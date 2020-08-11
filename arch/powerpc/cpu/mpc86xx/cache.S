@@ -1,6 +1,5 @@
 #include <config.h>
 #include <mpc86xx.h>
-#include <version.h>
 
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
@@ -113,51 +112,6 @@ _GLOBAL(clean_dcache_range)
 	addi	r3,r3,CACHE_LINE_SIZE
 	bdnz	1b
 	sync				/* wait for dcbst's to get to ram */
-	blr
-
-/*
- * Write any modified data cache blocks out to memory
- * and invalidate the corresponding instruction cache blocks.
- *
- * flush_dcache_range(unsigned long start, unsigned long stop)
- */
-_GLOBAL(flush_dcache_range)
-	li	r5,CACHE_LINE_SIZE-1
-	andc	r3,r3,r5
-	subf	r4,r3,r4
-	add	r4,r4,r5
-	srwi.	r4,r4,LG_CACHE_LINE_SIZE
-	beqlr
-	mtctr	r4
-
-	sync
-1:	dcbf	0,r3
-	addi	r3,r3,CACHE_LINE_SIZE
-	bdnz	1b
-	sync				/* wait for dcbf's to get to ram */
-	blr
-
-/*
- * Like above, but invalidate the D-cache.  This is used by the 8xx
- * to invalidate the cache so the PPC core doesn't get stale data
- * from the CPM (no cache snooping here :-).
- *
- * invalidate_dcache_range(unsigned long start, unsigned long stop)
- */
-_GLOBAL(invalidate_dcache_range)
-	li	r5,CACHE_LINE_SIZE-1
-	andc	r3,r3,r5
-	subf	r4,r3,r4
-	add	r4,r4,r5
-	srwi.	r4,r4,LG_CACHE_LINE_SIZE
-	beqlr
-	mtctr	r4
-
-	sync
-1:	dcbi	0,r3
-	addi	r3,r3,CACHE_LINE_SIZE
-	bdnz	1b
-	sync				/* wait for dcbi's to get to ram */
 	blr
 
 /*

@@ -1,22 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
  *
  * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <div64.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#ifdef CONFIG_FSL_ESDHC
-#include <fsl_esdhc.h>
+#ifdef CONFIG_FSL_ESDHC_IMX
+#include <fsl_esdhc_imx.h>
 #endif
 #include <netdev.h>
 #include <spl.h>
@@ -28,7 +28,7 @@
 
 #define CCM_GET_DIVIDER(x, m, o) (((x) & (m)) >> (o))
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
@@ -447,7 +447,7 @@ int cpu_eth_init(bd_t *bis)
 	return rc;
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 /*
  * Initializes on-chip MMC controllers.
  * to override, implement board_mmc_init()
@@ -460,7 +460,7 @@ int cpu_mmc_init(bd_t *bis)
 
 int get_clocks(void)
 {
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 #if CONFIG_SYS_FSL_ESDHC_ADDR == MMC_SDHC2_BASE_ADDR
 	gd->arch.sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 #elif CONFIG_SYS_FSL_ESDHC_ADDR == MMC_SDHC3_BASE_ADDR
@@ -524,24 +524,3 @@ u32 spl_boot_device(void)
 
 	return BOOT_DEVICE_NONE;
 }
-
-#ifdef CONFIG_SPL_BUILD
-u32 spl_boot_mode(void)
-{
-	switch (spl_boot_device()) {
-	case BOOT_DEVICE_MMC1:
-#ifdef CONFIG_SPL_FAT_SUPPORT
-		return MMCSD_MODE_FAT;
-#else
-		return MMCSD_MODE_RAW;
-#endif
-		break;
-	case BOOT_DEVICE_NAND:
-		return 0;
-		break;
-	default:
-		puts("spl: ERROR:  unsupported device\n");
-		hang();
-	}
-}
-#endif

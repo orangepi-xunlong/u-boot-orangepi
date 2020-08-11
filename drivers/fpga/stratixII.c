@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Eran Liberty, Extricom , eran.liberty@gmail.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>		/* core U-Boot definitions */
@@ -130,7 +129,7 @@ int StratixII_ps_fpp_load (Altera_desc * desc, void *buf, size_t bsize,
 		/* 3.1 check stratix has not signaled us an error */
 		if (fns->status (cookie) != 1) {
 			printf
-			    ("\n%s(%d) Stratix failed (byte transfered till failure 0x%x)\n",
+			    ("\n%s(%d) Stratix failed (byte transferred till failure 0x%x)\n",
 			     __FUNCTION__, __LINE__, bytecount);
 			fns->abort (cookie);
 			return FPGA_FAIL;

@@ -1,17 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Machine Specific Values for TRATS board based on EXYNOS4210
  *
  * Copyright (C) 2011 Samsung Electronics
  * Heungjun Kim <riverful.kim@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TRATS_SETUP_H
 #define _TRATS_SETUP_H
 
 #include <config.h>
-#include <version.h>
 #include <asm/arch/cpu.h>
 
 /* CLK_SRC_CPU: APLL(1), MPLL(1), CORE(0), HPM(0) */

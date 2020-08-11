@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007 Semihalf
  *
  * Written by: Rafal Jaworowski <raj@semihalf.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #if defined(CONFIG_PPC)
@@ -40,13 +39,38 @@ syscall:
 	ldr	ip, =syscall_ptr
 	ldr	pc, [ip]
 
+#elif defined(CONFIG_MIPS)
+#include <asm/asm.h>
+	.text
+	.globl __start
+	.ent __start
+__start:
+	PTR_S	$sp, search_hint
+	b	main
+	.end __start
+
+	.globl syscall
+	.ent syscall
+syscall:
+	PTR_S	$ra, return_addr
+	PTR_L	$t9, syscall_ptr
+	jalr	$t9
+	nop
+	PTR_L	$ra, return_addr
+	jr	$ra
+	nop
+	.end syscall
+
+return_addr:
+	.align 8
+	.long 0
 #else
 #error No support for this arch!
 #endif
 
 	.globl syscall_ptr
 syscall_ptr:
-	.align	4
+	.align	8
 	.long	0
 
 	.globl search_hint

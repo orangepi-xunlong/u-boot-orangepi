@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -194,8 +193,6 @@ struct descriptor {			/* A generic descriptor. */
 
 #define TOUT_LOOP		1000000
 
-#define ETH_ALEN		6
-
 static struct RxFD rx_ring[NUM_RX_DESC];	/* RX descriptor ring	      */
 static struct TxFD tx_ring[NUM_TX_DESC];	/* TX descriptor ring	      */
 static int rx_next;			/* RX descriptor ring pointer */
@@ -207,12 +204,6 @@ static int tx_threshold;
  * There are so many options that it would be difficult to document
  * each bit. We mostly use the default or recommended settings.
  */
-static const char i82557_config_cmd[] = {
-	22, 0x08, 0, 0, 0, 0, 0x32, 0x03, 1,	/* 1=Use MII  0=Use AUI */
-	0, 0x2E, 0, 0x60, 0,
-	0xf2, 0x48, 0, 0x40, 0xf2, 0x80,	/* 0x40=Force full-duplex */
-	0x3f, 0x05,
-};
 static const char i82558_config_cmd[] = {
 	22, 0x08, 0, 1, 0, 0, 0x22, 0x03, 1,	/* 1=Use MII  0=Use AUI */
 	0, 0x2E, 0, 0x60, 0x08, 0x88,
@@ -230,7 +221,7 @@ static int eepro100_send(struct eth_device *dev, void *packet, int length);
 static int eepro100_recv (struct eth_device *dev);
 static void eepro100_halt (struct eth_device *dev);
 
-#if defined(CONFIG_E500) || defined(CONFIG_DB64360) || defined(CONFIG_DB64460)
+#if defined(CONFIG_E500)
 #define bus_to_phys(a) (a)
 #define phys_to_bus(a) (a)
 #else
@@ -240,23 +231,23 @@ static void eepro100_halt (struct eth_device *dev);
 
 static inline int INW (struct eth_device *dev, u_long addr)
 {
-	return le16_to_cpu (*(volatile u16 *) (addr + dev->iobase));
+	return le16_to_cpu(*(volatile u16 *)(addr + (u_long)dev->iobase));
 }
 
 static inline void OUTW (struct eth_device *dev, int command, u_long addr)
 {
-	*(volatile u16 *) ((addr + dev->iobase)) = cpu_to_le16 (command);
+	*(volatile u16 *)((addr + (u_long)dev->iobase)) = cpu_to_le16(command);
 }
 
 static inline void OUTL (struct eth_device *dev, int command, u_long addr)
 {
-	*(volatile u32 *) ((addr + dev->iobase)) = cpu_to_le32 (command);
+	*(volatile u32 *)((addr + (u_long)dev->iobase)) = cpu_to_le32(command);
 }
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 static inline int INL (struct eth_device *dev, u_long addr)
 {
-	return le32_to_cpu (*(volatile u32 *) (addr + dev->iobase));
+	return le32_to_cpu(*(volatile u32 *)(addr + (u_long)dev->iobase));
 }
 
 static int get_phyreg (struct eth_device *dev, unsigned char addr,
@@ -334,34 +325,35 @@ static struct eth_device* verify_phyaddr (const char *devname,
 	return dev;
 }
 
-static int eepro100_miiphy_read(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short *value)
+static int eepro100_miiphy_read(struct mii_dev *bus, int addr, int devad,
+				int reg)
 {
+	unsigned short value = 0;
 	struct eth_device *dev;
 
-	dev = verify_phyaddr(devname, addr);
+	dev = verify_phyaddr(bus->name, addr);
 	if (dev == NULL)
 		return -1;
 
-	if (get_phyreg(dev, addr, reg, value) != 0) {
-		printf("%s: mii read timeout!\n", devname);
+	if (get_phyreg(dev, addr, reg, &value) != 0) {
+		printf("%s: mii read timeout!\n", bus->name);
 		return -1;
 	}
 
-	return 0;
+	return value;
 }
 
-static int eepro100_miiphy_write(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short value)
+static int eepro100_miiphy_write(struct mii_dev *bus, int addr, int devad,
+				 int reg, u16 value)
 {
 	struct eth_device *dev;
 
-	dev = verify_phyaddr(devname, addr);
+	dev = verify_phyaddr(bus->name, addr);
 	if (dev == NULL)
 		return -1;
 
 	if (set_phyreg(dev, addr, reg, value) != 0) {
-		printf("%s: mii write timeout!\n", devname);
+		printf("%s: mii write timeout!\n", bus->name);
 		return -1;
 	}
 
@@ -451,8 +443,17 @@ int eepro100_initialize (bd_t * bis)
 
 #if defined (CONFIG_MII) || defined(CONFIG_CMD_MII)
 		/* register mii command access routines */
-		miiphy_register(dev->name,
-				eepro100_miiphy_read, eepro100_miiphy_write);
+		int retval;
+		struct mii_dev *mdiodev = mdio_alloc();
+		if (!mdiodev)
+			return -ENOMEM;
+		strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+		mdiodev->read = eepro100_miiphy_read;
+		mdiodev->write = eepro100_miiphy_write;
+
+		retval = mdio_register(mdiodev);
+		if (retval < 0)
+			return retval;
 #endif
 
 		card_number++;
@@ -674,7 +675,8 @@ static int eepro100_recv (struct eth_device *dev)
 			/* Pass the packet up to the protocol
 			 * layers.
 			 */
-			NetReceive((u8 *)rx_ring[rx_next].data, length);
+			net_process_received_packet((u8 *)rx_ring[rx_next].data,
+						    length);
 		} else {
 			/* There was an error.
 			 */

@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
  * Author: Timur Tabi <timur@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -55,14 +54,14 @@
 #include <fsl_mdio.h>
 #include <malloc.h>
 #include <fdt_support.h>
-#include <asm/fsl_dtsec.h>
+#include <fsl_dtsec.h>
 
 #include "../common/ngpixis.h"
 #include "../common/fman.h"
 
 #ifdef CONFIG_FMAN_ENET
 
-#define BRDCFG1_EMI1_SEL_MASK	0x70
+#define BRDCFG1_EMI1_SEL_MASK	0x78
 #define BRDCFG1_EMI1_SEL_SLOT1	0x10
 #define BRDCFG1_EMI1_SEL_SLOT2	0x20
 #define BRDCFG1_EMI1_SEL_SLOT5	0x30
@@ -170,7 +169,7 @@ static int hydra_mdio_init(char *realbusname, char *fakebusname)
 	bus->read = hydra_mdio_read;
 	bus->write = hydra_mdio_write;
 	bus->reset = hydra_mdio_reset;
-	sprintf(bus->name, fakebusname);
+	strcpy(bus->name, fakebusname);
 
 	hmdio->realbus = miiphy_get_dev_by_name(realbusname);
 
@@ -202,6 +201,8 @@ static void fdt_set_mdio_mux(void *fdt, const char *alias, u32 mux)
 	if (!path)
 		path = alias;
 
+	do_fixup_by_path(fdt, path, "reg",
+			 &mux, sizeof(mux), 1);
 	do_fixup_by_path(fdt, path, "fsl,hydra-mdio-muxval",
 			 &mux, sizeof(mux), 1);
 }
@@ -250,11 +251,12 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 		return;
 	}
 
-	if (mux == BRDCFG1_EMI1_SEL_RGMII) {
+	if (mux == (BRDCFG1_EMI1_SEL_RGMII | BRDCFG1_EMI1_EN)) {
 		/* RGMII */
 		/* The RGMII PHY is identified by the MAC connected to it */
 		sprintf(phy, "phy_rgmii_%u", port == FM1_DTSEC4 ? 0 : 1);
 		fdt_set_phy_handle(fdt, compat, addr, phy);
+		return;
 	}
 
 	/* If it's not RGMII or XGMII, it must be SGMII */

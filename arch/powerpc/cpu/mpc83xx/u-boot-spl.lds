@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright 2008 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_ARCH(powerpc)
@@ -24,7 +23,6 @@ SECTIONS
 		_GOT2_TABLE_ = .;
 		KEEP(*(.got2))
 		KEEP(*(.got))
-		PROVIDE(_GLOBAL_OFFSET_TABLE_ = . + 4);
 	}
 	__got2_entries = ((_GLOBAL_OFFSET_TABLE_ - _GOT2_TABLE_) >> 2) - 1;
 

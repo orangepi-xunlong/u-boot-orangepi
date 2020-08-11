@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * OMAP USB PHY Support
  *
@@ -5,13 +6,12 @@
  * Texas Instruments, <www.ti.com>
  *
  * Author: Dan Murphy <dmurphy@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <usb.h>
-#include <asm-generic/errno.h>
+#include <dm/device_compat.h>
+#include <linux/errno.h>
 #include <asm/omap_common.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/sys_proto.h>
@@ -20,10 +20,10 @@
 #include <linux/usb/dwc3.h>
 #include <linux/usb/xhci-omap.h>
 
-#include "../host/xhci.h"
+#include <usb/xhci.h>
 
 #ifdef CONFIG_OMAP_USB3PHY1_HOST
-struct usb_dpll_params {
+struct usb3_dpll_params {
 	u16	m;
 	u8	n;
 	u8	freq:3;
@@ -31,16 +31,38 @@ struct usb_dpll_params {
 	u32	mf;
 };
 
-#define	NUM_USB_CLKS		6
-
-static struct usb_dpll_params omap_usb3_dpll_params[NUM_USB_CLKS] = {
-	{1250, 5, 4, 20, 0},		/* 12 MHz */
-	{3125, 20, 4, 20, 0},		/* 16.8 MHz */
-	{1172, 8, 4, 20, 65537},	/* 19.2 MHz */
-	{1250, 12, 4, 20, 0},		/* 26 MHz */
-	{3125, 47, 4, 20, 92843},	/* 38.4 MHz */
-	{1000, 7, 4, 10, 0},        /* 20 MHz */
+struct usb3_dpll_map {
+	unsigned long rate;
+	struct usb3_dpll_params params;
+	struct usb3_dpll_map *dpll_map;
 };
+
+static struct usb3_dpll_map dpll_map_usb[] = {
+	{12000000, {1250, 5, 4, 20, 0} },	/* 12 MHz */
+	{16800000, {3125, 20, 4, 20, 0} },	/* 16.8 MHz */
+	{19200000, {1172, 8, 4, 20, 65537} },	/* 19.2 MHz */
+	{20000000, {1000, 7, 4, 10, 0} },	/* 20 MHz */
+	{26000000, {1250, 12, 4, 20, 0} },	/* 26 MHz */
+	{38400000, {3125, 47, 4, 20, 92843} },	/* 38.4 MHz */
+	{ },					/* Terminator */
+};
+
+static struct usb3_dpll_params *omap_usb3_get_dpll_params(void)
+{
+	unsigned long rate;
+	struct usb3_dpll_map *dpll_map = dpll_map_usb;
+
+	rate = get_sys_clk_freq();
+
+	for (; dpll_map->rate; dpll_map++) {
+		if (rate == dpll_map->rate)
+			return &dpll_map->params;
+	}
+
+	dev_err(phy->dev, "No DPLL configuration for %lu Hz SYS CLK\n", rate);
+
+	return NULL;
+}
 
 static void omap_usb_dpll_relock(struct omap_usb3_phy *phy_regs)
 {
@@ -56,32 +78,36 @@ static void omap_usb_dpll_relock(struct omap_usb3_phy *phy_regs)
 
 static void omap_usb_dpll_lock(struct omap_usb3_phy *phy_regs)
 {
-	u32 clk_index = get_sys_clk_index();
+	struct usb3_dpll_params	*dpll_params;
 	u32 val;
+
+	dpll_params = omap_usb3_get_dpll_params();
+	if (!dpll_params)
+		return;
 
 	val = readl(&phy_regs->pll_config_1);
 	val &= ~PLL_REGN_MASK;
-	val |= omap_usb3_dpll_params[clk_index].n << PLL_REGN_SHIFT;
+	val |= dpll_params->n << PLL_REGN_SHIFT;
 	writel(val, &phy_regs->pll_config_1);
 
 	val = readl(&phy_regs->pll_config_2);
 	val &= ~PLL_SELFREQDCO_MASK;
-	val |= omap_usb3_dpll_params[clk_index].freq << PLL_SELFREQDCO_SHIFT;
+	val |= dpll_params->freq << PLL_SELFREQDCO_SHIFT;
 	writel(val, &phy_regs->pll_config_2);
 
 	val = readl(&phy_regs->pll_config_1);
 	val &= ~PLL_REGM_MASK;
-	val |= omap_usb3_dpll_params[clk_index].m << PLL_REGM_SHIFT;
+	val |= dpll_params->m << PLL_REGM_SHIFT;
 	writel(val, &phy_regs->pll_config_1);
 
 	val = readl(&phy_regs->pll_config_4);
 	val &= ~PLL_REGM_F_MASK;
-	val |= omap_usb3_dpll_params[clk_index].mf << PLL_REGM_F_SHIFT;
+	val |= dpll_params->mf << PLL_REGM_F_SHIFT;
 	writel(val, &phy_regs->pll_config_4);
 
 	val = readl(&phy_regs->pll_config_3);
 	val &= ~PLL_SD_MASK;
-	val |= omap_usb3_dpll_params[clk_index].sd << PLL_SD_SHIFT;
+	val |= dpll_params->sd << PLL_SD_SHIFT;
 	writel(val, &phy_regs->pll_config_3);
 
 	omap_usb_dpll_relock(phy_regs);
@@ -118,7 +144,6 @@ void usb_phy_power(int on)
 void omap_usb3_phy_init(struct omap_usb3_phy *phy_regs)
 {
 	omap_usb_dpll_lock(phy_regs);
-
 	usb3_phy_partial_powerup(phy_regs);
 	/*
 	 * Give enough time for the PHY to partially power-up before
@@ -126,23 +151,11 @@ void omap_usb3_phy_init(struct omap_usb3_phy *phy_regs)
 	 * team.
 	 */
 	mdelay(100);
-	usb3_phy_power(1);
 }
 
 static void omap_enable_usb3_phy(struct omap_xhci *omap)
 {
 	u32	val;
-
-	/* Setting OCP2SCP1 register */
-	setbits_le32((*prcm)->cm_l3init_ocp2scp1_clkctrl,
-		     OCP2SCP1_CLKCTRL_MODULEMODE_HW);
-
-	/* Turn on 32K AON clk */
-	setbits_le32((*prcm)->cm_coreaon_usb_phy_core_clkctrl,
-		     USBPHY_CORE_CLKCTRL_OPTFCLKEN_CLK32K);
-
-	/* Setting CM_L3INIT_CLKSTCTRL to 0x0 i.e NO sleep */
-	writel(0x0, (*prcm)->cm_l3init_clkstctrl);
 
 	val = (USBOTGSS_DMADISABLE |
 			USBOTGSS_STANDBYMODE_SMRT_WKUP |
@@ -171,11 +184,6 @@ static void omap_enable_usb3_phy(struct omap_xhci *omap)
 	writel(val, &omap->otg_wrapper->irqstatus_1);
 	val = readl(&omap->otg_wrapper->irqstatus_0);
 	writel(val, &omap->otg_wrapper->irqstatus_0);
-
-	/* Enable the USB OTG Super speed clocks */
-	val = (OPTFCLKEN_REFCLK960M | OTG_SS_CLKCTRL_MODULEMODE_HW);
-	setbits_le32((*prcm)->cm_l3init_usb_otg_ss_clkctrl, val);
-
 };
 #endif /* CONFIG_OMAP_USB3PHY1_HOST */
 
@@ -240,24 +248,6 @@ void usb_phy_power(int on)
 	writel(val, USB1_CTRL);
 }
 #endif /* CONFIG_AM437X_USB2PHY2_HOST */
-
-void omap_reset_usb_phy(struct dwc3 *dwc3_reg)
-{
-	/* Assert USB3 PHY reset */
-	setbits_le32(&dwc3_reg->g_usb3pipectl[0], DWC3_GUSB3PIPECTL_PHYSOFTRST);
-
-	/* Assert USB2 PHY reset */
-	setbits_le32(&dwc3_reg->g_usb2phycfg, DWC3_GUSB2PHYCFG_PHYSOFTRST);
-
-	mdelay(100);
-
-	/* Clear USB3 PHY reset */
-	clrbits_le32(&dwc3_reg->g_usb3pipectl[0], DWC3_GUSB3PIPECTL_PHYSOFTRST);
-
-	/* Clear USB2 PHY reset */
-	clrbits_le32(&dwc3_reg->g_usb2phycfg, DWC3_GUSB2PHYCFG_PHYSOFTRST);
-
-}
 
 void omap_enable_phy(struct omap_xhci *omap)
 {

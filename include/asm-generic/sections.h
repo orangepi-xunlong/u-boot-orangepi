@@ -1,13 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Taken from Linux kernel, commit f56c3196 */
 
 #ifndef _ASM_GENERIC_SECTIONS_H_
 #define _ASM_GENERIC_SECTIONS_H_
+
+#include <linux/types.h>
 
 /* References to section boundaries */
 
@@ -22,6 +23,8 @@ extern char __kprobes_text_start[], __kprobes_text_end[];
 extern char __entry_text_start[], __entry_text_end[];
 extern char __initdata_begin[], __initdata_end[];
 extern char __start_rodata[], __end_rodata[];
+extern char __efi_helloworld_begin[];
+extern char __efi_helloworld_end[];
 
 /* Start and end of .ctors section - used for constructor calls. */
 extern char __ctors_start[], __ctors_end[];
@@ -71,9 +74,9 @@ extern char __bss_start[];
 extern char __bss_end[];
 extern char __image_copy_start[];
 extern char __image_copy_end[];
+extern char _image_binary_end[];
 extern char __rel_dyn_start[];
 extern char __rel_dyn_end[];
-extern ulong _TEXT_BASE;	/* code start */
 
 #else /* don't use offsets: */
 
@@ -82,6 +85,7 @@ extern ulong __data_end;
 extern ulong __rel_dyn_start;
 extern ulong __rel_dyn_end;
 extern ulong __bss_end;
+extern ulong _image_binary_end;
 
 extern ulong _TEXT_BASE;	/* code start */
 

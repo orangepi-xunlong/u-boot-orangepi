@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012 Samsung Electronics
  * Donghwa Lee <dh09.lee@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +11,7 @@
 #include "tizen_logo_16bpp.h"
 #include "tizen_logo_16bpp_gzip.h"
 
+#ifdef CONFIG_LCD
 void get_tizen_logo_info(vidinfo_t *vid)
 {
 	switch (vid->vl_bpix) {
@@ -31,3 +31,4 @@ void get_tizen_logo_info(vidinfo_t *vid)
 		break;
 	}
 }
+#endif

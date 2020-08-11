@@ -1,20 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010 Marek Vasut <marek.vasut@gmail.com>
  *
  * Loosely based on the old code and Linux's PXA MMC driver
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <config.h>
 #include <common.h>
-#include <malloc.h>
-
-#include <mmc.h>
-#include <asm/errno.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/regs-mmc.h>
+#include <linux/errno.h>
 #include <asm/io.h>
+#include <malloc.h>
+#include <mmc.h>
 
 /* PXAMMC Generic default config for various CPUs */
 #if defined(CONFIG_CPU_PXA25X)
@@ -197,7 +194,7 @@ static int pxa_mmc_do_read_xfer(struct mmc *mmc, struct mmc_data *data)
 	while (len) {
 		/* The controller has data ready */
 		if (readl(&regs->i_reg) & MMC_I_REG_RXFIFO_RD_REQ) {
-			size = min(len, PXAMMC_FIFO_SIZE);
+			size = min(len, (uint32_t)PXAMMC_FIFO_SIZE);
 			len -= size;
 			size /= 4;
 
@@ -233,14 +230,14 @@ static int pxa_mmc_do_write_xfer(struct mmc *mmc, struct mmc_data *data)
 	while (len) {
 		/* The controller is ready to receive data */
 		if (readl(&regs->i_reg) & MMC_I_REG_TXFIFO_WR_REQ) {
-			size = min(len, PXAMMC_FIFO_SIZE);
+			size = min(len, (uint32_t)PXAMMC_FIFO_SIZE);
 			len -= size;
 			size /= 4;
 
 			while (size--)
 				writel(*buf++, &regs->txfifo);
 
-			if (min(len, PXAMMC_FIFO_SIZE) < 32)
+			if (min(len, (uint32_t)PXAMMC_FIFO_SIZE) < 32)
 				writel(MMC_PRTBUF_BUF_PART_FULL, &regs->prtbuf);
 		}
 
@@ -315,7 +312,7 @@ static int pxa_mmc_request(struct mmc *mmc, struct mmc_cmd *cmd,
 	return 0;
 }
 
-static void pxa_mmc_set_ios(struct mmc *mmc)
+static int pxa_mmc_set_ios(struct mmc *mmc)
 {
 	struct pxa_mmc_priv *priv = mmc->priv;
 	struct pxa_mmc_regs *regs = priv->regs;
@@ -324,13 +321,13 @@ static void pxa_mmc_set_ios(struct mmc *mmc)
 
 	if (!mmc->clock) {
 		pxa_mmc_stop_clock(mmc);
-		return;
+		return 0;
 	}
 
 	/* PXA3xx can do 26MHz with special settings. */
 	if (mmc->clock == 26000000) {
 		writel(0x7, &regs->clkrt);
-		return;
+		return 0;
 	}
 
 	/* Set clock to the card the usual way. */
@@ -344,6 +341,8 @@ static void pxa_mmc_set_ios(struct mmc *mmc)
 	}
 
 	writel(pxa_mmc_clock, &regs->clkrt);
+
+	return 0;
 }
 
 static int pxa_mmc_init(struct mmc *mmc)

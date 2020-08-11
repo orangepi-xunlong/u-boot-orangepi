@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2011 Jana Rapava <fermata7@gmail.com>
  * Copyright (C) 2011 CompuLab, Ltd. <www.compulab.co.il>
@@ -10,16 +11,6 @@
  *
  * Original Copyright follow:
  * Copyright (C) 2011 Google, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
 
 #include <common.h>
@@ -100,7 +91,8 @@ static int ulpi_request(struct ulpi_viewport *ulpi_vp, u32 value)
 
 int ulpi_write(struct ulpi_viewport *ulpi_vp, u8 *reg, u32 value)
 {
-	u32 val = ULPI_RWRUN | ULPI_RWCTRL | ((u32)reg << 16) | (value & 0xff);
+	u32 addr = (uintptr_t)reg & 0xFF;
+	u32 val = ULPI_RWRUN | ULPI_RWCTRL | addr << 16 | (value & 0xff);
 
 	val |= (ulpi_vp->port_num & 0x7) << 24;
 	return ulpi_request(ulpi_vp, val);
@@ -109,7 +101,7 @@ int ulpi_write(struct ulpi_viewport *ulpi_vp, u8 *reg, u32 value)
 u32 ulpi_read(struct ulpi_viewport *ulpi_vp, u8 *reg)
 {
 	int err;
-	u32 val = ULPI_RWRUN | ((u32)reg << 16);
+	u32 val = ULPI_RWRUN | ((uintptr_t)reg & 0xFF) << 16;
 
 	val |= (ulpi_vp->port_num & 0x7) << 24;
 	err = ulpi_request(ulpi_vp, val);

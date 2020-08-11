@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2009 Daniel Mack <daniel@caiaq.de>
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <usb.h>
 #include <errno.h>
 #include <linux/compiler.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
+#include <dm.h>
+#include <power/regulator.h>
 
 #include "ehci.h"
 
@@ -218,11 +219,24 @@ void __weak board_ehci_hcd_postinit(struct usb_ehci *ehci, int port)
 {
 }
 
+__weak void mx5_ehci_powerup_fixup(struct ehci_ctrl *ctrl, uint32_t *status_reg,
+				   uint32_t *reg)
+{
+	mdelay(50);
+}
+
+#if !CONFIG_IS_ENABLED(DM_USB)
+static const struct ehci_ops mx5_ehci_ops = {
+	.powerup_fixup		= mx5_ehci_powerup_fixup,
+};
+
 int ehci_hcd_init(int index, enum usb_init_type init,
 		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	struct usb_ehci *ehci;
 
+	/* The only user for this is efikamx-usb */
+	ehci_set_controller_priv(index, NULL, &mx5_ehci_ops);
 	set_usboh3_clk();
 	enable_usboh3_clk(true);
 	set_usb_phy_clk();
@@ -256,3 +270,103 @@ int ehci_hcd_stop(int index)
 {
 	return 0;
 }
+#else /* CONFIG_IS_ENABLED(DM_USB) */
+struct ehci_mx5_priv_data {
+	struct ehci_ctrl ctrl;
+	struct usb_ehci *ehci;
+	struct udevice *vbus_supply;
+	enum usb_init_type init_type;
+	int portnr;
+};
+
+static const struct ehci_ops mx5_ehci_ops = {
+	.powerup_fixup		= mx5_ehci_powerup_fixup,
+};
+
+static int ehci_usb_ofdata_to_platdata(struct udevice *dev)
+{
+	struct usb_platdata *plat = dev_get_platdata(dev);
+	const char *mode;
+
+	mode = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "dr_mode", NULL);
+	if (mode) {
+		if (strcmp(mode, "peripheral") == 0)
+			plat->init_type = USB_INIT_DEVICE;
+		else if (strcmp(mode, "host") == 0)
+			plat->init_type = USB_INIT_HOST;
+		else
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ehci_usb_probe(struct udevice *dev)
+{
+	struct usb_platdata *plat = dev_get_platdata(dev);
+	struct usb_ehci *ehci = (struct usb_ehci *)devfdt_get_addr(dev);
+	struct ehci_mx5_priv_data *priv = dev_get_priv(dev);
+	enum usb_init_type type = plat->init_type;
+	struct ehci_hccr *hccr;
+	struct ehci_hcor *hcor;
+	int ret;
+
+	set_usboh3_clk();
+	enable_usboh3_clk(true);
+	set_usb_phy_clk();
+	enable_usb_phy1_clk(true);
+	enable_usb_phy2_clk(true);
+	mdelay(1);
+
+	priv->ehci = ehci;
+	priv->portnr = dev->seq;
+	priv->init_type = type;
+
+	ret = device_get_supply_regulator(dev, "vbus-supply",
+					  &priv->vbus_supply);
+	if (ret)
+		debug("%s: No vbus supply\n", dev->name);
+
+	if (!ret && priv->vbus_supply) {
+		ret = regulator_set_enable(priv->vbus_supply,
+					   (type == USB_INIT_DEVICE) ?
+					   false : true);
+		if (ret) {
+			puts("Error enabling VBUS supply\n");
+			return ret;
+		}
+	}
+
+	hccr = (struct ehci_hccr *)((uint32_t)&ehci->caplength);
+	hcor = (struct ehci_hcor *)((uint32_t)hccr +
+			HC_LENGTH(ehci_readl(&(hccr)->cr_capbase)));
+	setbits_le32(&ehci->usbmode, CM_HOST);
+
+	__raw_writel(CONFIG_MXC_USB_PORTSC, &ehci->portsc);
+	setbits_le32(&ehci->portsc, USB_EN);
+
+	mxc_set_usbcontrol(priv->portnr, CONFIG_MXC_USB_FLAGS);
+	mdelay(10);
+
+	return ehci_register(dev, hccr, hcor, &mx5_ehci_ops, 0,
+			     priv->init_type);
+}
+
+static const struct udevice_id mx5_usb_ids[] = {
+	{ .compatible = "fsl,imx53-usb" },
+	{ }
+};
+
+U_BOOT_DRIVER(usb_mx5) = {
+	.name	= "ehci_mx5",
+	.id	= UCLASS_USB,
+	.of_match = mx5_usb_ids,
+	.ofdata_to_platdata = ehci_usb_ofdata_to_platdata,
+	.probe	= ehci_usb_probe,
+	.remove = ehci_deregister,
+	.ops	= &ehci_usb_ops,
+	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
+	.priv_auto_alloc_size = sizeof(struct ehci_mx5_priv_data),
+	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
+};
+#endif /* !CONFIG_IS_ENABLED(DM_USB) */

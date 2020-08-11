@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /* Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <console.h>
+#include <env_internal.h>
+#include <init.h>
 #include <ns16550.h>
 #include <malloc.h>
 #include <mmc.h>
@@ -52,20 +55,21 @@ void board_init_r(gd_t *gd, ulong dest_addr)
 	bd->bi_memstart = CONFIG_SYS_INIT_L2_ADDR;
 	bd->bi_memsize = CONFIG_SYS_L2_SIZE;
 
-	probecpu();
+	arch_cpu_init();
 	get_clocks();
 	mem_malloc_init(CONFIG_SPL_RELOC_MALLOC_ADDR,
 			CONFIG_SPL_RELOC_MALLOC_SIZE);
+	gd->flags |= GD_FLG_FULL_MALLOC_INIT;
 
 	/* relocate environment function pointers etc. */
 	nand_spl_load_image(CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE,
-			    (uchar *)CONFIG_ENV_ADDR);
-	gd->env_addr  = (ulong)(CONFIG_ENV_ADDR);
-	gd->env_valid = 1;
+			    (uchar *)SPL_ENV_ADDR);
+	gd->env_addr  = (ulong)(SPL_ENV_ADDR);
+	gd->env_valid = ENV_VALID;
 
 	i2c_init_all();
 
-	gd->ram_size = initdram(0);
+	dram_init();
 
 #ifdef CONFIG_SPL_NAND_BOOT
 	puts("TPL\n");

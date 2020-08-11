@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
  *
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * ve8313 board configuration file
@@ -17,35 +16,15 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1
-#define CONFIG_MPC831x		1
-#define CONFIG_MPC8313		1
-#define CONFIG_VE8313		1
 
-#ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE	0xfe000000
-#endif
-
-#define CONFIG_PCI		1
 #define CONFIG_PCI_INDIRECT_BRIDGE 1
-#define CONFIG_FSL_ELBC		1
-
-#define CONFIG_BOARD_EARLY_INIT_F	1
 
 /*
  * On-board devices
  *
  */
-#define CONFIG_83XX_CLKIN	32000000	/* in Hz */
-
-#define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
-
-#define CONFIG_SYS_IMMR		0xE0000000
-
 #define CONFIG_SYS_MEMTEST_START	0x00001000
 #define CONFIG_SYS_MEMTEST_END		0x07000000
-
-#define CONFIG_SYS_ACR_PIPE_DEP		3	/* Arbiter pipeline depth */
-#define CONFIG_SYS_ACR_RPTCNT		3	/* Arbiter repeat count */
 
 /*
  * Device configurations
@@ -54,9 +33,7 @@
 /*
  * DDR Setup
  */
-#define CONFIG_SYS_DDR_BASE		0x00000000 /* DDR is system memory*/
-#define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_BASE
-#define CONFIG_SYS_DDR_SDRAM_BASE	CONFIG_SYS_DDR_BASE
+#define CONFIG_SYS_SDRAM_BASE		0x00000000 /* DDR is system memory*/
 
 /*
  * Manually set up DDR parameters, as this board does not
@@ -122,27 +99,9 @@
 /*
  * FLASH on the Local Bus
  */
-#define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
-#define CONFIG_FLASH_CFI_DRIVER		/* use the CFI driver */
 #define CONFIG_SYS_FLASH_BASE		0xFE000000
 #define CONFIG_SYS_FLASH_SIZE		32	/* size in MB */
 #define CONFIG_SYS_FLASH_EMPTY_INFO		/* display empty sectors */
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	/* buffer up multiple bytes */
-
-#define CONFIG_SYS_NOR_BR_PRELIM	(CONFIG_SYS_FLASH_BASE \
-					| BR_PS_16	/* 16 bit */ \
-					| BR_MS_GPCM	/* MSEL = GPCM */ \
-					| BR_V)		/* valid */
-#define CONFIG_SYS_NOR_OR_PRELIM	(MEG_TO_AM(CONFIG_SYS_FLASH_SIZE) \
-					| OR_GPCM_CSNT \
-					| OR_GPCM_ACS_DIV4 \
-					| OR_GPCM_SCY_5 \
-					| OR_GPCM_TRLX_SET \
-					| OR_GPCM_EAD)
-					/* 0xfe000c55 */
-
-#define CONFIG_SYS_LBLAWBAR0_PRELIM	CONFIG_SYS_FLASH_BASE
-#define CONFIG_SYS_LBLAWAR0_PRELIM	(LBLAWAR_EN | LBLAWAR_32MB)
 
 #define CONFIG_SYS_MAX_FLASH_BANKS	1		/* number of banks */
 #define CONFIG_SYS_MAX_FLASH_SECT	256		/* sectors per dev */
@@ -169,88 +128,24 @@
 #define CONFIG_SYS_MALLOC_LEN		(512 * 1024)
 
 /*
- * Local Bus LCRR and LBCR regs
- */
-#define CONFIG_SYS_LCRR_EADC	LCRR_EADC_3
-#define CONFIG_SYS_LCRR_CLKDIV	LCRR_CLKDIV_2
-
-#define CONFIG_SYS_LBC_LBCR	0x00040000
-
-#define CONFIG_SYS_LBC_MRTPR	0x20000000
-
-/*
  * NAND settings
  */
 #define CONFIG_SYS_NAND_BASE		0x61000000
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_MTD_NAND_VERIFY_WRITE
-#define CONFIG_CMD_NAND 1
 #define CONFIG_NAND_FSL_ELBC 1
 #define CONFIG_SYS_NAND_BLOCK_SIZE 16384
 
-#define CONFIG_SYS_NAND_BR_PRELIM	(CONFIG_SYS_NAND_BASE \
-					| BR_PS_8		\
-					| BR_DECC_CHK_GEN	\
-					| BR_MS_FCM		\
-					| BR_V)	/* valid */
-					/* 0x61000c21 */
-#define CONFIG_SYS_NAND_OR_PRELIM	(OR_AM_32KB \
-					| OR_FCM_BCTLD \
-					| OR_FCM_CHT \
-					| OR_FCM_SCY_2 \
-					| OR_FCM_RST \
-					| OR_FCM_TRLX)
-					/* 0xffff90ac */
 
-#define CONFIG_SYS_BR0_PRELIM CONFIG_SYS_NOR_BR_PRELIM
-#define CONFIG_SYS_OR0_PRELIM CONFIG_SYS_NOR_OR_PRELIM
-#define CONFIG_SYS_BR1_PRELIM CONFIG_SYS_NAND_BR_PRELIM
-#define CONFIG_SYS_OR1_PRELIM CONFIG_SYS_NAND_OR_PRELIM
 
-#define CONFIG_SYS_LBLAWBAR1_PRELIM	CONFIG_SYS_NAND_BASE
-#define CONFIG_SYS_LBLAWAR1_PRELIM	(LBLAWAR_EN | LBLAWAR_32KB)
+/* Still needed for spl_minimal.c */
+#define CONFIG_SYS_NAND_BR_PRELIM CONFIG_SYS_BR1_PRELIM
+#define CONFIG_SYS_NAND_OR_PRELIM CONFIG_SYS_OR1_PRELIM
 
-#define CONFIG_SYS_NAND_LBLAWBAR_PRELIM CONFIG_SYS_LBLAWBAR1_PRELIM
-#define CONFIG_SYS_NAND_LBLAWAR_PRELIM CONFIG_SYS_LBLAWAR1_PRELIM
 
-/* CS2 NvRAM */
-#define CONFIG_SYS_BR2_PRELIM	(0x60000000 \
-				| BR_PS_8 \
-				| BR_V)
-				/* 0x60000801 */
-#define CONFIG_SYS_OR2_PRELIM	(OR_AM_128KB \
-				| OR_GPCM_CSNT \
-				| OR_GPCM_XACS \
-				| OR_GPCM_SCY_3 \
-				| OR_GPCM_TRLX_SET \
-				| OR_GPCM_EHTR_SET \
-				| OR_GPCM_EAD)
-				/* 0xfffe0937 */
-/* local bus read write buffer mapping SRAM@0x64000000 */
-#define CONFIG_SYS_BR3_PRELIM	(0x62000000 \
-				| BR_PS_16 \
-				| BR_V)
-				/* 0x62001001 */
-
-#define CONFIG_SYS_OR3_PRELIM	(OR_AM_32MB \
-				| OR_GPCM_CSNT \
-				| OR_GPCM_XACS \
-				| OR_GPCM_SCY_15 \
-				| OR_GPCM_TRLX_SET \
-				| OR_GPCM_EHTR_SET \
-				| OR_GPCM_EAD)
-				/* 0xfe0009f7 */
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP	1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -260,9 +155,6 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
 
 #if defined(CONFIG_PCI)
 /*
@@ -279,15 +171,12 @@
 #define CONFIG_SYS_PCI1_IO_PHYS		0xE2000000
 #define CONFIG_SYS_PCI1_IO_SIZE		0x00100000	/* 1M */
 
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1957	/* Freescale */
 #endif
 
 /*
  * TSEC
  */
-#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
-
 
 #define CONFIG_TSEC1
 #ifdef CONFIG_TSEC1
@@ -305,15 +194,7 @@
 /*
  * Environment
  */
-#define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_ADDR		\
-			(CONFIG_SYS_FLASH_BASE + CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
-#define CONFIG_ENV_SIZE		0x4000
 /* Address and size of Redundant Environment Sector */
-#define CONFIG_ENV_OFFSET_REDUND	\
-			(CONFIG_ENV_OFFSET + CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
@@ -322,32 +203,17 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_PCI
-
-#define CONFIG_CMDLINE_EDITING 1
-#define CONFIG_AUTO_COMPLETE	/* add autocompletion support   */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x100000	/* default load address */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS	16		/* max number of cmd args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot arg Buffer size */
 
 /*
@@ -357,25 +223,6 @@
  */
 				/* Initial Memory map for Linux*/
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20)
-
-/* 0x64050000 */
-#define CONFIG_SYS_HRCW_LOW (\
-	0x20000000 /* reserved, must be set */ |\
-	HRCWL_DDRCM |\
-	HRCWL_CSB_TO_CLKIN_4X1 | \
-	HRCWL_CORE_TO_CSB_2_5X1)
-
-/* 0xa0600004 */
-#define CONFIG_SYS_HRCW_HIGH (HRCWH_PCI_HOST | \
-	HRCWH_PCI_ARBITER_ENABLE | \
-	HRCWH_CORE_ENABLE | \
-	HRCWH_FROM_0X00000100 | \
-	HRCWH_BOOTSEQ_DISABLE |\
-	HRCWH_SW_WATCHDOG_DISABLE |\
-	HRCWH_ROM_LOC_LOCAL_16BIT | \
-	HRCWH_TSEC1M_IN_MII | \
-	HRCWH_BIG_ENDIAN | \
-	HRCWH_LALE_EARLY)
 
 /* System IO Config */
 #define CONFIG_SYS_SICRH	(0x01000000 | \
@@ -396,91 +243,10 @@
 				SICRL_ETSEC2_A)
 				/* 0x33fc0003) */
 
-#define CONFIG_SYS_HID0_INIT	0x000000000
-#define CONFIG_SYS_HID0_FINAL	(HID0_ENABLE_MACHINE_CHECK | \
-				 HID0_ENABLE_INSTRUCTION_CACHE)
-
-#define CONFIG_SYS_HID2 HID2_HBE
-
-#define CONFIG_HIGH_BATS	1	/* High BATs supported */
-
-/* DDR @ 0x00000000 */
-#define CONFIG_SYS_IBAT0L	(CONFIG_SYS_SDRAM_BASE | BATL_PP_RW)
-#define CONFIG_SYS_IBAT0U	(CONFIG_SYS_SDRAM_BASE \
-				| BATU_BL_256M \
-				| BATU_VS \
-				| BATU_VP)
-
-#if defined(CONFIG_PCI)
-/* PCI @ 0x80000000 */
-#define CONFIG_SYS_IBAT1L	(CONFIG_SYS_PCI1_MEM_BASE | BATL_PP_RW)
-#define CONFIG_SYS_IBAT1U	(CONFIG_SYS_PCI1_MEM_BASE \
-				| BATU_BL_256M \
-				| BATU_VS \
-				| BATU_VP)
-#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_PCI1_MMIO_BASE \
-				| BATL_PP_RW \
-				| BATL_CACHEINHIBIT \
-				| BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT2U	(CONFIG_SYS_PCI1_MMIO_BASE \
-				| BATU_BL_256M \
-				| BATU_VS \
-				| BATU_VP)
-#else
-#define CONFIG_SYS_IBAT1L	(0)
-#define CONFIG_SYS_IBAT1U	(0)
-#define CONFIG_SYS_IBAT2L	(0)
-#define CONFIG_SYS_IBAT2U	(0)
-#endif
-
-/* PCI2 not supported on 8313 */
-#define CONFIG_SYS_IBAT3L	(0)
-#define CONFIG_SYS_IBAT3U	(0)
-#define CONFIG_SYS_IBAT4L	(0)
-#define CONFIG_SYS_IBAT4U	(0)
-
-/* IMMRBAR @ 0xE0000000, PCI IO @ 0xE2000000 & BCSR @ 0xE2400000 */
-#define CONFIG_SYS_IBAT5L	(CONFIG_SYS_IMMR \
-				| BATL_PP_RW \
-				| BATL_CACHEINHIBIT \
-				| BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT5U	(CONFIG_SYS_IMMR \
-				| BATU_BL_256M \
-				| BATU_VS \
-				| BATU_VP)
-
-/* stack in DCACHE 0xFDF00000 & FLASH @ 0xFE000000 */
-#define CONFIG_SYS_IBAT6L	(0xF0000000 | BATL_PP_RW | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT6U	(0xF0000000 | BATU_BL_256M | BATU_VS | BATU_VP)
-
-/*  FPGA, SRAM, NAND @ 0x60000000 */
-#define CONFIG_SYS_IBAT7L	(0x60000000 | BATL_PP_RW | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT7U	(0x60000000 | BATU_BL_256M | BATU_VS | BATU_VP)
-
-#define CONFIG_SYS_DBAT0L	CONFIG_SYS_IBAT0L
-#define CONFIG_SYS_DBAT0U	CONFIG_SYS_IBAT0U
-#define CONFIG_SYS_DBAT1L	CONFIG_SYS_IBAT1L
-#define CONFIG_SYS_DBAT1U	CONFIG_SYS_IBAT1U
-#define CONFIG_SYS_DBAT2L	CONFIG_SYS_IBAT2L
-#define CONFIG_SYS_DBAT2U	CONFIG_SYS_IBAT2U
-#define CONFIG_SYS_DBAT3L	CONFIG_SYS_IBAT3L
-#define CONFIG_SYS_DBAT3U	CONFIG_SYS_IBAT3U
-#define CONFIG_SYS_DBAT4L	CONFIG_SYS_IBAT4L
-#define CONFIG_SYS_DBAT4U	CONFIG_SYS_IBAT4U
-#define CONFIG_SYS_DBAT5L	CONFIG_SYS_IBAT5L
-#define CONFIG_SYS_DBAT5U	CONFIG_SYS_IBAT5U
-#define CONFIG_SYS_DBAT6L	CONFIG_SYS_IBAT6L
-#define CONFIG_SYS_DBAT6U	CONFIG_SYS_IBAT6U
-#define CONFIG_SYS_DBAT7L	CONFIG_SYS_IBAT7L
-#define CONFIG_SYS_DBAT7U	CONFIG_SYS_IBAT7U
-
 #define CONFIG_NETDEV		eth0
 
-#define CONFIG_HOSTNAME		ve8313
+#define CONFIG_HOSTNAME		"ve8313"
 #define CONFIG_UBOOTPATH	ve8313/u-boot.bin
-
-#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
-#define CONFIG_BAUDRATE		115200
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"netdev=" __stringify(CONFIG_NETDEV) "\0"			\

@@ -1,15 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright 2019 NXP
  */
 
 #ifndef __FM_ETH_H__
 #define __FM_ETH_H__
 
 #include <common.h>
+#include <phy.h>
 #include <asm/types.h>
-#include <asm/fsl_enet.h>
 
 enum fm_port {
 	FM1_DTSEC1,
@@ -42,11 +42,24 @@ enum fm_eth_type {
 	FM_ETH_10G_E,
 };
 
+/* Historically, on FMan v3 platforms, the first MDIO bus has been used for
+ * Clause 22 PHYs and the second MDIO bus for 10G Clause 45 PHYs (thus the
+ * TGEC name).
+ *
+ * On LS1046A-FRWY, the QSGMII PHY is connected to the second MDIO bus,
+ * and no TGEC ports are present on-board.
+ */
 #ifdef CONFIG_SYS_FMAN_V3
+#ifdef CONFIG_TARGET_LS1046AFRWY
+#define CONFIG_SYS_FM1_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfd000)
+#else
 #define CONFIG_SYS_FM1_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfc000)
+#endif
 #define CONFIG_SYS_FM1_TGEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfd000)
+#if (CONFIG_SYS_NUM_FMAN == 2)
 #define CONFIG_SYS_FM2_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM2_ADDR + 0xfc000)
 #define CONFIG_SYS_FM2_TGEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM2_ADDR + 0xfd000)
+#endif
 #else
 #define CONFIG_SYS_FM1_DTSEC1_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xe1120)
 #define CONFIG_SYS_FM1_TGEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xf1000)
@@ -75,6 +88,21 @@ enum fm_eth_type {
 				offsetof(struct ccsr_fman, memac[n-1]),\
 }
 
+#ifdef CONFIG_FSL_FM_10GEC_REGULAR_NOTATION
+#define FM_TGEC_INFO_INITIALIZER(idx, n) \
+{									\
+	FM_ETH_INFO_INITIALIZER(idx, CONFIG_SYS_FM1_TGEC_MDIO_ADDR)	\
+	.index		= idx,						\
+	.num		= n - 1,					\
+	.type		= FM_ETH_10G_E,					\
+	.port		= FM##idx##_10GEC##n,				\
+	.rx_port_id	= RX_PORT_10G_BASE2 + n - 1,			\
+	.tx_port_id	= TX_PORT_10G_BASE2 + n - 1,			\
+	.compat_offset	= CONFIG_SYS_FSL_FM##idx##_OFFSET +		\
+				 offsetof(struct ccsr_fman, memac[n-1]),\
+}
+#else
+#if (CONFIG_SYS_NUM_FMAN == 2)
 #define FM_TGEC_INFO_INITIALIZER(idx, n) \
 {									\
 	FM_ETH_INFO_INITIALIZER(idx, CONFIG_SYS_FM2_TGEC_MDIO_ADDR)	\
@@ -87,6 +115,21 @@ enum fm_eth_type {
 	.compat_offset	= CONFIG_SYS_FSL_FM##idx##_OFFSET +		\
 				offsetof(struct ccsr_fman, memac[n-1+8]),\
 }
+#else
+#define FM_TGEC_INFO_INITIALIZER(idx, n) \
+{									\
+	FM_ETH_INFO_INITIALIZER(idx, CONFIG_SYS_FM1_TGEC_MDIO_ADDR)	\
+	.index		= idx,						\
+	.num		= n - 1,					\
+	.type		= FM_ETH_10G_E,					\
+	.port		= FM##idx##_10GEC##n,				\
+	.rx_port_id	= RX_PORT_10G_BASE + n - 1,			\
+	.tx_port_id	= TX_PORT_10G_BASE + n - 1,			\
+	.compat_offset	= CONFIG_SYS_FSL_FM##idx##_OFFSET +		\
+				offsetof(struct ccsr_fman, memac[n-1+8]),\
+}
+#endif
+#endif
 
 #if (CONFIG_SYS_NUM_FM1_10GEC >= 3)
 #define FM_TGEC_INFO_INITIALIZER2(idx, n) \

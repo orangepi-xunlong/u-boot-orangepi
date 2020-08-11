@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * LXT PHY drivers
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
+#include <common.h>
 #include <phy.h>
 
 /* LXT971 Status 2 registers */
@@ -49,10 +49,13 @@ static int lxt971_parse_status(struct phy_device *phydev)
 
 static int lxt971_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
-	lxt971_parse_status(phydev);
+	int ret;
 
-	return 0;
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return lxt971_parse_status(phydev);
 }
 
 static struct phy_driver LXT971_driver = {

@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2012 Samsung Electronics
  * R. Chadrasekar <rcsekar@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __WM8994_H__
@@ -16,7 +15,7 @@
 
 /*  Avilable audi interface ports in wm8994 codec */
 enum en_audio_interface {
-	 WM8994_AIF1 = 1,
+	 WM8994_AIF1,
 	 WM8994_AIF2,
 	 WM8994_AIF3
 };

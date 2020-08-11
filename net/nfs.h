@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Masami Komiya <mkomiya@sonare.it> 2004
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __NFS_H__
@@ -25,7 +24,10 @@
 #define NFS_READLINK    5
 #define NFS_READ        6
 
+#define NFS3PROC_LOOKUP 3
+
 #define NFS_FHSIZE      32
+#define NFS3_FHSIZE     64
 
 #define NFSERR_PERM     1
 #define NFSERR_NOENT    2
@@ -33,22 +35,29 @@
 #define NFSERR_ISDIR    21
 #define NFSERR_INVAL    22
 
-/* Block size used for NFS read accesses.  A RPC reply packet (including  all
+/*
+ * Block size used for NFS read accesses.  A RPC reply packet (including  all
  * headers) must fit within a single Ethernet frame to avoid fragmentation.
- * However, if CONFIG_IP_DEFRAG is set, the config file may want to use a
- * bigger value. In any case, most NFS servers are optimized for a power of 2.
+ * However, if CONFIG_IP_DEFRAG is set, a bigger value could be used.  In any
+ * case, most NFS servers are optimized for a power of 2.
  */
-#ifdef CONFIG_NFS_READ_SIZE
-#define NFS_READ_SIZE CONFIG_NFS_READ_SIZE
-#else
-#define NFS_READ_SIZE 1024 /* biggest power of two that fits Ether frame */
-#endif
+#define NFS_READ_SIZE	1024	/* biggest power of two that fits Ether frame */
+#define NFS_MAX_ATTRS	26
 
-#define NFS_MAXLINKDEPTH 16
+/* Values for Accept State flag on RPC answers (See: rfc1831) */
+enum rpc_accept_stat {
+	NFS_RPC_SUCCESS = 0,	/* RPC executed successfully */
+	NFS_RPC_PROG_UNAVAIL = 1,	/* remote hasn't exported program */
+	NFS_RPC_PROG_MISMATCH = 2,	/* remote can't support version # */
+	NFS_RPC_PROC_UNAVAIL = 3,	/* program can't support procedure */
+	NFS_RPC_GARBAGE_ARGS = 4,	/* procedure can't decode params */
+	NFS_RPC_SYSTEM_ERR = 5	/* errors like memory allocation failure */
+};
 
 struct rpc_t {
 	union {
-		uint8_t data[2048];
+		uint8_t data[NFS_READ_SIZE + (6 + NFS_MAX_ATTRS) *
+			sizeof(uint32_t)];
 		struct {
 			uint32_t id;
 			uint32_t type;
@@ -65,11 +74,12 @@ struct rpc_t {
 			uint32_t verifier;
 			uint32_t v2;
 			uint32_t astatus;
-			uint32_t data[19];
+			uint32_t data[NFS_READ_SIZE / sizeof(uint32_t) +
+				NFS_MAX_ATTRS];
 		} reply;
 	} u;
 };
-extern void NfsStart(void);	/* Begin NFS */
+void nfs_start(void);	/* Begin NFS */
 
 
 /**********************************************************************/

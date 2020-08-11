@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 Free Electrons
  * David Wagner <david.wagner@free-electrons.com>
@@ -5,8 +6,6 @@
  * Inspired from envcrc.c:
  * (C) Copyright 2001
  * Paolo Scaffardi, AIRVENT SAM s.p.a - RIMINI(ITALY), arsenio@tin.it
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <errno.h>
@@ -15,6 +14,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <u-boot/crc.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <sys/types.h>
@@ -37,6 +37,8 @@ static void usage(const char *exec_name)
 	       "\t\tkey1=value1\n"
 	       "\t\tkey2=value2\n"
 	       "\t\t...\n"
+	       "\tEmpty lines are skipped, and lines with a # in the first\n"
+	       "\tcolumn are treated as comments (also skipped).\n"
 	       "\t-r : the environment has multiple copies in flash\n"
 	       "\t-b : the target is big endian (default is little endian)\n"
 	       "\t-p <byte> : fill the image with <byte> bytes instead of 0xff bytes\n"
@@ -64,10 +66,12 @@ long int xstrtol(const char *s)
 	exit(EXIT_FAILURE);
 }
 
+#define CHUNK_SIZE 4096
+
 int main(int argc, char **argv)
 {
 	uint32_t crc, targetendian_crc;
-	const char *txt_filename = NULL, *bin_filename = NULL;
+	const char *bin_filename = NULL;
 	int txt_fd, bin_fd;
 	unsigned char *dataptr, *envptr;
 	unsigned char *filebuf = NULL;
@@ -75,11 +79,10 @@ int main(int argc, char **argv)
 	int bigendian = 0;
 	int redundant = 0;
 	unsigned char padbyte = 0xff;
+	int readbytes = 0;
 
 	int option;
 	int ret = EXIT_SUCCESS;
-
-	struct stat txt_file_stat;
 
 	int fp, ep;
 	const char *prg;
@@ -155,76 +158,41 @@ int main(int argc, char **argv)
 
 	/* Open the input file ... */
 	if (optind >= argc || strcmp(argv[optind], "-") == 0) {
-		int readbytes = 0;
-		int readlen = sizeof(*envptr) * 4096;
 		txt_fd = STDIN_FILENO;
-
-		do {
-			filebuf = realloc(filebuf, readlen);
-			if (!filebuf) {
-				fprintf(stderr, "Can't realloc memory for the input file buffer\n");
-				return EXIT_FAILURE;
-			}
-			readbytes = read(txt_fd, filebuf + filesize, readlen);
-			if (errno) {
-				fprintf(stderr, "Error while reading stdin: %s\n",
-						strerror(errno));
-				return EXIT_FAILURE;
-			}
-			filesize += readbytes;
-		} while (readbytes == readlen);
-
 	} else {
-		txt_filename = argv[optind];
-		txt_fd = open(txt_filename, O_RDONLY);
+		txt_fd = open(argv[optind], O_RDONLY);
 		if (txt_fd == -1) {
 			fprintf(stderr, "Can't open \"%s\": %s\n",
-					txt_filename, strerror(errno));
+					argv[optind], strerror(errno));
 			return EXIT_FAILURE;
 		}
-		/* ... and check it */
-		ret = fstat(txt_fd, &txt_file_stat);
-		if (ret == -1) {
-			fprintf(stderr, "Can't stat() on \"%s\": %s\n",
-					txt_filename, strerror(errno));
+	}
+
+	do {
+		filebuf = realloc(filebuf, filesize + CHUNK_SIZE);
+		if (!filebuf) {
+			fprintf(stderr, "Can't realloc memory for the input file buffer\n");
 			return EXIT_FAILURE;
 		}
-
-		filesize = txt_file_stat.st_size;
-
-		filebuf = mmap(NULL, sizeof(*envptr) * filesize, PROT_READ,
-			       MAP_PRIVATE, txt_fd, 0);
-		if (filebuf == MAP_FAILED) {
-			fprintf(stderr, "mmap (%zu bytes) failed: %s\n",
-					sizeof(*envptr) * filesize,
-					strerror(errno));
-			fprintf(stderr, "Falling back to read()\n");
-
-			filebuf = malloc(sizeof(*envptr) * filesize);
-			ret = read(txt_fd, filebuf, sizeof(*envptr) * filesize);
-			if (ret != sizeof(*envptr) * filesize) {
-				fprintf(stderr, "Can't read the whole input file (%zu bytes): %s\n",
-					sizeof(*envptr) * filesize,
-					strerror(errno));
-
-				return EXIT_FAILURE;
-			}
+		readbytes = read(txt_fd, filebuf + filesize, CHUNK_SIZE);
+		if (readbytes < 0) {
+			fprintf(stderr, "Error while reading: %s\n",
+				strerror(errno));
+			return EXIT_FAILURE;
 		}
+		filesize += readbytes;
+	} while (readbytes > 0);
+
+	if (txt_fd != STDIN_FILENO)
 		ret = close(txt_fd);
-	}
-	/* The +1 is for the additionnal ending \0. See below. */
-	if (filesize + 1 > envsize) {
-		fprintf(stderr, "The input file is larger than the environment partition size\n");
-		return EXIT_FAILURE;
-	}
 
-	/* Replace newlines separating variables with \0 */
-	for (fp = 0, ep = 0 ; fp < filesize ; fp++) {
+	/* Parse a byte at time until reaching the file OR until the environment fills
+	 * up. Check ep against envsize - 1 to allow for extra trailing '\0'. */
+	for (fp = 0, ep = 0 ; fp < filesize && ep < envsize - 1; fp++) {
 		if (filebuf[fp] == '\n') {
-			if (ep == 0) {
+			if (fp == 0 || filebuf[fp-1] == '\n') {
 				/*
-				 * Newlines at the beginning of the file ?
-				 * Ignore them.
+				 * Skip empty lines.
 				 */
 				continue;
 			} else if (filebuf[fp-1] == '\\') {
@@ -240,8 +208,31 @@ int main(int argc, char **argv)
 				/* End of a variable */
 				envptr[ep++] = '\0';
 			}
+		} else if ((fp == 0 || filebuf[fp-1] == '\n') && filebuf[fp] == '#') {
+			/* Comment, skip the line. */
+			while (++fp < filesize && filebuf[fp] != '\n')
+			continue;
 		} else {
 			envptr[ep++] = filebuf[fp];
+		}
+	}
+	/* If there are more bytes in the file still, it means the env filled up
+	 * before parsing the whole file.  Eat comments & whitespace here to see if
+	 * there was anything meaning full left in the file, and if so, throw a error
+	 * and exit. */
+	for( ; fp < filesize; fp++ )
+	{
+		if (filebuf[fp] == '\n') {
+			if (fp == 0 || filebuf[fp-1] == '\n') {
+				/* Ignore blank lines */
+				continue;
+			}
+		} else if ((fp == 0 || filebuf[fp-1] == '\n') && filebuf[fp] == '#') {
+			while (++fp < filesize && filebuf[fp] != '\n')
+			continue;
+		} else {
+			fprintf(stderr, "The environment file is too large for the target environment storage\n");
+			return EXIT_FAILURE;
 		}
 	}
 	/*

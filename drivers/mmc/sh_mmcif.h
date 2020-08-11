@@ -1,12 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MMCIF driver.
  *
  * Copyright (C)  2011 Renesas Solutions Corp.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License.
- *
  */
 
 #ifndef _SH_MMCIF_H_
@@ -199,7 +195,13 @@ struct sh_mmcif_regs {
 #define SOFT_RST_OFF		(0 << 31)
 
 #define CLKDEV_EMMC_DATA	52000000	/* 52MHz */
-#define	CLKDEV_MMC_INIT		400000		/* 100 - 400 KHz */
+#ifdef CONFIG_ARCH_RMOBILE
+#define MMC_CLK_DIV_MIN(clk)	(clk / (1 << 9))
+#define MMC_CLK_DIV_MAX(clk)	(clk / (1 << 1))
+#else
+#define MMC_CLK_DIV_MIN(clk)	(clk / (1 << 8))
+#define MMC_CLK_DIV_MAX(clk)	CLKDEV_EMMC_DATA
+#endif
 
 #define MMC_BUS_WIDTH_1		0
 #define MMC_BUS_WIDTH_4		2

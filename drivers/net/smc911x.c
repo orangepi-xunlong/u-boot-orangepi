@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SMSC LAN9[12]1[567] Network driver
  *
  * (c) 2007 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -187,11 +186,12 @@ static int smc911x_send(struct eth_device *dev, void *packet, int length)
 static void smc911x_halt(struct eth_device *dev)
 {
 	smc911x_reset(dev);
+	smc911x_handle_mac_address(dev);
 }
 
 static int smc911x_rx(struct eth_device *dev)
 {
-	u32 *data = (u32 *)NetRxPackets[0];
+	u32 *data = (u32 *)net_rx_packets[0];
 	u32 pktlen, tmplen;
 	u32 status;
 
@@ -210,7 +210,7 @@ static int smc911x_rx(struct eth_device *dev)
 				": dropped bad packet. Status: 0x%08x\n",
 				status);
 		else
-			NetReceive(NetRxPackets[0], pktlen);
+			net_process_received_packet(net_rx_packets[0], pktlen);
 	}
 
 	return 0;
@@ -218,20 +218,27 @@ static int smc911x_rx(struct eth_device *dev)
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 /* wrapper for smc911x_eth_phy_read */
-static int smc911x_miiphy_read(const char *devname, u8 phy, u8 reg, u16 *val)
+static int smc911x_miiphy_read(struct mii_dev *bus, int phy, int devad,
+			       int reg)
 {
-	struct eth_device *dev = eth_get_dev_by_name(devname);
-	if (dev)
-		return smc911x_eth_phy_read(dev, phy, reg, val);
-	return -1;
+	u16 val = 0;
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
+	if (dev) {
+		int retval = smc911x_eth_phy_read(dev, phy, reg, &val);
+		if (retval < 0)
+			return retval;
+		return val;
+	}
+	return -ENODEV;
 }
 /* wrapper for smc911x_eth_phy_write */
-static int smc911x_miiphy_write(const char *devname, u8 phy, u8 reg, u16 val)
+static int smc911x_miiphy_write(struct mii_dev *bus, int phy, int devad,
+				int reg, u16 val)
 {
-	struct eth_device *dev = eth_get_dev_by_name(devname);
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	if (dev)
 		return smc911x_eth_phy_write(dev, phy, reg, val);
-	return -1;
+	return -ENODEV;
 }
 #endif
 
@@ -275,7 +282,17 @@ int smc911x_initialize(u8 dev_num, int base_addr)
 	eth_register(dev);
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-	miiphy_register(dev->name, smc911x_miiphy_read, smc911x_miiphy_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+	mdiodev->read = smc911x_miiphy_read;
+	mdiodev->write = smc911x_miiphy_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 #endif
 
 	return 1;

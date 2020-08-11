@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Calxeda, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -466,7 +465,7 @@ static int xgmac_rx(struct eth_device *dev)
 
 	length = desc_get_rx_frame_len(rxdesc);
 
-	NetReceive(desc_get_buf_addr(rxdesc), length);
+	net_process_received_packet(desc_get_buf_addr(rxdesc), length);
 
 	/* set descriptor back to owned by XGMAC */
 	desc_set_rx_owner(rxdesc);

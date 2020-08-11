@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011, 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <hang.h>
 #include <hwconfig.h>
+#include <init.h>
 #include <pci.h>
 #include <i2c.h>
 #include <asm/processor.h>
@@ -20,7 +22,7 @@
 #include <asm/fsl_lbc.h>
 #include <asm/mp.h>
 #include <miiphy.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
@@ -39,7 +41,7 @@
 #define GPIO_SLIC_PIN		30
 #define GPIO_SLIC_DATA		(1 << (31 - GPIO_SLIC_PIN))
 
-#if defined(CONFIG_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
 #define GPIO_DDR_RST_PORT	1
 #define GPIO_DDR_RST_PIN	8
 #define GPIO_DDR_RST_DATA	(1 << (31 - GPIO_DDR_RST_PIN))
@@ -47,7 +49,7 @@
 #define GPIO_2BIT_MASK		(0x3 << (32 - (GPIO_DDR_RST_PIN + 1) * 2))
 #endif
 
-#if defined(CONFIG_P1025RDB) || defined(CONFIG_P1021RDB)
+#if defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB)
 #define PCA_IOPORT_I2C_ADDR		0x23
 #define PCA_IOPORT_OUTPUT_CMD		0x2
 #define PCA_IOPORT_CFG_CMD		0x6
@@ -58,14 +60,14 @@
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* GPIO */
 	{1,   1, 2, 0, 0}, /* GPIO7/PB1   - LOAD_DEFAULT_N */
-#if defined(CONFIG_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
 	{1,   8, 1, 1, 0}, /* GPIO10/PB8  - DDR_RST */
 #endif
 	{0,  15, 1, 0, 0}, /* GPIO11/A15  - WDI */
 	{GPIO_GETH_SW_PORT, GPIO_GETH_SW_PIN, 1, 0, 0},	/* RST_GETH_SW_N */
 	{GPIO_SLIC_PORT, GPIO_SLIC_PIN, 1, 0, 0},	/* RST_SLIC_N */
 
-#ifdef CONFIG_P1025RDB
+#ifdef CONFIG_TARGET_P1025RDB
 	/* QE_MUX_MDC */
 	{1,  19, 1, 0, 1}, /* QE_MUX_MDC               */
 
@@ -150,7 +152,7 @@ void board_gpio_init(void)
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	par_io_t *par_io = (par_io_t *) &(gur->qe_par_io);
 
-#if defined(CONFIG_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
 	/* reset DDR3 */
 	setbits_be32(&par_io[GPIO_DDR_RST_PORT].cpdat, GPIO_DDR_RST_DATA);
 	udelay(1000);
@@ -278,7 +280,7 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_PCI
+#if defined(CONFIG_PCI) && !defined(CONFIG_DM_PCI)
 void pci_init_board(void)
 {
 	fsl_pcie_init_board(0);
@@ -288,7 +290,7 @@ void pci_init_board(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -299,8 +301,14 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 2;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS, /* tlb, epn, rpn */
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,/* perms, wimge */
@@ -344,7 +352,8 @@ int board_eth_init(bd_t *bis)
 
 #ifdef CONFIG_VSC7385_ENET
 	/* If a VSC7385 microcode image is present, then upload it. */
-	if ((tmp = getenv("vscfw_addr")) != NULL) {
+	tmp = env_get("vscfw_addr");
+	if (tmp) {
 		vscfw_addr = simple_strtoul(tmp, NULL, 16);
 		printf("uploading VSC7385 microcode from %x\n", vscfw_addr);
 		if (vsc7385_upload_firmware((void *) vscfw_addr,
@@ -373,7 +382,7 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_QE) && \
-	(defined(CONFIG_P1025RDB) || defined(CONFIG_P1021RDB))
+	(defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB))
 static void fdt_board_fixup_qe_pins(void *blob)
 {
 	unsigned int oldbus;
@@ -418,32 +427,39 @@ static void fdt_board_fixup_qe_pins(void *blob)
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 	const char *soc_usb_compat = "fsl-usb2-dr";
-	int err, usb1_off, usb2_off;
+	int usb_err, usb1_off, usb2_off;
+#endif
+#if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
+	int err;
+#endif
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
+#if !defined(CONFIG_DM_PCI)
 	FT_FSL_PCI_SETUP;
+#endif
 
 #ifdef CONFIG_QE
 	do_fixup_by_compat(blob, "fsl,qe", "status", "okay",
 			sizeof("okay"), 0);
-#if defined(CONFIG_P1025RDB) || defined(CONFIG_P1021RDB)
+#if defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB)
 	fdt_board_fixup_qe_pins(blob);
 #endif
 #endif
 
 #if defined(CONFIG_HAS_FSL_DR_USB)
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
@@ -453,42 +469,43 @@ void ft_board_setup(void *blob, bd_t *bd)
 		int off = fdt_node_offset_by_compatible(blob, -1,
 				soc_elbc_compat);
 		if (off < 0) {
-			printf("WARNING: could not find compatible node %s: %s.\n",
-			       soc_elbc_compat,
-			       fdt_strerror(off));
-				return;
+			printf("WARNING: could not find compatible node %s\n",
+			       soc_elbc_compat);
+			return off;
 		}
 		err = fdt_del_node(blob, off);
 		if (err < 0) {
-			printf("WARNING: could not remove %s: %s.\n",
-			       soc_elbc_compat, fdt_strerror(err));
+			printf("WARNING: could not remove %s\n",
+			       soc_elbc_compat);
+			return err;
 		}
-		return;
+		return 0;
 	}
 #endif
 
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 /* Delete USB2 node as it is muxed with eLBC */
 	usb1_off = fdt_node_offset_by_compatible(blob, -1,
 		soc_usb_compat);
 	if (usb1_off < 0) {
-		printf("WARNING: could not find compatible node %s: %s.\n",
-		       soc_usb_compat,
-		       fdt_strerror(usb1_off));
-		return;
+		printf("WARNING: could not find compatible node %s\n",
+		       soc_usb_compat);
+		return usb1_off;
 	}
 	usb2_off = fdt_node_offset_by_compatible(blob, usb1_off,
 			soc_usb_compat);
 	if (usb2_off < 0) {
-		printf("WARNING: could not find compatible node %s: %s.\n",
-		       soc_usb_compat,
-		       fdt_strerror(usb2_off));
-		return;
+		printf("WARNING: could not find compatible node %s\n",
+		       soc_usb_compat);
+		return usb2_off;
 	}
-	err = fdt_del_node(blob, usb2_off);
-	if (err < 0) {
-		printf("WARNING: could not remove %s: %s.\n",
-		       soc_usb_compat, fdt_strerror(err));
+	usb_err = fdt_del_node(blob, usb2_off);
+	if (usb_err < 0) {
+		printf("WARNING: could not remove %s\n", soc_usb_compat);
+		return usb_err;
 	}
+#endif
 
+	return 0;
 }
 #endif

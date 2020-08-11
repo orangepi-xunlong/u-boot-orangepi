@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010 Freescale Semiconductor, Inc.
  * Authors: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *          Timur Tabi <timur@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -75,12 +74,12 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	(defined(CONFIG_SPL) && !defined(CONFIG_SPL_COMMON_INIT_DDR))
 	/* **** - eSDHC/eSPI/NAND boot */
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
 		      0, 8, BOOKE_PAGESZ_1G, 1),
 	/* **** - eSDHC/eSPI/NAND boot - second 1GB of memory */
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
 		      CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
-		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
 		      0, 9, BOOKE_PAGESZ_1G, 1),
 #endif
 

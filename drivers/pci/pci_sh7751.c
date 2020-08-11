@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SH7751 PCI Controller (PCIC) for U-Boot.
  * (C) Dustin McIntire (dustin@sensoria.com)
  * (C) 2007,2008 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <dm.h>
 #include <pci.h>
 #include <asm/processor.h>
 #include <asm/io.h>
@@ -20,85 +20,113 @@
 #define SH7751_WCR3	(vu_long *)0xFF800010
 #define SH7751_MCR	(vu_long *)0xFF800014
 #define SH7751_BCR3	(vu_short *)0xFF800050
-#define SH7751_PCICONF0 (vu_long *)0xFE200000
-#define SH7751_PCICONF1 (vu_long *)0xFE200004
-#define SH7751_PCICONF2 (vu_long *)0xFE200008
-#define SH7751_PCICONF3 (vu_long *)0xFE20000C
-#define SH7751_PCICONF4 (vu_long *)0xFE200010
-#define SH7751_PCICONF5 (vu_long *)0xFE200014
-#define SH7751_PCICONF6 (vu_long *)0xFE200018
-#define SH7751_PCICR    (vu_long *)0xFE200100
-#define SH7751_PCILSR0  (vu_long *)0xFE200104
-#define SH7751_PCILSR1  (vu_long *)0xFE200108
-#define SH7751_PCILAR0  (vu_long *)0xFE20010C
-#define SH7751_PCILAR1  (vu_long *)0xFE200110
-#define SH7751_PCIMBR   (vu_long *)0xFE2001C4
-#define SH7751_PCIIOBR  (vu_long *)0xFE2001C8
-#define SH7751_PCIPINT  (vu_long *)0xFE2001CC
-#define SH7751_PCIPINTM (vu_long *)0xFE2001D0
-#define SH7751_PCICLKR  (vu_long *)0xFE2001D4
-#define SH7751_PCIBCR1  (vu_long *)0xFE2001E0
-#define SH7751_PCIBCR2  (vu_long *)0xFE2001E4
-#define SH7751_PCIWCR1  (vu_long *)0xFE2001E8
-#define SH7751_PCIWCR2  (vu_long *)0xFE2001EC
-#define SH7751_PCIWCR3  (vu_long *)0xFE2001F0
-#define SH7751_PCIMCR   (vu_long *)0xFE2001F4
-#define SH7751_PCIBCR3  (vu_long *)0xFE2001F8
+#define SH7751_PCICONF0	(vu_long *)0xFE200000
+#define SH7751_PCICONF1	(vu_long *)0xFE200004
+#define SH7751_PCICONF2	(vu_long *)0xFE200008
+#define SH7751_PCICONF3	(vu_long *)0xFE20000C
+#define SH7751_PCICONF4	(vu_long *)0xFE200010
+#define SH7751_PCICONF5	(vu_long *)0xFE200014
+#define SH7751_PCICONF6	(vu_long *)0xFE200018
+#define SH7751_PCICR	(vu_long *)0xFE200100
+#define SH7751_PCILSR0	(vu_long *)0xFE200104
+#define SH7751_PCILSR1	(vu_long *)0xFE200108
+#define SH7751_PCILAR0	(vu_long *)0xFE20010C
+#define SH7751_PCILAR1	(vu_long *)0xFE200110
+#define SH7751_PCIMBR	(vu_long *)0xFE2001C4
+#define SH7751_PCIIOBR	(vu_long *)0xFE2001C8
+#define SH7751_PCIPINT	(vu_long *)0xFE2001CC
+#define SH7751_PCIPINTM	(vu_long *)0xFE2001D0
+#define SH7751_PCICLKR	(vu_long *)0xFE2001D4
+#define SH7751_PCIBCR1	(vu_long *)0xFE2001E0
+#define SH7751_PCIBCR2	(vu_long *)0xFE2001E4
+#define SH7751_PCIWCR1	(vu_long *)0xFE2001E8
+#define SH7751_PCIWCR2	(vu_long *)0xFE2001EC
+#define SH7751_PCIWCR3	(vu_long *)0xFE2001F0
+#define SH7751_PCIMCR	(vu_long *)0xFE2001F4
+#define SH7751_PCIBCR3	(vu_long *)0xFE2001F8
 
-#define BCR1_BREQEN				0x00080000
-#define PCI_SH7751_ID			0x35051054
-#define PCI_SH7751R_ID			0x350E1054
-#define SH7751_PCICONF1_WCC		0x00000080
-#define SH7751_PCICONF1_PER		0x00000040
-#define SH7751_PCICONF1_BUM		0x00000004
-#define SH7751_PCICONF1_MES		0x00000002
+#define BCR1_BREQEN		0x00080000
+#define PCI_SH7751_ID		0x35051054
+#define PCI_SH7751R_ID		0x350E1054
+#define SH7751_PCICONF1_WCC	0x00000080
+#define SH7751_PCICONF1_PER	0x00000040
+#define SH7751_PCICONF1_BUM	0x00000004
+#define SH7751_PCICONF1_MES	0x00000002
 #define SH7751_PCICONF1_CMDS	0x000000C6
 #define SH7751_PCI_HOST_BRIDGE	0x6
-#define SH7751_PCICR_PREFIX		0xa5000000
-#define SH7751_PCICR_PRST		0x00000002
-#define SH7751_PCICR_CFIN		0x00000001
-#define SH7751_PCIPINT_D3		0x00000002
-#define SH7751_PCIPINT_D0		0x00000001
-#define SH7751_PCICLKR_PREFIX   0xa5000000
+#define SH7751_PCICR_PREFIX	0xa5000000
+#define SH7751_PCICR_PRST	0x00000002
+#define SH7751_PCICR_CFIN	0x00000001
+#define SH7751_PCIPINT_D3	0x00000002
+#define SH7751_PCIPINT_D0	0x00000001
+#define SH7751_PCICLKR_PREFIX	0xa5000000
 
-#define SH7751_PCI_MEM_BASE		0xFD000000
-#define SH7751_PCI_MEM_SIZE		0x01000000
-#define SH7751_PCI_IO_BASE		0xFE240000
-#define SH7751_PCI_IO_SIZE		0x00040000
+#define SH7751_PCI_MEM_BASE	0xFD000000
+#define SH7751_PCI_MEM_SIZE	0x01000000
+#define SH7751_PCI_IO_BASE	0xFE240000
+#define SH7751_PCI_IO_SIZE	0x00040000
 
-#define SH7751_CS3_BASE_ADDR    0x0C000000
-#define SH7751_P2CS3_BASE_ADDR  0xAC000000
-
-#define SH7751_PCIPAR   (vu_long *)0xFE2001C0
-#define SH7751_PCIPDR   (vu_long *)0xFE200220
+#define SH7751_PCIPAR	(vu_long *)0xFE2001C0
+#define SH7751_PCIPDR	(vu_long *)0xFE200220
 
 #define p4_in(addr)	(*addr)
 #define p4_out(data, addr) (*addr) = (data)
 
-/* Double word */
-int pci_sh4_read_config_dword(struct pci_controller *hose,
-			      pci_dev_t dev, int offset, u32 *value)
+static int sh7751_pci_addr_valid(pci_dev_t d, uint offset)
 {
-	u32 par_data = 0x80000000 | dev;
-
-	p4_out(par_data | (offset & 0xfc), SH7751_PCIPAR);
-	*value = p4_in(SH7751_PCIPDR);
+	if (PCI_FUNC(d))
+		return -EINVAL;
 
 	return 0;
 }
 
-int pci_sh4_write_config_dword(struct pci_controller *hose,
-			       pci_dev_t dev, int offset, u32 value)
+static u32 get_bus_address(const struct udevice *dev, pci_dev_t bdf, u32 offset)
 {
-	u32 par_data = 0x80000000 | dev;
+	return BIT(31) | (PCI_DEV(bdf) << 8) | (offset & ~3);
+}
 
-	p4_out(par_data | (offset & 0xfc), SH7751_PCIPAR);
-	p4_out(value, SH7751_PCIPDR);
+static int sh7751_pci_read_config(const struct udevice *dev, pci_dev_t bdf,
+				  uint offset, ulong *value,
+				  enum pci_size_t size)
+{
+	u32 addr, reg;
+	int ret;
+
+	ret = sh7751_pci_addr_valid(bdf, offset);
+	if (ret) {
+		*value = pci_get_ff(size);
+		return 0;
+	}
+
+	addr = get_bus_address(dev, bdf, offset);
+	p4_out(addr, SH7751_PCIPAR);
+	reg = p4_in(SH7751_PCIPDR);
+	*value = pci_conv_32_to_size(reg, offset, size);
 
 	return 0;
 }
 
-int pci_sh7751_init(struct pci_controller *hose)
+static int sh7751_pci_write_config(struct udevice *dev, pci_dev_t bdf,
+				      uint offset, ulong value,
+				      enum pci_size_t size)
+{
+	u32 addr, reg, old;
+	int ret;
+
+	ret = sh7751_pci_addr_valid(bdf, offset);
+	if (ret)
+		return ret;
+
+	addr = get_bus_address(dev, bdf, offset);
+	p4_out(addr, SH7751_PCIPAR);
+	old = p4_in(SH7751_PCIPDR);
+	reg = pci_conv_size_to_32(old, value, offset, size);
+	p4_out(reg, SH7751_PCIPDR);
+
+	return 0;
+}
+
+static int sh7751_pci_probe(struct udevice *dev)
 {
 	/* Double-check that we're a 7751 or 7751R chip */
 	if (p4_in(SH7751_PCICONF0) != PCI_SH7751_ID
@@ -153,18 +181,19 @@ int pci_sh7751_init(struct pci_controller *hose)
 
 	/* Set up target memory mappings (for external DMA access) */
 	/* Map both P0 and P2 range to Area 3 RAM for ease of use */
-	p4_out((64 - 1) << 20, SH7751_PCILSR0);
-	p4_out(SH7751_CS3_BASE_ADDR, SH7751_PCILAR0);
+	p4_out(CONFIG_SYS_SDRAM_SIZE - 0x100000, SH7751_PCILSR0);
+	p4_out(CONFIG_SYS_SDRAM_BASE & 0x1FF00000, SH7751_PCILAR0);
+	p4_out(CONFIG_SYS_SDRAM_BASE & 0xFFF00000, SH7751_PCICONF5);
+
 	p4_out(0, SH7751_PCILSR1);
 	p4_out(0, SH7751_PCILAR1);
-	p4_out(SH7751_CS3_BASE_ADDR, SH7751_PCICONF5);
 	p4_out(0xd0000000, SH7751_PCICONF6);
 
 	/* Map memory window to same address on PCI bus */
 	p4_out(SH7751_PCI_MEM_BASE, SH7751_PCIMBR);
 
 	/* Map IO window to same address on PCI bus */
-	p4_out(0x2000 & 0xfffc0000, SH7751_PCIIOBR);
+	p4_out(SH7751_PCI_IO_BASE, SH7751_PCIIOBR);
 
 	/* set BREQEN */
 	p4_out(inl(SH7751_BCR1) | 0x00080000, SH7751_BCR1);
@@ -181,7 +210,23 @@ int pci_sh7751_init(struct pci_controller *hose)
 	/* Finally, set central function init complete */
 	p4_out((SH7751_PCICR_PREFIX | SH7751_PCICR_CFIN), SH7751_PCICR);
 
-	pci_sh4_init(hose);
-
 	return 0;
 }
+
+static const struct dm_pci_ops sh7751_pci_ops = {
+	.read_config	= sh7751_pci_read_config,
+	.write_config	= sh7751_pci_write_config,
+};
+
+static const struct udevice_id sh7751_pci_ids[] = {
+	{ .compatible = "renesas,pci-sh7751" },
+	{ }
+};
+
+U_BOOT_DRIVER(sh7751_pci) = {
+	.name		= "sh7751_pci",
+	.id		= UCLASS_PCI,
+	.of_match	= sh7751_pci_ids,
+	.ops		= &sh7751_pci_ops,
+	.probe		= sh7751_pci_probe,
+};

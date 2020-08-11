@@ -1,20 +1,23 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * FSL SD/MMC Defines
  *-------------------------------------------------------------------
  *
  * Copyright 2007-2008,2010-2011 Freescale Semiconductor, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef  __FSL_ESDHC_H__
 #define	__FSL_ESDHC_H__
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/byteorder.h>
 
 /* needed for the mmc_cfg definition */
 #include <mmc.h>
+
+#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
+#include "../board/freescale/common/qixis.h"
+#endif
 
 /* FSL eSDHC-specific constants */
 #define SYSCTL			0x0002e02c
@@ -74,6 +77,9 @@
 #define IRQSTATEN_TC		(0x00000002)
 #define IRQSTATEN_CC		(0x00000001)
 
+#define ESDHCCTL		0x0002e40c
+#define ESDHCCTL_PCS		(0x00080000)
+
 #define PRSSTAT			0x0002e024
 #define PRSSTAT_DAT0		(0x01000000)
 #define PRSSTAT_CLSL		(0x00800000)
@@ -82,6 +88,7 @@
 #define PRSSTAT_CINS		(0x00010000)
 #define PRSSTAT_BREN		(0x00000800)
 #define PRSSTAT_BWEN		(0x00000400)
+#define PRSSTAT_SDSTB		(0X00000008)
 #define PRSSTAT_DLA		(0x00000004)
 #define PRSSTAT_CICHB		(0x00000002)
 #define PRSSTAT_CIDHB		(0x00000001)
@@ -90,6 +97,7 @@
 #define PROCTL_INIT		0x00000020
 #define PROCTL_DTW_4		0x00000002
 #define PROCTL_DTW_8		0x00000004
+#define PROCTL_D3CD		0x00000008
 
 #define CMDARG			0x0002e008
 
@@ -108,12 +116,13 @@
 #define XFERTYP_RSPTYP_48_BUSY	0x00030000
 #define XFERTYP_MSBSEL		0x00000020
 #define XFERTYP_DTDSEL		0x00000010
+#define XFERTYP_DDREN		0x00000008
 #define XFERTYP_AC12EN		0x00000004
 #define XFERTYP_BCEN		0x00000002
 #define XFERTYP_DMAEN		0x00000001
 
 #define CINS_TIMEOUT		1000
-#define PIO_TIMEOUT		100000
+#define PIO_TIMEOUT		500
 
 #define DSADDR		0x2e004
 
@@ -147,22 +156,36 @@
 #define BLKATTR_SIZE(x)	(x & 0x1fff)
 #define MAX_BLK_CNT	0x7fff	/* so malloc will have enough room with 32M */
 
-#define ESDHC_HOSTCAPBLT_VS18	0x04000000
-#define ESDHC_HOSTCAPBLT_VS30	0x02000000
-#define ESDHC_HOSTCAPBLT_VS33	0x01000000
-#define ESDHC_HOSTCAPBLT_SRS	0x00800000
-#define ESDHC_HOSTCAPBLT_DMAS	0x00400000
-#define ESDHC_HOSTCAPBLT_HSS	0x00200000
+/* Host controller capabilities register */
+#define HOSTCAPBLT_VS18		0x04000000
+#define HOSTCAPBLT_VS30		0x02000000
+#define HOSTCAPBLT_VS33		0x01000000
+#define HOSTCAPBLT_SRS		0x00800000
+#define HOSTCAPBLT_DMAS		0x00400000
+#define HOSTCAPBLT_HSS		0x00200000
 
 struct fsl_esdhc_cfg {
-	u32	esdhc_base;
+	phys_addr_t esdhc_base;
 	u32	sdhc_clk;
 	u8	max_bus_width;
+	int	vs18_enable; /* Use 1.8V if set to 1 */
 	struct mmc_config cfg;
 };
 
 /* Select the correct accessors depending on endianess */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined CONFIG_SYS_FSL_ESDHC_LE
+#define esdhc_read32		in_le32
+#define esdhc_write32		out_le32
+#define esdhc_clrsetbits32	clrsetbits_le32
+#define esdhc_clrbits32		clrbits_le32
+#define esdhc_setbits32		setbits_le32
+#elif defined(CONFIG_SYS_FSL_ESDHC_BE)
+#define esdhc_read32            in_be32
+#define esdhc_write32           out_be32
+#define esdhc_clrsetbits32      clrsetbits_be32
+#define esdhc_clrbits32         clrbits_be32
+#define esdhc_setbits32         setbits_be32
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
 #define esdhc_read32		in_le32
 #define esdhc_write32		out_le32
 #define esdhc_clrsetbits32	clrsetbits_le32
@@ -182,6 +205,10 @@ struct fsl_esdhc_cfg {
 int fsl_esdhc_mmc_init(bd_t *bis);
 int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg);
 void fdt_fixup_esdhc(void *blob, bd_t *bd);
+#ifdef MMC_SUPPORTS_TUNING
+static inline int fsl_esdhc_execute_tuning(struct udevice *dev,
+					   uint32_t opcode) {return 0; }
+#endif
 #else
 static inline int fsl_esdhc_mmc_init(bd_t *bis) { return -ENOSYS; }
 static inline void fdt_fixup_esdhc(void *blob, bd_t *bd) {}

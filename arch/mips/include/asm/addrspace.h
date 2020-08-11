@@ -1,14 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * This file is subject to the terms and conditions of the GNU General Public
- * License.  See the file "COPYING" in the main directory of this archive
- * for more details.
- *
  * Copyright (C) 1996, 99 Ralf Baechle
  * Copyright (C) 2000, 2002  Maciej W. Rozycki
  * Copyright (C) 1990, 1999 by Silicon Graphics, Inc.
  */
 #ifndef _ASM_ADDRSPACE_H
 #define _ASM_ADDRSPACE_H
+
+#include <spaces.h>
 
 /*
  *  Configure language
@@ -50,7 +49,7 @@
  */
 #define CPHYSADDR(a)		((_ACAST32_(a)) & 0x1fffffff)
 #define XPHYSADDR(a)		((_ACAST64_(a)) &			\
-				 _CONST64_(0x000000ffffffffff))
+				 _CONST64_(0x0000ffffffffffff))
 
 #ifdef CONFIG_64BIT
 
@@ -131,13 +130,13 @@
  * Returns the uncached address of a sdram address
  */
 #ifndef __ASSEMBLY__
-#if defined(CONFIG_SOC_AU1X00) || defined(CONFIG_TB0229)
+#if defined(CONFIG_TB0229)
 /* We use a 36 bit physical address map here and
    cannot access physical memory directly from core */
 #define UNCACHED_SDRAM(a) (((unsigned long)(a)) | 0x20000000)
-#else	/* !CONFIG_SOC_AU1X00 */
+#else	/* !CONFIG_TB0229 */
 #define UNCACHED_SDRAM(a) CKSEG1ADDR(a)
-#endif	/* CONFIG_SOC_AU1X00 */
+#endif	/* CONFIG_TB0229 */
 #endif	/* __ASSEMBLY__ */
 
 /*

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 APBH DMA driver
  *
@@ -6,21 +7,20 @@
  *
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc. All Rights Reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <cpu_func.h>
 #include <linux/list.h>
 
 #include <common.h>
 #include <malloc.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/imx-common/dma.h>
-#include <asm/imx-common/regs-apbh.h>
+#include <asm/mach-imx/dma.h>
+#include <asm/mach-imx/regs-apbh.h>
 
 static struct mxs_dma_chan mxs_dma_channels[MXS_MAX_DMA_CHANNELS];
 
@@ -82,7 +82,7 @@ static int mxs_dma_read_semaphore(int channel)
 	return tmp;
 }
 
-#ifndef	CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
 {
 	uint32_t addr;
@@ -215,7 +215,7 @@ static int mxs_dma_reset(int channel)
 #if defined(CONFIG_MX23)
 	uint32_t setreg = (uint32_t)(&apbh_regs->hw_apbh_ctrl0_set);
 	uint32_t offset = APBH_CTRL0_RESET_CHANNEL_OFFSET;
-#elif (defined(CONFIG_MX28) || defined(CONFIG_MX6))
+#elif (defined(CONFIG_MX28) || defined(CONFIG_MX6) || defined(CONFIG_MX7))
 	uint32_t setreg = (uint32_t)(&apbh_regs->hw_apbh_channel_ctrl_set);
 	uint32_t offset = APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET;
 #endif

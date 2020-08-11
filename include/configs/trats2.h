@@ -1,22 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Samsung Electronics
  * Sanghee Kim <sh0130.kim@samsung.com>
  * Piotr Wilczek <p.wilczek@samsung.com>
  *
  * Configuation settings for the SAMSUNG TRATS2 (EXYNOS4412) board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_TRATS2_H
 #define __CONFIG_TRATS2_H
 
-#include <configs/exynos4-dt.h>
-
-#define CONFIG_SYS_PROMPT	"Trats2 # "	/* Monitor Command Prompt */
-
-#undef CONFIG_DEFAULT_DEVICE_TREE
-#define CONFIG_DEFAULT_DEVICE_TREE	exynos4412-trats2
+#include <configs/exynos4-common.h>
 
 #define CONFIG_TIZEN			/* TIZEN lib */
 
@@ -27,7 +21,6 @@
 #endif
 
 /* TRATS2 has 4 banks of DRAM */
-#define CONFIG_NR_DRAM_BANKS		4
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define PHYS_SDRAM_1			CONFIG_SYS_SDRAM_BASE
 #define SDRAM_BANK_SIZE			(256 << 20)	/* 256 MB */
@@ -36,22 +29,11 @@
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x5E00000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x3E00000)
 
-#define CONFIG_SYS_TEXT_BASE		0x43e00000
-
-#include <linux/sizes.h>
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 * SZ_1M))
-
 /* select serial console configuration */
-#define CONFIG_SERIAL2
-#define CONFIG_BAUDRATE			115200
 
 /* Console configuration */
-#define CONFIG_SYS_CONSOLE_INFO_QUIET
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
-#define CONFIG_BOOTARGS			"Please use defined boot"
-#define CONFIG_BOOTCOMMAND		"run mmcboot"
+#define CONFIG_BOOTCOMMAND		"run autoboot"
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR \
@@ -61,15 +43,9 @@
 
 #define CONFIG_SYS_MONITOR_BASE	0x00000000
 
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		CONFIG_MMC_DEFAULT_DEV
-#define CONFIG_ENV_SIZE			4096
-#define CONFIG_ENV_OFFSET		((32 - 4) << 10) /* 32KiB - 4KiB */
 
 #define CONFIG_ENV_OVERWRITE
-
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 /* Tizen - partitions definitions */
 #define PARTS_CSA		"csa-mmc"
@@ -92,9 +68,9 @@
 
 #define CONFIG_DFU_ALT \
 	"u-boot raw 0x80 0x800;" \
-	"uImage ext4 0 2;" \
-	"modem.bin ext4 0 2;" \
-	"exynos4412-trats2.dtb ext4 0 2;" \
+	"/uImage ext4 0 2;" \
+	"/modem.bin ext4 0 2;" \
+	"/exynos4412-trats2.dtb ext4 0 2;" \
 	""PARTS_CSA" part 0 1;" \
 	""PARTS_BOOT" part 0 2;" \
 	""PARTS_QBOOT" part 0 3;" \
@@ -102,7 +78,8 @@
 	""PARTS_ROOT" part 0 5;" \
 	""PARTS_DATA" part 0 6;" \
 	""PARTS_UMS" part 0 7;" \
-	"params.bin raw 0x38 0x8\0"
+	"params.bin raw 0x38 0x8;" \
+	"/Image.itb ext4 0 2\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"bootk=" \
@@ -159,62 +136,22 @@
 		   "setenv spl_imgsize;" \
 		   "setenv spl_imgaddr;" \
 		   "setenv spl_addr_tmp;\0" \
+	CONFIG_EXTRA_ENV_ITB \
 	"fdtaddr=40800000\0" \
 
 /* GPT */
-#define CONFIG_RANDOM_UUID
-
-/* I2C */
-#include <asm/arch/gpio.h>
-
-#define CONFIG_CMD_I2C
-
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_S3C24X0
-#define CONFIG_SYS_I2C_S3C24X0_SPEED	100000
-#define CONFIG_SYS_I2C_S3C24X0_SLAVE	0
-#define CONFIG_MAX_I2C_NUM		8
-#define CONFIG_SYS_I2C_SOFT
-#define CONFIG_SYS_I2C_SOFT_SPEED	50000
-#define CONFIG_SYS_I2C_SOFT_SLAVE	0x00
-#define I2C_SOFT_DECLARATIONS2
-#define CONFIG_SYS_I2C_SOFT_SPEED_2     50000
-#define CONFIG_SYS_I2C_SOFT_SLAVE_2     0x00
-#define CONFIG_SOFT_I2C_READ_REPEATED_START
-#define CONFIG_SYS_I2C_INIT_BOARD
-
-#ifndef __ASSEMBLY__
-int get_soft_i2c_scl_pin(void);
-int get_soft_i2c_sda_pin(void);
-#endif
-#define CONFIG_SOFT_I2C_GPIO_SCL	get_soft_i2c_scl_pin()
-#define CONFIG_SOFT_I2C_GPIO_SDA	get_soft_i2c_sda_pin()
-
-/* POWER */
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_MAX77686
-#define CONFIG_POWER_PMIC_MAX77693
-#define CONFIG_POWER_MUIC_MAX77693
-#define CONFIG_POWER_FG_MAX77693
-#define CONFIG_POWER_BATTERY_TRATS2
 
 /* Security subsystem - enable hw_rand() */
 #define CONFIG_EXYNOS_ACE_SHA
-#define CONFIG_LIB_HW_RAND
 
 /* Common misc for Samsung */
 #define CONFIG_MISC_COMMON
 
-#define CONFIG_MISC_INIT_R
-
 /* Download menu - Samsung common */
 #define CONFIG_LCD_MENU
-#define CONFIG_LCD_MENU_BOARD
 
 /* Download menu - definitions for check keys */
 #ifndef __ASSEMBLY__
-#include <power/max77686_pmic.h>
 
 #define KEY_PWR_PMIC_NAME		"MAX77686_PMIC"
 #define KEY_PWR_STATUS_REG		MAX77686_REG_PMIC_STATUS1
@@ -228,20 +165,12 @@ int get_soft_i2c_sda_pin(void);
 
 /* LCD console */
 #define LCD_BPP                 LCD_COLOR16
-#define CONFIG_SYS_WHITE_ON_BLACK
 
 /* LCD */
-#define CONFIG_EXYNOS_FB
-#define CONFIG_LCD
-#define CONFIG_CMD_BMP
 #define CONFIG_BMP_16BPP
 #define CONFIG_FB_ADDR		0x52504000
-#define CONFIG_S6E8AX0
 #define CONFIG_EXYNOS_MIPI_DSIM
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE ((500 * 160 * 4) + 54)
-
-#define LCD_XRES	720
-#define LCD_YRES	1280
 
 #endif	/* __CONFIG_H */

@@ -1,13 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004, 2007, 2009-2011 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
 #include <pci.h>
+#include <vsprintf.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
@@ -15,7 +16,7 @@
 #include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <miiphy.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <tsec.h>
 #include <fsl_mdio.h>
@@ -165,7 +166,7 @@ void lbc_sdram_init(void)
 #endif	/* enable SDRAM init */
 }
 
-#if defined(CONFIG_PCI) || defined(CONFIG_PCI1)
+#if (defined(CONFIG_PCI) || defined(CONFIG_PCI1)) && !defined(CONFIG_DM_PCI)
 /* For some reason the Tundra PCI bridge shows up on itself as a
  * different device.  Work around that by refusing to configure it.
  */
@@ -190,6 +191,7 @@ static struct pci_config_table pci_mpc85xxcds_config_table[] = {
 static struct pci_controller pci1_hose;
 #endif	/* CONFIG_PCI */
 
+#if !defined(CONFIG_DM_PCI)
 void pci_init_board(void)
 {
 	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
@@ -269,6 +271,7 @@ void pci_init_board(void)
 
 	fsl_pcie_init_board(first_free_busno);
 }
+#endif
 
 void configure_rgmii(void)
 {
@@ -301,9 +304,9 @@ void configure_rgmii(void)
 	return;
 }
 
-#ifdef CONFIG_TSEC_ENET
 int board_eth_init(bd_t *bis)
 {
+#ifdef CONFIG_TSEC_ENET
 	struct fsl_pq_mdio_info mdio_info;
 	struct tsec_info_struct tsec_info[4];
 	int num = 0;
@@ -345,12 +348,12 @@ int board_eth_init(bd_t *bis)
 
 	tsec_eth_init(bis, tsec_info, num);
 	configure_rgmii();
+#endif
 
 	return pci_eth_init(bis);
 }
-#endif
 
-#if defined(CONFIG_OF_BOARD_SETUP)
+#if defined(CONFIG_OF_BOARD_SETUP) && !defined(CONFIG_DM_PCI)
 void ft_pci_setup(void *blob, bd_t *bd)
 {
 	FT_FSL_PCI_SETUP;

@@ -1,19 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *
  * Dave Liu <daveliu@freescale.com>
  * based on source code of Shlomi Gridish
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include "common.h"
-#include "malloc.h"
-#include "asm/errno.h"
-#include "asm/io.h"
-#include "asm/immap_qe.h"
-#include "qe.h"
+#include <common.h>
+#include <malloc.h>
+#include <linux/errno.h>
+#include <asm/io.h>
+#include <linux/immap_qe.h>
 #include "uccf.h"
+#include <fsl_qe.h>
 
 void ucc_fast_transmit_on_demand(ucc_fast_private_t *uccf)
 {

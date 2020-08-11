@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 1998  Dan Malek <dmalek@jlc.net>
  * Copyright (C) 1999  Magnus Damm <kieraypc01.p.y.kie.era.ericsson.se>
  * Copyright (C) 2000, 2001,2002 Wolfgang Denk <wd@denx.de>
  * Copyright Freescale Semiconductor, Inc. 2004, 2006, 2008.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,9 +13,6 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc83xx.h>
-#ifndef  CONFIG_IDENT_STRING
-#define  CONFIG_IDENT_STRING "MPC83XX"
-#endif
 #include <version.h>
 
 #define CONFIG_83XX	1		/* needed for Linux kernel header files*/
@@ -27,6 +23,10 @@
 #include <asm/cache.h>
 #include <asm/mmu.h>
 #include <asm/u-boot.h>
+
+#include "hrcw/hrcw.h"
+#include "bats/bats.h"
+#include "hid/hid.h"
 
 /* We don't want the  MMU yet.
  */
@@ -119,31 +119,9 @@ disable_addr_trans:
 	mtspr	SRR1, r3
 	rfi
 
-	.globl get_svr
-get_svr:
-	mfspr	r3, SVR
-	blr
-
-	.globl get_pvr
-get_pvr:
-	mfspr	r3, PVR
-	blr
-
-	.globl	ppcDWstore
-ppcDWstore:
-	lfd	1, 0(r4)
-	stfd	1, 0(r3)
-	blr
-
-	.globl	ppcDWload
-ppcDWload:
-	lfd	1, 0(r3)
-	stfd	1, 0(r4)
-	blr
-
 #ifndef CONFIG_DEFAULT_IMMR
 #error CONFIG_DEFAULT_IMMR must be defined
-#endif /* CONFIG_SYS_DEFAULT_IMMR */
+#endif /* CONFIG_DEFAULT_IMMR */
 #ifndef CONFIG_SYS_IMMR
 #define CONFIG_SYS_IMMR CONFIG_DEFAULT_IMMR
 #endif /* CONFIG_SYS_IMMR */
@@ -261,14 +239,40 @@ in_flash:
 #endif
 
 	/* set up the stack pointer in our newly created
-	 * cache-ram (r1) */
-	lis	r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@h
-	ori	r1, r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@l
+	 * cache-ram; use r3 to keep the new SP for now to
+	 * avoid overiding the SP it uselessly */
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@l
 
+	/* r4 = end of GD area */
+	addi r4, r3, GENERATED_GBL_DATA_SIZE
+
+	/* Zero GD area */
+	li	r0, 0
+1:
+	subi	r4, r4, 1
+	stb	r0, 0(r4)
+	cmplw	r3, r4
+	bne	1b
+
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) + GENERATED_GBL_DATA_SIZE > CONFIG_SYS_INIT_RAM_SIZE
+#error "SYS_MALLOC_F_LEN too large to fit into initial RAM."
+#endif
+
+	/* r3 = new stack pointer / pre-reloc malloc area */
+	subi    r3, r3, CONFIG_VAL(SYS_MALLOC_F_LEN)
+
+	/* Set pointer to pre-reloc malloc area in GD */
+	stw     r3, GD_MALLOC_BASE(r4)
+#endif
 	li	r0, 0		/* Make room for stack frame header and	*/
-	stwu	r0, -4(r1)	/* clear final stack frame so that	*/
-	stwu	r0, -4(r1)	/* stack backtraces terminate cleanly	*/
+	stwu	r0, -4(r3)	/* clear final stack frame so that	*/
+	stwu	r0, -4(r3)	/* stack backtraces terminate cleanly	*/
 
+	/* Finally, actually set SP */
+	mr	r1, r3
 
 	/* let the C-code set up the rest	                    */
 	/*				                            */
@@ -276,6 +280,9 @@ in_flash:
 	/*------------------------------------------------------*/
 
 	GET_GOT			/* initialize GOT access	*/
+	/* Needed for -msingle-pic-base */
+	bl	_GLOBAL_OFFSET_TABLE_@local-4
+	mflr	r30
 
 	/* r3: IMMR */
 	lis	r3, CONFIG_SYS_IMMR@h
@@ -283,6 +290,7 @@ in_flash:
 	bl	cpu_init_f
 
 	/* run 1st part of board init code (in Flash)*/
+	li	r3, 0		/* clear boot_flag for calling board_init_f */
 	bl	board_init_f
 
 	/* NOTREACHED - board_init_f() does not return */
@@ -796,7 +804,7 @@ flush_dcache:
 /*-------------------------------------------------------------------*/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.
@@ -958,18 +966,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-#if defined(CONFIG_HYMOD)
-	/*
-	 * For HYMOD - the environment is the very last item in flash.
-	 * The real .bss stops just before environment starts, so only
-	 * clear up to that point.
-	 *
-	 * taken from mods for FADS board
-	 */
-	lwz	r4,GOT(environment)
-#else
 	lwz	r4,GOT(__bss_end)
-#endif
 
 	cmplw	0, r3, r4
 	beq	6f

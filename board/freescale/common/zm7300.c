@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 /* Power-One ZM7300 DPM */
@@ -140,9 +139,7 @@ int dpm_wrp(u8 r, u8 d)
 /* Uses the DPM command RRP */
 u8 zm_read(uchar reg)
 {
-	u8 d;
-	d = dpm_rrp(reg);
-	return d;
+	return dpm_rrp(reg);
 }
 
 /* ZM_write --

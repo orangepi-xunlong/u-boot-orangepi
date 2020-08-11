@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008 Extreme Engineering Solutions, Inc.
  *
  * This driver support NAND devices which have address lines
  * connected as ALE and CLE inputs.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,7 +15,7 @@
  */
 static void nand_addr_hwcontrol(struct mtd_info *mtd, int cmd, uint ctrl)
 {
-	struct nand_chip *this = mtd->priv;
+	struct nand_chip *this = mtd_to_nand(mtd);
 	ulong IO_ADDR_W;
 
 	if (ctrl & NAND_CTRL_CHANGE) {

@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Calxeda, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  */
 
 #include <common.h>
@@ -40,6 +40,7 @@ struct menu {
 	char *(*item_choice)(void *);
 	void *item_choice_data;
 	struct list_head items;
+	int item_cnt;
 };
 
 /*
@@ -105,12 +106,9 @@ static inline void *menu_item_destroy(struct menu *m,
 	return NULL;
 }
 
-void __menu_display_statusline(struct menu *m)
+__weak void menu_display_statusline(struct menu *m)
 {
-	return;
 }
-void menu_display_statusline(struct menu *m)
-	__attribute__ ((weak, alias("__menu_display_statusline")));
 
 /*
  * Display a menu so the user can make a choice of an item. First display its
@@ -198,13 +196,15 @@ static inline int menu_interactive_choice(struct menu *m, void **choice)
 
 		if (!m->item_choice) {
 			readret = cli_readline_into_buffer("Enter choice: ",
-							   cbuf,
-							   m->timeout / 10);
+							   cbuf, m->timeout);
 
 			if (readret >= 0) {
 				choice_item = menu_item_by_key(m, cbuf);
 				if (!choice_item)
 					printf("%s not found\n", cbuf);
+			} else if (readret == -1)  {
+				printf("<INTERRUPT>\n");
+				return -EINTR;
 			} else {
 				return menu_default_choice(m, choice);
 			}
@@ -273,7 +273,7 @@ int menu_get_choice(struct menu *m, void **choice)
 	if (!m || !choice)
 		return -EINVAL;
 
-	if (!m->prompt)
+	if (!m->prompt || m->item_cnt == 1)
 		return menu_default_choice(m, choice);
 
 	return menu_interactive_choice(m, choice);
@@ -325,6 +325,7 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
 	item->data = item_data;
 
 	list_add_tail(&item->list, &m->items);
+	m->item_cnt++;
 
 	return 1;
 }
@@ -350,7 +351,7 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
  * make it obvious what the key for each entry is.
  *
  * item_choice - If not NULL, will be called when asking the user to choose an
- * item. Returns a key string corresponding to the choosen item or NULL if
+ * item. Returns a key string corresponding to the chosen item or NULL if
  * no item has been selected.
  *
  * item_choice_data - Will be passed as the argument to the item_choice function
@@ -376,6 +377,7 @@ struct menu *menu_create(char *title, int timeout, int prompt,
 	m->item_data_print = item_data_print;
 	m->item_choice = item_choice;
 	m->item_choice_data = item_choice_data;
+	m->item_cnt = 0;
 
 	if (title) {
 		m->title = strdup(title);

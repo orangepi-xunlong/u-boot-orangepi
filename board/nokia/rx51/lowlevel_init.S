@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2012
  * Pali Rohár <pali.rohar@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -37,7 +36,8 @@ ih_magic:		/* IH_MAGIC in big endian from include/image.h */
 
 .global save_boot_params
 save_boot_params:
-
+	/* Get return address */
+	ldr	lr, =save_boot_params_ret
 
 /* Copy valid attached kernel to address KERNEL_ADDRESS */
 
@@ -103,10 +103,6 @@ fix_start:
 
 	/* r6 - maximal u-boot size */
 	ldr	r6, imagesize
-
-	/* fix return address */
-	subhi	lr, lr, r5
-	addlo	lr, lr, r5
 
 	/* r1 - start of u-boot after */
 	ldr	r1, startaddr

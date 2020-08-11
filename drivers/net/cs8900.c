@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Cirrus Logic CS8900A Ethernet
  *
@@ -20,8 +21,6 @@
  * target board.  Anything with a CL-PS7111 or EP7211 should be able to run
  * this code in bootstrap mode.  All the board specifics can be handled on
  * the host.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -188,14 +187,13 @@ static int cs8900_recv(struct eth_device *dev)
 
 	if (rxlen > PKTSIZE_ALIGN + PKTALIGN)
 		debug("packet too big!\n");
-	for (addr = (u16 *) NetRxPackets[0], i = rxlen >> 1; i > 0;
-		 i--)
+	for (addr = (u16 *)net_rx_packets[0], i = rxlen >> 1; i > 0; i--)
 		*addr++ = REG_READ(&priv->regs->rtdata);
 	if (rxlen & 1)
 		*addr++ = REG_READ(&priv->regs->rtdata);
 
 	/* Pass the packet up to the protocol layers. */
-	NetReceive (NetRxPackets[0], rxlen);
+	net_process_received_packet(net_rx_packets[0], rxlen);
 	return rxlen;
 }
 

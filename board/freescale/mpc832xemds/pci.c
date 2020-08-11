@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006-2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
  * PCI Configuration space access support for MPC83xx PCI Bridge
  */
+#include <init.h>
 #include <asm/mmu.h>
 #include <asm/io.h>
 #include <common.h>
@@ -15,8 +15,6 @@
 #include <i2c.h>
 #include <asm/fsl_i2c.h>
 #include "../common/pq-mds-pib.h"
-
-DECLARE_GLOBAL_DATA_PTR;
 
 static struct pci_region pci1_regions[] = {
 	{

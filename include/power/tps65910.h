@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2013
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * For more details, please see the TRM at http://www.ti.com/product/tps65910
  */
@@ -62,6 +61,7 @@ enum {
 
 #define TPS65910_OP_REG_SEL_MASK			(0x7F)
 #define TPS65910_OP_REG_SEL_0_9_5			(0x1F)	/* 0.9500 V */
+#define TPS65910_OP_REG_SEL_1_1_0			(0x2B)	/* 1.1000 V */
 #define TPS65910_OP_REG_SEL_1_1_3			(0x2E)	/* 1.1375 V */
 #define TPS65910_OP_REG_SEL_1_2_0			(0x33)	/* 1.2000 V */
 #define TPS65910_OP_REG_SEL_1_2_6			(0x38)	/* 1.2625 V */
@@ -72,6 +72,7 @@ enum {
 #define TPS65910_DEVCTRL_REG_SR_CTL_I2C_SEL_SR_I2C	(0x0 << 4)
 #define TPS65910_DEVCTRL_REG_SR_CTL_I2C_SEL_CTL_I2C	(0x1 << 4)
 
+int power_tps65910_init(unsigned char bus);
 int tps65910_set_i2c_control(void);
 int tps65910_voltage_update(unsigned int module, unsigned char vddx_op_vol_sel);
 #endif	/* __POWER_TPS65910_H__ */

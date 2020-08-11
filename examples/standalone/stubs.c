@@ -1,9 +1,8 @@
 #include <common.h>
 #include <exports.h>
+#include <linux/compiler.h>
 
-#ifndef GCC_VERSION
-#define GCC_VERSION (__GNUC__ * 1000 + __GNUC_MINOR__)
-#endif /* GCC_VERSION */
+#define FO(x) offsetof(struct jt_funcs, x)
 
 #if defined(CONFIG_X86)
 /*
@@ -13,23 +12,23 @@
  * from flash memory. The global_data address is passed as argv[-1]
  * to the application program.
  */
-static void **jt;
+static struct jt_funcs *jt;
 gd_t *global_data;
 
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
 "	movl	%0, %%eax\n"		\
 "	movl	jt, %%ecx\n"		\
 "	jmp	*(%%ecx, %%eax)\n"	\
-	: : "i"(XF_ ## x * sizeof(void *)) : "eax", "ecx");
+	: : "i"(FO(x)) : "eax", "ecx");
 #elif defined(CONFIG_PPC)
 /*
  * r2 holds the pointer to the global_data, r11 is a call-clobbered
  * register
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
@@ -37,35 +36,36 @@ gd_t *global_data;
 "	lwz	%%r11, %1(%%r11)\n"	\
 "	mtctr	%%r11\n"		\
 "	bctr\n"				\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r11");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r11");
 #elif defined(CONFIG_ARM)
 #ifdef CONFIG_ARM64
 /*
  * x18 holds the pointer to the global_data, x9 is a call-clobbered
  * register
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
 "	ldr	x9, [x18, %0]\n"		\
 "	ldr	x9, [x9, %1]\n"		\
 "	br	x9\n"		\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "x9");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "x9");
 #else
 /*
  * r9 holds the pointer to the global_data, ip is a call-clobbered
  * register
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
 "	ldr	ip, [r9, %0]\n"		\
 "	ldr	pc, [ip, %1]\n"		\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "ip");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "ip");
 #endif
 #elif defined(CONFIG_MIPS)
+#ifdef CONFIG_CPU_MIPS64
 /*
  * k0 ($26) holds the pointer to the global_data; t9 ($25) is a call-
  * clobbered register that is also used to set gp ($26). Note that the
@@ -73,19 +73,36 @@ gd_t *global_data;
  * it; however, GCC/mips generates an additional `nop' after each asm
  * statement
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
+	asm volatile (			\
+"	.globl " #x "\n"		\
+#x ":\n"				\
+"	ld	$25, %0($26)\n"		\
+"	ld	$25, %1($25)\n"		\
+"	jr	$25\n"			\
+        : : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "t9");
+#else
+/*
+ * k0 ($26) holds the pointer to the global_data; t9 ($25) is a call-
+ * clobbered register that is also used to set gp ($26). Note that the
+ * jr instruction also executes the instruction immediately following
+ * it; however, GCC/mips generates an additional `nop' after each asm
+ * statement
+ */
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
 "	lw	$25, %0($26)\n"		\
 "	lw	$25, %1($25)\n"		\
 "	jr	$25\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "t9");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "t9");
+#endif
 #elif defined(CONFIG_NIOS2)
 /*
  * gp holds the pointer to the global_data, r8 is call-clobbered
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
@@ -95,13 +112,13 @@ gd_t *global_data;
 "	ldw	r8, 0(r8)\n"		\
 "	ldw	r8, %1(r8)\n"		\
 "	jmp	r8\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "gp");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "gp");
 #elif defined(CONFIG_M68K)
 /*
  * d7 holds the pointer to the global_data, a0 is a call-clobbered
  * register
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
@@ -111,50 +128,24 @@ gd_t *global_data;
 "	adda.l	%1, %%a0\n"		\
 "	move.l	(%%a0), %%a0\n"		\
 "	jmp	(%%a0)\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "a0");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "a0");
 #elif defined(CONFIG_MICROBLAZE)
 /*
  * r31 holds the pointer to the global_data. r5 is a call-clobbered.
  */
-#define EXPORT_FUNC(x)				\
+#define EXPORT_FUNC(f, a, x, ...)				\
 	asm volatile (				\
 "	.globl " #x "\n"			\
 #x ":\n"					\
 "	lwi	r5, r31, %0\n"			\
 "	lwi	r5, r5, %1\n"			\
 "	bra	r5\n"				\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r5");
-#elif defined(CONFIG_BLACKFIN)
-/*
- * P3 holds the pointer to the global_data, P0 is a call-clobbered
- * register
- */
-#define EXPORT_FUNC(x)			\
-	asm volatile (			\
-"	.globl _" #x "\n_"		\
-#x ":\n"				\
-"	P0 = [P3 + %0]\n"		\
-"	P0 = [P0 + %1]\n"		\
-"	JUMP (P0)\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "P0");
-#elif defined(CONFIG_AVR32)
-/*
- * r6 holds the pointer to the global_data. r8 is call clobbered.
- */
-#define EXPORT_FUNC(x)					\
-	asm volatile(					\
-		"	.globl\t" #x "\n"		\
-		#x ":\n"				\
-		"	ld.w	r8, r6[%0]\n"		\
-		"	ld.w	pc, r8[%1]\n"		\
-		:					\
-		: "i"(offsetof(gd_t, jt)), "i"(XF_ ##x)	\
-		: "r8");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r5");
 #elif defined(CONFIG_SH)
 /*
  * r13 holds the pointer to the global_data. r1 is a call clobbered.
  */
-#define EXPORT_FUNC(x)					\
+#define EXPORT_FUNC(f, a, x, ...)					\
 	asm volatile (					\
 		"	.align	2\n"			\
 		"	.globl " #x "\n"		\
@@ -167,54 +158,48 @@ gd_t *global_data;
 		"	jmp	@r1\n"			\
 		"	nop\n"				\
 		"	nop\n"				\
-		: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r1", "r2");
-#elif defined(CONFIG_SPARC)
-/*
- * g7 holds the pointer to the global_data. g1 is call clobbered.
- */
-#define EXPORT_FUNC(x)					\
-	asm volatile(					\
-"	.globl\t" #x "\n"				\
-#x ":\n"						\
-"	set %0, %%g1\n"					\
-"	or %%g1, %%g7, %%g1\n"				\
-"	ld [%%g1], %%g1\n"				\
-"	ld [%%g1 + %1], %%g1\n"				\
-"	jmp %%g1\n"					\
-"	nop\n"						\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "g1" );
+		: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r1", "r2");
 #elif defined(CONFIG_NDS32)
 /*
  * r16 holds the pointer to the global_data. gp is call clobbered.
  * not support reduced register (16 GPR).
  */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
 "	lwi	$r16, [$gp + (%0)]\n"	\
 "	lwi	$r16, [$r16 + (%1)]\n"	\
 "	jr	$r16\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "$r16");
-#elif defined(CONFIG_OPENRISC)
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "$r16");
+#elif defined(CONFIG_RISCV)
 /*
- * r10 holds the pointer to the global_data, r13 is a call-clobbered
- * register
+ * gp holds the pointer to the global_data. t0 is call clobbered.
  */
-#define EXPORT_FUNC(x) \
+#ifdef CONFIG_ARCH_RV64I
+#define EXPORT_FUNC(f, a, x, ...)	\
 	asm volatile (			\
 "	.globl " #x "\n"		\
 #x ":\n"				\
-"	l.lwz	r13, %0(r10)\n"	\
-"	l.lwz	r13, %1(r13)\n"	\
-"	l.jr	r13\n"		\
-"	l.nop\n"				\
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r13");
+"	ld	t0, %0(gp)\n"		\
+"	ld	t0, %1(t0)\n"		\
+"	jr	t0\n"			\
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "t0");
+#else
+#define EXPORT_FUNC(f, a, x, ...)	\
+	asm volatile (			\
+"	.globl " #x "\n"		\
+#x ":\n"				\
+"	lw	t0, %0(gp)\n"		\
+"	lw	t0, %1(t0)\n"		\
+"	jr	t0\n"			\
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "t0");
+#endif
 #elif defined(CONFIG_ARC)
 /*
  * r25 holds the pointer to the global_data. r10 is call clobbered.
   */
-#define EXPORT_FUNC(x) \
+#define EXPORT_FUNC(f, a, x, ...) \
 	asm volatile( \
 "	.align 4\n" \
 "	.globl " #x "\n" \
@@ -222,7 +207,54 @@ gd_t *global_data;
 "	ld	r10, [r25, %0]\n" \
 "	ld	r10, [r10, %1]\n" \
 "	j	[r10]\n" \
-	: : "i"(offsetof(gd_t, jt)), "i"(XF_ ## x * sizeof(void *)) : "r10");
+	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r10");
+#elif defined(CONFIG_XTENSA)
+/*
+ * Global data ptr is in global_data, jump table ptr is in jt.
+ * Windowed ABI: Jump just past 'entry' in target and adjust stack frame
+ * (extract stack frame size from target 'entry' instruction).
+ */
+
+static void **jt;
+
+#if defined(__XTENSA_CALL0_ABI__)
+#define EXPORT_FUNC(f, a, x, ...)	\
+	asm volatile (			\
+"	.extern jt\n"			\
+"	.globl " #x "\n"		\
+"	.align 4\n"			\
+#x ":\n"				\
+"	l32i	a8, %0, 0\n"		\
+"	l32i	a8, a8, %1\n"		\
+"	jx	a8\n"			\
+	: : "r"(jt), "i" (FO(x)) : "a8");
+#elif defined(__XTENSA_WINDOWED_ABI__)
+#if XCHAL_HAVE_BE
+# define SFT "8"
+#else
+# define SFT "12"
+#endif
+#define EXPORT_FUNC(f, a, x, ...)	\
+	asm volatile (			\
+"	.extern jt\n"			\
+"	.globl " #x "\n"		\
+"	.align 4\n"			\
+#x ":\n"				\
+"	entry	sp, 16\n"		\
+"	l32i	a8, %0, 0\n"		\
+"	l32i	a8, a8, %1\n"		\
+"	l32i	a9, a8, 0\n"		\
+"	extui	a9, a9, " SFT ", 12\n"	\
+"	subx8	a9, a9, sp\n"		\
+"	movi	a10, 16\n"		\
+"	sub	a9, a10, a9\n"		\
+"	movsp	sp, a9\n"		\
+"	addi	a8, a8, 3\n"		\
+"	jx	a8\n"			\
+	: : "r"(jt), "i" (FO(x)) : "a8", "a9", "a10");
+#else
+#error Unsupported Xtensa ABI
+#endif
 #else
 /*"	addi	$sp, $sp, -24\n"	\
 "	br	$r16\n"			\*/
@@ -237,7 +269,7 @@ gd_t *global_data;
  * implementation. On the other hand, asm() statements with
  * arguments can be used only inside the functions (gcc limitation)
  */
-#if GCC_VERSION < 3004
+#if GCC_VERSION < 30400
 static
 #endif /* GCC_VERSION */
 void __attribute__((unused)) dummy(void)

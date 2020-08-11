@@ -1,22 +1,21 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23/i.MX28 Registers
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IMX_REGS_H__
 #define __IMX_REGS_H__
 
-#include <asm/imx-common/regs-apbh.h>
+#include <asm/mach-imx/regs-apbh.h>
 #include <asm/arch/regs-base.h>
-#include <asm/imx-common/regs-bch.h>
+#include <asm/mach-imx/regs-bch.h>
 #include <asm/arch/regs-digctl.h>
-#include <asm/imx-common/regs-gpmi.h>
+#include <asm/mach-imx/regs-gpmi.h>
+#include <asm/mach-imx/regs-lcdif.h>
 #include <asm/arch/regs-i2c.h>
-#include <asm/arch/regs-lcdif.h>
 #include <asm/arch/regs-lradc.h>
 #include <asm/arch/regs-ocotp.h>
 #include <asm/arch/regs-pinctrl.h>

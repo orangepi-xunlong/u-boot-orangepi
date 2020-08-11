@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2007,2009-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_PCI_H_
@@ -19,6 +18,7 @@
 #define FSL_PCI_PBFR		0x44
 
 #define FSL_PCIE_CFG_RDY	0x4b0
+#define FSL_PCIE_V3_CFG_RDY	0x1
 #define FSL_PROG_IF_AGENT	0x1
 
 #define PCI_LTSSM	0x404   /* PCIe Link Training, Status State Machine */
@@ -78,7 +78,9 @@ typedef struct ccsr_pci {
 	u32	pme_msg_dis;	/* 0x024 - PCIE PME & message disable register */
 	u32	pme_msg_int_en;	/* 0x028 - PCIE PME & message interrupt enable register */
 	u32	pm_command;	/* 0x02c - PCIE PM Command register */
-	char	res4[3016];	/*     (- #xbf8	 #x30)3016 */
+	char	res3[2188];	/*     (0x8bc - 0x30 = 2188) */
+	u32	dbi_ro_wr_en;	/* 0x8bc - DBI read only write enable reg */
+	char	res4[824];	/*     (0xbf8 - 0x8c0 = 824) */
 	u32	block_rev1;	/* 0xbf8 - PCIE Block Revision register 1 */
 	u32	block_rev2;	/* 0xbfc - PCIE Block Revision register 2 */
 

@@ -8,26 +8,23 @@
  * Licensed under the GPL-2 or later.
  */
 
+#define LOG_CATEGORY UCLASS_SPI
+
 #include <common.h>
+#include <dm.h>
 #include <malloc.h>
 #include <spi.h>
+#include <spi_flash.h>
 #include <os.h>
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/spi.h>
 #include <asm/state.h>
+#include <dm/device-internal.h>
 
 #ifndef CONFIG_SPI_IDLE_VAL
 # define CONFIG_SPI_IDLE_VAL 0xFF
 #endif
-
-struct sandbox_spi_slave {
-	struct spi_slave slave;
-	const struct sandbox_spi_emu_ops *ops;
-	void *priv;
-};
-
-#define to_sandbox_spi_slave(s) container_of(s, struct sandbox_spi_slave, slave)
 
 const char *sandbox_spi_parse_spec(const char *arg, unsigned long *bus,
 				   unsigned long *cs)
@@ -45,173 +42,112 @@ const char *sandbox_spi_parse_spec(const char *arg, unsigned long *bus,
 	return endp + 1;
 }
 
-int spi_cs_is_valid(unsigned int bus, unsigned int cs)
+__weak int sandbox_spi_get_emul(struct sandbox_state *state,
+				struct udevice *bus, struct udevice *slave,
+				struct udevice **emulp)
 {
-	return bus < CONFIG_SANDBOX_SPI_MAX_BUS &&
-		cs < CONFIG_SANDBOX_SPI_MAX_CS;
+	return -ENOENT;
 }
 
-void spi_cs_activate(struct spi_slave *slave)
+static int sandbox_spi_xfer(struct udevice *slave, unsigned int bitlen,
+			    const void *dout, void *din, unsigned long flags)
 {
-	struct sandbox_spi_slave *sss = to_sandbox_spi_slave(slave);
-
-	debug("sandbox_spi: activating CS\n");
-	if (sss->ops->cs_activate)
-		sss->ops->cs_activate(sss->priv);
-}
-
-void spi_cs_deactivate(struct spi_slave *slave)
-{
-	struct sandbox_spi_slave *sss = to_sandbox_spi_slave(slave);
-
-	debug("sandbox_spi: deactivating CS\n");
-	if (sss->ops->cs_deactivate)
-		sss->ops->cs_deactivate(sss->priv);
-}
-
-void spi_init(void)
-{
-}
-
-void spi_set_speed(struct spi_slave *slave, uint hz)
-{
-}
-
-struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
-		unsigned int max_hz, unsigned int mode)
-{
-	struct sandbox_spi_slave *sss;
+	struct udevice *bus = slave->parent;
 	struct sandbox_state *state = state_get_current();
-	const char *spec;
-
-	if (!spi_cs_is_valid(bus, cs)) {
-		debug("sandbox_spi: Invalid SPI bus/cs\n");
-		return NULL;
-	}
-
-	sss = spi_alloc_slave(struct sandbox_spi_slave, bus, cs);
-	if (!sss) {
-		debug("sandbox_spi: Out of memory\n");
-		return NULL;
-	}
-
-	spec = state->spi[bus][cs].spec;
-	sss->ops = state->spi[bus][cs].ops;
-	if (!spec || !sss->ops || sss->ops->setup(&sss->priv, spec)) {
-		free(sss);
-		printf("sandbox_spi: unable to locate a slave client\n");
-		return NULL;
-	}
-
-	return &sss->slave;
-}
-
-void spi_free_slave(struct spi_slave *slave)
-{
-	struct sandbox_spi_slave *sss = to_sandbox_spi_slave(slave);
-
-	debug("sandbox_spi: releasing slave\n");
-
-	if (sss->ops->free)
-		sss->ops->free(sss->priv);
-
-	free(sss);
-}
-
-static int spi_bus_claim_cnt[CONFIG_SANDBOX_SPI_MAX_BUS];
-
-int spi_claim_bus(struct spi_slave *slave)
-{
-	if (spi_bus_claim_cnt[slave->bus]++) {
-		printf("sandbox_spi: error: bus already claimed: %d!\n",
-		       spi_bus_claim_cnt[slave->bus]);
-	}
-
-	return 0;
-}
-
-void spi_release_bus(struct spi_slave *slave)
-{
-	if (--spi_bus_claim_cnt[slave->bus]) {
-		printf("sandbox_spi: error: bus freed too often: %d!\n",
-		       spi_bus_claim_cnt[slave->bus]);
-	}
-}
-
-int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
-		void *din, unsigned long flags)
-{
-	struct sandbox_spi_slave *sss = to_sandbox_spi_slave(slave);
+	struct dm_spi_emul_ops *ops;
+	struct udevice *emul;
 	uint bytes = bitlen / 8, i;
-	int ret = 0;
-	u8 *tx = (void *)dout, *rx = din;
+	int ret;
+	uint busnum, cs;
 
 	if (bitlen == 0)
-		goto done;
+		return 0;
 
 	/* we can only do 8 bit transfers */
 	if (bitlen % 8) {
 		printf("sandbox_spi: xfer: invalid bitlen size %u; needs to be 8bit\n",
 		       bitlen);
-		flags |= SPI_XFER_END;
-		goto done;
+		return -EINVAL;
 	}
 
-	if (flags & SPI_XFER_BEGIN)
-		spi_cs_activate(slave);
-
-	/* make sure rx/tx buffers are full so clients can assume */
-	if (!tx) {
-		debug("sandbox_spi: xfer: auto-allocating tx scratch buffer\n");
-		tx = malloc(bytes);
-		if (!tx) {
-			debug("sandbox_spi: Out of memory\n");
-			return -ENOMEM;
-		}
+	busnum = bus->seq;
+	cs = spi_chip_select(slave);
+	if (busnum >= CONFIG_SANDBOX_SPI_MAX_BUS ||
+	    cs >= CONFIG_SANDBOX_SPI_MAX_CS) {
+		printf("%s: busnum=%u, cs=%u: out of range\n", __func__,
+		       busnum, cs);
+		return -ENOENT;
 	}
-	if (!rx) {
-		debug("sandbox_spi: xfer: auto-allocating rx scratch buffer\n");
-		rx = malloc(bytes);
-		if (!rx) {
-			debug("sandbox_spi: Out of memory\n");
-			return -ENOMEM;
-		}
+	ret = sandbox_spi_get_emul(state, bus, slave, &emul);
+	if (ret) {
+		printf("%s: busnum=%u, cs=%u: no emulation available (err=%d)\n",
+		       __func__, busnum, cs, ret);
+		return -ENOENT;
 	}
+	ret = device_probe(emul);
+	if (ret)
+		return ret;
 
-	debug("sandbox_spi: xfer: bytes = %u\n tx:", bytes);
-	for (i = 0; i < bytes; ++i)
-		debug(" %u:%02x", i, tx[i]);
-	debug("\n");
+	ops = spi_emul_get_ops(emul);
+	ret = ops->xfer(emul, bitlen, dout, din, flags);
 
-	ret = sss->ops->xfer(sss->priv, tx, rx, bytes);
-
-	debug("sandbox_spi: xfer: got back %i (that's %s)\n rx:",
-	      ret, ret ? "bad" : "good");
-	for (i = 0; i < bytes; ++i)
-		debug(" %u:%02x", i, rx[i]);
-	debug("\n");
-
-	if (tx != dout)
-		free(tx);
-	if (rx != din)
-		free(rx);
-
- done:
-	if (flags & SPI_XFER_END)
-		spi_cs_deactivate(slave);
+	log_content("sandbox_spi: xfer: got back %i (that's %s)\n rx:",
+		    ret, ret ? "bad" : "good");
+	if (din) {
+		for (i = 0; i < bytes; ++i)
+			log_content(" %u:%02x", i, ((u8 *)din)[i]);
+	}
+	log_content("\n");
 
 	return ret;
 }
 
-/**
- * Set up a new SPI slave for an fdt node
- *
- * @param blob		Device tree blob
- * @param node		SPI peripheral node to use
- * @return 0 if ok, -1 on error
- */
-struct spi_slave *spi_setup_slave_fdt(const void *blob, int slave_node,
-				      int spi_node)
+static int sandbox_spi_set_speed(struct udevice *bus, uint speed)
 {
-	return NULL;
+	return 0;
 }
+
+static int sandbox_spi_set_mode(struct udevice *bus, uint mode)
+{
+	return 0;
+}
+
+static int sandbox_cs_info(struct udevice *bus, uint cs,
+			   struct spi_cs_info *info)
+{
+	/* Always allow activity on CS 0 */
+	if (cs >= 1)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int sandbox_spi_get_mmap(struct udevice *dev, ulong *map_basep,
+				uint *map_sizep, uint *offsetp)
+{
+	*map_basep = 0x1000;
+	*map_sizep = 0x2000;
+	*offsetp = 0x100;
+
+	return 0;
+}
+
+static const struct dm_spi_ops sandbox_spi_ops = {
+	.xfer		= sandbox_spi_xfer,
+	.set_speed	= sandbox_spi_set_speed,
+	.set_mode	= sandbox_spi_set_mode,
+	.cs_info	= sandbox_cs_info,
+	.get_mmap	= sandbox_spi_get_mmap,
+};
+
+static const struct udevice_id sandbox_spi_ids[] = {
+	{ .compatible = "sandbox,spi" },
+	{ }
+};
+
+U_BOOT_DRIVER(spi_sandbox) = {
+	.name	= "spi_sandbox",
+	.id	= UCLASS_SPI,
+	.of_match = sandbox_spi_ids,
+	.ops	= &sandbox_spi_ops,
+};

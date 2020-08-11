@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <stdio.h>
@@ -52,7 +51,7 @@ int main(int argc, char **argv)
 	}
 
 	ofd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, FILE_PERM);
-	if (ifd < 0) {
+	if (ofd < 0) {
 		fprintf(stderr, "%s: Can't open %s: %s\n",
 			argv[0], argv[2], strerror(errno));
 		if (ifd)
@@ -83,8 +82,8 @@ int main(int argc, char **argv)
 	for (i = 0; i < IMG_SIZE - SPL_HEADER_SIZE; i++)
 		checksum += buffer[i+16];
 
-	*(ulong *)buffer ^= 0x1f;
-	*(ulong *)(buffer+4) ^= checksum;
+	*(unsigned long *)buffer ^= 0x1f;
+	*(unsigned long *)(buffer+4) ^= checksum;
 
 	for (i = 1; i < SPL_HEADER_SIZE; i++)
 		buffer[i] ^= buffer[i-1];

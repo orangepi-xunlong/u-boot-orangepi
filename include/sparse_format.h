@@ -1,23 +1,15 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
 /*
+ * This is from the Android Project,
+ * Repository: https://android.googlesource.com/platform/system/core
+ * File: libsparse/sparse_format.h
+ * Commit: 28fa5bc347390480fe190294c6c385b6a9f0d68b
  * Copyright (C) 2010 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
-#ifndef  __SPARSE_FORMAT_H__
-#define  __SPARSE_FORMAT_H__
 
- 
-#define SPARSE_HEADER_MAJOR_VER 1
+#ifndef _LIBSPARSE_SPARSE_FORMAT_H_
+#define _LIBSPARSE_SPARSE_FORMAT_H_
+#include "sparse_defs.h"
 
 typedef struct sparse_header {
   __le32	magic;		/* 0xed26ff3a */
@@ -38,6 +30,7 @@ typedef struct sparse_header {
 #define CHUNK_TYPE_RAW		0xCAC1
 #define CHUNK_TYPE_FILL		0xCAC2
 #define CHUNK_TYPE_DONT_CARE	0xCAC3
+#define CHUNK_TYPE_CRC32    0xCAC4
 
 typedef struct chunk_header {
   __le16	chunk_type;	/* 0xCAC1 -> raw; 0xCAC2 -> fill; 0xCAC3 -> don't care */
@@ -46,9 +39,10 @@ typedef struct chunk_header {
   __le32	total_sz;	/* in bytes of chunk input file including chunk header and data */
 } chunk_header_t;
 
-/* Following a Raw or Fill chunk is data.  For a Raw chunk, it's the data in chunk_sz * blk_sz.
+/* Following a Raw or Fill or CRC32 chunk is data.
+ *  For a Raw chunk, it's the data in chunk_sz * blk_sz.
  *  For a Fill chunk, it's 4 bytes of the fill data.
+ *  For a CRC32 chunk, it's 4 bytes of CRC32
  */
 
 #endif
-

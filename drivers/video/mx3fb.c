@@ -1,18 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009
  * Guennadi Liakhovetski, DENX Software Engineering, <lg@denx.de>
  * Copyright (C) 2011
  * HALE electronic GmbH, <helmut.raiger@hale.at>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <env.h>
 #include <malloc.h>
 #include <video_fb.h>
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
 #include "videomodes.h"
@@ -343,8 +343,6 @@ union chan_param_mem {
 	struct chan_param_mem_planar		pp;
 	struct chan_param_mem_interleaved	ip;
 };
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /* graphics setup */
 static GraphicDevice panel;
@@ -816,7 +814,7 @@ void *video_hw_init(void)
 
 	videomode = CONFIG_SYS_DEFAULT_VIDEO_MODE;
 	/* get video mode via environment */
-	penv = getenv("videomode");
+	penv = env_get("videomode");
 	if (penv) {
 		/* decide if it is a string */
 		if (penv[0] <= '9') {
@@ -903,13 +901,4 @@ void *video_hw_init(void)
 			__func__, panel.frameAdrs, memsize);
 
 	return (void *) &panel;
-}
-
-void video_set_lut(unsigned int index,	/* color number */
-		    unsigned char r,	/* red */
-		    unsigned char g,	/* green */
-		    unsigned char b	/* blue */
-		    )
-{
-	return;
 }

@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 or later as published by the Free Software Foundation.
  */
 
 #include <common.h>
@@ -173,24 +170,27 @@ found:
 	/* DHC_EN =1, ODT = 75 Ohm */
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_75ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_75ohm);
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x3e;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
 #if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
 	puts("Initializing....using SPD\n");
-
 	dram_size = fsl_ddr_sdram();
-
-	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
-	dram_size *= 0x100000;
-
 #else
 	dram_size =  fsl_ddr_sdram_size();
 #endif
-	return dram_size;
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+	dram_size *= 0x100000;
+
+	gd->ram_size = dram_size;
+
+	return 0;
 }
 
 unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
@@ -214,7 +214,7 @@ unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
 
 		debug("rank density is 0x%llx, ctlr density is 0x%llx\n",
 		      rank_density, ctlr_density);
-		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+		for (i = CONFIG_SYS_NUM_DDR_CTLRS - 1; i >= 0; i--) {
 			switch (pinfo->memctl_opts[i].memctl_interleaving_mode) {
 			case FSL_DDR_CACHE_LINE_INTERLEAVING:
 			case FSL_DDR_PAGE_INTERLEAVING:
@@ -238,7 +238,7 @@ unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
 		 * Simple linear assignment if memory
 		 * controllers are not interleaved.
 		 */
-		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+		for (i = CONFIG_SYS_NUM_DDR_CTLRS - 1; i >= 0; i--) {
 			total_ctlr_mem = 0;
 			pinfo->common_timing_params[i].base_address =
 						current_mem_base;

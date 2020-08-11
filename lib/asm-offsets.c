@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Adapted from Linux v2.6.36 kernel: arch/powerpc/kernel/asm-offsets.c
  *
@@ -8,8 +9,6 @@
  * generate asm statements containing #defines,
  * compile this file to assembler, and then extract the
  * #defines from the assembly-language output.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -28,8 +27,9 @@ int main(void)
 	DEFINE(GD_SIZE, sizeof(struct global_data));
 
 	DEFINE(GD_BD, offsetof(struct global_data, bd));
-
-#if defined(CONFIG_ARM)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+	DEFINE(GD_MALLOC_BASE, offsetof(struct global_data, malloc_base));
+#endif
 
 	DEFINE(GD_RELOCADDR, offsetof(struct global_data, relocaddr));
 
@@ -37,7 +37,7 @@ int main(void)
 
 	DEFINE(GD_START_ADDR_SP, offsetof(struct global_data, start_addr_sp));
 
-#endif
+	DEFINE(GD_NEW_GD, offsetof(struct global_data, new_gd));
 
 	return 0;
 }

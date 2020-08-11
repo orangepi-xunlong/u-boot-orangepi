@@ -1,20 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004, 2011 Freescale Semiconductor.
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
 #include <pci.h>
+#include <vsprintf.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
 #include <fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <spd_sdram.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 
 #include "../common/cadmus.h"

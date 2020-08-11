@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+
+
 X86DIR  = x86emu
 
 obj-y = atibios.o biosemu.o besys.o bios.o \
@@ -9,4 +11,4 @@ obj-y = atibios.o biosemu.o besys.o bios.o \
 	$(X86DIR)/debug.o
 
 ccflags-y := -I$(srctree)/$(src) -I$(srctree)/$(src)/include \
-	-D__PPC__  -D__BIG_ENDIAN__
+	$(if $(CONFIG_PPC),-D__PPC__  -D__BIG_ENDIAN__)

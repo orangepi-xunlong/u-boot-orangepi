@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2001
  * Erik Theisen,  Wave 7 Optics, etheisen@mindspring.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -21,7 +20,7 @@
 int init_func_watchdog_reset(void);
 #endif
 
-#ifdef CONFIG_WATCHDOG
+#if defined(CONFIG_WATCHDOG) || defined(CONFIG_HW_WATCHDOG)
 #define INIT_FUNC_WATCHDOG_INIT	init_func_watchdog_init,
 #define INIT_FUNC_WATCHDOG_RESET	init_func_watchdog_reset,
 #else
@@ -52,9 +51,15 @@ int init_func_watchdog_reset(void);
 		#if defined(__ASSEMBLY__)
 			#define WATCHDOG_RESET bl watchdog_reset
 		#else
-			extern void watchdog_reset(void);
+			/* Don't require the watchdog to be enabled in SPL */
+			#if defined(CONFIG_SPL_BUILD) &&		\
+				!defined(CONFIG_SPL_WATCHDOG_SUPPORT)
+				#define WATCHDOG_RESET() {}
+			#else
+				extern void watchdog_reset(void);
 
-			#define WATCHDOG_RESET watchdog_reset
+				#define WATCHDOG_RESET watchdog_reset
+			#endif
 		#endif
 	#else
 		/*
@@ -72,27 +77,11 @@ int init_func_watchdog_reset(void);
  * Prototypes from $(CPU)/cpu.c.
  */
 
-/* MPC 8xx */
-#if (defined(CONFIG_8xx) || defined(CONFIG_MPC860)) && !defined(__ASSEMBLY__)
-	void reset_8xx_watchdog(volatile immap_t *immr);
-#endif
-
-/* MPC 5xx */
-#if defined(CONFIG_5xx) && !defined(__ASSEMBLY__)
-	void reset_5xx_watchdog(volatile immap_t *immr);
-#endif
-
-/* MPC 5xxx */
-#if defined(CONFIG_MPC5xxx) && !defined(__ASSEMBLY__)
-	void reset_5xxx_watchdog(void);
-#endif
-
-/* AMCC 4xx */
-#if defined(CONFIG_4xx) && !defined(__ASSEMBLY__)
-	void reset_4xx_watchdog(void);
-#endif
-
-#if defined(CONFIG_HW_WATCHDOG) && !defined(__ASSEMBLY__)
+#if (defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)) && !defined(__ASSEMBLY__)
 	void hw_watchdog_init(void);
+#endif
+
+#if defined(CONFIG_MPC85xx) && !defined(__ASSEMBLY__)
+	void init_85xx_watchdog(void);
 #endif
 #endif /* _WATCHDOG_H_ */

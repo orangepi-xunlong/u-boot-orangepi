@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Freescale MCF5485 FireEngine board.
  *
  * Copyright (C) 2004-2008 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,54 +17,23 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF547x_8x	/* define processor family */
-#define CONFIG_M548x		/* define processor type */
-#define CONFIG_M5485		/* define processor type */
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
 
-#define CONFIG_HW_WATCHDOG
+#undef CONFIG_HW_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT	5000	/* timeout in milliseconds, max timeout is 6.71sec */
-
-/* Command line configuration */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_CACHE
-#undef CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_USB
 
 #define CONFIG_SLTTMR
 
-#define CONFIG_FSLDMAFEC
 #ifdef CONFIG_FSLDMAFEC
-#	define CONFIG_MII		1
 #	define CONFIG_MII_INIT		1
 #	define CONFIG_HAS_ETH1
-
 #	define CONFIG_SYS_DMA_USE_INTSRAM	1
 #	define CONFIG_SYS_DISCOVER_PHY
 #	define CONFIG_SYS_RX_ETH_BUFFER	32
 #	define CONFIG_SYS_TX_ETH_BUFFER	48
 #	define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-
-#	define CONFIG_SYS_FEC0_PINMUX		0
-#	define CONFIG_SYS_FEC0_MIIBASE		CONFIG_SYS_FEC0_IOBASE
-#	define CONFIG_SYS_FEC1_PINMUX		0
-#	define CONFIG_SYS_FEC1_MIIBASE		CONFIG_SYS_FEC0_IOBASE
-
-#	define MCFFEC_TOUT_LOOP		50000
 /* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CONFIG_SYS_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -76,23 +44,14 @@
 #		endif
 #	endif			/* CONFIG_SYS_DISCOVER_PHY */
 
-#	define CONFIG_ETHADDR	00:e0:0c:bc:e5:60
-#	define CONFIG_ETH1ADDR	00:e0:0c:bc:e5:61
 #	define CONFIG_IPADDR	192.162.1.2
 #	define CONFIG_NETMASK	255.255.255.0
 #	define CONFIG_SERVERIP	192.162.1.1
 #	define CONFIG_GATEWAYIP	192.162.1.1
-#	define CONFIG_OVERWRITE_ETHADDR_ONCE
-
 #endif
 
 #ifdef CONFIG_CMD_USB
-#	define CONFIG_USB_STORAGE
-#	define CONFIG_DOS_PARTITION
 #	define CONFIG_USB_OHCI_NEW
-#	ifndef CONFIG_CMD_PCI
-#		define CONFIG_CMD_PCI
-#	endif
 /*#	define CONFIG_PCI_OHCI*/
 #	define CONFIG_SYS_USB_OHCI_REGS_BASE		0x80041000
 #	define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	15
@@ -110,8 +69,6 @@
 
 /* PCI */
 #ifdef CONFIG_CMD_PCI
-#define CONFIG_PCI		1
-#define CONFIG_PCI_PNP		1
 #define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 
 #define CONFIG_SYS_PCI_MEM_BUS		0x80000000
@@ -127,10 +84,9 @@
 #define CONFIG_SYS_PCI_CFG_SIZE	0x01000000
 #endif
 
-#define CONFIG_BOOTDELAY	1	/* autoboot after 5 seconds */
 #define CONFIG_UDP_CHECKSUM
 
-#define CONFIG_HOSTNAME		M548xEVB
+#define CONFIG_HOSTNAME		"M548xEVB"
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"netdev=eth0\0"				\
 	"loadaddr=10000\0"			\
@@ -144,18 +100,7 @@
 	""
 
 #define CONFIG_PRAM		512	/* 512 KB */
-#define CONFIG_SYS_PROMPT		"-> "
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
-#ifdef CONFIG_CMD_KGDB
-#	define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
-#else
-#	define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-#endif
-
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size    */
 #define CONFIG_SYS_LOAD_ADDR		0x00010000
 
 #define CONFIG_SYS_CLK			CONFIG_SYS_BUSCLK
@@ -222,14 +167,10 @@
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
 #	define CONFIG_SYS_FLASH_BASE		(CONFIG_SYS_CS0_BASE)
-#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
-#	define CONFIG_SYS_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
-#	define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #ifdef CONFIG_SYS_NOR1SZ
 #	define CONFIG_SYS_MAX_FLASH_BANKS	2	/* max number of memory banks */
 #	define CONFIG_SYS_FLASH_SIZE		((CONFIG_SYS_NOR1SZ + CONFIG_SYS_BOOTSZ) << 20)
@@ -244,9 +185,6 @@
  * Environment is not embedded in u-boot. First time runing may have env
  * crc error warning if there is no correct environment on the flash.
  */
-#define CONFIG_ENV_OFFSET		0x40000
-#define CONFIG_ENV_SECT_SIZE	0x10000
-#define CONFIG_ENV_IS_IN_FLASH	1
 
 /*-----------------------------------------------------------------------
  * Cache Configuration

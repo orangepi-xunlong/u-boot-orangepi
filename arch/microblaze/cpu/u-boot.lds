@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004 Atmark Techno, Inc.
  *
  * Yasushi SHOJI <yashi@atmark-techno.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_ARCH(microblaze)
@@ -29,17 +28,23 @@ SECTIONS
 	.data ALIGN(0x4):
 	{
 		__data_start = .;
-#ifdef CONFIG_OF_EMBED
-		dts/built-in.o (.data)
-#endif
 		*(.data)
 		__data_end = .;
+	}
+
+	.got ALIGN(4):
+	{
+		_got_start = .;
+		*(.got*)
+		. = ALIGN(4);
+		_got_end = .;
 	}
 
 	. = ALIGN(4);
 	.u_boot_list : {
 		KEEP(*(SORT(.u_boot_list*)));
 	}
+	__init_end = . ;
 
 	.bss ALIGN(0x4):
 	{

@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (c) 2008 Eric Jarrige <eric.jarrige@armadeus.org>
  *  Copyright (c) 2009 Ilya Yanok <yanok@emcraft.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <div64.h>
 #include <netdev.h>
+#include <vsprintf.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
-#ifdef CONFIG_MXC_MMC
+#include <asm/mach-imx/sys_proto.h>
+#ifdef CONFIG_MMC_MXC
 #include <asm/arch/mxcmmc.h>
 #endif
 
@@ -159,6 +160,11 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 }
 
 
+u32 get_cpu_rev(void)
+{
+	return MXC_CPU_MX27 << 12;
+}
+
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo (void)
 {
@@ -190,7 +196,7 @@ int cpu_eth_init(bd_t *bis)
  */
 int cpu_mmc_init(bd_t *bis)
 {
-#ifdef CONFIG_MXC_MMC
+#ifdef CONFIG_MMC_MXC
 	return mxc_mmc_init(bis);
 #else
 	return 0;
@@ -334,7 +340,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 }
 #endif /* CONFIG_FEC_MXC */
 
-#ifdef CONFIG_MXC_MMC
+#ifdef CONFIG_MMC_MXC
 void mx27_sd1_init_pins(void)
 {
 	int i;
@@ -368,12 +374,4 @@ void mx27_sd2_init_pins(void)
 		imx_gpio_mode(mode[i]);
 
 }
-#endif /* CONFIG_MXC_MMC */
-
-#ifndef CONFIG_SYS_DCACHE_OFF
-void enable_caches(void)
-{
-	/* Enable D-cache. I-cache is already enabled in start.S */
-	dcache_enable();
-}
-#endif /* CONFIG_SYS_DCACHE_OFF */
+#endif /* CONFIG_MMC_MXC */

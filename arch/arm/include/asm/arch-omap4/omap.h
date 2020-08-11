@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
@@ -8,8 +9,6 @@
  * Derived from OMAP3 work by
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <x0khasim@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _OMAP4_H_
@@ -18,6 +17,8 @@
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
 #endif /* !(__KERNEL_STRICT_NAMES || __ASSEMBLY__) */
+
+#include <linux/sizes.h>
 
 /*
  * L4 Peripherals - L4 Wakeup and L4 Core now
@@ -33,10 +34,6 @@
 
 /* CONTROL_ID_CODE */
 #define CONTROL_ID_CODE		0x4A002204
-#define STD_FUSE_DIE_ID_0	0x4A002200
-#define STD_FUSE_DIE_ID_1	0x4A002208
-#define STD_FUSE_DIE_ID_2	0x4A00220c
-#define STD_FUSE_DIE_ID_3	0x4A002210
 
 #define OMAP4_CONTROL_ID_CODE_ES1_0	0x0B85202F
 #define OMAP4_CONTROL_ID_CODE_ES2_0	0x1B85202F
@@ -102,7 +99,6 @@ struct s32ktimer {
 
 #define DEVICE_TYPE_SHIFT (0x8)
 #define DEVICE_TYPE_MASK (0x7 << DEVICE_TYPE_SHIFT)
-#define DEVICE_GP 0x3
 
 #endif /* __ASSEMBLY__ */
 
@@ -113,7 +109,8 @@ struct s32ktimer {
  */
 #define NON_SECURE_SRAM_START	0x40304000
 #define NON_SECURE_SRAM_END	0x4030E000	/* Not inclusive */
-#define SRAM_SCRATCH_SPACE_ADDR	0x4030C000
+#define NON_SECURE_SRAM_IMG_END	0x4030C000
+#define SRAM_SCRATCH_SPACE_ADDR	(NON_SECURE_SRAM_IMG_END - SZ_1K)
 /* base address for indirect vectors (internal boot mode) */
 #define SRAM_ROM_VECT_BASE	0x4030D000
 
@@ -123,5 +120,24 @@ struct s32ktimer {
 
 /* ABB tranxdone mask */
 #define OMAP_ABB_MPU_TXDONE_MASK	(0x1 << 7)
+
+#define OMAP44XX_SAR_RAM_BASE		0x4a326000
+#define OMAP_REBOOT_REASON_OFFSET	0xA0C
+#define OMAP_REBOOT_REASON_SIZE		0x0F
+
+/* Boot parameters */
+#ifndef __ASSEMBLY__
+struct omap_boot_parameters {
+	unsigned int boot_message;
+	unsigned int boot_device_descriptor;
+	unsigned char boot_device;
+	unsigned char reset_reason;
+	unsigned char ch_flags;
+};
+
+int omap_reboot_mode(char *mode, unsigned int length);
+int omap_reboot_mode_clear(void);
+int omap_reboot_mode_store(char *mode);
+#endif
 
 #endif

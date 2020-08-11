@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * (C) Copyright 2009 Magnus Lilja <lilja.magnus@gmail.com>
  *
  * (c) 2007 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #include <common.h>
+#include <init.h>
 #include <netdev.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>

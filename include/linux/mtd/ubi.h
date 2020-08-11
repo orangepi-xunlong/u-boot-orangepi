@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) International Business Machines Corp., 2006
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Author: Artem Bityutskiy (Битюцкий Артём)
  */
@@ -9,9 +8,21 @@
 #ifndef __LINUX_UBI_H__
 #define __LINUX_UBI_H__
 
-/* #include <asm/ioctl.h> */
 #include <linux/types.h>
+#ifndef __UBOOT__
+#include <linux/ioctl.h>
+#include <linux/scatterlist.h>
 #include <mtd/ubi-user.h>
+#endif
+
+/* All voumes/LEBs */
+#define UBI_ALL -1
+
+/*
+ * Maximum number of scatter gather list entries,
+ * we use only 64 to have a lower memory foot print.
+ */
+#define UBI_MAX_SG_COUNT 64
 
 /*
  * enum ubi_open_mode - UBI volume open mode constants.
@@ -19,11 +30,14 @@
  * UBI_READONLY: read-only mode
  * UBI_READWRITE: read-write mode
  * UBI_EXCLUSIVE: exclusive mode
+ * UBI_METAONLY: modify only the volume meta-data,
+ *  i.e. the data stored in the volume table, but not in any of volume LEBs.
  */
 enum {
 	UBI_READONLY = 1,
 	UBI_READWRITE,
-	UBI_EXCLUSIVE
+	UBI_EXCLUSIVE,
+	UBI_METAONLY
 };
 
 /**
@@ -33,13 +47,13 @@ enum {
  * @size: how many physical eraseblocks are reserved for this volume
  * @used_bytes: how many bytes of data this volume contains
  * @used_ebs: how many physical eraseblocks of this volume actually contain any
- * data
+ *            data
  * @vol_type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
  * @corrupted: non-zero if the volume is corrupted (static volumes only)
  * @upd_marker: non-zero if the volume has update marker set
  * @alignment: volume alignment
  * @usable_leb_size: how many bytes are available in logical eraseblocks of
- * this volume
+ *                   this volume
  * @name_len: volume name length
  * @name: volume name
  * @cdev: UBI volume character device major and minor numbers
@@ -75,7 +89,7 @@ enum {
  * physical eraseblock size and on how much bytes UBI headers consume. But
  * because of the volume alignment (@alignment), the usable size of logical
  * eraseblocks if a volume may be less. The following equation is true:
- * 	@usable_leb_size = LEB size - (LEB size mod @alignment),
+ *	@usable_leb_size = LEB size - (LEB size mod @alignment),
  * where LEB size is the logical eraseblock size defined by the UBI device.
  *
  * The alignment is multiple to the minimal flash input/output unit size or %1
@@ -101,23 +115,113 @@ struct ubi_volume_info {
 };
 
 /**
+ * struct ubi_sgl - UBI scatter gather list data structure.
+ * @list_pos: current position in @sg[]
+ * @page_pos: current position in @sg[@list_pos]
+ * @sg: the scatter gather list itself
+ *
+ * ubi_sgl is a wrapper around a scatter list which keeps track of the
+ * current position in the list and the current list item such that
+ * it can be used across multiple ubi_leb_read_sg() calls.
+ */
+struct ubi_sgl {
+	int list_pos;
+	int page_pos;
+#ifndef __UBOOT__
+	struct scatterlist sg[UBI_MAX_SG_COUNT];
+#endif
+};
+
+/**
+ * ubi_sgl_init - initialize an UBI scatter gather list data structure.
+ * @usgl: the UBI scatter gather struct itself
+ *
+ * Please note that you still have to use sg_init_table() or any adequate
+ * function to initialize the unterlaying struct scatterlist.
+ */
+static inline void ubi_sgl_init(struct ubi_sgl *usgl)
+{
+	usgl->list_pos = 0;
+	usgl->page_pos = 0;
+}
+
+/**
  * struct ubi_device_info - UBI device description data structure.
  * @ubi_num: ubi device number
  * @leb_size: logical eraseblock size on this UBI device
+ * @leb_start: starting offset of logical eraseblocks within physical
+ *             eraseblocks
  * @min_io_size: minimal I/O unit size
+ * @max_write_size: maximum amount of bytes the underlying flash can write at a
+ *                  time (MTD write buffer size)
  * @ro_mode: if this device is in read-only mode
  * @cdev: UBI character device major and minor numbers
  *
  * Note, @leb_size is the logical eraseblock size offered by the UBI device.
  * Volumes of this UBI device may have smaller logical eraseblock size if their
  * alignment is not equivalent to %1.
+ *
+ * The @max_write_size field describes flash write maximum write unit. For
+ * example, NOR flash allows for changing individual bytes, so @min_io_size is
+ * %1. However, it does not mean than NOR flash has to write data byte-by-byte.
+ * Instead, CFI NOR flashes have a write-buffer of, e.g., 64 bytes, and when
+ * writing large chunks of data, they write 64-bytes at a time. Obviously, this
+ * improves write throughput.
+ *
+ * Also, the MTD device may have N interleaved (striped) flash chips
+ * underneath, in which case @min_io_size can be physical min. I/O size of
+ * single flash chip, while @max_write_size can be N * @min_io_size.
+ *
+ * The @max_write_size field is always greater or equivalent to @min_io_size.
+ * E.g., some NOR flashes may have (@min_io_size = 1, @max_write_size = 64). In
+ * contrast, NAND flashes usually have @min_io_size = @max_write_size = NAND
+ * page size.
  */
 struct ubi_device_info {
 	int ubi_num;
 	int leb_size;
+	int leb_start;
 	int min_io_size;
+	int max_write_size;
 	int ro_mode;
+#ifndef __UBOOT__
 	dev_t cdev;
+#endif
+};
+
+/*
+ * Volume notification types.
+ * @UBI_VOLUME_ADDED: a volume has been added (an UBI device was attached or a
+ *                    volume was created)
+ * @UBI_VOLUME_REMOVED: a volume has been removed (an UBI device was detached
+ *			or a volume was removed)
+ * @UBI_VOLUME_RESIZED: a volume has been re-sized
+ * @UBI_VOLUME_RENAMED: a volume has been re-named
+ * @UBI_VOLUME_UPDATED: data has been written to a volume
+ *
+ * These constants define which type of event has happened when a volume
+ * notification function is invoked.
+ */
+enum {
+	UBI_VOLUME_ADDED,
+	UBI_VOLUME_REMOVED,
+	UBI_VOLUME_RESIZED,
+	UBI_VOLUME_RENAMED,
+	UBI_VOLUME_UPDATED,
+};
+
+/*
+ * struct ubi_notification - UBI notification description structure.
+ * @di: UBI device description object
+ * @vi: UBI volume description object
+ *
+ * UBI notifiers are called with a pointer to an object of this type. The
+ * object describes the notification. Namely, it provides a description of the
+ * UBI device and UBI volume the notification informs about.
+ */
+struct ubi_notification {
+	struct ubi_device_info di;
+	struct ubi_volume_info vi;
 };
 
 /* UBI descriptor given to users when they open UBI volumes */
@@ -129,17 +233,39 @@ void ubi_get_volume_info(struct ubi_volume_desc *desc,
 struct ubi_volume_desc *ubi_open_volume(int ubi_num, int vol_id, int mode);
 struct ubi_volume_desc *ubi_open_volume_nm(int ubi_num, const char *name,
 					   int mode);
+struct ubi_volume_desc *ubi_open_volume_path(const char *pathname, int mode);
+
+#ifndef __UBOOT__
+typedef	int (*notifier_fn_t)(void *nb,
+			unsigned long action, void *data);
+
+struct notifier_block {
+	notifier_fn_t notifier_call;
+	struct notifier_block *next;
+	void *next;
+	int priority;
+};
+
+int ubi_register_volume_notifier(struct notifier_block *nb,
+				 int ignore_existing);
+int ubi_unregister_volume_notifier(struct notifier_block *nb);
+#endif
+
 void ubi_close_volume(struct ubi_volume_desc *desc);
 int ubi_leb_read(struct ubi_volume_desc *desc, int lnum, char *buf, int offset,
 		 int len, int check);
+int ubi_leb_read_sg(struct ubi_volume_desc *desc, int lnum, struct ubi_sgl *sgl,
+		   int offset, int len, int check);
 int ubi_leb_write(struct ubi_volume_desc *desc, int lnum, const void *buf,
-		  int offset, int len, int dtype);
+		  int offset, int len);
 int ubi_leb_change(struct ubi_volume_desc *desc, int lnum, const void *buf,
-		   int len, int dtype);
+		   int len);
 int ubi_leb_erase(struct ubi_volume_desc *desc, int lnum);
 int ubi_leb_unmap(struct ubi_volume_desc *desc, int lnum);
-int ubi_leb_map(struct ubi_volume_desc *desc, int lnum, int dtype);
+int ubi_leb_map(struct ubi_volume_desc *desc, int lnum);
 int ubi_is_mapped(struct ubi_volume_desc *desc, int lnum);
+int ubi_sync(int ubi_num);
+int ubi_flush(int ubi_num, int vol_id, int lnum);
 
 /*
  * This function is the same as the 'ubi_leb_read()' function, but it does not
@@ -152,23 +278,12 @@ static inline int ubi_read(struct ubi_volume_desc *desc, int lnum, char *buf,
 }
 
 /*
- * This function is the same as the 'ubi_leb_write()' functions, but it does
- * not have the data type argument.
+ * This function is the same as the 'ubi_leb_read_sg()' function, but it does
+ * not provide the checking capability.
  */
-static inline int ubi_write(struct ubi_volume_desc *desc, int lnum,
-			    const void *buf, int offset, int len)
+static inline int ubi_read_sg(struct ubi_volume_desc *desc, int lnum,
+			      struct ubi_sgl *sgl, int offset, int len)
 {
-	return ubi_leb_write(desc, lnum, buf, offset, len, UBI_UNKNOWN);
+	return ubi_leb_read_sg(desc, lnum, sgl, offset, len, 0);
 }
-
-/*
- * This function is the same as the 'ubi_leb_change()' functions, but it does
- * not have the data type argument.
- */
-static inline int ubi_change(struct ubi_volume_desc *desc, int lnum,
-				    const void *buf, int len)
-{
-	return ubi_leb_change(desc, lnum, buf, len, UBI_UNKNOWN);
-}
-
 #endif /* !__LINUX_UBI_H__ */

@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_SERDES_H
@@ -10,6 +9,10 @@
 #include <config.h>
 
 enum srds_prtcl {
+	/*
+	 * Nobody will check whether the device 'NONE' has been configured,
+	 * So use it to indicate if the serdes_prtcl_map has been initialized.
+	 */
 	NONE = 0,
 	PCIE1,
 	PCIE2,
@@ -71,6 +74,29 @@ enum srds_prtcl {
 	INTERLAKEN,
 	QSGMII_SW1_A,		/* Indicates ports on L2 Switch */
 	QSGMII_SW1_B,
+	SGMII_2500_FM1_DTSEC1,
+	SGMII_2500_FM1_DTSEC2,
+	SGMII_2500_FM1_DTSEC3,
+	SGMII_2500_FM1_DTSEC4,
+	SGMII_2500_FM1_DTSEC5,
+	SGMII_2500_FM1_DTSEC6,
+	SGMII_2500_FM1_DTSEC9,
+	SGMII_2500_FM1_DTSEC10,
+	SGMII_2500_FM2_DTSEC1,
+	SGMII_2500_FM2_DTSEC2,
+	SGMII_2500_FM2_DTSEC3,
+	SGMII_2500_FM2_DTSEC4,
+	SGMII_2500_FM2_DTSEC5,
+	SGMII_2500_FM2_DTSEC6,
+	SGMII_2500_FM2_DTSEC9,
+	SGMII_2500_FM2_DTSEC10,
+	SGMII_SW1_MAC1,
+	SGMII_SW1_MAC2,
+	SGMII_SW1_MAC3,
+	SGMII_SW1_MAC4,
+	SGMII_SW1_MAC5,
+	SGMII_SW1_MAC6,
+	SERDES_PRCTL_COUNT	/* Keep this item the last one */
 };
 
 enum srds {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *                    Dave Liu <daveliu@freescale.com>
@@ -10,11 +11,12 @@
  *
  * (C) Copyright 2008 - 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
@@ -23,14 +25,18 @@
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <pci.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <post.h>
 
 #include "../common/common.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
+
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* port pin dir open_drain assign */
-#if defined(CONFIG_MPC8360)
+#if defined(CONFIG_ARCH_MPC8360)
 	/* MDIO */
 	{0,  1, 3, 0, 2}, /* MDIO */
 	{0,  2, 1, 0, 1}, /* MDC */
@@ -53,7 +59,7 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	{5,  2, 1, 0, 1}, /* UART2_RTS */
 	{5,  3, 2, 0, 2}, /* UART2_SIN */
 	{5,  1, 2, 0, 3}, /* UART2_CTS */
-#elif !defined(CONFIG_MPC8309)
+#elif !defined(CONFIG_ARCH_MPC8309)
 	/* Local Bus */
 	{0, 16, 1, 0, 3}, /* LA00 */
 	{0, 17, 1, 0, 3}, /* LA01 */
@@ -121,19 +127,10 @@ static int piggy_present(void)
 	return in_8(&base->bprth) & PIGGY_PRESENT;
 }
 
-#if defined(CONFIG_KMVECT1)
-int ethernet_present(void)
-{
-	/* ethernet port connected to simple switch without piggy */
-	return 1;
-}
-#else
 int ethernet_present(void)
 {
 	return piggy_present();
 }
-#endif
-
 
 int board_early_init_r(void)
 {
@@ -145,7 +142,7 @@ int board_early_init_r(void)
 	u32 *mxmr = &lbc->mamr;
 #endif
 
-#if defined(CONFIG_MPC8360)
+#if defined(CONFIG_ARCH_MPC8360)
 	unsigned short	svid;
 	/*
 	 * Because of errata in the UCCs, we have to write to the reserved
@@ -190,84 +187,14 @@ int board_early_init_r(void)
 
 int misc_init_r(void)
 {
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 	return 0;
 }
 
-#if defined(CONFIG_KMVECT1)
-#include <mv88e6352.h>
-/* Marvell MV88E6122 switch configuration */
-static struct mv88e_sw_reg extsw_conf[] = {
-	/* port 1, FRONT_MDI, autoneg */
-	{ PORT(1), PORT_PHY, NO_SPEED_FOR },
-	{ PORT(1), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	{ PHY(1), PHY_1000_CTRL, NO_ADV },
-	{ PHY(1), PHY_SPEC_CTRL, AUTO_MDIX_EN },
-	{ PHY(1), PHY_CTRL, PHY_100_MBPS | AUTONEG_EN | AUTONEG_RST |
-		FULL_DUPLEX },
-	/* port 2, unused */
-	{ PORT(2), PORT_CTRL, PORT_DIS },
-	{ PHY(2), PHY_CTRL, PHY_PWR_DOWN },
-	{ PHY(2), PHY_SPEC_CTRL, SPEC_PWR_DOWN },
-	/* port 3, BP_MII (CPU), PHY mode, 100BASE */
-	{ PORT(3), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/* port 4, ESTAR to slot 11, SerDes, 1000BASE-X */
-	{ PORT(4), PORT_STATUS, NO_PHY_DETECT },
-	{ PORT(4), PORT_PHY, SPEED_1000_FOR },
-	{ PORT(4), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/* port 5, ESTAR to slot 13, SerDes, 1000BASE-X */
-	{ PORT(5), PORT_STATUS, NO_PHY_DETECT },
-	{ PORT(5), PORT_PHY, SPEED_1000_FOR },
-	{ PORT(5), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/*
-	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
-	 * acc . MV-S300889-00D.pdf , clause 4.5
-	 */
-	{ PORT(5), 0x1A, 0xADB1 },
-	/* port 6, unused, this port has no phy */
-	{ PORT(6), PORT_CTRL, PORT_DIS },
-	/*
-	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
-	 * acc . MV-S300889-00D.pdf , clause 4.5
-	 */
-	{ PORT(5), 0x1A, 0xADB1 },
-};
-#endif
-
 int last_stage_init(void)
 {
-#if defined(CONFIG_KMVECT1)
-	struct km_bec_fpga __iomem *base =
-		(struct km_bec_fpga __iomem *)CONFIG_SYS_KMBEC_FPGA_BASE;
-	u8 tmp_reg;
-
-	/* Release mv88e6122 from reset */
-	tmp_reg = in_8(&base->res1[0]) | 0x10; /* DIRECT3 register */
-	out_8(&base->res1[0], tmp_reg);	       /* GP28 as output */
-	tmp_reg = in_8(&base->gprt3) | 0x10;   /* GP28 to high */
-	out_8(&base->gprt3, tmp_reg);
-
-	/* configure MV88E6122 switch */
-	char *name = "UEC2";
-
-	if (miiphy_set_current_dev(name))
-		return 0;
-
-	mv88e_sw_program(name, CONFIG_KM_MVEXTSW_ADDR, extsw_conf,
-		ARRAY_SIZE(extsw_conf));
-
-	mv88e_sw_reset(name, CONFIG_KM_MVEXTSW_ADDR);
-
-	if (piggy_present()) {
-		setenv("ethact", "UEC2");
-		setenv("netdev", "eth1");
-		puts("using PIGGY for network boot\n");
-	} else {
-		setenv("netdev", "eth0");
-		puts("using frontport for network boot\n");
-	}
-#endif
-
-#if defined(CONFIG_KMCOGE5NE)
+#if defined(CONFIG_TARGET_KMCOGE5NE)
 	struct bfticu_iomap *base =
 		(struct bfticu_iomap *)CONFIG_SYS_BFTIC3_BASE;
 	u8 dip_switch = in_8((u8 *)&(base->mswitch)) & BFTICU_DIPSWITCH_MASK;
@@ -275,7 +202,7 @@ int last_stage_init(void)
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		setenv("actual_bank", "0");
+		env_set("actual_bank", "0");
 	}
 #endif
 	set_km_env();
@@ -307,7 +234,7 @@ static int fixed_sdram(void)
 
 	msize = CONFIG_SYS_DDR_SIZE << 20;
 	disable_addr_trans();
-	msize = get_ram_size(CONFIG_SYS_DDR_BASE, msize);
+	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, msize);
 	enable_addr_trans();
 	msize /= (1024 * 1024);
 	if (CONFIG_SYS_DDR_SIZE != msize) {
@@ -325,16 +252,16 @@ static int fixed_sdram(void)
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((in_be32(&im->sysconf.immrbar) & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
-		CONFIG_SYS_DDR_BASE & LAWBAR_BAR);
+		CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR);
 	msize = fixed_sdram();
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
@@ -345,12 +272,14 @@ phys_size_t initdram(int board_type)
 #endif
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
 {
-	puts("Board: Keymile " CONFIG_KM_BOARD_NAME);
+	puts("Board: ABB " CONFIG_SYS_CONFIG_NAME);
 
 	if (piggy_present())
 		puts(" with PIGGY.");
@@ -358,17 +287,17 @@ int checkboard(void)
 	return 0;
 }
 
-#if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
-#endif
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 #endif

@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
  */
 
 #include <common.h>
+#include <hang.h>
 #include <asm/fsl_lbc.h>
+
+#ifdef CONFIG_MPC83xx
+#include "../mpc83xx/elbc/elbc.h"
+#endif
 
 #ifdef CONFIG_MPC85xx
 /* Boards should provide their own version of this if they use lbc sdram */

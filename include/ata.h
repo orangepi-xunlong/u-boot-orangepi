@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -126,7 +125,7 @@
 
 #define ATA_BLOCKSIZE	512	/* bytes */
 #define ATA_BLOCKSHIFT	9	/* 2 ^ ATA_BLOCKSIZESHIFT = 512 */
-#define ATA_SECTORWORDS	(512 / sizeof(unsigned long))
+#define ATA_SECTORWORDS	(512 / sizeof(uint32_t))
 
 #ifndef ATA_RESET_TIME
 #define ATA_RESET_TIME	60	/* spec allows up to 31 seconds */

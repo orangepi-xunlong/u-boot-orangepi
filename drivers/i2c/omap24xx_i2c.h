@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004-2010
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _OMAP2PLUS_I2C_H_
 #define _OMAP2PLUS_I2C_H_
@@ -82,10 +81,6 @@
 #define I2C_SCLH_HSSCLH		8
 #define I2C_SCLH_HSSCLH_M	0xFF
 
-#define OMAP_I2C_STANDARD	100000
-#define OMAP_I2C_FAST_MODE	400000
-#define OMAP_I2C_HIGH_SPEED	3400000
-
 #define SYSTEM_CLOCK_12		12000000
 #define SYSTEM_CLOCK_13		13000000
 #define SYSTEM_CLOCK_192	19200000
@@ -121,17 +116,17 @@
  * scll_trim = 7
  * sclh_trim = 5
  *
- * The linux 2.6.30 kernel uses
- * scll_trim = 6
- * sclh_trim = 6
+ * The linux 4.9 kernel uses
+ * scll_trim = 7
+ * sclh_trim = 5
  *
  * These are the trim values for standard and fast speed
  */
 #ifndef I2C_FASTSPEED_SCLL_TRIM
-#define I2C_FASTSPEED_SCLL_TRIM		6
+#define I2C_FASTSPEED_SCLL_TRIM		7
 #endif
 #ifndef I2C_FASTSPEED_SCLH_TRIM
-#define I2C_FASTSPEED_SCLH_TRIM		6
+#define I2C_FASTSPEED_SCLH_TRIM		5
 #endif
 
 /* These are the trim values for high speed */

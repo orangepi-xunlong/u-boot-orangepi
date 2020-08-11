@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
@@ -8,19 +9,20 @@
  *
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <i2c.h>
+#include <init.h>
 #include <nand.h>
+#include <net.h>
 #include <netdev.h>
 #include <miiphy.h>
 #include <spi.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 
 #include "../common/common.h"
@@ -37,6 +39,27 @@ DECLARE_GLOBAL_DATA_PTR;
 #define REG_IRQ_CIRQ2		0x2d
 #define MASK_RBI_DEFECT_16	0x01
 
+/*
+ * PHY registers definitions
+ */
+#define PHY_MARVELL_OUI					0x5043
+#define PHY_MARVELL_88E1118_MODEL			0x0022
+#define PHY_MARVELL_88E1118R_MODEL			0x0024
+
+#define PHY_MARVELL_PAGE_REG				0x0016
+#define PHY_MARVELL_DEFAULT_PAGE			0x0000
+
+#define PHY_MARVELL_88E1118R_LED_CTRL_PAGE		0x0003
+#define PHY_MARVELL_88E1118R_LED_CTRL_REG		0x0010
+
+#define PHY_MARVELL_88E1118R_LED_CTRL_RESERVED		0x1000
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED0_1000MB	(0x7<<0)
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED1_ACT		(0x3<<4)
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED2_LINK		(0x0<<8)
+
+/* I/O pin to erase flash RGPP09 = MPP43 */
+#define KM_FLASH_ERASE_ENABLE	43
+
 /* Multi-Purpose Pins Functionality configuration */
 static const u32 kwmpp_config[] = {
 	MPP0_NF_IO2,
@@ -46,18 +69,10 @@ static const u32 kwmpp_config[] = {
 	MPP4_NF_IO6,
 	MPP5_NF_IO7,
 	MPP6_SYSRST_OUTn,
-#if defined(KM_PCIE_RESET_MPP7)
-	MPP7_GPO,
-#else
 	MPP7_PEX_RST_OUTn,
-#endif
 #if defined(CONFIG_SYS_I2C_SOFT)
 	MPP8_GPIO,		/* SDA */
 	MPP9_GPIO,		/* SCL */
-#endif
-#if defined(CONFIG_HARD_I2C)
-	MPP8_TW_SDA,
-	MPP9_TW_SCK,
 #endif
 	MPP10_UART0_TXD,
 	MPP11_UART0_RXD,
@@ -102,25 +117,7 @@ static const u32 kwmpp_config[] = {
 	0
 };
 
-#if defined(CONFIG_KM_MGCOGE3UN)
-/*
- * Wait for startup OK from mgcoge3ne
- */
-static int startup_allowed(void)
-{
-	unsigned char buf;
-
-	/*
-	 * Read CIRQ16 bit (bit 0)
-	 */
-	if (i2c_read(BOCO, REG_IRQ_CIRQ2, 1, &buf, 1) != 0)
-		printf("%s: Error reading Boco\n", __func__);
-	else
-		if ((buf & MASK_RBI_DEFECT_16) == MASK_RBI_DEFECT_16)
-			return 1;
-	return 0;
-}
-#endif
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061)|defined(CONFIG_KM_PIGGY4_88E6352))
 /*
@@ -174,41 +171,13 @@ static void set_bootcount_addr(void)
 	unsigned int bootcountaddr;
 	bootcountaddr = gd->ram_size - BOOTCOUNT_ADDR;
 	sprintf((char *)buf, "0x%x", bootcountaddr);
-	setenv("bootcountaddr", (char *)buf);
+	env_set("bootcountaddr", (char *)buf);
 }
 
 int misc_init_r(void)
 {
-#if defined(CONFIG_KM_MGCOGE3UN)
-	char *wait_for_ne;
-	wait_for_ne = getenv("waitforne");
-	if (wait_for_ne != NULL) {
-		if (strcmp(wait_for_ne, "true") == 0) {
-			int cnt = 0;
-			int abort = 0;
-			puts("NE go: ");
-			while (startup_allowed() == 0) {
-				if (tstc()) {
-					(void) getc(); /* consume input */
-					abort = 1;
-					break;
-				}
-				udelay(200000);
-				cnt++;
-				if (cnt == 5)
-					puts("wait\b\b\b\b");
-				if (cnt == 10) {
-					cnt = 0;
-					puts("    \b\b\b\b");
-				}
-			}
-			if (abort == 1)
-				printf("\nAbort waiting for ne\n");
-			else
-				puts("OK\n");
-		}
-	}
-#endif
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 
 	initialize_unit_leds();
 	set_km_env();
@@ -222,11 +191,11 @@ int board_early_init_f(void)
 	u32 tmp;
 
 	/* set the 2 bitbang i2c pins as output gpios */
-	tmp = readl(KW_GPIO0_BASE + 4);
-	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS) , KW_GPIO0_BASE + 4);
+	tmp = readl(MVEBU_GPIO0_BASE + 4);
+	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS) , MVEBU_GPIO0_BASE + 4);
 #endif
 	/* adjust SDRAM size for bank 0 */
-	kw_sdram_size_adjust(0);
+	mvebu_sdram_size_adjust(0);
 	kirkwood_mpp_conf(kwmpp_config, NULL);
 	return 0;
 }
@@ -234,7 +203,7 @@ int board_early_init_f(void)
 int board_init(void)
 {
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	/*
 	 * The KM_FLASH_GPIO_PIN switches between using a
@@ -269,16 +238,14 @@ int board_init(void)
 
 int board_late_init(void)
 {
-#if defined(CONFIG_KMCOGE5UN)
-/* I/O pin to erase flash RGPP09 = MPP43 */
-#define KM_FLASH_ERASE_ENABLE	43
+#if defined(CONFIG_KM_COGE5UN)
 	u8 dip_switch = kw_gpio_get_value(KM_FLASH_ERASE_ENABLE);
 
 	/* if pin 1 do full erase */
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		setenv("actual_bank", "0");
+		env_set("actual_bank", "0");
 	}
 #endif
 
@@ -290,16 +257,35 @@ int board_late_init(void)
 	return 0;
 }
 
-int board_spi_claim_bus(struct spi_slave *slave)
+static const u32 spi_mpp_config[] = {
+	MPP1_SPI_MOSI,
+	MPP2_SPI_SCK,
+	MPP3_SPI_MISO,
+	0
+};
+
+static u32 spi_mpp_backup[4];
+
+int mvebu_board_spi_claim_bus(struct udevice *dev)
 {
+	spi_mpp_backup[3] = 0;
+
+	/* set new spi mpp config and save current one */
+	kirkwood_mpp_conf(spi_mpp_config, spi_mpp_backup);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 0);
 
 	return 0;
 }
 
-void board_spi_release_bus(struct spi_slave *slave)
+int mvebu_board_spi_release_bus(struct udevice *dev)
 {
+	/* restore saved mpp config */
+	kirkwood_mpp_conf(spi_mpp_backup, NULL);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 1);
+
+	return 0;
 }
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061))
@@ -405,6 +391,9 @@ void reset_phy(void)
 /* Configure and enable MV88E1118 PHY on the piggy*/
 void reset_phy(void)
 {
+	unsigned int oui;
+	unsigned char model, rev;
+
 	char *name = "egiga0";
 
 	if (miiphy_set_current_dev(name))
@@ -412,6 +401,40 @@ void reset_phy(void)
 
 	/* reset the phy */
 	miiphy_reset(name, CONFIG_PHY_BASE_ADR);
+
+	/* get PHY model */
+	if (miiphy_info(name, CONFIG_PHY_BASE_ADR, &oui, &model, &rev))
+		return;
+
+	/* check for Marvell 88E1118R Gigabit PHY (PIGGY3) */
+	if ((oui == PHY_MARVELL_OUI) &&
+	    (model == PHY_MARVELL_88E1118R_MODEL)) {
+		/* set page register to 3 */
+		if (miiphy_write(name, CONFIG_PHY_BASE_ADR,
+				 PHY_MARVELL_PAGE_REG,
+				 PHY_MARVELL_88E1118R_LED_CTRL_PAGE))
+			printf("Error writing PHY page reg\n");
+
+		/*
+		 * leds setup as printed on PCB:
+		 * LED2 (Link): 0x0 (On Link, Off No Link)
+		 * LED1 (Activity): 0x3 (On Activity, Off No Activity)
+		 * LED0 (Speed): 0x7 (On 1000 MBits, Off Else)
+		 */
+		if (miiphy_write(name, CONFIG_PHY_BASE_ADR,
+				 PHY_MARVELL_88E1118R_LED_CTRL_REG,
+				 PHY_MARVELL_88E1118R_LED_CTRL_RESERVED |
+				 PHY_MARVELL_88E1118R_LED_CTRL_LED0_1000MB |
+				 PHY_MARVELL_88E1118R_LED_CTRL_LED1_ACT |
+				 PHY_MARVELL_88E1118R_LED_CTRL_LED2_LINK))
+			printf("Error writing PHY LED reg\n");
+
+		/* set page register back to 0 */
+		if (miiphy_write(name, CONFIG_PHY_BASE_ADR,
+				 PHY_MARVELL_PAGE_REG,
+				 PHY_MARVELL_DEFAULT_PAGE))
+			printf("Error writing PHY page reg\n");
+	}
 }
 #endif
 
@@ -419,7 +442,7 @@ void reset_phy(void)
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 #endif

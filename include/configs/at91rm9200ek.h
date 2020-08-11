@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010 Andreas Bießmann <biessmann.devel@googlemail.com>
  *
@@ -7,8 +8,6 @@
  * Rick Bronson <rick@efn.org>
  *
  * Configuration settings for the AT91RM9200EK board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AT91RM9200EK_CONFIG_H__
@@ -25,9 +24,6 @@
  */
 #ifdef CONFIG_RAMBOOT
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SYS_TEXT_BASE 0x20100000
-#else
-#define CONFIG_SYS_TEXT_BASE 0x10000000
 #endif
 
 /*
@@ -47,7 +43,6 @@
 /* CPU configuration */
 #define CONFIG_AT91RM9200
 #define CONFIG_AT91RM9200EK
-#define CONFIG_CPUAT91
 #define USE_920T_MMU
 
 #include <asm/hardware.h>	/* needed for port definitions */
@@ -56,15 +51,9 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 
-#define CONFIG_BOARD_EARLY_INIT_F
-
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT
-
 /*
  * Memory Configuration
  */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x20000000
 #define CONFIG_SYS_SDRAM_SIZE		SZ_32M
 
@@ -115,19 +104,9 @@
 #define CONFIG_USART_BASE	ATMEL_BASE_DBGU
 #define CONFIG_USART_ID		0/* ignored in arm */
 
-#define CONFIG_BAUDRATE			115200
-
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_USB
-#undef CONFIG_CMD_FPGA
 
 /*
  * Network Driver Setting
@@ -135,19 +114,15 @@
 #define CONFIG_DRIVER_AT91EMAC
 #define CONFIG_SYS_RX_ETH_BUFFER	16
 #define CONFIG_RMII
-#define CONFIG_MII
 
 /*
  * NOR Flash
  */
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_BASE		0x10000000
 #define PHYS_FLASH_1			CONFIG_SYS_FLASH_BASE
 #define PHYS_FLASH_SIZE			SZ_8M
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	256
-#define CONFIG_SYS_FLASH_PROTECTION
 
 /*
  * USB Config
@@ -155,9 +130,6 @@
 #define CONFIG_USB_ATMEL			1
 #define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW			1
-#define CONFIG_USB_KEYBOARD			1
-#define CONFIG_USB_STORAGE			1
-#define CONFIG_DOS_PARTITION			1
 
 #define CONFIG_SYS_USB_OHCI_CPU_INIT		1
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		ATMEL_USB_HOST_BASE
@@ -167,14 +139,11 @@
 /*
  * Environment Settings
  */
-#define CONFIG_ENV_IS_IN_FLASH
 
 /*
  * after u-boot.bin
  */
-#define CONFIG_ENV_ADDR			\
-		(CONFIG_SYS_FLASH_BASE + CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_ENV_SIZE			SZ_64K /* sectors are 64K here */
+
 /* The following #defines are needed to get flash environment right */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_MONITOR_LEN		SZ_256K
@@ -182,7 +151,6 @@
 /*
  * Boot option
  */
-#define CONFIG_BOOTDELAY		3
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE + SZ_16M
@@ -191,16 +159,6 @@
 /*
  * Shell Settings
  */
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"U-Boot> "
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		\
-		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 
 /*
  * Size of malloc() pool

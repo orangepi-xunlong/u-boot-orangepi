@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010 eXMeritus, A Boeing Company
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef POWERPC_ASM_MPC85XX_GPIO_H_
@@ -72,9 +71,10 @@ static inline int gpio_request(unsigned gpio, const char *label)
 	return 0;
 }
 
-static inline void gpio_free(unsigned gpio)
+static inline int gpio_free(unsigned gpio)
 {
 	/* Compatibility shim */
+	return 0;
 }
 
 static inline int gpio_direction_input(unsigned gpio)
@@ -97,12 +97,13 @@ static inline int gpio_get_value(unsigned gpio)
 	return !!mpc85xx_gpio_get(1U << gpio);
 }
 
-static inline void gpio_set_value(unsigned gpio, int value)
+static inline int gpio_set_value(unsigned gpio, int value)
 {
 	if (value)
 		mpc85xx_gpio_set_high(1U << gpio);
 	else
 		mpc85xx_gpio_set_low(1U << gpio);
+	return 0;
 }
 
 static inline int gpio_is_valid(int gpio)

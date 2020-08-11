@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2013 Gabor Juhos <juhosg@openwrt.org>
  * Copyright (C) 2013 Imagination Technologies
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _MIPS_ASM_MALTA_H
@@ -63,5 +62,10 @@
 #define PCI_CFG_PIIX4_SERIRQC_CONT	(1 << 6)
 
 #define PCI_CFG_PIIX4_GENCFG_SERIRQ	(1 << 16)
+
+#define PCI_CFG_PIIX4_IDETIM_PRI	0x40
+#define PCI_CFG_PIIX4_IDETIM_SEC	0x42
+
+#define PCI_CFG_PIIX4_IDETIM_IDE	(1 << 15)
 
 #endif /* _MIPS_ASM_MALTA_H */

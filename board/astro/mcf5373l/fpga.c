@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2006
  * Wolfgang Wegner, ASTRO Strobel Kommunikationssysteme GmbH,
@@ -8,13 +9,12 @@
  * and
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
  * Keith Outwater, keith_outwater@mvis.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Altera/Xilinx FPGA configuration support for the ASTRO "URMEL" board */
 
 #include <common.h>
+#include <console.h>
 #include <watchdog.h>
 #include <altera.h>
 #include <ACEX1K.h>
@@ -23,8 +23,6 @@
 #include <asm/immap_5329.h>
 #include <asm/io.h>
 #include "fpga.h"
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int altera_pre_fn(int cookie)
 {

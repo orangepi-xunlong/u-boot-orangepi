@@ -1,16 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008-2011 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <linux/compiler.h>
 #include <asm/fsl_law.h>
 #include <asm/io.h>
+#include <linux/log2.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -187,7 +187,7 @@ int set_ddr_laws(u64 start, u64 sz, enum law_trgt_if id)
 	if (start == 0)
 		start_align = 1ull << (LAW_SIZE_32G + 1);
 	else
-		start_align = 1ull << (ffs64(start) - 1);
+		start_align = 1ull << (__ffs64(start));
 	law_sz = min(start_align, sz);
 	law_sz_enc = __ilog2_u64(law_sz) - 1;
 
@@ -202,7 +202,7 @@ int set_ddr_laws(u64 start, u64 sz, enum law_trgt_if id)
 	if (sz) {
 		start += law_sz;
 
-		start_align = 1ull << (ffs64(start) - 1);
+		start_align = 1ull << (__ffs64(start));
 		law_sz = min(start_align, sz);
 		law_sz_enc = __ilog2_u64(law_sz) - 1;
 
@@ -259,7 +259,7 @@ void init_laws(void)
 #error FSL_HW_NUM_LAWS can not be greater than 32 w/o code changes
 #endif
 
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_E500) && \
+#if defined(CONFIG_NXP_ESBC) && defined(CONFIG_E500) && \
 						!defined(CONFIG_E500MC)
 	/* ISBC (Boot ROM) creates a LAW 0 entry for non PBL platforms,
 	 * which is not disabled before transferring the control to uboot.
@@ -268,7 +268,7 @@ void init_laws(void)
 	disable_law(0);
 #endif
 
-#if !defined(CONFIG_SECURE_BOOT)
+#if !defined(CONFIG_NXP_ESBC)
 	/*
 	 * if any non DDR LAWs has been created earlier, remove them before
 	 * LAW table is parsed.

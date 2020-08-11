@@ -1,6 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -27,248 +27,214 @@
  */
 
 #include <common.h>
+#include <dm.h>
+#include <errno.h>
+#include <fdtdec.h>
+#include <pch.h>
 #include <pci.h>
+#include <asm/cpu.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/pci.h>
 
-/* Where in config space is the register that points to the GPIO registers? */
-#define PCI_CFG_GPIOBASE 0x48
+DECLARE_GLOBAL_DATA_PTR;
 
-#define NUM_BANKS 3
+#define GPIO_PER_BANK	32
 
-/* Within the I/O space, where are the registers to control the GPIOs? */
-static struct {
-	u8 use_sel;
-	u8 io_sel;
-	u8 lvl;
-} gpio_bank[NUM_BANKS] = {
-	{ 0x00, 0x04, 0x0c },		/* Bank 0 */
-	{ 0x30, 0x34, 0x38 },		/* Bank 1 */
-	{ 0x40, 0x44, 0x48 }		/* Bank 2 */
+struct ich6_bank_priv {
+	/* These are I/O addresses */
+	uint16_t use_sel;
+	uint16_t io_sel;
+	uint16_t lvl;
+	u32 lvl_write_cache;
+	bool use_lvl_write_cache;
 };
 
-static pci_dev_t dev;			/* handle for 0:1f:0 */
-static u32 gpiobase;			/* offset into I/O space */
-static int found_it_once;		/* valid GPIO device? */
-static u32 lock[NUM_BANKS];		/* "lock" for access to pins */
+#define GPIO_USESEL_OFFSET(x)	(x)
+#define GPIO_IOSEL_OFFSET(x)	(x + 4)
+#define GPIO_LVL_OFFSET(x)	(x + 8)
 
-static int bad_arg(int num, int *bank, int *bitnum)
+static int _ich6_gpio_set_value(struct ich6_bank_priv *bank, unsigned offset,
+				int value)
 {
-	int i = num / 32;
-	int j = num % 32;
+	u32 val;
 
-	if (num < 0 || i > NUM_BANKS) {
-		debug("%s: bogus gpio num: %d\n", __func__, num);
-		return -1;
-	}
-	*bank = i;
-	*bitnum = j;
+	if (bank->use_lvl_write_cache)
+		val = bank->lvl_write_cache;
+	else
+		val = inl(bank->lvl);
+
+	if (value)
+		val |= (1UL << offset);
+	else
+		val &= ~(1UL << offset);
+	outl(val, bank->lvl);
+	if (bank->use_lvl_write_cache)
+		bank->lvl_write_cache = val;
+
 	return 0;
 }
 
-static int mark_gpio(int bank, int bitnum)
+static int _ich6_gpio_set_direction(uint16_t base, unsigned offset, int dir)
 {
-	if (lock[bank] & (1UL << bitnum)) {
-		debug("%s: %d.%d already marked\n", __func__, bank, bitnum);
-		return -1;
+	u32 val;
+
+	if (!dir) {
+		val = inl(base);
+		val |= (1UL << offset);
+		outl(val, base);
+	} else {
+		val = inl(base);
+		val &= ~(1UL << offset);
+		outl(val, base);
 	}
-	lock[bank] |= (1 << bitnum);
+
 	return 0;
 }
 
-static void clear_gpio(int bank, int bitnum)
+static int gpio_ich6_ofdata_to_platdata(struct udevice *dev)
 {
-	lock[bank] &= ~(1 << bitnum);
+	struct ich6_bank_platdata *plat = dev_get_platdata(dev);
+	u32 gpiobase;
+	int offset;
+	int ret;
+
+	ret = pch_get_gpio_base(dev->parent, &gpiobase);
+	if (ret)
+		return ret;
+
+	offset = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "reg", -1);
+	if (offset == -1) {
+		debug("%s: Invalid register offset %d\n", __func__, offset);
+		return -EINVAL;
+	}
+	plat->offset = offset;
+	plat->base_addr = gpiobase + offset;
+	plat->bank_name = fdt_getprop(gd->fdt_blob, dev_of_offset(dev),
+				      "bank-name", NULL);
+
+	return 0;
 }
 
-static int notmine(int num, int *bank, int *bitnum)
+static int ich6_gpio_probe(struct udevice *dev)
 {
-	if (bad_arg(num, bank, bitnum))
-		return -1;
-	return !(lock[*bank] & (1UL << *bitnum));
+	struct ich6_bank_platdata *plat = dev_get_platdata(dev);
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
+	const void *prop;
+
+	uc_priv->gpio_count = GPIO_PER_BANK;
+	uc_priv->bank_name = plat->bank_name;
+	bank->use_sel = plat->base_addr;
+	bank->io_sel = plat->base_addr + 4;
+	bank->lvl = plat->base_addr + 8;
+
+	prop = fdt_getprop(gd->fdt_blob, dev_of_offset(dev),
+			   "use-lvl-write-cache", NULL);
+	if (prop)
+		bank->use_lvl_write_cache = true;
+	else
+		bank->use_lvl_write_cache = false;
+	bank->lvl_write_cache = 0;
+
+	return 0;
 }
 
-static int gpio_init(void)
+static int ich6_gpio_request(struct udevice *dev, unsigned offset,
+			     const char *label)
 {
-	u8 tmpbyte;
-	u16 tmpword;
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
 	u32 tmplong;
-
-	/* Have we already done this? */
-	if (found_it_once)
-		return 0;
-
-	/* Where should it be? */
-	dev = PCI_BDF(0, 0x1f, 0);
-
-	/* Is the device present? */
-	pci_read_config_word(dev, PCI_VENDOR_ID, &tmpword);
-	if (tmpword != PCI_VENDOR_ID_INTEL) {
-		debug("%s: wrong VendorID\n", __func__);
-		return -1;
-	}
-
-	pci_read_config_word(dev, PCI_DEVICE_ID, &tmpword);
-	debug("Found %04x:%04x\n", PCI_VENDOR_ID_INTEL, tmpword);
-	/*
-	 * We'd like to validate the Device ID too, but pretty much any
-	 * value is either a) correct with slight differences, or b)
-	 * correct but undocumented. We'll have to check a bunch of other
-	 * things instead...
-	 */
-
-	/* I/O should already be enabled (it's a RO bit). */
-	pci_read_config_word(dev, PCI_COMMAND, &tmpword);
-	if (!(tmpword & PCI_COMMAND_IO)) {
-		debug("%s: device IO not enabled\n", __func__);
-		return -1;
-	}
-
-	/* Header Type must be normal (bits 6-0 only; see spec.) */
-	pci_read_config_byte(dev, PCI_HEADER_TYPE, &tmpbyte);
-	if ((tmpbyte & 0x7f) != PCI_HEADER_TYPE_NORMAL) {
-		debug("%s: invalid Header type\n", __func__);
-		return -1;
-	}
-
-	/* Base Class must be a bridge device */
-	pci_read_config_byte(dev, PCI_CLASS_CODE, &tmpbyte);
-	if (tmpbyte != PCI_CLASS_CODE_BRIDGE) {
-		debug("%s: invalid class\n", __func__);
-		return -1;
-	}
-	/* Sub Class must be ISA */
-	pci_read_config_byte(dev, PCI_CLASS_SUB_CODE, &tmpbyte);
-	if (tmpbyte != PCI_CLASS_SUB_CODE_BRIDGE_ISA) {
-		debug("%s: invalid subclass\n", __func__);
-		return -1;
-	}
-
-	/* Programming Interface must be 0x00 (no others exist) */
-	pci_read_config_byte(dev, PCI_CLASS_PROG, &tmpbyte);
-	if (tmpbyte != 0x00) {
-		debug("%s: invalid interface type\n", __func__);
-		return -1;
-	}
-
-	/*
-	 * GPIOBASE moved to its current offset with ICH6, but prior to
-	 * that it was unused (or undocumented). Check that it looks
-	 * okay: not all ones or zeros, and mapped to I/O space (bit 0).
-	 */
-	pci_read_config_dword(dev, PCI_CFG_GPIOBASE, &tmplong);
-	if (tmplong == 0x00000000 || tmplong == 0xffffffff ||
-	    !(tmplong & 0x00000001)) {
-		debug("%s: unexpected GPIOBASE value\n", __func__);
-		return -1;
-	}
-
-	/*
-	 * Okay, I guess we're looking at the right device. The actual
-	 * GPIO registers are in the PCI device's I/O space, starting
-	 * at the offset that we just read. Bit 0 indicates that it's
-	 * an I/O address, not a memory address, so mask that off.
-	 */
-	gpiobase = tmplong & 0xfffffffe;
-
-	/* Finally. These are the droids we're looking for. */
-	found_it_once = 1;
-	return 0;
-}
-
-int gpio_request(unsigned num, const char *label /* UNUSED */)
-{
-	u32 tmplong;
-	int i = 0, j = 0;
-
-	/* Is the hardware ready? */
-	if (gpio_init())
-		return -1;
-
-	if (bad_arg(num, &i, &j))
-		return -1;
 
 	/*
 	 * Make sure that the GPIO pin we want isn't already in use for some
 	 * built-in hardware function. We have to check this for every
 	 * requested pin.
 	 */
-	tmplong = inl(gpiobase + gpio_bank[i].use_sel);
-	if (!(tmplong & (1UL << j))) {
+	tmplong = inl(bank->use_sel);
+	if (!(tmplong & (1UL << offset))) {
 		debug("%s: gpio %d is reserved for internal use\n", __func__,
-		      num);
-		return -1;
+		      offset);
+		return -EPERM;
 	}
 
-	return mark_gpio(i, j);
-}
-
-int gpio_free(unsigned num)
-{
-	int i = 0, j = 0;
-
-	if (notmine(num, &i, &j))
-		return -1;
-
-	clear_gpio(i, j);
 	return 0;
 }
 
-int gpio_direction_input(unsigned num)
+static int ich6_gpio_direction_input(struct udevice *dev, unsigned offset)
 {
-	u32 tmplong;
-	int i = 0, j = 0;
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
 
-	if (notmine(num, &i, &j))
-		return -1;
-
-	tmplong = inl(gpiobase + gpio_bank[i].io_sel);
-	tmplong |= (1UL << j);
-	outl(gpiobase + gpio_bank[i].io_sel, tmplong);
-	return 0;
+	return _ich6_gpio_set_direction(bank->io_sel, offset, 0);
 }
 
-int gpio_direction_output(unsigned num, int value)
+static int ich6_gpio_direction_output(struct udevice *dev, unsigned offset,
+				       int value)
 {
-	u32 tmplong;
-	int i = 0, j = 0;
+	int ret;
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
 
-	if (notmine(num, &i, &j))
-		return -1;
+	ret = _ich6_gpio_set_direction(bank->io_sel, offset, 1);
+	if (ret)
+		return ret;
 
-	tmplong = inl(gpiobase + gpio_bank[i].io_sel);
-	tmplong &= ~(1UL << j);
-	outl(gpiobase + gpio_bank[i].io_sel, tmplong);
-	return 0;
+	return _ich6_gpio_set_value(bank, offset, value);
 }
 
-int gpio_get_value(unsigned num)
+static int ich6_gpio_get_value(struct udevice *dev, unsigned offset)
 {
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
 	u32 tmplong;
-	int i = 0, j = 0;
 	int r;
 
-	if (notmine(num, &i, &j))
-		return -1;
-
-	tmplong = inl(gpiobase + gpio_bank[i].lvl);
-	r = (tmplong & (1UL << j)) ? 1 : 0;
+	tmplong = inl(bank->lvl);
+	if (bank->use_lvl_write_cache)
+		tmplong |= bank->lvl_write_cache;
+	r = (tmplong & (1UL << offset)) ? 1 : 0;
 	return r;
 }
 
-int gpio_set_value(unsigned num, int value)
+static int ich6_gpio_set_value(struct udevice *dev, unsigned offset,
+			       int value)
 {
-	u32 tmplong;
-	int i = 0, j = 0;
-
-	if (notmine(num, &i, &j))
-		return -1;
-
-	tmplong = inl(gpiobase + gpio_bank[i].lvl);
-	if (value)
-		tmplong |= (1UL << j);
-	else
-		tmplong &= ~(1UL << j);
-	outl(gpiobase + gpio_bank[i].lvl, tmplong);
-	return 0;
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
+	return _ich6_gpio_set_value(bank, offset, value);
 }
+
+static int ich6_gpio_get_function(struct udevice *dev, unsigned offset)
+{
+	struct ich6_bank_priv *bank = dev_get_priv(dev);
+	u32 mask = 1UL << offset;
+
+	if (!(inl(bank->use_sel) & mask))
+		return GPIOF_FUNC;
+	if (inl(bank->io_sel) & mask)
+		return GPIOF_INPUT;
+	else
+		return GPIOF_OUTPUT;
+}
+
+static const struct dm_gpio_ops gpio_ich6_ops = {
+	.request		= ich6_gpio_request,
+	.direction_input	= ich6_gpio_direction_input,
+	.direction_output	= ich6_gpio_direction_output,
+	.get_value		= ich6_gpio_get_value,
+	.set_value		= ich6_gpio_set_value,
+	.get_function		= ich6_gpio_get_function,
+};
+
+static const struct udevice_id intel_ich6_gpio_ids[] = {
+	{ .compatible = "intel,ich6-gpio" },
+	{ }
+};
+
+U_BOOT_DRIVER(gpio_ich6) = {
+	.name	= "gpio_ich6",
+	.id	= UCLASS_GPIO,
+	.of_match = intel_ich6_gpio_ids,
+	.ops	= &gpio_ich6_ops,
+	.ofdata_to_platdata	= gpio_ich6_ofdata_to_platdata,
+	.probe	= ich6_gpio_probe,
+	.priv_auto_alloc_size = sizeof(struct ich6_bank_priv),
+	.platdata_auto_alloc_size = sizeof(struct ich6_bank_platdata),
+};

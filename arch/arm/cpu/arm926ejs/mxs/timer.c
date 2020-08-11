@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 timer driver
  *
@@ -6,11 +7,10 @@
  *
  * Based on code from LTIB:
  * (C) Copyright 2009-2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <time.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
@@ -91,6 +91,8 @@ unsigned long long get_ticks(void)
 		TIMROT_RUNNING_COUNTn_RUNNING_COUNT_OFFSET;
 #elif defined(CONFIG_MX28)
 	now = readl(&timrot_regs->hw_timrot_running_count0);
+#else
+#error "Don't know how to read timrot_regs"
 #endif
 
 	if (lastdec >= now) {
@@ -109,14 +111,9 @@ unsigned long long get_ticks(void)
 	return timestamp;
 }
 
-ulong get_timer_masked(void)
-{
-	return tick_to_time(get_ticks());
-}
-
 ulong get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks()) - base;
 }
 
 /* We use the HW_DIGCTL_MICROSECONDS register for sub-millisecond timer. */

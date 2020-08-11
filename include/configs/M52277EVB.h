@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Freescale MCF52277 EVB board.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,13 +17,9 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF5227x		/* define processor family */
-#define CONFIG_M52277		/* define processor type */
-#define CONFIG_M52277EVB	/* M52277EVB board */
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE			115200
 
 #undef CONFIG_WATCHDOG
 
@@ -34,32 +29,8 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
-/* Command line configuration */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_LOADB
-#define CONFIG_CMD_LOADS
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
-#define CONFIG_CMD_REGINFO
-#undef CONFIG_CMD_USB
-#undef CONFIG_CMD_BMP
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
-
-#define CONFIG_HOSTNAME			M52277EVB
+#define CONFIG_HOSTNAME			"M52277EVB"
 #define CONFIG_SYS_UBOOT_END		0x3FFFF
 #define	CONFIG_SYS_LOAD_ADDR2		0x40010007
 #ifdef CONFIG_SYS_STMICRO_BOOT
@@ -99,10 +70,8 @@
 	""
 #endif
 
-#define CONFIG_BOOTDELAY		3	/* autoboot after 3 seconds */
 /* LCD */
 #ifdef CONFIG_CMD_BMP
-#define CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_LCD_LOGO
 #define CONFIG_SHARP_LQ035Q7DH06
@@ -110,11 +79,6 @@
 
 /* USB */
 #ifdef CONFIG_CMD_USB
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_STORAGE
-#define CONFIG_DOS_PARTITION
-#define CONFIG_MAC_PARTITION
-#define CONFIG_ISO_PARTITION
 #define CONFIG_SYS_USB_EHCI_REGS_BASE	0xFC0B0000
 #define CONFIG_SYS_USB_EHCI_CPU_INIT
 #endif
@@ -126,7 +90,6 @@
 
 /* Timer */
 #define CONFIG_MCFTMR
-#undef CONFIG_MCFPIT
 
 /* I2c */
 #define CONFIG_SYS_I2C
@@ -137,23 +100,8 @@
 #define CONFIG_SYS_IMMR			CONFIG_SYS_MBAR
 
 /* DSPI and Serial Flash */
-#define CONFIG_CF_SPI
 #define CONFIG_CF_DSPI
-#define CONFIG_HARD_SPI
 #define CONFIG_SYS_SBFHDR_SIZE		0x7
-#ifdef CONFIG_CMD_SPI
-#	define CONFIG_SYS_DSPI_CS2
-#	define CONFIG_SPI_FLASH
-#	define CONFIG_SPI_FLASH_STMICRO
-
-#	define CONFIG_SYS_DSPI_CTAR0	(DSPI_CTAR_TRSZ(7) | \
-					 DSPI_CTAR_PCSSCK_1CLK | \
-					 DSPI_CTAR_PASC(0) | \
-					 DSPI_CTAR_PDT(0) | \
-					 DSPI_CTAR_CSSCK(0) | \
-					 DSPI_CTAR_ASC(0) | \
-					 DSPI_CTAR_DT(1))
-#endif
 
 /* Input, PCI, Flexbus, and VCO */
 #define CONFIG_EXTRA_CLOCK
@@ -161,18 +109,6 @@
 #define CONFIG_SYS_INPUT_CLKSRC	16000000
 
 #define CONFIG_PRAM		2048	/* 2048 KB */
-
-#define CONFIG_SYS_PROMPT	"-> "
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
-#else
-#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-#endif
-#define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size    */
 
 #define CONFIG_SYS_LOAD_ADDR	(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
@@ -229,12 +165,6 @@
  * Environment is not embedded in u-boot. First time runing may have env
  * crc error warning if there is no correct environment on the flash.
  */
-#ifdef CONFIG_CF_SBF
-#	define CONFIG_ENV_IS_IN_SPI_FLASH
-#	define CONFIG_ENV_SPI_CS	2
-#else
-#	define CONFIG_ENV_IS_IN_FLASH	1
-#endif
 #define CONFIG_ENV_OVERWRITE		1
 
 /*-----------------------------------------------------------------------
@@ -243,31 +173,25 @@
 #ifdef CONFIG_SYS_STMICRO_BOOT
 #	define CONFIG_SYS_FLASH_BASE	CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE	CONFIG_SYS_CS0_BASE
-#	define CONFIG_ENV_OFFSET	0x30000
-#	define CONFIG_ENV_SIZE		0x1000
-#	define CONFIG_ENV_SECT_SIZE	0x10000
 #endif
 #ifdef CONFIG_SYS_SPANSION_BOOT
 #	define CONFIG_SYS_FLASH_BASE	CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE	CONFIG_SYS_CS0_BASE
-#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x40000)
-#	define CONFIG_ENV_SIZE		0x1000
-#	define CONFIG_ENV_SECT_SIZE	0x8000
 #endif
 
-#define CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
-#	define CONFIG_FLASH_CFI_DRIVER	1
-#	define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 #	define CONFIG_FLASH_SPANSION_S29WS_N	1
 #	define CONFIG_SYS_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
 #	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
-#	define CONFIG_SYS_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
 #	define CONFIG_SYS_FLASH_CHECKSUM
 #	define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_CS0_BASE }
 #endif
+
+#define LDS_BOARD_TEXT \
+        arch/m68k/cpu/mcf5227x/built-in.o   (.text*) \
+	arch/m68k/lib/built-in.o            (.text*)
 
 /*
  * This is setting for JFFS2 support in u-boot.

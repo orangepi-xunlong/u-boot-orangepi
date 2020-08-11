@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- *  (C) Copyright 2010,2011,2014
+ *  (C) Copyright 2010-2019
  *  NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PMC_H_
@@ -294,6 +293,7 @@ struct pmc_ctlr {
 #define CRAIL		0
 #define CE0		14
 #define C0NC		15
+#define SOR		17
 
 #define PMC_XOFS_SHIFT	1
 #define PMC_XOFS_MASK	(0x3F << PMC_XOFS_SHIFT)
@@ -303,7 +303,7 @@ struct pmc_ctlr {
 #define TIMER_MULT_MASK		(3 << TIMER_MULT_SHIFT)
 #define TIMER_MULT_CPU_SHIFT	2
 #define TIMER_MULT_CPU_MASK	(3 << TIMER_MULT_CPU_SHIFT)
-#elif defined(CONFIG_TEGRA124)
+#elif defined(CONFIG_TEGRA124) || defined(CONFIG_TEGRA210)
 #define TIMER_MULT_SHIFT	0
 #define TIMER_MULT_MASK		(7 << TIMER_MULT_SHIFT)
 #define TIMER_MULT_CPU_SHIFT	3
@@ -314,7 +314,7 @@ struct pmc_ctlr {
 #define MULT_2			1
 #define MULT_4			2
 #define MULT_8			3
-#if defined(CONFIG_TEGRA124)
+#if defined(CONFIG_TEGRA124) || defined(CONFIG_TEGRA210)
 #define MULT_16			4
 #endif
 
@@ -387,5 +387,23 @@ struct pmc_ctlr {
 
 /* APBDEV_PMC_CNTRL2_0 0x440 */
 #define HOLD_CKE_LOW_EN				(1 << 12)
+
+/* PMC read/write functions */
+u32 tegra_pmc_readl(unsigned long offset);
+void tegra_pmc_writel(u32 value, unsigned long offset);
+
+#define PMC_CNTRL		0x0
+#define  PMC_CNTRL_MAIN_RST	BIT(4)
+
+#if IS_ENABLED(CONFIG_TEGRA186)
+#  define PMC_SCRATCH0 0x32000
+#else
+#  define PMC_SCRATCH0 0x00050
+#endif
+
+/* for secure PMC */
+#define TEGRA_SMC_PMC		0xc2fffe00
+#define  TEGRA_SMC_PMC_READ	0xaa
+#define  TEGRA_SMC_PMC_WRITE	0xbb
 
 #endif	/* PMC_H */

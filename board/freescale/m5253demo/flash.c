@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <irq_func.h>
 
 #include <asm/immap.h>
 
@@ -31,7 +31,7 @@ typedef volatile unsigned short FLASH_PORT_WIDTHV;
 ulong flash_get_size(FPWV * addr, flash_info_t * info);
 int flash_get_offsets(ulong base, flash_info_t * info);
 int write_word(flash_info_t * info, FPWV * dest, u16 data);
-void inline spin_wheel(void);
+static inline void spin_wheel(void);
 
 flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];
 
@@ -56,14 +56,16 @@ ulong flash_init(void)
 
 int flash_get_offsets(ulong base, flash_info_t * info)
 {
-	int j, k;
+	int i;
 
 	if ((info->flash_id & FLASH_VENDMASK) == FLASH_MAN_SST) {
 
 		info->start[0] = base;
-		for (k = 0, j = 0; j < CONFIG_SYS_SST_SECT; j++, k++) {
-			info->start[k + 1] = info->start[k] + CONFIG_SYS_SST_SECTSZ;
-			info->protect[k] = 0;
+		info->protect[0] = 0;
+		for (i = 1; i < CONFIG_SYS_SST_SECT; i++) {
+			info->start[i] = info->start[i - 1]
+						+ CONFIG_SYS_SST_SECTSZ;
+			info->protect[i] = 0;
 		}
 	}
 
@@ -437,7 +439,7 @@ int write_word(flash_info_t * info, FPWV * dest, u16 data)
 	return (res);
 }
 
-void inline spin_wheel(void)
+static inline void spin_wheel(void)
 {
 	static int p = 0;
 	static char w[] = "\\/-";

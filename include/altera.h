@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <fpga.h>
@@ -10,35 +9,78 @@
 #ifndef _ALTERA_H_
 #define _ALTERA_H_
 
-typedef enum {				/* typedef Altera_iface */
-	min_altera_iface_type,		/* insert all new types after this */
-	passive_serial,			/* serial data and external clock */
-	passive_parallel_synchronous,	/* parallel data */
-	passive_parallel_asynchronous,	/* parallel data */
-	passive_serial_asynchronous,	/* serial data w/ internal clock (not used)	*/
-	altera_jtag_mode,		/* jtag/tap serial (not used ) */
-	fast_passive_parallel,		/* fast passive parallel (FPP) */
-	fast_passive_parallel_security,	/* fast passive parallel with security (FPPS) */
-	max_altera_iface_type		/* insert all new types before this */
-} Altera_iface;				/* end, typedef Altera_iface */
+/*
+ * For the StratixV FPGA programming via SPI, the following
+ * information is coded in the 32bit cookie:
+ * Bit 31 ... Bit 0
+ * SPI-Bus | SPI-Dev | Config-Pin | Done-Pin
+ */
+#define FPGA_COOKIE(bus, dev, config, done)			\
+	(((bus) << 24) | ((dev) << 16) | ((config) << 8) | (done))
+#define COOKIE2SPI_BUS(c)	(((c) >> 24) & 0xff)
+#define COOKIE2SPI_DEV(c)	(((c) >> 16) & 0xff)
+#define COOKIE2CONFIG(c)	(((c) >> 8) & 0xff)
+#define COOKIE2DONE(c)		((c) & 0xff)
 
-typedef enum {			/* typedef Altera_Family */
-	min_altera_type,	/* insert all new types after this */
-	Altera_ACEX1K,		/* ACEX1K Family */
-	Altera_CYC2,		/* CYCLONII Family */
-	Altera_StratixII,	/* StratixII Familiy */
-/* Add new models here */
-	max_altera_type		/* insert all new types before this */
-} Altera_Family;		/* end, typedef Altera_Family */
+enum altera_iface {
+	/* insert all new types after this */
+	min_altera_iface_type,
+	/* serial data and external clock */
+	passive_serial,
+	/* parallel data */
+	passive_parallel_synchronous,
+	/* parallel data */
+	passive_parallel_asynchronous,
+	/* serial data w/ internal clock (not used) */
+	passive_serial_asynchronous,
+	/* jtag/tap serial (not used ) */
+	altera_jtag_mode,
+	/* fast passive parallel (FPP) */
+	fast_passive_parallel,
+	/* fast passive parallel with security (FPPS) */
+	fast_passive_parallel_security,
+	/* secure device manager (SDM) mailbox */
+	secure_device_manager_mailbox,
+	/* insert all new types before this */
+	max_altera_iface_type,
+};
 
-typedef struct {		/* typedef Altera_desc */
-	Altera_Family	family;	/* part type */
-	Altera_iface	iface;	/* interface type */
-	size_t		size;	/* bytes of data part can accept */
-	void *		iface_fns;/* interface function table */
-	void *		base;	/* base interface address */
-	int		cookie;	/* implementation specific cookie */
-} Altera_desc;			/* end, typedef Altera_desc */
+enum altera_family {
+	/* insert all new types after this */
+	min_altera_type,
+	/* ACEX1K Family */
+	Altera_ACEX1K,
+	/* CYCLONII Family */
+	Altera_CYC2,
+	/* StratixII Family */
+	Altera_StratixII,
+	/* StratixV Family */
+	Altera_StratixV,
+	/* Stratix10 Family */
+	Intel_FPGA_Stratix10,
+	/* SoCFPGA Family */
+	Altera_SoCFPGA,
+
+	/* Add new models here */
+
+	/* insert all new types before this */
+	max_altera_type,
+};
+
+typedef struct {
+	/* part type */
+	enum altera_family	family;
+	/* interface type */
+	enum altera_iface	iface;
+	/* bytes of data part can accept */
+	size_t			size;
+	/* interface function table */
+	void			*iface_fns;
+	/* base interface address */
+	void			*base;
+	/* implementation specific cookie */
+	int			cookie;
+} Altera_desc;
 
 /* Generic Altera Functions
  *********************************************************************/
@@ -65,8 +107,21 @@ typedef struct {
 	Altera_done_fn done;
 	Altera_clk_fn clk;
 	Altera_data_fn data;
+	Altera_write_fn write;
 	Altera_abort_fn abort;
 	Altera_post_fn post;
 } altera_board_specific_func;
+
+#ifdef CONFIG_FPGA_SOCFPGA
+int socfpga_load(Altera_desc *desc, const void *rbf_data, size_t rbf_size);
+#endif
+
+#ifdef CONFIG_FPGA_STRATIX_V
+int stratixv_load(Altera_desc *desc, const void *rbf_data, size_t rbf_size);
+#endif
+
+#ifdef CONFIG_FPGA_STRATIX10
+int stratix10_load(Altera_desc *desc, const void *rbf_data, size_t rbf_size);
+#endif
 
 #endif /* _ALTERA_H_ */

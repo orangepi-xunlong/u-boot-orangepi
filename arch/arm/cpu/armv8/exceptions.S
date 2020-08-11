@@ -1,24 +1,51 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
 #include <config.h>
-#include <version.h>
 #include <asm/ptrace.h>
 #include <asm/macro.h>
 #include <linux/linkage.h>
 
 /*
- * Enter Exception.
- * This will save the processor state that is ELR/X0~X30
- * to the stack frame.
+ * AArch64 exception vectors:
+ * We have four types of exceptions:
+ * - synchronous: traps, data aborts, undefined instructions, ...
+ * - IRQ: group 1 (normal) interrupts
+ * - FIQ: group 0 or secure interrupts
+ * - SError: fatal system errors
+ * There are entries for all four of those for different contexts:
+ * - from same exception level, when using the SP_EL0 stack pointer
+ * - from same exception level, when using the SP_ELx stack pointer
+ * - from lower exception level, when this is AArch64
+ * - from lower exception level, when this is AArch32
+ * Each of those 16 entries have space for 32 instructions, each entry must
+ * be 128 byte aligned, the whole table must be 2K aligned.
+ * The 32 instructions are not enough to save and restore all registers and
+ * to branch to the actual handler, so we split this up:
+ * Each entry saves the LR, branches to the save routine, then to the actual
+ * handler, then to the restore routine. The save and restore routines are
+ * each split in half and stuffed in the unused gap between the entries.
+ * Also as we do not run anything in a lower exception level, we just provide
+ * the first 8 entries for exceptions from the same EL.
  */
-.macro	exception_entry
+	.align	11
+	.globl	vectors
+vectors:
+	.align	7		/* Current EL Synchronous Thread */
 	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
+	bl	do_bad_sync
+	b	exception_exit
+
+/*
+ * Save (most of) the GP registers to the stack frame.
+ * This is the first part of the shared routine called into from all entries.
+ */
+_exception_entry:
 	stp	x27, x28, [sp, #-16]!
 	stp	x25, x26, [sp, #-16]!
 	stp	x23, x24, [sp, #-16]!
@@ -33,7 +60,19 @@
 	stp	x5, x6, [sp, #-16]!
 	stp	x3, x4, [sp, #-16]!
 	stp	x1, x2, [sp, #-16]!
+	b	_save_el_regs			/* jump to the second part */
 
+	.align	7		/* Current EL IRQ Thread */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
+	bl	do_bad_irq
+	b	exception_exit
+
+/*
+ * Save exception specific context: ESR and ELR, for all exception levels.
+ * This is the second part of the shared routine called into from all entries.
+ */
+_save_el_regs:
 	/* Could be running at EL3/EL2/EL1 */
 	switch_el x11, 3f, 2f, 1f
 3:	mrs	x1, esr_el3
@@ -47,67 +86,75 @@
 0:
 	stp	x2, x0, [sp, #-16]!
 	mov	x0, sp
-.endm
+	ret
+
+	.align	7		/* Current EL FIQ Thread */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
+	bl	do_bad_fiq
+				/* falling through to _exception_exit */
+/*
+ * Restore the exception return address, for all exception levels.
+ * This is the first part of the shared routine called into from all entries.
+ */
+exception_exit:
+	ldp	x2, x0, [sp],#16
+	switch_el x11, 3f, 2f, 1f
+3:	msr	elr_el3, x2
+	b	_restore_regs
+2:	msr	elr_el2, x2
+	b	_restore_regs
+1:	msr	elr_el1, x2
+	b	_restore_regs		/* jump to the second part */
+
+	.align	7		/* Current EL Error Thread */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
+	bl	do_bad_error
+	b	exception_exit
 
 /*
- * Exception vectors.
+ * Restore the general purpose registers from the exception stack, then return.
+ * This is the second part of the shared routine called into from all entries.
  */
-	.align	11
-	.globl	vectors
-vectors:
-	.align	7
-	b	_do_bad_sync	/* Current EL Synchronous Thread */
+_restore_regs:
+	ldp	x1, x2, [sp],#16
+	ldp	x3, x4, [sp],#16
+	ldp	x5, x6, [sp],#16
+	ldp	x7, x8, [sp],#16
+	ldp	x9, x10, [sp],#16
+	ldp	x11, x12, [sp],#16
+	ldp	x13, x14, [sp],#16
+	ldp	x15, x16, [sp],#16
+	ldp	x17, x18, [sp],#16
+	ldp	x19, x20, [sp],#16
+	ldp	x21, x22, [sp],#16
+	ldp	x23, x24, [sp],#16
+	ldp	x25, x26, [sp],#16
+	ldp	x27, x28, [sp],#16
+	ldp	x29, x30, [sp],#16
+	eret
 
-	.align	7
-	b	_do_bad_irq	/* Current EL IRQ Thread */
-
-	.align	7
-	b	_do_bad_fiq	/* Current EL FIQ Thread */
-
-	.align	7
-	b	_do_bad_error	/* Current EL Error Thread */
-
-	.align	7
-	b	_do_sync	/* Current EL Synchronous Handler */
-
-	.align	7
-	b	_do_irq		/* Current EL IRQ Handler */
-
-	.align	7
-	b	_do_fiq		/* Current EL FIQ Handler */
-
-	.align	7
-	b	_do_error	/* Current EL Error Handler */
-
-
-_do_bad_sync:
-	exception_entry
-	bl	do_bad_sync
-
-_do_bad_irq:
-	exception_entry
-	bl	do_bad_irq
-
-_do_bad_fiq:
-	exception_entry
-	bl	do_bad_fiq
-
-_do_bad_error:
-	exception_entry
-	bl	do_bad_error
-
-_do_sync:
-	exception_entry
+	.align	7		 /* Current EL (SP_ELx) Synchronous Handler */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
 	bl	do_sync
+	b	exception_exit
 
-_do_irq:
-	exception_entry
+	.align	7		 /* Current EL (SP_ELx) IRQ Handler */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
 	bl	do_irq
+	b	exception_exit
 
-_do_fiq:
-	exception_entry
+	.align	7		 /* Current EL (SP_ELx) FIQ Handler */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
 	bl	do_fiq
+	b	exception_exit
 
-_do_error:
-	exception_entry
+	.align	7		 /* Current EL (SP_ELx) Error Handler */
+	stp	x29, x30, [sp, #-16]!
+	bl	_exception_entry
 	bl	do_error
+	b	exception_exit

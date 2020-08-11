@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006-2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <init.h>
 #include <asm/mmu.h>
 #include <asm/io.h>
 #include <common.h>
@@ -11,8 +11,6 @@
 #include <pci.h>
 #include <i2c.h>
 #include <asm/fsl_i2c.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 static struct pci_region pci1_regions[] = {
 	{
@@ -80,11 +78,11 @@ void pib_init(void)
 	i2c_write(0x26, 0x6, 1, &val8, 1);
 	val8 = 0x34;
 	i2c_write(0x26, 0x7, 1, &val8, 1);
-#if defined(PCI_64BIT)
+#if defined(CONFIG_PCI_64BIT)
 	val8 = 0xf4;	/* PMC2:PCI1/64-bit */
-#elif defined(PCI_ALL_PCI1)
+#elif defined(CONFIG_PCI_ALL_PCI1)
 	val8 = 0xf3;	/* PMC1:PCI1 PMC2:PCI1 PMC3:PCI1 */
-#elif defined(PCI_ONE_PCI1)
+#elif defined(CONFIG_PCI_ONE_PCI1)
 	val8 = 0xf9;	/* PMC1:PCI1 PMC2:PCI2 PMC3:PCI2 */
 #else
 	val8 = 0xf5;	/* PMC1:PCI1 PMC2:PCI1 PMC3:PCI2 */
@@ -101,11 +99,11 @@ void pib_init(void)
 	i2c_write(0x27, 0x3, 1, &val8, 1);
 	asm("eieio");
 
-#if defined(PCI_64BIT)
+#if defined(CONFIG_PCI_64BIT)
 	printf("PCI1: 64-bit on PMC2\n");
-#elif defined(PCI_ALL_PCI1)
+#elif defined(CONFIG_PCI_ALL_PCI1)
 	printf("PCI1: 32-bit on PMC1, PMC2, PMC3\n");
-#elif defined(PCI_ONE_PCI1)
+#elif defined(CONFIG_PCI_ONE_PCI1)
 	printf("PCI1: 32-bit on PMC1\n");
 	printf("PCI2: 32-bit on PMC2, PMC3\n");
 #else

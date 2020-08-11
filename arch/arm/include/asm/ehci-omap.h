@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * OMAP EHCI port support
  * Based on LINUX KERNEL
@@ -5,18 +6,6 @@
  *
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com*
  * Author: Govindraj R <govindraj.raja@ti.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2  of
- * the License as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _OMAP_COMMON_EHCI_H_
@@ -29,11 +18,7 @@ enum usbhs_omap_port_mode {
 	OMAP_EHCI_PORT_MODE_HSIC,
 };
 
-#ifdef CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS
-#define OMAP_HS_USB_PORTS	CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS
-#else
 #define OMAP_HS_USB_PORTS	3
-#endif
 
 #define is_ehci_phy_mode(x)	((x) == OMAP_EHCI_PORT_MODE_PHY)
 #define is_ehci_tll_mode(x)	((x) == OMAP_EHCI_PORT_MODE_TLL)

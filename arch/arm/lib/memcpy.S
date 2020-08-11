@@ -1,18 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *  linux/arch/arm/lib/memcpy.S
  *
  *  Author:	Nicolas Pitre
  *  Created:	Sep 28, 2005
  *  Copyright:	MontaVista Software, Inc.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License version 2 as
- *  published by the Free Software Foundation.
  */
 
+#include <linux/linkage.h>
 #include <asm/assembler.h>
-
-#define W(instr)	instr
 
 #define LDR1W_SHIFT	0
 #define STR1W_SHIFT	0
@@ -30,7 +26,7 @@
 	.endm
 
 	.macro ldr1b ptr reg cond=al abort
-	ldr\cond\()b \reg, [\ptr], #1
+	ldrb\cond\() \reg, [\ptr], #1
 	.endm
 
 	.macro str1w ptr reg abort
@@ -42,7 +38,7 @@
 	.endm
 
 	.macro str1b ptr reg cond=al abort
-	str\cond\()b \reg, [\ptr], #1
+	strb\cond\() \reg, [\ptr], #1
 	.endm
 
 	.macro enter reg1 reg2
@@ -56,12 +52,14 @@
 	.text
 
 /* Prototype: void *memcpy(void *dest, const void *src, size_t n); */
-
-.globl memcpy
-memcpy:
-
+	.syntax unified
+#if CONFIG_IS_ENABLED(SYS_THUMB_BUILD) && !defined(MEMCPY_NO_THUMB_BUILD)
+	.thumb
+	.thumb_func
+#endif
+ENTRY(memcpy)
 		cmp	r0, r1
-		moveq	pc, lr
+		bxeq	lr
 
 		enter	r4, lr
 
@@ -79,7 +77,7 @@ memcpy:
 
 	CALGN(	ands	ip, r0, #31		)
 	CALGN(	rsb	r3, ip, #32		)
-	CALGN(	sbcnes	r4, r3, r2		)  @ C is always set here
+	CALGN(	sbcsne	r4, r3, r2		)  @ C is always set here
 	CALGN(	bcs	2f			)
 	CALGN(	adr	r4, 6f			)
 	CALGN(	subs	r2, r2, r3		)  @ C gets set
@@ -149,7 +147,8 @@ memcpy:
 		str1b	r0, r4, cs, abort=21f
 		str1b	r0, ip, cs, abort=21f
 
-		exit	r4, pc
+		exit	r4, lr
+		bx	lr
 
 9:		rsb	ip, ip, #4
 		cmp	ip, #2
@@ -178,7 +177,7 @@ memcpy:
 
 	CALGN(	ands	ip, r0, #31		)
 	CALGN(	rsb	ip, ip, #32		)
-	CALGN(	sbcnes	r4, ip, r2		)  @ C is always set here
+	CALGN(	sbcsne	r4, ip, r2		)  @ C is always set here
 	CALGN(	subcc	r2, r2, ip		)
 	CALGN(	bcc	15f			)
 
@@ -193,24 +192,24 @@ memcpy:
 
 12:	PLD(	pld	[r1, #124]		)
 13:		ldr4w	r1, r4, r5, r6, r7, abort=19f
-		mov	r3, lr, pull #\pull
+		mov	r3, lr, lspull #\pull
 		subs	r2, r2, #32
 		ldr4w	r1, r8, r9, ip, lr, abort=19f
-		orr	r3, r3, r4, push #\push
-		mov	r4, r4, pull #\pull
-		orr	r4, r4, r5, push #\push
-		mov	r5, r5, pull #\pull
-		orr	r5, r5, r6, push #\push
-		mov	r6, r6, pull #\pull
-		orr	r6, r6, r7, push #\push
-		mov	r7, r7, pull #\pull
-		orr	r7, r7, r8, push #\push
-		mov	r8, r8, pull #\pull
-		orr	r8, r8, r9, push #\push
-		mov	r9, r9, pull #\pull
-		orr	r9, r9, ip, push #\push
-		mov	ip, ip, pull #\pull
-		orr	ip, ip, lr, push #\push
+		orr	r3, r3, r4, lspush #\push
+		mov	r4, r4, lspull #\pull
+		orr	r4, r4, r5, lspush #\push
+		mov	r5, r5, lspull #\pull
+		orr	r5, r5, r6, lspush #\push
+		mov	r6, r6, lspull #\pull
+		orr	r6, r6, r7, lspush #\push
+		mov	r7, r7, lspull #\pull
+		orr	r7, r7, r8, lspush #\push
+		mov	r8, r8, lspull #\pull
+		orr	r8, r8, r9, lspush #\push
+		mov	r9, r9, lspull #\pull
+		orr	r9, r9, ip, lspush #\push
+		mov	ip, ip, lspull #\pull
+		orr	ip, ip, lr, lspush #\push
 		str8w	r0, r3, r4, r5, r6, r7, r8, r9, ip, , abort=19f
 		bge	12b
 	PLD(	cmn	r2, #96			)
@@ -221,10 +220,10 @@ memcpy:
 14:		ands	ip, r2, #28
 		beq	16f
 
-15:		mov	r3, lr, pull #\pull
+15:		mov	r3, lr, lspull #\pull
 		ldr1w	r1, lr, abort=21f
 		subs	ip, ip, #4
-		orr	r3, r3, lr, push #\push
+		orr	r3, r3, lr, lspush #\push
 		str1w	r0, r3, abort=21f
 		bgt	15b
 	CALGN(	cmp	r2, #0			)
@@ -241,3 +240,25 @@ memcpy:
 17:		forward_copy_shift	pull=16	push=16
 
 18:		forward_copy_shift	pull=24	push=8
+
+
+/*
+ * Abort preamble and completion macros.
+ * If a fixup handler is required then those macros must surround it.
+ * It is assumed that the fixup code will handle the private part of
+ * the exit macro.
+ */
+
+	.macro	copy_abort_preamble
+19:	ldmfd	sp!, {r5 - r9}
+	b	21f
+20:	ldmfd	sp!, {r5 - r8}
+21:
+	.endm
+
+	.macro	copy_abort_end
+	ldmfd	sp!, {r4, lr}
+	bx	lr
+	.endm
+
+ENDPROC(memcpy)

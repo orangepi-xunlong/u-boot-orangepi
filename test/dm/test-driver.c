@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,11 +11,11 @@
 #include <errno.h>
 #include <malloc.h>
 #include <dm/test.h>
-#include <dm/ut.h>
+#include <test/ut.h>
 #include <asm/io.h>
 
 int dm_testdrv_op_count[DM_TEST_OP_COUNT];
-static struct dm_test_state *dms = &global_test_state;
+static struct unit_test_state *uts = &global_dm_test_state;
 
 static int testdrv_ping(struct udevice *dev, int pingval, int *pingret)
 {
@@ -114,6 +113,8 @@ static int test_manual_bind(struct udevice *dev)
 
 static int test_manual_probe(struct udevice *dev)
 {
+	struct dm_test_state *dms = uts->priv;
+
 	dm_testdrv_op_count[DM_TEST_OP_PROBE]++;
 	if (!dms->force_fail_alloc)
 		dev->priv = calloc(1, sizeof(struct dm_test_priv));
@@ -143,4 +144,26 @@ U_BOOT_DRIVER(test_manual_drv) = {
 	.probe	= test_manual_probe,
 	.remove	= test_manual_remove,
 	.unbind	= test_manual_unbind,
+};
+
+U_BOOT_DRIVER(test_pre_reloc_drv) = {
+	.name	= "test_pre_reloc_drv",
+	.id	= UCLASS_TEST,
+	.ops	= &test_manual_ops,
+	.bind	= test_manual_bind,
+	.probe	= test_manual_probe,
+	.remove	= test_manual_remove,
+	.unbind	= test_manual_unbind,
+	.flags	= DM_FLAG_PRE_RELOC,
+};
+
+U_BOOT_DRIVER(test_act_dma_drv) = {
+	.name	= "test_act_dma_drv",
+	.id	= UCLASS_TEST,
+	.ops	= &test_manual_ops,
+	.bind	= test_manual_bind,
+	.probe	= test_manual_probe,
+	.remove	= test_manual_remove,
+	.unbind	= test_manual_unbind,
+	.flags	= DM_FLAG_ACTIVE_DMA,
 };

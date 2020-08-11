@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <div64.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/clk.h>
@@ -54,12 +54,12 @@ unsigned int get_hclk_pll_rate(void)
 	if (fref > 27000000ULL || fref < 1000000ULL)
 		return 0;
 
-	fout = fref * m_div;
-	if (val & CLK_HCLK_PLL_FEEDBACK) {
-		fcco = fout;
+	fcco = fref * m_div;
+	fout = fcco;
+	if (val & CLK_HCLK_PLL_FEEDBACK)
+		fcco *= p_div;
+	else
 		do_div(fout, p_div);
-	} else
-		fcco = fout * p_div;
 
 	if (fcco > 320000000ULL || fcco < 156000000ULL)
 		return 0;
@@ -96,6 +96,40 @@ unsigned int get_periph_clk_rate(void)
 		return get_sys_clk_rate();
 
 	return get_hclk_pll_rate() / get_periph_clk_div();
+}
+
+unsigned int get_sdram_clk_rate(void)
+{
+	unsigned int src_clk;
+
+	if (!(readl(&clk->pwr_ctrl) & CLK_PWR_NORMAL_RUN))
+		return get_sys_clk_rate();
+
+	src_clk = get_hclk_pll_rate();
+
+	if (readl(&clk->sdramclk_ctrl) & CLK_SDRAM_DDR_SEL) {
+		/* using DDR */
+		switch (readl(&clk->hclkdiv_ctrl) & CLK_HCLK_DDRAM_MASK) {
+		case CLK_HCLK_DDRAM_HALF:
+			return src_clk/2;
+		case CLK_HCLK_DDRAM_NOMINAL:
+			return src_clk;
+		default:
+			return 0;
+		}
+	} else {
+		/* using SDR */
+		switch (readl(&clk->hclkdiv_ctrl) & CLK_HCLK_ARM_PLL_DIV_MASK) {
+		case CLK_HCLK_ARM_PLL_DIV_4:
+			return src_clk/4;
+		case CLK_HCLK_ARM_PLL_DIV_2:
+			return src_clk/2;
+		case CLK_HCLK_ARM_PLL_DIV_1:
+			return src_clk;
+		default:
+			return 0;
+		}
+	}
 }
 
 int get_serial_clock(void)

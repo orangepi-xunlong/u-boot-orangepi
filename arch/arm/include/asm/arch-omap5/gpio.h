@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2009 Wind River Systems, Inc.
  * Tom Rix <Tom.Rix@windriver.com>
- *
- * SPDX-License-Identifier:	GPL-2.0
  *
  * This work is derived from the linux 2.6.27 kernel source
  * To fetch, use the kernel repository
@@ -33,5 +32,9 @@
 #define OMAP54XX_GPIO6_BASE		0x4805D000
 #define OMAP54XX_GPIO7_BASE		0x48051000
 #define OMAP54XX_GPIO8_BASE		0x48053000
+
+
+/* Get the GPIO index from the given bank number and bank gpio */
+#define GPIO_TO_PIN(bank, bank_gpio)	(32 * (bank - 1) + (bank_gpio))
 
 #endif /* _GPIO_OMAP5_H */

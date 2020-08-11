@@ -1,21 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003, Psyent Corporation <www.psyent.com>
  * Scott McNutt <smcnutt@psyent.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <command.h>
-#include <asm/byteorder.h>
-#include <asm/cache.h>
+#include <cpu_func.h>
+#include <irq_func.h>
 
 #define NIOS_MAGIC 0x534f494e /* enable command line and initrd passing */
 
 int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *images)
 {
 	void (*kernel)(int, int, int, char *) = (void *)images->ep;
-	char *commandline = getenv("bootargs");
+	char *commandline = env_get("bootargs");
 	ulong initrd_start = images->rd_start;
 	ulong initrd_end = images->rd_end;
 	char *of_flat_tree = NULL;
@@ -40,8 +38,7 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 
 	/* flushes data and instruction caches before calling the kernel */
 	disable_interrupts();
-	flush_dcache((ulong)kernel, CONFIG_SYS_DCACHE_SIZE);
-	flush_icache((ulong)kernel, CONFIG_SYS_ICACHE_SIZE);
+	flush_dcache_all();
 
 	debug("bootargs=%s @ 0x%lx\n", commandline, (ulong)&commandline);
 	debug("initrd=0x%lx-0x%lx\n", (ulong)initrd_start, (ulong)initrd_end);

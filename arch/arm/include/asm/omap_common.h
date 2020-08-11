@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *
  * Aneesh V <aneesh@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef	_OMAP_COMMON_H_
 #define	_OMAP_COMMON_H_
@@ -143,8 +142,10 @@ struct prcm_regs {
 	u32 cm_div_m2_dpll_unipro;
 	u32 cm_ssc_deltamstep_dpll_unipro;
 	u32 cm_ssc_modfreqdiv_dpll_unipro;
-	u32 cm_coreaon_usb_phy_core_clkctrl;
+	u32 cm_coreaon_usb_phy1_core_clkctrl;
 	u32 cm_coreaon_usb_phy2_core_clkctrl;
+	u32 cm_coreaon_usb_phy3_core_clkctrl;
+	u32 cm_coreaon_l3init_60m_gfclk_clkctrl;
 
 	/* cm2.core */
 	u32 cm_coreaon_bandgap_clkctrl;
@@ -230,8 +231,10 @@ struct prcm_regs {
 	u32 cm_l3init_fsusb_clkctrl;
 	u32 cm_l3init_ocp2scp1_clkctrl;
 	u32 cm_l3init_ocp2scp3_clkctrl;
-	u32 cm_l3init_usb_otg_ss_clkctrl;
+	u32 cm_l3init_usb_otg_ss1_clkctrl;
+	u32 cm_l3init_usb_otg_ss2_clkctrl;
 
+	u32 prm_irqstatus_mpu;
 	u32 prm_irqstatus_mpu_2;
 
 	/* cm2.l4per */
@@ -313,11 +316,20 @@ struct prcm_regs {
 	u32 prm_rstctrl;
 	u32 prm_rstst;
 	u32 prm_rsttime;
+	u32 prm_io_pmctrl;
 	u32 prm_vc_val_bypass;
 	u32 prm_vc_cfg_i2c_mode;
 	u32 prm_vc_cfg_i2c_clk;
 	u32 prm_abbldo_mpu_setup;
 	u32 prm_abbldo_mpu_ctrl;
+	u32 prm_abbldo_mm_setup;
+	u32 prm_abbldo_mm_ctrl;
+	u32 prm_abbldo_iva_setup;
+	u32 prm_abbldo_iva_ctrl;
+	u32 prm_abbldo_eve_setup;
+	u32 prm_abbldo_eve_ctrl;
+	u32 prm_abbldo_gpu_setup;
+	u32 prm_abbldo_gpu_ctrl;
 
 	u32 cm_div_m4_dpll_core;
 	u32 cm_div_m5_dpll_core;
@@ -344,6 +356,14 @@ struct prcm_regs {
 	/* GMAC Clk Ctrl */
 	u32 cm_gmac_gmac_clkctrl;
 	u32 cm_gmac_clkstctrl;
+
+	/* IPU */
+	u32 cm_ipu_clkstctrl;
+	u32 cm_ipu_i2c5_clkctrl;
+
+	/*l3main1 edma*/
+	u32 cm_l3main1_tptc1_clkctrl;
+	u32 cm_l3main1_tptc2_clkctrl;
 };
 
 struct omap_sys_ctrl_regs {
@@ -352,7 +372,6 @@ struct omap_sys_ctrl_regs {
 	u32 control_core_mac_id_0_hi;
 	u32 control_core_mac_id_1_lo;
 	u32 control_core_mac_id_1_hi;
-	u32 control_std_fuse_opp_vdd_mpu_2;
 	u32 control_phy_power_usb;
 	u32 control_core_mmr_lock1;
 	u32 control_core_mmr_lock2;
@@ -362,6 +381,10 @@ struct omap_sys_ctrl_regs {
 	u32 control_core_control_io1;
 	u32 control_core_control_io2;
 	u32 control_id_code;
+	u32 control_std_fuse_die_id_0;
+	u32 control_std_fuse_die_id_1;
+	u32 control_std_fuse_die_id_2;
+	u32 control_std_fuse_die_id_3;
 	u32 control_std_fuse_opp_bgap;
 	u32 control_ldosram_iva_voltage_ctrl;
 	u32 control_ldosram_mpu_voltage_ctrl;
@@ -427,6 +450,10 @@ struct omap_sys_ctrl_regs {
 	u32 control_emif1_sdram_config_ext;
 	u32 control_emif2_sdram_config_ext;
 	u32 control_wkup_ldovbb_mpu_voltage_ctrl;
+	u32 control_wkup_ldovbb_mm_voltage_ctrl;
+	u32 control_wkup_ldovbb_iva_voltage_ctrl;
+	u32 control_wkup_ldovbb_eve_voltage_ctrl;
+	u32 control_wkup_ldovbb_gpu_voltage_ctrl;
 	u32 control_smart1nopmio_padconf_0;
 	u32 control_smart1nopmio_padconf_1;
 	u32 control_padconf_mode;
@@ -451,8 +478,12 @@ struct omap_sys_ctrl_regs {
 	u32 control_efuse_12;
 	u32 control_efuse_13;
 	u32 control_padconf_wkup_base;
+	u32 iodelay_config_base;
+	u32 ctrl_core_sma_sw_0;
+	u32 ctrl_core_sma_sw_1;
 };
 
+#if defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX)
 struct dpll_params {
 	u32 m;
 	u32 n;
@@ -485,6 +516,7 @@ struct dpll_regs {
 	u32 cm_div_h23_dpll;
 	u32 cm_div_h24_dpll;
 };
+#endif /* CONFIG_OMAP44XX || CONFIG_OMAP54XX */
 
 struct dplls {
 	const struct dpll_params *mpu;
@@ -508,21 +540,42 @@ struct pmic_data {
 	int (*pmic_write)(u8 sa, u8 reg_addr, u8 reg_data);
 };
 
+#if defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX)
+enum {
+	OPP_LOW,
+	OPP_NOM,
+	OPP_OD,
+	OPP_HIGH,
+	NUM_OPPS,
+};
+
 /**
  * struct volts_efuse_data - efuse definition for voltage
  * @reg:	register address for efuse
  * @reg_bits:	Number of bits in a register address, mandatory.
  */
 struct volts_efuse_data {
-	u32 reg;
+	u32 reg[NUM_OPPS];
 	u8 reg_bits;
 };
 
 struct volts {
-	u32 value;
+	u32 value[NUM_OPPS];
 	u32 addr;
 	struct volts_efuse_data efuse;
 	struct pmic_data *pmic;
+
+	u32 abb_tx_done_mask;
+};
+
+enum {
+	VOLT_MPU,
+	VOLT_CORE,
+	VOLT_MM,
+	VOLT_GPU,
+	VOLT_EVE,
+	VOLT_IVA,
+	NUM_VOLT_RAILS,
 };
 
 struct vcores_data {
@@ -533,6 +586,7 @@ struct vcores_data {
 	struct volts eve;
 	struct volts iva;
 };
+#endif /* CONFIG_OMAP44XX || CONFIG_OMAP54XX */
 
 extern struct prcm_regs const **prcm;
 extern struct prcm_regs const omap5_es1_prcm;
@@ -540,12 +594,21 @@ extern struct prcm_regs const omap5_es2_prcm;
 extern struct prcm_regs const omap4_prcm;
 extern struct prcm_regs const dra7xx_prcm;
 extern struct dplls const **dplls_data;
+extern struct dplls dra7xx_dplls;
+extern struct dplls dra72x_dplls;
+extern struct dplls dra76x_dplls;
 extern struct vcores_data const **omap_vcores;
 extern const u32 sys_clk_array[8];
 extern struct omap_sys_ctrl_regs const **ctrl;
+extern struct omap_sys_ctrl_regs const am33xx_ctrl;
+extern struct omap_sys_ctrl_regs const omap3_ctrl;
 extern struct omap_sys_ctrl_regs const omap4_ctrl;
 extern struct omap_sys_ctrl_regs const omap5_ctrl;
 extern struct omap_sys_ctrl_regs const dra7xx_ctrl;
+
+extern struct pmic_data tps659038;
+extern struct pmic_data lp8733;
+extern struct pmic_data lp87565;
 
 void hw_data_init(void);
 
@@ -556,10 +619,16 @@ const struct dpll_params *get_iva_dpll_params(struct dplls const *);
 const struct dpll_params *get_usb_dpll_params(struct dplls const *);
 const struct dpll_params *get_abe_dpll_params(struct dplls const *);
 
+#if defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX)
 void do_enable_clocks(u32 const *clk_domains,
 		      u32 const *clk_modules_hw_auto,
 		      u32 const *clk_modules_explicit_en,
 		      u8 wait_for_enable);
+
+void do_disable_clocks(u32 const *clk_domains,
+		       u32 const *clk_modules_disable,
+		       u8 wait_for_disable);
+#endif /* CONFIG_OMAP44XX || CONFIG_OMAP54XX */
 
 void setup_post_dividers(u32 const base,
 			const struct dpll_params *params);
@@ -567,14 +636,56 @@ u32 omap_ddr_clk(void);
 u32 get_sys_clk_index(void);
 void enable_basic_clocks(void);
 void enable_basic_uboot_clocks(void);
+
+void enable_usb_clocks(int index);
+void disable_usb_clocks(int index);
+
+#if defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX)
 void scale_vcores(struct vcores_data const *);
+#endif /* CONFIG_OMAP44XX || CONFIG_OMAP54XX */
+int get_voltrail_opp(int rail_offset);
 u32 get_offset_code(u32 volt_offset, struct pmic_data *pmic);
 void do_scale_vcore(u32 vcore_reg, u32 volt_mv, struct pmic_data *pmic);
 void abb_setup(u32 fuse, u32 ldovbb, u32 setup, u32 control,
 	       u32 txdone, u32 txdone_mask, u32 opp);
 s8 abb_setup_ldovbb(u32 fuse, u32 ldovbb);
 
-void usb_fake_mac_from_die_id(u32 *id);
+struct tag_serialnr;
+
+void omap_die_id_serial(void);
+void omap_die_id_get_board_serial(struct tag_serialnr *serialnr);
+void omap_die_id_usbethaddr(void);
+void omap_die_id_display(void);
+
+#ifdef CONFIG_FASTBOOT_FLASH
+void omap_set_fastboot_vars(void);
+#else
+static inline void omap_set_fastboot_vars(void) { }
+#endif
+
+void recalibrate_iodelay(void);
+
+void omap_smc1(u32 service, u32 val);
+
+/*
+ * Low-level helper function used when performing secure ROM calls on high-
+ * security (HS) device variants by doing a specially-formed smc entry.
+ */
+u32 omap_smc_sec(u32 service, u32 proc_id, u32 flag, u32 *params);
+u32 omap_smc_sec_cpu1(u32 service, u32 proc_id, u32 flag, u32 *params);
+
+void enable_edma3_clocks(void);
+void disable_edma3_clocks(void);
+
+void omap_die_id(unsigned int *die_id);
+
+/* Initialize general purpose I2C(0) on the SoC */
+void gpi2c_init(void);
+
+/* Common FDT Fixups */
+int ft_hs_disable_rng(void *fdt, bd_t *bd);
+int ft_hs_fixup_dram(void *fdt, bd_t *bd);
+int ft_hs_add_tee(void *fdt, bd_t *bd);
 
 /* ABB */
 #define OMAP_ABB_NOMINAL_OPP		0
@@ -595,6 +706,14 @@ static inline u32 omap_revision(void)
 	return *omap_si_rev;
 }
 
+#define OMAP44xx	0x44000000
+
+static inline u8 is_omap44xx(void)
+{
+	extern u32 *const omap_si_rev;
+	return (*omap_si_rev & 0xFF000000) == OMAP44xx;
+};
+
 #define OMAP54xx	0x54000000
 
 static inline u8 is_omap54xx(void)
@@ -604,11 +723,37 @@ static inline u8 is_omap54xx(void)
 }
 
 #define DRA7XX		0x07000000
+#define DRA72X		0x07200000
+#define DRA76X		0x07600000
 
 static inline u8 is_dra7xx(void)
 {
 	extern u32 *const omap_si_rev;
 	return ((*omap_si_rev & 0xFF000000) == DRA7XX);
+}
+
+static inline u8 is_dra72x(void)
+{
+	extern u32 *const omap_si_rev;
+	return (*omap_si_rev & 0xFFF00000) == DRA72X;
+}
+
+static inline u8 is_dra76x(void)
+{
+	extern u32 *const omap_si_rev;
+	return (*omap_si_rev & 0xFFF00000) == DRA76X;
+}
+
+static inline u8 is_dra76x_abz(void)
+{
+	extern u32 *const omap_si_rev;
+	return (*omap_si_rev & 0xF) == 2;
+}
+
+static inline u8 is_dra76x_acd(void)
+{
+	extern u32 *const omap_si_rev;
+	return (*omap_si_rev & 0xF) == 3;
 }
 #endif
 
@@ -637,9 +782,25 @@ static inline u8 is_dra7xx(void)
 #define OMAP5432_ES2_0  0x54320200
 
 /* DRA7XX */
+#define DRA762_ES1_0	0x07620100
 #define DRA752_ES1_0	0x07520100
 #define DRA752_ES1_1	0x07520110
+#define DRA752_ES2_0	0x07520200
 #define DRA722_ES1_0	0x07220100
+#define DRA722_ES2_0	0x07220200
+#define DRA722_ES2_1	0x07220210
+
+#define DRA762_ABZ_ES1_0	0x07620102
+#define DRA762_ACD_ES1_0	0x07620103
+/*
+ * silicon device type
+ * Moving to common from cpu.h, since it is shared by various omap devices
+ */
+#define TST_DEVICE          0x0
+#define EMU_DEVICE          0x1
+#define HS_DEVICE           0x2
+#define GP_DEVICE           0x3
+
 
 /*
  * SRAM scratch space entries
@@ -653,6 +814,23 @@ static inline u8 is_dra7xx(void)
 #define OMAP_SRAM_SCRATCH_VCORES_PTR    (SRAM_SCRATCH_SPACE_ADDR + 0x1C)
 #define OMAP_SRAM_SCRATCH_SYS_CTRL	(SRAM_SCRATCH_SPACE_ADDR + 0x20)
 #define OMAP_SRAM_SCRATCH_BOOT_PARAMS	(SRAM_SCRATCH_SPACE_ADDR + 0x24)
-#define OMAP5_SRAM_SCRATCH_SPACE_END	(SRAM_SCRATCH_SPACE_ADDR + 0x28)
+#ifndef TI_SRAM_SCRATCH_BOARD_EEPROM_START
+#define TI_SRAM_SCRATCH_BOARD_EEPROM_START (SRAM_SCRATCH_SPACE_ADDR + 0x28)
+#define TI_SRAM_SCRATCH_BOARD_EEPROM_END (SRAM_SCRATCH_SPACE_ADDR + 0x200)
+#endif
+#define OMAP_SRAM_SCRATCH_SPACE_END	(TI_SRAM_SCRATCH_BOARD_EEPROM_END)
+
+/* Boot parameters */
+#define DEVICE_DATA_OFFSET	0x18
+#define BOOT_MODE_OFFSET	0x8
+
+#define CH_FLAGS_CHSETTINGS	(1 << 0)
+#define CH_FLAGS_CHRAM		(1 << 1)
+#define CH_FLAGS_CHFLASH	(1 << 2)
+#define CH_FLAGS_CHMMCSD	(1 << 3)
+
+#ifndef __ASSEMBLY__
+u32 omap_sys_boot_device(void);
+#endif
 
 #endif /* _OMAP_COMMON_H_ */

@@ -1,46 +1,31 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Atmel Semiconductor <www.atmel.com>
  * Written-by: Bo Shen <voice.shen@atmel.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <watchdog.h>
+#include <clk.h>
+#include <dm.h>
+#include <malloc.h>
 #include <usb.h>
 #include <asm/io.h>
-#include <asm/arch/hardware.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/clk.h>
 
 #include "ehci.h"
 
-/* Enable UTMI PLL time out 500us
- * 10 times as datasheet specified
- */
-#define EN_UPLL_TIMEOUT	500UL
+#if !CONFIG_IS_ENABLED(DM_USB)
 
 int ehci_hcd_init(int index, enum usb_init_type init,
 		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
-	at91_pmc_t *pmc = (at91_pmc_t *)ATMEL_BASE_PMC;
-	ulong start_time, tmp_time;
-
-	start_time = get_timer(0);
 	/* Enable UTMI PLL */
-	writel(AT91_PMC_UPLLEN | AT91_PMC_BIASEN, &pmc->uckr);
-	while ((readl(&pmc->sr) & AT91_PMC_LOCKU) != AT91_PMC_LOCKU) {
-		WATCHDOG_RESET();
-		tmp_time = get_timer(0);
-		if ((tmp_time - start_time) > EN_UPLL_TIMEOUT) {
-			printf("ERROR: failed to enable UPLL\n");
-			return -1;
-		}
-	}
+	if (at91_upll_clk_enable())
+		return -1;
 
 	/* Enable USB Host clock */
-	writel(1 << ATMEL_ID_UHPHS, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_UHPHS);
 
 	*hccr = (struct ehci_hccr *)ATMEL_BASE_EHCI;
 	*hcor = (struct ehci_hcor *)((uint32_t)*hccr +
@@ -51,23 +36,96 @@ int ehci_hcd_init(int index, enum usb_init_type init,
 
 int ehci_hcd_stop(int index)
 {
-	at91_pmc_t *pmc = (at91_pmc_t *)ATMEL_BASE_PMC;
-	ulong start_time, tmp_time;
-
 	/* Disable USB Host Clock */
-	writel(1 << ATMEL_ID_UHPHS, &pmc->pcdr);
+	at91_periph_clk_disable(ATMEL_ID_UHPHS);
 
-	start_time = get_timer(0);
 	/* Disable UTMI PLL */
-	writel(readl(&pmc->uckr) & ~AT91_PMC_UPLLEN, &pmc->uckr);
-	while ((readl(&pmc->sr) & AT91_PMC_LOCKU) == AT91_PMC_LOCKU) {
-		WATCHDOG_RESET();
-		tmp_time = get_timer(0);
-		if ((tmp_time - start_time) > EN_UPLL_TIMEOUT) {
-			printf("ERROR: failed to stop UPLL\n");
-			return -1;
-		}
-	}
+	if (at91_upll_clk_disable())
+		return -1;
 
 	return 0;
 }
+
+#else
+
+struct ehci_atmel_priv {
+	struct ehci_ctrl ehci;
+};
+
+static int ehci_atmel_enable_clk(struct udevice *dev)
+{
+	struct clk clk;
+	int ret;
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret)
+		return ret;
+
+	ret = clk_enable(&clk);
+	if (ret)
+		return ret;
+
+	ret = clk_get_by_index(dev, 1, &clk);
+	if (ret)
+		return -EINVAL;
+
+	ret = clk_enable(&clk);
+	if (ret)
+		return ret;
+
+	clk_free(&clk);
+
+	return 0;
+}
+
+static int ehci_atmel_probe(struct udevice *dev)
+{
+	struct ehci_hccr *hccr;
+	struct ehci_hcor *hcor;
+	fdt_addr_t hcd_base;
+	int ret;
+
+	ret = ehci_atmel_enable_clk(dev);
+	if (ret) {
+		debug("Failed to enable USB Host clock\n");
+		return ret;
+	}
+
+	/*
+	 * Get the base address for EHCI controller from the device node
+	 */
+	hcd_base = devfdt_get_addr(dev);
+	if (hcd_base == FDT_ADDR_T_NONE) {
+		debug("Can't get the EHCI register base address\n");
+		return -ENXIO;
+	}
+
+	hccr = (struct ehci_hccr *)hcd_base;
+	hcor = (struct ehci_hcor *)
+		((u32)hccr + HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
+
+	debug("echi-atmel: init hccr %x and hcor %x hc_length %d\n",
+	      (u32)hccr, (u32)hcor,
+	      (u32)HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
+
+	return ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
+}
+
+static const struct udevice_id ehci_usb_ids[] = {
+	{ .compatible = "atmel,at91sam9g45-ehci", },
+	{ }
+};
+
+U_BOOT_DRIVER(ehci_atmel) = {
+	.name		= "ehci_atmel",
+	.id		= UCLASS_USB,
+	.of_match	= ehci_usb_ids,
+	.probe		= ehci_atmel_probe,
+	.remove		= ehci_deregister,
+	.ops		= &ehci_usb_ops,
+	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
+	.priv_auto_alloc_size = sizeof(struct ehci_atmel_priv),
+	.flags		= DM_FLAG_ALLOC_PRIV_DMA,
+};
+
+#endif

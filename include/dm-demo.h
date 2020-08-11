@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DM_DEMO_H
@@ -25,10 +24,14 @@ struct dm_demo_pdata {
 struct demo_ops {
 	int (*hello)(struct udevice *dev, int ch);
 	int (*status)(struct udevice *dev, int *status);
+	int (*set_light)(struct udevice *dev, int light);
+	int (*get_light)(struct udevice *dev);
 };
 
 int demo_hello(struct udevice *dev, int ch);
 int demo_status(struct udevice *dev, int *status);
+int demo_set_light(struct udevice *dev, int light);
+int demo_get_light(struct udevice *dev);
 int demo_list(void);
 
 int demo_parse_dt(struct udevice *dev);

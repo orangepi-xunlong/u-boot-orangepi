@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Cirrus Logic EP93xx ethernet MAC / MII driver.
  *
@@ -13,8 +14,6 @@
  * (C) Copyright 2002 2003
  * Adam Bezanson, Network Audio Technologies, Inc.
  * <bezanson@netaudiotech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <command.h>
@@ -30,10 +29,10 @@
 #define GET_REGS(eth_dev)	(GET_PRIV(eth_dev)->regs)
 
 /* ep93xx_miiphy ops forward declarations */
-static int ep93xx_miiphy_read(const char * const dev, unsigned char const addr,
-			unsigned char const reg, unsigned short * const value);
-static int ep93xx_miiphy_write(const char * const dev, unsigned char const addr,
-			unsigned char const reg, unsigned short const value);
+static int ep93xx_miiphy_read(struct mii_dev *bus, int addr, int devad,
+			      int reg);
+static int ep93xx_miiphy_write(struct mii_dev *bus, int addr, int devad,
+			       int reg, u16 value);
 
 #if defined(EP93XX_MAC_DEBUG)
 /**
@@ -53,7 +52,7 @@ static void dump_dev(struct eth_device *dev)
 	printf("  rx_sq.end	     %p\n", priv->rx_sq.end);
 
 	for (i = 0; i < NUMRXDESC; i++)
-		printf("  rx_buffer[%2.d]      %p\n", i, NetRxPackets[i]);
+		printf("  rx_buffer[%2.d]      %p\n", i, net_rx_packets[i]);
 
 	printf("  tx_dq.base	     %p\n", priv->tx_dq.base);
 	printf("  tx_dq.current	     %p\n", priv->tx_dq.current);
@@ -237,7 +236,7 @@ static int ep93xx_eth_open(struct eth_device *dev, bd_t *bd)
 	 */
 	for (i = 0; i < NUMRXDESC; i++) {
 		/* set buffer address */
-		(priv->rx_dq.base + i)->word1 = (uint32_t)NetRxPackets[i];
+		(priv->rx_dq.base + i)->word1 = (uint32_t)net_rx_packets[i];
 
 		/* set buffer length, clear buffer index and NSOF */
 		(priv->rx_dq.base + i)->word2 = PKTSIZE_ALIGN;
@@ -310,20 +309,21 @@ static int ep93xx_eth_rcv_packet(struct eth_device *dev)
 			/*
 			 * We have a good frame. Extract the frame's length
 			 * from the current rx_status_queue entry, and copy
-			 * the frame's data into NetRxPackets[] of the
+			 * the frame's data into net_rx_packets[] of the
 			 * protocol stack. We track the total number of
 			 * bytes in the frame (nbytes_frame) which will be
 			 * used when we pass the data off to the protocol
-			 * layer via NetReceive().
+			 * layer via net_process_received_packet().
 			 */
 			len = RX_STATUS_FRAME_LEN(priv->rx_sq.current);
 
-			NetReceive((uchar *)priv->rx_dq.current->word1,	len);
+			net_process_received_packet(
+				(uchar *)priv->rx_dq.current->word1, len);
 
 			debug("reporting %d bytes...\n", len);
 		} else {
 			/* Do we have an erroneous packet? */
-			error("packet rx error, status %08X %08X",
+			pr_err("packet rx error, status %08X %08X",
 				priv->rx_sq.current->word1,
 				priv->rx_sq.current->word2);
 			dump_rx_descriptor_queue(dev);
@@ -400,7 +400,7 @@ static int ep93xx_eth_send_packet(struct eth_device *dev,
 		; /* noop */
 
 	if (!TX_STATUS_TXWE(priv->tx_sq.current)) {
-		error("packet tx error, status %08X",
+		pr_err("packet tx error, status %08X",
 			priv->tx_sq.current->word1);
 		dump_tx_descriptor_queue(dev);
 		dump_tx_status_queue(dev);
@@ -420,7 +420,17 @@ eth_send_out:
 #if defined(CONFIG_MII)
 int ep93xx_miiphy_initialize(bd_t * const bd)
 {
-	miiphy_register("ep93xx_eth0", ep93xx_miiphy_read, ep93xx_miiphy_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, "ep93xx_eth0", MDIO_NAME_LEN);
+	mdiodev->read = ep93xx_miiphy_read;
+	mdiodev->write = ep93xx_miiphy_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 	return 0;
 }
 #endif
@@ -441,7 +451,7 @@ int ep93xx_eth_initialize(u8 dev_num, int base_addr)
 
 	priv = malloc(sizeof(*priv));
 	if (!priv) {
-		error("malloc() failed");
+		pr_err("malloc() failed");
 		goto eth_init_failed_0;
 	}
 	memset(priv, 0, sizeof(*priv));
@@ -451,34 +461,34 @@ int ep93xx_eth_initialize(u8 dev_num, int base_addr)
 	priv->tx_dq.base = calloc(NUMTXDESC,
 				sizeof(struct tx_descriptor));
 	if (priv->tx_dq.base == NULL) {
-		error("calloc() failed");
+		pr_err("calloc() failed");
 		goto eth_init_failed_1;
 	}
 
 	priv->tx_sq.base = calloc(NUMTXDESC,
 				sizeof(struct tx_status));
 	if (priv->tx_sq.base == NULL) {
-		error("calloc() failed");
+		pr_err("calloc() failed");
 		goto eth_init_failed_2;
 	}
 
 	priv->rx_dq.base = calloc(NUMRXDESC,
 				sizeof(struct rx_descriptor));
 	if (priv->rx_dq.base == NULL) {
-		error("calloc() failed");
+		pr_err("calloc() failed");
 		goto eth_init_failed_3;
 	}
 
 	priv->rx_sq.base = calloc(NUMRXDESC,
 				sizeof(struct rx_status));
 	if (priv->rx_sq.base == NULL) {
-		error("calloc() failed");
+		pr_err("calloc() failed");
 		goto eth_init_failed_4;
 	}
 
 	dev = malloc(sizeof *dev);
 	if (dev == NULL) {
-		error("malloc() failed");
+		pr_err("malloc() failed");
 		goto eth_init_failed_5;
 	}
 	memset(dev, 0, sizeof *dev);
@@ -541,9 +551,10 @@ eth_init_done:
 /**
  * Read a 16-bit value from an MII register.
  */
-static int ep93xx_miiphy_read(const char * const dev, unsigned char const addr,
-			unsigned char const reg, unsigned short * const value)
+static int ep93xx_miiphy_read(struct mii_dev *bus, int addr, int devad,
+			      int reg)
 {
+	unsigned short value = 0;
 	struct mac_regs *mac = (struct mac_regs *)MAC_BASE;
 	int ret = -1;
 	uint32_t self_ctl;
@@ -551,10 +562,9 @@ static int ep93xx_miiphy_read(const char * const dev, unsigned char const addr,
 	debug("+ep93xx_miiphy_read");
 
 	/* Parameter checks */
-	BUG_ON(dev == NULL);
+	BUG_ON(bus->name == NULL);
 	BUG_ON(addr > MII_ADDRESS_MAX);
 	BUG_ON(reg > MII_REGISTER_MAX);
-	BUG_ON(value == NULL);
 
 	/*
 	 * Save the current SelfCTL register value.  Set MAC to suppress
@@ -578,7 +588,7 @@ static int ep93xx_miiphy_read(const char * const dev, unsigned char const addr,
 	while (readl(&mac->miists) & MIISTS_BUSY)
 		; /* noop */
 
-	*value = (unsigned short)readl(&mac->miidata);
+	value = (unsigned short)readl(&mac->miidata);
 
 	/* Restore the saved SelfCTL value and return. */
 	writel(self_ctl, &mac->selfctl);
@@ -587,14 +597,16 @@ static int ep93xx_miiphy_read(const char * const dev, unsigned char const addr,
 	/* Fall through */
 
 	debug("-ep93xx_miiphy_read");
-	return ret;
+	if (ret < 0)
+		return ret;
+	return value;
 }
 
 /**
  * Write a 16-bit value to an MII register.
  */
-static int ep93xx_miiphy_write(const char * const dev, unsigned char const addr,
-			unsigned char const reg, unsigned short const value)
+static int ep93xx_miiphy_write(struct mii_dev *bus, int addr, int devad,
+			       int reg, u16 value)
 {
 	struct mac_regs *mac = (struct mac_regs *)MAC_BASE;
 	int ret = -1;
@@ -603,7 +615,7 @@ static int ep93xx_miiphy_write(const char * const dev, unsigned char const addr,
 	debug("+ep93xx_miiphy_write");
 
 	/* Parameter checks */
-	BUG_ON(dev == NULL);
+	BUG_ON(bus->name == NULL);
 	BUG_ON(addr > MII_ADDRESS_MAX);
 	BUG_ON(reg > MII_REGISTER_MAX);
 

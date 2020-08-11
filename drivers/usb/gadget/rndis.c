@@ -1,12 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * RNDIS MSG parser
  *
  * Authors:	Benedikt Spranger, Pengutronix
  *		Robert Schwebel, Pengutronix
- *
- *              This program is free software; you can redistribute it and/or
- *              modify it under the terms of the GNU General Public License
- *              version 2, as published by the Free Software Foundation.
  *
  *		This software was originally developed in conformance with
  *		Microsoft's Remote NDIS Specification License Agreement.
@@ -30,22 +27,13 @@
 
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 #undef	RNDIS_PM
 #undef	RNDIS_WAKEUP
 #undef	VERBOSE
 
 #include "rndis.h"
-
-#define ETH_ALEN	6		/* Octets in one ethernet addr	 */
-#define ETH_HLEN	14		/* Total octets in header.	 */
-#define ETH_ZLEN	60		/* Min. octets in frame sans FCS */
-#define ETH_DATA_LEN	1500		/* Max. octets in payload	 */
-#define ETH_FRAME_LEN	PKTSIZE_ALIGN	/* Max. octets in frame sans FCS */
-#define ETH_FCS_LEN	4		/* Octets in the FCS		 */
-#define ENOTSUPP        524     /* Operation is not supported */
-
 
 /*
  * The driver for your USB chip needs to support ep0 OUT to work with
@@ -1126,7 +1114,11 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 	return -ENOTSUPP;
 }
 
+#ifndef CONFIG_DM_ETH
 int rndis_register(int (*rndis_control_ack)(struct eth_device *))
+#else
+int rndis_register(int (*rndis_control_ack)(struct udevice *))
+#endif
 {
 	u8 i;
 
@@ -1154,8 +1146,13 @@ void rndis_deregister(int configNr)
 	return;
 }
 
-int rndis_set_param_dev(u8 configNr, struct eth_device *dev, int mtu,
-			struct net_device_stats *stats,	u16 *cdc_filter)
+#ifndef CONFIG_DM_ETH
+int  rndis_set_param_dev(u8 configNr, struct eth_device *dev, int mtu,
+			 struct net_device_stats *stats, u16 *cdc_filter)
+#else
+int  rndis_set_param_dev(u8 configNr, struct udevice *dev, int mtu,
+			 struct net_device_stats *stats, u16 *cdc_filter)
+#endif
 {
 	debug("%s: configNr = %d\n", __func__, configNr);
 	if (!dev || !stats)

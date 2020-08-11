@@ -92,8 +92,8 @@ typedef struct ccsr_local_mcm {
 
 /* Daul I2C Registers(0x3000-0x4000) */
 typedef struct ccsr_i2c {
-	struct fsl_i2c	i2c[2];
-	u8	res[4096 - 2 * sizeof(struct fsl_i2c)];
+	struct fsl_i2c_base	i2c[2];
+	u8	res[4096 - 2 * sizeof(struct fsl_i2c_base)];
 } ccsr_i2c_t;
 
 /* DUART Registers(0x4000-0x5000) */
@@ -1195,7 +1195,7 @@ extern immap_t  *immr;
 
 
 #define CONFIG_SYS_MPC86xx_PCI1_OFFSET		0x8000
-#ifdef CONFIG_MPC8610
+#ifdef CONFIG_ARCH_MPC8610
 #define CONFIG_SYS_MPC86xx_PCIE1_OFFSET         0xa000
 #else
 #define CONFIG_SYS_MPC86xx_PCIE1_OFFSET         0x8000

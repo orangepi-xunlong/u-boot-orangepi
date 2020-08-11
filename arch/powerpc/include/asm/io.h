@@ -123,6 +123,9 @@ static inline void isync(void)
 #define iobarrier_r()  eieio()
 #define iobarrier_w()  eieio()
 
+#define mb()	sync()
+#define isb()	isync()
+
 /*
  * Non ordered and non-swapping "raw" accessors
  */
@@ -160,7 +163,7 @@ static inline void __raw_writel(unsigned int v, volatile void __iomem *addr)
  * is actually performed (i.e. the data has come back) before we start
  * executing any following instructions.
  */
-extern inline u8 in_8(const volatile unsigned char __iomem *addr)
+static inline u8 in_8(const volatile unsigned char __iomem *addr)
 {
 	u8 ret;
 
@@ -171,7 +174,7 @@ extern inline u8 in_8(const volatile unsigned char __iomem *addr)
 	return ret;
 }
 
-extern inline void out_8(volatile unsigned char __iomem *addr, u8 val)
+static inline void out_8(volatile unsigned char __iomem *addr, u8 val)
 {
 	__asm__ __volatile__("sync;\n"
 			     "stb%U0%X0 %1,%0;\n"
@@ -179,7 +182,7 @@ extern inline void out_8(volatile unsigned char __iomem *addr, u8 val)
 			     : "r" (val));
 }
 
-extern inline u16 in_le16(const volatile unsigned short __iomem *addr)
+static inline u16 in_le16(const volatile unsigned short __iomem *addr)
 {
 	u16 ret;
 
@@ -190,7 +193,7 @@ extern inline u16 in_le16(const volatile unsigned short __iomem *addr)
 	return ret;
 }
 
-extern inline u16 in_be16(const volatile unsigned short __iomem *addr)
+static inline u16 in_be16(const volatile unsigned short __iomem *addr)
 {
 	u16 ret;
 
@@ -200,18 +203,18 @@ extern inline u16 in_be16(const volatile unsigned short __iomem *addr)
 	return ret;
 }
 
-extern inline void out_le16(volatile unsigned short __iomem *addr, u16 val)
+static inline void out_le16(volatile unsigned short __iomem *addr, u16 val)
 {
 	__asm__ __volatile__("sync; sthbrx %1,0,%2" : "=m" (*addr) :
 			      "r" (val), "r" (addr));
 }
 
-extern inline void out_be16(volatile unsigned short __iomem *addr, u16 val)
+static inline void out_be16(volatile unsigned short __iomem *addr, u16 val)
 {
 	__asm__ __volatile__("sync; sth%U0%X0 %1,%0" : "=m" (*addr) : "r" (val));
 }
 
-extern inline u32 in_le32(const volatile unsigned __iomem *addr)
+static inline u32 in_le32(const volatile unsigned __iomem *addr)
 {
 	u32 ret;
 
@@ -222,7 +225,7 @@ extern inline u32 in_le32(const volatile unsigned __iomem *addr)
 	return ret;
 }
 
-extern inline u32 in_be32(const volatile unsigned __iomem *addr)
+static inline u32 in_be32(const volatile unsigned __iomem *addr)
 {
 	u32 ret;
 
@@ -232,13 +235,13 @@ extern inline u32 in_be32(const volatile unsigned __iomem *addr)
 	return ret;
 }
 
-extern inline void out_le32(volatile unsigned __iomem *addr, u32 val)
+static inline void out_le32(volatile unsigned __iomem *addr, u32 val)
 {
 	__asm__ __volatile__("sync; stwbrx %1,0,%2" : "=m" (*addr) :
 			     "r" (val), "r" (addr));
 }
 
-extern inline void out_be32(volatile unsigned __iomem *addr, u32 val)
+static inline void out_be32(volatile unsigned __iomem *addr, u32 val)
 {
 	__asm__ __volatile__("sync; stw%U0%X0 %1,%0" : "=m" (*addr) : "r" (val));
 }
@@ -279,18 +282,25 @@ extern inline void out_be32(volatile unsigned __iomem *addr, u32 val)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
-/*
- * Given a physical address and a length, return a virtual address
- * that can be used to access the memory range with the caching
- * properties specified by "flags".
- */
-#define MAP_NOCACHE	(0)
-#define MAP_WRCOMBINE	(0)
-#define MAP_WRBACK	(0)
-#define MAP_WRTHROUGH	(0)
+#define readb_be(addr)							\
+	__raw_readb((__force unsigned *)(addr))
+#define readw_be(addr)							\
+	be16_to_cpu(__raw_readw((__force unsigned *)(addr)))
+#define readl_be(addr)							\
+	be32_to_cpu(__raw_readl((__force unsigned *)(addr)))
+#define readq_be(addr)							\
+	be64_to_cpu(__raw_readq((__force unsigned *)(addr)))
 
-static inline void *
-map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+#define writeb_be(val, addr)						\
+	__raw_writeb((val), (__force unsigned *)(addr))
+#define writew_be(val, addr)						\
+	__raw_writew(cpu_to_be16((val)), (__force unsigned *)(addr))
+#define writel_be(val, addr)						\
+	__raw_writel(cpu_to_be32((val)), (__force unsigned *)(addr))
+#define writeq_be(val, addr)						\
+	__raw_writeq(cpu_to_be64((val)), (__force unsigned *)(addr))
+
+static inline void *phys_to_virt(phys_addr_t paddr)
 {
 #ifdef CONFIG_ADDR_MAP
 	return addrmap_phys_to_virt(paddr);
@@ -298,14 +308,7 @@ map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
 	return (void *)((unsigned long)paddr);
 #endif
 }
-
-/*
- * Take down a mapping set up by map_physmem().
- */
-static inline void unmap_physmem(void *vaddr, unsigned long flags)
-{
-
-}
+#define phys_to_virt phys_to_virt
 
 static inline phys_addr_t virt_to_phys(void * vaddr)
 {
@@ -315,5 +318,8 @@ static inline phys_addr_t virt_to_phys(void * vaddr)
 	return (phys_addr_t)((unsigned long)vaddr);
 #endif
 }
+#define virt_to_phys virt_to_phys
+
+#include <asm-generic/io.h>
 
 #endif

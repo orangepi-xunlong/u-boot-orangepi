@@ -1,15 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_LISTS_H_
 #define _DM_LISTS_H_
 
+#include <dm/ofnode.h>
 #include <dm/uclass-id.h>
 
 /**
@@ -38,11 +38,11 @@ struct uclass_driver *lists_uclass_lookup(enum uclass_id id);
  * This searches the U_BOOT_DEVICE() structures and creates new devices for
  * each one. The devices will have @parent as their parent.
  *
- * @parent: parent driver (root)
- * @early_only: If true, bind only drivers with the DM_INIT_F flag. If false
- * bind all drivers.
+ * @parent: parent device (root)
+ * @pre_reloc_only: If true, bind only drivers with the DM_FLAG_PRE_RELOC flag.
+ * If false bind all drivers.
  */
-int lists_bind_drivers(struct udevice *parent);
+int lists_bind_drivers(struct udevice *parent, bool pre_reloc_only);
 
 /**
  * lists_bind_fdt() - bind a device tree node
@@ -50,10 +50,44 @@ int lists_bind_drivers(struct udevice *parent);
  * This creates a new device bound to the given device tree node, with
  * @parent as its parent.
  *
- * @parent: parent driver (root)
- * @blob: device tree blob
- * @offset: offset of this device tree node
+ * @parent: parent device (root)
+ * @node: device tree node to bind
+ * @devp: if non-NULL, returns a pointer to the bound device
+ * @pre_reloc_only: If true, bind only nodes with special devicetree properties,
+ * or drivers with the DM_FLAG_PRE_RELOC flag. If false bind all drivers.
+ * @return 0 if device was bound, -EINVAL if the device tree is invalid,
+ * other -ve value on error
  */
-int lists_bind_fdt(struct udevice *parent, const void *blob, int offset);
+int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp,
+		   bool pre_reloc_only);
+
+/**
+ * device_bind_driver() - bind a device to a driver
+ *
+ * This binds a new device to a driver.
+ *
+ * @parent:	Parent device
+ * @drv_name:	Name of driver to attach to this parent
+ * @dev_name:	Name of the new device thus created
+ * @devp:	If non-NULL, returns the newly bound device
+ */
+int device_bind_driver(struct udevice *parent, const char *drv_name,
+		       const char *dev_name, struct udevice **devp);
+
+/**
+ * device_bind_driver_to_node() - bind a device to a driver for a node
+ *
+ * This binds a new device to a driver for a given device tree node. This
+ * should only be needed if the node lacks a compatible strings.
+ *
+ * @parent:	Parent device
+ * @drv_name:	Name of driver to attach to this parent
+ * @dev_name:	Name of the new device thus created
+ * @node:	Device tree node
+ * @devp:	If non-NULL, returns the newly bound device
+ */
+int device_bind_driver_to_node(struct udevice *parent, const char *drv_name,
+			       const char *dev_name, ofnode node,
+			       struct udevice **devp);
 
 #endif

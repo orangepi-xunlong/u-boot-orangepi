@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -175,7 +174,7 @@ u32 get_cpu_rev(void)
 
 	for (i = 0; i < ARRAY_SIZE(mx31_cpu_type); i++)
 		if (srev == mx31_cpu_type[i].srev)
-			return mx31_cpu_type[i].v;
+			return mx31_cpu_type[i].v | (MXC_CPU_MX31 << 12);
 
 	return srev | 0x8000;
 }

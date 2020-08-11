@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2012
  * Pali Rohár <pali.rohar@gmail.com>
@@ -12,8 +13,6 @@
  * Syed Mohammed Khasim <x0khasim@ti.com>
  *
  * Configuration settings for the Nokia RX-51 aka N900.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -22,13 +21,7 @@
 /*
  * High Level Configuration Options
  */
-
-#define CONFIG_OMAP			/* in a TI OMAP core */
-#define CONFIG_OMAP34XX			/* which is a 34XX */
-#define CONFIG_OMAP3430			/* which is in a 3430 */
-#define CONFIG_OMAP3_RX51		/* working with RX51 */
 #define CONFIG_SYS_L2CACHE_OFF		/* pretend there is no L2 CACHE */
-#define CONFIG_OMAP_COMMON
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_NOKIA_RX51
 
@@ -37,27 +30,16 @@
  * NOLO loading boot image to random place, so it doesn't really
  * matter what we set this to. We have to copy u-boot to this address
  */
-#define CONFIG_SYS_TEXT_BASE	0x80008000
-
-#define CONFIG_SDRC			/* The chip has SDRC controller */
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
-#include <asm/arch/omap3.h>
+#include <asm/arch/omap.h>
 #include <asm/arch/mem.h>
 #include <linux/stringify.h>
-
-/*
- * Display CPU and Board information
- */
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
 
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
 
-#undef CONFIG_USE_IRQ				/* no support for IRQs */
-#define CONFIG_MISC_INIT_R
 #define CONFIG_SKIP_LOWLEVEL_INIT		/* X-Loader set everything up */
 
 #define CONFIG_CMDLINE_TAG	/* enable passing kernel command line string */
@@ -68,7 +50,6 @@
 /*
  * Size of malloc() pool
  */
-#define CONFIG_ENV_SIZE			(128 << 10)
 #define CONFIG_UBI_SIZE			(512 << 10)
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + CONFIG_UBI_SIZE + \
 					(128 << 10))
@@ -82,7 +63,6 @@
  */
 #define V_NS16550_CLK		48000000		/* 48MHz (APLL96/2) */
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
@@ -90,24 +70,11 @@
 /*
  * select serial console configuration
  */
-#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
-#define CONFIG_SERIAL3			3		/* UART3 on RX-51 */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE { 4800, 9600, 19200, 38400, 57600, 115200 }
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_OMAP_HSMMC
-#define CONFIG_DOS_PARTITION
-
-/* USB */
-#define CONFIG_MUSB_UDC
-#define CONFIG_MUSB_HDC
-#define CONFIG_USB_OMAP3
-#define CONFIG_TWL4030_USB
 
 /* USB device configuration */
 #define CONFIG_USB_DEVICE
@@ -116,60 +83,14 @@
 #define CONFIG_USBD_MANUFACTURER	"Nokia"
 #define CONFIG_USBD_PRODUCT_NAME	"N900"
 
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_SYS_NO_FLASH
-
 /* commands to include */
-#include <config_cmd_default.h>
 
-#define CONFIG_CMD_EXT2			/* EXT2 Support */
-#define CONFIG_CMD_EXT4			/* EXT4 Support */
-#define CONFIG_CMD_FAT			/* FAT support */
-
-#define CONFIG_CMD_I2C			/* I2C serial bus support */
-#define CONFIG_CMD_MMC			/* MMC support */
-#define CONFIG_CMD_GPIO			/* Enable gpio command */
-
-#define CONFIG_CMDLINE_EDITING		/* add command line history */
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
-
-#define CONFIG_CMD_BOOTMENU		/* ANSI terminal Boot Menu */
-#define CONFIG_CMD_CLEAR		/* ANSI terminal clear screen command */
-
-#ifdef ONENAND_SUPPORT
-
-#define CONFIG_CMD_ONENAND		/* ONENAND support */
-#define CONFIG_CMD_MTDPARTS		/* mtd parts support */
-
-#ifdef UBIFS_SUPPORT
-#define CONFIG_CMD_UBI			/* UBI Support */
-#define CONFIG_CMD_UBIFS		/* UBIFS Support */
-#endif
-
-#endif
-
-/* commands not needed from config_cmd_default.h */
-#undef CONFIG_CMD_FPGA			/* FPGA configuration Support */
-#undef CONFIG_CMD_IMI			/* iminfo */
-#undef CONFIG_CMD_NET			/* bootp, tftpboot, rarpboot */
-#undef CONFIG_CMD_NFS			/* NFS support */
-#undef CONFIG_CMD_SAVEENV		/* saveenv */
-#undef CONFIG_CMD_SETGETDCR		/* DCR support on 4xx */
-
-#define CONFIG_OMAP3_SPI
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
-#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
-#define CONFIG_SYS_I2C_OMAP34XX
 
 /*
  * TWL4030
  */
-#define CONFIG_TWL4030_POWER
-#define CONFIG_TWL4030_LED
-#define CONFIG_TWL4030_KEYPAD
 
-#define CONFIG_OMAP_GPIO
 #define GPIO_SLIDE			71
 
 /*
@@ -220,25 +141,7 @@
 
 #ifdef ONENAND_SUPPORT
 
-#define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-#define PISMO1_ONEN_SIZE		GPMC_SIZE_128M
 #define CONFIG_SYS_ONENAND_BASE		ONENAND_MAP
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-
-#ifdef UBIFS_SUPPORT
-#define CONFIG_RBTREE
-#define CONFIG_LZO
-#endif
-
-#define MTDIDS_DEFAULT			"onenand0=onenand"
-#define MTDPARTS_DEFAULT		"mtdparts=onenand:" \
-		__stringify(PART1_SIZE) PART1_SUFF "(" PART1_NAME ")ro," \
-		__stringify(PART2_SIZE) PART2_SUFF "(" PART2_NAME ")," \
-		__stringify(PART3_SIZE) PART3_SUFF "(" PART3_NAME ")," \
-		__stringify(PART4_SIZE) PART4_SUFF "(" PART4_NAME ")," \
-		__stringify(PART5_SIZE) PART5_SUFF "(" PART5_NAME ")," \
-		"-(" PART6_NAME ")"
 
 #endif
 
@@ -249,13 +152,9 @@
  * Framebuffer
  */
 /* Video console */
-#define CONFIG_VIDEO
-#define CONFIG_CFB_CONSOLE
-#define CONFIG_CFB_CONSOLE_ANSI	/* Enable ANSI escape codes in framebuffer */
 #define CONFIG_VIDEO_LOGO
 #define VIDEO_FB_16BPP_PIXEL_SWAP
 #define VIDEO_FB_16BPP_WORD_SWAP
-#define CONFIG_VIDEO_SW_CURSOR
 #define CONFIG_SPLASH_SCREEN
 
 /* functions for cfb_console */
@@ -263,18 +162,20 @@
 #define VIDEO_TSTC_FCT			rx51_kp_tstc
 #define VIDEO_GETC_FCT			rx51_kp_getc
 #ifndef __ASSEMBLY__
+struct stdio_dev;
 int rx51_kp_init(void);
-int rx51_kp_tstc(void);
-int rx51_kp_getc(void);
-#endif
-
-#ifndef MTDPARTS_DEFAULT
-#define MTDPARTS_DEFAULT
+int rx51_kp_tstc(struct stdio_dev *sdev);
+int rx51_kp_getc(struct stdio_dev *sdev);
 #endif
 
 /* Environment information */
+#ifdef CONFIG_MTDPARTS_DEFAULT
+#define MTDPARTS "mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"
+#else
+#define MTDPARTS
+#endif
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"mtdparts=" MTDPARTS_DEFAULT "\0" \
+	MTDPARTS \
 	"usbtty=cdc_acm\0" \
 	"stdin=vga\0" \
 	"stdout=vga\0" \
@@ -352,30 +253,6 @@ int rx51_kp_getc(void);
 	"bootmenu_delay=30\0" \
 	""
 
-#define CONFIG_PREBOOT \
-	"setenv mmcnum 1; setenv mmcpart 1;" \
-	"setenv mmcscriptfile bootmenu.scr;" \
-	"if run switchmmc; then " \
-		"setenv mmcdone true;" \
-		"setenv mmctype fat;" \
-		"if run scriptload; then true; else " \
-			"setenv mmctype ext2;" \
-			"if run scriptload; then true; else " \
-				"setenv mmctype ext4;" \
-				"if run scriptload; then true; else " \
-					"setenv mmcdone false;" \
-				"fi;" \
-			"fi;" \
-		"fi;" \
-		"if ${mmcdone}; then " \
-			"run scriptboot;" \
-		"fi;" \
-	"fi;" \
-	"if run slide; then true; else " \
-		"setenv bootmenu_delay 0;" \
-		"setenv bootdelay 0;" \
-	"fi"
-
 #define CONFIG_POSTBOOTMENU \
 	"echo;" \
 	"echo Extra commands:;" \
@@ -393,25 +270,9 @@ int rx51_kp_getc(void);
 	"run attachboot;" \
 	"echo"
 
-#define CONFIG_BOOTDELAY 30
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_MENU
-#define CONFIG_MENU_SHOW
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER			/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
-#define CONFIG_SYS_PROMPT		"Nokia RX-51 # "
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-						sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
 
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
 #define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + 0x01F00000)/*31MB*/
@@ -428,23 +289,13 @@ int rx51_kp_getc(void);
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /*
- * Stack sizes
- *
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE		(128 << 10) /* regular stack 128 KiB */
-
-/*
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS		2
 #define PHYS_SDRAM_1			OMAP34XX_SDRC_CS0
 
 /*
  * FLASH and environment organization
  */
-
-#define CONFIG_ENV_IS_NOWHERE
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	0x4020f800

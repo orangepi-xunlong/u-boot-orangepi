@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
  * Lukasz Majewski <l.majewski@samsung.com>
@@ -6,24 +7,35 @@
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
  * (C) Copyright 2008-2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * (C) Copyright 2019 NXP
  */
 
 #include <common.h>
 #include <linux/types.h>
 #include <power/pmic.h>
 #include <i2c.h>
-#include <compiler.h>
+#include <linux/compiler.h>
 
 int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 {
 	unsigned char buf[4] = { 0 };
 
 	if (check_reg(p, reg))
-		return -1;
+		return -EINVAL;
+#if defined(CONFIG_DM_I2C)
+	struct udevice *dev;
+	int ret;
 
+	ret = i2c_get_chip_for_busnum(p->bus, pmic_i2c_addr,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       p->bus);
+		return -ENXIO;
+	}
+#else /* Non DM I2C support - will be removed */
 	I2C_SET_BUS(p->bus);
+#endif
 
 	switch (pmic_i2c_tx_num) {
 	case 3:
@@ -51,27 +63,42 @@ int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 		break;
 	default:
 		printf("%s: invalid tx_num: %d", __func__, pmic_i2c_tx_num);
-		return -1;
+		return -EINVAL;
 	}
 
-	if (i2c_write(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num))
-		return -1;
-
-	return 0;
+#if defined(CONFIG_DM_I2C)
+	return dm_i2c_write(dev, reg, buf, pmic_i2c_tx_num);
+#else
+	return i2c_write(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num);
+#endif
 }
 
 int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 {
 	unsigned char buf[4] = { 0 };
 	u32 ret_val = 0;
+	int ret;
 
 	if (check_reg(p, reg))
-		return -1;
+		return -EINVAL;
 
+#if defined(CONFIG_DM_I2C)
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(p->bus, pmic_i2c_addr,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       p->bus);
+		return -ENXIO;
+	}
+	ret = dm_i2c_read(dev, reg, buf, pmic_i2c_tx_num);
+#else /* Non DM I2C support - will be removed */
 	I2C_SET_BUS(p->bus);
-
-	if (i2c_read(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num))
-		return -1;
+	ret = i2c_read(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num);
+#endif
+	if (ret)
+		return ret;
 
 	switch (pmic_i2c_tx_num) {
 	case 3:
@@ -93,7 +120,7 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 		break;
 	default:
 		printf("%s: invalid tx_num: %d", __func__, pmic_i2c_tx_num);
-		return -1;
+		return -EINVAL;
 	}
 	memcpy(val, &ret_val, sizeof(ret_val));
 
@@ -102,12 +129,25 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 
 int pmic_probe(struct pmic *p)
 {
-	i2c_set_bus_num(p->bus);
 	debug("Bus: %d PMIC:%s probed!\n", p->bus, p->name);
+#if defined(CONFIG_DM_I2C)
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(p->bus, pmic_i2c_addr,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       p->bus);
+		return -ENXIO;
+	}
+#else /* Non DM I2C support - will be removed */
+	i2c_set_bus_num(p->bus);
 	if (i2c_probe(pmic_i2c_addr)) {
 		printf("Can't find PMIC:%s\n", p->name);
-		return -1;
+		return -ENODEV;
 	}
+#endif
 
 	return 0;
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SPL specific code for Compulab CM-T335 board
  *
@@ -6,12 +7,12 @@
  * Copyright (C) 2013, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Ilya Ledvich <ilya@compulab.co.il>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <errno.h>
+#include <init.h>
 
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/clock.h>

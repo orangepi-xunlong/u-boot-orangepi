@@ -1,24 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * SH SPI driver
  *
  * Copyright (C) 2011-2012 Renesas Solutions Corp.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
  */
 
 #include <common.h>
+#include <console.h>
 #include <malloc.h>
 #include <spi.h>
 #include <asm/io.h>
@@ -76,10 +64,6 @@ static int write_fifo_empty_wait(struct sh_spi *ss)
 		udelay(10);
 	}
 	return 0;
-}
-
-void spi_init(void)
-{
 }
 
 static void sh_spi_set_cs(struct sh_spi *ss, unsigned int cs)

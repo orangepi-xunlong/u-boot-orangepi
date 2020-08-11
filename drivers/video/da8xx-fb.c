@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Porting to u-boot:
  *
@@ -9,17 +10,16 @@
  *
  * Based on the LCD driver for TI Avalanche processors written by
  * Ajay Singh and Shalom Hai.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <video_fb.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 
@@ -379,7 +379,7 @@ static void lcd_cfg_ac_bias(int period, int transitions_per_int)
 {
 	u32 reg;
 
-	/* Set the AC Bias Period and Number of Transisitons per Interrupt */
+	/* Set the AC Bias Period and Number of Transitions per Interrupt */
 	reg = lcdc_read(&da8xx_fb_reg_base->raster_timing_2) & 0xFFF00000;
 	reg |= LCD_AC_BIAS_FREQUENCY(period) |
 		LCD_AC_BIAS_TRANSITIONS_PER_INT(transitions_per_int);
@@ -487,7 +487,7 @@ static int lcd_cfg_frame_buffer(struct da8xx_fb_par *par, u32 width, u32 height,
 	/* Pixels per line = (PPL + 1)*16 */
 	if (lcd_revision == LCD_VERSION_1) {
 		/*
-		 * 0x3F in bits 4..9 gives max horisontal resolution = 1024
+		 * 0x3F in bits 4..9 gives max horizontal resolution = 1024
 		 * pixels
 		 */
 		width &= 0x3f0;
@@ -695,7 +695,7 @@ static int lcd_init(struct da8xx_fb_par *par, const struct lcd_ctrl_config *cfg,
 	lcd_cfg_vertical_sync(panel->vbp, panel->vsw, panel->vfp);
 	lcd_cfg_horizontal_sync(panel->hbp, panel->hsw, panel->hfp);
 
-	/* Configure for disply */
+	/* Configure for display */
 	ret = lcd_cfg_display(cfg);
 	if (ret < 0)
 		return ret;
@@ -761,7 +761,7 @@ static u32 lcdc_irq_handler_rev01(void)
 
 		lcdc_write(stat, &da8xx_fb_reg_base->stat);
 
-		/* Disable PL completion inerrupt */
+		/* Disable PL completion interrupt */
 		reg_ras  = lcdc_read(&da8xx_fb_reg_base->raster_ctrl);
 		reg_ras &= ~LCD_V1_PL_INT_ENA;
 		lcdc_write(reg_ras, &da8xx_fb_reg_base->raster_ctrl);
@@ -810,7 +810,7 @@ static u32 lcdc_irq_handler_rev02(void)
 
 		lcdc_write(stat, &da8xx_fb_reg_base->masked_stat);
 
-		/* Disable PL completion inerrupt */
+		/* Disable PL completion interrupt */
 		reg_int  = lcdc_read(&da8xx_fb_reg_base->int_ena_clr) |
 			(LCD_V2_PL_INT_ENA);
 		lcdc_write(reg_int, &da8xx_fb_reg_base->int_ena_clr);
@@ -853,9 +853,10 @@ static u32 wait_for_event(u32 event)
 	do {
 		ret = lcdc_irq_handler();
 		udelay(1000);
-	} while (!(ret & event));
+		--timeout;
+	} while (!(ret & event) && timeout);
 
-	if (timeout <= 0) {
+	if (!(ret & event)) {
 		printf("%s: event %d not hit\n", __func__, event);
 		return -1;
 	}
@@ -924,7 +925,7 @@ void *video_hw_init(void)
 	      da8xx_lcd_cfg->bpp);
 
 	size = sizeof(struct fb_info) + sizeof(struct da8xx_fb_par);
-	da8xx_fb_info = malloc(size);
+	da8xx_fb_info = malloc_cache_aligned(size);
 	debug("da8xx_fb_info at %x\n", (unsigned int)da8xx_fb_info);
 
 	if (!da8xx_fb_info) {
@@ -949,7 +950,7 @@ void *video_hw_init(void)
 			da8xx_lcd_cfg->bpp;
 	par->vram_size = par->vram_size * LCD_NUM_BUFFERS / 8;
 
-	par->vram_virt = malloc(par->vram_size);
+	par->vram_virt = malloc_cache_aligned(par->vram_size);
 
 	par->vram_phys = (dma_addr_t) par->vram_virt;
 	debug("Requesting 0x%x bytes for framebuffer at 0x%x\n",
@@ -972,7 +973,7 @@ void *video_hw_init(void)
 		da8xx_fb_fix.line_length - 1;
 
 	/* allocate palette buffer */
-	par->v_palette_base = malloc(PALETTE_SIZE);
+	par->v_palette_base = malloc_cache_aligned(PALETTE_SIZE);
 	if (!par->v_palette_base) {
 		printf("GLCD: malloc for palette buffer failed\n");
 		goto err_release_fb_mem;
@@ -1033,16 +1034,6 @@ err_release_fb:
 	free(da8xx_fb_info);
 
 	return NULL;
-}
-
-void video_set_lut(unsigned int index,	/* color number */
-		    unsigned char r,	/* red */
-		    unsigned char g,	/* green */
-		    unsigned char b	/* blue */
-		    )
-{
-
-	return;
 }
 
 void da8xx_video_init(const struct da8xx_panel *panel,

@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007-2011 Freescale Semiconductor, Inc.
  *
  * Dave Liu <daveliu@freescale.com>
  * based on the contribution of Marian Balakowicz <m8@semihalf.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <irq_func.h>
 #include <mpc83xx.h>
 #include <command.h>
 
@@ -37,7 +37,7 @@ void ecc_print_status(void)
 	printf("Memory Error Disable:\n");
 	printf("  Multiple-Bit Error Disable: %d\n",
 	       (ddr->err_disable & ECC_ERROR_DISABLE_MBED) ? 1 : 0);
-	printf("  Sinle-Bit Error Disable: %d\n",
+	printf("  Single-Bit Error Disable: %d\n",
 	       (ddr->err_disable & ECC_ERROR_DISABLE_SBED) ? 1 : 0);
 	printf("  Memory Select Error Disable: %d\n\n",
 	       (ddr->err_disable & ECC_ERROR_DISABLE_MSED) ? 1 : 0);
@@ -192,8 +192,8 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			}
 
 			ddr->err_disable = val;
-			__asm__ __volatile__("sync");
-			__asm__ __volatile__("isync");
+			sync();
+			isync();
 			return 0;
 		} else if (strcmp(argv[1], "errdetectclr") == 0) {
 			val = ddr->err_detect;
@@ -250,8 +250,8 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 				printf("Incorrect command\n");
 
 			ddr->ecc_err_inject = val;
-			__asm__ __volatile__("sync");
-			__asm__ __volatile__("isync");
+			sync();
+			isync();
 			return 0;
 		} else if (strcmp(argv[1], "mirror") == 0) {
 			val = ddr->ecc_err_inject;
@@ -273,7 +273,7 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			count = simple_strtoul(argv[3], NULL, 16);
 
 			if ((u32) addr % 8) {
-				printf("Address not alligned on "
+				printf("Address not aligned on "
 				       "double word boundary\n");
 				return 1;
 			}
@@ -283,26 +283,26 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 				/* enable injects */
 				ddr->ecc_err_inject |= ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* write memory location injecting errors */
 				ppcDWstore((u32 *) i, pattern);
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* disable injects */
 				ddr->ecc_err_inject &= ~ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* read data, this generates ECC error */
 				ppcDWload((u32 *) i, ret);
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* re-initialize memory, double word write the location again,
 				 * generates new ECC code this time */
 				ppcDWstore((u32 *) i, writeback);
-				__asm__ __volatile__("sync");
+				sync();
 			}
 			enable_interrupts();
 			return 0;
@@ -312,7 +312,7 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			count = simple_strtoul(argv[3], NULL, 16);
 
 			if ((u32) addr % 8) {
-				printf("Address not alligned on "
+				printf("Address not aligned on "
 				       "double word boundary\n");
 				return 1;
 			}
@@ -322,29 +322,29 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 				/* enable injects */
 				ddr->ecc_err_inject |= ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* write memory location injecting errors */
 				*(u32 *) i = 0xfedcba98UL;
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* sub double word write,
 				 * bus will read-modify-write,
 				 * generates ECC error */
 				*((u32 *) i + 1) = 0x76543210UL;
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* disable injects */
 				ddr->ecc_err_inject &= ~ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* re-initialize memory,
 				 * double word write the location again,
 				 * generates new ECC code this time */
 				ppcDWstore((u32 *) i, writeback);
-				__asm__ __volatile__("sync");
+				sync();
 			}
 			enable_interrupts();
 			return 0;

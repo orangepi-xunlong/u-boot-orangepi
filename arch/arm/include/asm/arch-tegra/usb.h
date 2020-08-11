@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * Copyright (c) 2013 NVIDIA Corporation
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA_USB_H_
@@ -266,6 +265,9 @@ struct usb_ctlr {
 
 /* USBx_UTMIP_BIAS_CFG1_0 */
 #define UTMIP_FORCE_PDTRK_POWERDOWN		1
+#define UTMIP_BIAS_DEBOUNCE_TIMESCALE_SHIFT	8
+#define UTMIP_BIAS_DEBOUNCE_TIMESCALE_MASK	\
+				(0x3f << UTMIP_BIAS_DEBOUNCE_TIMESCALE_SHIFT)
 #define UTMIP_BIAS_PDTRK_COUNT_SHIFT		3
 #define UTMIP_BIAS_PDTRK_COUNT_MASK		\
 				(0x1f << UTMIP_BIAS_PDTRK_COUNT_SHIFT)

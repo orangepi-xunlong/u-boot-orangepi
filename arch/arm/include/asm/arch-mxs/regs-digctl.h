@@ -1,15 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX28 DIGCTL Register Definitions
  *
  * Copyright (C) 2012 Robert Delien <robert@delien.nl>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_DIGCTL_H__
 #define __MX28_REGS_DIGCTL_H__
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_digctl_regs {
