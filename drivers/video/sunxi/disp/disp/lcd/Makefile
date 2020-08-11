@@ -1,0 +1,6 @@
+obj-y += lcd.o
+
+lcd-objs := lcd_source_interface.o panels/panels.o panels/default_panel.o panels/tft720x1280.o\
+            panels/vvx10f004b00.o panels/lp907qx.o panels/starry768x1024.o panels/sl698ph_720p.o panels/B116XAN03.o panels/u708_default_panel.o
+
+lcd-$(CONFIG_TV_GM7121) += panels/gm7121_cvbs.o

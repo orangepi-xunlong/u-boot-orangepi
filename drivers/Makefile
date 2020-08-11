@@ -1,0 +1,24 @@
+obj-$(CONFIG_BIOSEMU) += bios_emulator/
+obj-y += block/
+obj-$(CONFIG_BOOTCOUNT_LIMIT) += bootcount/
+obj-y += crypto/
+obj-$(CONFIG_FPGA) += fpga/
+obj-y += hwmon/
+obj-y += misc/
+obj-y += pcmcia/
+obj-y += dfu/
+obj-y += rtc/
+obj-$(CONFIG_SUNXI_IR) += ir/
+obj-y += sound/
+obj-y += tpm/
+obj-y += twserial/
+obj-y += video/
+obj-y += watchdog/
+obj-$(CONFIG_QE) += qe/
+obj-y += memory/
+obj-y += arisc/
+obj-y += spinor/
+
+ifneq ($(strip $(CONFIG_ARCH_SUN8IW12P1)),)
+obj-y += sunxi_vin/
+endif

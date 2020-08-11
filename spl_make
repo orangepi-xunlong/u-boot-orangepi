@@ -1,0 +1,107 @@
+
+
+include $(SPLDIR)/config.mk
+include $(TOPDIR)/include/autoconf.mk
+include $(TOPDIR)/include/autoconf.mk.dep
+
+
+export ARCH CPU BOARD SOC
+
+MAKEFLAGS +=  --no-print-directory
+include $(SPLDIR)/config.mk
+
+ifdef CONFIG_SUN50IW6P1_AXP802
+CONFIG_BIN_PATH=bin/axp802_bin
+else
+CONFIG_BIN_PATH=bin
+endif
+
+all:
+
+
+spl_lib: $(TIMESTAMP_FILE) $(VERSION_FILE)
+		@echo $(ARCH) $(CPU) $(BOARD) $(SOC)
+		@echo nand=$(CONFIG_STORAGE_MEDIA_NAND) mmc=$(CONFIG_STORAGE_MEDIA_MMC) nor=$(CONFIG_STORAGE_MEDIA_SPINOR)
+		$(MAKE)  -C  $(SPLDIR)/spl all
+
+fes:
+		$(MAKE) -C $(SPLDIR)/fes_init all
+		@$(TOPDIR)/tools/gen_check_sum $(SPLDIR)/fes_init/fes1.bin fes1_$(CONFIG_SYS_BOARD).bin > /dev/null
+		@cp -v fes1_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/fes1_$(CONFIG_SYS_BOARD).bin
+
+boot0:
+		$(MAKE)  -C  $(SPLDIR)/boot0 all
+ifdef CONFIG_STORAGE_MEDIA_NAND
+		@$(TOPDIR)/tools/gen_check_sum $(SPLDIR)/boot0/boot0_nand.bin boot0_nand_$(CONFIG_SYS_BOARD).bin > /dev/null
+		@if [ -z "$(findstring $(OTA_TEST_NAME), $(SUNXI_MODE))" ]; then \
+			cp -v boot0_nand_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_nand_$(CONFIG_SYS_BOARD).bin; \
+		else \
+			cp -v boot0_nand_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_nand_$(CONFIG_SYS_BOARD)-$(SUNXI_MODE).bin; \
+		fi
+endif
+ifdef CONFIG_STORAGE_MEDIA_MMC
+		@$(TOPDIR)/tools/gen_check_sum $(SPLDIR)/boot0/boot0_sdcard.bin boot0_sdcard_$(CONFIG_SYS_BOARD).bin > /dev/null
+		@if [ -z "$(findstring $(OTA_TEST_NAME), $(SUNXI_MODE))" ]; then \
+			cp -v boot0_sdcard_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_sdcard_$(CONFIG_SYS_BOARD).bin; \
+		else \
+			cp -v boot0_sdcard_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_sdcard_$(CONFIG_SYS_BOARD)-$(SUNXI_MODE).bin; \
+		fi
+endif
+ifdef CONFIG_STORAGE_MEDIA_SPINOR
+		@$(TOPDIR)/tools/gen_check_sum $(SPLDIR)/boot0/boot0_spinor.bin boot0_spinor_$(CONFIG_SYS_BOARD).bin > /dev/null
+		@if [ -z "$(findstring $(OTA_TEST_NAME), $(SUNXI_MODE))" ]; then \
+			cp -v boot0_spinor_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_spinor_$(CONFIG_SYS_BOARD).bin; \
+		else \
+			cp -v boot0_spinor_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/boot0_spinor_$(CONFIG_SYS_BOARD)-$(SUNXI_MODE).bin; \
+		fi
+endif
+sboot:
+		$(MAKE) -C $(SPLDIR)/sbrom all
+		@$(TOPDIR)/tools/gen_check_sum $(SPLDIR)/sbrom/sboot.bin sboot_$(CONFIG_SYS_BOARD).bin > /dev/null
+		@if [ -z "$(findstring $(OTA_TEST_NAME), $(SUNXI_MODE))" ]; then \
+			cp -v sboot_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/sboot_$(CONFIG_SYS_BOARD).bin; \
+		else \
+			cp -v sboot_$(CONFIG_SYS_BOARD).bin $(TOPDIR)/../../tools/pack/chips/$(CONFIG_SYS_BOARD)/$(CONFIG_BIN_PATH)/sboot_$(CONFIG_SYS_BOARD)-$(SUNXI_MODE).bin; \
+		fi
+
+ifeq ($(CONFIG_SUNXI_SECURE_SYSTEM),y)
+
+ifeq ($(SUNXI_MODE),$(OTA_TEST_NAME))
+spl:    boot0 sboot
+else
+spl:    fes boot0 sboot
+endif
+
+else
+
+ifeq ($(SUNXI_MODE),$(OTA_TEST_NAME))
+spl:    boot0
+else
+spl:    fes boot0
+endif
+
+endif
+
+
+
+mkdepend :
+
+
+depend:
+
+#
+# Auto-generate the autoconf.mk file (which is included by all makefiles)
+#
+# This target actually generates 2 files; autoconf.mk and autoconf.mk.dep.
+# the dep file is only include in this top level makefile to determine when
+# to regenerate the autoconf.mk file.
+
+
+$(SPLDIR)/autoconf.mk: $(obj)include/config.h $(obj)include/configs/$(SOC).h
+	@echo Generating $@ ; \
+    set -e ; \
+    : Extract the config macros ; \
+    $(CPP) $(ALL_CFLAGS) -DDO_DEPS_ONLY -dM $(SRCTREE)/include/common.h > $@.tmp && \
+	sed -n -f $(SRCTREE)/tools/scripts/define2mk.sed $@.tmp > $@; \
+	rm $@.tmp
+
