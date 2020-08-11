@@ -1,0 +1,23 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# Normal rules
+#
+
+*.rej
+*.axf
+*.map
+*.bin
+*.lds
+*.o
+*.depend
+*.cur
+cur.log
+include/generated/generic-asm-offsets.h
+#
+# Generated files
+#
+
+
