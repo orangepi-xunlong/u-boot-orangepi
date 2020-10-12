@@ -1,1 +1,5 @@
 /dtc
+
+*.tab.h
+*.lex.c
+*.tab.c

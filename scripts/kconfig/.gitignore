@@ -15,3 +15,6 @@ nconf
 qconf
 gconf
 kxgettext
+
+*.lex.c
+*.tab.c
