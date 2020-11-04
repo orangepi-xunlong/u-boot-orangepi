@@ -1,0 +1,24 @@
+
+config SUNXI_SDMMC
+	bool "support sunxi sdmmc devices"
+	depends on SUNXI_FLASH && MMC
+	default n
+	help
+	  enable support for sunxi sdmmc devices. these provide a block-level interface which permits
+	  reading, writing and (in some cases) erasing blocks.
+
+
+if SUNXI_SDMMC
+config MMC_LOGICAL_OFFSET
+	int "logic address for read/write"
+	default 40960
+	help
+	  logic address for mbr and partitions(1M-MBRSIZE = 2048-32).
+	  SDMMC address is offset*512 bytes.
+
+endif
+
+
+
+
+

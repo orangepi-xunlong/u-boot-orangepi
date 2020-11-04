@@ -1,0 +1,57 @@
+config AW_SPINAND_PHYSICAL_LAYER
+	bool
+	help
+	  Enable support for Allwinner's physical layer for spinand.
+	  It's a command physical layer, used by both AW-nand with nftl and
+	  MTD-nand with ubi.
+
+config AW_SPINAND_NONSTANDARD_SPI_DRIVER
+	bool
+	help
+	  Use NONSTANDARD spi controller driver for spinand. It's mamy
+	  bugs on standard spi driver when we developing, that's why the
+	  nonstandard spi driver existed.
+
+config AW_SPINAND_ENABLE_PHY_CRC16
+	bool "check crc16 for each page on spinand physical layer"
+	depends on AW_SPINAND_PHYSICAL_LAYER
+	help
+	  It is experimental.
+	  To check crc16 for each page on spinand physical layer.
+
+config AW_MTD_SPINAND
+	tristate "Allwinner MTD SPINAND Device Support"
+	depends on ARCH_SUNXI
+	select AW_SPINAND_PHYSICAL_LAYER
+	select AW_SPINAND_NONSTANDARD_SPI_DRIVER
+	select MTD_UBI
+	help
+	  Enables support for SPINAND Flash chips on Allwinner SoCs.
+	  It's different with Allwinner's privately nand driver that it use
+	  ubi system rather than Allwinner's NFTL.
+
+config AW_SPINAND_PSTORE_MTD_PART
+	bool "create pstore mtd partition for aw ubi spinand"
+	depends on AW_MTD_SPINAND
+	help
+	  Whether create pstore mtd partition, which is need by pstroe-blk.
+	  If you want linux kernel dump log to spinand when oops/panic, you
+	  should create pstreo mtd partition by this configure.
+
+	  If unsure, say no.
+
+config AW_MTD_SPINAND_UBOOT_BLKS
+	int "Blocks Count Reserved For Uboot"
+	depends on AW_MTD_SPINAND
+	default 0
+	range 0 33
+	help
+	  How many reserved blocks for uboot and uboot's copy?
+	  It's must in range [1,33]. If 0, set it automatically.
+	  The larger it is, the more uboot copies to save.
+
+	  WARNING!!!
+	  If it is change, the secure storage may be erased!
+	  Once changed, the image will be incompatible to old image.
+
+	  if unsure, set it 0.

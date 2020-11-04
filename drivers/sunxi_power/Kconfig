@@ -1,0 +1,79 @@
+menuconfig SUNXI_POWER
+	bool "Sunxi power device support"
+if SUNXI_POWER
+
+config SUNXI_PMU
+	bool "Sunxi pmu support"
+	---help---
+	Select this to enable support for PMU
+config SUNXI_BMU
+	bool "Sunxi bmu support"
+	---help---
+	Select this to enable support for BMU
+config SUNXI_TRY_POWER_SPLY
+	bool "try power sply"
+	depends on SUNXI_PMU
+	---help---
+	Try to find for example axp806_power_sply
+
+config AXPNULL_POWER
+	bool "axpdummy support board without a pmic"
+	depends on SUNXI_PMU
+	---help---
+	Select this for boards which do not use a PMIC.
+
+config AXP858_POWER
+	bool "pmu axp858 pmic support"
+	depends on SUNXI_PMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp858 pmic found on some
+	A50 PMU dev board
+
+config AXP2585_POWER
+	bool "bmu axp2585 pmic support"
+	depends on SUNXI_BMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp2585 pmic found on some
+	A50 BMU dev board
+
+config AXP2101_POWER
+	bool "pmu/bmu axp2101 pmic support"
+	depends on SUNXI_PMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp21 pmic found on some
+	sun8iw19p1 PMU/BMU dev board
+
+config SUNXI_AXP152_POWER
+	bool "pmu axp152 pmic support"
+	depends on SUNXI_PMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp152 pmic found on some
+	sun50iw9p1 PMU dev board
+
+config AXP1530_POWER
+	bool "pmu axp1530 pmic support"
+	depends on SUNXI_PMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp1530 pmic found on some
+	sun50iw9p1 PMU dev board
+
+config AXP806_POWER
+	bool "pmu axp806 pmic support"
+	depends on SUNXI_PMU
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp81X pmic found on some
+	sun50iw9p1 PMU dev board
+endif
+

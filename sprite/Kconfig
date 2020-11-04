@@ -1,0 +1,63 @@
+
+menuconfig SUNXI_SPRITE
+	bool "Sunxi Sprite support"
+	select SUNXI_FLASH
+	help
+	  Enable support for sunxi efex devices. 
+
+if SUNXI_SPRITE
+config SUNXI_SECURE_STORAGE
+	bool "Sunxi Sprite Secure Storage"
+	help
+	  Enable supprot for sunxi secure storage
+
+config SUNXI_SPRITE_CARTOON
+	bool "Sunxi Sprite cartoon support"
+	depends on (BOOT_GUI)
+	select SUNXI_FLASH
+	help
+	  Enable support for sunxi Sprite cartoon(display)
+
+config SUNXI_SPRITE_RECOVERY
+	bool "Sunxi Sprite recovery support"
+	depends on SUNXI_SDMMC
+	default y
+	help
+	  Enable support for sunxi Sprite recovery
+
+config SUNXI_AUTO_UPDATE
+	bool "Sunxi auto update support"
+	depends on MMC || USB
+	default n
+	help
+	  Enable support for sunxi auto update
+choice
+	depends on SUNXI_AUTO_UPDATE
+	prompt "select update form sdcard or usb disk"
+	default UPDATE_FROM_SDCARD
+
+config UPDATE_FROM_SDCARD
+	bool "img from sdcard"
+
+config UPDATE_FROM_USB
+	bool "img from usb disk"
+
+endchoice
+config FW_BURN_UDISK_MIN_SIZE
+	hex "UDISK min data length default is 0x800"
+	depends on SUNXI_SPRITE || SUNXI_AUTO_UPDATE
+	default 0x800
+	help
+	  set UDISK min data length
+
+config SUNXI_PART_UPDATE
+	bool "Sunxi part update support"
+	depends on MMC
+	default n
+	help
+	  Enable support for sunxi auto update
+
+endif
+
+
+

@@ -1,0 +1,32 @@
+menu "Sunxi crypto driver support"
+
+config SUNXI_CE_DRIVER
+	bool "Sunxi ce driver support"
+
+choice
+	prompt "CE_VERSION"
+	depends on SUNXI_CE_DRIVER
+config SUNXI_CE_10
+	bool "CE_VERSION 1.0"
+
+config SUNXI_CE_20
+	bool "CE_VERSION 2.0"
+
+config SUNXI_CE_21
+	bool "CE_VERSION 2.1"
+endchoice
+
+config SUNXI_SHA_CAL_PADDING
+	int "padding when malloc buffer for sha calculation"
+	depends on SUNXI_CE_DRIVER
+	default 0 if SUNXI_CE_20 || SUNXI_CE_21
+	default 64 if SUNXI_CE_10
+	help
+		some version of ce need to add padding data
+		to target data tail when calculating sha, even
+		when data len is already aligned. if malloc size
+		equals data len, padding goes to success buffer,
+		result in heap overflow. count this size in when
+		malloc buffer for sha calculation
+
+endmenu

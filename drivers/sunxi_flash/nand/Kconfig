@@ -1,0 +1,27 @@
+
+
+config SUNXI_NAND
+	bool "Support sunxi nand devices"
+	depends on ARCH_SUNXI
+	help
+	  Enable support for sunxi nand devices. These provide a block-level interface which permits
+	  reading, writing and (in some cases) erasing blocks.
+
+config SUNXI_UBIFS
+	bool "Support sunxi nand ubifs devices"
+	depends on ARCH_SUNXI
+	help
+	  Enable support for sunxi nand ubifs devices. These provide a block-level interface which permits
+	  reading, writing and (in some cases) erasing blocks.
+
+config SUNXI_COMM_NAND
+	bool "Support COMM NAND interface"
+	depends on SUNXI_NAND
+	default y if MACH_SUN50IW3
+
+config SUNXI_COMM_NAND_V1
+	bool "Support COMM NAND V1 interface"
+	depends on SUNXI_NAND || SUNXI_UBIFS
+	default y if MACH_SUN8IW18 || MACH_SUN50IW9 || MACH_SUN50IW10 || MACH_SUN8IW15 || MACH_SUN8IW7
+	select SUNXI_DMA
+

@@ -1,0 +1,668 @@
+/*
+ * Allwinner Technology CO., Ltd. sun8iw18p1 soc board.
+ *
+ * soc board support.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/gpio.h>
+/*#include "sun8iw18p1-clk.dtsi"*/
+/*#include "sun8iw18p1-pinctrl.dtsi"*/
+
+
+/ {
+	model = "sun8iw18";
+	compatible = "allwinner,sun8iw18p1";
+	interrupt-parent = <&wakeupgen>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		serial0 = &uart0;
+		twi0 = &twi0;
+		twi1 = &twi1;
+		spi0 = &spi0;
+		spi1 = &spi1;
+		spinand = &spinand;
+		nand0_para = &spinand;
+		ledc = &ledc;
+		nand0 =&nand0;
+		pwm = &pwm;
+		pwm0 = &pwm0;
+		pwm1 = &pwm1;
+		boot_disp = &boot_disp;
+	};
+
+	gic: interrupt-controller@03020000 {
+		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		device_type = "gic";
+		interrupt-controller;
+		reg = <0x0 0x03021000 0 0x1000>, /* GIC Dist */
+		      <0x0 0x03022000 0 0x2000>, /* GIC CPU */
+		      <0x0 0x03024000 0 0x2000>, /* GIC VCPU Control */
+		      <0x0 0x03026000 0 0x2000>; /* GIC VCPU */
+		interrupts = <GIC_PPI 9 0xf04>; /* GIC Maintenence IRQ */
+		interrupt-parent = <&gic>;
+	};
+	wakeupgen: interrupt-controller@0 {
+		compatible = "allwinner,sunxi-wakeupgen";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&gic>;
+	};
+
+	soc: soc@03000000 {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		device_type = "soc";
+
+
+		platform {
+			device_type = "platform";
+			eraseflag = <0x0>;
+		};
+
+		target {
+			device_type = "target";
+			boot_clock = <1008>;
+			storage_type = <0xffffffff>;
+			burn_key = <0x0>;
+			auto_fel = <0x0>;
+		};
+		pio: pinctrl@0300b000 {
+			compatible = "allwinner,sun8iw18p1-pinctrl";
+			reg = <0x0 0x0300b000 0x0 0x400>;
+			interrupts = <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
+			device_type = "pio";
+			/*clocks = <&clk_pio>;*/
+			gpio-controller;
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			#size-cells = <0>;
+			#gpio-cells = <6>;
+
+			vdevice_pins_a: vdevice@0 {
+				allwinner,pins = "PE0", "PE1";
+				allwinner,function = "vdevice";
+				allwinner,muxsel = <5>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			uart0_pins_a: uart0@0 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,pname = "uart0_tx", "uart0_rx";
+				allwinner,function = "uart0";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			uart0_pins_b: uart0@1 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			uart1_pins_a: uart1@0 {
+				allwinner,pins = "PG6", "PG7", "PG8", "PG9";
+				allwinner,pname = "uart1_tx", "uart1_rx",
+						  "uart1_rts", "uart1_cts";
+				allwinner,function = "uart1";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			uart1_pins_b: uart1@1 {
+				allwinner,pins = "PG6", "PG7", "PG8", "PG9";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			uart2_pins_a: uart2@0 {
+				allwinner,pins = "PB0", "PB1", "PB2", "PB3";
+				allwinner,pname = "uart2_tx", "uart2_rx",
+						  "uart2_rts", "uart2_cts";
+				allwinner,function = "uart2";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			uart2_pins_b: uart2@1 {
+				allwinner,pins = "PB0", "PB1", "PB2", "PB3";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			uart3_pins_a: uart3@0 {
+				allwinner,pins = "PH4", "PH5", "PH6", "PH7";
+				allwinner,pname = "uart3_tx", "uart3_rx",
+						  "uart3_rts", "uart3_cts";
+				allwinner,function = "uart3";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			uart3_pins_b: uart3@1 {
+				allwinner,pins = "PH4", "PH5", "PH6", "PH7";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			twi0_pins_a: twi0@0 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,pname = "twi0_scl", "twi0_sda";
+				allwinner,function = "twi0";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			twi0_pins_b: twi0@1 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			twi1_pins_a: twi1@0 {
+				allwinner,pins = "PB8", "PB9";
+				allwinner,pname = "twi1_scl", "twi1_sda";
+				allwinner,function = "twi1";
+				allwinner,muxsel = <4>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			twi1_pins_b: twi1@1 {
+				allwinner,pins = "PB8", "PB9";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			spi0_pins_a: spi0@0 {
+				allwinner,pins = "PC0", "PC2", "PC4", "PC16",
+						 "PC15";
+				allwinner,pname = "spi0_sclk", "spi0_mosi",
+						  "spi0_miso", "spi0_hold",
+						  "spi0_wp";
+				allwinner,function = "spi0";
+				allwinner,muxsel = <4>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			spi0_pins_b: spi0@1 {
+				allwinner,pins = "PC3";
+				allwinner,pname = "spi0_cs0";
+				allwinner,function = "spi0";
+				allwinner,muxsel = <4>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>; 	// only CS should be pulled up
+			};
+
+			spi0_pins_c: spi0@2 {
+				allwinner,pins = "PC0", "PC2", "PC3", "PC4",
+						 "PC15", "PC16";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			spi1_pins_a: spi1@0 {
+				allwinner,pins = "PH5", "PH6", "PH7";
+				allwinner,pname = "spi1_sclk", "spi1_mosi",
+						  "spi1_miso";
+				allwinner,function = "spi1";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			spi1_pins_b: spi1@1 {
+				allwinner,pins = "PH4";
+				allwinner,pname = "spi1_cs0";
+				allwinner,function = "spi1";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>; // only CS should be pulled up
+			};
+
+			spi1_pins_c: spi1@2 {
+				allwinner,pins = "PH4", "PH5", "PH6", "PH7";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			nand0_pins_a: nand0@0 {
+				allwinner,pins = "PC0", "PC1", "PC2", "PC5",
+						 "PC16", "PC15", "PC14", "PC13",
+						 "PC11", "PC10", "PC9", "PC8",
+						 "PC12";
+				allwinner,pname= "nand0_we", "nand0_ale","nand0_cle", "nand0_nre",
+						 "nand0_d0", "nand0_d1", "nand0_d2", "nand0_d3",
+						 "nand0_d4", "nand0_d5", "nand0_d6", "nand0_d7",
+						 "nand0_ndqs";
+				allwinner,function = "nand0";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			nand0_pins_b: nand0@1 {
+				allwinner,pins = "PC4", "PC6", "PC3", "PC7";
+				allwinner,pname= "nand0_ce0", "nand0_rb0", "nand0_ce1", "nand0_rb1";
+				allwinner,function = "nand0";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;// only RB&CE should be pulled up
+			};
+
+			nand0_pins_c: nand0@2 {
+				allwinner,pins = "PC0", "PC1", "PC2", "PC3",
+						 "PC4", "PC5", "PC6", "PC7",
+						 "PC8", "PC9", "PC10", "PC11",
+						 "PC12", "PC13", "PC14", "PC15",
+						 "PC16";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			ledc_pins_a: ledc@0 {
+				allwinner,pins = "PB0";
+				allwinner,function = "ledc";
+				allwinner,muxsel = <5>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			ledc_pins_b: ledc@1 {
+				allwinner,pins = "PB0";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+		}; /*end pio*/
+
+		uart0: uart@05000000 {
+			compatible = "allwinner,sun8i-uart";
+			device_type = "uart0";
+			reg = <0x0 0x05000000 0x0 0x400>;
+			interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_uart0>;*/
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&uart0_pins_a>;
+			pinctrl-1 = <&uart0_pins_b>;
+			uart0_port = <0>;
+			uart0_type = <2>;
+			status = "okay";
+		};
+
+
+		twi0: twi@0x05002000{
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sun8i-twi";
+			device_type = "twi0";
+			reg = <0x0 0x05002000 0x0 0x400>;
+			interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_twi0>;*/
+			clock-frequency = <400000>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&twi0_pins_a>;
+			pinctrl-1 = <&twi0_pins_b>;
+			status = "disabled";
+		};
+
+		twi1: twi@0x05002400{
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sun8i-twi";
+			device_type = "twi1";
+			reg = <0x0 0x05002400 0x0 0x400>;
+			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_twi1>;*/
+			clock-frequency = <100000>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&twi1_pins_a>;
+			pinctrl-1 = <&twi1_pins_b>;
+			status = "disabled";
+		};
+
+
+		spi0: spi@05010000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sun8i-spi";
+			device_type = "spi0";
+			reg = <0x0 0x05010000 0x0 0x1000>;
+			interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_pll_periph0>, <&clk_spi0>;*/
+			clock-frequency = <100000000>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&spi0_pins_a &spi0_pins_b>;
+			pinctrl-1 = <&spi0_pins_c>;
+			spi0_cs_number = <2>;
+			spi0_cs_bitmap = <3>;
+			status = "disabled";
+		};
+
+		spinand: spinand@05010000 {
+			compatible = "allwinner,sunxi-spinand";
+			device_type = "spinand";
+			reg = <0x0 0x05010000 0x0 0x1000>;
+			interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_pll_periph0>, <&clk_spi0>;*/
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&spi0_pins_a &spi0_pins_b>;
+			pinctrl-1 = <&spi0_pins_c>;
+			nand0_regulator1 = "vcc-nand";
+			nand0_regulator2 = "none";
+			nand0_cache_level = <0x55aaaa55>;
+			nand0_flush_cache_num = <0x55aaaa55>;
+			nand0_capacity_level = <0x55aaaa55>;
+			nand0_id_number_ctl = <0x55aaaa55>;
+			nand0_print_level = <0x55aaaa55>;
+			nand0_p0 = <0x55aaaa55>;
+			nand0_p1 = <0x55aaaa55>;
+			nand0_p2 = <0x55aaaa55>;
+			nand0_p3 = <0x55aaaa55>;
+			status = "disabled";
+		};
+
+		spi1: spi@05011000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sun8i-spi";
+			device_type = "spi1";
+			reg = <0x0 0x05011000 0x0 0x1000>;
+			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_pll_periph0>, <&clk_spi1>;*/
+			clock-frequency = <100000000>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&spi1_pins_a &spi1_pins_b>;
+			pinctrl-1 = <&spi1_pins_c>;
+			spi1_cs_number = <1>;
+			spi1_cs_bitmap = <1>;
+			status = "disabled";
+		};
+
+
+		pwm: pwm@0300a000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sunxi-pwm";
+			reg = <0x0 0x0300a000 0x0 0x3ff>;
+			/*clocks = <&clk_pwm>;*/
+			pwm-number = <8>;
+			pwm-base = <0x0>;
+			pwms = <&pwm0>, <&pwm1>;
+		};
+		pwm0: pwm0@0300a000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sunxi-pwm0";
+			pinctrl-names = "active", "sleep";
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x00>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x00>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x00>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x01>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x00>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x01>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x20>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x20>;
+			reg_bypass_shift = <0x05>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x20>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x20>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x30>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x30>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x00>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x00>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0x60>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0x60>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0x60>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0x60>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0x60>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0x64>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0x64>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm1: pwm1@0300a000 {
+			compatible = "allwinner,sunxi-pwm1";
+			pinctrl-names = "active", "sleep";
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x01>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x01>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x02>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x03>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x02>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x03>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x20>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x20>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x20>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x20>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x30>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x30>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x01>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x01>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0x80>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0x80>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0x80>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0x80>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0x80>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0x84>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0x84>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+
+		boot_disp: boot_disp {
+			compatible = "allwinner,boot_disp";
+		};
+
+
+
+
+		nand0:nand0@04011000 {
+			compatible = "allwinner,sun8iw18-nand";
+			device_type = "nand0";
+			reg = <0x0 0x04011000 0x0 0x1000>; /* nand0 */
+			interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
+			/*clocks = <&clk_pll_periph1x2>,<&clk_nand0>,<&clk_nand1>;*/
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&nand0_pins_a &nand0_pins_b>;
+			pinctrl-1 = <&nand0_pins_c>;
+			nand0_regulator1 = "vcc-nand";
+			nand0_regulator2 = "none";
+			nand0_cache_level = <0x55aaaa55>;
+			nand0_flush_cache_num = <0x55aaaa55>;
+			nand0_capacity_level = <0x55aaaa55>;
+			nand0_id_number_ctl = <0x55aaaa55>;
+			nand0_print_level = <0x55aaaa55>;
+			nand0_p0 = <0x55aaaa55>;
+			nand0_p1 = <0x55aaaa55>;
+			nand0_p2 = <0x55aaaa55>;
+			nand0_p3 = <0x55aaaa55>;
+			status = "disabled";
+		};
+
+
+		ledc: ledc@0x06700000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "allwinner,sunxi-leds";
+			reg = <0x0 0x06700000 0x0 0x50>;
+			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "ledcirq";
+			/*clocks = <&clk_ledc>, <&clk_cpuapb>;*/
+			clock-names = "clk_ledc", "clk_cpuapb";
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&ledc_pins_a>;
+			pinctrl-1 = <&ledc_pins_b>;
+			led_count         = <32>;
+			output_mode       = "GRB";
+			reset_ns          = <84>;
+			t1h_ns            = <800>;
+			t1l_ns            = <450>;
+			t0h_ns            = <400>;
+			t0l_ns            = <850>;
+			wait_time0_ns     = <84>;
+			wait_time1_ns     = <84>;
+			wait_data_time_ns = <600000>;
+		};
+	};
+};

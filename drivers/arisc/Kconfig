@@ -1,0 +1,3 @@
+config SUNXI_ARISC_EXIST
+	bool "support sunxi arisc"
+	default n

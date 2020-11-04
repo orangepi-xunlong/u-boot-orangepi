@@ -1,0 +1,11 @@
+menuconfig SUNXI_IR
+	bool "sunxi ir"
+	default n
+	imply SUNXI_IR_NEC_DECODE
+
+if SUNXI_IR
+
+config SUNXI_IR_NEC_DECODE
+	bool "support ir nec protocal"
+
+endif

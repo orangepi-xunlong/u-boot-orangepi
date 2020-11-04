@@ -1,0 +1,237 @@
+#
+# Video drivers selection for sunxi soc. These configs only impact the
+# compile process. You can surely check all the options. In this case, all the
+# display driver will be compiled, but which drivers finally  will be used is
+# decided by device tree configuration. What's more, enable needed power for
+# display by configure the device tree, and the vop driver will do the rest.
+#
+# Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
+#
+
+menu "BOOT GUI"
+
+config BOOT_GUI
+    bool "Boot GUI framework for sunxi display"
+    depends on DISP2_SUNXI
+    default n
+    ---help---
+      Boot GUI framework for sunxi display
+
+config UPDATE_DISPLAY_MODE
+	bool "Update init_disp to kernel"
+	depends on BOOT_GUI
+	default n
+	---help---
+	  Update init_disp to kernel
+
+config CONFIG_LCD_CHECK_SKIP_OPEN
+	bool "Skip LCD open in uboot"
+	depends on BOOT_GUI
+	default y
+	---help---
+	  if true, uboot will skip LCD open according ban_bl.fex in Reserve0 partition
+
+config BOOT_GUI_DOUBLE_BUF
+	bool "Enable double buffer for boot GUI"
+	depends on BOOT_GUI
+	default n
+	---help---
+	  if ture, enable double buffer for boot GUI
+
+
+menuconfig BOOT_GUI_TEST
+	bool "Boot GUI test command for boot gui"
+	depends on BOOT_GUI
+	default n
+	---help---
+	  Boot GUI test command
+
+config SURPORT_DRAW_CHARS
+	bool "Boot GUI test command(draw char) "
+	depends on BOOT_GUI_TEST
+	default y
+	---help---
+	  Boot GUI test command(draw char)
+
+
+config SUPORT_DRAW_GEOMETRY
+	bool "Boot GUI test command(draw geometry) "
+	depends on BOOT_GUI_TEST
+	default y
+	---help---
+	  Boot GUI test command(draw geometry)
+
+endmenu
+
+menu "SUNXI LOGO DISPLAY"
+config CMD_SUNXI_BMP
+	bool "Sunxi Bmp display interface"
+	depends on (BOOT_GUI && SUNXI_FLASH && CMD_FAT)
+	default n
+	---help---
+	  Load bmp from flash and display
+
+config SUNXI_SPINOR_BMP
+	bool "Bmp read interface for spinor"
+	depends on (SUNXI_FLASH)
+	default n
+	---help---
+	  Bmp read interface for spinor.Load bmp from spino into memory
+
+config ENABLE_ADVERT_PICTURE
+	bool "Change bmp logo dynamic for advert"
+	depends on (CMD_SUNXI_BMP)
+	default n
+	---help---
+	  Change bmp logo dynamic for advert
+
+config SUNXI_SPINOR_JPEG
+	bool "jpeg read interface for spinor"
+	depends on (SUNXI_FLASH)
+	default n
+	---help---
+	  jpeg read interface for spinor.Load jpeg from spino into memory
+
+config CMD_SUNXI_JPEG
+	bool "Sunxi JPEG display interface"
+	depends on (SUNXI_FLASH)
+	default y if SUNXI_SPINOR_JPEG
+	---help---
+	  Load bmp from flash and display
+endmenu
+
+
+menuconfig DISP2_SUNXI
+	bool "DISP Driver Support(sunxi-disp2)"
+	depends on (ARCH_SUNXI)
+	select CLK_SUNXI
+	default n
+	---help---
+	  Display driver for sunxi based boards.
+
+
+config HDMI_DISP2_SUNXI
+	bool "HDMI-1.4 Driver Support(sunxi-disp2)"
+	depends on (DISP2_SUNXI)
+	default n
+	---help---
+	  Hdmi-1.4 driver for sunxi based boards.
+
+menuconfig HDMI2_DISP2_SUNXI
+  bool "HDMI2.0 Driver Support(sunxi-disp2)"
+  depends on (DISP2_SUNXI)
+  default n
+  ---help---
+  Say Y here if you want to have support for HDMI2.0 controller
+  on the sunxi based boards. The HDMI2.0 controller include edid,
+  hdcp1.4,hdcp2.2,cec feature and is compatible with hdmi1.4,support
+  HDR,4k@60Hz. If unsure, say N.
+
+menuconfig HDMI2_HDCP_SUNXI
+  bool "HDMI2.0 HDCP"
+  depends on (HDMI2_DISP2_SUNXI)
+  default n
+  ---help---
+  Say Y here if you want to handle the cec message by User Space.
+  Say N here if you want to handle the cec message by Kernel.
+  If unsure, say N.
+
+config HDMI2_HDCP22_SUNXI
+  bool "HDMI2.0 HDCP2.2"
+  depends on (HDMI2_HDCP_SUNXI && HDMI2_DISP2_SUNXI)
+  default n
+  ---help---
+  Say Y here if you want to handle the cec message by User Space.
+  Say N here if you want to handle the cec message by Kernel.
+  If unsure, say N.
+
+menuconfig HDMI2_CEC_SUNXI
+  bool "HDMI2.0 CEC"
+  depends on (HDMI2_DISP2_SUNXI)
+  default n
+  ---help---
+  Say Y here if you want to handle the cec message by User Space.
+  Say N here if you want to handle the cec message by Kernel.
+  If unsure, say N.
+
+config HDMI2_CEC_USER
+  bool "HDMI2.0 CEC handled by user space"
+  depends on (HDMI2_CEC_SUNXI && HDMI2_DISP2_SUNXI)
+  default n
+  ---help---
+  Say Y here if you want to handle the cec message by User Space.
+  Say N here if you want to handle the cec message by Kernel.
+  If unsure, say N.
+
+config HDMI2_FREQ_SPREAD_SPECTRUM
+  bool "new frequency spread spectrum(hershey) of sunxi"
+  depends on HDMI2_DISP2_SUNXI
+  default n
+  ---help---
+  Say Y here if you want to use new frequency spread spectrum(hershey) of sunxi.
+  Say N here if you do NOT want to new frequency spread spectrum of sunxi.
+  If unsure, say N
+
+config VDPO_DISP2_SUNXI
+	 bool "VDPO Driver Support(sunxi-disp2)"
+	 depends on (DISP2_SUNXI)
+	 default n
+	 ---help---
+	  VDPO(bt656 and bt1120 output) driver for sunxi based boards.
+
+menuconfig TV_DISP2_SUNXI
+    bool "TV Driver Support(sunxi-disp2)"
+    depends on (DISP2_SUNXI)
+    default n
+    ---help---
+    TV driver for sunxi based boards.ie. CVBS out, VGA out, YPbPr out
+    And GM7121 and ac200.
+
+config DISP2_TV_GM7121
+	bool "GM7121 TV module Support(sunxi-disp2)"
+ 	depends on (DISP2_SUNXI && TV_DISP2_SUNXI)
+	default n
+	---help---
+
+config DISP2_TV_AC200
+	bool "AC200 TV module Support(sunxi-disp2)"
+	depends on (DISP2_SUNXI && TV_DISP2_SUNXI)
+	default n
+	---help---
+
+config EDP_DISP2_SUNXI
+	bool "EDP Driver Support(sunxi-disp2)"
+	depends on (DISP2_SUNXI)
+	default n
+	---help---
+      EDP 1.2 driver for sunxi. Embedded Display Port is
+      a high speed display interface for embedded device.
+      DisplayPort can be used to transmit audio and video
+      simultaneously, but each one is optional and can be
+      transmitted without the other.
+
+
+config EINK_PANEL_USED
+	bool "Eink panel used"
+	depends on (DISP2_SUNXI && CONFIG_MACH_SUN8IW15)
+	default n
+	---help---
+
+config EINK200_SUNXI
+	bool "Eink Driver Version 2.0 Support"
+	depends on (ARCH_SUNXI)
+	default n
+	---help---
+
+menu "LCD panels select"
+	depends on DISP2_SUNXI
+
+source "drivers/video/sunxi/disp2/disp/lcd/Kconfig"
+endmenu
+
+menu "Display engine feature select"
+	depends on DISP2_SUNXI
+
+source "drivers/video/sunxi/disp2/disp/Kconfig"
+endmenu
+

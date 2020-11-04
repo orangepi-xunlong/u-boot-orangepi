@@ -1,0 +1,23 @@
+menuconfig SUNXI_PHY_KEY
+	bool "Sunxi phy-key divice support"
+
+if SUNXI_PHY_KEY
+
+choice
+	prompt "choice sunxi phy-key"
+	default SUNXI_GPADC_KEY
+	default SUNXI_LRADC_KEY
+
+config SUNXI_GPADC_KEY
+	bool "Support sunxi gpkey devices"
+	help
+	  Enable support for sunxi gpkey devices.
+
+config SUNXI_LRADC_KEY
+	bool "Support sunxi lrkey devices"
+	help
+	  Enable support for sunxi lrkey devices.
+endchoice
+
+endif
+

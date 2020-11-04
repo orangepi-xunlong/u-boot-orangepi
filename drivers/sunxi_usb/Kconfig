@@ -1,0 +1,44 @@
+menuconfig SUNXI_USB
+	bool "Sunxi usb divice support"
+
+if SUNXI_USB
+
+config SUNXI_EFEX
+	bool "Support sunxi efex devices"
+	select SUNXI_FLASH
+	help
+	  Enable support for sunxi efex devices. 
+
+config SUNXI_BURN
+	bool "Support sunxi uburn devices"
+	select SUNXI_FLASH
+	help
+	  ENable support for sunxi uburn devices.
+
+menuconfig SUNXI_FASTBOOT
+	bool "Support sunxi fastboot devices"
+	select SUNXI_FLASH
+	imply  SUNXI_FASTBOOT_MBR
+	imply  SUNXI_FASTBOOT_BOOT0
+	imply  SUNXI_FASTBOOT_UBOOT
+	help
+	  ENable support for sunxi fastboot devices.
+if SUNXI_FASTBOOT
+
+config SUNXI_FASTBOOT_MBR
+	bool "Burn MBR via fastboot"
+	help
+		Support use fastboot to burn MBR
+
+config SUNXI_FASTBOOT_BOOT0
+	bool "Burn boot0/toc0 via fastboot"
+	help
+		Support use fastboot to burn boot0/toc0
+
+config SUNXI_FASTBOOT_UBOOT
+	bool "Burn uboot0/toc1 via fastboot"
+	help
+		Support use fastboot to burn uboot/toc1
+endif
+
+endif

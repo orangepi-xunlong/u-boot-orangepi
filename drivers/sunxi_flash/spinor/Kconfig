@@ -1,0 +1,25 @@
+
+config SUNXI_SPINOR
+	bool "Support sunxi spinor devices"
+	depends on SUNXI_FLASH
+	default y if SPI_FLASH
+	help
+	  Enable support for sunxi spinor devices. These provide a block-level interface which permits
+	  reading, writing and (in some cases) erasing blocks.
+
+if SUNXI_SPINOR
+config SPINOR_LOGICAL_OFFSET
+	int "logic address for read/write"
+	default 2016
+	help
+	  logic address for mbr and partitions(1M-MBRSIZE = 2048-32).
+	  spinor address is offset*512 bytes.
+
+config SPINOR_UBOOT_OFFSET
+	int "uboot offset for boot from spinor"
+	default 128
+	help
+	 spinor address is offset*512 bytes.
+endif
+
+

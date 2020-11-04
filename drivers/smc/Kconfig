@@ -1,0 +1,14 @@
+menu "OPTEE_VERSION"
+
+choice
+	prompt "select optee version"
+	default OPTEE25 if MACH_SUN8IW18
+
+config OPTEE25
+	bool "use optee 2.5 smc api"
+	---help---
+	Select this to use optee 2.5 smc api.
+
+endchoice
+
+endmenu

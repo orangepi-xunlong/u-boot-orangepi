@@ -1,0 +1,10 @@
+menuconfig SUNXI_FLASH
+	bool "Sunxi flash support"
+
+if SUNXI_FLASH
+
+source "drivers/sunxi_flash/nand/Kconfig"
+source "drivers/sunxi_flash/spinor/Kconfig"
+source "drivers/sunxi_flash/mmc/Kconfig"
+
+endif
