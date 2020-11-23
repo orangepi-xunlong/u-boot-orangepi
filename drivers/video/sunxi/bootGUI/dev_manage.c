@@ -177,6 +177,12 @@ static int get_output_mode(disp_device_t *disp_dev, char *buf, int num)
 					disp_dev->mode = DISP_TV_MOD_1080P_50HZ;
 				else if (strcmp(needle, "1080p60") == 0)
 					disp_dev->mode = DISP_TV_MOD_1080P_60HZ;
+				else if (strcmp(needle, "2160p24") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_24HZ;
+				else if (strcmp(needle, "2160p25") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_25HZ;
+				else if (strcmp(needle, "2160p30") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_30HZ;
 				else{
 					printf("disp_mode=%s is error, set HDMI to 1080p60hz by default\n", needle);
 					disp_dev->mode = DISP_TV_MOD_1080P_60HZ;
