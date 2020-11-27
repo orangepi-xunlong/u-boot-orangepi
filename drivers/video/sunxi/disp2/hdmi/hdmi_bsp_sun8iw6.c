@@ -602,7 +602,7 @@ int bsp_hdmi_ddc_read(char cmd, char pointer, char offset, int nbyte,
 		hdmi_udelay(10);
 		to_cnt--;
 		if (to_cnt == 0) {
-			printf("ddc rst timeout\n");
+			pr_msg("ddc rst timeout\n");
 			break;
 		}
 	}
@@ -622,7 +622,7 @@ int bsp_hdmi_ddc_read(char cmd, char pointer, char offset, int nbyte,
 		while (1) {
 			to_cnt--;
 			if (to_cnt == 0) {
-				printf("ddc read timeout, byte cnt = %d\n",
+				pr_msg("ddc read timeout, byte cnt = %d\n",
 					nbyte);
 				break;
 			}

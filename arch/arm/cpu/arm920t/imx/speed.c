@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * (c) 2004 Sascha Hauer <sascha@saschahauer.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 

@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_edid.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "hdmi_core.h"
 
 static s32 is_hdmi;
@@ -566,7 +550,7 @@ static s32 hdmi_edid_parse_vdb_and_get_tx_support_vic(void)
 			bsp_hdmi_ddc_read(Explicit_Offset_Address_E_DDC_Read, 0,
 						addr, 1, &buf);
 			if (((buf & 0xe0) >> 5) != 0x2) {/*The next data block is also not VDB*/
-				printf("Do not find the VDB, buf:0x%02x\n", buf);
+				pr_msg("Do not find the VDB, buf:0x%02x\n", buf);
 				return -1;
 			} else {/*The next data block is VDB*/
 				for (i = 0; i < len; i++) {
@@ -582,11 +566,11 @@ static s32 hdmi_edid_parse_vdb_and_get_tx_support_vic(void)
 
 			}
 		} else {
-			printf("Error: it is NOT data block\n");
+			pr_msg("Error: it is NOT data block\n");
 			return -1;
 		}
 	} else {
-		printf("WARN:Read flag of edid cea_extension data block failed-3\n");
+		pr_msg("WARN:Read flag of edid cea_extension data block failed-3\n");
 		return -2;
 	}
 
@@ -621,7 +605,7 @@ static s32 hdmi_check_vic_edid_vdb_support_and_get_support_vic(int init_vic)
 						0, addr, 1, &buf);
 			if (ret >= 0) {
 				if (((buf & 0xe0) >> 5) != 0x2) {
-					printf("Do not find VSDB-1\n");
+					pr_msg("Do not find VSDB-1\n");
 					return -1;
 				}
 
@@ -629,15 +613,15 @@ static s32 hdmi_check_vic_edid_vdb_support_and_get_support_vic(int init_vic)
 								     buf & 0x1f,
 								     init_vic);
 			} else {
-				printf("WARN: Read flag of edid cea_extension data block failed-2");
+				pr_msg("WARN: Read flag of edid cea_extension data block failed-2");
 				return -2;
 			}
 		} else {
-			printf("Error: it is not data block-1\n");
+			pr_msg("Error: it is not data block-1\n");
 			return -1;
 		}
 	} else {
-		printf("WARN:Read flag of edid cea_extension data block failed-1\n");
+		pr_msg("WARN:Read flag of edid cea_extension data block failed-1\n");
 		return -2;
 	}
 
@@ -678,7 +662,7 @@ static s32 hdmi_check_vic_edid_vsdb_support(int init_vic)
 				return -1;
 		}
 	} else {
-		printf("Warn: HDMI read EDID VSDB failed\n");
+		pr_msg("Warn: HDMI read EDID VSDB failed\n");
 		return -2;
 	}
 
@@ -712,7 +696,7 @@ static s32 hdmi_edid_get_dt_support(void)
 			if (pixel_clk <= 29700)
 				return HDMI_DT0 + i;
 		} else {
-			printf("WARN: read edid dt block failed\n");
+			pr_msg("WARN: read edid dt block failed\n");
 			return -2;
 		}
 	}
@@ -741,7 +725,7 @@ static s32 hdmi_check_vic_edid_dt_support(int init_vic)
 	int ret = 0;
 
 	if ((init_vic < HDMI_DT0) && (init_vic < HDMI_DT3)) {
-		printf("ERROR: error dt init_vic\n");
+		pr_msg("ERROR: error dt init_vic\n");
 		return -1;
 	}
 
@@ -752,7 +736,7 @@ static s32 hdmi_check_vic_edid_dt_support(int init_vic)
 		pixel_clk = (buf[1] << 8) + buf[0];
 		if (pixel_clk) {
 			if (pixel_clk > 29700) {
-				printf("WARN:DT%d pixel_clk:%d is too big\n",
+				pr_msg("WARN:DT%d pixel_clk:%d is too big\n",
 					dt_num, pixel_clk);
 				return -1;
 			} else {
@@ -762,7 +746,7 @@ static s32 hdmi_check_vic_edid_dt_support(int init_vic)
 			return -1;
 		}
 	} else {
-		printf("Warn: HDMI read detailed descriptor %d failed\n", dt_num);
+		pr_msg("Warn: HDMI read detailed descriptor %d failed\n", dt_num);
 		return init_vic;
 	}
 }
@@ -849,7 +833,7 @@ s32 hdmi_edid_check_init_vic_and_get_supported_vic(int init_vic)
 		if (hdmi_check_other_vic(init_vic)) {
 			return init_vic;
 		} else {
-			printf("Error: unsupport vic\n");
+			pr_msg("Error: unsupport vic\n");
 			return -1;
 		}
 	}
@@ -869,7 +853,7 @@ s32 hdmi_get_edid_dt_timing_info(int dt_mode, struct disp_video_timings *timing)
 	int i;
 
 	if ((dt_mode < HDMI_DT0) || (dt_mode > HDMI_DT3)) {
-		printf("ERROR HDMI EDID DT Mode\n");
+		pr_msg("ERROR HDMI EDID DT Mode\n");
 		return -1;
 	}
 
@@ -878,12 +862,12 @@ s32 hdmi_get_edid_dt_timing_info(int dt_mode, struct disp_video_timings *timing)
 
 	ret = bsp_hdmi_ddc_read(Explicit_Offset_Address_E_DDC_Read, 0, dt_addr, 18, buf);
 	if (ret < 0) {
-		printf("error: can not read edid,");
-		printf("please do not select hdmi_mode = 2 in sys_config\n");
+		pr_msg("error: can not read edid,");
+		pr_msg("please do not select hdmi_mode = 2 in sys_config\n");
 		return -1;
 	} else {
 		for (i = 0; i < 18; i++)
-			printf("EDIDBUF[%d]:0x%02x\n", i, buf[i]);
+			pr_msg("EDIDBUF[%d]:0x%02x\n", i, buf[i]);
 		hactive = ((buf[4] & 0xf0) << 4) + buf[2];
 		hblank = ((buf[4] & 0x0f) << 8) + buf[3];
 		vactive = ((buf[7] & 0xf0) << 4) + buf[5];

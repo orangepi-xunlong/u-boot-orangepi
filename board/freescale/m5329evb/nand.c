@@ -1,16 +1,19 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <common.h>
 #include <asm/io.h>
 #include <asm/immap.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_CMD_NAND)
 #include <nand.h>
@@ -21,7 +24,7 @@
 
 static void nand_hwcontrol(struct mtd_info *mtdinfo, int cmd, unsigned int ctrl)
 {
-	struct nand_chip *this = mtd_to_nand(mtdinfo);
+	struct nand_chip *this = mtdinfo->priv;
 	volatile u16 *nCE = (u16 *) CONFIG_SYS_LATCH_ADDR;
 
 	if (ctrl & NAND_CTRL_CHANGE) {

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -17,6 +18,11 @@
 #include <asm/system.h>
 
 static void cache_flush(void);
+
+void lowlevel_init(void)
+{
+    return ;
+}
 
 int cleanup_before_linux (void)
 {
@@ -44,9 +50,7 @@ int cleanup_before_linux (void)
 /* flush I/D-cache */
 static void cache_flush (void)
 {
-#if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
 	unsigned long i = 0;
 
 	asm ("mcr p15, 0, %0, c7, c7, 0": :"r" (i));
-#endif
 }

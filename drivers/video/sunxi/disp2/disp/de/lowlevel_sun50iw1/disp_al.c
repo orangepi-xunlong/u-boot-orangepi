@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/disp_al.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_al.h"
 #include "de_hal.h"
 
@@ -318,14 +302,12 @@ int disp_al_lcd_query_irq(u32 screen_id, __lcd_irq_id_t irq_id, disp_panel_para 
 	int ret = 0;
 
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel && LCD_IF_DSI == panel->lcd_if &&
-	    LCD_DSI_IF_COMMAND_MODE != panel->lcd_dsi_if) {
-		__dsi_irq_id_t dsi_irq = (LCD_IRQ_TCON0_VBLK == irq_id)
-					     ? DSI_IRQ_VIDEO_VBLK
-					     : DSI_IRQ_VIDEO_LINE;
+	if (LCD_IF_DSI == panel->lcd_if) {
+		__dsi_irq_id_t dsi_irq = (LCD_IRQ_TCON0_VBLK == irq_id)?DSI_IRQ_VIDEO_VBLK:DSI_IRQ_VIDEO_LINE;
 
 		return dsi_irq_query(screen_id, dsi_irq);
-	} else
+	}
+	else
 #endif
 		return tcon_irq_query(screen_id, irq_id);
 
@@ -716,7 +698,3 @@ int disp_al_get_display_size(unsigned int screen_id, unsigned int *width, unsign
 	return 0;
 }
 
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten)
-{
-	tcon_show_builtin_patten(hwdev_index, patten);
-}

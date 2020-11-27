@@ -1,7 +1,7 @@
 /*
  * drivers/video/sunxi/disp2/disp/de/disp_lcd/disp_lcd.c
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
+ * Copyright (c) 2007-2018 Allwinnertech Co., Ltd.
  * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -52,7 +52,7 @@ struct disp_lcd_private_data
 	struct clk *clk_parent;
 };
 
-__attribute__((unused)) static spinlock_t lcd_data_lock;
+static spinlock_t lcd_data_lock;
 
 static struct disp_device *lcds = NULL;
 static struct disp_lcd_private_data *lcd_private;
@@ -316,24 +316,29 @@ static s32 lcd_parse_panel_para(u32 disp, disp_panel_para * info)
 	if (ret == 1)
 		info->lcd_tcon_en_odd_even = value;
 
+    ret = disp_sys_script_get_item(primary_key, "lcd_edp_rate", &value, 1);
+    if (ret == 1)
+    {
+        info->lcd_edp_rate = value;
+    }
 
-	ret = disp_sys_script_get_item(primary_key, "lcd_fsync_en", &value, 1);
-	if (ret == 1)
-		info->lcd_fsync_en = value;
+    ret = disp_sys_script_get_item(primary_key, "lcd_edp_lane", &value, 1);
+    if (ret == 1)
+    {
+        info->lcd_edp_lane= value;
+    }
 
-	ret = disp_sys_script_get_item(primary_key, "lcd_fsync_act_time", &value, 1);
-	if (ret == 1)
-		info->lcd_fsync_act_time = value;
+    ret = disp_sys_script_get_item(primary_key, "lcd_edp_colordepth", &value, 1);
+    if (ret == 1)
+    {
+        info->lcd_edp_colordepth = value;
+    }
 
-	ret = disp_sys_script_get_item(primary_key, "lcd_fsync_dis_time", &value, 1);
-	if (ret == 1)
-		info->lcd_fsync_dis_time = value;
-
-	ret =
-	    disp_sys_script_get_item(primary_key, "lcd_fsync_pol", &value,
-				     1);
-	if (ret == 1)
-		info->lcd_fsync_pol = value;
+	ret = disp_sys_script_get_item(primary_key, "lcd_edp_fps", &value, 1);
+    if (ret == 1)
+    {
+        info->lcd_edp_fps = value;
+    }
 
     ret = disp_sys_script_get_item(primary_key, "lcd_hv_clk_phase", &value, 1);
     if (ret == 1)
@@ -649,20 +654,21 @@ static void lcd_get_sys_config(u32 disp, disp_lcd_cfg *lcd_cfg)
 {
     disp_gpio_set_t  *gpio_info;
     int  value = 1;
-    char primary_key[20], sub_name[25], str[10];
+    char primary_key[20], sub_name[25];
     int i = 0;
     int  ret;
 
     sprintf(primary_key, "lcd%d", disp);
 
 //lcd_used
-    ret = disp_sys_script_get_item(primary_key, "status", (int *)str, 2);
-    if (ret != 2 || strncmp(str, "okay", 10) != 0) {
-	    lcd_cfg->lcd_used = 0;
-	    return;
+    ret = disp_sys_script_get_item(primary_key, "lcd_used", &value, 1);
+    if (ret == 1)
+    {
+        lcd_cfg->lcd_used = value;
     }
 
-    lcd_cfg->lcd_used = 1;
+    if (lcd_cfg->lcd_used == 0) //no need to get lcd config if lcd_used eq 0
+        return ;
 
 //lcd_bl_en
     lcd_cfg->lcd_bl_en_used = 0;
@@ -999,6 +1005,9 @@ static int lcd_calc_judge_line(struct disp_device *lcd)
 		 *               = 1 / (dclk * 1000000 / vt / ht) / vt * 1000000
 		 *               = ht / dclk(Mhz)
 		 */
+		lcdp->frame_per_sec = panel_info->lcd_dclk_freq * 1000000
+		    / panel_info->lcd_ht / panel_info->lcd_vt
+		    * (panel_info->lcd_interlace + 1);
 		lcdp->usec_per_line = panel_info->lcd_ht
 		    / panel_info->lcd_dclk_freq;
 	}
@@ -1456,28 +1465,6 @@ exit:
 	return DISP_IRQ_RETURN;
 }
 
-static s32 disp_lcd_cal_fps(struct disp_device *lcd)
-{
-	s32 ret = -1;
-	struct disp_lcd_private_data *lcdp = NULL;
-	disp_panel_para *panel_info = NULL;
-
-	if (!lcd)
-		 goto OUT;
-	lcdp = disp_lcd_get_priv(lcd);
-	if (!lcdp)
-		goto OUT;
-	panel_info = &lcdp->panel_info;
-
-	lcdp->frame_per_sec = panel_info->lcd_dclk_freq * 1000000
-		/ panel_info->lcd_ht / panel_info->lcd_vt
-		* (panel_info->lcd_interlace + 1);
-
-	ret = 0;
-OUT:
-	return ret;
-}
-
 static s32 disp_lcd_pre_enable(struct disp_device* lcd)
 {
 	unsigned long flags;
@@ -1499,7 +1486,6 @@ static s32 disp_lcd_pre_enable(struct disp_device* lcd)
 	if (1 == disp_lcd_is_enabled(lcd))
 		return 0;
 
-	disp_lcd_cal_fps(lcd);
 	if (mgr->enable)
 		mgr->enable(mgr);
 
@@ -1614,7 +1600,6 @@ static s32 __disp_lcd_enable(struct disp_device* lcd, bool fake)
 	if (1 == disp_lcd_is_enabled(lcd))
 		return 0;
 
-	disp_lcd_cal_fps(lcd);
 	if (mgr->enable)
 		mgr->enable(mgr);
 
@@ -1759,8 +1744,6 @@ static s32 disp_lcd_enable(struct disp_device* lcd)
 	return __disp_lcd_enable(lcd, false);
 }
 #endif
-
-
 /* lcd enable except for backlight */
 static s32 disp_lcd_fake_enable(struct disp_device* lcd)
 {
@@ -2578,11 +2561,6 @@ s32 disp_init_lcd(disp_bsp_init_para * para)
 #if defined(SUPPORT_DSI)
 	u32 i = 0;
 #endif
-	char primary_key[20], str[10] = {0};
-	__attribute__((unused)) int ret = 0, value = 1;
-#if defined(CONFIG_MACH_SUN8IW17)
-	s32 use_dsi_flag = 0;
-#endif
 
 	DE_INF("disp_init_lcd\n");
 
@@ -2614,33 +2592,16 @@ s32 disp_init_lcd(disp_bsp_init_para * para)
 		if (!bsp_disp_feat_is_supported_output_types(hwdev_index, DISP_OUTPUT_TYPE_LCD)) {
 			continue;
 		}
-		sprintf(primary_key, "lcd%d", disp);
-		ret = disp_sys_script_get_item(primary_key, "status",
-					       (int *)str, 2);
-		if (ret != 2 || strncmp(str, "okay", 10) != 0)
-			continue;
-
 		lcd = &lcds[disp];
 		lcdp = &lcd_private[disp];
 		lcd->priv_data = (void*)lcdp;
 
 		sprintf(lcd->name, "lcd%d", disp);
 		lcd->disp = disp;
-#if defined(CONFIG_MACH_SUN8IW17)
-		value = 0;
-		ret = disp_sys_script_get_item(primary_key, "lcd_if", &value,
-					       1);
-		if (value == 4) {
-			lcd->hwdev_index = 1;
-			use_dsi_flag = 1;
-		} else
-			lcd->hwdev_index = (use_dsi_flag == 1) ? 0 : hwdev_index;
-#else
 		lcd->hwdev_index = hwdev_index;
-#endif
 		lcd->type = DISP_OUTPUT_TYPE_LCD;
-		lcdp->irq_no = para->irq_no[DISP_MOD_LCD0 + lcd->hwdev_index];
-		lcdp->clk = para->mclk[DISP_MOD_LCD0 + lcd->hwdev_index];
+		lcdp->irq_no = para->irq_no[DISP_MOD_LCD0 + hwdev_index];
+		lcdp->clk = para->mclk[DISP_MOD_LCD0 + hwdev_index];
 		lcdp->lvds_clk = para->mclk[DISP_MOD_LVDS];
 #if defined(SUPPORT_DSI)
 		lcdp->irq_no_dsi = para->irq_no[DISP_MOD_DSI0 + disp];
@@ -2689,7 +2650,6 @@ s32 disp_init_lcd(disp_bsp_init_para * para)
 		lcd->enable_gamma = disp_lcd_enable_gamma;
 		lcd->disable_gamma = disp_lcd_disable_gamma;
 		lcd->get_fps = disp_lcd_get_fps;
-		lcd->show_builtin_patten = disp_device_show_builtin_patten;
 
 		lcd->init = disp_lcd_init;
 		lcd->exit = disp_lcd_exit;

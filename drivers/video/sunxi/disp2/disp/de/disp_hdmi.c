@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_hdmi.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_hdmi.h"
 
 #if defined(SUPPORT_HDMI)
@@ -39,8 +23,8 @@ struct disp_device_private_data {
 
 static u32 hdmi_used = 0;
 
-__attribute__((unused)) static spinlock_t hdmi_data_lock;
-__attribute__((unused)) static struct mutex hdmi_mlock;
+static spinlock_t hdmi_data_lock;
+static struct mutex hdmi_mlock;
 
 static struct disp_device *hdmis = NULL;
 static struct disp_device_private_data *hdmi_private = NULL;
@@ -97,8 +81,7 @@ static s32 hdmi_clk_exit(struct disp_device *hdmi)
 	return 0;
 }
 
-#if defined(CONFIG_MACH_SUN8IW6) || defined(CONFIG_MACH_SUN8IW12) ||       \
-    defined(CONFIG_MACH_SUN8IW16)
+#if defined(CONFIG_ARCH_SUN8IW6P1) || defined(CONFIG_ARCH_SUN8IW12P1)
 static s32 hdmi_clk_config(struct disp_device *hdmi)
 {
 	struct disp_device_private_data *hdmip = disp_hdmi_get_priv(hdmi);
@@ -247,7 +230,7 @@ static s32 hdmi_calc_judge_line(struct disp_device *hdmi)
 	    / hdmip->video_info->ver_total_time
 	    * (hdmip->video_info->b_interlace + 1)
 	    / (hdmip->video_info->trd_mode + 1);
-	hdmip->usec_per_line = (unsigned long long)hdmip->video_info->hor_total_time
+	hdmip->usec_per_line = hdmip->video_info->hor_total_time
 	    * 1000000 / hdmip->video_info->pixel_clk;
 
 	start_delay =
@@ -565,11 +548,11 @@ static s32 disp_hdmi_detect(struct disp_device* hdmi)
 
 	if ((NULL == hdmi) || (NULL == hdmip)) {
 		DE_WRN("hdmi set func null  hdl!\n");
-		return 0;
+		return DIS_FAIL;
 	}
 	if (hdmip->hdmi_func.get_HPD_status)
 		return hdmip->hdmi_func.get_HPD_status();
-	return 0;
+	return DIS_FAIL;
 }
 
 static s32 disp_hdmi_set_detect(struct disp_device* hdmi, bool hpd)
@@ -871,7 +854,7 @@ s32 disp_init_hdmi(disp_bsp_init_para * para)
 
 	ret = disp_sys_script_get_item("hdmi", "boot_mask", &value, 1);
 	if (ret == 1 && value == 1) {
-		printf("skip hdmi in boot.\n");
+		pr_msg("skip hdmi in boot.\n");
 		return -1;
 	}
 
@@ -968,7 +951,6 @@ s32 disp_init_hdmi(disp_bsp_init_para * para)
 			hdmi->set_detect = disp_hdmi_set_detect;
 			hdmi->get_status = disp_hdmi_get_status;
 			hdmi->get_fps = disp_hdmi_get_fps;
-			hdmi->show_builtin_patten = disp_device_show_builtin_patten;
 
 			hdmi->init(hdmi);
 			disp_device_register(hdmi);
@@ -978,3 +960,4 @@ s32 disp_init_hdmi(disp_bsp_init_para * para)
 	return 0;
 }
 #endif
+

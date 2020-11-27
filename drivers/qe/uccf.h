@@ -1,17 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *
  * Dave Liu <daveliu@freescale.com>
  * based on source code of Shlomi Gridish
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __UCCF_H__
 #define __UCCF_H__
 
 #include "common.h"
-#include "linux/immap_qe.h"
-#include <fsl_qe.h>
+#include "qe.h"
+#include "asm/immap_qe.h"
 
 /* Fast or Giga ethernet
 */

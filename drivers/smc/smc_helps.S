@@ -13,6 +13,24 @@
 * note : in armv7 ,para0-3 pass use r0-r3,other para use sp
 */
 
+#ifdef CONFIG_ARCH_SUN3IW1P1
+
+ENTRY(__sunxi_smc_call)
+ENDPROC(__sunxi_smc_call)
+
+#else
+
+ENTRY(__sunxi_smc_call)
+#ifndef CONFIG_ARM64
+.arch_extension sec
+#endif
+	stmfd	sp!, {r4-r12, lr}	@ save reg state
+	smc #0
+	ldmfd	sp!, {r4-r12, pc}	@ restore saved regs and return
+
+ENDPROC(__sunxi_smc_call)
+
+
 /* void tee_smc_call(struct smc_param *param); */
 	.globl	tee_smc_call
 ENTRY(tee_smc_call)
@@ -25,6 +43,8 @@ ENTRY(tee_smc_call)
 	pop	{r4-r8, pc}
 ENDPROC(tee_smc_call)
 
+
+
 	/*
 	 * Wrap c macros in asm macros to delay expansion until after the
 	 * SMCCC asm macro is expanded.
@@ -32,6 +52,7 @@ ENDPROC(tee_smc_call)
 	.macro SMCCC_SMC
 	smc	#0
 	.endm
+
 
 	.macro SMCCC instr
 UNWIND(	.fnstart)
@@ -56,3 +77,6 @@ ENTRY(arm_smccc_smc)
 	SMCCC SMCCC_SMC
 ENDPROC(arm_smccc_smc)
 
+
+
+#endif

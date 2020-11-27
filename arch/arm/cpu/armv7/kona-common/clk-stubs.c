@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Broadcom Corporation.
+ *
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #include <common.h>
@@ -15,11 +16,6 @@ int __weak clk_sdio_enable(void *base, u32 rate, u32 *actual_ratep)
 }
 
 int __weak clk_bsc_enable(void *base, u32 rate, u32 *actual_ratep)
-{
-	return 0;
-}
-
-int __weak clk_usb_otg_enable(void *base)
 {
 	return 0;
 }

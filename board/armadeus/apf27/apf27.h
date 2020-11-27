@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2008-2013 Eric Jarrige <eric.jarrige@armadeus.org>
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #ifndef __APF27_H

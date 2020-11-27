@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -14,34 +13,17 @@
  * (C) Copyright 2004
  * ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
 #include <netdev.h>
 #include <asm/io.h>
-#include <dm/platform_data/serial_pl01x.h>
 #include "arm-ebi.h"
 #include "integrator-sc.h"
-#include <asm/mach-types.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-static const struct pl01x_serial_platdata serial_platdata = {
-	.base = 0x16000000,
-#ifdef CONFIG_ARCH_CINTEGRATOR
-	.type = TYPE_PL011,
-	.clock = 14745600,
-#else
-	.type = TYPE_PL010,
-	.clock = 0, /* Not used for PL010 */
-#endif
-};
-
-U_BOOT_DEVICE(integrator_serials) = {
-	.name = "serial_pl01x",
-	.platdata = &serial_platdata,
-};
 
 void peripheral_power_enable (void);
 
@@ -71,6 +53,8 @@ int board_init (void)
 
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = 0x00000100;
+
+	gd->flags = 0;
 
 #ifdef CONFIG_CM_REMAP
 extern void cm_remap(void);
@@ -115,7 +99,7 @@ extern void cm_remap(void);
 
 int misc_init_r (void)
 {
-	env_set("verify", "n");
+	setenv("verify", "n");
 	return (0);
 }
 

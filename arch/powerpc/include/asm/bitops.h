@@ -6,7 +6,13 @@
 #define _PPC_BITOPS_H
 
 #include <asm/byteorder.h>
-#include <asm-generic/bitops/__ffs.h>
+
+extern void set_bit(int nr, volatile void *addr);
+extern void clear_bit(int nr, volatile void *addr);
+extern void change_bit(int nr, volatile void *addr);
+extern int test_and_set_bit(int nr, volatile void *addr);
+extern int test_and_clear_bit(int nr, volatile void *addr);
+extern int test_and_change_bit(int nr, volatile void *addr);
 
 /*
  * Arguably these bit operations don't imply any memory barrier or
@@ -28,7 +34,7 @@
  * These used to be if'd out here because using : "cc" as a constraint
  * resulted in errors from egcs.  Things may be OK with gcc-2.95.
  */
-static __inline__ void set_bit(int nr, volatile void * addr)
+extern __inline__ void set_bit(int nr, volatile void * addr)
 {
 	unsigned long old;
 	unsigned long mask = 1 << (nr & 0x1f);
@@ -45,7 +51,7 @@ static __inline__ void set_bit(int nr, volatile void * addr)
 	: "cc" );
 }
 
-static __inline__ void clear_bit(int nr, volatile void *addr)
+extern __inline__ void clear_bit(int nr, volatile void *addr)
 {
 	unsigned long old;
 	unsigned long mask = 1 << (nr & 0x1f);
@@ -62,7 +68,7 @@ static __inline__ void clear_bit(int nr, volatile void *addr)
 	: "cc");
 }
 
-static __inline__ void change_bit(int nr, volatile void *addr)
+extern __inline__ void change_bit(int nr, volatile void *addr)
 {
 	unsigned long old;
 	unsigned long mask = 1 << (nr & 0x1f);
@@ -79,7 +85,7 @@ static __inline__ void change_bit(int nr, volatile void *addr)
 	: "cc");
 }
 
-static __inline__ int test_and_set_bit(int nr, volatile void *addr)
+extern __inline__ int test_and_set_bit(int nr, volatile void *addr)
 {
 	unsigned int old, t;
 	unsigned int mask = 1 << (nr & 0x1f);
@@ -98,7 +104,7 @@ static __inline__ int test_and_set_bit(int nr, volatile void *addr)
 	return (old & mask) != 0;
 }
 
-static __inline__ int test_and_clear_bit(int nr, volatile void *addr)
+extern __inline__ int test_and_clear_bit(int nr, volatile void *addr)
 {
 	unsigned int old, t;
 	unsigned int mask = 1 << (nr & 0x1f);
@@ -117,7 +123,7 @@ static __inline__ int test_and_clear_bit(int nr, volatile void *addr)
 	return (old & mask) != 0;
 }
 
-static __inline__ int test_and_change_bit(int nr, volatile void *addr)
+extern __inline__ int test_and_change_bit(int nr, volatile void *addr)
 {
 	unsigned int old, t;
 	unsigned int mask = 1 << (nr & 0x1f);
@@ -137,7 +143,7 @@ static __inline__ int test_and_change_bit(int nr, volatile void *addr)
 }
 #endif /* __INLINE_BITOPS */
 
-static __inline__ int test_bit(int nr, __const__ volatile void *addr)
+extern __inline__ int test_bit(int nr, __const__ volatile void *addr)
 {
 	__const__ unsigned int *p = (__const__ unsigned int *) addr;
 
@@ -146,7 +152,7 @@ static __inline__ int test_bit(int nr, __const__ volatile void *addr)
 
 /* Return the bit position of the most significant 1 bit in a word */
 /* - the result is undefined when x == 0 */
-static __inline__ int __ilog2(unsigned int x)
+extern __inline__ int __ilog2(unsigned int x)
 {
 	int lz;
 
@@ -154,7 +160,7 @@ static __inline__ int __ilog2(unsigned int x)
 	return 31 - lz;
 }
 
-static __inline__ int ffz(unsigned int x)
+extern __inline__ int ffz(unsigned int x)
 {
 	if ((x = ~x) == 0)
 		return 32;
@@ -203,6 +209,16 @@ static inline int fls64(__u64 x)
 #error BITS_PER_LONG not 32 or 64
 #endif
 
+static inline int __ilog2_u64(u64 n)
+{
+	return fls64(n) - 1;
+}
+
+static inline int ffs64(u64 x)
+{
+	return __ilog2_u64(x & -x) + 1ull;
+}
+
 #ifdef __KERNEL__
 
 /*
@@ -210,7 +226,7 @@ static inline int fls64(__u64 x)
  * the libc and compiler builtin ffs routines, therefore
  * differs in spirit from the above ffz (man ffs).
  */
-static __inline__ int ffs(int x)
+extern __inline__ int ffs(int x)
 {
 	return __ilog2(x & -x) + 1;
 }
@@ -234,7 +250,7 @@ static __inline__ int ffs(int x)
 #define find_first_zero_bit(addr, size) \
 	find_next_zero_bit((addr), (size), 0)
 
-static __inline__ unsigned long find_next_zero_bit(void * addr,
+extern __inline__ unsigned long find_next_zero_bit(void * addr,
 	unsigned long size, unsigned long offset)
 {
 	unsigned int * p = ((unsigned int *) addr) + (offset >> 5);
@@ -282,7 +298,7 @@ found_middle:
 #define ext2_clear_bit(nr, addr)	test_and_clear_bit((nr) ^ 0x18, addr)
 
 #else
-static __inline__ int ext2_set_bit(int nr, void * addr)
+extern __inline__ int ext2_set_bit(int nr, void * addr)
 {
 	int		mask;
 	unsigned char	*ADDR = (unsigned char *) addr;
@@ -295,7 +311,7 @@ static __inline__ int ext2_set_bit(int nr, void * addr)
 	return oldbit;
 }
 
-static __inline__ int ext2_clear_bit(int nr, void * addr)
+extern __inline__ int ext2_clear_bit(int nr, void * addr)
 {
 	int		mask;
 	unsigned char	*ADDR = (unsigned char *) addr;
@@ -309,7 +325,7 @@ static __inline__ int ext2_clear_bit(int nr, void * addr)
 }
 #endif	/* __KERNEL__ */
 
-static __inline__ int ext2_test_bit(int nr, __const__ void * addr)
+extern __inline__ int ext2_test_bit(int nr, __const__ void * addr)
 {
 	__const__ unsigned char	*ADDR = (__const__ unsigned char *) addr;
 

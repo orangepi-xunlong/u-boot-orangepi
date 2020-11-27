@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2012 Samsung Electronics
  *  Lukasz Majewski <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -32,7 +33,7 @@ static int pmic_charger_state(struct pmic *p, int state, int current)
 	u32 val = 0;
 
 	if (pmic_probe(p))
-		return -ENODEV;
+		return -1;
 
 	if (state == PMIC_CHARGER_DISABLE) {
 		puts("Disable the charger.\n");
@@ -40,13 +41,13 @@ static int pmic_charger_state(struct pmic *p, int state, int current)
 		val &= ~(MBCHOSTEN | VCHGR_FC);
 		pmic_reg_write(p, MAX8997_REG_MBCCTRL2, val);
 
-		return -ENOTSUPP;
+		return -1;
 	}
 
 	if (current < CHARGER_MIN_CURRENT || current > CHARGER_MAX_CURRENT) {
 		printf("%s: Wrong charge current: %d [mA]\n",
 		       __func__, current);
-		return -EINVAL;
+		return -1;
 	}
 
 	fc = (current - CHARGER_MIN_CURRENT) / CHARGER_CURRENT_RESOLUTION;
@@ -70,7 +71,7 @@ static int pmic_charger_bat_present(struct pmic *p)
 	u32 val;
 
 	if (pmic_probe(p))
-		return -ENODEV;
+		return -1;
 
 	pmic_reg_read(p, MAX8997_REG_STATUS4, &val);
 

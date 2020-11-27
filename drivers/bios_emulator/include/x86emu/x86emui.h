@@ -72,6 +72,9 @@
 #include <string.h>
 #endif
 
+#define printk printf
+
+
 /*--------------------------- Inline Functions ----------------------------*/
 
 #ifdef  __cplusplus

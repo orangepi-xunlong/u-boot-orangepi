@@ -26,7 +26,7 @@
 #define  __USBC_I_H__
 
 #include  <common.h>
-#include  <asm/arch/cpu.h>
+#include  <asm/arch/platform.h>
 #include  <asm/arch/usb.h>
 #include  <asm/arch/clock.h>
 

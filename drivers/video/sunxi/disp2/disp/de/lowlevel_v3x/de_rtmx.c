@@ -1125,29 +1125,29 @@ int de_rtmx_get_3d_in_single_size(enum de_3d_in_mode inmode,
 
 	switch (inmode) {
 	case DE_3D_SRC_MODE_TB:
-		/*size->w = size->w;*/
+		size->w = size->w;
 		size->h = size->h >> 1;
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	case DE_3D_SRC_MODE_SSF:
 	case DE_3D_SRC_MODE_SSH:
 		size->w = size->w >> 1;
-		/*size->h = size->h;*/
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->h = size->h;
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	case DE_3D_SRC_MODE_LI:
-		/*size->w = size->w;*/
+		size->w = size->w;
 		size->h = size->h >> 1;
-		/*size->x = size->x;*/
+		size->x = size->x;
 		size->y = size->y >> 1;
 		break;
 	case DE_3D_SRC_MODE_FP:
-		/*size->w = size->w;*/
-		/*size->h = size->h;*/
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->w = size->w;
+		size->h = size->h;
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	default:
 		/* undefine input mode */

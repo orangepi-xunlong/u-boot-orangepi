@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Joe Hershberger, National Instruments, joe.hershberger@ni.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ENV_FLAGS_H__
@@ -37,31 +38,17 @@ enum env_flags_varaccess {
 #endif
 
 #ifdef CONFIG_CMD_NET
-#ifdef CONFIG_REGEX
-#define ETHADDR_WILDCARD "\\d?"
-#else
-#define ETHADDR_WILDCARD
-#endif
 #ifdef CONFIG_ENV_OVERWRITE
-#define ETHADDR_FLAGS "eth" ETHADDR_WILDCARD "addr:ma,"
+#define ETHADDR_FLAGS "ethaddr:ma,"
 #else
 #ifdef CONFIG_OVERWRITE_ETHADDR_ONCE
-#define ETHADDR_FLAGS "eth" ETHADDR_WILDCARD "addr:mc,"
+#define ETHADDR_FLAGS "ethaddr:mc,"
 #else
-#define ETHADDR_FLAGS "eth" ETHADDR_WILDCARD "addr:mo,"
+#define ETHADDR_FLAGS "ethaddr:mo,"
 #endif
 #endif
-#define NET_FLAGS \
-	"ipaddr:i," \
-	"gatewayip:i," \
-	"netmask:i," \
-	"serverip:i," \
-	"nvlan:d," \
-	"vlan:d," \
-	"dnsip:i,"
 #else
-#define ETHADDR_FLAGS
-#define NET_FLAGS
+#define ETHADDR_FLAGS ""
 #endif
 
 #ifndef CONFIG_ENV_OVERWRITE
@@ -72,7 +59,6 @@ enum env_flags_varaccess {
 
 #define ENV_FLAGS_LIST_STATIC \
 	ETHADDR_FLAGS \
-	NET_FLAGS \
 	SERIAL_FLAGS \
 	CONFIG_ENV_FLAGS_LIST_STATIC
 
@@ -108,13 +94,6 @@ enum env_flags_varaccess env_flags_parse_varaccess(const char *flags);
  */
 enum env_flags_varaccess env_flags_parse_varaccess_from_binflags(int binflags);
 
-#ifdef CONFIG_CMD_NET
-/*
- * Check if a string has the format of an Ethernet MAC address
- */
-int eth_validate_ethaddr_str(const char *addr);
-#endif
-
 #ifdef USE_HOSTCC
 /*
  * Look up the type of a variable directly from the .flags var.
@@ -142,7 +121,7 @@ int env_flags_validate_varaccess(const char *name, int check_mask);
 /*
  * Validate the parameters passed to "env set" for type compliance
  */
-int env_flags_validate_env_set_params(char *name, char *const val[], int count);
+int env_flags_validate_env_set_params(int argc, char * const argv[]);
 
 #else /* !USE_HOSTCC */
 

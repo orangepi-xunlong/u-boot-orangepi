@@ -78,7 +78,9 @@ static struct hdmi_sink_blacklist sink_blacklist[] = {
 
 static int hdmitx_set_phy(struct hdmi_tx_core *core, int phy);
 static u32 svd_user_config(u32 code, u32 refresh_rate);
+#ifdef DEBUG
 static void print_videoinfo(videoParams_t *pVideo);
+#endif
 static void print_audioinfo(audioParams_t *audio);
 
 static void hdmitx_sleep(int us)
@@ -352,7 +354,9 @@ u8 get_hdcp22_status_core(void)
 
 void hdmi_configure_core(struct hdmi_tx_core *core)
 {
+#ifdef DEBUG
 	print_videoinfo(&(core->mode.pVideo));
+#endif
 	print_audioinfo(&(core->mode.pAudio));
 	core->dev_func.main_config(&core->mode.pVideo, &core->mode.pAudio,
 			&core->mode.pProduct, &core->mode.pHdcp, core->hdmi_tx_phy);
@@ -418,7 +422,7 @@ static u32 svd_user_config(u32 code, u32 refresh_rate)
 
 	return 0;
 }
-
+#ifdef DEBUG
 static void print_videoinfo(videoParams_t *pVideo)
 {
 	u32 refresh_rate = dtd_get_refresh_rate(&pVideo->mDtd);
@@ -478,7 +482,7 @@ static void print_videoinfo(videoParams_t *pVideo)
 		break;
 	}
 }
-
+#endif
 
 static void print_audioinfo(audioParams_t *audio)
 {
@@ -514,8 +518,9 @@ void video_apply(struct hdmi_tx_core *core)
 		HDMI_INFO_MSG("HDMI_ERROR:Improper arguments");
 		return;
 	}
-
+#ifdef DEBUG
 	print_videoinfo(&(core->mode.pVideo));
+#endif
 	if (!core->dev_func.main_config(&core->mode.pVideo,
 		&core->mode.pAudio, &core->mode.pProduct,
 			&core->mode.pHdcp, core->hdmi_tx_phy)) {

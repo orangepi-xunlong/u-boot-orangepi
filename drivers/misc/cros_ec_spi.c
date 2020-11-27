@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Chromium OS cros_ec driver - SPI interface
  *
  * Copyright (c) 2012 The Chromium OS Authors.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,44 +15,23 @@
 
 #include <common.h>
 #include <cros_ec.h>
-#include <dm.h>
-#include <errno.h>
 #include <spi.h>
 
-int cros_ec_spi_packet(struct udevice *udev, int out_bytes, int in_bytes)
+int cros_ec_spi_packet(struct cros_ec_dev *dev, int out_bytes, int in_bytes)
 {
-	struct cros_ec_dev *dev = dev_get_uclass_priv(udev);
-	struct spi_slave *slave = dev_get_parent_priv(dev->dev);
-	ulong start;
-	uint8_t byte;
 	int rv;
 
 	/* Do the transfer */
-	if (spi_claim_bus(slave)) {
+	if (spi_claim_bus(dev->spi)) {
 		debug("%s: Cannot claim SPI bus\n", __func__);
 		return -1;
 	}
 
-	rv = spi_xfer(slave, out_bytes * 8, dev->dout, NULL, SPI_XFER_BEGIN);
-	if (rv)
-		goto done;
-	start = get_timer(0);
-	while (1) {
-		rv = spi_xfer(slave, 8, NULL, &byte, 0);
-		if (byte == SPI_PREAMBLE_END_BYTE)
-			break;
-		if (rv)
-			goto done;
-		if (get_timer(start) > 100) {
-			rv = -ETIMEDOUT;
-			goto done;
-		}
-	}
+	rv = spi_xfer(dev->spi, max(out_bytes, in_bytes) * 8,
+		      dev->dout, dev->din,
+		      SPI_XFER_BEGIN | SPI_XFER_END);
 
-	rv = spi_xfer(slave, in_bytes * 8, NULL, dev->din, 0);
-done:
-	spi_xfer(slave, 0, NULL, NULL, SPI_XFER_END);
-	spi_release_bus(slave);
+	spi_release_bus(dev->spi);
 
 	if (rv) {
 		debug("%s: Cannot complete SPI transfer\n", __func__);
@@ -76,12 +56,10 @@ done:
  * @param din_len	Maximum size of response in bytes
  * @return number of bytes in response, or -1 on error
  */
-int cros_ec_spi_command(struct udevice *udev, uint8_t cmd, int cmd_version,
+int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 		     const uint8_t *dout, int dout_len,
 		     uint8_t **dinp, int din_len)
 {
-	struct cros_ec_dev *dev = dev_get_uclass_priv(udev);
-	struct spi_slave *slave = dev_get_parent_priv(dev->dev);
 	int in_bytes = din_len + 4;	/* status, length, checksum, trailer */
 	uint8_t *out;
 	uint8_t *p;
@@ -114,13 +92,13 @@ int cros_ec_spi_command(struct udevice *udev, uint8_t cmd, int cmd_version,
 	 */
 	memset(dev->din, '\0', in_bytes);
 
-	if (spi_claim_bus(slave)) {
+	if (spi_claim_bus(dev->spi)) {
 		debug("%s: Cannot claim SPI bus\n", __func__);
 		return -1;
 	}
 
 	out = dev->dout;
-	out[0] = EC_CMD_VERSION0 + cmd_version;
+	out[0] = cmd_version;
 	out[1] = cmd;
 	out[2] = (uint8_t)dout_len;
 	memcpy(out + 3, dout, dout_len);
@@ -135,17 +113,17 @@ int cros_ec_spi_command(struct udevice *udev, uint8_t cmd, int cmd_version,
 	p = dev->din + sizeof(int64_t) - 2;
 	len = dout_len + 4;
 	cros_ec_dump_data("out", cmd, out, len);
-	rv = spi_xfer(slave, max(len, in_bytes) * 8, out, p,
+	rv = spi_xfer(dev->spi, max(len, in_bytes) * 8, out, p,
 		      SPI_XFER_BEGIN | SPI_XFER_END);
 
-	spi_release_bus(slave);
+	spi_release_bus(dev->spi);
 
 	if (rv) {
 		debug("%s: Cannot complete SPI transfer\n", __func__);
 		return -1;
 	}
 
-	len = min((int)p[1], din_len);
+	len = min(p[1], din_len);
 	cros_ec_dump_data("in", -1, p, len + 3);
 
 	/* Response code is first byte of message */
@@ -168,25 +146,30 @@ int cros_ec_spi_command(struct udevice *udev, uint8_t cmd, int cmd_version,
 	return len;
 }
 
-static int cros_ec_probe(struct udevice *dev)
+int cros_ec_spi_decode_fdt(struct cros_ec_dev *dev, const void *blob)
 {
-	return cros_ec_register(dev);
+	/* Decode interface-specific FDT params */
+	dev->max_frequency = fdtdec_get_int(blob, dev->node,
+					    "spi-max-frequency", 500000);
+	dev->cs = fdtdec_get_int(blob, dev->node, "reg", 0);
+
+	return 0;
 }
 
-static struct dm_cros_ec_ops cros_ec_ops = {
-	.packet = cros_ec_spi_packet,
-	.command = cros_ec_spi_command,
-};
+/**
+ * Initialize SPI protocol.
+ *
+ * @param dev		CROS_EC device
+ * @param blob		Device tree blob
+ * @return 0 if ok, -1 on error
+ */
+int cros_ec_spi_init(struct cros_ec_dev *dev, const void *blob)
+{
+	dev->spi = spi_setup_slave_fdt(blob, dev->parent_node, dev->node);
+	if (!dev->spi) {
+		debug("%s: Could not setup SPI slave\n", __func__);
+		return -1;
+	}
 
-static const struct udevice_id cros_ec_ids[] = {
-	{ .compatible = "google,cros-ec-spi" },
-	{ }
-};
-
-U_BOOT_DRIVER(cros_ec_spi) = {
-	.name		= "cros_ec_spi",
-	.id		= UCLASS_CROS_EC,
-	.of_match	= cros_ec_ids,
-	.probe		= cros_ec_probe,
-	.ops		= &cros_ec_ops,
-};
+	return 0;
+}

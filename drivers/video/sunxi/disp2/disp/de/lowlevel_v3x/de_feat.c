@@ -870,11 +870,11 @@ int de_feat_get_scale_linebuf_for_ed(unsigned int disp, unsigned int chn)
 
 int de_feat_init(void)
 {
-#if defined(CONFIG_MACH_SUN50IW3)
+#if defined(CONFIG_ARCH_SUN50IW3P1)
 	de_cur_features = &sun50iw3_de_features;
-#elif defined(CONFIG_MACH_SUN50IW6)
+#elif defined(CONFIG_ARCH_SUN50IW6P1)
 	de_cur_features = &sun50iw6_de_features;
-#elif defined(CONFIG_MACH_SUN8IW11)
+#elif defined(CONFIG_ARCH_SUN8IW11P1)
 	de_cur_features = &sun8iw11_de_features;
 #else
 #error "undefined platform!!!"

@@ -1,15 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000
  * Hans-Joerg Frieden, Hyperion Entertainment
  * Hans-JoergF@hyperion-entertainment.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DISK_PART_AMIGA_H
 #define _DISK_PART_AMIGA_H
 #include <common.h>
 
-#if CONFIG_IS_ENABLED(ISO_PARTITION)
+#ifdef CONFIG_ISO_PARTITION
 /* Make the buffers bigger if ISO partition support is enabled -- CD-ROMS
    have 2048 byte blocks */
 #define DEFAULT_SECTOR_SIZE   2048

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  *   Renesas Solutions Corp.
  *   Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -41,10 +42,9 @@ int do_sh_zimageboot (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* Linux kernel command line */
 	cmdline = (char *)param + COMMAND_LINE;
-	bootargs = env_get("bootargs");
+	bootargs = getenv("bootargs");
 
 	/* Clear zero page */
-	/* cppcheck-suppress nullPointer */
 	memset(param, 0, 0x1000);
 
 	/* Set commandline */

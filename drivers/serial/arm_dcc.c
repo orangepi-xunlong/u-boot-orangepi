@@ -1,8 +1,19 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2004-2007 ARM Limited.
  * Copyright (C) 2008 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
- * Copyright (C) 2015 - 2016 Xilinx, Inc, Michal Simek
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License version 2
+ * as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * As a special exception, if other files instantiate templates or use macros
  * or inline functions from this file, or you compile this file and link it
@@ -16,12 +27,11 @@
  */
 
 #include <common.h>
-#include <dm.h>
 #include <serial.h>
 
-#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7)
+#if defined(CONFIG_CPU_V6)
 /*
- * ARMV6 & ARMV7
+ * ARMV6
  */
 #define DCC_RBIT	(1 << 30)
 #define DCC_WBIT	(1 << 29)
@@ -51,22 +61,6 @@
 #define status_dcc(x)	\
 		__asm__ volatile ("mrc p14, 0, %0, c14, c0, 0\n" : "=r" (x))
 
-#elif defined(CONFIG_CPU_ARMV8)
-/*
- * ARMV8
- */
-#define DCC_RBIT	(1 << 30)
-#define DCC_WBIT	(1 << 29)
-
-#define write_dcc(x)   \
-		__asm__ volatile ("msr dbgdtrtx_el0, %0\n" : : "r" (x))
-
-#define read_dcc(x)    \
-		__asm__ volatile ("mrs %0, dbgdtrrx_el0\n" : "=r" (x))
-
-#define status_dcc(x)  \
-		__asm__ volatile ("mrs %0, mdccsr_el0\n" : "=r" (x))
-
 #else
 #define DCC_RBIT	(1 << 0)
 #define DCC_WBIT	(1 << 1)
@@ -95,7 +89,12 @@
 
 #define TIMEOUT_COUNT 0x4000000
 
-static int arm_dcc_getc(struct udevice *dev)
+static int arm_dcc_init(void)
+{
+	return 0;
+}
+
+static int arm_dcc_getc(void)
 {
 	int ch;
 	register unsigned int reg;
@@ -108,7 +107,7 @@ static int arm_dcc_getc(struct udevice *dev)
 	return ch;
 }
 
-static int arm_dcc_putc(struct udevice *dev, char ch)
+static void arm_dcc_putc(char ch)
 {
 	register unsigned int reg;
 	unsigned int timeout_count = TIMEOUT_COUNT;
@@ -119,57 +118,41 @@ static int arm_dcc_putc(struct udevice *dev, char ch)
 			break;
 	}
 	if (timeout_count == 0)
-		return -EAGAIN;
+		return;
 	else
 		write_dcc(ch);
-
-	return 0;
 }
 
-static int arm_dcc_pending(struct udevice *dev, bool input)
+static int arm_dcc_tstc(void)
 {
 	register unsigned int reg;
 
-	if (input) {
-		can_read_dcc(reg);
-	} else {
-		can_write_dcc(reg);
-	}
+	can_read_dcc(reg);
 
 	return reg;
 }
 
-static const struct dm_serial_ops arm_dcc_ops = {
-	.putc = arm_dcc_putc,
-	.pending = arm_dcc_pending,
-	.getc = arm_dcc_getc,
-};
+static void arm_dcc_setbrg(void)
+{
+}
 
-static const struct udevice_id arm_dcc_ids[] = {
-	{ .compatible = "arm,dcc", },
-	{ }
-};
-
-U_BOOT_DRIVER(serial_dcc) = {
+static struct serial_device arm_dcc_drv = {
 	.name	= "arm_dcc",
-	.id	= UCLASS_SERIAL,
-	.of_match = arm_dcc_ids,
-	.ops	= &arm_dcc_ops,
-	.flags = DM_FLAG_PRE_RELOC,
+	.start	= arm_dcc_init,
+	.stop	= NULL,
+	.setbrg	= arm_dcc_setbrg,
+	.putc	= arm_dcc_putc,
+	.puts	= default_serial_puts,
+	.getc	= arm_dcc_getc,
+	.tstc	= arm_dcc_tstc,
 };
 
-#ifdef CONFIG_DEBUG_UART_ARM_DCC
-
-#include <debug_uart.h>
-
-static inline void _debug_uart_init(void)
+void arm_dcc_initialize(void)
 {
+	serial_register(&arm_dcc_drv);
 }
 
-static inline void _debug_uart_putc(int ch)
+__weak struct serial_device *default_serial_console(void)
 {
-	arm_dcc_putc(NULL, ch);
+	return &arm_dcc_drv;
 }
-
-DEBUG_UART_FUNCS
-#endif

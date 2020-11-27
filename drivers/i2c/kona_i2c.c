@@ -1,14 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Broadcom Corporation.
  *
- * NOTE: This driver should be converted to driver model before June 2017.
- * Please see doc/driver-model/i2c-howto.txt for instructions.
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/arch/sysmap.h>
 #include <asm/kona-common/clk.h>
 #include <i2c.h>
@@ -158,7 +156,7 @@ static struct bcm_kona_i2c_dev g_i2c_devs[CONFIG_SYS_MAX_I2C_BUS] = {
 #define I2C_M_RD	0x0001	/* read data */
 #define I2C_M_NOSTART	0x4000	/* no restart between msgs */
 
-struct kona_i2c_msg {
+struct i2c_msg {
 	uint16_t addr;
 	uint16_t flags;
 	uint16_t len;
@@ -299,7 +297,7 @@ static int bcm_kona_i2c_read_fifo_single(struct bcm_kona_i2c_dev *dev,
 
 /* Read any amount of data using the RX FIFO from the i2c bus */
 static int bcm_kona_i2c_read_fifo(struct bcm_kona_i2c_dev *dev,
-				  struct kona_i2c_msg *msg)
+				  struct i2c_msg *msg)
 {
 	unsigned int bytes_to_read = MAX_RX_FIFO_SIZE;
 	unsigned int last_byte_nak = 0;
@@ -383,7 +381,7 @@ static int bcm_kona_i2c_write_fifo_single(struct bcm_kona_i2c_dev *dev,
 		return -EREMOTEIO;
 	}
 
-	/* Check if a timeout occurred */
+	/* Check if a timeout occured */
 	if (!time_left) {
 		printf("completion timed out\n");
 		return -EREMOTEIO;
@@ -394,7 +392,7 @@ static int bcm_kona_i2c_write_fifo_single(struct bcm_kona_i2c_dev *dev,
 
 /* Write any amount of data using TX FIFO to the i2c bus */
 static int bcm_kona_i2c_write_fifo(struct bcm_kona_i2c_dev *dev,
-				   struct kona_i2c_msg *msg)
+				   struct i2c_msg *msg)
 {
 	unsigned int bytes_to_write = MAX_TX_FIFO_SIZE;
 	unsigned int bytes_written = 0;
@@ -420,7 +418,7 @@ static int bcm_kona_i2c_write_fifo(struct bcm_kona_i2c_dev *dev,
 
 /* Send i2c address */
 static int bcm_kona_i2c_do_addr(struct bcm_kona_i2c_dev *dev,
-				struct kona_i2c_msg *msg)
+				struct i2c_msg *msg)
 {
 	unsigned char addr;
 
@@ -482,9 +480,9 @@ static void bcm_kona_i2c_config_timing(struct bcm_kona_i2c_dev *dev)
 
 /* Master transfer function */
 static int bcm_kona_i2c_xfer(struct bcm_kona_i2c_dev *dev,
-			     struct kona_i2c_msg msgs[], int num)
+			     struct i2c_msg msgs[], int num)
 {
-	struct kona_i2c_msg *pmsg;
+	struct i2c_msg *pmsg;
 	int rc = 0;
 	int i;
 
@@ -637,7 +635,7 @@ static int kona_i2c_read(struct i2c_adapter *adap, uchar chip, uint addr,
 			 int alen, uchar *buffer, int len)
 {
 	/* msg[0] writes the addr, msg[1] reads the data */
-	struct kona_i2c_msg msg[2];
+	struct i2c_msg msg[2];
 	unsigned char msgbuf0[64];
 	struct bcm_kona_i2c_dev *dev = kona_get_dev(adap);
 
@@ -665,7 +663,7 @@ static int kona_i2c_read(struct i2c_adapter *adap, uchar chip, uint addr,
 static int kona_i2c_write(struct i2c_adapter *adap, uchar chip, uint addr,
 			  int alen, uchar *buffer, int len)
 {
-	struct kona_i2c_msg msg[1];
+	struct i2c_msg msg[1];
 	unsigned char msgbuf0[64];
 	unsigned int i;
 	struct bcm_kona_i2c_dev *dev = kona_get_dev(adap);

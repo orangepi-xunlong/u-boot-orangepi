@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Altera Corporation <www.altera.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -64,7 +65,7 @@ void hw_watchdog_init(void)
 	/* reset to disable the watchdog */
 	hw_watchdog_reset();
 	/* set timer in miliseconds */
-	designware_wdt_settimeout(CONFIG_WATCHDOG_TIMEOUT_MSECS);
+	designware_wdt_settimeout(CONFIG_HW_WATCHDOG_TIMEOUT_MS);
 	/* enable the watchdog */
 	designware_wdt_enable();
 	/* reset the watchdog */

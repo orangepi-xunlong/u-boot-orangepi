@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for TI AM335X based rut board
  * (C) Copyright 2013 Siemens Schweiz AG
@@ -8,6 +7,8 @@
  * u-boot:/board/ti/am335x/board.c
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -33,6 +34,8 @@
 #include "board.h"
 #include "../common/factoryset.h"
 #include "../../../drivers/video/da8xx-fb.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * Read header information from EEPROM into global structure.
@@ -171,7 +174,7 @@ static struct cpsw_platform_data cpsw_data = {
 };
 
 #if defined(CONFIG_DRIVER_TI_CPSW) || \
-	(defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET))
+	(defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET))
 int board_eth_init(bd_t *bis)
 {
 	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
@@ -179,7 +182,7 @@ int board_eth_init(bd_t *bis)
 	int rv;
 
 #ifndef CONFIG_SPL_BUILD
-	factoryset_env_set();
+	factoryset_setenv();
 #endif
 
 	/* Set rgmii mode and enable rmii clock to be sourced from chip */
@@ -464,27 +467,4 @@ static int board_video_init(void)
 	return 0;
 }
 #endif /* ifdef CONFIG_VIDEO */
-
-#ifdef CONFIG_BOARD_LATE_INIT
-int board_late_init(void)
-{
-	int ret;
-	char tmp[2 * MAX_STRING_LENGTH + 2];
-
-	omap_nand_switch_ecc(1, 8);
-
-	if (factory_dat.asn[0] != 0)
-		sprintf(tmp, "%s_%s", factory_dat.asn,
-			factory_dat.comp_version);
-	else
-		strcpy(tmp, "QMX7.E38_4.0");
-
-	ret = env_set("boardid", tmp);
-	if (ret)
-		printf("error setting board id\n");
-
-	return 0;
-}
-#endif
-
 #include "../common/board.c"

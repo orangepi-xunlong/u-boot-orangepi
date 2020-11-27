@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -24,7 +25,7 @@ int checkboard(void)
 	return 0;
 };
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	u32 dramsize;
 
@@ -103,9 +104,7 @@ int dram_init(void)
 
 	udelay(100);
 #endif
-	gd->ram_size = dramsize;
-
-	return 0;
+	return dramsize;
 };
 
 int testdram(void)

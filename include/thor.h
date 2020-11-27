@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * thor.h -- USB THOR Downloader protocol
  *
  * Copyright (C) 2013 Samsung Electronics
  * Lukasz Majewski  <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 

@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __PIXIS_H_
 #define __PIXIS_H_	1
 
 /* PIXIS register set. */
-#if defined(CONFIG_TARGET_MPC8536DS)
+#if defined(CONFIG_MPC8536DS)
 typedef struct pixis {
 	u8 id;
 	u8 ver;
@@ -45,7 +46,7 @@ typedef struct pixis {
 	u8 res2[4];
 } __attribute__ ((packed)) pixis_t;
 
-#elif defined(CONFIG_TARGET_MPC8544DS)
+#elif defined(CONFIG_MPC8544DS)
 typedef struct pixis {
 	u8 id;
 	u8 ver;
@@ -72,7 +73,7 @@ typedef struct pixis {
 	u8 res2[34];
 } __attribute__ ((packed)) pixis_t;
 
-#elif defined(CONFIG_TARGET_MPC8572DS)
+#elif defined(CONFIG_MPC8572DS)
 typedef struct pixis {
 	u8 id;
 	u8 ver;
@@ -101,7 +102,7 @@ typedef struct pixis {
 	u8 res4[25];
 } __attribute__ ((packed)) pixis_t;
 
-#elif defined(CONFIG_TARGET_MPC8610HPCD)
+#elif defined(CONFIG_MPC8610HPCD)
 typedef struct pixis {
 	u8 id;
 	u8 ver;	/* also called arch */
@@ -131,7 +132,7 @@ typedef struct pixis {
 	u8 res4[33];
 } __attribute__ ((packed)) pixis_t;
 
-#elif defined(CONFIG_TARGET_MPC8641HPCN)
+#elif defined(CONFIG_MPC8641HPCN)
 typedef struct pixis {
 	u8 id;
 	u8 ver;

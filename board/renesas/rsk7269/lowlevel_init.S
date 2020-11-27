@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2012 Renesas Electronics Europe Ltd.
  * Copyright (C) 2012 Phil Edworthy
@@ -6,8 +5,11 @@
  * Copyright (C) 2008 Nobuhiro Iwamatsu
  *
  * Based on board/renesas/rsk7264/lowlevel_init.S
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <config.h>
+#include <version.h>
 
 #include <asm/processor.h>
 #include <asm/macro.h>

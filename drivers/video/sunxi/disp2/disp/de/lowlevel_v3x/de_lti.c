@@ -17,7 +17,6 @@
  *
  ******************************************************************************/
 
-#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_lti_type.h"
 #include "de_enhance.h"
 
@@ -275,9 +274,9 @@ int de_lti_init_para(unsigned int sel, unsigned int chno)
  ******************************************************************************/
 int sel_coef(int insz, int outsz, int *coef)
 {
-	int i = 0;
-	int ratio = 0;
-	int win_sel = 0;
+	int i;
+	int ratio;
+	int win_sel;
 
 	if (insz != 0) {
 		ratio = (outsz + insz / 2) / insz;
@@ -377,4 +376,3 @@ int de_lti_info2para(unsigned int sel, unsigned int chno,
 	cti_block[sel][chno].dirty = 1;
 	return 0;
 }
-#endif

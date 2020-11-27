@@ -117,28 +117,5 @@ int disp_al_get_display_size(unsigned int sel, unsigned int *width,
 int disp_al_edp_cfg(u32 screen_id, u32 fps, u32 edp_index);
 int disp_al_edp_disable(u32 screen_id);
 #endif /*endif support_EDP */
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten);
-
-static inline s32 disp_al_capture_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline s32 disp_al_capture_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_capture_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_manager_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline u32 disp_al_manager_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline int disp_al_device_set_de_id(u32 screen_id, u32 de_id) { return 0; }
-
-static inline int disp_al_device_set_de_use_rcq(u32 screen_id, u32 use_rcq) { return 0; }
-
-static inline int disp_al_device_set_output_type(u32 screen_id, u32 output_type) { return 0; }
 
 #endif

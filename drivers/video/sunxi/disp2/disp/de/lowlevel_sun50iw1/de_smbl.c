@@ -1,25 +1,19 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_smbl.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+//*********************************************************************************************************************
+//  All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+//
+//  File name   :	de_smbl.c
+//
+//  Description :	display engine 2.0 smbl basic function definition
+//
+//  History     :	2014/05/13  vito cheng  v0.1  Initial version
+//*********************************************************************************************************************
+
 #include "de_feat.h"
 #include "de_smbl_type.h"
 #include "de_smbl.h"
 #include "de_rtmx.h"
 
-#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
+#if defined(SUPPORT_SMBL)
 
 #include "de_smbl_tab.h"
 #define SMBL_OFST	0xB0000		//SMBL offset based on RTMX

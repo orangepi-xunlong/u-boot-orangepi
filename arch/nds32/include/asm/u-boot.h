@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -7,6 +6,8 @@
  * Copyright (C) 2011 Andes Technology Corporation
  * Copyright (C) 2010 Shawn Lin (nobuhiro@andestech.com)
  * Copyright (C) 2011 Macpaul Lin (macpaul@andestech.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  ********************************************************************
  * NOTE: This header file defines an interface to U-Boot. Including
@@ -19,8 +20,6 @@
 #ifndef _U_BOOT_H_
 #define _U_BOOT_H_	1
 
-#include <asm/u-boot-nds32.h>
-
 #include <environment.h>
 
 typedef struct bd_info {
@@ -31,7 +30,6 @@ typedef struct bd_info {
 	unsigned long	bi_flashstart;	/* start of FLASH memory */
 	unsigned long	bi_flashsize;	/* size	 of FLASH memory */
 	unsigned long	bi_flashoffset; /* reserved area for startup monitor */
-	unsigned char	bi_enetaddr[6];
 
 	struct				/* RAM configuration */
 	{

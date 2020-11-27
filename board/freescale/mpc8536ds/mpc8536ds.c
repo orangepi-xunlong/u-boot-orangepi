@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,7 +17,7 @@
 #include <asm/fsl_serdes.h>
 #include <spd.h>
 #include <miiphy.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <spd_sdram.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
@@ -195,7 +196,7 @@ void pci_init_board(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	int flash_esel = find_tlb_idx((void *)flashbase, 1);
+	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -206,14 +207,8 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	if (flash_esel == -1) {
-		/* very unlikely unless something is messed up */
-		puts("Error: Could not find TLB for FLASH BASE\n");
-		flash_esel = 1;	/* give our best effort to continue */
-	} else {
-		/* invalidate existing TLB entry for flash + promjet */
-		disable_tlb(flash_esel);
-	}
+	/* invalidate existing TLB entry for flash + promjet */
+	disable_tlb(flash_esel);
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,	/* tlb, epn, rpn */
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,	/* perms, wimge */
@@ -270,7 +265,7 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -281,9 +276,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 #endif
 
 #ifdef CONFIG_HAS_FSL_MPH_USB
-	fsl_fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_dr_usb(blob, bd);
 #endif
 
-	return 0;
 }
 #endif

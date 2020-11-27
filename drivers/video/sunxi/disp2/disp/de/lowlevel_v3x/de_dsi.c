@@ -15,7 +15,7 @@
 #if defined(SUPPORT_DSI)
 
 static volatile struct __de_dsi_dev_t *dsi_dev[DEVICE_DSI_NUM];
-static volatile struct __de_dsi_dphy_dev_t *dphy_dev[DEVICE_DSI_NUM];
+static volatile struct __de_dsi_dphy_dev_t *dphy_dev[1];
 
 u32 dsi_pixel_bits[4] = { 24, 24, 18, 16 };
 u32 dsi_lane_den[4] = { 0x1, 0x3, 0x7, 0xf };
@@ -152,8 +152,7 @@ s32 dsi_start(u32 sel, enum __dsi_start_t func)
 	dsi_dev[sel]->dsi_basic_ctl0.bits.inst_st = 0;
 	dsi_dev[sel]->dsi_basic_ctl0.bits.inst_st = 1;
 	if (func == DSI_START_HSC)
-		dsi_dev[sel]->dsi_inst_func[DSI_INST_ID_LP11].bits.lane_cen =
-		    (dsi_dev[sel]->dsi_pixel_ctl0.bits.pd_plug_dis) ? 0 : 1;
+		dsi_dev[sel]->dsi_inst_func[DSI_INST_ID_LP11].bits.lane_cen = 0;
 
 	return 0;
 }

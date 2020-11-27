@@ -115,7 +115,7 @@ s32 tcon1_hdmi_clk_enable(u32 sel, u32 en)
 		lcd_top[0]->tcon_clk_gate.bits.tv1_clk_gate = en;
 
 	if (en) {
-#if defined(CONFIG_MACH_SUN50IW6)
+#if defined(CONFIG_ARCH_SUN50IW6P1)
 		lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 1;
 		lcd_top[0]->tcon_clk_gate.bits.tv0_clk_gate = 1;
 #else
@@ -125,7 +125,7 @@ s32 tcon1_hdmi_clk_enable(u32 sel, u32 en)
 			lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 2;
 #endif
 	} else {
-#if defined(CONFIG_MACH_SUN50IW6)
+#if defined(CONFIG_ARCH_SUN50IW6P1)
 		lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 0;
 		lcd_top[0]->tcon_clk_gate.bits.tv0_clk_gate = 0;
 #else
@@ -173,7 +173,7 @@ s32 tcon_de_attach(u32 tcon_index, u32 de_index)
 		return -1;
 
 	if (de_index == 0) {
-#if defined(CONFIG_MACH_SUN50IW6)
+#if defined(CONFIG_ARCH_SUN50IW6P1)
 		lcd_top[0]->tcon_de_perh.bits.de_port0_perh =
 		    (tcon_index == 1) ? 2 : 0;
 		lcd_top[0]->tcon_de_perh.bits.de_port1_perh =
@@ -182,7 +182,7 @@ s32 tcon_de_attach(u32 tcon_index, u32 de_index)
 		lcd_top[0]->tcon_de_perh.bits.de_port0_perh = tcon_index;
 #endif
 	} else if (de_index == 1) {
-#if defined(CONFIG_MACH_SUN50IW6)
+#if defined(CONFIG_ARCH_SUN50IW6P1)
 		lcd_top[0]->tcon_de_perh.bits.de_port1_perh =
 		    (tcon_index == 1) ? 2 : 0;
 		lcd_top[0]->tcon_de_perh.bits.de_port0_perh =
@@ -1620,9 +1620,3 @@ s32 tcon_cmap(u32 sel, u32 mode, unsigned int lcd_cmap_tbl[2][3][4])
 	}
 	return 0;
 }
-
-void tcon_show_builtin_patten(u32 sel, u32 patten)
-{
-	lcd_dev[sel]->tcon0_ctl.bits.src_sel = patten;
-}
-

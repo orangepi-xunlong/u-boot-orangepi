@@ -1,19 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 Keymile AG
  * Valentin Longchamp <valentin.longchamp@keymile.com>
  *
  * Copyright 2007-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
 #include <pci.h>
 #include <asm/fsl_pci.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/fsl_serdes.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 
 #include "kmp204x.h"
 

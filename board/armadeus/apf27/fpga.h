@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002-2013
  * Eric Jarrige <eric.jarrige@armadeus.org>
@@ -7,6 +6,8 @@
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com
  * and
  * Keith Outwater, keith_outwater@mvis.com
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 extern void APF27_init_fpga(void);
 

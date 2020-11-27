@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: eCos-2.0 */
 /*
  *==========================================================================
  *
@@ -6,6 +5,8 @@
  *
  *      RedBoot stream handler for xyzModem protocol
  *
+ *==========================================================================
+ * SPDX-License-Identifier:	eCos-2.0
  *==========================================================================
  *#####DESCRIPTIONBEGIN####
  *
@@ -43,6 +44,9 @@
 #define xyzModem_abort 2
 
 
+#ifdef REDBOOT
+extern getc_io_funcs_t xyzModem_io;
+#else
 #define CYGNUM_CALL_IF_SET_COMM_ID_QUERY_CURRENT
 #define CYGACC_CALL_IF_SET_CONSOLE_COMM(x)
 
@@ -56,8 +60,12 @@ typedef struct {
     char *filename;
     int   mode;
     int   chan;
+#ifdef CYGPKG_REDBOOT_NETWORKING
+    struct sockaddr_in *server;
+#endif
 } connection_info_t;
 
+#endif
 
 
 int   xyzModem_stream_open(connection_info_t *info, int *err);

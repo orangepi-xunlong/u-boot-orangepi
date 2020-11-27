@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007 Michal Simek
  *
  * Michal  SIMEK <monstr@monstr.eu>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* FSL macros */
@@ -42,14 +43,10 @@
 #define R14(val) \
 	__asm__ __volatile__ ("addi %0, r14, 0":"=r" (val));
 
-/* get return address from interrupt */
-#define R17(val) \
-	__asm__ __volatile__ ("addi %0, r17, 0" : "=r" (val));
-
 #define NOP	__asm__ __volatile__ ("nop");
 
 /* use machine status registe USE_MSR_REG */
-#if CONFIG_XILINX_MICROBLAZE0_USE_MSR_INSTR == 1
+#if XILINX_USE_MSR_INSTR == 1
 #define MSRSET(val) \
 	__asm__ __volatile__ ("msrset r0," #val );
 

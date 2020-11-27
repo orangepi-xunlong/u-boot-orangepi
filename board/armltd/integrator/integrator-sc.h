@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011
  * Linaro
@@ -6,6 +5,8 @@
  * Register definitions for the System Controller (SC) and
  * the similar "CP Controller" found in the ARM Integrator/AP and
  * Integrator/CP reference designs
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ARM_SC_H

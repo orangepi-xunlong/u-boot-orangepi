@@ -16,13 +16,20 @@ static u32 g_edp_num;
 struct drv_edp_info_t g_edp_info[EDP_NUM_MAX];
 static u32 power_enable_count;
 
+#ifdef CONFIG_SUNXI_MODULE_AXP
 static int edp_power_enable(char *name, bool en)
 {
 	if (en)
 		return disp_sys_power_enable(name);
 	return disp_sys_power_disable(name);
 }
-
+#else
+static int edp_power_enable(char *name, u32 en)
+{
+	edp_wrn("Not config CONFIG_AW_AXP\n");
+	return 0;
+}
+#endif
 /**
  * @name       :edp_clk_enable
  * @brief      :enable or disable edp clk
@@ -334,16 +341,6 @@ s32 edp_get_sys_config(u32 disp, struct disp_video_timings *p_info)
 	if (ret == 1)
 		g_edp_info[disp].para.edp_lane = value;
 
-	ret = disp_sys_script_get_item(primary_key, "edp_training_func", &value,
-				       1);
-	if (ret == 1)
-		g_edp_info[disp].para.edp_training_func = value;
-
-	ret = disp_sys_script_get_item(primary_key, "edp_sramble_seed", &value,
-				       1);
-	if (ret == 1)
-		g_edp_info[disp].para.edp_sramble_seed = value;
-
 	ret =
 	    disp_sys_script_get_item(primary_key, "edp_colordepth", &value, 1);
 	if (ret == 1)
@@ -501,12 +498,6 @@ s32 edp_get_start_delay(u32 sel)
 	return ret;
 }
 
-void edp_show_builtin_patten(u32 sel, u32 patten)
-{
-	dp_show_builtin_patten(sel, patten);
-}
-
-
 unsigned int edp_get_cur_line(u32 sel)
 {
 	u32 ret = 0;
@@ -598,7 +589,6 @@ static s32 edp_probe(u32 sel)
 		edp_func.tv_irq_query = edp_irq_query;
 		edp_func.tv_get_startdelay = edp_get_start_delay;
 		edp_func.tv_get_cur_line = edp_get_cur_line;
-		edp_func.tv_show_builtin_patten = edp_show_builtin_patten;
 		edp_here;
 		ret = disp_set_edp_func(&edp_func);
 		if (ret) {
@@ -632,7 +622,7 @@ s32 edp_init(void)
 #endif /*endif def */
 
 	for (i = 0; i < edp_num; i++) {
-		printf("%s:\n", __func__);
+		pr_msg("%s:\n", __func__);
 		sprintf(main_key, "edp%d", i);
 
 		ret = disp_sys_script_get_item(main_key, "used", &value, 1);

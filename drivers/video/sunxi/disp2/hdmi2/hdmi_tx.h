@@ -83,7 +83,4 @@ extern unsigned int disp_boot_para_parse_array(const char *name, unsigned int *v
 extern uintptr_t disp_getprop_regbase(
 	char *main_name, char *sub_name, u32 index);
 
-extern int fdt_getprop_u32(const void *fdt, int nodeoffset,
-			const char *prop, uint32_t *val);
-
 #endif /* __INCLUDES_H__ */

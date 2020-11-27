@@ -1,19 +1,14 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_wb.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+//*****************************************************************************
+//  All Winner Micro, All Right Reserved. 2006-2013 Copyright (c)
+//
+//  File name   :        de2_wb.h
+//
+//  Description :  DE2.0 Write-Back Controller  interface functions
+//  History     :
+//				   2014/03/03	initial version
+//				   2014/04/02 change the register operation from bits to word
+//	Code by		:  wangxuan
+//******************************************************************************
 #ifndef __DE_WB_H__
 #define __DE_WB_H__
 

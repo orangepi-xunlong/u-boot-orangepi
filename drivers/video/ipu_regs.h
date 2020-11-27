@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Porting to u-boot:
  *
@@ -8,6 +7,8 @@
  * Linux IPU driver for MX51:
  *
  * (C) Copyright 2005-2009 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IPU_REGS_INCLUDED__
@@ -312,12 +313,9 @@ struct ipu_dmfc {
 
 #define IPU_STAT		((struct ipu_stat *)(IPU_CTRL_BASE_ADDR + \
 				IPU_STAT_REG_BASE))
-#define IPU_INT_STAT(n)		(&IPU_STAT->int_stat[(n) - 1])
 #define IPU_CHA_CUR_BUF(ch)	(&IPU_STAT->cur_buf[ch / 32])
 #define IPU_CHA_BUF0_RDY(ch)	(&IPU_STAT->ch_buf0_rdy[ch / 32])
 #define IPU_CHA_BUF1_RDY(ch)	(&IPU_STAT->ch_buf1_rdy[ch / 32])
-#define IPUIRQ_2_STATREG(irq)	(IPU_INT_STAT(1) + ((irq) / 32))
-#define IPUIRQ_2_MASK(irq)	(1UL << ((irq) & 0x1F))
 
 #define IPU_INT_CTRL(n)		(&IPU_CM_REG->int_ctrl[(n) - 1])
 
@@ -337,7 +335,6 @@ struct ipu_dmfc {
 #define DI_SW_GEN0(di, gen)	(&DI_REG(di)->sw_gen0[gen - 1])
 #define DI_SW_GEN1(di, gen)	(&DI_REG(di)->sw_gen1[gen - 1])
 #define DI_STP_REP(di, gen)	(&DI_REG(di)->stp_rep[(gen - 1) / 2])
-#define DI_STP_REP9(di)		(&DI_REG(di)->stp_rep9)
 #define DI_SYNC_AS_GEN(di)	(&DI_REG(di)->sync_as)
 #define DI_DW_GEN(di, gen)	(&DI_REG(di)->dw_gen[gen])
 #define DI_DW_SET(di, gen, set)	(&DI_REG(di)->dw_set[gen + 12 * set])

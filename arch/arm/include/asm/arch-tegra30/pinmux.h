@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2010-2014, NVIDIA CORPORATION. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef _TEGRA30_PINMUX_H_
@@ -390,15 +391,8 @@ enum pmux_func {
 	PMUX_FUNC_COUNT,
 };
 
-#define TEGRA_PMX_SOC_DRV_GROUP_BASE_REG 0x868
-#define TEGRA_PMX_SOC_HAS_DRVGRPS
-#define TEGRA_PMX_GRPS_HAVE_LPMD
-#define TEGRA_PMX_GRPS_HAVE_SCHMT
-#define TEGRA_PMX_GRPS_HAVE_HSM
-#define TEGRA_PMX_PINS_HAVE_E_INPUT
-#define TEGRA_PMX_PINS_HAVE_LOCK
-#define TEGRA_PMX_PINS_HAVE_OD
-#define TEGRA_PMX_PINS_HAVE_IO_RESET
+#define TEGRA_PMX_HAS_PIN_IO_BIT_ETC
+#define TEGRA_PMX_HAS_DRVGRPS
 #include <asm/arch-tegra/pinmux.h>
 
 #endif /* _TEGRA30_PINMUX_H_ */

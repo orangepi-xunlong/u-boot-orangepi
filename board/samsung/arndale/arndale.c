@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Samsung Electronics
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <usb.h>
-#include <asm/gpio.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/dwmmc.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/power.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -18,8 +19,6 @@ int board_usb_init(int index, enum usb_init_type init)
 	/* Configure gpios for usb 3503 hub:
 	 * disconnect, toggle reset and connect
 	 */
-	gpio_request(EXYNOS5_GPIO_D17, "usb_connect");
-	gpio_request(EXYNOS5_GPIO_X35, "usb_reset");
 	gpio_direction_output(EXYNOS5_GPIO_D17, 0);
 	gpio_direction_output(EXYNOS5_GPIO_X35, 0);
 
@@ -54,7 +53,7 @@ int power_init_board(void)
 	return 0;
 }
 
-int dram_init_banksize(void)
+void dram_init_banksize(void)
 {
 	int i;
 	u32 addr, size;
@@ -66,11 +65,9 @@ int dram_init_banksize(void)
 		gd->bd->bi_dram[i].start = addr;
 		gd->bd->bi_dram[i].size = size;
 	}
-
-	return 0;
 }
 
-#ifdef CONFIG_MMC
+#ifdef CONFIG_GENERIC_MMC
 int board_mmc_init(bd_t *bis)
 {
 	int ret;
@@ -118,15 +115,5 @@ int checkboard(void)
 	printf("\nBoard: Arndale\n");
 
 	return 0;
-}
-#endif
-
-#ifdef CONFIG_S5P_PA_SYSRAM
-void smp_set_core_boot_addr(unsigned long addr, int corenr)
-{
-	writel(addr, CONFIG_S5P_PA_SYSRAM);
-
-	/* make sure this write is really executed */
-	__asm__ volatile ("dsb\n");
 }
 #endif

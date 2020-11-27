@@ -1,17 +1,3 @@
-/**
- * drivers/usb/host/sunxi_hci.h
- * (C) Copyright 2010-2015
- * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
- *
- * Include file for SUNXI HCI Host Controller Driver
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- */
-
 #ifndef _DE_FEAT_H_
 #define _DE_FEAT_H_
 
@@ -30,7 +16,7 @@
 #define P2P_FB_MIN_WIDTH 704
 #define P2P_FB_MAX_WIDTH 736
 
-#if defined(CONFIG_MACH_SUN50IW2)
+#if defined(CONFIG_ARCH_SUN50IW2P1)
 
 /* features for sun50iw2 */
 
@@ -67,7 +53,7 @@
 #define TCON1_DRIVE_PANEL
 #endif
 
-#elif defined(CONFIG_MACH_SUN8IW11)
+#elif defined(CONFIG_ARCH_SUN8IW11P1)
 
 /* features for sun8iw11 */
 #define DEVICE_NUM	4
@@ -91,8 +77,8 @@
 #define SUPPORT_LVDS
 #define DE_WB_RESET_SHARE
 /* #define LVDS_REVERT */
-#define TCON_POL_CORRECT
-#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16)
+
+#elif defined(CONFIG_ARCH_SUN8IW12P1)
 
 /* features for sun8iw12 */
 
@@ -105,7 +91,8 @@
 #define LAYER_NUM_PER_CHN_PER_UI_CHN	4
 #define LAYER_MAX_NUM_PER_CHN 4
 
-#if !defined(CONFIG_SUN8IW12P1_NOR) || !defined(CONFIG_SUN8IW16P1_NOR) || !defined(CONFIG_SUN8IW16P1_AXP2101_NOR)
+#ifndef CONFIG_SUN8IW12P1_NOR
+#define SUPPORT_SMBL
 #define SUPPORT_DSI
 #define SUPPORT_HDMI
 #define SUPPORT_TV
@@ -121,7 +108,7 @@
 /* #define SUPPORT_VGA */
 #define DE_WB_RESET_SHARE
 /* #define LVDS_REVERT */
-#elif defined(CONFIG_MACH_SUN8IW17)
+#elif defined(CONFIG_ARCH_SUN8IW17P1)
 
 /* features for sun8iw17 */
 
@@ -146,7 +133,7 @@
 #define SUPPORT_LVDS
 /* #define LVDS_REVERT */
 
-#elif defined(CONFIG_MACH_SUN50IW1)
+#elif defined(CONFIG_ARCH_SUN50IW1P1)
 
 /* features for sun50iw1 */
 
@@ -171,7 +158,7 @@
 #define SUPPORT_LVDS
 /* #define LVDS_REVERT */
 
-#elif defined(CONFIG_MACH_SUN8IW7)
+#elif defined(CONFIG_ARCH_SUN8IW7P1)
 
 #define DEVICE_NUM	2
 #define DE_NUM	2
@@ -186,9 +173,8 @@
 #define SUPPORT_HDMI
 #define SUPPORT_TV
 #define TV_UGLY_CLK_RATE 216000000
-#define DE_WB_RESET_SHARE
 
-#elif defined(CONFIG_MACH_SUN8IW6)
+#elif defined(CONFIG_ARCH_SUN8IW6P1)
 
 #define DEVICE_NUM	2
 #define DE_NUM	2
@@ -201,6 +187,7 @@
 #define VEP_NUM  1
 
 #define SUPPORT_DSI
+#define SUPPORT_SMBL
 #define CLK_NUM_PER_DSI 2
 #define SUPPORT_HDMI
 #define SUPPORT_LVDS
@@ -208,7 +195,7 @@
 
 #define DSI_VERSION_28
 
-#elif defined(CONFIG_MACH_SUN8IW15)
+#elif defined(CONFIG_ARCH_SUN8IW15P1)
 
 #define DEVICE_NUM	1
 #define DE_NUM	1

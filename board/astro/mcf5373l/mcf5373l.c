@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  * modified by Wolfgang Wegner <w.wegner@astro-kom.de> for ASTRO 5373l
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -26,7 +27,7 @@ int checkboard(void)
 	return 0;
 }
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 #if !defined(CONFIG_MONITOR_IS_IN_RAM)
 	sdram_t *sdp = (sdram_t *)(MMAP_SDRAM);
@@ -78,10 +79,8 @@ int dram_init(void)
 	 * (Do not rely on the SDCS register(s) being set to 0x00000000
 	 * during reset as stated in the data sheet.)
 	 */
-	gd->ram_size = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
+	return get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
 				0x80000000 - CONFIG_SYS_SDRAM_BASE);
-
-	return 0;
 }
 
 #define UART_BASE MMAP_UART0

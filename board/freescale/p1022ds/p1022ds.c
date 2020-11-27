@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * Authors: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *          Timur Tabi <timur@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,7 +17,7 @@
 #include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <asm/io.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
@@ -26,6 +27,8 @@
 #include <hwconfig.h>
 
 #include "../common/ngpixis.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f(void)
 {
@@ -246,7 +249,7 @@ void pci_init_board(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	int flash_esel = find_tlb_idx((void *)flashbase, 1);
+	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -257,14 +260,8 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	if (flash_esel == -1) {
-		/* very unlikely unless something is messed up */
-		puts("Error: Could not find TLB for FLASH BASE\n");
-		flash_esel = 2;	/* give our best effort to continue */
-	} else {
-		/* invalidate existing TLB entry for flash + promjet */
-		disable_tlb(flash_esel);
-	}
+	/* invalidate existing TLB entry for flash + promjet */
+	disable_tlb(flash_esel);
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
@@ -329,20 +326,20 @@ static void ft_codec_setup(void *blob, const char *compatible)
 	}
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = env_get_bootm_low();
-	size = env_get_bootm_size();
+	base = getenv_bootm_low();
+	size = getenv_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
 #ifdef CONFIG_HAS_FSL_DR_USB
-	fsl_fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_dr_usb(blob, bd);
 #endif
 
 	FT_FSL_PCI_SETUP;
@@ -353,7 +350,5 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	/* Update the WM8776 node's clock frequency property */
 	ft_codec_setup(blob, "wlf,wm8776");
-
-	return 0;
 }
 #endif

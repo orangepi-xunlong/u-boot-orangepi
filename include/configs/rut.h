@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * siemens rut
  * (C) Copyright 2013 Siemens Schweiz AG
@@ -8,15 +7,20 @@
  * U-Boot file:/include/configs/am335x_evm.h
  *
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_RUT_H
 #define __CONFIG_RUT_H
 
+#define CONFIG_SIEMENS_RUT
+#define MACH_TYPE_RUT			4316
 #define CONFIG_SIEMENS_MACH_TYPE	MACH_TYPE_RUT
 
 #include "siemens-am33x-common.h"
 
+#define CONFIG_SYS_MPUCLK	600
 #define RUT_IOCTRL_VAL	0x18b
 #define DDR_PLL_FREQ	303
 
@@ -31,26 +35,39 @@
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS       6       /* 64 byte pages */
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS   10      /* take up to 10 msec */
 
+#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	0x200
+
+#undef CONFIG_SPL_NET_SUPPORT
+#undef CONFIG_SPL_NET_VCI_STRING
+#undef CONFIG_SPL_ETH_SUPPORT
+
 #define CONFIG_PHY_NATSEMI
 
 #define CONFIG_FACTORYSET
+
+/* UBI Support */
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_PARTITIONS
+#define CONFIG_MTD_DEVICE
+#define CONFIG_RBTREE
+#define CONFIG_LZO
+#define CONFIG_CMD_UBI
+#define CONFIG_CMD_UBIFS
+#endif
 
 /* Watchdog */
 #define WATCHDOG_TRIGGER_GPIO	14
 
 #ifndef CONFIG_SPL_BUILD
 
-/* Use common default */
-
 /* Default env settings */
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"hostname=rut\0" \
-	"ubi_off=2048\0"\
 	"nand_img_size=0x500000\0" \
 	"splashpos=m,m\0" \
 	"optargs=fixrtc --no-log consoleblank=0 \0" \
-	CONFIG_ENV_SETTINGS_V1 \
-	CONFIG_ENV_SETTINGS_NAND_V1 \
+	CONFIG_COMMON_ENV_SETTINGS \
 	"mmc_dev=0\0" \
 	"mmc_root=/dev/mmcblk0p2 rw\0" \
 	"mmc_root_fs_type=ext4 rootwait\0" \
@@ -75,6 +92,7 @@
 
 #ifndef CONFIG_RESTORE_FLASH
 /* set to negative value for no autoboot */
+#define CONFIG_BOOTDELAY		3
 
 #define CONFIG_BOOTCOMMAND \
 	"if mmc rescan; then " \
@@ -96,6 +114,7 @@
 	"reset;"
 
 #else
+#define CONFIG_BOOTDELAY		0
 
 #define CONFIG_BOOTCOMMAND			\
 	"setenv autoload no; "			\
@@ -107,18 +126,32 @@
 
 #endif /* CONFIG_SPL_BUILD */
 
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_HW_WATCHDOG
+#endif
+
+#define CONFIG_VIDEO
 #if defined(CONFIG_VIDEO)
 #define CONFIG_VIDEO_DA8XX
+#define CONFIG_CFB_CONSOLE
+#define CONFIG_VGA_AS_SINGLE_DEVICE
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_RLE8
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_CMD_BMP
 #define DA8XX_LCD_CNTL_BASE	LCD_CNTL_BASE
 
+#define CONFIG_SPI
+#define CONFIG_OMAP3_SPI
+
 #define BOARD_LCD_RESET		115	/* Bank 3 pin 19 */
+#define CONFIG_ARCH_EARLY_INIT_R
 #define CONFIG_FORMIKE
 #define DISPL_PLL_SPREAD_SPECTRUM
+#define CONFIG_SYS_CONSOLE_BG_COL	0xff
+#define CONFIG_SYS_CONSOLE_FG_COL	0x00
 #endif
 
 #endif	/* ! __CONFIG_RUT_H */

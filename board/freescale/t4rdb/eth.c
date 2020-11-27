@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
  *
  * Chunhe Lan <Chunhe.Lan@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -22,7 +23,7 @@
 #include <fsl_mdio.h>
 #include <miiphy.h>
 #include <phy.h>
-#include <fsl_dtsec.h>
+#include <asm/fsl_dtsec.h>
 #include <asm/fsl_serdes.h>
 #include <hwconfig.h>
 
@@ -76,9 +77,6 @@ int board_eth_init(bd_t *bis)
 		puts("Invalid SerDes1 protocol for T4240RDB\n");
 	}
 
-	fm_disable_port(FM1_DTSEC5);
-	fm_disable_port(FM1_DTSEC6);
-
 	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CONFIG_SYS_NUM_FM1_DTSEC; i++) {
 		interface = fm_info_get_enet_if(i);
 		switch (interface) {
@@ -103,7 +101,7 @@ int board_eth_init(bd_t *bis)
 	}
 
 #if (CONFIG_SYS_NUM_FMAN == 2)
-	if ((srds_prtcl_s2 == 56) || (srds_prtcl_s2 == 55)) {
+	if (srds_prtcl_s2 == 56) {
 		/* SGMII && XFI */
 		fm_info_set_phy_address(FM2_DTSEC1, SGMII_PHY_ADDR5);
 		fm_info_set_phy_address(FM2_DTSEC2, SGMII_PHY_ADDR6);
@@ -117,8 +115,6 @@ int board_eth_init(bd_t *bis)
 		puts("Invalid SerDes2 protocol for T4240RDB\n");
 	}
 
-	fm_disable_port(FM2_DTSEC5);
-	fm_disable_port(FM2_DTSEC6);
 	for (i = FM2_DTSEC1; i < FM2_DTSEC1 + CONFIG_SYS_NUM_FM2_DTSEC; i++) {
 		interface = fm_info_get_enet_if(i);
 		switch (interface) {

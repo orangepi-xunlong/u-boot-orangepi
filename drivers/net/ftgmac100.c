@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Faraday FTGMAC100 Ethernet
  *
@@ -7,6 +6,8 @@
  *
  * (C) Copyright 2010 Andes Technology
  * Macpaul Lin <macpaul@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -345,7 +346,7 @@ static void ftgmac100_set_mac(struct eth_device *dev,
 
 static void ftgmac100_set_mac_from_env(struct eth_device *dev)
 {
-	eth_env_get_enetaddr("ethaddr", dev->enetaddr);
+	eth_getenv_enetaddr("ethaddr", dev->enetaddr);
 
 	ftgmac100_set_mac(dev, dev->enetaddr);
 }
@@ -422,7 +423,7 @@ static int ftgmac100_init(struct eth_device *dev, bd_t *bd)
 	for (i = 0; i < PKTBUFSRX; i++) {
 		/* RXBUF_BADR */
 		if (!rxdes[i].rxdes2) {
-			buf = net_rx_packets[i];
+			buf = NetRxPackets[i];
 			rxdes[i].rxdes3 = virt_to_phys(buf);
 			rxdes[i].rxdes2 = (uint)buf;
 		}
@@ -492,7 +493,7 @@ static int ftgmac100_recv(struct eth_device *dev)
 	dma_map_single((void *)curr_des->rxdes2, rxlen, DMA_FROM_DEVICE);
 
 	/* pass the packet up to the protocol layers. */
-	net_process_received_packet((void *)curr_des->rxdes2, rxlen);
+	NetReceive((void *)curr_des->rxdes2, rxlen);
 
 	/* release buffer to DMA */
 	curr_des->rxdes0 &= ~FTGMAC100_RXDES0_RXPKT_RDY;
@@ -561,7 +562,7 @@ int ftgmac100_initialize(bd_t *bd)
 	memset(dev, 0, sizeof(*dev));
 	memset(priv, 0, sizeof(*priv));
 
-	strcpy(dev->name, "FTGMAC100");
+	sprintf(dev->name, "FTGMAC100");
 	dev->iobase	= CONFIG_FTGMAC100_BASE;
 	dev->init	= ftgmac100_init;
 	dev->halt	= ftgmac100_halt;

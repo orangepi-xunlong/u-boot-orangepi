@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Porting to u-boot:
  *
@@ -10,6 +9,8 @@
  *
  * Based on the LCD driver for TI Avalanche processors written by
  * Ajay Singh and Shalom Hai.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef DA8XX_FB_H

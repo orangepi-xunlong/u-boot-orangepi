@@ -86,7 +86,6 @@ struct ci_req {
 	/* Buffer for the current transfer. Either req.buf/len or b_buf/len */
 	uint8_t *hw_buf;
 	uint32_t hw_len;
-	uint32_t dtd_count;
 };
 
 struct ci_ep {

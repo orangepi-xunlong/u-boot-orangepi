@@ -656,9 +656,3 @@ u32 edp_hal_get_cur_line(u32 sel)
 {
 	return dp_dev[sel]->dp_dbg_status0.bits.cur_line;
 }
-
-
-void edp_hal_show_builtin_patten(u32 sel, u32 patten)
-{
-	dp_dev[sel]->dp_vid_ctrl.bits.vid_src_sel = patten;
-}

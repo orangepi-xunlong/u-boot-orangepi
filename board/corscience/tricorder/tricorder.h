@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Dirk Behme <dirk.behme@gmail.com>
@@ -6,6 +5,8 @@
  * (C) Copyright 2012
  * Corscience GmbH & Co. KG, <www.corscience.de>
  * Thomas Weber <weber@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _TRICORDER_H_
 #define _TRICORDER_H_

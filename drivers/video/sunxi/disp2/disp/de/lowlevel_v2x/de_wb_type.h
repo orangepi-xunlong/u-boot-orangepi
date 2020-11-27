@@ -1,17 +1,11 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_wb_type.h
+/**
+ *	All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
+ *	File name   :       de_wb_type.h
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ *	Description :       display engine 2.0 wbc struct declaration
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *	History     :       2014/03/03   wangxuan   initial version
  *
  */
 #ifndef __DE_WB_TYPE_H__

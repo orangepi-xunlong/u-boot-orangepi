@@ -1,19 +1,9 @@
 /*
- * drivers/video/sunxi/disp2/disp/de/include/include.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+ *  * Copyright 2000-2009
+ *   * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *    *
+ *     * SPDX-License-Identifier:GPL-2.0+
+ *     */
 #ifndef _DISP_INCLUDE_H_
 #define _DISP_INCLUDE_H_
 
@@ -69,11 +59,11 @@
 s32 bsp_disp_get_print_level(void);
 
 #if 1
-#define __inf(msg...)       do {if (bsp_disp_get_print_level()) {printk(KERN_WARNING "[DISP] %s,line:%d:", __func__, __LINE__); printk(msg); } } while (0)
-#define __msg(msg...)       do {if (bsp_disp_get_print_level()) {printk(KERN_WARNING "[DISP] %s,line:%d:", __func__, __LINE__); printk(msg); } } while (0)
-#define __wrn(msg...)       do {{printk(KERN_WARNING "[DISP] %s,line:%d:", __func__, __LINE__); printk(msg); } } while (0)
-#define __here__            do {if (bsp_disp_get_print_level() == 2) {printk(KERN_WARNING "[DISP] %s,line:%d\n", __func__, __LINE__); } } while (0)
-#define __debug(msg...)     do {if (bsp_disp_get_print_level() == 2) {printk(KERN_WARNING "[DISP] %s,line:%d:", __func__, __LINE__); printk(msg); } } while (0)
+#define __inf(msg...)       do{if (bsp_disp_get_print_level()){printk(KERN_WARNING "[DISP] %s,line:%d:",__func__,__LINE__);printk(msg);}}while (0)
+#define __msg(msg...)       do{if (bsp_disp_get_print_level()){printk(KERN_WARNING "[DISP] %s,line:%d:",__func__,__LINE__);printk(msg);}}while (0)
+#define __wrn(msg...)       do{{printk(KERN_WARNING "[DISP] %s,line:%d:",__func__,__LINE__);printk(msg);}}while (0)
+#define __here__            do{if (bsp_disp_get_print_level()==2){printk(KERN_WARNING "[DISP] %s,line:%d\n",__func__,__LINE__);}}while (0)
+#define __debug(msg...)     do{if (bsp_disp_get_print_level()==2){printk(KERN_WARNING "[DISP] %s,line:%d:",__func__,__LINE__);printk(msg);}}while (0)
 #else
 #define __inf(msg...)  printk(msg)
 #define __msg(msg...)  printk(msg)
@@ -90,24 +80,22 @@ s32 bsp_disp_get_print_level(void);
 #include <sunxi_display2.h>
 #include <sunxi_metadata.h>
 #include <sys_config.h>
-/*#include <asm/arch/intc.h>*/
+#include <asm/arch/intc.h>
 #include <pwm.h>
 #include <asm/arch/timer.h>
-/*#include <asm/arch/platform.h>*/
+#include <asm/arch/platform.h>
 #include <linux/list.h>
 #include <asm/memory.h>
 #include <div64.h>
 #include <fdt_support.h>
-#include <sunxi_power/axp.h>
+#include <power/sunxi/pmu.h>
 #include "asm/io.h"
-#include <linux/compat.h>
 #include "../disp_sys_intf.h"
-#include "disp_features.h"
 
 #define OSAL_PRINTF
 #define __inf(msg...)
 #define __msg(msg...)
-#define __wrn(fmt, msg...) pr_notice(fmt, ##msg)
+#define __wrn(fmt, msg...) debug(fmt, ##msg)
 #define __here
 #define __debug
 
@@ -136,53 +124,45 @@ s32 bsp_disp_get_print_level(void);
 #define __FPGA_DEBUG__
 #endif
 
-#ifndef SETMASK
 #define SETMASK(width, shift)   ((width?((-1U) >> (32-width)):0)  << (shift))
-#endif
-
-#ifndef CLRMASK
 #define CLRMASK(width, shift)   (~(SETMASK(width, shift)))
-#endif
+#define GET_BITS(shift, width, reg)     \
+	(((reg) & SETMASK(width, shift)) >> (shift))
+#define SET_BITS(shift, width, reg, val) \
+	(((reg) & CLRMASK(width, shift)) | (val << (shift)))
 
-#ifndef GET_BITS
-#define GET_BITS(shift, width, reg) (((reg)&SETMASK(width, shift)) >> (shift))
-#endif
-
-#ifndef SET_BITS
-#define SET_BITS(shift, width, reg, val)                                       \
-	(((reg)&CLRMASK(width, shift)) | (val << (shift)))
-#endif
-
-#define DISPALIGN(value, align) ((align == 0) ? value : (((value) + ((align) - 1)) & ~((align) - 1)))
+#define DISPALIGN(value, align) ((align==0)?value:(((value) + ((align) - 1)) & ~((align) - 1)))
 
 #ifndef abs
-#define abs(x) (((x) & 0x80000000) ? (0 - (x)) : (x))
+#define abs(x) (((x)&0x80000000)? (0-(x)):(x))
 #endif
 
 #define LCD_GAMMA_TABLE_SIZE (256 * sizeof(unsigned int))
 
-typedef struct {
+typedef struct
+{
 	unsigned int   lcd_gamma_en;
 	unsigned int   lcd_gamma_tbl[256];
 	unsigned int   lcd_cmap_en;
 	unsigned int   lcd_cmap_tbl[2][3][4];
 	unsigned int   lcd_bright_curve_tbl[256];
-} panel_extend_para;
+}panel_extend_para;
 
-typedef enum {
-	DIS_SUCCESS = 0,
-	DIS_FAIL =  -1,
-	DIS_PARA_FAILED =  -2,
-	DIS_PRIO_ERROR =  -3,
-	DIS_OBJ_NOT_INITED =  -4,
-	DIS_NOT_SUPPORT =  -5,
-	DIS_NO_RES =  -6,
-	DIS_OBJ_COLLISION =  -7,
-	DIS_DEV_NOT_INITED =  -8,
-	DIS_DEV_SRAM_COLLISION =  -9,
+typedef enum
+{
+	DIS_SUCCESS=0,
+	DIS_FAIL=-1,
+	DIS_PARA_FAILED=-2,
+	DIS_PRIO_ERROR=-3,
+	DIS_OBJ_NOT_INITED=-4,
+	DIS_NOT_SUPPORT=-5,
+	DIS_NO_RES=-6,
+	DIS_OBJ_COLLISION=-7,
+	DIS_DEV_NOT_INITED=-8,
+	DIS_DEV_SRAM_COLLISION=-9,
 	DIS_TASK_ERROR = -10,
 	DIS_PRIO_COLLSION = -11
-} disp_return_value;
+}disp_return_value;
 
 /*basic data information definition*/
 enum disp_layer_feat {
@@ -200,12 +180,14 @@ enum disp_layer_feat {
 	DISP_LAYER_FEAT_DETAIL_ENHANCE      = 1 << 11,
 };
 
-typedef enum {
-	DISP_PIXEL_TYPE_RGB = 0x0,
-	DISP_PIXEL_TYPE_YUV = 0x1,
-} disp_pixel_type;
+typedef enum
+{
+	DISP_PIXEL_TYPE_RGB=0x0,
+	DISP_PIXEL_TYPE_YUV=0x1,
+}disp_pixel_type;
 
-typedef enum {
+typedef enum
+{
 	LAYER_ATTR_DIRTY       = 0x00000001,
 	LAYER_VI_FC_DIRTY      = 0x00000002,
 	LAYER_HADDR_DIRTY      = 0x00000004,
@@ -217,19 +199,19 @@ typedef enum {
 	LAYER_ATW_DIRTY        = 0x00000100,
 	LAYER_HDR_DIRTY        = 0x00000200,
 	LAYER_ALL_DIRTY        = 0x000003ff,
-} disp_layer_dirty_flags;
+}disp_layer_dirty_flags;
 
-typedef enum {
+typedef enum
+{
 	MANAGER_ENABLE_DIRTY     = 0x00000001,
 	MANAGER_CK_DIRTY         = 0x00000002,
 	MANAGER_BACK_COLOR_DIRTY = 0x00000004,
 	MANAGER_SIZE_DIRTY       = 0x00000008,
-	MANAGER_COLOR_RANGE_DIRTY = 0x00000010,
-	MANAGER_COLOR_SPACE_DIRTY = 0x00000020,
+	MANAGER_COLOR_RANGE_DIRTY= 0x00000010,
+	MANAGER_COLOR_SPACE_DIRTY= 0x00000020,
 	MANAGER_BLANK_DIRTY      = 0x00000040,
-	MANAGER_KSC_DIRTY = 0x00000080,
-	MANAGER_ALL_DIRTY = 0x000000ff,
-} disp_manager_dirty_flags;
+	MANAGER_ALL_DIRTY        = 0x0000007f,
+}disp_manager_dirty_flags;
 
 /* disp_fb_info_inner - image buffer info on the inside
  *
@@ -269,23 +251,6 @@ struct disp_fb_info_inner {
 	unsigned long long       metadata_buf;
 	unsigned int             metadata_size;
 	unsigned int             metadata_flag;
-	struct dma_buf           *metadata_dmabuf;
-	struct sunxi_metadata    *p_metadata;
-	struct afbc_header       *p_afbc_header;
-};
-
-/**
- * disp_snr_info
- */
-struct disp_snr_info_inner {
-	unsigned char en;
-	unsigned char demo_en;
-	struct disp_rect demo_win;
-	unsigned char y_strength;
-	unsigned char u_strength;
-	unsigned char v_strength;
-	unsigned char th_ver_line;
-	unsigned char th_hor_line;
 };
 
 /* disp_layer_info_inner - layer info on the inside
@@ -321,10 +286,6 @@ struct disp_layer_info_inner {
 
 	unsigned int              id;
 	struct disp_atw_info      atw;
-#if defined(DE_VERSION_V33X)
-	int transform;
-	struct disp_snr_info_inner snr;
-#endif
 };
 
 /* disp_layer_config_inner - layer config on the inside
@@ -351,7 +312,8 @@ struct disp_layer_config_ops {
 	void (*vunmap)(const void *vaddr);
 };
 
-struct disp_layer_config_data {
+struct disp_layer_config_data
+{
 	struct disp_layer_config_inner config;
 	disp_layer_dirty_flags flag;
 	struct disp_layer_config_ops ops;
@@ -372,16 +334,16 @@ struct disp_manager_info {
 	u32 de_freq;
 	enum disp_eotf eotf; /* sdr/hdr10/hlg */
 	enum disp_data_bits data_bits;
-	u32 device_fps;
-	struct disp_ksc_info ksc;
 };
 
-struct disp_manager_data {
+struct disp_manager_data
+{
 	struct disp_manager_info config;
 	disp_manager_dirty_flags flag;
 };
 
-struct disp_clk_info {
+struct disp_clk_info
+{
 		u32                     clk;
 		u32                     clk_div;
 		u32                     h_clk;
@@ -401,7 +363,8 @@ struct disp_clk_info {
 		bool                    enabled;
 };
 
-struct disp_enhance_info {
+struct disp_enhance_info
+{
 	/*
 	 * enhance parameters : 0~10, bigger value, stronger enhance level
 	 * mode : combination of enhance_mode and dev_type
@@ -431,7 +394,8 @@ struct disp_enhance_info {
 	u32         demo_enable;//1: enable demo mode
 };
 
-typedef enum {
+typedef enum
+{
 	ENH_NONE_DIRTY       = 0x0,
 	ENH_ENABLE_DIRTY     = 0x1 << 0,  /* enable dirty */
 	ENH_SIZE_DIRTY       = 0x1 << 1,  /* size dirty */
@@ -447,23 +411,26 @@ typedef enum {
 	ENH_DNS_DIRTY        = 0x1 << 15, /* de-noise level dirty */
 	ENH_USER_DIRTY       = 0xf00,     /* dirty by user */
 	ENH_ALL_DIRTY        = 0xffff      /* all dirty */
-} disp_enhance_dirty_flags;
+}disp_enhance_dirty_flags;
 
-struct disp_enhance_config {
+struct disp_enhance_config
+{
 	struct disp_enhance_info info;
 	disp_enhance_dirty_flags flags;
 };
 
-typedef enum {
+typedef enum
+{
 	SMBL_DIRTY_NONE      = 0x00000000,
 	SMBL_DIRTY_ENABLE    = 0x00000001,
 	SMBL_DIRTY_WINDOW    = 0x00000002,
 	SMBL_DIRTY_SIZE      = 0x00000004,
 	SMBL_DIRTY_BL        = 0x00000008,
 	SMBL_DIRTY_ALL       = 0x0000000F,
-} disp_smbl_dirty_flags;
+}disp_smbl_dirty_flags;
 
-struct disp_smbl_info {
+struct disp_smbl_info
+{
 	struct disp_rect                window;
 	u32                      enable;
 	struct disp_rect              size;
@@ -472,7 +439,8 @@ struct disp_smbl_info {
 	disp_smbl_dirty_flags    flags;
 };
 
-struct disp_csc_config {
+struct disp_csc_config
+{
 	u32 in_fmt;
 	u32 in_mode;
 	u32 in_color_range;
@@ -489,43 +457,49 @@ struct disp_csc_config {
 	u32 out_eotf;
 };
 
-enum {
+enum
+{
 	DE_RGB = 0,
 	DE_YUV = 1,
 };
 
-typedef enum {
+typedef enum
+{
   CAPTURE_DIRTY_ADDRESS   = 0x00000001,
   CAPTURE_DIRTY_WINDOW	  = 0x00000002,
   CAPTURE_DIRTY_SIZE	  = 0x00000004,
-  CAPTURE_DIRTY_ALL	  = 0x00000007,
-} disp_capture_dirty_flags;
+  CAPTURE_DIRTY_ALL 	  = 0x00000007,
+}disp_capture_dirty_flags;
 
-struct disp_capture_config {
+struct disp_capture_config
+{
 	struct disp_s_frame in_frame;   //only format/size/crop valid
 	struct disp_s_frame out_frame;
 	u32 disp;              //which disp channel to be capture
 	disp_capture_dirty_flags flags;
 };
 
-typedef enum {
+typedef enum
+{
 	LCD_IF_HV			  = 0,
 	LCD_IF_CPU			= 1,
 	LCD_IF_LVDS			= 3,
 	LCD_IF_DSI			= 4,
 	LCD_IF_EDP      = 5,
 	LCD_IF_EXT_DSI  = 6,
-} disp_lcd_if;
+}disp_lcd_if;
 
-typedef enum {
+typedef enum
+{
 	LCD_HV_IF_PRGB_1CYC		  = 0,  //parallel hv
 	LCD_HV_IF_SRGB_3CYC		  = 8,  //serial hv
 	LCD_HV_IF_DRGB_4CYC		  = 10, //Dummy RGB
 	LCD_HV_IF_RGBD_4CYC		  = 11, //RGB Dummy
 	LCD_HV_IF_CCIR656_2CYC	= 12,
-} disp_lcd_hv_if;
+}disp_lcd_hv_if;
 
-typedef enum {
+typedef enum
+{
 	LCD_HV_SRGB_SEQ_RGB_RGB	= 0,
 	LCD_HV_SRGB_SEQ_RGB_BRG	= 1,
 	LCD_HV_SRGB_SEQ_RGB_GBR	= 2,
@@ -535,28 +509,31 @@ typedef enum {
 	LCD_HV_SRGB_SEQ_GRB_RGB	= 8,
 	LCD_HV_SRGB_SEQ_GRB_BRG	= 9,
 	LCD_HV_SRGB_SEQ_GRB_GBR	= 10,
-} disp_lcd_hv_srgb_seq;
+}disp_lcd_hv_srgb_seq;
 
-typedef enum {
+typedef enum
+{
 	LCD_HV_SYUV_SEQ_YUYV	= 0,
 	LCD_HV_SYUV_SEQ_YVYU	= 1,
 	LCD_HV_SYUV_SEQ_UYUV	= 2,
 	LCD_HV_SYUV_SEQ_VYUY	= 3,
-} disp_lcd_hv_syuv_seq;
+}disp_lcd_hv_syuv_seq;
 
-typedef enum {
+typedef enum
+{
 	LCD_HV_SYUV_FDLY_0LINE	= 0,
 	LCD_HV_SRGB_FDLY_2LINE	= 1, /*ccir pal*/
 	LCD_HV_SRGB_FDLY_3LINE	= 2, /*ccir ntsc*/
-} disp_lcd_hv_syuv_fdly;
+}disp_lcd_hv_syuv_fdly;
 
-typedef enum {
+typedef enum
+{
 	LCD_CPU_IF_RGB666_18PIN = 0,
 	LCD_CPU_IF_RGB666_9PIN  = 10,
 	LCD_CPU_IF_RGB666_6PIN  = 12,
 	LCD_CPU_IF_RGB565_16PIN = 8,
 	LCD_CPU_IF_RGB565_8PIN  = 14,
-} disp_lcd_cpu_if;
+}disp_lcd_cpu_if;
 
 typedef enum {
 	LCD_CPU_AUTO_MODE    = 0,
@@ -567,50 +544,59 @@ typedef enum {
 	LCD_TE_DISABLE	= 0,
 	LCD_TE_RISING		= 1,
 	LCD_TE_FALLING  = 2,
-} disp_lcd_te;
+}disp_lcd_te;
 
-typedef enum {
+typedef enum
+{
 	LCD_LVDS_IF_SINGLE_LINK		= 0,
 	LCD_LVDS_IF_DUAL_LINK		  = 1,
-} disp_lcd_lvds_if;
+}disp_lcd_lvds_if;
 
-typedef enum {
+typedef enum
+{
 	LCD_LVDS_8bit		= 0,
 	LCD_LVDS_6bit		= 1,
-} disp_lcd_lvds_colordepth;
+}disp_lcd_lvds_colordepth;
 
-typedef enum {
+typedef enum
+{
 	LCD_LVDS_MODE_NS		  = 0,
 	LCD_LVDS_MODE_JEIDA		= 1,
-} disp_lcd_lvds_mode;
+}disp_lcd_lvds_mode;
 
-typedef enum {
+typedef enum
+{
 	LCD_DSI_IF_VIDEO_MODE	  = 0,
 	LCD_DSI_IF_COMMAND_MODE	= 1,
 	LCD_DSI_IF_BURST_MODE   = 2,
-} disp_lcd_dsi_if;
+}disp_lcd_dsi_if;
 
-typedef enum {
+typedef enum
+{
 	LCD_DSI_1LANE			= 1,
 	LCD_DSI_2LANE			= 2,
 	LCD_DSI_3LANE			= 3,
 	LCD_DSI_4LANE			= 4,
-} disp_lcd_dsi_lane;
+}disp_lcd_dsi_lane;
 
-typedef enum {
+typedef enum
+{
 	LCD_DSI_FORMAT_RGB888	  = 0,
 	LCD_DSI_FORMAT_RGB666	  = 1,
 	LCD_DSI_FORMAT_RGB666P	= 2,
 	LCD_DSI_FORMAT_RGB565	  = 3,
-} disp_lcd_dsi_format;
+}disp_lcd_dsi_format;
 
-typedef enum {
+
+typedef enum
+{
 	LCD_FRM_BYPASS	= 0,
 	LCD_FRM_RGB666	= 1,
 	LCD_FRM_RGB565	= 2,
-} disp_lcd_frm;
+}disp_lcd_frm;
 
-typedef enum {
+typedef enum
+{
 	LCD_CMAP_B0	= 0x0,
 	LCD_CMAP_G0	= 0x1,
 	LCD_CMAP_R0	= 0x2,
@@ -623,9 +609,10 @@ typedef enum {
 	LCD_CMAP_B3	= 0xc,
 	LCD_CMAP_G3	= 0xd,
 	LCD_CMAP_R3	= 0xe,
-} disp_lcd_cmap_color;
+}disp_lcd_cmap_color;
 
-typedef struct {
+typedef struct
+{
 	unsigned int lp_clk_div;
 	unsigned int hs_prepare;
 	unsigned int hs_trail;
@@ -639,7 +626,7 @@ typedef struct {
 	unsigned int lptx_ulps_exit;
 	unsigned int hstx_ana0;
 	unsigned int hstx_ana1;
-} __disp_dsi_dphy_timing_t;
+}__disp_dsi_dphy_timing_t;
 
 /**
  * lcd tcon mode(dual tcon drive dual dsi)
@@ -657,7 +644,8 @@ enum disp_lcd_dsi_port {
 	DISP_LCD_DSI_DUAL_PORT,
 };
 
-typedef struct {
+typedef struct
+{
 	disp_lcd_if              lcd_if;
 
 	disp_lcd_hv_if           lcd_hv_if;
@@ -689,12 +677,12 @@ typedef struct {
 	unsigned int             lcd_tcon_en_odd_even;
 
 	unsigned int             lcd_dsi_dphy_timing_en;
-	__disp_dsi_dphy_timing_t *lcd_dsi_dphy_timing_p;
+	__disp_dsi_dphy_timing_t*	lcd_dsi_dphy_timing_p;
 
-	unsigned int lcd_fsync_en;
-	unsigned int lcd_fsync_act_time;
-	unsigned int lcd_fsync_dis_time;
-	unsigned int lcd_fsync_pol;
+	unsigned int            lcd_edp_rate; //1(1.62G); 2(2.7G); 3(5.4G)
+	unsigned int            lcd_edp_lane; //  1/2/4lane
+	unsigned int            lcd_edp_colordepth; //color depth, 0:8bit; 1:6bit
+	unsigned int            lcd_edp_fps;
 
 	unsigned int            lcd_dclk_freq;
 	unsigned int            lcd_x; //horizontal resolution
@@ -735,9 +723,11 @@ typedef struct {
 	unsigned int            lcd_dclk_freq_original; //not need to config for user
 	unsigned int            ccir_clk_div; /*not need to config for user*/
 	unsigned int            input_csc;
-} disp_panel_para;
+}disp_panel_para;
 
-typedef enum {
+
+typedef enum
+{
 	DISP_MOD_DE = 0,
 	DISP_MOD_DEVICE, //for timing controller common module
 	DISP_MOD_LCD0,
@@ -753,26 +743,29 @@ typedef enum {
 	DISP_MOD_EINK,
 	DISP_MOD_EDMA,
 	DISP_MOD_NUM,
-} disp_mod_id;
+}disp_mod_id;
 
-typedef struct {
+typedef struct
+{
 	int sync; //1: sync width bootloader
 	int disp; //output disp at bootloader period
 	int type; //output type at bootloader period
 	int mode; //output mode at bootloader period
-} disp_bootloader_info;
+}disp_bootloader_info;
 
 #define DEBUG_TIME_SIZE 100
-typedef struct {
+typedef struct
+{
 	unsigned long         sync_time[DEBUG_TIME_SIZE];//for_debug
 	unsigned int          sync_time_index;//for_debug
 	unsigned int          skip_cnt;
 	unsigned int          error_cnt;//under flow .ect
 	unsigned int          irq_cnt;
 	unsigned int          vsync_cnt;
-} disp_health_info;
+}disp_health_info;
 
-typedef struct {
+typedef struct
+{
 	uintptr_t reg_base[DISP_MOD_NUM];
 	u32 irq_no[DISP_MOD_NUM];
 	struct clk *mclk[DISP_MOD_NUM];
@@ -783,31 +776,34 @@ typedef struct {
 	s32 (*capture_event)(u32 sel);
 	s32 (*shadow_protect)(u32 sel, bool protect);
 	disp_bootloader_info boot_info;
-	struct disp_feat_init feat_init;
-} disp_bsp_init_para;
+}disp_bsp_init_para;
 
 typedef void (*LCD_FUNC) (unsigned int sel);
-typedef struct lcd_function {
+typedef struct lcd_function
+{
 	LCD_FUNC func;
 	unsigned int delay;//ms
-} disp_lcd_function;
+}disp_lcd_function;
 
 #define LCD_MAX_SEQUENCES 7
-typedef struct lcd_flow {
+typedef struct lcd_flow
+{
     disp_lcd_function func[LCD_MAX_SEQUENCES];
     unsigned int func_num;
     unsigned int cur_step;
-} disp_lcd_flow;
+}disp_lcd_flow;
 
-typedef struct {
-	void (*cfg_panel_info)(panel_extend_para *info);
+typedef struct
+{
+	void (*cfg_panel_info)(panel_extend_para * info);
 	int (*cfg_open_flow)(unsigned int sel);
 	int (*cfg_close_flow)(unsigned int sel);
 	int (*lcd_user_defined_func)(unsigned int sel, unsigned int para1, unsigned int para2, unsigned int para3);
 	int (*set_bright)(unsigned int sel, unsigned int bright);
-} disp_lcd_panel_fun;
+}disp_lcd_panel_fun;
 
-typedef struct {
+typedef struct
+{
 	//basic adjust
 	u32         bright;
 	u32         contrast;
@@ -823,7 +819,7 @@ typedef struct {
 	u32         fancycolor_blue;//0-Off; 1-2-on.
 	struct disp_rect   window;
 	u32         enable;
-} disp_enhance_para;
+}disp_enhance_para;
 
 struct disp_device {
 	struct list_head list;
@@ -836,7 +832,7 @@ struct disp_device {
 	struct disp_manager *manager;
 	struct disp_video_timings timings;
 	struct work_struct close_eink_panel_work;
-	void *priv_data;
+	void* priv_data;
 
 	/* function fileds  */
 	/* init: script init && clock init && pwm init && register irq
@@ -881,13 +877,13 @@ struct disp_device {
 	s32 (*set_mode)(struct disp_device *dispdev, u32 mode);
 	s32 (*get_mode)(struct disp_device *dispdev);
 	s32 (*set_static_config)(struct disp_device *dispdev,
-				 struct disp_device_config *config);
+			  struct disp_device_config *config);
 	s32 (*get_static_config)(struct disp_device *dispdev,
-				 struct disp_device_config *config);
+			  struct disp_device_config *config);
 	s32 (*set_dynamic_config)(struct disp_device *dispdev,
-				  struct disp_device_dynamic_config *config);
+			  struct disp_device_dynamic_config *config);
 	s32 (*get_dynamic_config)(struct disp_device *dispdev,
-				  struct disp_device_dynamic_config *config);
+			  struct disp_device_dynamic_config *config);
 	/*
 	 * check_config_dirty
 	 * check if the config is not the same with current one
@@ -895,9 +891,9 @@ struct disp_device {
 	bool (*check_config_dirty)(struct disp_device *dispdev,
 				   struct disp_device_config *config);
 	s32 (*get_support_mode)(struct disp_device *dispdev, u32 init_mode);
-	s32 (*check_support_mode)(struct disp_device *dispdev, u32 mode);
-	s32 (*set_func)(struct disp_device *dispdev, struct disp_device_func *func);
-	s32 (*set_tv_func)(struct disp_device *dispdev, struct disp_tv_func *func);
+	s32 (*check_support_mode)(struct disp_device* dispdev, u32 mode);
+	s32 (*set_func)(struct disp_device*  dispdev, struct disp_device_func * func);
+	s32 (*set_tv_func)(struct disp_device*  dispdev, struct disp_tv_func * func);
 	s32 (*set_enhance_mode)(struct disp_device *dispdev, u32 mode);
 
 	/* LCD */
@@ -912,20 +908,18 @@ struct disp_device {
 	s32 (*tcon_enable)(struct disp_device *dispdev);
 	s32 (*tcon_disable)(struct disp_device *dispdev);
 	s32 (*set_bright_dimming)(struct disp_device *dispdev, u32 dimming);
-
 	disp_lcd_flow *(*get_open_flow)(struct disp_device *dispdev);
 	disp_lcd_flow *(*get_close_flow)(struct disp_device *dispdev);
 	s32 (*pin_cfg)(struct disp_device *dispdev, u32 bon);
-	s32 (*set_gamma_tbl)(struct disp_device *dispdev, u32 *tbl, u32 size);
-	s32 (*enable_gamma)(struct disp_device *dispdev);
-	s32 (*disable_gamma)(struct disp_device *dispdev);
-	s32 (*set_panel_func)(struct disp_device *lcd, char *name, disp_lcd_panel_fun *lcd_cfg);
-	s32 (*set_open_func)(struct disp_device *lcd, LCD_FUNC func, u32 delay);
-	s32 (*set_close_func)(struct disp_device *lcd, LCD_FUNC func, u32 delay);
-	int (*gpio_set_value)(struct disp_device *dispdev, unsigned int io_index, u32 value);
-	int (*gpio_set_direction)(struct disp_device *dispdev, unsigned int io_index, u32 direction);
-	int (*get_panel_info)(struct disp_device *dispdev, disp_panel_para *info);
-	void (*show_builtin_patten)(struct disp_device *dispdev, u32 patten);
+	s32 (*set_gamma_tbl)(struct disp_device* dispdev, u32 *tbl, u32 size);
+	s32 (*enable_gamma)(struct disp_device* dispdev);
+	s32 (*disable_gamma)(struct disp_device* dispdev);
+	s32 (*set_panel_func)(struct disp_device *lcd, char *name, disp_lcd_panel_fun * lcd_cfg);
+	s32 (*set_open_func)(struct disp_device* lcd, LCD_FUNC func, u32 delay);
+	s32 (*set_close_func)(struct disp_device* lcd, LCD_FUNC func, u32 delay);
+	int (*gpio_set_value)(struct disp_device* dispdev, unsigned int io_index, u32 value);
+	int (*gpio_set_direction)(struct disp_device* dispdev, unsigned int io_index, u32 direction);
+	int (*get_panel_info)(struct disp_device* dispdev, disp_panel_para *info);
 };
 
 /* manager */
@@ -985,9 +979,6 @@ struct disp_manager {
 
 	/* debug interface, dump manager info */
 	s32 (*dump)(struct disp_manager *mgr, char *buf);
-	s32 (*reg_protect)(struct disp_manager *mgr, bool protect);
-	s32 (*set_ksc_para)(struct disp_manager *mgr,
-				      struct disp_ksc_info *pinfo);
 };
 
 struct disp_layer {
@@ -1000,28 +991,28 @@ struct disp_layer {
 	//enum disp_layer_feat caps;
 	struct disp_manager *manager;
 	struct list_head list;
-	void *data;
+	void* data;
 
 	/* function fileds */
 
 //	s32 (*is_support_caps)(struct disp_layer* layer, enum disp_layer_feat caps);
-	s32 (*is_support_format)(struct disp_layer *layer, enum disp_pixel_format fmt);
-	s32 (*set_manager)(struct disp_layer *layer, struct disp_manager *mgr);
-	s32 (*unset_manager)(struct disp_layer *layer);
+	s32 (*is_support_format)(struct disp_layer* layer, enum disp_pixel_format fmt);
+	s32 (*set_manager)(struct disp_layer* layer, struct disp_manager *mgr);
+	s32 (*unset_manager)(struct disp_layer* layer);
 
-	s32 (*check)(struct disp_layer *layer, struct disp_layer_config *config);
+	s32 (*check)(struct disp_layer* layer, struct disp_layer_config *config);
 	s32 (*check2)(struct disp_layer *layer,
 		      struct disp_layer_config2 *config);
-	s32 (*save_and_dirty_check)(struct disp_layer *layer, struct disp_layer_config *config);
+	s32 (*save_and_dirty_check)(struct disp_layer* layer, struct disp_layer_config *config);
 	s32 (*save_and_dirty_check2)(struct disp_layer *layer,
 				     struct disp_layer_config2 *config);
-	s32 (*get_config)(struct disp_layer *layer, struct disp_layer_config *config);
+	s32 (*get_config)(struct disp_layer* layer, struct disp_layer_config *config);
 	s32 (*get_config2)(struct disp_layer *layer,
 			   struct disp_layer_config2 *config);
-	s32 (*apply)(struct disp_layer *layer);
-	s32 (*force_apply)(struct disp_layer *layer);
-	s32 (*is_dirty)(struct disp_layer *layer);
-	s32 (*dirty_clear)(struct disp_layer *layer);
+	s32 (*apply)(struct disp_layer* layer);
+	s32 (*force_apply)(struct disp_layer* layer);
+	s32 (*is_dirty)(struct disp_layer* layer);
+	s32 (*dirty_clear)(struct disp_layer* layer);
 
 	/* init: NULL
 	 * exit: NULL
@@ -1031,7 +1022,7 @@ struct disp_layer {
 
 	s32 (*get_frame_id)(struct disp_layer *layer);
 
-	s32 (*dump)(struct disp_layer *layer, char *buf);
+	s32 (*dump)(struct disp_layer* layer, char *buf);
 };
 
 struct disp_smbl {
@@ -1055,9 +1046,9 @@ struct disp_smbl {
 	s32 (*enable)(struct disp_smbl *smbl);
 	s32 (*disable)(struct disp_smbl *smbl);
 	bool (*is_enabled)(struct disp_smbl *smbl);
-	s32 (*set_manager)(struct disp_smbl *smbl, struct disp_manager *mgr);
-	s32 (*unset_manager)(struct disp_smbl *smbl);
-	s32 (*update_backlight)(struct disp_smbl *smbl, unsigned int bl);
+	s32 (*set_manager)(struct disp_smbl* smbl, struct disp_manager *mgr);
+	s32 (*unset_manager)(struct disp_smbl* smbl);
+	s32 (*update_backlight)(struct disp_smbl* smbl, unsigned int bl);
 
 	/* init: NULL
 	 * exit: NULL
@@ -1071,9 +1062,9 @@ struct disp_smbl {
 	s32 (*sync)(struct disp_smbl *smbl);
 	s32 (*tasklet)(struct disp_smbl *smbl);
 
-	s32 (*set_window)(struct disp_smbl *smbl, struct disp_rect *window);
-	s32 (*get_window)(struct disp_smbl *smbl, struct disp_rect *window);
-	s32 (*dump)(struct disp_smbl *smbl, char *buf);
+	s32 (*set_window)(struct disp_smbl* smbl, struct disp_rect *window);
+	s32 (*get_window)(struct disp_smbl* smbl, struct disp_rect *window);
+	s32 (*dump)(struct disp_smbl* smbl, char *buf);
 };
 
 struct disp_enhance {
@@ -1096,8 +1087,8 @@ struct disp_enhance {
 	s32 (*enable)(struct disp_enhance *enhance);
 	s32 (*disable)(struct disp_enhance *enhance);
 	bool (*is_enabled)(struct disp_enhance *enhance);
-	s32 (*set_manager)(struct disp_enhance *enhance, struct disp_manager *mgr);
-	s32 (*unset_manager)(struct disp_enhance *enhance);
+	s32 (*set_manager)(struct disp_enhance* enhance, struct disp_manager *mgr);
+	s32 (*unset_manager)(struct disp_enhance* enhance);
 
 	/* init: NULL
 	 * exit: NULL
@@ -1112,29 +1103,29 @@ struct disp_enhance {
 	s32 (*tasklet)(struct disp_enhance *enhance);
 
 	/* power manager */
-	s32 (*early_suspend)(struct disp_enhance *enhance);
-	s32 (*late_resume)(struct disp_enhance *enhance);
-	s32 (*suspend)(struct disp_enhance *enhance);
-	s32 (*resume)(struct disp_enhance *enhance);
+	s32 (*early_suspend)(struct disp_enhance* enhance);
+	s32 (*late_resume)(struct disp_enhance* enhance);
+	s32 (*suspend)(struct disp_enhance* enhance);
+	s32 (*resume)(struct disp_enhance* enhance);
 
-	s32 (*set_bright)(struct disp_enhance *enhance, u32 val);
-	s32 (*set_saturation)(struct disp_enhance *enhance, u32 val);
-	s32 (*set_contrast)(struct disp_enhance *enhance, u32 val);
-	s32 (*set_hue)(struct disp_enhance *enhance, u32 val);
+	s32 (*set_bright)(struct disp_enhance* enhance, u32 val);
+	s32 (*set_saturation)(struct disp_enhance* enhance, u32 val);
+	s32 (*set_contrast)(struct disp_enhance* enhance, u32 val);
+	s32 (*set_hue)(struct disp_enhance* enhance, u32 val);
 	s32 (*set_edge)(struct disp_enhance *enhance, u32 val);
 	s32 (*set_detail)(struct disp_enhance *enhance, u32 val);
 	s32 (*set_denoise)(struct disp_enhance *enhance, u32 val);
-	s32 (*set_mode)(struct disp_enhance *enhance, u32 val);
-	s32 (*set_window)(struct disp_enhance *enhance, struct disp_rect *window);
-	s32 (*get_bright)(struct disp_enhance *enhance);
-	s32 (*get_saturation)(struct disp_enhance *enhance);
-	s32 (*get_contrast)(struct disp_enhance *enhance);
-	s32 (*get_hue)(struct disp_enhance *enhance);
+	s32 (*set_mode)(struct disp_enhance* enhance, u32 val);
+	s32 (*set_window)(struct disp_enhance* enhance, struct disp_rect *window);
+	s32 (*get_bright)(struct disp_enhance* enhance);
+	s32 (*get_saturation)(struct disp_enhance* enhance);
+	s32 (*get_contrast)(struct disp_enhance* enhance);
+	s32 (*get_hue)(struct disp_enhance* enhance);
 	s32 (*get_edge)(struct disp_enhance *enhance);
 	s32 (*get_detail)(struct disp_enhance *enhance);
 	s32 (*get_denoise)(struct disp_enhance *enhance);
-	s32 (*get_mode)(struct disp_enhance *enhance);
-	s32 (*get_window)(struct disp_enhance *enhance, struct disp_rect *window);
+	s32 (*get_mode)(struct disp_enhance* enhance);
+	s32 (*get_window)(struct disp_enhance* enhance, struct disp_rect *window);
 	s32 (*set_para)(struct disp_enhance *enhance, disp_enhance_para *para);
 	s32 (*demo_enable)(struct disp_enhance *enhance);
 	s32 (*demo_disable)(struct disp_enhance *enhance);
@@ -1142,9 +1133,9 @@ struct disp_enhance {
 };
 
 struct disp_capture {
-	char *name;
+	char * name;
 	u32 disp;
-	struct disp_manager *manager;
+	struct disp_manager * manager;
 
 	s32 (*set_manager)(struct disp_capture *cptr, struct disp_manager *mgr);
 	s32 (*unset_manager)(struct disp_capture *cptr);
@@ -1176,7 +1167,6 @@ struct rect_size {
 	u32 align;
 };
 
-#if defined(CONFIG_EINK_PANEL_USED)
 struct area_info {
 	unsigned int x_top;
 	unsigned int y_top;
@@ -1222,28 +1212,28 @@ enum eink_update_mode {
 };
 
 struct eink_8bpp_image {
-	enum eink_update_mode	update_mode;
-	enum eink_flash_mode	flash_mode;
-	enum buf_use_state		state;
+	enum eink_update_mode 	update_mode;
+	enum eink_flash_mode 	flash_mode;
+	enum buf_use_state 		state;
 	void					*vaddr;
 	void					*paddr;
-	bool					window_calc_enable;
-	struct rect_size			size;
+	bool 					window_calc_enable;
+	struct rect_size 			size;
 	struct area_info			update_area;
 };
 
 struct eink_init_param {
-	bool					used;
-	u8					eink_moudule_type;
+	bool 					used;
+	u8         				eink_moudule_type;
 	u8					eink_version_type;
-	u8					eink_ctrl_data_type;
+	u8 					eink_ctrl_data_type;
 	u8					eink_bits;   /*0->3bits,1->4bits,2->5bits*/
 	u8					eink_mode;   /*0->8data,1->16data*/
-	struct eink_timing_param		timing;
+	struct eink_timing_param 		timing;
 	char				wavefile_path[32];
 };
 
-enum  eink_bit_num {
+enum  eink_bit_num{
 	EINK_BIT_1 = 0x01,
 	EINK_BIT_2 = 0x02,
 	EINK_BIT_3 = 0x03,
@@ -1256,9 +1246,8 @@ enum  eink_bit_num {
 struct disp_eink_manager {
 	unsigned int disp;
 	unsigned int test;
-	int	tcon_flag;
-	int	eink_panel_temperature;
-
+	int 	tcon_flag;
+	int 	eink_panel_temperature;
 	volatile unsigned int flush_continue_flag;
 	struct tasklet_struct sync_tasklet;
 	struct tasklet_struct decode_tasklet;
@@ -1274,7 +1263,7 @@ struct disp_eink_manager {
 	struct mutex standby_lock;
 
 	int (*eink_update)(struct disp_eink_manager *manager,
-			   struct eink_8bpp_image *cimage);
+			struct eink_8bpp_image *cimage);
 	int (*enable)(struct disp_eink_manager *);
 	int (*disable)(struct disp_eink_manager *);
 	int (*op_skip)(struct disp_eink_manager *manager, u32 skip);
@@ -1282,7 +1271,7 @@ struct disp_eink_manager {
 	int (*resume)(struct disp_eink_manager *);
 	void (*clearwd)(struct disp_eink_manager *, int);
 	/*for debug*/
-	int (*decode)(struct disp_eink_manager *, int);
+	int(*decode)(struct disp_eink_manager *, int);
 	int (*set_temperature)(struct disp_eink_manager *manager, unsigned int temp);
 	unsigned int (*get_temperature)(struct disp_eink_manager *manager);
 };
@@ -1305,7 +1294,7 @@ struct format_manager {
 	int (*enable)(unsigned int id);
 	int (*disable)(unsigned int id);
 	int (*start_convert)(unsigned int id, struct disp_layer_config *config,
-			     unsigned int layer_num, struct image_format *dest);
+			unsigned int layer_num, struct image_format *dest);
 };
 #endif
-#endif
+

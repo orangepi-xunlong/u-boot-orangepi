@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_core.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "hdmi_core.h"
 
 static s32		hdmi_state = HDMI_State_Idle;
@@ -216,7 +200,7 @@ s32 hdmi_core_loop(void)
 			__inf("HDMI_State_Wait_Hpd\n");
 			if (HPD) {
 				hdmi_state = HDMI_State_EDID_Parse;
-				__inf("plugin\n");
+				__wrn("plugin\n");
 			} else {
 				return 0;
 			}

@@ -35,21 +35,22 @@
 #define  SECURE_SWITCH_NORMAL  1
 #define  SECURE_NON_SECUREOS   2
 
-/*增加安全启动下，toc0的头部数据结构 */
-typedef struct {
-	u8 name[8];    /*字符串，可以更改，没有作限制 */
-	u32 magic;     /*必须是0x89119800 */
-	u32 check_sum; /*整个数据的校验和，参考现在boot0做法 */
+//增加安全启动下，toc0的头部数据结构
+typedef struct
+{
+	u8  name[8];	  //字符串，可以更改，没有作限制
+	u32 magic;	      //必须是0x89119800
+	u32 check_sum;    //整个数据的校验和，参考现在boot0做法
 
-	u32 serial_num; /*序列号，可以更改，没有限制 */
-	u32 status;     /*可以更改，没有限制 */
+	u32 serial_num;   //序列号，可以更改，没有限制
+	u32 status;       //可以更改，没有限制
 
-	u32 items_nr;     /*总的项目个数，对TOC0来说，必须是2 */
-	u32 length;       /*TOC0的长度 */
-	u8  platform[4];  /*toc_platform[0]标示启动介质 */
-			/*0：nand；1：卡0；2：卡2；3：spinor */
-	u32 reserved[2];  /*保留位 */
-	u32 end;          /*表示头部结构体结束，必须是0x3b45494d */
+	u32 items_nr;	  //总的项目个数，对TOC0来说，必须是2
+	u32 length;	      //TOC0的长度
+	u8  platform[4];  //toc_platform[0]标示启动介质
+                      //0：nand；1：卡0；2：卡2；3：spinor
+	u32 reserved[2];  //保留位
+	u32 end;          //表示头部结构体结束，必须是0x3b45494d
 
 }
 toc0_private_head_t;
@@ -148,8 +149,8 @@ typedef struct SBROM_TOC0_ITEM_info {
 	u32 end;
 }  SBROM_TOC0_ITEM_info_t;
 
-#define ITEM_PARAMETER_NAME             "parameter"
 #define ITEM_OPTEE_NAME			"optee"
+#define ITEM_PARAMETER_NAME		"parameter"
 #define ITEM_SCP_NAME			"scp"
 #define ITEM_MONITOR_NAME		"monitor"
 #define ITEM_UBOOT_NAME			"u-boot"
@@ -157,7 +158,6 @@ typedef struct SBROM_TOC0_ITEM_info {
 #define ITEM_DTB_NAME			"dtb"
 #define ITEM_SOCCFG_NAME		"soc-cfg"
 #define ITEM_BDCFG_NAME			"board-cfg"
-#define ITEM_ESM_IMG_NAME          "esm-img"
 #define ITEM_SHUTDOWNCHARGE_LOGO_NAME	"shutdowncharge"
 #define ITEM_ANDROIDCHARGE_LOGO_NAME	"androidcharge"
 #define ITEM_EMMC_FW_NAME		"emmc-fw"

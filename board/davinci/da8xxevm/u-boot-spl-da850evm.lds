@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * (C) Copyright 2008
  * Guennadi Liakhovetki, DENX Software Engineering, <lg@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,\
@@ -21,7 +22,6 @@ SECTIONS
 	.text      :
 	{
 	__start = .;
-	  *(.vectors)
 	  arch/arm/cpu/arm926ejs/start.o	(.text*)
 	  *(.text*)
 	} >.sram
@@ -31,9 +31,6 @@ SECTIONS
 
 	. = ALIGN(4);
 	.data : { *(SORT_BY_ALIGNMENT(.data*)) } >.sram
-
-	. = ALIGN(4);
-	.u_boot_list : { KEEP(*(SORT(.u_boot_list*))); } >.sram
 
 	. = ALIGN(4);
 	.rel.dyn : {

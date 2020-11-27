@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * U-Boot - linkage.h
+ * U-boot - linkage.h
  *
  * Copyright (c) 2005-2007 Analog Devices Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LINUX_LINKAGE_H
@@ -10,20 +11,13 @@
 
 #include <asm/linkage.h>
 
-/* Some toolchains use other characters (e.g. '`') to mark new line in macro */
-#ifndef ASM_NL
-#define ASM_NL		 ;
-#endif
-
 #ifdef __cplusplus
 #define CPP_ASMLINKAGE		extern "C"
 #else
 #define CPP_ASMLINKAGE
 #endif
 
-#ifndef asmlinkage
 #define asmlinkage CPP_ASMLINKAGE
-#endif
 
 #define SYMBOL_NAME_STR(X)	#X
 #define SYMBOL_NAME(X)		X
@@ -47,15 +41,15 @@
 #define ALIGN_STR		__ALIGN_STR
 
 #define LENTRY(name) \
-	ALIGN ASM_NL \
+	ALIGN; \
 	SYMBOL_NAME_LABEL(name)
 
 #define ENTRY(name) \
-	.globl SYMBOL_NAME(name) ASM_NL \
+	.globl SYMBOL_NAME(name); \
 	LENTRY(name)
 
 #define WEAK(name) \
-	.weak SYMBOL_NAME(name) ASM_NL \
+	.weak SYMBOL_NAME(name); \
 	LENTRY(name)
 
 #ifndef END
@@ -65,7 +59,7 @@
 
 #ifndef ENDPROC
 #define ENDPROC(name) \
-	.type name STT_FUNC ASM_NL \
+	.type name STT_FUNC; \
 	END(name)
 #endif
 

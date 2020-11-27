@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import collections
@@ -33,8 +34,9 @@ def FindCheckPatch():
             return fname
         path = os.path.dirname(path)
 
-    sys.exit('Cannot find checkpatch.pl - please put it in your ' +
-             '~/bin directory or use --no-check')
+    print >> sys.stderr, ('Cannot find checkpatch.pl - please put it in your ' +
+                '~/bin directory or use --no-check')
+    sys.exit(1)
 
 def CheckPatch(fname, verbose=False):
     """Run checkpatch.pl on a file.
@@ -62,8 +64,7 @@ def CheckPatch(fname, verbose=False):
     result.problems = []
     chk = FindCheckPatch()
     item = {}
-    result.stdout = command.Output(chk, '--no-tree', fname,
-                                   raise_on_error=False)
+    result.stdout = command.Output(chk, '--no-tree', fname)
     #pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     #stdout, stderr = pipe.communicate()
 
@@ -82,7 +83,7 @@ def CheckPatch(fname, verbose=False):
 
     for line in result.stdout.splitlines():
         if verbose:
-            print(line)
+            print line
 
         # A blank line indicates the end of a message
         if not line and item:
@@ -137,7 +138,7 @@ def GetWarningMsg(col, msg_type, fname, line, msg):
         msg_type = col.Color(col.RED, msg_type)
     elif msg_type == 'check':
         msg_type = col.Color(col.MAGENTA, msg_type)
-    return '%s:%d: %s: %s\n' % (fname, line, msg_type, msg)
+    return '%s: %s,%d: %s' % (msg_type, fname, line, msg)
 
 def CheckPatches(verbose, args):
     '''Run the checkpatch.pl script on each patch'''
@@ -150,18 +151,17 @@ def CheckPatches(verbose, args):
             error_count += result.errors
             warning_count += result.warnings
             check_count += result.checks
-            print('%d errors, %d warnings, %d checks for %s:' % (result.errors,
-                    result.warnings, result.checks, col.Color(col.BLUE, fname)))
+            print '%d errors, %d warnings, %d checks for %s:' % (result.errors,
+                    result.warnings, result.checks, col.Color(col.BLUE, fname))
             if (len(result.problems) != result.errors + result.warnings +
                     result.checks):
-                print("Internal error: some problems lost")
+                print "Internal error: some problems lost"
             for item in result.problems:
-                sys.stderr.write(
-                    GetWarningMsg(col, item.get('type', '<unknown>'),
+                print GetWarningMsg(col, item.get('type', '<unknown>'),
                         item.get('file', '<unknown>'),
-                        item.get('line', 0), item.get('msg', 'message')))
+                        item.get('line', 0), item.get('msg', 'message'))
             print
-            #print(stdout)
+            #print stdout
     if error_count or warning_count or check_count:
         str = 'checkpatch.pl found %d error(s), %d warning(s), %d checks(s)'
         color = col.GREEN
@@ -169,6 +169,6 @@ def CheckPatches(verbose, args):
             color = col.YELLOW
         if error_count:
             color = col.RED
-        print(col.Color(color, str % (error_count, warning_count, check_count)))
+        print col.Color(color, str % (error_count, warning_count, check_count))
         return False
     return True

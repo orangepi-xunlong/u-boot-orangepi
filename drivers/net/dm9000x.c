@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
   dm9000.c: Version 1.2 12/15/2003
 
 	A Davicom DM9000 ISA NIC fast Ethernet driver for Linux.
 	Copyright (C) 1997  Sten Wang
+
+ * SPDX-License-Identifier:	GPL-2.0+
 
   (C)Copyright 1997-1998 DAVICOM Semiconductor,Inc. All Rights Reserved.
 
@@ -341,8 +342,14 @@ static int dm9000_init(struct eth_device *dev, bd_t *bd)
 	DM9000_iow(DM9000_ISR, ISR_ROOS | ISR_ROS | ISR_PTS | ISR_PRS);
 
 	printf("MAC: %pM\n", dev->enetaddr);
-	if (!is_valid_ethaddr(dev->enetaddr)) {
+	if (!is_valid_ether_addr(dev->enetaddr)) {
+#ifdef CONFIG_RANDOM_MACADDR
+		printf("Bad MAC address (uninitialized EEPROM?), randomizing\n");
+		eth_random_addr(dev->enetaddr);
+		printf("MAC: %pM\n", dev->enetaddr);
+#else
 		printf("WARNING: Bad MAC address (uninitialized EEPROM?)\n");
+#endif
 	}
 
 	/* fill device MAC address registers */
@@ -457,8 +464,7 @@ static void dm9000_halt(struct eth_device *netdev)
 */
 static int dm9000_rx(struct eth_device *netdev)
 {
-	u8 rxbyte;
-	u8 *rdptr = (u8 *)net_rx_packets[0];
+	u8 rxbyte, *rdptr = (u8 *) NetRxPackets[0];
 	u16 RxStatus, RxLen = 0;
 	struct board_info *db = &dm9000_info;
 
@@ -519,7 +525,7 @@ static int dm9000_rx(struct eth_device *netdev)
 			DM9000_DMP_PACKET(__func__ , rdptr, RxLen);
 
 			DM9000_DBG("passing packet to upper layer\n");
-			net_process_received_packet(net_rx_packets[0], RxLen);
+			NetReceive(NetRxPackets[0], RxLen);
 		}
 	}
 	return 0;
@@ -629,7 +635,7 @@ int dm9000_initialize(bd_t *bis)
 	dev->halt = dm9000_halt;
 	dev->send = dm9000_send;
 	dev->recv = dm9000_rx;
-	strcpy(dev->name, "dm9000");
+	sprintf(dev->name, "dm9000");
 
 	eth_register(dev);
 

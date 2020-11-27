@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 Keymile AG
  * Valentin Longchamp <valentin.longchamp@keymile.com>
  *
  * Copyright 2011,2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -23,7 +24,7 @@
 #include "../common/common.h"
 #include "kmp204x.h"
 
-static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
+DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
@@ -79,36 +80,21 @@ int get_scl(void)
 
 #define ZL30158_RST	8
 #define BFTIC4_RST	0
-#define RSTRQSR1_WDT_RR	0x00200000
-#define RSTRQSR1_SW_RR	0x00100000
 
 int board_early_init_f(void)
 {
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	bool cpuwd_flag = false;
-
-	/* configure mode for uP reset request */
-	qrio_uprstreq(UPREQ_CORE_RST);
 
 	/* board only uses the DDR_MCK0, so disable the DDR_MCK1/2/3 */
 	setbits_be32(&gur->ddrclkdr, 0x001f000f);
-
-	/* set reset reason according CPU register */
-	if ((gur->rstrqsr1 & (RSTRQSR1_WDT_RR | RSTRQSR1_SW_RR)) ==
-	    RSTRQSR1_WDT_RR)
-		cpuwd_flag = true;
-
-	qrio_cpuwd_flag(cpuwd_flag);
-	/* clear CPU bits by writing 1 */
-	setbits_be32(&gur->rstrqsr1, RSTRQSR1_WDT_RR | RSTRQSR1_SW_RR);
 
 	/* set the BFTIC's prstcfg to reset at power-up and unit reset only */
 	qrio_prstcfg(BFTIC4_RST, PRSTCFG_POWUP_UNIT_RST);
 	/* and enable WD on it */
 	qrio_wdmask(BFTIC4_RST, true);
 
-	/* set the ZL30138's prstcfg to reset at power-up only */
-	qrio_prstcfg(ZL30158_RST, PRSTCFG_POWUP_RST);
+	/* set the ZL30138's prstcfg to reset at power-up and unit reset only */
+	qrio_prstcfg(ZL30158_RST, PRSTCFG_POWUP_UNIT_RST);
 	/* and take it out of reset as soon as possible (needed for Hooper) */
 	qrio_prst(ZL30158_RST, false, false);
 
@@ -123,7 +109,7 @@ int board_early_init_r(void)
 	invalidate_icache();
 
 	set_liodns();
-	setup_qbman_portals();
+	setup_portals();
 
 	ret = trigger_fpga_config();
 	if (ret)
@@ -157,8 +143,8 @@ int misc_init_f(void)
 	qrio_prstcfg(ETH_FRONT_PHY_RST, PRSTCFG_POWUP_UNIT_CORE_RST);
 	qrio_prst(ETH_FRONT_PHY_RST, false, false);
 
-	/* set the ZL30343 prstcfg to reset at power-up only */
-	qrio_prstcfg(ZL30343_RST, PRSTCFG_POWUP_RST);
+	/* set the ZL30343 prstcfg to reset at power-up and unit reset only */
+	qrio_prstcfg(ZL30343_RST, PRSTCFG_POWUP_UNIT_RST);
 	/* and enable the WD on it */
 	qrio_wdmask(ZL30343_RST, true);
 
@@ -194,14 +180,13 @@ int misc_init_r(void)
 		}
 	}
 
-	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ivm_read_eeprom();
 	return 0;
 }
 #endif
@@ -219,7 +204,7 @@ int last_stage_init(void)
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		env_set("actual_bank", "0");
+		setenv("actual_bank", "0");
 	}
 #endif
 	set_km_env();
@@ -236,7 +221,7 @@ void fdt_fixup_fman_mac_addresses(void *blob)
 	unsigned char mac_addr[6];
 
 	/* get the mac addr from env */
-	tmp = env_get("ethaddr");
+	tmp = getenv("ethaddr");
 	if (!tmp) {
 		printf("ethaddr env variable not defined\n");
 		return;
@@ -261,20 +246,20 @@ void fdt_fixup_fman_mac_addresses(void *blob)
 }
 #endif
 
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = env_get_bootm_low();
-	size = env_get_bootm_size();
+	base = getenv_bootm_low();
+	size = getenv_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
 #if defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB)
-	fsl_fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #ifdef CONFIG_PCI
@@ -286,8 +271,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_fman_ethernet(blob);
 	fdt_fixup_fman_mac_addresses(blob);
 #endif
-
-	return 0;
 }
 
 #if defined(CONFIG_POST)

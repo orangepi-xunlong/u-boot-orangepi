@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Register definitions for the Atmel USART3 module.
  *
@@ -6,6 +5,8 @@
  *
  * Modified to support C structure SoC access by
  * Andreas Bießmann <biessmann@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __DRIVERS_ATMEL_USART_H__
 #define __DRIVERS_ATMEL_USART_H__

@@ -1,25 +1,7 @@
-/*
- * drivers/video/sunxi/disp2/disp/disp_sys_intf.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _DISP_SYS_INTF_
 #define _DISP_SYS_INTF_
 #include <common.h>
 #include <clk/clk.h>
-#include <asm/arch/gic.h>
-#include <linux/compat.h>
 
 /* cache flush flags */
 #define  CACHE_FLUSH_I_CACHE_REGION       0
@@ -46,6 +28,13 @@ typedef struct
 	int gpio;
 } disp_gpio_set_t;
 
+struct mutex
+{
+	int data;
+};
+
+#define spinlock_t int
+
 struct file;
 
 struct tasklet_struct
@@ -54,16 +43,36 @@ struct tasklet_struct
 	unsigned long data;
 };
 
+struct work_struct
+{
+	int i;
+};
+
+#define spin_lock_irqsave(lock, cpu_sr) do {*lock=0;cpu_sr=1;}while(0)
+#define spin_unlock_irqrestore(lock, cpu_sr) do {*lock=0;int i=cpu_sr;cpu_sr=i;}while(0)
+
 #define DISP_PIN_STATE_ACTIVE "active"
 #define DISP_PIN_STATE_SLEEP "sleep"
+#define GFP_KERNEL 0
+#define __GFP_ZERO 0
+#define EFAULT 1
+#define EINVAL 1
+#define EXPORT_SYMBOL(val)
+#define IS_ERR(val) (NULL == (val))
 
 void disp_sys_cache_flush(void*address, u32 length, u32 flags);
 
+void spin_lock_init(spinlock_t* lock);
+void mutex_init(struct mutex* lock);
 void mutex_destroy(struct mutex* lock);
+void mutex_lock(struct mutex* lock);
+void mutex_unlock(struct mutex* lock);
 
 void tasklet_init(struct tasklet_struct *tasklet, void (*func), unsigned long data);
 void tasklet_schedule(struct tasklet_struct *tasklet);
 
+void * kmalloc(u32 Size, u32 flag);
+void kfree(void *Addr);
 
 int disp_sys_register_irq(u32 IrqNo, u32 Flags,void* Handler,void *pArg,u32 DataSize,u32 Prio);
 void disp_sys_unregister_irq(u32 IrqNo, void * Handler, void *pArg);
@@ -98,5 +107,17 @@ int disp_sys_pwm_disable(uintptr_t p_handler);
 int disp_sys_pwm_config(uintptr_t p_handler, int duty_ns, int period_ns);
 int disp_sys_pwm_set_polarity(uintptr_t p_handler, int polarity);
 
+#if 0
+/* clock */
+int clk_set_rate(struct clk* clk, unsigned long rate);
+unsigned long clk_get_rate(struct clk* clk);
+int clk_set_parent(struct clk* clk, struct clk* parent);
+struct clk* clk_get_parent(struct clk* clk);
+int clk_enable(struct clk* clk);
+int clk_prepare_enable(struct clk* clk);
+int clk_disable(struct clk* clk);
+struct clk* clk_get(char* clk);
+void clk_put(struct clk* clk);
+#endif
 
 #endif

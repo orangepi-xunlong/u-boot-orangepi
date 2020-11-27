@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import os
@@ -19,25 +20,9 @@ class CommandResult:
     def __init__(self):
         self.stdout = None
         self.stderr = None
-        self.combined = None
         self.return_code = None
         self.exception = None
 
-    def __init__(self, stdout='', stderr='', combined='', return_code=0,
-                 exception=None):
-        self.stdout = stdout
-        self.stderr = stderr
-        self.combined = combined
-        self.return_code = return_code
-        self.exception = exception
-
-
-# This permits interception of RunPipe for test purposes. If it is set to
-# a function, then that function is called with the pipe list being
-# executed. Otherwise, it is assumed to be a CommandResult object, and is
-# returned as the result for every RunPipe() call.
-# When this value is None, commands are executed as normal.
-test_result = None
 
 def RunPipe(pipe_list, infile=None, outfile=None,
             capture=False, capture_stderr=False, oneline=False,
@@ -59,16 +44,10 @@ def RunPipe(pipe_list, infile=None, outfile=None,
     Returns:
         CommandResult object
     """
-    if test_result:
-        if hasattr(test_result, '__call__'):
-            return test_result(pipe_list=pipe_list)
-        return test_result
     result = CommandResult()
     last_pipe = None
     pipeline = list(pipe_list)
     user_pipestr =  '|'.join([' '.join(pipe) for pipe in pipe_list])
-    kwargs['stdout'] = None
-    kwargs['stderr'] = None
     while pipeline:
         cmd = pipeline.pop(0)
         if last_pipe is not None:
@@ -84,7 +63,7 @@ def RunPipe(pipe_list, infile=None, outfile=None,
 
         try:
             last_pipe = cros_subprocess.Popen(cmd, cwd=cwd, **kwargs)
-        except Exception as err:
+        except Exception, err:
             result.exception = err
             if raise_on_error:
                 raise Exception("Error running '%s': %s" % (user_pipestr, str))
@@ -103,9 +82,8 @@ def RunPipe(pipe_list, infile=None, outfile=None,
         raise Exception("Error running '%s'" % user_pipestr)
     return result
 
-def Output(*cmd, **kwargs):
-    raise_on_error = kwargs.get('raise_on_error', True)
-    return RunPipe([cmd], capture=True, raise_on_error=raise_on_error).stdout
+def Output(*cmd):
+    return RunPipe([cmd], capture=True, raise_on_error=False).stdout
 
 def OutputOneLine(*cmd, **kwargs):
     raise_on_error = kwargs.pop('raise_on_error', True)

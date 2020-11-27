@@ -16,11 +16,6 @@
 #include <linux/clkdev.h>
 #include <linux/switch.h>
 #include <linux/kthread.h>
-
-#else
-#include <common.h>
-#include <linux/libfdt.h>
-#include <fdt_support.h>
 #endif
 
 #include "hdmi_tx.h"
@@ -180,7 +175,7 @@ static void hdmi_clk_enable(void)
 				pr_err("hdmi ddc clk set parent clk 'periph32k' failed\n");
 		}
 		if (clk_prepare_enable(hdmi_drv->hdmi_cec_clk) != 0)
-			pr_info("hdmi cec clk enable failed!\n");
+			pr_err("hdmi cec clk enable failed!\n");
 	}
 
 
@@ -278,14 +273,9 @@ static void hdmi_sys_source_reset(void)
 }
 #endif
 
-#ifdef CONFIG_HDMI2_FREQ_SPREAD_SPECTRUM
-extern u32 hdmi_set_spread_spectrum(u32 pixel_clk);
-#endif
-
 static s32 hdmi_enable(void)
 {
 	s32 ret = 0;
-	struct clk *clk_parent = NULL;
 
 	LOG_TRACE();
 
@@ -294,19 +284,6 @@ static s32 hdmi_enable(void)
 		mutex_unlock(&hdmi_drv->ctrl_mutex);
 		return 0;
 	}
-
-	clk_parent = clk_get(NULL, "tcon_tv");
-	if (clk_parent == NULL || IS_ERR(clk_parent))
-		printf("tcon_tv clk get failed\n");
-	else
-		clk_set_rate(hdmi_drv->hdmi_clk,
-			clk_get_rate(clk_parent));
-
-#ifdef CONFIG_HDMI2_FREQ_SPREAD_SPECTRUM
-	hdmi_set_spread_spectrum(
-		clk_get_rate(hdmi_drv->hdmi_clk));
-#endif
-
 	if (/*hpd_state &&*/ !video_on)
 		ret = hdmi_enable_core();
 #if defined(__LINUX_PLAT__)
@@ -728,7 +705,6 @@ s32 hdmi_init(void)
 	int node_offset = 0;
 	char io_name[32];
 	disp_gpio_set_t  gpio_info;
-	int power_io_ctrl = 0;
 
 	node_offset = disp_fdt_nodeoffset("hdmi");
 	of_periph_clk_config_setup(node_offset);
@@ -766,17 +742,16 @@ s32 hdmi_init(void)
 
 	ret = clk_prepare_enable(hdmi_drv->hdmi_clk);
 	if (ret != 0)
-		pr_info("hdmi clk enable failed!\n");
+		pr_err("hdmi clk enable failed!\n");
 	ret = clk_prepare_enable(hdmi_drv->hdmi_ddc_clk);
 	if (ret != 0)
-		pr_info("hdmi ddc clk enable failed!\n");
-	ret = clk_prepare_enable(hdmi_drv->hdmi_hdcp_clk);
-	if (ret != 0)
-		pr_info("hdmi hdcp clk enable failed!\n");
-
+		pr_err("hdmi ddc clk enable failed!\n");
 	ret = clk_prepare_enable(hdmi_drv->hdmi_cec_clk);
 	if (ret != 0)
-		pr_info("hdmi cec clk enable failed!\n");
+		pr_err("hdmi cec clk enable failed!\n");
+	ret = clk_prepare_enable(hdmi_drv->hdmi_hdcp_clk);
+	if (ret != 0)
+		pr_err("hdmi hdcp clk enable failed!\n");
 
 	sprintf(io_name, "ddc_scl");
 	ret = disp_sys_script_get_item("hdmi",
@@ -811,31 +786,10 @@ s32 hdmi_init(void)
 	if (ret == 3) {
 		disp_sys_gpio_request_simple(&gpio_info, 1);
 		pr_info("enable hmid cec pin\n");
+	} else {
+		pr_info("hmid cec pin not config\n");
 	}
-
 	hdmi_clk_enable_mask = 1;
-
-	/*hdmi power enable/disable io*/
-	/*get ddc control gpio enable config*/
-	if (fdt_getprop_u32(working_fdt, node_offset, "power_io_ctrl",
-					(uint32_t *)&power_io_ctrl) < 0)
-		pr_info("ERROR: can not get power_io_ctrl\n");
-
-	if (power_io_ctrl) {
-		memset(io_name, 0, 32);
-		memset(&gpio_info, 0, sizeof(gpio_info));
-		sprintf(io_name, "power_en_io");
-		ret = disp_sys_script_get_item("hdmi",
-			io_name,
-			(int *)&gpio_info,
-			sizeof(disp_gpio_set_t)/sizeof(int));
-		if (ret == 3) {
-			disp_sys_gpio_request_simple(&gpio_info, 1);
-			pr_info("enable hdmi power en pin\n");
-		} else {
-			pr_info("hmid power en pin not config\n");
-		}
-	}
 
 #endif
 	/*Init hdmi core and core params*/

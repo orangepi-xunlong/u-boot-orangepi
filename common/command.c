@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -10,7 +11,6 @@
 
 #include <common.h>
 #include <command.h>
-#include <console.h>
 #include <linux/ctype.h>
 
 /*
@@ -18,13 +18,13 @@
  * for long help messages
  */
 
-int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
-	     int argc, char * const argv[])
+int _do_help (cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t * cmdtp, int
+	      flag, int argc, char * const argv[])
 {
 	int i;
 	int rcode = 0;
 
-	if (argc == 1) {	/* show list of commands */
+	if (argc == 1) {	/*show list of commands */
 		cmd_tbl_t *cmd_array[cmd_items];
 		int i, j, swaps;
 
@@ -38,8 +38,8 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 		for (i = cmd_items - 1; i > 0; --i) {
 			swaps = 0;
 			for (j = 0; j < i; ++j) {
-				if (strcmp(cmd_array[j]->name,
-					   cmd_array[j + 1]->name) > 0) {
+				if (strcmp (cmd_array[j]->name,
+					    cmd_array[j + 1]->name) > 0) {
 					cmd_tbl_t *tmp;
 					tmp = cmd_array[j];
 					cmd_array[j] = cmd_array[j + 1];
@@ -56,7 +56,7 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 			const char *usage = cmd_array[i]->usage;
 
 			/* allow user abort */
-			if (ctrlc())
+			if (ctrlc ())
 				return 1;
 			if (usage == NULL)
 				continue;
@@ -69,24 +69,26 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 	 * command help (long version)
 	 */
 	for (i = 1; i < argc; ++i) {
-		cmdtp = find_cmd_tbl(argv[i], cmd_start, cmd_items);
-		if (cmdtp != NULL) {
+		if ((cmdtp = find_cmd_tbl (argv[i], cmd_start, cmd_items )) != NULL) {
 			rcode |= cmd_usage(cmdtp);
 		} else {
-			printf("Unknown command '%s' - try 'help' without arguments for list of all known commands\n\n",
-			       argv[i]);
+			printf ("Unknown command '%s' - try 'help'"
+				" without arguments for list of all"
+				" known commands\n\n", argv[i]
+					);
 			rcode = 1;
 		}
 	}
 	return rcode;
 }
 
-/* find command table entry for a command */
-cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
+/***************************************************************************
+ * find command table entry for a command
+ */
+cmd_tbl_t *find_cmd_tbl (const char *cmd, cmd_tbl_t *table, int table_len)
 {
-#ifdef CONFIG_CMDLINE
 	cmd_tbl_t *cmdtp;
-	cmd_tbl_t *cmdtp_temp = table;	/* Init value */
+	cmd_tbl_t *cmdtp_temp = table;	/*Init value */
 	const char *p;
 	int len;
 	int n_found = 0;
@@ -99,9 +101,11 @@ cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
 	 */
 	len = ((p = strchr(cmd, '.')) == NULL) ? strlen (cmd) : (p - cmd);
 
-	for (cmdtp = table; cmdtp != table + table_len; cmdtp++) {
-		if (strncmp(cmd, cmdtp->name, len) == 0) {
-			if (len == strlen(cmdtp->name))
+	for (cmdtp = table;
+	     cmdtp != table + table_len;
+	     cmdtp++) {
+		if (strncmp (cmd, cmdtp->name, len) == 0) {
+			if (len == strlen (cmdtp->name))
 				return cmdtp;	/* full match */
 
 			cmdtp_temp = cmdtp;	/* abbreviated command ? */
@@ -111,12 +115,11 @@ cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
 	if (n_found == 1) {			/* exactly one match */
 		return cmdtp_temp;
 	}
-#endif /* CONFIG_CMDLINE */
 
 	return NULL;	/* not found or ambiguous command */
 }
 
-cmd_tbl_t *find_cmd(const char *cmd)
+cmd_tbl_t *find_cmd (const char *cmd)
 {
 	cmd_tbl_t *start = ll_entry_start(cmd_tbl_t, cmd);
 	const int len = ll_entry_count(cmd_tbl_t, cmd);
@@ -135,8 +138,8 @@ int cmd_usage(const cmd_tbl_t *cmdtp)
 		return 1;
 	}
 
-	puts(cmdtp->help);
-	putc('\n');
+	puts (cmdtp->help);
+	putc ('\n');
 #endif	/* CONFIG_SYS_LONGHELP */
 	return 1;
 }
@@ -163,7 +166,6 @@ int var_complete(int argc, char * const argv[], char last_char, int maxv, char *
 
 static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv, char *cmdv[])
 {
-#ifdef CONFIG_CMDLINE
 	cmd_tbl_t *cmdtp = ll_entry_start(cmd_tbl_t, cmd);
 	const int count = ll_entry_count(cmd_tbl_t, cmd);
 	const cmd_tbl_t *cmdend = cmdtp + count;
@@ -192,7 +194,7 @@ static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv
 	}
 
 	/* more than one arg or one but the start of the next */
-	if (argc > 1 || last_char == '\0' || isblank(last_char)) {
+	if (argc > 1 || (last_char == '\0' || isblank(last_char))) {
 		cmdtp = find_cmd(argv[0]);
 		if (cmdtp == NULL || cmdtp->complete == NULL) {
 			cmdv[0] = NULL;
@@ -233,9 +235,6 @@ static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv
 
 	cmdv[n_found] = NULL;
 	return n_found;
-#else
-	return 0;
-#endif
 }
 
 static int make_argv(char *s, int argvsz, char *argv[])
@@ -317,7 +316,7 @@ static int find_common_prefix(char * const argv[])
 	return len;
 }
 
-static char tmp_buf[CONFIG_SYS_CBSIZE + 1];	/* copy of console I/O buffer */
+static char tmp_buf[CONFIG_SYS_CBSIZE];	/* copy of console I/O buffer	*/
 
 int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 {
@@ -346,8 +345,7 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 	argc = make_argv(tmp_buf, sizeof(argv)/sizeof(argv[0]), argv);
 
 	/* do the completion and return the possible completions */
-	i = complete_cmdv(argc, argv, last_char,
-			  sizeof(cmdv) / sizeof(cmdv[0]), cmdv);
+	i = complete_cmdv(argc, argv, last_char, sizeof(cmdv)/sizeof(cmdv[0]), cmdv);
 
 	/* no match; bell and out */
 	if (i == 0) {
@@ -367,7 +365,7 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 		len = strlen(s);
 		sep = " ";
 		seplen = 1;
-	} else if (i > 1 && (j = find_common_prefix(cmdv)) != 0) { /* more */
+	} else if (i > 1 && (j = find_common_prefix(cmdv)) != 0) {	/* more */
 		k = strlen(argv[argc - 1]);
 		j -= k;
 		if (j > 0) {
@@ -416,7 +414,7 @@ int cmd_get_data_size(char* arg, int default_size)
 	 */
 	int len = strlen(arg);
 	if (len > 2 && arg[len-2] == '.') {
-		switch (arg[len-1]) {
+		switch(arg[len-1]) {
 		case 'b':
 			return 1;
 		case 'w':
@@ -450,10 +448,10 @@ void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
 	for (i = 0; i < size; i++) {
 		ulong addr;
 
-		addr = (ulong)(cmdtp->cmd) + gd->reloc_off;
-#ifdef DEBUG_COMMANDS
+		addr = (ulong) (cmdtp->cmd) + gd->reloc_off;
+#if DEBUG_COMMANDS
 		printf("Command \"%s\": 0x%08lx => 0x%08lx\n",
-		       cmdtp->name, (ulong)(cmdtp->cmd), addr);
+		       cmdtp->name, (ulong) (cmdtp->cmd), addr);
 #endif
 		cmdtp->cmd =
 			(int (*)(struct cmd_tbl_s *, int, int, char * const []))addr;
@@ -498,7 +496,7 @@ static int cmd_call(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	result = (cmdtp->cmd)(cmdtp, flag, argc, argv);
 	if (result)
-		debug("Command failed, result=%d\n", result);
+		debug("Command failed, result=%d", result);
 	return result;
 }
 

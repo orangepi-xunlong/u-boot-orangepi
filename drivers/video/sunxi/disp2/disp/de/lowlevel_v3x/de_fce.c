@@ -7,7 +7,7 @@
  */
 
 /*******************************************************************************
- *  All Winner Tech, All Right Reserved. 2014-2016 Copyright
+ *  All Winner Tech, All Right Reserved. 2014-2016 Copyright (c)
  *
  *  File name   :  display engine 3.0 fce basic function definition
  *
@@ -15,7 +15,6 @@
  *
  ******************************************************************************/
 
-#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_fce_type.h"
 #include "de_rtmx.h"
 #include "de_enhance.h"
@@ -1181,4 +1180,3 @@ int de_ce_tasklet(unsigned int sel, unsigned int chno, unsigned int frame_cnt)
 
 	return 0;
 }
-#endif

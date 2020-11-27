@@ -1,22 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2008-2009 Samsung Electronics
  *  Minkyu Kang <mk7.kang@samsung.com>
  *  Kyungmin Park <kyungmin.park@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/gpio.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/mmc.h>
-#include <dm.h>
 #include <power/pmic.h>
-#include <usb/dwc2_udc.h>
+#include <usb/s3c_udc.h>
 #include <asm/arch/cpu.h>
 #include <power/max8998_pmic.h>
 #include <samsung/misc.h>
 #include <usb.h>
 #include <usb_mass_storage.h>
-#include <asm/mach-types.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -34,15 +33,20 @@ int board_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_SYS_I2C_INIT_BOARD
-void i2c_init_board(void)
+int power_init_board(void)
 {
-	gpio_request(S5PC110_GPIO_J43, "i2c_clk");
-	gpio_request(S5PC110_GPIO_J40, "i2c_data");
-	gpio_direction_output(S5PC110_GPIO_J43, 1);
-	gpio_direction_output(S5PC110_GPIO_J40, 1);
+	int ret;
+
+	/*
+	 * For PMIC the I2C bus is named as I2C5, but it is connected
+	 * to logical I2C adapter 0
+	 */
+	ret = pmic_init(I2C_0);
+	if (ret)
+		return ret;
+
+	return 0;
 }
-#endif
 
 int dram_init(void)
 {
@@ -52,7 +56,7 @@ int dram_init(void)
 	return 0;
 }
 
-int dram_init_banksize(void)
+void dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
@@ -60,8 +64,6 @@ int dram_init_banksize(void)
 	gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
 	gd->bd->bi_dram[2].start = PHYS_SDRAM_3;
 	gd->bd->bi_dram[2].size = PHYS_SDRAM_3_SIZE;
-
-	return 0;
 }
 
 #ifdef CONFIG_DISPLAY_BOARDINFO
@@ -72,13 +74,12 @@ int checkboard(void)
 }
 #endif
 
-#ifdef CONFIG_MMC
+#ifdef CONFIG_GENERIC_MMC
 int board_mmc_init(bd_t *bis)
 {
 	int i, ret, ret_sd = 0;
 
 	/* MASSMEMORY_EN: XMSMDATA7: GPJ2[7] output high */
-	gpio_request(S5PC110_GPIO_J27, "massmemory_en");
 	gpio_direction_output(S5PC110_GPIO_J27, 1);
 
 	/*
@@ -101,13 +102,12 @@ int board_mmc_init(bd_t *bis)
 
 	ret = s5p_mmc_init(0, 4);
 	if (ret)
-		pr_err("MMC: Failed to init MMC:0.\n");
+		error("MMC: Failed to init MMC:0.\n");
 
 	/*
 	 * SD card (T_FLASH) detect and init
 	 * T_FLASH_DETECT: EINT28: GPH3[4] input mode
 	 */
-	gpio_request(S5PC110_GPIO_H34, "t_flash_detect");
 	gpio_cfg_pin(S5PC110_GPIO_H34, S5P_GPIO_INPUT);
 	gpio_set_pull(S5PC110_GPIO_H34, S5P_GPIO_PULL_UP);
 
@@ -126,7 +126,7 @@ int board_mmc_init(bd_t *bis)
 
 		ret_sd = s5p_mmc_init(2, 4);
 		if (ret_sd)
-			pr_err("MMC: Failed to init SD card (MMC:2).\n");
+			error("MMC: Failed to init SD card (MMC:2).\n");
 	}
 
 	return ret & ret_sd;
@@ -136,54 +136,42 @@ int board_mmc_init(bd_t *bis)
 #ifdef CONFIG_USB_GADGET
 static int s5pc1xx_phy_control(int on)
 {
-	struct udevice *dev;
+	int ret;
 	static int status;
-	int reg, ret;
+	struct pmic *p = pmic_get("MAX8998_PMIC");
+	if (!p)
+		return -ENODEV;
 
-	ret = pmic_get("max8998-pmic", &dev);
-	if (ret)
-		return ret;
+	if (pmic_probe(p))
+		return -1;
 
 	if (on && !status) {
-		reg = pmic_reg_read(dev, MAX8998_REG_ONOFF1);
-		reg |= MAX8998_LDO3;
-		ret = pmic_reg_write(dev, MAX8998_REG_ONOFF1, reg);
+		ret = pmic_set_output(p, MAX8998_REG_ONOFF1,
+				      MAX8998_LDO3, LDO_ON);
+		ret = pmic_set_output(p, MAX8998_REG_ONOFF2,
+				      MAX8998_LDO8, LDO_ON);
 		if (ret) {
 			puts("MAX8998 LDO setting error!\n");
-			return -EINVAL;
-		}
-
-		reg = pmic_reg_read(dev, MAX8998_REG_ONOFF2);
-		reg |= MAX8998_LDO8;
-		ret = pmic_reg_write(dev, MAX8998_REG_ONOFF2, reg);
-		if (ret) {
-			puts("MAX8998 LDO setting error!\n");
-			return -EINVAL;
+			return -1;
 		}
 		status = 1;
 	} else if (!on && status) {
-		reg = pmic_reg_read(dev, MAX8998_REG_ONOFF1);
-		reg &= ~MAX8998_LDO3;
-		ret = pmic_reg_write(dev, MAX8998_REG_ONOFF1, reg);
+		ret = pmic_set_output(p, MAX8998_REG_ONOFF1,
+				      MAX8998_LDO3, LDO_OFF);
+		ret = pmic_set_output(p, MAX8998_REG_ONOFF2,
+				      MAX8998_LDO8, LDO_OFF);
 		if (ret) {
 			puts("MAX8998 LDO setting error!\n");
-			return -EINVAL;
-		}
-
-		reg = pmic_reg_read(dev, MAX8998_REG_ONOFF2);
-		reg &= ~MAX8998_LDO8;
-		ret = pmic_reg_write(dev, MAX8998_REG_ONOFF2, reg);
-		if (ret) {
-			puts("MAX8998 LDO setting error!\n");
-			return -EINVAL;
+			return -1;
 		}
 		status = 0;
 	}
 	udelay(10000);
+
 	return 0;
 }
 
-struct dwc2_plat_otg_data s5pc110_otg_data = {
+struct s3c_plat_otg_data s5pc110_otg_data = {
 	.phy_control = s5pc1xx_phy_control,
 	.regs_phy = S5PC110_PHY_BASE,
 	.regs_otg = S5PC110_OTG_BASE,
@@ -193,7 +181,7 @@ struct dwc2_plat_otg_data s5pc110_otg_data = {
 int board_usb_init(int index, enum usb_init_type init)
 {
 	debug("USB_udc_probe\n");
-	return dwc2_udc_probe(&s5pc110_otg_data);
+	return s3c_udc_probe(&s5pc110_otg_data);
 }
 #endif
 
@@ -206,8 +194,3 @@ int misc_init_r(void)
 	return 0;
 }
 #endif
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-	return 0;
-}

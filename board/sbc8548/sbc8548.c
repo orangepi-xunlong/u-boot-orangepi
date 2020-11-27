@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007,2009 Wind River Systems, Inc. <www.windriver.com>
  *
@@ -7,6 +6,8 @@
  * Copyright 2004, 2007 Freescale Semiconductor.
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -20,8 +21,10 @@
 #include <netdev.h>
 #include <tsec.h>
 #include <miiphy.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 void local_bus_init(void);
 
@@ -298,14 +301,12 @@ int last_stage_init(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_FSL_PCI_INIT
 	FT_FSL_PCI_SETUP;
 #endif
-
-	return 0;
 }
 #endif

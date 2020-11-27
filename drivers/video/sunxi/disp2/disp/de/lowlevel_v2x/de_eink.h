@@ -1,19 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_eink.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+/*****************************************************************************
+*  All Winner Micro, All Right Reserved. 2006-2015 Copyright (c)
+*
+*  File name   :        de_eink.h
+*
+*  Description :  DE2.0 Write-Back Controller  interface functions
+*  History     :
+*				   2015/07/17	initial version
+*	Code by		:  zengqi
+******************************************************************************/
 #ifndef __DE_EINK_H__
 #define __DE_EINK_H__
 

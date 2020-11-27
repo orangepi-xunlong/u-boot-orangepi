@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006, 2010.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * mpc8313epb board configuration file
@@ -18,7 +19,10 @@
 #define CONFIG_MPC8313ERDB	1
 
 #ifdef CONFIG_NAND
+#define CONFIG_SPL
 #define CONFIG_SPL_INIT_MINIMAL
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_FLUSH_IMAGE
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
 #define CONFIG_SPL_MPC83XX_WAIT_FOR_NAND
@@ -27,6 +31,7 @@
 #define CONFIG_NS16550_MIN_FUNCTIONS
 #endif
 
+#define CONFIG_SYS_TEXT_BASE	0x00100000 /* CONFIG_SYS_NAND_U_BOOT_DST */
 #define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
 #define CONFIG_SPL_MAX_SIZE	(4 * 1024)
 #define CONFIG_SPL_PAD_TO	0x4000
@@ -44,10 +49,15 @@
 
 #endif /* CONFIG_NAND */
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFE000000
+#endif
+
 #ifndef CONFIG_SYS_MONITOR_BASE
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #endif
 
+#define CONFIG_PCI
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_FSL_ELBC 1
 
@@ -71,6 +81,9 @@
 #endif
 
 #define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
+
+#define CONFIG_BOARD_EARLY_INIT_F		/* call board_early_init_f */
+#define CONFIG_BOARD_EARLY_INIT_R		/* call board_early_init_r */
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
@@ -227,7 +240,7 @@
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /* CONFIG_SYS_MONITOR_LEN must be a multiple of CONFIG_ENV_SECT_SIZE */
-#define CONFIG_SYS_MONITOR_LEN	(512 * 1024)	/* Reserve 512 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN	(384 * 1024)	/* Reserve 384 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN	(512 * 1024)	/* Reserved for malloc */
 
 /*
@@ -251,11 +264,18 @@
 
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITION
+#define CONFIG_CMD_MTDPARTS
+#define MTDIDS_DEFAULT			"nand0=e2800000.flash"
+#define MTDPARTS_DEFAULT		\
+	"mtdparts=e2800000.flash:512k(uboot),128k(env),3m@1m(kernel),-(fs)"
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_MTD_NAND_VERIFY_WRITE
+#define CONFIG_CMD_NAND 1
 #define CONFIG_NAND_FSL_ELBC 1
 #define CONFIG_SYS_NAND_BLOCK_SIZE 16384
 #define CONFIG_SYS_NAND_WINDOW_SIZE (32 * 1024)
+
 
 #define CONFIG_SYS_NAND_BR_PRELIM	(CONFIG_SYS_NAND_BASE \
 				| BR_DECC_CHK_GEN	/* Use HW ECC */ \
@@ -339,11 +359,19 @@
 
 #endif
 
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
+
 #define CONFIG_MPC83XX_GPIO 1
+#define CONFIG_CMD_GPIO 1
 
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1
+#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 
@@ -352,6 +380,9 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR+0x4600)
+
+/* Use the HUSH parser */
+#define CONFIG_SYS_HUSH_PARSER
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -378,11 +409,13 @@
 #define CONFIG_SYS_PCI1_IO_PHYS	0xE2000000
 #define CONFIG_SYS_PCI1_IO_SIZE	0x00100000	/* 1M */
 
+#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1057	/* Motorola */
 
 /*
  * TSEC
  */
+#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
 
 #define CONFIG_GMII			/* MII PHY management */
 
@@ -404,6 +437,7 @@
 #define TSEC2_PHYIDX		0
 #endif
 
+
 /* Options are: TSEC[0-1] */
 #define CONFIG_ETHPRIME			"TSEC1"
 
@@ -417,6 +451,7 @@
  * Environment
  */
 #if defined(CONFIG_NAND)
+	#define CONFIG_ENV_IS_IN_NAND	1
 	#define CONFIG_ENV_OFFSET		(512 * 1024)
 	#define CONFIG_ENV_SECT_SIZE	CONFIG_SYS_NAND_BLOCK_SIZE
 	#define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
@@ -425,6 +460,7 @@
 	#define CONFIG_ENV_OFFSET_REDUND	\
 					(CONFIG_ENV_OFFSET + CONFIG_ENV_RANGE)
 #elif !defined(CONFIG_SYS_RAMBOOT)
+	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		\
 			(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 	#define CONFIG_ENV_SECT_SIZE	0x10000	/* 64K(one sector) for env */
@@ -432,6 +468,7 @@
 
 /* Address and size of Redundant Environment Sector */
 #else
+	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -443,17 +480,42 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+
 
 /*
  * Command line configuration.
  */
+#include <config_cmd_default.h>
+
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_I2C
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_DATE
+#define CONFIG_CMD_PCI
+
+#if defined(CONFIG_SYS_RAMBOOT) && !defined(CONFIG_NAND)
+    #undef CONFIG_CMD_SAVEENV
+    #undef CONFIG_CMD_LOADS
+#endif
+
+#define CONFIG_CMDLINE_EDITING 1
+#define CONFIG_AUTO_COMPLETE	/* add autocompletion support   */
 
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 
+						/* Print Buffer Size */
+#define CONFIG_SYS_PBSIZE	\
+			(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
+#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 				/* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
@@ -464,7 +526,6 @@
  */
 				/* Initial Memory map for Linux*/
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20)
-#define CONFIG_SYS_BOOTM_LEN	(64 << 20)	/* Increase max gunzip size */
 
 #define CONFIG_SYS_RCWH_PCIHOST 0x80000000	/* PCIHOST  */
 
@@ -603,7 +664,7 @@
 
 #define CONFIG_NETDEV		"eth1"
 
-#define CONFIG_HOSTNAME		"mpc8313erdb"
+#define CONFIG_HOSTNAME		mpc8313erdb
 #define CONFIG_ROOTPATH		"/nfs/root/path"
 #define CONFIG_BOOTFILE		"uImage"
 				/* U-Boot image on TFTP server */
@@ -612,6 +673,8 @@
 
 				/* default location for tftp and bootm */
 #define CONFIG_LOADADDR		800000
+#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
+#define CONFIG_BAUDRATE		115200
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"netdev=" CONFIG_NETDEV "\0"					\

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * National Semiconductor PHY drivers
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
@@ -52,7 +53,7 @@ static struct phy_driver DP83630_driver = {
 
 
 /* NatSemi DP83865 */
-static int dp838xx_config(struct phy_device *phydev)
+static int dp83865_config(struct phy_device *phydev)
 {
 	phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
 	genphy_config_aneg(phydev);
@@ -92,13 +93,10 @@ static int dp83865_parse_status(struct phy_device *phydev)
 
 static int dp83865_startup(struct phy_device *phydev)
 {
-	int ret;
+	genphy_update_link(phydev);
+	dp83865_parse_status(phydev);
 
-	ret = genphy_update_link(phydev);
-	if (ret)
-		return ret;
-
-	return dp83865_parse_status(phydev);
+	return 0;
 }
 
 
@@ -107,51 +105,8 @@ static struct phy_driver DP83865_driver = {
 	.uid = 0x20005c70,
 	.mask = 0xfffffff0,
 	.features = PHY_GBIT_FEATURES,
-	.config = &dp838xx_config,
+	.config = &dp83865_config,
 	.startup = &dp83865_startup,
-	.shutdown = &genphy_shutdown,
-};
-
-/* NatSemi DP83848 */
-static int dp83848_parse_status(struct phy_device *phydev)
-{
-	int mii_reg;
-
-	mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
-
-	if(mii_reg & (BMSR_100FULL | BMSR_100HALF)) {
-		phydev->speed = SPEED_100;
-	} else {
-		phydev->speed = SPEED_10;
-	}
-
-	if (mii_reg & (BMSR_10FULL | BMSR_100FULL)) {
-		phydev->duplex = DUPLEX_FULL;
-	} else {
-		phydev->duplex = DUPLEX_HALF;
-	}
-
-	return 0;
-}
-
-static int dp83848_startup(struct phy_device *phydev)
-{
-	int ret;
-
-	ret = genphy_update_link(phydev);
-	if (ret)
-		return ret;
-
-	return dp83848_parse_status(phydev);
-}
-
-static struct phy_driver DP83848_driver = {
-	.name = "NatSemi DP83848",
-	.uid = 0x20005c90,
-	.mask = 0x2000ff90,
-	.features = PHY_BASIC_FEATURES,
-	.config = &dp838xx_config,
-	.startup = &dp83848_startup,
 	.shutdown = &genphy_shutdown,
 };
 
@@ -159,7 +114,6 @@ int phy_natsemi_init(void)
 {
 	phy_register(&DP83630_driver);
 	phy_register(&DP83865_driver);
-	phy_register(&DP83848_driver);
 
 	return 0;
 }

@@ -126,7 +126,7 @@ struct stat {
 
 #endif	/* __MIPS__ */
 
-#if defined(__SH__) || defined(__XTENSA__)
+#if defined(__AVR32__) || defined(__SH__)
 
 struct stat {
 	unsigned long st_dev;
@@ -149,7 +149,7 @@ struct stat {
 	unsigned long  __unused5;
 };
 
-#endif /* __SH__  || __XTENSA__ */
+#endif /* __AVR32__ || __SH__ */
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * am3517evm.h - Header file for the AM3517 EVM.
  *
@@ -8,6 +7,8 @@
  *
  * Copyright (C) 2010
  * Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _AM3517EVM_H_
@@ -332,7 +333,7 @@ const omap3_sysinfo sysinfo = {
 	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(SYS_CLKOUT2),	(IEN  | PTU | EN  | M0)) \
 	/* JTAG */\
-	MUX_VAL(CP(JTAG_NTRST),		(IEN  | PTD | DIS | M0)) \
+	MUX_VAL(CP(JTAG_nTRST),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TCK),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TMS),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TDI),		(IEN  | PTD | DIS | M0)) \

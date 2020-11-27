@@ -1,15 +1,21 @@
 /*
- * (C) Copyright 2018 allwinnertech  <wangwei@allwinnertech.com>
+ * Copyright (c) 2014, Linaro Limited
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License Version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
-
 #ifndef TEESMC25_H
 #define TEESMC25_H
 
 /* for optee v2.5 */
 #define ARM_SMCCC_STD_CALL		0
-#define ARM_SMCCC_FAST_CALL		1u
+#define ARM_SMCCC_FAST_CALL		1
 #define ARM_SMCCC_TYPE_SHIFT		31
 
 #define ARM_SMCCC_SMC_32		0
@@ -81,10 +87,6 @@
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_EFUSE)
 #define EFUSE_OP_WR 1
 #define EFUSE_OP_RD 0
-
-#define OPTEE_SMC_FUNCIC_SUNXI_HASH 23
-#define OPTEE_SMC_SUNXI_HASH_OP \
-		OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCIC_SUNXI_HASH)
 
 /*PLATFORM_FASTCALL*/
 #define OPTEE_SMC_FUNCID_PLATFORM  100

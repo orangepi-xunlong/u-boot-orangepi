@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 Ilya Yanok, Emcraft Systems
  * (C) Copyright 2004-2008
@@ -8,6 +7,8 @@
  *	Sunil Kumar <sunilsaini05@gmail.com>
  *	Shashi Ranjan <shashiranjanmca05@gmail.com>
  *
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

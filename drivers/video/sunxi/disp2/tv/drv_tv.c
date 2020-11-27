@@ -7,15 +7,14 @@
  *
  */
 #include "drv_tv.h"
-#include "../disp/disp_sys_intf.h"
 
 static int suspend;
 struct tv_info_t g_tv_info;
-#if defined(CONFIG_MACH_SUN8IW7)
+#if defined(CONFIG_ARCH_SUN8IW7P1)
 static unsigned int cali[4] = {512, 512, 512, 512};
 #else
 static unsigned int cali[4] = {625, 625, 625, 625};
-#endif /*endif CONFIG_MACH_SUN8IW7 */
+#endif /*endif CONFIG_ARCH_SUN8IW7P1 */
 static int offset[4] = {0, 0, 0, 0};
 extern s32 disp_set_tv_func(struct disp_tv_func * func);
 extern uintptr_t disp_getprop_regbase(char *main_name,
@@ -340,103 +339,19 @@ static struct disp_video_timings video_timing[] = {
 	},
 	{
 		.vic = 0,
-		.tv_mode = DISP_VGA_MOD_1600_900P_60,
-		.pixel_clk = 108000000,
-		.pixel_repeat = 0,
-		.x_res = 1600,
-		.y_res = 900,
-		.hor_total_time = 1800,
-		.hor_back_porch = 96,
-		.hor_front_porch = 24,
-		.hor_sync_time = 80,
-		.ver_total_time = 1000,
-		.ver_back_porch = 96,
-		.ver_front_porch = 1,
-		.ver_sync_time = 3,
-		.hor_sync_polarity = 1,/* 0: negative, 1: positive */
-		.ver_sync_polarity = 1,/* 0: negative, 1: positive */
-		.b_interlace = 0,
-		.vactive_space = 0,
-		.trd_mode = 0,
-	},
-	{
-		.vic = 0,
-		.tv_mode = DISP_VGA_MOD_1440_900P_60,
-		.pixel_clk = 89000000,
-		.pixel_repeat = 0,
-		.x_res = 1440,
-		.y_res = 900,
-		.hor_total_time = 1600,
-		.hor_back_porch = 80,
-		.hor_front_porch = 48,
-		.hor_sync_time = 32,
-		.ver_total_time = 926,
-		.ver_back_porch = 17,
-		.ver_front_porch = 3,
-		.ver_sync_time = 6,
-		.hor_sync_polarity = 1,/* 0: negative, 1: positive */
-		.ver_sync_polarity = 0,/* 0: negative, 1: positive */
-		.b_interlace = 0,
-		.vactive_space = 0,
-		.trd_mode = 0,
-	},
-	{
-		.vic = 0,
-		.tv_mode = DISP_VGA_MOD_1366_768P_60,
-		.pixel_clk = 85800000,
-		.pixel_repeat = 0,
-		.x_res = 1366,
-		.y_res = 768,
-		.hor_total_time = 1792,
-		.hor_back_porch = 213,
-		.hor_front_porch = 70,
-		.hor_sync_time = 143,
-		.ver_total_time = 798,
-		.ver_back_porch = 24,
-		.ver_front_porch = 3,
-		.ver_sync_time = 3,
-		.hor_sync_polarity = 1,/* 0: negative, 1: positive */
-		.ver_sync_polarity = 1,/* 0: negative, 1: positive */
-		.b_interlace = 0,
-		.vactive_space = 0,
-		.trd_mode = 0,
-	},
-	{
-		.vic = 0,
-		.tv_mode = DISP_VGA_MOD_1280_800P_60,
-		.pixel_clk = 83500000,
-		.pixel_repeat = 0,
-		.x_res = 1280,
-		.y_res = 800,
-		.hor_total_time = 1680,
-		.hor_back_porch = 200,
-		.hor_front_porch = 72,
-		.hor_sync_time = 128,
-		.ver_total_time = 831,
-		.ver_back_porch = 22,
-		.ver_front_porch = 3,
-		.ver_sync_time = 6,
-		.hor_sync_polarity = 0,/* 0: negative, 1: positive */
-		.ver_sync_polarity = 1,/* 0: negative, 1: positive */
-		.b_interlace = 0,
-		.vactive_space = 0,
-		.trd_mode = 0,
-	},
-	{
-		.vic = 0,
 		.tv_mode = DISP_VGA_MOD_1920_1080P_60,
-		.pixel_clk = 148500000,
+		.pixel_clk = 14850000,
 		.pixel_repeat = 0,
 		.x_res = 1920,
 		.y_res = 1080,
 		.hor_total_time = 2200,
-		.hor_back_porch = 148,
-		.hor_front_porch = 88,
-		.hor_sync_time = 44,
-		.ver_total_time = 1125,
-		.ver_back_porch = 36,
-		.ver_front_porch = 4,
-		.ver_sync_time = 5,
+		.hor_back_porch = 88,
+		.hor_front_porch = 40,
+		.hor_sync_time = 128,
+		.ver_total_time = 628,
+		.ver_back_porch = 23,
+		.ver_front_porch = 1,
+		.ver_sync_time = 4,
 		.hor_sync_polarity = 1,/* 0: negative, 1: positive */
 		.ver_sync_polarity = 1,/* 0: negative, 1: positive */
 		.b_interlace = 0,
@@ -447,18 +362,18 @@ static struct disp_video_timings video_timing[] = {
 
 #define TVE_CHECK_PARAM(sel) \
 	do { if (sel >= TVE_DEVICE_NUM) {\
-		printf("%s, sel(%u) is out of range\n", __func__, sel);\
+		pr_msg("%s, sel(%d) is out of range\n", __func__, sel);\
 		return -1;\
 		} \
 	} while (0)
 
 /*#define TVDEBUG*/
 #if defined(TVDEBUG)
-#define TV_DBG(fmt, arg...)   printf("%s()%d "fmt, __func__, __LINE__, ##arg)
+#define TV_DBG(fmt, arg...)   pr_msg("%s()%d "fmt, __func__, __LINE__, ##arg)
 #else
 #define TV_DBG(fmt, arg...)
 #endif
-#define TV_ERR(fmt, arg...)   printf("%s()%d "fmt, __func__, __LINE__, ##arg)
+#define TV_ERR(fmt, arg...)   pr_msg("%s()%d "fmt, __func__, __LINE__, ##arg)
 
 #if defined(CONFIG_SWITCH) || defined(CONFIG_ANDROID_SWITCH)
 static struct task_struct *tve_task;
@@ -614,7 +529,7 @@ static int tve_clk_enable(u32 sel)
 
 	ret = clk_prepare_enable(g_tv_info.screen[sel].clk);
 	if (0 != ret) {
-		TV_ERR("fail to enable tve%u's clk!\n", sel);
+		TV_ERR("fail to enable tve%d's clk!\n", sel);
 		return ret;
 	}
 
@@ -630,13 +545,14 @@ static int tve_clk_disable(u32 sel)
 static void tve_clk_config(u32 sel, u32 tv_mode)
 {
 	struct disp_video_timings *info = video_timing;
-	int i, list_num;
+	int i, list_num, rc;
 	int ret = 0;
 	bool find = false;
 	unsigned long rate = 0, prate = 0;
-	unsigned long round = 0, parent_round_rate = 0;
-	signed long rate_diff = 0, prate_diff = 0, accuracy = 1000000;
-	unsigned int div = 1;
+	unsigned long parent_rate[] = {216000000, 297000000, 240000000,
+				       432000000};
+	bool rate_exact = false;
+	unsigned long round;
 
 	list_num = tv_get_list_num();
 	for(i=0; i<list_num; i++) {
@@ -647,55 +563,39 @@ static void tve_clk_config(u32 sel, u32 tv_mode)
 		info++;
 	}
 	if (!find) {
-		TV_ERR("tv have no mode(%u)!\n", tv_mode);
+		TV_ERR("tv have no mode(%d)!\n", tv_mode);
 		return;
 	}
 
 	rate = info->pixel_clk;
-
-	round = clk_round_rate(g_tv_info.screen[sel].clk, rate);
-	rate_diff = (long)(round - rate);
-	if ((rate_diff > accuracy) || (rate_diff < -accuracy)) {
-		for (accuracy = 1000000; accuracy <= 5000000;
-		     accuracy += 1000000) {
-			for (div = 1; (rate * div) <= 984000000; div++) {
-				prate = rate * div;
-				parent_round_rate =
-				    clk_round_rate(g_tv_info.clk_parent, prate);
-				prate_diff = (long)(parent_round_rate - prate);
-				if ((prate_diff < accuracy) &&
-				    (prate_diff > -accuracy)) {
-					ret = clk_set_rate(g_tv_info.clk_parent,
-							   prate);
-					ret += clk_set_rate(
-					    g_tv_info.screen[sel].clk, rate);
-					if (ret)
-						TV_ERR("fail to set rate(%lu) "
-						       "fo tve%u's clock!\n",
-						       rate, sel);
-					else
-						break;
-				}
-			}
-			if (rate * div > 984000000)
-				continue;
+	rc = sizeof(parent_rate)/sizeof(unsigned long);
+	for (i = 0; i < rc; i++) {
+		if (!(parent_rate[i] % rate)) {
+			prate = parent_rate[i];
 			break;
 		}
-		if (accuracy > 5000000)
-			TV_ERR("fail to set tve clk at %ld accuracy\n",
-			       accuracy);
-	} else {
-		prate = clk_get_rate(g_tv_info.clk_parent);
-		ret = clk_set_rate(g_tv_info.screen[sel].clk, rate);
-		if (ret)
-			TV_ERR("fail to set rate(%lu) fo tve%u's clock!\n",
-			       rate, sel);
+	}
+	if (!prate) {
+		prate = 984000000;
+		TV_ERR("not find suitable parent rate, set max rate.\n");
 	}
 
-	TV_DBG("parent prate=%lu(%lu), rate=%lu(%lu), tv_mode=%d\n",
-		clk_get_rate(g_tv_info.clk_parent), prate,
-		clk_get_rate(g_tv_info.screen[sel].clk), rate, tv_mode);
+	TV_DBG("parent count = %d, prate=%lu, rate=%lu, tv_mode=%d\n",
+		rc, prate, rate, tv_mode);
 
+	round = clk_round_rate(g_tv_info.screen[sel].clk, rate);
+	if (round == rate)
+		rate_exact = true;
+
+	if (!rate_exact) {
+		ret = clk_set_rate(g_tv_info.screen[sel].clk->parent, prate);
+		if (ret)
+			TV_ERR("fail to set rate(%ld) fo tve%d's pclk!\n",
+			    prate, sel);
+	}
+	ret = clk_set_rate(g_tv_info.screen[sel].clk, rate);
+	if (ret)
+		TV_ERR("fail to set rate(%ld) fo tve%d's clock!\n", rate, sel);
 }
 
 /**
@@ -714,10 +614,10 @@ static s32 __get_offset(char *main_key, u32 i)
 	if (!main_key)
 		return 0;
 
-	snprintf(sub_key, sizeof(sub_key), "dac_offset%u", i);
+	snprintf(sub_key, sizeof(sub_key), "dac_offset%d", i);
 
 	ret = disp_sys_script_get_item(main_key, sub_key, &value, 1);
-	if (ret == 1) {
+	if (ret >= 0) {
 		/* Sysconfig can not use signed params, however,
 		 * dac_offset as a signed param which ranges from
 		 * -100 to 100, is maping sysconfig params from
@@ -776,7 +676,7 @@ static s32 tv_inside_init(int sel)
 		sprintf(sub_key, "dac_type%d", i);
 		ret = disp_sys_script_get_item(main_key, sub_key, &value, 1);
 		if (ret != 1) {
-			TV_DBG("tv%d have no type%d\n", sel, i);
+			TV_ERR("tv%d have no type%d\n", sel, i);
 			/* if do'not config type, set disabled status */
 			g_tv_info.screen[sel].dac_type[i] = 7;
 		} else {
@@ -847,15 +747,6 @@ err_iomap:
 }
 #endif
 
-static int tv_power_enable(char *name)
-{
-	int ret = -1;
-
-	ret = disp_sys_power_enable(name);
-
-	return ret;
-}
-
 static int tv_probe(int sel)
 {
 	struct disp_tv_func disp_func;
@@ -864,8 +755,7 @@ static int tv_probe(int sel)
 	int node_offset = 0;
 	int ret = 0;
 	int value = 0;
-	char tv_power[40];
-	TV_DBG("\n");
+	TV_ERR("\n");
 
 	sprintf(main_key, "tv%d", sel);
 
@@ -874,10 +764,6 @@ static int tv_probe(int sel)
 		TV_ERR("skip tv%d in boot.\n", sel);
 		return -1;
 	}
-
-	if (disp_sys_script_get_item(main_key, "tv_power", (int *)tv_power,
-				     2) == 2)
-		tv_power_enable(tv_power);
 
 	if (!g_tv_info.tv_number)
 		memset(&g_tv_info, 0, sizeof(struct tv_info_t));
@@ -940,16 +826,19 @@ err_iomap:
 s32 tv_init(void)
 {
 	s32 i = 0, ret = 0;
-	char main_key[20], str[10];
+	char main_key[20];
+	int value = 0;
 
 	for (i = 0; i < TVE_DEVICE_NUM; i++) {
 		sprintf(main_key, "tv%d", i);
 
-		ret = disp_sys_script_get_item(main_key, "status", (int *)str, 2);
-		if (ret != 2 || strncmp(str, "okay", 10) != 0) {
+		ret = disp_sys_script_get_item(main_key, "used", &value, 1);
+		if (ret != 1) {
 			TV_ERR("fetch tv%d err.\n", i);
 			continue;
 		}
+		if (1 != value)
+			continue;
 
 		tv_probe(i);
 	}

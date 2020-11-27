@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Gerry Hamel, geh@ti.com, Texas Instruments
@@ -16,6 +15,8 @@
  *	Stuart Lynne <sl@lineo.com>,
  *	Tom Rushworth <tbr@lineo.com>,
  *	Bruce Balden <balden@lineo.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -314,7 +315,7 @@ static int ep0_get_descriptor (struct usb_device_instance *device,
 			/*copy_config(urb, &report_descriptor->bData[0], report_descriptor->wLength, max); */
 			if (max - urb->actual_length > 0) {
 				int length =
-					min(report_descriptor->wLength,
+					MIN (report_descriptor->wLength,
 					     max - urb->actual_length);
 				memcpy (urb->buffer + urb->actual_length,
 					&report_descriptor->bData[0], length);

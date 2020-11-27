@@ -9,8 +9,8 @@
 
 SRCTREE		:= $(CURDIR)
 TOPDIR		:= $(SRCTREE)
-CROSS_COMPILE := $(TOPDIR)/../tools/toolchain/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-
-DRIVER_DIR	:= $(TOPDIR)/drivers/sunxi_flash/nand
+CROSS_COMPILE :=
+
 export TOPDIR
 
 AS              = $(CROSS_COMPILE)as
@@ -25,73 +25,32 @@ OBJDUMP         = $(CROSS_COMPILE)objdump
 
 export AS LD CC CPP AR NM LDR STRIP OBJCOPY OBJDUMP
 
-CFLGAS = -nostdinc -isystem \
-  -D__KERNEL__ -D__UBOOT__ \
-  -Wall -Wstrict-prototypes \
-  -Wno-format-security -fno-builtin -ffreestanding -fshort-wchar -Os \
-  -fno-stack-protector -fno-delete-null-pointer-checks \
-  -fstack-usage -Wno-format-nonliteral \
-  -Werror=date-time -D__ARM__ \
-  -Wa,-mimplicit-it=always -mthumb -mthumb-interwork \
-  -mabi=aapcs-linux -mword-relocations -fno-pic -mno-unaligned-access \
-  -ffunction-sections -fdata-sections -fno-common \
-  -ffixed-r9 -msoft-float -pipe -march=armv7-a \
-  -D__LINUX_ARM_ARCH__=7
+CFLGAS = -Wall -Wstrict-prototypes -Wno-format-security -fno-builtin \
+	-ffreestanding -Os  -fno-stack-protector -g -fstack-usage \
+	-Wno-format-nonliteral   -D__KERNEL__ \
+	-march=armv7-a -mno-unaligned-access -DCONFIG_ARM -D__ARM__ \
+	-marm -mno-thumb-interwork  -mabi=aapcs-linux  -mword-relocations \
+	-ffunction-sections -fdata-sections -fno-common -ffixed-r9  \
+	-msoft-float  -pipe -nostdinc -isystem
 
 INCLUDE = -I$(shell dirname `$(CC)  -print-libgcc-file-name`)/include \
 		  -I$(SRCTREE)/include \
 		  -I$(SRCTREE)/arch/arm/include
 
 export CFLGAS INCLUDE
-platform=$(shell cat .config | grep "CONFIG_MACH_SUN8IW18=y" | awk -F '=' '{print $$1}')
 
-.PHONY:clean clean_libcomm1 clean_libcomm0
+libcomm0:
+	make -C nand_sunxi/common0/lib-nand
+sun50iw1p1:
+	make -C nand_sunxi/sun50iw1p1/lib-nand
+sun8iw17p1:
+	make -C nand_sunxi/sun8iw17p1/lib-nand
 
-all:libcomm0 libcomm1
-
-libcomm0:clean_libcomm0
-ifneq ("$(wildcard $(DRIVER_DIR)/common0/lib-nand)","")
-	make -C $(DRIVER_DIR)/common0/lib-nand
-endif
-
-clean_libcomm0:
-ifneq ("$(wildcard $(DRIVER_DIR)/common0/lib-nand)","")
-	make -k -C $(DRIVER_DIR)/common0/lib-nand clean
-endif
-
-ifeq ("$(platform)", "CONFIG_MACH_SUN8IW18")
-libcomm1:clean_libcomm1
-ifneq ("$(wildcard $(DRIVER_DIR)/common1/lib-nand)","")
-	make -C $(DRIVER_DIR)/common1/lib-nand
-endif
-
-else
-libcomm1:clean_libcomm1
-ifneq ("$(wildcard $(DRIVER_DIR)/common1/)","")
-	make -C $(DRIVER_DIR)/common1/lib
-endif
-endif
-libsun8iw7p1:clean_sun8iw7p1
-ifneq ("$(wildcard $(DRIVER_DIR)/sun8iw7p1/lib-nand)","")
-	make -C $(DRIVER_DIR)/sun8iw7p1/lib-nand
-endif
-
-ifeq ("$(platform)", "CONFIG_MACH_SUN8IW18")
-clean_libcomm1:
-ifneq ("$(wildcard $(DRIVER_DIR)/common1/lib-nand)","")
-	make -k -C $(DRIVER_DIR)/common1/lib-nand clean
-endif
-
-else
-clean_libcomm1:
-ifneq ("$(wildcard $(DRIVER_DIR)/common1/lib)","")
-	make -k -C $(DRIVER_DIR)/common1/lib clean
-endif
-endif
-clean_sun8iw7p1:
-ifneq ("$(wildcard $(DRIVER_DIR)/sun8iw7p1/lib-nand)","")
-	make -k -C $(DRIVER_DIR)/sun8iw7p1/lib-nand clean
-endif
-
-clean: clean_libcomm1 clean_libcomm0 clean_sun8iw7p1
+.PHONY:clean
+clean:
+	make -C nand_sunxi/common0/lib-nand clean
+clean_a64:
+	make -C nand_sunxi/sun50iw1p1/lib-nand clean
+clean_t7:
+	make -C nand_sunxi/sun8iw17p1/lib-nand clean
 

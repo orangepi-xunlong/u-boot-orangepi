@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
  *
@@ -10,6 +9,8 @@
  *
  * Portions of this file are derived from the Linux kernel source
  *  Copyright (C) 1991, 1992  Linus Torvalds
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __X86_CONTROL_REGS_H

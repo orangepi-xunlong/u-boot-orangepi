@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/tv/de_tve_sun8iw7.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "drv_tv.h"
 #include "de_tvec.h"
 
@@ -23,7 +7,7 @@ static s32 tve_low_dac_auto_cali(u32 sel, u32 cali);
 s32 tve_low_set_reg_base(u32 sel, void __iomem *address)
 {
 	if (sel > 2)
-		printf("sel is %d,err!", sel);
+		pr_msg("sel is %d,err!", sel);
 	else
 		tve_reg_base[sel] = address;
 	return 0;

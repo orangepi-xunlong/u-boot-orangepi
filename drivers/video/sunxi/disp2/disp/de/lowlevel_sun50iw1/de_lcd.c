@@ -1,19 +1,4 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_lcd.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #include "de_lcd_type.h"
 #include "de_lcd.h"
 
@@ -1326,9 +1311,4 @@ s32 tcon_cmap(u32 sel, u32 mode,unsigned int lcd_cmap_tbl[2][3][4])
 		lcd_dev[sel]->tcon_cmap_ctl.bits.cmap_en = 1;
 	}
     return 0;
-}
-
-void tcon_show_builtin_patten(u32 sel, u32 patten)
-{
-	lcd_dev[sel]->tcon0_ctl.bits.src_sel = patten;
 }

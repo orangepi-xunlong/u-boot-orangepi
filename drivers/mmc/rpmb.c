@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014, Staubli Faverges
  * Pierre Aubert
  *
  * eMMC- Replay Protected Memory Block
  * According to JEDEC Standard No. 84-A441
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <common.h>
-#include <memalign.h>
 #include <mmc.h>
 #include <u-boot/sha256.h>
 #include "mmc_private.h"
@@ -66,7 +66,7 @@ struct s_rpmb {
 	unsigned char mac[RPMB_SZ_MAC];
 	unsigned char data[RPMB_SZ_DATA];
 	unsigned char nonce[RPMB_SZ_NONCE];
-	unsigned int write_counter;
+	unsigned long write_counter;
 	unsigned short address;
 	unsigned short block_count;
 	unsigned short result;

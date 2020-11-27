@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * board.h
  *
  * Copyright (C) 2013 Lothar Felten <lothar.felten@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _BOARD_H_

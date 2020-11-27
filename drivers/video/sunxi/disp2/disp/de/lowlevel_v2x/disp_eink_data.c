@@ -1,19 +1,17 @@
 /*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/disp_eink_data.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+******************************************************************************
+*Melis
+*the Easy Portable/Player Operation System
+*(c) Copyright 2012-2020
+*All	Rights Reserved
+*
+* File    :
+* By      : libaiao
+* Version : v1.00
+* Data    :
+* Note    : eink 设备控制时序数据和waveform数据
+******************************************************************************
+*/
 
 #include "disp_eink_data.h"
 #include "disp_waveform.h"
@@ -672,7 +670,7 @@ static __s32 load_wavedata(const char *path, char *buf)
 
 	read_len = vfs_read(fp, (char *)buf, file_len, &pos);
 	if (read_len != file_len) {
-		printf("read file(%s) error(read=%d byte, file=%d byte)\n", path, read_len, file_len);
+		pr_msg("read file(%s) error(read=%d byte, file=%d byte)\n", path, read_len, file_len);
 		ret = -EAGAIN;
 		goto error;
 	}
@@ -709,7 +707,7 @@ int init_eink_ctrl_data_8(unsigned long wavedata_buf, struct eink_timing_param *
 	int ret = -EINVAL;
 
 	if ((wavedata_buf == 0) || (eink_timing_info == NULL)) {
-		printf("%s: input param is null\n", __func__);
+		pr_msg("%s: input param is null\n", __func__);
 		return -EINVAL;
 	}
 
@@ -718,7 +716,7 @@ int init_eink_ctrl_data_8(unsigned long wavedata_buf, struct eink_timing_param *
 	sprintf(path, "%s", "/test/wave_data_frame0.bin");
 	ret = load_wavedata(path, (char *)point);
 	if (ret != 0) {
-		printf("%s: load wavedata fail, ret = %d\n", __func__, ret);
+		pr_msg("%s: load wavedata fail, ret = %d\n", __func__, ret);
 	}
 
 	return ret;
@@ -751,7 +749,7 @@ int init_eink_ctrl_data_8(unsigned long wavedata_buf, struct eink_timing_param *
 	B100_WAVEDATA_8 *dest = NULL;
 
 	if ((wavedata_buf == 0) || (eink_timing_info == NULL)) {
-		printf("%s: input param is null\n", __func__);
+		pr_msg("%s: input param is null\n", __func__);
 		return -EINVAL;
 	}
 
@@ -762,13 +760,13 @@ int init_eink_ctrl_data_8(unsigned long wavedata_buf, struct eink_timing_param *
 	wav_width = h_data_len + hync_len;
 	wav_height = v_data_len + vync_len;
 
-/*	printf("%s: wav_width=%d, wav_height=%d\n", __func__, wav_width, wav_height);*/
+/*	pr_msg("%s: wav_width=%d, wav_height=%d\n", __func__, wav_width, wav_height);*/
 
 	global_ctrl_buffer = (A13_WAVEDATA *)malloc(wav_width*wav_height*sizeof(A13_WAVEDATA));
 	memset((A13_WAVEDATA *)global_ctrl_buffer, 0, wav_width*wav_height*sizeof(A13_WAVEDATA));
 
 	if (global_ctrl_buffer == NULL) {
-		printf("%s: alloc memory for global control buffer fail, size=0x%x\n", __func__, wav_width*wav_height*sizeof(A13_WAVEDATA));
+		pr_msg("%s: alloc memory for global control buffer fail, size=0x%x\n", __func__, wav_width*wav_height*sizeof(A13_WAVEDATA));
 		return -EINVAL;
 	}
 
@@ -852,7 +850,7 @@ int init_eink_ctrl_data_16(unsigned long wavedata_buf, struct eink_timing_param 
 	B100_WAVEDATA_16 *dest = NULL;
 
 	if ((wavedata_buf == 0) || (eink_timing_info == NULL)) {
-		printf("%s: input param is null\n", __func__);
+		pr_msg("%s: input param is null\n", __func__);
 		return -EINVAL;
 	}
 
@@ -863,13 +861,13 @@ int init_eink_ctrl_data_16(unsigned long wavedata_buf, struct eink_timing_param 
 	wav_width = h_data_len + hync_len;
 	wav_height = v_data_len + vync_len;
 
-	printf("%s: wav_width=%d, wav_height=%d\n", __func__, wav_width, wav_height);
+	pr_msg("%s: wav_width=%d, wav_height=%d\n", __func__, wav_width, wav_height);
 
 	global_ctrl_buffer = (A13_WAVEDATA *)malloc(wav_width*wav_height*sizeof(A13_WAVEDATA));
 
 /*	global_ctrl_buffer = (A13_WAVEDATA *)kzalloc(wav_width*wav_height*sizeof(A13_WAVEDATA), GFP_KERNEL);*/
 	if (global_ctrl_buffer == NULL) {
-		printf("%s: alloc memory for global control buffer fail, size=0x%x\n", __func__, wav_width*wav_height*sizeof(A13_WAVEDATA));
+		pr_msg("%s: alloc memory for global control buffer fail, size=0x%x\n", __func__, wav_width*wav_height*sizeof(A13_WAVEDATA));
 		return -EINVAL;
 	}
 

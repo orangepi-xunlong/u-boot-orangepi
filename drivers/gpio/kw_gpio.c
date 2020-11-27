@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * arch/arm/plat-orion/gpio.c
  *
  * Marvell Orion SoC GPIO handling.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -13,9 +14,9 @@
  */
 
 #include <common.h>
-#include <linux/bitops.h>
+#include <asm/bitops.h>
 #include <asm/io.h>
-#include <asm/arch/soc.h>
+#include <asm/arch/kirkwood.h>
 #include <asm/arch/gpio.h>
 
 static unsigned long gpio_valid_input[BITS_TO_LONGS(GPIO_MAX)];
@@ -35,7 +36,7 @@ void __set_direction(unsigned pin, int input)
 	u = readl(GPIO_IO_CONF(pin));
 }
 
-static void __set_level(unsigned pin, int high)
+void __set_level(unsigned pin, int high)
 {
 	u32 u;
 
@@ -47,7 +48,7 @@ static void __set_level(unsigned pin, int high)
 	writel(u, GPIO_OUT(pin));
 }
 
-static void __set_blinking(unsigned pin, int blink)
+void __set_blinking(unsigned pin, int blink)
 {
 	u32 u;
 

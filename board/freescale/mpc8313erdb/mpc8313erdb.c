@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006-2007
  *
  * Author: Scott Wood <scottwood@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #endif
 #include <pci.h>
 #include <mpc83xx.h>
@@ -115,14 +116,12 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-
-	return 0;
 }
 #endif
 #else /* CONFIG_SPL_BUILD */
@@ -132,8 +131,8 @@ void board_init_f(ulong bootflag)
 	NS16550_init((NS16550_t)(CONFIG_SYS_IMMR + 0x4500),
 		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 	puts("NAND boot... ");
-	timer_init();
-	dram_init();
+	init_timebase();
+	initdram(0);
 	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC_SP, (gd_t *)gd,
 		      CONFIG_SYS_NAND_U_BOOT_RELOC);
 }

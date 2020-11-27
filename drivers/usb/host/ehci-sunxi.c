@@ -1,27 +1,39 @@
 /*
- * SPDX-License-Identifier: GPL-2.0+
  * (C) Copyright 20016-2020
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * wangwei <wangwei@allwinnertech.com>
  *
+ * See file CREDITS for list of people who contributed to this
+ * project.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/usb_phy.h>
+#include <pci.h>
+#include <usb.h>
 #include <asm/io.h>
-#include <dm.h>
-#include <asm/arch/gpio.h>
-#include <asm/gpio.h>
-#include <asm/arch/clock.h>
+#include <usb/ehci-fsl.h>
+#include <sys_config.h>
+#include <asm/arch/ccmu.h>
 #include "ehci.h"
+#include "ehci-sunxi.h"
 
-
-#define SUNXI_USB_CTRL		0x800
-#define SUNXI_USB_PHY_CTRL	0x810
-
-static u32 usb_vbase = SUNXI_EHCI0_BASE;
-unsigned int usb_drv_vbus_gpio = -1;
+static u32 usb_vbase = SUNXI_EHCI1_BASE;
+static u32 usb_vbus_handle = 0;
 
 typedef struct _ehci_config
 {
@@ -32,119 +44,293 @@ typedef struct _ehci_config
 	u32 phy_slk_gatimg_ofs;
 	u32 usb0_support;
 	char name[32];
+	char node[32];
 }ehci_config_t;
 
-
+#ifdef CONFIG_USB_EHCI_SUNXI
 static ehci_config_t ehci_cfg[] = {
-	{SUNXI_EHCI0_BASE, USBEHCI0_RST_BIT, USBEHCI0_GATIING_BIT, USBPHY0_RST_BIT, USBPHY0_SCLK_GATING_BIT, 1, "USB-DRD"},
-#ifdef SUNXI_EHCI1_BASE
-	{SUNXI_EHCI1_BASE, USBEHCI1_RST_BIT, USBEHCI1_GATIING_BIT, USBPHY1_RST_BIT, USBPHY1_SCLK_GATING_BIT, 0, "USB-Host"},
+	{SUNXI_EHCI0_BASE, USBEHCI0_RST_BIT, USBEHCI0_GATIING_BIT, USBPHY0_RST_BIT, USBPHY0_SCLK_GATING_BIT, 1, "ehci0", "/soc/usbc0"},
+#ifndef CONFIG_ARCH_SUN50IW6P1
+	{SUNXI_EHCI1_BASE, USBEHCI1_RST_BIT, USBEHCI1_GATIING_BIT, USBPHY1_RST_BIT, USBPHY1_SCLK_GATING_BIT, 0, "ehci1", "/soc/usbc1"},
 #endif
 };
+#endif
 
-
-/*Port:port+num<fun><pull><drv><data>*/
-ulong config_usb_pin(int index)
+/*
+*******************************************************************************
+*                     pin_init
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
+ulong config_usb_pin(char *path, char *prop)
 {
 
-	if(index == 0)
-		usb_drv_vbus_gpio =sunxi_name_to_gpio(CONFIG_USB0_VBUS_PIN);
-	else
-		usb_drv_vbus_gpio =sunxi_name_to_gpio(CONFIG_USB1_VBUS_PIN);
+	user_gpio_set_t     usbc_gpio;
+	int status = -1;
+	ulong pin_handle = 0;
 
-	/*usbc0 port:PB0<0><1><default><default>*/
-	/*usbc1 port:PB1<0><1><default><default>*/
-	sunxi_gpio_set_cfgpin(usb_drv_vbus_gpio, 0);
-	sunxi_gpio_set_pull(usb_drv_vbus_gpio, SUNXI_GPIO_PULL_UP);
+	do{
+		if(fdt_get_one_gpio(path,prop,&usbc_gpio))
+		{
+			break;
+		}
 
-	/* set cfg, ouput */
-	sunxi_gpio_set_cfgpin(usb_drv_vbus_gpio, 1);
+		pin_handle = gpio_request(&usbc_gpio, 1);
+		if(!pin_handle)
+		{
+			break;
+		}
 
-	/* reserved is pull down */
-	sunxi_gpio_set_pull(usb_drv_vbus_gpio, 2);
+		/* set config, ouput */
+		if(gpio_set_one_pin_io_status(pin_handle, 1, NULL))
+		{
+			break;
+		}
 
-	return 0;
+		/* reserved is pull down */
+		if(gpio_set_one_pin_pull(pin_handle, 2, NULL))
+		{
+			break;
+		}
+		status = 0;
+	}while(0);
+	printf("config usb pin %s\n",status?"fail":"success");
+	return status ? 0 : pin_handle;
 }
-
-void sunxi_set_vbus(int onoff)
-{
-	gpio_set_value(usb_drv_vbus_gpio, onoff);
-	return;
-}
-
 s32 __attribute__((weak)) axp_usb_vbus_output(void){ return 0;}
 
 int alloc_pin(int index)
 {
 	if (axp_usb_vbus_output())
 		return 0;
-	config_usb_pin(index);
-	return 0;
+	usb_vbus_handle = config_usb_pin(ehci_cfg[index].node,
+		"usb_drv_vbus_gpio");
+        return usb_vbus_handle ? 0:-1;
 }
 
+/*
+*******************************************************************************
+*                     pin_exit
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
 void free_pin(void)
 {
+	if(usb_vbus_handle)
+		gpio_release(usb_vbus_handle, 0);
+	usb_vbus_handle = 0;
 	return;
 }
 
+
+/*
+*******************************************************************************
+*                     open_usb_clock
+*
+* Description:
+*
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
+#if defined(SUNXI_NCAT_VERSION1)
 u32 open_usb_clock(int index)
 {
 	u32 reg_value = 0;
-
-	struct sunxi_ccm_reg *const ccm =
-		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	u32 ccmu_base = SUNXI_CCM_BASE;
 
 	/* Bus reset and gating for ehci */
-	reg_value = readl(&ccm->usb_gate_reset);
+	reg_value = USBC_Readl(ccmu_base + CCMU_USB_BUS_GATING_RST);
 	reg_value |= (1 << ehci_cfg[index].bus_soft_reset_ofs);
 	reg_value |= (1 << ehci_cfg[index].bus_clk_gating_ofs);
-	writel(reg_value, &ccm->usb_gate_reset);
+	USBC_Writel(reg_value, (ccmu_base + CCMU_USB_BUS_GATING_RST));
 
 	/* open clk for usb phy */
 	if (index == 0) {
-		reg_value = readl(&ccm->usb0_clk_cfg);
+		reg_value = USBC_Readl(ccmu_base + CCMU_USB0_CLK);
 		reg_value |= (1 << ehci_cfg[index].phy_slk_gatimg_ofs);
 		reg_value |= (1 << ehci_cfg[index].phy_reset_ofs);
-		writel(reg_value, &ccm->usb0_clk_cfg);
+		USBC_Writel(reg_value, (ccmu_base + CCMU_USB0_CLK));
 	} else if (index == 1) {
-		reg_value = readl(&ccm->usb1_clk_cfg);
+#ifndef CONFIG_ARCH_SUN50IW6P1
+		reg_value = USBC_Readl(ccmu_base + CCMU_USB1_CLK);
 		reg_value |= (1 << ehci_cfg[index].phy_slk_gatimg_ofs);
 		reg_value |= (1 << ehci_cfg[index].phy_reset_ofs);
-		writel(reg_value, &ccm->usb1_clk_cfg);
+		USBC_Writel(reg_value, (ccmu_base + CCMU_USB1_CLK));
+#endif
 	}
+
 	printf("config usb clk ok\n");
 	return 0;
 }
 
+/*
+*******************************************************************************
+*                     close_usb_clock
+*
+* Description:
+*
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
 u32 close_usb_clock(int index)
 {
 	u32 reg_value = 0;
-	struct sunxi_ccm_reg *const ccm =
-		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	u32 ccmu_base = SUNXI_CCM_BASE;
 
 	/* Bus reset and gating for ehci */
-	reg_value = readl(&ccm->usb_gate_reset);
+	reg_value = USBC_Readl(ccmu_base + CCMU_USB_BUS_GATING_RST);
 	reg_value &= ~(1 << ehci_cfg[index].bus_soft_reset_ofs);
 	reg_value &= ~(1 << ehci_cfg[index].bus_clk_gating_ofs);
-	writel(reg_value, &ccm->usb_gate_reset);
+	USBC_Writel(reg_value, (ccmu_base + CCMU_USB_BUS_GATING_RST));
 
 	/* close clk for usb phy */
 	if (index == 0) {
-		reg_value = readl(&ccm->usb0_clk_cfg);
+		reg_value = USBC_Readl(ccmu_base + CCMU_USB0_CLK);
 		reg_value &= ~(1 << ehci_cfg[index].phy_slk_gatimg_ofs);
 		reg_value &= ~(1 << ehci_cfg[index].phy_reset_ofs);
-		writel(reg_value, &ccm->usb0_clk_cfg);
+		USBC_Writel(reg_value, (ccmu_base + CCMU_USB0_CLK));
 	} else if (index == 1) {
-		reg_value = readl(&ccm->usb1_clk_cfg);
+#ifndef CONFIG_ARCH_SUN50IW6P1
+		reg_value = USBC_Readl(ccmu_base + CCMU_USB1_CLK);
 		reg_value &= ~(1 << ehci_cfg[index].phy_slk_gatimg_ofs);
 		reg_value &= ~(1 << ehci_cfg[index].phy_reset_ofs);
-		writel(reg_value, &ccm->usb1_clk_cfg);
+		USBC_Writel(reg_value, (ccmu_base + CCMU_USB1_CLK));
+#endif
 	}
 
 	return 0;
 }
+#else
+u32 open_usb_clock(int index)
+{
+	u32 reg_value = 0;
+	u32 ccmu_base = SUNXI_CCM_BASE;
 
+	/* BUS clk gating for USB EHCI */
+	reg_value = USBC_Readl(ccmu_base + BUS_CLK_GATING_REG);
+	reg_value |= (1 << ehci_cfg[index].bus_soft_reset_ofs);
+	USBC_Writel(reg_value, (ccmu_base + BUS_CLK_GATING_REG));
 
+	/* Bus soft reset for USB EHCI */
+	reg_value = USBC_Readl(ccmu_base + BUS_SOFTWARE_RESET_REG);
+	reg_value |= (1 << ehci_cfg[index].bus_clk_gating_ofs);
+	USBC_Writel(reg_value, (ccmu_base + BUS_SOFTWARE_RESET_REG));
+
+	/* open clock for USB PHY */
+	reg_value = USBC_Readl(ccmu_base + USBPHY_CONFIG_REG);
+	reg_value |= (1 << ehci_cfg[index].phy_slk_gatimg_ofs);
+	reg_value |= (1 << ehci_cfg[index].phy_reset_ofs);
+	USBC_Writel(reg_value, (ccmu_base + USBPHY_CONFIG_REG));
+
+	printf("config usb clk ok\n");
+	return 0;
+}
+
+/*
+*******************************************************************************
+*                     close_usb_clock
+*
+* Description:
+*
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
+
+u32 close_usb_clock(int index)
+{
+	u32 reg_value = 0;
+	u32 ccmu_base = SUNXI_CCM_BASE;
+
+	/* Bus soft reset for USB EHCI */
+	reg_value = USBC_Readl(ccmu_base + BUS_SOFTWARE_RESET_REG);
+	reg_value &= ~(1 << ehci_cfg[index].bus_soft_reset_ofs);
+	USBC_Writel(reg_value, (ccmu_base + BUS_SOFTWARE_RESET_REG));
+
+	/* BUS clk gating for USB EHCI */
+	reg_value = USBC_Readl(ccmu_base + BUS_CLK_GATING_REG);
+	reg_value &= ~(1 << ehci_cfg[index].bus_clk_gating_ofs);
+	USBC_Writel(reg_value, (ccmu_base + BUS_CLK_GATING_REG));
+
+	/* close clock for USB PHY */
+	reg_value = USBC_Readl(ccmu_base + USBPHY_CONFIG_REG);
+	/* PHY0 */
+	reg_value &= ~(1 << ehci_cfg[index].phy_slk_gatimg_ofs);
+	reg_value &= ~(1 <<  ehci_cfg[index].phy_reset_ofs);
+	USBC_Writel(reg_value, (ccmu_base + USBPHY_CONFIG_REG));
+
+	return 0;
+}
+#endif
+
+/*
+*******************************************************************************
+*                     enable_usb_passby
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
 void usb_passby(int index, u32 enable)
 {
 	unsigned long reg_value = 0;
@@ -153,33 +339,56 @@ void usb_passby(int index, u32 enable)
 	if(ehci_cfg[index].usb0_support)
 	{
 		/* the default mode of usb0 is OTG,so change it here. */
-		reg_value = readl(SUNXI_USBOTG_BASE + 0x420);
+		reg_value = USBC_Readl(SUNXI_USBOTG_BASE + 0x420);
 		reg_value &= ~(0x01);
-		writel(reg_value, (SUNXI_USBOTG_BASE + 0x420));
+		USBC_Writel(reg_value, (SUNXI_USBOTG_BASE + 0x420));
 	}
-
-	reg_value = readl(ehci_vbase + SUNXI_USB_PHY_CTRL);
+	reg_value = USBC_Readl(ehci_vbase + 0x810);
 	reg_value &= ~(0x01<<1);
-	writel(reg_value, (ehci_vbase + SUNXI_USB_PHY_CTRL));
+	USBC_Writel(reg_value, (ehci_vbase + 0x810));
 
-	reg_value = readl(ehci_vbase + SUNXI_USB_CTRL);
-	if (enable) {
+	reg_value = USBC_Readl(ehci_vbase + SUNXI_USB_PMU_IRQ_ENABLE);
+	if(enable){
 		reg_value |= (1 << 10);		/* AHB Master interface INCR8 enable */
 		reg_value |= (1 << 9);     	/* AHB Master interface burst type INCR4 enable */
 		reg_value |= (1 << 8);     	/* AHB Master interface INCRX align enable */
 		reg_value |= (1 << 0);     	/* ULPI bypass enable */
-	} else if(!enable) {
+	}else if(!enable){
 		reg_value &= ~(1 << 10);	/* AHB Master interface INCR8 disable */
 		reg_value &= ~(1 << 9);     /* AHB Master interface burst type INCR4 disable */
 		reg_value &= ~(1 << 8);     /* AHB Master interface INCRX align disable */
 		reg_value &= ~(1 << 0);     /* ULPI bypass disable */
 	}
-	writel(reg_value, (ehci_vbase + SUNXI_USB_CTRL));
+        USBC_Writel(reg_value, (ehci_vbase + SUNXI_USB_PMU_IRQ_ENABLE));
 
 	return;
 }
 
+void sunxi_set_vbus(int on_off)
+{
+	if(usb_vbus_handle)
+	        gpio_write_one_pin_value(usb_vbus_handle, on_off, NULL);
+	return;
+}
 
+/*
+*******************************************************************************
+*                     sunxi_start_ehci
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
 int sunxi_start_ehci(int index)
 {
 	if(alloc_pin(index))
@@ -187,10 +396,28 @@ int sunxi_start_ehci(int index)
 	open_usb_clock(index);
 	usb_passby(index, 1);
 	sunxi_set_vbus(1);
-	mdelay(800);
+	__msdelay(800);
 	return 0;
 }
 
+/*
+*******************************************************************************
+*                     sunxi_stop_ehci
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
 void sunxi_stop_ehci(int index)
 {
 	sunxi_set_vbus(0);

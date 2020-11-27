@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Porting to u-boot:
  *
@@ -8,13 +7,15 @@
  * Linux IPU driver for MX51:
  *
  * (C) Copyright 2005-2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
 
 #include <common.h>
 #include <linux/types.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
@@ -32,7 +33,7 @@ enum csc_type_t {
 
 struct dp_csc_param_t {
 	int mode;
-	const int (*coeff)[5][3];
+	void *coeff;
 };
 
 #define SYNC_WAVE 0
@@ -376,7 +377,7 @@ static struct dp_csc_param_t dp_csc_array[CSC_NUM][CSC_NUM] = {
 static enum csc_type_t fg_csc_type = CSC_NONE, bg_csc_type = CSC_NONE;
 static int color_key_4rgb = 1;
 
-static void ipu_dp_csc_setup(int dp, struct dp_csc_param_t dp_csc_param,
+void ipu_dp_csc_setup(int dp, struct dp_csc_param_t dp_csc_param,
 			unsigned char srm_mode_update)
 {
 	u32 reg;
@@ -604,15 +605,28 @@ void ipu_dc_uninit(int dc_chan)
 	}
 }
 
+int ipu_chan_is_interlaced(ipu_channel_t channel)
+{
+	if (channel == MEM_DC_SYNC)
+		return !!(__raw_readl(DC_WR_CH_CONF_1) &
+			  DC_WR_CH_CONF_FIELD_MODE);
+	else if ((channel == MEM_BG_SYNC) || (channel == MEM_FG_SYNC))
+		return !!(__raw_readl(DC_WR_CH_CONF_5) &
+			  DC_WR_CH_CONF_FIELD_MODE);
+	return 0;
+}
+
 void ipu_dp_dc_enable(ipu_channel_t channel)
 {
 	int di;
 	uint32_t reg;
 	uint32_t dc_chan;
 
+	if (channel == MEM_FG_SYNC)
+		dc_chan = 5;
 	if (channel == MEM_DC_SYNC)
 		dc_chan = 1;
-	else if ((channel == MEM_BG_SYNC) || (channel == MEM_FG_SYNC))
+	else if (channel == MEM_BG_SYNC)
 		dc_chan = 5;
 	else
 		return;
@@ -652,16 +666,13 @@ void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap)
 	uint32_t csc;
 	uint32_t dc_chan = 0;
 	int timeout = 50;
-	int irq = 0;
 
 	dc_swap = swap;
 
 	if (channel == MEM_DC_SYNC) {
 		dc_chan = 1;
-		irq = IPU_IRQ_DC_FC_1;
 	} else if (channel == MEM_BG_SYNC) {
 		dc_chan = 5;
-		irq = IPU_IRQ_DP_SF_END;
 	} else if (channel == MEM_FG_SYNC) {
 		/* Disable FG channel */
 		dc_chan = 5;
@@ -712,11 +723,25 @@ void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap)
 		reg ^= DC_WR_CH_CONF_PROG_DI_ID;
 		__raw_writel(reg, DC_WR_CH_CONF(dc_chan));
 	} else {
-		/* Make sure that we leave at the irq starting edge */
-		__raw_writel(IPUIRQ_2_MASK(irq), IPUIRQ_2_STATREG(irq));
-		do {
-			reg = __raw_readl(IPUIRQ_2_STATREG(irq));
-		} while (!(reg & IPUIRQ_2_MASK(irq)));
+		timeout = 50;
+
+		/* Wait for DC triple buffer to empty */
+		if (g_dc_di_assignment[dc_chan] == 0)
+			while ((__raw_readl(DC_STAT) & 0x00000002)
+				!= 0x00000002) {
+				udelay(2000);
+				timeout -= 2;
+				if (timeout <= 0)
+					break;
+			}
+		else if (g_dc_di_assignment[dc_chan] == 1)
+			while ((__raw_readl(DC_STAT) & 0x00000020)
+				!= 0x00000020) {
+				udelay(2000);
+				timeout -= 2;
+				if (timeout <= 0)
+					break;
+			}
 
 		reg = __raw_readl(DC_WR_CH_CONF(dc_chan));
 		reg &= ~DC_WR_CH_CONF_PROG_TYPE_MASK;
@@ -768,7 +793,7 @@ void ipu_init_dc_mappings(void)
 	ipu_dc_map_config(4, 2, 21, 0xFC);
 }
 
-static int ipu_pixfmt_to_map(uint32_t fmt)
+int ipu_pixfmt_to_map(uint32_t fmt)
 {
 	switch (fmt) {
 	case IPU_PIX_FMT_GENERIC:
@@ -785,6 +810,28 @@ static int ipu_pixfmt_to_map(uint32_t fmt)
 	}
 
 	return -1;
+}
+
+/*
+ * This function is called to adapt synchronous LCD panel to IPU restriction.
+ */
+void adapt_panel_to_ipu_restricitions(uint32_t *pixel_clk,
+				      uint16_t width, uint16_t height,
+				      uint16_t h_start_width,
+				      uint16_t h_end_width,
+				      uint16_t v_start_width,
+				      uint16_t *v_end_width)
+{
+	if (*v_end_width < 2) {
+		uint16_t total_width = width + h_start_width + h_end_width;
+		uint16_t total_height_old = height + v_start_width +
+			(*v_end_width);
+		uint16_t total_height_new = height + v_start_width + 2;
+		*v_end_width = 2;
+		*pixel_clk = (*pixel_clk) * total_width * total_height_new /
+			(total_width * total_height_old);
+		printf("WARNING: adapt panel end blank lines\n");
+	}
 }
 
 /*
@@ -844,17 +891,14 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	if ((v_sync_width == 0) || (h_sync_width == 0))
 		return -EINVAL;
 
-	/* adapt panel to ipu restricitions */
-	if (v_end_width < 2) {
-		v_end_width = 2;
-		puts("WARNING: v_end_width (lower_margin) must be >= 2, adjusted\n");
-	}
-
+	adapt_panel_to_ipu_restricitions(&pixel_clk, width, height,
+					 h_start_width, h_end_width,
+					 v_start_width, &v_end_width);
 	h_total = width + h_sync_width + h_start_width + h_end_width;
 	v_total = height + v_sync_width + v_start_width + v_end_width;
 
 	/* Init clocking */
-	debug("pixel clk = %dHz\n", pixel_clk);
+	debug("pixel clk = %d\n", pixel_clk);
 
 	if (sig.ext_clk) {
 		if (!(g_di1_tvout && (disp == 1))) { /*not round div for tvout*/
@@ -1116,7 +1160,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		reg &= 0x0000FFFF;
 		__raw_writel(reg, DI_STP_REP(disp, 6));
 		__raw_writel(0, DI_STP_REP(disp, 7));
-		__raw_writel(0, DI_STP_REP9(disp));
+		__raw_writel(0, DI_STP_REP(disp, 9));
 
 		/* Init template microcode */
 		if (disp) {

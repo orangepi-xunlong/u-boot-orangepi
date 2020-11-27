@@ -22,6 +22,7 @@
  * MA 02111-1307 USA
  */
 
+
 #ifndef __SW_SYS_CONFIG_H
 #define __SW_SYS_CONFIG_H
 
@@ -35,7 +36,6 @@
 #define   FDT_PATH_CARD_BOOT                 "/soc/card_boot"
 #define   FDT_PATH_CARD0_BOOT_PARA           "/soc/card0_boot_para"
 #define   FDT_PATH_CARD2_BOOT_PARA           "/soc/card2_boot_para"
-#define	  FDT_PATH_GPIO_BIAS		     "/soc/gpio_bias"
 /*
   * mmc2 and mmc3 can be use only one at same time on sun8iw10, so put mmc3's config at the same
   * place with mmc2 to be compatile with other platforms.
@@ -53,10 +53,12 @@
 #define   FDT_TV1_PATH  "tv1"
 #define   FDT_EDP0_PATH  "edp0"
 #define   FDT_EDP1_PATH  "edp1"
-//for eink alias
-#define   FDT_EINK_PATH  "eink"
 
-typedef struct {
+
+
+
+typedef struct
+{
 	char  gpio_name[32];
 	int port;
 	int port_num;
@@ -66,18 +68,21 @@ typedef struct {
 	int data;
 } script_gpio_set_t;
 
+
 #define   EGPIO_FAIL             (-1)
 #define   EGPIO_SUCCESS          (0)
 
-typedef enum {
-	PIN_PULL_DEFAULT	=	0xFF,
-	PIN_PULL_DISABLE	=	0x00,
+typedef enum
+{
+	PIN_PULL_DEFAULT 	= 	0xFF,
+	PIN_PULL_DISABLE 	=	0x00,
 	PIN_PULL_UP			  =	0x01,
-	PIN_PULL_DOWN		=	0x02,
+	PIN_PULL_DOWN	  	=	0x02,
 	PIN_PULL_RESERVED	=	0x03
 } pin_pull_level_t;
 
-typedef	enum {
+typedef	enum
+{
 	PIN_MULTI_DRIVING_DEFAULT	=	0xFF,
 	PIN_MULTI_DRIVING_0			=	0x00,
 	PIN_MULTI_DRIVING_1			=	0x01,
@@ -85,7 +90,8 @@ typedef	enum {
 	PIN_MULTI_DRIVING_3			=	0x03
 } pin_drive_level_t;
 
-typedef enum {
+typedef enum
+{
 	PIN_DATA_LOW,
 	PIN_DATA_HIGH,
 	PIN_DATA_DEFAULT = 0XFF
@@ -102,7 +108,8 @@ typedef enum {
 #define	PIN_PHY_GROUP_I			0x08
 #define	PIN_PHY_GROUP_J			0x09
 
-typedef struct {
+typedef struct
+{
     char  gpio_name[32];
     int port;
     int port_num;
@@ -112,14 +119,17 @@ typedef struct {
     int data;
 } user_gpio_set_t;
 
-typedef struct {
+
+typedef struct
+{
     int mul_sel;
     int pull;
     int drv_level;
     int data;
 } gpio_status_set_t;
 
-typedef struct {
+typedef struct
+{
     char    gpio_name[32];
     int     port;
     int     port_num;
@@ -127,40 +137,41 @@ typedef struct {
     gpio_status_set_t hardware_gpio_status;
 } system_gpio_set_t;
 
-/* gpio operations */
-int gpio_init(void);
-int gpio_exit(void);
-int gpio_request_simple(char *main_name, const char *sub_name);
-ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, unsigned int group_count_max);
-ulong  gpio_request_ex(char *main_name, const char *sub_name);
-int gpio_release(ulong p_handler, int if_release_to_default_status);
-int gpio_get_all_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, unsigned int gpio_count_max, unsigned int if_get_from_hardware);
-int gpio_get_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, const char *gpio_name, unsigned int if_get_from_hardware);
-int gpio_set_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, const char *gpio_name, unsigned int if_set_to_current_input_status);
-int gpio_set_one_pin_io_status(ulong p_handler, unsigned int if_set_to_output_status, const char *gpio_name);
-int gpio_set_one_pin_pull(ulong p_handler, unsigned int set_pull_status, const char *gpio_name);
-int gpio_set_one_pin_driver_level(ulong p_handler, unsigned int set_driver_level, const char *gpio_name);
-int gpio_read_one_pin_value(ulong p_handler, const char *gpio_name);
-int gpio_write_one_pin_value(ulong p_handler, unsigned int value_to_gpio, const char *gpio_name);
-int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_gpio);
 
-void upper(char *str);
-void lower(char *str);
+
+/* gpio operations */
+extern int gpio_init(void);
+extern int gpio_exit(void);
+extern int gpio_request_simple(char *main_name, const char *sub_name);
+extern ulong gpio_request(user_gpio_set_t *gpio_list, unsigned group_count_max);
+extern ulong  gpio_request_ex(char *main_name, const char *sub_name);
+extern int gpio_release(ulong p_handler, int if_release_to_default_status);
+extern int gpio_get_all_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, unsigned gpio_count_max, unsigned if_get_from_hardware);
+extern int gpio_get_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, const char *gpio_name, unsigned if_get_from_hardware);
+extern int gpio_set_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, const char *gpio_name, unsigned if_set_to_current_input_status);
+extern int gpio_set_one_pin_io_status(ulong p_handler, unsigned if_set_to_output_status, const char *gpio_name);
+extern int gpio_set_one_pin_pull(ulong p_handler, unsigned set_pull_status, const char *gpio_name);
+extern int gpio_set_one_pin_driver_level(ulong p_handler, unsigned set_driver_level, const char *gpio_name);
+extern int gpio_read_one_pin_value(ulong p_handler, const char *gpio_name);
+extern int gpio_write_one_pin_value(ulong p_handler, unsigned value_to_gpio, const char *gpio_name);
+extern int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_gpio);
+
+extern void upper(char *str);
+extern void lower(char *str);
 
 //gpio for use fdt
-int fdt_get_one_gpio_by_offset(int node_offset, const char *prop_name, user_gpio_set_t *gpio_list);
-int fdt_get_one_gpio(const char *node_path, const char *prop_name, user_gpio_set_t *gpio_list);
+int fdt_get_one_gpio_by_offset(int node_offset, const char* prop_name,user_gpio_set_t* gpio_list);
+int fdt_get_one_gpio(const char* node_path, const char* prop_name,user_gpio_set_t* gpio_list);
 
-int fdt_set_one_gpio(const char *node_path, const char *prop_name);
+int fdt_set_one_gpio(const char* node_path, const char* prop_name);
 //pin for use fdt
 //int fdt_get_pin_num(const char* node_path,const char* pinctrl_name);
-int fdt_get_all_pin(int nodeoffset, const char *pinctrl_name, user_gpio_set_t *gpio_list);
-int fdt_set_all_pin(const char *node_path, const char *pinctrl_name);
-int fdt_set_all_pin_by_offset(int nodeoffset, const char *pinctrl_name);
-int fdt_set_pin_byname(user_gpio_set_t  *pin_list, int pin_count, const char *pin_name);
+int fdt_get_all_pin(int nodeoffset,const char* pinctrl_name,user_gpio_set_t* gpio_list);
+int fdt_set_all_pin(const char * node_path,const char * pinctrl_name);
+int fdt_set_all_pin_by_offset(int nodeoffset,const char* pinctrl_name);
+int fdt_set_pin_byname(user_gpio_set_t  *pin_list,int pin_count, const char* pin_name);
 //normal
 int fdt_set_normal_gpio(user_gpio_set_t  *gpio_list, int gpio_count);
 
-int script_parser_fetch(char *node_path, char *prop_name, int value[], int def_val);
 
 #endif

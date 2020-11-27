@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009 Extreme Engineering Solutions, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,8 +12,6 @@
 #include <fdt_support.h>
 #include <pca953x.h>
 #include "../common/fsl_8xxx_misc.h"
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_PCI)
 extern void ft_board_pci_setup(void *blob, bd_t *bd);
@@ -57,7 +56,7 @@ int board_early_init_r(void)
 	return 0;
 }
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	phys_size_t dram_size = fsl_ddr_sdram();
 
@@ -66,19 +65,15 @@ int dram_init(void)
 	ddr_enable_ecc(dram_size);
 #endif
 
-	gd->ram_size = dram_size;
-
-	return 0;
+	return dram_size;
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 #ifdef CONFIG_PCI
 	ft_board_pci_setup(blob, bd);
 #endif
 	ft_cpu_setup(blob, bd);
-
-	return 0;
 }
 #endif

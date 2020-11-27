@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/disp_al.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _DISP_AL_H_
 #define _DISP_AL_H_
 
@@ -29,12 +13,9 @@
 #include "de_dsi.h"
 #endif
 #include "de_clock.h"
-
-#if defined(CONFIG_EINK_PANEL_USED)
 #include "de_rtmx.h"
 #include "disp_waveform.h"
 #include "disp_eink_data.h"
-#endif
 
 struct lcd_clk_info {
 	disp_lcd_if lcd_if;
@@ -48,14 +29,14 @@ int disp_al_de_clk_enable(unsigned int disp);
 int disp_al_de_clk_disable(unsigned int disp);
 int disp_al_manager_init(unsigned int disp);
 int disp_al_manager_exit(unsigned int disp);
-int disp_al_manager_apply(unsigned int disp,
-			  struct disp_manager_data *data);
-int disp_al_layer_apply(unsigned int disp,
-			struct disp_layer_config_data *data,
+extern int disp_al_manager_apply(unsigned int disp,
+				 struct disp_manager_data *data);
+extern int disp_al_layer_apply(unsigned int disp,
+			       struct disp_layer_config_data *data,
 			       unsigned int layer_num);
-int disp_init_al(disp_bsp_init_para *para);
-int disp_al_manager_sync(unsigned int disp);
-int disp_al_manager_update_regs(unsigned int disp);
+extern int disp_init_al(disp_bsp_init_para *para);
+extern int disp_al_manager_sync(unsigned int disp);
+extern int disp_al_manager_update_regs(unsigned int disp);
 int disp_al_manager_query_irq(unsigned int disp);
 int disp_al_manager_enable_irq(unsigned int disp);
 int disp_al_manager_disable_irq(unsigned int disp);
@@ -131,12 +112,12 @@ int disp_al_get_display_size(unsigned int sel, unsigned int *width,
 #ifdef SUPPORT_WB
 int disp_al_set_rtmx_base(u32 disp, unsigned int base);
 int disp_al_rtmx_init(u32 disp, unsigned int addr0, unsigned int addr1,
-		      unsigned int addr2, unsigned int w, unsigned int h,
+			unsigned int addr2, unsigned int w, unsigned int h,
 			unsigned int outw, unsigned int outh, unsigned int fmt);
 int disp_al_rtmx_set_addr(u32 disp, unsigned int addr0);
 int disp_al_set_eink_wb_base(u32 disp, unsigned int base);
 int disp_al_set_eink_wb_param(u32 disp, unsigned int w, unsigned int h,
-			      unsigned int addr);
+							unsigned int addr);
 int disp_al_enable_eink_wb_interrupt(u32 disp);
 int disp_al_disable_eink_wb_interrupt(u32 disp);
 int disp_al_clear_eink_wb_interrupt(u32 disp);
@@ -147,7 +128,6 @@ int disp_al_eink_wb_reset(u32 disp);
 int disp_al_eink_wb_dereset(u32 disp);
 
 #endif
-#if defined(CONFIG_EINK_PANEL_USED)
 int disp_al_set_eink_base(u32 disp, unsigned long base);
 int disp_al_eink_irq_enable(u32 disp);
 int disp_al_eink_irq_disable(u32 disp);
@@ -155,7 +135,7 @@ int disp_al_eink_irq_query(u32 disp);
 int disp_al_eink_config(u32 disp, struct eink_init_param *param);
 int disp_al_eink_disable(u32 disp);
 int disp_al_eink_start_calculate_index(u32 disp,
-				       unsigned long old_index_data_paddr,
+				unsigned long old_index_data_paddr,
 				unsigned long new_index_data_paddr,
 				struct eink_8bpp_image *last_image,
 				struct eink_8bpp_image *current_image);
@@ -165,50 +145,26 @@ int disp_al_eink_pipe_enable(u32 disp, unsigned int pipe_no);
 int disp_al_eink_pipe_disable(u32 disp, unsigned int pipe_no);
 int disp_al_eink_pipe_config(u32 disp,  unsigned int pipe_no, struct area_info area);
 int disp_al_eink_pipe_config_wavefile(u32 disp, unsigned int wav_file_addr,
-				      unsigned int pipe_no);
+							unsigned int pipe_no);
 int disp_al_eink_start_decode(unsigned int disp, unsigned long new_idx_addr,
-			      unsigned long wav_data_addr,
+						unsigned long wav_data_addr,
 						struct eink_init_param *param);
 int disp_al_init_waveform(const char *path);
 int disp_al_edma_init(unsigned int disp, struct eink_init_param *param);
 int disp_al_edma_config(unsigned int disp, unsigned long wave_data_addr,
-			struct eink_init_param *param);
+					struct eink_init_param *param);
 int disp_al_eink_edma_cfg_addr(unsigned int disp, unsigned long wav_addr);
 int disp_al_dbuf_rdy(void);
 int disp_al_edma_write(unsigned int disp, unsigned char en);
 int disp_al_get_waveform_data(unsigned int disp, enum eink_update_mode mode,
-			      unsigned int temp, unsigned int *total_frames,
+				unsigned int temp, unsigned int *total_frames,
 							unsigned int *wf_buf);
 int disp_al_get_eink_panel_bit_num(unsigned int disp,
-				   enum  eink_bit_num *bit_num);
+						enum  eink_bit_num *bit_num);
 void disp_al_free_waveform(void);
 int disp_al_init_eink_ctrl_data_8(unsigned int disp, unsigned long wavedata_buf,
-				  struct eink_timing_param *eink_timing_info, unsigned int i);
+		struct eink_timing_param *eink_timing_info, unsigned int i);
 int disp_al_init_eink_ctrl_data_16(unsigned int disp, unsigned int wavedata_buf,
-				   struct eink_timing_param *eink_timing_info);
-#endif
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten);
-
-static inline s32 disp_al_capture_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline s32 disp_al_capture_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_capture_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_manager_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline u32 disp_al_manager_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline int disp_al_device_set_de_id(u32 screen_id, u32 de_id) { return 0; }
-
-static inline int disp_al_device_set_de_use_rcq(u32 screen_id, u32 use_rcq) { return 0; }
-
-static inline int disp_al_device_set_output_type(u32 screen_id, u32 output_type) { return 0; }
+		struct eink_timing_param *eink_timing_info);
 
 #endif

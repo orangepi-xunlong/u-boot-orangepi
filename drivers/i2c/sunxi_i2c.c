@@ -1,46 +1,35 @@
 /*
  * Copyright (C) 2016 Allwinner.
  * zhouhuacai <zhouhuacai@allwinnertech.com>
- * wangwei <wangwei@allwinnertech.com>
  *
- * SUNXI TWI Controller Definition
+ * SUNXI TWI Controller Driver
  *
  * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
-#include <errno.h>
-#include <i2c.h>
-#include <linux/errno.h>
-#include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/sys_proto.h>
-#include <asm/arch/gpio.h>
+#include <asm/arch/ccmu.h>
+#include <asm/arch/twi.h>
+#include <sys_config.h>
 #include <asm/arch/timer.h>
-#include <sunxi_board.h>
-#include "sunxi_i2c.h"
+#include <asm/io.h>
+#include <asm/arch/platform.h>
+#include <sys_config.h>
+#include <sys_config_old.h>
+#include <fdt_support.h>
+#include <sunxi_i2c.h>
 
-
-/*#define SUNXI_I2C_DEBUG */
-#if defined(SUNXI_I2C_DEBUG)
-#define I2C_DBG(msg...)                                                        \
-	do {                                                                   \
-		{                                                              \
-			printf("[I2C-DBG] %s,line:%d:    ", __func__, __LINE__); \
-			printf(msg);                                           \
-		}                                                              \
-	} while (0)
-#else
-#define I2C_DBG(fmt, arg...)
-#endif /*endif defined(_SUNXI_I2C_DEBUG) */
-
+#define I2C_DBG(fmt, arg...)	printf("[I2C-DEBUG]:%s() %d \n", __func__, __LINE__)
 #define I2C_ERR(fmt, arg...)	printf("[I2C-ERROR]:%s() %d "fmt, __func__, __LINE__)
-#define I2C_WRN(fmt, arg...)	printf("[I2C-WRN]:%s() %d "fmt, __func__, __LINE__)
 
-#define MAX_SUNXI_I2C_NUM (SUNXI_PHY_I2C_BUS_MAX)
+#define MAX_SUNXI_I2C_NUM 4
 
 __attribute__((section(".data")))
 static  struct sunxi_twi_reg *sunxi_i2c[MAX_SUNXI_I2C_NUM] = {NULL, NULL, NULL, NULL};
+
+static s32 i2c_io_null(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len);
+s32 (* i2c_read_pt)(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len) = i2c_io_null;
+s32 (* i2c_write_pt)(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len) = i2c_io_null;
 
 static inline void twi_soft_reset(int bus_num)
 {
@@ -194,11 +183,10 @@ static int twi_send_slave_addr(int bus_num, u32 saddr,  u32 rw)
 	if (twi_wait_irq_flag_clear(bus_num, time))
 		return SUNXI_I2C_TOUT;
 
-	if ((rw == I2C_WRITE) && (i2c->status != I2C_ADDRWRITE_ACK)) {
-		return i2c->status;
-	}
+	if ((rw == I2C_WRITE) && (i2c->status != I2C_ADDRWRITE_ACK))
+		return -I2C_ADDRWRITE_ACK;
 	else if ((rw == I2C_READ) && (i2c->status != I2C_ADDRREAD_ACK))
-		return i2c->status;
+		return -I2C_ADDRREAD_ACK;
 
 	return SUNXI_I2C_OK;
 }
@@ -215,7 +203,7 @@ static int  twi_send_byte_addr(int bus_num, u32 byteaddr)
 		return SUNXI_I2C_TOUT;
 
 	if (i2c->status != I2C_DATAWRITE_ACK)
-		return i2c->status;
+		return -I2C_DATAWRITE_ACK;
 
 	return SUNXI_I2C_OK;
 }
@@ -366,12 +354,14 @@ static void i2c_set_clock(int bus_num, int speed)
 		I2C_DBG("[i2c%d] bus is busy, lcr = %x\n", bus_num, i2c->lcr);
 		twi_send_clk_9pulse(bus_num);
 	}
+
 	speed /= 1000; /*khz*/ 
 
 	if (speed < 100)
 		speed = 100;
 	else if (speed > 400)
 		speed = 400;
+
 	/*Foscl=24000/(2^CLK_N*(CLK_M+1)*10)*/
 	clk_n = (speed == 100) ? 1 : 0;
 	pow_2_clk_n = 1;
@@ -382,277 +372,217 @@ static void i2c_set_clock(int bus_num, int speed)
 	i2c->clk = (clk_m << 3) | clk_n;
 	i2c->ctl |= TWI_CTL_BUSEN;
 	i2c->eft = 0;
+
 }
 
-static void sunxi_i2c_bus_setting(int bus_num, int onoff)
+static void sunxi_i2c_bus_setting(int bus_num)
 {
 	int reg_value = 0;
+#ifdef CCMU_TWI_BGR_REG
+	//de-assert
+	reg_value = readl(CCMU_TWI_BGR_REG);
+	reg_value |= (1 << (16 + bus_num));
+	writel(reg_value, CCMU_TWI_BGR_REG);
 
-	struct sunxi_ccm_reg *const ccm =
-		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
-
-#if defined(CONFIG_SUNXI_VERSION1)
-	if (onoff) {
-		//de-assert
-		reg_value = readl(&ccm->apb2_reset_cfg);
-		reg_value |= (1 << bus_num);
-		writel(reg_value, &ccm->apb2_reset_cfg);
-
-		//gating clock pass
-		reg_value = readl(&ccm->apb2_gate);
-		reg_value &= ~(1 << bus_num);
-		writel(reg_value, &ccm->apb2_gate);
-		__msdelay(1);
-		reg_value |= (1 << bus_num);
-		writel(reg_value, &ccm->apb2_gate);
-	} else {
-		//gating clock mask
-		reg_value = readl(&ccm->apb2_gate);
-		reg_value &= ~(1 << bus_num);
-		writel(reg_value, &ccm->apb2_gate);
-
-		//assert
-		reg_value = readl(&ccm->apb2_reset_cfg);
-		reg_value &= ~(1 << bus_num);
-		writel(reg_value, &ccm->apb2_reset_cfg);
-	}
+	//gating clock pass
+	reg_value = readl(CCMU_TWI_BGR_REG);
+	reg_value &= ~(1 << bus_num);
+	writel(reg_value, CCMU_TWI_BGR_REG);
+	__msdelay(1);
+	reg_value |= (1 << bus_num);
+	writel(reg_value, CCMU_TWI_BGR_REG);
 #else
-	if (onoff) {
-		//de-assert
-		reg_value = readl(&ccm->twi_gate_reset);
-		reg_value |= (1 << (16 + bus_num));
-		writel(reg_value, &ccm->twi_gate_reset);
+	/* reset i2c clock */
+	/* reset apb2 twi0 */
+	reg_value = readl(CCMU_BUS_SOFT_RST_REG4);
+	reg_value |= 0x01 << bus_num;
+	writel(reg_value, CCMU_BUS_SOFT_RST_REG4);
+	__msdelay(1);
 
-		//gating clock pass
-		reg_value = readl(&ccm->twi_gate_reset);
-		reg_value &= ~(1 << bus_num);
-		writel(reg_value, &ccm->twi_gate_reset);
-		__msdelay(1);
-		reg_value |= (1 << bus_num);
-		writel(reg_value, &ccm->twi_gate_reset);
-	} else {
-		//gating clock mask
-		reg_value = readl(&ccm->twi_gate_reset);
-		reg_value &= ~(1 << bus_num);
-		writel(reg_value, &ccm->twi_gate_reset);
-
-		//assert
-		reg_value = readl(&ccm->twi_gate_reset);
-		reg_value &= ~(1 << (16 + bus_num));
-		writel(reg_value, &ccm->twi_gate_reset);
-	}
+	reg_value = readl(CCMU_BUS_CLK_GATING_REG3);
+	reg_value &= ~(1 << bus_num);
+	writel(reg_value, CCMU_BUS_CLK_GATING_REG3);
+	__msdelay(1);
+	reg_value |= (1 << bus_num);
+	writel(reg_value, CCMU_BUS_CLK_GATING_REG3);
 #endif
-
 }
 
-static void sunxi_r_i2c_bus_setting(int bus_num, int onoff)
+
+int sunxi_i2c_init(int bus_num, int speed, int slaveaddr)
+{
+	int ret;
+
+	if (sunxi_i2c[bus_num] != NULL) {
+		I2C_ERR("error:i2c has been initialized\n");
+		return -1;
+	}
+
+	sunxi_i2c[bus_num] = (struct sunxi_twi_reg *)
+	                     (SUNXI_TWI0_BASE + (bus_num * TWI_CONTROL_OFFSET));
+
+	ret = gpio_request_simple("twi_para", NULL);
+
+	if (ret) {
+		I2C_ERR("error:fail to set the i2c gpio\n");
+		sunxi_i2c[bus_num] = NULL;
+		return -1;
+	}
+
+	sunxi_i2c_bus_setting(bus_num);
+	i2c_set_clock(bus_num, speed);
+	printf("i2c_init ok\n");
+	return 0;
+}
+
+
+void sunxi_i2c_exit(int bus_num)
 {
 	int reg_value = 0;
-	int r_bus_num = bus_num - SUNXI_PHY_R_I2C0;
-	if (onoff) {
-		/*de-assert*/
-		reg_value = readl(SUNXI_RTWI_BRG_REG);
-		reg_value |= (1 << (16 + r_bus_num));
-		writel(reg_value, SUNXI_RTWI_BRG_REG);
+#ifdef CCMU_TWI_BGR_REG
+	//gating clock mask
+	reg_value = readl(CCMU_TWI_BGR_REG);
+	reg_value &= ~(1 << bus_num);
+	writel(reg_value, CCMU_TWI_BGR_REG);
 
-		/*gating clock pass*/
-		reg_value = readl(SUNXI_RTWI_BRG_REG);
-		reg_value &= ~(1 << r_bus_num);
-		writel(reg_value, SUNXI_RTWI_BRG_REG);
-		__msdelay(1);
-		reg_value |= (1 << r_bus_num);
-		writel(reg_value, SUNXI_RTWI_BRG_REG);
-	} else {
-		/*gating clock mask*/
-		reg_value = readl(SUNXI_RTWI_BRG_REG);
-		reg_value &= ~(1 << r_bus_num);
-		writel(reg_value, SUNXI_RTWI_BRG_REG);
-
-		/*assert*/
-		reg_value = readl(SUNXI_RTWI_BRG_REG);
-		reg_value &= ~(1 << (16 + r_bus_num));
-		writel(reg_value, SUNXI_RTWI_BRG_REG);
-	}
-
+	//assert
+	reg_value = readl(CCMU_TWI_BGR_REG);
+	reg_value &= ~(1 << (16 + bus_num));
+	writel(reg_value, CCMU_TWI_BGR_REG);
+#else
+	reg_value = readl(CCMU_BUS_CLK_GATING_REG3);
+	reg_value &= ~(1 << bus_num);
+	writel(reg_value, CCMU_BUS_CLK_GATING_REG3);
+#endif
+	sunxi_i2c[bus_num] = NULL;
+	return ;
 }
 
-
-static int sunxi_i2c_read(struct i2c_adapter *adap, uint8_t chip,
-				uint32_t addr, int alen, uint8_t *buffer, int len)
+int sunxi_i2c_read(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
 	int  ret;
 
-	ret = twi_start(adap->hwadapnr);
+	ret = twi_start(bus_num);
+	if (ret)
+		goto i2c_read_err_occur;
+
+	ret = twi_send_slave_addr(bus_num, chip, I2C_WRITE);
+	if (ret)
+		goto i2c_read_err_occur;
+
+	ret = twi_send_addr(bus_num, addr, alen);
+	if (ret)
+		goto i2c_read_err_occur;
+
+	ret = twi_restart(bus_num);
 	if (ret) {
-		I2C_DBG("twi_start error\n");
 		goto i2c_read_err_occur;
 	}
 
-	ret = twi_send_slave_addr(adap->hwadapnr, chip, I2C_WRITE);
-	if (ret){
-		I2C_DBG("twi_send_slave_addr error\n");
-		goto i2c_read_err_occur;
-	}
-
-	ret = twi_send_addr(adap->hwadapnr, addr, alen);
-	if (ret){
-		I2C_DBG("twi_send_addr error\n");
-		goto i2c_read_err_occur;
-	}
-
-	ret = twi_restart(adap->hwadapnr);
+	ret = twi_send_slave_addr(bus_num, chip, I2C_READ);
 	if (ret) {
-		I2C_DBG("twi_restart error\n");
 		goto i2c_read_err_occur;
 	}
 
-	ret = twi_send_slave_addr(adap->hwadapnr, chip, I2C_READ);
+	ret = twi_get_data(bus_num, buffer, len);
 	if (ret) {
-		I2C_DBG("twi_send_slave_addr error\n");
-		goto i2c_read_err_occur;
-	}
-
-	ret = twi_get_data(adap->hwadapnr, buffer, len);
-	if (ret) {
-		I2C_DBG("twi_get_data error\n");
 		goto i2c_read_err_occur;
 	}
 
 i2c_read_err_occur:
-	twi_stop(adap->hwadapnr);
+	twi_stop(bus_num);
 	return ret;
-
 }
 
-static int sunxi_i2c_write(struct i2c_adapter *adap, uint8_t chip,
-				uint32_t addr, int alen, uint8_t *buffer, int len)
+int sunxi_i2c_write(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
 	int ret;
 
-	
-	ret = twi_start(adap->hwadapnr);
+	ret = twi_start(bus_num);
 	if (ret)
 		goto i2c_write_err_occur;
 
-	ret = twi_send_slave_addr(adap->hwadapnr, chip, I2C_WRITE);
+	ret = twi_send_slave_addr(bus_num, chip, I2C_WRITE);
 	if (ret)
 		goto i2c_write_err_occur;
 
-	ret = twi_send_addr(adap->hwadapnr, addr, alen);
+	ret = twi_send_addr(bus_num, addr, alen);
 	if (ret)
 		goto i2c_write_err_occur;
 
-	ret = twi_send_data(adap->hwadapnr, buffer, len);
+	ret = twi_send_data(bus_num, buffer, len);
 	if (ret)
 		goto i2c_write_err_occur;
 
 i2c_write_err_occur:
-	twi_stop(adap->hwadapnr);
+	twi_stop(bus_num);
 	return ret;
-
 }
 
-static struct sunxi_twi_reg *sunxi_get_base(struct i2c_adapter *adap)
+static s32 i2c_io_null(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
-	if (strstr(adap->name, "r_i2c") != NULL) {
-		return (struct sunxi_twi_reg *)(SUNXI_R_TWI_BASE +
-					((adap->hwadapnr - SUNXI_PHY_R_I2C0) * TWI_CONTROL_OFFSET));
-	} else {
-		return (struct sunxi_twi_reg *)(SUNXI_TWI0_BASE +
-					(adap->hwadapnr* TWI_CONTROL_OFFSET));
+	return -1;
+}
+
+int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
+{
+	return i2c_read_pt(0, chip, addr, alen, buffer, len);
+}
+
+int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
+{
+	return i2c_write_pt(0, chip, addr, alen, buffer, len);
+}
+
+
+#if defined(CONFIG_USE_SECURE_I2C)||defined(CONFIG_CPUS_I2C)
+
+#include <smc.h>
+extern int sunxi_probe_secure_monitor(void);
+static s32 sunxi_i2c_secure_read(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len)
+{
+	int ret = 0;
+	ret = (u8)(arm_svc_arisc_read_pmu((ulong)addr));
+
+	if (ret < 0 ) {
+		return -1;
 	}
-}
 
-static uint sunxi_i2c_setspeed(struct i2c_adapter *adap, uint speed)
-{
-	i2c_set_clock(adap->hwadapnr, speed);
-	adap->speed	= speed;
+	*buffer = ret & 0xff;
 	return 0;
 }
 
-static int sunxi_i2c_probe(struct i2c_adapter *adap, uint8_t chip)
+static s32 sunxi_i2c_secure_write(int bus_num, uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
-	return 0;
+	return arm_svc_arisc_write_pmu((ulong)addr, (u32)(*buffer));
 }
 
-void sunxi_i2c_init(struct i2c_adapter *adap, int speed, int slaveaddr)
+void i2c_init(int speed, int slaveaddr)
 {
+	printf("%s: by cpus\n", __func__);
 
-	if (sunxi_i2c[adap->hwadapnr] != NULL) {
-		I2C_DBG("[I2C-WRN]:i2c%d has been initialized\n", adap->hwadapnr);
-		goto OUT;
+	if (sunxi_probe_secure_monitor()) {
+		i2c_read_pt  = sunxi_i2c_secure_read;
+		i2c_write_pt = sunxi_i2c_secure_write;
 	}
 
-	sunxi_i2c[adap->hwadapnr] = sunxi_get_base(adap);
-
-	if (strstr(adap->name, "r_i2c") != NULL) {
-		sunxi_r_i2c_bus_setting(adap->hwadapnr, 1);
-	} else {
-		sunxi_i2c_bus_setting(adap->hwadapnr, 1);
-	}
-	sunxi_i2c_setspeed(adap, speed);
-OUT:
-	I2C_DBG("i2c%d info:%x(slaveaddr),%d(speed)\n", adap->hwadapnr,
-	       adap->slaveaddr, adap->speed);
-}
-
-void sunxi_i2c_exit(int bus_num)
-{
-	sunxi_i2c_bus_setting(bus_num, 0);
-	sunxi_i2c[bus_num] = NULL;
-	I2C_DBG("exit");
 	return ;
 }
 
-#ifdef CONFIG_I2C0_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_i2c0, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_I2C0_SPEED,
-			 CONFIG_SYS_SUNXI_I2C0_SLAVE,
-			 SUNXI_PHY_I2C0)
-#endif
-#ifdef CONFIG_I2C1_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_i2c1, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_I2C1_SPEED,
-			 CONFIG_SYS_SUNXI_I2C1_SLAVE,
-			 SUNXI_PHY_I2C1)
-#endif
-#ifdef CONFIG_I2C3_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_i2c3, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_I2C3_SPEED,
-			 CONFIG_SYS_SUNXI_I2C3_SLAVE,
-			 SUNXI_PHY_I2C3)
-#endif
-#ifdef CONFIG_I2C4_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_i2c4, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_I2C4_SPEED,
-			 CONFIG_SYS_SUNXI_I2C4_SLAVE,
-			 SUNXI_PHY_I2C4)
-#endif
-#ifdef CONFIG_I2C5_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_i2c5, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_I2C5_SPEED,
-			 CONFIG_SYS_SUNXI_I2C5_SLAVE,
-			 SUNXI_PHY_I2C5)
-#endif
+#else
 
-#ifdef CONFIG_R_I2C0_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_r_i2c0, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_R_I2C0_SPEED,
-			 CONFIG_SYS_SUNXI_R_I2C0_SLAVE,
-			 SUNXI_PHY_R_I2C0)
-#endif
-#ifdef CONFIG_R_I2C1_ENABLE
-U_BOOT_I2C_ADAP_COMPLETE(sunxi_r_i2c1, sunxi_i2c_init, sunxi_i2c_probe,
-			 sunxi_i2c_read, sunxi_i2c_write, sunxi_i2c_setspeed,
-			 CONFIG_SYS_SUNXI_R_I2C1_SPEED,
-			 CONFIG_SYS_SUNXI_R_I2C1_SLAVE,
-			 SUNXI_PHY_R_I2C1)
+static int bus_num = 0;
+void i2c_init(int speed, int slaveaddr)
+{
+	printf("%s: by cpux\n", __func__);
+
+	if (!sunxi_i2c_init(bus_num, speed, slaveaddr)) {
+		i2c_read_pt = sunxi_i2c_read;
+		i2c_write_pt = sunxi_i2c_write;
+	}
+
+	return ;
+}
 #endif
 
 

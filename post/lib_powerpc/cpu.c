@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -41,6 +42,8 @@ extern int cpu_post_test_multi (void);
 extern int cpu_post_test_string (void);
 extern int cpu_post_test_complex (void);
 
+DECLARE_GLOBAL_DATA_PTR;
+
 ulong cpu_post_makecr (long v)
 {
 	ulong cr = 0;
@@ -63,6 +66,10 @@ int cpu_post_test (int flags)
 	WATCHDOG_RESET();
 	if (ic)
 		icache_disable ();
+#ifdef CONFIG_4xx_DCACHE
+	/* disable cache */
+	change_tlb(gd->bd->bi_memstart, gd->bd->bi_memsize, TLB_WORD2_I_ENABLE);
+#endif
 
 	if (ret == 0)
 		ret = cpu_post_test_cmp ();
@@ -111,6 +118,10 @@ int cpu_post_test (int flags)
 
 	if (ic)
 		icache_enable ();
+#ifdef CONFIG_4xx_DCACHE
+	/* enable cache */
+	change_tlb(gd->bd->bi_memstart, gd->bd->bi_memsize, 0);
+#endif
 
 	WATCHDOG_RESET();
 

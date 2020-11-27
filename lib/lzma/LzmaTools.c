@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Usefuls routines based on the LzmaTest.c file from LZMA SDK 4.65
  *
@@ -6,6 +5,8 @@
  * Luigi 'Comio' Mantellini (luigi.mantellini@idf-hit.com)
  *
  * Copyright (C) 1999-2005 Igor Pavlov
+ *
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 /*
@@ -101,7 +102,7 @@ int lzmaBuffToBuffDecompress (unsigned char *outStream, SizeT *uncompressedSize,
         return SZ_ERROR_OUTPUT_EOF;
 
     /* Decompress */
-    outProcessed = min(outSizeFull, *uncompressedSize);
+    outProcessed = outSizeFull;
 
     WATCHDOG_RESET();
 
@@ -111,7 +112,7 @@ int lzmaBuffToBuffDecompress (unsigned char *outStream, SizeT *uncompressedSize,
         inStream, LZMA_PROPS_SIZE, LZMA_FINISH_END, &state, &g_Alloc);
     *uncompressedSize = outProcessed;
 
-    debug("LZMA: Uncompressed ............... 0x%zx\n", outProcessed);
+    debug("LZMA: Uncompresed ................ 0x%zx\n", outProcessed);
 
     if (res != SZ_OK)  {
         return res;

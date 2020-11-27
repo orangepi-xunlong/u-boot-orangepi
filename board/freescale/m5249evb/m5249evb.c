@@ -1,15 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
 #include <asm/immap.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard (void) {
 	ulong val;
@@ -30,8 +29,7 @@ int checkboard (void) {
 };
 
 
-int dram_init(void)
-{
+phys_size_t initdram (int board_type) {
 	unsigned long	junk = 0xa5a59696;
 
 	/*
@@ -83,9 +81,7 @@ int dram_init(void)
 	mbar_writeLong(MCFSIM_DACR0, 0x0000b364);  /* Enable DACR0[IMRS] (bit 6); RE remains enabled */
 	*((volatile unsigned long *) 0x800) = junk; /* Access RAM to initialize the mode register */
 
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
-
-	return 0;
+	return CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
 };
 
 

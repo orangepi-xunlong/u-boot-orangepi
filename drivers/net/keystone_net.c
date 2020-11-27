@@ -1,34 +1,25 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Ethernet driver for TI K2HK EVM.
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #include <common.h>
 #include <command.h>
-#include <console.h>
-
-#include <dm.h>
-#include <dm/lists.h>
 
 #include <net.h>
-#include <phy.h>
-#include <errno.h>
 #include <miiphy.h>
 #include <malloc.h>
-#include <asm/ti-common/keystone_nav.h>
-#include <asm/ti-common/keystone_net.h>
-#include <asm/ti-common/keystone_serdes.h>
+#include <asm/arch/emac_defs.h>
 #include <asm/arch/psc_defs.h>
+#include <asm/arch/keystone_nav.h>
 
-DECLARE_GLOBAL_DATA_PTR;
+unsigned int emac_dbg;
 
-#ifndef CONFIG_DM_ETH
 unsigned int emac_open;
-static struct mii_dev *mdio_bus;
 static unsigned int sys_has_mdio = 1;
-#endif
 
 #ifdef KEYSTONE2_EMAC_GIG_ENABLE
 #define emac_gigabit_enable(x)	keystone2_eth_gigabit_enable(x)
@@ -39,143 +30,108 @@ static unsigned int sys_has_mdio = 1;
 #define RX_BUFF_NUMS	24
 #define RX_BUFF_LEN	1520
 #define MAX_SIZE_STREAM_BUFFER RX_BUFF_LEN
-#define SGMII_ANEG_TIMEOUT		4000
 
 static u8 rx_buffs[RX_BUFF_NUMS * RX_BUFF_LEN] __aligned(16);
 
-#ifndef CONFIG_DM_ETH
 struct rx_buff_desc net_rx_buffs = {
 	.buff_ptr	= rx_buffs,
 	.num_buffs	= RX_BUFF_NUMS,
 	.buff_len	= RX_BUFF_LEN,
 	.rx_flow	= 22,
 };
-#endif
 
-#ifdef CONFIG_DM_ETH
+static void keystone2_eth_mdio_enable(void);
 
-enum link_type {
-	LINK_TYPE_SGMII_MAC_TO_MAC_AUTO		= 0,
-	LINK_TYPE_SGMII_MAC_TO_PHY_MODE		= 1,
-	LINK_TYPE_SGMII_MAC_TO_MAC_FORCED_MODE	= 2,
-	LINK_TYPE_SGMII_MAC_TO_FIBRE_MODE	= 3,
-	LINK_TYPE_SGMII_MAC_TO_PHY_NO_MDIO_MODE	= 4,
-	LINK_TYPE_RGMII_LINK_MAC_PHY		= 5,
-	LINK_TYPE_RGMII_LINK_MAC_MAC_FORCED	= 6,
-	LINK_TYPE_RGMII_LINK_MAC_PHY_NO_MDIO	= 7,
-	LINK_TYPE_10G_MAC_TO_PHY_MODE		= 10,
-	LINK_TYPE_10G_MAC_TO_MAC_FORCED_MODE	= 11,
-};
+static int gen_get_link_speed(int phy_addr);
 
-#define mac_hi(mac)     (((mac)[0] << 0) | ((mac)[1] << 8) |    \
-			 ((mac)[2] << 16) | ((mac)[3] << 24))
-#define mac_lo(mac)     (((mac)[4] << 0) | ((mac)[5] << 8))
+/* EMAC Addresses */
+static volatile struct emac_regs	*adap_emac =
+	(struct emac_regs *)EMAC_EMACSL_BASE_ADDR;
+static volatile struct mdio_regs	*adap_mdio =
+	(struct mdio_regs *)EMAC_MDIO_BASE_ADDR;
 
-#ifdef CONFIG_KSNET_NETCP_V1_0
-
-#define EMAC_EMACSW_BASE_OFS		0x90800
-#define EMAC_EMACSW_PORT_BASE_OFS	(EMAC_EMACSW_BASE_OFS + 0x60)
-
-/* CPSW Switch slave registers */
-#define CPGMACSL_REG_SA_LO		0x10
-#define CPGMACSL_REG_SA_HI		0x14
-
-#define DEVICE_EMACSW_BASE(base, x)	((base) + EMAC_EMACSW_PORT_BASE_OFS +  \
-					 (x) * 0x30)
-
-#elif defined CONFIG_KSNET_NETCP_V1_5
-
-#define EMAC_EMACSW_PORT_BASE_OFS	0x222000
-
-/* CPSW Switch slave registers */
-#define CPGMACSL_REG_SA_LO		0x308
-#define CPGMACSL_REG_SA_HI		0x30c
-
-#define DEVICE_EMACSW_BASE(base, x)	((base) + EMAC_EMACSW_PORT_BASE_OFS +  \
-					 (x) * 0x1000)
-
-#endif
-
-
-struct ks2_eth_priv {
-	struct udevice			*dev;
-	struct phy_device		*phydev;
-	struct mii_dev			*mdio_bus;
-	int				phy_addr;
-	phy_interface_t			phy_if;
-	int				sgmii_link_type;
-	void				*mdio_base;
-	struct rx_buff_desc		net_rx_buffs;
-	struct pktdma_cfg		*netcp_pktdma;
-	void				*hd;
-	int				slave_port;
-	enum link_type			link_type;
-	bool				emac_open;
-	bool				has_mdio;
-};
-#endif
-
-/* MDIO */
-
-static int keystone2_mdio_reset(struct mii_dev *bus)
+int keystone2_eth_read_mac_addr(struct eth_device *dev)
 {
-	u_int32_t clkdiv;
-	struct mdio_regs *adap_mdio = bus->priv;
+	struct eth_priv_t *eth_priv;
+	u32 maca = 0;
+	u32 macb = 0;
 
-	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
+	eth_priv = (struct eth_priv_t *)dev->priv;
 
-	writel((clkdiv & 0xffff) | MDIO_CONTROL_ENABLE |
-	       MDIO_CONTROL_FAULT | MDIO_CONTROL_FAULT_ENABLE,
-	       &adap_mdio->control);
+	/* Read the e-fuse mac address */
+	if (eth_priv->slave_port == 1) {
+		maca = __raw_readl(MAC_ID_BASE_ADDR);
+		macb = __raw_readl(MAC_ID_BASE_ADDR + 4);
+	}
 
-	while (readl(&adap_mdio->control) & MDIO_CONTROL_IDLE)
-		;
+	dev->enetaddr[0] = (macb >>  8) & 0xff;
+	dev->enetaddr[1] = (macb >>  0) & 0xff;
+	dev->enetaddr[2] = (maca >> 24) & 0xff;
+	dev->enetaddr[3] = (maca >> 16) & 0xff;
+	dev->enetaddr[4] = (maca >>  8) & 0xff;
+	dev->enetaddr[5] = (maca >>  0) & 0xff;
 
 	return 0;
 }
 
-/**
- * keystone2_mdio_read - read a PHY register via MDIO interface.
- * Blocks until operation is complete.
- */
-static int keystone2_mdio_read(struct mii_dev *bus,
-			       int addr, int devad, int reg)
+static void keystone2_eth_mdio_enable(void)
 {
-	int tmp;
-	struct mdio_regs *adap_mdio = bus->priv;
+	u_int32_t	clkdiv;
+
+	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
+
+	writel((clkdiv & 0xffff) |
+	       MDIO_CONTROL_ENABLE |
+	       MDIO_CONTROL_FAULT |
+	       MDIO_CONTROL_FAULT_ENABLE,
+	       &adap_mdio->control);
+
+	while (readl(&adap_mdio->control) & MDIO_CONTROL_IDLE)
+		;
+}
+
+/* Read a PHY register via MDIO inteface. Returns 1 on success, 0 otherwise */
+int keystone2_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
+{
+	int	tmp;
 
 	while (readl(&adap_mdio->useraccess0) & MDIO_USERACCESS0_GO)
 		;
 
-	writel(MDIO_USERACCESS0_GO | MDIO_USERACCESS0_WRITE_READ |
-	       ((reg & 0x1f) << 21) | ((addr & 0x1f) << 16),
+	writel(MDIO_USERACCESS0_GO |
+	       MDIO_USERACCESS0_WRITE_READ |
+	       ((reg_num & 0x1f) << 21) |
+	       ((phy_addr & 0x1f) << 16),
 	       &adap_mdio->useraccess0);
 
 	/* Wait for command to complete */
 	while ((tmp = readl(&adap_mdio->useraccess0)) & MDIO_USERACCESS0_GO)
 		;
 
-	if (tmp & MDIO_USERACCESS0_ACK)
-		return tmp & 0xffff;
+	if (tmp & MDIO_USERACCESS0_ACK) {
+		*data = tmp & 0xffff;
+		return 0;
+	}
 
+	*data = -1;
 	return -1;
 }
 
-/**
- * keystone2_mdio_write - write to a PHY register via MDIO interface.
+/*
+ * Write to a PHY register via MDIO inteface.
  * Blocks until operation is complete.
  */
-static int keystone2_mdio_write(struct mii_dev *bus,
-				int addr, int devad, int reg, u16 val)
+int keystone2_eth_phy_write(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t data)
 {
-	struct mdio_regs *adap_mdio = bus->priv;
-
 	while (readl(&adap_mdio->useraccess0) & MDIO_USERACCESS0_GO)
 		;
 
-	writel(MDIO_USERACCESS0_GO | MDIO_USERACCESS0_WRITE_WRITE |
-	       ((reg & 0x1f) << 21) | ((addr & 0x1f) << 16) |
-	       (val & 0xffff), &adap_mdio->useraccess0);
+	writel(MDIO_USERACCESS0_GO |
+	       MDIO_USERACCESS0_WRITE_WRITE |
+	       ((reg_num & 0x1f) << 21) |
+	       ((phy_addr & 0x1f) << 16) |
+	       (data & 0xffff),
+	       &adap_mdio->useraccess0);
 
 	/* Wait for command to complete */
 	while (readl(&adap_mdio->useraccess0) & MDIO_USERACCESS0_GO)
@@ -184,7 +140,19 @@ static int keystone2_mdio_write(struct mii_dev *bus,
 	return 0;
 }
 
-#ifndef CONFIG_DM_ETH
+/* PHY functions for a generic PHY */
+static int gen_get_link_speed(int phy_addr)
+{
+	u_int16_t	tmp;
+
+	if ((!keystone2_eth_phy_read(phy_addr, MII_STATUS_REG, &tmp)) &&
+	    (tmp & 0x04)) {
+		return 0;
+	}
+
+	return -1;
+}
+
 static void  __attribute__((unused))
 	keystone2_eth_gigabit_enable(struct eth_device *dev)
 {
@@ -192,10 +160,8 @@ static void  __attribute__((unused))
 	struct eth_priv_t *eth_priv = (struct eth_priv_t *)dev->priv;
 
 	if (sys_has_mdio) {
-		data = keystone2_mdio_read(mdio_bus, eth_priv->phy_addr,
-					   MDIO_DEVAD_NONE, 0);
-		/* speed selection MSB */
-		if (!(data & (1 << 6)))
+		if (keystone2_eth_phy_read(eth_priv->phy_addr, 0, &data) ||
+		    !(data & (1 << 6))) /* speed selection MSB */
 			return;
 	}
 
@@ -203,69 +169,50 @@ static void  __attribute__((unused))
 	 * Check if link detected is giga-bit
 	 * If Gigabit mode detected, enable gigbit in MAC
 	 */
-	writel(readl(DEVICE_EMACSL_BASE(eth_priv->slave_port - 1) +
-		     CPGMACSL_REG_CTL) |
+	writel(readl(&(adap_emac[eth_priv->slave_port - 1].maccontrol)) |
 	       EMAC_MACCONTROL_GIGFORCE | EMAC_MACCONTROL_GIGABIT_ENABLE,
-	       DEVICE_EMACSL_BASE(eth_priv->slave_port - 1) + CPGMACSL_REG_CTL);
+	       &(adap_emac[eth_priv->slave_port - 1].maccontrol))
+		;
 }
-#else
-static void  __attribute__((unused))
-	keystone2_eth_gigabit_enable(struct udevice *dev)
+
+int keystone_sgmii_link_status(int port)
 {
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	u_int16_t data;
+	u32 status = 0;
 
-	if (priv->has_mdio) {
-		data = keystone2_mdio_read(priv->mdio_bus, priv->phy_addr,
-					   MDIO_DEVAD_NONE, 0);
-		/* speed selection MSB */
-		if (!(data & (1 << 6)))
-			return;
-	}
+	status = __raw_readl(SGMII_STATUS_REG(port));
 
-	/*
-	 * Check if link detected is giga-bit
-	 * If Gigabit mode detected, enable gigbit in MAC
-	 */
-	writel(readl(DEVICE_EMACSL_BASE(priv->slave_port - 1) +
-		     CPGMACSL_REG_CTL) |
-	       EMAC_MACCONTROL_GIGFORCE | EMAC_MACCONTROL_GIGABIT_ENABLE,
-	       DEVICE_EMACSL_BASE(priv->slave_port - 1) + CPGMACSL_REG_CTL);
+	return status & SGMII_REG_STATUS_LINK;
 }
+
+
+int keystone_get_link_status(struct eth_device *dev)
+{
+	struct eth_priv_t *eth_priv = (struct eth_priv_t *)dev->priv;
+	int sgmii_link;
+	int link_state = 0;
+#if CONFIG_GET_LINK_STATUS_ATTEMPTS > 1
+	int j;
+
+	for (j = 0; (j < CONFIG_GET_LINK_STATUS_ATTEMPTS) && (link_state == 0);
+	     j++) {
 #endif
+		sgmii_link =
+			keystone_sgmii_link_status(eth_priv->slave_port - 1);
 
-#ifdef CONFIG_SOC_K2G
-int keystone_rgmii_config(struct phy_device *phy_dev)
-{
-	unsigned int i, status;
+		if (sgmii_link) {
+			link_state = 1;
 
-	i = 0;
-	do {
-		if (i > SGMII_ANEG_TIMEOUT) {
-			puts(" TIMEOUT !\n");
-			phy_dev->link = 0;
-			return 0;
+			if (eth_priv->sgmii_link_type == SGMII_LINK_MAC_PHY)
+				if (gen_get_link_speed(eth_priv->phy_addr))
+					link_state = 0;
 		}
-
-		if (ctrlc()) {
-			puts("user interrupt!\n");
-			phy_dev->link = 0;
-			return -EINTR;
-		}
-
-		if ((i++ % 500) == 0)
-			printf(".");
-
-		udelay(1000);   /* 1 ms */
-		status = readl(RGMII_STATUS_REG);
-	} while (!(status & RGMII_REG_STATUS_LINK));
-
-	puts(" done\n");
-
-	return 0;
+#if CONFIG_GET_LINK_STATUS_ATTEMPTS > 1
+	}
+#endif
+	return link_state;
 }
-#else
-int keystone_sgmii_config(struct phy_device *phy_dev, int port, int interface)
+
+int keystone_sgmii_config(int port, int interface)
 {
 	unsigned int i, status, mask;
 	unsigned int mr_adv_ability, control;
@@ -326,39 +273,14 @@ int keystone_sgmii_config(struct phy_device *phy_dev, int port, int interface)
 	if (control & SGMII_REG_CONTROL_AUTONEG)
 		mask |= SGMII_REG_STATUS_AUTONEG;
 
-	status = __raw_readl(SGMII_STATUS_REG(port));
-	if ((status & mask) == mask)
-		return 0;
-
-	printf("\n%s Waiting for SGMII auto negotiation to complete",
-	       phy_dev->dev->name);
-	while ((status & mask) != mask) {
-		/*
-		 * Timeout reached ?
-		 */
-		if (i > SGMII_ANEG_TIMEOUT) {
-			puts(" TIMEOUT !\n");
-			phy_dev->link = 0;
-			return 0;
-		}
-
-		if (ctrlc()) {
-			puts("user interrupt!\n");
-			phy_dev->link = 0;
-			return -EINTR;
-		}
-
-		if ((i++ % 500) == 0)
-			printf(".");
-
-		udelay(1000);   /* 1 ms */
+	for (i = 0; i < 1000; i++) {
 		status = __raw_readl(SGMII_STATUS_REG(port));
+		if ((status & mask) == mask)
+			break;
 	}
-	puts(" done\n");
 
 	return 0;
 }
-#endif
 
 int mac_sl_reset(u32 port)
 {
@@ -368,12 +290,13 @@ int mac_sl_reset(u32 port)
 		return GMACSL_RET_INVALID_PORT;
 
 	/* Set the soft reset bit */
-	writel(CPGMAC_REG_RESET_VAL_RESET,
-	       DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_RESET);
+	DEVICE_REG32_W(DEVICE_EMACSL_BASE(port) +
+		       CPGMACSL_REG_RESET, CPGMAC_REG_RESET_VAL_RESET);
 
 	/* Wait for the bit to clear */
 	for (i = 0; i < DEVICE_EMACSL_RESET_POLL_COUNT; i++) {
-		v = readl(DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_RESET);
+		v = DEVICE_REG32_R(DEVICE_EMACSL_BASE(port) +
+				   CPGMACSL_REG_RESET);
 		if ((v & CPGMAC_REG_RESET_VAL_RESET_MASK) !=
 		    CPGMAC_REG_RESET_VAL_RESET)
 			return GMACSL_RET_OK;
@@ -398,7 +321,8 @@ int mac_sl_config(u_int16_t port, struct mac_sl_cfg *cfg)
 
 	/* Must wait if the device is undergoing reset */
 	for (i = 0; i < DEVICE_EMACSL_RESET_POLL_COUNT; i++) {
-		v = readl(DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_RESET);
+		v = DEVICE_REG32_R(DEVICE_EMACSL_BASE(port) +
+				   CPGMACSL_REG_RESET);
 		if ((v & CPGMAC_REG_RESET_VAL_RESET_MASK) !=
 		    CPGMAC_REG_RESET_VAL_RESET)
 			break;
@@ -407,13 +331,11 @@ int mac_sl_config(u_int16_t port, struct mac_sl_cfg *cfg)
 	if (i == DEVICE_EMACSL_RESET_POLL_COUNT)
 		return GMACSL_RET_CONFIG_FAIL_RESET_ACTIVE;
 
-	writel(cfg->max_rx_len, DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_MAXLEN);
-	writel(cfg->ctl, DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_CTL);
+	DEVICE_REG32_W(DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_MAXLEN,
+		       cfg->max_rx_len);
 
-#ifndef CONFIG_SOC_K2HK
-	/* Map RX packet flow priority to 0 */
-	writel(0, DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_RX_PRI_MAP);
-#endif
+	DEVICE_REG32_W(DEVICE_EMACSL_BASE(port) + CPGMACSL_REG_CTL,
+		       cfg->ctl);
 
 	return ret;
 }
@@ -423,24 +345,24 @@ int ethss_config(u32 ctl, u32 max_pkt_size)
 	u32 i;
 
 	/* Max length register */
-	writel(max_pkt_size, DEVICE_CPSW_BASE + CPSW_REG_MAXLEN);
+	DEVICE_REG32_W(DEVICE_CPSW_BASE + CPSW_REG_MAXLEN, max_pkt_size);
 
 	/* Control register */
-	writel(ctl, DEVICE_CPSW_BASE + CPSW_REG_CTL);
+	DEVICE_REG32_W(DEVICE_CPSW_BASE + CPSW_REG_CTL, ctl);
 
 	/* All statistics enabled by default */
-	writel(CPSW_REG_VAL_STAT_ENABLE_ALL,
-	       DEVICE_CPSW_BASE + CPSW_REG_STAT_PORT_EN);
+	DEVICE_REG32_W(DEVICE_CPSW_BASE + CPSW_REG_STAT_PORT_EN,
+		       CPSW_REG_VAL_STAT_ENABLE_ALL);
 
 	/* Reset and enable the ALE */
-	writel(CPSW_REG_VAL_ALE_CTL_RESET_AND_ENABLE |
-	       CPSW_REG_VAL_ALE_CTL_BYPASS,
-	       DEVICE_CPSW_BASE + CPSW_REG_ALE_CONTROL);
+	DEVICE_REG32_W(DEVICE_CPSW_BASE + CPSW_REG_ALE_CONTROL,
+		       CPSW_REG_VAL_ALE_CTL_RESET_AND_ENABLE |
+		       CPSW_REG_VAL_ALE_CTL_BYPASS);
 
 	/* All ports put into forward mode */
 	for (i = 0; i < DEVICE_CPSW_NUM_PORTS; i++)
-		writel(CPSW_REG_VAL_PORTCTL_FORWARD_MODE,
-		       DEVICE_CPSW_BASE + CPSW_REG_ALE_PORTCTL(i));
+		DEVICE_REG32_W(DEVICE_CPSW_BASE + CPSW_REG_ALE_PORTCTL(i),
+			       CPSW_REG_VAL_PORTCTL_FORWARD_MODE);
 
 	return 0;
 }
@@ -471,72 +393,20 @@ int ethss_stop(void)
 	return 0;
 }
 
-struct ks2_serdes ks2_serdes_sgmii_156p25mhz = {
-	.clk = SERDES_CLOCK_156P25M,
-	.rate = SERDES_RATE_5G,
-	.rate_mode = SERDES_QUARTER_RATE,
-	.intf = SERDES_PHY_SGMII,
-	.loopback = 0,
-};
-
-#ifndef CONFIG_SOC_K2G
-static void keystone2_net_serdes_setup(void)
-{
-	ks2_serdes_init(CONFIG_KSNET_SERDES_SGMII_BASE,
-			&ks2_serdes_sgmii_156p25mhz,
-			CONFIG_KSNET_SERDES_LANES_PER_SGMII);
-
-#if defined(CONFIG_SOC_K2E) || defined(CONFIG_SOC_K2L)
-	ks2_serdes_init(CONFIG_KSNET_SERDES_SGMII2_BASE,
-			&ks2_serdes_sgmii_156p25mhz,
-			CONFIG_KSNET_SERDES_LANES_PER_SGMII);
-#endif
-
-	/* wait till setup */
-	udelay(5000);
-}
-#endif
-
-#ifndef CONFIG_DM_ETH
-
-int keystone2_eth_read_mac_addr(struct eth_device *dev)
-{
-	struct eth_priv_t *eth_priv;
-	u32 maca = 0;
-	u32 macb = 0;
-
-	eth_priv = (struct eth_priv_t *)dev->priv;
-
-	/* Read the e-fuse mac address */
-	if (eth_priv->slave_port == 1) {
-		maca = __raw_readl(MAC_ID_BASE_ADDR);
-		macb = __raw_readl(MAC_ID_BASE_ADDR + 4);
-	}
-
-	dev->enetaddr[0] = (macb >>  8) & 0xff;
-	dev->enetaddr[1] = (macb >>  0) & 0xff;
-	dev->enetaddr[2] = (maca >> 24) & 0xff;
-	dev->enetaddr[3] = (maca >> 16) & 0xff;
-	dev->enetaddr[4] = (maca >>  8) & 0xff;
-	dev->enetaddr[5] = (maca >>  0) & 0xff;
-
-	return 0;
-}
-
 int32_t cpmac_drv_send(u32 *buffer, int num_bytes, int slave_port_num)
 {
 	if (num_bytes < EMAC_MIN_ETHERNET_PKT_SIZE)
 		num_bytes = EMAC_MIN_ETHERNET_PKT_SIZE;
 
-	return ksnav_send(&netcp_pktdma, buffer,
-			  num_bytes, (slave_port_num) << 16);
+	return netcp_send(buffer, num_bytes, (slave_port_num) << 16);
 }
 
 /* Eth device open */
 static int keystone2_eth_open(struct eth_device *dev, bd_t *bis)
 {
+	u_int32_t clkdiv;
+	int link;
 	struct eth_priv_t *eth_priv = (struct eth_priv_t *)dev->priv;
-	struct phy_device *phy_dev = eth_priv->phy_dev;
 
 	debug("+ emac_open\n");
 
@@ -545,15 +415,16 @@ static int keystone2_eth_open(struct eth_device *dev, bd_t *bis)
 	sys_has_mdio =
 		(eth_priv->sgmii_link_type == SGMII_LINK_MAC_PHY) ? 1 : 0;
 
-	if (sys_has_mdio)
-		keystone2_mdio_reset(mdio_bus);
+	psc_enable_module(KS2_LPSC_PA);
+	psc_enable_module(KS2_LPSC_CPGMAC);
 
-#ifdef CONFIG_SOC_K2G
-	keystone_rgmii_config(phy_dev);
-#else
-	keystone_sgmii_config(phy_dev, eth_priv->slave_port - 1,
+	sgmii_serdes_setup_156p25mhz();
+
+	if (sys_has_mdio)
+		keystone2_eth_mdio_enable();
+
+	keystone_sgmii_config(eth_priv->slave_port - 1,
 			      eth_priv->sgmii_link_type);
-#endif
 
 	udelay(10000);
 
@@ -565,7 +436,7 @@ static int keystone2_eth_open(struct eth_device *dev, bd_t *bis)
 		printf("ERROR: qm_init()\n");
 		return -1;
 	}
-	if (ksnav_init(&netcp_pktdma, &net_rx_buffs)) {
+	if (netcp_init(&net_rx_buffs)) {
 		qm_close();
 		printf("ERROR: netcp_init()\n");
 		return -1;
@@ -579,11 +450,18 @@ static int keystone2_eth_open(struct eth_device *dev, bd_t *bis)
 	hw_config_streaming_switch();
 
 	if (sys_has_mdio) {
-		keystone2_mdio_reset(mdio_bus);
+		/* Init MDIO & get link state */
+		clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
+		writel((clkdiv & 0xff) | MDIO_CONTROL_ENABLE |
+		       MDIO_CONTROL_FAULT, &adap_mdio->control)
+			;
 
-		phy_startup(phy_dev);
-		if (phy_dev->link == 0) {
-			ksnav_close(&netcp_pktdma);
+		/* We need to wait for MDIO to start */
+		udelay(1000);
+
+		link = keystone_get_link_status(dev);
+		if (link == 0) {
+			netcp_close();
 			qm_close();
 			return -1;
 		}
@@ -603,9 +481,6 @@ static int keystone2_eth_open(struct eth_device *dev, bd_t *bis)
 /* Eth device close */
 void keystone2_eth_close(struct eth_device *dev)
 {
-	struct eth_priv_t *eth_priv = (struct eth_priv_t *)dev->priv;
-	struct phy_device *phy_dev = eth_priv->phy_dev;
-
 	debug("+ emac_close\n");
 
 	if (!emac_open)
@@ -613,14 +488,15 @@ void keystone2_eth_close(struct eth_device *dev)
 
 	ethss_stop();
 
-	ksnav_close(&netcp_pktdma);
+	netcp_close();
 	qm_close();
-	phy_shutdown(phy_dev);
 
 	emac_open = 0;
 
 	debug("- emac_close\n");
 }
+
+static int tx_send_loop;
 
 /*
  * This function sends a single packet on the network and returns
@@ -631,14 +507,21 @@ static int keystone2_eth_send_packet(struct eth_device *dev,
 {
 	int ret_status = -1;
 	struct eth_priv_t *eth_priv = (struct eth_priv_t *)dev->priv;
-	struct phy_device *phy_dev = eth_priv->phy_dev;
 
-	genphy_update_link(phy_dev);
-	if (phy_dev->link == 0)
+	tx_send_loop = 0;
+
+	if (keystone_get_link_status(dev) == 0)
 		return -1;
+
+	emac_gigabit_enable(dev);
 
 	if (cpmac_drv_send((u32 *)packet, length, eth_priv->slave_port) != 0)
 		return ret_status;
+
+	if (keystone_get_link_status(dev) == 0)
+		return -1;
+
+	emac_gigabit_enable(dev);
 
 	return length;
 }
@@ -652,33 +535,23 @@ static int keystone2_eth_rcv_packet(struct eth_device *dev)
 	int  pkt_size;
 	u32  *pkt;
 
-	hd = ksnav_recv(&netcp_pktdma, &pkt, &pkt_size);
+	hd = netcp_recv(&pkt, &pkt_size);
 	if (hd == NULL)
 		return 0;
 
-	net_process_received_packet((uchar *)pkt, pkt_size);
+	NetReceive((uchar *)pkt, pkt_size);
 
-	ksnav_release_rxhd(&netcp_pktdma, hd);
+	netcp_release_rxhd(hd);
 
 	return pkt_size;
 }
-
-#ifdef CONFIG_MCAST_TFTP
-static int keystone2_eth_bcast_addr(struct eth_device *dev, u32 ip, u8 set)
-{
-	return 0;
-}
-#endif
 
 /*
  * This function initializes the EMAC hardware.
  */
 int keystone2_emac_initialize(struct eth_priv_t *eth_priv)
 {
-	int res;
 	struct eth_device *dev;
-	struct phy_device *phy_dev;
-	struct mdio_regs *adap_mdio = (struct mdio_regs *)EMAC_MDIO_BASE_ADDR;
 
 	dev = malloc(sizeof(struct eth_device));
 	if (dev == NULL)
@@ -696,475 +569,148 @@ int keystone2_emac_initialize(struct eth_priv_t *eth_priv)
 	dev->halt		= keystone2_eth_close;
 	dev->send		= keystone2_eth_send_packet;
 	dev->recv		= keystone2_eth_rcv_packet;
-#ifdef CONFIG_MCAST_TFTP
-	dev->mcast		= keystone2_eth_bcast_addr;
-#endif
 
 	eth_register(dev);
 
-	/* Register MDIO bus if it's not registered yet */
-	if (!mdio_bus) {
-		mdio_bus	= mdio_alloc();
-		mdio_bus->read	= keystone2_mdio_read;
-		mdio_bus->write	= keystone2_mdio_write;
-		mdio_bus->reset	= keystone2_mdio_reset;
-		mdio_bus->priv	= (void *)EMAC_MDIO_BASE_ADDR;
-		strcpy(mdio_bus->name, "ethernet-mdio");
-
-		res = mdio_register(mdio_bus);
-		if (res)
-			return res;
-	}
-
-#ifndef CONFIG_SOC_K2G
-	keystone2_net_serdes_setup();
-#endif
-
-	/* Create phy device and bind it with driver */
-#ifdef CONFIG_KSNET_MDIO_PHY_CONFIG_ENABLE
-	phy_dev = phy_connect(mdio_bus, eth_priv->phy_addr,
-			      dev, eth_priv->phy_if);
-	phy_config(phy_dev);
-#else
-	phy_dev = phy_find_by_mask(mdio_bus, 1 << eth_priv->phy_addr,
-				   eth_priv->phy_if);
-	phy_dev->dev = dev;
-#endif
-	eth_priv->phy_dev = phy_dev;
-
 	return 0;
 }
 
-#else
-
-static int ks2_eth_start(struct udevice *dev)
+void sgmii_serdes_setup_156p25mhz(void)
 {
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-
-#ifdef CONFIG_SOC_K2G
-	keystone_rgmii_config(priv->phydev);
-#else
-	keystone_sgmii_config(priv->phydev, priv->slave_port - 1,
-			      priv->sgmii_link_type);
-#endif
-
-	udelay(10000);
-
-	/* On chip switch configuration */
-	ethss_config(target_get_switch_ctl(), SWITCH_MAX_PKT_SIZE);
-
-	qm_init();
-
-	if (ksnav_init(priv->netcp_pktdma, &priv->net_rx_buffs)) {
-		pr_err("ksnav_init failed\n");
-		goto err_knav_init;
-	}
+	unsigned int cnt;
 
 	/*
-	 * Streaming switch configuration. If not present this
-	 * statement is defined to void in target.h.
-	 * If present this is usually defined to a series of register writes
+	 * configure Serializer/Deserializer (SerDes) hardware. SerDes IP
+	 * hardware vendor published only register addresses and their values
+	 * to be used for configuring SerDes. So had to use hardcoded values
+	 * below.
 	 */
-	hw_config_streaming_switch();
+	clrsetbits_le32(0x0232a000, 0xffff0000, 0x00800000);
+	clrsetbits_le32(0x0232a014, 0x0000ffff, 0x00008282);
+	clrsetbits_le32(0x0232a060, 0x00ffffff, 0x00142438);
+	clrsetbits_le32(0x0232a064, 0x00ffff00, 0x00c3c700);
+	clrsetbits_le32(0x0232a078, 0x0000ff00, 0x0000c000);
 
-	if (priv->has_mdio) {
-		keystone2_mdio_reset(priv->mdio_bus);
+	clrsetbits_le32(0x0232a204, 0xff0000ff, 0x38000080);
+	clrsetbits_le32(0x0232a208, 0x000000ff, 0x00000000);
+	clrsetbits_le32(0x0232a20c, 0xff000000, 0x02000000);
+	clrsetbits_le32(0x0232a210, 0xff000000, 0x1b000000);
+	clrsetbits_le32(0x0232a214, 0x0000ffff, 0x00006fb8);
+	clrsetbits_le32(0x0232a218, 0xffff00ff, 0x758000e4);
+	clrsetbits_le32(0x0232a2ac, 0x0000ff00, 0x00004400);
+	clrsetbits_le32(0x0232a22c, 0x00ffff00, 0x00200800);
+	clrsetbits_le32(0x0232a280, 0x00ff00ff, 0x00820082);
+	clrsetbits_le32(0x0232a284, 0xffffffff, 0x1d0f0385);
 
-		phy_startup(priv->phydev);
-		if (priv->phydev->link == 0) {
-			pr_err("phy startup failed\n");
-			goto err_phy_start;
-		}
-	}
+	clrsetbits_le32(0x0232a404, 0xff0000ff, 0x38000080);
+	clrsetbits_le32(0x0232a408, 0x000000ff, 0x00000000);
+	clrsetbits_le32(0x0232a40c, 0xff000000, 0x02000000);
+	clrsetbits_le32(0x0232a410, 0xff000000, 0x1b000000);
+	clrsetbits_le32(0x0232a414, 0x0000ffff, 0x00006fb8);
+	clrsetbits_le32(0x0232a418, 0xffff00ff, 0x758000e4);
+	clrsetbits_le32(0x0232a4ac, 0x0000ff00, 0x00004400);
+	clrsetbits_le32(0x0232a42c, 0x00ffff00, 0x00200800);
+	clrsetbits_le32(0x0232a480, 0x00ff00ff, 0x00820082);
+	clrsetbits_le32(0x0232a484, 0xffffffff, 0x1d0f0385);
 
-	emac_gigabit_enable(dev);
+	clrsetbits_le32(0x0232a604, 0xff0000ff, 0x38000080);
+	clrsetbits_le32(0x0232a608, 0x000000ff, 0x00000000);
+	clrsetbits_le32(0x0232a60c, 0xff000000, 0x02000000);
+	clrsetbits_le32(0x0232a610, 0xff000000, 0x1b000000);
+	clrsetbits_le32(0x0232a614, 0x0000ffff, 0x00006fb8);
+	clrsetbits_le32(0x0232a618, 0xffff00ff, 0x758000e4);
+	clrsetbits_le32(0x0232a6ac, 0x0000ff00, 0x00004400);
+	clrsetbits_le32(0x0232a62c, 0x00ffff00, 0x00200800);
+	clrsetbits_le32(0x0232a680, 0x00ff00ff, 0x00820082);
+	clrsetbits_le32(0x0232a684, 0xffffffff, 0x1d0f0385);
 
-	ethss_start();
+	clrsetbits_le32(0x0232a804, 0xff0000ff, 0x38000080);
+	clrsetbits_le32(0x0232a808, 0x000000ff, 0x00000000);
+	clrsetbits_le32(0x0232a80c, 0xff000000, 0x02000000);
+	clrsetbits_le32(0x0232a810, 0xff000000, 0x1b000000);
+	clrsetbits_le32(0x0232a814, 0x0000ffff, 0x00006fb8);
+	clrsetbits_le32(0x0232a818, 0xffff00ff, 0x758000e4);
+	clrsetbits_le32(0x0232a8ac, 0x0000ff00, 0x00004400);
+	clrsetbits_le32(0x0232a82c, 0x00ffff00, 0x00200800);
+	clrsetbits_le32(0x0232a880, 0x00ff00ff, 0x00820082);
+	clrsetbits_le32(0x0232a884, 0xffffffff, 0x1d0f0385);
 
-	priv->emac_open = true;
+	clrsetbits_le32(0x0232aa00, 0x0000ff00, 0x00000800);
+	clrsetbits_le32(0x0232aa08, 0xffff0000, 0x38a20000);
+	clrsetbits_le32(0x0232aa30, 0x00ffff00, 0x008a8a00);
+	clrsetbits_le32(0x0232aa84, 0x0000ff00, 0x00000600);
+	clrsetbits_le32(0x0232aa94, 0xff000000, 0x10000000);
+	clrsetbits_le32(0x0232aaa0, 0xff000000, 0x81000000);
+	clrsetbits_le32(0x0232aabc, 0xff000000, 0xff000000);
+	clrsetbits_le32(0x0232aac0, 0x000000ff, 0x0000008b);
+	clrsetbits_le32(0x0232ab08, 0xffff0000, 0x583f0000);
+	clrsetbits_le32(0x0232ab0c, 0x000000ff, 0x0000004e);
+	clrsetbits_le32(0x0232a000, 0x000000ff, 0x00000003);
+	clrsetbits_le32(0x0232aa00, 0x000000ff, 0x0000005f);
 
-	return 0;
+	clrsetbits_le32(0x0232aa48, 0x00ffff00, 0x00fd8c00);
+	clrsetbits_le32(0x0232aa54, 0x00ffffff, 0x002fec72);
+	clrsetbits_le32(0x0232aa58, 0xffffff00, 0x00f92100);
+	clrsetbits_le32(0x0232aa5c, 0xffffffff, 0x00040060);
+	clrsetbits_le32(0x0232aa60, 0xffffffff, 0x00008000);
+	clrsetbits_le32(0x0232aa64, 0xffffffff, 0x0c581220);
+	clrsetbits_le32(0x0232aa68, 0xffffffff, 0xe13b0602);
+	clrsetbits_le32(0x0232aa6c, 0xffffffff, 0xb8074cc1);
+	clrsetbits_le32(0x0232aa70, 0xffffffff, 0x3f02e989);
+	clrsetbits_le32(0x0232aa74, 0x000000ff, 0x00000001);
+	clrsetbits_le32(0x0232ab20, 0x00ff0000, 0x00370000);
+	clrsetbits_le32(0x0232ab1c, 0xff000000, 0x37000000);
+	clrsetbits_le32(0x0232ab20, 0x000000ff, 0x0000005d);
 
-err_phy_start:
-	ksnav_close(priv->netcp_pktdma);
-err_knav_init:
-	qm_close();
+	/*Bring SerDes out of Reset if SerDes is Shutdown & is in Reset Mode*/
+	clrbits_le32(0x0232a010, 1 << 28);
 
-	return -EFAULT;
+	/* Enable TX and RX via the LANExCTL_STS 0x0000 + x*4 */
+	clrbits_le32(0x0232a228, 1 << 29);
+	writel(0xF800F8C0, 0x0232bfe0);
+	clrbits_le32(0x0232a428, 1 << 29);
+	writel(0xF800F8C0, 0x0232bfe4);
+	clrbits_le32(0x0232a628, 1 << 29);
+	writel(0xF800F8C0, 0x0232bfe8);
+	clrbits_le32(0x0232a828, 1 << 29);
+	writel(0xF800F8C0, 0x0232bfec);
+
+	/*Enable pll via the pll_ctrl 0x0014*/
+	writel(0xe0000000, 0x0232bff4)
+		;
+
+	/*Waiting for SGMII Serdes PLL lock.*/
+	for (cnt = 10000; cnt > 0 && ((readl(0x02090114) & 0x10) == 0); cnt--)
+		;
+
+	for (cnt = 10000; cnt > 0 && ((readl(0x02090214) & 0x10) == 0); cnt--)
+		;
+
+	for (cnt = 10000; cnt > 0 && ((readl(0x02090414) & 0x10) == 0); cnt--)
+		;
+
+	for (cnt = 10000; cnt > 0 && ((readl(0x02090514) & 0x10) == 0); cnt--)
+		;
+
+	udelay(45000);
 }
 
-static int ks2_eth_send(struct udevice *dev, void *packet, int length)
+void sgmii_serdes_shutdown(void)
 {
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
+	/*
+	 * shutdown SerDes hardware. SerDes hardware vendor published only
+	 * register addresses and their values. So had to use hardcoded
+	 * values below.
+	 */
+	clrbits_le32(0x0232bfe0, 3 << 29 | 3 << 13);
+	setbits_le32(0x02320228, 1 << 29);
+	clrbits_le32(0x0232bfe4, 3 << 29 | 3 << 13);
+	setbits_le32(0x02320428, 1 << 29);
+	clrbits_le32(0x0232bfe8, 3 << 29 | 3 << 13);
+	setbits_le32(0x02320628, 1 << 29);
+	clrbits_le32(0x0232bfec, 3 << 29 | 3 << 13);
+	setbits_le32(0x02320828, 1 << 29);
 
-	genphy_update_link(priv->phydev);
-	if (priv->phydev->link == 0)
-		return -1;
-
-	if (length < EMAC_MIN_ETHERNET_PKT_SIZE)
-		length = EMAC_MIN_ETHERNET_PKT_SIZE;
-
-	return ksnav_send(priv->netcp_pktdma, (u32 *)packet,
-			  length, (priv->slave_port) << 16);
+	clrbits_le32(0x02320034, 3 << 29);
+	setbits_le32(0x02320010, 1 << 28);
 }
-
-static int ks2_eth_recv(struct udevice *dev, int flags, uchar **packetp)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	int  pkt_size;
-	u32 *pkt = NULL;
-
-	priv->hd = ksnav_recv(priv->netcp_pktdma, &pkt, &pkt_size);
-	if (priv->hd == NULL)
-		return -EAGAIN;
-
-	*packetp = (uchar *)pkt;
-
-	return pkt_size;
-}
-
-static int ks2_eth_free_pkt(struct udevice *dev, uchar *packet,
-				   int length)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-
-	ksnav_release_rxhd(priv->netcp_pktdma, priv->hd);
-
-	return 0;
-}
-
-static void ks2_eth_stop(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-
-	if (!priv->emac_open)
-		return;
-	ethss_stop();
-
-	ksnav_close(priv->netcp_pktdma);
-	qm_close();
-	phy_shutdown(priv->phydev);
-	priv->emac_open = false;
-}
-
-int ks2_eth_read_rom_hwaddr(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-	u32 maca = 0;
-	u32 macb = 0;
-
-	/* Read the e-fuse mac address */
-	if (priv->slave_port == 1) {
-		maca = __raw_readl(MAC_ID_BASE_ADDR);
-		macb = __raw_readl(MAC_ID_BASE_ADDR + 4);
-	}
-
-	pdata->enetaddr[0] = (macb >>  8) & 0xff;
-	pdata->enetaddr[1] = (macb >>  0) & 0xff;
-	pdata->enetaddr[2] = (maca >> 24) & 0xff;
-	pdata->enetaddr[3] = (maca >> 16) & 0xff;
-	pdata->enetaddr[4] = (maca >>  8) & 0xff;
-	pdata->enetaddr[5] = (maca >>  0) & 0xff;
-
-	return 0;
-}
-
-int ks2_eth_write_hwaddr(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-
-	writel(mac_hi(pdata->enetaddr),
-	       DEVICE_EMACSW_BASE(pdata->iobase, priv->slave_port - 1) +
-				  CPGMACSL_REG_SA_HI);
-	writel(mac_lo(pdata->enetaddr),
-	       DEVICE_EMACSW_BASE(pdata->iobase, priv->slave_port - 1) +
-				  CPGMACSL_REG_SA_LO);
-
-	return 0;
-}
-
-static int ks2_eth_probe(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	struct mii_dev *mdio_bus;
-	int ret;
-
-	priv->dev = dev;
-
-	/* These clock enables has to be moved to common location */
-	if (cpu_is_k2g())
-		writel(KS2_ETHERNET_RGMII, KS2_ETHERNET_CFG);
-
-	/* By default, select PA PLL clock as PA clock source */
-#ifndef CONFIG_SOC_K2G
-	if (psc_enable_module(KS2_LPSC_PA))
-		return -EACCES;
-#endif
-	if (psc_enable_module(KS2_LPSC_CPGMAC))
-		return -EACCES;
-	if (psc_enable_module(KS2_LPSC_CRYPTO))
-		return -EACCES;
-
-	if (cpu_is_k2e() || cpu_is_k2l())
-		pll_pa_clk_sel();
-
-
-	priv->net_rx_buffs.buff_ptr = rx_buffs;
-	priv->net_rx_buffs.num_buffs = RX_BUFF_NUMS;
-	priv->net_rx_buffs.buff_len = RX_BUFF_LEN;
-
-	if (priv->slave_port == 1) {
-		/*
-		 * Register MDIO bus for slave 0 only, other slave have
-		 * to re-use the same
-		 */
-		mdio_bus = mdio_alloc();
-		if (!mdio_bus) {
-			pr_err("MDIO alloc failed\n");
-			return -ENOMEM;
-		}
-		priv->mdio_bus = mdio_bus;
-		mdio_bus->read	= keystone2_mdio_read;
-		mdio_bus->write	= keystone2_mdio_write;
-		mdio_bus->reset	= keystone2_mdio_reset;
-		mdio_bus->priv	= priv->mdio_base;
-		sprintf(mdio_bus->name, "ethernet-mdio");
-
-		ret = mdio_register(mdio_bus);
-		if (ret) {
-			pr_err("MDIO bus register failed\n");
-			return ret;
-		}
-	} else {
-		/* Get the MDIO bus from slave 0 device */
-		struct ks2_eth_priv *parent_priv;
-
-		parent_priv = dev_get_priv(dev->parent);
-		priv->mdio_bus = parent_priv->mdio_bus;
-	}
-
-#ifndef CONFIG_SOC_K2G
-	keystone2_net_serdes_setup();
-#endif
-
-	priv->netcp_pktdma = &netcp_pktdma;
-
-	if (priv->has_mdio) {
-		priv->phydev = phy_connect(priv->mdio_bus, priv->phy_addr,
-					   dev, priv->phy_if);
-		phy_config(priv->phydev);
-	}
-
-	return 0;
-}
-
-int ks2_eth_remove(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-
-	free(priv->phydev);
-	mdio_unregister(priv->mdio_bus);
-	mdio_free(priv->mdio_bus);
-
-	return 0;
-}
-
-static const struct eth_ops ks2_eth_ops = {
-	.start			= ks2_eth_start,
-	.send			= ks2_eth_send,
-	.recv			= ks2_eth_recv,
-	.free_pkt		= ks2_eth_free_pkt,
-	.stop			= ks2_eth_stop,
-	.read_rom_hwaddr	= ks2_eth_read_rom_hwaddr,
-	.write_hwaddr		= ks2_eth_write_hwaddr,
-};
-
-static int ks2_eth_bind_slaves(struct udevice *dev, int gbe, int *gbe_0)
-{
-	const void *fdt = gd->fdt_blob;
-	struct udevice *sl_dev;
-	int interfaces;
-	int sec_slave;
-	int slave;
-	int ret;
-	char *slave_name;
-
-	interfaces = fdt_subnode_offset(fdt, gbe, "interfaces");
-	fdt_for_each_subnode(slave, fdt, interfaces) {
-		int slave_no;
-
-		slave_no = fdtdec_get_int(fdt, slave, "slave-port", -ENOENT);
-		if (slave_no == -ENOENT)
-			continue;
-
-		if (slave_no == 0) {
-			/* This is the current eth device */
-			*gbe_0 = slave;
-		} else {
-			/* Slave devices to be registered */
-			slave_name = malloc(20);
-			snprintf(slave_name, 20, "netcp@slave-%d", slave_no);
-			ret = device_bind_driver_to_node(dev, "eth_ks2_sl",
-					slave_name, offset_to_ofnode(slave),
-					&sl_dev);
-			if (ret) {
-				pr_err("ks2_net - not able to bind slave interfaces\n");
-				return ret;
-			}
-		}
-	}
-
-	sec_slave = fdt_subnode_offset(fdt, gbe, "secondary-slave-ports");
-	fdt_for_each_subnode(slave, fdt, sec_slave) {
-		int slave_no;
-
-		slave_no = fdtdec_get_int(fdt, slave, "slave-port", -ENOENT);
-		if (slave_no == -ENOENT)
-			continue;
-
-		/* Slave devices to be registered */
-		slave_name = malloc(20);
-		snprintf(slave_name, 20, "netcp@slave-%d", slave_no);
-		ret = device_bind_driver_to_node(dev, "eth_ks2_sl", slave_name,
-					offset_to_ofnode(slave), &sl_dev);
-		if (ret) {
-			pr_err("ks2_net - not able to bind slave interfaces\n");
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
-static int ks2_eth_parse_slave_interface(int netcp, int slave,
-					 struct ks2_eth_priv *priv,
-					 struct eth_pdata *pdata)
-{
-	const void *fdt = gd->fdt_blob;
-	int mdio;
-	int phy;
-	int dma_count;
-	u32 dma_channel[8];
-
-	priv->slave_port = fdtdec_get_int(fdt, slave, "slave-port", -1);
-	priv->net_rx_buffs.rx_flow = priv->slave_port * 8;
-
-	/* U-Boot slave port number starts with 1 instead of 0 */
-	priv->slave_port += 1;
-
-	dma_count = fdtdec_get_int_array_count(fdt, netcp,
-					       "ti,navigator-dmas",
-					       dma_channel, 8);
-
-	if (dma_count > (2 * priv->slave_port)) {
-		int dma_idx;
-
-		dma_idx = priv->slave_port * 2 - 1;
-		priv->net_rx_buffs.rx_flow = dma_channel[dma_idx];
-	}
-
-	priv->link_type = fdtdec_get_int(fdt, slave, "link-interface", -1);
-
-	phy = fdtdec_lookup_phandle(fdt, slave, "phy-handle");
-	if (phy >= 0) {
-		priv->phy_addr = fdtdec_get_int(fdt, phy, "reg", -1);
-
-		mdio = fdt_parent_offset(fdt, phy);
-		if (mdio < 0) {
-			pr_err("mdio dt not found\n");
-			return -ENODEV;
-		}
-		priv->mdio_base = (void *)fdtdec_get_addr(fdt, mdio, "reg");
-	}
-
-	if (priv->link_type == LINK_TYPE_SGMII_MAC_TO_PHY_MODE) {
-		priv->phy_if = PHY_INTERFACE_MODE_SGMII;
-		pdata->phy_interface = priv->phy_if;
-		priv->sgmii_link_type = SGMII_LINK_MAC_PHY;
-		priv->has_mdio = true;
-	} else if (priv->link_type == LINK_TYPE_RGMII_LINK_MAC_PHY) {
-		priv->phy_if = PHY_INTERFACE_MODE_RGMII;
-		pdata->phy_interface = priv->phy_if;
-		priv->has_mdio = true;
-	}
-
-	return 0;
-}
-
-static int ks2_sl_eth_ofdata_to_platdata(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-	const void *fdt = gd->fdt_blob;
-	int slave = dev_of_offset(dev);
-	int interfaces;
-	int gbe;
-	int netcp_devices;
-	int netcp;
-
-	interfaces = fdt_parent_offset(fdt, slave);
-	gbe = fdt_parent_offset(fdt, interfaces);
-	netcp_devices = fdt_parent_offset(fdt, gbe);
-	netcp = fdt_parent_offset(fdt, netcp_devices);
-
-	ks2_eth_parse_slave_interface(netcp, slave, priv, pdata);
-
-	pdata->iobase = fdtdec_get_addr(fdt, netcp, "reg");
-
-	return 0;
-}
-
-static int ks2_eth_ofdata_to_platdata(struct udevice *dev)
-{
-	struct ks2_eth_priv *priv = dev_get_priv(dev);
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-	const void *fdt = gd->fdt_blob;
-	int gbe_0 = -ENODEV;
-	int netcp_devices;
-	int gbe;
-
-	netcp_devices = fdt_subnode_offset(fdt, dev_of_offset(dev),
-					   "netcp-devices");
-	gbe = fdt_subnode_offset(fdt, netcp_devices, "gbe");
-
-	ks2_eth_bind_slaves(dev, gbe, &gbe_0);
-
-	ks2_eth_parse_slave_interface(dev_of_offset(dev), gbe_0, priv, pdata);
-
-	pdata->iobase = devfdt_get_addr(dev);
-
-	return 0;
-}
-
-static const struct udevice_id ks2_eth_ids[] = {
-	{ .compatible = "ti,netcp-1.0" },
-	{ }
-};
-
-U_BOOT_DRIVER(eth_ks2_slave) = {
-	.name	= "eth_ks2_sl",
-	.id	= UCLASS_ETH,
-	.ofdata_to_platdata = ks2_sl_eth_ofdata_to_platdata,
-	.probe	= ks2_eth_probe,
-	.remove	= ks2_eth_remove,
-	.ops	= &ks2_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct ks2_eth_priv),
-	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
-	.flags = DM_FLAG_ALLOC_PRIV_DMA,
-};
-
-U_BOOT_DRIVER(eth_ks2) = {
-	.name	= "eth_ks2",
-	.id	= UCLASS_ETH,
-	.of_match = ks2_eth_ids,
-	.ofdata_to_platdata = ks2_eth_ofdata_to_platdata,
-	.probe	= ks2_eth_probe,
-	.remove	= ks2_eth_remove,
-	.ops	= &ks2_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct ks2_eth_priv),
-	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
-	.flags = DM_FLAG_ALLOC_PRIV_DMA,
-};
-#endif

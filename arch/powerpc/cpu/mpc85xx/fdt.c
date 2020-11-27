@@ -1,28 +1,24 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007-2011 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <environment.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
 #include <linux/ctype.h>
 #include <asm/io.h>
-#include <asm/fsl_fdt.h>
 #include <asm/fsl_portals.h>
-#include <fsl_qbman.h>
 #include <hwconfig.h>
 #ifdef CONFIG_FSL_ESDHC
 #include <fsl_esdhc.h>
 #endif
-#ifdef CONFIG_SYS_DPAA_FMAN
-#include <fsl_fman.h>
-#endif
+#include "../../../../drivers/qe/qe.h"		/* For struct qe_firmware */
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -93,7 +89,7 @@ void ft_fixup_cpu(void *blob, u64 memory_limit)
 	 * Extract hwconfig from environment.
 	 * Search for tdm entry in hwconfig.
 	 */
-	ret = env_get_f("hwconfig", buffer, sizeof(buffer));
+	ret = getenv_f("hwconfig", buffer, sizeof(buffer));
 	if (ret > 0)
 		tdm_hwconfig_enabled = hwconfig_f("tdm", buffer);
 
@@ -138,21 +134,6 @@ void ft_fixup_cpu(void *blob, u64 memory_limit)
 			printf("Failed to reserve memory for spin table: %s\n",
 				fdt_strerror(off));
 	}
-#ifdef CONFIG_DEEP_SLEEP
-#ifdef CONFIG_SPL_MMC_BOOT
-	off = fdt_add_mem_rsv(blob, CONFIG_SYS_MMC_U_BOOT_START,
-		CONFIG_SYS_MMC_U_BOOT_SIZE);
-	if (off < 0)
-		printf("Failed to reserve memory for SD deep sleep: %s\n",
-		       fdt_strerror(off));
-#elif defined(CONFIG_SPL_SPI_BOOT)
-	off = fdt_add_mem_rsv(blob, CONFIG_SYS_SPI_FLASH_U_BOOT_START,
-		CONFIG_SYS_SPI_FLASH_U_BOOT_SIZE);
-	if (off < 0)
-		printf("Failed to reserve memory for SPI deep sleep: %s\n",
-		       fdt_strerror(off));
-#endif
-#endif
 }
 #endif
 
@@ -179,39 +160,6 @@ static inline void ft_fixup_l3cache(void *blob, int off)
 }
 #else
 #define ft_fixup_l3cache(x, y)
-#endif
-
-#if defined(CONFIG_L2_CACHE) || \
-	defined(CONFIG_BACKSIDE_L2_CACHE) || \
-	defined(CONFIG_SYS_FSL_QORIQ_CHASSIS2)
-static inline void ft_fixup_l2cache_compatible(void *blob, int off)
-{
-	int len;
-	struct cpu_type *cpu = identify_cpu(SVR_SOC_VER(get_svr()));
-
-	if (cpu) {
-		char buf[40];
-
-		if (isdigit(cpu->name[0])) {
-			/* MPCxxxx, where xxxx == 4-digit number */
-			len = sprintf(buf, "fsl,mpc%s-l2-cache-controller",
-				cpu->name) + 1;
-		} else {
-			/* Pxxxx or Txxxx, where xxxx == 4-digit number */
-			len = sprintf(buf, "fsl,%c%s-l2-cache-controller",
-			tolower(cpu->name[0]), cpu->name + 1) + 1;
-		}
-
-		/*
-		 * append "cache" after the NULL character that the previous
-		 * sprintf wrote.  This is how a device tree stores multiple
-		 * strings in a property.
-		 */
-		len += sprintf(buf + len, "cache") + 1;
-
-		fdt_setprop(blob, off, "compatible", buf, len);
-	}
-}
 #endif
 
 #if defined(CONFIG_L2_CACHE)
@@ -249,8 +197,9 @@ static inline u32 l2cache_size(void)
 
 static inline void ft_fixup_l2cache(void *blob)
 {
-	int off;
+	int len, off;
 	u32 *ph;
+	struct cpu_type *cpu = identify_cpu(SVR_SOC_VER(get_svr()));
 
 	const u32 line_size = 32;
 	const u32 num_ways = 8;
@@ -276,7 +225,28 @@ static inline void ft_fixup_l2cache(void *blob)
 		return ;
 	}
 
-	ft_fixup_l2cache_compatible(blob, off);
+	if (cpu) {
+		char buf[40];
+
+		if (isdigit(cpu->name[0])) {
+			/* MPCxxxx, where xxxx == 4-digit number */
+			len = sprintf(buf, "fsl,mpc%s-l2-cache-controller",
+				cpu->name) + 1;
+		} else {
+			/* Pxxxx or Txxxx, where xxxx == 4-digit number */
+			len = sprintf(buf, "fsl,%c%s-l2-cache-controller",
+				tolower(cpu->name[0]), cpu->name + 1) + 1;
+		}
+
+		/*
+		 * append "cache" after the NULL character that the previous
+		 * sprintf wrote.  This is how a device tree stores multiple
+		 * strings in a property.
+		 */
+		len += sprintf(buf + len, "cache") + 1;
+
+		fdt_setprop(blob, off, "compatible", buf, len);
+	}
 	fdt_setprop(blob, off, "cache-unified", NULL, 0);
 	fdt_setprop_cell(blob, off, "cache-block-size", line_size);
 	fdt_setprop_cell(blob, off, "cache-size", size);
@@ -349,7 +319,7 @@ static inline void ft_fixup_l2cache(void *blob)
 			fdt_setprop_cell(blob, l2_off, "cache-size", size);
 			fdt_setprop_cell(blob, l2_off, "cache-sets", num_sets);
 			fdt_setprop_cell(blob, l2_off, "cache-level", 2);
-			ft_fixup_l2cache_compatible(blob, l2_off);
+			fdt_setprop(blob, l2_off, "compatible", "cache", 6);
 		}
 
 		if (l3_off < 0) {
@@ -502,7 +472,126 @@ static void ft_fixup_qe_snum(void *blob)
 }
 #endif
 
-#if defined(CONFIG_ARCH_P4080)
+/**
+ * fdt_fixup_fman_firmware -- insert the Fman firmware into the device tree
+ *
+ * The binding for an Fman firmware node is documented in
+ * Documentation/powerpc/dts-bindings/fsl/dpaa/fman.txt.  This node contains
+ * the actual Fman firmware binary data.  The operating system is expected to
+ * be able to parse the binary data to determine any attributes it needs.
+ */
+#ifdef CONFIG_SYS_DPAA_FMAN
+void fdt_fixup_fman_firmware(void *blob)
+{
+	int rc, fmnode, fwnode = -1;
+	uint32_t phandle;
+	struct qe_firmware *fmanfw;
+	const struct qe_header *hdr;
+	unsigned int length;
+	uint32_t crc;
+	const char *p;
+
+	/* The first Fman we find will contain the actual firmware. */
+	fmnode = fdt_node_offset_by_compatible(blob, -1, "fsl,fman");
+	if (fmnode < 0)
+		/* Exit silently if there are no Fman devices */
+		return;
+
+	/* If we already have a firmware node, then also exit silently. */
+	if (fdt_node_offset_by_compatible(blob, -1, "fsl,fman-firmware") > 0)
+		return;
+
+	/* If the environment variable is not set, then exit silently */
+	p = getenv("fman_ucode");
+	if (!p)
+		return;
+
+	fmanfw = (struct qe_firmware *) simple_strtoul(p, NULL, 16);
+	if (!fmanfw)
+		return;
+
+	hdr = &fmanfw->header;
+	length = be32_to_cpu(hdr->length);
+
+	/* Verify the firmware. */
+	if ((hdr->magic[0] != 'Q') || (hdr->magic[1] != 'E') ||
+		(hdr->magic[2] != 'F')) {
+		printf("Data at %p is not an Fman firmware\n", fmanfw);
+		return;
+	}
+
+	if (length > CONFIG_SYS_QE_FMAN_FW_LENGTH) {
+		printf("Fman firmware at %p is too large (size=%u)\n",
+		       fmanfw, length);
+		return;
+	}
+
+	length -= sizeof(u32);	/* Subtract the size of the CRC */
+	crc = be32_to_cpu(*(u32 *)((void *)fmanfw + length));
+	if (crc != crc32_no_comp(0, (void *)fmanfw, length)) {
+		printf("Fman firmware at %p has invalid CRC\n", fmanfw);
+		return;
+	}
+
+	/* Increase the size of the fdt to make room for the node. */
+	rc = fdt_increase_size(blob, fmanfw->header.length);
+	if (rc < 0) {
+		printf("Unable to make room for Fman firmware: %s\n",
+			fdt_strerror(rc));
+		return;
+	}
+
+	/* Create the firmware node. */
+	fwnode = fdt_add_subnode(blob, fmnode, "fman-firmware");
+	if (fwnode < 0) {
+		char s[64];
+		fdt_get_path(blob, fmnode, s, sizeof(s));
+		printf("Could not add firmware node to %s: %s\n", s,
+		       fdt_strerror(fwnode));
+		return;
+	}
+	rc = fdt_setprop_string(blob, fwnode, "compatible", "fsl,fman-firmware");
+	if (rc < 0) {
+		char s[64];
+		fdt_get_path(blob, fwnode, s, sizeof(s));
+		printf("Could not add compatible property to node %s: %s\n", s,
+		       fdt_strerror(rc));
+		return;
+	}
+	phandle = fdt_create_phandle(blob, fwnode);
+	if (!phandle) {
+		char s[64];
+		fdt_get_path(blob, fwnode, s, sizeof(s));
+		printf("Could not add phandle property to node %s: %s\n", s,
+		       fdt_strerror(rc));
+		return;
+	}
+	rc = fdt_setprop(blob, fwnode, "fsl,firmware", fmanfw, fmanfw->header.length);
+	if (rc < 0) {
+		char s[64];
+		fdt_get_path(blob, fwnode, s, sizeof(s));
+		printf("Could not add firmware property to node %s: %s\n", s,
+		       fdt_strerror(rc));
+		return;
+	}
+
+	/* Find all other Fman nodes and point them to the firmware node. */
+	while ((fmnode = fdt_node_offset_by_compatible(blob, fmnode, "fsl,fman")) > 0) {
+		rc = fdt_setprop_cell(blob, fmnode, "fsl,firmware-phandle", phandle);
+		if (rc < 0) {
+			char s[64];
+			fdt_get_path(blob, fmnode, s, sizeof(s));
+			printf("Could not add pointer property to node %s: %s\n",
+			       s, fdt_strerror(rc));
+			return;
+		}
+	}
+}
+#else
+#define fdt_fixup_fman_firmware(x)
+#endif
+
+#if defined(CONFIG_PPC_P4080)
 static void fdt_fixup_usb(void *fdt)
 {
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
@@ -523,51 +612,7 @@ static void fdt_fixup_usb(void *fdt)
 #define fdt_fixup_usb(x)
 #endif
 
-#if defined(CONFIG_ARCH_T2080) || defined(CONFIG_ARCH_T4240) || \
-	defined(CONFIG_ARCH_T4160)
-void fdt_fixup_dma3(void *blob)
-{
-	/* the 3rd DMA is not functional if SRIO2 is chosen */
-	int nodeoff;
-	ccsr_gur_t __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-
-#define CONFIG_SYS_ELO3_DMA3 (0xffe000000 + 0x102300)
-#if defined(CONFIG_ARCH_T2080)
-	u32 srds_prtcl_s2 = in_be32(&gur->rcwsr[4]) &
-				    FSL_CORENET2_RCWSR4_SRDS2_PRTCL;
-	srds_prtcl_s2 >>= FSL_CORENET2_RCWSR4_SRDS2_PRTCL_SHIFT;
-
-	switch (srds_prtcl_s2) {
-	case 0x29:
-	case 0x2d:
-	case 0x2e:
-#elif defined(CONFIG_ARCH_T4240) || defined(CONFIG_ARCH_T4160)
-	u32 srds_prtcl_s4 = in_be32(&gur->rcwsr[4]) &
-				    FSL_CORENET2_RCWSR4_SRDS4_PRTCL;
-	srds_prtcl_s4 >>= FSL_CORENET2_RCWSR4_SRDS4_PRTCL_SHIFT;
-
-	switch (srds_prtcl_s4) {
-	case 6:
-	case 8:
-	case 14:
-	case 16:
-#endif
-		nodeoff = fdt_node_offset_by_compat_reg(blob, "fsl,elo3-dma",
-							CONFIG_SYS_ELO3_DMA3);
-		if (nodeoff > 0)
-			fdt_status_disabled(blob, nodeoff);
-		else
-			printf("WARNING: unable to disable dma3\n");
-		break;
-	default:
-		break;
-	}
-}
-#else
-#define fdt_fixup_dma3(x)
-#endif
-
-#if defined(CONFIG_ARCH_T1040)
+#if defined(CONFIG_PPC_T1040)
 static void fdt_fixup_l2_switch(void *blob)
 {
 	uchar l2swaddr[6];
@@ -581,7 +626,7 @@ static void fdt_fixup_l2_switch(void *blob)
 		return;
 
 	/* Get MAC address for the l2switch from "l2switchaddr"*/
-	if (!eth_env_get_enetaddr("l2switchaddr", l2swaddr)) {
+	if (!eth_getenv_enetaddr("l2switchaddr", l2swaddr)) {
 		printf("Warning: MAC address for l2switch not found\n");
 		memset(l2swaddr, 0, sizeof(l2swaddr));
 	}
@@ -609,9 +654,11 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 		ccsr_sec_t __iomem *sec;
 
 		sec = (void __iomem *)CONFIG_SYS_FSL_SEC_ADDR;
-		fdt_fixup_crypto_node(blob, sec_in32(&sec->secvid_ms));
+		fdt_fixup_crypto_node(blob, in_be32(&sec->secvid_ms));
 	}
 #endif
+
+	fdt_fixup_ethernet(blob);
 
 	fdt_add_enet_stashing(blob);
 
@@ -635,14 +682,16 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	do_fixup_by_prop_u32(blob, "device_type", "soc", 4,
 		"bus-frequency", bd->bi_busfreq, 1);
 
+	do_fixup_by_compat_u32(blob, "fsl,pq3-localbus",
+		"bus-frequency", gd->arch.lbc_clk, 1);
+	do_fixup_by_compat_u32(blob, "fsl,elbc",
+		"bus-frequency", gd->arch.lbc_clk, 1);
 #ifdef CONFIG_QE
 	ft_qe_setup(blob);
 	ft_fixup_qe_snum(blob);
 #endif
 
-#ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_firmware(blob);
-#endif
 
 #ifdef CONFIG_SYS_NS16550
 	do_fixup_by_compat_u32(blob, "ns16550",
@@ -729,8 +778,6 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	fdt_fixup_usb(blob);
 
 	fdt_fixup_l2_switch(blob);
-
-	fdt_fixup_dma3(blob);
 }
 
 /*
@@ -771,15 +818,8 @@ int ft_verify_fdt(void *fdt)
 
 	/* First check the CCSR base address */
 	off = fdt_node_offset_by_prop_value(fdt, -1, "device_type", "soc", 4);
-	if (off > 0) {
-		int size;
-		u32 naddr;
-		const fdt32_t *prop;
-
-		naddr = fdt_address_cells(fdt, off);
-		prop = fdt_getprop(fdt, off, "ranges", &size);
-		addr = fdt_translate_address(fdt, off, prop + naddr);
-	}
+	if (off > 0)
+		addr = fdt_get_base_address(fdt, off);
 
 	if (!addr) {
 		printf("Warning: could not determine base CCSR address in "
@@ -840,14 +880,4 @@ int ft_verify_fdt(void *fdt)
 #endif
 
 	return 1;
-}
-
-void fdt_del_diu(void *blob)
-{
-	int nodeoff = 0;
-
-	while ((nodeoff = fdt_node_offset_by_compatible(blob, 0,
-				"fsl,diu")) >= 0) {
-		fdt_del_node(blob, nodeoff);
-	}
 }

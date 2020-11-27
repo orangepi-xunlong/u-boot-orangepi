@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * PPC-AG BG0900 board
  *
  * Copyright (C) 2013 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

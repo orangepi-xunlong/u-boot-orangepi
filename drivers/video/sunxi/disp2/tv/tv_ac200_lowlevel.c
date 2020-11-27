@@ -1,18 +1,8 @@
 /*
- * drivers/video/sunxi/disp2/tv/tv_ac200_lowlevel.c
+ * aw1683_tve_sw.c
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ *  Created on: 2015.1.26
+ *      Author: A
  */
 #include "tv_ac200.h"
 #include "tv_ac200_lowlevel.h"
@@ -41,14 +31,14 @@ s32 aw1683_wr_reg(__u16 sub_addr, __u16 data)
 
 	ret = i2c_write((uchar)ac200_twi_addr, (__u32)0xfe ,1 , (__u8*)&tmpData,2);
 #if DEBUG
-	printf("------write------tmpdata = 0x%x, ret1 = 0x%x\n", tmpData, ret);
+	pr_msg("------write------tmpdata = 0x%x, ret1 = 0x%x\n", tmpData, ret);
 #endif
 	tmpData = sub_addr & 0xff;
 
 
 	ret = i2c_write((uchar)ac200_twi_addr, tmpData ,1 , (__u8*)&data,2);
 #if DEBUG
-	printf("-------write-----tmpdata = 0x%x, ret2 = 0x%x\n", tmpData, ret);
+	pr_msg("-------write-----tmpdata = 0x%x, ret2 = 0x%x\n", tmpData, ret);
 #endif
 	return ret;
 }
@@ -72,13 +62,13 @@ s32 aw1683_rd_reg(__u16 sub_addr, __u16 *data)
 
 	ret = i2c_write((uchar)ac200_twi_addr, i2cFixAddr ,1 , (__u8*)&tmpData,2);
 #if DEBUG
-	printf("-------read-----tmpdata1 = 0x%x, ret1 = 0x%x\n", tmpData, ret);
+	pr_msg("-------read-----tmpdata1 = 0x%x, ret1 = 0x%x\n", tmpData, ret);
 #endif
 
 	tmpData = (u32)(sub_addr & 0xff);
 	ret = i2c_read((uchar)ac200_twi_addr, tmpData,1,(__u8*)data, 2);
 #if DEBUG
-	printf("------read-----tmpdata2 = 0x%x, ret2 = 0x%x\n", tmpData, ret);
+	pr_msg("------read-----tmpdata2 = 0x%x, ret2 = 0x%x\n", tmpData, ret);
 #endif
 	pexcTmp = (__u8*)data;
 	excTmp = pexcTmp[0];
@@ -103,7 +93,7 @@ s32 aw1683_tve_init(const u16 *p_dac_cali, const u16 *p_bandgap)
 		aw1683_rd_reg(0x0002, &data);
 	}
 	if (data != 0x0001) {
-		printf("close chip reset failed after %d times\n", try_count);
+		pr_msg("close chip reset failed after %d times\n", try_count);
 		return -1;
 	}
 

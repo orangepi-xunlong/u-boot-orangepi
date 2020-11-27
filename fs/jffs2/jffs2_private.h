@@ -98,8 +98,4 @@ data_crc(struct jffs2_raw_inode *node)
 	}
 }
 
-#if defined(CONFIG_SYS_JFFS2_SORT_FRAGMENTS)
-/* External merge sort. */
-int sort_list(struct b_list *list);
-#endif
 #endif /* jffs2_private.h */

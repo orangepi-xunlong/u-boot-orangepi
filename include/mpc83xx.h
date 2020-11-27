@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004-2007, 2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MPC83XX_H__
@@ -1296,6 +1297,7 @@
  */
 #define SDRAM_INTERVAL_REFINT		0x3FFF0000
 #define SDRAM_INTERVAL_REFINT_SHIFT	16
+#define SDRAM_INTERVAL_BSTOPRE		0x00003FFF
 #define SDRAM_INTERVAL_BSTOPRE_SHIFT	0
 
 /*

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009 DENX Software Engineering
  * Author: John Rigby <jrigby@gmail.com>
@@ -6,13 +5,14 @@
  * Based on mx27/generic.c:
  *  Copyright (c) 2008 Eric Jarrige <eric.jarrige@armadeus.org>
  *  Copyright (c) 2009 Ilya Yanok <yanok@emcraft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <div64.h>
 #include <netdev.h>
 #include <asm/io.h>
-#include <asm/arch-imx/cpu.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 
@@ -57,14 +57,6 @@ static ulong imx_get_mpllclk(void)
 	return imx_decode_pll(readl(&ccm->mpctl), fref);
 }
 
-static ulong imx_get_upllclk(void)
-{
-	struct ccm_regs *ccm = (struct ccm_regs *)IMX_CCM_BASE;
-	ulong fref = MXC_HCLK;
-
-	return imx_decode_pll(readl(&ccm->upctl), fref);
-}
-
 static ulong imx_get_armclk(void)
 {
 	struct ccm_regs *ccm = (struct ccm_regs *)IMX_CCM_BASE;
@@ -102,33 +94,13 @@ static ulong imx_get_ipgclk(void)
 static ulong imx_get_perclk(int clk)
 {
 	struct ccm_regs *ccm = (struct ccm_regs *)IMX_CCM_BASE;
-	ulong fref = readl(&ccm->mcr) & (1 << clk) ? imx_get_upllclk() :
-						     imx_get_ahbclk();
+	ulong fref = imx_get_ahbclk();
 	ulong div;
 
 	div = readl(&ccm->pcdr[CCM_PERCLK_REG(clk)]);
 	div = ((div >> CCM_PERCLK_SHIFT(clk)) & CCM_PERCLK_MASK) + 1;
 
 	return fref / div;
-}
-
-int imx_set_perclk(enum mxc_clock clk, bool from_upll, unsigned int freq)
-{
-	struct ccm_regs *ccm = (struct ccm_regs *)IMX_CCM_BASE;
-	ulong fref = from_upll ? imx_get_upllclk() : imx_get_ahbclk();
-	ulong div = (fref + freq - 1) / freq;
-
-	if (clk > MXC_UART_CLK || !div || --div > CCM_PERCLK_MASK)
-		return -EINVAL;
-
-	clrsetbits_le32(&ccm->pcdr[CCM_PERCLK_REG(clk)],
-			CCM_PERCLK_MASK << CCM_PERCLK_SHIFT(clk),
-			div << CCM_PERCLK_SHIFT(clk));
-	if (from_upll)
-		setbits_le32(&ccm->mcr, 1 << clk);
-	else
-		clrbits_le32(&ccm->mcr, 1 << clk);
-	return 0;
 }
 
 unsigned int mxc_get_clock(enum mxc_clock clk)
@@ -209,7 +181,7 @@ int print_cpuinfo(void)
 		(cpurev & 0xF0) >> 4, (cpurev & 0x0F),
 		((cpurev & 0x8000) ? " unknown" : ""),
 		strmhz(buf, imx_get_armclk()));
-	printf("Reset cause: %s\n", get_reset_cause());
+	printf("Reset cause: %s\n\n", get_reset_cause());
 	return 0;
 }
 #endif

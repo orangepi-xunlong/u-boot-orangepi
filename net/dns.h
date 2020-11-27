@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Masami Komiya <mkomiya@sonare.it> 2005
  *  Copyright 2009, Robin Getz <rgetz@blackfin.uclinux.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DNS_H__
@@ -28,8 +29,8 @@ struct header {
 	uint16_t	nauth;		/* Authority PRs */
 	uint16_t	nother;		/* Other PRs */
 	unsigned char	data[1];	/* Data, variable length */
-} __attribute__((packed));
+};
 
-void dns_start(void);		/* Begin DNS */
+extern void DnsStart(void);		/* Begin DNS */
 
 #endif

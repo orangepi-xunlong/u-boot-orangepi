@@ -1,6 +1,6 @@
 #ifndef __EFUSE_MAP_H__
 #define __EFUSE_MAP_H__
-#include <asm/arch/efuse.h>
+#include "asm/arch/sid.h"
 
 #define EFUSE_CHIPID_NAME            "chipid"
 #define EFUSE_BROM_CONF_NAME         "brom_conf"

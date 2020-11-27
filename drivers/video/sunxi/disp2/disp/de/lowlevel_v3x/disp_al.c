@@ -427,8 +427,7 @@ int disp_al_lcd_query_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 			  disp_panel_para *panel)
 {
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel && LCD_IF_DSI == panel->lcd_if &&
-	    LCD_DSI_IF_COMMAND_MODE != panel->lcd_dsi_if) {
+	if (panel->lcd_if == LCD_IF_DSI) {
 		enum __dsi_irq_id_t dsi_irq =
 		    (irq_id == LCD_IRQ_TCON0_VBLK) ?
 		    DSI_IRQ_VIDEO_VBLK : DSI_IRQ_VIDEO_LINE;
@@ -545,12 +544,14 @@ int disp_al_lcd_get_start_delay(u32 screen_id, disp_panel_para *panel)
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
 	u32 lcd_start_delay = 0;
 	u32 de_clk_rate = de_get_clk_rate() / 1000000;
-	if (panel && LCD_IF_DSI == panel->lcd_if) {
-		lcd_start_delay =
-		    ((tcon0_get_cpu_tri2_start_delay(screen_id) + 1) << 3) *
-		    (panel->lcd_dclk_freq) / (panel->lcd_ht * de_clk_rate);
-		return dsi_get_start_delay(screen_id) + lcd_start_delay;
-	} else
+	if (panel) {
+		lcd_start_delay = ((tcon0_get_cpu_tri2_start_delay(screen_id)+1)
+				  << 3) * (panel->lcd_dclk_freq)
+				  / (panel->lcd_ht*de_clk_rate);
+	}
+	if (LCD_IF_DSI == panel->lcd_if)
+		return dsi_get_start_delay(screen_id)+lcd_start_delay;
+	else
 #endif
 	return tcon_get_start_delay(screen_id,
 				    al_priv.tcon_type[screen_id]);
@@ -908,11 +909,11 @@ int disp_init_al(disp_bsp_init_para *para)
 		al_priv.tcon_type[tcon_id] =
 		    (para->boot_info.type == DISP_OUTPUT_TYPE_TV) ?
 		    1 : al_priv.tcon_type[tcon_id];
-#if defined(CONFIG_DISP2_TV_AC200)
+#if defined(CONFIG_USE_AC200)
 		al_priv.tcon_type[tcon_id] =
 			(para->boot_info.type == DISP_OUTPUT_TYPE_TV) ?
 			0 : al_priv.tcon_type[tcon_id];
-#endif /*endif  CONFIG_DISP2_TV_AC200*/
+#endif /*endif  CONFIG_USE_AC200*/
 #endif
 
 		de_rtmx_sync_hw(disp);
@@ -957,9 +958,4 @@ int disp_al_edp_disable(u32 screen_id)
 	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
 	return 0;
 }
-
 #endif
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten)
-{
-	tcon_show_builtin_patten(hwdev_index, patten);
-}

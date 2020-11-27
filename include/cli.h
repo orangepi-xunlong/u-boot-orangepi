@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014 Google, Inc
  * Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CLI_H
@@ -28,14 +29,6 @@ void cli_simple_loop(void);
  *           considered unrecognized)
  */
 int cli_simple_run_command(const char *cmd, int flag);
-
-/**
- * cli_simple_process_macros() - Expand $() and ${} format env. variables
- *
- * @param input		Input string possible containing $() / ${} vars
- * @param output	Output string with $() / ${} vars expanded
- */
-void cli_simple_process_macros(const char *input, char *output);
 
 /**
  * cli_simple_run_command_list() - Execute a list of command
@@ -107,7 +100,7 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
  */
 int cli_simple_parse_line(char *line, char *argv[]);
 
-#if CONFIG_IS_ENABLED(OF_CONTROL)
+#ifdef CONFIG_OF_CONTROL
 /**
  * cli_process_fdt() - process the boot command from the FDT
  *

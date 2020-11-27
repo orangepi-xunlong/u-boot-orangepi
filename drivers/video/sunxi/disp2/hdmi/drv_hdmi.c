@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/drv_hdmi.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "drv_hdmi_i.h"
 #include "hdmi_core.h"
 #include "../disp/disp_sys_intf.h"
@@ -41,13 +25,13 @@ static int hdmi_work_mode;
 static struct clk *hdmi_clk = NULL;
 static struct clk *hdmi_ddc_clk = NULL;
 static struct clk *hdmi_clk_parent;
-#if defined(CONFIG_MACH_SUN8IW12)
+#if defined(CONFIG_ARCH_SUN8IW12P1)
 static struct clk *hdmi_cec_clk;
 #endif /*endif CONFIG_ARCH */
 #endif
 static u32 power_enable_count = 0;
 static u32 clk_enable_count = 0;
-__attribute__((unused)) static struct mutex mlock;
+static struct mutex mlock;
 #if defined(CONFIG_SND_SUNXI_SOC_HDMIAUDIO)
 static bool audio_enable = false;
 #endif
@@ -83,7 +67,7 @@ void hdmi_delay_us(unsigned long us)
 unsigned int hdmi_get_soc_version(void)
 {
     unsigned int version = 0;
-#if defined(CONFIG_MACH_SUN8IW7)
+#if defined(CONFIG_ARCH_SUN8IW7)
 #if defined(SUN8IW7P1_REV_A) || defined(SUN8IW7P2_REV_B)
 	unsigned int chip_ver = sunxi_get_soc_ver();
 
@@ -164,7 +148,7 @@ static int hdmi_clk_enable(void)
 		clk_disable(hdmi_clk);
 	}
 
-#if defined(CONFIG_MACH_SUN8IW12)
+#if defined(CONFIG_ARCH_SUN8IW12P1)
 	if (hdmi_cec_clk)
 		ret = clk_prepare_enable(hdmi_cec_clk);
 	if (0 != ret)
@@ -180,7 +164,7 @@ static int hdmi_clk_disable(void)
 		clk_disable(hdmi_clk);
 	if (hdmi_ddc_clk)
 		clk_disable(hdmi_ddc_clk);
-#if defined(CONFIG_MACH_SUN8IW12)
+#if defined(CONFIG_ARCH_SUN8IW12P1)
 	if (hdmi_cec_clk)
 		clk_disable(hdmi_cec_clk);
 #endif
@@ -240,7 +224,7 @@ static int hdmi_clk_config(u32 vic)
 			}
 		}
 		if (i == 10)
-			printf("clk_set_rate fail.need %ldhz,but get %ldhz\n",
+			pr_msg("clk_set_rate fail.need %ldhz,but get %ldhz\n",
 				rate, rate_set);
 	}
 
@@ -458,7 +442,7 @@ static s32 get_vic_from_tv_mode(s32 tv_mode)
 
 static s32 hdmi_get_support_mode(u32 init_mode)
 {
-	int vic_mode = 0, tv_mode = 0, i;
+	int vic_mode, tv_mode, i;
 	struct disp_video_timings *timing = NULL;
 	bool find = false;
 
@@ -767,81 +751,81 @@ static int hdmi_update_para_for_kernel(struct disp_video_timings *timing)
 
 	node = fdt_path_offset(working_fdt, "hdmi");
 	if (node < 0) {
-		printf("%s:hdmi_fdt_nodeoffset %s fail\n", __func__, "hdmi");
+		pr_msg("%s:hdmi_fdt_nodeoffset %s fail\n", __func__, "hdmi");
 		goto exit;
 	}
 
 	ret = fdt_setprop_u32(working_fdt, node, "pixel_clk",
 					timing->pixel_clk);
 	if (ret < 0) {
-		printf("set pixel_clk failed\n");
+		pr_msg("set pixel_clk failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "interlace",
 					timing->b_interlace);
 	if (ret < 0) {
-		printf("set interlace failed\n");
+		pr_msg("set interlace failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "hactive",
 					timing->x_res);
 	if (ret < 0) {
-		printf("set hactive failed\n");
+		pr_msg("set hactive failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "hblank",
 			timing->hor_total_time - timing->x_res);
 	if (ret < 0) {
-		printf("set hblank failed\n");
+		pr_msg("set hblank failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "hsync_offset",
 					timing->hor_front_porch);
 	if (ret < 0) {
-		printf("set hsync_offset failed\n");
+		pr_msg("set hsync_offset failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "hsync",
 					timing->hor_sync_time);
 	if (ret < 0) {
-		printf("set hsync failed\n");
+		pr_msg("set hsync failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "hpol",
 				timing->hor_sync_polarity);
 	if (ret < 0) {
-		printf("set hpol failed\n");
+		pr_msg("set hpol failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "vactive",
 		timing->b_interlace ? (timing->y_res / 2) : timing->y_res);
 	if (ret < 0) {
-		printf("set vactive failed\n");
+		pr_msg("set vactive failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "vblank",
 		timing->b_interlace ?
 		(timing->ver_total_time - timing->y_res) / 2 : timing->y_res);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "vsync_offset",
 					timing->ver_front_porch);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "vsync",
 					timing->ver_sync_time);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = fdt_setprop_u32(working_fdt, node, "vpol",
 					timing->ver_sync_polarity);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 exit:
@@ -855,73 +839,73 @@ exit:
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "pixel_clk",
 					timing->pixel_clk);
 	if (ret < 0) {
-		printf("set pixel_clk failed\n");
+		pr_msg("set pixel_clk failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "interlace",
 					timing->b_interlace);
 	if (ret < 0) {
-		printf("set interlace failed\n");
+		pr_msg("set interlace failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "hactive",
 					timing->x_res);
 	if (ret < 0) {
-		printf("set hactive failed\n");
+		pr_msg("set hactive failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "hblank",
 			timing->hor_total_time - timing->x_res);
 	if (ret < 0) {
-		printf("set hblank failed\n");
+		pr_msg("set hblank failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "hsync_offset",
 					timing->hor_front_porch);
 	if (ret < 0) {
-		printf("set hsync_offset failed\n");
+		pr_msg("set hsync_offset failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "hsync",
 					timing->hor_sync_time);
 	if (ret < 0) {
-		printf("set hsync failed\n");
+		pr_msg("set hsync failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "hpol",
 				timing->hor_sync_polarity);
 	if (ret < 0) {
-		printf("set hpol failed\n");
+		pr_msg("set hpol failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "vactive",
 				timing->y_res / (1 + timing->b_interlace));
 	if (ret < 0) {
-		printf("set vactive failed\n");
+		pr_msg("set vactive failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "vblank",
 		(timing->ver_total_time - timing->y_res) / (1 + timing->b_interlace));
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "vsync_offset",
 					timing->ver_front_porch);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "vsync",
 					timing->ver_sync_time);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 	ret = sunxi_fdt_getprop_store(working_fdt, "hdmi", "vpol",
 					timing->ver_sync_polarity);
 	if (ret < 0) {
-		printf("set vblank failed\n");
+		pr_msg("set vblank failed\n");
 		goto exit;
 	}
 exit:
@@ -939,7 +923,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->pixel_clk = value;
 	} else {
-		__inf("fetch hdmi pixel clk err.\n");
+		pr_msg("fetch hdmi pixel clk err.\n");
 		return -1;
 	}
 
@@ -947,7 +931,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->b_interlace = value ? true : false;
 	} else {
-		printf("fetch hdmi interlace err.\n");
+		pr_msg("fetch hdmi interlace err.\n");
 		timing->b_interlace = 0;
 	}
 
@@ -955,7 +939,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->x_res = value;
 	} else {
-		printf("fetch hdmi hacive err.\n");
+		pr_msg("fetch hdmi hacive err.\n");
 		return -1;
 	}
 
@@ -964,7 +948,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 		blanking = value;
 		timing->hor_total_time = timing->x_res + value;
 	} else {
-		printf("fetch hdmi hblanking err.\n");
+		pr_msg("fetch hdmi hblanking err.\n");
 		return -1;
 	}
 
@@ -972,7 +956,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->hor_sync_time = value;
 	} else {
-		printf("fetch hdmi hsync err.\n");
+		pr_msg("fetch hdmi hsync err.\n");
 		return -1;
 	}
 
@@ -982,7 +966,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 		timing->hor_back_porch = blanking - timing->hor_sync_time
 						  - value;
 	} else {
-		printf("fetch hdmi hsync_offset err.\n");
+		pr_msg("fetch hdmi hsync_offset err.\n");
 		return -1;
 	}
 
@@ -990,7 +974,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->hor_sync_polarity = value;
 	} else {
-		printf("fetch hdmi hpol err.\n");
+		pr_msg("fetch hdmi hpol err.\n");
 		return -1;
 	}
 
@@ -998,7 +982,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->y_res = timing->b_interlace ? (2 * value) : value;
 	} else {
-		printf("fetch hdmi vacive err.\n");
+		pr_msg("fetch hdmi vacive err.\n");
 		return -1;
 	}
 
@@ -1008,7 +992,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 		timing->ver_total_time = timing->y_res +
 			(timing->b_interlace ? (2 * value) : value);
 	} else {
-		printf("fetch hdmi vblanking err.\n");
+		pr_msg("fetch hdmi vblanking err.\n");
 		return -1;
 	}
 
@@ -1016,7 +1000,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->ver_front_porch = value;
 	} else {
-		printf("fetch hdmi vsync_offset err.\n");
+		pr_msg("fetch hdmi vsync_offset err.\n");
 		return -1;
 	}
 
@@ -1026,7 +1010,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 		timing->ver_back_porch = blanking - value
 					 - timing->ver_front_porch;
 	} else {
-		printf("fetch hdmi vsync err.\n");
+		pr_msg("fetch hdmi vsync err.\n");
 		return -1;
 	}
 
@@ -1034,7 +1018,7 @@ int hdmi_parse_dts_timing(struct disp_video_timings *timing)
 	if (ret == 1) {
 		timing->ver_sync_polarity = value;
 	} else {
-		printf("fetch hdmi vpol err.\n");
+		pr_msg("fetch hdmi vpol err.\n");
 		return -1;
 	}
 
@@ -1062,22 +1046,27 @@ s32 hdmi_init(void)
 	int value;
 	int node_offset = 0;
 	struct disp_video_timings *vt = NULL;
-	char str[10] = {0};
+//	char str[10] = {0};
 
 	hdmi_used = 0;
 	b_hdmi_suspend_pre = b_hdmi_suspend = false;
 	hdmi_power_used = 0;
 
-	ret = disp_sys_script_get_item(FDT_HDMI_PATH, "status", (int *)str, 2);
+/*	ret = disp_sys_script_get_item("hdmi", "status", (int*)str, 2);
 	if (ret != 2) {
-		printf("fetch hdmi err.\n");
+		pr_msg("fetch hdmi err.\n");
 		return -1;
 	}
-	if (0 != strncmp(str, "okay", 10)) {
-		printf("hdmi not okay!%s\n", str);
+	if (0 != strcmp(str, "okay"))
+		return -1;
+*/
+	ret = disp_sys_script_get_item(FDT_HDMI_PATH, "hdmi_used", &value, 1);
+	if (ret != 1) {
+		pr_msg("fetch hdmi err.\n");
 		return -1;
 	}
-
+	if (value != 1)
+		return -1;
 
 	hdmi_used = 1;
 
@@ -1103,7 +1092,7 @@ s32 hdmi_init(void)
 	if (ret == 1) {
 		hdmi_work_mode = value;
 	} else {
-		__inf("Failed to parse hdmi_mode from dts\n");
+		pr_msg("Failed to parse hdmi_mode from dts\n");
 		hdmi_work_mode = DISP_HDMI_SEMI_AUTO;
 	}
 
@@ -1115,7 +1104,7 @@ s32 hdmi_init(void)
 
 	ret = disp_sys_script_get_item("hdmi", "boot_mask", &value, 1);
 	if (ret == 1 && value == 1) {
-		__wrn("skip hdmi in boot.\n");
+		pr_msg("skip hdmi in boot.\n");
 		return -1;
 	}
 
@@ -1143,7 +1132,7 @@ s32 hdmi_init(void)
 		goto err_clk_get;
 	}
 
-#if defined(CONFIG_MACH_SUN8IW12)
+#if defined(CONFIG_ARCH_SUN8IW12P1)
 	hdmi_cec_clk = of_clk_get(node_offset, 2);
 	if (hdmi_cec_clk == NULL) {
 		__wrn("fail to get clk for hdmi cec\n");

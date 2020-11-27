@@ -1,22 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_ase.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+/******************************************************************************
+ * 2016-1-14 10:19:32	All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+ * File name   :     de_ase.c
+ * Description :     display engine 2.0 ase basic function definition
+ * History     :     2014/04/01  vito cheng  v0.1  Initial version
+ * 2014/04/25  vito cheng  v0.11 Add block updated function
+ ******************************************************************************/
 #include "de_feat.h"
 
-#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
+#if defined(SUPPORT_ENHANCE)
 #include "de_ase_type.h"
 #include "de_rtmx.h"
 #include "de_enhance.h"

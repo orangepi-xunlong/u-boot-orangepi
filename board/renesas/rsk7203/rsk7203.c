@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008 Nobuhiro Iwamatsu
  * Copyright (C) 2008 Renesas Solutions Corp.
  *
  * u-boot/board/rsk7203/rsk7203.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +12,8 @@
 #include <netdev.h>
 #include <asm/io.h>
 #include <asm/processor.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
@@ -20,6 +23,14 @@ int checkboard(void)
 
 int board_init(void)
 {
+	return 0;
+}
+
+int dram_init(void)
+{
+	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
+	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
 	return 0;
 }
 

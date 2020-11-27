@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Gateworks Corporation
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef _VENTANA_EEPROM_
@@ -108,25 +109,8 @@ enum {
 	GW52xx,
 	GW53xx,
 	GW54xx,
-	GW551x,
-	GW552x,
-	GW553x,
-	GW560x,
-	GW5903,
-	GW5904,
 	GW_UNKNOWN,
-	GW_BADCRC,
 };
-
-/* config items */
-struct ventana_eeprom_config {
-	const char *name;	/* name of item */
-	const char *dtalias;	/* name of dt node to remove if not set */
-	int bit;		/* bit within config */
-};
-
-extern struct ventana_eeprom_config econfig[];
-extern struct ventana_board_info ventana_info;
 
 int read_eeprom(int bus, struct ventana_board_info *);
 

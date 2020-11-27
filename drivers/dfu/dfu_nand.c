@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * dfu_nand.c -- DFU for NAND routines.
  *
@@ -7,6 +6,8 @@
  * Based on dfu_mmc.c which is:
  * Copyright (C) 2012 Samsung Electronics
  * author: Lukasz Majewski <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -24,7 +25,7 @@ static int nand_block_op(enum dfu_op op, struct dfu_entity *dfu,
 	loff_t start, lim;
 	size_t count, actual;
 	int ret;
-	struct mtd_info *mtd;
+	nand_info_t *nand;
 
 	/* if buf == NULL return total size of the area */
 	if (buf == NULL) {
@@ -36,18 +37,18 @@ static int nand_block_op(enum dfu_op op, struct dfu_entity *dfu,
 	lim = dfu->data.nand.start + dfu->data.nand.size - start;
 	count = *len;
 
-	mtd = get_nand_dev_by_index(nand_curr_device);
-
 	if (nand_curr_device < 0 ||
 	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
-	    !mtd) {
+	    !nand_info[nand_curr_device].name) {
 		printf("%s: invalid nand device\n", __func__);
 		return -1;
 	}
 
+	nand = &nand_info[nand_curr_device];
+
 	if (op == DFU_OP_READ) {
-		ret = nand_read_skip_bad(mtd, start, &count, &actual,
-					 lim, buf);
+		ret = nand_read_skip_bad(nand, start, &count, &actual,
+				lim, buf);
 	} else {
 		nand_erase_options_t opts;
 
@@ -58,12 +59,12 @@ static int nand_block_op(enum dfu_op op, struct dfu_entity *dfu,
 		opts.quiet = 1;
 		opts.lim = lim;
 		/* first erase */
-		ret = nand_erase_opts(mtd, &opts);
+		ret = nand_erase_opts(nand, &opts);
 		if (ret)
 			return ret;
 		/* then write */
-		ret = nand_write_skip_bad(mtd, start, &count, &actual,
-					  lim, buf, WITH_WR_VERIFY);
+		ret = nand_write_skip_bad(nand, start, &count, &actual,
+				lim, buf, 0);
 	}
 
 	if (ret != 0) {
@@ -113,13 +114,6 @@ static int dfu_write_medium_nand(struct dfu_entity *dfu,
 	return ret;
 }
 
-int dfu_get_medium_size_nand(struct dfu_entity *dfu, u64 *size)
-{
-	*size = dfu->data.nand.size;
-
-	return 0;
-}
-
 static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 		long *len)
 {
@@ -127,6 +121,7 @@ static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 
 	switch (dfu->layout) {
 	case DFU_RAW_ADDR:
+		*len = dfu->data.nand.size;
 		ret = nand_block_read(dfu, offset, buf, len);
 		break;
 	default:
@@ -140,35 +135,27 @@ static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 static int dfu_flush_medium_nand(struct dfu_entity *dfu)
 {
 	int ret = 0;
-	u64 off;
 
 	/* in case of ubi partition, erase rest of the partition */
 	if (dfu->data.nand.ubi) {
-		struct mtd_info *mtd = get_nand_dev_by_index(nand_curr_device);
+		nand_info_t *nand;
 		nand_erase_options_t opts;
 
 		if (nand_curr_device < 0 ||
 		    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
-		    !mtd) {
+		    !nand_info[nand_curr_device].name) {
 			printf("%s: invalid nand device\n", __func__);
 			return -1;
 		}
 
+		nand = &nand_info[nand_curr_device];
+
 		memset(&opts, 0, sizeof(opts));
-		off = dfu->offset;
-		if ((off & (mtd->erasesize - 1)) != 0) {
-			/*
-			 * last write ended with unaligned length
-			 * sector is erased, jump to next
-			 */
-			off = off & ~((mtd->erasesize - 1));
-			off += mtd->erasesize;
-		}
-		opts.offset = dfu->data.nand.start + off +
+		opts.offset = dfu->data.nand.start + dfu->offset +
 				dfu->bad_skip;
 		opts.length = dfu->data.nand.start +
 				dfu->data.nand.size - opts.offset;
-		ret = nand_erase_opts(mtd, &opts);
+		ret = nand_erase_opts(nand, &opts);
 		if (ret != 0)
 			printf("Failure erase: %d\n", ret);
 	}
@@ -188,7 +175,7 @@ unsigned int dfu_polltimeout_nand(struct dfu_entity *dfu)
 	return DFU_DEFAULT_POLL_TIMEOUT;
 }
 
-int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr, char *s)
+int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
 {
 	char *st;
 	int ret, dev, part;
@@ -233,7 +220,6 @@ int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr, char *s)
 		return -1;
 	}
 
-	dfu->get_medium_size = dfu_get_medium_size_nand;
 	dfu->read_medium = dfu_read_medium_nand;
 	dfu->write_medium = dfu_write_medium_nand;
 	dfu->flush_medium = dfu_flush_medium_nand;

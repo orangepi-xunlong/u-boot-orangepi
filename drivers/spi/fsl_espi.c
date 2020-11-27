@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * eSPI controller driver.
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * Author: Mingkai Hu (Mingkai.hu@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -31,26 +32,26 @@ struct fsl_spi_slave {
 #define ESPI_MAX_CS_NUM		4
 #define ESPI_FIFO_WIDTH_BIT	32
 
-#define ESPI_EV_RNE		BIT(9)
-#define ESPI_EV_TNF		BIT(8)
-#define ESPI_EV_DON		BIT(14)
-#define ESPI_EV_TXE		BIT(15)
+#define ESPI_EV_RNE		(1 << 9)
+#define ESPI_EV_TNF		(1 << 8)
+#define ESPI_EV_DON		(1 << 14)
+#define ESPI_EV_TXE		(1 << 15)
 #define ESPI_EV_RFCNT_SHIFT	24
 #define ESPI_EV_RFCNT_MASK	(0x3f << ESPI_EV_RFCNT_SHIFT)
 
-#define ESPI_MODE_EN		BIT(31)	/* Enable interface */
+#define ESPI_MODE_EN		(1 << 31)	/* Enable interface */
 #define ESPI_MODE_TXTHR(x)	((x) << 8)	/* Tx FIFO threshold */
 #define ESPI_MODE_RXTHR(x)	((x) << 0)	/* Rx FIFO threshold */
 
 #define ESPI_COM_CS(x)		((x) << 30)
 #define ESPI_COM_TRANLEN(x)	((x) << 0)
 
-#define ESPI_CSMODE_CI_INACTIVEHIGH	BIT(31)
-#define ESPI_CSMODE_CP_BEGIN_EDGCLK	BIT(30)
-#define ESPI_CSMODE_REV_MSB_FIRST	BIT(29)
-#define ESPI_CSMODE_DIV16		BIT(28)
+#define ESPI_CSMODE_CI_INACTIVEHIGH	(1 << 31)
+#define ESPI_CSMODE_CP_BEGIN_EDGCLK	(1 << 30)
+#define ESPI_CSMODE_REV_MSB_FIRST	(1 << 29)
+#define ESPI_CSMODE_DIV16		(1 << 28)
 #define ESPI_CSMODE_PM(x)		((x) << 24)
-#define ESPI_CSMODE_POL_ASSERTED_LOW	BIT(20)
+#define ESPI_CSMODE_POL_ASSERTED_LOW	(1 << 20)
 #define ESPI_CSMODE_LEN(x)		((x) << 16)
 #define ESPI_CSMODE_CSBEF(x)		((x) << 12)
 #define ESPI_CSMODE_CSAFT(x)		((x) << 8)
@@ -116,6 +117,11 @@ void spi_free_slave(struct spi_slave *slave)
 {
 	struct fsl_spi_slave *fsl = to_fsl_spi_slave(slave);
 	free(fsl);
+}
+
+void spi_init(void)
+{
+
 }
 
 int spi_claim_bus(struct spi_slave *slave)
@@ -267,7 +273,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *data_out,
 			spi_cs_deactivate(slave);
 			return 0;
 		}
-		buf_len = 2 * cmd_len + min(data_len, (size_t)max_tran_len);
+		buf_len = 2 * cmd_len + min(data_len, max_tran_len);
 		len = cmd_len + data_len;
 		rx_offset = cmd_len;
 		buffer = (unsigned char *)malloc(buf_len);
@@ -300,7 +306,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *data_out,
 		if (data_in)
 			din = buffer + rx_offset;
 		dout = buffer;
-		tran_len = min(data_len, (size_t)max_tran_len);
+		tran_len = min(data_len , max_tran_len);
 		num_blks = DIV_ROUND_UP(tran_len + cmd_len, 4);
 		num_bytes = (tran_len + cmd_len) % 4;
 		fsl->data_len = tran_len + cmd_len;

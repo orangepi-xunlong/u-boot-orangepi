@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2009, STMicroelectronics - All Rights Reserved
- * Author(s): Vipin Kumar, <vipin.kumar@st.com> for STMicroelectronics.
+ * (C) Copyright 2009
+ * Vipin Kumar, STMicroelectronics, <vipin.kumar@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_HARDWARE_H
@@ -10,8 +11,6 @@
 #define CONFIG_SYS_USBD_BASE			0xE1100000
 #define CONFIG_SYS_PLUG_BASE			0xE1200000
 #define CONFIG_SYS_FIFO_BASE			0xE1000800
-#define CONFIG_SYS_UHC0_EHCI_BASE		0xE1800000
-#define CONFIG_SYS_UHC1_EHCI_BASE		0xE2000000
 #define CONFIG_SYS_SMI_BASE			0xFC000000
 #define CONFIG_SPEAR_SYSCNTLBASE		0xFCA00000
 #define CONFIG_SPEAR_TIMERBASE			0xFC800000

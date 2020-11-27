@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Broadcom Corporation.
+ *
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #include <common.h>

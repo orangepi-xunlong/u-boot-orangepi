@@ -1,26 +1,10 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_tv.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_tv.h"
 
 
 #if defined(SUPPORT_TV)
 
 #define TVE_COUNT 	1
-__attribute__((unused)) static spinlock_t g_tv_data_lock;
+static spinlock_t g_tv_data_lock;
 static struct disp_device *g_ptv_devices = NULL;
 static struct disp_device_private_data *g_ptv_private = NULL;
 disp_bsp_init_para g_init_para;
@@ -71,7 +55,7 @@ static s32 disp_tv_event_proc(void *parg)
 	return DISP_IRQ_RETURN;
 }
 
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6)
 static s32 tv_clk_init(struct disp_device*  ptv)
 {
 	struct disp_device_private_data *ptvp = disp_tv_get_priv(ptv);
@@ -230,7 +214,7 @@ s32 disp_tv_enable( struct disp_device* ptv)
 
 	if (mgr->enable)
 		mgr->enable(mgr);
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6)
 	tv_clk_config(ptv);  			//no need tcon clk for 1680
 	tv_clk_enable(ptv);
 #endif
@@ -370,7 +354,7 @@ static s32 disp_tv_init(struct disp_device*  ptv)
 	    DE_WRN("tv init null hdl!\n");
 	    return DIS_FAIL;
 	}
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6)
 	tv_clk_init(ptv);
 #endif
 	return 0;
@@ -386,11 +370,13 @@ s32 disp_tv_exit(struct disp_device* ptv)
 	    return DIS_FAIL;
 	}
 	disp_tv_disable(ptv);
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6)
 	tv_clk_exit(ptv);
 #endif
 	kfree(ptv);
 	kfree(ptvp);
+	ptv = NULL;
+	ptvp = NULL;
 	return 0;
 }
 
@@ -663,7 +649,7 @@ s32 disp_init_tv(void)//disp_bsp_init_para * para)  //call by disp_display
 	u32 hwdev_index = 0;
 	u32 num_devices_support_tv = 0;
 	int value = 0;
-	char type_name[32] = {0}, str[10] = {0};
+	char type_name[32] = {0};
 //	char str[10] = {0};
 	int ret = 0;
 #if defined(__LINUX_PLAT__)
@@ -693,8 +679,8 @@ s32 disp_init_tv(void)//disp_bsp_init_para * para)  //call by disp_display
 	for (hwdev_index = 0; hwdev_index < num_devices; hwdev_index++) {
 		if (!bsp_disp_feat_is_supported_output_types(hwdev_index,
 							DISP_OUTPUT_TYPE_TV)) {
-			DE_INF("screen %d don't support TV!\n", hwdev_index);
-			continue;
+			DE_WRN("screen %d don't support TV!\n", hwdev_index);
+				continue;
 		}
 
 		snprintf(type_name, sizeof(type_name), "tv%d", disp);
@@ -709,10 +695,14 @@ s32 disp_init_tv(void)//disp_bsp_init_para * para)  //call by disp_display
 			}
 		}
 */
-		ret = disp_sys_script_get_item(type_name, "status", (int *)str, 2);
-		if (ret != 2 || strncmp(str, "okay", 10) != 0) {
-			disp++;
-			continue;
+		ret = disp_sys_script_get_item(type_name, "used", &value, 1);
+		if (ret != 1) {
+			DE_WRN("TV get status err.\n");
+			} else {
+			if (value != 1) {
+				disp++;
+				continue;
+			}
 		}
 
 
@@ -762,7 +752,6 @@ s32 disp_init_tv(void)//disp_bsp_init_para * para)  //call by disp_display
 		p_tv->resume = disp_tv_resume;
 		p_tv->set_enhance_mode = disp_set_enhance_mode;
 		p_tv->get_fps = disp_tv_get_fps;
-		p_tv->show_builtin_patten = disp_device_show_builtin_patten;
 		p_tv->init(p_tv);
 
 		disp_device_register(p_tv);

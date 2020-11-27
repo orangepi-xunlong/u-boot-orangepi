@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Imagination Technologies
- * Author: Paul Burton <paul.burton@mips.com>
+ * Author: Paul Burton <paul.burton@imgtec.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __PCI_MSC01_H__

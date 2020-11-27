@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Michael Schwingen, <michael@schwingen.org>
@@ -6,6 +5,8 @@
  * based in great part on jedec_probe.c from linux kernel:
  * (C) 2000 Red Hat. GPL'd.
  * Occasionally maintained by Thayne Harbaugh tharbaugh at lnxi dot com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* The DEBUG define must be before common to enable debugging */
@@ -329,57 +330,6 @@ static const struct amd_flash_info jedec_table[] = {
 			ERASEINFO(0x02000, 2),
 			ERASEINFO(0x08000, 1),
 			ERASEINFO(0x10000, 15),
-		}
-	},
-	{
-		.mfr_id		= (u16)AMD_MANUFACT,
-		.dev_id		= AM29LV800BT,
-		.name		= "AMD AM29LV800BT",
-		.uaddr		= {
-			[1] = MTD_UADDR_0x0555_0x02AA /* x16 */
-		},
-		.DevSize	= SIZE_1MiB,
-		.CmdSet		= CFI_CMDSET_AMD_LEGACY,
-		.NumEraseRegions= 4,
-		.regions	= {
-			ERASEINFO(0x10000, 15),
-			ERASEINFO(0x08000, 1),
-			ERASEINFO(0x02000, 2),
-			ERASEINFO(0x04000, 1),
-		}
-	},
-	{
-		.mfr_id		= (u16)MX_MANUFACT,
-		.dev_id		= AM29LV800BT,
-		.name		= "MXIC MX29LV800BT",
-		.uaddr		= {
-			[1] = MTD_UADDR_0x0555_0x02AA /* x16 */
-		},
-		.DevSize	= SIZE_1MiB,
-		.CmdSet		= CFI_CMDSET_AMD_LEGACY,
-		.NumEraseRegions= 4,
-		.regions	= {
-			ERASEINFO(0x10000, 15),
-			ERASEINFO(0x08000, 1),
-			ERASEINFO(0x02000, 2),
-			ERASEINFO(0x04000, 1),
-		}
-	},
-	{
-		.mfr_id		= (u16)EON_ALT_MANU,
-		.dev_id		= AM29LV800BT,
-		.name		= "EON EN29LV800BT",
-		.uaddr		= {
-			[1] = MTD_UADDR_0x0555_0x02AA /* x16 */
-		},
-		.DevSize	= SIZE_1MiB,
-		.CmdSet		= CFI_CMDSET_AMD_LEGACY,
-		.NumEraseRegions= 4,
-		.regions	= {
-			ERASEINFO(0x10000, 15),
-			ERASEINFO(0x08000, 1),
-			ERASEINFO(0x02000, 2),
-			ERASEINFO(0x04000, 1),
 		}
 	},
 	{

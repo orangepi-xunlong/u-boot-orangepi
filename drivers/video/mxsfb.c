@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX23/i.MX28 LCDIF driver
  *
  * Copyright (C) 2011-2013 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <malloc.h>
@@ -11,10 +12,10 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 
-#include <asm/mach-imx/dma.h>
+#include <asm/imx-common/dma.h>
 
 #include "videomodes.h"
 
@@ -35,7 +36,7 @@ __weak void mxsfb_system_setup(void)
 }
 
 /*
- * ARIES M28EVK:
+ * DENX M28EVK:
  * setenv videomode
  * video=ctfb:x:800,y:480,depth:18,mode:0,pclk:30066,
  *       le:0,ri:256,up:0,lo:45,hs:1,vs:1,sync:100663296,vmode:0
@@ -54,7 +55,7 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	uint8_t valid_data = 0;
 
 	/* Kick in the LCDIF clock */
-	mxs_set_lcdclk(MXS_LCDIF_BASE, PS2KHZ(mode->pixclock));
+	mxs_set_lcdclk(PS2KHZ(mode->pixclock));
 
 	/* Restart the LCDIF block */
 	mxs_reset_block(&regs->hw_lcdif_ctrl_reg);
@@ -130,26 +131,6 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel(LCDIF_CTRL_RUN, &regs->hw_lcdif_ctrl_set);
 }
 
-void lcdif_power_down(void)
-{
-	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
-	int timeout = 1000000;
-
-	if (!panel.frameAdrs)
-		return;
-
-	writel(panel.frameAdrs, &regs->hw_lcdif_cur_buf_reg);
-	writel(panel.frameAdrs, &regs->hw_lcdif_next_buf_reg);
-	writel(LCDIF_CTRL1_VSYNC_EDGE_IRQ, &regs->hw_lcdif_ctrl1_clr);
-	while (--timeout) {
-		if (readl(&regs->hw_lcdif_ctrl1_reg) &
-		    LCDIF_CTRL1_VSYNC_EDGE_IRQ)
-			break;
-		udelay(1);
-	}
-	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl_reg);
-}
-
 void *video_hw_init(void)
 {
 	int bpp = -1;
@@ -160,7 +141,7 @@ void *video_hw_init(void)
 	puts("Video: ");
 
 	/* Suck display configuration from "videomode" variable */
-	penv = env_get("videomode");
+	penv = getenv("videomode");
 	if (!penv) {
 		puts("MXSFB: 'videomode' variable not set!\n");
 		return NULL;

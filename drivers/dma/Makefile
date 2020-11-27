@@ -1,14 +1,19 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-
-obj-$(CONFIG_DMA) += dma-uclass.o
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 obj-$(CONFIG_FSLDMAFEC) += MCD_tasksInit.o MCD_dmaApi.o MCD_tasks.o
 obj-$(CONFIG_APBH_DMA) += apbh_dma.o
 obj-$(CONFIG_FSL_DMA) += fsl_dma.o
-obj-$(CONFIG_TI_KSNAV) += keystone_nav.o keystone_nav_cfg.o
-obj-$(CONFIG_TI_EDMA3) += ti-edma3.o
-obj-$(CONFIG_DMA_LPC32XX) += lpc32xx_dma.o
-obj-$(CONFIG_SUNXI_DMA) += sunxi_dma.o
+obj-$(CONFIG_OMAP3_DMA) += omap3_dma.o
+
+ifdef CONFIG_ARCH_SUN3IW1P1
+obj-y += sunxi_dma_sun3iw1p1.o
+else
+obj-y += sunxi_dma.o
+endif
+
+subdir-ccflags-$(CONFIG_SUNXI_FINS_FUNC_DRIVER_DMA_DIR) += -finstrument-functions

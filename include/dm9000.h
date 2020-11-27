@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * NOTE:        DAVICOM DM9000 ethernet driver interface
  *
  * Authors:     Remy Bohmer <linux@bohmer.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __DM9000_H__
 #define __DM9000_H__

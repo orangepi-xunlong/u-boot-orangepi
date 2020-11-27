@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_bsp_sun8iw11.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "hdmi_bsp.h"
 #include "hdmi_core.h"
 
@@ -453,7 +437,7 @@ int bsp_hdmi_video(struct video_para *video)
 			video->csc = BT709;
 	}
 	if (hdmi_phy_set(video) != 0) {
-		printf("HDMI Error: Set PHY Failed\n");
+		pr_msg("HDMI Error: Set PHY Failed\n");
 		return -1;
 	}
 

@@ -16,7 +16,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program;
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifndef __ARISC_I_H__
@@ -25,12 +26,12 @@
 #include <common.h>
 #include <fdt_support.h>
 #include <fdtdec.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <private_uboot.h>
 #include <linux/types.h>
 #include <linux/err.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 
 #define ARISC_DVFS_VF_TABLE_MAX         (16)
 #define IR_NUM_KEY_SUP 16
@@ -52,19 +53,19 @@
 #define DEBUG_LEVEL_ERR    ((u32)1 << 3)
 
 #define ARISC_INF(format, args...)                          \
-	if (DEBUG_LEVEL_INF & (0xf0 >> (arisc_debug_level +1)))  \
+	if(DEBUG_LEVEL_INF & (0xf0 >> (arisc_debug_level +1)))  \
 		pr_msg("[ARISC] :"format, ##args);
 
 #define ARISC_LOG(format, args...)                                      \
-	if (DEBUG_LEVEL_LOG & (0xf0 >> (arisc_debug_level +1)))	\
+	if(DEBUG_LEVEL_LOG & (0xf0 >> (arisc_debug_level +1)))	\
 		pr_msg("[ARISC] :"format, ##args);
 
 #define ARISC_WRN(format, args...)                          \
-	if (DEBUG_LEVEL_WRN & (0xf0 >> (arisc_debug_level +1)))  \
+	if(DEBUG_LEVEL_WRN & (0xf0 >> (arisc_debug_level +1)))  \
 		pr_warning("[ARISC WARING] :"format, ##args);
 
 #define ARISC_ERR(format, args...)                          \
-	if (DEBUG_LEVEL_ERR & (0xf0 >> (arisc_debug_level +1)))  \
+	if(DEBUG_LEVEL_ERR & (0xf0 >> (arisc_debug_level +1)))  \
 		pr_error("[ARISC ERROR] :"format, ##args);
 
 #else /* ARISC_DEBUG_ON */
@@ -75,41 +76,48 @@
 
 #endif /* ARISC_DEBUG_ON */
 
-typedef struct mem_cfg {
+typedef struct mem_cfg
+{
 	phys_addr_t base;
 	size_t size;
 } mem_cfg_t;
 
-typedef struct mem_cfg_64 {
+typedef struct mem_cfg_64
+{
 	u64 base;
 	u64 size;
 } mem_cfg_64_t;
 
-typedef struct dev_cfg {
+typedef struct dev_cfg
+{
 	phys_addr_t base;
 	size_t size;
 	u32 irq;
 	int status;
 } dev_cfg_t;
 
-typedef struct dev_cfg_64 {
+typedef struct dev_cfg_64
+{
 	u64 base;
 	u64 size;
 	u32 irq;
 	int status;
 } dev_cfg_64_t;
 
-typedef struct ir_code {
+typedef struct ir_code
+{
 	uint32_t key_code;
 	uint32_t addr_code;
 } ir_code_t;
 
-typedef struct ir_key {
+typedef struct ir_key
+{
 	uint32_t num;
 	ir_code_t ir_code[IR_NUM_KEY_SUP];
 } ir_key_t;
 
-typedef struct cir_cfg {
+typedef struct cir_cfg
+{
 	phys_addr_t base;
 	size_t size;
 	u32 irq;
@@ -117,7 +125,8 @@ typedef struct cir_cfg {
 	int status;
 } cir_cfg_t;
 
-typedef struct cir_cfg_64 {
+typedef struct cir_cfg_64
+{
 	u64 base;
 	u64 size;
 	u32 irq;
@@ -125,14 +134,16 @@ typedef struct cir_cfg_64 {
 	int status;
 } cir_cfg_64_t;
 
-typedef struct pmu_cfg {
+typedef struct pmu_cfg
+{
 	u32 pmu_bat_shutdown_ltf;
 	u32 pmu_bat_shutdown_htf;
 	u32 pmu_pwroff_vol;
 	u32 power_start;
 } pmu_cfg_t;
 
-typedef struct box_start_os_cfg {
+typedef struct box_start_os_cfg
+{
 	u32 used;
 	u32 start_type;
 	u32 irkey_used;
@@ -142,23 +153,27 @@ typedef struct box_start_os_cfg {
 	u32 led_state;
 } box_start_os_cfg_t;
 
-typedef struct power_cfg {
+typedef struct power_cfg
+{
 	u32 powchk_used;
 	u32 power_reg;
 	u32 system_power;
 } power_cfg_t;
 
-typedef struct image_cfg {
+typedef struct image_cfg
+{
 	phys_addr_t base;
 	size_t size;
 } image_cfg_t;
 
-typedef struct image_cfg_64 {
+typedef struct image_cfg_64
+{
 	u64 base;
 	u64 size;
 } image_cfg_64_t;
 
-typedef struct space_cfg {
+typedef struct space_cfg
+{
 	phys_addr_t sram_dst;
 	phys_addr_t sram_offset;
 	size_t sram_size;
@@ -176,7 +191,8 @@ typedef struct space_cfg {
 	size_t standby_size;
 } space_cfg_t;
 
-typedef struct space_cfg_64 {
+typedef struct space_cfg_64
+{
 	u64 sram_dst;
 	u64 sram_offset;
 	u64 sram_size;
@@ -194,7 +210,8 @@ typedef struct space_cfg_64 {
 	u64 standby_size;
 } space_cfg_64_t;
 
-typedef struct dram_para {
+typedef struct dram_para
+{
 	//normal configuration
 	u32 dram_clk;
 	u32 dram_type; //dram_type DDR2: 2 DDR3: 3 LPDDR2: 6 DDR3L: 31
@@ -227,15 +244,17 @@ typedef struct dram_para {
 	u32 dram_tpr12;
 	u32 dram_tpr13;
 
-} dram_para_t;
+}dram_para_t;
 
-typedef struct arisc_freq_voltage {
+typedef struct arisc_freq_voltage
+{
 	u32 freq;       //cpu frequency
 	u32 voltage;    //voltage for the frequency
 	u32 axi_div;    //the divide ratio of axi bus
 } arisc_freq_voltage_t;
 
-typedef struct dts_cfg {
+typedef struct dts_cfg
+{
 	struct dram_para dram_para;
 	struct arisc_freq_voltage vf[ARISC_DVFS_VF_TABLE_MAX];
 	struct space_cfg space;
@@ -257,7 +276,8 @@ typedef struct dts_cfg {
 	struct power_cfg power;
 } dts_cfg_t;
 
-typedef struct dts_cfg_64 {
+typedef struct dts_cfg_64
+{
 	struct dram_para dram_para;
 	struct arisc_freq_voltage vf[ARISC_DVFS_VF_TABLE_MAX];
 	struct space_cfg_64 space;

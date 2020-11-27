@@ -1,15 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DW_ETH_H
 #define _DW_ETH_H
-
-#ifdef CONFIG_DM_GPIO
-#include <asm-generic/gpio.h>
-#endif
 
 #define CONFIG_TX_DESCR_NUM	16
 #define CONFIG_RX_DESCR_NUM	16
@@ -71,9 +68,7 @@ struct eth_dma_regs {
 	u32 status;		/* 0x14 */
 	u32 opmode;		/* 0x18 */
 	u32 intenable;		/* 0x1c */
-	u32 reserved1[2];
-	u32 axibus;		/* 0x28 */
-	u32 reserved2[7];
+	u8 reserved[40];
 	u32 currhosttxdesc;	/* 0x48 */
 	u32 currhostrxdesc;	/* 0x4c */
 	u32 currhosttxbuffaddr;	/* 0x50 */
@@ -113,8 +108,8 @@ struct eth_dma_regs {
 struct dmamacdescr {
 	u32 txrx_status;
 	u32 dmamac_cntl;
-	u32 dmamac_addr;
-	u32 dmamac_next;
+	void *dmamac_addr;
+	struct dmamacdescr *dmamac_next;
 } __aligned(ARCH_DMA_MINALIGN);
 
 /*
@@ -226,45 +221,15 @@ struct dw_eth_dev {
 	char rxbuffs[RX_TOTAL_BUFSIZE] __aligned(ARCH_DMA_MINALIGN);
 
 	u32 interface;
-	u32 max_speed;
 	u32 tx_currdescnum;
 	u32 rx_currdescnum;
 
 	struct eth_mac_regs *mac_regs_p;
 	struct eth_dma_regs *dma_regs_p;
-#ifndef CONFIG_DM_ETH
-	struct eth_device *dev;
-#endif
-#ifdef CONFIG_DM_GPIO
-	struct gpio_desc reset_gpio;
-#endif
-#ifdef CONFIG_CLK
-	struct clk *clocks;	/* clock list */
-	int clock_count;	/* number of clock in clock list */
-#endif
 
+	struct eth_device *dev;
 	struct phy_device *phydev;
 	struct mii_dev *bus;
 };
-
-#ifdef CONFIG_DM_ETH
-int designware_eth_ofdata_to_platdata(struct udevice *dev);
-int designware_eth_probe(struct udevice *dev);
-extern const struct eth_ops designware_eth_ops;
-
-struct dw_eth_pdata {
-	struct eth_pdata eth_pdata;
-	u32 reset_delays[3];
-};
-
-int designware_eth_init(struct dw_eth_dev *priv, u8 *enetaddr);
-int designware_eth_enable(struct dw_eth_dev *priv);
-int designware_eth_send(struct udevice *dev, void *packet, int length);
-int designware_eth_recv(struct udevice *dev, int flags, uchar **packetp);
-int designware_eth_free_pkt(struct udevice *dev, uchar *packet,
-				   int length);
-void designware_eth_stop(struct udevice *dev);
-int designware_eth_write_hwaddr(struct udevice *dev);
-#endif
 
 #endif

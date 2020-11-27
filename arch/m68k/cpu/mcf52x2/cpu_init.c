@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Josef Baumgartner <josef.baumgartner@telex.de>
@@ -15,6 +14,8 @@
  *
  * MCF5275 additions
  * Copyright (C) 2008 Arthur Shipkowski (art@videon-central.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -316,6 +317,18 @@ int fecpin_setclear(struct eth_device *dev, int setclear)
 	return 0;
 }
 #endif				/* CONFIG_CMD_NET */
+
+#if defined(CONFIG_CF_QSPI)
+
+/* Configure PIOs for SIN, SOUT, and SCK */
+void cfspi_port_conf(void)
+{
+	mbar_writeByte(MCF_GPIO_PAR_QSPI,
+		       MCF_GPIO_PAR_QSPI_SIN_SIN   |
+		       MCF_GPIO_PAR_QSPI_SOUT_SOUT |
+		       MCF_GPIO_PAR_QSPI_SCK_SCK);
+}
+#endif				/* CONFIG_CF_QSPI */
 
 #endif				/* CONFIG_M5271 */
 

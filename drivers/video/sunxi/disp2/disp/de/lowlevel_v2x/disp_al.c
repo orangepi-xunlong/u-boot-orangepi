@@ -1,25 +1,5 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/disp_al.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_al.h"
 #include "de_hal.h"
-
-#if defined(CONFIG_MACH_SUN8IW12)
-#define DISP2_TCON_TV_SYNC_POL_ISSUE
-#endif /*endif CONFIG_MACH_SUN8IW12 */
 
 /*
  * disp_al_private_data - abstract layer private data
@@ -57,7 +37,7 @@ int disp_al_set_rtmx_base(u32 disp, unsigned int base)
 }
 
 int disp_al_rtmx_init(u32 disp, unsigned int addr0, unsigned int addr1,
-		      unsigned int addr2, unsigned int w, unsigned int h,
+			unsigned int addr2, unsigned int w, unsigned int h,
 			unsigned int outw, unsigned int outh, unsigned int fmt)
 {
 	rt_mixer_init(disp, addr0, addr1, addr2, w, h, outw, outh, fmt);
@@ -76,7 +56,7 @@ int disp_al_set_eink_wb_base(u32 disp, unsigned int base)
 }
 
 int disp_al_set_eink_wb_param(u32 disp, unsigned int w,
-			      unsigned int h, unsigned int addr)
+				unsigned int h, unsigned int addr)
 {
 	__einkwb_config_t wbcfg;
 
@@ -96,6 +76,7 @@ int disp_al_enable_eink_wb_interrupt(u32 disp)
 
 int disp_al_disable_eink_wb_interrupt(u32 disp)
 {
+
 	return wb_eink_disableint(disp);
 }
 
@@ -124,13 +105,13 @@ int disp_al_eink_wb_dereset(u32 disp)
 	return wb_eink_dereset(disp);
 }
 
+
 int disp_al_get_eink_wb_status(u32 disp)
 {
 	return wb_eink_get_status(disp);
 }
 #endif
 
-#if defined(CONFIG_EINK_PANEL_USED)
 int disp_al_set_eink_base(u32 disp, unsigned long base)
 {
 	return eink_set_base(base);
@@ -153,19 +134,24 @@ int disp_al_eink_irq_query(u32 disp)
 	return eink_irq_query();
 }
 
+
 int disp_al_eink_config(u32 disp, struct eink_init_param *param)
 {
+
 	eink_config(param->eink_bits, param->eink_mode);
 	return 0;
 }
 
+
 int disp_al_eink_disable(u32 disp)
 {
 	return 0;
+
 }
 
+
 s32 disp_al_eink_start_calculate_index(u32 disp,
-				       unsigned long old_index_data_paddr,
+					unsigned long old_index_data_paddr,
 					unsigned long new_index_data_paddr,
 					struct eink_8bpp_image *last_image,
 					struct eink_8bpp_image *current_image)
@@ -191,10 +177,10 @@ s32 disp_al_eink_start_calculate_index(u32 disp,
 	win_en = current_image->window_calc_enable;
 
 	memcpy((void *)&update_area, (void *)&current_image->update_area,
-	       sizeof(struct area_info));
+					sizeof(struct area_info));
 
 	eink_start_idx(&tlast_img, &tcurrent_img, flash_mode, win_en,
-		       old_index_data_paddr,
+					old_index_data_paddr,
 					new_index_data_paddr, &update_area);
 
 	return 0;
@@ -210,6 +196,7 @@ int disp_al_get_update_area(unsigned int disp, struct area_info *area)
 	return eink_get_updata_area(area);
 }
 
+
 int disp_al_eink_pipe_enable(u32 disp, unsigned int pipe_no)
 {
 	return eink_pipe_enable(pipe_no);
@@ -217,23 +204,26 @@ int disp_al_eink_pipe_enable(u32 disp, unsigned int pipe_no)
 
 int disp_al_eink_pipe_disable(u32 disp, unsigned int pipe_no)
 {
+
 	return eink_pipe_disable(pipe_no);
 }
 
 int disp_al_eink_pipe_config(u32 disp,  unsigned int pipe_no,
-			     struct area_info area)
+					struct area_info area)
 {
 	return eink_pipe_config(&area, pipe_no);
+
 }
 
 int disp_al_eink_pipe_config_wavefile(u32 disp, unsigned int wav_file_addr,
-				      unsigned int pipe_no)
+						unsigned int pipe_no)
 {
+
 	return eink_pipe_config_wavefile(wav_file_addr, pipe_no);
 }
 
 int disp_al_eink_start_decode(unsigned int disp, unsigned long new_idx_addr,
-			      unsigned long wav_data_addr,
+						unsigned long wav_data_addr,
 						struct eink_init_param *param)
 {
 	return eink_decoder_start(new_idx_addr, wav_data_addr, param);
@@ -241,6 +231,7 @@ int disp_al_eink_start_decode(unsigned int disp, unsigned long new_idx_addr,
 
 int disp_al_edma_init(unsigned int disp, struct eink_init_param *param)
 {
+
 	return eink_edma_init(param->eink_mode);
 }
 
@@ -249,14 +240,17 @@ int disp_al_eink_edma_cfg_addr(unsigned int disp, unsigned long wav_addr)
 	return  eink_edma_cfg_addr(wav_addr);
 }
 
+
 int disp_al_edma_config(unsigned int disp, unsigned long wave_data_addr,
-			struct eink_init_param *param)
+						struct eink_init_param *param)
 {
+
 	return eink_edma_cfg(wave_data_addr, param);
 }
 
 int disp_al_edma_write(unsigned int disp, unsigned char en)
 {
+
 	return eink_edma_en(en);
 }
 
@@ -281,35 +275,37 @@ void disp_al_free_waveform(void)
 	free_waveform();
 }
 
+
 int disp_al_get_waveform_data(unsigned int disp, enum eink_update_mode mode,
-			      unsigned int temp, unsigned int *total_frames,
+				unsigned int temp, unsigned int *total_frames,
 							unsigned int *wf_buf)
 {
 	return get_waveform_data(mode, temp, total_frames, wf_buf);
 }
 
 int disp_al_get_eink_panel_bit_num(unsigned int disp,
-				   enum eink_bit_num *bit_num)
+					enum eink_bit_num *bit_num)
 {
 	return get_eink_panel_bit_num(bit_num);
 }
 
 int disp_al_init_eink_ctrl_data_8(unsigned int disp, unsigned long wavedata_buf,
-				  struct eink_timing_param *eink_timing_info,
+				struct eink_timing_param *eink_timing_info,
 				unsigned int i)
 {
 	return init_eink_ctrl_data_8(wavedata_buf, eink_timing_info, i);
+
 }
 
 int disp_al_init_eink_ctrl_data_16(unsigned int disp, unsigned int wavedata_buf,
-				   struct eink_timing_param *eink_timing_info)
+				struct eink_timing_param *eink_timing_info)
 {
 	return init_eink_ctrl_data_16(wavedata_buf, eink_timing_info);
+
 }
-#endif
 
 static int disp_al_validate_direct_show(unsigned int disp,
-					struct disp_layer_config_data *data,
+			struct disp_layer_config_data *data,
 			unsigned int layer_num)
 {
 	int tcon_id = al_priv.tcon_id[disp];
@@ -483,7 +479,7 @@ int disp_al_manager_apply(unsigned int disp, struct disp_manager_data *data)
 	}
 
 	if (al_priv.output_type[al_priv.tcon_id[disp]] ==
-	    (u32)DISP_OUTPUT_TYPE_HDMI) {
+	    (u32) DISP_OUTPUT_TYPE_HDMI) {
 		/*
 		 * If yuv output(cs != 0), remap yuv plane to (v y u) sequency
 		 * else disable color remap function
@@ -553,7 +549,6 @@ int disp_al_enhance_tasklet(unsigned int disp)
 	return de_enhance_tasklet(disp);
 }
 
-#ifndef CONFIG_EINK200_SUNXI
 int disp_al_capture_init(unsigned int disp)
 {
 	return de_clk_enable(DE_CLK_WB);
@@ -591,42 +586,6 @@ int disp_al_write_back_clk_exit(unsigned int disp)
 {
 	return de_clk_disable(DE_CLK_WB);
 }
-#else
-int disp_al_capture_init(unsigned int disp)
-{
-	return 0;
-}
-
-int disp_al_capture_exit(unsigned int disp)
-{
-	return 0;
-}
-
-int disp_al_capture_sync(u32 disp)
-{
-	return 0;
-}
-
-int disp_al_capture_apply(unsigned int disp, struct disp_capture_config *cfg)
-{
-	return 0;
-}
-
-int disp_al_capture_get_status(unsigned int disp)
-{
-	return 0;
-}
-
-int disp_al_write_back_clk_init(unsigned int disp)
-{
-	return 0;
-}
-
-int disp_al_write_back_clk_exit(unsigned int disp)
-{
-	return 0;
-}
-#endif
 
 int disp_al_smbl_apply(unsigned int disp, struct disp_smbl_info *info)
 {
@@ -677,7 +636,7 @@ int disp_al_lcd_get_clk_info(u32 screen_id, struct lcd_clk_info *info,
 	int i;
 	int find = 0;
 
-	if (!panel) {
+	if (NULL == panel) {
 		__wrn("panel is NULL\n");
 		return 0;
 	}
@@ -726,7 +685,7 @@ int disp_al_lcd_get_clk_info(u32 screen_id, struct lcd_clk_info *info,
 		dsi_div /= 2;
 	}
 
-	if (find == 0)
+	if (0 == find)
 		__wrn("cant find clk info for lcd_if %d\n", panel->lcd_if);
 
 #if defined(DSI_VERSION_28)
@@ -750,8 +709,8 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para *panel,
 {
 	struct lcd_clk_info info;
 
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_LCD;
-	al_priv.output_mode[screen_id] = (u32)panel->lcd_if;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_LCD;
+	al_priv.output_mode[screen_id] = (u32) panel->lcd_if;
 	al_priv.output_fps[screen_id] =
 	    panel->lcd_dclk_freq * 1000000 / panel->lcd_ht / panel->lcd_vt;
 
@@ -764,7 +723,7 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para *panel,
 
 #if !defined(TCON1_DRIVE_PANEL)
 	al_priv.tcon_type[screen_id] = 0;
-	if (tcon0_cfg(screen_id, panel) != 0)
+	if (0 != tcon0_cfg(screen_id, panel))
 		DE_WRN("lcd cfg fail!\n");
 	else
 		DE_INF("lcd cfg ok!\n");
@@ -772,14 +731,14 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para *panel,
 	tcon0_cfg_ext(screen_id, extend_panel);
 	tcon0_src_select(screen_id, LCD_SRC_DE, al_priv.de_id[screen_id]);
 
-	if (panel->lcd_if == LCD_IF_DSI)	{
+	if (LCD_IF_DSI == panel->lcd_if)	{
 #if defined(SUPPORT_DSI)
 		if (panel->lcd_if == LCD_IF_DSI) {
-			if (dsi_cfg(screen_id, panel) != 0)
+			if (0 != dsi_cfg(screen_id, panel))
 				DE_WRN("dsi %d cfg fail!\n", screen_id);
 			if (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI &&
 			    screen_id + 1 < DEVICE_DSI_NUM) {
-				if (dsi_cfg(screen_id + 1, panel) != 0)
+				if (0 != dsi_cfg(screen_id + 1, panel))
 					DE_WRN("dsi %d cfg fail!\n",
 					       screen_id + 1);
 			}
@@ -794,7 +753,7 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para *panel,
 	 * so, here we need to config tcon1 here.
 	 */
 	al_priv.tcon_type[screen_id] = 1;
-	if (tcon1_cfg_ex(screen_id, panel) != 0)
+	if (0 != tcon1_cfg_ex(screen_id, panel))
 		DE_WRN("lcd cfg fail!\n");
 	else
 		DE_INF("lcd cfg ok!\n");
@@ -814,9 +773,9 @@ int disp_al_lcd_enable(u32 screen_id, disp_panel_para *panel)
 #if !defined(TCON1_DRIVE_PANEL)
 
 	tcon0_open(screen_id, panel);
-	if (panel->lcd_if == LCD_IF_LVDS) {
+	if (LCD_IF_LVDS == panel->lcd_if) {
 		lvds_open(screen_id, panel);
-	} else if (panel->lcd_if == LCD_IF_DSI) {
+	} else if (LCD_IF_DSI == panel->lcd_if) {
 #if defined(SUPPORT_DSI)
 		dsi_open(screen_id, panel);
 		if (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI &&
@@ -838,13 +797,13 @@ int disp_al_lcd_enable(u32 screen_id, disp_panel_para *panel)
 
 int disp_al_lcd_disable(u32 screen_id, disp_panel_para *panel)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_NONE;
 
 #if !defined(TCON1_DRIVE_PANEL)
 
-	if (panel->lcd_if == LCD_IF_LVDS) {
+	if (LCD_IF_LVDS == panel->lcd_if) {
 		lvds_close(screen_id);
-	} else if (panel->lcd_if == LCD_IF_DSI) {
+	} else if (LCD_IF_DSI == panel->lcd_if) {
 #if defined(SUPPORT_DSI)
 		dsi_close(screen_id);
 		if (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI &&
@@ -874,10 +833,9 @@ int disp_al_lcd_query_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 	int ret = 0;
 
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel && LCD_IF_DSI == panel->lcd_if &&
-	    LCD_DSI_IF_COMMAND_MODE != panel->lcd_dsi_if) {
+	if (LCD_IF_DSI == panel->lcd_if) {
 		enum __dsi_irq_id_t dsi_irq =
-		    (irq_id == LCD_IRQ_TCON0_VBLK) ?
+		    (LCD_IRQ_TCON0_VBLK == irq_id) ?
 		    DSI_IRQ_VIDEO_VBLK : DSI_IRQ_VIDEO_LINE;
 
 		return dsi_irq_query(screen_id, dsi_irq);
@@ -896,9 +854,9 @@ int disp_al_lcd_enable_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 	int ret = 0;
 
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel->lcd_if == LCD_IF_DSI) {
+	if (LCD_IF_DSI == panel->lcd_if) {
 		enum __dsi_irq_id_t dsi_irq =
-		    (irq_id == LCD_IRQ_TCON0_VBLK) ?
+		    (LCD_IRQ_TCON0_VBLK == irq_id) ?
 		    DSI_IRQ_VIDEO_VBLK : DSI_IRQ_VIDEO_LINE;
 
 		ret = dsi_irq_enable(screen_id, dsi_irq);
@@ -918,9 +876,9 @@ int disp_al_lcd_disable_irq(u32 screen_id, enum __lcd_irq_id_t irq_id,
 	int ret = 0;
 
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel->lcd_if == LCD_IF_DSI) {
+	if (LCD_IF_DSI == panel->lcd_if) {
 		enum __dsi_irq_id_t dsi_irq =
-		    (irq_id == LCD_IRQ_TCON0_VBLK) ?
+		    (LCD_IRQ_TCON0_VBLK == irq_id) ?
 		    DSI_IRQ_VIDEO_VBLK : DSI_IRQ_VIDEO_LINE;
 
 		ret = dsi_irq_disable(screen_id, dsi_irq);
@@ -941,7 +899,7 @@ int disp_al_lcd_tri_busy(u32 screen_id, disp_panel_para *panel)
 
 	busy |= tcon0_tri_busy(screen_id);
 #if defined(SUPPORT_DSI)
-	if (panel->lcd_if == LCD_IF_DSI)
+	if (LCD_IF_DSI == panel->lcd_if)
 		busy |= dsi_inst_busy(screen_id);
 #endif
 	ret = (busy == 0) ? 0 : 1;
@@ -953,7 +911,7 @@ int disp_al_lcd_tri_busy(u32 screen_id, disp_panel_para *panel)
 int disp_al_lcd_tri_start(u32 screen_id, disp_panel_para *panel)
 {
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel->lcd_if == LCD_IF_DSI)
+	if (LCD_IF_DSI == panel->lcd_if)
 		dsi_tri_start(screen_id);
 #endif
 	return tcon0_tri_start(screen_id);
@@ -983,7 +941,7 @@ int disp_al_lcd_io_cfg(u32 screen_id, u32 enable, disp_panel_para *panel)
 int disp_al_lcd_get_cur_line(u32 screen_id, disp_panel_para *panel)
 {
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel->lcd_if == LCD_IF_DSI)
+	if (LCD_IF_DSI == panel->lcd_if)
 		return dsi_get_cur_line(screen_id);
 	else
 #endif
@@ -996,13 +954,15 @@ int disp_al_lcd_get_start_delay(u32 screen_id, disp_panel_para *panel)
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
 	u32 lcd_start_delay = 0;
 	u32 de_clk_rate = de_get_clk_rate() / 1000000;
+	if (panel) {
+		lcd_start_delay = ((tcon0_get_cpu_tri2_start_delay(screen_id)+1)
+				   << 3) * (panel->lcd_dclk_freq)
+			/ (panel->lcd_ht*de_clk_rate);
 
-	if (panel && LCD_IF_DSI == panel->lcd_if) {
-		lcd_start_delay =
-		    ((tcon0_get_cpu_tri2_start_delay(screen_id) + 1) << 3) *
-		    (panel->lcd_dclk_freq) / (panel->lcd_ht * de_clk_rate);
-		return dsi_get_start_delay(screen_id) + lcd_start_delay;
-	} else
+	}
+	if (LCD_IF_DSI == panel->lcd_if)
+		return dsi_get_start_delay(screen_id)+lcd_start_delay;
+	else
 #endif
 		return tcon_get_start_delay(screen_id,
 					    al_priv.tcon_type[screen_id]);
@@ -1019,7 +979,7 @@ int disp_al_hdmi_enable(u32 screen_id)
 
 int disp_al_hdmi_disable(u32 screen_id)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_NONE;
 
 	tcon1_close(screen_id);
 	tcon_exit(screen_id);
@@ -1030,8 +990,8 @@ int disp_al_hdmi_disable(u32 screen_id)
 
 int disp_al_hdmi_cfg(u32 screen_id, struct disp_video_timings *video_info)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_HDMI;
-	al_priv.output_mode[screen_id] = (u32)video_info->vic;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_HDMI;
+	al_priv.output_mode[screen_id] = (u32) video_info->vic;
 	al_priv.output_fps[screen_id] =
 	    video_info->pixel_clk / video_info->hor_total_time /
 	    video_info->ver_total_time * (video_info->b_interlace +
@@ -1043,14 +1003,6 @@ int disp_al_hdmi_cfg(u32 screen_id, struct disp_video_timings *video_info)
 
 	tcon_init(screen_id);
 	tcon1_set_timming(screen_id, video_info);
-#if defined(DISP2_TCON_TV_SYNC_POL_ISSUE)
-	tcon_set_sync_pol(screen_id, !video_info->ver_sync_polarity,
-			  !video_info->hor_sync_polarity);
-#endif /*endif DISP2_TCON_TV_SYNC_POL_ISSUE */
-
-#ifdef TCON_POL_CORRECT
-	tcom1_cfg_correct(screen_id, video_info);
-#endif
 	/*
 	 * If yuv output(cs != 0), remap yuv plane to (v y u) sequency
 	 * else disable color remap function
@@ -1077,7 +1029,7 @@ int disp_al_tv_enable(u32 screen_id)
 
 int disp_al_tv_disable(u32 screen_id)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_NONE;
 
 	tcon1_close(screen_id);
 	tcon_exit(screen_id);
@@ -1095,8 +1047,8 @@ int disp_al_tv_cfg(u32 screen_id, struct disp_video_timings *video_info)
 	pixel_clk = (pixel_clk == TV_UGLY_CLK_RATE) ?
 	    TV_COMPOSITE_CLK_RATE : pixel_clk;
 #endif
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_TV;
-	al_priv.output_mode[screen_id] = (u32)video_info->tv_mode;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_TV;
+	al_priv.output_mode[screen_id] = (u32) video_info->tv_mode;
 	al_priv.output_fps[screen_id] =
 	    pixel_clk / video_info->hor_total_time
 	    / video_info->ver_total_time;
@@ -1126,7 +1078,7 @@ int disp_al_vga_enable(u32 screen_id)
 
 int disp_al_vga_disable(u32 screen_id)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_NONE;
 
 	tcon1_close(screen_id);
 	tcon_exit(screen_id);
@@ -1136,8 +1088,8 @@ int disp_al_vga_disable(u32 screen_id)
 
 int disp_al_vga_cfg(u32 screen_id, struct disp_video_timings *video_info)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_VGA;
-	al_priv.output_mode[screen_id] = (u32)video_info->tv_mode;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_VGA;
+	al_priv.output_mode[screen_id] = (u32) video_info->tv_mode;
 	al_priv.output_fps[screen_id] =
 	    video_info->pixel_clk / video_info->hor_total_time
 	    / video_info->ver_total_time;
@@ -1161,10 +1113,10 @@ int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info,
 	disp_panel_para info;
 
 	if (para->sub_intf == LCD_HV_IF_CCIR656_2CYC)
-		al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_TV;
+		al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_TV;
 	else
-		al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_LCD;
-	al_priv.output_mode[screen_id] = (u32)para->intf;
+		al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_LCD;
+	al_priv.output_mode[screen_id] = (u32) para->intf;
 	al_priv.output_fps[screen_id] =
 	    video_info->pixel_clk / video_info->hor_total_time
 	    / video_info->ver_total_time;
@@ -1190,7 +1142,7 @@ int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info,
 	info.lcd_hv_clk_phase = para->clk_phase;
 	info.lcd_hv_sync_polarity = para->sync_polarity;
 
-	if (info.lcd_hv_if == LCD_HV_IF_CCIR656_2CYC)
+	if (LCD_HV_IF_CCIR656_2CYC == info.lcd_hv_if)
 		info.lcd_hv_syuv_seq = para->sequence;
 	else
 		info.lcd_hv_srgb_seq = para->sequence;
@@ -1202,7 +1154,7 @@ int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info,
 
 	if (para->sub_intf == LCD_HV_IF_CCIR656_2CYC)
 		tcon1_yuv_range(screen_id, 1);
-	if (tcon0_cfg(screen_id, &info) != 0)
+	if (0 != tcon0_cfg(screen_id, &info))
 		DE_WRN("lcd cfg fail!\n");
 	else
 		DE_INF("lcd cfg ok!\n");
@@ -1224,7 +1176,7 @@ int disp_al_vdevice_enable(u32 screen_id)
 
 int disp_al_vdevice_disable(u32 screen_id)
 {
-	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_NONE;
+	al_priv.output_type[screen_id] = (u32) DISP_OUTPUT_TYPE_NONE;
 
 	tcon0_close(screen_id);
 	tcon_exit(screen_id);
@@ -1309,8 +1261,7 @@ int disp_init_al(disp_bsp_init_para *para)
 	de_enhance_init(para);
 	de_ccsc_init(para);
 	de_dcsc_init(para);
-#if defined(CONFIG_EINK_PANEL_USED) || defined(CONFIG_EINK200_SUNXI)
-#else
+#ifndef CONFIG_EINK_PANEL_USED
 	wb_ebios_init(para);
 #endif
 	de_clk_set_reg_base(para->reg_base[DISP_MOD_DE]);
@@ -1331,7 +1282,7 @@ int disp_init_al(disp_bsp_init_para *para)
 		dsi_set_reg_base(i, para->reg_base[DISP_MOD_DSI0 + i]);
 #endif
 
-	if (para->boot_info.sync == 1) {
+	if (1 == para->boot_info.sync) {
 		u32 disp = para->boot_info.disp;
 		u32 tcon_id;
 		struct disp_video_timings tt;
@@ -1353,18 +1304,18 @@ int disp_init_al(disp_bsp_init_para *para)
 		al_priv.tcon_type[tcon_id] = 0;
 #if defined(SUPPORT_HDMI)
 		al_priv.tcon_type[tcon_id] =
-		    (para->boot_info.type == DISP_OUTPUT_TYPE_HDMI) ?
+		    (DISP_OUTPUT_TYPE_HDMI == para->boot_info.type) ?
 		    1 : al_priv.tcon_type[tcon_id];
 #endif
 #if defined(SUPPORT_TV)
 		al_priv.tcon_type[tcon_id] =
-		    (para->boot_info.type == DISP_OUTPUT_TYPE_TV) ?
+		    (DISP_OUTPUT_TYPE_TV == para->boot_info.type) ?
 		    1 : al_priv.tcon_type[tcon_id];
 #endif
 
 #if defined(SUPPORT_VGA)
 		al_priv.tcon_type[tcon_id] =
-		    (para->boot_info.type == DISP_OUTPUT_TYPE_VGA) ?
+		    (DISP_OUTPUT_TYPE_VGA == para->boot_info.type) ?
 		    1 : al_priv.tcon_type[tcon_id];
 #endif
 
@@ -1391,9 +1342,4 @@ int disp_al_get_display_size(unsigned int screen_id, unsigned int *width,
 	*height = al_priv.disp_size[screen_id].height;
 
 	return 0;
-}
-
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten)
-{
-	tcon_show_builtin_patten(hwdev_index, patten);
 }

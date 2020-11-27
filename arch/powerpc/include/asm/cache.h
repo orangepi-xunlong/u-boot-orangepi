@@ -7,7 +7,7 @@
 #include <asm/processor.h>
 
 /* bytes per L1 cache line */
-#if defined(CONFIG_MPC8xx)
+#if defined(CONFIG_8xx)
 #define	L1_CACHE_SHIFT	4
 #elif defined(CONFIG_PPC64BRIDGE)
 #define L1_CACHE_SHIFT	7
@@ -57,12 +57,6 @@ extern void unlock_ram_in_cache(void);
 #endif /* CONFIG_SYS_INIT_RAM_LOCK */
 #endif /* __ASSEMBLY__ */
 
-#if defined(__KERNEL__) && !defined(__ASSEMBLY__)
-int l2cache_init(void);
-void enable_cpc(void);
-void disable_cpc_sram(void);
-#endif
-
 /* prep registers for L2 */
 #define CACHECRBA       0x80000823      /* Cache configuration register address */
 #define L2CACHE_MASK	0x03	/* Mask for 2 L2 Cache bits */
@@ -72,7 +66,7 @@ void disable_cpc_sram(void);
 #define L2CACHE_NONE	0x03	/* NONE */
 #define L2CACHE_PARITY  0x08    /* Mask for L2 Cache Parity Protected bit */
 
-#ifdef CONFIG_MPC8xx
+#ifdef CONFIG_8xx
 /* Cache control on the MPC8xx is provided through some additional
  * special purpose registers.
  */
@@ -107,38 +101,6 @@ void disable_cpc_sram(void);
 
 #define DC_DFWT		0x40000000	/* Data cache is forced write through */
 #define DC_LES		0x20000000	/* Caches are little endian mode */
-
-#if !defined(__ASSEMBLY__)
-static inline uint rd_ic_cst(void)
-{
-	return mfspr(IC_CST);
-}
-
-static inline void wr_ic_cst(uint val)
-{
-	mtspr(IC_CST, val);
-}
-
-static inline void wr_ic_adr(uint val)
-{
-	mtspr(IC_ADR, val);
-}
-
-static inline uint rd_dc_cst(void)
-{
-	return mfspr(DC_CST);
-}
-
-static inline void wr_dc_cst(uint val)
-{
-	mtspr(DC_CST, val);
-}
-
-static inline void wr_dc_adr(uint val)
-{
-	mtspr(DC_ADR, val);
-}
-#endif
-#endif /* CONFIG_MPC8xx */
+#endif /* CONFIG_8xx */
 
 #endif

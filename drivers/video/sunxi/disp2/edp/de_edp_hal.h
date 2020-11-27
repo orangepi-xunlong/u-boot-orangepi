@@ -53,6 +53,5 @@ u32 edp_hal_get_start_dly(u32 sel);
 u32 edp_hal_get_cur_line(u32 sel);
 void edp_hal_dp_module(u32 sel);
 void edp_hal_dp_module_en(u32 sel, u32 en);
-void edp_hal_show_builtin_patten(u32 sel, u32 patten);
 
 #endif /*End of file*/

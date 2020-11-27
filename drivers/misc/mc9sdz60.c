@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010 Stefano Babic <sbabic@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #include <config.h>
 #include <common.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <linux/types.h>
 #include <i2c.h>
 #include <mc9sdz60.h>

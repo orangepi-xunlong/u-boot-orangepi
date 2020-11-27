@@ -18,6 +18,8 @@ static void lcd_bl_close(u32 sel);
 static void lcd_panel_init(u32 sel);
 static void lcd_panel_exit(u32 sel);
 
+static u8 const mipi_dcs_pixel_format[4] = { 0x77, 0x66, 0x66, 0x55 };
+
 #define panel_reset(val) sunxi_lcd_gpio_set_value(sel, 0, val)
 #define power_en(val)  sunxi_lcd_gpio_set_value(sel, 1, val)
 

@@ -53,9 +53,9 @@ typedef u16 X86EMU_pioAddr;
 
 /*---------------------- Macros and type definitions ----------------------*/
 
-#if defined(CONFIG_ARM)
+#if defined (CONFIG_ARM)
 #define GAS_LINE_COMMENT	"@"
-#elif defined(CONFIG_MIPS) || defined(CONFIG_PPC) || defined(CONFIG_X86)
+#elif defined(CONFIG_MIPS) || defined(CONFIG_PPC)
 #define GAS_LINE_COMMENT	"#"
 #elif defined (CONFIG_SH)
 #define GAS_LINE_COMMENT	"!"
@@ -153,7 +153,6 @@ extern "C" {			/* Use "C" linkage when in C++ mode */
 	void X86EMU_setupMemFuncs(X86EMU_memFuncs * funcs);
 	void X86EMU_setupPioFuncs(X86EMU_pioFuncs * funcs);
 	void X86EMU_setupIntrFuncs(X86EMU_intrFuncs funcs[]);
-	void X86EMU_setupIntrFunc(int intnum, X86EMU_intrFuncs func);
 	void X86EMU_prepareForInt(int num);
 
 /* decode.c */
@@ -161,7 +160,7 @@ extern "C" {			/* Use "C" linkage when in C++ mode */
 	void X86EMU_exec(void);
 	void X86EMU_halt_sys(void);
 
-#ifdef CONFIG_X86EMU_DEBUG
+#ifdef  DEBUG
 #define HALT_SYS()  \
     printf("halt_sys: file %s, line %d\n", __FILE__, __LINE__), \
     X86EMU_halt_sys()

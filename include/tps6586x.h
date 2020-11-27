@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  (C) Copyright 2010,2011
  *  NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TPS6586X_H_
@@ -43,9 +44,9 @@ int tps6586x_adjust_sm0_sm1(int sm0_target, int sm1_target, int step, int rate,
  * Set up the TPS6586X I2C bus number. This will be used for all operations
  * on the device. This function must be called before using other functions.
  *
- * @param bus	I2C bus containing the TPS6586X chip
+ * @param bus	I2C bus number containing the TPS6586X chip
  * @return 0 (always succeeds)
  */
-int tps6586x_init(struct udevice *bus);
+int tps6586x_init(int bus);
 
 #endif	/* _TPS6586X_H_ */

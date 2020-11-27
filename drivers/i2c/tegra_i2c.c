@@ -1,42 +1,38 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
  * Copyright (c) 2010-2011 NVIDIA Corporation
  *  NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
-#include <errno.h>
+#include <fdtdec.h>
 #include <i2c.h>
 #include <asm/io.h>
-#include <clk.h>
-#include <reset.h>
-#ifndef CONFIG_TEGRA186
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
-#endif
 #include <asm/arch/gpio.h>
+#include <asm/arch/pinmux.h>
+#include <asm/arch-tegra/clk_rst.h>
 #include <asm/arch-tegra/tegra_i2c.h>
 
-enum i2c_type {
-	TYPE_114,
-	TYPE_STD,
-	TYPE_DVC,
-};
+DECLARE_GLOBAL_DATA_PTR;
 
 /* Information about i2c controller */
 struct i2c_bus {
 	int			id;
-	struct reset_ctl	reset_ctl;
-	struct clk		clk;
+	enum periph_id		periph_id;
 	int			speed;
 	int			pinmux_config;
 	struct i2c_control	*control;
 	struct i2c_ctlr		*regs;
-	enum i2c_type		type;
+	int			is_dvc;	/* DVC type, rather than I2C */
+	int			is_scs;	/* single clock source (T114+) */
 	int			inited;	/* bus is inited */
 };
+
+static struct i2c_bus i2c_controllers[TEGRA_I2C_NUM_CONTROLLERS];
 
 static void set_packet_mode(struct i2c_bus *i2c_bus)
 {
@@ -44,7 +40,7 @@ static void set_packet_mode(struct i2c_bus *i2c_bus)
 
 	config = I2C_CNFG_NEW_MASTER_FSM_MASK | I2C_CNFG_PACKET_MODE_MASK;
 
-	if (i2c_bus->type == TYPE_DVC) {
+	if (i2c_bus->is_dvc) {
 		struct dvc_ctlr *dvc = (struct dvc_ctlr *)i2c_bus->regs;
 
 		writel(config, &dvc->cnfg);
@@ -61,48 +57,23 @@ static void set_packet_mode(struct i2c_bus *i2c_bus)
 static void i2c_reset_controller(struct i2c_bus *i2c_bus)
 {
 	/* Reset I2C controller. */
-	reset_assert(&i2c_bus->reset_ctl);
-	udelay(1);
-	reset_deassert(&i2c_bus->reset_ctl);
-	udelay(1);
+	reset_periph(i2c_bus->periph_id, 1);
 
 	/* re-program config register to packet mode */
 	set_packet_mode(i2c_bus);
 }
 
-static int i2c_init_clock(struct i2c_bus *i2c_bus, unsigned rate)
-{
-	int ret;
-
-	ret = reset_assert(&i2c_bus->reset_ctl);
-	if (ret)
-		return ret;
-	ret = clk_enable(&i2c_bus->clk);
-	if (ret)
-		return ret;
-	ret = clk_set_rate(&i2c_bus->clk, rate);
-	if (IS_ERR_VALUE(ret))
-		return ret;
-	ret = reset_deassert(&i2c_bus->reset_ctl);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
 static void i2c_init_controller(struct i2c_bus *i2c_bus)
 {
-	if (!i2c_bus->speed)
-		return;
-	debug("%s: speed=%d\n", __func__, i2c_bus->speed);
 	/*
 	 * Use PLLP - DP-04508-001_v06 datasheet indicates a divisor of 8
 	 * here, in section 23.3.1, but in fact we seem to need a factor of
 	 * 16 to get the right frequency.
 	 */
-	i2c_init_clock(i2c_bus, i2c_bus->speed * 2 * 8);
+	clock_start_periph_pll(i2c_bus->periph_id, CLOCK_ID_PERIPH,
+		i2c_bus->speed * 2 * 8);
 
-	if (i2c_bus->type == TYPE_114) {
+	if (i2c_bus->is_scs) {
 		/*
 		 * T114 I2C went to a single clock source for standard/fast and
 		 * HS clock speeds. The new clock rate setting calculation is:
@@ -115,27 +86,25 @@ static void i2c_init_controller(struct i2c_bus *i2c_bus)
 		 * is running, we hang, and we need it for the new calc.
 		 */
 		int clk_div_stdfst_mode = readl(&i2c_bus->regs->clk_div) >> 16;
-		unsigned rate = CLK_MULT_STD_FAST_MODE *
-				(clk_div_stdfst_mode + 1) * i2c_bus->speed * 2;
 		debug("%s: CLK_DIV_STD_FAST_MODE setting = %d\n", __func__,
 			clk_div_stdfst_mode);
 
-		i2c_init_clock(i2c_bus, rate);
+		clock_start_periph_pll(i2c_bus->periph_id, CLOCK_ID_PERIPH,
+			CLK_MULT_STD_FAST_MODE * (clk_div_stdfst_mode + 1) *
+			i2c_bus->speed * 2);
 	}
 
 	/* Reset I2C controller. */
 	i2c_reset_controller(i2c_bus);
 
 	/* Configure I2C controller. */
-	if (i2c_bus->type == TYPE_DVC) {	/* only for DVC I2C */
+	if (i2c_bus->is_dvc) {	/* only for DVC I2C */
 		struct dvc_ctlr *dvc = (struct dvc_ctlr *)i2c_bus->regs;
 
 		setbits_le32(&dvc->ctrl3, DVC_CTRL_REG3_I2C_HW_SW_PROG_MASK);
 	}
 
-#ifndef CONFIG_TEGRA186
-	funcmux_select(i2c_bus->clk.id, i2c_bus->pinmux_config);
-#endif
+	funcmux_select(i2c_bus->periph_id, i2c_bus->pinmux_config);
 }
 
 static void send_packet_headers(
@@ -258,7 +227,7 @@ static int send_recv_packets(struct i2c_bus *i2c_bus,
 			if ((words == 1) && last_bytes) {
 				local = 0;
 				memcpy(&local, dptr, last_bytes);
-			} else if ((unsigned long)dptr & 3) {
+			} else if ((unsigned)dptr & 3) {
 				memcpy(&local, dptr, sizeof(u32));
 			} else {
 				local = *wptr;
@@ -281,7 +250,7 @@ static int send_recv_packets(struct i2c_bus *i2c_bus,
 			local = readl(&control->rx_fifo);
 			if ((words == 1) && last_bytes)
 				memcpy(dptr, (char *)&local, last_bytes);
-			else if ((unsigned long)dptr & 3)
+			else if ((unsigned)dptr & 3)
 				memcpy(dptr, &local, sizeof(u32));
 			else
 				*wptr = local;
@@ -303,7 +272,7 @@ exit:
 	return error;
 }
 
-static int tegra_i2c_write_data(struct i2c_bus *i2c_bus, u32 addr, u8 *data,
+static int tegra_i2c_write_data(struct i2c_bus *bus, u32 addr, u8 *data,
 				u32 len, bool end_with_repeated_start)
 {
 	int error;
@@ -317,14 +286,14 @@ static int tegra_i2c_write_data(struct i2c_bus *i2c_bus, u32 addr, u8 *data,
 	trans_info.num_bytes = len;
 	trans_info.is_10bit_address = 0;
 
-	error = send_recv_packets(i2c_bus, &trans_info);
+	error = send_recv_packets(bus, &trans_info);
 	if (error)
 		debug("tegra_i2c_write_data: Error (%d) !!!\n", error);
 
 	return error;
 }
 
-static int tegra_i2c_read_data(struct i2c_bus *i2c_bus, u32 addr, u8 *data,
+static int tegra_i2c_read_data(struct i2c_bus *bus, u32 addr, u8 *data,
 			       u32 len)
 {
 	int error;
@@ -336,54 +305,61 @@ static int tegra_i2c_read_data(struct i2c_bus *i2c_bus, u32 addr, u8 *data,
 	trans_info.num_bytes = len;
 	trans_info.is_10bit_address = 0;
 
-	error = send_recv_packets(i2c_bus, &trans_info);
+	error = send_recv_packets(bus, &trans_info);
 	if (error)
 		debug("tegra_i2c_read_data: Error (%d) !!!\n", error);
 
 	return error;
 }
 
-static int tegra_i2c_set_bus_speed(struct udevice *dev, unsigned int speed)
-{
-	struct i2c_bus *i2c_bus = dev_get_priv(dev);
+#ifndef CONFIG_OF_CONTROL
+#error "Please enable device tree support to use this driver"
+#endif
 
-	i2c_bus->speed = speed;
-	i2c_init_controller(i2c_bus);
+/**
+ * Check that a bus number is valid and return a pointer to it
+ *
+ * @param bus_num	Bus number to check / return
+ * @return pointer to bus, if valid, else NULL
+ */
+static struct i2c_bus *tegra_i2c_get_bus(struct i2c_adapter *adap)
+{
+	struct i2c_bus *bus;
+
+	bus = &i2c_controllers[adap->hwadapnr];
+	if (!bus->inited) {
+		debug("%s: Bus %u not available\n", __func__, adap->hwadapnr);
+		return NULL;
+	}
+
+	return bus;
+}
+
+static unsigned int tegra_i2c_set_bus_speed(struct i2c_adapter *adap,
+			unsigned int speed)
+{
+	struct i2c_bus *bus;
+
+	bus = tegra_i2c_get_bus(adap);
+	if (!bus)
+		return 0;
+	bus->speed = speed;
+	i2c_init_controller(bus);
 
 	return 0;
 }
 
-static int tegra_i2c_probe(struct udevice *dev)
+static int i2c_get_config(const void *blob, int node, struct i2c_bus *i2c_bus)
 {
-	struct i2c_bus *i2c_bus = dev_get_priv(dev);
-	int ret;
-	bool is_dvc;
+	i2c_bus->regs = (struct i2c_ctlr *)fdtdec_get_addr(blob, node, "reg");
 
-	i2c_bus->id = dev->seq;
-	i2c_bus->type = dev_get_driver_data(dev);
-	i2c_bus->regs = (struct i2c_ctlr *)dev_read_addr(dev);
-	if ((ulong)i2c_bus->regs == FDT_ADDR_T_NONE) {
-		debug("%s: Cannot get regs address\n", __func__);
-		return -EINVAL;
-	}
-
-	ret = reset_get_by_name(dev, "i2c", &i2c_bus->reset_ctl);
-	if (ret) {
-		pr_err("reset_get_by_name() failed: %d\n", ret);
-		return ret;
-	}
-	ret = clk_get_by_name(dev, "div-clk", &i2c_bus->clk);
-	if (ret) {
-		pr_err("clk_get_by_name() failed: %d\n", ret);
-		return ret;
-	}
-
-#ifndef CONFIG_TEGRA186
 	/*
 	 * We don't have a binding for pinmux yet. Leave it out for now. So
 	 * far no one needs anything other than the default.
 	 */
 	i2c_bus->pinmux_config = FUNCMUX_DEFAULT;
+	i2c_bus->speed = fdtdec_get_int(blob, node, "clock-frequency", 0);
+	i2c_bus->periph_id = clock_decode_periph_id(blob, node);
 
 	/*
 	 * We can't specify the pinmux config in the fdt, so I2C2 will not
@@ -391,28 +367,112 @@ static int tegra_i2c_probe(struct udevice *dev)
 	 * You could add in this little hack if you need to use it.
 	 * The correct solution is a pinmux binding in the fdt.
 	 *
-	 *	if (i2c_bus->clk.id == PERIPH_ID_I2C2)
+	 *	if (i2c_bus->periph_id == PERIPH_ID_I2C2)
 	 *		i2c_bus->pinmux_config = FUNCMUX_I2C2_PTA;
 	 */
-#endif
-
-	is_dvc = dev_get_driver_data(dev) == TYPE_DVC;
-	if (is_dvc) {
-		i2c_bus->control =
-			&((struct dvc_ctlr *)i2c_bus->regs)->control;
-	} else {
-		i2c_bus->control = &i2c_bus->regs->control;
-	}
-	i2c_init_controller(i2c_bus);
-	debug("%s: controller bus %d at %p, speed %d: ",
-	      is_dvc ? "dvc" : "i2c", dev->seq, i2c_bus->regs, i2c_bus->speed);
+	if (i2c_bus->periph_id == -1)
+		return -FDT_ERR_NOTFOUND;
 
 	return 0;
 }
 
+/*
+ * Process a list of nodes, adding them to our list of I2C ports.
+ *
+ * @param blob		fdt blob
+ * @param node_list	list of nodes to process (any <=0 are ignored)
+ * @param count		number of nodes to process
+ * @param is_dvc	1 if these are DVC ports, 0 if standard I2C
+ * @param is_scs	1 if this HW uses a single clock source (T114+)
+ * @return 0 if ok, -1 on error
+ */
+static int process_nodes(const void *blob, int node_list[], int count,
+			 int is_dvc, int is_scs)
+{
+	struct i2c_bus *i2c_bus;
+	int i;
+
+	/* build the i2c_controllers[] for each controller */
+	for (i = 0; i < count; i++) {
+		int node = node_list[i];
+
+		if (node <= 0)
+			continue;
+
+		i2c_bus = &i2c_controllers[i];
+		i2c_bus->id = i;
+
+		if (i2c_get_config(blob, node, i2c_bus)) {
+			printf("i2c_init_board: failed to decode bus %d\n", i);
+			return -1;
+		}
+
+		i2c_bus->is_scs = is_scs;
+
+		i2c_bus->is_dvc = is_dvc;
+		if (is_dvc) {
+			i2c_bus->control =
+				&((struct dvc_ctlr *)i2c_bus->regs)->control;
+		} else {
+			i2c_bus->control = &i2c_bus->regs->control;
+		}
+		debug("%s: controller bus %d at %p, periph_id %d, speed %d: ",
+		      is_dvc ? "dvc" : "i2c", i, i2c_bus->regs,
+		      i2c_bus->periph_id, i2c_bus->speed);
+		i2c_init_controller(i2c_bus);
+		debug("ok\n");
+		i2c_bus->inited = 1;
+
+		/* Mark position as used */
+		node_list[i] = -1;
+	}
+
+	return 0;
+}
+
+/* Sadly there is no error return from this function */
+void i2c_init_board(void)
+{
+	int node_list[TEGRA_I2C_NUM_CONTROLLERS];
+	const void *blob = gd->fdt_blob;
+	int count;
+
+	/* First check for newer (T114+) I2C ports */
+	count = fdtdec_find_aliases_for_id(blob, "i2c",
+			COMPAT_NVIDIA_TEGRA114_I2C, node_list,
+			TEGRA_I2C_NUM_CONTROLLERS);
+	if (process_nodes(blob, node_list, count, 0, 1))
+		return;
+
+	/* Now get the older (T20/T30) normal I2C ports */
+	count = fdtdec_find_aliases_for_id(blob, "i2c",
+			COMPAT_NVIDIA_TEGRA20_I2C, node_list,
+			TEGRA_I2C_NUM_CONTROLLERS);
+	if (process_nodes(blob, node_list, count, 0, 0))
+		return;
+
+	/* Now look for dvc ports */
+	count = fdtdec_add_aliases_for_id(blob, "i2c",
+			COMPAT_NVIDIA_TEGRA20_DVC, node_list,
+			TEGRA_I2C_NUM_CONTROLLERS);
+	if (process_nodes(blob, node_list, count, 1, 0))
+		return;
+}
+
+static void tegra_i2c_init(struct i2c_adapter *adap, int speed, int slaveaddr)
+{
+	/* No i2c support prior to relocation */
+	if (!(gd->flags & GD_FLG_RELOC))
+		return;
+
+	/* This will override the speed selected in the fdt for that port */
+	debug("i2c_init(speed=%u, slaveaddr=0x%x)\n", speed, slaveaddr);
+	i2c_set_bus_speed(speed);
+}
+
 /* i2c write version without the register address */
-static int i2c_write_data(struct i2c_bus *i2c_bus, uchar chip, uchar *buffer,
-			  int len, bool end_with_repeated_start)
+int i2c_write_data(struct i2c_bus *bus, uchar chip, uchar *buffer, int len,
+		   bool end_with_repeated_start)
 {
 	int rc;
 
@@ -424,7 +484,7 @@ static int i2c_write_data(struct i2c_bus *i2c_bus, uchar chip, uchar *buffer,
 	debug("\n");
 
 	/* Shift 7-bit address over for lower-level i2c functions */
-	rc = tegra_i2c_write_data(i2c_bus, chip << 1, buffer, len,
+	rc = tegra_i2c_write_data(bus, chip << 1, buffer, len,
 				  end_with_repeated_start);
 	if (rc)
 		debug("i2c_write_data(): rc=%d\n", rc);
@@ -433,14 +493,13 @@ static int i2c_write_data(struct i2c_bus *i2c_bus, uchar chip, uchar *buffer,
 }
 
 /* i2c read version without the register address */
-static int i2c_read_data(struct i2c_bus *i2c_bus, uchar chip, uchar *buffer,
-			 int len)
+int i2c_read_data(struct i2c_bus *bus, uchar chip, uchar *buffer, int len)
 {
 	int rc;
 
 	debug("inside i2c_read_data():\n");
 	/* Shift 7-bit address over for lower-level i2c functions */
-	rc = tegra_i2c_read_data(i2c_bus, chip << 1, buffer, len);
+	rc = tegra_i2c_read_data(bus, chip << 1, buffer, len);
 	if (rc) {
 		debug("i2c_read_data(): rc=%d\n", rc);
 		return rc;
@@ -456,81 +515,132 @@ static int i2c_read_data(struct i2c_bus *i2c_bus, uchar chip, uchar *buffer,
 }
 
 /* Probe to see if a chip is present. */
-static int tegra_i2c_probe_chip(struct udevice *bus, uint chip_addr,
-				uint chip_flags)
+static int tegra_i2c_probe(struct i2c_adapter *adap, uchar chip)
 {
-	struct i2c_bus *i2c_bus = dev_get_priv(bus);
+	struct i2c_bus *bus;
 	int rc;
-	u8 reg;
+	uchar reg;
 
-	/* Shift 7-bit address over for lower-level i2c functions */
-	rc = tegra_i2c_write_data(i2c_bus, chip_addr << 1, &reg, sizeof(reg),
-				  false);
-
-	return rc;
+	debug("i2c_probe: addr=0x%x\n", chip);
+	bus = tegra_i2c_get_bus(adap);
+	if (!bus)
+		return 1;
+	reg = 0;
+	rc = i2c_write_data(bus, chip, &reg, 1, false);
+	if (rc) {
+		debug("Error probing 0x%x.\n", chip);
+		return 1;
+	}
+	return 0;
 }
 
-static int tegra_i2c_xfer(struct udevice *bus, struct i2c_msg *msg,
-			  int nmsgs)
+static int i2c_addr_ok(const uint addr, const int alen)
 {
-	struct i2c_bus *i2c_bus = dev_get_priv(bus);
-	int ret;
+	/* We support 7 or 10 bit addresses, so one or two bytes each */
+	return alen == 1 || alen == 2;
+}
 
-	debug("i2c_xfer: %d messages\n", nmsgs);
-	for (; nmsgs > 0; nmsgs--, msg++) {
-		bool next_is_read = nmsgs > 1 && (msg[1].flags & I2C_M_RD);
+/* Read bytes */
+static int tegra_i2c_read(struct i2c_adapter *adap, uchar chip, uint addr,
+			int alen, uchar *buffer, int len)
+{
+	struct i2c_bus *bus;
+	uint offset;
+	int i;
 
-		debug("i2c_xfer: chip=0x%x, len=0x%x\n", msg->addr, msg->len);
-		if (msg->flags & I2C_M_RD) {
-			ret = i2c_read_data(i2c_bus, msg->addr, msg->buf,
-					    msg->len);
-		} else {
-			ret = i2c_write_data(i2c_bus, msg->addr, msg->buf,
-					     msg->len, next_is_read);
+	debug("i2c_read: chip=0x%x, addr=0x%x, alen=0x%x len=0x%x\n",
+	      chip, addr, alen, len);
+	bus = tegra_i2c_get_bus(adap);
+	if (!bus)
+		return 1;
+	if (!i2c_addr_ok(addr, alen)) {
+		debug("i2c_read: Bad address %x.%d.\n", addr, alen);
+		return 1;
+	}
+	for (offset = 0; offset < len; offset++) {
+		if (alen) {
+			uchar data[alen];
+			for (i = 0; i < alen; i++) {
+				data[alen - i - 1] =
+					(addr + offset) >> (8 * i);
+			}
+			if (i2c_write_data(bus, chip, data, alen, true)) {
+				debug("i2c_read: error sending (0x%x)\n",
+					addr);
+				return 1;
+			}
 		}
-		if (ret) {
-			debug("i2c_write: error sending\n");
-			return -EREMOTEIO;
+		if (i2c_read_data(bus, chip, buffer + offset, 1)) {
+			debug("i2c_read: error reading (0x%x)\n", addr);
+			return 1;
 		}
 	}
 
 	return 0;
 }
 
-int tegra_i2c_get_dvc_bus(struct udevice **busp)
+/* Write bytes */
+static int tegra_i2c_write(struct i2c_adapter *adap, uchar chip, uint addr,
+			int alen, uchar *buffer, int len)
 {
-	struct udevice *bus;
+	struct i2c_bus *bus;
+	uint offset;
+	int i;
 
-	for (uclass_first_device(UCLASS_I2C, &bus);
-	     bus;
-	     uclass_next_device(&bus)) {
-		if (dev_get_driver_data(bus) == TYPE_DVC) {
-			*busp = bus;
-			return 0;
+	debug("i2c_write: chip=0x%x, addr=0x%x, alen=0x%x len=0x%x\n",
+	      chip, addr, alen, len);
+	bus = tegra_i2c_get_bus(adap);
+	if (!bus)
+		return 1;
+	if (!i2c_addr_ok(addr, alen)) {
+		debug("i2c_write: Bad address %x.%d.\n", addr, alen);
+		return 1;
+	}
+	for (offset = 0; offset < len; offset++) {
+		uchar data[alen + 1];
+		for (i = 0; i < alen; i++)
+			data[alen - i - 1] = (addr + offset) >> (8 * i);
+		data[alen] = buffer[offset];
+		if (i2c_write_data(bus, chip, data, alen + 1, false)) {
+			debug("i2c_write: error sending (0x%x)\n", addr);
+			return 1;
 		}
 	}
 
-	return -ENODEV;
+	return 0;
 }
 
-static const struct dm_i2c_ops tegra_i2c_ops = {
-	.xfer		= tegra_i2c_xfer,
-	.probe_chip	= tegra_i2c_probe_chip,
-	.set_bus_speed	= tegra_i2c_set_bus_speed,
-};
+int tegra_i2c_get_dvc_bus_num(void)
+{
+	int i;
 
-static const struct udevice_id tegra_i2c_ids[] = {
-	{ .compatible = "nvidia,tegra114-i2c", .data = TYPE_114 },
-	{ .compatible = "nvidia,tegra20-i2c", .data = TYPE_STD },
-	{ .compatible = "nvidia,tegra20-i2c-dvc", .data = TYPE_DVC },
-	{ }
-};
+	for (i = 0; i < TEGRA_I2C_NUM_CONTROLLERS; i++) {
+		struct i2c_bus *bus = &i2c_controllers[i];
 
-U_BOOT_DRIVER(i2c_tegra) = {
-	.name	= "i2c_tegra",
-	.id	= UCLASS_I2C,
-	.of_match = tegra_i2c_ids,
-	.probe	= tegra_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct i2c_bus),
-	.ops	= &tegra_i2c_ops,
-};
+		if (bus->inited && bus->is_dvc)
+			return i;
+	}
+
+	return -1;
+}
+
+/*
+ * Register soft i2c adapters
+ */
+U_BOOT_I2C_ADAP_COMPLETE(tegra0, tegra_i2c_init, tegra_i2c_probe,
+			 tegra_i2c_read, tegra_i2c_write,
+			 tegra_i2c_set_bus_speed, 100000, 0, 0)
+U_BOOT_I2C_ADAP_COMPLETE(tegra1, tegra_i2c_init, tegra_i2c_probe,
+			 tegra_i2c_read, tegra_i2c_write,
+			 tegra_i2c_set_bus_speed, 100000, 0, 1)
+U_BOOT_I2C_ADAP_COMPLETE(tegra2, tegra_i2c_init, tegra_i2c_probe,
+			 tegra_i2c_read, tegra_i2c_write,
+			 tegra_i2c_set_bus_speed, 100000, 0, 2)
+U_BOOT_I2C_ADAP_COMPLETE(tegra3, tegra_i2c_init, tegra_i2c_probe,
+			 tegra_i2c_read, tegra_i2c_write,
+			 tegra_i2c_set_bus_speed, 100000, 0, 3)
+#if TEGRA_I2C_NUM_CONTROLLERS > 4
+U_BOOT_I2C_ADAP_COMPLETE(tegra4, tegra_i2c_init, tegra_i2c_probe,
+			 tegra_i2c_read, tegra_i2c_write,
+			 tegra_i2c_set_bus_speed, 100000, 0, 4)
+#endif

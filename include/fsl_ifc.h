@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * Author: Dipen Dudhat <dipen.dudhat@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_IFC_H
@@ -10,23 +11,16 @@
 #ifdef CONFIG_FSL_IFC
 #include <config.h>
 #include <common.h>
-#ifdef CONFIG_ARM
-#include <asm/arch/soc.h>
-#endif
 
-#define FSL_IFC_V1_1_0	0x01010000
-#define FSL_IFC_V2_0_0	0x02000000
 
 #ifdef CONFIG_SYS_FSL_IFC_LE
 #define ifc_in32(a)       in_le32(a)
 #define ifc_out32(a, v)   out_le32(a, v)
 #define ifc_in16(a)       in_le16(a)
-#define ifc_out16(a, v)   out_le16(a, v)
 #elif defined(CONFIG_SYS_FSL_IFC_BE)
 #define ifc_in32(a)       in_be32(a)
 #define ifc_out32(a, v)   out_be32(a, v)
 #define ifc_in16(a)       in_be16(a)
-#define ifc_out16(a, v)   out_be16(a, v)
 #else
 #error Neither CONFIG_SYS_FSL_IFC_LE nor CONFIG_SYS_FSL_IFC_BE is defined
 #endif
@@ -373,8 +367,6 @@
  */
 /* Auto Boot Mode */
 #define IFC_NAND_NCFGR_BOOT		0x80000000
-/* SRAM INIT EN */
-#define IFC_NAND_SRAM_INIT_EN		0x20000000
 /* Addressing Mode-ROW0+n/COL0 */
 #define IFC_NAND_NCFGR_ADDR_MODE_RC0	0x00000000
 /* Addressing Mode-ROW0+n/COL0+n */
@@ -794,36 +786,24 @@ extern void print_ifc_regs(void);
 extern void init_early_memctl_regs(void);
 void init_final_memctl_regs(void);
 
-#define IFC_RREGS_4KOFFSET	(4*1024)
-#define IFC_RREGS_64KOFFSET	(64*1024)
+#define IFC_BASE_ADDR ((struct fsl_ifc *)CONFIG_SYS_IFC_ADDR)
 
-#define IFC_FCM_BASE_ADDR \
-	((struct fsl_ifc_fcm *)CONFIG_SYS_IFC_ADDR)
+#define get_ifc_cspr_ext(i) (ifc_in32(&(IFC_BASE_ADDR)->cspr_cs[i].cspr_ext))
+#define get_ifc_cspr(i) (ifc_in32(&(IFC_BASE_ADDR)->cspr_cs[i].cspr))
+#define get_ifc_csor_ext(i) (ifc_in32(&(IFC_BASE_ADDR)->csor_cs[i].csor_ext))
+#define get_ifc_csor(i) (ifc_in32(&(IFC_BASE_ADDR)->csor_cs[i].csor))
+#define get_ifc_amask(i) (ifc_in32(&(IFC_BASE_ADDR)->amask_cs[i].amask))
+#define get_ifc_ftim(i, j) (ifc_in32(&(IFC_BASE_ADDR)->ftim_cs[i].ftim[j]))
 
-#define get_ifc_cspr_ext(i)	\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->cspr_cs[i].cspr_ext))
-#define get_ifc_cspr(i)		\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->cspr_cs[i].cspr))
-#define get_ifc_csor_ext(i)	\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->csor_cs[i].csor_ext))
-#define get_ifc_csor(i)		\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->csor_cs[i].csor))
-#define get_ifc_amask(i)	\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->amask_cs[i].amask))
-#define get_ifc_ftim(i, j)	\
-		(ifc_in32(&(IFC_FCM_BASE_ADDR)->ftim_cs[i].ftim[j]))
-#define set_ifc_cspr_ext(i, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->cspr_cs[i].cspr_ext, v))
-#define set_ifc_cspr(i, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->cspr_cs[i].cspr, v))
-#define set_ifc_csor_ext(i, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->csor_cs[i].csor_ext, v))
-#define set_ifc_csor(i, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->csor_cs[i].csor, v))
-#define set_ifc_amask(i, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->amask_cs[i].amask, v))
-#define set_ifc_ftim(i, j, v)	\
-		(ifc_out32(&(IFC_FCM_BASE_ADDR)->ftim_cs[i].ftim[j], v))
+#define set_ifc_cspr_ext(i, v) \
+			(ifc_out32(&(IFC_BASE_ADDR)->cspr_cs[i].cspr_ext, v))
+#define set_ifc_cspr(i, v) (ifc_out32(&(IFC_BASE_ADDR)->cspr_cs[i].cspr, v))
+#define set_ifc_csor_ext(i, v) \
+			(ifc_out32(&(IFC_BASE_ADDR)->csor_cs[i].csor_ext, v))
+#define set_ifc_csor(i, v) (ifc_out32(&(IFC_BASE_ADDR)->csor_cs[i].csor, v))
+#define set_ifc_amask(i, v) (ifc_out32(&(IFC_BASE_ADDR)->amask_cs[i].amask, v))
+#define set_ifc_ftim(i, j, v) \
+			(ifc_out32(&(IFC_BASE_ADDR)->ftim_cs[i].ftim[j], v))
 
 enum ifc_chip_sel {
 	IFC_CS0,
@@ -885,26 +865,20 @@ struct fsl_ifc_nand {
 	u32 nand_evter_en;
 	u32 res17[0x2];
 	u32 nand_evter_intr_en;
-	u32 nand_vol_addr_stat;
-	u32 res18;
+	u32 res18[0x2];
 	u32 nand_erattr0;
 	u32 nand_erattr1;
 	u32 res19[0x10];
 	u32 nand_fsr;
-	u32 res20[0x3];
-	u32 nand_eccstat[6];
-	u32 res21[0x1c];
+	u32 res20;
+	u32 nand_eccstat[4];
+	u32 res21[0x20];
 	u32 nanndcr;
 	u32 res22[0x2];
 	u32 nand_autoboot_trgr;
 	u32 res23;
 	u32 nand_mdr;
-	u32 res24[0x1c];
-	u32 nand_dll_lowcfg0;
-	u32 nand_dll_lowcfg1;
-	u32 res25;
-	u32 nand_dll_lowstat;
-	u32 res26[0x3C];
+	u32 res24[0x5C];
 };
 
 /*
@@ -939,6 +913,7 @@ struct fsl_ifc_gpcm {
 	u32 gpcm_erattr1;
 	u32 gpcm_erattr2;
 	u32 gpcm_stat;
+	u32 res4[0x1F3];
 };
 
 #ifdef CONFIG_SYS_FSL_IFC_BANK_COUNT
@@ -986,11 +961,9 @@ struct fsl_ifc_ftim {
 };
 
 /*
- * IFC Controller Global Registers
- * FCM - Flash control machine
+ * IFC Controller Registers
  */
-
-struct fsl_ifc_fcm {
+struct fsl_ifc {
 	u32 ifc_rev;
 	u32 res1[0x2];
 	struct fsl_ifc_cspr cspr_cs[CONFIG_SYS_FSL_IFC_BANK_COUNT];
@@ -1002,8 +975,7 @@ struct fsl_ifc_fcm {
 	struct fsl_ifc_ftim ftim_cs[CONFIG_SYS_FSL_IFC_BANK_COUNT];
 	u8 res5[IFC_FTIM_REG_LEN - IFC_FTIM_USED_LEN];
 	u32 rb_stat;
-	u32 rb_map;
-	u32 wp_map;
+	u32 res6[0x2];
 	u32 ifc_gcr;
 	u32 res7[0x2];
 	u32 cm_evter_stat;
@@ -1017,18 +989,10 @@ struct fsl_ifc_fcm {
 	u32 res11[0x2];
 	u32 ifc_ccr;
 	u32 ifc_csr;
-	u32 ddr_ccr_low;
-};
-
-struct fsl_ifc_runtime {
+	u32 res12[0x2EB];
 	struct fsl_ifc_nand ifc_nand;
 	struct fsl_ifc_nor ifc_nor;
 	struct fsl_ifc_gpcm ifc_gpcm;
-};
-
-struct fsl_ifc {
-	struct fsl_ifc_fcm *gregs;
-	struct fsl_ifc_runtime *rregs;
 };
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_IFC_A002769

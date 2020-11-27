@@ -117,7 +117,7 @@ static int de_set_ccsc_coef(unsigned int sel, unsigned int ch_id,
 	ccsc_dev[sel][ch_id]->c0[0].dwval = *(csc_coeff);
 	ccsc_dev[sel][ch_id]->c0[1].dwval = *(csc_coeff + 1);
 	ccsc_dev[sel][ch_id]->c0[2].dwval = *(csc_coeff + 2);
-#if defined(CONFIG_MACH_SUN50IW6)
+#if defined(CONFIG_ARCH_SUN50IW6P1)
 	if (sel == 1 && ch_id == 1) {
 		c[0] = (*(csc_coeff + 3) >> 2) & 0x7ff;
 		d[0] = (*(csc_coeff + 12) >> 2) & 0x7ff;

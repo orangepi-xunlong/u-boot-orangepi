@@ -1,97 +1,35 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <config.h>
 #include <common.h>
-#include <console.h>
-#include <div64.h>
-#include <inttypes.h>
 #include <version.h>
 #include <linux/ctype.h>
 #include <asm/io.h>
 
-char *display_options_get_banner_priv(bool newlines, const char *build_tag,
-				      char *buf, int size)
+int display_options (void)
 {
-	int len;
-
-	len = snprintf(buf, size, "%s%s", newlines ? "\n\n" : "",
-		       version_string);
-	if (build_tag && len < size)
-		len += snprintf(buf + len, size - len, ", Build: %s",
-				build_tag);
-	if (len > size - 3)
-		len = size - 3;
-	strcpy(buf + len, "\n\n");
-
-	return buf;
-}
-
-#ifndef BUILD_TAG
-#define BUILD_TAG NULL
+#if defined(BUILD_TAG)
+	printf ("\n\n%s, Build: %s\n\n", version_string, BUILD_TAG);
+#else
+	printf ("\n\n%s\n\n", version_string);
 #endif
-
-char *display_options_get_banner(bool newlines, char *buf, int size)
-{
-	return display_options_get_banner_priv(newlines, BUILD_TAG, buf, size);
-}
-
-int display_options(void)
-{
-	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
-
-	display_options_get_banner(true, buf, sizeof(buf));
-	printf("%s", buf);
-
 	return 0;
 }
 
-void print_freq(uint64_t freq, const char *s)
-{
-	unsigned long m = 0;
-	uint32_t f;
-	static const char names[] = {'G', 'M', 'K'};
-	unsigned long d = 1e9;
-	char c = 0;
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(names); i++, d /= 1000) {
-		if (freq >= d) {
-			c = names[i];
-			break;
-		}
-	}
-
-	if (!c) {
-		printf("%" PRIu64 " Hz%s", freq, s);
-		return;
-	}
-
-	f = do_div(freq, d);
-
-	/* If there's a remainder, show the first few digits */
-	if (f) {
-		m = f;
-		while (m > 1000)
-			m /= 10;
-		while (m && !(m % 10))
-			m /= 10;
-		if (m >= 100)
-			m = (m / 10) + (m % 100 >= 50);
-	}
-
-	printf("%lu", (unsigned long) freq);
-	if (m)
-		printf(".%ld", m);
-	printf(" %cHz%s", c, s);
-}
-
-void print_size(uint64_t size, const char *s)
+/*
+ * print sizes as "xxx KiB", "xxx.y KiB", "xxx MiB", "xxx.y MiB",
+ * xxx GiB, xxx.y GiB, etc as needed; allow for optional trailing string
+ * (like "\n")
+ */
+void print_size(unsigned long long size, const char *s)
 {
 	unsigned long m = 0, n;
-	uint64_t f;
+	unsigned long long f;
 	static const char names[] = {'E', 'P', 'T', 'G', 'M', 'K'};
 	unsigned long d = 10 * ARRAY_SIZE(names);
 	char c = 0;
@@ -105,7 +43,7 @@ void print_size(uint64_t size, const char *s)
 	}
 
 	if (!c) {
-		printf("%" PRIu64 " Bytes%s", size, s);
+		printf("%llu Bytes%s", size, s);
 		return;
 	}
 
@@ -129,7 +67,19 @@ void print_size(uint64_t size, const char *s)
 	printf (" %ciB%s", c, s);
 }
 
-
+/*
+ * Print data buffer in hex and ascii form to the terminal.
+ *
+ * data reads are buffered so that each memory address is only read once.
+ * Useful when displaying the contents of volatile registers.
+ *
+ * parameters:
+ *    addr: Starting address to display at start of line
+ *    data: pointer to data buffer
+ *    width: data value width.  May be 1, 2, or 4.
+ *    count: number of values to display
+ *    linelen: Number of values to print per line; specify 0 for default length
+ */
 #define MAX_LINE_LENGTH_BYTES (64)
 #define DEFAULT_LINE_LENGTH_BYTES (16)
 int print_buffer(ulong addr, const void *data, uint width, uint count,
@@ -146,9 +96,9 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 	} lb;
 	int i;
 #ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
-	uint64_t __maybe_unused x;
+	uint64_t x;
 #else
-	uint32_t __maybe_unused x;
+	uint32_t x;
 #endif
 
 	if (linelen*width > MAX_LINE_LENGTH_BYTES)
@@ -176,16 +126,8 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 				x = lb.us[i] = *(volatile uint16_t *)data;
 			else
 				x = lb.uc[i] = *(volatile uint8_t *)data;
-#ifdef CONFIG_SUNXI_MEM_MAPPING_CHECK
-			extern int mem_mapping_check(u32 addr);
-			if (!mem_mapping_check((u32)data)) {
-				x = 0;
-				memset(lb.uc + width * i, 0, width);
-			}
-#endif
-
 #ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
-			printf(" %0*llx", width * 2, (long long)x);
+			printf(" %0*llx", width * 2, x);
 #else
 			printf(" %0*x", width * 2, x);
 #endif

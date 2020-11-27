@@ -24,12 +24,13 @@
 
 #include <common.h>
 #include <private_uboot.h>
+extern char uboot_hash_value[64];
 #pragma pack(1)
 struct spare_boot_head_t  uboot_spare_head = 
 {
     {
         /* jump_instruction */          
-        ( 0xEA000000 | ( ( ( sizeof( struct spare_boot_head_t ) + sizeof( int ) - 1 ) / sizeof( int ) - 2 ) & 0x00FFFFFF ) ),
+        ( 0xEA000000 | ( ( ( sizeof( struct spare_boot_head_t ) + sizeof(uboot_hash_value)+ sizeof( int ) - 1 ) / sizeof( int ) - 2 ) & 0x00FFFFFF ) ),
         UBOOT_MAGIC,
         STAMP_VALUE,
         ALIGN_SIZE,
@@ -54,20 +55,18 @@ struct spare_boot_head_t  uboot_spare_head =
         0,			//work mode
         0,			//storage mode
         { {0} },		//nand gpio
-	{ 0 },		//nand info
+        { 0 },		//nand spare data
         { {0} },		//sdcard gpio
-	{ 0 }, 		//sdcard info
+        { 0 }, 		//sdcard spare data
         0,                          //secure os 
         0,                          //monitor
-	0,                        /* see enum UBOOT_FUNC_MASK_EN */
-	{0},						//reserved data
+        {0},                        //reserved data
         UBOOT_START_SECTOR_IN_SDMMC, //OTA flag
         0,                           //dtb offset
         0,                           //boot_package_size
 		0,							//dram_scan_size
-	{0}			//reserved data
-    },
-
+        { 0 }			//reserved data
+    }
 };
 
 #pragma pack()

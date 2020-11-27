@@ -1,15 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23/i.MX28 specific functions
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __MXS_SYS_PROTO_H__
-#define __MXS_SYS_PROTO_H__
+#ifndef __SYS_PROTO_H__
+#define __SYS_PROTO_H__
 
-#include <asm/mach-imx/sys_proto.h>
+int mxs_reset_block(struct mxs_register_32 *reg);
+int mxs_wait_mask_set(struct mxs_register_32 *reg,
+		       uint32_t mask,
+		       unsigned int timeout);
+int mxs_wait_mask_clr(struct mxs_register_32 *reg,
+		       uint32_t mask,
+		       unsigned int timeout);
 
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 
@@ -24,8 +31,6 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 void mxs_common_spl_init(const uint32_t arg, const uint32_t *resptr,
 			 const iomux_cfg_t *iomux_setup,
 			 const unsigned int iomux_size);
-
-void mxs_power_switch_dcdc_clocksource(uint32_t freqsel);
 #endif
 
 struct mxs_pair {
@@ -66,25 +71,6 @@ static const struct mxs_pair mxs_boot_modes[] = {
 	{ 0x00, 0x00, "Reserved/Unknown/Wrong" },
 #endif
 };
-
-#define MXS_BM_USB			0x00
-#define MXS_BM_I2C_MASTER_3V3		0x01
-#define MXS_BM_I2C_MASTER_1V8		0x11
-#define MXS_BM_SPI2_MASTER_3V3_NOR	0x02
-#define MXS_BM_SPI2_MASTER_1V8_NOR	0x12
-#define MXS_BM_SPI3_MASTER_3V3_NOR	0x03
-#define MXS_BM_SPI3_MASTER_1V8_NOR	0x13
-#define MXS_BM_NAND_3V3			0x04
-#define MXS_BM_NAND_1V8			0x14
-#define MXS_BM_JTAG			0x06
-#define MXS_BM_SPI3_MASTER_3V3_EEPROM	0x08
-#define MXS_BM_SPI3_MASTER_1V8_EEPROM	0x18
-#define MXS_BM_SDMMC0_3V3		0x09
-#define MXS_BM_SDMMC0_1V8		0x19
-#define MXS_BM_SDMMC1_3V3		0x0a
-#define MXS_BM_SDMMC1_1V8		0x1a
-
-#define MXS_SPL_DATA ((struct mxs_spl_data *)(CONFIG_SYS_TEXT_BASE - 0x200))
 
 struct mxs_spl_data {
 	uint8_t		boot_mode_idx;

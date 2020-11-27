@@ -22,7 +22,7 @@
 #define de_writel(val, addr) writel(val, (void __iomem *)(addr))
 #define de_readl(addr) readl((void __iomem *)(addr))
 
-#if defined(CONFIG_MACH_SUN50IW3)
+#if defined(CONFIG_ARCH_SUN50IW3P1)
 /* features for sun50iw3 */
 
 #define DEVICE_NUM	3
@@ -56,7 +56,7 @@
 #endif
 #define LVDS_REVERT
 
-#elif defined(CONFIG_MACH_SUN50IW6)
+#elif defined(CONFIG_ARCH_SUN50IW6P1)
 
 /* features for sun50iw6 */
 
@@ -87,7 +87,7 @@
 /* #define SUPPORT_LVDS */
 /* #define LVDS_REVERT */
 
-#elif defined(CONFIG_MACH_SUN8IW11)
+#elif defined(CONFIG_ARCH_SUN8IW11P1)
 
 /* features for sun8iw11, only for verify */
 
@@ -103,8 +103,8 @@
 #define DEVICE_LCD_NUM 2
 
 #define SUPPORT_DSI
-/*#define SUPPORT_SMBL*/
-/*#define SUPPORT_SMBL*/
+#define SUPPORT_SMBL
+#define SUPPORT_SMBL
 #define SUPPORT_DE_NOISE
 /* CDC: color space & dynamic range convert */
 #define SUPPORT_CDC

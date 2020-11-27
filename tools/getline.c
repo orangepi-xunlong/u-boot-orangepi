@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /* getline.c -- Replacement for GNU C library function getline
  *
  * Copyright (C) 1993, 1996, 2001, 2002 Free Software Foundation, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Written by Jan Brittenson, bson@gnu.ai.mit.edu.  */

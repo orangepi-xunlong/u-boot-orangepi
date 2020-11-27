@@ -1,18 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007, 2012 Freescale Semiconductor, Inc.
  * Hayden Fraser (Hayden.Fraser@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/immap.h>
 #include <netdev.h>
 #include <asm/io.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
@@ -21,7 +20,7 @@ int checkboard(void)
 	return 0;
 };
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	u32 dramsize = 0;
 
@@ -74,9 +73,7 @@ int dram_init(void)
 		mb();
 	}
 
-	gd->ram_size = dramsize;
-
-	return 0;
+	return dramsize;
 }
 
 int testdram(void)
@@ -87,7 +84,7 @@ int testdram(void)
 	return (0);
 }
 
-#ifdef CONFIG_IDE
+#ifdef CONFIG_CMD_IDE
 #include <ata.h>
 int ide_preinit(void)
 {
@@ -132,7 +129,7 @@ void ide_set_reset(int idereset)
 		setbits_8(&ata->cr, 0x01);
 	}
 }
-#endif				/* CONFIG_IDE */
+#endif				/* CONFIG_CMD_IDE */
 
 
 #ifdef CONFIG_DRIVER_DM9000

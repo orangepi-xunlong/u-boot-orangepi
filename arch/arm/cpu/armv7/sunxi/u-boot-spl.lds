@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
@@ -12,6 +11,8 @@
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *	Aneesh V <aneesh@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,\
 		LENGTH = CONFIG_SPL_MAX_SIZE }
@@ -26,7 +27,6 @@ SECTIONS
 	.text      :
 	{
 		__start = .;
-		*(.vectors)
 		arch/arm/cpu/armv7/start.o	(.text)
 		*(.text*)
 	} > .sram
@@ -36,11 +36,6 @@ SECTIONS
 
 	. = ALIGN(4);
 	.data : { *(SORT_BY_ALIGNMENT(.data*)) } >.sram
-
-	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
-	} > .sram
 
 	. = ALIGN(4);
 	__image_copy_end = .;

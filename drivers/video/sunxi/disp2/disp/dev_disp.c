@@ -31,7 +31,7 @@ static struct timer_list lcd_timer[2];
 static s8   lcd_op_start[2] = {0};
 
 static u32 DISP_print = 0xffff;   //print cmd which eq DISP_print
-__attribute__((unused)) static u32 g_output_type = DISP_OUTPUT_TYPE_LCD;
+static u32 g_output_type = DISP_OUTPUT_TYPE_LCD;
 
 uintptr_t disp_getprop_regbase(char *main_name, char *sub_name, u32 index)
 {
@@ -97,6 +97,12 @@ exit:
 	return irq;
 }
 
+static s32 copy_from_user(void *dest, void* src, u32 size)
+{
+	memcpy(dest, src, size);
+	return 0;
+}
+
 static s32 copy_to_user(void *src, void* dest, u32 size)
 {
 	memcpy(dest, src, size);
@@ -111,29 +117,32 @@ static void drv_lcd_open_callback(void *parg)
 
 	flow = bsp_disp_lcd_get_open_flow(sel);
 	if (NULL == flow) {
-		printf("%s lcd open flow is NULL! LCD enable fail!\n",
-		       __func__);
+		pr_msg("%s lcd open flow is NULL! LCD enable fail!\n", __func__);
 		lcd_op_start[sel] = 0;
 		lcd_op_finished[sel] = 1;
 		del_timer(&lcd_timer[sel]);
-		return;
+		return ;
 	}
 
-	if (i < flow->func_num) {
+	if (i < flow->func_num)
+	{
+		//printf("%s, step=%d, number=%d, todo\n", __func__, i, flow->func_num);
 		flow->func[i].func(sel);
+		//printf("%s, step=%d, number=%d, finish\n", __func__, i, flow->func_num);
 		if (flow->func[i].delay == 0) {
-			drv_lcd_open_callback((void *)sel);
-		} else {
+			drv_lcd_open_callback((void*)sel);
+		}	else {
+			//printf("%s, setnext step timer, delay=%d\n", __func__, flow->func[i].delay);
 			lcd_timer[sel].data = sel;
 			lcd_timer[sel].expires = flow->func[i].delay;
 			lcd_timer[sel].function = drv_lcd_open_callback;
 			add_timer(&lcd_timer[sel]);
 		}
-	} else if (i >= flow->func_num) {
+	}	else if (i >= flow->func_num) {
 		lcd_op_finished[sel] = 1;
-		tick_printf("LCD open finish\n");
 	}
 }
+
 
 static s32 drv_lcd_enable(u32 sel)
 {
@@ -184,7 +193,7 @@ static void drv_lcd_close_callback(void *parg)
 	}
 }
 
-__weak s32 drv_lcd_disable(u32 sel)
+static s32 drv_lcd_disable(u32 sel)
 {
 	lcd_flow_cnt[sel] = 0;
 	lcd_op_finished[sel] = 0;
@@ -238,8 +247,7 @@ s32 disp_tv_register(struct disp_tv_func * func)
 EXPORT_SYMBOL(disp_tv_register);
 #endif
 
-/*TODO:sunxi_board_shutdown*/
-/*extern int sunxi_board_shutdown(void);*/
+extern int sunxi_board_shutdown(void);
 static s32 drv_disp_check_spec(void)
 {
 	unsigned int lcd_used = 0;
@@ -248,7 +256,7 @@ static s32 drv_disp_check_spec(void)
 	int value = 0;
 	int limit_w = 0xffff, limit_h = 0xffff;
 
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6)
 	limit_w = 2048;
 	limit_h = 1536;
 #endif
@@ -267,71 +275,14 @@ static s32 drv_disp_check_spec(void)
 
 		if (((lcd_x > limit_w) && (lcd_y > limit_h)) ||
 				((lcd_x > limit_h) && (lcd_y > limit_w))) {
-			printf("fatal err: cannot support lcd with resolution(%d*%d) larger than %d*%d, the system will shut down!\n",
+			pr_msg("fatal err: cannot support lcd with resolution(%d*%d) larger than %d*%d, the system will shut down!\n",
 				lcd_x, lcd_y,limit_w,limit_h);
-			/*sunxi_board_shutdown();*/
+			sunxi_board_shutdown();
 		}
 
 	}
 
 	return 0;
-}
-
-/**
- * @name       :disp_draw_colorbar
- * @brief      :draw colorbar using DE's LAYER MODE
- * @param[IN]  :disp:screen index
- * @return     :0 if success
- */
-int disp_draw_colorbar(u32 disp)
-{
-	struct disp_manager *mgr = NULL;
-	struct disp_layer_config config[4];
-	unsigned int i = 0;
-	unsigned int width = 0, height = 0, num_screens;
-	int ret = -1;
-
-	num_screens = bsp_disp_feat_get_num_screens();
-	if (disp < num_screens)
-		mgr = g_disp_drv.mgr[disp];
-	else
-		return ret;
-
-	if (mgr && mgr->device && mgr->device->get_resolution)
-		mgr->device->get_resolution(mgr->device, &width, &height);
-	else
-		return ret;
-
-	memset(config, 0, 4 * sizeof(struct disp_layer_config));
-	for (i = 0; i < 4; ++i) {
-		config[i].channel = de_feat_get_num_vi_chns(disp);
-		config[i].layer_id = i;
-		config[i].enable = 1;
-		config[i].info.zorder = 16;
-		config[i].info.mode = LAYER_MODE_COLOR;
-		config[i].info.fb.format = DISP_FORMAT_ARGB_8888;
-		config[i].info.screen_win.width = width / 4;
-		config[i].info.screen_win.height = height;
-		config[i].info.screen_win.x = (width / 4) * i;
-		config[i].info.screen_win.y = 0;
-		config[i].info.fb.crop.x =
-		    ((long long)(config[i].info.screen_win.x) << 32);
-		config[i].info.fb.crop.y =
-		    ((long long)(config[i].info.screen_win.y) << 32);
-		config[i].info.fb.crop.width =
-		    ((long long)(config[i].info.screen_win.width) << 32);
-		config[i].info.fb.crop.height =
-		    ((long long)(config[i].info.screen_win.height) << 32);
-	}
-	config[0].info.color = 0xffff0000; /*red*/
-	config[1].info.color = 0xff00ff00; /*green*/
-	config[2].info.color = 0xff0000ff; /*blue*/
-	config[3].info.color = 0xffffff00; /*yellow*/
-
-	if (mgr->set_layer_config)
-		ret = mgr->set_layer_config(mgr, config, 4);
-
-	return ret;
 }
 
 extern __s32 hdmi_init(void);
@@ -348,11 +299,11 @@ s32 drv_disp_init(void)
 	int ret = 0;
 	int counter = 0;
 	int node_offset = 0;
-	s32 value = 0;
 
-	tick_printf("%s\n", __func__);
+	pr_msg("%s\n", __func__);
 	disp_fdt_init();
 
+	clk_init();
 	/* check if the resolution of lcd supported */
 	drv_disp_check_spec();
 
@@ -416,17 +367,6 @@ s32 drv_disp_init(void)
 	/* parse and map irq */
 	/* lcd0/1/2.. - dsi */
 	counter = 0;
-
-
-#ifdef DE_VERSION_V33X
-	para->irq_no[DISP_MOD_DE] =
-	    disp_getprop_irq(FDT_DISP_PATH, "interrupts", counter);
-	if (!para->irq_no[DISP_MOD_DE]) {
-		__wrn("irq_of_parse_and_map de irq fail\n");
-	}
-	++counter;
-#endif
-
 	for (i=0; i<DISP_DEVICE_NUM; i++) {
 		para->irq_no[DISP_MOD_LCD0 + i] = disp_getprop_irq(FDT_DISP_PATH, "interrupts", counter);
 		if (!para->irq_no[DISP_MOD_LCD0 + i]) {
@@ -444,7 +384,6 @@ s32 drv_disp_init(void)
 		counter++;
 	}
 #endif
-
 #if defined(SUPPORT_EINK)
 		para->irq_no[DISP_MOD_DE] = disp_getprop_irq(FDT_DISP_PATH, "interrupts", counter);
 		if (!para->irq_no[DISP_MOD_DE]) {
@@ -468,14 +407,14 @@ s32 drv_disp_init(void)
 	counter = 0;
 	para->mclk[DISP_MOD_DE] = of_clk_get(node_offset, counter);
 	if (IS_ERR(para->mclk[DISP_MOD_DE])) {
-		printf("fail to get clk for de\n");
+		pr_msg("fail to get clk for de\n");
 	}
 	counter ++;
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
 	para->mclk[DISP_MOD_DEVICE] = of_clk_get(node_offset, counter);
 	if (IS_ERR(para->mclk[DISP_MOD_DEVICE])) {
-		printf("fail to get clk for device common module\n");
+		pr_msg("fail to get clk for device common module\n");
 	}
 	counter ++;
 #endif
@@ -483,7 +422,7 @@ s32 drv_disp_init(void)
 	for (i=0; i<DISP_DEVICE_NUM; i++) {
 		para->mclk[DISP_MOD_LCD0 + i] = of_clk_get(node_offset, counter);
 		if (IS_ERR(para->mclk[DISP_MOD_LCD0 + i])) {
-			printf("fail to get clk for timing controller%d\n", i);
+			pr_msg("fail to get clk for timing controller%d\n", i);
 		}
 		counter ++;
 	}
@@ -491,7 +430,7 @@ s32 drv_disp_init(void)
 #if defined(SUPPORT_LVDS)
 	para->mclk[DISP_MOD_LVDS] = of_clk_get(node_offset, counter);
 	if (IS_ERR(para->mclk[DISP_MOD_LVDS])) {
-		printf("fail to get clk for lvds\n");
+		pr_msg("fail to get clk for lvds\n");
 	}
 	counter ++;
 #endif
@@ -509,13 +448,13 @@ s32 drv_disp_init(void)
 #if defined(SUPPORT_EINK)
 	para->mclk[DISP_MOD_EINK] = of_clk_get(node_offset, counter);
 	if (IS_ERR(para->mclk[DISP_MOD_EINK])) {
-		printf("fail to get clk for eink\n");
+		pr_msg("fail to get clk for eink\n");
 	}
 	counter ++;
 
 	para->mclk[DISP_MOD_EDMA] = of_clk_get(node_offset, counter);
 	if (IS_ERR(para->mclk[DISP_MOD_EDMA])) {
-		printf("fail to get clk for edma\n");
+		pr_msg("fail to get clk for edma\n");
 	}
 	counter ++;
 #endif
@@ -527,7 +466,7 @@ s32 drv_disp_init(void)
 			clk_put(pll);
 #endif
 
-#if defined(CONFIG_MACH_SUN8IW10)
+#if defined(CONFIG_ARCH_SUN8IW10)
 	{
 		struct clk* pll;
 
@@ -535,34 +474,29 @@ s32 drv_disp_init(void)
 		if (pll) {
 			ret = clk_set_parent(para->mclk[DISP_MOD_LCD0], pll);
 			if (0 != ret) {
-				printf("clk_set parent tcon0 fail\n");
+				pr_msg("clk_set parent tcon0 fail\n");
 			}
 		} else
-			printf("clk(pll_video0) get fail\n");
+			pr_msg("clk(pll_video0) get fail\n");
 
 		ret = clk_set_parent(para->mclk[DISP_MOD_LCD1], pll);
 		if (0 != ret) {
-			printf("clk_set parent tcon1 fail\n");
+			pr_msg("clk_set parent tcon1 fail\n");
 		}
 
 		pll = clk_get(NULL, "pll_de");
 		if (pll) {
 			ret = clk_set_parent(para->mclk[DISP_MOD_DE], pll);
 			if (0 != ret) {
-				printf("clk_set parent de fail\n");
+				pr_msg("clk_set parent de fail\n");
 			}
 		} else
-			printf("clk(pll_de) get fail\n");
+			pr_msg("clk(pll_de) get fail\n");
 		clk_put(pll);
 	}
 #endif
 
-	ret =
-	    disp_sys_script_get_item(FDT_DISP_PATH, "chn_cfg_mode", &value, 1);
-	g_disp_drv.disp_init.chn_cfg_mode = (ret != 1) ? 0 : value;
-
-	para->feat_init.chn_cfg_mode = g_disp_drv.disp_init.chn_cfg_mode;
-	ret = bsp_disp_init(para);
+	bsp_disp_init(para);
 	num_screens = bsp_disp_feat_get_num_screens();
 	for (disp=0; disp<num_screens; disp++) {
 		g_disp_drv.mgr[disp] = disp_get_layer_manager(disp);
@@ -572,11 +506,11 @@ s32 drv_disp_init(void)
 
 #endif
 	lcd_init();
-#if defined(SUPPORT_HDMI) && (defined(CONFIG_HDMI_DISP2_SUNXI) || \
-				defined(CONFIG_HDMI2_DISP2_SUNXI))
+#if defined(SUPPORT_HDMI) && (defined(CONFIG_SUNXI_MODULE_HDMI2) || \
+				defined(CONFIG_SUNXI_MODULE_HDMI))
 	hdmi_init();
 #endif
-#if defined(SUPPORT_TV) && defined(CONFIG_TV_DISP2_SUNXI)
+#if defined(SUPPORT_TV) && defined(CONFIG_SUNXI_MODULE_TV)
 	tv_init();
 #endif
 
@@ -584,14 +518,14 @@ s32 drv_disp_init(void)
 	edp_init();
 #endif
 
-#if defined(CONFIG_DISP2_TV_AC200)
+#if defined(CONFIG_USE_AC200)
 	tv_ac200_init();
 #endif
 	bsp_disp_open();
 
 	g_disp_drv.inited = true;
 
-	tick_printf("%s finish\n", __func__);
+	pr_msg("%s finish\n", __func__);
 
 exit:
 	return ret;
@@ -599,7 +533,7 @@ exit:
 
 s32 drv_disp_exit(void)
 {
-	printf("%s\n", __func__);
+	pr_msg("%s\n", __func__);
 	if (g_disp_drv.inited == true) {
 		g_disp_drv.inited = false;
 		bsp_disp_close();
@@ -682,7 +616,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 #endif
 
 	if (false == g_disp_drv.inited) {
-		printf("%s, display not init yet\n", __func__);
+		pr_msg("%s, display not init yet\n", __func__);
 		return -1;
 	}
 	num_screens = bsp_disp_feat_get_num_screens();
@@ -868,7 +802,7 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	{
 		struct eink_8bpp_image current_image;
 		if (!eink_manager) {
-			printf("there is no eink manager!\n");
+			pr_msg("there is no eink manager!\n");
 			break;
 		}
 
@@ -1212,22 +1146,6 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return g_disp_mm[ubuffer[0]].mem_start;
 #endif
 
-	case DISP_SET_KSC_PARA:
-		{
-
-			struct disp_ksc_info ksc;
-
-			if (copy_from_user(&ksc, (void __user *)ubuffer[1],
-					   sizeof(struct disp_ksc_info))) {
-				__wrn("copy_from_user fail\n");
-				return  -EFAULT;
-			}
-			if (mgr && mgr->set_ksc_para)
-				ret = mgr->set_ksc_para(mgr, &ksc);
-
-			break;
-		}
-
 	case DISP_SET_EXIT_MODE:
 		ret = g_disp_drv.exit_mode = ubuffer[1];
 		break;
@@ -1246,49 +1164,77 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
   return ret;
 }
 
-/*TODO:drv_disp_standby is useful??*/
+#define  DELAY_ONCE_TIME   (50)
 
-int do_sunxi_disp_colorbar(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+s32 drv_disp_standby(u32 cmd, void *pArg)
 {
-	int color_code = -1, screen_index = 0;
-	unsigned int num_screens;
-	struct disp_manager *mgr = NULL;
+	s32 ret;
+	s32 timedly = 5000;
+	s32 check_time = timedly/DELAY_ONCE_TIME;
 
-	if (argc < 2 || argc > 4)
-		return cmd_usage(cmdtp);
+	if (cmd == BOOT_MOD_ENTER_STANDBY)
+	{
+	    if (g_output_type == DISP_OUTPUT_TYPE_HDMI)
+	    {
+		}
+		else
+        {
+            drv_lcd_disable(0);
+		}
+		do
+		{
+			ret = drv_lcd_check_close_finished(0);
+			if (ret == 1)
+			{
+				break;
+			}
+			else if (ret == -1)
+			{
+				return -1;
+			}
+			__msdelay(DELAY_ONCE_TIME);
+			check_time --;
+			if (check_time <= 0)
+			{
+				return -1;
+			}
+		}
+		while (1);
 
-	color_code = simple_strtoul(argv[1], NULL, 10);
-	if (color_code < 0 || color_code > 8)
-		return cmd_usage(cmdtp);
+		return 0;
+	}
+	else if (cmd == BOOT_MOD_EXIT_STANDBY)
+	{
+		if (g_output_type == DISP_OUTPUT_TYPE_HDMI)
+		{
+		}
+		else
+		{
+			drv_lcd_enable(0);
+        }
 
-	if (argc == 3)
-		screen_index = simple_strtoul(argv[2], NULL, 10);
+		do
+		{
+			ret = drv_lcd_check_open_finished(0);
+			if (ret == 1)
+			{
+				break;
+			}
+			else if (ret == -1)
+			{
+				return -1;
+			}
+			__msdelay(DELAY_ONCE_TIME);
+			check_time --;
+			if (check_time <= 0)
+			{
+				return -1;
+			}
+		}
+		while (1);
 
-	num_screens = bsp_disp_feat_get_num_screens();
-	if (screen_index < num_screens)
-		mgr = g_disp_drv.mgr[screen_index];
-	else {
-		printf("Screen index out of range:%d!\n", screen_index);
-		return cmd_usage(cmdtp);
+		return 0;
 	}
 
-	if (color_code == 8) {
-		disp_draw_colorbar(screen_index);
-		if (mgr && mgr->device && mgr->device->show_builtin_patten)
-			mgr->device->show_builtin_patten(mgr->device, 0);
-	} else {
-		if (mgr && mgr->device && mgr->device->show_builtin_patten)
-			mgr->device->show_builtin_patten(mgr->device, color_code);
-	}
-	return 0;
+	return -1;
 }
-
-U_BOOT_CMD(
-	colorbar,	3,	0,	do_sunxi_disp_colorbar,
-	"show colorbar",
-	"\nparameters 1 : colorbar code 0~8\n"
-	"- 0:picture\n"
-	"- 1~7:tcon or edp or other device's builtin patten\n"
-	"- 8:de colorbar\n"
-	"parameters 2[optional]: screen index.0~3\n"
-);

@@ -1,152 +1,100 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004, Psyent Corporation <www.psyent.com>
  * Scott McNutt <smcnutt@psyent.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+
 #include <common.h>
-#include <dm.h>
-#include <errno.h>
-#include <serial.h>
+#include <watchdog.h>
 #include <asm/io.h>
+#include <nios2-io.h>
+#include <linux/compiler.h>
+#include <serial.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* status register */
-#define ALTERA_UART_TMT		BIT(5)	/* tx empty */
-#define ALTERA_UART_TRDY	BIT(6)	/* tx ready */
-#define ALTERA_UART_RRDY	BIT(7)	/* rx ready */
+/*------------------------------------------------------------------
+ * UART the serial port
+ *-----------------------------------------------------------------*/
 
-struct altera_uart_regs {
-	u32	rxdata;		/* Rx data reg */
-	u32	txdata;		/* Tx data reg */
-	u32	status;		/* Status reg */
-	u32	control;	/* Control reg */
-	u32	divisor;	/* Baud rate divisor reg */
-	u32	endofpacket;	/* End-of-packet reg */
-};
+static nios_uart_t *uart = (nios_uart_t *) CONFIG_SYS_NIOS_CONSOLE;
 
-struct altera_uart_platdata {
-	struct altera_uart_regs *regs;
-	unsigned int uartclk;
-};
+#if defined(CONFIG_SYS_NIOS_FIXEDBAUD)
 
-static int altera_uart_setbrg(struct udevice *dev, int baudrate)
+/*
+ * Everything's already setup for fixed-baud PTF
+ * assignment
+ */
+static void altera_serial_setbrg(void)
 {
-	struct altera_uart_platdata *plat = dev->platdata;
-	struct altera_uart_regs *const regs = plat->regs;
-	u32 div;
-
-	div = (plat->uartclk / baudrate) - 1;
-	writel(div, &regs->divisor);
-
-	return 0;
 }
 
-static int altera_uart_putc(struct udevice *dev, const char ch)
-{
-	struct altera_uart_platdata *plat = dev->platdata;
-	struct altera_uart_regs *const regs = plat->regs;
-
-	if (!(readl(&regs->status) & ALTERA_UART_TRDY))
-		return -EAGAIN;
-
-	writel(ch, &regs->txdata);
-
-	return 0;
-}
-
-static int altera_uart_pending(struct udevice *dev, bool input)
-{
-	struct altera_uart_platdata *plat = dev->platdata;
-	struct altera_uart_regs *const regs = plat->regs;
-	u32 st = readl(&regs->status);
-
-	if (input)
-		return st & ALTERA_UART_RRDY ? 1 : 0;
-	else
-		return !(st & ALTERA_UART_TMT);
-}
-
-static int altera_uart_getc(struct udevice *dev)
-{
-	struct altera_uart_platdata *plat = dev->platdata;
-	struct altera_uart_regs *const regs = plat->regs;
-
-	if (!(readl(&regs->status) & ALTERA_UART_RRDY))
-		return -EAGAIN;
-
-	return readl(&regs->rxdata) & 0xff;
-}
-
-static int altera_uart_probe(struct udevice *dev)
+static int altera_serial_init(void)
 {
 	return 0;
 }
 
-static int altera_uart_ofdata_to_platdata(struct udevice *dev)
+#else
+
+static void altera_serial_setbrg(void)
 {
-	struct altera_uart_platdata *plat = dev_get_platdata(dev);
+	unsigned div;
 
-	plat->regs = map_physmem(devfdt_get_addr(dev),
-				 sizeof(struct altera_uart_regs),
-				 MAP_NOCACHE);
-	plat->uartclk = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
-		"clock-frequency", 0);
+	div = (CONFIG_SYS_CLK_FREQ/gd->baudrate)-1;
+	writel (div, &uart->divisor);
+}
 
+static int altera_serial_init(void)
+{
+	serial_setbrg();
 	return 0;
 }
 
-static const struct dm_serial_ops altera_uart_ops = {
-	.putc = altera_uart_putc,
-	.pending = altera_uart_pending,
-	.getc = altera_uart_getc,
-	.setbrg = altera_uart_setbrg,
-};
+#endif /* CONFIG_SYS_NIOS_FIXEDBAUD */
 
-static const struct udevice_id altera_uart_ids[] = {
-	{ .compatible = "altr,uart-1.0" },
-	{}
-};
-
-U_BOOT_DRIVER(altera_uart) = {
-	.name	= "altera_uart",
-	.id	= UCLASS_SERIAL,
-	.of_match = altera_uart_ids,
-	.ofdata_to_platdata = altera_uart_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct altera_uart_platdata),
-	.probe = altera_uart_probe,
-	.ops	= &altera_uart_ops,
-	.flags = DM_FLAG_PRE_RELOC,
-};
-
-#ifdef CONFIG_DEBUG_UART_ALTERA_UART
-
-#include <debug_uart.h>
-
-static inline void _debug_uart_init(void)
+/*-----------------------------------------------------------------------
+ * UART CONSOLE
+ *---------------------------------------------------------------------*/
+static void altera_serial_putc(char c)
 {
-	struct altera_uart_regs *regs = (void *)CONFIG_DEBUG_UART_BASE;
-	u32 div;
-
-	div = (CONFIG_DEBUG_UART_CLOCK / CONFIG_BAUDRATE) - 1;
-	writel(div, &regs->divisor);
+	if (c == '\n')
+		serial_putc ('\r');
+	while ((readl (&uart->status) & NIOS_UART_TRDY) == 0)
+		WATCHDOG_RESET ();
+	writel ((unsigned char)c, &uart->txdata);
 }
 
-static inline void _debug_uart_putc(int ch)
+static int altera_serial_tstc(void)
 {
-	struct altera_uart_regs *regs = (void *)CONFIG_DEBUG_UART_BASE;
-
-	while (1) {
-		u32 st = readl(&regs->status);
-
-		if (st & ALTERA_UART_TRDY)
-			break;
-	}
-
-	writel(ch, &regs->txdata);
+	return (readl (&uart->status) & NIOS_UART_RRDY);
 }
 
-DEBUG_UART_FUNCS
+static int altera_serial_getc(void)
+{
+	while (serial_tstc () == 0)
+		WATCHDOG_RESET ();
+	return (readl (&uart->rxdata) & 0x00ff );
+}
 
-#endif
+static struct serial_device altera_serial_drv = {
+	.name	= "altera_serial",
+	.start	= altera_serial_init,
+	.stop	= NULL,
+	.setbrg	= altera_serial_setbrg,
+	.putc	= altera_serial_putc,
+	.puts	= default_serial_puts,
+	.getc	= altera_serial_getc,
+	.tstc	= altera_serial_tstc,
+};
+
+void altera_serial_initialize(void)
+{
+	serial_register(&altera_serial_drv);
+}
+
+__weak struct serial_device *default_serial_console(void)
+{
+	return &altera_serial_drv;
+}

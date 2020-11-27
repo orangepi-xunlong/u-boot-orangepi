@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,14 +11,14 @@
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
+#include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
-#include <hwconfig.h>
 
 #include "../common/qixis.h"
 #include "../common/vsc3316_3308.h"
@@ -194,7 +195,7 @@ static int adjust_vdd(ulong vdd_override)
 	      vid, vdd_target/10);
 
 	/* check override variable for overriding VDD */
-	vdd_string = env_get("b4qds_vdd_mv");
+	vdd_string = getenv("b4qds_vdd_mv");
 	if (vdd_override == 0 && vdd_string &&
 	    !strict_strtoul(vdd_string, 10, &vdd_string_override))
 		vdd_override = vdd_string_override;
@@ -332,8 +333,6 @@ int configure_vsc3316_3308(void)
 	unsigned int num_vsc16_con, num_vsc08_con;
 	u32 serdes1_prtcl, serdes2_prtcl;
 	int ret;
-	char buffer[HWCONFIG_BUFFER_SIZE];
-	char *buf = NULL;
 
 	serdes1_prtcl = in_be32(&gur->rcwsr[4]) &
 			FSL_CORENET2_RCWSR4_SRDS1_PRTCL;
@@ -386,18 +385,15 @@ int configure_vsc3316_3308(void)
 		}
 		break;
 
-	case 0x01:
 	case 0x02:
 	case 0x04:
 	case 0x05:
 	case 0x06:
-	case 0x07:
 	case 0x08:
 	case 0x09:
 	case 0x0A:
 	case 0x0B:
 	case 0x0C:
-	case 0x2F:
 	case 0x30:
 	case 0x32:
 	case 0x33:
@@ -436,7 +432,7 @@ int configure_vsc3316_3308(void)
 		}
 		break;
 
-#ifdef CONFIG_ARCH_B4420
+#ifdef CONFIG_PPC_B4420
 	case 0x17:
 	case 0x18:
 			/*
@@ -491,21 +487,21 @@ int configure_vsc3316_3308(void)
 		return -1;
 	}
 
-	num_vsc08_con = NUM_CON_VSC3308;
-	/* Configure VSC3308 crossbar switch */
-	ret = select_i2c_ch_pca(I2C_CH_VSC3308);
 	switch (serdes2_prtcl) {
-#ifdef CONFIG_ARCH_B4420
+#ifdef CONFIG_PPC_B4420
 	case 0x9d:
 #endif
 	case 0x9E:
 	case 0x9A:
 	case 0x98:
-	case 0x48:
+	case 0xb2:
 	case 0x49:
 	case 0x4E:
-	case 0x79:
+	case 0x8D:
 	case 0x7A:
+		num_vsc08_con = NUM_CON_VSC3308;
+		/* Configure VSC3308 crossbar switch */
+		ret = select_i2c_ch_pca(I2C_CH_VSC3308);
 		if (!ret) {
 			ret = vsc3308_config(VSC3308_TX_ADDRESS,
 					vsc08_tx_amc, num_vsc08_con);
@@ -515,71 +511,6 @@ int configure_vsc3316_3308(void)
 					vsc08_rx_amc, num_vsc08_con);
 			if (ret)
 				return ret;
-		} else {
-			return ret;
-		}
-		break;
-	case 0x80:
-	case 0x81:
-	case 0x82:
-	case 0x83:
-	case 0x84:
-	case 0x85:
-	case 0x86:
-	case 0x87:
-	case 0x88:
-	case 0x89:
-	case 0x8a:
-	case 0x8b:
-	case 0x8c:
-	case 0x8d:
-	case 0x8e:
-	case 0xb1:
-	case 0xb2:
-		if (!ret) {
-			/*
-			 * Extract hwconfig from environment since environment
-			 * is not setup properly yet
-			 */
-			env_get_f("hwconfig", buffer, sizeof(buffer));
-			buf = buffer;
-
-			if (hwconfig_subarg_cmp_f("fsl_b4860_serdes2",
-						  "sfp_amc", "sfp", buf)) {
-#ifdef CONFIG_SYS_FSL_B4860QDS_XFI_ERR
-				/* change default VSC3308 for XFI erratum */
-				ret = vsc3308_config_adjust(VSC3308_TX_ADDRESS,
-						vsc08_tx_sfp, num_vsc08_con);
-				if (ret)
-					return ret;
-
-				ret = vsc3308_config_adjust(VSC3308_RX_ADDRESS,
-						vsc08_rx_sfp, num_vsc08_con);
-				if (ret)
-					return ret;
-#else
-				ret = vsc3308_config(VSC3308_TX_ADDRESS,
-						vsc08_tx_sfp, num_vsc08_con);
-				if (ret)
-					return ret;
-
-				ret = vsc3308_config(VSC3308_RX_ADDRESS,
-						vsc08_rx_sfp, num_vsc08_con);
-				if (ret)
-					return ret;
-#endif
-			} else {
-				ret = vsc3308_config(VSC3308_TX_ADDRESS,
-						vsc08_tx_amc, num_vsc08_con);
-				if (ret)
-					return ret;
-
-				ret = vsc3308_config(VSC3308_RX_ADDRESS,
-						vsc08_rx_amc, num_vsc08_con);
-				if (ret)
-					return ret;
-			}
-
 		} else {
 			return ret;
 		}
@@ -799,23 +730,19 @@ int config_serdes1_refclks(void)
 	 * to 122.88MHz
 	 */
 	switch (serdes1_prtcl) {
-	case 0x29:
 	case 0x2A:
 	case 0x2C:
 	case 0x2D:
 	case 0x2E:
-	case 0x01:
 	case 0x02:
 	case 0x04:
 	case 0x05:
 	case 0x06:
-	case 0x07:
 	case 0x08:
 	case 0x09:
 	case 0x0A:
 	case 0x0B:
 	case 0x0C:
-	case 0x2F:
 	case 0x30:
 	case 0x32:
 	case 0x33:
@@ -928,13 +855,11 @@ int config_serdes2_refclks(void)
 	 * For this SerDes2's Refclk1 need to be set to 100MHz
 	 */
 	switch (serdes2_prtcl) {
-#ifdef CONFIG_ARCH_B4420
+#ifdef CONFIG_PPC_B4420
 	case 0x9d:
 #endif
 	case 0x9E:
 	case 0x9A:
-		/* fallthrough */
-	case 0xb1:
 	case 0xb2:
 		debug("Configuring IDT for PCIe SATA for srds_prctl:%x\n",
 			serdes2_prtcl);
@@ -988,16 +913,8 @@ out:
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	int flash_esel = find_tlb_idx((void *)flashbase, 1);
+	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
 	int ret;
-	u32 svr = SVR_SOC_VER(get_svr());
-
-	/* Create law for MAPLE only for personalities having MAPLE */
-	if ((svr == SVR_B4860) || (svr == SVR_B4440) ||
-	    (svr == SVR_B4420) || (svr == SVR_B4220)) {
-		set_next_law(CONFIG_SYS_MAPLE_MEM_PHYS, LAW_SIZE_16M,
-			     LAW_TRGT_IF_MAPLE);
-	}
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -1008,19 +925,17 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	if (flash_esel == -1) {
-		/* very unlikely unless something is messed up */
-		puts("Error: Could not find TLB for FLASH BASE\n");
-		flash_esel = 2;	/* give our best effort to continue */
-	} else {
-		/* invalidate existing TLB entry for flash + promjet */
-		disable_tlb(flash_esel);
-	}
+	/* invalidate existing TLB entry for flash + promjet */
+	disable_tlb(flash_esel);
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 			0, flash_esel, BOOKE_PAGESZ_256M, 1);
 
+	set_liodns();
+#ifdef CONFIG_SYS_DPAA_QBMAN
+	setup_portals();
+#endif
 	/*
 	 * Adjust core voltage according to voltage ID
 	 * This function changes I2C mux to channel 2.
@@ -1189,15 +1104,15 @@ int misc_init_r(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = env_get_bootm_low();
-	size = env_get_bootm_size();
+	base = getenv_bootm_low();
+	size = getenv_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
@@ -1208,15 +1123,13 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_liodn(blob);
 
 #ifdef CONFIG_HAS_FSL_DR_USB
-	fsl_fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_ethernet(blob);
 	fdt_fixup_board_enet(blob);
 #endif
-
-	return 0;
 }
 
 /*

@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_lcd.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __DE_LCD_H_
 #define __DE_LCD_H_
 
@@ -27,8 +11,6 @@ enum __lcd_irq_id_t {
 	LCD_IRQ_TCON1_LINE = 12,
 	LCD_IRQ_TCON0_TRIF = 11,
 	LCD_IRQ_TCON0_CNTR = 10,
-	LCD_IRQ_FSYNC_INT = 9,
-	LCD_IRQ_DATA_EN_INT = 8,
 };
 
 enum __dsi_irq_id_t {
@@ -119,9 +101,6 @@ s32 tcon0_cpu_rd_16b(u32 sel, u32 index, u32 *data);
 
 s32 tcon1_open(u32 sel);
 s32 tcon1_close(u32 sel);
-#ifdef TCON_POL_CORRECT
-u32 tcom1_cfg_correct(u32 sel, struct disp_video_timings *timing);
-#endif
 s32 tcon1_src_select(u32 sel, enum __lcd_src_t src, enum __de_perh_t de_no);
 s32 tcon1_src_get(u32 sel);
 s32 tcon1_cfg_ex(u32 sel, disp_panel_para *panel);
@@ -134,36 +113,6 @@ s32 tcon1_yuv_range(u32 sel, u32 onoff);
 u32 tcon0_get_cpu_tri2_start_delay(u32 sel);
 s32 rgb_src_sel(u32 src);
 s32 dsi_src_sel(u32 sel, u32 src);
-s32 tcon_set_sync_pol(u32 sel, u32 ver_pol, u32 hor_pol);
-
-/**
- * @name       :tcon_fsync_set_pol
- * @brief      :set fsync's polarity
- * @param[IN]  :sel:tcon index
- * @param[IN]  :pol:polarity. 1:positive;0:negetive
- *	positive:
- *           +---------+
- *  ---------+         +-----------
- *
- *	negative:
- *  ---------+         +------------
- *	     +---------+
- *
- * @return     :always 0
- */
-s32 tcon_set_fsync_pol(u32 sel, u32 pol);
-
-/**
- * @name       :tcon_set_fsync_active_time
- * @brief      :set tcon fsync's active time
- * @param[IN]  :sel:tcon index
- * @param[IN]  :pixel_num:number of pixel time(Tpixel) to set
- *
- * Tpixel = 1/fps*1e9/vt/ht, unit:ns
- *
- * @return     :0 if success
- */
-s32 tcon_set_fsync_active_time(u32 sel, u32 pixel_num);
 
 #if defined(SUPPORT_DSI)
 extern __u32 dsi_pixel_bits[4];
@@ -172,6 +121,5 @@ extern __u32 tcon_div;
 extern s32 disp_delay_us(u32 us);
 extern s32 disp_delay_ms(u32 ms);
 extern int de_get_clk_rate(void);
-void tcon_show_builtin_patten(u32 sel, u32 patten);
 
 #endif

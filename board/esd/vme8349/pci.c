@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * pci.c -- esd VME8349 PCI board support.
  * Copyright (c) 2006 Wind River Systems, Inc.
@@ -8,6 +7,8 @@
  * Reinhard Arlt <reinhard.arlt@esd-electronics.com>
  *
  * Based on MPC8349 PCI support but w/o PIB related code.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/mmu.h>
@@ -18,6 +19,8 @@
 #include <i2c.h>
 #include <asm/fsl_i2c.h>
 #include "vme8349pin.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static struct pci_region pci1_regions[] = {
 	{

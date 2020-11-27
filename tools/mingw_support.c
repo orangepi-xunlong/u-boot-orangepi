@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008 Extreme Engineering Solutions, Inc.
  *
@@ -6,6 +5,8 @@
  * Clamav Native Windows Port : mmap win32 compatibility layer
  * Copyright (c) 2005-2006 Gianluigi Tiesi <sherpya@netfarm.it>
  * Parts by Kees Zeelenberg <kzlg@users.sourceforge.net> (LibGW32C)
+ *
+ * SPDX-License-Identifier:	LGPL-2.0+
  */
 
 #include "mingw_support.h"
@@ -70,6 +71,8 @@ int munmap(void *addr, size_t len)
 /* Reentrant string tokenizer.  Generic version.
    Copyright (C) 1991,1996-1999,2001,2004,2007 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
+
+  * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Parse S into tokens separated by characters in DELIM.

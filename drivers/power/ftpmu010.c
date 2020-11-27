@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009 Faraday Technology
  * Po-Yu Chuang <ratbert@faraday-tech.com>
@@ -6,6 +5,8 @@
  * Copyright (C) 2010 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

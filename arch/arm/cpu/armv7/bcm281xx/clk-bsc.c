@@ -1,11 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Broadcom Corporation.
+ *
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/arch/sysmap.h>
 #include <asm/kona-common/clk.h>
 #include "clk-core.h"

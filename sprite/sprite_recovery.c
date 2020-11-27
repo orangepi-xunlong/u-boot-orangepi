@@ -15,77 +15,88 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 #include <config.h>
 #include <common.h>
+#include <sunxi_mbr.h>
 #include <malloc.h>
+#include <sys_config.h>
 #include <sunxi_board.h>
 #include "sprite_card.h"
 #include "sprite_download.h"
+#include "sprite_erase.h"
 #include "./firmware/imgdecode.h"
 #include "./firmware/imagefile_new.h"
-#include <sys_config.h>
-#include <fdt_support.h>
-#include "./cartoon/sprite_cartoon.h"
-#include <sys_partition.h>
+
 
 extern uint img_file_start;
 extern int sunxi_sprite_deal_part_from_sysrevoery(sunxi_download_info *dl_map);
 extern int __imagehd(HIMAGE tmp_himage);
-extern int char8_char16_compare(const char *char8, const efi_char16_t *char16,
-				size_t char16_len);
+extern int gpt_partition_get_info_byname(const char *part_name, uint *part_offset, uint *part_size);
 
-typedef struct tag_IMAGE_HANDLE {
-	ImageHead_t ImageHead;
-	ImageItem_t *ItemTable;
-} IMAGE_HANDLE;
 
-static HIMAGE Img_Open_from_sysrecovery(__u32 start)
+typedef struct tag_IMAGE_HANDLE
 {
-	IMAGE_HANDLE *pImage = NULL;
+	ImageHead_t  ImageHead;
+	ImageItem_t *ItemTable;
+}IMAGE_HANDLE;
+
+
+HIMAGE 	Img_Open_from_sysrecovery(__u32 start)
+{
+	IMAGE_HANDLE * pImage = NULL;
 	uint ItemTableSize;
 
 	img_file_start = start;
-	if (!img_file_start) {
-		pr_err("sunxi sprite error: unable to get firmware start position\n");
+	if(!img_file_start)
+	{
+		pr_notice("sunxi sprite error: unable to get firmware start position\n");
 
 		return NULL;
 	}
 	debug("img start = 0x%x\n", img_file_start);
 	pImage = (IMAGE_HANDLE *)malloc(sizeof(IMAGE_HANDLE));
-	if (NULL == pImage) {
-		pr_err("sunxi sprite error: fail to malloc memory for img head\n");
+	if (NULL == pImage)
+	{
+		pr_notice("sunxi sprite error: fail to malloc memory for img head\n");
 
 		return NULL;
 	}
 	memset(pImage, 0, sizeof(IMAGE_HANDLE));
 
-	//debug("try to read mmc start %d\n", img_file_start);
-	if (!sunxi_flash_read(img_file_start, IMAGE_HEAD_SIZE / 512,
-			      &pImage->ImageHead)) {
-		pr_err("sunxi sprite error: read iamge head fail\n");
+	/* //debug("try to read mmc start %d\n", img_file_start); */
+	if(!sunxi_flash_read(img_file_start, IMAGE_HEAD_SIZE/512, &pImage->ImageHead))
+	{
+		pr_notice("sunxi sprite error: read iamge head fail\n");
 
 		goto _img_open_fail_;
 	}
 	debug("read mmc ok\n");
 
-	if (memcmp(pImage->ImageHead.magic, IMAGE_MAGIC, 8) != 0) {
-		pr_err("sunxi sprite error: iamge magic is bad\n");
+	if (memcmp(pImage->ImageHead.magic, IMAGE_MAGIC, 8) != 0)
+	{
+		pr_notice("sunxi sprite error: iamge magic is bad\n");
 
 		goto _img_open_fail_;
 	}
 
-	ItemTableSize     = pImage->ImageHead.itemcount * sizeof(ImageItem_t);
-	pImage->ItemTable = (ImageItem_t *)malloc(ItemTableSize);
-	if (NULL == pImage->ItemTable) {
-		pr_err("sunxi sprite error: fail to malloc memory for item table\n");
+	ItemTableSize = pImage->ImageHead.itemcount * sizeof(ImageItem_t);
+	pImage->ItemTable = (ImageItem_t*)malloc(ItemTableSize);
+	if (NULL == pImage->ItemTable)
+	{
+		pr_notice("sunxi sprite error: fail to malloc memory for item table\n");
 
 		goto _img_open_fail_;
 	}
 
-	if (!sunxi_flash_read(img_file_start + (IMAGE_HEAD_SIZE / 512),
-			      ItemTableSize / 512, pImage->ItemTable)) {
-		pr_err("sunxi sprite error: read iamge item table fail\n");
+	if(!sunxi_flash_read(img_file_start + (IMAGE_HEAD_SIZE/512), ItemTableSize/512, pImage->ItemTable))
+	{
+		pr_notice("sunxi sprite error: read iamge item table fail\n");
 
 		goto _img_open_fail_;
 	}
@@ -93,205 +104,169 @@ static HIMAGE Img_Open_from_sysrecovery(__u32 start)
 	return pImage;
 
 _img_open_fail_:
-	if (pImage->ItemTable) {
+	if(pImage->ItemTable)
+	{
 		free(pImage->ItemTable);
 	}
-	if (pImage) {
+	if(pImage)
+	{
 		free(pImage);
 	}
 
 	return NULL;
 }
 
-static int sprite_erase_partition_by_name(char *part_name)
+
+int  card_part_info(__u32 *part_start, __u32 *part_size, const char *str)
 {
-	int ret = -1;
-	__u32 img_start;
-	__u32 part_size;
+	char   buffer[SUNXI_MBR_SIZE] = {0};
+	sunxi_mbr_t    *mbr;
+	int    i;
+	int offest = 0;
+	for (i = 0; i < 4; i++) {
+		if (!sunxi_flash_read (offest, SUNXI_MBR_SIZE >> 9, (void *)buffer)) {
+			pr_notice("read mbr failed\n");
+		}
+		mbr = (sunxi_mbr_t *)buffer;
+		if (!strncmp((const char *)mbr->magic, SUNXI_MBR_MAGIC, 8)) {
+			break;
+		}
+		offest += SUNXI_MBR_SIZE >> 9;
+	}
+	if (i == 4) {
+		pr_notice("read mbr failed\n");
+		return -1;
+	}
 
-	ret = sunxi_partition_get_info_byname(part_name, &img_start,
-					      &part_size);
-	if (ret) {
-		pr_msg("sprite update error: no %s found\n", part_name);
-		if (!strcmp(part_name, "data")) {
-			ret = sunxi_partition_get_info_byname(
-				"UDISK", &img_start, &part_size);
-			if (ret) {
-				pr_err("sprite update error: no udisk partition\n");
-				return -1;
-			}
+	for (i = 0; i < mbr->PartCount; i++) {
+		pr_notice("part name  = %s\n", mbr->array[i].name);
+		pr_notice("part start = %d\n", mbr->array[i].addrlo);
+		pr_notice("part size  = %d\n", mbr->array[i].lenlo);
+		if (!strcmp(str, (char *)mbr->array[i].name)) {
+			*part_start = mbr->array[i].addrlo;
+			*part_size  = mbr->array[i].lenlo;
+			return 0;
 		}
 	}
 
-	if (!ret) {
-		__u32 tmp_size;
-		__u32 tmp_start;
-		char *src_buf = NULL;
-
-		src_buf = (char *)malloc(1024 * 1024);
-		if (!src_buf) {
-			pr_err("sprite erase error: fail to get memory for tmpdata\n");
-			return -1;
-		}
-
-		tmp_start = img_start;
-		tmp_size  = part_size;
-		pr_msg("data part size=%d\n", tmp_size);
-		tick_printf("begin erase part %s\n", part_name);
-		memset(src_buf, 0xff, 1024 * 1024);
-
-		sunxi_flash_write(tmp_start, 1024 * 1024 / 512, src_buf);
-
-		if (src_buf) {
-			free(src_buf);
-		}
-
-		tick_printf("finish erase part\n");
-	}
-
-	return 0;
+	return -1;
 }
 
-static int sprite_erase_in_sysrecovery(void)
-{
-	int ret;
-	ret = sprite_erase_partition_by_name("data");
-	if (ret) {
-		pr_err("sprite update error: fail to erase data\n");
-		return -1;
-	}
-
-	ret = sprite_erase_partition_by_name("cache");
-	if (ret) {
-		pr_err("sprite update error: fail to erase cache\n");
-		return -1;
-	}
-
-	ret = sprite_erase_partition_by_name("Reserve0");
-	if (ret) {
-		pr_err("sprite update error: fail to erase cache\n");
-		return -1;
-	}
-
-	ret = sprite_erase_partition_by_name("Reserve1");
-	if (ret) {
-		pr_err("sprite update error: fail to erase cache\n");
-		return -1;
-	}
-
-	ret = sprite_erase_partition_by_name("Reserve2");
-	if (ret) {
-		pr_err("sprite update error: fail to erase cache\n");
-		return -1;
-	}
-	return 0;
-}
 
 int sprite_form_sysrecovery(void)
 {
-	HIMAGEITEM imghd = 0;
-	__u32 part_size;
-	__u32 img_start;
-	sunxi_download_info *dl_info = NULL;
-	char *src_buf		     = NULL;
-	int ret			     = -1;
-	int production_media	 = get_boot_storage_type();
+	HIMAGEITEM  imghd = 0;
+	__u32       part_size;
+	__u32		img_start;
+	sunxi_download_info   *dl_info  = NULL;
+	char        *src_buf = NULL;
+	int         ret = -1;
+	int production_media = get_boot_storage_type();
 
-#ifdef CONFIG_SUNXI_SPRITE_CARTOON
-	int nodeoffset;
-	int processbar_direct = 0;
-	;
-	nodeoffset = fdt_path_offset(working_fdt, FDT_PATH_CARD_BOOT);
-	if (nodeoffset >= 0) {
-		if (fdt_getprop_u32(working_fdt, nodeoffset,
-				    "processbar_direct",
-				    (uint32_t *)&processbar_direct) < 0)
-			processbar_direct = 0;
-	}
-
-	sprite_cartoon_create(processbar_direct);
-#endif
-	tick_printf("sunxi sprite begin\n");
+	pr_notice("sunxi sprite begin\n");
+	sprite_cartoon_create();
 
 	src_buf = (char *)malloc(1024 * 1024);
 	if (!src_buf) {
-		pr_err("sprite update error: fail to get memory for tmpdata\n");
+		pr_notice("sprite update error: fail to get memory for tmpdata\n");
 		goto _update_error_;
 	}
-
-	ret = sunxi_partition_get_info_byname("sysrecovery", &img_start, &part_size);
+	ret = gpt_partition_get_info_byname("sysrecovery", &img_start, &part_size);
 	if (ret) {
-		pr_err("sprite update error: read image start error\n");
-		goto _update_error_;
+		pr_notice("try mbr sysrecovery info");
+		ret = card_part_info(&img_start, &part_size, "sysrecovery");
+		if (ret) {
+			pr_notice("sprite update error: read image start error\n");
+			goto _update_error_;
+		}
 	}
-	tick_printf("part start = %d\n", img_start);
+	pr_notice("img_start=0x%x part_size=0x%x\n", img_start, part_size);
+	pr_notice("part start = %d\n", img_start);
 	imghd = Img_Open_from_sysrecovery(img_start);
-	if (!imghd) {
-		pr_err("sprite update error: fail to open img\n");
+	if (!imghd)
+	{
+		pr_notice("sprite update error: fail to open img\n");
 		goto _update_error_;
 	}
 	__imagehd(imghd);
 
-#ifdef CONFIG_SUNXI_SPRITE_CARTOON
 	sprite_cartoon_upgrade(10);
-#endif
 
-	//erase the data partition.
-	ret = sprite_erase_in_sysrecovery();
+	/* //erase the data partition. */
+	ret = gpt_partition_get_info_byname("data", &img_start, &part_size);
 	if (ret) {
-		goto _update_error_;
+		pr_notice("try mbr data info");
+		ret = card_part_info(&img_start, &part_size, "data");
+	}
+	if (ret) {
+		pr_notice("sprite update error: no data part found\n");
+	} else {
+		__u32 tmp_size;
+		__u32 tmp_start;
+
+		tmp_start = img_start;
+		tmp_size = part_size;
+		pr_notice("data part size=%d\n", tmp_size);
+		pr_notice("begin erase part data\n");
+		memset(src_buf, 0xff, 1024 * 1024);
+		sunxi_flash_write(tmp_start, 1024 * 1024/512, src_buf);
+		pr_notice("finish erase part data\n");
 	}
 
-	dl_info = (sunxi_download_info *)malloc(sizeof(sunxi_download_info));
-	if (!dl_info) {
-		pr_err("sprite update error: fail to get memory for download map\n");
+	dl_info = (sunxi_download_info  *)malloc(sizeof(sunxi_download_info ));
+	if (!dl_info) 
+	{
+		pr_notice("sprite update error: fail to get memory for download map\n");
 		goto _update_error_;
 	}
-	memset(dl_info, 0, sizeof(sunxi_download_info));
+	memset(dl_info, 0, sizeof(sunxi_download_info ));
 
 	ret = sprite_card_fetch_download_map(dl_info);
 	if (ret) {
-		pr_err("sunxi sprite error: donn't download dl_map\n");
+		pr_notice("sunxi sprite error: donn't download dl_map\n");
 		goto _update_error_;
 	}
-#ifdef CONFIG_SUNXI_SPRITE_CARTOON
 	sprite_cartoon_upgrade(20);
-#endif
 
-	if (sunxi_sprite_deal_part_from_sysrevoery(dl_info)) {
-		pr_err("sunxi sprite error : download part error\n");
-		goto _update_error_;
+
+	if (sunxi_sprite_deal_part_from_sysrevoery(dl_info))
+	{
+		pr_notice("sunxi sprite error : download part error\n");
+		return -1;
 	}
 
-	if (sunxi_sprite_deal_recorvery_boot(production_media)) {
-		pr_err("recovery error : download uboot or boot0 error!\n");
-		goto _update_error_;
+	if(sunxi_sprite_deal_recorvery_boot(production_media))
+	{
+		pr_notice("recovery error : download uboot or boot0 error!\n");
+		return -1;
 	}
 	tick_printf("successed in downloading uboot and boot0\n");
-#ifdef CONFIG_SUNXI_SPRITE_CARTOON
 	sprite_cartoon_upgrade(100);
-#endif
-	mdelay(3000);
+	__msdelay(3000);
 
 	Img_Close(imghd);
-	if (dl_info) {
+	if (dl_info)
+	{
 		free(dl_info);
 	}
-	if (src_buf) {
+	if (src_buf)
+	{
 		free(src_buf);
 	}
 
 	sunxi_board_restart(0);
 	return 0;
-
+	
 _update_error_:
-	if (dl_info) {
+	if (dl_info)
+	{
 		free(dl_info);
 	}
-	if (src_buf) {
+	if (src_buf)
+	{
 		free(src_buf);
 	}
-	pr_err("sprite update error: current card sprite failed\n");
-	pr_err("now hold the machine\n");
+	pr_notice("sprite update error: current card sprite failed\n");
+	pr_notice("now hold the machine\n");
 	return -1;
 }

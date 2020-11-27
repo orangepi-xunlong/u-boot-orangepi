@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Intel PXA25x and IXP4xx on-chip full speed USB device controllers
  *
@@ -8,6 +7,8 @@
  * Copyright (C) 2003 David Brownell
  * Copyright (C) 2003 Joshua Wise
  * Copyright (C) 2012 Lukasz Dalek <luk0104@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * MODULE_AUTHOR("Frank Becker, Robert Schwebel, David Brownell");
  */
@@ -1949,10 +1950,10 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	dev->watchdog.period = 5000 * CONFIG_SYS_HZ / 1000000; /* 5 ms */
 	dev->watchdog.function = udc_watchdog;
 
-	dev->mach = &mach_info;
-
 	udc_disable(dev);
 	udc_reinit(dev);
+
+	dev->mach = &mach_info;
 
 	dev->gadget.name = "pxa2xx_udc";
 	retval = driver->bind(&dev->gadget);
@@ -2040,7 +2041,7 @@ extern void udc_disconnect(void)
 /*-------------------------------------------------------------------------*/
 
 extern int
-usb_gadget_handle_interrupts(int index)
+usb_gadget_handle_interrupts(void)
 {
 	return pxa25x_udc_irq();
 }

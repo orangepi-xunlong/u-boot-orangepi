@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: LGPL-2.1+
 /*
  * Copyright (C) 2003 David Brownell
  *
- * Ported to U-Boot by: Thomas Smits <ts.smits@gmail.com> and
+ * SPDX-License-Identifier:	LGPL-2.1+
+ *
+ * Ported to U-boot by: Thomas Smits <ts.smits@gmail.com> and
  *                      Remy Bohmer <linux@bohmer.net>
  */
 
 #include <common.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 

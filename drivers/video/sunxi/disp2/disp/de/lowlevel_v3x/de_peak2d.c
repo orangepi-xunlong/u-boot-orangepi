@@ -14,7 +14,6 @@
  *  History     :  2016/03/30      vito cheng  v0.1  Initial version
  *
  ******************************************************************************/
-#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 
 #include "de_peak2d_type.h"
 #include "de_rtmx.h"
@@ -169,4 +168,3 @@ int de_peak2d_enable(unsigned int sel, unsigned int chno, unsigned int en)
 	return 0;
 }
 
-#endif

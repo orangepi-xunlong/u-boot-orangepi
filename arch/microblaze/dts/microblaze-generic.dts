@@ -4,6 +4,4 @@
 	#size-cells = <1>;
 	aliases {
 	} ;
-	chosen {
-	} ;
 } ;

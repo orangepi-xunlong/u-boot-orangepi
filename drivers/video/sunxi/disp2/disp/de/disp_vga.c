@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_vga.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_vga.h"
 
 #if defined(SUPPORT_VGA)
@@ -386,6 +370,8 @@ static s32 disp_vga_exit(struct disp_device* vga)
 
 	kfree(vga);
 	kfree(vgap);
+	vga = NULL;
+	vgap = NULL;
 	return 0;
 }
 
@@ -606,32 +592,7 @@ static s32 disp_vga_get_static_config(struct disp_device *vga,
 	config->type = vga->type;
 	config->mode = vgap->vga_mode;
 	if (vgap->tv_func.tv_get_input_csc)
-		config->format = vgap->tv_func.tv_get_input_csc(vga->disp);
-
-exit:
-	return ret;
-}
-
-static bool
-disp_vga_check_config_dirty(struct disp_device *vga,
-			    struct disp_device_config *config)
-{
-	bool ret = false;
-	struct disp_vga_private_data *vgap = NULL;
-
-	if (!vga) {
-		DE_WRN("NULL hdl!\n");
-		goto exit;
-	}
-
-	vgap = disp_vga_get_priv(vga);
-	if (!vgap) {
-		DE_WRN("NULL hdl!\n");
-		goto exit;
-	}
-
-	if ((vgap->enabled == 0) || (config->mode != vgap->vga_mode))
-		ret = true;
+		vgap->tv_func.tv_get_input_csc(vga->disp);
 
 exit:
 	return ret;
@@ -674,7 +635,7 @@ s32 disp_init_vga(void)
 	for (hwdev_index = 0; hwdev_index < num_devices; hwdev_index++) {
 		if (!bsp_disp_feat_is_supported_output_types(hwdev_index,
 							DISP_OUTPUT_TYPE_VGA)) {
-			DE_INF("screen %d do not support VGA TYPE!\n",
+			DE_WRN("screen %d do not support VGA TYPE!\n",
 				hwdev_index);
 			continue;
 		}
@@ -732,14 +693,12 @@ s32 disp_init_vga(void)
 		vga->get_mode = disp_vga_get_mode;
 		vga->set_static_config = disp_vga_set_static_config;
 		vga->get_static_config = disp_vga_get_static_config;
-		vga->check_config_dirty = disp_vga_check_config_dirty;
 		vga->check_support_mode = disp_vga_check_support_mode;
 		vga->get_input_csc = disp_vga_get_input_csc;
 		vga->suspend = disp_vga_suspend;
 		vga->resume = disp_vga_resume;
 		vga->set_enhance_mode = disp_set_enhance_mode;
 		vga->get_fps = disp_vga_get_fps;
-		vga->show_builtin_patten = disp_device_show_builtin_patten;
 		vga->init(vga);
 		disp_device_register(vga);
 		disp++;

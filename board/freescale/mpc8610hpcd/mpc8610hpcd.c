@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007,2009-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -13,12 +14,10 @@
 #include <asm/fsl_serdes.h>
 #include <i2c.h>
 #include <asm/io.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <spd_sdram.h>
 #include <netdev.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 void sdram_init(void);
 phys_size_t fixed_sdram(void);
@@ -117,7 +116,8 @@ int checkboard(void)
 }
 
 
-int dram_init(void)
+phys_size_t
+initdram(int board_type)
 {
 	phys_size_t dram_size = 0;
 
@@ -130,9 +130,7 @@ int dram_init(void)
 	setup_ddr_bat(dram_size);
 
 	debug(" DDR: ");
-	gd->ram_size = dram_size;
-
-	return 0;
+	return dram_size;
 }
 
 
@@ -260,13 +258,12 @@ void pci_init_board(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void
+ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 	FT_FSL_PCI_SETUP;
-
-	return 0;
 }
 #endif
 

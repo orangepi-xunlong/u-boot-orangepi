@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,12 +15,12 @@
 #include <command.h>
 #include <mpc83xx.h>
 #include <asm/processor.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <tsec.h>
 #include <netdev.h>
 #include <fsl_esdhc.h>
 #if defined(CONFIG_BOOTCOUNT_LIMIT) && !defined(CONFIG_MPC831x)
-#include <linux/immap_qe.h>
+#include <asm/immap_qe.h>
 #include <asm/io.h>
 #endif
 
@@ -32,7 +33,6 @@ int checkcpu(void)
 	u32 pvr = get_pvr();
 	u32 spridr;
 	char buf[32];
-	int ret;
 	int i;
 
 	const struct cpu_type {
@@ -60,10 +60,6 @@ int checkcpu(void)
 	};
 
 	immr = (immap_t *)CONFIG_SYS_IMMR;
-
-	ret = prt_83xx_rsr();
-	if (ret)
-		return ret;
 
 	puts("CPU:   ");
 
@@ -177,7 +173,11 @@ do_reset (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 unsigned long get_tbclk(void)
 {
-	return (gd->bus_clk + 3L) / 4L;
+	ulong tbclk;
+
+	tbclk = (gd->bus_clk + 3L) / 4L;
+
+	return tbclk;
 }
 
 

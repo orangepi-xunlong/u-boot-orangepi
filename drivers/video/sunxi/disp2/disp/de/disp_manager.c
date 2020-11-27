@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_manager.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_manager.h"
 
 struct disp_manager_private_data {
@@ -31,8 +15,8 @@ struct disp_manager_private_data {
 	struct clk *extra_clk;
 };
 
-__attribute__((unused)) static spinlock_t mgr_data_lock;
-__attribute__((unused)) static struct mutex mgr_mlock;
+static spinlock_t mgr_data_lock;
+static struct mutex mgr_mlock;
 
 
 static struct disp_manager *mgrs = NULL;
@@ -132,10 +116,6 @@ s32 __disp_config_transfer2inner(struct disp_layer_config_inner *config_inner,
 	config_inner->enable = config->enable;
 	config_inner->channel = config->channel;
 	config_inner->layer_id = config->layer_id;
-
-	if (0 == config->enable) {
-		memset(&(config->info), 0, sizeof(config->info));
-	}
 	/* layer info */
 	config_inner->info.mode = config->info.mode;
 	config_inner->info.zorder = config->info.zorder;
@@ -172,7 +152,6 @@ s32 __disp_config_transfer2inner(struct disp_layer_config_inner *config_inner,
 	config_inner->info.fb.metadata_buf = 0;
 	config_inner->info.fb.metadata_size = 0;
 	config_inner->info.fb.metadata_flag = 0;
-	config_inner->info.atw.used = 0;
 
 	if (config_inner->info.mode == LAYER_MODE_COLOR)
 		config_inner->info.color = config->info.color;
@@ -188,11 +167,6 @@ s32 __disp_config2_transfer2inner(struct disp_layer_config_inner *config_inner,
 	config_inner->enable = config2->enable;
 	config_inner->channel = config2->channel;
 	config_inner->layer_id = config2->layer_id;
-
-	if (0 == config2->enable) {
-		memset(&(config2->info), 0, sizeof(config2->info));
-	}
-
 	/* layer info */
 	config_inner->info.mode = config2->info.mode;
 	config_inner->info.zorder = config2->info.zorder;
@@ -240,13 +214,6 @@ s32 __disp_config2_transfer2inner(struct disp_layer_config_inner *config_inner,
 	config_inner->info.atw.cof_addr = config2->info.atw.cof_addr;
 	if (config_inner->info.mode == LAYER_MODE_COLOR)
 		config_inner->info.color = config2->info.color;
-
-#if defined(DE_VERSION_V33X)
-	config_inner->info.transform = config2->info.transform;
-	memcpy(&config_inner->info.snr, &config2->info.snr,
-	       sizeof(struct disp_snr_info));
-
-#endif
 
 	return 0;
 }
@@ -353,12 +320,6 @@ s32 __disp_inner_transfer2config2(struct disp_layer_config2 *config2,
 	if (config2->info.mode == LAYER_MODE_COLOR)
 		config2->info.color = config_inner->info.color;
 
-#if defined(DE_VERSION_V33X)
-	config2->info.transform = config_inner->info.transform;
-	memcpy(&config2->info.snr, &config_inner->info.snr,
-	       sizeof(struct disp_snr_info));
-#endif
-
 	return 0;
 }
 
@@ -447,10 +408,9 @@ static s32 disp_lyr_save_and_dirty_check(struct disp_layer *lyr,
 			(pre_config->info.fb.crop.width != config->info.fb.crop.width) ||
 			(pre_config->info.fb.crop.height != config->info.fb.crop.height) ||
 			(pre_config->info.screen_win.width != config->info.screen_win.width) ||
-			(pre_config->info.screen_win.height != config->info.screen_win.height)) {
+			(pre_config->info.screen_win.height != config->info.screen_win.height))
 			lyrp->cfg->flag |= LAYER_SIZE_DIRTY;
-		}
-		lyrp->cfg->flag = LAYER_ALL_DIRTY;
+			lyrp->cfg->flag = LAYER_ALL_DIRTY;
 		__disp_config_transfer2inner(&lyrp->cfg->config, config);
 	} else {
 		DE_INF("cfg is NULL\n");
@@ -817,26 +777,10 @@ static s32 disp_mgr_clk_enable(struct disp_manager *mgr)
 {
 	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
 	int ret = 0;
-	unsigned long de_freq = 0;
 
 	if ((NULL == mgr) || (NULL == mgrp)) {
 		DE_WRN("NULL hdl!\n");
 		return -1;
-	}
-
-	if (mgr->get_clk_rate && mgrp->clk) {
-		DE_INF("set DE rate to %u\n", mgr->get_clk_rate(mgr));
-		de_freq = mgr->get_clk_rate(mgr);
-		clk_set_rate(mgrp->clk, de_freq);
-		if (de_freq != clk_get_rate(mgrp->clk)) {
-			if (mgrp->clk_parent)
-				clk_set_rate(mgrp->clk_parent, de_freq);
-			clk_set_rate(mgrp->clk, de_freq);
-			if (de_freq != clk_get_rate(mgrp->clk)) {
-				DE_WRN("Set DE clk fail\n");
-				return -1;
-			}
-		}
 	}
 
 	DE_INF("mgr %d clk enable\n", mgr->disp);
@@ -880,13 +824,6 @@ static s32 disp_mgr_get_clk_rate(struct disp_manager *mgr)
 		DE_WRN("NULL hdl!\n");
 		return 0;
 	}
-
-#if defined(CONFIG_MACH_SUN8IW16)
-	if (mgr->device && mgr->device->type != DISP_OUTPUT_TYPE_HDMI)
-		mgrp->cfg->config.de_freq = 216000000;
-	else
-		mgrp->cfg->config.de_freq = 432000000;
-#endif
 
 	return mgrp->cfg->config.de_freq;
 }
@@ -1233,7 +1170,6 @@ static s32 disp_mgr_sync(struct disp_manager *mgr)
 		DE_WRN("NULL hdl!\n");
 		return -1;
 	}
-
 	mgrp = disp_mgr_get_priv(mgr);
 	if (NULL == mgrp) {
 		DE_WRN("get mgr %d's priv fail!!\n", mgr->disp);
@@ -1462,11 +1398,6 @@ static s32 disp_mgr_enable(struct disp_manager *mgr)
 	disp_al_manager_init(mgr->disp);
 
 	if (mgr->device) {
-		disp_al_device_set_de_id(mgr->device->hwdev_index, mgr->disp);
-		disp_al_device_set_de_use_rcq(mgr->device->hwdev_index,
-			disp_feat_is_using_rcq(mgr->disp));
-		disp_al_device_set_output_type(mgr->device->hwdev_index,
-			mgr->device->type);
 		if (mgr->device->get_resolution)
 			mgr->device->get_resolution(mgr->device, &width, &height);
 		if (mgr->device->get_static_config)
@@ -1480,11 +1411,6 @@ static s32 disp_mgr_enable(struct disp_manager *mgr)
 			mgrp->cfg->config.interlace = mgr->device->is_interlace(mgr->device);
 		else
 			mgrp->cfg->config.interlace = 0;
-		if (mgr->device && mgr->device->get_fps)
-			mgrp->cfg->config.device_fps =
-			    mgr->device->get_fps(mgr->device);
-		else
-			mgrp->cfg->config.device_fps = 60;
 	}
 
 	DE_INF("output res: %d x %d, cs=%d, range=%d, interlace=%d\n",
@@ -1645,20 +1571,6 @@ static s32 disp_mgr_blank(struct disp_manager *mgr, bool blank)
 	return 0;
 }
 
-s32 disp_mgr_set_ksc_para(struct disp_manager *mgr,
-		    struct disp_ksc_info *pinfo)
-{
-	unsigned long flags;
-	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
-
-	spin_lock_irqsave(&mgr_data_lock, flags);
-	memcpy(&mgrp->cfg->config.ksc, pinfo, sizeof(struct disp_colorkey));
-	mgrp->cfg->flag |= MANAGER_KSC_DIRTY;
-	spin_unlock_irqrestore(&mgr_data_lock, flags);
-
-	return mgr->apply(mgr);
-}
-
 s32 disp_init_mgr(disp_bsp_init_para * para)
 {
 	u32 num_screens;
@@ -1721,7 +1633,6 @@ s32 disp_init_mgr(disp_bsp_init_para * para)
 		mgr->set_output_color_range = disp_mgr_set_output_color_range;
 		mgr->get_output_color_range = disp_mgr_get_output_color_range;
 		mgr->update_color_space = disp_mgr_update_color_space;
-		mgr->set_ksc_para = disp_mgr_set_ksc_para;
 		mgr->dump = disp_mgr_dump;
 		mgr->blank = disp_mgr_blank;
 		mgr->get_clk_rate = disp_mgr_get_clk_rate;
@@ -1743,3 +1654,4 @@ s32 disp_init_mgr(disp_bsp_init_para * para)
 	disp_init_lyr(para);
 	return 0;
 }
+

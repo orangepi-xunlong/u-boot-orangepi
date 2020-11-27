@@ -1,15 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011, Google Inc. All rights reserved.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA_GPIO_H_
 #define _TEGRA_GPIO_H_
 
-#include <dt-bindings/gpio/tegra-gpio.h>
-
-#define TEGRA_GPIOS_PER_PORT	8
-#define TEGRA_PORTS_PER_BANK	4
 #define MAX_NUM_GPIOS           (TEGRA_GPIO_PORTS * TEGRA_GPIO_BANKS * 8)
 #define GPIO_NAME_SIZE		20	/* gpio_request max label len */
 
@@ -29,6 +25,10 @@ struct tegra_gpio_config {
 	u32 init:2;
 };
 
+/*
+ * Tegra-specific GPIO API
+ */
+
 /**
  * Configure a list of GPIOs
  *
@@ -36,5 +36,9 @@ struct tegra_gpio_config {
  * @param len		Number of config items in list
  */
 void gpio_config_table(const struct tegra_gpio_config *config, int len);
+
+void gpio_info(void);
+
+#define gpio_status()	gpio_info()
 
 #endif	/* TEGRA_GPIO_H_ */

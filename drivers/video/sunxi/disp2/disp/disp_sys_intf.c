@@ -1,22 +1,8 @@
-/*
- * disp2/disp/disp_sys_intf.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #include "de/bsp_display.h"
 #include "disp_sys_intf.h"
 #include "asm/io.h"
+#include <sys_config_old.h>
 
 
 /* cache flush flags */
@@ -26,11 +12,6 @@
 #define  CACHE_CLEAN_D_CACHE_REGION       3
 #define  CACHE_CLEAN_FLUSH_D_CACHE_REGION 4
 #define  CACHE_CLEAN_FLUSH_CACHE_REGION   5
-
-void mutex_destroy(struct mutex* lock)
-{
-	return;
-}
 
 /*
 *******************************************************************************
@@ -185,6 +166,31 @@ void disp_sys_disable_irq(u32 IrqNo)
 {
 	irq_disable(IrqNo);
 }
+#if 1
+void spin_lock_init(spinlock_t* lock)
+{
+	return;
+}
+
+void mutex_init(struct mutex* lock)
+{
+	return;
+}
+
+void mutex_destroy(struct mutex* lock)
+{
+	return;
+}
+
+void mutex_lock(struct mutex* lock)
+{
+	return;
+}
+
+void mutex_unlock(struct mutex* lock)
+{
+	return;
+}
 
 void tasklet_init(struct tasklet_struct *tasklet, void (*func), unsigned long data)
 {
@@ -207,6 +213,22 @@ void tasklet_schedule(struct tasklet_struct *tasklet)
 	tasklet->func(tasklet->data);
 }
 
+void * kmalloc(u32 Size, u32 flag)
+{
+	void * addr;
+
+	addr = malloc(Size);
+	if(addr)
+		memset(addr, 0, Size);
+
+	return addr;
+}
+
+void kfree(void *Addr)
+{
+	free(Addr);
+}
+
 typedef struct __disp_node_map
 {
 	char node_name[16];
@@ -220,7 +242,7 @@ static disp_fdt_node_map_t g_disp_fdt_node_map[] ={
 #endif
 	{FDT_LCD0_PATH, -1},
 	{FDT_LCD1_PATH, -1},
-#ifdef CONFIG_DISP2_TV_AC200
+#ifdef CONFIG_USE_AC200
 	{FDT_AC200_PATH, -1},
 #endif
 	{FDT_BOOT_DISP_PATH, -1},
@@ -267,29 +289,37 @@ int  disp_fdt_nodeoffset(char *main_name)
 /* type: 0:invalid, 1: int; 2:str, 3: gpio */
 int disp_sys_script_get_item(char *main_name, char *sub_name, int value[], int type)
 {
-	int node;
+/*	int node;
 	int ret = 0;
 	user_gpio_set_t  gpio_info;
 	disp_gpio_set_t  *gpio_list;
+	//int i, node_index = 0;
+	//bool find_flag = false;
 	node = disp_fdt_nodeoffset(main_name);
-        if (node < 0) {
-          printf("fdt get node offset faill: %s\n", main_name);
-          return ret;
-        }
+	if(node < 0 )
+	{
+		pr_msg("fdt get node offset faill: %s\n", main_name);
+		return ret;
+	}
 
-        if (1 == type) {
-          if (fdt_getprop_u32(working_fdt, node, sub_name, (uint32_t *)value) >=
-              0)
-            ret = type;
-        } else if (2 == type) {
+	if (1 == type) {
+		if (fdt_getprop_u32(working_fdt, node, sub_name, (uint32_t*)value) < 0)
+			pr_msg("fdt_getprop_u32 %s.%s fail\n", main_name, sub_name);
+		else
+			ret = type;
+	} else if (2 == type) {
 		const char *str;
-                if (fdt_getprop_string(working_fdt, node, sub_name,
-                                       (char **)&str) >= 0) {
-                  ret = type;
-                  memcpy((void *)value, str, strlen(str) + 1);
-                }
-        } else if (3 == type) {
-		if(fdt_get_one_gpio_by_offset(node, sub_name, &gpio_info) >= 0) {
+
+		if (fdt_getprop_string(working_fdt, node, sub_name, (char **)&str) < 0)
+			pr_msg("fdt_getprop_string %s.%s fail\n", main_name, sub_name);
+		else {
+			ret = type;
+			memcpy((void*)value, str, strlen(str)+1);
+		}
+	} else if (3 == type) {
+		if(fdt_get_one_gpio_by_offset(node, sub_name, &gpio_info) < 0)
+			pr_msg("fdt_get_one_gpio %s.%s fail\n", main_name, sub_name);
+		else {
 			gpio_list = (disp_gpio_set_t  *)value;
 			gpio_list->port = gpio_info.port;
 			gpio_list->port_num = gpio_info.port_num;
@@ -299,12 +329,28 @@ int disp_sys_script_get_item(char *main_name, char *sub_name, int value[], int t
 			gpio_list->data = gpio_info.data;
 
 			memcpy(gpio_info.gpio_name, sub_name, strlen(sub_name)+1);
-			debug("%s.%s gpio=%d,mul_sel=%d,data:%d\n",main_name, sub_name, gpio_list->gpio, gpio_list->mul_sel, gpio_list->data);
+			pr_msg("%s.%s gpio=%d,mul_sel=%d,data:%d\n",main_name, sub_name, gpio_list->gpio, gpio_list->mul_sel, gpio_list->data);
 			ret = type;
 		}
 	}
 
 	return ret;
+*/
+#if 1
+	int ret;
+	script_parser_value_type_t ret_type;
+	ret = script_parser_fetch_ex(main_name, sub_name, value, &ret_type,(sizeof(script_gpio_set_t)));
+
+	if (ret == SCRIPT_PARSER_OK)
+	{
+		if(ret_type == 4)
+			return (ret_type-1);
+		else
+		return ret_type;
+	}
+
+	return 0;
+#endif
 }
 
 EXPORT_SYMBOL(disp_sys_script_get_item);
@@ -323,12 +369,19 @@ int disp_sys_gpio_request(disp_gpio_set_t *gpio_list, u32 group_count_max)
 	gpio_info.drv_level = gpio_list->drv_level;
 	gpio_info.data = gpio_list->data;
 
-        __inf("disp_sys_gpio_request, port:%d, port_num:%d, mul_sel:%d, "
-              "pull:%d, drv_level:%d, data:%d\n",
-              gpio_list->port, gpio_list->port_num, gpio_list->mul_sel,
-              gpio_list->pull, gpio_list->drv_level, gpio_list->data);
-        /*TODO:different name*/
-	return sunxi_gpio_request(&gpio_info, group_count_max);
+	__inf("disp_sys_gpio_request, port:%d, port_num:%d, mul_sel:%d, pull:%d, drv_level:%d, data:%d\n", gpio_list->port, gpio_list->port_num, gpio_list->mul_sel, gpio_list->pull, gpio_list->drv_level, gpio_list->data);
+	 //gpio_list->port, gpio_list->port_num, gpio_list->mul_sel, gpio_list->pull, gpio_list->drv_level, gpio_list->data);
+#if 0
+	if(gpio_list->port == 0xffff) {
+		__u32 on_off;
+		on_off = gpio_list->data;
+		//axp_set_dc1sw(on_off);
+		axp_set_supply_status(0, PMU_SUPPLY_DC1SW, 0, on_off);
+
+		return 0xffff;
+	}
+#endif
+	return gpio_request(&gpio_info, group_count_max);
 }
 EXPORT_SYMBOL(disp_sys_gpio_request);
 
@@ -378,15 +431,39 @@ int disp_sys_gpio_set_value(u32 p_handler, u32 value_to_gpio, const char *gpio_n
 extern int fdt_set_all_pin(const char* node_path,const char* pinctrl_name);
 int disp_sys_pin_set_state(char *dev_name, char *name)
 {
+#if 0
+	char compat[32];
+	u32 len = 0;
+	int state = 0;
+	int ret = -1;
+	int nodeoffset;
+
+	if (!strcmp(name, DISP_PIN_STATE_ACTIVE))
+		state = 1;
+	else
+		state = 0;
+
+	len = sprintf(compat, "%s", dev_name);
+	if (len > 32)
+		__wrn("disp_sys_set_state, size of mian_name is out of range\n");
+
+	nodeoffset = disp_fdt_nodeoffset(compat);
+	if(nodeoffset < 0)
+	{
+		pr_msg("nodeoffset is wrong!\n");
+		return ret;
+	}
+	ret = fdt_set_all_pin_by_offset(nodeoffset, (1 == state)?"pinctrl-0":"pinctrl-1");
+	if (0 != ret)
+		__wrn("%s, fdt_set_all_pin, ret=%d\n", __func__, ret);
+#else
 	int ret = -1;
 
 	if (!strcmp(name, DISP_PIN_STATE_ACTIVE))
-		ret = fdt_set_all_pin("lcd0", "pinctrl-0");
+		ret = gpio_request_simple("lcd0", NULL);
 	else
-		ret = fdt_set_all_pin("lcd0_suspend", "pinctrl-1");
-
-	if (ret != 0)
-		printf("%s, fdt_set_all_pin, ret=%d\n", __func__, ret);
+		ret = gpio_request_simple("lcd0_suspend", NULL);
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(disp_sys_pin_set_state);
@@ -397,14 +474,11 @@ int disp_sys_power_enable(char *name)
 	if(0 == strlen(name)) {
 		return 0;
 	}
-#if defined(CONFIG_SUNXI_PMU)
-	/*TODO:bmu*/
-	ret = pmu_set_voltage(name, 0, 1);
+	ret = axp_set_supply_status_byregulator(name, 1);
 	if(!ret)
 		__wrn("enable power %s, ret=%d\n", name, ret);
-#endif
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(disp_sys_power_enable);
 
@@ -412,17 +486,13 @@ int disp_sys_power_disable(char *name)
 {
 	int ret = 0;
 
-	/*TODO:bmu*/
-#if defined(CONFIG_SUNXI_PMU)
-	ret = pmu_set_voltage(name, 0, 0);
+	ret = axp_set_supply_status_byregulator(name, 0);
 	if(!ret)
 		__wrn("disable power %s, ret=%d\n", name, ret);
-#endif
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(disp_sys_power_disable);
 
-#if defined(CONFIG_PWM_SUNXI) || defined(CONFIG_PWM_SUNXI_NEW)
 uintptr_t disp_sys_pwm_request(u32 pwm_id)
 {
 	pwm_request(pwm_id, "lcd");
@@ -470,34 +540,69 @@ int disp_sys_pwm_set_polarity(uintptr_t p_handler, int polarity)
 	ret = pwm_set_polarity(pwm_id, polarity);
 	return ret;
 }
-#else
-uintptr_t disp_sys_pwm_request(u32 pwm_id)
+
+#endif
+
+#if 0
+int clk_set_rate(struct clk* clk, unsigned long rate)
 {
-	return 0;
+	int ret = 0;
+
+	return ret;
 }
 
-int disp_sys_pwm_free(uintptr_t p_handler)
+unsigned long clk_get_rate(struct clk* clk)
 {
-	return 0;
+	unsigned long rate = 0;
+
+	return rate;
+}
+EXPORT_SYMBOL(clk_set_rate);
+int clk_set_parent(struct clk* clk, struct clk *parent)
+{
+	int ret = 0;
+
+	return ret;
 }
 
-int disp_sys_pwm_enable(uintptr_t p_handler)
+struct clk* clk_get_parent(struct clk* clk)
 {
-	return 0;
+	struct clk* ret = NULL;
+
+	return ret;
 }
 
-int disp_sys_pwm_disable(uintptr_t p_handler)
+int clk_enable(struct clk* clk)
 {
-	return 0;
+		return 0;
 }
 
-int disp_sys_pwm_config(uintptr_t p_handler, int duty_ns, int period_ns)
+int clk_prepare_enable(struct clk* clk)
 {
-	return 0;
+	return clk_enable(clk);
 }
 
-int disp_sys_pwm_set_polarity(uintptr_t p_handler, int polarity)
+int clk_disable(struct clk* clk)
 {
-	return 0;
+	int ret = 0;
+
+	return ret;
 }
+
+struct clk* clk_get(char* clk)
+{
+	struct clk* ret = NULL;
+
+	return ret;
+}
+
+void clk_put(struct clk* clk)
+{
+	return;
+}
+
+EXPORT_SYMBOL(clk_get_rate);
+EXPORT_SYMBOL(clk_set_parent);
+EXPORT_SYMBOL(clk_enable);
+EXPORT_SYMBOL(clk_disable);
 #endif

@@ -300,7 +300,6 @@ s32 disp_edp_set_func(struct disp_device *p_edp,
 	p_edpp->edp_func.tv_get_cur_line = func->tv_get_cur_line;
 	p_edpp->edp_func.tv_get_video_timing_info =
 	    func->tv_get_video_timing_info;
-	p_edpp->edp_func.tv_show_builtin_patten = func->tv_show_builtin_patten;
 
 	return 0;
 }
@@ -878,15 +877,6 @@ static s32 disp_edp_pwm_disable(struct disp_device *edp)
 	return DIS_FAIL;
 }
 
-void disp_edp_show_builtin_patten(struct disp_device *edp, u32 patten)
-{
-	struct disp_edp_private_data *p_edpp = disp_edp_get_priv(edp);
-
-	if (p_edpp->edp_func.tv_show_builtin_patten)
-		p_edpp->edp_func.tv_show_builtin_patten(p_edpp->edp_index,
-							patten);
-}
-
 /**
  * @name       :disp_init_edp
  * @brief      :register edp device
@@ -980,7 +970,6 @@ s32 disp_init_edp(disp_bsp_init_para *para)
 		p_edp->pwm_disable = disp_edp_pwm_disable;
 		p_edp->power_enable = disp_edp_power_enable;
 		p_edp->power_disable = disp_edp_power_disable;
-		p_edp->show_builtin_patten = disp_edp_show_builtin_patten;
 		p_edp->init(p_edp);
 
 		disp_device_register(p_edp);

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -14,9 +15,6 @@ struct law_entry law_table[] = {
 #endif
 #ifdef CONFIG_SYS_QMAN_MEM_PHYS
 	SET_LAW(CONFIG_SYS_QMAN_MEM_PHYS, LAW_SIZE_32M, LAW_TRGT_IF_QMAN),
-#endif
-#ifdef CONFIG_SYS_CPLD_BASE_PHYS
-	SET_LAW(CONFIG_SYS_CPLD_BASE_PHYS, LAW_SIZE_4K, LAW_TRGT_IF_IFC),
 #endif
 #ifdef CONFIG_SYS_DCSRBAR_PHYS
 	/* Limit DCSR to 32M to access NPC Trace Buffer */

@@ -22,7 +22,7 @@
  * MA 02111-1307 USA
  */
 #ifndef  __SPRITE_PRIVATEDATA_H__
-#define  __SPRITE_PRIVATEDATA_H__
+#define __SPRITE_PRIVATEDATA_H__
 
 
 extern int sunxi_sprite_store_part_data(void  *mbr);

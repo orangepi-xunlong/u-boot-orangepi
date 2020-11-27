@@ -1,8 +1,20 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * This file is part of UBIFS.
  *
  * Copyright (C) 2006-2008 Nokia Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published by
+ * the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  *
  * Authors: Artem Bityutskiy (Битюцкий Артём)
  *          Adrian Hunter
@@ -122,13 +134,6 @@
 
 /* The key is always at the same position in all keyed nodes */
 #define UBIFS_KEY_OFFSET offsetof(struct ubifs_ino_node, key)
-
-/* Garbage collector journal head number */
-#define UBIFS_GC_HEAD   0
-/* Base journal head number */
-#define UBIFS_BASE_HEAD 1
-/* Data journal head number */
-#define UBIFS_DATA_HEAD 2
 
 /*
  * LEB Properties Tree node types.
@@ -396,11 +401,9 @@ enum {
  * Superblock flags.
  *
  * UBIFS_FLG_BIGLPT: if "big" LPT model is used if set
- * UBIFS_FLG_SPACE_FIXUP: first-mount "fixup" of free space within LEBs needed
  */
 enum {
 	UBIFS_FLG_BIGLPT = 0x02,
-	UBIFS_FLG_SPACE_FIXUP = 0x04,
 };
 
 /**
@@ -424,7 +427,7 @@ struct ubifs_ch {
 	__u8 node_type;
 	__u8 group_type;
 	__u8 padding[2];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * union ubifs_dev_desc - device node descriptor.
@@ -438,7 +441,7 @@ struct ubifs_ch {
 union ubifs_dev_desc {
 	__le32 new;
 	__le64 huge;
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_ino_node - inode node.
@@ -499,7 +502,7 @@ struct ubifs_ino_node {
 	__le16 compr_type;
 	__u8 padding2[26]; /* Watch 'zero_ino_node_unused()' if changing! */
 	__u8 data[];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_dent_node - directory entry node.
@@ -523,12 +526,8 @@ struct ubifs_dent_node {
 	__u8 type;
 	__le16 nlen;
 	__u8 padding2[4]; /* Watch 'zero_dent_node_unused()' if changing! */
-#ifndef __UBOOT__
 	__u8 name[];
-#else
-	char name[];
-#endif
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_data_node - data node.
@@ -549,7 +548,7 @@ struct ubifs_data_node {
 	__le16 compr_type;
 	__u8 padding[2]; /* Watch 'zero_data_node_unused()' if changing! */
 	__u8 data[];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_trun_node - truncation node.
@@ -569,7 +568,7 @@ struct ubifs_trun_node {
 	__u8 padding[12]; /* Watch 'zero_trun_node_unused()' if changing! */
 	__le64 old_size;
 	__le64 new_size;
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_pad_node - padding node.
@@ -580,7 +579,7 @@ struct ubifs_trun_node {
 struct ubifs_pad_node {
 	struct ubifs_ch ch;
 	__le32 pad_len;
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_sb_node - superblock node.
@@ -638,7 +637,7 @@ struct ubifs_sb_node {
 	__u8 uuid[16];
 	__le32 ro_compat_version;
 	__u8 padding2[3968];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_mst_node - master node.
@@ -705,7 +704,7 @@ struct ubifs_mst_node {
 	__le32 idx_lebs;
 	__le32 leb_cnt;
 	__u8 padding[344];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_ref_node - logical eraseblock reference node.
@@ -721,7 +720,7 @@ struct ubifs_ref_node {
 	__le32 offs;
 	__le32 jhead;
 	__u8 padding[28];
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_branch - key/reference/length branch
@@ -734,12 +733,8 @@ struct ubifs_branch {
 	__le32 lnum;
 	__le32 offs;
 	__le32 len;
-#ifndef __UBOOT__
 	__u8 key[];
-#else
-	char key[];
-#endif
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_idx_node - indexing node.
@@ -752,12 +747,8 @@ struct ubifs_idx_node {
 	struct ubifs_ch ch;
 	__le16 child_cnt;
 	__le16 level;
-#ifndef __UBOOT__
 	__u8 branches[];
-#else
-	char branches[];
-#endif
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_cs_node - commit start node.
@@ -767,7 +758,7 @@ struct ubifs_idx_node {
 struct ubifs_cs_node {
 	struct ubifs_ch ch;
 	__le64 cmt_no;
-} __packed;
+} __attribute__ ((packed));
 
 /**
  * struct ubifs_orph_node - orphan node.
@@ -779,6 +770,6 @@ struct ubifs_orph_node {
 	struct ubifs_ch ch;
 	__le64 cmt_no;
 	__le64 inos[];
-} __packed;
+} __attribute__ ((packed));
 
 #endif /* __UBIFS_MEDIA_H__ */

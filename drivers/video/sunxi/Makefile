@@ -4,10 +4,8 @@
 #
 #
 
-obj-$(CONFIG_DISP2_SUNXI) += disp2/
-
-obj-$(CONFIG_BOOT_GUI) += bootGUI/
-
-obj-y += logo_display/
-obj-$(CONFIG_EINK200_SUNXI) += disp2/eink200/
-obj-$(CONFIG_EINK200_SUNXI) += common/eink_v2.o
+ifeq ($(CONFIG_ARCH_SUN8IW5P1),y)
+obj-y += disp/
+else
+obj-y += disp2/
+endif

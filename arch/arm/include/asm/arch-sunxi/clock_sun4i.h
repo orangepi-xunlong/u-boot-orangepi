@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * sun4i, sun5i and sun7i clock register definitions
  *
  * (C) Copyright 2007-2011
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Tom Cubie <tangliang@allwinnertech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SUNXI_CLOCK_SUN4I_H
@@ -38,7 +39,7 @@ struct sunxi_ccm_reg {
 	u32 apb0_gate;		/* 0x68 apb0 module clock gating */
 	u32 apb1_gate;		/* 0x6c apb1 module clock gating */
 	u8 res4[0x10];
-	u32 nand0_clk_cfg;	/* 0x80 nand sub clock control */
+	u32 nand_sclk_cfg;	/* 0x80 nand sub clock control */
 	u32 ms_sclk_cfg;	/* 0x84 memory stick sub clock control */
 	u32 sd0_clk_cfg;	/* 0x88 sd0 clock control */
 	u32 sd1_clk_cfg;	/* 0x8c sd1 clock control */
@@ -61,7 +62,7 @@ struct sunxi_ccm_reg {
 	u32 gps_clk_cfg;	/* 0xd0 */
 	u32 spi3_clk_cfg;	/* 0xd4 */
 	u8 res5[0x28];
-	u32 dram_clk_gate;	/* 0x100 */
+	u32 dram_clk_cfg;	/* 0x100 */
 	u32 be0_clk_cfg;	/* 0x104 */
 	u32 be1_clk_cfg;	/* 0x108 */
 	u32 fe0_clk_cfg;	/* 0x10c */
@@ -143,16 +144,7 @@ struct sunxi_ccm_reg {
 
 #define PLL1_CFG_DEFAULT	0xa1005000
 
-#if defined CONFIG_OLD_SUNXI_KERNEL_COMPAT && defined CONFIG_MACH_SUN5I
-/*
- * Older linux-sunxi-3.4 kernels override our PLL6 setting with 300 MHz,
- * halving the mbus frequency, so set it to 300 MHz ourselves and base the
- * mbus divider on that.
- */
-#define PLL6_CFG_DEFAULT	0xa1009900
-#else
 #define PLL6_CFG_DEFAULT	0xa1009911
-#endif
 
 /* nand clock */
 #define NAND_CLK_SRC_OSC24		0
@@ -176,7 +168,7 @@ struct sunxi_ccm_reg {
 #define AHB_GATE_OFFSET_ACE		16
 #define AHB_GATE_OFFSET_DLL		15
 #define AHB_GATE_OFFSET_SDRAM		14
-#define AHB_GATE_OFFSET_NAND0		13
+#define AHB_GATE_OFFSET_NAND		13
 #define AHB_GATE_OFFSET_MS		12
 #define AHB_GATE_OFFSET_MMC3		11
 #define AHB_GATE_OFFSET_MMC2		10
@@ -190,28 +182,15 @@ struct sunxi_ccm_reg {
 #define AHB_GATE_OFFSET_USB_EHCI1	3
 #define AHB_GATE_OFFSET_USB_OHCI0	2
 #define AHB_GATE_OFFSET_USB_EHCI0	1
-#define AHB_GATE_OFFSET_USB0		0
+#define AHB_GATE_OFFSET_USB		0
 
 /* ahb clock gate bit offset (second register) */
 #define AHB_GATE_OFFSET_GMAC		17
-#define AHB_GATE_OFFSET_DE_FE0		14
-#define AHB_GATE_OFFSET_DE_BE0		12
-#define AHB_GATE_OFFSET_HDMI		11
-#define AHB_GATE_OFFSET_LCD1		5
-#define AHB_GATE_OFFSET_LCD0		4
-#define AHB_GATE_OFFSET_TVE1		3
-#define AHB_GATE_OFFSET_TVE0		2
 
 #define CCM_AHB_GATE_GPS (0x1 << 26)
 #define CCM_AHB_GATE_SDRAM (0x1 << 14)
 #define CCM_AHB_GATE_DLL (0x1 << 15)
 #define CCM_AHB_GATE_ACE (0x1 << 16)
-
-#define CCM_PLL3_CTRL_M_SHIFT		0
-#define CCM_PLL3_CTRL_M_MASK		(0x7f << CCM_PLL3_CTRL_M_SHIFT)
-#define CCM_PLL3_CTRL_M(n)		(((n) & 0x7f) << 0)
-#define CCM_PLL3_CTRL_INTEGER_MODE	(0x1 << 15)
-#define CCM_PLL3_CTRL_EN		(0x1 << 31)
 
 #define CCM_PLL5_CTRL_M(n) (((n) & 0x3) << 0)
 #define CCM_PLL5_CTRL_M_MASK CCM_PLL5_CTRL_M(0x3)
@@ -220,16 +199,13 @@ struct sunxi_ccm_reg {
 #define CCM_PLL5_CTRL_M1_MASK CCM_PLL5_CTRL_M1(0x3)
 #define CCM_PLL5_CTRL_M1_X(n) ((n) - 1)
 #define CCM_PLL5_CTRL_K(n) (((n) & 0x3) << 4)
-#define CCM_PLL5_CTRL_K_SHIFT 4
 #define CCM_PLL5_CTRL_K_MASK CCM_PLL5_CTRL_K(0x3)
 #define CCM_PLL5_CTRL_K_X(n) ((n) - 1)
 #define CCM_PLL5_CTRL_LDO (0x1 << 7)
 #define CCM_PLL5_CTRL_N(n) (((n) & 0x1f) << 8)
-#define CCM_PLL5_CTRL_N_SHIFT 8
 #define CCM_PLL5_CTRL_N_MASK CCM_PLL5_CTRL_N(0x1f)
 #define CCM_PLL5_CTRL_N_X(n) (n)
 #define CCM_PLL5_CTRL_P(n) (((n) & 0x3) << 16)
-#define CCM_PLL5_CTRL_P_SHIFT 16
 #define CCM_PLL5_CTRL_P_MASK CCM_PLL5_CTRL_P(0x3)
 #define CCM_PLL5_CTRL_P_X(n) ((n) - 1)
 #define CCM_PLL5_CTRL_BW (0x1 << 18)
@@ -242,13 +218,10 @@ struct sunxi_ccm_reg {
 #define CCM_PLL5_CTRL_BYPASS (0x1 << 30)
 #define CCM_PLL5_CTRL_EN (0x1 << 31)
 
-#define CCM_PLL6_CTRL_EN		31
-#define CCM_PLL6_CTRL_BYPASS_EN		30
-#define CCM_PLL6_CTRL_SATA_EN_SHIFT	14
-#define CCM_PLL6_CTRL_N_SHIFT		8
-#define CCM_PLL6_CTRL_N_MASK		(0x1f << CCM_PLL6_CTRL_N_SHIFT)
-#define CCM_PLL6_CTRL_K_SHIFT		4
-#define CCM_PLL6_CTRL_K_MASK		(0x3 << CCM_PLL6_CTRL_K_SHIFT)
+#define CCM_PLL6_CTRL_N_SHIFT	8
+#define CCM_PLL6_CTRL_N_MASK	(0x1f << CCM_PLL6_CTRL_N_SHIFT)
+#define CCM_PLL6_CTRL_K_SHIFT	4
+#define CCM_PLL6_CTRL_K_MASK	(0x3 << CCM_PLL6_CTRL_K_SHIFT)
 
 #define CCM_GPS_CTRL_RESET (0x1 << 0)
 #define CCM_GPS_CTRL_GATE (0x1 << 1)
@@ -268,95 +241,16 @@ struct sunxi_ccm_reg {
 #define CCM_MBUS_CTRL_CLK_SRC_PLL5 0x2
 #define CCM_MBUS_CTRL_GATE (0x1 << 31)
 
-#define CCM_NAND_CTRL_M(x)		((x) - 1)
-#define CCM_NAND_CTRL_N(x)		((x) << 16)
-#define CCM_NAND_CTRL_OSCM24		(0x0 << 24)
-#define CCM_NAND_CTRL_PLL6		(0x1 << 24)
-#define CCM_NAND_CTRL_PLL5		(0x2 << 24)
-#define CCM_NAND_CTRL_ENABLE		(0x1 << 31)
+#define CCM_MMC_CTRL_OSCM24 (0x0 << 24)
+#define CCM_MMC_CTRL_PLL6   (0x1 << 24)
+#define CCM_MMC_CTRL_PLL5   (0x2 << 24)
 
-#define CCM_MMC_CTRL_M(x)		((x) - 1)
-#define CCM_MMC_CTRL_OCLK_DLY(x)	((x) << 8)
-#define CCM_MMC_CTRL_N(x)		((x) << 16)
-#define CCM_MMC_CTRL_SCLK_DLY(x)	((x) << 20)
-#define CCM_MMC_CTRL_OSCM24		(0x0 << 24)
-#define CCM_MMC_CTRL_PLL6		(0x1 << 24)
-#define CCM_MMC_CTRL_PLL5		(0x2 << 24)
-#define CCM_MMC_CTRL_ENABLE		(0x1 << 31)
-
-#define CCM_DRAM_GATE_OFFSET_DE_FE1	24 /* Note the order of FE1 and */
-#define CCM_DRAM_GATE_OFFSET_DE_FE0	25 /* FE0 is swapped ! */
-#define CCM_DRAM_GATE_OFFSET_DE_BE0	26
-#define CCM_DRAM_GATE_OFFSET_DE_BE1	27
-
-#define CCM_LCD_CH0_CTRL_PLL3		(0 << 24)
-#define CCM_LCD_CH0_CTRL_PLL7		(1 << 24)
-#define CCM_LCD_CH0_CTRL_PLL3_2X	(2 << 24)
-#define CCM_LCD_CH0_CTRL_PLL7_2X	(3 << 24)
-#define CCM_LCD_CH0_CTRL_MIPI_PLL	0 /* No mipi pll on sun4i/5i/7i */
-#ifdef CONFIG_MACH_SUN5I
-#define CCM_LCD_CH0_CTRL_TVE_RST	(0x1 << 29)
-#else
-#define CCM_LCD_CH0_CTRL_TVE_RST	0 /* No separate tve-rst on sun4i/7i */
-#endif
-#define CCM_LCD_CH0_CTRL_RST		(0x1 << 30)
-#define CCM_LCD_CH0_CTRL_GATE		(0x1 << 31)
-
-#define CCM_LCD_CH1_CTRL_M(n)		((((n) - 1) & 0xf) << 0)
-#define CCM_LCD_CH1_CTRL_HALF_SCLK1	(1 << 11)
-#define CCM_LCD_CH1_CTRL_PLL3		(0 << 24)
-#define CCM_LCD_CH1_CTRL_PLL7		(1 << 24)
-#define CCM_LCD_CH1_CTRL_PLL3_2X	(2 << 24)
-#define CCM_LCD_CH1_CTRL_PLL7_2X	(3 << 24)
-/* Enable / disable both ch1 sclk1 and sclk2 at the same time */
-#define CCM_LCD_CH1_CTRL_GATE		(0x1 << 31 | 0x1 << 15)
-
-#define CCM_LVDS_CTRL_RST		(1 << 0)
-
-#define CCM_HDMI_CTRL_M(n)		((((n) - 1) & 0xf) << 0)
-#define CCM_HDMI_CTRL_PLL_MASK		(3 << 24)
-#define CCM_HDMI_CTRL_PLL3		(0 << 24)
-#define CCM_HDMI_CTRL_PLL7		(1 << 24)
-#define CCM_HDMI_CTRL_PLL3_2X		(2 << 24)
-#define CCM_HDMI_CTRL_PLL7_2X		(3 << 24)
-/* No separate ddc gate on sun4i, sun5i and sun7i */
-#define CCM_HDMI_CTRL_DDC_GATE		0
-#define CCM_HDMI_CTRL_GATE		(0x1 << 31)
+#define CCM_MMC_CTRL_ENABLE (0x1 << 31)
 
 #define CCM_GMAC_CTRL_TX_CLK_SRC_MII 0x0
 #define CCM_GMAC_CTRL_TX_CLK_SRC_EXT_RGMII 0x1
 #define CCM_GMAC_CTRL_TX_CLK_SRC_INT_RGMII 0x2
 #define CCM_GMAC_CTRL_GPIT_MII (0x0 << 2)
 #define CCM_GMAC_CTRL_GPIT_RGMII (0x1 << 2)
-#define CCM_GMAC_CTRL_RX_CLK_DELAY(x)	((x) << 5)
-#define CCM_GMAC_CTRL_TX_CLK_DELAY(x)	((x) << 10)
-
-#define CCM_USB_CTRL_PHY0_RST (0x1 << 0)
-#define CCM_USB_CTRL_PHY1_RST (0x1 << 1)
-#define CCM_USB_CTRL_PHY2_RST (0x1 << 2)
-#define CCM_USB_CTRL_OHCI0_CLK (0x1 << 6)
-#define CCM_USB_CTRL_OHCI1_CLK (0x1 << 7)
-#define CCM_USB_CTRL_PHYGATE (0x1 << 8)
-/* These 3 are sun6i only, define them as 0 on sun4i */
-#define CCM_USB_CTRL_PHY0_CLK 0
-#define CCM_USB_CTRL_PHY1_CLK 0
-#define CCM_USB_CTRL_PHY2_CLK 0
-
-/* CCM bits common to all Display Engine (and IEP) clock ctrl regs */
-#define CCM_DE_CTRL_M(n)		((((n) - 1) & 0xf) << 0)
-#define CCM_DE_CTRL_PLL_MASK		(3 << 24)
-#define CCM_DE_CTRL_PLL3		(0 << 24)
-#define CCM_DE_CTRL_PLL7		(1 << 24)
-#define CCM_DE_CTRL_PLL5P		(2 << 24)
-#define CCM_DE_CTRL_RST			(1 << 30)
-#define CCM_DE_CTRL_GATE		(1 << 31)
-
-#ifndef __ASSEMBLY__
-void clock_set_pll1(unsigned int hz);
-void clock_set_pll3(unsigned int hz);
-unsigned int clock_get_pll3(void);
-unsigned int clock_get_pll5p(void);
-unsigned int clock_get_pll6(void);
-#endif
 
 #endif /* _SUNXI_CLOCK_SUN4I_H */

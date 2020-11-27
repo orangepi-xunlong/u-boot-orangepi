@@ -1,15 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Semihalf
  *
  * Written by: Piotr Ziecik <kosmo@semihalf.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <flash.h>
 #include <malloc.h>
 
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/concat.h>
 #include <mtd/cfi_flash.h>
@@ -225,7 +226,6 @@ int cfi_mtd_init(void)
 		mtd->flags		= MTD_CAP_NORFLASH;
 		mtd->size		= fi->size;
 		mtd->writesize		= 1;
-		mtd->writebufsize	= mtd->writesize;
 
 		mtd->_erase		= cfi_mtd_erase;
 		mtd->_read		= cfi_mtd_read;

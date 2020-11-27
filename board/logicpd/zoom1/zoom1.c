@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004-2008
  * Texas Instruments, <www.ti.com>
@@ -12,14 +11,12 @@
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <khasim@ti.com>
  *
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
-#include <dm.h>
-#include <environment.h>
-#include <ns16550.h>
 #include <netdev.h>
 #include <twl4030.h>
-#include <linux/mtd/omap_gpmc.h>
 #include <asm/io.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/mmc_host_def.h>
@@ -30,10 +27,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/*
- * gpmc_cfg is initialized by gpmc_init and we use it here.
- * GPMC definitions for Ethenet Controller LAN9211
- */
+/* gpmc_cfg is initialized by gpmc_init and we use it here */
+extern struct gpmc *gpmc_cfg;
+
+/* GPMC definitions for Ethenet Controller LAN9211 */
 static const u32 gpmc_lab_enet[] = {
 	ZOOM1_ENET_GPMC_CONF1,
 	ZOOM1_ENET_GPMC_CONF2,
@@ -42,18 +39,6 @@ static const u32 gpmc_lab_enet[] = {
 	ZOOM1_ENET_GPMC_CONF5,
 	ZOOM1_ENET_GPMC_CONF6,
 	/*CONF7- computed as params */
-};
-
-static const struct ns16550_platdata zoom1_serial = {
-	.base = OMAP34XX_UART3,
-	.reg_shift = 2,
-	.clock = V_NS16550_CLK,
-	.fcr = UART_FCR_DEFVAL,
-};
-
-U_BOOT_DEVICE(zoom1_uart) = {
-	"ns16550_serial",
-	&zoom1_serial
 };
 
 /*
@@ -82,7 +67,7 @@ int misc_init_r(void)
 {
 	twl4030_power_init();
 	twl4030_led_init(TWL4030_LED_LEDEN_LEDAON | TWL4030_LED_LEDEN_LEDBON);
-	omap_die_id_display();
+	dieid_num_r();
 
 	/*
 	 * Board Reset
@@ -106,15 +91,10 @@ void set_muxconf_regs(void)
 	MUX_ZOOM1_MDK();
 }
 
-#ifdef CONFIG_MMC
+#ifdef CONFIG_GENERIC_MMC
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
-}
-
-void board_mmc_power_init(void)
-{
-	twl4030_power_mmc_init(0);
 }
 #endif
 
@@ -130,10 +110,10 @@ int board_eth_init(bd_t *bis)
 	uchar eth_addr[6];
 
 	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
-	if (!eth_env_get_enetaddr(STR_ENV_ETHADDR, eth_addr)) {
+	if (!eth_getenv_enetaddr(STR_ENV_ETHADDR, eth_addr)) {
 		dev = eth_get_dev_by_index(0);
 		if (dev) {
-			eth_env_set_enetaddr(STR_ENV_ETHADDR, dev->enetaddr);
+			eth_setenv_enetaddr(STR_ENV_ETHADDR, dev->enetaddr);
 		} else {
 			printf("zoom1: Couldn't get eth device\n");
 			rc = -1;

@@ -1,33 +1,23 @@
 /*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/disp_waveform.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+Description: awf waveform file decoder
+Version	: v0.1
+Author	: oujunxi
+Date	: 2015/07/10
+*/
 
 #include "disp_waveform.h"
 
 #define DEBUG_WAVEFILE
 #ifdef DEBUG_WAVEFILE
-#define WF_DBG(msg, fmt...)		printf(msg, ##fmt)
-#define WF_INFO(msg, fmt...)		printf(msg, ##fmt)
-#define WF_WRN(msg, fmt...)		printf(msg, ##fmt)
-#define WF_ERR(msg, fmt...)		printf(msg, ##fmt)
+#define WF_DBG(msg, fmt...)		pr_msg(msg, ##fmt)
+#define WF_INFO(msg, fmt...)		pr_msg(msg, ##fmt)
+#define WF_WRN(msg, fmt...)		pr_msg(msg, ##fmt)
+#define WF_ERR(msg, fmt...)		pr_msg(msg, ##fmt)
 #else
 #define WF_DBG(msg, fmt...)
 #define WF_INFO(msg, fmt...)
-#define WF_WRN(msg, fmt...)		printf(msg, ##fmt)
-#define WF_ERR(msg, fmt...)		printf(msg, ##fmt)
+#define WF_WRN(msg, fmt...)		pr_msg(msg, ##fmt)
+#define WF_ERR(msg, fmt...)		pr_msg(msg, ##fmt)
 #endif
 
 #define    C_HEADER_INFO_OFFSET			0
@@ -277,10 +267,10 @@ __s32 init_waveform(const char *path)
 	memset(&g_waveform_file, 0, sizeof(g_waveform_file));
 
 	g_waveform_file.p_wf_vaddr = (char *)malloc_aligned(waveform_buff_len, ARCH_DMA_MINALIGN);
-	printf("g_waveform_file.p_wf_vaddr %lx\n", (ulong)g_waveform_file.p_wf_vaddr);
+	pr_msg("g_waveform_file.p_wf_vaddr %lx\n", (ulong)g_waveform_file.p_wf_vaddr);
 
 	if (g_waveform_file.p_wf_vaddr == NULL) {
-		printf("sunxi bmp: alloc buffer for %s fail\n", path);
+		pr_msg("sunxi bmp: alloc buffer for %s fail\n", path);
 		return -1;
 	}
 
@@ -293,7 +283,7 @@ __s32 init_waveform(const char *path)
 	memset(waveform_path, 0, 32);
 	strcpy(waveform_path, path);
 	if (do_fat_fsload(0, 0, 5, waveform_argv)) {
-		printf("sunxi bmp info error : unable to open logo file %s\n", waveform_argv[4]);
+		pr_msg("sunxi bmp info error : unable to open logo file %s\n", waveform_argv[4]);
 		free(waveform_buff);
 		return -1;
 	}

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *
  * Cleaned up and refactored by Charles Manning.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include "pblimage.h"
 

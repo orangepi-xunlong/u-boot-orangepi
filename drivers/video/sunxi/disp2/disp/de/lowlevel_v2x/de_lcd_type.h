@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_lcd_type.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __DE_LCD_TYPE_H__
 #define __DE_LCD_TYPE_H__
 
@@ -578,32 +562,6 @@ union tcon_slave_stop_reg_t {
 	} bits;
 };
 
-union tcon_fsync_gen_ctrl_reg_t {
-	u32 dwval;
-	struct {
-		u32 fsync_gen_en:1;
-		u32 sel_vsync_en:1;
-		u32 hsync_pol_sel:1;
-		u32 res0:1;
-		u32 sensor_dis_value:1;
-		u32 sensor_act0_value:1;
-		u32 sensor_act1_value:1;
-		u32 res1:1;
-		u32 sensor_dis_time:11;
-		u32 res2:13;
-	} bits;
-};
-
-union tcon_fsync_gen_dly_reg_t {
-	u32 dwval;
-	struct {
-		u32 sensor_act1_time:12;
-		u32 res0:4;
-		u32 sensor_act0_time:12;
-		u32 res1:4;
-	} bits;
-};
-
 union tcon0_lvds_ana_reg_t {
 	u32 dwval;
 	struct {
@@ -885,9 +843,7 @@ struct __de_lcd_dev_t {
 	union tcon_sync_ctl_reg_t tcon_sync_ctl;
 	union tcon_sync_pos_reg_t tcon_sync_pos;
 	union tcon_slave_stop_reg_t tcon_slave_stop;
-	union tcon_fsync_gen_ctrl_reg_t fsync_gen_ctrl;
-	union tcon_fsync_gen_dly_reg_t fsync_gen_dly;
-	union tcon_reservd_reg_t tcon_reg244[47];
+	union tcon_reservd_reg_t tcon_reg23c[49];
 	/* 0x300 - 0x30c */
 	union tcon1_fill_ctl_reg_t tcon_fill_ctl;
 	union tcon1_fill_begin_reg_t tcon_fill_start0;

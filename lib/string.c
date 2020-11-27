@@ -102,31 +102,6 @@ char * strncpy(char * dest,const char *src,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRLCPY
-/**
- * strlcpy - Copy a C-string into a sized buffer
- * @dest: Where to copy the string to
- * @src: Where to copy the string from
- * @size: size of destination buffer
- *
- * Compatible with *BSD: the result is always a valid
- * NUL-terminated string that fits in the buffer (unless,
- * of course, the buffer size is zero). It does not pad
- * out the result like strncpy() does.
- */
-size_t strlcpy(char *dest, const char *src, size_t size)
-{
-	size_t ret = strlen(src);
-
-	if (size) {
-		size_t len = (ret >= size) ? size - 1 : ret;
-		memcpy(dest, src, len);
-		dest[len] = '\0';
-	}
-	return ret;
-}
-#endif
-
 #ifndef __HAVE_ARCH_STRCAT
 /**
  * strcat - Append one %NUL-terminated string to another
@@ -230,14 +205,6 @@ char * strchr(const char * s, int c)
 }
 #endif
 
-const char *strchrnul(const char *s, int c)
-{
-	for (; *s != (char)c; ++s)
-		if (*s == '\0')
-			break;
-	return s;
-}
-
 #ifndef __HAVE_ARCH_STRRCHR
 /**
  * strrchr - Find the last occurrence of a character in a string
@@ -283,30 +250,6 @@ size_t strnlen(const char * s, size_t count)
 	for (sc = s; count-- && *sc != '\0'; ++sc)
 		/* nothing */;
 	return sc - s;
-}
-#endif
-
-#ifndef __HAVE_ARCH_STRCSPN
-/**
- * strcspn - Calculate the length of the initial substring of @s which does
- * not contain letters in @reject
- * @s: The string to be searched
- * @reject: The string to avoid
- */
-size_t strcspn(const char *s, const char *reject)
-{
-	const char *p;
-	const char *r;
-	size_t count = 0;
-
-	for (p = s; *p != '\0'; ++p) {
-		for (r = reject; *r != '\0'; ++r) {
-			if (*p == *r)
-				return count;
-		}
-		++count;
-	}
-	return count;
 }
 #endif
 
@@ -469,10 +412,8 @@ char *strswab(const char *s)
 void * memset(void * s,int c,size_t count)
 {
 	unsigned long *sl = (unsigned long *) s;
-	char *s8;
-
-#if !CONFIG_IS_ENABLED(TINY_MEMSET)
 	unsigned long cl = 0;
+	char *s8;
 	int i;
 
 	/* do it one word at a time (32 bits or 64 bits) while possible */
@@ -486,12 +427,36 @@ void * memset(void * s,int c,size_t count)
 			count -= sizeof(*sl);
 		}
 	}
-#endif	/* fill 8 bits at a time */
+	/* fill 8 bits at a time */
 	s8 = (char *)sl;
 	while (count--)
 		*s8++ = c;
 
 	return s;
+}
+#endif
+
+#ifndef __HAVE_ARCH_BCOPY
+/**
+ * bcopy - Copy one area of memory to another
+ * @src: Where to copy from
+ * @dest: Where to copy to
+ * @count: The size of the area.
+ *
+ * Note that this is the same as memcpy(), with the arguments reversed.
+ * memcpy() is the standard, bcopy() is a legacy BSD function.
+ *
+ * You should not use this function to access IO space, use memcpy_toio()
+ * or memcpy_fromio() instead.
+ */
+char * bcopy(const char * src, char * dest, int count)
+{
+	char *tmp = dest;
+
+	while (count--)
+		*tmp++ = *src++;
+
+	return dest;
 }
 #endif
 
@@ -543,9 +508,16 @@ void * memmove(void * dest,const void *src,size_t count)
 {
 	char *tmp, *s;
 
+	if (src == dest)
+		return dest;
+
 	if (dest <= src) {
-		memcpy(dest, src, count);
-	} else {
+		tmp = (char *) dest;
+		s = (char *) src;
+		while (count--)
+			*tmp++ = *s++;
+		}
+	else {
 		tmp = (char *) dest + count;
 		s = (char *) src + count;
 		while (count--)

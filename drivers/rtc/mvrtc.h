@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011
  * Jason Cooper <u-boot@lakedaemon.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -11,8 +12,8 @@
 #ifndef _MVRTC_H_
 #define _MVRTC_H_
 
-#include <asm/arch/soc.h>
-#include <linux/compiler.h>
+#include <asm/arch/kirkwood.h>
+#include <compiler.h>
 
 /* RTC registers */
 struct mvrtc_registers {

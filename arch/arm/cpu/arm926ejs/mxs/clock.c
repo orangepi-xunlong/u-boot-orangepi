@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX23/i.MX28 clock setup code
  *
@@ -7,10 +6,12 @@
  *
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -308,7 +309,7 @@ void mxs_set_ssp_busclock(unsigned int bus, uint32_t freq)
 		bus, tgtclk, freq);
 }
 
-void mxs_set_lcdclk(uint32_t __maybe_unused lcd_base, uint32_t freq)
+void mxs_set_lcdclk(uint32_t freq)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
 		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;

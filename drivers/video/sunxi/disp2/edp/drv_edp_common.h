@@ -77,14 +77,16 @@
 #include <malloc.h>
 #include <sunxi_display2.h>
 #include <sys_config.h>
+#include <asm/arch/intc.h>
 #include <pwm.h>
 #include <asm/arch/timer.h>
+#include <asm/arch/platform.h>
 #include <linux/list.h>
 #include <asm/memory.h>
 #include <div64.h>
 #include <fdt_support.h>
+#include <power/sunxi/pmu.h>
 #include "asm/io.h"
-#include <linux/compat.h>
 #include "../disp/disp_sys_intf.h"
 #include "../disp/de/bsp_display.h"
 

@@ -1,24 +1,14 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_bsp.h
+/* hdmi driver
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
 #ifndef __HDMI_BSP_H_
 #define __HDMI_BSP_H_
 
 #include <compiler.h>
-#if defined(CONFIG_MACH_SUN50IW2)
+#if defined(CONFIG_ARCH_SUN50IW2P1)
 #define HDMI_USING_INNER_BIAS 1
 #endif
 

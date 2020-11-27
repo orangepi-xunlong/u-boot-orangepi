@@ -12,23 +12,22 @@
 
 #include <common.h>
 
-#if defined(CONFIG_MACH_SUN8IW11)
+#if defined(CONFIG_ARCH_SUN8IW11P1)
 #define TVE_TOP_SUPPORT
 #define TVE_DEVICE_NUM 2
 #define TVE_TOP_DEVIVE_NUM 1
 #define TVE_DAC_NUM 4
-#elif defined(CONFIG_MACH_SUN50IW2)
+#elif defined(CONFIG_ARCH_SUN50IW2P1)
 /* #define TVE_TOP_SUPPORT */
 #define TVE_DEVICE_NUM 1
 #define TVE_TOP_DEVIVE_NUM 1
 #define TVE_DAC_NUM 1
-#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16) ||        \
-	defined(CONFIG_MACH_SUN50IW9)
+#elif defined(CONFIG_ARCH_SUN8IW12P1)
 #define TVE_TOP_SUPPORT
 #define TVE_DEVICE_NUM 1
 #define TVE_TOP_DEVIVE_NUM 1
 #define TVE_DAC_NUM 1
-#elif defined(CONFIG_MACH_SUN8IW17)
+#elif defined(CONFIG_ARCH_SUN8IW17P1)
 #define TVE_TOP_SUPPORT
 #define TVE_DEVICE_NUM 1
 #define TVE_TOP_DEVIVE_NUM 1

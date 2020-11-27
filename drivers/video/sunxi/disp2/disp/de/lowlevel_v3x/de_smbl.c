@@ -21,7 +21,7 @@
 #include "de_smbl.h"
 #include "de_rtmx.h"
 
-#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
+#if defined(SUPPORT_SMBL)
 
 #include "de_smbl_tab.h"
 /* SMBL offset based on RTMX */

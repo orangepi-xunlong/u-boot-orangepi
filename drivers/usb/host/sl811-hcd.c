@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -16,6 +15,8 @@
  *	  Adam Richter, Gregory P. Smith;
  *	2.Original SL811 driver (hc_sl811.o) by Pei Liu <pbl@cypress.com>
  *	3.Rewrited as sl811.o by Yin Aihua <yinah:couragetech.com.cn>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

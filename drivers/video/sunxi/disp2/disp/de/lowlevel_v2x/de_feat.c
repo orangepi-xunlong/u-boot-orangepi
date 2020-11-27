@@ -1,24 +1,8 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_feat.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "de_feat.h"
 
 static const struct de_feat *de_cur_features;
 
-#if defined(CONFIG_MACH_SUN8IW15)
+#if defined(CONFIG_ARCH_SUN8IW15P1)
 static const int sun8iw15_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -127,9 +111,9 @@ static const struct de_feat sun8iw15_de_features = {
 	.scale_line_buffer_rgb = sun8iw15_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun8iw15_de_scale_line_buffer_ed,
 };
-#endif /*endif CONFIG_MACH_SUN8IW15*/
+#endif /*endif CONFIG_ARCH_SUN8IW15P1*/
 
-#if defined(CONFIG_MACH_SUN8IW7)
+#if defined(CONFIG_ARCH_SUN8IW7P1)
 static const int sun8iw7_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -271,10 +255,10 @@ static const struct de_feat sun8iw7_de_features = {
 	.scale_line_buffer_ed = sun8iw7_de_scale_line_buffer_ed,
 };
 
-#endif /*endif CONFIG_MACH_SUN8IW7 */
+#endif /*endif CONFIG_ARCH_SUN8IW7P1 */
 
 
-#if defined(CONFIG_MACH_SUN8IW6)
+#if defined(CONFIG_ARCH_SUN8IW6P1)
 static const int sun8iw6_de_num_chns[] = {
 	4,
 	2,
@@ -382,7 +366,6 @@ static const struct de_feat sun8iw6_de_features = {
 };
 #endif
 
-#if defined(CONFIG_MACH_SUN50IW2)
 static const int sun50iw2_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -527,9 +510,7 @@ static const struct de_feat sun50iw2_de_features = {
 	.scale_line_buffer_rgb = sun50iw2_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun50iw2_de_scale_line_buffer_ed,
 };
-#endif
 
-#if defined(CONFIG_MACH_SUN50IW1)
 static const int sun50iw1_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -670,9 +651,7 @@ static const struct de_feat sun50iw1_de_features = {
 	.scale_line_buffer_rgb = sun50iw1_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun50iw1_de_scale_line_buffer_ed,
 };
-#endif
 
-#if defined(CONFIG_MACH_SUN8IW11)
 static const int sun8iw11_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -817,9 +796,7 @@ static const struct de_feat sun8iw11_de_features = {
 	.scale_line_buffer_rgb = sun8iw11_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun8iw11_de_scale_line_buffer_ed,
 };
-#endif
 
-#if defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16)
 static const int sun8iw12_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -929,9 +906,6 @@ static const struct de_feat sun8iw12_de_features = {
 	.scale_line_buffer_rgb = sun8iw12_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun8iw12_de_scale_line_buffer_ed,
 };
-#endif
-
-#if defined(CONFIG_MACH_SUN8IW17)
 static const int sun8iw17_de_num_chns[] = {
 	/* DISP0 */
 	4,
@@ -1074,7 +1048,6 @@ static const struct de_feat sun8iw17_de_features = {
 	.scale_line_buffer_rgb = sun8iw17_de_scale_line_buffer_rgb,
 	.scale_line_buffer_ed = sun8iw17_de_scale_line_buffer_ed,
 };
-#endif
 
 static const int default_de_num_chns[] = {
 	/* DISP0 */
@@ -1201,7 +1174,7 @@ static const int default_de_scale_line_buffer_ed[] = {
 	2048,
 };
 
-__attribute__((unused)) static const struct de_feat default_de_features = {
+static const struct de_feat default_de_features = {
 	.num_screens = DE_NUM,
 	.num_devices = DEVICE_NUM,
 	.num_chns = default_de_num_chns,
@@ -1444,21 +1417,21 @@ int de_feat_get_tcon_index(unsigned int tcon_index)
 
 int de_feat_init(void)
 {
-#if defined(CONFIG_MACH_SUN50IW2)
+#if defined(CONFIG_ARCH_SUN50IW2P1)
 	de_cur_features = &sun50iw2_de_features;
-#elif defined(CONFIG_MACH_SUN50IW1)
+#elif defined(CONFIG_ARCH_SUN50IW1P1)
 	de_cur_features = &sun50iw1_de_features;
-#elif defined(CONFIG_MACH_SUN8IW11)
+#elif defined(CONFIG_ARCH_SUN8IW11P1)
 	de_cur_features = &sun8iw11_de_features;
-#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16)
+#elif defined(CONFIG_ARCH_SUN8IW12P1)
 	de_cur_features = &sun8iw12_de_features;
-#elif defined(CONFIG_MACH_SUN8IW17)
+#elif defined(CONFIG_ARCH_SUN8IW17P1)
 	de_cur_features = &sun8iw17_de_features;
-#elif defined(CONFIG_MACH_SUN8IW7)
+#elif defined(CONFIG_ARCH_SUN8IW7P1)
 	de_cur_features = &sun8iw7_de_features;
-#elif defined(CONFIG_MACH_SUN8IW6)
+#elif defined(CONFIG_ARCH_SUN8IW6P1)
 	de_cur_features = &sun8iw6_de_features;
-#elif defined(CONFIG_MACH_SUN8IW15)
+#elif defined(CONFIG_ARCH_SUN8IW15P1)
 	de_cur_features = &sun8iw15_de_features;
 #else
 #error "undefined platform!!!"

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  * Avionic Design GmbH <www.avionic-design.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/gp_padctrl.h>
 #include <asm/arch/gpio.h>
@@ -41,25 +41,18 @@ void pinmux_init(void)
 void gpio_early_init(void)
 {
 	/* Turn on the alive signal */
-	gpio_request(TEGRA_GPIO(V, 2), "ALIVE");
-	gpio_direction_output(TEGRA_GPIO(V, 2), 1);
+	gpio_request(GPIO_PV2, "ALIVE");
+	gpio_direction_output(GPIO_PV2, 1);
 
 	/* Remove the reset on the external periph */
-	gpio_request(TEGRA_GPIO(I, 4), "nRST_PERIPH");
-	gpio_direction_output(TEGRA_GPIO(I, 4), 1);
+	gpio_request(GPIO_PI4, "nRST_PERIPH");
+	gpio_direction_output(GPIO_PI4, 1);
 }
 
 void pmu_write(uchar reg, uchar data)
 {
-	struct udevice *dev;
-	int ret;
-
-	ret = i2c_get_chip_for_busnum(4, PMU_I2C_ADDRESS, 1, &dev);
-	if (ret) {
-		debug("%s: Cannot find PMIC I2C chip\n", __func__);
-		return;
-	}
-	dm_i2c_write(dev, reg, &data, 1);
+	i2c_set_bus_num(4);	/* PMU is on bus 4 */
+	i2c_write(PMU_I2C_ADDRESS, reg, 1, &data, 1);
 }
 
 /*
@@ -72,8 +65,8 @@ void board_sdmmc_voltage_init(void)
 	pmu_write(PMU_REG_LDO5, PMU_LDO5(HIGH_POWER, 3300));
 
 	/* Switch the power on */
-	gpio_request(TEGRA_GPIO(J, 2), "EN_3V3_EMMC");
-	gpio_direction_output(TEGRA_GPIO(J, 2), 1);
+	gpio_request(GPIO_PJ2, "EN_3V3_EMMC");
+	gpio_direction_output(GPIO_PJ2, 1);
 }
 
 /*

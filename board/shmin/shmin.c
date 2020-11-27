@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 - 2010
  *     Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
@@ -7,6 +6,8 @@
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  *
  * board/shmin/shmin.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copy board_flash_get_legacy() from board/freescale/m54455evb/m54455evb.c
  */
@@ -29,6 +30,16 @@ int checkboard(void)
 int board_init(void)
 {
 	writew(0x2980, BCR2);
+	return 0;
+}
+
+int dram_init(void)
+{
+	DECLARE_GLOBAL_DATA_PTR;
+
+	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
+	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
 	return 0;
 }
 

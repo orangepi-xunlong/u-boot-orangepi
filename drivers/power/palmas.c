@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012-2013
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <config.h>
 #include <palmas.h>
@@ -22,43 +23,25 @@ void palmas_init_settings(void)
 #endif
 }
 
-#if defined(CONFIG_OMAP54XX)
-int lp873x_mmc1_poweron_ldo(uint voltage)
-{
-	if (palmas_i2c_write_u8(LP873X_LDO1_ADDR, LP873X_LDO1_VOLTAGE,
-				voltage)) {
-		printf("lp873x: could not set LDO1 voltage.\n");
-		return 1;
-	}
-	/* TURN ON LDO1 */
-	if (palmas_i2c_write_u8(LP873X_LDO1_ADDR, LP873X_LDO1_CTRL,
-				LP873X_LDO_CTRL_EN | LP873X_LDO_CTRL_RDIS_EN)) {
-		printf("lp873x: could not turn on LDO1.\n");
-		return 1;
-	}
-	return 0;
-
-}
-#endif
-
-int palmas_mmc1_poweron_ldo(uint ldo_volt, uint ldo_ctrl, uint voltage)
+int palmas_mmc1_poweron_ldo(void)
 {
 	u8 val = 0;
 
 #if defined(CONFIG_DRA7XX)
-	int ret;
-
-	ret = palmas_i2c_write_u8(TPS65903X_CHIP_P1, ldo_volt, voltage);
-	if (ret) {
+	/*
+	 * Currently valid for the dra7xx_evm board:
+	 * Set TPS659038 LDO1 to 3.0 V
+	 */
+	val = LDO_VOLT_3V0;
+	if (palmas_i2c_write_u8(TPS65903X_CHIP_P1, LDO1_VOLTAGE, val)) {
 		printf("tps65903x: could not set LDO1 voltage.\n");
-		return ret;
+		return 1;
 	}
 	/* TURN ON LDO1 */
 	val = RSC_MODE_SLEEP | RSC_MODE_ACTIVE;
-	ret = palmas_i2c_write_u8(TPS65903X_CHIP_P1, ldo_ctrl, val);
-	if (ret) {
+	if (palmas_i2c_write_u8(TPS65903X_CHIP_P1, LDO1_CTRL, val)) {
 		printf("tps65903x: could not turn on LDO1.\n");
-		return ret;
+		return 1;
 	}
 	return 0;
 #else

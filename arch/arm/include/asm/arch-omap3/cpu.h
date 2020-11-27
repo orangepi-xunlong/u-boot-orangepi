@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2008
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CPU_H
@@ -58,8 +59,13 @@ struct ctrl_id {
 #endif /* __ASSEMBLY__ */
 #endif /* __KERNEL_STRICT_NAMES */
 
-/* boot pin mask */
+/* device type */
+#define DEVICE_MASK		(0x7 << 8)
 #define SYSBOOT_MASK		0x1F
+#define TST_DEVICE		0x0
+#define EMU_DEVICE		0x1
+#define HS_DEVICE		0x2
+#define GP_DEVICE		0x3
 
 /* device speed */
 #define SKUID_CLK_MASK		0xf
@@ -92,6 +98,7 @@ struct ctrl_id {
 #define DEBUG_BASE		0x08000000	/* debug board */
 #define NAND_BASE		0x30000000	/* NAND addr */
 						/* (actual size small port) */
+#define PISMO2_BASE		0x18000000	/* PISMO2 CS1/2 */
 #define ONENAND_MAP		0x20000000	/* OneNand addr */
 						/* (actual size small port) */
 /* SMS */

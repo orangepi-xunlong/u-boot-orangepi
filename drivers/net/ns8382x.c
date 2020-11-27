@@ -809,13 +809,11 @@ ns8382x_poll(struct eth_device *dev)
 
 	if ((rx_status & (DescMore | DescPktOK | DescRxLong)) != DescPktOK) {
 		/* corrupted packet received */
-		printf("ns8382x_poll: Corrupted packet, status:%lx\n",
-		       rx_status);
+		printf("ns8382x_poll: Corrupted packet, status:%lx\n", rx_status);
 		retstat = 0;
 	} else {
 		/* give packet to higher level routine */
-		net_process_received_packet((rxb + cur_rx * RX_BUF_SIZE),
-					    length);
+		NetReceive((rxb + cur_rx * RX_BUF_SIZE), length);
 		retstat = 1;
 	}
 

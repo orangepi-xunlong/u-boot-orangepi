@@ -1,19 +1,3 @@
-/*
- * include/sunxi_display2.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __SUNXI_DISPLAY2_H__
 #define __SUNXI_DISPLAY2_H__
 
@@ -172,18 +156,6 @@ enum disp_data_bits {
 	DISP_DATA_16BITS   = 3,
 };
 
-enum disp_dvi_hdmi {
-	DISP_DVI_HDMI_UNDEFINED = 0,
-	DISP_DVI = 1,
-	DISP_HDMI = 2,
-};
-
-enum disp_scan_info {
-	DISP_SCANINFO_NO_DATA = 0,
-	OVERSCAN = 1,
-	UNDERSCAN = 2,
-};
-
 enum disp_color_range
 {
 	DISP_COLOR_RANGE_16_255 = 0,
@@ -264,13 +236,11 @@ enum disp_tv_mode
 	DISP_VGA_MOD_1366_768P_60        = 0x55,
 	DISP_VGA_MOD_1440_900P_60        = 0x56,
 	DISP_VGA_MOD_1920_1080P_60       = 0x57,
-	DISP_VGA_MOD_1920_1200P_60 = 0x58,
-	DISP_TV_MOD_3840_1080P_30 = 0x59,
-	DISP_VGA_MOD_1280_720P_60        = 0x5a,
-	DISP_VGA_MOD_1600_900P_60        = 0x5b,
-	DISP_VGA_MOD_MAX_NUM             = 0x5c,
+	DISP_VGA_MOD_1280_720P_60        = 0x58,
+	DISP_VGA_MOD_1920_1200P_60       = 0x5a,
+	DISP_VGA_MOD_MAX_NUM             = 0x5b,
 
-	DISP_TV_MODE_NUM
+	DISP_TV_MODE_NUM                 = 0x5c,
 };
 
 //FIXME:still need?
@@ -344,17 +314,6 @@ struct disp_output
 	unsigned int mode;
 };
 
-enum disp_transform {
-	DISP_TRANSFORM_ROT_0         = 0x00,
-	DISP_TRANSFORM_ROT_90        = 0x01,
-	DISP_TRANSFORM_ROT_180       = 0x02,
-	DISP_TRANSFORM_ROT_270       = 0x03,
-	DISP_TRANSFORM_FLIP_H        = 0x04,
-	DISP_TRANSFORM_ROT_90_FLIP_H = 0x05,
-	DISP_TRANSFORM_FLIP_V        = 0x06,
-	DISP_TRANSFORM_ROT_90_FLIP_V = 0x07,
-};
-
 struct disp_rect64
 {
 	long long x;
@@ -422,7 +381,7 @@ struct disp_atw_info {
 	enum disp_atw_mode mode;
 	unsigned int b_row;
 	unsigned int b_col;
-	unsigned long long cof_addr;
+	unsigned long cof_addr;
 };
 
 /* disp_fb_info2 - image buffer info v2
@@ -465,21 +424,6 @@ struct disp_fb_info2 {
 	unsigned int             metadata_flag;
 };
 
-
-/**
- * disp_snr_info
- */
-struct disp_snr_info {
-	unsigned char en;
-	unsigned char demo_en;
-	struct disp_rect demo_win;
-	unsigned char y_strength;
-	unsigned char u_strength;
-	unsigned char v_strength;
-	unsigned char th_ver_line;
-	unsigned char th_hor_line;
-};
-
 /* disp_layer_info2 - layer info v2
  *
  * @mode: buffer/clolor mode, when in color mode, the layer is widthout buffer
@@ -513,8 +457,6 @@ struct disp_layer_info2 {
 
 	unsigned int              id;
 	struct disp_atw_info      atw;
-	enum disp_transform transform;
-	struct disp_snr_info snr;
 };
 
 /* disp_layer_config2 - layer config v2
@@ -577,11 +519,12 @@ struct disp_device_config {
 	enum disp_data_bits     bits;
 	enum disp_eotf          eotf;
 	enum disp_color_space   cs;
-	enum disp_dvi_hdmi	dvi_hdmi;
-	enum disp_color_range	range;
-	enum disp_scan_info	scan;
-	unsigned int	aspect_ratio;
 	unsigned int            reserve1;
+	unsigned int            reserve2;
+	unsigned int            reserve3;
+	unsigned int            reserve4;
+	unsigned int            reserve5;
+	unsigned int            reserve6;
 };
 
 /* disp_device_dynamic_config - display deivce dynamic config
@@ -677,7 +620,6 @@ struct disp_tv_func {
 	int (*tv_irq_query)(u32 sel);
 	unsigned int (*tv_get_cur_line)(u32 sel);
 	int (*tv_get_startdelay)(u32 sel);
-	void (*tv_show_builtin_patten)(u32 sel, u32 patten);
 };
 
 /* disp_vdevice_interface_para - vdevice interaface parameter
@@ -806,7 +748,6 @@ enum tag_DISP_CMD
 	DISP_HWC_CUSTOM = 0x13,
 	DISP_DEVICE_SET_CONFIG = 0x14,
 	DISP_DEVICE_GET_CONFIG = 0x15,
-	DISP_SET_KSC_PARA = 0x16,
 
 	//----layer----
 	DISP_LAYER_ENABLE = 0x40,
@@ -887,35 +828,6 @@ enum tag_DISP_CMD
 	DISP_EINK_UPDATE  = 0x402,
 	DISP_EINK_SET_TEMP = 0x403,
 	DISP_EINK_GET_TEMP = 0x404,
-};
-
-enum {
-	ROTATION_SW_0 = 0,
-	ROTATION_SW_90 = 1,
-	ROTATION_SW_180 = 2,
-	ROTATION_SW_270 = 3,
-};
-
-/* struct disp_ksc_info - keystone correction struct
- *
- * @enable: 1:enable; 0:disable
- * @first_line_width: the width in pixel of first line you want
- * @ration: ration is 12-bit Fixed point decimal with 5-bit interger (<= 256)
- *	    direction = 0:
- *	    last_line_width = first_line_width + (lcd_y-1)*ration_double
- *	    ration_double = (last_line_width - first_line_width) / (lcd_y -1)
- *	    direction = 1:
- *	    last_line_width = first_line_width - (lcd_y-1)*ration_double
- *	    ration_double = (first_line_width - last_line_width) / (lcd_y -1)
- *	    ration = int(ration_double * pow(2, 12))
- * @direction: see above
- *
- */
-struct disp_ksc_info {
-	unsigned int enable;
-	unsigned int first_line_width;
-	unsigned int ration;
-	unsigned int direction;
 };
 
 #define FBIOGET_LAYER_HDL_0 0x4700

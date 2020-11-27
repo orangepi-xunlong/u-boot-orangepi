@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,10 +17,8 @@
 #include <spd_sdram.h>
 #include <asm/mmu.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #endif
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_SPD_EEPROM
 /*************************************************************************
@@ -117,7 +116,7 @@ volatile static struct pci_controller hose[] = {
 };
 #endif				/* CONFIG_PCI */
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -126,7 +125,7 @@ int dram_init(void)
 #endif
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32) im)
-		return -ENXIO;
+		return -1;
 
 	/* DDR SDRAM - Main SODIMM */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
@@ -145,9 +144,7 @@ int dram_init(void)
 #endif
 
 	/* return total bus RAM size(bytes) */
-	gd->ram_size = msize * 1024 * 1024;
-
-	return 0;
+	return msize * 1024 * 1024;
 }
 
 int checkboard(void)
@@ -381,13 +378,11 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-
-	return 0;
 }
 #endif

@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * WindRiver SBC8349 U-Boot configuration file.
  * Copyright (c) 2006, 2007 Wind River Systems, Inc.
  *
  * Paul Gortmaker <paul.gortmaker@windriver.com>
  * Based on the MPC8349EMDS config.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -20,6 +21,9 @@
 #define CONFIG_E300		1	/* E300 Family */
 #define CONFIG_MPC834x		1	/* MPC834x family */
 #define CONFIG_MPC8349		1	/* MPC8349 specific */
+#define CONFIG_SBC8349		1	/* WRS SBC8349 board specific */
+
+#define	CONFIG_SYS_TEXT_BASE	0xFF800000
 
 /* Don't enable PCI2 on sbc834x - it doesn't exist physically. */
 #undef CONFIG_MPC83XX_PCI2		/* support for 2nd PCI controller */
@@ -45,6 +49,8 @@
 #define HRCWL_CSB_TO_CLKIN	HRCWL_CSB_TO_CLKIN_4X1
 #endif
 #endif
+
+#undef CONFIG_BOARD_EARLY_INIT_F		/* call board_pre_init */
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
@@ -258,6 +264,8 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX     1
+#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -267,6 +275,16 @@
 
 #define CONFIG_SYS_NS16550_COM1        (CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2        (CONFIG_SYS_IMMR+0x4600)
+
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
+#define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
+/* Use the HUSH parser */
+#define CONFIG_SYS_HUSH_PARSER
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -320,6 +338,8 @@
 #undef PCI_ONE_PCI1
 #endif
 
+#define CONFIG_PCI_PNP		/* do pci plug-and-play */
+
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
 
@@ -337,6 +357,7 @@
 /*
  * TSEC configuration
  */
+#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -361,6 +382,7 @@
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
+	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
 	#define CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
 	#define CONFIG_ENV_SIZE		0x2000
@@ -370,6 +392,8 @@
 #define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #else
+	#define CONFIG_SYS_NO_FLASH	1	/* Flash is not usable now */
+	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -377,21 +401,54 @@
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
+
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+
 
 /*
  * Command line configuration.
  */
+#include <config_cmd_default.h>
+
+#define CONFIG_CMD_I2C
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_PING
+
+#if defined(CONFIG_PCI)
+    #define CONFIG_CMD_PCI
+#endif
+
+#if defined(CONFIG_SYS_RAMBOOT)
+    #undef CONFIG_CMD_SAVEENV
+    #undef CONFIG_CMD_LOADS
+#endif
+
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
+
+#if defined(CONFIG_CMD_KGDB)
+	#define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
+#else
+	#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
+#endif
+
+				/* Print Buffer Size */
+#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
+#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
+				/* Boot Argument Buffer Size */
+#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 /*
  * For booting Linux, the board info and command line data
@@ -480,6 +537,7 @@
 	HID0_ENABLE_INSTRUCTION_CACHE |\
 	HID0_ENABLE_M_BIT |\
 	HID0_ENABLE_ADDRESS_BROADCAST) */
+
 
 #define CONFIG_SYS_HID2 HID2_HBE
 
@@ -596,12 +654,17 @@
 #define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_HOSTNAME		"SBC8349"
+#define CONFIG_HOSTNAME		SBC8349
 #define CONFIG_ROOTPATH		"/tftpboot/rootfs"
 #define CONFIG_BOOTFILE		"uImage"
 
 				/* default location for tftp and bootm */
 #define CONFIG_LOADADDR		800000
+
+#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
+#undef  CONFIG_BOOTARGS		/* the boot command will set bootargs */
+
+#define CONFIG_BAUDRATE	 115200
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\

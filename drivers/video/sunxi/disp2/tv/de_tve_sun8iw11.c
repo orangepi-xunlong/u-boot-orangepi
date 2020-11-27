@@ -19,7 +19,7 @@ static unsigned int dac_type_info[TVE_DEVICE_NUM][TVE_DAC_NUM];
 s32 tve_low_set_reg_base(u32 sel, void __iomem *address)
 {
 	if (sel > 2)
-		printf("sel is %u,err!", sel);
+		pr_msg("sel is %d,err!", sel);
 	else
 		tve_reg_base[sel] = address;
 	return 0;
@@ -145,7 +145,7 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 		TVE_CLR_BIT(sel, TVE_000, 0x1<<0);
 		TVE_WUINT32(sel, TVE_130, reg_sync);
 		TVE_WUINT32(sel, TVE_014, 0x00820020);
-		TVE_WUINT32(sel, TVE_130, 0x20050013);
+		TVE_WUINT32(sel, TVE_130, 0x20050000);
 		TVE_WUINT32(sel, TVE_380, (deflick == 0)
 					? 0x00000000 : 0x0<<10 | 0x3<<8);
 		break;
@@ -181,7 +181,7 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 		TVE_WUINT32(sel, TVE_000, 0x00300000);
 		TVE_CLR_BIT(sel, TVE_000, 0x1<<0);
 		TVE_WUINT32(sel, TVE_130, reg_sync);
-		TVE_WUINT32(sel, TVE_130, 0x20050364);
+		TVE_WUINT32(sel, TVE_130, 0x20050370);
 		TVE_WUINT32(sel, TVE_380, (deflick == 0)
 					? 0x00000000 : 0x0<<10 | 0x3<<8);
 		break;
@@ -471,8 +471,6 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 	case DISP_VGA_MOD_1280_800P_60:
 	case DISP_VGA_MOD_1366_768P_60:
 	case DISP_VGA_MOD_1440_900P_60:
-	case DISP_VGA_MOD_1600_900P_60:
-	case DISP_VGA_MOD_1280_720P_60:
 	case DISP_VGA_MOD_1920_1080P_60:
 	case DISP_VGA_MOD_1920_1200P_60:
 		TVE_WUINT32(sel, TVE_004, 0x08000000);
@@ -510,12 +508,7 @@ s32 tve_low_dac_autocheck_enable(u32 sel)
 
 	TVE_SET_BIT(sel, TVE_000, 0x80000000);	/* tvclk enable */
 	TVE_WUINT32(sel, TVE_0F8, 0x00000200);
-#if defined(CONFIG_MACH_SUN50IW9)
-	TVE_WUINT32(sel, TVE_0FC, 0x014700FF);	/* 10ms x 10 */
-	TVE_SET_BIT(sel, TVE_030, 0x80000000); /* new detect mode */
-#else
 	TVE_WUINT32(sel, TVE_0FC, 0x0A3C00FF);	/* 20ms x 10 */
-#endif
 	TVE_WUINT32(sel, TVE_03C, 0x00009999);
 	for (i = 0; i < TVE_DAC_NUM; i++) {
 		if (dac_info[sel][i] == 1)
@@ -536,19 +529,6 @@ s32 tve_low_dac_autocheck_disable(u32 sel)
 	return 0;
 }
 
-#if defined (CONFIG_MACH_SUN50IW9)
-u32 tve_low_get_sid(u32 index)
-{
-	u32 efuse = 0;
-
-	efuse = (readl(0x0300622c) >> 16) + (readl(0x03006230) << 16);
-
-	if (efuse > 5)
-		efuse -= 5;
-
-	return efuse;
-}
-#else
 u32 tve_low_get_sid(u32 index)
 {
 	s32 ret = 0;
@@ -564,7 +544,6 @@ u32 tve_low_get_sid(u32 index)
 
 	return efuse[index];
 }
-#endif
 
 s32 tve_low_enhance(u32 sel, u32 mode)
 {

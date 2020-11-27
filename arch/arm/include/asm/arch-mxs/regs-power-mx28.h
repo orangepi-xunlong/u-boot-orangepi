@@ -1,14 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX28 Power Controller Register Definitions
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_POWER_H__
 #define __MX28_REGS_POWER_H__
 
-#include <asm/mach-imx/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_power_regs {

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Faraday USB 2.0 OTG Controller
  *
  * (C) Copyright 2010 Faraday Technology
  * Dante Su <dantesu@faraday-tech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +13,7 @@
 #include <net.h>
 #include <malloc.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <linux/types.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -831,7 +832,7 @@ static struct fotg210_chip controller = {
 	},
 };
 
-int usb_gadget_handle_interrupts(int index)
+int usb_gadget_handle_interrupts(void)
 {
 	struct fotg210_chip *chip = &controller;
 	struct fotg210_regs *regs = chip->regs;

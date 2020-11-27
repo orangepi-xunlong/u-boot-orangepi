@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2016 Allwinner.
  * zhouhuacai <zhouhuacai@allwinnertech.com>
- * wangwei <wangwei@allwinnertech.com>
  *
  * SUNXI TWI Controller Definition
  *
@@ -87,77 +86,25 @@
 #define TWI_STAT_IDLE           (0xF8)
 #define TWI_LCR_NORM_STATUS     (0x30)
 
-
-
-
-#define TWI_CONTROL_OFFSET             0x400
-#define SUNXI_I2C_CONTROLLER             5
-
-struct sunxi_twi_reg
-{
-    volatile unsigned int addr;        /* slave address     */
-    volatile unsigned int xaddr;       /* extend address    */
-	volatile unsigned int data;        /* data              */
-    volatile unsigned int ctl;         /* control           */
-    volatile unsigned int status;      /* status            */
-    volatile unsigned int clk;         /* clock             */
-    volatile unsigned int srst;        /* soft reset        */
-    volatile unsigned int eft;         /* enhanced future   */
-    volatile unsigned int lcr;         /* line control      */
-    volatile unsigned int dvfs;        /* dvfs control      */
-};
-
 enum {
-	SUNXI_PHY_I2C0 = 0,
-
-	SUNXI_PHY_I2C1,
-
-	SUNXI_PHY_I2C2,
-
-	SUNXI_PHY_I2C3,
-
-	SUNXI_PHY_I2C4,
-
-	SUNXI_PHY_I2C5,
-
-	SUNXI_PHY_R_I2C0,
-
-	SUNXI_PHY_R_I2C1,
-
-	/*The new i2c bus must be added before SUNXI_PHY_I2C_BUS_MAX*/
-	SUNXI_PHY_I2C_BUS_MAX,
-
+	SUNXI_I2C0 = 0,
+#if defined (CONFIG_ARCH_SUN50IW3P1)
+	SUNXI_I2C1,
+	SUNXI_I2C2,
+	SUNXI_I2C3,
+	SUNXI_I2C4,
+#if defined(CONFIG_CPUS_I2C)
+	SUNXI_R_I2C0,
+#endif
+#else
+#if defined(CONFIG_USE_AC200) && defined (CONFIG_ARCH_SUN50IW6P1)
+	SUNXI_I2C3,
+#endif
+#if defined(CONFIG_CPUS_I2C)
+	SUNXI_R_I2C0,
+#endif
+#endif
 };
-
-enum {
-#ifdef CONFIG_I2C0_ENABLE
-	SUNXI_VIR_I2C0,
-#endif
-#ifdef CONFIG_I2C1_ENABLE
-	SUNXI_VIR_I2C1,
-#endif
-#ifdef CONFIG_I2C2_ENABLE
-	SUNXI_VIR_I2C2,
-#endif
-#ifdef CONFIG_I2C3_ENABLE
-	SUNXI_VIR_I2C3,
-#endif
-#ifdef CONFIG_I2C4_ENABLE
-	SUNXI_VIR_I2C4,
-#endif
-#ifdef CONFIG_I2C5_ENABLE
-	SUNXI_VIR_I2C5,
-#endif
-#ifdef CONFIG_R_I2C0_ENABLE
-	SUNXI_VIR_R_I2C0,
-#endif
-#ifdef CONFIG_R_I2C1_ENABLE
-	SUNXI_VIR_R_I2C1,
-#endif
-	/*The new i2c bus must be added before SUNXI_VIR_I2C_BUS_MAX*/
-	SUNXI_VIR_I2C_BUS_MAX,
-};
-
 
 #endif /* _SUNXI_I2C_H_ */
 

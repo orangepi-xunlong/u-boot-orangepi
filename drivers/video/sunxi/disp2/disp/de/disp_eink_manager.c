@@ -75,7 +75,7 @@ unsigned int get_temperature(struct disp_eink_manager *manager)
 	if (manager) {
 		temp = manager->get_temperature(manager);
 	} else {
-		printf("eink manager is null\n");
+		pr_msg("eink manager is null\n");
 	}
 
 	return temp;
@@ -493,8 +493,8 @@ static s32 eink_calculate_index_data(struct disp_eink_manager *manager,
 		disp_al_get_update_area(manager->disp, &current_image->update_area);
 
 #ifdef __EINK_TEST__
-	printf("calc en=%d, flash mode = %d\n", current_image->window_calc_enable, current_image->flash_mode);
-	printf("xtop=%d,ytop=%d,xbot=%d,ybot=%d\n",
+	pr_msg("calc en=%d, flash mode = %d\n", current_image->window_calc_enable, current_image->flash_mode);
+	pr_msg("xtop=%d,ytop=%d,xbot=%d,ybot=%d\n",
 		current_image->update_area.x_top, current_image->update_area.y_top,
 		current_image->update_area.x_bottom, current_image->update_area.y_bottom);
 #endif
@@ -554,7 +554,7 @@ int eink_display_one_frame(struct disp_eink_manager *manager)
 		tail = manager->private_data->wavedata_ring_buffer.tail;
 		head = manager->private_data->wavedata_ring_buffer.head;
 		spin_unlock_irqrestore(&manager->private_data->wavedata_ring_buffer.slock, flags1);
-		printf("<2>fin:tai=%d,hed=%d,idx=%d,dc=%d,qc=%d,ec=%d,tf=%d\n",
+		pr_msg("<2>fin:tai=%d,hed=%d,idx=%d,dc=%d,qc=%d,ec=%d,tf=%d\n",
 			tail, head, index, decount, qcount, emcount,
 			manager->private_data->total_frame);
 		decount = wacount = emcount = qcount = 0;
@@ -601,7 +601,7 @@ static int eink_decode_finish(struct disp_eink_manager *manager)
 
 out:
 	spin_unlock_irqrestore(&manager->private_data->slock, flags);
-/*	printf("frame_index=%d, total_index=%d\n",
+/*	pr_msg("frame_index=%d, total_index=%d\n",
 		 manager->private_data->decode_frame_index,
 		 manager->private_data->total_frame);
 */
@@ -696,7 +696,7 @@ void eink_decode_task(void)
 			count++;
 		}
 		if (count > 100) {
-			printf("wavedata_ring_buffer was full, stop decoding.\n");
+			pr_msg("wavedata_ring_buffer was full, stop decoding.\n");
 			return;
 		}
 		__usdelay(1);
@@ -766,7 +766,7 @@ s32 eink_update_image(struct disp_eink_manager *manager, struct eink_8bpp_image 
 	last_image.size.height = height;
 
 	if (index_err) {
-		printf("%s: index err.\n", __func__);
+		pr_msg("%s: index err.\n", __func__);
 		return -1;
 	}
 
@@ -1091,7 +1091,7 @@ int disp_init_eink(disp_bsp_init_para *para)
 
 		memcpy((void *)&data->param, (void *)&eink_param, sizeof(struct eink_init_param));
 
-		printf("eink_clk: 0x%p; edma_clk: 0x%p; base_addr: 0x%p; irq_no: 0x%x\n",
+		pr_msg("eink_clk: 0x%p; edma_clk: 0x%p; base_addr: 0x%p; irq_no: 0x%x\n",
 					data->eink_clk, data->edma_clk, (void *)data->eink_base_addr, data->irq_no);
 
 		disp_al_set_eink_base(disp, data->eink_base_addr);
@@ -1111,7 +1111,7 @@ int disp_init_eink(disp_bsp_init_para *para)
 		for (i = 0; i < INDEX_BUFFER_NUM; i++) {
 			data->index_paddr[i] = data->index_paddr[0] + indexdata_buf_size * i;
 			data->index_vaddr[i] = data->index_vaddr[0] + indexdata_buf_size * i;
-			printf("index_paddr%d:0x%p\n", i, data->index_paddr[i]);
+			pr_msg("index_paddr%d:0x%p\n", i, data->index_paddr[i]);
 		}
 
 		memset(&data->wavedata_ring_buffer, 0, sizeof(struct wavedata_queue));
@@ -1136,7 +1136,7 @@ int disp_init_eink(disp_bsp_init_para *para)
 			}
 			memset((void *)data->wavedata_ring_buffer.wavedata_vaddr[wd_buf_id], 0, wavedata_buf_size);
 
-			printf("wavedata id=%d, virt-addr=0x%p, phy-addr=0x%p\n", \
+			pr_msg("wavedata id=%d, virt-addr=0x%p, phy-addr=0x%p\n", \
 					wd_buf_id, (data->wavedata_ring_buffer.wavedata_vaddr[wd_buf_id]),
 					data->wavedata_ring_buffer.wavedata_paddr[wd_buf_id]);
 		}
@@ -1151,13 +1151,13 @@ int disp_init_eink(disp_bsp_init_para *para)
 			}
 			memset((void *)data->wavedata_ring_buffer.wavedata_vaddr[wd_buf_id], 0, wavedata_buf_size);
 
-/*			printf("wavedata id=%d, virt-addr=%p, phy-addr=%p,wavedata_buf_size=%x\n",
+/*			pr_msg("wavedata id=%d, virt-addr=%p, phy-addr=%p,wavedata_buf_size=%x\n",
 			wd_buf_id,
 			data->wavedata_ring_buffer.wavedata_vaddr[wd_buf_id],
 			data->wavedata_ring_buffer.wavedata_paddr[wd_buf_id],
 			wavedata_buf_size);
 */
-/*			printf("wavedata id=%d, virt-addr value =%d, phy-addr value=%d\n",
+/*			pr_msg("wavedata id=%d, virt-addr value =%d, phy-addr value=%d\n",
 			wd_buf_id,
 			*((int *)data->wavedata_ring_buffer.wavedata_vaddr[wd_buf_id]),
 			*((int *)data->wavedata_ring_buffer.wavedata_paddr[wd_buf_id]));
@@ -1165,7 +1165,7 @@ int disp_init_eink(disp_bsp_init_para *para)
 		}
 #endif
 		pipeline_manager_init(manager);
-/*		printf("fresh_frame_index=%p, total_frame=%p, decode_frame_index= %p, diplay_finish_flag=%p\n",
+/*		pr_msg("fresh_frame_index=%p, total_frame=%p, decode_frame_index= %p, diplay_finish_flag=%p\n",
 					&manager->private_data->fresh_frame_index,
 					&manager->private_data->total_frame,
 					&manager->private_data->decode_frame_index,

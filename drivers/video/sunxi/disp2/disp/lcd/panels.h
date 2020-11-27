@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/lcd/panels.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __PANEL_H__
 #define __PANEL_H__
 #include "../de/bsp_display.h"
@@ -83,122 +67,32 @@ typedef enum
 extern int sunxi_disp_get_source_ops(struct sunxi_disp_source_ops *src_ops);
 int lcd_init(void);
 
-extern __lcd_panel_t default_panel;
-
-#ifdef CONFIG_LCD_SUPPORT_HE0801A068
-extern __lcd_panel_t he0801a068_panel;
-#endif
-
-#ifdef CONFIG_EINK_PANEL_USED
-extern __lcd_panel_t default_eink;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_LT070ME05000
-extern __lcd_panel_t lt070me05000_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_WTQ05027D01
-extern __lcd_panel_t wtq05027d01_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_T27P06
-extern __lcd_panel_t t27p06_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_DX0960BE40A1
-extern __lcd_panel_t dx0960be40a1_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_TFT720X1280
-extern __lcd_panel_t tft720x1280_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_S6D7AA0X01
-extern __lcd_panel_t S6D7AA0X01_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_GG1P4062UTSW
-extern __lcd_panel_t gg1p4062utsw_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_LS029B3SX02
-extern __lcd_panel_t ls029b3sx02_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_FD055HD003S
-extern __lcd_panel_t fd055hd003s_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_FRD450H40014
-extern __lcd_panel_t frd450h40014_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_H245QBN02
-extern __lcd_panel_t h245qbn02_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_ILI9341
-extern __lcd_panel_t ili9341_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_LH219WQ1
-extern __lcd_panel_t lh219wq1_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_ST7789V
-extern __lcd_panel_t st7789v_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_ST7796S
-extern __lcd_panel_t st7796s_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_ST7701S
-extern __lcd_panel_t st7701s_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_WTL096601G03
-extern __lcd_panel_t wtl096601g03_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_T30P106
-extern __lcd_panel_t t30p106_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_TO20T20000
-extern __lcd_panel_t to20t20000_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_S2003T46G
-extern __lcd_panel_t s2003t46g_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_WILLIAMLCD
 extern __lcd_panel_t WilliamLcd_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_LQ101R1SX03
-extern __lcd_panel_t lq101r1sx03_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_INET_DSI_PANEL
-extern __lcd_panel_t inet_dsi_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_VR_LS055T1SX01
+#if defined(CONFIG_ARCH_SUN50IW3P1)
+extern __lcd_panel_t ls029b3sx02_panel;
 extern __lcd_panel_t vr_ls055t1sx01_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_SL008PN21D
+extern __lcd_panel_t lq101r1sx03_panel;
+extern __lcd_panel_t he0801a068_panel;
 extern __lcd_panel_t sl008pn21d_panel;
-#endif
-
-#ifdef CONFIG_LCD_SUPPORT_VR_SHARP
+#else
+#if defined(CONFIG_ARCH_SUN8IW12P1)
+extern __lcd_panel_t ili9341_panel;
+extern __lcd_panel_t fd055hd003s_panel;
+extern __lcd_panel_t default_panel;
+#else
+extern __lcd_panel_t default_eink;
+extern __lcd_panel_t default_panel;
+extern __lcd_panel_t lt070me05000_panel;
+extern __lcd_panel_t wtq05027d01_panel;
+extern __lcd_panel_t t27p06_panel;
+extern __lcd_panel_t dx0960be40a1_panel;
+extern __lcd_panel_t tft720x1280_panel;
+extern __lcd_panel_t S6D7AA0X01_panel;
+extern __lcd_panel_t gg1p4062utsw_panel;
 extern __lcd_panel_t vr_sharp_panel;
-#endif
+extern __lcd_panel_t he0801a068_panel;
+#endif /*endif CONFIG_ARCH_SUN8IW12P1 */
+#endif /*endif CONFIG_ARCH_SUN50IW3P1 */
 
-#ifdef CONFIG_LCD_SUPPORT_BP101WX1
-extern __lcd_panel_t bp101wx1_panel;
-#endif
 
 #endif

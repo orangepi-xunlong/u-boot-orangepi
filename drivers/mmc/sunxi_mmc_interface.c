@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * MMC driver for allwinner sunxi platform.
  *
@@ -15,7 +14,6 @@
 #include "mmc_private.h"
 #include "mmc_def.h"
 
-#if 0
 int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value);
 
 static int mmc_wp_grp_aligned(struct mmc *mmc, unsigned int from, unsigned int nr)
@@ -915,15 +913,14 @@ ERR_RET:
 
 
 
-static ulong mmc_do_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const void *src)
+static ulong mmc_do_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const void*src)
 {
 	s32 err = 0;
 	ulong rblk, blocks_do = 0;
 	void *dst = NULL;
 	struct mmc *mmc = find_mmc_device(dev_num);
 
-	dst = (void *)malloc(blkcnt * mmc->write_bl_len);
-	if (dst == NULL) {
+	if ((dst = (void *)malloc(blkcnt * mmc->write_bl_len)) == NULL) {
 		MMCINFO("%s: request memory fail\n", __FUNCTION__);
 		return 0;
 	}
@@ -938,7 +935,7 @@ static ulong mmc_do_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, cons
 
 	/* read and check */
 	rblk = mmc_bread(dev_num, start, blkcnt, dst);
-	if ((rblk < blkcnt) || memcmp(src, dst, blkcnt * mmc->write_bl_len)) {
+	if ((rblk<blkcnt) || memcmp(src, dst, blkcnt * mmc->write_bl_len)) {
 		MMCINFO("%s: check boot0 fail\n", __FUNCTION__);
 		err = -1;
 	} else
@@ -946,14 +943,11 @@ static ulong mmc_do_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, cons
 
 ERR_RET:
 	free(dst);
-	if (err)
-		return 0;
-	else
-		return blocks_do;
+	return (err ? 0 : blocks_do);
 }
 
 
-static ulong mmc_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const void *src)
+static ulong mmc_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const void*src)
 {
 	lbaint_t blocks_do_user = 0, blocks_do_boot = 0;
 	ulong start_todo = start;
@@ -961,7 +955,8 @@ static ulong mmc_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const v
 	struct mmc *mmc = find_mmc_device(dev_num);
 
 	if ((mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_BURN_EMMC_BOOT_PART)
-		&& mmc->boot_support) {
+		&& mmc->boot_support)
+	{
 		MMCDBG("%s: start burn emmc boot part: %d...\n", __func__, (int)start);
 		/* enable boot mode */
 		err = mmc_switch_boot_bus_cond(dev_num,
@@ -1008,7 +1003,8 @@ static ulong mmc_burn_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, const v
 
 DISABLE_BOOT_MODE:
 	if ((err || !(mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_BURN_EMMC_BOOT_PART))
-			&& mmc->boot_support) {
+			&& mmc->boot_support)
+	{
 		/* disable boot mode */
 		err = mmc_switch_boot_part(dev_num, 0, MMC_SWITCH_PART_BOOT_PART_NONE);
 		if (err)
@@ -1016,7 +1012,8 @@ DISABLE_BOOT_MODE:
 	}
 
 	/* burn boot to user partition */
-	if (!(mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_NOT_BURN_USER_PART)) {
+	if (!(mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_NOT_BURN_USER_PART))
+	{
 		MMCDBG("%s: start burn emmc user part: %d...\n", __func__, (int)start);
 		blocks_do_user = mmc_do_burn_boot(dev_num, start, blkcnt, src);
 		if (blocks_do_user != blkcnt)
@@ -1037,7 +1034,8 @@ static ulong mmc_get_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, void *ds
 	ulong start_todo = start;
 	struct mmc *mmc = find_mmc_device(dev_num);
 
-	if (!(mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_NOT_BURN_USER_PART)) {
+	if (!(mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_NOT_BURN_USER_PART))
+	{
 		blocks_do = mmc_bread(dev_num, start_todo, blkcnt, dst);
 		if (blocks_do != blkcnt) {
 			MMCINFO("%s: get boot0 from user part err\n", __FUNCTION__);
@@ -1048,8 +1046,10 @@ static ulong mmc_get_boot(int dev_num, lbaint_t start, lbaint_t blkcnt, void *ds
 	}
 
 	if ((mmc->cfg->platform_caps.drv_burn_boot_pos & DRV_PARA_BURN_EMMC_BOOT_PART)
-		&& mmc->boot_support) {
-		if (mmc_switch_part(dev_num, MMC_SWITCH_PART_BOOT_PART_1)) {
+		&& mmc->boot_support)
+	{
+		if (mmc_switch_part(dev_num, MMC_SWITCH_PART_BOOT_PART_1))
+		{
 			MMCINFO("%s: switch to boot1 part failed\n", __FUNCTION__);
 			goto RET;
 		}
@@ -1082,15 +1082,18 @@ RET:
 
 
 
-static ulong mmc_bwrite_mass_pro(int dev_num, ulong start, lbaint_t blkcnt, const void *src)
+static ulong mmc_bwrite_mass_pro(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
 {
 	MMCDBG("%s: dev %d, start %ld, blkcnt %ld src 0x%x\n", __FUNCTION__, dev_num, start, blkcnt, (u32)src);
 
-	if ((((dev_num == 2) && (start == BOOT0_SDMMC_START_ADDR)) || ((dev_num == 3) && (start == BOOT0_EMMC3_START_ADDR)))
-		&& ((start+blkcnt) < CONFIG_MMC_LOGICAL_OFFSET)) {
+	if ((((dev_num == 2) &&(start == BOOT0_SDMMC_START_ADDR)) || ((dev_num == 3) && (start == BOOT0_EMMC3_START_ADDR)))
+		&& ((start+blkcnt) < CONFIG_MMC_LOGICAL_OFFSET))
+	{
 		MMCDBG("%s: start burn boot data...\n", __FUNCTION__);
 		return mmc_burn_boot(dev_num, start, blkcnt, src);
-	} else /*if (start > CONFIG_MMC_LOGICAL_OFFSET)*/ {
+	}
+	else /*if (start > CONFIG_MMC_LOGICAL_OFFSET)*/
+	{
 		MMCDBG("%s: start burn user data...\n", __FUNCTION__);
 		return mmc_bwrite(dev_num, start, blkcnt, src);
 	}
@@ -1108,11 +1111,14 @@ static ulong mmc_bread_mass_pro(int dev_num, ulong start, lbaint_t blkcnt, void 
 {
 	MMCDBG("%s: dev %d, start %ld, blkcnt %ld src 0x%x\n", __FUNCTION__, dev_num, start, blkcnt, (u32)dst);
 
-	if ((((dev_num == 2) && (start == BOOT0_SDMMC_START_ADDR)) || ((dev_num == 3) && (start == BOOT0_EMMC3_START_ADDR)))
-		&& ((start+blkcnt) < CONFIG_MMC_LOGICAL_OFFSET)) {
+	if ((((dev_num == 2) &&(start == BOOT0_SDMMC_START_ADDR)) || ((dev_num == 3) && (start == BOOT0_EMMC3_START_ADDR)))
+		&& ((start+blkcnt) < CONFIG_MMC_LOGICAL_OFFSET))
+	{
 		MMCDBG("%s: start read boot data...\n", __FUNCTION__);
 		return mmc_get_boot(dev_num, start, blkcnt, dst);
-	} else /*if (start > CONFIG_MMC_LOGICAL_OFFSET)*/ {
+	}
+	else /*if (start > CONFIG_MMC_LOGICAL_OFFSET)*/
+	{
 		MMCDBG("%s: start read user data...\n", __FUNCTION__);
 		return mmc_bread(dev_num, start, blkcnt, dst);
 	}
@@ -1341,15 +1347,15 @@ check_secure_area(ulong start, lbaint_t blkcnt)
 	u32 sta_add = start;
 	u32 end_add = start + blkcnt -1;
 	u32 se_sta_add = SDMMC_SECURE_STORAGE_START_ADD;
-	u32 se_end_add = SDMMC_SECURE_STORAGE_START_ADD + (SDMMC_ITEM_SIZE * 2 * MAX_SECURE_STORAGE_MAX_ITEM) - 1;
-	if (blkcnt <= (SDMMC_ITEM_SIZE * 2 * MAX_SECURE_STORAGE_MAX_ITEM)) {
-		if (((sta_add >= se_sta_add) && (sta_add <= se_end_add))
-			|| ((end_add >= se_sta_add) && (end_add <= se_end_add))) {
+	u32 se_end_add = SDMMC_SECURE_STORAGE_START_ADD +(SDMMC_ITEM_SIZE*2*MAX_SECURE_STORAGE_MAX_ITEM)-1;
+	if(blkcnt<=(SDMMC_ITEM_SIZE*2*MAX_SECURE_STORAGE_MAX_ITEM)){
+		if(((sta_add >= se_sta_add)&&(sta_add <= se_end_add))
+			||((end_add >= se_sta_add)&&(end_add <= se_end_add))){
 			return 1;
 		}
-	} else {
-		if (((se_sta_add >= sta_add) && (se_sta_add <= end_add))
-			|| ((se_end_add >= sta_add) && (se_end_add <= end_add))) {
+	}else{
+		if(((se_sta_add >= sta_add)&&(se_sta_add <= end_add))
+			||((se_end_add >= sta_add)&&(se_end_add <= end_add))){
 			return 1;
 		}
 	}
@@ -1360,9 +1366,9 @@ check_secure_area(ulong start, lbaint_t blkcnt)
 static ulong
 mmc_bread_secure(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %ld,end %ld\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 
@@ -1370,11 +1376,11 @@ mmc_bread_secure(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
 }
 
 static ulong
-mmc_bwrite_secure(int dev_num, ulong start, lbaint_t blkcnt, const void *src)
+mmc_bwrite_secure(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if(check_secure_area(start,blkcnt)){
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %ld,end %ld\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt - 1);
+			__FUNCTION__,__LINE__ ,start,start + blkcnt-1);
 		return -1;
 	}
 
@@ -1384,9 +1390,9 @@ mmc_bwrite_secure(int dev_num, ulong start, lbaint_t blkcnt, const void *src)
 static ulong
 mmc_berase_secure(int dev_num, unsigned long start, lbaint_t blkcnt)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %ld,end %ld\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 
@@ -1394,11 +1400,11 @@ mmc_berase_secure(int dev_num, unsigned long start, lbaint_t blkcnt)
 }
 
 static ulong
-mmc_bwrite_mass_pro_secure(int dev_num, ulong start, lbaint_t blkcnt, const void *src)
+mmc_bwrite_mass_pro_secure(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
 {
 	if (check_secure_area(start, blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %ld,end %ld\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 
@@ -1437,9 +1443,9 @@ mmc_secure_wipe_secure(int dev_num, unsigned int start, unsigned int blkcnt, uns
 static int
 mmc_mmc_erase_secure(int dev_num, unsigned int start, unsigned int blkcnt, unsigned int *skip_space)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %d,end %d\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 	return mmc_mmc_erase(dev_num, start, blkcnt, skip_space);
@@ -1448,9 +1454,9 @@ mmc_mmc_erase_secure(int dev_num, unsigned int start, unsigned int blkcnt, unsig
 static int
 mmc_mmc_trim_secure(int dev_num, unsigned int start, unsigned int blkcnt)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %d,end %d\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 	return mmc_mmc_trim(dev_num, start, blkcnt);
@@ -1459,9 +1465,9 @@ mmc_mmc_trim_secure(int dev_num, unsigned int start, unsigned int blkcnt)
 static int
 mmc_mmc_discard_secure(int dev_num, unsigned int start, unsigned int blkcnt)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %d,end %d\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 	return mmc_mmc_discard(dev_num, start, blkcnt);
@@ -1475,9 +1481,9 @@ mmc_mmc_sanitize_secure(int dev_num)
 static int
 mmc_mmc_secure_erase_secure(int dev_num, unsigned int start, unsigned int blkcnt, unsigned int *skip_space)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %d,end %d\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 	return mmc_mmc_secure_erase(dev_num, start, blkcnt, skip_space);
@@ -1486,9 +1492,9 @@ mmc_mmc_secure_erase_secure(int dev_num, unsigned int start, unsigned int blkcnt
 static int
 mmc_mmc_secure_trim_secure(int dev_num, unsigned int start, unsigned int blkcnt)
 {
-	if (check_secure_area(start, blkcnt)) {
+	if (check_secure_area(start,blkcnt)) {
 		MMCINFO("Should not w/r secure area in fun %s,line,%d in start %d,end %d\n",\
-			__FUNCTION__, __LINE__, start, start + blkcnt-1);
+			__FUNCTION__,__LINE__,start,start + blkcnt-1);
 		return -1;
 	}
 	return mmc_mmc_secure_trim(dev_num, start, blkcnt);
@@ -1501,33 +1507,33 @@ get_sdmmc_secure_storage_max_item(void)
 }
 
 static int
-sdmmc_secure_storage_write(s32 dev_num, u32 item, u8 *buf, lbaint_t blkcnt)
+sdmmc_secure_storage_write(s32 dev_num,u32 item,u8 *buf , lbaint_t blkcnt)
 {
 	s32 ret = 0;
 
-	if (buf == NULL) {
+	if(buf == NULL){
 		MMCINFO("intput buf is NULL \n");
 		return -1;
 	}
 
-	if (item > MAX_SECURE_STORAGE_MAX_ITEM) {
-		MMCINFO("item exceed %d\n", MAX_SECURE_STORAGE_MAX_ITEM);
+	if(item > MAX_SECURE_STORAGE_MAX_ITEM){
+		MMCINFO("item exceed %d\n",MAX_SECURE_STORAGE_MAX_ITEM);
 		return -1;
 	}
 
-	if (blkcnt > SDMMC_ITEM_SIZE) {
-		MMCINFO("block count exceed %d\n", SDMMC_ITEM_SIZE);
+	if(blkcnt > SDMMC_ITEM_SIZE){
+		MMCINFO("block count exceed %d\n",SDMMC_ITEM_SIZE);
 		return -1;
 	}
 	/* first backups*/
-	ret = mmc_bwrite(dev_num, SDMMC_SECURE_STORAGE_START_ADD + SDMMC_ITEM_SIZE * 2 * item, blkcnt, buf);
-	if (ret != blkcnt) {
+	ret = mmc_bwrite(dev_num,SDMMC_SECURE_STORAGE_START_ADD+SDMMC_ITEM_SIZE*2*item,blkcnt,buf);
+	if(ret != blkcnt){
 		MMCINFO("Write first backup failed\n");
 		return -1;
 	}
 	/*second backups*/
-	ret = mmc_bwrite(dev_num, SDMMC_SECURE_STORAGE_START_ADD + SDMMC_ITEM_SIZE * 2 * item + SDMMC_ITEM_SIZE, blkcnt, buf);
-	if (ret != blkcnt) {
+	ret = mmc_bwrite(dev_num,SDMMC_SECURE_STORAGE_START_ADD+SDMMC_ITEM_SIZE*2*item+SDMMC_ITEM_SIZE,blkcnt,buf);
+	if(ret != blkcnt){
 		MMCINFO("Write second backup failed\n");
 		return -1;
 	}
@@ -1535,63 +1541,63 @@ sdmmc_secure_storage_write(s32 dev_num, u32 item, u8 *buf, lbaint_t blkcnt)
 }
 
 static int
-sdmmc_secure_storage_read(s32 dev_num, u32 item, u8 *buf, lbaint_t blkcnt)
+sdmmc_secure_storage_read(s32 dev_num,u32 item,u8 *buf , lbaint_t blkcnt)
 {
 	s32 ret = 0;
 	s32 *fst_bak = NULL;
 	s32 *sec_bak = NULL;
 
-	if (buf == NULL) {
+	if(buf == NULL){
 		MMCINFO("intput buf is NULL\n");
 		ret = -1;
 		goto out;
 	}
 
-	if (item > MAX_SECURE_STORAGE_MAX_ITEM) {
-		MMCINFO("item exceed %d\n", MAX_SECURE_STORAGE_MAX_ITEM);
+	if(item > MAX_SECURE_STORAGE_MAX_ITEM){
+		MMCINFO("item exceed %d\n",MAX_SECURE_STORAGE_MAX_ITEM);
 		ret = -1;
 		goto out;
 	}
 
-	if (blkcnt > SDMMC_ITEM_SIZE) {
-		MMCINFO("block count exceed %d\n", SDMMC_ITEM_SIZE);
+	if(blkcnt > SDMMC_ITEM_SIZE){
+		MMCINFO("block count exceed %d\n",SDMMC_ITEM_SIZE);
 		ret = -1;
 		goto out;
 	}
 
 	fst_bak = malloc(blkcnt*512);
-	if (fst_bak == NULL) {
-		MMCINFO("malloc buff failed in fun %s line %d\n", __FUNCTION__, __LINE__);
+	if(fst_bak == NULL){
+		MMCINFO("malloc buff failed in fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
 		goto out;
 	}
 	sec_bak = malloc(blkcnt*512);
-	if (sec_bak == NULL) {
-		MMCINFO("malloc buff failed in fun %s line %d\n", __FUNCTION__, __LINE__);
+	if(sec_bak == NULL){
+		MMCINFO("malloc buff failed in fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
 		goto out_fst;
 	}
 
 	/*first backups*/
-	ret = mmc_bread(dev_num, SDMMC_SECURE_STORAGE_START_ADD + SDMMC_ITEM_SIZE * 2 * item, blkcnt, fst_bak);
-	if (ret != blkcnt) {
-		MMCINFO("read first backup failed in fun %s line %d\n", __FUNCTION__, __LINE__);
+	ret = mmc_bread(dev_num,SDMMC_SECURE_STORAGE_START_ADD+SDMMC_ITEM_SIZE*2*item,blkcnt,fst_bak);
+	if(ret != blkcnt){
+		MMCINFO("read first backup failed in fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
 		goto out_sec;
 	}
 	/*second backups*/
-	ret = mmc_bread(dev_num, SDMMC_SECURE_STORAGE_START_ADD + SDMMC_ITEM_SIZE * 2 * item + SDMMC_ITEM_SIZE, blkcnt, sec_bak);
-	if (ret != blkcnt) {
-		MMCINFO("read second backup failed fun %s line %d\n", __FUNCTION__, __LINE__);
+	ret = mmc_bread(dev_num,SDMMC_SECURE_STORAGE_START_ADD+SDMMC_ITEM_SIZE*2*item+SDMMC_ITEM_SIZE,blkcnt,sec_bak);
+	if(ret != blkcnt){
+		MMCINFO("read second backup failed fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
 		goto out_sec;
 	}
 
-	if (memcmp(fst_bak, sec_bak, blkcnt * 512)) {
-		MMCINFO("first and second bak compare failed fun %s line %d\n", __FUNCTION__, __LINE__);
+	if(memcmp(fst_bak,sec_bak,blkcnt*512)){
+		MMCINFO("first and second bak compare failed fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
-	} else {
-		memcpy(buf, fst_bak, blkcnt * 512);
+	}else{
+		memcpy(buf,fst_bak,blkcnt*512);
 		ret = blkcnt;
 	}
 
@@ -1603,34 +1609,34 @@ out:
 	return ret;
 }
 
-static int sdmmc_secure_storage_read_backup(s32 dev_num, u32 item, u8 *buf, lbaint_t blkcnt)
+static int sdmmc_secure_storage_read_backup(s32 dev_num,u32 item,u8 *buf , lbaint_t blkcnt)
 {
 	s32 ret = 0;
 	s32 *sec_bak = (s32 *)buf;
 
-	if (buf == NULL) {
+	if(buf == NULL){
 		MMCINFO("intput buf is NULL\n");
 		ret = -1;
 		goto out;
 
 	}
 
-	if (item > MAX_SECURE_STORAGE_MAX_ITEM) {
-		MMCINFO("item exceed %d\n", MAX_SECURE_STORAGE_MAX_ITEM);
+	if(item > MAX_SECURE_STORAGE_MAX_ITEM){
+		MMCINFO("item exceed %d\n",MAX_SECURE_STORAGE_MAX_ITEM);
 		ret = -1;
 		goto out;
 	}
 
-	if (blkcnt > SDMMC_ITEM_SIZE) {
-		MMCINFO("block count exceed %d\n", SDMMC_ITEM_SIZE);
+	if(blkcnt > SDMMC_ITEM_SIZE){
+		MMCINFO("block count exceed %d\n",SDMMC_ITEM_SIZE);
 		ret = -1;
 		goto out;
 	}
 
 	//second backups
-	ret = mmc_bread(dev_num, SDMMC_SECURE_STORAGE_START_ADD + SDMMC_ITEM_SIZE * 2 * item + SDMMC_ITEM_SIZE, blkcnt, sec_bak);
-	if (ret != blkcnt) {
-		MMCINFO("read second backup failed fun %s line %d\n", __FUNCTION__, __LINE__);
+	ret = mmc_bread(dev_num,SDMMC_SECURE_STORAGE_START_ADD+SDMMC_ITEM_SIZE*2*item+SDMMC_ITEM_SIZE,blkcnt,sec_bak);
+	if(ret != blkcnt){
+		MMCINFO("read second backup failed fun %s line %d\n",__FUNCTION__,__LINE__);
 		ret = -1;
 	}
 
@@ -1639,11 +1645,10 @@ out:
 }
 #endif
 
-#endif
 
 int mmc_init_blk_ops(struct mmc *mmc)
 {
-#if 0
+
 #ifndef CONFIG_SUNXI_SECURE_STORAGE
 	mmc->block_dev.block_read 	= mmc_bread;
 	mmc->block_dev.block_write 	= mmc_bwrite;
@@ -1657,7 +1662,7 @@ int mmc_init_blk_ops(struct mmc *mmc)
 
 	mmc->block_dev.block_read_secure	= NULL;
 	mmc->block_dev.block_write_secure	= NULL;
-	mmc->block_dev.block_get_item_secure	= NULL;
+	mmc->block_dev.block_get_item_secure= NULL;
 
 	mmc->block_dev.block_secure_wipe = mmc_secure_wipe;
 	mmc->block_dev.block_mmc_erase = mmc_mmc_erase;
@@ -1686,7 +1691,7 @@ int mmc_init_blk_ops(struct mmc *mmc)
 	mmc->block_dev.block_read_secure_backup
 			= sdmmc_secure_storage_read_backup;
 	mmc->block_dev.block_write_secure	= sdmmc_secure_storage_write;
-	mmc->block_dev.block_get_item_secure	= get_sdmmc_secure_storage_max_item;
+	mmc->block_dev.block_get_item_secure= get_sdmmc_secure_storage_max_item;
 
 	mmc->block_dev.block_secure_wipe	= mmc_secure_wipe_secure;
 	mmc->block_dev.block_mmc_erase = mmc_mmc_erase_secure;
@@ -1700,11 +1705,7 @@ int mmc_init_blk_ops(struct mmc *mmc)
 	mmc->block_dev.block_mmc_user_write_protect = mmc_mmc_user_write_protect;
 	mmc->block_dev.block_mmc_clr_tem_wp = mmc_clr_tem_wp;
 #endif
-#endif
-	mmc->block_dev.block_read = mmc_bread;
-	mmc->block_dev.block_write = mmc_bwrite;
-	mmc->block_dev.block_mmc_erase = mmc_mmc_erase;
-	mmc->block_dev.block_erase = mmc_berase;
+
 
 	return 0;
 }

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * File:         include/pca9564.h
  * Author:
@@ -10,6 +9,8 @@
  *               Copyright 2009 CJSC "NII STT", http://www.niistt.ru/
  *
  * Bugs:
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PCA9564_H

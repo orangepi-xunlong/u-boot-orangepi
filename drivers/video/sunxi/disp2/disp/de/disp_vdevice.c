@@ -1,22 +1,6 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_vdevice.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_vdevice.h"
 
-#if defined(CONFIG_DISP2_TV_AC200) || defined(CONFIG_DISP2_TV_GM7121)
+#if defined(CONFIG_USE_AC200) || defined(CONFIG_USE_GM7121)
 
 struct disp_vdevice_private_data {
 	u32 enabled;
@@ -759,7 +743,6 @@ struct disp_device* disp_vdevice_register(struct disp_vdevice_init_data *data)
 	vdevice->resume = disp_vdevice_resume;
 	vdevice->detect = disp_vdevice_detect;
 	vdevice->get_fps = disp_vdevice_get_fps;
-	vdevice->show_builtin_patten = disp_device_show_builtin_patten;
 
 	vdevice->priv_data = (void*)vdevicep;
 	vdevice->init(vdevice);
@@ -810,4 +793,4 @@ EXPORT_SYMBOL(disp_vdevice_register);
 EXPORT_SYMBOL(disp_vdevice_unregister);
 EXPORT_SYMBOL(disp_vdevice_get_source_ops);
 #endif
-#endif /*endif CONFIG_DISP2_TV_AC200 */
+#endif /*endif CONFIG_USE_AC200 */

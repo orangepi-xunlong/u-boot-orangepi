@@ -1,7 +1,8 @@
-#!/usr/bin/env python2
-# SPDX-License-Identifier: GPL-2.0+
+#!/usr/bin/env python
 #
 # Copyright (c) 2011 The Chromium OS Authors.
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 """See README for more information"""
@@ -13,21 +14,20 @@ import sys
 import unittest
 
 # Our modules
-try:
-    from patman import checkpatch, command, gitutil, patchstream, \
-        project, settings, terminal, test
-except ImportError:
-    import checkpatch
-    import command
-    import gitutil
-    import patchstream
-    import project
-    import settings
-    import terminal
-    import test
+import checkpatch
+import command
+import gitutil
+import patchstream
+import project
+import settings
+import terminal
+import test
 
 
 parser = OptionParser()
+parser.add_option('-a', '--no-apply', action='store_false',
+                  dest='apply_patches', default=True,
+                  help="Don't test-apply patches with git am")
 parser.add_option('-H', '--full-help', action='store_true', dest='full_help',
        default=False, help='Display the README file')
 parser.add_option('-c', '--count', dest='count', type='int',
@@ -35,9 +35,6 @@ parser.add_option('-c', '--count', dest='count', type='int',
 parser.add_option('-i', '--ignore-errors', action='store_true',
        dest='ignore_errors', default=False,
        help='Send patches email even if patch errors are found')
-parser.add_option('-m', '--no-maintainers', action='store_false',
-       dest='add_maintainers', default=True,
-       help="Don't cc the file maintainers automatically")
 parser.add_option('-n', '--dry-run', action='store_true', dest='dry_run',
        default=False, help="Do a dry run (create but don't email patches)")
 parser.add_option('-p', '--project', default=project.DetectProject(),
@@ -60,10 +57,8 @@ parser.add_option('--no-check', action='store_false', dest='check_patch',
                   help="Don't check for patch compliance")
 parser.add_option('--no-tags', action='store_false', dest='process_tags',
                   default=True, help="Don't process subject tags as aliaes")
-parser.add_option('-T', '--thread', action='store_true', dest='thread',
-                  default=False, help='Create patches as a single thread')
 
-parser.usage += """
+parser.usage = """patman [options]
 
 Create patches from commits in a branch, check them and email them as
 specified by tags you place in the commits. Use -n to do a dry run first."""
@@ -75,30 +70,25 @@ specified by tags you place in the commits. Use -n to do a dry run first."""
 settings.Setup(parser, options.project, '')
 (options, args) = parser.parse_args()
 
-if __name__ != "__main__":
-    pass
-
 # Run our meagre tests
-elif options.test:
+if options.test:
     import doctest
-    import func_test
 
     sys.argv = [sys.argv[0]]
+    suite = unittest.TestLoader().loadTestsFromTestCase(test.TestPatch)
     result = unittest.TestResult()
-    for module in (test.TestPatch, func_test.TestFunctional):
-        suite = unittest.TestLoader().loadTestsFromTestCase(module)
-        suite.run(result)
+    suite.run(result)
 
     for module in ['gitutil', 'settings']:
         suite = doctest.DocTestSuite(module)
         suite.run(result)
 
     # TODO: Surely we can just 'print' result?
-    print(result)
+    print result
     for test, err in result.errors:
-        print(err)
+        print err
     for test, err in result.failures:
-        print(err)
+        print err
 
 # Called from git with a patch filename as argument
 # Printout a list of additional CC recipients for this patch
@@ -111,15 +101,14 @@ elif options.cc_cmd:
             for cc in match.group(2).split(', '):
                 cc = cc.strip()
                 if cc:
-                    print(cc)
+                    print cc
     fd.close()
 
 elif options.full_help:
     pager = os.getenv('PAGER')
     if not pager:
         pager = 'more'
-    fname = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),
-                         'README')
+    fname = os.path.join(os.path.dirname(sys.argv[0]), 'README')
     command.Run(pager, fname)
 
 # Process commits, produce patches files, check them, email them
@@ -133,7 +122,8 @@ else:
     col = terminal.Color()
     if not options.count:
         str = 'No commits found to process - please use -c flag'
-        sys.exit(col.Color(col.RED, str))
+        print col.Color(col.RED, str)
+        sys.exit(1)
 
     # Read the metadata from the commits
     if options.count:
@@ -142,8 +132,8 @@ else:
                 series)
 
     # Fix up the patch files to our liking, and insert the cover letter
-    patchstream.FixPatches(series, args)
-    if cover_fname and series.get('cover'):
+    series = patchstream.FixPatches(series, args)
+    if series and cover_fname and series.get('cover'):
         patchstream.InsertCoverLetter(cover_fname, series, options.count)
 
     # Do a few checks on the series
@@ -154,25 +144,23 @@ else:
         ok = checkpatch.CheckPatches(options.verbose, args)
     else:
         ok = True
+    if options.apply_patches:
+        if not gitutil.ApplyPatches(options.verbose, args,
+                                    options.count + options.start):
+            ok = False
 
     cc_file = series.MakeCcFile(options.process_tags, cover_fname,
-                                not options.ignore_bad_tags,
-                                options.add_maintainers)
+                                not options.ignore_bad_tags)
 
     # Email the patches out (giving the user time to check / cancel)
     cmd = ''
-    its_a_go = ok or options.ignore_errors
-    if its_a_go:
+    if ok or options.ignore_errors:
         cmd = gitutil.EmailPatches(series, cover_fname, args,
                 options.dry_run, not options.ignore_bad_tags, cc_file,
-                in_reply_to=options.in_reply_to, thread=options.thread)
-    else:
-        print(col.Color(col.RED, "Not sending emails due to errors/warnings"))
+                in_reply_to=options.in_reply_to)
 
     # For a dry run, just show our actions as a sanity check
     if options.dry_run:
         series.ShowActions(args, cmd, options.process_tags)
-        if not its_a_go:
-            print(col.Color(col.RED, "Email would not be sent"))
 
     os.remove(cc_file)

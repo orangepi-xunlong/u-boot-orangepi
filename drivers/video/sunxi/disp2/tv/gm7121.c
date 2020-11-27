@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/tv/gm7121.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #if 0
 #include <linux/module.h>
 #include <asm/uaccess.h>
@@ -158,7 +142,7 @@ static s32 gm7121_tv_power_on(u32 on_off)
 
 static s32 gm7121_tv_open(void)
 {
-	printf("gm7121_tv_open\n");
+	pr_msg("gm7121_tv_open\n");
 		if(tv_source_ops.tcon_enable)
 			tv_source_ops.tcon_enable(gm7121_device);
 		__msdelay(10);
@@ -166,7 +150,7 @@ static s32 gm7121_tv_open(void)
 		tv_pin_config(1);
 		__msdelay(500);
     gm7121_init(g_tv_mode);
-    printf("gm7121_tv_open finish\n");
+    pr_msg("gm7121_tv_open finish\n");
 
     return 0;
 }
@@ -190,7 +174,7 @@ static s32 gm7121_tv_get_mode(void)
 
 static s32 gm7121_tv_set_mode(disp_tv_mode tv_mode)
 {
-	printf("gm7121_tv_set_mode, mode=%u\n", (unsigned int)tv_mode);
+	pr_msg("gm7121_tv_set_mode, mode=%u\n", (unsigned int)tv_mode);
 	g_tv_mode = tv_mode;
 
     return 0;
@@ -226,7 +210,7 @@ static s32 gm7121_tv_get_video_timing_info(disp_video_timings **video_info)
 
 		info ++;
 	}
-	printf("gm7121_tv_get_video_timing_info, x,y=%d,%d\n", info->x_res, info->y_res);
+	pr_msg("gm7121_tv_get_video_timing_info, x,y=%d,%d\n", info->x_res, info->y_res);
 	return ret;
 }
 
@@ -262,7 +246,7 @@ static void gm7121_init(disp_tv_mode tv_mode)
 		return;
 	//disp_tv_mode tv_mode = DISP_TV_MOD_PAL;//DISP_TV_MOD_PAL;//DISP_TV_MOD_NTSC;
 	//-------------------SAA7121 START-------------------------------
-	printf("[TV]gm7121_init, tv_Mode=%d 22\n", tv_mode);
+	pr_msg("[TV]gm7121_init, tv_Mode=%d 22\n", tv_mode);
 	GM7121_Config(0x28,0x21);
 	GM7121_Config(0x29,0x1D);
 	GM7121_Config(0x2A,0x00);
@@ -347,17 +331,17 @@ static void gm7121_init(disp_tv_mode tv_mode)
 	{
 		uchar data;
 		tv_i2c_read(0x6E, &data);
-		printf("reg[%x]=0x%x\n", 0x6e, data);
+		pr_msg("reg[%x]=0x%x\n", 0x6e, data);
 		tv_i2c_read(0x70, &data);
-		printf("reg[%x]=0x%x\n", 0x70, data);
+		pr_msg("reg[%x]=0x%x\n", 0x70, data);
 		tv_i2c_read(0x6D, &data);
-		printf("reg[%x]=0x%x\n", 0x6D, data);
+		pr_msg("reg[%x]=0x%x\n", 0x6D, data);
 		tv_i2c_read(0x5D, &data);
-		printf("reg[%x]=0x%x\n", 0x5D, data);
+		pr_msg("reg[%x]=0x%x\n", 0x5D, data);
 		tv_i2c_read(0x61, &data);
-		printf("reg[%x]=0x%x\n", 0x61, data);
+		pr_msg("reg[%x]=0x%x\n", 0x61, data);
 	}
-	printf("[TV]gm7121_init, tv_Mode=%d, finish\n", tv_mode);
+	pr_msg("[TV]gm7121_init, tv_Mode=%d, finish\n", tv_mode);
 }
 
 
@@ -467,7 +451,7 @@ int  gm7121_module_init(void)
 	int ret;
 	int value;
 
-  printf("[TV]gm7121_module_init begin\n");
+  pr_msg("[TV]gm7121_module_init begin\n");
 
 	ret = disp_sys_script_get_item(key_name, "tv_used", &value, 1);
 	if(1 == ret) {
@@ -478,7 +462,7 @@ int  gm7121_module_init(void)
 			ret = disp_sys_script_get_item(key_name, "tv_power", (int*)tv_power, 32/sizeof(int));
 			if(2 == ret) {
 				tv_power_used = 1;
-				printf("[TV] tv_power: %s\n", tv_power);
+				pr_msg("[TV] tv_power: %s\n", tv_power);
 			}
 			tv_i2c_init();
 			tv_init();
@@ -491,6 +475,6 @@ int  gm7121_module_init(void)
 
 void  gm7121_module_exit(void)
 {
-    printf("gm7121_module_exit\n");
+    pr_msg("gm7121_module_exit\n");
     tv_i2c_exit();
 }
