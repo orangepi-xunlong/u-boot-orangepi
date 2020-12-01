@@ -342,7 +342,7 @@ static void get_fb_configs(fb_config_t *fb_cfgs, int fb_id)
 	char prop[12];
 
 	int read_bytes = 0;
-	char buf[256] = {0};
+	char buf[2560] = {0};
 	int value = -1;
 
 	read_bytes = hal_ext4_fsload(NULL, DISPLAY_FB_FILENAME, buf, sizeof(buf));
