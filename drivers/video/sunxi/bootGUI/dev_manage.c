@@ -210,7 +210,7 @@ static int get_device_configs(disp_device_t *disp_dev_list, int *dev_num)
 	char prop[32] = {'\n'};
 
 	int read_bytes = 0;
-	char buf[256] = {0};
+	char buf[2560] = {0};
 
 	disp_device_t *disp_dev = NULL;
 	int id = 0;
