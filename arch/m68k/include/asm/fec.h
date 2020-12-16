@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * fec.h -- Fast Ethernet Controller definitions
  *
@@ -8,12 +9,12 @@
  * Add FEC Structure and definitions
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	fec_h
 #define	fec_h
+
+#include <phy.h>
 
 /* Buffer descriptors used FEC.
 */
@@ -341,10 +342,9 @@ int fecpin_setclear(struct eth_device *dev, int setclear);
 void __mii_init(void);
 uint mii_send(uint mii_cmd);
 int mii_discover_phy(struct eth_device *dev);
-int mcffec_miiphy_read(const char *devname, unsigned char addr,
-		       unsigned char reg, unsigned short *value);
-int mcffec_miiphy_write(const char *devname, unsigned char addr,
-			unsigned char reg, unsigned short value);
+int mcffec_miiphy_read(struct mii_dev *bus, int addr, int devad, int reg);
+int mcffec_miiphy_write(struct mii_dev *bus, int addr, int devad, int reg,
+			u16 value);
 #endif
 
 #endif				/* fec_h */

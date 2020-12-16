@@ -1,17 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * GIC Initialization Routines.
  *
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
 #include <config.h>
 #include <linux/linkage.h>
-#include <asm/macro.h>
 #include <asm/gic.h>
+#include <asm/macro.h>
 
 
 /*************************************************************************
@@ -46,11 +45,19 @@ ENTRY(gic_init_secure)
 	ldr	w9, [x0, GICD_TYPER]
 	and	w10, w9, #0x1f		/* ITLinesNumber */
 	cbz	w10, 1f			/* No SPIs */
-	add	x11, x0, (GICD_IGROUPRn + 4)
+	add	x11, x0, GICD_IGROUPRn
 	mov	w9, #~0			/* Config SPIs as Grp1 */
+	str	w9, [x11], #0x4
 0:	str	w9, [x11], #0x4
 	sub	w10, w10, #0x1
 	cbnz	w10, 0b
+
+	ldr	x1, =GICC_BASE		/* GICC_CTLR */
+	mov	w0, #3			/* EnableGrp0 | EnableGrp1 */
+	str	w0, [x1]
+
+	mov	w0, #1 << 7		/* allow NS access to GICC_PMR */
+	str	w0, [x1, #4]		/* GICC_PMR */
 #endif
 1:
 	ret
@@ -181,14 +188,10 @@ ENDPROC(gic_kick_secondary_cpus)
  *
  *************************************************************************/
 ENTRY(gic_wait_for_interrupt)
-0:	wfi
 #if defined(CONFIG_GICV3)
-	mrs	x9, ICC_IAR1_EL1
-	msr	ICC_EOIR1_EL1, x9
+	gic_wait_for_interrupt_m x9
 #elif defined(CONFIG_GICV2)
-	ldr	w9, [x0, GICC_AIAR]
-	str	w9, [x0, GICC_AEOIR]
+	gic_wait_for_interrupt_m x0, w9
 #endif
-	cbnz	w9, 0b
 	ret
 ENDPROC(gic_wait_for_interrupt)

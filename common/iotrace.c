@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #define IOTRACE_IMPL
 
 #include <common.h>
+#include <mapmem.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;

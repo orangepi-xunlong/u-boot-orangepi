@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Freescale MCF54418 TWR board.
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,14 +17,12 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF5441x	/* define processor family */
-#define CONFIG_M54418		/* define processor type */
-#define CONFIG_M54418TWR	/* M54418TWR board */
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
+
+#define LDS_BOARD_TEXT			board/freescale/m54418twr/sbf_dram_init.o (.text*)
 
 #undef CONFIG_WATCHDOG
 
@@ -35,37 +32,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
-/* Command line configuration */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_BOOTD
-#define CONFIG_CMD_CACHE
-#undef CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
-#undef CONFIG_CMD_FLASH
-#undef CONFIG_CMD_I2C
-#undef CONFIG_CMD_JFFS2
-#undef CONFIG_CMD_UBI
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
-#define CONFIG_CMD_MII
-#undef CONFIG_CMD_NAND
-#undef CONFIG_CMD_NAND_YAFFS
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
-#undef CONFIG_CMD_IMLS
-
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_LOADS
 
 /*
  * NAND FLASH
@@ -82,12 +48,11 @@
 /* Network configuration */
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
-#define CONFIG_NET_MULTI		1
 #define CONFIG_MII			1
 #define CONFIG_MII_INIT		1
 #define CONFIG_SYS_DISCOVER_PHY
 #define CONFIG_SYS_RX_ETH_BUFFER	2
-#define CONFIG_SYS_FAULT_ECCONFIG_SYS_NO_FLASHHO_LINK_DOWN
+#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 #define CONFIG_SYS_TX_ETH_BUFFER	2
 #define CONFIG_HAS_ETH1
 
@@ -99,32 +64,12 @@
 #define CONFIG_SYS_FEC0_PHYADDR	0
 #define CONFIG_SYS_FEC1_PHYADDR	1
 
-#define CONFIG_BOOTDELAY		2	/* autoboot after 5 seconds */
-
-#ifdef	CONFIG_SYS_NAND_BOOT
-#define CONFIG_BOOTARGS	"root=/dev/mtdblock2 rw rootfstype=jffs2 " \
-				"mtdparts=NAND:1M(u-boot)ro,7M(kernel)ro," \
-				"-(jffs2) console=ttyS0,115200"
-#else
-#define CONFIG_BOOTARGS	"root=/dev/nfs rw nfsroot="	\
-				__stringify(CONFIG_SERVERIP) ":/tftpboot/" \
-				__stringify(CONFIG_IPADDR) "  ip="	\
-				__stringify(CONFIG_IPADDR) ":"	\
-				__stringify(CONFIG_SERVERIP)":"	\
-				__stringify(CONFIG_GATEWAYIP)": "	\
-				__stringify(CONFIG_NETMASK)		\
-				"::eth0:off:rw console=ttyS0,115200"
-#endif
-
-#define CONFIG_ETHADDR		00:e0:0c:bc:e5:60
-#define CONFIG_ETH1ADDR	00:e0:0c:bc:e5:61
 #define CONFIG_ETHPRIME	"FEC0"
 #define CONFIG_IPADDR		192.168.1.2
 #define CONFIG_NETMASK		255.255.255.0
 #define CONFIG_SERVERIP	192.168.1.1
 #define CONFIG_GATEWAYIP	192.168.1.1
 
-#define CONFIG_OVERWRITE_ETHADDR_ONCE
 #define CONFIG_SYS_FEC_BUF_USE_SRAM
 /* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
 #ifndef CONFIG_SYS_DISCOVER_PHY
@@ -139,7 +84,7 @@
 #endif			/* CONFIG_SYS_DISCOVER_PHY */
 #endif
 
-#define CONFIG_HOSTNAME		M54418TWR
+#define CONFIG_HOSTNAME		"M54418TWR"
 
 #if defined(CONFIG_CF_SBF)
 /* ST Micro serial flash */
@@ -197,7 +142,6 @@
 
 /* I2c */
 #undef CONFIG_SYS_FSL_I2C
-#undef CONFIG_HARD_I2C		/* I2C with hardware support */
 #undef	CONFIG_SYS_I2C_SOFT	/* I2C bit-banged */
 /* I2C speed and slave address  */
 #define CONFIG_SYS_I2C_SPEED		80000
@@ -206,14 +150,11 @@
 #define CONFIG_SYS_IMMR		CONFIG_SYS_MBAR
 
 /* DSPI and Serial Flash */
-#define CONFIG_CF_SPI
 #define CONFIG_CF_DSPI
 #define CONFIG_SERIAL_FLASH
 #define CONFIG_HARD_SPI
 #define CONFIG_SYS_SBFHDR_SIZE		0x7
 #ifdef CONFIG_CMD_SPI
-#	define CONFIG_SPI_FLASH
-#	define CONFIG_SPI_FLASH_ATMEL
 
 #	define CONFIG_SYS_DSPI_CTAR0	(DSPI_CTAR_TRSZ(7) | \
 					 DSPI_CTAR_PCSSCK_1CLK | \
@@ -230,25 +171,6 @@
 #define CONFIG_EXTRA_CLOCK
 
 #define CONFIG_PRAM			2048	/* 2048 KB */
-
-/* HUSH */
-#define CONFIG_SYS_HUSH_PARSER		1
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
-
-#define CONFIG_SYS_PROMPT		"-> "
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
-#else
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#endif
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-/* Boot Argument Buffer Size    */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
@@ -289,7 +211,7 @@
 #endif
 
 #if defined(CONFIG_SERIAL_BOOT)
-#define CONFIG_SYS_MONITOR_BASE	(TEXT_BASE + 0x400)
+#define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_TEXT_BASE + 0x400)
 #else
 #define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_FLASH_BASE + 0x400)
 #endif
@@ -313,23 +235,17 @@
  * Environment is embedded in u-boot in the second sector of the flash
  */
 #if !defined(CONFIG_SERIAL_BOOT)  /*MRAM boot*/
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_IS_IN_MRAM	1
 #define CONFIG_ENV_ADDR		(0x40000 - 0x1000) /*MRAM size 40000*/
 #define CONFIG_ENV_SIZE		0x1000
 #endif
 
 #if defined(CONFIG_CF_SBF)
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_IS_IN_SPI_FLASH	1
 #define CONFIG_ENV_SPI_CS		1
 #define CONFIG_ENV_OFFSET		0x40000
 #define CONFIG_ENV_SIZE		0x2000
 #define CONFIG_ENV_SECT_SIZE		0x10000
 #endif
 #if defined(CONFIG_SYS_NAND_BOOT)
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_OFFSET	0x80000
 #define CONFIG_ENV_SIZE	0x20000
 #define CONFIG_ENV_SECT_SIZE	0x20000
@@ -368,24 +284,13 @@
 #ifdef CONFIG_CMD_JFFS2
 #define CONFIG_JFFS2_DEV		"nand0"
 #define CONFIG_JFFS2_PART_OFFSET	(0x800000)
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
-#define MTDIDS_DEFAULT		"nand0=m54418twr.nand"
-
-#define MTDPARTS_DEFAULT	"mtdparts=m54418twr.nand:1m(data),"	\
-						"7m(kernel),"		\
-						"-(rootfs)"
 
 #endif
 
 #ifdef CONFIG_CMD_UBI
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE	/* needed for mtdparts command */
 #define CONFIG_MTD_PARTITIONS	/* mtdparts and UBI support */
-#define CONFIG_RBTREE
-#define MTDIDS_DEFAULT		"nand0=NAND"
-#define MTDPARTS_DEFAULT	"mtdparts=NAND:1m(u-boot),"	\
-					"-(ubi)"
 #endif
 /* Cache Configuration */
 #define CONFIG_SYS_CACHELINE_SIZE	16

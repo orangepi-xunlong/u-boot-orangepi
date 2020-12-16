@@ -1,14 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSMC_NAND_H__
 #define __FSMC_NAND_H__
 
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
 
 struct fsmc_regs {
 	u32 ctrl;			/* 0x00 */

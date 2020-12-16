@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _FSL_SRIO_H_
 #define _FSL_SRIO_H_
+
+#include <linux/log2.h>
 
 enum atmu_size {
 	ATMU_SIZE_4K = 0xb,

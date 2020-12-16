@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -9,8 +10,6 @@
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* CPU specific code */
@@ -31,16 +30,10 @@ int cleanup_before_linux(void)
 {
 	disable_interrupts();
 
-#ifdef CONFIG_MMU
 	/* turn off I/D-cache */
+	cache_flush();
 	icache_disable();
 	dcache_disable();
-
-	/* flush I/D-cache */
-	invalidate_icac();
-	invalidate_dcac();
-#endif
-
 	return 0;
 }
 

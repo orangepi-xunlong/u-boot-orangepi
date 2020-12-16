@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Keyboard matrix helper functions
  *
  * Copyright (c) 2012 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _KEY_MATRIX_H
@@ -69,8 +68,7 @@ int key_matrix_decode(struct key_matrix *config, struct key_matrix_key *keys,
  * @param node          Node containing compatible data
  * @return 0 if ok, -1 on error
  */
-int key_matrix_decode_fdt(struct key_matrix *config, const void *blob,
-			  int node);
+int key_matrix_decode_fdt(struct udevice *dev, struct key_matrix *config);
 
 /**
  * Set up a new key matrix.

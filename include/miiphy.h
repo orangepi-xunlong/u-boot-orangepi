@@ -1,6 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0 OR IBM-pibs */
 /*
- * SPDX-License-Identifier:	GPL-2.0	IBM-pibs
- *
  * Additions (C) Copyright 2009 Industrie Dial Face S.p.A.
  */
 /*----------------------------------------------------------------------------+
@@ -21,13 +20,6 @@
 #include <net.h>
 #include <phy.h>
 
-struct legacy_mii_dev {
-	int (*read)(const char *devname, unsigned char addr,
-		     unsigned char reg, unsigned short *value);
-	int (*write)(const char *devname, unsigned char addr,
-		      unsigned char reg, unsigned short value);
-};
-
 int miiphy_read(const char *devname, unsigned char addr, unsigned char reg,
 		 unsigned short *value);
 int miiphy_write(const char *devname, unsigned char addr, unsigned char reg,
@@ -44,12 +36,6 @@ int miiphy_link(const char *devname, unsigned char addr);
 
 void miiphy_init(void);
 
-void miiphy_register(const char *devname,
-		      int (*read)(const char *devname, unsigned char addr,
-				   unsigned char reg, unsigned short *value),
-		      int (*write)(const char *devname, unsigned char addr,
-				    unsigned char reg, unsigned short value));
-
 int miiphy_set_current_dev(const char *devname);
 const char *miiphy_get_current_dev(void);
 struct mii_dev *mdio_get_current_dev(void);
@@ -59,7 +45,18 @@ struct phy_device *mdio_phydev_for_ethname(const char *devname);
 void miiphy_listdev(void);
 
 struct mii_dev *mdio_alloc(void);
+void mdio_free(struct mii_dev *bus);
 int mdio_register(struct mii_dev *bus);
+
+/**
+ * mdio_register_seq - Register mdio bus with sequence number
+ * @bus: mii device structure
+ * @seq: sequence number
+ *
+ * Return: 0 if success, negative value if error
+ */
+int mdio_register_seq(struct mii_dev *bus, int seq);
+int mdio_unregister(struct mii_dev *bus);
 void mdio_list_devices(void);
 
 #ifdef CONFIG_BITBANGMII
@@ -84,10 +81,9 @@ extern struct bb_miiphy_bus bb_miiphy_buses[];
 extern int bb_miiphy_buses_num;
 
 void bb_miiphy_init(void);
-int bb_miiphy_read(const char *devname, unsigned char addr,
-		    unsigned char reg, unsigned short *value);
-int bb_miiphy_write(const char *devname, unsigned char addr,
-		     unsigned char reg, unsigned short value);
+int bb_miiphy_read(struct mii_dev *miidev, int addr, int devad, int reg);
+int bb_miiphy_write(struct mii_dev *miidev, int addr, int devad, int reg,
+		    u16 value);
 #endif
 
 /* phy seed setup */

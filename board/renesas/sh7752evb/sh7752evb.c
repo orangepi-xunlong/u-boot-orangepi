@@ -1,14 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012  Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <environment.h>
 #include <malloc.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/mmc.h>
+#include <spi.h>
 #include <spi_flash.h>
 
 int checkboard(void)
@@ -158,17 +159,6 @@ int board_init(void)
 	return 0;
 }
 
-int dram_init(void)
-{
-	DECLARE_GLOBAL_DATA_PTR;
-
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
-
-	return 0;
-}
-
 int board_mmc_init(bd_t *bis)
 {
 	struct gpio_regs *gpio = GPIO_BASE;
@@ -231,10 +221,10 @@ static void init_ethernet_mac(void)
 	for (i = 0; i < SH7752EVB_ETHERNET_NUM_CH; i++) {
 		get_sh_eth_mac(i, mac_string, buf);
 		if (i == 0)
-			setenv("ethaddr", mac_string);
+			env_set("ethaddr", mac_string);
 		else {
 			sprintf(env_string, "eth%daddr", i);
-			setenv(env_string, mac_string);
+			env_set(env_string, mac_string);
 		}
 		set_mac_to_sh_giga_eth_register(i, mac_string);
 	}

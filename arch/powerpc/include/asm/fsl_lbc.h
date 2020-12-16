@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004-2008,2010-2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_PPC_FSL_LBC_H
@@ -325,9 +324,9 @@ void lbc_sdram_init(void);
  */
 #define LCRR_CLKDIV			0x0000001F
 #define LCRR_CLKDIV_SHIFT		0
-#if defined(CONFIG_MPC83xx) || defined (CONFIG_MPC8540) || \
-    defined(CONFIG_MPC8541) || defined (CONFIG_MPC8555) || \
-    defined(CONFIG_MPC8560)
+#if defined(CONFIG_MPC83xx) || defined(CONFIG_ARCH_MPC8540) || \
+	defined(CONFIG_ARCH_MPC8541) || defined(CONFIG_ARCH_MPC8555) || \
+	defined(CONFIG_ARCH_MPC8560)
 #define LCRR_CLKDIV_2			0x00000002
 #define LCRR_CLKDIV_4			0x00000004
 #define LCRR_CLKDIV_8			0x00000008

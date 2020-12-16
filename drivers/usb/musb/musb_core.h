@@ -1,34 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************
  * Copyright 2008 Mentor Graphics Corporation
  * Copyright (C) 2008 by Texas Instruments
  *
  * This file is part of the Inventra Controller Driver for Linux.
- *
- * The Inventra Controller Driver for Linux is free software; you
- * can redistribute it and/or modify it under the terms of the GNU
- * General Public License version 2 as published by the Free Software
- * Foundation.
- *
- * The Inventra Controller Driver for Linux is distributed in
- * the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
- * License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with The Inventra Controller Driver for Linux ; if not,
- * write to the Free Software Foundation, Inc., 59 Temple Place,
- * Suite 330, Boston, MA  02111-1307  USA
- *
- * ANY DOWNLOAD, USE, REPRODUCTION, MODIFICATION OR DISTRIBUTION
- * OF THIS DRIVER INDICATES YOUR COMPLETE AND UNCONDITIONAL ACCEPTANCE
- * OF THOSE TERMS.THIS DRIVER IS PROVIDED "AS IS" AND MENTOR GRAPHICS
- * MAKES NO WARRANTIES, EXPRESS OR IMPLIED, RELATED TO THIS DRIVER.
- * MENTOR GRAPHICS SPECIFICALLY DISCLAIMS ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY; FITNESS FOR A PARTICULAR PURPOSE AND
- * NON-INFRINGEMENT.  MENTOR GRAPHICS DOES NOT PROVIDE SUPPORT
- * SERVICES OR UPDATES FOR THIS DRIVER, EVEN IF YOU ARE A MENTOR
- * GRAPHICS SUPPORT CUSTOMER.
  ******************************************************************/
 
 #ifndef __MUSB_HDRC_DEFS_H__
@@ -36,10 +11,6 @@
 
 #include <usb_defs.h>
 #include <asm/io.h>
-
-#ifdef CONFIG_USB_BLACKFIN
-# include "blackfin_usb.h"
-#endif
 
 #define MUSB_EP0_FIFOSIZE	64	/* This is non-configurable */
 
@@ -360,28 +331,6 @@ extern void musb_configure_ep(const struct musb_epinfo *epinfo, u8 cnt);
 extern void write_fifo(u8 ep, u32 length, void *fifo_data);
 extern void read_fifo(u8 ep, u32 length, void *fifo_data);
 
-#if defined(CONFIG_USB_BLACKFIN)
-/* Every USB register is accessed as a 16-bit even if the value itself
- * is only 8-bits in size.  Fun stuff.
- */
-# undef  readb
-# define readb(addr)     (u8)bfin_read16(addr)
-# undef  writeb
-# define writeb(b, addr) bfin_write16(addr, b)
-# undef MUSB_TXCSR_MODE /* not supported */
-# define MUSB_TXCSR_MODE 0
-/*
- * The USB PHY on current Blackfin processors is a UTMI+ level 2 PHY.
- * However, it has no ULPI support - so there are no registers at all.
- * That means accesses to ULPI_BUSCONTROL have to be abstracted away.
- */
-static inline u8 musb_read_ulpi_buscontrol(struct musb_regs *musbr)
-{
-	return 0;
-}
-static inline void musb_write_ulpi_buscontrol(struct musb_regs *musbr, u8 val)
-{}
-#else
 static inline u8 musb_read_ulpi_buscontrol(struct musb_regs *musbr)
 {
 	return readb(&musbr->ulpi_busctl);
@@ -390,6 +339,5 @@ static inline void musb_write_ulpi_buscontrol(struct musb_regs *musbr, u8 val)
 {
 	writeb(val, &musbr->ulpi_busctl);
 }
-#endif
 
 #endif	/* __MUSB_HDRC_DEFS_H__ */

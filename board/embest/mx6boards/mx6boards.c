@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Eukréa Electromatique
  * Author: Eric Bénard <eric@eukrea.com>
@@ -9,8 +10,6 @@
  * and on hummingboard.c which is :
  * Copyright (C) 2013 SolidRun ltd.
  * Copyright (C) 2013 Jon Nettleton <jon.nettleton@gmail.com>.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -18,13 +17,15 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/mx6-pins.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/spi.h>
+#include <asm/mach-imx/video.h>
 #include <i2c.h>
+#include <input.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <miiphy.h>
@@ -34,7 +35,7 @@
 #include <linux/fb.h>
 #include <ipu_pixfmt.h>
 #include <asm/io.h>
-#include <asm/arch/sys_proto.h>
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
@@ -215,12 +216,12 @@ int board_mmc_getcd(struct mmc *mmc)
 
 int board_mmc_init(bd_t *bis)
 {
-	s32 status = 0;
+	int ret;
 	int i;
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * ** RiOTboard :
 	 * mmc0                    SDCard slot (bottom)
 	 * mmc1                    uSDCard slot (top)
@@ -246,6 +247,7 @@ int board_mmc_init(bd_t *bis)
 					riotboard_usdhc3_pads,
 					ARRAY_SIZE(riotboard_usdhc3_pads));
 				gpio_direction_input(USDHC3_CD_GPIO);
+			} else {
 				gpio_direction_output(IMX_GPIO_NR(7, 8) , 0);
 				udelay(250);
 				gpio_set_value(IMX_GPIO_NR(7, 8), 1);
@@ -266,13 +268,15 @@ int board_mmc_init(bd_t *bis)
 			printf("Warning: you configured more USDHC controllers"
 			       "(%d) then supported by the board (%d)\n",
 			       i + 1, CONFIG_SYS_FSL_USDHC_NUM);
-			return status;
+			return -EINVAL;
 		}
 
-		status |= fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
+		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
+		if (ret)
+			return ret;
 	}
 
-	return status;
+	return 0;
 }
 #endif
 
@@ -283,6 +287,11 @@ iomux_v3_cfg_t const ecspi1_pads[] = {
 	MX6_PAD_EIM_D18__ECSPI1_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX6_PAD_EIM_EB2__GPIO2_IO30 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+
+int board_spi_cs_gpio(unsigned bus, unsigned cs)
+{
+	return (bus == 0 && cs == 0) ? (IMX_GPIO_NR(2, 30)) : -1;
+}
 
 static void setup_spi(void)
 {

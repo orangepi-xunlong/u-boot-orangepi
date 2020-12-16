@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Dirk Behme <dirk.behme@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _BEAGLE_H_
 #define _BEAGLE_H_
@@ -375,7 +374,7 @@ const omap3_sysinfo sysinfo = {
 
 #define MUX_BEAGLE_XM() \
 	MUX_VAL(CP(GPMC_NCS5),		(IDIS | PTD | EN  | M4)) /*GPIO_56*/\
-	MUX_VAL(CP(GPMC_WAIT0),		(IDIS | PTU | EN  | M4)) /*GPIO_63*/\
+	MUX_VAL(CP(GPMC_WAIT1),		(IDIS | PTU | EN  | M4)) /*GPIO_63*/\
 	MUX_VAL(CP(MMC1_DAT7),		(IDIS | PTU | EN  | M4)) /*GPIO_129*/\
 	MUX_VAL(CP(HDQ_SIO),		(IDIS | PTU | EN  | M4)) /*GPIO_170*/\
 	MUX_VAL(CP(MCBSP3_DX),		(IEN  | PTD | DIS | M4)) /*GPIO_140*/\

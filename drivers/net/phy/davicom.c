@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Davicom PHY drivers
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
@@ -60,10 +59,13 @@ static int dm9161_parse_status(struct phy_device *phydev)
 
 static int dm9161_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
-	dm9161_parse_status(phydev);
+	int ret;
 
-	return 0;
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return dm9161_parse_status(phydev);
 }
 
 static struct phy_driver DM9161_driver = {

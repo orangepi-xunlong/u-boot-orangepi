@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
  */
 
 #include <common.h>
@@ -17,8 +14,8 @@
 
 #ifdef CONFIG_SYS_DDR_RAW_TIMING
 #if	defined(CONFIG_P1020RDB_PROTO) || \
-	defined(CONFIG_P1021RDB) || \
-	defined(CONFIG_P1020UTM)
+	defined(CONFIG_TARGET_P1021RDB) || \
+	defined(CONFIG_TARGET_P1020UTM)
 /* Micron MT41J256M8_187E */
 dimm_params_t ddr_raw_timing = {
 	.n_ranks = 1,
@@ -49,7 +46,7 @@ dimm_params_t ddr_raw_timing = {
 	.refresh_rate_ps = 7800000,
 	.tfaw_ps = 37500,
 };
-#elif defined(CONFIG_P2020RDB)
+#elif defined(CONFIG_TARGET_P2020RDB)
 /* Micron MT41J128M16_15E */
 dimm_params_t ddr_raw_timing = {
 	.n_ranks = 1,
@@ -80,7 +77,7 @@ dimm_params_t ddr_raw_timing = {
 	.refresh_rate_ps = 7800000,
 	.tfaw_ps = 30000,
 };
-#elif (defined(CONFIG_P1020MBG) || defined(CONFIG_P1020RDB_PD))
+#elif (defined(CONFIG_TARGET_P1020MBG) || defined(CONFIG_TARGET_P1020RDB_PD))
 /* Micron MT41J512M8_187E */
 dimm_params_t ddr_raw_timing = {
 	.n_ranks = 2,
@@ -111,7 +108,7 @@ dimm_params_t ddr_raw_timing = {
 	.refresh_rate_ps = 7800000,
 	.tfaw_ps = 37500,
 };
-#elif defined(CONFIG_P1020RDB_PC)
+#elif defined(CONFIG_TARGET_P1020RDB_PC)
 /*
  * Samsung K4B2G0846C-HCF8
  * The following timing are for "downshift"
@@ -148,8 +145,8 @@ dimm_params_t ddr_raw_timing = {
 	.refresh_rate_ps = 7800000,
 	.tfaw_ps = 37500,
 };
-#elif	defined(CONFIG_P1024RDB) || \
-	defined(CONFIG_P1025RDB)
+#elif	defined(CONFIG_TARGET_P1024RDB) || \
+	defined(CONFIG_TARGET_P1025RDB)
 /*
  * Samsung K4B2G0846C-HCH9
  * The following timing are for "downshift"

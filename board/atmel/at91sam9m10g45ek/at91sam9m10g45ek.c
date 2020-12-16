@@ -1,26 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <debug_uart.h>
 #include <asm/io.h>
+#include <asm/arch/clk.h>
 #include <asm/arch/at91sam9g45_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
-#include <asm/arch/at91_pmc.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/clk.h>
 #include <lcd.h>
+#include <linux/mtd/rawnand.h>
 #include <atmel_lcdc.h>
-#include <atmel_mci.h>
-#if defined(CONFIG_RESET_PHY_R) && defined(CONFIG_MACB)
-#include <net.h>
-#endif
-#include <netdev.h>
+#include <asm/mach-types.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -34,7 +31,6 @@ void at91sam9m10g45ek_nand_hw_init(void)
 {
 	struct at91_smc *smc = (struct at91_smc *)ATMEL_BASE_SMC;
 	struct at91_matrix *matrix = (struct at91_matrix *)ATMEL_BASE_MATRIX;
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 	unsigned long csa;
 
 	/* Enable CS3 */
@@ -61,7 +57,7 @@ void at91sam9m10g45ek_nand_hw_init(void)
 	       AT91_SMC_MODE_TDF_CYCLE(3),
 	       &smc->cs[3].mode);
 
-	writel(1 << ATMEL_ID_PIOC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_PIOC);
 
 	/* Configure RDY/BSY */
 	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
@@ -71,50 +67,81 @@ void at91sam9m10g45ek_nand_hw_init(void)
 }
 #endif
 
-#ifdef CONFIG_CMD_USB
-static void at91sam9m10g45ek_usb_hw_init(void)
+#if defined(CONFIG_SPL_BUILD)
+#include <spl.h>
+#include <nand.h>
+
+void at91_spl_board_init(void)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+	/*
+	 * On the at91sam9m10g45ek board, the chip wm9711 stays in the
+	 * test mode, so it needs do some action to exit test mode.
+	 */
+	at91_periph_clk_enable(ATMEL_ID_PIODE);
+	at91_set_gpio_output(AT91_PIN_PD7, 0);
+	at91_set_gpio_output(AT91_PIN_PD8, 0);
+	at91_set_pio_pullup(AT91_PIO_PORTD, 7, 1);
+	at91_set_pio_pullup(AT91_PIO_PORTD, 8, 1);
 
-	writel(1 << ATMEL_ID_PIODE, &pmc->pcer);
+#ifdef CONFIG_SD_BOOT
+	at91_mci_hw_init();
+#elif CONFIG_NAND_BOOT
+	at91sam9m10g45ek_nand_hw_init();
+#endif
+}
 
-	at91_set_gpio_output(AT91_PIN_PD1, 0);
-	at91_set_gpio_output(AT91_PIN_PD3, 0);
+#include <asm/arch/atmel_mpddrc.h>
+static void ddr2_conf(struct atmel_mpddrc_config *ddr2)
+{
+	ddr2->md = (ATMEL_MPDDRC_MD_DBW_16_BITS | ATMEL_MPDDRC_MD_DDR2_SDRAM);
+
+	ddr2->cr = (ATMEL_MPDDRC_CR_NC_COL_10 |
+		    ATMEL_MPDDRC_CR_NR_ROW_14 |
+		    ATMEL_MPDDRC_CR_DQMS_SHARED |
+		    ATMEL_MPDDRC_CR_CAS_DDR_CAS3);
+
+	ddr2->rtr = 0x24b;
+
+	ddr2->tpr0 = (6 << ATMEL_MPDDRC_TPR0_TRAS_OFFSET |/* 6*7.5 = 45 ns */
+		      2 << ATMEL_MPDDRC_TPR0_TRCD_OFFSET |/* 2*7.5 = 15 ns */
+		      2 << ATMEL_MPDDRC_TPR0_TWR_OFFSET | /* 2*7.5 = 15 ns */
+		      8 << ATMEL_MPDDRC_TPR0_TRC_OFFSET | /* 8*7.5 = 60 ns */
+		      2 << ATMEL_MPDDRC_TPR0_TRP_OFFSET | /* 2*7.5 = 15 ns */
+		      1 << ATMEL_MPDDRC_TPR0_TRRD_OFFSET | /* 1*7.5= 7.5 ns*/
+		      1 << ATMEL_MPDDRC_TPR0_TWTR_OFFSET | /* 1 clk cycle */
+		      2 << ATMEL_MPDDRC_TPR0_TMRD_OFFSET); /* 2 clk cycles */
+
+	ddr2->tpr1 = (2 << ATMEL_MPDDRC_TPR1_TXP_OFFSET | /* 2*7.5 = 15 ns */
+		      200 << ATMEL_MPDDRC_TPR1_TXSRD_OFFSET |
+		      16 << ATMEL_MPDDRC_TPR1_TXSNR_OFFSET |
+		      14 << ATMEL_MPDDRC_TPR1_TRFC_OFFSET);
+
+	ddr2->tpr2 = (1 << ATMEL_MPDDRC_TPR2_TRTP_OFFSET |
+		      0 << ATMEL_MPDDRC_TPR2_TRPA_OFFSET |
+		      7 << ATMEL_MPDDRC_TPR2_TXARDS_OFFSET |
+		      2 << ATMEL_MPDDRC_TPR2_TXARD_OFFSET);
+}
+
+void mem_init(void)
+{
+	struct atmel_mpddrc_config ddr2;
+
+	ddr2_conf(&ddr2);
+
+	at91_system_clk_enable(AT91_PMC_DDR);
+
+	/* DDRAM2 Controller initialize */
+	ddr2_init(ATMEL_BASE_DDRSDRC0, ATMEL_BASE_CS6, &ddr2);
 }
 #endif
 
-#ifdef CONFIG_MACB
-static void at91sam9m10g45ek_macb_hw_init(void)
+#ifdef CONFIG_CMD_USB
+static void at91sam9m10g45ek_usb_hw_init(void)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-	struct at91_port *pioa = (struct at91_port *)ATMEL_BASE_PIOA;
+	at91_periph_clk_enable(ATMEL_ID_PIODE);
 
-	/* Enable clock */
-	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
-
-	/*
-	 * Disable pull-up on:
-	 *      RXDV (PA15) => PHY normal mode (not Test mode)
-	 *      ERX0 (PA12) => PHY ADDR0
-	 *      ERX1 (PA13) => PHY ADDR1 => PHYADDR = 0x0
-	 *
-	 * PHY has internal pull-down
-	 */
-	writel(pin_to_mask(AT91_PIN_PA15) |
-	       pin_to_mask(AT91_PIN_PA12) |
-	       pin_to_mask(AT91_PIN_PA13),
-	       &pioa->pudr);
-
-	at91_phy_reset();
-
-	/* Re-enable pull-up */
-	writel(pin_to_mask(AT91_PIN_PA15) |
-	       pin_to_mask(AT91_PIN_PA12) |
-	       pin_to_mask(AT91_PIN_PA13),
-	       &pioa->puer);
-
-	/* And the pins. */
-	at91_macb_hw_init();
+	at91_set_gpio_output(AT91_PIN_PD1, 0);
+	at91_set_gpio_output(AT91_PIN_PD3, 0);
 }
 #endif
 
@@ -150,8 +177,6 @@ void lcd_disable(void)
 
 static void at91sam9m10g45ek_lcd_hw_init(void)
 {
-	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
-
 	at91_set_A_periph(AT91_PIN_PE0, 0);	/* LCDDPWR */
 	at91_set_A_periph(AT91_PIN_PE2, 0);	/* LCDCC */
 	at91_set_A_periph(AT91_PIN_PE3, 0);	/* LCDVSYNC */
@@ -183,7 +208,7 @@ static void at91sam9m10g45ek_lcd_hw_init(void)
 	at91_set_A_periph(AT91_PIN_PE29, 0);	/* LCDD22 */
 	at91_set_A_periph(AT91_PIN_PE30, 0);	/* LCDD23 */
 
-	writel(1 << ATMEL_ID_LCDC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_LCDC);
 
 	gd->fb_base = CONFIG_AT91SAM9G45_LCD_BASE;
 }
@@ -210,7 +235,7 @@ void lcd_show_board_info(void)
 		dram_size += gd->bd->bi_dram[i].size;
 	nand_size = 0;
 	for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++)
-		nand_size += nand_info[i].size;
+		nand_size += get_nand_dev_by_index(i)->size;
 	lcd_printf ("  %ld MB SDRAM, %ld MB NAND\n",
 		dram_size >> 20,
 		nand_size >> 20 );
@@ -218,20 +243,22 @@ void lcd_show_board_info(void)
 #endif /* CONFIG_LCD_INFO */
 #endif
 
-#ifdef CONFIG_GENERIC_ATMEL_MCI
-int board_mmc_init(bd_t *bis)
+#ifdef CONFIG_DEBUG_UART_BOARD_INIT
+void board_debug_uart_init(void)
 {
-	at91_mci_hw_init();
-
-	return atmel_mci_init((void *)ATMEL_BASE_MCI0);
+	at91_seriald_hw_init();
 }
 #endif
 
+#ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
-	at91_seriald_hw_init();
+#ifdef CONFIG_DEBUG_UART
+	debug_uart_init();
+#endif
 	return 0;
 }
+#endif
 
 int board_init(void)
 {
@@ -251,15 +278,6 @@ int board_init(void)
 #ifdef CONFIG_CMD_USB
 	at91sam9m10g45ek_usb_hw_init();
 #endif
-#ifdef CONFIG_HAS_DATAFLASH
-	at91_spi0_hw_init(1 << 0);
-#endif
-#ifdef CONFIG_ATMEL_SPI
-	at91_spi0_hw_init(1 << 4);
-#endif
-#ifdef CONFIG_MACB
-	at91sam9m10g45ek_macb_hw_init();
-#endif
 #ifdef CONFIG_LCD
 	at91sam9m10g45ek_lcd_hw_init();
 #endif
@@ -278,48 +296,3 @@ void reset_phy(void)
 {
 }
 #endif
-
-int board_eth_init(bd_t *bis)
-{
-	int rc = 0;
-#ifdef CONFIG_MACB
-	rc = macb_eth_initialize(0, (void *)ATMEL_BASE_EMAC, 0x00);
-#endif
-	return rc;
-}
-
-/* SPI chip select control */
-#ifdef CONFIG_ATMEL_SPI
-#include <spi.h>
-
-int spi_cs_is_valid(unsigned int bus, unsigned int cs)
-{
-	return bus == 0 && cs < 2;
-}
-
-void spi_cs_activate(struct spi_slave *slave)
-{
-	switch(slave->cs) {
-		case 1:
-			at91_set_gpio_output(AT91_PIN_PB18, 0);
-			break;
-		case 0:
-		default:
-			at91_set_gpio_output(AT91_PIN_PB3, 0);
-			break;
-	}
-}
-
-void spi_cs_deactivate(struct spi_slave *slave)
-{
-	switch(slave->cs) {
-		case 1:
-			at91_set_gpio_output(AT91_PIN_PB18, 1);
-			break;
-		case 0:
-		default:
-			at91_set_gpio_output(AT91_PIN_PB3, 1);
-		break;
-	}
-}
-#endif /* CONFIG_ATMEL_SPI */

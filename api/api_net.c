@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007 Semihalf
  *
  * Written by: Rafal Jaworowski <raj@semihalf.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -11,8 +10,6 @@
 #include <net.h>
 #include <linux/types.h>
 #include <api_public.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define DEBUG
 #undef DEBUG
@@ -25,6 +22,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define errf(fmt, args...) do { printf("ERROR @ %s(): ", __func__); printf(fmt, ##args); } while (0)
 
+#if defined(CONFIG_CMD_NET) && !defined(CONFIG_DM_ETH)
 
 static int dev_valid_net(void *cookie)
 {
@@ -36,7 +34,7 @@ int dev_open_net(void *cookie)
 	if (!dev_valid_net(cookie))
 		return API_ENODEV;
 
-	if (eth_init(gd->bd) < 0)
+	if (eth_init() < 0)
 		return API_EIO;
 
 	return 0;
@@ -85,3 +83,32 @@ int dev_read_net(void *cookie, void *buf, int len)
 
 	return eth_receive(buf, len);
 }
+
+#else
+
+int dev_open_net(void *cookie)
+{
+	return API_ENODEV;
+}
+
+int dev_close_net(void *cookie)
+{
+	return API_ENODEV;
+}
+
+int dev_enum_net(struct device_info *di)
+{
+	return 0;
+}
+
+int dev_write_net(void *cookie, void *buf, int len)
+{
+	return API_ENODEV;
+}
+
+int dev_read_net(void *cookie, void *buf, int len)
+{
+	return API_ENODEV;
+}
+
+#endif

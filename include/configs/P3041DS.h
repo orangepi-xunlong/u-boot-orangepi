@@ -1,20 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
  * P3041 DS board configuration file
  *
  */
-#define CONFIG_P3041DS
-#define CONFIG_PHYS_64BIT
-#define CONFIG_PPC_P3041
-
 #define CONFIG_FSL_NGPIXIS		/* use common ngPIXIS code */
 
-#define CONFIG_MMC
 #define CONFIG_NAND_FSL_ELBC
 #define CONFIG_FSL_SATA_V2
 #define CONFIG_PCIE3

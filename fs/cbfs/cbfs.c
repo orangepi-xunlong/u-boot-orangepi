@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <common.h>
 #include <cbfs.h>
 #include <malloc.h>
 #include <asm/byteorder.h>
@@ -96,8 +96,8 @@ static int file_cbfs_next_file(u8 *start, u32 size, u32 align,
 		}
 
 		swap_file_header(&header, fileHeader);
-		if (header.offset < sizeof(const struct cbfs_cachenode *) ||
-				header.offset > header.len) {
+		if (header.offset < sizeof(struct cbfs_fileheader) ||
+		    header.offset > header.len) {
 			file_cbfs_result = CBFS_BAD_FILE;
 			return -1;
 		}
@@ -105,9 +105,9 @@ static int file_cbfs_next_file(u8 *start, u32 size, u32 align,
 		newNode->type = header.type;
 		newNode->data = start + header.offset;
 		newNode->data_length = header.len;
-		name_len = header.offset - sizeof(struct cbfs_cachenode *);
+		name_len = header.offset - sizeof(struct cbfs_fileheader);
 		newNode->name = (char *)fileHeader +
-				sizeof(struct cbfs_cachenode *);
+				sizeof(struct cbfs_fileheader);
 		newNode->name_length = name_len;
 		newNode->checksum = header.checksum;
 
@@ -167,9 +167,9 @@ static int file_cbfs_load_header(uintptr_t end_of_rom,
 				 struct cbfs_header *header)
 {
 	struct cbfs_header *header_in_rom;
+	int32_t offset = *(u32 *)(end_of_rom - 3);
 
-	header_in_rom = (struct cbfs_header *)(uintptr_t)
-			*(u32 *)(end_of_rom - 3);
+	header_in_rom = (struct cbfs_header *)(end_of_rom + offset + 1);
 	swap_header(header, header_in_rom);
 
 	if (header->magic != good_magic || header->offset >

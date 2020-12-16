@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * esd vme8349 U-Boot configuration file
  * Copyright (c) 2008, 2009 esd gmbh Hannover Germany
@@ -7,8 +8,6 @@
  *
  * reinhard.arlt@esd-electronics.de
  * Based on the MPC8349EMDS config.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -33,11 +32,8 @@
 #define CONFIG_MPC8349		1	/* MPC8349 specific */
 #define CONFIG_VME8349		1	/* ESD VME8349 board specific */
 
-#define	CONFIG_SYS_TEXT_BASE	0xFFF00000
-
 #define CONFIG_MISC_INIT_R
 
-#define CONFIG_PCI
 /* Don't enable PCI2 on vme834x - it doesn't exist physically. */
 #undef CONFIG_MPC83XX_PCI2		/* support for 2nd PCI controller */
 
@@ -197,8 +193,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -208,16 +202,6 @@
 
 #define CONFIG_SYS_NS16550_COM1		(CONFIG_SYS_IMMR + 0x4500)
 #define CONFIG_SYS_NS16550_COM2		(CONFIG_SYS_IMMR + 0x4600)
-
-#define CONFIG_CMDLINE_EDITING		/* add command line history	*/
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
-#define CONFIG_OF_STDOUT_VIA_ALIAS
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -275,7 +259,6 @@
 
 #ifndef VME_CADDY2
 #endif
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
@@ -294,11 +277,6 @@
 /*
  * TSEC configuration
  */
-#ifdef VME_CADDY2
-#define CONFIG_E1000
-#else
-#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
-#endif
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -324,7 +302,6 @@
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
-	#define CONFIG_ENV_IS_IN_FLASH
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0xc0000)
 	#define CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
 	#define CONFIG_ENV_SIZE		0x2000
@@ -334,8 +311,6 @@
 #define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #else
-	#define CONFIG_SYS_NO_FLASH		/* Flash is not usable now */
-	#define CONFIG_ENV_IS_NOWHERE		/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -347,34 +322,14 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DATE
 #define CONFIG_SYS_RTC_BUS_NUM  0x01
 #define CONFIG_SYS_I2C_RTC_ADDR	0x32
 #define CONFIG_RTC_RX8025
-#define CONFIG_CMD_TSI148
 
-#if defined(CONFIG_PCI)
-    #define CONFIG_CMD_PCI
-#endif
-
-#if defined(CONFIG_SYS_RAMBOOT)
-    #undef CONFIG_CMD_ENV
-    #undef CONFIG_CMD_LOADS
-#endif
-
-#define CONFIG_CMD_ELF
 /* Pass Ethernet MAC to VxWorks */
 #define CONFIG_SYS_VXWORKS_MAC_PTR	0x000043f0
 
@@ -383,18 +338,7 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-
-#if defined(CONFIG_CMD_KGDB)
-	#define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
-#else
-	#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-#endif
-
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16		/* max num of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot Argument Buf Size */
 
 /*
  * For booting Linux, the board info and command line data
@@ -550,16 +494,11 @@
 #define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_HOSTNAME		VME8349
+#define CONFIG_HOSTNAME		"VME8349"
 #define CONFIG_ROOTPATH		"/tftpboot/rootfs"
 #define CONFIG_BOOTFILE		"uImage"
 
 #define CONFIG_LOADADDR		800000	/* def location for tftp and bootm */
-
-#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
-#undef  CONFIG_BOOTARGS			/* boot command will set bootargs */
-
-#define CONFIG_BAUDRATE	 9600
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\

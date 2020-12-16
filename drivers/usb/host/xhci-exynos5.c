@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SAMSUNG EXYNOS5 USB HOST XHCI Controller
  *
  * Copyright (C) 2012 Samsung Electronics Co.Ltd
  *	Vivek Gautam <gautam.vivek@samsung.com>
  *	Vikas Sajjan <vikas.sajjan@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,8 +13,9 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <fdtdec.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <malloc.h>
 #include <usb.h>
 #include <watchdog.h>
@@ -23,7 +23,7 @@
 #include <asm/arch/power.h>
 #include <asm/arch/xhci-exynos.h>
 #include <asm/gpio.h>
-#include <asm-generic/errno.h>
+#include <linux/errno.h>
 #include <linux/compat.h>
 #include <linux/usb/dwc3.h>
 
@@ -32,47 +32,42 @@
 /* Declare global data pointer */
 DECLARE_GLOBAL_DATA_PTR;
 
+struct exynos_xhci_platdata {
+	fdt_addr_t hcd_base;
+	fdt_addr_t phy_base;
+	struct gpio_desc vbus_gpio;
+};
+
 /**
  * Contains pointers to register base addresses
  * for the usb controller.
  */
 struct exynos_xhci {
+	struct usb_platdata usb_plat;
+	struct xhci_ctrl ctrl;
 	struct exynos_usb3_phy *usb3_phy;
 	struct xhci_hccr *hcd;
 	struct dwc3 *dwc3_reg;
-	struct fdt_gpio_state vbus_gpio;
 };
 
-static struct exynos_xhci exynos;
-
-#ifdef CONFIG_OF_CONTROL
-static int exynos_usb3_parse_dt(const void *blob, struct exynos_xhci *exynos)
+static int xhci_usb_ofdata_to_platdata(struct udevice *dev)
 {
-	fdt_addr_t addr;
+	struct exynos_xhci_platdata *plat = dev_get_platdata(dev);
+	const void *blob = gd->fdt_blob;
 	unsigned int node;
 	int depth;
-
-	node = fdtdec_next_compatible(blob, 0, COMPAT_SAMSUNG_EXYNOS5_XHCI);
-	if (node <= 0) {
-		debug("XHCI: Can't get device node for xhci\n");
-		return -ENODEV;
-	}
 
 	/*
 	 * Get the base address for XHCI controller from the device node
 	 */
-	addr = fdtdec_get_addr(blob, node, "reg");
-	if (addr == FDT_ADDR_T_NONE) {
+	plat->hcd_base = devfdt_get_addr(dev);
+	if (plat->hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the XHCI register base address\n");
 		return -ENXIO;
 	}
-	exynos->hcd = (struct xhci_hccr *)addr;
-
-	/* Vbus gpio */
-	fdtdec_decode_gpio(blob, node, "samsung,vbus-gpio", &exynos->vbus_gpio);
 
 	depth = 0;
-	node = fdtdec_next_compatible_subnode(blob, node,
+	node = fdtdec_next_compatible_subnode(blob, dev_of_offset(dev),
 				COMPAT_SAMSUNG_EXYNOS5_USB3_PHY, &depth);
 	if (node <= 0) {
 		debug("XHCI: Can't get device node for usb3-phy controller\n");
@@ -82,16 +77,18 @@ static int exynos_usb3_parse_dt(const void *blob, struct exynos_xhci *exynos)
 	/*
 	 * Get the base address for usbphy from the device node
 	 */
-	exynos->usb3_phy = (struct exynos_usb3_phy *)fdtdec_get_addr(blob, node,
-								"reg");
-	if (exynos->usb3_phy == NULL) {
+	plat->phy_base = fdtdec_get_addr(blob, node, "reg");
+	if (plat->phy_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the usbphy register address\n");
 		return -ENXIO;
 	}
 
+	/* Vbus gpio */
+	gpio_request_by_name(dev, "samsung,vbus-gpio", 0,
+			     &plat->vbus_gpio, GPIOD_IS_OUT);
+
 	return 0;
 }
-#endif
 
 static void exynos5_usb3_phy_init(struct exynos_usb3_phy *phy)
 {
@@ -181,84 +178,6 @@ static void exynos5_usb3_phy_exit(struct exynos_usb3_phy *phy)
 	set_usbdrd_phy_ctrl(POWER_USB_DRD_PHY_CTRL_DISABLE);
 }
 
-void dwc3_set_mode(struct dwc3 *dwc3_reg, u32 mode)
-{
-	clrsetbits_le32(&dwc3_reg->g_ctl,
-			DWC3_GCTL_PRTCAPDIR(DWC3_GCTL_PRTCAP_OTG),
-			DWC3_GCTL_PRTCAPDIR(mode));
-}
-
-static void dwc3_core_soft_reset(struct dwc3 *dwc3_reg)
-{
-	/* Before Resetting PHY, put Core in Reset */
-	setbits_le32(&dwc3_reg->g_ctl,
-			DWC3_GCTL_CORESOFTRESET);
-
-	/* Assert USB3 PHY reset */
-	setbits_le32(&dwc3_reg->g_usb3pipectl[0],
-			DWC3_GUSB3PIPECTL_PHYSOFTRST);
-
-	/* Assert USB2 PHY reset */
-	setbits_le32(&dwc3_reg->g_usb2phycfg,
-			DWC3_GUSB2PHYCFG_PHYSOFTRST);
-
-	mdelay(100);
-
-	/* Clear USB3 PHY reset */
-	clrbits_le32(&dwc3_reg->g_usb3pipectl[0],
-			DWC3_GUSB3PIPECTL_PHYSOFTRST);
-
-	/* Clear USB2 PHY reset */
-	clrbits_le32(&dwc3_reg->g_usb2phycfg,
-			DWC3_GUSB2PHYCFG_PHYSOFTRST);
-
-	/* After PHYs are stable we can take Core out of reset state */
-	clrbits_le32(&dwc3_reg->g_ctl,
-			DWC3_GCTL_CORESOFTRESET);
-}
-
-static int dwc3_core_init(struct dwc3 *dwc3_reg)
-{
-	u32 reg;
-	u32 revision;
-	unsigned int dwc3_hwparams1;
-
-	revision = readl(&dwc3_reg->g_snpsid);
-	/* This should read as U3 followed by revision number */
-	if ((revision & DWC3_GSNPSID_MASK) != 0x55330000) {
-		puts("this is not a DesignWare USB3 DRD Core\n");
-		return -EINVAL;
-	}
-
-	dwc3_core_soft_reset(dwc3_reg);
-
-	dwc3_hwparams1 = readl(&dwc3_reg->g_hwparams1);
-
-	reg = readl(&dwc3_reg->g_ctl);
-	reg &= ~DWC3_GCTL_SCALEDOWN_MASK;
-	reg &= ~DWC3_GCTL_DISSCRAMBLE;
-	switch (DWC3_GHWPARAMS1_EN_PWROPT(dwc3_hwparams1)) {
-	case DWC3_GHWPARAMS1_EN_PWROPT_CLK:
-		reg &= ~DWC3_GCTL_DSBLCLKGTNG;
-		break;
-	default:
-		debug("No power optimization available\n");
-	}
-
-	/*
-	 * WORKAROUND: DWC3 revisions <1.90a have a bug
-	 * where the device can fail to connect at SuperSpeed
-	 * and falls back to high-speed mode which causes
-	 * the device to enter a Connect/Disconnect loop
-	 */
-	if ((revision & DWC3_REVISION_MASK) < 0x190a)
-		reg |= DWC3_GCTL_U2RSTECN;
-
-	writel(reg, &dwc3_reg->g_ctl);
-
-	return 0;
-}
-
 static int exynos_xhci_core_init(struct exynos_xhci *exynos)
 {
 	int ret;
@@ -282,26 +201,22 @@ static void exynos_xhci_core_exit(struct exynos_xhci *exynos)
 	exynos5_usb3_phy_exit(exynos->usb3_phy);
 }
 
-int xhci_hcd_init(int index, struct xhci_hccr **hccr, struct xhci_hcor **hcor)
+static int xhci_usb_probe(struct udevice *dev)
 {
-	struct exynos_xhci *ctx = &exynos;
+	struct exynos_xhci_platdata *plat = dev_get_platdata(dev);
+	struct exynos_xhci *ctx = dev_get_priv(dev);
+	struct xhci_hcor *hcor;
 	int ret;
 
-#ifdef CONFIG_OF_CONTROL
-	exynos_usb3_parse_dt(gd->fdt_blob, ctx);
-#else
-	ctx->usb3_phy = (struct exynos_usb3_phy *)samsung_get_base_usb3_phy();
-	ctx->hcd = (struct xhci_hccr *)samsung_get_base_usb_xhci();
-#endif
-
+	ctx->hcd = (struct xhci_hccr *)plat->hcd_base;
+	ctx->usb3_phy = (struct exynos_usb3_phy *)plat->phy_base;
 	ctx->dwc3_reg = (struct dwc3 *)((char *)(ctx->hcd) + DWC3_REG_OFFSET);
+	hcor = (struct xhci_hcor *)((uint32_t)ctx->hcd +
+			HC_LENGTH(xhci_readl(&ctx->hcd->cr_capbase)));
 
-#ifdef CONFIG_OF_CONTROL
 	/* setup the Vbus gpio here */
-	if (fdt_gpio_isvalid(&ctx->vbus_gpio) &&
-	    !fdtdec_setup_gpio(&ctx->vbus_gpio))
-		gpio_direction_output(ctx->vbus_gpio.gpio, 1);
-#endif
+	if (dm_gpio_is_valid(&plat->vbus_gpio))
+		dm_gpio_set_value(&plat->vbus_gpio, 1);
 
 	ret = exynos_xhci_core_init(ctx);
 	if (ret) {
@@ -309,20 +224,36 @@ int xhci_hcd_init(int index, struct xhci_hccr **hccr, struct xhci_hcor **hcor)
 		return -EINVAL;
 	}
 
-	*hccr = (ctx->hcd);
-	*hcor = (struct xhci_hcor *)((uint32_t) *hccr
-				+ HC_LENGTH(xhci_readl(&(*hccr)->cr_capbase)));
+	return xhci_register(dev, ctx->hcd, hcor);
+}
 
-	debug("Exynos5-xhci: init hccr %x and hcor %x hc_length %d\n",
-		(uint32_t)*hccr, (uint32_t)*hcor,
-		(uint32_t)HC_LENGTH(xhci_readl(&(*hccr)->cr_capbase)));
+static int xhci_usb_remove(struct udevice *dev)
+{
+	struct exynos_xhci *ctx = dev_get_priv(dev);
+	int ret;
+
+	ret = xhci_deregister(dev);
+	if (ret)
+		return ret;
+	exynos_xhci_core_exit(ctx);
 
 	return 0;
 }
 
-void xhci_hcd_stop(int index)
-{
-	struct exynos_xhci *ctx = &exynos;
+static const struct udevice_id xhci_usb_ids[] = {
+	{ .compatible = "samsung,exynos5250-xhci" },
+	{ }
+};
 
-	exynos_xhci_core_exit(ctx);
-}
+U_BOOT_DRIVER(usb_xhci) = {
+	.name	= "xhci_exynos",
+	.id	= UCLASS_USB,
+	.of_match = xhci_usb_ids,
+	.ofdata_to_platdata = xhci_usb_ofdata_to_platdata,
+	.probe = xhci_usb_probe,
+	.remove = xhci_usb_remove,
+	.ops	= &xhci_usb_ops,
+	.platdata_auto_alloc_size = sizeof(struct exynos_xhci_platdata),
+	.priv_auto_alloc_size = sizeof(struct exynos_xhci),
+	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
+};

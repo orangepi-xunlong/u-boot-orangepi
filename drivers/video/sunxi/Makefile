@@ -1,11 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
-# Copyright (c) 2015 Allwinnertech, Inc.
-# Tyle <tyle at allwinnertech.com>
-#
-#
+# (C) Copyright 2000-2007
+# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
-ifeq ($(CONFIG_ARCH_SUN8IW5P1),y)
-obj-y += disp/
-else
-obj-y += disp2/
-endif
+obj-$(CONFIG_VIDEO_SUNXI) += sunxi_display.o simplefb_common.o lcdc.o tve_common.o ../videomodes.o
+obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o simplefb_common.o lcdc.o ../dw_hdmi.o sunxi_lcd.o

@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -40,3 +39,6 @@ void cpld_write(unsigned int reg, u8 value);
 #define CPLD_LBMAP_RESET	0xFF
 #define CPLD_LBMAP_SHIFT	0x03
 #define CPLD_BOOT_SEL		0x80
+
+/* RSTCON Register */
+#define CPLD_RSTCON_EDC_RST	0x04

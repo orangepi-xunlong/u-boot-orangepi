@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
@@ -10,14 +11,13 @@
  *
  * Copyright (C) 2009 Nick Thompson, GE Fanuc, Ltd. <nick.thompson@gefanuc.com>
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <i2c.h>
 #include <net.h>
 #include <netdev.h>
+#include <asm/mach-types.h>
 #include <asm/arch/hardware.h>
 #include <asm/ti-common/davinci_nand.h>
 #include <asm/arch/emac_defs.h>
@@ -203,9 +203,7 @@ int board_early_init_f(void)
 	/* Set LCD_B_PWR low to power down LCD Backlight*/
 	gpio_direction_output(102, 0);
 
-#ifndef CONFIG_USE_IRQ
 	irq_init();
-#endif
 
 	/*
 	 * NAND CS setup - cycle counts based on da850evm NAND timings in the

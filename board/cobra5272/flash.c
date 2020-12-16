@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <console.h>
 
 #define PHYS_FLASH_1 CONFIG_SYS_FLASH_BASE
 #define FLASH_BANK_SIZE 0x200000
@@ -215,7 +215,7 @@ int flash_erase (flash_info_t * info, int s_first, int s_last)
 				goto outahere;
 			}
 			if (chip1 == TMO) {
-				rc = ERR_TIMOUT;
+				rc = ERR_TIMEOUT;
 				goto outahere;
 			}
 

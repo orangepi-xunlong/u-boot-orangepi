@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Driver for the Zynq-7000 PS I2C controller
  * IP from Cadence (ID T-CS-PE-0007-100, Version R1p10f2)
@@ -7,13 +8,14 @@
  *
  * Copyright (c) 2012-2013 Xilinx, Michal Simek
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * NOTE: This driver should be converted to driver model before June 2017.
+ * Please see doc/driver-model/i2c-howto.txt for instructions.
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <i2c.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/arch/hardware.h>
 
 /* i2c register set */
@@ -297,11 +299,15 @@ static unsigned int zynq_i2c_set_bus_speed(struct i2c_adapter *adap,
 	return 0;
 }
 
+#ifdef CONFIG_ZYNQ_I2C0
 U_BOOT_I2C_ADAP_COMPLETE(zynq_0, zynq_i2c_init, zynq_i2c_probe, zynq_i2c_read,
 			 zynq_i2c_write, zynq_i2c_set_bus_speed,
 			 CONFIG_SYS_I2C_ZYNQ_SPEED, CONFIG_SYS_I2C_ZYNQ_SLAVE,
 			 0)
+#endif
+#ifdef CONFIG_ZYNQ_I2C1
 U_BOOT_I2C_ADAP_COMPLETE(zynq_1, zynq_i2c_init, zynq_i2c_probe, zynq_i2c_read,
 			 zynq_i2c_write, zynq_i2c_set_bus_speed,
 			 CONFIG_SYS_I2C_ZYNQ_SPEED, CONFIG_SYS_I2C_ZYNQ_SLAVE,
 			 1)
+#endif

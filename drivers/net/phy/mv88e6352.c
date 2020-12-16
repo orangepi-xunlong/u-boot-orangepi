@@ -1,13 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Valentin Lontgchamp, Keymile AG, valentin.longchamp@keymile.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <miiphy.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <mv88e6352.h>
 
 #define SMI_HDR		((0x8 | 0x1) << 12)

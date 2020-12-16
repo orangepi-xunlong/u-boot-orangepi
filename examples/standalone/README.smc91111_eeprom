@@ -7,14 +7,14 @@ EEPROMs.
 
 Contents:
 ------------------------
-1. Ensuring U-boot's MAC address can be set in hardware
+1. Ensuring U-Boot's MAC address can be set in hardware
 2. Running the smc91111_eeprom program
 3. Setting MAC addresses
 4. Other things you can do with this
 5. Things to be done.
 
 
-1. Ensuring U-boot's MAC address can be set in hardware
+1. Ensuring U-Boot's MAC address can be set in hardware
 --------------------------------------------------------------------------
 
 On the Internet - MAC addresses are very important. Short for Media
@@ -26,29 +26,6 @@ addresses.
 To find out who has a MAC address, or to purchase MAC addresses, goto
 the IEEE, at:
 http://standards.ieee.org/regauth/oui/index.shtml
-
-To change your MAC address, there can not be a MAC address predefined in
-U-Boot. To ensure that this does not occur, check your
-include/configs/<board_name>.h file, and check to see that the following
-settings are _not_ or commented out there.
-
-#define HARDCODE_MAC			1
-#define CONFIG_ETHADDR			02:80:ad:20:31:b8
-
-The purpose of HARDCODE_MAC is to hardcode the MAC address in software,
-(not what we want), or to preset it to 02:80:ad:20:31:b8 (not what we
-want either).
-
-You can check this in a running U-Boot, by doing a power cycle, then
-before U-Boot tries to do any networking, running the 'printenv' command
-
-  BOOT> printenv
-
-  ethaddr=02:80:ad:20:31:b8
-
-If you see the 'ethaddr' variable show up, like the above, you need to
-recompile U-Boot, with the above settings commented out of the
-include/configs/<board_name>.h file.
 
 2. Running the smc91111_eeprom program
 ---------------------------------------------------------------------
@@ -153,14 +130,14 @@ SMC91111>
 The MAC address can be stored in four locations:
 
 -Boot environmental variable in Flash <- can not change, without
-					  re-flashing U-boot.
+					  re-flashing U-Boot.
 U-Boot environmental variable	       <- can not change, without
 					  resetting board/U-Boot
 LAN91C111 Registers		       <- volatile
 LAN91C111 EEPROM		       <- Non-volatile
 
 If you have not activated the network, and do not have a hardcoded
-or pre-assigned MAC address in U-boot, the environmental variables
+or pre-assigned MAC address in U-Boot, the environmental variables
 should be blank, and allow you to set things one time.
 
 To set the EEPROM MAC address to 12:34:56:78:9A:BC

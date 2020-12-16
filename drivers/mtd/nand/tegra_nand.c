@@ -1,21 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2011 NVIDIA Corporation <www.nvidia.com>
  * (C) Copyright 2006 Detlev Zundel, dzu@denx.de
  * (C) Copyright 2006 DENX Software Engineering
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
+#include <memalign.h>
 #include <nand.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch-tegra/clk_rst.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
 #include <fdtdec.h>
+#include <bouncebuf.h>
 #include "tegra_nand.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -79,58 +80,19 @@ enum {
 struct fdt_nand {
 	struct nand_ctlr *reg;
 	int enabled;		/* 1 to enable, 0 to disable */
-	struct fdt_gpio_state wp_gpio;	/* write-protect GPIO */
+	struct gpio_desc wp_gpio;	/* write-protect GPIO */
 	s32 width;		/* bit width, normally 8 */
 	u32 timing[FDT_NAND_TIMING_COUNT];
 };
 
 struct nand_drv {
 	struct nand_ctlr *reg;
-
-	/*
-	* When running in PIO mode to get READ ID bytes from register
-	* RESP_0, we need this variable as an index to know which byte in
-	* register RESP_0 should be read.
-	* Because common code in nand_base.c invokes read_byte function two
-	* times for NAND_CMD_READID.
-	* And our controller returns 4 bytes at once in register RESP_0.
-	*/
-	int pio_byte_index;
 	struct fdt_nand config;
 };
 
 static struct nand_drv nand_ctrl;
 static struct mtd_info *our_mtd;
 static struct nand_chip nand_chip[CONFIG_SYS_MAX_NAND_DEVICE];
-
-#ifdef CONFIG_SYS_DCACHE_OFF
-static inline void dma_prepare(void *start, unsigned long length,
-			       int is_writing)
-{
-}
-#else
-/**
- * Prepare for a DMA transaction
- *
- * For a write we flush out our data. For a read we invalidate, since we
- * need to do this before we read from the buffer after the DMA has
- * completed, so may as well do it now.
- *
- * @param start		Start address for DMA buffer (should be cache-aligned)
- * @param length	Length of DMA buffer in bytes
- * @param is_writing	0 if reading, non-zero if writing
- */
-static void dma_prepare(void *start, unsigned long length, int is_writing)
-{
-	unsigned long addr = (unsigned long)start;
-
-	length = ALIGN(length, ARCH_DMA_MINALIGN);
-	if (is_writing)
-		flush_dcache_range(addr, addr + length);
-	else
-		invalidate_dcache_range(addr, addr + length);
-}
-#endif
 
 /**
  * Wait for command completion
@@ -180,26 +142,17 @@ static int nand_waitfor_cmd_completion(struct nand_ctlr *reg)
  */
 static uint8_t read_byte(struct mtd_info *mtd)
 {
-	struct nand_chip *chip = mtd->priv;
-	u32 dword_read;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 	struct nand_drv *info;
 
-	info = (struct nand_drv *)chip->priv;
+	info = (struct nand_drv *)nand_get_controller_data(chip);
 
-	/* In PIO mode, only 4 bytes can be transferred with single CMD_GO. */
-	if (info->pio_byte_index > 3) {
-		info->pio_byte_index = 0;
-		writel(CMD_GO | CMD_PIO
-			| CMD_RX | CMD_CE0,
-			&info->reg->command);
-		if (!nand_waitfor_cmd_completion(info->reg))
-			printf("Command timeout\n");
-	}
+	writel(CMD_GO | CMD_PIO | CMD_RX | CMD_CE0 | CMD_A_VALID,
+	       &info->reg->command);
+	if (!nand_waitfor_cmd_completion(info->reg))
+		printf("Command timeout\n");
 
-	dword_read = readl(&info->reg->resp);
-	dword_read = dword_read >> (8 * info->pio_byte_index);
-	info->pio_byte_index++;
-	return (uint8_t)dword_read;
+	return (uint8_t)readl(&info->reg->resp);
 }
 
 /**
@@ -215,8 +168,8 @@ static void read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
 	int i, s;
 	unsigned int reg;
-	struct nand_chip *chip = mtd->priv;
-	struct nand_drv *info = (struct nand_drv *)chip->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct nand_drv *info = (struct nand_drv *)nand_get_controller_data(chip);
 
 	for (i = 0; i < len; i += 4) {
 		s = (len - i) > 4 ? 4 : len - i;
@@ -240,11 +193,11 @@ static void read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
  */
 static int nand_dev_ready(struct mtd_info *mtd)
 {
-	struct nand_chip *chip = mtd->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 	int reg_val;
 	struct nand_drv *info;
 
-	info = (struct nand_drv *)chip->priv;
+	info = (struct nand_drv *)nand_get_controller_data(chip);
 
 	reg_val = readl(&info->reg->status);
 	if (reg_val & STATUS_RBSY0)
@@ -291,10 +244,10 @@ static void nand_clear_interrupt_status(struct nand_ctlr *reg)
 static void nand_command(struct mtd_info *mtd, unsigned int command,
 	int column, int page_addr)
 {
-	struct nand_chip *chip = mtd->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 	struct nand_drv *info;
 
-	info = (struct nand_drv *)chip->priv;
+	info = (struct nand_drv *)nand_get_controller_data(chip);
 
 	/*
 	 * Write out the command to the device.
@@ -330,12 +283,8 @@ static void nand_command(struct mtd_info *mtd, unsigned int command,
 	case NAND_CMD_READID:
 		writel(NAND_CMD_READID, &info->reg->cmd_reg1);
 		writel(column & 0xFF, &info->reg->addr_reg1);
-		writel(CMD_GO | CMD_CLE | CMD_ALE | CMD_PIO
-			| CMD_RX |
-			((4 - 1) << CMD_TRANS_SIZE_SHIFT)
-			| CMD_CE0,
-			&info->reg->command);
-		info->pio_byte_index = 0;
+		writel(CMD_GO | CMD_CLE | CMD_ALE | CMD_CE0,
+		       &info->reg->command);
 		break;
 	case NAND_CMD_PARAM:
 		writel(NAND_CMD_PARAM, &info->reg->cmd_reg1);
@@ -376,7 +325,6 @@ static void nand_command(struct mtd_info *mtd, unsigned int command,
 			| ((1 - 0) << CMD_TRANS_SIZE_SHIFT)
 			| CMD_CE0,
 			&info->reg->command);
-		info->pio_byte_index = 0;
 		break;
 	case NAND_CMD_RESET:
 		writel(NAND_CMD_RESET, &info->reg->cmd_reg1);
@@ -555,13 +503,15 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
 	char *tag_ptr;
 	struct nand_drv *info;
 	struct fdt_nand *config;
+	unsigned int bbflags;
+	struct bounce_buffer bbstate, bbstate_oob;
 
 	if ((uintptr_t)buf & 0x03) {
 		printf("buf %p has to be 4-byte aligned\n", buf);
 		return -EINVAL;
 	}
 
-	info = (struct nand_drv *)chip->priv;
+	info = (struct nand_drv *)nand_get_controller_data(chip);
 	config = &info->config;
 	if (set_bus_width_page_size(config, &reg_val))
 		return -EINVAL;
@@ -571,21 +521,21 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 	stop_command(info->reg);
 
-	writel((1 << chip->page_shift) - 1, &info->reg->dma_cfg_a);
-	writel(virt_to_phys(buf), &info->reg->data_block_ptr);
+	if (is_writing)
+		bbflags = GEN_BB_READ;
+	else
+		bbflags = GEN_BB_WRITE;
 
-	if (with_ecc) {
-		writel(virt_to_phys(tag_ptr), &info->reg->tag_ptr);
-		if (is_writing)
-			memcpy(tag_ptr, chip->oob_poi + free->offset,
-				chip->ecc.layout->oobavail +
-				TAG_ECC_BYTES);
-	} else {
-		writel(virt_to_phys(chip->oob_poi), &info->reg->tag_ptr);
-	}
+	bounce_buffer_start(&bbstate, (void *)buf, 1 << chip->page_shift,
+			    bbflags);
+	writel((1 << chip->page_shift) - 1, &info->reg->dma_cfg_a);
+	writel(virt_to_phys(bbstate.bounce_buffer), &info->reg->data_block_ptr);
 
 	/* Set ECC selection, configure ECC settings */
 	if (with_ecc) {
+		if (is_writing)
+			memcpy(tag_ptr, chip->oob_poi + free->offset,
+			       chip->ecc.layout->oobavail + TAG_ECC_BYTES);
 		tag_size = chip->ecc.layout->oobavail + TAG_ECC_BYTES;
 		reg_val |= (CFG_SKIP_SPARE_SEL_4
 			| CFG_SKIP_SPARE_ENABLE
@@ -598,7 +548,8 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 		if (!is_writing)
 			tag_size += SKIPPED_SPARE_BYTES;
-		dma_prepare(tag_ptr, tag_size, is_writing);
+		bounce_buffer_start(&bbstate_oob, (void *)tag_ptr, tag_size,
+				    bbflags);
 	} else {
 		tag_size = mtd->oobsize;
 		reg_val |= (CFG_SKIP_SPARE_DISABLE
@@ -606,14 +557,12 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
 			| CFG_ECC_EN_TAG_DISABLE
 			| CFG_HW_ECC_DISABLE
 			| (tag_size - 1));
-		dma_prepare(chip->oob_poi, tag_size, is_writing);
+		bounce_buffer_start(&bbstate_oob, (void *)chip->oob_poi,
+				    tag_size, bbflags);
 	}
 	writel(reg_val, &info->reg->config);
-
-	dma_prepare(buf, 1 << chip->page_shift, is_writing);
-
+	writel(virt_to_phys(bbstate_oob.bounce_buffer), &info->reg->tag_ptr);
 	writel(BCH_CONFIG_BCH_ECC_DISABLE, &info->reg->bch_config);
-
 	writel(tag_size - 1, &info->reg->dma_cfg_b);
 
 	nand_clear_interrupt_status(info->reg);
@@ -658,6 +607,9 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
 		printf("\n");
 		return -EIO;
 	}
+
+	bounce_buffer_stop(&bbstate_oob);
+	bounce_buffer_stop(&bbstate);
 
 	if (with_ecc && !is_writing) {
 		memcpy(chip->oob_poi, tag_ptr,
@@ -704,16 +656,9 @@ static int nand_read_page_hwecc(struct mtd_info *mtd,
  * @param buf	data buffer
  */
 static int nand_write_page_hwecc(struct mtd_info *mtd,
-	struct nand_chip *chip, const uint8_t *buf, int oob_required)
+	struct nand_chip *chip, const uint8_t *buf, int oob_required,
+	int page)
 {
-	int page;
-	struct nand_drv *info;
-
-	info = (struct nand_drv *)chip->priv;
-
-	page = (readl(&info->reg->addr_reg1) >> 16) |
-		(readl(&info->reg->addr_reg2) << 16);
-
 	nand_rw_page(mtd, chip, (uint8_t *)buf, page, 1, 1);
 	return 0;
 }
@@ -744,15 +689,9 @@ static int nand_read_page_raw(struct mtd_info *mtd,
  * @param buf	data buffer
  */
 static int nand_write_page_raw(struct mtd_info *mtd,
-		struct nand_chip *chip,	const uint8_t *buf, int oob_required)
+		struct nand_chip *chip,	const uint8_t *buf,
+		int oob_required, int page)
 {
-	int page;
-	struct nand_drv *info;
-
-	info = (struct nand_drv *)chip->priv;
-	page = (readl(&info->reg->addr_reg1) >> 16) |
-		(readl(&info->reg->addr_reg2) << 16);
-
 	nand_rw_page(mtd, chip, (uint8_t *)buf, page, 0, 1);
 	return 0;
 }
@@ -776,16 +715,16 @@ static int nand_rw_oob(struct mtd_info *mtd, struct nand_chip *chip,
 	int tag_size;
 	struct nand_oobfree *free = chip->ecc.layout->oobfree;
 	struct nand_drv *info;
+	unsigned int bbflags;
+	struct bounce_buffer bbstate_oob;
 
 	if (((int)chip->oob_poi) & 0x03)
 		return -EINVAL;
-	info = (struct nand_drv *)chip->priv;
+	info = (struct nand_drv *)nand_get_controller_data(chip);
 	if (set_bus_width_page_size(&info->config, &reg_val))
 		return -EINVAL;
 
 	stop_command(info->reg);
-
-	writel(virt_to_phys(chip->oob_poi), &info->reg->tag_ptr);
 
 	/* Set ECC selection */
 	tag_size = mtd->oobsize;
@@ -800,12 +739,19 @@ static int nand_rw_oob(struct mtd_info *mtd, struct nand_chip *chip,
 		CFG_HW_ECC_DISABLE);
 	writel(reg_val, &info->reg->config);
 
-	dma_prepare(chip->oob_poi, tag_size, is_writing);
-
-	writel(BCH_CONFIG_BCH_ECC_DISABLE, &info->reg->bch_config);
-
 	if (is_writing && with_ecc)
 		tag_size -= TAG_ECC_BYTES;
+
+	if (is_writing)
+		bbflags = GEN_BB_READ;
+	else
+		bbflags = GEN_BB_WRITE;
+
+	bounce_buffer_start(&bbstate_oob, (void *)chip->oob_poi, tag_size,
+			    bbflags);
+	writel(virt_to_phys(bbstate_oob.bounce_buffer), &info->reg->tag_ptr);
+
+	writel(BCH_CONFIG_BCH_ECC_DISABLE, &info->reg->bch_config);
 
 	writel(tag_size - 1, &info->reg->dma_cfg_b);
 
@@ -842,6 +788,8 @@ static int nand_rw_oob(struct mtd_info *mtd, struct nand_chip *chip,
 			printf("Write OOB of Page 0x%X timeout\n", page);
 		return -EIO;
 	}
+
+	bounce_buffer_stop(&bbstate_oob);
 
 	if (with_ecc && !is_writing) {
 		reg_val = (u32)check_ecc_error(info->reg, 0, 0,
@@ -935,7 +883,7 @@ static void setup_timing(unsigned timing[FDT_NAND_TIMING_COUNT],
  * Decode NAND parameters from the device tree
  *
  * @param blob	Device tree blob
- * @param node	Node containing "nand-flash" compatble node
+ * @param node	Node containing "nand-flash" compatible node
  * @return 0 if ok, -ve on error (FDT_ERR_...)
  */
 static int fdt_decode_nand(const void *blob, int node, struct fdt_nand *config)
@@ -945,8 +893,8 @@ static int fdt_decode_nand(const void *blob, int node, struct fdt_nand *config)
 	config->reg = (struct nand_ctlr *)fdtdec_get_addr(blob, node, "reg");
 	config->enabled = fdtdec_get_is_enabled(blob, node);
 	config->width = fdtdec_get_int(blob, node, "nvidia,nand-width", 8);
-	err = fdtdec_decode_gpio(blob, node, "nvidia,wp-gpios",
-				 &config->wp_gpio);
+	err = gpio_request_by_name_nodev(offset_to_ofnode(node),
+			"nvidia,wp-gpios", 0, &config->wp_gpio, GPIOD_IS_OUT);
 	if (err)
 		return err;
 	err = fdtdec_get_int_array(blob, node, "nvidia,timing",
@@ -1001,7 +949,10 @@ int tegra_nand_init(struct nand_chip *nand, int devnum)
 	nand->ecc.strength = 1;
 	nand->select_chip = nand_select_chip;
 	nand->dev_ready  = nand_dev_ready;
-	nand->priv = &nand_ctrl;
+	nand_set_controller_data(nand, &nand_ctrl);
+
+	/* Disable subpage writes as we do not provide ecc->hwctl */
+	nand->options |= NAND_NO_SUBPAGE_WRITE;
 
 	/* Adjust controller clock rate */
 	clock_start_periph_pll(PERIPH_ID_NDFLASH, CLOCK_ID_PERIPH, 52000000);
@@ -1009,11 +960,9 @@ int tegra_nand_init(struct nand_chip *nand, int devnum)
 	/* Adjust timing for NAND device */
 	setup_timing(config->timing, info->reg);
 
-	fdtdec_setup_gpio(&config->wp_gpio);
-	gpio_direction_output(config->wp_gpio.gpio, 1);
+	dm_gpio_set_value(&config->wp_gpio, 1);
 
-	our_mtd = &nand_info[devnum];
-	our_mtd->priv = nand;
+	our_mtd = nand_to_mtd(nand);
 	ret = nand_scan_ident(our_mtd, CONFIG_SYS_NAND_MAX_CHIPS, NULL);
 	if (ret)
 		return ret;
@@ -1025,7 +974,7 @@ int tegra_nand_init(struct nand_chip *nand, int devnum)
 	if (ret)
 		return ret;
 
-	ret = nand_register(devnum);
+	ret = nand_register(devnum, our_mtd);
 	if (ret)
 		return ret;
 

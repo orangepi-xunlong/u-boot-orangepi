@@ -1,16 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX28 I2C Register Definitions
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_I2C_H__
 #define __MX28_REGS_I2C_H__
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_i2c_regs {

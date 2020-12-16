@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Gururaja Hebbar gururajakr@sanyo.co.in
  *
  * reference linux-2.6.20.6/drivers/rtc/rtc-pl031.c
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -72,8 +71,7 @@ int rtc_set(struct rtc_time *tmp)
 	}
 
 	/* Calculate number of seconds this incoming time represents */
-	tim = mktime(tmp->tm_year, tmp->tm_mon, tmp->tm_mday,
-			tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+	tim = rtc_mktime(tmp);
 
 	RTC_WRITE_REG(RTC_LR, tim);
 
@@ -97,7 +95,7 @@ int rtc_get(struct rtc_time *tmp)
 
 	tim = RTC_READ_REG(RTC_DR);
 
-	to_tm (tim, tmp);
+	rtc_to_tm(tim, tmp);
 
 	debug ( "Get DATE: %4d-%02d-%02d (wday=%d)  TIME: %2d:%02d:%02d\n",
 		tmp->tm_year, tmp->tm_mon, tmp->tm_mday, tmp->tm_wday,

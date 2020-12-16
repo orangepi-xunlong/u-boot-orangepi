@@ -1,41 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007-2013
  * Stelian Pop <stelian.pop@leadtechdesign.com>
  * Lead Tech Design <www.leadtechdesign.com>
  * Thomas Petazzoni, Free Electrons, <thomas.petazzoni@free-electrons.com>
  * Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_matrix.h>
-#include <asm/arch/at91_pmc.h>
+#include <asm/arch/clk.h>
 #include <asm/arch/gpio.h>
 #include <asm-generic/gpio.h>
 #include <asm/io.h>
 #include <net.h>
 #include <netdev.h>
-#include <dataflash.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#ifdef CONFIG_HAS_DATAFLASH
-AT91S_DATAFLASH_INFO dataflash_info[CONFIG_SYS_MAX_DATAFLASH_BANKS];
-
-struct dataflash_addr cs[CONFIG_SYS_MAX_DATAFLASH_BANKS] = {
-	{CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0, 0},	/* Logical adress, CS */
-};
-
-/*define the area offsets*/
-dataflash_protect_t area_list[NB_DATAFLASH_AREA] = {
-	{0x00000000, 0x00001FFF, FLAG_PROTECT_SET, 0, "Bootstrap"},
-	{0x00002000, 0x00003FFF, FLAG_PROTECT_CLEAR, 0, "Environment"},
-	{0x00004000, 0xFFFFFFFF, FLAG_PROTECT_CLEAR, 0, "U-Boot"},
-};
-#endif
 
 #ifdef CONFIG_CMD_NAND
 static void usb_a9263_nand_hw_init(void)
@@ -43,7 +26,6 @@ static void usb_a9263_nand_hw_init(void)
 	unsigned long csa;
 	at91_smc_t *smc = (at91_smc_t *)ATMEL_BASE_SMC0;
 	at91_matrix_t *matrix = (at91_matrix_t *)ATMEL_BASE_MATRIX;
-	at91_pmc_t *pmc = (at91_pmc_t *)ATMEL_BASE_PMC;
 
 	/* Enable CS3 */
 	csa = readl(&matrix->csa[0]) | AT91_MATRIX_CSA_EBI_CS3A;
@@ -66,7 +48,8 @@ static void usb_a9263_nand_hw_init(void)
 	       AT91_SMC_MODE_DBW_8 |
 	       AT91_SMC_MODE_TDF_CYCLE(2), &smc->cs[3].mode);
 
-	writel(1 << ATMEL_ID_PIOA | 1 << ATMEL_ID_PIOCDE, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_PIOA);
+	at91_periph_clk_enable(ATMEL_ID_PIOCDE);
 
 	/* Configure RDY/BSY */
 	gpio_request(CONFIG_SYS_NAND_READY_PIN, "NAND ready/busy");
@@ -81,10 +64,7 @@ static void usb_a9263_nand_hw_init(void)
 #ifdef CONFIG_MACB
 static void usb_a9263_macb_hw_init(void)
 {
-	at91_pmc_t *pmc = (at91_pmc_t *)ATMEL_BASE_PMC;
-
-	/* Enable clock */
-	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_EMAC);
 
 	/*
 	 * Disable pull-up on:
@@ -117,9 +97,6 @@ int board_init(void)
 
 #ifdef CONFIG_CMD_NAND
 	usb_a9263_nand_hw_init();
-#endif
-#ifdef CONFIG_HAS_DATAFLASH
-	at91_spi0_hw_init(1 << 0);
 #endif
 #ifdef CONFIG_MACB
 	usb_a9263_macb_hw_init();

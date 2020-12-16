@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * DENX Software Engineering, Anatolij Gustschin, agust@denx.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -246,7 +245,8 @@ unsigned int card_init (void)
 	tmp = 0;
 	videomode = 0x310;
 	/* get video mode via environment */
-	if ((penv = getenv ("videomode")) != NULL) {
+	penv = env_get("videomode");
+	if (penv) {
 		/* decide if it is a string */
 		if (penv[0] <= '9') {
 			videomode = (int) simple_strtoul (penv, NULL, 16);

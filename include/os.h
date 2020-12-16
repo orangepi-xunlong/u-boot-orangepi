@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Operating System Interface
  *
@@ -5,7 +6,6 @@
  * They are kept in a separate file so we can include system headers.
  *
  * Copyright (c) 2011 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __OS_H__
@@ -13,6 +13,7 @@
 
 #include <linux/types.h>
 
+struct rtc_time;
 struct sandbox_state;
 
 /**
@@ -64,7 +65,7 @@ off_t os_lseek(int fd, off_t offset, int whence);
  * Access to the OS open() system call
  *
  * \param pathname	Pathname of file to open
- * \param flags		Flags, like O_RDONLY, O_RDWR
+ * \param flags		Flags, like OS_O_RDONLY, OS_O_RDWR
  * \return file descriptor, or -1 on error
  */
 int os_open(const char *pathname, int flags);
@@ -109,6 +110,14 @@ void os_exit(int exit_code) __attribute__((noreturn));
  *			be handled by U-Boot
  */
 void os_tty_raw(int fd, bool allow_sigs);
+
+/**
+ * Restore the tty to its original mode
+ *
+ * Call this to restore the original terminal mode, after it has been changed
+ * by os_tty_raw(). This is an internal function.
+ */
+void os_fd_restore(void);
 
 /**
  * Acquires some memory from the underlying os.
@@ -206,9 +215,18 @@ struct os_dirent_node {
 int os_dirent_ls(const char *dirname, struct os_dirent_node **headp);
 
 /**
+ * Free directory list
+ *
+ * This frees a linked list containing a directory listing.
+ *
+ * @param node		Pointer to head of linked list
+ */
+void os_dirent_free(struct os_dirent_node *node);
+
+/**
  * Get the name of a directory entry type
  *
- * @param type		Type to cehck
+ * @param type		Type to check
  * @return string containing the name of that type, or "???" if none/invalid
  */
 const char *os_dirent_get_typename(enum os_dirent_t type);
@@ -217,9 +235,10 @@ const char *os_dirent_get_typename(enum os_dirent_t type);
  * Get the size of a file
  *
  * @param fname		Filename to check
- * @return size of file, or -1 if an error ocurred
+ * @param size		size of file is returned if no error
+ * @return 0 on success or -1 if an error ocurred
  */
-ssize_t os_get_filesize(const char *fname);
+int os_get_filesize(const char *fname, loff_t *size);
 
 /**
  * Write a character to the controlling OS terminal
@@ -275,5 +294,40 @@ int os_read_ram_buf(const char *fname);
  * @param size		Size of buffer
  */
 int os_jump_to_image(const void *dest, int size);
+
+/**
+ * os_find_u_boot() - Determine the path to U-Boot proper
+ *
+ * This function is intended to be called from within sandbox SPL. It uses
+ * a few heuristics to find U-Boot proper. Normally it is either in the same
+ * directory, or the directory above (since u-boot-spl is normally in an
+ * spl/ subdirectory when built).
+ *
+ * @fname:	Place to put full path to U-Boot
+ * @maxlen:	Maximum size of @fname
+ * @return 0 if OK, -NOSPC if the filename is too large, -ENOENT if not found
+ */
+int os_find_u_boot(char *fname, int maxlen);
+
+/**
+ * os_spl_to_uboot() - Run U-Boot proper
+ *
+ * When called from SPL, this runs U-Boot proper. The filename is obtained by
+ * calling os_find_u_boot().
+ *
+ * @fname:	Full pathname to U-Boot executable
+ * @return 0 if OK, -ve on error
+ */
+int os_spl_to_uboot(const char *fname);
+
+/**
+ * Read the current system time
+ *
+ * This reads the current Local Time and places it into the provided
+ * structure.
+ *
+ * @param rt		Place to put system time
+ */
+void os_localtime(struct rtc_time *rt);
 
 #endif

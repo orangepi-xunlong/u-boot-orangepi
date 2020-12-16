@@ -1,50 +1,35 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *
  * Configuration settings for the Armadeus Project motherboard APF27
  *
  * Copyright (C) 2008-2013 Eric Jarrige <eric.jarrige@armadeus.org>
- *
- * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_VERSION_VARIABLE
 #define CONFIG_ENV_VERSION	10
-#define CONFIG_IDENT_STRING	" apf27 patch 3.10"
 #define CONFIG_BOARD_NAME apf27
 
 /*
  * SoC configurations
  */
-#define CONFIG_ARM926EJS		/* this is an ARM926EJS CPU */
-#define CONFIG_MX27			/* in a Freescale i.MX27 Chip */
+#define CONFIG_MX27			/* This is a Freescale i.MX27 Chip */
 #define CONFIG_MACH_TYPE	1698	/* APF27 */
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Enable the call to miscellaneous platform dependent initialization.
  */
-#define CONFIG_SYS_NO_FLASH	/* to be define before <config_cmd_default.h> */
-
-/*
- * Board display option
- */
-#define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_DISPLAY_CPUINFO
 
 /*
  * SPL
  */
-#define CONFIG_SPL
 #define CONFIG_SPL_TARGET	"u-boot-with-spl.bin"
-#define CONFIG_SPL_LDSCRIPT	"arch/$(ARCH)/cpu/u-boot-spl.lds"
 #define CONFIG_SPL_MAX_SIZE	2048
 #define CONFIG_SPL_TEXT_BASE    0xA0000000
 
 /* NAND boot config */
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SYS_NAND_U_BOOT_START    CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x800
 #define CONFIG_SYS_NAND_U_BOOT_DST	CONFIG_SYS_TEXT_BASE
@@ -53,44 +38,11 @@
 /*
  * BOOTP options
  */
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-#define CONFIG_BOOTP_BOOTPATH
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 
-#define CONFIG_HOSTNAME	CONFIG_BOARD_NAME
+#define CONFIG_HOSTNAME	"apf27"
 #define CONFIG_ROOTPATH	"/tftpboot/" __stringify(CONFIG_BOARD_NAME) "-root"
-
-/*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_ASKENV	/* ask for env variable		*/
-#define CONFIG_CMD_BSP		/* Board Specific functions	*/
-#define CONFIG_CMD_CACHE	/* icache, dcache		*/
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP		/* DHCP Support			*/
-#define CONFIG_CMD_DNS
-#define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT		/* FAT support			*/
-#define CONFIG_CMD_IMX_FUSE	/* imx iim fuse                 */
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII		/* MII support			*/
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
-#define CONFIG_CMD_NAND		/* NAND support			*/
-#define CONFIG_CMD_NAND_LOCK_UNLOCK
-#define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_CMD_NFS		/* NFS support			*/
-#define CONFIG_CMD_PING		/* ping support			*/
-#define CONFIG_CMD_SETEXPR	/* setexpr support		*/
-#define CONFIG_CMD_UBI
-#define CONFIG_CMD_UBIFS
 
 /*
  * Memory configurations
@@ -110,14 +62,11 @@
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_SDRAM_BASE	\
 		+ PHYS_SDRAM_1_SIZE - 0x0100000)
 
-#define CONFIG_SYS_TEXT_BASE		0xA0000800
-
 /*
  * FLASH organization
  */
 #define	ACFG_MONITOR_OFFSET		0x00000000
 #define	CONFIG_SYS_MONITOR_LEN		0x00100000	/* 1MiB */
-#define CONFIG_ENV_IS_IN_NAND
 #define	CONFIG_ENV_OVERWRITE
 #define	CONFIG_ENV_OFFSET		0x00100000	/* NAND offset */
 #define	CONFIG_ENV_SIZE			0x00020000	/* 128kB  */
@@ -130,36 +79,13 @@
 #define	CONFIG_KERNEL_OFFSET		0x00300000
 #define	CONFIG_ROOTFS_OFFSET		0x00800000
 
-#define CONFIG_MTDMAP			"mxc_nand.0"
-#define MTDIDS_DEFAULT			"nand0=" CONFIG_MTDMAP
-#define MTDPARTS_DEFAULT	"mtdparts=" CONFIG_MTDMAP \
-				":1M(u-boot)ro," \
-				"512K(env)," \
-				"512K(env2)," \
-				"512K(firmware)," \
-				"512K(dtb)," \
-				"5M(kernel)," \
-				"-(rootfs)"
-
 /*
  * U-Boot general configurations
  */
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"BIOS> "	/* prompt string */
 #define CONFIG_SYS_CBSIZE		2048		/* console I/O buffer */
-#define CONFIG_SYS_PBSIZE		\
-				(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS		16		/* max command args */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 						/* Boot argument buffer size */
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_HUSH_PARSER			/* enable the "hush" shell */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "	/* secondary prompt string */
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
 #define CONFIG_PREBOOT			"run check_flash check_env;"
-
 
 /*
  * Boot Linux
@@ -168,14 +94,7 @@
 #define CONFIG_SETUP_MEMORY_TAGS	/* send memory definition to kernel */
 #define CONFIG_INITRD_TAG		/* send initrd params	*/
 
-#define CONFIG_OF_LIBFDT
-
-#define CONFIG_BOOTDELAY	5
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 #define	CONFIG_BOOTFILE		__stringify(CONFIG_BOARD_NAME) "-linux.bin"
-#define CONFIG_BOOTARGS		"console=" __stringify(ACFG_CONSOLE_DEV) "," \
-			__stringify(CONFIG_BAUDRATE) " " MTDPARTS_DEFAULT \
-			" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs "
 
 #define ACFG_CONSOLE_DEV	ttySMX0
 #define CONFIG_BOOTCOMMAND	"run ubifsboot"
@@ -192,7 +111,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"env_version="		__stringify(CONFIG_ENV_VERSION)		"\0" \
 	"consoledev="		__stringify(ACFG_CONSOLE_DEV)		"\0" \
-	"mtdparts="		MTDPARTS_DEFAULT			"\0" \
+	"mtdparts="	 	CONFIG_MTDPARTS_DEFAULT	"\0" \
 	"partition=nand0,6\0"						\
 	"u-boot_addr="		__stringify(ACFG_MONITOR_OFFSET)	"\0" \
 	"env_addr="		__stringify(CONFIG_ENV_OFFSET)		"\0" \
@@ -235,14 +154,7 @@
  * Serial Driver
  */
 #define CONFIG_MXC_UART
-#define CONFIG_CONS_INDEX		1
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_MXC_UART_BASE		UART1_BASE
-
-/*
- * GPIO
- */
-#define CONFIG_MXC_GPIO
 
 /*
  * NOR
@@ -251,7 +163,6 @@
 /*
  * NAND
  */
-#define CONFIG_NAND_MXC
 
 #define CONFIG_MXC_NAND_REGS_BASE	0xD8000000
 #define CONFIG_SYS_NAND_BASE		CONFIG_MXC_NAND_REGS_BASE
@@ -259,7 +170,6 @@
 
 #define CONFIG_MXC_NAND_HWECC
 #define CONFIG_SYS_NAND_LARGEPAGE
-#define CONFIG_SYS_NAND_BUSWIDTH_16BIT
 #define CONFIG_SYS_NAND_PAGE_SIZE	2048
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(128 * 1024)
 #define CONFIG_SYS_NAND_PAGE_COUNT	CONFIG_SYS_NAND_BLOCK_SIZE / \
@@ -276,14 +186,6 @@
  */
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITIONS
-#define CONFIG_DOS_PARTITION
-#define CONFIG_SUPPORT_VFAT
-
-/*
- * UBIFS
- */
-#define CONFIG_RBTREE
-#define CONFIG_LZO
 
 /*
  * Ethernet (on SOC imx FEC)
@@ -295,12 +197,7 @@
 /*
  * FPGA
  */
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_FPGA
-#endif
 #define CONFIG_FPGA_COUNT		1
-#define CONFIG_FPGA_XILINX
-#define CONFIG_FPGA_SPARTAN3
 #define CONFIG_SYS_FPGA_WAIT		250 /* 250 ms */
 #define CONFIG_SYS_FPGA_PROG_FEEDBACK
 #define CONFIG_SYS_FPGA_CHECK_CTRLC
@@ -323,6 +220,8 @@
 #ifdef CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_MXC_I2C1_SPEED	100000	/* 100 kHz */
 #define CONFIG_SYS_MXC_I2C1_SLAVE	0x7F
 #define CONFIG_SYS_MXC_I2C2_SPEED	100000	/* 100 kHz */
@@ -341,9 +240,6 @@
  * SD/MMC
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_MXC_MMC
 #define CONFIG_MXC_MCI_REGS_BASE	0x10014000
 #endif
 

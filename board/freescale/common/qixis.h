@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011 Freescale Semiconductor
  * Author: Shengzhou Liu <Shengzhou.Liu@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file provides support for the QIXIS of some Freescale reference boards.
  */
@@ -100,12 +99,38 @@ u8 qixis_read_i2c(unsigned int reg);
 void qixis_write_i2c(unsigned int reg, u8 value);
 #endif
 
+#if defined(CONFIG_QIXIS_I2C_ACCESS) && defined(CONFIG_SYS_I2C_FPGA_ADDR)
+#define QIXIS_READ(reg) qixis_read_i2c(offsetof(struct qixis, reg))
+#define QIXIS_WRITE(reg, value) \
+	qixis_write_i2c(offsetof(struct qixis, reg), value)
+#else
 #define QIXIS_READ(reg) qixis_read(offsetof(struct qixis, reg))
 #define QIXIS_WRITE(reg, value) qixis_write(offsetof(struct qixis, reg), value)
+#endif
+
 #ifdef CONFIG_SYS_I2C_FPGA_ADDR
 #define QIXIS_READ_I2C(reg) qixis_read_i2c(offsetof(struct qixis, reg))
 #define QIXIS_WRITE_I2C(reg, value) \
 			qixis_write_i2c(offsetof(struct qixis, reg), value)
+#endif
+
+/* Use for SDHC adapter card type identification and operation */
+#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
+#define QIXIS_SDID_MASK                         0x07
+#define QIXIS_ESDHC_ADAPTER_TYPE_EMMC45         0x1	/* eMMC Card Rev4.5 */
+#define QIXIS_ESDHC_ADAPTER_TYPE_SDMMC_LEGACY   0x2	/* SD/MMC Legacy Card */
+#define QIXIS_ESDHC_ADAPTER_TYPE_EMMC44         0x3	/* eMMC Card Rev4.4 */
+#define QIXIS_ESDHC_ADAPTER_TYPE_RSV            0x4	/* Reserved */
+#define QIXIS_ESDHC_ADAPTER_TYPE_MMC            0x5	/* MMC Card */
+#define QIXIS_ESDHC_ADAPTER_TYPE_SD             0x6	/* SD Card Rev2.0 3.0 */
+#define QIXIS_ESDHC_NO_ADAPTER                  0x7	/* No Card is Present*/
+
+#define QIXIS_SDCLKIN		0x08
+#define QIXIS_SDCLKOUT		0x02
+#define QIXIS_DAT5_6_7		0X02
+#define QIXIS_DAT4		0X01
+
+#define QIXIS_EVDD_BY_SDHC_VS	0x0c
 #endif
 
 #endif

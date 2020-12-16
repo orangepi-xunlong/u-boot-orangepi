@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Ilya Yanok, Emcraft Systems
  *
  * Based on: mach-davinci/emac_defs.h
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DAVINCI_EMAC_H_
@@ -40,6 +39,8 @@
 
 /* MII Status Register */
 #define MII_STATUS_REG			1
+/* PHY Configuration register */
+#define PHY_CONF_TXCLKEN		(1 << 5)
 
 /* Number of statistics registers */
 #define EMAC_NUM_STATS			36

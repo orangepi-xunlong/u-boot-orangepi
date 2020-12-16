@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2005-2006 Atmel Corporation
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __DRIVERS_MACB_H__
 #define __DRIVERS_MACB_H__
@@ -11,6 +10,7 @@
 #define MACB_NCFGR				0x0004
 #define MACB_NSR				0x0008
 #define GEM_UR					0x000c
+#define MACB_DMACFG				0x0010
 #define MACB_TSR				0x0014
 #define MACB_RBQP				0x0018
 #define MACB_TBQP				0x001c
@@ -60,6 +60,13 @@
 
 /* GEM specific register offsets */
 #define GEM_DCFG1				0x0280
+#define GEM_DCFG6				0x0294
+
+#define MACB_MAX_QUEUES				8
+
+/* GEM specific multi queues register offset */
+/* hw_q can be 0~7 */
+#define GEM_TBQP(hw_q)				(0x0440 + ((hw_q) << 2))
 
 /* Bitfields in NCR */
 #define MACB_LB_OFFSET				0
@@ -309,5 +316,7 @@
 	readl((port)->regs + GEM_##reg)
 #define gem_writel(port, reg, value)			\
 	writel((value), (port)->regs + GEM_##reg)
+#define gem_writel_queue_TBQP(port, value, queue_num)	\
+	writel((value), (port)->regs + GEM_TBQP(queue_num))
 
 #endif /* __DRIVERS_MACB_H__ */

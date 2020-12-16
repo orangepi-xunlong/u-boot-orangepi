@@ -89,11 +89,6 @@
 
 /* Special Purpose Registers (SPRNs)*/
 
-/* PPC440 Architecture is BOOK-E */
-#ifdef CONFIG_440
-#define CONFIG_BOOKE
-#endif
-
 #define SPRN_CCR0	0x3B3	/* Core Configuration Register 0 */
 #ifdef CONFIG_BOOKE
 #define SPRN_CCR1	0x378	/* Core Configuration Register for 440 only */
@@ -378,11 +373,16 @@
 #else
 #define SPRN_TCR	0x154	/* Book E Timer Control Register */
 #endif /* CONFIG_BOOKE */
+#ifdef CONFIG_E500MC
+#define  TCR_WP(x)		(((64-x)&0x3)<<30)| \
+				(((64-x)&0x3c)<<15) /* WDT Period 2^x clocks*/
+#else
 #define   TCR_WP(x)		(((x)&0x3)<<30)	/* WDT Period */
 #define     WP_2_17		0		/* 2^17 clocks */
 #define     WP_2_21		1		/* 2^21 clocks */
 #define     WP_2_25		2		/* 2^25 clocks */
 #define     WP_2_29		3		/* 2^29 clocks */
+#endif /* CONFIG_E500 */
 #define   TCR_WRC(x)		(((x)&0x3)<<28)	/* WDT Reset Control */
 #define     WRC_NONE		0		/* No reset will occur */
 #define     WRC_CORE		1		/* Core reset will occur */
@@ -496,6 +496,7 @@
 #define   L1CSR1_ICE		0x00000001	/* Instruction Cache Enable */
 #define SPRN_L1CSR2	0x25e	/* L1 Data Cache Control and Status Register 2 */
 #define   L1CSR2_DCWS		0x40000000	/* Data Cache Write Shadow */
+#define   L1CSR2_DCSTASHID  0x000003ff	/* Data Cache Stash ID */
 #define SPRN_L2CSR0	0x3f9	/* L2 Data Cache Control and Status Register 0 */
 #define   L2CSR0_L2E		0x80000000	/* L2 Cache Enable */
 #define   L2CSR0_L2PE		0x40000000	/* L2 Cache Parity/ECC Enable */
@@ -564,12 +565,7 @@
 #define SPRN_MCAR	0x23d	/* Machine Check Address register */
 #define MCSR_MCS	0x80000000	/* Machine Check Summary */
 #define MCSR_IB		0x40000000	/* Instruction PLB Error */
-#if defined(CONFIG_440)
-#define MCSR_DRB	0x20000000	/* Data Read PLB Error */
-#define MCSR_DWB	0x10000000	/* Data Write PLB Error */
-#else
 #define MCSR_DB		0x20000000	/* Data PLB Error */
-#endif /* defined(CONFIG_440) */
 #define MCSR_TLBP	0x08000000	/* TLB Parity Error */
 #define MCSR_ICP	0x04000000	/* I-Cache Parity Error */
 #define MCSR_DCSP	0x02000000	/* D-Cache Search Parity Error */
@@ -758,7 +754,7 @@
 #define MAS7	SPRN_MAS7
 #define MAS8 	SPRN_MAS8
 
-#if defined(CONFIG_4xx) || defined(CONFIG_44x) || defined(CONFIG_MPC85xx)
+#if defined(CONFIG_MPC85xx)
 #define DAR_DEAR DEAR
 #else
 #define DAR_DEAR DAR
@@ -977,23 +973,9 @@
  * differentiated by the version number in the Communication Processor
  * Module (CPM).
  */
-#define PVR_821		0x00500000
-#define PVR_823		PVR_821
-#define PVR_850		PVR_821
-#define PVR_860		PVR_821
-#define PVR_7400	0x000C0000
-#define PVR_8240	0x00810100
+#define PVR_8xx		0x00500000
 
-/*
- * PowerQUICC II family processors report different PVR values depending
- * on silicon process (HiP3, HiP4, HiP7, etc.)
- */
-#define PVR_8260	PVR_8240
-#define PVR_8260_HIP3	0x00810101
-#define PVR_8260_HIP4	0x80811014
-#define PVR_8260_HIP7	0x80822011
-#define PVR_8260_HIP7R1 0x80822013
-#define PVR_8260_HIP7RA	0x80822014
+#define PVR_7400	0x000C0000
 
 /*
  * MPC 52xx
@@ -1043,7 +1025,7 @@
 #define SVR_FAM(svr)	(((svr) >> 20) & 0xFFF)	/* Family field */
 #define SVR_MEM(svr)	(((svr) >> 16) & 0xF)	/* Member field */
 
-#ifdef CONFIG_MPC8536
+#ifdef CONFIG_ARCH_MPC8536
 #define SVR_MAJ(svr)	(((svr) >>  4) & 0x7)	/* Major revision field*/
 #else
 #define SVR_MAJ(svr)	(((svr) >>  4) & 0xF)	/* Major revision field*/
@@ -1118,7 +1100,6 @@
 #define SVR_B4860	0X868000
 #define SVR_G4860	0x868001
 #define SVR_B4460	0x868003
-#define SVR_G4060	0x868003
 #define SVR_B4440	0x868100
 #define SVR_G4440	0x868101
 #define SVR_B4420	0x868102
@@ -1129,6 +1110,10 @@
 #define SVR_T1020	0x852100
 #define SVR_T1021	0x852101
 #define SVR_T1022	0x852102
+#define SVR_T1024	0x854000
+#define SVR_T1023	0x854100
+#define SVR_T1014	0x854400
+#define SVR_T1013	0x854500
 #define SVR_T2080	0x853000
 #define SVR_T2081	0x853100
 
@@ -1194,12 +1179,17 @@ struct cpu_type {
 	u32 soc_ver;
 	u32 num_cores;
 	u32 mask;	/* which cpu(s) actually exist */
+#ifdef CONFIG_HETROGENOUS_CLUSTERS
+	u32 dsp_num_cores;
+	u32 dsp_mask;	/* which DSP cpu(s) actually exist */
+#endif
 };
 
 struct cpu_type *identify_cpu(u32 ver);
 int fixup_cpu(void);
 
 int fsl_qoriq_core_to_cluster(unsigned int core);
+int fsl_qoriq_dsp_core_to_cluster(unsigned int core);
 
 #if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
 #define CPU_TYPE_ENTRY(n, v, nc) \
@@ -1213,11 +1203,6 @@ int fsl_qoriq_core_to_cluster(unsigned int core);
 #endif
 #endif
 
-
-#ifndef CONFIG_MACH_SPECIFIC
-extern int _machine;
-extern int have_of;
-#endif /* CONFIG_MACH_SPECIFIC */
 
 /* what kind of prep workstation we are */
 extern int _prep_type;
@@ -1340,26 +1325,11 @@ void ll_puts(const char *);
 /* In misc.c */
 void _nmask_and_or_msr(unsigned long nmask, unsigned long or_val);
 
+int prt_83xx_rsr(void);
+
 #endif /* ndef ASSEMBLY*/
 
-#ifdef CONFIG_MACH_SPECIFIC
-#if defined(CONFIG_8xx)
-#define _machine _MACH_8xx
-#define have_of 0
-#elif defined(CONFIG_WALNUT)
-#define _machine _MACH_walnut
-#define have_of 0
-#elif defined(CONFIG_MPC8260)
-#define _machine _MACH_8260
-#define have_of 0
-#elif defined(CONFIG_SANDPOINT)
-#define _machine _MACH_sandpoint
-#else
-#error "Machine not defined correctly"
-#endif
-#endif /* CONFIG_MACH_SPECIFIC */
-
-#if defined(CONFIG_MPC85xx) || defined(CONFIG_440)
+#if defined(CONFIG_MPC85xx)
  #define EPAPR_MAGIC	(0x45504150)
 #else
  #define EPAPR_MAGIC	(0x65504150)

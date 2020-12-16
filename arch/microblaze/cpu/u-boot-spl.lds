@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 - 2014 Xilinx, Inc
  *
  * Michal Simek <michal.simek@xilinx.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <asm-offsets.h>
@@ -36,6 +35,12 @@ SECTIONS
 		*(.data.*)
 		__data_end = .;
 	}
+
+	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*)));
+	}
+	__init_end = . ;
 
 	.bss ALIGN(0x4):
 	{

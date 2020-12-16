@@ -1,16 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
 /*
  * This file is part of the libpayload project.
  *
  * Copyright (C) 2008 Advanced Micro Devices, Inc.
  * Copyright (C) 2009 coresystems GmbH
- *
- * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #include <common.h>
-#include <asm/arch-coreboot/ipchecksum.h>
-#include <asm/arch-coreboot/sysinfo.h>
-#include <asm/arch-coreboot/tables.h>
+#include <net.h>
+#include <asm/arch/sysinfo.h>
 
 /*
  * This needs to be in the .data section so that it's copied over during
@@ -131,11 +129,11 @@ static int cb_parse_header(void *addr, int len, struct sysinfo_t *info)
 		return 0;
 
 	/* Make sure the checksums match. */
-	if (ipchksum((u16 *) header, sizeof(*header)) != 0)
+	if (!ip_checksum_ok(header, sizeof(*header)))
 		return -1;
 
-	if (ipchksum((u16 *) (ptr + sizeof(*header)),
-		     header->table_bytes) != header->table_checksum)
+	if (compute_ip_checksum(ptr + sizeof(*header), header->table_bytes) !=
+	    header->table_checksum)
 		return -1;
 
 	/* Now, walk the tables. */

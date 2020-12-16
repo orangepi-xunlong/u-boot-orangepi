@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2006 Ben Warren, Qstreams Networks Inc.
  * With help from the common/soft_spi and arch/powerpc/cpu/mpc8260 drivers
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -55,7 +54,7 @@ void spi_init(void)
 	 * some registers
 	 */
 	spi->mode = SPI_MODE_REV | SPI_MODE_MS | SPI_MODE_EN;
-	spi->mode = (spi->mode & 0xfff0ffff) | (1 << 16); /* Use SYSCLK / 8
+	spi->mode = (spi->mode & 0xfff0ffff) | BIT(16); /* Use SYSCLK / 8
 							     (16.67MHz typ.) */
 	spi->event = 0xffffffff;	/* Clear all SPI events */
 	spi->mask = 0x00000000;	/* Mask  all SPI interrupts */

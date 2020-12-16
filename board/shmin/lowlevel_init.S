@@ -1,11 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008, 2010 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
-#include <version.h>
 
 #include <asm/processor.h>
 #include <asm/macro.h>

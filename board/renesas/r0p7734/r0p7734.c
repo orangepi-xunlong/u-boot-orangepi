@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
  * Copyright (C) 2011 Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,8 +9,6 @@
 #include <asm/processor.h>
 #include <netdev.h>
 #include <i2c.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define MODEMR			(0xFFCC0020)
 #define MODEMR_MASK		(0x6)
@@ -46,26 +43,7 @@ int board_init(void)
 
 int board_late_init(void)
 {
-	u8 mac[6];
-
-	/* Read Mac Address and set*/
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-	i2c_set_bus_num(CONFIG_SYS_I2C_MODULE);
-
-	/* Read MAC address */
-	i2c_read(0x50, 0x10, 0, mac, 6);
-
-	if (is_valid_ether_addr(mac))
-		eth_setenv_enetaddr("ethaddr", mac);
-
-	return 0;
-}
-
-int dram_init(void)
-{
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
+	printf("Cannot get MAC address from I2C\n");
 
 	return 0;
 }

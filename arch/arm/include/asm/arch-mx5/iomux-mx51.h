@@ -1,14 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009-2010 Amit Kucheria <amit.kucheria@canonical.com>
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
  * Copyright (C) 2009-2012 Genesi USA, Inc.
- *
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
  */
 
 /*
@@ -19,7 +13,7 @@
 #ifndef __IOMUX_MX51_H__
 #define __IOMUX_MX51_H__
 
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
 
 /* Pad control groupings */
 #define MX51_UART_PAD_CTRL	(PAD_CTL_PUS_100K_DOWN | PAD_CTL_DSE_HIGH | \
@@ -184,8 +178,19 @@ enum {
 	MX51_PAD_DISPB2_SER_DIO__GPIO3_6	= IOMUX_PAD(0x6c0, 0x2c0, 4, 0x98c, 1, MX51_GPIO_PAD_CTRL),
 	MX51_PAD_DI1_PIN3__DI1_PIN3		= IOMUX_PAD(0x72c, 0x32c, 0, __NA_, 0, NO_PAD_CTRL),
 	MX51_PAD_DI1_PIN2__DI1_PIN2		= IOMUX_PAD(0x734, 0x330, 0, __NA_, 0, NO_PAD_CTRL),
+	MX51_PAD_DI2_PIN2__FEC_MDC		= IOMUX_PAD(0x74C, 0x344, 2, __NA_, 0, MX51_PAD_CTRL_5),
 	MX51_PAD_DI2_DISP_CLK__DI2_DISP_CLK	= IOMUX_PAD(0x754, 0x34c, 0, __NA_, 0, NO_PAD_CTRL),
 	MX51_PAD_DI_GP4__DI2_PIN15		= IOMUX_PAD(0x758, 0x350, 4, __NA_, 0, NO_PAD_CTRL),
+	MX51_PAD_DISP2_DAT6__FEC_TDAT1		= IOMUX_PAD(0x774, 0x36C, 2, __NA_, 0, MX51_PAD_CTRL_5),
+	MX51_PAD_DISP2_DAT7__FEC_TDAT2		= IOMUX_PAD(0x778, 0x370, 2, __NA_, 0, MX51_PAD_CTRL_5),
+	MX51_PAD_DISP2_DAT8__FEC_TDAT3		= IOMUX_PAD(0x77C, 0x374, 2, __NA_, 0, MX51_PAD_CTRL_5),
+	MX51_PAD_DISP2_DAT9__FEC_TX_EN		= IOMUX_PAD(0x780, 0x378, 2, __NA_, 0, MX51_PAD_CTRL_5),
+	MX51_PAD_DISP2_DAT10__FEC_COL		= IOMUX_PAD(0x784, 0x37C, 2, 0x94c, 0x1, MX51_PAD_CTRL_2),
+	MX51_PAD_DISP2_DAT11__FEC_RXCLK		= IOMUX_PAD(0x788, 0x380, 2, 0x968, 0x1, MX51_PAD_CTRL_2),
+	MX51_PAD_DISP2_DAT12__FEC_RX_DV		= IOMUX_PAD(0x78C, 0x384, 2, 0x96c, 0x1, MX51_PAD_CTRL_4),
+	MX51_PAD_DISP2_DAT13__FEC_TX_CLK	= IOMUX_PAD(0x790, 0x388, 2, 0x974, 0x1, MX51_PAD_CTRL_4),
+	MX51_PAD_DISP2_DAT14__FEC_RDAT0		= IOMUX_PAD(0x794, 0x38C, 2, 0x958, 0x1, MX51_PAD_CTRL_4),
+	MX51_PAD_DISP2_DAT15__FEC_TDAT0		= IOMUX_PAD(0x798, 0x390, 2, 0x0, 0, MX51_PAD_CTRL_5),
 	MX51_PAD_SD1_CMD__SD1_CMD		= IOMUX_PAD(0x79c, 0x394, 0x10, __NA_, 0, MX51_SDHCI_PAD_CTRL),
 	MX51_PAD_SD1_CLK__SD1_CLK		= IOMUX_PAD(0x7a0, 0x398, 0x10, __NA_, 0, MX51_SDHCI_PAD_CTRL | PAD_CTL_HYS),
 	MX51_PAD_SD1_DATA0__SD1_DATA0		= IOMUX_PAD(0x7a4, 0x39c, 0x10, __NA_, 0, MX51_SDHCI_PAD_CTRL),

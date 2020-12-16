@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004, Psyent Corporation <www.psyent.com>
  * Scott McNutt <smcnutt@psyent.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_NIOS2_BITOPS_H_
@@ -12,5 +11,10 @@
 #include <asm/bitops/atomic.h>
 #include <asm/bitops/non-atomic.h>
 #include <asm/bitops/ffs.h>
+
+#include <asm-generic/bitops/fls.h>
+#include <asm-generic/bitops/__fls.h>
+#include <asm-generic/bitops/fls64.h>
+#include <asm-generic/bitops/__ffs.h>
 
 #endif /* __ASM_NIOS2_BITOPS_H */

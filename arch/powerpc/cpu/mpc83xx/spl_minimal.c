@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2004-2008 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -18,14 +17,10 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 void cpu_init_f (volatile immap_t * im)
 {
-	int i;
-
 	/* Pointer is writable since we allocated a register for it */
 	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
 
-	/* Clear initial global data */
-	for (i = 0; i < sizeof(gd_t); i++)
-		((char *)gd)[i] = 0;
+	/* global data region was cleared in start.S */
 
 	/* system performance tweaking */
 
@@ -47,7 +42,7 @@ void cpu_init_f (volatile immap_t * im)
 			   (CONFIG_SYS_SPCR_OPT << SPCR_OPT_SHIFT);
 #endif
 
-	/* Enable Time Base & Decrimenter (so we will have udelay()) */
+	/* Enable Time Base & Decrementer (so we will have udelay()) */
 	im->sysconf.spcr |= SPCR_TBEN;
 
 	/* DDR control driver register */

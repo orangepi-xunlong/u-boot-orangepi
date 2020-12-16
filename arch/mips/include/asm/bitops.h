@@ -1,8 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * This file is subject to the terms and conditions of the GNU General Public
- * License.  See the file "COPYING" in the main directory of this archive
- * for more details.
- *
  * Copyright (c) 1994 - 1997, 1999, 2000  Ralf Baechle (ralf@gnu.org)
  * Copyright (c) 2000  Silicon Graphics, Inc.
  */
@@ -16,6 +13,11 @@
 
 #include <asm/sgidefs.h>
 #include <asm/system.h>
+
+#include <asm-generic/bitops/fls.h>
+#include <asm-generic/bitops/__fls.h>
+#include <asm-generic/bitops/fls64.h>
+#include <asm-generic/bitops/__ffs.h>
 
 /*
  * clear_bit() doesn't provide any barrier for the compiler.

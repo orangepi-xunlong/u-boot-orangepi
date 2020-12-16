@@ -1,17 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012 Michal Simek <monstr@monstr.eu>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * (C) Copyright 2013 - 2018 Xilinx, Inc.
  */
 
 #include <common.h>
+#include <dm/uclass.h>
 #include <fdtdec.h>
 #include <fpga.h>
 #include <mmc.h>
-#include <netdev.h>
+#include <wdt.h>
 #include <zynqpl.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch/ps7_init_gpl.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -20,12 +22,32 @@ DECLARE_GLOBAL_DATA_PTR;
 static xilinx_desc fpga;
 
 /* It can be done differently */
+static xilinx_desc fpga007s = XILINX_XC7Z007S_DESC(0x7);
 static xilinx_desc fpga010 = XILINX_XC7Z010_DESC(0x10);
+static xilinx_desc fpga012s = XILINX_XC7Z012S_DESC(0x12);
+static xilinx_desc fpga014s = XILINX_XC7Z014S_DESC(0x14);
 static xilinx_desc fpga015 = XILINX_XC7Z015_DESC(0x15);
 static xilinx_desc fpga020 = XILINX_XC7Z020_DESC(0x20);
 static xilinx_desc fpga030 = XILINX_XC7Z030_DESC(0x30);
+static xilinx_desc fpga035 = XILINX_XC7Z035_DESC(0x35);
 static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
 static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
+#endif
+
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_WDT)
+static struct udevice *watchdog_dev;
+#endif
+
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_BOARD_EARLY_INIT_F)
+int board_early_init_f(void)
+{
+# if defined(CONFIG_WDT)
+	/* bss is not cleared at time when watchdog_reset() is called */
+	watchdog_dev = NULL;
+# endif
+
+	return 0;
+}
 #endif
 
 int board_init(void)
@@ -37,8 +59,17 @@ int board_init(void)
 	idcode = zynq_slcr_get_idcode();
 
 	switch (idcode) {
+	case XILINX_ZYNQ_7007S:
+		fpga = fpga007s;
+		break;
 	case XILINX_ZYNQ_7010:
 		fpga = fpga010;
+		break;
+	case XILINX_ZYNQ_7012S:
+		fpga = fpga012s;
+		break;
+	case XILINX_ZYNQ_7014S:
+		fpga = fpga014s;
 		break;
 	case XILINX_ZYNQ_7015:
 		fpga = fpga015;
@@ -49,6 +80,9 @@ int board_init(void)
 	case XILINX_ZYNQ_7030:
 		fpga = fpga030;
 		break;
+	case XILINX_ZYNQ_7035:
+		fpga = fpga035;
+		break;
 	case XILINX_ZYNQ_7045:
 		fpga = fpga045;
 		break;
@@ -57,6 +91,15 @@ int board_init(void)
 		break;
 	}
 #endif
+
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_WDT)
+	if (uclass_get_device(UCLASS_WDT, 0, &watchdog_dev)) {
+		puts("Watchdog: Not found!\n");
+	} else {
+		wdt_start(watchdog_dev, 0, 0);
+		puts("Watchdog: Started\n");
+	}
+# endif
 
 #if (defined(CONFIG_FPGA) && !defined(CONFIG_SPL_BUILD)) || \
     (defined(CONFIG_SPL_FPGA_SUPPORT) && defined(CONFIG_SPL_BUILD))
@@ -70,98 +113,103 @@ int board_init(void)
 int board_late_init(void)
 {
 	switch ((zynq_slcr_get_boot_mode()) & ZYNQ_BM_MASK) {
+	case ZYNQ_BM_QSPI:
+		env_set("modeboot", "qspiboot");
+		break;
+	case ZYNQ_BM_NAND:
+		env_set("modeboot", "nandboot");
+		break;
 	case ZYNQ_BM_NOR:
-		setenv("modeboot", "norboot");
+		env_set("modeboot", "norboot");
 		break;
 	case ZYNQ_BM_SD:
-		setenv("modeboot", "sdboot");
+		env_set("modeboot", "sdboot");
 		break;
 	case ZYNQ_BM_JTAG:
-		setenv("modeboot", "jtagboot");
+		env_set("modeboot", "jtagboot");
 		break;
 	default:
-		setenv("modeboot", "");
+		env_set("modeboot", "");
 		break;
 	}
 
 	return 0;
 }
 
-int board_eth_init(bd_t *bis)
+#ifdef CONFIG_DISPLAY_BOARDINFO
+int checkboard(void)
 {
-	u32 ret = 0;
+	u32 version = zynq_get_silicon_version();
 
-#ifdef CONFIG_XILINX_AXIEMAC
-	ret |= xilinx_axiemac_initialize(bis, XILINX_AXIEMAC_BASEADDR,
-						XILINX_AXIDMA_BASEADDR);
-#endif
-#ifdef CONFIG_XILINX_EMACLITE
-	u32 txpp = 0;
-	u32 rxpp = 0;
-# ifdef CONFIG_XILINX_EMACLITE_TX_PING_PONG
-	txpp = 1;
-# endif
-# ifdef CONFIG_XILINX_EMACLITE_RX_PING_PONG
-	rxpp = 1;
-# endif
-	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR,
-			txpp, rxpp);
-#endif
+	version <<= 1;
+	if (version > (PCW_SILICON_VERSION_3 << 1))
+		version += 1;
 
-#if defined(CONFIG_ZYNQ_GEM)
-# if defined(CONFIG_ZYNQ_GEM0)
-	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR0,
-						CONFIG_ZYNQ_GEM_PHY_ADDR0, 0);
-# endif
-# if defined(CONFIG_ZYNQ_GEM1)
-	ret |= zynq_gem_initialize(bis, ZYNQ_GEM_BASEADDR1,
-						CONFIG_ZYNQ_GEM_PHY_ADDR1, 0);
-# endif
-#endif
-	return ret;
-}
+	puts("Board: Xilinx Zynq\n");
+	printf("Silicon: v%d.%d\n", version >> 1, version & 1);
 
-#ifdef CONFIG_CMD_MMC
-int board_mmc_init(bd_t *bd)
-{
-	int ret = 0;
-
-#if defined(CONFIG_ZYNQ_SDHCI)
-# if defined(CONFIG_ZYNQ_SDHCI0)
-	ret = zynq_sdhci_init(ZYNQ_SDHCI_BASEADDR0);
-# endif
-# if defined(CONFIG_ZYNQ_SDHCI1)
-	ret |= zynq_sdhci_init(ZYNQ_SDHCI_BASEADDR1);
-# endif
-#endif
-	return ret;
+	return 0;
 }
 #endif
+
+int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
+{
+#if defined(CONFIG_ZYNQ_GEM_EEPROM_ADDR) && \
+    defined(CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET)
+	if (eeprom_read(CONFIG_ZYNQ_GEM_EEPROM_ADDR,
+			CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET,
+			ethaddr, 6))
+		printf("I2C EEPROM MAC address read failed\n");
+#endif
+
+	return 0;
+}
+
+#if !defined(CONFIG_SYS_SDRAM_BASE) && !defined(CONFIG_SYS_SDRAM_SIZE)
+int dram_init_banksize(void)
+{
+	return fdtdec_setup_memory_banksize();
+}
 
 int dram_init(void)
 {
-#ifdef CONFIG_OF_CONTROL
-	int node;
-	fdt_addr_t addr;
-	fdt_size_t size;
-	const void *blob = gd->fdt_blob;
+	if (fdtdec_setup_memory_size() != 0)
+		return -EINVAL;
 
-	node = fdt_node_offset_by_prop_value(blob, -1, "device_type",
-					     "memory", 7);
-	if (node == -FDT_ERR_NOTFOUND) {
-		debug("ZYNQ DRAM: Can't get memory node\n");
-		return -1;
-	}
-	addr = fdtdec_get_addr_size(blob, node, "reg", &size);
-	if (addr == FDT_ADDR_T_NONE || size == 0) {
-		debug("ZYNQ DRAM: Can't get base address or size\n");
-		return -1;
-	}
-	gd->ram_size = size;
-#else
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
-#endif
 	zynq_ddrc_init();
 
 	return 0;
 }
+#else
+int dram_init(void)
+{
+	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
+				    CONFIG_SYS_SDRAM_SIZE);
+
+	zynq_ddrc_init();
+
+	return 0;
+}
+#endif
+
+#if defined(CONFIG_WATCHDOG)
+/* Called by macro WATCHDOG_RESET */
+void watchdog_reset(void)
+{
+# if !defined(CONFIG_SPL_BUILD)
+	static ulong next_reset;
+	ulong now;
+
+	if (!watchdog_dev)
+		return;
+
+	now = timer_get_us();
+
+	/* Do not reset the watchdog too often */
+	if (now > next_reset) {
+		wdt_reset(watchdog_dev);
+		next_reset = now + 1000;
+	}
+# endif
+}
+#endif

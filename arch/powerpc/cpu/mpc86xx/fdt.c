@@ -1,17 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008, 2011 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <asm/mp.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 extern void ft_fixup_num_cores(void *blob);
 extern void ft_srio_setup(void *blob);
@@ -32,19 +27,7 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	do_fixup_by_prop_u32(blob, "device_type", "soc", 4,
 			     "bus-frequency", bd->bi_busfreq, 1);
 
-#if defined(CONFIG_MPC8641)
-	do_fixup_by_compat_u32(blob, "fsl,mpc8641-localbus",
-			       "bus-frequency", gd->arch.lbc_clk, 1);
-#endif
-	do_fixup_by_compat_u32(blob, "fsl,elbc",
-			       "bus-frequency", gd->arch.lbc_clk, 1);
-
 	fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
-
-#if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) \
-    || defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3)
-	fdt_fixup_ethernet(blob);
-#endif
 
 #ifdef CONFIG_SYS_NS16550
 	do_fixup_by_compat_u32(blob, "ns16550",

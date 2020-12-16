@@ -1,56 +1,29 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas R7780MP board
  *
  * Copyright (C) 2007,2008 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
  * Copyright (C) 2008 Yusuke Goda <goda.yusuke@renesas.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __R7780RP_H
 #define __R7780RP_H
 
-#undef DEBUG
 #define CONFIG_CPU_SH7780	1
 #define CONFIG_R7780MP		1
 #define CONFIG_SYS_R7780MP_OLD_FLASH	1
 #define __LITTLE_ENDIAN__ 1
 
-/*
- * Command line configuration.
- */
-#define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_PCI
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SAVEENV
-#define CONFIG_CMD_NFS
-#define CONFIG_CMD_IDE
-#define CONFIG_CMD_EXT2
-#define CONFIG_DOS_PARTITION
+#define CONFIG_DISPLAY_BOARDINFO
 
-#define CONFIG_SCIF_CONSOLE	1
-#define CONFIG_BAUDRATE		115200
 #define CONFIG_CONS_SCIF0	1
 
-#define CONFIG_BOOTDELAY	3
-#define CONFIG_BOOTARGS		"console=ttySC0,115200"
 #define CONFIG_ENV_OVERWRITE	1
 
-/* check for keypress on bootdelay==0 */
-/*#define CONFIG_ZERO_BOOTDELAY_CHECK*/
-
-#define CONFIG_SYS_TEXT_BASE		0x0FFC0000
 #define CONFIG_SYS_SDRAM_BASE		(0x08000000)
 #define CONFIG_SYS_SDRAM_SIZE		(128 * 1024 * 1024)
 
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_PBSIZE		256
-#define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_BARGSIZE	512
 
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - 0x100000)
@@ -90,7 +63,6 @@
 /* print 'E' for empty sector on flinfo */
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_SECT_SIZE	(256 * 1024)
 #define CONFIG_ENV_SIZE		(CONFIG_ENV_SECT_SIZE)
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
@@ -105,15 +77,12 @@
 
 /* PCI Controller */
 #if defined(CONFIG_CMD_PCI)
-#define CONFIG_PCI
 #define CONFIG_SH4_PCI
 #define CONFIG_SH7780_PCI
 #define CONFIG_SH7780_PCI_LSR	0x07f00001
 #define CONFIG_SH7780_PCI_LAR	CONFIG_SYS_SDRAM_SIZE
 #define CONFIG_SH7780_PCI_BAR	CONFIG_SYS_SDRAM_SIZE
-#define CONFIG_PCI_PNP
 #define CONFIG_PCI_SCAN_SHOW	1
-#define __io
 #define __mem_pci
 
 #define CONFIG_PCI_MEM_BUS	0xFD000000	/* Memory space base addr */
@@ -129,16 +98,13 @@
 #endif /* CONFIG_CMD_PCI */
 
 #if defined(CONFIG_CMD_NET)
-/*
-#define CONFIG_RTL8169
-*/
 /* AX88796L Support(NE2000 base chip) */
 #define CONFIG_DRIVER_AX88796L
 #define CONFIG_DRIVER_NE2000_BASE	0xA4100000
 #endif
 
 /* Compact flash Support */
-#if defined(CONFIG_CMD_IDE)
+#if defined(CONFIG_IDE)
 #define CONFIG_IDE_RESET        1
 #define CONFIG_SYS_PIO_MODE            1
 #define CONFIG_SYS_IDE_MAXBUS          1   /* IDE bus */
@@ -149,6 +115,6 @@
 #define CONFIG_SYS_ATA_REG_OFFSET      0x1000          /* reg offset */
 #define CONFIG_SYS_ATA_ALT_OFFSET      0x800           /* alternate register offset */
 #define CONFIG_IDE_SWAP_IO
-#endif /* CONFIG_CMD_IDE */
+#endif /* CONFIG_IDE */
 
 #endif /* __R7780RP_H */

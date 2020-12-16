@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Erik Theisen,  Wave 7 Optics, etheisen@mindspring.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -127,10 +126,8 @@ void rtc_reset (void)
 
 static uchar rtc_read (uchar reg)
 {
-	uchar val;
-	val = *(unsigned char *)
+	return *(unsigned char *)
 		((CONFIG_SYS_NVRAM_BASE_ADDR + CONFIG_SYS_NVRAM_SIZE - 8) + reg);
-	return val;
 }
 
 static void rtc_write (uchar reg, uchar val)

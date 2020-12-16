@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
 #include <netdev.h>
 #include <asm/processor.h>
-#include <asm/cache.h>
 
 int checkcpu(void)
 {
@@ -32,39 +30,6 @@ int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	disable_interrupts();
 	reset_cpu (0);
-	return 0;
-}
-
-void flush_cache (unsigned long addr, unsigned long size)
-{
-	invalidate_dcache_range(addr , addr + size);
-}
-
-void icache_enable (void)
-{
-	cache_control(0);
-}
-
-void icache_disable (void)
-{
-	cache_control(1);
-}
-
-int icache_status (void)
-{
-	return 0;
-}
-
-void dcache_enable (void)
-{
-}
-
-void dcache_disable (void)
-{
-}
-
-int dcache_status (void)
-{
 	return 0;
 }
 

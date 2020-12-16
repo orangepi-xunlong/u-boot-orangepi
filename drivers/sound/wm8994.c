@@ -1,14 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Samsung Electronics
  * R. Chandrasekar <rcsekar@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
+#include <common.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <common.h>
 #include <div64.h>
 #include <fdtdec.h>
 #include <i2c.h>
@@ -814,7 +813,7 @@ static int get_codec_values(struct sound_codec_info *pcodec_info,
 			const void *blob)
 {
 	int error = 0;
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 	enum fdt_compat_id compat;
 	int node;
 	int parent;

@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * SH QSPI (Quad SPI) driver
  *
  * Copyright (C) 2013 Renesas Electronics Corporation
  * Copyright (C) 2013 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
+#include <console.h>
 #include <malloc.h>
 #include <spi.h>
+#include <wait_bit.h>
 #include <asm/arch/rmobile.h>
 #include <asm/io.h>
 
@@ -21,46 +22,48 @@
 #define SPPCR_IO3FV	0x04
 #define SPPCR_IO2FV	0x02
 #define SPPCR_IO1FV	0x01
-#define SPBDCR_RXBC0	(1 << 0)
-#define SPCMD_SCKDEN	(1 << 15)
-#define SPCMD_SLNDEN	(1 << 14)
-#define SPCMD_SPNDEN	(1 << 13)
-#define SPCMD_SSLKP	(1 << 7)
-#define SPCMD_BRDV0	(1 << 2)
+#define SPBDCR_RXBC0	BIT(0)
+#define SPCMD_SCKDEN	BIT(15)
+#define SPCMD_SLNDEN	BIT(14)
+#define SPCMD_SPNDEN	BIT(13)
+#define SPCMD_SSLKP	BIT(7)
+#define SPCMD_BRDV0	BIT(2)
 #define SPCMD_INIT1	SPCMD_SCKDEN | SPCMD_SLNDEN | \
 			SPCMD_SPNDEN | SPCMD_SSLKP | \
 			SPCMD_BRDV0
 #define SPCMD_INIT2	SPCMD_SPNDEN | SPCMD_SSLKP | \
 			SPCMD_BRDV0
-#define SPBFCR_TXRST	(1 << 7)
-#define SPBFCR_RXRST	(1 << 6)
+#define SPBFCR_TXRST	BIT(7)
+#define SPBFCR_RXRST	BIT(6)
+#define SPBFCR_TXTRG	0x30
+#define SPBFCR_RXTRG	0x07
 
 /* SH QSPI register set */
 struct sh_qspi_regs {
-	unsigned char spcr;
-	unsigned char sslp;
-	unsigned char sppcr;
-	unsigned char spsr;
-	unsigned long spdr;
-	unsigned char spscr;
-	unsigned char spssr;
-	unsigned char spbr;
-	unsigned char spdcr;
-	unsigned char spckd;
-	unsigned char sslnd;
-	unsigned char spnd;
-	unsigned char dummy0;
-	unsigned short spcmd0;
-	unsigned short spcmd1;
-	unsigned short spcmd2;
-	unsigned short spcmd3;
-	unsigned char spbfcr;
-	unsigned char dummy1;
-	unsigned short spbdcr;
-	unsigned long spbmul0;
-	unsigned long spbmul1;
-	unsigned long spbmul2;
-	unsigned long spbmul3;
+	u8	spcr;
+	u8	sslp;
+	u8	sppcr;
+	u8	spsr;
+	u32	spdr;
+	u8	spscr;
+	u8	spssr;
+	u8	spbr;
+	u8	spdcr;
+	u8	spckd;
+	u8	sslnd;
+	u8	spnd;
+	u8	dummy0;
+	u16	spcmd0;
+	u16	spcmd1;
+	u16	spcmd2;
+	u16	spcmd3;
+	u8	spbfcr;
+	u8	dummy1;
+	u16	spbdcr;
+	u32	spbmul0;
+	u32	spbmul1;
+	u32	spbmul2;
+	u32	spbmul3;
 };
 
 struct sh_qspi_slave {
@@ -199,11 +202,11 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	     void *din, unsigned long flags)
 {
 	struct sh_qspi_slave *ss = to_sh_qspi(slave);
-	unsigned long nbyte;
-	int ret = 0;
-	unsigned char dtdata = 0, drdata;
-	unsigned char *tdata = &dtdata, *rdata = &drdata;
-	unsigned long *spbmul0 = &ss->regs->spbmul0;
+	u32 nbyte, chunk;
+	int i, ret = 0;
+	u8 dtdata = 0, drdata;
+	u8 *tdata = &dtdata, *rdata = &drdata;
+	u32 *spbmul0 = &ss->regs->spbmul0;
 
 	if (dout == NULL && din == NULL) {
 		if (flags & SPI_XFER_END)
@@ -229,46 +232,44 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 		writel(nbyte, spbmul0);
 
 	if (dout != NULL)
-		tdata = (unsigned char *)dout;
+		tdata = (u8 *)dout;
 
 	if (din != NULL)
 		rdata = din;
 
 	while (nbyte > 0) {
-		while (!(readb(&ss->regs->spsr) & SPSR_SPTEF)) {
-			if (ctrlc()) {
-				puts("abort\n");
-				return 1;
-			}
-			udelay(10);
+		/*
+		 * Check if there is 32 Byte chunk and if there is, transfer
+		 * it in one burst, otherwise transfer on byte-by-byte basis.
+		 */
+		chunk = (nbyte >= 32) ? 32 : 1;
+
+		clrsetbits_8(&ss->regs->spbfcr, SPBFCR_TXTRG | SPBFCR_RXTRG,
+			     chunk == 32 ? SPBFCR_TXTRG | SPBFCR_RXTRG : 0);
+
+		ret = wait_for_bit_8(&ss->regs->spsr, SPSR_SPTEF,
+				     true, 1000, true);
+		if (ret)
+			return ret;
+
+		for (i = 0; i < chunk; i++) {
+			writeb(*tdata, &ss->regs->spdr);
+			if (dout != NULL)
+				tdata++;
 		}
 
-		writeb(*tdata, (unsigned char *)(&ss->regs->spdr));
+		ret = wait_for_bit_8(&ss->regs->spsr, SPSR_SPRFF,
+				     true, 1000, true);
+		if (ret)
+			return ret;
 
-		while ((readw(&ss->regs->spbdcr) != SPBDCR_RXBC0)) {
-			if (ctrlc()) {
-				puts("abort\n");
-				return 1;
-			}
-			udelay(1);
+		for (i = 0; i < chunk; i++) {
+			*rdata = readb(&ss->regs->spdr);
+			if (din != NULL)
+				rdata++;
 		}
 
-		while (!(readb(&ss->regs->spsr) & SPSR_SPRFF)) {
-			if (ctrlc()) {
-				puts("abort\n");
-				return 1;
-			}
-			udelay(10);
-		}
-
-		*rdata = readb((unsigned char *)(&ss->regs->spdr));
-
-		if (dout != NULL)
-			tdata++;
-		if (din != NULL)
-			rdata++;
-
-		nbyte--;
+		nbyte -= chunk;
 	}
 
 	if (flags & SPI_XFER_END)

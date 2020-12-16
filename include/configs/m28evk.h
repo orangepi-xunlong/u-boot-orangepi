@@ -1,54 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_M28EVK_H__
 #define __CONFIGS_M28EVK_H__
 
 /* System configurations */
-#define CONFIG_MX28				/* i.MX28 SoC */
-#define MACH_TYPE_M28EVK	3613
 #define CONFIG_MACH_TYPE	MACH_TYPE_M28EVK
 
-#define CONFIG_FIT
-
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
-
-/* U-Boot Commands */
-#define CONFIG_SYS_NO_FLASH
-#include <config_cmd_default.h>
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DOS_PARTITION
-#define CONFIG_FAT_WRITE
-
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_BMP
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_GPIO
-#define CONFIG_CMD_GREPENV
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SETEXPR
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_USB
-#define	CONFIG_VIDEO
-
-#define CONFIG_REGEX			/* Enable regular expression support */
 
 /* Memory configuration */
 #define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
@@ -58,7 +19,6 @@
 
 /* Environment */
 #define CONFIG_ENV_SIZE			(16 * 1024)
-#define CONFIG_ENV_IS_IN_NAND
 
 /* Environment is in NAND */
 #if defined(CONFIG_CMD_NAND) && defined(CONFIG_ENV_IS_IN_NAND)
@@ -69,35 +29,13 @@
 #define CONFIG_ENV_OFFSET_REDUND	\
 		(CONFIG_ENV_OFFSET + CONFIG_ENV_RANGE)
 
-#define CONFIG_CMD_UBI
-#define CONFIG_CMD_UBIFS
-#define CONFIG_CMD_MTDPARTS
-#define CONFIG_RBTREE
-#define CONFIG_LZO
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITIONS
-#define MTDIDS_DEFAULT			"nand0=gpmi-nand"
-#define MTDPARTS_DEFAULT			\
-	"mtdparts=gpmi-nand:"			\
-		"3m(u-boot),"			\
-		"512k(env1),"			\
-		"512k(env2),"			\
-		"14m(boot),"			\
-		"238m(data),"			\
-		"-@4096k(UBI)"
-#else
-#define CONFIG_ENV_IS_NOWHERE
 #endif
 
 /* FEC Ethernet on SoC */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_FEC_MXC
-#endif
-
-/* EEPROM */
-#ifdef CONFIG_CMD_EEPROM
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
-#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
 #endif
 
 /* RTC */
@@ -118,19 +56,15 @@
 #define CONFIG_EHCI_MXS_PORT0
 #define CONFIG_EHCI_MXS_PORT1
 #define CONFIG_USB_MAX_CONTROLLER_COUNT	2
-#define CONFIG_USB_STORAGE
 #endif
 
 /* SPI */
 #ifdef CONFIG_CMD_SPI
 #define CONFIG_DEFAULT_SPI_BUS		2
-#define CONFIG_DEFAULT_SPI_CS		0
 #define CONFIG_DEFAULT_SPI_MODE		SPI_MODE_0
 
 /* SPI FLASH */
 #ifdef CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SF_DEFAULT_BUS		2
 #define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED		40000000
@@ -148,7 +82,6 @@
 #ifdef CONFIG_VIDEO
 #define	CONFIG_VIDEO_LOGO
 #define	CONFIG_SPLASH_SCREEN
-#define	CONFIG_CMD_BMP
 #define	CONFIG_BMP_16BPP
 #define	CONFIG_VIDEO_BMP_RLE8
 #define	CONFIG_VIDEO_BMP_GZIP
@@ -156,20 +89,19 @@
 #endif
 
 /* Booting Linux */
-#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"fitImage"
-#define CONFIG_BOOTARGS		"console=ttyAMA0,115200n8 "
 #define CONFIG_BOOTCOMMAND	"run mmc_mmc"
 #define CONFIG_LOADADDR		0x42000000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
 /* Extra Environment */
 #define CONFIG_PREBOOT		"run try_bootscript"
-#define CONFIG_HOSTNAME		m28evk
+#define CONFIG_HOSTNAME		"m28evk"
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"consdev=ttyAMA0\0"						\
 	"baudrate=115200\0"						\
+	"bootscript=boot.scr\0"						\
 	"bootdev=/dev/mmcblk0p2\0"					\
 	"rootdev=/dev/mmcblk0p3\0"					\
 	"netdev=eth0\0"							\
@@ -236,7 +168,7 @@
 	"addargs=run addcons addmtd addmisc\0"				\
 	"mmcload="							\
 		"mmc rescan ; "						\
-		"ext4load mmc 0:2 ${kernel_addr_r} ${bootfile}\0"	\
+		"load mmc 0:2 ${kernel_addr_r} ${bootfile}\0"		\
 	"ubiload="							\
 		"ubi part UBI ; ubifsmount ubi0:rootfs ; "		\
 		"ubifsload ${kernel_addr_r} /boot/${bootfile}\0"	\
@@ -279,10 +211,12 @@
 		"bootm ${kernel_addr_r}\0"				\
 	"try_bootscript="						\
 		"mmc rescan;"						\
-		"if ext4load mmc 0:2 ${kernel_addr_r} ${bootscript};"	\
-		"then;"							\
-			"\techo Running bootscript...;"			\
-			"\tsource ${kernel_addr_r};"			\
+		"if test -e mmc 0:2 ${bootscript} ; then "		\
+		"if load mmc 0:2 ${kernel_addr_r} ${bootscript};"	\
+		"then ; "						\
+			"echo Running bootscript... ; "			\
+			"source ${kernel_addr_r} ; "			\
+		"fi ; "							\
 		"fi\0"
 
 /* The rest of the configuration is shared */

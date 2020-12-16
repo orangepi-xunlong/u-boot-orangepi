@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Robin Getz rgetz@blacfin.uclinux.org
  *
- * SPDX-License-Identifier:	GPL-2.0+
- *
  * Heavily borrowed from the following peoples GPL'ed software:
  *  - Wolfgang Denk, DENX Software Engineering, wd@denx.de
- *       Das U-boot
+ *       Das U-Boot
  *  - Ladislav Michl ladis@linux-mips.org
  *       A rejected patch on the U-Boot mailing list
  */

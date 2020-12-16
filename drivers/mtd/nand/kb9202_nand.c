@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2006
  * KwikByte <kb9200_dev@kwikbyte.com>
  *
  * (C) Copyright 2009
  * Matthias Kaehlcke <matthias@kaehlcke.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -35,7 +34,7 @@
  */
 static void kb9202_nand_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 {
-	struct nand_chip *this = mtd->priv;
+	struct nand_chip *this = mtd_to_nand(mtd);
 
 	if (ctrl & NAND_CTRL_CHANGE) {
 		ulong IO_ADDR_W = (ulong) this->IO_ADDR_W;

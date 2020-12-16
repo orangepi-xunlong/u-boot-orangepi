@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23/i.MX28 Clock
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CLOCK_H__
@@ -46,7 +45,7 @@ uint32_t mxc_get_clock(enum mxc_clock clk);
 void mxs_set_ioclk(enum mxs_ioclock io, uint32_t freq);
 void mxs_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal);
 void mxs_set_ssp_busclock(unsigned int bus, uint32_t freq);
-void mxs_set_lcdclk(uint32_t freq);
+void mxs_set_lcdclk(uint32_t __maybe_unused lcd_base, uint32_t freq);
 
 /* Compatibility with the FEC Ethernet driver */
 #define	imx_get_fecclk()	mxc_get_clock(MXC_AHB_CLK)

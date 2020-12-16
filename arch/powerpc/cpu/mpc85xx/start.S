@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2004, 2007-2012 Freescale Semiconductor, Inc.
  * Copyright (C) 2003  Motorola,Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* U-Boot Startup Code for Motorola 85xx PowerPC based Embedded Boards
@@ -252,39 +251,36 @@ l2_disabled:
 	lis	r1,CONFIG_SYS_MONITOR_BASE@h
 	mtspr	IVPR,r1
 
-	lis	r3,(CONFIG_SYS_MONITOR_BASE & 0xffff)@h
-	ori	r3,r3,(CONFIG_SYS_MONITOR_BASE & 0xffff)@l
-
-	addi	r4,r3,CriticalInput - _start + _START_OFFSET
+	li	r4,CriticalInput@l
 	mtspr	IVOR0,r4	/* 0: Critical input */
-	addi	r4,r3,MachineCheck - _start + _START_OFFSET
+	li	r4,MachineCheck@l
 	mtspr	IVOR1,r4	/* 1: Machine check */
-	addi	r4,r3,DataStorage - _start + _START_OFFSET
+	li	r4,DataStorage@l
 	mtspr	IVOR2,r4	/* 2: Data storage */
-	addi	r4,r3,InstStorage - _start + _START_OFFSET
+	li	r4,InstStorage@l
 	mtspr	IVOR3,r4	/* 3: Instruction storage */
-	addi	r4,r3,ExtInterrupt - _start + _START_OFFSET
+	li	r4,ExtInterrupt@l
 	mtspr	IVOR4,r4	/* 4: External interrupt */
-	addi	r4,r3,Alignment - _start + _START_OFFSET
+	li	r4,Alignment@l
 	mtspr	IVOR5,r4	/* 5: Alignment */
-	addi	r4,r3,ProgramCheck - _start + _START_OFFSET
+	li	r4,ProgramCheck@l
 	mtspr	IVOR6,r4	/* 6: Program check */
-	addi	r4,r3,FPUnavailable - _start + _START_OFFSET
+	li	r4,FPUnavailable@l
 	mtspr	IVOR7,r4	/* 7: floating point unavailable */
-	addi	r4,r3,SystemCall - _start + _START_OFFSET
+	li	r4,SystemCall@l
 	mtspr	IVOR8,r4	/* 8: System call */
 	/* 9: Auxiliary processor unavailable(unsupported) */
-	addi	r4,r3,Decrementer - _start + _START_OFFSET
+	li	r4,Decrementer@l
 	mtspr	IVOR10,r4	/* 10: Decrementer */
-	addi	r4,r3,IntervalTimer - _start + _START_OFFSET
+	li	r4,IntervalTimer@l
 	mtspr	IVOR11,r4	/* 11: Interval timer */
-	addi	r4,r3,WatchdogTimer - _start + _START_OFFSET
+	li	r4,WatchdogTimer@l
 	mtspr	IVOR12,r4	/* 12: Watchdog timer */
-	addi	r4,r3,DataTLBError - _start + _START_OFFSET
+	li	r4,DataTLBError@l
 	mtspr	IVOR13,r4	/* 13: Data TLB error */
-	addi	r4,r3,InstructionTLBError - _start + _START_OFFSET
+	li	r4,InstructionTLBError@l
 	mtspr	IVOR14,r4	/* 14: Instruction TLB error */
-	addi	r4,r3,DebugBreakpoint - _start + _START_OFFSET
+	li	r4,DebugBreakpoint@l
 	mtspr	IVOR15,r4	/* 15: Debug */
 #endif
 
@@ -314,7 +310,7 @@ l2_disabled:
 #endif
 	mtspr	HID0,r0
 
-#if !defined(CONFIG_E500MC) && !defined(CONFIG_QEMU_E500)
+#if !defined(CONFIG_E500MC) && !defined(CONFIG_ARCH_QEMU_E500)
 	li	r0,(HID1_ASTME|HID1_ABE)@l	/* Addr streaming & broadcast */
 	mfspr	r3,PVR
 	andi.	r3,r3, 0xff
@@ -348,7 +344,7 @@ l2_disabled:
 	mtspr	DBCR0,r0
 #endif
 
-#ifdef CONFIG_MPC8569
+#ifdef CONFIG_ARCH_MPC8569
 #define CONFIG_SYS_LBC_ADDR (CONFIG_SYS_CCSRBAR_DEFAULT + 0x5000)
 #define CONFIG_SYS_LBCR_ADDR (CONFIG_SYS_LBC_ADDR + 0xd0)
 
@@ -379,7 +375,7 @@ l2_disabled:
 	tlbivax	0,r4
 	isync
 
-#endif /* CONFIG_MPC8569 */
+#endif /* CONFIG_ARCH_MPC8569 */
 
 /*
  * Search for the TLB that covers the code we're executing, and shrink it
@@ -723,16 +719,39 @@ enable_l2_cluster_l2:
 	ori	r4, r4, (L2CSR0_L2FI|L2CSR0_L2LFC)@l
 	sync
 	stw	r4, 0(r3)	/* invalidate L2 */
+	/* Poll till the bits are cleared */
 1:	sync
 	lwz	r0, 0(r3)
 	twi	0, r0, 0
 	isync
 	and.	r1, r0, r4
 	bne	1b
+
+	/* L2PE must be set before L2 cache is enabled */
+	lis	r4, (L2CSR0_L2PE)@h
+	ori	r4, r4, (L2CSR0_L2PE)@l
+	sync
+	stw	r4, 0(r3)	/* enable L2 parity/ECC error checking */
+	/* Poll till the bit is set */
+1:	sync
+	lwz	r0, 0(r3)
+	twi	0, r0, 0
+	isync
+	and.	r1, r0, r4
+	beq	1b
+
 	lis	r4, (L2CSR0_L2E|L2CSR0_L2PE)@h
 	ori	r4, r4, (L2CSR0_L2REP_MODE)@l
 	sync
 	stw	r4, 0(r3)	/* enable L2 */
+	/* Poll till the bit is set */
+1:	sync
+	lwz	r0, 0(r3)
+	twi	0, r0, 0
+	isync
+	and.	r1, r0, r4
+	beq	1b
+
 delete_ccsr_l2_tlb:
 	delete_tlb0_entry 0, CONFIG_SYS_CCSRBAR + 0xC20000, MAS2_I|MAS2_G, r3
 #endif
@@ -1049,12 +1068,29 @@ create_init_ram_area:
 #elif !defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SECURE_BOOT)
 	/* create a temp mapping in AS = 1 for Flash mapping
 	 * created by PBL for ISBC code
-	*/
+	 */
 	create_tlb1_entry 15, \
 		1, BOOKE_PAGESZ_1M, \
 		CONFIG_SYS_MONITOR_BASE & 0xfff00000, MAS2_I|MAS2_G, \
 		CONFIG_SYS_PBI_FLASH_WINDOW & 0xfff00000, MAS3_SX|MAS3_SW|MAS3_SR, \
 		0, r6
+
+/*
+ * For Targets without CONFIG_SPL like P3, P5
+ * and for targets with CONFIG_SPL like T1, T2, T4, only for
+ * u-boot-spl i.e. CONFIG_SPL_BUILD
+ */
+#elif defined(CONFIG_RAMBOOT_PBL) && defined(CONFIG_SECURE_BOOT) && \
+	(!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
+	/* create a temp mapping in AS = 1 for mapping CONFIG_SYS_MONITOR_BASE
+	 * to L3 Address configured by PBL for ISBC code
+	 */
+	create_tlb1_entry 15, \
+		1, BOOKE_PAGESZ_1M, \
+		CONFIG_SYS_MONITOR_BASE & 0xfff00000, MAS2_I|MAS2_G, \
+		CONFIG_SYS_INIT_L3_ADDR & 0xfff00000, MAS3_SX|MAS3_SW|MAS3_SR, \
+		0, r6
+
 #else
 	/*
 	 * create a temp mapping in AS=1 to the 1M CONFIG_SYS_MONITOR_BASE space, the main
@@ -1108,7 +1144,12 @@ switch_as:
 	li	r0,0
 1:
 	dcbz	r0,r3
-	dcbtls	0,r0,r3
+#ifdef CONFIG_E6500	/* Lock/unlock L2 cache long with L1 */
+	dcbtls	2, r0, r3
+	dcbtls	0, r0, r3
+#else
+	dcbtls	0, r0, r3
+#endif
 	addi	r3,r3,CONFIG_SYS_CACHELINE_SIZE
 	bdnz	1b
 
@@ -1121,7 +1162,7 @@ switch_as:
 	/*--------------------------------------------------------------*/
 	lis	r3,CONFIG_SYS_MONITOR_BASE@h
 	ori	r3,r3,CONFIG_SYS_MONITOR_BASE@l
-	addi	r3,r3,_start_cont - _start + _START_OFFSET
+	addi	r3,r3,_start_cont - _start
 	mtlr	r3
 	blr
 #endif
@@ -1140,6 +1181,35 @@ _start_cont:
 	/* Setup the stack in initial RAM,could be L2-as-SRAM or L1 dcache*/
 	lis	r3,(CONFIG_SYS_INIT_RAM_ADDR)@h
 	ori	r3,r3,((CONFIG_SYS_INIT_SP_OFFSET-16)&~0xf)@l /* Align to 16 */
+
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) + GENERATED_GBL_DATA_SIZE > CONFIG_SYS_INIT_RAM_SIZE
+#error "SYS_MALLOC_F_LEN too large to fit into initial RAM."
+#endif
+
+	/* Leave 16+ byte for back chain termination and NULL return address */
+	subi	r3,r3,((CONFIG_VAL(SYS_MALLOC_F_LEN)+16+15)&~0xf)
+#endif
+
+	/* End of RAM */
+	lis	r4,(CONFIG_SYS_INIT_RAM_ADDR)@h
+	ori	r4,r4,(CONFIG_SYS_INIT_RAM_SIZE)@l
+
+	li	r0,0
+
+1: 	subi 	r4,r4,4
+	stw 	r0,0(r4)
+	cmplw 	r4,r3
+	bne	1b
+
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+	lis	r4,(CONFIG_SYS_INIT_RAM_ADDR)@h
+	ori	r4,r4,(CONFIG_SYS_GBL_DATA_OFFSET)@l
+
+	addi	r3,r3,16	/* Pre-relocation malloc area */
+	stw	r3,GD_MALLOC_BASE(r4)
+	subi	r3,r3,16
+#endif
 	li	r0,0
 	stw	r0,0(r3)	/* Terminate Back Chain */
 	stw	r0,+4(r3)	/* NULL return address. */
@@ -1165,7 +1235,6 @@ _start_cont:
 	/* NOTREACHED - board_init_f() does not return */
 
 #ifndef MINIMAL_SPL
-	. = EXC_OFF_SYS_RESET
 	.globl	_start_of_vectors
 _start_of_vectors:
 
@@ -1185,7 +1254,6 @@ _start_of_vectors:
 	STD_EXCEPTION(0x0500, ExtInterrupt, ExtIntException)
 
 /* Alignment exception. */
-	. = 0x0600
 Alignment:
 	EXCEPTION_PROLOG(SRR0, SRR1)
 	mfspr	r4,DAR
@@ -1193,87 +1261,20 @@ Alignment:
 	mfspr	r5,DSISR
 	stw	r5,_DSISR(r21)
 	addi	r3,r1,STACK_FRAME_OVERHEAD
-	EXC_XFER_TEMPLATE(Alignment, AlignmentException, MSR_KERNEL, COPY_EE)
+	EXC_XFER_TEMPLATE(0x600, Alignment, AlignmentException,
+		MSR_KERNEL, COPY_EE)
 
 /* Program check exception */
-	. = 0x0700
 ProgramCheck:
 	EXCEPTION_PROLOG(SRR0, SRR1)
 	addi	r3,r1,STACK_FRAME_OVERHEAD
-	EXC_XFER_TEMPLATE(ProgramCheck, ProgramCheckException,
+	EXC_XFER_TEMPLATE(0x700, ProgramCheck, ProgramCheckException,
 		MSR_KERNEL, COPY_EE)
 
 	/* No FPU on MPC85xx.  This exception is not supposed to happen.
 	*/
 	STD_EXCEPTION(0x0800, FPUnavailable, UnknownException)
-
-	. = 0x0900
-/*
- * r0 - SYSCALL number
- * r3-... arguments
- */
-SystemCall:
-	addis	r11,r0,0	/* get functions table addr */
-	ori	r11,r11,0	/* Note: this code is patched in trap_init */
-	addis	r12,r0,0	/* get number of functions */
-	ori	r12,r12,0
-
-	cmplw	0,r0,r12
-	bge	1f
-
-	rlwinm	r0,r0,2,0,31	/* fn_addr = fn_tbl[r0] */
-	add	r11,r11,r0
-	lwz	r11,0(r11)
-
-	li	r20,0xd00-4	/* Get stack pointer */
-	lwz	r12,0(r20)
-	subi	r12,r12,12	/* Adjust stack pointer */
-	li	r0,0xc00+_end_back-SystemCall
-	cmplw	0,r0,r12	/* Check stack overflow */
-	bgt	1f
-	stw	r12,0(r20)
-
-	mflr	r0
-	stw	r0,0(r12)
-	mfspr	r0,SRR0
-	stw	r0,4(r12)
-	mfspr	r0,SRR1
-	stw	r0,8(r12)
-
-	li	r12,0xc00+_back-SystemCall
-	mtlr	r12
-	mtspr	SRR0,r11
-
-1:	SYNC
-	rfi
-_back:
-
-	mfmsr	r11			/* Disable interrupts */
-	li	r12,0
-	ori	r12,r12,MSR_EE
-	andc	r11,r11,r12
-	SYNC				/* Some chip revs need this... */
-	mtmsr	r11
-	SYNC
-
-	li	r12,0xd00-4		/* restore regs */
-	lwz	r12,0(r12)
-
-	lwz	r11,0(r12)
-	mtlr	r11
-	lwz	r11,4(r12)
-	mtspr	SRR0,r11
-	lwz	r11,8(r12)
-	mtspr	SRR1,r11
-
-	addi	r12,r12,12		/* Adjust stack pointer */
-	li	r20,0xd00-4
-	stw	r12,0(r20)
-
-	SYNC
-	rfi
-_end_back:
-
+	STD_EXCEPTION(0x0900, SystemCall, UnknownException)
 	STD_EXCEPTION(0x0a00, Decrementer, timer_interrupt)
 	STD_EXCEPTION(0x0b00, IntervalTimer, UnknownException)
 	STD_EXCEPTION(0x0c00, WatchdogTimer, UnknownException)
@@ -1293,32 +1294,22 @@ _end_of_vectors:
  * This code finishes saving the registers to the exception frame
  * and jumps to the appropriate handler for the exception.
  * Register r21 is pointer into trap frame, r1 has new stack pointer.
+ * r23 is the address of the handler.
  */
 	.globl	transfer_to_handler
 transfer_to_handler:
-	stw	r22,_NIP(r21)
-	lis	r22,MSR_POW@h
-	andc	r23,r23,r22
-	stw	r23,_MSR(r21)
 	SAVE_GPR(7, r21)
 	SAVE_4GPRS(8, r21)
 	SAVE_8GPRS(12, r21)
 	SAVE_8GPRS(24, r21)
 
-	mflr	r23
-	andi.	r24,r23,0x3f00		/* get vector offset */
-	stw	r24,TRAP(r21)
 	li	r22,0
 	stw	r22,RESULT(r21)
 	mtspr	SPRG2,r22		/* r1 is now kernel sp */
 
-	lwz	r24,0(r23)		/* virtual address of handler */
-	lwz	r23,4(r23)		/* where to go when done */
-	mtspr	SRR0,r24
-	mtspr	SRR1,r20
-	mtlr	r23
-	SYNC
-	rfi				/* jump to handler, enable MMU */
+	mtctr	r23			/* virtual address of handler */
+	mtmsr	r20
+	bctrl
 
 int_return:
 	mfmsr	r28		/* Disable interrupts */
@@ -1349,66 +1340,6 @@ int_return:
 	lwz	r1,GPR1(r1)
 	SYNC
 	rfi
-
-crit_return:
-	mfmsr	r28		/* Disable interrupts */
-	li	r4,0
-	ori	r4,r4,MSR_EE
-	andc	r28,r28,r4
-	SYNC			/* Some chip revs need this... */
-	mtmsr	r28
-	SYNC
-	lwz	r2,_CTR(r1)
-	lwz	r0,_LINK(r1)
-	mtctr	r2
-	mtlr	r0
-	lwz	r2,_XER(r1)
-	lwz	r0,_CCR(r1)
-	mtspr	XER,r2
-	mtcrf	0xFF,r0
-	REST_10GPRS(3, r1)
-	REST_10GPRS(13, r1)
-	REST_8GPRS(23, r1)
-	REST_GPR(31, r1)
-	lwz	r2,_NIP(r1)	/* Restore environment */
-	lwz	r0,_MSR(r1)
-	mtspr	SPRN_CSRR0,r2
-	mtspr	SPRN_CSRR1,r0
-	lwz	r0,GPR0(r1)
-	lwz	r2,GPR2(r1)
-	lwz	r1,GPR1(r1)
-	SYNC
-	rfci
-
-mck_return:
-	mfmsr	r28		/* Disable interrupts */
-	li	r4,0
-	ori	r4,r4,MSR_EE
-	andc	r28,r28,r4
-	SYNC			/* Some chip revs need this... */
-	mtmsr	r28
-	SYNC
-	lwz	r2,_CTR(r1)
-	lwz	r0,_LINK(r1)
-	mtctr	r2
-	mtlr	r0
-	lwz	r2,_XER(r1)
-	lwz	r0,_CCR(r1)
-	mtspr	XER,r2
-	mtcrf	0xFF,r0
-	REST_10GPRS(3, r1)
-	REST_10GPRS(13, r1)
-	REST_8GPRS(23, r1)
-	REST_GPR(31, r1)
-	lwz	r2,_NIP(r1)	/* Restore environment */
-	lwz	r0,_MSR(r1)
-	mtspr	SPRN_MCSRR0,r2
-	mtspr	SPRN_MCSRR1,r0
-	lwz	r0,GPR0(r1)
-	lwz	r2,GPR2(r1)
-	lwz	r1,GPR1(r1)
-	SYNC
-	rfmci
 
 /* Cache functions.
 */
@@ -1441,8 +1372,8 @@ icache_enable:
 	mtlr	r8
 	isync
 	mfspr	r4,L1CSR1
-	ori	r4,r4,0x0001
-	oris	r4,r4,0x0001
+	ori	r4,r4,(L1CSR1_CPE | L1CSR1_ICE)@l
+	oris	r4,r4,(L1CSR1_CPE | L1CSR1_ICE)@h
 	mtspr	L1CSR1,r4
 	isync
 	blr
@@ -1470,8 +1401,8 @@ dcache_enable:
 	mtlr	r8
 	isync
 	mfspr	r0,L1CSR0
-	ori	r0,r0,0x0001
-	oris	r0,r0,0x0001
+	ori	r0,r0,(L1CSR0_CPE |  L1CSR0_DCE)@l
+	oris	r0,r0,(L1CSR0_CPE |  L1CSR0_DCE)@h
 	msync
 	isync
 	mtspr	L1CSR0,r0
@@ -1492,26 +1423,6 @@ dcache_disable:
 dcache_status:
 	mfspr	r3,L1CSR0
 	andi.	r3,r3,L1CSR0_DCE
-	blr
-
-	.globl get_pir
-get_pir:
-	mfspr	r3,PIR
-	blr
-
-	.globl get_pvr
-get_pvr:
-	mfspr	r3,PVR
-	blr
-
-	.globl get_svr
-get_svr:
-	mfspr	r3,SVR
-	blr
-
-	.globl wr_tcr
-wr_tcr:
-	mtspr	TCR,r3
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -1728,7 +1639,7 @@ relocate_code:
  * initialization, now running from RAM.
  */
 
-	addi	r0,r10,in_ram - _start + _START_OFFSET
+	addi	r0,r10,in_ram - _start
 
 	/*
 	 * As IVPR is going to point RAM address,
@@ -1816,89 +1727,46 @@ clear_bss:
 	 */
 	.globl	trap_init
 trap_init:
-	mflr	r4			/* save link register		*/
-	GET_GOT
-	lwz	r7,GOT(_start_of_vectors)
-	lwz	r8,GOT(_end_of_vectors)
+	mflr	r11
+	bl	_GLOBAL_OFFSET_TABLE_-4
+	mflr	r12
 
-	li	r9,0x100		/* reset vector always at 0x100 */
+	/* Update IVORs as per relocation */
+	mtspr	IVPR,r3
 
-	cmplw	0,r7,r8
-	bgelr				/* return if r7>=r8 - just in case */
-1:
-	lwz	r0,0(r7)
-	stw	r0,0(r9)
-	addi	r7,r7,4
-	addi	r9,r9,4
-	cmplw	0,r7,r8
-	bne	1b
-
-	/*
-	 * relocate `hdlr' and `int_return' entries
-	 */
-	li	r7,.L_CriticalInput - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_MachineCheck - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_DataStorage - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_InstStorage - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_ExtInterrupt - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_Alignment - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_ProgramCheck - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_FPUnavailable - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_Decrementer - _start + _START_OFFSET
-	bl	trap_reloc
-	li	r7,.L_IntervalTimer - _start + _START_OFFSET
-	li	r8,_end_of_vectors - _start + _START_OFFSET
-2:
-	bl	trap_reloc
-	addi	r7,r7,0x100		/* next exception vector	*/
-	cmplw	0,r7,r8
-	blt	2b
-
-	/* Update IVORs as per relocated vector table address */
-	li	r7,0x0100
-	mtspr	IVOR0,r7	/* 0: Critical input */
-	li	r7,0x0200
-	mtspr	IVOR1,r7	/* 1: Machine check */
-	li	r7,0x0300
-	mtspr	IVOR2,r7	/* 2: Data storage */
-	li	r7,0x0400
-	mtspr	IVOR3,r7	/* 3: Instruction storage */
-	li	r7,0x0500
-	mtspr	IVOR4,r7	/* 4: External interrupt */
-	li	r7,0x0600
-	mtspr	IVOR5,r7	/* 5: Alignment */
-	li	r7,0x0700
-	mtspr	IVOR6,r7	/* 6: Program check */
-	li	r7,0x0800
-	mtspr	IVOR7,r7	/* 7: floating point unavailable */
-	li	r7,0x0900
-	mtspr	IVOR8,r7	/* 8: System call */
+	lwz	r4,CriticalInput@got(r12)
+	mtspr	IVOR0,r4	/* 0: Critical input */
+	lwz	r4,MachineCheck@got(r12)
+	mtspr	IVOR1,r4	/* 1: Machine check */
+	lwz	r4,DataStorage@got(r12)
+	mtspr	IVOR2,r4	/* 2: Data storage */
+	lwz	r4,InstStorage@got(r12)
+	mtspr	IVOR3,r4	/* 3: Instruction storage */
+	lwz	r4,ExtInterrupt@got(r12)
+	mtspr	IVOR4,r4	/* 4: External interrupt */
+	lwz	r4,Alignment@got(r12)
+	mtspr	IVOR5,r4	/* 5: Alignment */
+	lwz	r4,ProgramCheck@got(r12)
+	mtspr	IVOR6,r4	/* 6: Program check */
+	lwz	r4,FPUnavailable@got(r12)
+	mtspr	IVOR7,r4	/* 7: floating point unavailable */
+	lwz	r4,SystemCall@got(r12)
+	mtspr	IVOR8,r4	/* 8: System call */
 	/* 9: Auxiliary processor unavailable(unsupported) */
-	li	r7,0x0a00
-	mtspr	IVOR10,r7	/* 10: Decrementer */
-	li	r7,0x0b00
-	mtspr	IVOR11,r7	/* 11: Interval timer */
-	li	r7,0x0c00
-	mtspr	IVOR12,r7	/* 12: Watchdog timer */
-	li	r7,0x0d00
-	mtspr	IVOR13,r7	/* 13: Data TLB error */
-	li	r7,0x0e00
-	mtspr	IVOR14,r7	/* 14: Instruction TLB error */
-	li	r7,0x0f00
-	mtspr	IVOR15,r7	/* 15: Debug */
+	lwz	r4,Decrementer@got(r12)
+	mtspr	IVOR10,r4	/* 10: Decrementer */
+	lwz	r4,IntervalTimer@got(r12)
+	mtspr	IVOR11,r4	/* 11: Interval timer */
+	lwz	r4,WatchdogTimer@got(r12)
+	mtspr	IVOR12,r4	/* 12: Watchdog timer */
+	lwz	r4,DataTLBError@got(r12)
+	mtspr	IVOR13,r4	/* 13: Data TLB error */
+	lwz	r4,InstructionTLBError@got(r12)
+	mtspr	IVOR14,r4	/* 14: Instruction TLB error */
+	lwz	r4,DebugBreakpoint@got(r12)
+	mtspr	IVOR15,r4	/* 15: Debug */
 
-	lis	r7,0x0
-	mtspr	IVPR,r7
-
-	mtlr	r4			/* restore link register	*/
+	mtlr	r11
 	blr
 
 .globl unlock_ram_in_cache
@@ -1911,7 +1779,12 @@ unlock_ram_in_cache:
 	slwi	r4,r4,(10 - 1 - L1_CACHE_SHIFT)
 	mtctr	r4
 1:	dcbi	r0,r3
+#ifdef CONFIG_E6500	/* lock/unlock L2 cache long with L1 */
+	dcblc	2, r0, r3
+	dcblc	0, r0, r3
+#else
 	dcblc	r0,r3
+#endif
 	addi	r3,r3,CONFIG_SYS_CACHELINE_SIZE
 	bdnz	1b
 	sync

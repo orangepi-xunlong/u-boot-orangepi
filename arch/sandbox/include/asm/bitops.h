@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  *
+ * Modified from Linux arch/arm/include/asm/bitops.h
+ *
  * Copyright 1995, Russell King.
  * Various bits and pieces copyrights include:
  *  Linus Torvalds (test_bit).
@@ -19,6 +21,10 @@
 
 #include <linux/compiler.h>
 #include <asm/system.h>
+#include <asm-generic/bitops/fls.h>
+#include <asm-generic/bitops/__fls.h>
+#include <asm-generic/bitops/fls64.h>
+#include <asm-generic/bitops/__ffs.h>
 
 #ifdef __KERNEL__
 

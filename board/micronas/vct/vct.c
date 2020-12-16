@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Stefan Roese <sr@denx.de>, DENX Software Engineering
  *
  * Copyright (C) 2006 Micronas GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,6 +26,8 @@
 #else
 #define BOARD_NAME_ADD	" NOR"
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f(void)
 {
@@ -59,16 +60,18 @@ void _machine_restart(void)
  * SDRAM is already configured by the bootstrap code, only return the
  * auto-detected size here
  */
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
-	return get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
+	gd->ram_size = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
 			    CONFIG_SYS_MBYTES_SDRAM << 20);
+
+	return 0;
 }
 
 int checkboard(void)
 {
 	char buf[64];
-	int i = getenv_f("serial#", buf, sizeof(buf));
+	int i = env_get_f("serial#", buf, sizeof(buf));
 	u32 config0 = read_c0_prid();
 
 	if ((config0 & 0xff0000) == PRID_COMP_LEGACY

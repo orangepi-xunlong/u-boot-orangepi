@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * eco5.h - Header file for the 8D Technologies ECO5 board.
  *
@@ -6,8 +7,6 @@
  *
  * Copyright (C) 2011 8D Technologies inc.
  * Copyright (C) 2009 Texas Instruments Incorporated
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ECO5PK_H__
@@ -332,7 +331,7 @@ const omap3_sysinfo sysinfo = {
 	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(SYS_CLKOUT2),	(IEN  | PTU | EN  | M0)) \
 	/* JTAG */\
-	MUX_VAL(CP(JTAG_nTRST),		(IEN  | PTD | DIS | M0)) \
+	MUX_VAL(CP(JTAG_NTRST),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TCK),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TMS),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TDI),		(IEN  | PTD | DIS | M0)) \

@@ -14,6 +14,8 @@
 #define __deprecated
 #endif
 
+#include <linux/compat.h>
+
 /* The USB role is defined by the connector used on the board, so long as
  * standards are being followed.  (Developer boards sometimes won't.)
  */
@@ -89,14 +91,6 @@ struct musb_hdrc_config {
 	u8		ram_bits;	/* ram address size */
 
 	struct musb_hdrc_eps_bits *eps_bits __deprecated;
-#ifdef CONFIG_BLACKFIN
-	/* A GPIO controlling VRSEL in Blackfin */
-	unsigned int	gpio_vrsel;
-	unsigned int	gpio_vrsel_active;
-	/* musb CLKIN in Blackfin in MHZ */
-	unsigned char   clkin;
-#endif
-
 };
 
 struct musb_hdrc_platform_data {
@@ -141,7 +135,7 @@ struct musb_hdrc_platform_data {
 #define	TUSB6010_REFCLK_24	41667	/* psec/clk @ 24.0 MHz XI */
 #define	TUSB6010_REFCLK_19	52083	/* psec/clk @ 19.2 MHz CLKIN */
 
-#ifdef	CONFIG_ARCH_OMAP2
+#ifdef	CONFIG_ARCH_OMAP2PLUS
 
 extern int __init tusb6010_setup_interface(
 		struct musb_hdrc_platform_data *data,

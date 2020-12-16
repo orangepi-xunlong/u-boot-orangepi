@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Rob Taylor, Flying Pig Systems. robt@flyingpig.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -81,7 +80,8 @@ static NS16550_t serial_ports[6] = {
 	static int  eserial##port##_init(void) \
 	{ \
 		int clock_divisor; \
-		clock_divisor = calc_divisor(serial_ports[port-1]); \
+		clock_divisor = ns16550_calc_divisor(serial_ports[port-1], \
+				CONFIG_SYS_NS16550_CLK, gd->baudrate); \
 		NS16550_init(serial_ports[port-1], clock_divisor); \
 		return 0 ; \
 	} \
@@ -118,35 +118,7 @@ static NS16550_t serial_ports[6] = {
 	.puts	= eserial##port##_puts,		\
 }
 
-static int calc_divisor (NS16550_t port)
-{
-#ifdef CONFIG_OMAP1510
-	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CONFIG_SYS_NS16550_CLK == 12000000) && (gd->baudrate == 115200)) {
-		port->osc_12m_sel = OSC_12M_SEL;	/* enable 6.5 * divisor */
-		return (1);				/* return 1 for base divisor */
-	}
-	port->osc_12m_sel = 0;			/* clear if previsouly set */
-#endif
-#ifdef CONFIG_OMAP1610
-	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CONFIG_SYS_NS16550_CLK == 48000000) && (gd->baudrate == 115200)) {
-		return (26);		/* return 26 for base divisor */
-	}
-#endif
-
-#define MODE_X_DIV 16
-	/* Compute divisor value. Normally, we should simply return:
-	 *   CONFIG_SYS_NS16550_CLK) / MODE_X_DIV / gd->baudrate
-	 * but we need to round that value by adding 0.5.
-	 * Rounding is especially important at high baud rates.
-	 */
-	return (CONFIG_SYS_NS16550_CLK + (gd->baudrate * (MODE_X_DIV / 2))) /
-		(MODE_X_DIV * gd->baudrate);
-}
-
-void
-_serial_putc(const char c,const int port)
+static void _serial_putc(const char c, const int port)
 {
 	if (c == '\n')
 		NS16550_putc(PORT, '\r');
@@ -154,39 +126,29 @@ _serial_putc(const char c,const int port)
 	NS16550_putc(PORT, c);
 }
 
-void
-_serial_putc_raw(const char c,const int port)
-{
-	NS16550_putc(PORT, c);
-}
-
-void
-_serial_puts (const char *s,const int port)
+static void _serial_puts(const char *s, const int port)
 {
 	while (*s) {
-		_serial_putc (*s++,port);
+		_serial_putc(*s++, port);
 	}
 }
 
-
-int
-_serial_getc(const int port)
+static int _serial_getc(const int port)
 {
 	return NS16550_getc(PORT);
 }
 
-int
-_serial_tstc(const int port)
+static int _serial_tstc(const int port)
 {
 	return NS16550_tstc(PORT);
 }
 
-void
-_serial_setbrg (const int port)
+static void _serial_setbrg(const int port)
 {
 	int clock_divisor;
 
-	clock_divisor = calc_divisor(PORT);
+	clock_divisor = ns16550_calc_divisor(PORT, CONFIG_SYS_NS16550_CLK,
+					     gd->baudrate);
 	NS16550_reinit(PORT, clock_divisor);
 }
 
@@ -194,12 +156,6 @@ static inline void
 serial_putc_dev(unsigned int dev_index,const char c)
 {
 	_serial_putc(c,dev_index);
-}
-
-static inline void
-serial_putc_raw_dev(unsigned int dev_index,const char c)
-{
-	_serial_putc_raw(c,dev_index);
 }
 
 static inline void
@@ -259,37 +215,6 @@ struct serial_device eserial6_device =
 
 __weak struct serial_device *default_serial_console(void)
 {
-#if 1
-	int port = uboot_spare_head.boot_data.uart_port;
-	switch(port) {
-#if defined(CONFIG_SYS_NS16550_COM1)
-	case 0:
-		return &eserial1_device;
-#endif
-#if defined(CONFIG_SYS_NS16550_COM2)
-	case 1:
-		return &eserial2_device;
-#endif
-#if defined(CONFIG_SYS_NS16550_COM3)
-	case 2:
-		return &eserial3_device;
-#endif
-#if defined(CONFIG_SYS_NS16550_COM4)
-	case 3:
-		return &eserial4_device;
-#endif
-#if defined(CONFIG_SYS_NS16550_COM5)
-	case 4:
-		return &eserial5_device;
-#endif
-#if defined(CONFIG_SYS_NS16550_COM6)
-	case 5:
-		return &eserial6_device;
-#endif
-	default:
-		return &eserial1_device;
-	}
-#else
 #if CONFIG_CONS_INDEX == 1
 	return &eserial1_device;
 #elif CONFIG_CONS_INDEX == 2
@@ -304,7 +229,6 @@ __weak struct serial_device *default_serial_console(void)
 	return &eserial6_device;
 #else
 #error "Bad CONFIG_CONS_INDEX."
-#endif
 #endif
 }
 

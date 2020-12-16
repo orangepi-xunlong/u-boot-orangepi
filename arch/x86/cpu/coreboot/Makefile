@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2011 The Chromium OS Authors.
 #
@@ -9,14 +10,9 @@
 #
 # (C) Copyright 2002
 # Daniel Engström, Omicron Ceti AB, daniel@omicron.se.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
-obj-$(CONFIG_SYS_COREBOOT) += car.o
-obj-$(CONFIG_SYS_COREBOOT) += coreboot.o
-obj-$(CONFIG_SYS_COREBOOT) += tables.o
-obj-$(CONFIG_SYS_COREBOOT) += ipchecksum.o
-obj-$(CONFIG_SYS_COREBOOT) += sdram.o
-obj-$(CONFIG_SYS_COREBOOT) += timestamp.o
-obj-$(CONFIG_PCI) += pci.o
+obj-y += car.o
+obj-y += coreboot.o
+obj-y += tables.o
+obj-y += sdram.o
+obj-y += timestamp.o

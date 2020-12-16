@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * (C) Copyright 2000-2003
@@ -5,8 +6,6 @@
  *
  * (C) Copyright 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -205,6 +204,7 @@ void cpu_init_f(void)
 	/* FlexBus Chipselect */
 	init_fbcs();
 
+#ifdef CONFIG_SYS_CS0_BASE
 	/*
 	 * now the flash base address is no longer at 0 (Newer ColdFire family
 	 * boot at address 0 instead of 0xFFnn_nnnn). The vector table must
@@ -212,6 +212,7 @@ void cpu_init_f(void)
 	 */
 	if (CONFIG_SYS_CS0_BASE != 0)
 		setvbr(CONFIG_SYS_CS0_BASE);
+#endif
 
 	icache_enable();
 }

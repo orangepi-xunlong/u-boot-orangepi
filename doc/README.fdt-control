@@ -1,8 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2011 The Chromium OS Authors.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 Device Tree Control in U-Boot
 =============================
@@ -33,12 +31,6 @@ the features of each board in the device tree file, and have a single
 generic source base.
 
 To enable this feature, add CONFIG_OF_CONTROL to your board config file.
-It is currently supported on ARM, x86 and Microblaze - other architectures
-will need to add code to their arch/xxx/lib/board.c file to locate the
-FDT. Alternatively you can enable generic board support on your board
-(with CONFIG_SYS_GENERIC_BOARD) if this is available (as it is for
-PowerPC). For ARM, Tegra and Exynos5 have device trees available for
-common devices.
 
 
 What is a Flat Device Tree?
@@ -136,6 +128,10 @@ u-boot-dtb.bin which does the above step for you also. If you are using
 CONFIG_SPL_FRAMEWORK, then u-boot.img will be built to include the device
 tree binary.
 
+If CONFIG_OF_BOARD is defined, a board-specific routine will provide the
+device tree at runtime, for example if an earlier bootloader stage creates
+it and passes it to U-Boot.
+
 If CONFIG_OF_HOSTFILE is defined, then it will be read from a file on
 startup. This is only useful for sandbox. Use the -d flag to U-Boot to
 specify the file to read.
@@ -156,7 +152,10 @@ address of the fdt binary blob, and will override either of the options.
 Be aware that this environment variable is checked prior to relocation,
 when only the compiled-in environment is available. Therefore it is not
 possible to define this variable in the saved SPI/NAND flash
-environment, for example (it will be ignored).
+environment, for example (it will be ignored). After relocation, this
+variable will be set to the address of the newly relocated fdt blob.
+It is read-only and cannot be changed. It can optionally be used to
+control the boot process of Linux with bootm/bootz commands.
 
 To use this, put something like this in your board header file:
 

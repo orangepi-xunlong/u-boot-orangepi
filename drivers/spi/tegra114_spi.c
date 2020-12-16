@@ -1,87 +1,67 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * NVIDIA Tegra SPI controller (T114 and later)
  *
  * Copyright (c) 2010-2013 NVIDIA Corporation
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <malloc.h>
+#include <dm.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/clk_rst.h>
-#include <asm/arch-tegra114/tegra114_spi.h>
 #include <spi.h>
-#include <fdtdec.h>
-
-DECLARE_GLOBAL_DATA_PTR;
+#include "tegra_spi.h"
 
 /* COMMAND1 */
-#define SPI_CMD1_GO			(1 << 31)
-#define SPI_CMD1_M_S			(1 << 30)
-#define SPI_CMD1_MODE_MASK		0x3
+#define SPI_CMD1_GO			BIT(31)
+#define SPI_CMD1_M_S			BIT(30)
+#define SPI_CMD1_MODE_MASK		GENMASK(1, 0)
 #define SPI_CMD1_MODE_SHIFT		28
-#define SPI_CMD1_CS_SEL_MASK		0x3
+#define SPI_CMD1_CS_SEL_MASK		GENMASK(1, 0)
 #define SPI_CMD1_CS_SEL_SHIFT		26
-#define SPI_CMD1_CS_POL_INACTIVE3	(1 << 25)
-#define SPI_CMD1_CS_POL_INACTIVE2	(1 << 24)
-#define SPI_CMD1_CS_POL_INACTIVE1	(1 << 23)
-#define SPI_CMD1_CS_POL_INACTIVE0	(1 << 22)
-#define SPI_CMD1_CS_SW_HW		(1 << 21)
-#define SPI_CMD1_CS_SW_VAL		(1 << 20)
-#define SPI_CMD1_IDLE_SDA_MASK		0x3
+#define SPI_CMD1_CS_POL_INACTIVE3	BIT(25)
+#define SPI_CMD1_CS_POL_INACTIVE2	BIT(24)
+#define SPI_CMD1_CS_POL_INACTIVE1	BIT(23)
+#define SPI_CMD1_CS_POL_INACTIVE0	BIT(22)
+#define SPI_CMD1_CS_SW_HW		BIT(21)
+#define SPI_CMD1_CS_SW_VAL		BIT(20)
+#define SPI_CMD1_IDLE_SDA_MASK		GENMASK(1, 0)
 #define SPI_CMD1_IDLE_SDA_SHIFT		18
-#define SPI_CMD1_BIDIR			(1 << 17)
-#define SPI_CMD1_LSBI_FE		(1 << 16)
-#define SPI_CMD1_LSBY_FE		(1 << 15)
-#define SPI_CMD1_BOTH_EN_BIT		(1 << 14)
-#define SPI_CMD1_BOTH_EN_BYTE		(1 << 13)
-#define SPI_CMD1_RX_EN			(1 << 12)
-#define SPI_CMD1_TX_EN			(1 << 11)
-#define SPI_CMD1_PACKED			(1 << 5)
-#define SPI_CMD1_BIT_LEN_MASK		0x1F
+#define SPI_CMD1_BIDIR			BIT(17)
+#define SPI_CMD1_LSBI_FE		BIT(16)
+#define SPI_CMD1_LSBY_FE		BIT(15)
+#define SPI_CMD1_BOTH_EN_BIT		BIT(14)
+#define SPI_CMD1_BOTH_EN_BYTE		BIT(13)
+#define SPI_CMD1_RX_EN			BIT(12)
+#define SPI_CMD1_TX_EN			BIT(11)
+#define SPI_CMD1_PACKED			BIT(5)
+#define SPI_CMD1_BIT_LEN_MASK		GENMASK(4, 0)
 #define SPI_CMD1_BIT_LEN_SHIFT		0
 
 /* COMMAND2 */
-#define SPI_CMD2_TX_CLK_TAP_DELAY	(1 << 6)
-#define SPI_CMD2_TX_CLK_TAP_DELAY_MASK	(0x3F << 6)
-#define SPI_CMD2_RX_CLK_TAP_DELAY	(1 << 0)
-#define SPI_CMD2_RX_CLK_TAP_DELAY_MASK	(0x3F << 0)
+#define SPI_CMD2_TX_CLK_TAP_DELAY	BIT(6)
+#define SPI_CMD2_TX_CLK_TAP_DELAY_MASK	GENMASK(11, 6)
+#define SPI_CMD2_RX_CLK_TAP_DELAY	BIT(0)
+#define SPI_CMD2_RX_CLK_TAP_DELAY_MASK	GENMASK(5, 0)
 
 /* TRANSFER STATUS */
-#define SPI_XFER_STS_RDY		(1 << 30)
+#define SPI_XFER_STS_RDY		BIT(30)
 
 /* FIFO STATUS */
-#define SPI_FIFO_STS_CS_INACTIVE	(1 << 31)
-#define SPI_FIFO_STS_FRAME_END		(1 << 30)
-#define SPI_FIFO_STS_RX_FIFO_FLUSH	(1 << 15)
-#define SPI_FIFO_STS_TX_FIFO_FLUSH	(1 << 14)
-#define SPI_FIFO_STS_ERR		(1 << 8)
-#define SPI_FIFO_STS_TX_FIFO_OVF	(1 << 7)
-#define SPI_FIFO_STS_TX_FIFO_UNR	(1 << 6)
-#define SPI_FIFO_STS_RX_FIFO_OVF	(1 << 5)
-#define SPI_FIFO_STS_RX_FIFO_UNR	(1 << 4)
-#define SPI_FIFO_STS_TX_FIFO_FULL	(1 << 3)
-#define SPI_FIFO_STS_TX_FIFO_EMPTY	(1 << 2)
-#define SPI_FIFO_STS_RX_FIFO_FULL	(1 << 1)
-#define SPI_FIFO_STS_RX_FIFO_EMPTY	(1 << 0)
+#define SPI_FIFO_STS_CS_INACTIVE	BIT(31)
+#define SPI_FIFO_STS_FRAME_END		BIT(30)
+#define SPI_FIFO_STS_RX_FIFO_FLUSH	BIT(15)
+#define SPI_FIFO_STS_TX_FIFO_FLUSH	BIT(14)
+#define SPI_FIFO_STS_ERR		BIT(8)
+#define SPI_FIFO_STS_TX_FIFO_OVF	BIT(7)
+#define SPI_FIFO_STS_TX_FIFO_UNR	BIT(6)
+#define SPI_FIFO_STS_RX_FIFO_OVF	BIT(5)
+#define SPI_FIFO_STS_RX_FIFO_UNR	BIT(4)
+#define SPI_FIFO_STS_TX_FIFO_FULL	BIT(3)
+#define SPI_FIFO_STS_TX_FIFO_EMPTY	BIT(2)
+#define SPI_FIFO_STS_RX_FIFO_FULL	BIT(1)
+#define SPI_FIFO_STS_RX_FIFO_EMPTY	BIT(0)
 
 #define SPI_TIMEOUT		1000
 #define TEGRA_SPI_MAX_FREQ	52000000
@@ -104,130 +84,69 @@ struct spi_regs {
 	u32 spare_ctl;	/* 18c:SPI_SPARE_CTRL register */
 };
 
-struct tegra_spi_ctrl {
+struct tegra114_spi_priv {
 	struct spi_regs *regs;
 	unsigned int freq;
 	unsigned int mode;
 	int periph_id;
 	int valid;
+	int last_transaction_us;
 };
 
-struct tegra_spi_slave {
-	struct spi_slave slave;
-	struct tegra_spi_ctrl *ctrl;
-};
-
-static struct tegra_spi_ctrl spi_ctrls[CONFIG_TEGRA114_SPI_CTRLS];
-
-static inline struct tegra_spi_slave *to_tegra_spi(struct spi_slave *slave)
+static int tegra114_spi_ofdata_to_platdata(struct udevice *bus)
 {
-	return container_of(slave, struct tegra_spi_slave, slave);
+	struct tegra_spi_platdata *plat = bus->platdata;
+
+	plat->base = dev_read_addr(bus);
+	plat->periph_id = clock_decode_periph_id(bus);
+
+	if (plat->periph_id == PERIPH_ID_NONE) {
+		debug("%s: could not decode periph id %d\n", __func__,
+		      plat->periph_id);
+		return -FDT_ERR_NOTFOUND;
+	}
+
+	/* Use 500KHz as a suitable default */
+	plat->frequency = dev_read_u32_default(bus, "spi-max-frequency",
+					       500000);
+	plat->deactivate_delay_us = dev_read_u32_default(bus,
+						"spi-deactivate-delay", 0);
+	debug("%s: base=%#08lx, periph_id=%d, max-frequency=%d, deactivate_delay=%d\n",
+	      __func__, plat->base, plat->periph_id, plat->frequency,
+	      plat->deactivate_delay_us);
+
+	return 0;
 }
 
-int tegra114_spi_cs_is_valid(unsigned int bus, unsigned int cs)
+static int tegra114_spi_probe(struct udevice *bus)
 {
-	if (bus >= CONFIG_TEGRA114_SPI_CTRLS || cs > 3 || !spi_ctrls[bus].valid)
-		return 0;
-	else
-		return 1;
-}
+	struct tegra_spi_platdata *plat = dev_get_platdata(bus);
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
+	struct spi_regs *regs;
+	ulong rate;
 
-struct spi_slave *tegra114_spi_setup_slave(unsigned int bus, unsigned int cs,
-		unsigned int max_hz, unsigned int mode)
-{
-	struct tegra_spi_slave *spi;
+	priv->regs = (struct spi_regs *)plat->base;
+	regs = priv->regs;
 
-	debug("%s: bus: %u, cs: %u, max_hz: %u, mode: %u\n", __func__,
-		bus, cs, max_hz, mode);
+	priv->last_transaction_us = timer_get_us();
+	priv->freq = plat->frequency;
+	priv->periph_id = plat->periph_id;
 
-	if (!spi_cs_is_valid(bus, cs)) {
-		printf("SPI error: unsupported bus %d / chip select %d\n",
-		       bus, cs);
-		return NULL;
-	}
-
-	if (max_hz > TEGRA_SPI_MAX_FREQ) {
-		printf("SPI error: unsupported frequency %d Hz. Max frequency"
-			" is %d Hz\n", max_hz, TEGRA_SPI_MAX_FREQ);
-		return NULL;
-	}
-
-	spi = spi_alloc_slave(struct tegra_spi_slave, bus, cs);
-	if (!spi) {
-		printf("SPI error: malloc of SPI structure failed\n");
-		return NULL;
-	}
-	spi->ctrl = &spi_ctrls[bus];
-	if (!spi->ctrl) {
-		printf("SPI error: could not find controller for bus %d\n",
-		       bus);
-		return NULL;
-	}
-
-	if (max_hz < spi->ctrl->freq) {
-		debug("%s: limiting frequency from %u to %u\n", __func__,
-		      spi->ctrl->freq, max_hz);
-		spi->ctrl->freq = max_hz;
-	}
-	spi->ctrl->mode = mode;
-
-	return &spi->slave;
-}
-
-void tegra114_spi_free_slave(struct spi_slave *slave)
-{
-	struct tegra_spi_slave *spi = to_tegra_spi(slave);
-
-	free(spi);
-}
-
-int tegra114_spi_init(int *node_list, int count)
-{
-	struct tegra_spi_ctrl *ctrl;
-	int i;
-	int node = 0;
-	int found = 0;
-
-	for (i = 0; i < count; i++) {
-		ctrl = &spi_ctrls[i];
-		node = node_list[i];
-
-		ctrl->regs = (struct spi_regs *)fdtdec_get_addr(gd->fdt_blob,
-								 node, "reg");
-		if ((fdt_addr_t)ctrl->regs == FDT_ADDR_T_NONE) {
-			debug("%s: no spi register found\n", __func__);
-			continue;
+	/*
+	 * Change SPI clock to correct frequency, PLLP_OUT0 source, falling
+	 * back to the oscillator if that is too fast.
+	 */
+	rate = clock_start_periph_pll(priv->periph_id, CLOCK_ID_PERIPH,
+				      priv->freq);
+	if (rate > priv->freq + 100000) {
+		rate = clock_start_periph_pll(priv->periph_id, CLOCK_ID_OSC,
+					      priv->freq);
+		if (rate != priv->freq) {
+			printf("Warning: SPI '%s' requested clock %u, actual clock %lu\n",
+			       bus->name, priv->freq, rate);
 		}
-		ctrl->freq = fdtdec_get_int(gd->fdt_blob, node,
-					    "spi-max-frequency", 0);
-		if (!ctrl->freq) {
-			debug("%s: no spi max frequency found\n", __func__);
-			continue;
-		}
-
-		ctrl->periph_id = clock_decode_periph_id(gd->fdt_blob, node);
-		if (ctrl->periph_id == PERIPH_ID_NONE) {
-			debug("%s: could not decode periph id\n", __func__);
-			continue;
-		}
-		ctrl->valid = 1;
-		found = 1;
-
-		debug("%s: found controller at %p, freq = %u, periph_id = %d\n",
-		      __func__, ctrl->regs, ctrl->freq, ctrl->periph_id);
 	}
-
-	return !found;
-}
-
-int tegra114_spi_claim_bus(struct spi_slave *slave)
-{
-	struct tegra_spi_slave *spi = to_tegra_spi(slave);
-	struct spi_regs *regs = spi->ctrl->regs;
-
-	/* Change SPI clock to correct frequency, PLLP_OUT0 source */
-	clock_start_periph_pll(spi->ctrl->periph_id, CLOCK_ID_PERIPH,
-			       spi->ctrl->freq);
+	udelay(plat->deactivate_delay_us);
 
 	/* Clear stale status here */
 	setbits_le32(&regs->fifo_status,
@@ -242,35 +161,65 @@ int tegra114_spi_claim_bus(struct spi_slave *slave)
 		     SPI_FIFO_STS_RX_FIFO_EMPTY);
 	debug("%s: FIFO STATUS = %08x\n", __func__, readl(&regs->fifo_status));
 
-	/* Set master mode and sw controlled CS */
-	setbits_le32(&regs->command1, SPI_CMD1_M_S | SPI_CMD1_CS_SW_HW |
-		     (spi->ctrl->mode << SPI_CMD1_MODE_SHIFT));
+	setbits_le32(&priv->regs->command1, SPI_CMD1_M_S | SPI_CMD1_CS_SW_HW |
+		     (priv->mode << SPI_CMD1_MODE_SHIFT) | SPI_CMD1_CS_SW_VAL);
 	debug("%s: COMMAND1 = %08x\n", __func__, readl(&regs->command1));
 
 	return 0;
 }
 
-void tegra114_spi_cs_activate(struct spi_slave *slave)
+/**
+ * Activate the CS by driving it LOW
+ *
+ * @param slave	Pointer to spi_slave to which controller has to
+ *		communicate with
+ */
+static void spi_cs_activate(struct udevice *dev)
 {
-	struct tegra_spi_slave *spi = to_tegra_spi(slave);
-	struct spi_regs *regs = spi->ctrl->regs;
+	struct udevice *bus = dev->parent;
+	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
 
-	clrbits_le32(&regs->command1, SPI_CMD1_CS_SW_VAL);
+	/* If it's too soon to do another transaction, wait */
+	if (pdata->deactivate_delay_us &&
+	    priv->last_transaction_us) {
+		ulong delay_us;		/* The delay completed so far */
+		delay_us = timer_get_us() - priv->last_transaction_us;
+		if (delay_us < pdata->deactivate_delay_us)
+			udelay(pdata->deactivate_delay_us - delay_us);
+	}
+
+	clrbits_le32(&priv->regs->command1, SPI_CMD1_CS_SW_VAL);
 }
 
-void tegra114_spi_cs_deactivate(struct spi_slave *slave)
+/**
+ * Deactivate the CS by driving it HIGH
+ *
+ * @param slave	Pointer to spi_slave to which controller has to
+ *		communicate with
+ */
+static void spi_cs_deactivate(struct udevice *dev)
 {
-	struct tegra_spi_slave *spi = to_tegra_spi(slave);
-	struct spi_regs *regs = spi->ctrl->regs;
+	struct udevice *bus = dev->parent;
+	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
 
-	setbits_le32(&regs->command1, SPI_CMD1_CS_SW_VAL);
+	setbits_le32(&priv->regs->command1, SPI_CMD1_CS_SW_VAL);
+
+	/* Remember time of this transaction so we can honour the bus delay */
+	if (pdata->deactivate_delay_us)
+		priv->last_transaction_us = timer_get_us();
+
+	debug("Deactivate CS, bus '%s'\n", bus->name);
 }
 
-int tegra114_spi_xfer(struct spi_slave *slave, unsigned int bitlen,
-		const void *data_out, void *data_in, unsigned long flags)
+static int tegra114_spi_xfer(struct udevice *dev, unsigned int bitlen,
+			     const void *data_out, void *data_in,
+			     unsigned long flags)
 {
-	struct tegra_spi_slave *spi = to_tegra_spi(slave);
-	struct spi_regs *regs = spi->ctrl->regs;
+	struct udevice *bus = dev->parent;
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
+	struct spi_regs *regs = priv->regs;
 	u32 reg, tmpdout, tmpdin = 0;
 	const u8 *dout = data_out;
 	u8 *din = data_in;
@@ -278,12 +227,15 @@ int tegra114_spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	int ret;
 
 	debug("%s: slave %u:%u dout %p din %p bitlen %u\n",
-	      __func__, slave->bus, slave->cs, dout, din, bitlen);
+	      __func__, bus->seq, spi_chip_select(dev), dout, din, bitlen);
 	if (bitlen % 8)
 		return -1;
 	num_bytes = bitlen / 8;
 
 	ret = 0;
+
+	if (flags & SPI_XFER_BEGIN)
+		spi_cs_activate(dev);
 
 	/* clear all error status bits */
 	reg = readl(&regs->fifo_status);
@@ -291,13 +243,10 @@ int tegra114_spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 
 	clrsetbits_le32(&regs->command1, SPI_CMD1_CS_SW_VAL,
 			SPI_CMD1_RX_EN | SPI_CMD1_TX_EN | SPI_CMD1_LSBY_FE |
-			(slave->cs << SPI_CMD1_CS_SEL_SHIFT));
+			(spi_chip_select(dev) << SPI_CMD1_CS_SEL_SHIFT));
 
 	/* set xfer size to 1 block (32 bits) */
 	writel(0, &regs->dma_blk);
-
-	if (flags & SPI_XFER_BEGIN)
-		spi_cs_activate(slave);
 
 	/* handle data in 32-bit chunks */
 	while (num_bytes > 0) {
@@ -383,7 +332,7 @@ int tegra114_spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	}
 
 	if (flags & SPI_XFER_END)
-		spi_cs_deactivate(slave);
+		spi_cs_deactivate(dev);
 
 	debug("%s: transfer ended. Value=%08x, fifo_status = %08x\n",
 	      __func__, tmpdin, readl(&regs->fifo_status));
@@ -394,5 +343,54 @@ int tegra114_spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 		return -1;
 	}
 
+	return ret;
+}
+
+static int tegra114_spi_set_speed(struct udevice *bus, uint speed)
+{
+	struct tegra_spi_platdata *plat = bus->platdata;
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
+
+	if (speed > plat->frequency)
+		speed = plat->frequency;
+	priv->freq = speed;
+	debug("%s: regs=%p, speed=%d\n", __func__, priv->regs, priv->freq);
+
 	return 0;
 }
+
+static int tegra114_spi_set_mode(struct udevice *bus, uint mode)
+{
+	struct tegra114_spi_priv *priv = dev_get_priv(bus);
+
+	priv->mode = mode;
+	debug("%s: regs=%p, mode=%d\n", __func__, priv->regs, priv->mode);
+
+	return 0;
+}
+
+static const struct dm_spi_ops tegra114_spi_ops = {
+	.xfer		= tegra114_spi_xfer,
+	.set_speed	= tegra114_spi_set_speed,
+	.set_mode	= tegra114_spi_set_mode,
+	/*
+	 * cs_info is not needed, since we require all chip selects to be
+	 * in the device tree explicitly
+	 */
+};
+
+static const struct udevice_id tegra114_spi_ids[] = {
+	{ .compatible = "nvidia,tegra114-spi" },
+	{ }
+};
+
+U_BOOT_DRIVER(tegra114_spi) = {
+	.name	= "tegra114_spi",
+	.id	= UCLASS_SPI,
+	.of_match = tegra114_spi_ids,
+	.ops	= &tegra114_spi_ops,
+	.ofdata_to_platdata = tegra114_spi_ofdata_to_platdata,
+	.platdata_auto_alloc_size = sizeof(struct tegra_spi_platdata),
+	.priv_auto_alloc_size = sizeof(struct tegra114_spi_priv),
+	.probe	= tegra114_spi_probe,
+};

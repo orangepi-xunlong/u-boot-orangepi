@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 /* Tegra124 clock PLL tables */
@@ -25,10 +24,12 @@ enum clock_id {
 	CLOCK_ID_XCPU = CLOCK_ID_FIRST_SIMPLE,
 	CLOCK_ID_EPCI,
 	CLOCK_ID_SFROM32KHZ,
+	CLOCK_ID_DP,	/* Special for Tegra124 */
 
 	/* These are the base clocks (inputs to the Tegra SoC) */
 	CLOCK_ID_32KHZ,
 	CLOCK_ID_OSC,
+	CLOCK_ID_CLK_M,
 
 	CLOCK_ID_COUNT,	/* number of PLLs */
 
@@ -284,12 +285,12 @@ enum periph_id {
 	/* 184 */
 	PERIPH_ID_GPU,
 	PERIPH_ID_AMX1,
-	PERIPH_ID_X_RESERVED26,
-	PERIPH_ID_X_RESERVED27,
-	PERIPH_ID_X_RESERVED28,
-	PERIPH_ID_X_RESERVED29,
-	PERIPH_ID_X_RESERVED30,
-	PERIPH_ID_X_RESERVED31,
+	PERIPH_ID_AFC5,
+	PERIPH_ID_AFC4,
+	PERIPH_ID_AFC3,
+	PERIPH_ID_AFC2,
+	PERIPH_ID_AFC1,
+	PERIPH_ID_AFC0,
 
 	PERIPH_ID_COUNT,
 	PERIPH_ID_NONE = -1,
@@ -424,7 +425,7 @@ enum periphc_internal_id {
 
 	/* 0x58 */
 	PERIPHC_58h,
-	PERIPHC_59h,
+	PERIPHC_SOR,
 	PERIPHC_5ah,
 	PERIPHC_5bh,
 	PERIPHC_SATAOOB,

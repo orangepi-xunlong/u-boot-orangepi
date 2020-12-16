@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011
  * Logic Product Development <www.logicpd.com>
@@ -8,10 +9,10 @@
  * Derived from Beagle Board and 3430 SDP code by
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <khasim@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <dm.h>
+#include <ns16550.h>
 #include <netdev.h>
 #include <flash.h>
 #include <nand.h>
@@ -24,7 +25,17 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
+#include <linux/mtd/rawnand.h>
+#include <asm/omap_musb.h>
+#include <linux/errno.h>
+#include <linux/usb/ch9.h>
+#include <linux/usb/gadget.h>
+#include <linux/usb/musb.h>
 #include "omap3logic.h"
+#ifdef CONFIG_USB_EHCI_HCD
+#include <usb.h>
+#include <asm/ehci-omap.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -36,28 +47,170 @@ DECLARE_GLOBAL_DATA_PTR;
 static struct board_id {
 	char *name;
 	int machine_id;
+	char *fdtfile;
 } boards[2][2] = {
 	{
 		{
 			.name		= "OMAP35xx SOM LV",
 			.machine_id	= MACH_TYPE_OMAP3530_LV_SOM,
+			.fdtfile	= "logicpd-som-lv-35xx-devkit.dtb",
 		},
 		{
 			.name		= "OMAP35xx Torpedo",
 			.machine_id	= MACH_TYPE_OMAP3_TORPEDO,
+			.fdtfile	= "logicpd-torpedo-35xx-devkit.dtb",
 		},
 	},
 	{
 		{
 			.name		= "DM37xx SOM LV",
-			.machine_id	= MACH_TYPE_DM3730_SOM_LV,
+			.fdtfile	= "logicpd-som-lv-37xx-devkit.dtb",
 		},
 		{
 			.name		= "DM37xx Torpedo",
-			.machine_id	= MACH_TYPE_DM3730_TORPEDO,
+			.fdtfile	= "logicpd-torpedo-37xx-devkit.dtb",
 		},
 	},
 };
+
+#ifdef CONFIG_SPL_OS_BOOT
+int spl_start_uboot(void)
+{
+	/* break into full u-boot on 'c' */
+	return serial_tstc() && serial_getc() == 'c';
+}
+#endif
+
+#if defined(CONFIG_SPL_BUILD)
+/*
+ * Routine: get_board_mem_timings
+ * Description: If we use SPL then there is no x-loader nor config header
+ * so we have to setup the DDR timings ourself on the first bank.  This
+ * provides the timing values back to the function that configures
+ * the memory.
+ */
+void get_board_mem_timings(struct board_sdrc_timings *timings)
+{
+	timings->mr = MICRON_V_MR_165;
+	/* 256MB DDR */
+	timings->mcfg = MICRON_V_MCFG_200(256 << 20);
+	timings->ctrla = MICRON_V_ACTIMA_200;
+	timings->ctrlb = MICRON_V_ACTIMB_200;
+	timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_200MHz;
+}
+
+#define GPMC_NAND_COMMAND_0 (OMAP34XX_GPMC_BASE + 0x7c)
+#define GPMC_NAND_DATA_0 (OMAP34XX_GPMC_BASE + 0x84)
+#define GPMC_NAND_ADDRESS_0 (OMAP34XX_GPMC_BASE + 0x80)
+
+void spl_board_prepare_for_linux(void)
+{
+	/* The Micron NAND starts locked which
+	 * prohibits mounting the NAND as RW
+	 * The following commands are what unlocks
+	 * the NAND to become RW Falcon Mode does not
+	 * have as many smarts as U-Boot, but Logic PD
+	 * only makes NAND with 512MB so these hard coded
+	 * values should work for all current models
+	 */
+
+	writeb(0x70, GPMC_NAND_COMMAND_0);
+	writeb(-1, GPMC_NAND_DATA_0);
+	writeb(0x7a, GPMC_NAND_COMMAND_0);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(-1, GPMC_NAND_COMMAND_0);
+
+	/* Begin address 0 */
+	writeb(NAND_CMD_UNLOCK1, 0x6e00007c);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(0x00, GPMC_NAND_ADDRESS_0);
+	writeb(-1, GPMC_NAND_DATA_0);
+
+	/* Ending address at the end of Flash */
+	writeb(NAND_CMD_UNLOCK2, GPMC_NAND_COMMAND_0);
+	writeb(0xc0, GPMC_NAND_ADDRESS_0);
+	writeb(0xff, GPMC_NAND_ADDRESS_0);
+	writeb(0x03, GPMC_NAND_ADDRESS_0);
+	writeb(-1, GPMC_NAND_DATA_0);
+	writeb(0x79, GPMC_NAND_COMMAND_0);
+	writeb(-1, GPMC_NAND_DATA_0);
+	writeb(-1, GPMC_NAND_DATA_0);
+}
+#endif
+
+#ifdef CONFIG_USB_MUSB_OMAP2PLUS
+static struct musb_hdrc_config musb_config = {
+	.multipoint     = 1,
+	.dyn_fifo       = 1,
+	.num_eps        = 16,
+	.ram_bits       = 12,
+};
+
+static struct omap_musb_board_data musb_board_data = {
+	.interface_type	= MUSB_INTERFACE_ULPI,
+};
+
+static struct musb_hdrc_platform_data musb_plat = {
+#if defined(CONFIG_USB_MUSB_HOST)
+	.mode           = MUSB_HOST,
+#elif defined(CONFIG_USB_MUSB_GADGET)
+	.mode		= MUSB_PERIPHERAL,
+#else
+#error "Please define either CONFIG_USB_MUSB_HOST or CONFIG_USB_MUSB_GADGET"
+#endif
+	.config         = &musb_config,
+	.power          = 100,
+	.platform_ops	= &omap2430_ops,
+	.board_data	= &musb_board_data,
+};
+#endif
+
+#if defined(CONFIG_USB_EHCI_HCD) && !defined(CONFIG_SPL_BUILD)
+/* Call usb_stop() before starting the kernel */
+void show_boot_progress(int val)
+{
+	if (val == BOOTSTAGE_ID_RUN_OS)
+		usb_stop();
+}
+
+static struct omap_usbhs_board_data usbhs_bdata = {
+	.port_mode[0] = OMAP_EHCI_PORT_MODE_PHY,
+	.port_mode[1] = OMAP_EHCI_PORT_MODE_PHY,
+	.port_mode[2] = OMAP_USBHS_PORT_MODE_UNUSED
+};
+
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+{
+	return omap_ehci_hcd_init(index, &usbhs_bdata, hccr, hcor);
+}
+
+int ehci_hcd_stop(int index)
+{
+	return omap_ehci_hcd_stop();
+}
+
+#endif /* CONFIG_USB_EHCI_HCD */
+
+
+/*
+ * Routine: misc_init_r
+ * Description: Configure board specific parts
+ */
+int misc_init_r(void)
+{
+	twl4030_power_init();
+	omap_die_id_display();
+
+#ifdef CONFIG_USB_MUSB_OMAP2PLUS
+	musb_register(&musb_plat, &musb_board_data, (void *)MUSB_BASE);
+#endif
+
+	return 0;
+}
 
 /*
  * BOARD_ID_GPIO - GPIO of pin with optional pulldown resistor on SOM LV
@@ -70,13 +223,29 @@ static struct board_id {
  */
 int board_init(void)
 {
-	struct board_id *board;
-	unsigned int val;
-
 	gpmc_init(); /* in SRAM or SDRAM, finish GPMC */
 
 	/* boot param addr */
 	gd->bd->bi_boot_params = (OMAP34XX_SDRC_CS0 + 0x100);
+
+	return 0;
+}
+
+#ifdef CONFIG_BOARD_LATE_INIT
+
+static void unlock_nand(void)
+{
+	int dev = nand_curr_device;
+	struct mtd_info *mtd;
+
+	mtd = get_nand_dev_by_index(dev);
+	nand_unlock(mtd, 0, mtd->size, 0);
+}
+
+int board_late_init(void)
+{
+	struct board_id *board;
+	unsigned int val;
 
 	/*
 	 * To identify between a SOM LV and Torpedo module,
@@ -112,19 +281,35 @@ int board_init(void)
 		printf("Board: %s\n", board->name);
 
 		/* Set the machine_id passed to Linux */
-		gd->bd->bi_arch_number = board->machine_id;
+		if (board->machine_id)
+			gd->bd->bi_arch_number = board->machine_id;
+
+		/* If the user has not set fdtimage, set the default */
+		if (!env_get("fdtimage"))
+			env_set("fdtimage", board->fdtfile);
 	}
 
 	/* restore hsusb0_data5 pin as hsusb0_data5 */
 	MUX_VAL(CP(HSUSB0_DATA5),	(IEN  | PTD | DIS | M0));
 
+#ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
+	unlock_nand();
+#endif
 	return 0;
 }
+#endif
 
-#if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_MMC)
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
+}
+#endif
+
+#if defined(CONFIG_MMC)
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
 }
 #endif
 
@@ -148,88 +333,4 @@ int board_eth_init(bd_t *bis)
 }
 #endif
 
-/*
- * IEN  - Input Enable
- * IDIS - Input Disable
- * PTD  - Pull type Down
- * PTU  - Pull type Up
- * DIS  - Pull type selection is inactive
- * EN   - Pull type selection is active
- * M0   - Mode 0
- * The commented string gives the final mux configuration for that pin
- */
 
-/*
- * Routine: set_muxconf_regs
- * Description: Setting up the configuration Mux registers specific to the
- *		hardware. Many pins need to be moved from protect to primary
- *		mode.
- */
-void set_muxconf_regs(void)
-{
-	/*GPMC*/
-	MUX_VAL(CP(GPMC_A1),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A2),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A3),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A4),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A5),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A6),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A7),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A8),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A9),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_A10),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D0),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D1),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D2),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D3),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D4),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D5),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D6),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D7),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D8),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D9),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D10),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D11),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D12),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D13),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D14),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_D15),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_NCS0),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_NCS1),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_NCS2),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_NCS3),		(IDIS | PTD | DIS | M0));
-	MUX_VAL(CP(GPMC_NCS5),          (IDIS | PTU | DIS | M4));
-	MUX_VAL(CP(GPMC_NCS7),		(IDIS | PTD | DIS | M1)); /*GPMC_IO_DIR*/
-	MUX_VAL(CP(GPMC_NBE0_CLE),	(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(GPMC_WAIT1),		(IEN  | PTU | EN  | M0));
-
-	/*Expansion card  */
-	MUX_VAL(CP(MMC1_CLK),		(IDIS | PTU | EN  | M0));
-	MUX_VAL(CP(MMC1_CMD),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(MMC1_DAT0),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(MMC1_DAT1),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(MMC1_DAT2),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(MMC1_DAT3),		(IEN  | PTU | EN  | M0));
-
-	/* Serial Console */
-	MUX_VAL(CP(UART1_TX),		(IDIS | PTD | DIS | M0));
-	MUX_VAL(CP(UART1_RTS),		(IDIS | PTD | DIS | M0));
-	MUX_VAL(CP(UART1_CTS),		(IEN  | PTU | DIS | M0));
-	MUX_VAL(CP(UART1_RX),		(IEN  | PTD | DIS | M0));
-
-	/* I2C */
-	MUX_VAL(CP(I2C2_SCL),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(I2C2_SDA),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(I2C3_SCL),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(I2C3_SDA),		(IEN  | PTU | EN  | M0));
-
-	MUX_VAL(CP(HDQ_SIO),		(IEN  | PTU | EN  | M0));
-
-	/*Control and debug */
-	MUX_VAL(CP(SYS_NIRQ),		(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(SYS_OFF_MODE),	(IEN  | PTD | DIS | M0));
-	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M0));
-	MUX_VAL(CP(SYS_CLKOUT2),	(IEN  | PTU | EN  | M0));
-	MUX_VAL(CP(JTAG_nTRST),		(IEN  | PTD | DIS | M0));
-	MUX_VAL(CP(SDRC_CKE0),		(IDIS | PTU | EN  | M0));
-}

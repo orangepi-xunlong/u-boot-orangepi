@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011 Freescale Semiconductor, Inc.
- *	Andy Fleming <afleming@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ *	Andy Fleming <afleming@gmail.com>
  *
  * This file pretty much stolen from Linux's mii.h/ethtool.h/phy.h
  */
@@ -15,30 +14,45 @@
 #include <linux/ethtool.h>
 #include <linux/mdio.h>
 
+#define PHY_FIXED_ID		0xa5a55a5a
+
 #define PHY_MAX_ADDR 32
 
-#define PHY_BASIC_FEATURES	(SUPPORTED_10baseT_Half | \
-				 SUPPORTED_10baseT_Full | \
-				 SUPPORTED_100baseT_Half | \
-				 SUPPORTED_100baseT_Full | \
-				 SUPPORTED_Autoneg | \
+#define PHY_FLAG_BROKEN_RESET	(1 << 0) /* soft reset not supported */
+
+#define PHY_DEFAULT_FEATURES	(SUPPORTED_Autoneg | \
 				 SUPPORTED_TP | \
 				 SUPPORTED_MII)
 
-#define PHY_GBIT_FEATURES	(PHY_BASIC_FEATURES | \
-				 SUPPORTED_1000baseT_Half | \
+#define PHY_10BT_FEATURES	(SUPPORTED_10baseT_Half | \
+				 SUPPORTED_10baseT_Full)
+
+#define PHY_100BT_FEATURES	(SUPPORTED_100baseT_Half | \
+				 SUPPORTED_100baseT_Full)
+
+#define PHY_1000BT_FEATURES	(SUPPORTED_1000baseT_Half | \
 				 SUPPORTED_1000baseT_Full)
+
+#define PHY_BASIC_FEATURES	(PHY_10BT_FEATURES | \
+				 PHY_100BT_FEATURES | \
+				 PHY_DEFAULT_FEATURES)
+
+#define PHY_GBIT_FEATURES	(PHY_BASIC_FEATURES | \
+				 PHY_1000BT_FEATURES)
 
 #define PHY_10G_FEATURES	(PHY_GBIT_FEATURES | \
 				SUPPORTED_10000baseT_Full)
 
+#ifndef PHY_ANEG_TIMEOUT
 #define PHY_ANEG_TIMEOUT	4000
+#endif
 
 
 typedef enum {
 	PHY_INTERFACE_MODE_MII,
 	PHY_INTERFACE_MODE_GMII,
 	PHY_INTERFACE_MODE_SGMII,
+	PHY_INTERFACE_MODE_SGMII_2500,
 	PHY_INTERFACE_MODE_QSGMII,
 	PHY_INTERFACE_MODE_TBI,
 	PHY_INTERFACE_MODE_RMII,
@@ -48,13 +62,19 @@ typedef enum {
 	PHY_INTERFACE_MODE_RGMII_TXID,
 	PHY_INTERFACE_MODE_RTBI,
 	PHY_INTERFACE_MODE_XGMII,
-	PHY_INTERFACE_MODE_NONE	/* Must be last */
+	PHY_INTERFACE_MODE_XAUI,
+	PHY_INTERFACE_MODE_RXAUI,
+	PHY_INTERFACE_MODE_SFI,
+	PHY_INTERFACE_MODE_NONE,	/* Must be last */
+
+	PHY_INTERFACE_MODE_COUNT,
 } phy_interface_t;
 
 static const char *phy_interface_strings[] = {
 	[PHY_INTERFACE_MODE_MII]		= "mii",
 	[PHY_INTERFACE_MODE_GMII]		= "gmii",
 	[PHY_INTERFACE_MODE_SGMII]		= "sgmii",
+	[PHY_INTERFACE_MODE_SGMII_2500]		= "sgmii-2500",
 	[PHY_INTERFACE_MODE_QSGMII]		= "qsgmii",
 	[PHY_INTERFACE_MODE_TBI]		= "tbi",
 	[PHY_INTERFACE_MODE_RMII]		= "rmii",
@@ -64,6 +84,9 @@ static const char *phy_interface_strings[] = {
 	[PHY_INTERFACE_MODE_RGMII_TXID]		= "rgmii-txid",
 	[PHY_INTERFACE_MODE_RTBI]		= "rtbi",
 	[PHY_INTERFACE_MODE_XGMII]		= "xgmii",
+	[PHY_INTERFACE_MODE_XAUI]		= "xaui",
+	[PHY_INTERFACE_MODE_RXAUI]		= "rxaui",
+	[PHY_INTERFACE_MODE_SFI]		= "sfi",
 	[PHY_INTERFACE_MODE_NONE]		= "",
 };
 
@@ -138,7 +161,11 @@ struct phy_device {
 	struct phy_driver *drv;
 	void *priv;
 
+#ifdef CONFIG_DM_ETH
+	struct udevice *dev;
+#else
 	struct eth_device *dev;
+#endif
 
 	/* forced speed & duplex (no autoneg)
 	 * partner speed & duplex & pause (autoneg)
@@ -201,14 +228,22 @@ int phy_init(void);
 int phy_reset(struct phy_device *phydev);
 struct phy_device *phy_find_by_mask(struct mii_dev *bus, unsigned phy_mask,
 		phy_interface_t interface);
+#ifdef CONFIG_DM_ETH
+void phy_connect_dev(struct phy_device *phydev, struct udevice *dev);
+struct phy_device *phy_connect(struct mii_dev *bus, int addr,
+				struct udevice *dev,
+				phy_interface_t interface);
+#else
 void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev);
 struct phy_device *phy_connect(struct mii_dev *bus, int addr,
 				struct eth_device *dev,
 				phy_interface_t interface);
+#endif
 int phy_startup(struct phy_device *phydev);
 int phy_config(struct phy_device *phydev);
 int phy_shutdown(struct phy_device *phydev);
 int phy_register(struct phy_driver *drv);
+int phy_set_supported(struct phy_device *phydev, u32 max_speed);
 int genphy_config_aneg(struct phy_device *phydev);
 int genphy_restart_aneg(struct phy_device *phydev);
 int genphy_update_link(struct phy_device *phydev);
@@ -221,22 +256,64 @@ int gen10g_startup(struct phy_device *phydev);
 int gen10g_shutdown(struct phy_device *phydev);
 int gen10g_discover_mmds(struct phy_device *phydev);
 
+int phy_b53_init(void);
+int phy_mv88e61xx_init(void);
+int phy_aquantia_init(void);
 int phy_atheros_init(void);
 int phy_broadcom_init(void);
+int phy_cortina_init(void);
 int phy_davicom_init(void);
 int phy_et1011c_init(void);
 int phy_lxt_init(void);
 int phy_marvell_init(void);
-int phy_micrel_init(void);
+int phy_micrel_ksz8xxx_init(void);
+int phy_micrel_ksz90x1_init(void);
+int phy_meson_gxl_init(void);
 int phy_natsemi_init(void);
 int phy_realtek_init(void);
 int phy_smsc_init(void);
 int phy_teranetics_init(void);
+int phy_ti_init(void);
 int phy_vitesse_init(void);
+int phy_xilinx_init(void);
+int phy_mscc_init(void);
+int phy_fixed_init(void);
 
 int board_phy_config(struct phy_device *phydev);
+int get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id);
+
+/**
+ * phy_get_interface_by_name() - Look up a PHY interface name
+ *
+ * @str:	PHY interface name, e.g. "mii"
+ * @return PHY_INTERFACE_MODE_... value, or -1 if not found
+ */
+int phy_get_interface_by_name(const char *str);
+
+/**
+ * phy_interface_is_rgmii - Convenience function for testing if a PHY interface
+ * is RGMII (all variants)
+ * @phydev: the phy_device struct
+ */
+static inline bool phy_interface_is_rgmii(struct phy_device *phydev)
+{
+	return phydev->interface >= PHY_INTERFACE_MODE_RGMII &&
+		phydev->interface <= PHY_INTERFACE_MODE_RGMII_TXID;
+}
+
+/**
+ * phy_interface_is_sgmii - Convenience function for testing if a PHY interface
+ * is SGMII (all variants)
+ * @phydev: the phy_device struct
+ */
+static inline bool phy_interface_is_sgmii(struct phy_device *phydev)
+{
+	return phydev->interface >= PHY_INTERFACE_MODE_SGMII &&
+		phydev->interface <= PHY_INTERFACE_MODE_QSGMII;
+}
 
 /* PHY UIDs for various PHYs that are referenced in external code */
+#define PHY_UID_CS4340  0x13e51002
 #define PHY_UID_TN2020	0x00a19410
 
 #endif

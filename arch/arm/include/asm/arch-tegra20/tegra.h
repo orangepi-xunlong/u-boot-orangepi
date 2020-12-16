@@ -1,16 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010,2011
  * NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA20_H_
 #define _TEGRA20_H_
 
-#define CONFIG_TEGRA20
-
 #define NV_PA_SDRAM_BASE	0x00000000
+#define NV_PA_MC_BASE		0x7000F000
 
 #include <asm/arch-tegra/tegra.h>
 

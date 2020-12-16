@@ -23,7 +23,7 @@
 #include <part.h>
 #include <malloc.h>
 #include <mmc.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 
@@ -211,11 +211,11 @@ static int mxcmci_finish_data(struct mxcmci_host *host, unsigned int stat)
 		} else if (stat & STATUS_CRC_WRITE_ERR) {
 			u32 err_code = (stat >> 9) & 0x3;
 			if (err_code == 2) /* No CRC response */
-				data_error = TIMEOUT;
+				data_error = -ETIMEDOUT;
 			else
 				data_error = -EILSEQ;
 		} else if (stat & STATUS_TIME_OUT_READ) {
-			data_error = TIMEOUT;
+			data_error = -ETIMEDOUT;
 		} else {
 			data_error = -EIO;
 		}
@@ -238,7 +238,7 @@ static int mxcmci_read_response(struct mxcmci_host *host, unsigned int stat)
 
 	if (stat & STATUS_TIME_OUT_RESP) {
 		printf("CMD TIMEOUT\n");
-		return TIMEOUT;
+		return -ETIMEDOUT;
 	} else if (stat & STATUS_RESP_CRC_ERR && cmd->resp_type & MMC_RSP_CRC) {
 		printf("cmd crc error\n");
 		return -EILSEQ;
@@ -448,7 +448,7 @@ static void mxcmci_set_clk_rate(struct mxcmci_host *host, unsigned int clk_ios)
 	writel((prescaler << 4) | divider, &host->base->clk_rate);
 }
 
-static void mxcmci_set_ios(struct mmc *mmc)
+static int mxcmci_set_ios(struct mmc *mmc)
 {
 	struct mxcmci_host *host = mmc->priv;
 	if (mmc->bus_width == 4)
@@ -464,6 +464,8 @@ static void mxcmci_set_ios(struct mmc *mmc)
 	}
 
 	host->clock = mmc->clock;
+
+	return 0;
 }
 
 static int mxcmci_init(struct mmc *mmc)

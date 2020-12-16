@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * (C) Copyright 2010,2011
+ * (C) Copyright 2010-2015
  * NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA_H_
@@ -56,6 +55,8 @@ struct timerus {
 /* Address at which WB code runs, it must not overlap Bootrom's IRAM usage */
 #define NV_WB_RUN_ADDRESS	0x40020000
 
+#define NVBOOTTYPE_RECOVERY	2	/* BR entered RCM */
+#define NVBOOTINFOTABLE_BOOTTYPE 0xC	/* Boot type in BIT in IRAM */
 #define NVBOOTINFOTABLE_BCTSIZE	0x38	/* BCT size in BIT in IRAM */
 #define NVBOOTINFOTABLE_BCTPTR	0x3C	/* BCT pointer in BIT in IRAM */
 
@@ -74,6 +75,7 @@ enum {
 	SKU_ID_T114_ENG		= 0x00, /* Dalmore value, unfused */
 	SKU_ID_T114_1		= 0x01,
 	SKU_ID_T124_ENG		= 0x00, /* Venice2 value, unfused */
+	SKU_ID_T210_ENG		= 0x00, /* unfused value TBD */
 };
 
 /*
@@ -88,9 +90,15 @@ enum {
 	TEGRA_SOC_T30,
 	TEGRA_SOC_T114,
 	TEGRA_SOC_T124,
+	TEGRA_SOC_T210,
 
 	TEGRA_SOC_CNT,
 	TEGRA_SOC_UNKNOWN	= -1,
+};
+
+/* Tegra system controller (SYSCON) devices */
+enum {
+	TEGRA_SYSCON_PMC,
 };
 
 #else  /* __ASSEMBLY__ */

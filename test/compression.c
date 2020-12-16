@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013, The Chromium Authors
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#define DEBUG
-
 #include <common.h>
+#include <bootm.h>
 #include <command.h>
 #include <malloc.h>
+#include <mapmem.h>
+#include <asm/io.h>
 
 #include <u-boot/zlib.h>
 #include <bzlib.h>
@@ -18,6 +18,9 @@
 #include <lzma/LzmaTools.h>
 
 #include <linux/lzo.h>
+#include <test/compression.h>
+#include <test/suites.h>
+#include <test/ut.h>
 
 static const char plain[] =
 	"I am a highly compressable bit of text.\n"
@@ -92,13 +95,36 @@ static const char lzo_compressed[] =
 	"\x73\x61\x67\x65\x73\x2e\x0a\x11\x00\x00\x00\x00\x00\x00";
 static const unsigned long lzo_compressed_size = 334;
 
+/* lz4 -z /tmp/plain.txt > /tmp/plain.lz4 */
+static const char lz4_compressed[] =
+	"\x04\x22\x4d\x18\x64\x70\xb9\x01\x01\x00\x00\xff\x19\x49\x20\x61"
+	"\x6d\x20\x61\x20\x68\x69\x67\x68\x6c\x79\x20\x63\x6f\x6d\x70\x72"
+	"\x65\x73\x73\x61\x62\x6c\x65\x20\x62\x69\x74\x20\x6f\x66\x20\x74"
+	"\x65\x78\x74\x2e\x0a\x28\x00\x3d\xf1\x25\x54\x68\x65\x72\x65\x20"
+	"\x61\x72\x65\x20\x6d\x61\x6e\x79\x20\x6c\x69\x6b\x65\x20\x6d\x65"
+	"\x2c\x20\x62\x75\x74\x20\x74\x68\x69\x73\x20\x6f\x6e\x65\x20\x69"
+	"\x73\x20\x6d\x69\x6e\x65\x2e\x0a\x49\x66\x20\x49\x20\x77\x32\x00"
+	"\xd1\x6e\x79\x20\x73\x68\x6f\x72\x74\x65\x72\x2c\x20\x74\x45\x00"
+	"\xf4\x0b\x77\x6f\x75\x6c\x64\x6e\x27\x74\x20\x62\x65\x20\x6d\x75"
+	"\x63\x68\x20\x73\x65\x6e\x73\x65\x20\x69\x6e\x0a\xcf\x00\x50\x69"
+	"\x6e\x67\x20\x6d\x12\x00\x00\x32\x00\xf0\x11\x20\x66\x69\x72\x73"
+	"\x74\x20\x70\x6c\x61\x63\x65\x2e\x20\x41\x74\x20\x6c\x65\x61\x73"
+	"\x74\x20\x77\x69\x74\x68\x20\x6c\x7a\x6f\x2c\x63\x00\xf5\x14\x77"
+	"\x61\x79\x2c\x0a\x77\x68\x69\x63\x68\x20\x61\x70\x70\x65\x61\x72"
+	"\x73\x20\x74\x6f\x20\x62\x65\x68\x61\x76\x65\x20\x70\x6f\x6f\x72"
+	"\x6c\x79\x4e\x00\x30\x61\x63\x65\x27\x01\x01\x95\x00\x01\x2d\x01"
+	"\xb0\x0a\x6d\x65\x73\x73\x61\x67\x65\x73\x2e\x0a\x00\x00\x00\x00"
+	"\x9d\x12\x8c\x9d";
+static const unsigned long lz4_compressed_size = 276;
+
 
 #define TEST_BUFFER_SIZE	512
 
-typedef int (*mutate_func)(void *, unsigned long, void *, unsigned long,
-			   unsigned long *);
+typedef int (*mutate_func)(struct unit_test_state *uts, void *, unsigned long,
+			   void *, unsigned long, unsigned long *);
 
-static int compress_using_gzip(void *in, unsigned long in_size,
+static int compress_using_gzip(struct unit_test_state *uts,
+			       void *in, unsigned long in_size,
 			       void *out, unsigned long out_max,
 			       unsigned long *out_size)
 {
@@ -112,7 +138,8 @@ static int compress_using_gzip(void *in, unsigned long in_size,
 	return ret;
 }
 
-static int uncompress_using_gzip(void *in, unsigned long in_size,
+static int uncompress_using_gzip(struct unit_test_state *uts,
+				 void *in, unsigned long in_size,
 				 void *out, unsigned long out_max,
 				 unsigned long *out_size)
 {
@@ -126,13 +153,14 @@ static int uncompress_using_gzip(void *in, unsigned long in_size,
 	return ret;
 }
 
-static int compress_using_bzip2(void *in, unsigned long in_size,
+static int compress_using_bzip2(struct unit_test_state *uts,
+				void *in, unsigned long in_size,
 				void *out, unsigned long out_max,
 				unsigned long *out_size)
 {
 	/* There is no bzip2 compression in u-boot, so fake it. */
-	assert(in_size == strlen(plain));
-	assert(memcmp(plain, in, in_size) == 0);
+	ut_asserteq(in_size, strlen(plain));
+	ut_asserteq(0, memcmp(plain, in, in_size));
 
 	if (bzip2_compressed_size > out_max)
 		return -1;
@@ -144,7 +172,8 @@ static int compress_using_bzip2(void *in, unsigned long in_size,
 	return 0;
 }
 
-static int uncompress_using_bzip2(void *in, unsigned long in_size,
+static int uncompress_using_bzip2(struct unit_test_state *uts,
+				  void *in, unsigned long in_size,
 				  void *out, unsigned long out_max,
 				  unsigned long *out_size)
 {
@@ -159,13 +188,14 @@ static int uncompress_using_bzip2(void *in, unsigned long in_size,
 	return (ret != BZ_OK);
 }
 
-static int compress_using_lzma(void *in, unsigned long in_size,
+static int compress_using_lzma(struct unit_test_state *uts,
+			       void *in, unsigned long in_size,
 			       void *out, unsigned long out_max,
 			       unsigned long *out_size)
 {
 	/* There is no lzma compression in u-boot, so fake it. */
-	assert(in_size == strlen(plain));
-	assert(memcmp(plain, in, in_size) == 0);
+	ut_asserteq(in_size,  strlen(plain));
+	ut_asserteq(0, memcmp(plain, in, in_size));
 
 	if (lzma_compressed_size > out_max)
 		return -1;
@@ -177,7 +207,8 @@ static int compress_using_lzma(void *in, unsigned long in_size,
 	return 0;
 }
 
-static int uncompress_using_lzma(void *in, unsigned long in_size,
+static int uncompress_using_lzma(struct unit_test_state *uts,
+				 void *in, unsigned long in_size,
 				 void *out, unsigned long out_max,
 				 unsigned long *out_size)
 {
@@ -191,13 +222,14 @@ static int uncompress_using_lzma(void *in, unsigned long in_size,
 	return (ret != SZ_OK);
 }
 
-static int compress_using_lzo(void *in, unsigned long in_size,
+static int compress_using_lzo(struct unit_test_state *uts,
+			      void *in, unsigned long in_size,
 			      void *out, unsigned long out_max,
 			      unsigned long *out_size)
 {
 	/* There is no lzo compression in u-boot, so fake it. */
-	assert(in_size == strlen(plain));
-	assert(memcmp(plain, in, in_size) == 0);
+	ut_asserteq(in_size,  strlen(plain));
+	ut_asserteq(0, memcmp(plain, in, in_size));
 
 	if (lzo_compressed_size > out_max)
 		return -1;
@@ -209,7 +241,8 @@ static int compress_using_lzo(void *in, unsigned long in_size,
 	return 0;
 }
 
-static int uncompress_using_lzo(void *in, unsigned long in_size,
+static int uncompress_using_lzo(struct unit_test_state *uts,
+				void *in, unsigned long in_size,
 				void *out, unsigned long out_max,
 				unsigned long *out_size)
 {
@@ -224,79 +257,110 @@ static int uncompress_using_lzo(void *in, unsigned long in_size,
 	return (ret != LZO_E_OK);
 }
 
+static int compress_using_lz4(struct unit_test_state *uts,
+			      void *in, unsigned long in_size,
+			      void *out, unsigned long out_max,
+			      unsigned long *out_size)
+{
+	/* There is no lz4 compression in u-boot, so fake it. */
+	ut_asserteq(in_size,  strlen(plain));
+	ut_asserteq(0, memcmp(plain, in, in_size));
+
+	if (lz4_compressed_size > out_max)
+		return -1;
+
+	memcpy(out, lz4_compressed, lz4_compressed_size);
+	if (out_size)
+		*out_size = lz4_compressed_size;
+
+	return 0;
+}
+
+static int uncompress_using_lz4(struct unit_test_state *uts,
+				void *in, unsigned long in_size,
+				void *out, unsigned long out_max,
+				unsigned long *out_size)
+{
+	int ret;
+	size_t input_size = in_size;
+	size_t output_size = out_max;
+
+	ret = ulz4fn(in, input_size, out, &output_size);
+	if (out_size)
+		*out_size = output_size;
+
+	return (ret != 0);
+}
+
 #define errcheck(statement) if (!(statement)) { \
 	fprintf(stderr, "\tFailed: %s\n", #statement); \
 	ret = 1; \
 	goto out; \
 }
 
-static int run_test(char *name, mutate_func compress, mutate_func uncompress)
-{
-	ulong orig_size, compressed_size, uncompressed_size;
+struct buf_state {
+	ulong orig_size;
+	ulong compressed_size;
+	ulong uncompressed_size;
 	void *orig_buf;
-	void *compressed_buf = NULL;
-	void *uncompressed_buf = NULL;
-	void *compare_buf = NULL;
+	void *compressed_buf;
+	void *uncompressed_buf;
+	void *compare_buf;
+};
+
+static int run_test_internal(struct unit_test_state *uts, char *name,
+			     mutate_func compress, mutate_func uncompress,
+			     struct buf_state *buf)
+{
 	int ret;
 
-	printf(" testing %s ...\n", name);
-
-	orig_buf = (void *)plain;
-	orig_size = strlen(orig_buf); /* Trailing NULL not included. */
-	errcheck(orig_size > 0);
-
-	compressed_size = uncompressed_size = TEST_BUFFER_SIZE;
-	compressed_buf = malloc(compressed_size);
-	errcheck(compressed_buf != NULL);
-	uncompressed_buf = malloc(uncompressed_size);
-	errcheck(uncompressed_buf != NULL);
-	compare_buf = malloc(uncompressed_size);
-	errcheck(compare_buf != NULL);
-
 	/* Compress works as expected. */
-	printf("\torig_size:%lu\n", orig_size);
-	memset(compressed_buf, 'A', TEST_BUFFER_SIZE);
-	errcheck(compress(orig_buf, orig_size,
-			compressed_buf, compressed_size,
-			&compressed_size) == 0);
-	printf("\tcompressed_size:%lu\n", compressed_size);
-	errcheck(compressed_size > 0);
-	errcheck(compressed_size < orig_size);
-	errcheck(((char *)compressed_buf)[compressed_size-1] != 'A');
-	errcheck(((char *)compressed_buf)[compressed_size] == 'A');
+	printf("\torig_size:%lu\n", buf->orig_size);
+	memset(buf->compressed_buf, 'A', TEST_BUFFER_SIZE);
+	errcheck(compress(uts, buf->orig_buf, buf->orig_size,
+			  buf->compressed_buf, buf->compressed_size,
+			  &buf->compressed_size) == 0);
+	printf("\tcompressed_size:%lu\n", buf->compressed_size);
+	errcheck(buf->compressed_size > 0);
+	errcheck(buf->compressed_size < buf->orig_size);
+	errcheck(((char *)buf->compressed_buf)[buf->compressed_size - 1] !=
+			'A');
+	errcheck(((char *)buf->compressed_buf)[buf->compressed_size] == 'A');
 
 	/* Uncompresses with space remaining. */
-	errcheck(uncompress(compressed_buf, compressed_size,
-			  uncompressed_buf, uncompressed_size,
-			  &uncompressed_size) == 0);
-	printf("\tuncompressed_size:%lu\n", uncompressed_size);
-	errcheck(uncompressed_size == orig_size);
-	errcheck(memcmp(orig_buf, uncompressed_buf, orig_size) == 0);
+	errcheck(uncompress(uts, buf->compressed_buf, buf->compressed_size,
+			    buf->uncompressed_buf, buf->uncompressed_size,
+			    &buf->uncompressed_size) == 0);
+	printf("\tuncompressed_size:%lu\n", buf->uncompressed_size);
+	errcheck(buf->uncompressed_size == buf->orig_size);
+	errcheck(memcmp(buf->orig_buf, buf->uncompressed_buf,
+			buf->orig_size) == 0);
 
 	/* Uncompresses with exactly the right size output buffer. */
-	memset(uncompressed_buf, 'A', TEST_BUFFER_SIZE);
-	errcheck(uncompress(compressed_buf, compressed_size,
-			  uncompressed_buf, orig_size,
-			  &uncompressed_size) == 0);
-	errcheck(uncompressed_size == orig_size);
-	errcheck(memcmp(orig_buf, uncompressed_buf, orig_size) == 0);
-	errcheck(((char *)uncompressed_buf)[orig_size] == 'A');
+	memset(buf->uncompressed_buf, 'A', TEST_BUFFER_SIZE);
+	errcheck(uncompress(uts, buf->compressed_buf, buf->compressed_size,
+			    buf->uncompressed_buf, buf->orig_size,
+			    &buf->uncompressed_size) == 0);
+	errcheck(buf->uncompressed_size == buf->orig_size);
+	errcheck(memcmp(buf->orig_buf, buf->uncompressed_buf,
+			buf->orig_size) == 0);
+	errcheck(((char *)buf->uncompressed_buf)[buf->orig_size] == 'A');
 
 	/* Make sure compression does not over-run. */
-	memset(compare_buf, 'A', TEST_BUFFER_SIZE);
-	ret = compress(orig_buf, orig_size,
-		       compare_buf, compressed_size - 1,
+	memset(buf->compare_buf, 'A', TEST_BUFFER_SIZE);
+	ret = compress(uts, buf->orig_buf, buf->orig_size,
+		       buf->compare_buf, buf->compressed_size - 1,
 		       NULL);
-	errcheck(((char *)compare_buf)[compressed_size] == 'A');
+	errcheck(((char *)buf->compare_buf)[buf->compressed_size] == 'A');
 	errcheck(ret != 0);
 	printf("\tcompress does not overrun\n");
 
 	/* Make sure decompression does not over-run. */
-	memset(compare_buf, 'A', TEST_BUFFER_SIZE);
-	ret = uncompress(compressed_buf, compressed_size,
-			 compare_buf, uncompressed_size - 1,
+	memset(buf->compare_buf, 'A', TEST_BUFFER_SIZE);
+	ret = uncompress(uts, buf->compressed_buf, buf->compressed_size,
+			 buf->compare_buf, buf->uncompressed_size - 1,
 			 NULL);
-	errcheck(((char *)compare_buf)[uncompressed_size - 1] == 'A');
+	errcheck(((char *)buf->compare_buf)[buf->uncompressed_size - 1] == 'A');
 	errcheck(ret != 0);
 	printf("\tuncompress does not overrun\n");
 
@@ -304,32 +368,175 @@ static int run_test(char *name, mutate_func compress, mutate_func uncompress)
 	ret = 0;
 
 out:
+	return ret;
+}
+
+static int run_test(struct unit_test_state *uts, char *name,
+		    mutate_func compress, mutate_func uncompress)
+{
+	struct buf_state sbuf, *buf = &sbuf;
+	int ret;
+
+	printf(" testing %s ...\n", name);
+
+	buf->orig_buf = (void *)plain;
+	buf->orig_size = strlen(buf->orig_buf); /* Trailing NUL not included */
+	errcheck(buf->orig_size > 0);
+
+	buf->compressed_size = TEST_BUFFER_SIZE;
+	buf->uncompressed_size = TEST_BUFFER_SIZE;
+	buf->compressed_buf = malloc(buf->compressed_size);
+	errcheck(buf->compressed_buf);
+	buf->uncompressed_buf = malloc(buf->uncompressed_size);
+	errcheck(buf->uncompressed_buf);
+	buf->compare_buf = malloc(buf->uncompressed_size);
+	errcheck(buf->compare_buf);
+
+	ret = run_test_internal(uts, name, compress, uncompress, buf);
+out:
 	printf(" %s: %s\n", name, ret == 0 ? "ok" : "FAILED");
 
-	free(compare_buf);
-	free(uncompressed_buf);
-	free(compressed_buf);
+	free(buf->compare_buf);
+	free(buf->uncompressed_buf);
+	free(buf->compressed_buf);
 
 	return ret;
 }
 
-
-static int do_test_compression(cmd_tbl_t *cmdtp, int flag, int argc,
-			       char * const argv[])
+static int compression_test_gzip(struct unit_test_state *uts)
 {
-	int err = 0;
+	return run_test(uts, "gzip", compress_using_gzip,
+			uncompress_using_gzip);
+}
+COMPRESSION_TEST(compression_test_gzip, 0);
 
-	err += run_test("gzip", compress_using_gzip, uncompress_using_gzip);
-	err += run_test("bzip2", compress_using_bzip2, uncompress_using_bzip2);
-	err += run_test("lzma", compress_using_lzma, uncompress_using_lzma);
-	err += run_test("lzo", compress_using_lzo, uncompress_using_lzo);
+static int compression_test_bzip2(struct unit_test_state *uts)
+{
+	return run_test(uts, "bzip2", compress_using_bzip2,
+			uncompress_using_bzip2);
+}
+COMPRESSION_TEST(compression_test_bzip2, 0);
 
-	printf("test_compression %s\n", err == 0 ? "ok" : "FAILED");
+static int compression_test_lzma(struct unit_test_state *uts)
+{
+	return run_test(uts, "lzma", compress_using_lzma,
+			uncompress_using_lzma);
+}
+COMPRESSION_TEST(compression_test_lzma, 0);
 
-	return err;
+static int compression_test_lzo(struct unit_test_state *uts)
+{
+	return run_test(uts, "lzo", compress_using_lzo, uncompress_using_lzo);
+}
+COMPRESSION_TEST(compression_test_lzo, 0);
+
+static int compression_test_lz4(struct unit_test_state *uts)
+{
+	return run_test(uts, "lz4", compress_using_lz4, uncompress_using_lz4);
+}
+COMPRESSION_TEST(compression_test_lz4, 0);
+
+static int compress_using_none(struct unit_test_state *uts,
+			       void *in, unsigned long in_size,
+			       void *out, unsigned long out_max,
+			       unsigned long *out_size)
+{
+	/* Here we just copy */
+	memcpy(out, in, in_size);
+	*out_size = in_size;
+
+	return 0;
 }
 
-U_BOOT_CMD(
-	test_compression,	5,	1,	do_test_compression,
-	"Basic test of compressors: gzip bzip2 lzma lzo", ""
-);
+/**
+ * run_bootm_test() - Run tests on the bootm decopmression function
+ *
+ * @comp_type:	Compression type to test
+ * @compress:	Our function to compress data
+ * @return 0 if OK, non-zero on failure
+ */
+static int run_bootm_test(struct unit_test_state *uts, int comp_type,
+			  mutate_func compress)
+{
+	ulong compress_size = 1024;
+	void *compress_buff;
+	int unc_len;
+	int err = 0;
+	const ulong image_start = 0;
+	const ulong load_addr = 0x1000;
+	ulong load_end;
+
+	printf("Testing: %s\n", genimg_get_comp_name(comp_type));
+	compress_buff = map_sysmem(image_start, 0);
+	unc_len = strlen(plain);
+	compress(uts, (void *)plain, unc_len, compress_buff, compress_size,
+		 &compress_size);
+	err = bootm_decomp_image(comp_type, load_addr, image_start,
+				 IH_TYPE_KERNEL, map_sysmem(load_addr, 0),
+				 compress_buff, compress_size, unc_len,
+				 &load_end);
+	ut_assertok(err);
+	err = bootm_decomp_image(comp_type, load_addr, image_start,
+				 IH_TYPE_KERNEL, map_sysmem(load_addr, 0),
+				 compress_buff, compress_size, unc_len - 1,
+				 &load_end);
+	ut_assert(err);
+
+	/* We can't detect corruption when not decompressing */
+	if (comp_type == IH_COMP_NONE)
+		return 0;
+	memset(compress_buff + compress_size / 2, '\x49',
+	       compress_size / 2);
+	err = bootm_decomp_image(comp_type, load_addr, image_start,
+				 IH_TYPE_KERNEL, map_sysmem(load_addr, 0),
+				 compress_buff, compress_size, 0x10000,
+				 &load_end);
+	ut_assert(err);
+
+	return 0;
+}
+
+static int compression_test_bootm_gzip(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_GZIP, compress_using_gzip);
+}
+COMPRESSION_TEST(compression_test_bootm_gzip, 0);
+
+static int compression_test_bootm_bzip2(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_BZIP2, compress_using_bzip2);
+}
+COMPRESSION_TEST(compression_test_bootm_bzip2, 0);
+
+static int compression_test_bootm_lzma(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_LZMA, compress_using_lzma);
+}
+COMPRESSION_TEST(compression_test_bootm_lzma, 0);
+
+static int compression_test_bootm_lzo(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_LZO, compress_using_lzo);
+}
+COMPRESSION_TEST(compression_test_bootm_lzo, 0);
+
+static int compression_test_bootm_lz4(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_LZ4, compress_using_lz4);
+}
+COMPRESSION_TEST(compression_test_bootm_lz4, 0);
+
+static int compression_test_bootm_none(struct unit_test_state *uts)
+{
+	return run_bootm_test(uts, IH_COMP_NONE, compress_using_none);
+}
+COMPRESSION_TEST(compression_test_bootm_none, 0);
+
+int do_ut_compression(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	struct unit_test *tests = ll_entry_start(struct unit_test,
+						 compression_test);
+	const int n_ents = ll_entry_count(struct unit_test, compression_test);
+
+	return cmd_ut_category("compression", tests, n_ents, argc, argv);
+}

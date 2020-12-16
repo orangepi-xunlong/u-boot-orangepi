@@ -1,16 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Samsung Electronics
  *
  * Author: Donghwa Lee <dh09.lee@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/arch/mipi_dsim.h>
 
-#include "exynos_mipi_dsi_lowlevel.h"
-#include "exynos_mipi_dsi_common.h"
+#include "exynos/exynos_mipi_dsi_lowlevel.h"
+#include "exynos/exynos_mipi_dsi_common.h"
 
 static void s6e8ax0_panel_cond(struct mipi_dsim_device *dsim_dev)
 {

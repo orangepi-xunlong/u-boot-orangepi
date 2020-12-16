@@ -1,15 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2003
  * Wolfgang Denk Engineering, <wd@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
-
-#if defined(CONFIG_64BIT)
-#define PTR_COUNT_SHIFT	3
-#else
-#define PTR_COUNT_SHIFT	2
-#endif
 
 OUTPUT_ARCH(mips)
 ENTRY(_start)
@@ -19,7 +12,9 @@ SECTIONS
 
 	. = ALIGN(4);
 	.text : {
+		__text_start = .;
 		*(.text*)
+		__text_end = .;
 	}
 
 	. = ALIGN(4);
@@ -31,15 +26,6 @@ SECTIONS
 	.data : {
 		*(.data*)
 	}
-
-	. = .;
-	_gp = ALIGN(16) + 0x7ff0;
-
-	.got : {
-		*(.got)
-	}
-
-	num_got_entries = SIZEOF(.got) >> PTR_COUNT_SHIFT;
 
 	. = ALIGN(4);
 	.sdata : {
@@ -55,15 +41,19 @@ SECTIONS
 	__image_copy_end = .;
 	__init_end = .;
 
-	.rel.dyn : {
-		__rel_dyn_start = .;
-		*(.rel.dyn)
-		__rel_dyn_end = .;
+	/*
+	 * .rel must come last so that the mips-relocs tool can shrink
+	 * the section size & the PT_LOAD program header filesz.
+	 */
+	.rel : {
+		__rel_start = .;
+		BYTE(0x0)
+		. += (32 * 1024) - 1;
 	}
 
 	_end = .;
 
-	.bss __rel_dyn_start (OVERLAY) : {
+	.bss __rel_start (OVERLAY) : {
 		__bss_start = .;
 		*(.sbss.*)
 		*(.bss.*)

@@ -13,7 +13,7 @@ Created 06/05/2007
 
 2. MEMORY MAP UNDER U-BOOT AND LINUX KERNEL
 ===========================================
-2.1. For the initial bringup, we adopted a consistent memory scheme between u-boot and
+2.1. For the initial bringup, we adopted a consistent memory scheme between U-Boot and
 	linux kernel, you can customize it based on your system requirements:
 	SDR:	0x00000000-0x00ffffff
 	SRAM0:	0x20010000-0x20017fff
@@ -27,7 +27,6 @@ Created 06/05/2007
 3.1 Explanation on NEW definitions in include/configs/M5253EVBE.h
 	CONFIG_MCF52x2		Processor family
 	CONFIG_MCF5253		MCF5253 specific
-	CONFIG_M5253EVBE	Amadeus Plus board specific
 	CONFIG_SYS_CLK			Define Amadeus Plus CPU Clock
 	CONFIG_SYS_MBAR		MBAR base address
 	CONFIG_SYS_MBAR2		MBAR2 base address

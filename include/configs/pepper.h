@@ -1,35 +1,24 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Gumstix, Inc. - http://www.gumstix.com/
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __CONFIG_PEPPER_H
 #define __CONFIG_PEPPER_H
 
-#define CONFIG_MMC
 #include <configs/ti_am335x_common.h>
-
-#undef CONFIG_BOARD_LATE_INIT
-#undef CONFIG_SPL_OS_BOOT
 
 /* Clock defines */
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
-#undef CONFIG_SYS_PROMPT
-#define CONFIG_SYS_PROMPT		"pepper# "
+#define CONFIG_SYS_I2C_EEPROM_ADDR	0x50
 
 /* Mach type */
-#define MACH_TYPE_PEPPER		4207	/* Until the next sync */
 #define CONFIG_MACH_TYPE		MACH_TYPE_PEPPER
 
 #define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_IS_NOWHERE
-/* Display cpuinfo */
-#define CONFIG_DISPLAY_CPUINFO
 
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	"bootdir=/boot\0" \
@@ -39,7 +28,7 @@
 	"optargs=\0" \
 	"mmcdev=0\0" \
 	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext3 rootwait\0" \
+	"mmcrootfstype=ext4 rootwait\0" \
 	"mmcargs=setenv bootargs console=${console} " \
 		"${optargs} " \
 		"root=${mmcroot} " \
@@ -81,19 +70,12 @@
 	"fi;" \
 
 /* Serial console configuration */
-#define CONFIG_CONS_INDEX		1 /* UART0 */
 #define CONFIG_SERIAL1			1
 #define CONFIG_SYS_NS16550_COM1		0x44e09000
 
 /* Ethernet support */
-#define CONFIG_PHY_GIGE
-#define CONFIG_PHYLIB
-#define CONFIG_PHY_ADDR			0
-#define CONFIG_PHY_MICREL
-#define CONFIG_PHY_MICREL_KSZ9021
 #define CONFIG_PHY_RESET_DELAY 1000
 
 /* SPL */
-#define CONFIG_SPL_LDSCRIPT		"$(CPUDIR)/am33xx/u-boot-spl.lds"
 
 #endif /* __CONFIG_PEPPER_H */

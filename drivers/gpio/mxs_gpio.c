@@ -1,15 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 GPIO control code
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <netdev.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
@@ -113,4 +111,19 @@ int gpio_request(unsigned gpio, const char *label)
 int gpio_free(unsigned gpio)
 {
 	return 0;
+}
+
+int name_to_gpio(const char *name)
+{
+	unsigned bank, pin;
+	char *end;
+
+	bank = simple_strtoul(name, &end, 10);
+
+	if (!*end || *end != ':')
+		return bank;
+
+	pin = simple_strtoul(end + 1, NULL, 10);
+
+	return (bank << MXS_PAD_BANK_SHIFT) | (pin << MXS_PAD_PIN_SHIFT);
 }

@@ -1,62 +1,52 @@
-#include<clk/clk_plat.h>
-#include<clk/clk.h>
-
-
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * DOC: basic fixed-rate clock that cannot gate
- *
- * Traits of this clock:
- * prepare - clk_(un)prepare only ensures parents are prepared
- * enable - clk_enable only ensures parents are enabled
- * rate - rate is always a fixed value.  No clk_set_rate support
- * parent - fixed parent.  No clk_set_parent support
+ * Copyright (C) 2016 Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#define to_clk_fixed_rate(_hw) container_of(_hw, struct clk_fixed_rate, hw)
+#include <common.h>
+#include <clk-uclass.h>
+#include <dm.h>
 
-static unsigned long clk_fixed_rate_recalc_rate(struct clk_hw *hw,
-		unsigned long parent_rate)
-{
-	return to_clk_fixed_rate(hw)->fixed_rate;
-}
-
-struct clk_ops clk_fixed_rate_ops = {
-	.recalc_rate = clk_fixed_rate_recalc_rate,
+struct clk_fixed_rate {
+	unsigned long fixed_rate;
 };
 
-struct clk *clk_register_fixed_rate(void *dev, const char *name,
-		const char *parent_name, unsigned long flags,
-		unsigned long fixed_rate)
+#define to_clk_fixed_rate(dev)	((struct clk_fixed_rate *)dev_get_platdata(dev))
+
+static ulong clk_fixed_rate_get_rate(struct clk *clk)
 {
-	struct clk_fixed_rate *fixed;
-	struct clk *clk;
-	struct clk_init_data init;
+	if (clk->id != 0)
+		return -EINVAL;
 
-	/* allocate fixed-rate clock */
-	fixed = malloc(sizeof(struct clk_fixed_rate));
-	if (fixed)
-		memset(fixed,0,sizeof(struct clk_fixed_rate));
-    else {
-        printf("%s: could not allocate fixed rate clk\n", __func__);
-        return NULL;
-    }
-
-	init.name = name;
-	init.ops = &clk_fixed_rate_ops;
-	init.flags = flags | CLK_IS_BASIC;
-	init.parent_names = (parent_name ? &parent_name: NULL);
-	init.num_parents = (parent_name ? 1 : 0);
-	/* struct clk_fixed_rate assignments */
-	fixed->fixed_rate = fixed_rate;
-	fixed->hw.init = &init;
-
-	/* register the clock */
-	clk = clk_register(&fixed->hw);
-
-	if (NULL == clk)
-		free(fixed);
-
-	return clk;
-
+	return to_clk_fixed_rate(clk->dev)->fixed_rate;
 }
 
+const struct clk_ops clk_fixed_rate_ops = {
+	.get_rate = clk_fixed_rate_get_rate,
+};
+
+static int clk_fixed_rate_ofdata_to_platdata(struct udevice *dev)
+{
+#if !CONFIG_IS_ENABLED(OF_PLATDATA)
+	to_clk_fixed_rate(dev)->fixed_rate =
+		dev_read_u32_default(dev, "clock-frequency", 0);
+#endif
+
+	return 0;
+}
+
+static const struct udevice_id clk_fixed_rate_match[] = {
+	{
+		.compatible = "fixed-clock",
+	},
+	{ /* sentinel */ }
+};
+
+U_BOOT_DRIVER(clk_fixed_rate) = {
+	.name = "fixed_rate_clock",
+	.id = UCLASS_CLK,
+	.of_match = clk_fixed_rate_match,
+	.ofdata_to_platdata = clk_fixed_rate_ofdata_to_platdata,
+	.platdata_auto_alloc_size = sizeof(struct clk_fixed_rate),
+	.ops = &clk_fixed_rate_ops,
+};

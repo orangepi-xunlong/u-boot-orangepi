@@ -9,7 +9,7 @@
 #ifndef _DAVINCI_NAND_H_
 #define _DAVINCI_NAND_H_
 
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
 #include <asm/arch/hardware.h>
 
 #define NAND_READ_START  	0x00
@@ -35,10 +35,12 @@ struct davinci_emif_regs {
 	uint32_t	sdrcr;
 	union {
 		uint32_t abncr[4];
-		uint32_t ab1cr;
-		uint32_t ab2cr;
-		uint32_t ab3cr;
-		uint32_t ab4cr;
+		struct {
+			uint32_t ab1cr;
+			uint32_t ab2cr;
+			uint32_t ab3cr;
+			uint32_t ab4cr;
+		};
 	};
 	uint32_t	sdtimr;
 	uint32_t	ddrsr;

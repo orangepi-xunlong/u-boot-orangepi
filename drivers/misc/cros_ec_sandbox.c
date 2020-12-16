@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Chromium OS cros_ec driver - sandbox emulation
  *
  * Copyright (c) 2013 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <cros_ec.h>
+#include <dm.h>
 #include <ec_commands.h>
 #include <errno.h>
 #include <hash.h>
@@ -50,8 +50,6 @@
  * the EC image in with U-Boot (Vic has demonstrated a prototype for this).
  */
 
-DECLARE_GLOBAL_DATA_PTR;
-
 #define KEYBOARD_ROWS	8
 #define KEYBOARD_COLS	13
 
@@ -85,7 +83,7 @@ struct ec_state {
 	struct ec_keymatrix_entry *matrix;	/* the key matrix info */
 	uint8_t keyscan[KEYBOARD_COLS];
 	bool recovery_req;
-} s_state, *state;
+} s_state, *g_state;
 
 /**
  * cros_ec_read_state() - read the sandbox EC state from the state file
@@ -138,7 +136,7 @@ static int cros_ec_read_state(const void *blob, int node)
  */
 static int cros_ec_write_state(void *blob, int node)
 {
-	struct ec_state *ec = &s_state;
+	struct ec_state *ec = g_state;
 
 	/* We are guaranteed enough space to write basic properties */
 	fdt_setprop_u32(blob, node, "current-image", ec->current_image);
@@ -187,18 +185,16 @@ static int get_image_used(struct ec_state *ec, struct fmap_entry *entry)
  * RR=Row CC=Column KKKK=Key Code
  *
  * @param ec	Current emulated EC state
- * @param blob	Device tree blob containing keyscan information
  * @param node	Keyboard node of device tree containing keyscan information
  * @return 0 if ok, -1 on error
  */
-static int keyscan_read_fdt_matrix(struct ec_state *ec, const void *blob,
-				   int node)
+static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
 {
 	const u32 *cell;
 	int upto;
 	int len;
 
-	cell = fdt_getprop(blob, node, "linux,keymap", &len);
+	cell = ofnode_get_property(node, "linux,keymap", &len);
 	ec->matrix_count = len / 4;
 	ec->matrix = calloc(ec->matrix_count, sizeof(*ec->matrix));
 	if (!ec->matrix) {
@@ -369,7 +365,7 @@ static int process_cmd(struct ec_state *ec,
 		struct fmap_entry *entry;
 		int ret, size;
 
-		entry = &state->ec_config.region[EC_FLASH_REGION_RW];
+		entry = &ec->ec_config.region[EC_FLASH_REGION_RW];
 
 		switch (req->cmd) {
 		case EC_VBOOT_HASH_RECALC:
@@ -426,7 +422,7 @@ static int process_cmd(struct ec_state *ec,
 		case EC_FLASH_REGION_RO:
 		case EC_FLASH_REGION_RW:
 		case EC_FLASH_REGION_WP_RO:
-			entry = &state->ec_config.region[req->region];
+			entry = &ec->ec_config.region[req->region];
 			resp->offset = entry->offset;
 			resp->size = entry->length;
 			len = sizeof(*resp);
@@ -458,6 +454,9 @@ static int process_cmd(struct ec_state *ec,
 	case EC_CMD_MKBP_STATE:
 		len = cros_ec_keyscan(ec, resp_data);
 		break;
+	case EC_CMD_ENTERING_MODE:
+		len = 0;
+		break;
 	default:
 		printf("   ** Unknown EC command %#02x\n", req_hdr->command);
 		return -1;
@@ -466,16 +465,17 @@ static int process_cmd(struct ec_state *ec,
 	return len;
 }
 
-int cros_ec_sandbox_packet(struct cros_ec_dev *dev, int out_bytes,
-			   int in_bytes)
+int cros_ec_sandbox_packet(struct udevice *udev, int out_bytes, int in_bytes)
 {
+	struct cros_ec_dev *dev = dev_get_uclass_priv(udev);
+	struct ec_state *ec = dev_get_priv(dev->dev);
 	struct ec_host_request *req_hdr = (struct ec_host_request *)dev->dout;
 	const void *req_data = req_hdr + 1;
 	struct ec_host_response *resp_hdr = (struct ec_host_response *)dev->din;
 	void *resp_data = resp_hdr + 1;
 	int len;
 
-	len = process_cmd(&s_state, req_hdr, req_data, resp_hdr, resp_data);
+	len = process_cmd(ec, req_hdr, req_data, resp_hdr, resp_data);
 	if (len < 0)
 		return len;
 
@@ -491,14 +491,9 @@ int cros_ec_sandbox_packet(struct cros_ec_dev *dev, int out_bytes,
 	return in_bytes;
 }
 
-int cros_ec_sandbox_decode_fdt(struct cros_ec_dev *dev, const void *blob)
-{
-	return 0;
-}
-
 void cros_ec_check_keyboard(struct cros_ec_dev *dev)
 {
-	struct ec_state *ec = &s_state;
+	struct ec_state *ec = dev_get_priv(dev->dev);
 	ulong start;
 
 	printf("Press keys for EC to detect on reset (ESC=recovery)...");
@@ -512,28 +507,33 @@ void cros_ec_check_keyboard(struct cros_ec_dev *dev)
 	}
 }
 
-/**
- * Initialize sandbox EC emulation.
- *
- * @param dev		CROS_EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 on error
- */
-int cros_ec_sandbox_init(struct cros_ec_dev *dev, const void *blob)
+int cros_ec_probe(struct udevice *dev)
 {
-	struct ec_state *ec = &s_state;
-	int node;
+	struct ec_state *ec = dev->priv;
+	struct cros_ec_dev *cdev = dev->uclass_priv;
+	struct udevice *keyb_dev;
+	ofnode node;
 	int err;
 
-	state = &s_state;
-	err = cros_ec_decode_ec_flash(blob, &ec->ec_config);
-	if (err)
+	memcpy(ec, &s_state, sizeof(*ec));
+	err = cros_ec_decode_ec_flash(dev, &ec->ec_config);
+	if (err) {
+		debug("%s: Cannot device EC flash\n", __func__);
 		return err;
+	}
 
-	node = fdtdec_next_compatible(blob, 0, COMPAT_GOOGLE_CROS_EC_KEYB);
-	if (node < 0) {
+	node = ofnode_null();
+	for (device_find_first_child(dev, &keyb_dev);
+	     keyb_dev;
+	     device_find_next_child(&keyb_dev)) {
+		if (device_get_uclass_id(keyb_dev) == UCLASS_KEYBOARD) {
+			node = dev_ofnode(keyb_dev);
+			break;
+		}
+	}
+	if (!ofnode_valid(node)) {
 		debug("%s: No cros_ec keyboard found\n", __func__);
-	} else if (keyscan_read_fdt_matrix(ec, blob, node)) {
+	} else if (keyscan_read_fdt_matrix(ec, node)) {
 		debug("%s: Could not read key matrix\n", __func__);
 		return -1;
 	}
@@ -555,5 +555,25 @@ int cros_ec_sandbox_init(struct cros_ec_dev *dev, const void *blob)
 			return -ENOMEM;
 	}
 
-	return 0;
+	cdev->dev = dev;
+	g_state = ec;
+	return cros_ec_register(dev);
 }
+
+struct dm_cros_ec_ops cros_ec_ops = {
+	.packet = cros_ec_sandbox_packet,
+};
+
+static const struct udevice_id cros_ec_ids[] = {
+	{ .compatible = "google,cros-ec-sandbox" },
+	{ }
+};
+
+U_BOOT_DRIVER(cros_ec_sandbox) = {
+	.name		= "cros_ec_sandbox",
+	.id		= UCLASS_CROS_EC,
+	.of_match	= cros_ec_ids,
+	.probe		= cros_ec_probe,
+	.priv_auto_alloc_size = sizeof(struct ec_state),
+	.ops		= &cros_ec_ops,
+};

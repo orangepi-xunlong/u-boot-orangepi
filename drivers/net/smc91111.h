@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*------------------------------------------------------------------------
  . smc91111.h - macros for the LAN91C111 Ethernet Driver
  .
@@ -7,8 +8,6 @@
  . Copyright (C) 2001 Standard Microsystems Corporation (SMSC)
  .       Developed by Simple Network Magic Corporation (SNMC)
  . Copyright (C) 1996 by Erik Stahlman (ES)
- .
-  * SPDX-License-Identifier:	GPL-2.0+
  .
  . This file contains register information and access macros for
  . the LAN91C111 single chip ethernet controller.  It is a modified
@@ -77,19 +76,6 @@ struct smc91111_priv{
 	if (__p & 2) __v >>= 8; \
 	else __v &= 0xff; \
 	__v; })
-#elif defined(CONFIG_XAENIAX)
-#define SMC_inl(a,r)	(*((volatile dword *)((a)->iobase+(r))))
-#define SMC_inw(a,z)	({ \
-	unsigned int __p = (unsigned int)((a)->iobase + (z)); \
-	unsigned int __v = *(volatile unsigned int *)((__p) & ~3); \
-	if (__p & 3) __v >>= 16; \
-	else __v &= 0xffff; \
-	__v; })
-#define SMC_inb(a,p)	({ \
-	unsigned int ___v = SMC_inw((a),(p) & ~1); \
-	if ((p) & 1) ___v >>= 8; \
-	else ___v &= 0xff; \
-	___v; })
 #else
 #define	SMC_inl(a,r)	(*((volatile dword *)((a)->iobase+(r))))
 #define	SMC_inw(a,r)	(*((volatile word *)((a)->iobase+(r))))
@@ -104,15 +90,6 @@ struct smc91111_priv{
 #ifdef CONFIG_XSENGINE
 #define	SMC_outl(a,d,r)	(*((volatile dword *)((a)->iobase+(r<<1))) = d)
 #define	SMC_outw(a,d,r)	(*((volatile word *)((a)->iobase+(r<<1))) = d)
-#elif defined (CONFIG_XAENIAX)
-#define SMC_outl(a,d,r)	(*((volatile dword *)((a)->iobase+(r))) = d)
-#define SMC_outw(a,d,p)	({ \
-	dword __dwo = SMC_inl((a),(p) & ~3); \
-	dword __dwn = (word)(d); \
-	__dwo &= ((p) & 3) ? 0x0000ffff : 0xffff0000; \
-	__dwo |= ((p) & 3) ? __dwn << 16 : __dwn; \
-	SMC_outl((a), __dwo, (p) & ~3); \
-})
 #else
 #define	SMC_outl(a,d,r)	(*((volatile dword *)((a)->iobase+(r))) = d)
 #define	SMC_outw(a,d,r)	(*((volatile word *)((a)->iobase+(r))) = d)
@@ -236,7 +213,36 @@ struct smc91111_priv{
 					  *(__b2 + __i) = SMC_inb((a),(r));  \
 					};  \
 				}while(0)
-
+#elif defined(CONFIG_MS7206SE)
+#define SWAB7206(x) ({ word __x = x; ((__x << 8)|(__x >> 8)); })
+#define SMC_inw(a, r) *((volatile word*)((a)->iobase + (r)))
+#define SMC_inb(a, r) (*((volatile byte*)((a)->iobase + ((r) ^ 0x01))))
+#define SMC_insw(a, r, b, l) \
+	do { \
+		int __i; \
+		word *__b2 = (word *)(b);		  \
+		for (__i = 0; __i < (l); __i++) { \
+			*__b2++ = SWAB7206(SMC_inw(a, r));	\
+		} \
+	} while (0)
+#define	SMC_outw(a, d, r)	(*((volatile word *)((a)->iobase+(r))) = d)
+#define	SMC_outb(a, d, r)	({	word __d = (byte)(d);  \
+				word __w = SMC_inw((a), ((r)&(~1)));	\
+				if (((r) & 1)) \
+					__w = (__w & 0x00ff) | (__d << 8); \
+				else \
+					__w = (__w & 0xff00) | (__d); \
+				SMC_outw((a), __w, ((r)&(~1)));	      \
+			})
+#define SMC_outsw(a, r, b, l) \
+	do { \
+		int __i; \
+		word *__b2 = (word *)(b);		  \
+		for (__i = 0; __i < (l); __i++) { \
+			SMC_outw(a, SWAB7206(*__b2), r);	  \
+			__b2++; \
+		} \
+	} while (0)
 #else			/* if not CONFIG_CPU_PXA25X and not CONFIG_LEON */
 
 #ifndef CONFIG_SMC_USE_IOFUNCS /* these macros don't work on some boards */
@@ -246,8 +252,6 @@ struct smc91111_priv{
 
 #ifdef CONFIG_ADNPESC1
 #define	SMC_inw(a,r)	(*((volatile word *)((a)->iobase+((r)<<1))))
-#elif CONFIG_BLACKFIN
-#define	SMC_inw(a,r)	({ word __v = (*((volatile word *)((a)->iobase+(r)))); SSYNC(); __v;})
 #elif CONFIG_ARM64
 #define	SMC_inw(a, r)	(*((volatile word*)((a)->iobase+((dword)(r)))))
 #else
@@ -257,11 +261,6 @@ struct smc91111_priv{
 
 #ifdef CONFIG_ADNPESC1
 #define	SMC_outw(a,d,r)	(*((volatile word *)((a)->iobase+((r)<<1))) = d)
-#elif CONFIG_BLACKFIN
-#define	SMC_outw(a, d, r)	\
-			({	(*((volatile word*)((a)->iobase+((r)))) = d); \
-				SSYNC(); \
-			})
 #elif CONFIG_ARM64
 #define	SMC_outw(a, d, r)	\
 			(*((volatile word*)((a)->iobase+((dword)(r)))) = d)

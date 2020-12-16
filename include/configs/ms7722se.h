@@ -1,31 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Hitachi Solution Engine 7722
  *
  * Copyright (C) 2007 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MS7722SE_H
 #define __MS7722SE_H
 
 #define CONFIG_CPU_SH7722	1
-#define CONFIG_MS7722SE		1
 
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_SAVEENV
-
-#define CONFIG_BAUDRATE		115200
-#define CONFIG_BOOTDELAY	3
-#define CONFIG_BOOTARGS		"console=ttySC0,115200 root=1f01"
-
-#define CONFIG_VERSION_VARIABLE
+#define CONFIG_DISPLAY_BOARDINFO
 #undef  CONFIG_SHOW_BOOT_PROGRESS
 
 /* SMC9111 */
@@ -37,25 +22,15 @@
 #define MS7722SE_FLASH_BASE_1	(0xA0000000)
 #define MS7722SE_FLASH_BANK_SIZE	(8*1024 * 1024)
 
-#define CONFIG_SYS_TEXT_BASE	0x8FFC0000
-#define CONFIG_SYS_LONGHELP				/* undef to save memory	*/
-#define CONFIG_SYS_CBSIZE		256		/* Buffer size for input from the Console */
 #define CONFIG_SYS_PBSIZE		256		/* Buffer size for Console output */
-#define CONFIG_SYS_MAXARGS		16		/* max args accepted for monitor commands */
-#define CONFIG_SYS_BARGSIZE		512		/* Buffer size for Boot Arguments passed to kernel */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }	/* List of legal baudrate settings for this board */
 
 /* SCIF */
-#define CONFIG_SCIF_CONSOLE	1
 #define CONFIG_CONS_SCIF0	1
-#undef  CONFIG_SYS_CONSOLE_INFO_QUIET			/* Suppress display of console information at boot */
-#undef  CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
-#undef  CONFIG_SYS_CONSOLE_ENV_OVERWRITE
 
 #define CONFIG_SYS_MEMTEST_START	(MS7722SE_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + (60 * 1024 * 1024))
 
-#undef  CONFIG_SYS_ALT_MEMTEST		/* Enable alternate, more extensive, memory test */
 #undef  CONFIG_SYS_MEMTEST_SCRATCH	/* Scratch address used by the alternate memory test */
 
 #undef  CONFIG_SYS_LOADS_BAUD_CHANGE	/* Enable temporary baudrate change while serial download */
@@ -97,7 +72,6 @@
 
 #undef  CONFIG_SYS_DIRECT_FLASH_TFTP
 
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_OVERWRITE	1
 #define CONFIG_ENV_SECT_SIZE	(8 * 1024)
 #define CONFIG_ENV_SIZE		(CONFIG_ENV_SECT_SIZE)

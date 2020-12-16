@@ -1,14 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
  * Kumar Gala <kumar.gala@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc85xx.h>
-#include <version.h>
 
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
@@ -185,12 +183,18 @@ __secondary_start_page:
 
 	mtspr	SPRN_PIR,r4	/* write to PIR register */
 
+#ifdef CONFIG_SYS_FSL_ERRATUM_A007907
+	mfspr	r8, L1CSR2
+	clrrwi	r8, r8, 10	/* clear bit [54-63] DCSTASHID */
+	mtspr	L1CSR2, r8
+#else
 #ifdef CONFIG_SYS_CACHE_STASHING
 	/* set stash id to (coreID) * 2 + 32 + L1 CT (0) */
 	slwi	r8,r4,1
 	addi	r8,r8,32
 	mtspr	L1CSR2,r8
 #endif
+#endif	/* CONFIG_SYS_FSL_ERRATUM_A007907 */
 
 #if defined(CONFIG_SYS_P4080_ERRATUM_CPU22) || \
 	defined(CONFIG_SYS_FSL_ERRATUM_NMG_CPU_A011)

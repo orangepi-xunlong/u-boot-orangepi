@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * USB HOST XHCI Controller
  *
@@ -10,19 +11,16 @@
  * Copyright (C) 2013 Samsung Electronics Co.Ltd
  * Authors: Vivek Gautam <gautam.vivek@samsung.com>
  *	    Vikas Sajjan <vikas.sajjan@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef HOST_XHCI_H_
 #define HOST_XHCI_H_
 
+#include <asm/types.h>
 #include <asm/cache.h>
 #include <asm/io.h>
 #include <linux/list.h>
-
-#define upper_32_bits(n) (u32)((n) >> 32)
-#define lower_32_bits(n) (u32)(n)
+#include <linux/compat.h>
 
 #define MAX_EP_CTX_NUM		31
 #define XHCI_ALIGNMENT		64
@@ -31,7 +29,7 @@
 /* Max number of USB devices for any host controller - limit in section 6.1 */
 #define MAX_HC_SLOTS            256
 /* Section 5.3.3 - MaxPorts */
-#define MAX_HC_PORTS            127
+#define MAX_HC_PORTS            255
 
 /* Up to 16 ms to halt an HC */
 #define XHCI_MAX_HALT_USEC	(16*1000)
@@ -103,8 +101,8 @@ struct xhci_hccr {
 #define HCS_MAX_INTRS(p)	(((p) >> 8) & 0x7ff)
 /* bits 24:31, Max Ports - max value is 0x7F = 127 ports */
 #define HCS_MAX_PORTS_SHIFT	24
-#define HCS_MAX_PORTS_MASK	(0x7f << HCS_MAX_PORTS_SHIFT)
-#define HCS_MAX_PORTS(p)	(((p) >> 24) & 0x7f)
+#define HCS_MAX_PORTS_MASK	(0xff << HCS_MAX_PORTS_SHIFT)
+#define HCS_MAX_PORTS(p)	(((p) >> 24) & 0xff)
 
 /* HCSPARAMS2 - hcs_params2 - bitmasks */
 /* bits 0:3, frames or uframes that SW needs to queue transactions
@@ -112,9 +110,10 @@ struct xhci_hccr {
 #define HCS_IST(p)		(((p) >> 0) & 0xf)
 /* bits 4:7, max number of Event Ring segments */
 #define HCS_ERST_MAX(p)		(((p) >> 4) & 0xf)
+/* bits 21:25 Hi 5 bits of Scratchpad buffers SW must allocate for the HW */
 /* bit 26 Scratchpad restore - for save/restore HW state - not used yet */
-/* bits 27:31 number of Scratchpad buffers SW must allocate for the HW */
-#define HCS_MAX_SCRATCHPAD(p)   (((p) >> 27) & 0x1f)
+/* bits 27:31 Lo 5 bits of Scratchpad buffers SW must allocate for the HW */
+#define HCS_MAX_SCRATCHPAD(p)	((((p) >> 16) & 0x3e0) | (((p) >> 27) & 0x1f))
 
 /* HCSPARAMS3 - hcs_params3 - bitmasks */
 /* bits 0:7, Max U1 to U0 latency for the roothub ports */
@@ -172,9 +171,7 @@ struct xhci_hcor {
 	volatile uint64_t or_dcbaap;
 	volatile uint32_t or_config;
 	volatile uint32_t reserved_2[241];
-	struct xhci_hcor_port_regs portregs[CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS];
-
-	uint32_t reserved_4[CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS * 254];
+	struct xhci_hcor_port_regs portregs[MAX_HC_PORTS];
 };
 
 /* USBCMD - USB command - command bitmasks */
@@ -483,10 +480,9 @@ struct xhci_protocol_caps {
  * @type: Type of context.  Used to calculated offsets to contained contexts.
  * @size: Size of the context data
  * @bytes: The raw context data given to HW
- * @dma: dma address of the bytes
  *
  * Represents either a Device or Input context.  Holds a pointer to the raw
- * memory used for the context (bytes) and dma address of it (dma).
+ * memory used for the context (bytes).
  */
 struct xhci_container_ctx {
 	unsigned type;
@@ -551,12 +547,12 @@ struct xhci_slot_ctx {
  * The Slot ID of the hub that isolates the high speed signaling from
  * this low or full-speed device.  '0' if attached to root hub port.
  */
-#define TT_SLOT			(0xff)
+#define TT_SLOT(p)		(((p) & 0xff) << 0)
 /*
  * The number of the downstream facing port of the high-speed hub
  * '0' if the device is not low or full speed.
  */
-#define TT_PORT			(0xff << 8)
+#define TT_PORT(p)		(((p) & 0xff) << 8)
 #define TT_THINK_TIME(p)	(((p) & 0x3) << 16)
 
 /* dev_state bitmasks */
@@ -666,8 +662,9 @@ struct xhci_ep_ctx {
 #define GET_MAX_PACKET(p)	((p) & 0x7ff)
 
 /* tx_info bitmasks */
-#define AVG_TRB_LENGTH_FOR_EP(p)	((p) & 0xffff)
-#define MAX_ESIT_PAYLOAD_FOR_EP(p)	(((p) & 0xffff) << 16)
+#define EP_AVG_TRB_LENGTH(p)		((p) & 0xffff)
+#define EP_MAX_ESIT_PAYLOAD_LO(p)	(((p) & 0xffff) << 16)
+#define EP_MAX_ESIT_PAYLOAD_HI(p)	((((p) >> 16) & 0xff) << 24)
 #define CTX_TO_MAX_ESIT_PAYLOAD(p)	(((p) >> 16) & 0xffff)
 
 /* deq bitmasks */
@@ -1039,14 +1036,18 @@ struct xhci_erst {
 	unsigned int		erst_size;
 };
 
+struct xhci_scratchpad {
+	u64 *sp_array;
+};
+
 /*
  * Each segment table entry is 4*32bits long.  1K seems like an ok size:
  * (1K bytes * 8bytes/bit) / (4*32 bits) = 64 segment entries in the table,
  * meaning 64 ring segments.
  * Initial allocated size of the ERST, in number of entries */
-#define	ERST_NUM_SEGS	3
+#define	ERST_NUM_SEGS	1
 /* Initial number of event segment rings allocated */
-#define	ERST_ENTRIES	3
+#define	ERST_ENTRIES	1
 /* Initial allocated size of the ERST, in number of entries */
 #define	ERST_SIZE	64
 /* Poll every 60 seconds */
@@ -1110,20 +1111,28 @@ static inline void xhci_writel(uint32_t volatile *regs, const unsigned int val)
  */
 static inline u64 xhci_readq(__le64 volatile *regs)
 {
+#if BITS_PER_LONG == 64
+	return readq(regs);
+#else
 	__u32 *ptr = (__u32 *)regs;
 	u64 val_lo = readl(ptr);
 	u64 val_hi = readl(ptr + 1);
 	return val_lo + (val_hi << 32);
+#endif
 }
 
 static inline void xhci_writeq(__le64 volatile *regs, const u64 val)
 {
+#if BITS_PER_LONG == 64
+	writeq(val, regs);
+#else
 	__u32 *ptr = (__u32 *)regs;
 	u32 val_lo = lower_32_bits(val);
 	/* FIXME */
-	u32 val_hi = 0;
+	u32 val_hi = upper_32_bits(val);
 	writel(val_lo, ptr);
 	writel(val_hi, ptr + 1);
+#endif
 }
 
 int xhci_hcd_init(int index, struct xhci_hccr **ret_hccr,
@@ -1202,6 +1211,9 @@ void xhci_hcd_stop(int index);
 #define XHCI_STS_CNR		(1 << 11)
 
 struct xhci_ctrl {
+#ifdef CONFIG_DM_USB
+	struct udevice *dev;
+#endif
 	struct xhci_hccr *hccr;	/* R/O registers, not need for volatile */
 	struct xhci_hcor *hcor;
 	struct xhci_doorbell_array *dba;
@@ -1215,6 +1227,7 @@ struct xhci_ctrl {
 	struct xhci_intr_reg *ir_set;
 	struct xhci_erst erst;
 	struct xhci_erst_entry entry[ERST_NUM_SEGS];
+	struct xhci_scratchpad *scratchpad;
 	struct xhci_virt_device *devs[MAX_HC_SLOTS];
 	int rootdev;
 };
@@ -1234,7 +1247,8 @@ void xhci_endpoint_copy(struct xhci_ctrl *ctrl,
 void xhci_slot_copy(struct xhci_ctrl *ctrl,
 		    struct xhci_container_ctx *in_ctx,
 		    struct xhci_container_ctx *out_ctx);
-void xhci_setup_addressable_virt_dev(struct usb_device *udev);
+void xhci_setup_addressable_virt_dev(struct xhci_ctrl *ctrl,
+				     struct usb_device *udev, int hop_portnr);
 void xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr,
 			u32 slot_id, u32 ep_index, trb_type cmd);
 void xhci_acknowledge_event(struct xhci_ctrl *ctrl);
@@ -1244,12 +1258,35 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 		 struct devrequest *req, int length, void *buffer);
 int xhci_check_maxpacket(struct usb_device *udev);
-void xhci_flush_cache(uint32_t addr, u32 type_len);
-void xhci_inval_cache(uint32_t addr, u32 type_len);
+void xhci_flush_cache(uintptr_t addr, u32 type_len);
+void xhci_inval_cache(uintptr_t addr, u32 type_len);
 void xhci_cleanup(struct xhci_ctrl *ctrl);
 struct xhci_ring *xhci_ring_alloc(unsigned int num_segs, bool link_trbs);
-int xhci_alloc_virt_device(struct usb_device *udev);
+int xhci_alloc_virt_device(struct xhci_ctrl *ctrl, unsigned int slot_id);
 int xhci_mem_init(struct xhci_ctrl *ctrl, struct xhci_hccr *hccr,
 		  struct xhci_hcor *hcor);
+
+/**
+ * xhci_deregister() - Unregister an XHCI controller
+ *
+ * @dev:	Controller device
+ * @return 0 if registered, -ve on error
+ */
+int xhci_deregister(struct udevice *dev);
+
+/**
+ * xhci_register() - Register a new XHCI controller
+ *
+ * @dev:	Controller device
+ * @hccr:	Host controller control registers
+ * @hcor:	Not sure what this means
+ * @return 0 if registered, -ve on error
+ */
+int xhci_register(struct udevice *dev, struct xhci_hccr *hccr,
+		  struct xhci_hcor *hcor);
+
+extern struct dm_usb_ops xhci_usb_ops;
+
+struct xhci_ctrl *xhci_get_ctrl(struct usb_device *udev);
 
 #endif /* HOST_XHCI_H_ */

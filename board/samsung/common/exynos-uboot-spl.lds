@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
@@ -5,8 +6,6 @@
  * Copyright (C) 2012 Samsung Electronics
  *
  * Based on arch/arm/cpu/armv7/omap-common/u-boot-spl.lds
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE, \
@@ -21,6 +20,7 @@ SECTIONS
 	.text :
 	{
 		__start = .;
+		*(.vectors)
 		arch/arm/cpu/armv7/start.o (.text*)
 		*(.text*)
 	} >.sram
@@ -37,8 +37,7 @@ SECTIONS
 	} >.sram
 	. = ALIGN(4);
 
-	/* Align .machine_param on 256 byte boundary for easier searching */
-	.machine_param ALIGN(0x100) : { *(.machine_param) } >.sram
+	.machine_param : { *(.machine_param) } >.sram
 	. = ALIGN(4);
 
 	__image_copy_end = .;

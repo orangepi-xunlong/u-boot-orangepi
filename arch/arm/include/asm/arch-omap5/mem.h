@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2008
  * Texas Instruments, <www.ti.com>
@@ -7,8 +8,6 @@
  *
  * Initial Code from:
  *		Richard Woodruff <r-woodruff2@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MEM_H_
@@ -46,13 +45,13 @@
 #define M_NAND_GPMC_CONFIG6	0x16000f80
 #define M_NAND_GPMC_CONFIG7	0x00000008
 
-#define STNOR_GPMC_CONFIG1	0x00001200
-#define STNOR_GPMC_CONFIG2	0x00101000
-#define STNOR_GPMC_CONFIG3	0x00030301
-#define STNOR_GPMC_CONFIG4	0x10041004
-#define STNOR_GPMC_CONFIG5	0x000C1010
+#define STNOR_GPMC_CONFIG1	0x00001000
+#define STNOR_GPMC_CONFIG2	0x001f1f00
+#define STNOR_GPMC_CONFIG3	0x001f1f01
+#define STNOR_GPMC_CONFIG4	0x1f011f01
+#define STNOR_GPMC_CONFIG5	0x001d1f1f
 #define STNOR_GPMC_CONFIG6	0x08070280
-#define STNOR_GPMC_CONFIG7	0x00000F48
+#define STNOR_GPMC_CONFIG7	0x00000048
 
 /* max number of GPMC Chip Selects */
 #define GPMC_MAX_CS		8

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011-2014 OMICRON electronics GmbH
  *
@@ -5,8 +6,6 @@
  *
  * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,26 +15,16 @@
  * Board
  */
 #define CONFIG_DRIVER_TI_EMAC
-#define MACH_TYPE_CALIMAIN	3528
 #define CONFIG_MACH_TYPE	MACH_TYPE_CALIMAIN
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * SoC Configuration
  */
-#define CONFIG_MACH_DAVINCI_CALIMAIN
-#define CONFIG_ARM926EJS		/* arm926ejs CPU core */
-#define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
-#define CONFIG_SOC_DA850		/* TI DA850 SoC */
 #define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		calimain_get_osc_freq()
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
-#define CONFIG_SYS_TEXT_BASE		0x60000000
-#define CONFIG_DA850_LOWLEVEL
-#define CONFIG_SYS_DA850_PLL_INIT
-#define CONFIG_SYS_DA850_DDR_INIT
 #define CONFIG_ARCH_CPU_INIT
 #define CONFIG_DA8XX_GPIO
 #define CONFIG_HW_WATCHDOG
@@ -48,20 +37,6 @@
 /*
  * PLL configuration
  */
-#define CONFIG_SYS_DV_CLKMODE          0
-#define CONFIG_SYS_DA850_PLL0_POSTDIV  1
-#define CONFIG_SYS_DA850_PLL0_PLLDIV1  0x8000
-#define CONFIG_SYS_DA850_PLL0_PLLDIV2  0x8001
-#define CONFIG_SYS_DA850_PLL0_PLLDIV3  0x8002
-#define CONFIG_SYS_DA850_PLL0_PLLDIV4  0x8003
-#define CONFIG_SYS_DA850_PLL0_PLLDIV5  0x8002
-#define CONFIG_SYS_DA850_PLL0_PLLDIV6  CONFIG_SYS_DA850_PLL0_PLLDIV1
-#define CONFIG_SYS_DA850_PLL0_PLLDIV7  0x8005
-
-#define CONFIG_SYS_DA850_PLL1_POSTDIV  1
-#define CONFIG_SYS_DA850_PLL1_PLLDIV1  0x8000
-#define CONFIG_SYS_DA850_PLL1_PLLDIV2  0x8001
-#define CONFIG_SYS_DA850_PLL1_PLLDIV3  0x8002
 
 #define CONFIG_SYS_DA850_PLL0_PLLM \
 	((calimain_get_osc_freq() == 25000000) ? 23 : 24)
@@ -153,15 +128,11 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
 #define CONFIG_SYS_NS16550_CLK	clk_get(DAVINCI_UART2_CLKID)
-#define CONFIG_CONS_INDEX	1		/* use UART0 for console */
-#define CONFIG_BAUDRATE		115200		/* Default baud rate */
 
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_PROTECTION
@@ -183,9 +154,7 @@
  * Network & Ethernet Configuration
  */
 #ifdef CONFIG_DRIVER_TI_EMAC
-#define CONFIG_EMAC_MDIO_PHY_NUM	1
 #define CONFIG_MII
-#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT	10
@@ -195,19 +164,10 @@
  * U-Boot general configuration
  */
 #define CONFIG_BOOTFILE        "uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT      "Calimain > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE      1024 /* Console I/O Buffer Size	*/
-#define CONFIG_SYS_PBSIZE      (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS     16 /* max number of command args */
 #define CONFIG_SYS_BARGSIZE    CONFIG_SYS_CBSIZE /* Boot Args Buffer Size */
 #define CONFIG_SYS_LOAD_ADDR   (PHYS_SDRAM_1 + 0x700000)
 #define CONFIG_LOADADDR        0xc0700000
-#define CONFIG_VERSION_VARIABLE
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_CRC32_VERIFY
 #define CONFIG_MX_CYCLIC
 
 /*
@@ -217,13 +177,8 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTARGS           ""
 #define CONFIG_BOOTCOMMAND        "run checkupdate; run checkbutton;"
-#define CONFIG_BOOTDELAY          0
-#define CONFIG_ZERO_BOOTDELAY_CHECK   /* check for keypress on bootdelay==0 */
 #define CONFIG_BOOT_RETRY_TIME    60  /* continue boot after 60 s inactivity */
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_DELAY_STR "\x0d" /* press ENTER to interrupt BOOT */
 #define CONFIG_RESET_TO_RETRY
 
 /*
@@ -311,38 +266,17 @@
 	"echo Product: $product; "	\
 	"gpio c 1; gpio c 2;"
 
-/*
- * U-Boot commands
- */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_ENV
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_DIAG
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_SAVES
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_GPIO
-
-#ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_DHCP
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PING
-#endif
-
 /* additions for new relocation code, must added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0xc0000000
 /* initial stack pointer in internal SRAM */
 #define CONFIG_SYS_INIT_SP_ADDR		(0x8001ff00)
 
-#define CONFIG_BOOTCOUNT_LIMIT
 #define CONFIG_SYS_BOOTCOUNT_LE		/* Use little-endian accessors */
-#define CONFIG_SYS_BOOTCOUNT_ADDR	DAVINCI_RTC_BASE
 
 #ifndef __ASSEMBLY__
 int calimain_get_osc_freq(void);
 #endif
+
+#include <asm/arch/hardware.h>
 
 #endif /* __CONFIG_H */

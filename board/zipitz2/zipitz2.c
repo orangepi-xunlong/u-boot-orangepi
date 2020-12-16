@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009
  * Marek Vasut <marek.vasut@gmail.com>
  *
  * Heavily based on pxa255_idp platform
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,6 +14,8 @@
 #include <asm/arch/regs-mmc.h>
 #include <spi.h>
 #include <asm/io.h>
+#include <usb.h>
+#include <asm/mach-types.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -27,13 +28,8 @@ inline void lcd_start(void) {};
 /*
  * Miscelaneous platform dependent initialisations
  */
-
-int board_init (void)
+int board_init(void)
 {
-	/* We have RAM, disable cache */
-	dcache_disable();
-	icache_disable();
-
 	/* arch number of Z2 */
 	gd->bd->bi_arch_number = MACH_TYPE_ZIPIT2;
 
@@ -53,10 +49,32 @@ int dram_init(void)
 	return 0;
 }
 
-void dram_init_banksize(void)
+#ifdef	CONFIG_CMD_USB
+int board_usb_init(int index, enum usb_init_type init)
+{
+	/* enable port 2 */
+	writel(readl(UP2OCR) | UP2OCR_HXOE | UP2OCR_HXS |
+		UP2OCR_DMPDE | UP2OCR_DPPDE, UP2OCR);
+
+	return 0;
+}
+
+int board_usb_cleanup(int index, enum usb_init_type init)
+{
+	return 0;
+}
+
+void usb_board_stop(void)
+{
+}
+#endif
+
+int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
+
+	return 0;
 }
 
 #ifdef	CONFIG_CMD_MMC
@@ -154,7 +172,6 @@ void spi_cs_deactivate(struct spi_slave *slave)
 {
 	/* GPIO 88 high */
 	writel((1 << 24), GPSR2);
-
 }
 
 void lcd_start(void)

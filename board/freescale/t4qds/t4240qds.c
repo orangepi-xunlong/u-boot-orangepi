@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +14,6 @@
 #include <asm/immap_85xx.h>
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
-#include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
 
@@ -266,7 +264,7 @@ static int adjust_vdd(ulong vdd_override)
 	vdd_target = vdd[vid];
 
 	/* check override variable for overriding VDD */
-	vdd_string = getenv("t4240qds_vdd_mv");
+	vdd_string = env_get("t4240qds_vdd_mv");
 	if (vdd_override == 0 && vdd_string &&
 	    !strict_strtoul(vdd_string, 10, &vdd_string_override))
 		vdd_override = vdd_string_override;
@@ -528,7 +526,7 @@ int config_backside_crossbar_mux(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -539,17 +537,18 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash + promjet */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 2;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash + promjet */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
-
-	set_liodns();
-#ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_portals();
-#endif
 
 	/* Disable remote I2C connection to qixis fpga */
 	QIXIS_WRITE(brdcfg[5], QIXIS_READ(brdcfg[5]) & ~BRDCFG5_IRE);
@@ -638,9 +637,10 @@ unsigned long get_board_ddr_clk(void)
 int misc_init_r(void)
 {
 	u8 sw;
-	serdes_corenet_t *srds_regs =
-		(void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
+	void *srds_base = (void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
+	serdes_corenet_t *srds_regs;
 	u32 actual[MAX_SERDES];
+	u32 pllcr0, expected;
 	unsigned int i;
 
 	sw = QIXIS_READ(brdcfg[2]);
@@ -663,8 +663,9 @@ int misc_init_r(void)
 	}
 
 	for (i = 0; i < MAX_SERDES; i++) {
-		u32 pllcr0 = srds_regs->bank[i].pllcr0;
-		u32 expected = pllcr0 & SRDS_PLLCR0_RFCK_SEL_MASK;
+		srds_regs = srds_base + i * 0x1000;
+		pllcr0 = srds_regs->bank[0].pllcr0;
+		expected = pllcr0 & SRDS_PLLCR0_RFCK_SEL_MASK;
 		if (expected != actual[i]) {
 			printf("Warning: SERDES%u expects reference clock %sMHz, but actual is %sMHz\n",
 			       i + 1, serdes_clock_to_string(expected),
@@ -675,15 +676,15 @@ int misc_init_r(void)
 	return 0;
 }
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
@@ -692,12 +693,14 @@ void ft_board_setup(void *blob, bd_t *bd)
 #endif
 
 	fdt_fixup_liodn(blob);
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_ethernet(blob);
 	fdt_fixup_board_enet(blob);
 #endif
+
+	return 0;
 }
 
 /*

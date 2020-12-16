@@ -1,14 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
 
@@ -18,7 +17,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_BOOTCOUNT_LIMIT) && \
 	(defined(CONFIG_QE) && !defined(CONFIG_MPC831x))
-#include <asm/immap_qe.h>
+#include <linux/immap_qe.h>
 
 void fdt_fixup_muram (void *blob)
 {
@@ -53,7 +52,6 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 #if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) ||\
     defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3) ||\
     defined(CONFIG_HAS_ETH4) || defined(CONFIG_HAS_ETH5)
-	fdt_fixup_ethernet(blob);
 #ifdef CONFIG_MPC8313
 	/*
 	* mpc8313e erratum IPIC1 swapped TSEC interrupt ID numbers on rev. 1

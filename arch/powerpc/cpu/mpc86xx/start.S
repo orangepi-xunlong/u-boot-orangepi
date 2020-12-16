@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2004, 2007, 2011 Freescale Semiconductor.
  * Srikanth Srinivasan <srikanth.srinivaan@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*  U-Boot - Startup Code for 86xx PowerPC based Embedded Boards
@@ -543,16 +542,6 @@ int_return:
 
 	.globl	dc_read
 dc_read:
-	blr
-
-	.globl get_pvr
-get_pvr:
-	mfspr	r3, PVR
-	blr
-
-	.globl get_svr
-get_svr:
-	mfspr	r3, SVR
 	blr
 
 

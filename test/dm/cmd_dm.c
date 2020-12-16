@@ -1,124 +1,71 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <command.h>
 #include <dm.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <errno.h>
 #include <asm/io.h>
 #include <dm/root.h>
-#include <dm/test.h>
-#include <dm/uclass-internal.h>
-
-static int display_succ(struct udevice *in, char *buf)
-{
-	int len;
-	int ip = 0;
-	char local[16];
-	struct udevice *pos, *n, *prev = NULL;
-
-	printf("%s- %c %s @ %08lx", buf,
-	       in->flags & DM_FLAG_ACTIVATED ? '*' : ' ',
-	       in->name, (ulong)map_to_sysmem(in));
-	puts("\n");
-
-	if (list_empty(&in->child_head))
-		return 0;
-
-	len = strlen(buf);
-	strncpy(local, buf, sizeof(local));
-	snprintf(local + len, 2, "|");
-	if (len && local[len - 1] == '`')
-		local[len - 1] = ' ';
-
-	list_for_each_entry_safe(pos, n, &in->child_head, sibling_node) {
-		if (ip++)
-			display_succ(prev, local);
-		prev = pos;
-	}
-
-	snprintf(local + len, 2, "`");
-	display_succ(prev, local);
-
-	return 0;
-}
-
-static int dm_dump(struct udevice *dev)
-{
-	if (!dev)
-		return -EINVAL;
-	return display_succ(dev, "");
-}
+#include <dm/util.h>
 
 static int do_dm_dump_all(cmd_tbl_t *cmdtp, int flag, int argc,
 			  char * const argv[])
 {
-	struct udevice *root;
+	dm_dump_all();
 
-	root = dm_root();
-	printf("ROOT %08lx\n", (ulong)map_to_sysmem(root));
-	return dm_dump(root);
+	return 0;
 }
 
 static int do_dm_dump_uclass(cmd_tbl_t *cmdtp, int flag, int argc,
 			     char * const argv[])
 {
-	struct uclass *uc;
-	int ret;
-	int id;
-
-	for (id = 0; id < UCLASS_COUNT; id++) {
-		struct udevice *dev;
-
-		ret = uclass_get(id, &uc);
-		if (ret)
-			continue;
-
-		printf("uclass %d: %s\n", id, uc->uc_drv->name);
-		for (ret = uclass_first_device(id, &dev);
-		     dev;
-		     ret = uclass_next_device(&dev)) {
-			printf("  %c %s @ %08lx:\n",
-			       dev->flags & DM_FLAG_ACTIVATED ? '*' : ' ',
-			       dev->name, (ulong)map_to_sysmem(dev));
-		}
-		puts("\n");
-	}
+	dm_dump_uclass();
 
 	return 0;
 }
 
-#ifdef CONFIG_DM_TEST
-static int do_dm_test(cmd_tbl_t *cmdtp, int flag, int argc,
-			  char * const argv[])
+static int do_dm_dump_devres(cmd_tbl_t *cmdtp, int flag, int argc,
+			     char * const argv[])
 {
-	return dm_test_main();
+	dm_dump_devres();
+
+	return 0;
 }
-#define TEST_HELP "\ndm test         Run tests"
-#else
-#define TEST_HELP
-#endif
 
 static cmd_tbl_t test_commands[] = {
 	U_BOOT_CMD_MKENT(tree, 0, 1, do_dm_dump_all, "", ""),
 	U_BOOT_CMD_MKENT(uclass, 1, 1, do_dm_dump_uclass, "", ""),
-#ifdef CONFIG_DM_TEST
-	U_BOOT_CMD_MKENT(test, 1, 1, do_dm_test, "", ""),
-#endif
+	U_BOOT_CMD_MKENT(devres, 1, 1, do_dm_dump_devres, "", ""),
 };
+
+static __maybe_unused void dm_reloc(void)
+{
+	static int relocated;
+
+	if (!relocated) {
+		fixup_cmdtable(test_commands, ARRAY_SIZE(test_commands));
+		relocated = 1;
+	}
+}
 
 static int do_dm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	cmd_tbl_t *test_cmd;
 	int ret;
 
-	if (argc != 2)
+#ifdef CONFIG_NEEDS_MANUAL_RELOC
+	dm_reloc();
+#endif
+
+	if (argc < 2)
 		return CMD_RET_USAGE;
 	test_cmd = find_cmd_tbl(argv[1], test_commands,
 				ARRAY_SIZE(test_commands));
@@ -133,9 +80,9 @@ static int do_dm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	dm,	2,	1,	do_dm,
+	dm,	3,	1,	do_dm,
 	"Driver model low level access",
-	"tree         Dump driver model tree\n"
-	"dm uclass        Dump list of instances for each uclass"
-	TEST_HELP
+	"tree         Dump driver model tree ('*' = activated)\n"
+	"dm uclass        Dump list of instances for each uclass\n"
+	"dm devres        Dump list of device resources for each device"
 );

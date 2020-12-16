@@ -28,4 +28,13 @@ void check_boot_mode(void);
 void draw_logo(void);
 #endif
 
+#ifdef CONFIG_SET_DFU_ALT_INFO
+char *get_dfu_alt_system(char *interface, char *devstr);
+char *get_dfu_alt_boot(char *interface, char *devstr);
+#endif
+#ifdef CONFIG_BOARD_TYPES
+void set_board_type(void);
+const char *get_board_type(void);
+#endif
+
 #endif /* __SAMSUNG_MISC_COMMON_H__ */

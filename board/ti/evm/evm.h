@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Nishanth Menon <menon.nishanth@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _EVM_H_
 #define _EVM_H_
@@ -278,12 +277,19 @@ static void reset_net_chip(void);
 								 /* TS_PEN_IRQ */\
 	MUX_VAL(CP(MCSPI1_CS2),		(IEN  | PTU | DIS | M4)) /*GPIO_176*/\
 								 /* - LAN_INTR*/\
-	MUX_VAL(CP(MCSPI1_CS3),		(IEN  | PTD | EN  | M0)) /*McSPI1_CS3*/\
-	MUX_VAL(CP(MCSPI2_CLK),		(IEN  | PTD | DIS | M0)) /*McSPI2_CLK*/\
-	MUX_VAL(CP(MCSPI2_SIMO),	(IEN  | PTD | DIS | M0)) /*McSPI2_SIMO*/\
-	MUX_VAL(CP(MCSPI2_SOMI),	(IEN  | PTD | DIS | M0)) /*McSPI2_SOMI*/\
-	MUX_VAL(CP(MCSPI2_CS0),		(IEN  | PTD | EN  | M0)) /*McSPI2_CS0*/\
-	MUX_VAL(CP(MCSPI2_CS1),		(IEN  | PTD | EN  | M0)) /*McSPI2_CS1*/\
+ /* USB EHCI (port 2) */\
+	MUX_VAL(CP(MCSPI1_CS3),		(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA2*/\
+	MUX_VAL(CP(MCSPI2_CLK),		(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA7*/\
+	MUX_VAL(CP(MCSPI2_SIMO),	(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA4*/\
+	MUX_VAL(CP(MCSPI2_SOMI),	(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA5*/\
+	MUX_VAL(CP(MCSPI2_CS0),		(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA6*/\
+	MUX_VAL(CP(MCSPI2_CS1),		(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA3*/\
+	MUX_VAL(CP(ETK_D10_ES2),	(IDIS | PTD | DIS | M3)) /*HSUSB2_CLK*/\
+	MUX_VAL(CP(ETK_D11_ES2),	(IDIS | PTD | DIS | M3)) /*HSUSB2_STP*/\
+	MUX_VAL(CP(ETK_D12_ES2),	(IEN  | PTD | EN  | M3)) /*HSUSB2_DIR*/\
+	MUX_VAL(CP(ETK_D13_ES2),	(IEN  | PTD | EN  | M3)) /*HSUSB2_NXT*/\
+	MUX_VAL(CP(ETK_D14_ES2),	(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA0*/\
+	MUX_VAL(CP(ETK_D15_ES2),	(IEN  | PTD | EN  | M3)) /*HSUSB2_DATA1*/\
  /*Control and debug */\
 	MUX_VAL(CP(SYS_32K),		(IEN  | PTD | DIS | M0)) /*SYS_32K*/\
 	MUX_VAL(CP(SYS_CLKREQ),		(IEN  | PTD | DIS | M0)) /*SYS_CLKREQ*/\
@@ -300,7 +306,7 @@ static void reset_net_chip(void);
 	MUX_VAL(CP(SYS_OFF_MODE),	(IEN  | PTD | DIS | M0)) /*SYS_OFF_MODE*/\
 	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M0)) /*SYS_CLKOUT1*/\
 	MUX_VAL(CP(SYS_CLKOUT2),	(IEN  | PTU | EN  | M0)) /*SYS_CLKOUT2*/\
-	MUX_VAL(CP(JTAG_nTRST),		(IEN  | PTD | DIS | M0)) /*JTAG_nTRST*/\
+	MUX_VAL(CP(JTAG_NTRST),		(IEN  | PTD | DIS | M0)) /*JTAG_NTRST*/\
 	MUX_VAL(CP(JTAG_TCK),		(IEN  | PTD | DIS | M0)) /*JTAG_TCK*/\
 	MUX_VAL(CP(JTAG_TMS),		(IEN  | PTD | DIS | M0)) /*JTAG_TMS*/\
 	MUX_VAL(CP(JTAG_TDI),		(IEN  | PTD | DIS | M0)) /*JTAG_TDI*/\
@@ -318,12 +324,6 @@ static void reset_net_chip(void);
 	MUX_VAL(CP(ETK_D7_ES2 ),	(IEN  | PTD | DIS | M0)) /*ETK_D7*/\
 	MUX_VAL(CP(ETK_D8_ES2 ),	(IEN  | PTD | DIS | M0)) /*ETK_D8*/\
 	MUX_VAL(CP(ETK_D9_ES2 ),	(IEN  | PTD | DIS | M0)) /*ETK_D9*/\
-	MUX_VAL(CP(ETK_D10_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D10*/\
-	MUX_VAL(CP(ETK_D11_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D11*/\
-	MUX_VAL(CP(ETK_D12_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D12*/\
-	MUX_VAL(CP(ETK_D13_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D13*/\
-	MUX_VAL(CP(ETK_D14_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D14*/\
-	MUX_VAL(CP(ETK_D15_ES2),	(IEN  | PTD | DIS | M0)) /*ETK_D15*/\
  /*Die to Die */\
 	MUX_VAL(CP(D2D_MCAD1),		(IEN  | PTD | EN  | M0)) /*d2d_mcad1*/\
 	MUX_VAL(CP(D2D_MCAD2),		(IEN  | PTD | EN  | M0)) /*d2d_mcad2*/\

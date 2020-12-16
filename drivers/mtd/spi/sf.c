@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SPI flash interface
  *
  * Copyright (C) 2008 Atmel Corporation
  * Copyright (C) 2010 Reinhard Meyer, EMK Elektronik
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -18,10 +17,6 @@ static int spi_flash_read_write(struct spi_slave *spi,
 	unsigned long flags = SPI_XFER_BEGIN;
 	int ret;
 
-#ifdef CONFIG_SF_DUAL_FLASH
-	if (spi->flags & SPI_XFER_U_PAGE)
-		flags |= SPI_XFER_U_PAGE;
-#endif
 	if (data_len == 0)
 		flags |= SPI_XFER_END;
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0+
 NAND FLASH commands and notes
 
 See NOTE below!!!
@@ -5,7 +6,6 @@ See NOTE below!!!
 # (C) Copyright 2003
 # Dave Ellis, SIXNET, dge@sixnetio.com
 #
-# SPDX-License-Identifier:	GPL-2.0+
 
 Commands:
 
@@ -89,17 +89,15 @@ Commands:
 
 Configuration Options:
 
+   CONFIG_SYS_NAND_U_BOOT_OFFS
+	NAND Offset from where SPL will read u-boot image. This is the starting
+	address of u-boot MTD partition in NAND.
+
    CONFIG_CMD_NAND
-      Enables NAND support and commmands.
+      Enables NAND support and commands.
 
    CONFIG_CMD_NAND_TORTURE
       Enables the torture command (see description of this command below).
-
-   CONFIG_MTD_NAND_ECC_JFFS2
-      Define this if you want the Error Correction Code information in
-      the out-of-band data to be formatted to match the JFFS2 file system.
-      CONFIG_MTD_NAND_ECC_YAFFS would be another useful choice for
-      someone to implement.
 
    CONFIG_SYS_MAX_NAND_DEVICE
       The maximum number of NAND devices you want to support.
@@ -138,15 +136,8 @@ Configuration Options:
       Example of new init to be added to the end of an existing driver
       init:
 
-	/*
-	 * devnum is the device number to be used in nand commands
-	 * and in mtd->name.  Must be less than
-	 * CONFIG_SYS_NAND_MAX_DEVICE.
-	 */
-	mtd = &nand_info[devnum];
-
 	/* chip is struct nand_chip, and is now provided by the driver. */
-	mtd->priv = &chip;
+	mtd = nand_to_mtd(&chip);
 
 	/*
 	 * Fill in appropriate values if this driver uses these fields,
@@ -167,7 +158,11 @@ Configuration Options:
 	if (nand_scan_tail(mtd))
 		error out
 
-	if (nand_register(devnum))
+	/*
+	 * devnum is the device number to be used in nand commands
+	 * and in mtd->name.  Must be less than CONFIG_SYS_MAX_NAND_DEVICE.
+	 */
+	if (nand_register(devnum, mtd))
 		error out
 
       In addition to providing more flexibility to the driver, it reduces
@@ -185,30 +180,6 @@ Configuration Options:
 	And fetching device parameters flashed on device, by parsing
 	ONFI parameter page.
 
-   CONFIG_BCH
-	Enables software based BCH ECC algorithm present in lib/bch.c
-	This is used by SoC platforms which do not have built-in ELM
-	hardware engine required for BCH ECC correction.
-
-   CONFIG_SYS_NAND_BUSWIDTH_16BIT
-	Indicates that NAND device has 16-bit wide data-bus. In absence of this
-	config, bus-width of NAND device is assumed to be either 8-bit and later
-	determined by reading ONFI params.
-	Above config is useful when NAND device's bus-width information cannot
-	be determined from on-chip ONFI params, like in following scenarios:
-	- SPL boot does not support reading of ONFI parameters. This is done to
-	  keep SPL code foot-print small.
-	- In current U-Boot flow using nand_init(), driver initialization
-	  happens in board_nand_init() which is called before any device probe
-	  (nand_scan_ident + nand_scan_tail), thus device's ONFI parameters are
-	  not available while configuring controller. So a static CONFIG_NAND_xx
-	  is needed to know the device's bus-width in advance.
-	Some drivers using above config are:
-	drivers/mtd/nand/mxc_nand.c
-	drivers/mtd/nand/ndfc.c
-	drivers/mtd/nand/omap_gpmc.c
-
-
 Platform specific options
 =========================
    CONFIG_NAND_OMAP_GPMC
@@ -225,6 +196,14 @@ Platform specific options
 	thus such SoC platforms need to depend on software library for ECC error
 	detection. However ECC calculation on such plaforms would still be
 	done by GPMC controller.
+
+   CONFIG_SPL_NAND_AM33XX_BCH
+	Enables SPL-NAND driver (am335x_spl_bch.c) which supports ELM based
+        hardware ECC correction. This is useful for platforms which have ELM
+	hardware engine and use NAND boot mode.
+	Some legacy platforms like OMAP3xx do not have in-built ELM h/w engine,
+	so those platforms should use CONFIG_SPL_NAND_SIMPLE for enabling
+        SPL-NAND driver with software ECC correction support.
 
    CONFIG_NAND_OMAP_ECCSCHEME
 	On OMAP platforms, this CONFIG specifies NAND ECC scheme.
@@ -286,20 +265,19 @@ Platform specific options
 
 		However, for 4K pagesize NAND
 		NAND_PAGESIZE = 4096
-		NAND_OOBSIZE = 64
+		NAND_OOBSIZE = 224
 		ECC_BYTES = 26
 		2 + (4096 / 512) * 26 = 210 < NAND_OOBSIZE
 		Thus BCH16 can be supported on 4K page NAND.
 
 
+    CONFIG_NAND_OMAP_GPMC_PREFETCH
+	On OMAP platforms that use the GPMC controller
+	(CONFIG_NAND_OMAP_GPMC_PREFETCH), this options enables the code that
+	uses the prefetch mode to speed up read operations.
+
 NOTE:
 =====
-
-The current NAND implementation is based on what is in recent
-Linux kernels.  The old legacy implementation has been removed.
-
-If you have board code which used CONFIG_NAND_LEGACY, you'll need
-to convert to the current NAND interface for it to continue to work.
 
 The Disk On Chip driver is currently broken and has been for some time.
 There is a driver in drivers/mtd/nand, taken from Linux, that works with
@@ -323,7 +301,7 @@ Miscellaneous and testing commands:
   DANGEROUS!!! Factory set bad blocks will be lost. Use only
   to remove artificial bad blocks created with the "markbad" command.
 
-  "torture offset"
+  "torture offset [size]"
   Torture block to determine if it is still reliable.
   Enabled by the CONFIG_CMD_NAND_TORTURE configuration option.
   This command returns 0 if the block is still reliable, else 1.
@@ -340,6 +318,10 @@ Miscellaneous and testing commands:
   automate actions following a nand->write() error. This would e.g. be required
   in order to program or update safely firmware to NAND, especially for the UBI
   part of such firmware.
+  Optionally, a second parameter size can be given to test multiple blocks with
+  one call. If size is not a multiple of the NAND's erase size, then the block
+  that contains offset + size will be tested in full. If used with size, this
+  command returns 0 if all tested blocks have been found reliable, else 1.
 
 
 NAND locking command (for chips with active LOCKPRE pin)

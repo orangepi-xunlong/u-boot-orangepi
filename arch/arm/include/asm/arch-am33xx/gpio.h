@@ -1,12 +1,14 @@
-/*
- * SPDX-License-Identifier:	GPL-2.0+
- */
+/* SPDX-License-Identifier: GPL-2.0+ */
 #ifndef _GPIO_AM33xx_H
 #define _GPIO_AM33xx_H
 
 #include <asm/omap_gpio.h>
 
+#ifdef CONFIG_AM43XX
+#define OMAP_MAX_GPIO		192
+#else
 #define OMAP_MAX_GPIO		128
+#endif
 
 #define AM33XX_GPIO0_BASE       0x44E07000
 #define AM33XX_GPIO1_BASE       0x4804C000

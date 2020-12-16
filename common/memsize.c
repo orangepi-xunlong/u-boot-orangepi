@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,55 +26,66 @@ DECLARE_GLOBAL_DATA_PTR;
 long get_ram_size(long *base, long maxsize)
 {
 	volatile long *addr;
-	long           save[32];
+	long           save[31];
+	long           save_base;
 	long           cnt;
 	long           val;
 	long           size;
 	int            i = 0;
 
-	for (cnt = (maxsize / sizeof (long)) >> 1; cnt > 0; cnt >>= 1) {
+	for (cnt = (maxsize / sizeof(long)) >> 1; cnt > 0; cnt >>= 1) {
 		addr = base + cnt;	/* pointer arith! */
-		sync ();
+		sync();
 		save[i++] = *addr;
-		sync ();
+		sync();
 		*addr = ~cnt;
 	}
 
 	addr = base;
-	sync ();
-	save[i] = *addr;
-	sync ();
+	sync();
+	save_base = *addr;
+	sync();
 	*addr = 0;
 
-	sync ();
+	sync();
 	if ((val = *addr) != 0) {
-		/* Restore the original data before leaving the function.
-		 */
-		sync ();
-		*addr = save[i];
+		/* Restore the original data before leaving the function. */
+		sync();
+		*base = save_base;
 		for (cnt = 1; cnt < maxsize / sizeof(long); cnt <<= 1) {
 			addr  = base + cnt;
-			sync ();
+			sync();
 			*addr = save[--i];
 		}
 		return (0);
 	}
 
-	for (cnt = 1; cnt < maxsize / sizeof (long); cnt <<= 1) {
+	for (cnt = 1; cnt < maxsize / sizeof(long); cnt <<= 1) {
 		addr = base + cnt;	/* pointer arith! */
 		val = *addr;
 		*addr = save[--i];
 		if (val != ~cnt) {
-			size = cnt * sizeof (long);
-			/* Restore the original data before leaving the function.
+			size = cnt * sizeof(long);
+			/*
+			 * Restore the original data
+			 * before leaving the function.
 			 */
-			for (cnt <<= 1; cnt < maxsize / sizeof (long); cnt <<= 1) {
+			for (cnt <<= 1;
+			     cnt < maxsize / sizeof(long);
+			     cnt <<= 1) {
 				addr  = base + cnt;
 				*addr = save[--i];
 			}
+			/* warning: don't restore save_base in this case,
+			 * it is already done in the loop because
+			 * base and base+size share the same physical memory
+			 * and *base is saved after *(base+size) modification
+			 * in first loop
+			 */
 			return (size);
 		}
 	}
+	*base = save_base;
 
 	return (maxsize);
 }

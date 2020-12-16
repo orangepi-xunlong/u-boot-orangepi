@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006-2007
  *
@@ -5,12 +6,10 @@
  *
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <pci.h>
 #include <mpc83xx.h>
 #include <ns16550.h>
@@ -88,7 +87,7 @@ static long fixed_sdram(void)
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile fsl_lbc_t *lbc = &im->im_lbc;
@@ -106,7 +105,9 @@ phys_size_t initdram(int board_type)
 	sync();
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize;
+	gd->ram_size = msize;
+
+	return 0;
 }
 
 #define VE8313_WDT_EN	0x00020000
@@ -192,11 +193,13 @@ void pci_init_board(void)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif

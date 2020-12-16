@@ -1,26 +1,19 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * Hayden Fraser (Hayden.Fraser@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _M5253EVBE_H
 #define _M5253EVBE_H
 
-#define CONFIG_MCF52x2		/* define processor family */
-#define CONFIG_M5253		/* define processor type */
-#define CONFIG_M5253EVBE	/* define board type */
-
 #define CONFIG_MCFTMR
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
 
 #undef CONFIG_WATCHDOG		/* disable watchdog */
 
-#define CONFIG_BOOTDELAY	5
 
 /* Configuration for environment
  * Environment is embedded in u-boot in the second sector of the flash
@@ -28,38 +21,25 @@
 #ifndef CONFIG_MONITOR_IS_IN_RAM
 #define CONFIG_ENV_OFFSET		0x4000
 #define CONFIG_ENV_SECT_SIZE	0x2000
-#define CONFIG_ENV_IS_IN_FLASH	1
 #else
 #define CONFIG_ENV_ADDR		0xffe04000
 #define CONFIG_ENV_SECT_SIZE	0x2000
-#define CONFIG_ENV_IS_IN_FLASH	1
 #endif
+
+#define LDS_BOARD_TEXT \
+	. = DEFINED(env_offset) ? env_offset : .; \
+	env/embedded.o(.text)
 
 /*
  * BOOTP options
  */
 #undef CONFIG_BOOTP_BOOTFILESIZE
-#undef CONFIG_BOOTP_BOOTPATH
-#undef CONFIG_BOOTP_GATEWAY
-#undef CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_CACHE
-#undef CONFIG_CMD_NET
-#define CONFIG_CMD_LOADB
-#define CONFIG_CMD_LOADS
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_IDE
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
 
 /* ATA */
-#define CONFIG_DOS_PARTITION
-#define CONFIG_MAC_PARTITION
 #define CONFIG_IDE_RESET	1
 #define CONFIG_IDE_PREINIT	1
 #define CONFIG_ATAPI
@@ -75,17 +55,6 @@
 #define CONFIG_SYS_ATA_REG_OFFSET	0xA0	/* Offset for normal register accesses */
 #define CONFIG_SYS_ATA_ALT_OFFSET	0xC0	/* Offset for alternate registers */
 #define CONFIG_SYS_ATA_STRIDE		4	/* Interval between registers */
-
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
-#else
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#endif
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
 

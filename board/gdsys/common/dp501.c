@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Parade Technologies Inc. DP501 DisplayPort DVI/HDMI Transmitter */
@@ -11,6 +10,16 @@
 #include <asm/io.h>
 #include <errno.h>
 #include <i2c.h>
+
+#define DP501_I2C_ADDR 0x08
+
+#ifdef CONFIG_SYS_DP501_I2C
+int dp501_i2c[] = CONFIG_SYS_DP501_I2C;
+#endif
+
+#ifdef CONFIG_SYS_DP501_BASE
+int dp501_base[] = CONFIG_SYS_DP501_BASE;
+#endif
 
 static void dp501_setbits(u8 addr, u8 reg, u8 mask)
 {
@@ -40,11 +49,29 @@ static int dp501_detect_cable_adapter(u8 addr)
 static void dp501_link_training(u8 addr)
 {
 	u8 val;
+	u8 link_bw;
+	u8 max_lane_cnt;
+	u8 lane_cnt;
 
 	val = i2c_reg_read(addr, 0x51);
-	i2c_reg_write(addr, 0x5d, val); /* set link_bw */
+	if (val >= 0x0a)
+		link_bw = 0x0a;
+	else
+		link_bw = 0x06;
+	if (link_bw != val)
+		printf("DP sink supports %d Mbps link rate, set to %d Mbps\n",
+		       val * 270, link_bw * 270);
+	i2c_reg_write(addr, 0x5d, link_bw); /* set link_bw */
 	val = i2c_reg_read(addr, 0x52);
-	i2c_reg_write(addr, 0x5e, val); /* set lane_cnt */
+	max_lane_cnt = val & 0x1f;
+	if (max_lane_cnt >= 4)
+		lane_cnt = 4;
+	else
+		lane_cnt = max_lane_cnt;
+	if (lane_cnt != max_lane_cnt)
+		printf("DP sink supports %d lanes, set to %d lanes\n",
+		       max_lane_cnt, lane_cnt);
+	i2c_reg_write(addr, 0x5e, lane_cnt | (val & 0x80)); /* set lane_cnt */
 	val = i2c_reg_read(addr, 0x53);
 	i2c_reg_write(addr, 0x5c, val); /* set downspread_ctl */
 
@@ -77,6 +104,8 @@ void dp501_powerup(u8 addr)
 	i2c_reg_write(addr + 2, 0x24, 0x02); /* clock input single ended */
 #endif
 
+	i2c_reg_write(addr + 2, 0x1a, 0x04); /* SPDIF input method TTL */
+
 	i2c_reg_write(addr + 2, 0x00, 0x18); /* driving strength */
 	i2c_reg_write(addr + 2, 0x03, 0x06); /* driving strength */
 	i2c_reg_write(addr, 0x2c, 0x00); /* configure N value */
@@ -86,7 +115,8 @@ void dp501_powerup(u8 addr)
 	dp501_setbits(addr, 0x78, 0x03); /* clear all interrupt */
 	i2c_reg_write(addr, 0x75, 0xf8); /* aux channel reset */
 	i2c_reg_write(addr, 0x75, 0x00); /* clear aux channel reset */
-	i2c_reg_write(addr, 0x87, 0x70); /* set retry counter as 7 */
+	i2c_reg_write(addr, 0x87, 0x7f); /* set retry counter as 7
+					    retry interval 400us */
 
 	if (dp501_detect_cable_adapter(addr)) {
 		printf("DVI/HDMI cable adapter detected\n");
@@ -103,4 +133,25 @@ void dp501_powerup(u8 addr)
 void dp501_powerdown(u8 addr)
 {
 	dp501_setbits(addr, 0x0a, 0x30); /* power down encoder, standby mode */
+}
+
+
+int dp501_probe(unsigned screen, bool power)
+{
+#ifdef CONFIG_SYS_DP501_BASE
+	uint8_t dp501_addr = dp501_base[screen];
+#else
+	uint8_t dp501_addr = DP501_I2C_ADDR;
+#endif
+
+#ifdef CONFIG_SYS_DP501_I2C
+	i2c_set_bus_num(dp501_i2c[screen]);
+#endif
+
+	if (i2c_probe(dp501_addr))
+		return -1;
+
+	dp501_powerup(dp501_addr);
+
+	return 0;
 }

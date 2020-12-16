@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2001
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CLI_HUSH_H_
@@ -11,6 +10,7 @@
 #define FLAG_EXIT_FROM_LOOP 1
 #define FLAG_PARSE_SEMICOLON (1 << 1)	  /* symbol ';' is special for parser */
 #define FLAG_REPARSING       (1 << 2)	  /* >=2nd pass */
+#define FLAG_CONT_ON_NEWLINE (1 << 3)	  /* continue when we see \n */
 
 extern int u_boot_hush_start(void);
 extern int parse_string_outer(const char *, int);

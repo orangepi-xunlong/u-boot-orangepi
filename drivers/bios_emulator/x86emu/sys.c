@@ -35,7 +35,7 @@
 * Description:  This file includes subroutines which are related to
 *               programmed I/O and memory access. Included in this module
 *               are default functions that do nothing. For real uses these
-*               functions will have to be overriden by the user library.
+*               functions will have to be overridden by the user library.
 *
 ****************************************************************************/
 
@@ -271,6 +271,11 @@ void X86EMU_setupPioFuncs(X86EMU_pioFuncs * funcs)
 	sys_outb = funcs->outb;
 	sys_outw = funcs->outw;
 	sys_outl = funcs->outl;
+}
+
+void X86EMU_setupIntrFunc(int intnum, X86EMU_intrFuncs func)
+{
+	_X86EMU_intrTab[intnum] = func;
 }
 
 /****************************************************************************

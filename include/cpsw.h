@@ -21,6 +21,7 @@ struct cpsw_slave_data {
 	u32		sliver_reg_ofs;
 	int		phy_addr;
 	int		phy_if;
+	int		phy_of_handle;
 };
 
 enum {
@@ -31,6 +32,8 @@ enum {
 struct cpsw_platform_data {
 	u32	mdio_base;
 	u32	cpsw_base;
+	u32	mac_id;
+	u32	gmii_sel;
 	int	mdio_div;
 	int	channels;	/* number of cpdma channels (symmetric)	*/
 	u32	cpdma_reg_ofs;	/* cpdma register offset		*/
@@ -44,9 +47,12 @@ struct cpsw_platform_data {
 	struct cpsw_slave_data	*slave_data;
 	void	(*control)(int enabled);
 	u32	host_port_num;
+	u32	active_slave;
+	bool	rmii_clock_external;
 	u8	version;
 };
 
 int cpsw_register(struct cpsw_platform_data *data);
+int ti_cm_get_macid(struct udevice *dev, int slave, u8 *mac_addr);
 
 #endif /* _CPSW_H_  */

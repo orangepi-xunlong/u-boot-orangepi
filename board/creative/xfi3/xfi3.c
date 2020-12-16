@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Creative ZEN X-Fi3 board
  *
@@ -6,8 +7,6 @@
  * Hardware investigation done by:
  *
  * Amaury Pouly <amaury.pouly@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -163,7 +162,7 @@ static const struct {
 	{ 0x21, 0,  0x0000 },
 };
 
-void board_mxsfb_system_setup(void)
+void mxsfb_system_setup(void)
 {
 	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
 	int i;

@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * hardware_am43xx.h
  *
  * AM43xx hardware specific header
  *
  * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AM43XX_HARDWARE_AM43XX_H
@@ -61,6 +60,15 @@
 /* RTC base address */
 #define RTC_BASE			0x44E3E000
 
+/* USB OTG */
+#define USB_OTG_SS1_BASE		0x48390000
+#define USB_OTG_SS1_GLUE_BASE		0x48380000
+#define USB2_PHY1_POWER			0x44E10620
+
+#define USB_OTG_SS2_BASE		0x483D0000
+#define USB_OTG_SS2_GLUE_BASE		0x483C0000
+#define USB2_PHY2_POWER			0x44E10628
+
 /* USB Clock Control */
 #define PRM_PER_USB_OTG_SS0_CLKCTRL (CM_PER + 0x260)
 #define PRM_PER_USB_OTG_SS1_CLKCTRL (CM_PER + 0x268)
@@ -71,18 +79,12 @@
 #define PRM_PER_USBPHYOCP2SCP1_CLKCTRL (CM_PER + 0x5c0)
 #define USBPHYOCPSCP_MODULE_EN	(1 << 1)
 #define CM_DEVICE_INST			0x44df4100
+#define PRM_DEVICE_INST			0x44df4000
 
-/* Control status register */
-#define CTRL_CRYSTAL_FREQ_SRC_MASK		(1 << 31)
-#define CTRL_CRYSTAL_FREQ_SRC_SHIFT		31
-#define CTRL_CRYSTAL_FREQ_SELECTION_MASK	(0x3 << 29)
-#define CTRL_CRYSTAL_FREQ_SELECTION_SHIFT	29
-#define CTRL_SYSBOOT_15_14_MASK			(0x3 << 22)
-#define CTRL_SYSBOOT_15_14_SHIFT		22
+#define	USBOTGSSX_CLKCTRL_OPTFCLKEN_REFCLK960	(1 << 8)
+#define	USBPHY0_CLKCTRL_OPTFCLKEN_CLK32K	(1 << 8)
 
-#define CTRL_CRYSTAL_FREQ_SRC_SYSBOOT		0x0
-#define CTRL_CRYSTAL_FREQ_SRC_EFUSE		0x1
-
-#define NUM_CRYSTAL_FREQ			0x4
+/* EDMA3 Base Address */
+#define EDMA3_BASE				0x49000000
 
 #endif /* __AM43XX_HARDWARE_AM43XX_H */

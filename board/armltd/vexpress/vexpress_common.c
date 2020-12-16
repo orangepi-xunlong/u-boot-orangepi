@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -13,14 +14,13 @@
  * (C) Copyright 2004
  * ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <malloc.h>
 #include <errno.h>
 #include <netdev.h>
 #include <asm/io.h>
+#include <asm/mach-types.h>
 #include <asm/arch/systimer.h>
 #include <asm/arch/sysctrl.h>
 #include <asm/arch/wdt.h>
@@ -75,6 +75,7 @@ int cpu_mmc_init(bd_t *bis)
 	(void) bis;
 #ifdef CONFIG_ARM_PL180_MMCI
 	struct pl180_mmc_host *host;
+	struct mmc *mmc;
 
 	host = malloc(sizeof(struct pl180_mmc_host));
 	if (!host)
@@ -90,7 +91,7 @@ int cpu_mmc_init(bd_t *bis)
 	host->clock_in = ARM_MCLK;
 	host->clock_min = ARM_MCLK / (2 * (SDI_CLKCR_CLKDIV_INIT_V1 + 1));
 	host->clock_max = CONFIG_ARM_PL180_MMCI_CLOCK_FREQ;
-	rc = arm_pl180_mmci_init(host);
+	rc = arm_pl180_mmci_init(host, &mmc);
 #endif
 	return rc;
 }
@@ -109,7 +110,7 @@ int dram_init(void)
 	return 0;
 }
 
-void dram_init_banksize(void)
+int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size =
@@ -117,6 +118,8 @@ void dram_init_banksize(void)
 	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
 	gd->bd->bi_dram[1].size =
 			get_ram_size((long *)PHYS_SDRAM_2, PHYS_SDRAM_2_SIZE);
+
+	return 0;
 }
 
 /*
@@ -181,7 +184,7 @@ ulong get_board_rev(void){
 	return readl((u32 *)SYS_ID);
 }
 
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#ifdef CONFIG_ARMV7_NONSEC
 /* Setting the address at which secondary cores start from.
  * Versatile Express uses one address for all cores, so ignore corenr
  */

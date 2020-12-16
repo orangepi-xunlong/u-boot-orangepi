@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Hitachi Solution Engine 7750
  *
  * Copyright (C) 2007 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MS7750SE_H
@@ -12,37 +11,23 @@
 #define CONFIG_CPU_SH7750	1
 /* #define CONFIG_CPU_SH7751	1 */
 /* #define CONFIG_CPU_TYPE_R	1 */
-#define CONFIG_MS7750SE		1
 #define __LITTLE_ENDIAN__	1
+
+#define CONFIG_DISPLAY_BOARDINFO
 
 /*
  * Command line configuration.
  */
-/*#include <config_cmd_default.h>*/
-
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_SAVEENV
-
-#define CONFIG_SCIF_CONSOLE	1
-#define CONFIG_BAUDRATE		38400
 #define CONFIG_CONS_SCIF1	1
-#define CONFIG_BOARD_LATE_INIT
 
-#define CONFIG_BOOTDELAY	-1
-#define CONFIG_BOOTARGS		"console=ttySC0,38400"
 #define CONFIG_ENV_OVERWRITE	1
 
 /* SDRAM */
 #define CONFIG_SYS_SDRAM_BASE		(0x8C000000)
 #define CONFIG_SYS_SDRAM_SIZE		(64 * 1024 * 1024)
 
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_PBSIZE		256
-#define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_BARGSIZE		512
 
-#define CONFIG_SYS_TEXT_BASE		0x8FFC0000
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - 0x100000)
 
@@ -69,8 +54,6 @@
 #undef  CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_SYS_FLASH_EMPTY_INFO				/* print 'E' for empty sector on flinfo */
 
-
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_SECT_SIZE	0x20000
 #define CONFIG_ENV_SIZE		(CONFIG_ENV_SECT_SIZE)
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)

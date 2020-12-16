@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004 Freescale Semiconductor.
  * Jeff Brown
@@ -5,8 +6,6 @@
  *
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -24,7 +23,6 @@ void get_sys_info(sys_info_t *sys_info)
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile ccsr_gur_t *gur = &immap->im_gur;
 	uint plat_ratio, e600_ratio;
-	uint lcrr_div;
 
 	plat_ratio = (gur->porpllsr) & 0x0000003e;
 	plat_ratio >>= 1;
@@ -78,19 +76,7 @@ void get_sys_info(sys_info_t *sys_info)
 		break;
 	}
 
-#if defined(CONFIG_SYS_LBC_LCRR)
-	/* We will program LCRR to this value later */
-	lcrr_div = CONFIG_SYS_LBC_LCRR & LCRR_CLKDIV;
-#else
-	lcrr_div = in_be32(&immap->im_lbc.lcrr) & LCRR_CLKDIV;
-#endif
-	if (lcrr_div == 2 || lcrr_div == 4 || lcrr_div == 8) {
-		sys_info->freq_localbus = sys_info->freq_systembus
-							/ (lcrr_div * 2);
-	} else {
-		/* In case anyone cares what the unknown value is */
-		sys_info->freq_localbus = lcrr_div;
-	}
+	sys_info->freq_localbus = sys_info->freq_systembus;
 }
 
 
@@ -115,7 +101,7 @@ int get_clocks(void)
 	 * for that SOC. This information is taken from application note
 	 * AN2919.
 	 */
-#ifdef CONFIG_MPC8610
+#ifdef CONFIG_ARCH_MPC8610
 	gd->arch.i2c1_clk = sys_info.freq_systembus;
 #else
 	gd->arch.i2c1_clk = sys_info.freq_systembus / 2;

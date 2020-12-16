@@ -1,12 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Boundary Devices Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ASM_ARCH_MX6_PINS_H__
 #define __ASM_ARCH_MX6_PINS_H__
 
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
 
 #define MX6_PAD_DECLARE(prefix, name, pco, mc, mm, sio, si, pc) \
 	prefix##name = IOMUX_PAD(pco, mc, mm, sio, si, pc)
@@ -33,8 +32,16 @@ enum {
 	MX6_PAD_DECLARE(MX6_PAD_,name, pco, mc, mm, sio, si, pc),
 #include "mx6dl_pins.h"
 };
+#elif defined(CONFIG_MX6SLL)
+#include "mx6sll_pins.h"
 #elif defined(CONFIG_MX6SL)
 #include "mx6sl_pins.h"
+#elif defined(CONFIG_MX6SX)
+#include "mx6sx_pins.h"
+#elif defined(CONFIG_MX6ULL)
+#include "mx6ull_pins.h"
+#elif defined(CONFIG_MX6UL)
+#include "mx6ul_pins.h"
 #else
 #error "Please select cpu"
 #endif	/* CONFIG_MX6Q */

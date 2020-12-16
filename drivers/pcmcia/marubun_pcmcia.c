@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Marubun MR-SHPC-01 PCMCIA controller device driver
  *
  * (c) 2007 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,7 +16,7 @@
 #define	CONFIG_PCMCIA
 #endif
 
-#if defined(CONFIG_CMD_IDE)
+#if defined(CONFIG_IDE)
 #define	CONFIG_PCMCIA
 #endif
 

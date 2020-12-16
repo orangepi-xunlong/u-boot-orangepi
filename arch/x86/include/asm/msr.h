@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Taken from the linux kernel file of the same name
  *
  * (C) Copyright 2012
  * Graeme Russ, <graeme.russ@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_X86_MSR_H
@@ -22,7 +21,7 @@
 
 #ifdef __KERNEL__
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 struct msr {
 	union {
@@ -128,6 +127,34 @@ static inline void wrmsr(unsigned msr, unsigned low, unsigned high)
 #define wrmsrl(msr, val)						\
 	native_write_msr((msr), (u32)((u64)(val)), (u32)((u64)(val) >> 32))
 
+static inline void msr_clrsetbits_64(unsigned msr, u64 clear, u64 set)
+{
+	u64 val;
+
+	val = native_read_msr(msr);
+	val &= ~clear;
+	val |= set;
+	wrmsrl(msr, val);
+}
+
+static inline void msr_setbits_64(unsigned msr, u64 set)
+{
+	u64 val;
+
+	val = native_read_msr(msr);
+	val |= set;
+	wrmsrl(msr, val);
+}
+
+static inline void msr_clrbits_64(unsigned msr, u64 clear)
+{
+	u64 val;
+
+	val = native_read_msr(msr);
+	val &= ~clear;
+	wrmsrl(msr, val);
+}
+
 /* rdmsr with exception handling */
 #define rdmsr_safe(msr, p1, p2)					\
 ({								\
@@ -175,6 +202,25 @@ static inline int wrmsr_safe_regs(u32 regs[8])
 	return native_wrmsr_safe_regs(regs);
 }
 
+typedef struct msr_t {
+	uint32_t lo;
+	uint32_t hi;
+} msr_t;
+
+static inline struct msr_t msr_read(unsigned msr_num)
+{
+	struct msr_t msr;
+
+	rdmsr(msr_num, msr.lo, msr.hi);
+
+	return msr;
+}
+
+static inline void msr_write(unsigned msr_num, msr_t msr)
+{
+	wrmsr(msr_num, msr.lo, msr.hi);
+}
+
 #define rdtscl(low)						\
 	((low) = (u32)__native_read_tsc())
 
@@ -210,17 +256,6 @@ do {                                                            \
 struct msr *msrs_alloc(void);
 void msrs_free(struct msr *msrs);
 
-#ifdef CONFIG_SMP
-int rdmsr_on_cpu(unsigned int cpu, u32 msr_no, u32 *l, u32 *h);
-int wrmsr_on_cpu(unsigned int cpu, u32 msr_no, u32 l, u32 h);
-void rdmsr_on_cpus(const struct cpumask *mask, u32 msr_no, struct msr *msrs);
-void wrmsr_on_cpus(const struct cpumask *mask, u32 msr_no, struct msr *msrs);
-int rdmsr_safe_on_cpu(unsigned int cpu, u32 msr_no, u32 *l, u32 *h);
-int wrmsr_safe_on_cpu(unsigned int cpu, u32 msr_no, u32 l, u32 h);
-int rdmsr_safe_regs_on_cpu(unsigned int cpu, u32 regs[8]);
-int wrmsr_safe_regs_on_cpu(unsigned int cpu, u32 regs[8]);
-
-#endif  /* CONFIG_SMP */
 #endif /* __KERNEL__ */
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_X86_MSR_H */

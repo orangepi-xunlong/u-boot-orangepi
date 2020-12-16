@@ -1,7 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 What is this?
 =============
@@ -27,8 +25,8 @@ Series-to: fred.blogs@napier.co.nz
 
 in one of your commits, the series will be sent there.
 
-In Linux this will also call get_maintainer.pl on each of your
-patches automatically.
+In Linux and U-Boot this will also call get_maintainer.pl on each of your
+patches automatically (unless you use -m to disable this).
 
 
 How to use this tool
@@ -52,12 +50,15 @@ will get a consistent result each time.
 How to configure it
 ===================
 
-For most cases of using patman for U-Boot development, patman will
-locate and use the file 'doc/git-mailrc' in your U-Boot directory.
-This contains most of the aliases you will need.
+For most cases of using patman for U-Boot development, patman can use the
+file 'doc/git-mailrc' in your U-Boot directory to supply the email aliases
+you need. To make this work, tell git where to find the file by typing
+this once:
 
-For Linux the 'scripts/get_maintainer.pl' handles figuring out where
-to send patches pretty well.
+    git config sendemail.aliasesfile doc/git-mailrc
+
+For both Linux and U-Boot the 'scripts/get_maintainer.pl' handles figuring
+out where to send patches pretty well.
 
 During the first run patman creates a config file for you by taking the default
 user name and email address from the global .gitconfig file.
@@ -80,6 +81,18 @@ Aliases are recursive.
 
 The checkpatch.pl in the U-Boot tools/ subdirectory will be located and
 used. Failing that you can put it into your path or ~/bin/checkpatch.pl
+
+If you want to avoid sending patches to email addresses that are picked up
+by patman but are known to bounce you can add a [bounces] section to your
+.patman file. Unlike the [alias] section these are simple key: value pairs
+that are not recursive.
+
+>>>
+
+[bounces]
+gonefishing: Fred Bloggs <f.bloggs@napier.net>
+
+<<<
 
 
 If you want to change the defaults for patman's command-line arguments,
@@ -132,6 +145,17 @@ Similar to the above, but skip the first commit and take the next 5. This
 is useful if your top commit is for setting up testing.
 
 
+How to install it
+=================
+
+The most up to date version of patman can be found in the U-Boot sources.
+However to use it on other projects it may be more convenient to install it as
+a standalone application. A distutils installer is included, this can be used
+to install patman:
+
+$ cd tools/patman && python setup.py install
+
+
 How to add tags
 ===============
 
@@ -151,7 +175,11 @@ Series-version: n
 
 Series-prefix: prefix
 	Sets the subject prefix. Normally empty but it can be RFC for
-	RFC patches, or RESEND if you are being ignored.
+	RFC patches, or RESEND if you are being ignored. The patch subject
+	is like [RFC PATCH] or [RESEND PATCH].
+	In the meantime, git format.subjectprefix option will be added as
+	well. If your format.subjectprefix is set to InternalProject, then
+	the patch shows like: [InternalProject][RFC/RESEND PATCH]
 
 Series-name: name
 	Sets the name of the series. You don't need to have a name, and

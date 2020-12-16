@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * vme8349.c -- esd VME8349 board support
  *
@@ -8,8 +9,6 @@
  *
  * Reinhard Arlt <reinhard.arlt@esd-electronics.com>
  * Based on board/mpc8349emds/mpc8349emds.c (and previous 834x releases.)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,7 +16,7 @@
 #include <mpc83xx.h>
 #include <asm/mpc8349_pci.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #endif
 #include <asm/io.h>
 #include <asm/mmu.h>
@@ -26,15 +25,17 @@
 #include <i2c.h>
 #include <netdev.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 void ddr_enable_ecc(unsigned int dram_size);
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM - Main memory */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
@@ -52,7 +53,9 @@ phys_size_t initdram(int board_type)
 	msize = get_ram_size(0, msize);
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
@@ -74,13 +77,15 @@ int board_eth_init(bd_t *bis)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif
 

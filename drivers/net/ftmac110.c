@@ -1,17 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Faraday 10/100Mbps Ethernet Controller
  *
  * (C) Copyright 2013 Faraday Technology
  * Dante Su <dantesu@faraday-tech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
 #include <net.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/dma-mapping.h>
 
@@ -347,7 +346,7 @@ static int ftmac110_recv(struct eth_device *dev)
 			printf("ftmac110: rx error\n");
 		} else {
 			dma_map_single(buf, len, DMA_FROM_DEVICE);
-			NetReceive(buf, len);
+			net_process_received_packet(buf, len);
 			rlen += len;
 		}
 
@@ -364,32 +363,35 @@ static int ftmac110_recv(struct eth_device *dev)
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 
-static int ftmac110_mdio_read(
-	const char *devname, uint8_t addr, uint8_t reg, uint16_t *value)
+static int ftmac110_mdio_read(struct mii_dev *bus, int addr, int devad,
+			      int reg)
 {
+	uint16_t value = 0;
 	int ret = 0;
 	struct eth_device *dev;
 
-	dev = eth_get_dev_by_name(devname);
+	dev = eth_get_dev_by_name(bus->name);
 	if (dev == NULL) {
-		printf("%s: no such device\n", devname);
+		printf("%s: no such device\n", bus->name);
 		ret = -1;
 	} else {
-		*value = mdio_read(dev, addr, reg);
+		value = mdio_read(dev, addr, reg);
 	}
 
-	return ret;
+	if (ret < 0)
+		return ret;
+	return value;
 }
 
-static int ftmac110_mdio_write(
-	const char *devname, uint8_t addr, uint8_t reg, uint16_t value)
+static int ftmac110_mdio_write(struct mii_dev *bus, int addr, int devad,
+			       int reg, u16 value)
 {
 	int ret = 0;
 	struct eth_device *dev;
 
-	dev = eth_get_dev_by_name(devname);
+	dev = eth_get_dev_by_name(bus->name);
 	if (dev == NULL) {
-		printf("%s: no such device\n", devname);
+		printf("%s: no such device\n", bus->name);
 		ret = -1;
 	} else {
 		mdio_write(dev, addr, reg, value);
@@ -423,9 +425,6 @@ int ftmac110_initialize(bd_t *bis)
 	dev->halt = ftmac110_halt;
 	dev->send = ftmac110_send;
 	dev->recv = ftmac110_recv;
-
-	if (!eth_getenv_enetaddr_by_index("eth", card_nr, dev->enetaddr))
-		eth_random_addr(dev->enetaddr);
 
 	/* allocate tx descriptors (it must be 16 bytes aligned) */
 	chip->txd = dma_alloc_coherent(
@@ -471,7 +470,17 @@ int ftmac110_initialize(bd_t *bis)
 	eth_register(dev);
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-	miiphy_register(dev->name, ftmac110_mdio_read, ftmac110_mdio_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+	mdiodev->read = ftmac110_mdio_read;
+	mdiodev->write = ftmac110_mdio_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 #endif
 
 	card_nr++;

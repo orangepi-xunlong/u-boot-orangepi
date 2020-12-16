@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
  * Copyright (C) 2009 TechNexion Ltd.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __TAM3517_H
@@ -13,25 +12,9 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_OMAP		/* in a TI OMAP core */
-#define CONFIG_OMAP34XX		/* which is a 34XX */
-#define CONFIG_OMAP_GPIO
-#define CONFIG_OMAP_COMMON
-
-#define CONFIG_SYS_TEXT_BASE 0x80008000
-
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
-#define CONFIG_EMIF4	/* The chip has EMIF4 controller */
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
-#include <asm/arch/omap3.h>
-
-/*
- * Display CPU and Board information
- */
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
+#include <asm/arch/omap.h>
 
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
@@ -53,7 +36,6 @@
 /*
  * DDR related
  */
-#define CONFIG_OMAP3_MICRON_DDR		/* Micron DDR */
 #define CONFIG_SYS_CS0_SIZE		(256 * 1024 * 1024)
 
 /*
@@ -63,7 +45,6 @@
 /*
  * NS16550 Configuration
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000	/* 48MHz (APLL96/2) */
@@ -71,56 +52,17 @@
 /*
  * select serial console configuration
  */
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_COM1		OMAP34XX_UART1
 #define CONFIG_SERIAL1			/* UART1 */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
-#define CONFIG_MMC
-#define CONFIG_OMAP_HSMMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_DOS_PARTITION
-
 /* EHCI */
-#define CONFIG_OMAP3_GPIO_5
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_OMAP
-#define CONFIG_USB_ULPI
-#define CONFIG_USB_ULPI_VIEWPORT_OMAP
 #define CONFIG_OMAP_EHCI_PHY1_RESET_GPIO	25
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 3
-#define CONFIG_USB_STORAGE
 
-/* commands to include */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_EXT2		/* EXT2 Support			*/
-#define CONFIG_CMD_FAT		/* FAT support			*/
-#define CONFIG_CMD_GPIO
-#define CONFIG_CMD_I2C		/* I2C serial bus support	*/
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC		/* MMC support			*/
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
-#define CONFIG_CMD_NAND		/* NAND support			*/
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_USB
-#define CONFIG_CMD_EEPROM
-
-#undef CONFIG_CMD_FLASH		/* only NAND on the SOM */
-#undef CONFIG_CMD_IMLS
-
-#define CONFIG_SYS_NO_FLASH
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_OMAP24_I2C_SPEED	400000
-#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
-#define CONFIG_SYS_I2C_OMAP34XX
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50		/* base address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1		/* bytes of address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW	0x07
@@ -135,24 +77,13 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1		/* Max number of */
 							/* NAND devices */
 
-#define CONFIG_AUTO_COMPLETE
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_MAXARGS		32	/* max number of command */
 						/* args */
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
 #define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + \
@@ -182,18 +113,10 @@
 
 /* **** PISMO SUPPORT *** */
 
-/* Configure the PISMO */
-#define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-
-#define CONFIG_NAND
-#define CONFIG_NAND_OMAP_GPMC
-#define CONFIG_ENV_IS_IN_NAND
-#define SMNAND_ENV_OFFSET		0x180000 /* environment starts here */
-
 /* Redundant Environment */
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
-#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
+#define CONFIG_ENV_OFFSET		0x180000
+#define CONFIG_ENV_ADDR			0x180000
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + \
 						2 * CONFIG_SYS_ENV_SECT_SIZE)
 #define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
@@ -212,36 +135,22 @@
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_MII
-#define CONFIG_EMAC_MDIO_PHY_NUM	0
-#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT 10
 
 /* Defines for SPL */
-#define CONFIG_SPL
-#define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_CONSOLE
-#define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SPL_NAND_SOFTECC
 #define CONFIG_SPL_NAND_WORKSPACE	0x8f07f000 /* below BSS */
 
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBDISK_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_POWER_SUPPORT
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_BASE
 #define CONFIG_SPL_NAND_DRIVERS
 #define CONFIG_SPL_NAND_ECC
-#define CONFIG_SPL_LDSCRIPT		"$(CPUDIR)/omap-common/u-boot-spl.lds"
 
 #define CONFIG_SPL_TEXT_BASE		0x40200000 /*CONFIG_SYS_SRAM_START*/
-#define CONFIG_SPL_MAX_SIZE		(54 * 1024)	/* 8 KB for stack */
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
+					 CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
 #define CONFIG_SYS_SPL_MALLOC_START	0x8f000000
@@ -249,8 +158,19 @@
 #define CONFIG_SPL_BSS_START_ADDR	0x8f080000 /* end of RAM */
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 
+#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
+
+/* FAT */
+#define CONFIG_SPL_FS_LOAD_KERNEL_NAME		"uImage"
+#define CONFIG_SPL_FS_LOAD_ARGS_NAME		"args"
+
+/* RAW SD card / eMMC */
+#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0x900	/* address 0x120000 */
+#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	0x80	/* address 0x10000 */
+#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	0x80	/* 64KiB */
+
 /* NAND boot config */
-#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
 #define CONFIG_SYS_NAND_PAGE_COUNT	64
 #define CONFIG_SYS_NAND_PAGE_SIZE	2048
 #define CONFIG_SYS_NAND_OOBSIZE		64
@@ -269,21 +189,10 @@
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	0x80000
 
-#define CONFIG_OF_LIBFDT
-#define CONFIG_FIT
-#define CONFIG_CMD_UBI
-#define CONFIG_CMD_UBIFS
-#define CONFIG_RBTREE
-#define CONFIG_LZO
 #define CONFIG_MTD_PARTITIONS
 #define CONFIG_MTD_DEVICE
-#define CONFIG_CMD_MTDPARTS
 
 /* Setup MTD for NAND on the SOM */
-#define MTDIDS_DEFAULT		"nand0=omap2-nand.0"
-#define MTDPARTS_DEFAULT	"mtdparts=omap2-nand.0:512k(MLO)," \
-				"1m(u-boot),256k(env1)," \
-				"256k(env2),6m(kernel),-(rootfs)"
 
 #define	CONFIG_TAM3517_SETTINGS						\
 	"netdev=eth0\0"							\
@@ -304,8 +213,8 @@
 	"addmisc=setenv bootargs ${bootargs} ${misc}\0"			\
 	"loadaddr=82000000\0"						\
 	"kernel_addr_r=82000000\0"					\
-	"hostname=" __stringify(CONFIG_HOSTNAME) "\0"			\
-	"bootfile=" __stringify(CONFIG_HOSTNAME) "/uImage\0"		\
+	"hostname=" CONFIG_HOSTNAME "\0"			\
+	"bootfile=" CONFIG_HOSTNAME "/uImage\0"		\
 	"flash_self=run ramargs addip addtty addmtd addmisc;"		\
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"flash_nfs=run nfsargs addip addtty addmtd addmisc;"		\
@@ -320,10 +229,10 @@
 		"run ramargs addip addtty addmtd addmisc;"		\
 		"bootm ${kernel_addr_r} ${ramdisk_addr_r};"		\
 		"else echo Images not loades;fi\0"			\
-	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.img\0"		\
+	"u-boot=" CONFIG_HOSTNAME "/u-boot.img\0"		\
 	"load=tftp ${loadaddr} ${u-boot}\0"				\
 	"loadmlo=tftp ${loadaddr} ${mlo}\0"				\
-	"mlo=" __stringify(CONFIG_HOSTNAME) "/MLO\0"			\
+	"mlo=" CONFIG_HOSTNAME "/MLO\0"			\
 	"uboot_addr=0x80000\0"						\
 	"update=nandecc sw;nand erase ${uboot_addr} 100000;"		\
 		"nand write ${loadaddr} ${uboot_addr} 80000\0"		\
@@ -335,7 +244,6 @@
 			"echo Board without bootloader !!;"		\
 		"fi;"							\
 		"else echo U-Boot not downloaded..exiting;fi\0"		\
-
 
 /*
  * this is common code for all TAM3517 boards.
@@ -395,9 +303,9 @@ do {								\
 		if (i)						\
 			sprintf(ethname, "eth%daddr", i);	\
 		else						\
-			sprintf(ethname, "ethaddr");		\
+			strcpy(ethname, "ethaddr");		\
 		printf("Setting %s from EEPROM with %s\n", ethname, buf);\
-		setenv(ethname, buf);				\
+		env_set(ethname, buf);				\
 	}							\
 } while (0)
 

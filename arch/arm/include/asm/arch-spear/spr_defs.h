@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SPR_DEFS_H__
@@ -13,9 +12,7 @@ extern void setfreq(unsigned int, unsigned int);
 extern unsigned int setfreq_sz;
 
 void plat_ddr_init(void);
-void soc_init(void);
 void spear_late_init(void);
-void plat_late_init(void);
 
 int snor_boot_selected(void);
 int nand_boot_selected(void);

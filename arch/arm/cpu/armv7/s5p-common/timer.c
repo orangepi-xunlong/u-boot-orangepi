@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009 Samsung Electronics
  * Heungjun Kim <riverful.kim@samsung.com>
  * Inki Dae <inki.dae@samsung.com>
  * Minkyu Kang <mk7.kang@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +11,9 @@
 #include <asm/io.h>
 #include <asm/arch/pwm.h>
 #include <asm/arch/clk.h>
+
+/* Use the old PWM interface for now */
+#undef CONFIG_DM_PWM
 #include <pwm.h>
 
 DECLARE_GLOBAL_DATA_PTR;

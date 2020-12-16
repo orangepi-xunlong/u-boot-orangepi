@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SPR_MISC_H
@@ -253,5 +252,6 @@ struct misc_regs {
 #define SOC_SPEAR320		203
 
 extern int get_socrev(void);
+int fsmc_nand_switch_ecc(uint32_t eccstrength);
 
 #endif

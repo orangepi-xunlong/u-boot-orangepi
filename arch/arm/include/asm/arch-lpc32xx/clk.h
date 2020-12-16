@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_CLK_H
@@ -71,6 +70,7 @@ struct clk_pm_regs {
 };
 
 /* HCLK Divider Control Register bits */
+#define CLK_HCLK_DDRAM_MASK		(0x3 << 7)
 #define CLK_HCLK_DDRAM_HALF		(0x2 << 7)
 #define CLK_HCLK_DDRAM_NOMINAL		(0x1 << 7)
 #define CLK_HCLK_DDRAM_STOPPED		(0x0 << 7)
@@ -123,6 +123,10 @@ struct clk_pm_regs {
 #define CLK_MAC_SLAVE			(1 << 1)
 #define CLK_MAC_REG			(1 << 0)
 
+/* I2C Clock Control Register bits	*/
+#define CLK_I2C2_ENABLE			(1 << 1)
+#define CLK_I2C1_ENABLE			(1 << 0)
+
 /* Timer Clock Control1 Register bits */
 #define CLK_TIMCLK_MOTOR		(1 << 6)
 #define CLK_TIMCLK_TIMER3		(1 << 5)
@@ -147,11 +151,36 @@ struct clk_pm_regs {
 /* DMA Clock Control Register bits */
 #define CLK_DMA_ENABLE			(1 << 0)
 
+/* NAND Clock Control Register bits */
+#define CLK_NAND_SLC			(1 << 0)
+#define CLK_NAND_MLC			(1 << 1)
+#define CLK_NAND_SLC_SELECT		(1 << 2)
+#define CLK_NAND_MLC_INT		(1 << 5)
+
+/* SSP Clock Control Register bits */
+#define CLK_SSP0_ENABLE_CLOCK		(1 << 0)
+
+/* SDRAMCLK register bits */
+#define CLK_SDRAM_DDR_SEL		(1 << 1)
+
+/* USB control register definitions */
+#define CLK_USBCTRL_PLL_STS		(1 << 0)
+#define CLK_USBCTRL_FDBK_PLUS1(n)	(((n) & 0xFF) << 1)
+#define CLK_USBCTRL_POSTDIV_2POW(n)	(((n) & 0x3) << 11)
+#define CLK_USBCTRL_PLL_PWRUP		(1 << 16)
+#define CLK_USBCTRL_CLK_EN1		(1 << 17)
+#define CLK_USBCTRL_CLK_EN2		(1 << 18)
+#define CLK_USBCTRL_BUS_KEEPER		(0x1 << 19)
+#define CLK_USBCTRL_USBHSTND_EN		(1 << 21)
+#define CLK_USBCTRL_USBDVND_EN		(1 << 22)
+#define CLK_USBCTRL_HCLK_EN		(1 << 24)
+
 unsigned int get_sys_clk_rate(void);
 unsigned int get_hclk_pll_rate(void);
 unsigned int get_hclk_clk_div(void);
 unsigned int get_hclk_clk_rate(void);
 unsigned int get_periph_clk_div(void);
 unsigned int get_periph_clk_rate(void);
+unsigned int get_sdram_clk_rate(void);
 
 #endif /* _LPC32XX_CLK_H */

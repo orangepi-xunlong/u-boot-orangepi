@@ -1,16 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * NAND boot for Freescale Integrated Flash Controller, NAND FCM
  *
  * Copyright 2011 Freescale Semiconductor, Inc.
  * Author: Dipen Dudhat <dipen.dudhat@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <fsl_ifc.h>
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
+#ifdef CONFIG_CHAIN_OF_TRUST
+#include <fsl_validate.h>
+#endif
 
 static inline int is_blank(uchar *addr, int page_size)
 {
@@ -48,11 +50,25 @@ static inline int check_read_ecc(uchar *buf, u32 *eccstat,
 	return 0;
 }
 
+static inline struct fsl_ifc_runtime *runtime_regs_address(void)
+{
+	struct fsl_ifc regs = {(void *)CONFIG_SYS_IFC_ADDR, NULL};
+	int ver = 0;
+
+	ver = ifc_in32(&regs.gregs->ifc_rev);
+	if (ver >= FSL_IFC_V2_0_0)
+		regs.rregs = (void *)CONFIG_SYS_IFC_ADDR + IFC_RREGS_64KOFFSET;
+	else
+		regs.rregs = (void *)CONFIG_SYS_IFC_ADDR + IFC_RREGS_4KOFFSET;
+
+	return regs.rregs;
+}
+
 static inline void nand_wait(uchar *buf, int bufnum, int page_size)
 {
-	struct fsl_ifc *ifc = IFC_BASE_ADDR;
+	struct fsl_ifc_runtime *ifc = runtime_regs_address();
 	u32 status;
-	u32 eccstat[4];
+	u32 eccstat[8];
 	int bufperpage = page_size / 512;
 	int bufnum_end, i;
 
@@ -90,14 +106,15 @@ static inline int bad_block(uchar *marker, int port_size)
 
 int nand_spl_load_image(uint32_t offs, unsigned int uboot_size, void *vdst)
 {
-	struct fsl_ifc *ifc = IFC_BASE_ADDR;
+	struct fsl_ifc_fcm *gregs = (void *)CONFIG_SYS_IFC_ADDR;
+	struct fsl_ifc_runtime *ifc = NULL;
 	uchar *buf = (uchar *)CONFIG_SYS_NAND_BASE;
 	int page_size;
 	int port_size;
 	int pages_per_blk;
 	int blk_size;
 	int bad_marker = 0;
-	int bufnum_mask, bufnum;
+	int bufnum_mask, bufnum, ver = 0;
 
 	int csor, cspr;
 	int pos = 0;
@@ -106,6 +123,8 @@ int nand_spl_load_image(uint32_t offs, unsigned int uboot_size, void *vdst)
 	int sram_addr;
 	int pg_no;
 	uchar *dst = vdst;
+
+	ifc = runtime_regs_address();
 
 	/* Get NAND Flash configuration */
 	csor = CONFIG_SYS_NAND_CSOR;
@@ -129,6 +148,10 @@ int nand_spl_load_image(uint32_t offs, unsigned int uboot_size, void *vdst)
 		if (port_size == 8)
 			bad_marker = 5;
 	}
+
+	ver = ifc_in32(&gregs->ifc_rev);
+	if (ver >= FSL_IFC_V2_0_0)
+		bufnum_mask = (bufnum_mask * 2) + 1;
 
 	pages_per_blk =
 		32 << ((csor & CSOR_NAND_PB_MASK) >> CSOR_NAND_PB_SHIFT);
@@ -215,7 +238,7 @@ int nand_spl_load_image(uint32_t offs, unsigned int uboot_size, void *vdst)
 
 /*
  * Main entrypoint for NAND Boot. It's necessary that SDRAM is already
- * configured and available since this code loads the main U-boot image
+ * configured and available since this code loads the main U-Boot image
  * from NAND into SDRAM and starts from there.
  */
 void nand_boot(void)
@@ -247,6 +270,37 @@ void nand_boot(void)
 	 */
 	flush_cache(CONFIG_SYS_NAND_U_BOOT_DST, CONFIG_SYS_NAND_U_BOOT_SIZE);
 #endif
+
+#ifdef CONFIG_CHAIN_OF_TRUST
+	/*
+	 * U-Boot header is appended at end of U-boot image, so
+	 * calculate U-boot header address using U-boot header size.
+	 */
+#define CONFIG_U_BOOT_HDR_ADDR \
+		((CONFIG_SYS_NAND_U_BOOT_START + \
+		  CONFIG_SYS_NAND_U_BOOT_SIZE) - \
+		 CONFIG_U_BOOT_HDR_SIZE)
+	spl_validate_uboot(CONFIG_U_BOOT_HDR_ADDR,
+			   CONFIG_SYS_NAND_U_BOOT_START);
+	/*
+	 * In case of failure in validation, spl_validate_uboot would
+	 * not return back in case of Production environment with ITS=1.
+	 * Thus U-Boot will not start.
+	 * In Development environment (ITS=0 and SB_EN=1), the function
+	 * may return back in case of non-fatal failures.
+	 */
+#endif
+
 	uboot = (void *)CONFIG_SYS_NAND_U_BOOT_START;
 	uboot();
 }
+
+#ifndef CONFIG_SPL_NAND_INIT
+void nand_init(void)
+{
+}
+
+void nand_deselect(void)
+{
+}
+#endif

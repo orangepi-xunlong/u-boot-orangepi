@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 OMICRON electronics GmbH
  *
@@ -6,8 +7,6 @@
  * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
  * Copyright (C) 2009 Nick Thompson, GE Fanuc, Ltd. <nick.thompson@gefanuc.com>
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -100,9 +99,7 @@ int board_init(void)
 {
 	int val;
 
-#ifndef CONFIG_USE_IRQ
 	irq_init();
-#endif
 
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = LINUX_BOOT_PARAM_ADDR;

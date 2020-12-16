@@ -1,17 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008
  * Mark Jonas <mark.jonas@de.bosch.com>
  *
  * board/mpr2/mpr2.c
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <asm/processor.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
@@ -136,13 +133,5 @@ int board_init(void)
 	 * V3 GPO(MID1);     V2 CARD_TxD;      V1 CARD_RxD;         V0 GPI+(/BAT_FAULT); */
 	__raw_writew(0x0142, PVCR);   /* 00 00 00 01 01 00 00 10 */
 
-	return 0;
-}
-
-int dram_init(void)
-{
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("SDRAM: %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
 	return 0;
 }

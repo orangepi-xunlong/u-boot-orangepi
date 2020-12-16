@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -19,9 +18,6 @@
 #define CONFIG_E300		1	/* E300 Family */
 #define CONFIG_MPC834x		1	/* MPC834x family */
 #define CONFIG_MPC8349		1	/* MPC8349 specific */
-#define CONFIG_MPC8349EMDS	1	/* MPC8349EMDS board specific */
-
-#define	CONFIG_SYS_TEXT_BASE	0xFE000000
 
 #define CONFIG_PCI_66M
 #ifdef CONFIG_PCI_66M
@@ -31,7 +27,6 @@
 #endif
 
 #ifdef CONFIG_PCISLAVE
-#define CONFIG_PCI
 #define CONFIG_83XX_PCICLK	66666666	/* in Hz */
 #endif /* CONFIG_PCISLAVE */
 
@@ -44,8 +39,6 @@
 #define HRCWL_CSB_TO_CLKIN	HRCWL_CSB_TO_CLKIN_8X1
 #endif
 #endif
-
-#define CONFIG_BOARD_EARLY_INIT_F		/* call board_pre_init */
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
@@ -61,21 +54,16 @@
 #define CONFIG_SPD_EEPROM		/* use SPD EEPROM for DDR setup*/
 
 /*
- * define CONFIG_SYS_FSL_DDR2 to use unified DDR driver
- * undefine it to use old spd_sdram.c
+ * SYS_FSL_DDR2 is selected in Kconfig to use unified DDR driver
+ * unselect it to use old spd_sdram.c
  */
-#define CONFIG_SYS_FSL_DDR2
-#ifdef CONFIG_SYS_FSL_DDR2
-#define CONFIG_SYS_FSL_DDRC_GEN2
 #define CONFIG_SYS_SPD_BUS_NUM	0
 #define SPD_EEPROM_ADDRESS1	0x52
 #define SPD_EEPROM_ADDRESS2	0x51
-#define CONFIG_NUM_DDR_CONTROLLERS	1
 #define CONFIG_DIMM_SLOTS_PER_CTLR	2
 #define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 #define CONFIG_ECC_INIT_VIA_DDRCONTROLLER
 #define CONFIG_MEM_INIT_VALUE	0xDeadBeef
-#endif
 
 /*
  * 32-bit data path mode.
@@ -223,7 +211,7 @@
 			(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN	(384 * 1024)	/* Reserve 384 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN	(512 * 1024)	/* Reserve 512 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN	(256 * 1024)	/* Reserved for malloc */
 
 /*
@@ -315,8 +303,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX     1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -326,16 +312,6 @@
 
 #define CONFIG_SYS_NS16550_COM1        (CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2        (CONFIG_SYS_IMMR+0x4600)
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP	1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -349,7 +325,6 @@
 #define CONFIG_SYS_I2C_NOPROBES		{ {0, 0x69} }
 
 /* SPI */
-#define CONFIG_MPC8XXX_SPI
 #undef CONFIG_SOFT_SPI			/* SPI bit-banged */
 
 /* GPIOs.  Used as SPI chip selects */
@@ -399,7 +374,6 @@
 #undef PCI_ONE_PCI1
 #endif
 
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 #define CONFIG_83XX_PCI_STREAMING
 
 #undef CONFIG_EEPRO100
@@ -419,7 +393,6 @@
 /*
  * TSEC configuration
  */
-#define CONFIG_TSEC_ENET	/* TSEC ethernet support */
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -450,7 +423,6 @@
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
-	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		\
 			(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 	#define CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
@@ -461,8 +433,6 @@
 #define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #else
-	#define CONFIG_SYS_NO_FLASH	1	/* Flash is not usable now */
-	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -470,55 +440,21 @@
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_MII
-
-#if defined(CONFIG_PCI)
-    #define CONFIG_CMD_PCI
-#endif
-
-#if defined(CONFIG_SYS_RAMBOOT)
-    #undef CONFIG_CMD_SAVEENV
-    #undef CONFIG_CMD_LOADS
-#endif
-
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-
-#if defined(CONFIG_CMD_KGDB)
-	#define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
-#else
-	#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-#endif
-
-				/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-				/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 /*
  * For booting Linux, the board info and command line data
@@ -527,6 +463,7 @@
  */
 				/* Initial Memory map for Linux*/
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20)
+#define CONFIG_SYS_BOOTM_LEN	(64 << 20)	/* Increase max gunzip size */
 
 #define CONFIG_SYS_RCWH_PCIHOST 0x80000000 /* PCIHOST  */
 
@@ -632,7 +569,6 @@
 	HID0_ENABLE_INSTRUCTION_CACHE |\
 	HID0_ENABLE_M_BIT |\
 	HID0_ENABLE_ADDRESS_BROADCAST) */
-
 
 #define CONFIG_SYS_HID2 HID2_HBE
 #define CONFIG_HIGH_BATS	1	/* High BATs supported */
@@ -748,16 +684,11 @@
 #define CONFIG_HAS_ETH0
 #endif
 
-#define CONFIG_HOSTNAME		mpc8349emds
+#define CONFIG_HOSTNAME		"mpc8349emds"
 #define CONFIG_ROOTPATH		"/nfsroot/rootfs"
 #define CONFIG_BOOTFILE		"uImage"
 
 #define CONFIG_LOADADDR	800000	/* default location for tftp and bootm */
-
-#define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
-#undef  CONFIG_BOOTARGS		/* the boot command will set bootargs */
-
-#define CONFIG_BAUDRATE	 115200
 
 #define CONFIG_PREBOOT	"echo;"	\
 	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \

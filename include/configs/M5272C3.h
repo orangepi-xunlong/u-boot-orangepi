@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Motorola MC5272C3 board.
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -17,14 +16,10 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF52x2		/* define processor family */
-#define CONFIG_M5272		/* define processor type */
-
 #define CONFIG_MCFTMR
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
 
 #undef CONFIG_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT 10000	/* timeout in milliseconds */
@@ -37,39 +32,24 @@
 #ifndef CONFIG_MONITOR_IS_IN_RAM
 #define CONFIG_ENV_OFFSET		0x4000
 #define CONFIG_ENV_SECT_SIZE	0x2000
-#define CONFIG_ENV_IS_IN_FLASH	1
 #else
 #define CONFIG_ENV_ADDR		0xffe04000
 #define CONFIG_ENV_SECT_SIZE	0x2000
-#define CONFIG_ENV_IS_IN_FLASH	1
 #endif
+
+#define LDS_BOARD_TEXT \
+	. = DEFINED(env_offset) ? env_offset : .; \
+	env/embedded.o(.text);
 
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
 
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_MISC
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_MEMORY
-
-#undef CONFIG_CMD_LOADS
-#undef CONFIG_CMD_LOADB
-
-#define CONFIG_BOOTDELAY	5
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_MII		1
@@ -93,15 +73,13 @@
 #endif
 
 #ifdef CONFIG_MCFFEC
-#	define CONFIG_ETHADDR	00:e0:0c:bc:e5:60
 #	define CONFIG_IPADDR	192.162.1.2
 #	define CONFIG_NETMASK	255.255.255.0
 #	define CONFIG_SERVERIP	192.162.1.1
 #	define CONFIG_GATEWAYIP	192.162.1.1
-#	define CONFIG_OVERWRITE_ETHADDR_ONCE
 #endif				/* CONFIG_MCFFEC */
 
-#define CONFIG_HOSTNAME		M5272C3
+#define CONFIG_HOSTNAME		"M5272C3"
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"netdev=eth0\0"				\
 	"loadaddr=10000\0"			\
@@ -114,18 +92,6 @@
 	"save\0"				\
 	""
 
-#define CONFIG_SYS_PROMPT		"-> "
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size      */
-#else
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size      */
-#endif
-
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args   */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size    */
 #define CONFIG_SYS_LOAD_ADDR		0x20000
 #define CONFIG_SYS_MEMTEST_START	0x400
 #define CONFIG_SYS_MEMTEST_END		0x380000

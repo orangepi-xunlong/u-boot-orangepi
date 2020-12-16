@@ -1,14 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Renesas Solutions Corp.
  * Copyright (C) 2011 Nobuhiro Iwamatsu <nobuhiro.Iwamatsu.yj@renesas.com>
  *
  * board/renesas/ecovec/lowlevel_init.S
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
-#include <version.h>
 #include <asm/processor.h>
 #include <asm/macro.h>
 #include <configs/ecovec.h>

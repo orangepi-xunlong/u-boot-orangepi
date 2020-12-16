@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2005
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -43,7 +42,7 @@ ulong flash_get_size (ulong base, int banknum);
 /* Local functions */
 static int detect_num_flash_banks(void);
 static long int get_ddr_bank_size(short cs, long *base);
-static void set_cs_bounds(short cs, long base, long size);
+static void set_cs_bounds(short cs, ulong base, ulong size);
 static void set_cs_config(short cs, long config);
 static void set_ddr_config(void);
 
@@ -66,7 +65,7 @@ int board_early_init_r (void) {
 /**************************************************************************
  * DRAM initalization and size detection
  */
-phys_size_t initdram (int board_type)
+int dram_init(void)
 {
 	long bank_size;
 	long size;
@@ -112,7 +111,9 @@ phys_size_t initdram (int board_type)
 		if(size < DDR_MAX_SIZE_PER_CS) break;
 	}
 
-	return size;
+	gd->ram_size = size;
+
+	return 0;
 }
 
 /**************************************************************************
@@ -314,7 +315,7 @@ static long int get_ddr_bank_size(short cs, long *base)
 /**************************************************************************
  * Sets DDR bank CS bounds.
  */
-static void set_cs_bounds(short cs, long base, long size)
+static void set_cs_bounds(short cs, ulong base, ulong size)
 {
 	debug("Setting bounds %08lx, %08lx for cs %d\n", base, size, cs);
 	if(size == 0){
@@ -414,12 +415,14 @@ static void set_ddr_config(void) {
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif	/* CONFIG_PCI */
+
+	return 0;
 }
 #endif	/* CONFIG_OF_BOARD_SETUP */

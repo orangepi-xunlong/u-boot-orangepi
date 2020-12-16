@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * Author: Dipen Dudhat <dipen.dudhat@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -167,5 +166,26 @@ void init_final_memctl_regs(void)
 {
 #ifdef CONFIG_SYS_CSPR0_FINAL
 	set_ifc_cspr(IFC_CS0, CONFIG_SYS_CSPR0_FINAL);
+#endif
+#ifdef CONFIG_SYS_AMASK0_FINAL
+	set_ifc_amask(IFC_CS0, CONFIG_SYS_AMASK0);
+#endif
+#ifdef CONFIG_SYS_CSPR1_FINAL
+	set_ifc_cspr(IFC_CS1, CONFIG_SYS_CSPR1_FINAL);
+#endif
+#ifdef CONFIG_SYS_AMASK1_FINAL
+	set_ifc_amask(IFC_CS1, CONFIG_SYS_AMASK1_FINAL);
+#endif
+#ifdef CONFIG_SYS_CSPR2_FINAL
+	set_ifc_cspr(IFC_CS2, CONFIG_SYS_CSPR2_FINAL);
+#endif
+#ifdef CONFIG_SYS_AMASK2_FINAL
+	set_ifc_amask(IFC_CS2, CONFIG_SYS_AMASK2);
+#endif
+#ifdef CONFIG_SYS_CSPR3_FINAL
+	set_ifc_cspr(IFC_CS3, CONFIG_SYS_CSPR3_FINAL);
+#endif
+#ifdef CONFIG_SYS_AMASK3_FINAL
+	set_ifc_amask(IFC_CS3, CONFIG_SYS_AMASK3);
 #endif
 }

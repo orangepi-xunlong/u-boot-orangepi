@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  *
- * (C) Copyright 2009-2011
+ * (C) Copyright 2009-2015
  * Daniel Gorsulowski <daniel.gorsulowski@esd.eu>
  * esd electronic system design gmbh <www.esd.eu>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
+#include <asm/mach-types.h>
+#include <asm/setup.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_pmc.h>
@@ -28,6 +29,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * Miscelaneous platform dependent initialisations
  */
 
+#ifdef CONFIG_REVISION_TAG
 static int hw_rev = -1;	/* hardware revision */
 
 int get_hw_rev(void)
@@ -45,6 +47,7 @@ int get_hw_rev(void)
 
 	return hw_rev;
 }
+#endif /* CONFIG_REVISION_TAG */
 
 #ifdef CONFIG_CMD_NAND
 static void meesc_nand_hw_init(void)
@@ -85,9 +88,8 @@ static void meesc_nand_hw_init(void)
 #ifdef CONFIG_MACB
 static void meesc_macb_hw_init(void)
 {
-	at91_pmc_t	*pmc	= (at91_pmc_t *) ATMEL_BASE_PMC;
-	/* Enable clock */
-	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_EMAC);
+
 	at91_macb_hw_init();
 }
 #endif
@@ -125,9 +127,17 @@ static void meesc_ethercat_hw_init(void)
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size(
-		(void *)CONFIG_SYS_SDRAM_BASE,
-		CONFIG_SYS_SDRAM_SIZE);
+	/* dram_init must store complete ramsize in gd->ram_size */
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM,
+				PHYS_SDRAM_SIZE);
+	return 0;
+}
+
+int dram_init_banksize(void)
+{
+	gd->bd->bi_dram[0].start = PHYS_SDRAM;
+	gd->bd->bi_dram[0].size = PHYS_SDRAM_SIZE;
+
 	return 0;
 }
 
@@ -140,6 +150,7 @@ int board_eth_init(bd_t *bis)
 	return rc;
 }
 
+#ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
 	char str[32];
@@ -169,21 +180,24 @@ int checkboard(void)
 		puts("Board: EtherCAN/2 Gateway");
 		break;
 	}
-	if (getenv_f("serial#", str, sizeof(str)) > 0) {
+	if (env_get_f("serial#", str, sizeof(str)) > 0) {
 		puts(", serial# ");
 		puts(str);
 	}
+#ifdef CONFIG_REVISION_TAG
 	printf("\nHardware-revision: 1.%d\n", get_hw_rev());
+#endif
 	printf("Mach-type: %lu\n", gd->bd->bi_arch_number);
 	return 0;
 }
+#endif /* CONFIG_DISPLAY_BOARDINFO */
 
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
 {
 	char *str;
 
-	char *serial = getenv("serial#");
+	char *serial = env_get("serial#");
 	if (serial) {
 		str = strchr(serial, '_');
 		if (str && (strlen(str) >= 4)) {
@@ -216,7 +230,8 @@ int misc_init_r(void)
 	 * In some cases this this needs to be set to 4.
 	 * Check the user has set environment mdiv to 4 to change the divisor.
 	 */
-	if ((str = getenv("mdiv")) && (strcmp(str, "4") == 0)) {
+	str = env_get("mdiv");
+	if (str && (strcmp(str, "4") == 0)) {
 		writel((readl(&pmc->mckr) & ~AT91_PMC_MDIV) |
 			AT91SAM9_PMC_MDIV_4, &pmc->mckr);
 		at91_clock_init(CONFIG_SYS_AT91_MAIN_CLOCK);
@@ -232,14 +247,7 @@ int misc_init_r(void)
 
 int board_early_init_f(void)
 {
-	at91_pmc_t	*pmc	= (at91_pmc_t *) ATMEL_BASE_PMC;
-
-	/* enable all clocks */
-	writel((1 << ATMEL_ID_PIOA) | (1 << ATMEL_ID_PIOB) |
-		(1 << ATMEL_ID_PIOCDE) | (1 << ATMEL_ID_UHP),
-		&pmc->pcer);
-
-	at91_seriald_hw_init();
+	at91_periph_clk_enable(ATMEL_ID_UHP);
 
 	return 0;
 }
@@ -254,9 +262,6 @@ int board_init(void)
 
 #ifdef CONFIG_CMD_NAND
 	meesc_nand_hw_init();
-#endif
-#ifdef CONFIG_HAS_DATAFLASH
-	at91_spi0_hw_init(1 << 0);
 #endif
 #ifdef CONFIG_MACB
 	meesc_macb_hw_init();

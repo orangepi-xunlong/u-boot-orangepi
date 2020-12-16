@@ -1,25 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Semihalf
  *
  * (C) Copyright 2000-2009
  * DENX Software Engineering
  * Wolfgang Denk, wd@denx.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
+#include "imximage.h"
 #include <image.h>
 #include <version.h>
 
 static void copy_file(int, const char *, int);
-static void usage(void);
-
-/* image_type_params link list to maintain registered image type supports */
-struct image_type_params *mkimage_tparams = NULL;
 
 /* parameters initialized by core will be used by the image type code */
-struct image_tool_params params = {
+static struct image_tool_params params = {
 	.os = IH_OS_LINUX,
 	.arch = IH_ARCH_PPC,
 	.type = IH_TYPE_KERNEL,
@@ -29,108 +25,291 @@ struct image_tool_params params = {
 	.imagename2 = "",
 };
 
-/*
- * mkimage_register -
- *
- * It is used to register respective image generation/list support to the
- * mkimage core
- *
- * the input struct image_type_params is checked and appended to the link
- * list, if the input structure is already registered, error
- */
-void mkimage_register (struct image_type_params *tparams)
+static enum ih_category cur_category;
+
+static int h_compare_category_name(const void *vtype1, const void *vtype2)
 {
-	struct image_type_params **tp;
+	const int *type1 = vtype1;
+	const int *type2 = vtype2;
+	const char *name1 = genimg_get_cat_short_name(cur_category, *type1);
+	const char *name2 = genimg_get_cat_short_name(cur_category, *type2);
 
-	if (!tparams) {
-		fprintf (stderr, "%s: %s: Null input\n",
-			params.cmdname, __FUNCTION__);
-		exit (EXIT_FAILURE);
-	}
-
-	/* scan the linked list, check for registry and point the last one */
-	for (tp = &mkimage_tparams; *tp != NULL; tp = &(*tp)->next) {
-		if (!strcmp((*tp)->name, tparams->name)) {
-			fprintf (stderr, "%s: %s already registered\n",
-				params.cmdname, tparams->name);
-			return;
-		}
-	}
-
-	/* add input struct entry at the end of link list */
-	*tp = tparams;
-	/* mark input entry as last entry in the link list */
-	tparams->next = NULL;
-
-	debug ("Registered %s\n", tparams->name);
+	return strcmp(name1, name2);
 }
 
-/*
- * mkimage_get_type -
- *
- * It scans all registers image type supports
- * checks the input type_id for each supported image type
- *
- * if successful,
- * 	returns respective image_type_params pointer if success
- * if input type_id is not supported by any of image_type_support
- * 	returns NULL
- */
-struct image_type_params *mkimage_get_type(int type)
+static int show_valid_options(enum ih_category category)
 {
-	struct image_type_params *curr;
+	int *order;
+	int count;
+	int item;
+	int i;
 
-	for (curr = mkimage_tparams; curr != NULL; curr = curr->next) {
-		if (curr->check_image_type) {
-			if (!curr->check_image_type (type))
-				return curr;
-		}
+	count = genimg_get_cat_count(category);
+	order = calloc(count, sizeof(*order));
+	if (!order)
+		return -ENOMEM;
+
+	/* Sort the names in order of short name for easier reading */
+	for (item = 0; item < count; item++)
+		order[item] = item;
+	cur_category = category;
+	qsort(order, count, sizeof(int), h_compare_category_name);
+
+	fprintf(stderr, "\nInvalid %s, supported are:\n",
+		genimg_get_cat_desc(category));
+	for (i = 0; i < count; i++) {
+		item = order[i];
+		fprintf(stderr, "\t%-15s  %s\n",
+			genimg_get_cat_short_name(category, item),
+			genimg_get_cat_name(category, item));
 	}
-	return NULL;
+	fprintf(stderr, "\n");
+	free(order);
+
+	return 0;
 }
 
-/*
- * mkimage_verify_print_header -
- *
- * It scans mkimage_tparams link list,
- * verifies image_header for each supported image type
- * if verification is successful, prints respective header
- *
- * returns negative if input image format does not match with any of
- * supported image types
- */
-int mkimage_verify_print_header (void *ptr, struct stat *sbuf)
+static void usage(const char *msg)
 {
-	int retval = -1;
-	struct image_type_params *curr;
+	fprintf(stderr, "Error: %s\n", msg);
+	fprintf(stderr, "Usage: %s -l image\n"
+			 "          -l ==> list image header information\n",
+		params.cmdname);
+	fprintf(stderr,
+		"       %s [-x] -A arch -O os -T type -C comp -a addr -e ep -n name -d data_file[:data_file...] image\n"
+		"          -A ==> set architecture to 'arch'\n"
+		"          -O ==> set operating system to 'os'\n"
+		"          -T ==> set image type to 'type'\n"
+		"          -C ==> set compression type 'comp'\n"
+		"          -a ==> set load address to 'addr' (hex)\n"
+		"          -e ==> set entry point to 'ep' (hex)\n"
+		"          -n ==> set image name to 'name'\n"
+		"          -d ==> use image data from 'datafile'\n"
+		"          -x ==> set XIP (execute in place)\n",
+		params.cmdname);
+	fprintf(stderr,
+		"       %s [-D dtc_options] [-f fit-image.its|-f auto|-F] [-b <dtb> [-b <dtb>]] [-i <ramdisk.cpio.gz>] fit-image\n"
+		"           <dtb> file is used with -f auto, it may occur multiple times.\n",
+		params.cmdname);
+	fprintf(stderr,
+		"          -D => set all options for device tree compiler\n"
+		"          -f => input filename for FIT source\n"
+		"          -i => input filename for ramdisk file\n");
+#ifdef CONFIG_FIT_SIGNATURE
+	fprintf(stderr,
+		"Signing / verified boot options: [-E] [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
+		"          -E => place data outside of the FIT structure\n"
+		"          -k => set directory containing private keys\n"
+		"          -K => write public keys to this .dtb file\n"
+		"          -c => add comment in signature node\n"
+		"          -F => re-sign existing FIT image\n"
+		"          -p => place external data at a static position\n"
+		"          -r => mark keys used as 'required' in dtb\n"
+		"          -N => engine to use for signing (pkcs11)\n");
+#else
+	fprintf(stderr,
+		"Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
+#endif
+	fprintf(stderr, "       %s -V ==> print version information and exit\n",
+		params.cmdname);
+	fprintf(stderr, "Use '-T list' to see a list of available image types\n");
 
-	for (curr = mkimage_tparams; curr != NULL; curr = curr->next ) {
-		if (curr->verify_header) {
-			retval = curr->verify_header (
-				(unsigned char *)ptr, sbuf->st_size,
-				&params);
+	exit(EXIT_FAILURE);
+}
 
-			if (retval == 0) {
-				/*
-				 * Print the image information
-				 * if verify is successful
-				 */
-				if (curr->print_header)
-					curr->print_header (ptr);
-				else {
-					fprintf (stderr,
-					"%s: print_header undefined for %s\n",
-					params.cmdname, curr->name);
-				}
-				break;
+static int add_content(int type, const char *fname)
+{
+	struct content_info *cont;
+
+	cont = calloc(1, sizeof(*cont));
+	if (!cont)
+		return -1;
+	cont->type = type;
+	cont->fname = fname;
+	if (params.content_tail)
+		params.content_tail->next = cont;
+	else
+		params.content_head = cont;
+	params.content_tail = cont;
+
+	return 0;
+}
+
+static void process_args(int argc, char **argv)
+{
+	char *ptr;
+	int type = IH_TYPE_INVALID;
+	char *datafile = NULL;
+	int opt;
+
+	while ((opt = getopt(argc, argv,
+			     "a:A:b:c:C:d:D:e:Ef:Fk:i:K:ln:N:p:O:rR:qsT:vVx")) != -1) {
+		switch (opt) {
+		case 'a':
+			params.addr = strtoull(optarg, &ptr, 16);
+			if (*ptr) {
+				fprintf(stderr, "%s: invalid load address %s\n",
+					params.cmdname, optarg);
+				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'A':
+			params.arch = genimg_get_arch_id(optarg);
+			if (params.arch < 0) {
+				show_valid_options(IH_ARCH);
+				usage("Invalid architecture");
+			}
+			break;
+		case 'b':
+			if (add_content(IH_TYPE_FLATDT, optarg)) {
+				fprintf(stderr,
+					"%s: Out of memory adding content '%s'",
+					params.cmdname, optarg);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'c':
+			params.comment = optarg;
+			break;
+		case 'C':
+			params.comp = genimg_get_comp_id(optarg);
+			if (params.comp < 0) {
+				show_valid_options(IH_COMP);
+				usage("Invalid compression type");
+			}
+			break;
+		case 'd':
+			params.datafile = optarg;
+			params.dflag = 1;
+			break;
+		case 'D':
+			params.dtc = optarg;
+			break;
+		case 'e':
+			params.ep = strtoull(optarg, &ptr, 16);
+			if (*ptr) {
+				fprintf(stderr, "%s: invalid entry point %s\n",
+					params.cmdname, optarg);
+				exit(EXIT_FAILURE);
+			}
+			params.eflag = 1;
+			break;
+		case 'E':
+			params.external_data = true;
+			break;
+		case 'f':
+			datafile = optarg;
+			params.auto_its = !strcmp(datafile, "auto");
+			/* no break */
+		case 'F':
+			/*
+			 * The flattened image tree (FIT) format
+			 * requires a flattened device tree image type
+			 */
+			params.type = IH_TYPE_FLATDT;
+			params.fflag = 1;
+			break;
+		case 'i':
+			params.fit_ramdisk = optarg;
+			break;
+		case 'k':
+			params.keydir = optarg;
+			break;
+		case 'K':
+			params.keydest = optarg;
+			break;
+		case 'l':
+			params.lflag = 1;
+			break;
+		case 'n':
+			params.imagename = optarg;
+			break;
+		case 'N':
+			params.engine_id = optarg;
+			break;
+		case 'O':
+			params.os = genimg_get_os_id(optarg);
+			if (params.os < 0) {
+				show_valid_options(IH_OS);
+				usage("Invalid operating system");
+			}
+			break;
+		case 'p':
+			params.external_offset = strtoull(optarg, &ptr, 16);
+			if (*ptr) {
+				fprintf(stderr, "%s: invalid offset size %s\n",
+					params.cmdname, optarg);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'q':
+			params.quiet = 1;
+			break;
+		case 'r':
+			params.require_keys = 1;
+			break;
+		case 'R':
+			/*
+			 * This entry is for the second configuration
+			 * file, if only one is not enough.
+			 */
+			params.imagename2 = optarg;
+			break;
+		case 's':
+			params.skipcpy = 1;
+			break;
+		case 'T':
+			if (strcmp(optarg, "list") == 0) {
+				show_valid_options(IH_TYPE);
+				exit(EXIT_SUCCESS);
+			}
+			type = genimg_get_type_id(optarg);
+			if (type < 0) {
+				show_valid_options(IH_TYPE);
+				usage("Invalid image type");
+			}
+			break;
+		case 'v':
+			params.vflag++;
+			break;
+		case 'V':
+			printf("mkimage version %s\n", PLAIN_VERSION);
+			exit(EXIT_SUCCESS);
+		case 'x':
+			params.xflag++;
+			break;
+		default:
+			usage("Invalid option");
 		}
 	}
-	return retval;
+
+	/* The last parameter is expected to be the imagefile */
+	if (optind < argc)
+		params.imagefile = argv[optind];
+
+	/*
+	 * For auto-generated FIT images we need to know the image type to put
+	 * in the FIT, which is separate from the file's image type (which
+	 * will always be IH_TYPE_FLATDT in this case).
+	 */
+	if (params.type == IH_TYPE_FLATDT) {
+		params.fit_image_type = type ? type : IH_TYPE_KERNEL;
+		/* For auto_its, datafile is always 'auto' */
+		if (!params.auto_its)
+			params.datafile = datafile;
+		else if (!params.datafile)
+			usage("Missing data file for auto-FIT (use -d)");
+	} else if (type != IH_TYPE_INVALID) {
+		if (type == IH_TYPE_SCRIPT && !params.datafile)
+			usage("Missing data file for script (use -d)");
+		params.type = type;
+	}
+
+	if (!params.imagefile)
+		usage("Missing output filename");
 }
 
-int
-main (int argc, char **argv)
+int main(int argc, char **argv)
 {
 	int ifd = -1;
 	struct stat sbuf;
@@ -138,148 +317,16 @@ main (int argc, char **argv)
 	int retval = 0;
 	struct image_type_params *tparams = NULL;
 	int pad_len = 0;
-
-	/* Init all image generation/list support */
-	register_image_tool(mkimage_register);
+	int dfd;
 
 	params.cmdname = *argv;
-	params.addr = params.ep = 0;
+	params.addr = 0;
+	params.ep = 0;
 
-	while (--argc > 0 && **++argv == '-') {
-		while (*++*argv) {
-			switch (**argv) {
-			case 'l':
-				params.lflag = 1;
-				break;
-			case 'A':
-				if ((--argc <= 0) ||
-					(params.arch =
-					genimg_get_arch_id (*++argv)) < 0)
-					usage ();
-				goto NXTARG;
-			case 'c':
-				if (--argc <= 0)
-					usage();
-				params.comment = *++argv;
-				goto NXTARG;
-			case 'C':
-				if ((--argc <= 0) ||
-					(params.comp =
-					genimg_get_comp_id (*++argv)) < 0)
-					usage ();
-				goto NXTARG;
-			case 'D':
-				if (--argc <= 0)
-					usage ();
-				params.dtc = *++argv;
-				goto NXTARG;
-
-			case 'O':
-				if ((--argc <= 0) ||
-					(params.os =
-					genimg_get_os_id (*++argv)) < 0)
-					usage ();
-				goto NXTARG;
-			case 'T':
-				if ((--argc <= 0) ||
-					(params.type =
-					genimg_get_type_id (*++argv)) < 0)
-					usage ();
-				goto NXTARG;
-
-			case 'a':
-				if (--argc <= 0)
-					usage ();
-				params.addr = strtoul (*++argv, &ptr, 16);
-				if (*ptr) {
-					fprintf (stderr,
-						"%s: invalid load address %s\n",
-						params.cmdname, *argv);
-					exit (EXIT_FAILURE);
-				}
-				goto NXTARG;
-			case 'd':
-				if (--argc <= 0)
-					usage ();
-				params.datafile = *++argv;
-				params.dflag = 1;
-				goto NXTARG;
-			case 'e':
-				if (--argc <= 0)
-					usage ();
-				params.ep = strtoul (*++argv, &ptr, 16);
-				if (*ptr) {
-					fprintf (stderr,
-						"%s: invalid entry point %s\n",
-						params.cmdname, *argv);
-					exit (EXIT_FAILURE);
-				}
-				params.eflag = 1;
-				goto NXTARG;
-			case 'f':
-				if (--argc <= 0)
-					usage ();
-				params.datafile = *++argv;
-				/* no break */
-			case 'F':
-				/*
-				 * The flattened image tree (FIT) format
-				 * requires a flattened device tree image type
-				 */
-				params.type = IH_TYPE_FLATDT;
-				params.fflag = 1;
-				goto NXTARG;
-			case 'k':
-				if (--argc <= 0)
-					usage();
-				params.keydir = *++argv;
-				goto NXTARG;
-			case 'K':
-				if (--argc <= 0)
-					usage();
-				params.keydest = *++argv;
-				goto NXTARG;
-			case 'n':
-				if (--argc <= 0)
-					usage ();
-				params.imagename = *++argv;
-				goto NXTARG;
-			case 'r':
-				params.require_keys = 1;
-				break;
-			case 'R':
-				if (--argc <= 0)
-					usage();
-				/*
-				 * This entry is for the second configuration
-				 * file, if only one is not enough.
-				 */
-				params.imagename2 = *++argv;
-				goto NXTARG;
-			case 's':
-				params.skipcpy = 1;
-				break;
-			case 'v':
-				params.vflag++;
-				break;
-			case 'V':
-				printf("mkimage version %s\n", PLAIN_VERSION);
-				exit(EXIT_SUCCESS);
-			case 'x':
-				params.xflag++;
-				break;
-			default:
-				usage ();
-			}
-		}
-NXTARG:		;
-	}
-
-	if (argc != 1)
-		usage ();
+	process_args(argc, argv);
 
 	/* set tparams as per input type_id */
-	tparams = mkimage_get_type(params.type);
+	tparams = imagetool_get_type(params.type);
 	if (tparams == NULL) {
 		fprintf (stderr, "%s: unsupported type %s\n",
 			params.cmdname, genimg_get_type_name(params.type));
@@ -292,7 +339,7 @@ NXTARG:		;
 	 */
 	if (tparams->check_params)
 		if (tparams->check_params (&params))
-			usage ();
+			usage("Bad parameters for image type");
 
 	if (!params.eflag) {
 		params.ep = params.addr;
@@ -300,8 +347,6 @@ NXTARG:		;
 		if (params.xflag)
 			params.ep += tparams->header_size;
 	}
-
-	params.imagefile = *argv;
 
 	if (params.fflag){
 		if (tparams->fflag_handle)
@@ -363,12 +408,33 @@ NXTARG:		;
 		 * Print the image information for matched image type
 		 * Returns the error code if not matched
 		 */
-		retval = mkimage_verify_print_header (ptr, &sbuf);
+		retval = imagetool_verify_print_header(ptr, &sbuf,
+				tparams, &params);
 
 		(void) munmap((void *)ptr, sbuf.st_size);
 		(void) close (ifd);
 
 		exit (retval);
+	}
+
+	if ((params.type != IH_TYPE_MULTI) && (params.type != IH_TYPE_SCRIPT)) {
+		dfd = open(params.datafile, O_RDONLY | O_BINARY);
+		if (dfd < 0) {
+			fprintf(stderr, "%s: Can't open %s: %s\n",
+				params.cmdname, params.datafile,
+				strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		if (fstat(dfd, &sbuf) < 0) {
+			fprintf(stderr, "%s: Can't stat %s: %s\n",
+				params.cmdname, params.datafile,
+				strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		params.file_size = sbuf.st_size + tparams->header_size;
+		close(dfd);
 	}
 
 	/*
@@ -452,12 +518,44 @@ NXTARG:		;
 		} else {
 			copy_file(ifd, params.datafile, pad_len);
 		}
+		if (params.type == IH_TYPE_FIRMWARE_IVT) {
+			/* Add alignment and IVT */
+			uint32_t aligned_filesize = (params.file_size + 0x1000
+					- 1) & ~(0x1000 - 1);
+			flash_header_v2_t ivt_header = { { 0xd1, 0x2000, 0x40 },
+					params.addr, 0, 0, 0, params.addr
+							+ aligned_filesize
+							- tparams->header_size,
+					params.addr + aligned_filesize
+							- tparams->header_size
+							+ 0x20, 0 };
+			int i = params.file_size;
+			for (; i < aligned_filesize; i++) {
+				if (write(ifd, (char *) &i, 1) != 1) {
+					fprintf(stderr,
+							"%s: Write error on %s: %s\n",
+							params.cmdname,
+							params.imagefile,
+							strerror(errno));
+					exit(EXIT_FAILURE);
+				}
+			}
+			if (write(ifd, &ivt_header, sizeof(flash_header_v2_t))
+					!= sizeof(flash_header_v2_t)) {
+				fprintf(stderr, "%s: Write error on %s: %s\n",
+						params.cmdname,
+						params.imagefile,
+						strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
 	}
 
 	/* We're a bit of paranoid */
 #if defined(_POSIX_SYNCHRONIZED_IO) && \
    !defined(__sun__) && \
    !defined(__FreeBSD__) && \
+   !defined(__OpenBSD__) && \
    !defined(__APPLE__)
 	(void) fdatasync (ifd);
 #else
@@ -469,6 +567,7 @@ NXTARG:		;
 			params.cmdname, params.imagefile, strerror(errno));
 		exit (EXIT_FAILURE);
 	}
+	params.file_size = sbuf.st_size;
 
 	ptr = mmap(0, sbuf.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, ifd, 0);
 	if (ptr == MAP_FAILED) {
@@ -490,9 +589,8 @@ NXTARG:		;
 	if (tparams->print_header)
 		tparams->print_header (ptr);
 	else {
-		fprintf (stderr, "%s: Can't print header for %s: %s\n",
-			params.cmdname, tparams->name, strerror(errno));
-		exit (EXIT_FAILURE);
+		fprintf (stderr, "%s: Can't print header for %s\n",
+			params.cmdname, tparams->name);
 	}
 
 	(void) munmap((void *)ptr, sbuf.st_size);
@@ -501,6 +599,7 @@ NXTARG:		;
 #if defined(_POSIX_SYNCHRONIZED_IO) && \
    !defined(__sun__) && \
    !defined(__FreeBSD__) && \
+   !defined(__OpenBSD__) && \
    !defined(__APPLE__)
 	(void) fdatasync (ifd);
 #else
@@ -527,13 +626,7 @@ copy_file (int ifd, const char *datafile, int pad)
 	uint8_t zeros[4096];
 	int offset = 0;
 	int size;
-	struct image_type_params *tparams = mkimage_get_type (params.type);
-
-	if (pad >= sizeof(zeros)) {
-		fprintf(stderr, "%s: Can't pad to %d\n",
-			params.cmdname, pad);
-		exit(EXIT_FAILURE);
-	}
+	struct image_type_params *tparams = imagetool_get_type(params.type);
 
 	memset(zeros, 0, sizeof(zeros));
 
@@ -604,51 +697,21 @@ copy_file (int ifd, const char *datafile, int pad)
 			exit (EXIT_FAILURE);
 		}
 	} else if (pad > 1) {
-		if (write(ifd, (char *)&zeros, pad) != pad) {
-			fprintf(stderr, "%s: Write error on %s: %s\n",
-				params.cmdname, params.imagefile,
-				strerror(errno));
-			exit(EXIT_FAILURE);
+		while (pad > 0) {
+			int todo = sizeof(zeros);
+
+			if (todo > pad)
+				todo = pad;
+			if (write(ifd, (char *)&zeros, todo) != todo) {
+				fprintf(stderr, "%s: Write error on %s: %s\n",
+					params.cmdname, params.imagefile,
+					strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			pad -= todo;
 		}
 	}
 
 	(void) munmap((void *)ptr, sbuf.st_size);
 	(void) close (dfd);
-}
-
-static void usage(void)
-{
-	fprintf (stderr, "Usage: %s -l image\n"
-			 "          -l ==> list image header information\n",
-		params.cmdname);
-	fprintf (stderr, "       %s [-x] -A arch -O os -T type -C comp "
-			 "-a addr -e ep -n name -d data_file[:data_file...] image\n"
-			 "          -A ==> set architecture to 'arch'\n"
-			 "          -O ==> set operating system to 'os'\n"
-			 "          -T ==> set image type to 'type'\n"
-			 "          -C ==> set compression type 'comp'\n"
-			 "          -a ==> set load address to 'addr' (hex)\n"
-			 "          -e ==> set entry point to 'ep' (hex)\n"
-			 "          -n ==> set image name to 'name'\n"
-			 "          -d ==> use image data from 'datafile'\n"
-			 "          -x ==> set XIP (execute in place)\n",
-		params.cmdname);
-	fprintf(stderr, "       %s [-D dtc_options] [-f fit-image.its|-F] fit-image\n",
-		params.cmdname);
-	fprintf(stderr, "          -D => set options for device tree compiler\n"
-			"          -f => input filename for FIT source\n");
-#ifdef CONFIG_FIT_SIGNATURE
-	fprintf(stderr, "Signing / verified boot options: [-k keydir] [-K dtb] [ -c <comment>] [-r]\n"
-			"          -k => set directory containing private keys\n"
-			"          -K => write public keys to this .dtb file\n"
-			"          -c => add comment in signature node\n"
-			"          -F => re-sign existing FIT image\n"
-			"          -r => mark keys used as 'required' in dtb\n");
-#else
-	fprintf(stderr, "Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
-#endif
-	fprintf (stderr, "       %s -V ==> print version information and exit\n",
-		params.cmdname);
-
-	exit (EXIT_FAILURE);
 }

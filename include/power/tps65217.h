@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2013
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * For more details, please see the TRM at http://www.ti.com/product/tps65217a
  */
@@ -38,6 +37,7 @@ enum {
 	TPS65217_DEFLS1,
 	TPS65217_DEFLS2,
 	TPS65217_ENABLE,
+	TPS65217_RESERVED0, /* no 0x17 register available */
 	TPS65217_DEFUVLO,
 	TPS65217_SEQ1,
 	TPS65217_SEQ2,
@@ -65,7 +65,10 @@ enum {
 #define TPS65217_USB_INPUT_CUR_LIMIT_1300MA	0x02
 #define TPS65217_USB_INPUT_CUR_LIMIT_1800MA	0x03
 
+#define TPS65217_DCDC_VOLT_SEL_950MV		0x02
+#define TPS65217_DCDC_VOLT_SEL_1100MV		0x08
 #define TPS65217_DCDC_VOLT_SEL_1125MV		0x09
+#define TPS65217_DCDC_VOLT_SEL_1200MV		0x0c
 #define TPS65217_DCDC_VOLT_SEL_1275MV		0x0F
 #define TPS65217_DCDC_VOLT_SEL_1325MV		0x11
 
@@ -73,6 +76,7 @@ enum {
 #define TPS65217_LDO_VOLTAGE_OUT_1_8		0x06
 #define TPS65217_LDO_VOLTAGE_OUT_3_3		0x1F
 
+#define TPS65217_PWR_OFF			0x80
 #define TPS65217_PWR_SRC_USB_BITMASK		0x4
 #define TPS65217_PWR_SRC_AC_BITMASK		0x8
 

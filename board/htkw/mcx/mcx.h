@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Ilya Yanok, Emcraft Systems
  *
  * Based on ti/evm/evm.h
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _AM3517EVM_H_
@@ -339,7 +338,7 @@ const omap3_sysinfo sysinfo = {
 	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M4))\
 	MUX_VAL(CP(SYS_CLKOUT2),	(IDIS | PTU | DIS | M4))\
 	/* JTAG */\
-	MUX_VAL(CP(JTAG_nTRST),		(IEN | PTU | EN  | M4)) \
+	MUX_VAL(CP(JTAG_NTRST),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TCK),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TMS),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TDI),		(IEN | PTU | EN  | M4)) \

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 1995-1996  Gary Thomas (gdt@linuxppc.org)
  *
@@ -6,8 +7,6 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -194,14 +193,4 @@ void UnknownException(struct pt_regs *regs)
 	printf("Bad trap at PC: %lx, SR: %lx, vector=%lx\n",
 	       regs->nip, regs->msr, regs->trap);
 	_exception(0, regs);
-}
-
-/*
- * Probe an address by reading.
- * If not present, return -1,
- * otherwise return 0.
- */
-int addr_probe(uint *addr)
-{
-	return 0;
 }

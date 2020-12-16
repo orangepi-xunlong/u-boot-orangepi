@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 Freescale Semiconductor, Inc.
  * Copyright (C) 2010 Ilya Yanok, Emcraft Systems, yanok@emcraft.com
  *
  * This files is  mostly identical to the original from
  * board/freescale/mpc8308rdb/sdram.c
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -61,7 +60,7 @@ static long fixed_sdram(void)
 	return get_ram_size(CONFIG_SYS_DDR_SDRAM_BASE, msize);
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize;
@@ -72,6 +71,8 @@ phys_size_t initdram(int board_type)
 	/* DDR SDRAM */
 	msize = fixed_sdram();
 
-	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize;
+	/* set total bus SDRAM size(bytes)  -- DDR */
+	gd->ram_size = msize;
+
+	return 0;
 }

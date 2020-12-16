@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 Freescale Semiconductor, Inc.
  *
  * Authors: Nick.Spence@freescale.com
  *          Wilson.Lo@freescale.com
  *          scottwood@freescale.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -92,13 +91,13 @@ static long fixed_sdram(void)
 }
 #endif /* CONFIG_SYS_RAMBOOT */
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	u32 msize;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM */
 	msize = fixed_sdram();
@@ -106,6 +105,8 @@ phys_size_t initdram(int board_type)
 	if (im->pmc.pmccr1 & PMCCR1_POWER_OFF)
 		resume_from_sleep();
 
-	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize;
+	/* set total bus SDRAM size(bytes)  -- DDR */
+	gd->ram_size = msize;
+
+	return 0;
 }

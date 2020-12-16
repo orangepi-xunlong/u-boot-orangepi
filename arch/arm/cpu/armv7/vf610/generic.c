@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,6 +8,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
+#include <asm/mach-imx/sys_proto.h>
 #include <netdev.h>
 #ifdef CONFIG_FSL_ESDHC
 #include <fsl_esdhc.h>
@@ -17,6 +17,8 @@
 #ifdef CONFIG_FSL_ESDHC
 DECLARE_GLOBAL_DATA_PTR;
 #endif
+
+static char soc_type[] = "xx0";
 
 #ifdef CONFIG_MXC_OCOTP
 void enable_ocotp_clk(unsigned char enable)
@@ -196,6 +198,16 @@ static u32 get_i2c_clk(void)
 	return get_ipg_clk();
 }
 
+static u32 get_dspi_clk(void)
+{
+	return get_ipg_clk();
+}
+
+u32 get_lpuart_clk(void)
+{
+	return get_uart_clk();
+}
+
 unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -213,6 +225,8 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_fec_clk();
 	case MXC_I2C_CLK:
 		return get_i2c_clk();
+	case MXC_DSPI_CLK:
+		return get_dspi_clk();
 	default:
 		break;
 	}
@@ -257,6 +271,11 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 }
 #endif
 
+u32 get_cpu_rev(void)
+{
+	return MXC_CPU_VF610 << 12;
+}
+
 #if defined(CONFIG_DISPLAY_CPUINFO)
 static char *get_reset_cause(void)
 {
@@ -265,27 +284,51 @@ static char *get_reset_cause(void)
 
 	cause = readl(&src_regs->srsr);
 	writel(cause, &src_regs->srsr);
-	cause &= 0xff;
 
-	switch (cause) {
-	case 0x08:
-		return "WDOG";
-	case 0x20:
+	if (cause & SRC_SRSR_POR_RST)
+		return "POWER ON RESET";
+	else if (cause & SRC_SRSR_WDOG_A5)
+		return "WDOG A5";
+	else if (cause & SRC_SRSR_WDOG_M4)
+		return "WDOG M4";
+	else if (cause & SRC_SRSR_JTAG_RST)
 		return "JTAG HIGH-Z";
-	case 0x80:
+	else if (cause & SRC_SRSR_SW_RST)
+		return "SW RESET";
+	else if (cause & SRC_SRSR_RESETB)
 		return "EXTERNAL RESET";
-	case 0xfd:
-		return "POR";
-	default:
+	else
 		return "unknown reset";
-	}
 }
 
 int print_cpuinfo(void)
 {
-	printf("CPU:   Freescale Vybrid VF610 at %d MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	printf("CPU: Freescale Vybrid VF%s at %d MHz\n",
+	       soc_type, mxc_get_clock(MXC_ARM_CLK) / 1000000);
 	printf("Reset cause: %s\n", get_reset_cause());
+
+	return 0;
+}
+#endif
+
+int arch_cpu_init(void)
+{
+	struct mscm *mscm = (struct mscm *)MSCM_BASE_ADDR;
+
+	soc_type[0] = mscm->cpxcount ? '6' : '5'; /*Dual Core => VF6x0 */
+	soc_type[1] = mscm->cpxcfg1 ? '1' : '0'; /* L2 Cache => VFx10 */
+
+	return 0;
+}
+
+#ifdef CONFIG_ARCH_MISC_INIT
+int arch_misc_init(void)
+{
+	char soc[6];
+
+	strcpy(soc, "vf");
+	strcat(soc, soc_type);
+	env_set("soc", soc);
 
 	return 0;
 }
@@ -316,3 +359,19 @@ int get_clocks(void)
 #endif
 	return 0;
 }
+
+#ifndef CONFIG_SYS_DCACHE_OFF
+void enable_caches(void)
+{
+#if defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
+	enum dcache_option option = DCACHE_WRITETHROUGH;
+#else
+	enum dcache_option option = DCACHE_WRITEBACK;
+#endif
+	dcache_enable();
+	icache_enable();
+
+    /* Enable caching on OCRAM */
+	mmu_set_region_dcache_behaviour(IRAM_BASE_ADDR, IRAM_SIZE, option);
+}
+#endif

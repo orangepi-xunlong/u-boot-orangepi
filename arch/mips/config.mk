@@ -1,33 +1,41 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2003
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
-ifeq ($(CROSS_COMPILE),)
-CROSS_COMPILE := mips_4KC-
-endif
-
-# Handle special prefix in ELDK 4.0 toolchain
-ifneq (,$(findstring 4KCle,$(CROSS_COMPILE)))
-ENDIANNESS := -EL
+ifdef CONFIG_SYS_BIG_ENDIAN
+32bit-emul		:= elf32btsmip
+64bit-emul		:= elf64btsmip
+32bit-bfd		:= elf32-tradbigmips
+64bit-bfd		:= elf64-tradbigmips
+PLATFORM_CPPFLAGS	+= -EB
+PLATFORM_LDFLAGS	+= -EB
 endif
 
 ifdef CONFIG_SYS_LITTLE_ENDIAN
-ENDIANNESS := -EL
+32bit-emul		:= elf32ltsmip
+64bit-emul		:= elf64ltsmip
+32bit-bfd		:= elf32-tradlittlemips
+64bit-bfd		:= elf64-tradlittlemips
+PLATFORM_CPPFLAGS	+= -EL
+PLATFORM_LDFLAGS	+= -EL
 endif
 
-ifdef CONFIG_SYS_BIG_ENDIAN
-ENDIANNESS := -EB
+ifdef CONFIG_32BIT
+PLATFORM_CPPFLAGS	+= -mabi=32
+PLATFORM_LDFLAGS	+= -m $(32bit-emul)
+OBJCOPYFLAGS		+= -O $(32bit-bfd)
 endif
 
-# Default to EB if no endianess is configured
-ENDIANNESS ?= -EB
+ifdef CONFIG_64BIT
+PLATFORM_CPPFLAGS	+= -mabi=64
+PLATFORM_LDFLAGS	+= -m$(64bit-emul)
+OBJCOPYFLAGS		+= -O $(64bit-bfd)
+endif
 
-PLATFORM_CPPFLAGS += -DCONFIG_MIPS -D__MIPS__
-
-__HAVE_ARCH_GENERIC_BOARD := y
+PLATFORM_CPPFLAGS += -D__MIPS__
+PLATFORM_ELFENTRY = "__start"
+PLATFORM_ELFFLAGS += -B mips $(OBJCOPYFLAGS)
 
 #
 # From Linux arch/mips/Makefile
@@ -46,13 +54,14 @@ __HAVE_ARCH_GENERIC_BOARD := y
 # LDFLAGS_vmlinux		+= -G 0 -static -n -nostdlib
 # MODFLAGS			+= -mlong-calls
 #
-# On the other hand, we want PIC in the U-Boot code to relocate it from ROM
-# to RAM. $28 is always used as gp.
-#
-PLATFORM_CPPFLAGS		+= -G 0 -mabicalls -fpic $(ENDIANNESS)
+ifndef CONFIG_SPL_BUILD
+OBJCOPYFLAGS			+= -j .got -j .rel -j .padding -j .dtb.init.rodata
+LDFLAGS_FINAL			+= --emit-relocs
+endif
+
+PLATFORM_CPPFLAGS		+= -G 0 -mno-abicalls -fno-pic
 PLATFORM_CPPFLAGS		+= -msoft-float
-PLATFORM_LDFLAGS		+= -G 0 -static -n -nostdlib $(ENDIANNESS)
+PLATFORM_LDFLAGS		+= -G 0 -static -n -nostdlib
 PLATFORM_RELFLAGS		+= -ffunction-sections -fdata-sections
-LDFLAGS_FINAL			+= --gc-sections -pie
-OBJCOPYFLAGS			+= -j .text -j .rodata -j .data -j .got
-OBJCOPYFLAGS			+= -j .u_boot_list -j .rel.dyn
+LDFLAGS_FINAL			+= --gc-sections
+OBJCOPYFLAGS			+= -j .text -j .rodata -j .data -j .u_boot_list

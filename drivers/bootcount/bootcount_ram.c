@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -35,6 +34,10 @@ void bootcount_store(ulong a)
 		writel(patterns[i % NBR_OF_PATTERNS],
 			&save_addr[i + OFFS_PATTERN]);
 
+	/* Make sure the data is written to RAM */
+	flush_dcache_range((ulong)&save_addr[0],
+			   (((ulong)&save_addr[REPEAT_PATTERN + OFFS_PATTERN] &
+			     ~(ARCH_DMA_MINALIGN - 1)) + ARCH_DMA_MINALIGN));
 }
 
 ulong bootcount_load(void)

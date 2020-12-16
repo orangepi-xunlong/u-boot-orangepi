@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
@@ -9,8 +10,6 @@
  * (C) Copyright 2011-2012
  * Holger Brunck, Keymile GmbH Hannover, holger.brunck@keymile.com
  * Valentin Longchamp, Keymile AG, valentin.longchamp@keymile.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -23,22 +22,21 @@
 
 /* KM_KIRKWOOD */
 #if defined(CONFIG_KM_KIRKWOOD)
-#define CONFIG_IDENT_STRING		"\nKeymile Kirkwood"
-#define CONFIG_HOSTNAME			km_kirkwood
+#define CONFIG_HOSTNAME			"km_kirkwood"
 #define CONFIG_KM_DISABLE_PCIE
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 
 /* KM_KIRKWOOD_PCI */
 #elif defined(CONFIG_KM_KIRKWOOD_PCI)
-#define CONFIG_IDENT_STRING		"\nKeymile Kirkwood PCI"
-#define CONFIG_HOSTNAME			km_kirkwood_pci
+#define CONFIG_HOSTNAME			"km_kirkwood_pci"
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 #define CONFIG_KM_FPGA_CONFIG
+#define CONFIG_KM_UBI_PART_BOOT_OPTS		",2048"
+#define CONFIG_SYS_NAND_NO_SUBPAGE_WRITE
 
 /* KM_KIRKWOOD_128M16 */
 #elif defined(CONFIG_KM_KIRKWOOD_128M16)
-#define CONFIG_IDENT_STRING		"\nKeymile Kirkwood 128M16"
-#define CONFIG_HOSTNAME			km_kirkwood_128m16
+#define CONFIG_HOSTNAME			"km_kirkwood_128m16"
 #undef CONFIG_SYS_KWD_CONFIG
 #define CONFIG_SYS_KWD_CONFIG $(CONFIG_BOARDDIR)/kwbimage_128M16_1.cfg
 #define CONFIG_KM_DISABLE_PCIE
@@ -49,11 +47,9 @@
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 
 # if defined(CONFIG_KM_NUSA)
-#define CONFIG_IDENT_STRING		"\nKeymile NUSA"
-#define CONFIG_HOSTNAME			kmnusa
+#define CONFIG_HOSTNAME			"kmnusa"
 # elif defined(CONFIG_KM_SUGP1)
-#define CONFIG_IDENT_STRING		"\nKeymile SUGP1"
-#define CONFIG_HOSTNAME			kmsugp1
+#define CONFIG_HOSTNAME			"kmsugp1"
 #define KM_PCIE_RESET_MPP7
 #endif
 
@@ -67,8 +63,7 @@
 
 /* KM_MGCOGE3UN */
 #elif defined(CONFIG_KM_MGCOGE3UN)
-#define CONFIG_IDENT_STRING		"\nKeymile COGE3UN"
-#define CONFIG_HOSTNAME			mgcoge3un
+#define CONFIG_HOSTNAME			"mgcoge3un"
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 #undef CONFIG_SYS_KWD_CONFIG
 #define CONFIG_SYS_KWD_CONFIG $(CONFIG_BOARDDIR)/kwbimage-memphis.cfg
@@ -79,43 +74,37 @@
 
 /* KMCOGE5UN */
 #elif defined(CONFIG_KM_COGE5UN)
-#define CONFIG_IDENT_STRING		"\nKeymile COGE5UN"
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 #undef	CONFIG_SYS_KWD_CONFIG
 #define CONFIG_SYS_KWD_CONFIG $(CONFIG_BOARDDIR)/kwbimage_256M8_1.cfg
 #define CONFIG_KM_ENV_IS_IN_SPI_NOR
 #define CONFIG_PIGGY_MAC_ADRESS_OFFSET	3
-#define CONFIG_HOSTNAME			kmcoge5un
+#define CONFIG_HOSTNAME			"kmcoge5un"
 #define CONFIG_KM_DISABLE_PCIE
 #define CONFIG_KM_PIGGY4_88E6352
 
 /* KM_PORTL2 */
 #elif defined(CONFIG_KM_PORTL2)
-#define CONFIG_IDENT_STRING		"\nKeymile Port-L2"
-#define CONFIG_HOSTNAME			portl2
+#define CONFIG_HOSTNAME			"portl2"
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
 #define CONFIG_KM_PIGGY4_88E6061
 
 /* KM_SUV31 */
 #elif defined(CONFIG_KM_SUV31)
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
-#define CONFIG_IDENT_STRING		"\nKeymile SUV31"
-#define CONFIG_HOSTNAME			kmsuv31
+#define CONFIG_HOSTNAME			"kmsuv31"
 #undef CONFIG_SYS_KWD_CONFIG
 #define CONFIG_SYS_KWD_CONFIG $(CONFIG_BOARDDIR)/kwbimage_128M16_1.cfg
 #define CONFIG_KM_ENV_IS_IN_SPI_NOR
 #define CONFIG_KM_FPGA_CONFIG
-
+#define CONFIG_KM_UBI_PART_BOOT_OPTS		",2048"
+#define CONFIG_SYS_NAND_NO_SUBPAGE_WRITE
 #else
 #error ("Board unsupported")
 #endif
 
 /* include common defines/options for all arm based Keymile boards */
 #include "km/km_arm.h"
-
-#ifndef CONFIG_KM_ENV_IS_IN_SPI_NOR
-#define KM_ENV_BUS	5	/* I2C2 (Mux-Port 5)*/
-#endif
 
 #if defined(CONFIG_KM_PIGGY4_88E6352)
 /*
@@ -180,6 +169,5 @@
 #ifdef CONFIG_KM_DISABLE_PCI
 #undef  CONFIG_KIRKWOOD_PCIE_INIT
 #endif
-
 
 #endif /* _CONFIG_KM_KIRKWOOD */

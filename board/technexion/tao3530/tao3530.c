@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Maintainer :
  *      Tapani Utriainen <linuxfae@technexion.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <netdev.h>
@@ -160,7 +159,7 @@ int misc_init_r(void)
 		puts("Unknown board revision\n");
 	}
 
-	dieid_num_r();
+	omap_die_id_display();
 
 	return 0;
 }
@@ -179,7 +178,7 @@ void set_muxconf_regs(void)
 #endif
 }
 
-#if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_MMC)
 int board_mmc_init(bd_t *bis)
 {
 	omap_mmc_init(0, 0, 0, -1, -1);
@@ -188,7 +187,14 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-#if defined(CONFIG_USB_EHCI) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_MMC)
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
+}
+#endif
+
+#if defined(CONFIG_USB_EHCI_HCD) && !defined(CONFIG_SPL_BUILD)
 /* Call usb_stop() before starting the kernel */
 void show_boot_progress(int val)
 {
@@ -212,4 +218,4 @@ int ehci_hcd_stop(int index)
 {
 	return omap_ehci_hcd_stop();
 }
-#endif /* CONFIG_USB_EHCI */
+#endif /* CONFIG_USB_EHCI_HCD */

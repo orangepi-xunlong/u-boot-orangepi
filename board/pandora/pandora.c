@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Grazvydas Ignotas <notasas@gmail.com>
@@ -10,8 +11,6 @@
  *
  * (C) Copyright 2004-2008
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <twl4030.h>
@@ -102,7 +101,7 @@ int misc_init_r(void)
 		TWL4030_BB_CFG_BBCHEN | TWL4030_BB_CFG_BBSEL_3200MV |
 		TWL4030_BB_CFG_BBISEL_500UA);
 
-	dieid_num_r();
+	omap_die_id_display();
 
 	return 0;
 }
@@ -121,9 +120,14 @@ void set_muxconf_regs(void)
 	}
 }
 
-#ifdef CONFIG_GENERIC_MMC
+#ifdef CONFIG_MMC
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
+}
+
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
 }
 #endif

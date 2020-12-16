@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_CACHE_H
@@ -16,6 +15,9 @@
 /*
  * Invalidate L2 Cache using co-proc instruction
  */
+#if CONFIG_IS_ENABLED(SYS_THUMB_BUILD)
+void invalidate_l2_cache(void);
+#else
 static inline void invalidate_l2_cache(void)
 {
 	unsigned int val=0;
@@ -24,6 +26,9 @@ static inline void invalidate_l2_cache(void)
 		: : "r" (val) : "cc");
 	isb();
 }
+#endif
+
+int check_cache_range(unsigned long start, unsigned long stop);
 
 void l2_cache_enable(void);
 void l2_cache_disable(void);
@@ -37,14 +42,11 @@ void dram_bank_mmu_setup(int bank);
 #endif
 
 /*
- * The current upper bound for ARM L1 data cache line sizes is 64 bytes.  We
- * use that value for aligning DMA buffers unless the board config has specified
- * an alternate cache line size.
+ * The value of the largest data cache relevant to DMA operations shall be set
+ * for us in CONFIG_SYS_CACHELINE_SIZE.  In some cases this may be a larger
+ * value than found in the L1 cache but this is OK to use in terms of
+ * alignment.
  */
-#ifdef CONFIG_SYS_CACHELINE_SIZE
 #define ARCH_DMA_MINALIGN	CONFIG_SYS_CACHELINE_SIZE
-#else
-#define ARCH_DMA_MINALIGN	64
-#endif
 
 #endif /* _ASM_CACHE_H */

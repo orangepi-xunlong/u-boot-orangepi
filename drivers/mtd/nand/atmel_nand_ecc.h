@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Error Corrected Code Controller (ECC) - System peripherals regsters.
  * Based on AT91SAM9260 datasheet revision B.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef ATMEL_NAND_ECC_H
@@ -34,6 +33,9 @@
 #define pmecc_readl(addr, reg) \
 	readl(&addr->reg)
 
+#define pmecc_readb(addr, reg) \
+	readb(&addr->reg)
+
 #define pmecc_writel(addr, reg, value) \
 	writel((value), &addr->reg)
 
@@ -55,14 +57,23 @@ struct pmecc_regs {
 
 	/* 0x40 + sector_num * (0x40), Redundancy Registers */
 	struct {
+#ifdef CONFIG_SAMA5D2
+		u8 ecc[56];	/* PMECC Generated Redundancy Byte Per Sector */
+		u32 reserved1[2];
+#else
 		u8 ecc[44];	/* PMECC Generated Redundancy Byte Per Sector */
 		u32 reserved1[5];
+#endif
 	} ecc_port[PMECC_MAX_SECTOR_NUM];
 
 	/* 0x240 + sector_num * (0x40) Remainder Registers */
 	struct {
+#ifdef CONFIG_SAMA5D2
+		u32 rem[16];
+#else
 		u32 rem[12];
 		u32 reserved2[4];
+#endif
 	} rem_port[PMECC_MAX_SECTOR_NUM];
 	u32 reserved3[16];	/* 0x440-0x47C Reserved */
 };
@@ -73,6 +84,7 @@ struct pmecc_regs {
 #define		PMECC_CFG_BCH_ERR8		(2 << 0)
 #define		PMECC_CFG_BCH_ERR12		(3 << 0)
 #define		PMECC_CFG_BCH_ERR24		(4 << 0)
+#define		PMECC_CFG_BCH_ERR32		(5 << 0)
 
 #define		PMECC_CFG_SECTOR512		(0 << 4)
 #define		PMECC_CFG_SECTOR1024		(1 << 4)
@@ -117,9 +129,35 @@ struct pmecc_errloc_regs {
 	u32 elimr;	/* 0x0C Error Location Interrupt Mask Register */
 	u32 elisr;	/* 0x20 Error Location Interrupt Status Register */
 	u32 reserved0;	/* 0x24 Reserved */
+#ifdef CONFIG_SAMA5D2
+	u32 sigma[33];	/* 0x28-0xA8 Error Location Sigma Registers */
+	u32 el[32];	/* 0xAC-0x128 Error Location Registers */
+
+	/*
+	 * 0x12C-0x1FC:
+	 *   Reserved for SAMA5D2.
+	 */
+	u32 reserved1[53];
+#else
 	u32 sigma[25];	/* 0x28-0x88 Error Location Sigma Registers */
 	u32 el[24];	/* 0x8C-0xE8 Error Location Registers */
 	u32 reserved1[5];	/* 0xEC-0xFC Reserved */
+#endif
+
+	/*
+	 * SAMA5 chip HSMC registers start here. But for 9X5 chip it is just
+	 * reserved.
+	 *
+	 * Offset 0x00-0xF8:
+	 */
+	u32 reserved2[63];
+
+	/*
+	 * Offset 0xFC:
+	 *   PMECC version for AT91SAM9X5, AT91SAM9N12.
+	 *   HSMC version for SAMA5D3, SAMA5D4. Can refer as PMECC version.
+	 */
+	u32 version;
 };
 
 /* For Error Location Configuration Register */
@@ -131,16 +169,35 @@ struct pmecc_errloc_regs {
 #define		PMERRLOC_DISABLE		(1 << 0)
 
 /* For Error Location Interrupt Status Register */
+#ifdef CONFIG_SAMA5D2
+#define		PMERRLOC_ERR_NUM_MASK		(0x3f << 8)
+#else
 #define		PMERRLOC_ERR_NUM_MASK		(0x1f << 8)
+#endif
+
 #define		PMERRLOC_CALC_DONE		(1 << 0)
+
+/* PMECC IP version */
+#define PMECC_VERSION_SAMA5D2			0x210
+#define PMECC_VERSION_SAMA5D4			0x113
+#define PMECC_VERSION_SAMA5D3			0x112
+#define PMECC_VERSION_AT91SAM9N12		0x102
+#define PMECC_VERSION_AT91SAM9X5		0x101
 
 /* Galois field dimension */
 #define PMECC_GF_DIMENSION_13			13
 #define PMECC_GF_DIMENSION_14			14
 
+/* Primitive Polynomial used by PMECC */
+#define PMECC_GF_13_PRIMITIVE_POLY		0x201b
+#define PMECC_GF_14_PRIMITIVE_POLY		0x4443
+
 #define PMECC_INDEX_TABLE_SIZE_512		0x2000
 #define PMECC_INDEX_TABLE_SIZE_1024		0x4000
 
 #define PMECC_MAX_TIMEOUT_US		(100 * 1000)
+
+/* Reserved bytes in oob area */
+#define PMECC_OOB_RESERVED_BYTES		2
 
 #endif

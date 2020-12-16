@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -146,8 +145,8 @@ int board_late_init(void)
 	if (!p)
 		return -ENODEV;
 
-	/* Turn on Ethernet PHY supply */
-	pmic_reg_write(p, MC34704_GENERAL2_REG, ONOFFE);
+	/* Turn on Ethernet PHY and LCD supplies */
+	pmic_reg_write(p, MC34704_GENERAL2_REG, ONOFFE | ONOFFA);
 
 	return 0;
 }
@@ -175,6 +174,12 @@ int board_mmc_init(bd_t *bis)
 
 	imx_iomux_v3_setup_multiple_pads(sdhc1_pads, ARRAY_SIZE(sdhc1_pads));
 
+	/*
+	 * Set the eSDHC1 PER clock to the maximum frequency lower than or equal
+	 * to 50 MHz that can be obtained, which requires to use UPLL as the
+	 * clock source. This actually gives 48 MHz.
+	 */
+	imx_set_perclk(MXC_ESDHC1_CLK, true, 50000000);
 	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC1_CLK);
 	return fsl_esdhc_initialize(bis, &esdhc_cfg[0]);
 }
@@ -186,3 +191,6 @@ int checkboard(void)
 
 	return 0;
 }
+
+/* Lowlevel init isn't used on mx25pdk, so just provide a dummy one here */
+void lowlevel_init(void) {}

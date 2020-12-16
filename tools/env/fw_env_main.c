@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -34,53 +33,221 @@
 #include <stdlib.h>
 #include <sys/file.h>
 #include <unistd.h>
+#include <version.h>
+#include "fw_env_private.h"
 #include "fw_env.h"
 
-#define	CMD_PRINTENV	"fw_printenv"
+#define CMD_PRINTENV	"fw_printenv"
 #define CMD_SETENV	"fw_setenv"
+static int do_printenv;
 
 static struct option long_options[] = {
-	{"script", required_argument, NULL, 's'},
+	{"config", required_argument, NULL, 'c'},
 	{"help", no_argument, NULL, 'h'},
+	{"script", required_argument, NULL, 's'},
+	{"noheader", no_argument, NULL, 'n'},
+	{"lock", required_argument, NULL, 'l'},
+	{"version", no_argument, NULL, 'v'},
 	{NULL, 0, NULL, 0}
 };
 
-void usage(void)
+static struct env_opts env_opts;
+
+/* setenv options */
+static int noheader;
+
+/* getenv options */
+static char *script_file;
+
+void usage_printenv(void)
 {
 
-	fprintf(stderr, "fw_printenv/fw_setenv, "
-		"a command line interface to U-Boot environment\n\n"
-		"usage:\tfw_printenv [-a key] [-n] [variable name]\n"
-		"\tfw_setenv [-a key] [variable name] [variable value]\n"
-		"\tfw_setenv -s [ file ]\n"
-		"\tfw_setenv -s - < [ file ]\n\n"
-		"The file passed as argument contains only pairs "
-		"name / value\n"
-		"Example:\n"
-		"# Any line starting with # is treated as comment\n"
+	fprintf(stderr,
+		"Usage: fw_printenv [OPTIONS]... [VARIABLE]...\n"
+		"Print variables from U-Boot environment\n"
 		"\n"
-		"\t      netdev         eth0\n"
-		"\t      kernel_addr    400000\n"
-		"\t      var1\n"
-		"\t      var2          The quick brown fox jumps over the "
-		"lazy dog\n"
+		" -h, --help           print this help.\n"
+		" -v, --version        display version\n"
+#ifdef CONFIG_FILE
+		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
+#endif
+		" -n, --noheader       do not repeat variable name in output\n"
+		" -l, --lock           lock node, default:/var/lock\n"
+		"\n");
+}
+
+void usage_env_set(void)
+{
+	fprintf(stderr,
+		"Usage: fw_setenv [OPTIONS]... [VARIABLE]...\n"
+		"Modify variables in U-Boot environment\n"
 		"\n"
-		"A variable without value will be dropped. It is possible\n"
-		"to put any number of spaces between the fields, but any\n"
-		"space inside the value is treated as part of the value "
-		"itself.\n\n"
-	);
+		" -h, --help           print this help.\n"
+		" -v, --version        display version\n"
+#ifdef CONFIG_FILE
+		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
+#endif
+		" -l, --lock           lock node, default:/var/lock\n"
+		" -s, --script         batch mode to minimize writes\n"
+		"\n"
+		"Examples:\n"
+		"  fw_setenv foo bar   set variable foo equal bar\n"
+		"  fw_setenv foo       clear variable foo\n"
+		"  fw_setenv --script file run batch script\n"
+		"\n"
+		"Script Syntax:\n"
+		"  key [space] value\n"
+		"  lines starting with '#' are treated as comment\n"
+		"\n"
+		"  A variable without value will be deleted. Any number of spaces are\n"
+		"  allowed between key and value. Space inside of the value is treated\n"
+		"  as part of the value itself.\n"
+		"\n"
+		"Script Example:\n"
+		"  netdev         eth0\n"
+		"  kernel_addr    400000\n"
+		"  foo            empty empty empty    empty empty empty\n"
+		"  bar\n"
+		"\n");
+}
+
+static void parse_common_args(int argc, char *argv[])
+{
+	int c;
+
+#ifdef CONFIG_FILE
+	env_opts.config_file = CONFIG_FILE;
+#endif
+
+	while ((c = getopt_long(argc, argv, ":a:c:l:h:v", long_options, NULL)) !=
+	       EOF) {
+		switch (c) {
+#ifdef CONFIG_FILE
+		case 'c':
+			env_opts.config_file = optarg;
+			break;
+#endif
+		case 'l':
+			env_opts.lockname = optarg;
+			break;
+		case 'h':
+			do_printenv ? usage_printenv() : usage_env_set();
+			exit(EXIT_SUCCESS);
+			break;
+		case 'v':
+			fprintf(stderr, "Compiled with " U_BOOT_VERSION "\n");
+			exit(EXIT_SUCCESS);
+			break;
+		default:
+			/* ignore unknown options */
+			break;
+		}
+	}
+
+	/* Reset getopt for the next pass. */
+	opterr = 1;
+	optind = 1;
+}
+
+int parse_printenv_args(int argc, char *argv[])
+{
+	int c;
+
+	parse_common_args(argc, argv);
+
+	while ((c = getopt_long(argc, argv, "a:c:ns:l:h:v", long_options, NULL))
+		!= EOF) {
+		switch (c) {
+		case 'n':
+			noheader = 1;
+			break;
+		case 'a':
+		case 'c':
+		case 'h':
+		case 'l':
+			/* ignore common options */
+			break;
+		default: /* '?' */
+			usage_printenv();
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+	return 0;
+}
+
+int parse_setenv_args(int argc, char *argv[])
+{
+	int c;
+
+	parse_common_args(argc, argv);
+
+	while ((c = getopt_long(argc, argv, "a:c:ns:l:h:v", long_options, NULL))
+		!= EOF) {
+		switch (c) {
+		case 's':
+			script_file = optarg;
+			break;
+		case 'a':
+		case 'c':
+		case 'h':
+		case 'l':
+			/* ignore common options */
+			break;
+		default: /* '?' */
+			usage_env_set();
+			exit(EXIT_FAILURE);
+			break;
+		}
+	}
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	char *p;
-	char *cmdname = *argv;
-	char *script_file = NULL;
-	int c;
-	const char *lockname = "/var/lock/" CMD_PRINTENV ".lock";
+	char *lockname = "/var/lock/" CMD_PRINTENV ".lock";
 	int lockfd = -1;
 	int retval = EXIT_SUCCESS;
+	char *_cmdname;
+
+	_cmdname = *argv;
+	if (strrchr(_cmdname, '/') != NULL)
+		_cmdname = strrchr(_cmdname, '/') + 1;
+
+	if (strcmp(_cmdname, CMD_PRINTENV) == 0) {
+		do_printenv = 1;
+	} else if (strcmp(_cmdname, CMD_SETENV) == 0) {
+		do_printenv = 0;
+	} else {
+		fprintf(stderr,
+			"Identity crisis - may be called as `%s' or as `%s' but not as `%s'\n",
+			CMD_PRINTENV, CMD_SETENV, _cmdname);
+		exit(EXIT_FAILURE);
+	}
+
+	if (do_printenv) {
+		if (parse_printenv_args(argc, argv))
+			exit(EXIT_FAILURE);
+	} else {
+		if (parse_setenv_args(argc, argv))
+			exit(EXIT_FAILURE);
+	}
+
+	/* shift parsed flags, jump to non-option arguments */
+	argc -= optind;
+	argv += optind;
+
+	if (env_opts.lockname) {
+		lockname = malloc(strlen(env_opts.lockname) +
+				sizeof(CMD_PRINTENV) + 10);
+		if (!lockname) {
+			fprintf(stderr, "Unable allocate memory");
+			exit(EXIT_FAILURE);
+		}
+
+		sprintf(lockname, "%s/%s.lock",
+			env_opts.lockname, CMD_PRINTENV);
+	}
 
 	lockfd = open(lockname, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	if (-1 == lockfd) {
@@ -94,53 +261,22 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if ((p = strrchr (cmdname, '/')) != NULL) {
-		cmdname = p + 1;
-	}
-
-	while ((c = getopt_long (argc, argv, "a:ns:h",
-		long_options, NULL)) != EOF) {
-		switch (c) {
-		case 'a':
-			/* AES key, handled later */
-			break;
-		case 'n':
-			/* handled in fw_printenv */
-			break;
-		case 's':
-			script_file = optarg;
-			break;
-		case 'h':
-			usage();
-			goto exit;
-		default: /* '?' */
-			fprintf(stderr, "Try `%s --help' for more information."
-				"\n", cmdname);
+	if (do_printenv) {
+		if (fw_printenv(argc, argv, noheader, &env_opts) != 0)
 			retval = EXIT_FAILURE;
-			goto exit;
-		}
-	}
-
-	if (strcmp(cmdname, CMD_PRINTENV) == 0) {
-		if (fw_printenv(argc, argv) != 0)
-			retval = EXIT_FAILURE;
-	} else if (strcmp(cmdname, CMD_SETENV) == 0) {
+	} else {
 		if (!script_file) {
-			if (fw_setenv(argc, argv) != 0)
+			if (fw_env_set(argc, argv, &env_opts) != 0)
 				retval = EXIT_FAILURE;
 		} else {
-			if (fw_parse_script(script_file) != 0)
+			if (fw_parse_script(script_file, &env_opts) != 0)
 				retval = EXIT_FAILURE;
 		}
-	} else {
-		fprintf(stderr,
-			"Identity crisis - may be called as `" CMD_PRINTENV
-			"' or as `" CMD_SETENV "' but not as `%s'\n",
-			cmdname);
-		retval = EXIT_FAILURE;
 	}
 
-exit:
+	if (env_opts.lockname)
+		free(lockname);
+
 	flock(lockfd, LOCK_UN);
 	close(lockfd);
 	return retval;

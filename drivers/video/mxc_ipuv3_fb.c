@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Porting to u-boot:
  *
@@ -7,12 +8,10 @@
  * MX51 Linux framebuffer:
  *
  * (C) Copyright 2004-2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/global_data.h>
 #include <linux/string.h>
 #include <linux/list.h>
@@ -36,7 +35,7 @@ static struct fb_videomode const *gmode;
 static uint8_t gdisp;
 static uint32_t gpixfmt;
 
-void fb_videomode_to_var(struct fb_var_screeninfo *var,
+static void fb_videomode_to_var(struct fb_var_screeninfo *var,
 			 const struct fb_videomode *mode)
 {
 	var->xres = mode->xres;
@@ -258,8 +257,7 @@ static int mxcfb_set_par(struct fb_info *fbi)
 	if (fbi->var.sync & FB_SYNC_CLK_IDLE_EN)
 		sig_cfg.clkidle_en = 1;
 
-	debug("pixclock = %ul Hz\n",
-		(u32) (PICOS2KHZ(fbi->var.pixclock) * 1000UL));
+	debug("pixclock = %lu Hz\n", PICOS2KHZ(fbi->var.pixclock) * 1000UL);
 
 	if (ipu_init_sync_panel(mxc_fbi->ipu_di,
 				(PICOS2KHZ(fbi->var.pixclock)) * 1000UL,
@@ -486,7 +484,7 @@ static struct fb_info *mxcfb_init_fbinfo(void)
 
 /*
  * Probe routine for the framebuffer driver. It is called during the
- * driver binding process.      The following functions are performed in
+ * driver binding process. The following functions are performed in
  * this routine: Framebuffer initialization, Memory allocation and
  * mapping, Framebuffer registration, IPU initialization.
  *
@@ -542,7 +540,7 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 
 	mxcfb_set_fix(fbi);
 
-	/* alocate fb first */
+	/* allocate fb first */
 	if (mxcfb_map_video_memory(fbi) < 0)
 		return -ENOMEM;
 
@@ -572,6 +570,9 @@ void ipuv3_fb_shutdown(void)
 	int i;
 	struct ipu_stat *stat = (struct ipu_stat *)IPU_STAT;
 
+	if (!ipu_clk_enabled())
+		return;
+
 	for (i = 0; i < ARRAY_SIZE(mxcfb_info); i++) {
 		struct fb_info *fbi = mxcfb_info[i];
 		if (fbi) {
@@ -598,15 +599,6 @@ void *video_hw_init(void)
 	debug("Framebuffer at 0x%x\n", (unsigned int)panel.frameAdrs);
 
 	return (void *)&panel;
-}
-
-void video_set_lut(unsigned int index, /* color number */
-			unsigned char r,    /* red */
-			unsigned char g,    /* green */
-			unsigned char b     /* blue */
-			)
-{
-	return;
 }
 
 int ipuv3_fb_init(struct fb_videomode const *mode,

@@ -1,17 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008, Guennadi Liakhovetski <lg@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <dm.h>
 #include <malloc.h>
 #include <spi.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
+#include <asm/mach-imx/spi.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_MX27
 /* i.MX27 has a completely wrong register layout and register definitions in the
@@ -21,14 +24,19 @@
 "See linux mxc_spi driver from Freescale for details."
 #endif
 
-static unsigned long spi_bases[] = {
-	MXC_SPI_BASE_ADDRESSES
-};
+__weak int board_spi_cs_gpio(unsigned bus, unsigned cs)
+{
+	return -1;
+}
 
 #define OUT	MXC_GPIO_DIRECTION_OUT
 
 #define reg_read readl
 #define reg_write(a, v) writel(v, a)
+
+#if !defined(CONFIG_SYS_SPI_MXC_WAIT)
+#define CONFIG_SYS_SPI_MXC_WAIT		(CONFIG_SYS_HZ/100)	/* 10 ms */
+#endif
 
 struct mxc_spi_slave {
 	struct spi_slave slave;
@@ -39,6 +47,9 @@ struct mxc_spi_slave {
 #endif
 	int		gpio;
 	int		ss_pol;
+	unsigned int	max_hz;
+	unsigned int	mode;
+	struct gpio_desc ss;
 };
 
 static inline struct mxc_spi_slave *to_mxc_spi_slave(struct spi_slave *slave)
@@ -46,19 +57,24 @@ static inline struct mxc_spi_slave *to_mxc_spi_slave(struct spi_slave *slave)
 	return container_of(slave, struct mxc_spi_slave, slave);
 }
 
-void spi_cs_activate(struct spi_slave *slave)
+static void mxc_spi_cs_activate(struct mxc_spi_slave *mxcs)
 {
-	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
-	if (mxcs->gpio > 0)
-		gpio_set_value(mxcs->gpio, mxcs->ss_pol);
+	if (CONFIG_IS_ENABLED(DM_SPI)) {
+		dm_gpio_set_value(&mxcs->ss, mxcs->ss_pol);
+	} else {
+		if (mxcs->gpio > 0)
+			gpio_set_value(mxcs->gpio, mxcs->ss_pol);
+	}
 }
 
-void spi_cs_deactivate(struct spi_slave *slave)
+static void mxc_spi_cs_deactivate(struct mxc_spi_slave *mxcs)
 {
-	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
-	if (mxcs->gpio > 0)
-		gpio_set_value(mxcs->gpio,
-			      !(mxcs->ss_pol));
+	if (CONFIG_IS_ENABLED(DM_SPI)) {
+		dm_gpio_set_value(&mxcs->ss, !(mxcs->ss_pol));
+	} else {
+		if (mxcs->gpio > 0)
+			gpio_set_value(mxcs->gpio, !(mxcs->ss_pol));
+	}
 }
 
 u32 get_cspi_div(u32 div)
@@ -73,12 +89,13 @@ u32 get_cspi_div(u32 div)
 }
 
 #ifdef MXC_CSPI
-static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
-		unsigned int max_hz, unsigned int mode)
+static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs)
 {
 	unsigned int ctrl_reg;
 	u32 clk_src;
 	u32 div;
+	unsigned int max_hz = mxcs->max_hz;
+	unsigned int mode = mxcs->mode;
 
 	clk_src = mxc_get_clock(MXC_CSPI_CLK);
 
@@ -110,19 +127,15 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 #endif
 
 #ifdef MXC_ECSPI
-static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
-		unsigned int max_hz, unsigned int mode)
+static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs)
 {
 	u32 clk_src = mxc_get_clock(MXC_CSPI_CLK);
 	s32 reg_ctrl, reg_config;
 	u32 ss_pol = 0, sclkpol = 0, sclkpha = 0, sclkctl = 0;
 	u32 pre_div = 0, post_div = 0;
 	struct cspi_regs *regs = (struct cspi_regs *)mxcs->base;
-
-	if (max_hz == 0) {
-		printf("Error: desired clock is 0\n");
-		return -1;
-	}
+	unsigned int max_hz = mxcs->max_hz;
+	unsigned int mode = mxcs->mode;
 
 	/*
 	 * Reset SPI and set all CSs to master mode, if toggling
@@ -158,9 +171,6 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 		MXC_CSPICTRL_PREDIV(pre_div);
 	reg_ctrl = (reg_ctrl & ~MXC_CSPICTRL_POSTDIV(0x0F)) |
 		MXC_CSPICTRL_POSTDIV(post_div);
-
-	/* We need to disable SPI before changing registers */
-	reg_ctrl &= ~MXC_CSPICTRL_EN;
 
 	if (mode & SPI_CS_HIGH)
 		ss_pol = 1;
@@ -205,13 +215,14 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 }
 #endif
 
-int spi_xchg_single(struct spi_slave *slave, unsigned int bitlen,
+int spi_xchg_single(struct mxc_spi_slave *mxcs, unsigned int bitlen,
 	const u8 *dout, u8 *din, unsigned long flags)
 {
-	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
 	int nbytes = DIV_ROUND_UP(bitlen, 8);
 	u32 data, cnt, i;
 	struct cspi_regs *regs = (struct cspi_regs *)mxcs->base;
+	u32 ts;
+	int status;
 
 	debug("%s: bitlen %d dout 0x%x din 0x%x\n",
 		__func__, bitlen, (u32)dout, (u32)din);
@@ -272,9 +283,16 @@ int spi_xchg_single(struct spi_slave *slave, unsigned int bitlen,
 	reg_write(&regs->ctrl, mxcs->ctrl_reg |
 		MXC_CSPICTRL_EN | MXC_CSPICTRL_XCH);
 
+	ts = get_timer(0);
+	status = reg_read(&regs->stat);
 	/* Wait until the TC (Transfer completed) bit is set */
-	while ((reg_read(&regs->stat) & MXC_CSPICTRL_TC) == 0)
-		;
+	while ((status & MXC_CSPICTRL_TC) == 0) {
+		if (get_timer(ts) > CONFIG_SYS_SPI_MXC_WAIT) {
+			printf("spi_xchg_single: Timeout!\n");
+			return -1;
+		}
+		status = reg_read(&regs->stat);
+	}
 
 	/* Transfer completed, clear any pending request */
 	reg_write(&regs->stat, MXC_CSPICTRL_TC | MXC_CSPICTRL_RXOVF);
@@ -300,7 +318,7 @@ int spi_xchg_single(struct spi_slave *slave, unsigned int bitlen,
 		tmp = reg_read(&regs->rxdata);
 		data = cpu_to_be32(tmp);
 		debug("SPI Rx: 0x%x 0x%x\n", tmp, data);
-		cnt = min(nbytes, sizeof(data));
+		cnt = min_t(u32, nbytes, sizeof(data));
 		if (din) {
 			memcpy(din, &data, cnt);
 			din += cnt;
@@ -312,8 +330,9 @@ int spi_xchg_single(struct spi_slave *slave, unsigned int bitlen,
 
 }
 
-int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
-		void *din, unsigned long flags)
+static int mxc_spi_xfer_internal(struct mxc_spi_slave *mxcs,
+				 unsigned int bitlen, const void *dout,
+				 void *din, unsigned long flags)
 {
 	int n_bytes = DIV_ROUND_UP(bitlen, 8);
 	int n_bits;
@@ -322,11 +341,11 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	u8 *p_outbuf = (u8 *)dout;
 	u8 *p_inbuf = (u8 *)din;
 
-	if (!slave)
-		return -1;
+	if (!mxcs)
+		return -EINVAL;
 
 	if (flags & SPI_XFER_BEGIN)
-		spi_cs_activate(slave);
+		mxc_spi_cs_activate(mxcs);
 
 	while (n_bytes > 0) {
 		if (n_bytes < MAX_SPI_BYTES)
@@ -336,7 +355,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 
 		n_bits = blk_size * 8;
 
-		ret = spi_xchg_single(slave, n_bits, p_outbuf, p_inbuf, 0);
+		ret = spi_xchg_single(mxcs, n_bits, p_outbuf, p_inbuf, 0);
 
 		if (ret)
 			return ret;
@@ -348,42 +367,73 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	}
 
 	if (flags & SPI_XFER_END) {
-		spi_cs_deactivate(slave);
+		mxc_spi_cs_deactivate(mxcs);
 	}
 
 	return 0;
+}
+
+static int mxc_spi_claim_bus_internal(struct mxc_spi_slave *mxcs, int cs)
+{
+	struct cspi_regs *regs = (struct cspi_regs *)mxcs->base;
+	int ret;
+
+	reg_write(&regs->rxdata, 1);
+	udelay(1);
+	ret = spi_cfg_mxc(mxcs, cs);
+	if (ret) {
+		printf("mxc_spi: cannot setup SPI controller\n");
+		return ret;
+	}
+	reg_write(&regs->period, MXC_CSPIPERIOD_32KHZ);
+	reg_write(&regs->intr, 0);
+
+	return 0;
+}
+
+#ifndef CONFIG_DM_SPI
+int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
+		void *din, unsigned long flags)
+{
+	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
+
+	return mxc_spi_xfer_internal(mxcs, bitlen, dout, din, flags);
 }
 
 void spi_init(void)
 {
 }
 
-static int decode_cs(struct mxc_spi_slave *mxcs, unsigned int cs)
+/*
+ * Some SPI devices require active chip-select over multiple
+ * transactions, we achieve this using a GPIO. Still, the SPI
+ * controller has to be configured to use one of its own chipselects.
+ * To use this feature you have to implement board_spi_cs_gpio() to assign
+ * a gpio value for each cs (-1 if cs doesn't need to use gpio).
+ * You must use some unused on this SPI controller cs between 0 and 3.
+ */
+static int setup_cs_gpio(struct mxc_spi_slave *mxcs,
+			 unsigned int bus, unsigned int cs)
 {
 	int ret;
 
-	/*
-	 * Some SPI devices require active chip-select over multiple
-	 * transactions, we achieve this using a GPIO. Still, the SPI
-	 * controller has to be configured to use one of its own chipselects.
-	 * To use this feature you have to call spi_setup_slave() with
-	 * cs = internal_cs | (gpio << 8), and you have to use some unused
-	 * on this SPI controller cs between 0 and 3.
-	 */
-	if (cs > 3) {
-		mxcs->gpio = cs >> 8;
-		cs &= 3;
-		ret = gpio_direction_output(mxcs->gpio, !(mxcs->ss_pol));
-		if (ret) {
-			printf("mxc_spi: cannot setup gpio %d\n", mxcs->gpio);
-			return -EINVAL;
-		}
-	} else {
-		mxcs->gpio = -1;
+	mxcs->gpio = board_spi_cs_gpio(bus, cs);
+	if (mxcs->gpio == -1)
+		return 0;
+
+	gpio_request(mxcs->gpio, "spi-cs");
+	ret = gpio_direction_output(mxcs->gpio, !(mxcs->ss_pol));
+	if (ret) {
+		printf("mxc_spi: cannot setup gpio %d\n", mxcs->gpio);
+		return -EINVAL;
 	}
 
-	return cs;
+	return 0;
 }
+
+static unsigned long spi_bases[] = {
+	MXC_SPI_BASE_ADDRESSES
+};
 
 struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 			unsigned int max_hz, unsigned int mode)
@@ -394,6 +444,11 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	if (bus >= ARRAY_SIZE(spi_bases))
 		return NULL;
 
+	if (max_hz == 0) {
+		printf("Error: desired clock is 0\n");
+		return NULL;
+	}
+
 	mxcs = spi_alloc_slave(struct mxc_spi_slave, bus, cs);
 	if (!mxcs) {
 		puts("mxc_spi: SPI Slave not allocated !\n");
@@ -402,22 +457,16 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 
 	mxcs->ss_pol = (mode & SPI_CS_HIGH) ? 1 : 0;
 
-	ret = decode_cs(mxcs, cs);
+	ret = setup_cs_gpio(mxcs, bus, cs);
 	if (ret < 0) {
 		free(mxcs);
 		return NULL;
 	}
 
-	cs = ret;
-
 	mxcs->base = spi_bases[bus];
+	mxcs->max_hz = max_hz;
+	mxcs->mode = mode;
 
-	ret = spi_cfg_mxc(mxcs, cs, max_hz, mode);
-	if (ret) {
-		printf("mxc_spi: cannot setup SPI controller\n");
-		free(mxcs);
-		return NULL;
-	}
 	return &mxcs->slave;
 }
 
@@ -431,18 +480,103 @@ void spi_free_slave(struct spi_slave *slave)
 int spi_claim_bus(struct spi_slave *slave)
 {
 	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
-	struct cspi_regs *regs = (struct cspi_regs *)mxcs->base;
 
-	reg_write(&regs->rxdata, 1);
-	udelay(1);
-	reg_write(&regs->ctrl, mxcs->ctrl_reg);
-	reg_write(&regs->period, MXC_CSPIPERIOD_32KHZ);
-	reg_write(&regs->intr, 0);
-
-	return 0;
+	return mxc_spi_claim_bus_internal(mxcs, slave->cs);
 }
 
 void spi_release_bus(struct spi_slave *slave)
 {
 	/* TODO: Shut the controller down */
 }
+#else
+
+static int mxc_spi_probe(struct udevice *bus)
+{
+	struct mxc_spi_slave *plat = bus->platdata;
+	struct mxc_spi_slave *mxcs = dev_get_platdata(bus);
+	int node = dev_of_offset(bus);
+	const void *blob = gd->fdt_blob;
+	int ret;
+
+	if (gpio_request_by_name(bus, "cs-gpios", 0, &plat->ss,
+				 GPIOD_IS_OUT)) {
+		dev_err(bus, "No cs-gpios property\n");
+		return -EINVAL;
+	}
+
+	plat->base = dev_get_addr(bus);
+	if (plat->base == FDT_ADDR_T_NONE)
+		return -ENODEV;
+
+	ret = dm_gpio_set_value(&plat->ss, !(mxcs->ss_pol));
+	if (ret) {
+		dev_err(bus, "Setting cs error\n");
+		return ret;
+	}
+
+	mxcs->max_hz = fdtdec_get_int(blob, node, "spi-max-frequency",
+				      20000000);
+
+	return 0;
+}
+
+static int mxc_spi_xfer(struct udevice *dev, unsigned int bitlen,
+		const void *dout, void *din, unsigned long flags)
+{
+	struct mxc_spi_slave *mxcs = dev_get_platdata(dev->parent);
+
+
+	return mxc_spi_xfer_internal(mxcs, bitlen, dout, din, flags);
+}
+
+static int mxc_spi_claim_bus(struct udevice *dev)
+{
+	struct mxc_spi_slave *mxcs = dev_get_platdata(dev->parent);
+	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+
+	return mxc_spi_claim_bus_internal(mxcs, slave_plat->cs);
+}
+
+static int mxc_spi_release_bus(struct udevice *dev)
+{
+	return 0;
+}
+
+static int mxc_spi_set_speed(struct udevice *bus, uint speed)
+{
+	/* Nothing to do */
+	return 0;
+}
+
+static int mxc_spi_set_mode(struct udevice *bus, uint mode)
+{
+	struct mxc_spi_slave *mxcs = dev_get_platdata(bus);
+
+	mxcs->mode = mode;
+	mxcs->ss_pol = (mode & SPI_CS_HIGH) ? 1 : 0;
+
+	return 0;
+}
+
+static const struct dm_spi_ops mxc_spi_ops = {
+	.claim_bus	= mxc_spi_claim_bus,
+	.release_bus	= mxc_spi_release_bus,
+	.xfer		= mxc_spi_xfer,
+	.set_speed	= mxc_spi_set_speed,
+	.set_mode	= mxc_spi_set_mode,
+};
+
+static const struct udevice_id mxc_spi_ids[] = {
+	{ .compatible = "fsl,imx51-ecspi" },
+	{ }
+};
+
+U_BOOT_DRIVER(mxc_spi) = {
+	.name	= "mxc_spi",
+	.id	= UCLASS_SPI,
+	.of_match = mxc_spi_ids,
+	.ops	= &mxc_spi_ops,
+	.platdata_auto_alloc_size = sizeof(struct mxc_spi_slave),
+	.probe	= mxc_spi_probe,
+};
+#endif

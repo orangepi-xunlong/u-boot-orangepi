@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Linaro LTD, www.linaro.org
@@ -10,8 +11,6 @@
  * (C) Copyright 2008
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "imagetool.h"
@@ -19,6 +18,8 @@
 #include <image.h>
 #include "gpheader.h"
 #include "omapimage.h"
+
+#define DIV_ROUND_UP(n, d)     (((n) + (d) - 1) / (d))
 
 /* Header size is CH header rounded up to 512 bytes plus GP header */
 #define OMAP_CH_HDR_SIZE 512
@@ -143,15 +144,17 @@ static void omapimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	toc++;
 	memset(toc, 0xff, sizeof(*toc));
 
-	gph_set_header(gph, sbuf->st_size - OMAP_FILE_HDR_SIZE,
+	gph_set_header(gph, sbuf->st_size - OMAP_CH_HDR_SIZE,
 		       params->addr, 0);
 
 	if (strncmp(params->imagename, "byteswap", 8) == 0) {
 		do_swap32 = 1;
 		int swapped = 0;
 		uint32_t *data = (uint32_t *)ptr;
+		const off_t size_in_words =
+			DIV_ROUND_UP(sbuf->st_size, sizeof(uint32_t));
 
-		while (swapped <= (sbuf->st_size / sizeof(uint32_t))) {
+		while (swapped < size_in_words) {
 			*data = cpu_to_be32(*data);
 			swapped++;
 			data++;
@@ -162,18 +165,17 @@ static void omapimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 /*
  * omapimage parameters
  */
-static struct image_type_params omapimage_params = {
-	.name		= "TI OMAP CH/GP Boot Image support",
-	.header_size	= OMAP_FILE_HDR_SIZE,
-	.hdr		= (void *)&omapimage_header,
-	.check_image_type = omapimage_check_image_types,
-	.verify_header	= omapimage_verify_header,
-	.print_header	= omapimage_print_header,
-	.set_header	= omapimage_set_header,
-	.check_params	= gpimage_check_params,
-};
-
-void init_omap_image_type(void)
-{
-	register_image_type(&omapimage_params);
-}
+U_BOOT_IMAGE_TYPE(
+	omapimage,
+	"TI OMAP CH/GP Boot Image support",
+	OMAP_FILE_HDR_SIZE,
+	(void *)&omapimage_header,
+	gpimage_check_params,
+	omapimage_verify_header,
+	omapimage_print_header,
+	omapimage_set_header,
+	NULL,
+	omapimage_check_image_types,
+	NULL,
+	NULL
+);

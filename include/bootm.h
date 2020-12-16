@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _BOOTM_H
@@ -48,10 +47,29 @@ int boot_selected_os(int argc, char * const argv[], int state,
 
 ulong bootm_disable_interrupts(void);
 
-/* This is a special function used by bootz */
-int bootm_find_ramdisk_fdt(int flag, int argc, char * const argv[]);
+/* This is a special function used by booti/bootz */
+int bootm_find_images(int flag, int argc, char * const argv[]);
 
 int do_bootm_states(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		    int states, bootm_headers_t *images, int boot_progress);
+
+void arch_preboot_os(void);
+
+/**
+ * bootm_decomp_image() - decompress the operating system
+ *
+ * @comp:	Compression algorithm that is used (IH_COMP_...)
+ * @load:	Destination load address in U-Boot memory
+ * @image_start Image start address (where we are decompressing from)
+ * @type:	OS type (IH_OS_...)
+ * @load_bug:	Place to decompress to
+ * @image_buf:	Address to decompress from
+ * @image_len:	Number of bytes in @image_buf to decompress
+ * @unc_len:	Available space for decompression
+ * @return 0 if OK, -ve on error (BOOTM_ERR_...)
+ */
+int bootm_decomp_image(int comp, ulong load, ulong image_start, int type,
+		       void *load_buf, void *image_buf, ulong image_len,
+		       uint unc_len, ulong *load_end);
 
 #endif

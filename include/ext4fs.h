@@ -28,10 +28,12 @@
 #define __EXT4__
 #include <ext_common.h>
 
+#define EXT4_INDEX_FL		0x00001000 /* Inode uses hash tree index */
 #define EXT4_EXTENTS_FL		0x00080000 /* Inode uses extents */
 #define EXT4_EXT_MAGIC			0xf30a
 #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM	0x0010
 #define EXT4_FEATURE_INCOMPAT_EXTENTS	0x0040
+#define EXT4_FEATURE_INCOMPAT_64BIT	0x0080
 #define EXT4_INDIRECT_BLOCKS		12
 
 #define EXT4_BG_INODE_UNINIT		0x0001
@@ -85,6 +87,8 @@ struct ext_filesystem {
 	uint32_t inodesz;
 	/* Sectors per Block */
 	uint32_t sect_perblk;
+	/* Group Descriptor size */
+	uint16_t gdsize;
 	/* Group Descriptor Block Number */
 	uint32_t gdtable_blkno;
 	/* Total block groups of partition */
@@ -94,7 +98,6 @@ struct ext_filesystem {
 	/* Superblock */
 	struct ext2_sblock *sb;
 	/* Block group descritpor table */
-	struct ext2_block_group *bgd;
 	char *gdtable;
 
 	/* Block Bitmap Related */
@@ -110,7 +113,7 @@ struct ext_filesystem {
 	/* Journal Related */
 
 	/* Block Device Descriptor */
-	block_dev_desc_t *dev_desc;
+	struct blk_desc *dev_desc;
 };
 
 extern struct ext2_data *ext4fs_root;
@@ -123,25 +126,30 @@ extern int gindex;
 
 int ext4fs_init(void);
 void ext4fs_deinit(void);
-int ext4fs_filename_check(char *filename);
+int ext4fs_filename_unlink(char *filename);
 int ext4fs_write(const char *fname, unsigned char *buffer,
-				unsigned long sizebytes);
+		 unsigned long sizebytes);
+int ext4_write_file(const char *filename, void *buf, loff_t offset, loff_t len,
+		    loff_t *actwrite);
 #endif
 
 struct ext_filesystem *get_fs(void);
-int ext4fs_open(const char *filename);
-int ext4fs_read(char *buf, unsigned len);
+int ext4fs_open(const char *filename, loff_t *len);
+int ext4fs_read(char *buf, loff_t offset, loff_t len, loff_t *actread);
 int ext4fs_mount(unsigned part_length);
 void ext4fs_close(void);
 void ext4fs_reinit_global(void);
 int ext4fs_ls(const char *dirname);
 int ext4fs_exists(const char *filename);
+int ext4fs_size(const char *filename, loff_t *size);
 void ext4fs_free_node(struct ext2fs_node *node, struct ext2fs_node *currroot);
 int ext4fs_devread(lbaint_t sector, int byte_offset, int byte_len, char *buf);
-void ext4fs_set_blk_dev(block_dev_desc_t *rbdd, disk_partition_t *info);
+void ext4fs_set_blk_dev(struct blk_desc *rbdd, disk_partition_t *info);
 long int read_allocated_block(struct ext2_inode *inode, int fileblock);
-int ext4fs_probe(block_dev_desc_t *fs_dev_desc,
+int ext4fs_probe(struct blk_desc *fs_dev_desc,
 		 disk_partition_t *fs_partition);
-int ext4_read_file(const char *filename, void *buf, int offset, int len);
+int ext4_read_file(const char *filename, void *buf, loff_t offset, loff_t len,
+		   loff_t *actread);
 int ext4_read_superblock(char *buffer);
+int ext4fs_uuid(char *uuid_str);
 #endif

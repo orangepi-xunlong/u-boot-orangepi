@@ -1,14 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009 Renesas Solutions Corp.
  * Copyright (C) 2009 Nobuhiro Iwamatsu <iwamatsu.nobuhiro@renesas.com>
  *
  * board/espt/lowlevel_init.S
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
-#include <version.h>
 #include <asm/processor.h>
 #include <asm/macro.h>
 

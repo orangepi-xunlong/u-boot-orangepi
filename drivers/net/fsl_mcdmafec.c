@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * (C) Copyright 2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <environment.h>
 #include <malloc.h>
 #include <command.h>
 #include <config.h>
@@ -36,8 +36,6 @@
 #include <asm/fsl_mcdmafec.h>
 
 #include "MCD_dma.h"
-
-DECLARE_GLOBAL_DATA_PTR;
 
 struct fec_info_dma fec_info[] = {
 #ifdef CONFIG_SYS_FEC0_IOBASE
@@ -244,7 +242,7 @@ static int fec_recv(struct eth_device *dev)
 	struct fec_info_dma *info = dev->priv;
 	volatile fecdma_t *fecp = (fecdma_t *) (info->iobase);
 
-	cbd_t *pRbd = &info->rxbd[info->rxIdx];
+	cbd_t *prbd = &info->rxbd[info->rxIdx];
 	u32 ievent;
 	int frame_length, len = 0;
 
@@ -276,26 +274,27 @@ static int fec_recv(struct eth_device *dev)
 		}
 	}
 
-	if (!(pRbd->cbd_sc & BD_ENET_RX_EMPTY)) {
-		if ((pRbd->cbd_sc & BD_ENET_RX_LAST)
-		    && !(pRbd->cbd_sc & BD_ENET_RX_ERR)
-		    && ((pRbd->cbd_datlen - 4) > 14)) {
+	if (!(prbd->cbd_sc & BD_ENET_RX_EMPTY)) {
+		if ((prbd->cbd_sc & BD_ENET_RX_LAST) &&
+		    !(prbd->cbd_sc & BD_ENET_RX_ERR) &&
+		    ((prbd->cbd_datlen - 4) > 14)) {
 
 			/* Get buffer address and size */
-			frame_length = pRbd->cbd_datlen - 4;
+			frame_length = prbd->cbd_datlen - 4;
 
 			/* Fill the buffer and pass it to upper layers */
-			NetReceive((uchar *)pRbd->cbd_bufaddr, frame_length);
+			net_process_received_packet((uchar *)prbd->cbd_bufaddr,
+						    frame_length);
 			len = frame_length;
 		}
 
 		/* Reset buffer descriptor as empty */
 		if ((info->rxIdx) == (PKTBUFSRX - 1))
-			pRbd->cbd_sc = (BD_ENET_RX_WRAP | BD_ENET_RX_EMPTY);
+			prbd->cbd_sc = (BD_ENET_RX_WRAP | BD_ENET_RX_EMPTY);
 		else
-			pRbd->cbd_sc = BD_ENET_RX_EMPTY;
+			prbd->cbd_sc = BD_ENET_RX_EMPTY;
 
-		pRbd->cbd_datlen = PKTSIZE_ALIGN;
+		prbd->cbd_datlen = PKTSIZE_ALIGN;
 
 		/* Now, we have an empty RxBD, restart the DMA receive task */
 		MCD_continDma(info->rxTask);
@@ -382,15 +381,15 @@ static int fec_init(struct eth_device *dev, bd_t * bd)
 
 	/* Set station address   */
 	if ((u32) fecp == CONFIG_SYS_FEC0_IOBASE)
-		eth_getenv_enetaddr("ethaddr", enetaddr);
+		eth_env_get_enetaddr("ethaddr", enetaddr);
 	else
-		eth_getenv_enetaddr("eth1addr", enetaddr);
+		eth_env_get_enetaddr("eth1addr", enetaddr);
 	fec_set_hwaddr(fecp, enetaddr);
 
 	/* Set Opcode/Pause Duration Register */
 	fecp->opd = 0x00010020;
 
-	/* Setup Buffers and Buffer Desriptors */
+	/* Setup Buffers and Buffer Descriptors */
 	info->rxIdx = 0;
 	info->txIdx = 0;
 
@@ -399,7 +398,7 @@ static int fec_init(struct eth_device *dev, bd_t * bd)
 	for (i = 0; i < PKTBUFSRX; i++) {
 		info->rxbd[i].cbd_sc = BD_ENET_RX_EMPTY;
 		info->rxbd[i].cbd_datlen = PKTSIZE_ALIGN;
-		info->rxbd[i].cbd_bufaddr = (uint) NetRxPackets[i];
+		info->rxbd[i].cbd_bufaddr = (uint) net_rx_packets[i];
 	}
 	info->rxbd[PKTBUFSRX - 1].cbd_sc |= BD_ENET_RX_WRAP;
 
@@ -474,7 +473,7 @@ static void fec_halt(struct eth_device *dev)
 
 	/* Disable DMA tasks */
 	MCD_killDma(info->txTask);
-	MCD_killDma(info->rxTask);;
+	MCD_killDma(info->rxTask);
 
 	/* Disable the Ethernet Controller */
 	fecp->ecr &= ~FEC_ECR_ETHER_EN;
@@ -555,8 +554,17 @@ int mcdmafec_initialize(bd_t * bis)
 		eth_register(dev);
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-		miiphy_register(dev->name,
-				mcffec_miiphy_read, mcffec_miiphy_write);
+		int retval;
+		struct mii_dev *mdiodev = mdio_alloc();
+		if (!mdiodev)
+			return -ENOMEM;
+		strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+		mdiodev->read = mcffec_miiphy_read;
+		mdiodev->write = mcffec_miiphy_write;
+
+		retval = mdio_register(mdiodev);
+		if (retval < 0)
+			return retval;
 #endif
 
 		if (i > 0)

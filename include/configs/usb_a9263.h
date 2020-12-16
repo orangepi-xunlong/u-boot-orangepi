@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2013
  * Stelian Pop <stelian.pop@leadtechdesign.com>
@@ -9,8 +10,6 @@
  *
  * U-Boot image has to be less than 200704 bytes, otherwise at91bootstrap
  * installed on board will not be able to load it properly.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -31,48 +30,13 @@
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
-#define CONFIG_DISPLAY_CPUINFO
-
-#define CONFIG_OF_LIBFDT
-#define CONFIG_SYS_GENERIC_BOARD
-#define CONFIG_SYS_TEXT_BASE		0x23f00000
-
 /*
  * Hardware drivers
  */
-#define CONFIG_AT91_GPIO
-
-/* serial console */
-#define CONFIG_ATMEL_USART
-#define CONFIG_USART_BASE		ATMEL_BASE_DBGU
-#define CONFIG_USART_ID			ATMEL_ID_SYS
-#define CONFIG_BAUDRATE			115200
-
-#define CONFIG_BOOTDELAY 3
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
-/*
- * Command line configuration.
- */
-#include <config_cmd_default.h>
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_ITEST
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_LOADS
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_NAND
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -80,20 +44,7 @@
 #define CONFIG_SYS_SDRAM_SIZE		0x04000000
 
 #define CONFIG_SYS_INIT_SP_ADDR \
-	(ATMEL_BASE_SRAM1 + 0x1000 - GENERATED_GBL_DATA_SIZE)
-
-/* DataFlash */
-#define CONFIG_ATMEL_DATAFLASH_SPI
-#define CONFIG_HAS_DATAFLASH
-#define CONFIG_SYS_SPI_WRITE_TOUT		(5*CONFIG_SYS_HZ)
-#define CONFIG_SYS_MAX_DATAFLASH_BANKS		1
-#define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000
-#define AT91_SPI_CLK				8000000
-#define DATAFLASH_TCSS				(0x1a << 16)
-#define DATAFLASH_TCHS				(0x1 << 24)
-
-/* no NOR flash */
-#define CONFIG_SYS_NO_FLASH
+	(ATMEL_BASE_SRAM1 + 16 * 1024 - GENERATED_GBL_DATA_SIZE)
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
@@ -108,9 +59,6 @@
 #define CONFIG_SYS_NAND_READY_PIN		GPIO_PIN_PA(22)
 #endif
 
-#define MTDPARTS_DEFAULT \
-	"mtdparts=atmel_nand:16m(kernel)ro,120m(root1),-(root2)"
-
 /* Ethernet */
 #define CONFIG_MACB
 #define CONFIG_RMII
@@ -121,13 +69,10 @@
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_ATMEL
 #define CONFIG_USB_OHCI_NEW
-#define CONFIG_DOS_PARTITION
 #define CONFIG_SYS_USB_OHCI_CPU_INIT
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		0x00a00000
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"at91sam9263"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
-#define CONFIG_USB_STORAGE
-#define CONFIG_CMD_FAT
 #endif
 
 #define CONFIG_SYS_LOAD_ADDR			0x22000000
@@ -135,30 +80,14 @@
 #define CONFIG_SYS_MEMTEST_START		CONFIG_SYS_SDRAM_BASE
 #define CONFIG_SYS_MEMTEST_END			0x23e00000
 
-/* bootstrap + u-boot + env in dataflash on CS0 */
-#define CONFIG_ENV_IS_IN_DATAFLASH
-#define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0 + 0x4000)
+/* bootstrap + u-boot + env + linux in dataflash on CS0 */
 #define CONFIG_ENV_OFFSET	0x2000
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0 + \
-				 CONFIG_ENV_OFFSET)
 #define CONFIG_ENV_SIZE		0x2000
+#define CONFIG_ENV_SECT_SIZE	CONFIG_ENV_SIZE
+#define CONFIG_ENV_SPI_MAX_HZ	15000000
 #define CONFIG_BOOTCOMMAND	"nboot 21000000 0"
-#define CONFIG_BOOTARGS		"console=ttyS0,115200 " \
-	"root=/dev/mtdblock1 " \
-	"mtdparts=" MTDPARTS_DEFAULT " " \
-	"rw rootfstype=jffs2"
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"mtdparts=" MTDPARTS_DEFAULT "\0" \
-
-#define CONFIG_SYS_PROMPT		"U-Boot> "
-#define CONFIG_SYS_CBSIZE		256
-#define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					 sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_LONGHELP
+	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 
 /*
  * Size of malloc() pool

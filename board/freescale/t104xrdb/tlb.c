@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -28,12 +27,25 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 	/* TLB 1 */
 	/* *I*** - Covers boot page */
-#if defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SYS_INIT_L3_ADDR)
+#if defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SYS_INIT_L3_ADDR) && \
+	!defined(CONFIG_SECURE_BOOT)
 	/*
 	 * *I*G - L3SRAM. When L3 is used as 256K SRAM, the address of the
 	 * SRAM is at 0xfffc0000, it covered the 0xfffff000.
 	 */
 	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L3_ADDR, CONFIG_SYS_INIT_L3_ADDR,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+		      0, 0, BOOKE_PAGESZ_256K, 1),
+
+#elif defined(CONFIG_SECURE_BOOT) && defined(CONFIG_SPL_BUILD)
+	/*
+	 * *I*G - L3SRAM. When L3 is used as 256K SRAM, in case of Secure Boot
+	 * the physical address of the SRAM is at 0xbffc0000,
+	 * and virtual address is 0xfffc0000
+	 */
+
+	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L3_VADDR,
+		      CONFIG_SYS_INIT_L3_ADDR,
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		      0, 0, BOOKE_PAGESZ_256K, 1),
 #else
@@ -107,11 +119,11 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 #if defined(CONFIG_RAMBOOT_PBL) && !defined(CONFIG_SPL_BUILD)
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
 		      0, 12, BOOKE_PAGESZ_1G, 1),
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
 		      CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
-		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
 		      0, 13, BOOKE_PAGESZ_1G, 1)
 #endif
 };

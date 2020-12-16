@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 or later as published by the Free Software Foundation.
  */
 
 #include <common.h>
@@ -109,9 +106,12 @@ found:
 	/* DHC_EN =1, ODT = 75 Ohm */
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_75ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_75ohm);
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x63;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
@@ -119,13 +119,14 @@ phys_size_t initdram(int board_type)
 
 #if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
 	dram_size = fsl_ddr_sdram();
-
-	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
-	dram_size *= 0x100000;
-
 #else
 	/* DDR has been initialised by first stage boot loader */
 	dram_size = fsl_ddr_sdram_size();
 #endif
-	return dram_size;
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+	dram_size *= 0x100000;
+
+	gd->ram_size = dram_size;
+
+	return 0;
 }

@@ -25,41 +25,13 @@
 #include <linux/types.h>
 #include <asm/byteorder.h>
 #include <asm/memory.h>
+#include <asm/barriers.h>
 #if 0	/* XXX###XXX */
 #include <asm/arch/hardware.h>
 #endif	/* XXX###XXX */
 
 static inline void sync(void)
 {
-}
-
-/*
- * Given a physical address and a length, return a virtual address
- * that can be used to access the memory range with the caching
- * properties specified by "flags".
- */
-#define MAP_NOCACHE	(0)
-#define MAP_WRCOMBINE	(0)
-#define MAP_WRBACK	(0)
-#define MAP_WRTHROUGH	(0)
-
-static inline void *
-map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
-{
-	return (void *)paddr;
-}
-
-/*
- * Take down a mapping set up by map_physmem().
- */
-static inline void unmap_physmem(void *vaddr, unsigned long flags)
-{
-
-}
-
-static inline phys_addr_t virt_to_phys(void * vaddr)
-{
-	return (phys_addr_t)(vaddr);
 }
 
 /*
@@ -136,7 +108,7 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
  * TODO: The kernel offers some more advanced versions of barriers, it might
  * have some advantages to use them instead of the simple one here.
  */
-#define dmb()		__asm__ __volatile__ ("" : : : "memory")
+#define mb()		dsb()
 #define __iormb()	dmb()
 #define __iowmb()	dmb()
 
@@ -283,39 +255,12 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define insw_p(port,to,len)		insw(port,to,len)
 #define insl_p(port,to,len)		insl(port,to,len)
 
-/*
- * ioremap and friends.
- *
- * ioremap takes a PCI memory address, as specified in
- * linux/Documentation/IO-mapping.txt.  If you want a
- * physical address, use __ioremap instead.
- */
-extern void * __ioremap(unsigned long offset, size_t size, unsigned long flags);
-extern void __iounmap(void *addr);
-
-/*
- * Generic ioremap support.
- *
- * Define:
- *  iomem_valid_addr(off,size)
- *  iomem_to_phys(off)
- */
-#ifdef iomem_valid_addr
-#define __arch_ioremap(off,sz,nocache)					\
- ({									\
-	unsigned long _off = (off), _size = (sz);			\
-	void *_ret = (void *)0;						\
-	if (iomem_valid_addr(_off, _size))				\
-		_ret = __ioremap(iomem_to_phys(_off),_size,nocache);	\
-	_ret;								\
- })
-
-#define __arch_iounmap __iounmap
-#endif
-
-#define ioremap(off,sz)			__arch_ioremap((off),(sz),0)
-#define ioremap_nocache(off,sz)		__arch_ioremap((off),(sz),1)
-#define iounmap(_addr)			__arch_iounmap(_addr)
+#define writesl(a, d, s)	__raw_writesl((unsigned long)a, d, s)
+#define readsl(a, d, s)		__raw_readsl((unsigned long)a, d, s)
+#define writesw(a, d, s)	__raw_writesw((unsigned long)a, d, s)
+#define readsw(a, d, s)		__raw_readsw((unsigned long)a, d, s)
+#define writesb(a, d, s)	__raw_writesb((unsigned long)a, d, s)
+#define readsb(a, d, s)		__raw_readsb((unsigned long)a, d, s)
 
 /*
  * DMA-consistent mapping functions.  These allocate/free a region of
@@ -375,7 +320,12 @@ out:
 	return retval;
 }
 
-#elif !defined(readb)
+#else
+#define memset_io(a, b, c)		memset((void *)(a), (b), (c))
+#define memcpy_fromio(a, b, c)		memcpy((a), (void *)(b), (c))
+#define memcpy_toio(a, b, c)		memcpy((void *)(a), (b), (c))
+
+#if !defined(readb)
 
 #define readb(addr)			(__readwrite_bug("readb"),0)
 #define readw(addr)			(__readwrite_bug("readw"),0)
@@ -388,6 +338,7 @@ out:
 
 #define check_signature(io,sig,len)	(0)
 
+#endif
 #endif	/* __mem_pci */
 
 /*
@@ -446,6 +397,7 @@ out:
 #endif	/* __mem_isa */
 #endif	/* __KERNEL__ */
 
+#include <asm-generic/io.h>
 #include <iotrace.h>
 
 #endif	/* __ASM_ARM_IO_H */

@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Davinci MMC Controller Driver
  *
  * Copyright (C) 2010 Texas Instruments Incorporated
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <common.h>
 #include <command.h>
+#include <errno.h>
 #include <mmc.h>
 #include <part.h>
 #include <malloc.h>
@@ -66,7 +66,7 @@ dmmc_wait_fifo_status(volatile struct davinci_mmc_regs *regs, uint status)
 		udelay(100);
 
 	if (wdog == 0)
-		return COMM_ERR;
+		return -ECOMM;
 
 	return 0;
 }
@@ -80,7 +80,7 @@ static int dmmc_busy_wait(volatile struct davinci_mmc_regs *regs)
 		udelay(10);
 
 	if (wdog == 0)
-		return COMM_ERR;
+		return -ECOMM;
 
 	return 0;
 }
@@ -99,7 +99,7 @@ static int dmmc_check_status(volatile struct davinci_mmc_regs *regs,
 			return 0;
 		} else if (mmcstatus & st_error) {
 			if (mmcstatus & MMCST0_TOUTRS)
-				return TIMEOUT;
+				return -ETIMEDOUT;
 			printf("[ ST0 ERROR %x]\n", mmcstatus);
 			/*
 			 * Ignore CRC errors as some MMC cards fail to
@@ -107,7 +107,7 @@ static int dmmc_check_status(volatile struct davinci_mmc_regs *regs,
 			 */
 			if (mmcstatus & MMCST0_CRCRS)
 				return 0;
-			return COMM_ERR;
+			return -ECOMM;
 		}
 		udelay(10);
 
@@ -116,7 +116,7 @@ static int dmmc_check_status(volatile struct davinci_mmc_regs *regs,
 
 	printf("Status %x Timeout ST0:%x ST1:%x\n", st_ready, mmcstatus,
 			get_val(&regs->mmcst1));
-	return COMM_ERR;
+	return -ECOMM;
 }
 
 /*
@@ -346,8 +346,8 @@ static int dmmc_init(struct mmc *mmc)
 	return 0;
 }
 
-/* Set buswidth or clock as indicated by the GENERIC_MMC framework */
-static void dmmc_set_ios(struct mmc *mmc)
+/* Set buswidth or clock as indicated by the MMC framework */
+static int dmmc_set_ios(struct mmc *mmc)
 {
 	struct davinci_mmc *host = mmc->priv;
 	struct davinci_mmc_regs *regs = host->reg_base;
@@ -361,6 +361,8 @@ static void dmmc_set_ios(struct mmc *mmc)
 	/* Set clock speed */
 	if (mmc->clock)
 		dmmc_set_clock(mmc, mmc->clock);
+
+	return 0;
 }
 
 static const struct mmc_ops dmmc_ops = {

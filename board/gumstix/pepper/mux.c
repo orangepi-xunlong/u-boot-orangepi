@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Muxing for Gumstix Pepper and AM335x-based boards
  *
  * Copyright (C) 2014, Gumstix, Incorporated - http://www.gumstix.com/
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 #include <common.h>
 #include <asm/arch/sys_proto.h>
@@ -62,6 +61,11 @@ static struct module_pin_mux rgmii1_pin_mux[] = {
 void enable_uart0_pin_mux(void)
 {
 	configure_module_pin_mux(uart0_pin_mux);
+}
+
+void enable_i2c0_pin_mux(void)
+{
+	configure_module_pin_mux(i2c0_pin_mux);
 }
 
 /*

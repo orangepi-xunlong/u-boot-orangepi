@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  (C) Copyright 2010-2014
  *  NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA_CLK_RST_H_
@@ -48,6 +47,7 @@ enum {
 	TEGRA_CLK_REGS_VW	= 2,	/* Number of clock enable regs V/W */
 	TEGRA_CLK_SOURCES_VW	= 32,	/* Number of ppl clock sources V/W */
 	TEGRA_CLK_SOURCES_X	= 32,	/* Number of ppl clock sources X */
+	TEGRA_CLK_SOURCES_Y	= 18,	/* Number of ppl clock sources Y */
 };
 
 /* Clock/Reset Controller (CLK_RST_CONTROLLER_) regs */
@@ -94,7 +94,15 @@ struct clk_rst_ctlr {
 	uint crc_rst_dev_x_set;		/* _RST_DEV_X_SET_0,	0x290 */
 	uint crc_rst_dev_x_clr;		/* _RST_DEV_X_CLR_0,	0x294 */
 
-	uint crc_reserved21[23];	/* _reserved_21,	0x298-2f0 */
+	uint crc_clk_out_enb_y;		/* _CLK_OUT_ENB_Y_0,	0x298 */
+	uint crc_clk_enb_y_set;		/* _CLK_ENB_Y_SET_0,	0x29c */
+	uint crc_clk_enb_y_clr;		/* _CLK_ENB_Y_CLR_0,	0x2a0 */
+
+	uint crc_rst_devices_y;		/* _RST_DEVICES_Y_0,	0x2a4 */
+	uint crc_rst_dev_y_set;		/* _RST_DEV_Y_SET_0,	0x2a8 */
+	uint crc_rst_dev_y_clr;		/* _RST_DEV_Y_CLR_0,	0x2ac */
+
+	uint crc_reserved21[17];	/* _reserved_21,	0x2b0-2f0 */
 
 	uint crc_dfll_base;		/* _DFLL_BASE_0,	0x2f4 */
 
@@ -136,7 +144,7 @@ struct clk_rst_ctlr {
 	struct clk_set_clr crc_rst_dev_ex_vw[TEGRA_CLK_REGS_VW];
 	/* _CLK_ENB_V/W_CLR_0 0x440 ~ 0x44c */
 	struct clk_set_clr crc_clk_enb_ex_vw[TEGRA_CLK_REGS_VW];
-	/* Additional (T114) registers */
+	/* Additional (T114+) registers */
 	uint crc_rst_cpug_cmplx_set;	/* _RST_CPUG_CMPLX_SET_0,  0x450 */
 	uint crc_rst_cpug_cmplx_clr;	/* _RST_CPUG_CMPLX_CLR_0,  0x454 */
 	uint crc_rst_cpulp_cmplx_set;	/* _RST_CPULP_CMPLX_SET_0, 0x458 */
@@ -202,10 +210,23 @@ struct clk_rst_ctlr {
 	uint crc_reserved52[1];		/* _reserved_52, 0x554 */
 	uint crc_super_gr3d_clk_div;	/* _SUPER_GR3D_CLK_DIVIDER_0, 0x558 */
 	uint crc_spare_reg0;		/* _SPARE_REG0_0, 0x55C */
+	u32 _rsv32[4];                  /*                    0x560-0x56c */
+	u32 crc_plld2_ss_cfg;		/* _PLLD2_SS_CFG            0x570 */
+	u32 _rsv32_1[7];		/*                      0x574-58c */
+	struct clk_pll_simple plldp;	/* _PLLDP_BASE, 0x590 _PLLDP_MISC */
+	u32 crc_plldp_ss_cfg;		/* _PLLDP_SS_CFG, 0x598 */
 
-	/* Tegra124 - skip to 0x600 here for new CLK_SOURCE_ regs */
-	uint crc_reserved60[40];	/* _reserved_60, 0x560 - 0x5FC */
-	uint crc_clk_src_x[TEGRA_CLK_SOURCES_X]; /* XUSB, etc, 0x600-0x678 */
+	/* Tegra124+ - skip to 0x600 here for new CLK_SOURCE_ regs */
+	uint _rsrv32_2[25];			/* _0x59C - 0x5FC */
+	uint crc_clk_src_x[TEGRA_CLK_SOURCES_X]; /* XUSB, etc, 0x600-0x67C */
+
+	/* Tegra210 - skip to 0x694 here for new CLK_SOURCE_ regs */
+	uint crc_reserved61[5];	/* _reserved_61, 0x680 - 0x690 */
+	/*
+	 * NOTE: PLLA1 regs are in the middle of this Y region. Break this in
+	 * two later if PLLA1 is needed, but for now this is cleaner.
+	 */
+	uint crc_clk_src_y[TEGRA_CLK_SOURCES_Y]; /* SPARE1, etc, 0x694-0x6D8 */
 };
 
 /* CLK_RST_CONTROLLER_CLK_CPU_CMPLX_0 */
@@ -227,15 +248,6 @@ struct clk_rst_ctlr {
 #define PLL_LOCK_SHIFT		27
 #define PLL_LOCK_MASK		(1U << PLL_LOCK_SHIFT)
 
-#define PLL_DIVP_SHIFT		20
-#define PLL_DIVP_MASK		(7U << PLL_DIVP_SHIFT)
-
-#define PLL_DIVN_SHIFT		8
-#define PLL_DIVN_MASK		(0x3ffU << PLL_DIVN_SHIFT)
-
-#define PLL_DIVM_SHIFT		0
-#define PLL_DIVM_MASK		(0x1f << PLL_DIVM_SHIFT)
-
 /* CLK_RST_CONTROLLER_PLLx_OUTx_0 */
 #define PLL_OUT_RSTN		(1 << 0)
 #define PLL_OUT_CLKEN		(1 << 1)
@@ -247,18 +259,6 @@ struct clk_rst_ctlr {
 /* CLK_RST_CONTROLLER_PLLx_MISC_0 */
 #define PLL_DCCON_SHIFT		20
 #define PLL_DCCON_MASK		(1U << PLL_DCCON_SHIFT)
-
-#define PLL_LOCK_ENABLE_SHIFT	18
-#define PLL_LOCK_ENABLE_MASK	(1U << PLL_LOCK_ENABLE_SHIFT)
-
-#define PLL_CPCON_SHIFT		8
-#define PLL_CPCON_MASK		(15U << PLL_CPCON_SHIFT)
-
-#define PLL_LFCON_SHIFT		4
-#define PLL_LFCON_MASK		(15U << PLL_LFCON_SHIFT)
-
-#define PLLU_VCO_FREQ_SHIFT	20
-#define PLLU_VCO_FREQ_MASK	(1U << PLLU_VCO_FREQ_SHIFT)
 
 #define PLLP_OUT1_OVR		(1 << 2)
 #define PLLP_OUT2_OVR		(1 << 18)
@@ -439,5 +439,13 @@ enum {
 /* CLK_RST_CONTROLLER_PLLX_MISC_3 */
 #define PLLX_IDDQ_SHIFT			3
 #define PLLX_IDDQ_MASK			(1U << PLLX_IDDQ_SHIFT)
+
+/* CLK_RST_PLLDP_SS_CFG */
+#define PLLDP_SS_CFG_CLAMP		(1 << 22)
+#define PLLDP_SS_CFG_UNDOCUMENTED	(1 << 24)
+#define PLLDP_SS_CFG_DITHER		(1 << 28)
+
+/* CLK_RST_PLLD_MISC */
+#define PLLD_CLKENABLE			30
 
 #endif	/* _TEGRA_CLK_RST_H_ */

@@ -1,48 +1,43 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 1999-2003 David Woodhouse <dwmw2@infradead.org> et al.
+ * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org> et al.
  *
- * Released under GPL
  */
 
 #ifndef __MTD_MTD_H__
 #define __MTD_MTD_H__
 
+#ifndef __UBOOT__
 #include <linux/types.h>
-#include <div64.h>
-#include <mtd/mtd-abi.h>
-#include <asm/errno.h>
+#include <linux/uio.h>
+#include <linux/notifier.h>
+#include <linux/device.h>
 
-#define MTD_CHAR_MAJOR 90
-#define MTD_BLOCK_MAJOR 31
+#include <mtd/mtd-abi.h>
+
+#include <asm/div64.h>
+#else
+#include <linux/compat.h>
+#include <mtd/mtd-abi.h>
+#include <linux/errno.h>
+#include <div64.h>
+
 #define MAX_MTD_DEVICES 32
+#endif
 
 #define MTD_ERASE_PENDING	0x01
 #define MTD_ERASING		0x02
 #define MTD_ERASE_SUSPEND	0x04
-#define MTD_ERASE_DONE          0x08
-#define MTD_ERASE_FAILED        0x10
+#define MTD_ERASE_DONE		0x08
+#define MTD_ERASE_FAILED	0x10
 
-#define MTD_FAIL_ADDR_UNKNOWN	-1LL
+#define MTD_FAIL_ADDR_UNKNOWN -1LL
 
 /*
- * Enumeration for NAND/OneNAND flash chip state
+ * If the erase fails, fail_addr might indicate exactly which block failed. If
+ * fail_addr = MTD_FAIL_ADDR_UNKNOWN, the failure was not at the device level
+ * or was not specific to any particular block.
  */
-enum {
-	FL_READY,
-	FL_READING,
-	FL_WRITING,
-	FL_ERASING,
-	FL_SYNCING,
-	FL_CACHEDPRG,
-	FL_RESETING,
-	FL_UNLOCKING,
-	FL_LOCKING,
-	FL_PM_SUSPENDED,
-};
-
-/* If the erase fails, fail_addr might indicate exactly which block failed.  If
-   fail_addr = MTD_FAIL_ADDR_UNKNOWN, the failure was not at the device level or was not
-   specific to any particular block. */
 struct erase_info {
 	struct mtd_info *mtd;
 	uint64_t addr;
@@ -50,8 +45,8 @@ struct erase_info {
 	uint64_t fail_addr;
 	u_long time;
 	u_long retries;
-	u_int dev;
-	u_int cell;
+	unsigned dev;
+	unsigned cell;
 	void (*callback) (struct erase_info *self);
 	u_long priv;
 	u_char state;
@@ -60,9 +55,9 @@ struct erase_info {
 };
 
 struct mtd_erase_region_info {
-	uint64_t offset;			/* At which this region starts, from the beginning of the MTD */
-	u_int32_t erasesize;		/* For this region */
-	u_int32_t numblocks;		/* Number of blocks of erasesize in this region */
+	uint64_t offset;		/* At which this region starts, from the beginning of the MTD */
+	uint32_t erasesize;		/* For this region */
+	uint32_t numblocks;		/* Number of blocks of erasesize in this region */
 	unsigned long *lockmap;		/* If keeping bitmap of locks */
 };
 
@@ -81,7 +76,7 @@ struct mtd_erase_region_info {
  * @datbuf:	data buffer - if NULL only oob data are read/written
  * @oobbuf:	oob data buffer
  *
- * Note, it is allowed to read more then one OOB area at one go, but not write.
+ * Note, it is allowed to read more than one OOB area at one go, but not write.
  * The interface assumes that the OOB write requests program only one page's
  * OOB area.
  */
@@ -105,30 +100,64 @@ struct mtd_oob_ops {
 #ifdef CONFIG_SYS_NAND_MAX_ECCPOS
 #define MTD_MAX_ECCPOS_ENTRIES_LARGE	CONFIG_SYS_NAND_MAX_ECCPOS
 #else
-#define MTD_MAX_ECCPOS_ENTRIES_LARGE	640
+#define MTD_MAX_ECCPOS_ENTRIES_LARGE	680
 #endif
+/**
+ * struct mtd_oob_region - oob region definition
+ * @offset: region offset
+ * @length: region length
+ *
+ * This structure describes a region of the OOB area, and is used
+ * to retrieve ECC or free bytes sections.
+ * Each section is defined by an offset within the OOB area and a
+ * length.
+ */
+struct mtd_oob_region {
+	u32 offset;
+	u32 length;
+};
 
 /*
- * ECC layout control structure. Exported to userspace for
- * diagnosis and to allow creation of raw images
+ * struct mtd_ooblayout_ops - NAND OOB layout operations
+ * @ecc: function returning an ECC region in the OOB area.
+ *	 Should return -ERANGE if %section exceeds the total number of
+ *	 ECC sections.
+ * @free: function returning a free region in the OOB area.
+ *	  Should return -ERANGE if %section exceeds the total number of
+ *	  free sections.
+ */
+struct mtd_ooblayout_ops {
+	int (*ecc)(struct mtd_info *mtd, int section,
+		   struct mtd_oob_region *oobecc);
+	int (*free)(struct mtd_info *mtd, int section,
+		    struct mtd_oob_region *oobfree);
+};
+
+/*
+ * Internal ECC layout control structure. For historical reasons, there is a
+ * similar, smaller struct nand_ecclayout_user (in mtd-abi.h) that is retained
+ * for export to user-space via the ECCGETLAYOUT ioctl.
+ * nand_ecclayout should be expandable in the future simply by the above macros.
  */
 struct nand_ecclayout {
-	uint32_t eccbytes;
-	uint32_t eccpos[MTD_MAX_ECCPOS_ENTRIES_LARGE];
-	uint32_t oobavail;
+	__u32 eccbytes;
+	__u32 eccpos[MTD_MAX_ECCPOS_ENTRIES_LARGE];
+	__u32 oobavail;
 	struct nand_oobfree oobfree[MTD_MAX_OOBFREE_ENTRIES_LARGE];
 };
 
+struct module;	/* only needed for owner field in mtd_info */
+
 struct mtd_info {
 	u_char type;
-	u_int32_t flags;
-	uint64_t size;	 /* Total size of the MTD */
+	uint32_t flags;
+	uint64_t size;	 // Total size of the MTD
 
 	/* "Major" erase size for the device. Naïve users may take this
 	 * to be the only erase size available, or may use the more detailed
 	 * information below if they desire
 	 */
-	u_int32_t erasesize;
+	uint32_t erasesize;
 	/* Minimal writable flash unit size. In case of NOR flash it is 1 (even
 	 * though individual bits can be cleared), in case of NAND flash it is
 	 * one NAND page (or half, or one-fourths of it), in case of ECC-ed NOR
@@ -136,10 +165,31 @@ struct mtd_info {
 	 * Any driver registering a struct mtd_info must ensure a writesize of
 	 * 1 or larger.
 	 */
-	u_int32_t writesize;
+	uint32_t writesize;
 
-	u_int32_t oobsize;   /* Amount of OOB data per block (e.g. 16) */
-	u_int32_t oobavail;  /* Available OOB bytes per block */
+	/*
+	 * Size of the write buffer used by the MTD. MTD devices having a write
+	 * buffer can write multiple writesize chunks at a time. E.g. while
+	 * writing 4 * writesize bytes to a device with 2 * writesize bytes
+	 * buffer the MTD driver can (but doesn't have to) do 2 writesize
+	 * operations, but not 4. Currently, all NANDs have writebufsize
+	 * equivalent to writesize (NAND page size). Some NOR flashes do have
+	 * writebufsize greater than writesize.
+	 */
+	uint32_t writebufsize;
+
+	uint32_t oobsize;   // Amount of OOB data per block (e.g. 16)
+	uint32_t oobavail;  // Available OOB bytes per block
+
+	/*
+	 * If erasesize is a power of 2 then the shift is stored in
+	 * erasesize_shift otherwise erasesize_shift is zero. Ditto writesize.
+	 */
+	unsigned int erasesize_shift;
+	unsigned int writesize_shift;
+	/* Masks based on erasesize_shift and writesize_shift */
+	unsigned int erasesize_mask;
+	unsigned int writesize_mask;
 
 	/*
 	 * read ops return -EUCLEAN if max number of bitflips corrected on any
@@ -150,12 +200,22 @@ struct mtd_info {
 	 */
 	unsigned int bitflip_threshold;
 
-	/* Kernel-only stuff starts here. */
+	// Kernel-only stuff starts here.
+#ifndef __UBOOT__
 	const char *name;
+#else
+	char *name;
+#endif
 	int index;
+
+	/* OOB layout description */
+	const struct mtd_ooblayout_ops *ooblayout;
 
 	/* ECC layout structure pointer - read only! */
 	struct nand_ecclayout *ecclayout;
+
+	/* the ecc step size. */
+	unsigned int ecc_step_size;
 
 	/* max number of correctible bit errors per ecc step */
 	unsigned int ecc_strength;
@@ -171,44 +231,53 @@ struct mtd_info {
 	 * wrappers instead.
 	 */
 	int (*_erase) (struct mtd_info *mtd, struct erase_info *instr);
+#ifndef __UBOOT__
 	int (*_point) (struct mtd_info *mtd, loff_t from, size_t len,
-			size_t *retlen, void **virt, phys_addr_t *phys);
-	void (*_unpoint) (struct mtd_info *mtd, loff_t from, size_t len);
+		       size_t *retlen, void **virt, resource_size_t *phys);
+	int (*_unpoint) (struct mtd_info *mtd, loff_t from, size_t len);
+#endif
+	unsigned long (*_get_unmapped_area) (struct mtd_info *mtd,
+					     unsigned long len,
+					     unsigned long offset,
+					     unsigned long flags);
 	int (*_read) (struct mtd_info *mtd, loff_t from, size_t len,
-		     size_t *retlen, u_char *buf);
+		      size_t *retlen, u_char *buf);
 	int (*_write) (struct mtd_info *mtd, loff_t to, size_t len,
-		      size_t *retlen, const u_char *buf);
-
-	/* In blackbox flight recorder like scenarios we want to make successful
-	   writes in interrupt context. panic_write() is only intended to be
-	   called when its known the kernel is about to panic and we need the
-	   write to succeed. Since the kernel is not going to be running for much
-	   longer, this function can break locks and delay to ensure the write
-	   succeeds (but not sleep). */
-
-	int (*_panic_write) (struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen, const u_char *buf);
-
+		       size_t *retlen, const u_char *buf);
+	int (*_panic_write) (struct mtd_info *mtd, loff_t to, size_t len,
+			     size_t *retlen, const u_char *buf);
 	int (*_read_oob) (struct mtd_info *mtd, loff_t from,
-			 struct mtd_oob_ops *ops);
+			  struct mtd_oob_ops *ops);
 	int (*_write_oob) (struct mtd_info *mtd, loff_t to,
-			 struct mtd_oob_ops *ops);
-	int (*_get_fact_prot_info) (struct mtd_info *mtd, struct otp_info *buf,
-				   size_t len);
+			   struct mtd_oob_ops *ops);
+	int (*_get_fact_prot_info) (struct mtd_info *mtd, size_t len,
+				    size_t *retlen, struct otp_info *buf);
 	int (*_read_fact_prot_reg) (struct mtd_info *mtd, loff_t from,
-				   size_t len, size_t *retlen, u_char *buf);
-	int (*_get_user_prot_info) (struct mtd_info *mtd, struct otp_info *buf,
-				   size_t len);
+				    size_t len, size_t *retlen, u_char *buf);
+	int (*_get_user_prot_info) (struct mtd_info *mtd, size_t len,
+				    size_t *retlen, struct otp_info *buf);
 	int (*_read_user_prot_reg) (struct mtd_info *mtd, loff_t from,
-				   size_t len, size_t *retlen, u_char *buf);
-	int (*_write_user_prot_reg) (struct mtd_info *mtd, loff_t to, size_t len,
-				    size_t *retlen, u_char *buf);
+				    size_t len, size_t *retlen, u_char *buf);
+	int (*_write_user_prot_reg) (struct mtd_info *mtd, loff_t to,
+				     size_t len, size_t *retlen, u_char *buf);
 	int (*_lock_user_prot_reg) (struct mtd_info *mtd, loff_t from,
-				   size_t len);
+				    size_t len);
+#ifndef __UBOOT__
+	int (*_writev) (struct mtd_info *mtd, const struct kvec *vecs,
+			unsigned long count, loff_t to, size_t *retlen);
+#endif
 	void (*_sync) (struct mtd_info *mtd);
 	int (*_lock) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
 	int (*_unlock) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
+	int (*_is_locked) (struct mtd_info *mtd, loff_t ofs, uint64_t len);
+	int (*_block_isreserved) (struct mtd_info *mtd, loff_t ofs);
 	int (*_block_isbad) (struct mtd_info *mtd, loff_t ofs);
 	int (*_block_markbad) (struct mtd_info *mtd, loff_t ofs);
+#ifndef __UBOOT__
+	int (*_suspend) (struct mtd_info *mtd);
+	void (*_resume) (struct mtd_info *mtd);
+	void (*_reboot) (struct mtd_info *mtd);
+#endif
 	/*
 	 * If the driver is something smart, like UBI, it may need to maintain
 	 * its own reference counting. The below functions are only for driver.
@@ -216,16 +285,12 @@ struct mtd_info {
 	int (*_get_device) (struct mtd_info *mtd);
 	void (*_put_device) (struct mtd_info *mtd);
 
-/* XXX U-BOOT XXX */
-#if 0
-	/* kvec-based read/write methods.
-	   NB: The 'count' parameter is the number of _vectors_, each of
-	   which contains an (ofs, len) tuple.
-	*/
-	int (*writev) (struct mtd_info *mtd, const struct kvec *vecs, unsigned long count, loff_t to, size_t *retlen);
-#endif
-/* XXX U-BOOT XXX */
-#if 0
+#ifndef __UBOOT__
+	/* Backing device capabilities for this device
+	 * - provides mmap capabilities
+	 */
+	struct backing_dev_info *backing_dev_info;
+
 	struct notifier_block reboot_notifier;  /* default mode before reboot */
 #endif
 
@@ -237,10 +302,51 @@ struct mtd_info {
 	void *priv;
 
 	struct module *owner;
+#ifndef __UBOOT__
+	struct device dev;
+#else
+	struct udevice *dev;
+#endif
 	int usecount;
 };
 
+int mtd_ooblayout_ecc(struct mtd_info *mtd, int section,
+		      struct mtd_oob_region *oobecc);
+int mtd_ooblayout_find_eccregion(struct mtd_info *mtd, int eccbyte,
+				 int *section,
+				 struct mtd_oob_region *oobregion);
+int mtd_ooblayout_get_eccbytes(struct mtd_info *mtd, u8 *eccbuf,
+			       const u8 *oobbuf, int start, int nbytes);
+int mtd_ooblayout_set_eccbytes(struct mtd_info *mtd, const u8 *eccbuf,
+			       u8 *oobbuf, int start, int nbytes);
+int mtd_ooblayout_free(struct mtd_info *mtd, int section,
+		       struct mtd_oob_region *oobfree);
+int mtd_ooblayout_get_databytes(struct mtd_info *mtd, u8 *databuf,
+				const u8 *oobbuf, int start, int nbytes);
+int mtd_ooblayout_set_databytes(struct mtd_info *mtd, const u8 *databuf,
+				u8 *oobbuf, int start, int nbytes);
+int mtd_ooblayout_count_freebytes(struct mtd_info *mtd);
+int mtd_ooblayout_count_eccbytes(struct mtd_info *mtd);
+
+static inline void mtd_set_ooblayout(struct mtd_info *mtd,
+				     const struct mtd_ooblayout_ops *ooblayout)
+{
+	mtd->ooblayout = ooblayout;
+}
+
+static inline int mtd_oobavail(struct mtd_info *mtd, struct mtd_oob_ops *ops)
+{
+	return ops->mode == MTD_OPS_AUTO_OOB ? mtd->oobavail : mtd->oobsize;
+}
+
 int mtd_erase(struct mtd_info *mtd, struct erase_info *instr);
+#ifndef __UBOOT__
+int mtd_point(struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen,
+	      void **virt, resource_size_t *phys);
+int mtd_unpoint(struct mtd_info *mtd, loff_t from, size_t len);
+#endif
+unsigned long mtd_get_unmapped_area(struct mtd_info *mtd, unsigned long len,
+				    unsigned long offset, unsigned long flags);
 int mtd_read(struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen,
 	     u_char *buf);
 int mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen,
@@ -261,20 +367,19 @@ static inline int mtd_write_oob(struct mtd_info *mtd, loff_t to,
 	return mtd->_write_oob(mtd, to, ops);
 }
 
-int mtd_get_fact_prot_info(struct mtd_info *mtd, struct otp_info *buf,
-			   size_t len);
+int mtd_get_fact_prot_info(struct mtd_info *mtd, size_t len, size_t *retlen,
+			   struct otp_info *buf);
 int mtd_read_fact_prot_reg(struct mtd_info *mtd, loff_t from, size_t len,
 			   size_t *retlen, u_char *buf);
-int mtd_get_user_prot_info(struct mtd_info *mtd, struct otp_info *buf,
-			   size_t len);
+int mtd_get_user_prot_info(struct mtd_info *mtd, size_t len, size_t *retlen,
+			   struct otp_info *buf);
 int mtd_read_user_prot_reg(struct mtd_info *mtd, loff_t from, size_t len,
 			   size_t *retlen, u_char *buf);
 int mtd_write_user_prot_reg(struct mtd_info *mtd, loff_t to, size_t len,
 			    size_t *retlen, u_char *buf);
 int mtd_lock_user_prot_reg(struct mtd_info *mtd, loff_t from, size_t len);
 
-/* XXX U-BOOT XXX */
-#if 0
+#ifndef __UBOOT__
 int mtd_writev(struct mtd_info *mtd, const struct kvec *vecs,
 	       unsigned long count, loff_t to, size_t *retlen);
 #endif
@@ -288,23 +393,61 @@ static inline void mtd_sync(struct mtd_info *mtd)
 int mtd_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len);
 int mtd_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len);
 int mtd_is_locked(struct mtd_info *mtd, loff_t ofs, uint64_t len);
+int mtd_block_isreserved(struct mtd_info *mtd, loff_t ofs);
 int mtd_block_isbad(struct mtd_info *mtd, loff_t ofs);
 int mtd_block_markbad(struct mtd_info *mtd, loff_t ofs);
 
+#ifndef __UBOOT__
+static inline int mtd_suspend(struct mtd_info *mtd)
+{
+	return mtd->_suspend ? mtd->_suspend(mtd) : 0;
+}
+
+static inline void mtd_resume(struct mtd_info *mtd)
+{
+	if (mtd->_resume)
+		mtd->_resume(mtd);
+}
+#endif
+
 static inline uint32_t mtd_div_by_eb(uint64_t sz, struct mtd_info *mtd)
 {
+	if (mtd->erasesize_shift)
+		return sz >> mtd->erasesize_shift;
 	do_div(sz, mtd->erasesize);
 	return sz;
 }
 
 static inline uint32_t mtd_mod_by_eb(uint64_t sz, struct mtd_info *mtd)
 {
+	if (mtd->erasesize_shift)
+		return sz & mtd->erasesize_mask;
 	return do_div(sz, mtd->erasesize);
+}
+
+static inline uint32_t mtd_div_by_ws(uint64_t sz, struct mtd_info *mtd)
+{
+	if (mtd->writesize_shift)
+		return sz >> mtd->writesize_shift;
+	do_div(sz, mtd->writesize);
+	return sz;
+}
+
+static inline uint32_t mtd_mod_by_ws(uint64_t sz, struct mtd_info *mtd)
+{
+	if (mtd->writesize_shift)
+		return sz & mtd->writesize_mask;
+	return do_div(sz, mtd->writesize);
 }
 
 static inline int mtd_has_oob(const struct mtd_info *mtd)
 {
 	return mtd->_read_oob && mtd->_write_oob;
+}
+
+static inline int mtd_type_is_nand(const struct mtd_info *mtd)
+{
+	return mtd->type == MTD_NANDFLASH || mtd->type == MTD_MLCNANDFLASH;
 }
 
 static inline int mtd_can_have_bb(const struct mtd_info *mtd)
@@ -314,27 +457,36 @@ static inline int mtd_can_have_bb(const struct mtd_info *mtd)
 
 	/* Kernel-side ioctl definitions */
 
-extern int add_mtd_device(struct mtd_info *mtd);
-extern int del_mtd_device (struct mtd_info *mtd);
+struct mtd_partition;
+struct mtd_part_parser_data;
 
+extern int mtd_device_parse_register(struct mtd_info *mtd,
+				     const char * const *part_probe_types,
+				     struct mtd_part_parser_data *parser_data,
+				     const struct mtd_partition *defparts,
+				     int defnr_parts);
+#define mtd_device_register(master, parts, nr_parts)	\
+	mtd_device_parse_register(master, NULL, NULL, parts, nr_parts)
+extern int mtd_device_unregister(struct mtd_info *master);
 extern struct mtd_info *get_mtd_device(struct mtd_info *mtd, int num);
+extern int __get_mtd_device(struct mtd_info *mtd);
+extern void __put_mtd_device(struct mtd_info *mtd);
 extern struct mtd_info *get_mtd_device_nm(const char *name);
-
 extern void put_mtd_device(struct mtd_info *mtd);
-extern void mtd_get_len_incl_bad(struct mtd_info *mtd, uint64_t offset,
-				 const uint64_t length, uint64_t *len_incl_bad,
-				 int *truncated);
-/* XXX U-BOOT XXX */
-#if 0
+
+
+#ifndef __UBOOT__
 struct mtd_notifier {
 	void (*add)(struct mtd_info *mtd);
 	void (*remove)(struct mtd_info *mtd);
 	struct list_head list;
 };
 
+
 extern void register_mtd_user (struct mtd_notifier *new);
 extern int unregister_mtd_user (struct mtd_notifier *old);
 #endif
+void *mtd_kmalloc_up_to(const struct mtd_info *mtd, size_t *size);
 
 #ifdef CONFIG_MTD_PARTITIONS
 void mtd_erase_callback(struct erase_info *instr);
@@ -345,33 +497,6 @@ static inline void mtd_erase_callback(struct erase_info *instr)
 		instr->callback(instr);
 }
 #endif
-
-/*
- * Debugging macro and defines
- */
-#define MTD_DEBUG_LEVEL0	(0)	/* Quiet   */
-#define MTD_DEBUG_LEVEL1	(1)	/* Audible */
-#define MTD_DEBUG_LEVEL2	(2)	/* Loud    */
-#define MTD_DEBUG_LEVEL3	(3)	/* Noisy   */
-
-#ifdef CONFIG_MTD_DEBUG
-#define pr_debug(args...)	MTDDEBUG(MTD_DEBUG_LEVEL0, args)
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (n <= CONFIG_MTD_DEBUG_VERBOSE)	\
-			printk(KERN_INFO args);		\
-	} while(0)
-#else /* CONFIG_MTD_DEBUG */
-#define pr_debug(args...)
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (0)					\
-			printk(KERN_INFO args);		\
-	} while(0)
-#endif /* CONFIG_MTD_DEBUG */
-#define pr_info(args...)	MTDDEBUG(MTD_DEBUG_LEVEL0, args)
-#define pr_warn(args...)	MTDDEBUG(MTD_DEBUG_LEVEL0, args)
-#define pr_err(args...)		MTDDEBUG(MTD_DEBUG_LEVEL0, args)
 
 static inline int mtd_is_bitflip(int err) {
 	return err == -EUCLEAN;
@@ -385,13 +510,24 @@ static inline int mtd_is_bitflip_or_eccerr(int err) {
 	return mtd_is_bitflip(err) || mtd_is_eccerr(err);
 }
 
-/* sunxi mtd functions */
-int sunxi_do_mtdparts(int flag, int argc, char * const argv[]);
-char *sunxi_get_mtdparts_name(u16 mtd_partnum);
-u64 sunxi_get_mtdpart_size(u16 mtd_partnum);
-u16 sunxi_get_mtd_num_parts(void);
-u64 sunxi_get_mtdpart_offset(u16 mtd_partnum);
+unsigned mtd_mmap_capabilities(struct mtd_info *mtd);
 
-extern void set_default_env(const char *s);
+#ifdef __UBOOT__
+/* drivers/mtd/mtdcore.h */
+int add_mtd_device(struct mtd_info *mtd);
+int del_mtd_device(struct mtd_info *mtd);
+int add_mtd_partitions(struct mtd_info *, const struct mtd_partition *, int);
+int del_mtd_partitions(struct mtd_info *);
 
+int mtd_arg_off(const char *arg, int *idx, loff_t *off, loff_t *size,
+		loff_t *maxsize, int devtype, uint64_t chipsize);
+int mtd_arg_off_size(int argc, char *const argv[], int *idx, loff_t *off,
+		     loff_t *size, loff_t *maxsize, int devtype,
+		     uint64_t chipsize);
+
+/* drivers/mtd/mtdcore.c */
+void mtd_get_len_incl_bad(struct mtd_info *mtd, uint64_t offset,
+			  const uint64_t length, uint64_t *len_incl_bad,
+			  int *truncated);
+#endif
 #endif /* __MTD_MTD_H__ */

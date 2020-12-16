@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 ###
 # This makefile is used to generate the kernel documentation,
 # primarily based on in-line comments in various source files.

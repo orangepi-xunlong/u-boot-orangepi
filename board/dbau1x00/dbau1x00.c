@@ -1,21 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Thomas.Lange@corelatus.se
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
-#include <asm/au1x00.h>
+#include <mach/au1x00.h>
 #include <asm/mipsregs.h>
 #include <asm/io.h>
 
-phys_size_t initdram(int board_type)
+DECLARE_GLOBAL_DATA_PTR;
+
+int dram_init(void)
 {
 	/* Sdram is setup by assembler code */
 	/* If memory could be changed, we should return the true value here */
-	return MEM_SIZE*1024*1024;
+	gd->ram_size = MEM_SIZE * 1024 * 1024;
+
+	return 0;
 }
 
 #define BCSR_PCMCIA_PC0DRVEN		0x0010

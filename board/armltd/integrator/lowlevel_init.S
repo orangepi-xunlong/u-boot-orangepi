@@ -1,14 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Board specific setup info
  *
  * (C) Copyright 2004, ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
-#include <version.h>
 
 	/* Reset using CM control register */
 .global reset_cpu

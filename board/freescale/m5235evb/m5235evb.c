@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -22,7 +21,7 @@ int checkboard(void)
 	return 0;
 };
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	sdram_t *sdram = (sdram_t *)(MMAP_SDRAM);
 	gpio_t *gpio = (gpio_t *)(MMAP_GPIO);
@@ -97,7 +96,9 @@ phys_size_t initdram(int board_type)
 		*(u32 *) (CONFIG_SYS_SDRAM_BASE + 0x400) = 0xA5A59696;
 	}
 
-	return dramsize;
+	gd->ram_size = dramsize;
+
+	return 0;
 };
 
 int testdram(void)

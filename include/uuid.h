@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Samsung Electronics
  * Przemyslaw Marczak <p.marczak@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __UUID_H__
 #define __UUID_H__
@@ -36,6 +35,10 @@ enum {
 int uuid_str_valid(const char *uuid);
 int uuid_str_to_bin(char *uuid_str, unsigned char *uuid_bin, int str_format);
 void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format);
+#ifdef CONFIG_PARTITION_TYPE_GUID
+int uuid_guid_get_bin(const char *guid_str, unsigned char *guid_bin);
+int uuid_guid_get_str(unsigned char *guid_bin, char *guid_str);
+#endif
 void gen_rand_uuid(unsigned char *uuid_bin);
 void gen_rand_uuid_str(char *uuid_str, int str_format);
 #endif

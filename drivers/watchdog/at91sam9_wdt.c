@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * [origin: Linux kernel drivers/watchdog/at91sam9_wdt.c]
  *
@@ -5,8 +6,6 @@
  *
  * Copyright (C) 2008 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  * Copyright (C) 2008 Renaud CERRATO r.cerrato@til-technologies.fr
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -30,7 +29,11 @@
 #define ticks_to_ms(t)	(((t + 1) * 1000) >> 8)
 
 /* Hardware timeout in seconds */
+#if !defined(CONFIG_AT91_HW_WDT_TIMEOUT)
 #define WDT_HW_TIMEOUT 2
+#else
+#define WDT_HW_TIMEOUT CONFIG_AT91_HW_WDT_TIMEOUT
+#endif
 
 /*
  * Set the watchdog time interval in 1/256Hz (write-once)

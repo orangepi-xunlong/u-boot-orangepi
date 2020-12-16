@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
@@ -5,8 +6,6 @@
  * Authors:
  *	Aneesh V <aneesh@ti.com>
  *	Sricharan R <r.sricharan@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _OMAP5_H_
@@ -15,6 +14,8 @@
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
 #endif /* !(__KERNEL_STRICT_NAMES || __ASSEMBLY__) */
+
+#include <linux/sizes.h>
 
 /*
  * L4 Peripherals - L4 Wakeup and L4 Core now
@@ -27,10 +28,28 @@
 #define CONTROL_CORE_ID_CODE	0x4A002204
 #define CONTROL_WKUP_ID_CODE	0x4AE0C204
 
-#ifdef CONFIG_DRA7XX
+#if defined(CONFIG_DRA7XX)
 #define CONTROL_ID_CODE		CONTROL_WKUP_ID_CODE
 #else
 #define CONTROL_ID_CODE		CONTROL_CORE_ID_CODE
+#endif
+
+#if defined(CONFIG_DRA7XX)
+#define DRA7_USB_OTG_SS1_BASE		0x48890000
+#define DRA7_USB_OTG_SS1_GLUE_BASE	0x48880000
+#define DRA7_USB3_PHY1_PLL_CTRL		0x4A084C00
+#define DRA7_USB3_PHY1_POWER		0x4A002370
+#define DRA7_USB2_PHY1_POWER		0x4A002300
+
+#define DRA7_USB_OTG_SS2_BASE		0x488D0000
+#define DRA7_USB_OTG_SS2_GLUE_BASE	0x488C0000
+#define DRA7_USB2_PHY2_POWER		0x4A002E74
+#else
+#define OMAP5XX_USB_OTG_SS_BASE		0x4A030000
+#define OMAP5XX_USB_OTG_SS_GLUE_BASE	0x4A020000
+#define OMAP5XX_USB3_PHY_PLL_CTRL	0x4A084C00
+#define OMAP5XX_USB3_PHY_POWER		0x4A002370
+#define OMAP5XX_USB2_PHY_POWER		0x4A002300
 #endif
 
 /* To be verified */
@@ -38,9 +57,16 @@
 #define OMAP5430_CONTROL_ID_CODE_ES2_0          0x1B94202F
 #define OMAP5432_CONTROL_ID_CODE_ES1_0		0x0B99802F
 #define OMAP5432_CONTROL_ID_CODE_ES2_0          0x1B99802F
+#define DRA762_CONTROL_ID_CODE_ES1_0		0x0BB5002F
 #define DRA752_CONTROL_ID_CODE_ES1_0		0x0B99002F
 #define DRA752_CONTROL_ID_CODE_ES1_1		0x1B99002F
+#define DRA752_CONTROL_ID_CODE_ES2_0		0x2B99002F
 #define DRA722_CONTROL_ID_CODE_ES1_0		0x0B9BC02F
+#define DRA722_CONTROL_ID_CODE_ES2_0		0x1B9BC02F
+#define DRA722_CONTROL_ID_CODE_ES2_1		0x2B9BC02F
+
+#define DRA762_ABZ_PACKAGE			0x2
+#define DRA762_ACD_PACKAGE			0x3
 
 /* UART */
 #define UART1_BASE		(OMAP54XX_L4_PER_BASE + 0x6a000)
@@ -105,7 +131,6 @@ struct s32ktimer {
 
 #define DEVICE_TYPE_SHIFT 0x6
 #define DEVICE_TYPE_MASK (0x7 << DEVICE_TYPE_SHIFT)
-#define DEVICE_GP 0x3
 
 /* Output impedance control */
 #define ds_120_ohm	0x0
@@ -163,14 +188,16 @@ struct s32ktimer {
  * much larger) and do not, at this time, make use of the additional
  * space.
  */
-#ifdef CONFIG_DRA7XX
+#if defined(CONFIG_DRA7XX)
 #define NON_SECURE_SRAM_START	0x40300000
 #define NON_SECURE_SRAM_END	0x40380000	/* Not inclusive */
+#define NON_SECURE_SRAM_IMG_END	0x4037C000
 #else
 #define NON_SECURE_SRAM_START	0x40300000
 #define NON_SECURE_SRAM_END	0x40320000	/* Not inclusive */
+#define NON_SECURE_SRAM_IMG_END	0x4031E000
 #endif
-#define SRAM_SCRATCH_SPACE_ADDR	0x4031E000
+#define SRAM_SCRATCH_SPACE_ADDR	(NON_SECURE_SRAM_IMG_END - SZ_1K)
 
 /* base address for indirect vectors (internal boot mode) */
 #define SRAM_ROM_VECT_BASE	0x4031F000
@@ -195,35 +222,18 @@ struct s32ktimer {
 
 /* ABB tranxdone mask */
 #define OMAP_ABB_MPU_TXDONE_MASK		(0x1 << 7)
+#define OMAP_ABB_MM_TXDONE_MASK			(0x1 << 31)
+#define OMAP_ABB_IVA_TXDONE_MASK		(0x1 << 30)
+#define OMAP_ABB_EVE_TXDONE_MASK		(0x1 << 29)
+#define OMAP_ABB_GPU_TXDONE_MASK		(0x1 << 28)
 
 /* ABB efuse masks */
-#define OMAP5_ABB_FUSE_VSET_MASK		(0x1F << 24)
-#define OMAP5_ABB_FUSE_ENABLE_MASK		(0x1 << 29)
+#define OMAP5_PROD_ABB_FUSE_VSET_MASK		(0x1F << 20)
+#define OMAP5_PROD_ABB_FUSE_ENABLE_MASK		(0x1 << 25)
 #define DRA7_ABB_FUSE_VSET_MASK			(0x1F << 20)
 #define DRA7_ABB_FUSE_ENABLE_MASK		(0x1 << 25)
 #define OMAP5_ABB_LDOVBBMPU_MUX_CTRL_MASK	(0x1 << 10)
 #define OMAP5_ABB_LDOVBBMPU_VSET_OUT_MASK	(0x1f << 0)
-
-/* IO Delay module defines */
-#define CFG_IO_DELAY_BASE		0x4844A000
-#define CFG_IO_DELAY_LOCK		(CFG_IO_DELAY_BASE + 0x02C)
-
-/* CPSW IO Delay registers*/
-#define CFG_RGMII0_TXCTL		(CFG_IO_DELAY_BASE + 0x74C)
-#define CFG_RGMII0_TXD0			(CFG_IO_DELAY_BASE + 0x758)
-#define CFG_RGMII0_TXD1			(CFG_IO_DELAY_BASE + 0x764)
-#define CFG_RGMII0_TXD2			(CFG_IO_DELAY_BASE + 0x770)
-#define CFG_RGMII0_TXD3			(CFG_IO_DELAY_BASE + 0x77C)
-#define CFG_VIN2A_D13			(CFG_IO_DELAY_BASE + 0xA7C)
-#define CFG_VIN2A_D17			(CFG_IO_DELAY_BASE + 0xAAC)
-#define CFG_VIN2A_D16			(CFG_IO_DELAY_BASE + 0xAA0)
-#define CFG_VIN2A_D15			(CFG_IO_DELAY_BASE + 0xA94)
-#define CFG_VIN2A_D14			(CFG_IO_DELAY_BASE + 0xA88)
-
-#define CFG_IO_DELAY_UNLOCK_KEY		0x0000AAAA
-#define CFG_IO_DELAY_LOCK_KEY		0x0000AAAB
-#define CFG_IO_DELAY_ACCESS_PATTERN	0x00029000
-#define CFG_IO_DELAY_LOCK_MASK		0x400
 
 #ifndef __ASSEMBLY__
 struct srcomp_params {
@@ -243,9 +253,19 @@ struct ctrl_ioregs {
 	u32 ctrl_ddr_ctrl_ext_0;
 };
 
-struct io_delay {
-	u32 addr;
-	u32 dly;
-};
+void clrset_spare_register(u8 spare_type, u32 clear_bits, u32 set_bits);
+
 #endif /* __ASSEMBLY__ */
+
+/* Boot parameters */
+#ifndef __ASSEMBLY__
+struct omap_boot_parameters {
+	unsigned int boot_message;
+	unsigned int boot_device_descriptor;
+	unsigned char boot_device;
+	unsigned char reset_reason;
+	unsigned char ch_flags;
+};
+#endif
+
 #endif

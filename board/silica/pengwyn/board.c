@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * board.c
  *
  * Copyright (C) 2013 Lothar Felten <lothar.felten@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <environment.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/ddr_defs.h>
@@ -141,12 +141,6 @@ static struct cpsw_slave_data cpsw_slaves[] = {
 	{
 		.slave_reg_ofs	= 0x208,
 		.sliver_reg_ofs	= 0xd80,
-		.phy_addr	= 0,
-		.phy_if		= PHY_INTERFACE_MODE_MII,
-	},
-	{
-		.slave_reg_ofs	= 0x308,
-		.sliver_reg_ofs	= 0xdc0,
 		.phy_addr	= 1,
 		.phy_if		= PHY_INTERFACE_MODE_MII,
 	},
@@ -177,7 +171,7 @@ int board_eth_init(bd_t *bis)
 	uint8_t mac_addr[6];
 	uint32_t mac_hi, mac_lo;
 
-	if (!eth_getenv_enetaddr("ethaddr", mac_addr)) {
+	if (!eth_env_get_enetaddr("ethaddr", mac_addr)) {
 		printf("<ethaddr> not set. Reading from E-fuse\n");
 		/* try reading mac address from efuse */
 		mac_lo = readl(&cdev->macid0l);
@@ -189,8 +183,8 @@ int board_eth_init(bd_t *bis)
 		mac_addr[4] = mac_lo & 0xFF;
 		mac_addr[5] = (mac_lo & 0xFF00) >> 8;
 
-		if (is_valid_ether_addr(mac_addr))
-			eth_setenv_enetaddr("ethaddr", mac_addr);
+		if (is_valid_ethaddr(mac_addr))
+			eth_env_set_enetaddr("ethaddr", mac_addr);
 		else
 			return n;
 	}

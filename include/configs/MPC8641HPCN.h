@@ -1,37 +1,29 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2006, 2010-2011 Freescale Semiconductor.
  *
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
  * MPC8641HPCN board configuration file
  *
  * Make sure you change the MAC address and other network params first,
- * search for CONFIG_ETHADDR, CONFIG_SERVERIP, etc in this file.
+ * search for CONFIG_SERVERIP, etc. in this file.
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_GENERIC_BOARD
-#define CONFIG_DISPLAY_BOARDINFO
-
 /* High Level Configuration Options */
-#define CONFIG_MPC8641		1	/* MPC8641 specific */
-#define CONFIG_MPC8641HPCN	1	/* MPC8641HPCN board specific */
 #define CONFIG_MP		1	/* support multiple processors */
 #define CONFIG_LINUX_RESET_VEC	0x100	/* Reset vector used by Linux */
-/*#define CONFIG_PHYS_64BIT	1*/	/* Place devices in 36-bit space */
 #define CONFIG_ADDR_MAP		1	/* Use addr map */
 
 /*
  * default CCSRBAR is at 0xff700000
  * assume U-Boot is less than 0.5MB
  */
-#define	CONFIG_SYS_TEXT_BASE	0xeff00000
 
 #ifdef RUN_DIAG
 #define CONFIG_SYS_DIAG_ADDR	     CONFIG_SYS_FLASH_BASE
@@ -46,14 +38,11 @@
 #define CONFIG_SYS_SRIO
 #define CONFIG_SRIO1			/* SRIO port 1 */
 
-#define CONFIG_PCI		1	/* Enable PCI/PCIE */
-#define CONFIG_PCIE1		1	/* PCIE controler 1 (ULI bridge) */
-#define CONFIG_PCIE2		1	/* PCIE controler 2 (slot) */
+#define CONFIG_PCIE1		1	/* PCIE controller 1 (ULI bridge) */
+#define CONFIG_PCIE2		1	/* PCIE controller 2 (slot) */
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
-#define CONFIG_FSL_LAW		1	/* Use common FSL law init code */
 
-#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BAT_RW		1	/* Use common BAT rw code */
@@ -94,7 +83,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CONFIG_SYS_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #define CONFIG_SYS_CCSRBAR		0xffe00000	/* relocated CCSRBAR */
 #define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR	/* PQII uses CONFIG_SYS_IMMR */
 
@@ -110,8 +98,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 /*
  * DDR Setup
  */
-#define CONFIG_SYS_FSL_DDR2
-#undef CONFIG_FSL_DDR_INTERACTIVE
+#define CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
 
@@ -123,7 +110,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_MAX_DDR_BAT_SIZE	0x80000000	/* BAT mapping size */
 #define CONFIG_VERY_BIG_RAM
 
-#define CONFIG_NUM_DDR_CONTROLLERS	2
 #define CONFIG_DIMM_SLOTS_PER_CTLR	2
 #define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
@@ -134,7 +120,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define SPD_EEPROM_ADDRESS2	0x52	/* CTLR 0 DIMM 1 */
 #define SPD_EEPROM_ADDRESS3	0x53	/* CTLR 1 DIMM 0 */
 #define SPD_EEPROM_ADDRESS4	0x54	/* CTLR 1 DIMM 1 */
-
 
 /*
  * These are used when DDR doesn't use SPD.
@@ -255,12 +240,10 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN		(512 * 1024)	/* Reserve 512 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	 /* Reserved for malloc */
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX     1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -270,16 +253,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/*
- * Pass open firmware flat tree to kernel
- */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * I2C
@@ -367,12 +340,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
-#undef CONFIG_SYS_SCSI_SCAN_BUS_REVERSE
-
-#define CONFIG_PCI_PNP			/* do pci plug-and-play */
-
-#define CONFIG_RTL8139
-
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
 
@@ -381,9 +348,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  ************************************************************/
 #define CONFIG_PCI_OHCI			1
 #define CONFIG_USB_OHCI_NEW		1
-#define CONFIG_USB_KEYBOARD		1
-#define CONFIG_SYS_STDIO_DEREGISTER
-#define CONFIG_SYS_USB_EVENT_POLL		1
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"ohci_pci"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	15
 #define CONFIG_SYS_OHCI_SWAP_REG_ACCESS	1
@@ -395,26 +359,17 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 /*#define VIDEO_IO_OFFSET	CONFIG_SYS_PCIE1_IO_VIRT*/
 
 /* video */
-#define CONFIG_VIDEO
 
 #if defined(CONFIG_VIDEO)
 #define CONFIG_BIOSEMU
-#define CONFIG_CFB_CONSOLE
-#define CONFIG_VIDEO_SW_CURSOR
-#define CONFIG_VGA_AS_SINGLE_DEVICE
 #define CONFIG_ATI_RADEON_FB
 #define CONFIG_VIDEO_LOGO
-/*#define CONFIG_CONSOLE_CURSOR*/
 #define CONFIG_SYS_ISA_IO_BASE_ADDRESS CONFIG_SYS_PCIE2_IO_VIRT
 #endif
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
-#define CONFIG_DOS_PARTITION
-#define CONFIG_SCSI_AHCI
-
 #ifdef CONFIG_SCSI_AHCI
-#define CONFIG_LIBATA
 #define CONFIG_SATA_ULI5288
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	4
 #define CONFIG_SYS_SCSI_MAX_LUN	1
@@ -453,7 +408,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_ETHPRIME		"eTSEC1"
 
 #endif	/* CONFIG_TSEC_ENET */
-
 
 #ifdef CONFIG_PHYS_64BIT
 #define PHYS_HIGH_TO_BXPN(x) ((x & 0x0000000e) << 8)
@@ -601,11 +555,10 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
-    #define CONFIG_ENV_IS_IN_FLASH	1
-    #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x60000)
+    #define CONFIG_ENV_ADDR		\
+			(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
     #define CONFIG_ENV_SECT_SIZE		0x10000	/* 64K(one sector) for env */
 #else
-    #define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
     #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 #endif
 #define CONFIG_ENV_SIZE		0x2000
@@ -613,62 +566,25 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
-
-/*
- * Command line configuration.
- */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_REGINFO
-
-#if defined(CONFIG_SYS_RAMBOOT)
-    #undef CONFIG_CMD_SAVEENV
-#endif
-
-#if defined(CONFIG_PCI)
-    #define CONFIG_CMD_PCI
-    #define CONFIG_CMD_SCSI
-    #define CONFIG_CMD_EXT2
-    #define CONFIG_CMD_USB
-#endif
-
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-
-#if defined(CONFIG_CMD_KGDB)
-    #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
-#else
-    #define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
-#endif
-
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16		/* max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
 
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(256 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTM_LEN	(256 << 20)	/* Increase max gunzip size */
 
 #if defined(CONFIG_CMD_KGDB)
     #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
@@ -678,14 +594,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  * Environment Configuration
  */
 
-/* The mac addresses for all ethernet interface */
-#if defined(CONFIG_TSEC_ENET)
-#define CONFIG_ETHADDR	 00:E0:0C:00:00:01
-#define CONFIG_ETH1ADDR  00:E0:0C:00:01:FD
-#define CONFIG_ETH2ADDR  00:E0:0C:00:02:FD
-#define CONFIG_ETH3ADDR  00:E0:0C:00:03:FD
-#endif
-
 #define CONFIG_HAS_ETH0		1
 #define CONFIG_HAS_ETH1		1
 #define CONFIG_HAS_ETH2		1
@@ -693,7 +601,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_IPADDR		192.168.1.100
 
-#define CONFIG_HOSTNAME		unknown
+#define CONFIG_HOSTNAME		"unknown"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin	/* U-Boot image on TFTP server */
@@ -703,12 +611,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_NETMASK		255.255.255.0
 
 /* default location for tftp and bootm */
-#define CONFIG_LOADADDR		1000000
-
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
-#undef	CONFIG_BOOTARGS		/* the boot command will set bootargs */
-
-#define CONFIG_BAUDRATE	115200
+#define CONFIG_LOADADDR		0x10000000
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
@@ -725,14 +628,13 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 		"cmp.b $loadaddr " __stringify(CONFIG_SYS_TEXT_BASE)	\
 			" $filesize\0"	\
 	"consoledev=ttyS0\0"						\
-	"ramdiskaddr=2000000\0"						\
+	"ramdiskaddr=0x18000000\0"						\
 	"ramdiskfile=your.ramdisk.u-boot\0"				\
-	"fdtaddr=c00000\0"						\
+	"fdtaddr=0x17c00000\0"						\
 	"fdtfile=mpc8641_hpcn.dtb\0"					\
 	"en-wd=mw.b ffdf0010 0x08; echo -expect:- 08; md.b ffdf0010 1\0"			\
 	"dis-wd=mw.b ffdf0010 0x00; echo -expect:- 00; md.b ffdf0010 1\0" \
 	"maxcpus=2"
-
 
 #define CONFIG_NFSBOOTCOMMAND						\
 	"setenv bootargs root=/dev/nfs rw "				\

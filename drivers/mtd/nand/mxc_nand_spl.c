@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Magnus Lilja <lilja.magnus@gmail.com>
@@ -7,8 +8,6 @@
  *
  * (C) Copyright 2006-2008
  * Stefan Roese, DENX Software Engineering, sr at denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -232,7 +231,7 @@ static int nfc_read_page(unsigned int page_address, unsigned char *buf)
 	nfc_nand_read_page(page_address);
 
 	if (nfc_nand_check_ecc())
-		return -1;
+		return -EBADMSG;
 
 	src = (u32 *)&nfc->main_area[0][0];
 	dst = (u32 *)buf;
@@ -337,7 +336,7 @@ void nand_boot(void)
 	if (!nand_spl_load_image(CONFIG_SYS_NAND_U_BOOT_OFFS,
 			CONFIG_SYS_NAND_U_BOOT_SIZE,
 			(uchar *)CONFIG_SYS_NAND_U_BOOT_DST)) {
-		/* Copy from NAND successful, start U-boot */
+		/* Copy from NAND successful, start U-Boot */
 		uboot = (void *)CONFIG_SYS_NAND_U_BOOT_START;
 		uboot();
 	} else {

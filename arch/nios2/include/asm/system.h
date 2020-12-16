@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004, Psyent Corporation <www.psyent.com>
  * Scott McNutt <smcnutt@psyent.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ASM_NIOS2_SYSTEM_H_
 #define __ASM_NIOS2_SYSTEM_H_
@@ -44,5 +43,7 @@
 #define nios2_callr(addr) __asm__ __volatile__ (	\
 	"callr	%0"					\
 	: : "r" (addr))
+
+void display_sysid(void);
 
 #endif /* __ASM_NIOS2_SYSTEM_H */

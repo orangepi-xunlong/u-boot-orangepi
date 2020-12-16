@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright 2004 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -20,7 +19,7 @@ struct irq_action {
 	ulong count;
 };
 
-int interrupt_init_cpu (unsigned *decrementer_count)
+void interrupt_init_cpu (unsigned *decrementer_count)
 {
 	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 
@@ -29,8 +28,6 @@ int interrupt_init_cpu (unsigned *decrementer_count)
 	/* Enable e300 time base */
 
 	immr->sysconf.spcr |= 0x00400000;
-
-	return 0;
 }
 
 

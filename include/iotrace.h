@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2014 Google, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __IOTRACE_H
@@ -31,10 +30,11 @@
 #define writew(val, addr)	iotrace_writew(val, (const void *)(addr))
 
 #undef readb
-#define readb(addr)	iotrace_readb((const void *)(addr))
+#define readb(addr)	iotrace_readb((const void *)(uintptr_t)addr)
 
 #undef writeb
-#define writeb(val, addr)	iotrace_writeb(val, (const void *)(addr))
+#define writeb(val, addr) \
+	iotrace_writeb(val, (const void *)(uintptr_t)addr)
 
 #endif
 

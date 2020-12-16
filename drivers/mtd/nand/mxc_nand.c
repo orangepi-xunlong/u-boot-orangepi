@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004-2007 Freescale Semiconductor, Inc.
  * Copyright 2008 Sascha Hauer, kernel@pengutronix.de
  * Copyright 2009 Ilya Yanok, <yanok@emcraft.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,7 +18,6 @@
 #define DRIVER_NAME "mxc_nand"
 
 struct mxc_nand_host {
-	struct mtd_info			mtd;
 	struct nand_chip		*nand;
 
 	struct mxc_nand_regs __iomem	*regs;
@@ -133,7 +131,7 @@ static void wait_op_done(struct mxc_nand_host *host, int max_retries,
 		udelay(1);
 	}
 	if (max_retries < 0) {
-		MTDDEBUG(MTD_DEBUG_LEVEL0, "%s(%d): INT not set\n",
+		pr_debug("%s(%d): INT not set\n",
 				__func__, param);
 	}
 }
@@ -144,7 +142,7 @@ static void wait_op_done(struct mxc_nand_host *host, int max_retries,
  */
 static void send_cmd(struct mxc_nand_host *host, uint16_t cmd)
 {
-	MTDDEBUG(MTD_DEBUG_LEVEL3, "send_cmd(host, 0x%x)\n", cmd);
+	pr_debug("send_cmd(host, 0x%x)\n", cmd);
 
 	writenfc(cmd, &host->regs->flash_cmd);
 	writenfc(NFC_CMD, &host->regs->operation);
@@ -160,7 +158,7 @@ static void send_cmd(struct mxc_nand_host *host, uint16_t cmd)
  */
 static void send_addr(struct mxc_nand_host *host, uint16_t addr)
 {
-	MTDDEBUG(MTD_DEBUG_LEVEL3, "send_addr(host, 0x%x)\n", addr);
+	pr_debug("send_addr(host, 0x%x)\n", addr);
 
 	writenfc(addr, &host->regs->flash_addr);
 	writenfc(NFC_ADDR, &host->regs->operation);
@@ -177,7 +175,7 @@ static void send_prog_page(struct mxc_nand_host *host, uint8_t buf_id,
 			int spare_only)
 {
 	if (spare_only)
-		MTDDEBUG(MTD_DEBUG_LEVEL1, "send_prog_page (%d)\n", spare_only);
+		pr_debug("send_prog_page (%d)\n", spare_only);
 
 	if (is_mxc_nfc_21() || is_mxc_nfc_32()) {
 		int i;
@@ -227,7 +225,7 @@ static void send_prog_page(struct mxc_nand_host *host, uint8_t buf_id,
 static void send_read_page(struct mxc_nand_host *host, uint8_t buf_id,
 		int spare_only)
 {
-	MTDDEBUG(MTD_DEBUG_LEVEL3, "send_read_page (%d)\n", spare_only);
+	pr_debug("send_read_page (%d)\n", spare_only);
 
 #if defined(MXC_NFC_V1) || defined(MXC_NFC_V2_1)
 	writenfc(buf_id, &host->regs->buf_addr);
@@ -351,8 +349,8 @@ static int mxc_nand_dev_ready(struct mtd_info *mtd)
 
 static void _mxc_nand_enable_hwecc(struct mtd_info *mtd, int on)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 #if defined(MXC_NFC_V1) || defined(MXC_NFC_V2_1)
 	uint16_t tmp = readnfc(&host->regs->config1);
 
@@ -386,15 +384,14 @@ static int mxc_nand_read_oob_syndrome(struct mtd_info *mtd,
 				      struct nand_chip *chip,
 				      int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	uint8_t *buf = chip->oob_poi;
 	int length = mtd->oobsize;
 	int eccpitch = chip->ecc.bytes + chip->ecc.prepad + chip->ecc.postpad;
 	uint8_t *bufpoi = buf;
 	int i, toread;
 
-	MTDDEBUG(MTD_DEBUG_LEVEL0,
-			"%s: Reading OOB area of page %u to oob %p\n",
+	pr_debug("%s: Reading OOB area of page %u to oob %p\n",
 			 __func__, page, buf);
 
 	chip->cmdfunc(mtd, NAND_CMD_READOOB, mtd->writesize, page);
@@ -441,7 +438,7 @@ static int mxc_nand_read_page_raw_syndrome(struct mtd_info *mtd,
 					   int oob_required,
 					   int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	int eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccpitch = eccbytes + chip->ecc.prepad + chip->ecc.postpad;
@@ -486,7 +483,7 @@ static int mxc_nand_read_page_syndrome(struct mtd_info *mtd,
 				       int oob_required,
 				       int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	int n, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccpitch = eccbytes + chip->ecc.prepad + chip->ecc.postpad;
@@ -494,8 +491,8 @@ static int mxc_nand_read_page_syndrome(struct mtd_info *mtd,
 	uint8_t *p = buf;
 	uint8_t *oob = chip->oob_poi;
 
-	MTDDEBUG(MTD_DEBUG_LEVEL1, "Reading page %u to buf %p oob %p\n",
-	      page, buf, oob);
+	pr_debug("Reading page %u to buf %p oob %p\n",
+		 page, buf, oob);
 
 	/* first read the data area and the available portion of OOB */
 	for (n = 0; eccsteps; n++, eccsteps--, p += eccsize) {
@@ -550,7 +547,7 @@ static int mxc_nand_read_page_syndrome(struct mtd_info *mtd,
 static int mxc_nand_write_oob_syndrome(struct mtd_info *mtd,
 				       struct nand_chip *chip, int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	int eccpitch = chip->ecc.bytes + chip->ecc.prepad + chip->ecc.postpad;
 	int length = mtd->oobsize;
 	int i, len, status, steps = chip->ecc.steps;
@@ -576,9 +573,9 @@ static int mxc_nand_write_oob_syndrome(struct mtd_info *mtd,
 static int mxc_nand_write_page_raw_syndrome(struct mtd_info *mtd,
 					     struct nand_chip *chip,
 					     const uint8_t *buf,
-					     int oob_required)
+					     int oob_required, int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	int eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccpitch = eccbytes + chip->ecc.prepad + chip->ecc.postpad;
@@ -616,9 +613,9 @@ static int mxc_nand_write_page_raw_syndrome(struct mtd_info *mtd,
 static int mxc_nand_write_page_syndrome(struct mtd_info *mtd,
 					 struct nand_chip *chip,
 					 const uint8_t *buf,
-					 int oob_required)
+					 int oob_required, int page)
 {
-	struct mxc_nand_host *host = chip->priv;
+	struct mxc_nand_host *host = nand_get_controller_data(chip);
 	int i, n, eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;
 	int eccpitch = eccbytes + chip->ecc.prepad + chip->ecc.postpad;
@@ -661,8 +658,8 @@ static int mxc_nand_write_page_syndrome(struct mtd_info *mtd,
 static int mxc_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 				 u_char *read_ecc, u_char *calc_ecc)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 	uint32_t ecc_status = readl(&host->regs->ecc_status_result);
 	int subpages = mtd->writesize / nand_chip->subpagesize;
 	int pg2blk_shift = nand_chip->phys_erase_shift -
@@ -681,7 +678,7 @@ static int mxc_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 				       mtd->writesize / nand_chip->subpagesize
 					    - subpages);
 			}
-			return -1;
+			return -EBADMSG;
 		}
 		ecc_status >>= 4;
 		subpages--;
@@ -700,8 +697,8 @@ static int mxc_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 static int mxc_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 				 u_char *read_ecc, u_char *calc_ecc)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 
 	/*
 	 * 1-Bit errors are automatically corrected in HW.  No need for
@@ -711,9 +708,8 @@ static int mxc_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 	uint16_t ecc_status = readnfc(&host->regs->ecc_status_result);
 
 	if (((ecc_status & 0x3) == 2) || ((ecc_status >> 2) == 2)) {
-		MTDDEBUG(MTD_DEBUG_LEVEL0,
-		      "MXC_NAND: HWECC uncorrectable 2-bit ECC error\n");
-		return -1;
+		pr_debug("MXC_NAND: HWECC uncorrectable 2-bit ECC error\n");
+		return -EBADMSG;
 	}
 
 	return 0;
@@ -729,8 +725,8 @@ static int mxc_nand_calculate_ecc(struct mtd_info *mtd, const u_char *dat,
 
 static u_char mxc_nand_read_byte(struct mtd_info *mtd)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 	uint8_t ret = 0;
 	uint16_t col;
 	uint16_t __iomem *main_buf =
@@ -769,13 +765,12 @@ static u_char mxc_nand_read_byte(struct mtd_info *mtd)
 
 static uint16_t mxc_nand_read_word(struct mtd_info *mtd)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 	uint16_t col, ret;
 	uint16_t __iomem *p;
 
-	MTDDEBUG(MTD_DEBUG_LEVEL3,
-	      "mxc_nand_read_word(col = %d)\n", host->col_addr);
+	pr_debug("mxc_nand_read_word(col = %d)\n", host->col_addr);
 
 	col = host->col_addr;
 	/* Adjust saved column address */
@@ -821,13 +816,12 @@ static uint16_t mxc_nand_read_word(struct mtd_info *mtd)
 static void mxc_nand_write_buf(struct mtd_info *mtd,
 				const u_char *buf, int len)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 	int n, col, i = 0;
 
-	MTDDEBUG(MTD_DEBUG_LEVEL3,
-	      "mxc_nand_write_buf(col = %d, len = %d)\n", host->col_addr,
-	      len);
+	pr_debug("mxc_nand_write_buf(col = %d, len = %d)\n", host->col_addr,
+		 len);
 
 	col = host->col_addr;
 
@@ -838,8 +832,7 @@ static void mxc_nand_write_buf(struct mtd_info *mtd,
 	n = mtd->writesize + mtd->oobsize - col;
 	n = min(len, n);
 
-	MTDDEBUG(MTD_DEBUG_LEVEL3,
-	      "%s:%d: col = %d, n = %d\n", __func__, __LINE__, col, n);
+	pr_debug("%s:%d: col = %d, n = %d\n", __func__, __LINE__, col, n);
 
 	while (n > 0) {
 		void __iomem *p;
@@ -851,8 +844,8 @@ static void mxc_nand_write_buf(struct mtd_info *mtd,
 						mtd->writesize + (col & ~3);
 		}
 
-		MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:%d: p = %p\n", __func__,
-		      __LINE__, p);
+		pr_debug("%s:%d: p = %p\n", __func__,
+			 __LINE__, p);
 
 		if (((col | (unsigned long)&buf[i]) & 3) || n < 4) {
 			union {
@@ -874,9 +867,8 @@ static void mxc_nand_write_buf(struct mtd_info *mtd,
 
 			m = min(n, m) & ~3;
 
-			MTDDEBUG(MTD_DEBUG_LEVEL3,
-			      "%s:%d: n = %d, m = %d, i = %d, col = %d\n",
-			      __func__,  __LINE__, n, m, i, col);
+			pr_debug("%s:%d: n = %d, m = %d, i = %d, col = %d\n",
+				 __func__,  __LINE__, n, m, i, col);
 
 			mxc_nand_memcpy32(p, (uint32_t *)&buf[i], m);
 			col += m;
@@ -895,12 +887,12 @@ static void mxc_nand_write_buf(struct mtd_info *mtd,
  */
 static void mxc_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 	int n, col, i = 0;
 
-	MTDDEBUG(MTD_DEBUG_LEVEL3,
-	      "mxc_nand_read_buf(col = %d, len = %d)\n", host->col_addr, len);
+	pr_debug("mxc_nand_read_buf(col = %d, len = %d)\n", host->col_addr,
+		 len);
 
 	col = host->col_addr;
 
@@ -950,37 +942,13 @@ static void mxc_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 }
 
 /*
- * Used by the upper layer to verify the data in NAND Flash
- * with the data in the buf.
- */
-static int mxc_nand_verify_buf(struct mtd_info *mtd,
-				const u_char *buf, int len)
-{
-	u_char tmp[256];
-	uint bsize;
-
-	while (len) {
-		bsize = min(len, 256);
-		mxc_nand_read_buf(mtd, tmp, bsize);
-
-		if (memcmp(buf, tmp, bsize))
-			return 1;
-
-		buf += bsize;
-		len -= bsize;
-	}
-
-	return 0;
-}
-
-/*
  * This function is used by upper layer for select and
  * deselect of the NAND chip
  */
 static void mxc_nand_select_chip(struct mtd_info *mtd, int chip)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 
 	switch (chip) {
 	case -1:
@@ -1006,12 +974,11 @@ static void mxc_nand_select_chip(struct mtd_info *mtd, int chip)
 void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 				int column, int page_addr)
 {
-	struct nand_chip *nand_chip = mtd->priv;
-	struct mxc_nand_host *host = nand_chip->priv;
+	struct nand_chip *nand_chip = mtd_to_nand(mtd);
+	struct mxc_nand_host *host = nand_get_controller_data(nand_chip);
 
-	MTDDEBUG(MTD_DEBUG_LEVEL3,
-	      "mxc_nand_command (cmd = 0x%x, col = 0x%x, page = 0x%x)\n",
-	      command, column, page_addr);
+	pr_debug("mxc_nand_command (cmd = 0x%x, col = 0x%x, page = 0x%x)\n",
+		 command, column, page_addr);
 
 	/* Reset command state information */
 	host->status_request = false;
@@ -1188,14 +1155,13 @@ int board_nand_init(struct nand_chip *this)
 #endif
 
 	/* structures must be linked */
-	mtd = &host->mtd;
-	mtd->priv = this;
+	mtd = &this->mtd;
 	host->nand = this;
 
 	/* 5 us command delay time */
 	this->chip_delay = 5;
 
-	this->priv = host;
+	nand_set_controller_data(this, host);
 	this->dev_ready = mxc_nand_dev_ready;
 	this->cmdfunc = mxc_nand_command;
 	this->select_chip = mxc_nand_select_chip;
@@ -1203,7 +1169,6 @@ int board_nand_init(struct nand_chip *this)
 	this->read_word = mxc_nand_read_word;
 	this->write_buf = mxc_nand_write_buf;
 	this->read_buf = mxc_nand_read_buf;
-	this->verify_buf = mxc_nand_verify_buf;
 
 	host->regs = (struct mxc_nand_regs __iomem *)CONFIG_MXC_NAND_REGS_BASE;
 #ifdef MXC_NFC_V3_2

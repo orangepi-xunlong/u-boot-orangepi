@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -5,8 +6,6 @@
  * A bootcount driver for the RTC IP block found on many TI platforms.
  * This requires the RTC clocks, etc, to be enabled prior to use and
  * not all boards with this IP block on it will have the RTC in use.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <bootcount.h>
@@ -18,9 +17,9 @@ void bootcount_store(ulong a)
 		(struct davinci_rtc *)CONFIG_SYS_BOOTCOUNT_ADDR;
 
 	/*
-	 * write RTC kick register to enable write
-	 * for RTC Scratch registers. Scratch0 and 1 are
-	 * used for bootcount values.
+	 * write RTC kick registers to enable write
+	 * for RTC Scratch registers. Scratch register 2 is
+	 * used for bootcount value.
 	 */
 	writel(RTC_KICK0R_WE, &reg->kick0r);
 	writel(RTC_KICK1R_WE, &reg->kick1r);

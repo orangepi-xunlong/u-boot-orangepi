@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuration settings for the Sentec Cobra Board.
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -39,21 +38,7 @@
 #error No card type defined!
 #endif
 
-/*
- * Define processor
- * possible values for Urmel board: only Coldfire M5373 processor supported
- * (please do not change)
- */
-
-/* it seems not clear yet which processor defines we should use */
-#define CONFIG_MCF537x			/* define processor family */
-#define CONFIG_MCF532x			/* define processor family */
-#define CONFIG_M5373			/* define processor type */
-#define CONFIG_ASTRO5373L		/* define board type */
-
 /* Command line configuration */
-#include <config_cmd_default.h>
-
 /*
  * CONFIG_RAM defines if u-boot is loaded via BDM (or started from
  * a different bootloader that has already performed RAM setup) or
@@ -62,36 +47,10 @@
  */
 #ifdef CONFIG_RAM
 #define CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_SYS_TEXT_BASE		0x40020000
 #define ENABLE_JFFS	0
 #else
-#define CONFIG_SYS_TEXT_BASE		0x00000000
 #define ENABLE_JFFS	1
 #endif
-
-/* Define which commmands should be available at u-boot command prompt */
-
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
-#define CONFIG_CMD_XIMG
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
-#if ENABLE_JFFS
-#define CONFIG_CMD_JFFS2
-#endif
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_LOADS
-#define CONFIG_CMD_LOADB
-#define CONFIG_CMD_FPGA
-#define CONFIG_CMD_FPGA_LOADMK
-#define CONFIG_CMDLINE_EDITING
-
-#define CONFIG_SYS_HUSH_PARSER
 
 #define CONFIG_MCFRTC
 #undef RTC_DEBUG
@@ -129,8 +88,6 @@
  * in u-boot command interface
  */
 
-#define CONFIG_BAUDRATE		115200
-
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(2)
 #define CONFIG_SYS_UART2_ALT3_GPIO
@@ -154,7 +111,6 @@
 #ifndef CONFIG_MONITOR_IS_IN_RAM
 #define CONFIG_ENV_OFFSET		0x1FF8000
 #define CONFIG_ENV_SECT_SIZE		0x8000
-#define CONFIG_ENV_IS_IN_FLASH		1
 #else
 /*
  * environment in RAM - This is used to use a single PC-based application
@@ -164,7 +120,6 @@
  */
 #define CONFIG_ENV_ADDR		0x40060000
 #define CONFIG_ENV_SECT_SIZE	0x8000
-#define CONFIG_ENV_IS_IN_FLASH	1
 #endif
 
 /* here we put our FPGA configuration... */
@@ -173,19 +128,6 @@
 /* Define user parameters that have to be customized most likely */
 
 /* AUTOBOOT settings - booting images automatically by u-boot after power on */
-
-/*
- * used for autoboot, delay in seconds u-boot will wait before starting
- * defined (auto-)boot command, setting to -1 disables delay, setting to
- * 0 will too prevent access to u-boot command interface: u-boot then has
- * to be reflashed
- * beware - watchdog is not serviced during autoboot delay time!
- */
-#ifdef CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_BOOTDELAY	1
-#else
-#define CONFIG_BOOTDELAY	1
-#endif
 
 /*
  * The following settings will be contained in the environment block ; if you
@@ -224,32 +166,10 @@
 #endif
 #endif
 
-/* default bootargs that are considered during boot */
-#define CONFIG_BOOTARGS		" console=ttyS2,115200 rootfstype=romfs"\
-				" loaderversion=$loaderversion"
-
-#define CONFIG_SYS_PROMPT	"URMEL > "
-
 /* default RAM address for user programs */
 #define CONFIG_SYS_LOAD_ADDR	0x20000
 
-#define CONFIG_SYS_LONGHELP
-
-#if (CONFIG_COMMANDS & CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE		1024
-#else
-#define CONFIG_SYS_CBSIZE		256
-#endif
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
 #define CONFIG_FPGA_COUNT	1
-#define CONFIG_FPGA
-#define	CONFIG_FPGA_XILINX
-#define	CONFIG_FPGA_SPARTAN3
-#define CONFIG_FPGA_ALTERA
-#define CONFIG_FPGA_CYCLON2
 #define CONFIG_SYS_FPGA_PROG_FEEDBACK
 #define CONFIG_SYS_FPGA_WAIT		1000
 
@@ -352,6 +272,10 @@
 #define CONFIG_SYS_FLASH_PROTECTION	1
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 #define CONFIG_SYS_FLASH_CFI_NONBLOCK	1
+
+#define LDS_BOARD_TEXT \
+	. = DEFINED(env_offset) ? env_offset : .; \
+	env/embedded.o(.text*)
 
 #if ENABLE_JFFS
 /* JFFS Partition offset set */

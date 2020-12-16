@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -37,7 +36,7 @@ int timer_init(void)
 	writel(MISC_PRSC_CFG, &misc_regs_p->prsc1_clk_cfg);
 	synth = MISC_GPT3SYNTH;
 #else
-# error Incorrect config. Can only be spear{600|300|310|320}
+# error Incorrect config. Can only be SPEAR{600|300|310|320}
 #endif
 
 	writel(readl(&misc_regs_p->periph_clk_cfg) | synth,

@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007 Michal Simek
  *
  * Michal  SIMEK <monstr@monstr.cz>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 typedef volatile struct microblaze_intc_t {
@@ -34,5 +33,3 @@ struct irq_action {
  */
 int install_interrupt_handler(int irq, interrupt_handler_t *hdlr,
 				       void *arg);
-
-int interrupts_init(void);

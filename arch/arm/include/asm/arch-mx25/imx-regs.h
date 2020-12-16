@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009, DENX Software Engineering
  * Author: John Rigby <jcrigby@gmail.com
@@ -10,8 +11,6 @@
  *		Sascha Hauer <s.hauer@pengutronix.de>
  *	Copyright (C) 2009 Ilya Yanok,
  *		Emcraft Systems <yanok@emcraft.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _IMX_REGS_H
@@ -293,13 +292,13 @@ struct cspi_regs {
 #define IMX_ETB_SLOT4_BASE	(0x43F0C000)
 #define IMX_ETB_SLOT5_BASE	(0x43F10000)
 #define IMX_ECT_CTIO_BASE	(0x43F18000)
-#define IMX_I2C_BASE		(0x43F80000)
-#define IMX_I2C3_BASE		(0x43F84000)
+#define I2C1_BASE_ADDR		(0x43F80000)
+#define I2C3_BASE_ADDR		(0x43F84000)
 #define IMX_CAN1_BASE		(0x43F88000)
 #define IMX_CAN2_BASE		(0x43F8C000)
 #define UART1_BASE		(0x43F90000)
 #define UART2_BASE		(0x43F94000)
-#define IMX_I2C2_BASE		(0x43F98000)
+#define I2C2_BASE_ADDR		(0x43F98000)
 #define IMX_OWIRE_BASE		(0x43F9C000)
 #define IMX_CSPI1_BASE		(0x43FA4000)
 #define IMX_KPP_BASE		(0x43FA8000)
@@ -525,9 +524,5 @@ struct cspi_regs {
 	IMX_CSPI1_BASE, \
 	IMX_CSPI2_BASE, \
 	IMX_CSPI3_BASE
-
-#define CHIP_REV_1_0		0x10
-#define CHIP_REV_1_1		0x11
-#define CHIP_REV_1_2		0x12
 
 #endif				/* _IMX_REGS_H */
