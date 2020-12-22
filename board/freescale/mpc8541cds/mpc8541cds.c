@@ -6,13 +6,16 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <pci.h>
+#include <vsprintf.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
 #include <fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <spd_sdram.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 

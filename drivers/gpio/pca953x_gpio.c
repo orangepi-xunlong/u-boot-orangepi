@@ -15,8 +15,7 @@
  *
  * TODO:
  * 1. Support PCA957X_TYPE
- * 2. Support 24 gpio pins
- * 3. Support Polarity Inversion
+ * 2. Support Polarity Inversion
  */
 
 #include <common.h>
@@ -27,7 +26,9 @@
 #include <malloc.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <dm/device_compat.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <linux/bitops.h>
 
 #define PCA953X_INPUT           0
 #define PCA953X_OUTPUT          1
@@ -118,12 +119,39 @@ static int pca953x_read_regs(struct udevice *dev, int reg, u8 *val)
 		ret = dm_i2c_read(dev, reg, val, 1);
 	} else if (info->gpio_count <= 16) {
 		ret = dm_i2c_read(dev, reg << 1, val, info->bank_count);
+	} else if (info->gpio_count <= 24) {
+		/* Auto increment */
+		ret = dm_i2c_read(dev, (reg << 2) | 0x80, val,
+				  info->bank_count);
 	} else if (info->gpio_count == 40) {
 		/* Auto increment */
 		ret = dm_i2c_read(dev, (reg << 3) | 0x80, val,
 				  info->bank_count);
 	} else {
 		dev_err(dev, "Unsupported now\n");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int pca953x_write_regs(struct udevice *dev, int reg, u8 *val)
+{
+	struct pca953x_info *info = dev_get_platdata(dev);
+	int ret = 0;
+
+	if (info->gpio_count <= 8) {
+		ret = dm_i2c_write(dev, reg, val, 1);
+	} else if (info->gpio_count <= 16) {
+		ret = dm_i2c_write(dev, reg << 1, val, info->bank_count);
+	} else if (info->gpio_count <= 24) {
+		/* Auto increment */
+		ret = dm_i2c_write(dev, (reg << 2) | 0x80, val,
+				   info->bank_count);
+	} else if (info->gpio_count == 40) {
+		/* Auto increment */
+		ret = dm_i2c_write(dev, (reg << 3) | 0x80, val, info->bank_count);
+	} else {
 		return -EINVAL;
 	}
 
@@ -227,7 +255,7 @@ static int pca953x_xlate(struct udevice *dev, struct gpio_desc *desc,
 			 struct ofnode_phandle_args *args)
 {
 	desc->offset = args->args[0];
-	desc->flags = args->args[1] & (GPIO_ACTIVE_LOW ? GPIOD_ACTIVE_LOW : 0);
+	desc->flags = args->args[1] & GPIO_ACTIVE_LOW ? GPIOD_ACTIVE_LOW : 0;
 
 	return 0;
 }
@@ -251,6 +279,7 @@ static int pca953x_probe(struct udevice *dev)
 	int ret;
 	int size;
 	const u8 *tmp;
+	u8 val[MAX_BANK];
 
 	addr = dev_read_addr(dev);
 	if (addr == 0)
@@ -296,6 +325,14 @@ static int pca953x_probe(struct udevice *dev)
 		snprintf(name, sizeof(name), "gpio@%x_", info->addr);
 	}
 
+	/* Clear the polarity registers to no invert */
+	memset(val, 0, MAX_BANK);
+	ret = pca953x_write_regs(dev, PCA953X_INVERT, val);
+	if (ret < 0) {
+		dev_err(dev, "Error writing invert register\n");
+		return ret;
+	}
+
 	str = strdup(name);
 	if (!str)
 		return -ENOMEM;
@@ -335,6 +372,7 @@ static const struct udevice_id pca953x_ids[] = {
 	{ .compatible = "ti,tca6408", .data = OF_953X(8, PCA_INT), },
 	{ .compatible = "ti,tca6416", .data = OF_953X(16, PCA_INT), },
 	{ .compatible = "ti,tca6424", .data = OF_953X(24, PCA_INT), },
+	{ .compatible = "ti,tca9539", .data = OF_953X(16, PCA_INT), },
 
 	{ .compatible = "onsemi,pca9654", .data = OF_953X(8, PCA_INT), },
 

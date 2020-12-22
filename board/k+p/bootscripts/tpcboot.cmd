@@ -23,6 +23,16 @@ setenv mmcroot "/dev/mmcblk${devnum}p2 rootwait rw"
 setenv displayargs ""
 setenv mmcargs "setenv bootargs console=${console} ${smp} root=${mmcroot} \
 	${displayargs}"
+setenv miscadj "
+if test '${boardsoc}' = 'imx53'; then
+       setenv bootargs '${bootargs} di=${dig_in} key1=${key1}';
+fi;"
+setenv nfsadj "
+if test '${boardsoc}' = 'imx53'; then
+   if test '${boardtype}' = 'hsc'; then
+       setenv bootargs '${bootargs} dsa_core.blacklist=yes';
+   fi;
+fi;"
 setenv boot_fitImage "
 	setenv fdt_conf 'conf@${boardsoc}-${boardname}.dtb';
 	setenv itbcfg "\"#\${fdt_conf}\"";
@@ -39,6 +49,7 @@ if test -e ${devtype} ${devnum}:${distro_bootpart} ${kernel_file}; then
 	if load ${devtype} ${devnum}:${distro_bootpart} ${loadaddr} \
 	   ${kernel_file}; then
 		run mmcargs;
+		run miscadj;
 		run boot_fitImage;
 	fi;
 fi;"
@@ -47,11 +58,12 @@ fi;"
 #
 # Provide 'boot_tftp_kernel' command
 #------------------------------------------------------------
-setenv download_kernel "tftpboot ${loadaddr} ${kernel_file}"
+setenv download_kernel "dhcp ${loadaddr} ${kernel_file}"
 
 setenv boot_tftp_kernel "
 if run download_kernel; then
 	run mmcargs;
+	run miscadj;
 	run boot_fitImage;
 fi"
 
@@ -59,18 +71,15 @@ fi"
 #
 # Provide 'boot_nfs' command
 #------------------------------------------------------------
-setenv rootpath "/srv/tftp/KP/rootfs"
-setenv nfsargs "setenv bootargs root=/dev/nfs rw \
-       nfsroot=${serverip}:${rootpath},nolock,nfsvers=3"
-setenv addip "setenv bootargs ${bootargs} \
-       ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:\
-       ${hostname}:eth0:on"
+setenv nfsargs "setenv bootargs root=/dev/nfs rw nfsroot='${rootpath}',nolock,nfsvers=3"
+setenv addip "setenv bootargs '${bootargs}' ip='${ipaddr}':'${serverip}':'${gatewayip}':'${netmask}':'${hostname}':eth0:on"
 
 setenv boot_nfs "
 if run download_kernel; then
 	run nfsargs;
 	run addip;
-	setenv bootargs ${bootargs} console=${console};
+	run nfsadj;
+	setenv bootargs '${bootargs}' console=${console};
 
 	run boot_fitImage;
 fi"

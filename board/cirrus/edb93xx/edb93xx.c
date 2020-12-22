@@ -15,7 +15,12 @@
 
 #include <config.h>
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <irq_func.h>
+#include <net.h>
 #include <netdev.h>
+#include <status_led.h>
 #include <asm/io.h>
 #include <asm/mach-types.h>
 #include <asm/arch/ep93xx.h>

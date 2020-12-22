@@ -8,57 +8,85 @@
  */
 
 #include <common.h>
-#include <asm/io.h>
-#include <asm/arch/sys_proto.h>
+#include <dm.h>
+#include <init.h>
+#include <dm/uclass-internal.h>
 #include <asm/arch/rmobile.h>
-#include <asm/arch/rcar-mstp.h>
+#include <linux/libfdt.h>
 
-#define TSTR0		0x04
-#define TSTR0_STR0	0x01
-
-static struct mstp_ctl mstptbl[] = {
-	{ SMSTPCR0, MSTP0_BITS, CONFIG_SMSTP0_ENA,
-		RMSTPCR0, MSTP0_BITS, CONFIG_RMSTP0_ENA },
-	{ SMSTPCR1, MSTP1_BITS, CONFIG_SMSTP1_ENA,
-		RMSTPCR1, MSTP1_BITS, CONFIG_RMSTP1_ENA },
-	{ SMSTPCR2, MSTP2_BITS, CONFIG_SMSTP2_ENA,
-		RMSTPCR2, MSTP2_BITS, CONFIG_RMSTP2_ENA },
-	{ SMSTPCR3, MSTP3_BITS, CONFIG_SMSTP3_ENA,
-		RMSTPCR3, MSTP3_BITS, CONFIG_RMSTP3_ENA },
-	{ SMSTPCR4, MSTP4_BITS, CONFIG_SMSTP4_ENA,
-		RMSTPCR4, MSTP4_BITS, CONFIG_RMSTP4_ENA },
-	{ SMSTPCR5, MSTP5_BITS, CONFIG_SMSTP5_ENA,
-		RMSTPCR5, MSTP5_BITS, CONFIG_RMSTP5_ENA },
 #ifdef CONFIG_RCAR_GEN3
-	{ SMSTPCR6, MSTP6_BITS, CONFIG_SMSTP6_ENA,
-		RMSTPCR6, MSTP6_BITS, CONFIG_RMSTP6_ENA },
-#endif
-	{ SMSTPCR7, MSTP7_BITS, CONFIG_SMSTP7_ENA,
-		RMSTPCR7, MSTP7_BITS, CONFIG_RMSTP7_ENA },
-	{ SMSTPCR8, MSTP8_BITS, CONFIG_SMSTP8_ENA,
-		RMSTPCR8, MSTP8_BITS, CONFIG_RMSTP8_ENA },
-	{ SMSTPCR9, MSTP9_BITS, CONFIG_SMSTP9_ENA,
-		RMSTPCR9, MSTP9_BITS, CONFIG_RMSTP9_ENA },
-	{ SMSTPCR10, MSTP10_BITS, CONFIG_SMSTP10_ENA,
-		 RMSTPCR10, MSTP10_BITS, CONFIG_RMSTP10_ENA },
-	{ SMSTPCR11, MSTP11_BITS, CONFIG_SMSTP1_ENA,
-		 RMSTPCR11, MSTP11_BITS, CONFIG_RMSTP11_ENA },
-};
 
-void arch_preboot_os(void)
+DECLARE_GLOBAL_DATA_PTR;
+
+/* If the firmware passed a device tree use it for U-Boot DRAM setup. */
+extern u64 rcar_atf_boot_args[];
+
+int fdtdec_board_setup(const void *fdt_blob)
 {
-	int i;
+	void *atf_fdt_blob = (void *)(rcar_atf_boot_args[1]);
 
-	/* stop TMU0 */
-	mstp_clrbits_le32(TMU_BASE + TSTR0, TMU_BASE + TSTR0, TSTR0_STR0);
+	if (fdt_magic(atf_fdt_blob) == FDT_MAGIC)
+		fdt_overlay_apply_node((void *)fdt_blob, 0, atf_fdt_blob, 0);
 
-	/* Stop module clock */
-	for (i = 0; i < ARRAY_SIZE(mstptbl); i++) {
-		mstp_setclrbits_le32((uintptr_t)mstptbl[i].s_addr,
-				     mstptbl[i].s_dis,
-				     mstptbl[i].s_ena);
-		mstp_setclrbits_le32((uintptr_t)mstptbl[i].r_addr,
-				     mstptbl[i].r_dis,
-				     mstptbl[i].r_ena);
-	}
+	return 0;
 }
+
+int dram_init(void)
+{
+	return fdtdec_setup_mem_size_base_fdt(gd->fdt_blob);
+}
+
+int dram_init_banksize(void)
+{
+	fdtdec_setup_memory_banksize_fdt(gd->fdt_blob);
+
+	return 0;
+}
+
+#if CONFIG_IS_ENABLED(OF_BOARD_SETUP) && CONFIG_IS_ENABLED(PCI)
+int ft_board_setup(void *blob, bd_t *bd)
+{
+	struct udevice *dev;
+	struct uclass *uc;
+	fdt_addr_t regs_addr;
+	int i, off, ret;
+
+	ret = uclass_get(UCLASS_PCI, &uc);
+	if (ret)
+		return ret;
+
+	uclass_foreach_dev(dev, uc) {
+		struct pci_controller hose = { 0 };
+
+		for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+			if (hose.region_count == MAX_PCI_REGIONS) {
+				printf("maximum number of regions parsed, aborting\n");
+				break;
+			}
+
+			if (bd->bi_dram[i].size) {
+				pci_set_region(&hose.regions[hose.region_count++],
+					       bd->bi_dram[i].start,
+					       bd->bi_dram[i].start,
+					       bd->bi_dram[i].size,
+					       PCI_REGION_MEM |
+					       PCI_REGION_PREFETCH |
+					       PCI_REGION_SYS_MEMORY);
+			}
+		}
+
+		regs_addr = devfdt_get_addr_index(dev, 0);
+		off = fdt_node_offset_by_compat_reg(blob,
+				"renesas,pcie-rcar-gen3", regs_addr);
+		if (off < 0) {
+			printf("Failed to find PCIe node@%llx\n", regs_addr);
+			return off;
+		}
+
+		fdt_pci_dma_ranges(blob, off, &hose);
+	}
+
+	return 0;
+}
+#endif
+#endif

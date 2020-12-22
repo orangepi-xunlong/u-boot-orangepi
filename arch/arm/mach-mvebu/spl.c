@@ -7,6 +7,9 @@
 #include <dm.h>
 #include <debug_uart.h>
 #include <fdtdec.h>
+#include <hang.h>
+#include <init.h>
+#include <log.h>
 #include <spl.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -25,17 +28,18 @@ static u32 get_boot_device(void)
 	val = readl(CONFIG_BOOTROM_ERR_REG);
 	boot_device = (val & BOOTROM_ERR_MODE_MASK) >> BOOTROM_ERR_MODE_OFFS;
 	debug("BOOTROM_REG=0x%08x boot_device=0x%x\n", val, boot_device);
-#if defined(CONFIG_ARMADA_38X)
-	/*
-	 * If the bootrom error register contains any else than zeros
-	 * in the first 8 bits it's an error condition. And in that case
-	 * try to boot from UART.
-	 */
-	if (boot_device)
-#else
 	if (boot_device == BOOTROM_ERR_MODE_UART)
-#endif
 		return BOOT_DEVICE_UART;
+
+#ifdef CONFIG_ARMADA_38X
+	/*
+	 * If the bootrom error code contains any other than zeros it's an
+	 * error condition and the bootROM has fallen back to UART boot
+	 */
+	boot_device = (val & BOOTROM_ERR_CODE_MASK) >> BOOTROM_ERR_CODE_OFFS;
+	if (boot_device)
+		return BOOT_DEVICE_UART;
+#endif
 
 	/*
 	 * Now check the SAR register for the strapped boot-device
@@ -58,6 +62,11 @@ static u32 get_boot_device(void)
 	case BOOT_FROM_UART_ALT:
 #endif
 		return BOOT_DEVICE_UART;
+#ifdef BOOT_FROM_SATA
+	case BOOT_FROM_SATA:
+	case BOOT_FROM_SATA_ALT:
+		return BOOT_DEVICE_SATA;
+#endif
 	case BOOT_FROM_SPI:
 	default:
 		return BOOT_DEVICE_SPI;
@@ -92,14 +101,20 @@ void board_init_f(ulong dummy)
 	 */
 #endif
 
+	/*
+	 * Use special translation offset for SPL. This needs to be
+	 * configured *before* spl_init() is called as this function
+	 * calls dm_init() which calls the bind functions of the
+	 * device drivers. Here the base address needs to be configured
+	 * (translated) correctly.
+	 */
+	gd->translation_offset = 0xd0000000 - 0xf1000000;
+
 	ret = spl_init();
 	if (ret) {
 		debug("spl_init() failed: %d\n", ret);
 		hang();
 	}
-
-	/* Use special translation offset for SPL */
-	dm_set_translation_offset(0xd0000000 - 0xf1000000);
 
 	preloader_console_init();
 
@@ -113,6 +128,12 @@ void board_init_f(ulong dummy)
 	/* Setup DDR */
 	ddr3_init();
 #endif
+
+	/* Initialize Auto Voltage Scaling */
+	mv_avs_init();
+
+	/* Update read timing control for PCIe */
+	mv_rtc_config();
 
 	/*
 	 * Return to the BootROM to continue the Marvell xmodem

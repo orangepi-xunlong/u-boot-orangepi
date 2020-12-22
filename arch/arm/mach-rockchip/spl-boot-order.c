@@ -5,10 +5,11 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <mmc.h>
 #include <spl.h>
 
-#if CONFIG_IS_ENABLED(OF_CONTROL)
+#if CONFIG_IS_ENABLED(OF_LIBFDT)
 /**
  * spl_node_to_boot_device() - maps from a DT-node to a SPL boot device
  * @node:	of_offset of the node
@@ -35,7 +36,7 @@ static int spl_node_to_boot_device(int node)
 	/*
 	 * This should eventually move into the SPL code, once SPL becomes
 	 * aware of the block-device layer.  Until then (and to avoid unneeded
-	 * delays in getting this feature out, it lives at the board-level).
+	 * delays in getting this feature out), it lives at the board-level.
 	 */
 	if (!uclass_get_device_by_of_offset(UCLASS_MMC, node, &parent)) {
 		struct udevice *dev;
@@ -61,6 +62,9 @@ static int spl_node_to_boot_device(int node)
 		default:
 			return -ENOSYS;
 		}
+	} else if (!uclass_get_device_by_of_offset(UCLASS_SPI_FLASH, node,
+		&parent)) {
+		return BOOT_DEVICE_SPI;
 	}
 
 	/*
@@ -95,6 +99,12 @@ __weak const char *board_spl_was_booted_from(void)
 
 void board_boot_order(u32 *spl_boot_list)
 {
+	/* In case of no fdt (or only platdata), use spl_boot_device() */
+	if (!CONFIG_IS_ENABLED(OF_CONTROL) || CONFIG_IS_ENABLED(OF_PLATDATA)) {
+		spl_boot_list[0] = spl_boot_device();
+		return;
+	}
+
 	const void *blob = gd->fdt_blob;
 	int chosen_node = fdt_path_offset(blob, "/chosen");
 	int idx = 0;
@@ -131,7 +141,7 @@ void board_boot_order(u32 *spl_boot_list)
 		/* Try to resolve the config item (or alias) as a path */
 		node = fdt_path_offset(blob, conf);
 		if (node < 0) {
-			debug("%s: could not find %s in FDT", __func__, conf);
+			debug("%s: could not find %s in FDT\n", __func__, conf);
 			continue;
 		}
 

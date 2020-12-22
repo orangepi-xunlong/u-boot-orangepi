@@ -9,6 +9,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/sizes.h>
 #include "at91-sama5_common.h"
 
 /*
@@ -23,7 +24,6 @@
 #define ATMEL_PMC_UHP			(1 <<  6)
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE           0x20000000
 #define CONFIG_SYS_SDRAM_SIZE		0x10000000
 
@@ -36,7 +36,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x60000000
 /* our ALE is AD21 */
@@ -44,18 +43,9 @@
 /* our CLE is AD22 */
 #define CONFIG_SYS_NAND_MASK_CLE	(1 << 22)
 #define CONFIG_SYS_NAND_ONFI_DETECTION
-
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #endif
-/* PMECC & PMERRLOC */
-#define CONFIG_ATMEL_NAND_HWECC
-#define CONFIG_ATMEL_NAND_HW_PMECC
-#define CONFIG_PMECC_CAP		4
-#define CONFIG_PMECC_SECTOR_SIZE	512
 
 /* USB */
-
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_ATMEL
 #define CONFIG_USB_ATMEL_CLK_SEL_UPLL
@@ -69,14 +59,14 @@
 #define CONFIG_SYS_LOAD_ADDR			0x22000000 /* load address */
 
 /* SPL */
-#define CONFIG_SPL_TEXT_BASE		0x300000
 #define CONFIG_SPL_MAX_SIZE		0x18000
 #define CONFIG_SPL_BSS_START_ADDR	0x20000000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 #define CONFIG_SYS_SPL_MALLOC_START	0x20080000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x80000
 
-#define CONFIG_SYS_MONITOR_LEN		(512 << 10)
+/* size of u-boot.bin to load */
+#define CONFIG_SYS_MONITOR_LEN		(2 * SZ_512K)
 
 #ifdef CONFIG_SD_BOOT
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
@@ -93,6 +83,5 @@
 #define CONFIG_SYS_NAND_OOBSIZE		64
 #define CONFIG_SYS_NAND_BLOCK_SIZE	0x20000
 #define CONFIG_SYS_NAND_BAD_BLOCK_POS	0x0
-#define CONFIG_SPL_GENERATE_ATMEL_PMECC_HEADER
 
 #endif

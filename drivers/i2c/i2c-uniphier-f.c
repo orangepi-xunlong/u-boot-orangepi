@@ -5,6 +5,7 @@
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
+#include <dm/device_compat.h>
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -281,7 +282,7 @@ static int uniphier_fi2c_set_bus_speed(struct udevice *bus, unsigned int speed)
 	struct uniphier_fi2c_regs __iomem *regs = priv->regs;
 
 	/* max supported frequency is 400 kHz */
-	if (speed > 400000)
+	if (speed > I2C_SPEED_FAST_RATE)
 		return -EINVAL;
 
 	ret = uniphier_fi2c_check_bus_busy(priv);

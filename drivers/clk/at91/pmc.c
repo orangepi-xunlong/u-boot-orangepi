@@ -7,6 +7,7 @@
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <log.h>
 #include <dm/lists.h>
 #include <dm/util.h>
 #include "pmc.h"
@@ -61,7 +62,7 @@ int at91_clk_sub_device_bind(struct udevice *dev, const char *drv_name)
 	     offset > 0;
 	     offset = fdt_next_subnode(fdt, offset)) {
 		if (pre_reloc_only &&
-		    !dm_fdt_pre_reloc(fdt, offset))
+		    !ofnode_pre_reloc(offset_to_ofnode(offset)))
 			continue;
 		/*
 		 * If this node has "compatible" property, this is not

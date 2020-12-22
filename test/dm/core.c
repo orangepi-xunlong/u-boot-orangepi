@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <malloc.h>
 #include <dm/device-internal.h>
 #include <dm/root.h>
@@ -749,6 +750,9 @@ static int dm_test_uclass_devices_find(struct unit_test_state *uts)
 		ut_assert(dev);
 	}
 
+	ut_assertok(uclass_find_first_device(UCLASS_TEST_DUMMY, &dev));
+	ut_assert(!dev);
+
 	return 0;
 }
 DM_TEST(dm_test_uclass_devices_find, DM_TESTF_SCAN_PDATA);
@@ -870,3 +874,34 @@ static int dm_test_uclass_names(struct unit_test_state *uts)
 	return 0;
 }
 DM_TEST(dm_test_uclass_names, DM_TESTF_SCAN_PDATA);
+
+static int dm_test_inactive_child(struct unit_test_state *uts)
+{
+	struct dm_test_state *dms = uts->priv;
+	struct udevice *parent, *dev1, *dev2;
+
+	/* Skip the behaviour in test_post_probe() */
+	dms->skip_post_probe = 1;
+
+	ut_assertok(uclass_first_device_err(UCLASS_TEST, &parent));
+
+	/*
+	 * Create a child but do not activate it. Calling the function again
+	 * should return the same child.
+	 */
+	ut_asserteq(-ENODEV, device_find_first_inactive_child(parent,
+							UCLASS_TEST, &dev1));
+	ut_assertok(device_bind_ofnode(parent, DM_GET_DRIVER(test_drv),
+				       "test_child", 0, ofnode_null(), &dev1));
+
+	ut_assertok(device_find_first_inactive_child(parent, UCLASS_TEST,
+						     &dev2));
+	ut_asserteq_ptr(dev1, dev2);
+
+	ut_assertok(device_probe(dev1));
+	ut_asserteq(-ENODEV, device_find_first_inactive_child(parent,
+							UCLASS_TEST, &dev2));
+
+	return 0;
+}
+DM_TEST(dm_test_inactive_child, DM_TESTF_SCAN_PDATA);

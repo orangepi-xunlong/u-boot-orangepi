@@ -10,10 +10,15 @@
 
 #include <common.h>
 #include <clk.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <miiphy.h>
 #include <malloc.h>
+#include <asm/cache.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/mii.h>
 #include <wait_bit.h>
 #include <asm/io.h>
@@ -45,6 +50,8 @@
 
 #define CSR_OPS			0x0000000F
 #define CSR_OPS_CONFIG		BIT(1)
+
+#define APSR_TDM		BIT(14)
 
 #define TCCR_TSRQ0		BIT(0)
 
@@ -318,12 +325,13 @@ static int ravb_phy_config(struct udevice *dev)
 
 	eth->phydev = phydev;
 
-	/* 10BASE is not supported for Ethernet AVB MAC */
-	phydev->supported &= ~(SUPPORTED_10baseT_Full
-			       | SUPPORTED_10baseT_Half);
+	phydev->supported &= SUPPORTED_100baseT_Full |
+			     SUPPORTED_1000baseT_Full | SUPPORTED_Autoneg |
+			     SUPPORTED_TP | SUPPORTED_MII | SUPPORTED_Pause |
+			     SUPPORTED_Asym_Pause;
+
 	if (pdata->max_speed != 1000) {
-		phydev->supported &= ~(SUPPORTED_1000baseT_Half
-				       | SUPPORTED_1000baseT_Full);
+		phydev->supported &= ~SUPPORTED_1000baseT_Full;
 		reg = phy_read(phydev, -1, MII_CTRL1000);
 		reg &= ~(BIT(9) | BIT(8));
 		phy_write(phydev, -1, MII_CTRL1000, reg);
@@ -388,9 +396,14 @@ static int ravb_dmac_init(struct udevice *dev)
 	/* FIFO size set */
 	writel(0x00222210, eth->iobase + RAVB_REG_TGC);
 
-	/* Delay CLK: 2ns */
-	if (pdata->max_speed == 1000)
-		writel(BIT(14), eth->iobase + RAVB_REG_APSR);
+	/* Delay CLK: 2ns (not applicable on R-Car E3/D3) */
+	if ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77990) ||
+	    (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77995))
+		return 0;
+
+	if ((pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_ID) ||
+	    (pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_TXID))
+		writel(APSR_TDM, eth->iobase + RAVB_REG_APSR);
 
 	return 0;
 }
@@ -437,7 +450,7 @@ static int ravb_start(struct udevice *dev)
 
 	ret = ravb_reset(dev);
 	if (ret)
-		goto err;
+		return ret;
 
 	ravb_base_desc_init(eth);
 	ravb_tx_desc_init(eth);
@@ -445,16 +458,12 @@ static int ravb_start(struct udevice *dev)
 
 	ret = ravb_config(dev);
 	if (ret)
-		goto err;
+		return ret;
 
 	/* Setting the control will start the AVB-DMAC process. */
 	writel(CCC_OPC_OPERATION, eth->iobase + RAVB_REG_CCC);
 
 	return 0;
-
-err:
-	clk_disable(&eth->clk);
-	return ret;
 }
 
 static void ravb_stop(struct udevice *dev)
@@ -469,6 +478,7 @@ static int ravb_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct ravb_priv *eth = dev_get_priv(dev);
+	struct ofnode_phandle_args phandle_args;
 	struct mii_dev *mdiodev;
 	void __iomem *iobase;
 	int ret;
@@ -480,8 +490,16 @@ static int ravb_probe(struct udevice *dev)
 	if (ret < 0)
 		goto err_mdio_alloc;
 
-	gpio_request_by_name(dev, "reset-gpios", 0, &eth->reset_gpio,
-			     GPIOD_IS_OUT);
+	ret = dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0, &phandle_args);
+	if (!ret) {
+		gpio_request_by_name_nodev(phandle_args.node, "reset-gpios", 0,
+					   &eth->reset_gpio, GPIOD_IS_OUT);
+	}
+
+	if (!dm_gpio_is_valid(&eth->reset_gpio)) {
+		gpio_request_by_name(dev, "reset-gpios", 0, &eth->reset_gpio,
+				     GPIOD_IS_OUT);
+	}
 
 	mdiodev = mdio_alloc();
 	if (!mdiodev) {
@@ -659,6 +677,7 @@ static const struct udevice_id ravb_ids[] = {
 	{ .compatible = "renesas,etheravb-r8a7796" },
 	{ .compatible = "renesas,etheravb-r8a77965" },
 	{ .compatible = "renesas,etheravb-r8a77970" },
+	{ .compatible = "renesas,etheravb-r8a77990" },
 	{ .compatible = "renesas,etheravb-r8a77995" },
 	{ .compatible = "renesas,etheravb-rcar-gen3" },
 	{ }

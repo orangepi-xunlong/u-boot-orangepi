@@ -7,6 +7,8 @@ SoC overview
 	5. LS1046A
 	6. LS2088A
 	7. LS2081A
+	8. LX2160A
+	9. LS1028A
 
 LS1043A
 ---------
@@ -271,3 +273,109 @@ Refer to LS2084A(LS2088A) section above for details.
 It has one more similar SoC personality
 1)LS2041A, few difference w.r.t. LS2081A:
        a) Four 64-bit ARM v8 Cortex-A72 CPUs
+
+LX2160A
+--------
+The QorIQ LX2160A processor is built in the 16FFC process on
+the Layerscape architecture combining sixteen ARM A72 processor
+cores with advanced, high-performance datapath acceleration and
+network, peripheral interfaces required for networking, wireless
+infrastructure, storage, and general-purpose embedded applications.
+
+LX2160A is compliant with the Layerscape Chassis Generation 3.2.
+
+The LX2160A SoC includes the following function and features:
+  Sixteen 32-bit / 64-bit ARM v8 A72 CPUs
+  Cache Coherent Interconnect Fabric (CCN508 aka “Eliot”)
+  Two 64-bit 3.2GT/s DDR4 SDRAM memory controllers with ECC.
+  Data path acceleration architecture (DPAA2)
+  24 Serdes lanes at up to 25 GHz
+  Ethernet interfaces
+  Single WRIOP tile supporting 130Gbps using 18 MACs
+  Support for 10G-SXGMII (aka USXGMII).
+  Support for SGMII (and 1000Base-KX)
+  Support for XFI (and 10GBase-KR)
+  Support for CAUI4 (100G); CAUI2 (50G) and 25G-AUI(25G).
+  Support for XLAUI (and 40GBase-KR4) for 40G.
+  Support for two RGMII parallel interfaces.
+  Energy efficient Ethernet support (802.3az)
+  IEEE 1588 support.
+  High-speed peripheral interfaces
+	Two PCIe Gen 4.0 8-lane controllers supporting SR-IOV,
+	Four PCIe Gen 4.0 4-lane controllers.
+	Four serial ATA (SATA 3.0) controllers.
+	Two USB 3.0 controllers with integrated PHY
+	Two Enhanced secure digital host controllers
+	Two Controller Area Network (CAN) modules
+	Flexible Serial peripheral interface (FlexSPI) controller.
+	Three Serial peripheral interface (SPI) controllers.
+	Eight I2C Controllers.
+	Four PL011 UARTs supporting two 4-pin UART ports or four 2-pin UART ports.
+	General Purpose IO (GPIO)
+  Support for hardware virtualization and partitioning (ARM MMU-500)
+  Support for GIC (ARM GIC-500)
+  QorIQ platform Trust Architecture 3.0
+  One Secure WatchDog timer and one Non-Secure Watchdog timer.
+  ARM Generic Timer
+  Two Flextimers
+  Debug supporting run control, data acquisition, high-speed trace,
+  performance/event monitoring
+  Thermal Monitor Unit (TMU) with +/- 2C accuracy
+  Support for Voltage ID (VID) for yield improvement
+
+LX2160A SoC has 2 more similar SoC personalities
+1)LX2120A, few difference w.r.t. LX2160A:
+       a) Twelve 64-bit ARM v8 Cortex-A72 CPUs
+
+2)LX2080A, few difference w.r.t. LX2160A:
+       a) Eight 64-bit ARM v8 Cortex-A72 CPUs
+
+
+LS1028A
+--------
+The QorIQ LS1028A processor integrates two 64-bit Arm Cortex-A72 cores with
+a GPU and LCD controller, as well as two TSN-enabled Ethernet controllers and
+a TSNenabled 4-port switch.
+
+The high performance Cortex-A72 cores, performing above 16,000 CoreMarks,
+combined with 2.5 Gbit Ethernet, PCI express Gen 3.0, SATA 3.0, USB 3.0 and
+Octal/Quad SPI interfaces provide capabilities for a number of industrial and
+embedded applications. The device provides excellent integration with the
+new Time-Sensitive Networking standard, and enables a number of
+TSN applications.
+
+The LS1028A SoC includes the following function and features:
+ - Two 64-bit ARM v8 A72 CPUs
+ - Cache Coherent interconnect (CCI-400)
+ - One 32-bit DDR3L/DDR4 SDRAM memory controller with ECC
+ - eDP/Displayport interface
+ - Graphics processing unit
+ - One Configurable x4 SerDes
+ - Ethernet interfaces
+   - Non-switched: One Ethernet MAC supporting 2.5G, 1G, 100M, 10M, one
+   ethernet MAC supporting 1G, 100M, 10M.
+   - Switched: TSN IP to support four 2.5/1G interfaces.
+   - None of the MACs support MACSEC
+   - Support for RGMII, SGMII (and 1000Base-KX), SGMII 2.5x, QSGMII
+   - Support for 10G-SXGMII and 10G-QXGMII.
+   - Energy efficient Ethernet support (802.3az)
+   - IEEE 1588 support
+  - High-speed peripheral interfaces
+    - Two PCIe 3.0 controllers, one supporting x4 operation
+    - One serial ATA (SATA 3.0) controller
+  - Additional peripheral interfaces
+    - Two high-speed USB 2.0/3.0 controllers with integrated PHY each
+      supporting host or device modes
+    - Two Enhanced secure digital host controllers (SD/SDIO/eMMC)
+    - Two Serial peripheral interface (SPI) controllers
+    - Eight I2C controllers
+    - Two UART controllers
+    - Additional six Industrual UARTs (LPUART).
+    - One FlexSPI controller
+    - General Purpose IO (GPIO)
+    - Two CAN-FD interfaces
+    - Eight Flextimers with PWM I/O
+  - Support for hardware virtualization and partitioning enforcement
+  - Layerscape Trust Architecture
+  - Service Processor (SP) provides pre-boot initialization and secure-boot
+    capabilities

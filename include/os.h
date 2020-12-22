@@ -27,16 +27,6 @@ struct sandbox_state;
 ssize_t os_read(int fd, void *buf, size_t count);
 
 /**
- * Access to the OS read() system call with non-blocking access
- *
- * \param fd	File descriptor as returned by os_open()
- * \param buf	Buffer to place data
- * \param count	Number of bytes to read
- * \return number of bytes read, or -1 on error
- */
-ssize_t os_read_no_block(int fd, void *buf, size_t count);
-
-/**
  * Access to the OS write() system call
  *
  * \param fd	File descriptor as returned by os_open()
@@ -75,6 +65,7 @@ int os_open(const char *pathname, int flags);
 #define OS_O_RDWR	2
 #define OS_O_MASK	3	/* Mask for read/write flags */
 #define OS_O_CREAT	0100
+#define OS_O_TRUNC	01000
 
 /**
  * Access to the OS close() system call
@@ -128,33 +119,13 @@ void os_fd_restore(void);
 void *os_malloc(size_t length);
 
 /**
- * Free memory previous allocated with os_malloc()/os_realloc()
+ * Free memory previous allocated with os_malloc()
  *
  * This returns the memory to the OS.
  *
  * \param ptr		Pointer to memory block to free
  */
 void os_free(void *ptr);
-
-/**
- * Reallocate previously-allocated memory to increase/decrease space
- *
- * This works in a similar way to the C library realloc() function. If
- * length is 0, then ptr is freed. Otherwise the space used by ptr is
- * expanded or reduced depending on whether length is larger or smaller
- * than before.
- *
- * If ptr is NULL, then this is similar to calling os_malloc().
- *
- * This function may need to move the memory block to make room for any
- * extra space, in which case the new pointer is returned.
- *
- * \param ptr		Pointer to memory block to reallocate
- * \param length	New length for memory block
- * \return pointer to new memory block, or NULL on failure or if length
- *	is 0.
- */
-void *os_realloc(void *ptr, size_t length);
 
 /**
  * Access to the usleep function of the os
@@ -329,5 +300,59 @@ int os_spl_to_uboot(const char *fname);
  * @param rt		Place to put system time
  */
 void os_localtime(struct rtc_time *rt);
+
+/**
+ * os_abort() - Raise SIGABRT to exit sandbox (e.g. to debugger)
+ */
+void os_abort(void);
+
+/**
+ * os_mprotect_allow() - Remove write-protection on a region of memory
+ *
+ * The start and length will be page-aligned before use.
+ *
+ * @start:	Region start
+ * @len:	Region length in bytes
+ * @return 0 if OK, -1 on error from mprotect()
+ */
+int os_mprotect_allow(void *start, size_t len);
+
+/**
+ * os_write_file() - Write a file to the host filesystem
+ *
+ * This can be useful when debugging for writing data out of sandbox for
+ * inspection by external tools.
+ *
+ * @name:	File path to write to
+ * @buf:	Data to write
+ * @size:	Size of data to write
+ * @return 0 if OK, -ve on error
+ */
+int os_write_file(const char *name, const void *buf, int size);
+
+/**
+ * os_read_file() - Read a file from the host filesystem
+ *
+ * This can be useful when reading test data into sandbox for use by test
+ * routines. The data is allocated using os_malloc() and should be freed by
+ * the caller.
+ *
+ * @name:	File path to read from
+ * @bufp:	Returns buffer containing data read
+ * @sizep:	Returns size of data
+ * @return 0 if OK, -ve on error
+ */
+int os_read_file(const char *name, void **bufp, int *sizep);
+
+/*
+ * os_find_text_base() - Find the text section in this running process
+ *
+ * This tries to find the address of the text section in this running process.
+ * It can be useful to map the address of functions to the address listed in
+ * the u-boot.map file.
+ *
+ * @return address if found, else NULL
+ */
+void *os_find_text_base(void);
 
 #endif

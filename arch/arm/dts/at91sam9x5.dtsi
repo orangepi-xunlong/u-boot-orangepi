@@ -41,9 +41,6 @@
 	};
 
 	cpus {
-		#address-cells = <0>;
-		#size-cells = <0>;
-
 		cpu {
 			compatible = "arm,arm926ej-s";
 			device_type = "cpu";
@@ -1048,8 +1045,6 @@
 			};
 
 			adc0: adc@f804c000 {
-				#address-cells = <1>;
-				#size-cells = <0>;
 				compatible = "atmel,at91sam9x5-adc";
 				reg = <0xf804c000 0x100>;
 				interrupts = <19 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1185,7 +1180,7 @@
 				};
 			};
 
-			watchdog@fffffe40 {
+			watchdog: watchdog@fffffe40 {
 				compatible = "atmel,at91sam9260-wdt";
 				reg = <0xfffffe40 0x10>;
 				interrupts = <1 IRQ_TYPE_LEVEL_HIGH 7>;

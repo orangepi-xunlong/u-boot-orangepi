@@ -7,6 +7,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/pinmux.h>
@@ -14,6 +15,7 @@
 #include <asm/arch/mc.h>
 #include <asm/arch-tegra/clk_rst.h>
 #include <asm/arch-tegra/pmc.h>
+#include <linux/delay.h>
 #include <power/as3722.h>
 #include <power/pmic.h>
 #include "pinmux-config-nyan-big.h"
@@ -121,7 +123,7 @@ static void enable_required_clocks(void)
 int nvidia_board_init(void)
 {
 	clock_start_periph_pll(PERIPH_ID_EXTPERIPH1, CLOCK_ID_OSC, 12000000);
-	clock_start_periph_pll(PERIPH_ID_I2S1, CLOCK_ID_OSC, 1500000);
+	clock_start_periph_pll(PERIPH_ID_I2S1, CLOCK_ID_CLK_M, 1500000);
 
 	/* For external MAX98090 audio codec */
 	clock_external_output(1);

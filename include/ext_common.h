@@ -19,8 +19,11 @@
 
 #ifndef __EXT_COMMON__
 #define __EXT_COMMON__
-#include <command.h>
+
+struct cmd_tbl;
+
 #define SECTOR_SIZE		0x200
+#define LOG2_SECTOR_SIZE	9
 
 /* Magic value used to identify an ext2 filesystem.  */
 #define	EXT2_MAGIC			0xEF53
@@ -209,11 +212,11 @@ struct ext2_data {
 
 extern lbaint_t part_offset;
 
-int do_ext2ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
-int do_ext2load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
-int do_ext4_load(cmd_tbl_t *cmdtp, int flag, int argc,
-					char *const argv[]);
-int do_ext4_ls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
-int do_ext4_write(cmd_tbl_t *cmdtp, int flag, int argc,
-				char *const argv[]);
+int do_ext2ls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext2load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext4_load(struct cmd_tbl *cmdtp, int flag, int argc,
+		 char *const argv[]);
+int do_ext4_ls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext4_write(struct cmd_tbl *cmdtp, int flag, int argc,
+		  char *const argv[]);
 #endif

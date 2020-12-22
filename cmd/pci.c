@@ -18,6 +18,7 @@
 #include <command.h>
 #include <console.h>
 #include <dm.h>
+#include <init.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <pci.h>
@@ -148,7 +149,7 @@ int pci_bar_show(struct udevice *dev)
 
 		if ((!is_64 && size_low) || (is_64 && size)) {
 			size = ~size + 1;
-			printf(" %d   %#016llx  %#016llx  %d     %s   %s\n",
+			printf(" %d   %#018llx  %#018llx  %d     %s   %s\n",
 			       bar_id, (unsigned long long)base,
 			       (unsigned long long)size, is_64 ? 64 : 32,
 			       is_io ? "I/O" : "MEM",
@@ -629,10 +630,10 @@ static void pci_show_regions(struct udevice *bus)
 		return;
 	}
 
-	printf("#   %-16s %-16s %-16s  %s\n", "Bus start", "Phys start", "Size",
+	printf("#   %-18s %-18s %-18s  %s\n", "Bus start", "Phys start", "Size",
 	       "Flags");
 	for (i = 0, reg = hose->regions; i < hose->region_count; i++, reg++) {
-		printf("%d   %#016llx %#016llx %#016llx  ", i,
+		printf("%d   %#018llx %#018llx %#018llx  ", i,
 		       (unsigned long long)reg->bus_start,
 		       (unsigned long long)reg->phys_start,
 		       (unsigned long long)reg->size);
@@ -655,7 +656,7 @@ static void pci_show_regions(struct udevice *bus)
  *      pci modify[.b, .w, .l] bus.device.function [addr]
  *      pci write[.b, .w, .l] bus.device.function addr value
  */
-static int do_pci(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_pci(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	ulong addr = 0, value = 0, cmd_size = 0;
 	enum pci_size_t size = PCI_SIZE_32;

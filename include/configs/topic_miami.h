@@ -15,25 +15,12 @@
 #include "zynq-common.h"
 
 /* Fixup settings */
-#undef CONFIG_ENV_SIZE
-#define CONFIG_ENV_SIZE			0x8000
-#undef CONFIG_ENV_OFFSET
-#define CONFIG_ENV_OFFSET		0x80000
 
 /* SPL settings */
 #undef CONFIG_SPL_ETH_SUPPORT
-#undef CONFIG_SYS_SPI_U_BOOT_OFFS
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
 #undef CONFIG_SPL_MAX_FOOTPRINT
 #define CONFIG_SPL_MAX_FOOTPRINT	CONFIG_SYS_SPI_U_BOOT_OFFS
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
-
-/* sspi command isn't useful */
-#undef CONFIG_CMD_SPI
-
-/* No useful gpio */
-#undef CONFIG_ZYNQ_GPIO
-#undef CONFIG_CMD_GPIO
 
 /* No falcon support */
 #undef CONFIG_SPL_OS_BOOT
@@ -42,18 +29,9 @@
 /* FPGA commands that we don't use */
 
 /* Extras */
-#undef CONFIG_SYS_MEMTEST_START
-#define CONFIG_SYS_MEMTEST_START	0
-#undef CONFIG_SYS_MEMTEST_END
-#define CONFIG_SYS_MEMTEST_END	0x18000000
 
 /* Faster flash, ours may run at 108 MHz */
-#undef CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_SF_DEFAULT_SPEED	108000000
-#define CONFIG_SF_DEFAULT_MODE SPI_MODE_0
-#define CONFIG_ENV_SPI_MAX_HZ CONFIG_SF_DEFAULT_SPEED
 #undef CONFIG_SPI_FLASH_WINBOND
-#undef CONFIG_SPI_FLASH_ISSI
 
 /* Setup proper boot sequences for Miami boards */
 
@@ -83,8 +61,6 @@
 #else
 # define EXTRA_ENV_USB
 #endif
-
-#undef CONFIG_PREBOOT
 
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS	\

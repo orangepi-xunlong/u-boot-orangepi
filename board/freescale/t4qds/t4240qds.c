@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <image.h>
+#include <init.h>
+#include <irq_func.h>
+#include <log.h>
 #include <netdev.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
@@ -16,6 +23,7 @@
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
+#include <linux/delay.h>
 
 #include "../common/qixis.h"
 #include "../common/vsc3316_3308.h"
@@ -87,11 +95,25 @@ int checkboard(void)
 	return 0;
 }
 
-int select_i2c_ch_pca9547(u8 ch)
+int select_i2c_ch_pca9547(u8 ch, int bus_num)
 {
 	int ret;
 
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(bus_num, I2C_MUX_PCA_ADDR_PRI,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
+		return ret;
+	}
+
+	ret = dm_i2c_write(dev, 0, &ch, 1);
+#else
 	ret = i2c_write(I2C_MUX_PCA_ADDR_PRI, 0, 1, &ch, 1);
+#endif
 	if (ret) {
 		puts("PCA: failed to select proper channel\n");
 		return ret;
@@ -111,10 +133,28 @@ static inline int read_voltage(void)
 {
 	int i, ret, voltage_read = 0;
 	u16 vol_mon;
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+	int bus_num = 0;
+#endif
 
 	for (i = 0; i < NUM_READINGS; i++) {
+#ifdef CONFIG_DM_I2C
+		ret = i2c_get_chip_for_busnum(bus_num, I2C_VOL_MONITOR_ADDR,
+					      1, &dev);
+		if (ret) {
+			printf("%s: Cannot find udev for a bus %d\n", __func__,
+			       bus_num);
+			return ret;
+		}
+
+		ret = dm_i2c_read(dev,
+				  I2C_VOL_MONITOR_BUS_V_OFFSET,
+				  (void *)&vol_mon, 2);
+#else
 		ret = i2c_read(I2C_VOL_MONITOR_ADDR,
 			I2C_VOL_MONITOR_BUS_V_OFFSET, 1, (void *)&vol_mon, 2);
+#endif
 		if (ret) {
 			printf("VID: failed to read core voltage\n");
 			return ret;
@@ -246,7 +286,7 @@ static int adjust_vdd(ulong vdd_override)
 		unsigned voltage;
 	};
 
-	ret = select_i2c_ch_pca9547(I2C_MUX_CH_VOL_MONITOR);
+	ret = select_i2c_ch_pca9547(I2C_MUX_CH_VOL_MONITOR, 0);
 	if (ret) {
 		debug("VID: I2c failed to switch channel\n");
 		ret = -1;
@@ -344,7 +384,7 @@ int config_frontside_crossbar_vsc3316(void)
 	u32 srds_prtcl_s1, srds_prtcl_s2;
 	int ret;
 
-	ret = select_i2c_ch_pca9547(I2C_MUX_CH_VSC3316_FS);
+	ret = select_i2c_ch_pca9547(I2C_MUX_CH_VSC3316_FS, 0);
 	if (ret)
 		return ret;
 
@@ -563,7 +603,7 @@ int board_early_init_r(void)
 	/* Configure board SERDES ports crossbar */
 	config_frontside_crossbar_vsc3316();
 	config_backside_crossbar_mux();
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 
 	return 0;
 }
@@ -696,7 +736,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 	fdt_fixup_board_enet(blob);
 #endif
 
@@ -728,11 +770,11 @@ void board_detail(void)
 	}
 
 	/* Voltage secion */
-	if (!select_i2c_ch_pca9547(I2C_MUX_CH_VOL_MONITOR)) {
+	if (!select_i2c_ch_pca9547(I2C_MUX_CH_VOL_MONITOR, 0)) {
 		vdd = read_voltage();
 		if (vdd > 0)
 			printf("Core voltage= %d mV\n", vdd);
-		select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+		select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 	}
 
 	printf("XVDD        = 1.%d V\n", ((brdcfg[8] & 0xf) - 4) * 5 + 25);
@@ -864,9 +906,9 @@ void qixis_dump_switch(void)
 	}
 }
 
-static int do_vdd_adjust(cmd_tbl_t *cmdtp,
+static int do_vdd_adjust(struct cmd_tbl *cmdtp,
 			 int flag, int argc,
-			 char * const argv[])
+			 char *const argv[])
 {
 	ulong override;
 

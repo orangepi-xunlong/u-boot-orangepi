@@ -11,6 +11,7 @@
  * Marius Groeger <mgroeger@sysgo.de>
  */
 #include <common.h>
+#include <init.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -22,19 +23,12 @@ int arch_reserve_stacks(void)
 #else
 	/* setup stack pointer for exceptions */
 	gd->irq_sp = gd->start_addr_sp;
-#ifdef CONFIG_ARCH_SUNXI
-	gd->start_addr_sp -= (SUNXI_STACKSIZE_IRQ + SUNXI_STACKSIZE_FIQ);
-	debug("Reserving %zu Bytes for IRQ stack at: %08lx\n",
-			SUNXI_STACKSIZE_IRQ + SUNXI_STACKSIZE_FIQ, gd->start_addr_sp);
-
-	/* 8-byte alignment for ARM ABI compliance */
-	gd->start_addr_sp &= ~0x07;
-#endif
 
 # if !defined(CONFIG_ARM64)
 	/* leave 3 words for abort-stack, plus 1 for alignment */
 	gd->start_addr_sp -= 16;
 # endif
 #endif
+
 	return 0;
 }

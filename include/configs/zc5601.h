@@ -13,13 +13,10 @@
 #define CONSOLE_DEV		"ttymxc1"
 #define CONFIG_MMCROOT			"/dev/mmcblk0p1"
 
-#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
-
 #include "el6x_common.h"
 
 /* Ethernet */
 #define CONFIG_FEC_MXC
-#define CONFIG_MII
 #define IMX_FEC_BASE				ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE			RGMII
 #define CONFIG_ETHPRIME				"FEC"

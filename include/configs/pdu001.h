@@ -12,18 +12,10 @@
 
 #include <configs/ti_am335x_common.h>
 
-/* No more need for I2C legacy compatibility for this board.
- * CONFIG_DM_I2C_COMPAT is defined in ti_armv7_common.h. See the comment there
- * for the right moment to delete the following line.
- */
-#undef CONFIG_DM_I2C_COMPAT
-
 /* Using 32K of volatile storage for environment */
-#define CONFIG_ENV_SIZE		0x4000
 
 #define MACH_TYPE_PDU001	5075
 #define CONFIG_MACH_TYPE	MACH_TYPE_PDU001
-#define CONFIG_BOARD_LATE_INIT
 
 /* Clock Defines */
 #define V_OSCK			24000000  /* Clock output from T2 */

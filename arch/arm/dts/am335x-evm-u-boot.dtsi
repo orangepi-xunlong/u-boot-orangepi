@@ -3,7 +3,17 @@
  * Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/
  */
 
+/ {
+	panel {
+		u-boot,dm-pre-reloc;
+	};
+};
+
 
 &mmc3 {
 	status = "disabled";
+};
+
+&usb0 {
+	dr_mode = "peripheral";
 };

@@ -19,7 +19,6 @@
 
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_SYS_SDRAM_SIZE		0x80000000
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define CONFIG_SYS_MALLOC_LEN		SZ_4M	/* see armv7/start.S. */
 
@@ -55,7 +54,6 @@
 #define CONFIG_SYS_TIMER_COUNTER	(TIMER_BASE_ADDR + 4) /* STCLO offset */
 
 /* Init functions */
-#define CONFIG_MISC_INIT_R	/* board's misc_init_r function */
 
 /* Some commands use this as the default load address */
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE
@@ -78,8 +76,6 @@
 
 /* must fit into GPT:u-boot-env partition */
 #define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_OFFSET		(0x00011a00 * 512)
-#define CONFIG_ENV_SIZE			(8 * 512)
 
 /* console configuration */
 #define CONFIG_SYS_CBSIZE		1024	/* Console buffer size */
@@ -93,8 +89,6 @@
  */
 
 /* version string, parser, etc */
-
-#define CONFIG_MX_CYCLIC
 
 /* Initial upstream - boot to cmd prompt only */
 #define CONFIG_BOOTCOMMAND		""

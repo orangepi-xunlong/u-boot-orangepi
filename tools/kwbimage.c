@@ -701,7 +701,7 @@ int kwb_verify(RSA *key, void *data, int datasz, struct sig_v1 *sig,
 		goto err_ctx;
 	}
 
-	if (!EVP_VerifyFinal(ctx, sig->sig, sizeof(sig->sig), evp_key)) {
+	if (EVP_VerifyFinal(ctx, sig->sig, sizeof(sig->sig), evp_key) != 1) {
 		ret = openssl_err("Could not verify signature");
 		goto err_ctx;
 	}
@@ -1015,7 +1015,7 @@ static size_t image_headersz_v1(int *hasext)
 	 * The payload should be aligned on some reasonable
 	 * boundary
 	 */
-	return ALIGN_SUP(headersz, 4096);
+	return ALIGN(headersz, 4096);
 }
 
 int add_binary_header_v1(uint8_t *cur)
@@ -1058,7 +1058,7 @@ int add_binary_header_v1(uint8_t *cur)
 	 * up to a 4-byte boundary. Plus 4 bytes for the
 	 * next-header byte and 3-byte alignment at the end.
 	 */
-	binhdrsz = ALIGN_SUP(binhdrsz, 4) + 4;
+	binhdrsz = ALIGN(binhdrsz, 4) + 4;
 	hdr->headersz_lsb = cpu_to_le16(binhdrsz & 0xFFFF);
 	hdr->headersz_msb = (binhdrsz & 0xFFFF0000) >> 16;
 
@@ -1082,7 +1082,7 @@ int add_binary_header_v1(uint8_t *cur)
 
 	fclose(bin);
 
-	cur += ALIGN_SUP(s.st_size, 4);
+	cur += ALIGN(s.st_size, 4);
 
 	/*
 	 * For now, we don't support more than one binary
@@ -1273,6 +1273,13 @@ static void *image_create_v1(size_t *imagesz, struct image_tool_params *params,
 	e = image_find_option(IMAGE_CFG_DEBUG);
 	if (e)
 		main_hdr->flags = e->debug ? 0x1 : 0;
+	e = image_find_option(IMAGE_CFG_BINARY);
+	if (e) {
+		char *s = strrchr(e->binary.file, '/');
+
+		if (strcmp(s, "/binary.0") == 0)
+			main_hdr->destaddr = cpu_to_le32(params->addr);
+	}
 
 #if defined(CONFIG_KWB_SECURE)
 	if (image_get_csk_index() >= 0) {
@@ -1541,7 +1548,7 @@ static void kwbimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	}
 
 	/* The MVEBU BootROM does not allow non word aligned payloads */
-	sbuf->st_size = ALIGN_SUP(sbuf->st_size, 4);
+	sbuf->st_size = ALIGN(sbuf->st_size, 4);
 
 	version = image_get_version();
 	switch (version) {

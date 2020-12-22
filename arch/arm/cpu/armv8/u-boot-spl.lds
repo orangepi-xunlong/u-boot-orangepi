@@ -11,8 +11,8 @@
  *	Aneesh V <aneesh@ti.com>
  */
 
-MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,
-		LENGTH = CONFIG_SPL_MAX_SIZE }
+MEMORY { .sram : ORIGIN = IMAGE_TEXT_BASE,
+		LENGTH = IMAGE_MAX_SIZE }
 MEMORY { .sdram : ORIGIN = CONFIG_SPL_BSS_START_ADDR,
 		LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
 
@@ -37,6 +37,14 @@ SECTIONS
 		. = ALIGN(8);
 		*(.data*)
 	} >.sram
+
+#ifdef CONFIG_SPL_RECOVER_DATA_SECTION
+	.data_save : {
+		*(.__data_save_start)
+		. = SIZEOF(.data);
+		*(.__data_save_end)
+	} >.sram
+#endif
 
 	.u_boot_list : {
 		. = ALIGN(8);

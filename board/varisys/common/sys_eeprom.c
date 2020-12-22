@@ -12,8 +12,11 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <i2c.h>
 #include <linux/ctype.h>
+#include <linux/delay.h>
+#include <u-boot/crc.h>
 
 #include "eeprom.h"
 
@@ -304,7 +307,7 @@ static void set_mac_address(unsigned int index, const char *string)
 	update_crc();
 }
 
-int do_mac(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mac(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char cmd;
 

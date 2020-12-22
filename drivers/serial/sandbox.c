@@ -10,6 +10,7 @@
  */
 
 #include <common.h>
+#include <console.h>
 #include <dm.h>
 #include <fdtdec.h>
 #include <lcd.h>
@@ -21,6 +22,8 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+
 /*
  *
  *   serial_buf: A buffer that holds keyboard characters for the
@@ -30,7 +33,7 @@ DECLARE_GLOBAL_DATA_PTR;
  *   serial_buf_write		 == serial_buf_read -> empty buffer
  *   (serial_buf_write + 1) % 16 == serial_buf_read -> full buffer
  */
-static char serial_buf[16];
+static unsigned char serial_buf[16];
 static unsigned int serial_buf_write;
 static unsigned int serial_buf_read;
 
@@ -68,6 +71,9 @@ static int sandbox_serial_probe(struct udevice *dev)
 	if (state->term_raw != STATE_TERM_COOKED)
 		os_tty_raw(0, state->term_raw == STATE_TERM_RAW_WITH_SIGS);
 	priv->start_of_line = 0;
+
+	if (state->term_raw != STATE_TERM_RAW)
+		disable_ctrlc(1);
 
 	return 0;
 }
@@ -120,7 +126,7 @@ static int sandbox_serial_pending(struct udevice *dev, bool input)
 	if (next_index == serial_buf_read)
 		return 1;	/* buffer full */
 
-	count = os_read_no_block(0, &serial_buf[serial_buf_write], 1);
+	count = os_read(0, &serial_buf[serial_buf_write], 1);
 	if (count == 1)
 		serial_buf_write = next_index;
 
@@ -138,7 +144,72 @@ static int sandbox_serial_getc(struct udevice *dev)
 	serial_buf_read = increment_buffer_index(serial_buf_read);
 	return result;
 }
+#endif /* CONFIG_IS_ENABLED(OF_CONTROL) */
 
+#ifdef CONFIG_DEBUG_UART_SANDBOX
+
+#include <debug_uart.h>
+
+static inline void _debug_uart_init(void)
+{
+}
+
+static inline void _debug_uart_putc(int ch)
+{
+	os_putc(ch);
+}
+
+DEBUG_UART_FUNCS
+
+#endif /* CONFIG_DEBUG_UART_SANDBOX */
+
+static int sandbox_serial_getconfig(struct udevice *dev, uint *serial_config)
+{
+	uint config = SERIAL_DEFAULT_CONFIG;
+
+	if (!serial_config)
+		return -EINVAL;
+
+	*serial_config = config;
+
+	return 0;
+}
+
+static int sandbox_serial_setconfig(struct udevice *dev, uint serial_config)
+{
+	u8 parity = SERIAL_GET_PARITY(serial_config);
+	u8 bits = SERIAL_GET_BITS(serial_config);
+	u8 stop = SERIAL_GET_STOP(serial_config);
+
+	if (bits != SERIAL_8_BITS || stop != SERIAL_ONE_STOP ||
+	    parity != SERIAL_PAR_NONE)
+		return -ENOTSUPP; /* not supported in driver*/
+
+	return 0;
+}
+
+static int sandbox_serial_getinfo(struct udevice *dev,
+				  struct serial_device_info *serial_info)
+{
+	struct serial_device_info info = {
+		.type = SERIAL_CHIP_UNKNOWN,
+		.addr_space = SERIAL_ADDRESS_SPACE_IO,
+		.addr = SERIAL_DEFAULT_ADDRESS,
+		.reg_width = 1,
+		.reg_offset = 0,
+		.reg_shift = 0,
+		.clock = SERIAL_DEFAULT_CLOCK,
+	};
+
+	if (!serial_info)
+		return -EINVAL;
+
+	*serial_info = info;
+
+	return 0;
+}
+
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 static const char * const ansi_colour[] = {
 	"black", "red", "green", "yellow", "blue", "megenta", "cyan",
 	"white",
@@ -150,6 +221,8 @@ static int sandbox_serial_ofdata_to_platdata(struct udevice *dev)
 	const char *colour;
 	int i;
 
+	if (CONFIG_IS_ENABLED(OF_PLATDATA))
+		return 0;
 	plat->colour = -1;
 	colour = fdt_getprop(gd->fdt_blob, dev_of_offset(dev),
 			     "sandbox,text-colour", NULL);
@@ -169,6 +242,9 @@ static const struct dm_serial_ops sandbox_serial_ops = {
 	.putc = sandbox_serial_putc,
 	.pending = sandbox_serial_pending,
 	.getc = sandbox_serial_getc,
+	.getconfig = sandbox_serial_getconfig,
+	.setconfig = sandbox_serial_setconfig,
+	.getinfo = sandbox_serial_getinfo,
 };
 
 static const struct udevice_id sandbox_serial_ids[] = {
@@ -197,3 +273,4 @@ U_BOOT_DEVICE(serial_sandbox_non_fdt) = {
 	.name = "serial_sandbox",
 	.platdata = &platdata_non_fdt,
 };
+#endif /* CONFIG_IS_ENABLED(OF_CONTROL) */

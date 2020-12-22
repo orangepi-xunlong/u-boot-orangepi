@@ -6,6 +6,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <linux/bitops.h>
 #include <linux/log2.h>
 #include <malloc.h>
 #include <asm/fsl_pamu.h>
@@ -131,10 +133,10 @@ static int pamu_config_ppaace(uint32_t liodn, uint64_t win_addr,
 		set_bf(ppaace->addr_bitfields, PAACE_AF_AP, PAACE_AP_PERMS_ALL);
 	}
 
-	asm volatile("sync" : : : "memory");
+	sync();
 	/* Mark the ppace entry valid */
 	ppaace->addr_bitfields |= PAACE_V_VALID;
-	asm volatile("sync" : : : "memory");
+	sync();
 
 	return 0;
 }
@@ -279,7 +281,7 @@ int pamu_init(void)
 			out_be32(&regs->splah, spaact_lim >> 32);
 			out_be32(&regs->splal, (uint32_t)spaact_lim);
 		}
-		asm volatile("sync" : : : "memory");
+		sync();
 
 		base_addr += PAMU_OFFSET;
 	}
@@ -294,7 +296,7 @@ void pamu_enable(void)
 	for (i = 0; i < CONFIG_NUM_PAMU; i++) {
 		setbits_be32((void *)base_addr + PAMU_PCR_OFFSET,
 			     PAMU_PCR_PE);
-		asm volatile("sync" : : : "memory");
+		sync();
 		base_addr += PAMU_OFFSET;
 	}
 }
@@ -318,7 +320,7 @@ void pamu_reset(void)
 		out_be32(&regs->splal, 0);
 
 		clrbits_be32((void *)regs + PAMU_PCR_OFFSET, PAMU_PCR_PE);
-		asm volatile("sync" : : : "memory");
+		sync();
 		base_addr += PAMU_OFFSET;
 	}
 }
@@ -331,7 +333,7 @@ void pamu_disable(void)
 
 	for (i = 0; i < CONFIG_NUM_PAMU; i++) {
 		clrbits_be32((void *)base_addr + PAMU_PCR_OFFSET, PAMU_PCR_PE);
-		asm volatile("sync" : : : "memory");
+		sync();
 		base_addr += PAMU_OFFSET;
 	}
 }

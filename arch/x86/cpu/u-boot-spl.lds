@@ -15,9 +15,12 @@ SECTIONS
 	/DISCARD/ : { *(.u_boot_list_2_cmd_*) }
 #endif
 
-	. = CONFIG_SPL_TEXT_BASE;	/* Location of bootcode in flash */
+	. = IMAGE_TEXT_BASE;	/* Location of bootcode in flash */
 	__text_start = .;
-	.text  : { *(.text*); }
+	.text  : {
+		__image_copy_start = .;
+		*(.text*);
+	}
 
 	. = ALIGN(4);
 
@@ -35,6 +38,12 @@ SECTIONS
 	. = ALIGN(4);
 	__data_end = .;
 	__init_end = .;
+	. = ALIGN(4);
+	.binman_sym_table : {
+		__binman_sym_start = .;
+		KEEP(*(SORT(.binman_sym*)));
+		__binman_sym_end = .;
+	}
 
         _image_binary_end = .;
 
@@ -54,7 +63,7 @@ SECTIONS
 	/DISCARD/ : { *(.interp*) }
 	/DISCARD/ : { *(.gnu*) }
 
-#ifdef CONFIG_SPL_X86_16BIT_INIT
+#if defined(CONFIG_SPL_X86_16BIT_INIT) || defined(CONFIG_TPL_X86_16BIT_INIT)
 	/*
 	 * The following expressions place the 16-bit Real-Mode code and
 	 * Reset Vector at the end of the Flash ROM

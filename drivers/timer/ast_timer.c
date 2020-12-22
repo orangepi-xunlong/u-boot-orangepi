@@ -9,6 +9,7 @@
 #include <timer.h>
 #include <asm/io.h>
 #include <asm/arch/timer.h>
+#include <linux/err.h>
 
 #define AST_TICK_TIMER  1
 #define AST_TMC_RELOAD_VAL  0xffffffff
@@ -90,5 +91,4 @@ U_BOOT_DRIVER(ast_timer) = {
 	.priv_auto_alloc_size = sizeof(struct ast_timer_priv),
 	.ofdata_to_platdata = ast_timer_ofdata_to_platdata,
 	.ops = &ast_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

@@ -6,7 +6,9 @@
  */
 
 #include "btrfs.h"
+#include <log.h>
 #include <malloc.h>
+#include <memalign.h>
 
 int btrfs_comp_keys(struct btrfs_key *a, struct btrfs_key *b)
 {
@@ -105,23 +107,24 @@ void btrfs_free_path(struct btrfs_path *p)
 
 static int read_tree_node(u64 physical, union btrfs_tree_node **buf)
 {
-	struct btrfs_header hdr;
-	unsigned long size, offset = sizeof(hdr);
+	ALLOC_CACHE_ALIGN_BUFFER(struct btrfs_header, hdr,
+				 sizeof(struct btrfs_header));
+	unsigned long size, offset = sizeof(*hdr);
 	union btrfs_tree_node *res;
 	u32 i;
 
-	if (!btrfs_devread(physical, sizeof(hdr), &hdr))
+	if (!btrfs_devread(physical, sizeof(*hdr), hdr))
 		return -1;
 
-	btrfs_header_to_cpu(&hdr);
+	btrfs_header_to_cpu(hdr);
 
-	if (hdr.level)
+	if (hdr->level)
 		size = sizeof(struct btrfs_node)
-		       + hdr.nritems * sizeof(struct btrfs_key_ptr);
+		       + hdr->nritems * sizeof(struct btrfs_key_ptr);
 	else
 		size = btrfs_info.sb.nodesize;
 
-	res = malloc(size);
+	res = malloc_cache_aligned(size);
 	if (!res) {
 		debug("%s: malloc failed\n", __func__);
 		return -1;
@@ -133,12 +136,12 @@ static int read_tree_node(u64 physical, union btrfs_tree_node **buf)
 		return -1;
 	}
 
-	res->header = hdr;
-	if (hdr.level)
-		for (i = 0; i < hdr.nritems; ++i)
+	memcpy(&res->header, hdr, sizeof(*hdr));
+	if (hdr->level)
+		for (i = 0; i < hdr->nritems; ++i)
 			btrfs_key_ptr_to_cpu(&res->node.ptrs[i]);
 	else
-		for (i = 0; i < hdr.nritems; ++i)
+		for (i = 0; i < hdr->nritems; ++i)
 			btrfs_item_to_cpu(&res->leaf.items[i]);
 
 	*buf = res;
@@ -183,10 +186,20 @@ int btrfs_search_tree(const struct btrfs_root *root, struct btrfs_key *key,
 		p->slots[lvl] = slot;
 		p->nodes[lvl] = buf;
 
-		if (lvl)
+		if (lvl) {
 			logical = buf->node.ptrs[slot].blockptr;
-		else
+		} else {
+			/*
+			 * The path might be invalid if:
+			 *   cur leaf max < searched value < next leaf min
+			 *
+			 * Jump to the next valid element if it exists.
+			 */
+			if (slot >= buf->header.nritems)
+				if (btrfs_next_slot(p) < 0)
+					goto err;
 			break;
+		}
 	}
 
 	return 0;
@@ -270,7 +283,7 @@ int btrfs_next_slot(struct btrfs_path *p)
 {
 	struct btrfs_leaf *leaf = &p->nodes[0]->leaf;
 
-	if (p->slots[0] >= leaf->header.nritems)
+	if (p->slots[0] + 1 >= leaf->header.nritems)
 		return jump_leaf(p, 1);
 
 	p->slots[0]++;

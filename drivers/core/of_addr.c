@@ -7,6 +7,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <linux/bug.h>
 #include <linux/libfdt.h>
 #include <dm/of_access.h>
 #include <dm/of_addr.h>
@@ -318,6 +320,10 @@ u64 of_translate_address(const struct device_node *dev, const __be32 *in_addr)
 	return __of_translate_address(dev, in_addr, "ranges");
 }
 
+u64 of_translate_dma_address(const struct device_node *dev, const __be32 *in_addr)
+{
+	return __of_translate_address(dev, in_addr, "dma-ranges");
+}
 
 static int __of_address_to_resource(const struct device_node *dev,
 		const __be32 *addrp, u64 size, unsigned int flags,

@@ -9,8 +9,11 @@
 
 #include <common.h>
 #include <i2c.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 #include <linux/compat.h>
 #ifdef CONFIG_DM_I2C
 #include <dm.h>
@@ -24,9 +27,9 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 
 #ifndef CONFIG_DM_I2C
-#if defined(CONFIG_ORION5X)
+#if defined(CONFIG_ARCH_ORION5X)
 #include <asm/arch/orion5x.h>
-#elif (defined(CONFIG_KIRKWOOD) || defined(CONFIG_ARCH_MVEBU))
+#elif (defined(CONFIG_ARCH_KIRKWOOD) || defined(CONFIG_ARCH_MVEBU))
 #include <asm/arch/soc.h>
 #elif defined(CONFIG_ARCH_SUNXI)
 #include <asm/arch/i2c.h>
@@ -57,6 +60,7 @@ struct  mvtwsi_registers {
 	u32 status;
 	u32 baudrate;
 	u32 soft_reset;
+	u32 debug; /* Dummy field for build compatibility with mvebu */
 };
 
 #else
@@ -70,8 +74,10 @@ struct  mvtwsi_registers {
 		u32 baudrate;	/* When writing */
 	};
 	u32 xtnd_slave_addr;
-	u32 reserved[2];
+	u32 reserved0[2];
 	u32 soft_reset;
+	u32 reserved1[27];
+	u32 debug;
 };
 
 #endif
@@ -267,6 +273,17 @@ static int twsi_wait(struct mvtwsi_registers *twsi, int expected_status,
 	do {
 		control = readl(&twsi->control);
 		if (control & MVTWSI_CONTROL_IFLG) {
+			/*
+			 * On Armada 38x it seems that the controller works as
+			 * if it first set the MVTWSI_CONTROL_IFLAG in the
+			 * control register and only after that it changed the
+			 * status register.
+			 * This sometimes caused weird bugs which only appeared
+			 * on selected I2C speeds and even then only sometimes.
+			 * We therefore add here a simple ndealy(100), which
+			 * seems to fix this weird bug.
+			 */
+			ndelay(100);
 			status = readl(&twsi->status);
 			if (status == expected_status)
 				return 0;
@@ -790,8 +807,26 @@ static int mvtwsi_i2c_ofdata_to_platdata(struct udevice *bus)
 				    "cell-index", -1);
 	dev->slaveadd = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
 				       "u-boot,i2c-slave-addr", 0x0);
-	dev->speed = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
-				    "clock-frequency", 100000);
+	dev->speed = dev_read_u32_default(bus, "clock-frequency",
+					  I2C_SPEED_STANDARD_RATE);
+
+	return 0;
+}
+
+static void twsi_disable_i2c_slave(struct mvtwsi_registers *twsi)
+{
+	clrbits_le32(&twsi->debug, BIT(18));
+}
+
+static int mvtwsi_i2c_bind(struct udevice *bus)
+{
+	struct mvtwsi_registers *twsi = devfdt_get_addr_ptr(bus);
+
+	/* Disable the hidden slave in i2c0 of these platforms */
+	if ((IS_ENABLED(CONFIG_ARMADA_38X) || IS_ENABLED(CONFIG_ARCH_KIRKWOOD))
+			&& bus->req_seq == 0)
+		twsi_disable_i2c_slave(twsi);
+
 	return 0;
 }
 
@@ -850,6 +885,7 @@ U_BOOT_DRIVER(i2c_mvtwsi) = {
 	.name = "i2c_mvtwsi",
 	.id = UCLASS_I2C,
 	.of_match = mvtwsi_i2c_ids,
+	.bind = mvtwsi_i2c_bind,
 	.probe = mvtwsi_i2c_probe,
 	.ofdata_to_platdata = mvtwsi_i2c_ofdata_to_platdata,
 	.priv_auto_alloc_size = sizeof(struct mvtwsi_i2c_dev),

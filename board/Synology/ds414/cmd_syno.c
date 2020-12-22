@@ -6,7 +6,10 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <div64.h>
+#include <env.h>
+#include <net.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <linux/mtd/mtd.h>
@@ -14,13 +17,12 @@
 #include <asm/io.h>
 #include "../drivers/ddr/marvell/axp/ddr3_init.h"
 
-#define ETH_ALEN		6
 #define ETHADDR_MAX		4
 #define SYNO_SN_TAG		"SN="
 #define SYNO_CHKSUM_TAG		"CHK="
 
 
-static int do_syno_populate(int argc, char * const argv[])
+static int do_syno_populate(int argc, char *const argv[])
 {
 	unsigned int bus = CONFIG_SF_DEFAULT_BUS;
 	unsigned int cs = CONFIG_SF_DEFAULT_CS;
@@ -151,7 +153,7 @@ static const char * const pwr_mng_bit_func[] = {
 	NULL,
 };
 
-static int do_syno_clk_gate(int argc, char * const argv[])
+static int do_syno_clk_gate(int argc, char *const argv[])
 {
 	u32 pwr_mng_ctrl_reg = reg_read(POWER_MNG_CTRL_REG);
 	const char *func, *state;
@@ -194,8 +196,8 @@ static int do_syno_clk_gate(int argc, char * const argv[])
 	return 0;
 }
 
-static int do_syno(cmd_tbl_t *cmdtp, int flag,
-                   int argc, char * const argv[])
+static int do_syno(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
 	const char *cmd;
 	int ret = 0;

@@ -26,7 +26,6 @@
 #define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		0x01
 
-#define CONFIG_MII
 #define CONFIG_PHY_MICREL_KSZ9021
 
 /* I2C Configs */
@@ -38,7 +37,6 @@
 /* Filesystem support */
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
@@ -55,13 +53,7 @@
 #define CONFIG_SYS_FSL_USDHC_NUM	1
 
 /* Environment organization */
-#define CONFIG_ENV_SIZE                (16 * 1024)
-#define CONFIG_ENV_OFFSET		(6 * 64 * 1024)
 #define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_OFFSET_REDUND       (CONFIG_ENV_OFFSET + \
-						CONFIG_ENV_SIZE)
-#define CONFIG_ENV_SIZE_REDUND         CONFIG_ENV_SIZE
 
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS \

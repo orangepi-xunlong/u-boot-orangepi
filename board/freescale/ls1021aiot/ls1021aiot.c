@@ -4,16 +4,19 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <fdt_support.h>
+#include <init.h>
+#include <net.h>
 #include <asm/arch/immap_ls102xa.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
 #include <asm/arch/ls102xa_stream_id.h>
+#include <linux/delay.h>
 
 #include <asm/arch/ls102xa_devdis.h>
 #include <asm/arch/ls102xa_soc.h>
-#include <asm/arch/ls102xa_sata.h>
 #include <fsl_csu.h>
-#include <fsl_esdhc.h>
 #include <fsl_immap.h>
 #include <netdev.h>
 #include <fsl_mdio.h>
@@ -98,23 +101,11 @@ int dram_init(void)
 	ddrmc_init();
 #endif
 
+	erratum_a008850_post();
+
 	gd->ram_size = DDR_SIZE;
 	return 0;
 }
-
-#ifdef CONFIG_FSL_ESDHC
-struct fsl_esdhc_cfg esdhc_cfg[1] = {
-	{CONFIG_SYS_FSL_ESDHC_ADDR},
-};
-
-int board_mmc_init(bd_t *bis)
-{
-	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-
-	return fsl_esdhc_initialize(bis, &esdhc_cfg[0]);
-}
-
-#endif
 
 #ifdef CONFIG_TSEC_ENET
 int board_eth_init(bd_t *bis)
@@ -206,10 +197,6 @@ int board_init(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#ifdef CONFIG_SCSI_AHCI_PLAT
-	ls1021a_sata_init();
-#endif
-
 	return 0;
 }
 #endif

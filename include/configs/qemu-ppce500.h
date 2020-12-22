@@ -24,9 +24,6 @@
 #define CONFIG_ADDR_MAP
 #define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
 
-#define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
-#define CONFIG_SYS_MEMTEST_END		0x00400000
-
 /* Needed to fill the ccsrbar pointer */
 
 /* Virtual address to CCSRBAR */
@@ -107,13 +104,8 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 /*
  * Environment
  */
-#define CONFIG_ENV_SIZE		0x2000
 
 #define CONFIG_LOADS_ECHO		/* echo on for serial download */
-
-/*
- * Command line configuration.
- */
 
 /*
  * Miscellaneous configurable options

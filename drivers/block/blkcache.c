@@ -4,8 +4,9 @@
  * Author: Eric Nelson<eric@nelint.com>
  *
  */
-#include <config.h>
 #include <common.h>
+#include <blk.h>
+#include <log.h>
 #include <malloc.h>
 #include <part.h>
 #include <linux/ctype.h>
@@ -21,12 +22,25 @@ struct block_cache_node {
 	char *cache;
 };
 
+#ifndef CONFIG_M68K
 static LIST_HEAD(block_cache);
+#else
+static struct list_head block_cache;
+#endif
 
 static struct block_cache_stats _stats = {
-	.max_blocks_per_entry = 2,
+	.max_blocks_per_entry = 8,
 	.max_entries = 32
 };
+
+#ifdef CONFIG_M68K
+int blkcache_init(void)
+{
+	INIT_LIST_HEAD(&block_cache);
+
+	return 0;
+}
+#endif
 
 static struct block_cache_node *cache_find(int iftype, int devnum,
 					   lbaint_t start, lbaint_t blkcnt,

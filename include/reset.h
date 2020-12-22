@@ -6,6 +6,7 @@
 #ifndef _RESET_H
 #define _RESET_H
 
+#include <dm/ofnode.h>
 #include <linux/errno.h>
 
 /**
@@ -40,10 +41,14 @@ struct udevice;
  *
  * @dev: The device which implements the reset signal.
  * @id: The reset signal ID within the provider.
+ * @data: An optional data field for scenarios where a single integer ID is not
+ *	  sufficient. If used, it can be populated through an .of_xlate op and
+ *	  processed during the various reset ops.
+ * @polarity: An optional polarity field for drivers that support
+ *	  different reset polarities.
  *
- * Currently, the reset API assumes that a single integer ID is enough to
- * identify and configure any reset signal for any reset provider. If this
- * assumption becomes invalid in the future, the struct could be expanded to
+ * Should additional information to identify and configure any reset signal
+ * for any provider be required in the future, the struct could be expanded to
  * either (a) add more fields to allow reset providers to store additional
  * information, or (b) replace the id field with an opaque pointer, which the
  * provider would dynamically allocated during its .of_xlate op, and process
@@ -53,10 +58,11 @@ struct udevice;
 struct reset_ctl {
 	struct udevice *dev;
 	/*
-	 * Written by of_xlate. We assume a single id is enough for now. In the
-	 * future, we might add more fields here.
+	 * Written by of_xlate. In the future, we might add more fields here.
 	 */
 	unsigned long id;
+	unsigned long data;
+	unsigned long polarity;
 };
 
 /**
@@ -77,7 +83,7 @@ struct reset_ctl_bulk {
 	unsigned int count;
 };
 
-#ifdef CONFIG_DM_RESET
+#if CONFIG_IS_ENABLED(DM_RESET)
 /**
  * reset_get_by_index - Get/request a reset signal by integer index.
  *
@@ -96,6 +102,21 @@ struct reset_ctl_bulk {
  */
 int reset_get_by_index(struct udevice *dev, int index,
 		       struct reset_ctl *reset_ctl);
+
+/**
+ * reset_get_by_index_nodev - Get/request a reset signal by integer index
+ * without a device.
+ *
+ * This is a version of reset_get_by_index() that does not use a device.
+ *
+ * @node:	The client ofnode.
+ * @index:	The index of the reset signal to request, within the client's
+ *		list of reset signals.
+ * @reset_ctl	A pointer to a reset control struct to initialize.
+ * @return 0 if OK, or a negative error code.
+ */
+int reset_get_by_index_nodev(ofnode node, int index,
+			     struct reset_ctl *reset_ctl);
 
 /**
  * reset_get_bulk - Get/request all reset signals of a device.
@@ -207,6 +228,15 @@ int reset_deassert(struct reset_ctl *reset_ctl);
 int reset_deassert_bulk(struct reset_ctl_bulk *bulk);
 
 /**
+ * rst_status - Check reset signal status.
+ *
+ * @reset_ctl:	The reset signal to check.
+ * @return 0 if deasserted, positive if asserted, or a negative
+ *           error code.
+ */
+int reset_status(struct reset_ctl *reset_ctl);
+
+/**
  * reset_release_all - Assert/Free an array of previously requested resets.
  *
  * For each reset contained in the reset array, this function will check if
@@ -279,6 +309,11 @@ static inline int reset_deassert_bulk(struct reset_ctl_bulk *bulk)
 	return 0;
 }
 
+static inline int reset_status(struct reset_ctl *reset_ctl)
+{
+	return -ENOTSUPP;
+}
+
 static inline int reset_release_all(struct reset_ctl *reset_ctl, int count)
 {
 	return 0;
@@ -289,5 +324,16 @@ static inline int reset_release_bulk(struct reset_ctl_bulk *bulk)
 	return 0;
 }
 #endif
+
+/**
+ * reset_valid() - check if reset is valid
+ *
+ * @reset_ctl:		the reset to check
+ * @return TRUE if valid, or FALSE
+ */
+static inline bool reset_valid(struct reset_ctl *reset_ctl)
+{
+	return !!reset_ctl->dev;
+}
 
 #endif

@@ -7,6 +7,8 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <log.h>
 
 /* emit some sample log records in different ways, for testing */
 static int log_run(enum uclass_id cat, const char *file)
@@ -181,13 +183,26 @@ static int log_test(int testnum)
 			return ret;
 		break;
 	}
+	case 10: {
+		log_err("level %d\n", LOGL_EMERG);
+		log_err("level %d\n", LOGL_ALERT);
+		log_err("level %d\n", LOGL_CRIT);
+		log_err("level %d\n", LOGL_ERR);
+		log_warning("level %d\n", LOGL_WARNING);
+		log_notice("level %d\n", LOGL_NOTICE);
+		log_info("level %d\n", LOGL_INFO);
+		log_debug("level %d\n", LOGL_DEBUG);
+		log_content("level %d\n", LOGL_DEBUG_CONTENT);
+		log_io("level %d\n", LOGL_DEBUG_IO);
+		break;
+	}
 	}
 
 	return 0;
 }
 
 #ifdef CONFIG_LOG_TEST
-int do_log_test(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_log_test(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int testnum = 0;
 	int ret;

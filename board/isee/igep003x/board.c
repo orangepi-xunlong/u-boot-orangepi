@@ -6,7 +6,12 @@
  */
 
 #include <common.h>
+#include <env.h>
 #include <errno.h>
+#include <init.h>
+#include <malloc.h>
+#include <net.h>
+#include <serial.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -25,7 +30,6 @@
 #include <fdt_support.h>
 #include <mtd_node.h>
 #include <jffs2/load_kernel.h>
-#include <environment.h>
 #include "board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -211,7 +215,7 @@ int board_late_init(void)
 int ft_board_setup(void *blob, bd_t *bd)
 {
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
-	static struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
 	};
 

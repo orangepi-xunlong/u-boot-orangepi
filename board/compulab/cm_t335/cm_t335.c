@@ -8,10 +8,13 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <env.h>
 #include <errno.h>
 #include <miiphy.h>
+#include <net.h>
+#include <status_led.h>
 #include <cpsw.h>
+#include <linux/delay.h>
 
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/hardware_am33xx.h>

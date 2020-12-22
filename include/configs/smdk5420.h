@@ -25,7 +25,6 @@
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_IRAM_TOP - 0x800)
 
 /* select serial console configuration */
-#define CONFIG_SERIAL3		/* use SERIAL 3 */
 #define CONFIG_DEFAULT_CONSOLE	"console=ttySAC1,115200n8\0"
 
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC1,115200n8\0"
@@ -34,7 +33,6 @@
 #define CONFIG_USB_XHCI_EXYNOS
 
 /* DRAM Memory Banks */
-#define CONFIG_NR_DRAM_BANKS	7
 #define SDRAM_BANK_SIZE		(512UL << 20UL)	/* 512 MB */
 
 #endif	/* __CONFIG_SMDK5420_H */

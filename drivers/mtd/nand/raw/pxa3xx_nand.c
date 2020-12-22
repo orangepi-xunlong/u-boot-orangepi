@@ -10,6 +10,12 @@
 #include <malloc.h>
 #include <fdtdec.h>
 #include <nand.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
+#include <linux/delay.h>
+#include <linux/err.h>
 #include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -636,7 +642,7 @@ static void handle_data_pio(struct pxa3xx_nand_info *info)
 				DIV_ROUND_UP(info->step_spare_size, 4));
 		break;
 	case STATE_PIO_READING:
-		if (info->step_chunk_size)
+		if (data_len)
 			drain_fifo(info,
 				   info->data_buff + info->data_buff_pos,
 				   DIV_ROUND_UP(data_len, 4));

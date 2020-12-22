@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/pfuze100_pmic.h>
@@ -482,11 +483,11 @@ static int pfuze100_regulator_val(struct udevice *dev, int op, int *uV)
 		debug("Set voltage for REGULATOR_TYPE_FIXED regulator\n");
 		return -EINVAL;
 	} else if (desc->volt_table) {
-		for (i = 0; i < desc->vsel_mask; i++) {
+		for (i = 0; i <= desc->vsel_mask; i++) {
 			if (*uV == desc->volt_table[i])
 				break;
 		}
-		if (i == desc->vsel_mask) {
+		if (i == desc->vsel_mask + 1) {
 			debug("Unsupported voltage %u\n", *uV);
 			return -EINVAL;
 		}

@@ -7,13 +7,32 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <dm/pinctrl.h>
+#include <linux/bitops.h>
 
 static const char * const sandbox_pins[] = {
 	"SCL",
 	"SDA",
 	"TX",
 	"RX",
+	"W1",
+	"GPIO0",
+	"GPIO1",
+	"GPIO2",
+	"GPIO3",
+};
+
+static const char * const sandbox_pins_muxing[] = {
+	"I2C SCL",
+	"I2C SDA",
+	"Uart TX",
+	"Uart RX",
+	"1-wire gpio",
+	"gpio",
+	"gpio",
+	"gpio",
+	"gpio",
 };
 
 static const char * const sandbox_groups[] = {
@@ -21,12 +40,18 @@ static const char * const sandbox_groups[] = {
 	"serial_a",
 	"serial_b",
 	"spi",
+	"w1",
 };
 
 static const char * const sandbox_functions[] = {
 	"i2c",
 	"serial",
 	"spi",
+	"w1",
+	"gpio",
+	"gpio",
+	"gpio",
+	"gpio",
 };
 
 static const struct pinconf_param sandbox_conf_params[] = {
@@ -43,6 +68,10 @@ static const struct pinconf_param sandbox_conf_params[] = {
 	{ "input-disable", PIN_CONFIG_INPUT_ENABLE, 0 },
 };
 
+/* bitfield used to save param and value of each pin/selector */
+static unsigned int sandbox_pins_param[ARRAY_SIZE(sandbox_pins)];
+static unsigned int sandbox_pins_value[ARRAY_SIZE(sandbox_pins)];
+
 static int sandbox_get_pins_count(struct udevice *dev)
 {
 	return ARRAY_SIZE(sandbox_pins);
@@ -51,6 +80,32 @@ static int sandbox_get_pins_count(struct udevice *dev)
 static const char *sandbox_get_pin_name(struct udevice *dev, unsigned selector)
 {
 	return sandbox_pins[selector];
+}
+
+static int sandbox_get_pin_muxing(struct udevice *dev,
+				  unsigned int selector,
+				  char *buf, int size)
+{
+	const struct pinconf_param *p;
+	int i;
+
+	snprintf(buf, size, "%s", sandbox_pins_muxing[selector]);
+
+	if (sandbox_pins_param[selector]) {
+		for (i = 0, p = sandbox_conf_params;
+		     i < ARRAY_SIZE(sandbox_conf_params);
+		     i++, p++) {
+			if ((sandbox_pins_param[selector] & BIT(p->param)) &&
+			    (!!(sandbox_pins_value[selector] & BIT(p->param)) ==
+			     p->default_value)) {
+				strncat(buf, " ", size);
+				strncat(buf, p->property, size);
+			}
+		}
+	}
+	strncat(buf, ".", size);
+
+	return 0;
 }
 
 static int sandbox_get_groups_count(struct udevice *dev)
@@ -82,6 +137,9 @@ static int sandbox_pinmux_set(struct udevice *dev, unsigned pin_selector,
 	      pin_selector, sandbox_get_pin_name(dev, pin_selector),
 	      func_selector, sandbox_get_function_name(dev, func_selector));
 
+	sandbox_pins_param[pin_selector] = 0;
+	sandbox_pins_value[pin_selector] = 0;
+
 	return 0;
 }
 
@@ -103,6 +161,12 @@ static int sandbox_pinconf_set(struct udevice *dev, unsigned pin_selector,
 	      pin_selector, sandbox_get_pin_name(dev, pin_selector),
 	      param, argument);
 
+	sandbox_pins_param[pin_selector] |= BIT(param);
+	if (argument)
+		sandbox_pins_value[pin_selector] |= BIT(param);
+	else
+		sandbox_pins_value[pin_selector] &= ~BIT(param);
+
 	return 0;
 }
 
@@ -120,6 +184,7 @@ static int sandbox_pinconf_group_set(struct udevice *dev,
 const struct pinctrl_ops sandbox_pinctrl_ops = {
 	.get_pins_count = sandbox_get_pins_count,
 	.get_pin_name = sandbox_get_pin_name,
+	.get_pin_muxing = sandbox_get_pin_muxing,
 	.get_groups_count = sandbox_get_groups_count,
 	.get_group_name = sandbox_get_group_name,
 	.get_functions_count = sandbox_get_functions_count,

@@ -1,22 +1,22 @@
 menu "Environment"
 
+config ENV_SUPPORT
+	def_bool y
+
+config SAVEENV
+	def_bool y if CMD_SAVEENV
+
 config ENV_IS_NOWHERE
 	bool "Environment is not stored"
-	depends on !ENV_IS_IN_EEPROM
-	depends on !ENV_IS_IN_FAT
-	depends on !ENV_IS_IN_FLASH
-	depends on !ENV_IS_IN_MMC
-	depends on !ENV_IS_IN_NAND
-	depends on !ENV_IS_IN_NVRAM
-	depends on !ENV_IS_IN_ONENAND
-	depends on !ENV_IS_IN_REMOTE
-	depends on !ENV_IS_IN_SPI_FLASH
-	depends on !ENV_IS_IN_UBI
-	depends on !ENV_IS_IN_SUNXI_FLASH
-	default y
+	default y if !ENV_IS_IN_EEPROM && !ENV_IS_IN_EXT4 && \
+		     !ENV_IS_IN_FAT && !ENV_IS_IN_FLASH && \
+		     !ENV_IS_IN_MMC && !ENV_IS_IN_NAND && \
+		     !ENV_IS_IN_NVRAM && !ENV_IS_IN_ONENAND && \
+		     !ENV_IS_IN_REMOTE && !ENV_IS_IN_SPI_FLASH && \
+		     !ENV_IS_IN_UBI
 	help
 	  Define this if you don't want to or can't have an environment stored
-	  on a storage medium. In this case the environemnt will still exist
+	  on a storage medium. In this case the environment will still exist
 	  while U-Boot is running, but once U-Boot exits it will not be
 	  stored. U-Boot will therefore always start up with a default
 	  environment.
@@ -56,6 +56,7 @@ config ENV_IS_IN_FAT
 	bool "Environment is in a FAT filesystem"
 	depends on !CHAIN_OF_TRUST
 	default y if ARCH_BCM283X
+	default y if ARCH_SUNXI && MMC
 	default y if MMC_OMAP_HS && TI_COMMON_CMD_OPTIONS
 	select FS_FAT
 	select FAT_WRITE
@@ -137,7 +138,6 @@ config ENV_IS_IN_FLASH
 	   RAM, your target system will be dead.
 
 	  CONFIG_ENV_ADDR_REDUND
-	  CONFIG_ENV_SIZE_REDUND
 
 	   These settings describe a second storage area used to hold
 	   a redundant copy of the environment data, so that there is
@@ -199,12 +199,6 @@ config ENV_IS_IN_MMC
 
 	  This value is also in units of bytes, but must also be aligned to
 	  an MMC sector boundary.
-
-	  CONFIG_ENV_SIZE_REDUND (optional):
-
-	  This value need not be set, even when CONFIG_ENV_OFFSET_REDUND is
-	  set. If this value is set, it must be set to the same value as
-	  CONFIG_ENV_SIZE.
 
 config ENV_IS_IN_NAND
 	bool "Environment in a NAND device"
@@ -276,7 +270,7 @@ config ENV_IS_IN_ONENAND
 	  provision.
 
 config ENV_IS_IN_REMOTE
-	bool "Environment is in remove memory space"
+	bool "Environment is in remote memory space"
 	depends on !CHAIN_OF_TRUST
 	help
 	  Define this if you have a remote memory space which you
@@ -292,7 +286,7 @@ config ENV_IS_IN_REMOTE
 
 config ENV_IS_IN_SPI_FLASH
 	bool "Environment is in SPI flash"
-	depends on !CHAIN_OF_TRUST
+	depends on !CHAIN_OF_TRUST && SPI
 	default y if ARMADA_XP
 	default y if INTEL_BAYTRAIL
 	default y if INTEL_BRASWELL
@@ -323,22 +317,63 @@ config ENV_IS_IN_SPI_FLASH
 	  during a "saveenv" operation. CONFIG_ENV_OFFSET_REDUND must be
 	  aligned to an erase sector boundary.
 
-	  - CONFIG_ENV_SPI_BUS (optional):
-	  - CONFIG_ENV_SPI_CS (optional):
+config USE_ENV_SPI_BUS
+	bool "SPI flash bus for environment"
+	depends on ENV_IS_IN_SPI_FLASH
+	help
+	  Force the SPI bus for environment.
+	  If not defined, use CONFIG_SF_DEFAULT_BUS.
 
-	  Define the SPI bus and chip select. If not defined they will be 0.
+config ENV_SPI_BUS
+	int "Value of SPI flash bus for environment"
+	depends on USE_ENV_SPI_BUS
+	help
+	  Value the SPI bus and chip select for environment.
 
-	  - CONFIG_ENV_SPI_MAX_HZ (optional):
+config USE_ENV_SPI_CS
+	bool "SPI flash chip select for environment"
+	depends on ENV_IS_IN_SPI_FLASH
+	help
+	  Force the SPI chip select for environment.
+	  If not defined, use CONFIG_SF_DEFAULT_CS.
 
-	  Define the SPI max work clock. If not defined then use 1MHz.
+config ENV_SPI_CS
+	int "Value of SPI flash chip select for environment"
+	depends on USE_ENV_SPI_CS
+	help
+	  Value of the SPI chip select for environment.
 
-	  - CONFIG_ENV_SPI_MODE (optional):
+config USE_ENV_SPI_MAX_HZ
+	bool "SPI flash max frequency for environment"
+	depends on ENV_IS_IN_SPI_FLASH
+	help
+	  Force the SPI max work clock for environment.
+	  If not defined, use CONFIG_SF_DEFAULT_SPEED.
 
-	  Define the SPI work mode. If not defined then use SPI_MODE_3.
+config ENV_SPI_MAX_HZ
+	int "Value of SPI flash max frequency for environment"
+	depends on USE_ENV_SPI_MAX_HZ
+	help
+	  Value of the SPI max work clock for environment.
+
+config USE_ENV_SPI_MODE
+	bool "SPI flash mode for environment"
+	depends on ENV_IS_IN_SPI_FLASH
+	help
+	  Force the SPI work mode for environment.
+
+config ENV_SPI_MODE
+	hex "Value of SPI flash work mode for environment"
+	depends on USE_ENV_SPI_MODE
+	help
+	  Value of the SPI work mode for environment.
+	  See include/spi.h for value.
 
 config ENV_IS_IN_UBI
 	bool "Environment in a UBI volume"
 	depends on !CHAIN_OF_TRUST
+	depends on MTD_UBI
+	depends on CMD_UBI
 	help
 	  Define this if you have an UBI volume that you want to use for the
 	  environment.  This has the benefit of wear-leveling the environment
@@ -359,11 +394,20 @@ config ENV_IS_IN_UBI
 	  the environment in.  This will enable redundant environments in UBI.
 	  It is assumed that both volumes are in the same MTD partition.
 
+config SYS_REDUNDAND_ENVIRONMENT
+	bool "Enable redundant environment support"
+	depends on ENV_IS_IN_EEPROM || ENV_IS_IN_FLASH || ENV_IS_IN_MMC || \
+		ENV_IS_IN_NAND || ENV_IS_IN_SPI_FLASH || ENV_IS_IN_UBI
+	help
+	  Normally, the environemt is stored in a single location.  By
+	  selecting this option, you can then define where to hold a redundant
+	  copy of the environment data, so that there is a valid backup copy in
+	  case there is a power failure during a "saveenv" operation.
+
 config ENV_FAT_INTERFACE
 	string "Name of the block device for the environment"
 	depends on ENV_IS_IN_FAT
-	default "mmc" if ARCH_SUNXI
-	default "mmc" if TI_COMMON_CMD_OPTIONS || ARCH_ZYNQMP || ARCH_AT91
+	default "mmc"
 	help
 	  Define this to a string that is the name of the block device.
 
@@ -391,7 +435,7 @@ config ENV_FAT_DEVICE_AND_PART
 	                   partition table then means device D.
 
 config ENV_FAT_FILE
-	string "Name of the FAT file to use for the environemnt"
+	string "Name of the FAT file to use for the environment"
 	depends on ENV_IS_IN_FAT
 	default "uboot.env"
 	help
@@ -423,41 +467,75 @@ config ENV_EXT4_DEVICE_AND_PART
 	                   partition table then means device D.
 
 config ENV_EXT4_FILE
-	string "Name of the EXT4 file to use for the environemnt"
+	string "Name of the EXT4 file to use for the environment"
 	depends on ENV_IS_IN_EXT4
 	default "uboot.env"
 	help
 	  It's a string of the EXT4 file name. This file use to store the
 	  environment (explicit path to the file)
 
-if ARCH_SUNXI
-
-config ENV_IS_IN_SUNXI_FLASH
-	bool "Environment is in sunxi flash"
-	default n
-	help
-	  Define this if you have a sunxi Flash memory device which you
-	  want to use for the environment.
-
-config ENV_OFFSET
-	hex "Environment Offset"
-	depends on !ENV_IS_IN_UBI
-	depends on !ENV_IS_NOWHERE
-	default 0x88000 if ARCH_SUNXI
+config ENV_ADDR
+	hex "Environment address"
+	depends on ENV_IS_IN_FLASH || ENV_IS_IN_NVRAM || ENV_IS_IN_ONENAND || \
+		     ENV_IS_IN_REMOTE || ENV_IS_IN_SPI_FLASH
+	default 0x0 if ENV_IS_IN_SPI_FLASH
 	help
 	  Offset from the start of the device (or partition)
 
+config ENV_ADDR_REDUND
+	hex "Redundant environment address"
+	depends on ENV_IS_IN_FLASH && SYS_REDUNDAND_ENVIRONMENT
+	help
+	  Offset from the start of the device (or partition) of the redundant
+	  environment location.
+
+config ENV_OFFSET
+	hex "Environment offset"
+	depends on ENV_IS_IN_EEPROM || ENV_IS_IN_MMC || ENV_IS_IN_NAND || \
+		    ENV_IS_IN_SPI_FLASH
+	default 0x3f8000 if ARCH_ROCKCHIP && ENV_IS_IN_MMC
+	default 0x140000 if ARCH_ROCKCHIP && ENV_IS_IN_SPI_FLASH
+	default 0x88000 if ARCH_SUNXI
+	default 0xE0000 if ARCH_ZYNQ
+	default 0x1E00000 if ARCH_ZYNQMP
+	default 0x7F40000 if ARCH_VERSAL
+	default 0 if ARC
+	default 0x140000 if ARCH_AT91
+	default 0x260000 if ARCH_OMAP2PLUS
+	default 0x1080000 if MICROBLAZE && ENV_IS_IN_SPI_FLASH
+	help
+	  Offset from the start of the device (or partition)
+
+config ENV_OFFSET_REDUND
+	hex "Redundant environment offset"
+	depends on (ENV_IS_IN_EEPROM || ENV_IS_IN_MMC || ENV_IS_IN_NAND || \
+		    ENV_IS_IN_SPI_FLASH) && SYS_REDUNDAND_ENVIRONMENT
+	help
+	  Offset from the start of the device (or partition) of the redundant
+	  environment location.
+
 config ENV_SIZE
 	hex "Environment Size"
-	depends on !ENV_IS_NOWHERE
-	default 0x20000 if ARCH_SUNXI
+	default 0x40000 if ENV_IS_IN_SPI_FLASH && ARCH_ZYNQMP
+	default 0x20000 if ARCH_SUNXI || ARCH_ZYNQ || ARCH_OMAP2PLUS || ARCH_AT91
+	default 0x8000 if ARCH_ROCKCHIP && ENV_IS_IN_MMC
+	default 0x2000 if ARCH_ROCKCHIP && ENV_IS_IN_SPI_FLASH
+	default 0x8000 if ARCH_ZYNQMP || ARCH_VERSAL
+	default 0x4000 if ARC
+	default 0x1f000
 	help
 	  Size of the environment storage area
-config SYS_MAXARGS
-	hex "Environment Max number of command args"
-	default 64 if ARCH_SUNXI
+
+config ENV_SECT_SIZE
+	hex "Environment Sector-Size"
+	depends on ENV_IS_IN_FLASH || ENV_IS_IN_SPI_FLASH
+	default 0x2000 if ARCH_ROCKCHIP
+	default 0x40000 if ARCH_ZYNQMP || ARCH_VERSAL
+	default 0x20000 if ARCH_ZYNQ || ARCH_OMAP2PLUS || ARCH_AT91
+	default 0x20000 if MICROBLAZE && ENV_IS_IN_SPI_FLASH
 	help
-	  set "Environment Max number of command args
+	  Size of the sector containing the environment.
+
 config ENV_UBI_PART
 	string "UBI partition name"
 	depends on ENV_IS_IN_UBI
@@ -470,51 +548,24 @@ config ENV_UBI_VOLUME
 	help
 	  Name of the volume that you want to store the environment in.
 
-config SUNXI_REDUNDAND_ENVIRONMENT
-	bool "sunxi env use redundant"
-	select SYS_REDUNDAND_ENVIRONMENT
-	depends on ENV_IS_IN_SUNXI_FLASH
-	default n
+config ENV_UBI_VOLUME_REDUND
+	string "UBI redundant volume name"
+	depends on ENV_IS_IN_UBI && SYS_REDUNDAND_ENVIRONMENT
 	help
-	  Arch sunxi support redundant env function
+	  Name of the redundant volume that you want to store the environment in.
 
-config SYS_REDUNDAND_ENVIRONMENT
-	bool "env use redundant"
-	default n
-
-config SUNXI_ENV_PARTITION
-	string "sunxi env partition name"
-	depends on SUNXI_REDUNDAND_ENVIRONMENT
-	default "env"
+config ENV_UBI_VID_OFFSET
+	int "ubi environment VID offset"
+	depends on ENV_IS_IN_UBI
+	default 0
 	help
-	  Name of the partition that you want to store the environment in.
+	  UBI VID offset for environment. If 0, no custom VID offset is used.
 
-config SUNXI_ENV_REDUNDAND_PARTITION
-	string "sunxi env redundant partition name"
-	depends on SUNXI_REDUNDAND_ENVIRONMENT
-	default "env-redund"
+config SYS_RELOC_GD_ENV_ADDR
+	bool "Relocate gd->env_addr"
 	help
-	  Name of the partition that you want to store the redundant environment in.
-
-endif
-
-if ARCH_ROCKCHIP
-
-config ENV_OFFSET
-	hex
-	depends on !ENV_IS_IN_UBI
-	depends on !ENV_IS_NOWHERE
-	default 0x3f8000
-	help
-	  Offset from the start of the device (or partition)
-
-config ENV_SIZE
-	hex
-	default 0x8000
-	help
-	  Size of the environment storage area
-
-endif
+	  Relocate the early env_addr pointer so we know it is not inside
+	  the binary. Some systems need this and for the rest, it doesn't hurt.
 
 config USE_DEFAULT_ENV_FILE
 	bool "Create default environment from file"
@@ -540,5 +591,139 @@ config ENV_VARS_UBOOT_RUNTIME_CONFIG
 	  Enable this in order to add variables describing certain
 	  run-time determined information about the hardware to the
 	  environment.  These will be named board_name, board_rev.
+
+config DELAY_ENVIRONMENT
+	bool "Delay environment loading"
+	depends on !OF_CONTROL
+	help
+	  Enable this to inhibit loading the environment during board
+	  initialization. This can address the security risk of untrusted data
+	  being used during boot. Normally the environment is loaded when the
+	  board is initialised so that it is available to U-Boot. This inhibits
+	  that so that the environment is not available until explicitly loaded
+	  later by U-Boot code. With CONFIG_OF_CONTROL this is instead
+	  controlled by the value of /config/load-environment.
+
+config ENV_ACCESS_IGNORE_FORCE
+	bool "Block forced environment operations"
+	default n
+	help
+	  If defined, don't allow the -f switch to env set override variable
+	  access flags.
+
+if SPL_ENV_SUPPORT
+config SPL_ENV_IS_NOWHERE
+	bool "SPL Environment is not stored"
+	default y if ENV_IS_NOWHERE
+	help
+	  Similar to ENV_IS_NOWHERE, used for SPL environment.
+
+config SPL_ENV_IS_IN_MMC
+	bool "SPL Environment in an MMC device"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_MMC
+	default y
+	help
+	  Similar to ENV_IS_IN_MMC, used for SPL environment.
+
+config SPL_ENV_IS_IN_FAT
+	bool "SPL Environment is in a FAT filesystem"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_FAT
+	default y
+	help
+	  Similar to ENV_IS_IN_FAT, used for SPL environment.
+
+config SPL_ENV_IS_IN_EXT4
+	bool "SPL Environment is in a EXT4 filesystem"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_EXT4
+	default y
+	help
+	  Similar to ENV_IS_IN_EXT4, used for SPL environment.
+
+config SPL_ENV_IS_IN_NAND
+	bool "SPL Environment in a NAND device"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_NAND
+	default y
+	help
+	  Similar to ENV_IS_IN_NAND, used for SPL environment.
+
+config SPL_ENV_IS_IN_SPI_FLASH
+	bool "SPL Environment is in SPI flash"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_SPI_FLASH
+	default y
+	help
+	  Similar to ENV_IS_IN_SPI_FLASH, used for SPL environment.
+
+config SPL_ENV_IS_IN_FLASH
+	bool "SPL Environment in flash memory"
+	depends on !SPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_FLASH
+	default y
+	help
+	  Similar to ENV_IS_IN_FLASH, used for SPL environment.
+
+endif
+
+if TPL_ENV_SUPPORT
+
+config TPL_ENV_IS_NOWHERE
+	bool "TPL Environment is not stored"
+	default y if ENV_IS_NOWHERE
+	help
+	  Similar to ENV_IS_NOWHERE, used for TPL environment.
+
+config TPL_ENV_IS_IN_MMC
+	bool "TPL Environment in an MMC device"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_MMC
+	default y
+	help
+	  Similar to ENV_IS_IN_MMC, used for TPL environment.
+
+config TPL_ENV_IS_IN_FAT
+	bool "TPL Environment is in a FAT filesystem"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_FAT
+	default y
+	help
+	  Similar to ENV_IS_IN_FAT, used for TPL environment.
+
+config TPL_ENV_IS_IN_EXT4
+	bool "TPL Environment is in a EXT4 filesystem"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_EXT4
+	default y
+	help
+	  Similar to ENV_IS_IN_EXT4, used for TPL environment.
+
+config TPL_ENV_IS_IN_NAND
+	bool "TPL Environment in a NAND device"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_NAND
+	default y
+	help
+	  Similar to ENV_IS_IN_NAND, used for TPL environment.
+
+config TPL_ENV_IS_IN_SPI_FLASH
+	bool "TPL Environment is in SPI flash"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_SPI_FLASH
+	default y
+	help
+	  Similar to ENV_IS_IN_SPI_FLASH, used for TPL environment.
+
+config TPL_ENV_IS_IN_FLASH
+	bool "TPL Environment in flash memory"
+	depends on !TPL_ENV_IS_NOWHERE
+	depends on ENV_IS_IN_FLASH
+	default y
+	help
+	  Similar to ENV_IS_IN_FLASH, used for TPL environment.
+
+endif
 
 endmenu

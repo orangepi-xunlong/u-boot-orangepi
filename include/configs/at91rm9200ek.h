@@ -54,13 +54,8 @@
 /*
  * Memory Configuration
  */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x20000000
 #define CONFIG_SYS_SDRAM_SIZE		SZ_32M
-
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		\
-		(CONFIG_SYS_MEMTEST_START + CONFIG_SYS_SDRAM_SIZE - SZ_256K)
 
 /*
  * LowLevel Init
@@ -106,28 +101,20 @@
 #define CONFIG_USART_ID		0/* ignored in arm */
 
 /*
- * Command line configuration.
- */
-
-/*
  * Network Driver Setting
  */
 #define CONFIG_DRIVER_AT91EMAC
 #define CONFIG_SYS_RX_ETH_BUFFER	16
 #define CONFIG_RMII
-#define CONFIG_MII
 
 /*
  * NOR Flash
  */
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_BASE		0x10000000
 #define PHYS_FLASH_1			CONFIG_SYS_FLASH_BASE
 #define PHYS_FLASH_SIZE			SZ_8M
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	256
-#define CONFIG_SYS_FLASH_PROTECTION
 
 /*
  * USB Config
@@ -148,9 +135,7 @@
 /*
  * after u-boot.bin
  */
-#define CONFIG_ENV_ADDR			\
-		(CONFIG_SYS_FLASH_BASE + CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_ENV_SIZE			SZ_64K /* sectors are 64K here */
+
 /* The following #defines are needed to get flash environment right */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_MONITOR_LEN		SZ_256K

@@ -15,6 +15,7 @@
  *    reentrant and should be faster). Use only strsep() in new code, please.
  */
 
+#include <config.h>
 #include <linux/types.h>
 #include <linux/string.h>
 #include <linux/ctype.h>
@@ -321,6 +322,29 @@ char * strdup(const char *s)
 	}
 
 	strcpy (new, s);
+	return new;
+}
+
+char * strndup(const char *s, size_t n)
+{
+	size_t len;
+	char *new;
+
+	if (s == NULL)
+		return NULL;
+
+	len = strlen(s);
+
+	if (n < len)
+		len = n;
+
+	new = malloc(len + 1);
+	if (new == NULL)
+		return NULL;
+
+	strncpy(new, s, len);
+	new[len] = '\0';
+
 	return new;
 }
 #endif

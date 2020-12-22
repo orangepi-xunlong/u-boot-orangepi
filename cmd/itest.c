@@ -14,6 +14,7 @@
 #include <common.h>
 #include <config.h>
 #include <command.h>
+#include <env.h>
 #include <mapmem.h>
 
 #include <asm/io.h>
@@ -72,6 +73,11 @@ static long evalexp(char *s, int w)
 		case 4:
 			l = (long)(*(u32 *)buf);
 			break;
+#ifdef CONFIG_PHYS_64BIT
+		case 8:
+			l = (long)(*(unsigned long *)buf);
+			break;
+#endif
 		}
 		unmap_physmem(buf, w);
 		return l;
@@ -169,7 +175,8 @@ static int binary_test(char *op, char *arg1, char *arg2, int w)
 }
 
 /* command line interface to the shell test */
-static int do_itest(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_itest(struct cmd_tbl *cmdtp, int flag, int argc,
+		    char *const argv[])
 {
 	int	value, w;
 
@@ -185,6 +192,9 @@ static int do_itest(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	case 1:
 	case 2:
 	case 4:
+#ifdef CONFIG_PHYS_64BIT
+	case 8:
+#endif
 		value = binary_test (argv[2], argv[1], argv[3], w);
 		break;
 	case -2:
@@ -203,5 +213,9 @@ static int do_itest(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 U_BOOT_CMD(
 	itest, 4, 0, do_itest,
 	"return true/false on integer compare",
+#ifdef CONFIG_PHYS_64BIT
+	"[.b, .w, .l, .q, .s] [*]value1 <op> [*]value2"
+#else
 	"[.b, .w, .l, .s] [*]value1 <op> [*]value2"
+#endif
 );

@@ -5,9 +5,9 @@
  */
 
 #include <common.h>
+#include <compiler.h>
 #include <console.h>
 #include <div64.h>
-#include <inttypes.h>
 #include <version.h>
 #include <linux/ctype.h>
 #include <asm/io.h>
@@ -24,7 +24,9 @@ char *display_options_get_banner_priv(bool newlines, const char *build_tag,
 				build_tag);
 	if (len > size - 3)
 		len = size - 3;
-	strcpy(buf + len, "\n\n");
+	if (len < 0)
+		len = 0;
+	snprintf(buf + len, size - len, "\n\n");
 
 	return buf;
 }
@@ -65,7 +67,7 @@ void print_freq(uint64_t freq, const char *s)
 	}
 
 	if (!c) {
-		printf("%" PRIu64 " Hz%s", freq, s);
+		printf("%llu Hz%s", freq, s);
 		return;
 	}
 
@@ -105,7 +107,7 @@ void print_size(uint64_t size, const char *s)
 	}
 
 	if (!c) {
-		printf("%" PRIu64 " Bytes%s", size, s);
+		printf("%llu Bytes%s", size, s);
 		return;
 	}
 
@@ -129,7 +131,6 @@ void print_size(uint64_t size, const char *s)
 	printf (" %ciB%s", c, s);
 }
 
-
 #define MAX_LINE_LENGTH_BYTES (64)
 #define DEFAULT_LINE_LENGTH_BYTES (16)
 int print_buffer(ulong addr, const void *data, uint width, uint count,
@@ -137,7 +138,7 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 {
 	/* linebuf as a union causes proper alignment */
 	union linebuf {
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
+#ifdef MEM_SUPPORT_64BIT_DATA
 		uint64_t uq[MAX_LINE_LENGTH_BYTES/sizeof(uint64_t) + 1];
 #endif
 		uint32_t ui[MAX_LINE_LENGTH_BYTES/sizeof(uint32_t) + 1];
@@ -145,7 +146,7 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 		uint8_t  uc[MAX_LINE_LENGTH_BYTES/sizeof(uint8_t) + 1];
 	} lb;
 	int i;
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
+#ifdef MEM_SUPPORT_64BIT_DATA
 	uint64_t __maybe_unused x;
 #else
 	uint32_t __maybe_unused x;
@@ -168,7 +169,7 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 		for (i = 0; i < thislinelen; i++) {
 			if (width == 4)
 				x = lb.ui[i] = *(volatile uint32_t *)data;
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
+#ifdef MEM_SUPPORT_64BIT_DATA
 			else if (width == 8)
 				x = lb.uq[i] = *(volatile uint64_t *)data;
 #endif
@@ -176,15 +177,9 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 				x = lb.us[i] = *(volatile uint16_t *)data;
 			else
 				x = lb.uc[i] = *(volatile uint8_t *)data;
-#ifdef CONFIG_SUNXI_MEM_MAPPING_CHECK
-			extern int mem_mapping_check(u32 addr);
-			if (!mem_mapping_check((u32)data)) {
-				x = 0;
-				memset(lb.uc + width * i, 0, width);
-			}
-#endif
-
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
+#if defined(CONFIG_SPL_BUILD)
+			printf(" %x", (uint)x);
+#elif defined(MEM_SUPPORT_64BIT_DATA)
 			printf(" %0*llx", width * 2, (long long)x);
 #else
 			printf(" %0*x", width * 2, x);
@@ -211,8 +206,10 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 		addr += thislinelen * width;
 		count -= thislinelen;
 
+#ifndef CONFIG_SPL_BUILD
 		if (ctrlc())
 			return -1;
+#endif
 	}
 
 	return 0;

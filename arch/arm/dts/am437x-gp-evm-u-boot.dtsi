@@ -7,6 +7,8 @@
  * Based on "dra7.dtsi"
  */
 
+#include "am4372-u-boot.dtsi"
+
 /{
 	ocp {
 		u-boot,dm-spl;
@@ -34,5 +36,25 @@
 };
 
 &phy_sel {
+	u-boot,dm-spl;
+};
+
+&i2c0 {
+	u-boot,dm-spl;
+};
+
+&l4_wkup {
+	u-boot,dm-spl;
+};
+
+&scm {
+	u-boot,dm-spl;
+};
+
+&scm_conf {
+	u-boot,dm-spl;
+};
+
+&ethphy0 {
 	u-boot,dm-spl;
 };

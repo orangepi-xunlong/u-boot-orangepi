@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2017 NXP
+ * Copyright 2017-2019 NXP
  * Copyright 2015 Freescale Semiconductor
  */
 
@@ -53,11 +53,40 @@ struct cpu_type {
 
 #define CPU_TYPE_ENTRY(n, v, nc) \
 	{ .name = #n, .soc_ver = SVR_##v, .num_cores = (nc)}
+
+#ifdef CONFIG_TFABOOT
+#define SMC_DRAM_BANK_INFO (0xC200FF12)
+#define SIP_SVC_RCW	0xC200FF18
+
+phys_size_t tfa_get_dram_size(void);
+
+enum boot_src {
+	BOOT_SOURCE_RESERVED = 0,
+	BOOT_SOURCE_IFC_NOR,
+	BOOT_SOURCE_IFC_NAND,
+	BOOT_SOURCE_QSPI_NOR,
+	BOOT_SOURCE_QSPI_NAND,
+	BOOT_SOURCE_XSPI_NOR,
+	BOOT_SOURCE_XSPI_NAND,
+	BOOT_SOURCE_SD_MMC,
+	BOOT_SOURCE_SD_MMC2,
+	BOOT_SOURCE_I2C1_EXTENDED,
+};
+
+enum boot_src get_boot_src(void);
+#endif
 #endif
 #define SVR_WO_E		0xFFFFFE
 #define SVR_LS1012A		0x870400
 #define SVR_LS1043A		0x879200
 #define SVR_LS1023A		0x879208
+/* LS1043A/LS1023A 23x23 package silicon has different value of VAR_PER */
+#define SVR_LS1043A_P23		0x879202
+#define SVR_LS1023A_P23		0x87920A
+#define SVR_LS1017A		0x870B24
+#define SVR_LS1018A		0x870B20
+#define SVR_LS1027A		0x870B04
+#define SVR_LS1028A		0x870B00
 #define SVR_LS1046A		0x870700
 #define SVR_LS1026A		0x870708
 #define SVR_LS1048A		0x870320
@@ -74,50 +103,27 @@ struct cpu_type {
 #define SVR_LS2044A		0x870930
 #define SVR_LS2081A		0x870918
 #define SVR_LS2041A		0x870914
+#define SVR_LX2160A		0x873600
+#define SVR_LX2120A		0x873620
+#define SVR_LX2080A		0x873602
 
 #define SVR_MAJ(svr)		(((svr) >> 4) & 0xf)
 #define SVR_MIN(svr)		(((svr) >> 0) & 0xf)
 #define SVR_REV(svr)		(((svr) >> 0) & 0xff)
 #define SVR_SOC_VER(svr)	(((svr) >> 8) & SVR_WO_E)
 #define IS_E_PROCESSOR(svr)	(!((svr >> 8) & 0x1))
+#ifdef CONFIG_ARCH_LX2160A
+#define IS_C_PROCESSOR(svr)	(!((svr >> 12) & 0x1))
+#endif
+#ifdef CONFIG_ARCH_LS1028A
+#define IS_MULTIMEDIA_EN(svr)	(!((svr >> 10) & 0x1))
+#endif
 #define IS_SVR_REV(svr, maj, min) \
 		((SVR_MAJ(svr) == (maj)) && (SVR_MIN(svr) == (min)))
 #define SVR_DEV(svr)		((svr) >> 8)
 #define IS_SVR_DEV(svr, dev)	(((svr) >> 16) == (dev))
 
-/* ahci port register default value */
-#define AHCI_PORT_PHY_1_CFG    0xa003fffe
-#define AHCI_PORT_PHY2_CFG	0x28184d1f
-#define AHCI_PORT_PHY3_CFG	0x0e081509
-#define AHCI_PORT_TRANS_CFG    0x08000029
-#define AHCI_PORT_AXICC_CFG	0x3fffffff
-
 #ifndef __ASSEMBLY__
-/* AHCI (sata) register map */
-struct ccsr_ahci {
-	u32 res1[0xa4/4];	/* 0x0 - 0xa4 */
-	u32 pcfg;	/* port config */
-	u32 ppcfg;	/* port phy1 config */
-	u32 pp2c;	/* port phy2 config */
-	u32 pp3c;	/* port phy3 config */
-	u32 pp4c;	/* port phy4 config */
-	u32 pp5c;	/* port phy5 config */
-	u32 axicc;	/* AXI cache control */
-	u32 paxic;	/* port AXI config */
-	u32 axipc;	/* AXI PROT control */
-	u32 ptc;	/* port Trans Config */
-	u32 pts;	/* port Trans Status */
-	u32 plc;	/* port link config */
-	u32 plc1;	/* port link config1 */
-	u32 plc2;	/* port link config2 */
-	u32 pls;	/* port link status */
-	u32 pls1;	/* port link status1 */
-	u32 pcmdc;	/* port CMD config */
-	u32 ppcs;	/* port phy control status */
-	u32 pberr;	/* port 0/1 BIST error */
-	u32 cmds;	/* port 0/1 CMD status error */
-};
-
 #ifdef CONFIG_FSL_LSCH3
 void fsl_lsch3_early_init_f(void);
 int get_core_volt_from_fuse(void);
@@ -129,6 +135,16 @@ int board_setup_core_volt(u32 vdd);
 #ifdef CONFIG_FSL_PFE
 void init_pfe_scfg_dcfg_regs(void);
 #endif
+#endif
+#ifdef CONFIG_QSPI_AHB_INIT
+int qspi_ahb_init(void);
+#endif
+
+#ifdef CONFIG_FSPI_AHB_EN_4BYTE
+#define SYS_NXP_FSPI_LUTCR_LOCK			0x00000001
+#define SYS_NXP_FSPI_LUTCR_UNLOCK		0x00000002
+#define SYS_NXP_FSPI_LUTKEY			0x5AF05AF0
+int fspi_ahb_init(void);
 #endif
 
 void cpu_name(char *name);
@@ -142,6 +158,10 @@ void erratum_a010315(void);
 
 bool soc_has_dp_ddr(void);
 bool soc_has_aiop(void);
+
+#ifdef CONFIG_GIC_V3_ITS
+int ls_gic_rd_tables_init(void *blob);
+#endif
 #endif
 
 #endif /* _ASM_ARMV8_FSL_LAYERSCAPE_SOC_H_ */

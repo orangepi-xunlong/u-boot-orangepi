@@ -1,4 +1,4 @@
-if CPU_V7
+if CPU_V7A
 
 config CPU_V7_HAS_NONSEC
         bool
@@ -19,7 +19,7 @@ config ARMV7_NONSEC
 config ARMV7_BOOT_SEC_DEFAULT
 	bool "Boot in secure mode by default" if EXPERT
 	depends on ARMV7_NONSEC
-	default y if TEGRA
+	default y if ARCH_TEGRA
 	---help---
 	Say Y here to boot in secure mode by default even if non-secure mode
 	is supported. This option is useful to boot kernels which do not
@@ -52,8 +52,8 @@ config ARMV7_PSCI_NR_CPUS
 
 config ARMV7_LPAE
 	bool "Use LPAE page table format" if EXPERT
-	depends on CPU_V7
-	default n
+	depends on CPU_V7A
+	default y if ARMV7_VIRT
 	---help---
 	Say Y here to use the long descriptor page table format. This is
 	required if U-Boot runs in HYP mode.

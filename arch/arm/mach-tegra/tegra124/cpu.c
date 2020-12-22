@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/ahb.h>
 #include <asm/arch/clock.h>
@@ -14,6 +15,7 @@
 #include <asm/arch-tegra/clk_rst.h>
 #include <asm/arch-tegra/pmc.h>
 #include <asm/arch-tegra/ap.h>
+#include <linux/delay.h>
 #include "../cpu.h"
 
 /* Tegra124-specific CPU init code */
@@ -102,6 +104,43 @@ static void remove_cpu_resets(void)
 		CLR_CPURESET3 | CLR_DBGRESET3 | CLR_CORERESET3 | CLR_CXRESET3 |
 		CLR_L2RESET | CLR_PRESETDBG;
 	writel(reg, &clkrst->crc_rst_cpug_cmplx_clr);
+}
+
+static void tegra124_ram_repair(void)
+{
+	struct flow_ctlr *flow = (struct flow_ctlr *)NV_PA_FLOW_BASE;
+	u32 ram_repair_timeout; /*usec*/
+	u32 val;
+
+	/*
+	 * Request the Flow Controller perform RAM repair whenever it turns on
+	 * a power rail that requires RAM repair.
+	 */
+	clrbits_le32(&flow->ram_repair, RAM_REPAIR_BYPASS_EN);
+
+	/* Request SW trigerred RAM repair by setting req  bit */
+	/* cluster 0 */
+	setbits_le32(&flow->ram_repair, RAM_REPAIR_REQ);
+	/* Wait for completion (status == 0) */
+	ram_repair_timeout = 500;
+	do {
+		udelay(1);
+		val = readl(&flow->ram_repair);
+	} while (!(val & RAM_REPAIR_STS) && ram_repair_timeout--);
+	if (!ram_repair_timeout)
+		debug("Ram Repair cluster0 failed\n");
+
+	/* cluster 1 */
+	setbits_le32(&flow->ram_repair_cluster1, RAM_REPAIR_REQ);
+	/* Wait for completion (status == 0) */
+	ram_repair_timeout = 500;
+	do {
+		udelay(1);
+		val = readl(&flow->ram_repair_cluster1);
+	} while (!(val & RAM_REPAIR_STS) && ram_repair_timeout--);
+
+	if (!ram_repair_timeout)
+		debug("Ram Repair cluster1 failed\n");
 }
 
 /**
@@ -201,6 +240,45 @@ static bool is_partition_powered(u32 partid)
 	return !!(reg & (1 << partid));
 }
 
+static void unpower_partition(u32 partid)
+{
+	struct pmc_ctlr *pmc = (struct pmc_ctlr *)NV_PA_PMC_BASE;
+
+	debug("%s: part ID = %08X\n", __func__, partid);
+	/* Is the partition on? */
+	if (is_partition_powered(partid)) {
+		/* Yes, toggle the partition power state (ON -> OFF) */
+		debug("power_partition, toggling state\n");
+		writel(START_CP | partid, &pmc->pmc_pwrgate_toggle);
+
+		/* Wait for the power to come down */
+		while (is_partition_powered(partid))
+			;
+
+		/* Give I/O signals time to stabilize */
+		udelay(IO_STABILIZATION_DELAY);
+	}
+}
+
+void unpower_cpus(void)
+{
+	debug("%s entry: G cluster\n", __func__);
+
+	/* Power down the fast cluster rail partition */
+	debug("%s: CRAIL\n", __func__);
+	unpower_partition(CRAIL);
+
+	/* Power down the fast cluster non-CPU partition */
+	debug("%s: C0NC\n", __func__);
+	unpower_partition(C0NC);
+
+	/* Power down the fast cluster CPU0 partition */
+	debug("%s: CE0\n", __func__);
+	unpower_partition(CE0);
+
+	debug("%s: done\n", __func__);
+}
+
 static void power_partition(u32 partid)
 {
 	struct pmc_ctlr *pmc = (struct pmc_ctlr *)NV_PA_PMC_BASE;
@@ -247,6 +325,12 @@ void start_cpu(u32 reset_vector)
 
 	debug("%s entry, reset_vector = %x\n", __func__, reset_vector);
 
+	/*
+	 * High power clusters are on after software reset,
+	 * it may interfere with tegra124_ram_repair.
+	 * unpower them.
+	 */
+	unpower_cpus();
 	tegra124_init_clocks();
 
 	/* Set power-gating timer multiplier */
@@ -254,10 +338,11 @@ void start_cpu(u32 reset_vector)
 	       &pmc->pmc_pwrgate_timer_mult);
 
 	enable_cpu_power_rail();
+	powerup_cpus();
+	tegra124_ram_repair();
 	enable_cpu_clocks();
 	clock_enable_coresight(1);
-	remove_cpu_resets();
 	writel(reset_vector, EXCEP_VECTOR_CPU_RESET_VECTOR);
-	powerup_cpus();
+	remove_cpu_resets();
 	debug("%s exit, should continue @ reset_vector\n", __func__);
 }

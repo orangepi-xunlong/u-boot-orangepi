@@ -64,6 +64,17 @@
 		method = "smc";
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		psci-area@4000000 {
+			reg = <0x0 0x4000000 0x0 0x200000>;
+			no-map;
+		};
+	};
+
 	ap806 {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -141,7 +152,7 @@
 			};
 
 			ap_pinctl: ap-pinctl@6F4000 {
-				compatible = "marvell,armada-ap806-pinctrl";
+				compatible = "marvell,ap806-pinctrl";
 				bank-name ="apn-806";
 				reg = <0x6F4000 0x10>;
 				pin-count = <20>;

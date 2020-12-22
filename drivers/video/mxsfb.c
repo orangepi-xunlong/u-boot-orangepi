@@ -5,22 +5,32 @@
  * Copyright (C) 2011-2013 Marek Vasut <marex@denx.de>
  */
 #include <common.h>
+#include <clk.h>
+#include <dm.h>
+#include <env.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <dm/device_compat.h>
+#include <linux/delay.h>
+#include <linux/errno.h>
 #include <malloc.h>
+#include <video.h>
 #include <video_fb.h>
 
-#include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
-#include <linux/errno.h>
-#include <asm/io.h>
-
 #include <asm/mach-imx/dma.h>
+#include <asm/io.h>
 
 #include "videomodes.h"
 
 #define	PS2KHZ(ps)	(1000000000UL / (ps))
+#define HZ2PS(hz)	(1000000000UL / ((hz) / 1000))
 
-static GraphicDevice panel;
+#define BITS_PP		18
+#define BYTES_PP	4
+
 struct mxs_dma_desc desc;
 
 /**
@@ -46,15 +56,40 @@ __weak void mxsfb_system_setup(void)
  * 	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
  */
 
-static void mxs_lcd_init(GraphicDevice *panel,
-			struct ctfb_res_modes *mode, int bpp)
+static void mxs_lcd_init(struct udevice *dev, u32 fb_addr,
+			 struct display_timing *timings, int bpp)
 {
 	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
+	const enum display_flags flags = timings->flags;
 	uint32_t word_len = 0, bus_width = 0;
 	uint8_t valid_data = 0;
+	uint32_t vdctrl0;
 
+#if CONFIG_IS_ENABLED(CLK)
+	struct clk per_clk;
+	int ret;
+
+	ret = clk_get_by_name(dev, "per", &per_clk);
+	if (ret) {
+		dev_err(dev, "Failed to get mxs clk: %d\n", ret);
+		return;
+	}
+
+	ret = clk_set_rate(&per_clk, timings->pixelclock.typ);
+	if (ret < 0) {
+		dev_err(dev, "Failed to set mxs clk: %d\n", ret);
+		return;
+	}
+
+	ret = clk_enable(&per_clk);
+	if (ret < 0) {
+		dev_err(dev, "Failed to enable mxs clk: %d\n", ret);
+		return;
+	}
+#else
 	/* Kick in the LCDIF clock */
-	mxs_set_lcdclk(MXS_LCDIF_BASE, PS2KHZ(mode->pixclock));
+	mxs_set_lcdclk(MXS_LCDIF_BASE, timings->pixelclock.typ / 1000);
+#endif
 
 	/* Restart the LCDIF block */
 	mxs_reset_block(&regs->hw_lcdif_ctrl_reg);
@@ -91,29 +126,40 @@ static void mxs_lcd_init(GraphicDevice *panel,
 
 	mxsfb_system_setup();
 
-	writel((mode->yres << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) | mode->xres,
-		&regs->hw_lcdif_transfer_count);
+	writel((timings->vactive.typ << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) |
+		timings->hactive.typ, &regs->hw_lcdif_transfer_count);
 
-	writel(LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
-		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
-		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
-		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
-	writel(mode->upper_margin + mode->lower_margin +
-		mode->vsync_len + mode->yres,
+	vdctrl0 = LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
+		  LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
+		  LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
+		  timings->vsync_len.typ;
+
+	if(flags & DISPLAY_FLAGS_HSYNC_HIGH)
+		vdctrl0 |= LCDIF_VDCTRL0_HSYNC_POL;
+	if(flags & DISPLAY_FLAGS_VSYNC_HIGH)
+		vdctrl0 |= LCDIF_VDCTRL0_VSYNC_POL;
+	if(flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
+		vdctrl0 |= LCDIF_VDCTRL0_DOTCLK_POL;
+	if(flags & DISPLAY_FLAGS_DE_HIGH)
+		vdctrl0 |= LCDIF_VDCTRL0_ENABLE_POL;
+
+	writel(vdctrl0, &regs->hw_lcdif_vdctrl0);
+	writel(timings->vback_porch.typ + timings->vfront_porch.typ +
+		timings->vsync_len.typ + timings->vactive.typ,
 		&regs->hw_lcdif_vdctrl1);
-	writel((mode->hsync_len << LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET) |
-		(mode->left_margin + mode->right_margin +
-		mode->hsync_len + mode->xres),
+	writel((timings->hsync_len.typ << LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET) |
+		(timings->hback_porch.typ + timings->hfront_porch.typ +
+		timings->hsync_len.typ + timings->hactive.typ),
 		&regs->hw_lcdif_vdctrl2);
-	writel(((mode->left_margin + mode->hsync_len) <<
+	writel(((timings->hback_porch.typ + timings->hsync_len.typ) <<
 		LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_OFFSET) |
-		(mode->upper_margin + mode->vsync_len),
+		(timings->vback_porch.typ + timings->vsync_len.typ),
 		&regs->hw_lcdif_vdctrl3);
-	writel((0 << LCDIF_VDCTRL4_DOTCLK_DLY_SEL_OFFSET) | mode->xres,
+	writel((0 << LCDIF_VDCTRL4_DOTCLK_DLY_SEL_OFFSET) | timings->hactive.typ,
 		&regs->hw_lcdif_vdctrl4);
 
-	writel(panel->frameAdrs, &regs->hw_lcdif_cur_buf);
-	writel(panel->frameAdrs, &regs->hw_lcdif_next_buf);
+	writel(fb_addr, &regs->hw_lcdif_cur_buf);
+	writel(fb_addr, &regs->hw_lcdif_next_buf);
 
 	/* Flush FIFO first */
 	writel(LCDIF_CTRL1_FIFO_CLEAR, &regs->hw_lcdif_ctrl1_set);
@@ -130,16 +176,48 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel(LCDIF_CTRL_RUN, &regs->hw_lcdif_ctrl_set);
 }
 
-void lcdif_power_down(void)
+static int mxs_probe_common(struct udevice *dev, struct display_timing *timings,
+			    int bpp, u32 fb)
+{
+	/* Start framebuffer */
+	mxs_lcd_init(dev, fb, timings, bpp);
+
+#ifdef CONFIG_VIDEO_MXS_MODE_SYSTEM
+	/*
+	 * If the LCD runs in system mode, the LCD refresh has to be triggered
+	 * manually by setting the RUN bit in HW_LCDIF_CTRL register. To avoid
+	 * having to set this bit manually after every single change in the
+	 * framebuffer memory, we set up specially crafted circular DMA, which
+	 * sets the RUN bit, then waits until it gets cleared and repeats this
+	 * infinitelly. This way, we get smooth continuous updates of the LCD.
+	 */
+	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
+
+	memset(&desc, 0, sizeof(struct mxs_dma_desc));
+	desc.address = (dma_addr_t)&desc;
+	desc.cmd.data = MXS_DMA_DESC_COMMAND_NO_DMAXFER | MXS_DMA_DESC_CHAIN |
+			MXS_DMA_DESC_WAIT4END |
+			(1 << MXS_DMA_DESC_PIO_WORDS_OFFSET);
+	desc.cmd.pio_words[0] = readl(&regs->hw_lcdif_ctrl) | LCDIF_CTRL_RUN;
+	desc.cmd.next = (uint32_t)&desc.cmd;
+
+	/* Execute the DMA chain. */
+	mxs_dma_circ_start(MXS_DMA_CHANNEL_AHB_APBH_LCDIF, &desc);
+#endif
+
+	return 0;
+}
+
+static int mxs_remove_common(u32 fb)
 {
 	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
 	int timeout = 1000000;
 
-	if (!panel.frameAdrs)
-		return;
+	if (!fb)
+		return -EINVAL;
 
-	writel(panel.frameAdrs, &regs->hw_lcdif_cur_buf_reg);
-	writel(panel.frameAdrs, &regs->hw_lcdif_next_buf_reg);
+	writel(fb, &regs->hw_lcdif_cur_buf_reg);
+	writel(fb, &regs->hw_lcdif_next_buf_reg);
 	writel(LCDIF_CTRL1_VSYNC_EDGE_IRQ, &regs->hw_lcdif_ctrl1_clr);
 	while (--timeout) {
 		if (readl(&regs->hw_lcdif_ctrl1_reg) &
@@ -148,14 +226,27 @@ void lcdif_power_down(void)
 		udelay(1);
 	}
 	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl_reg);
+
+	return 0;
+}
+
+#ifndef CONFIG_DM_VIDEO
+
+static GraphicDevice panel;
+
+void lcdif_power_down(void)
+{
+	mxs_remove_common(panel.frameAdrs);
 }
 
 void *video_hw_init(void)
 {
 	int bpp = -1;
+	int ret = 0;
 	char *penv;
-	void *fb;
+	void *fb = NULL;
 	struct ctfb_res_modes mode;
+	struct display_timing timings;
 
 	puts("Video: ");
 
@@ -169,8 +260,7 @@ void *video_hw_init(void)
 	bpp = video_get_params(&mode, penv);
 
 	/* fill in Graphic device struct */
-	sprintf(panel.modeIdent, "%dx%dx%d",
-			mode.xres, mode.yres, bpp);
+	sprintf(panel.modeIdent, "%dx%dx%d", mode.xres, mode.yres, bpp);
 
 	panel.winSizeX = mode.xres;
 	panel.winSizeY = mode.yres;
@@ -213,31 +303,168 @@ void *video_hw_init(void)
 
 	printf("%s\n", panel.modeIdent);
 
-	/* Start framebuffer */
-	mxs_lcd_init(&panel, &mode, bpp);
+	video_ctfb_mode_to_display_timing(&mode, &timings);
 
-#ifdef CONFIG_VIDEO_MXS_MODE_SYSTEM
-	/*
-	 * If the LCD runs in system mode, the LCD refresh has to be triggered
-	 * manually by setting the RUN bit in HW_LCDIF_CTRL register. To avoid
-	 * having to set this bit manually after every single change in the
-	 * framebuffer memory, we set up specially crafted circular DMA, which
-	 * sets the RUN bit, then waits until it gets cleared and repeats this
-	 * infinitelly. This way, we get smooth continuous updates of the LCD.
-	 */
-	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
-
-	memset(&desc, 0, sizeof(struct mxs_dma_desc));
-	desc.address = (dma_addr_t)&desc;
-	desc.cmd.data = MXS_DMA_DESC_COMMAND_NO_DMAXFER | MXS_DMA_DESC_CHAIN |
-			MXS_DMA_DESC_WAIT4END |
-			(1 << MXS_DMA_DESC_PIO_WORDS_OFFSET);
-	desc.cmd.pio_words[0] = readl(&regs->hw_lcdif_ctrl) | LCDIF_CTRL_RUN;
-	desc.cmd.next = (uint32_t)&desc.cmd;
-
-	/* Execute the DMA chain. */
-	mxs_dma_circ_start(MXS_DMA_CHANNEL_AHB_APBH_LCDIF, &desc);
-#endif
+	ret = mxs_probe_common(NULL, &timings, bpp, (u32)fb);
+	if (ret)
+		goto dealloc_fb;
 
 	return (void *)&panel;
+
+dealloc_fb:
+	free(fb);
+
+	return NULL;
 }
+#else /* ifndef CONFIG_DM_VIDEO */
+
+static int mxs_of_get_timings(struct udevice *dev,
+			      struct display_timing *timings,
+			      u32 *bpp)
+{
+	int ret = 0;
+	u32 display_phandle;
+	ofnode display_node;
+
+	ret = ofnode_read_u32(dev_ofnode(dev), "display", &display_phandle);
+	if (ret) {
+		dev_err(dev, "required display property isn't provided\n");
+		return -EINVAL;
+	}
+
+	display_node = ofnode_get_by_phandle(display_phandle);
+	if (!ofnode_valid(display_node)) {
+		dev_err(dev, "failed to find display subnode\n");
+		return -EINVAL;
+	}
+
+	ret = ofnode_read_u32(display_node, "bits-per-pixel", bpp);
+	if (ret) {
+		dev_err(dev,
+			"required bits-per-pixel property isn't provided\n");
+		return -EINVAL;
+	}
+
+	ret = ofnode_decode_display_timing(display_node, 0, timings);
+	if (ret) {
+		dev_err(dev, "failed to get any display timings\n");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int mxs_video_probe(struct udevice *dev)
+{
+	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
+
+	struct display_timing timings;
+	u32 bpp = 0;
+	u32 fb_start, fb_end;
+	int ret;
+
+	debug("%s() plat: base 0x%lx, size 0x%x\n",
+	       __func__, plat->base, plat->size);
+
+	ret = mxs_of_get_timings(dev, &timings, &bpp);
+	if (ret)
+		return ret;
+
+	ret = mxs_probe_common(dev, &timings, bpp, plat->base);
+	if (ret)
+		return ret;
+
+	switch (bpp) {
+	case 32:
+	case 24:
+	case 18:
+		uc_priv->bpix = VIDEO_BPP32;
+		break;
+	case 16:
+		uc_priv->bpix = VIDEO_BPP16;
+		break;
+	case 8:
+		uc_priv->bpix = VIDEO_BPP8;
+		break;
+	default:
+		dev_err(dev, "invalid bpp specified (bpp = %i)\n", bpp);
+		return -EINVAL;
+	}
+
+	uc_priv->xsize = timings.hactive.typ;
+	uc_priv->ysize = timings.vactive.typ;
+
+	/* Enable dcache for the frame buffer */
+	fb_start = plat->base & ~(MMU_SECTION_SIZE - 1);
+	fb_end = plat->base + plat->size;
+	fb_end = ALIGN(fb_end, 1 << MMU_SECTION_SHIFT);
+	mmu_set_region_dcache_behaviour(fb_start, fb_end - fb_start,
+					DCACHE_WRITEBACK);
+	video_set_flush_dcache(dev, true);
+	gd->fb_base = plat->base;
+
+	return ret;
+}
+
+static int mxs_video_bind(struct udevice *dev)
+{
+	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct display_timing timings;
+	u32 bpp = 0;
+	u32 bytes_pp = 0;
+	int ret;
+
+	ret = mxs_of_get_timings(dev, &timings, &bpp);
+	if (ret)
+		return ret;
+
+	switch (bpp) {
+	case 32:
+	case 24:
+	case 18:
+		bytes_pp = 4;
+		break;
+	case 16:
+		bytes_pp = 2;
+		break;
+	case 8:
+		bytes_pp = 1;
+		break;
+	default:
+		dev_err(dev, "invalid bpp specified (bpp = %i)\n", bpp);
+		return -EINVAL;
+	}
+
+	plat->size = timings.hactive.typ * timings.vactive.typ * bytes_pp;
+
+	return 0;
+}
+
+static int mxs_video_remove(struct udevice *dev)
+{
+	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+
+	mxs_remove_common(plat->base);
+
+	return 0;
+}
+
+static const struct udevice_id mxs_video_ids[] = {
+	{ .compatible = "fsl,imx23-lcdif" },
+	{ .compatible = "fsl,imx28-lcdif" },
+	{ .compatible = "fsl,imx7ulp-lcdif" },
+	{ .compatible = "fsl,imxrt-lcdif" },
+	{ /* sentinel */ }
+};
+
+U_BOOT_DRIVER(mxs_video) = {
+	.name	= "mxs_video",
+	.id	= UCLASS_VIDEO,
+	.of_match = mxs_video_ids,
+	.bind	= mxs_video_bind,
+	.probe	= mxs_video_probe,
+	.remove = mxs_video_remove,
+	.flags	= DM_FLAG_PRE_RELOC | DM_FLAG_OS_PREPARE,
+};
+#endif /* ifndef CONFIG_DM_VIDEO */

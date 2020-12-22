@@ -32,7 +32,7 @@
 				dmas = <0>, <0>;	/*  Do not use DMA for spi0 */
 
 				spi_flash@0 {
-					compatible = "spi-flash";
+					compatible = "jedec,spi-nor";
 					spi-max-frequency = <50000000>;
 					reg = <0>;
 				};
@@ -221,8 +221,6 @@
 		compatible = "gpio-keys";
 		status = "okay";
 
-		#address-cells = <1>;
-		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_keys>;
 

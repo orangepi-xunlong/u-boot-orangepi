@@ -14,7 +14,11 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <ioports.h>
+#include <log.h>
 #include <mpc83xx.h>
 #include <i2c.h>
 #include <miiphy.h>
@@ -22,6 +26,7 @@
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <pci.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <post.h>
 
@@ -33,7 +38,7 @@ static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* port pin dir open_drain assign */
-#if defined(CONFIG_MPC8360)
+#if defined(CONFIG_ARCH_MPC8360)
 	/* MDIO */
 	{0,  1, 3, 0, 2}, /* MDIO */
 	{0,  2, 1, 0, 1}, /* MDC */
@@ -56,7 +61,7 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	{5,  2, 1, 0, 1}, /* UART2_RTS */
 	{5,  3, 2, 0, 2}, /* UART2_SIN */
 	{5,  1, 2, 0, 3}, /* UART2_CTS */
-#elif !defined(CONFIG_MPC8309)
+#elif !defined(CONFIG_ARCH_MPC8309)
 	/* Local Bus */
 	{0, 16, 1, 0, 3}, /* LA00 */
 	{0, 17, 1, 0, 3}, /* LA01 */
@@ -95,27 +100,6 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	{0,  0, 0, 0, QE_IOP_TAB_END},
 };
 
-#if defined(CONFIG_SUVD3)
-const uint upma_table[] = {
-	0x1ffedc00, 0x0ffcdc80, 0x0ffcdc80, 0x0ffcdc04, /* Words 0 to 3 */
-	0x0ffcdc00, 0xffffcc00, 0xffffcc01, 0xfffffc01, /* Words 4 to 7 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 8 to 11 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 12 to 15 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 16 to 19 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 20 to 23 */
-	0x9cfffc00, 0x00fffc80, 0x00fffc80, 0x00fffc00, /* Words 24 to 27 */
-	0xffffec04, 0xffffec01, 0xfffffc01, 0xfffffc01, /* Words 28 to 31 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 32 to 35 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 36 to 39 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 40 to 43 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 44 to 47 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 48 to 51 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 52 to 55 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01, /* Words 56 to 59 */
-	0xfffffc01, 0xfffffc01, 0xfffffc01, 0xfffffc01  /* Words 60 to 63 */
-};
-#endif
-
 static int piggy_present(void)
 {
 	struct km_bec_fpga __iomem *base =
@@ -124,31 +108,17 @@ static int piggy_present(void)
 	return in_8(&base->bprth) & PIGGY_PRESENT;
 }
 
-#if defined(CONFIG_KMVECT1)
-int ethernet_present(void)
-{
-	/* ethernet port connected to simple switch without piggy */
-	return 1;
-}
-#else
 int ethernet_present(void)
 {
 	return piggy_present();
 }
-#endif
-
 
 int board_early_init_r(void)
 {
 	struct km_bec_fpga *base =
 		(struct km_bec_fpga *)CONFIG_SYS_KMBEC_FPGA_BASE;
-#if defined(CONFIG_SUVD3)
-	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
-	fsl_lbc_t *lbc = &immap->im_lbc;
-	u32 *mxmr = &lbc->mamr;
-#endif
 
-#if defined(CONFIG_MPC8360)
+#if defined(CONFIG_ARCH_MPC8360)
 	unsigned short	svid;
 	/*
 	 * Because of errata in the UCCs, we have to write to the reserved
@@ -182,96 +152,19 @@ int board_early_init_r(void)
 	/* enable Application Buffer */
 	setbits_8(&base->oprtl, OPRTL_XBUFENA);
 
-#if defined(CONFIG_SUVD3)
-	/* configure UPMA for APP1 */
-	upmconfig(UPMA, (uint *) upma_table,
-		sizeof(upma_table) / sizeof(uint));
-	out_be32(mxmr, CONFIG_SYS_MAMR);
-#endif
 	return 0;
 }
 
 int misc_init_r(void)
 {
-	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 	return 0;
 }
 
-#if defined(CONFIG_KMVECT1)
-#include <mv88e6352.h>
-/* Marvell MV88E6122 switch configuration */
-static struct mv88e_sw_reg extsw_conf[] = {
-	/* port 1, FRONT_MDI, autoneg */
-	{ PORT(1), PORT_PHY, NO_SPEED_FOR },
-	{ PORT(1), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	{ PHY(1), PHY_1000_CTRL, NO_ADV },
-	{ PHY(1), PHY_SPEC_CTRL, AUTO_MDIX_EN },
-	{ PHY(1), PHY_CTRL, PHY_100_MBPS | AUTONEG_EN | AUTONEG_RST |
-		FULL_DUPLEX },
-	/* port 2, unused */
-	{ PORT(2), PORT_CTRL, PORT_DIS },
-	{ PHY(2), PHY_CTRL, PHY_PWR_DOWN },
-	{ PHY(2), PHY_SPEC_CTRL, SPEC_PWR_DOWN },
-	/* port 3, BP_MII (CPU), PHY mode, 100BASE */
-	{ PORT(3), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/* port 4, ESTAR to slot 11, SerDes, 1000BASE-X */
-	{ PORT(4), PORT_STATUS, NO_PHY_DETECT },
-	{ PORT(4), PORT_PHY, SPEED_1000_FOR },
-	{ PORT(4), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/* port 5, ESTAR to slot 13, SerDes, 1000BASE-X */
-	{ PORT(5), PORT_STATUS, NO_PHY_DETECT },
-	{ PORT(5), PORT_PHY, SPEED_1000_FOR },
-	{ PORT(5), PORT_CTRL, FORWARDING | EGRS_FLD_ALL },
-	/*
-	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
-	 * acc . MV-S300889-00D.pdf , clause 4.5
-	 */
-	{ PORT(5), 0x1A, 0xADB1 },
-	/* port 6, unused, this port has no phy */
-	{ PORT(6), PORT_CTRL, PORT_DIS },
-	/*
-	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
-	 * acc . MV-S300889-00D.pdf , clause 4.5
-	 */
-	{ PORT(5), 0x1A, 0xADB1 },
-};
-#endif
-
 int last_stage_init(void)
 {
-#if defined(CONFIG_KMVECT1)
-	struct km_bec_fpga __iomem *base =
-		(struct km_bec_fpga __iomem *)CONFIG_SYS_KMBEC_FPGA_BASE;
-	u8 tmp_reg;
-
-	/* Release mv88e6122 from reset */
-	tmp_reg = in_8(&base->res1[0]) | 0x10; /* DIRECT3 register */
-	out_8(&base->res1[0], tmp_reg);	       /* GP28 as output */
-	tmp_reg = in_8(&base->gprt3) | 0x10;   /* GP28 to high */
-	out_8(&base->gprt3, tmp_reg);
-
-	/* configure MV88E6122 switch */
-	char *name = "UEC2";
-
-	if (miiphy_set_current_dev(name))
-		return 0;
-
-	mv88e_sw_program(name, CONFIG_KM_MVEXTSW_ADDR, extsw_conf,
-		ARRAY_SIZE(extsw_conf));
-
-	mv88e_sw_reset(name, CONFIG_KM_MVEXTSW_ADDR);
-
-	if (piggy_present()) {
-		env_set("ethact", "UEC2");
-		env_set("netdev", "eth1");
-		puts("using PIGGY for network boot\n");
-	} else {
-		env_set("netdev", "eth0");
-		puts("using frontport for network boot\n");
-	}
-#endif
-
-#if defined(CONFIG_KMCOGE5NE)
+#if defined(CONFIG_TARGET_KMCOGE5NE)
 	struct bfticu_iomap *base =
 		(struct bfticu_iomap *)CONFIG_SYS_BFTIC3_BASE;
 	u8 dip_switch = in_8((u8 *)&(base->mswitch)) & BFTICU_DIPSWITCH_MASK;
@@ -311,7 +204,7 @@ static int fixed_sdram(void)
 
 	msize = CONFIG_SYS_DDR_SIZE << 20;
 	disable_addr_trans();
-	msize = get_ram_size(CONFIG_SYS_DDR_BASE, msize);
+	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, msize);
 	enable_addr_trans();
 	msize /= (1024 * 1024);
 	if (CONFIG_SYS_DDR_SIZE != msize) {
@@ -338,7 +231,7 @@ int dram_init(void)
 		return -ENXIO;
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
-		CONFIG_SYS_DDR_BASE & LAWBAR_BAR);
+		CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR);
 	msize = fixed_sdram();
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
@@ -356,7 +249,7 @@ int dram_init(void)
 
 int checkboard(void)
 {
-	puts("Board: Keymile " CONFIG_KM_BOARD_NAME);
+	puts("Board: ABB " CONFIG_SYS_CONFIG_NAME);
 
 	if (piggy_present())
 		puts(" with PIGGY.");
@@ -407,8 +300,12 @@ void post_word_store(ulong value)
 
 int arch_memory_test_prepare(u32 *vstart, u32 *size, phys_addr_t *phys_offset)
 {
-	*vstart = CONFIG_SYS_MEMTEST_START;
-	*size = CONFIG_SYS_MEMTEST_END - CONFIG_SYS_MEMTEST_START;
+	/*
+	 * These match CONFIG_SYS_MEMTEST_START and
+	 * (CONFIG_SYS_MEMTEST_END - CONFIG_SYS_MEMTEST_START)
+	 */
+	*vstart = 0x00100000;
+	*size = 0xe00000;
 	debug("arch_memory_test_prepare 0x%08X 0x%08X\n", *vstart, *size);
 
 	return 0;

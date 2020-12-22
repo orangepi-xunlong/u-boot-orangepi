@@ -1,95 +1,66 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2007 Michal Simek
+ * (C) Copyright 2007-2018 Michal Simek
  *
- * Michal  SIMEK <monstr@monstr.eu>
+ * Michal SIMEK <monstr@monstr.eu>
  */
 
-/* This is a board specific file.  It's OK to include board specific
- * header files */
+/*
+ * This is a board specific file.  It's OK to include board specific
+ * header files
+ */
 
 #include <common.h>
 #include <config.h>
+#include <env.h>
+#include <init.h>
+#include <log.h>
+#include <dm/lists.h>
 #include <fdtdec.h>
-#include <asm/processor.h>
-#include <asm/microblaze_intc.h>
-#include <asm/asm.h>
-#include <asm/gpio.h>
+#include <linux/sizes.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_XILINX_GPIO
-static int reset_pin = -1;
-#endif
-
-ulong ram_base;
-
 int dram_init_banksize(void)
 {
-	gd->bd->bi_dram[0].start = ram_base;
-	gd->bd->bi_dram[0].size = get_effective_memsize();
-
-	return 0;
+	return fdtdec_setup_memory_banksize();
 }
 
 int dram_init(void)
 {
-	int node;
-	fdt_addr_t addr;
-	fdt_size_t size;
-	const void *blob = gd->fdt_blob;
-
-	node = fdt_node_offset_by_prop_value(blob, -1, "device_type",
-					     "memory", 7);
-	if (node == -FDT_ERR_NOTFOUND) {
-		debug("DRAM: Can't get memory node\n");
-		return 1;
-	}
-	addr = fdtdec_get_addr_size(blob, node, "reg", &size);
-	if (addr == FDT_ADDR_T_NONE || size == 0) {
-		debug("DRAM: Can't get base address or size\n");
-		return 1;
-	}
-	ram_base = addr;
-
-	gd->ram_top = addr; /* In setup_dest_addr() is done +ram_size */
-	gd->ram_size = size;
+	if (fdtdec_setup_mem_size_base() != 0)
+		return -EINVAL;
 
 	return 0;
 };
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-#ifndef CONFIG_SPL_BUILD
-#ifdef CONFIG_XILINX_GPIO
-	if (reset_pin != -1)
-		gpio_direction_output(reset_pin, 1);
-#endif
-
-#ifdef CONFIG_XILINX_TB_WATCHDOG
-	hw_watchdog_disable();
-#endif
-#endif
-	puts ("Reseting board\n");
-	__asm__ __volatile__ ("	mts rmsr, r0;" \
-				"bra r0");
-
-	return 0;
-}
-
-static int gpio_init(void)
-{
-#ifdef CONFIG_XILINX_GPIO
-	reset_pin = gpio_alloc(CONFIG_SYS_GPIO_0_ADDR, "reset", 1);
-	if (reset_pin != -1)
-		gpio_request(reset_pin, "reset_pin");
-#endif
-	return 0;
-}
-
 int board_late_init(void)
 {
-	gpio_init();
+	ulong max_size, lowmem_size;
+
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_SYSRESET_MICROBLAZE)
+	int ret;
+
+	ret = device_bind_driver(gd->dm_root, "mb_soft_reset",
+				 "reset_soft", NULL);
+	if (ret)
+		printf("Warning: No reset driver: ret=%d\n", ret);
+#endif
+
+	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
+		debug("Saved variables - Skipping\n");
+		return 0;
+	}
+
+	max_size = gd->start_addr_sp - CONFIG_STACK_SIZE;
+	max_size = round_down(max_size, SZ_16M);
+
+	/* Linux default LOWMEM_SIZE is 0x30000000 = 768MB */
+	lowmem_size = gd->ram_base + 768 * 1024 * 1024;
+
+	env_set_addr("initrd_high", (void *)min_t(ulong, max_size,
+						  lowmem_size));
+	env_set_addr("fdt_high", (void *)min_t(ulong, max_size, lowmem_size));
 
 	return 0;
 }

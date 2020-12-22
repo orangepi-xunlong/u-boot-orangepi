@@ -31,7 +31,7 @@
 		interrupts = <1 9 0xf08>;
 	};
 
-	soc {
+	soc: soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -68,6 +68,14 @@
 			num-cs = <6>;
 			big-endian;
 			status = "disabled";
+		};
+
+		esdhc: esdhc@1560000 {
+			compatible = "fsl,esdhc";
+			reg = <0x0 0x1560000 0x0 0x10000>;
+			interrupts = <0 62 0x4>;
+			big-endian;
+			bus-width = <4>;
 		};
 
 		ifc: ifc@1530000 {
@@ -203,14 +211,12 @@
 		};
 
 		qspi: quadspi@1550000 {
-			compatible = "fsl,vf610-qspi";
+			compatible = "fsl,ls1021a-qspi";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x0 0x1550000 0x0 0x10000>,
 				<0x0 0x40000000 0x0 0x10000000>;
 			reg-names = "QuadSPI", "QuadSPI-memory";
-			num-cs = <4>;
-			big-endian;
 			status = "disabled";
 		};
 
@@ -282,6 +288,16 @@
 			bus-range = <0x0 0xff>;
 			ranges = <0x81000000 0x0 0x00000000 0x50 0x00020000 0x0 0x00010000   /* downstream I/O */
 				  0x82000000 0x0 0x40000000 0x50 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
+		};
+
+		sata: sata@3200000 {
+			compatible = "fsl,ls1046a-ahci";
+			reg = <0x0 0x3200000 0x0 0x10000 /* ccsr sata base */
+			       0x0 0x20140520 0x0 0x4>;	 /* ecc sata addr*/
+			reg-names = "sata-base", "ecc-addr";
+			interrupts = <0 69 4>;
+			clocks = <&clockgen 4 1>;
+			status = "disabled";
 		};
 	};
 };

@@ -6,6 +6,7 @@
  */
 
 #include <config.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/psci.h>
 #include <asm/arch/immap_ls102xa.h>
@@ -68,11 +69,18 @@ static void __secure ls1_deepsleep_irq_cfg(void)
 
 	ippdexpcr0 = in_be32(&rcpm->ippdexpcr0);
 	/*
-	 * Workaround: There is bug of register ippdexpcr1, when read it always
-	 * returns zero, so its value is saved to a scrachpad register to be
-	 * read, that is why we don't read it from register ippdexpcr1 itself.
+	 * Workaround of errata A-008646
+	 * Errata states that read to register ippdexpcr1 always returns
+	 * zero irrespective of what value is written into it. So its value
+	 * is first saved to a spare register and then read from it
 	 */
-	ippdexpcr1 = in_le32(&scfg->sparecr[7]);
+	ippdexpcr1 = in_be32(&scfg->sparecr[7]);
+
+	/*
+	 * To allow OCRAM to be used as wakeup source in deep sleep,
+	 * do not power it down.
+	 */
+	out_be32(&rcpm->ippdexpcr1, ippdexpcr1 | RCPM_IPPDEXPCR1_OCRAM1);
 
 	if (ippdexpcr0 & RCPM_IPPDEXPCR0_ETSEC)
 		pmcintecr |= SCFG_PMCINTECR_ETSECRXG0 |
@@ -191,6 +199,9 @@ static void __secure ls1_deep_sleep(u32 entry_point)
 	/* Enable Warm Device Reset */
 	setbits_be32(&scfg->dpslpcr, SCFG_DPSLPCR_WDRR_EN);
 	setbits_be32(&gur->crstsr, DCFG_CRSTSR_WDRFR);
+
+	/* Disable QE */
+	setbits_be32(&gur->devdisr, CCSR_DEVDISR1_QE);
 
 	ls1_deepsleep_irq_cfg();
 

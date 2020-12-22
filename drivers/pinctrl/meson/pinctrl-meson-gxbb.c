@@ -11,9 +11,9 @@
 #include <dm/pinctrl.h>
 #include <dt-bindings/gpio/meson-gxbb-gpio.h>
 
-#include "pinctrl-meson.h"
+#include "pinctrl-meson-gx.h"
 
-#define EE_OFF	14
+#define EE_OFF	15
 
 static const unsigned int emmc_nand_d07_pins[] = {
 	PIN(BOOT_0, EE_OFF), PIN(BOOT_1, EE_OFF), PIN(BOOT_2, EE_OFF),
@@ -60,6 +60,10 @@ static const unsigned int eth_txd0_pins[]	= { PIN(GPIOZ_10, EE_OFF) };
 static const unsigned int eth_txd1_pins[]	= { PIN(GPIOZ_11, EE_OFF) };
 static const unsigned int eth_txd2_pins[]	= { PIN(GPIOZ_12, EE_OFF) };
 static const unsigned int eth_txd3_pins[]	= { PIN(GPIOZ_13, EE_OFF) };
+
+static const unsigned int hdmi_hpd_pins[]	= { PIN(GPIOH_0, EE_OFF) };
+static const unsigned int hdmi_sda_pins[]	= { PIN(GPIOH_1, EE_OFF) };
+static const unsigned int hdmi_scl_pins[]	= { PIN(GPIOH_2, EE_OFF) };
 
 static const unsigned int uart_tx_ao_a_pins[]	= { PIN(GPIOAO_0, 0) };
 static const unsigned int uart_rx_ao_a_pins[]	= { PIN(GPIOAO_1, 0) };
@@ -144,6 +148,7 @@ static struct meson_pmx_group meson_gxbb_periphs_groups[] = {
 	GPIO_GROUP(GPIODV_15, EE_OFF),
 	GPIO_GROUP(GPIODV_16, EE_OFF),
 	GPIO_GROUP(GPIODV_17, EE_OFF),
+	GPIO_GROUP(GPIODV_18, EE_OFF),
 	GPIO_GROUP(GPIODV_19, EE_OFF),
 	GPIO_GROUP(GPIODV_20, EE_OFF),
 	GPIO_GROUP(GPIODV_21, EE_OFF),
@@ -203,8 +208,6 @@ static struct meson_pmx_group meson_gxbb_periphs_groups[] = {
 	GPIO_GROUP(GPIOCLK_2, EE_OFF),
 	GPIO_GROUP(GPIOCLK_3, EE_OFF),
 
-	GPIO_GROUP(GPIO_TEST_N, EE_OFF),
-
 	/* Bank X */
 	GROUP(uart_tx_a,	4,	13),
 	GROUP(uart_rx_a,	4,	12),
@@ -232,6 +235,11 @@ static struct meson_pmx_group meson_gxbb_periphs_groups[] = {
 	GROUP(eth_txd1,		6,	4),
 	GROUP(eth_txd2,		6,	3),
 	GROUP(eth_txd3,		6,	2),
+
+	/* Bank H */
+	GROUP(hdmi_hpd,		1,	26),
+	GROUP(hdmi_sda,		1,	25),
+	GROUP(hdmi_scl,		1,	24),
 
 	/* Bank DV */
 	GROUP(uart_tx_b,	2,	29),
@@ -269,6 +277,8 @@ static struct meson_pmx_group meson_gxbb_aobus_groups[] = {
 	GPIO_GROUP(GPIOAO_11, 0),
 	GPIO_GROUP(GPIOAO_12, 0),
 	GPIO_GROUP(GPIOAO_13, 0),
+
+	GPIO_GROUP(GPIO_TEST_N, 0),
 
 	/* bank AO */
 	GROUP(uart_tx_ao_b,	0,	26),
@@ -319,7 +329,7 @@ static const char * const gpio_periphs_groups[] = {
 	"GPIOX_15", "GPIOX_16", "GPIOX_17", "GPIOX_18", "GPIOX_19",
 	"GPIOX_20", "GPIOX_21", "GPIOX_22",
 
-	"GPIO_TEST_N",
+	"GPIOCLK_0", "GPIOCLK_1", "GPIOCLK_2", "GPIOCLK_3",
 };
 
 static const char * const emmc_groups[] = {
@@ -350,10 +360,20 @@ static const char * const eth_groups[] = {
 	"eth_txd0", "eth_txd1", "eth_txd2", "eth_txd3",
 };
 
+static const char * const hdmi_hpd_groups[] = {
+	"hdmi_hpd",
+};
+
+static const char * const hdmi_i2c_groups[] = {
+	"hdmi_sda", "hdmi_scl",
+};
+
 static const char * const gpio_aobus_groups[] = {
 	"GPIOAO_0", "GPIOAO_1", "GPIOAO_2", "GPIOAO_3", "GPIOAO_4",
 	"GPIOAO_5", "GPIOAO_6", "GPIOAO_7", "GPIOAO_8", "GPIOAO_9",
 	"GPIOAO_10", "GPIOAO_11", "GPIOAO_12", "GPIOAO_13",
+
+	"GPIO_TEST_N",
 };
 
 static const char * const uart_ao_groups[] = {
@@ -380,6 +400,8 @@ static struct meson_pmx_func meson_gxbb_periphs_functions[] = {
 	FUNCTION(uart_b),
 	FUNCTION(uart_c),
 	FUNCTION(eth),
+	FUNCTION(hdmi_hpd),
+	FUNCTION(hdmi_i2c),
 };
 
 static struct meson_pmx_func meson_gxbb_aobus_functions[] = {
@@ -409,14 +431,15 @@ static struct meson_bank meson_gxbb_aobus_banks[] = {
 
 struct meson_pinctrl_data meson_gxbb_periphs_pinctrl_data = {
 	.name		= "periphs-banks",
-	.pin_base	= 14,
+	.pin_base	= 15,
 	.groups		= meson_gxbb_periphs_groups,
 	.funcs		= meson_gxbb_periphs_functions,
 	.banks		= meson_gxbb_periphs_banks,
-	.num_pins	= 120,
+	.num_pins	= 119,
 	.num_groups	= ARRAY_SIZE(meson_gxbb_periphs_groups),
 	.num_funcs	= ARRAY_SIZE(meson_gxbb_periphs_functions),
 	.num_banks	= ARRAY_SIZE(meson_gxbb_periphs_banks),
+	.gpio_driver	= &meson_gx_gpio_driver,
 };
 
 struct meson_pinctrl_data meson_gxbb_aobus_pinctrl_data = {
@@ -425,10 +448,11 @@ struct meson_pinctrl_data meson_gxbb_aobus_pinctrl_data = {
 	.groups		= meson_gxbb_aobus_groups,
 	.funcs		= meson_gxbb_aobus_functions,
 	.banks		= meson_gxbb_aobus_banks,
-	.num_pins	= 14,
+	.num_pins	= 15,
 	.num_groups	= ARRAY_SIZE(meson_gxbb_aobus_groups),
 	.num_funcs	= ARRAY_SIZE(meson_gxbb_aobus_functions),
 	.num_banks	= ARRAY_SIZE(meson_gxbb_aobus_banks),
+	.gpio_driver	= &meson_gx_gpio_driver,
 };
 
 static const struct udevice_id meson_gxbb_pinctrl_match[] = {
@@ -449,5 +473,5 @@ U_BOOT_DRIVER(meson_gxbb_pinctrl) = {
 	.of_match = of_match_ptr(meson_gxbb_pinctrl_match),
 	.probe = meson_pinctrl_probe,
 	.priv_auto_alloc_size = sizeof(struct meson_pinctrl),
-	.ops = &meson_pinctrl_ops,
+	.ops = &meson_gx_pinctrl_ops,
 };

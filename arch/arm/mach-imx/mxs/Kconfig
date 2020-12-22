@@ -50,9 +50,6 @@ config TARGET_APX4DEVKIT
 config TARGET_BG0900
 	bool "Support bg0900"
 
-config TARGET_M28EVK
-	bool "Support m28evk"
-
 config TARGET_MX28EVK
 	bool "Support mx28evk"
 	select BOARD_EARLY_INIT_F
@@ -63,14 +60,17 @@ config TARGET_SC_SPS_1
 config TARGET_TS4600
 	bool "Support TS4600"
 
+config TARGET_XEA
+	bool "Support XEA"
+
 endchoice
 
 config SYS_SOC
 	default "mxs"
 
-source "board/aries/m28evk/Kconfig"
 source "board/bluegiga/apx4devkit/Kconfig"
 source "board/freescale/mx28evk/Kconfig"
+source "board/liebherr/xea/Kconfig"
 source "board/ppcag/bg0900/Kconfig"
 source "board/schulercontrol/sc_sps_1/Kconfig"
 source "board/technologic/ts4600/Kconfig"

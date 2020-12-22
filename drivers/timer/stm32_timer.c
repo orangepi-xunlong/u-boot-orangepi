@@ -9,6 +9,8 @@
 #include <dm.h>
 #include <fdtdec.h>
 #include <timer.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
 
 #include <asm/io.h>
 
@@ -132,6 +134,5 @@ U_BOOT_DRIVER(stm32_timer) = {
 	.priv_auto_alloc_size = sizeof(struct stm32_timer_priv),
 	.probe = stm32_timer_probe,
 	.ops = &stm32_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
 

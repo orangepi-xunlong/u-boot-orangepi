@@ -56,12 +56,12 @@
 #include <netdev.h>
 #include <asm/io.h>
 #include <pci.h>
+#include <linux/delay.h>
 
 /* defines */
 #define EEPROM_SIZE 0xb /*12 16-bit chunks, or 24 bytes*/
 
 #define DSIZE		0x00000FFF
-#define ETH_ALEN	6
 #define CRC_SIZE	4
 #define TOUT_LOOP	500000
 #define TX_BUF_SIZE	1536

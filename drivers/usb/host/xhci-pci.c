@@ -7,9 +7,11 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
+#include <log.h>
 #include <pci.h>
 #include <usb.h>
-#include "xhci.h"
+#include <usb/xhci.h>
 
 static void xhci_pci_init(struct udevice *dev, struct xhci_hccr **ret_hccr,
 			  struct xhci_hcor **ret_hcor)
@@ -23,9 +25,8 @@ static void xhci_pci_init(struct udevice *dev, struct xhci_hccr **ret_hccr,
 	hcor = (struct xhci_hcor *)((uintptr_t) hccr +
 			HC_LENGTH(xhci_readl(&hccr->cr_capbase)));
 
-	debug("XHCI-PCI init hccr 0x%x and hcor 0x%x hc_length %d\n",
-	      (u32)hccr, (u32)hcor,
-	      (u32)HC_LENGTH(xhci_readl(&hccr->cr_capbase)));
+	debug("XHCI-PCI init hccr %p and hcor %p hc_length %d\n",
+	      hccr, hcor, (u32)HC_LENGTH(xhci_readl(&hccr->cr_capbase)));
 
 	*ret_hccr = hccr;
 	*ret_hcor = hcor;

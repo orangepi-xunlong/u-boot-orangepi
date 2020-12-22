@@ -1,15 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause
 /*
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd.
  */
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <ram.h>
 #include <syscon.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/grf_rk3128.h>
-#include <asm/arch/sdram_common.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/grf_rk3128.h>
+#include <asm/arch-rockchip/sdram.h>
 
 struct dram_info {
 	struct ram_info info;

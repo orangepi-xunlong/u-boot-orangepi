@@ -18,11 +18,12 @@
 
 #define CONFIG_REMAKE_ELF
 
+#define CONFIG_SYS_BOOTM_LEN		SZ_64M
+
 /* Physical Memory Map */
 
 /* CONFIG_SYS_TEXT_BASE needs to align with where ATF loads bl33.bin */
 
-#define CONFIG_NR_DRAM_BANKS		6
 #define PHYS_SDRAM_1			0x00000000
 
 /* 1008 MB (the last 16Mb are secured for TrustZone by ATF*/
@@ -50,18 +51,9 @@
 #define CONFIG_USB_DWC2_REG_ADDR 0xF72C0000
 /*#define CONFIG_DWC2_DFLT_SPEED_FULL*/
 #define CONFIG_DWC2_ENABLE_DYNAMIC_FIFO
-
-#define CONFIG_MISC_INIT_R
 #endif
 
 #define CONFIG_HIKEY_GPIO
-
-/* SD/MMC configuration */
-#define CONFIG_BOUNCE_BUFFER
-
-/* Command line configuration */
-
-#define CONFIG_MTD_PARTITIONS
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
@@ -87,8 +79,9 @@
 				"initrd_high=0xffffffffffffffff\0" \
 				BOOTENV
 
-/* Preserve environment on sd card */
-#define CONFIG_ENV_SIZE			0x1000
+/* Preserve environment on eMMC */
+#define CONFIG_SYS_MMC_ENV_DEV		0	/* Use eMMC */
+#define CONFIG_SYS_MMC_ENV_PART		2	/* Use Boot1 partition */
 
 /* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */

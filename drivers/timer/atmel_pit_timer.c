@@ -9,6 +9,7 @@
 #include <dm.h>
 #include <timer.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 #define AT91_PIT_VALUE		0xfffff
 #define AT91_PIT_PITEN		BIT(24)		/* Timer Enabled */
@@ -85,5 +86,4 @@ U_BOOT_DRIVER(atmel_pit) = {
 	.platdata_auto_alloc_size = sizeof(struct atmel_pit_platdata),
 	.probe	= atmel_pit_probe,
 	.ops	= &atmel_pit_ops,
-	.flags	= DM_FLAG_PRE_RELOC,
 };

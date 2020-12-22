@@ -7,6 +7,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -33,7 +34,9 @@ struct sdram_addr_dec {
 #define REG_CPUCS_WIN_WIN0_CS(x)	(((x) & 0x3) << 2)
 #define REG_CPUCS_WIN_SIZE(x)		(((x) & 0xff) << 24)
 
-#define SDRAM_SIZE_MAX			0xc0000000
+#ifndef MVEBU_SDRAM_SIZE_MAX
+#define MVEBU_SDRAM_SIZE_MAX		0xc0000000
+#endif
 
 #define SCRUB_MAGIC		0xbeefdead
 
@@ -275,19 +278,9 @@ int dram_init(void)
 		 * address space left for the internal registers etc.
 		 */
 		size += mvebu_sdram_bs(i);
-		if (size > SDRAM_SIZE_MAX)
-			size = SDRAM_SIZE_MAX;
+		if (size > MVEBU_SDRAM_SIZE_MAX)
+			size = MVEBU_SDRAM_SIZE_MAX;
 	}
-
-	for (; i < CONFIG_NR_DRAM_BANKS; i++) {
-		/* If above loop terminated prematurely, we need to set
-		 * remaining banks' start address & size as 0. Otherwise other
-		 * u-boot functions and Linux kernel gets wrong values which
-		 * could result in crash */
-		gd->bd->bi_dram[i].start = 0;
-		gd->bd->bi_dram[i].size = 0;
-	}
-
 
 	if (ecc_enabled())
 		dram_ecc_scrubbing();
@@ -312,7 +305,7 @@ int dram_init_banksize(void)
 
 		/* Clip the banksize to 1GiB if it exceeds the max size */
 		size += gd->bd->bi_dram[i].size;
-		if (size > SDRAM_SIZE_MAX)
+		if (size > MVEBU_SDRAM_SIZE_MAX)
 			mvebu_sdram_bs_set(i, 0x40000000);
 	}
 

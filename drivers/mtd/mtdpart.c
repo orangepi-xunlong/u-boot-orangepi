@@ -9,6 +9,8 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -19,6 +21,7 @@
 
 #include <common.h>
 #include <malloc.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/compat.h>
 #include <ubi_uboot.h>
@@ -180,7 +183,6 @@ static int mtd_parse_partition(const char **_mtdparts,
 
 	return 0;
 }
-
 
 /**
  * mtd_parse_partitions - Create a partition array from an mtdparts definition

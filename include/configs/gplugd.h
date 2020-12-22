@@ -28,14 +28,6 @@
  * TBD: dcache to be used for this
  */
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_TEXT_BASE - 0x00200000)
-#define CONFIG_NR_DRAM_BANKS_MAX	2
-
-/*
- * Commands configuration
- */
-
-/* Disable DCACHE */
-#define CONFIG_SYS_DCACHE_OFF
 
 /* Network configuration */
 #ifdef CONFIG_CMD_NET
@@ -49,7 +41,6 @@
 #define CONFIG_MARVELL_GPIO
 
 /* PHY configuration */
-#define CONFIG_MII
 #define CONFIG_RESET_PHY_R
 /* 88E3015 register definition */
 #define PHY_LED_PAR_SEL_REG		22
@@ -75,7 +66,6 @@
 /*
  * Environment variables configurations
  */
-#define CONFIG_ENV_SIZE			0x4000
 
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_EHCI_ARMADA100

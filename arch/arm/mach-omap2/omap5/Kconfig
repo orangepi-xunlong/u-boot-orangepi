@@ -9,10 +9,6 @@ choice
 	prompt "OMAP5 board select"
 	optional
 
-config TARGET_CL_SOM_AM57X
-	bool "CompuLab CL-SOM-AM57x"
-	select DRA7XX
-
 config TARGET_CM_T54
 	bool "CompuLab CM-T54"
 
@@ -23,26 +19,26 @@ config TARGET_DRA7XX_EVM
 	bool "TI DRA7XX"
 	select BOARD_LATE_INIT
 	select DRA7XX
-	select TI_I2C_BOARD_DETECT
 	select PHYS_64BIT
-	imply SCSI
+	select TI_I2C_BOARD_DETECT
 	imply DM_PMIC
-	imply PMIC_LP87565
 	imply DM_REGULATOR
 	imply DM_REGULATOR_LP87565
-	imply SPL_THERMAL
 	imply DM_THERMAL
+	imply PMIC_LP87565
+	imply SCSI
+	imply SPL_THERMAL
 	imply TI_DRA7_THERMAL
 
 config TARGET_AM57XX_EVM
 	bool "AM57XX"
 	select BOARD_LATE_INIT
+	select CMD_DDR3
 	select DRA7XX
 	select TI_I2C_BOARD_DETECT
-	select CMD_DDR3
+	imply DM_THERMAL
 	imply SCSI
 	imply SPL_THERMAL
-	imply DM_THERMAL
 	imply TI_DRA7_THERMAL
 
 endchoice
@@ -160,7 +156,6 @@ endchoice
 endmenu
 endif
 
-source "board/compulab/cl-som-am57x/Kconfig"
 source "board/compulab/cm_t54/Kconfig"
 source "board/ti/omap5_uevm/Kconfig"
 source "board/ti/dra7xx/Kconfig"

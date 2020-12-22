@@ -10,6 +10,9 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <init.h>
+#include <net.h>
 #include <watchdog.h>
 #include <asm/processor.h>
 #include <ioports.h>
@@ -30,6 +33,7 @@
 #include <fsl_usb.h>
 #include <hwconfig.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 #include "mp.h"
 #ifdef CONFIG_CHAIN_OF_TRUST
 #include <fsl_validate.h>
@@ -37,7 +41,7 @@
 #ifdef CONFIG_FSL_CAAM
 #include <fsl_sec.h>
 #endif
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_FSL_CORENET)
+#if defined(CONFIG_NXP_ESBC) && defined(CONFIG_FSL_CORENET)
 #include <asm/fsl_pamu.h>
 #include <fsl_secboot_err.h>
 #endif
@@ -439,7 +443,7 @@ ulong cpu_init_f(void)
 #ifdef CONFIG_SYS_DCSRBAR_PHYS
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 #endif
-#if defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_NXP_ESBC) && !defined(CONFIG_SYS_RAMBOOT)
 	struct law_entry law;
 #endif
 #ifdef CONFIG_ARCH_MPC8548
@@ -459,7 +463,7 @@ ulong cpu_init_f(void)
 	disable_tlb(14);
 	disable_tlb(15);
 
-#if defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_NXP_ESBC) && !defined(CONFIG_SYS_RAMBOOT)
 	/* Disable the LAW created for NOR flash by the PBI commands */
 	law = find_law(CONFIG_SYS_PBI_FLASH_BASE);
 	if (law.index != -1)
@@ -959,10 +963,12 @@ int cpu_init_r(void)
 #endif
 
 #ifdef CONFIG_FMAN_ENET
+#ifndef CONFIG_DM_ETH
 	fman_enet_init();
 #endif
+#endif
 
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_FSL_CORENET)
+#if defined(CONFIG_NXP_ESBC) && defined(CONFIG_FSL_CORENET)
 	if (pamu_init() < 0)
 		fsl_secboot_handle_error(ERROR_ESBC_PAMU_INIT);
 #endif
@@ -1022,25 +1028,15 @@ void arch_preboot_os(void)
 	mtmsr(msr);
 }
 
-#if defined(CONFIG_SATA) && defined(CONFIG_FSL_SATA)
-int sata_initialize(void)
-{
-	if (is_serdes_configured(SATA1) || is_serdes_configured(SATA2))
-		return __sata_initialize();
-
-	return 1;
-}
-#endif
-
 void cpu_secondary_init_r(void)
 {
+#ifdef CONFIG_QE
 #ifdef CONFIG_U_QE
 	uint qe_base = CONFIG_SYS_IMMR + 0x00140000; /* QE immr base */
-#elif defined CONFIG_QE
+#else
 	uint qe_base = CONFIG_SYS_IMMR + 0x00080000; /* QE immr base */
 #endif
 
-#ifdef CONFIG_QE
 	qe_init(qe_base);
 	qe_reset();
 #endif

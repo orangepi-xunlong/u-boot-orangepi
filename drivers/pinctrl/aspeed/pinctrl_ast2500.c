@@ -6,6 +6,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/pinctrl.h>
 #include <asm/arch/scu_ast2500.h>
@@ -58,6 +59,8 @@ static const struct ast2500_group_config ast2500_groups[] = {
 	{ "MDIO1", 3, (1 << 31) | (1 << 30) },
 	{ "MAC2LINK", 1, (1 << 1) },
 	{ "MDIO2", 5, (1 << 2) },
+	{ "SD1", 5, (1 << 0) },
+	{ "SD2", 5, (1 << 1) },
 };
 
 static int ast2500_pinctrl_get_groups_count(struct udevice *dev)

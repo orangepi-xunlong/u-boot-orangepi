@@ -23,8 +23,6 @@
 #define V_OSCK				25000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
-#define CONFIG_ENV_SIZE			(16 << 10)	/* 16 KiB */
-
 #ifndef CONFIG_SPL_BUILD
 #define MMCARGS \
 	"mmcdev=0\0" \
@@ -79,7 +77,6 @@
 #define CONFIG_SYS_AUTOLOAD		"no"
 
 /* Serial console configuration */
-#define CONFIG_SERIAL1			1	/* UART0 */
 
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
@@ -93,7 +90,6 @@
 /* SPL */
 
 /* Network. */
-#define CONFIG_PHY_ATHEROS
 
 /* NAND support */
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
@@ -119,7 +115,6 @@
 #undef CONFIG_SYS_NAND_U_BOOT_OFFS
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x200000
 
-#define CONFIG_ENV_OFFSET		0x300000 /* environment starts here */
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #ifdef CONFIG_SPL_OS_BOOT

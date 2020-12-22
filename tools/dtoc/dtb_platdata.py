@@ -15,8 +15,9 @@ import collections
 import copy
 import sys
 
-import fdt
-import fdt_util
+from dtoc import fdt
+from dtoc import fdt_util
+from patman import tools
 
 # When we see these properties we ignore them - i.e. do not create a structure member
 PROP_IGNORE_LIST = [
@@ -99,7 +100,7 @@ def get_value(ftype, value):
     if ftype == fdt.TYPE_INT:
         return '%#x' % fdt_util.fdt32_to_cpu(value)
     elif ftype == fdt.TYPE_BYTE:
-        return '%#x' % ord(value[0])
+        return '%#x' % tools.ToByte(value[0])
     elif ftype == fdt.TYPE_STRING:
         return '"%s"' % value
     elif ftype == fdt.TYPE_BOOL:
@@ -211,15 +212,21 @@ class DtbPlatdata(object):
             Number of argument cells is this is a phandle, else None
         """
         if prop.name in ['clocks']:
+            if not isinstance(prop.value, list):
+                prop.value = [prop.value]
             val = prop.value
-            if not isinstance(val, list):
-                val = [val]
             i = 0
 
             max_args = 0
             args = []
             while i < len(val):
                 phandle = fdt_util.fdt32_to_cpu(val[i])
+                # If we get to the end of the list, stop. This can happen
+                # since some nodes have more phandles in the list than others,
+                # but we allocate enough space for the largest list. So those
+                # nodes with shorter lists end up with zeroes at the end.
+                if not phandle:
+                    break
                 target = self._fdt.phandle_to_node.get(phandle)
                 if not target:
                     raise ValueError("Cannot parse '%s' in node '%s'" %
@@ -310,7 +317,8 @@ class DtbPlatdata(object):
             total = na + ns
 
             if reg.type != fdt.TYPE_INT:
-                raise ValueError("Node '%s' reg property is not an int")
+                raise ValueError("Node '%s' reg property is not an int" %
+                                 node.name)
             if len(reg.value) % total:
                 raise ValueError("Node '%s' reg property has %d cells "
                         'which is not a multiple of na + ns = %d + %d)' %
@@ -400,8 +408,6 @@ class DtbPlatdata(object):
                     continue
                 info = self.get_phandle_argc(prop, node.name)
                 if info:
-                    if not isinstance(prop.value, list):
-                        prop.value = [prop.value]
                     # Process the list as pairs of (phandle, id)
                     pos = 0
                     for args in info.args:
@@ -417,7 +423,7 @@ class DtbPlatdata(object):
 
         This writes out the body of a header file consisting of structure
         definitions for node in self._valid_nodes. See the documentation in
-        README.of-plat for more information.
+        doc/driver-model/of-plat.rst for more information.
         """
         self.out_header()
         self.out('#include <stdbool.h>\n')
@@ -444,9 +450,10 @@ class DtbPlatdata(object):
                 self.out(';\n')
             self.out('};\n')
 
-        for alias, struct_name in self._aliases.iteritems():
-            self.out('#define %s%s %s%s\n'% (STRUCT_PREFIX, alias,
-                                             STRUCT_PREFIX, struct_name))
+        for alias, struct_name in self._aliases.items():
+            if alias not in sorted(structs):
+                self.out('#define %s%s %s%s\n'% (STRUCT_PREFIX, alias,
+                                                 STRUCT_PREFIX, struct_name))
 
     def output_node(self, node):
         """Output the C code for a node
@@ -456,9 +463,10 @@ class DtbPlatdata(object):
         """
         struct_name, _ = get_compat_name(node)
         var_name = conv_name_to_c(node.name)
-        self.buf('static struct %s%s %s%s = {\n' %
+        self.buf('static const struct %s%s %s%s = {\n' %
                  (STRUCT_PREFIX, struct_name, VAL_PREFIX, var_name))
-        for pname, prop in node.props.items():
+        for pname in sorted(node.props):
+            prop = node.props[pname]
             if pname in PROP_IGNORE_LIST or pname[0] == '#':
                 continue
             member_name = conv_name_to_c(prop.name)
@@ -492,7 +500,7 @@ class DtbPlatdata(object):
                         vals.append(get_value(prop.type, val))
 
                     # Put 8 values per line to avoid very long lines.
-                    for i in xrange(0, len(vals), 8):
+                    for i in range(0, len(vals), 8):
                         if i:
                             self.buf(',\n\t\t')
                         self.buf(', '.join(vals[i:i + 8]))
@@ -519,7 +527,7 @@ class DtbPlatdata(object):
         U_BOOT_DEVICE() declarations for each valid node. Where a node has
         multiple compatible strings, a #define is used to make them equivalent.
 
-        See the documentation in doc/driver-model/of-plat.txt for more
+        See the documentation in doc/driver-model/of-plat.rst for more
         information.
         """
         self.out_header()

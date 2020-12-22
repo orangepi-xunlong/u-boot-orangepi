@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 
 #include <common.h>
+#include <init.h>
 #include <linux/libfdt.h>
 #include <linux/compiler.h>
 
@@ -22,7 +23,7 @@ int __weak show_board_info(void)
 	model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
 
 	if (model)
-		tick_printf("Model: %s\n", model);
+		printf("Model: %s\n", model);
 #endif
 
 	return checkboard();

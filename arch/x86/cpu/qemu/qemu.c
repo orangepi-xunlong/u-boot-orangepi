@@ -4,6 +4,8 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <pci.h>
 #include <qfw.h>
 #include <asm/irq.h>
@@ -143,10 +145,6 @@ int arch_cpu_init(void)
 
 	return x86_cpu_init_f();
 }
-#endif
-
-#if !CONFIG_IS_ENABLED(EFI_STUB) && \
-	!CONFIG_IS_ENABLED(SPL_X86_32BIT_INIT)
 
 int checkcpu(void)
 {
@@ -159,12 +157,6 @@ int print_cpuinfo(void)
 	return default_print_cpuinfo();
 }
 #endif
-
-void reset_cpu(ulong addr)
-{
-	/* cold reset */
-	x86_full_reset();
-}
 
 int arch_early_init_r(void)
 {

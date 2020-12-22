@@ -20,7 +20,7 @@ struct interface {
 	void (EFIAPI * inc)(void);
 } interface;
 
-static efi_guid_t guid_device_path = DEVICE_PATH_GUID;
+static efi_guid_t guid_device_path = EFI_DEVICE_PATH_PROTOCOL_GUID;
 
 static efi_guid_t guid_device_path_to_text_protocol =
 	EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
@@ -257,7 +257,7 @@ static int teardown(void)
 static int execute(void)
 {
 	struct efi_device_path *remaining_dp;
-	void *handle;
+	efi_handle_t handle;
 	/*
 	 * This device path node ends with the letter 't' of 'u-boot'.
 	 * The following '.bin' does not belong to the node but is

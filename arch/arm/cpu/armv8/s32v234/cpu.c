@@ -4,11 +4,15 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/armv8/mmu.h>
 #include <asm/io.h>
 #include <asm/arch/mc_me_regs.h>
+#include <linux/bitops.h>
 #include "cpu.h"
 
 u32 cpu_mask(void)
@@ -16,7 +20,7 @@ u32 cpu_mask(void)
 	return readl(MC_ME_CS);
 }
 
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 
 #define S32V234_IRAM_BASE        0x3e800000UL
 #define S32V234_IRAM_SIZE        0x800000UL

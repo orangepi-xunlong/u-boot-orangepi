@@ -11,9 +11,11 @@
 
 #include <common.h>
 #include <clk.h>
+#include <log.h>
 #include <malloc.h>
 #include <part.h>
 #include <mmc.h>
+#include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/errno.h>
 #include <asm/byteorder.h>
@@ -463,7 +465,7 @@ int ftsdc010_mmc_bind(struct udevice *dev)
 }
 
 static const struct udevice_id ftsdc010_mmc_ids[] = {
-	{ .compatible = "andestech,atsdc010" },
+	{ .compatible = "andestech,atfsdc010" },
 	{ }
 };
 

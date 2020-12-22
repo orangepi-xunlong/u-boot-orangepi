@@ -69,7 +69,7 @@ struct fdt_cros_ec {
  * @param maxlen	Maximum length of the ID field
  * @return 0 if ok, -1 on error
  */
-int cros_ec_read_id(struct cros_ec_dev *dev, char *id, int maxlen);
+int cros_ec_read_id(struct udevice *dev, char *id, int maxlen);
 
 /**
  * Read a keyboard scan from the CROS-EC device
@@ -89,18 +89,19 @@ int cros_ec_scan_keyboard(struct udevice *dev, struct mbkp_keyscan *scan);
  * @param image		Destination for image identifier
  * @return 0 if ok, <0 on error
  */
-int cros_ec_read_current_image(struct cros_ec_dev *dev,
-		enum ec_current_image *image);
+int cros_ec_read_current_image(struct udevice *dev,
+			       enum ec_current_image *image);
 
 /**
  * Read the hash of the CROS-EC device firmware.
  *
  * @param dev		CROS-EC device
+ * @param hash_offset	Offset in flash to read from
  * @param hash		Destination for hash information
  * @return 0 if ok, <0 on error
  */
-int cros_ec_read_hash(struct cros_ec_dev *dev,
-		struct ec_response_vboot_hash *hash);
+int cros_ec_read_hash(struct udevice *dev, uint hash_offset,
+		      struct ec_response_vboot_hash *hash);
 
 /**
  * Send a reboot command to the CROS-EC device.
@@ -112,8 +113,7 @@ int cros_ec_read_hash(struct cros_ec_dev *dev,
  * @param flags         Flags for reboot command (EC_REBOOT_FLAG_*)
  * @return 0 if ok, <0 on error
  */
-int cros_ec_reboot(struct cros_ec_dev *dev, enum ec_reboot_cmd cmd,
-		uint8_t flags);
+int cros_ec_reboot(struct udevice *dev, enum ec_reboot_cmd cmd, uint8_t flags);
 
 /**
  * Check if the CROS-EC device has an interrupt pending.
@@ -144,7 +144,7 @@ enum {
  *	expected), -ve if we should have an cros_ec device but failed to find
  *	one, or init failed (-CROS_EC_ERR_...).
  */
-int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp);
+int cros_ec_init(const void *blob, struct udevice**cros_ecp);
 
 /**
  * Read information about the keyboard matrix
@@ -152,8 +152,7 @@ int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp);
  * @param dev		CROS-EC device
  * @param info		Place to put the info structure
  */
-int cros_ec_info(struct cros_ec_dev *dev,
-		struct ec_response_mkbp_info *info);
+int cros_ec_info(struct udevice *dev, struct ec_response_mkbp_info *info);
 
 /**
  * Read the host event flags
@@ -162,7 +161,7 @@ int cros_ec_info(struct cros_ec_dev *dev,
  * @param events_ptr	Destination for event flags.  Not changed on error.
  * @return 0 if ok, <0 on error
  */
-int cros_ec_get_host_events(struct cros_ec_dev *dev, uint32_t *events_ptr);
+int cros_ec_get_host_events(struct udevice *dev, uint32_t *events_ptr);
 
 /**
  * Clear the specified host event flags
@@ -171,7 +170,7 @@ int cros_ec_get_host_events(struct cros_ec_dev *dev, uint32_t *events_ptr);
  * @param events	Event flags to clear
  * @return 0 if ok, <0 on error
  */
-int cros_ec_clear_host_events(struct cros_ec_dev *dev, uint32_t events);
+int cros_ec_clear_host_events(struct udevice *dev, uint32_t events);
 
 /**
  * Get/set flash protection
@@ -184,10 +183,18 @@ int cros_ec_clear_host_events(struct cros_ec_dev *dev, uint32_t events);
  * @param prot          Destination for updated protection state from EC.
  * @return 0 if ok, <0 on error
  */
-int cros_ec_flash_protect(struct cros_ec_dev *dev,
-		       uint32_t set_mask, uint32_t set_flags,
-		       struct ec_response_flash_protect *resp);
+int cros_ec_flash_protect(struct udevice *dev, uint32_t set_mask,
+			  uint32_t set_flags,
+			  struct ec_response_flash_protect *resp);
 
+/**
+ * Notify EC of current boot mode
+ *
+ * @param dev		CROS-EC device
+ * @param vboot_mode    Verified boot mode
+ * @return 0 if ok, <0 on error
+ */
+int cros_ec_entering_mode(struct udevice *dev, int mode);
 
 /**
  * Run internal tests on the cros_ec interface.
@@ -195,7 +202,7 @@ int cros_ec_flash_protect(struct cros_ec_dev *dev,
  * @param dev		CROS-EC device
  * @return 0 if ok, <0 if the test failed
  */
-int cros_ec_test(struct cros_ec_dev *dev);
+int cros_ec_test(struct udevice *dev);
 
 /**
  * Update the EC RW copy.
@@ -205,17 +212,15 @@ int cros_ec_test(struct cros_ec_dev *dev);
  * @param imafge_size	content length
  * @return 0 if ok, <0 if the test failed
  */
-int cros_ec_flash_update_rw(struct cros_ec_dev *dev,
-			 const uint8_t  *image, int image_size);
+int cros_ec_flash_update_rw(struct udevice *dev, const uint8_t  *image,
+			    int image_size);
 
 /**
  * Return a pointer to the board's CROS-EC device
  *
- * This should be implemented by board files.
- *
  * @return pointer to CROS-EC device, or NULL if none is available
  */
-struct cros_ec_dev *board_get_cros_ec_dev(void);
+struct udevice *board_get_cros_ec_dev(void);
 
 struct dm_cros_ec_ops {
 	int (*check_version)(struct udevice *dev);
@@ -249,8 +254,7 @@ void cros_ec_dump_data(const char *name, int cmd, const uint8_t *data, int len);
  */
 int cros_ec_calc_checksum(const uint8_t *data, int size);
 
-int cros_ec_flash_erase(struct cros_ec_dev *dev, uint32_t offset,
-		uint32_t size);
+int cros_ec_flash_erase(struct udevice *dev, uint32_t offset, uint32_t size);
 
 /**
  * Read data from the flash
@@ -267,8 +271,8 @@ int cros_ec_flash_erase(struct cros_ec_dev *dev, uint32_t offset,
  * @param size		Number of bytes to read
  * @return 0 if ok, -1 on error
  */
-int cros_ec_flash_read(struct cros_ec_dev *dev, uint8_t *data, uint32_t offset,
-		    uint32_t size);
+int cros_ec_flash_read(struct udevice *dev, uint8_t *data, uint32_t offset,
+		       uint32_t size);
 
 /**
  * Read back flash parameters
@@ -278,8 +282,8 @@ int cros_ec_flash_read(struct cros_ec_dev *dev, uint8_t *data, uint32_t offset,
  * @param dev  Pointer to device
  * @param info Pointer to output flash info struct
  */
-int cros_ec_read_flashinfo(struct cros_ec_dev *dev,
-			  struct ec_response_flash_info *info);
+int cros_ec_read_flashinfo(struct udevice *dev,
+			   struct ec_response_flash_info *info);
 
 /**
  * Write data to the flash
@@ -299,8 +303,8 @@ int cros_ec_read_flashinfo(struct cros_ec_dev *dev,
  * @param size		Number of bytes to write
  * @return 0 if ok, -1 on error
  */
-int cros_ec_flash_write(struct cros_ec_dev *dev, const uint8_t *data,
-		     uint32_t offset, uint32_t size);
+int cros_ec_flash_write(struct udevice *dev, const uint8_t *data,
+			uint32_t offset, uint32_t size);
 
 /**
  * Obtain position and size of a flash region
@@ -311,18 +315,18 @@ int cros_ec_flash_write(struct cros_ec_dev *dev, const uint8_t *data,
  * @param size		Returns size of flash region
  * @return 0 if ok, -1 on error
  */
-int cros_ec_flash_offset(struct cros_ec_dev *dev, enum ec_flash_region region,
-		      uint32_t *offset, uint32_t *size);
+int cros_ec_flash_offset(struct udevice *dev, enum ec_flash_region region,
+			 uint32_t *offset, uint32_t *size);
 
 /**
- * Read/write VbNvContext from/to a CROS-EC device.
+ * Read/write non-volatile data from/to a CROS-EC device.
  *
  * @param dev		CROS-EC device
  * @param block		Buffer of VbNvContext to be read/write
  * @return 0 if ok, -1 on error
  */
-int cros_ec_read_vbnvcontext(struct cros_ec_dev *dev, uint8_t *block);
-int cros_ec_write_vbnvcontext(struct cros_ec_dev *dev, const uint8_t *block);
+int cros_ec_read_nvdata(struct udevice *dev, uint8_t *block, int size);
+int cros_ec_write_nvdata(struct udevice *dev, const uint8_t *block, int size);
 
 /**
  * Read the version information for the EC images
@@ -331,8 +335,8 @@ int cros_ec_write_vbnvcontext(struct cros_ec_dev *dev, const uint8_t *block);
  * @param versionp	This is set to point to the version information
  * @return 0 if ok, -1 on error
  */
-int cros_ec_read_version(struct cros_ec_dev *dev,
-		       struct ec_response_get_version **versionp);
+int cros_ec_read_version(struct udevice *dev,
+			 struct ec_response_get_version **versionp);
 
 /**
  * Read the build information for the EC
@@ -341,7 +345,7 @@ int cros_ec_read_version(struct cros_ec_dev *dev,
  * @param versionp	This is set to point to the build string
  * @return 0 if ok, -1 on error
  */
-int cros_ec_read_build_info(struct cros_ec_dev *dev, char **strp);
+int cros_ec_read_build_info(struct udevice *dev, char **strp);
 
 /**
  * Switch on/off a LDO / FET.
@@ -387,7 +391,7 @@ int cros_ec_decode_ec_flash(struct udevice *dev, struct fdt_cros_ec *config);
  *
  * @param ec		CROS-EC device
  */
-void cros_ec_check_keyboard(struct cros_ec_dev *dev);
+void cros_ec_check_keyboard(struct udevice *dev);
 
 struct i2c_msg;
 /*
@@ -400,5 +404,86 @@ struct i2c_msg;
  */
 int cros_ec_i2c_tunnel(struct udevice *dev, int port, struct i2c_msg *msg,
 		       int nmsgs);
+
+/**
+ * cros_ec_get_events_b() - Get event mask B
+ *
+ * @return value of event mask, default value of 0 if it could not be read
+ */
+uint64_t cros_ec_get_events_b(struct udevice *dev);
+
+/**
+ * cros_ec_clear_events_b() - Clear even mask B
+ *
+ * Any pending events in the B range are cleared
+ *
+ * @return 0 if OK, -ve on error
+ */
+int cros_ec_clear_events_b(struct udevice *dev, uint64_t mask);
+
+/**
+ * cros_ec_efs_verify() - tell the EC to verify one of its images
+ *
+ * @param dev		CROS-EC device
+ * @param region	Flash region to query
+ * @return 0 if OK, -ve on error
+ */
+int cros_ec_efs_verify(struct udevice *dev, enum ec_flash_region region);
+
+/**
+ * cros_ec_battery_cutoff() - Request that the battery be cut off
+ *
+ * This tells the battery to stop supplying power. This is used before shipping
+ * a device to ensure that the battery remains charged while the device is
+ * shipped or sitting on the shelf waiting to be purchased.
+ *
+ * @param dev		CROS-EC device
+ * @param flags		Flags to use (EC_BATTERY_CUTOFF_FLAG_...)
+ * @return 0 if OK, -ve on error
+ */
+int cros_ec_battery_cutoff(struct udevice *dev, uint8_t flags);
+
+/**
+ * cros_ec_read_limit_power() - Check if power is limited by batter/charger
+ *
+ * Sometimes the battery is low and / or the device is connected to a charger
+ * that cannot supply much power.
+ *
+ * @param dev		CROS-EC device
+ * @param limit_powerp	Returns whether power is limited (0 or 1)
+ * @return 0 if OK, -ENOSYS if the EC does not support this comment, -EINVAL
+ *		if the EC returned an invalid response
+ */
+int cros_ec_read_limit_power(struct udevice *dev, int *limit_powerp);
+
+/**
+ * cros_ec_config_powerbtn() - Configure the behaviour of the power button
+ *
+ * @param dev		CROS-EC device
+ * @param flags		Flags to use (EC_POWER_BUTTON_...)
+ * @return 0 if OK, -ve on error
+ */
+int cros_ec_config_powerbtn(struct udevice *dev, uint32_t flags);
+
+/**
+ * cros_ec_get_lid_shutdown_mask() - Set the lid shutdown mask
+ *
+ * Determines whether a lid close event is reported
+ *
+ * @param dev		CROS-EC device
+ * @return shufdown mas if OK, -ve on error
+ */
+int cros_ec_get_lid_shutdown_mask(struct udevice *dev);
+
+/**
+ * cros_ec_set_lid_shutdown_mask() - Set the lid shutdown mask
+ *
+ * Set whether a lid close event is reported
+ *
+ * @param dev		CROS-EC device
+ * @param enable	true to enable reporting, false to disable
+ * @return shufdown mas if OK, -ve on error
+ */
+int cros_ec_set_lid_shutdown_mask(struct udevice *dev, int enable);
 
 #endif

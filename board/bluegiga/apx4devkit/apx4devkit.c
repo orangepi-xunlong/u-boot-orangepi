@@ -14,6 +14,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <net.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/setup.h>
@@ -21,6 +23,7 @@
 #include <asm/arch/iomux-mx28.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
+#include <env.h>
 #include <linux/mii.h>
 #include <miiphy.h>
 #include <netdev.h>

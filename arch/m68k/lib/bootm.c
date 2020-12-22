@@ -5,12 +5,15 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <command.h>
+#include <env.h>
 #include <image.h>
+#include <lmb.h>
+#include <log.h>
 #include <u-boot/zlib.h>
 #include <bzlib.h>
 #include <watchdog.h>
-#include <environment.h>
 #include <asm/byteorder.h>
 #ifdef CONFIG_SHOW_BOOT_PROGRESS
 # include <status_led.h>
@@ -47,7 +50,8 @@ void arch_lmb_reserve(struct lmb *lmb)
 	lmb_reserve(lmb, sp, (CONFIG_SYS_SDRAM_BASE + gd->ram_size - sp));
 }
 
-int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *images)
+int do_bootm_linux(int flag, int argc, char *const argv[],
+		   bootm_headers_t *images)
 {
 	int ret;
 	bd_t  *kbd;

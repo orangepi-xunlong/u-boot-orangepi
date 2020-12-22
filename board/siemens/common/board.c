@@ -10,7 +10,12 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <env.h>
 #include <errno.h>
+#include <init.h>
+#include <malloc.h>
+#include <serial.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -147,7 +152,7 @@ unsigned char get_button_state(char * const envname, unsigned char def)
  *		0 if button is not held down
  */
 static int
-do_userbutton(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_userbutton(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int button = 0;
 	button = get_button_state("button_dfu0", BOARD_DFU_BUTTON_GPIO);
@@ -163,7 +168,7 @@ U_BOOT_CMD(
 #endif
 
 static int
-do_usertestwdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_usertestwdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	printf("\n\n\n Go into infinite loop\n\n\n");
 	while (1)
@@ -188,14 +193,11 @@ void set_env_gpios(unsigned char state)
 {
 	char *ptr_env;
 	char str_tmp[5];	/* must contain "ledX"*/
-	char num[1];
 	unsigned char i, idx, pos1, pos2, ccount;
 	unsigned char gpio_n, gpio_s0, gpio_s1;
 
 	for (i = 0; i < MAX_NR_LEDS; i++) {
-		strcpy(str_tmp, "led");
-		sprintf(num, "%d", i);
-		strcat(str_tmp, num);
+		sprintf(str_tmp, "led%d", i);
 
 		/* If env var is not found we stop */
 		ptr_env = env_get(str_tmp);
@@ -250,8 +252,8 @@ void set_env_gpios(unsigned char state)
 	} /* loop through defined led in environment */
 }
 
-static int do_board_led(cmd_tbl_t *cmdtp, int flag, int argc,
-			   char *const argv[])
+static int do_board_led(struct cmd_tbl *cmdtp, int flag, int argc,
+			char *const argv[])
 {
 	if (argc != 2)
 		return CMD_RET_USAGE;

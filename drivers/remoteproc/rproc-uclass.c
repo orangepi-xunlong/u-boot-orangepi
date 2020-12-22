@@ -7,6 +7,7 @@
 #include <common.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <malloc.h>
 #include <remoteproc.h>
 #include <asm/io.h>
@@ -269,6 +270,25 @@ int rproc_init(void)
 	}
 
 	ret = for_each_remoteproc_device(_rproc_probe_dev, NULL, NULL);
+	return ret;
+}
+
+int rproc_dev_init(int id)
+{
+	struct udevice *dev = NULL;
+	int ret;
+
+	ret = uclass_get_device_by_seq(UCLASS_REMOTEPROC, id, &dev);
+	if (ret) {
+		debug("Unknown remote processor id '%d' requested(%d)\n",
+		      id, ret);
+		return ret;
+	}
+
+	ret = device_probe(dev);
+	if (ret)
+		debug("%s: Failed to initialize - %d\n", dev->name, ret);
+
 	return ret;
 }
 

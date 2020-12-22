@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011, 2013 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <hang.h>
 #include <hwconfig.h>
+#include <image.h>
+#include <init.h>
+#include <net.h>
 #include <pci.h>
 #include <i2c.h>
 #include <asm/processor.h>
@@ -19,6 +25,7 @@
 #include <asm/fsl_lbc.h>
 #include <asm/mp.h>
 #include <miiphy.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
@@ -224,6 +231,7 @@ int checkboard(void)
 	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u8 in, out, io_config, val;
+	int bus_num = CONFIG_SYS_SPD_BUS_NUM;
 
 	printf("Board: %s CPLD: V%d.%d PCBA: V%d.0\n", CONFIG_BOARDNAME,
 		in_8(&cpld_data->cpld_rev_major) & 0x0F,
@@ -231,7 +239,26 @@ int checkboard(void)
 		in_8(&cpld_data->pcba_rev) & 0x0F);
 
 	/* Initialize i2c early for rom_loc and flash bank information */
-	i2c_set_bus_num(CONFIG_SYS_SPD_BUS_NUM);
+	#if defined(CONFIG_DM_I2C)
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(bus_num, CONFIG_SYS_I2C_PCA9557_ADDR,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
+		return -ENXIO;
+	}
+
+	if (dm_i2c_read(dev, 0, &in, 1) < 0 ||
+	    dm_i2c_read(dev, 1, &out, 1) < 0 ||
+	    dm_i2c_read(dev, 3, &io_config, 1) < 0) {
+		printf("Error reading i2c boot information!\n");
+		return 0; /* Don't want to hang() on this error */
+	}
+	#else /* Non DM I2C support - will be removed */
+	i2c_set_bus_num(bus_num);
 
 	if (i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 0, 1, &in, 1) < 0 ||
 	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 1, 1, &out, 1) < 0 ||
@@ -239,6 +266,7 @@ int checkboard(void)
 		printf("Error reading i2c boot information!\n");
 		return 0; /* Don't want to hang() on this error */
 	}
+	#endif
 
 	val = (in & io_config) | (out & (~io_config));
 
@@ -277,7 +305,7 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_PCI
+#if defined(CONFIG_PCI) && !defined(CONFIG_DM_PCI)
 void pci_init_board(void)
 {
 	fsl_pcie_init_board(0);
@@ -443,7 +471,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
+#if !defined(CONFIG_DM_PCI)
 	FT_FSL_PCI_SETUP;
+#endif
 
 #ifdef CONFIG_QE
 	do_fixup_by_compat(blob, "fsl,qe", "status", "okay",

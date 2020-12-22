@@ -8,11 +8,13 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <wdt.h>
 #include <clk.h>
+#include <div64.h>
+#include <dm/device_compat.h>
+#include <linux/err.h>
 #include <linux/io.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 struct cdns_regs {
 	u32 zmr;	/* WD Zero mode register, offset - 0x0 */
@@ -23,7 +25,6 @@ struct cdns_regs {
 
 struct cdns_wdt_priv {
 	bool rst;
-	u32 timeout;
 	struct cdns_regs *regs;
 };
 
@@ -142,12 +143,12 @@ static int cdns_wdt_start(struct udevice *dev, u64 timeout, ulong flags)
 		return -1;
 	}
 
-	debug("%s: CLK_FREQ %ld, timeout %lld\n", __func__, clk_f, timeout);
+	/* Calculate timeout in seconds and restrict to min and max value */
+	do_div(timeout, 1000);
+	timeout = max_t(u64, timeout, CDNS_WDT_MIN_TIMEOUT);
+	timeout = min_t(u64, timeout, CDNS_WDT_MAX_TIMEOUT);
 
-	if ((timeout < CDNS_WDT_MIN_TIMEOUT) ||
-	    (timeout > CDNS_WDT_MAX_TIMEOUT)) {
-		timeout = priv->timeout;
-	}
+	debug("%s: CLK_FREQ %ld, timeout %lld\n", __func__, clk_f, timeout);
 
 	if (clk_f <= CDNS_WDT_CLK_75MHZ) {
 		prescaler = CDNS_WDT_PRESCALE_512;
@@ -224,26 +225,20 @@ static int cdns_wdt_probe(struct udevice *dev)
 {
 	debug("%s: Probing wdt%u\n", __func__, dev->seq);
 
-	cdns_wdt_stop(dev);
-
 	return 0;
 }
 
 static int cdns_wdt_ofdata_to_platdata(struct udevice *dev)
 {
-	int node = dev_of_offset(dev);
 	struct cdns_wdt_priv *priv = dev_get_priv(dev);
 
-	priv->regs = devfdt_get_addr_ptr(dev);
+	priv->regs = (struct cdns_regs *)dev_read_addr(dev);
 	if (IS_ERR(priv->regs))
 		return PTR_ERR(priv->regs);
 
-	priv->timeout = fdtdec_get_int(gd->fdt_blob, node, "timeout-sec",
-				       CDNS_WDT_DEFAULT_TIMEOUT);
+	priv->rst = dev_read_bool(dev, "reset-on-timeout");
 
-	priv->rst = fdtdec_get_bool(gd->fdt_blob, node, "reset-on-timeout");
-
-	debug("%s: timeout %d, reset %d\n", __func__, priv->timeout, priv->rst);
+	debug("%s: reset %d\n", __func__, priv->rst);
 
 	return 0;
 }
@@ -252,6 +247,7 @@ static const struct wdt_ops cdns_wdt_ops = {
 	.start = cdns_wdt_start,
 	.reset = cdns_wdt_reset,
 	.stop = cdns_wdt_stop,
+	/* There is no bit/reg/support in IP for expire_now functionality */
 };
 
 static const struct udevice_id cdns_wdt_ids[] = {

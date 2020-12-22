@@ -131,7 +131,7 @@
 		ranges;
 		interrupt-parent = <&intc>;
 
-		l2: l2-cache@500c0000 {
+		l2: cache-controller@500c0000 {
 			compatible = "socionext,uniphier-system-cache";
 			reg = <0x500c0000 0x2000>, <0x503c0100 0x8>,
 			      <0x506c0000 0x400>;
@@ -144,7 +144,7 @@
 			next-level-cache = <&l3>;
 		};
 
-		l3: l3-cache@500c8000 {
+		l3: cache-controller@500c8000 {
 			compatible = "socionext,uniphier-system-cache";
 			reg = <0x500c8000 0x2000>, <0x503c8100 0x8>,
 			      <0x506c8000 0x400>;
@@ -156,6 +156,28 @@
 			cache-level = <3>;
 		};
 
+		spi0: spi@54006000 {
+			compatible = "socionext,uniphier-scssi";
+			status = "disabled";
+			reg = <0x54006000 0x100>;
+			interrupts = <0 39 4>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_spi0>;
+			clocks = <&peri_clk 11>;
+			resets = <&peri_rst 11>;
+		};
+
+		spi1: spi@54006100 {
+			compatible = "socionext,uniphier-scssi";
+			status = "disabled";
+			reg = <0x54006100 0x100>;
+			interrupts = <0 216 4>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_spi1>;
+			clocks = <&peri_clk 11>;
+			resets = <&peri_rst 11>;
+		};
+
 		serial0: serial@54006800 {
 			compatible = "socionext,uniphier-uart";
 			status = "disabled";
@@ -164,7 +186,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_uart0>;
 			clocks = <&peri_clk 0>;
-			clock-frequency = <73728000>;
 			resets = <&peri_rst 0>;
 		};
 
@@ -176,7 +197,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_uart1>;
 			clocks = <&peri_clk 1>;
-			clock-frequency = <73728000>;
 			resets = <&peri_rst 1>;
 		};
 
@@ -188,7 +208,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_uart2>;
 			clocks = <&peri_clk 2>;
-			clock-frequency = <73728000>;
 			resets = <&peri_rst 2>;
 		};
 
@@ -200,7 +219,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_uart3>;
 			clocks = <&peri_clk 3>;
-			clock-frequency = <73728000>;
 			resets = <&peri_rst 3>;
 		};
 
@@ -390,7 +408,7 @@
 			};
 		};
 
-		aidet: aidet@5fc20000 {
+		aidet: interrupt-controller@5fc20000 {
 			compatible = "socionext,uniphier-pro5-aidet";
 			reg = <0x5fc20000 0x200>;
 			interrupt-controller;
@@ -471,7 +489,7 @@
 			};
 		};
 
-		nand: nand@68000000 {
+		nand: nand-controller@68000000 {
 			compatible = "socionext,uniphier-denali-nand-v5b";
 			status = "disabled";
 			reg-names = "nand_data", "denali_reg";
@@ -479,35 +497,36 @@
 			interrupts = <0 65 4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_nand2cs>;
-			clocks = <&sys_clk 2>;
-			resets = <&sys_rst 2>;
+			clock-names = "nand", "nand_x", "ecc";
+			clocks = <&sys_clk 2>, <&sys_clk 3>, <&sys_clk 3>;
+			reset-names = "nand", "reg";
+			resets = <&sys_rst 2>, <&sys_rst 2>;
 		};
 
-		emmc: sdhc@68400000 {
-			compatible = "socionext,uniphier-sdhc";
+		emmc: mmc@68400000 {
+			compatible = "socionext,uniphier-sd-v3.1";
 			status = "disabled";
 			reg = <0x68400000 0x800>;
 			interrupts = <0 78 4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_emmc>;
 			clocks = <&sd_clk 1>;
-			reset-names = "host";
-			resets = <&sd_rst 1>;
+			reset-names = "host", "hw";
+			resets = <&sd_rst 1>, <&sd_rst 6>;
 			bus-width = <8>;
-			non-removable;
 			cap-mmc-highspeed;
 			cap-mmc-hw-reset;
-			no-3-3-v;
+			non-removable;
 		};
 
-		sd: sdhc@68800000 {
-			compatible = "socionext,uniphier-sdhc";
+		sd: mmc@68800000 {
+			compatible = "socionext,uniphier-sd-v3.1";
 			status = "disabled";
 			reg = <0x68800000 0x800>;
 			interrupts = <0 76 4>;
-			pinctrl-names = "default", "1.8v";
+			pinctrl-names = "default", "uhs";
 			pinctrl-0 = <&pinctrl_sd>;
-			pinctrl-1 = <&pinctrl_sd_1v8>;
+			pinctrl-1 = <&pinctrl_sd_uhs>;
 			clocks = <&sd_clk 0>;
 			reset-names = "host";
 			resets = <&sd_rst 0>;

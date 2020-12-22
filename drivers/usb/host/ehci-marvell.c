@@ -6,16 +6,18 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <usb.h>
+#include <linux/delay.h>
 #include "ehci.h"
 #include <linux/mbus.h>
 #include <asm/arch/cpu.h>
 #include <dm.h>
 
-#if defined(CONFIG_KIRKWOOD)
+#if defined(CONFIG_ARCH_KIRKWOOD)
 #include <asm/arch/soc.h>
-#elif defined(CONFIG_ORION5X)
+#elif defined(CONFIG_ARCH_ORION5X)
 #include <asm/arch/orion5x.h>
 #endif
 
@@ -38,7 +40,7 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * USB 2.0 Bridge Address Decoding registers setup
  */
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 
 struct ehci_mvebu_priv {
 	struct ehci_ctrl ehci;
@@ -228,4 +230,4 @@ int ehci_hcd_stop(int index)
 	return 0;
 }
 
-#endif /* CONFIG_DM_USB */
+#endif /* CONFIG_IS_ENABLED(DM_USB) */

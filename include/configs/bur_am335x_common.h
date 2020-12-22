@@ -11,6 +11,19 @@
 #ifndef __BUR_AM335X_COMMON_H__
 #define __BUR_AM335X_COMMON_H__
 /* ------------------------------------------------------------------------- */
+
+/* legacy #defines for non DM bur-board */
+#ifndef CONFIG_DM
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
+#define CONFIG_SYS_NS16550_CLK		(48000000)
+#define CONFIG_SYS_NS16550_COM1		0x44e09000
+
+#define CONFIG_I2C
+#define CONFIG_SYS_I2C
+
+#endif /* CONFIG_DM */
+
 #define CONFIG_MAX_RAM_BANK_SIZE	(1024 << 20)	/* 1GB */
 
 /* Timer information */
@@ -20,16 +33,6 @@
 
 #include <asm/arch/omap.h>
 
-/* NS16550 Configuration */
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		48000000
-#define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
-
-/* Network defines */
-#define CONFIG_MII			/* Required in net/eth.c */
-#define CONFIG_PHY_NATSEMI
-
 /*
  * SPL related defines.  The Public RAM memory map the ROM defines the
  * area between 0x402F0400 and 0x4030B800 as a download area and
@@ -38,7 +41,6 @@
  * Y-MODEM to load u-boot.img, when booted over UART.  We must also include
  * the scratch space that U-Boot uses in SRAM.
  */
-#define CONFIG_SPL_TEXT_BASE		0x402F0400
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
 					 CONFIG_SPL_TEXT_BASE)
 
@@ -60,13 +62,9 @@
  * always, even when we have more.  We always start at 0x80000000,
  * and we place the initial stack pointer in our SRAM.
  */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_SYS_INIT_SP_ADDR		(NON_SECURE_SRAM_END - \
 					GENERATED_GBL_DATA_SIZE)
-
-/* I2C */
-#define CONFIG_SYS_I2C
 
 /*
  * Our platforms make use of SPL to initalize the hardware (primarily

@@ -4,10 +4,13 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <dm.h>
+#include <init.h>
+#include <log.h>
 #include <dm/ofnode.h>
 #include <mapmem.h>
-#include <asm/arch/timer.h>
+#include <asm/arch-rockchip/timer.h>
 #include <dt-structs.h>
 #include <timer.h>
 #include <asm/io.h>
@@ -163,7 +166,6 @@ U_BOOT_DRIVER(rockchip_rk3368_timer) = {
 	.of_match = rockchip_timer_ids,
 	.probe = rockchip_timer_probe,
 	.ops	= &rockchip_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 	.priv_auto_alloc_size = sizeof(struct rockchip_timer_priv),
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
 	.platdata_auto_alloc_size = sizeof(struct rockchip_timer_plat),

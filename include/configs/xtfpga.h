@@ -71,8 +71,6 @@
 #define CONFIG_SYS_BOOTPARAMS_LEN	(64  << 10)
 
 /* Memory test is destructive so default must not overlap vectors or U-Boot*/
-#define CONFIG_SYS_MEMTEST_START	MEMADDR(0x01000000)
-#define CONFIG_SYS_MEMTEST_END		MEMADDR(0x02000000)
 
 /* Load address for stand-alone applications.
  * MEMADDR cannot be used here, because the definition needs to be
@@ -108,7 +106,6 @@
 /*==============================*/
 
 #define CONFIG_BOARD_POSTCLK_INIT
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_BOOTFILE			"uImage"
 	/* Console I/O Buffer Size  */
@@ -119,9 +116,6 @@
 /*==============================*/
 /* U-Boot autoboot configuration */
 /*==============================*/
-
-#define CONFIG_MX_CYCLIC
-#define CONFIG_SHOW_BOOT_PROGRESS
 
 
 /*=========================================*/
@@ -195,8 +189,6 @@
 /* Flash & Environment */
 /*=====================*/
 
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER			/* use generic CFI driver */
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #ifdef CONFIG_XTFPGA_LX60
@@ -221,14 +213,11 @@
 #define CONFIG_SYS_MAX_FLASH_SECT	\
 	(CONFIG_SYS_FLASH_SECT_SZ/CONFIG_SYS_FLASH_PARMSECT_SZ + \
 	 CONFIG_SYS_FLASH_SIZE/CONFIG_SYS_FLASH_SECT_SZ - 1)
-#define CONFIG_SYS_FLASH_PROTECTION		/* hw flash protection */
 
 /*
  * Put environment in top block (64kB)
  * Another option would be to put env. in 2nd param block offs 8KB, size 8KB
  */
-#define CONFIG_ENV_OFFSET    (CONFIG_SYS_FLASH_SIZE - CONFIG_SYS_FLASH_SECT_SZ)
-#define CONFIG_ENV_SIZE	     CONFIG_SYS_FLASH_SECT_SZ
 
 /* print 'E' for empty sector on flinfo */
 #define CONFIG_SYS_FLASH_EMPTY_INFO

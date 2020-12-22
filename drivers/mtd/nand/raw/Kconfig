@@ -1,7 +1,7 @@
 
-menuconfig NAND
+menuconfig MTD_RAW_NAND
 	bool "Raw NAND Device Support"
-if NAND
+if MTD_RAW_NAND
 
 config SYS_NAND_SELF_INIT
 	bool
@@ -14,6 +14,11 @@ config SYS_NAND_DRIVER_ECC_LAYOUT
 	help
 	  Omit standard ECC layouts to safe space. Select this if your driver
 	  is known to provide its own ECC layout.
+
+config SYS_NAND_USE_FLASH_BBT
+	bool "Enable BBT (Bad Block Table) support"
+	help
+	  Enable the BBT (Bad Block Table) usage.
 
 config NAND_ATMEL
 	bool "Support Atmel NAND controller"
@@ -60,6 +65,43 @@ config SPL_GENERATE_ATMEL_PMECC_HEADER
 
 endif
 
+config NAND_BRCMNAND
+	bool "Support Broadcom NAND controller"
+	depends on OF_CONTROL && DM && DM_MTD
+	help
+	  Enable the driver for NAND flash on platforms using a Broadcom NAND
+	  controller.
+
+config NAND_BRCMNAND_6368
+	bool "Support Broadcom NAND controller on bcm6368"
+	depends on NAND_BRCMNAND && ARCH_BMIPS
+	help
+	  Enable support for broadcom nand driver on bcm6368.
+
+config NAND_BRCMNAND_68360
+       bool "Support Broadcom NAND controller on bcm68360"
+       depends on NAND_BRCMNAND && ARCH_BCM68360
+       help
+         Enable support for broadcom nand driver on bcm68360.
+
+config NAND_BRCMNAND_6838
+       bool "Support Broadcom NAND controller on bcm6838"
+       depends on NAND_BRCMNAND && ARCH_BMIPS && SOC_BMIPS_BCM6838
+       help
+         Enable support for broadcom nand driver on bcm6838.
+
+config NAND_BRCMNAND_6858
+       bool "Support Broadcom NAND controller on bcm6858"
+       depends on NAND_BRCMNAND && ARCH_BCM6858
+       help
+         Enable support for broadcom nand driver on bcm6858.
+
+config NAND_BRCMNAND_63158
+       bool "Support Broadcom NAND controller on bcm63158"
+       depends on NAND_BRCMNAND && ARCH_BCM63158
+       help
+         Enable support for broadcom nand driver on bcm63158.
+
 config NAND_DAVINCI
 	bool "Support TI Davinci NAND controller"
 	help
@@ -74,19 +116,10 @@ config NAND_DENALI
 config NAND_DENALI_DT
 	bool "Support Denali NAND controller as a DT device"
 	select NAND_DENALI
-	depends on OF_CONTROL && DM
+	depends on OF_CONTROL && DM_MTD
 	help
 	  Enable the driver for NAND flash on platforms using a Denali NAND
 	  controller as a DT device.
-
-config NAND_DENALI_SPARE_AREA_SKIP_BYTES
-	int "Number of bytes skipped in OOB area"
-	depends on NAND_DENALI
-	range 0 63
-	help
-	  This option specifies the number of bytes to skip from the beginning
-	  of OOB area before last ECC sector data starts.  This is potentially
-	  used to preserve the bad block marker in the OOB area.
 
 config NAND_LPC32XX_SLC
 	bool "Support LPC32XX_SLC controller"
@@ -137,7 +170,7 @@ if NAND_VF610_NFC
 
 config NAND_VF610_NFC_DT
         bool "Support Vybrid's vf610 NAND controller as a DT device"
-        depends on OF_CONTROL && MTD
+        depends on OF_CONTROL && DM_MTD
         help
           Enable the driver for Vybrid's vf610 NAND flash on platforms
 	  using device tree.
@@ -200,6 +233,7 @@ endif
 config NAND_ARASAN
 	bool "Configure Arasan Nand"
 	select SYS_NAND_SELF_INIT
+	select DM_MTD
 	imply CMD_NAND
 	help
 	  This enables Nand driver support for Arasan nand flash
@@ -216,12 +250,12 @@ config NAND_MXC
 
 config NAND_MXS
 	bool "MXS NAND support"
-	depends on MX23 || MX28 || MX6 || MX7
+	depends on MX23 || MX28 || MX6 || MX7 || IMX8 || IMX8M
 	select SYS_NAND_SELF_INIT
 	imply CMD_NAND
 	select APBH_DMA
-	select APBH_DMA_BURST if ARCH_MX6 || ARCH_MX7
-	select APBH_DMA_BURST8 if ARCH_MX6 || ARCH_MX7
+	select APBH_DMA_BURST if ARCH_MX6 || ARCH_MX7 || ARCH_IMX8 || ARCH_IMX8M
+	select APBH_DMA_BURST8 if ARCH_MX6 || ARCH_MX7 || ARCH_IMX8 || ARCH_IMX8M
 	help
 	  This enables NAND driver for the NAND flash controller on the
 	  MXS processors.
@@ -230,7 +264,7 @@ if NAND_MXS
 
 config NAND_MXS_DT
 	bool "Support MXS NAND controller as a DT device"
-	depends on OF_CONTROL && MTD
+	depends on OF_CONTROL && DM_MTD
 	help
 	  Enable the driver for MXS NAND flash on platforms using
 	  device tree.
@@ -244,6 +278,7 @@ endif
 config NAND_ZYNQ
 	bool "Support for Zynq Nand controller"
 	select SYS_NAND_SELF_INIT
+	select DM_MTD
 	imply CMD_NAND
 	help
 	  This enables Nand driver support for Nand flash controller
@@ -359,6 +394,15 @@ config SPL_NAND_DENALI
 	help
 	  This is a small implementation of the Denali NAND controller
 	  for use on SPL.
+
+config NAND_DENALI_SPARE_AREA_SKIP_BYTES
+	int "Number of bytes skipped in OOB area"
+	depends on SPL_NAND_DENALI
+	range 0 63
+	help
+	  This option specifies the number of bytes to skip from the beginning
+	  of OOB area before last ECC sector data starts.  This is potentially
+	  used to preserve the bad block marker in the OOB area.
 
 config SPL_NAND_SIMPLE
 	bool "Use simple SPL NAND driver"

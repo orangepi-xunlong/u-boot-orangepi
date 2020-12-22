@@ -8,12 +8,14 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <env.h>
 #include <fdt_support.h>
+#include <net.h>
 #include <usb.h>
 #include <mmc.h>
 #include <palmas.h>
 #include <spl.h>
+#include <linux/delay.h>
 
 #include <asm/gpio.h>
 #include <asm/arch/sys_proto.h>

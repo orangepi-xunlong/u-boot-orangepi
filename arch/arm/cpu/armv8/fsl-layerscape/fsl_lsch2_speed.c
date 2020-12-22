@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
+ * Copyright 2019 NXP.
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <cpu_func.h>
 #include <linux/compiler.h>
 #include <asm/io.h>
 #include <asm/processor.h>
@@ -21,10 +24,12 @@ DECLARE_GLOBAL_DATA_PTR;
 void get_sys_info(struct sys_info *sys_info)
 {
 	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
-#if (defined(CONFIG_FSL_ESDHC) &&\
-	defined(CONFIG_FSL_ESDHC_USE_PERIPHERAL_CLK)) ||\
-	defined(CONFIG_SYS_DPAA_FMAN)
-
+/* rcw_tmp is needed to get FMAN clock, or to get cluster group A
+ * mux 2 clock for LS1043A/LS1046A.
+ */
+#if defined(CONFIG_SYS_DPAA_FMAN) || \
+	    defined(CONFIG_TARGET_LS1046ARDB) || \
+	    defined(CONFIG_TARGET_LS1043ARDB)
 	u32 rcw_tmp;
 #endif
 	struct ccsr_clk *clk = (void *)(CONFIG_SYS_FSL_CLK_ADDR);
@@ -123,31 +128,29 @@ void get_sys_info(struct sys_info *sys_info)
 
 #define HWA_CGA_M2_CLK_SEL	0x00000007
 #define HWA_CGA_M2_CLK_SHIFT	0
-#ifdef CONFIG_FSL_ESDHC
-#ifdef CONFIG_FSL_ESDHC_USE_PERIPHERAL_CLK
+#if defined(CONFIG_TARGET_LS1046ARDB) || defined(CONFIG_TARGET_LS1043ARDB)
 	rcw_tmp = in_be32(&gur->rcwsr[15]);
 	switch ((rcw_tmp & HWA_CGA_M2_CLK_SEL) >> HWA_CGA_M2_CLK_SHIFT) {
 	case 1:
-		sys_info->freq_sdhc = freq_c_pll[1];
+		sys_info->freq_cga_m2 = freq_c_pll[1];
 		break;
+#if defined(CONFIG_TARGET_LS1046ARDB)
 	case 2:
-		sys_info->freq_sdhc = freq_c_pll[1] / 2;
+		sys_info->freq_cga_m2 = freq_c_pll[1] / 2;
 		break;
+#endif
 	case 3:
-		sys_info->freq_sdhc = freq_c_pll[1] / 3;
+		sys_info->freq_cga_m2 = freq_c_pll[1] / 3;
 		break;
+#if defined(CONFIG_TARGET_LS1046ARDB)
 	case 6:
-		sys_info->freq_sdhc = freq_c_pll[0] / 2;
+		sys_info->freq_cga_m2 = freq_c_pll[0] / 2;
 		break;
+#endif
 	default:
-		printf("Error: Unknown ESDHC clock select!\n");
+		printf("Error: Unknown cluster group A mux 2 clock select!\n");
 		break;
 	}
-#else
-	sys_info->freq_sdhc = (sys_info->freq_systembus /
-				CONFIG_SYS_FSL_PCLK_DIV) /
-				CONFIG_SYS_FSL_SDHC_CLK_DIV;
-#endif
 #endif
 
 #if defined(CONFIG_FSL_IFC)
@@ -155,7 +158,9 @@ void get_sys_info(struct sys_info *sys_info)
 						CONFIG_SYS_FSL_IFC_CLK_DIV;
 #endif
 #ifdef CONFIG_SYS_DPAA_QBMAN
-	sys_info->freq_qman = sys_info->freq_systembus;
+	sys_info->freq_qman = (sys_info->freq_systembus /
+				CONFIG_SYS_FSL_PCLK_DIV) /
+				CONFIG_SYS_FSL_QMAN_CLK_DIV;
 #endif
 }
 
@@ -173,16 +178,22 @@ unsigned long get_qman_freq(void)
 int get_clocks(void)
 {
 	struct sys_info sys_info;
-
+#ifdef CONFIG_FSL_ESDHC
+	u32 clock = 0;
+#endif
 	get_sys_info(&sys_info);
 	gd->cpu_clk = sys_info.freq_processor[0];
 	gd->bus_clk = sys_info.freq_systembus / CONFIG_SYS_FSL_PCLK_DIV;
 	gd->mem_clk = sys_info.freq_ddrbus;
-
 #ifdef CONFIG_FSL_ESDHC
-	gd->arch.sdhc_clk = sys_info.freq_sdhc;
+#if defined(CONFIG_ARCH_LS1012A)
+	clock = sys_info.freq_systembus;
+#elif defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
+	clock = sys_info.freq_cga_m2;
 #endif
-
+	gd->arch.sdhc_per_clk = clock / CONFIG_SYS_FSL_SDHC_CLK_DIV;
+	gd->arch.sdhc_clk = gd->bus_clk / CONFIG_SYS_FSL_SDHC_CLK_DIV;
+#endif
 	if (gd->cpu_clk != 0)
 		return 0;
 	else
@@ -208,16 +219,6 @@ ulong get_ddr_freq(ulong dummy)
 
 	return gd->mem_clk;
 }
-
-#ifdef CONFIG_FSL_ESDHC
-int get_sdhc_freq(ulong dummy)
-{
-	if (!gd->arch.sdhc_clk)
-		get_clocks();
-
-	return gd->arch.sdhc_clk;
-}
-#endif
 
 int get_serial_clock(void)
 {
@@ -246,10 +247,6 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 	switch (clk) {
 	case MXC_I2C_CLK:
 		return get_i2c_freq(0);
-#if defined(CONFIG_FSL_ESDHC)
-	case MXC_ESDHC_CLK:
-		return get_sdhc_freq(0);
-#endif
 	case MXC_DSPI_CLK:
 		return get_dspi_freq(0);
 #ifdef CONFIG_FSL_LPUART

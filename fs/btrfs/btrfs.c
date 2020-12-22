@@ -8,6 +8,7 @@
 #include "btrfs.h"
 #include <config.h>
 #include <malloc.h>
+#include <uuid.h>
 #include <linux/time.h>
 
 struct btrfs_info btrfs_info;
@@ -74,7 +75,8 @@ static int readdir_callback(const struct btrfs_root *root,
 	return 0;
 }
 
-int btrfs_probe(struct blk_desc *fs_dev_desc, disk_partition_t *fs_partition)
+int btrfs_probe(struct blk_desc *fs_dev_desc,
+		struct disk_partition *fs_partition)
 {
 	btrfs_blk_desc = fs_dev_desc;
 	btrfs_part_info = fs_partition;
@@ -119,17 +121,17 @@ int btrfs_ls(const char *path)
 
 	if (inr == -1ULL) {
 		printf("Cannot lookup path %s\n", path);
-		return 1;
+		return -1;
 	}
 
 	if (type != BTRFS_FT_DIR) {
 		printf("Not a directory: %s\n", path);
-		return 1;
+		return -1;
 	}
 
 	if (btrfs_readdir(&root, inr, readdir_callback)) {
 		printf("An error occured while listing directory %s\n", path);
-		return 1;
+		return -1;
 	}
 
 	return 0;
@@ -158,12 +160,12 @@ int btrfs_size(const char *file, loff_t *size)
 
 	if (inr == -1ULL) {
 		printf("Cannot lookup file %s\n", file);
-		return 1;
+		return -1;
 	}
 
 	if (type != BTRFS_FT_REG_FILE) {
 		printf("Not a regular file: %s\n", file);
-		return 1;
+		return -1;
 	}
 
 	*size = inode.size;
@@ -183,12 +185,12 @@ int btrfs_read(const char *file, void *buf, loff_t offset, loff_t len,
 
 	if (inr == -1ULL) {
 		printf("Cannot lookup file %s\n", file);
-		return 1;
+		return -1;
 	}
 
 	if (type != BTRFS_FT_REG_FILE) {
 		printf("Not a regular file: %s\n", file);
-		return 1;
+		return -1;
 	}
 
 	if (!len)
@@ -200,7 +202,7 @@ int btrfs_read(const char *file, void *buf, loff_t offset, loff_t len,
 	rd = btrfs_file_read(&root, inr, offset, len, buf);
 	if (rd == -1ULL) {
 		printf("An error occured while reading file %s\n", file);
-		return 1;
+		return -1;
 	}
 
 	*actread = rd;

@@ -25,9 +25,6 @@
 #define CONFIG_SYS_NOR_AMASK	IFC_AMASK(128*1024*1024)
 
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_QUIET_TEST
 #endif
 
@@ -146,6 +143,5 @@
 #define CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS 200000
 
 /* Store environment at top of flash */
-#define CONFIG_ENV_SIZE			0x1000
 
 #endif /* __LS2_SIMU_H */

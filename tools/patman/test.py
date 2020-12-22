@@ -8,10 +8,11 @@ import os
 import tempfile
 import unittest
 
-import checkpatch
-import gitutil
-import patchstream
-import series
+from patman import checkpatch
+from patman import gitutil
+from patman import patchstream
+from patman import series
+from patman import commit
 
 
 class TestPatch(unittest.TestCase):
@@ -48,7 +49,8 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
  arch/arm/cpu/armv7/tegra2/ap20.c           |   57 ++----
  arch/arm/cpu/armv7/tegra2/clock.c          |  163 +++++++++++++++++
 '''
-        expected='''
+        expected='''Message-Id: <19991231235959.0.I80fe1d0c0b7dd10aa58ce5bb1d9290b6664d5413@changeid>
+
 
 From 656c9a8c31fa65859d924cd21da920d6ba537fad Mon Sep 17 00:00:00 2001
 From: Simon Glass <sjg@chromium.org>
@@ -70,16 +72,25 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
 '''
         out = ''
         inhandle, inname = tempfile.mkstemp()
-        infd = os.fdopen(inhandle, 'w')
+        infd = os.fdopen(inhandle, 'w', encoding='utf-8')
         infd.write(data)
         infd.close()
 
         exphandle, expname = tempfile.mkstemp()
-        expfd = os.fdopen(exphandle, 'w')
+        expfd = os.fdopen(exphandle, 'w', encoding='utf-8')
         expfd.write(expected)
         expfd.close()
 
-        patchstream.FixPatch(None, inname, series.Series(), None)
+        # Normally by the time we call FixPatch we've already collected
+        # metadata.  Here, we haven't, but at least fake up something.
+        # Set the "count" to -1 which tells FixPatch to use a bogus/fixed
+        # time for generating the Message-Id.
+        com = commit.Commit('')
+        com.change_id = 'I80fe1d0c0b7dd10aa58ce5bb1d9290b6664d5413'
+        com.count = -1
+
+        patchstream.FixPatch(None, inname, series.Series(), com)
+
         rc = os.system('diff -u %s %s' % (inname, expname))
         self.assertEqual(rc, 0)
 
@@ -148,7 +159,7 @@ index 0000000..2234c87
 --- /dev/null
 +++ b/common/bootstage.c
 @@ -0,0 +1,37 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
++%s
 +/*
 + * Copyright (c) 2011, Google Inc. All rights reserved.
 + *
@@ -189,19 +200,22 @@ index 0000000..2234c87
 1.7.3.1
 '''
         signoff = 'Signed-off-by: Simon Glass <sjg@chromium.org>\n'
+        license = '// SPDX-License-Identifier: GPL-2.0+'
         tab = '	'
         indent = '    '
         if data_type == 'good':
             pass
         elif data_type == 'no-signoff':
             signoff = ''
+        elif data_type == 'no-license':
+            license = ''
         elif data_type == 'spaces':
             tab = '   '
         elif data_type == 'indent':
             indent = tab
         else:
             print('not implemented')
-        return data % (signoff, tab, indent, tab)
+        return data % (signoff, license, tab, indent, tab)
 
     def SetupData(self, data_type):
         inhandle, inname = tempfile.mkstemp()
@@ -230,6 +244,17 @@ index 0000000..2234c87
         self.assertEqual(len(result.problems), 1)
         self.assertEqual(result.errors, 1)
         self.assertEqual(result.warnings, 0)
+        self.assertEqual(result.checks, 0)
+        self.assertEqual(result.lines, 62)
+        os.remove(inf)
+
+    def testNoLicense(self):
+        inf = self.SetupData('no-license')
+        result = checkpatch.CheckPatch(inf)
+        self.assertEqual(result.ok, False)
+        self.assertEqual(len(result.problems), 1)
+        self.assertEqual(result.errors, 0)
+        self.assertEqual(result.warnings, 1)
         self.assertEqual(result.checks, 0)
         self.assertEqual(result.lines, 62)
         os.remove(inf)

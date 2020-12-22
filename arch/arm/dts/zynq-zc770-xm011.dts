@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Xilinx ZC770 XM013 board DTS
+ * Xilinx ZC770 XM011 board DTS
  *
  * Copyright (C) 2013-2018 Xilinx, Inc.
  */
@@ -8,8 +8,8 @@
 #include "zynq-7000.dtsi"
 
 / {
+	model = "Xilinx ZC770 XM011 board";
 	compatible = "xlnx,zynq-zc770-xm011", "xlnx,zynq-7000";
-	model = "Xilinx Zynq";
 
 	aliases {
 		i2c0 = &i2c1;
@@ -45,6 +45,14 @@
 		compatible = "atmel,24c02";
 		reg = <0x52>;
 	};
+};
+
+&nand0 {
+	status = "okay";
+};
+
+&smcc {
+	status = "okay";
 };
 
 &spi0 {

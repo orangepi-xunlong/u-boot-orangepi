@@ -23,27 +23,19 @@ extern ulong _datarellocal_start_ofs;
 extern ulong _datarelro_start_ofs;
 extern ulong IRQ_STACK_START_IN;	/* 8 bytes in IRQ stack */
 
+void s_init(void);
+
 /* cpu/.../cpu.c */
-int	cpu_init(void);
 int	cleanup_before_linux(void);
 
 /* Set up ARMv7 MMU, caches and TLBs */
 void	cpu_init_cp15(void);
 
 /* cpu/.../arch/cpu.c */
-int	arch_cpu_init(void);
 int	arch_misc_init(void);
-int	arch_early_init_r(void);
 
 /* board/.../... */
 int	board_init(void);
-void	board_quiesce_devices(void);
-
-/* cpu/.../interrupt.c */
-int	arch_interrupt_init	(void);
-void	reset_timer_masked	(void);
-ulong	get_timer_masked	(void);
-void	udelay_masked		(unsigned long usec);
 
 /* calls to c from vectors.S */
 struct pt_regs;
@@ -61,6 +53,8 @@ void do_irq(struct pt_regs *pt_regs, unsigned int esr);
 void do_fiq(struct pt_regs *pt_regs);
 void do_irq(struct pt_regs *pt_regswq);
 #endif
+
+void reset_misc(void);
 
 #endif /* __ASSEMBLY__ */
 

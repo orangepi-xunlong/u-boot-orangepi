@@ -6,6 +6,8 @@ config ARCH_RMOBILE_BOARD_STRING
 
 config RCAR_GEN2
 	bool "Renesas RCar Gen2"
+	select PHY
+	select PHY_RCAR_GEN2
 
 config R8A7740
 	bool "Renesas SoC R8A7740"
@@ -13,22 +15,36 @@ config R8A7740
 config R8A7790
 	bool "Renesas SoC R8A7790"
 	select RCAR_GEN2
+	select ARM_CORTEX_A15_CVE_2017_5715
+	imply CLK_R8A7790
+	imply PINCTRL_PFC_R8A7790
 
 config R8A7791
 	bool "Renesas SoC R8A7791"
 	select RCAR_GEN2
+	select ARM_CORTEX_A15_CVE_2017_5715
+	imply CLK_R8A7791
+	imply PINCTRL_PFC_R8A7791
 
 config R8A7792
 	bool "Renesas SoC R8A7792"
 	select RCAR_GEN2
+	select ARM_CORTEX_A15_CVE_2017_5715
+	imply CLK_R8A7792
+	imply PINCTRL_PFC_R8A7792
 
 config R8A7793
 	bool "Renesas SoC R8A7793"
 	select RCAR_GEN2
+	select ARM_CORTEX_A15_CVE_2017_5715
+	imply CLK_R8A7793
+	imply PINCTRL_PFC_R8A7793
 
 config R8A7794
 	bool "Renesas SoC R8A7794"
 	select RCAR_GEN2
+	imply CLK_R8A7794
+	imply PINCTRL_PFC_R8A7794
 
 choice
 	prompt "Renesas ARM SoCs board select"
@@ -41,30 +57,34 @@ config TARGET_BLANCHE
 	bool "Blanche board"
 	select DM
 	select DM_SERIAL
+	imply CMD_DM
 
 config TARGET_GOSE
 	bool "Gose board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_KOELSCH
 	bool "Koelsch board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_LAGER
 	bool "Lager board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_KZM9G
 	bool "KZM9D board"
@@ -73,33 +93,37 @@ config TARGET_ALT
 	bool "Alt board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_SILK
 	bool "Silk board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_PORTER
 	bool "Porter board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 config TARGET_STOUT
 	bool "Stout board"
 	select DM
 	select DM_SERIAL
-	select SUPPORT_SPL
-	select USE_TINY_PRINTF
 	select SPL_TINY_MEMSET
+	select SUPPORT_SPL
+	select SPL_USE_TINY_PRINTF
+	imply CMD_DM
 
 endchoice
 

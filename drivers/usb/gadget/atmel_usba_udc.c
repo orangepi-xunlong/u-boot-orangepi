@@ -8,6 +8,7 @@
  */
 
 #include <common.h>
+#include <linux/bitops.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/hardware.h>
@@ -16,7 +17,6 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/atmel_usba_udc.h>
 #include <malloc.h>
-#include <usb/lin_gadget_compat.h>
 
 #include "atmel_usba_udc.h"
 

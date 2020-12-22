@@ -6,8 +6,10 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <console.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <init.h>
 #include <asm/spl.h>
 #include <malloc.h>
 #include <ns16550.h>
@@ -84,9 +86,9 @@ void board_init_r(gd_t *gd, ulong dest_addr)
 
 	mmc_initialize(bd);
 	mmc_spl_load_image(CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE,
-			   (uchar *)CONFIG_ENV_ADDR);
+			   (uchar *)SPL_ENV_ADDR);
 
-	gd->env_addr  = (ulong)(CONFIG_ENV_ADDR);
+	gd->env_addr  = (ulong)(SPL_ENV_ADDR);
 	gd->env_valid = ENV_VALID;
 
 	i2c_init_all();

@@ -23,6 +23,9 @@
 
 #ifndef __ASSEMBLY__
 
+#include <asm/types.h>
+#include <linux/types.h>
+
 typedef struct bd_info {
 	unsigned long	bi_memstart;	/* start of DRAM memory */
 	phys_size_t	bi_memsize;	/* size	 of DRAM memory in bytes */

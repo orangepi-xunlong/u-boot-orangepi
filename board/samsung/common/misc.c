@@ -5,8 +5,11 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <env.h>
 #include <lcd.h>
 #include <libtizen.h>
+#include <linux/delay.h>
 #include <samsung/misc.h>
 #include <errno.h>
 #include <version.h>
@@ -101,7 +104,7 @@ void set_board_info(void)
 		bdtype = "";
 
 	sprintf(info, "%s%s", bdname, bdtype);
-	env_set("boardname", info);
+	env_set("board_name", info);
 #endif
 	snprintf(info, ARRAY_SIZE(info),  "%s%x-%s%s.dtb",
 		 CONFIG_SYS_SOC, s5p_cpu_id, bdname, bdtype);
@@ -260,7 +263,7 @@ static int mode_leave_menu(int mode)
 	char *exit_option;
 	char *exit_reset = "reset";
 	char *exit_back = "back";
-	cmd_tbl_t *cmd;
+	struct cmd_tbl *cmd;
 	int cmd_result;
 	int leave;
 
@@ -456,7 +459,7 @@ void draw_logo(void)
 
 	addr = panel_info.logo_addr;
 	if (!addr) {
-		pr_err("There is no logo data.");
+		pr_err("There is no logo data.\n");
 		return;
 	}
 

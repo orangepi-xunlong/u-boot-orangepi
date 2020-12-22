@@ -8,7 +8,9 @@
 #include <dm.h>
 #include <errno.h>
 #include <edid.h>
+#include <log.h>
 #include <video_bridge.h>
+#include <linux/delay.h>
 
 int video_bridge_set_backlight(struct udevice *dev, int percent)
 {
@@ -106,13 +108,19 @@ static int video_bridge_pre_probe(struct udevice *dev)
 int video_bridge_set_active(struct udevice *dev, bool active)
 {
 	struct video_bridge_priv *uc_priv = dev_get_uclass_priv(dev);
-	int ret;
+	int ret = 0;
 
 	debug("%s: %d\n", __func__, active);
-	ret = dm_gpio_set_value(&uc_priv->sleep, !active);
-	if (ret)
-		return ret;
-	if (active) {
+	if (uc_priv->sleep.dev) {
+		ret = dm_gpio_set_value(&uc_priv->sleep, !active);
+		if (ret)
+			return ret;
+	}
+
+	if (!active)
+		return 0;
+
+	if (uc_priv->reset.dev) {
 		ret = dm_gpio_set_value(&uc_priv->reset, true);
 		if (ret)
 			return ret;

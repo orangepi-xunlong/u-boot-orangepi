@@ -9,18 +9,23 @@
 #include <dm.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <mapmem.h>
 #include <syscon.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3188.h>
-#include <asm/arch/grf_rk3188.h>
-#include <asm/arch/hardware.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru_rk3188.h>
+#include <asm/arch-rockchip/grf_rk3188.h>
+#include <asm/arch-rockchip/hardware.h>
 #include <dt-bindings/clock/rk3188-cru.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dm/uclass-internal.h>
+#include <linux/delay.h>
+#include <linux/err.h>
 #include <linux/log2.h>
+#include <linux/stringify.h>
 
 enum rk3188_clk_type {
 	RK3188_CRU,
@@ -562,6 +567,10 @@ static int rk3188_clk_probe(struct udevice *dev)
 #endif
 
 	rkclk_init(priv->cru, priv->grf, priv->has_bwadj);
+
+	/* Init CPU frequency */
+	rkclk_configure_cpu(priv->cru, priv->grf, APLL_SAFE_HZ,
+			    priv->has_bwadj);
 #endif
 
 	return 0;
@@ -587,7 +596,7 @@ static int rk3188_clk_bind(struct udevice *dev)
 		sys_child->priv = priv;
 	}
 
-#if CONFIG_IS_ENABLED(CONFIG_RESET_ROCKCHIP)
+#if CONFIG_IS_ENABLED(RESET_ROCKCHIP)
 	ret = offsetof(struct rk3188_cru, cru_softrst_con[0]);
 	ret = rockchip_reset_bind(dev, ret, 9);
 	if (ret)

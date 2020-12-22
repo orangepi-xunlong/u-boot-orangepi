@@ -164,7 +164,9 @@ the '/images' node should have the following layout:
   - data : Path to the external file which contains this node's binary data.
   - compression : Compression used by included data. Supported compressions
     are "gzip" and "bzip2". If no compression is used compression property
-    should be set to "none".
+    should be set to "none". If the data is compressed but it should not be
+    uncompressed by U-Boot (e.g. compressed ramdisk), this should also be set
+    to "none".
 
   Conditionally mandatory property:
   - os : OS name, mandatory for types "kernel" and "ramdisk". Valid OS names
@@ -238,6 +240,7 @@ o config-1
   |- fdt = "fdt sub-node unit-name" [, "fdt overlay sub-node unit-name", ...]
   |- fpga = "fpga sub-node unit-name"
   |- loadables = "loadables sub-node unit-name"
+  |- compatible = "vendor,board-style device tree compatible string"
 
 
   Mandatory properties:
@@ -259,8 +262,14 @@ o config-1
   - loadables : Unit name containing a list of additional binaries to be
     loaded at their given locations.  "loadables" is a comma-separated list
     of strings. U-Boot will load each binary at its given start-address and
-    may optionaly invoke additional post-processing steps on this binary based
+    may optionally invoke additional post-processing steps on this binary based
     on its component image node type.
+  - compatible : The root compatible string of the U-Boot device tree that
+    this configuration shall automatically match when CONFIG_FIT_BEST_MATCH is
+    enabled. If this property is not provided, the compatible string will be
+    extracted from the fdt blob instead. This is only possible if the fdt is
+    not compressed, so images with compressed fdts that want to use compatible
+    string matching must always provide this property.
 
 The FDT blob is required to properly boot FDT based kernel, so the minimal
 configuration for 2.6 FDT kernel is (kernel, fdt) pair.
@@ -294,6 +303,11 @@ mkimage to enable 'data-position'.
 Normal kernel FIT image has data embedded within FIT structure. U-Boot image
 for SPL boot has external data. Existence of 'data-offset' can be used to
 identify which format is used.
+
+For FIT image with external data, it would be better to align each blob of data
+to block(512 byte) for block device, so that we don't need to do the copy when
+read the image data in SPL. Pass '-B 0x200' to mkimage to align the FIT
+structure and data to 512 byte, other values available for other align size.
 
 9) Examples
 -----------

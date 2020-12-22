@@ -10,7 +10,7 @@
 #include <syscon.h>
 #include <linux/io.h>
 #include <mach/at91_pmc.h>
-#include <mach/sama5_sfr.h>
+#include <mach/at91_sfr.h>
 #include "pmc.h"
 
 /*
@@ -28,6 +28,7 @@ static int utmi_clk_enable(struct clk *clk)
 	u32 utmi_ref_clk_freq;
 	u32 tmp;
 	int err;
+	int timeout = 2000000;
 
 	if (readl(&pmc->sr) & AT91_PMC_LOCKU)
 		return 0;
@@ -85,8 +86,12 @@ static int utmi_clk_enable(struct clk *clk)
 	       AT91_PMC_BIASEN;
 	writel(tmp, &pmc->uckr);
 
-	while (!(readl(&pmc->sr) & AT91_PMC_LOCKU))
+	while ((--timeout) && !(readl(&pmc->sr) & AT91_PMC_LOCKU))
 		;
+	if (!timeout) {
+		printf("UTMICK: timeout waiting for UPLL lock\n");
+		return -ETIMEDOUT;
+	}
 
 	return 0;
 }

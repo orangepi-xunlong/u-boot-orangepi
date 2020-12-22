@@ -9,14 +9,23 @@
  */
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <net.h>
+#include <vsprintf.h>
+#include <asm/cache.h>
 #include <linux/compiler.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+__maybe_unused void print_cpu_word_size(void)
+{
+	printf("%-12s= %u-bit\n", "Build", (uint)sizeof(void *) * 8);
+}
+
 __maybe_unused
 static void print_num(const char *name, ulong value)
 {
-	printf("%-12s= 0x%08lX\n", name, value);
+	printf("%-12s= 0x%0*lx\n", name, 2 * (int)sizeof(value), value);
 }
 
 __maybe_unused
@@ -168,7 +177,7 @@ void __weak board_detail(void)
 	/* Please define board_detail() for your platform */
 }
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -206,12 +215,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	print_baudrate();
 	print_num("relocaddr", gd->relocaddr);
 	board_detail();
+	print_cpu_word_size();
+
 	return 0;
 }
 
 #elif defined(CONFIG_NIOS2)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -225,13 +236,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_MICROBLAZE)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -250,13 +262,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	print_num("fdt_blob", (ulong)gd->fdt_blob);
 	print_num("new_fdt", (ulong)gd->new_fdt);
 	print_num("fdt_size", (ulong)gd->fdt_size);
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_M68K)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -281,25 +294,27 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_MIPS)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	print_std_bdinfo(gd->bd);
 	print_num("relocaddr", gd->relocaddr);
 	print_num("reloc off", gd->reloc_off);
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_ARM)
 
-static int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc,
-			char * const argv[])
+static int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -321,14 +336,14 @@ static int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc,
 	print_eths();
 #endif
 	print_baudrate();
-#if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
+#if !(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
 	print_num("TLB addr", gd->arch.tlb_addr);
 #endif
 	print_num("relocaddr", gd->relocaddr);
 	print_num("reloc off", gd->reloc_off);
 	print_num("irq_sp", gd->irq_sp);	/* irq stack pointer */
 	print_num("sp start ", gd->start_addr_sp);
-#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
+#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO) || defined(CONFIG_DM_VIDEO)
 	print_num("FB base  ", gd->fb_base);
 #endif
 	/*
@@ -347,15 +362,19 @@ static int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc,
 	printf("Early malloc usage: %lx / %x\n", gd->malloc_ptr,
 	       CONFIG_VAL(SYS_MALLOC_F_LEN));
 #endif
+#if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
+	print_num("multi_dtb_fit", (ulong)gd->multi_dtb_fit);
+#endif
 	if (gd->fdt_blob)
-		printf("fdt_blob = %p\n", gd->fdt_blob);
+		print_num("fdt_blob", (ulong)gd->fdt_blob);
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_SH)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -363,12 +382,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	print_bi_flash(bd);
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
+
 	return 0;
 }
 
 #elif defined(CONFIG_X86)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -383,13 +404,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	print_mhz("ethspeed",	    bd->bi_ethspeed);
 #endif
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_SANDBOX)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -400,12 +422,14 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
 	print_num("FB base  ", gd->fb_base);
 #endif
+	print_cpu_word_size();
+
 	return 0;
 }
 
 #elif defined(CONFIG_NDS32)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
@@ -414,41 +438,45 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	print_bi_dram(bd);
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_RISCV)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
-	print_num("arch_number", bd->bi_arch_number);
 	print_bi_boot_params(bd);
 	print_bi_dram(bd);
+	print_num("relocaddr", gd->relocaddr);
+	print_num("reloc off", gd->reloc_off);
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_ARC)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	bd_t *bd = gd->bd;
 
 	print_bi_mem(bd);
 	print_eth_ip_addr();
 	print_baudrate();
+	print_cpu_word_size();
 
 	return 0;
 }
 
 #elif defined(CONFIG_XTENSA)
 
-int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	print_std_bdinfo(gd->bd);
 	return 0;

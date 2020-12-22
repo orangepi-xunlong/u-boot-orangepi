@@ -12,9 +12,11 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <pci.h>
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -240,7 +242,7 @@ static int pcie_dw_addr_valid(pci_dev_t d, int first_busno)
  *
  * Return: 0 on success
  */
-static int pcie_dw_mvebu_read_config(struct udevice *bus, pci_dev_t bdf,
+static int pcie_dw_mvebu_read_config(const struct udevice *bus, pci_dev_t bdf,
 				     uint offset, ulong *valuep,
 				     enum pci_size_t size)
 {
@@ -476,7 +478,7 @@ static int pcie_dw_mvebu_probe(struct udevice *dev)
 	struct pcie_dw_mvebu *pcie = dev_get_priv(dev);
 	struct udevice *ctlr = pci_get_controller(dev);
 	struct pci_controller *hose = dev_get_uclass_priv(ctlr);
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct gpio_desc reset_gpio;
 
 	gpio_request_by_name(dev, "marvell,reset-gpio", 0, &reset_gpio,
@@ -489,12 +491,14 @@ static int pcie_dw_mvebu_probe(struct udevice *dev)
 	 * using this GPIO.
 	 */
 	if (dm_gpio_is_valid(&reset_gpio)) {
-		dm_gpio_set_value(&reset_gpio, 1);
+		dm_gpio_set_value(&reset_gpio, 1); /* assert */
+		mdelay(200);
+		dm_gpio_set_value(&reset_gpio, 0); /* de-assert */
 		mdelay(200);
 	}
 #else
 	debug("PCIE Reset on GPIO support is missing\n");
-#endif /* CONFIG_DM_GPIO */
+#endif /* DM_GPIO */
 
 	pcie->first_busno = dev->seq;
 

@@ -5,7 +5,7 @@
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#include <common.h>
+#include <cpu_func.h>
 #include <linux/io.h>
 #include <asm/secure.h>
 
@@ -22,14 +22,14 @@ void __SECURE reset_cpu(unsigned long ignored)
 {
 	u32 tmp;
 
-	writel(5, SC_IRQTIMSET); /* default value */
+	writel(5, sc_base + SC_IRQTIMSET); /* default value */
 
-	tmp  = readl(SC_SLFRSTSEL);
+	tmp  = readl(sc_base + SC_SLFRSTSEL);
 	tmp &= ~0x3; /* mask [1:0] */
 	tmp |= 0x0;  /* XRST reboot */
-	writel(tmp, SC_SLFRSTSEL);
+	writel(tmp, sc_base + SC_SLFRSTSEL);
 
-	tmp = readl(SC_SLFRSTCTL);
+	tmp = readl(sc_base + SC_SLFRSTCTL);
 	tmp |= 0x1;
-	writel(tmp, SC_SLFRSTCTL);
+	writel(tmp, sc_base + SC_SLFRSTCTL);
 }

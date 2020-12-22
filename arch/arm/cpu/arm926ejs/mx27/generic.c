@@ -6,7 +6,9 @@
 
 #include <common.h>
 #include <div64.h>
+#include <net.h>
 #include <netdev.h>
+#include <vsprintf.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -374,11 +376,3 @@ void mx27_sd2_init_pins(void)
 
 }
 #endif /* CONFIG_MMC_MXC */
-
-#ifndef CONFIG_SYS_DCACHE_OFF
-void enable_caches(void)
-{
-	/* Enable D-cache. I-cache is already enabled in start.S */
-	dcache_enable();
-}
-#endif /* CONFIG_SYS_DCACHE_OFF */

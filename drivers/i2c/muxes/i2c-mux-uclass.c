@@ -8,10 +8,10 @@
 #include <dm.h>
 #include <errno.h>
 #include <i2c.h>
+#include <log.h>
+#include <malloc.h>
 #include <dm/lists.h>
 #include <dm/root.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * struct i2c_mux: Information the uclass stores about an I2C mux
@@ -39,7 +39,7 @@ static int i2c_mux_child_post_bind(struct udevice *dev)
 	struct i2c_mux_bus *plat = dev_get_parent_platdata(dev);
 	int channel;
 
-	channel = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "reg", -1);
+	channel = dev_read_u32_default(dev, "reg", -1);
 	if (channel < 0)
 		return -EINVAL;
 	plat->channel = channel;
@@ -61,11 +61,34 @@ static int i2c_mux_post_bind(struct udevice *mux)
 	dev_for_each_subnode(node, mux) {
 		struct udevice *dev;
 		const char *name;
+		const char *arrow = "->";
+		char *full_name;
+		int parent_name_len, arrow_len, mux_name_len, name_len;
 
 		name = ofnode_get_name(node);
-		ret = device_bind_driver_to_node(mux, "i2c_mux_bus_drv", name,
-						 node, &dev);
-		debug("   - bind ret=%d, %s\n", ret, dev ? dev->name : NULL);
+
+		/* Calculate lenghts of strings */
+		parent_name_len = strlen(mux->parent->name);
+		arrow_len = strlen(arrow);
+		mux_name_len = strlen(mux->name);
+		name_len = strlen(name);
+
+		full_name = calloc(1, parent_name_len + arrow_len +
+				   mux_name_len + arrow_len + name_len + 1);
+		if (!full_name)
+			return -ENOMEM;
+
+		/* Compose bus name */
+		strcat(full_name, mux->parent->name);
+		strcat(full_name, arrow);
+		strcat(full_name, mux->name);
+		strcat(full_name, arrow);
+		strcat(full_name, name);
+
+		ret = device_bind_driver_to_node(mux, "i2c_mux_bus_drv",
+						 full_name, node, &dev);
+		debug("   - bind ret=%d, %s, req_seq %d\n", ret,
+		      dev ? dev->name : NULL, dev->req_seq);
 		if (ret)
 			return ret;
 	}

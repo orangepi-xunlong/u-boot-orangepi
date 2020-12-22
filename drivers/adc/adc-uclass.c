@@ -6,11 +6,13 @@
 
 #include <common.h>
 #include <errno.h>
+#include <div64.h>
 #include <dm.h>
 #include <dm/lists.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
 #include <adc.h>
+#include <linux/delay.h>
 #include <power/regulator.h>
 
 #define ADC_UCLASS_PLATDATA_SIZE	sizeof(struct adc_uclass_platdata)
@@ -74,6 +76,18 @@ int adc_data_mask(struct udevice *dev, unsigned int *data_mask)
 		return -ENOSYS;
 
 	*data_mask = uc_pdata->data_mask;
+	return 0;
+}
+
+int adc_channel_mask(struct udevice *dev, unsigned int *channel_mask)
+{
+	struct adc_uclass_platdata *uc_pdata = dev_get_uclass_platdata(dev);
+
+	if (!uc_pdata)
+		return -ENOSYS;
+
+	*channel_mask = uc_pdata->channel_mask;
+
 	return 0;
 }
 
@@ -264,10 +278,8 @@ static int adc_vdd_platdata_update(struct udevice *dev)
 	 * will bind before its supply regulator device, then the below 'get'
 	 * will return an error.
 	 */
-	ret = device_get_supply_regulator(dev, "vdd-supply",
-					  &uc_pdata->vdd_supply);
-	if (ret)
-		return ret;
+	if (!uc_pdata->vdd_supply)
+		return 0;
 
 	ret = regulator_get_value(uc_pdata->vdd_supply);
 	if (ret < 0)
@@ -283,10 +295,8 @@ static int adc_vss_platdata_update(struct udevice *dev)
 	struct adc_uclass_platdata *uc_pdata = dev_get_uclass_platdata(dev);
 	int ret;
 
-	ret = device_get_supply_regulator(dev, "vss-supply",
-					  &uc_pdata->vss_supply);
-	if (ret)
-		return ret;
+	if (!uc_pdata->vss_supply)
+		return 0;
 
 	ret = regulator_get_value(uc_pdata->vss_supply);
 	if (ret < 0)
@@ -302,14 +312,11 @@ int adc_vdd_value(struct udevice *dev, int *uV)
 	struct adc_uclass_platdata *uc_pdata = dev_get_uclass_platdata(dev);
 	int ret, value_sign = uc_pdata->vdd_polarity_negative ? -1 : 1;
 
-	if (!uc_pdata->vdd_supply)
-		goto nodev;
-
 	/* Update the regulator Value. */
 	ret = adc_vdd_platdata_update(dev);
 	if (ret)
 		return ret;
-nodev:
+
 	if (uc_pdata->vdd_microvolts == -ENODATA)
 		return -ENODATA;
 
@@ -323,18 +330,39 @@ int adc_vss_value(struct udevice *dev, int *uV)
 	struct adc_uclass_platdata *uc_pdata = dev_get_uclass_platdata(dev);
 	int ret, value_sign = uc_pdata->vss_polarity_negative ? -1 : 1;
 
-	if (!uc_pdata->vss_supply)
-		goto nodev;
-
 	/* Update the regulator Value. */
 	ret = adc_vss_platdata_update(dev);
 	if (ret)
 		return ret;
-nodev:
+
 	if (uc_pdata->vss_microvolts == -ENODATA)
 		return -ENODATA;
 
 	*uV = uc_pdata->vss_microvolts * value_sign;
+
+	return 0;
+}
+
+int adc_raw_to_uV(struct udevice *dev, unsigned int raw, int *uV)
+{
+	unsigned int data_mask;
+	int ret, val, vref;
+	u64 raw64 = raw;
+
+	ret = adc_vdd_value(dev, &vref);
+	if (ret)
+		return ret;
+
+	if (!adc_vss_value(dev, &val))
+		vref -= val;
+
+	ret = adc_data_mask(dev, &data_mask);
+	if (ret)
+		return ret;
+
+	raw64 *= vref;
+	do_div(raw64, data_mask);
+	*uV = raw64;
 
 	return 0;
 }
@@ -348,7 +376,12 @@ static int adc_vdd_platdata_set(struct udevice *dev)
 	prop = "vdd-polarity-negative";
 	uc_pdata->vdd_polarity_negative = dev_read_bool(dev, prop);
 
-	ret = adc_vdd_platdata_update(dev);
+	/* Optionally get regulators */
+	ret = device_get_supply_regulator(dev, "vdd-supply",
+					  &uc_pdata->vdd_supply);
+	if (!ret)
+		return adc_vdd_platdata_update(dev);
+
 	if (ret != -ENOENT)
 		return ret;
 
@@ -368,7 +401,11 @@ static int adc_vss_platdata_set(struct udevice *dev)
 	prop = "vss-polarity-negative";
 	uc_pdata->vss_polarity_negative = dev_read_bool(dev, prop);
 
-	ret = adc_vss_platdata_update(dev);
+	ret = device_get_supply_regulator(dev, "vss-supply",
+					  &uc_pdata->vss_supply);
+	if (!ret)
+		return adc_vss_platdata_update(dev);
+
 	if (ret != -ENOENT)
 		return ret;
 

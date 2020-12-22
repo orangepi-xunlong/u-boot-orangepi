@@ -14,8 +14,6 @@
  * High Level Configuration Options (easy to change)                    *
  *----------------------------------------------------------------------*/
 
-#define CONFIG_MISC_INIT_R
-
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
 
@@ -40,17 +38,10 @@
  * Environment is in the second sector of the first 256k of flash	*
  *----------------------------------------------------------------------*/
 
-#define CONFIG_ENV_ADDR		0xFF040000
-#define CONFIG_ENV_SECT_SIZE	0x00020000
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-
-/*
- * Command line configuration.
- */
 
 #define CONFIG_MCFTMR
 
@@ -59,8 +50,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000
 
-#define CONFIG_SYS_MEMTEST_START	0x100000
-#define CONFIG_SYS_MEMTEST_END		0x400000
 /*#define CONFIG_SYS_DRAM_TEST		1 */
 #undef CONFIG_SYS_DRAM_TEST
 
@@ -78,18 +67,13 @@
  * Network								*
  *----------------------------------------------------------------------*/
 
-#define CONFIG_MCFFEC
-#define CONFIG_MII			1
+#ifdef CONFIG_MCFFEC
 #define CONFIG_MII_INIT			1
 #define CONFIG_SYS_DISCOVER_PHY
 #define CONFIG_SYS_RX_ETH_BUFFER	8
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-
-#define CONFIG_SYS_FEC0_PINMUX		0
-#define CONFIG_SYS_FEC0_MIIBASE		CONFIG_SYS_FEC0_IOBASE
-#define MCFFEC_TOUT_LOOP		50000
-
 #define CONFIG_OVERWRITE_ETHADDR_ONCE
+#endif
 
 /*-------------------------------------------------------------------------
  * Low Level Configuration Settings
@@ -143,10 +127,7 @@
 #define	CONFIG_SYS_MAX_FLASH_SECT	128
 #define	CONFIG_SYS_MAX_FLASH_BANKS	1
 #define	CONFIG_SYS_FLASH_ERASE_TOUT	10000000
-#define	CONFIG_SYS_FLASH_PROTECTION
 
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_SIZE		16*1024*1024
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 

@@ -13,12 +13,15 @@
 #include <asm/io.h>
 #include <linux/immap_qe.h>
 #include <fsl_qe.h>
+#include <mmc.h>
+#include <u-boot/crc.h>
+
 #ifdef CONFIG_ARCH_LS1021A
 #include <asm/arch/immap_ls102xa.h>
 #endif
-
-#ifdef CONFIG_SYS_QE_FMAN_FW_IN_MMC
-#include <mmc.h>
+#ifdef CONFIG_ARM64
+#include <asm/armv8/mmu.h>
+#include <asm/arch/cpu.h>
 #endif
 
 #define MPC85xx_DEVDISR_QE_DISABLE	0x1
@@ -116,7 +119,7 @@ static void qe_sdma_init(void)
  */
 static u8 thread_snum[] = {
 /* Evthreads 16-29 are not supported in MPC8309 */
-#if !defined(CONFIG_MPC8309)
+#if !defined(CONFIG_ARCH_MPC8309)
 	0x04, 0x05, 0x0c, 0x0d,
 	0x14, 0x15, 0x1c, 0x1d,
 	0x24, 0x25, 0x2c, 0x2d,
@@ -170,6 +173,33 @@ void qe_put_snum(u8 snum)
 	}
 }
 
+#ifdef CONFIG_TFABOOT
+void qe_init(uint qe_base)
+{
+	enum boot_src src = get_boot_src();
+
+	/* Init the QE IMMR base */
+	qe_immr = (qe_map_t *)qe_base;
+
+	if (src == BOOT_SOURCE_IFC_NOR) {
+		/*
+		 * Upload microcode to IRAM for those SOCs
+		 * which do not have ROM in QE.
+		 */
+		qe_upload_firmware((const void *)(CONFIG_SYS_QE_FW_ADDR +
+				   CONFIG_SYS_FSL_IFC_BASE));
+
+		/* enable the microcode in IRAM */
+		out_be32(&qe_immr->iram.iready, QE_IRAM_READY);
+	}
+
+	gd->arch.mp_alloc_base = QE_DATAONLY_BASE;
+	gd->arch.mp_alloc_top = gd->arch.mp_alloc_base + QE_DATAONLY_SIZE;
+
+	qe_sdma_init();
+	qe_snums_init();
+}
+#else
 void qe_init(uint qe_base)
 {
 	/* Init the QE IMMR base */
@@ -192,8 +222,53 @@ void qe_init(uint qe_base)
 	qe_snums_init();
 }
 #endif
+#endif
 
 #ifdef CONFIG_U_QE
+#ifdef CONFIG_TFABOOT
+void u_qe_init(void)
+{
+	enum boot_src src = get_boot_src();
+
+	qe_immr = (qe_map_t *)(CONFIG_SYS_IMMR + QE_IMMR_OFFSET);
+
+	void *addr = (void *)CONFIG_SYS_QE_FW_ADDR;
+
+	if (src == BOOT_SOURCE_IFC_NOR)
+		addr = (void *)(CONFIG_SYS_QE_FW_ADDR + CONFIG_SYS_FSL_IFC_BASE);
+
+	if (src == BOOT_SOURCE_QSPI_NOR)
+		addr = (void *)(CONFIG_SYS_QE_FW_ADDR + CONFIG_SYS_FSL_QSPI_BASE);
+
+	if (src == BOOT_SOURCE_SD_MMC) {
+		int dev = CONFIG_SYS_MMC_ENV_DEV;
+		u32 cnt = CONFIG_SYS_QE_FMAN_FW_LENGTH / 512;
+		u32 blk = CONFIG_SYS_QE_FW_ADDR / 512;
+
+		if (mmc_initialize(gd->bd)) {
+			printf("%s: mmc_initialize() failed\n", __func__);
+			return;
+		}
+		addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
+		struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
+
+		if (!mmc) {
+			free(addr);
+			printf("\nMMC cannot find device for ucode\n");
+		} else {
+			printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
+			       dev, blk, cnt);
+			mmc_init(mmc);
+			(void)blk_dread(mmc_get_blk_desc(mmc), blk, cnt,
+						addr);
+		}
+	}
+	if (!u_qe_upload_firmware(addr))
+		out_be32(&qe_immr->iram.iready, QE_IRAM_READY);
+	if (src == BOOT_SOURCE_SD_MMC)
+		free(addr);
+}
+#else
 void u_qe_init(void)
 {
 	qe_immr = (qe_map_t *)(CONFIG_SYS_IMMR + QE_IMMR_OFFSET);
@@ -218,7 +293,7 @@ void u_qe_init(void)
 		printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
 		       dev, blk, cnt);
 		mmc_init(mmc);
-		(void)mmc->block_dev.block_read(&mmc->block_dev, blk, cnt,
+		(void)blk_dread(mmc_get_blk_desc(mmc), blk, cnt,
 						addr);
 	}
 #endif
@@ -228,6 +303,7 @@ void u_qe_init(void)
 	free(addr);
 #endif
 }
+#endif
 #endif
 
 #ifdef CONFIG_U_QE
@@ -364,7 +440,8 @@ static void qe_upload_microcode(const void *base,
 /*
  * Upload a microcode to the I-RAM at a specific address.
  *
- * See docs/README.qe_firmware for information on QE microcode uploading.
+ * See Documentation/powerpc/qe_firmware.rst in the Linux kernel tree for
+ * information on QE microcode uploading.
  *
  * Currently, only version 1 is supported, so the 'version' field must be
  * set to 1.
@@ -503,7 +580,8 @@ int qe_upload_firmware(const struct qe_firmware *firmware)
 /*
  * Upload a microcode to the I-RAM at a specific address.
  *
- * See docs/README.qe_firmware for information on QE microcode uploading.
+ * See Documentation/powerpc/qe_firmware.rst in the Linux kernel tree for
+ * information on QE microcode uploading.
  *
  * Currently, only version 1 is supported, so the 'version' field must be
  * set to 1.
@@ -703,7 +781,7 @@ struct qe_firmware_info *qe_get_firmware_info(void)
 	return qe_firmware_uploaded ? &qe_firmware_info : NULL;
 }
 
-static int qe_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int qe_cmd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	ulong addr;
 

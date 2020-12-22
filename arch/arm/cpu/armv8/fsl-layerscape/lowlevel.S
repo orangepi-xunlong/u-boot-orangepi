@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014-2015 Freescale Semiconductor
+ * Copyright 2019 NXP
  *
  * Extracted from armv8/start.S
  */
@@ -70,6 +71,15 @@ ENDPROC(smp_kick_all_cpus)
 
 ENTRY(lowlevel_init)
 	mov	x29, lr			/* Save LR */
+
+	/* unmask SError and abort */
+	msr daifclr, #4
+
+	/* Set HCR_EL2[AMO] so SError @EL2 is taken */
+	mrs	x0, hcr_el2
+	orr	x0, x0, #0x20			/* AMO */
+	msr	hcr_el2, x0
+	isb
 
 	switch_el x1, 1f, 100f, 100f	/* skip if not in EL3 */
 1:
@@ -233,39 +243,45 @@ ENTRY(lowlevel_init)
 	 * NOTE: As per the CCSR map doc, TZASC 3 and TZASC 4 are just
 	 * 	 placeholders.
 	 */
+
+.macro tzasc_prog, xreg
+
+	mov     x12, TZASC1_BASE
+	mov     x16, #0x10000
+	mul     x14, \xreg, x16
+	add     x14, x14,x12
+	mov 	x1, #0x8
+	add     x1, x1, x14
+
+	ldr     w0, [x1]		/* Filter 0 Gate Keeper Register */
+	orr     w0, w0, #1 << 0		/* Set open_request for Filter 0 */
+	str     w0, [x1]
+
+	mov	x1, #0x110
+	add     x1, x1, x14
+
+	ldr     w0, [x1]		/* Region-0 Attributes Register */
+	orr     w0, w0, #1 << 31	/* Set Sec global write en, Bit[31] */
+	orr     w0, w0, #1 << 30	/* Set Sec global read en, Bit[30] */
+	str     w0, [x1]
+
+	mov	x1, #0x114
+	add     x1, x1, x14
+
+	ldr     w0, [x1]		/* Region-0 Access Register */
+	mov     w0, #0xFFFFFFFF		/* Set nsaid_wr_en and nsaid_rd_en */
+	str     w0, [x1]
+.endm
+
 #ifdef CONFIG_FSL_TZASC_1
-	ldr	x1, =TZASC_GATE_KEEPER(0)
-	ldr	w0, [x1]		/* Filter 0 Gate Keeper Register */
-	orr	w0, w0, #1 << 0		/* Set open_request for Filter 0 */
-	str	w0, [x1]
+	mov     x13, #0
+	tzasc_prog	x13
 
-	ldr	x1, =TZASC_REGION_ATTRIBUTES_0(0)
-	ldr	w0, [x1]		/* Region-0 Attributes Register */
-	orr	w0, w0, #1 << 31	/* Set Sec global write en, Bit[31] */
-	orr	w0, w0, #1 << 30	/* Set Sec global read en, Bit[30] */
-	str	w0, [x1]
-
-	ldr	x1, =TZASC_REGION_ID_ACCESS_0(0)
-	ldr	w0, [x1]		/* Region-0 Access Register */
-	mov	w0, #0xFFFFFFFF		/* Set nsaid_wr_en and nsaid_rd_en */
-	str	w0, [x1]
 #endif
 #ifdef CONFIG_FSL_TZASC_2
-	ldr	x1, =TZASC_GATE_KEEPER(1)
-	ldr	w0, [x1]		/* Filter 0 Gate Keeper Register */
-	orr	w0, w0, #1 << 0		/* Set open_request for Filter 0 */
-	str	w0, [x1]
+	mov     x13, #1
+	tzasc_prog	x13
 
-	ldr	x1, =TZASC_REGION_ATTRIBUTES_0(1)
-	ldr	w0, [x1]		/* Region-1 Attributes Register */
-	orr	w0, w0, #1 << 31	/* Set Sec global write en, Bit[31] */
-	orr	w0, w0, #1 << 30	/* Set Sec global read en, Bit[30] */
-	str	w0, [x1]
-
-	ldr	x1, =TZASC_REGION_ID_ACCESS_0(1)
-	ldr	w0, [x1]		/* Region-1 Attributes Register */
-	mov	w0, #0xFFFFFFFF		/* Set nsaid_wr_en and nsaid_rd_en */
-	str	w0, [x1]
 #endif
 	isb
 	dsb	sy
@@ -289,7 +305,8 @@ ENTRY(lowlevel_init)
 100:
 #endif
 
-#if defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_TFABOOT) && \
+	(defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD))
 	bl	fsl_ocram_init
 #endif
 
@@ -338,33 +355,24 @@ get_svr:
 	ret
 #endif
 
-#ifdef CONFIG_SYS_FSL_HAS_CCN504
+#if defined(CONFIG_SYS_FSL_HAS_CCN504) || defined(CONFIG_SYS_FSL_HAS_CCN508)
 hnf_pstate_poll:
-	/* x0 has the desired status, return 0 for success, 1 for timeout
-	 * clobber x1, x2, x3, x4, x6, x7
+	/* x0 has the desired status, return only if operation succeed
+	 * clobber x1, x2, x6
 	 */
 	mov	x1, x0
-	mov	x7, #0			/* flag for timeout */
-	mrs	x3, cntpct_el0		/* read timer */
-	add	x3, x3, #1200		/* timeout after 100 microseconds */
+	mov	w6, #8			/* HN-F node count */
 	mov	x0, #0x18
 	movk	x0, #0x420, lsl #16	/* HNF0_PSTATE_STATUS */
-	mov	w6, #8			/* HN-F node count */
 1:
 	ldr	x2, [x0]
 	cmp	x2, x1			/* check status */
 	b.eq	2f
-	mrs	x4, cntpct_el0
-	cmp	x4, x3
-	b.ls	1b
-	mov	x7, #1			/* timeout */
-	b	3f
+	b	1b
 2:
 	add	x0, x0, #0x10000	/* move to next node */
 	subs	w6, w6, #1
 	cbnz	w6, 1b
-3:
-	mov	x0, x7
 	ret
 
 hnf_set_pstate:
@@ -389,10 +397,8 @@ ENTRY(__asm_flush_l3_dcache)
 	/*
 	 * Return status in x0
 	 *    success 0
-	 *    timeout 1 for setting SFONLY, 2 for FAM, 3 for both
 	 */
 	mov	x29, lr
-	mov	x8, #0
 
 	dsb	sy
 	mov	x0, #0x1		/* HNFPSTAT_SFONLY */
@@ -400,19 +406,15 @@ ENTRY(__asm_flush_l3_dcache)
 
 	mov	x0, #0x4		/* SFONLY status */
 	bl	hnf_pstate_poll
-	cbz	x0, 1f
-	mov	x8, #1			/* timeout */
-1:
+
 	dsb	sy
 	mov	x0, #0x3		/* HNFPSTAT_FAM */
 	bl	hnf_set_pstate
 
 	mov	x0, #0xc		/* FAM status */
 	bl	hnf_pstate_poll
-	cbz	x0, 1f
-	add	x8, x8, #0x2
-1:
-	mov	x0, x8
+
+	mov	x0, #0
 	mov	lr, x29
 	ret
 ENDPROC(__asm_flush_l3_dcache)

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2012
- * Pali Rohár <pali.rohar@gmail.com>
+ * Pali Rohár <pali@kernel.org>
  *
  * (C) Copyright 2010
  * Alistair Buxton <a.j.buxton@gmail.com>
@@ -25,12 +25,6 @@
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_NOKIA_RX51
 
-/*
- * Nokia X-Loader loading secondary image to address 0x80400000
- * NOLO loading boot image to random place, so it doesn't really
- * matter what we set this to. We have to copy u-boot to this address
- */
-
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
 #include <asm/arch/mem.h>
@@ -40,7 +34,6 @@
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
 
-#define CONFIG_MISC_INIT_R
 #define CONFIG_SKIP_LOWLEVEL_INIT		/* X-Loader set everything up */
 
 #define CONFIG_CMDLINE_TAG	/* enable passing kernel command line string */
@@ -51,7 +44,6 @@
 /*
  * Size of malloc() pool
  */
-#define CONFIG_ENV_SIZE			(128 << 10)
 #define CONFIG_UBI_SIZE			(512 << 10)
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + CONFIG_UBI_SIZE + \
 					(128 << 10))
@@ -73,7 +65,6 @@
  * select serial console configuration
  */
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
-#define CONFIG_SERIAL3			3		/* UART3 on RX-51 */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -93,8 +84,6 @@
 /*
  * TWL4030
  */
-#define CONFIG_TWL4030_LED
-#define CONFIG_TWL4030_KEYPAD
 
 #define GPIO_SLIDE			71
 
@@ -102,55 +91,7 @@
  * Board ONENAND Info.
  */
 
-#define PART1_NAME			"bootloader"
-#define PART1_SIZE			128
-#define PART1_MULL			1024
-#define PART1_SUFF			"k"
-#define PART1_OFFS			0x00000000
-#define PART1_MASK			0x00000003
-
-#define PART2_NAME			"config"
-#define PART2_SIZE			384
-#define PART2_MULL			1024
-#define PART2_SUFF			"k"
-#define PART2_OFFS			0x00020000
-#define PART2_MASK			0x00000000
-
-#define PART3_NAME			"log"
-#define PART3_SIZE			256
-#define PART3_MULL			1024
-#define PART3_SUFF			"k"
-#define PART3_OFFS			0x00080000
-#define PART3_MASK			0x00000000
-
-#define PART4_NAME			"kernel"
-#define PART4_SIZE			2
-#define PART4_MULL			1024*1024
-#define PART4_SUFF			"m"
-#define PART4_OFFS			0x000c0000
-#define PART4_MASK			0x00000000
-
-#define PART5_NAME			"initfs"
-#define PART5_SIZE			2
-#define PART5_MULL			1024*1024
-#define PART5_SUFF			"m"
-#define PART5_OFFS			0x002c0000
-#define PART5_MASK			0x00000000
-
-#define PART6_NAME			"rootfs"
-#define PART6_SIZE			257280
-#define PART6_MULL			1024
-#define PART6_SUFF			"k"
-#define PART6_OFFS			0x004c0000
-#define PART6_MASK			0x00000000
-
-#ifdef ONENAND_SUPPORT
-
 #define CONFIG_SYS_ONENAND_BASE		ONENAND_MAP
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-
-#endif
 
 /* Watchdog support */
 #define CONFIG_HW_WATCHDOG
@@ -176,17 +117,11 @@ int rx51_kp_getc(struct stdio_dev *sdev);
 #endif
 
 /* Environment information */
-#ifdef CONFIG_MTDPARTS_DEFAULT
-#define MTDPARTS "mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"
-#else
-#define MTDPARTS
-#endif
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	MTDPARTS \
 	"usbtty=cdc_acm\0" \
-	"stdin=vga\0" \
-	"stdout=vga\0" \
-	"stderr=vga\0" \
+	"stdin=serial,vga\0" \
+	"stdout=serial,vga\0" \
+	"stderr=serial,vga\0" \
 	"setcon=setenv stdin ${con};" \
 		"setenv stdout ${con};" \
 		"setenv stderr ${con}\0" \
@@ -252,6 +187,28 @@ int rx51_kp_getc(struct stdio_dev *sdev);
 		"fi\0" \
 	"emmcboot=setenv mmcnum 1; run trymmcboot\0" \
 	"sdboot=setenv mmcnum 0; run trymmcboot\0" \
+	"preboot=setenv mmcnum 1; setenv mmcpart 1;" \
+		"setenv mmcscriptfile bootmenu.scr;" \
+		"if run switchmmc; then " \
+			"setenv mmcdone true;" \
+			"setenv mmctype fat;" \
+			"if run scriptload; then true; else " \
+				"setenv mmctype ext2;" \
+				"if run scriptload; then true; else " \
+					"setenv mmctype ext4;" \
+					"if run scriptload; then true; else " \
+						"setenv mmcdone false;" \
+					"fi;" \
+				"fi;" \
+			"fi;" \
+			"if ${mmcdone}; then " \
+				"run scriptboot;" \
+			"fi;" \
+		"fi;" \
+		"if run slide; then true; else " \
+			"setenv bootmenu_delay 0;" \
+			"setenv bootdelay 0;" \
+		"fi\0" \
 	"menucmd=bootmenu\0" \
 	"bootmenu_0=Attached kernel=run attachboot\0" \
 	"bootmenu_1=Internal eMMC=run emmcboot\0" \
@@ -259,30 +216,6 @@ int rx51_kp_getc(struct stdio_dev *sdev);
 	"bootmenu_3=U-Boot boot order=boot\0" \
 	"bootmenu_delay=30\0" \
 	""
-
-#define CONFIG_PREBOOT \
-	"setenv mmcnum 1; setenv mmcpart 1;" \
-	"setenv mmcscriptfile bootmenu.scr;" \
-	"if run switchmmc; then " \
-		"setenv mmcdone true;" \
-		"setenv mmctype fat;" \
-		"if run scriptload; then true; else " \
-			"setenv mmctype ext2;" \
-			"if run scriptload; then true; else " \
-				"setenv mmctype ext4;" \
-				"if run scriptload; then true; else " \
-					"setenv mmcdone false;" \
-				"fi;" \
-			"fi;" \
-		"fi;" \
-		"if ${mmcdone}; then " \
-			"run scriptboot;" \
-		"fi;" \
-	"fi;" \
-	"if run slide; then true; else " \
-		"setenv bootmenu_delay 0;" \
-		"setenv bootdelay 0;" \
-	"fi"
 
 #define CONFIG_POSTBOOTMENU \
 	"echo;" \
@@ -301,14 +234,9 @@ int rx51_kp_getc(struct stdio_dev *sdev);
 	"run attachboot;" \
 	"echo"
 
-#define CONFIG_MENU_SHOW
-
 /*
  * Miscellaneous configurable options
  */
-
-#define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
-#define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + 0x01F00000)/*31MB*/
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		(OMAP34XX_SDRC_CS0)
@@ -324,7 +252,6 @@ int rx51_kp_getc(struct stdio_dev *sdev);
 /*
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS		2
 #define PHYS_SDRAM_1			OMAP34XX_SDRC_CS0
 
 /*

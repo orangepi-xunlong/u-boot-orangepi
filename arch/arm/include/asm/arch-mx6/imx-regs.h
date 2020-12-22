@@ -372,6 +372,7 @@
 #include <asm/mach-imx/regs-lcdif.h>
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
+#include <linux/bitops.h>
 
 /* only for i.MX6SX/UL */
 #define WDOG3_BASE_ADDR (((is_mx6ul() || is_mx6ull()) ?	\
@@ -996,5 +997,12 @@ struct pwm_regs {
 	u32	pr;
 	u32	cnr;
 };
-#endif /* __ASSEMBLER__*/
+
+/*
+ * If ROM fail back to USB recover mode, USBPH0_PWD will be clear to use USB
+ * If boot from the other mode, USB0_PWD will keep reset value
+ */
+#define	is_boot_from_usb(void) (!(readl(USB_PHY0_BASE_ADDR) & (1<<20)))
+
+#endif /* __ASSEMBLY__ */
 #endif /* __ASM_ARCH_MX6_IMX_REGS_H__ */

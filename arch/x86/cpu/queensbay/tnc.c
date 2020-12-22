@@ -5,6 +5,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
 #include <dm/device-internal.h>
 #include <pci.h>
 #include <asm/io.h>
@@ -12,7 +13,7 @@
 #include <asm/post.h>
 #include <asm/arch/device.h>
 #include <asm/arch/tnc.h>
-#include <asm/fsp/fsp_support.h>
+#include <asm/fsp1/fsp_support.h>
 #include <asm/processor.h>
 
 static int __maybe_unused disable_igd(void)
@@ -98,6 +99,43 @@ int arch_cpu_init(void)
 	return x86_cpu_init_f();
 }
 
+static void tnc_irq_init(void)
+{
+	struct tnc_rcba *rcba;
+	u32 base;
+
+	pci_read_config32(TNC_LPC, LPC_RCBA, &base);
+	base &= ~MEM_BAR_EN;
+	rcba = (struct tnc_rcba *)base;
+
+	/* Make sure all internal PCI devices are using INTA */
+	writel(INTA, &rcba->d02ip);
+	writel(INTA, &rcba->d03ip);
+	writel(INTA, &rcba->d27ip);
+	writel(INTA, &rcba->d31ip);
+	writel(INTA, &rcba->d23ip);
+	writel(INTA, &rcba->d24ip);
+	writel(INTA, &rcba->d25ip);
+	writel(INTA, &rcba->d26ip);
+
+	/*
+	 * Route TunnelCreek PCI device interrupt pin to PIRQ
+	 *
+	 * Since PCIe downstream ports received INTx are routed to PIRQ
+	 * A/B/C/D directly and not configurable, we have to route PCIe
+	 * root ports' INTx to PIRQ A/B/C/D as well. For other devices
+	 * on TunneCreek, route them to PIRQ E/F/G/H.
+	 */
+	writew(PIRQE, &rcba->d02ir);
+	writew(PIRQF, &rcba->d03ir);
+	writew(PIRQG, &rcba->d27ir);
+	writew(PIRQH, &rcba->d31ir);
+	writew(PIRQA, &rcba->d23ir);
+	writew(PIRQB, &rcba->d24ir);
+	writew(PIRQC, &rcba->d25ir);
+	writew(PIRQD, &rcba->d26ir);
+}
+
 int arch_early_init_r(void)
 {
 	int ret = 0;
@@ -105,6 +143,8 @@ int arch_early_init_r(void)
 #ifdef CONFIG_DISABLE_IGD
 	ret = disable_igd();
 #endif
+
+	tnc_irq_init();
 
 	return ret;
 }

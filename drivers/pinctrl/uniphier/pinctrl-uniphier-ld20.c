@@ -10,6 +10,15 @@
 
 #include "pinctrl-uniphier.h"
 
+static const struct uniphier_pinctrl_pin uniphier_ld20_pins[] = {
+	UNIPHIER_PINCTRL_PIN(40, "RGMII_TXCLK", 28, UNIPHIER_PIN_DRV_3BIT),
+	UNIPHIER_PINCTRL_PIN(41, "RGMII_TXD0", 29, UNIPHIER_PIN_DRV_3BIT),
+	UNIPHIER_PINCTRL_PIN(42, "RGMII_TXD1", 30, UNIPHIER_PIN_DRV_3BIT),
+	UNIPHIER_PINCTRL_PIN(43, "RGMII_TXD2", 31, UNIPHIER_PIN_DRV_3BIT),
+	UNIPHIER_PINCTRL_PIN(44, "RGMII_TXD3", 32, UNIPHIER_PIN_DRV_3BIT),
+	UNIPHIER_PINCTRL_PIN(45, "RGMII_TXCTL", 33, UNIPHIER_PIN_DRV_3BIT),
+};
+
 static const unsigned emmc_pins[] = {18, 19, 20, 21, 22, 23, 24, 25};
 static const int emmc_muxvals[] = {0, 0, 0, 0, 0, 0, 0, 0};
 static const unsigned emmc_dat8_pins[] = {26, 27, 28, 29};
@@ -34,6 +43,14 @@ static const unsigned nand_pins[] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
 static const int nand_muxvals[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static const unsigned sd_pins[] = {10, 11, 12, 13, 14, 15, 16, 17};
 static const int sd_muxvals[] = {3, 3, 3, 3, 3, 3, 3, 3};  /* No SDVOLC */
+static const unsigned spi0_pins[] = {56, 57, 58, 59};
+static const int spi0_muxvals[] = {0, 0, 0, 0};
+static const unsigned spi1_pins[] = {169, 170, 171, 172};
+static const int spi1_muxvals[] = {1, 1, 1, 1};
+static const unsigned spi2_pins[] = {86, 87, 88, 89};
+static const int spi2_muxvals[] = {1, 1, 1, 1};
+static const unsigned spi3_pins[] = {74, 75, 76, 77};
+static const int spi3_muxvals[] = {1, 1, 1, 1};
 static const unsigned system_bus_pins[] = {1, 2, 6, 7, 8, 9, 10, 11, 12, 13,
 					   14, 15, 16, 17};
 static const int system_bus_muxvals[] = {0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -68,6 +85,10 @@ static const struct uniphier_pinctrl_group uniphier_ld20_groups[] = {
 	UNIPHIER_PINCTRL_GROUP(i2c4),
 	UNIPHIER_PINCTRL_GROUP(nand),
 	UNIPHIER_PINCTRL_GROUP(sd),
+	UNIPHIER_PINCTRL_GROUP(spi0),
+	UNIPHIER_PINCTRL_GROUP(spi1),
+	UNIPHIER_PINCTRL_GROUP(spi2),
+	UNIPHIER_PINCTRL_GROUP(spi3),
 	UNIPHIER_PINCTRL_GROUP(system_bus),
 	UNIPHIER_PINCTRL_GROUP(system_bus_cs1),
 	UNIPHIER_PINCTRL_GROUP(uart0),
@@ -90,6 +111,10 @@ static const char * const uniphier_ld20_functions[] = {
 	UNIPHIER_PINMUX_FUNCTION(i2c4),
 	UNIPHIER_PINMUX_FUNCTION(nand),
 	UNIPHIER_PINMUX_FUNCTION(sd),
+	UNIPHIER_PINMUX_FUNCTION(spi0),
+	UNIPHIER_PINMUX_FUNCTION(spi1),
+	UNIPHIER_PINMUX_FUNCTION(spi2),
+	UNIPHIER_PINMUX_FUNCTION(spi3),
 	UNIPHIER_PINMUX_FUNCTION(system_bus),
 	UNIPHIER_PINMUX_FUNCTION(uart0),
 	UNIPHIER_PINMUX_FUNCTION(uart1),
@@ -102,6 +127,8 @@ static const char * const uniphier_ld20_functions[] = {
 };
 
 static struct uniphier_pinctrl_socdata uniphier_ld20_pinctrl_socdata = {
+	.pins = uniphier_ld20_pins,
+	.pins_count = ARRAY_SIZE(uniphier_ld20_pins),
 	.groups = uniphier_ld20_groups,
 	.groups_count = ARRAY_SIZE(uniphier_ld20_groups),
 	.functions = uniphier_ld20_functions,

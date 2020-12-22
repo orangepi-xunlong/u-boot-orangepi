@@ -24,26 +24,11 @@
 #define CONFIG_KW88F6281		/* SOC Name */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
-/*
- * Commands configuration
- */
-#define CONFIG_SYS_MVFS
-
-/*
- * mv-common.h should be defined after CMD configs since it used them
- * to enable certain macros
- */
 #include "mv-common.h"
 
 /*
  *  Environment variables configurations
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_ENV_SECT_SIZE		0x20000	/* 128K */
-#endif
-
-#define CONFIG_ENV_SIZE			0x20000	/* 128k */
-#define CONFIG_ENV_OFFSET		0x60000	/* env starts here */
 
 /*
  * Default environment variables
@@ -72,7 +57,5 @@
 /*
  * File system
  */
-#define CONFIG_MTD_DEVICE               /* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS
 
 #endif /* _CONFIG_POGO_E02_H */

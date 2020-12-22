@@ -17,6 +17,8 @@
 
 #include <stdio_dev.h>
 
+struct udevice;
+
 struct video_uc_platdata {
 	uint align;
 	uint size;
@@ -55,19 +57,22 @@ enum video_log2_bpp {
  * @xsize:	Number of pixel columns (e.g. 1366)
  * @ysize:	Number of pixels rows (e.g.. 768)
  * @rot:	Display rotation (0=none, 1=90 degrees clockwise, etc.)
- * @bpix:	Encoded bits per pixel
+ * @bpix:	Encoded bits per pixel (enum video_log2_bpp)
  * @vidconsole_drv_name:	Driver to use for the text console, NULL to
  *		select automatically
  * @font_size:	Font size in pixels (0 to use a default value)
  * @fb:		Frame buffer
  * @fb_size:	Frame buffer size
- * @line_length:	Length of each frame buffer line, in bytes
+ * @line_length:	Length of each frame buffer line, in bytes. This can be
+ *		set by the driver, but if not, the uclass will set it after
+ *		probing
  * @colour_fg:	Foreground colour (pixel value)
  * @colour_bg:	Background colour (pixel value)
  * @flush_dcache:	true to enable flushing of the data cache after
  *		the LCD is updated
  * @cmap:	Colour map for 8-bit-per-pixel displays
  * @fg_col_idx:	Foreground color code (bit 3 = bold, bit 0-2 = color)
+ * @bg_col_idx:	Background color code (bit 3 = bold, bit 0-2 = color)
  */
 struct video_priv {
 	/* Things set up by the driver: */
@@ -90,6 +95,7 @@ struct video_priv {
 	bool flush_dcache;
 	ushort *cmap;
 	u8 fg_col_idx;
+	u8 bg_col_idx;
 };
 
 /* Placeholder - there are no video operations at present */
@@ -120,8 +126,9 @@ int video_reserve(ulong *addrp);
  * video_clear() - Clear a device's frame buffer to background color.
  *
  * @dev:	Device to clear
+ * @return 0
  */
-void video_clear(struct udevice *dev);
+int video_clear(struct udevice *dev);
 
 /**
  * video_sync() - Sync a device's frame buffer with its hardware
@@ -131,8 +138,10 @@ void video_clear(struct udevice *dev);
  * buffer are displayed to the user.
  *
  * @dev:	Device to sync
+ * @force:	True to force a sync even if there was one recently (this is
+ *		very expensive on sandbox)
  */
-void video_sync(struct udevice *vid);
+void video_sync(struct udevice *vid, bool force);
 
 /**
  * video_sync_all() - Sync all devices' frame buffers with there hardware
@@ -188,21 +197,16 @@ void video_set_flush_dcache(struct udevice *dev, bool flush);
 /**
  * Set default colors and attributes
  *
- * @priv	device information
+ * @dev:	video device
+ * @invert	true to invert colours
  */
-void video_set_default_colors(struct video_priv *priv);
+void video_set_default_colors(struct udevice *dev, bool invert);
 
 #endif /* CONFIG_DM_VIDEO */
 
 #ifndef CONFIG_DM_VIDEO
 
 /* Video functions */
-
-struct stdio_dev;
-
-int	video_init(void *videobase);
-void	video_putc(struct stdio_dev *dev, const char c);
-void	video_puts(struct stdio_dev *dev, const char *s);
 
 /**
  * Display a BMP format bitmap on the screen
@@ -272,6 +276,6 @@ int lg4573_spi_startup(unsigned int bus, unsigned int cs,
  */
 void video_get_info_str(int line_number, char *info);
 
-#endif /* CONFIG_DM_VIDEO */
+#endif /* !CONFIG_DM_VIDEO */
 
 #endif

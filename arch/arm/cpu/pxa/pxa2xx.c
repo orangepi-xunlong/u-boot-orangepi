@@ -10,7 +10,11 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <irq_func.h>
 #include <asm/arch/pxa-regs.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <command.h>
@@ -37,13 +41,6 @@ int cleanup_before_linux(void)
 	cache_flush();
 
 	return 0;
-}
-
-void pxa_wait_ticks(int ticks)
-{
-	writel(0, OSCR);
-	while (readl(OSCR) < ticks)
-		asm volatile("" : : : "memory");
 }
 
 inline void writelrb(uint32_t val, uint32_t addr)
@@ -136,8 +133,11 @@ void pxa2xx_dram_init(void)
 
 	writelrb(CONFIG_SYS_MDCNFG_VAL &
 		~(MDCNFG_DE0 | MDCNFG_DE1 | MDCNFG_DE2 | MDCNFG_DE3), MDCNFG);
+
 	/* Wait for the clock to the SDRAMs to stabilize, 100..200 usec. */
-	pxa_wait_ticks(0x300);
+	writel(0, OSCR);
+	while (readl(OSCR) < 0x300)
+		asm volatile("" : : : "memory");
 
 	/*
 	 * 8) Trigger a number (usually 8) refresh cycles by attempting
@@ -286,10 +286,10 @@ void reset_cpu(ulong ignored)
 
 void enable_caches(void)
 {
-#ifndef CONFIG_SYS_ICACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
 	icache_enable();
 #endif
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 	dcache_enable();
 #endif
 }

@@ -9,6 +9,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
@@ -22,6 +23,7 @@
 #include <netdev.h>
 #include <i2c.h>
 #include <pca953x.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

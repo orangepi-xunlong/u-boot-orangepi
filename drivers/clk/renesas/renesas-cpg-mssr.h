@@ -13,6 +13,7 @@
 #ifndef __DRIVERS_CLK_RENESAS_CPG_MSSR__
 #define __DRIVERS_CLK_RENESAS_CPG_MSSR__
 
+#include <linux/bitops.h>
 struct cpg_mssr_info {
 	const struct cpg_core_clk	*core_clk;
 	unsigned int			core_clk_size;
@@ -57,6 +58,7 @@ enum clk_types {
 	CLK_TYPE_FF,		/* Fixed Factor Clock */
 	CLK_TYPE_DIV6P1,	/* DIV6 Clock with 1 parent clock */
 	CLK_TYPE_DIV6_RO,	/* DIV6 Clock read only with extra divisor */
+	CLK_TYPE_FR,		/* Fixed Rate Clock */
 
 	/* Custom definitions start here */
 	CLK_TYPE_CUSTOM,
@@ -75,6 +77,8 @@ enum clk_types {
 	DEF_BASE(_name, _id, CLK_TYPE_DIV6P1, _parent, .offset = _offset)
 #define DEF_DIV6_RO(_name, _id, _parent, _offset, _div)	\
 	DEF_BASE(_name, _id, CLK_TYPE_DIV6_RO, _parent, .offset = _offset, .div = _div, .mult = 1)
+#define DEF_RATE(_name, _id, _rate)	\
+	DEF_TYPE(_name, _id, CLK_TYPE_FR, .mult = _rate)
 
 /*
  * Definitions of Module Clocks

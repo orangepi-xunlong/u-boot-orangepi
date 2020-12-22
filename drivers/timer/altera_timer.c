@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <timer.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 /* control register */
 #define ALTERA_TIMER_CONT	BIT(1)	/* Continuous mode */
@@ -92,5 +93,4 @@ U_BOOT_DRIVER(altera_timer) = {
 	.platdata_auto_alloc_size = sizeof(struct altera_timer_platdata),
 	.probe = altera_timer_probe,
 	.ops	= &altera_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

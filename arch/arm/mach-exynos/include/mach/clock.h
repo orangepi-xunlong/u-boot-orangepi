@@ -8,6 +8,7 @@
 #define __ASM_ARM_ARCH_CLOCK_H_
 
 #ifndef __ASSEMBLY__
+#include <linux/bitops.h>
 struct exynos4_clock {
 	unsigned char	res1[0x4200];
 	unsigned int	src_leftbus;
@@ -1370,10 +1371,13 @@ struct set_epll_con_val {
 #define AUDIO_1_RATIO_MASK		0x0f
 
 #define AUDIO0_SEL_MASK			0xf
+#define EXYNOS5420_AUDIO0_SEL_MASK	(0x3 << 28)
 #define AUDIO1_SEL_MASK			0xf
 
 #define CLK_SRC_SCLK_EPLL		0x7
+#define EXYNOS5420_CLK_SRC_SCLK_EPLL	(0x6 << 28)
 #define CLK_SRC_MOUT_EPLL		(1<<12)
+#define EXYNOS5420_CLK_SRC_MOUT_EPLL	BIT(20)
 #define AUDIO_CLKMUX_ASS		(1<<0)
 
 /* CON0 bit-fields */

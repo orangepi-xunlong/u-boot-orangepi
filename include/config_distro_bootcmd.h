@@ -27,7 +27,7 @@
 
 #define BOOTENV_SHARED_BLKDEV_BODY(devtypel) \
 		"if " #devtypel " dev ${devnum}; then " \
-			"setenv devtype " #devtypel "; " \
+			"devtype=" #devtypel "; " \
 			"run scan_dev_for_boot_part; " \
 		"fi\0"
 
@@ -37,7 +37,7 @@
 
 #define BOOTENV_DEV_BLKDEV(devtypeu, devtypel, instance) \
 	"bootcmd_" #devtypel #instance "=" \
-		"setenv devnum " #instance "; " \
+		"devnum=" #instance "; " \
 		"run " #devtypel "_boot\0"
 
 #define BOOTENV_DEV_NAME_BLKDEV(devtypeu, devtypel, instance) \
@@ -77,7 +77,7 @@
 		"if ubi part ${bootubipart} && " \
 			"ubifsmount ubi${devnum}:${bootubivol}; " \
 		"then " \
-			"setenv devtype ubi; " \
+			"devtype=ubi; " \
 			"run scan_dev_for_boot; " \
 		"fi\0"
 #define BOOTENV_DEV_UBIFS	BOOTENV_DEV_BLKDEV
@@ -99,6 +99,10 @@
 #define BOOTEFI_NAME "bootia32.efi"
 #elif defined(CONFIG_X86_RUN_64BIT)
 #define BOOTEFI_NAME "bootx64.efi"
+#elif defined(CONFIG_ARCH_RV32I)
+#define BOOTEFI_NAME "bootriscv32.efi"
+#elif defined(CONFIG_ARCH_RV64I)
+#define BOOTEFI_NAME "bootriscv64.efi"
 #endif
 #endif
 
@@ -174,13 +178,39 @@
 	BOOT_TARGET_DEVICES_references_SATA_without_CONFIG_SATA
 #endif
 
+#ifdef CONFIG_NVME
+#define BOOTENV_RUN_NVME_INIT "run nvme_init; "
+#define BOOTENV_SET_NVME_NEED_INIT "setenv nvme_need_init; "
+#define BOOTENV_SHARED_NVME \
+	"nvme_init=" \
+		"if ${nvme_need_init}; then " \
+			"setenv nvme_need_init false; " \
+			"nvme scan; " \
+		"fi\0" \
+	\
+	"nvme_boot=" \
+		BOOTENV_RUN_PCI_ENUM \
+		BOOTENV_RUN_NVME_INIT \
+		BOOTENV_SHARED_BLKDEV_BODY(nvme)
+#define BOOTENV_DEV_NVME	BOOTENV_DEV_BLKDEV
+#define BOOTENV_DEV_NAME_NVME	BOOTENV_DEV_NAME_BLKDEV
+#else
+#define BOOTENV_RUN_NVME_INIT
+#define BOOTENV_SET_NVME_NEED_INIT
+#define BOOTENV_SHARED_NVME
+#define BOOTENV_DEV_NVME \
+	BOOT_TARGET_DEVICES_references_NVME_without_CONFIG_NVME
+#define BOOTENV_DEV_NAME_NVME \
+	BOOT_TARGET_DEVICES_references_NVME_without_CONFIG_NVME
+#endif
+
 #ifdef CONFIG_SCSI
 #define BOOTENV_RUN_SCSI_INIT "run scsi_init; "
-#define BOOTENV_SET_SCSI_NEED_INIT "setenv scsi_need_init; "
+#define BOOTENV_SET_SCSI_NEED_INIT "scsi_need_init=; "
 #define BOOTENV_SHARED_SCSI \
 	"scsi_init=" \
 		"if ${scsi_need_init}; then " \
-			"setenv scsi_need_init false; " \
+			"scsi_need_init=false; " \
 			"scsi scan; " \
 		"fi\0" \
 	\
@@ -200,10 +230,23 @@
 #endif
 
 #ifdef CONFIG_IDE
-#define BOOTENV_SHARED_IDE	BOOTENV_SHARED_BLKDEV(ide)
+#define BOOTENV_RUN_IDE_INIT "run ide_init; "
+#define BOOTENV_SET_IDE_NEED_INIT "setenv ide_need_init; "
+#define BOOTENV_SHARED_IDE \
+	"ide_init=" \
+		"if ${ide_need_init}; then " \
+			"setenv ide_need_init false; " \
+			"ide reset; " \
+		"fi\0" \
+	\
+	"ide_boot=" \
+		BOOTENV_RUN_IDE_INIT \
+		BOOTENV_SHARED_BLKDEV_BODY(ide)
 #define BOOTENV_DEV_IDE		BOOTENV_DEV_BLKDEV
 #define BOOTENV_DEV_NAME_IDE	BOOTENV_DEV_NAME_BLKDEV
 #else
+#define BOOTENV_RUN_IDE_INIT
+#define BOOTENV_SET_IDE_NEED_INIT
 #define BOOTENV_SHARED_IDE
 #define BOOTENV_DEV_IDE \
 	BOOT_TARGET_DEVICES_references_IDE_without_CONFIG_IDE
@@ -212,11 +255,11 @@
 #endif
 
 #if defined(CONFIG_DM_PCI)
-#define BOOTENV_RUN_NET_PCI_ENUM "run boot_net_pci_enum; "
+#define BOOTENV_RUN_PCI_ENUM "run boot_pci_enum; "
 #define BOOTENV_SHARED_PCI \
-	"boot_net_pci_enum=pci enum\0"
+	"boot_pci_enum=pci enum\0"
 #else
-#define BOOTENV_RUN_NET_PCI_ENUM
+#define BOOTENV_RUN_PCI_ENUM
 #define BOOTENV_SHARED_PCI
 #endif
 
@@ -238,18 +281,55 @@
 	BOOT_TARGET_DEVICES_references_USB_without_CONFIG_CMD_USB
 #endif
 
+#ifdef CONFIG_CMD_VIRTIO
+#define BOOTENV_RUN_VIRTIO_INIT "run virtio_init; "
+#define BOOTENV_SET_VIRTIO_NEED_INIT "virtio_need_init=; "
+#define BOOTENV_SHARED_VIRTIO \
+	"virtio_init=" \
+		"if ${virtio_need_init}; then " \
+			"virtio_need_init=false; " \
+			"virtio scan; " \
+		"fi\0" \
+	\
+	"virtio_boot=" \
+		BOOTENV_RUN_PCI_ENUM \
+		BOOTENV_RUN_VIRTIO_INIT \
+		BOOTENV_SHARED_BLKDEV_BODY(virtio)
+#define BOOTENV_DEV_VIRTIO	BOOTENV_DEV_BLKDEV
+#define BOOTENV_DEV_NAME_VIRTIO	BOOTENV_DEV_NAME_BLKDEV
+#else
+#define BOOTENV_RUN_VIRTIO_INIT
+#define BOOTENV_SET_VIRTIO_NEED_INIT
+#define BOOTENV_SHARED_VIRTIO
+#define BOOTENV_DEV_VIRTIO \
+	BOOT_TARGET_DEVICES_references_VIRTIO_without_CONFIG_CMD_VIRTIO
+#define BOOTENV_DEV_NAME_VIRTIO \
+	BOOT_TARGET_DEVICES_references_VIRTIO_without_CONFIG_CMD_VIRTIO
+#endif
+
 #if defined(CONFIG_CMD_DHCP)
 #if defined(CONFIG_EFI_LOADER)
-#if defined(CONFIG_ARM64)
+/* http://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xml */
+#if defined(CONFIG_ARM64) || defined(__aarch64__)
 #define BOOTENV_EFI_PXE_ARCH "0xb"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00011:UNDI:003000"
-#elif defined(CONFIG_ARM)
+#elif defined(CONFIG_ARM) || defined(__arm__)
 #define BOOTENV_EFI_PXE_ARCH "0xa"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00010:UNDI:003000"
-#elif defined(CONFIG_X86)
-/* Always assume we're running 64bit */
+#elif defined(CONFIG_X86) || defined(__x86_64__)
 #define BOOTENV_EFI_PXE_ARCH "0x7"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00007:UNDI:003000"
+#elif defined(__i386__)
+#define BOOTENV_EFI_PXE_ARCH "0x6"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00006:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV32I) || ((defined(__riscv) && __riscv_xlen == 32))
+#define BOOTENV_EFI_PXE_ARCH "0x19"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00025:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV64I) || ((defined(__riscv) && __riscv_xlen == 64))
+#define BOOTENV_EFI_PXE_ARCH "0x1b"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00027:UNDI:003000"
+#elif defined(CONFIG_SANDBOX)
+# error "sandbox EFI support is only supported on ARM and x86"
 #else
 #error Please specify an EFI client identifier
 #endif
@@ -285,7 +365,7 @@
 #define BOOTENV_DEV_DHCP(devtypeu, devtypel, instance) \
 	"bootcmd_dhcp=" \
 		BOOTENV_RUN_NET_USB_START \
-		BOOTENV_RUN_NET_PCI_ENUM \
+		BOOTENV_RUN_PCI_ENUM \
 		"if dhcp ${scriptaddr} ${boot_script_dhcp}; then " \
 			"source ${scriptaddr}; " \
 		"fi;" \
@@ -304,7 +384,7 @@
 #define BOOTENV_DEV_PXE(devtypeu, devtypel, instance) \
 	"bootcmd_pxe=" \
 		BOOTENV_RUN_NET_USB_START \
-		BOOTENV_RUN_NET_PCI_ENUM \
+		BOOTENV_RUN_PCI_ENUM \
 		"dhcp; " \
 		"if pxe get; then " \
 			"pxe boot; " \
@@ -332,23 +412,26 @@
 	BOOTENV_SHARED_USB \
 	BOOTENV_SHARED_SATA \
 	BOOTENV_SHARED_SCSI \
+	BOOTENV_SHARED_NVME \
 	BOOTENV_SHARED_IDE \
 	BOOTENV_SHARED_UBIFS \
 	BOOTENV_SHARED_EFI \
+	BOOTENV_SHARED_VIRTIO \
 	"boot_prefixes=/ /boot/\0" \
 	"boot_scripts=boot.scr.uimg boot.scr\0" \
 	"boot_script_dhcp=boot.scr.uimg\0" \
 	BOOTENV_BOOT_TARGETS \
 	\
+	"boot_syslinux_conf=extlinux/extlinux.conf\0" \
 	"boot_extlinux="                                                  \
 		"sysboot ${devtype} ${devnum}:${distro_bootpart} any "    \
-			"${scriptaddr} ${prefix}extlinux/extlinux.conf\0" \
+			"${scriptaddr} ${prefix}${boot_syslinux_conf}\0"  \
 	\
 	"scan_dev_for_extlinux="                                          \
 		"if test -e ${devtype} "                                  \
 				"${devnum}:${distro_bootpart} "           \
-				"${prefix}extlinux/extlinux.conf; then "  \
-			"echo Found ${prefix}extlinux/extlinux.conf; "    \
+				"${prefix}${boot_syslinux_conf}; then "   \
+			"echo Found ${prefix}${boot_syslinux_conf}; "     \
 			"run boot_extlinux; "                             \
 			"echo SCRIPT FAILED: continuing...; "             \
 		"fi\0"                                                    \
@@ -389,11 +472,15 @@
 					"bootfstype; then "               \
 				"run scan_dev_for_boot; "                 \
 			"fi; "                                            \
-		"done\0"                                                  \
+		"done; "                                                  \
+		"setenv devplist\0"					  \
 	\
 	BOOT_TARGET_DEVICES(BOOTENV_DEV)                                  \
 	\
 	"distro_bootcmd=" BOOTENV_SET_SCSI_NEED_INIT                      \
+		BOOTENV_SET_NVME_NEED_INIT                                \
+		BOOTENV_SET_IDE_NEED_INIT                                 \
+		BOOTENV_SET_VIRTIO_NEED_INIT                              \
 		"for target in ${boot_targets}; do "                      \
 			"run bootcmd_${target}; "                         \
 		"done\0"

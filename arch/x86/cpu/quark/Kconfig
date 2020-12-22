@@ -84,7 +84,7 @@ config ACPI_PM1_BASE
 	hex
 	default 0x1000
 	help
-	  ACPI Power Managment 1 (PM1) i/o-mapped base address.
+	  ACPI Power Management 1 (PM1) i/o-mapped base address.
 	  This device is defined in ACPI specification, with 16 bytes in size.
 
 config ACPI_PBLK_BASE
@@ -129,5 +129,9 @@ config SYS_CAR_SIZE
 	help
 	  Space in bytes in eSRAM used as Cache-As-ARM (CAR).
 	  Note this size must not exceed eSRAM's total size.
+
+config X86_TSC_TIMER_EARLY_FREQ
+	int
+	default 400
 
 endif

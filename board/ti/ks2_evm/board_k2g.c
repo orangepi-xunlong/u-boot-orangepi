@@ -6,6 +6,11 @@
  *     Texas Instruments Incorporated, <www.ti.com>
  */
 #include <common.h>
+#include <eeprom.h>
+#include <env.h>
+#include <hang.h>
+#include <image.h>
+#include <init.h>
 #include <asm/arch/clock.h>
 #include <asm/ti-common/keystone_net.h>
 #include <asm/arch/psc_defs.h>
@@ -13,6 +18,8 @@
 #include <fdtdec.h>
 #include <i2c.h>
 #include <remoteproc.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include "mux-k2g.h"
 #include "../common/board_detect.h"
 
@@ -251,6 +258,7 @@ int board_fit_config_name_match(const char *name)
 #if defined(CONFIG_DTB_RESELECT)
 static int k2g_alt_board_detect(void)
 {
+#ifndef CONFIG_DM_I2C
 	int rc;
 
 	rc = i2c_set_bus_num(1);
@@ -260,7 +268,17 @@ static int k2g_alt_board_detect(void)
 	rc = i2c_probe(K2G_GP_AUDIO_CODEC_ADDRESS);
 	if (rc)
 		return rc;
+#else
+	struct udevice *bus, *dev;
+	int rc;
 
+	rc = uclass_get_device_by_seq(UCLASS_I2C, 1, &bus);
+	if (rc)
+		return rc;
+	rc = dm_i2c_probe(bus, K2G_GP_AUDIO_CODEC_ADDRESS, 0, &dev);
+	if (rc)
+		return rc;
+#endif
 	ti_i2c_eeprom_am_set("66AK2GGP", "1.0X");
 
 	return 0;
@@ -304,6 +322,21 @@ int embedded_dtb_select(void)
 			     BIT(9));
 		setbits_le32(K2G_GPIO1_BANK2_BASE + K2G_GPIO_SETDATA_OFFSET,
 			     BIT(9));
+	} else if (board_is_k2g_ice()) {
+		/* GBE Phy workaround. For Phy to latch the input
+		 * configuration, a GPIO reset is asserted at the
+		 * Phy reset pin to latch configuration correctly after SoC
+		 * reset. GPIO0 Pin 10 (Ball AA20) is used for this on ICE
+		 * board. Just do a low to high transition.
+		 */
+		clrbits_le32(K2G_GPIO0_BANK0_BASE + K2G_GPIO_DIR_OFFSET,
+			     BIT(10));
+		setbits_le32(K2G_GPIO0_BANK0_BASE + K2G_GPIO_CLRDATA_OFFSET,
+			     BIT(10));
+		/* Delay just to get a transition to high */
+		udelay(100);
+		setbits_le32(K2G_GPIO0_BANK0_BASE + K2G_GPIO_SETDATA_OFFSET,
+			     BIT(10));
 	}
 
 	return 0;
@@ -351,24 +384,6 @@ int board_early_init_f(void)
 void spl_init_keystone_plls(void)
 {
 	init_plls();
-}
-#endif
-
-#ifdef CONFIG_DRIVER_TI_KEYSTONE_NET
-struct eth_priv_t eth_priv_cfg[] = {
-	{
-		.int_name	= "K2G_EMAC",
-		.rx_flow	= 0,
-		.phy_addr	= 0,
-		.slave_port	= 1,
-		.sgmii_link_type = SGMII_LINK_MAC_PHY,
-		.phy_if          = PHY_INTERFACE_MODE_RGMII,
-	},
-};
-
-int get_num_eth_ports(void)
-{
-	return sizeof(eth_priv_cfg) / sizeof(struct eth_priv_t);
 }
 #endif
 

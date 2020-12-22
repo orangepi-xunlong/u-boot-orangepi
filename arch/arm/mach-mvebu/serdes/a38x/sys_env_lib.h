@@ -7,7 +7,6 @@
 #define _SYS_ENV_LIB_H
 
 #include "../../../drivers/ddr/marvell/a38x/ddr3_init.h"
-#include "../../../drivers/ddr/marvell/a38x/ddr3_hws_hw_training.h"
 
 /* Serdes definitions */
 #define COMMON_PHY_BASE_ADDR		0x18300
@@ -34,6 +33,8 @@
 #define DEV_ID_REG_DEVICE_ID_OFFS	16
 #define DEV_ID_REG_DEVICE_ID_MASK	0xffff0000
 
+#define SAR_FREQ_OFFSET			10
+#define SAR_FREQ_MASK			0x1f
 #define SAR_DEV_ID_OFFS			27
 #define SAR_DEV_ID_MASK			0x7
 
@@ -72,6 +73,7 @@
 #define RX_REG3				0xa0188
 #define PCIE_REG1			0xa0288
 #define PCIE_REG3			0xa0290
+#define LANE_CFG0_REG			0xa0600
 #define LANE_CFG1_REG			0xa0604
 #define LANE_CFG4_REG			0xa0620
 #define LANE_CFG5_REG			0xa0624
@@ -148,6 +150,19 @@
 #define MPP_UART1_SET_MASK		(~(0xff000))
 #define MPP_UART1_SET_DATA		(0x66000)
 
+#define DFX_PIPE_SELECT_PIPE0_ACTIVE_OFFS	0
+/* DFX_PIPE_SELECT_XBAR_CLIENT_SEL_OFFS: Since address completion in 14bit
+ * address mode, and given that [14:8] => [19:13], the 2 lower bits [9:8] =>
+ * [14:13] are dismissed. hence field offset is also shifted to 10
+ */
+#define DFX_PIPE_SELECT_XBAR_CLIENT_SEL_OFFS	10
+
+#define RTC_MEMORY_CTRL_REG_BASE	0xE6000
+#define RTC_MEMORY_WRAPPER_COUNT	8
+#define RTC_MEMORY_WRAPPER_REG(i)	(RTC_MEMORY_CTRL_REG_BASE + ((i) * 0x40))
+#define RTC_MEMORY_CTRL_PDLVMC_FIELD_OFFS	6
+#define RTC_MEMORY_WRAPPER_CTRL_VAL	(0x1 << RTC_MEMORY_CTRL_PDLVMC_FIELD_OFFS)
+
 #define AVS_DEBUG_CNTR_REG		0xe4124
 #define AVS_DEBUG_CNTR_DEFAULT_VALUE	0x08008073
 
@@ -155,10 +170,12 @@
 #define AVS_LOW_VDD_LIMIT_OFFS		4
 #define AVS_LOW_VDD_LIMIT_MASK		(0xff << AVS_LOW_VDD_LIMIT_OFFS)
 #define AVS_LOW_VDD_LIMIT_VAL		(0x27 << AVS_LOW_VDD_LIMIT_OFFS)
+#define AVS_LOW_VDD_SLOW_VAL		(0x23 << AVS_LOW_VDD_LIMIT_OFFS)
 
 #define AVS_HIGH_VDD_LIMIT_OFFS		12
 #define AVS_HIGH_VDD_LIMIT_MASK		(0xff << AVS_HIGH_VDD_LIMIT_OFFS)
 #define AVS_HIGH_VDD_LIMIT_VAL		(0x27 << AVS_HIGH_VDD_LIMIT_OFFS)
+#define AVS_HIGH_VDD_SLOW_VAL		(0x23 << AVS_HIGH_VDD_LIMIT_OFFS)
 
 /* Board ID numbers */
 #define MARVELL_BOARD_ID_MASK		0x10
@@ -233,6 +250,7 @@
 /* A38x revisions */
 #define MV_88F68XX_Z1_ID		0x0
 #define MV_88F68XX_A0_ID		0x4
+#define MV_88F68XX_B0_ID		0xa
 /* A39x revisions */
 #define MV_88F69XX_Z1_ID		0x2
 

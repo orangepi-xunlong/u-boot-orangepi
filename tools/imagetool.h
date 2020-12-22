@@ -25,6 +25,9 @@
 
 #define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))
 
+#define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+#define ALIGN(x, a)		__ALIGN_MASK((x), (typeof(x))(a) - 1)
+
 #define IH_ARCH_DEFAULT		IH_ARCH_INVALID
 
 /* Information about a file that needs to be placed into the FIT */
@@ -76,6 +79,7 @@ struct image_tool_params {
 	bool external_data;	/* Store data outside the FIT */
 	bool quiet;		/* Don't output text in normal operation */
 	unsigned int external_offset;	/* Add padding to external data */
+	int bl_len;		/* Block length in byte for external data */
 	const char *engine_id;	/* Engine to use for signing */
 };
 
@@ -179,6 +183,25 @@ int imagetool_verify_print_header(
 	struct image_type_params *tparams,
 	struct image_tool_params *params);
 
+/*
+ * imagetool_verify_print_header_by_type() - verifies the image header
+ *
+ * Verify the image_header for the image type given by tparams.
+ * If verification is successful, this prints the respective header.
+ * @ptr: pointer the the image header
+ * @sbuf: stat information about the file pointed to by ptr
+ * @tparams: image type parameters
+ * @params: mkimage parameters
+ *
+ * @return 0 on success, negative if input image format does not match with
+ * the given image type
+ */
+int imagetool_verify_print_header_by_type(
+	void *ptr,
+	struct stat *sbuf,
+	struct image_type_params *tparams,
+	struct image_tool_params *params);
+
 /**
  * imagetool_save_subimage - store data into a file
  * @file_name: name of the destination file
@@ -216,12 +239,12 @@ int imagetool_get_filesize(struct image_tool_params *params, const char *fname);
  * an error message if SOURCE_DATE_EPOCH contains an invalid value and returns
  * 0.
  *
- * @params:	mkimage parameters
+ * @cmdname:	command name
  * @fallback:	timestamp to use if SOURCE_DATE_EPOCH isn't set
  * @return timestamp based on SOURCE_DATE_EPOCH
  */
 time_t imagetool_get_source_date(
-	struct image_tool_params *params,
+	const char *cmdname,
 	time_t fallback);
 
 /*
@@ -231,6 +254,10 @@ time_t imagetool_get_source_date(
 
 
 void pbl_load_uboot(int fd, struct image_tool_params *mparams);
+int zynqmpbif_copy_image(int fd, struct image_tool_params *mparams);
+int imx8image_copy_image(int fd, struct image_tool_params *mparams);
+int imx8mimage_copy_image(int fd, struct image_tool_params *mparams);
+int rockchip_copy_image(int fd, struct image_tool_params *mparams);
 
 #define ___cat(a, b) a ## b
 #define __cat(a, b) ___cat(a, b)

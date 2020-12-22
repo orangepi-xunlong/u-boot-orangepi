@@ -13,12 +13,20 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
+#include <log.h>
 #include <net.h>
 #include <netdev.h>
 #include <config.h>
 #include <malloc.h>
+#include <asm/cache.h>
 #include <asm/io.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <phy.h>
 #include <miiphy.h>
@@ -27,20 +35,13 @@
 #include <asm/arch/soc.h>
 #include <linux/compat.h>
 #include <linux/mbus.h>
+#include <asm-generic/gpio.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #if !defined(CONFIG_PHYLIB)
 # error Marvell mvneta requires PHYLIB
 #endif
-
-/* Some linux -> U-Boot compatibility stuff */
-#define netdev_err(dev, fmt, args...)		\
-	printf(fmt, ##args)
-#define netdev_warn(dev, fmt, args...)		\
-	printf(fmt, ##args)
-#define netdev_info(dev, fmt, args...)		\
-	printf(fmt, ##args)
 
 #define CONFIG_NR_CPUS		1
 #define ETH_HLEN		14	/* Total octets in header */
@@ -282,6 +283,9 @@ struct mvneta_port {
 	int init;
 	int phyaddr;
 	struct phy_device *phydev;
+#if CONFIG_IS_ENABLED(DM_GPIO)
+	struct gpio_desc phy_reset_gpio;
+#endif
 	struct mii_dev *bus;
 };
 
@@ -1025,6 +1029,8 @@ static int mvneta_rxq_init(struct mvneta_port *pp,
 	if (rxq->descs == NULL)
 		return -ENOMEM;
 
+	WARN_ON(rxq->descs != PTR_ALIGN(rxq->descs, ARCH_DMA_MINALIGN));
+
 	rxq->last_desc = rxq->size - 1;
 
 	/* Set Rx descriptors queue starting address */
@@ -1060,6 +1066,8 @@ static int mvneta_txq_init(struct mvneta_port *pp,
 	txq->descs_phys = (dma_addr_t)txq->descs;
 	if (txq->descs == NULL)
 		return -ENOMEM;
+
+	WARN_ON(txq->descs != PTR_ALIGN(txq->descs, ARCH_DMA_MINALIGN));
 
 	txq->last_desc = txq->size - 1;
 
@@ -1562,6 +1570,10 @@ static int mvneta_start(struct udevice *dev)
 
 			phydev = phy_connect(pp->bus, pp->phyaddr, dev,
 					     pp->phy_interface);
+			if (!phydev) {
+				printf("phy_connect failed\n");
+				return -ENODEV;
+			}
 
 			pp->phydev = phydev;
 			phy_config(phydev);
@@ -1690,18 +1702,22 @@ static int mvneta_probe(struct udevice *dev)
 	 * be active. Make this area DMA safe by disabling the D-cache
 	 */
 	if (!buffer_loc.tx_descs) {
+		u32 size;
+
 		/* Align buffer area for descs and rx_buffers to 1MiB */
 		bd_space = memalign(1 << MMU_SECTION_SHIFT, BD_SPACE);
+		flush_dcache_range((ulong)bd_space, (ulong)bd_space + BD_SPACE);
 		mmu_set_region_dcache_behaviour((phys_addr_t)bd_space, BD_SPACE,
 						DCACHE_OFF);
 		buffer_loc.tx_descs = (struct mvneta_tx_desc *)bd_space;
+		size = roundup(MVNETA_MAX_TXD * sizeof(struct mvneta_tx_desc),
+				ARCH_DMA_MINALIGN);
+		memset(buffer_loc.tx_descs, 0, size);
 		buffer_loc.rx_descs = (struct mvneta_rx_desc *)
-			((phys_addr_t)bd_space +
-			 MVNETA_MAX_TXD * sizeof(struct mvneta_tx_desc));
-		buffer_loc.rx_buffers = (phys_addr_t)
-			(bd_space +
-			 MVNETA_MAX_TXD * sizeof(struct mvneta_tx_desc) +
-			 MVNETA_MAX_RXD * sizeof(struct mvneta_rx_desc));
+			((phys_addr_t)bd_space + size);
+		size += roundup(MVNETA_MAX_RXD * sizeof(struct mvneta_rx_desc),
+				ARCH_DMA_MINALIGN);
+		buffer_loc.rx_buffers = (phys_addr_t)(bd_space + size);
 	}
 
 	pp->base = (void __iomem *)pdata->iobase;
@@ -1744,6 +1760,17 @@ static int mvneta_probe(struct udevice *dev)
 	ret = mdio_register(bus);
 	if (ret)
 		return ret;
+
+#if CONFIG_IS_ENABLED(DM_GPIO)
+	gpio_request_by_name(dev, "phy-reset-gpios", 0,
+			     &pp->phy_reset_gpio, GPIOD_IS_OUT);
+
+	if (dm_gpio_is_valid(&pp->phy_reset_gpio)) {
+		dm_gpio_set_value(&pp->phy_reset_gpio, 1);
+		mdelay(10);
+		dm_gpio_set_value(&pp->phy_reset_gpio, 0);
+	}
+#endif
 
 	return board_network_enable(bus);
 }

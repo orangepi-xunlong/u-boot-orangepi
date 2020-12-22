@@ -96,6 +96,16 @@
 				#size-cells = <0>;
 				compatible = "marvell,orion-mdio";
 				reg = <0x12a200 0x10>;
+				device-name = "cps-mdio";
+			};
+
+			cps_xmdio: mdio@12a600 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "marvell,xmdio";
+				reg = <0x12a600 0x16>;
+				status = "disabled";
+				device-name = "cps-xmdio";
 			};
 
 			cps_syscon0: system-controller@440000 {
@@ -120,7 +130,7 @@
 
 			cps_pinctl: cps-pinctl@440000 {
 				compatible = "marvell,mvebu-pinctrl",
-					     "marvell,a80x0-cp1-pinctrl";
+					     "marvell,armada-8k-cps-pinctrl";
 				bank-name ="cp1-110";
 				reg = <0x440000 0x20>;
 				pin-count = <63>;

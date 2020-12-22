@@ -7,6 +7,8 @@
 /* Tegra124 Clock control functions */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sysctr.h>
@@ -15,6 +17,7 @@
 #include <asm/arch-tegra/timer.h>
 #include <div64.h>
 #include <fdtdec.h>
+#include <linux/delay.h>
 
 /*
  * Clock types that we can use as a source. The Tegra124 has muxes for the
@@ -71,7 +74,7 @@ enum {
  */
 #define CLK(x) CLOCK_ID_ ## x
 static enum clock_id clock_source[CLOCK_TYPE_COUNT][CLOCK_MAX_MUX+1] = {
-	{ CLK(AUDIO),	CLK(XCPU),	CLK(PERIPH),	CLK(OSC),
+	{ CLK(AUDIO),	CLK(XCPU),	CLK(PERIPH),	CLK(CLK_M),
 		CLK(NONE),	CLK(NONE),	CLK(NONE),	CLK(NONE),
 		MASK_BITS_31_30},
 	{ CLK(MEMORY),	CLK(CGENERAL),	CLK(PERIPH),	CLK(AUDIO),

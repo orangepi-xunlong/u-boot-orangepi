@@ -10,6 +10,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <net.h>
 #include <netdev.h>
 #include <asm/mach-types.h>
 #include <asm/arch/hardware.h>

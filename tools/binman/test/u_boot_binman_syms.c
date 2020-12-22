@@ -8,6 +8,7 @@
 #define CONFIG_BINMAN
 #include <binman_sym.h>
 
-binman_sym_declare(unsigned long, u_boot_spl, pos);
-binman_sym_declare(unsigned long long, u_boot_spl2, pos);
-binman_sym_declare(unsigned long, u_boot_any, pos);
+binman_sym_declare(unsigned long, u_boot_spl, offset);
+binman_sym_declare(unsigned long long, u_boot_spl2, offset);
+binman_sym_declare(unsigned long, u_boot_any, image_pos);
+binman_sym_declare(unsigned long, u_boot_any, size);

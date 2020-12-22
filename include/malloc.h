@@ -788,8 +788,13 @@ struct mallinfo {
 
 */
 
-/* #define USE_DL_PREFIX */
-
+/*
+ * Rename the U-Boot alloc functions so that sandbox can still use the system
+ * ones
+ */
+#ifdef CONFIG_SANDBOX
+#define USE_DL_PREFIX
+#endif
 
 /*
 
@@ -878,8 +883,8 @@ extern Void_t*     sbrk();
 #define memalign memalign_simple
 static inline void free(void *ptr) {}
 void *calloc(size_t nmemb, size_t size);
-void *memalign_simple(size_t alignment, size_t bytes);
 void *realloc_simple(void *ptr, size_t size);
+void malloc_simple_info(void);
 #else
 
 # ifdef USE_DL_PREFIX
@@ -892,6 +897,21 @@ void *realloc_simple(void *ptr, size_t size);
 # define pvALLOc		dlpvalloc
 # define mALLINFo	dlmallinfo
 # define mALLOPt		dlmallopt
+
+/* Ensure that U-Boot actually uses these too */
+#define calloc dlcalloc
+#define free(ptr) dlfree(ptr)
+#define malloc(x) dlmalloc(x)
+#define memalign dlmemalign
+#define realloc dlrealloc
+#define valloc dlvalloc
+#define pvalloc dlpvalloc
+#define mallinfo() dlmallinfo()
+#define mallopt dlmallopt
+#define malloc_trim dlmalloc_trim
+#define malloc_usable_size dlmalloc_usable_size
+#define malloc_stats dlmalloc_stats
+
 # else /* USE_DL_PREFIX */
 # define cALLOc		calloc
 # define fREe		free
@@ -908,14 +928,12 @@ void *realloc_simple(void *ptr, size_t size);
 
 /* Set up pre-relocation malloc() ready for use */
 int initf_malloc(void);
-void *malloc_align(size_t size, size_t align);
-void free_align(void *ptr);
-
 
 /* Public routines */
 
 /* Simple versions which can be used when space is tight */
 void *malloc_simple(size_t size);
+void *memalign_simple(size_t alignment, size_t bytes);
 
 #pragma GCC visibility push(hidden)
 # if __STD_C

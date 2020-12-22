@@ -4,8 +4,8 @@
  *		      Bo Shen <voice.shen@atmel.com>
  */
 
-MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE, \
-		LENGTH = CONFIG_SPL_MAX_SIZE }
+MEMORY { .sram : ORIGIN = IMAGE_TEXT_BASE, \
+		LENGTH = IMAGE_MAX_SIZE }
 MEMORY { .sdram : ORIGIN = CONFIG_SPL_BSS_START_ADDR, \
 		LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
 
@@ -39,6 +39,8 @@ SECTIONS
 		*(.__end)
 	} >.sram
 
+	_image_binary_end = .;
+
 	.bss :
 	{
 		. = ALIGN(4);
@@ -48,3 +50,13 @@ SECTIONS
 		__bss_end = .;
 	} >.sdram
 }
+
+#if defined(IMAGE_MAX_SIZE)
+ASSERT(__image_copy_end - __start <= (IMAGE_MAX_SIZE), \
+	"SPL image too big");
+#endif
+
+#if defined(CONFIG_SPL_BSS_MAX_SIZE)
+ASSERT(__bss_end - __bss_start <= (CONFIG_SPL_BSS_MAX_SIZE), \
+	"SPL image BSS too big");
+#endif

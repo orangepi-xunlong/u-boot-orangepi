@@ -12,8 +12,6 @@
 #include "seq_exec.h"
 #include "sys_env_lib.h"
 
-#include "../../../drivers/ddr/marvell/a38x/ddr3_a38x.h"
-
 #ifdef CONFIG_ARMADA_38X
 enum unit_id sys_env_soc_unit_nums[MAX_UNITS_ID][MAX_DEV_ID_NUM] = {
 /*                     6820    6810     6811     6828     */
@@ -233,4 +231,71 @@ u32 sys_env_device_id_get(void)
 	printf("Detected Device ID %s\n", device_id_str[g_dev_id]);
 
 	return g_dev_id;
+}
+
+/*
+ * sys_env_device_rev_get - Get Marvell controller device revision number
+ *
+ * DESCRIPTION:
+ *       This function returns 8bit describing the device revision as defined
+ *       Revision ID Register.
+ *
+ * INPUT:
+ *       None.
+ *
+ * OUTPUT:
+ *       None.
+ *
+ * RETURN:
+ *       8bit desscribing Marvell controller revision number
+ */
+u8 sys_env_device_rev_get(void)
+{
+	u32 value;
+
+	value = reg_read(DEV_VERSION_ID_REG);
+	return (value & (REVISON_ID_MASK)) >> REVISON_ID_OFFS;
+}
+
+void mv_rtc_config(void)
+{
+	u32 i, val;
+
+	if (!(IS_ENABLED(CONFIG_ARMADA_38X) || IS_ENABLED(CONFIG_ARMADA_39X)))
+		return;
+
+	/* Activate pipe0 for read/write transaction, and set XBAR client number #1 */
+	val = 0x1 << DFX_PIPE_SELECT_PIPE0_ACTIVE_OFFS |
+	      0x1 << DFX_PIPE_SELECT_XBAR_CLIENT_SEL_OFFS;
+	writel(val, MVEBU_DFX_BASE);
+
+	/* Set new RTC value for all memory wrappers */
+	for (i = 0; i < RTC_MEMORY_WRAPPER_COUNT; i++)
+		reg_write(RTC_MEMORY_WRAPPER_REG(i), RTC_MEMORY_WRAPPER_CTRL_VAL);
+}
+
+void mv_avs_init(void)
+{
+	u32 sar_freq;
+
+	if (!(IS_ENABLED(CONFIG_ARMADA_38X) || IS_ENABLED(CONFIG_ARMADA_39X)))
+		return;
+
+	reg_write(AVS_DEBUG_CNTR_REG, AVS_DEBUG_CNTR_DEFAULT_VALUE);
+	reg_write(AVS_DEBUG_CNTR_REG, AVS_DEBUG_CNTR_DEFAULT_VALUE);
+
+	sar_freq = reg_read(DEVICE_SAMPLE_AT_RESET1_REG);
+	sar_freq = sar_freq >> SAR_FREQ_OFFSET & SAR_FREQ_MASK;
+
+	/* Set AVS value only for core frequency of 1600MHz or less.
+	 * For higher frequency leave the default value.
+	 */
+	if (sar_freq <= 0xd) {
+		u32 avs_reg_data = reg_read(AVS_ENABLED_CONTROL);
+
+		avs_reg_data &= ~(AVS_LOW_VDD_LIMIT_MASK
+				| AVS_HIGH_VDD_LIMIT_MASK);
+		avs_reg_data |= AVS_LOW_VDD_SLOW_VAL | AVS_HIGH_VDD_SLOW_VAL;
+		reg_write(AVS_ENABLED_CONTROL, avs_reg_data);
+	}
 }

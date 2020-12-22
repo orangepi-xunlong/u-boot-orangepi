@@ -5,6 +5,8 @@
  */
 #include <common.h>
 #include <config.h>
+#include <hang.h>
+#include <init.h>
 #include <spl.h>
 #include <asm/u-boot.h>
 #include <asm/utils.h>
@@ -31,14 +33,12 @@ void putc(char c)
 }
 #endif /* CONFIG_SPL_LIBCOMMON_SUPPORT */
 
-void spl_board_init(void)
+void board_init_f(ulong dummy)
 {
-#ifdef CONFIG_SOC_DM365
-	dm36x_lowlevel_init(0);
-#endif
-#ifdef CONFIG_SOC_DA8XX
 	arch_cpu_init();
-#endif
+
+	spl_early_init();
+
 	preloader_console_init();
 }
 

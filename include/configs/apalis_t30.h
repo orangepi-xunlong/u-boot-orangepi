@@ -12,34 +12,20 @@
 
 #include "tegra30-common.h"
 
-/* High-level configuration options */
-
 /* Board-specific serial config */
 #define CONFIG_TEGRA_ENABLE_UARTA
 #define CONFIG_SYS_NS16550_COM1		NV_PA_APB_UARTA_BASE
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_APALIS_T30
 
-/* I2C */
-#define CONFIG_SYS_I2C_TEGRA
-
 /* Environment in eMMC, before config block at the end of 1st "boot sector" */
-#define CONFIG_ENV_OFFSET		(-CONFIG_ENV_SIZE + \
-					 CONFIG_TDX_CFG_BLOCK_OFFSET)
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_SYS_MMC_ENV_PART		1
-
-/* USB host support */
-#define CONFIG_USB_EHCI_TEGRA
-
-/* PCI host support */
 
 /* PCI networking support */
 #define CONFIG_E1000_NO_NVM
 
 /* General networking support */
-#define CONFIG_IP_DEFRAG
-#define CONFIG_TFTP_BLOCKSIZE		16352
 #define CONFIG_TFTP_TSIZE
 
 /* Increase console I/O buffer size */
@@ -53,6 +39,17 @@
 /* Increase maximum number of arguments */
 #undef CONFIG_SYS_MAXARGS
 #define CONFIG_SYS_MAXARGS		32
+
+#define UBOOT_UPDATE \
+	"uboot_hwpart=1\0" \
+	"uboot_blk=0\0" \
+	"set_blkcnt=setexpr blkcnt ${filesize} + 0x1ff && " \
+		"setexpr blkcnt ${blkcnt} / 0x200\0" \
+	"update_uboot=run set_blkcnt && mmc dev 0 ${uboot_hwpart} && " \
+		"mmc write ${loadaddr} ${uboot_blk} ${blkcnt}\0" \
+
+#define BOARD_EXTRA_ENV_SETTINGS \
+	UBOOT_UPDATE
 
 #include "tegra-common-usb-gadget.h"
 #include "tegra-common-post.h"

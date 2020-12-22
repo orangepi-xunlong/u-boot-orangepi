@@ -3,6 +3,8 @@
  * Copyright 2015 Freescale Semiconductor
  */
 #include <common.h>
+#include <env.h>
+#include <init.h>
 #include <malloc.h>
 #include <errno.h>
 #include <netdev.h>
@@ -12,13 +14,14 @@
 #include <fdt_support.h>
 #include <linux/libfdt.h>
 #include <fsl-mc/fsl_mc.h>
-#include <environment.h>
+#include <env_internal.h>
 #include <i2c.h>
 #include <rtc.h>
 #include <asm/arch/soc.h>
 #include <hwconfig.h>
 #include <fsl_sec.h>
 #include <asm/arch/ppa.h>
+#include <asm/arch-fsl-layerscape/fsl_icid.h>
 
 
 #include "../common/qixis.h"
@@ -160,8 +163,16 @@ unsigned long get_board_ddr_clk(void)
 int select_i2c_ch_pca9547(u8 ch)
 {
 	int ret;
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
 
+	ret = i2c_get_chip_for_busnum(0, I2C_MUX_PCA_ADDR_PRI, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_write(dev, 0, &ch, 1);
+
+#else
 	ret = i2c_write(I2C_MUX_PCA_ADDR_PRI, 0, 1, &ch, 1);
+#endif
 	if (ret) {
 		puts("PCA: failed to select proper channel\n");
 		return ret;
@@ -211,7 +222,7 @@ int board_init(void)
 	else
 		config_board_mux(MUX_TYPE_SDHC);
 
-#if defined(CONFIG_NAND) && defined(CONFIG_FSL_QSPI)
+#if defined(CONFIG_MTD_RAW_NAND) && defined(CONFIG_FSL_QSPI)
 	val = in_le32(dcfg_ccsr + DCFG_RCWSR15 / 4);
 
 	if (DCFG_RCWSR15_IFCGRPABASE_QSPI == (val & (u32)0x3))
@@ -224,13 +235,25 @@ int board_init(void)
 	gd->env_addr = (ulong)&default_environment[0];
 #endif
 	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+
+#ifdef CONFIG_RTC_ENABLE_32KHZ_OUTPUT
+#ifdef CONFIG_DM_I2C
+	rtc_enable_32khz_output(0, CONFIG_SYS_I2C_RTC_ADDR);
+#else
 	rtc_enable_32khz_output();
+#endif
+#endif
+
 #ifdef CONFIG_FSL_CAAM
 	sec_init();
 #endif
 
 #ifdef CONFIG_FSL_LS_PPA
 	ppa_init();
+#endif
+
+#if !defined(CONFIG_SYS_EARLY_PCI_INIT) && defined(CONFIG_DM_ETH)
+	pci_init();
 #endif
 
 	return 0;
@@ -271,13 +294,6 @@ void detail_board_ddr_info(void)
 #endif
 }
 
-#if defined(CONFIG_ARCH_MISC_INIT)
-int arch_misc_init(void)
-{
-	return 0;
-}
-#endif
-
 #if defined(CONFIG_FSL_MC_ENET) && !defined(CONFIG_SPL_BUILD)
 void fdt_fixup_board_enet(void *fdt)
 {
@@ -294,7 +310,8 @@ void fdt_fixup_board_enet(void *fdt)
 		return;
 	}
 
-	if ((get_mc_boot_status() == 0) && (get_dpl_apply_status() == 0))
+	if (get_mc_boot_status() == 0 &&
+	    (is_lazy_dpl_addr_valid() || get_dpl_apply_status() == 0))
 		fdt_status_okay(fdt, offset);
 	else
 		fdt_status_fail(fdt, offset);
@@ -332,11 +349,15 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_memory_banks(blob, base, size, 2);
 
+	fdt_fsl_mc_fixup_iommu_map_entry(blob);
+
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #if defined(CONFIG_FSL_MC_ENET) && !defined(CONFIG_SPL_BUILD)
 	fdt_fixup_board_enet(blob);
 #endif
+
+	fdt_fixup_icid(blob);
 
 	return 0;
 }

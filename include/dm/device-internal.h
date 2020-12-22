@@ -40,6 +40,10 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 		const char *name, void *platdata, int of_offset,
 		struct udevice **devp);
 
+int device_bind_ofnode(struct udevice *parent, const struct driver *drv,
+		       const char *name, void *platdata, ofnode node,
+		       struct udevice **devp);
+
 /**
  * device_bind_with_driver_data() - Create a device and bind it to a driver
  *
@@ -70,14 +74,30 @@ int device_bind_with_driver_data(struct udevice *parent,
  * tree.
  *
  * @parent: Pointer to device's parent
- * @pre_reloc_only: If true, bind the driver only if its DM_INIT_F flag is set.
- * If false bind the driver always.
+ * @pre_reloc_only: If true, bind the driver only if its DM_FLAG_PRE_RELOC flag
+ * is set. If false bind the driver always.
  * @info: Name and platdata for this device
  * @devp: if non-NULL, returns a pointer to the bound device
  * @return 0 if OK, -ve on error
  */
 int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
 			const struct driver_info *info, struct udevice **devp);
+
+/**
+ * device_ofdata_to_platdata() - Read platform data for a device
+ *
+ * Read platform data for a device (typically from the device tree) so that
+ * the information needed to probe the device is present.
+ *
+ * This may cause some others devices to be probed if this one depends on them,
+ * e.g. a GPIO line will cause a GPIO device to be probed.
+ *
+ * All private data associated with the device is allocated.
+ *
+ * @dev: Pointer to device to process
+ * @return 0 if OK, -ve on error
+ */
+int device_ofdata_to_platdata(struct udevice *dev);
 
 /**
  * device_probe() - Probe a device, activating it
@@ -124,6 +144,44 @@ static inline int device_unbind(struct udevice *dev) { return 0; }
 void device_free(struct udevice *dev);
 #else
 static inline void device_free(struct udevice *dev) {}
+#endif
+
+/**
+ * device_chld_unbind() - Unbind all device's children from the device if bound
+ *			  to drv
+ *
+ * On error, the function continues to unbind all children, and reports the
+ * first error.
+ *
+ * @dev:	The device that is to be stripped of its children
+ * @drv:	The targeted driver
+ * @return 0 on success, -ve on error
+ */
+#if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
+int device_chld_unbind(struct udevice *dev, struct driver *drv);
+#else
+static inline int device_chld_unbind(struct udevice *dev, struct driver *drv)
+{
+	return 0;
+}
+#endif
+
+/**
+ * device_chld_remove() - Stop all device's children
+ * @dev:	The device whose children are to be removed
+ * @drv:	The targeted driver
+ * @flags:	Flag, if this functions is called in the pre-OS stage
+ * @return 0 on success, -ve on error
+ */
+#if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
+int device_chld_remove(struct udevice *dev, struct driver *drv,
+		       uint flags);
+#else
+static inline int device_chld_remove(struct udevice *dev, struct driver *drv,
+				     uint flags)
+{
+	return 0;
+}
 #endif
 
 /**

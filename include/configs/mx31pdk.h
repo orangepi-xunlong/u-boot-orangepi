@@ -16,8 +16,6 @@
 #include <asm/arch/imx-regs.h>
 
 /* High Level Configuration Options */
-#define CONFIG_MX31			/* This is a mx31 */
-
 #define CONFIG_CMDLINE_TAG			/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
@@ -26,8 +24,6 @@
 
 #define CONFIG_SPL_TARGET	"u-boot-with-spl.bin"
 #define CONFIG_SPL_MAX_SIZE	2048
-
-#define CONFIG_SPL_TEXT_BASE	0x87dc0000
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SKIP_LOWLEVEL_INIT
@@ -44,10 +40,6 @@
 
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
-
-#define CONFIG_HARD_SPI
-#define CONFIG_DEFAULT_SPI_BUS	1
-#define CONFIG_DEFAULT_SPI_MODE	(SPI_MODE_0 | SPI_CS_HIGH)
 
 /* PMIC Controller */
 #define CONFIG_POWER
@@ -79,8 +71,6 @@
  */
 
 /* memtest works on */
-#define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		0x80010000
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		0x81000000
@@ -88,7 +78,6 @@
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM_1		CSD0_BASE
 #define PHYS_SDRAM_1_SIZE	(128 * 1024 * 1024)
 
@@ -103,9 +92,6 @@
 /*
  * environment organization
  */
-#define CONFIG_ENV_OFFSET		0x40000
-#define CONFIG_ENV_OFFSET_REDUND	0x60000
-#define CONFIG_ENV_SIZE			(128 * 1024)
 
 /*
  * NAND driver

@@ -1,18 +1,19 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Renesas R8A77995 CPG MSSR driver
+ * r8a77995 Clock Pulse Generator / Module Standby and Software Reset
  *
- * Copyright (C) 2017-2018 Marek Vasut <marek.vasut@gmail.com>
+ * Copyright (C) 2017 Glider bvba
  *
- * Based on the following driver from Linux kernel:
- * r8a7796 Clock Pulse Generator / Module Standby and Software Reset
+ * Based on r8a7795-cpg-mssr.c
  *
- * Copyright (C) 2016 Glider bvba
+ * Copyright (C) 2015 Glider bvba
+ * Copyright (C) 2015 Renesas Electronics Corp.
  */
 
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <linux/bitops.h>
 
 #include <dt-bindings/clock/r8a77995-cpg-mssr.h>
 
@@ -21,7 +22,7 @@
 
 enum clk_ids {
 	/* Core Clock Outputs exported to DT */
-	LAST_DT_CORE_CLK = R8A77995_CLK_CP,
+	LAST_DT_CORE_CLK = R8A77995_CLK_CPEX,
 
 	/* External Input Clocks */
 	CLK_EXTAL,
@@ -41,7 +42,9 @@ enum clk_ids {
 	CLK_S2,
 	CLK_S3,
 	CLK_SDSRC,
-	CLK_SSPSRC,
+	CLK_RPCSRC,
+	CLK_RINT,
+	CLK_OCO,
 
 	/* Module Clocks */
 	MOD_CLK_BASE
@@ -67,6 +70,11 @@ static const struct cpg_core_clk r8a77995_core_clks[] = {
 	DEF_FIXED(".s2",       CLK_S2,             CLK_PLL1,       4, 1),
 	DEF_FIXED(".s3",       CLK_S3,             CLK_PLL1,       6, 1),
 	DEF_FIXED(".sdsrc",    CLK_SDSRC,          CLK_PLL1,       2, 1),
+	DEF_FIXED(".rpcsrc",   CLK_RPCSRC,         CLK_PLL1,       2, 1),
+
+	DEF_DIV6_RO(".r",      CLK_RINT,           CLK_EXTAL, CPG_RCKCR, 32),
+
+	DEF_RATE(".oco",       CLK_OCO,            8 * 1000 * 1000),
 
 	/* Core Clock Outputs */
 	DEF_FIXED("z2",        R8A77995_CLK_Z2,    CLK_PLL0D3,     1, 1),
@@ -86,8 +94,11 @@ static const struct cpg_core_clk r8a77995_core_clks[] = {
 
 	DEF_FIXED("cl",        R8A77995_CLK_CL,    CLK_PLL1,      48, 1),
 	DEF_FIXED("cp",        R8A77995_CLK_CP,    CLK_EXTAL,      2, 1),
-	DEF_FIXED("osc",       R8A77995_CLK_OSC,   CLK_EXTAL,    384, 1),
-	DEF_FIXED("r",         R8A77995_CLK_R,     CLK_EXTAL,   1536, 1),
+	DEF_FIXED("cpex",      R8A77995_CLK_CPEX,  CLK_EXTAL,      4, 1),
+
+	DEF_DIV6_RO("osc",     R8A77995_CLK_OSC,   CLK_EXTAL, CPG_RCKCR,  8),
+
+	DEF_GEN3_RPC("rpc",    R8A77995_CLK_RPC,   CLK_RPCSRC,    0x238),
 
 	DEF_GEN3_PE("s1d4c",   R8A77995_CLK_S1D4C, CLK_S1, 4, CLK_PE, 2),
 	DEF_GEN3_PE("s3d1c",   R8A77995_CLK_S3D1C, CLK_S3, 1, CLK_PE, 1),
@@ -95,6 +106,11 @@ static const struct cpg_core_clk r8a77995_core_clks[] = {
 	DEF_GEN3_PE("s3d4c",   R8A77995_CLK_S3D4C, CLK_S3, 4, CLK_PE, 4),
 
 	DEF_GEN3_SD("sd0",     R8A77995_CLK_SD0,   CLK_SDSRC,     0x268),
+
+	DEF_DIV6P1("canfd",    R8A77995_CLK_CANFD, CLK_PLL0D3,    0x244),
+	DEF_DIV6P1("mso",      R8A77995_CLK_MSO,   CLK_PLL1D2,    0x014),
+
+	DEF_GEN3_RCKSEL("r",   R8A77995_CLK_R, CLK_RINT, 1, CLK_OCO, 61 * 4),
 };
 
 static const struct mssr_mod_clk r8a77995_mod_clks[] = {
@@ -120,7 +136,7 @@ static const struct mssr_mod_clk r8a77995_mod_clks[] = {
 	DEF_MOD("usb-dmac1",		 331,	R8A77995_CLK_S3D1),
 	DEF_MOD("rwdt",			 402,	R8A77995_CLK_R),
 	DEF_MOD("intc-ex",		 407,	R8A77995_CLK_CP),
-	DEF_MOD("intc-ap",		 408,	R8A77995_CLK_S3D1),
+	DEF_MOD("intc-ap",		 408,	R8A77995_CLK_S1D2),
 	DEF_MOD("audmac0",		 502,	R8A77995_CLK_S3D1),
 	DEF_MOD("hscif3",		 517,	R8A77995_CLK_S3D1C),
 	DEF_MOD("hscif0",		 520,	R8A77995_CLK_S3D1C),
@@ -134,12 +150,9 @@ static const struct mssr_mod_clk r8a77995_mod_clks[] = {
 	DEF_MOD("vspbs",		 627,	R8A77995_CLK_S0D1),
 	DEF_MOD("ehci0",		 703,	R8A77995_CLK_S3D2),
 	DEF_MOD("hsusb",		 704,	R8A77995_CLK_S3D2),
-	DEF_MOD("du1",			 723,	R8A77995_CLK_S2D1),
-	DEF_MOD("du0",			 724,	R8A77995_CLK_S2D1),
+	DEF_MOD("du1",			 723,	R8A77995_CLK_S1D1),
+	DEF_MOD("du0",			 724,	R8A77995_CLK_S1D1),
 	DEF_MOD("lvds",			 727,	R8A77995_CLK_S2D1),
-	DEF_MOD("vin7",			 804,	R8A77995_CLK_S1D2),
-	DEF_MOD("vin6",			 805,	R8A77995_CLK_S1D2),
-	DEF_MOD("vin5",			 806,	R8A77995_CLK_S1D2),
 	DEF_MOD("vin4",			 807,	R8A77995_CLK_S1D2),
 	DEF_MOD("etheravb",		 812,	R8A77995_CLK_S3D2),
 	DEF_MOD("imr0",			 823,	R8A77995_CLK_S1D2),
@@ -153,6 +166,7 @@ static const struct mssr_mod_clk r8a77995_mod_clks[] = {
 	DEF_MOD("can-fd",		 914,	R8A77995_CLK_S3D2),
 	DEF_MOD("can-if1",		 915,	R8A77995_CLK_S3D4),
 	DEF_MOD("can-if0",		 916,	R8A77995_CLK_S3D4),
+	DEF_MOD("rpc",			 917,	R8A77995_CLK_RPC),
 	DEF_MOD("i2c3",			 928,	R8A77995_CLK_S3D2),
 	DEF_MOD("i2c2",			 929,	R8A77995_CLK_S3D2),
 	DEF_MOD("i2c1",			 930,	R8A77995_CLK_S3D2),
@@ -177,14 +191,14 @@ static const struct mssr_mod_clk r8a77995_mod_clks[] = {
  * MD19		EXTAL (MHz)	PLL0		PLL1		PLL3
  *--------------------------------------------------------------------
  * 0		48 x 1		x250/4		x100/3		x100/3
- * 1		48 x 1		x250/4		x100/3		x116/6
+ * 1		48 x 1		x250/4		x100/3		x58/3
  */
 #define CPG_PLL_CONFIG_INDEX(md)	(((md) & BIT(19)) >> 19)
 
 static const struct rcar_gen3_cpg_pll_config cpg_pll_configs[2] = {
 	/* EXTAL div	PLL1 mult/div	PLL3 mult/div */
 	{ 1,		100,	3,	100,	3,	},
-	{ 1,		100,	3,	116,	6,	},
+	{ 1,		100,	3,	58,	3,	},
 };
 
 static const struct mstp_stop_table r8a77995_mstp_table[] = {

@@ -6,8 +6,10 @@
 
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
+#include <eeprom.h>
+#include <env.h>
 #include <i2c_eeprom.h>
+#include <net.h>
 #include <netdev.h>
 
 int at91_set_ethaddr(int offset)

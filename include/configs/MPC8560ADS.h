@@ -17,6 +17,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/delay.h>
+
 /* High Level Configuration Options */
 #define CONFIG_CPM2		1	/* has CPM2 */
 
@@ -57,16 +59,12 @@
 
 #define CONFIG_SYS_INIT_DBCR DBCR_IDM		/* Enable Debug Exceptions */
 
-#define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest region */
-#define CONFIG_SYS_MEMTEST_END		0x00400000
-
 #define CONFIG_SYS_CCSRBAR		0xe0000000
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
 
 /* DDR Setup */
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
 #define CONFIG_DDR_SPD
-#undef CONFIG_FSL_DDR_INTERACTIVE
 
 #define CONFIG_MEM_INIT_VALUE		0xDeadBeef
 
@@ -113,8 +111,6 @@
 #undef  CONFIG_SYS_RAMBOOT
 #endif
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 
 #undef CONFIG_CLOCKS_IN_MHZ
@@ -253,9 +249,6 @@
 
 #ifdef CONFIG_TSEC_ENET
 
-#ifndef CONFIG_MII
-#define CONFIG_MII		1	/* MII PHY management */
-#endif
 #define CONFIG_TSEC1	1
 #define CONFIG_TSEC1_NAME	"TSEC0"
 #define CONFIG_TSEC2	1
@@ -294,12 +287,6 @@
   #define FETH3_RST		0x80
 #endif					/* CONFIG_ETHER_INDEX */
 
-#ifndef CONFIG_MII
-#define CONFIG_MII		1	/* MII PHY management */
-#endif
-
-#define CONFIG_BITBANGMII		/* bit-bang MII PHY management */
-
 /*
  * GPIO pins used for bit-banged MII communications
  */
@@ -325,14 +312,6 @@
 /*
  * Environment
  */
-#ifndef CONFIG_SYS_RAMBOOT
-  #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
-  #define CONFIG_ENV_SECT_SIZE	0x40000	/* 256K(one sector) for env */
-  #define CONFIG_ENV_SIZE		0x2000
-#else
-  #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
-  #define CONFIG_ENV_SIZE		0x2000
-#endif
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */

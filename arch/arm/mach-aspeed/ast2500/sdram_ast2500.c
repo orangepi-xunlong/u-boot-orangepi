@@ -9,6 +9,7 @@
 #include <clk.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <ram.h>
 #include <regmap.h>
 #include <reset.h>
@@ -391,7 +392,7 @@ static int ast2500_sdrammc_ofdata_to_platdata(struct udevice *dev)
 	struct regmap *map;
 	int ret;
 
-	ret = regmap_init_mem(dev, &map);
+	ret = regmap_init_mem(dev_ofnode(dev), &map);
 	if (ret)
 		return ret;
 

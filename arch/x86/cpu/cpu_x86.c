@@ -52,7 +52,7 @@ int cpu_x86_get_desc(struct udevice *dev, char *buf, int size)
 	return 0;
 }
 
-static int cpu_x86_get_count(struct udevice *dev)
+int cpu_x86_get_count(struct udevice *dev)
 {
 	int node, cpu;
 	int num = 0;
@@ -94,4 +94,5 @@ U_BOOT_DRIVER(cpu_x86_drv) = {
 	.of_match	= cpu_x86_ids,
 	.bind		= cpu_x86_bind,
 	.ops		= &cpu_x86_ops,
+	.flags		= DM_FLAG_PRE_RELOC,
 };

@@ -15,8 +15,6 @@
 #include <asm/arch/imx-regs.h>
 
 /* U-Boot environment */
-#define CONFIG_ENV_OFFSET	(6 * 64 * 1024)
-#define CONFIG_ENV_SIZE		(8 * 1024)
 #define CONFIG_SYS_MMC_ENV_DEV	0
 
 /* U-Boot general configurations */
@@ -31,7 +29,6 @@
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
 
 /* USB */
-#define CONFIG_USB_EHCI_MX5
 #define CONFIG_MXC_USB_PORT	1
 #define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS	0
@@ -82,7 +79,6 @@
 #endif
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			CSD0_BASE_ADDR
 #define PHYS_SDRAM_SIZE			(gd->ram_size)
 
@@ -94,9 +90,6 @@
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-#define CONFIG_SYS_MEMTEST_START	0x70000000
-#define CONFIG_SYS_MEMTEST_END		0x90000000
 
 #define CONFIG_SYS_MALLOC_LEN		(10 * 1024 * 1024)
 

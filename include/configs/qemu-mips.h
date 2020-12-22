@@ -13,8 +13,6 @@
 
 #define CONFIG_QEMU_MIPS
 
-#define CONFIG_MISC_INIT_R
-
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
@@ -31,10 +29,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-
-/*
- * Command line configuration.
- */
 
 #define CONFIG_DRIVER_NE2000
 #define CONFIG_DRIVER_NE2000_BASE	0xb4000300
@@ -75,9 +69,6 @@
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		0x81000000
 
-#define CONFIG_SYS_MEMTEST_START	0x80100000
-#define CONFIG_SYS_MEMTEST_END		0x80800000
-
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
  */
@@ -90,13 +81,8 @@
 #define CONFIG_SYS_FLASH_BASE		0xbfc00000
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	128
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 
 /* Address and size of Primary Environment Sector */
-#define CONFIG_ENV_SIZE		0x8000
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + (4 << 20) - CONFIG_ENV_SIZE)
 
 #define CONFIG_ENV_OVERWRITE	1
 

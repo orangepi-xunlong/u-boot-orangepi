@@ -20,6 +20,18 @@ config SYS_FSL_DDR_LE
 	help
 		Access DDR registers in little-endian
 
+config FSL_DDR_BIST
+	bool
+
+config FSL_DDR_INTERACTIVE
+	bool
+
+config FSL_DDR_SYNC_REFRESH
+	bool
+
+config FSL_DDR_FIRST_SLOT_QUAD_CAPABLE
+	bool
+
 menu "Freescale DDR controllers"
 	depends on SYS_FSL_DDR
 
@@ -34,6 +46,7 @@ config SYS_NUM_DDR_CTLRS
 			ARCH_P4080	|| \
 			ARCH_P5020	|| \
 			ARCH_P5040	|| \
+			ARCH_LX2160A	|| \
 			ARCH_T4160
 	default 1
 
@@ -136,6 +149,9 @@ endchoice
 endmenu
 
 config SYS_FSL_ERRATUM_A008378
+	bool
+
+config SYS_FSL_ERRATUM_A008109
 	bool
 
 config SYS_FSL_ERRATUM_A008511

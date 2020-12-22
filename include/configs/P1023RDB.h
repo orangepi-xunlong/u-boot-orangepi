@@ -9,6 +9,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/stringify.h>
+
 #ifndef CONFIG_SYS_MONITOR_BASE
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #endif
@@ -18,14 +20,12 @@
 #endif
 
 /* High Level Configuration Options */
-#define CONFIG_MP		/* support multiple processors */
 
 #define CONFIG_PCI_INDIRECT_BRIDGE     /* indirect PCI bridge support */
 #define CONFIG_PCIE1		/* PCIE controller 1 (slot 1) */
 #define CONFIG_PCIE2		/* PCIE controller 2 (slot 2) */
 #define CONFIG_PCIE3		/* PCIE controller 3 (slot 3) */
 #define CONFIG_FSL_PCI_INIT	/* Use common FSL init code */
-#define CONFIG_FSL_PCIE_RESET	/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT	/* enable 64-bit PCI resources */
 
 #ifndef __ASSEMBLY__
@@ -44,9 +44,6 @@ extern unsigned long get_clock_freq(void);
 
 #define CONFIG_ENABLE_36BIT_PHYS
 
-#define CONFIG_SYS_MEMTEST_START	0x01000000	/* memtest works on */
-#define CONFIG_SYS_MEMTEST_END		0x02000000
-
 /* Implement conversion of addresses in the LBC */
 #define CONFIG_SYS_LBC_LBCR		0x00000000
 #define CONFIG_SYS_LBC_LCRR		LCRR_CLKDIV_8
@@ -60,7 +57,6 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_CHIP_SELECTS_PER_CTRL	1
 
 #define CONFIG_DDR_SPD
-#define CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SYS_SDRAM_SIZE		512u	/* DDR is 512M */
 #define CONFIG_SYS_SPD_BUS_NUM          0
 #define SPD_EEPROM_ADDRESS              0x50
@@ -93,8 +89,6 @@ extern unsigned long get_clock_freq(void);
 				| BR_PS_16 | BR_V)
 #define CONFIG_FLASH_OR_PRELIM	0xfc000ff7
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_MAX_FLASH_BANKS	1	/* number of banks */
 #define CONFIG_SYS_MAX_FLASH_SECT	512	/* sectors per device */
@@ -219,10 +213,6 @@ extern unsigned long get_clock_freq(void);
  */
 #define CONFIG_ENV_OVERWRITE
 
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE		0x2000
-#define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K (one sector) */
-
 #define CONFIG_LOADS_ECHO		/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	/* allow baudrate change */
 
@@ -286,14 +276,8 @@ extern unsigned long get_clock_freq(void);
 /* For FM */
 #define CONFIG_SYS_DPAA_FMAN
 
-#ifdef CONFIG_SYS_DPAA_FMAN
-#define CONFIG_FMAN_ENET
-#define CONFIG_PHY_ATHEROS
-#endif
-
 /* Default address of microcode for the Linux Fman driver */
 /* QE microcode/firmware address */
-#define CONFIG_SYS_QE_FMAN_FW_IN_NOR
 #define CONFIG_SYS_FMAN_FW_ADDR	0xEFF00000
 #define CONFIG_SYS_QE_FMAN_FW_LENGTH	0x10000
 #define CONFIG_SYS_FDT_PAD		(0x3000 + CONFIG_SYS_QE_FMAN_FW_LENGTH)
@@ -303,7 +287,6 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_FM1_DTSEC2_PHY_ADDR	0x2
 
 #define CONFIG_SYS_TBIPA_VALUE	8
-#define CONFIG_MII		/* MII PHY management */
 #define CONFIG_ETHPRIME		"FM1@DTSEC1"
 #endif
 

@@ -16,6 +16,8 @@
 #ifndef _I2C_H_
 #define _I2C_H_
 
+#include <linker_lists.h>
+
 /*
  * For now there are essentially two parts to this file - driver model
  * here at the top, and the older code below (with CONFIG_SYS_I2C being
@@ -28,6 +30,32 @@ enum dm_i2c_chip_flags {
 	DM_I2C_CHIP_10BIT	= 1 << 0, /* Use 10-bit addressing */
 	DM_I2C_CHIP_RD_ADDRESS	= 1 << 1, /* Send address for each read byte */
 	DM_I2C_CHIP_WR_ADDRESS	= 1 << 2, /* Send address for each write byte */
+};
+
+/** enum i2c_speed_mode - standard I2C speed modes */
+enum i2c_speed_mode {
+	IC_SPEED_MODE_STANDARD,
+	IC_SPEED_MODE_FAST,
+	IC_SPEED_MODE_FAST_PLUS,
+	IC_SPEED_MODE_HIGH,
+	IC_SPEED_MODE_FAST_ULTRA,
+
+	IC_SPEED_MODE_COUNT,
+};
+
+/** enum i2c_speed_rate - standard I2C speeds in Hz */
+enum i2c_speed_rate {
+	I2C_SPEED_STANDARD_RATE		= 100000,
+	I2C_SPEED_FAST_RATE		= 400000,
+	I2C_SPEED_FAST_PLUS_RATE	= 1000000,
+	I2C_SPEED_HIGH_RATE		= 3400000,
+	I2C_SPEED_FAST_ULTRA_RATE	= 5000000,
+};
+
+/** enum i2c_address_mode - available address modes */
+enum i2c_address_mode {
+	I2C_MODE_7_BIT,
+	I2C_MODE_10_BIT
 };
 
 struct udevice;
@@ -45,12 +73,26 @@ struct udevice;
  *		represent up to 256 bytes. A value larger than 1 may be
  *		needed for larger devices.
  * @flags:	Flags for this chip (dm_i2c_chip_flags)
+ * @chip_addr_offset_mask: Mask of offset bits within chip_addr. Used for
+ *			   devices which steal addresses as part of offset.
+ *			   If offset_len is zero, then the offset is encoded
+ *			   completely within the chip address itself.
+ *			   e.g. a devce with chip address of 0x2c with 512
+ *			   registers might use the bottom bit of the address
+ *			   to indicate which half of the address space is being
+ *			   accessed while still only using 1 byte offset.
+ *			   This means it will respond to  chip address 0x2c and
+ *			   0x2d.
+ *			   A real world example is the Atmel AT24C04. It's
+ *			   datasheet explains it's usage of this addressing
+ *			   mode.
  * @emul: Emulator for this chip address (only used for emulation)
  */
 struct dm_i2c_chip {
 	uint chip_addr;
 	uint offset_len;
 	uint flags;
+	uint chip_addr_offset_mask;
 #ifdef CONFIG_SANDBOX
 	struct udevice *emul;
 	bool test_mode;
@@ -68,9 +110,11 @@ struct dm_i2c_chip {
  * I2C bus udevice.
  *
  * @speed_hz: Bus speed in hertz (typically 100000)
+ * @max_transaction_bytes: Maximal size of single I2C transfer
  */
 struct dm_i2c_bus {
 	int speed_hz;
+	int max_transaction_bytes;
 };
 
 /*
@@ -260,6 +304,25 @@ int i2c_set_chip_offset_len(struct udevice *dev, uint offset_len);
 int i2c_get_chip_offset_len(struct udevice *dev);
 
 /**
+ * i2c_set_chip_addr_offset_mask() - set mask of address bits usable by offset
+ *
+ * Some devices listen on multiple chip addresses to achieve larger offsets
+ * than their single or multiple byte offsets would allow for. You can use this
+ * function to set the bits that are valid to be used for offset overflow.
+ *
+ * @mask: The mask to be used for high offset bits within address
+ * @return 0 if OK, other -ve value on error
+ */
+int i2c_set_chip_addr_offset_mask(struct udevice *dev, uint mask);
+
+/*
+ * i2c_get_chip_addr_offset_mask() - get mask of address bits usable by offset
+ *
+ * @return current chip addr offset mask
+ */
+uint i2c_get_chip_addr_offset_mask(struct udevice *dev);
+
+/**
  * i2c_deblock() - recover a bus that is in an unknown state
  *
  * See the deblock() method in 'struct dm_i2c_ops' for full information
@@ -269,85 +332,23 @@ int i2c_get_chip_offset_len(struct udevice *dev);
  */
 int i2c_deblock(struct udevice *bus);
 
-#ifdef CONFIG_DM_I2C_COMPAT
 /**
- * i2c_probe() - Compatibility function for driver model
+ * i2c_deblock_gpio_loop() - recover a bus from an unknown state by toggling SDA/SCL
  *
- * Calls dm_i2c_probe() on the current bus
- */
-int i2c_probe(uint8_t chip_addr);
-
-/**
- * i2c_read() - Compatibility function for driver model
+ * This is the inner logic used for toggling I2C SDA/SCL lines as GPIOs
+ * for deblocking the I2C bus.
  *
- * Calls dm_i2c_read() with the device corresponding to @chip_addr, and offset
- * set to @addr. @alen must match the current setting for the device.
+ * @sda_pin:	SDA GPIO
+ * @scl_pin:	SCL GPIO
+ * @scl_count:	Number of SCL clock cycles generated to deblock SDA
+ * @start_count:Number of I2C start conditions sent after deblocking SDA
+ * @delay:	Delay between SCL clock line changes
+ * @return 0 if OK, -ve on error
  */
-int i2c_read(uint8_t chip_addr, unsigned int addr, int alen, uint8_t *buffer,
-	     int len);
-
-/**
- * i2c_write() - Compatibility function for driver model
- *
- * Calls dm_i2c_write() with the device corresponding to @chip_addr, and offset
- * set to @addr. @alen must match the current setting for the device.
- */
-int i2c_write(uint8_t chip_addr, unsigned int addr, int alen, uint8_t *buffer,
-	      int len);
-
-/**
- * i2c_get_bus_num_fdt() - Compatibility function for driver model
- *
- * @return the bus number associated with the given device tree node
- */
-int i2c_get_bus_num_fdt(int node);
-
-/**
- * i2c_get_bus_num() - Compatibility function for driver model
- *
- * @return the 'current' bus number
- */
-unsigned int i2c_get_bus_num(void);
-
-/**
- * i2c_set_bus_num() - Compatibility function for driver model
- *
- * Sets the 'current' bus
- */
-int i2c_set_bus_num(unsigned int bus);
-
-static inline void I2C_SET_BUS(unsigned int bus)
-{
-	i2c_set_bus_num(bus);
-}
-
-static inline unsigned int I2C_GET_BUS(void)
-{
-	return i2c_get_bus_num();
-}
-
-/**
- * i2c_init() - Compatibility function for driver model
- *
- * This function does nothing.
- */
-void i2c_init(int speed, int slaveaddr);
-
-/**
- * board_i2c_init() - Compatibility function for driver model
- *
- * @param blob  Device tree blbo
- * @return the number of I2C bus
- */
-void board_i2c_init(const void *blob);
-
-/*
- * Compatibility functions for driver model.
- */
-uint8_t i2c_reg_read(uint8_t addr, uint8_t reg);
-void i2c_reg_write(uint8_t addr, uint8_t reg, uint8_t val);
-
-#endif
+struct gpio_desc;
+int i2c_deblock_gpio_loop(struct gpio_desc *sda_pin, struct gpio_desc *scl_pin,
+			  unsigned int scl_count, unsigned int start_count,
+			  unsigned int delay);
 
 /**
  * struct dm_i2c_ops - driver operations for I2C uclass
@@ -535,6 +536,27 @@ int i2c_chip_ofdata_to_platdata(struct udevice *dev, struct dm_i2c_chip *chip);
  * @nmsgs:	Number of messages
  */
 void i2c_dump_msgs(struct i2c_msg *msg, int nmsgs);
+
+/**
+ * i2c_emul_find() - Find an emulator for an i2c sandbox device
+ *
+ * This looks at the device's 'emul' phandle
+ *
+ * @dev: Device to find an emulator for
+ * @emulp: Returns the associated emulator, if found *
+ * @return 0 if OK, -ENOENT or -ENODEV if not found
+ */
+int i2c_emul_find(struct udevice *dev, struct udevice **emulp);
+
+/**
+ * i2c_emul_get_device() - Find the device being emulated
+ *
+ * Given an emulator this returns the associated device
+ *
+ * @emul: Emulator for the device
+ * @return device that @emul is emulating
+ */
+struct udevice *i2c_emul_get_device(struct udevice *emul);
 
 #ifndef CONFIG_DM_I2C
 

@@ -13,9 +13,12 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
 #include <asm/gpio.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -215,8 +218,8 @@ static int soft_spi_probe(struct udevice *dev)
 	int cs_flags, clk_flags;
 	int ret;
 
-	cs_flags = (slave->mode & SPI_CS_HIGH) ? 0 : GPIOD_ACTIVE_LOW;
-	clk_flags = (slave->mode & SPI_CPOL) ? GPIOD_ACTIVE_LOW : 0;
+	cs_flags = (slave && slave->mode & SPI_CS_HIGH) ? 0 : GPIOD_ACTIVE_LOW;
+	clk_flags = (slave && slave->mode & SPI_CPOL) ? GPIOD_ACTIVE_LOW : 0;
 
 	if (gpio_request_by_name(dev, "cs-gpios", 0, &plat->cs,
 				 GPIOD_IS_OUT | cs_flags) ||

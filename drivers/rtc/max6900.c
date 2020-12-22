@@ -14,8 +14,7 @@
 #include <command.h>
 #include <rtc.h>
 #include <i2c.h>
-
-#if defined(CONFIG_CMD_DATE)
+#include <linux/delay.h>
 
 #ifndef	CONFIG_SYS_I2C_RTC_ADDR
 #define	CONFIG_SYS_I2C_RTC_ADDR	0x50
@@ -104,5 +103,3 @@ int rtc_set (struct rtc_time *tmp)
 void rtc_reset (void)
 {
 }
-
-#endif

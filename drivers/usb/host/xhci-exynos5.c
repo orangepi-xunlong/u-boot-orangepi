@@ -15,6 +15,8 @@
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <malloc.h>
 #include <usb.h>
@@ -27,7 +29,7 @@
 #include <linux/compat.h>
 #include <linux/usb/dwc3.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 
 /* Declare global data pointer */
 DECLARE_GLOBAL_DATA_PTR;

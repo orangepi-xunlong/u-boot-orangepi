@@ -7,7 +7,10 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <clock_legacy.h>
+#include <env.h>
+#include <log.h>
+#include <time.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>

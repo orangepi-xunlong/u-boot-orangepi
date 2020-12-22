@@ -10,6 +10,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <dm/device_compat.h>
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/log2.h>
@@ -795,10 +797,4 @@ int spi_nor_scan(struct spi_nor *nor)
 		return ret;
 
 	return 0;
-}
-
-/* U-Boot specific functions, need to extend MTD to support these */
-int spi_flash_cmd_get_sw_write_prot(struct spi_nor *nor)
-{
-	return -ENOTSUPP;
 }

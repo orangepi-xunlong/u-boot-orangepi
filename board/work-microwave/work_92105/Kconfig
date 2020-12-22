@@ -6,14 +6,11 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "work-microwave"
 
-config SYS_SOC
-	default "lpc32xx"
-
 config SYS_CONFIG_NAME
 	default "work_92105"
 
 config CMD_HD44760
-	bool "Enable 'hd44780' LCD-control comand"
+	bool "Enable 'hd44780' LCD-control command"
 	help
 	  This controls the LCD driver.
 

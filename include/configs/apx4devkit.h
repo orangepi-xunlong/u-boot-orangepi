@@ -17,7 +17,6 @@
 #define CONFIG_MACH_TYPE	MACH_TYPE_APX4DEVKIT
 
 /* Memory configuration */
-#define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
 #define PHYS_SDRAM_1			0x40000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE		0x20000000	/* Max 512 MB RAM */
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
@@ -27,27 +26,15 @@
 
 /* Environment is in MMC */
 #if defined(CONFIG_CMD_MMC) && defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET		(256 * 1024)
-#define CONFIG_ENV_SIZE			(16 * 1024)
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #endif
 
 /* Environment is in NAND */
 #if defined(CONFIG_CMD_NAND) && defined(CONFIG_ENV_IS_IN_NAND)
-#define CONFIG_ENV_SECT_SIZE		(128 * 1024)
-#define CONFIG_ENV_SIZE			(128 * 1024)
-#define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
 #define CONFIG_ENV_RANGE		(384 * 1024)
-#define CONFIG_ENV_OFFSET		0x120000
-#define CONFIG_ENV_OFFSET_REDUND	\
-		(CONFIG_ENV_OFFSET + CONFIG_ENV_RANGE)
 #endif
 
 /* UBI and NAND partitioning */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-#endif
 
 /* FEC Ethernet on SoC */
 #ifdef CONFIG_CMD_NET

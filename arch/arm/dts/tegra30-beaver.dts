@@ -28,7 +28,7 @@
 		reg = <0x80000000 0x7ff00000>;
 	};
 
-	pcie-controller@00003000 {
+	pcie@3000 {
 		status = "okay";
 
 		avdd-pexa-supply = <&ldo1_reg>;
@@ -102,9 +102,6 @@
 			vccio-supply = <&vdd_5v_in_reg>;
 
 			regulators {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
 				vdd1_reg: vdd1 {
 					regulator-name = "vddio_ddr_1v2";
 					regulator-min-microvolt = <1200000>;

@@ -35,17 +35,18 @@ env__net_dhcp_server = True
 # static IP. If solely relying on DHCP, this variable may be omitted or set to
 # an empty list.
 env__net_static_env_vars = [
-    ("ipaddr", "10.0.0.100"),
-    ("netmask", "255.255.255.0"),
-    ("serverip", "10.0.0.1"),
+    ('ipaddr', '10.0.0.100'),
+    ('netmask', '255.255.255.0'),
+    ('serverip', '10.0.0.1'),
 ]
 
 # Details regarding a file that may be read from a TFTP server. This variable
 # may be omitted or set to None if TFTP testing is not possible or desired.
 env__efi_loader_helloworld_file = {
-    "fn": "lib/efi_loader/helloworld.efi",
-    "size": 5058624,
-    "crc32": "c2244b26",
+    'fn': 'lib/efi_loader/helloworld.efi', # file name
+    'size': 5058624,                       # file length in bytes
+    'crc32': 'c2244b26',                   # CRC32 check sum
+    'addr': 0x40400000,                    # load address
 }
 """
 
@@ -118,7 +119,7 @@ def fetch_tftp_file(u_boot_console, env_conf):
 
     addr = f.get('addr', None)
     if not addr:
-        addr = u_boot_utils.find_ram_base(u_boot_console) + (1024 * 1024 * 4)
+        addr = u_boot_utils.find_ram_base(u_boot_console)
 
     fn = f['fn']
     output = u_boot_console.run_command('tftpboot %x %s' % (addr, fn))
@@ -140,12 +141,13 @@ def fetch_tftp_file(u_boot_console, env_conf):
 
     return addr
 
+@pytest.mark.buildconfigspec('of_control')
 @pytest.mark.buildconfigspec('cmd_bootefi_hello_compile')
 def test_efi_helloworld_net(u_boot_console):
     """Run the helloworld.efi binary via TFTP.
 
-    The helloworld.efi file is downloaded from the TFTP server and gets
-    executed.
+    The helloworld.efi file is downloaded from the TFTP server and is executed
+    using the fallback device tree at $fdtcontroladdr.
     """
 
     addr = fetch_tftp_file(u_boot_console, 'env__efi_loader_helloworld_file')
@@ -168,6 +170,7 @@ def test_efi_helloworld_builtin(u_boot_console):
     expected_text = 'Hello, world'
     assert expected_text in output
 
+@pytest.mark.buildconfigspec('of_control')
 @pytest.mark.buildconfigspec('cmd_bootefi')
 def test_efi_grub_net(u_boot_console):
     """Run the grub.efi binary via TFTP.

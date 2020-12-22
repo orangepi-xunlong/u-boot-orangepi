@@ -378,14 +378,15 @@ _start:
 	clr.l	%sp@-
 
 	/* run low-level board init code (from flash) */
-	bsr	board_init_f
+	move.l	#board_init_f, %a1
+	jsr	(%a1)
 
 	/* board_init_f() does not return */
 
 /******************************************************************************/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.

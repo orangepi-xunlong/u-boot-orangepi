@@ -16,7 +16,7 @@
 
 int nand_curr_device = -1;
 
-struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
+static struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
 
 #ifndef CONFIG_SYS_NAND_SELF_INIT
 static struct nand_chip nand_chip[CONFIG_SYS_MAX_NAND_DEVICE];
@@ -59,7 +59,7 @@ int nand_register(int devnum, struct mtd_info *mtd)
 	sprintf(dev_name[devnum], "nand%d", devnum);
 	mtd->name = dev_name[devnum];
 
-#ifdef CONFIG_MTD_DEVICE
+#ifdef CONFIG_MTD
 	/*
 	 * Add MTD device so that we can reference it later
 	 * via the mtdcore infrastructure (e.g. ubi).

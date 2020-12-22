@@ -7,7 +7,9 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/io.h>
+#include <asm/arch/base.h>
 #include <asm/arch/wdog.h>
 #include <efi_loader.h>
 
@@ -23,16 +25,12 @@
 /* max ticks timeout */
 #define BCM2835_WDOG_MAX_TIMEOUT	0x000fffff
 
-#ifdef CONFIG_BCM2835_WDT
-extern void hw_watchdog_disable(void);
-#else
 void hw_watchdog_disable(void) {}
-#endif
 
-__efi_runtime_data struct bcm2835_wdog_regs *wdog_regs =
-	(struct bcm2835_wdog_regs *)BCM2835_WDOG_PHYSADDR;
+__efi_runtime_data struct bcm2835_wdog_regs *wdog_regs;
 
-void __efi_runtime reset_cpu(ulong ticks)
+static void __efi_runtime
+__reset_cpu(struct bcm2835_wdog_regs *wdog_regs, ulong ticks)
 {
 	uint32_t rstc, timeout;
 
@@ -50,6 +48,14 @@ void __efi_runtime reset_cpu(ulong ticks)
 	writel(BCM2835_WDOG_PASSWORD | rstc, &wdog_regs->rstc);
 }
 
+void reset_cpu(ulong ticks)
+{
+	struct bcm2835_wdog_regs *regs =
+		(struct bcm2835_wdog_regs *)BCM2835_WDOG_PHYSADDR;
+
+	__reset_cpu(regs, 0);
+}
+
 #ifdef CONFIG_EFI_LOADER
 
 void __efi_runtime EFIAPI efi_reset_system(
@@ -59,13 +65,11 @@ void __efi_runtime EFIAPI efi_reset_system(
 {
 	u32 val;
 
-	switch (reset_type) {
-	case EFI_RESET_COLD:
-	case EFI_RESET_WARM:
-	case EFI_RESET_PLATFORM_SPECIFIC:
-		reset_cpu(0);
-		break;
-	case EFI_RESET_SHUTDOWN:
+	if (reset_type == EFI_RESET_COLD ||
+	    reset_type == EFI_RESET_WARM ||
+	    reset_type == EFI_RESET_PLATFORM_SPECIFIC) {
+		__reset_cpu(wdog_regs, 0);
+	} else if (reset_type == EFI_RESET_SHUTDOWN) {
 		/*
 		 * We set the watchdog hard reset bit here to distinguish this reset
 		 * from the normal (full) reset. bootcode.bin will not reboot after a
@@ -75,8 +79,7 @@ void __efi_runtime EFIAPI efi_reset_system(
 		val |= BCM2835_WDOG_PASSWORD;
 		val |= BCM2835_WDOG_RSTS_RASPBERRYPI_HALT;
 		writel(val, &wdog_regs->rsts);
-		reset_cpu(0);
-		break;
+		__reset_cpu(wdog_regs, 0);
 	}
 
 	while (1) { }
@@ -84,6 +87,7 @@ void __efi_runtime EFIAPI efi_reset_system(
 
 efi_status_t efi_reset_system_init(void)
 {
+	wdog_regs = (struct bcm2835_wdog_regs *)BCM2835_WDOG_PHYSADDR;
 	return efi_add_runtime_mmio(&wdog_regs, sizeof(*wdog_regs));
 }
 

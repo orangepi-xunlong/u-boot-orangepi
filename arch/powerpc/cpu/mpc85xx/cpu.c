@@ -10,6 +10,12 @@
 
 #include <config.h>
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <irq_func.h>
+#include <log.h>
+#include <time.h>
+#include <vsprintf.h>
 #include <watchdog.h>
 #include <command.h>
 #include <fsl_esdhc.h>
@@ -23,6 +29,7 @@
 #include <asm/processor.h>
 #include <fsl_ddr_sdram.h>
 #include <asm/ppc.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -290,7 +297,7 @@ int checkcpu (void)
 
 /* ------------------------------------------------------------------------- */
 
-int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 /* Everything after the first generation of PQ3 parts has RSTCR */
 #if defined(CONFIG_ARCH_MPC8540) || defined(CONFIG_ARCH_MPC8541) || \
@@ -329,7 +336,7 @@ int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #ifndef CONFIG_SYS_FSL_TBCLK_DIV
 #define CONFIG_SYS_FSL_TBCLK_DIV 8
 #endif
-__weak unsigned long get_tbclk (void)
+__weak unsigned long get_tbclk(void)
 {
 	unsigned long tbclk_div = CONFIG_SYS_FSL_TBCLK_DIV;
 

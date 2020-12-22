@@ -5,15 +5,14 @@
  */
 
 #include <common.h>
+#include <hang.h>
 #include <asm/io.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_wdt.h>
 #include <asm/arch/clk.h>
 #include <spl.h>
 
-#if defined(CONFIG_AT91SAM9_WATCHDOG)
-void at91_disable_wdt(void) { }
-#else
+#if !defined(CONFIG_WDT_AT91)
 void at91_disable_wdt(void)
 {
 	struct at91_wdt *wdt = (struct at91_wdt *)ATMEL_BASE_WDT;

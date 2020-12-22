@@ -20,11 +20,12 @@
  */
 
 #ifndef __ASSEMBLY__
+#include <fdtdec.h>
 #include <membuff.h>
 #include <linux/list.h>
 
 typedef struct global_data {
-	bd_t *bd;
+	struct bd_info *bd;
 	unsigned long flags;
 	unsigned int baudrate;
 	unsigned long cpu_clk;		/* CPU clock in Hz!		*/
@@ -32,7 +33,7 @@ typedef struct global_data {
 	/* We cannot bracket this with CONFIG_PCI due to mpc5xxx */
 	unsigned long pci_clk;
 	unsigned long mem_clk;
-#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
+#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO) || defined(CONFIG_DM_VIDEO)
 	unsigned long fb_base;		/* Base address of framebuffer mem */
 #endif
 #if defined(CONFIG_POST)
@@ -50,8 +51,9 @@ typedef struct global_data {
 	unsigned long env_addr;		/* Address  of Environment struct */
 	unsigned long env_valid;	/* Environment valid? enum env_valid */
 	unsigned long env_has_init;	/* Bitmask of boolean of struct env_location offsets */
-	int env_load_location;
+	int env_load_prio;		/* Priority of the loaded environment */
 
+	unsigned long ram_base;		/* Base address of RAM used by U-Boot */
 	unsigned long ram_top;		/* Top address of RAM used by U-Boot */
 	unsigned long relocaddr;	/* Start address of U-Boot in RAM */
 	phys_size_t ram_size;		/* RAM size */
@@ -72,10 +74,13 @@ typedef struct global_data {
 
 	const void *fdt_blob;		/* Our device tree, NULL if none */
 	void *new_fdt;			/* Relocated FDT */
-	void *new_dtbo;			/*Relocated dtbo */
 	unsigned long fdt_size;		/* Space reserved for relocated FDT */
 #ifdef CONFIG_OF_LIVE
 	struct device_node *of_root;
+#endif
+
+#if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
+	const void *multi_dtb_fit;	/* uncompressed multi-dtb FIT image */
 #endif
 	struct jt_funcs *jt;		/* jump table */
 	char env_buf[32];		/* buffer for env_get() before reloc. */
@@ -84,9 +89,6 @@ typedef struct global_data {
 #endif
 #if defined(CONFIG_SYS_I2C)
 	int		cur_i2c_bus;	/* current used i2c bus */
-#endif
-#ifdef CONFIG_SYS_I2C_MXC
-	void *srdata[10];
 #endif
 	unsigned int timebase_h;
 	unsigned int timebase_l;
@@ -122,44 +124,19 @@ typedef struct global_data {
 	struct list_head log_head;	/* List of struct log_device */
 	int log_fmt;			/* Mask containing log format info */
 #endif
-#ifdef CONFIG_ARCH_SUNXI
-	long           securemode;
-	void          *parameter_mod_buf;
-	long           boot_card_num;
-	ulong          lockflag;
-	ulong          chargemode;
-
-	ulong          parameter_reloc_buf;
-	ulong          parameter_reloc_size;
-
-	ulong          malloc_noncache_start;
-
-	long           key_pressd_value;
-	long           axp_power_soft_id;
-	long           power_step_level;
-	long           pmu_suspend_chgcur;
-	long           pmu_runtime_chgcur;
-	long           limit_vol;
-	long           limit_cur;
-	long           limit_pcvol;
-	long           limit_pccur;
-	ulong          force_download_uboot;
-	ulong          vbus_status;//0: unknow 1:exist 2:not exist
-	ulong          debug_mode;
-	long           force_shell;
-	long           user_debug_mode;
-	ulong          layer_para;
-	ulong          layer_hd;
-	ulong          bootfile_mode;
-	int            pmu_saved_status;
-	int 		   need_shutdown;
-	int            logo_status_multiboot;
-	int            ir_detect_status;
-	bool			uboot_shell;
-	ulong          boot_logo_addr;
-
+#if CONFIG_IS_ENABLED(BLOBLIST)
+	struct bloblist_hdr *bloblist;	/* Bloblist information */
+	struct bloblist_hdr *new_bloblist;	/* Relocated blolist info */
+# ifdef CONFIG_SPL
+	struct spl_handoff *spl_handoff;
+# endif
 #endif
-
+#if defined(CONFIG_TRANSLATION_OFFSET)
+	fdt_addr_t translation_offset;	/* optional translation offset */
+#endif
+#if CONFIG_IS_ENABLED(WDT)
+	struct udevice *watchdog_dev;
+#endif
 } gd_t;
 #endif
 
@@ -170,7 +147,7 @@ typedef struct global_data {
 #endif
 
 /*
- * Global Data Flags - the top 16 bits are reserved for arch-specific flags
+ * Global Data Flags
  */
 #define GD_FLG_RELOC		0x00001	/* Code was relocated to RAM	   */
 #define GD_FLG_DEVINIT		0x00002	/* Devices have been initialized   */
@@ -188,5 +165,7 @@ typedef struct global_data {
 #define GD_FLG_ENV_DEFAULT	0x02000 /* Default variable flag	   */
 #define GD_FLG_SPL_EARLY_INIT	0x04000 /* Early SPL init is done	   */
 #define GD_FLG_LOG_READY	0x08000 /* Log system is ready for use	   */
+#define GD_FLG_WDT_READY	0x10000 /* Watchdog is ready for use	   */
+#define GD_FLG_SKIP_LL_INIT	0x20000	/* Don't perform low-level init	   */
 
 #endif /* __ASM_GENERIC_GBL_DATA_H */

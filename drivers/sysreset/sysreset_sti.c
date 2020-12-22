@@ -10,6 +10,7 @@
 #include <syscon.h>
 #include <sysreset.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -58,7 +59,7 @@ static int sti_sysreset_probe(struct udevice *dev)
 		return -ENODEV;
 	}
 
-	priv->base = regmap->base;
+	priv->base = regmap->ranges[0].start;
 
 	return 0;
 }

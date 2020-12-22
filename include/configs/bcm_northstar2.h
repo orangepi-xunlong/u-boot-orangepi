@@ -14,7 +14,6 @@
 #define V2M_BASE				0x80000000
 #define PHYS_SDRAM_1				V2M_BASE
 
-#define CONFIG_NR_DRAM_BANKS			2
 #define PHYS_SDRAM_1_SIZE			(4UL * SZ_1G)
 #define PHYS_SDRAM_2_SIZE			(4UL * SZ_1G)
 #define CONFIG_SYS_SDRAM_BASE			PHYS_SDRAM_1
@@ -33,8 +32,6 @@
 #define CONFIG_SYS_NS16550_COM3			0x66120000
 #define CONFIG_SYS_NS16550_COM4			0x66130000
 #define CONFIG_BAUDRATE				115200
-
-#define CONFIG_ENV_SIZE				SZ_8K
 
 /* console configuration */
 #define CONFIG_SYS_CBSIZE			SZ_1K

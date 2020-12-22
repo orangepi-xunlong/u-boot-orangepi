@@ -5,9 +5,21 @@
 # Entry-type module for x86 VGA ROM binary blob
 #
 
-from entry import Entry
-from blob import Entry_blob
+from binman.entry import Entry
+from binman.etype.blob import Entry_blob
 
 class Entry_intel_vga(Entry_blob):
-    def __init__(self, image, etype, node):
-        Entry_blob.__init__(self, image, etype, node)
+    """Entry containing an Intel Video Graphics Adaptor (VGA) file
+
+    Properties / Entry arguments:
+        - filename: Filename of file to read into entry
+
+    This file contains code that sets up the integrated graphics subsystem on
+    some Intel SoCs. U-Boot executes this when the display is started up.
+
+    This is similar to the VBT file but in a different format.
+
+    See README.x86 for information about Intel binary blobs.
+    """
+    def __init__(self, section, etype, node):
+        Entry_blob.__init__(self, section, etype, node)

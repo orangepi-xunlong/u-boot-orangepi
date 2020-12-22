@@ -21,22 +21,18 @@
 #endif
 
 /* TRATS2 has 4 banks of DRAM */
-#define CONFIG_NR_DRAM_BANKS		4
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define PHYS_SDRAM_1			CONFIG_SYS_SDRAM_BASE
 #define SDRAM_BANK_SIZE			(256 << 20)	/* 256 MB */
 /* memtest works on */
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x5E00000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x3E00000)
 
 /* select serial console configuration */
-#define CONFIG_SERIAL2
 
 /* Console configuration */
 
 #define CONFIG_BOOTCOMMAND		"run autoboot"
-#define CONFIG_DEFAULT_CONSOLE		"ttySAC2,115200n8"
+#define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR \
 					- GENERATED_GBL_DATA_SIZE)
@@ -46,8 +42,6 @@
 #define CONFIG_SYS_MONITOR_BASE	0x00000000
 
 #define CONFIG_SYS_MMC_ENV_DEV		CONFIG_MMC_DEFAULT_DEV
-#define CONFIG_ENV_SIZE			4096
-#define CONFIG_ENV_OFFSET		((32 - 4) << 10) /* 32KiB - 4KiB */
 
 #define CONFIG_ENV_OVERWRITE
 
@@ -105,7 +99,7 @@
 	"boottrace=setenv opts initcall_debug; run bootcmd\0" \
 	"verify=n\0" \
 	"rootfstype=ext4\0" \
-	"console=" CONFIG_DEFAULT_CONSOLE "\0" \
+	"console=" CONFIG_DEFAULT_CONSOLE \
 	"kernelname=uImage\0" \
 	"loaduimage=ext4load mmc ${mmcdev}:${mmcbootpart} 0x40007FC0 " \
 		"${kernelname}\0" \
@@ -150,8 +144,6 @@
 
 /* Common misc for Samsung */
 #define CONFIG_MISC_COMMON
-
-#define CONFIG_MISC_INIT_R
 
 /* Download menu - Samsung common */
 #define CONFIG_LCD_MENU

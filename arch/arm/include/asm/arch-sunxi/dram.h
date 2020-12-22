@@ -15,63 +15,26 @@
 #include <linux/types.h>
 
 /* dram regs definition */
-#if defined(CONFIG_MACH_SUN50IW3) || defined(CONFIG_MACH_SUN8IW16) \
-		|| defined (CONFIG_MACH_SUN8IW18) \
-		|| defined (CONFIG_MACH_SUN50IW9) \
-		|| defined (CONFIG_MACH_SUN8IW19) \
-		|| defined (CONFIG_MACH_SUN50IW10) \
-		|| defined (CONFIG_MACH_SUN50IW11) \
-		|| defined (CONFIG_MACH_SUN8IW15) \
-		|| defined (CONFIG_MACH_SUN8IW7)
-
-#define  CONFIG_DRAM_VER_1
-
-typedef struct __DRAM_PARA
-{
-	//normal configuration
-	unsigned int        dram_clk;
-	//dram_type DDR2: 2     DDR3: 3   LPDDR2: 6   LPDDR3: 7  DDR3L: 31
-	unsigned int        dram_type;
-	unsigned int        dram_zq;		//do not need
-	unsigned int		dram_odt_en;
-
-	//control configuration
-	unsigned int		dram_para1;
-	unsigned int		dram_para2;
-
-	//timing configuration
-	unsigned int		dram_mr0;
-	unsigned int		dram_mr1;
-	unsigned int		dram_mr2;
-	unsigned int		dram_mr3;
-	unsigned int		dram_tpr0;	//DRAMTMG0
-	unsigned int		dram_tpr1;	//DRAMTMG1
-	unsigned int		dram_tpr2;	//DRAMTMG2
-	unsigned int		dram_tpr3;	//DRAMTMG3
-	unsigned int		dram_tpr4;	//DRAMTMG4
-	unsigned int		dram_tpr5;	//DRAMTMG5
-	unsigned int		dram_tpr6;	//DRAMTMG8
-
-	//reserved for future use
-	unsigned int		dram_tpr7;
-	unsigned int		dram_tpr8;
-	unsigned int		dram_tpr9;
-	unsigned int		dram_tpr10;
-	unsigned int		dram_tpr11;
-	unsigned int		dram_tpr12;
-	unsigned int		dram_tpr13;
-
-}__dram_para_t;
-
-#ifdef FPGA_PLATFORM
-unsigned int mctl_init(void *para);
+#if defined(CONFIG_MACH_SUN6I)
+#include <asm/arch/dram_sun6i.h>
+#elif defined(CONFIG_MACH_SUN8I_A23)
+#include <asm/arch/dram_sun8i_a23.h>
+#elif defined(CONFIG_MACH_SUN8I_A33)
+#include <asm/arch/dram_sun8i_a33.h>
+#elif defined(CONFIG_MACH_SUN8I_A83T)
+#include <asm/arch/dram_sun8i_a83t.h>
+#elif defined(CONFIG_SUNXI_DRAM_DW)
+#include <asm/arch/dram_sunxi_dw.h>
+#elif defined(CONFIG_MACH_SUN9I)
+#include <asm/arch/dram_sun9i.h>
+#elif defined(CONFIG_MACH_SUN50I_H6)
+#include <asm/arch/dram_sun50i_h6.h>
 #else
-extern int init_DRAM(int type, __dram_para_t *buff);
-#endif
-extern int update_fdt_dram_para(void *dtb_base);
-#else
-#error "platform not support"
+#include <asm/arch/dram_sun4i.h>
 #endif
 
+unsigned long sunxi_dram_init(void);
+void mctl_await_completion(u32 *reg, u32 mask, u32 val);
+bool mctl_mem_matches(u32 offset);
 
 #endif /* _SUNXI_DRAM_H */

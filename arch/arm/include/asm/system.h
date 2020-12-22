@@ -1,7 +1,6 @@
 #ifndef __ASM_ARM_SYSTEM_H
 #define __ASM_ARM_SYSTEM_H
 
-#include <common.h>
 #include <linux/compiler.h>
 #include <asm/barriers.h>
 
@@ -29,6 +28,7 @@
 #define SCR_EL3_HCE_EN		(1 << 8)  /* Hypervisor Call enable          */
 #define SCR_EL3_SMD_DIS		(1 << 7)  /* Secure Monitor Call disable     */
 #define SCR_EL3_RES1		(3 << 4)  /* Reserved, RES1                  */
+#define SCR_EL3_EA_EN		(1 << 3)  /* External aborts taken to EL3    */
 #define SCR_EL3_NS_EN		(1 << 0)  /* EL0 and EL1 in Non-scure state  */
 
 /*
@@ -108,6 +108,8 @@
 #define SCTLR_EL1_MMU_DIS	(0)       /* MMU disabled                     */
 
 #ifndef __ASSEMBLY__
+
+struct pt_regs;
 
 u64 get_page_table_size(void);
 #define PGTABLE_SIZE	get_page_table_size()
@@ -253,6 +255,7 @@ void mmu_change_region_attr(phys_addr_t start, size_t size, u64 attrs);
 void smc_call(struct pt_regs *args);
 
 void __noreturn psci_system_reset(void);
+void __noreturn psci_system_reset2(u32 reset_level, u32 cookie);
 void __noreturn psci_system_off(void);
 
 #ifdef CONFIG_ARMV8_PSCI
@@ -451,7 +454,7 @@ enum dcache_option {
 	DCACHE_WRITEBACK = TTB_SECT | TTB_SECT_MAIR(2),
 	DCACHE_WRITEALLOC = TTB_SECT | TTB_SECT_MAIR(3),
 };
-#elif defined(CONFIG_CPU_V7)
+#elif defined(CONFIG_CPU_V7A)
 /* Short-Descriptor Translation Table Level 1 Bits */
 #define TTB_SECT_NS_MASK	(1 << 19)
 #define TTB_SECT_NG_MASK	(1 << 17)
@@ -483,6 +486,14 @@ enum dcache_option {
 };
 #endif
 
+#if defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
+#define DCACHE_DEFAULT_OPTION	DCACHE_WRITETHROUGH
+#elif defined(CONFIG_SYS_ARM_CACHE_WRITEALLOC)
+#define DCACHE_DEFAULT_OPTION	DCACHE_WRITEALLOC
+#elif defined(CONFIG_SYS_ARM_CACHE_WRITEBACK)
+#define DCACHE_DEFAULT_OPTION	DCACHE_WRITEBACK
+#endif
+
 /* Size of an MMU section */
 enum {
 #ifdef CONFIG_ARMV7_LPAE
@@ -493,7 +504,7 @@ enum {
 	MMU_SECTION_SIZE	= 1 << MMU_SECTION_SHIFT,
 };
 
-#ifdef CONFIG_CPU_V7
+#ifdef CONFIG_CPU_V7A
 /* TTBR0 bits */
 #define TTBR0_BASE_ADDR_MASK	0xFFFFC000
 #define TTBR0_RGN_NC			(0 << 3)
@@ -514,6 +525,22 @@ enum {
  * \param stop		stop address of update in page table
  */
 void mmu_page_table_flush(unsigned long start, unsigned long stop);
+
+#ifdef CONFIG_ARMV7_PSCI
+void psci_arch_cpu_entry(void);
+void psci_arch_init(void);
+u32 psci_version(void);
+s32 psci_features(u32 function_id, u32 psci_fid);
+s32 psci_cpu_off(void);
+s32 psci_cpu_on(u32 function_id, u32 target_cpu, u32 pc,
+		u32 context_id);
+s32 psci_affinity_info(u32 function_id, u32 target_affinity,
+		       u32  lowest_affinity_level);
+u32 psci_migrate_info_type(void);
+void psci_system_off(void);
+void psci_system_reset(void);
+s32 psci_features(u32 function_id, u32 psci_fid);
+#endif
 
 #endif /* __ASSEMBLY__ */
 

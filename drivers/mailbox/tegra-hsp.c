@@ -4,10 +4,13 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <malloc.h>
 #include <asm/io.h>
 #include <dm.h>
 #include <mailbox-uclass.h>
 #include <dt-bindings/mailbox/tegra186-hsp.h>
+#include <linux/bitops.h>
 
 #define TEGRA_HSP_INT_DIMENSIONING		0x380
 #define TEGRA_HSP_INT_DIMENSIONING_NSI_SHIFT	16
@@ -175,7 +178,7 @@ static const struct udevice_id tegra_hsp_ids[] = {
 struct mbox_ops tegra_hsp_mbox_ops = {
 	.of_xlate = tegra_hsp_of_xlate,
 	.request = tegra_hsp_request,
-	.free = tegra_hsp_free,
+	.rfree = tegra_hsp_free,
 	.send = tegra_hsp_send,
 	.recv = tegra_hsp_recv,
 };

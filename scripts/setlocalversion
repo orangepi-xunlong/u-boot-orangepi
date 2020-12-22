@@ -65,8 +65,6 @@ scm_version()
 			else
 				printf '%s%s' -g $head
 			fi
-		else
-			printf '%s%s' -g $head
 		fi
 
 		# Is this git on svn?

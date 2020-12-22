@@ -121,15 +121,5 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 
 #define arm_smccc_hvc_quirk(...) __arm_smccc_hvc(__VA_ARGS__)
 
-u32 __sunxi_smc_call(ulong arg0, ulong arg1, ulong arg2, ulong arg3);
-
-
-static inline u32 sunxi_smc_call_atf(ulong arg0, ulong arg1, ulong arg2, ulong arg3)
-{
-	return __sunxi_smc_call(arg0, arg1, arg2, arg3);
-}
-
-
-
 #endif /*__ASSEMBLY__*/
 #endif /*__LINUX_ARM_SMCCC_H*/

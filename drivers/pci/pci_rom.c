@@ -24,20 +24,21 @@
 
 #include <common.h>
 #include <bios_emul.h>
+#include <bootstage.h>
 #include <dm.h>
 #include <errno.h>
+#include <init.h>
+#include <log.h>
 #include <malloc.h>
 #include <pci.h>
 #include <pci_rom.h>
 #include <vbe.h>
 #include <video.h>
 #include <video_fb.h>
+#include <acpi/acpi_s3.h>
 #include <linux/screen_info.h>
 
-#ifdef CONFIG_X86
-#include <asm/acpi_s3.h>
 DECLARE_GLOBAL_DATA_PTR;
-#endif
 
 __weak bool board_should_run_oprom(struct udevice *dev)
 {
@@ -247,7 +248,7 @@ int dm_pci_run_vga_bios(struct udevice *dev, int (*int15_handler)(void),
 	}
 
 	if (!board_should_load_oprom(dev))
-		return -ENXIO;
+		return log_msg_ret("Should not load OPROM", -ENXIO);
 
 	ret = pci_rom_probe(dev, &rom);
 	if (ret)
@@ -306,7 +307,7 @@ int dm_pci_run_vga_bios(struct udevice *dev, int (*int15_handler)(void),
 			goto err;
 #endif
 	} else {
-#if defined(CONFIG_X86) && CONFIG_IS_ENABLED(X86_32BIT_INIT)
+#if defined(CONFIG_X86) && (CONFIG_IS_ENABLED(X86_32BIT_INIT) || CONFIG_TPL)
 		bios_set_interrupt_handler(0x15, int15_handler);
 
 		bios_run_on_x86(dev, (unsigned long)ram, vesa_mode,
@@ -328,9 +329,10 @@ int vbe_setup_video_priv(struct vesa_mode_info *vesa,
 			 struct video_uc_platdata *plat)
 {
 	if (!vesa->x_resolution)
-		return -ENXIO;
+		return log_msg_ret("No x resolution", -ENXIO);
 	uc_priv->xsize = vesa->x_resolution;
 	uc_priv->ysize = vesa->y_resolution;
+	uc_priv->line_length = vesa->bytes_per_scanline;
 	switch (vesa->bits_per_pixel) {
 	case 32:
 	case 24:

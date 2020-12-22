@@ -241,10 +241,13 @@
 
 #include <config.h>
 #include <hexdump.h>
+#include <log.h>
 #include <malloc.h>
 #include <common.h>
 #include <console.h>
 #include <g_dnl.h>
+#include <dm/devres.h>
+#include <linux/bug.h>
 
 #include <linux/err.h>
 #include <linux/usb/ch9.h>
@@ -252,10 +255,11 @@
 #include <usb_mass_storage.h>
 
 #include <asm/unaligned.h>
+#include <linux/bitops.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
-#include <usb/lin_gadget_compat.h>
+#include <linux/bitmap.h>
 #include <g_dnl.h>
 
 /*------------------------------------------------------------------------*/
@@ -282,26 +286,6 @@ static const char fsg_string_interface[] = "Mass Storage";
 
 struct kref {int x; };
 struct completion {int x; };
-
-inline void set_bit(int nr, volatile void *addr)
-{
-	int	mask;
-	unsigned int *a = (unsigned int *) addr;
-
-	a += nr >> 5;
-	mask = 1 << (nr & 0x1f);
-	*a |= mask;
-}
-
-inline void clear_bit(int nr, volatile void *addr)
-{
-	int	mask;
-	unsigned int *a = (unsigned int *) addr;
-
-	a += nr >> 5;
-	mask = 1 << (nr & 0x1f);
-	*a &= ~mask;
-}
 
 struct fsg_dev;
 struct fsg_common;
@@ -409,7 +393,11 @@ static inline int __fsg_is_set(struct fsg_common *common,
 	if (common->fsg)
 		return 1;
 	ERROR(common, "common->fsg is NULL in %s at %u\n", func, line);
+#ifdef __UBOOT__
+	assert_noisy(false);
+#else
 	WARN_ON(1);
+#endif
 	return 0;
 }
 
@@ -2086,7 +2074,7 @@ static int received_cbw(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 		 * we can simply accept and discard any data received
 		 * until the next reset. */
 		wedge_bulk_in_endpoint(fsg);
-		set_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
+		generic_set_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 		return -EINVAL;
 	}
 
@@ -2250,7 +2238,7 @@ reset:
 	fsg->bulk_out_enabled = 1;
 	common->bulk_out_maxpacket =
 				le16_to_cpu(get_unaligned(&d->wMaxPacketSize));
-	clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
+	generic_clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 
 	/* Allocate the requests */
 	for (i = 0; i < FSG_NUM_BUFFERS; ++i) {

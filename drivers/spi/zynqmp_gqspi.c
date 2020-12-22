@@ -6,9 +6,10 @@
  */
 
 #include <common.h>
-#include <asm/arch/clk.h>
-#include <asm/arch/hardware.h>
+#include <cpu_func.h>
+#include <log.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <clk.h>
 #include <dm.h>
@@ -17,6 +18,9 @@
 #include <spi.h>
 #include <ubi_uboot.h>
 #include <wait_bit.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/err.h>
 
 #define GQSPI_GFIFO_STRT_MODE_MASK	BIT(29)
 #define GQSPI_CONFIG_MODE_EN_MASK	(3 << 30)
@@ -267,7 +271,7 @@ void zynqmp_qspi_set_tapdelay(struct udevice *bus, u32 baudrateval)
 		zynqmp_mmio_read(IOU_TAPDLY_BYPASS_OFST, &tapdlybypass);
 		tapdlybypass |= (TAP_DLY_BYPASS_LQSPI_RX_VALUE <<
 				TAP_DLY_BYPASS_LQSPI_RX_SHIFT);
-	} else if (reqhz < GQSPI_FREQ_100MHZ) {
+	} else if (reqhz <= GQSPI_FREQ_100MHZ) {
 		zynqmp_mmio_read(IOU_TAPDLY_BYPASS_OFST, &tapdlybypass);
 		tapdlybypass |= (TAP_DLY_BYPASS_LQSPI_RX_VALUE <<
 				TAP_DLY_BYPASS_LQSPI_RX_SHIFT);
@@ -277,7 +281,7 @@ void zynqmp_qspi_set_tapdelay(struct udevice *bus, u32 baudrateval)
 		datadlyadj |= ((GQSPI_USE_DATA_DLY << GQSPI_USE_DATA_DLY_SHIFT)
 				| (GQSPI_DATA_DLY_ADJ_VALUE <<
 					GQSPI_DATA_DLY_ADJ_SHIFT));
-	} else if (reqhz < GQSPI_FREQ_150MHZ) {
+	} else if (reqhz <= GQSPI_FREQ_150MHZ) {
 		lpbkdlyadj = readl(&regs->lpbkdly);
 		lpbkdlyadj |= ((GQSPI_LPBK_DLY_ADJ_LPBK_MASK) |
 				GQSPI_LPBK_DLY_ADJ_DLY_0);

@@ -2,8 +2,6 @@
 # Copyright (c) 2011 The Chromium OS Authors.
 #
 
-from __future__ import print_function
-
 try:
     import configparser as ConfigParser
 except:
@@ -12,8 +10,9 @@ except:
 import os
 import re
 
-import command
-import gitutil
+from patman import command
+from patman import gitutil
+from patman import tools
 
 """Default settings per-project.
 
@@ -35,10 +34,7 @@ class _ProjectConfigParser(ConfigParser.SafeConfigParser):
     - Merge general default settings/aliases with project-specific ones.
 
     # Sample config used for tests below...
-    >>> try:
-    ...     from StringIO import StringIO
-    ... except ImportError:
-    ...     from io import StringIO
+    >>> from io import StringIO
     >>> sample_config = '''
     ... [alias]
     ... me: Peter P. <likesspiders@example.com>
@@ -57,25 +53,25 @@ class _ProjectConfigParser(ConfigParser.SafeConfigParser):
     # Check to make sure that bogus project gets general alias.
     >>> config = _ProjectConfigParser("zzz")
     >>> config.readfp(StringIO(sample_config))
-    >>> config.get("alias", "enemies")
+    >>> str(config.get("alias", "enemies"))
     'Evil <evil@example.com>'
 
     # Check to make sure that alias gets overridden by project.
     >>> config = _ProjectConfigParser("sm")
     >>> config.readfp(StringIO(sample_config))
-    >>> config.get("alias", "enemies")
+    >>> str(config.get("alias", "enemies"))
     'Green G. <ugly@example.com>'
 
     # Check to make sure that settings get merged with project.
     >>> config = _ProjectConfigParser("linux")
     >>> config.readfp(StringIO(sample_config))
-    >>> sorted(config.items("settings"))
+    >>> sorted((str(a), str(b)) for (a, b) in config.items("settings"))
     [('am_hero', 'True'), ('process_tags', 'False')]
 
     # Check to make sure that settings works with unknown project.
     >>> config = _ProjectConfigParser("unknown")
     >>> config.readfp(StringIO(sample_config))
-    >>> sorted(config.items("settings"))
+    >>> sorted((str(a), str(b)) for (a, b) in config.items("settings"))
     [('am_hero', 'True')]
     """
     def __init__(self, project_name):
@@ -108,14 +104,15 @@ class _ProjectConfigParser(ConfigParser.SafeConfigParser):
             See SafeConfigParser.
         """
         try:
-            return ConfigParser.SafeConfigParser.get(
+            val = ConfigParser.SafeConfigParser.get(
                 self, "%s_%s" % (self._project_name, section), option,
                 *args, **kwargs
             )
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-            return ConfigParser.SafeConfigParser.get(
+            val = ConfigParser.SafeConfigParser.get(
                 self, section, option, *args, **kwargs
             )
+        return tools.ToUnicode(val)
 
     def items(self, section, *args, **kwargs):
         """Extend SafeConfigParser to add project_section to section.
@@ -150,7 +147,8 @@ class _ProjectConfigParser(ConfigParser.SafeConfigParser):
 
         item_dict = dict(top_items)
         item_dict.update(project_items)
-        return item_dict.items()
+        return {(tools.ToUnicode(item), tools.ToUnicode(val))
+                for item, val in item_dict.items()}
 
 def ReadGitAliases(fname):
     """Read a git alias file. This is in the form used by git:
@@ -162,7 +160,7 @@ def ReadGitAliases(fname):
         fname: Filename to read
     """
     try:
-        fd = open(fname, 'r')
+        fd = open(fname, 'r', encoding='utf-8')
     except IOError:
         print("Warning: Cannot find alias file '%s'" % fname)
         return
@@ -256,14 +254,14 @@ def _ReadAliasFile(fname):
     """
     if os.path.exists(fname):
         bad_line = None
-        with open(fname) as fd:
+        with open(fname, encoding='utf-8') as fd:
             linenum = 0
             for line in fd:
                 linenum += 1
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                words = line.split(' ', 2)
+                words = line.split(None, 2)
                 if len(words) < 3 or words[0] != 'alias':
                     if not bad_line:
                         bad_line = "%s:%d:Invalid line '%s'" % (fname, linenum,

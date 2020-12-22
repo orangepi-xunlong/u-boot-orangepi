@@ -8,14 +8,16 @@
 #include <mapmem.h>
 #include <dm/root.h>
 #include <dm/util.h>
+#include <dm/uclass-internal.h>
 
 static void show_devices(struct udevice *dev, int depth, int last_flag)
 {
 	int i, is_last;
 	struct udevice *child;
 
-	/* print the first 11 characters to not break the tree-format. */
-	printf(" %-10.10s [ %c ]   %-10.10s  ", dev->uclass->uc_drv->name,
+	/* print the first 20 characters to not break the tree-format. */
+	printf(" %-10.10s  %3d  [ %c ]   %-20.20s  ", dev->uclass->uc_drv->name,
+	       dev_get_uclass_index(dev, NULL),
 	       dev->flags & DM_FLAG_ACTIVATED ? '+' : ' ', dev->driver->name);
 
 	for (i = depth; i >= 0; i--) {
@@ -47,8 +49,8 @@ void dm_dump_all(void)
 
 	root = dm_root();
 	if (root) {
-		printf(" Class      Probed  Driver      Name\n");
-		printf("----------------------------------------\n");
+		printf(" Class     Index  Probed  Driver                Name\n");
+		printf("-----------------------------------------------------------\n");
 		show_devices(root, -1, 0);
 	}
 }
@@ -60,9 +62,9 @@ void dm_dump_all(void)
  *
  * @dev:	Device to display
  */
-static void dm_display_line(struct udevice *dev)
+static void dm_display_line(struct udevice *dev, int index)
 {
-	printf("- %c %s @ %08lx",
+	printf("%-3i %c %s @ %08lx", index,
 	       dev->flags & DM_FLAG_ACTIVATED ? '*' : ' ',
 	       dev->name, (ulong)map_to_sysmem(dev));
 	if (dev->seq != -1 || dev->req_seq != -1)
@@ -78,6 +80,7 @@ void dm_dump_uclass(void)
 
 	for (id = 0; id < UCLASS_COUNT; id++) {
 		struct udevice *dev;
+		int i = 0;
 
 		ret = uclass_get(id, &uc);
 		if (ret)
@@ -86,9 +89,34 @@ void dm_dump_uclass(void)
 		printf("uclass %d: %s\n", id, uc->uc_drv->name);
 		if (list_empty(&uc->dev_head))
 			continue;
-		list_for_each_entry(dev, &uc->dev_head, uclass_node) {
-			dm_display_line(dev);
+		uclass_foreach_dev(dev, uc) {
+			dm_display_line(dev, i);
+			i++;
 		}
 		puts("\n");
+	}
+}
+
+void dm_dump_drivers(void)
+{
+	struct driver *d = ll_entry_start(struct driver, driver);
+	const int n_ents = ll_entry_count(struct driver, driver);
+	struct driver *entry;
+	const struct udevice_id *match;
+
+	puts("Driver                Compatible\n");
+	puts("--------------------------------\n");
+	for (entry = d; entry < d + n_ents; entry++) {
+		match = entry->of_match;
+
+		printf("%-20.20s", entry->name);
+		if (match) {
+			printf("  %s", match->compatible);
+			match++;
+		}
+		printf("\n");
+
+		for (; match && match->compatible; match++)
+			printf("%-20.20s  %s\n", "", match->compatible);
 	}
 }

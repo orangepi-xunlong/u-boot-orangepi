@@ -46,7 +46,6 @@
 # include <byteswap.h>
 #elif defined(__MACH__) || defined(__FreeBSD__)
 # include <machine/endian.h>
-typedef unsigned long ulong;
 #endif
 #ifdef __FreeBSD__
 # include <sys/endian.h> /* htole32 and friends */
@@ -66,6 +65,7 @@ typedef uint8_t __u8;
 typedef uint16_t __u16;
 typedef uint32_t __u32;
 typedef unsigned int uint;
+typedef unsigned long ulong;
 
 #define uswap_16(x) \
 	((((x) & 0xff00) >> 8) | \
@@ -120,13 +120,8 @@ typedef unsigned int uint;
 
 #else /* !USE_HOSTCC */
 
-#ifdef CONFIG_USE_STDINT
-/* Provided by gcc. */
-#include <stdint.h>
-#else
 /* Type for `void *' pointers. */
 typedef unsigned long int uintptr_t;
-#endif
 
 #include <linux/string.h>
 #include <linux/types.h>
@@ -148,5 +143,9 @@ typedef unsigned long int uintptr_t;
 
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
+
+#ifdef __LP64__
+#define MEM_SUPPORT_64BIT_DATA
+#endif
 
 #endif

@@ -7,8 +7,10 @@
 #include <common.h>
 #include <clk.h>
 #include <fdtdec.h>
+#include <malloc.h>
 #include <mmc.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <linux/compat.h>
 #include <linux/dma-direction.h>
 #include <linux/io.h>
@@ -25,39 +27,52 @@ static const struct dm_mmc_ops uniphier_sd_ops = {
 };
 
 static const struct udevice_id uniphier_sd_match[] = {
-	{ .compatible = "socionext,uniphier-sdhc", .data = 0 },
+	{ .compatible = "socionext,uniphier-sd-v2.91" },
+	{ .compatible = "socionext,uniphier-sd-v3.1" },
+	{ .compatible = "socionext,uniphier-sd-v3.1.1" },
 	{ /* sentinel */ }
 };
+
+static ulong uniphier_sd_clk_get_rate(struct tmio_sd_priv *priv)
+{
+#if CONFIG_IS_ENABLED(CLK)
+	return clk_get_rate(&priv->clk);
+#elif CONFIG_SPL_BUILD
+	return 100000000;
+#else
+	return 0;
+#endif
+}
 
 static int uniphier_sd_probe(struct udevice *dev)
 {
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
+
+	priv->clk_get_rate = uniphier_sd_clk_get_rate;
+	priv->read_poll_flag = TMIO_SD_DMA_INFO1_END_RD2;
+
 #ifndef CONFIG_SPL_BUILD
-	struct clk clk;
 	int ret;
 
-	ret = clk_get_by_index(dev, 0, &clk);
+	ret = clk_get_by_index(dev, 0, &priv->clk);
 	if (ret < 0) {
 		dev_err(dev, "failed to get host clock\n");
 		return ret;
 	}
 
 	/* set to max rate */
-	priv->mclk = clk_set_rate(&clk, ULONG_MAX);
-	if (IS_ERR_VALUE(priv->mclk)) {
+	ret = clk_set_rate(&priv->clk, ULONG_MAX);
+	if (ret < 0) {
 		dev_err(dev, "failed to set rate for host clock\n");
-		clk_free(&clk);
-		return priv->mclk;
+		clk_free(&priv->clk);
+		return ret;
 	}
 
-	ret = clk_enable(&clk);
-	clk_free(&clk);
+	ret = clk_enable(&priv->clk);
 	if (ret) {
 		dev_err(dev, "failed to enable host clock\n");
 		return ret;
 	}
-#else
-	priv->mclk = 100000000;
 #endif
 
 	return tmio_sd_probe(dev, 0);

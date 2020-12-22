@@ -8,6 +8,7 @@
 #include <config.h>
 #include <common.h>
 #include <api_public.h>
+#include <part.h>
 
 #if defined(CONFIG_CMD_USB) && defined(CONFIG_USB_STORAGE)
 #include <usb.h>
@@ -99,6 +100,7 @@ static int dev_stor_get(int type, int *more, struct device_info *di)
 {
 	struct blk_desc *dd;
 	int found = 0;
+	int found_last = 0;
 	int i = 0;
 
 	/* Wasn't configured for this type, return 0 directly */
@@ -111,9 +113,13 @@ static int dev_stor_get(int type, int *more, struct device_info *di)
 			if (di->cookie ==
 			    (void *)blk_get_dev(specs[type].name, i)) {
 				i += 1;
+				found_last = 1;
 				break;
 			}
 		}
+
+		if (!found_last)
+			i = 0;
 	}
 
 	for (; i < specs[type].max_dev; i++) {
@@ -342,5 +348,29 @@ lbasize_t dev_read_stor(void *cookie, void *buf, lbasize_t len, lbastart_t start
 	}
 
 	return dd->block_read(dd, start, len, buf);
+#endif	/* defined(CONFIG_BLK) */
+}
+
+
+lbasize_t dev_write_stor(void *cookie, void *buf, lbasize_t len, lbastart_t start)
+{
+	struct blk_desc *dd = (struct blk_desc *)cookie;
+	int type = dev_stor_type(dd);
+
+	if (type == ENUM_MAX)
+		return 0;
+
+	if (!dev_stor_is_valid(type, dd))
+		return 0;
+
+#ifdef CONFIG_BLK
+	return blk_dwrite(dd, start, len, buf);
+#else
+	if (dd->block_write == NULL) {
+		debugf("no block_write() for device 0x%08x\n", cookie);
+		return 0;
+	}
+
+	return dd->block_write(dd, start, len, buf);
 #endif	/* defined(CONFIG_BLK) */
 }

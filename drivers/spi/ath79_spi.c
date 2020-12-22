@@ -4,10 +4,12 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <spi.h>
 #include <dm.h>
 #include <div64.h>
 #include <errno.h>
+#include <time.h>
 #include <asm/io.h>
 #include <asm/addrspace.h>
 #include <asm/types.h>
@@ -198,7 +200,7 @@ static int ath79_cs_info(struct udevice *bus, uint cs,
 {
 	/* Always allow activity on CS 0/1/2 */
 	if (cs >= 3)
-		return -ENODEV;
+		return -EINVAL;
 
 	return 0;
 }

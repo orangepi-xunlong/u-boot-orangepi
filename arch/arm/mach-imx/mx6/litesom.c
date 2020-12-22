@@ -4,6 +4,7 @@
  * Copyright (C) 2016 Grinn
  */
 
+#include <init.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
@@ -16,7 +17,8 @@
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/io.h>
 #include <common.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 #include <mmc.h>
 
@@ -49,7 +51,7 @@ static iomux_v3_cfg_t const emmc_pads[] = {
 	MX6_PAD_NAND_ALE__GPIO4_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 static struct fsl_esdhc_cfg emmc_cfg = {USDHC2_BASE_ADDR, 0, 8};
 
 #define EMMC_PWR_GPIO	IMX_GPIO_NR(4, 10)

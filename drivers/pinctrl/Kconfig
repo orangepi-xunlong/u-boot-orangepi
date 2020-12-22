@@ -59,11 +59,34 @@ config PINCONF
 	  This option enables pin configuration through the generic pinctrl
 	  framework.
 
+config PINCONF_RECURSIVE
+	bool "Support recursive binding for pin configuration nodes"
+	depends on PINCTRL_FULL
+	default n if ARCH_STM32MP
+	default y
+	help
+	  In the Linux pinctrl binding, the pin configuration nodes need not be
+	  direct children of the pin controller device (may be grandchildren for
+	  example). It is define is each individual pin controller device.
+	  Say Y here if you want to keep this behavior with the pinconfig
+	  u-class: all sub are recursivelly bounded.
+	  If the option is disabled, this behavior is deactivated and only
+	  the direct children of pin controller will be assumed as pin
+	  configuration; you can save memory footprint when this feature is
+	  no needed.
+
 config SPL_PINCTRL
 	bool "Support pin controllers in SPL"
 	depends on SPL && SPL_DM
 	help
 	  This option is an SPL-variant of the PINCTRL option.
+	  See the help of PINCTRL for details.
+
+config TPL_PINCTRL
+	bool "Support pin controllers in TPL"
+	depends on TPL && TPL_DM
+	help
+	  This option is an TPL variant of the PINCTRL option.
 	  See the help of PINCTRL for details.
 
 config SPL_PINCTRL_FULL
@@ -73,6 +96,13 @@ config SPL_PINCTRL_FULL
 	default y
 	help
 	  This option is an SPL-variant of the PINCTRL_FULL option.
+	  See the help of PINCTRL_FULL for details.
+
+config TPL_PINCTRL_FULL
+	bool "Support full pin controllers in TPL"
+	depends on TPL_PINCTRL && TPL_OF_CONTROL
+	help
+	  This option is an TPL-variant of the PINCTRL_FULL option.
 	  See the help of PINCTRL_FULL for details.
 
 config SPL_PINCTRL_GENERIC
@@ -103,6 +133,15 @@ config SPL_PINCONF
 	help
 	  This option is an SPL-variant of the PINCONF option.
 	  See the help of PINCONF for details.
+
+config SPL_PINCONF_RECURSIVE
+	bool "Support recursive binding for pin configuration nodes in SPL"
+	depends on SPL_PINCTRL_FULL
+	default n if ARCH_STM32MP
+	default y
+	help
+	  This option is an SPL-variant of the PINCONF_RECURSIVE option.
+	  See the help of PINCONF_RECURSIVE for details.
 
 if PINCTRL || SPL_PINCTRL
 
@@ -138,6 +177,14 @@ config PINCTRL_AT91PIO4
 	  This option is to enable the AT91 pinctrl driver for AT91 PIO4
 	  controller which is available on SAMA5D2 SoC.
 
+config PINCTRL_INTEL
+	bool "Standard Intel pin-control and pin-mux driver"
+	help
+	  Recent Intel chips such as Apollo Lake (APL) use a common pin control
+	  and GPIO scheme. The settings for this come from an SoC-specific
+	  driver which must be separately enabled. The driver supports setting
+	  pins on start-up and changing the GPIO attributes.
+
 config PINCTRL_PIC32
 	bool "Microchip PIC32 pin-control and pin-mux driver"
 	depends on DM && MACH_PIC32
@@ -146,93 +193,13 @@ config PINCTRL_PIC32
 	  Supports individual pin selection and configuration for each
 	  remappable peripheral available on Microchip PIC32
 	  SoCs. This driver is controlled by a device tree node which
-	  contains both GPIO defintion and pin control functions.
+	  contains both GPIO definition and pin control functions.
 
 config PINCTRL_QCA953X
 	bool "QCA/Athores qca953x pin control driver"
 	depends on DM && SOC_QCA953X
 	help
 	  Support pin multiplexing control on QCA/Athores qca953x SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3036
-	bool "Rockchip rk3036 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3036 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3128
-	bool "Rockchip rk3128 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3128 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3188
-	bool "Rockchip rk3188 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3188 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK322X
-	bool "Rockchip rk322x pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk322x SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3288
-	bool "Rockchip rk3288 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3288 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3328
-	bool "Rockchip rk3328 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3328 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3368
-	bool "Rockchip RK3368 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3368 SoCs.
-
-	  The driver is controlled by a device tree node which contains both
-	  the GPIO definitions and pin control functions for each available
-	  multiplex function.
-
-config PINCTRL_ROCKCHIP_RK3399
-	bool "Rockchip rk3399 pin control driver"
-	depends on DM
-	help
-	  Support pin multiplexing control on Rockchip rk3399 SoCs.
 
 	  The driver is controlled by a device tree node which contains both
 	  the GPIO definitions and pin control functions for each available
@@ -289,6 +256,25 @@ config PINCTRL_STM32
 	  the GPIO definitions and pin control functions for each available
 	  multiplex function.
 
+config PINCTRL_STMFX
+	bool "STMicroelectronics STMFX I2C GPIO expander pinctrl driver"
+	depends on DM && PINCTRL_FULL
+	help
+	  I2C driver for STMicroelectronics Multi-Function eXpander (STMFX)
+	  GPIO expander.
+	  Supports pin multiplexing control on stm32 SoCs.
+
+	  The driver is controlled by a device tree node which contains both
+	  the GPIO definitions and pin control functions for each available
+	  multiplex function.
+
+config SPL_PINCTRL_STMFX
+	bool "STMicroelectronics STMFX I2C GPIO expander pinctrl driver in SPL"
+	depends on SPL_PINCTRL_FULL
+	help
+	  This option is an SPL-variant of the SPL_PINCTRL_STMFX option.
+	  See the help of PINCTRL_STMFX for details.
+
 config ASPEED_AST2500_PINCTRL
   bool "Aspeed AST2500 pin control driver"
   depends on DM && PINCTRL_GENERIC && ASPEED_AST2500
@@ -300,12 +286,17 @@ config ASPEED_AST2500_PINCTRL
 
 endif
 
+source "drivers/pinctrl/broadcom/Kconfig"
+source "drivers/pinctrl/exynos/Kconfig"
+source "drivers/pinctrl/intel/Kconfig"
+source "drivers/pinctrl/mediatek/Kconfig"
 source "drivers/pinctrl/meson/Kconfig"
+source "drivers/pinctrl/mscc/Kconfig"
+source "drivers/pinctrl/mtmips/Kconfig"
+source "drivers/pinctrl/mvebu/Kconfig"
 source "drivers/pinctrl/nxp/Kconfig"
 source "drivers/pinctrl/renesas/Kconfig"
+source "drivers/pinctrl/rockchip/Kconfig"
 source "drivers/pinctrl/uniphier/Kconfig"
-source "drivers/pinctrl/exynos/Kconfig"
-source "drivers/pinctrl/mvebu/Kconfig"
-source "drivers/pinctrl/broadcom/Kconfig"
 
 endmenu

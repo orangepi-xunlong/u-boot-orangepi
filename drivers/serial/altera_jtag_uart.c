@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <serial.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 /* data register */
 #define ALTERA_JTAG_RVALID	BIT(15)	/* Read valid */
@@ -121,7 +122,6 @@ U_BOOT_DRIVER(altera_jtaguart) = {
 	.platdata_auto_alloc_size = sizeof(struct altera_jtaguart_platdata),
 	.probe = altera_jtaguart_probe,
 	.ops	= &altera_jtaguart_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
 
 #ifdef CONFIG_DEBUG_UART_ALTERA_JTAGUART

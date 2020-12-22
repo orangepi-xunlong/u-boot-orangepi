@@ -56,6 +56,8 @@ enum {
 enum {
 	DM_TEST_TYPE_FIRST = 0,
 	DM_TEST_TYPE_SECOND,
+
+	DM_TEST_TYPE_COUNT,
 };
 
 /* The number added to the ping total on each probe */
@@ -69,6 +71,7 @@ struct dm_test_priv {
 	int op_count[DM_TEST_OP_COUNT];
 	int uclass_flag;
 	int uclass_total;
+	int uclass_postp;
 };
 
 /**

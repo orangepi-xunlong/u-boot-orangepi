@@ -5,17 +5,19 @@
 
 #include <common.h>
 #include <fdtdec.h>
+#include <malloc.h>
 #include <asm/io.h>
 #include <dm.h>
+#include <clk.h>
+#include <dm/device-internal.h>
 #include <asm/arch/clock_manager.h>
+#include <linux/delay.h>
+
+#ifdef CONFIG_SPL_BUILD
 
 static u32 eosc1_hz;
 static u32 cb_intosc_hz;
 static u32 f2s_free_hz;
-static u32 cm_l4_main_clk_hz;
-static u32 cm_l4_sp_clk_hz;
-static u32 cm_l4_mp_clk_hz;
-static u32 cm_l4_sys_free_clk_hz;
 
 struct mainpll_cfg {
 	u32 vco0_psrc;
@@ -64,89 +66,161 @@ struct perpll_cfg {
 	u32 cntr8clk_cnt;
 	u32 cntr8clk_src;
 	u32 cntr9clk_cnt;
+	u32 cntr9clk_src;
 	u32 emacctl_emac0sel;
 	u32 emacctl_emac1sel;
 	u32 emacctl_emac2sel;
 	u32 gpiodiv_gpiodbclk;
 };
 
-struct alteragrp_cfg {
-	u32 nocclk;
-	u32 mpuclk;
+struct strtou32 {
+	const char *str;
+	const u32 val;
 };
 
-static const struct socfpga_clock_manager *clock_manager_base =
-	(struct socfpga_clock_manager *)SOCFPGA_CLKMGR_ADDRESS;
+static const struct strtou32 mainpll_cfg_tab[] = {
+	{ "vco0-psrc", offsetof(struct mainpll_cfg, vco0_psrc) },
+	{ "vco1-denom", offsetof(struct mainpll_cfg, vco1_denom) },
+	{ "vco1-numer", offsetof(struct mainpll_cfg, vco1_numer) },
+	{ "mpuclk-cnt", offsetof(struct mainpll_cfg, mpuclk_cnt) },
+	{ "mpuclk-src", offsetof(struct mainpll_cfg, mpuclk_src) },
+	{ "nocclk-cnt", offsetof(struct mainpll_cfg, nocclk_cnt) },
+	{ "nocclk-src", offsetof(struct mainpll_cfg, nocclk_src) },
+	{ "cntr2clk-cnt", offsetof(struct mainpll_cfg, cntr2clk_cnt) },
+	{ "cntr3clk-cnt", offsetof(struct mainpll_cfg, cntr3clk_cnt) },
+	{ "cntr4clk-cnt", offsetof(struct mainpll_cfg, cntr4clk_cnt) },
+	{ "cntr5clk-cnt", offsetof(struct mainpll_cfg, cntr5clk_cnt) },
+	{ "cntr6clk-cnt", offsetof(struct mainpll_cfg, cntr6clk_cnt) },
+	{ "cntr7clk-cnt", offsetof(struct mainpll_cfg, cntr7clk_cnt) },
+	{ "cntr7clk-src", offsetof(struct mainpll_cfg, cntr7clk_src) },
+	{ "cntr8clk-cnt", offsetof(struct mainpll_cfg, cntr8clk_cnt) },
+	{ "cntr9clk-cnt", offsetof(struct mainpll_cfg, cntr9clk_cnt) },
+	{ "cntr9clk-src", offsetof(struct mainpll_cfg, cntr9clk_src) },
+	{ "cntr15clk-cnt", offsetof(struct mainpll_cfg, cntr15clk_cnt) },
+	{ "nocdiv-l4mainclk", offsetof(struct mainpll_cfg, nocdiv_l4mainclk) },
+	{ "nocdiv-l4mpclk", offsetof(struct mainpll_cfg, nocdiv_l4mpclk) },
+	{ "nocdiv-l4spclk", offsetof(struct mainpll_cfg, nocdiv_l4spclk) },
+	{ "nocdiv-csatclk", offsetof(struct mainpll_cfg, nocdiv_csatclk) },
+	{ "nocdiv-cstraceclk", offsetof(struct mainpll_cfg, nocdiv_cstraceclk) },
+	{ "nocdiv-cspdbgclk", offsetof(struct mainpll_cfg, nocdiv_cspdbclk) },
+};
 
-static int of_to_struct(const void *blob, int node, int cfg_len, void *cfg)
+static const struct strtou32 perpll_cfg_tab[] = {
+	{ "vco0-psrc", offsetof(struct perpll_cfg, vco0_psrc) },
+	{ "vco1-denom", offsetof(struct perpll_cfg, vco1_denom) },
+	{ "vco1-numer", offsetof(struct perpll_cfg, vco1_numer) },
+	{ "cntr2clk-cnt", offsetof(struct perpll_cfg, cntr2clk_cnt) },
+	{ "cntr2clk-src", offsetof(struct perpll_cfg, cntr2clk_src) },
+	{ "cntr3clk-cnt", offsetof(struct perpll_cfg, cntr3clk_cnt) },
+	{ "cntr3clk-src", offsetof(struct perpll_cfg, cntr3clk_src) },
+	{ "cntr4clk-cnt", offsetof(struct perpll_cfg, cntr4clk_cnt) },
+	{ "cntr4clk-src", offsetof(struct perpll_cfg, cntr4clk_src) },
+	{ "cntr5clk-cnt", offsetof(struct perpll_cfg, cntr5clk_cnt) },
+	{ "cntr5clk-src", offsetof(struct perpll_cfg, cntr5clk_src) },
+	{ "cntr6clk-cnt", offsetof(struct perpll_cfg, cntr6clk_cnt) },
+	{ "cntr6clk-src", offsetof(struct perpll_cfg, cntr6clk_src) },
+	{ "cntr7clk-cnt", offsetof(struct perpll_cfg, cntr7clk_cnt) },
+	{ "cntr8clk-cnt", offsetof(struct perpll_cfg, cntr8clk_cnt) },
+	{ "cntr8clk-src", offsetof(struct perpll_cfg, cntr8clk_src) },
+	{ "cntr9clk-cnt", offsetof(struct perpll_cfg, cntr9clk_cnt) },
+	{ "emacctl-emac0sel", offsetof(struct perpll_cfg, emacctl_emac0sel) },
+	{ "emacctl-emac1sel", offsetof(struct perpll_cfg, emacctl_emac1sel) },
+	{ "emacctl-emac2sel", offsetof(struct perpll_cfg, emacctl_emac2sel) },
+	{ "gpiodiv-gpiodbclk", offsetof(struct perpll_cfg, gpiodiv_gpiodbclk) },
+};
+
+static const struct strtou32 alteragrp_cfg_tab[] = {
+	{ "nocclk", offsetof(struct mainpll_cfg, nocclk) },
+	{ "mpuclk", offsetof(struct mainpll_cfg, mpuclk) },
+};
+
+struct strtopu32 {
+	const char *str;
+	u32 *p;
+};
+
+const struct strtopu32 dt_to_val[] = {
+	{ "altera_arria10_hps_eosc1", &eosc1_hz },
+	{ "altera_arria10_hps_cb_intosc_ls", &cb_intosc_hz },
+	{ "altera_arria10_hps_f2h_free", &f2s_free_hz },
+};
+
+static int of_to_struct(const void *blob, int node, const struct strtou32 *cfg_tab,
+			int cfg_tab_len, void *cfg)
 {
-	if (fdtdec_get_int_array(blob, node, "altr,of_reg_value",
-				 (u32 *)cfg, cfg_len)) {
-		/* could not find required property */
-		return -EINVAL;
+	int i;
+	u32 val;
+
+	for (i = 0; i < cfg_tab_len; i++) {
+		if (fdtdec_get_int_array(blob, node, cfg_tab[i].str, &val, 1)) {
+			/* could not find required property */
+			return -EINVAL;
+		}
+		*(u32 *)(cfg + cfg_tab[i].val) = val;
 	}
 
 	return 0;
 }
 
-static int of_get_input_clks(const void *blob, int node, u32 *val)
+static int of_get_input_clks(const void *blob)
 {
-	*val = fdtdec_get_uint(blob, node, "clock-frequency", 0);
-	if (!*val)
-		return -EINVAL;
+	struct udevice *dev;
+	struct clk clk;
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(dt_to_val); i++) {
+		memset(&clk, 0, sizeof(clk));
+
+		ret = uclass_get_device_by_name(UCLASS_CLK, dt_to_val[i].str,
+						&dev);
+		if (ret)
+			return ret;
+
+		ret = clk_request(dev, &clk);
+		if (ret)
+			return ret;
+
+		*dt_to_val[i].p = clk_get_rate(&clk);
+	}
 
 	return 0;
 }
 
 static int of_get_clk_cfg(const void *blob, struct mainpll_cfg *main_cfg,
-			  struct perpll_cfg *per_cfg,
-			  struct alteragrp_cfg *altrgrp_cfg)
+			  struct perpll_cfg *per_cfg)
 {
-	int node, child, len;
+	int ret, node, child, len;
 	const char *node_name;
 
-	node = fdtdec_next_compatible(blob, 0, COMPAT_ALTERA_SOCFPGA_CLK);
+	ret = of_get_input_clks(blob);
+	if (ret)
+		return ret;
+
+	node = fdtdec_next_compatible(blob, 0, COMPAT_ALTERA_SOCFPGA_CLK_INIT);
+
 	if (node < 0)
 		return -EINVAL;
 
 	child = fdt_first_subnode(blob, node);
-	if (child < 0)
-		return -EINVAL;
 
-	child = fdt_first_subnode(blob, child);
 	if (child < 0)
 		return -EINVAL;
 
 	node_name = fdt_get_name(blob, child, &len);
 
 	while (node_name) {
-		if (!strcmp(node_name, "osc1")) {
-			if (of_get_input_clks(blob, child, &eosc1_hz))
+		if (!strcmp(node_name, "mainpll")) {
+			if (of_to_struct(blob, child, mainpll_cfg_tab,
+					 ARRAY_SIZE(mainpll_cfg_tab), main_cfg))
 				return -EINVAL;
-		} else if (!strcmp(node_name, "cb_intosc_ls_clk")) {
-			if (of_get_input_clks(blob, child, &cb_intosc_hz))
+		} else if (!strcmp(node_name, "perpll")) {
+			if (of_to_struct(blob, child, perpll_cfg_tab,
+					 ARRAY_SIZE(perpll_cfg_tab), per_cfg))
 				return -EINVAL;
-		} else if (!strcmp(node_name, "f2s_free_clk")) {
-			if (of_get_input_clks(blob, child, &f2s_free_hz))
+		} else if (!strcmp(node_name, "alteragrp")) {
+			if (of_to_struct(blob, child, alteragrp_cfg_tab,
+					 ARRAY_SIZE(alteragrp_cfg_tab), main_cfg))
 				return -EINVAL;
-		} else if (!strcmp(node_name, "main_pll")) {
-			if (of_to_struct(blob, child,
-					 sizeof(*main_cfg)/sizeof(u32),
-					 main_cfg))
-				return -EINVAL;
-		} else if (!strcmp(node_name, "periph_pll")) {
-			if (of_to_struct(blob, child,
-					 sizeof(*per_cfg)/sizeof(u32),
-					 per_cfg))
-				return -EINVAL;
-		} else if (!strcmp(node_name, "altera")) {
-			if (of_to_struct(blob, child,
-					 sizeof(*altrgrp_cfg)/sizeof(u32),
-					 altrgrp_cfg))
-				return -EINVAL;
-
-			main_cfg->mpuclk = altrgrp_cfg->mpuclk;
-			main_cfg->nocclk = altrgrp_cfg->nocclk;
 		}
 		child = fdt_next_subnode(blob, child);
 
@@ -476,12 +550,13 @@ static void cm_pll_ramp_main(struct mainpll_cfg *main_cfg,
 		writel((main_cfg->vco1_denom <<
 			CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
 			cm_calc_safe_pll_numer(0, main_cfg, per_cfg, clk_hz),
-			&clock_manager_base->main_pll.vco1);
+			socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO1);
 		mdelay(1);
 		cm_wait_for_lock(LOCKED_MASK);
 	}
 	writel((main_cfg->vco1_denom << CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
-		main_cfg->vco1_numer, &clock_manager_base->main_pll.vco1);
+		main_cfg->vco1_numer,
+		socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO1);
 	mdelay(1);
 	cm_wait_for_lock(LOCKED_MASK);
 }
@@ -504,14 +579,18 @@ static void cm_pll_ramp_periph(struct mainpll_cfg *main_cfg,
 	/* execute the ramping here */
 	for (clk_hz = pll_ramp_periph_hz + clk_incr_hz;
 	     clk_hz < clk_final_hz; clk_hz += clk_incr_hz) {
-		writel((per_cfg->vco1_denom << CLKMGR_PERPLL_VCO1_DENOM_LSB) |
-			cm_calc_safe_pll_numer(1, main_cfg, per_cfg, clk_hz),
-			&clock_manager_base->per_pll.vco1);
+		writel((per_cfg->vco1_denom <<
+			      CLKMGR_PERPLL_VCO1_DENOM_LSB) |
+			      cm_calc_safe_pll_numer(1, main_cfg, per_cfg,
+						     clk_hz),
+			      socfpga_get_clkmgr_addr() +
+			      CLKMGR_A10_PERPLL_VCO1);
 		mdelay(1);
 		cm_wait_for_lock(LOCKED_MASK);
 	}
 	writel((per_cfg->vco1_denom << CLKMGR_PERPLL_VCO1_DENOM_LSB) |
-		per_cfg->vco1_numer, &clock_manager_base->per_pll.vco1);
+		      per_cfg->vco1_numer,
+		      socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO1);
 	mdelay(1);
 	cm_wait_for_lock(LOCKED_MASK);
 }
@@ -563,16 +642,16 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 	/* gate off all mainpll clock excpet HW managed clock */
 	writel(CLKMGR_MAINPLL_EN_S2FUSER0CLKEN_SET_MSK |
 		CLKMGR_MAINPLL_EN_HMCPLLREFCLKEN_SET_MSK,
-		&clock_manager_base->main_pll.enr);
+		socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_ENR);
 
 	/* now we can gate off the rest of the peripheral clocks */
-	writel(0, &clock_manager_base->per_pll.en);
+	writel(0, socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_EN);
 
 	/* Put all plls in external bypass */
 	writel(CLKMGR_MAINPLL_BYPASS_RESET,
-	       &clock_manager_base->main_pll.bypasss);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_BYPASSS);
 	writel(CLKMGR_PERPLL_BYPASS_RESET,
-	       &clock_manager_base->per_pll.bypasss);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_BYPASSS);
 
 	/*
 	 * Put all plls VCO registers back to reset value.
@@ -582,15 +661,17 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 	writel(CLKMGR_MAINPLL_VCO0_RESET |
 	       CLKMGR_MAINPLL_VCO0_REGEXTSEL_SET_MSK |
 	       (main_cfg->vco0_psrc << CLKMGR_MAINPLL_VCO0_PSRC_LSB),
-	       &clock_manager_base->main_pll.vco0);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0);
 
 	writel(CLKMGR_PERPLL_VCO0_RESET |
 	       CLKMGR_PERPLL_VCO0_REGEXTSEL_SET_MSK |
 	       (per_cfg->vco0_psrc << CLKMGR_PERPLL_VCO0_PSRC_LSB),
-	       &clock_manager_base->per_pll.vco0);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0);
 
-	writel(CLKMGR_MAINPLL_VCO1_RESET, &clock_manager_base->main_pll.vco1);
-	writel(CLKMGR_PERPLL_VCO1_RESET, &clock_manager_base->per_pll.vco1);
+	writel(CLKMGR_MAINPLL_VCO1_RESET,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO1);
+	writel(CLKMGR_PERPLL_VCO1_RESET,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO1);
 
 	/* clear the interrupt register status register */
 	writel(CLKMGR_CLKMGR_INTR_MAINPLLLOST_SET_MSK |
@@ -601,7 +682,7 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 		CLKMGR_CLKMGR_INTR_PERPLLFBSLIP_SET_MSK |
 		CLKMGR_CLKMGR_INTR_MAINPLLACHIEVED_SET_MSK |
 		CLKMGR_CLKMGR_INTR_PERPLLACHIEVED_SET_MSK,
-		&clock_manager_base->intr);
+		socfpga_get_clkmgr_addr() + CLKMGR_A10_INTR);
 
 	/* Program VCO Numerator and Denominator for main PLL */
 	ramp_required = cm_is_pll_ramp_required(0, main_cfg, per_cfg);
@@ -612,14 +693,16 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 		else if (ramp_required == 2)
 			pll_ramp_main_hz = CLKMGR_PLL_RAMP_NOCCLK_THRESHOLD_HZ;
 
-		writel((main_cfg->vco1_denom << CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
+		writel((main_cfg->vco1_denom <<
+			CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
 			cm_calc_safe_pll_numer(0, main_cfg, per_cfg,
 					       pll_ramp_main_hz),
-			&clock_manager_base->main_pll.vco1);
+			socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO1);
 	} else
-		writel((main_cfg->vco1_denom << CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
-			main_cfg->vco1_numer,
-			&clock_manager_base->main_pll.vco1);
+		writel((main_cfg->vco1_denom <<
+		       CLKMGR_MAINPLL_VCO1_DENOM_LSB) |
+		       main_cfg->vco1_numer,
+		       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO1);
 
 	/* Program VCO Numerator and Denominator for periph PLL */
 	ramp_required = cm_is_pll_ramp_required(1, main_cfg, per_cfg);
@@ -632,23 +715,25 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 			pll_ramp_periph_hz =
 				CLKMGR_PLL_RAMP_NOCCLK_THRESHOLD_HZ;
 
-		writel((per_cfg->vco1_denom << CLKMGR_PERPLL_VCO1_DENOM_LSB) |
+		writel((per_cfg->vco1_denom <<
+			CLKMGR_PERPLL_VCO1_DENOM_LSB) |
 			cm_calc_safe_pll_numer(1, main_cfg, per_cfg,
 					       pll_ramp_periph_hz),
-			&clock_manager_base->per_pll.vco1);
+			socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO1);
 	} else
-		writel((per_cfg->vco1_denom << CLKMGR_PERPLL_VCO1_DENOM_LSB) |
+		writel((per_cfg->vco1_denom <<
+			CLKMGR_PERPLL_VCO1_DENOM_LSB) |
 			per_cfg->vco1_numer,
-			&clock_manager_base->per_pll.vco1);
+			socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO1);
 
 	/* Wait for at least 5 us */
 	udelay(5);
 
 	/* Now deassert BGPWRDN and PWRDN */
-	clrbits_le32(&clock_manager_base->main_pll.vco0,
+	clrbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0,
 		     CLKMGR_MAINPLL_VCO0_BGPWRDN_SET_MSK |
 		     CLKMGR_MAINPLL_VCO0_PWRDN_SET_MSK);
-	clrbits_le32(&clock_manager_base->per_pll.vco0,
+	clrbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0,
 		     CLKMGR_PERPLL_VCO0_BGPWRDN_SET_MSK |
 		     CLKMGR_PERPLL_VCO0_PWRDN_SET_MSK);
 
@@ -656,84 +741,92 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 	udelay(7);
 
 	/* enable the VCO and disable the external regulator to PLL */
-	writel((readl(&clock_manager_base->main_pll.vco0) &
+	writel((readl(socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0) &
 		~CLKMGR_MAINPLL_VCO0_REGEXTSEL_SET_MSK) |
 		CLKMGR_MAINPLL_VCO0_EN_SET_MSK,
-		&clock_manager_base->main_pll.vco0);
-	writel((readl(&clock_manager_base->per_pll.vco0) &
+		socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0);
+	writel((readl(socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0) &
 		~CLKMGR_PERPLL_VCO0_REGEXTSEL_SET_MSK) |
 		CLKMGR_PERPLL_VCO0_EN_SET_MSK,
-		&clock_manager_base->per_pll.vco0);
+		socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0);
 
 	/* setup all the main PLL counter and clock source */
 	writel(main_cfg->nocclk,
-	       SOCFPGA_CLKMGR_ADDRESS + CLKMGR_MAINPLL_NOC_CLK_OFFSET);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_ALTR_NOCCLK);
 	writel(main_cfg->mpuclk,
-	       SOCFPGA_CLKMGR_ADDRESS + CLKMGR_ALTERAGRP_MPU_CLK_OFFSET);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_ALTR_MPUCLK);
 
 	/* main_emaca_clk divider */
-	writel(main_cfg->cntr2clk_cnt, &clock_manager_base->main_pll.cntr2clk);
+	writel(main_cfg->cntr2clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR2CLK);
 	/* main_emacb_clk divider */
-	writel(main_cfg->cntr3clk_cnt, &clock_manager_base->main_pll.cntr3clk);
+	writel(main_cfg->cntr3clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR3CLK);
 	/* main_emac_ptp_clk divider */
-	writel(main_cfg->cntr4clk_cnt, &clock_manager_base->main_pll.cntr4clk);
+	writel(main_cfg->cntr4clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR4CLK);
 	/* main_gpio_db_clk divider */
-	writel(main_cfg->cntr5clk_cnt, &clock_manager_base->main_pll.cntr5clk);
+	writel(main_cfg->cntr5clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR5CLK);
 	/* main_sdmmc_clk divider */
-	writel(main_cfg->cntr6clk_cnt, &clock_manager_base->main_pll.cntr6clk);
+	writel(main_cfg->cntr6clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR6CLK);
 	/* main_s2f_user0_clk divider */
 	writel(main_cfg->cntr7clk_cnt |
 	       (main_cfg->cntr7clk_src << CLKMGR_MAINPLL_CNTR7CLK_SRC_LSB),
-	       &clock_manager_base->main_pll.cntr7clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR7CLK);
 	/* main_s2f_user1_clk divider */
-	writel(main_cfg->cntr8clk_cnt, &clock_manager_base->main_pll.cntr8clk);
+	writel(main_cfg->cntr8clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR8CLK);
 	/* main_hmc_pll_clk divider */
 	writel(main_cfg->cntr9clk_cnt |
 	       (main_cfg->cntr9clk_src << CLKMGR_MAINPLL_CNTR9CLK_SRC_LSB),
-	       &clock_manager_base->main_pll.cntr9clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR9CLK);
 	/* main_periph_ref_clk divider */
 	writel(main_cfg->cntr15clk_cnt,
-	       &clock_manager_base->main_pll.cntr15clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_CNTR15CLK);
 
 	/* setup all the peripheral PLL counter and clock source */
 	/* peri_emaca_clk divider */
 	writel(per_cfg->cntr2clk_cnt |
 	       (per_cfg->cntr2clk_src << CLKMGR_PERPLL_CNTR2CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr2clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR2CLK);
 	/* peri_emacb_clk divider */
 	writel(per_cfg->cntr3clk_cnt |
 	       (per_cfg->cntr3clk_src << CLKMGR_PERPLL_CNTR3CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr3clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR3CLK);
 	/* peri_emac_ptp_clk divider */
 	writel(per_cfg->cntr4clk_cnt |
 	       (per_cfg->cntr4clk_src << CLKMGR_PERPLL_CNTR4CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr4clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR4CLK);
 	/* peri_gpio_db_clk divider */
 	writel(per_cfg->cntr5clk_cnt |
 	       (per_cfg->cntr5clk_src << CLKMGR_PERPLL_CNTR5CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr5clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR5CLK);
 	/* peri_sdmmc_clk divider */
 	writel(per_cfg->cntr6clk_cnt |
 	       (per_cfg->cntr6clk_src << CLKMGR_PERPLL_CNTR6CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr6clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR6CLK);
 	/* peri_s2f_user0_clk divider */
-	writel(per_cfg->cntr7clk_cnt, &clock_manager_base->per_pll.cntr7clk);
+	writel(per_cfg->cntr7clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR7CLK);
 	/* peri_s2f_user1_clk divider */
 	writel(per_cfg->cntr8clk_cnt |
 	       (per_cfg->cntr8clk_src << CLKMGR_PERPLL_CNTR8CLK_SRC_LSB),
-	       &clock_manager_base->per_pll.cntr8clk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR8CLK);
 	/* peri_hmc_pll_clk divider */
-	writel(per_cfg->cntr9clk_cnt, &clock_manager_base->per_pll.cntr9clk);
+	writel(per_cfg->cntr9clk_cnt,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_CNTR9CLK);
 
 	/* setup all the external PLL counter */
 	/* mpu wrapper / external divider */
 	writel(main_cfg->mpuclk_cnt |
 	       (main_cfg->mpuclk_src << CLKMGR_MAINPLL_MPUCLK_SRC_LSB),
-	       &clock_manager_base->main_pll.mpuclk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_MPUCLK);
 	/* NOC wrapper / external divider */
 	writel(main_cfg->nocclk_cnt |
 	       (main_cfg->nocclk_src << CLKMGR_MAINPLL_NOCCLK_SRC_LSB),
-	       &clock_manager_base->main_pll.nocclk);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_NOCCLK);
 	/* NOC subclock divider such as l4 */
 	writel(main_cfg->nocdiv_l4mainclk |
 	       (main_cfg->nocdiv_l4mpclk <<
@@ -746,10 +839,10 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 		CLKMGR_MAINPLL_NOCDIV_CSTRACECLK_LSB) |
 	       (main_cfg->nocdiv_cspdbclk <<
 		CLKMGR_MAINPLL_NOCDIV_CSPDBGCLK_LSB),
-		&clock_manager_base->main_pll.nocdiv);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_NOCDIV);
 	/* gpio_db external divider */
 	writel(per_cfg->gpiodiv_gpiodbclk,
-	       &clock_manager_base->per_pll.gpiodiv);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_GPIOFIV);
 
 	/* setup the EMAC clock mux select */
 	writel((per_cfg->emacctl_emac0sel <<
@@ -758,7 +851,7 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 		CLKMGR_PERPLL_EMACCTL_EMAC1SEL_LSB) |
 	       (per_cfg->emacctl_emac2sel <<
 		CLKMGR_PERPLL_EMACCTL_EMAC2SEL_LSB),
-	       &clock_manager_base->per_pll.emacctl);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_EMACCTL);
 
 	/* at this stage, check for PLL lock status */
 	cm_wait_for_lock(LOCKED_MASK);
@@ -768,33 +861,33 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 	 * assert/deassert outresetall
 	 */
 	/* assert mainpll outresetall */
-	setbits_le32(&clock_manager_base->main_pll.vco0,
+	setbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0,
 		     CLKMGR_MAINPLL_VCO0_OUTRSTALL_SET_MSK);
 	/* assert perpll outresetall */
-	setbits_le32(&clock_manager_base->per_pll.vco0,
+	setbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0,
 		     CLKMGR_PERPLL_VCO0_OUTRSTALL_SET_MSK);
 	/* de-assert mainpll outresetall */
-	clrbits_le32(&clock_manager_base->main_pll.vco0,
+	clrbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_VCO0,
 		     CLKMGR_MAINPLL_VCO0_OUTRSTALL_SET_MSK);
 	/* de-assert perpll outresetall */
-	clrbits_le32(&clock_manager_base->per_pll.vco0,
+	clrbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_VCO0,
 		     CLKMGR_PERPLL_VCO0_OUTRSTALL_SET_MSK);
 
 	/* Take all PLLs out of bypass when boot mode is cleared. */
 	/* release mainpll from bypass */
 	writel(CLKMGR_MAINPLL_BYPASS_RESET,
-	       &clock_manager_base->main_pll.bypassr);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_BYPASSR);
 	/* wait till Clock Manager is not busy */
 	cm_wait_for_fsm();
 
 	/* release perpll from bypass */
 	writel(CLKMGR_PERPLL_BYPASS_RESET,
-	       &clock_manager_base->per_pll.bypassr);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_BYPASSR);
 	/* wait till Clock Manager is not busy */
 	cm_wait_for_fsm();
 
 	/* clear boot mode */
-	clrbits_le32(&clock_manager_base->ctrl,
+	clrbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_CTRL,
 		     CLKMGR_CLKMGR_CTL_BOOTMOD_SET_MSK);
 	/* wait till Clock Manager is not busy */
 	cm_wait_for_fsm();
@@ -807,9 +900,10 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 
 	/* Now ungate non-hw-managed clocks */
 	writel(CLKMGR_MAINPLL_EN_S2FUSER0CLKEN_SET_MSK |
-		CLKMGR_MAINPLL_EN_HMCPLLREFCLKEN_SET_MSK,
-		&clock_manager_base->main_pll.ens);
-	writel(CLKMGR_PERPLL_EN_RESET, &clock_manager_base->per_pll.ens);
+	       CLKMGR_MAINPLL_EN_HMCPLLREFCLKEN_SET_MSK,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_MAINPLL_ENS);
+	writel(CLKMGR_PERPLL_EN_RESET,
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_PERPLL_ENS);
 
 	/* Clear the loss lock and slip bits as they might set during
 	clock reconfiguration */
@@ -819,284 +913,102 @@ static int cm_full_cfg(struct mainpll_cfg *main_cfg, struct perpll_cfg *per_cfg)
 	       CLKMGR_CLKMGR_INTR_PERPLLRFSLIP_SET_MSK |
 	       CLKMGR_CLKMGR_INTR_MAINPLLFBSLIP_SET_MSK |
 	       CLKMGR_CLKMGR_INTR_PERPLLFBSLIP_SET_MSK,
-	       &clock_manager_base->intr);
+	       socfpga_get_clkmgr_addr() + CLKMGR_A10_INTR);
 
 	return 0;
 }
 
-void cm_use_intosc(void)
+static void cm_use_intosc(void)
 {
-	setbits_le32(&clock_manager_base->ctrl,
+	setbits_le32(socfpga_get_clkmgr_addr() + CLKMGR_A10_CTRL,
 		     CLKMGR_CLKMGR_CTL_BOOTCLK_INTOSC_SET_MSK);
-}
-
-unsigned int cm_get_noc_clk_hz(void)
-{
-	unsigned int clk_src, divisor, nocclk, src_hz;
-
-	nocclk = readl(&clock_manager_base->main_pll.nocclk);
-	clk_src = (nocclk >> CLKMGR_MAINPLL_NOCCLK_SRC_LSB) &
-		  CLKMGR_MAINPLL_NOCCLK_SRC_MSK;
-
-	divisor = 1 + (nocclk & CLKMGR_MAINPLL_NOCDIV_MSK);
-
-	if (clk_src == CLKMGR_PERPLLGRP_SRC_MAIN) {
-		src_hz = cm_get_main_vco_clk_hz();
-		src_hz /= 1 +
-		(readl(SOCFPGA_CLKMGR_ADDRESS + CLKMGR_MAINPLL_NOC_CLK_OFFSET) &
-		CLKMGR_MAINPLL_NOCCLK_CNT_MSK);
-	} else if (clk_src == CLKMGR_PERPLLGRP_SRC_PERI) {
-		src_hz = cm_get_per_vco_clk_hz();
-		src_hz /= 1 +
-		((readl(SOCFPGA_CLKMGR_ADDRESS +
-			CLKMGR_MAINPLL_NOC_CLK_OFFSET) >>
-			CLKMGR_MAINPLL_NOCCLK_PERICNT_LSB) &
-			CLKMGR_MAINPLL_NOCCLK_CNT_MSK);
-	} else if (clk_src == CLKMGR_PERPLLGRP_SRC_OSC1) {
-		src_hz = eosc1_hz;
-	} else if (clk_src == CLKMGR_PERPLLGRP_SRC_INTOSC) {
-		src_hz = cb_intosc_hz;
-	} else if (clk_src == CLKMGR_PERPLLGRP_SRC_FPGA) {
-		src_hz = f2s_free_hz;
-	} else {
-		src_hz = 0;
-	}
-
-	return src_hz / divisor;
-}
-
-unsigned int cm_get_l4_noc_hz(unsigned int nocdivshift)
-{
-	unsigned int divisor2 = 1 <<
-		((readl(&clock_manager_base->main_pll.nocdiv) >>
-			nocdivshift) & CLKMGR_MAINPLL_NOCDIV_MSK);
-
-	return cm_get_noc_clk_hz() / divisor2;
 }
 
 int cm_basic_init(const void *blob)
 {
 	struct mainpll_cfg main_cfg;
 	struct perpll_cfg per_cfg;
-	struct alteragrp_cfg altrgrp_cfg;
 	int rval;
 
 	/* initialize to zero for use case of optional node */
 	memset(&main_cfg, 0, sizeof(main_cfg));
 	memset(&per_cfg, 0, sizeof(per_cfg));
-	memset(&altrgrp_cfg, 0, sizeof(altrgrp_cfg));
 
-	rval = of_get_clk_cfg(blob, &main_cfg, &per_cfg, &altrgrp_cfg);
+	rval = of_get_clk_cfg(blob, &main_cfg, &per_cfg);
 	if (rval)
 		return rval;
 
-	rval =  cm_full_cfg(&main_cfg, &per_cfg);
+	cm_use_intosc();
 
-	cm_l4_main_clk_hz =
-		cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MAINCLK_LSB);
+	return cm_full_cfg(&main_cfg, &per_cfg);
+}
+#endif
 
-	cm_l4_mp_clk_hz = cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MPCLK_LSB);
+static u32 cm_get_rate_dm(char *name)
+{
+	struct uclass *uc;
+	struct udevice *dev = NULL;
+	struct clk clk = { 0 };
+	ulong rate;
+	int ret;
 
-	cm_l4_sp_clk_hz = cm_get_l4_sp_clk_hz();
+	/* Device addresses start at 1 */
+	ret = uclass_get(UCLASS_CLK, &uc);
+	if (ret)
+		return 0;
 
-	cm_l4_sys_free_clk_hz = cm_get_noc_clk_hz() / 4;
+	ret = uclass_get_device_by_name(UCLASS_CLK, name, &dev);
+	if (ret)
+		return 0;
 
-	return rval;
+	ret = device_probe(dev);
+	if (ret)
+		return 0;
+
+	ret = clk_request(dev, &clk);
+	if (ret)
+		return 0;
+
+	rate = clk_get_rate(&clk);
+
+	clk_free(&clk);
+
+	return rate;
+}
+
+static u32 cm_get_rate_dm_khz(char *name)
+{
+	return cm_get_rate_dm(name) / 1000;
 }
 
 unsigned long cm_get_mpu_clk_hz(void)
 {
-	u32 reg, clk_hz;
-	u32 clk_src, mainmpuclk_reg;
-
-	mainmpuclk_reg = readl(&clock_manager_base->main_pll.mpuclk);
-
-	clk_src = (mainmpuclk_reg >> CLKMGR_MAINPLL_MPUCLK_SRC_LSB) &
-		CLKMGR_MAINPLL_MPUCLK_SRC_MSK;
-
-	reg = readl(&clock_manager_base->altera.mpuclk);
-	/* Check MPU clock source: main, periph, osc1, intosc or f2s? */
-	switch (clk_src) {
-	case CLKMGR_MAINPLL_MPUCLK_SRC_MAIN:
-		clk_hz = cm_get_main_vco_clk_hz();
-		clk_hz /= (reg & CLKMGR_MAINPLL_MPUCLK_CNT_MSK) + 1;
-		break;
-	case CLKMGR_MAINPLL_MPUCLK_SRC_PERI:
-		clk_hz = cm_get_per_vco_clk_hz();
-		clk_hz /= (((reg >> CLKMGR_MAINPLL_MPUCLK_PERICNT_LSB) &
-			   CLKMGR_MAINPLL_MPUCLK_CNT_MSK) + 1);
-		break;
-	case CLKMGR_MAINPLL_MPUCLK_SRC_OSC1:
-		clk_hz = eosc1_hz;
-		break;
-	case CLKMGR_MAINPLL_MPUCLK_SRC_INTOSC:
-		clk_hz = cb_intosc_hz;
-		break;
-	case CLKMGR_MAINPLL_MPUCLK_SRC_FPGA:
-		clk_hz = f2s_free_hz;
-		break;
-	default:
-		printf("cm_get_mpu_clk_hz invalid clk_src %d\n", clk_src);
-		return 0;
-	}
-
-	clk_hz /= (mainmpuclk_reg & CLKMGR_MAINPLL_MPUCLK_CNT_MSK) + 1;
-
-	return clk_hz;
-}
-
-unsigned int cm_get_per_vco_clk_hz(void)
-{
-	u32 src_hz = 0;
-	u32 clk_src = 0;
-	u32 numer = 0;
-	u32 denom = 0;
-	u32 vco = 0;
-
-	clk_src = readl(&clock_manager_base->per_pll.vco0);
-
-	clk_src = (clk_src >> CLKMGR_PERPLL_VCO0_PSRC_LSB) &
-		CLKMGR_PERPLL_VCO0_PSRC_MSK;
-
-	if (clk_src == CLKMGR_PERPLL_VCO0_PSRC_EOSC) {
-		src_hz = eosc1_hz;
-	} else if (clk_src == CLKMGR_PERPLL_VCO0_PSRC_E_INTOSC) {
-		src_hz = cb_intosc_hz;
-	} else if (clk_src == CLKMGR_PERPLL_VCO0_PSRC_F2S) {
-		src_hz = f2s_free_hz;
-	} else if (clk_src == CLKMGR_PERPLL_VCO0_PSRC_MAIN) {
-		src_hz = cm_get_main_vco_clk_hz();
-		src_hz /= (readl(&clock_manager_base->main_pll.cntr15clk) &
-			CLKMGR_MAINPLL_CNTRCLK_MSK) + 1;
-	} else {
-		printf("cm_get_per_vco_clk_hz invalid clk_src %d\n", clk_src);
-		return 0;
-	}
-
-	vco = readl(&clock_manager_base->per_pll.vco1);
-
-	numer = vco & CLKMGR_PERPLL_VCO1_NUMER_MSK;
-
-	denom = (vco >> CLKMGR_PERPLL_VCO1_DENOM_LSB) &
-			CLKMGR_PERPLL_VCO1_DENOM_MSK;
-
-	vco = src_hz;
-	vco /= 1 + denom;
-	vco *= 1 + numer;
-
-	return vco;
-}
-
-unsigned int cm_get_main_vco_clk_hz(void)
-{
-	u32 src_hz, numer, denom, vco;
-
-	u32 clk_src = readl(&clock_manager_base->main_pll.vco0);
-
-	clk_src = (clk_src >> CLKMGR_MAINPLL_VCO0_PSRC_LSB) &
-		CLKMGR_MAINPLL_VCO0_PSRC_MSK;
-
-	if (clk_src == CLKMGR_MAINPLL_VCO0_PSRC_EOSC) {
-		src_hz = eosc1_hz;
-	} else if (clk_src == CLKMGR_MAINPLL_VCO0_PSRC_E_INTOSC) {
-		src_hz = cb_intosc_hz;
-	} else if (clk_src == CLKMGR_MAINPLL_VCO0_PSRC_F2S) {
-		src_hz = f2s_free_hz;
-	} else {
-		printf("cm_get_main_vco_clk_hz invalid clk_src %d\n", clk_src);
-		return 0;
-	}
-
-	vco = readl(&clock_manager_base->main_pll.vco1);
-
-	numer = vco & CLKMGR_MAINPLL_VCO1_NUMER_MSK;
-
-	denom = (vco >> CLKMGR_MAINPLL_VCO1_DENOM_LSB) &
-			CLKMGR_MAINPLL_VCO1_DENOM_MSK;
-
-	vco = src_hz;
-	vco /= 1 + denom;
-	vco *= 1 + numer;
-
-	return vco;
-}
-
-unsigned int cm_get_l4_sp_clk_hz(void)
-{
-	return cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4SPCLK_LSB);
-}
-
-unsigned int cm_get_mmc_controller_clk_hz(void)
-{
-	u32 clk_hz = 0;
-	u32 clk_input = 0;
-
-	clk_input = readl(&clock_manager_base->per_pll.cntr6clk);
-	clk_input = (clk_input >> CLKMGR_PERPLL_CNTR6CLK_SRC_LSB) &
-		CLKMGR_PERPLLGRP_SRC_MSK;
-
-	switch (clk_input) {
-	case CLKMGR_PERPLLGRP_SRC_MAIN:
-		clk_hz = cm_get_main_vco_clk_hz();
-		clk_hz /= 1 + (readl(&clock_manager_base->main_pll.cntr6clk) &
-			CLKMGR_MAINPLL_CNTRCLK_MSK);
-		break;
-
-	case CLKMGR_PERPLLGRP_SRC_PERI:
-		clk_hz = cm_get_per_vco_clk_hz();
-		clk_hz /= 1 + (readl(&clock_manager_base->per_pll.cntr6clk) &
-			CLKMGR_PERPLL_CNTRCLK_MSK);
-		break;
-
-	case CLKMGR_PERPLLGRP_SRC_OSC1:
-		clk_hz = eosc1_hz;
-		break;
-
-	case CLKMGR_PERPLLGRP_SRC_INTOSC:
-		clk_hz = cb_intosc_hz;
-		break;
-
-	case CLKMGR_PERPLLGRP_SRC_FPGA:
-		clk_hz = f2s_free_hz;
-		break;
-	}
-
-	return clk_hz / 4;
-}
-
-unsigned int cm_get_spi_controller_clk_hz(void)
-{
-	return cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MPCLK_LSB);
+	return cm_get_rate_dm("main_mpu_base_clk");
 }
 
 unsigned int cm_get_qspi_controller_clk_hz(void)
 {
-	return  cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MAINCLK_LSB);
+	return cm_get_rate_dm("qspi_clk");
 }
 
-/* Override weak dw_spi_get_clk implementation in designware_spi.c driver */
-int dw_spi_get_clk(struct udevice *bus, ulong *rate)
+unsigned int cm_get_l4_sp_clk_hz(void)
 {
-	*rate = cm_get_spi_controller_clk_hz();
-
-	return 0;
+	return cm_get_rate_dm("l4_sp_clk");
 }
 
 void cm_print_clock_quick_summary(void)
 {
-	printf("MPU       %10ld kHz\n", cm_get_mpu_clk_hz() / 1000);
-	printf("MMC         %8d kHz\n", cm_get_mmc_controller_clk_hz() / 1000);
-	printf("QSPI        %8d kHz\n", cm_get_qspi_controller_clk_hz() / 1000);
-	printf("SPI         %8d kHz\n", cm_get_spi_controller_clk_hz() / 1000);
-	printf("EOSC1       %8d kHz\n", eosc1_hz / 1000);
-	printf("cb_intosc   %8d kHz\n", cb_intosc_hz / 1000);
-	printf("f2s_free    %8d kHz\n", f2s_free_hz / 1000);
-	printf("Main VCO    %8d kHz\n", cm_get_main_vco_clk_hz() / 1000);
-	printf("NOC         %8d kHz\n", cm_get_noc_clk_hz() / 1000);
-	printf("L4 Main	    %8d kHz\n",
-	       cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MAINCLK_LSB) / 1000);
-	printf("L4 MP       %8d kHz\n",
-	       cm_get_l4_noc_hz(CLKMGR_MAINPLL_NOCDIV_L4MPCLK_LSB) / 1000);
-	printf("L4 SP       %8d kHz\n", cm_get_l4_sp_clk_hz() / 1000);
-	printf("L4 sys free %8d kHz\n", cm_l4_sys_free_clk_hz / 1000);
+	printf("MPU       %10d kHz\n", cm_get_rate_dm_khz("main_mpu_base_clk"));
+	printf("MMC         %8d kHz\n", cm_get_rate_dm_khz("sdmmc_clk"));
+	printf("QSPI        %8d kHz\n", cm_get_rate_dm_khz("qspi_clk"));
+	printf("SPI         %8d kHz\n", cm_get_rate_dm_khz("spi_m_clk"));
+	printf("EOSC1       %8d kHz\n", cm_get_rate_dm_khz("osc1"));
+	printf("cb_intosc   %8d kHz\n", cm_get_rate_dm_khz("cb_intosc_ls_clk"));
+	printf("f2s_free    %8d kHz\n", cm_get_rate_dm_khz("f2s_free_clk"));
+	printf("Main VCO    %8d kHz\n", cm_get_rate_dm_khz("main_pll@40"));
+	printf("NOC         %8d kHz\n", cm_get_rate_dm_khz("main_noc_base_clk"));
+	printf("L4 Main	    %8d kHz\n", cm_get_rate_dm_khz("l4_main_clk"));
+	printf("L4 MP       %8d kHz\n", cm_get_rate_dm_khz("l4_mp_clk"));
+	printf("L4 SP       %8d kHz\n", cm_get_rate_dm_khz("l4_sp_clk"));
+	printf("L4 sys free %8d kHz\n", cm_get_rate_dm_khz("l4_sys_free_clk"));
 }

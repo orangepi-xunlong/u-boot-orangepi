@@ -18,6 +18,8 @@
 
 #ifdef CONFIG_DM_RTC
 
+struct udevice;
+
 struct rtc_ops {
 	/**
 	 * get() - get the current time
@@ -86,7 +88,7 @@ struct rtc_ops {
 int dm_rtc_get(struct udevice *dev, struct rtc_time *time);
 
 /**
- * dm_rtc_put() - Write a time to an RTC
+ * dm_rtc_set() - Write a time to an RTC
  *
  * @dev:	Device to read from
  * @time:	Time to write into the RTC
@@ -166,11 +168,17 @@ int rtc_read32(struct udevice *dev, unsigned int reg, u32 *valuep);
  */
 int rtc_write32(struct udevice *dev, unsigned int reg, u32 value);
 
+#ifdef CONFIG_RTC_ENABLE_32KHZ_OUTPUT
+int rtc_enable_32khz_output(int busnum, int chip_addr);
+#endif
+
 #else
 int rtc_get (struct rtc_time *);
 int rtc_set (struct rtc_time *);
 void rtc_reset (void);
+#ifdef CONFIG_RTC_ENABLE_32KHZ_OUTPUT
 void rtc_enable_32khz_output(void);
+#endif
 
 /**
  * rtc_read8() - Read an 8-bit register
@@ -208,7 +216,18 @@ void rtc_write32(int reg, u32 value);
  * rtc_init() - Set up the real time clock ready for use
  */
 void rtc_init(void);
-#endif
+#endif /* CONFIG_DM_RTC */
+
+/**
+ * is_leap_year - Check if year is a leap year
+ *
+ * @year	Year
+ * @return	1 if leap year
+ */
+static inline bool is_leap_year(unsigned int year)
+{
+	return (!(year % 4) && (year % 100)) || !(year % 400);
+}
 
 /**
  * rtc_calc_weekday() - Work out the weekday from a time
@@ -231,9 +250,8 @@ int rtc_calc_weekday(struct rtc_time *time);
  *
  * @time_t:	Number of seconds since 1970-01-01 00:00:00
  * @time:	Place to put the broken-out time
- * @return 0 if OK, -EINVAL if the weekday could not be determined
  */
-int rtc_to_tm(int time_t, struct rtc_time *time);
+void rtc_to_tm(u64 time_t, struct rtc_time *time);
 
 /**
  * rtc_mktime() - Convert a broken-out time into a time_t value
@@ -247,5 +265,13 @@ int rtc_to_tm(int time_t, struct rtc_time *time);
  * @return corresponding time_t value, seconds since 1970-01-01 00:00:00
  */
 unsigned long rtc_mktime(const struct rtc_time *time);
+
+/**
+ * rtc_month_days() - The number of days in the month
+ *
+ * @month:	month (January = 0)
+ * @year:	year (4 digits)
+ */
+int rtc_month_days(unsigned int month, unsigned int year);
 
 #endif	/* _RTC_H_ */

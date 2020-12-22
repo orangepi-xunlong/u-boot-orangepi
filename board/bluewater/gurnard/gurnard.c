@@ -12,6 +12,8 @@
 #include <atmel_lcdc.h>
 #include <atmel_mci.h>
 #include <dm.h>
+#include <env.h>
+#include <init.h>
 #include <lcd.h>
 #include <net.h>
 #ifndef CONFIG_DM_ETH
@@ -31,6 +33,7 @@
 #include <asm/arch/clk.h>
 #include <asm/arch/gpio.h>
 #include <dm/uclass-internal.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_GURNARD_SPLASH
 #include "splash_logo.h"

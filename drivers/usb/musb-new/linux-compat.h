@@ -2,14 +2,9 @@
 #define __LINUX_COMPAT_H__
 
 #include <malloc.h>
+#include <linux/delay.h>
 #include <linux/list.h>
 #include <linux/compat.h>
-
-#define WARN(condition, fmt, args...) ({	\
-	int ret_warn = !!condition;		\
-	if (ret_warn)				\
-		printf(fmt, ##args);		\
-	ret_warn; })
 
 #define device_init_wakeup(dev, a) do {} while (0)
 

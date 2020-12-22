@@ -40,12 +40,6 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
 /*
- * Commands configuration
- */
-#ifndef CONFIG_NETSPACE_MINI_V2 /* No USB ports on Network Space v2 Mini */
-#endif
-
-/*
  * Core clock definition
  */
 #define CONFIG_SYS_TCLK			166000000 /* 166MHz */
@@ -53,7 +47,6 @@
 /*
  * SDRAM configuration
  */
-#define CONFIG_NR_DRAM_BANKS		1
 
 /*
  * Different SDRAM configuration and size for some of the boards derived
@@ -72,15 +65,12 @@
 #include "mv-common.h"
 
 /* Remove or override few declarations from mv-common.h */
-#undef CONFIG_ENV_SPI_MAX_HZ
 #undef CONFIG_SYS_IDE_MAXBUS
 #undef CONFIG_SYS_IDE_MAXDEVICE
-#define CONFIG_ENV_SPI_MAX_HZ           20000000 /* 20Mhz */
 
 /*
  * Enable platform initialisation via misc_init_r() function
  */
-#define CONFIG_MISC_INIT_R
 
 /*
  * Ethernet Driver configuration
@@ -135,10 +125,6 @@
 /*
  * Environment variables configurations
  */
-#define CONFIG_ENV_SECT_SIZE		0x10000	/* 64KB */
-#define CONFIG_ENV_SIZE			0x1000	/* 4KB */
-#define CONFIG_ENV_ADDR			0x70000
-#define CONFIG_ENV_OFFSET		0x70000	/* env starts here */
 
 /*
  * Default environment variables

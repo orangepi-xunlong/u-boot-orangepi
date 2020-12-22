@@ -88,13 +88,11 @@
 #define PSCI_RET_DISABLED			-8
 
 #ifdef CONFIG_ARM_PSCI_FW
-typedef unsigned long (psci_fn)(unsigned long, unsigned long,
-				unsigned long, unsigned long);
-
-extern psci_fn *invoke_psci_fn;
-#else
 unsigned long invoke_psci_fn(unsigned long a0, unsigned long a1,
-			     unsigned long a2, unsigned long a3)
+			     unsigned long a2, unsigned long a3);
+#else
+static inline unsigned long invoke_psci_fn(unsigned long a0, unsigned long a1,
+					   unsigned long a2, unsigned long a3)
 {
 	return PSCI_RET_DISABLED;
 }

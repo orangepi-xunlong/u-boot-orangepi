@@ -10,7 +10,10 @@
  */
 
 #include <common.h>
+#include <bootcount.h>
+#include <env.h>
 #include <errno.h>
+#include <init.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -26,7 +29,6 @@
 #include <i2c.h>
 #include <power/tps65217.h>
 #include "../common/bur_common.h"
-#include <lcd.h>
 #include <watchdog.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -73,27 +75,13 @@ static const struct ctrl_ioregs ddr3_ioregs = {
 	.dt1ioctl = MT41K256M16HA125E_IOCTRL_VALUE,
 };
 
-#ifdef CONFIG_SPL_OS_BOOT
-/*
- * called from spl_nand.c
- * return 0 for loading linux, return 1 for loading u-boot
- */
-int spl_start_uboot(void)
-{
-	if (0 == gpio_get_value(REPSWITCH)) {
-		mdelay(1000);
-		printf("SPL: entering u-boot instead kernel image.\n");
-		return 1;
-	}
-	return 0;
-}
-#endif /* CONFIG_SPL_OS_BOOT */
-
 #define OSC	(V_OSCK/1000000)
 static const struct dpll_params dpll_ddr3 = { 400, OSC-1, 1, -1, -1, -1, -1};
 
 void am33xx_spl_board_init(void)
 {
+	int rc;
+
 	struct cm_perpll *const cmper = (struct cm_perpll *)CM_PER;
 	/*struct cm_wkuppll *const cmwkup = (struct cm_wkuppll *)CM_WKUP;*/
 	struct cm_dpll *const cmdpll = (struct cm_dpll *)CM_DPLL;
@@ -121,12 +109,24 @@ void am33xx_spl_board_init(void)
 
 	/* setup I2C */
 	enable_i2c_pin_mux();
-	i2c_set_bus_num(0);
-	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
-	pmicsetup(0);
 
-	gpio_direction_output(64+29, 1); /* switch NAND_RnB to GPMC_WAIT1 */
-	gpio_direction_output(64+28, 1); /* switch MII2_CRS to GPMC_WAIT0 */
+	pmicsetup(0, 0);
+
+	/* peripheral reset */
+	rc = gpio_request(64 + 29, "GPMC_WAIT1");
+	if (rc != 0)
+		printf("cannot request GPMC_WAIT1 GPIO!\n");
+	rc = gpio_direction_output(64 + 29, 1);
+	if (rc != 0)
+		printf("cannot set GPMC_WAIT1 GPIO!\n");
+
+	rc = gpio_request(64 + 28, "GPMC_WAIT0");
+	if (rc != 0)
+		printf("cannot request GPMC_WAIT0 GPIO!\n");
+	rc = gpio_direction_output(64 + 28, 1);
+	if (rc != 0)
+		printf("cannot set GPMC_WAIT0 GPIO!\n");
+
 }
 
 const struct dpll_params *get_dpll_ddr_params(void)
@@ -150,21 +150,43 @@ int board_init(void)
 	hw_watchdog_init();
 #endif
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 	gpmc_init();
 #endif
 	return 0;
 }
 
 #ifdef CONFIG_BOARD_LATE_INIT
+static char *bootmodeascii[16] = {
+	"BOOT",		"reserved",	"reserved",	"reserved",
+	"RUN",		"reserved",	"reserved",	"reserved",
+	"reserved",	"reserved",	"reserved",	"reserved",
+	"PME",		"reserved",	"reserved",	"DIAG",
+};
+
 int board_late_init(void)
 {
-	if (0 == gpio_get_value(REPSWITCH)) {
-		lcd_position_cursor(1, 8);
-		lcd_puts(
-		"switching to network-console ...       ");
-		env_set("bootcmd", "run netconsole");
-	}
+	unsigned char bmode = 0;
+	ulong bootcount = 0;
+	int rc;
+
+	bootcount = bootcount_load() & 0xF;
+
+	rc = gpio_request(REPSWITCH, "REPSWITCH");
+
+	if (rc != 0 || gpio_get_value(REPSWITCH) == 0 || bootcount == 12)
+		bmode = 12;
+	else if (bootcount > 0)
+		bmode = 0;
+	else
+		bmode = 4;
+
+	printf("Mode:  %s\n", bootmodeascii[bmode & 0x0F]);
+	env_set_ulong("b_mode", bmode);
+
+	/* get sure that bootcmd isn't affected by any bootcount value */
+	env_set_ulong("bootlimit", 0);
+
 	return 0;
 }
 #endif /* CONFIG_BOARD_LATE_INIT */

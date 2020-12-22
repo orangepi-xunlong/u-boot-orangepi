@@ -27,8 +27,11 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <asm/relocs.h>
 #include <asm/sections.h>
+#include <linux/bitops.h>
 
 /**
  * read_uint() - Read an unsigned integer from the buffer

@@ -28,10 +28,13 @@
 #define __EXT4__
 #include <ext_common.h>
 
+struct disk_partition;
+
 #define EXT4_INDEX_FL		0x00001000 /* Inode uses hash tree index */
 #define EXT4_EXTENTS_FL		0x00080000 /* Inode uses extents */
 #define EXT4_EXT_MAGIC			0xf30a
 #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM	0x0010
+#define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM 0x0400
 #define EXT4_FEATURE_INCOMPAT_EXTENTS	0x0040
 #define EXT4_FEATURE_INCOMPAT_64BIT	0x0080
 #define EXT4_INDIRECT_BLOCKS		12
@@ -116,6 +119,12 @@ struct ext_filesystem {
 	struct blk_desc *dev_desc;
 };
 
+struct ext_block_cache {
+	char *buf;
+	lbaint_t block;
+	int size;
+};
+
 extern struct ext2_data *ext4fs_root;
 extern struct ext2fs_node *ext4fs_file;
 
@@ -127,10 +136,11 @@ extern int gindex;
 int ext4fs_init(void);
 void ext4fs_deinit(void);
 int ext4fs_filename_unlink(char *filename);
-int ext4fs_write(const char *fname, unsigned char *buffer,
-		 unsigned long sizebytes);
+int ext4fs_write(const char *fname, const char *buffer,
+				 unsigned long sizebytes, int type);
 int ext4_write_file(const char *filename, void *buf, loff_t offset, loff_t len,
 		    loff_t *actwrite);
+int ext4fs_create_link(const char *target, const char *fname);
 #endif
 
 struct ext_filesystem *get_fs(void);
@@ -144,12 +154,16 @@ int ext4fs_exists(const char *filename);
 int ext4fs_size(const char *filename, loff_t *size);
 void ext4fs_free_node(struct ext2fs_node *node, struct ext2fs_node *currroot);
 int ext4fs_devread(lbaint_t sector, int byte_offset, int byte_len, char *buf);
-void ext4fs_set_blk_dev(struct blk_desc *rbdd, disk_partition_t *info);
-long int read_allocated_block(struct ext2_inode *inode, int fileblock);
+void ext4fs_set_blk_dev(struct blk_desc *rbdd, struct disk_partition *info);
+long int read_allocated_block(struct ext2_inode *inode, int fileblock,
+			      struct ext_block_cache *cache);
 int ext4fs_probe(struct blk_desc *fs_dev_desc,
-		 disk_partition_t *fs_partition);
+		 struct disk_partition *fs_partition);
 int ext4_read_file(const char *filename, void *buf, loff_t offset, loff_t len,
 		   loff_t *actread);
 int ext4_read_superblock(char *buffer);
 int ext4fs_uuid(char *uuid_str);
+void ext_cache_init(struct ext_block_cache *cache);
+void ext_cache_fini(struct ext_block_cache *cache);
+int ext_cache_read(struct ext_block_cache *cache, lbaint_t block, int size);
 #endif

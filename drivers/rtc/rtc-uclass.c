@@ -7,6 +7,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <rtc.h>
 
 int dm_rtc_get(struct udevice *dev, struct rtc_time *time)
@@ -122,4 +123,5 @@ int rtc_write32(struct udevice *dev, unsigned int reg, u32 value)
 UCLASS_DRIVER(rtc) = {
 	.name		= "rtc",
 	.id		= UCLASS_RTC,
+	.post_bind	= dm_scan_fdt_dev,
 };

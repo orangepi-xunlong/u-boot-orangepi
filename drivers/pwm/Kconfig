@@ -18,6 +18,18 @@ config PWM_EXYNOS
 	  used. It provides 5 channels which can be independently
 	  programmed. Channel 4 (the last) is normally used as a timer.
 
+config PWM_IMX
+	bool "Enable support for i.MX27 and later PWM"
+	help
+	  This PWM is found i.MX27 and later i.MX SoCs.
+
+config PWM_MTK
+	bool "Enable support for MediaTek PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found on MT7622, MT7623, and MT7629. It supports a
+	  programmable period and duty cycle.
+
 config PWM_ROCKCHIP
 	bool "Enable support for the Rockchip PWM"
 	depends on DM_PWM
@@ -44,25 +56,9 @@ config PWM_TEGRA
 	  32KHz clock is supported by the driver but the duty cycle is
 	  configurable.
 
-menu "PWM_SUNXI"
-choice
-	prompt "SUNXI PWM SELECT"
-
 config PWM_SUNXI
-	bool "Enable Sunxi PWM"
-	depends on ARCH_SUNXI
+	bool "Enable support for the Allwinner Sunxi PWM"
+	depends on DM_PWM
 	help
-	  This PWM is Base PWM framework driver for sunxi.
-
-config PWM_SUNXI_NEW
-	bool "Enable Sunxi Enhance PWM"
-	depends on ARCH_SUNXI
-	help
-	  This PWM is Enhance PWM framework driver for sunxi.
-config PWM_NOT_USE
-	bool "NOT USE PWM"
-	depends on ARCH_SUNXI
-	help
-	 no use pwm
-endchoice
-endmenu
+	  This PWM is found on H3, A64 and other Allwinner SoCs. It supports a
+	  programmable period and duty cycle. A 16-bit counter is used.

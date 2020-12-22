@@ -10,17 +10,6 @@
 
 #include "pinctrl-uniphier.h"
 
-static const struct uniphier_pinctrl_pin uniphier_ld6b_pins[] = {
-	UNIPHIER_PINCTRL_PIN(113, 0),
-	UNIPHIER_PINCTRL_PIN(114, 0),
-	UNIPHIER_PINCTRL_PIN(115, 0),
-	UNIPHIER_PINCTRL_PIN(116, 0),
-	UNIPHIER_PINCTRL_PIN(217, 0),
-	UNIPHIER_PINCTRL_PIN(218, 0),
-	UNIPHIER_PINCTRL_PIN(219, 0),
-	UNIPHIER_PINCTRL_PIN(220, 0),
-};
-
 static const unsigned emmc_pins[] = {36, 37, 38, 39, 40, 41, 42};
 static const int emmc_muxvals[] = {1, 1, 1, 1, 1, 1, 1};
 static const unsigned emmc_dat8_pins[] = {43, 44, 45, 46};
@@ -48,6 +37,10 @@ static const unsigned nand_cs1_pins[] = {37, 38};
 static const int nand_cs1_muxvals[] = {0, 0};
 static const unsigned sd_pins[] = {47, 48, 49, 50, 51, 52, 53, 54, 55};
 static const int sd_muxvals[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const unsigned spi0_pins[] = {199, 200, 201, 202};
+static const int spi0_muxvals[] = {8, 8, 8, 8};
+static const unsigned spi1_pins[] = {93, 94, 95, 96};
+static const int spi1_muxvals[] = {1, 1, 1, 1};
 static const unsigned system_bus_pins[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 					   11, 12, 13};
 static const int system_bus_muxvals[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -95,6 +88,8 @@ static const struct uniphier_pinctrl_group uniphier_ld6b_groups[] = {
 	UNIPHIER_PINCTRL_GROUP(nand),
 	UNIPHIER_PINCTRL_GROUP(nand_cs1),
 	UNIPHIER_PINCTRL_GROUP(sd),
+	UNIPHIER_PINCTRL_GROUP(spi0),
+	UNIPHIER_PINCTRL_GROUP(spi1),
 	UNIPHIER_PINCTRL_GROUP(system_bus),
 	UNIPHIER_PINCTRL_GROUP(system_bus_cs1),
 	UNIPHIER_PINCTRL_GROUP(system_bus_cs2),
@@ -123,6 +118,8 @@ static const char * const uniphier_ld6b_functions[] = {
 	UNIPHIER_PINMUX_FUNCTION(i2c3),
 	UNIPHIER_PINMUX_FUNCTION(nand),
 	UNIPHIER_PINMUX_FUNCTION(sd),
+	UNIPHIER_PINMUX_FUNCTION(spi0),
+	UNIPHIER_PINMUX_FUNCTION(spi1),
 	UNIPHIER_PINMUX_FUNCTION(system_bus),
 	UNIPHIER_PINMUX_FUNCTION_SPL(uart0),
 	UNIPHIER_PINMUX_FUNCTION_SPL(uart1),
@@ -134,8 +131,6 @@ static const char * const uniphier_ld6b_functions[] = {
 };
 
 static struct uniphier_pinctrl_socdata uniphier_ld6b_pinctrl_socdata = {
-	.pins = uniphier_ld6b_pins,
-	.pins_count = ARRAY_SIZE(uniphier_ld6b_pins),
 	.groups = uniphier_ld6b_groups,
 	.groups_count = ARRAY_SIZE(uniphier_ld6b_groups),
 	.functions = uniphier_ld6b_functions,

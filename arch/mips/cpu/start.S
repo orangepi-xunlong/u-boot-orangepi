@@ -59,7 +59,8 @@
 		sp, sp, GD_SIZE		# reserve space for gd
 	and	sp, sp, t0		# force 16 byte alignment
 	move	k0, sp			# save gd pointer
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+    !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	li	t2, CONFIG_VAL(SYS_MALLOC_F_LEN)
 	PTR_SUBU \
 		sp, sp, t2		# reserve space for early malloc
@@ -71,10 +72,12 @@
 	move	t0, k0
 1:
 	PTR_S	zero, 0(t0)
+	PTR_ADDIU t0, PTRSIZE
 	blt	t0, t1, 1b
-	 PTR_ADDIU t0, PTRSIZE
+	 nop
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+    !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	PTR_S	sp, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 #endif
 	.endm
@@ -84,25 +87,14 @@ ENTRY(_start)
 	b	reset
 	 mtc0	zero, CP0_COUNT	# clear cp0 count for most accurate boot timing
 
-#if defined(CONFIG_SYS_XWAY_EBU_BOOTCFG)
+#if defined(CONFIG_MIPS_INSERT_BOOT_CONFIG)
 	/*
-	 * Almost all Lantiq XWAY SoC devices have an external bus unit (EBU) to
-	 * access external NOR flashes. If the board boots from NOR flash the
-	 * internal BootROM does a blind read at address 0xB0000010 to read the
-	 * initial configuration for that EBU in order to access the flash
-	 * device with correct parameters. This config option is board-specific.
+	 * Store some board-specific boot configuration. This is used by some
+	 * MIPS systems like Malta.
 	 */
 	.org 0x10
-	.word CONFIG_SYS_XWAY_EBU_BOOTCFG
-	.word 0x0
-#endif
-#if defined(CONFIG_MALTA)
-	/*
-	 * Linux expects the Board ID here.
-	 */
-	.org 0x10
-	.word 0x00000420	# 0x420 (Malta Board with CoreLV)
-	.word 0x00000000
+	.word CONFIG_MIPS_BOOT_CONFIG_WORD0
+	.word CONFIG_MIPS_BOOT_CONFIG_WORD1
 #endif
 
 #if defined(CONFIG_ROM_EXCEPTION_VECTORS)
@@ -227,6 +219,13 @@ wr_done:
 #endif
 
 #ifdef CONFIG_MIPS_INIT_STACK_IN_SRAM
+#ifdef CONFIG_MIPS_SRAM_INIT
+	/* Initialize the SRAM first */
+	PTR_LA	t9, mips_sram_init
+	jalr	t9
+	 nop
+#endif
+
 	/* Set up initial stack and global data */
 	setup_stack_gd
 

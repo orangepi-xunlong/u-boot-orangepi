@@ -6,14 +6,15 @@ choice
 
 config OMAP34XX
 	bool "OMAP34XX SoC"
+	select ARM_CORTEX_A8_CVE_2017_5715
 	select ARM_ERRATA_430973
 	select ARM_ERRATA_454179
 	select ARM_ERRATA_621766
 	select ARM_ERRATA_725233
-	select USE_TINY_PRINTF
+	select SPL_USE_TINY_PRINTF if SPL
 	imply NAND_OMAP_GPMC
-	imply SPL_EXT_SUPPORT
-	imply SPL_FAT_SUPPORT
+	imply SPL_FS_EXT4
+	imply SPL_FS_FAT
 	imply SPL_GPIO_SUPPORT
 	imply SPL_I2C_SUPPORT
 	imply SPL_LIBCOMMON_SUPPORT
@@ -30,12 +31,12 @@ config OMAP34XX
 
 config OMAP44XX
 	bool "OMAP44XX SoC"
-	select USE_TINY_PRINTF
+	select SPL_USE_TINY_PRINTF
 	imply NAND_OMAP_ELM
 	imply NAND_OMAP_GPMC
 	imply SPL_DISPLAY_PRINT
-	imply SPL_EXT_SUPPORT
-	imply SPL_FAT_SUPPORT
+	imply SPL_FS_EXT4
+	imply SPL_FS_FAT
 	imply SPL_GPIO_SUPPORT
 	imply SPL_I2C_SUPPORT
 	imply SPL_LIBCOMMON_SUPPORT
@@ -51,14 +52,15 @@ config OMAP44XX
 
 config OMAP54XX
 	bool "OMAP54XX SoC"
+	select ARM_CORTEX_A15_CVE_2017_5715
 	select ARM_ERRATA_798870
 	select SYS_THUMB_BUILD
 	imply NAND_OMAP_ELM
 	imply NAND_OMAP_GPMC
 	imply SPL_DISPLAY_PRINT
 	imply SPL_ENV_SUPPORT
-	imply SPL_EXT_SUPPORT
-	imply SPL_FAT_SUPPORT
+	imply SPL_FS_EXT4
+	imply SPL_FS_FAT
 	imply SPL_GPIO_SUPPORT
 	imply SPL_I2C_SUPPORT
 	imply SPL_LIBCOMMON_SUPPORT
@@ -114,6 +116,7 @@ config AM43XX
 
 config AM33XX
 	bool "AM33XX SoC"
+	select ARM_CORTEX_A8_CVE_2017_5715
 	select SPECIFY_CONSOLE_INDEX
 	imply NAND_OMAP_ELM
 	imply NAND_OMAP_GPMC
@@ -121,7 +124,7 @@ config AM33XX
 	imply SPL_NAND_SUPPORT
 	imply SYS_I2C_OMAP24XX
 	imply SYS_THUMB_BUILD
-	imply USE_TINY_PRINTF
+	imply SPL_USE_TINY_PRINTF
 	help
 	  Support for AM335x SOC from Texas Instruments.
 	  The AM335x high performance SOC features a Cortex-A8
@@ -133,6 +136,7 @@ endchoice
 
 config SYS_MPUCLK
 	int "MPU CLK speed"
+	depends on AM33XX
 	default 500
 	help
 	  Defines the MPU clock speed (in MHz).
@@ -172,6 +176,7 @@ source "arch/arm/mach-omap2/omap5/Kconfig"
 source "arch/arm/mach-omap2/am33xx/Kconfig"
 
 source "board/BuR/brxre1/Kconfig"
+source "board/BuR/brsmarc1/Kconfig"
 source "board/BuR/brppt1/Kconfig"
 source "board/siemens/draco/Kconfig"
 source "board/siemens/pxm2/Kconfig"
@@ -182,6 +187,7 @@ source "board/ti/am43xx/Kconfig"
 source "board/ti/am335x/Kconfig"
 source "board/compulab/cm_t335/Kconfig"
 source "board/compulab/cm_t43/Kconfig"
+source "board/phytec/phycore_am335x_r2/Kconfig"
 
 config SPL_LDSCRIPT
         default "arch/arm/mach-omap2/u-boot-spl.lds"

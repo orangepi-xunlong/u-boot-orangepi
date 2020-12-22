@@ -12,15 +12,17 @@ import sys
 import tempfile
 import unittest
 
-import gitutil
-import patchstream
-import settings
+from io import StringIO
+
+from patman import gitutil
+from patman import patchstream
+from patman import settings
+from patman import tools
 
 
 @contextlib.contextmanager
 def capture():
     import sys
-    from cStringIO import StringIO
     oldout,olderr = sys.stdout, sys.stderr
     try:
         out=[StringIO(), StringIO()]
@@ -46,7 +48,7 @@ class TestFunctional(unittest.TestCase):
 
     @classmethod
     def GetText(self, fname):
-        return open(self.GetPath(fname)).read()
+        return open(self.GetPath(fname), encoding='utf-8').read()
 
     @classmethod
     def GetPatchName(self, subject):
@@ -80,18 +82,32 @@ class TestFunctional(unittest.TestCase):
             Series-prefix: RFC
             Series-cc: Stefan Brüns <stefan.bruens@rwth-aachen.de>
             Cover-letter-cc: Lord Mëlchett <clergy@palace.gov>
-            Series-version: 2
+            Series-version: 3
+            Patch-cc: fred
+            Series-process-log: sort, uniq
             Series-changes: 4
             - Some changes
+            - Multi
+              line
+              change
+
+            Commit-changes: 2
+            - Changes only for this commit
+
+            Cover-changes: 4
+            - Some notes for the cover letter
 
             Cover-letter:
             test: A test patch series
             This is a test of how the cover
-            leter
+            letter
             works
             END
 
         and this in the first commit:
+
+            Commit-changes: 2
+            - second revision change
 
             Series-notes:
             some notes
@@ -124,10 +140,10 @@ class TestFunctional(unittest.TestCase):
         """
         process_tags = True
         ignore_bad_tags = True
-        stefan = u'Stefan Brüns <stefan.bruens@rwth-aachen.de>'
+        stefan = b'Stefan Br\xc3\xbcns <stefan.bruens@rwth-aachen.de>'.decode('utf-8')
         rick = 'Richard III <richard@palace.gov>'
-        mel = u'Lord Mëlchett <clergy@palace.gov>'
-        ed = u'Lond Edmund Blackaddër <weasel@blackadder.org'
+        mel = b'Lord M\xc3\xablchett <clergy@palace.gov>'.decode('utf-8')
+        ed = b'Lond Edmund Blackadd\xc3\xabr <weasel@blackadder.org'.decode('utf-8')
         fred = 'Fred Bloggs <f.bloggs@napier.net>'
         add_maintainers = [stefan, rick]
         dry_run = True
@@ -149,16 +165,16 @@ class TestFunctional(unittest.TestCase):
                 patchstream.InsertCoverLetter(cover_fname, series, count)
             series.DoChecks()
             cc_file = series.MakeCcFile(process_tags, cover_fname,
-                                        not ignore_bad_tags, add_maintainers)
+                                        not ignore_bad_tags, add_maintainers,
+                                        None)
             cmd = gitutil.EmailPatches(series, cover_fname, args,
                     dry_run, not ignore_bad_tags, cc_file,
                     in_reply_to=in_reply_to, thread=None)
             series.ShowActions(args, cmd, process_tags)
-        cc_lines = open(cc_file).read().splitlines()
+        cc_lines = open(cc_file, encoding='utf-8').read().splitlines()
         os.remove(cc_file)
 
         lines = out[0].splitlines()
-        #print '\n'.join(lines)
         self.assertEqual('Cleaned %s patches' % len(series.commits), lines[0])
         self.assertEqual('Change log missing for v2', lines[1])
         self.assertEqual('Change log missing for v3', lines[2])
@@ -173,31 +189,34 @@ class TestFunctional(unittest.TestCase):
             while 'Cc:' in lines[line]:
                 line += 1
         self.assertEqual('To:	  u-boot@lists.denx.de', lines[line])
-        self.assertEqual('Cc:	  %s' % stefan.encode('utf-8'), lines[line + 1])
+        self.assertEqual('Cc:	  %s' % tools.FromUnicode(stefan),
+                         lines[line + 1])
         self.assertEqual('Version:  3', lines[line + 2])
         self.assertEqual('Prefix:\t  RFC', lines[line + 3])
         self.assertEqual('Cover: 4 lines', lines[line + 4])
         line += 5
-        self.assertEqual('      Cc:  %s' % mel.encode('utf-8'), lines[line + 0])
-        self.assertEqual('      Cc:  %s' % rick, lines[line + 1])
-        self.assertEqual('      Cc:  %s' % fred, lines[line + 2])
-        self.assertEqual('      Cc:  %s' % ed.encode('utf-8'), lines[line + 3])
+        self.assertEqual('      Cc:  %s' % fred, lines[line + 0])
+        self.assertEqual('      Cc:  %s' % tools.FromUnicode(ed),
+                         lines[line + 1])
+        self.assertEqual('      Cc:  %s' % tools.FromUnicode(mel),
+                         lines[line + 2])
+        self.assertEqual('      Cc:  %s' % rick, lines[line + 3])
         expected = ('Git command: git send-email --annotate '
                     '--in-reply-to="%s" --to "u-boot@lists.denx.de" '
                     '--cc "%s" --cc-cmd "%s --cc-cmd %s" %s %s'
                     % (in_reply_to, stefan, sys.argv[0], cc_file, cover_fname,
-                       ' '.join(args))).encode('utf-8')
+                       ' '.join(args)))
         line += 4
-        self.assertEqual(expected, lines[line])
+        self.assertEqual(expected, tools.ToUnicode(lines[line]))
 
-        self.assertEqual(('%s %s, %s' % (args[0], rick, stefan))
-                         .encode('utf-8'), cc_lines[0])
-        self.assertEqual(('%s %s, %s, %s, %s' % (args[1], fred, rick, stefan,
-                                            ed)).encode('utf-8'), cc_lines[1])
+        self.assertEqual(('%s %s\0%s' % (args[0], rick, stefan)),
+                         tools.ToUnicode(cc_lines[0]))
+        self.assertEqual(('%s %s\0%s\0%s\0%s' % (args[1], fred, ed, rick,
+                                     stefan)), tools.ToUnicode(cc_lines[1]))
 
         expected = '''
 This is a test of how the cover
-leter
+letter
 works
 
 some notes
@@ -205,11 +224,15 @@ about some things
 from the first commit
 
 Changes in v4:
+- Multi
+  line
+  change
 - Some changes
+- Some notes for the cover letter
 
 Simon Glass (2):
   pci: Correct cast for sandbox
-  fdt: Correct cast for sandbox in fdtdec_setup_memory_size()
+  fdt: Correct cast for sandbox in fdtdec_setup_mem_size_base()
 
  cmd/pci.c                   | 3 ++-
  fs/fat/fat.c                | 1 +
@@ -221,21 +244,45 @@ Simon Glass (2):
 2.7.4
 
 '''
-        lines = open(cover_fname).read().splitlines()
-        #print '\n'.join(lines)
+        lines = open(cover_fname, encoding='utf-8').read().splitlines()
         self.assertEqual(
                 'Subject: [RFC PATCH v3 0/2] test: A test patch series',
                 lines[3])
         self.assertEqual(expected.splitlines(), lines[7:])
 
         for i, fname in enumerate(args):
-            lines = open(fname).read().splitlines()
-            #print '\n'.join(lines)
+            lines = open(fname, encoding='utf-8').read().splitlines()
             subject = [line for line in lines if line.startswith('Subject')]
             self.assertEqual('Subject: [RFC %d/%d]' % (i + 1, count),
                              subject[0][:18])
+
+            # Check that we got our commit notes
+            start = 0
+            expected = ''
+
             if i == 0:
-                # Check that we got our commit notes
-                self.assertEqual('---', lines[17])
-                self.assertEqual('Some notes about', lines[18])
-                self.assertEqual('the first commit', lines[19])
+                start = 17
+                expected = '''---
+Some notes about
+the first commit
+
+(no changes since v2)
+
+Changes in v2:
+- second revision change'''
+            elif i == 1:
+                start = 17
+                expected = '''---
+
+Changes in v4:
+- Multi
+  line
+  change
+- Some changes
+
+Changes in v2:
+- Changes only for this commit'''
+
+            if expected:
+                expected = expected.splitlines()
+                self.assertEqual(expected, lines[start:(start+len(expected))])

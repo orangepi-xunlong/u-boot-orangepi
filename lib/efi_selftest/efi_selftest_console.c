@@ -6,10 +6,11 @@
  */
 
 #include <efi_selftest.h>
+#include <net.h>
 #include <vsprintf.h>
 
 struct efi_simple_text_output_protocol *con_out;
-struct efi_simple_input_interface *con_in;
+struct efi_simple_text_input_protocol *con_in;
 
 /*
  * Print a MAC address to an u16 string
@@ -70,11 +71,12 @@ static void pointer(void *pointer, u16 **buf)
 /*
  * Print an unsigned 32bit value as decimal number to an u16 string
  *
- * @value: value to be printed
- * @buf: pointer to buffer address
- * on return position of terminating zero word
+ * @value:	value to be printed
+ * @prec:	minimum number of digits to display
+ * @buf:	pointer to buffer address
+ *		on return position of terminating zero word
  */
-static void uint2dec(u32 value, u16 **buf)
+static void uint2dec(u32 value, int prec, u16 **buf)
 {
 	u16 *pos = *buf;
 	int i;
@@ -93,7 +95,7 @@ static void uint2dec(u32 value, u16 **buf)
 	for (i = 0; i < 10; ++i) {
 		/* Write current digit */
 		c = f >> 60;
-		if (c || pos != *buf)
+		if (c || pos != *buf || 10 - i <= prec)
 			*pos++ = c + '0';
 		/* Eliminate current digit */
 		f &= 0xfffffffffffffff;
@@ -109,11 +111,12 @@ static void uint2dec(u32 value, u16 **buf)
 /*
  * Print a signed 32bit value as decimal number to an u16 string
  *
- * @value: value to be printed
- * @buf: pointer to buffer address
+ * @value:	value to be printed
+ * @prec:	minimum number of digits to display
+ * @buf:	pointer to buffer address
  * on return position of terminating zero word
  */
-static void int2dec(s32 value, u16 **buf)
+static void int2dec(s32 value, int prec, u16 **buf)
 {
 	u32 u;
 	u16 *pos = *buf;
@@ -124,7 +127,7 @@ static void int2dec(s32 value, u16 **buf)
 	} else {
 		u = value;
 	}
-	uint2dec(u, &pos);
+	uint2dec(u, prec, &pos);
 	*buf = pos;
 }
 
@@ -143,6 +146,7 @@ void efi_st_printc(int color, const char *fmt, ...)
 	u16 *pos = buf;
 	const char *s;
 	u16 *u;
+	int prec;
 
 	va_start(args, fmt);
 
@@ -172,12 +176,20 @@ void efi_st_printc(int color, const char *fmt, ...)
 			break;
 		case '%':
 			++c;
+			/* Parse precision */
+			if (*c == '.') {
+				++c;
+				prec = *c - '0';
+				++c;
+			} else {
+				prec = 0;
+			}
 			switch (*c) {
 			case '\0':
 				--c;
 				break;
 			case 'd':
-				int2dec(va_arg(args, s32), &pos);
+				int2dec(va_arg(args, s32), prec, &pos);
 				break;
 			case 'p':
 				++c;
@@ -209,7 +221,7 @@ void efi_st_printc(int color, const char *fmt, ...)
 					*pos++ = *s;
 				break;
 			case 'u':
-				uint2dec(va_arg(args, u32), &pos);
+				uint2dec(va_arg(args, u32), prec, &pos);
 				break;
 			default:
 				break;

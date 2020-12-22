@@ -5,7 +5,10 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <i2c.h>
+#include <irq_func.h>
+#include <log.h>
 #include <asm/io.h>
 #ifdef CONFIG_FSL_LSCH2
 #include <asm/arch/immap_lsch2.h>
@@ -14,6 +17,7 @@
 #else
 #include <asm/immap_85xx.h>
 #endif
+#include <linux/delay.h>
 #include "vid.h"
 
 int __weak i2c_multiplexer_select_vid_channel(u8 channel)
@@ -60,13 +64,23 @@ static int find_ir_chip_on_i2c(void)
 	u8 byte;
 	int i;
 	const int ir_i2c_addr[] = {0x38, 0x08, 0x09};
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+#endif
 
 	/* Check all the address */
 	for (i = 0; i < (sizeof(ir_i2c_addr)/sizeof(ir_i2c_addr[0])); i++) {
 		i2caddress = ir_i2c_addr[i];
+#ifndef CONFIG_DM_I2C
 		ret = i2c_read(i2caddress,
 			       IR36021_MFR_ID_OFFSET, 1, (void *)&byte,
 			       sizeof(byte));
+#else
+		ret = i2c_get_chip_for_busnum(0, i2caddress, 1, &dev);
+		if (!ret)
+			ret = dm_i2c_read(dev, IR36021_MFR_ID_OFFSET,
+					  (void *)&byte, sizeof(byte));
+#endif
 		if ((ret >= 0) && (byte == IR36021_MFR_ID))
 			return i2caddress;
 	}
@@ -102,11 +116,21 @@ static int read_voltage_from_INA220(int i2caddress)
 	int i, ret, voltage_read = 0;
 	u16 vol_mon;
 	u8 buf[2];
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+#endif
 
 	for (i = 0; i < NUM_READINGS; i++) {
+#ifndef CONFIG_DM_I2C
 		ret = i2c_read(I2C_VOL_MONITOR_ADDR,
 			       I2C_VOL_MONITOR_BUS_V_OFFSET, 1,
 			       (void *)&buf, 2);
+#else
+		ret = i2c_get_chip_for_busnum(0, I2C_VOL_MONITOR_ADDR, 1, &dev);
+		if (!ret)
+			ret = dm_i2c_read(dev, I2C_VOL_MONITOR_BUS_V_OFFSET,
+					  (void *)&buf, 2);
+#endif
 		if (ret) {
 			printf("VID: failed to read core voltage\n");
 			return ret;
@@ -135,11 +159,21 @@ static int read_voltage_from_IR(int i2caddress)
 	int i, ret, voltage_read = 0;
 	u16 vol_mon;
 	u8 buf;
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
+#endif
 
 	for (i = 0; i < NUM_READINGS; i++) {
+#ifndef CONFIG_DM_I2C
 		ret = i2c_read(i2caddress,
 			       IR36021_LOOP1_VOUT_OFFSET,
 			       1, (void *)&buf, 1);
+#else
+		ret = i2c_get_chip_for_busnum(0, i2caddress, 1, &dev);
+		if (!ret)
+			ret = dm_i2c_read(dev, IR36021_LOOP1_VOUT_OFFSET,
+					  (void *)&buf, 1);
+#endif
 		if (ret) {
 			printf("VID: failed to read vcpu\n");
 			return ret;
@@ -178,17 +212,33 @@ static int read_voltage_from_LTC(int i2caddress)
 	int  ret, vcode = 0;
 	u8 chan = PWM_CHANNEL0;
 
+#ifndef CONFIG_DM_I2C
 	/* select the PAGE 0 using PMBus commands PAGE for VDD*/
 	ret = i2c_write(I2C_VOL_MONITOR_ADDR,
 			PMBUS_CMD_PAGE, 1, &chan, 1);
+#else
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(0, I2C_VOL_MONITOR_ADDR, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_write(dev, PMBUS_CMD_PAGE, &chan, 1);
+#endif
 	if (ret) {
 		printf("VID: failed to select VDD Page 0\n");
 		return ret;
 	}
 
+#ifndef CONFIG_DM_I2C
 	/*read the output voltage using PMBus command READ_VOUT*/
 	ret = i2c_read(I2C_VOL_MONITOR_ADDR,
 		       PMBUS_CMD_READ_VOUT, 1, (void *)&vcode, 2);
+#else
+	ret = dm_i2c_read(dev, PMBUS_CMD_READ_VOUT, (void *)&vcode, 2);
+	if (ret) {
+		printf("VID: failed to read the volatge\n");
+		return ret;
+	}
+#endif
 	if (ret) {
 		printf("VID: failed to read the volatge\n");
 		return ret;
@@ -293,8 +343,18 @@ static int set_voltage_to_IR(int i2caddress, int vdd)
 	vid = DIV_ROUND_UP(vdd - 245, 5);
 #endif
 
+#ifndef CONFIG_DM_I2C
 	ret = i2c_write(i2caddress, IR36021_LOOP1_MANUAL_ID_OFFSET,
 			1, (void *)&vid, sizeof(vid));
+#else
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(0, i2caddress, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_write(dev, IR36021_LOOP1_MANUAL_ID_OFFSET,
+				   (void *)&vid, sizeof(vid));
+
+#endif
 	if (ret) {
 		printf("VID: failed to write VID\n");
 		return -1;
@@ -318,6 +378,7 @@ static int set_voltage_to_IR(int i2caddress, int vdd)
 static int set_voltage_to_LTC(int i2caddress, int vdd)
 {
 	int ret, vdd_last, vdd_target = vdd;
+	int count = 100, temp = 0;
 
 	/* Scale up to the LTC resolution is 1/4096V */
 	vdd = (vdd * 4096) / 1000;
@@ -329,8 +390,17 @@ static int set_voltage_to_LTC(int i2caddress, int vdd)
 			vdd & 0xFF, (vdd & 0xFF00) >> 8};
 
 	/* Write the desired voltage code to the regulator */
+#ifndef CONFIG_DM_I2C
 	ret = i2c_write(I2C_VOL_MONITOR_ADDR,
 			PMBUS_CMD_PAGE_PLUS_WRITE, 1, (void *)&buff, 5);
+#else
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(0, I2C_VOL_MONITOR_ADDR, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_write(dev, PMBUS_CMD_PAGE_PLUS_WRITE,
+				   (void *)&buff, 5);
+#endif
 	if (ret) {
 		printf("VID: I2C failed to write to the volatge regulator\n");
 		return -1;
@@ -343,7 +413,9 @@ static int set_voltage_to_LTC(int i2caddress, int vdd)
 			printf("VID: Couldn't read sensor abort VID adjust\n");
 			return -1;
 		}
-	} while (vdd_last != vdd_target);
+		count--;
+		temp = vdd_last - vdd_target;
+	} while ((abs(temp) > 2)  && (count > 0));
 
 	return vdd_last;
 }
@@ -379,6 +451,42 @@ int adjust_vdd(ulong vdd_override)
 	int ret, i2caddress;
 	unsigned long vdd_string_override;
 	char *vdd_string;
+#ifdef CONFIG_ARCH_LX2160A
+	static const u16 vdd[32] = {
+		8250,
+		7875,
+		7750,
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		8000,
+		8125,
+		8250,
+		0,      /* reserved */
+		8500,
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+		0,      /* reserved */
+	};
+#else
 #ifdef CONFIG_ARCH_LS1088A
 	static const uint16_t vdd[32] = {
 		10250,
@@ -428,7 +536,7 @@ int adjust_vdd(ulong vdd_override)
 		0,      /* reserved */
 		0,      /* reserved */
 		0,      /* reserved */
-		0,      /* reserved */
+		9000,      /* reserved */
 		0,      /* reserved */
 		0,      /* reserved */
 		0,      /* reserved */
@@ -450,6 +558,7 @@ int adjust_vdd(ulong vdd_override)
 		0,      /* reserved */
 		0,      /* reserved */
 	};
+#endif
 #endif
 	struct vdd_drive {
 		u8 vid;
@@ -475,14 +584,24 @@ int adjust_vdd(ulong vdd_override)
 	}
 
 	/* check IR chip work on Intel mode*/
+#ifndef CONFIG_DM_I2C
 	ret = i2c_read(i2caddress,
 		       IR36021_INTEL_MODE_OOFSET,
 		       1, (void *)&buf, 1);
+#else
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(0, i2caddress, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_read(dev, IR36021_INTEL_MODE_OOFSET,
+				  (void *)&buf, 1);
+#endif
 	if (ret) {
 		printf("VID: failed to read IR chip mode.\n");
 		ret = -1;
 		goto exit;
 	}
+
 	if ((buf & IR36021_MODE_MASK) != IR36021_INTEL_MODE) {
 		printf("VID: IR Chip is not used in Intel mode.\n");
 		ret = -1;
@@ -647,9 +766,18 @@ int adjust_vdd(ulong vdd_override)
 	}
 
 	/* check IR chip work on Intel mode*/
+#ifndef CONFIG_DM_I2C
 	ret = i2c_read(i2caddress,
 		       IR36021_INTEL_MODE_OOFSET,
 		       1, (void *)&buf, 1);
+#else
+	struct udevice *dev;
+
+	ret = i2c_get_chip_for_busnum(0, i2caddress, 1, &dev);
+	if (!ret)
+		ret = dm_i2c_read(dev, IR36021_INTEL_MODE_OOFSET,
+				  (void *)&buf, 1);
+#endif
 	if (ret) {
 		printf("VID: failed to read IR chip mode.\n");
 		ret = -1;
@@ -799,9 +927,9 @@ exit:
 
 }
 
-static int do_vdd_override(cmd_tbl_t *cmdtp,
+static int do_vdd_override(struct cmd_tbl *cmdtp,
 			   int flag, int argc,
-			   char * const argv[])
+			   char *const argv[])
 {
 	ulong override;
 
@@ -815,9 +943,8 @@ static int do_vdd_override(cmd_tbl_t *cmdtp,
 	return 0;
 }
 
-static int do_vdd_read(cmd_tbl_t *cmdtp,
-			 int flag, int argc,
-			 char * const argv[])
+static int do_vdd_read(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	if (argc < 1)
 		return CMD_RET_USAGE;

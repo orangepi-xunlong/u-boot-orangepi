@@ -12,12 +12,18 @@
 
 #include <common.h>
 #include <dm.h>
+#include <efi_loader.h>
+#include <hang.h>
+#include <init.h>
+#include <irq.h>
+#include <irq_func.h>
 #include <asm/control_regs.h>
 #include <asm/i8259.h>
 #include <asm/interrupt.h>
 #include <asm/io.h>
 #include <asm/lapic.h>
 #include <asm/processor-flags.h>
+#include <asm/ptrace.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -37,7 +43,7 @@ static char *exceptions[] = {
 	"Overflow",
 	"BOUND Range Exceeded",
 	"Invalid Opcode (Undefined Opcode)",
-	"Device Not Avaiable (No Math Coprocessor)",
+	"Device Not Available (No Math Coprocessor)",
 	"Double Fault",
 	"Coprocessor Segment Overrun",
 	"Invalid TSS",
@@ -63,6 +69,18 @@ static char *exceptions[] = {
 	"Reserved",
 	"Reserved"
 };
+
+/**
+ * show_efi_loaded_images() - show loaded UEFI images
+ *
+ * List all loaded UEFI images.
+ *
+ * @eip:	instruction pointer
+ */
+static void show_efi_loaded_images(uintptr_t eip)
+{
+	efi_print_image_infos((void *)eip);
+}
 
 static void dump_regs(struct irq_regs *regs)
 {
@@ -144,6 +162,7 @@ static void dump_regs(struct irq_regs *regs)
 		printf("0x%8.8lx : 0x%8.8lx\n", sp, (ulong)readl(sp));
 		sp -= 4;
 	}
+	show_efi_loaded_images(eip);
 }
 
 static void do_exception(struct irq_regs *regs)
@@ -246,8 +265,11 @@ int interrupt_init(void)
 	struct udevice *dev;
 	int ret;
 
+	if (!ll_boot_init())
+		return 0;
+
 	/* Try to set up the interrupt router, but don't require one */
-	ret = uclass_first_device_err(UCLASS_IRQ, &dev);
+	ret = irq_first_device_type(X86_IRQT_BASE, &dev);
 	if (ret && ret != -ENODEV)
 		return ret;
 
@@ -264,7 +286,9 @@ int interrupt_init(void)
 	i8259_init();
 #endif
 
+#ifdef CONFIG_APIC
 	lapic_setup();
+#endif
 
 	/* Initialize core interrupt and exception functionality of CPU */
 	cpu_init_interrupts();
@@ -275,8 +299,7 @@ int interrupt_init(void)
 	 * TODO(sjg@chromium.org): But we don't handle these correctly when
 	 * booted from EFI.
 	 */
-	if (ll_boot_init())
-		enable_interrupts();
+	enable_interrupts();
 #endif
 
 	return 0;

@@ -8,9 +8,7 @@
 #include <efi_selftest.h>
 #include <vsprintf.h>
 
-/*
- * Constants for test step bitmap
- */
+/* Constants for test step bitmap */
 #define EFI_ST_SETUP	1
 #define EFI_ST_EXECUTE	2
 #define EFI_ST_TEARDOWN	4
@@ -20,13 +18,14 @@ static const struct efi_boot_services *boottime;
 static const struct efi_runtime_services *runtime;
 static efi_handle_t handle;
 static u16 reset_message[] = L"Selftest completed";
+static int *setup_status;
 
 /*
  * Exit the boot services.
  *
  * The size of the memory map is determined.
  * Pool memory is allocated to copy the memory map.
- * The memory amp is copied and the map key is obtained.
+ * The memory map is copied and the map key is obtained.
  * The map key is used to exit the boot services.
  */
 void efi_st_exit_boot_services(void)
@@ -76,20 +75,20 @@ void efi_st_exit_boot_services(void)
  */
 static int setup(struct efi_unit_test *test, unsigned int *failures)
 {
-	if (!test->setup) {
-		test->setup_ok = EFI_ST_SUCCESS;
+	int ret;
+
+	if (!test->setup)
 		return EFI_ST_SUCCESS;
-	}
 	efi_st_printc(EFI_LIGHTBLUE, "\nSetting up '%s'\n", test->name);
-	test->setup_ok = test->setup(handle, systable);
-	if (test->setup_ok != EFI_ST_SUCCESS) {
+	ret = test->setup(handle, systable);
+	if (ret != EFI_ST_SUCCESS) {
 		efi_st_error("Setting up '%s' failed\n", test->name);
 		++*failures;
 	} else {
 		efi_st_printc(EFI_LIGHTGREEN,
 			      "Setting up '%s' succeeded\n", test->name);
 	}
-	return test->setup_ok;
+	return ret;
 }
 
 /*
@@ -146,7 +145,7 @@ static int teardown(struct efi_unit_test *test, unsigned int *failures)
  * Check that a test exists.
  *
  * @testname:	name of the test
- * @return:	test
+ * @return:	test, or NULL if not found
  */
 static struct efi_unit_test *find_test(const u16 *testname)
 {
@@ -182,24 +181,26 @@ static void list_all_tests(void)
  *
  * @testname	name of a single selected test or NULL
  * @phase	test phase
- * @steps	steps to execute
+ * @steps	steps to execute (mask with bits from EFI_ST_...)
  * failures	returns EFI_ST_SUCCESS if all test steps succeeded
  */
 void efi_st_do_tests(const u16 *testname, unsigned int phase,
 		     unsigned int steps, unsigned int *failures)
 {
+	int i = 0;
 	struct efi_unit_test *test;
 
 	for (test = ll_entry_start(struct efi_unit_test, efi_unit_test);
-	     test < ll_entry_end(struct efi_unit_test, efi_unit_test); ++test) {
+	     test < ll_entry_end(struct efi_unit_test, efi_unit_test);
+	     ++test, ++i) {
 		if (testname ?
 		    efi_st_strcmp_16_8(testname, test->name) : test->on_request)
 			continue;
 		if (test->phase != phase)
 			continue;
 		if (steps & EFI_ST_SETUP)
-			setup(test, failures);
-		if (steps & EFI_ST_EXECUTE && test->setup_ok == EFI_ST_SUCCESS)
+			setup_status[i] = setup(test, failures);
+		if (steps & EFI_ST_EXECUTE && setup_status[i] == EFI_ST_SUCCESS)
 			execute(test, failures);
 		if (steps & EFI_ST_TEARDOWN)
 			teardown(test, failures);
@@ -273,6 +274,16 @@ efi_status_t EFIAPI efi_selftest(efi_handle_t image_handle,
 			      ll_entry_count(struct efi_unit_test,
 					     efi_unit_test));
 
+	/* Allocate buffer for setup results */
+	ret = boottime->allocate_pool(EFI_RUNTIME_SERVICES_DATA, sizeof(int) *
+				      ll_entry_count(struct efi_unit_test,
+						     efi_unit_test),
+				      (void **)&setup_status);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Allocate pool failed\n");
+		return ret;
+	}
+
 	/* Execute boottime tests */
 	efi_st_do_tests(testname, EFI_EXECUTE_BEFORE_BOOTTIME_EXIT,
 			EFI_ST_SETUP | EFI_ST_EXECUTE | EFI_ST_TEARDOWN,
@@ -296,12 +307,12 @@ efi_status_t EFIAPI efi_selftest(efi_handle_t image_handle,
 	efi_st_printc(EFI_WHITE, "\nSummary: %u failures\n\n", failures);
 
 	/* Reset system */
-	efi_st_printf("Preparing for reset. Press any key.\n");
+	efi_st_printf("Preparing for reset. Press any key...\n");
 	efi_st_get_key();
 	runtime->reset_system(EFI_RESET_WARM, EFI_NOT_READY,
 			      sizeof(reset_message), reset_message);
 	efi_st_printf("\n");
-	efi_st_error("Reset failed.\n");
+	efi_st_error("Reset failed\n");
 
 	return EFI_UNSUPPORTED;
 }

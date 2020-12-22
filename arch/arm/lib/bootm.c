@@ -12,9 +12,15 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <command.h>
+#include <cpu_func.h>
 #include <dm.h>
+#include <hang.h>
+#include <lmb.h>
+#include <log.h>
 #include <dm/root.h>
+#include <env.h>
 #include <image.h>
 #include <u-boot/zlib.h>
 #include <asm/byteorder.h>
@@ -26,6 +32,7 @@
 #include <linux/compiler.h>
 #include <bootm.h>
 #include <vxworks.h>
+#include <asm/cache.h>
 
 #ifdef CONFIG_ARMV7_NONSEC
 #include <asm/armv7.h>
@@ -64,13 +71,18 @@ void arch_lmb_reserve(struct lmb *lmb)
 	/* adjust sp by 4K to be safe */
 	sp -= 4096;
 	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
-		if (sp < gd->bd->bi_dram[bank].start)
+		if (!gd->bd->bi_dram[bank].size ||
+		    sp < gd->bd->bi_dram[bank].start)
 			continue;
+		/* Watch out for RAM at end of address space! */
 		bank_end = gd->bd->bi_dram[bank].start +
-			gd->bd->bi_dram[bank].size;
-		if (sp >= bank_end)
+			gd->bd->bi_dram[bank].size - 1;
+		if (sp > bank_end)
 			continue;
-		lmb_reserve(lmb, sp, bank_end - sp);
+		if (bank_end > gd->ram_top)
+			bank_end = gd->ram_top - 1;
+
+		lmb_reserve(lmb, sp, bank_end - sp + 1);
 		break;
 	}
 }
@@ -86,8 +98,6 @@ __weak void board_quiesce_devices(void)
  */
 static void announce_and_cleanup(int fake)
 {
-	printf("\nStarting kernel ...%s\n\n", fake ?
-		"(fake run for tracing)" : "");
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 #ifdef CONFIG_BOOTSTAGE_FDT
 	bootstage_fdt_add_report();
@@ -102,6 +112,8 @@ static void announce_and_cleanup(int fake)
 
 	board_quiesce_devices();
 
+	printf("\nStarting kernel ...%s\n\n", fake ?
+		"(fake run for tracing)" : "");
 	/*
 	 * Call remove function of all devices with a removal flag set.
 	 * This may be useful for last-stage operations, like cancelling
@@ -221,6 +233,8 @@ static void do_nonsec_virt_switch(void)
 }
 #endif
 
+__weak void board_prep_linux(bootm_headers_t *images) { }
+
 /* Subcommand: PREP */
 static void boot_prep_linux(bootm_headers_t *images)
 {
@@ -267,6 +281,8 @@ static void boot_prep_linux(bootm_headers_t *images)
 		printf("FDT and ATAGS support not compiled in - hanging\n");
 		hang();
 	}
+
+	board_prep_linux(images);
 }
 
 __weak bool armv7_boot_nonsec_default(void)
@@ -316,9 +332,6 @@ static void switch_to_el1(void)
 #endif
 #endif
 
-#include <linux/arm-smccc.h>
-#include <sunxi_board.h>
-
 /* Subcommand: GO */
 static void boot_jump_linux(bootm_headers_t *images, int flag)
 {
@@ -366,7 +379,6 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	void (*kernel_entry)(int zero, int arch, uint params);
 	unsigned long r2;
 	int fake = (flag & BOOTM_STATE_OS_FAKE_GO);
-	u32 ARM_SVC_RUNNSOS = 0x8000ff04;
 
 	kernel_entry = (void (*)(int, int, uint))images->ep;
 #ifdef CONFIG_CPU_V7M
@@ -385,20 +397,21 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	debug("## Transferring control to Linux (at address %08lx)" \
 		"...\n", (ulong) kernel_entry);
 	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
-	
+	announce_and_cleanup(fake);
 
 	if (IMAGE_ENABLE_OF_LIBFDT && images->ft_len)
 		r2 = (unsigned long)images->ft_addr;
 	else
 		r2 = gd->bd->bi_boot_params;
-		
-	printf("## Linux machid: %08lx, FDT addr: %08lx\n", machid, r2);
-	announce_and_cleanup(fake);
-	
+
 	if (!fake) {
-		if (sunxi_probe_secure_monitor())
-			sunxi_smc_call_atf(ARM_SVC_RUNNSOS,(ulong)kernel_entry, (ulong)r2,  1);
-		else
+#ifdef CONFIG_ARMV7_NONSEC
+		if (armv7_boot_nonsec()) {
+			armv7_init_nonsec();
+			secure_ram_addr(_do_nonsec_entry)(kernel_entry,
+							  0, machid, r2);
+		} else
+#endif
 			kernel_entry(0, machid, r2);
 	}
 #endif
@@ -410,7 +423,7 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
  * DIFFERENCE: Instead of calling prep and go at the end
  * they are called if subcommand is equal 0.
  */
-int do_bootm_linux(int flag, int argc, char * const argv[],
+int do_bootm_linux(int flag, int argc, char *const argv[],
 		   bootm_headers_t *images)
 {
 	/* No need for those on ARM */
@@ -440,7 +453,7 @@ void boot_prep_vxworks(bootm_headers_t *images)
 
 	if (images->ft_addr) {
 		off = fdt_path_offset(images->ft_addr, "/memory");
-		if (off < 0) {
+		if (off > 0) {
 			if (arch_fixup_fdt(images->ft_addr))
 				puts("## WARNING: fixup memory failed!\n");
 		}

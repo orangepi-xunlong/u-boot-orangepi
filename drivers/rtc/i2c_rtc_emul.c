@@ -16,6 +16,7 @@
 #include <common.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <os.h>
 #include <rtc.h>
 #include <asm/rtc.h>
@@ -96,7 +97,9 @@ static int sandbox_i2c_rtc_get(struct udevice *dev, struct rtc_time *time)
 		now = plat->base_time;
 	}
 
-	return rtc_to_tm(now + plat->offset, time);
+	rtc_to_tm(now + plat->offset, time);
+
+	return 0;
 }
 
 static int sandbox_i2c_rtc_set(struct udevice *dev, const struct rtc_time *time)

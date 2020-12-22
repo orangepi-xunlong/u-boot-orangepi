@@ -29,6 +29,18 @@ static int sandbox_warm_sysreset_request(struct udevice *dev,
 	return -EINPROGRESS;
 }
 
+int sandbox_warm_sysreset_get_status(struct udevice *dev, char *buf, int size)
+{
+	strlcpy(buf, "Reset Status: WARM", size);
+
+	return 0;
+}
+
+int sandbox_warm_sysreset_get_last(struct udevice *dev)
+{
+	return SYSRESET_WARM;
+}
+
 static int sandbox_sysreset_request(struct udevice *dev, enum sysreset_t type)
 {
 	struct sandbox_state *state = state_get_current();
@@ -45,12 +57,16 @@ static int sandbox_sysreset_request(struct udevice *dev, enum sysreset_t type)
 	case SYSRESET_COLD:
 		state->last_sysreset = type;
 		break;
-	case SYSRESET_POWER:
+	case SYSRESET_POWER_OFF:
 		state->last_sysreset = type;
 		if (!state->sysreset_allowed[type])
 			return -EACCES;
 		sandbox_exit();
 		break;
+	case SYSRESET_POWER:
+		if (!state->sysreset_allowed[type])
+			return -EACCES;
+		sandbox_exit();
 	default:
 		return -ENOSYS;
 	}
@@ -60,8 +76,28 @@ static int sandbox_sysreset_request(struct udevice *dev, enum sysreset_t type)
 	return -EINPROGRESS;
 }
 
+int sandbox_sysreset_get_status(struct udevice *dev, char *buf, int size)
+{
+	strlcpy(buf, "Reset Status: COLD", size);
+
+	return 0;
+}
+
+int sandbox_sysreset_get_last(struct udevice *dev)
+{
+	struct sandbox_state *state = state_get_current();
+
+	/*
+	 * The first phase is a power reset, after that we assume we don't
+	 * know.
+	 */
+	return state->jumped_fname ? SYSRESET_WARM : SYSRESET_POWER;
+}
+
 static struct sysreset_ops sandbox_sysreset_ops = {
 	.request	= sandbox_sysreset_request,
+	.get_status	= sandbox_sysreset_get_status,
+	.get_last	= sandbox_sysreset_get_last,
 };
 
 static const struct udevice_id sandbox_sysreset_ids[] = {
@@ -78,6 +114,8 @@ U_BOOT_DRIVER(sysreset_sandbox) = {
 
 static struct sysreset_ops sandbox_warm_sysreset_ops = {
 	.request	= sandbox_warm_sysreset_request,
+	.get_status	= sandbox_warm_sysreset_get_status,
+	.get_last	= sandbox_warm_sysreset_get_last,
 };
 
 static const struct udevice_id sandbox_warm_sysreset_ids[] = {

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier:	GPL-2.0+
- */
-
 #ifndef __KERNEL_PRINTK__
 #define __KERNEL_PRINTK__
 
@@ -19,7 +15,7 @@
 #define KERN_CONT
 
 #define printk(fmt, ...) \
-	tick_printf(fmt, ##__VA_ARGS__)
+	printf(fmt, ##__VA_ARGS__)
 
 /*
  * Dummy printk for disabled debugging statements to use whilst maintaining
@@ -32,8 +28,10 @@
 	0;						\
 })
 
-extern int uprintf(int log_level, const char *fmt, ...);
-#define __printk(level, fmt, ...) uprintf(level, fmt, ##__VA_ARGS__)
+#define __printk(level, fmt, ...)					\
+({									\
+	level < CONFIG_LOGLEVEL ? printk(fmt, ##__VA_ARGS__) : 0;	\
+})
 
 #ifndef pr_fmt
 #define pr_fmt(fmt) fmt
@@ -57,13 +55,6 @@ extern int uprintf(int log_level, const char *fmt, ...);
 
 #define pr_cont(fmt, ...) \
 	printk(fmt, ##__VA_ARGS__)
-
-#define pr_force(fmt, args...) \
-	printk(fmt, ##args)
-#define pr_msg(fmt, args...) \
-	__printk(6, fmt, ##args)
-#define pr_error(fmt, args...) \
-	__printk(3, fmt, ##args)
 
 /* pr_devel() should produce zero code unless DEBUG is defined */
 #ifdef DEBUG

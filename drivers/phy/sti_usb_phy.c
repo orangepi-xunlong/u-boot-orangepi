@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <bitfield.h>
 #include <dm.h>
@@ -64,12 +65,12 @@ static int sti_usb_phy_init(struct phy *usb_phy)
 	void __iomem *reg;
 
 	/* set ctrl picophy value */
-	reg = (void __iomem *)phy->regmap->base + phy->ctrl;
+	reg = (void __iomem *)phy->regmap->ranges[0].start + phy->ctrl;
 	/* CTRL_PORT mask is 0x1f */
 	clrsetbits_le32(reg, 0x1f, STIH407_USB_PICOPHY_CTRL_PORT_CONF);
 
 	/* set ports parameters overriding */
-	reg = (void __iomem *)phy->regmap->base + phy->param;
+	reg = (void __iomem *)phy->regmap->ranges[0].start + phy->param;
 	/* PARAM_DEF mask is 0xffffffff */
 	clrsetbits_le32(reg, 0xffffffff, STIH407_USB_PICOPHY_PARAM_DEF);
 

@@ -7,16 +7,15 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <reset-uclass.h>
+#include <stm32_rcc.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 /* reset clear offset for STM32MP RCC */
 #define RCC_CL 0x4
-
-enum rcc_type {
-	RCC_STM32 = 0,
-	RCC_STM32MP,
-};
 
 struct stm32_reset_priv {
 	fdt_addr_t base;
@@ -40,7 +39,7 @@ static int stm32_reset_assert(struct reset_ctl *reset_ctl)
 	debug("%s: reset id = %ld bank = %d offset = %d)\n", __func__,
 	      reset_ctl->id, bank, offset);
 
-	if (dev_get_driver_data(reset_ctl->dev) == RCC_STM32MP)
+	if (dev_get_driver_data(reset_ctl->dev) == STM32MP1)
 		/* reset assert is done in rcc set register */
 		writel(BIT(offset), priv->base + bank);
 	else
@@ -57,7 +56,7 @@ static int stm32_reset_deassert(struct reset_ctl *reset_ctl)
 	debug("%s: reset id = %ld bank = %d offset = %d)\n", __func__,
 	      reset_ctl->id, bank, offset);
 
-	if (dev_get_driver_data(reset_ctl->dev) == RCC_STM32MP)
+	if (dev_get_driver_data(reset_ctl->dev) == STM32MP1)
 		/* reset deassert is done in rcc clr register */
 		writel(BIT(offset), priv->base + bank + RCC_CL);
 	else
@@ -68,7 +67,7 @@ static int stm32_reset_deassert(struct reset_ctl *reset_ctl)
 
 static const struct reset_ops stm32_reset_ops = {
 	.request	= stm32_reset_request,
-	.free		= stm32_reset_free,
+	.rfree		= stm32_reset_free,
 	.rst_assert	= stm32_reset_assert,
 	.rst_deassert	= stm32_reset_deassert,
 };
@@ -88,15 +87,9 @@ static int stm32_reset_probe(struct udevice *dev)
 	return 0;
 }
 
-static const struct udevice_id stm32_reset_ids[] = {
-	{ .compatible = "st,stm32mp1-rcc-rst", .data = RCC_STM32MP },
-	{ }
-};
-
 U_BOOT_DRIVER(stm32_rcc_reset) = {
 	.name			= "stm32_rcc_reset",
 	.id			= UCLASS_RESET,
-	.of_match		= stm32_reset_ids,
 	.probe			= stm32_reset_probe,
 	.priv_auto_alloc_size	= sizeof(struct stm32_reset_priv),
 	.ops			= &stm32_reset_ops,

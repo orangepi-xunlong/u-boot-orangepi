@@ -19,8 +19,12 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <malloc.h>
+#include <spl.h>
 #include <asm/control_regs.h>
+#include <asm/coreboot_tables.h>
 #include <asm/cpu.h>
 #include <asm/mp.h>
 #include <asm/msr.h>
@@ -57,6 +61,8 @@ struct cpuinfo_x86 {
 	uint8_t x86_mask;
 };
 
+/* gcc 7.3 does not wwant to drop x86_vendors, so use #ifdef */
+#ifndef CONFIG_TPL_BUILD
 /*
  * List of cpu vendor strings along with their normalized
  * id values.
@@ -77,6 +83,7 @@ static const struct {
 	{ X86_VENDOR_NSC,       "Geode by NSC", },
 	{ X86_VENDOR_SIS,       "SiS SiS SiS ", },
 };
+#endif
 
 static void load_ds(u32 segment)
 {
@@ -130,10 +137,14 @@ void arch_setup_gd(gd_t *new_gd)
 	/* DS: data, read/write, 4 GB, base 0 */
 	gdt_addr[X86_GDT_ENTRY_32BIT_DS] = GDT_ENTRY(0xc093, 0, 0xfffff);
 
-	/* FS: data, read/write, 4 GB, base (Global Data Pointer) */
+	/*
+	 * FS: data, read/write, sizeof (Global Data Pointer),
+	 * base (Global Data Pointer)
+	 */
 	new_gd->arch.gd_addr = new_gd;
-	gdt_addr[X86_GDT_ENTRY_32BIT_FS] = GDT_ENTRY(0xc093,
-		     (ulong)&new_gd->arch.gd_addr, 0xfffff);
+	gdt_addr[X86_GDT_ENTRY_32BIT_FS] = GDT_ENTRY(0x8093,
+					(ulong)&new_gd->arch.gd_addr,
+					sizeof(new_gd->arch.gd_addr) - 1);
 
 	/* 16-bit CS: code, read/execute, 64 kB, base 0 */
 	gdt_addr[X86_GDT_ENTRY_16BIT_CS] = GDT_ENTRY(0x009b, 0, 0x0ffff);
@@ -198,6 +209,7 @@ static inline int test_cyrix_52div(void)
 	return (unsigned char) (test >> 8) == 0x02;
 }
 
+#ifndef CONFIG_TPL_BUILD
 /*
  *	Detect a NexGen CPU running without BIOS hypercode new enough
  *	to have CPUID. (Thanks to Herbert Oppmann)
@@ -218,6 +230,7 @@ static int deep_magic_nexgen_probe(void)
 		: "=a" (ret) : : "cx", "dx");
 	return  ret;
 }
+#endif
 
 static bool has_cpuid(void)
 {
@@ -229,6 +242,7 @@ static bool has_mtrr(void)
 	return cpuid_edx(0x00000001) & (1 << 12) ? true : false;
 }
 
+#ifndef CONFIG_TPL_BUILD
 static int build_vendor_name(char *vendor_name)
 {
 	struct cpuid_result result;
@@ -241,14 +255,40 @@ static int build_vendor_name(char *vendor_name)
 
 	return result.eax;
 }
+#endif
 
 static void identify_cpu(struct cpu_device_id *cpu)
 {
+	cpu->device = 0; /* fix gcc 4.4.4 warning */
+
+	/*
+	 * Do a quick and dirty check to save space - Intel and AMD only and
+	 * just the vendor. This is enough for most TPL code.
+	 */
+	if (spl_phase() == PHASE_TPL) {
+		struct cpuid_result result;
+
+		result = cpuid(0x00000000);
+		switch (result.ecx >> 24) {
+		case 'l': /* GenuineIntel */
+			cpu->vendor = X86_VENDOR_INTEL;
+			break;
+		case 'D': /* AuthenticAMD */
+			cpu->vendor = X86_VENDOR_AMD;
+			break;
+		default:
+			cpu->vendor = X86_VENDOR_ANY;
+			break;
+		}
+		return;
+	}
+
+/* gcc 7.3 does not want to drop x86_vendors, so use #ifdef */
+#ifndef CONFIG_TPL_BUILD
 	char vendor_name[16];
 	int i;
 
 	vendor_name[0] = '\0'; /* Unset */
-	cpu->device = 0; /* fix gcc 4.4.4 warning */
 
 	/* Find the id and vendor_name */
 	if (!has_cpuid()) {
@@ -264,9 +304,8 @@ static void identify_cpu(struct cpu_device_id *cpu)
 		/* Detect NexGen with old hypercode */
 		else if (deep_magic_nexgen_probe())
 			memcpy(vendor_name, "NexGenDriven", 13);
-	}
-	if (has_cpuid()) {
-		int  cpuid_level;
+	} else {
+		int cpuid_level;
 
 		cpuid_level = build_vendor_name(vendor_name);
 		vendor_name[12] = '\0';
@@ -286,6 +325,7 @@ static void identify_cpu(struct cpu_device_id *cpu)
 			break;
 		}
 	}
+#endif
 }
 
 static inline void get_fms(struct cpuinfo_x86 *c, uint32_t tfms)
@@ -309,21 +349,22 @@ u32 cpu_get_stepping(void)
 	return gd->arch.x86_mask;
 }
 
-int x86_cpu_init_f(void)
+/* initialise FPU, reset EM, set MP and NE */
+static void setup_cpu_features(void)
 {
 	const u32 em_rst = ~X86_CR0_EM;
 	const u32 mp_ne_set = X86_CR0_MP | X86_CR0_NE;
 
-	if (ll_boot_init()) {
-		/* initialize FPU, reset EM, set MP and NE */
-		asm ("fninit\n" \
-		"movl %%cr0, %%eax\n" \
-		"andl %0, %%eax\n" \
-		"orl  %1, %%eax\n" \
-		"movl %%eax, %%cr0\n" \
-		: : "i" (em_rst), "i" (mp_ne_set) : "eax");
-	}
+	asm ("fninit\n" \
+	"movl %%cr0, %%eax\n" \
+	"andl %0, %%eax\n" \
+	"orl  %1, %%eax\n" \
+	"movl %%eax, %%cr0\n" \
+	: : "i" (em_rst), "i" (mp_ne_set) : "eax");
+}
 
+static void setup_identity(void)
+{
 	/* identify CPU via cpuid and store the decoded info into gd->arch */
 	if (has_cpuid()) {
 		struct cpu_device_id cpu;
@@ -339,46 +380,80 @@ int x86_cpu_init_f(void)
 
 		gd->arch.has_mtrr = has_mtrr();
 	}
-	/* Don't allow PCI region 3 to use memory in the 2-4GB memory hole */
+}
+
+/* Don't allow PCI region 3 to use memory in the 2-4GB memory hole */
+static void setup_pci_ram_top(void)
+{
 	gd->pci_ram_top = 0x80000000U;
+}
+
+static void setup_mtrr(void)
+{
+	u64 mtrr_cap;
 
 	/* Configure fixed range MTRRs for some legacy regions */
-	if (gd->arch.has_mtrr) {
-		u64 mtrr_cap;
+	if (!gd->arch.has_mtrr)
+		return;
 
-		mtrr_cap = native_read_msr(MTRR_CAP_MSR);
-		if (mtrr_cap & MTRR_CAP_FIX) {
-			/* Mark the VGA RAM area as uncacheable */
-			native_write_msr(MTRR_FIX_16K_A0000_MSR,
-					 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE),
-					 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE));
+	mtrr_cap = native_read_msr(MTRR_CAP_MSR);
+	if (mtrr_cap & MTRR_CAP_FIX) {
+		/* Mark the VGA RAM area as uncacheable */
+		native_write_msr(MTRR_FIX_16K_A0000_MSR,
+				 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE),
+				 MTRR_FIX_TYPE(MTRR_TYPE_UNCACHEABLE));
 
-			/*
-			 * Mark the PCI ROM area as cacheable to improve ROM
-			 * execution performance.
-			 */
-			native_write_msr(MTRR_FIX_4K_C0000_MSR,
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
-			native_write_msr(MTRR_FIX_4K_C8000_MSR,
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
-			native_write_msr(MTRR_FIX_4K_D0000_MSR,
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
-			native_write_msr(MTRR_FIX_4K_D8000_MSR,
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
-					 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+		/*
+		 * Mark the PCI ROM area as cacheable to improve ROM
+		 * execution performance.
+		 */
+		native_write_msr(MTRR_FIX_4K_C0000_MSR,
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+		native_write_msr(MTRR_FIX_4K_C8000_MSR,
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+		native_write_msr(MTRR_FIX_4K_D0000_MSR,
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
+		native_write_msr(MTRR_FIX_4K_D8000_MSR,
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK),
+				 MTRR_FIX_TYPE(MTRR_TYPE_WRBACK));
 
-			/* Enable the fixed range MTRRs */
-			msr_setbits_64(MTRR_DEF_TYPE_MSR, MTRR_DEF_TYPE_FIX_EN);
-		}
+		/* Enable the fixed range MTRRs */
+		msr_setbits_64(MTRR_DEF_TYPE_MSR, MTRR_DEF_TYPE_FIX_EN);
 	}
+}
 
-#ifdef CONFIG_I8254_TIMER
+int x86_cpu_init_tpl(void)
+{
+	setup_cpu_features();
+	setup_identity();
+
+	return 0;
+}
+
+int x86_cpu_init_f(void)
+{
+	if (ll_boot_init())
+		setup_cpu_features();
+	setup_identity();
+	setup_mtrr();
+	setup_pci_ram_top();
+
 	/* Set up the i8254 timer if required */
-	i8254_init();
-#endif
+	if (IS_ENABLED(CONFIG_I8254_TIMER))
+		i8254_init();
+
+	return 0;
+}
+
+int x86_cpu_reinit_f(void)
+{
+	setup_identity();
+	setup_pci_ram_top();
+	if (locate_coreboot_table() >= 0)
+		gd->flags |= GD_FLG_SKIP_LL_INIT;
 
 	return 0;
 }
@@ -462,6 +537,7 @@ int cpu_has_64bit(void)
 		has_long_mode();
 }
 
+#define PAGETABLE_BASE		0x80000
 #define PAGETABLE_SIZE		(6 * 4096)
 
 /**
@@ -522,43 +598,21 @@ int cpu_jump_to_64bit_uboot(ulong target)
 	typedef void (*func_t)(ulong pgtable, ulong setup_base, ulong target);
 	uint32_t *pgtable;
 	func_t func;
+	char *ptr;
 
-	/* TODO(sjg@chromium.org): Find a better place for this */
-	pgtable = (uint32_t *)0x1000000;
-	if (!pgtable)
-		return -ENOMEM;
+	pgtable = (uint32_t *)PAGETABLE_BASE;
 
 	build_pagetable(pgtable);
 
-	/* TODO(sjg@chromium.org): Find a better place for this */
-	char *ptr = (char *)0x3000000;
-	char *gdt = (char *)0x3100000;
+	extern long call64_stub_size;
+	ptr = malloc(call64_stub_size);
+	if (!ptr) {
+		printf("Failed to allocate the cpu_call64 stub\n");
+		return -ENOMEM;
+	}
+	memcpy(ptr, cpu_call64, call64_stub_size);
 
-	extern char gdt64[];
-
-	memcpy(ptr, cpu_call64, 0x1000);
-	memcpy(gdt, gdt64, 0x100);
-
-	/*
-	 * TODO(sjg@chromium.org): This manually inserts the pointers into
-	 * the code. Tidy this up to avoid this.
-	 */
 	func = (func_t)ptr;
-	ulong ofs = (ulong)cpu_call64 - (ulong)ptr;
-	*(ulong *)(ptr + 7) = (ulong)gdt;
-	*(ulong *)(ptr + 0xc) = (ulong)gdt + 2;
-	*(ulong *)(ptr + 0x13) = (ulong)gdt;
-	*(ulong *)(ptr + 0x117 - 0xd4) -= ofs;
-
-	/*
-	 * Copy U-Boot from ROM
-	 * TODO(sjg@chromium.org): Figure out a way to get the text base
-	 * correctly here, and in the device-tree binman definition.
-	 *
-	 * Also consider using FIT so we get the correct image length and
-	 * parameters.
-	 */
-	memcpy((char *)target, (char *)0xfff00000, 0x100000);
 
 	/* Jump to U-Boot */
 	func((ulong)pgtable, 0, (ulong)target);

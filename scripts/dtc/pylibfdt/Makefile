@@ -14,13 +14,14 @@ PYLIBFDT_srcs = $(addprefix $(LIBFDT_srcdir)/,$(LIBFDT_SRCS)) \
 		$(obj)/libfdt.i
 
 quiet_cmd_pymod = PYMOD   $@
-      cmd_pymod = unset CC; unset CROSS_COMPILE; unset CFLAGS;\
+      cmd_pymod = unset CROSS_COMPILE; unset CFLAGS; \
+		CC="$(HOSTCC)" LDSHARED="$(HOSTCC) -shared " \
 		LDFLAGS="$(HOSTLDFLAGS)" \
 		VERSION="u-boot-$(UBOOTVERSION)" \
 		CPPFLAGS="$(HOSTCFLAGS) -I$(LIBFDT_srcdir)" OBJDIR=$(obj) \
 		SOURCES="$(PYLIBFDT_srcs)" \
 		SWIG_OPTS="-I$(LIBFDT_srcdir) -I$(LIBFDT_srcdir)/.." \
-		$(PYTHON) $< --quiet build_ext --inplace
+		$(PYTHON3) $< --quiet build_ext --inplace
 
 $(obj)/_libfdt.so: $(src)/setup.py $(PYLIBFDT_srcs) FORCE
 	$(call if_changed,pymod)

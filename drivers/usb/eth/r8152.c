@@ -7,10 +7,12 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <net.h>
 #include <usb.h>
-#include <usb/lin_gadget_compat.h>
+#include <linux/delay.h>
 #include <linux/mii.h>
 #include <linux/bitops.h>
 #include "usb_ether.h"
@@ -709,9 +711,9 @@ static void r8152b_enter_oob(struct r8152 *tp)
 
 	rtl_rx_vlan_en(tp, false);
 
-	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PAL_BDC_CR);
+	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_BDC_CR);
 	ocp_data |= ALDPS_PROXY_MODE;
-	ocp_write_word(tp, MCU_TYPE_PLA, PAL_BDC_CR, ocp_data);
+	ocp_write_word(tp, MCU_TYPE_PLA, PLA_BDC_CR, ocp_data);
 
 	ocp_data = ocp_read_byte(tp, MCU_TYPE_PLA, PLA_OOB_CTRL);
 	ocp_data |= NOW_IS_OOB | DIS_MCU_CLROOB;
@@ -842,9 +844,9 @@ static void r8153_enter_oob(struct r8152 *tp)
 
 	rtl_rx_vlan_en(tp, false);
 
-	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PAL_BDC_CR);
+	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_BDC_CR);
 	ocp_data |= ALDPS_PROXY_MODE;
-	ocp_write_word(tp, MCU_TYPE_PLA, PAL_BDC_CR, ocp_data);
+	ocp_write_word(tp, MCU_TYPE_PLA, PLA_BDC_CR, ocp_data);
 
 	ocp_data = ocp_read_byte(tp, MCU_TYPE_PLA, PLA_OOB_CTRL);
 	ocp_data |= NOW_IS_OOB | DIS_MCU_CLROOB;
@@ -1352,9 +1354,8 @@ int r8152_eth_probe(struct usb_device *dev, unsigned int ifnum,
 	struct usb_interface *iface;
 	struct usb_interface_descriptor *iface_desc;
 	int ep_in_found = 0, ep_out_found = 0;
-	int i;
-
 	struct r8152 *tp;
+	int i;
 
 	/* let's examine the device now */
 	iface = &dev->config.if_desc[ifnum];
@@ -1397,10 +1398,13 @@ int r8152_eth_probe(struct usb_device *dev, unsigned int ifnum,
 		if ((iface->ep_desc[i].bmAttributes &
 		     USB_ENDPOINT_XFERTYPE_MASK) == USB_ENDPOINT_XFER_BULK) {
 			u8 ep_addr = iface->ep_desc[i].bEndpointAddress;
-			if ((ep_addr & USB_DIR_IN) && !ep_in_found) {
-				ss->ep_in = ep_addr &
-					USB_ENDPOINT_NUMBER_MASK;
-				ep_in_found = 1;
+
+			if (ep_addr & USB_DIR_IN) {
+				if (!ep_in_found) {
+					ss->ep_in = ep_addr &
+						USB_ENDPOINT_NUMBER_MASK;
+					ep_in_found = 1;
+				}
 			} else {
 				if (!ep_out_found) {
 					ss->ep_out = ep_addr &

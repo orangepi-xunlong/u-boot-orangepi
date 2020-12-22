@@ -195,7 +195,6 @@ struct usb_bus_instance;
 #define USB_DT_STRING			0x03
 #define USB_DT_INTERFACE		0x04
 #define USB_DT_ENDPOINT			0x05
-#define USB_DT_DEVICE_QUALIFIER		0x06
 
 #if defined(CONFIG_USBD_HS)
 #define USB_DT_QUAL			0x06

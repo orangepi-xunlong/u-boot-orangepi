@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
+ * Copyright 2019 NXP
  */
 
 #include <common.h>
 #include <i2c.h>
 #include <fdt_support.h>
 #include <fsl_ddr_sdram.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
 #include <asm/arch/ppa.h>
 #include <asm/arch/fdt.h>
 #include <asm/arch/mmu.h>
+#include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <asm/arch-fsl-layerscape/fsl_icid.h>
 #include <ahci.h>
 #include <hwconfig.h>
 #include <mmc.h>
@@ -31,18 +35,152 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_TFABOOT
+struct ifc_regs ifc_cfg_nor_boot[CONFIG_SYS_FSL_IFC_BANK_COUNT] = {
+	{
+		"nor0",
+		CONFIG_SYS_NOR0_CSPR,
+		CONFIG_SYS_NOR0_CSPR_EXT,
+		CONFIG_SYS_NOR_AMASK,
+		CONFIG_SYS_NOR_CSOR,
+		{
+			CONFIG_SYS_NOR_FTIM0,
+			CONFIG_SYS_NOR_FTIM1,
+			CONFIG_SYS_NOR_FTIM2,
+			CONFIG_SYS_NOR_FTIM3
+		},
+
+	},
+	{
+		"nor1",
+		CONFIG_SYS_NOR1_CSPR,
+		CONFIG_SYS_NOR1_CSPR_EXT,
+		CONFIG_SYS_NOR_AMASK,
+		CONFIG_SYS_NOR_CSOR,
+		{
+			CONFIG_SYS_NOR_FTIM0,
+			CONFIG_SYS_NOR_FTIM1,
+			CONFIG_SYS_NOR_FTIM2,
+			CONFIG_SYS_NOR_FTIM3
+		},
+	},
+	{
+		"nand",
+		CONFIG_SYS_NAND_CSPR,
+		CONFIG_SYS_NAND_CSPR_EXT,
+		CONFIG_SYS_NAND_AMASK,
+		CONFIG_SYS_NAND_CSOR,
+		{
+			CONFIG_SYS_NAND_FTIM0,
+			CONFIG_SYS_NAND_FTIM1,
+			CONFIG_SYS_NAND_FTIM2,
+			CONFIG_SYS_NAND_FTIM3
+		},
+	},
+	{
+		"fpga",
+		CONFIG_SYS_FPGA_CSPR,
+		CONFIG_SYS_FPGA_CSPR_EXT,
+		CONFIG_SYS_FPGA_AMASK,
+		CONFIG_SYS_FPGA_CSOR,
+		{
+			CONFIG_SYS_FPGA_FTIM0,
+			CONFIG_SYS_FPGA_FTIM1,
+			CONFIG_SYS_FPGA_FTIM2,
+			CONFIG_SYS_FPGA_FTIM3
+		},
+	}
+};
+
+struct ifc_regs ifc_cfg_nand_boot[CONFIG_SYS_FSL_IFC_BANK_COUNT] = {
+	{
+		"nand",
+		CONFIG_SYS_NAND_CSPR,
+		CONFIG_SYS_NAND_CSPR_EXT,
+		CONFIG_SYS_NAND_AMASK,
+		CONFIG_SYS_NAND_CSOR,
+		{
+			CONFIG_SYS_NAND_FTIM0,
+			CONFIG_SYS_NAND_FTIM1,
+			CONFIG_SYS_NAND_FTIM2,
+			CONFIG_SYS_NAND_FTIM3
+		},
+	},
+	{
+		"nor0",
+		CONFIG_SYS_NOR0_CSPR,
+		CONFIG_SYS_NOR0_CSPR_EXT,
+		CONFIG_SYS_NOR_AMASK,
+		CONFIG_SYS_NOR_CSOR,
+		{
+			CONFIG_SYS_NOR_FTIM0,
+			CONFIG_SYS_NOR_FTIM1,
+			CONFIG_SYS_NOR_FTIM2,
+			CONFIG_SYS_NOR_FTIM3
+		},
+	},
+	{
+		"nor1",
+		CONFIG_SYS_NOR1_CSPR,
+		CONFIG_SYS_NOR1_CSPR_EXT,
+		CONFIG_SYS_NOR_AMASK,
+		CONFIG_SYS_NOR_CSOR,
+		{
+			CONFIG_SYS_NOR_FTIM0,
+			CONFIG_SYS_NOR_FTIM1,
+			CONFIG_SYS_NOR_FTIM2,
+			CONFIG_SYS_NOR_FTIM3
+		},
+	},
+	{
+		"fpga",
+		CONFIG_SYS_FPGA_CSPR,
+		CONFIG_SYS_FPGA_CSPR_EXT,
+		CONFIG_SYS_FPGA_AMASK,
+		CONFIG_SYS_FPGA_CSOR,
+		{
+			CONFIG_SYS_FPGA_FTIM0,
+			CONFIG_SYS_FPGA_FTIM1,
+			CONFIG_SYS_FPGA_FTIM2,
+			CONFIG_SYS_FPGA_FTIM3
+		},
+	}
+};
+
+void ifc_cfg_boot_info(struct ifc_regs_info *regs_info)
+{
+	enum boot_src src = get_boot_src();
+
+	if (src == BOOT_SOURCE_IFC_NAND)
+		regs_info->regs = ifc_cfg_nand_boot;
+	else
+		regs_info->regs = ifc_cfg_nor_boot;
+	regs_info->cs_size = CONFIG_SYS_FSL_IFC_BANK_COUNT;
+}
+
+#endif
+
 enum {
 	MUX_TYPE_GPIO,
 };
 
 int checkboard(void)
 {
+#ifdef CONFIG_TFABOOT
+	enum boot_src src = get_boot_src();
+#endif
 	char buf[64];
 #ifndef CONFIG_SD_BOOT
 	u8 sw;
 #endif
 
 	puts("Board: LS1046AQDS, boot from ");
+
+#ifdef CONFIG_TFABOOT
+	if (src == BOOT_SOURCE_SD_MMC)
+		puts("SD\n");
+	else {
+#endif
 
 #ifdef CONFIG_SD_BOOT
 	puts("SD\n");
@@ -62,6 +200,9 @@ int checkboard(void)
 		printf("invalid setting of SW%u\n", QIXIS_LBMAP_SWITCH);
 #endif
 
+#ifdef CONFIG_TFABOOT
+	}
+#endif
 	printf("Sys ID: 0x%02x, Sys Ver: 0x%02x\n",
 	       QIXIS_READ(id), QIXIS_READ(arch));
 
@@ -130,11 +271,23 @@ u32 get_lpuart_clk(void)
 }
 #endif
 
-int select_i2c_ch_pca9547(u8 ch)
+int select_i2c_ch_pca9547(u8 ch, int bus_num)
 {
 	int ret;
+#ifdef CONFIG_DM_I2C
+	struct udevice *dev;
 
+	ret = i2c_get_chip_for_busnum(bus_num, I2C_MUX_PCA_ADDR_PRI,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
+		return ret;
+	}
+	ret = dm_i2c_write(dev, 0, &ch, 1);
+#else
 	ret = i2c_write(I2C_MUX_PCA_ADDR_PRI, 0, 1, &ch, 1);
+#endif
 	if (ret) {
 		puts("PCA: failed to select proper channel\n");
 		return ret;
@@ -149,10 +302,13 @@ int dram_init(void)
 	 * When resuming from deep sleep, the I2C channel may not be
 	 * in the default channel. So, switch to the default channel
 	 * before accessing DDR SPD.
+	 *
+	 * PCA9547 mount on I2C1 bus
 	 */
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 	fsl_initdram();
-#if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
+#if (!defined(CONFIG_SPL) && !defined(CONFIG_TFABOOT)) || \
+	defined(CONFIG_SPL_BUILD)
 	/* This will break-before-make MMU for DDR */
 	update_early_mmu_table();
 #endif
@@ -162,7 +318,7 @@ int dram_init(void)
 
 int i2c_multiplexer_select_vid_channel(u8 channel)
 {
-	return select_i2c_ch_pca9547(channel);
+	return select_i2c_ch_pca9547(channel, 0);
 }
 
 int board_early_init_f(void)
@@ -175,8 +331,10 @@ int board_early_init_f(void)
 	u8 uart;
 #endif
 
+#ifdef CONFIG_SYS_I2C
 #ifdef CONFIG_SYS_I2C_EARLY_INIT
 	i2c_early_init_f();
+#endif
 #endif
 	fsl_lsch2_early_init_f();
 
@@ -254,7 +412,7 @@ int misc_init_r(void)
 
 int board_init(void)
 {
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 
 #ifdef CONFIG_SYS_FSL_SERDES
 	config_serdes_mux();
@@ -267,7 +425,7 @@ int board_init(void)
 	ppa_init();
 #endif
 
-#ifdef CONFIG_SECURE_BOOT
+#ifdef CONFIG_NXP_ESBC
 	/*
 	 * In case of Secure Boot, the IBR configures the SMMU
 	 * to allow only Secure transactions.
@@ -305,9 +463,13 @@ int ft_board_setup(void *blob, bd_t *bd)
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 	fdt_fixup_board_enet(blob);
 #endif
+
+	fdt_fixup_icid(blob);
 
 	reg = QIXIS_READ(brdcfg[0]);
 	reg = (reg & QIXIS_LBMAP_MASK) >> QIXIS_LBMAP_SHIFT;
@@ -339,3 +501,10 @@ u16 flash_read16(void *addr)
 
 	return (((val) >> 8) & 0x00ff) | (((val) << 8) & 0xff00);
 }
+
+#if defined(CONFIG_TFABOOT) && defined(CONFIG_ENV_IS_IN_SPI_FLASH)
+void *env_sf_get_env_addr(void)
+{
+	return (void *)(CONFIG_SYS_FSL_QSPI_BASE + CONFIG_ENV_OFFSET);
+}
+#endif

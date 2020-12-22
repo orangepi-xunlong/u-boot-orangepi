@@ -9,6 +9,7 @@
 #include <command.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <rtc.h>
 
 #define PCF2127_REG_CTRL1	0x00
@@ -22,13 +23,31 @@
 #define PCF2127_REG_MO		0x08
 #define PCF2127_REG_YR		0x09
 
+static int pcf2127_read_reg(struct udevice *dev, uint offset,
+			    u8 *buffer, int len)
+{
+	struct dm_i2c_chip *chip = dev_get_parent_platdata(dev);
+	struct i2c_msg msg;
+	int ret;
+
+	/* Set the address of the start register to be read */
+	ret = dm_i2c_write(dev, offset, NULL, 0);
+	if (ret < 0)
+		return ret;
+
+	/* Read register's data */
+	msg.addr = chip->chip_addr;
+	msg.flags |= I2C_M_RD;
+	msg.len = len;
+	msg.buf = buffer;
+
+	return dm_i2c_xfer(dev, &msg, 1);
+}
+
 static int pcf2127_rtc_set(struct udevice *dev, const struct rtc_time *tm)
 {
-	uchar buf[8];
+	uchar buf[7] = {0};
 	int i = 0, ret;
-
-	/* start register address */
-	buf[i++] = PCF2127_REG_SC;
 
 	/* hours, minutes and seconds */
 	buf[i++] = bin2bcd(tm->tm_sec);
@@ -38,13 +57,13 @@ static int pcf2127_rtc_set(struct udevice *dev, const struct rtc_time *tm)
 	buf[i++] = tm->tm_wday & 0x07;
 
 	/* month, 1 - 12 */
-	buf[i++] = bin2bcd(tm->tm_mon + 1);
+	buf[i++] = bin2bcd(tm->tm_mon);
 
 	/* year */
 	buf[i++] = bin2bcd(tm->tm_year % 100);
 
 	/* write register's data */
-	ret = dm_i2c_write(dev, PCF2127_REG_CTRL1, buf, sizeof(buf));
+	ret = dm_i2c_write(dev, PCF2127_REG_SC, buf, i);
 
 	return ret;
 }
@@ -54,10 +73,7 @@ static int pcf2127_rtc_get(struct udevice *dev, struct rtc_time *tm)
 	int ret = 0;
 	uchar buf[10] = { PCF2127_REG_CTRL1 };
 
-	ret = dm_i2c_write(dev, PCF2127_REG_CTRL1, buf, 1);
-	if (ret < 0)
-		return ret;
-	ret = dm_i2c_read(dev, PCF2127_REG_CTRL1, buf, sizeof(buf));
+	ret = pcf2127_read_reg(dev, PCF2127_REG_CTRL1, buf, sizeof(buf));
 	if (ret < 0)
 		return ret;
 
@@ -68,7 +84,7 @@ static int pcf2127_rtc_get(struct udevice *dev, struct rtc_time *tm)
 	tm->tm_min  = bcd2bin(buf[PCF2127_REG_MN] & 0x7F);
 	tm->tm_hour = bcd2bin(buf[PCF2127_REG_HR] & 0x3F);
 	tm->tm_mday = bcd2bin(buf[PCF2127_REG_DM] & 0x3F);
-	tm->tm_mon  = bcd2bin(buf[PCF2127_REG_MO] & 0x1F) - 1;
+	tm->tm_mon  = bcd2bin(buf[PCF2127_REG_MO] & 0x1F);
 	tm->tm_year = bcd2bin(buf[PCF2127_REG_YR]) + 1900;
 	if (tm->tm_year < 1970)
 		tm->tm_year += 100;	/* assume we are in 1970...2069 */

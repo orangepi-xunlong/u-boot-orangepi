@@ -120,7 +120,7 @@ def wait_until_open_succeeds(fn):
         An open file handle to the file.
     """
 
-    for i in xrange(100):
+    for i in range(100):
         fh = attempt_to_open_file(fn)
         if fh:
             return fh
@@ -143,7 +143,7 @@ def wait_until_file_open_fails(fn, ignore_errors):
         Nothing.
     """
 
-    for i in xrange(100):
+    for i in range(100):
         fh = attempt_to_open_file(fn)
         if not fh:
             return
@@ -235,6 +235,13 @@ def find_ram_base(u_boot_console):
         if ram_base is None:
             ram_base = -1
             raise Exception('Failed to find RAM bank start in `bdinfo`')
+
+    # We don't want ram_base to be zero as some functions test if the given
+    # address is NULL (0). Besides, on some RISC-V targets the low memory
+    # is protected that prevents S-mode U-Boot from access.
+    # Let's add 2MiB then (size of an ARM LPAE/v8 section).
+
+    ram_base += 1024 * 1024 * 2
 
     return ram_base
 

@@ -9,9 +9,12 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <power/as3722.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
+
+#define AS3722_LDO_CONTROL0_MAX_INDEX 7
 
 static int stepdown_get_value(struct udevice *dev)
 {
@@ -68,10 +71,16 @@ static int ldo_set_value(struct udevice *dev, int uvolt)
 static int ldo_set_enable(struct udevice *dev, bool enable)
 {
 	struct udevice *pmic = dev_get_parent(dev);
+	u8 ctrl_reg = AS3722_LDO_CONTROL0;
 	int ldo = dev->driver_data;
 	int ret;
 
-	ret = pmic_clrsetbits(pmic, AS3722_LDO_CONTROL, 0, 1 << ldo);
+	if (ldo > AS3722_LDO_CONTROL0_MAX_INDEX) {
+		ctrl_reg = AS3722_LDO_CONTROL1;
+		ldo -= 8;
+	}
+
+	ret = pmic_clrsetbits(pmic, ctrl_reg, !enable << ldo, enable << ldo);
 	if (ret < 0) {
 		debug("%s: failed to write LDO control register: %d", __func__,
 		      ret);
@@ -84,10 +93,16 @@ static int ldo_set_enable(struct udevice *dev, bool enable)
 static int ldo_get_enable(struct udevice *dev)
 {
 	struct udevice *pmic = dev_get_parent(dev);
+	u8 ctrl_reg = AS3722_LDO_CONTROL0;
 	int ldo = dev->driver_data;
 	int ret;
 
-	ret = pmic_reg_read(pmic, AS3722_LDO_CONTROL);
+	if (ldo > AS3722_LDO_CONTROL0_MAX_INDEX) {
+		ctrl_reg = AS3722_LDO_CONTROL1;
+		ldo -= 8;
+	}
+
+	ret = pmic_reg_read(pmic, ctrl_reg);
 	if (ret < 0) {
 		debug("%s: failed to read SD control register: %d", __func__,
 		      ret);

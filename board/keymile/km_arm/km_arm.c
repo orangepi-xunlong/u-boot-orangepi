@@ -12,8 +12,11 @@
  */
 
 #include <common.h>
+#include <env.h>
 #include <i2c.h>
+#include <init.h>
 #include <nand.h>
+#include <net.h>
 #include <netdev.h>
 #include <miiphy.h>
 #include <spi.h>
@@ -66,11 +69,7 @@ static const u32 kwmpp_config[] = {
 	MPP4_NF_IO6,
 	MPP5_NF_IO7,
 	MPP6_SYSRST_OUTn,
-#if defined(KM_PCIE_RESET_MPP7)
-	MPP7_GPO,
-#else
 	MPP7_PEX_RST_OUTn,
-#endif
 #if defined(CONFIG_SYS_I2C_SOFT)
 	MPP8_GPIO,		/* SDA */
 	MPP9_GPIO,		/* SCL */
@@ -119,26 +118,6 @@ static const u32 kwmpp_config[] = {
 };
 
 static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
-
-#if defined(CONFIG_KM_MGCOGE3UN)
-/*
- * Wait for startup OK from mgcoge3ne
- */
-static int startup_allowed(void)
-{
-	unsigned char buf;
-
-	/*
-	 * Read CIRQ16 bit (bit 0)
-	 */
-	if (i2c_read(BOCO, REG_IRQ_CIRQ2, 1, &buf, 1) != 0)
-		printf("%s: Error reading Boco\n", __func__);
-	else
-		if ((buf & MASK_RBI_DEFECT_16) == MASK_RBI_DEFECT_16)
-			return 1;
-	return 0;
-}
-#endif
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061)|defined(CONFIG_KM_PIGGY4_88E6352))
 /*
@@ -197,40 +176,8 @@ static void set_bootcount_addr(void)
 
 int misc_init_r(void)
 {
-#if defined(CONFIG_KM_MGCOGE3UN)
-	char *wait_for_ne;
-	u8 dip_switch = kw_gpio_get_value(KM_FLASH_ERASE_ENABLE);
-	wait_for_ne = env_get("waitforne");
-
-	if ((wait_for_ne != NULL) && (dip_switch == 0)) {
-		if (strcmp(wait_for_ne, "true") == 0) {
-			int cnt = 0;
-			int abort = 0;
-			puts("NE go: ");
-			while (startup_allowed() == 0) {
-				if (tstc()) {
-					(void) getc(); /* consume input */
-					abort = 1;
-					break;
-				}
-				udelay(200000);
-				cnt++;
-				if (cnt == 5)
-					puts("wait\b\b\b\b");
-				if (cnt == 10) {
-					cnt = 0;
-					puts("    \b\b\b\b");
-				}
-			}
-			if (abort == 1)
-				printf("\nAbort waiting for ne\n");
-			else
-				puts("OK\n");
-		}
-	}
-#endif
-
-	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 
 	initialize_unit_leds();
 	set_km_env();
@@ -291,7 +238,7 @@ int board_init(void)
 
 int board_late_init(void)
 {
-#if (defined(CONFIG_KM_COGE5UN) | defined(CONFIG_KM_MGCOGE3UN))
+#if defined(CONFIG_KM_COGE5UN)
 	u8 dip_switch = kw_gpio_get_value(KM_FLASH_ERASE_ENABLE);
 
 	/* if pin 1 do full erase */
@@ -310,16 +257,35 @@ int board_late_init(void)
 	return 0;
 }
 
-int board_spi_claim_bus(struct spi_slave *slave)
+static const u32 spi_mpp_config[] = {
+	MPP1_SPI_MOSI,
+	MPP2_SPI_SCK,
+	MPP3_SPI_MISO,
+	0
+};
+
+static u32 spi_mpp_backup[4];
+
+int mvebu_board_spi_claim_bus(struct udevice *dev)
 {
+	spi_mpp_backup[3] = 0;
+
+	/* set new spi mpp config and save current one */
+	kirkwood_mpp_conf(spi_mpp_config, spi_mpp_backup);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 0);
 
 	return 0;
 }
 
-void board_spi_release_bus(struct spi_slave *slave)
+int mvebu_board_spi_release_bus(struct udevice *dev)
 {
+	/* restore saved mpp config */
+	kirkwood_mpp_conf(spi_mpp_backup, NULL);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 1);
+
+	return 0;
 }
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061))

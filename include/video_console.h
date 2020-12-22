@@ -43,20 +43,22 @@ enum color_idx {
  * Drivers must set up @rows, @cols, @x_charsize, @y_charsize in their probe()
  * method. Drivers may set up @xstart_frac if desired.
  *
- * @sdev:	stdio device, acting as an output sink
- * @xcur_frac:	Current X position, in fractional units (VID_TO_POS(x))
- * @curr_row:	Current Y position in pixels (0=top)
- * @rows:	Number of text rows
- * @cols:	Number of text columns
- * @x_charsize:	Character width in pixels
- * @y_charsize:	Character height in pixels
+ * @sdev:		stdio device, acting as an output sink
+ * @xcur_frac:		Current X position, in fractional units (VID_TO_POS(x))
+ * @ycur:		Current Y position in pixels (0=top)
+ * @rows:		Number of text rows
+ * @cols:		Number of text columns
+ * @x_charsize:		Character width in pixels
+ * @y_charsize:		Character height in pixels
  * @tab_width_frac:	Tab width in fractional units
- * @xsize_frac:	Width of the display in fractional units
+ * @xsize_frac:		Width of the display in fractional units
  * @xstart_frac:	Left margin for the text console in fractional units
- * @last_ch:	Last character written to the text console on this line
- * @escape:	TRUE if currently accumulating an ANSI escape sequence
- * @escape_len:	Length of accumulated escape sequence so far
- * @escape_buf:	Buffer to accumulate escape sequence
+ * @last_ch:		Last character written to the text console on this line
+ * @escape:		TRUE if currently accumulating an ANSI escape sequence
+ * @escape_len:		Length of accumulated escape sequence so far
+ * @col_saved:		Saved X position, in fractional units (VID_TO_POS(x))
+ * @row_saved:		Saved Y position in pixels (0=top)
+ * @escape_buf:		Buffer to accumulate escape sequence
  */
 struct vidconsole_priv {
 	struct stdio_dev sdev;
@@ -77,6 +79,8 @@ struct vidconsole_priv {
 	 */
 	int escape;
 	int escape_len;
+	int row_saved;
+	int col_saved;
 	char escape_buf[32];
 };
 
@@ -209,6 +213,22 @@ int vidconsole_set_row(struct udevice *dev, uint row, int clr);
  * @return 0 if OK, -ve on error
  */
 int vidconsole_put_char(struct udevice *dev, char ch);
+
+/**
+ * vidconsole_put_string() - Output a string to the current console position
+ *
+ * Outputs a string to the console and advances the cursor. This function
+ * handles wrapping to new lines and scrolling the console. Special
+ * characters are handled also: \n, \r, \b and \t.
+ *
+ * The device always starts with the cursor at position 0,0 (top left). It
+ * can be adjusted manually using vidconsole_position_cursor().
+ *
+ * @dev:	Device to adjust
+ * @str:	String to write
+ * @return 0 if OK, -ve on error
+ */
+int vidconsole_put_string(struct udevice *dev, const char *str);
 
 /**
  * vidconsole_position_cursor() - Move the text cursor

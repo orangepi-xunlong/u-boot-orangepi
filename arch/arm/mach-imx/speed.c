@@ -8,16 +8,17 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 int get_clocks(void)
 {
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 #ifdef CONFIG_FSL_USDHC
 #if CONFIG_SYS_FSL_ESDHC_ADDR == USDHC2_BASE_ADDR
 	gd->arch.sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);

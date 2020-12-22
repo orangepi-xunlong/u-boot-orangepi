@@ -12,7 +12,8 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <env.h>
+#include <init.h>
 #include <status_led.h>
 #include <netdev.h>
 #include <net.h>
@@ -22,6 +23,7 @@
 #include <splash.h>
 #include <twl4030.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 
 #include <asm/io.h>
 #include <linux/errno.h>

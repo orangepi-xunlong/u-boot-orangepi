@@ -12,22 +12,32 @@
 #ifndef USE_HOSTCC
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <hw_sha.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <linux/errno.h>
+#include <u-boot/crc.h>
 #else
 #include "mkimage.h"
 #include <time.h>
-#include <image.h>
 #endif /* !USE_HOSTCC*/
 
 #include <hash.h>
+#include <image.h>
 #include <u-boot/crc.h>
 #include <u-boot/sha1.h>
 #include <u-boot/sha256.h>
 #include <u-boot/md5.h>
+
+#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
+DECLARE_GLOBAL_DATA_PTR;
+#endif
+
+static void reloc_update(void);
 
 #if defined(CONFIG_SHA1) && !defined(CONFIG_SHA_PROG_HW_ACCEL)
 static int hash_init_sha1(struct hash_algo *algo, void **ctxp)
@@ -84,6 +94,33 @@ static int hash_finish_sha256(struct hash_algo *algo, void *ctx, void
 	return 0;
 }
 #endif
+
+static int hash_init_crc16_ccitt(struct hash_algo *algo, void **ctxp)
+{
+	uint16_t *ctx = malloc(sizeof(uint16_t));
+	*ctx = 0;
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_crc16_ccitt(struct hash_algo *algo, void *ctx,
+				   const void *buf, unsigned int size,
+				   int is_last)
+{
+	*((uint16_t *)ctx) = crc16_ccitt(*((uint16_t *)ctx), buf, size);
+	return 0;
+}
+
+static int hash_finish_crc16_ccitt(struct hash_algo *algo, void *ctx,
+				   void *dest_buf, int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	*((uint16_t *)dest_buf) = *((uint16_t *)ctx);
+	free(ctx);
+	return 0;
+}
 
 static int hash_init_crc32(struct hash_algo *algo, void **ctxp)
 {
@@ -160,6 +197,15 @@ static struct hash_algo hash_algo[] = {
 	},
 #endif
 	{
+		.name		= "crc16-ccitt",
+		.digest_size	= 2,
+		.chunk_size	= CHUNKSZ,
+		.hash_func_ws	= crc16_ccitt_wd_buf,
+		.hash_init	= hash_init_crc16_ccitt,
+		.hash_update	= hash_update_crc16_ccitt,
+		.hash_finish	= hash_finish_crc16_ccitt,
+	},
+	{
 		.name		= "crc32",
 		.digest_size	= 4,
 		.chunk_size	= CHUNKSZ_CRC32,
@@ -178,9 +224,30 @@ static struct hash_algo hash_algo[] = {
 #define multi_hash()	0
 #endif
 
+static void reloc_update(void)
+{
+#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
+	int i;
+	static bool done;
+
+	if (!done) {
+		done = true;
+		for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
+			hash_algo[i].name += gd->reloc_off;
+			hash_algo[i].hash_func_ws += gd->reloc_off;
+			hash_algo[i].hash_init += gd->reloc_off;
+			hash_algo[i].hash_update += gd->reloc_off;
+			hash_algo[i].hash_finish += gd->reloc_off;
+		}
+	}
+#endif
+}
+
 int hash_lookup_algo(const char *algo_name, struct hash_algo **algop)
 {
 	int i;
+
+	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -197,6 +264,8 @@ int hash_progressive_lookup_algo(const char *algo_name,
 				 struct hash_algo **algop)
 {
 	int i;
+
+	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -376,8 +445,8 @@ static void hash_show(struct hash_algo *algo, ulong addr, ulong len, uint8_t *ou
 		printf("%02x", output[i]);
 }
 
-int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
-		 int argc, char * const argv[])
+int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
+		 int flag, int argc, char *const argv[])
 {
 	ulong addr, len;
 

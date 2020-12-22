@@ -3,7 +3,7 @@ if ARCH_ZYNQ
 config SPL_LDSCRIPT
 	default "arch/arm/mach-zynq/u-boot-spl.lds"
 
-config SPL_FAT_SUPPORT
+config SPL_FS_FAT
 	default y
 
 config SPL_LIBCOMMON_SUPPORT
@@ -55,7 +55,10 @@ config SYS_CONFIG_NAME
 	  will be used for board configuration.
 
 config SYS_MALLOC_F_LEN
-	default 0x600
+	default 0x800
+
+config SYS_MALLOC_LEN
+	default 0x1400000
 
 config BOOT_INIT_FILE
 	string "boot.bin init register filename"

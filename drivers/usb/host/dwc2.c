@@ -5,16 +5,24 @@
  */
 
 #include <common.h>
+#include <clk.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
-#include <usb.h>
+#include <generic-phy.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <phys2bus.h>
+#include <usb.h>
 #include <usbroothubdes.h>
 #include <wait_bit.h>
+#include <asm/cache.h>
 #include <asm/io.h>
+#include <dm/device_compat.h>
+#include <linux/delay.h>
 #include <power/regulator.h>
+#include <reset.h>
 
 #include "dwc2.h"
 
@@ -28,12 +36,14 @@
 #define MAX_ENDPOINT			16
 
 struct dwc2_priv {
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 	uint8_t aligned_buffer[DWC2_DATA_BUF_SIZE] __aligned(ARCH_DMA_MINALIGN);
 	uint8_t status_buffer[DWC2_STATUS_BUF_SIZE] __aligned(ARCH_DMA_MINALIGN);
 #ifdef CONFIG_DM_REGULATOR
 	struct udevice *vbus_supply;
 #endif
+	struct phy phy;
+	struct clk_bulk clks;
 #else
 	uint8_t *aligned_buffer;
 	uint8_t *status_buffer;
@@ -49,9 +59,11 @@ struct dwc2_priv {
 	 */
 	bool hnp_srp_disable;
 	bool oc_disable;
+
+	struct reset_ctl_bulk	resets;
 };
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 /* We need cacheline-aligned buffers for DMA transfers and dcache support */
 DEFINE_ALIGN_BUFFER(uint8_t, aligned_buffer_addr, DWC2_DATA_BUF_SIZE,
 		ARCH_DMA_MINALIGN);
@@ -165,7 +177,7 @@ static void dwc_otg_core_reset(struct dwc2_core_regs *regs)
 	mdelay(100);
 }
 
-#if defined(CONFIG_DM_USB) && defined(CONFIG_DM_REGULATOR)
+#if CONFIG_IS_ENABLED(DM_USB) && defined(CONFIG_DM_REGULATOR)
 static int dwc_vbus_supply_init(struct udevice *dev)
 {
 	struct dwc2_priv *priv = dev_get_priv(dev);
@@ -208,7 +220,7 @@ static int dwc_vbus_supply_init(struct udevice *dev)
 	return 0;
 }
 
-#if defined(CONFIG_DM_USB)
+#if CONFIG_IS_ENABLED(DM_USB)
 static int dwc_vbus_supply_exit(struct udevice *dev)
 {
 	return 0;
@@ -1105,7 +1117,8 @@ static int _submit_control_msg(struct dwc2_priv *priv, struct usb_device *dev,
 }
 
 int _submit_int_msg(struct dwc2_priv *priv, struct usb_device *dev,
-		    unsigned long pipe, void *buffer, int len, int interval)
+		    unsigned long pipe, void *buffer, int len, int interval,
+		    bool nonblock)
 {
 	unsigned long timeout;
 	int ret;
@@ -1119,9 +1132,38 @@ int _submit_int_msg(struct dwc2_priv *priv, struct usb_device *dev,
 			return -ETIMEDOUT;
 		}
 		ret = _submit_bulk_msg(priv, dev, pipe, buffer, len);
-		if (ret != -EAGAIN)
+		if ((ret != -EAGAIN) || nonblock)
 			return ret;
 	}
+}
+
+static int dwc2_reset(struct udevice *dev)
+{
+	int ret;
+	struct dwc2_priv *priv = dev_get_priv(dev);
+
+	ret = reset_get_bulk(dev, &priv->resets);
+	if (ret) {
+		dev_warn(dev, "Can't get reset: %d\n", ret);
+		/* Return 0 if error due to !CONFIG_DM_RESET and reset
+		 * DT property is not present.
+		 */
+		if (ret == -ENOENT || ret == -ENOTSUPP)
+			return 0;
+		else
+			return ret;
+	}
+
+	/* force reset to clear all IP register */
+	reset_assert_bulk(&priv->resets);
+	ret = reset_deassert_bulk(&priv->resets);
+	if (ret) {
+		reset_release_bulk(&priv->resets);
+		dev_err(dev, "Failed to reset: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static int dwc2_init_common(struct udevice *dev, struct dwc2_priv *priv)
@@ -1129,6 +1171,11 @@ static int dwc2_init_common(struct udevice *dev, struct dwc2_priv *priv)
 	struct dwc2_core_regs *regs = priv->regs;
 	uint32_t snpsid;
 	int i, j;
+	int ret;
+
+	ret = dwc2_reset(dev);
+	if (ret)
+		return ret;
 
 	snpsid = readl(&regs->gsnpsid);
 	dev_info(dev, "Core Release: %x.%03x\n",
@@ -1175,6 +1222,8 @@ static int dwc2_init_common(struct udevice *dev, struct dwc2_priv *priv)
 	if (readl(&regs->gintsts) & DWC2_GINTSTS_CURMODE_HOST)
 		mdelay(1000);
 
+	printf("USB DWC2\n");
+
 	return 0;
 }
 
@@ -1187,7 +1236,7 @@ static void dwc2_uninit_common(struct dwc2_core_regs *regs)
 			DWC2_HPRT0_PRTRST);
 }
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 int submit_control_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 		       int len, struct devrequest *setup)
 {
@@ -1201,9 +1250,10 @@ int submit_bulk_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 }
 
 int submit_int_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
-		   int len, int interval)
+		   int len, int interval, bool nonblock)
 {
-	return _submit_int_msg(&local, dev, pipe, buffer, len, interval);
+	return _submit_int_msg(&local, dev, pipe, buffer, len, interval,
+			       nonblock);
 }
 
 /* U-Boot USB control interface */
@@ -1232,7 +1282,7 @@ int usb_lowlevel_stop(int index)
 }
 #endif
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int dwc2_submit_control_msg(struct udevice *dev, struct usb_device *udev,
 				   unsigned long pipe, void *buffer, int length,
 				   struct devrequest *setup)
@@ -1257,13 +1307,14 @@ static int dwc2_submit_bulk_msg(struct udevice *dev, struct usb_device *udev,
 
 static int dwc2_submit_int_msg(struct udevice *dev, struct usb_device *udev,
 			       unsigned long pipe, void *buffer, int length,
-			       int interval)
+			       int interval, bool nonblock)
 {
 	struct dwc2_priv *priv = dev_get_priv(dev);
 
 	debug("%s: dev='%s', udev=%p\n", __func__, dev->name, udev);
 
-	return _submit_int_msg(priv, udev, pipe, buffer, length, interval);
+	return _submit_int_msg(priv, udev, pipe, buffer, length, interval,
+			       nonblock);
 }
 
 static int dwc2_usb_ofdata_to_platdata(struct udevice *dev)
@@ -1282,12 +1333,94 @@ static int dwc2_usb_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
+static int dwc2_setup_phy(struct udevice *dev)
+{
+	struct dwc2_priv *priv = dev_get_priv(dev);
+	int ret;
+
+	ret = generic_phy_get_by_index(dev, 0, &priv->phy);
+	if (ret) {
+		if (ret == -ENOENT)
+			return 0; /* no PHY, nothing to do */
+		dev_err(dev, "Failed to get USB PHY: %d.\n", ret);
+		return ret;
+	}
+
+	ret = generic_phy_init(&priv->phy);
+	if (ret) {
+		dev_dbg(dev, "Failed to init USB PHY: %d.\n", ret);
+		return ret;
+	}
+
+	ret = generic_phy_power_on(&priv->phy);
+	if (ret) {
+		dev_dbg(dev, "Failed to power on USB PHY: %d.\n", ret);
+		generic_phy_exit(&priv->phy);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int dwc2_shutdown_phy(struct udevice *dev)
+{
+	struct dwc2_priv *priv = dev_get_priv(dev);
+	int ret;
+
+	/* PHY is not valid when generic_phy_get_by_index() = -ENOENT */
+	if (!generic_phy_valid(&priv->phy))
+		return 0; /* no PHY, nothing to do */
+
+	ret = generic_phy_power_off(&priv->phy);
+	if (ret) {
+		dev_dbg(dev, "Failed to power off USB PHY: %d.\n", ret);
+		return ret;
+	}
+
+	ret = generic_phy_exit(&priv->phy);
+	if (ret) {
+		dev_dbg(dev, "Failed to power off USB PHY: %d.\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int dwc2_clk_init(struct udevice *dev)
+{
+	struct dwc2_priv *priv = dev_get_priv(dev);
+	int ret;
+
+	ret = clk_get_bulk(dev, &priv->clks);
+	if (ret == -ENOSYS || ret == -ENOENT)
+		return 0;
+	if (ret)
+		return ret;
+
+	ret = clk_enable_bulk(&priv->clks);
+	if (ret) {
+		clk_release_bulk(&priv->clks);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int dwc2_usb_probe(struct udevice *dev)
 {
 	struct dwc2_priv *priv = dev_get_priv(dev);
 	struct usb_bus_priv *bus_priv = dev_get_uclass_priv(dev);
+	int ret;
 
 	bus_priv->desc_before_addr = true;
+
+	ret = dwc2_clk_init(dev);
+	if (ret)
+		return ret;
+
+	ret = dwc2_setup_phy(dev);
+	if (ret)
+		return ret;
 
 	return dwc2_init_common(dev, priv);
 }
@@ -1301,7 +1434,17 @@ static int dwc2_usb_remove(struct udevice *dev)
 	if (ret)
 		return ret;
 
+	ret = dwc2_shutdown_phy(dev);
+	if (ret) {
+		dev_dbg(dev, "Failed to shutdown USB PHY: %d.\n", ret);
+		return ret;
+	}
+
 	dwc2_uninit_common(priv->regs);
+
+	reset_release_bulk(&priv->resets);
+	clk_disable_bulk(&priv->clks);
+	clk_release_bulk(&priv->clks);
 
 	return 0;
 }
@@ -1314,6 +1457,7 @@ struct dm_usb_ops dwc2_usb_ops = {
 
 static const struct udevice_id dwc2_usb_ids[] = {
 	{ .compatible = "brcm,bcm2835-usb" },
+	{ .compatible = "brcm,bcm2708-usb" },
 	{ .compatible = "snps,dwc2" },
 	{ }
 };

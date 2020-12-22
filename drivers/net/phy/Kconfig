@@ -46,7 +46,7 @@ config B53_PHY_PORTS
 endif # B53_SWITCH
 
 config MV88E61XX_SWITCH
-	bool "Marvel MV88E61xx Ethernet switch PHY support."
+	bool "Marvell MV88E61xx Ethernet switch PHY support."
 
 if MV88E61XX_SWITCH
 
@@ -64,8 +64,32 @@ endif # MV88E61XX_SWITCH
 config PHYLIB_10G
 	bool "Generic 10G PHY support"
 
-config PHY_AQUANTIA
+menuconfig PHY_AQUANTIA
 	bool "Aquantia Ethernet PHYs support"
+	select PHY_GIGE
+	select PHYLIB_10G
+
+config PHY_AQUANTIA_UPLOAD_FW
+	bool "Aquantia firmware loading support"
+	default n
+	depends on PHY_AQUANTIA
+	help
+		Aquantia PHYs use firmware which can be either loaded automatically
+		from storage directly attached to the phy or loaded by the boot loader
+		via MDIO commands.  The firmware is loaded from a file, specified by
+		the PHY_AQUANTIA_FW_PART and PHY_AQUANTIA_FW_NAME options.
+
+config PHY_AQUANTIA_FW_PART
+	string "Aquantia firmware partition"
+	depends on PHY_AQUANTIA_UPLOAD_FW
+	help
+		Partition containing the firmware file.
+
+config PHY_AQUANTIA_FW_NAME
+	string "Aquantia firmware filename"
+	depends on PHY_AQUANTIA_UPLOAD_FW
+	help
+		Firmware filename.
 
 config PHY_ATHEROS
 	bool "Atheros Ethernet PHYs support"
@@ -75,6 +99,28 @@ config PHY_BROADCOM
 
 config PHY_CORTINA
 	bool "Cortina Ethernet PHYs support"
+
+choice
+	prompt "Location of the Cortina firmware"
+	default SYS_CORTINA_FW_IN_NOR
+	depends on PHY_CORTINA
+
+config SYS_CORTINA_FW_IN_MMC
+	bool "Cortina firmware in MMC"
+
+config SYS_CORTINA_FW_IN_NAND
+	bool "Cortina firmware in NAND flash"
+
+config SYS_CORTINA_FW_IN_NOR
+	bool "Cortina firmware in NOR flash"
+
+config SYS_CORTINA_FW_IN_REMOTE
+	bool "Cortina firmware in remote device"
+
+config SYS_CORTINA_FW_IN_SPIFLASH
+	bool "Cortina firmware in SPI flash"
+
+endchoice
 
 config PHY_DAVICOM
 	bool "Davicom Ethernet PHYs support"
@@ -95,21 +141,19 @@ config PHY_MICREL
 	bool "Micrel Ethernet PHYs support"
 	help
 	  Enable support for the GbE PHYs manufactured by Micrel (now
-	  a part of Microchip). This includes drivers for the KSZ804,
-	  KSZ8031, KSZ8051, KSZ8081, KSZ8895, KSZ886x, KSZ8721
-	  either/or KSZ9021 (see the "Micrel KSZ9021 family support"
-	  config option for details), and KSZ9031 (if configured).
+	  a part of Microchip). This includes drivers for the KSZ804, KSZ8031,
+	  KSZ8051, KSZ8081, KSZ8895, KSZ886x and KSZ8721 (if "Micrel KSZ8xxx
+	  family support" is selected) and the KSZ9021 and KSZ9031 (if "Micrel
+	  KSZ90x1 family support" is selected).
 
 if PHY_MICREL
 
 config PHY_MICREL_KSZ9021
 	bool
-	select PHY_GIGE
 	select PHY_MICREL_KSZ90X1
 
 config PHY_MICREL_KSZ9031
 	bool
-	select PHY_GIGE
 	select PHY_MICREL_KSZ90X1
 
 config PHY_MICREL_KSZ90X1
@@ -122,19 +166,12 @@ config PHY_MICREL_KSZ90X1
 	  delays configured in the device tree will be applied to the
 	  PHY during initialization.
 
-	  This should not be enabled at the same time with PHY_MICREL_KSZ8XXX
-	  as the KSZ9021 and KS8721 share the same ID.
-
 config PHY_MICREL_KSZ8XXX
 	bool "Micrel KSZ8xxx family support"
-	default y if !PHY_MICREL_KSZ90X1
 	help
-	  Enable support for the 8000 series GbE PHYs manufactured by Micrel
+	  Enable support for the 8000 series 10/100 PHYs manufactured by Micrel
 	  (now a part of Microchip). This includes drivers for the KSZ804,
 	  KSZ8031, KSZ8051, KSZ8081, KSZ8895, KSZ886x, and KSZ8721.
-
-	  This should not be enabled at the same time with PHY_MICREL_KSZ90X1
-	  as the KSZ9021 and KS8721 share the same ID.
 
 endif # PHY_MICREL
 
@@ -178,6 +215,26 @@ config RTL8211X_PHY_FORCE_MASTER
 
 	  If unsure, say N.
 
+config RTL8211F_PHY_FORCE_EEE_RXC_ON
+	bool "Ethernet PHY RTL8211F: do not stop receiving the xMII clock during LPI"
+	depends on PHY_REALTEK
+	default n
+	help
+	  The IEEE 802.3az-2010 (EEE) standard provides a protocol to coordinate
+	  transitions to/from a lower power consumption level (Low Power Idle
+	  mode) based on link utilization. When no packets are being
+	  transmitted, the system goes to Low Power Idle mode to save power.
+
+	  Under particular circumstances this setting can cause issues where
+	  the PHY is unable to transmit or receive any packet when in LPI mode.
+	  The problem is caused when the PHY is configured to stop receiving
+	  the xMII clock while it is signaling LPI. For some PHYs the bit
+	  configuring this behavior is set by the Linux kernel, causing the
+	  issue in U-Boot on reboot if the PHY retains the register value.
+
+	  Default n, which means that the PHY state is not changed. To work
+	  around the issues, change this setting to y.
+
 config PHY_SMSC
 	bool  "Microchip(SMSC) Ethernet PHYs support"
 
@@ -193,6 +250,13 @@ config PHY_VITESSE
 config PHY_XILINX
 	bool "Xilinx Ethernet PHYs support"
 
+config PHY_XILINX_GMII2RGMII
+	bool "Xilinx GMII to RGMII Ethernet PHYs support"
+	help
+	  This adds support for Xilinx GMII to RGMII IP core. This IP acts
+	  as bridge between MAC connected over GMII and external phy that
+	  is connected over RGMII interface.
+
 config PHY_FIXED
 	bool "Fixed-Link PHY"
 	depends on DM_ETH
@@ -202,5 +266,9 @@ config PHY_FIXED
 	  There is nothing like autoneogation and so
 	  on, the link is always up with fixed speed and fixed duplex-setting.
 	  More information: doc/device-tree-bindings/net/fixed-link.txt
+
+config PHY_NCSI
+	bool "NC-SI based PHY"
+	depends on DM_ETH
 
 endif #PHYLIB

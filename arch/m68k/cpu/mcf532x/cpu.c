@@ -9,16 +9,20 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <net.h>
+#include <vsprintf.h>
 #include <watchdog.h>
 #include <command.h>
 #include <netdev.h>
+#include <linux/delay.h>
 
 #include <asm/immap.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	rcm_t *rcm = (rcm_t *) (MMAP_RCM);
 
@@ -145,7 +149,6 @@ int watchdog_init(void)
  * create a board-specific function called:
  * 	int board_eth_init(bd_t *bis)
  */
-
 int cpu_eth_init(bd_t *bis)
 {
 	return mcffec_initialize(bis);

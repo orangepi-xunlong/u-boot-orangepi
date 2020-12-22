@@ -9,7 +9,7 @@
 #ifndef _ELF_H
 #define _ELF_H
 
-#ifndef __ASSEMBLER__
+#ifndef __ASSEMBLY__
 #include "compiler.h"
 
 /* This version doesn't work for 64-bit ABIs - Erik */
@@ -550,6 +550,41 @@ unsigned long elf_hash(const unsigned char *name);
 
 #endif /* __ASSEMBLER */
 
+/* ELF register definitions */
+#define R_386_NONE	0
+#define R_386_32	1
+#define R_386_PC32	2
+#define R_386_GOT32	3
+#define R_386_PLT32	4
+#define R_386_COPY	5
+#define R_386_GLOB_DAT	6
+#define R_386_JMP_SLOT	7
+#define R_386_RELATIVE	8
+#define R_386_GOTOFF	9
+#define R_386_GOTPC	10
+#define R_386_NUM	11
+
+/* x86-64 relocation types */
+#define R_X86_64_NONE		0	/* No reloc */
+#define R_X86_64_64		1	/* Direct 64 bit  */
+#define R_X86_64_PC32		2	/* PC relative 32 bit signed */
+#define R_X86_64_GOT32		3	/* 32 bit GOT entry */
+#define R_X86_64_PLT32		4	/* 32 bit PLT address */
+#define R_X86_64_COPY		5	/* Copy symbol at runtime */
+#define R_X86_64_GLOB_DAT	6	/* Create GOT entry */
+#define R_X86_64_JUMP_SLOT	7	/* Create PLT entry */
+#define R_X86_64_RELATIVE	8	/* Adjust by program base */
+/* 32 bit signed pc relative offset to GOT */
+#define R_X86_64_GOTPCREL	9
+#define R_X86_64_32		10	/* Direct 32 bit zero extended */
+#define R_X86_64_32S		11	/* Direct 32 bit sign extended */
+#define R_X86_64_16		12	/* Direct 16 bit zero extended */
+#define R_X86_64_PC16		13	/* 16 bit sign extended pc relative */
+#define R_X86_64_8		14	/* Direct 8 bit sign extended  */
+#define R_X86_64_PC8		15	/* 8 bit sign extended pc relative */
+
+#define R_X86_64_NUM		16
+
 /*
  * XXX - PowerPC defines really don't belong in here,
  * but we'll put them in for simplicity.
@@ -557,6 +592,9 @@ unsigned long elf_hash(const unsigned char *name);
 
 /* Values for Elf32/64_Ehdr.e_flags */
 #define EF_PPC_EMB		0x80000000	/* PowerPC embedded flag */
+
+#define EF_PPC64_ELFV1_ABI	0x00000001
+#define EF_PPC64_ELFV2_ABI	0x00000002
 
 /* Cygnus local bits below */
 #define EF_PPC_RELOCATABLE	0x00010000	/* PowerPC -mrelocatable flag*/
@@ -652,8 +690,12 @@ unsigned long elf_hash(const unsigned char *name);
 #define R_RISCV_64		2
 #define R_RISCV_RELATIVE	3
 
-#ifndef __ASSEMBLER__
+#ifndef __ASSEMBLY__
 int valid_elf_image(unsigned long addr);
+unsigned long load_elf64_image_phdr(unsigned long addr);
+unsigned long load_elf64_image_shdr(unsigned long addr);
+unsigned long load_elf_image_phdr(unsigned long addr);
+unsigned long load_elf_image_shdr(unsigned long addr);
 #endif
 
 #endif /* _ELF_H */

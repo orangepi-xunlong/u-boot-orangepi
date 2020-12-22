@@ -8,7 +8,6 @@
 #define __PCM058_CONFIG_H
 
 #ifdef CONFIG_SPL
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
 #include "imx6_spl.h"
 #endif
 
@@ -32,17 +31,12 @@
 
 /* Ethernet */
 #define CONFIG_FEC_MXC
-#define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		RGMII
 #define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		3
 
 /* SPI Flash */
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		20000000
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 
 /* I2C Configs */
 #define CONFIG_SYS_I2C
@@ -61,11 +55,8 @@
 /* DMA stuff, needed for GPMI/MXS NAND support */
 
 /* Filesystem support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
@@ -82,21 +73,5 @@
 #define CONFIG_SYS_FSL_USDHC_NUM	1
 
 /* Environment organization */
-#define CONFIG_ENV_SIZE                (16 * 1024)
-#define CONFIG_ENV_OFFSET		(1024 * SZ_1K)
-#define CONFIG_ENV_SECT_SIZE		(64 * SZ_1K)
-#define CONFIG_ENV_SPI_BUS             CONFIG_SF_DEFAULT_BUS
-#define CONFIG_ENV_SPI_CS              CONFIG_SF_DEFAULT_CS
-#define CONFIG_ENV_SPI_MODE            CONFIG_SF_DEFAULT_MODE
-#define CONFIG_ENV_SPI_MAX_HZ          CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_OFFSET_REDUND       (CONFIG_ENV_OFFSET + \
-						CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND         CONFIG_ENV_SIZE
-
-#ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OFFSET              (0x1E0000)
-#define CONFIG_ENV_SECT_SIZE           (128 * SZ_1K)
-#endif
 
 #endif

@@ -5,8 +5,11 @@
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
  */
 
+#include <init.h>
+#include <net.h>
 #include <asm/mach-types.h>
 #include <common.h>
+#include <flash.h>
 #if defined(CONFIG_FTMAC100) && !defined(CONFIG_DM_ETH)
 #include <netdev.h>
 #endif

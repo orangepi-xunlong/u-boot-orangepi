@@ -14,7 +14,9 @@
 #include <command.h>
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
+#include <env.h>
+#include <flash.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/at91sam9260_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
@@ -197,11 +199,11 @@ void mem_init(void)
 
 	/* Mirrors at A15 on ATMEL G20 SDRAM Controller with 64MB*/
 	if (ram_size == 0x800) {
-		printf("\n\r 64MB");
+		printf("\n\r 64MB\n");
 		sdramc_configure(AT91_SDRAMC_NC_9);
 	} else {
 		/* Size already initialized */
-		printf("\n\r 128MB");
+		printf("\n\r 128MB\n");
 	}
 }
 #endif
@@ -282,24 +284,6 @@ int board_early_init_f(void)
 	return 0;
 }
 
-/* FIXME gpio code here need to handle through DM_GPIO */
-#ifndef CONFIG_DM_SPI
-int spi_cs_is_valid(unsigned int bus, unsigned int cs)
-{
-	return bus == 0 && cs == 0;
-}
-
-void spi_cs_activate(struct spi_slave *slave)
-{
-	at91_set_gpio_value(TAURUS_SPI_CS_PIN, 0);
-}
-
-void spi_cs_deactivate(struct spi_slave *slave)
-{
-	at91_set_gpio_value(TAURUS_SPI_CS_PIN, 1);
-}
-#endif
-
 #ifdef CONFIG_USB_GADGET_AT91
 #include <linux/usb/at91_udc.h>
 
@@ -346,17 +330,6 @@ int dram_init(void)
 				    CONFIG_SYS_SDRAM_SIZE);
 	return 0;
 }
-
-#ifndef CONFIG_DM_ETH
-int board_eth_init(bd_t *bis)
-{
-	int rc = 0;
-#ifdef CONFIG_MACB
-	rc = macb_eth_initialize(0, (void *)ATMEL_BASE_EMAC0, 0x00);
-#endif
-	return rc;
-}
-#endif
 
 #if !defined(CONFIG_SPL_BUILD)
 #if defined(CONFIG_BOARD_AXM)
@@ -413,8 +386,8 @@ static int upgrade_failure_fallback(void)
 	return 0;
 }
 
-static int do_upgrade_available(cmd_tbl_t *cmdtp, int flag, int argc,
-			char * const argv[])
+static int do_upgrade_available(struct cmd_tbl *cmdtp, int flag, int argc,
+				char *const argv[])
 {
 	unsigned long upgrade_available = 0;
 	unsigned long boot_retry = 0;

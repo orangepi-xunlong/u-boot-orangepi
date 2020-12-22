@@ -1,11 +1,5 @@
 menu "LED Support"
 
-config SUNXI_LEDC
-	bool "Enable Support for sunxi ledc"
-	depends on LED
-	help
-	  This option enables support for ledc connected to the sunxi u-boot plantform.
-
 config LED
 	bool "Enable LED support"
 	depends on DM
@@ -33,6 +27,13 @@ config LED_BCM6358
 	  This option enables support for LEDs connected to the BCM6358
 	  LED HW controller accessed via MMIO registers.
 	  HW has no blinking capabilities and up to 32 LEDs can be controlled.
+
+config LED_BCM6858
+	bool "LED Support for BCM6858"
+	depends on LED && (ARCH_BCM68360 || ARCH_BCM6858 || ARCH_BCM63158)
+	help
+	  This option enables support for LEDs connected to the BCM6858
+	  HW has blinking capabilities and up to 32 LEDs can be controlled.
 
 config LED_BLINK
 	bool "Support LED blinking"

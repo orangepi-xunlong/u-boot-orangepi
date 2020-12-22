@@ -1,9 +1,12 @@
 #ifndef _LINUX_BITOPS_H
 #define _LINUX_BITOPS_H
 
+#ifndef USE_HOSTCC
+
 #include <asm/types.h>
 #include <asm-generic/bitsperlong.h>
 #include <linux/compiler.h>
+#include <linux/kernel.h>
 
 #ifdef	__KERNEL__
 #define BIT(nr)			(1UL << (nr))
@@ -21,8 +24,13 @@
  * position @h. For example
  * GENMASK_ULL(39, 21) gives us the 64bit vector 0x000000ffffe00000.
  */
+#ifdef CONFIG_SANDBOX
+#define GENMASK(h, l) \
+	(((~0UL) << (l)) & (~0UL >> (CONFIG_SANDBOX_BITS_PER_LONG - 1 - (h))))
+#else
 #define GENMASK(h, l) \
 	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
+#endif
 
 #define GENMASK_ULL(h, l) \
 	(((~0ULL) << (l)) & (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
@@ -128,6 +136,17 @@ static inline unsigned int generic_hweight8(unsigned int w)
 	return (res & 0x0F) + ((res >> 4) & 0x0F);
 }
 
+static inline unsigned long generic_hweight64(__u64 w)
+{
+	return generic_hweight32((unsigned int)(w >> 32)) +
+	       generic_hweight32((unsigned int)w);
+}
+
+static inline unsigned long hweight_long(unsigned long w)
+{
+	return sizeof(w) == 4 ? generic_hweight32(w) : generic_hweight64(w);
+}
+
 #include <asm/bitops.h>
 
 /* linux/include/asm-generic/bitops/non-atomic.h */
@@ -198,5 +217,7 @@ static inline void generic_clear_bit(int nr, volatile unsigned long *addr)
 
 	*p &= ~mask;
 }
+
+#endif /* !USE_HOSTCC */
 
 #endif

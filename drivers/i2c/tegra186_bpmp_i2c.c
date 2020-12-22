@@ -6,8 +6,10 @@
 #include <common.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <misc.h>
 #include <asm/arch-tegra/bpmp_abi.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -85,6 +87,12 @@ static int tegra186_bpmp_i2c_xfer(struct udevice *dev, struct i2c_msg *msg,
 	return 0;
 }
 
+static int tegra186_bpmp_probe_chip(struct udevice *bus, uint chip_addr,
+				    uint chip_flags)
+{
+	return 0;
+}
+
 static int tegra186_bpmp_i2c_probe(struct udevice *dev)
 {
 	struct tegra186_bpmp_i2c *priv = dev_get_priv(dev);
@@ -101,6 +109,7 @@ static int tegra186_bpmp_i2c_probe(struct udevice *dev)
 
 static const struct dm_i2c_ops tegra186_bpmp_i2c_ops = {
 	.xfer = tegra186_bpmp_i2c_xfer,
+	.probe_chip = tegra186_bpmp_probe_chip,
 };
 
 static const struct udevice_id tegra186_bpmp_i2c_ids[] = {

@@ -29,6 +29,9 @@
 #include <pci.h>
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/ioport.h>
 
 /* PCIe core registers */
@@ -297,7 +300,7 @@ static int pcie_advk_check_pio_status(struct pcie_advk *pcie,
  *
  * Return: 0 on success
  */
-static int pcie_advk_read_config(struct udevice *bus, pci_dev_t bdf,
+static int pcie_advk_read_config(const struct udevice *bus, pci_dev_t bdf,
 				 uint offset, ulong *valuep,
 				 enum pci_size_t size)
 {
@@ -610,7 +613,7 @@ static int pcie_advk_probe(struct udevice *dev)
 {
 	struct pcie_advk *pcie = dev_get_priv(dev);
 
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct gpio_desc reset_gpio;
 
 	gpio_request_by_name(dev, "reset-gpio", 0, &reset_gpio,
@@ -636,7 +639,7 @@ static int pcie_advk_probe(struct udevice *dev)
 	}
 #else
 	dev_dbg(pcie->dev, "PCIE Reset on GPIO support is missing\n");
-#endif /* CONFIG_DM_GPIO */
+#endif /* DM_GPIO */
 
 	pcie->first_busno = dev->seq;
 	pcie->dev = pci_get_controller(dev);

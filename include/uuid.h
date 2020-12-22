@@ -6,6 +6,8 @@
 #ifndef __UUID_H__
 #define __UUID_H__
 
+#include <linux/bitops.h>
+
 /* This is structure is in big-endian */
 struct uuid {
 	unsigned int time_low;
@@ -16,10 +18,10 @@ struct uuid {
 	unsigned char node[6];
 } __packed;
 
-enum {
-	UUID_STR_FORMAT_STD,
-	UUID_STR_FORMAT_GUID
-};
+/* Bits of a bitmask specifying the output format for GUIDs */
+#define UUID_STR_FORMAT_STD	0
+#define UUID_STR_FORMAT_GUID	BIT(0)
+#define UUID_STR_UPPER_CASE	BIT(1)
 
 #define UUID_STR_LEN		36
 #define UUID_BIN_LEN		sizeof(struct uuid)
@@ -33,11 +35,13 @@ enum {
 #define UUID_VARIANT		0x1
 
 int uuid_str_valid(const char *uuid);
-int uuid_str_to_bin(char *uuid_str, unsigned char *uuid_bin, int str_format);
-void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format);
+int uuid_str_to_bin(const char *uuid_str, unsigned char *uuid_bin,
+		    int str_format);
+void uuid_bin_to_str(const unsigned char *uuid_bin, char *uuid_str,
+		     int str_format);
 #ifdef CONFIG_PARTITION_TYPE_GUID
 int uuid_guid_get_bin(const char *guid_str, unsigned char *guid_bin);
-int uuid_guid_get_str(unsigned char *guid_bin, char *guid_str);
+int uuid_guid_get_str(const unsigned char *guid_bin, char *guid_str);
 #endif
 void gen_rand_uuid(unsigned char *uuid_bin);
 void gen_rand_uuid_str(char *uuid_str, int str_format);

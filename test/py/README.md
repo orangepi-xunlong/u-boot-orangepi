@@ -21,18 +21,34 @@ involves executing some binary and interacting with its stdin/stdout. You will
 need to implement various "hook" scripts that are called by the test suite at
 the appropriate time.
 
-On Debian or Debian-like distributions, the following packages are required.
-Some packages are required to execute any test, and others only for specific
-tests. Similar package names should exist in other distributions.
+In order to run the testsuite at a minimum we require that both python3 and
+pip for python3 be installed.  All of the required python modules are
+described in the requirements.txt file in this directory and can be installed
+with the command ```pip install -r requirements.txt```
 
-| Package        | Version tested (Ubuntu 14.04) |
-| -------------- | ----------------------------- |
-| python         | 2.7.5-5ubuntu3                |
-| python-pytest  | 2.5.1-1                       |
-| gdisk          | 0.8.8-1ubuntu0.1              |
-| dfu-util       | 0.5-1                         |
-| dtc            | 1.4.0+dfsg-1                  |
-| openssl        | 1.0.1f-1ubuntu2.22            |
+In order to execute certain tests on their supported platforms other tools
+will be required.  The following is an incomplete list:
+
+| Package        |
+| -------------- |
+| gdisk          |
+| dfu-util       |
+| dtc            |
+| openssl        |
+| sudo OR guestmount |
+| e2fsprogs      |
+| util-linux     |
+| coreutils      |
+| dosfstools     |
+| efitools       |
+| mount          |
+| mtools         |
+| sbsigntool     |
+| udisks2        |
+
+
+Please use the apporirate commands for your distribution to match these tools
+up with the package that provides them.
 
 The test script supports either:
 
@@ -44,18 +60,16 @@ The test script supports either:
 
 ### Using `virtualenv` to provide requirements
 
-Older distributions (e.g. Ubuntu 10.04) may not provide all the required
-packages, or may provide versions that are too old to run the test suite. One
-can use the Python `virtualenv` script to locally install more up-to-date
-versions of the required packages without interfering with the OS installation.
-For example:
+The recommended way to run the test suite, in order to ensure reproducibility
+is to use `virtualenv` to set up the necessary environment.  This can be done
+via the following commands:
 
 ```bash
 $ cd /path/to/u-boot
-$ sudo apt-get install python python-virtualenv
-$ virtualenv venv
+$ sudo apt-get install python3 python3-virtualenv
+$ virtualenv -p /usr/bin/python3 venv
 $ . ./venv/bin/activate
-$ pip install pytest
+$ pip install -r test/py/requirements.txt
 ```
 
 ## Testing sandbox
@@ -132,6 +146,9 @@ command-line option; see the next section.
   before running the tests. If using this option, make sure that any
   environment variables required by the build process are already set, such as
   `$CROSS_COMPILE`.
+- `--buildman` indicates that `--build` should use buildman to build U-Boot.
+  There is no need to set $CROSS_COMPILE` in this case since buildman handles
+  it.
 - `--build-dir` sets the directory containing the compiled U-Boot binaries.
   If omitted, this is `${source_dir}/build-${board_type}`.
 - `--result-dir` sets the directory to write results, such as log files,
@@ -309,6 +326,7 @@ instances of:
 
 - `buildconfig.get(...`
 - `@pytest.mark.buildconfigspec(...`
+- `@pytest.mark.notbuildconfigspec(...`
 
 ### Complete invocation example
 
@@ -326,13 +344,21 @@ PATH=$HOME/ubtest/bin:$PATH \
 
 If you want the test script to compile U-Boot for you too, then you likely
 need to set `$CROSS_COMPILE` to allow this, and invoke the test script as
-follow:
+follows:
 
 ```bash
 CROSS_COMPILE=arm-none-eabi- \
     PATH=$HOME/ubtest/bin:$PATH \
     PYTHONPATH=${HOME}/ubtest/py/${HOSTNAME}:${PYTHONPATH} \
     ./test/py/test.py --bd seaboard --build
+```
+
+or, using buildman to handle it:
+
+```bash
+    PATH=$HOME/ubtest/bin:$PATH \
+    PYTHONPATH=${HOME}/ubtest/py/${HOSTNAME}:${PYTHONPATH} \
+    ./test/py/test.py --bd seaboard --build --buildman
 ```
 
 ## Writing tests

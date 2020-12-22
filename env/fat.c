@@ -7,16 +7,18 @@
  */
 
 #include <common.h>
-
 #include <command.h>
-#include <environment.h>
-#include <linux/stddef.h>
+#include <env.h>
+#include <env_internal.h>
+#include <part.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <search.h>
 #include <errno.h>
 #include <fat.h>
 #include <mmc.h>
+#include <asm/cache.h>
+#include <linux/stddef.h>
 
 #ifdef CONFIG_SPL_BUILD
 /* TODO(sjg@chromium.org): Figure out why this is needed */
@@ -25,17 +27,13 @@
 # endif
 #else
 # define LOADENV
-# if defined(CONFIG_CMD_SAVEENV)
-#  define CMD_SAVEENV
-# endif
 #endif
 
-#ifdef CMD_SAVEENV
 static int env_fat_save(void)
 {
 	env_t __aligned(ARCH_DMA_MINALIGN) env_new;
 	struct blk_desc *dev_desc = NULL;
-	disk_partition_t info;
+	struct disk_partition info;
 	int dev, part;
 	int err;
 	loff_t size;
@@ -75,14 +73,13 @@ static int env_fat_save(void)
 
 	return 0;
 }
-#endif /* CMD_SAVEENV */
 
 #ifdef LOADENV
 static int env_fat_load(void)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
 	struct blk_desc *dev_desc = NULL;
-	disk_partition_t info;
+	struct disk_partition info;
 	int dev, part;
 	int err;
 
@@ -122,7 +119,7 @@ static int env_fat_load(void)
 	return env_import(buf, 1);
 
 err_env_relocate:
-	set_default_env(NULL);
+	env_set_default(NULL, 0);
 
 	return -EIO;
 }
@@ -134,7 +131,5 @@ U_BOOT_ENV_LOCATION(fat) = {
 #ifdef LOADENV
 	.load		= env_fat_load,
 #endif
-#ifdef CMD_SAVEENV
-	.save		= env_save_ptr(env_fat_save),
-#endif
+	.save		= ENV_SAVE_PTR(env_fat_save),
 };

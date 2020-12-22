@@ -4,7 +4,10 @@
  */
 
 #include <dm.h>
+#include <log.h>
+#include <net.h>
 #include <usb.h>
+#include <linux/bitops.h>
 #include "usb_ether.h"
 #include "lan7x.h"
 
@@ -296,7 +299,7 @@ static int lan78xx_basic_reset(struct usb_device *udev,
 	ret = lan7x_read_reg(udev, LAN78XX_USB_CFG0, &val);
 	if (ret)
 		return ret;
-	val |= LAN78XX_USB_CFG0_BIR;
+	val &= ~LAN78XX_USB_CFG0_BIR;
 	return lan7x_write_reg(udev, LAN78XX_USB_CFG0, val);
 }
 

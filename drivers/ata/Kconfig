@@ -66,9 +66,18 @@ config DWC_AHSATA
 	  Enable this driver to support the DWC AHSATA SATA controller found
 	  in i.MX5 and i.MX6 SoCs.
 
+config DWC_AHSATA_AHCI
+	bool "Enable DWC AHSATA AHCI driver support"
+	depends on DWC_AHSATA
+	depends on AHCI
+	default y
+	help
+	  Enable this option unless you need your private ahci implementation
+
 config FSL_SATA
 	bool "Enable Freescale SATA controller driver support"
 	select LIBATA
+	select AHCI if BLK
 	help
 	  Enable this driver to support the SATA controller found in
 	  some Freescale PowerPC SoCs.
@@ -81,7 +90,9 @@ config MVSATA_IDE
 
 config SATA_MV
 	bool "Enable Marvell SATA controller driver support"
+	select AHCI
 	select LIBATA
+	depends on BLK
 	help
 	  Enable this driver to support the SATA controller found in
 	  some Marvell SoCs.
@@ -89,6 +100,7 @@ config SATA_MV
 config SATA_SIL
 	bool "Enable Silicon Image SIL3131 / SIL3132 / SIL3124 SATA driver support"
 	select LIBATA
+	select AHCI if BLK
 	help
 	  Enable this driver to support the SIL3131, SIL3132 and SIL3124
 	  SATA controllers.
@@ -99,4 +111,23 @@ config SATA_SIL3114
 	help
 	  Enable this driver to support the SIL3114 SATA controllers.
 
+config SUNXI_AHCI
+	bool "Enable Allwinner SATA driver support"
+	depends on AHCI
+	default y if ARCH_SUNXI
+	help
+	  Enable this driver to support the SATA controllers found in the
+	  Allwinner A10, A20 and R40 SoCs.
+
+config AHCI_MVEBU
+	bool "Marvell EBU AHCI SATA support"
+	depends on ARCH_MVEBU
+	depends on AHCI
+	select SCSI_AHCI
+	select DM_SCSI
+	help
+	  This option enables support for the Marvell EBU SoC's
+	  onboard AHCI SATA.
+
+	  If unsure, say N.
 endmenu

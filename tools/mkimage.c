@@ -7,6 +7,7 @@
  * Wolfgang Denk, wd@denx.de
  */
 
+#include "imagetool.h"
 #include "mkimage.h"
 #include "imximage.h"
 #include <image.h>
@@ -97,15 +98,16 @@ static void usage(const char *msg)
 		"          -i => input filename for ramdisk file\n");
 #ifdef CONFIG_FIT_SIGNATURE
 	fprintf(stderr,
-		"Signing / verified boot options: [-E] [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
+		"Signing / verified boot options: [-E] [-B size] [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
 		"          -E => place data outside of the FIT structure\n"
+		"          -B => align size in hex for FIT structure and header\n"
 		"          -k => set directory containing private keys\n"
 		"          -K => write public keys to this .dtb file\n"
 		"          -c => add comment in signature node\n"
 		"          -F => re-sign existing FIT image\n"
 		"          -p => place external data at a static position\n"
 		"          -r => mark keys used as 'required' in dtb\n"
-		"          -N => engine to use for signing (pkcs11)\n");
+		"          -N => openssl engine to use for signing\n");
 #else
 	fprintf(stderr,
 		"Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
@@ -143,7 +145,7 @@ static void process_args(int argc, char **argv)
 	int opt;
 
 	while ((opt = getopt(argc, argv,
-			     "a:A:b:c:C:d:D:e:Ef:Fk:i:K:ln:N:p:O:rR:qsT:vVx")) != -1) {
+			     "a:A:b:B:c:C:d:D:e:Ef:Fk:i:K:ln:N:p:O:rR:qsT:vVx")) != -1) {
 		switch (opt) {
 		case 'a':
 			params.addr = strtoull(optarg, &ptr, 16);
@@ -167,6 +169,15 @@ static void process_args(int argc, char **argv)
 					params.cmdname, optarg);
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'B':
+			params.bl_len = strtoull(optarg, &ptr, 16);
+			if (*ptr) {
+				fprintf(stderr, "%s: invalid block length %s\n",
+					params.cmdname, optarg);
+				exit(EXIT_FAILURE);
+			}
+
 			break;
 		case 'c':
 			params.comment = optarg;
@@ -200,7 +211,7 @@ static void process_args(int argc, char **argv)
 		case 'f':
 			datafile = optarg;
 			params.auto_its = !strcmp(datafile, "auto");
-			/* no break */
+			/* fallthrough */
 		case 'F':
 			/*
 			 * The flattened image tree (FIT) format
@@ -318,6 +329,7 @@ int main(int argc, char **argv)
 	struct image_type_params *tparams = NULL;
 	int pad_len = 0;
 	int dfd;
+	size_t map_len;
 
 	params.cmdname = *argv;
 	params.addr = 0;
@@ -402,14 +414,21 @@ int main(int argc, char **argv)
 			exit (EXIT_FAILURE);
 		}
 
-		/*
-		 * scan through mkimage registry for all supported image types
-		 * and verify the input image file header for match
-		 * Print the image information for matched image type
-		 * Returns the error code if not matched
-		 */
-		retval = imagetool_verify_print_header(ptr, &sbuf,
-				tparams, &params);
+		if (params.fflag) {
+			/*
+			 * Verifies the header format based on the expected header for image
+			 * type in tparams
+			 */
+			retval = imagetool_verify_print_header_by_type(ptr, &sbuf,
+					tparams, &params);
+		} else {
+			/**
+			 * When listing the image, we are not given the image type. Simply check all
+			 * image types to find one that matches our header
+			 */
+			retval = imagetool_verify_print_header(ptr, &sbuf,
+					tparams, &params);
+		}
 
 		(void) munmap((void *)ptr, sbuf.st_size);
 		(void) close (ifd);
@@ -515,13 +534,42 @@ int main(int argc, char **argv)
 		} else if (params.type == IH_TYPE_PBLIMAGE) {
 			/* PBL has special Image format, implements its' own */
 			pbl_load_uboot(ifd, &params);
+		} else if (params.type == IH_TYPE_ZYNQMPBIF) {
+			/* Image file is meta, walk through actual targets */
+			int ret;
+
+			ret = zynqmpbif_copy_image(ifd, &params);
+			if (ret)
+				return ret;
+		} else if (params.type == IH_TYPE_IMX8IMAGE) {
+			/* i.MX8/8X has special Image format */
+			int ret;
+
+			ret = imx8image_copy_image(ifd, &params);
+			if (ret)
+				return ret;
+		} else if (params.type == IH_TYPE_IMX8MIMAGE) {
+			/* i.MX8M has special Image format */
+			int ret;
+
+			ret = imx8mimage_copy_image(ifd, &params);
+			if (ret)
+				return ret;
+		} else if ((params.type == IH_TYPE_RKSD) ||
+				(params.type == IH_TYPE_RKSPI)) {
+			/* Rockchip has special Image format */
+			int ret;
+
+			ret = rockchip_copy_image(ifd, &params);
+			if (ret)
+				return ret;
 		} else {
 			copy_file(ifd, params.datafile, pad_len);
 		}
 		if (params.type == IH_TYPE_FIRMWARE_IVT) {
 			/* Add alignment and IVT */
-			uint32_t aligned_filesize = (params.file_size + 0x1000
-					- 1) & ~(0x1000 - 1);
+			uint32_t aligned_filesize = ALIGN(params.file_size,
+							  0x1000);
 			flash_header_v2_t ivt_header = { { 0xd1, 0x2000, 0x40 },
 					params.addr, 0, 0, 0, params.addr
 							+ aligned_filesize
@@ -569,7 +617,8 @@ int main(int argc, char **argv)
 	}
 	params.file_size = sbuf.st_size;
 
-	ptr = mmap(0, sbuf.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, ifd, 0);
+	map_len = sbuf.st_size;
+	ptr = mmap(0, map_len, PROT_READ | PROT_WRITE, MAP_SHARED, ifd, 0);
 	if (ptr == MAP_FAILED) {
 		fprintf (stderr, "%s: Can't map %s: %s\n",
 			params.cmdname, params.imagefile, strerror(errno));
@@ -593,7 +642,7 @@ int main(int argc, char **argv)
 			params.cmdname, tparams->name);
 	}
 
-	(void) munmap((void *)ptr, sbuf.st_size);
+	(void)munmap((void *)ptr, map_len);
 
 	/* We're a bit of paranoid */
 #if defined(_POSIX_SYNCHRONIZED_IO) && \

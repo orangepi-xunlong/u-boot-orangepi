@@ -6,6 +6,7 @@
  */
 
 #include "btrfs.h"
+#include <log.h>
 #include <malloc.h>
 
 struct chunk_map_item {
@@ -78,7 +79,7 @@ u64 btrfs_map_logical_to_physical(u64 logical)
 
 		if (item->logical > logical)
 			node = node->rb_left;
-		else if (logical > item->logical + item->length)
+		else if (logical >= item->logical + item->length)
 			node = node->rb_right;
 		else
 			return item->physical + logical - item->logical;
@@ -158,7 +159,7 @@ int btrfs_read_chunk_tree(void)
 	do {
 		found_key = btrfs_path_leaf_key(&path);
 		if (btrfs_comp_keys_type(&key, found_key))
-			break;
+			continue;
 
 		chunk = btrfs_path_item_ptr(&path, struct btrfs_chunk);
 		btrfs_chunk_to_cpu(chunk);

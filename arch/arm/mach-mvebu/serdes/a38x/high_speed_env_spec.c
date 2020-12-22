@@ -8,6 +8,7 @@
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <linux/delay.h>
 
 #include "high_speed_env_spec.h"
 #include "sys_env_lib.h"
@@ -597,6 +598,8 @@ struct op_params pex_electrical_config_serdes_rev2_params[] = {
 	{LANE_CFG4_REG, 0x800, 0x8, {0x8}, 0, 0},
 	/* tximpcal_th and rximpcal_th */
 	{VTHIMPCAL_CTRL_REG, 0x800, 0xff00, {0x3000}, 0, 0},
+	/* Force receiver detected */
+	{LANE_CFG0_REG, 0x800, 0x8000, {0x8000}, 0, 0},
 };
 
 /* PEX - configuration seq for REF_CLOCK_25MHz */
@@ -1364,16 +1367,16 @@ static void print_topology_details(const struct serdes_map *serdes_map,
 
 	DEBUG_INIT_S("board SerDes lanes topology details:\n");
 
-	DEBUG_INIT_S(" | Lane #  | Speed |  Type       |\n");
+	DEBUG_INIT_S(" | Lane # | Speed |  Type       |\n");
 	DEBUG_INIT_S(" --------------------------------\n");
 	for (lane_num = 0; lane_num < count; lane_num++) {
 		if (serdes_map[lane_num].serdes_type == DEFAULT_SERDES)
 			continue;
 		DEBUG_INIT_S(" |   ");
 		DEBUG_INIT_D(hws_get_physical_serdes_num(lane_num), 1);
-		DEBUG_INIT_S("    |  ");
+		DEBUG_INIT_S("    |   ");
 		DEBUG_INIT_D(serdes_map[lane_num].serdes_speed, 2);
-		DEBUG_INIT_S("   |  ");
+		DEBUG_INIT_S("   | ");
 		DEBUG_INIT_S((char *)
 			     serdes_type_to_string[serdes_map[lane_num].
 						   serdes_type]);

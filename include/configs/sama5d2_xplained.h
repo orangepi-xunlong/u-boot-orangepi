@@ -11,10 +11,7 @@
 
 #include "at91-sama5_common.h"
 
-#define CONFIG_MISC_INIT_R
-
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE           0x20000000
 #define CONFIG_SYS_SDRAM_SIZE		0x20000000
 
@@ -28,25 +25,39 @@
 #define CONFIG_SYS_LOAD_ADDR		0x22000000 /* load address */
 
 /* SerialFlash */
-#ifdef CONFIG_CMD_SF
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		30000000
-#endif
 
 #ifdef CONFIG_SD_BOOT
 
 /* bootstrap + u-boot + env in sd card */
 #undef CONFIG_BOOTCOMMAND
 
-#define CONFIG_BOOTCOMMAND	"fatload mmc 1:1 0x21000000 at91-sama5d2_xplained.dtb; " \
-				"fatload mmc 1:1 0x22000000 zImage; " \
+#define CONFIG_BOOTCOMMAND	"fatload mmc " CONFIG_ENV_FAT_DEVICE_AND_PART " 0x21000000 at91-sama5d2_xplained.dtb; " \
+				"fatload mmc " CONFIG_ENV_FAT_DEVICE_AND_PART " 0x22000000 zImage; " \
+				"bootz 0x22000000 - 0x21000000"
+
+#elif CONFIG_SPI_BOOT
+
+/* bootstrap + u-boot + env in sd card, but kernel + dtb in eMMC */
+#undef CONFIG_BOOTCOMMAND
+
+#define CONFIG_BOOTCOMMAND	"ext4load mmc 0:1 0x21000000 /boot/at91-sama5d2_xplained.dtb; " \
+				"ext4load mmc 0:1 0x22000000 /boot/zImage; " \
+				"bootz 0x22000000 - 0x21000000"
+
+#endif
+
+#ifdef CONFIG_QSPI_BOOT
+#undef CONFIG_ENV_SPI_BUS
+#undef CONFIG_BOOTCOMMAND
+#define CONFIG_ENV_SPI_BUS	1
+#define CONFIG_BOOTCOMMAND	"sf probe 1:0; "			\
+				"sf read 0x21000000 0x180000 0x80000; "	\
+				"sf read 0x22000000 0x200000 0x600000; "\
 				"bootz 0x22000000 - 0x21000000"
 
 #endif
 
 /* SPL */
-#define CONFIG_SPL_TEXT_BASE		0x200000
 #define CONFIG_SPL_MAX_SIZE		0x10000
 #define CONFIG_SPL_BSS_START_ADDR	0x20000000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
@@ -58,10 +69,6 @@
 #ifdef CONFIG_SD_BOOT
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
-
-#elif CONFIG_SPI_BOOT
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x10000
-
 #endif
 
 #endif

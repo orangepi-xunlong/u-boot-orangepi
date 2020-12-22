@@ -9,6 +9,7 @@
 #include <dt-bindings/interrupt-router/intel-irq.h>
 
 /include/ "skeleton.dtsi"
+/include/ "reset.dtsi"
 /include/ "rtc.dtsi"
 /include/ "tsc_timer.dtsi"
 
@@ -97,7 +98,7 @@
 			#size-cells = <1>;
 
 			irq-router {
-				compatible = "intel,quark-irq-router";
+				compatible = "intel,irq-router";
 				intel,pirq-config = "pci";
 				intel,actl-addr = <0x58>;
 				intel,pirq-link = <0x60 8>;
@@ -138,7 +139,7 @@
 					#address-cells = <1>;
 					reg = <0>;
 					compatible = "winbond,w25q64",
-						"spi-flash";
+						"jedec,spi-nor";
 					memory-map = <0xff800000 0x00800000>;
 					rw-mrc-cache {
 						label = "rw-mrc-cache";

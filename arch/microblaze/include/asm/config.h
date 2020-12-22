@@ -6,10 +6,12 @@
 #ifndef _ASM_CONFIG_H_
 #define _ASM_CONFIG_H_
 
+#define CONFIG_LMB
+
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_NEEDS_MANUAL_RELOC
 #endif
 
-#define CONFIG_NR_DRAM_BANKS	1
+#define CONFIG_SYS_BOOT_RAMDISK_HIGH
 
 #endif

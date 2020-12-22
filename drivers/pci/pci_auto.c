@@ -10,6 +10,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <pci.h>
 
 /* the user can define CONFIG_SYS_PCI_CACHE_LINE_SIZE to avoid problems */
@@ -39,6 +40,8 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 
 	for (bar = PCI_BASE_ADDRESS_0;
 	     bar < PCI_BASE_ADDRESS_0 + (bars_num * 4); bar += 4) {
+		int ret = 0;
+
 		/* Tickle the BAR and get the response */
 		if (!enum_only)
 			dm_pci_write_config32(dev, bar, 0xffffffff);
@@ -97,8 +100,13 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 			      (unsigned long long)bar_size);
 		}
 
-		if (!enum_only && pciauto_region_allocate(bar_res, bar_size,
-							  &bar_value) == 0) {
+		if (!enum_only) {
+			ret = pciauto_region_allocate(bar_res, bar_size,
+						      &bar_value, found_mem64);
+			if (ret)
+				printf("PCI: Failed autoconfig bar %x\n", bar);
+		}
+		if (!enum_only && !ret) {
 			/* Write it out and update our limit */
 			dm_pci_write_config32(dev, bar, (u32)bar_value);
 
@@ -140,7 +148,8 @@ void dm_pciauto_setup_device(struct udevice *dev, int bars_num,
 				debug("PCI Autoconfig: ROM, size=%#x, ",
 				      (unsigned int)bar_size);
 				if (pciauto_region_allocate(mem, bar_size,
-							    &bar_value) == 0) {
+							    &bar_value,
+							    false) == 0) {
 					dm_pci_write_config32(dev, rom_addr,
 							      bar_value);
 				}
@@ -357,7 +366,8 @@ int dm_pciauto_config_device(struct udevice *dev)
 		      PCI_DEV(dm_pci_get_bdf(dev)));
 		break;
 #endif
-#if defined(CONFIG_MPC834x) && !defined(CONFIG_VME8349)
+#if defined(CONFIG_ARCH_MPC834X) && !defined(CONFIG_TARGET_VME8349) && \
+		!defined(CONFIG_TARGET_CADDY2)
 	case PCI_CLASS_BRIDGE_OTHER:
 		/*
 		 * The host/PCI bridge 1 seems broken in 8349 - it presents

@@ -20,20 +20,25 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
+#include <image.h>
+#include <asm/cache.h>
 #include <linux/mtd/mtd.h>
 #include <command.h>
 #include <console.h>
+#include <env.h>
 #include <watchdog.h>
 #include <malloc.h>
 #include <asm/byteorder.h>
 #include <jffs2/jffs2.h>
 #include <nand.h>
 
+#include "legacy-mtd-utils.h"
+
 #if defined(CONFIG_CMD_MTDPARTS)
 
 /* partition handling routines */
 int mtdparts_init(void);
-int id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		      u8 *part_num, struct part_info **part);
 #endif
@@ -184,7 +189,7 @@ static void do_nand_status(struct mtd_info *mtd)
 #ifdef CONFIG_ENV_OFFSET_OOB
 unsigned long nand_env_oob_offset;
 
-int do_nand_env_oob(cmd_tbl_t *cmdtp, int argc, char *const argv[])
+int do_nand_env_oob(struct cmd_tbl *cmdtp, int argc, char *const argv[])
 {
 	int ret;
 	uint32_t oob_buf[ENV_OFFSET_SIZE/sizeof(uint32_t)];
@@ -371,7 +376,8 @@ static void adjust_size_for_badblocks(loff_t *size, loff_t offset, int dev)
 	}
 }
 
-static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_nand(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
 	int i, ret = 0;
 	ulong addr;
@@ -840,13 +846,13 @@ U_BOOT_CMD(
 	"NAND sub-system", nand_help_text
 );
 
-static int nand_load_image(cmd_tbl_t *cmdtp, struct mtd_info *mtd,
+static int nand_load_image(struct cmd_tbl *cmdtp, struct mtd_info *mtd,
 			   ulong offset, ulong addr, char *cmd)
 {
 	int r;
 	char *s;
 	size_t cnt;
-#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
+#if defined(CONFIG_LEGACY_IMAGE_FORMAT)
 	image_header_t *hdr;
 #endif
 #if defined(CONFIG_FIT)
@@ -874,7 +880,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, struct mtd_info *mtd,
 	bootstage_mark(BOOTSTAGE_ID_NAND_HDR_READ);
 
 	switch (genimg_get_format ((void *)addr)) {
-#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
+#if defined(CONFIG_LEGACY_IMAGE_FORMAT)
 	case IMAGE_FORMAT_LEGACY:
 		hdr = (image_header_t *)addr;
 
@@ -923,13 +929,13 @@ static int nand_load_image(cmd_tbl_t *cmdtp, struct mtd_info *mtd,
 
 	/* Loading ok, update default load address */
 
-	load_addr = addr;
+	image_load_addr = addr;
 
 	return bootm_maybe_autostart(cmdtp, cmd);
 }
 
-static int do_nandboot(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
+static int do_nandboot(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	char *boot_device = NULL;
 	int idx;

@@ -24,9 +24,6 @@
 #define PHYS_SDRAM_1			MMDC0_ARB_BASE_ADDR
 #define PHYS_SDRAM_2			MMDC1_ARB_BASE_ADDR
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-#define CONFIG_NR_DRAM_BANKS		2
-#define CONFIG_SYS_MEMTEST_START	0x10000000
-#define CONFIG_SYS_MEMTEST_END		0x10010000
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 #define CONFIG_SYS_INIT_SP_OFFSET \
@@ -39,27 +36,7 @@
 #define CONFIG_MXC_UART_BASE		UART4_BASE
 #define CONFIG_SYS_BAUDRATE_TABLE	{9600, 19200, 38400, 57600, 115200}
 
-/* SPI flash */
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		25000000
-#define CONFIG_SF_DEFAULT_MODE		(SPI_MODE_0)
-
-/* MTD support */
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_SPI_FLASH_MTD
-#endif
-
 /* Environment */
-#define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_ENV_SPI_MODE		CONFIG_SF_DEFAULT_MODE
-#define CONFIG_ENV_SPI_BUS		CONFIG_SF_DEFAULT_BUS
-#define CONFIG_ENV_SPI_CS		CONFIG_SF_DEFAULT_CS
-#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
-#define CONFIG_ENV_SIZE			(8 * 1024)
-#define CONFIG_ENV_OFFSET		(768 * 1024)
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -72,8 +49,8 @@
 	"scriptaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 	"fdtfile=undefined\0" \
 	"stdin=serial,usbkbd\0" \
-	"stdout=serial,vga\0" \
-	"stderr=serial,vga\0" \
+	"stdout=serial,vidconsole\0" \
+	"stderr=serial,vidconsole\0" \
 	"panel=HDMI\0" \
 	"autoload=no\0" \
 	"uImage=uImage-cm-fx6\0" \
@@ -155,8 +132,6 @@
 			"echo WARNING: Could not determine dtb to use; fi; \0" \
 	BOOTENV
 
-#define CONFIG_PREBOOT		"usb start;sf probe"
-
 #define BOOT_TARGET_DEVICES(func) \
 	func(USB, usb, 0) \
 	func(MMC, mmc, 2) \
@@ -176,13 +151,18 @@
 /* APBH DMA is required for NAND support */
 #endif
 
+/* SPI Flash Configs */
+#if defined(CONFIG_SPL_BUILD)
+#undef CONFIG_DM_SPI
+#undef CONFIG_DM_SPI_FLASH
+#undef CONFIG_SPI_FLASH_MTD
+#endif
+
 /* Ethernet */
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_MXC_PHYADDR		0
 #define CONFIG_FEC_XCV_TYPE		RGMII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_PHY_ATHEROS
-#define CONFIG_MII
 #define CONFIG_ETHPRIME			"FEC0"
 #define CONFIG_ARP_TIMEOUT		200UL
 #define CONFIG_NET_RETRY_COUNT		5
@@ -218,14 +198,11 @@
 
 /* misc */
 #define CONFIG_SYS_MALLOC_LEN			(10 * 1024 * 1024)
-#define CONFIG_MISC_INIT_R
 
 /* SPL */
 #include "imx6_spl.h"
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
 
 /* Display */
-#define CONFIG_VIDEO_IPUV3
 #define CONFIG_IMX_HDMI
 
 #define CONFIG_SPLASH_SCREEN

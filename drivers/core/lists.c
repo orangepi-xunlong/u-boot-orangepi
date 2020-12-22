@@ -6,8 +6,11 @@
  * Marek Vasut <marex@denx.de>
  */
 
+#define LOG_CATEGORY LOGC_DM
+
 #include <common.h>
 #include <errno.h>
+#include <log.h>
 #include <dm/device.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
@@ -122,7 +125,8 @@ static int driver_check_compatible(const struct udevice_id *of_match,
 	return -ENOENT;
 }
 
-int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp)
+int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp,
+		   bool pre_reloc_only)
 {
 	struct driver *driver = ll_entry_start(struct driver, driver);
 	const int n_ents = ll_entry_count(struct driver, driver);
@@ -138,13 +142,13 @@ int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp)
 	if (devp)
 		*devp = NULL;
 	name = ofnode_get_name(node);
-	pr_debug("bind node %s\n", name);
+	log_debug("bind node %s\n", name);
 
 	compat_list = ofnode_get_property(node, "compatible", &compat_length);
 	if (!compat_list) {
 		if (compat_length == -FDT_ERR_NOTFOUND) {
-			pr_debug("Device '%s' has no compatible string\n",
-				 name);
+			log_debug("Device '%s' has no compatible string\n",
+				  name);
 			return 0;
 		}
 
@@ -159,8 +163,8 @@ int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp)
 	 */
 	for (i = 0; i < compat_length; i += strlen(compat) + 1) {
 		compat = compat_list + i;
-		pr_debug("   - attempt to match compatible string '%s'\n",
-			 compat);
+		log_debug("   - attempt to match compatible string '%s'\n",
+			  compat);
 
 		for (entry = driver; entry != driver + n_ents; entry++) {
 			ret = driver_check_compatible(entry->of_match, &id,
@@ -171,11 +175,21 @@ int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp)
 		if (entry == driver + n_ents)
 			continue;
 
-		pr_debug("   - found match at '%s'\n", entry->name);
+		if (pre_reloc_only) {
+			if (!ofnode_pre_reloc(node) &&
+			    !(entry->flags & DM_FLAG_PRE_RELOC)) {
+				log_debug("Skipping device pre-relocation\n");
+				return 0;
+			}
+		}
+
+		log_debug("   - found match at '%s': '%s' matches '%s'\n",
+			  entry->name, entry->of_match->compatible,
+			  id->compatible);
 		ret = device_bind_with_driver_data(parent, entry, name,
 						   id->data, node, &dev);
 		if (ret == -ENODEV) {
-			pr_debug("Driver '%s' refuses to bind\n", entry->name);
+			log_debug("Driver '%s' refuses to bind\n", entry->name);
 			continue;
 		}
 		if (ret) {
@@ -191,7 +205,7 @@ int lists_bind_fdt(struct udevice *parent, ofnode node, struct udevice **devp)
 	}
 
 	if (!found && !result && ret != -ENODEV)
-		pr_debug("No match for node '%s'\n", name);
+		log_debug("No match for node '%s'\n", name);
 
 	return result;
 }

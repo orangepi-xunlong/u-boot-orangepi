@@ -7,6 +7,7 @@
 #include <dm.h>
 #include <fdtdec.h>
 #include <fdt_support.h>
+#include <log.h>
 #include <video.h>
 
 static int simple_video_probe(struct udevice *dev)
@@ -68,5 +69,4 @@ U_BOOT_DRIVER(simple_video) = {
 	.id	= UCLASS_VIDEO,
 	.of_match = simple_video_ids,
 	.probe	= simple_video_probe,
-	.flags	= DM_FLAG_PRE_RELOC,
 };

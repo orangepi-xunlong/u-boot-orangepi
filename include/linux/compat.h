@@ -1,22 +1,7 @@
-/*
- * include/linux/compat.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _LINUX_COMPAT_H_
 #define _LINUX_COMPAT_H_
 
+#include <log.h>
 #include <malloc.h>
 #include <linux/types.h>
 #include <linux/err.h>
@@ -58,6 +43,25 @@ extern struct p_current *current;
 	printf(fmt, ##args)
 #define dev_warn(dev, fmt, args...)		\
 	printf(fmt, ##args)
+
+#define netdev_emerg(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_alert(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_crit(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_err(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_warn(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_notice(dev, fmt, args...)	\
+	printf(fmt, ##args)
+#define netdev_info(dev, fmt, args...)		\
+	printf(fmt, ##args)
+#define netdev_dbg(dev, fmt, args...)		\
+	debug(fmt, ##args)
+#define netdev_vdbg(dev, fmt, args...)		\
+	debug(fmt, ##args)
 
 #define GFP_ATOMIC ((gfp_t) 0)
 #define GFP_KERNEL ((gfp_t) 0)
@@ -120,7 +124,10 @@ static inline void kmem_cache_destroy(struct kmem_cache *cachep)
 
 #define KERNEL_VERSION(a,b,c)	(((a) << 16) + ((b) << 8) + (c))
 
+/* This is also defined in ARMv8's mmu.h */
+#ifndef PAGE_SIZE
 #define PAGE_SIZE	4096
+#endif
 
 /* drivers/char/random.c */
 #define get_random_bytes(...)
@@ -347,7 +354,7 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp);
 
 typedef int irqreturn_t;
 
-/*struct timer_list {};*/
+struct timer_list {};
 struct notifier_block {};
 
 typedef unsigned long dmaaddr_t;

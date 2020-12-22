@@ -11,10 +11,12 @@
 #include <ahci.h>
 #include <dm.h>
 #include <dwc_ahsata.h>
-#include <environment.h>
-#include <fsl_esdhc.h>
+#include <env.h>
+#include <fsl_esdhc_imx.h>
+#include <init.h>
 #include <miiphy.h>
 #include <mtd_node.h>
+#include <net.h>
 #include <netdev.h>
 #include <errno.h>
 #include <usb.h>
@@ -33,6 +35,7 @@
 #include <dm/platform_data/serial_mxc.h>
 #include <dm/device-internal.h>
 #include <jffs2/load_kernel.h>
+#include <linux/delay.h>
 #include "common.h"
 #include "../common/eeprom.h"
 #include "../common/common.h"
@@ -145,6 +148,11 @@ int board_video_skip(void)
 #else
 static inline void cm_fx6_setup_display(void) {}
 #endif /* CONFIG_VIDEO_IPUV3 */
+
+int ipu_displays_init(void)
+{
+	return board_video_skip();
+}
 
 #ifdef CONFIG_DWC_AHSATA
 static int cm_fx6_issd_gpios[] = {
@@ -519,7 +527,7 @@ int cm_fx6_setup_ecspi(void) { return 0; }
 #ifdef CONFIG_OF_BOARD_SETUP
 #define USDHC3_PATH	"/soc/aips-bus@02100000/usdhc@02198000/"
 
-struct node_info nodes[] = {
+static const struct node_info nodes[] = {
 	/*
 	 * Both entries target the same flash chip. The st,m25p compatible
 	 * is used in the vendor device trees, while upstream uses (the
@@ -608,7 +616,7 @@ int board_init(void)
 	cm_fx6_setup_display();
 
 	/* This should be done in the MMC driver when MX6 has a clock driver */
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 	if (IS_ENABLED(CONFIG_BLK)) {
 		int i;
 

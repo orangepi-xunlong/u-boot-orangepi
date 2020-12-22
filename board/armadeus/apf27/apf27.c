@@ -7,7 +7,8 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <hang.h>
+#include <init.h>
 #include <jffs2/jffs2.h>
 #include <nand.h>
 #include <netdev.h>
@@ -16,8 +17,8 @@
 #include <asm/arch/gpio.h>
 #include <asm/gpio.h>
 #include <linux/errno.h>
+#include <u-boot/crc.h>
 #include "apf27.h"
-#include "crc.h"
 #include "fpga.h"
 
 DECLARE_GLOBAL_DATA_PTR;

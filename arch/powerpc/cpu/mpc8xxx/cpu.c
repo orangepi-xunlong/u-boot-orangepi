@@ -10,6 +10,9 @@
 #include <config.h>
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <net.h>
 #include <tsec.h>
 #include <fm_eth.h>
 #include <netdev.h>

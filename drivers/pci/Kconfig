@@ -51,6 +51,13 @@ config PCIE_ECAM_GENERIC
 	  Say Y here if you want to enable support for generic ECAM-based
 	  PCIe host controllers, such as the one emulated by QEMU.
 
+config PCI_PHYTIUM
+	bool "Phytium PCIe support"
+	depends on DM_PCI
+	help
+	  Say Y here if you want to enable PCIe controller support on
+	  Phytium SoCs.
+
 config PCIE_DW_MVEBU
 	bool "Enable Armada-8K PCIe driver (DesignWare core)"
 	depends on DM_PCI
@@ -60,6 +67,21 @@ config PCIE_DW_MVEBU
 	  Armada-8K SoCs. The PCIe controller on Armada-8K is based on
 	  DesignWare hardware.
 
+config PCIE_FSL
+	bool "FSL PowerPC PCIe support"
+	depends on DM_PCI
+	help
+	  Say Y here if you want to enable PCIe controller support on FSL
+	  PowerPC MPC85xx, MPC86xx, B series, P series and T series SoCs.
+	  This driver does not support SRIO_PCIE_BOOT feature.
+
+config PCI_MPC85XX
+	bool "MPC85XX PowerPC PCI support"
+	depends on DM_PCI
+	help
+	  Say Y here if you want to enable PCI controller support on FSL
+	  PowerPC MPC85xx SoC.
+
 config PCI_RCAR_GEN2
 	bool "Renesas RCar Gen2 PCIe driver"
 	depends on DM_PCI
@@ -68,6 +90,14 @@ config PCI_RCAR_GEN2
 	  Say Y here if you want to enable PCIe controller support on
 	  Renesas RCar Gen2 SoCs. The PCIe controller on RCar Gen2 is
 	  also used to access EHCI USB controller on the SoC.
+
+config PCI_RCAR_GEN3
+	bool "Renesas RCar Gen3 PCIe driver"
+	depends on DM_PCI
+	depends on RCAR_GEN3
+	help
+	  Say Y here if you want to enable PCIe controller support on
+	  Renesas RCar Gen3 SoCs.
 
 config PCI_SANDBOX
 	bool "Sandbox PCI support"
@@ -81,7 +111,7 @@ config PCI_SANDBOX
 
 config PCI_TEGRA
 	bool "Tegra PCI support"
-	depends on TEGRA
+	depends on ARCH_TEGRA
 	depends on (TEGRA186 && POWER_DOMAIN) || (!TEGRA186)
 	help
 	  Enable support for the PCIe controller found on some generations of
@@ -104,5 +134,75 @@ config PCIE_LAYERSCAPE
 	  Support Layerscape PCIe. The Layerscape SoC may have one or several
 	  PCIe controllers. The PCIe may works in RC or EP mode according to
 	  RCW[HOST_AGT_PEX] setting.
+
+config PCIE_LAYERSCAPE_GEN4
+	bool "Layerscape Gen4 PCIe support"
+	depends on DM_PCI
+	help
+	  Support PCIe Gen4 on NXP Layerscape SoCs, which may have one or
+	  several PCIe controllers. The PCIe controller can work in RC or
+	  EP mode according to RCW[HOST_AGT_PEX] setting.
+
+config FSL_PCIE_COMPAT
+	string "PCIe compatible of Kernel DT"
+	depends on PCIE_LAYERSCAPE || PCIE_LAYERSCAPE_GEN4
+	default "fsl,ls1012a-pcie" if ARCH_LS1012A
+	default "fsl,ls1028a-pcie" if ARCH_LS1028A
+	default "fsl,ls1043a-pcie" if ARCH_LS1043A
+	default "fsl,ls1046a-pcie" if ARCH_LS1046A
+	default "fsl,ls2080a-pcie" if ARCH_LS2080A
+	default "fsl,ls1088a-pcie" if ARCH_LS1088A
+	default "fsl,lx2160a-pcie" if ARCH_LX2160A
+	default "fsl,ls1021a-pcie" if ARCH_LS1021A
+	help
+	  This compatible is used to find pci controller node in Kernel DT
+	  to complete fixup.
+
+config FSL_PCIE_EP_COMPAT
+	string "PCIe EP compatible of Kernel DT"
+	depends on PCIE_LAYERSCAPE || PCIE_LAYERSCAPE_GEN4
+	default "fsl,lx2160a-pcie-ep" if ARCH_LX2160A
+	default "fsl,ls-pcie-ep"
+	help
+	  This compatible is used to find pci controller ep node in Kernel DT
+	  to complete fixup.
+
+config PCIE_INTEL_FPGA
+	bool "Intel FPGA PCIe support"
+	depends on DM_PCI
+	help
+	  Say Y here if you want to enable PCIe controller support on Intel
+	  FPGA, example Stratix 10.
+
+config PCI_MVEBU
+	bool "Enable Armada XP/38x PCIe driver"
+	depends on ARCH_MVEBU
+	select DM_PCI
+	select MISC
+	help
+	  Say Y here if you want to enable PCIe controller support on
+	  Armada XP/38x SoCs.
+
+config PCI_KEYSTONE
+	bool "TI Keystone PCIe controller"
+	depends on DM_PCI
+	help
+	  Say Y here if you want to enable PCI controller support on AM654 SoC.
+
+config PCIE_MEDIATEK
+	bool "MediaTek PCIe Gen2 controller"
+	depends on DM_PCI
+	depends on ARCH_MEDIATEK
+	help
+	  Say Y here if you want to enable Gen2 PCIe controller,
+	  which could be found on MT7623 SoC family.
+
+config PCIE_ROCKCHIP
+	bool "Enable Rockchip PCIe driver"
+	select DM_PCI
+	default y if ROCKCHIP_RK3399
+	help
+	  Say Y here if you want to enable PCIe controller support on
+	  Rockchip SoCs.
 
 endif

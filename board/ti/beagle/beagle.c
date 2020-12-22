@@ -13,8 +13,13 @@
  *
  */
 #include <common.h>
+#include <bootstage.h>
 #include <dm.h>
+#include <env.h>
+#include <init.h>
+#include <net.h>
 #include <ns16550.h>
+#include <serial.h>
 #ifdef CONFIG_LED_STATUS
 #include <status_led.h>
 #endif
@@ -70,18 +75,6 @@ static struct {
 	char env_var[16];
 	char env_setting[64];
 } expansion_config;
-
-static const struct ns16550_platdata beagle_serial = {
-	.base = OMAP34XX_UART3,
-	.reg_shift = 2,
-	.clock = V_NS16550_CLK,
-	.fcr = UART_FCR_DEFVAL,
-};
-
-U_BOOT_DEVICE(beagle_uart) = {
-	"ns16550_serial",
-	&beagle_serial
-};
 
 /*
  * Routine: board_init

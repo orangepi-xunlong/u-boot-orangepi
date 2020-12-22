@@ -75,6 +75,10 @@
 	status = "okay";
 };
 
+&sd {
+	status = "okay";
+};
+
 &eth0 {
 	status = "okay";
 	phy-handle = <&ethphy0>;
@@ -102,6 +106,10 @@
 };
 
 &usb1 {
+	status = "okay";
+};
+
+&pcie {
 	status = "okay";
 };
 

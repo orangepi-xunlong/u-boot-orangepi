@@ -4,9 +4,13 @@
  * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
  */
 
+#ifdef CONFIG_GDSYS_LEGACY_DRIVERS
+
 #include <common.h>
+#include <command.h>
 #include <i2c.h>
 #include <malloc.h>
+#include <linux/stringify.h>
 
 #include "ch7301.h"
 #include "dp501.h"
@@ -257,7 +261,8 @@ static int osd_write_videomem(unsigned screen, unsigned offset,
 	return charcount;
 }
 
-static int osd_print(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int osd_print(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	unsigned screen;
 
@@ -394,7 +399,7 @@ int osd_probe(unsigned screen)
 	return 0;
 }
 
-int osd_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int osd_write(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	unsigned screen;
 
@@ -447,7 +452,7 @@ int osd_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-int osd_size(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int osd_size(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	unsigned screen;
 	unsigned x;
@@ -497,3 +502,5 @@ U_BOOT_CMD(
 	"size_x(max. " __stringify(MAX_X_CHARS)
 	") size_y(max. " __stringify(MAX_Y_CHARS) ")\n"
 );
+
+#endif /* CONFIG_GDSYS_LEGACY_DRIVERS */

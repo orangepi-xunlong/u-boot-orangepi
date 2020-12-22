@@ -1,6 +1,7 @@
 #include <common.h>
+#include <log.h>
 
-#if defined(CONFIG_UNIT_TEST)
+#if CONFIG_IS_ENABLED(UNIT_TEST)
 #define DEBUG
 #endif
 
@@ -280,6 +281,7 @@ nextchunk-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	    |             Unused space (may be 0 bytes long)                .
 	    .                                                               .
 	    .                                                               |
+
 nextchunk-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     `foot:' |             Size of chunk, in bytes                           |
 	    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -574,6 +576,10 @@ static void malloc_bin_reloc(void)
 static inline void malloc_bin_reloc(void) {}
 #endif
 
+#ifdef CONFIG_SYS_MALLOC_DEFAULT_TO_INIT
+static void malloc_init(void);
+#endif
+
 ulong mem_malloc_start = 0;
 ulong mem_malloc_end = 0;
 ulong mem_malloc_brk = 0;
@@ -603,6 +609,10 @@ void mem_malloc_init(ulong start, ulong size)
 	mem_malloc_start = start;
 	mem_malloc_end = start + size;
 	mem_malloc_brk = start;
+
+#ifdef CONFIG_SYS_MALLOC_DEFAULT_TO_INIT
+	malloc_init();
+#endif
 
 	debug("using memory %#lx-%#lx for malloc()\n", mem_malloc_start,
 	      mem_malloc_end);
@@ -708,7 +718,36 @@ static unsigned int max_n_mmaps = 0;
 static unsigned long max_mmapped_mem = 0;
 #endif
 
+#ifdef CONFIG_SYS_MALLOC_DEFAULT_TO_INIT
+static void malloc_init(void)
+{
+	int i, j;
 
+	debug("bins (av_ array) are at %p\n", (void *)av_);
+
+	av_[0] = NULL; av_[1] = NULL;
+	for (i = 2, j = 2; i < NAV * 2 + 2; i += 2, j++) {
+		av_[i] = bin_at(j - 2);
+		av_[i + 1] = bin_at(j - 2);
+
+		/* Just print the first few bins so that
+		 * we can see there are alright.
+		 */
+		if (i < 10)
+			debug("av_[%d]=%lx av_[%d]=%lx\n",
+			      i, (ulong)av_[i],
+			      i + 1, (ulong)av_[i + 1]);
+	}
+
+	/* Init the static bookkeeping as well */
+	sbrk_base = (char *)(-1);
+	max_sbrked_mem = 0;
+	max_total_mem = 0;
+#ifdef DEBUG
+	memset((void *)&current_mallinfo, 0, sizeof(struct mallinfo));
+#endif
+}
+#endif
 
 /*
   Debugging support
@@ -1050,9 +1089,6 @@ static mchunkptr mremap_chunk(p, new_size) mchunkptr p; size_t new_size;
 #endif /* HAVE_MREMAP */
 
 #endif /* HAVE_MMAP */
-
-
-
 
 /*
   Extend the top-most chunk by obtaining memory from system.
@@ -1891,6 +1927,12 @@ Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
 
   if ((long)bytes < 0) return NULL;
 
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+	if (!(gd->flags & GD_FLG_FULL_MALLOC_INIT)) {
+		return memalign_simple(alignment, bytes);
+	}
+#endif
+
   /* If need less alignment than we give anyway, just relay to malloc */
 
   if (alignment <= MALLOC_ALIGNMENT) return mALLOc(bytes);
@@ -2080,7 +2122,7 @@ Void_t* cALLOc(n, elem_size) size_t n; size_t elem_size;
   {
 #if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	if (!(gd->flags & GD_FLG_FULL_MALLOC_INIT)) {
-		MALLOC_ZERO(mem, sz);
+		memset(mem, 0, sz);
 		return mem;
 	}
 #endif
@@ -2387,50 +2429,6 @@ int initf_malloc(void)
 
 	return 0;
 }
-
-void *malloc_align(size_t size, size_t align)
-{
-	int *ret, *ret_align, *ret_tem;
-	int  tem;
-	if (size <= 0 && align <=0) {
-		return 0;
-	}
-	if ((align & 0x3)){
-		return NULL;
-	}
-	size =  size + align;
-	ret = (int *)malloc(size);
-	if (!ret) {
-		return NULL;
-	}
-
-	if (!((int)ret & (align-1))) {
-		/* the buffer is align
-		 * */
-		tem = (int)ret + align;
-		ret_align = (int *)(tem);
-		ret_tem = ret_align;
-		ret_tem--;
-		*ret_tem = (int)ret;
-	} else {
-		tem =(int)ret & ~(align-1);
-		tem = tem+align;
-		ret_align = (int *)(tem);
-		ret_tem = ret_align;
-		ret_tem--;
-		*ret_tem = (int)ret;
-	}
-	return (void *)ret_align;
-}
-
-void free_align(void *ptr)
-{
-	int *ret;
-	ret = (int *)ptr;
-	ret--;
-	free((void *)*ret);
-}
-
 
 /*
 

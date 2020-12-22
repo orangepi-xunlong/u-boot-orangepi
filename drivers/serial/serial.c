@@ -5,12 +5,14 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <hang.h>
 #include <serial.h>
 #include <stdio_dev.h>
 #include <post.h>
 #include <linux/compiler.h>
 #include <errno.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -36,7 +38,15 @@ static void serial_null(void)
 /**
  * on_baudrate() - Update the actual baudrate when the env var changes
  *
+ * @name:	changed environment variable
+ * @value:	new value of the environment variable
+ * @op:		operation (create, overwrite, or delete)
+ * @flags:	attributes of environment variable change,
+ *		see flags H_* in include/search.h
+ *
  * This will check for a valid baudrate and only apply it if valid.
+ *
+ * Return:	0 on success, 1 on error
  */
 static int on_baudrate(const char *name, const char *value, enum env_op op,
 	int flags)
@@ -109,15 +119,14 @@ U_BOOT_ENV_CALLBACK(baudrate, on_baudrate);
 		__attribute__((weak, alias("serial_null")));
 
 serial_initfunc(atmel_serial_initialize);
-serial_initfunc(au1x00_serial_initialize);
 serial_initfunc(mcf_serial_initialize);
 serial_initfunc(mpc85xx_serial_initialize);
-serial_initfunc(mpc8xx_serial_initialize);
 serial_initfunc(mxc_serial_initialize);
 serial_initfunc(ns16550_serial_initialize);
 serial_initfunc(pl01x_serial_initialize);
 serial_initfunc(pxa_serial_initialize);
 serial_initfunc(sh_serial_initialize);
+serial_initfunc(mtk_serial_initialize);
 
 /**
  * serial_register() - Register serial driver with serial driver core
@@ -164,15 +173,14 @@ void serial_register(struct serial_device *dev)
 void serial_initialize(void)
 {
 	atmel_serial_initialize();
-	au1x00_serial_initialize();
 	mcf_serial_initialize();
 	mpc85xx_serial_initialize();
-	mpc8xx_serial_initialize();
 	mxc_serial_initialize();
 	ns16550_serial_initialize();
 	pl01x_serial_initialize();
 	pxa_serial_initialize();
 	sh_serial_initialize();
+	mtk_serial_initialize();
 
 	serial_assign(default_serial_console()->name);
 }

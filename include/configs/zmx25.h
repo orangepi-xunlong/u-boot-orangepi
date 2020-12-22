@@ -45,20 +45,11 @@
  */
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_MXC_PHYADDR		0x00
-#define CONFIG_MII
 
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-
-/*
- * Command line configuration.
- */
-
-/*
- * Additional command
- */
 
 /*
  * USB
@@ -73,7 +64,6 @@
 #endif /* CONFIG_CMD_USB */
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM		0x80000000	/* start address of LPDDRRAM */
 #define PHYS_SDRAM_SIZE		0x04000000	/* 64 megs */
 
@@ -87,23 +77,11 @@
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	256
 
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x00040000)
-#define CONFIG_ENV_SECT_SIZE		(128 * 1024)
-#define CONFIG_ENV_SIZE			(128 * 1024)
-
 /*
  * CFI FLASH driver setup
  */
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	/* ~10x faster */
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE
-
-#define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM + (512*1024))
-#define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM + PHYS_SDRAM_SIZE)
-
-#define CONFIG_PREBOOT  ""
 
 
 /*

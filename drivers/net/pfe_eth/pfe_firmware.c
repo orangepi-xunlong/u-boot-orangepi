@@ -10,10 +10,17 @@
  * files.
  */
 
+#include <image.h>
+#include <log.h>
+#include <malloc.h>
+#include <linux/bitops.h>
 #include <net/pfe_eth/pfe_eth.h>
 #include <net/pfe_eth/pfe_firmware.h>
+#ifdef CONFIG_CHAIN_OF_TRUST
+#include <fsl_validate.h>
+#endif
 
-#define PFE_FIRMEWARE_FIT_CNF_NAME	"config@1"
+#define PFE_FIRMWARE_FIT_CNF_NAME	"config@1"
 
 static const void *pfe_fit_addr = (void *)CONFIG_SYS_LS_PFE_FW_ADDR;
 
@@ -96,7 +103,7 @@ static int pfe_get_fw(const void **data,
 	char *desc;
 	int ret = 0;
 
-	conf_node_name = PFE_FIRMEWARE_FIT_CNF_NAME;
+	conf_node_name = PFE_FIRMWARE_FIT_CNF_NAME;
 
 	conf_node_off = fit_conf_get_node(pfe_fit_addr, conf_node_name);
 	if (conf_node_off < 0) {
@@ -168,16 +175,42 @@ static int pfe_fit_check(void)
  */
 int pfe_firmware_init(void)
 {
+#define PFE_KEY_HASH	NULL
 	char *pfe_firmware_name;
 	const void *raw_image_addr;
 	size_t raw_image_size = 0;
 	u8 *pfe_firmware;
+#ifdef CONFIG_CHAIN_OF_TRUST
+	uintptr_t pfe_esbc_hdr = 0;
+	uintptr_t pfe_img_addr = 0;
+#endif
 	int ret = 0;
 	int fw_count;
 
 	ret = pfe_fit_check();
 	if (ret)
 		goto err;
+
+#ifdef CONFIG_CHAIN_OF_TRUST
+	pfe_esbc_hdr = CONFIG_SYS_LS_PFE_ESBC_ADDR;
+	pfe_img_addr = (uintptr_t)pfe_fit_addr;
+	if (fsl_check_boot_mode_secure() != 0) {
+		/*
+		 * In case of failure in validation, fsl_secboot_validate
+		 * would not return back in case of Production environment
+		 * with ITS=1. In Development environment (ITS=0 and
+		 * SB_EN=1), the function may return back in case of
+		 * non-fatal failures.
+		 */
+		ret = fsl_secboot_validate(pfe_esbc_hdr,
+					   PFE_KEY_HASH,
+					   &pfe_img_addr);
+		if (ret != 0)
+			printf("PFE firmware(s) validation failed\n");
+		else
+			printf("PFE firmware(s) validation Successful\n");
+	}
+#endif
 
 	for (fw_count = 0; fw_count < 2; fw_count++) {
 		if (fw_count == 0)
