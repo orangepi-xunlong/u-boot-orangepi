@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -6,21 +7,15 @@
  * (C) Copyright 2001, 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+
- *
  * This has been changed substantially by Gerald Van Baren, Custom IDEAS,
  * vanbaren@cideas.com.  It was heavily influenced by LiMon, written by
  * Neil Russell.
+ *
+ * NOTE: This driver should be converted to driver model before June 2017.
+ * Please see doc/driver-model/i2c-howto.txt for instructions.
  */
 
 #include <common.h>
-#ifdef	CONFIG_MPC8260			/* only valid for MPC8260 */
-#include <ioports.h>
-#include <asm/io.h>
-#endif
-#if defined(CONFIG_AVR32)
-#include <asm/arch/portmux.h>
-#endif
 #if defined(CONFIG_AT91FAMILY)
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
@@ -28,9 +23,6 @@
 #ifdef CONFIG_ATMEL_LEGACY
 #include <asm/arch/gpio.h>
 #endif
-#endif
-#if defined(CONFIG_MPC852T) || defined(CONFIG_MPC866)
-#include <asm/io.h>
 #endif
 #include <i2c.h>
 
@@ -91,15 +83,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef	I2C_SOFT_DECLARATIONS
-# if defined(CONFIG_MPC8260)
-#  define I2C_SOFT_DECLARATIONS volatile ioport_t *iop = \
-		ioport_addr((immap_t *)CONFIG_SYS_IMMR, I2C_PORT);
-# elif defined(CONFIG_8xx)
-#  define I2C_SOFT_DECLARATIONS	volatile immap_t *immr = \
-		(immap_t *)CONFIG_SYS_IMMR;
-# else
 #  define I2C_SOFT_DECLARATIONS
-# endif
 #endif
 
 #if !defined(CONFIG_SYS_I2C_SOFT_SPEED)
@@ -448,28 +432,84 @@ static int  soft_i2c_write(struct i2c_adapter *adap, uchar chip, uint addr,
 /*
  * Register soft i2c adapters
  */
-U_BOOT_I2C_ADAP_COMPLETE(soft0, soft_i2c_init, soft_i2c_probe,
+U_BOOT_I2C_ADAP_COMPLETE(soft00, soft_i2c_init, soft_i2c_probe,
 			 soft_i2c_read, soft_i2c_write, NULL,
 			 CONFIG_SYS_I2C_SOFT_SPEED, CONFIG_SYS_I2C_SOFT_SLAVE,
 			 0)
 #if defined(I2C_SOFT_DECLARATIONS2)
-U_BOOT_I2C_ADAP_COMPLETE(soft1, soft_i2c_init, soft_i2c_probe,
+U_BOOT_I2C_ADAP_COMPLETE(soft01, soft_i2c_init, soft_i2c_probe,
 			 soft_i2c_read, soft_i2c_write, NULL,
 			 CONFIG_SYS_I2C_SOFT_SPEED_2,
 			 CONFIG_SYS_I2C_SOFT_SLAVE_2,
 			 1)
 #endif
 #if defined(I2C_SOFT_DECLARATIONS3)
-U_BOOT_I2C_ADAP_COMPLETE(soft2, soft_i2c_init, soft_i2c_probe,
+U_BOOT_I2C_ADAP_COMPLETE(soft02, soft_i2c_init, soft_i2c_probe,
 			 soft_i2c_read, soft_i2c_write, NULL,
 			 CONFIG_SYS_I2C_SOFT_SPEED_3,
 			 CONFIG_SYS_I2C_SOFT_SLAVE_3,
 			 2)
 #endif
 #if defined(I2C_SOFT_DECLARATIONS4)
-U_BOOT_I2C_ADAP_COMPLETE(soft3, soft_i2c_init, soft_i2c_probe,
+U_BOOT_I2C_ADAP_COMPLETE(soft03, soft_i2c_init, soft_i2c_probe,
 			 soft_i2c_read, soft_i2c_write, NULL,
 			 CONFIG_SYS_I2C_SOFT_SPEED_4,
 			 CONFIG_SYS_I2C_SOFT_SLAVE_4,
 			 3)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS5)
+U_BOOT_I2C_ADAP_COMPLETE(soft04, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_5,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_5,
+			 4)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS6)
+U_BOOT_I2C_ADAP_COMPLETE(soft05, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_6,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_6,
+			 5)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS7)
+U_BOOT_I2C_ADAP_COMPLETE(soft06, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_7,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_7,
+			 6)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS8)
+U_BOOT_I2C_ADAP_COMPLETE(soft07, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_8,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_8,
+			 7)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS9)
+U_BOOT_I2C_ADAP_COMPLETE(soft08, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_9,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_9,
+			 8)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS10)
+U_BOOT_I2C_ADAP_COMPLETE(soft09, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_10,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_10,
+			 9)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS11)
+U_BOOT_I2C_ADAP_COMPLETE(soft10, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_11,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_11,
+			 10)
+#endif
+#if defined(I2C_SOFT_DECLARATIONS12)
+U_BOOT_I2C_ADAP_COMPLETE(soft11, soft_i2c_init, soft_i2c_probe,
+			 soft_i2c_read, soft_i2c_write, NULL,
+			 CONFIG_SYS_I2C_SOFT_SPEED_12,
+			 CONFIG_SYS_I2C_SOFT_SLAVE_12,
+			 11)
 #endif

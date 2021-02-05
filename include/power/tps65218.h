@@ -1,12 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __POWER_TPS65218_H__
 #define __POWER_TPS65218_H__
+
+#include <linux/bitops.h>
 
 /* I2C chip address */
 #define TPS65218_CHIP_PM			0x24
@@ -54,10 +55,28 @@ enum {
 
 #define TPS65218_MASK_ALL_BITS			0xFF
 
-#define TPS65218_DCDC_VOLT_SEL_1100MV		0x19
-#define TPS65218_DCDC_VOLT_SEL_1330MV		0x30
+#define TPS65218_DCDC_VSEL_MASK			0x3F
 
+#define TPS65218_DCDC_VOLT_SEL_0950MV		0x0a
+#define TPS65218_DCDC_VOLT_SEL_1100MV		0x19
+#define TPS65218_DCDC_VOLT_SEL_1200MV		0x23
+#define TPS65218_DCDC_VOLT_SEL_1260MV		0x29
+#define TPS65218_DCDC_VOLT_SEL_1330MV		0x30
+#define TPS65218_DCDC3_VOLT_SEL_1350MV		0x12
+#define TPS65218_DCDC3_VOLT_SEL_1200MV		0xC
+
+#define TPS65218_CC_STAT	(BIT(0) | BIT(1))
+#define TPS65218_STATE		(BIT(2) | BIT(3))
+#define TPS65218_PB_STATE	BIT(4)
+#define TPS65218_AC_STATE	BIT(5)
+#define TPS65218_EE		BIT(6)
+#define TPS65218_FSEAL		BIT(7)
+
+int tps65218_reg_read(uchar dest_reg, uchar *dest_val);
 int tps65218_reg_write(uchar prot_level, uchar dest_reg, uchar dest_val,
 		       uchar mask);
 int tps65218_voltage_update(uchar dc_cntrl_reg, uchar volt_sel);
+int tps65218_toggle_fseal(void);
+int tps65218_lock_fseal(void);
+int power_tps65218_init(unsigned char bus);
 #endif	/* __POWER_TPS65218_H__ */

@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007 Semihalf
  *
  * Written by: Rafal Jaworowski <raj@semihalf.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * This is is a set of wrappers/stubs that allow to use certain routines from
  * U-Boot's lib in the standalone app. This way way we can re-use
@@ -11,51 +10,20 @@
  */
 
 #include <common.h>
+#include <hang.h>
 #include <linux/types.h>
 #include <api_public.h>
 
 #include "glue.h"
 
-/*
- * printf() and vprintf() are stolen from u-boot/common/console.c
- */
-int printf (const char *fmt, ...)
-{
-	va_list args;
-	uint i;
-	char printbuffer[256];
-
-	va_start (args, fmt);
-
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	i = vsprintf (printbuffer, fmt, args);
-	va_end (args);
-
-	/* Print the string */
-	ub_puts (printbuffer);
-	return i;
-}
-
-int vprintf (const char *fmt, va_list args)
-{
-	uint i;
-	char printbuffer[256];
-
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	i = vsprintf (printbuffer, fmt, args);
-
-	/* Print the string */
-	ub_puts (printbuffer);
-	return i;
-}
-
-void putc (const char c)
+void putc(const char c)
 {
 	ub_putc(c);
+}
+
+void puts(const char *s)
+{
+	ub_puts(s);
 }
 
 void __udelay(unsigned long usec)
@@ -74,7 +42,7 @@ void *malloc (size_t len)
 	return NULL;
 }
 
-void hang (void)
+void hang(void)
 {
 	while (1) ;
 }

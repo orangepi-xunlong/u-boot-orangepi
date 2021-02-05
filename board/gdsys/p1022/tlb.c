@@ -1,12 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010 Freescale Semiconductor, Inc.
  * Authors: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *          Timur Tabi <timur@freescale.com>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
  */
 
 #include <common.h>
@@ -68,7 +64,7 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 #ifdef CONFIG_SYS_RAMBOOT
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
 		      0, 6, BOOKE_PAGESZ_1G, 1),
 #endif
 #endif

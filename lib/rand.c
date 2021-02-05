@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Simple xorshift PRNG
  *   see http://www.jstatsoft.org/v08/i14/paper
  *
  * Copyright (c) 2012 Michael Walle
  * Michael Walle <michael@walle.cc>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <rand.h>
 
 static unsigned int y = 1U;
 

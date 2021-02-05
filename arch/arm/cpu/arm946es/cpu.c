@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -5,8 +6,6 @@
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -15,6 +14,8 @@
 
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <irq_func.h>
 #include <asm/system.h>
 #include <asm/io.h>
 
@@ -29,7 +30,7 @@ int cleanup_before_linux (void)
 	 * we turn off caches etc ...
 	 */
 
-	disable_interrupts ();
+	disable_interrupts();
 
 	/* ARM926E-S needs the protection unit enabled for the icache to have
 	 * been enabled	 - left for possible later use
@@ -53,7 +54,7 @@ static void cache_flush (void)
 	asm ("mcr p15, 0, %0, c7, c6, 0": :"r" (i));
 }
 
-#ifndef CONFIG_INTEGRATOR
+#ifndef CONFIG_ARCH_INTEGRATOR
 
 __attribute__((noreturn)) void reset_cpu(ulong addr __attribute__((unused)))
 {
@@ -63,4 +64,4 @@ __attribute__((noreturn)) void reset_cpu(ulong addr __attribute__((unused)))
 		;
 }
 
-#endif	/* #ifdef CONFIG_INTEGRATOR */
+#endif	/* #ifdef CONFIG_ARCH_INTEGRATOR */

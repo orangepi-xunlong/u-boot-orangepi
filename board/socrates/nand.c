@@ -1,15 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Sergei Poselenov, Emcraft Systems, sposelenov@emcraft.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 
 #if defined(CONFIG_SYS_NAND_BASE)
 #include <nand.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
 static int state;
@@ -18,7 +17,6 @@ static void sc_nand_write_buf(struct mtd_info *mtd, const u_char *buf, int len);
 static u_char sc_nand_read_byte(struct mtd_info *mtd);
 static u16 sc_nand_read_word(struct mtd_info *mtd);
 static void sc_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len);
-static int sc_nand_verify_buf(struct mtd_info *mtd, const u_char *buf, int len);
 static int sc_nand_device_ready(struct mtd_info *mtdinfo);
 
 #define FPGA_NAND_CMD_MASK		(0x7 << 28)
@@ -49,7 +47,7 @@ static void sc_nand_write_byte(struct mtd_info *mtd, u_char byte)
 static void sc_nand_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 {
 	int i;
-	struct nand_chip *this = mtd->priv;
+	struct nand_chip *this = mtd_to_nand(mtd);
 
 	for (i = 0; i < len; i++) {
 		out_be32(this->IO_ADDR_W,
@@ -89,7 +87,7 @@ static u16 sc_nand_read_word(struct mtd_info *mtd)
 static void sc_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 {
 	int i;
-	struct nand_chip *this = mtd->priv;
+	struct nand_chip *this = mtd_to_nand(mtd);
 	int val;
 
 	val = (state & FPGA_NAND_ENABLE) | FPGA_NAND_CMD_READ;
@@ -101,29 +99,12 @@ static void sc_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 }
 
 /**
- * sc_nand_verify_buf -  Verify chip data against buffer
- * @mtd:	MTD device structure
- * @buf:	buffer containing the data to compare
- * @len:	number of bytes to compare
- */
-static int sc_nand_verify_buf(struct mtd_info *mtd, const u_char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++) {
-		if (buf[i] != sc_nand_read_byte(mtd));
-			return -EFAULT;
-	}
-	return 0;
-}
-
-/**
  * sc_nand_device_ready - Check the NAND device is ready for next command.
  * @mtd:	MTD device structure
  */
 static int sc_nand_device_ready(struct mtd_info *mtdinfo)
 {
-	struct nand_chip *this = mtdinfo->priv;
+	struct nand_chip *this = mtd_to_nand(mtdinfo);
 
 	if (in_be32(this->IO_ADDR_W) & FPGA_NAND_BUSY)
 		return 0; /* busy */
@@ -174,7 +155,6 @@ int board_nand_init(struct nand_chip *nand)
 	nand->read_word = sc_nand_read_word;
 	nand->write_buf = sc_nand_write_buf;
 	nand->read_buf = sc_nand_read_buf;
-	nand->verify_buf = sc_nand_verify_buf;
 
 	return 0;
 }

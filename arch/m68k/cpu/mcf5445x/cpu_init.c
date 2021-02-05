@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * (C) Copyright 2000-2003
@@ -5,11 +6,10 @@
  *
  * (C) Copyright 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <watchdog.h>
 #include <asm/immap.h>
 #include <asm/processor.h>
@@ -66,6 +66,32 @@ void init_fbcs(void)
 	out_be32(&fbcs->csmr5, CONFIG_SYS_CS5_MASK);
 #endif
 }
+
+#ifdef CONFIG_CF_DSPI
+void cfspi_port_conf(void)
+{
+	gpio_t *gpio = (gpio_t *)MMAP_GPIO;
+
+#ifdef CONFIG_MCF5445x
+	out_8(&gpio->par_dspi,
+	      GPIO_PAR_DSPI_SIN_SIN |
+	      GPIO_PAR_DSPI_SOUT_SOUT |
+	      GPIO_PAR_DSPI_SCK_SCK);
+#endif
+
+#ifdef CONFIG_MCF5441x
+	pm_t *pm = (pm_t *)MMAP_PM;
+
+	out_8(&gpio->par_dspi0,
+	      GPIO_PAR_DSPI0_SIN_DSPI0SIN | GPIO_PAR_DSPI0_SOUT_DSPI0SOUT |
+	      GPIO_PAR_DSPI0_SCK_DSPI0SCK);
+	out_8(&gpio->srcr_dspiow, 3);
+
+	/* DSPI0 */
+	out_8(&pm->pmcr0, 23);
+#endif
+}
+#endif
 
 /*
  * Breath some life into the CPU...
@@ -174,6 +200,15 @@ void cpu_init_f(void)
 
 	/* Lowest slew rate for UART0,1,2 */
 	out_8(&gpio->srcr_uart, 0x00);
+
+#ifdef CONFIG_FSL_ESDHC_IMX
+	/* eSDHC pin as faster speed */
+	out_8(&gpio->srcr_sdhc, 0x03);
+
+	/* All esdhc pins as SD */
+	out_8(&gpio->par_sdhch, 0xff);
+	out_8(&gpio->par_sdhcl, 0xff);
+#endif
 #endif		/* CONFIG_MCF5441x */
 
 #ifdef CONFIG_MCF5445x
@@ -196,6 +231,10 @@ void cpu_init_f(void)
 		GPIO_PAR_FBCTL_OE | GPIO_PAR_FBCTL_TA_TA |
 		GPIO_PAR_FBCTL_RW_RW | GPIO_PAR_FBCTL_TS_TS);
 
+#ifdef CONFIG_CF_SPI
+	cfspi_port_conf();
+#endif
+
 #ifdef CONFIG_SYS_FSL_I2C
 	out_be16(&gpio->par_feci2c,
 		GPIO_PAR_FECI2C_SCL_SCL | GPIO_PAR_FECI2C_SDA_SDA);
@@ -205,6 +244,7 @@ void cpu_init_f(void)
 	/* FlexBus Chipselect */
 	init_fbcs();
 
+#ifdef CONFIG_SYS_CS0_BASE
 	/*
 	 * now the flash base address is no longer at 0 (Newer ColdFire family
 	 * boot at address 0 instead of 0xFFnn_nnnn). The vector table must
@@ -212,6 +252,7 @@ void cpu_init_f(void)
 	 */
 	if (CONFIG_SYS_CS0_BASE != 0)
 		setvbr(CONFIG_SYS_CS0_BASE);
+#endif
 
 	icache_enable();
 }
@@ -361,15 +402,18 @@ void uart_port_conf(int port)
 }
 
 #if defined(CONFIG_CMD_NET)
-int fecpin_setclear(struct eth_device *dev, int setclear)
+int fecpin_setclear(fec_info_t *info, int setclear)
 {
 	gpio_t *gpio = (gpio_t *) MMAP_GPIO;
-#ifdef CONFIG_MCF5445x
-	struct fec_info_s *info = (struct fec_info_s *)dev->priv;
+	u32 fec0_base;
 
+	if (fec_get_base_addr(0, &fec0_base))
+		return -1;
+
+#ifdef CONFIG_MCF5445x
 	if (setclear) {
 #ifdef CONFIG_SYS_FEC_NO_SHARED_PHY
-		if (info->iobase == CONFIG_SYS_FEC0_IOBASE)
+		if (info->iobase == fec0_base)
 			setbits_be16(&gpio->par_feci2c,
 				GPIO_PAR_FECI2C_MDC0_MDC0 |
 				GPIO_PAR_FECI2C_MDIO0_MDIO0);
@@ -382,7 +426,7 @@ int fecpin_setclear(struct eth_device *dev, int setclear)
 			GPIO_PAR_FECI2C_MDC0_MDC0 | GPIO_PAR_FECI2C_MDIO0_MDIO0);
 #endif
 
-		if (info->iobase == CONFIG_SYS_FEC0_IOBASE)
+		if (info->iobase == fec0_base)
 			setbits_8(&gpio->par_fec, GPIO_PAR_FEC_FEC0_RMII_GPIO);
 		else
 			setbits_8(&gpio->par_fec, GPIO_PAR_FEC_FEC1_RMII_ATA);
@@ -390,7 +434,7 @@ int fecpin_setclear(struct eth_device *dev, int setclear)
 		clrbits_be16(&gpio->par_feci2c,
 			GPIO_PAR_FECI2C_MDC0_MDC0 | GPIO_PAR_FECI2C_MDIO0_MDIO0);
 
-		if (info->iobase == CONFIG_SYS_FEC0_IOBASE) {
+		if (info->iobase == fec0_base) {
 #ifdef CONFIG_SYS_FEC_FULL_MII
 			setbits_8(&gpio->par_fec, GPIO_PAR_FEC_FEC0_MII);
 #else
@@ -420,117 +464,5 @@ int fecpin_setclear(struct eth_device *dev, int setclear)
 		clrbits_8(&gpio->par_fec, ~GPIO_PAR_FEC_FEC_MASK);
 #endif
 	return 0;
-}
-#endif
-
-#ifdef CONFIG_CF_DSPI
-void cfspi_port_conf(void)
-{
-	gpio_t *gpio = (gpio_t *) MMAP_GPIO;
-
-#ifdef CONFIG_MCF5445x
-	out_8(&gpio->par_dspi,
-		GPIO_PAR_DSPI_SIN_SIN |
-		GPIO_PAR_DSPI_SOUT_SOUT |
-		GPIO_PAR_DSPI_SCK_SCK);
-#endif
-
-#ifdef CONFIG_MCF5441x
-	pm_t *pm = (pm_t *) MMAP_PM;
-
-	out_8(&gpio->par_dspi0,
-		GPIO_PAR_DSPI0_SIN_DSPI0SIN | GPIO_PAR_DSPI0_SOUT_DSPI0SOUT |
-		GPIO_PAR_DSPI0_SCK_DSPI0SCK);
-	out_8(&gpio->srcr_dspiow, 3);
-
-	/* DSPI0 */
-	out_8(&pm->pmcr0, 23);
-#endif
-}
-
-int cfspi_claim_bus(uint bus, uint cs)
-{
-	dspi_t *dspi = (dspi_t *) MMAP_DSPI;
-	gpio_t *gpio = (gpio_t *) MMAP_GPIO;
-
-	if ((in_be32(&dspi->sr) & DSPI_SR_TXRXS) != DSPI_SR_TXRXS)
-		return -1;
-
-	/* Clear FIFO and resume transfer */
-	clrbits_be32(&dspi->mcr, DSPI_MCR_CTXF | DSPI_MCR_CRXF);
-
-#ifdef CONFIG_MCF5445x
-	switch (cs) {
-	case 0:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS0_PCS0);
-		setbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS0_PCS0);
-		break;
-	case 1:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS1_PCS1);
-		setbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS1_PCS1);
-		break;
-	case 2:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS2_PCS2);
-		setbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS2_PCS2);
-		break;
-	case 3:
-		clrbits_8(&gpio->par_dma, ~GPIO_PAR_DMA_DACK0_UNMASK);
-		setbits_8(&gpio->par_dma, GPIO_PAR_DMA_DACK0_PCS3);
-		break;
-	case 5:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS5_PCS5);
-		setbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS5_PCS5);
-		break;
-	}
-#endif
-
-#ifdef CONFIG_MCF5441x
-	switch (cs) {
-	case 0:
-		clrbits_8(&gpio->par_dspi0, ~GPIO_PAR_DSPI0_PCS0_MASK);
-		setbits_8(&gpio->par_dspi0, GPIO_PAR_DSPI0_PCS0_DSPI0PCS0);
-		break;
-	case 1:
-		clrbits_8(&gpio->par_dspiow, GPIO_PAR_DSPIOW_DSPI0PSC1);
-		setbits_8(&gpio->par_dspiow, GPIO_PAR_DSPIOW_DSPI0PSC1);
-		break;
-	}
-#endif
-
-	return 0;
-}
-
-void cfspi_release_bus(uint bus, uint cs)
-{
-	dspi_t *dspi = (dspi_t *) MMAP_DSPI;
-	gpio_t *gpio = (gpio_t *) MMAP_GPIO;
-
-	/* Clear FIFO */
-	clrbits_be32(&dspi->mcr, DSPI_MCR_CTXF | DSPI_MCR_CRXF);
-
-#ifdef CONFIG_MCF5445x
-	switch (cs) {
-	case 0:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS0_PCS0);
-		break;
-	case 1:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS1_PCS1);
-		break;
-	case 2:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS2_PCS2);
-		break;
-	case 3:
-		clrbits_8(&gpio->par_dma, ~GPIO_PAR_DMA_DACK0_UNMASK);
-		break;
-	case 5:
-		clrbits_8(&gpio->par_dspi, GPIO_PAR_DSPI_PCS5_PCS5);
-		break;
-	}
-#endif
-
-#ifdef CONFIG_MCF5441x
-	if (cs == 1)
-		clrbits_8(&gpio->par_dspiow, GPIO_PAR_DSPIOW_DSPI0PSC1);
-#endif
 }
 #endif

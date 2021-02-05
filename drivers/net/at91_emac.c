@@ -1,18 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009 BuS Elektronik GmbH & Co. KG
  * Jens Scharsig (esw@bus-elektronik.de)
  *
  * (C) Copyright 2003
  * Author : Hamid Ikdoumi (Atmel)
-
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_emac.h>
-#include <asm/arch/at91_pmc.h>
+#include <asm/arch/clk.h>
 #include <asm/arch/at91_pio.h>
 #include <net.h>
 #include <netdev.h>
@@ -159,23 +158,23 @@ at91_emac_t *get_emacbase_by_name(const char *devname)
 	return (at91_emac_t *) netdev->iobase;
 }
 
-int  at91emac_mii_read(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short *value)
+int at91emac_mii_read(struct mii_dev *bus, int addr, int devad, int reg)
 {
+	unsigned short value = 0;
 	at91_emac_t *emac;
 
-	emac = get_emacbase_by_name(devname);
-	at91emac_read(emac , addr, reg, value);
-	return 0;
+	emac = get_emacbase_by_name(bus->name);
+	at91emac_read(emac , addr, reg, &value);
+	return value;
 }
 
 
-int  at91emac_mii_write(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short value)
+int at91emac_mii_write(struct mii_dev *bus, int addr, int devad, int reg,
+		       u16 value)
 {
 	at91_emac_t *emac;
 
-	emac = get_emacbase_by_name(devname);
+	emac = get_emacbase_by_name(bus->name);
 	at91emac_write(emac, addr, reg, value);
 	return 0;
 }
@@ -321,7 +320,6 @@ static int at91emac_init(struct eth_device *netdev, bd_t *bd)
 	emac_device *dev;
 	at91_emac_t *emac;
 	at91_pio_t *pio = (at91_pio_t *) ATMEL_BASE_PIO;
-	at91_pmc_t *pmc = (at91_pmc_t *) ATMEL_BASE_PMC;
 
 	emac = (at91_emac_t *) netdev->iobase;
 	dev = (emac_device *) netdev->priv;
@@ -334,7 +332,7 @@ static int at91emac_init(struct eth_device *netdev, bd_t *bd)
 		ATMEL_PMX_AA_ETXEN |	ATMEL_PMX_AA_EREFCK;
 
 	writel(value, &pio->pioa.pdr);
-	writel(value, &pio->pioa.asr);
+	writel(value, &pio->pioa.mux.pio2.asr);
 
 #ifdef CONFIG_RMII
 	value = ATMEL_PMX_BA_ERXCK;
@@ -345,14 +343,15 @@ static int at91emac_init(struct eth_device *netdev, bd_t *bd)
 		ATMEL_PMX_BA_ETX3 |	ATMEL_PMX_BA_ETX2;
 #endif
 	writel(value, &pio->piob.pdr);
-	writel(value, &pio->piob.bsr);
+	writel(value, &pio->piob.mux.pio2.bsr);
 
-	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_EMAC);
+
 	writel(readl(&emac->ctl) | AT91_EMAC_CTL_CSR, &emac->ctl);
 
 	/* Init Ethernet buffers */
 	for (i = 0; i < RBF_FRAMEMAX; i++) {
-		dev->rbfdt[i].addr = (unsigned long) NetRxPackets[i];
+		dev->rbfdt[i].addr = (unsigned long) net_rx_packets[i];
 		dev->rbfdt[i].size = 0;
 	}
 	dev->rbfdt[RBF_FRAMEMAX - 1].addr |= RBF_WRAP;
@@ -420,7 +419,7 @@ static int at91emac_recv(struct eth_device *netdev)
 	rbfp = &dev->rbfdt[dev->rbindex];
 	while (rbfp->addr & RBF_OWNER)	{
 		size = rbfp->size & RBF_SIZE;
-		NetReceive(NetRxPackets[dev->rbindex], size);
+		net_process_received_packet(net_rx_packets[dev->rbindex], size);
 
 		debug_cond(DEBUG_AT91EMAC, "Recv[%ld]: %d bytes @ %lx\n",
 			dev->rbindex, size, rbfp->addr);
@@ -452,10 +451,10 @@ static int at91emac_recv(struct eth_device *netdev)
 static int at91emac_write_hwaddr(struct eth_device *netdev)
 {
 	at91_emac_t *emac;
-	at91_pmc_t *pmc = (at91_pmc_t *) ATMEL_BASE_PMC;
 	emac = (at91_emac_t *) netdev->iobase;
 
-	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
+	at91_periph_clk_enable(ATMEL_ID_EMAC);
+
 	debug_cond(DEBUG_AT91EMAC,
 		"init MAC-ADDR %02x:%02x:%02x:%02x:%02x:%02x\n",
 		netdev->enetaddr[5], netdev->enetaddr[4], netdev->enetaddr[3],
@@ -490,7 +489,7 @@ int at91emac_register(bd_t *bis, unsigned long iobase)
 	memset(emacfix, 0, sizeof(emac_device));
 
 	memset(dev, 0, sizeof(*dev));
-	sprintf(dev->name, "emac");
+	strcpy(dev->name, "emac");
 	dev->iobase = iobase;
 	dev->priv = emacfix;
 	dev->init = at91emac_init;
@@ -502,7 +501,17 @@ int at91emac_register(bd_t *bis, unsigned long iobase)
 	eth_register(dev);
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-	miiphy_register(dev->name, at91emac_mii_read, at91emac_mii_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+	mdiodev->read = at91emac_mii_read;
+	mdiodev->write = at91emac_mii_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 #endif
 	return 1;
 }

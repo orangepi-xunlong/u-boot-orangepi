@@ -1,15 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009 SAMSUNG Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
- * Portions Copyright (C) 2011-2012 NVIDIA Corporation
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Portions Copyright (C) 2011-2012,2019 NVIDIA Corporation
  */
 
 #ifndef __TEGRA_MMC_H_
 #define __TEGRA_MMC_H_
 
+#include <common.h>
+#include <clk.h>
+#include <reset.h>
 #include <fdtdec.h>
+#include <asm/gpio.h>
 
 /* for mmc_config definition */
 #include <mmc.h>
@@ -49,7 +52,7 @@ struct tegra_mmc {
 	unsigned char	admaerr;	/* offset 54h */
 	unsigned char	res4[3];	/* RESERVED, offset 55h-57h */
 	unsigned long	admaaddr;	/* offset 58h-5Fh */
-	unsigned char	res5[0xa0];	/* RESERVED, offset 60h-FBh */
+	unsigned char	res5[0x9c];	/* RESERVED, offset 60h-FBh */
 	unsigned short	slotintstatus;	/* offset FCh */
 	unsigned short	hcver;		/* HOST Version */
 	unsigned int	venclkctl;	/* _VENDOR_CLOCK_CNTRL_0,    100h */
@@ -104,6 +107,8 @@ struct tegra_mmc {
 #define TEGRA_MMC_CLKCON_SDCLK_FREQ_SEL_SHIFT			8
 #define TEGRA_MMC_CLKCON_SDCLK_FREQ_SEL_MASK			(0xff << 8)
 
+#define TEGRA_MMC_MISCON_ENABLE_EXT_LOOPBACK			(1 << 17)
+
 #define TEGRA_MMC_SWRST_SW_RESET_FOR_ALL			(1 << 0)
 #define TEGRA_MMC_SWRST_SW_RESET_FOR_CMD_LINE			(1 << 1)
 #define TEGRA_MMC_SWRST_SW_RESET_FOR_DAT_LINE			(1 << 2)
@@ -122,27 +127,23 @@ struct tegra_mmc {
 
 #define TEGRA_MMC_NORINTSIGEN_XFER_COMPLETE			(1 << 1)
 
-/* SDMMC1/3 settings from section 24.6 of T30 TRM */
+/* SDMMC1/3 settings from SDMMCx Initialization Sequence of TRM */
 #define MEMCOMP_PADCTRL_VREF	7
-#define AUTO_CAL_ENABLED	(1 << 29)
+#define AUTO_CAL_ENABLE		(1 << 29)
+#define AUTO_CAL_ACTIVE		(1 << 31)
+#define AUTO_CAL_START		(1 << 31)
+#if defined(CONFIG_TEGRA210)
+#define AUTO_CAL_PD_OFFSET	(0x7D << 8)
+#define AUTO_CAL_PU_OFFSET	(0 << 0)
+#define IO_TRIM_BYPASS_MASK	(1 << 2)
+#define TRIM_VAL_SHIFT		24
+#define TRIM_VAL_MASK		(0x1F << TRIM_VAL_SHIFT)
+#define TAP_VAL_SHIFT		16
+#define TAP_VAL_MASK		(0xFF << TAP_VAL_SHIFT)
+#else
 #define AUTO_CAL_PD_OFFSET	(0x70 << 8)
 #define AUTO_CAL_PU_OFFSET	(0x62 << 0)
-
-struct mmc_host {
-	struct tegra_mmc *reg;
-	int id;			/* device id/number, 0-3 */
-	int enabled;		/* 1 to enable, 0 to disable */
-	int width;		/* Bus Width, 1, 4 or 8 */
-	enum periph_id mmc_id;	/* Peripheral ID: PERIPH_ID_... */
-	struct fdt_gpio_state cd_gpio;		/* Change Detect GPIO */
-	struct fdt_gpio_state pwr_gpio;		/* Power GPIO */
-	struct fdt_gpio_state wp_gpio;		/* Write Protect GPIO */
-	unsigned int version;	/* SDHCI spec. version */
-	unsigned int clock;	/* Current clock (MHz) */
-	struct mmc_config cfg;	/* mmc configuration */
-};
-
-void pad_init_mmc(struct mmc_host *host);
+#endif
 
 #endif	/* __ASSEMBLY__ */
 #endif	/* __TEGRA_MMC_H_ */

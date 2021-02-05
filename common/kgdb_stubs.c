@@ -1,5 +1,5 @@
 /*
- * U-boot - stub functions for common kgdb code,
+ * U-Boot - stub functions for common kgdb code,
  *          can be overridden in board specific files
  *
  * Copyright 2009 Analog Devices Inc.
@@ -8,7 +8,9 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <kgdb.h>
+#include <serial.h>
 
 int (*debugger_exception_handler)(struct pt_regs *);
 

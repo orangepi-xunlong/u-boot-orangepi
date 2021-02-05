@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /**
  * Copyright 2014 Freescale Semiconductor
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file provides support for the board-specific CPLD used on some Freescale
  * reference boards.
@@ -69,7 +68,11 @@ static void cpld_dump_regs(void)
 	printf("int_status	 = 0x%02x\n", CPLD_READ(int_status));
 	printf("flash_ctl_status = 0x%02x\n", CPLD_READ(flash_ctl_status));
 	printf("fan_ctl_status	 = 0x%02x\n", CPLD_READ(fan_ctl_status));
+#if defined(CONFIG_TARGET_T1040D4D4RDB) || defined(CONFIG_TARGET_T1042D4RDB)
+	printf("int_mask	 = 0x%02x\n", CPLD_READ(int_mask));
+#else
 	printf("led_ctl_status	 = 0x%02x\n", CPLD_READ(led_ctl_status));
+#endif
 	printf("sfp_ctl_status	 = 0x%02x\n", CPLD_READ(sfp_ctl_status));
 	printf("misc_ctl_status	 = 0x%02x\n", CPLD_READ(misc_ctl_status));
 	printf("boot_override	 = 0x%02x\n", CPLD_READ(boot_override));

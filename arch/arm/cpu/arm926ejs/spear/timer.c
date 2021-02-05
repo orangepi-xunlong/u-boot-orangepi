@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <time.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/spr_gpt.h>
@@ -22,6 +22,8 @@ static struct misc_regs *const misc_regs_p =
 
 DECLARE_GLOBAL_DATA_PTR;
 
+static ulong get_timer_masked(void);
+
 #define timestamp gd->arch.tbl
 #define lastdec gd->arch.lastinc
 
@@ -37,7 +39,7 @@ int timer_init(void)
 	writel(MISC_PRSC_CFG, &misc_regs_p->prsc1_clk_cfg);
 	synth = MISC_GPT3SYNTH;
 #else
-# error Incorrect config. Can only be spear{600|300|310|320}
+# error Incorrect config. Can only be SPEAR{600|300|310|320}
 #endif
 
 	writel(readl(&misc_regs_p->periph_clk_cfg) | synth,
@@ -83,7 +85,7 @@ void __udelay(unsigned long usec)
 		;
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	ulong now = READ_TIMER();
 
@@ -97,11 +99,6 @@ ulong get_timer_masked(void)
 	lastdec = now;
 
 	return timestamp;
-}
-
-void udelay_masked(unsigned long usec)
-{
-	return udelay(usec);
 }
 
 /*

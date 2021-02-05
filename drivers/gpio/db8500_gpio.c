@@ -1,14 +1,14 @@
 /*
  * Code ported from Nomadik GPIO driver in ST-Ericsson Linux kernel code.
  * The purpose is that GPIO config found in kernel should work by simply
- * copy-paste it to U-boot.
+ * copy-paste it to U-Boot.
  *
  * Original Linux authors:
  * Copyright (C) 2008,2009 STMicroelectronics
  * Copyright (C) 2009 Alessandro Rubini <rubini@unipv.it>
  *   Rewritten based on work by Prafulla WADASKAR <prafulla.wadaskar@st.com>
  *
- * Ported to U-boot by:
+ * Ported to U-Boot by:
  * Copyright (C) 2010 Joakim Axelsson <joakim.axelsson AT stericsson.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -174,7 +174,7 @@ void db8500_gpio_set_output(unsigned gpio, int val)
 
 /**
  * config_pin - configure a pin's mux attributes
- * @cfg: pin confguration
+ * @cfg: pin configuration
  *
  * Configures a pin's mode (alternate function or GPIO), its pull up status,
  * and its sleep mode based on the specified configuration.  The @cfg is

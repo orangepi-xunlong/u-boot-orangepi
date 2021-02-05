@@ -1,35 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MUSB OTG driver defines
  *
  * Copyright 2005 Mentor Graphics Corporation
  * Copyright (C) 2005-2006 by Texas Instruments
  * Copyright (C) 2006-2007 Nokia Corporation
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
- * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef __MUSB_CORE_H__
@@ -45,7 +20,7 @@
 #include <linux/usb.h>
 #include <linux/usb/otg.h>
 #else
-#include <asm/errno.h>
+#include <linux/errno.h>
 #endif
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -97,7 +72,7 @@ struct musb_ep;
 #ifndef __UBOOT__
 #define	is_peripheral_capable()	(1)
 #else
-#ifdef CONFIG_MUSB_GADGET
+#ifdef CONFIG_USB_MUSB_GADGET
 #define	is_peripheral_capable()	(1)
 #else
 #define	is_peripheral_capable()	(0)
@@ -118,7 +93,7 @@ extern void musb_g_disconnect(struct musb *);
 #ifndef __UBOOT__
 #define	is_host_capable()	(1)
 #else
-#ifdef CONFIG_MUSB_HOST
+#ifdef CONFIG_USB_MUSB_HOST
 #define	is_host_capable()	(1)
 #else
 #define	is_host_capable()	(0)
@@ -176,8 +151,7 @@ enum musb_g_ep0_state {
  */
 
 #if defined(CONFIG_ARCH_DAVINCI) || defined(CONFIG_SOC_OMAP2430) \
-		|| defined(CONFIG_SOC_OMAP3430) || defined(CONFIG_BLACKFIN) \
-		|| defined(CONFIG_ARCH_OMAP4)
+		|| defined(CONFIG_SOC_OMAP3430) || defined(CONFIG_ARCH_OMAP4)
 /* REVISIT indexed access seemed to
  * misbehave (on DaVinci) for at least peripheral IN ...
  */
@@ -226,12 +200,18 @@ enum musb_g_ep0_state {
  * @vbus_status: returns vbus status if possible
  * @set_vbus:	forces vbus status
  * @adjust_channel_params: pre check for standard dma channel_program func
+ * @pre_root_reset_end: called before the root usb port reset flag gets cleared
+ * @post_root_reset_end: called after the root usb port reset flag gets cleared
  */
 struct musb_platform_ops {
 	int	(*init)(struct musb *musb);
 	int	(*exit)(struct musb *musb);
 
+#ifndef __UBOOT__
 	void	(*enable)(struct musb *musb);
+#else
+	int	(*enable)(struct musb *musb);
+#endif
 	void	(*disable)(struct musb *musb);
 
 	int	(*set_mode)(struct musb *musb, u8 mode);
@@ -243,6 +223,8 @@ struct musb_platform_ops {
 	int	(*adjust_channel_params)(struct dma_channel *channel,
 				u16 packet_sz, u8 *mode,
 				dma_addr_t *dma_addr, u32 *len);
+	void	(*pre_root_reset_end)(struct musb *musb);
+	void	(*post_root_reset_end)(struct musb *musb);
 };
 
 /*
@@ -475,34 +457,6 @@ static inline struct musb *gadget_to_musb(struct usb_gadget *g)
 	return container_of(g, struct musb, g);
 }
 
-#ifdef CONFIG_BLACKFIN
-static inline int musb_read_fifosize(struct musb *musb,
-		struct musb_hw_ep *hw_ep, u8 epnum)
-{
-	musb->nr_endpoints++;
-	musb->epmask |= (1 << epnum);
-
-	if (epnum < 5) {
-		hw_ep->max_packet_sz_tx = 128;
-		hw_ep->max_packet_sz_rx = 128;
-	} else {
-		hw_ep->max_packet_sz_tx = 1024;
-		hw_ep->max_packet_sz_rx = 1024;
-	}
-	hw_ep->is_shared_fifo = false;
-
-	return 0;
-}
-
-static inline void musb_configure_ep0(struct musb *musb)
-{
-	musb->endpoints[0].max_packet_sz_tx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].is_shared_fifo = true;
-}
-
-#else
-
 static inline int musb_read_fifosize(struct musb *musb,
 		struct musb_hw_ep *hw_ep, u8 epnum)
 {
@@ -539,14 +493,16 @@ static inline void musb_configure_ep0(struct musb *musb)
 	musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
 	musb->endpoints[0].is_shared_fifo = true;
 }
-#endif /* CONFIG_BLACKFIN */
-
 
 /***************************** Glue it together *****************************/
 
 extern const char musb_driver_name[];
 
+#ifndef __UBOOT__
 extern void musb_start(struct musb *musb);
+#else
+extern int musb_start(struct musb *musb);
+#endif
 extern void musb_stop(struct musb *musb);
 
 extern void musb_write_fifo(struct musb_hw_ep *ep, u16 len, const u8 *src);
@@ -564,11 +520,21 @@ static inline void musb_platform_set_vbus(struct musb *musb, int is_on)
 		musb->ops->set_vbus(musb, is_on);
 }
 
+#ifndef __UBOOT__
 static inline void musb_platform_enable(struct musb *musb)
 {
 	if (musb->ops->enable)
 		musb->ops->enable(musb);
 }
+#else
+static inline int musb_platform_enable(struct musb *musb)
+{
+	if (!musb->ops->enable)
+		return 0;
+
+	return musb->ops->enable(musb);
+}
+#endif
 
 static inline void musb_platform_disable(struct musb *musb)
 {

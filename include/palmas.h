@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012-2013
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef PALMAS_H
 #define PALMAS_H
@@ -24,9 +23,23 @@
 #define LDO1_CTRL		0x50
 #define LDO1_VOLTAGE		0x51
 
+/* LDO1 control/voltage for LP873x */
+#define LP873X_LDO1_ADDR	0x60
+#define LP873X_LDO1_CTRL	0x9
+#define LP873X_LDO1_VOLTAGE	0xa
+#define LP873X_LDO_VOLT_3V0	0x19
+#define LP873X_LDO_VOLT_1V8	0xa
+#define LP873X_LDO_CTRL_EN	(0x1 << 0)
+#define LP873X_LDO_CTRL_EN_PINCTRL	(0x1 << 1)
+#define LP873X_LDO_CTRL_RDIS_EN	(0x1 << 2)
+
 /* LDO2 control/voltage */
 #define LDO2_CTRL		0x52
 #define LDO2_VOLTAGE		0x53
+
+/* LDO2 control/voltage */
+#define LDO4_CTRL		0x5e
+#define LDO4_VOLTAGE		0x5f
 
 /* LDO9 control/voltage */
 #define LDO9_CTRL		0x60
@@ -104,6 +117,7 @@
 #define BB_VSEL_VBAT		(3 << 1)
 #define BB_CHRG_EN		(1 << 0)
 
+#ifndef CONFIG_DM_I2C
 /*
  * Functions to read and write from TPS659038/TWL6035/TWL6037
  * or other Palmas family of TI PMICs
@@ -117,9 +131,14 @@ static inline int palmas_i2c_read_u8(u8 chip_no, u8 reg, u8 *val)
 {
 	return i2c_read(chip_no, reg, 1, val, 1);
 }
+#else
+int palmas_i2c_write_u8(u8 chip_no, u8 reg, u8 val);
+int palmas_i2c_read_u8(u8 chip_no, u8 reg, u8 *val);
+#endif
 
 void palmas_init_settings(void);
-int palmas_mmc1_poweron_ldo(void);
+int palmas_mmc1_poweron_ldo(uint ldo_volt, uint ldo_ctrl, uint voltage);
+int lp873x_mmc1_poweron_ldo(uint voltage);
 int twl603x_mmc1_set_ldo9(u8 vsel);
 int twl603x_audio_power(u8 on);
 int twl603x_enable_bb_charge(u8 bb_fields);

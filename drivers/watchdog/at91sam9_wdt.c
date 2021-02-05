@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * [origin: Linux kernel drivers/watchdog/at91sam9_wdt.c]
  *
- * Watchdog driver for Atmel AT91SAM9x processors.
+ * Watchdog driver for AT91SAM9x processors.
  *
  * Copyright (C) 2008 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  * Copyright (C) 2008 Renaud CERRATO r.cerrato@til-technologies.fr
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -15,34 +14,41 @@
  * write to this register. Inform Linux to it too
  */
 
-#include <common.h>
-#include <watchdog.h>
-#include <asm/arch/hardware.h>
 #include <asm/io.h>
 #include <asm/arch/at91_wdt.h>
+#include <common.h>
+#include <div64.h>
+#include <dm.h>
+#include <errno.h>
+#include <wdt.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * AT91SAM9 watchdog runs a 12bit counter @ 256Hz,
  * use this to convert a watchdog
- * value from/to milliseconds.
+ * value from seconds.
  */
-#define ms_to_ticks(t)	(((t << 8) / 1000) - 1)
-#define ticks_to_ms(t)	(((t + 1) * 1000) >> 8)
-
-/* Hardware timeout in seconds */
-#define WDT_HW_TIMEOUT 2
+#define WDT_SEC2TICKS(s)	(((s) << 8) - 1)
 
 /*
  * Set the watchdog time interval in 1/256Hz (write-once)
  * Counter is 12 bit.
  */
-static int at91_wdt_settimeout(unsigned int timeout)
+static int at91_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 {
-	unsigned int reg;
-	at91_wdt_t *wd = (at91_wdt_t *) ATMEL_BASE_WDT;
+	struct at91_wdt_priv *priv = dev_get_priv(dev);
+	u64 timeout;
+	u32 ticks;
+
+	/* Calculate timeout in seconds and the resulting ticks */
+	timeout = timeout_ms;
+	do_div(timeout, 1000);
+	timeout = min_t(u64, timeout, WDT_MAX_TIMEOUT);
+	ticks = WDT_SEC2TICKS(timeout);
 
 	/* Check if disabled */
-	if (readl(&wd->mr) & AT91_WDT_MR_WDDIS) {
+	if (readl(priv->regs + AT91_WDT_MR) & AT91_WDT_MR_WDDIS) {
 		printf("sorry, watchdog is disabled\n");
 		return -1;
 	}
@@ -53,25 +59,64 @@ static int at91_wdt_settimeout(unsigned int timeout)
 	 * Since WDV is a 12-bit counter, the maximum period is
 	 * 4096 / 256 = 16 seconds.
 	 */
-
-	reg = AT91_WDT_MR_WDRSTEN		/* causes watchdog reset */
+	priv->regval = AT91_WDT_MR_WDRSTEN	/* causes watchdog reset */
 		| AT91_WDT_MR_WDDBGHLT		/* disabled in debug mode */
 		| AT91_WDT_MR_WDD(0xfff)	/* restart at any time */
-		| AT91_WDT_MR_WDV(timeout);	/* timer value */
-
-	writel(reg, &wd->mr);
+		| AT91_WDT_MR_WDV(ticks);	/* timer value */
+	writel(priv->regval, priv->regs + AT91_WDT_MR);
 
 	return 0;
 }
 
-void hw_watchdog_reset(void)
+static int at91_wdt_stop(struct udevice *dev)
 {
-	at91_wdt_t *wd = (at91_wdt_t *) ATMEL_BASE_WDT;
-	writel(AT91_WDT_CR_WDRSTT | AT91_WDT_CR_KEY, &wd->cr);
+	struct at91_wdt_priv *priv = dev_get_priv(dev);
+
+	/* Disable Watchdog Timer */
+	priv->regval |= AT91_WDT_MR_WDDIS;
+	writel(priv->regval, priv->regs + AT91_WDT_MR);
+
+	return 0;
 }
 
-void hw_watchdog_init(void)
+static int at91_wdt_reset(struct udevice *dev)
 {
-	/* 16 seconds timer, resets enabled */
-	at91_wdt_settimeout(ms_to_ticks(WDT_HW_TIMEOUT * 1000));
+	struct at91_wdt_priv *priv = dev_get_priv(dev);
+
+	writel(AT91_WDT_CR_WDRSTT | AT91_WDT_CR_KEY, priv->regs + AT91_WDT_CR);
+
+	return 0;
 }
+
+static const struct wdt_ops at91_wdt_ops = {
+	.start = at91_wdt_start,
+	.stop = at91_wdt_stop,
+	.reset = at91_wdt_reset,
+};
+
+static const struct udevice_id at91_wdt_ids[] = {
+	{ .compatible = "atmel,at91sam9260-wdt" },
+	{}
+};
+
+static int at91_wdt_probe(struct udevice *dev)
+{
+	struct at91_wdt_priv *priv = dev_get_priv(dev);
+
+	priv->regs = dev_remap_addr(dev);
+	if (!priv->regs)
+		return -EINVAL;
+
+	debug("%s: Probing wdt%u\n", __func__, dev->seq);
+
+	return 0;
+}
+
+U_BOOT_DRIVER(at91_wdt) = {
+	.name = "at91_wdt",
+	.id = UCLASS_WDT,
+	.of_match = at91_wdt_ids,
+	.priv_auto_alloc_size = sizeof(struct at91_wdt_priv),
+	.ops = &at91_wdt_ops,
+	.probe = at91_wdt_probe,
+};

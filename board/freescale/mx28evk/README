@@ -1,7 +1,7 @@
 FREESCALE MX28EVK
 ==================
 
-Supported hardware: only MX28EVK rev D is supported in U-boot.
+Supported hardware: MX28EVK rev C and D are supported in U-Boot.
 
 Files of the MX28EVK port
 --------------------------
@@ -45,7 +45,7 @@ or
 
 or
 
-"make mx28evk_spi_config"       - store enviroment variables into SPI NOR flash
+"make mx28evk_spi_config"       - store environment variables into SPI NOR flash
 
 Choose the target accordingly.
 
@@ -58,5 +58,5 @@ It is possible to solder a SOIC memory on U49 or use a DIP8 on J89.
 To get SPI communication to work R320, R321,R322 and C178 need to be populated.
 Look in the schematics for the proper component values.
 
-Follow the instructions from doc/README.mxs to generate a bootable SD card or
-to generate a binary to be flashed into SPI NOR.
+Follow the instructions from doc/imx/common/mxs.txt to generate a bootable
+SD card or to generate a binary to be flashed into SPI NOR.

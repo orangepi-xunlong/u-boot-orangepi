@@ -1,6 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _HASH_H
@@ -16,11 +16,6 @@ enum {
 	HASH_FLAG_VERIFY	= 1 << 0,	/* Enable verify mode */
 	HASH_FLAG_ENV		= 1 << 1,	/* Allow env vars */
 };
-
-#ifndef USE_HOSTCC
-#if defined(CONFIG_SHA1SUM_VERIFY) || defined(CONFIG_CRC32_VERIFY)
-#define CONFIG_HASH_VERIFY
-#endif
 
 struct hash_algo {
 	const char *name;			/* Name of algorithm */
@@ -77,6 +72,7 @@ struct hash_algo {
 			   int size);
 };
 
+#ifndef USE_HOSTCC
 /**
  * hash_command: Process a hash command for a particular algorithm
  *
@@ -114,6 +110,8 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 int hash_block(const char *algo_name, const void *data, unsigned int len,
 	       uint8_t *output, int *output_size);
 
+#endif /* !USE_HOSTCC */
+
 /**
  * hash_lookup_algo() - Look up the hash_algo struct for an algorithm
  *
@@ -128,18 +126,31 @@ int hash_block(const char *algo_name, const void *data, unsigned int len,
 int hash_lookup_algo(const char *algo_name, struct hash_algo **algop);
 
 /**
- * hash_show() - Print out a hash algorithm and value
+ * hash_progressive_lookup_algo() - Look up hash_algo for prog. hash support
  *
- * You will get a message like this (without a newline at the end):
+ * The function returns the pointer to the struct or -EPROTONOSUPPORT if the
+ * algorithm is not available with progressive hash support.
  *
- * "sha1 for 9eb3337c ... 9eb3338f ==> 7942ef1df479fd3130f716eb9613d107dab7e257"
+ * @algo_name: Hash algorithm to look up
+ * @algop: Pointer to the hash_algo struct if found
  *
- * @algo:		Algorithm used for hash
- * @addr:		Address of data that was hashed
- * @len:		Length of data that was hashed
- * @output:		Hash value to display
+ * @return 0 if ok, -EPROTONOSUPPORT for an unknown algorithm.
  */
-void hash_show(struct hash_algo *algo, ulong addr, ulong len,
-	       uint8_t *output);
-#endif /* !USE_HOSTCC */
+int hash_progressive_lookup_algo(const char *algo_name,
+				 struct hash_algo **algop);
+
+/**
+ * hash_parse_string() - Parse hash string into a binary array
+ *
+ * The function parses a hash string into a binary array that
+ * can for example easily be used to compare to hash values.
+ *
+ * @algo_name: Hash algorithm to look up
+ * @str: Hash string to get parsed
+ * @result: Binary array of the parsed hash string
+ *
+ * @return 0 if ok, -EPROTONOSUPPORT for an unknown algorithm.
+ */
+int hash_parse_string(const char *algo_name, const char *str, uint8_t *result);
+
 #endif

@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006-2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <init.h>
 #include <asm/mmu.h>
 #include <asm/io.h>
 #include <common.h>
+#include <env.h>
 #include <mpc83xx.h>
 #include <pci.h>
 #include <i2c.h>
@@ -67,7 +68,7 @@ static struct pci_region pcie_regions_1[] = {
 
 static int is_pex_x2(void)
 {
-	const char *pex_x2 = getenv("pex_x2");
+	const char *pex_x2 = env_get("pex_x2");
 
 	if (pex_x2 && !strcmp(pex_x2, "yes"))
 		return 1;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for TI AM335X based draco board
  * (C) Copyright 2013 Siemens Schweiz AG
@@ -9,12 +10,12 @@
  * u-boot:/board/ti/am335x/board.c
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <errno.h>
+#include <init.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -24,6 +25,7 @@
 #include <asm/arch/gpio.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch/mem.h>
 #include <asm/io.h>
 #include <asm/emif.h>
 #include <asm/gpio.h>
@@ -33,21 +35,31 @@
 #include <watchdog.h>
 #include "board.h"
 #include "../common/factoryset.h"
-
-DECLARE_GLOBAL_DATA_PTR;
+#include <nand.h>
 
 #ifdef CONFIG_SPL_BUILD
 static struct draco_baseboard_id __attribute__((section(".data"))) settings;
 
 #if DDR_PLL_FREQ == 303
+#if !defined(CONFIG_TARGET_ETAMIN)
 /* Default@303MHz-i0 */
 const struct ddr3_data ddr3_default = {
 	0x33524444, 0x56312e35, 0x0080, 0x0000, 0x003A, 0x003F, 0x009F,
-	0x0079, 0x0888A39B, 0x26247FDA, 0x501F821F, 0x00100206, 0x61A44A32,
+	0x0079, 0x0888A39B, 0x26517FDA, 0x501F84EF, 0x00100206, 0x61A44A32,
 	0x0000093B, 0x0000014A,
 	"default name @303MHz           \0",
 	"default marking                \0",
 };
+#else
+/* etamin board */
+const struct ddr3_data ddr3_default = {
+	0x33524444, 0x56312e36, 0x0080, 0x0000, 0x003A, 0x0010, 0x009F,
+	0x0050, 0x0888A39B, 0x266D7FDA, 0x501F86AF, 0x00100206, 0x61A44BB2,
+	0x0000093B, 0x0000018A,
+	"test-etamin                    \0",
+	"generic-8Gbit                  \0",
+};
+#endif
 #elif DDR_PLL_FREQ == 400
 /* Default@400MHz-i0 */
 const struct ddr3_data ddr3_default = {
@@ -71,8 +83,8 @@ static void print_ddr3_timings(void)
 	printf("clock:\t\t%d MHz\n", DDR_PLL_FREQ);
 	printf("device:\t\t%s\n", settings.ddr3.manu_name);
 	printf("marking:\t%s\n", settings.ddr3.manu_marking);
-	printf("timing parameters\n");
-	printf("diff\teeprom\tdefault\n");
+	printf("%-20s, %-8s, %-8s, %-4s\n", "timing parameters", "eeprom",
+	       "default", "diff");
 	PRINTARGS(magic);
 	PRINTARGS(version);
 	PRINTARGS(ddr3_sratio);
@@ -96,11 +108,48 @@ static void print_ddr3_timings(void)
 
 static void print_chip_data(void)
 {
+	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
+	dpll_mpu_opp100.m = am335x_get_efuse_mpu_max_freq(cdev);
 	printf("\nCPU BOARD\n");
 	printf("device: \t'%s'\n", settings.chip.sdevname);
 	printf("hw version: \t'%s'\n", settings.chip.shwver);
+	printf("max freq: \t%d MHz\n", dpll_mpu_opp100.m);
 }
 #endif /* CONFIG_SPL_BUILD */
+
+#define AM335X_NAND_ECC_MASK 0x0f
+#define AM335X_NAND_ECC_TYPE_16 0x02
+
+static int ecc_type;
+
+struct am335x_nand_geometry {
+	u32 magic;
+	u8 nand_geo_addr;
+	u8 nand_geo_page;
+	u8 nand_bus;
+};
+
+static int draco_read_nand_geometry(void)
+{
+	struct am335x_nand_geometry geo;
+
+	/* Read NAND geometry */
+	if (i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0x80, 2,
+		     (uchar *)&geo, sizeof(struct am335x_nand_geometry))) {
+		printf("Could not read the NAND geomtery; something fundamentally wrong on the I2C bus.\n");
+		return -EIO;
+	}
+	if (geo.magic != 0xa657b310) {
+		printf("%s: bad magic: %x\n", __func__, geo.magic);
+		return -EFAULT;
+	}
+	if ((geo.nand_bus & AM335X_NAND_ECC_MASK) == AM335X_NAND_ECC_TYPE_16)
+		ecc_type = 16;
+	else
+		ecc_type = 8;
+
+	return 0;
+}
 
 /*
  * Read header information from EEPROM into global structure.
@@ -144,6 +193,8 @@ static int read_eeprom(void)
 		printf("Warning: No chip data in eeprom\n");
 
 	print_ddr3_timings();
+
+	return draco_read_nand_geometry();
 #endif
 	return 0;
 }
@@ -171,6 +222,7 @@ struct ctrl_ioregs draco_ddr3_ioregs = {
 	draco_ddr3_emif_reg_data.emif_ddr_phy_ctlr_1 =
 		settings.ddr3.emif_ddr_phy_ctlr_1;
 	draco_ddr3_emif_reg_data.sdram_config = settings.ddr3.sdram_config;
+	draco_ddr3_emif_reg_data.sdram_config2 = 0x08000000;
 	draco_ddr3_emif_reg_data.ref_ctrl = settings.ddr3.ref_ctrl;
 
 	draco_ddr3_data.datardsratio0 = settings.ddr3.dt0rdsratio0;
@@ -200,6 +252,37 @@ static void spl_siemens_board_init(void)
 	return;
 }
 #endif /* if def CONFIG_SPL_BUILD */
+
+#ifdef CONFIG_BOARD_LATE_INIT
+int board_late_init(void)
+{
+	int ret;
+
+	ret = draco_read_nand_geometry();
+	if (ret != 0)
+		return ret;
+
+	nand_curr_device = 0;
+	omap_nand_switch_ecc(1, ecc_type);
+#ifdef CONFIG_TARGET_ETAMIN
+	nand_curr_device = 1;
+	omap_nand_switch_ecc(1, ecc_type);
+#endif
+#ifdef CONFIG_FACTORYSET
+	/* Set ASN in environment*/
+	if (factory_dat.asn[0] != 0) {
+		env_set("dtb_name", (char *)factory_dat.asn);
+	} else {
+		/* dtb suffix gets added in load script */
+		env_set("dtb_name", "am335x-draco");
+	}
+#else
+	env_set("dtb_name", "am335x-draco");
+#endif
+
+	return 0;
+}
+#endif
 
 #if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) || \
 	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD))
@@ -239,14 +322,14 @@ static struct cpsw_platform_data cpsw_data = {
 };
 
 #if defined(CONFIG_DRIVER_TI_CPSW) || \
-	(defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET))
+	(defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET))
 int board_eth_init(bd_t *bis)
 {
 	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 	int n = 0;
 	int rv;
 
-	factoryset_setenv();
+	factoryset_env_set();
 
 	/* Set rgmii mode and enable rmii clock to be sourced from chip */
 	writel((RMII_MODE_ENABLE | RMII_CHIPCKL_ENABLE), &cdev->miisel);
@@ -260,7 +343,7 @@ int board_eth_init(bd_t *bis)
 }
 
 static int do_switch_reset(cmd_tbl_t *cmdtp, int flag, int argc,
-			   char *const argv[])
+			  char *const argv[])
 {
 	/* Reset SMSC LAN9303 switch for default configuration */
 	gpio_request(GPIO_LAN9303_NRST, "nRST");
@@ -279,5 +362,24 @@ U_BOOT_CMD(
 );
 #endif /* #if defined(CONFIG_DRIVER_TI_CPSW) */
 #endif /* #if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) */
+
+#ifdef CONFIG_NAND_CS_INIT
+/* GPMC definitions for second nand cs1 */
+static const u32 gpmc_nand_config[] = {
+	ETAMIN_NAND_GPMC_CONFIG1,
+	ETAMIN_NAND_GPMC_CONFIG2,
+	ETAMIN_NAND_GPMC_CONFIG3,
+	ETAMIN_NAND_GPMC_CONFIG4,
+	ETAMIN_NAND_GPMC_CONFIG5,
+	ETAMIN_NAND_GPMC_CONFIG6,
+	/*CONFIG7- computed as params */
+};
+
+static void board_nand_cs_init(void)
+{
+	enable_gpmc_cs_config(gpmc_nand_config, &gpmc_cfg->cs[1],
+			      0x18000000, GPMC_SIZE_16M);
+}
+#endif
 
 #include "../common/board.c"

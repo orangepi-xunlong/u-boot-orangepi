@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *
  * (c) 2009 Ilya Yanok, Emcraft Systems <yanok@emcraft.com>
  *
  * Modified for mx25 by John Rigby <jrigby@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_CLOCK_H
@@ -51,6 +50,7 @@ enum mxc_clock {
 	MXC_CLK_NUM
 };
 
+int imx_set_perclk(enum mxc_clock clk, bool from_upll, unsigned int freq);
 unsigned int mxc_get_clock(enum mxc_clock clk);
 
 #define imx_get_uartclk()	mxc_get_clock(MXC_UART_CLK)

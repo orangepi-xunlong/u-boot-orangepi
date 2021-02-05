@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__ASM_GBL_DATA_H
@@ -12,13 +11,21 @@
 
 /* Architecture-specific global data */
 struct arch_global_data {
-#ifdef CONFIG_JZSOC
-	/* There are other clocks in the jz4740 */
-	unsigned long per_clk;	/* Peripheral bus clock */
-	unsigned long dev_clk;	/* Device clock */
-	unsigned long sys_clk;
-	unsigned long tbl;
-	unsigned long lastinc;
+#ifdef CONFIG_DYNAMIC_IO_PORT_BASE
+	unsigned long io_port_base;
+#endif
+#ifdef CONFIG_ARCH_ATH79
+	unsigned long id;
+	unsigned long soc;
+	unsigned long rev;
+	unsigned long ver;
+#endif
+#ifdef CONFIG_SYS_CACHE_SIZE_AUTO
+	unsigned short l1i_line_size;
+	unsigned short l1d_line_size;
+#endif
+#ifdef CONFIG_MIPS_L2_CACHE
+	unsigned short l2_line_size;
 #endif
 };
 

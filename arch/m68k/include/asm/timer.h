@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * timer.h -- ColdFire internal TIMER support defines.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /****************************************************************************/
@@ -17,7 +16,8 @@
 /****************************************************************************/
 /* DMA Timer module registers */
 typedef struct dtimer_ctrl {
-#if defined(CONFIG_M5249) || defined(CONFIG_M5253) || defined(CONFIG_M5272)
+#if defined(CONFIG_M5249) || defined(CONFIG_M5253) || \
+    defined(CONFIG_M5272) || defined(CONFIG_M5307)
 	u16 tmr;		/* 0x00 Mode register */
 	u16 res1;		/* 0x02 */
 	u16 trr;		/* 0x04 Reference register */

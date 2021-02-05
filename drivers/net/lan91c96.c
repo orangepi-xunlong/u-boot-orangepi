@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*------------------------------------------------------------------------
  * lan91c96.c
  * This is a driver for SMSC's LAN91C96 single-chip Ethernet device, based
- * on the SMC91111 driver from U-boot.
+ * on the SMC91111 driver from U-Boot.
  *
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -10,8 +11,6 @@
  * Copyright (C) 2001 Standard Microsystems Corporation (SMSC)
  *       Developed by Simple Network Magic Corporation (SNMC)
  * Copyright (C) 1996 by Erik Stahlman (ES)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Information contained in this file was obtained from the LAN91C96
  * manual from SMC.  To get a copy, if you really want one, you can find
@@ -47,6 +46,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <malloc.h>
 #include "lan91c96.h"
 #include <net.h>
@@ -568,29 +568,30 @@ static int smc_rcv(struct eth_device *dev)
 		   to send the DWORDs or the bytes first, or some
 		   mixture.  A mixture might improve already slow PIO
 		   performance  */
-		SMC_insl(dev, LAN91C96_DATA_HIGH, NetRxPackets[0],
-				packet_length >> 2);
+		SMC_insl(dev, LAN91C96_DATA_HIGH, net_rx_packets[0],
+			 packet_length >> 2);
 		/* read the left over bytes */
 		if (packet_length & 3) {
 			int i;
 
-			byte *tail = (byte *) (NetRxPackets[0] + (packet_length & ~3));
+			byte *tail = (byte *)(net_rx_packets[0] +
+				(packet_length & ~3));
 			dword leftover = SMC_inl(dev, LAN91C96_DATA_HIGH);
 
 			for (i = 0; i < (packet_length & 3); i++)
 				*tail++ = (byte) (leftover >> (8 * i)) & 0xff;
 		}
 #else
-		PRINTK3 (" Reading %d words and %d byte(s) \n",
-				 (packet_length >> 1), packet_length & 1);
-		SMC_insw(dev, LAN91C96_DATA_HIGH, NetRxPackets[0],
-				packet_length >> 1);
+		PRINTK3(" Reading %d words and %d byte(s)\n",
+			(packet_length >> 1), packet_length & 1);
+		SMC_insw(dev, LAN91C96_DATA_HIGH, net_rx_packets[0],
+			 packet_length >> 1);
 
 #endif /* USE_32_BIT */
 
 #if	SMC_DEBUG > 2
 		printf ("Receiving Packet\n");
-		print_packet((byte *)NetRxPackets[0], packet_length);
+		print_packet((byte *)net_rx_packets[0], packet_length);
 #endif
 	} else {
 		/* error ... */
@@ -609,7 +610,7 @@ static int smc_rcv(struct eth_device *dev)
 
 	if (!is_error) {
 		/* Pass the packet up to the protocol layers. */
-		NetReceive (NetRxPackets[0], packet_length);
+		net_process_received_packet(net_rx_packets[0], packet_length);
 		return packet_length;
 	} else {
 		return 0;
@@ -703,13 +704,13 @@ static int smc_get_ethaddr(bd_t *bd, struct eth_device *dev)
 {
 	uchar v_mac[6];
 
-	if (!eth_getenv_enetaddr("ethaddr", v_mac)) {
+	if (!eth_env_get_enetaddr("ethaddr", v_mac)) {
 		/* get ROM mac value if any */
 		if (!get_rom_mac(dev, v_mac)) {
 			printf("\n*** ERROR: ethaddr is NOT set !!\n");
 			return -1;
 		}
-		eth_setenv_enetaddr("ethaddr", v_mac);
+		eth_env_set_enetaddr("ethaddr", v_mac);
 	}
 
 	smc_set_mac_addr(v_mac); /* use old function to update smc default */
@@ -724,12 +725,6 @@ static int smc_get_ethaddr(bd_t *bd, struct eth_device *dev)
 
 static int get_rom_mac(struct eth_device *dev, unsigned char *v_rom_mac)
 {
-#ifdef HARDCODE_MAC	/* used for testing or to supress run time warnings */
-	char hw_mac_addr[] = { 0x02, 0x80, 0xad, 0x20, 0x31, 0xb8 };
-
-	memcpy (v_rom_mac, hw_mac_addr, 6);
-	return (1);
-#else
 	int i;
 	SMC_SELECT_BANK(dev, 1);
 	for (i=0; i<6; i++)
@@ -737,7 +732,6 @@ static int get_rom_mac(struct eth_device *dev, unsigned char *v_rom_mac)
 		v_rom_mac[i] = SMC_inb(dev, LAN91C96_IA0 + i);
 	}
 	return (1);
-#endif
 }
 
 /* Structure to detect the device IDs */

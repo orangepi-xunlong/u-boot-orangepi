@@ -3,27 +3,33 @@
 # subdirectories here. Add them in the ".gitignore" file
 # in that subdirectory instead.
 #
-# Normal rules
+# Normal rules (sorted alphabetically)
 #
 .*
+*.a
+*.asn1.[ch]
+*.bin
+*.cfgout
+*.dtb
+*.dtbo
+*.dtb.S
+*.elf
+*.exe
+*.gcda
+*.gcno
+*.i
+*.img
+*.lex.c
+*.lst
+*.mod.c
 *.o
 *.o.*
-*.a
+*.order
+*.patch
 *.s
 *.su
-*.mod.c
-*.i
-*.lst
-*.order
-*.elf
 *.swp
-*.bin
-*.patch
-*.cfgtmp
-*.log
-
-# host programs on Cygwin
-*.exe
+*.tab.[ch]
 
 # Build tree
 /build-*
@@ -31,10 +37,13 @@
 #
 # Top-level generic files
 #
+fit-dtb.blob*
 /MLO*
-/SPL
+/SPL*
 /System.map
 /u-boot*
+/boards.cfg
+/*.log
 
 #
 # git files that we don't want to ignore even it they are dot-files
@@ -45,21 +54,15 @@
 #
 # Generated files
 #
-
-/LOG
-/errlog
-/reloc_off
-
 /spl/
 /tpl/
+/defconfig
 
 #
 # Generated include files
 #
 /include/config/
 /include/generated/
-/include/spl-autoconf.mk
-/include/tpl-autoconf.mk
 
 # stgit generated dirs
 patches-*
@@ -89,5 +92,3 @@ GTAGS
 *.orig
 *~
 \#*#
-
-sunxi_spl/

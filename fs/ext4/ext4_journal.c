@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -10,7 +11,6 @@
  * Written by Stephen C. Tweedie <sct@redhat.com>
  *
  * Copyright 1998-2000 Red Hat, Inc --- All Rights Reserved
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -151,7 +151,7 @@ int ext4fs_log_gdt(char *gd_table)
  * journal_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_log_journal(char *journal_buffer, long int blknr)
+int ext4fs_log_journal(char *journal_buffer, uint32_t blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	short i;
@@ -183,14 +183,18 @@ int ext4fs_log_journal(char *journal_buffer, long int blknr)
  * metadata_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_put_metadata(char *metadata_buffer, long int blknr)
+int ext4fs_put_metadata(char *metadata_buffer, uint32_t blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	if (!metadata_buffer) {
 		printf("Invalid input arguments %s\n", __func__);
 		return -EINVAL;
 	}
-	dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
+	if (dirty_block_ptr[gd_index]->buf)
+		assert(dirty_block_ptr[gd_index]->blknr == blknr);
+	else
+		dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
+
 	if (!dirty_block_ptr[gd_index]->buf)
 		return -ENOMEM;
 	memcpy(dirty_block_ptr[gd_index]->buf, metadata_buffer, fs->blksz);
@@ -215,7 +219,7 @@ void print_revoke_blks(char *revk_blk)
 	printf("total bytes %d\n", max);
 
 	while (offset < max) {
-		blocknr = be32_to_cpu(*((long int *)(revk_blk + offset)));
+		blocknr = be32_to_cpu(*((__be32 *)(revk_blk + offset)));
 		printf("revoke blknr is %ld\n", blocknr);
 		offset += 4;
 	}
@@ -302,7 +306,7 @@ int check_blknr_for_revoke(long int blknr, int sequence_no)
 			max = be32_to_cpu(header->r_count);
 
 			while (offset < max) {
-				blocknr = be32_to_cpu(*((long int *)
+				blocknr = be32_to_cpu(*((__be32 *)
 						  (revk_blk + offset)));
 				if (blocknr == blknr)
 					goto found;
@@ -343,7 +347,7 @@ void recover_transaction(int prev_desc_logical_no)
 	ext4fs_read_inode(ext4fs_root, EXT2_JOURNAL_INO,
 			  (struct ext2_inode *)&inode_journal);
 	blknr = read_allocated_block((struct ext2_inode *)
-				     &inode_journal, i);
+				     &inode_journal, i, NULL);
 	ext4fs_devread((lbaint_t)blknr * fs->sect_perblk, 0, fs->blksz,
 		       temp_buff);
 	p_jdb = (char *)temp_buff;
@@ -351,7 +355,7 @@ void recover_transaction(int prev_desc_logical_no)
 	ofs = sizeof(struct journal_header_t);
 
 	do {
-		tag = (struct ext3_journal_block_tag *)&p_jdb[ofs];
+		tag = (struct ext3_journal_block_tag *)(p_jdb + ofs);
 		ofs += sizeof(struct ext3_journal_block_tag);
 
 		if (ofs > fs->blksz)
@@ -368,7 +372,7 @@ void recover_transaction(int prev_desc_logical_no)
 				be32_to_cpu(jdb->h_sequence)) == 0)
 				continue;
 		}
-		blknr = read_allocated_block(&inode_journal, i);
+		blknr = read_allocated_block(&inode_journal, i, NULL);
 		ext4fs_devread((lbaint_t)blknr * fs->sect_perblk, 0,
 			       fs->blksz, metadata_buff);
 		put_ext4((uint64_t)((uint64_t)be32_to_cpu(tag->block) * (uint64_t)fs->blksz),
@@ -415,12 +419,13 @@ int ext4fs_check_journal_state(int recovery_flag)
 	}
 
 	ext4fs_read_inode(ext4fs_root, EXT2_JOURNAL_INO, &inode_journal);
-	blknr = read_allocated_block(&inode_journal, EXT2_JOURNAL_SUPERBLOCK);
+	blknr = read_allocated_block(&inode_journal, EXT2_JOURNAL_SUPERBLOCK,
+				     NULL);
 	ext4fs_devread((lbaint_t)blknr * fs->sect_perblk, 0, fs->blksz,
 		       temp_buff);
 	jsb = (struct journal_superblock_t *) temp_buff;
 
-	if (fs->sb->feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER) {
+	if (le32_to_cpu(fs->sb->feature_incompat) & EXT3_FEATURE_INCOMPAT_RECOVER) {
 		if (recovery_flag == RECOVER)
 			printf("Recovery required\n");
 	} else {
@@ -439,7 +444,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 
 	i = be32_to_cpu(jsb->s_first);
 	while (1) {
-		blknr = read_allocated_block(&inode_journal, i);
+		blknr = read_allocated_block(&inode_journal, i, NULL);
 		memset(temp_buff1, '\0', fs->blksz);
 		ext4fs_devread((lbaint_t)blknr * fs->sect_perblk,
 			       0, fs->blksz, temp_buff1);
@@ -462,7 +467,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 			ofs = sizeof(struct journal_header_t);
 			do {
 				tag = (struct ext3_journal_block_tag *)
-				    &p_jdb[ofs];
+				    (p_jdb + ofs);
 				ofs += sizeof(struct ext3_journal_block_tag);
 				if (ofs > fs->blksz)
 					break;
@@ -517,11 +522,14 @@ int ext4fs_check_journal_state(int recovery_flag)
 
 end:
 	if (recovery_flag == RECOVER) {
+		uint32_t new_feature_incompat;
 		jsb->s_start = cpu_to_be32(1);
 		jsb->s_sequence = cpu_to_be32(be32_to_cpu(jsb->s_sequence) + 1);
 		/* get the superblock */
 		ext4_read_superblock((char *)fs->sb);
-		fs->sb->feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
+		new_feature_incompat = le32_to_cpu(fs->sb->feature_incompat);
+		new_feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
+		fs->sb->feature_incompat = cpu_to_le32(new_feature_incompat);
 
 		/* Update the super block */
 		put_ext4((uint64_t) (SUPERBLOCK_SIZE),
@@ -530,7 +538,7 @@ end:
 		ext4_read_superblock((char *)fs->sb);
 
 		blknr = read_allocated_block(&inode_journal,
-					 EXT2_JOURNAL_SUPERBLOCK);
+					 EXT2_JOURNAL_SUPERBLOCK, NULL);
 		put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz),
 			 (struct journal_superblock_t *)temp_buff,
 			 (uint32_t) fs->blksz);
@@ -559,7 +567,7 @@ static void update_descriptor_block(long int blknr)
 
 	ext4fs_read_inode(ext4fs_root, EXT2_JOURNAL_INO, &inode_journal);
 	jsb_blknr = read_allocated_block(&inode_journal,
-					 EXT2_JOURNAL_SUPERBLOCK);
+					 EXT2_JOURNAL_SUPERBLOCK, NULL);
 	ext4fs_devread((lbaint_t)jsb_blknr * fs->sect_perblk, 0, fs->blksz,
 		       temp_buff);
 	jsb = (struct journal_superblock_t *) temp_buff;
@@ -611,7 +619,7 @@ static void update_commit_block(long int blknr)
 	ext4fs_read_inode(ext4fs_root, EXT2_JOURNAL_INO,
 			  &inode_journal);
 	jsb_blknr = read_allocated_block(&inode_journal,
-					 EXT2_JOURNAL_SUPERBLOCK);
+					 EXT2_JOURNAL_SUPERBLOCK, NULL);
 	ext4fs_devread((lbaint_t)jsb_blknr * fs->sect_perblk, 0, fs->blksz,
 		       temp_buff);
 	jsb = (struct journal_superblock_t *) temp_buff;
@@ -637,17 +645,22 @@ void ext4fs_update_journal(void)
 	struct ext_filesystem *fs = get_fs();
 	long int blknr;
 	int i;
+
+	if (!(fs->sb->feature_compatibility & EXT4_FEATURE_COMPAT_HAS_JOURNAL))
+		return;
+
 	ext4fs_read_inode(ext4fs_root, EXT2_JOURNAL_INO, &inode_journal);
-	blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++);
+	blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++, NULL);
 	update_descriptor_block(blknr);
 	for (i = 0; i < MAX_JOURNAL_ENTRIES; i++) {
 		if (journal_ptr[i]->blknr == -1)
 			break;
-		blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++);
+		blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++,
+					     NULL);
 		put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz),
 			 journal_ptr[i]->buf, fs->blksz);
 	}
-	blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++);
+	blknr = read_allocated_block(&inode_journal, jrnl_blk_idx++, NULL);
 	update_commit_block(blknr);
 	printf("update journal finished\n");
 }

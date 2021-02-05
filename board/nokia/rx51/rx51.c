@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Ивайло Димитров <freemangordon@abv.bg>
@@ -18,11 +19,10 @@
  *
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <khasim@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <watchdog.h>
 #include <malloc.h>
 #include <twl4030.h>
@@ -234,18 +234,18 @@ void setup_board_tags(struct tag **in_params)
 	params->u.core.rootdev = 0x0;
 
 	/* append omap atag only if env setup_omap_atag is set to 1 */
-	str = getenv("setup_omap_atag");
+	str = env_get("setup_omap_atag");
 	if (!str || str[0] != '1')
 		return;
 
-	str = getenv("setup_console_atag");
+	str = env_get("setup_console_atag");
 	if (str && str[0] == '1')
 		setup_console_atag = 1;
 	else
 		setup_console_atag = 0;
 
-	setup_boot_reason_atag = getenv("setup_boot_reason_atag");
-	setup_boot_mode_atag = getenv("setup_boot_mode_atag");
+	setup_boot_reason_atag = env_get("setup_boot_reason_atag");
+	setup_boot_mode_atag = env_get("setup_boot_mode_atag");
 
 	params = *in_params;
 	t = (struct tag_omap *)&params->u;
@@ -341,6 +341,17 @@ static void omap3_emu_romcode_call(u32 service_id, u32 *parameters)
 	do_omap3_emu_romcode_call(service_id, OMAP3_PUBLIC_SRAM_SCRATCH_AREA);
 }
 
+void omap3_set_aux_cr_secure(u32 acr)
+{
+	struct emu_hal_params_rx51 emu_romcode_params = { 0, };
+
+	emu_romcode_params.num_params = 2;
+	emu_romcode_params.param1 = acr;
+
+	omap3_emu_romcode_call(OMAP3_EMU_HAL_API_WRITE_ACR,
+			       (u32 *)&emu_romcode_params);
+}
+
 /*
  * Routine: omap3_update_aux_cr_secure_rx51
  * Description: Modify the contents Auxiliary Control Register.
@@ -350,19 +361,13 @@ static void omap3_emu_romcode_call(u32 service_id, u32 *parameters)
  */
 static void omap3_update_aux_cr_secure_rx51(u32 set_bits, u32 clear_bits)
 {
-	struct emu_hal_params_rx51 emu_romcode_params = { 0, };
 	u32 acr;
 
 	/* Read ACR */
 	asm volatile ("mrc p15, 0, %0, c1, c0, 1" : "=r" (acr));
 	acr &= ~clear_bits;
 	acr |= set_bits;
-
-	emu_romcode_params.num_params = 2;
-	emu_romcode_params.param1 = acr;
-
-	omap3_emu_romcode_call(OMAP3_EMU_HAL_API_WRITE_ACR,
-				(u32 *)&emu_romcode_params);
+	omap3_set_aux_cr_secure(acr);
 }
 
 /*
@@ -408,7 +413,7 @@ int misc_init_r(void)
 
 	/* set env variable attkernaddr for relocated kernel */
 	sprintf(buf, "%#x", KERNEL_ADDRESS);
-	setenv("attkernaddr", buf);
+	env_set("attkernaddr", buf);
 
 	/* initialize omap tags */
 	init_omap_tags();
@@ -416,14 +421,18 @@ int misc_init_r(void)
 	/* reuse atags from previous bootloader */
 	reuse_atags();
 
-	dieid_num_r();
+	omap_die_id_display();
 	print_cpuinfo();
 
 	/*
 	 * Cortex-A8(r1p0..r1p2) errata 430973 workaround
 	 * Set IBE bit in Auxiliary Control Register
+	 *
+	 * Call this routine only on real secure device
+	 * Qemu does not implement secure PPA and crash
 	 */
-	omap3_update_aux_cr_secure_rx51(1 << 6, 0);
+	if (get_device_type() == HS_DEVICE)
+		omap3_update_aux_cr_secure_rx51(1 << 6, 0);
 
 	return 0;
 }
@@ -585,7 +594,7 @@ static void rx51_kp_fill(u8 k, u8 mods)
  * Routine: rx51_kp_tstc
  * Description: Test if key was pressed (from buffer).
  */
-int rx51_kp_tstc(void)
+int rx51_kp_tstc(struct stdio_dev *sdev)
 {
 	u8 c, r, dk, i;
 	u8 intr;
@@ -641,10 +650,10 @@ int rx51_kp_tstc(void)
  * Routine: rx51_kp_getc
  * Description: Get last pressed key (from buffer).
  */
-int rx51_kp_getc(void)
+int rx51_kp_getc(struct stdio_dev *sdev)
 {
 	keybuf_head %= KEYBUF_SIZE;
-	while (!rx51_kp_tstc())
+	while (!rx51_kp_tstc(sdev))
 		WATCHDOG_RESET();
 	return keybuf[keybuf_head++];
 }
@@ -658,4 +667,10 @@ int board_mmc_init(bd_t *bis)
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);
 	return 0;
+}
+
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
+	twl4030_power_mmc_init(1);
 }

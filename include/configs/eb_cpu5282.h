@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the BuS EB+CPU5283 boards (aka EB+MCF-EV123)
  *
  * (C) Copyright 2005-2009 BuS Elektronik GmbH & Co.KG <esw@bus-elektonik.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_EB_CPU5282_H_
@@ -15,14 +14,8 @@
  * High Level Configuration Options (easy to change)                    *
  *----------------------------------------------------------------------*/
 
-#define	CONFIG_MCF52x2			/* define processor family */
-#define CONFIG_M5282			/* define processor type */
-
-#define CONFIG_MISC_INIT_R
-
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE			115200
 
 #undef	CONFIG_MONITOR_IS_IN_RAM		/* starts uboot direct */
 
@@ -38,54 +31,25 @@
 
 #define CONFIG_HW_WATCHDOG
 
-#define CONFIG_STATUS_LED
-#define CONFIG_BOARD_SPECIFIC_LED
 #define STATUS_LED_ACTIVE		0
-#define STATUS_LED_BIT			0x0008	/* Timer7 GPIO */
-#define STATUS_LED_BOOT			0
-#define STATUS_LED_PERIOD		(CONFIG_SYS_HZ / 2)
-#define STATUS_LED_STATE		STATUS_LED_OFF
 
 /*----------------------------------------------------------------------*
  * Configuration for environment					*
  * Environment is in the second sector of the first 256k of flash	*
  *----------------------------------------------------------------------*/
 
-#define CONFIG_ENV_ADDR		0xFF040000
-#define CONFIG_ENV_SECT_SIZE	0x00020000
-#define CONFIG_ENV_IS_IN_FLASH	1
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#define CONFIG_CMDLINE_EDITING
-#include <config_cmd_default.h>
-
-#undef CONFIG_CMD_LOADB
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_LED
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
 
 #define CONFIG_MCFTMR
 
-#define CONFIG_BOOTDELAY	5
-#define CONFIG_SYS_PROMPT	"\nEB+CPU5282> "
-#define	CONFIG_SYS_LONGHELP	1
-
 #define	CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size	*/
-#define	CONFIG_SYS_PBSIZE 	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define	CONFIG_SYS_MAXARGS	16	/* max number of command args	*/
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000
@@ -109,18 +73,13 @@
  * Network								*
  *----------------------------------------------------------------------*/
 
-#define CONFIG_MCFFEC
-#define CONFIG_MII			1
+#ifdef CONFIG_MCFFEC
 #define CONFIG_MII_INIT			1
 #define CONFIG_SYS_DISCOVER_PHY
 #define CONFIG_SYS_RX_ETH_BUFFER	8
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-
-#define CONFIG_SYS_FEC0_PINMUX		0
-#define CONFIG_SYS_FEC0_MIIBASE		CONFIG_SYS_FEC0_IOBASE
-#define MCFFEC_TOUT_LOOP		50000
-
 #define CONFIG_OVERWRITE_ETHADDR_ONCE
+#endif
 
 /*-------------------------------------------------------------------------
  * Low Level Configuration Settings
@@ -174,10 +133,7 @@
 #define	CONFIG_SYS_MAX_FLASH_SECT	128
 #define	CONFIG_SYS_MAX_FLASH_BANKS	1
 #define	CONFIG_SYS_FLASH_ERASE_TOUT	10000000
-#define	CONFIG_SYS_FLASH_PROTECTION
 
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_SIZE		16*1024*1024
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 
@@ -262,8 +218,6 @@
 /*-----------------------------------------------------------------------
  * VIDEO configuration
  */
-
-#define CONFIG_VIDEO
 
 #ifdef CONFIG_VIDEO
 #define CONFIG_VIDEO_VCXK			1

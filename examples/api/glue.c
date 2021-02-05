@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007-2008 Semihalf, Rafal Jaworowski <raj@semihalf.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <linux/types.h>
 #include <api_public.h>
+#include <u-boot/crc.h>
 
 #include "glue.h"
 
@@ -77,7 +78,7 @@ int ub_getc(void)
 {
 	int c;
 
-	if (!syscall(API_GETC, NULL, (uint32_t)&c))
+	if (!syscall(API_GETC, NULL, &c))
 		return -1;
 
 	return c;
@@ -87,7 +88,7 @@ int ub_tstc(void)
 {
 	int t;
 
-	if (!syscall(API_TSTC, NULL, (uint32_t)&t))
+	if (!syscall(API_TSTC, NULL, &t))
 		return -1;
 
 	return t;
@@ -95,12 +96,12 @@ int ub_tstc(void)
 
 void ub_putc(char c)
 {
-	syscall(API_PUTC, NULL, (uint32_t)&c);
+	syscall(API_PUTC, NULL, &c);
 }
 
 void ub_puts(const char *s)
 {
-	syscall(API_PUTS, NULL, (uint32_t)s);
+	syscall(API_PUTS, NULL, s);
 }
 
 /****************************************
@@ -126,7 +127,7 @@ struct sys_info * ub_get_sys_info(void)
 	si.mr_no = UB_MAX_MR;
 	memset(&mr, 0, sizeof(mr));
 
-	if (!syscall(API_GET_SYS_INFO, &err, (u_int32_t)&si))
+	if (!syscall(API_GET_SYS_INFO, &err, &si))
 		return NULL;
 
 	return ((err) ? NULL : &si);
@@ -344,7 +345,7 @@ char * ub_env_get(const char *name)
 {
 	char *value;
 
-	if (!syscall(API_ENV_GET, NULL, (uint32_t)name, (uint32_t)&value))
+	if (!syscall(API_ENV_GET, NULL, name, &value))
 		return NULL;
 
 	return value;
@@ -352,7 +353,7 @@ char * ub_env_get(const char *name)
 
 void ub_env_set(const char *name, char *value)
 {
-	syscall(API_ENV_SET, NULL, (uint32_t)name, (uint32_t)value);
+	syscall(API_ENV_SET, NULL, name, value);
 }
 
 static char env_name[256];
@@ -366,10 +367,10 @@ const char * ub_env_enum(const char *last)
 
 	/*
 	 * It's OK to pass only the name piece as last (and not the whole
-	 * 'name=val' string), since the API_ENUM_ENV call uses envmatch()
+	 * 'name=val' string), since the API_ENUM_ENV call uses env_match()
 	 * internally, which handles such case
 	 */
-	if (!syscall(API_ENV_ENUM, NULL, (uint32_t)last, (uint32_t)&env))
+	if (!syscall(API_ENV_ENUM, NULL, last, &env))
 		return NULL;
 
 	if (!env)
@@ -396,7 +397,7 @@ int ub_display_get_info(int type, struct display_info *di)
 {
 	int err = 0;
 
-	if (!syscall(API_DISPLAY_GET_INFO, &err, (uint32_t)type, (uint32_t)di))
+	if (!syscall(API_DISPLAY_GET_INFO, &err, type, di))
 		return API_ESYSC;
 
 	return err;
@@ -415,4 +416,16 @@ int ub_display_draw_bitmap(ulong bitmap, int x, int y)
 void ub_display_clear(void)
 {
 	syscall(API_DISPLAY_CLEAR, NULL);
+}
+
+__weak void *memcpy(void *dest, const void *src, size_t size)
+{
+	unsigned char *dptr = dest;
+	const unsigned char *ptr = src;
+	const unsigned char *end = src + size;
+
+	while (ptr < end)
+		*dptr++ = *ptr++;
+
+	return dest;
 }

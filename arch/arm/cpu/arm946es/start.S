@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  armboot - Startup Code for ARM926EJS CPU-core
  *
@@ -11,13 +12,10 @@
  *  Copyright (c) 2003	Richard Woodruff <r-woodruff2@ti.com>
  *  Copyright (c) 2003	Kshitij <kshitij@ti.com>
  *  Copyright (c) 2010	Albert Aribaud <albert.u.boot@aribaud.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
 #include <config.h>
-#include <version.h>
 
 /*
  *************************************************************************
@@ -87,15 +85,17 @@ cpu_init_crit:
 	mrc	p15, 0, r0, c1, c0, 0
 	bic	r0, r0, #0x00002300	/* clear bits 13, 9:8 (--V- --RS) */
 	bic	r0, r0, #0x00000087	/* clear bits 7, 2:0 (B--- -CAM) */
-	orr	r0, r0, #0x00000002	/* set bit 2 (A) Align */
+	orr	r0, r0, #0x00000002	/* set bit 1 (A) Align */
 	orr	r0, r0, #0x00001000	/* set bit 12 (I) I-Cache */
 	mcr	p15, 0, r0, c1, c0, 0
 
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT_ONLY
 	/*
 	 * Go setup Memory and board specific bits prior to relocation.
 	 */
 	mov	ip, lr		/* perserve link reg across call */
 	bl	lowlevel_init	/* go setup memory */
 	mov	lr, ip		/* restore link */
+#endif
 	mov	pc, lr		/* back to my caller */
 #endif

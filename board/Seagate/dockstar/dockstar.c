@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010  Eric C. Cooper <ecc@cmu.edu>
  *
@@ -5,16 +6,16 @@
  * Prafulla Wadaskar <prafulla@marvell.com>
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <miiphy.h>
-#include <asm/arch/kirkwood.h>
+#include <net.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/cpu.h>
 #include <asm/io.h>
+#include <asm/mach-types.h>
 #include "dockstar.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -26,9 +27,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the  below configuration configures mainly initial LED status
 	 */
-	kw_config_gpio(DOCKSTAR_OE_VAL_LOW,
-			DOCKSTAR_OE_VAL_HIGH,
-			DOCKSTAR_OE_LOW, DOCKSTAR_OE_HIGH);
+	mvebu_config_gpio(DOCKSTAR_OE_VAL_LOW,
+			  DOCKSTAR_OE_VAL_HIGH,
+			  DOCKSTAR_OE_LOW, DOCKSTAR_OE_HIGH);
 
 	/* Multi-Purpose Pins Functionality configuration */
 	static const u32 kwmpp_config[] = {
@@ -96,7 +97,7 @@ int board_init(void)
 	gd->bd->bi_arch_number = MACH_TYPE_DOCKSTAR;
 
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	return 0;
 }
@@ -143,7 +144,7 @@ void reset_phy(void)
 
 static void set_leds(u32 leds, u32 blinking)
 {
-	struct kwgpio_registers *r = (struct kwgpio_registers *)KW_GPIO1_BASE;
+	struct kwgpio_registers *r = (struct kwgpio_registers *)MVEBU_GPIO1_BASE;
 	u32 oe = readl(&r->oe) | BOTH_LEDS;
 	writel(oe & ~leds, &r->oe);	/* active low */
 	u32 bl = readl(&r->blink_en) & ~BOTH_LEDS;

@@ -1,30 +1,31 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux-mx51.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
-#include <asm/imx-common/mx5_video.h>
+#include <asm/mach-imx/mx5_video.h>
 #include <i2c.h>
+#include <input.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <power/pmic.h>
 #include <fsl_pmic.h>
 #include <mc13892.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 struct fsl_esdhc_cfg esdhc_cfg[2] = {
 	{MMC_SDHC1_BASE_ADDR},
 	{MMC_SDHC2_BASE_ADDR},
@@ -112,7 +113,7 @@ static void setup_iomux_spi(void)
 #ifdef CONFIG_USB_EHCI_MX5
 #define MX51EVK_USBH1_HUB_RST	IMX_GPIO_NR(1, 7)
 #define MX51EVK_USBH1_STP	IMX_GPIO_NR(1, 27)
-#define MX51EVK_USB_CLK_EN_B	IMX_GPIO_NR(2, 2)
+#define MX51EVK_USB_CLK_EN_B	IMX_GPIO_NR(2, 1)
 #define MX51EVK_USB_PHY_RESET	IMX_GPIO_NR(2, 5)
 
 static void setup_usb_h1(void)
@@ -262,7 +263,7 @@ static void power_init(void)
 	gpio_set_value(IMX_GPIO_NR(2, 14), 1);
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 int board_mmc_getcd(struct mmc *mmc)
 {
 	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
@@ -320,7 +321,7 @@ int board_mmc_init(bd_t *bis)
 	};
 
 	u32 index;
-	s32 status = 0;
+	int ret;
 
 	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 	esdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
@@ -340,11 +341,13 @@ int board_mmc_init(bd_t *bis)
 			printf("Warning: you configured more ESDHC controller"
 				"(%d) as supported by the board(2)\n",
 				CONFIG_SYS_FSL_ESDHC_NUM);
-			return status;
+			return -EINVAL;
 		}
-		status |= fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		ret = fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		if (ret)
+			return ret;
 	}
-	return status;
+	return 0;
 }
 #endif
 

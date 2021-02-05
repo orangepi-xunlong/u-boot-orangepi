@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * MUSB OTG driver host support
  *
@@ -5,36 +6,11 @@
  * Copyright (C) 2005-2006 by Texas Instruments
  * Copyright (C) 2006-2007 Nokia Corporation
  * Copyright (C) 2008-2009 MontaVista Software, Inc. <source@mvista.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
- * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
-#define __UBOOT__
 #ifndef __UBOOT__
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
@@ -2068,7 +2044,11 @@ int musb_urb_enqueue(
 
 	/* precompute addressing for external hub/tt ports */
 	if (musb->is_multipoint) {
+#ifndef __UBOOT__
 		struct usb_device	*parent = urb->dev->parent;
+#else
+		struct usb_device	*parent = usb_dev_get_parent(urb->dev);
+#endif
 
 #ifndef __UBOOT__
 		if (parent != hcd->self.root_hub) {
@@ -2089,9 +2069,13 @@ int musb_urb_enqueue(
 			}
 #else
 			if (tt_needed(musb, urb->dev)) {
-				u16 hub_port = find_tt(urb->dev);
-				qh->h_addr_reg = (u8) (hub_port >> 8);
-				qh->h_port_reg = (u8) (hub_port & 0xff);
+				uint8_t portnr = 0;
+				uint8_t hubaddr = 0;
+				usb_find_usb2_hub_address_port(urb->dev,
+							       &hubaddr,
+							       &portnr);
+				qh->h_addr_reg = hubaddr;
+				qh->h_port_reg = portnr;
 			}
 #endif
 		}
@@ -2131,8 +2115,6 @@ done:
 	return ret;
 }
 
-
-#ifndef __UBOOT__
 /*
  * abort a transfer that's at the head of a hardware queue.
  * called with controller locked, irqs blocked
@@ -2196,7 +2178,14 @@ static int musb_cleanup_urb(struct urb *urb, struct musb_qh *qh)
 	return status;
 }
 
-static int musb_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
+#ifndef __UBOOT__
+static int musb_urb_dequeue(
+#else
+int musb_urb_dequeue(
+#endif
+	struct usb_hcd *hcd,
+	struct urb *urb,
+	int status)
 {
 	struct musb		*musb = hcd_to_musb(hcd);
 	struct musb_qh		*qh;
@@ -2254,6 +2243,7 @@ done:
 	return ret;
 }
 
+#ifndef __UBOOT__
 /* disable an endpoint */
 static void
 musb_h_disable(struct usb_hcd *hcd, struct usb_host_endpoint *hep)

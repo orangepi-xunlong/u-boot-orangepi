@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * ddr_defs.h
  *
  * ddr specific header
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DDR_DEFS_H
@@ -33,11 +32,7 @@
 #define MT47H128M16RT25E_EMIF_SDCFG		0x41805332
 #define MT47H128M16RT25E_EMIF_SDREF		0x0000081a
 #define MT47H128M16RT25E_RATIO			0x80
-#define MT47H128M16RT25E_INVERT_CLKOUT		0x00
 #define MT47H128M16RT25E_RD_DQS			0x12
-#define MT47H128M16RT25E_WR_DQS			0x00
-#define MT47H128M16RT25E_PHY_WRLVL		0x00
-#define MT47H128M16RT25E_PHY_GATELVL		0x00
 #define MT47H128M16RT25E_PHY_WR_DATA		0x40
 #define MT47H128M16RT25E_PHY_FIFO_WE		0x80
 #define MT47H128M16RT25E_IOCTRL_VALUE		0x18B
@@ -58,6 +53,21 @@
 #define MT41J128MJT125_PHY_FIFO_WE		0x100
 #define MT41J128MJT125_IOCTRL_VALUE		0x18B
 
+/* Micron MT41J128M16JT-125 at 400MHz*/
+#define MT41J128MJT125_EMIF_READ_LATENCY_400MHz	0x100007
+#define MT41J128MJT125_EMIF_TIM1_400MHz		0x0AAAD4DB
+#define MT41J128MJT125_EMIF_TIM2_400MHz		0x26437FDA
+#define MT41J128MJT125_EMIF_TIM3_400MHz		0x501F83FF
+#define MT41J128MJT125_EMIF_SDCFG_400MHz	0x61C052B2
+#define MT41J128MJT125_EMIF_SDREF_400MHz	0x00000C30
+#define MT41J128MJT125_ZQ_CFG_400MHz		0x50074BE4
+#define MT41J128MJT125_RATIO_400MHz		0x80
+#define MT41J128MJT125_INVERT_CLKOUT_400MHz	0x0
+#define MT41J128MJT125_RD_DQS_400MHz		0x3A
+#define MT41J128MJT125_WR_DQS_400MHz		0x3B
+#define MT41J128MJT125_PHY_WR_DATA_400MHz	0x76
+#define MT41J128MJT125_PHY_FIFO_WE_400MHz	0x96
+
 /* Micron MT41K128M16JT-187E */
 #define MT41K128MJT187E_EMIF_READ_LATENCY	0x06
 #define MT41K128MJT187E_EMIF_TIM1		0x0888B3DB
@@ -73,6 +83,22 @@
 #define MT41K128MJT187E_PHY_WR_DATA		0xC1
 #define MT41K128MJT187E_PHY_FIFO_WE		0x100
 #define MT41K128MJT187E_IOCTRL_VALUE		0x18B
+
+/* Micron MT41K128M16JT-125 IT:K (256 MB) at 400MHz */
+#define MT41K128M16JT125K_EMIF_READ_LATENCY     0x07
+#define MT41K128M16JT125K_EMIF_TIM1             0x0AAAD4DB
+#define MT41K128M16JT125K_EMIF_TIM2             0x2A437FDA
+#define MT41K128M16JT125K_EMIF_TIM3             0x501F83FF
+#define MT41K128M16JT125K_EMIF_SDCFG            0x61A052B2
+#define MT41K128M16JT125K_EMIF_SDREF            0x00000C30
+#define MT41K128M16JT125K_ZQ_CFG                0x50074BE4
+#define MT41K128M16JT125K_RATIO                 0x80
+#define MT41K128M16JT125K_INVERT_CLKOUT         0x0
+#define MT41K128M16JT125K_RD_DQS                0x38
+#define MT41K128M16JT125K_WR_DQS                0x46
+#define MT41K128M16JT125K_PHY_WR_DATA           0x7D
+#define MT41K128M16JT125K_PHY_FIFO_WE           0x9B
+#define MT41K128M16JT125K_IOCTRL_VALUE          0x18B
 
 /* Micron MT41J64M16JT-125 */
 #define MT41J64MJT125_EMIF_SDCFG		0x61C04A32
@@ -343,9 +369,15 @@ struct ddr_ctrl {
 	unsigned int ddrckectrl;
 };
 
+#ifdef CONFIG_TI816X
+void config_ddr(const struct ddr_data *data, const struct cmd_control *ctrl,
+		const struct emif_regs *regs,
+		const struct dmm_lisa_map_regs *lisa_regs, int nrs);
+#else
 void config_ddr(unsigned int pll, const struct ctrl_ioregs *ioregs,
 		const struct ddr_data *data, const struct cmd_control *ctrl,
 		const struct emif_regs *regs, int nr);
+#endif
 void emif_get_ext_phy_ctrl_const_regs(const u32 **regs, u32 *size);
 
 #endif  /* _DDR_DEFS_H */

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23 CLKCTRL Register Definitions
  *
@@ -6,14 +7,12 @@
  *
  * Based on code from LTIB:
  * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX23_REGS_CLKCTRL_H__
 #define __MX23_REGS_CLKCTRL_H__
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_clkctrl_regs {
@@ -25,8 +24,10 @@ struct mxs_clkctrl_regs {
 	mxs_reg_32(hw_clkctrl_xbus)		/* 0x40 */
 	mxs_reg_32(hw_clkctrl_xtal)		/* 0x50 */
 	mxs_reg_32(hw_clkctrl_pix)		/* 0x60 */
-	mxs_reg_32(hw_clkctrl_ssp0)		/* 0x70 */
-	mxs_reg_32(hw_clkctrl_gpmi)		/* 0x80 */
+	uint32_t	hw_clkctrl_ssp0;	/* 0x70 */
+	uint32_t	reserved_ssp0[3];	/* 0x74-0x7c */
+	uint32_t	hw_clkctrl_gpmi;	/* 0x80 */
+	uint32_t	reserved_gpmi[3];	/* 0x84-0x8c */
 	mxs_reg_32(hw_clkctrl_spdif)		/* 0x90 */
 	mxs_reg_32(hw_clkctrl_emi)		/* 0xa0 */
 

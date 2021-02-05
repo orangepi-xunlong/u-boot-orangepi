@@ -1,19 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
  * Copyright (C) 2012 Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <spl.h>
 #include <version.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/spr_defs.h>
 #include <asm/arch/spr_misc.h>
 #include <asm/arch/spr_syscntl.h>
+#include <linux/mtd/st_smi.h>
+
+/* Reserve some space to store the BootROM's stack pointer during SPL operation.
+ * The BSS cannot be used for this purpose because it will be zeroed after
+ * having stored the pointer, so force the location to the data section.
+ */
+u32 bootrom_stash_sp __attribute__((section(".data")));
 
 static void ddr_clock_init(void)
 {
@@ -205,55 +212,89 @@ int get_socrev(void)
 #endif
 }
 
-void lowlevel_init(void)
+/*
+ * SNOR (Serial NOR flash) related functions
+ */
+static void snor_init(void)
+{
+	struct smi_regs *const smicntl =
+		(struct smi_regs * const)CONFIG_SYS_SMI_BASE;
+
+	/* Setting the fast mode values. SMI working at 166/4 = 41.5 MHz */
+	writel(HOLD1 | FAST_MODE | BANK_EN | DSEL_TIME | PRESCAL4,
+	       &smicntl->smi_cr1);
+}
+
+u32 spl_boot_device(void)
+{
+	u32 mode = 0;
+
+	if (usb_boot_selected()) {
+		mode = BOOT_DEVICE_BOOTROM;
+	} else if (snor_boot_selected()) {
+		/* SNOR-SMI initialization */
+		snor_init();
+
+		mode = BOOT_DEVICE_NOR;
+	}
+
+	return mode;
+}
+
+void board_boot_order(u32 *spl_boot_list)
+{
+	spl_boot_list[0] = spl_boot_device();
+
+	/*
+	 * If the main boot device (eg. NOR) is empty, try to jump back into the
+	 * BootROM for USB boot process.
+	 */
+	if (USB_BOOT_SUPPORTED)
+		spl_boot_list[1] = BOOT_DEVICE_BOOTROM;
+}
+
+void board_init_f(ulong dummy)
 {
 	struct misc_regs *misc_p = (struct misc_regs *)CONFIG_SPEAR_MISCBASE;
-	const char *u_boot_rev = U_BOOT_VERSION;
 
 	/* Initialize PLLs */
 	sys_init();
 
-	/* Initialize UART */
-	serial_init();
-
-	/* Print U-Boot SPL version string */
-	serial_puts("\nU-Boot SPL ");
-	/* Avoid a second "U-Boot" coming from this string */
-	u_boot_rev = &u_boot_rev[7];
-	serial_puts(u_boot_rev);
-	serial_puts(" (");
-	serial_puts(U_BOOT_DATE);
-	serial_puts(" - ");
-	serial_puts(U_BOOT_TIME);
-	serial_puts(")\n");
-
-#if defined(CONFIG_OS_BOOT)
-	writel(readl(&misc_p->periph1_clken) | PERIPH_UART1,
-			&misc_p->periph1_clken);
-#endif
+	preloader_console_init();
+	arch_cpu_init();
 
 	/* Enable IPs (release reset) */
 	writel(PERIPH_RST_ALL, &misc_p->periph1_rst);
 
 	/* Initialize MPMC */
-	serial_puts("Configure DDR\n");
+	puts("Configure DDR\n");
 	mpmc_init();
-
-	/* SoC specific initialization */
-	soc_init();
+	spear_late_init();
 }
 
-void spear_late_init(void)
+/*
+ * In a few cases (Ethernet, UART or USB boot, we might want to go back into the
+ * BootROM code right after having initialized a few components like the DRAM).
+ * The following function is called from SPL common code (board_init_r).
+ */
+int board_return_to_bootrom(struct spl_image_info *spl_image,
+			    struct spl_boot_device *bootdev)
 {
-	struct misc_regs *misc_p = (struct misc_regs *)CONFIG_SPEAR_MISCBASE;
+	/*
+	 * Retrieve the BootROM's stack pointer and jump back to the start of
+	 * the SPL, where we can easily branch back into the BootROM. Don't do
+	 * it right here because SPL might be compiled in Thumb mode while the
+	 * BootROM expects ARM mode.
+	 */
+	asm volatile ("ldr r0, =bootrom_stash_sp;"
+		      "ldr r0, [r0];"
+		      "mov sp, r0;"
+#if defined(CONFIG_SPL_SYS_THUMB_BUILD)
+		      "blx back_to_bootrom;"
+#else
+		      "bl back_to_bootrom;"
+#endif
+		      );
 
-	writel(0x80000007, &misc_p->arb_icm_ml1);
-	writel(0x80000007, &misc_p->arb_icm_ml2);
-	writel(0x80000007, &misc_p->arb_icm_ml3);
-	writel(0x80000007, &misc_p->arb_icm_ml4);
-	writel(0x80000007, &misc_p->arb_icm_ml5);
-	writel(0x80000007, &misc_p->arb_icm_ml6);
-	writel(0x80000007, &misc_p->arb_icm_ml7);
-	writel(0x80000007, &misc_p->arb_icm_ml8);
-	writel(0x80000007, &misc_p->arb_icm_ml9);
+	return 0;
 }

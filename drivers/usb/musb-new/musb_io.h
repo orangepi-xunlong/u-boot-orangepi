@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MUSB OTG driver register I/O
  *
@@ -8,28 +9,6 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
- * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef __MUSB_LINUX_PLATFORM_ARCH_H__
@@ -42,9 +21,9 @@
 #endif
 
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SUPERH) \
-	&& !defined(CONFIG_AVR32) && !defined(CONFIG_PPC32) \
-	&& !defined(CONFIG_PPC64) && !defined(CONFIG_BLACKFIN) \
-	&& !defined(CONFIG_MIPS) && !defined(CONFIG_M68K)
+	&& !defined(CONFIG_PPC32) \
+	&& !defined(CONFIG_PPC64) && !defined(CONFIG_MIPS) \
+	&& !defined(CONFIG_M68K)
 static inline void readsl(const void __iomem *addr, void *buf, int len)
 	{ insl((unsigned long)addr, buf, len); }
 static inline void readsw(const void __iomem *addr, void *buf, int len)
@@ -60,8 +39,6 @@ static inline void writesb(const void __iomem *addr, const void *buf, int len)
 	{ outsb((unsigned long)addr, buf, len); }
 
 #endif
-
-#ifndef CONFIG_BLACKFIN
 
 /* NOTE:  these offsets are all in bytes */
 
@@ -120,27 +97,5 @@ static inline void musb_writeb(void __iomem *addr, unsigned offset, u8 data)
 	{ __raw_writeb(data, addr + offset); }
 
 #endif	/* CONFIG_USB_MUSB_TUSB6010 */
-
-#else
-
-static inline u8 musb_readb(const void __iomem *addr, unsigned offset)
-	{ return (u8) (bfin_read16(addr + offset)); }
-
-static inline u16 musb_readw(const void __iomem *addr, unsigned offset)
-	{ return bfin_read16(addr + offset); }
-
-static inline u32 musb_readl(const void __iomem *addr, unsigned offset)
-	{ return (u32) (bfin_read16(addr + offset)); }
-
-static inline void musb_writeb(void __iomem *addr, unsigned offset, u8 data)
-	{ bfin_write16(addr + offset, (u16) data); }
-
-static inline void musb_writew(void __iomem *addr, unsigned offset, u16 data)
-	{ bfin_write16(addr + offset, data); }
-
-static inline void musb_writel(void __iomem *addr, unsigned offset, u32 data)
-	{ bfin_write16(addr + offset, (u16) data); }
-
-#endif /* CONFIG_BLACKFIN */
 
 #endif

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006-2007
  *
  * Authors: Nick.Spence@freescale.com
  *          Wilson.Lo@freescale.com
  *          scottwood@freescale.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -48,7 +47,7 @@ static long fixed_sdram(void)
 	volatile immap_t *im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	u32 msize_log2 = __ilog2(msize);
 
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & 0xfffff000;
 	im->sysconf.ddrlaw[0].ar = LBLAWAR_EN | (msize_log2 - 1);
 	im->sysconf.ddrcdr = CONFIG_SYS_DDRCDR_VALUE;
 
@@ -58,12 +57,12 @@ static long fixed_sdram(void)
 	 */
 	__udelay(50000);
 
-#if ((CONFIG_SYS_DDR_SDRAM_BASE & 0x00FFFFFF) != 0)
+#if ((CONFIG_SYS_SDRAM_BASE & 0x00FFFFFF) != 0)
 #warning Chip select bounds is only configurable in 16MB increments
 #endif
 	im->ddr.csbnds[0].csbnds =
-		((CONFIG_SYS_DDR_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
-		(((CONFIG_SYS_DDR_SDRAM_BASE + msize - 1) >> CSBNDS_EA_SHIFT) &
+		((CONFIG_SYS_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_SDRAM_BASE + msize - 1) >> CSBNDS_EA_SHIFT) &
 			CSBNDS_EA);
 	im->ddr.cs_config[0] = CONFIG_SYS_DDR_CS0_CONFIG;
 
@@ -97,21 +96,22 @@ static long fixed_sdram(void)
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile fsl_lbc_t *lbc = &im->im_lbc;
 	u32 msize;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM - Main SODIMM */
 	msize = fixed_sdram();
 
 	/* Local Bus setup lbcr and mrtpr */
-	lbc->lbcr = CONFIG_SYS_LBC_LBCR;
-	lbc->mrtpr = CONFIG_SYS_LBC_MRTPR;
+	lbc->lbcr = (0x00040000 | (0xFF << LBCR_BMT_SHIFT) | 0xF);
+	/* LB refresh timer prescal, 266MHz/32 */
+	lbc->mrtpr = 0x20000000;
 	sync();
 
 #ifndef CONFIG_SYS_8313ERDB_BROKEN_PMC
@@ -120,5 +120,7 @@ phys_size_t initdram(int board_type)
 #endif
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize;
+	gd->ram_size = msize;
+
+	return 0;
 }

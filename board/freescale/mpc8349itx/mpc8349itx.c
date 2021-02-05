@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <fdt_support.h>
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
@@ -17,8 +17,13 @@
 #include <spd_sdram.h>
 #include <asm/mmu.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #endif
+
+#include "../../../arch/powerpc/cpu/mpc83xx/hrcw/hrcw.h"
+#include "../../../arch/powerpc/cpu/mpc83xx/elbc/elbc.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_SPD_EEPROM
 /*************************************************************************
@@ -33,14 +38,14 @@ int fixed_sdram(void)
 
 	im->sysconf.ddrlaw[0].ar =
 	    LAWAR_EN | ((ddr_size_log2 - 1) & LAWAR_SIZE);
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & 0xfffff000;
 
-#if ((CONFIG_SYS_DDR_SDRAM_BASE & 0x00FFFFFF) != 0)
+#if ((CONFIG_SYS_SDRAM_BASE & 0x00FFFFFF) != 0)
 #warning Chip select bounds is only configurable in 16MB increments
 #endif
 	im->ddr.csbnds[0].csbnds =
-		((CONFIG_SYS_DDR_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
-		(((CONFIG_SYS_DDR_SDRAM_BASE + ddr_size - 1) >>
+		((CONFIG_SYS_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_SDRAM_BASE + ddr_size - 1) >>
 				CSBNDS_EA_SHIFT) & CSBNDS_EA);
 	im->ddr.cs_config[0] = CONFIG_SYS_DDR_CS0_CONFIG;
 
@@ -116,7 +121,7 @@ volatile static struct pci_controller hose[] = {
 };
 #endif				/* CONFIG_PCI */
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -125,10 +130,10 @@ phys_size_t initdram(int board_type)
 #endif
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32) im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM - Main SODIMM */
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR;
 #ifdef CONFIG_SPD_EEPROM
 	msize = spd_sdram();
 #else
@@ -144,12 +149,14 @@ phys_size_t initdram(int board_type)
 #endif
 
 	/* return total bus RAM size(bytes) */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
 {
-#ifdef CONFIG_MPC8349ITX
+#ifdef CONFIG_TARGET_MPC8349ITX
 	puts("Board: Freescale MPC8349E-mITX\n");
 #else
 	puts("Board: Freescale MPC8349E-mITX-GP\n");
@@ -378,11 +385,13 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif

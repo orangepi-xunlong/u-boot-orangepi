@@ -23,9 +23,20 @@
 
 #include <linux/types.h>
 
+#ifdef CONFIG_DM_SERIAL
+/*
+ * For driver model we always use one byte per register, and sort out the
+ * differences in the driver
+ */
+#define CONFIG_SYS_NS16550_REG_SIZE (-1)
+#endif
+
+#ifdef CONFIG_NS16550_DYNAMIC
+#define UART_REG(x)	unsigned char x
+#else
 #if !defined(CONFIG_SYS_NS16550_REG_SIZE) || (CONFIG_SYS_NS16550_REG_SIZE == 0)
 #error "Please define NS16550 registers size."
-#elif defined(CONFIG_SYS_NS16550_MEM32)
+#elif defined(CONFIG_SYS_NS16550_MEM32) && !defined(CONFIG_DM_SERIAL)
 #define UART_REG(x) u32 x
 #elif (CONFIG_SYS_NS16550_REG_SIZE > 0)
 #define UART_REG(x)						   \
@@ -36,6 +47,40 @@
 	unsigned char x;						\
 	unsigned char postpad_##x[-CONFIG_SYS_NS16550_REG_SIZE - 1];
 #endif
+#endif /* CONFIG_NS16550_DYNAMIC */
+
+enum ns16550_flags {
+	NS16550_FLAG_IO		= 1 << 0, /* Use I/O access (else mem-mapped) */
+	NS16550_FLAG_ENDIAN	= 1 << 1, /* Use out_le/be_32() */
+	NS16550_FLAG_BE		= 1 << 2, /* Big-endian access (else little) */
+};
+
+/**
+ * struct ns16550_platdata - information about a NS16550 port
+ *
+ * @base:		Base register address
+ * @reg_width:		IO accesses size of registers (in bytes, 1 or 4)
+ * @reg_shift:		Shift size of registers (0=byte, 1=16bit, 2=32bit...)
+ * @reg_offset:		Offset to start of registers (normally 0)
+ * @clock:		UART base clock speed in Hz
+ * @fcr:		Offset of FCR register (normally UART_FCR_DEFVAL)
+ * @flags:		A few flags (enum ns16550_flags)
+ * @bdf:		PCI slot/function (pci_dev_t)
+ */
+struct ns16550_platdata {
+	unsigned long base;
+	int reg_width;
+	int reg_shift;
+	int reg_offset;
+	int clock;
+	u32 fcr;
+	int flags;
+#if defined(CONFIG_PCI) && defined(CONFIG_SPL)
+	int bdf;
+#endif
+};
+
+struct udevice;
 
 struct NS16550 {
 	UART_REG(rbr);		/* 0 */
@@ -64,8 +109,9 @@ struct NS16550 {
 	UART_REG(uasr);		/* F */
 	UART_REG(scr);		/* 10*/
 	UART_REG(ssr);		/* 11*/
-	UART_REG(reg12);	/* 12*/
-	UART_REG(osc_12m_sel);	/* 13*/
+#endif
+#ifdef CONFIG_DM_SERIAL
+	struct ns16550_platdata *plat;
 #endif
 };
 
@@ -92,13 +138,14 @@ typedef struct NS16550 *NS16550_t;
 #define UART_FCR_RXSR		0x02 /* Receiver soft reset */
 #define UART_FCR_TXSR		0x04 /* Transmitter soft reset */
 
-/*
- * These are the definitions for the Status Register
- */
-#define UART_USR                0x7c      /* UART Status Register*/
-#define UART_USR_TFNF           (0x1<<1)  /* TX FIFO full bit ofs*/
-#define TX_FIFO_FULL            0x1       /* TX FIFO not full */
-#define TX_FIFO_NOT_FULL        0x0       /* TX FIFO full */
+/* Ingenic JZ47xx specific UART-enable bit. */
+#define UART_FCR_UME		0x10
+
+/* Clear & enable FIFOs */
+#define UART_FCR_DEFVAL (UART_FCR_FIFO_EN | \
+			UART_FCR_RXSR |	\
+			UART_FCR_TXSR)
+
 /*
  * These are the definitions for the Modem Control Register
  */
@@ -171,11 +218,6 @@ typedef struct NS16550 *NS16550_t;
 #define UART_IER_THRI	0x02	/* Enable Transmitter holding register int. */
 #define UART_IER_RDI	0x01	/* Enable receiver data interrupt */
 
-
-#ifdef CONFIG_OMAP1510
-#define OSC_12M_SEL	0x01	/* selects 6.5 * current clk div */
-#endif
-
 /* useful defaults for LCR */
 #define UART_LCR_8N1	0x03
 
@@ -184,3 +226,43 @@ void NS16550_putc(NS16550_t com_port, char c);
 char NS16550_getc(NS16550_t com_port);
 int NS16550_tstc(NS16550_t com_port);
 void NS16550_reinit(NS16550_t com_port, int baud_divisor);
+
+/**
+ * ns16550_calc_divisor() - calculate the divisor given clock and baud rate
+ *
+ * Given the UART input clock and required baudrate, calculate the divisor
+ * that should be used.
+ *
+ * @port:	UART port
+ * @clock:	UART input clock speed in Hz
+ * @baudrate:	Required baud rate
+ * @return baud rate divisor that should be used
+ */
+int ns16550_calc_divisor(NS16550_t port, int clock, int baudrate);
+
+/**
+ * ns16550_serial_ofdata_to_platdata() - convert DT to platform data
+ *
+ * Decode a device tree node for an ns16550 device. This includes the
+ * register base address and register shift properties. The caller must set
+ * up the clock frequency.
+ *
+ * @dev:	dev to decode platform data for
+ * @return:	0 if OK, -EINVAL on error
+ */
+int ns16550_serial_ofdata_to_platdata(struct udevice *dev);
+
+/**
+ * ns16550_serial_probe() - probe a serial port
+ *
+ * This sets up the serial port ready for use, except for the baud rate
+ * @return 0, or -ve on error
+ */
+int ns16550_serial_probe(struct udevice *dev);
+
+/**
+ * struct ns16550_serial_ops - ns16550 serial operations
+ *
+ * These should be used by the client driver for the driver's 'ops' member
+ */
+extern const struct dm_serial_ops ns16550_serial_ops;

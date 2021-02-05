@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Sergei Poselenov, Emcraft Systems, sposelenov@emcraft.com.
@@ -6,8 +7,6 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -32,9 +31,7 @@
 
 struct law_entry law_table[] = {
 	SET_LAW(CONFIG_SYS_DDR_SDRAM_BASE, LAW_SIZE_512M, LAW_TRGT_IF_DDR),
-	SET_LAW(CONFIG_SYS_PCI1_MEM_PHYS, LAW_SIZE_512M, LAW_TRGT_IF_PCI),
 	SET_LAW(CONFIG_SYS_LBC_FLASH_BASE, LAW_SIZE_64M, LAW_TRGT_IF_LBC),
-	SET_LAW(CONFIG_SYS_PCI1_IO_PHYS, LAW_SIZE_16M, LAW_TRGT_IF_PCI),
 #if defined(CONFIG_SYS_FPGA_BASE)
 	SET_LAW(CONFIG_SYS_FPGA_BASE, LAW_SIZE_1M, LAW_TRGT_IF_LBC),
 #endif

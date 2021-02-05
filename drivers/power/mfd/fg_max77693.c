@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Samsung Electronics
  * Piotr Wilczek <p.wilczek@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -52,7 +51,7 @@ static int power_update_battery(struct pmic *p, struct pmic *bat)
 
 	if (pmic_probe(p)) {
 		puts("Can't find max77693 fuel gauge\n");
-		return -1;
+		return -ENODEV;
 	}
 
 	ret = max77693_get_soc(&pb->bat->state_of_chrg);
@@ -60,8 +59,6 @@ static int power_update_battery(struct pmic *p, struct pmic *bat)
 		return ret;
 
 	max77693_get_vcell(&pb->bat->voltage_uV);
-	if (ret)
-		return ret;
 
 	return 0;
 }
@@ -74,7 +71,7 @@ static int power_check_battery(struct pmic *p, struct pmic *bat)
 
 	if (pmic_probe(p)) {
 		puts("Can't find max77693 fuel gauge\n");
-		return -1;
+		return -ENODEV;
 	}
 
 	ret = pmic_reg_read(p, MAX77693_STATUS, &val);

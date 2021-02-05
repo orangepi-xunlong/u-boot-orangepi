@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * pinmux setup for siemens draco board
  *
@@ -7,8 +8,6 @@
  * Based on:
  * u-boot:/board/ti/am335x/mux.c
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -51,6 +50,7 @@ static struct module_pin_mux nand_pin_mux[] = {
 	{OFFSET(gpmc_wait0), (MODE(0) | RXACTIVE | PULLUP_EN)}, /* NAND WAIT */
 	{OFFSET(gpmc_wpn), (MODE(7) | PULLUP_EN | RXACTIVE)},	/* NAND_WPN */
 	{OFFSET(gpmc_csn0), (MODE(0) | PULLUDEN)},	/* NAND_CS0 */
+	{OFFSET(gpmc_csn1), MODE(0) | PULLUDEN | PULLUP_EN},    /* NAND_CS1 */
 	{OFFSET(gpmc_advn_ale), (MODE(0) | PULLUDEN)}, /* NAND_ADV_ALE */
 	{OFFSET(gpmc_oen_ren), (MODE(0) | PULLUDEN)},	/* NAND_OE */
 	{OFFSET(gpmc_wen), (MODE(0) | PULLUDEN)},	/* NAND_WEN */
@@ -60,7 +60,7 @@ static struct module_pin_mux nand_pin_mux[] = {
 
 static struct module_pin_mux gpios_pin_mux[] = {
 	/* DFU button GPIO0_27*/
-	{OFFSET(gpmc_ad11), (MODE(7) | PULLUDEN | RXACTIVE)},
+	{OFFSET(gpmc_ad11), (MODE(7) | PULLUDEN | PULLUP_EN | RXACTIVE)},
 	{OFFSET(gpmc_csn3), MODE(7) },			/* LED0 GPIO2_0 */
 	{OFFSET(emu0), MODE(7)},			/* LED1 GPIO3_7 */
 	/* Triacs in HW Rev 2 */
@@ -68,7 +68,6 @@ static struct module_pin_mux gpios_pin_mux[] = {
 	{OFFSET(mmc0_dat1), MODE(7) | PULLUDDIS | RXACTIVE},	/* Y3 GPIO2_28*/
 	{OFFSET(mmc0_dat2), MODE(7) | PULLUDDIS | RXACTIVE},	/* Y7 GPIO2_27*/
 	/* Triacs initial HW Rev */
-	{OFFSET(gpmc_csn1), MODE(7) | RXACTIVE | PULLUDDIS},	/* 1_30 Y0 */
 	{OFFSET(gpmc_be1n), MODE(7) | RXACTIVE | PULLUDDIS},	/* 1_28 Y1 */
 	{OFFSET(gpmc_csn2), MODE(7) | RXACTIVE | PULLUDDIS},	/* 1_31 Y2 */
 	{OFFSET(lcd_data15), MODE(7) | RXACTIVE | PULLUDDIS},	/* 0_11 Y3 */
@@ -222,7 +221,7 @@ static struct module_pin_mux gpios_pin_mux[] = {
 	{OFFSET(vrefp), MODE(7) | RXACTIVE | PULLUDDIS},
 	{OFFSET(vrefn), MODE(7) | RXACTIVE | PULLUDDIS},
 	/* nRST for SMSC LAN9303 switch - GPIO2_24 */
-	{OFFSET(lcd_pclk), MODE(7) },			/* LAN9303 nRST */
+	{OFFSET(lcd_pclk), MODE(7) | PULLUDEN | PULLUP_EN }, /* LAN9303 nRST */
 	{-1},
 };
 

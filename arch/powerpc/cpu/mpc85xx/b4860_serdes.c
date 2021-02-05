@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,9 +14,11 @@ struct serdes_config {
 	u8 lanes[SRDS_MAX_LANES];
 };
 
-#ifdef CONFIG_PPC_B4860
+#ifdef CONFIG_ARCH_B4860
 static struct serdes_config serdes1_cfg_tbl[] = {
 	/* SerDes 1 */
+	{0x01, {AURORA, AURORA, CPRI6, CPRI5,
+		CPRI4, CPRI3, CPRI2, CPRI1} },
 	{0x02, {AURORA, AURORA, CPRI6, CPRI5,
 		CPRI4, CPRI3, CPRI2, CPRI1} },
 	{0x04, {AURORA, AURORA, CPRI6, CPRI5,
@@ -25,6 +26,8 @@ static struct serdes_config serdes1_cfg_tbl[] = {
 	{0x05, {AURORA, AURORA, CPRI6, CPRI5,
 		CPRI4, CPRI3, CPRI2, CPRI1} },
 	{0x06, {AURORA, AURORA, CPRI6, CPRI5,
+		CPRI4, CPRI3, CPRI2, CPRI1} },
+	{0x07, {AURORA, AURORA, CPRI6, CPRI5,
 		CPRI4, CPRI3, CPRI2, CPRI1} },
 	{0x08, {AURORA, AURORA, CPRI6, CPRI5,
 		CPRI4, CPRI3, CPRI2, CPRI1} },
@@ -176,7 +179,7 @@ static struct serdes_config serdes2_cfg_tbl[] = {
 };
 #endif
 
-#ifdef CONFIG_PPC_B4420
+#ifdef CONFIG_ARCH_B4420
 static struct serdes_config serdes1_cfg_tbl[] = {
 	{0x0D, {NONE, NONE, CPRI6, CPRI5,
 		CPRI4, CPRI3, NONE, NONE} },
@@ -184,11 +187,16 @@ static struct serdes_config serdes1_cfg_tbl[] = {
 		CPRI4, CPRI3, NONE, NONE} },
 	{0x0F, {NONE, NONE, CPRI6, CPRI5,
 		CPRI4, CPRI3, NONE, NONE} },
+	{0x17, {NONE, NONE,
+		SGMII_FM1_DTSEC3, SGMII_FM1_DTSEC4,
+		NONE, NONE, NONE, NONE} },
 	{0x18, {NONE, NONE,
 		SGMII_FM1_DTSEC3, SGMII_FM1_DTSEC4,
 		NONE, NONE, NONE, NONE} },
 	{0x1B, {NONE, NONE,
 		SGMII_FM1_DTSEC3, SGMII_FM1_DTSEC4,
+		NONE, NONE, NONE, NONE} },
+	{0x1D, {NONE, NONE, AURORA, AURORA,
 		NONE, NONE, NONE, NONE} },
 	{0x1E, {NONE, NONE, AURORA, AURORA,
 		NONE, NONE, NONE, NONE} },
@@ -199,18 +207,28 @@ static struct serdes_config serdes1_cfg_tbl[] = {
 	{}
 };
 static struct serdes_config serdes2_cfg_tbl[] = {
+	{0x48, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
+		SGMII_FM1_DTSEC3, AURORA,
+		NONE, NONE, NONE, NONE} },
 	{0x49, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
 		SGMII_FM1_DTSEC3, AURORA,
 		NONE, NONE, NONE, NONE} },
 	{0x4A, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
 		SGMII_FM1_DTSEC3, AURORA,
 		NONE, NONE, NONE, NONE} },
+	{0x6E, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
+		AURORA, AURORA, NONE, NONE, NONE, NONE} },
 	{0x6F, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
 		AURORA, AURORA,	NONE, NONE, NONE, NONE} },
 	{0x70, {SGMII_FM1_DTSEC1, SGMII_FM1_DTSEC2,
 		AURORA, AURORA,	NONE, NONE, NONE, NONE} },
+	{0x99, {PCIE1, PCIE1,
+		SGMII_FM1_DTSEC3, SGMII_FM1_DTSEC4,
+		NONE, NONE, NONE, NONE} },
 	{0x9A, {PCIE1, PCIE1,
 		SGMII_FM1_DTSEC3, SGMII_FM1_DTSEC4,
+		NONE, NONE, NONE, NONE} },
+	{0x9D, {PCIE1, PCIE1, PCIE1, PCIE1,
 		NONE, NONE, NONE, NONE} },
 	{0x9E, {PCIE1, PCIE1, PCIE1, PCIE1,
 		NONE, NONE, NONE, NONE} },

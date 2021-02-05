@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Copyright (C) 1998	Dan Malek <dmalek@jlc.net>
  *  Copyright (C) 1999	Magnus Damm <kieraypc01.p.y.kie.era.ericsson.se>
  *  Copyright (C) 2000,2001,2002 Wolfgang Denk <wd@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*  U-Boot - Startup Code for PowerPC based Embedded Boards
@@ -106,12 +105,7 @@ _start:
 	lis	r3, IDC_DISABLE@h	/* Disable data cache */
 	mtspr	DC_CST, r3
 
-#if !defined(CONFIG_SYS_DELAYED_ICACHE)
-					/* On IP860 and PCU E,
-					 * we cannot enable IC yet
-					 */
 	lis	r3, IDC_ENABLE@h	/* Enable instruction cache */
-#endif
 	mtspr	IC_CST, r3
 
 	/* invalidate all tlb's							*/
@@ -135,12 +129,6 @@ in_flash:
 	/* initialize some SPRs that are hard to access from C			*/
 	/*----------------------------------------------------------------------*/
 
-	lis	r3, CONFIG_SYS_IMMR@h		/* pass IMMR as arg1 to C routine */
-	ori	r1, r3, CONFIG_SYS_INIT_SP_OFFSET /* set up the stack in internal DPRAM */
-	/* Note: R0 is still 0 here */
-	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
-	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
-
 	/*
 	 * Disable serialized ifetch and show cycles
 	 * (i.e. set processor to normal mode).
@@ -156,6 +144,27 @@ in_flash:
 	ori	r2, r2, CONFIG_SYS_DER@l
 	mtspr	DER, r2
 
+	/* set up the stack on top of internal DPRAM */
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@l
+	stw	r0, -4(r3)
+	stw	r0, -8(r3)
+	addi	r1, r3, -8
+
+	bl	board_init_f_alloc_reserve
+	addi	r1, r3, -8
+
+	/* Zeroise the CPM dpram */
+	lis	r4, CONFIG_SYS_IMMR@h
+	ori	r4, r4, (0x2000 - 4)
+	li	r0, (0x2000 / 4)
+	mtctr	r0
+	li	r0, 0
+1:	stwu	r0, 4(r4)
+	bdnz	1b
+
+	bl	board_init_f_init_reserve
+
 	/* let the C-code set up the rest					*/
 	/*									*/
 	/* Be careful to keep code relocatable !				*/
@@ -163,7 +172,7 @@ in_flash:
 
 	GET_GOT			/* initialize GOT access			*/
 
-	/* r3: IMMR */
+	lis	r3, CONFIG_SYS_IMMR@h
 	bl	cpu_init_f	/* run low-level CPU init code     (from Flash)	*/
 
 	bl	board_init_f	/* run 1st part of board init code (from Flash) */
@@ -310,127 +319,10 @@ int_return:
 	SYNC
 	rfi
 
-/* Cache functions.
-*/
-	.globl	icache_enable
-icache_enable:
-	SYNC
-	lis	r3, IDC_INVALL@h
-	mtspr	IC_CST, r3
-	lis	r3, IDC_ENABLE@h
-	mtspr	IC_CST, r3
-	blr
-
-	.globl	icache_disable
-icache_disable:
-	SYNC
-	lis	r3, IDC_DISABLE@h
-	mtspr	IC_CST, r3
-	blr
-
-	.globl	icache_status
-icache_status:
-	mfspr	r3, IC_CST
-	srwi	r3, r3, 31	/* >>31 => select bit 0 */
-	blr
-
-	.globl	dcache_enable
-dcache_enable:
-#if 0
-	SYNC
-#endif
-#if 1
-	lis	r3, 0x0400		/* Set cache mode with MMU off */
-	mtspr	MD_CTR, r3
-#endif
-
-	lis	r3, IDC_INVALL@h
-	mtspr	DC_CST, r3
-#if 0
-	lis	r3, DC_SFWT@h
-	mtspr	DC_CST, r3
-#endif
-	lis	r3, IDC_ENABLE@h
-	mtspr	DC_CST, r3
-	blr
-
-	.globl	dcache_disable
-dcache_disable:
-	SYNC
-	lis	r3, IDC_DISABLE@h
-	mtspr	DC_CST, r3
-	lis	r3, IDC_INVALL@h
-	mtspr	DC_CST, r3
-	blr
-
-	.globl	dcache_status
-dcache_status:
-	mfspr	r3, DC_CST
-	srwi	r3, r3, 31	/* >>31 => select bit 0 */
-	blr
-
-	.globl	dc_read
-dc_read:
-	mtspr	DC_ADR, r3
-	mfspr	r3, DC_DAT
-	blr
-
-/*
- * unsigned int get_immr (unsigned int mask)
- *
- * return (mask ? (IMMR & mask) : IMMR);
- */
-	.globl	get_immr
-get_immr:
-	mr	r4,r3		/* save mask */
-	mfspr	r3, IMMR	/* IMMR */
-	cmpwi	0,r4,0		/* mask != 0 ? */
-	beq	4f
-	and	r3,r3,r4	/* IMMR & mask */
-4:
-	blr
-
-	.globl get_pvr
-get_pvr:
-	mfspr	r3, PVR
-	blr
-
-
-	.globl wr_ic_cst
-wr_ic_cst:
-	mtspr	IC_CST, r3
-	blr
-
-	.globl rd_ic_cst
-rd_ic_cst:
-	mfspr	r3, IC_CST
-	blr
-
-	.globl wr_ic_adr
-wr_ic_adr:
-	mtspr	IC_ADR, r3
-	blr
-
-
-	.globl wr_dc_cst
-wr_dc_cst:
-	mtspr	DC_CST, r3
-	blr
-
-	.globl rd_dc_cst
-rd_dc_cst:
-	mfspr	r3, DC_CST
-	blr
-
-	.globl wr_dc_adr
-wr_dc_adr:
-	mtspr	DC_ADR, r3
-	blr
-
 /*------------------------------------------------------------------------------*/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.

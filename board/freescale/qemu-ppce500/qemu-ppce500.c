@@ -1,17 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007,2009-2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <init.h>
 #include <pci.h>
+#include <time.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/fsl_pci.h>
 #include <asm/io.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <netdev.h>
 #include <fdtdec.h>
@@ -50,13 +53,19 @@ uint64_t get_phys_ccsrbar_addr_early(void)
 {
 	void *fdt = get_fdt_virt();
 	uint64_t r;
+	int size, node;
+	u32 naddr;
+	const fdt32_t *prop;
 
 	/*
 	 * To be able to read the FDT we need to create a temporary TLB
 	 * map for it.
 	 */
 	map_fdt_as(10);
-	r = fdt_get_base_address(fdt, fdt_path_offset(fdt, "/soc"));
+	node = fdt_path_offset(fdt, "/soc");
+	naddr = fdt_address_cells(fdt, node);
+	prop = fdt_getprop(fdt, node, "ranges", &size);
+	r = fdt_translate_address(fdt, node, prop + naddr);
 	disable_tlb(10);
 
 	return r;
@@ -81,7 +90,7 @@ static int pci_map_region(void *fdt, int pci_node, int range_id,
 	ulong map_addr;
 	int r;
 
-	r = fdt_read_range(fdt, pci_node, 0, NULL, &addr, &size);
+	r = fdt_read_range(fdt, pci_node, range_id, NULL, &addr, &size);
 	if (r)
 		return r;
 
@@ -205,10 +214,10 @@ int last_stage_init(void)
 	/* -kernel boot */
 	prop = fdt_getprop(fdt, chosen, "qemu,boot-kernel", &len);
 	if (prop && (len >= 8))
-		setenv_hex("qemu_kernel_addr", *prop);
+		env_set_hex("qemu_kernel_addr", *prop);
 
 	/* Give the user a variable for the host fdt */
-	setenv_hex("fdt_addr_r", (ulong)fdt);
+	env_set_hex("fdt_addr_r", (ulong)fdt);
 
 	return 0;
 }
@@ -235,9 +244,11 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	FT_FSL_PCI_SETUP;
+
+	return 0;
 }
 #endif
 
@@ -313,7 +324,7 @@ void get_sys_info(sys_info_t *sys_info)
 	sys_info->freq_processor[0] = freq;
 }
 
-int get_clocks (void)
+int get_clocks(void)
 {
 	sys_info_t sys_info;
 
@@ -327,7 +338,7 @@ int get_clocks (void)
 	return 0;
 }
 
-unsigned long get_tbclk (void)
+unsigned long get_tbclk(void)
 {
 	void *fdt = get_fdt_virt();
 	int cpus_node = fdt_path_offset(fdt, "/cpus");
@@ -340,7 +351,7 @@ unsigned long get_tbclk (void)
  * get_bus_freq
  * return system bus freq in Hz
  *********************************************/
-ulong get_bus_freq (ulong dummy)
+ulong get_bus_freq(ulong dummy)
 {
 	sys_info_t sys_info;
 	get_sys_info(&sys_info);

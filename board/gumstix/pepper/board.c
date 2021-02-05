@@ -1,14 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for Gumstix Pepper and AM335x-based boards
  *
  * Copyright (C) 2014, Gumstix, Incorporated - http://www.gumstix.com/
  * Based on board/ti/am335x/board.c from Texas Instruments, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <errno.h>
+#include <serial.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -26,49 +27,64 @@
 #include <miiphy.h>
 #include <cpsw.h>
 #include <power/tps65217.h>
-#include <environment.h>
 #include <watchdog.h>
 #include "board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_SPL_BUILD
+#define OSC	(V_OSCK/1000000)
+
+static const struct ddr_data ddr3_data = {
+	.datardsratio0 = MT41K256M16HA125E_RD_DQS,
+	.datawdsratio0 = MT41K256M16HA125E_WR_DQS,
+	.datafwsratio0 = MT41K256M16HA125E_PHY_FIFO_WE,
+	.datawrsratio0 = MT41K256M16HA125E_PHY_WR_DATA,
+};
+
+static const struct cmd_control ddr3_cmd_ctrl_data = {
+	.cmd0csratio = MT41K256M16HA125E_RATIO,
+	.cmd0iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+
+	.cmd1csratio = MT41K256M16HA125E_RATIO,
+	.cmd1iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+
+	.cmd2csratio = MT41K256M16HA125E_RATIO,
+	.cmd2iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+};
+
+static struct emif_regs ddr3_emif_reg_data = {
+	.sdram_config = MT41K256M16HA125E_EMIF_SDCFG,
+	.ref_ctrl = MT41K256M16HA125E_EMIF_SDREF,
+	.sdram_tim1 = MT41K256M16HA125E_EMIF_TIM1,
+	.sdram_tim2 = MT41K256M16HA125E_EMIF_TIM2,
+	.sdram_tim3 = MT41K256M16HA125E_EMIF_TIM3,
+	.zq_config = MT41K256M16HA125E_ZQ_CFG,
+	.emif_ddr_phy_ctlr_1 = MT41K256M16HA125E_EMIF_READ_LATENCY,
+};
+
+const struct dpll_params dpll_ddr3 = {400, OSC-1, 1, -1, -1, -1, -1};
+
+const struct ctrl_ioregs ioregs_ddr3 = {
+	.cm0ioctl               = MT41K256M16HA125E_IOCTRL_VALUE,
+	.cm1ioctl               = MT41K256M16HA125E_IOCTRL_VALUE,
+	.cm2ioctl               = MT41K256M16HA125E_IOCTRL_VALUE,
+	.dt0ioctl               = MT41K256M16HA125E_IOCTRL_VALUE,
+	.dt1ioctl               = MT41K256M16HA125E_IOCTRL_VALUE,
+};
+
 static const struct ddr_data ddr2_data = {
-	.datardsratio0 = ((MT47H128M16RT25E_RD_DQS<<30) |
-			  (MT47H128M16RT25E_RD_DQS<<20) |
-			  (MT47H128M16RT25E_RD_DQS<<10) |
-			  (MT47H128M16RT25E_RD_DQS<<0)),
-	.datawdsratio0 = ((MT47H128M16RT25E_WR_DQS<<30) |
-			  (MT47H128M16RT25E_WR_DQS<<20) |
-			  (MT47H128M16RT25E_WR_DQS<<10) |
-			  (MT47H128M16RT25E_WR_DQS<<0)),
-	.datawiratio0 = ((MT47H128M16RT25E_PHY_WRLVL<<30) |
-			 (MT47H128M16RT25E_PHY_WRLVL<<20) |
-			 (MT47H128M16RT25E_PHY_WRLVL<<10) |
-			 (MT47H128M16RT25E_PHY_WRLVL<<0)),
-	.datagiratio0 = ((MT47H128M16RT25E_PHY_GATELVL<<30) |
-			 (MT47H128M16RT25E_PHY_GATELVL<<20) |
-			 (MT47H128M16RT25E_PHY_GATELVL<<10) |
-			 (MT47H128M16RT25E_PHY_GATELVL<<0)),
-	.datafwsratio0 = ((MT47H128M16RT25E_PHY_FIFO_WE<<30) |
-			  (MT47H128M16RT25E_PHY_FIFO_WE<<20) |
-			  (MT47H128M16RT25E_PHY_FIFO_WE<<10) |
-			  (MT47H128M16RT25E_PHY_FIFO_WE<<0)),
-	.datawrsratio0 = ((MT47H128M16RT25E_PHY_WR_DATA<<30) |
-			  (MT47H128M16RT25E_PHY_WR_DATA<<20) |
-			  (MT47H128M16RT25E_PHY_WR_DATA<<10) |
-			  (MT47H128M16RT25E_PHY_WR_DATA<<0)),
+	.datardsratio0 = MT47H128M16RT25E_RD_DQS,
+	.datafwsratio0 = MT47H128M16RT25E_PHY_FIFO_WE,
+	.datawrsratio0 = MT47H128M16RT25E_PHY_WR_DATA,
 };
 
 static const struct cmd_control ddr2_cmd_ctrl_data = {
 	.cmd0csratio = MT47H128M16RT25E_RATIO,
-	.cmd0iclkout = MT47H128M16RT25E_INVERT_CLKOUT,
 
 	.cmd1csratio = MT47H128M16RT25E_RATIO,
-	.cmd1iclkout = MT47H128M16RT25E_INVERT_CLKOUT,
 
 	.cmd2csratio = MT47H128M16RT25E_RATIO,
-	.cmd2iclkout = MT47H128M16RT25E_INVERT_CLKOUT,
 };
 
 static const struct emif_regs ddr2_emif_reg_data = {
@@ -80,6 +96,70 @@ static const struct emif_regs ddr2_emif_reg_data = {
 	.emif_ddr_phy_ctlr_1 = MT47H128M16RT25E_EMIF_READ_LATENCY,
 };
 
+const struct dpll_params dpll_ddr2 = {266, OSC-1, 1, -1, -1, -1, -1};
+
+const struct ctrl_ioregs ioregs_ddr2 = {
+	.cm0ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
+	.cm1ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
+	.cm2ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
+	.dt0ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
+	.dt1ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
+};
+
+static int read_eeprom(struct pepper_board_id *header)
+{
+	if (i2c_probe(CONFIG_SYS_I2C_EEPROM_ADDR)) {
+		return -ENODEV;
+	}
+
+	if (i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0, 1, (uchar *)header,
+		sizeof(struct pepper_board_id))) {
+		return -EIO;
+	}
+
+	return 0;
+}
+
+const struct dpll_params *get_dpll_ddr_params(void)
+{
+	struct pepper_board_id header;
+
+	enable_i2c0_pin_mux();
+	i2c_set_bus_num(0);
+
+	if (read_eeprom(&header) < 0)
+		return &dpll_ddr3;
+
+	switch (header.device_vendor) {
+	case GUMSTIX_PEPPER:
+		return &dpll_ddr2;
+	case GUMSTIX_PEPPER_DVI:
+		return &dpll_ddr3;
+	default:
+		return &dpll_ddr3;
+	}
+}
+
+void sdram_init(void)
+{
+	const struct dpll_params *dpll = get_dpll_ddr_params();
+
+	/*
+	 * Here we are assuming PLL clock reveals the type of RAM.
+	 * DDR2 = 266
+	 * DDR3 = 400
+	 * Note that DDR3 is the default.
+	 */
+	if (dpll->m == 266) {
+		config_ddr(dpll->m, &ioregs_ddr2, &ddr2_data,
+			&ddr2_cmd_ctrl_data, &ddr2_emif_reg_data, 0);
+	}
+	else if (dpll->m == 400) {
+		config_ddr(dpll->m, &ioregs_ddr3, &ddr3_data,
+			&ddr3_cmd_ctrl_data, &ddr3_emif_reg_data, 0);
+	}
+}
+
 #ifdef CONFIG_SPL_OS_BOOT
 int spl_start_uboot(void)
 {
@@ -87,14 +167,6 @@ int spl_start_uboot(void)
 	return serial_tstc() && serial_getc() == 'c';
 }
 #endif
-
-#define OSC	(V_OSCK/1000000)
-const struct dpll_params dpll_ddr = {266, OSC-1, 1, -1, -1, -1, -1};
-
-const struct dpll_params *get_dpll_ddr_params(void)
-{
-	return &dpll_ddr;
-}
 
 void set_uart_mux_conf(void)
 {
@@ -106,19 +178,7 @@ void set_mux_conf_regs(void)
 	enable_board_pin_mux();
 }
 
-const struct ctrl_ioregs ioregs = {
-	.cm0ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
-	.cm1ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
-	.cm2ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
-	.dt0ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
-	.dt1ioctl		= MT47H128M16RT25E_IOCTRL_VALUE,
-};
 
-void sdram_init(void)
-{
-	config_ddr(266, &ioregs, &ddr2_data,
-		   &ddr2_cmd_ctrl_data, &ddr2_emif_reg_data, 0);
-}
 #endif
 
 int board_init(void)
@@ -179,7 +239,7 @@ int board_eth_init(bd_t *bis)
 	uint32_t mac_hi, mac_lo;
 	const char *devname;
 
-	if (!eth_getenv_enetaddr("ethaddr", mac_addr)) {
+	if (!eth_env_get_enetaddr("ethaddr", mac_addr)) {
 		/* try reading mac address from efuse */
 		mac_lo = readl(&cdev->macid0l);
 		mac_hi = readl(&cdev->macid0h);
@@ -189,8 +249,8 @@ int board_eth_init(bd_t *bis)
 		mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
 		mac_addr[4] = mac_lo & 0xFF;
 		mac_addr[5] = (mac_lo & 0xFF00) >> 8;
-		if (is_valid_ether_addr(mac_addr))
-			eth_setenv_enetaddr("ethaddr", mac_addr);
+		if (is_valid_ethaddr(mac_addr))
+			eth_env_set_enetaddr("ethaddr", mac_addr);
 	}
 
 	writel((RGMII_MODE_ENABLE | RGMII_INT_DELAY), &cdev->miisel);

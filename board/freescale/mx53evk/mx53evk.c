@@ -1,22 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/iomux-mx53.h>
-#include <asm/errno.h>
-#include <asm/imx-common/boot_mode.h>
+#include <linux/errno.h>
+#include <asm/mach-imx/boot_mode.h>
 #include <netdev.h>
 #include <i2c.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <power/pmic.h>
 #include <fsl_pmic.h>
 #include <asm/gpio.h>
@@ -138,7 +138,7 @@ static void setup_iomux_fec(void)
 	imx_iomux_v3_setup_multiple_pads(fec_pads, ARRAY_SIZE(fec_pads));
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 struct fsl_esdhc_cfg esdhc_cfg[2] = {
 	{MMC_SDHC1_BASE_ADDR},
 	{MMC_SDHC3_BASE_ADDR},
@@ -195,7 +195,7 @@ int board_mmc_init(bd_t *bis)
 	};
 
 	u32 index;
-	s32 status = 0;
+	int ret;
 
 	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 	esdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
@@ -214,12 +214,14 @@ int board_mmc_init(bd_t *bis)
 			printf("Warning: you configured more ESDHC controller"
 				"(%d) as supported by the board(2)\n",
 				CONFIG_SYS_FSL_ESDHC_NUM);
-			return status;
+			return -EINVAL;
 		}
-		status |= fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		ret = fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		if (ret)
+			return ret;
 	}
 
-	return status;
+	return 0;
 }
 #endif
 

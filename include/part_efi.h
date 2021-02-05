@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2008 RuggedCom, Inc.
  * Richard Retanubun <RichardRetanubun@RuggedCom.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,23 +17,20 @@
 #ifndef _DISK_PART_EFI_H
 #define _DISK_PART_EFI_H
 
+#include <efi.h>
+
 #define MSDOS_MBR_SIGNATURE 0xAA55
+#define MSDOS_MBR_BOOT_CODE_SIZE 440
 #define EFI_PMBR_OSTYPE_EFI 0xEF
 #define EFI_PMBR_OSTYPE_EFI_GPT 0xEE
 
-#define GPT_HEADER_SIGNATURE 0x5452415020494645ULL
+#define GPT_HEADER_SIGNATURE_UBOOT 0x5452415020494645ULL // 'EFI PART'
+#define GPT_HEADER_CHROMEOS_IGNORE 0x454d45524f4e4749ULL // 'IGNOREME'
+
 #define GPT_HEADER_REVISION_V1 0x00010000
 #define GPT_PRIMARY_PARTITION_TABLE_LBA 1ULL
-#define GPT_ENTRY_NAME "gpt"
-#define GPT_ENTRY_NUMBERS		128
+#define GPT_ENTRY_NUMBERS		CONFIG_EFI_PARTITION_ENTRIES_NUMBERS
 #define GPT_ENTRY_SIZE			128
-
-#define EFI_GUID(a,b,c,d0,d1,d2,d3,d4,d5,d6,d7) \
-	((efi_guid_t) \
-	{{ (a) & 0xff, ((a) >> 8) & 0xff, ((a) >> 16) & 0xff, ((a) >> 24) & 0xff, \
-		(b) & 0xff, ((b) >> 8) & 0xff, \
-		(c) & 0xff, ((c) >> 8) & 0xff, \
-		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) }})
 
 #define PARTITION_SYSTEM_GUID \
 	EFI_GUID( 0xC12A7328, 0xF81F, 0x11d2, \
@@ -48,6 +44,9 @@
 #define PARTITION_BASIC_DATA_GUID \
 	EFI_GUID( 0xEBD0A0A2, 0xB9E5, 0x4433, \
 		0x87, 0xC0, 0x68, 0xB6, 0xB7, 0x26, 0x99, 0xC7)
+#define PARTITION_LINUX_FILE_SYSTEM_DATA_GUID \
+	EFI_GUID(0x0FC63DAF, 0x8483, 0x4772, \
+		0x8E, 0x79, 0x3D, 0x69, 0xD8, 0x47, 0x7D, 0xE4)
 #define PARTITION_LINUX_RAID_GUID \
 	EFI_GUID( 0xa19d880f, 0x05fc, 0x4d3b, \
 		0xa0, 0x06, 0x74, 0x3f, 0x0f, 0x84, 0x91, 0x1e)
@@ -60,10 +59,6 @@
 
 /* linux/include/efi.h */
 typedef u16 efi_char16_t;
-
-typedef struct {
-	u8 b[16];
-} efi_guid_t;
 
 /* based on linux/include/genhd.h */
 struct partition {
@@ -119,7 +114,7 @@ typedef struct _gpt_entry {
 } __packed gpt_entry;
 
 typedef struct _legacy_mbr {
-	u8 boot_code[440];
+	u8 boot_code[MSDOS_MBR_BOOT_CODE_SIZE];
 	__le32 unique_mbr_signature;
 	__le16 unknown;
 	struct partition partition_record[4];

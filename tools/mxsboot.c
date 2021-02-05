@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 image generator
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <fcntl.h>
@@ -13,6 +12,10 @@
 #include <unistd.h>
 
 #include "compiler.h"
+
+/* Taken from <linux/kernel.h> */
+#define __round_mask(x, y) ((__typeof__(x))((y)-1))
+#define round_down(x, y) ((x) & ~__round_mask(x, y))
 
 /*
  * Default BCB layout.
@@ -48,6 +51,7 @@ static uint32_t sd_sector = 2048;
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		512
 #define	MXS_NAND_METADATA_SIZE			10
+#define	MXS_NAND_BITS_PER_ECC_LEVEL		13
 #define	MXS_NAND_COMMAND_BUFFER_SIZE		32
 
 struct mx28_nand_fcb {
@@ -125,26 +129,34 @@ struct mx28_sd_config_block {
 	struct mx28_sd_drive_info	drv_info[1];
 };
 
+static inline uint32_t mx28_nand_ecc_chunk_cnt(uint32_t page_data_size)
+{
+	return page_data_size / MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
+}
+
 static inline uint32_t mx28_nand_ecc_size_in_bits(uint32_t ecc_strength)
 {
-	return ecc_strength * 13;
+	return ecc_strength * MXS_NAND_BITS_PER_ECC_LEVEL;
 }
 
 static inline uint32_t mx28_nand_get_ecc_strength(uint32_t page_data_size,
 						uint32_t page_oob_size)
 {
-	if (page_data_size == 2048)
-		return 8;
+	int ecc_strength;
 
-	if (page_data_size == 4096) {
-		if (page_oob_size == 128)
-			return 8;
+	/*
+	 * Determine the ECC layout with the formula:
+	 *	ECC bits per chunk = (total page spare data bits) /
+	 *		(bits per ECC level) / (chunks per page)
+	 * where:
+	 *	total page spare data bits =
+	 *		(page oob size - meta data size) * (bits per byte)
+	 */
+	ecc_strength = ((page_oob_size - MXS_NAND_METADATA_SIZE) * 8)
+			/ (MXS_NAND_BITS_PER_ECC_LEVEL *
+				mx28_nand_ecc_chunk_cnt(page_data_size));
 
-		if (page_oob_size == 218)
-			return 16;
-	}
-
-	return 0;
+	return round_down(ecc_strength, 2);
 }
 
 static inline uint32_t mx28_nand_get_mark_offset(uint32_t page_data_size,
@@ -258,20 +270,10 @@ static struct mx28_nand_fcb *mx28_nand_get_fcb(uint32_t size)
 	fcb->ecc_block_0_size =		512;
 	fcb->ecc_block_n_size =		512;
 	fcb->metadata_bytes =		10;
-
-	if (nand_writesize == 2048) {
-		fcb->ecc_block_n_ecc_type =		4;
-		fcb->ecc_block_0_ecc_type =		4;
-	} else if (nand_writesize == 4096) {
-		if (nand_oobsize == 128) {
-			fcb->ecc_block_n_ecc_type =	4;
-			fcb->ecc_block_0_ecc_type =	4;
-		} else if (nand_oobsize == 218) {
-			fcb->ecc_block_n_ecc_type =	8;
-			fcb->ecc_block_0_ecc_type =	8;
-		}
-	}
-
+	fcb->ecc_block_n_ecc_type = mx28_nand_get_ecc_strength(
+					nand_writesize, nand_oobsize) >> 1;
+	fcb->ecc_block_0_ecc_type = mx28_nand_get_ecc_strength(
+					nand_writesize, nand_oobsize) >> 1;
 	if (fcb->ecc_block_n_ecc_type == 0) {
 		printf("MX28 NAND: Unsupported NAND geometry\n");
 		goto err;
@@ -553,15 +555,15 @@ static int mx28_create_sd_image(int infd, int outfd)
 
 	cb = (struct mx28_sd_config_block *)buf;
 
-	cb->signature = 0x00112233;
-	cb->primary_boot_tag = 0x1;
-	cb->secondary_boot_tag = 0x1;
-	cb->num_copies = 1;
-	cb->drv_info[0].chip_num = 0x0;
-	cb->drv_info[0].drive_type = 0x0;
-	cb->drv_info[0].tag = 0x1;
-	cb->drv_info[0].first_sector_number = sd_sector + 4;
-	cb->drv_info[0].sector_count = (size - 4) / 512;
+	cb->signature = cpu_to_le32(0x00112233);
+	cb->primary_boot_tag = cpu_to_le32(0x1);
+	cb->secondary_boot_tag = cpu_to_le32(0x1);
+	cb->num_copies = cpu_to_le32(1);
+	cb->drv_info[0].chip_num = cpu_to_le32(0x0);
+	cb->drv_info[0].drive_type = cpu_to_le32(0x0);
+	cb->drv_info[0].tag = cpu_to_le32(0x1);
+	cb->drv_info[0].first_sector_number = cpu_to_le32(sd_sector + 4);
+	cb->drv_info[0].sector_count = cpu_to_le32((size - 4) / 512);
 
 	wr_size = write(outfd, buf, size);
 	if (wr_size != size) {

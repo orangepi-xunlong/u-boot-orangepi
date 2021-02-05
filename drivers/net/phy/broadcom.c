@@ -1,12 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Broadcom PHY drivers
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
-#include <config.h>
 #include <common.h>
 #include <phy.h>
 
@@ -29,6 +27,29 @@
 #define MIIM_BCM54XX_EXP_SEL		0x17	/* Expansion register select */
 #define MIIM_BCM54XX_EXP_SEL_SSD	0x0e00	/* Secondary SerDes select */
 #define MIIM_BCM54XX_EXP_SEL_ER		0x0f00	/* Expansion register select */
+
+#define MIIM_BCM_AUXCNTL_SHDWSEL_MISC	0x0007
+#define MIIM_BCM_AUXCNTL_ACTL_SMDSP_EN	0x0800
+
+#define MIIM_BCM_CHANNEL_WIDTH    0x2000
+
+static void bcm_phy_write_misc(struct phy_device *phydev,
+			       u16 reg, u16 chl, u16 value)
+{
+	int reg_val;
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL,
+		  MIIM_BCM_AUXCNTL_SHDWSEL_MISC);
+
+	reg_val = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL);
+	reg_val |= MIIM_BCM_AUXCNTL_ACTL_SMDSP_EN;
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL, reg_val);
+
+	reg_val = (chl * MIIM_BCM_CHANNEL_WIDTH) | reg;
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54XX_EXP_SEL, reg_val);
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54XX_EXP_DATA, value);
+}
 
 /* Broadcom BCM5461S */
 static int bcm5461_config(struct phy_device *phydev)
@@ -84,11 +105,14 @@ static int bcm54xx_parse_status(struct phy_device *phydev)
 
 static int bcm54xx_startup(struct phy_device *phydev)
 {
-	/* Read the Status (2x to make sure link is right) */
-	genphy_update_link(phydev);
-	bcm54xx_parse_status(phydev);
+	int ret;
 
-	return 0;
+	/* Read the Status (2x to make sure link is right) */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return bcm54xx_parse_status(phydev);
 }
 
 /* Broadcom BCM5482S */
@@ -133,6 +157,66 @@ static int bcm5482_config(struct phy_device *phydev)
 			MIIM_BCM54XX_SHD_WR_ENCODE(0x1e, 0x201));
 
 	genphy_config_aneg(phydev);
+
+	return 0;
+}
+
+static int bcm_cygnus_startup(struct phy_device *phydev)
+{
+	int ret;
+
+	/* Read the Status (2x to make sure link is right) */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return genphy_parse_link(phydev);
+}
+
+static void bcm_cygnus_afe(struct phy_device *phydev)
+{
+	/* ensures smdspclk is enabled */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_BCM54xx_AUXCNTL, 0x0c30);
+
+	/* AFE_VDAC_ICTRL_0 bit 7:4 Iq=1100 for 1g 10bt, normal modes */
+	bcm_phy_write_misc(phydev, 0x39, 0x01, 0xA7C8);
+
+	/* AFE_HPF_TRIM_OTHERS bit11=1, short cascode for all modes*/
+	bcm_phy_write_misc(phydev, 0x3A, 0x00, 0x0803);
+
+	/* AFE_TX_CONFIG_1 bit 7:4 Iq=1100 for test modes */
+	bcm_phy_write_misc(phydev, 0x3A, 0x01, 0xA740);
+
+	/* AFE TEMPSEN_OTHERS rcal_HT, rcal_LT 10000 */
+	bcm_phy_write_misc(phydev, 0x3A, 0x03, 0x8400);
+
+	/* AFE_FUTURE_RSV bit 2:0 rccal <2:0>=100 */
+	bcm_phy_write_misc(phydev, 0x3B, 0x00, 0x0004);
+
+	/* Adjust bias current trim to overcome digital offSet */
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x1E, 0x02);
+
+	/* make rcal=100, since rdb default is 000 */
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x17, 0x00B1);
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x15, 0x0010);
+
+	/* CORE_EXPB0, Reset R_CAL/RC_CAL Engine */
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x17, 0x00B0);
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x15, 0x0010);
+
+	/* CORE_EXPB0, Disable Reset R_CAL/RC_CAL Engine */
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x17, 0x00B0);
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x15, 0x0000);
+}
+
+static int bcm_cygnus_config(struct phy_device *phydev)
+{
+	genphy_config_aneg(phydev);
+	phy_reset(phydev);
+	/* AFE settings for PHY stability */
+	bcm_cygnus_afe(phydev);
+	/* Forcing aneg after applying the AFE settings */
+	genphy_restart_aneg(phydev);
 
 	return 0;
 }
@@ -221,17 +305,21 @@ static u32 bcm5482_parse_serdes_sr(struct phy_device *phydev)
  */
 static int bcm5482_startup(struct phy_device *phydev)
 {
+	int ret;
+
 	if (bcm5482_is_serdes(phydev)) {
 		bcm5482_parse_serdes_sr(phydev);
 		phydev->port = PORT_FIBRE;
-	} else {
-		/* Wait for auto-negotiation to complete or fail */
-		genphy_update_link(phydev);
-		/* Parse BCM54xx copper aux status register */
-		bcm54xx_parse_status(phydev);
+		return 0;
 	}
 
-	return 0;
+	/* Wait for auto-negotiation to complete or fail */
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	/* Parse BCM54xx copper aux status register */
+	return bcm54xx_parse_status(phydev);
 }
 
 static struct phy_driver BCM5461S_driver = {
@@ -264,11 +352,22 @@ static struct phy_driver BCM5482S_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
+static struct phy_driver BCM_CYGNUS_driver = {
+	.name = "Broadcom CYGNUS GPHY",
+	.uid = 0xae025200,
+	.mask = 0xfffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &bcm_cygnus_config,
+	.startup = &bcm_cygnus_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 int phy_broadcom_init(void)
 {
 	phy_register(&BCM5482S_driver);
 	phy_register(&BCM5464S_driver);
 	phy_register(&BCM5461S_driver);
+	phy_register(&BCM_CYGNUS_driver);
 
 	return 0;
 }

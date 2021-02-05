@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2007 Wind River Systems <www.windriver.com>
  * Copyright 2007 Embedded Specialties, Inc.
@@ -6,27 +7,20 @@
  * Copyright 2006 Freescale Semiconductor.
  *
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
  * SBC8641D board configuration file
  *
  * Make sure you change the MAC address and other network params first,
- * search for CONFIG_ETHADDR, CONFIG_SERVERIP, etc in this file.
+ * search for CONFIG_SERVERIP, etc in this file.
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 /* High Level Configuration Options */
-#define CONFIG_MPC8641		1	/* MPC8641 specific */
-#define CONFIG_SBC8641D		1	/* SBC8641D board specific */
-#define CONFIG_MP		1	/* support multiple processors */
 #define CONFIG_LINUX_RESET_VEC  0x100   /* Reset vector used by Linux */
-
-#define	CONFIG_SYS_TEXT_BASE	0xfff00000
 
 #ifdef RUN_DIAG
 #define CONFIG_SYS_DIAG_ADDR        0xff800000
@@ -43,29 +37,23 @@
 #define CONFIG_SYS_SRIO
 #define CONFIG_SRIO1			/* SRIO port 1 */
 
-#define CONFIG_PCI		1	/* Enable PCIE */
-#define CONFIG_PCIE1		1	/* PCIE controler 1 (slot 1) */
-#define CONFIG_PCIE2		1	/* PCIE controler 2 (slot 2) */
+#define CONFIG_PCIE1		1	/* PCIE controller 1 (slot 1) */
+#define CONFIG_PCIE2		1	/* PCIE controller 2 (slot 2) */
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
-#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
-#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BAT_RW		1	/* Use common BAT rw code */
-#define CONFIG_HIGH_BATS	1	/* High BATs supported and enabled */
 
 #undef CONFIG_SPD_EEPROM		/* Do not use SPD EEPROM for DDR setup*/
 #undef CONFIG_DDR_ECC			/* only for ECC DDR module */
 #define CONFIG_ECC_INIT_VIA_DDRCONTROLLER	/* DDR controller or DMA? */
 #define CONFIG_MEM_INIT_VALUE		0xDeadBeef
-#define CONFIG_NUM_DDR_CONTROLLERS     2
 #define CACHE_LINE_INTERLEAVING		0x20000000
 #define PAGE_INTERLEAVING		0x21000000
 #define BANK_INTERLEAVING		0x22000000
 #define SUPER_BANK_INTERLEAVING		0x23000000
-
 
 #define CONFIG_ALTIVEC          1
 
@@ -80,8 +68,6 @@
 #define CONFIG_SYS_CLK_FREQ     get_board_sys_clk(0)
 #endif
 
-#define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_pre_init */
-
 #undef	CONFIG_SYS_DRAM_TEST				/* memory test, takes time */
 #define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest region */
 #define CONFIG_SYS_MEMTEST_END		0x00400000
@@ -90,7 +76,6 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CONFIG_SYS_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #define CONFIG_SYS_CCSRBAR		0xf8000000	/* relocated CCSRBAR */
 #define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR	/* PQII uses CONFIG_SYS_IMMR */
 
@@ -108,7 +93,6 @@
 #define CONFIG_SYS_MAX_DDR_BAT_SIZE	0x80000000	/* BAT mapping size */
 #define CONFIG_VERY_BIG_RAM
 
-#define CONFIG_NUM_DDR_CONTROLLERS	2
 #define CONFIG_DIMM_SLOTS_PER_CTLR	2
 #define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
@@ -172,7 +156,6 @@
     #define CONFIG_SYS_DDR2_CLK_CTRL	0x03800000
     #define CONFIG_SYS_DDR2_CFG_1B	0xC3008008
 
-
 #endif
 
 /* #define CONFIG_ID_EEPROM	1
@@ -222,11 +205,8 @@
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #define CONFIG_SYS_MONITOR_BASE_EARLY   0xfff00000	/* early monitor loc */
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_WRITE_SWAPPED_DATA
 #define CONFIG_SYS_FLASH_EMPTY_INFO
-#define CONFIG_SYS_FLASH_PROTECTION
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
@@ -241,12 +221,10 @@
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024)    /* Reserve 256 kB for Mon */
-#define CONFIG_SYS_MALLOC_LEN		(128 * 1024)    /* Reserved for malloc */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024)    /* Reserve 384 kB for Mon */
+#define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)   /* Reserved for malloc */
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX     1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -256,18 +234,6 @@
 
 #define CONFIG_SYS_NS16550_COM1        (CONFIG_SYS_CCSRBAR+0x4500)
 #define CONFIG_SYS_NS16550_COM2        (CONFIG_SYS_CCSRBAR+0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-#ifdef  CONFIG_SYS_HUSH_PARSER
-#endif
-
-/*
- * Pass open firmware flat tree to kernel
- */
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_OF_BOARD_SETUP		1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * I2C
@@ -312,10 +278,6 @@
 
 #define CONFIG_PCI_SCAN_SHOW            /* show pci devices on startup */
 
-#undef CONFIG_SYS_SCSI_SCAN_BUS_REVERSE
-
-#define CONFIG_PCI_PNP			/* do pci plug-and-play */
-
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
 
@@ -327,23 +289,16 @@
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
-#define CONFIG_DOS_PARTITION
-#undef CONFIG_SCSI_AHCI
-
 #ifdef CONFIG_SCSI_AHCI
 #define CONFIG_SATA_ULI5288
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	4
 #define CONFIG_SYS_SCSI_MAX_LUN	1
 #define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * CONFIG_SYS_SCSI_MAX_LUN)
-#define CONFIG_SYS_SCSI_MAXDEVICE	CONFIG_SYS_SCSI_MAX_DEVICE
 #endif
 
 #endif	/* CONFIG_PCI */
 
 #if defined(CONFIG_TSEC_ENET)
-
-/* #define CONFIG_MII		1 */	/* MII PHY management */
-
 #define CONFIG_TSEC1    1
 #define CONFIG_TSEC1_NAME       "eTSEC1"
 #define CONFIG_TSEC2    1
@@ -471,40 +426,16 @@
 /*
  * Environment
  */
-#define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
-#define CONFIG_ENV_SECT_SIZE	0x40000	/* 256K(one sector) for env */
-#define CONFIG_ENV_SIZE		0x2000
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
-
-#include <config_cmd_default.h>
-    #define CONFIG_CMD_PING
-    #define CONFIG_CMD_I2C
-    #define CONFIG_CMD_REGINFO
-
-#if defined(CONFIG_PCI)
-    #define CONFIG_CMD_PCI
-#endif
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-
-#if defined(CONFIG_CMD_KGDB)
-    #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
-#else
-    #define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
-#endif
-
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16		/* max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
 
 /*
  * For booting Linux, the board info and command line data
@@ -528,14 +459,6 @@
  * Environment Configuration
  */
 
-/* The mac addresses for all ethernet interface */
-#if defined(CONFIG_TSEC_ENET)
-#define CONFIG_ETHADDR   02:E0:0C:00:00:01
-#define CONFIG_ETH1ADDR  02:E0:0C:00:01:FD
-#define CONFIG_ETH2ADDR  02:E0:0C:00:02:FD
-#define CONFIG_ETH3ADDR  02:E0:0C:00:03:FD
-#endif
-
 #define CONFIG_HAS_ETH0		1
 #define CONFIG_HAS_ETH1		1
 #define CONFIG_HAS_ETH2		1
@@ -543,7 +466,7 @@
 
 #define CONFIG_IPADDR		192.168.0.50
 
-#define CONFIG_HOSTNAME		sbc8641d
+#define CONFIG_HOSTNAME		"sbc8641d"
 #define CONFIG_ROOTPATH		"/opt/eldk/ppc_74xx"
 #define CONFIG_BOOTFILE		"uImage"
 
@@ -553,11 +476,6 @@
 
 /* default location for tftp and bootm */
 #define CONFIG_LOADADDR		1000000
-
-#define CONFIG_BOOTDELAY 10	/* -1 disables auto-boot */
-#undef  CONFIG_BOOTARGS		/* the boot command will set bootargs */
-
-#define CONFIG_BAUDRATE	115200
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
    "netdev=eth0\0"							\

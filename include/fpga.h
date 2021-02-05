@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/types.h>	       /* for ulong typedef */
@@ -16,10 +15,13 @@
 
 /* fpga_xxxx function return value definitions */
 #define FPGA_SUCCESS		0
-#define FPGA_FAIL		-1
+#define FPGA_FAIL		1
 
 /* device numbers must be non-negative */
 #define FPGA_INVALID_DEVICE	-1
+
+#define FPGA_ENC_USR_KEY	1
+#define FPGA_NO_ENC_OR_NO_AUTH	2
 
 /* root data type defintions */
 typedef enum {			/* typedef fpga_type */
@@ -39,28 +41,39 @@ typedef struct {                /* typedef fpga_desc */
 	unsigned int blocksize;
 	char *interface;
 	char *dev_part;
-	char *filename;
+	const char *filename;
 	int fstype;
 } fpga_fs_info;
+
+struct fpga_secure_info {
+	u8 *userkey_addr;
+	u8 authflag;
+	u8 encflag;
+};
 
 typedef enum {
 	BIT_FULL = 0,
 	BIT_PARTIAL,
+	BIT_NONE = 0xFF,
 } bitstream_type;
 
 /* root function definitions */
-extern void fpga_init(void);
-extern int fpga_add(fpga_type devtype, void *desc);
-extern int fpga_count(void);
-extern int fpga_load(int devnum, const void *buf, size_t bsize,
-		     bitstream_type bstype);
-extern int fpga_fsload(int devnum, const void *buf, size_t size,
-		       fpga_fs_info *fpga_fsinfo);
-extern int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
-			      bitstream_type bstype);
-extern int fpga_dump(int devnum, const void *buf, size_t bsize);
-extern int fpga_info(int devnum);
-extern const fpga_desc *const fpga_validate(int devnum, const void *buf,
-					    size_t bsize, char *fn);
+void fpga_init(void);
+int fpga_add(fpga_type devtype, void *desc);
+int fpga_count(void);
+const fpga_desc *const fpga_get_desc(int devnum);
+int fpga_is_partial_data(int devnum, size_t img_len);
+int fpga_load(int devnum, const void *buf, size_t bsize,
+	      bitstream_type bstype);
+int fpga_fsload(int devnum, const void *buf, size_t size,
+		fpga_fs_info *fpga_fsinfo);
+int fpga_loads(int devnum, const void *buf, size_t size,
+	       struct fpga_secure_info *fpga_sec_info);
+int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
+		       bitstream_type bstype);
+int fpga_dump(int devnum, const void *buf, size_t bsize);
+int fpga_info(int devnum);
+const fpga_desc *const fpga_validate(int devnum, const void *buf,
+				     size_t bsize, char *fn);
 
 #endif	/* _FPGA_H_ */

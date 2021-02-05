@@ -1,15 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004 Freescale Semiconductor.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include "cadmus.h"
 
 #if defined(CONFIG_OF_BOARD_SETUP)
+#if defined(CONFIG_PCI) && !defined(CONFIG_DM_PCI)
 static void cds_pci_fixup(void *blob)
 {
 	int node;
@@ -62,14 +62,16 @@ static void cds_pci_fixup(void *blob)
 		}
 	}
 }
+#endif
 
-void
-ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-#ifdef CONFIG_PCI
+#if defined(CONFIG_PCI) && !defined(CONFIG_DM_PCI)
 	ft_pci_setup(blob, bd);
 	cds_pci_fixup(blob);
 #endif
+
+	return 0;
 }
 #endif

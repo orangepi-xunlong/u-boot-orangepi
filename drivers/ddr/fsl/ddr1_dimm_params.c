@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
  */
 
 #include <common.h>
@@ -110,22 +107,14 @@ static unsigned int byte40_table_ps[8] = {
 static unsigned int
 compute_trfc_ps_from_spd(unsigned char trctrfc_ext, unsigned char trfc)
 {
-	unsigned int trfc_ps;
-
-	trfc_ps = (((trctrfc_ext & 0x1) * 256) + trfc) * 1000
+	return ((trctrfc_ext & 0x1) * 256 + trfc) * 1000
 		+ byte40_table_ps[(trctrfc_ext >> 1) & 0x7];
-
-	return trfc_ps;
 }
 
 static unsigned int
 compute_trc_ps_from_spd(unsigned char trctrfc_ext, unsigned char trc)
 {
-	unsigned int trc_ps;
-
-	trc_ps = trc * 1000 + byte40_table_ps[(trctrfc_ext >> 4) & 0x7];
-
-	return trc_ps;
+	return trc * 1000 + byte40_table_ps[(trctrfc_ext >> 4) & 0x7];
 }
 
 /*
@@ -228,10 +217,10 @@ compute_derated_DDR1_CAS_latency(unsigned int mclk_ps)
  *
  * FIXME: use #define for the retvals
  */
-unsigned int
-ddr_compute_dimm_parameters(const ddr1_spd_eeprom_t *spd,
-			     dimm_params_t *pdimm,
-			     unsigned int dimm_number)
+unsigned int ddr_compute_dimm_parameters(const unsigned int ctrl_num,
+					 const ddr1_spd_eeprom_t *spd,
+					 dimm_params_t *pdimm,
+					 unsigned int dimm_number)
 {
 	unsigned int retval;
 
@@ -280,7 +269,6 @@ ddr_compute_dimm_parameters(const ddr1_spd_eeprom_t *spd,
 	pdimm->n_banks_per_sdram_device = spd->nbanks;
 	pdimm->edc_config = spd->config;
 	pdimm->burst_lengths_bitmask = spd->burstl;
-	pdimm->row_density = spd->bank_dens;
 
 	/*
 	 * Calculate the Maximum Data Rate based on the Minimum Cycle time.
@@ -311,16 +299,16 @@ ddr_compute_dimm_parameters(const ddr1_spd_eeprom_t *spd,
 					  & ~(1 << pdimm->caslat_x_minus_1));
 
 	/* Compute CAS latencies below that defined by SPD */
-	pdimm->caslat_lowest_derated
-		= compute_derated_DDR1_CAS_latency(get_memory_clk_period_ps());
+	pdimm->caslat_lowest_derated = compute_derated_DDR1_CAS_latency(
+					get_memory_clk_period_ps(ctrl_num));
 
 	/* Compute timing parameters */
 	pdimm->trcd_ps = spd->trcd * 250;
 	pdimm->trp_ps = spd->trp * 250;
 	pdimm->tras_ps = spd->tras * 1000;
 
-	pdimm->twr_ps = mclk_to_picos(3);
-	pdimm->twtr_ps = mclk_to_picos(1);
+	pdimm->twr_ps = mclk_to_picos(ctrl_num, 3);
+	pdimm->twtr_ps = mclk_to_picos(ctrl_num, 1);
 	pdimm->trfc_ps = compute_trfc_ps_from_spd(0, spd->trfc);
 
 	pdimm->trrd_ps = spd->trrd * 250;
@@ -335,7 +323,7 @@ ddr_compute_dimm_parameters(const ddr1_spd_eeprom_t *spd,
 	pdimm->tdh_ps
 		= convert_bcd_hundredths_to_cycle_time_ps(spd->data_hold);
 
-	pdimm->trtp_ps = mclk_to_picos(2);	/* By the book. */
+	pdimm->trtp_ps = mclk_to_picos(ctrl_num, 2);	/* By the book. */
 	pdimm->tdqsq_max_ps = spd->tdqsq * 10;
 	pdimm->tqhs_ps = spd->tqhs * 10;
 

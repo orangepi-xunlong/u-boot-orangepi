@@ -1,44 +1,41 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
+ */
+
+#ifndef __SYS_PROTO_IMX6_
+#define __SYS_PROTO_IMX6_
+
+#include <asm/mach-imx/sys_proto.h>
+#include <asm/arch/iomux.h>
+
+#define USBPHY_PWD		0x00000000
+
+#define USBPHY_PWD_RXPWDRX	(1 << 20) /* receiver block power down */
+
+#define is_usbotg_phy_active(void) (!(readl(USB_PHY0_BASE_ADDR + USBPHY_PWD) & \
+				   USBPHY_PWD_RXPWDRX))
+
+int imx6_pcie_toggle_power(void);
+int imx6_pcie_toggle_reset(void);
+
+enum ldo_reg {
+	LDO_ARM,
+	LDO_SOC,
+	LDO_PU,
+};
+
+int set_ldo_voltage(enum ldo_reg ldo, u32 mv);
+
+/**
+ * iomuxc_set_rgmii_io_voltage - set voltage level of RGMII/USB pins
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * @param io_vol - the voltage IO level of pins
  */
+static inline void iomuxc_set_rgmii_io_voltage(int io_vol)
+{
+	__raw_writel(io_vol, IOMUXC_SW_PAD_CTL_GRP_DDR_TYPE_RGMII);
+}
 
-#ifndef _SYS_PROTO_H_
-#define _SYS_PROTO_H_
-
-#include <asm/imx-common/regs-common.h>
-#include "../arch-imx/cpu.h"
-
-#define soc_rev() (get_cpu_rev() & 0xFF)
-#define is_soc_rev(rev)        (soc_rev() - rev)
-
-u32 get_cpu_rev(void);
-
-/* returns MXC_CPU_ value */
-#define cpu_type(rev) (((rev) >> 12)&0xff)
-
-/* use with MXC_CPU_ constants */
-#define is_cpu_type(cpu) (cpu_type(get_cpu_rev()) == cpu)
-
-const char *get_imx_type(u32 imxtype);
-unsigned imx_ddr_size(void);
-
-/*
- * Initializes on-chip ethernet controllers.
- * to override, implement board_eth_init()
- */
-
-int fecmxc_initialize(bd_t *bis);
-u32 get_ahb_clk(void);
-u32 get_periph_clk(void);
-
-int mxs_reset_block(struct mxs_register_32 *reg);
-int mxs_wait_mask_set(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
-int mxs_wait_mask_clr(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
-#endif
+#endif /* __SYS_PROTO_IMX6_ */

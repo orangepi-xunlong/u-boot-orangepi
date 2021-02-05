@@ -70,7 +70,7 @@ Set compression type.
 Pass \-h as the compression to see the list of supported compression type.
 
 .TP
-.BI "\-a [" "load addess" "]"
+.BI "\-a [" "load address" "]"
 Set load address with a hex number.
 
 .TP
@@ -97,6 +97,10 @@ Set XIP (execute in place) flag.
 .B Create FIT image:
 
 .TP
+.BI "\-b [" "device tree file" "]
+Appends the device tree binary file (.dtb) to the FIT.
+
+.TP
 .BI "\-c [" "comment" "]"
 Specifies a comment to be added when signing. This is typically a useful
 message which describes how the image was signed or some other useful
@@ -108,16 +112,34 @@ Provide special options to the device tree compiler that is used to
 create the image.
 
 .TP
-.BI "\-f [" "image tree source file" "]"
+.BI "\-E
+After processing, move the image data outside the FIT and store a data offset
+in the FIT. Images will be placed one after the other immediately after the
+FIT, with each one aligned to a 4-byte boundary. The existing 'data' property
+in each image will be replaced with 'data-offset' and 'data-size' properties.
+A 'data-offset' of 0 indicates that it starts in the first (4-byte aligned)
+byte after the FIT.
+
+.TP
+.BI "\-f [" "image tree source file" " | " "auto" "]"
 Image tree source file that describes the structure and contents of the
 FIT image.
+
+This can be automatically generated for some simple cases.
+Use "-f auto" for this. In that case the arguments -d, -A, -O, -T, -C, -a
+and -e are used to specify the image to include in the FIT and its attributes.
+No .its file is required.
 
 .TP
 .BI "\-F"
 Indicates that an existing FIT image should be modified. No dtc
-compilation is performed and the -f flag should not be given.
+compilation is performed and the \-f flag should not be given.
 This can be used to sign images with additional keys after initial image
 creation.
+
+.TP
+.BI "\-i [" "ramdisk_file" "]"
+Appends the ramdisk file to the FIT.
 
 .TP
 .BI "\-k [" "key_directory" "]"
@@ -132,6 +154,12 @@ public key information into. When a private key is used to sign an image,
 the corresponding public key is written into this file for for run-time
 verification. Typically the file here is the device tree binary used by
 CONFIG_OF_CONTROL in U-Boot.
+
+.TP
+.BI "\-p [" "external position" "]"
+Place external data at a static external position. See \-E. Instead of writing
+a 'data-offset' property defining the offset from the end of the FIT, \-p will
+use 'data-position' as the absolute position from the base of the FIT.
 
 .TP
 .BI "\-r
@@ -163,7 +191,8 @@ Create FIT image with compressed kernel and sign it with keys in the
 skipping those for which keys cannot be found. Also add a comment.
 .nf
 .B mkimage -f kernel.its -k /public/signing-keys -K u-boot.dtb \\\\
--c "Kernel 3.8 image for production devices" kernel.itb
+.br
+.B -c """Kernel 3.8 image for production devices""" kernel.itb
 .fi
 
 .P
@@ -173,7 +202,26 @@ with keys that are available in the new directory. Images that request signing
 with unavailable keys are skipped.
 .nf
 .B mkimage -F -k /secret/signing-keys -K u-boot.dtb \\\\
--c "Kernel 3.8 image for production devices" kernel.itb
+.br
+.B -c """Kernel 3.8 image for production devices""" kernel.itb
+.fi
+
+.P
+Create a FIT image containing a kernel, using automatic mode. No .its file
+is required.
+.nf
+.B mkimage -f auto -A arm -O linux -T kernel -C none -a 43e00000 -e 0 \\\\
+.br
+.B -c """Kernel 4.4 image for production devices""" -d vmlinuz kernel.itb
+.fi
+.P
+Create a FIT image containing a kernel and some device tree files, using
+automatic mode. No .its file is required.
+.nf
+.B mkimage -f auto -A arm -O linux -T kernel -C none -a 43e00000 -e 0 \\\\
+.br
+.B -c """Kernel 4.4 image for production devices""" -d vmlinuz \\\\
+.B -b /path/to/rk3288-firefly.dtb -b /path/to/rk3288-jerry.dtb kernel.itb
 .fi
 
 .SH HOMEPAGE

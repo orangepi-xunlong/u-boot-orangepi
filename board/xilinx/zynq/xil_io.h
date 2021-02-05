@@ -1,12 +1,10 @@
-/*
- * SPDX-License-Identifier:    GPL-2.0+
- */
+/* SPDX-License-Identifier: GPL-2.0+ */
 
 #ifndef XIL_IO_H           /* prevent circular inclusions */
 #define XIL_IO_H
 
 /*
- * This empty file is here because ps7_init.c exported by hw project
+ * This empty file is here because ps7_init_gpl.c exported by hw project
  * has #include "xil_io.h" line.
  */
 

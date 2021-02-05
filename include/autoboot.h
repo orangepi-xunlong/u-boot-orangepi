@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -5,14 +6,12 @@
  * Add to readline cmdline-editing by
  * (C) Copyright 2005
  * JinHua Luo, GuangDong Linux Center, <luo.jinhua@gd-linux.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AUTOBOOT_H
 #define __AUTOBOOT_H
 
-#ifdef CONFIG_BOOTDELAY
+#ifdef CONFIG_AUTOBOOT
 /**
  * bootdelay_process() - process the bootd delay
  *
@@ -28,7 +27,7 @@ const char *bootdelay_process(void);
  * autoboot_command() - run the autoboot command
  *
  * If enabled, run the autoboot command returned from bootdelay_process().
- * Also do the CONFIG_MENUKEY processing if enabled.
+ * Also do the CONFIG_AUTOBOOT_MENUKEY processing if enabled.
  *
  * @cmd: Command to run
  */

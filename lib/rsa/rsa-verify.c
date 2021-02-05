@@ -1,186 +1,312 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013, Google Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
 #include <common.h>
 #include <fdtdec.h>
+#include <malloc.h>
 #include <asm/types.h>
 #include <asm/byteorder.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/types.h>
 #include <asm/unaligned.h>
+#include <dm.h>
 #else
 #include "fdt_host.h"
 #include "mkimage.h"
 #include <fdt_support.h>
 #endif
+#include <u-boot/rsa-mod-exp.h>
 #include <u-boot/rsa.h>
-#include <u-boot/sha1.h>
-#include <u-boot/sha256.h>
 
-#define UINT64_MULT32(v, multby)  (((uint64_t)(v)) * ((uint32_t)(multby)))
-
-#define get_unaligned_be32(a) fdt32_to_cpu(*(uint32_t *)a)
-#define put_unaligned_be32(a, b) (*(uint32_t *)(b) = cpu_to_fdt32(a))
+/* Default public exponent for backward compatibility */
+#define RSA_DEFAULT_PUBEXP	65537
 
 /**
- * subtract_modulus() - subtract modulus from the given value
+ * rsa_verify_padding() - Verify RSA message padding is valid
  *
- * @key:	Key containing modulus to subtract
- * @num:	Number to subtract modulus from, as little endian word array
+ * Verify a RSA message's padding is consistent with PKCS1.5
+ * padding as described in the RSA PKCS#1 v2.1 standard.
+ *
+ * @msg:	Padded message
+ * @pad_len:	Number of expected padding bytes
+ * @algo:	Checksum algo structure having information on DER encoding etc.
+ * @return 0 on success, != 0 on failure
  */
-static void subtract_modulus(const struct rsa_public_key *key, uint32_t num[])
+static int rsa_verify_padding(const uint8_t *msg, const int pad_len,
+			      struct checksum_algo *algo)
 {
-	int64_t acc = 0;
-	uint i;
+	int ff_len;
+	int ret;
 
-	for (i = 0; i < key->len; i++) {
-		acc += (uint64_t)num[i] - key->modulus[i];
-		num[i] = (uint32_t)acc;
-		acc >>= 32;
-	}
+	/* first byte must be 0x00 */
+	ret = *msg++;
+	/* second byte must be 0x01 */
+	ret |= *msg++ ^ 0x01;
+	/* next ff_len bytes must be 0xff */
+	ff_len = pad_len - algo->der_len - 3;
+	ret |= *msg ^ 0xff;
+	ret |= memcmp(msg, msg+1, ff_len-1);
+	msg += ff_len;
+	/* next byte must be 0x00 */
+	ret |= *msg++;
+	/* next der_len bytes must match der_prefix */
+	ret |= memcmp(msg, algo->der_prefix, algo->der_len);
+
+	return ret;
 }
 
-/**
- * greater_equal_modulus() - check if a value is >= modulus
- *
- * @key:	Key containing modulus to check
- * @num:	Number to check against modulus, as little endian word array
- * @return 0 if num < modulus, 1 if num >= modulus
- */
-static int greater_equal_modulus(const struct rsa_public_key *key,
-				 uint32_t num[])
+int padding_pkcs_15_verify(struct image_sign_info *info,
+			   uint8_t *msg, int msg_len,
+			   const uint8_t *hash, int hash_len)
 {
-	uint32_t i;
+	struct checksum_algo *checksum = info->checksum;
+	int ret, pad_len = msg_len - checksum->checksum_len;
 
-	for (i = key->len - 1; i >= 0; i--) {
-		if (num[i] < key->modulus[i])
-			return 0;
-		if (num[i] > key->modulus[i])
-			return 1;
-	}
-
-	return 1;  /* equal */
-}
-
-/**
- * montgomery_mul_add_step() - Perform montgomery multiply-add step
- *
- * Operation: montgomery result[] += a * b[] / n0inv % modulus
- *
- * @key:	RSA key
- * @result:	Place to put result, as little endian word array
- * @a:		Multiplier
- * @b:		Multiplicand, as little endian word array
- */
-static void montgomery_mul_add_step(const struct rsa_public_key *key,
-		uint32_t result[], const uint32_t a, const uint32_t b[])
-{
-	uint64_t acc_a, acc_b;
-	uint32_t d0;
-	uint i;
-
-	acc_a = (uint64_t)a * b[0] + result[0];
-	d0 = (uint32_t)acc_a * key->n0inv;
-	acc_b = (uint64_t)d0 * key->modulus[0] + (uint32_t)acc_a;
-	for (i = 1; i < key->len; i++) {
-		acc_a = (acc_a >> 32) + (uint64_t)a * b[i] + result[i];
-		acc_b = (acc_b >> 32) + (uint64_t)d0 * key->modulus[i] +
-				(uint32_t)acc_a;
-		result[i - 1] = (uint32_t)acc_b;
-	}
-
-	acc_a = (acc_a >> 32) + (acc_b >> 32);
-
-	result[i - 1] = (uint32_t)acc_a;
-
-	if (acc_a >> 32)
-		subtract_modulus(key, result);
-}
-
-/**
- * montgomery_mul() - Perform montgomery mutitply
- *
- * Operation: montgomery result[] = a[] * b[] / n0inv % modulus
- *
- * @key:	RSA key
- * @result:	Place to put result, as little endian word array
- * @a:		Multiplier, as little endian word array
- * @b:		Multiplicand, as little endian word array
- */
-static void montgomery_mul(const struct rsa_public_key *key,
-		uint32_t result[], uint32_t a[], const uint32_t b[])
-{
-	uint i;
-
-	for (i = 0; i < key->len; ++i)
-		result[i] = 0;
-	for (i = 0; i < key->len; ++i)
-		montgomery_mul_add_step(key, result, a[i], b);
-}
-
-/**
- * pow_mod() - in-place public exponentiation
- *
- * @key:	RSA key
- * @inout:	Big-endian word array containing value and result
- */
-static int pow_mod(const struct rsa_public_key *key, uint32_t *inout)
-{
-	uint32_t *result, *ptr;
-	uint i;
-
-	/* Sanity check for stack size - key->len is in 32-bit words */
-	if (key->len > RSA_MAX_KEY_BITS / 32) {
-		debug("RSA key words %u exceeds maximum %d\n", key->len,
-		      RSA_MAX_KEY_BITS / 32);
+	/* Check pkcs1.5 padding bytes. */
+	ret = rsa_verify_padding(msg, pad_len, checksum);
+	if (ret) {
+		debug("In RSAVerify(): Padding check failed!\n");
 		return -EINVAL;
 	}
 
-	uint32_t val[key->len], acc[key->len], tmp[key->len];
-	result = tmp;  /* Re-use location. */
-
-	/* Convert from big endian byte array to little endian word array. */
-	for (i = 0, ptr = inout + key->len - 1; i < key->len; i++, ptr--)
-		val[i] = get_unaligned_be32(ptr);
-
-	montgomery_mul(key, acc, val, key->rr);  /* axx = a * RR / R mod M */
-	for (i = 0; i < 16; i += 2) {
-		montgomery_mul(key, tmp, acc, acc); /* tmp = acc^2 / R mod M */
-		montgomery_mul(key, acc, tmp, tmp); /* acc = tmp^2 / R mod M */
+	/* Check hash. */
+	if (memcmp((uint8_t *)msg + pad_len, hash, msg_len - pad_len)) {
+		debug("In RSAVerify(): Hash check failed!\n");
+		return -EACCES;
 	}
-	montgomery_mul(key, result, acc, val);  /* result = XX * a / R mod M */
 
-	/* Make sure result < mod; result is at most 1x mod too large. */
-	if (greater_equal_modulus(key, result))
-		subtract_modulus(key, result);
-
-	/* Convert to bigendian byte array */
-	for (i = key->len - 1, ptr = inout; (int)i >= 0; i--, ptr++)
-		put_unaligned_be32(result[i], ptr);
 	return 0;
 }
 
-static int rsa_verify_key(const struct rsa_public_key *key, const uint8_t *sig,
-			  const uint32_t sig_len, const uint8_t *hash,
-			  struct checksum_algo *algo)
+#ifdef CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT
+static void u32_i2osp(uint32_t val, uint8_t *buf)
 {
-	const uint8_t *padding;
-	int pad_len;
-	int ret;
+	buf[0] = (uint8_t)((val >> 24) & 0xff);
+	buf[1] = (uint8_t)((val >> 16) & 0xff);
+	buf[2] = (uint8_t)((val >>  8) & 0xff);
+	buf[3] = (uint8_t)((val >>  0) & 0xff);
+}
 
-	if (!key || !sig || !hash || !algo)
+/**
+ * mask_generation_function1() - generate an octet string
+ *
+ * Generate an octet string used to check rsa signature.
+ * It use an input octet string and a hash function.
+ *
+ * @checksum:	A Hash function
+ * @seed:	Specifies an input variable octet string
+ * @seed_len:	Size of the input octet string
+ * @output:	Specifies the output octet string
+ * @output_len:	Size of the output octet string
+ * @return 0 if the octet string was correctly generated, others on error
+ */
+static int mask_generation_function1(struct checksum_algo *checksum,
+				     uint8_t *seed, int seed_len,
+				     uint8_t *output, int output_len)
+{
+	struct image_region region[2];
+	int ret = 0, i, i_output = 0, region_count = 2;
+	uint32_t counter = 0;
+	uint8_t buf_counter[4], *tmp;
+	int hash_len = checksum->checksum_len;
+
+	memset(output, 0, output_len);
+
+	region[0].data = seed;
+	region[0].size = seed_len;
+	region[1].data = &buf_counter[0];
+	region[1].size = 4;
+
+	tmp = malloc(hash_len);
+	if (!tmp) {
+		debug("%s: can't allocate array tmp\n", __func__);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	while (i_output < output_len) {
+		u32_i2osp(counter, &buf_counter[0]);
+
+		ret = checksum->calculate(checksum->name,
+					  region, region_count,
+					  tmp);
+		if (ret < 0) {
+			debug("%s: Error in checksum calculation\n", __func__);
+			goto out;
+		}
+
+		i = 0;
+		while ((i_output < output_len) && (i < hash_len)) {
+			output[i_output] = tmp[i];
+			i_output++;
+			i++;
+		}
+
+		counter++;
+	}
+
+out:
+	free(tmp);
+
+	return ret;
+}
+
+static int compute_hash_prime(struct checksum_algo *checksum,
+			      uint8_t *pad, int pad_len,
+			      uint8_t *hash, int hash_len,
+			      uint8_t *salt, int salt_len,
+			      uint8_t *hprime)
+{
+	struct image_region region[3];
+	int ret, region_count = 3;
+
+	region[0].data = pad;
+	region[0].size = pad_len;
+	region[1].data = hash;
+	region[1].size = hash_len;
+	region[2].data = salt;
+	region[2].size = salt_len;
+
+	ret = checksum->calculate(checksum->name, region, region_count, hprime);
+	if (ret < 0) {
+		debug("%s: Error in checksum calculation\n", __func__);
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+int padding_pss_verify(struct image_sign_info *info,
+		       uint8_t *msg, int msg_len,
+		       const uint8_t *hash, int hash_len)
+{
+	uint8_t *masked_db = NULL;
+	int masked_db_len = msg_len - hash_len - 1;
+	uint8_t *h = NULL, *hprime = NULL;
+	int h_len = hash_len;
+	uint8_t *db_mask = NULL;
+	int db_mask_len = masked_db_len;
+	uint8_t *db = NULL, *salt = NULL;
+	int db_len = masked_db_len, salt_len = msg_len - hash_len - 2;
+	uint8_t pad_zero[8] = { 0 };
+	int ret, i, leftmost_bits = 1;
+	uint8_t leftmost_mask;
+	struct checksum_algo *checksum = info->checksum;
+
+	/* first, allocate everything */
+	masked_db = malloc(masked_db_len);
+	h = malloc(h_len);
+	db_mask = malloc(db_mask_len);
+	db = malloc(db_len);
+	salt = malloc(salt_len);
+	hprime = malloc(hash_len);
+	if (!masked_db || !h || !db_mask || !db || !salt || !hprime) {
+		printf("%s: can't allocate some buffer\n", __func__);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* step 4: check if the last byte is 0xbc */
+	if (msg[msg_len - 1] != 0xbc) {
+		printf("%s: invalid pss padding (0xbc is missing)\n", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* step 5 */
+	memcpy(masked_db, msg, masked_db_len);
+	memcpy(h, msg + masked_db_len, h_len);
+
+	/* step 6 */
+	leftmost_mask = (0xff >> (8 - leftmost_bits)) << (8 - leftmost_bits);
+	if (masked_db[0] & leftmost_mask) {
+		printf("%s: invalid pss padding ", __func__);
+		printf("(leftmost bit of maskedDB not zero)\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* step 7 */
+	mask_generation_function1(checksum, h, h_len, db_mask, db_mask_len);
+
+	/* step 8 */
+	for (i = 0; i < db_len; i++)
+		db[i] = masked_db[i] ^ db_mask[i];
+
+	/* step 9 */
+	db[0] &= 0xff >> leftmost_bits;
+
+	/* step 10 */
+	if (db[0] != 0x01) {
+		printf("%s: invalid pss padding ", __func__);
+		printf("(leftmost byte of db isn't 0x01)\n");
+		ret = EINVAL;
+		goto out;
+	}
+
+	/* step 11 */
+	memcpy(salt, &db[1], salt_len);
+
+	/* step 12 & 13 */
+	compute_hash_prime(checksum, pad_zero, 8,
+			   (uint8_t *)hash, hash_len,
+			   salt, salt_len, hprime);
+
+	/* step 14 */
+	ret = memcmp(h, hprime, hash_len);
+
+out:
+	free(hprime);
+	free(salt);
+	free(db);
+	free(db_mask);
+	free(h);
+	free(masked_db);
+
+	return ret;
+}
+#endif
+
+/**
+ * rsa_verify_key() - Verify a signature against some data using RSA Key
+ *
+ * Verify a RSA PKCS1.5 signature against an expected hash using
+ * the RSA Key properties in prop structure.
+ *
+ * @info:	Specifies key and FIT information
+ * @prop:	Specifies key
+ * @sig:	Signature
+ * @sig_len:	Number of bytes in signature
+ * @hash:	Pointer to the expected hash
+ * @key_len:	Number of bytes in rsa key
+ * @return 0 if verified, -ve on error
+ */
+static int rsa_verify_key(struct image_sign_info *info,
+			  struct key_prop *prop, const uint8_t *sig,
+			  const uint32_t sig_len, const uint8_t *hash,
+			  const uint32_t key_len)
+{
+	int ret;
+#if !defined(USE_HOSTCC)
+	struct udevice *mod_exp_dev;
+#endif
+	struct checksum_algo *checksum = info->checksum;
+	struct padding_algo *padding = info->padding;
+	int hash_len;
+
+	if (!prop || !sig || !hash || !checksum)
 		return -EIO;
 
-	if (sig_len != (key->len * sizeof(uint32_t))) {
+	if (sig_len != (prop->num_bits / 8)) {
 		debug("Signature is of incorrect length %d\n", sig_len);
 		return -EINVAL;
 	}
 
-	debug("Checksum algorithm: %s", algo->name);
+	debug("Checksum algorithm: %s", checksum->name);
 
 	/* Sanity check for stack size */
 	if (sig_len > RSA_MAX_SIG_BITS / 8) {
@@ -189,91 +315,86 @@ static int rsa_verify_key(const struct rsa_public_key *key, const uint8_t *sig,
 		return -EINVAL;
 	}
 
-	uint32_t buf[sig_len / sizeof(uint32_t)];
+	uint8_t buf[sig_len];
+	hash_len = checksum->checksum_len;
 
-	memcpy(buf, sig, sig_len);
-
-	ret = pow_mod(key, buf);
-	if (ret)
-		return ret;
-
-	padding = algo->rsa_padding;
-	pad_len = algo->pad_len - algo->checksum_len;
-
-	/* Check pkcs1.5 padding bytes. */
-	if (memcmp(buf, padding, pad_len)) {
-		debug("In RSAVerify(): Padding check failed!\n");
+#if !defined(USE_HOSTCC)
+	ret = uclass_get_device(UCLASS_MOD_EXP, 0, &mod_exp_dev);
+	if (ret) {
+		printf("RSA: Can't find Modular Exp implementation\n");
 		return -EINVAL;
 	}
 
-	/* Check hash. */
-	if (memcmp((uint8_t *)buf + pad_len, hash, sig_len - pad_len)) {
-		debug("In RSAVerify(): Hash check failed!\n");
-		return -EACCES;
+	ret = rsa_mod_exp(mod_exp_dev, sig, sig_len, prop, buf);
+#else
+	ret = rsa_mod_exp_sw(sig, sig_len, prop, buf);
+#endif
+	if (ret) {
+		debug("Error in Modular exponentation\n");
+		return ret;
+	}
+
+	ret = padding->verify(info, buf, key_len, hash, hash_len);
+	if (ret) {
+		debug("In RSAVerify(): padding check failed!\n");
+		return ret;
 	}
 
 	return 0;
 }
 
-static void rsa_convert_big_endian(uint32_t *dst, const uint32_t *src, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		dst[i] = fdt32_to_cpu(src[len - 1 - i]);
-}
-
+/**
+ * rsa_verify_with_keynode() - Verify a signature against some data using
+ * information in node with prperties of RSA Key like modulus, exponent etc.
+ *
+ * Parse sign-node and fill a key_prop structure with properties of the
+ * key.  Verify a RSA PKCS1.5 signature against an expected hash using
+ * the properties parsed
+ *
+ * @info:	Specifies key and FIT information
+ * @hash:	Pointer to the expected hash
+ * @sig:	Signature
+ * @sig_len:	Number of bytes in signature
+ * @node:	Node having the RSA Key properties
+ * @return 0 if verified, -ve on error
+ */
 static int rsa_verify_with_keynode(struct image_sign_info *info,
-		const void *hash, uint8_t *sig, uint sig_len, int node)
+				   const void *hash, uint8_t *sig,
+				   uint sig_len, int node)
 {
 	const void *blob = info->fdt_blob;
-	struct rsa_public_key key;
-	const void *modulus, *rr;
-	int ret;
+	struct key_prop prop;
+	int length;
+	int ret = 0;
 
 	if (node < 0) {
 		debug("%s: Skipping invalid node", __func__);
 		return -EBADF;
 	}
-	if (!fdt_getprop(blob, node, "rsa,n0-inverse", NULL)) {
-		debug("%s: Missing rsa,n0-inverse", __func__);
-		return -EFAULT;
-	}
-	key.len = fdtdec_get_int(blob, node, "rsa,num-bits", 0);
-	key.n0inv = fdtdec_get_int(blob, node, "rsa,n0-inverse", 0);
-	modulus = fdt_getprop(blob, node, "rsa,modulus", NULL);
-	rr = fdt_getprop(blob, node, "rsa,r-squared", NULL);
-	if (!key.len || !modulus || !rr) {
+
+	prop.num_bits = fdtdec_get_int(blob, node, "rsa,num-bits", 0);
+
+	prop.n0inv = fdtdec_get_int(blob, node, "rsa,n0-inverse", 0);
+
+	prop.public_exponent = fdt_getprop(blob, node, "rsa,exponent", &length);
+	if (!prop.public_exponent || length < sizeof(uint64_t))
+		prop.public_exponent = NULL;
+
+	prop.exp_len = sizeof(uint64_t);
+
+	prop.modulus = fdt_getprop(blob, node, "rsa,modulus", NULL);
+
+	prop.rr = fdt_getprop(blob, node, "rsa,r-squared", NULL);
+
+	if (!prop.num_bits || !prop.modulus) {
 		debug("%s: Missing RSA key info", __func__);
 		return -EFAULT;
 	}
 
-	/* Sanity check for stack size */
-	if (key.len > RSA_MAX_KEY_BITS || key.len < RSA_MIN_KEY_BITS) {
-		debug("RSA key bits %u outside allowed range %d..%d\n",
-		      key.len, RSA_MIN_KEY_BITS, RSA_MAX_KEY_BITS);
-		return -EFAULT;
-	}
-	key.len /= sizeof(uint32_t) * 8;
-	uint32_t key1[key.len], key2[key.len];
+	ret = rsa_verify_key(info, &prop, sig, sig_len, hash,
+			     info->crypto->key_len);
 
-	key.modulus = key1;
-	key.rr = key2;
-	rsa_convert_big_endian(key.modulus, modulus, key.len);
-	rsa_convert_big_endian(key.rr, rr, key.len);
-	if (!key.modulus || !key.rr) {
-		debug("%s: Out of memory", __func__);
-		return -ENOMEM;
-	}
-
-	debug("key length %d\n", key.len);
-	ret = rsa_verify_key(&key, sig, sig_len, hash, info->algo->checksum);
-	if (ret) {
-		printf("%s: RSA failed to verify: %d\n", __func__, ret);
-		return ret;
-	}
-
-	return 0;
+	return ret;
 }
 
 int rsa_verify(struct image_sign_info *info,
@@ -282,7 +403,7 @@ int rsa_verify(struct image_sign_info *info,
 {
 	const void *blob = info->fdt_blob;
 	/* Reserve memory for maximum checksum-length */
-	uint8_t hash[info->algo->checksum->pad_len];
+	uint8_t hash[info->crypto->key_len];
 	int ndepth, noffset;
 	int sig_node, node;
 	char name[100];
@@ -292,10 +413,10 @@ int rsa_verify(struct image_sign_info *info,
 	 * Verify that the checksum-length does not exceed the
 	 * rsa-signature-length
 	 */
-	if (info->algo->checksum->checksum_len >
-	    info->algo->checksum->pad_len) {
+	if (info->checksum->checksum_len >
+	    info->crypto->key_len) {
 		debug("%s: invlaid checksum-algorithm %s for %s\n",
-		      __func__, info->algo->checksum->name, info->algo->name);
+		      __func__, info->checksum->name, info->crypto->name);
 		return -EINVAL;
 	}
 
@@ -306,14 +427,18 @@ int rsa_verify(struct image_sign_info *info,
 	}
 
 	/* Calculate checksum with checksum-algorithm */
-	info->algo->checksum->calculate(region, region_count, hash);
+	ret = info->checksum->calculate(info->checksum->name,
+					region, region_count, hash);
+	if (ret < 0) {
+		debug("%s: Error in checksum calculation\n", __func__);
+		return -EINVAL;
+	}
 
 	/* See if we must use a particular key */
 	if (info->required_keynode != -1) {
 		ret = rsa_verify_with_keynode(info, hash, sig, sig_len,
 			info->required_keynode);
-		if (!ret)
-			return ret;
+		return ret;
 	}
 
 	/* Look for a key that matches our hint */

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013, Google Inc.
  *
@@ -5,8 +6,6 @@
  *
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _RSA_H
@@ -27,7 +26,10 @@ struct rsa_public_key {
 	uint32_t n0inv;		/* -1 / modulus[0] mod 2^32 */
 	uint32_t *modulus;	/* modulus as little endian array */
 	uint32_t *rr;		/* R^2 as little endian array */
+	uint64_t exponent;	/* public exponent */
 };
+
+struct image_sign_info;
 
 #if IMAGE_ENABLE_SIGN
 /**
@@ -95,6 +97,16 @@ static inline int rsa_add_verify_data(struct image_sign_info *info,
 int rsa_verify(struct image_sign_info *info,
 	       const struct image_region region[], int region_count,
 	       uint8_t *sig, uint sig_len);
+
+int padding_pkcs_15_verify(struct image_sign_info *info,
+			   uint8_t *msg, int msg_len,
+			   const uint8_t *hash, int hash_len);
+
+#ifdef CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT
+int padding_pss_verify(struct image_sign_info *info,
+		       uint8_t *msg, int msg_len,
+		       const uint8_t *hash, int hash_len);
+#endif /* CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT */
 #else
 static inline int rsa_verify(struct image_sign_info *info,
 		const struct image_region region[], int region_count,
@@ -102,7 +114,25 @@ static inline int rsa_verify(struct image_sign_info *info,
 {
 	return -ENXIO;
 }
+
+static inline int padding_pkcs_15_verify(struct image_sign_info *info,
+					 uint8_t *msg, int msg_len,
+					 const uint8_t *hash, int hash_len)
+{
+	return -ENXIO;
+}
+
+#ifdef CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT
+static inline int padding_pss_verify(struct image_sign_info *info,
+				     uint8_t *msg, int msg_len,
+				     const uint8_t *hash, int hash_len)
+{
+	return -ENXIO;
+}
+#endif /* CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT */
 #endif
+
+#define RSA_DEFAULT_PADDING_NAME		"pkcs-1.5"
 
 #define RSA2048_BYTES	(2048 / 8)
 #define RSA4096_BYTES	(4096 / 8)

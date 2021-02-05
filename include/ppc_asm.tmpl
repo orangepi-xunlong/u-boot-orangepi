@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -11,6 +10,8 @@
  */
 #ifndef	__PPC_ASM_TMPL__
 #define __PPC_ASM_TMPL__
+
+#include <config.h>
 
 /***************************************************************************
  *
@@ -79,8 +80,7 @@
 #define	r30	30
 #define	r31	31
 
-
-#if defined(CONFIG_8xx) || defined(CONFIG_MPC824X)
+#if defined(CONFIG_MPC8xx)
 
 /* Some special registers */
 
@@ -92,21 +92,10 @@
 #define LCTRL2	157	/* Load/Store Support	    (37-41) */
 #define ICTRL	158
 
-#endif	/* CONFIG_8xx, CONFIG_MPC824X */
+#endif	/* CONFIG_MPC8xx */
 
 
-#if  defined(CONFIG_5xx)
-/* Some special purpose registers */
-#define DER	149		/* Debug Enable Register		*/
-#define COUNTA	150		/* Breakpoint Counter			*/
-#define COUNTB	151		/* Breakpoint Counter			*/
-#define LCTRL1	156		/* Load/Store Support			*/
-#define LCTRL2	157		/* Load/Store Support			*/
-#define ICTRL	158		/* I-Bus Support Control Register	*/
-#define EID	81
-#endif	/* CONFIG_5xx */
-
-#if defined(CONFIG_8xx)
+#if defined(CONFIG_MPC8xx)
 
 /* Registers in the processor's internal memory map that we use.
 */
@@ -134,35 +123,6 @@
 #define TBREFF0	0x00000204
 
 #define PLPRCR	0x00000284
-
-#elif defined(CONFIG_MPC8260)
-
-#define HID2		1011
-
-#define HID0_IFEM	(1<<7)
-
-#define HID0_ICE_BITPOS	16
-#define HID0_DCE_BITPOS	17
-
-#define IM_REGBASE	0x10000
-#define IM_SYPCR	(IM_REGBASE+0x0004)
-#define IM_SWSR		(IM_REGBASE+0x000e)
-#define IM_BR0		(IM_REGBASE+0x0100)
-#define IM_OR0		(IM_REGBASE+0x0104)
-#define IM_BR1		(IM_REGBASE+0x0108)
-#define IM_OR1		(IM_REGBASE+0x010c)
-#define IM_BR2		(IM_REGBASE+0x0110)
-#define IM_OR2		(IM_REGBASE+0x0114)
-#define IM_MPTPR	(IM_REGBASE+0x0184)
-#define IM_PSDMR	(IM_REGBASE+0x0190)
-#define IM_PSRT		(IM_REGBASE+0x019c)
-#define IM_IMMR		(IM_REGBASE+0x01a8)
-#define IM_SCCR		(IM_REGBASE+0x0c80)
-
-#elif defined(CONFIG_MPC5xxx)
-
-#define HID0_ICE_BITPOS	16
-#define HID0_DCE_BITPOS	17
 
 #endif
 
@@ -243,6 +203,48 @@
  */
 #define COPY_EE(d, s)		rlwimi d,s,0,16,16
 #define NOCOPY(d, s)
+
+#ifdef CONFIG_E500
+#define EXC_XFER_TEMPLATE(n, label, hdlr, msr, copyee)	\
+	stw	r22,_NIP(r21);				\
+	stw	r23,_MSR(r21);				\
+	li	r23,n;					\
+	stw	r23,TRAP(r21);				\
+	li	r20,msr;				\
+	copyee(r20,r23);				\
+	rlwimi	r20,r23,0,25,25;			\
+	mtmsr	r20;					\
+	bl	1f;					\
+1:	mflr	r23;					\
+	addis	r23,r23,(hdlr - 1b)@ha;			\
+	addi	r23,r23,(hdlr - 1b)@l;			\
+	b	transfer_to_handler
+
+#define STD_EXCEPTION(n, label, hdlr)				\
+.align 4;							\
+label:								\
+	EXCEPTION_PROLOG(SRR0, SRR1);				\
+	addi	r3,r1,STACK_FRAME_OVERHEAD;			\
+	EXC_XFER_TEMPLATE(n, label, hdlr, MSR_KERNEL, NOCOPY)	\
+
+#define CRIT_EXCEPTION(n, label, hdlr)				\
+.align 4;							\
+label:								\
+	EXCEPTION_PROLOG(CSRR0, CSRR1);				\
+	addi	r3,r1,STACK_FRAME_OVERHEAD;			\
+	EXC_XFER_TEMPLATE(n, label, hdlr,			\
+	MSR_KERNEL & ~(MSR_ME|MSR_DE|MSR_CE), NOCOPY)		\
+
+#define MCK_EXCEPTION(n, label, hdlr)				\
+.align 4;							\
+label:								\
+	EXCEPTION_PROLOG(MCSRR0, MCSRR1);			\
+	addi	r3,r1,STACK_FRAME_OVERHEAD;			\
+	EXC_XFER_TEMPLATE(n, label, hdlr,			\
+	MSR_KERNEL & ~(MSR_ME|MSR_DE|MSR_CE), NOCOPY)		\
+
+#else	/* !E500 */
+
 #define EXC_XFER_TEMPLATE(label, hdlr, msr, copyee)	\
 	bl	1f;					\
 1:	mflr    r20;					\
@@ -280,4 +282,5 @@ label:								\
 	EXC_XFER_TEMPLATE(label, hdlr,				\
 	MSR_KERNEL & ~(MSR_ME|MSR_DE|MSR_CE), NOCOPY)		\
 
+#endif	/* !E500 */
 #endif	/* __PPC_ASM_TMPL__ */

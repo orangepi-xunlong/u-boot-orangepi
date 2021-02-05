@@ -1,17 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 extra-y        := hello_world
 extra-$(CONFIG_SMC91111)           += smc91111_eeprom
 extra-$(CONFIG_SMC911X)            += smc911x_eeprom
 extra-$(CONFIG_SPI_FLASH_ATMEL)    += atmel_df_pow2
-extra-$(CONFIG_MPC5xxx)            += interrupt
-extra-$(CONFIG_8xx)                += test_burst timer
-extra-$(CONFIG_MPC8260)            += mem_to_mem_idma2intr
 extra-$(CONFIG_PPC)                += sched
 
 #
@@ -22,17 +17,15 @@ extra-$(CONFIG_PPC)                += sched
 ELF := $(strip $(extra-y))
 
 extra-y += $(addsuffix .srec,$(extra-y)) $(addsuffix .bin,$(extra-y))
-clean-files  := $(extra-) $(addsuffix .srec,$(extra-)) $(addsuffix .bin,$(extra-))
+clean-files  := *.srec *.bin
 
 COBJS	:= $(ELF:=.o)
 
 LIB	= $(obj)/libstubs.o
 
 LIBOBJS-$(CONFIG_PPC) += ppc_longjmp.o ppc_setjmp.o
-LIBOBJS-$(CONFIG_8xx) += test_burst_lib.o
 LIBOBJS-y += stubs.o
 
-.SECONDARY: $(call objectify,$(COBJS))
 targets += $(patsubst $(obj)/%,%,$(LIB)) $(COBJS) $(LIBOBJS-y)
 
 LIBOBJS	:= $(addprefix $(obj)/,$(LIBOBJS-y))
@@ -51,6 +44,8 @@ endif
 # source file.
 ccflags-y += $(call cc-option,-fno-toplevel-reorder)
 
+LDFLAGS_STANDALONE	+= -Ttext $(CONFIG_STANDALONE_LOAD_ADDR)
+
 #########################################################################
 
 quiet_cmd_link_lib = LD      $@
@@ -60,16 +55,26 @@ $(LIB):	$(LIBOBJS) FORCE
 	$(call if_changed,link_lib)
 
 quiet_cmd_link_elf = LD      $@
-      cmd_link_elf = $(LD) $(LDFLAGS) -g -Ttext $(CONFIG_STANDALONE_LOAD_ADDR) \
+      cmd_link_elf = $(LD) $(LDFLAGS) $(LDFLAGS_STANDALONE) -g  \
 		     -o $@ -e $(SYM_PREFIX)$(@F) $< $(LIB) $(PLATFORM_LIBGCC)
 
 $(ELF): $(obj)/%: $(obj)/%.o $(LIB) FORCE
 	$(call if_changed,link_elf)
 
-$(obj)/%.srec: OBJCOPYFLAGS := -O srec
+$(obj)/%.srec: OBJCOPYFLAGS += -O srec
 $(obj)/%.srec: $(obj)/% FORCE
 	$(call if_changed,objcopy)
 
-$(obj)/%.bin: OBJCOPYFLAGS := -O binary
+$(obj)/%.bin: OBJCOPYFLAGS += -O binary
 $(obj)/%.bin: $(obj)/% FORCE
 	$(call if_changed,objcopy)
+
+# some files can only build in ARM or THUMB2, not THUMB1
+
+ifdef CONFIG_SYS_THUMB_BUILD
+ifndef CONFIG_HAS_THUMB2
+
+CFLAGS_stubs.o := -marm
+
+endif
+endif

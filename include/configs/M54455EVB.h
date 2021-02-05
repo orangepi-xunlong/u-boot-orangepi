@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Freescale MCF54455 EVB board.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,13 +17,12 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF5445x		/* define processor family */
-#define CONFIG_M54455		/* define processor type */
 #define CONFIG_M54455EVB	/* M54455EVB board */
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
+
+#define LDS_BOARD_TEXT                  board/freescale/m54455evb/sbf_dram_init.o (.text*)
 
 #undef CONFIG_WATCHDOG
 
@@ -34,63 +32,19 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
-/* Command line configuration */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_BOOTD
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_FLASH
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_IDE
-#define CONFIG_CMD_JFFS2
-#define CONFIG_CMD_MEMORY
-#define CONFIG_CMD_MISC
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-#undef CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
-
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_LOADS
 
 /* Network configuration */
-#define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
-#	define CONFIG_MII		1
 #	define CONFIG_MII_INIT		1
 #	define CONFIG_SYS_DISCOVER_PHY
 #	define CONFIG_SYS_RX_ETH_BUFFER	8
 #	define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-
-#	define CONFIG_SYS_FEC0_PINMUX	0
-#	define CONFIG_SYS_FEC1_PINMUX	0
-#	define CONFIG_SYS_FEC0_MIIBASE	CONFIG_SYS_FEC0_IOBASE
-#	define CONFIG_SYS_FEC1_MIIBASE	CONFIG_SYS_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 50000
 #	define CONFIG_HAS_ETH1
-
-#	define CONFIG_BOOTDELAY	1	/* autoboot after 5 seconds */
-#	define CONFIG_BOOTARGS		"root=/dev/mtdblock1 rw rootfstype=jffs2 ip=none mtdparts=physmap-flash.0:5M(kernel)ro,-(jffs2)"
-#	define CONFIG_ETHADDR		00:e0:0c:bc:e5:60
-#	define CONFIG_ETH1ADDR		00:e0:0c:bc:e5:61
 #	define CONFIG_ETHPRIME		"FEC0"
 #	define CONFIG_IPADDR		192.162.1.2
 #	define CONFIG_NETMASK		255.255.255.0
 #	define CONFIG_SERVERIP		192.162.1.1
 #	define CONFIG_GATEWAYIP		192.162.1.1
-#	define CONFIG_OVERWRITE_ETHADDR_ONCE
 
 /* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CONFIG_SYS_DISCOVER_PHY
@@ -103,7 +57,7 @@
 #	endif			/* CONFIG_SYS_DISCOVER_PHY */
 #endif
 
-#define CONFIG_HOSTNAME		M54455EVB
+#define CONFIG_HOSTNAME		"M54455EVB"
 #ifdef CONFIG_SYS_STMICRO_BOOT
 /* ST Micro serial flash */
 #define	CONFIG_SYS_LOAD_ADDR2		0x40010013
@@ -145,8 +99,6 @@
 #endif
 
 /* ATA configuration */
-#define CONFIG_ISO_PARTITION
-#define CONFIG_DOS_PARTITION
 #define CONFIG_IDE_RESET	1
 #define CONFIG_IDE_PREINIT	1
 #define CONFIG_ATAPI
@@ -170,7 +122,6 @@
 
 /* Timer */
 #define CONFIG_MCFTMR
-#undef CONFIG_MCFPIT
 
 /* I2c */
 #define CONFIG_SYS_I2C
@@ -181,27 +132,11 @@
 #define CONFIG_SYS_IMMR		CONFIG_SYS_MBAR
 
 /* DSPI and Serial Flash */
-#define CONFIG_CF_SPI
 #define CONFIG_CF_DSPI
-#define CONFIG_HARD_SPI
 #define CONFIG_SYS_SBFHDR_SIZE		0x13
-#ifdef CONFIG_CMD_SPI
-#	define CONFIG_SPI_FLASH
-#	define CONFIG_SPI_FLASH_STMICRO
-
-#	define CONFIG_SYS_DSPI_CTAR0		(DSPI_CTAR_TRSZ(7) | \
-					 DSPI_CTAR_PCSSCK_1CLK | \
-					 DSPI_CTAR_PASC(0) | \
-					 DSPI_CTAR_PDT(0) | \
-					 DSPI_CTAR_CSSCK(0) | \
-					 DSPI_CTAR_ASC(0) | \
-					 DSPI_CTAR_DT(1))
-#endif
 
 /* PCI */
 #ifdef CONFIG_CMD_PCI
-#define CONFIG_PCI		1
-#define CONFIG_PCI_PNP		1
 #define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 
 #define CONFIG_SYS_PCI_CACHE_LINE_SIZE	4
@@ -221,7 +156,6 @@
 
 /* FPGA - Spartan 2 */
 /* experiment
-#define CONFIG_FPGA
 #define CONFIG_FPGA_COUNT	1
 #define CONFIG_SYS_FPGA_PROG_FEEDBACK
 #define CONFIG_SYS_FPGA_CHECK_CTRLC
@@ -231,18 +165,6 @@
 #define CONFIG_EXTRA_CLOCK
 
 #define CONFIG_PRAM		2048	/* 2048 KB */
-
-#define CONFIG_SYS_PROMPT		"-> "
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE			1024	/* Console I/O Buffer Size */
-#else
-#define CONFIG_SYS_CBSIZE			256	/* Console I/O Buffer Size */
-#endif
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size    */
 
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
@@ -307,12 +229,6 @@
  * Environment is not embedded in u-boot. First time runing may have env
  * crc error warning if there is no correct environment on the flash.
  */
-#ifdef CONFIG_CF_SBF
-#	define CONFIG_ENV_IS_IN_SPI_FLASH
-#	define CONFIG_ENV_SPI_CS		1
-#else
-#	define CONFIG_ENV_IS_IN_FLASH	1
-#endif
 #undef CONFIG_ENV_OVERWRITE
 
 /*-----------------------------------------------------------------------
@@ -321,37 +237,24 @@
 #ifdef CONFIG_SYS_STMICRO_BOOT
 #	define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE		CONFIG_SYS_CS1_BASE
-#	define CONFIG_ENV_OFFSET		0x30000
-#	define CONFIG_ENV_SIZE		0x2000
-#	define CONFIG_ENV_SECT_SIZE	0x10000
 #endif
 #ifdef CONFIG_SYS_ATMEL_BOOT
 #	define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE		CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH1_BASE		CONFIG_SYS_CS1_BASE
-#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x40000)
-#	define CONFIG_ENV_SIZE		0x2000
-#	define CONFIG_ENV_SECT_SIZE	0x10000
 #endif
 #ifdef CONFIG_SYS_INTEL_BOOT
 #	define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE		CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH1_BASE		CONFIG_SYS_CS1_BASE
-#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x40000)
-#	define CONFIG_ENV_SIZE		0x2000
-#	define CONFIG_ENV_SECT_SIZE	0x20000
 #endif
 
-#define CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
 
-#	define CONFIG_FLASH_CFI_DRIVER	1
-#	define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 #	define CONFIG_SYS_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_8BIT
 #	define CONFIG_SYS_MAX_FLASH_BANKS	2	/* max number of memory banks */
 #	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
-#	define CONFIG_SYS_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
 #	define CONFIG_SYS_FLASH_CHECKSUM
 #	define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_CS0_BASE, CONFIG_SYS_CS1_BASE }
 #	define CONFIG_FLASH_CFI_LEGACY

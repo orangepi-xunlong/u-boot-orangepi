@@ -1,18 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2006,2009-2010 Freescale Semiconductor, Inc.
  * Jeff Brown
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <time.h>
+#include <vsprintf.h>
 #include <watchdog.h>
 #include <command.h>
 #include <asm/cache.h>
 #include <asm/mmu.h>
 #include <mpc86xx.h>
 #include <asm/fsl_law.h>
+#include <asm/ppc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -90,9 +93,9 @@ checkcpu(void)
 
 	puts("L2:    ");
 	if (get_l2cr() & 0x80000000) {
-#if defined(CONFIG_MPC8610)
+#if defined(CONFIG_ARCH_MPC8610)
 		puts("256");
-#elif defined(CONFIG_MPC8641)
+#elif defined(CONFIG_ARCH_MPC8641)
 		puts("512");
 #endif
 		puts(" KiB enabled\n");
@@ -139,7 +142,7 @@ get_tbclk(void)
 void
 watchdog_reset(void)
 {
-#if defined(CONFIG_MPC8610)
+#if defined(CONFIG_ARCH_MPC8610)
 	/*
 	 * This actually feed the hard enabled watchdog.
 	 */
@@ -160,7 +163,7 @@ watchdog_reset(void)
  * Print out the state of various machine registers.
  * Currently prints out LAWs, BR0/OR0, and BATs
  */
-void mpc86xx_reginfo(void)
+void print_reginfo(void)
 {
 	print_bats();
 	print_laws();

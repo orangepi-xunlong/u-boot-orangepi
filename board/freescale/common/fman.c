@@ -1,16 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2011 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright 2011-2015 Freescale Semiconductor, Inc.
  */
 
 #include <common.h>
-#include <libfdt.h>
-#include <libfdt_env.h>
+#include <linux/libfdt.h>
+#include <linux/libfdt_env.h>
 #include <fdt_support.h>
 
 #include <fm_eth.h>
+#ifdef CONFIG_FSL_LAYERSCAPE
+#include <asm/arch/fsl_serdes.h>
+#else
 #include <asm/fsl_serdes.h>
+#endif
 
 /*
  * Given the following ...
@@ -47,6 +50,8 @@ int fdt_set_phy_handle(void *fdt, char *compat, phys_addr_t addr,
 	ph = fdt_create_phandle(fdt, offset);
 	if (!ph)
 		return -FDT_ERR_BADPHANDLE;
+
+	ph = cpu_to_fdt32(ph);
 
 	offset = fdt_node_offset_by_compat_reg(fdt, compat, addr);
 	if (offset < 0)

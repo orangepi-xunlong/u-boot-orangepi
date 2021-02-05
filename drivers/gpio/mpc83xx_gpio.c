@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale MPC83xx GPIO handling.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <malloc.h>
 #include <mpc83xx.h>
 #include <asm/gpio.h>
 #include <asm/io.h>

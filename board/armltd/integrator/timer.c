@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -13,12 +14,11 @@
  * (C) Copyright 2004
  * ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <div64.h>
+#include <time.h>
 
 #ifdef CONFIG_ARCH_CINTEGRATOR
 #define DIV_CLOCK_INIT	1
@@ -94,6 +94,30 @@ int timer_init (void)
 /*
  * timer without interrupts
  */
+
+/* converts the timer reading to U-Boot ticks	       */
+/* the timestamp is the number of ticks since reset    */
+static ulong get_timer_masked (void)
+{
+	/* get current count */
+	unsigned long long now = READ_TIMER;
+
+	if(now > lastdec) {
+		/* Must have wrapped */
+		total_count += lastdec + TIMER_LOAD_VAL + 1 - now;
+	} else {
+		total_count += lastdec - now;
+	}
+	lastdec	= now;
+
+	/* Reuse "now" */
+	now = total_count;
+	do_div(now, div_timer);
+	timestamp = now;
+
+	return timestamp;
+}
+
 ulong get_timer (ulong base_ticks)
 {
 	return get_timer_masked () - base_ticks;
@@ -116,35 +140,6 @@ void __udelay (unsigned long usec)
 	}
 }
 
-/* converts the timer reading to U-Boot ticks	       */
-/* the timestamp is the number of ticks since reset    */
-ulong get_timer_masked (void)
-{
-	/* get current count */
-	unsigned long long now = READ_TIMER;
-
-	if(now > lastdec) {
-		/* Must have wrapped */
-		total_count += lastdec + TIMER_LOAD_VAL + 1 - now;
-	} else {
-		total_count += lastdec - now;
-	}
-	lastdec	= now;
-
-	/* Reuse "now" */
-	now = total_count;
-	do_div(now, div_timer);
-	timestamp = now;
-
-	return timestamp;
-}
-
-/* waits specified delay value and resets timestamp */
-void udelay_masked (unsigned long usec)
-{
-	udelay(usec);
-}
-
 /*
  * This function is derived from PowerPC code (read timebase as long long).
  * On ARM it just returns the timer value.
@@ -158,7 +153,7 @@ unsigned long long get_ticks(void)
  * Return the timebase clock frequency
  * i.e. how often the timer decrements
  */
-ulong get_tbclk (void)
+ulong get_tbclk(void)
 {
 	unsigned long long tmp = CONFIG_SYS_HZ_CLOCK;
 

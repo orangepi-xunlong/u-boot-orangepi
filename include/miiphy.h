@@ -1,6 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0 OR IBM-pibs */
 /*
- * SPDX-License-Identifier:	GPL-2.0	IBM-pibs
- *
  * Additions (C) Copyright 2009 Industrie Dial Face S.p.A.
  */
 /*----------------------------------------------------------------------------+
@@ -21,13 +20,6 @@
 #include <net.h>
 #include <phy.h>
 
-struct legacy_mii_dev {
-	int (*read)(const char *devname, unsigned char addr,
-		     unsigned char reg, unsigned short *value);
-	int (*write)(const char *devname, unsigned char addr,
-		      unsigned char reg, unsigned short value);
-};
-
 int miiphy_read(const char *devname, unsigned char addr, unsigned char reg,
 		 unsigned short *value);
 int miiphy_write(const char *devname, unsigned char addr, unsigned char reg,
@@ -44,22 +36,28 @@ int miiphy_link(const char *devname, unsigned char addr);
 
 void miiphy_init(void);
 
-void miiphy_register(const char *devname,
-		      int (*read)(const char *devname, unsigned char addr,
-				   unsigned char reg, unsigned short *value),
-		      int (*write)(const char *devname, unsigned char addr,
-				    unsigned char reg, unsigned short value));
-
 int miiphy_set_current_dev(const char *devname);
 const char *miiphy_get_current_dev(void);
 struct mii_dev *mdio_get_current_dev(void);
+struct list_head *mdio_get_list_head(void);
 struct mii_dev *miiphy_get_dev_by_name(const char *devname);
 struct phy_device *mdio_phydev_for_ethname(const char *devname);
 
 void miiphy_listdev(void);
 
 struct mii_dev *mdio_alloc(void);
+void mdio_free(struct mii_dev *bus);
 int mdio_register(struct mii_dev *bus);
+
+/**
+ * mdio_register_seq - Register mdio bus with sequence number
+ * @bus: mii device structure
+ * @seq: sequence number
+ *
+ * Return: 0 if success, negative value if error
+ */
+int mdio_register_seq(struct mii_dev *bus, int seq);
+int mdio_unregister(struct mii_dev *bus);
 void mdio_list_devices(void);
 
 #ifdef CONFIG_BITBANGMII
@@ -84,10 +82,9 @@ extern struct bb_miiphy_bus bb_miiphy_buses[];
 extern int bb_miiphy_buses_num;
 
 void bb_miiphy_init(void);
-int bb_miiphy_read(const char *devname, unsigned char addr,
-		    unsigned char reg, unsigned short *value);
-int bb_miiphy_write(const char *devname, unsigned char addr,
-		     unsigned char reg, unsigned short value);
+int bb_miiphy_read(struct mii_dev *miidev, int addr, int devad, int reg);
+int bb_miiphy_write(struct mii_dev *miidev, int addr, int devad, int reg,
+		    u16 value);
 #endif
 
 /* phy seed setup */
@@ -120,5 +117,86 @@ int bb_miiphy_write(const char *devname, unsigned char addr,
 /* phy EXSR */
 #define ESTATUS_1000XF		0x8000
 #define ESTATUS_1000XH		0x4000
+
+#ifdef CONFIG_DM_MDIO
+
+/**
+ * struct mdio_perdev_priv - Per-device class data for MDIO DM
+ *
+ * @mii_bus: Supporting MII legacy bus
+ */
+struct mdio_perdev_priv {
+	struct mii_dev *mii_bus;
+};
+
+/**
+ * struct mdio_ops - MDIO bus operations
+ *
+ * @read: Read from a PHY register
+ * @write: Write to a PHY register
+ * @reset: Reset the MDIO bus, NULL if not supported
+ */
+struct mdio_ops {
+	int (*read)(struct udevice *mdio_dev, int addr, int devad, int reg);
+	int (*write)(struct udevice *mdio_dev, int addr, int devad, int reg,
+		     u16 val);
+	int (*reset)(struct udevice *mdio_dev);
+};
+
+#define mdio_get_ops(dev) ((struct mdio_ops *)(dev)->driver->ops)
+
+/**
+ * dm_mdio_probe_devices - Call probe on all MII devices, currently used for
+ * MDIO console commands.
+ */
+void dm_mdio_probe_devices(void);
+
+/**
+ * dm_mdio_phy_connect - Wrapper over phy_connect for DM MDIO
+ *
+ * @mdiodev: mdio device the PHY is accesible on
+ * @phyaddr: PHY address on MDIO bus
+ * @ethdev: ethernet device to connect to the PHY
+ * @interface: MAC-PHY protocol
+ *
+ * @return pointer to phy_device, or 0 on error
+ */
+struct phy_device *dm_mdio_phy_connect(struct udevice *mdiodev, int phyaddr,
+				       struct udevice *ethdev,
+				       phy_interface_t interface);
+
+/**
+ * dm_eth_phy_connect - Connect an Eth device to a PHY based on device tree
+ *
+ * Picks up the DT phy-handle and phy-mode from ethernet device node and
+ * connects the ethernet device to the linked PHY.
+ *
+ * @ethdev: ethernet device
+ *
+ * @return pointer to phy_device, or 0 on error
+ */
+struct phy_device *dm_eth_phy_connect(struct udevice *ethdev);
+
+#endif
+
+#ifdef CONFIG_DM_MDIO_MUX
+
+/* indicates none of the child buses is selected */
+#define MDIO_MUX_SELECT_NONE	-1
+
+/**
+ * struct mdio_mux_ops - MDIO MUX operations
+ *
+ * @select: Selects a child bus
+ * @deselect: Clean up selection.  Optional, can be NULL
+ */
+struct mdio_mux_ops {
+	int (*select)(struct udevice *mux, int cur, int sel);
+	int (*deselect)(struct udevice *mux, int sel);
+};
+
+#define mdio_mux_get_ops(dev) ((struct mdio_mux_ops *)(dev)->driver->ops)
+
+#endif
 
 #endif

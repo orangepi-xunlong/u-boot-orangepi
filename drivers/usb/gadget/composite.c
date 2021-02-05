@@ -1,19 +1,27 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * composite.c - infrastructure for Composite USB Gadgets
  *
  * Copyright (C) 2006-2008 David Brownell
- * U-boot porting: Lukasz Majewski <l.majewski@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * U-Boot porting: Lukasz Majewski <l.majewski@samsung.com>
  */
 #undef DEBUG
 
+#include <dm/devres.h>
 #include <linux/bitops.h>
 #include <linux/usb/composite.h>
 
 #define USB_BUFSIZ	4096
 
+/* Helper type for accessing packed u16 pointers */
+typedef struct { __le16 val; } __packed __le16_packed;
+
 static struct usb_composite_driver *composite;
+
+static inline void le16_add_cpu_packed(__le16_packed *var, u16 val)
+{
+	var->val = cpu_to_le16(le16_to_cpu(var->val) + val);
+}
 
 /**
  * usb_add_function() - add a function to a configuration
@@ -165,7 +173,7 @@ static int config_buf(struct usb_configuration *config,
 	int				len = USB_BUFSIZ - USB_DT_CONFIG_SIZE;
 	void				*next = buf + USB_DT_CONFIG_SIZE;
 	struct usb_descriptor_header    **descriptors;
-	struct usb_config_descriptor	*c = buf;
+	struct usb_config_descriptor	*c;
 	int				status;
 	struct usb_function		*f;
 
@@ -283,7 +291,7 @@ static void device_qual(struct usb_composite_dev *cdev)
 	qual->bDeviceSubClass = cdev->desc.bDeviceSubClass;
 	qual->bDeviceProtocol = cdev->desc.bDeviceProtocol;
 	/* ASSUME same EP0 fifo size at both speeds */
-	qual->bMaxPacketSize0 = cdev->desc.bMaxPacketSize0;
+	qual->bMaxPacketSize0 = cdev->gadget->ep0->maxpacket;
 	qual->bNumConfigurations = count_configs(cdev, USB_DT_DEVICE_QUALIFIER);
 	qual->bRESERVED = 0;
 }
@@ -379,7 +387,7 @@ static int set_config(struct usb_composite_dev *cdev,
 			ep = (struct usb_endpoint_descriptor *)*descriptors;
 			addr = ((ep->bEndpointAddress & 0x80) >> 3)
 			     |	(ep->bEndpointAddress & 0x0f);
-			__set_bit(addr, f->endpoints);
+			generic_set_bit(addr, f->endpoints);
 		}
 
 		result = f->set_alt(f, tmp, 0);
@@ -481,20 +489,21 @@ done:
  * the host side.
  */
 
-static void collect_langs(struct usb_gadget_strings **sp, __le16 *buf)
+static void collect_langs(struct usb_gadget_strings **sp, void *buf)
 {
 	const struct usb_gadget_strings	*s;
 	u16				language;
-	__le16				*tmp;
+	__le16_packed			*tmp;
+	__le16_packed			*end = (buf + 252);
 
 	while (*sp) {
 		s = *sp;
 		language = cpu_to_le16(s->language);
-		for (tmp = buf; *tmp && tmp < &buf[126]; tmp++) {
-			if (*tmp == language)
+		for (tmp = buf; tmp->val && tmp < end; tmp++) {
+			if (tmp->val == language)
 				goto repeat;
 		}
-		*tmp++ = language;
+		tmp->val = language;
 repeat:
 		sp++;
 	}
@@ -689,6 +698,59 @@ static void composite_setup_complete(struct usb_ep *ep, struct usb_request *req)
 				req->status, req->actual, req->length);
 }
 
+static int bos_desc(struct usb_composite_dev *cdev)
+{
+	struct usb_ext_cap_descriptor   *usb_ext;
+	struct usb_bos_descriptor       *bos = cdev->req->buf;
+
+	bos->bLength = USB_DT_BOS_SIZE;
+	bos->bDescriptorType = USB_DT_BOS;
+
+	bos->wTotalLength = cpu_to_le16(USB_DT_BOS_SIZE);
+	bos->bNumDeviceCaps = 0;
+
+	/*
+	 * A SuperSpeed device shall include the USB2.0 extension descriptor
+	 * and shall support LPM when operating in USB2.0 HS mode.
+	 */
+	usb_ext = cdev->req->buf + le16_to_cpu(bos->wTotalLength);
+	bos->bNumDeviceCaps++;
+	le16_add_cpu_packed((__le16_packed *)&bos->wTotalLength,
+			    USB_DT_USB_EXT_CAP_SIZE);
+	usb_ext->bLength = USB_DT_USB_EXT_CAP_SIZE;
+	usb_ext->bDescriptorType = USB_DT_DEVICE_CAPABILITY;
+	usb_ext->bDevCapabilityType = USB_CAP_TYPE_EXT;
+	usb_ext->bmAttributes =
+		cpu_to_le32(USB_LPM_SUPPORT | USB_BESL_SUPPORT);
+
+	/*
+	 * The Superspeed USB Capability descriptor shall be implemented
+	 * by all SuperSpeed devices.
+	 */
+	if (gadget_is_superspeed(cdev->gadget)) {
+		struct usb_ss_cap_descriptor *ss_cap;
+
+		ss_cap = cdev->req->buf + le16_to_cpu(bos->wTotalLength);
+		bos->bNumDeviceCaps++;
+		le16_add_cpu_packed((__le16_packed *)&bos->wTotalLength,
+				    USB_DT_USB_SS_CAP_SIZE);
+		ss_cap->bLength = USB_DT_USB_SS_CAP_SIZE;
+		ss_cap->bDescriptorType = USB_DT_DEVICE_CAPABILITY;
+		ss_cap->bDevCapabilityType = USB_SS_CAP_TYPE;
+		ss_cap->bmAttributes = 0; /* LTM is not supported yet */
+		ss_cap->wSpeedSupported =
+			cpu_to_le16(USB_LOW_SPEED_OPERATION |
+				    USB_FULL_SPEED_OPERATION |
+				    USB_HIGH_SPEED_OPERATION |
+				    USB_5GBPS_OPERATION);
+		ss_cap->bFunctionalitySupport = USB_LOW_SPEED_OPERATION;
+		ss_cap->bU1devExitLat = USB_DEFAULT_U1_DEV_EXIT_LAT;
+		ss_cap->bU2DevExitLat =
+			cpu_to_le16(USB_DEFAULT_U2_DEV_EXIT_LAT);
+	}
+	return le16_to_cpu(bos->wTotalLength);
+}
+
 /*
  * The setup() callback implements all the ep0 functionality that's
  * not handled lower down, in hardware or the hardware driver(like
@@ -736,6 +798,21 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		case USB_DT_DEVICE:
 			cdev->desc.bNumConfigurations =
 				count_configs(cdev, USB_DT_DEVICE);
+
+			/*
+			 * If the speed is Super speed, then the supported
+			 * max packet size is 512 and it should be sent as
+			 * exponent of 2. So, 9(2^9=512) should be filled in
+			 * bMaxPacketSize0. Also fill USB version as 3.0
+			 * if speed is Super speed.
+			 */
+			if (cdev->gadget->speed == USB_SPEED_SUPER) {
+				cdev->desc.bMaxPacketSize0 = 9;
+				cdev->desc.bcdUSB = cpu_to_le16(0x0300);
+			} else {
+				cdev->desc.bMaxPacketSize0 =
+					cdev->gadget->ep0->maxpacket;
+			}
 			value = min(w_length, (u16) sizeof cdev->desc);
 			memcpy(req->buf, &cdev->desc, value);
 			break;
@@ -743,8 +820,8 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 			if (!gadget_is_dualspeed(gadget))
 				break;
 			device_qual(cdev);
-			value = min(w_length,
-				sizeof(struct usb_qualifier_descriptor));
+			value = min_t(int, w_length,
+				      sizeof(struct usb_qualifier_descriptor));
 			break;
 		case USB_DT_OTHER_SPEED_CONFIG:
 			if (!gadget_is_dualspeed(gadget))
@@ -760,6 +837,12 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 					w_index, w_value & 0xff);
 			if (value >= 0)
 				value = min(w_length, (u16) value);
+			break;
+		case USB_DT_BOS:
+			if (gadget_is_superspeed(cdev->gadget))
+				value = bos_desc(cdev);
+			if (value >= 0)
+				value = min(w_length, (u16)value);
 			break;
 		default:
 			goto unknown;
@@ -828,6 +911,9 @@ unknown:
 			ctrl->bRequestType, ctrl->bRequest,
 			w_value, w_index, w_length);
 
+		if (!cdev->config)
+			goto done;
+
 		/*
 		 * functions always handle their interfaces and endpoints...
 		 * punt other recipients (other, WUSB, ...) to the current
@@ -872,7 +958,7 @@ unknown:
 			value = f->setup(f, ctrl);
 		else {
 			c = cdev->config;
-			if (c && c->setup)
+			if (c->setup)
 				value = c->setup(c, ctrl);
 		}
 
@@ -918,7 +1004,11 @@ static void composite_unbind(struct usb_gadget *gadget)
 	 * so there's no i/o concurrency that could affect the
 	 * state protected by cdev->lock.
 	 */
+#ifdef __UBOOT__
+	assert_noisy(!cdev->config);
+#else
 	BUG_ON(cdev->config);
+#endif
 
 	while (!list_empty(&cdev->configs)) {
 		c = list_first_entry(&cdev->configs,
@@ -938,6 +1028,7 @@ static void composite_unbind(struct usb_gadget *gadget)
 			debug("unbind config '%s'/%p\n", c->label, c);
 			c->unbind(c);
 		}
+		free(c);
 	}
 	if (composite->unbind)
 		composite->unbind(cdev);
@@ -1042,6 +1133,7 @@ static struct usb_gadget_driver composite_driver = {
 	.unbind         = composite_unbind,
 
 	.setup		= composite_setup,
+	.reset          = composite_disconnect,
 	.disconnect	= composite_disconnect,
 
 	.suspend        = composite_suspend,
@@ -1065,6 +1157,8 @@ static struct usb_gadget_driver composite_driver = {
  */
 int usb_composite_register(struct usb_composite_driver *driver)
 {
+	int res;
+
 	if (!driver || !driver->dev || !driver->bind || composite)
 		return -EINVAL;
 
@@ -1072,7 +1166,11 @@ int usb_composite_register(struct usb_composite_driver *driver)
 		driver->name = "composite";
 	composite = driver;
 
-	return usb_gadget_register_driver(&composite_driver);
+	res = usb_gadget_register_driver(&composite_driver);
+	if (res != 0)
+		composite = NULL;
+
+	return res;
 }
 
 /**

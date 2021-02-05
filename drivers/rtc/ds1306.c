@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002 SIXNET, dge@sixnetio.com.
  *
  * (C) Copyright 2004, Li-Pro.Net <www.li-pro.net>
  * Stephan Linz <linz@li-pro.net>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -19,8 +18,6 @@
 #include <command.h>
 #include <rtc.h>
 #include <spi.h>
-
-#if defined(CONFIG_CMD_DATE)
 
 #define	RTC_SECONDS		0x00
 #define	RTC_MINUTES		0x01
@@ -110,7 +107,7 @@ int rtc_get (struct rtc_time *tmp)
 	immap->im_cpm.cp_pbdat &= ~PB_SPI_CE;	/* Disable DS1306 Chip */
 	udelay (10);
 
-	GregorianDay (tmp);	/* Determine the day of week */
+	rtc_calc_weekday(tmp);	/* Determine the day of week */
 
 	debug ("Get DATE: %4d-%02d-%02d (wday=%d)  TIME: %2d:%02d:%02d\n",
 	       tmp->tm_year, tmp->tm_mon, tmp->tm_mday, tmp->tm_wday,
@@ -180,8 +177,7 @@ int rtc_set (struct rtc_time *tmp)
 	{
 		ulong tim;
 
-		tim = mktime (tmp->tm_year, tmp->tm_mon, tmp->tm_mday,
-			      tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
+		tim = rtc_mktime(tmp);
 
 		immap->im_sitk.sitk_rtck = KAPWR_KEY;
 		immap->im_sit.sit_rtc = tim;
@@ -439,5 +435,3 @@ static void rtc_write (unsigned char reg, unsigned char val)
 }
 
 #endif /* end of code exclusion (see #ifdef CONFIG_SXNI855T above) */
-
-#endif

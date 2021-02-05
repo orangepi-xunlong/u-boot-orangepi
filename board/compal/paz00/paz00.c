@@ -1,17 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
  */
 
 #include <common.h>
@@ -20,7 +12,7 @@
 #include <asm/arch/pinmux.h>
 #include <asm/gpio.h>
 
-#ifdef CONFIG_TEGRA_MMC
+#ifdef CONFIG_MMC_SDHCI_TEGRA
 /*
  * Routine: pin_mux_mmc
  * Description: setup the pin muxes/tristate values for the SDMMC(s)
@@ -48,7 +40,7 @@ void pin_mux_mmc(void)
 }
 #endif
 
-#ifdef CONFIG_LCD
+#ifdef CONFIG_DM_VIDEO
 /* this is a weak define that we are overriding */
 void pin_mux_display(void)
 {

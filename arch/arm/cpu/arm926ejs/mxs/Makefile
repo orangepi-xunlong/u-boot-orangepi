@@ -1,9 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 extra-$(CONFIG_SPL_BUILD) := start.o
 
@@ -14,8 +12,8 @@ obj-y	+= spl_boot.o spl_lradc_init.o spl_mem_init.o spl_power_init.o
 endif
 
 # Specify the target for use in elftosb call
-MKIMAGE_TARGET-$(CONFIG_MX23) = mxsimage.mx23.cfg
-MKIMAGE_TARGET-$(CONFIG_MX28) = mxsimage.mx28.cfg
+MKIMAGE_TARGET-$(CONFIG_MX23) = mxsimage$(CONFIG_SPL_FRAMEWORK:%=-spl).mx23.cfg
+MKIMAGE_TARGET-$(CONFIG_MX28) = mxsimage$(CONFIG_SPL_FRAMEWORK:%=-spl).mx28.cfg
 
 # Generate HAB-capable IVT
 #
@@ -74,12 +72,10 @@ u-boot.csf: u-boot.ivt u-boot.bin board/$(VENDOR)/$(BOARD)/sign/u-boot.csf
 %.sig: %.csf
 	$(call if_changed,mkcst_mxs)
 
-quiet_cmd_mkimage_mxs = MKIMAGE $@
-cmd_mkimage_mxs = $(objtree)/tools/mkimage -n $< -T mxsimage $@ \
-	$(if $(KBUILD_VERBOSE:1=), >/dev/null)
-
+MKIMAGEFLAGS_u-boot.sb = -n $< -T mxsimage
 u-boot.sb: $(src)/$(MKIMAGE_TARGET-y) u-boot.bin spl/u-boot-spl.bin FORCE
-	$(call if_changed,mkimage_mxs)
+	$(call if_changed,mkimage)
 
+MKIMAGEFLAGS_u-boot-signed.sb = -n $< -T mxsimage
 u-boot-signed.sb: $(src)/mxsimage-signed.cfg u-boot.ivt u-boot.sig spl/u-boot-spl.ivt spl/u-boot-spl.sig FORCE
-	$(call if_changed,mkimage_mxs)
+	$(call if_changed,mkimage)

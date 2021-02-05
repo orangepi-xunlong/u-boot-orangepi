@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause
 /*
  * f_mass_storage.c -- Mass Storage USB Composite Function
  *
@@ -5,8 +6,6 @@
  * Copyright (C) 2009 Samsung Electronics
  *                    Author: Michal Nazarewicz <m.nazarewicz@samsung.com>
  * All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0+	BSD-3-Clause
  */
 
 /*
@@ -241,9 +240,12 @@
 /* #define DUMP_MSGS */
 
 #include <config.h>
+#include <hexdump.h>
 #include <malloc.h>
 #include <common.h>
+#include <console.h>
 #include <g_dnl.h>
+#include <dm/devres.h>
 
 #include <linux/err.h>
 #include <linux/usb/ch9.h>
@@ -251,10 +253,11 @@
 #include <usb_mass_storage.h>
 
 #include <asm/unaligned.h>
+#include <linux/bitops.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
-#include <usb/lin_gadget_compat.h>
+#include <linux/bitmap.h>
 #include <g_dnl.h>
 
 /*------------------------------------------------------------------------*/
@@ -281,26 +284,6 @@ static const char fsg_string_interface[] = "Mass Storage";
 
 struct kref {int x; };
 struct completion {int x; };
-
-inline void set_bit(int nr, volatile void *addr)
-{
-	int	mask;
-	unsigned int *a = (unsigned int *) addr;
-
-	a += nr >> 5;
-	mask = 1 << (nr & 0x1f);
-	*a |= mask;
-}
-
-inline void clear_bit(int nr, volatile void *addr)
-{
-	int	mask;
-	unsigned int *a = (unsigned int *) addr;
-
-	a += nr >> 5;
-	mask = 1 << (nr & 0x1f);
-	*a &= ~mask;
-}
 
 struct fsg_dev;
 struct fsg_common;
@@ -408,7 +391,11 @@ static inline int __fsg_is_set(struct fsg_common *common,
 	if (common->fsg)
 		return 1;
 	ERROR(common, "common->fsg is NULL in %s at %u\n", func, line);
+#ifdef __UBOOT__
+	assert_noisy(false);
+#else
 	WARN_ON(1);
+#endif
 	return 0;
 }
 
@@ -443,8 +430,9 @@ static void set_bulk_out_req_length(struct fsg_common *common,
 
 /*-------------------------------------------------------------------------*/
 
-struct ums *ums;
-struct fsg_common *the_fsg_common;
+static struct ums *ums;
+static int ums_count;
+static struct fsg_common *the_fsg_common;
 
 static int fsg_set_halt(struct fsg_dev *fsg, struct usb_ep *ep)
 {
@@ -671,7 +659,7 @@ static int sleep_thread(struct fsg_common *common)
 		if (common->thread_wakeup_needed)
 			break;
 
-		if (++i == 50000) {
+		if (++i == 20000) {
 			busy_indicator();
 			i = 0;
 			k++;
@@ -689,7 +677,7 @@ static int sleep_thread(struct fsg_common *common)
 			k = 0;
 		}
 
-		usb_gadget_handle_interrupts();
+		usb_gadget_handle_interrupts(0);
 	}
 	common->thread_wakeup_needed = 0;
 	return rc;
@@ -771,7 +759,7 @@ static int do_read(struct fsg_common *common)
 		}
 
 		/* Perform the read */
-		rc = ums->read_sector(ums,
+		rc = ums[common->lun].read_sector(&ums[common->lun],
 				      file_offset / SECTOR_SIZE,
 				      amount / SECTOR_SIZE,
 				      (char __user *)bh->buf);
@@ -945,7 +933,7 @@ static int do_write(struct fsg_common *common)
 			amount = bh->outreq->actual;
 
 			/* Perform the write */
-			rc = ums->write_sector(ums,
+			rc = ums[common->lun].write_sector(&ums[common->lun],
 					       file_offset / SECTOR_SIZE,
 					       amount / SECTOR_SIZE,
 					       (char __user *)bh->buf);
@@ -973,7 +961,7 @@ static int do_write(struct fsg_common *common)
 
 			/* If an error occurred, report it and its position */
 			if (nwritten < amount) {
-				printf("nwritten:%d amount:%d\n", nwritten,
+				printf("nwritten:%zd amount:%u\n", nwritten,
 				       amount);
 				curlun->sense_data = SS_WRITE_ERROR;
 				curlun->info_valid = 1;
@@ -1061,7 +1049,7 @@ static int do_verify(struct fsg_common *common)
 		}
 
 		/* Perform the read */
-		rc = ums->read_sector(ums,
+		rc = ums[common->lun].read_sector(&ums[common->lun],
 				      file_offset / SECTOR_SIZE,
 				      amount / SECTOR_SIZE,
 				      (char __user *)bh->buf);
@@ -1110,12 +1098,13 @@ static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 
 	memset(buf, 0, 8);
 	buf[0] = TYPE_DISK;
+	buf[1] = curlun->removable ? 0x80 : 0;
 	buf[2] = 2;		/* ANSI SCSI level 2 */
 	buf[3] = 2;		/* SCSI-2 INQUIRY data format */
 	buf[4] = 31;		/* Additional length */
 				/* No special options */
 	sprintf((char *) (buf + 8), "%-8s%-16s%04x", (char*) vendor_id ,
-			ums->name, (u16) 0xffff);
+			ums[common->lun].name, (u16) 0xffff);
 
 	return 36;
 }
@@ -1741,7 +1730,7 @@ static int check_command(struct fsg_common *common, int cmnd_size,
 		    common->lun, lun);
 
 	/* Check the LUN */
-	if (common->lun >= 0 && common->lun < common->nluns) {
+	if (common->lun < common->nluns) {
 		curlun = &common->luns[common->lun];
 		if (common->cmnd[0] != SC_REQUEST_SENSE) {
 			curlun->sense_data = SS_NO_SENSE;
@@ -2083,7 +2072,7 @@ static int received_cbw(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 		 * we can simply accept and discard any data received
 		 * until the next reset. */
 		wedge_bulk_in_endpoint(fsg);
-		set_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
+		generic_set_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 		return -EINVAL;
 	}
 
@@ -2247,7 +2236,7 @@ reset:
 	fsg->bulk_out_enabled = 1;
 	common->bulk_out_maxpacket =
 				le16_to_cpu(get_unaligned(&d->wMaxPacketSize));
-	clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
+	generic_clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 
 	/* Allocate the requests */
 	for (i = 0; i < FSG_NUM_BUFFERS; ++i) {
@@ -2454,7 +2443,7 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 	int nluns, i, rc;
 
 	/* Find out how many LUNs there should be */
-	nluns = 1;
+	nluns = ums_count;
 	if (nluns < 1 || nluns > FSG_MAX_LUNS) {
 		printf("invalid number of LUNs: %u\n", nluns);
 		return ERR_PTR(-EINVAL);
@@ -2499,7 +2488,7 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 	for (i = 0; i < nluns; i++) {
 		common->luns[i].removable = 1;
 
-		rc = fsg_lun_open(&common->luns[i], "");
+		rc = fsg_lun_open(&common->luns[i], ums[i].num_sectors, "");
 		if (rc)
 			goto error_luns;
 	}
@@ -2773,9 +2762,10 @@ int fsg_add(struct usb_configuration *c)
 	return fsg_bind_config(c->cdev, c, fsg_common);
 }
 
-int fsg_init(struct ums *ums_dev)
+int fsg_init(struct ums *ums_devs, int count)
 {
-	ums = ums_dev;
+	ums = ums_devs;
+	ums_count = count;
 
 	return 0;
 }

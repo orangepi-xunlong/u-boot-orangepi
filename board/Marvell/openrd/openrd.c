@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Net Insight <www.netinsight.net>
@@ -7,14 +8,14 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <miiphy.h>
+#include <net.h>
+#include <asm/mach-types.h>
 #include <asm/arch/cpu.h>
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include "openrd.h"
 
@@ -27,9 +28,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the  below configuration configures mainly initial LED status
 	 */
-	kw_config_gpio(OPENRD_OE_VAL_LOW,
-			OPENRD_OE_VAL_HIGH,
-			OPENRD_OE_LOW, OPENRD_OE_HIGH);
+	mvebu_config_gpio(OPENRD_OE_VAL_LOW,
+			  OPENRD_OE_VAL_HIGH,
+			  OPENRD_OE_LOW, OPENRD_OE_HIGH);
 
 	/* Multi-Purpose Pins Functionality configuration */
 	static const u32 kwmpp_config[] = {
@@ -104,7 +105,7 @@ int board_init(void)
 #endif
 
 	/* adress of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 	return 0;
 }
 
@@ -119,9 +120,8 @@ void mv_phy_init(char *name)
 		return;
 
 	/* command to read PHY dev address */
-	if (miiphy_read(name, 0xEE, 0xEE, (u16 *) &devadr)) {
-		printf("Err..%s could not read PHY dev address\n",
-			__FUNCTION__);
+	if (miiphy_read(name, 0xEE, 0xEE, (u16 *)&devadr)) {
+		printf("Err..%s could not read PHY dev address\n", __func__);
 		return;
 	}
 

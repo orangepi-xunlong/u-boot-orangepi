@@ -1,59 +1,76 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DW_I2C_H_
 #define __DW_I2C_H_
 
+#include <clk.h>
+#include <i2c.h>
+#include <reset.h>
+
 struct i2c_regs {
-	u32 ic_con;
-	u32 ic_tar;
-	u32 ic_sar;
-	u32 ic_hs_maddr;
-	u32 ic_cmd_data;
-	u32 ic_ss_scl_hcnt;
-	u32 ic_ss_scl_lcnt;
-	u32 ic_fs_scl_hcnt;
-	u32 ic_fs_scl_lcnt;
-	u32 ic_hs_scl_hcnt;
-	u32 ic_hs_scl_lcnt;
-	u32 ic_intr_stat;
-	u32 ic_intr_mask;
-	u32 ic_raw_intr_stat;
-	u32 ic_rx_tl;
-	u32 ic_tx_tl;
-	u32 ic_clr_intr;
-	u32 ic_clr_rx_under;
-	u32 ic_clr_rx_over;
-	u32 ic_clr_tx_over;
-	u32 ic_clr_rd_req;
-	u32 ic_clr_tx_abrt;
-	u32 ic_clr_rx_done;
-	u32 ic_clr_activity;
-	u32 ic_clr_stop_det;
-	u32 ic_clr_start_det;
-	u32 ic_clr_gen_call;
-	u32 ic_enable;
-	u32 ic_status;
-	u32 ic_txflr;
-	u32 ix_rxflr;
-	u32 reserved_1;
-	u32 ic_tx_abrt_source;
+	u32 ic_con;		/* 0x00 */
+	u32 ic_tar;		/* 0x04 */
+	u32 ic_sar;		/* 0x08 */
+	u32 ic_hs_maddr;	/* 0x0c */
+	u32 ic_cmd_data;	/* 0x10 */
+	u32 ic_ss_scl_hcnt;	/* 0x14 */
+	u32 ic_ss_scl_lcnt;	/* 0x18 */
+	u32 ic_fs_scl_hcnt;	/* 0x1c */
+	u32 ic_fs_scl_lcnt;	/* 0x20 */
+	u32 ic_hs_scl_hcnt;	/* 0x24 */
+	u32 ic_hs_scl_lcnt;	/* 0x28 */
+	u32 ic_intr_stat;	/* 0x2c */
+	u32 ic_intr_mask;	/* 0x30 */
+	u32 ic_raw_intr_stat;	/* 0x34 */
+	u32 ic_rx_tl;		/* 0x38 */
+	u32 ic_tx_tl;		/* 0x3c */
+	u32 ic_clr_intr;	/* 0x40 */
+	u32 ic_clr_rx_under;	/* 0x44 */
+	u32 ic_clr_rx_over;	/* 0x48 */
+	u32 ic_clr_tx_over;	/* 0x4c */
+	u32 ic_clr_rd_req;	/* 0x50 */
+	u32 ic_clr_tx_abrt;	/* 0x54 */
+	u32 ic_clr_rx_done;	/* 0x58 */
+	u32 ic_clr_activity;	/* 0x5c */
+	u32 ic_clr_stop_det;	/* 0x60 */
+	u32 ic_clr_start_det;	/* 0x64 */
+	u32 ic_clr_gen_call;	/* 0x68 */
+	u32 ic_enable;		/* 0x6c */
+	u32 ic_status;		/* 0x70 */
+	u32 ic_txflr;		/* 0x74 */
+	u32 ic_rxflr;		/* 0x78 */
+	u32 ic_sda_hold;	/* 0x7c */
+	u32 ic_tx_abrt_source;	/* 0x80 */
+	u32 slv_data_nak_only;
+	u32 dma_cr;
+	u32 dma_tdlr;
+	u32 dma_rdlr;
+	u32 sda_setup;
+	u32 ack_general_call;
+	u32 ic_enable_status;	/* 0x9c */
+	u32 fs_spklen;
+	u32 hs_spklen;
+	u32 clr_restart_det;
+	u8 reserved[0xf4 - 0xac];
+	u32 comp_param1;	/* 0xf4 */
+	u32 comp_version;
+	u32 comp_type;
 };
 
-#if !defined(IC_CLK)
-#define IC_CLK			166
-#endif
-#define NANO_TO_MICRO		1000
+#define IC_CLK			166666666
+#define NANO_TO_KILO		1000000
 
 /* High and low times in different speed modes (in ns) */
 #define MIN_SS_SCL_HIGHTIME	4000
 #define MIN_SS_SCL_LOWTIME	4700
 #define MIN_FS_SCL_HIGHTIME	600
 #define MIN_FS_SCL_LOWTIME	1300
+#define MIN_FP_SCL_HIGHTIME	260
+#define MIN_FP_SCL_LOWTIME	500
 #define MIN_HS_SCL_HIGHTIME	60
 #define MIN_HS_SCL_LOWTIME	160
 
@@ -121,13 +138,73 @@ struct i2c_regs {
 #define IC_STATUS_TFNF		0x0002
 #define IC_STATUS_ACT		0x0001
 
-/* Speed Selection */
-#define IC_SPEED_MODE_STANDARD	1
-#define IC_SPEED_MODE_FAST	2
-#define IC_SPEED_MODE_MAX	3
+/**
+ * struct dw_scl_sda_cfg - I2C timing configuration
+ *
+ * @has_high_speed: Support high speed (3.4Mbps)
+ * @ss_hcnt: Standard speed high time in ns
+ * @fs_hcnt: Fast speed high time in ns
+ * @ss_lcnt: Standard speed low time in ns
+ * @fs_lcnt: Fast speed low time in ns
+ * @sda_hold: SDA hold time
+ */
+struct dw_scl_sda_cfg {
+	bool has_high_speed;
+	u32 ss_hcnt;
+	u32 fs_hcnt;
+	u32 ss_lcnt;
+	u32 fs_lcnt;
+	u32 sda_hold;
+};
 
-#define I2C_MAX_SPEED		3400000
-#define I2C_FAST_SPEED		400000
-#define I2C_STANDARD_SPEED	100000
+/**
+ * struct dw_i2c_speed_config - timings to use for a particular speed
+ *
+ * This holds calculated values to be written to the I2C controller. Each value
+ * is represented as a number of IC clock cycles.
+ *
+ * @scl_lcnt: Low count value for SCL
+ * @scl_hcnt: High count value for SCL
+ * @sda_hold: Data hold count
+ * @speed_mode: Speed mode being used
+ */
+struct dw_i2c_speed_config {
+	/* SCL high and low period count */
+	u16 scl_lcnt;
+	u16 scl_hcnt;
+	u32 sda_hold;
+	enum i2c_speed_mode speed_mode;
+};
+
+/**
+ * struct dw_i2c - private information for the bus
+ *
+ * @regs: Registers pointer
+ * @scl_sda_cfg: Deprecated information for x86 (should move to device tree)
+ * @resets: Resets for the I2C controller
+ * @scl_rise_time_ns: Configured SCL rise time in nanoseconds
+ * @scl_fall_time_ns: Configured SCL fall time in nanoseconds
+ * @sda_hold_time_ns: Configured SDA hold time in nanoseconds
+ * @has_spk_cnt: true if the spike-count register is present
+ * @clk: Clock input to the I2C controller
+ */
+struct dw_i2c {
+	struct i2c_regs *regs;
+	struct dw_scl_sda_cfg *scl_sda_cfg;
+	struct reset_ctl_bulk resets;
+	u32 scl_rise_time_ns;
+	u32 scl_fall_time_ns;
+	u32 sda_hold_time_ns;
+	bool has_spk_cnt;
+#if CONFIG_IS_ENABLED(CLK)
+	struct clk clk;
+#endif
+};
+
+extern const struct dm_i2c_ops designware_i2c_ops;
+
+int designware_i2c_probe(struct udevice *bus);
+int designware_i2c_remove(struct udevice *dev);
+int designware_i2c_ofdata_to_platdata(struct udevice *bus);
 
 #endif /* __DW_I2C_H_ */

@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Murray Jensen <Murray.Jensen@cmst.csiro.au>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <stdio.h>
@@ -15,7 +14,7 @@ main(int argc, char *argv[])
 {
     unsigned long ethaddr_low, ethaddr_high;
 
-    srand(time(0) | getpid());
+    srand(time(0) + (getpid() << 8));
 
     /*
      * setting the 2nd LSB in the most significant byte of

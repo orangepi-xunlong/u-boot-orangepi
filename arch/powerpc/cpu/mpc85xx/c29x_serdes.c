@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -32,6 +31,9 @@ static const struct serdes_config serdes1_cfg_tbl[] = {
 
 int is_serdes_configured(enum srds_prtcl device)
 {
+	if (!(serdes1_prtcl_map & (1 << NONE)))
+		fsl_serdes_init();
+
 	return (1 << device) & serdes1_prtcl_map;
 }
 
@@ -43,6 +45,9 @@ void fsl_serdes_init(void)
 				MPC85xx_PORDEVSR_IO_SEL_SHIFT;
 	const struct serdes_config *ptr;
 	int lane;
+
+	if (serdes1_prtcl_map & (1 << NONE))
+		return;
 
 	debug("PORDEVSR[IO_SEL_SRDS] = %x\n", srds_cfg);
 
@@ -59,4 +64,7 @@ void fsl_serdes_init(void)
 		enum srds_prtcl lane_prtcl = ptr->lanes[lane];
 		serdes1_prtcl_map |= (1 << lane_prtcl);
 	}
+
+	/* Set the first bit to indicate serdes has been initialized */
+	serdes1_prtcl_map |= (1 << NONE);
 }

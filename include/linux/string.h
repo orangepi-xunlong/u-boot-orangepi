@@ -26,6 +26,9 @@ extern char * strcpy(char *,const char *);
 #ifndef __HAVE_ARCH_STRNCPY
 extern char * strncpy(char *,const char *, __kernel_size_t);
 #endif
+#ifndef __HAVE_ARCH_STRLCPY
+size_t strlcpy(char *, const char *, size_t);
+#endif
 #ifndef __HAVE_ARCH_STRCAT
 extern char * strcat(char *, const char *);
 #endif
@@ -47,6 +50,19 @@ extern int strncasecmp(const char *s1, const char *s2, __kernel_size_t len);
 #ifndef __HAVE_ARCH_STRCHR
 extern char * strchr(const char *,int);
 #endif
+
+/**
+ * strchrnul() - return position of a character in the string, or end of string
+ *
+ * The strchrnul() function is like strchr() except that if c is not found
+ * in s, then it returns a pointer to the nul byte at the end of s, rather than
+ * NULL
+ * @s: string to search
+ * @c: character to search for
+ * @return position of @c in @s, or end of @s if not found
+ */
+const char *strchrnul(const char *s, int c);
+
 #ifndef __HAVE_ARCH_STRRCHR
 extern char * strrchr(const char *,int);
 #endif
@@ -60,8 +76,29 @@ extern __kernel_size_t strlen(const char *);
 #ifndef __HAVE_ARCH_STRNLEN
 extern __kernel_size_t strnlen(const char *,__kernel_size_t);
 #endif
+
+#ifndef __HAVE_ARCH_STRCSPN
+/**
+ * strcspn() - find span of string without given characters
+ *
+ * Calculates the length of the initial segment of @s which consists entirely
+ * of bsytes not in reject.
+ *
+ * @s: string to search
+ * @reject: strings which cause the search to halt
+ * @return number of characters at the start of @s which are not in @reject
+ */
+size_t strcspn(const char *s, const char *reject);
+#endif
+
+#ifdef CONFIG_SANDBOX
+# define strdup		sandbox_strdup
+# define strndup		sandbox_strndup
+#endif
+
 #ifndef __HAVE_ARCH_STRDUP
 extern char * strdup(const char *);
+extern char * strndup(const char *, size_t);
 #endif
 #ifndef __HAVE_ARCH_STRSWAB
 extern char * strswab(const char *);
@@ -88,6 +125,9 @@ extern void * memchr(const void *,int,__kernel_size_t);
 #ifndef __HAVE_ARCH_MEMCHR_INV
 void *memchr_inv(const void *, int, size_t);
 #endif
+
+unsigned long ustrtoul(const char *cp, char **endp, unsigned int base);
+unsigned long long ustrtoull(const char *cp, char **endp, unsigned int base);
 
 #ifdef __cplusplus
 }

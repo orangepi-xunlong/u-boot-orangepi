@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  * Aneesh V <aneesh@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _PL310_H_
 #define _PL310_H_
@@ -15,6 +14,18 @@
 #define L2X0_DYNAMIC_CLK_GATING_EN		(1 << 1)
 #define L2X0_STNDBY_MODE_EN			(1 << 0)
 #define L2X0_CTRL_EN				1
+
+#define L310_SHARED_ATT_OVERRIDE_ENABLE		(1 << 22)
+#define L310_AUX_CTRL_DATA_PREFETCH_MASK	(1 << 28)
+#define L310_AUX_CTRL_INST_PREFETCH_MASK	(1 << 29)
+#define L310_LATENCY_CTRL_SETUP(n)		((n) << 0)
+#define L310_LATENCY_CTRL_RD(n)			((n) << 4)
+#define L310_LATENCY_CTRL_WR(n)			((n) << 8)
+
+#define L2X0_CACHE_ID_PART_MASK     (0xf << 6)
+#define L2X0_CACHE_ID_PART_L310     (3 << 6)
+#define L2X0_CACHE_ID_RTL_MASK          0x3f
+#define L2X0_CACHE_ID_RTL_R3P2          0x8
 
 struct pl310_regs {
 	u32 pl310_cache_id;

@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Samsung Electronics
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <stdio.h>
@@ -110,7 +109,7 @@ int main(int argc, char **argv)
 	}
 
 	ofd = open(argv[of_index], O_WRONLY | O_CREAT | O_TRUNC, FILE_PERM);
-	if (ifd < 0) {
+	if (ofd < 0) {
 		fprintf(stderr, "%s: Can't open %s: %s\n",
 			prog_name, argv[of_index], strerror(errno));
 		exit(EXIT_FAILURE);

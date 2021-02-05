@@ -1,5 +1,5 @@
 /*
- * Simulate a SPI port and clients (see README.sandbox for details)
+ * Simulate a SPI port and clients (see doc/arch/sandbox.rst for details)
  *
  * Copyright (c) 2011-2013 The Chromium OS Authors.
  * See file CREDITS for list of people who contributed to this
@@ -31,19 +31,6 @@ struct sandbox_spi_emu_ops {
 	/* The client is rx-ing bytes from the bus, so it should tx some */
 	int (*xfer)(void *priv, const u8 *rx, u8 *tx, uint bytes);
 };
-
-/*
- * There are times when the data lines are allowed to tristate.  What
- * is actually sensed on the line depends on the hardware.  It could
- * always be 0xFF/0x00 (if there are pull ups/downs), or things could
- * float and so we'd get garbage back.  This func encapsulates that
- * scenario so we can worry about the details here.
- */
-static inline void sandbox_spi_tristate(u8 *buf, uint len)
-{
-	/* XXX: make this into a user config option ? */
-	memset(buf, 0xff, len);
-}
 
 /*
  * Extract the bus/cs from the spi spec and return the start of the spi

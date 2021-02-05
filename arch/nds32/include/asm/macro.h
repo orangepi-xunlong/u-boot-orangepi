@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * include/asm-nds32/macro.h
  *
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  * Copyright (C) 2011 Andes Technology Corporation
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_NDS_MACRO_H
@@ -23,20 +22,20 @@
  */
 
 .macro	write32, addr, data
-	li	$r4, addr
-	li	$r5, data
+	li	$r4, \addr
+	li	$r5, \data
 	swi	$r5, [$r4]
 .endm
 
 .macro	write16, addr, data
-	li	$r4, addr
-	li	$r5, data
+	li	$r4, \addr
+	li	$r5, \data
 	shi	$r5, [$r4]
 .endm
 
 .macro	write8, addr, data
-	li	$r4, addr
-	li	$r5, data
+	li	$r4, \addr
+	li	$r5, \data
 	sbi	$r5, [$r4]
 .endm
 
@@ -46,17 +45,17 @@
  * Note: Instruction 'ori' supports immediate value up to 15 bits.
  */
 .macro	setbf32, addr, data
-	li	$r4, addr
+	li	$r4, \addr
 	lwi	$r5, [$r4]
-	li	$r6, data
+	li	$r6, \data
 	or	$r5, $r5, $r6
 	swi	$r5, [$r4]
 .endm
 
 .macro	setbf15, addr, data
-	li	$r4, addr
+	li	$r4, \addr
 	lwi	$r5, [$r4]
-	ori	$r5, $r5, data
+	ori	$r5, $r5, \data
 	swi	$r5, [$r4]
 .endm
 
@@ -69,7 +68,7 @@
  */
 
 .macro	wait_timer, time
-	li	$r4, time
+	li	$r4, \time
 1:
 	nop
 	addi	$r4, $r4, -1

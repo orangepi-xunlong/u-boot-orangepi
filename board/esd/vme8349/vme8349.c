@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * vme8349.c -- esd VME8349 board support
  *
@@ -8,16 +9,16 @@
  *
  * Reinhard Arlt <reinhard.arlt@esd-electronics.com>
  * Based on board/mpc8349emds/mpc8349emds.c (and previous 834x releases.)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <asm/mpc8349_pci.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #endif
 #include <asm/io.h>
 #include <asm/mmu.h>
@@ -26,18 +27,20 @@
 #include <i2c.h>
 #include <netdev.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 void ddr_enable_ecc(unsigned int dram_size);
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM - Main memory */
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR;
 
 	msize = spd_sdram();
 
@@ -52,12 +55,14 @@ phys_size_t initdram(int board_type)
 	msize = get_ram_size(0, msize);
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
 {
-#ifdef VME_CADDY2
+#ifdef CONFIG_TARGET_CADDY2
 	puts("Board: esd VME-CADDY/2\n");
 #else
 	puts("Board: esd VME-CPU/8349\n");
@@ -66,7 +71,7 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef VME_CADDY2
+#ifdef CONFIG_TARGET_CADDY2
 int board_eth_init(bd_t *bis)
 {
 	return pci_eth_init(bis);
@@ -74,13 +79,15 @@ int board_eth_init(bd_t *bis)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif
 
@@ -97,7 +104,7 @@ int misc_init_r()
  * Provide SPD values for spd_sdram(). Both boards (VME-CADDY/2
  * and VME-CADDY/2) have different SDRAM configurations.
  */
-#ifdef VME_CADDY2
+#ifdef CONFIG_TARGET_CADDY2
 #define SMALL_RAM	0xff
 #define LARGE_RAM	0x00
 #else
@@ -160,7 +167,7 @@ static spd_eeprom_t default_spd_eeprom = {
 	SPD_VAL(0x7e, 0x1d),	/* 63 */
 	{ 'e', 's', 'd', '-', 'g', 'm', 'b', 'h' },
 	SPD_VAL(0x00, 0x00),	/* 72 */
-#ifdef VME_CADDY2
+#ifdef CONFIG_TARGET_CADDY2
 	{ "vme-caddy/2 ram   " }
 #else
 	{ "vme-cpu/2 ram     " }

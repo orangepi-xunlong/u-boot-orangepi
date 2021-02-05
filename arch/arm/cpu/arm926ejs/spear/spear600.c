@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2009
  * Viresh Kumar, ST Microelectronics, viresh.kumar@st.com
  * Vipin Kumar, ST Microelectronics, vipin.kumar@st.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +10,21 @@
 #include <asm/io.h>
 #include <asm/arch/spr_misc.h>
 #include <asm/arch/spr_defs.h>
+
+void spear_late_init(void)
+{
+	struct misc_regs *misc_p = (struct misc_regs *)CONFIG_SPEAR_MISCBASE;
+
+	writel(0x80000007, &misc_p->arb_icm_ml1);
+	writel(0x80000007, &misc_p->arb_icm_ml2);
+	writel(0x80000007, &misc_p->arb_icm_ml3);
+	writel(0x80000007, &misc_p->arb_icm_ml4);
+	writel(0x80000007, &misc_p->arb_icm_ml5);
+	writel(0x80000007, &misc_p->arb_icm_ml6);
+	writel(0x80000007, &misc_p->arb_icm_ml7);
+	writel(0x80000007, &misc_p->arb_icm_ml8);
+	writel(0x80000007, &misc_p->arb_icm_ml9);
+}
 
 static void sel_1v8(void)
 {
@@ -101,14 +115,6 @@ void plat_ddr_init(void)
 		else
 			sel_2v5();
 	}
-}
-
-/*
- * soc_init:
- */
-void soc_init(void)
-{
-	/* Nothing to be done for SPEAr600 */
 }
 
 /*

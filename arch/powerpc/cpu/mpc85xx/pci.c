@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004 Freescale Semiconductor.
  * Copyright (C) 2003 Motorola Inc.
  * Xianghua Xiao (x.xiao@motorola.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -13,7 +12,7 @@
 #include <asm/cpm_85xx.h>
 #include <pci.h>
 
-#if !defined(CONFIG_FSL_PCI_INIT)
+#if !defined(CONFIG_FSL_PCI_INIT) && !defined(CONFIG_DM_PCI)
 
 #ifndef CONFIG_SYS_PCI1_MEM_BUS
 #define CONFIG_SYS_PCI1_MEM_BUS CONFIG_SYS_PCI1_MEM_BASE
@@ -120,7 +119,7 @@ pci_mpc85xx_init(struct pci_controller *board_hose)
 
 	pci_register_hose(hose);
 
-#if defined(CONFIG_MPC8555CDS) || defined(CONFIG_MPC8541CDS)
+#if defined(CONFIG_TARGET_MPC8555CDS) || defined(CONFIG_TARGET_MPC8541CDS)
 	/*
 	 * This is a SW workaround for an apparent HW problem
 	 * in the PCI controller on the MPC85555/41 CDS boards.

@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007,2008 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_CPU_SH4_H_
@@ -31,8 +30,6 @@
 # include <asm/cpu_sh7722.h>
 #elif defined (CONFIG_CPU_SH7723)
 # include <asm/cpu_sh7723.h>
-#elif defined (CONFIG_CPU_SH7724)
-# include <asm/cpu_sh7724.h>
 #elif defined (CONFIG_CPU_SH7734)
 # include <asm/cpu_sh7734.h>
 #elif defined (CONFIG_CPU_SH7752)
@@ -45,8 +42,6 @@
 # include <asm/cpu_sh7763.h>
 #elif defined (CONFIG_CPU_SH7780)
 # include <asm/cpu_sh7780.h>
-#elif defined (CONFIG_CPU_SH7785)
-# include <asm/cpu_sh7785.h>
 #else
 # error "Unknown SH4 variant"
 #endif

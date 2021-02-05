@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Decode and dump U-Boot profiling information */
@@ -16,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <sys/types.h>
 
 #include <compiler.h>
 #include <trace.h>
@@ -132,13 +132,8 @@ static int read_system_map(FILE *fin)
 
 		if (func_count == alloced) {
 			alloced += 256;
-                        struct func_info *func_list_new = realloc(func_list,
+			func_list = realloc(func_list,
 					sizeof(struct func_info) * alloced);
-                        if(func_list_new == NULL)
-                        {
-                                return -1;
-                        }
-                        func_list = func_list_new;
 			assert(func_list);
 		}
 		if (!func_count)
@@ -210,12 +205,12 @@ static struct func_info *find_caller_by_offset(uint32_t offset)
 	return low >= 0 ? &func_list[low] : NULL;
 }
 
-static int read_calls(FILE *fin, int count)
+static int read_calls(FILE *fin, size_t count)
 {
 	struct trace_call *call_data;
 	int i;
 
-	notice("call count: %d\n", count);
+	notice("call count: %zu\n", count);
 	call_list = (struct trace_call *)calloc(count, sizeof(*call_data));
 	if (!call_list) {
 		error("Cannot allocate call_list\n");
@@ -413,7 +408,6 @@ static int read_trace_config(FILE *fin)
 
 		tok = strtok_r(s, " \t", &saveptr);
 		if (!tok) {
-                        free(line);
 			error("Invalid trace config data on line %d\n",
 			      linenum);
 			return -1;
@@ -423,7 +417,6 @@ static int read_trace_config(FILE *fin)
 		} else if (0 == strcmp(tok, "exclude-func")) {
 			line->type = TRACE_LINE_EXCLUDE;
 		} else {
-                        free(line);
 			error("Unknown command in trace config data line %d\n",
 			      linenum);
 			return -1;
@@ -431,7 +424,6 @@ static int read_trace_config(FILE *fin)
 
 		tok = strtok_r(NULL, " \t", &saveptr);
 		if (!tok) {
-                        free(line);
 			error("Missing pattern in trace config data line %d\n",
 			      linenum);
 			return -1;
@@ -439,9 +431,10 @@ static int read_trace_config(FILE *fin)
 
 		err = regcomp(&line->regex, tok, REG_NOSUB);
 		if (err) {
+			int r = regex_report_error(&line->regex, err,
+						   "compile", tok);
 			free(line);
-			return regex_report_error(&line->regex, err, "compile",
-						  tok);
+			return r;
 		}
 
 		/* link this new one to the end of the list */

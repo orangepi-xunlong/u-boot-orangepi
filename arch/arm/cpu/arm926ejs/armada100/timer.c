@@ -1,13 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  * Contributor: Mahavir Jain <mjain@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <time.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/armada100.h>
 
@@ -62,7 +63,7 @@ ulong read_timer(void)
 	return(readl(&armd1timers->cvwr));
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	ulong now = read_timer();
 
@@ -138,7 +139,7 @@ int timer_init(void)
  * 2. Write key value to TMP_WSAR reg.
  * 3. Perform write operation.
  */
-void reset_cpu (unsigned long ignored)
+void reset_cpu(unsigned long ignored)
 {
 	struct armd1mpmu_registers *mpmu =
 		(struct armd1mpmu_registers *) ARMD1_MPMU_BASE;
@@ -188,7 +189,7 @@ unsigned long long get_ticks(void)
  * This function is derived from PowerPC code (timebase clock frequency).
  * On ARM it returns the number of timer ticks per second.
  */
-ulong get_tbclk (void)
+ulong get_tbclk(void)
 {
 	return (ulong)CONFIG_SYS_HZ;
 }

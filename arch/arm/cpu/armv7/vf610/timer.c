@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <time.h>
 #include <asm/io.h>
 #include <div64.h>
 #include <asm/arch/imx-regs.h>
@@ -58,14 +58,9 @@ unsigned long long get_ticks(void)
 	return (((unsigned long long)gd->arch.tbu) << 32) | gd->arch.tbl;
 }
 
-ulong get_timer_masked(void)
-{
-	return tick_to_time(get_ticks());
-}
-
 ulong get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks()) - base;
 }
 
 /* delay x useconds AND preserve advance timstamp value */

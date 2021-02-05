@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Advanced Crypto Engine - SHA Firmware
  * Copyright (c) 2012  Samsung Electronics
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include "ace_sha.h"
@@ -10,7 +9,7 @@
 #ifdef CONFIG_SHA_HW_ACCEL
 #include <u-boot/sha256.h>
 #include <u-boot/sha1.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 /* SHA1 value for the message of zero length */
 static const unsigned char sha1_digest_emptymsg[SHA1_SUM_LEN] = {

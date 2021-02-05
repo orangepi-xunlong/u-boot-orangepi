@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008-2010 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <ioports.h>
@@ -14,7 +14,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int cpu_reset(int nr)
+int cpu_reset(u32 nr)
 {
 	/* dummy function so common/cmd_mp.c will build
 	 * should be implemented in the future, when cpu_release()
@@ -24,13 +24,13 @@ int cpu_reset(int nr)
 	return 1;
 }
 
-int cpu_status(int nr)
+int cpu_status(u32 nr)
 {
 	/* dummy function so common/cmd_mp.c will build */
 	return 0;
 }
 
-int cpu_disable(int nr)
+int cpu_disable(u32 nr)
 {
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_CCSRBAR;
 	volatile ccsr_gur_t *gur = &immap->im_gur;
@@ -67,7 +67,7 @@ int is_core_disabled(int nr) {
 	return 0;
 }
 
-int cpu_release(int nr, int argc, char * const argv[])
+int cpu_release(u32 nr, int argc, char * const argv[])
 {
 	/* dummy function so common/cmd_mp.c will build
 	 * should be implemented in the future */

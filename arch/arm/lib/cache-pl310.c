@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  * Aneesh V <aneesh@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <linux/types.h>
 #include <asm/io.h>
@@ -34,7 +33,7 @@ static void pl310_background_op_all_ways(u32 *op_reg)
 	/* Invalidate all ways */
 	writel(way_mask, op_reg);
 	/* Wait for all ways to be invalidated */
-	while (readl(op_reg) && way_mask)
+	while (readl(op_reg) & way_mask)
 		;
 	pl310_cache_sync();
 }

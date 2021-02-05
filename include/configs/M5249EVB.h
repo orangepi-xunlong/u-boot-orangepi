@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the esd TASREG board.
  *
  * (C) Copyright 2004
  * Stefan Roese, esd gmbh germany, stefan.roese@esd-electronics.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,14 +17,10 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCF52x2			/* define processor family */
-#define CONFIG_M5249			/* define processor type */
-
 #define CONFIG_MCFTMR
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
-#define CONFIG_BAUDRATE		115200
 
 #undef  CONFIG_WATCHDOG
 
@@ -35,33 +30,12 @@
  * BOOTP options
  */
 #undef CONFIG_BOOTP_BOOTFILESIZE
-#undef CONFIG_BOOTP_BOOTPATH
-#undef CONFIG_BOOTP_GATEWAY
-#undef CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_CACHE
-#undef CONFIG_CMD_NET
-
-#define CONFIG_SYS_LONGHELP				/* undef to save memory		*/
-
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_SYS_CBSIZE		1024		/* Console I/O Buffer Size	*/
-#else
-#define CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size	*/
-#endif
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS		16		/* max number of command args	*/
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size	*/
 
 #define CONFIG_SYS_DEVICE_NULLDEV	1	/* include nulldev device	*/
-#define CONFIG_SYS_CONSOLE_INFO_QUIET	1	/* don't print console @ startup	*/
-#define CONFIG_AUTO_COMPLETE	1	/* add autocompletion support	*/
-#define CONFIG_LOOPW		1	/* enable loopw command	*/
-#define CONFIG_MX_CYCLIC	1	/* enable mdc/mwc commands	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x200000	/* default load address */
 
@@ -93,10 +67,9 @@
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_OFFSET		0x4000	/* Address of Environment Sector*/
-#define CONFIG_ENV_SIZE		0x2000	/* Total Size of Environment Sector	*/
-#define CONFIG_ENV_SECT_SIZE	0x2000 /* see README - env sector total size	*/
+#define LDS_BOARD_TEXT \
+	. = DEFINED(env_offset) ? env_offset : .; \
+	env/embedded.o(.text);
 
 /*-----------------------------------------------------------------------
  * Start addresses for the final memory configuration
@@ -127,15 +100,12 @@
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
 
-#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CONFIG_SYS_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
 #	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
-#	define CONFIG_SYS_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
 #	define CONFIG_SYS_FLASH_CHECKSUM
 #	define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE }
 #endif

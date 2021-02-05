@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *	Andesboot - Startup Code for Whitiger core
  *
@@ -5,15 +6,14 @@
  *	Copyright (C) 2006	Shawn Lin <nobuhiro@andestech.com>
  *	Copyright (C) 2011	Macpaul Lin <macpaul@andestech.com>
  *				Greentime Hu <greentime@andestech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
+
+.pic
 
 #include <asm-offsets.h>
 #include <config.h>
 #include <common.h>
 #include <asm/macro.h>
-#include <version.h>
 
 /*
  * Jump vector table for EVIC mode
@@ -89,24 +89,6 @@ _start:	j	reset
 _TEXT_BASE:
 	.word	CONFIG_SYS_TEXT_BASE
 
-/*
- * These are defined in the board-specific linker script.
- * Subtracting _start from them lets the linker put their
- * relative position in the executable instead of leaving
- * them null.
- */
-#ifdef CONFIG_USE_IRQ
-/* IRQ stack memory (calculated at run-time) */
-.globl IRQ_STACK_START
-IRQ_STACK_START:
-	.word 0x0badc0de
-
-/* IRQ stack memory (calculated at run-time) */
-.globl FIQ_STACK_START
-FIQ_STACK_START:
-	.word 0x0badc0de
-#endif
-
 /* IRQ stack memory (calculated at run-time) + 8 bytes */
 .globl IRQ_STACK_START_IN
 IRQ_STACK_START_IN:
@@ -117,36 +99,105 @@ IRQ_STACK_START_IN:
  */
 
 reset:
+
+/*
+ *  gp = ~0            for burn mode
+ *     = ~load_address for load mode
+ */
+reset_gp:
+	.relax_hint 0
+	sethi   $gp, hi20(_GLOBAL_OFFSET_TABLE_-8)
+	.relax_hint 0
+	ori     $gp, $gp, lo12(_GLOBAL_OFFSET_TABLE_-4)
+	add5.pc $gp
+
 set_ivb:
 	li	$r0, 0x0
-
 	/* turn on BTB */
 	mtsr	$r0, $misc_ctl
 	/* set IVIC, vector size: 4 bytes, base: 0x0 */
 	mtsr	$r0, $ivb
+/*
+ * MMU_CTL NTC0 Non-cacheable
+ */
+	li	$r0, ~0x6
+	mfsr	$r1, $mr0
+	and	$r1, $r1, $r0
+	mtsr	$r1, $mr0
 
-load_lli:
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-	jal	load_lowlevel_init
-	jral	$p0
+	li	$r0, ~0x3
+	mfsr	$r1, $mr8
+	and	$r1, $r1, $r0
+	mtsr	$r1, $mr8
+#if !(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
+/*
+ * MMU_CTL NTC0 Cacheable/Write-Back
+ */
+	li	$r0, 0x4
+	mfsr	$r1, $mr0
+	or	$r1, $r1, $r0
+	mtsr	$r1, $mr0
 #endif
+
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
+#ifdef CONFIG_ARCH_MAP_SYSMEM
+/*
+ * MMU_CTL NTC1 Non-cacheable
+ */
+	li	$r0, ~0x18
+	mfsr	$r1, $mr0
+	and	$r1, $r1, $r0
+	mtsr	$r1, $mr0
+/*
+ * MMU_CTL NTM1 mapping for partition 0
+ */
+	li	$r0, ~0x6000
+	mfsr	$r1, $mr0
+	and	$r1, $r1, $r0
+	mtsr	$r1, $mr0
+#endif
+#endif
+
+#if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
+	li	$r0, 0x1
+	mfsr	$r1, $mr8
+	or	$r1, $r1, $r0
+	mtsr	$r1, $mr8
+#endif
+
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
+	li	$r0, 0x2
+	mfsr	$r1, $mr8
+	or	$r1, $r1, $r0
+	mtsr	$r1, $mr8
+#endif
+
+	jal mem_init
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+	jal	lowlevel_init
+/*
+ *  gp = ~VMA          for burn mode
+ *     = ~load_address for load mode
+ */
+update_gp:
+	.relax_hint 0
+	sethi   $gp, hi20(_GLOBAL_OFFSET_TABLE_-8)
+	.relax_hint 0
+	ori     $gp, $gp, lo12(_GLOBAL_OFFSET_TABLE_-4)
+	add5.pc $gp
+#endif
+/*
+ *  do critical initializations first (shall be in short time)
+ *  do self_relocation ASAP.
+ */
 
 /*
  * Set the N1213 (Whitiger) core to superuser mode
  * According to spec, it is already when reset
  */
-turnoff_wtdog:
 #ifndef CONFIG_SKIP_TRUNOFF_WATCHDOG
-	jal	load_turnoff_watchdog
-	jral	$p0
-#endif
-
-/*
- * Do CPU critical regs init only at reboot,
- * not when booting from ram
- */
-#ifdef CONFIG_INIT_CRITICAL
-	bal	cpu_init_crit		! Do CPU critical regs init
+	jal	turnoff_watchdog
 #endif
 
 /*
@@ -154,9 +205,15 @@ turnoff_wtdog:
  * $sp must be 8-byte alignment for ABI compliance.
  */
 call_board_init_f:
-	li	$sp, CONFIG_SYS_INIT_SP_ADDR
-	li	$r0, 0x00000000
-
+	li		$sp, CONFIG_SYS_INIT_SP_ADDR
+	move	$r0, $sp
+	bal	board_init_f_alloc_reserve
+	move	$sp, $r0
+	bal	board_init_f_init_reserve
+#ifdef CONFIG_DEBUG_UART
+	bal	debug_uart_init
+#endif
+	li		$r0, 0x00000000
 #ifdef __PIC__
 #ifdef __NDS32_N1213_43U1H__
 /* __NDS32_N1213_43U1H__ implies NDS32 V0 ISA */
@@ -166,12 +223,17 @@ call_board_init_f:
 	j	board_init_f		! jump to board_init_f() in lib/board.c
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.
  *
  */
+
+/*
+ *  gp = ~RAM_SIZE - TEXT_SIZE for burn/load mode
+ */
+
 .globl	relocate_code
 relocate_code:
 	move	$r4, $r0		/* save addr_sp */
@@ -182,49 +244,41 @@ relocate_code:
 stack_setup:
 	move	$sp, $r4
 
-	la	$r0, _start
-
+	la	$r0, _start@GOTOFF
 	beq	$r0, $r6, clear_bss	/* skip relocation */
 
-	move	$r1, $r6		/* r1 <- scratch for copy_loop */
-	la	$r3, __bss_start
-	sub	$r3, $r3, $r0		/* r3 <- __bss_start_ofs */
-	add	$r2, $r0, $r3		/* r2 <- source end address */
-
+	la	 $r1, _end@GOTOFF
+	move $r2, $r6			/* r2 <- scratch for copy_loop */
 copy_loop:
-	lwi.p	$r7, [$r0], #4
-	swi.p	$r7, [$r1], #4
-	blt	$r0, $r2, copy_loop
-
+	lmw.bim	$r11, [$r0], $r18
+	smw.bim	$r11, [$r2], $r18
+	blt	$r0, $r1, copy_loop
 /*
  * fix relocations related issues
  */
 fix_relocations:
-	l.w	$r0, _TEXT_BASE		/* r0 <- Text base */
-	sub	$r9, $r6, $r0		/* r9 <- relocation offset */
+	l.w	$r0, _TEXT_BASE@GOTOFF	/* r0 <- Text base */
+	sub	$r9, $r6, $r0			/* r9 <- relocation offset */
 
-fix_got:
-/*
- * Now we want to update GOT.
- *
- * GOT[0] is reserved. GOT[1] is also reserved for the dynamic object
- * generated by GNU ld. Skip these reserved entries from relocation.
- */
-	la	$r2, __got_start	/* r2 <- rel __got_start in FLASH */
-	add	$r2, $r2, $r9		/* r2 <- rel __got_start in RAM */
-	la	$r3, __got_end		/* r3 <- rel __got_end in FLASH */
-	add	$r3, $r3, $r9		/* r3 <- rel __got_end in RAM */
-	addi	$r2, $r2, #8		/* skipping first two entries */
-fix_got_loop:
-	lwi	$r0, [$r2]		/* r0 <- location in FLASH to fix up */
-	add	$r0, $r0, $r9		/* r0 <- location fix up to RAM */
-	swi.p	$r0, [$r2], #4		/* r0 <- store fix into .got in RAM */
-	blt	$r2, $r3, fix_got_loop
+	la  $r7, __rel_dyn_start@GOTOFF
+	add	$r7, $r7, $r9		/* r2 <- rel __got_start in RAM */
+	la  $r8, __rel_dyn_end@GOTOFF
+	add	$r8, $r8, $r9		/* r2 <- rel __got_start in RAM */
+	li  $r3, #0x2a /* R_NDS32_RELATIVE */
+1:
+	lmw.bim $r0, [$r7], $r2 /* r0,r1,r2 <- adr,type,addend */
+	bne $r1, $r3, 2f
+
+	add $r0, $r0, $r9
+	add $r2, $r2, $r9
+	sw  $r2, [$r0]
+2:
+	blt $r7, $r8, 1b
 
 clear_bss:
-	la	$r0, __bss_start	/* r0 <- rel __bss_start in FLASH */
+	la	$r0, __bss_start@GOTOFF	/* r0 <- rel __bss_start in FLASH */
 	add	$r0, $r0, $r9		/* r0 <- rel __bss_start in FLASH */
-	la	$r1, __bss_end		/* r1 <- rel __bss_end in RAM */
+	la	$r1, __bss_end@GOTOFF		/* r1 <- rel __bss_end in RAM */
 	add	$r1, $r1, $r9		/* r0 <- rel __bss_end in RAM */
 	li	$r2, 0x00000000		/* clear */
 
@@ -238,7 +292,9 @@ clbss_l:
  * initialization, now running from RAM.
  */
 call_board_init_r:
-	la	$r0, board_init_r
+	bal invalidate_icache_all
+	bal flush_dcache_all
+	la	$r0, board_init_r@GOTOFF
 	move	$lp, $r0		/* offset of board_init_r() */
 	add	$lp, $lp, $r9		/* real address of board_init_r() */
 	/* setup parameters for board_init_r */
@@ -253,67 +309,6 @@ call_board_init_r:
 
 	/* jump to it ... */
 	jr	$lp			/* jump to board_init_r() */
-
-/*
- * Initialize CPU critical registers
- *
- *	1.	Setup control registers
- *		1.1 Mask all IRQs
- *		1.2 Flush cache and TLB
- *		1.3 Disable MMU and cache
- *	2.	Setup memory timing
- */
-
-cpu_init_crit:
-
-	move	$r0, $lp		/* push	ra */
-
-	/* Disable Interrupts by clear GIE in $PSW reg */
-	setgie.d
-
-	/* Flush caches and TLB */
-	/* Invalidate caches */
-	bal	invalidate_icac
-	bal	invalidate_dcac
-
-	/* Flush TLB */
-	mfsr	$p0, $MMU_CFG
-	andi	$p0, $p0, 0x3			! MMPS
-	li	$p1, 0x2			! TLB MMU
-	bne	$p0, $p1, 1f
-	tlbop	flushall			! Flush TLB
-
-1:
-	! Disable MMU, Dcache
-	! Whitiger is MMU disabled when reset
-	! Disable the D$
-	mfsr	$p0, MR_CAC_CTL			! Get the $CACHE_CTL reg
-	li	$p1, DIS_DCAC
-	and	$p0, $p0, $p1			! Set DC_EN bit
-	mtsr	$p0, MR_CAC_CTL			! write back the $CACHE_CTL reg
-	isb
-
-	move	$lp, $r0
-2:
-	ret
-
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-load_lowlevel_init:
-	la  $r6, lowlevel_init
-	la  $r7, load_lli + 4
-	sub $p0, $r6, $r7
-	add $p0, $p0, $lp
-ret
-#endif
-
-#ifndef CONFIG_SKIP_TRUNOFF_WATCHDOG
-load_turnoff_watchdog:
-	la  $r6, turnoff_watchdog
-	la  $r7, turnoff_wtdog + 4
-	sub $p0, $r6, $r7
-	add $p0, $p0, $lp
-ret
-#endif
 
 /*
  * Invalidate I$
@@ -398,7 +393,7 @@ end_flush_dcache:
 	! FIXME: Other way to get PC?
 	! FIXME: Update according to the newest spec!!
 1:
-	la	 $r28, 1
+	li	 $r28, 1
 	push $r28
 	mfsr $r28, PSW			! $PSW
 	push $r28

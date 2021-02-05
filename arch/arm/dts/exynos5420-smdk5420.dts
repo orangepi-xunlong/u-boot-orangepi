@@ -1,14 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * SAMSUNG SMDK5420 board device tree source
  *
  * Copyright (c) 2013 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
-/include/ "exynos54xx.dtsi"
+#include "exynos54xx.dtsi"
 
 / {
 	model = "SAMSUNG SMDK5420 board based on EXYNOS5420";
@@ -37,7 +36,7 @@
 	};
 
 	/* s2mps11 is on i2c bus 4 */
-	i2c@12ca0000 {
+	i2c@12CA0000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		pmic@66 {
@@ -82,10 +81,27 @@
 		samsung,codec-type = "wm8994";
 	};
 
-	i2c@12c70000 {
-		soundcodec@1a {
+	i2c@12C70000 {
+		wm8994: soundcodec@1a {
 			reg = <0x1a>;
-			compatible = "wolfson,wm8994-codec";
+			u-boot,i2c-offset-len = <2>;
+			compatible = "wolfson,wm8994";
+			#sound-dai-cells = <1>;
+		};
+	};
+
+	sound {
+		compatible = "samsung,smdk5420-audio-wm8994";
+
+		samsung,model = "Snow-I2S-MAX98095";
+		samsung,audio-codec = <&wm8994>;
+
+		cpu {
+			sound-dai = <&i2s0 0>;
+		};
+
+		codec {
+			sound-dai = <&wm8994 0>;
 		};
 	};
 

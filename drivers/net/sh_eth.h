@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * sh_eth.h - Driver for Renesas SuperH ethernet controler.
+ * sh_eth.h - Driver for Renesas SuperH ethernet controller.
  *
  * Copyright (C) 2008 - 2012 Renesas Solutions Corp.
  * Copyright (c) 2008 - 2012 Nobuhiro Iwamatsu
  * Copyright (c) 2007 Carlos Munoz <carlos@kenati.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <netdev.h>
@@ -16,18 +15,20 @@
 #if defined(CONFIG_SH)
 /* Malloc returns addresses in the P1 area (cacheable). However we need to
    use area P2 (non-cacheable) */
-#define ADDR_TO_P2(addr)	((((int)(addr) & ~0xe0000000) | 0xa0000000))
+#define ADDR_TO_P2(addr)	((((uintptr_t)(addr) & ~0xe0000000) | 0xa0000000))
 
 /* The ethernet controller needs to use physical addresses */
 #if defined(CONFIG_SH_32BIT)
-#define ADDR_TO_PHY(addr)	((((int)(addr) & ~0xe0000000) | 0x40000000))
+#define ADDR_TO_PHY(addr)	((((uintptr_t)(addr) & ~0xe0000000) | 0x40000000))
 #else
-#define ADDR_TO_PHY(addr)	((int)(addr) & ~0xe0000000)
+#define ADDR_TO_PHY(addr)	((uintptr_t)(addr) & ~0xe0000000)
 #endif
 #elif defined(CONFIG_ARM)
-#define inl		readl
+#ifndef inl
+#define inl	readl
 #define outl	writel
-#define ADDR_TO_PHY(addr)	((int)(addr))
+#endif
+#define ADDR_TO_PHY(addr)	((uintptr_t)(addr))
 #define ADDR_TO_P2(addr)	(addr)
 #endif /* defined(CONFIG_SH) */
 
@@ -51,8 +52,6 @@
 /* The size of the tx descriptor is determined by how much padding is used.
    4, 20, or 52 bytes of padding can be used */
 #define TX_DESC_PADDING	(CONFIG_SH_ETHER_ALIGNE_SIZE - 12)
-/* same as CONFIG_SH_ETHER_ALIGNE_SIZE */
-#define TX_DESC_SIZE	(12 + TX_DESC_PADDING)
 
 /* Tx descriptor. We always use 3 bytes of padding */
 struct tx_desc_s {
@@ -68,8 +67,6 @@ struct tx_desc_s {
 /* The size of the rx descriptor is determined by how much padding is used.
    4, 20, or 52 bytes of padding can be used */
 #define RX_DESC_PADDING	(CONFIG_SH_ETHER_ALIGNE_SIZE - 12)
-/* same as CONFIG_SH_ETHER_ALIGNE_SIZE */
-#define RX_DESC_SIZE		(12 + RX_DESC_PADDING)
 /* aligned cache line size */
 #define RX_BUF_ALIGNE_SIZE	(CONFIG_SH_ETHER_ALIGNE_SIZE > 32 ? 64 : 32)
 
@@ -82,18 +79,19 @@ struct rx_desc_s {
 };
 
 struct sh_eth_info {
-	struct tx_desc_s *tx_desc_malloc;
+	struct tx_desc_s *tx_desc_alloc;
 	struct tx_desc_s *tx_desc_base;
 	struct tx_desc_s *tx_desc_cur;
-	struct rx_desc_s *rx_desc_malloc;
+	struct rx_desc_s *rx_desc_alloc;
 	struct rx_desc_s *rx_desc_base;
 	struct rx_desc_s *rx_desc_cur;
-	u8 *rx_buf_malloc;
+	u8 *rx_buf_alloc;
 	u8 *rx_buf_base;
 	u8 mac_addr[6];
 	u8 phy_addr;
 	struct eth_device *dev;
 	struct phy_device *phydev;
+	void __iomem *iobase;
 };
 
 struct sh_eth_dev {
@@ -230,7 +228,6 @@ static const u16 sh_eth_offset_gigabit[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[RMII_MII] =  0x0790,
 };
 
-#if defined(SH_ETH_TYPE_RZ)
 static const u16 sh_eth_offset_rz[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[EDSR]	= 0x0000,
 	[EDMR]	= 0x0400,
@@ -258,6 +255,7 @@ static const u16 sh_eth_offset_rz[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[ECMR]	= 0x0500,
 	[ECSR]	= 0x0510,
 	[ECSIPR]	= 0x0518,
+	[PIR]	= 0x0520,
 	[PSR]	= 0x0528,
 	[PIPR]	= 0x052c,
 	[RFLR]	= 0x0508,
@@ -283,7 +281,6 @@ static const u16 sh_eth_offset_rz[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[MAFCR]	= 0x0778,
 	[RMII_MII] =  0x0790,
 };
-#endif
 
 static const u16 sh_eth_offset_fast_sh4[SH_ETH_MAX_REGISTER_OFFSET] = {
 	[ECMR]	= 0x0100,
@@ -352,18 +349,18 @@ static const u16 sh_eth_offset_fast_sh4[SH_ETH_MAX_REGISTER_OFFSET] = {
 #define SH_ETH_TYPE_ETHER
 #define BASE_IO_ADDR	0xfef00000
 #endif
-#elif defined(CONFIG_CPU_SH7724)
-#define SH_ETH_TYPE_ETHER
-#define BASE_IO_ADDR	0xA4600000
 #elif defined(CONFIG_R8A7740)
 #define SH_ETH_TYPE_GETHER
 #define BASE_IO_ADDR	0xE9A00000
-#elif defined(CONFIG_R8A7790) || defined(CONFIG_R8A7791)
+#elif defined(CONFIG_RCAR_GEN2)
 #define SH_ETH_TYPE_ETHER
 #define BASE_IO_ADDR	0xEE700200
 #elif defined(CONFIG_R7S72100)
 #define SH_ETH_TYPE_RZ
 #define BASE_IO_ADDR	0xE8203000
+#elif defined(CONFIG_R8A77980)
+#define SH_ETH_TYPE_GETHER
+#define BASE_IO_ADDR	0xE7400000
 #endif
 
 /*
@@ -380,6 +377,7 @@ enum EDSR_BIT {
 
 /* EDMR */
 enum DMAC_M_BIT {
+	EDMR_NBST	= 0x80, /* DMA transfer burst mode */
 	EDMR_DL1 = 0x20, EDMR_DL0 = 0x10,
 #if defined(SH_ETH_TYPE_GETHER) || defined(SH_ETH_TYPE_RZ)
 	EDMR_SRST	= 0x03, /* Receive/Send reset */
@@ -569,7 +567,7 @@ enum FELIC_MODE_BIT {
 	ECMR_PRM = 0x00000001,
 #ifdef CONFIG_CPU_SH7724
 	ECMR_RTM = 0x00000010,
-#elif defined(CONFIG_R8A7790) || defined(CONFIG_R8A7791)
+#elif defined(CONFIG_RCAR_GEN2) || defined (CONFIG_R8A77980)
 	ECMR_RTM = 0x00000004,
 #endif
 
@@ -656,10 +654,10 @@ enum FIFO_SIZE_BIT {
 	FIFO_SIZE_T = 0x00000700, FIFO_SIZE_R = 0x00000007,
 };
 
-static inline unsigned long sh_eth_reg_addr(struct sh_eth_dev *eth,
+static inline unsigned long sh_eth_reg_addr(struct sh_eth_info *port,
 					    int enum_index)
 {
-#if defined(SH_ETH_TYPE_GETHER)
+#if defined(SH_ETH_TYPE_GETHER) || defined(SH_ETH_TYPE_RZ)
 	const u16 *reg_offset = sh_eth_offset_gigabit;
 #elif defined(SH_ETH_TYPE_ETHER)
 	const u16 *reg_offset = sh_eth_offset_fast_sh4;
@@ -668,17 +666,17 @@ static inline unsigned long sh_eth_reg_addr(struct sh_eth_dev *eth,
 #else
 #error
 #endif
-	return BASE_IO_ADDR + reg_offset[enum_index] + 0x800 * eth->port;
+	return (unsigned long)port->iobase + reg_offset[enum_index];
 }
 
-static inline void sh_eth_write(struct sh_eth_dev *eth, unsigned long data,
+static inline void sh_eth_write(struct sh_eth_info *port, unsigned long data,
 				int enum_index)
 {
-	outl(data, sh_eth_reg_addr(eth, enum_index));
+	outl(data, sh_eth_reg_addr(port, enum_index));
 }
 
-static inline unsigned long sh_eth_read(struct sh_eth_dev *eth,
+static inline unsigned long sh_eth_read(struct sh_eth_info *port,
 					int enum_index)
 {
-	return inl(sh_eth_reg_addr(eth, enum_index));
+	return inl(sh_eth_reg_addr(port, enum_index));
 }

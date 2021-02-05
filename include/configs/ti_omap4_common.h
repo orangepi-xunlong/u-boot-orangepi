@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments Incorporated.
@@ -5,30 +6,15 @@
  * Steve Sakoman  <steve@sakoman.com>
  *
  * TI OMAP4 common configuration settings
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_TI_OMAP4_COMMON_H
 #define __CONFIG_TI_OMAP4_COMMON_H
 
-/*
- * High Level Configuration Options
- */
-#define CONFIG_OMAP44XX		1	/* which is a 44XX */
-#define CONFIG_OMAP4430		1	/* which is in a 4430 */
-#define CONFIG_MISC_INIT_R
-#define CONFIG_ARCH_CPU_INIT
-#define CONFIG_DISPLAY_CPUINFO		1
-#define CONFIG_DISPLAY_BOARDINFO	1
-
-#define CONFIG_SYS_THUMB_BUILD
-
 #ifndef CONFIG_SYS_L2CACHE_OFF
 #define CONFIG_SYS_L2_PL310		1
 #define CONFIG_SYS_PL310_BASE	0x48242000
 #endif
-#define CONFIG_SYS_CACHELINE_SIZE	32
 
 /* Get CPU defs */
 #include <asm/arch/cpu.h>
@@ -36,11 +22,6 @@
 
 /* Use General purpose timer 1 */
 #define CONFIG_SYS_TIMERBASE		GPT2_BASE
-
-/*
- * Total Size Environment - 128k
- */
-#define CONFIG_ENV_SIZE			(128 << 10)
 
 /*
  * For the DDR timing information we can either dynamically determine
@@ -53,17 +34,17 @@
 #define CONFIG_SYS_DEFAULT_LPDDR2_TIMINGS
 #endif
 
-#include <configs/ti_armv7_common.h>
+#include <configs/ti_armv7_omap.h>
 
 /*
  * Hardware drivers
  */
-#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_CLK		48000000
+#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_DM_SERIAL)
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		48000000
-#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		UART3_BASE
+#endif
 
 /* TWL6030 */
 #ifndef CONFIG_SPL_BUILD
@@ -71,23 +52,41 @@
 #endif
 
 /* USB */
-#define CONFIG_MUSB_UDC			1
-#define CONFIG_USB_OMAP3		1
 
 /* USB device configuration */
 #define CONFIG_USB_DEVICE		1
 #define CONFIG_USB_TTY			1
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
-
-/* Per-Soc commands */
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
 
 /*
  * Environment setup
  */
+#define BOOTENV_DEV_LEGACY_MMC(devtypeu, devtypel, instance) \
+	"bootcmd_" #devtypel #instance "=" \
+	"setenv mmcdev " #instance"; "\
+	"setenv bootpart " #instance":2 ; "\
+	"run mmcboot\0"
+
+#define BOOTENV_DEV_NAME_LEGACY_MMC(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOTENV_DEV_NAME_NAND(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 0) \
+	func(LEGACY_MMC, legacy_mmc, 0) \
+	func(MMC, mmc, 1) \
+	func(LEGACY_MMC, legacy_mmc, 1) \
+	func(PXE, pxe, na) \
+	func(DHCP, dhcp, na)
+
+#include <config_distro_bootcmd.h>
+#include <environment/ti/mmc.h>
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
+	DEFAULT_MMC_TI_ARGS \
+	DEFAULT_FIT_TI_ARGS \
 	"console=ttyO2,115200n8\0" \
 	"fdtfile=undefined\0" \
 	"bootpart=0:2\0" \
@@ -95,26 +94,9 @@
 	"bootfile=zImage\0" \
 	"usbtty=cdc_acm\0" \
 	"vram=16M\0" \
-	"mmcdev=0\0" \
-	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext3 rootwait\0" \
-	"mmcargs=setenv bootargs console=${console} " \
-		"vram=${vram} " \
-		"root=${mmcroot} " \
-		"rootfstype=${mmcrootfstype}\0" \
-	"loadbootscript=fatload mmc ${mmcdev} ${loadaddr} boot.scr\0" \
-	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
-		"source ${loadaddr}\0" \
-	"loadbootenv=fatload mmc ${mmcdev} ${loadaddr} uEnv.txt\0" \
-	"importbootenv=echo Importing environment from mmc${mmcdev} ...; " \
-		"env import -t ${loadaddr} ${filesize}\0" \
-	"loadimage=load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootfile}\0" \
 	"loaduimage=load mmc ${mmcdev} ${loadaddr} uImage\0" \
-	"mmcboot=echo Booting from mmc${mmcdev} ...; " \
-		"run mmcargs; " \
-		"bootz ${loadaddr} - ${fdtaddr}\0" \
 	"uimageboot=echo Booting from mmc${mmcdev} ...; " \
-		"run mmcargs; " \
+		"run args_mmc; " \
 		"bootm ${loadaddr}\0" \
 	"findfdt="\
 		"if test $board_name = sdp4430; then " \
@@ -129,31 +111,7 @@
 			"setenv fdtfile omap4-duovero-parlor.dtb; fi;" \
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0" \
-	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile}\0" \
-
-#define CONFIG_BOOTCOMMAND \
-	"run findfdt; " \
-	"mmc dev ${mmcdev}; if mmc rescan; then " \
-		"echo SD/MMC found on device ${mmcdev};" \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loadbootenv; then " \
-				"run importbootenv; " \
-			"fi;" \
-			"if test -n ${uenvcmd}; then " \
-				"echo Running uenvcmd ...;" \
-				"run uenvcmd;" \
-			"fi;" \
-		"fi;" \
-		"if run loadimage; then " \
-			"run loadfdt;" \
-			"run mmcboot; " \
-		"fi; " \
-		"if run loaduimage; then " \
-			"run uimageboot;" \
-		"fi; " \
-	"fi"
+	BOOTENV
 
 /*
  * Defines for SPL
@@ -161,21 +119,12 @@
  * SPL is overlapped with public stack and breaking non HS devices to boot.
  * So moving TEXT_BASE down to non-HS limit.
  */
-#define CONFIG_SPL_TEXT_BASE		0x40300000
-#define CONFIG_SPL_MAX_SIZE		(0x4030C000 - CONFIG_SPL_TEXT_BASE)
-#define CONFIG_SPL_DISPLAY_PRINT
-#define CONFIG_SPL_LDSCRIPT "$(CPUDIR)/omap-common/u-boot-spl.lds"
 #define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
 					 (128 << 20))
-
-#ifdef CONFIG_NAND
-#define CONFIG_SPL_NAND_AM33XX_BCH	/* ELM support */
-#endif
 
 #ifdef CONFIG_SPL_BUILD
 /* No need for i2c in SPL mode as we will use SRI2C for PMIC access on OMAP4 */
 #undef CONFIG_SYS_I2C
-#undef CONFIG_SYS_I2C_OMAP24XX
 #endif
 
 #endif /* __CONFIG_TI_OMAP4_COMMON_H */

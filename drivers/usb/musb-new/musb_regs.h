@@ -1,35 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MUSB OTG driver register defines
  *
  * Copyright 2005 Mentor Graphics Corporation
  * Copyright (C) 2005-2006 by Texas Instruments
  * Copyright (C) 2006-2007 Nokia Corporation
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- *
- * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN
- * NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
- * USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef __MUSB_REGS_H__
@@ -214,7 +189,8 @@
 #define MUSB_HUBADDR_MULTI_TT		0x80
 
 
-#ifndef CONFIG_BLACKFIN
+/* SUNXI has different reg addresses, but identical r/w functions */
+#ifndef CONFIG_ARCH_SUNXI 
 
 /*
  * Common USB registers
@@ -318,6 +294,85 @@
 #define MUSB_BUSCTL_OFFSET(_epnum, _offset) \
 	(0x80 + (8*(_epnum)) + (_offset))
 
+#else /* CONFIG_ARCH_SUNXI */
+
+/*
+ * Common USB registers
+ */
+
+#define MUSB_FADDR		0x0098
+#define MUSB_POWER		0x0040
+
+#define MUSB_INTRTX		0x0044
+#define MUSB_INTRRX		0x0046
+#define MUSB_INTRTXE		0x0048
+#define MUSB_INTRRXE		0x004A
+#define MUSB_INTRUSB		0x004C
+#define MUSB_INTRUSBE		0x0050
+#define MUSB_FRAME		0x0054
+#define MUSB_INDEX		0x0042
+#define MUSB_TESTMODE		0x007C
+
+/* Get offset for a given FIFO from musb->mregs */
+#define MUSB_FIFO_OFFSET(epnum)	(0x00 + ((epnum) * 4))
+
+/*
+ * Additional Control Registers
+ */
+
+#define MUSB_DEVCTL		0x0041
+
+/* These are always controlled through the INDEX register */
+#define MUSB_TXFIFOSZ		0x0090
+#define MUSB_RXFIFOSZ		0x0094
+#define MUSB_TXFIFOADD		0x0092
+#define MUSB_RXFIFOADD		0x0096
+
+#define MUSB_EPINFO		0x0078
+#define MUSB_RAMINFO		0x0079
+#define MUSB_LINKINFO		0x007A
+#define MUSB_VPLEN		0x007B
+#define MUSB_HS_EOF1		0x007C
+#define MUSB_FS_EOF1		0x007D
+#define MUSB_LS_EOF1		0x007E
+
+/* Offsets to endpoint registers */
+#define MUSB_TXMAXP		0x0080
+#define MUSB_TXCSR		0x0082
+#define MUSB_CSR0		0x0082
+#define MUSB_RXMAXP		0x0084
+#define MUSB_RXCSR		0x0086
+#define MUSB_RXCOUNT		0x0088
+#define MUSB_COUNT0		0x0088
+#define MUSB_TXTYPE		0x008C
+#define MUSB_TYPE0		0x008C
+#define MUSB_TXINTERVAL		0x008D
+#define MUSB_NAKLIMIT0		0x008D
+#define MUSB_RXTYPE		0x008E
+#define MUSB_RXINTERVAL		0x008F
+
+#define MUSB_CONFIGDATA		0x00b0 /* musb_read_configdata adds 0x10 ! */
+#define MUSB_FIFOSIZE		0x0090
+
+/* Offsets to endpoint registers in indexed model (using INDEX register) */
+#define MUSB_INDEXED_OFFSET(_epnum, _offset) (_offset)
+
+#define MUSB_TXCSR_MODE		0x2000
+
+/* "bus control"/target registers, for host side multipoint (external hubs) */
+#define MUSB_TXFUNCADDR		0x0098
+#define MUSB_TXHUBADDR		0x009A
+#define MUSB_TXHUBPORT		0x009B
+
+#define MUSB_RXFUNCADDR		0x009C
+#define MUSB_RXHUBADDR		0x009E
+#define MUSB_RXHUBPORT		0x009F
+
+/* Endpoint is selected with MUSB_INDEX. */
+#define MUSB_BUSCTL_OFFSET(_epnum, _offset) (_offset)
+
+#endif /* CONFIG_ARCH_SUNXI */
+
 static inline void musb_write_txfifosz(void __iomem *mbase, u8 c_size)
 {
 	musb_writeb(mbase, MUSB_TXFIFOSZ, c_size);
@@ -340,7 +395,9 @@ static inline void  musb_write_rxfifoadd(void __iomem *mbase, u16 c_off)
 
 static inline void musb_write_ulpi_buscontrol(void __iomem *mbase, u8 val)
 {
+#ifndef CONFIG_ARCH_SUNXI /* No ulpi on sunxi */
 	musb_writeb(mbase, MUSB_ULPI_BUSCONTROL, val);
+#endif
 }
 
 static inline u8 musb_read_txfifosz(void __iomem *mbase)
@@ -365,18 +422,32 @@ static inline u16  musb_read_rxfifoadd(void __iomem *mbase)
 
 static inline u8 musb_read_ulpi_buscontrol(void __iomem *mbase)
 {
+#ifdef CONFIG_ARCH_SUNXI /* No ulpi on sunxi */
+	return 0;
+#else
 	return musb_readb(mbase, MUSB_ULPI_BUSCONTROL);
+#endif
 }
 
 static inline u8 musb_read_configdata(void __iomem *mbase)
 {
+#if defined CONFIG_MACH_SUN8I_A33 || defined CONFIG_MACH_SUN8I_A83T || \
+		defined CONFIG_MACH_SUNXI_H3_H5 || defined CONFIG_MACH_SUN50I
+	/* <Sigh> allwinner saves a reg, and we need to hardcode this */
+	return 0xde;
+#else
 	musb_writeb(mbase, MUSB_INDEX, 0);
 	return musb_readb(mbase, 0x10 + MUSB_CONFIGDATA);
+#endif
 }
 
 static inline u16 musb_read_hwvers(void __iomem *mbase)
 {
+#ifdef CONFIG_ARCH_SUNXI
+	return 0; /* Unknown version */
+#else
 	return musb_readw(mbase, MUSB_HWVERS);
+#endif
 }
 
 static inline void __iomem *musb_read_target_reg_base(u8 i, void __iomem *mbase)
@@ -452,194 +523,5 @@ static inline u8  musb_read_txhubport(void __iomem *mbase, u8 epnum)
 {
 	return musb_readb(mbase, MUSB_BUSCTL_OFFSET(epnum, MUSB_TXHUBPORT));
 }
-
-#else /* CONFIG_BLACKFIN */
-
-#define USB_BASE		USB_FADDR
-#define USB_OFFSET(reg)		(reg - USB_BASE)
-
-/*
- * Common USB registers
- */
-#define MUSB_FADDR		USB_OFFSET(USB_FADDR)	/* 8-bit */
-#define MUSB_POWER		USB_OFFSET(USB_POWER)	/* 8-bit */
-#define MUSB_INTRTX		USB_OFFSET(USB_INTRTX)	/* 16-bit */
-#define MUSB_INTRRX		USB_OFFSET(USB_INTRRX)
-#define MUSB_INTRTXE		USB_OFFSET(USB_INTRTXE)
-#define MUSB_INTRRXE		USB_OFFSET(USB_INTRRXE)
-#define MUSB_INTRUSB		USB_OFFSET(USB_INTRUSB)	/* 8 bit */
-#define MUSB_INTRUSBE		USB_OFFSET(USB_INTRUSBE)/* 8 bit */
-#define MUSB_FRAME		USB_OFFSET(USB_FRAME)
-#define MUSB_INDEX		USB_OFFSET(USB_INDEX)	/* 8 bit */
-#define MUSB_TESTMODE		USB_OFFSET(USB_TESTMODE)/* 8 bit */
-
-/* Get offset for a given FIFO from musb->mregs */
-#define MUSB_FIFO_OFFSET(epnum)	\
-	(USB_OFFSET(USB_EP0_FIFO) + ((epnum) * 8))
-
-/*
- * Additional Control Registers
- */
-
-#define MUSB_DEVCTL		USB_OFFSET(USB_OTG_DEV_CTL)	/* 8 bit */
-
-#define MUSB_LINKINFO		USB_OFFSET(USB_LINKINFO)/* 8 bit */
-#define MUSB_VPLEN		USB_OFFSET(USB_VPLEN)	/* 8 bit */
-#define MUSB_HS_EOF1		USB_OFFSET(USB_HS_EOF1)	/* 8 bit */
-#define MUSB_FS_EOF1		USB_OFFSET(USB_FS_EOF1)	/* 8 bit */
-#define MUSB_LS_EOF1		USB_OFFSET(USB_LS_EOF1)	/* 8 bit */
-
-/* Offsets to endpoint registers */
-#define MUSB_TXMAXP		0x00
-#define MUSB_TXCSR		0x04
-#define MUSB_CSR0		MUSB_TXCSR	/* Re-used for EP0 */
-#define MUSB_RXMAXP		0x08
-#define MUSB_RXCSR		0x0C
-#define MUSB_RXCOUNT		0x10
-#define MUSB_COUNT0		MUSB_RXCOUNT	/* Re-used for EP0 */
-#define MUSB_TXTYPE		0x14
-#define MUSB_TYPE0		MUSB_TXTYPE	/* Re-used for EP0 */
-#define MUSB_TXINTERVAL		0x18
-#define MUSB_NAKLIMIT0		MUSB_TXINTERVAL	/* Re-used for EP0 */
-#define MUSB_RXTYPE		0x1C
-#define MUSB_RXINTERVAL		0x20
-#define MUSB_TXCOUNT		0x28
-
-/* Offsets to endpoint registers in indexed model (using INDEX register) */
-#define MUSB_INDEXED_OFFSET(_epnum, _offset)	\
-	(0x40 + (_offset))
-
-/* Offsets to endpoint registers in flat models */
-#define MUSB_FLAT_OFFSET(_epnum, _offset)	\
-	(USB_OFFSET(USB_EP_NI0_TXMAXP) + (0x40 * (_epnum)) + (_offset))
-
-/* Not implemented - HW has separate Tx/Rx FIFO */
-#define MUSB_TXCSR_MODE			0x0000
-
-static inline void musb_write_txfifosz(void __iomem *mbase, u8 c_size)
-{
-}
-
-static inline void musb_write_txfifoadd(void __iomem *mbase, u16 c_off)
-{
-}
-
-static inline void musb_write_rxfifosz(void __iomem *mbase, u8 c_size)
-{
-}
-
-static inline void  musb_write_rxfifoadd(void __iomem *mbase, u16 c_off)
-{
-}
-
-static inline void musb_write_ulpi_buscontrol(void __iomem *mbase, u8 val)
-{
-}
-
-static inline u8 musb_read_txfifosz(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u16 musb_read_txfifoadd(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u8 musb_read_rxfifosz(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u16  musb_read_rxfifoadd(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u8 musb_read_ulpi_buscontrol(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u8 musb_read_configdata(void __iomem *mbase)
-{
-	return 0;
-}
-
-static inline u16 musb_read_hwvers(void __iomem *mbase)
-{
-	/*
-	 * This register is invisible on Blackfin, actually the MUSB
-	 * RTL version of Blackfin is 1.9, so just harcode its value.
-	 */
-	return MUSB_HWVERS_1900;
-}
-
-static inline void __iomem *musb_read_target_reg_base(u8 i, void __iomem *mbase)
-{
-	return NULL;
-}
-
-static inline void musb_write_rxfunaddr(void __iomem *ep_target_regs,
-		u8 qh_addr_req)
-{
-}
-
-static inline void musb_write_rxhubaddr(void __iomem *ep_target_regs,
-		u8 qh_h_addr_reg)
-{
-}
-
-static inline void musb_write_rxhubport(void __iomem *ep_target_regs,
-		u8 qh_h_port_reg)
-{
-}
-
-static inline void  musb_write_txfunaddr(void __iomem *mbase, u8 epnum,
-		u8 qh_addr_reg)
-{
-}
-
-static inline void  musb_write_txhubaddr(void __iomem *mbase, u8 epnum,
-		u8 qh_addr_reg)
-{
-}
-
-static inline void  musb_write_txhubport(void __iomem *mbase, u8 epnum,
-		u8 qh_h_port_reg)
-{
-}
-
-static inline u8 musb_read_rxfunaddr(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-static inline u8 musb_read_rxhubaddr(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-static inline u8 musb_read_rxhubport(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-static inline u8  musb_read_txfunaddr(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-static inline u8  musb_read_txhubaddr(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-static inline u8 musb_read_txhubport(void __iomem *mbase, u8 epnum)
-{
-	return 0;
-}
-
-#endif /* CONFIG_BLACKFIN */
 
 #endif	/* __MUSB_REGS_H__ */

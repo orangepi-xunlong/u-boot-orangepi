@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for Compulab CM-T54 board
  *
  * Copyright (C) 2014, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Dmitry Lifshitz <lifshitz@compulab.co.il>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
 #include <fdt_support.h>
 #include <usb.h>
 #include <mmc.h>
@@ -30,7 +30,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #if !defined(CONFIG_SPL_BUILD)
-inline void set_muxconf_regs_essential(void){};
+inline void set_muxconf_regs(void){};
 #endif
 
 const struct omap_sysinfo sysinfo = {
@@ -43,7 +43,7 @@ const struct omap_sysinfo sysinfo = {
  */
 int board_init(void)
 {
-	gd->bd->bi_boot_params = (CONFIG_SYS_SDRAM_BASE + 0x100); /* boot param addr */
+	gd->bd->bi_boot_params = (CONFIG_SYS_SDRAM_BASE + 0x100);
 
 	return 0;
 }
@@ -82,34 +82,29 @@ static int cm_t54_palmas_regulator_set(u8 vreg, u8 vval, u8 creg, u8 cval)
 #ifdef CONFIG_SYS_MMC_ENV_PART
 uint mmc_get_env_part(struct mmc *mmc)
 {
-	u32 bootmode = gd->arch.omap_boot_params.omap_bootmode;
+	u32 bootmode = gd->arch.omap_boot_mode;
 	uint bootpart = CONFIG_SYS_MMC_ENV_PART;
 
 	/*
 	 * If booted from eMMC boot partition then force eMMC
 	 * FIRST boot partition to be env storage
 	 */
-	if (bootmode == BOOT_DEVICE_MMC2_2)
+	if (bootmode == BOOT_DEVICE_MMC2)
 		bootpart = 1;
 
 	return bootpart;
 }
 #endif
 
-#if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_MMC)
 #define SB_T54_CD_GPIO 228
 #define SB_T54_WP_GPIO 229
-
-int board_mmc_getcd(struct mmc *mmc)
-{
-	return !gpio_get_value(SB_T54_CD_GPIO);
-}
 
 int board_mmc_init(bd_t *bis)
 {
 	int ret0, ret1;
 
-	ret0 = omap_mmc_init(0, 0, 0, -1, SB_T54_WP_GPIO);
+	ret0 = omap_mmc_init(0, 0, 0, SB_T54_CD_GPIO, SB_T54_WP_GPIO);
 	if (ret0)
 		printf("cm_t54: failed to initialize mmc0\n");
 
@@ -126,15 +121,17 @@ int board_mmc_init(bd_t *bis)
 
 #ifdef CONFIG_USB_HOST_ETHER
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	uint8_t enetaddr[6];
 
 	/* MAC addr */
-	if (eth_getenv_enetaddr("usbethaddr", enetaddr)) {
+	if (eth_env_get_enetaddr("usbethaddr", enetaddr)) {
 		fdt_find_and_setprop(blob, "/smsc95xx@0", "mac-address",
 				     enetaddr, 6, 1);
 	}
+
+	return 0;
 }
 
 static void generate_mac_addr(uint8_t *enetaddr)
@@ -164,18 +161,18 @@ static int handle_mac_address(void)
 	uint8_t enetaddr[6];
 	int ret;
 
-	ret = eth_getenv_enetaddr("usbethaddr", enetaddr);
+	ret = eth_env_get_enetaddr("usbethaddr", enetaddr);
 	if (ret)
 		return 0;
 
-	ret = cl_eeprom_read_mac_addr(enetaddr);
-	if (!ret || !is_valid_ether_addr(enetaddr))
+	ret = cl_eeprom_read_mac_addr(enetaddr, CONFIG_SYS_I2C_EEPROM_BUS);
+	if (ret || !is_valid_ethaddr(enetaddr))
 		generate_mac_addr(enetaddr);
 
-	if (!is_valid_ether_addr(enetaddr))
+	if (!is_valid_ethaddr(enetaddr))
 		return -1;
 
-	return eth_setenv_enetaddr("usbethaddr", enetaddr);
+	return eth_env_set_enetaddr("usbethaddr", enetaddr);
 }
 
 int board_eth_init(bd_t *bis)
@@ -184,7 +181,7 @@ int board_eth_init(bd_t *bis)
 }
 #endif
 
-#ifdef CONFIG_USB_EHCI
+#ifdef CONFIG_USB_EHCI_HCD
 static struct omap_usbhs_board_data usbhs_bdata = {
 	.port_mode[0] = OMAP_USBHS_PORT_MODE_UNUSED,
 	.port_mode[1] = OMAP_EHCI_PORT_MODE_HSIC,
@@ -249,7 +246,7 @@ int ehci_hcd_stop(void)
 	return ret;
 }
 
-void usb_hub_reset_devices(int port)
+void usb_hub_reset_devices(struct usb_hub_device *hub, int port)
 {
 	/* The LAN9730 needs to be reset after the port power has been set. */
 	if (port == 3) {

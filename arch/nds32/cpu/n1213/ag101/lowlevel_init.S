@@ -1,10 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
+
+.pic
 
 .text
 
@@ -84,25 +85,7 @@
 	bnez	$r1, 1b
 .endm
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-.globl	lowlevel_init
-lowlevel_init:
-	move	$r10, $lp
-
-	led	0x0
-	jal	mem_init
-
-	led	0x10
-	jal	remap
-
-#if (defined(NDS32_EXT_FPU_DP) || defined(NDS32_EXT_FPU_SP))
-	led	0x1f
-	jal	enable_fpu
-#endif
-
-	led	0x20
-	ret	$r10
-
+.globl	mem_init
 mem_init:
 	move	$r11, $lp
 
@@ -122,9 +105,7 @@ mem_init:
 	lwi $r1, [$r0+#0x00]
 	ori $r1, $r1, 0x8f0
 	xori $r1, $r1, 0x8f0
-  /*
-   * check board
-   */
+	/* check board */
 	li      $r3, CONFIG_FTPMU010_BASE + BOARD_ID_REG
   lwi     $r3, [$r3]
   li      $r4, BOARD_ID_FAMILY_MASK
@@ -132,29 +113,21 @@ mem_init:
   li      $r4, BOARD_ID_FAMILY_K7
   xor     $r4, $r3, $r4
   beqz    $r4, use_flash_16bit_boot
-  /*
-   * 32-bit mode
-   */
+	/* 32-bit mode */
 use_flash_32bit_boot:
 	ori     $r1, $r1, 0x50
   li      $r2, 0x00151151
   j       sdram_b0_cr
-  /*
-   * 16-bit mode
-   */
+	/* 16-bit mode */
 use_flash_16bit_boot:
   ori     $r1, $r1, 0x60
   li      $r2, 0x00153153
-  /*
-   * SRAM bank0 config
-   */
+	/* SRAM bank0 config */
 sdram_b0_cr:
   swi     $r1, [$r0+#0x00]
   swi     $r2, [$r0+#0x04]
 
-	/*
-	 * config AHB Controller
-	 */
+	/* config AHB Controller */
 	led	0x02
 
 	/*
@@ -190,6 +163,21 @@ sdram_b0_cr:
 	move	$lp, $r11
 	ret
 
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+
+.globl	lowlevel_init
+lowlevel_init:
+	move	$r10, $lp
+	led	0x10
+	jal	remap
+#if (defined(NDS32_EXT_FPU_DP) || defined(NDS32_EXT_FPU_SP))
+	led	0x1f
+	jal	enable_fpu
+#endif
+	led	0x20
+	ret	$r10
+
 remap:
 	move	$r11, $lp
 #ifdef __NDS32_N1213_43U1H__	/* NDS32 V0 ISA - AG101 Only */
@@ -201,12 +189,10 @@ relo_base:
 	mfusr	$r0, $pc
 #endif /* __NDS32_N1213_43U1H__ */
 
-	/*
-	 * Remapping
-	 */
+	/* Remapping */
 	led	0x1a
-	write32	SDMC_B0_BSR_A, SDMC_B0_BSR_D		! 0x00001100
-	write32	SDMC_B1_BSR_A, SDMC_B1_BSR_D		! 0x00001140
+	write32	SDMC_B0_BSR_A, SDMC_B0_BSR_D		! 0x00001800
+	write32	SDMC_B1_BSR_A, SDMC_B1_BSR_D		! 0x00001880
 
 	/* clear empty BSR registers */
 	led	0x1b
@@ -248,16 +234,11 @@ relo_base:
     */
 	li	$r5, AHBC_BSR6_A
 	lwi $r8, [$r5]
-	li	$r4, 0xfff00000
+	li	$r4, 0xfff00000   /* r4 = bank6 base */
 	and $r4, $r4, $r8
 
-
-	li	$r5, 0x0
-	la	$r1, relo_base				/* get $pc or $lp */
-	sub	$r2, $r0, $r1
-	sethi	$r6, hi20(_end)
-	ori	$r6, $r6, lo12(_end)
-	add	$r6, $r6, $r2
+	la	$r5, _start@GOTOFF
+	la  $r6, _end@GOTOFF
 1:
 	lwi.p	$r7, [$r5], #4
 	swi.p	$r7, [$r4], #4
@@ -272,7 +253,11 @@ relo_base:
 	 */
 	led	0x1c
 	write32 SDMC_B0_BSR_A, 0x00001000
-	write32 SDMC_B1_BSR_A, 0x00001040
+	write32 SDMC_B1_BSR_A, 0x00001200
+	li $r5, CONFIG_SYS_TEXT_BASE	/* flash base address */
+	add $r11, $r11, $r5	/* add flash address offset for ret */
+	add $r10, $r10, $r5
+	move $lp, $r11
 	setbf15	AHBC_CR_A, FTAHBC020S_CR_REMAP		! 0x1
 
   /*
@@ -282,9 +267,9 @@ relo_base:
 	li	$r5, AHBC_BSR6_A
 	lwi $r6, [$r5]
 	li  $r4, 0xfff0ffff
-	and $r6 ,$r4 , $r6
+	and $r6 ,$r4, $r6
 	li	$r4, 0x000b0000
-	or  $r6, $r4,	$r6
+	or  $r6, $r4, $r6
 	swi	$r6, [$r5]
 
   /*
@@ -299,7 +284,7 @@ relo_base:
 	or  $r5, $r5, $r6
 	swi $r5,	[$r4]
 #endif /* #ifdef CONFIG_MEM_REMAP */
-	move	$lp, $r11
+	move $lp, $r11
 2:
 	ret
 

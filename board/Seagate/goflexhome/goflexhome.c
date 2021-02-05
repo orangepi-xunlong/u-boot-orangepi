@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Suriyan Ramasami <suriyan.r@gmail.com>
  *
@@ -8,13 +9,13 @@
  * Prafulla Wadaskar <prafulla@marvell.com>
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <miiphy.h>
-#include <asm/arch/kirkwood.h>
+#include <net.h>
+#include <asm/mach-types.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/cpu.h>
 #include <asm/io.h>
@@ -83,9 +84,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the  below configuration configures mainly initial LED status
 	 */
-	kw_config_gpio(GOFLEXHOME_OE_VAL_LOW,
-		       GOFLEXHOME_OE_VAL_HIGH,
-		       GOFLEXHOME_OE_LOW, GOFLEXHOME_OE_HIGH);
+	mvebu_config_gpio(GOFLEXHOME_OE_VAL_LOW,
+			  GOFLEXHOME_OE_VAL_HIGH,
+			  GOFLEXHOME_OE_LOW, GOFLEXHOME_OE_HIGH);
 	kirkwood_mpp_conf(kwmpp_config, NULL);
 	return 0;
 }
@@ -98,7 +99,7 @@ int board_init(void)
 	gd->bd->bi_arch_number = MACH_TYPE_GOFLEXHOME;
 
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	return 0;
 }
@@ -149,7 +150,7 @@ static void set_leds(u32 leds, u32 blinking)
 	u32 oe;
 	u32 bl;
 
-	r = (struct kwgpio_registers *)KW_GPIO1_BASE;
+	r = (struct kwgpio_registers *)MVEBU_GPIO1_BASE;
 	oe = readl(&r->oe) | BOTH_LEDS;
 	writel(oe & ~leds, &r->oe);	/* active low */
 	bl = readl(&r->blink_en) & ~BOTH_LEDS;

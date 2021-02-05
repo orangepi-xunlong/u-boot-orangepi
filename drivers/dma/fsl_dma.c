@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004,2007,2008 Freescale Semiconductor, Inc.
  * (C) Copyright 2002, 2003 Motorola Inc.
@@ -5,8 +6,6 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -96,7 +95,7 @@ int dmacpy(phys_addr_t dest, phys_addr_t src, phys_size_t count) {
 	uint xfer_size;
 
 	while (count) {
-		xfer_size = MIN(FSL_DMA_MAX_SIZE, count);
+		xfer_size = min(FSL_DMA_MAX_SIZE, count);
 
 		out_dma32(&dma->dar, (u32) (dest & 0xFFFFFFFF));
 		out_dma32(&dma->sar, (u32) (src & 0xFFFFFFFF));

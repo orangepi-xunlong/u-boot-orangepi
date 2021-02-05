@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -8,14 +9,14 @@
  *
  * Sergej Stepanov <ste@ids.de>
  * Based on board/freescale/mpc8313erdb/mpc8313erdb.c
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <mpc83xx.h>
 #include <spi.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 /** CPLD contains the info about:
@@ -58,7 +59,7 @@ int fixed_sdram(unsigned long config)
 	u32 msize_log2 = __ilog2(msize);
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
-		 (CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000));
+		 (CONFIG_SYS_SDRAM_BASE & 0xfffff000));
 	out_be32(&im->sysconf.ddrlaw[0].ar, LBLAWAR_EN | (msize_log2 - 1));
 	out_be32(&im->sysconf.ddrcdr, CONFIG_SYS_DDRCDR_VALUE);
 	sync();
@@ -97,7 +98,7 @@ int fixed_sdram(unsigned long config)
 	setbits_be32(&im->ddr.sdram_cfg, SDRAM_CFG_MEM_EN);
 	/* now check the real size */
 	disable_addr_trans();
-	msize = get_ram_size(CONFIG_SYS_DDR_BASE, msize);
+	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, msize);
 	enable_addr_trans();
 #endif
 	return msize;
@@ -119,28 +120,32 @@ static int setup_sdram(void)
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	fsl_lbc_t *lbc = &im->im_lbc;
 	u32 msize = 0;
 
 	if ((in_be32(&im->sysconf.immrbar) & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	msize = setup_sdram();
 
-	out_be32(&lbc->lbcr, CONFIG_SYS_LBC_LBCR);
-	out_be32(&lbc->mrtpr, CONFIG_SYS_LBC_MRTPR);
+	out_be32(&lbc->lbcr, (0x00040000 | (0xFF << LBCR_BMT_SHIFT) | 0xF));
+	out_be32(&lbc->mrtpr, 0x20000000);
 	sync();
 
-	return msize;
+	gd->ram_size = msize;
+
+	return 0;
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
 #endif
 
@@ -205,4 +210,4 @@ void spi_cs_deactivate(struct spi_slave *slave)
 	/* deactivate the spi_cs */
 	setbits_be32(&iopd->dat, IDSCPLD_SPI_CS_MASK);
 }
-#endif /* CONFIG_HARD_SPI */
+#endif

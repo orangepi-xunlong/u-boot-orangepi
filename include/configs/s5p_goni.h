@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009 Samsung Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
  * Kyungmin Park <kyungmin.park@samsung.com>
  *
  * Configuation settings for the SAMSUNG Universal (s5pc100) board.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,14 +14,9 @@
 #define CONFIG_SAMSUNG		1	/* in a SAMSUNG core */
 #define CONFIG_S5P		1	/* which is in a S5P Family */
 #define CONFIG_S5PC110		1	/* which is in a S5PC110 */
-#define CONFIG_MACH_GONI	1	/* working with Goni */
 
 #include <linux/sizes.h>
 #include <asm/arch/cpu.h>		/* get chip and board defs */
-
-#define CONFIG_ARCH_CPU_INIT
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
 
 /* input clock of PLL: has 24MHz input clock at S5PC110 */
 #define CONFIG_SYS_CLK_FREQ_C110	24000000
@@ -31,81 +25,37 @@
 #define CONFIG_SYS_SDRAM_BASE		0x30000000
 
 /* Text Base */
-#define CONFIG_SYS_TEXT_BASE		0x34800000
 
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_INITRD_TAG
-#define CONFIG_CMDLINE_EDITING
 
-/* Size of malloc() pool.*/
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 80 * SZ_1M)
+/* Size of malloc() pool before and after relocation */
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 << 20))
 
 /*
  * select serial console configuration
  */
-#define CONFIG_SERIAL2			1	/* use SERIAL2 */
-#define CONFIG_BAUDRATE			115200
 
 /* MMC */
-#define CONFIG_GENERIC_MMC
-#define CONFIG_MMC
-#define CONFIG_SDHCI
-#define CONFIG_S5P_SDHCI
+#define SDHCI_MAX_HOSTS		4
 
 /* PWM */
 #define CONFIG_PWM			1
 
-/* It should define before config_cmd_default.h */
-#define CONFIG_SYS_NO_FLASH		1
-
-/* Command definition */
-#include <config_cmd_default.h>
-
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_MISC
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
-#undef CONFIG_CMD_XIMG
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_ONENAND
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_DFU
-#define CONFIG_CMD_GPT
-
 /* USB Composite download gadget - g_dnl */
-#define CONFIG_USBDOWNLOAD_GADGET
-#define CONFIG_DFU_FUNCTION
-#define CONFIG_DFU_MMC
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE SZ_32M
 #define DFU_DEFAULT_POLL_TIMEOUT 300
 
-/* TIZEN THOR downloader support */
-#define CONFIG_CMD_THOR_DOWNLOAD
-#define CONFIG_THOR_FUNCTION
-
 /* USB Samsung's IDs */
-#define CONFIG_G_DNL_VENDOR_NUM 0x04E8
-#define CONFIG_G_DNL_PRODUCT_NUM 0x6601
-#define CONFIG_G_DNL_THOR_VENDOR_NUM CONFIG_G_DNL_VENDOR_NUM
+
+#define CONFIG_G_DNL_THOR_VENDOR_NUM 0x04E8
 #define CONFIG_G_DNL_THOR_PRODUCT_NUM 0x685D
-#define CONFIG_G_DNL_MANUFACTURER "Samsung"
+#define CONFIG_G_DNL_UMS_VENDOR_NUM 0x0525
+#define CONFIG_G_DNL_UMS_PRODUCT_NUM 0xA4A5
 
 /* Actual modem binary size is 16MiB. Add 2MiB for bad block handling */
-#define MTDIDS_DEFAULT		"onenand0=samsung-onenand"
-#define MTDPARTS_DEFAULT	"mtdparts=samsung-onenand:1m(bootloader)"\
-				",256k(params)"\
-				",2816k(config)"\
-				",8m(csa)"\
-				",7m(kernel)"\
-				",1m(log)"\
-				",12m(modem)"\
-				",60m(qboot)\0"
-
-#define CONFIG_BOOTDELAY		1
-#define CONFIG_ZERO_BOOTDELAY_CHECK
 
 /* partitions definitions */
 #define PARTS_CSA			"csa-mmc"
@@ -142,19 +92,12 @@
 
 #define CONFIG_COMMON_BOOT	"${console} ${meminfo} ${mtdparts}"
 
-#define CONFIG_BOOTARGS	"root=/dev/mtdblock8 rootfstype=ext4 " \
-			CONFIG_COMMON_BOOT
-
 #define CONFIG_UPDATEB	"updateb=onenand erase 0x0 0x100000;" \
 			" onenand write 0x32008000 0x0 0x100000\0"
 
 #define CONFIG_MISC_COMMON
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_ENV_VARS_UBOOT_CONFIG
-#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	CONFIG_UPDATEB \
 	"updatek=" \
@@ -202,21 +145,13 @@
 	"opts=always_resume=1\0" \
 	"dfu_alt_info=" CONFIG_DFU_ALT "\0"
 
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser	*/
-#define CONFIG_SYS_PROMPT	"Goni # "
-#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE	384	/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x5000000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x4000000)
 
 /* Goni has 3 banks of DRAM, but swap the bank */
-#define CONFIG_NR_DRAM_BANKS	3
 #define PHYS_SDRAM_1		CONFIG_SYS_SDRAM_BASE	/* OneDRAM Bank #0 */
 #define PHYS_SDRAM_1_SIZE	(80 << 20)		/* 80 MB in Bank #0 */
 #define PHYS_SDRAM_2		0x40000000		/* mDDR DMC1 Bank #1 */
@@ -229,56 +164,15 @@
 
 /* FLASH and environment organization */
 #define CONFIG_MMC_DEFAULT_DEV	0
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		CONFIG_MMC_DEFAULT_DEV
-#define CONFIG_ENV_SIZE			4096
-#define CONFIG_ENV_OFFSET		((32 - 4) << 10) /* 32KiB - 4KiB */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_USE_ONENAND_BOARD_INIT
 #define CONFIG_SAMSUNG_ONENAND		1
 #define CONFIG_SYS_ONENAND_BASE		0xB0000000
 
-#define CONFIG_DOS_PARTITION		1
-
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-
-/* write support for filesystems */
-#define CONFIG_FAT_WRITE
-#define CONFIG_EXT4_WRITE
-
-/* GPT */
-#define CONFIG_EFI_PARTITION
-#define CONFIG_PARTITION_UUIDS
-
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
-#define CONFIG_SYS_CACHELINE_SIZE       64
-
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_MAX8998
-
-#include <asm/arch/gpio.h>
-/*
- * I2C Settings
- */
-#define CONFIG_SOFT_I2C_GPIO_SCL S5PC110_GPIO_J43
-#define CONFIG_SOFT_I2C_GPIO_SDA S5PC110_GPIO_J40
-
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_SOFT		/* I2C bit-banged */
-#define CONFIG_SYS_I2C_SOFT_SPEED	50000
-#define CONFIG_SYS_I2C_SOFT_SLAVE	0x7F
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS	7
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_S3C_UDC_OTG
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW 2
-#define CONFIG_CMD_USB_MASS_STORAGE
-#define CONFIG_USB_GADGET_MASS_STORAGE
+#define CONFIG_USB_GADGET_DWC2_OTG_PHY
 
 #endif	/* __CONFIG_H */

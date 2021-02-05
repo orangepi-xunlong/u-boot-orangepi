@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * sbc8349.c -- WindRiver SBC8349 board support.
  * Copyright (c) 2006-2007 Wind River Systems, Inc.
  *
  * Paul Gortmaker <paul.gortmaker@windriver.com>
  * Based on board/mpc8349emds/mpc8349emds.c (and previous 834x releases.)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <fdt_support.h>
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <asm/mpc8349_pci.h>
@@ -16,8 +16,10 @@
 #include <spd_sdram.h>
 #include <miiphy.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int fixed_sdram(void);
 void sdram_init(void);
@@ -35,7 +37,7 @@ int board_early_init_f (void)
 
 #define ns2clk(ns) (ns / (1000000000 / CONFIG_8349_CLKIN) + 1)
 
-phys_size_t initdram (int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -44,7 +46,7 @@ phys_size_t initdram (int board_type)
 		return -1;
 
 	/* DDR SDRAM - Main SODIMM */
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR;
 #if defined(CONFIG_SPD_EEPROM)
 	msize = spd_sdram();
 #else
@@ -61,8 +63,10 @@ phys_size_t initdram (int board_type)
 	 */
 	ddr_enable_ecc(msize * 1024 * 1024);
 #endif
-	/* return total bus SDRAM size(bytes)  -- DDR */
-	return (msize * 1024 * 1024);
+	/* set total bus SDRAM size(bytes)  -- DDR */
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 #if !defined(CONFIG_SPD_EEPROM)
@@ -76,19 +80,19 @@ int fixed_sdram(void)
 	u32 ddr_size = msize << 20;	/* DDR size in bytes */
 	u32 ddr_size_log2 = __ilog2(msize);
 
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & 0xfffff000;
 	im->sysconf.ddrlaw[0].ar = LAWAR_EN | ((ddr_size_log2 - 1) & LAWAR_SIZE);
 
 #if (CONFIG_SYS_DDR_SIZE != 256)
 #warning Currently any ddr size other than 256 is not supported
 #endif
 
-#if ((CONFIG_SYS_DDR_SDRAM_BASE & 0x00FFFFFF) != 0)
+#if ((CONFIG_SYS_SDRAM_BASE & 0x00FFFFFF) != 0)
 #warning Chip select bounds is only configurable in 16MB increments
 #endif
 	im->ddr.csbnds[2].csbnds =
-		((CONFIG_SYS_DDR_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
-		(((CONFIG_SYS_DDR_SDRAM_BASE + ddr_size - 1) >>
+		((CONFIG_SYS_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_SDRAM_BASE + ddr_size - 1) >>
 				CSBNDS_EA_SHIFT) & CSBNDS_EA);
 	im->ddr.cs_config[2] = CONFIG_SYS_DDR_CS2_CONFIG;
 
@@ -144,6 +148,9 @@ void sdram_init(void)
 	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	volatile fsl_lbc_t *lbc = &immap->im_lbc;
 	uint *sdram_addr = (uint *)CONFIG_SYS_LBC_SDRAM_BASE;
+	const u32 lsdmr_common = LSDMR_RFEN | LSDMR_BSMA1516 | LSDMR_RFCR8 |
+				 LSDMR_PRETOACT6 | LSDMR_ACTTORW3 | LSDMR_BL8 |
+				 LSDMR_WRC3 | LSDMR_CL3;
 
 	puts("\n   SDRAM on Local Bus: ");
 	print_size (CONFIG_SYS_LBC_SDRAM_SIZE * 1024 * 1024, "\n");
@@ -153,22 +160,27 @@ void sdram_init(void)
 	 */
 
 	/* setup mtrpt, lsrt and lbcr for LB bus */
-	lbc->lbcr = CONFIG_SYS_LBC_LBCR;
-	lbc->mrtpr = CONFIG_SYS_LBC_MRTPR;
-	lbc->lsrt = CONFIG_SYS_LBC_LSRT;
+	lbc->lbcr = 0x00000000;
+	/* LB refresh timer prescal, 266MHz/32 */
+	lbc->mrtpr = 0x20000000;
+	/* LB sdram refresh timer, about 6us */
+	lbc->lsrt = 0x32000000;
 	asm("sync");
 
 	/*
 	 * Configure the SDRAM controller Machine Mode Register.
 	 */
-	lbc->lsdmr = CONFIG_SYS_LBC_LSDMR_5; /* 0x40636733; normal operation */
+	/* 0x40636733; normal operation */
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_NORMAL;
 
-	lbc->lsdmr = CONFIG_SYS_LBC_LSDMR_1; /* 0x68636733; precharge all the banks */
+	/* 0x68636733; precharge all the banks */
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_PCHALL;
 	asm("sync");
 	*sdram_addr = 0xff;
 	udelay(100);
 
-	lbc->lsdmr = CONFIG_SYS_LBC_LSDMR_2; /* 0x48636733; auto refresh */
+	/* 0x48636733; auto refresh */
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_ARFRSH;
 	asm("sync");
 	/*1 times*/
 	*sdram_addr = 0xff;
@@ -196,12 +208,13 @@ void sdram_init(void)
 	udelay(100);
 
 	/* 0x58636733; mode register write operation */
-	lbc->lsdmr = CONFIG_SYS_LBC_LSDMR_4;
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_MRW;
 	asm("sync");
 	*sdram_addr = 0xff;
 	udelay(100);
 
-	lbc->lsdmr = CONFIG_SYS_LBC_LSDMR_5; /* 0x40636733; normal operation */
+	/* 0x40636733; normal operation */
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_NORMAL;
 	asm("sync");
 	*sdram_addr = 0xff;
 	udelay(100);
@@ -214,11 +227,13 @@ void sdram_init(void)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif

@@ -1,17 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 ADVANSEE
  * Benoît Thébaudeau <benoit.thebaudeau@advansee.com>
  *
  * Based on Freescale's Linux i.MX iomux-mx53.h file:
  * Copyright (C) 2010-2011 Freescale Semiconductor, Inc. All Rights Reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IOMUX_MX53_H__
 #define __IOMUX_MX53_H__
 
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
 
 /* Pad control groupings */
 #define MX53_UART_PAD_CTRL	(PAD_CTL_PUS_100K_DOWN | PAD_CTL_DSE_HIGH | \

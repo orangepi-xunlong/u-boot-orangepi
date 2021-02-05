@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (c) 2011 Graf-Syteco, Matthias Weisser
  * <weisserm@arcor.de>
@@ -11,10 +12,10 @@
  *   Copyright (C) 2009 Ilya Yanok <yanok@emcraft.com>
  * And:
  *   RedBoot tx25_misc.c Copyright (C) 2009 Red Hat
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
@@ -146,7 +147,7 @@ int board_late_init(void)
 	udelay(5000);
 #endif
 
-	e = getenv("gs_base_board");
+	e = env_get("gs_base_board");
 	if (e != NULL) {
 		if (strcmp(e, "G283") == 0) {
 			int key = gpio_get_value(IMX_GPIO_NR(2, 29));
@@ -156,9 +157,9 @@ int board_late_init(void)
 				gpio_set_value(IMX_GPIO_NR(1, 29), 0);
 				gpio_set_value(IMX_GPIO_NR(4, 21), 0);
 
-				setenv("preboot", "run gs_slow_boot");
+				env_set("preboot", "run gs_slow_boot");
 			} else
-				setenv("preboot", "run gs_fast_boot");
+				env_set("preboot", "run gs_fast_boot");
 		}
 	}
 

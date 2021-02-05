@@ -1,13 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-
-#if defined(CONFIG_CMD_DATE)
 
 #include <command.h>
 #include <rtc.h>
@@ -38,7 +35,7 @@ int rtc_get(struct rtc_time *tmp)
 	tim = (tim * 60) + rtc_mins;
 	tim = (tim * 60) + rtc->seconds;
 
-	to_tm(tim, tmp);
+	rtc_to_tm(tim, tmp);
 
 	tmp->tm_yday = 0;
 	tmp->tm_isdst = 0;
@@ -105,5 +102,3 @@ void rtc_reset(void)
 
 	rtc->cr |= RTC_CR_SWR;
 }
-
-#endif				/* CONFIG_MCFRTC && CONFIG_CMD_DATE */

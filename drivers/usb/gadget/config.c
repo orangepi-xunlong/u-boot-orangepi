@@ -1,17 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * usb/gadget/config.c -- simplify building config descriptors
  *
  * Copyright (C) 2003 David Brownell
  *
- * SPDX-License-Identifier:	GPL-2.0+
- *
- * Ported to U-boot by: Thomas Smits <ts.smits@gmail.com> and
+ * Ported to U-Boot by: Thomas Smits <ts.smits@gmail.com> and
  *                      Remy Bohmer <linux@bohmer.net>
  */
 
 #include <common.h>
 #include <asm/unaligned.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <linux/list.h>
 #include <linux/string.h>
 

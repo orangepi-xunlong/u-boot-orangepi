@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *
  * Cleaned up and refactored by Charles Manning.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include "pblimage.h"
+#include <u-boot/crc.h>
 
 static uint32_t crc_table[256];
 static int crc_table_valid;

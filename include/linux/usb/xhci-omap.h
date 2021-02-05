@@ -1,19 +1,24 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * Texas Instruments Inc, <www.ti.com>
  *
  * Author: Dan Murphy <dmurphy@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_XHCI_OMAP_H_
 #define _ASM_ARCH_XHCI_OMAP_H_
 
 #ifdef CONFIG_DRA7XX
+#if CONFIG_USB_XHCI_DRA7XX_INDEX == 1
 #define OMAP_XHCI_BASE 0x488d0000
 #define OMAP_OCP1_SCP_BASE 0x4A081000
 #define OMAP_OTG_WRAPPER_BASE 0x488c0000
+#elif CONFIG_USB_XHCI_DRA7XX_INDEX == 0
+#define OMAP_XHCI_BASE 0x48890000
+#define OMAP_OCP1_SCP_BASE 0x4A084c00
+#define OMAP_OTG_WRAPPER_BASE 0x48880000
+#endif /* CONFIG_USB_XHCI_DRA7XX_INDEX == 1 */
 #elif defined CONFIG_AM43XX
 #define OMAP_XHCI_BASE 0x483d0000
 #define OMAP_OCP1_SCP_BASE 0x483E8000

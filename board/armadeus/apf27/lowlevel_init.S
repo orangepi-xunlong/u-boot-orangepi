@@ -1,12 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 Philippe Reynes <tremyfr@yahoo.fr>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <generated/asm-offsets.h>
-#include <version.h>
 #include <asm/macro.h>
 #include <asm/arch/imx-regs.h>
 #include "apf27.h"

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Copyright 2000-2002 by Hans Reiser, licensing governed by reiserfs/README
  *
@@ -6,8 +7,6 @@
  *
  *  (C) Copyright 2003 Sysgo Real-Time Solutions, AG <www.elinos.com>
  *  Pavel Bartusek <pba@sysgo.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* An implementation for the ReiserFS filesystem ported from GRUB.
@@ -63,7 +62,7 @@ typedef enum
 } reiserfs_error_t;
 
 
-extern void reiserfs_set_blk_dev(block_dev_desc_t *rbdd, disk_partition_t *info);
+void reiserfs_set_blk_dev(struct blk_desc *rbdd, disk_partition_t *info);
 extern int reiserfs_ls (char *dirname);
 extern int reiserfs_open (char *filename);
 extern int reiserfs_read (char *buf, unsigned len);

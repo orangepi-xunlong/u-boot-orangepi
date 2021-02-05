@@ -1,16 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *
  * Dave Liu <daveliu@freescale.com>
  * based on source code of Shlomi Gridish
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include "common.h"
-#include "asm/errno.h"
-#include "asm/io.h"
-#include "asm/immap_83xx.h"
+#include <common.h>
+#include <linux/errno.h>
+#include <asm/io.h>
+#include <asm/immap_83xx.h>
 
 #define	NUM_OF_PINS	32
 void qe_config_iopin(u8 port, u8 pin, int dir, int open_drain, int assign)
@@ -23,7 +22,7 @@ void qe_config_iopin(u8 port, u8 pin, int dir, int open_drain, int assign)
 	volatile immap_t	*im = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile qepio83xx_t	*par_io = (volatile qepio83xx_t *)&im->qepio;
 
-	/* Caculate pin location and 2bit mask and dir */
+	/* Calculate pin location and 2bit mask and dir */
 	pin_2bit_mask = (u32)(0x3 << (NUM_OF_PINS-(pin%(NUM_OF_PINS/2)+1)*2));
 	pin_2bit_dir = (u32)(dir << (NUM_OF_PINS-(pin%(NUM_OF_PINS/2)+1)*2));
 

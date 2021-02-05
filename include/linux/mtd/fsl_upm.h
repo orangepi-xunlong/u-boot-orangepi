@@ -1,16 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * FSL UPM NAND driver
  *
  * Copyright (C) 2007 MontaVista Software, Inc.
  *                    Anton Vorontsov <avorontsov@ru.mvista.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LINUX_MTD_NAND_FSL_UPM
 #define __LINUX_MTD_NAND_FSL_UPM
 
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
 
 #define FSL_UPM_WAIT_RUN_PATTERN  0x1
 #define FSL_UPM_WAIT_WRITE_BYTE   0x2

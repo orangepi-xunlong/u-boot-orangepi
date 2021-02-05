@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Freescale i.MX6 PCI Express Root-Complex driver
  *
@@ -6,34 +7,46 @@
  * Based on upstream Linux kernel driver:
  * pci-imx6.c:		Sean Cross <xobs@kosagi.com>
  * pcie-designware.c:	Jingoo Han <jg1.han@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
+#include <init.h>
+#include <malloc.h>
 #include <pci.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <dm.h>
 #include <linux/sizes.h>
 #include <errno.h>
+#include <asm/arch/sys_proto.h>
 
 #define PCI_ACCESS_READ  0
 #define PCI_ACCESS_WRITE 1
 
+#ifdef CONFIG_MX6SX
+#define MX6_DBI_ADDR	0x08ffc000
+#define MX6_IO_ADDR	0x08000000
+#define MX6_MEM_ADDR	0x08100000
+#define MX6_ROOT_ADDR	0x08f00000
+#else
 #define MX6_DBI_ADDR	0x01ffc000
-#define MX6_DBI_SIZE	0x4000
 #define MX6_IO_ADDR	0x01000000
-#define MX6_IO_SIZE	0x100000
 #define MX6_MEM_ADDR	0x01100000
-#define MX6_MEM_SIZE	0xe00000
 #define MX6_ROOT_ADDR	0x01f00000
+#endif
+#define MX6_DBI_SIZE	0x4000
+#define MX6_IO_SIZE	0x100000
+#define MX6_MEM_SIZE	0xe00000
 #define MX6_ROOT_SIZE	0xfc000
 
 /* PCIe Port Logic registers (memory-mapped) */
 #define PL_OFFSET 0x700
+#define PCIE_PL_PFLR (PL_OFFSET + 0x08)
+#define PCIE_PL_PFLR_LINK_STATE_MASK		(0x3f << 16)
+#define PCIE_PL_PFLR_FORCE_LINK			(1 << 15)
 #define PCIE_PHY_DEBUG_R0 (PL_OFFSET + 0x28)
 #define PCIE_PHY_DEBUG_R1 (PL_OFFSET + 0x2c)
 #define PCIE_PHY_DEBUG_R1_LINK_UP		(1 << 4)
@@ -57,6 +70,8 @@
 #define PHY_RX_OVRD_IN_LO_RX_DATA_EN (1 << 5)
 #define PHY_RX_OVRD_IN_LO_RX_PLL_EN (1 << 3)
 
+#define PCIE_PHY_PUP_REQ		(1 << 7)
+
 /* iATU registers */
 #define PCIE_ATU_VIEWPORT		0x900
 #define PCIE_ATU_REGION_INBOUND		(0x1 << 31)
@@ -79,6 +94,11 @@
 #define PCIE_ATU_DEV(x)			(((x) & 0x1f) << 19)
 #define PCIE_ATU_FUNC(x)		(((x) & 0x7) << 16)
 #define PCIE_ATU_UPPER_TARGET		0x91C
+
+struct imx_pcie_priv {
+	void __iomem		*dbi_base;
+	void __iomem		*cfg_base;
+};
 
 /*
  * PHY access functions
@@ -213,13 +233,13 @@ static int pcie_phy_write(void __iomem *dbi_base, int addr, int data)
 	return 0;
 }
 
-static int imx6_pcie_link_up(void)
+static int imx6_pcie_link_up(struct imx_pcie_priv *priv)
 {
 	u32 rc, ltssm;
 	int rx_valid, temp;
 
 	/* link is debug bit 36, debug register 1 starts at bit 32 */
-	rc = readl(MX6_DBI_ADDR + PCIE_PHY_DEBUG_R1);
+	rc = readl(priv->dbi_base + PCIE_PHY_DEBUG_R1);
 	if ((rc & PCIE_PHY_DEBUG_R1_LINK_UP) &&
 	    !(rc & PCIE_PHY_DEBUG_R1_LINK_IN_TRAINING))
 		return -EAGAIN;
@@ -231,8 +251,8 @@ static int imx6_pcie_link_up(void)
 	 * && (PHY/rx_valid==0) then pulse PHY/rx_reset. Transition
 	 * to gen2 is stuck
 	 */
-	pcie_phy_read((void *)MX6_DBI_ADDR, PCIE_PHY_RX_ASIC_OUT, &rx_valid);
-	ltssm = readl(MX6_DBI_ADDR + PCIE_PHY_DEBUG_R0) & 0x3F;
+	pcie_phy_read(priv->dbi_base, PCIE_PHY_RX_ASIC_OUT, &rx_valid);
+	ltssm = readl(priv->dbi_base + PCIE_PHY_DEBUG_R0) & 0x3F;
 
 	if (rx_valid & 0x01)
 		return 0;
@@ -242,15 +262,15 @@ static int imx6_pcie_link_up(void)
 
 	printf("transition to gen2 is stuck, reset PHY!\n");
 
-	pcie_phy_read((void *)MX6_DBI_ADDR, PHY_RX_OVRD_IN_LO, &temp);
+	pcie_phy_read(priv->dbi_base, PHY_RX_OVRD_IN_LO, &temp);
 	temp |= (PHY_RX_OVRD_IN_LO_RX_DATA_EN | PHY_RX_OVRD_IN_LO_RX_PLL_EN);
-	pcie_phy_write((void *)MX6_DBI_ADDR, PHY_RX_OVRD_IN_LO, temp);
+	pcie_phy_write(priv->dbi_base, PHY_RX_OVRD_IN_LO, temp);
 
 	udelay(3000);
 
-	pcie_phy_read((void *)MX6_DBI_ADDR, PHY_RX_OVRD_IN_LO, &temp);
+	pcie_phy_read(priv->dbi_base, PHY_RX_OVRD_IN_LO, &temp);
 	temp &= ~(PHY_RX_OVRD_IN_LO_RX_DATA_EN | PHY_RX_OVRD_IN_LO_RX_PLL_EN);
-	pcie_phy_write((void *)MX6_DBI_ADDR, PHY_RX_OVRD_IN_LO, temp);
+	pcie_phy_write(priv->dbi_base, PHY_RX_OVRD_IN_LO, temp);
 
 	return 0;
 }
@@ -258,7 +278,7 @@ static int imx6_pcie_link_up(void)
 /*
  * iATU region setup
  */
-static int imx_pcie_regions_setup(void)
+static int imx_pcie_regions_setup(struct imx_pcie_priv *priv)
 {
 	/*
 	 * i.MX6 defines 16MB in the AXI address map for PCIe.
@@ -273,24 +293,27 @@ static int imx_pcie_regions_setup(void)
 	 */
 
 	/* CMD reg:I/O space, MEM space, and Bus Master Enable */
-	setbits_le32(MX6_DBI_ADDR | PCI_COMMAND,
+	setbits_le32(priv->dbi_base + PCI_COMMAND,
 		     PCI_COMMAND_IO | PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER);
 
 	/* Set the CLASS_REV of RC CFG header to PCI_CLASS_BRIDGE_PCI */
-	setbits_le32(MX6_DBI_ADDR + PCI_CLASS_REVISION,
+	setbits_le32(priv->dbi_base + PCI_CLASS_REVISION,
 		     PCI_CLASS_BRIDGE_PCI << 16);
 
 	/* Region #0 is used for Outbound CFG space access. */
-	writel(0, MX6_DBI_ADDR + PCIE_ATU_VIEWPORT);
+	writel(0, priv->dbi_base + PCIE_ATU_VIEWPORT);
 
-	writel(MX6_ROOT_ADDR, MX6_DBI_ADDR + PCIE_ATU_LOWER_BASE);
-	writel(0, MX6_DBI_ADDR + PCIE_ATU_UPPER_BASE);
-	writel(MX6_ROOT_ADDR + MX6_ROOT_SIZE, MX6_DBI_ADDR + PCIE_ATU_LIMIT);
+	writel(lower_32_bits((uintptr_t)priv->cfg_base),
+	       priv->dbi_base + PCIE_ATU_LOWER_BASE);
+	writel(upper_32_bits((uintptr_t)priv->cfg_base),
+	       priv->dbi_base + PCIE_ATU_UPPER_BASE);
+	writel(lower_32_bits((uintptr_t)priv->cfg_base + MX6_ROOT_SIZE),
+	       priv->dbi_base + PCIE_ATU_LIMIT);
 
-	writel(0, MX6_DBI_ADDR + PCIE_ATU_LOWER_TARGET);
-	writel(0, MX6_DBI_ADDR + PCIE_ATU_UPPER_TARGET);
-	writel(PCIE_ATU_TYPE_CFG0, MX6_DBI_ADDR + PCIE_ATU_CR1);
-	writel(PCIE_ATU_ENABLE, MX6_DBI_ADDR + PCIE_ATU_CR2);
+	writel(0, priv->dbi_base + PCIE_ATU_LOWER_TARGET);
+	writel(0, priv->dbi_base + PCIE_ATU_UPPER_TARGET);
+	writel(PCIE_ATU_TYPE_CFG0, priv->dbi_base + PCIE_ATU_CR1);
+	writel(PCIE_ATU_ENABLE, priv->dbi_base + PCIE_ATU_CR2);
 
 	return 0;
 }
@@ -298,23 +321,24 @@ static int imx_pcie_regions_setup(void)
 /*
  * PCI Express accessors
  */
-static uint32_t get_bus_address(pci_dev_t d, int where)
+static void __iomem *get_bus_address(struct imx_pcie_priv *priv,
+				     pci_dev_t d, int where)
 {
-	uint32_t va_address;
+	void __iomem *va_address;
 
 	/* Reconfigure Region #0 */
-	writel(0, MX6_DBI_ADDR + PCIE_ATU_VIEWPORT);
+	writel(0, priv->dbi_base + PCIE_ATU_VIEWPORT);
 
 	if (PCI_BUS(d) < 2)
-		writel(PCIE_ATU_TYPE_CFG0, MX6_DBI_ADDR + PCIE_ATU_CR1);
+		writel(PCIE_ATU_TYPE_CFG0, priv->dbi_base + PCIE_ATU_CR1);
 	else
-		writel(PCIE_ATU_TYPE_CFG1, MX6_DBI_ADDR + PCIE_ATU_CR1);
+		writel(PCIE_ATU_TYPE_CFG1, priv->dbi_base + PCIE_ATU_CR1);
 
 	if (PCI_BUS(d) == 0) {
-		va_address = MX6_DBI_ADDR;
+		va_address = priv->dbi_base;
 	} else {
-		writel(d << 8, MX6_DBI_ADDR + PCIE_ATU_LOWER_TARGET);
-		va_address = MX6_IO_ADDR + SZ_16M - SZ_1M;
+		writel(d << 8, priv->dbi_base + PCIE_ATU_LOWER_TARGET);
+		va_address = priv->cfg_base;
 	}
 
 	va_address += (where & ~0x3);
@@ -362,19 +386,19 @@ static void imx_pcie_fix_dabt_handler(bool set)
 	}
 }
 
-static int imx_pcie_read_config(struct pci_controller *hose, pci_dev_t d,
-				int where, u32 *val)
+static int imx_pcie_read_cfg(struct imx_pcie_priv *priv, pci_dev_t d,
+			     int where, u32 *val)
 {
-	uint32_t va_address;
+	void __iomem *va_address;
 	int ret;
 
 	ret = imx_pcie_addr_valid(d);
 	if (ret) {
 		*val = 0xffffffff;
-		return ret;
+		return 0;
 	}
 
-	va_address = get_bus_address(d, where);
+	va_address = get_bus_address(priv, d, where);
 
 	/*
 	 * Read the PCIe config space. We must replace the DABT handler
@@ -391,17 +415,17 @@ static int imx_pcie_read_config(struct pci_controller *hose, pci_dev_t d,
 	return 0;
 }
 
-static int imx_pcie_write_config(struct pci_controller *hose, pci_dev_t d,
-			int where, u32 val)
+static int imx_pcie_write_cfg(struct imx_pcie_priv *priv, pci_dev_t d,
+			      int where, u32 val)
 {
-	uint32_t va_address = 0;
+	void __iomem *va_address = NULL;
 	int ret;
 
 	ret = imx_pcie_addr_valid(d);
 	if (ret)
 		return ret;
 
-	va_address = get_bus_address(d, where);
+	va_address = get_bus_address(priv, d, where);
 
 	/*
 	 * Write the PCIe config space. We must replace the DABT handler
@@ -418,12 +442,57 @@ static int imx_pcie_write_config(struct pci_controller *hose, pci_dev_t d,
 /*
  * Initial bus setup
  */
-static int imx6_pcie_assert_core_reset(void)
+static int imx6_pcie_assert_core_reset(struct imx_pcie_priv *priv,
+				       bool prepare_for_boot)
 {
 	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
 
+	if (is_mx6dqp())
+		setbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_PCIE_SW_RST);
+
+#if defined(CONFIG_MX6SX)
+	struct gpc *gpc_regs = (struct gpc *)GPC_BASE_ADDR;
+
+	/* SSP_EN is not used on MX6SX anymore */
+	setbits_le32(&iomuxc_regs->gpr[12], IOMUXC_GPR12_TEST_POWERDOWN);
+	/* Force PCIe PHY reset */
+	setbits_le32(&iomuxc_regs->gpr[5], IOMUXC_GPR5_PCIE_BTNRST);
+	/* Power up PCIe PHY */
+	setbits_le32(&gpc_regs->cntr, PCIE_PHY_PUP_REQ);
+#else
+	/*
+	 * If the bootloader already enabled the link we need some special
+	 * handling to get the core back into a state where it is safe to
+	 * touch it for configuration.  As there is no dedicated reset signal
+	 * wired up for MX6QDL, we need to manually force LTSSM into "detect"
+	 * state before completely disabling LTSSM, which is a prerequisite
+	 * for core configuration.
+	 *
+	 * If both LTSSM_ENABLE and REF_SSP_ENABLE are active we have a strong
+	 * indication that the bootloader activated the link.
+	 */
+	if (is_mx6dq() && prepare_for_boot) {
+		u32 val, gpr1, gpr12;
+
+		gpr1 = readl(&iomuxc_regs->gpr[1]);
+		gpr12 = readl(&iomuxc_regs->gpr[12]);
+		if ((gpr1 & IOMUXC_GPR1_PCIE_REF_CLK_EN) &&
+		    (gpr12 & IOMUXC_GPR12_PCIE_CTL_2)) {
+			val = readl(priv->dbi_base + PCIE_PL_PFLR);
+			val &= ~PCIE_PL_PFLR_LINK_STATE_MASK;
+			val |= PCIE_PL_PFLR_FORCE_LINK;
+
+			imx_pcie_fix_dabt_handler(true);
+			writel(val, priv->dbi_base + PCIE_PL_PFLR);
+			imx_pcie_fix_dabt_handler(false);
+
+			gpr12 &= ~IOMUXC_GPR12_PCIE_CTL_2;
+			writel(val, &iomuxc_regs->gpr[12]);
+		}
+	}
 	setbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_TEST_POWERDOWN);
 	clrbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_REF_SSP_EN);
+#endif
 
 	return 0;
 }
@@ -441,6 +510,12 @@ static int imx6_pcie_init_phy(void)
 			IOMUXC_GPR12_LOS_LEVEL_MASK,
 			IOMUXC_GPR12_LOS_LEVEL_9);
 
+#ifdef CONFIG_MX6SX
+	clrsetbits_le32(&iomuxc_regs->gpr[12],
+			IOMUXC_GPR12_RX_EQ_MASK,
+			IOMUXC_GPR12_RX_EQ_2);
+#endif
+
 	writel((0x0 << IOMUXC_GPR8_PCS_TX_DEEMPH_GEN1_OFFSET) |
 	       (0x0 << IOMUXC_GPR8_PCS_TX_DEEMPH_GEN2_3P5DB_OFFSET) |
 	       (20 << IOMUXC_GPR8_PCS_TX_DEEMPH_GEN2_6DB_OFFSET) |
@@ -454,10 +529,12 @@ static int imx6_pcie_init_phy(void)
 __weak int imx6_pcie_toggle_power(void)
 {
 #ifdef CONFIG_PCIE_IMX_POWER_GPIO
+	gpio_request(CONFIG_PCIE_IMX_POWER_GPIO, "pcie_power");
 	gpio_direction_output(CONFIG_PCIE_IMX_POWER_GPIO, 0);
 	mdelay(20);
 	gpio_set_value(CONFIG_PCIE_IMX_POWER_GPIO, 1);
 	mdelay(20);
+	gpio_free(CONFIG_PCIE_IMX_POWER_GPIO);
 #endif
 	return 0;
 }
@@ -470,7 +547,7 @@ __weak int imx6_pcie_toggle_reset(void)
 	 *
 	 * The PCIe #PERST reset line _MUST_ be connected, otherwise your
 	 * design does not conform to the specification. You must wait at
-	 * least 20 mS after de-asserting the #PERST so the EP device can
+	 * least 20 ms after de-asserting the #PERST so the EP device can
 	 * do self-initialisation.
 	 *
 	 * In case your #PERST pin is connected to a plain GPIO pin of the
@@ -481,7 +558,7 @@ __weak int imx6_pcie_toggle_reset(void)
 	 * In case your #PERST toggling logic is more complex, for example
 	 * connected via CPLD or somesuch, you can override this function
 	 * in your board file and implement reset logic as needed. You must
-	 * not forget to wait at least 20 mS after de-asserting #PERST in
+	 * not forget to wait at least 20 ms after de-asserting #PERST in
 	 * this case either though.
 	 *
 	 * In case your #PERST line of the PCIe EP device is not connected
@@ -493,10 +570,12 @@ __weak int imx6_pcie_toggle_reset(void)
 	 * state due to being previously used in U-Boot.
 	 */
 #ifdef CONFIG_PCIE_IMX_PERST_GPIO
+	gpio_request(CONFIG_PCIE_IMX_PERST_GPIO, "pcie_reset");
 	gpio_direction_output(CONFIG_PCIE_IMX_PERST_GPIO, 0);
 	mdelay(20);
 	gpio_set_value(CONFIG_PCIE_IMX_PERST_GPIO, 1);
 	mdelay(20);
+	gpio_free(CONFIG_PCIE_IMX_PERST_GPIO);
 #else
 	puts("WARNING: Make sure the PCIe #PERST line is connected!\n");
 #endif
@@ -509,34 +588,55 @@ static int imx6_pcie_deassert_core_reset(void)
 
 	imx6_pcie_toggle_power();
 
-	/* Enable PCIe */
-	clrbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_TEST_POWERDOWN);
-	setbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_REF_SSP_EN);
-
 	enable_pcie_clock();
+
+	if (is_mx6dqp())
+		clrbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_PCIE_SW_RST);
 
 	/*
 	 * Wait for the clock to settle a bit, when the clock are sourced
-	 * from the CPU, we need about 30mS to settle.
+	 * from the CPU, we need about 30 ms to settle.
 	 */
 	mdelay(50);
+
+#if defined(CONFIG_MX6SX)
+	/* SSP_EN is not used on MX6SX anymore */
+	clrbits_le32(&iomuxc_regs->gpr[12], IOMUXC_GPR12_TEST_POWERDOWN);
+	/* Clear PCIe PHY reset bit */
+	clrbits_le32(&iomuxc_regs->gpr[5], IOMUXC_GPR5_PCIE_BTNRST);
+#else
+	/* Enable PCIe */
+	clrbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_TEST_POWERDOWN);
+	setbits_le32(&iomuxc_regs->gpr[1], IOMUXC_GPR1_REF_SSP_EN);
+#endif
 
 	imx6_pcie_toggle_reset();
 
 	return 0;
 }
 
-static int imx_pcie_link_up(void)
+static int imx_pcie_link_up(struct imx_pcie_priv *priv)
 {
 	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
 	uint32_t tmp;
 	int count = 0;
 
-	imx6_pcie_assert_core_reset();
+	imx6_pcie_assert_core_reset(priv, false);
 	imx6_pcie_init_phy();
 	imx6_pcie_deassert_core_reset();
 
-	imx_pcie_regions_setup();
+	imx_pcie_regions_setup(priv);
+
+	/*
+	 * By default, the subordinate is set equally to the secondary
+	 * bus (0x01) when the RC boots.
+	 * This means that theoretically, only bus 1 is reachable from the RC.
+	 * Force the PCIe RC subordinate to 0xff, otherwise no downstream
+	 * devices will be detected if the enumeration is applied strictly.
+	 */
+	tmp = readl(priv->dbi_base + 0x18);
+	tmp |= (0xff << 16);
+	writel(tmp, priv->dbi_base + 0x18);
 
 	/*
 	 * FIXME: Force the PCIe RC to Gen1 operation
@@ -544,27 +644,53 @@ static int imx_pcie_link_up(void)
 	 * up, otherwise no downstream devices are detected. After the
 	 * link is up, a managed Gen1->Gen2 transition can be initiated.
 	 */
-	tmp = readl(MX6_DBI_ADDR + 0x7c);
+	tmp = readl(priv->dbi_base + 0x7c);
 	tmp &= ~0xf;
 	tmp |= 0x1;
-	writel(tmp, MX6_DBI_ADDR + 0x7c);
+	writel(tmp, priv->dbi_base + 0x7c);
 
 	/* LTSSM enable, starting link. */
 	setbits_le32(&iomuxc_regs->gpr[12], IOMUXC_GPR12_APPS_LTSSM_ENABLE);
 
-	while (!imx6_pcie_link_up()) {
+	while (!imx6_pcie_link_up(priv)) {
 		udelay(10);
 		count++;
-		if (count >= 2000) {
-			debug("phy link never came up\n");
+		if (count >= 4000) {
+#ifdef CONFIG_PCI_SCAN_SHOW
+			puts("PCI:   pcie phy link never came up\n");
+#endif
 			debug("DEBUG_R0: 0x%08x, DEBUG_R1: 0x%08x\n",
-			      readl(MX6_DBI_ADDR + PCIE_PHY_DEBUG_R0),
-			      readl(MX6_DBI_ADDR + PCIE_PHY_DEBUG_R1));
+			      readl(priv->dbi_base + PCIE_PHY_DEBUG_R0),
+			      readl(priv->dbi_base + PCIE_PHY_DEBUG_R1));
 			return -EINVAL;
 		}
 	}
 
 	return 0;
+}
+
+#if !CONFIG_IS_ENABLED(DM_PCI)
+static struct imx_pcie_priv imx_pcie_priv = {
+	.dbi_base	= (void __iomem *)MX6_DBI_ADDR,
+	.cfg_base	= (void __iomem *)MX6_ROOT_ADDR,
+};
+
+static struct imx_pcie_priv *priv = &imx_pcie_priv;
+
+static int imx_pcie_read_config(struct pci_controller *hose, pci_dev_t d,
+				int where, u32 *val)
+{
+	struct imx_pcie_priv *priv = hose->priv_data;
+
+	return imx_pcie_read_cfg(priv, d, where, val);
+}
+
+static int imx_pcie_write_config(struct pci_controller *hose, pci_dev_t d,
+				 int where, u32 val)
+{
+	struct imx_pcie_priv *priv = hose->priv_data;
+
+	return imx_pcie_write_cfg(priv, d, where, val);
 }
 
 void imx_pcie_init(void)
@@ -575,6 +701,8 @@ void imx_pcie_init(void)
 	int ret;
 
 	memset(&pcc, 0, sizeof(pcc));
+
+	hose->priv_data = priv;
 
 	/* PCI I/O space */
 	pci_set_region(&hose->regions[0],
@@ -602,7 +730,7 @@ void imx_pcie_init(void)
 		    imx_pcie_write_config);
 
 	/* Start the controller. */
-	ret = imx_pcie_link_up();
+	ret = imx_pcie_link_up(priv);
 
 	if (!ret) {
 		pci_register_hose(hose);
@@ -610,8 +738,97 @@ void imx_pcie_init(void)
 	}
 }
 
+void imx_pcie_remove(void)
+{
+	imx6_pcie_assert_core_reset(priv, true);
+}
+
 /* Probe function. */
 void pci_init_board(void)
 {
 	imx_pcie_init();
 }
+#else
+static int imx_pcie_dm_read_config(const struct udevice *dev, pci_dev_t bdf,
+				   uint offset, ulong *value,
+				   enum pci_size_t size)
+{
+	struct imx_pcie_priv *priv = dev_get_priv(dev);
+	u32 tmpval;
+	int ret;
+
+	ret = imx_pcie_read_cfg(priv, bdf, offset, &tmpval);
+	if (ret)
+		return ret;
+
+	*value = pci_conv_32_to_size(tmpval, offset, size);
+	return 0;
+}
+
+static int imx_pcie_dm_write_config(struct udevice *dev, pci_dev_t bdf,
+				    uint offset, ulong value,
+				    enum pci_size_t size)
+{
+	struct imx_pcie_priv *priv = dev_get_priv(dev);
+	u32 tmpval, newval;
+	int ret;
+
+	ret = imx_pcie_read_cfg(priv, bdf, offset, &tmpval);
+	if (ret)
+		return ret;
+
+	newval = pci_conv_size_to_32(tmpval, value, offset, size);
+	return imx_pcie_write_cfg(priv, bdf, offset, newval);
+}
+
+static int imx_pcie_dm_probe(struct udevice *dev)
+{
+	struct imx_pcie_priv *priv = dev_get_priv(dev);
+
+	return imx_pcie_link_up(priv);
+}
+
+static int imx_pcie_dm_remove(struct udevice *dev)
+{
+	struct imx_pcie_priv *priv = dev_get_priv(dev);
+
+	imx6_pcie_assert_core_reset(priv, true);
+
+	return 0;
+}
+
+static int imx_pcie_ofdata_to_platdata(struct udevice *dev)
+{
+	struct imx_pcie_priv *priv = dev_get_priv(dev);
+
+	priv->dbi_base = (void __iomem *)devfdt_get_addr_index(dev, 0);
+	priv->cfg_base = (void __iomem *)devfdt_get_addr_index(dev, 1);
+	if (!priv->dbi_base || !priv->cfg_base)
+		return -EINVAL;
+
+	return 0;
+}
+
+static const struct dm_pci_ops imx_pcie_ops = {
+	.read_config	= imx_pcie_dm_read_config,
+	.write_config	= imx_pcie_dm_write_config,
+};
+
+static const struct udevice_id imx_pcie_ids[] = {
+	{ .compatible = "fsl,imx6q-pcie" },
+	{ .compatible = "fsl,imx6sx-pcie" },
+	{ }
+};
+
+U_BOOT_DRIVER(imx_pcie) = {
+	.name			= "imx_pcie",
+	.id			= UCLASS_PCI,
+	.of_match		= imx_pcie_ids,
+	.ops			= &imx_pcie_ops,
+	.probe			= imx_pcie_dm_probe,
+	.remove			= imx_pcie_dm_remove,
+	.ofdata_to_platdata	= imx_pcie_ofdata_to_platdata,
+	.priv_auto_alloc_size	= sizeof(struct imx_pcie_priv),
+	.flags			= DM_FLAG_OS_PREPARE,
+};
+#endif

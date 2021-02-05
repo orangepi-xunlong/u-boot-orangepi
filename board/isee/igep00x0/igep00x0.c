@@ -1,101 +1,103 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * ISEE 2007 SL, <www.iseebcn.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <env.h>
+#include <malloc.h>
+#include <status_led.h>
+#include <dm.h>
+#include <ns16550.h>
 #include <twl4030.h>
 #include <netdev.h>
+#include <spl.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/mach-types.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/rawnand.h>
+#include <linux/mtd/onenand.h>
+#include <jffs2/load_kernel.h>
+#include <mtd_node.h>
+#include <fdt_support.h>
 #include "igep00x0.h"
 
-DECLARE_GLOBAL_DATA_PTR;
-
-#if defined(CONFIG_CMD_NET)
-/* GPMC definitions for LAN9221 chips */
-static const u32 gpmc_lan_config[] = {
-	NET_LAN9221_GPMC_CONFIG1,
-	NET_LAN9221_GPMC_CONFIG2,
-	NET_LAN9221_GPMC_CONFIG3,
-	NET_LAN9221_GPMC_CONFIG4,
-	NET_LAN9221_GPMC_CONFIG5,
-	NET_LAN9221_GPMC_CONFIG6,
+static const struct ns16550_platdata igep_serial = {
+	.base = OMAP34XX_UART3,
+	.reg_shift = 2,
+	.clock = V_NS16550_CLK,
+	.fcr = UART_FCR_DEFVAL,
 };
-#endif
+
+U_BOOT_DEVICE(igep_uart) = {
+	"ns16550_serial",
+	&igep_serial
+};
 
 /*
- * Routine: board_init
- * Description: Early hardware init.
+ * Routine: get_board_revision
+ * Description: GPIO_28 and GPIO_129 are used to read board and revision from
+ * IGEP00x0 boards. First of all, it is necessary to reset USB transceiver from
+ * IGEP0030 in order to read GPIO_IGEP00X0_BOARD_DETECTION correctly, because
+ * this functionality is shared by USB HOST.
+ * Once USB reset is applied, U-boot configures these pins as input pullup to
+ * detect board and revision:
+ * IGEP0020-RF = 0b00
+ * IGEP0020-RC = 0b01
+ * IGEP0030-RG = 0b10
+ * IGEP0030-RE = 0b11
  */
-int board_init(void)
+static int get_board_revision(void)
 {
-	gpmc_init(); /* in SRAM or SDRAM, finish GPMC */
-	/* boot param addr */
-	gd->bd->bi_boot_params = (OMAP34XX_SDRC_CS0 + 0x100);
+	int revision;
 
-	return 0;
+	gpio_request(IGEP0030_USB_TRANSCEIVER_RESET,
+				"igep0030_usb_transceiver_reset");
+	gpio_direction_output(IGEP0030_USB_TRANSCEIVER_RESET, 0);
+
+	gpio_request(GPIO_IGEP00X0_BOARD_DETECTION, "igep00x0_board_detection");
+	gpio_direction_input(GPIO_IGEP00X0_BOARD_DETECTION);
+	revision = 2 * gpio_get_value(GPIO_IGEP00X0_BOARD_DETECTION);
+	gpio_free(GPIO_IGEP00X0_BOARD_DETECTION);
+
+	gpio_request(GPIO_IGEP00X0_REVISION_DETECTION,
+				"igep00x0_revision_detection");
+	gpio_direction_input(GPIO_IGEP00X0_REVISION_DETECTION);
+	revision = revision + gpio_get_value(GPIO_IGEP00X0_REVISION_DETECTION);
+	gpio_free(GPIO_IGEP00X0_REVISION_DETECTION);
+
+	gpio_free(IGEP0030_USB_TRANSCEIVER_RESET);
+
+	return revision;
 }
 
-#if defined(CONFIG_SHOW_BOOT_PROGRESS) && !defined(CONFIG_SPL_BUILD)
-void show_boot_progress(int val)
+int onenand_board_init(struct mtd_info *mtd)
 {
-	if (val < 0) {
-		/* something went wrong */
-		return;
+	if (gpmc_cs0_flash == MTD_DEV_TYPE_ONENAND) {
+		struct onenand_chip *this = mtd->priv;
+		this->base = (void *)CONFIG_SYS_ONENAND_BASE;
+		return 0;
 	}
-
-	if (!gpio_request(IGEP00X0_GPIO_LED, ""))
-		gpio_direction_output(IGEP00X0_GPIO_LED, 1);
+	return 1;
 }
-#endif
-
-#ifdef CONFIG_SPL_BUILD
-/*
- * Routine: omap_rev_string
- * Description: For SPL builds output board rev
- */
-void omap_rev_string(void)
-{
-}
-
-/*
- * Routine: get_board_mem_timings
- * Description: If we use SPL then there is no x-loader nor config header
- * so we have to setup the DDR timings ourself on both banks.
- */
-void get_board_mem_timings(struct board_sdrc_timings *timings)
-{
-	timings->mr = MICRON_V_MR_165;
-#ifdef CONFIG_BOOT_NAND
-	timings->mcfg = MICRON_V_MCFG_200(256 << 20);
-	timings->ctrla = MICRON_V_ACTIMA_200;
-	timings->ctrlb = MICRON_V_ACTIMB_200;
-	timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_200MHz;
-#else
-	if (get_cpu_family() == CPU_OMAP34XX) {
-		timings->mcfg = NUMONYX_V_MCFG_165(256 << 20);
-		timings->ctrla = NUMONYX_V_ACTIMA_165;
-		timings->ctrlb = NUMONYX_V_ACTIMB_165;
-		timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_165MHz;
-
-	} else {
-		timings->mcfg = NUMONYX_V_MCFG_200(256 << 20);
-		timings->ctrla = NUMONYX_V_ACTIMA_200;
-		timings->ctrlb = NUMONYX_V_ACTIMB_200;
-		timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_200MHz;
-	}
-#endif
-}
-#endif
 
 #if defined(CONFIG_CMD_NET)
+static void reset_net_chip(int gpio)
+{
+	if (!gpio_request(gpio, "eth nrst")) {
+		gpio_direction_output(gpio, 1);
+		udelay(1);
+		gpio_set_value(gpio, 0);
+		udelay(40);
+		gpio_set_value(gpio, 1);
+		mdelay(10);
+	}
+}
+
 /*
  * Routine: setup_net_chip
  * Description: Setting up the configuration GPMC registers specific to the
@@ -104,9 +106,17 @@ void get_board_mem_timings(struct board_sdrc_timings *timings)
 static void setup_net_chip(void)
 {
 	struct ctrl *ctrl_base = (struct ctrl *)OMAP34XX_CTRL_BASE;
+	static const u32 gpmc_lan_config[] = {
+		NET_LAN9221_GPMC_CONFIG1,
+		NET_LAN9221_GPMC_CONFIG2,
+		NET_LAN9221_GPMC_CONFIG3,
+		NET_LAN9221_GPMC_CONFIG4,
+		NET_LAN9221_GPMC_CONFIG5,
+		NET_LAN9221_GPMC_CONFIG6,
+	};
 
-	enable_gpmc_cs_config(gpmc_lan_config, &gpmc_cfg->cs[5], 0x2C000000,
-			GPMC_SIZE_16M);
+	enable_gpmc_cs_config(gpmc_lan_config, &gpmc_cfg->cs[5],
+			CONFIG_SMC911X_BASE, GPMC_SIZE_16M);
 
 	/* Enable off mode for NWE in PADCONF_GPMC_NWE register */
 	writew(readw(&ctrl_base->gpmc_nwe) | 0x0E00, &ctrl_base->gpmc_nwe);
@@ -116,37 +126,82 @@ static void setup_net_chip(void)
 	writew(readw(&ctrl_base->gpmc_nadv_ale) | 0x0E00,
 		&ctrl_base->gpmc_nadv_ale);
 
-	/* Make GPIO 64 as output pin and send a magic pulse through it */
-	if (!gpio_request(64, "")) {
-		gpio_direction_output(64, 0);
-		gpio_set_value(64, 1);
-		udelay(1);
-		gpio_set_value(64, 0);
-		udelay(1);
-		gpio_set_value(64, 1);
-	}
+	reset_net_chip(64);
+}
+
+int board_eth_init(bd_t *bis)
+{
+#ifdef CONFIG_SMC911X
+	return smc911x_initialize(0, CONFIG_SMC911X_BASE);
+#else
+	return 0;
+#endif
 }
 #else
 static inline void setup_net_chip(void) {}
 #endif
 
-#if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
-int board_mmc_init(bd_t *bis)
+#ifdef CONFIG_OF_BOARD_SETUP
+static int ft_enable_by_compatible(void *blob, char *compat, int enable)
 {
-	return omap_mmc_init(0, 0, 0, -1, -1);
+	int off = fdt_node_offset_by_compatible(blob, -1, compat);
+	if (off < 0)
+		return off;
+
+	if (enable)
+		fdt_status_okay(blob, off);
+	else
+		fdt_status_disabled(blob, off);
+
+	return 0;
+}
+
+int ft_board_setup(void *blob, bd_t *bd)
+{
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+	static const struct node_info nodes[] = {
+		{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
+		{ "ti,omap2-onenand", MTD_DEV_TYPE_ONENAND, },
+	};
+
+	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+#endif
+	ft_enable_by_compatible(blob, "ti,omap2-nand",
+				gpmc_cs0_flash == MTD_DEV_TYPE_NAND);
+	ft_enable_by_compatible(blob, "ti,omap2-onenand",
+				gpmc_cs0_flash == MTD_DEV_TYPE_ONENAND);
+
+	return 0;
 }
 #endif
 
-void set_fdt(void)
+void set_led(void)
 {
-	switch (gd->bd->bi_arch_number) {
-	case MACH_TYPE_IGEP0020:
-		setenv("dtbfile", "omap3-igep0020.dtb");
+	switch (get_board_revision()) {
+	case 0:
+	case 1:
+		gpio_request(IGEP0020_GPIO_LED, "igep0020_gpio_led");
+		gpio_direction_output(IGEP0020_GPIO_LED, 1);
 		break;
-	case MACH_TYPE_IGEP0030:
-		setenv("dtbfile", "omap3-igep0030.dtb");
+	case 2:
+	case 3:
+		gpio_request(IGEP0030_GPIO_LED, "igep0030_gpio_led");
+		gpio_direction_output(IGEP0030_GPIO_LED, 0);
+		break;
+	default:
+		/* Should not happen... */
 		break;
 	}
+}
+
+void set_boardname(void)
+{
+	char rev[5] = { 'F','C','G','E', };
+	int i = get_board_revision();
+
+	rev[i+1] = 0;
+	env_set("board_rev", rev + i);
+	env_set("board_name", i < 2 ? "igep0020" : "igep0030");
 }
 
 /*
@@ -155,43 +210,51 @@ void set_fdt(void)
  */
 int misc_init_r(void)
 {
+	t2_t *t2_base = (t2_t *)T2_BASE;
+	u32 pbias_lite;
+
 	twl4030_power_init();
+
+	/* set VSIM to 1.8V */
+	twl4030_pmrecv_vsel_cfg(TWL4030_PM_RECEIVER_VSIM_DEDICATED,
+				TWL4030_PM_RECEIVER_VSIM_VSEL_18,
+				TWL4030_PM_RECEIVER_VSIM_DEV_GRP,
+				TWL4030_PM_RECEIVER_DEV_GRP_P1);
+
+	/* set up dual-voltage GPIOs to 1.8V */
+	pbias_lite = readl(&t2_base->pbias_lite);
+	pbias_lite &= ~PBIASLITEVMODE1;
+	pbias_lite |= PBIASLITEPWRDNZ1;
+	writel(pbias_lite, &t2_base->pbias_lite);
+	if (get_cpu_family() == CPU_OMAP36XX)
+		writel(readl(OMAP34XX_CTRL_WKUP_CTRL) |
+					 OMAP34XX_CTRL_WKUP_CTRL_GPIO_IO_PWRDNZ,
+					 OMAP34XX_CTRL_WKUP_CTRL);
 
 	setup_net_chip();
 
-	dieid_num_r();
+	omap_die_id_display();
 
-	set_fdt();
+	set_led();
+
+	set_boardname();
 
 	return 0;
 }
 
-/*
- * Routine: set_muxconf_regs
- * Description: Setting up the configuration Mux registers specific to the
- *		hardware. Many pins need to be moved from protect to primary
- *		mode.
- */
-void set_muxconf_regs(void)
+void board_mtdparts_default(const char **mtdids, const char **mtdparts)
 {
-	MUX_DEFAULT();
-
-#if (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0020)
-	MUX_IGEP0020();
-#endif
-
-#if (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0030)
-	MUX_IGEP0030();
-#endif
+	struct mtd_info *mtd = get_mtd_device(NULL, 0);
+	if (mtd) {
+		static char ids[24];
+		static char parts[48];
+		const char *linux_name = "omap2-nand";
+		if (strncmp(mtd->name, "onenand0", 8) == 0)
+			linux_name = "omap2-onenand";
+		snprintf(ids, sizeof(ids), "%s=%s", mtd->name, linux_name);
+		snprintf(parts, sizeof(parts), "mtdparts=%s:%dk(SPL),-(UBI)",
+		         linux_name, 4 * mtd->erasesize >> 10);
+		*mtdids = ids;
+		*mtdparts = parts;
+	}
 }
-
-#if defined(CONFIG_CMD_NET)
-int board_eth_init(bd_t *bis)
-{
-	int rc = 0;
-#ifdef CONFIG_SMC911X
-	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
-#endif
-	return rc;
-}
-#endif

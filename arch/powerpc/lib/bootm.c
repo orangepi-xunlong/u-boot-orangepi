@@ -1,26 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Semihalf
  *
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #include <common.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <init.h>
 #include <watchdog.h>
 #include <command.h>
 #include <image.h>
 #include <malloc.h>
 #include <u-boot/zlib.h>
 #include <bzlib.h>
-#include <environment.h>
 #include <asm/byteorder.h>
 #include <asm/mp.h>
+#include <bootm.h>
+#include <vxworks.h>
 
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #endif
 
@@ -79,7 +82,7 @@ static void boot_jump_linux(bootm_headers_t *images)
 		debug ("   Booting using OF flat tree...\n");
 		WATCHDOG_RESET ();
 		(*kernel) ((bd_t *)of_flat_tree, 0, 0, EPAPR_MAGIC,
-			   getenv_bootm_mapsize(), 0, 0);
+			   env_get_bootm_mapsize(), 0, 0);
 		/* does not return */
 	} else
 #endif
@@ -114,8 +117,8 @@ void arch_lmb_reserve(struct lmb *lmb)
 	phys_size_t bootm_size;
 	ulong size, sp, bootmap_base;
 
-	bootmap_base = getenv_bootm_low();
-	bootm_size = getenv_bootm_size();
+	bootmap_base = env_get_bootm_low();
+	bootm_size = env_get_bootm_size();
 
 #ifdef DEBUG
 	if (((u64)bootmap_base + bootm_size) >
@@ -126,7 +129,7 @@ void arch_lmb_reserve(struct lmb *lmb)
 #endif
 
 	size = min(bootm_size, get_effective_memsize());
-	size = min(size, CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE);
+	size = min(size, (ulong)CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE);
 
 	if (size < bootm_size) {
 		ulong base = bootmap_base + size;
@@ -268,7 +271,8 @@ static void set_clocks_in_mhz (bd_t *kbd)
 {
 	char	*s;
 
-	if ((s = getenv ("clocks_in_mhz")) != NULL) {
+	s = env_get("clocks_in_mhz");
+	if (s) {
 		/* convert all clock information to MHz */
 		kbd->bi_intfreq /= 1000000L;
 		kbd->bi_busfreq /= 1000000L;
@@ -278,10 +282,6 @@ static void set_clocks_in_mhz (bd_t *kbd)
 		kbd->bi_sccfreq /= 1000000L;
 		kbd->bi_vco	/= 1000000L;
 #endif
-#if defined(CONFIG_MPC5xxx)
-		kbd->bi_ipbfreq /= 1000000L;
-		kbd->bi_pcifreq /= 1000000L;
-#endif /* CONFIG_MPC5xxx */
 	}
 }
 
@@ -336,6 +336,6 @@ void boot_jump_vxworks(bootm_headers_t *images)
 
 	((void (*)(void *, ulong, ulong, ulong,
 		ulong, ulong, ulong))images->ep)(images->ft_addr,
-		0, 0, EPAPR_MAGIC, getenv_bootm_mapsize(), 0, 0);
+		0, 0, EPAPR_MAGIC, env_get_bootm_mapsize(), 0, 0);
 }
 #endif

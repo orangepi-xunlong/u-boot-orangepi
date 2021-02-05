@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009-2010 Freescale Semiconductor, Inc.
  * Copyright (C) 2010 Ilya Yanok, Emcraft Systems, yanok@emcraft.com
  *
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -13,13 +12,6 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC830x		1 /* MPC830x family */
-#define CONFIG_MPC8308		1 /* MPC8308 CPU specific */
-#define CONFIG_MPC8308_P1M	1 /* mpc8308_p1m board specific */
-
-#ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE	0xFC000000
-#endif
 
 /*
  * On-board devices
@@ -28,69 +20,6 @@
  */
 #define CONFIG_TSEC1
 #define CONFIG_TSEC2
-
-/*
- * System Clock Setup
- */
-#define CONFIG_83XX_CLKIN	33333333 /* in Hz */
-#define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
-
-/*
- * Hardware Reset Configuration Word
- * if CLKIN is 66.66MHz, then
- * CSB = 133MHz, DDRC = 266MHz, LBC = 133MHz
- * We choose the A type silicon as default, so the core is 400Mhz.
- */
-#define CONFIG_SYS_HRCW_LOW (\
-	HRCWL_LCL_BUS_TO_SCB_CLK_1X1 |\
-	HRCWL_DDR_TO_SCB_CLK_2X1 |\
-	HRCWL_SVCOD_DIV_2 |\
-	HRCWL_CSB_TO_CLKIN_4X1 |\
-	HRCWL_CORE_TO_CSB_3X1)
-/*
- * There are neither HRCWH_PCI_HOST nor HRCWH_PCI1_ARBITER_ENABLE bits
- * in 8308's HRCWH according to the manual, but original Freescale's
- * code has them and I've expirienced some problems using the board
- * with BDI3000 attached when I've tried to set these bits to zero
- * (UART doesn't work after the 'reset run' command).
- */
-#define CONFIG_SYS_HRCW_HIGH (\
-	HRCWH_PCI_HOST |\
-	HRCWH_PCI1_ARBITER_ENABLE |\
-	HRCWH_CORE_ENABLE |\
-	HRCWH_FROM_0X00000100 |\
-	HRCWH_BOOTSEQ_DISABLE |\
-	HRCWH_SW_WATCHDOG_DISABLE |\
-	HRCWH_ROM_LOC_LOCAL_16BIT |\
-	HRCWH_RL_EXT_LEGACY |\
-	HRCWH_TSEC1M_IN_MII |\
-	HRCWH_TSEC2M_IN_MII |\
-	HRCWH_BIG_ENDIAN)
-
-/*
- * System IO Config
- */
-#define CONFIG_SYS_SICRH (\
-	SICRH_ESDHC_A_GPIO |\
-	SICRH_ESDHC_B_GPIO |\
-	SICRH_ESDHC_C_GTM |\
-	SICRH_GPIO_A_TSEC2 |\
-	SICRH_GPIO_B_TSEC2_TX_CLK |\
-	SICRH_IEEE1588_A_GPIO |\
-	SICRH_USB |\
-	SICRH_GTM_GPIO |\
-	SICRH_IEEE1588_B_GPIO |\
-	SICRH_ETSEC2_CRS |\
-	SICRH_GPIOSEL_1 |\
-	SICRH_TMROBI_V3P3 |\
-	SICRH_TSOBI1_V3P3 |\
-	SICRH_TSOBI2_V3P3)	/* 0xf577d100 */
-#define CONFIG_SYS_SICRL (\
-	SICRL_SPI_PF0 |\
-	SICRL_UART_PF0 |\
-	SICRL_IRQ_PF0 |\
-	SICRL_I2C2_PF0 |\
-	SICRL_ETSEC1_TX_CLK)	/* 0x00000000 */
 
 #define CONFIG_SYS_GPIO1_PRELIM
 /* GPIO Default input/output settings */
@@ -102,29 +31,15 @@
 #define CONFIG_SYS_GPIO1_DAT        0x08008C00
 
 /*
- * IMMR new address
- */
-#define CONFIG_SYS_IMMR		0xE0000000
-
-/*
  * SERDES
  */
 #define CONFIG_FSL_SERDES
 #define CONFIG_FSL_SERDES1	0xe3000
 
 /*
- * Arbiter Setup
- */
-#define CONFIG_SYS_ACR_PIPE_DEP	3 /* Arbiter pipeline depth is 4 */
-#define CONFIG_SYS_ACR_RPTCNT	3 /* Arbiter repeat count is 4 */
-#define CONFIG_SYS_SPCR_TSECEP	3 /* eTSEC emergency priority is highest */
-
-/*
  * DDR Setup
  */
-#define CONFIG_SYS_DDR_BASE		0x00000000 /* DDR is system memory */
-#define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_BASE
-#define CONFIG_SYS_DDR_SDRAM_BASE	CONFIG_SYS_DDR_BASE
+#define CONFIG_SYS_SDRAM_BASE		0x00000000 /* DDR is system memory */
 #define CONFIG_SYS_DDR_SDRAM_CLK_CNTL	DDR_SDRAM_CLK_CNTL_CLK_ADJUST_05
 #define CONFIG_SYS_DDRCDR_VALUE	(DDRCDR_EN \
 				| DDRCDR_PZ_LOZ \
@@ -211,39 +126,13 @@
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /*
- * Local Bus Configuration & Clock Setup
- */
-#define CONFIG_SYS_LCRR_DBYP		LCRR_DBYP
-#define CONFIG_SYS_LCRR_CLKDIV		LCRR_CLKDIV_2
-#define CONFIG_SYS_LBC_LBCR		0x00040000
-
-/*
  * FLASH on the Local Bus
  */
-#define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
-#define CONFIG_FLASH_CFI_DRIVER		/* use the CFI driver */
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 
 #define CONFIG_SYS_FLASH_BASE		0xFC000000 /* FLASH base address */
 #define CONFIG_SYS_FLASH_SIZE		64 /* FLASH size is 64M */
-#define CONFIG_SYS_FLASH_PROTECTION	1 /* Use h/w Flash protection. */
 
-/* Window base at flash base */
-#define CONFIG_SYS_LBLAWBAR0_PRELIM	CONFIG_SYS_FLASH_BASE
-#define CONFIG_SYS_LBLAWAR0_PRELIM	(LBLAWAR_EN | LBLAWAR_64MB)
-
-#define CONFIG_SYS_BR0_PRELIM	(CONFIG_SYS_FLASH_BASE \
-				| BR_PS_16	/* 16 bit port */ \
-				| BR_MS_GPCM	/* MSEL = GPCM */ \
-				| BR_V)		/* valid */
-#define CONFIG_SYS_OR0_PRELIM	(MEG_TO_AM(CONFIG_SYS_FLASH_SIZE) \
-				| OR_UPM_XAM \
-				| OR_GPCM_CSNT \
-				| OR_GPCM_ACS_DIV2 \
-				| OR_GPCM_XACS \
-				| OR_GPCM_SCY_4 \
-				| OR_GPCM_TRLX_SET \
-				| OR_GPCM_EHTR_SET)
 
 #define CONFIG_SYS_MAX_FLASH_BANKS	1 /* number of banks */
 #define CONFIG_SYS_MAX_FLASH_SECT	512
@@ -257,40 +146,18 @@
  * SJA1000 CAN controller on Local Bus
  */
 #define CONFIG_SYS_SJA1000_BASE	0xFBFF0000
-#define CONFIG_SYS_BR1_PRELIM	(CONFIG_SYS_SJA1000_BASE \
-				| BR_PS_8	/* 8 bit port size */ \
-				| BR_MS_GPCM	/* MSEL = GPCM */ \
-				| BR_V)		/* valid */
-#define CONFIG_SYS_OR1_PRELIM	(OR_AM_32KB \
-				| OR_GPCM_SCY_5 \
-				| OR_GPCM_EHTR_SET)
-				/* 0xFFFF8052 */
 
-#define CONFIG_SYS_LBLAWBAR1_PRELIM	CONFIG_SYS_SJA1000_BASE
-#define CONFIG_SYS_LBLAWAR1_PRELIM	(LBLAWAR_EN | LBLAWAR_32KB)
 
 /*
  * CPLD on Local Bus
  */
 #define CONFIG_SYS_CPLD_BASE	0xFBFF8000
-#define CONFIG_SYS_BR2_PRELIM	(CONFIG_SYS_CPLD_BASE \
-				| BR_PS_8	/* 8 bit port */ \
-				| BR_MS_GPCM	/* MSEL = GPCM */ \
-				| BR_V)		/* valid */
-#define CONFIG_SYS_OR2_PRELIM	(OR_AM_32KB \
-				| OR_GPCM_SCY_4 \
-				| OR_GPCM_EHTR_SET)
-				/* 0xFFFF8042 */
 
-#define CONFIG_SYS_LBLAWBAR2_PRELIM	CONFIG_SYS_CPLD_BASE
-#define CONFIG_SYS_LBLAWAR2_PRELIM	(LBLAWAR_EN | LBLAWAR_32KB)
 
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -300,14 +167,6 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR + 0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR + 0x4600)
-
-/* Use the HUSH parser */
-#define CONFIG_SYS_HUSH_PARSER
-
-/* Pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP	1
-#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -336,11 +195,8 @@
 /* enable PCIE clock */
 #define CONFIG_SYS_SCCR_PCIEXP1CM	1
 
-#define CONFIG_PCI
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_PCIE
-
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1957	/* Freescale */
 #define CONFIG_83XX_GENERIC_PCIE_REGISTER_HOSES 1
@@ -348,7 +204,6 @@
 /*
  * TSEC
  */
-#define CONFIG_TSEC_ENET	/* TSEC ethernet support */
 #define CONFIG_SYS_TSEC1_OFFSET	0x24000
 #define CONFIG_SYS_TSEC1	(CONFIG_SYS_IMMR+CONFIG_SYS_TSEC1_OFFSET)
 #define CONFIG_SYS_TSEC2_OFFSET	0x25000
@@ -357,7 +212,6 @@
 /*
  * TSEC ethernet configuration
  */
-#define CONFIG_MII		1 /* MII PHY management */
 #define CONFIG_TSEC1_NAME	"eTSEC0"
 #define CONFIG_TSEC2_NAME	"eTSEC1"
 #define TSEC1_PHY_ADDR		1
@@ -373,13 +227,6 @@
 /*
  * Environment
  */
-#define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
-				 CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K(one sector) for env */
-#define CONFIG_ENV_SIZE		0x2000
-#define CONFIG_ENV_ADDR_REDUND	(CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND	CONFIG_ENV_SIZE
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
@@ -388,35 +235,18 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history */
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR		0x2000000 /* default load address */
 
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
 
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
@@ -426,52 +256,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20) /* Initial Memory map for Linux */
-
-/*
- * Core HID Setup
- */
-#define CONFIG_SYS_HID0_INIT	0x000000000
-#define CONFIG_SYS_HID0_FINAL	(HID0_ENABLE_MACHINE_CHECK | \
-				 HID0_ENABLE_INSTRUCTION_CACHE | \
-				 HID0_ENABLE_DYNAMIC_POWER_MANAGMENT)
-#define CONFIG_SYS_HID2		HID2_HBE
-
-/*
- * MMU Setup
- */
-
-/* DDR: cache cacheable */
-#define CONFIG_SYS_IBAT0L	(CONFIG_SYS_SDRAM_BASE | BATL_PP_RW | \
-					BATL_MEMCOHERENCE)
-#define CONFIG_SYS_IBAT0U	(CONFIG_SYS_SDRAM_BASE | BATU_BL_128M | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT0L	CONFIG_SYS_IBAT0L
-#define CONFIG_SYS_DBAT0U	CONFIG_SYS_IBAT0U
-
-/* IMMRBAR, PCI IO and NAND: cache-inhibit and guarded */
-#define CONFIG_SYS_IBAT1L	(CONFIG_SYS_IMMR | BATL_PP_RW | \
-			BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT1U	(CONFIG_SYS_IMMR | BATU_BL_8M | BATU_VS | \
-					BATU_VP)
-#define CONFIG_SYS_DBAT1L	CONFIG_SYS_IBAT1L
-#define CONFIG_SYS_DBAT1U	CONFIG_SYS_IBAT1U
-
-/* FLASH: icache cacheable, but dcache-inhibit and guarded */
-#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_FLASH_BASE | BATL_PP_RW | \
-					BATL_MEMCOHERENCE)
-#define CONFIG_SYS_IBAT2U	(CONFIG_SYS_FLASH_BASE | BATU_BL_8M | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT2L	(CONFIG_SYS_FLASH_BASE | BATL_PP_RW | \
-					BATL_CACHEINHIBIT | \
-					BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_DBAT2U	CONFIG_SYS_IBAT2U
-
-/* Stack in dcache: cacheable, no memory coherence */
-#define CONFIG_SYS_IBAT3L	(CONFIG_SYS_INIT_RAM_ADDR | BATL_PP_RW)
-#define CONFIG_SYS_IBAT3U	(CONFIG_SYS_INIT_RAM_ADDR | BATU_BL_128K | \
-					BATU_VS | BATU_VP)
-#define CONFIG_SYS_DBAT3L	CONFIG_SYS_IBAT3L
-#define CONFIG_SYS_DBAT3U	CONFIG_SYS_IBAT3U
 
 /*
  * Environment Configuration
@@ -484,11 +268,8 @@
 #define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_BAUDRATE 115200
-
 #define CONFIG_LOADADDR	800000	/* default location for tftp and bootm */
 
-#define CONFIG_BOOTDELAY	5	/* -1 disables auto-boot */
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\

@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * FIPS-180-2 compliant SHA-256 implementation
  *
  * Copyright (C) 2001-2003  Christophe Devine
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
@@ -14,6 +13,12 @@
 #endif /* USE_HOSTCC */
 #include <watchdog.h>
 #include <u-boot/sha256.h>
+
+const uint8_t sha256_der_prefix[SHA256_DER_LEN] = {
+	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
+	0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+	0x00, 0x04, 0x20
+};
 
 /*
  * 32-bit integer manipulation macros (big endian)

@@ -1,14 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 Keymile AG
  * Valentin Longchamp <valentin.longchamp@keymile.com>
  *
  * Copyright 2011,2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <netdev.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
@@ -22,79 +24,50 @@
 #include <fm_eth.h>
 
 #include "../common/common.h"
+#include "../common/qrio.h"
 #include "kmp204x.h"
 
-DECLARE_GLOBAL_DATA_PTR;
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 int checkboard(void)
 {
-	printf("Board: Keymile %s\n", CONFIG_KM_BOARD_NAME);
+	printf("Board: Keymile %s\n", CONFIG_SYS_CONFIG_NAME);
 
 	return 0;
 }
 
-/* I2C deblocking uses the algorithm defined in board/keymile/common/common.c
- * 2 dedicated QRIO GPIOs externally pull the SCL and SDA lines
- * For I2C only the low state is activly driven and high state is pulled-up
- * by a resistor. Therefore the deblock GPIOs are used
- *  -> as an active output to drive a low state
- *  -> as an open-drain input to have a pulled-up high state
- */
-
-/* QRIO GPIOs used for deblocking */
-#define DEBLOCK_PORT1	GPIO_A
-#define DEBLOCK_SCL1	20
-#define DEBLOCK_SDA1	21
-
-/* By default deblock GPIOs are floating */
-static void i2c_deblock_gpio_cfg(void)
-{
-	/* set I2C bus 1 deblocking GPIOs input, but 0 value for open drain */
-	qrio_gpio_direction_input(DEBLOCK_PORT1, DEBLOCK_SCL1);
-	qrio_gpio_direction_input(DEBLOCK_PORT1, DEBLOCK_SDA1);
-
-	qrio_set_gpio(DEBLOCK_PORT1, DEBLOCK_SCL1, 0);
-	qrio_set_gpio(DEBLOCK_PORT1, DEBLOCK_SDA1, 0);
-}
-
-void set_sda(int state)
-{
-	qrio_set_opendrain_gpio(DEBLOCK_PORT1, DEBLOCK_SDA1, state);
-}
-
-void set_scl(int state)
-{
-	qrio_set_opendrain_gpio(DEBLOCK_PORT1, DEBLOCK_SCL1, state);
-}
-
-int get_sda(void)
-{
-	return qrio_get_gpio(DEBLOCK_PORT1, DEBLOCK_SDA1);
-}
-
-int get_scl(void)
-{
-	return qrio_get_gpio(DEBLOCK_PORT1, DEBLOCK_SCL1);
-}
-
-
 #define ZL30158_RST	8
 #define BFTIC4_RST	0
+#define RSTRQSR1_WDT_RR	0x00200000
+#define RSTRQSR1_SW_RR	0x00100000
 
 int board_early_init_f(void)
 {
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	bool cpuwd_flag = false;
+
+	/* configure mode for uP reset request */
+	qrio_uprstreq(UPREQ_CORE_RST);
 
 	/* board only uses the DDR_MCK0, so disable the DDR_MCK1/2/3 */
 	setbits_be32(&gur->ddrclkdr, 0x001f000f);
+
+	/* set reset reason according CPU register */
+	if ((gur->rstrqsr1 & (RSTRQSR1_WDT_RR | RSTRQSR1_SW_RR)) ==
+	    RSTRQSR1_WDT_RR)
+		cpuwd_flag = true;
+
+	qrio_cpuwd_flag(cpuwd_flag);
+	/* clear CPU bits by writing 1 */
+	setbits_be32(&gur->rstrqsr1, RSTRQSR1_WDT_RR | RSTRQSR1_SW_RR);
 
 	/* set the BFTIC's prstcfg to reset at power-up and unit reset only */
 	qrio_prstcfg(BFTIC4_RST, PRSTCFG_POWUP_UNIT_RST);
 	/* and enable WD on it */
 	qrio_wdmask(BFTIC4_RST, true);
 
-	/* set the ZL30138's prstcfg to reset at power-up and unit reset only */
-	qrio_prstcfg(ZL30158_RST, PRSTCFG_POWUP_UNIT_RST);
+	/* set the ZL30138's prstcfg to reset at power-up only */
+	qrio_prstcfg(ZL30158_RST, PRSTCFG_POWUP_RST);
 	/* and take it out of reset as soon as possible (needed for Hooper) */
 	qrio_prst(ZL30158_RST, false, false);
 
@@ -109,7 +82,7 @@ int board_early_init_r(void)
 	invalidate_icache();
 
 	set_liodns();
-	setup_portals();
+	setup_qbman_portals();
 
 	ret = trigger_fpga_config();
 	if (ret)
@@ -121,7 +94,7 @@ int board_early_init_r(void)
 	/* enable Application Buffer */
 	qrio_enable_app_buffer();
 
-	return ret;
+	return 0;
 }
 
 unsigned long get_board_sys_clk(unsigned long dummy)
@@ -143,8 +116,8 @@ int misc_init_f(void)
 	qrio_prstcfg(ETH_FRONT_PHY_RST, PRSTCFG_POWUP_UNIT_CORE_RST);
 	qrio_prst(ETH_FRONT_PHY_RST, false, false);
 
-	/* set the ZL30343 prstcfg to reset at power-up and unit reset only */
-	qrio_prstcfg(ZL30343_RST, PRSTCFG_POWUP_UNIT_RST);
+	/* set the ZL30343 prstcfg to reset at power-up only */
+	qrio_prstcfg(ZL30343_RST, PRSTCFG_POWUP_RST);
 	/* and enable the WD on it */
 	qrio_wdmask(ZL30343_RST, true);
 
@@ -180,13 +153,15 @@ int misc_init_r(void)
 		}
 	}
 
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 	return 0;
 }
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 #endif
@@ -204,7 +179,7 @@ int last_stage_init(void)
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		setenv("actual_bank", "0");
+		env_set("actual_bank", "0");
 	}
 #endif
 	set_km_env();
@@ -221,7 +196,7 @@ void fdt_fixup_fman_mac_addresses(void *blob)
 	unsigned char mac_addr[6];
 
 	/* get the mac addr from env */
-	tmp = getenv("ethaddr");
+	tmp = env_get("ethaddr");
 	if (!tmp) {
 		printf("ethaddr env variable not defined\n");
 		return;
@@ -246,20 +221,20 @@ void fdt_fixup_fman_mac_addresses(void *blob)
 }
 #endif
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
 #if defined(CONFIG_HAS_FSL_DR_USB) || defined(CONFIG_HAS_FSL_MPH_USB)
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #ifdef CONFIG_PCI
@@ -271,12 +246,14 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_fman_ethernet(blob);
 	fdt_fixup_fman_mac_addresses(blob);
 #endif
+
+	return 0;
 }
 
 #if defined(CONFIG_POST)
 
 /* DIC26_SELFTEST GPIO used to start factory test sw */
-#define SELFTEST_PORT	GPIO_A
+#define SELFTEST_PORT	QRIO_GPIO_A
 #define SELFTEST_PIN	31
 
 int post_hotkeys_pressed(void)

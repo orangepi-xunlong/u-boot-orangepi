@@ -1,64 +1,60 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011-2012 The Chromium OS Authors.
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <errno.h>
 #include <fdtdec.h>
 #include <os.h>
+#include <asm/malloc.h>
 #include <asm/state.h>
 
 /* Main state record for the sandbox */
 static struct sandbox_state main_state;
 static struct sandbox_state *state;	/* Pointer to current state record */
 
-void state_record_exit(enum exit_type_id exit_type)
-{
-	state->exit_type = exit_type;
-}
-
 static int state_ensure_space(int extra_size)
 {
 	void *blob = state->state_fdt;
-	int used, size, free;
+	int used, size, free_bytes;
 	void *buf;
 	int ret;
 
 	used = fdt_off_dt_strings(blob) + fdt_size_dt_strings(blob);
 	size = fdt_totalsize(blob);
-	free = size - used;
-	if (free > extra_size)
+	free_bytes = size - used;
+	if (free_bytes > extra_size)
 		return 0;
 
 	size = used + extra_size;
-	buf = os_malloc(size);
+	buf = malloc(size);
 	if (!buf)
 		return -ENOMEM;
 
 	ret = fdt_open_into(blob, buf, size);
 	if (ret) {
-		os_free(buf);
+		free(buf);
 		return -EIO;
 	}
 
-	os_free(blob);
+	free(blob);
 	state->state_fdt = buf;
 	return 0;
 }
 
 static int state_read_file(struct sandbox_state *state, const char *fname)
 {
-	int size;
+	loff_t size;
 	int ret;
 	int fd;
 
-	size = os_get_filesize(fname);
-	if (size < 0) {
+	ret = os_get_filesize(fname, &size);
+	if (ret < 0) {
 		printf("Cannot find sandbox state file '%s'\n", fname);
 		return -ENOENT;
 	}
-	state->state_fdt = os_malloc(size);
+	state->state_fdt = malloc(size);
 	if (!state->state_fdt) {
 		puts("No memory to read sandbox state\n");
 		return -ENOMEM;
@@ -80,7 +76,7 @@ static int state_read_file(struct sandbox_state *state, const char *fname)
 err_read:
 	os_close(fd);
 err_open:
-	os_free(state->state_fdt);
+	free(state->state_fdt);
 	state->state_fdt = NULL;
 
 	return ret;
@@ -158,7 +154,7 @@ int sandbox_read_state(struct sandbox_state *state, const char *fname)
 			return ret;
 	}
 
-	/* Call all the state read funtcions */
+	/* Call all the state read functions */
 	got_err = false;
 	blob = state->state_fdt;
 	io = ll_entry_start(struct sandbox_state_io, state_io);
@@ -247,7 +243,7 @@ int sandbox_write_state(struct sandbox_state *state, const char *fname)
 	/* Create a state FDT if we don't have one */
 	if (!state->state_fdt) {
 		size = 0x4000;
-		state->state_fdt = os_malloc(size);
+		state->state_fdt = malloc(size);
 		if (!state->state_fdt) {
 			puts("No memory to create FDT\n");
 			return -ENOMEM;
@@ -305,7 +301,7 @@ int sandbox_write_state(struct sandbox_state *state, const char *fname)
 err_write:
 	os_close(fd);
 err_create:
-	os_free(state->state_fdt);
+	free(state->state_fdt);
 
 	return ret;
 }
@@ -342,6 +338,39 @@ struct sandbox_state *state_get_current(void)
 	return state;
 }
 
+void state_set_skip_delays(bool skip_delays)
+{
+	struct sandbox_state *state = state_get_current();
+
+	state->skip_delays = skip_delays;
+}
+
+bool state_get_skip_delays(void)
+{
+	struct sandbox_state *state = state_get_current();
+
+	return state->skip_delays;
+}
+
+void state_reset_for_test(struct sandbox_state *state)
+{
+	/* No reset yet, so mark it as such. Always allow power reset */
+	state->last_sysreset = SYSRESET_COUNT;
+	state->sysreset_allowed[SYSRESET_POWER_OFF] = true;
+	state->allow_memio = false;
+
+	memset(&state->wdt, '\0', sizeof(state->wdt));
+	memset(state->spi, '\0', sizeof(state->spi));
+
+	/*
+	 * Set up the memory tag list. Use the top of emulated SDRAM for the
+	 * first tag number, since that address offset is outside the legal
+	 * range, and can be assumed to be a tag.
+	 */
+	INIT_LIST_HEAD(&state->mapmem_head);
+	state->next_tag = state->ram_size;
+}
+
 int state_init(void)
 {
 	state = &main_state;
@@ -350,6 +379,7 @@ int state_init(void)
 	state->ram_buf = os_malloc(state->ram_size);
 	assert(state->ram_buf);
 
+	state_reset_for_test(state);
 	/*
 	 * Example of how to use GPIOs:
 	 *
@@ -365,7 +395,7 @@ int state_uninit(void)
 
 	state = &main_state;
 
-	if (state->write_ram_buf && !state->ram_buf_rm) {
+	if (state->write_ram_buf) {
 		err = os_write_ram_buf(state->ram_buf_fname);
 		if (err) {
 			printf("Failed to write RAM buffer\n");
@@ -380,12 +410,16 @@ int state_uninit(void)
 		}
 	}
 
+	/* Remove old memory file if required */
+	if (state->ram_buf_rm && state->ram_buf_fname)
+		os_unlink(state->ram_buf_fname);
+
 	/* Delete this at the last moment so as not to upset gdb too much */
 	if (state->jumped_fname)
 		os_unlink(state->jumped_fname);
 
 	if (state->state_fdt)
-		os_free(state->state_fdt);
+		free(state->state_fdt);
 	memset(state, '\0', sizeof(*state));
 
 	return 0;

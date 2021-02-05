@@ -1,28 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2010,2011
  * Graeme Russ, <graeme.russ@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <malloc.h>
+#include <init.h>
 #include <asm/e820.h>
-#include <asm/u-boot-x86.h>
-#include <asm/global_data.h>
-#include <asm/processor.h>
-#include <asm/sections.h>
 #include <asm/arch/sysinfo.h>
-#include <asm/arch/tables.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
+unsigned int install_e820_map(unsigned int max_entries,
+			      struct e820_entry *entries)
 {
+	unsigned int num_entries;
 	int i;
 
-	unsigned num_entries = min(lib_sysinfo.n_memranges, max_entries);
+	num_entries = min((unsigned int)lib_sysinfo.n_memranges, max_entries);
 	if (num_entries < lib_sysinfo.n_memranges) {
 		printf("Warning: Limiting e820 map to %d entries.\n",
 			num_entries);
@@ -32,8 +28,18 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
 
 		entries[i].addr = memrange->base;
 		entries[i].size = memrange->size;
-		entries[i].type = memrange->type;
+
+		/*
+		 * coreboot has some extensions (type 6 & 16) to the E820 types.
+		 * When we detect this, mark it as E820_RESERVED.
+		 */
+		if (memrange->type == CB_MEM_VENDOR_RSVD ||
+		    memrange->type == CB_MEM_TABLE)
+			entries[i].type = E820_RESERVED;
+		else
+			entries[i].type = memrange->type;
 	}
+
 	return num_entries;
 }
 
@@ -79,7 +85,7 @@ ulong board_get_usable_ram_top(ulong total_size)
 	return (ulong)dest_addr;
 }
 
-int dram_init_f(void)
+int dram_init(void)
 {
 	int i;
 	phys_size_t ram_size = 0;
@@ -89,11 +95,13 @@ int dram_init_f(void)
 		unsigned long long end = memrange->base + memrange->size;
 
 		if (memrange->type == CB_MEM_RAM && end > ram_size)
-			ram_size = end;
+			ram_size += memrange->size;
 	}
+
 	gd->ram_size = ram_size;
 	if (ram_size == 0)
 		return -1;
+
 	return 0;
 }
 
@@ -114,10 +122,6 @@ int dram_init_banksize(void)
 			}
 		}
 	}
-	return 0;
-}
 
-int dram_init(void)
-{
-	return dram_init_banksize();
+	return 0;
 }

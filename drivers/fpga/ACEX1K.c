@@ -1,14 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Steven Scholz, imc Measurement & Control, steven.scholz@imc-berlin.de
  *
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>		/* core U-Boot definitions */
+#include <console.h>
 #include <ACEX1K.h>		/* ACEX device family */
 
 /* Define FPGA_DEBUG to get debug printf's */

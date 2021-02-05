@@ -1,14 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012  Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <env.h>
+#include <init.h>
 #include <malloc.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/mmc.h>
+#include <spi.h>
 #include <spi_flash.h>
 
 int checkboard(void)
@@ -99,7 +101,7 @@ static void set_mac_to_sh_giga_eth_register(int channel, char *mac_string)
 	unsigned char mac[6];
 	unsigned long val;
 
-	eth_parse_enetaddr(mac_string, mac);
+	string_to_enetaddr(mac_string, mac);
 
 	if (!channel)
 		ether = GETHER0_MAC_BASE;
@@ -112,6 +114,7 @@ static void set_mac_to_sh_giga_eth_register(int channel, char *mac_string)
 	writel(val, &ether->malr);
 }
 
+#if defined(CONFIG_SH_32BIT)
 /*****************************************************************
  * This PMB must be set on this timing. The lowlevel_init is run on
  * Area 0(phys 0x00000000), so we have to map it.
@@ -153,30 +156,22 @@ static void set_pmb_on_board_init(void)
 	writel(mk_pmb_addr_val(0x98), PMB_ADDR_BASE(7));
 	writel(mk_pmb_data_val(0x58, 0, 1, 1, 0, 1, 1), PMB_DATA_BASE(7));
 }
+#endif
 
 int board_init(void)
 {
 	struct gether_control_regs *gether = GETHER_CONTROL_BASE;
 
 	init_gpio();
+#if defined(CONFIG_SH_32BIT)
 	set_pmb_on_board_init();
+#endif
 
 	/* Sets TXnDLY to B'010 */
 	writel(0x00000202, &gether->gbecont);
 
 	init_usb_phy();
 	init_gether_mdio();
-
-	return 0;
-}
-
-int dram_init(void)
-{
-	DECLARE_GLOBAL_DATA_PTR;
-
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
 
 	return 0;
 }
@@ -196,6 +191,7 @@ int board_mmc_init(bd_t *bis)
 
 static int get_sh_eth_mac_raw(unsigned char *buf, int size)
 {
+#ifdef CONFIG_DEPRECATED
 	struct spi_flash *spi;
 	int ret;
 
@@ -212,6 +208,7 @@ static int get_sh_eth_mac_raw(unsigned char *buf, int size)
 		return 1;
 	}
 	spi_flash_free(spi);
+#endif
 
 	return 0;
 }
@@ -243,10 +240,10 @@ static void init_ethernet_mac(void)
 	for (i = 0; i < SH7753EVB_ETHERNET_NUM_CH; i++) {
 		get_sh_eth_mac(i, mac_string, buf);
 		if (i == 0)
-			setenv("ethaddr", mac_string);
+			env_set("ethaddr", mac_string);
 		else {
 			sprintf(env_string, "eth%daddr", i);
-			setenv(env_string, mac_string);
+			env_set(env_string, mac_string);
 		}
 		set_mac_to_sh_giga_eth_register(i, mac_string);
 	}
@@ -261,6 +258,7 @@ int board_late_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_DEPRECATED
 int do_write_mac(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int i, ret;
@@ -324,3 +322,4 @@ U_BOOT_CMD(
 	"write MAC address for GETHERC",
 	"[GETHERC ch0] [GETHERC ch1]\n"
 );
+#endif

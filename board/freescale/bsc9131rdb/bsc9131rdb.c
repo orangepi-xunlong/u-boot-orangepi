@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,11 +9,15 @@
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/io.h>
+#include <env.h>
 #include <miiphy.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
+#include <jffs2/load_kernel.h>
+#include <mtd_node.h>
+#include <flash.h>
 #include <netdev.h>
 
 
@@ -50,18 +53,28 @@ int checkboard(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+static const struct node_info nodes[] = {
+	{ "fsl,ifc-nand",		MTD_DEV_TYPE_NAND, },
+};
+#endif
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+#endif
 
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
+
+	return 0;
 }
 #endif

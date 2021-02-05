@@ -1,16 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Hans-Joerg Frieden, Hyperion Entertainment
  * Hans-JoergF@hyperion-entertainment.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <ide.h>
 #include "part_amiga.h"
 
-#ifdef HAVE_BLOCK_DEVICE
+#ifdef CONFIG_HAVE_BLOCK_DEVICE
 
 #undef AMIGA_DEBUG
 
@@ -126,13 +126,13 @@ static void print_part_info(struct partition_block *p)
  * the ID AMIGA_ID_RDISK ('RDSK') and needs to have a valid
  * sum-to-zero checksum
  */
-struct rigid_disk_block *get_rdisk(block_dev_desc_t *dev_desc)
+struct rigid_disk_block *get_rdisk(struct blk_desc *dev_desc)
 {
     int i;
     int limit;
     char *s;
 
-    s = getenv("amiga_scanlimit");
+    s = env_get("amiga_scanlimit");
     if (s)
 	limit = simple_strtoul(s, NULL, 10);
     else
@@ -140,8 +140,7 @@ struct rigid_disk_block *get_rdisk(block_dev_desc_t *dev_desc)
 
     for (i=0; i<limit; i++)
     {
-	ulong res = dev_desc->block_read(dev_desc->dev, i, 1,
-					 (ulong *)block_buffer);
+	ulong res = blk_dread(dev_desc, i, 1, (ulong *)block_buffer);
 	if (res == 1)
 	{
 	    struct rigid_disk_block *trdb = (struct rigid_disk_block *)block_buffer;
@@ -167,13 +166,13 @@ struct rigid_disk_block *get_rdisk(block_dev_desc_t *dev_desc)
  * Ridgid disk block
  */
 
-struct bootcode_block *get_bootcode(block_dev_desc_t *dev_desc)
+struct bootcode_block *get_bootcode(struct blk_desc *dev_desc)
 {
     int i;
     int limit;
     char *s;
 
-    s = getenv("amiga_scanlimit");
+    s = env_get("amiga_scanlimit");
     if (s)
 	limit = simple_strtoul(s, NULL, 10);
     else
@@ -183,7 +182,7 @@ struct bootcode_block *get_bootcode(block_dev_desc_t *dev_desc)
 
     for (i = 0; i < limit; i++)
     {
-	ulong res = dev_desc->block_read(dev_desc->dev, i, 1, (ulong *)block_buffer);
+	ulong res = blk_dread(dev_desc, i, 1, (ulong *)block_buffer);
 	if (res == 1)
 	{
 	    struct bootcode_block *boot = (struct bootcode_block *)block_buffer;
@@ -208,27 +207,27 @@ struct bootcode_block *get_bootcode(block_dev_desc_t *dev_desc)
  * Test if the given partition has an Amiga partition table/Rigid
  * Disk block
  */
-int test_part_amiga(block_dev_desc_t *dev_desc)
+static int part_test_amiga(struct blk_desc *dev_desc)
 {
     struct rigid_disk_block *rdb;
     struct bootcode_block *bootcode;
 
-    PRINTF("test_part_amiga: Testing for an Amiga RDB partition\n");
+    PRINTF("part_test_amiga: Testing for an Amiga RDB partition\n");
 
     rdb = get_rdisk(dev_desc);
     if (rdb)
     {
 	bootcode = get_bootcode(dev_desc);
 	if (bootcode)
-	    PRINTF("test_part_amiga: bootable Amiga disk\n");
+	    PRINTF("part_test_amiga: bootable Amiga disk\n");
 	else
-	    PRINTF("test_part_amiga: non-bootable Amiga disk\n");
+	    PRINTF("part_test_amiga: non-bootable Amiga disk\n");
 
 	return 0;
     }
     else
     {
-	PRINTF("test_part_amiga: no RDB found\n");
+	PRINTF("part_test_amiga: no RDB found\n");
 	return -1;
     }
 
@@ -237,7 +236,8 @@ int test_part_amiga(block_dev_desc_t *dev_desc)
 /*
  * Find partition number partnum on the given drive.
  */
-static struct partition_block *find_partition(block_dev_desc_t *dev_desc, int partnum)
+static struct partition_block *find_partition(struct blk_desc *dev_desc,
+					      int partnum)
 {
     struct rigid_disk_block *rdb;
     struct partition_block *p;
@@ -258,8 +258,7 @@ static struct partition_block *find_partition(block_dev_desc_t *dev_desc, int pa
 
     while (block != 0xFFFFFFFF)
     {
-	ulong res = dev_desc->block_read(dev_desc->dev, block, 1,
-					 (ulong *)block_buffer);
+	ulong res = blk_dread(dev_desc, block, 1, (ulong *)block_buffer);
 	if (res == 1)
 	{
 	    p = (struct partition_block *)block_buffer;
@@ -291,7 +290,8 @@ static struct partition_block *find_partition(block_dev_desc_t *dev_desc, int pa
 /*
  * Get info about a partition
  */
-int get_partition_info_amiga (block_dev_desc_t *dev_desc, int part, disk_partition_t *info)
+static int part_get_info_amiga(struct blk_desc *dev_desc, int part,
+				    disk_partition_t *info)
 {
     struct partition_block *p = find_partition(dev_desc, part-1);
     struct amiga_part_geometry *g;
@@ -303,7 +303,7 @@ int get_partition_info_amiga (block_dev_desc_t *dev_desc, int part, disk_partiti
     info->start = g->low_cyl  * g->block_per_track * g->surfaces;
     info->size  = (g->high_cyl - g->low_cyl + 1) * g->block_per_track * g->surfaces - 1;
     info->blksz = rdb.block_bytes;
-    bcpl_strcpy(info->name, p->drive_name);
+    bcpl_strcpy((char *)info->name, p->drive_name);
 
 
     disk_type = g->dos_type;
@@ -318,7 +318,7 @@ int get_partition_info_amiga (block_dev_desc_t *dev_desc, int part, disk_partiti
     return 0;
 }
 
-void print_part_amiga (block_dev_desc_t *dev_desc)
+static void part_print_amiga(struct blk_desc *dev_desc)
 {
     struct rigid_disk_block *rdb;
     struct bootcode_block *boot;
@@ -329,14 +329,14 @@ void print_part_amiga (block_dev_desc_t *dev_desc)
     rdb = get_rdisk(dev_desc);
     if (!rdb)
     {
-	PRINTF("print_part_amiga: no rdb found\n");
+	PRINTF("part_print_amiga: no rdb found\n");
 	return;
     }
 
-    PRINTF("print_part_amiga: Scanning partition list\n");
+    PRINTF("part_print_amiga: Scanning partition list\n");
 
     block = rdb->partition_list;
-    PRINTF("print_part_amiga: partition list at 0x%x\n", block);
+    PRINTF("part_print_amiga: partition list at 0x%x\n", block);
 
     printf("Summary:  DiskBlockSize: %d\n"
 	   "          Cylinders    : %d\n"
@@ -354,8 +354,7 @@ void print_part_amiga (block_dev_desc_t *dev_desc)
 
 	PRINTF("Trying to load block #0x%X\n", block);
 
-	res = dev_desc->block_read(dev_desc->dev, block, 1,
-				   (ulong *)block_buffer);
+	res = blk_dread(dev_desc, block, 1, (ulong *)block_buffer);
 	if (res == 1)
 	{
 	    p = (struct partition_block *)block_buffer;
@@ -378,5 +377,14 @@ void print_part_amiga (block_dev_desc_t *dev_desc)
 	printf("Disk is bootable\n");
     }
 }
+
+U_BOOT_PART_TYPE(amiga) = {
+	.name		= "AMIGA",
+	.part_type	= PART_TYPE_AMIGA,
+	.max_entries	= AMIGA_ENTRY_NUMBERS,
+	.get_info	= part_get_info_amiga,
+	.print		= part_print_amiga,
+	.test		= part_test_amiga,
+};
 
 #endif
