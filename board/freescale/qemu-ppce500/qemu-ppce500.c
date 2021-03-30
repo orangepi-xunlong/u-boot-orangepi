@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007,2009-2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,7 +11,7 @@
 #include <asm/mmu.h>
 #include <asm/fsl_pci.h>
 #include <asm/io.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <netdev.h>
 #include <fdtdec.h>
@@ -49,19 +50,13 @@ uint64_t get_phys_ccsrbar_addr_early(void)
 {
 	void *fdt = get_fdt_virt();
 	uint64_t r;
-	int size, node;
-	u32 naddr;
-	const fdt32_t *prop;
 
 	/*
 	 * To be able to read the FDT we need to create a temporary TLB
 	 * map for it.
 	 */
 	map_fdt_as(10);
-	node = fdt_path_offset(fdt, "/soc");
-	naddr = fdt_address_cells(fdt, node);
-	prop = fdt_getprop(fdt, node, "ranges", &size);
-	r = fdt_translate_address(fdt, node, prop + naddr);
+	r = fdt_get_base_address(fdt, fdt_path_offset(fdt, "/soc"));
 	disable_tlb(10);
 
 	return r;
@@ -86,7 +81,7 @@ static int pci_map_region(void *fdt, int pci_node, int range_id,
 	ulong map_addr;
 	int r;
 
-	r = fdt_read_range(fdt, pci_node, range_id, NULL, &addr, &size);
+	r = fdt_read_range(fdt, pci_node, 0, NULL, &addr, &size);
 	if (r)
 		return r;
 
@@ -210,10 +205,10 @@ int last_stage_init(void)
 	/* -kernel boot */
 	prop = fdt_getprop(fdt, chosen, "qemu,boot-kernel", &len);
 	if (prop && (len >= 8))
-		env_set_hex("qemu_kernel_addr", *prop);
+		setenv_hex("qemu_kernel_addr", *prop);
 
 	/* Give the user a variable for the host fdt */
-	env_set_hex("fdt_addr_r", (ulong)fdt);
+	setenv_hex("fdt_addr_r", (ulong)fdt);
 
 	return 0;
 }
@@ -240,11 +235,9 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	FT_FSL_PCI_SETUP;
-
-	return 0;
 }
 #endif
 

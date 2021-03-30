@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Imagination Technologies
- * Author: Paul Burton <paul.burton@mips.com>
+ * Author: Paul Burton <paul.burton@imgtec.com>
  *
  * Setup code for the FDC37M817 super I/O controller
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -44,19 +45,19 @@ static struct {
 	{ SIOCONF_ACTIVATE,	0x01 },
 };
 
-void malta_superio_init(void)
+void malta_superio_init(void *io_base)
 {
 	unsigned i;
 
 	/* enter config state */
-	outb(SIOCONF_ENTER_SETUP, SIO_CONF_PORT);
+	writeb(SIOCONF_ENTER_SETUP, io_base + SIO_CONF_PORT);
 
 	/* configure peripherals */
 	for (i = 0; i < ARRAY_SIZE(sio_config); i++) {
-		outb(sio_config[i].key, SIO_CONF_PORT);
-		outb(sio_config[i].data, SIO_DATA_PORT);
+		writeb(sio_config[i].key, io_base + SIO_CONF_PORT);
+		writeb(sio_config[i].data, io_base + SIO_DATA_PORT);
 	}
 
 	/* exit config state */
-	outb(SIOCONF_EXIT_SETUP, SIO_CONF_PORT);
+	writeb(SIOCONF_EXIT_SETUP, io_base + SIO_CONF_PORT);
 }

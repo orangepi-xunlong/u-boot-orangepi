@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2006, 2007, 2010-2011 Freescale Semiconductor.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,11 +12,9 @@
 #include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <asm/io.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <netdev.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 phys_size_t fixed_sdram(void);
 
@@ -38,7 +37,8 @@ int checkboard(void)
 	return 0;
 }
 
-int dram_init(void)
+phys_size_t
+initdram(int board_type)
 {
 	phys_size_t dram_size = 0;
 
@@ -51,9 +51,7 @@ int dram_init(void)
 	setup_ddr_bat(dram_size);
 
 	debug("    DDR: ");
-	gd->ram_size = dram_size;
-
-	return 0;
+	return dram_size;
 }
 
 
@@ -121,11 +119,12 @@ void pci_init_board(void)
 
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void
+ft_board_setup(void *blob, bd_t *bd)
 {
 	int off;
 	u64 *tmp;
-	int addrcells;
+	u32 *addrcells;
 
 	ft_cpu_setup(blob, bd);
 
@@ -137,13 +136,12 @@ int ft_board_setup(void *blob, bd_t *bd)
 	 * which is defined by the "reg" property in the soc node.
 	 */
 	off = fdt_path_offset(blob, "/soc8641");
-	addrcells = fdt_address_cells(blob, 0);
+	addrcells = (u32 *)fdt_getprop(blob, 0, "#address-cells", NULL);
 	tmp = (u64 *)fdt_getprop(blob, off, "reg", NULL);
 
 	if (tmp) {
 		u64 addr;
-
-		if (addrcells == 1)
+		if (addrcells && (*addrcells == 1))
 			addr = *(u32 *)tmp;
 		else
 			addr = *tmp;
@@ -154,8 +152,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 			       "in u-boot.  This means your .dts might "
 			       "be old.\n");
 	}
-
-	return 0;
 }
 #endif
 

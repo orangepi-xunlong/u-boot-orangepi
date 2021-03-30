@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
@@ -6,6 +5,8 @@
  * Based on Linux IPU driver for MX51 (ipu.h):
  *
  * (C) Copyright 2005-2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IPU_PIXFMT_H__

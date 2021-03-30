@@ -872,53 +872,33 @@ extern Void_t*     sbrk();
 
 #else
 
-#if CONFIG_IS_ENABLED(SYS_MALLOC_SIMPLE)
-#define malloc malloc_simple
-#define realloc realloc_simple
-#define memalign memalign_simple
-static inline void free(void *ptr) {}
-void *calloc(size_t nmemb, size_t size);
-void *memalign_simple(size_t alignment, size_t bytes);
-void *realloc_simple(void *ptr, size_t size);
-#else
-
-# ifdef USE_DL_PREFIX
-# define cALLOc		dlcalloc
-# define fREe		dlfree
-# define mALLOc		dlmalloc
-# define mEMALIGn	dlmemalign
-# define rEALLOc		dlrealloc
-# define vALLOc		dlvalloc
-# define pvALLOc		dlpvalloc
-# define mALLINFo	dlmallinfo
-# define mALLOPt		dlmallopt
-# else /* USE_DL_PREFIX */
-# define cALLOc		calloc
-# define fREe		free
-# define mALLOc		malloc
-# define mEMALIGn	memalign
-# define rEALLOc		realloc
-# define vALLOc		valloc
-# define pvALLOc		pvalloc
-# define mALLINFo	mallinfo
-# define mALLOPt		mallopt
-# endif /* USE_DL_PREFIX */
+#ifdef USE_DL_PREFIX
+#define cALLOc		dlcalloc
+#define fREe		dlfree
+#define mALLOc		dlmalloc
+#define mEMALIGn	dlmemalign
+#define rEALLOc		dlrealloc
+#define vALLOc		dlvalloc
+#define pvALLOc		dlpvalloc
+#define mALLINFo	dlmallinfo
+#define mALLOPt		dlmallopt
+#else /* USE_DL_PREFIX */
+#define cALLOc		calloc
+#define fREe		free
+#define mALLOc		malloc
+#define mEMALIGn	memalign
+#define rEALLOc		realloc
+#define vALLOc		valloc
+#define pvALLOc		pvalloc
+#define mALLINFo	mallinfo
+#define mALLOPt		mallopt
+#endif /* USE_DL_PREFIX */
 
 #endif
 
-/* Set up pre-relocation malloc() ready for use */
-int initf_malloc(void);
-void *malloc_align(size_t size, size_t align);
-void free_align(void *ptr);
-
-
 /* Public routines */
 
-/* Simple versions which can be used when space is tight */
-void *malloc_simple(size_t size);
-
-#pragma GCC visibility push(hidden)
-# if __STD_C
+#if __STD_C
 
 Void_t* mALLOc(size_t);
 void    fREe(Void_t*);
@@ -933,7 +913,7 @@ size_t  malloc_usable_size(Void_t*);
 void    malloc_stats(void);
 int     mALLOPt(int, int);
 struct mallinfo mALLINFo(void);
-# else
+#else
 Void_t* mALLOc();
 void    fREe();
 Void_t* rEALLOc();
@@ -947,9 +927,7 @@ size_t  malloc_usable_size();
 void    malloc_stats();
 int     mALLOPt();
 struct mallinfo mALLINFo();
-# endif
 #endif
-#pragma GCC visibility pop
 
 /*
  * Begin and End of memory area for malloc(), and current "brk"
@@ -959,6 +937,8 @@ extern ulong mem_malloc_end;
 extern ulong mem_malloc_brk;
 
 void mem_malloc_init(ulong start, ulong size);
+void *malloc_noncache(uint num_bytes);
+void  free_noncache(void *p);
 
 #ifdef __cplusplus
 };  /* end of extern "C" */

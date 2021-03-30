@@ -1,19 +1,4 @@
-/*
- * drivers/video/sunxi/disp2/tv/tv_ac200.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #ifndef  _DRV_TV_AC200_H_
 #define  _DRV_TV_AC200_H_
 #if 0
@@ -94,6 +79,4 @@ int tv_ac200_init(void);
 
 extern struct ac200_tv_priv tv_priv;
 extern struct disp_video_timings tv_video_timing[];
-extern struct ac200_tv_priv tv_priv;
-extern u32 ac200_twi_addr;
 #endif

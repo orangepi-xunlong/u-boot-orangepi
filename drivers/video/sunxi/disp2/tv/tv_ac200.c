@@ -1,31 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/tv/tv_ac200.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "tv_ac200.h"
 #include "tv_ac200_lowlevel.h"
 #include <i2c.h>
-#if defined(CONFIG_MACH_SUN50IW6)
-#include <efuse_map.h>
-#endif
 
+#define PWM_ID 16
 /* clk */
 #define DE_LCD_CLK "lcd0"
 #define DE_LCD_CLK_SRC "pll_video0"
 
-static char modules_name[40] = {0};
+static char modules_name[16] = {0};
 static enum disp_tv_mode g_tv_mode = DISP_TV_MOD_PAL;
 static char key_name[20] = "ac200";
 static struct clk *tv_clk;
@@ -35,31 +17,13 @@ static u32   tv_used = 0;
 static u32   tv_power_used = 0;
 static char  tv_power[16] = {0};
 static unsigned long pwm_handle = 0;
-static u32 ccir_clk_div;
 
 static bool tv_suspend_status;
 //static bool tv_io_used[28];
 //static disp_gpio_set_t tv_io[28];
 
-/*#define	 AC200_DEBUG*/
-#define __ac200_err(msg...) do { \
-	{printf("[ac200] %s,line:%d:    ", \
-	__func__, __LINE__); printf(msg); } \
-	} while (0)
-
-#if defined(AC200_DEBUG)
-#define __ac200_dbg(msg...) do { \
-	{printf("[ac200] %s,line:%d:    ", \
-	__func__, __LINE__); printf(msg); } \
-	} while (0)
-#else
-#define __ac200_dbg(msg...)
-#endif /*endif AC200_DEBUG */
-
 static struct disp_device *tv_device = NULL;
 static struct disp_vdevice_source_ops tv_source_ops;
-
-u32 ac200_twi_addr;
 
 struct ac200_tv_priv tv_priv;
 struct disp_video_timings tv_video_timing[] =
@@ -139,72 +103,17 @@ static int  tv_i2c_init(void)
     int value;
 
     ret = disp_sys_script_get_item(key_name, "tv_twi_used", &value, 1);
-    if (1 == ret) {
-	    tv_i2c_used = value;
-	    if (tv_i2c_used == 1) {
-		    ret = disp_sys_script_get_item(key_name, "tv_twi_addr",
-						   &value, 1);
-		    if (ret != 1) {
-			    printf("get tv_twi_addr failed\n");
-			    return -1;
-		    }
-		    ac200_twi_addr = value;
-		    ret = disp_sys_script_get_item(key_name, "tv_twi_id",
-						   &value, 1);
-		    if (ret != 1) {
-			    printf("get tv_twi_id failed\n");
-			    return -1;
-		    }
-#if defined(CONFIG_SYS_I2C) && defined (CONFIG_MACH_SUN50IW6)
-		    i2c_set_bus_num(1);
-		    i2c_init(CONFIG_SYS_I2C_AC200_SPEED,
-			     value);
-		    printf("speed=%d, slave=%d\n",
-			   (u32)CONFIG_SYS_I2C_AC200_SPEED,
-			   (u32)ac200_twi_addr);
-#else
-		    i2c_init(CONFIG_SYS_I2C_SPEED,
-			     value);
-		    printf("speed=%d, slave=%d\n",
-			   (u32)CONFIG_SYS_I2C_SPEED,
-			   (u32)ac200_twi_addr);
-#endif /*endif CONFIG_SYS_I2C */
-	    }
+    if(1 == ret)
+    {
+        tv_i2c_used = value;
+        if(tv_i2c_used == 1)
+        {
+        	printf("speed=%d, slave=%d\n",(u32)CONFIG_SYS_I2C_SPEED, (u32)CONFIG_SYS_I2C_SLAVE);
+            i2c_init(CONFIG_SYS_I2C_SPEED,CONFIG_SYS_I2C_SLAVE);         //cpus twi0 for cvbs
+        }
     }
     return 0;
 }
-
-#if defined(CONFIG_MACH_SUN50IW6)
-/**
- * @name       tv_read_sid
- * @brief      read tv out sid from efuse
- * @param[IN]   none
- * @param[OUT]  p_dac_cali:tv_out dac cali
- * @param[OUT]  p_bandgap:tv_out bandcap
- * @return	return 0 if success,-1 if fail
- */
-static s32 tv_read_sid(u16 *p_dac_cali, u16 *p_bandgap)
-{
-	s32 ret = 0;
-	u8 buf[48];
-	s32 buf_len = 48;
-
-	if (p_dac_cali == NULL || p_bandgap == NULL) {
-		__ac200_err("%s's pointer type args are NULL!\n", __func__);
-		return -1;
-	}
-	ret = sunxi_efuse_read(EFUSE_EMAC_NAME, buf, &buf_len);
-	if (ret < 0) {
-		__ac200_err("sunxi_efuse_readn failed:%d\n", ret);
-		return ret;
-	}
-	*p_dac_cali = buf[2] + (buf[3] << 8);
-	*p_bandgap = buf[4] + (buf[5] << 8);
-	__ac200_dbg("buf[2]:0x%x, buf[3]:0x%x, buf[4]:0x%x, buf[5]:0x%x\n",
-		    buf[2], buf[3], buf[4], buf[5]);
-	return 0;
-}
-#endif /*endif CONFIG_MACH_SUN50IW6 */
 
 static s32 tv_clk_config(u32 mode)
 {
@@ -223,34 +132,55 @@ static s32 tv_clk_config(u32 mode)
 	}
 	lcd_div = 1;
 	dclk_rate = pixel_clk * (pixel_repeat + 1);
-	tcon_div = ccir_clk_div;
+	tcon_div = 8;//fixme
 	lcd_rate = dclk_rate * tcon_div;
 	pll_rate = lcd_rate * lcd_div;
 
 	parent = clk_get_parent(tv_clk);
-
 	if (parent)
 		clk_set_rate(tv_clk->parent, pll_rate);
-	else
-	{
-		__ac200_err("tv_clk has no parent clk\n");
-		return -1;
-	}
-
-	__ac200_dbg("tcon_div:%d lcd_div:%d\n", tcon_div, lcd_div);
 	pll_rate_set = clk_get_rate(parent);
 	lcd_rate_set = pll_rate_set / lcd_div;
 	clk_set_rate(tv_clk, lcd_rate_set);
 	lcd_rate_set = clk_get_rate(tv_clk);
 	dclk_rate_set = lcd_rate_set / tcon_div;
 	if(dclk_rate_set != dclk_rate)
-		__ac200_err("pclk=%ld, cur=%ld\n", dclk_rate, dclk_rate_set);
-
-	__ac200_dbg("parent clk=%ld, pclk=%ld\n", pll_rate_set, dclk_rate_set);
+		printf("pclk=%ld, cur=%ld\n", dclk_rate, dclk_rate_set);
 
 	return 0;
 }
+/*
+static s32 tv_clk_config(u32 mode)
+{
+	unsigned long pixel_clk, pll_rate, lcd_rate, dclk_rate;//hz
+	unsigned long pll_rate_set, lcd_rate_set, dclk_rate_set;//hz
+	u32 pixel_repeat, tcon_div, lcd_div;
 
+	if(11 == mode) {
+		pixel_clk = tv_video_timing[1].pixel_clk;
+		pixel_repeat = tv_video_timing[1].pixel_repeat;
+	}
+	else {
+		pixel_clk = tv_video_timing[0].pixel_clk;
+		pixel_repeat = tv_video_timing[0].pixel_repeat;
+	}
+	lcd_div = 1;
+	dclk_rate = pixel_clk * (pixel_repeat + 1);
+	tcon_div = 8;//fixme
+	lcd_rate = dclk_rate * tcon_div;
+	pll_rate = lcd_rate * lcd_div;
+	disp_sys_clk_set_rate(DE_LCD_CLK_SRC, pll_rate);
+	pll_rate_set = disp_sys_clk_get_rate(DE_LCD_CLK_SRC);
+	lcd_rate_set = pll_rate_set / lcd_div;
+	disp_sys_clk_set_rate(DE_LCD_CLK, lcd_rate_set);
+	lcd_rate_set = disp_sys_clk_get_rate(DE_LCD_CLK_SRC);
+	dclk_rate_set = lcd_rate_set / tcon_div;
+	if(dclk_rate_set != dclk_rate)
+		printf("pclk=%ld, cur=%ld\n", dclk_rate, dclk_rate_set);
+
+	return 0;
+}
+*/
 static s32 tv_clk_enable(u32 mode)
 {
 	int ret = 0;
@@ -270,28 +200,76 @@ static s32 tv_clk_disable(void)
 	return 0;
 }
 
-
-static int tv_pin_config(void)
+/*
+static s32 tv_clk_enable(u32 mode)
 {
-	int ret = 0;
-	ret = gpio_request_simple("ac200", NULL);
-	return ret;
+	tv_clk_config(mode);
+	disp_sys_clk_enable(DE_LCD_CLK);
+
+	return 0;
+}
+
+static s32 tv_clk_disable(void)
+{
+
+	disp_sys_clk_disable(DE_LCD_CLK);
+
+	return 0;
+}
+*/
+
+/*
+static int tv_parse_config(void)
+{
+	disp_gpio_set_t  *gpio_info;
+	int i, ret;
+	char io_name[32];
+
+	for(i=0; i<28; i++) {
+		gpio_info = &(tv_io[i]);
+		sprintf(io_name, "tv_d%d", i);
+		ret = disp_sys_script_get_item(key_name, io_name, (int *)gpio_info, sizeof(disp_gpio_set_t)/sizeof(int));
+		if(ret == 3)
+		{
+		  tv_io_used[i]= 1;
+		}
+	}
+
+  return 0;
+}*/
+/*
+static int tv_pin_config(u32 bon)
+{
+	int hdl,i;
+
+	for(i=0; i<28; i++)	{
+		if(tv_io_used[i]) {
+			disp_gpio_set_t  gpio_info[1];
+
+			memcpy(gpio_info, &(tv_io[i]), sizeof(disp_gpio_set_t));
+			if(!bon) {
+				gpio_info->mul_sel = 7;
+			}
+			hdl = disp_sys_gpio_request(gpio_info, 1);
+			disp_sys_gpio_release(hdl, 2);
+		}
+	}
+	return 0;
+}*/
+
+static int tv_pin_config(u32 bon)
+{
+	return disp_sys_pin_set_state("ac200", (1==bon)? DISP_PIN_STATE_ACTIVE:DISP_PIN_STATE_SLEEP);
 }
 
 static s32 tv_open(void)
 {
-	s32 ret = 0;
-	if (tv_source_ops.tcon_enable)
-		tv_source_ops.tcon_enable(tv_device);
-
 	aw1683_tve_set_mode(g_tv_mode);
+	if(tv_source_ops.tcon_enable)
+    	tv_source_ops.tcon_enable(tv_device);
 
-	ret = aw1683_tve_open();
-	if (ret != 0)
-		__ac200_err("tve_open failed:%d\n", ret);
-	else
-		printf("tv_open finsih\n");
-	return 0;
+	aw1683_tve_open();
+    return 0;
 }
 
 static s32 tv_close(void)
@@ -300,6 +278,8 @@ static s32 tv_close(void)
 	if(tv_source_ops.tcon_disable)
     	tv_source_ops.tcon_disable(tv_device);
 
+    if(tv_source_ops.tcon_simple_enable)
+    	tv_source_ops.tcon_simple_enable(tv_device);
     return 0;
 }
 
@@ -345,12 +325,6 @@ static s32 tv_get_video_timing_info(struct disp_video_timings **video_info)
 	return ret;
 }
 
-/*0:rgb;  1:yuv*/
-static s32 tv_get_input_csc(void)
-{
-	return 1;
-}
-
 static s32 tv_get_interface_para(void* para)
 {
 	struct disp_vdevice_interface_para intf_para;
@@ -360,12 +334,10 @@ static s32 tv_get_interface_para(void* para)
 	intf_para.sequence = 0;
 	intf_para.clk_phase = 0;
 	intf_para.sync_polarity = 0;
-	intf_para.ccir_clk_div = ccir_clk_div;
-	intf_para.input_csc = tv_get_input_csc();
 	if(g_tv_mode == DISP_TV_MOD_NTSC)
-		intf_para.fdelay = 2;//ntsc
+		intf_para.fdelay = 1;//ntsc
 	else
-		intf_para.fdelay = 1;//pal
+		intf_para.fdelay = 2;//pal
 
 	if(para)
 		memcpy(para, &intf_para, sizeof(struct disp_vdevice_interface_para));
@@ -373,6 +345,11 @@ static s32 tv_get_interface_para(void* para)
 	return 0;
 }
 
+//0:rgb;  1:yuv
+static s32 tv_get_input_csc(void)
+{
+	return 1;
+}
 
 s32 tv_suspend(void)
 {
@@ -395,6 +372,8 @@ s32 tv_resume(void)
 		tv_clk_enable(g_tv_mode);
 
 		tv_detect_enable();
+		if(tv_source_ops.tcon_simple_enable)
+			tv_source_ops.tcon_simple_enable(tv_device);
 	}
 
 	return  0;
@@ -406,8 +385,6 @@ int tv_ac200_init(void)
 	int ret;
 	int value;
 	struct disp_vdevice_init_data init_data;
-	u16 dac_cali = 0, bandgap = 0;
-	/*int node_offset = 0;*/
 
 	tv_suspend_status = 0;
 
@@ -426,17 +403,12 @@ int tv_ac200_init(void)
 				}
 			}
 
-			tv_clk = clk_get(NULL, "tcon_lcd");
+			tv_clk = clk_get(NULL, "tcon0");
 			if (IS_ERR(tv_clk)) {
-				__ac200_err("fail to get clk for ac200\n");
-				return -1;
+				__wrn("fail to get clk for hdmi\n");
 			}
 
-			ret = tv_pin_config();
-			if (ret != 0) {
-				__ac200_err("tv_pin_config failed:%d\n", ret);
-				return -1;
-			}
+			tv_pin_config(1);
 
 			ret = disp_sys_script_get_item(key_name, "tv_power", (int*)tv_power, 2);
 
@@ -444,24 +416,10 @@ int tv_ac200_init(void)
 				tv_power_used = 1;
 				printf("[TV] tv_power: %s\n", tv_power);
 			}
-
-			ret = disp_sys_script_get_item("ac200", "tv_pwm_ch",
-						       &value, 1);
-			if (ret != 1) {
-				__ac200_err("fail to get pwm ch num\n");
-				return -1;
-			}
-			pwm_handle = disp_sys_pwm_request(value);
-			disp_sys_pwm_config(pwm_handle, 20, 41);
+			/* use spwm, pwm_id is 16 */
+			pwm_handle = disp_sys_pwm_request(PWM_ID);
+			disp_sys_pwm_config(pwm_handle, 0, 41);
 			disp_sys_pwm_enable(pwm_handle);
-
-			ret = disp_sys_script_get_item("ac200", "tv_clk_div",
-						       &value, 1);
-			if (ret != 1) {
-				__ac200_err("fail to get tv_clk_div\n");
-				return -1;
-			}
-			ccir_clk_div = value;
 
 			tv_i2c_init();
 
@@ -483,21 +441,16 @@ int tv_ac200_init(void)
 			tv_clk_init();
 			tv_clk_enable(g_tv_mode);
 			disp_vdevice_get_source_ops(&tv_source_ops);
-			if (tv_source_ops.tcon_simple_enable)
-				tv_source_ops.tcon_simple_enable(tv_device);
-			else
-				printf("tcon_simple_enable failed\n");
-#if defined(CONFIG_MACH_SUN50IW6)
-			if (tv_read_sid(&dac_cali, &bandgap) != 0) {
-				dac_cali = 0;
-				bandgap = 0;
-			}
-#endif /*endif CONFIG_MACH_SUN50IW6*/
-			__ac200_dbg("dac cali:0x%x, bandgap:0x%x\n", dac_cali,
-				    bandgap);
-			aw1683_tve_init(&dac_cali, &bandgap);
+			if(tv_source_ops.tcon_simple_enable)
+        		tv_source_ops.tcon_simple_enable(tv_device);
+        	else
+				printf("tv_init_tcon_not_enable!\n");
+			aw1683_tve_init();
+			disp_delay_ms(200);
+			aw1683_tve_plug_status();
 		}
 	} else
 		tv_used = 0;
 	return 0;
 }
+

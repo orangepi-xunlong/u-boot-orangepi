@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Vipin Kumar, STMicroelectronics, <vipin.kumar@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SPEAR_COMMON_H
@@ -10,11 +11,16 @@
  * Common configurations used for both spear3xx as well as spear6xx
  */
 
-/* U-Boot Load Address */
+/* U-boot Load Address */
+#define CONFIG_SYS_TEXT_BASE			0x00700000
 
 /* Ethernet driver configuration */
 #define CONFIG_MII
+#define CONFIG_DESIGNWARE_ETH
+#define CONFIG_NET_MULTI
+#define CONFIG_PHYLIB
 #define CONFIG_PHY_RESET_DELAY			10000		/* in usec */
+#define CONFIG_PHY_GIGE			/* Include GbE speed/duplex detection */
 
 /* USBD driver configuration */
 #if defined(CONFIG_SPEAR_USBTTY)
@@ -31,7 +37,8 @@
 #define CONFIG_EXTRA_ENV_USBTTY			"usbtty=cdc_acm\0"
 
 /* I2C driver configuration */
-#define CONFIG_SYS_I2C
+#define CONFIG_HARD_I2C
+#define CONFIG_DW_I2C
 #if defined(CONFIG_SPEAR600)
 #define CONFIG_SYS_I2C_BASE			0xD0200000
 #elif defined(CONFIG_SPEAR300)
@@ -74,7 +81,10 @@
  * Serial Configuration (PL011)
  * CONFIG_PL01x_PORTS is defined in specific files
  */
+#define CONFIG_PL011_SERIAL
 #define CONFIG_PL011_CLOCK			(48 * 1000 * 1000)
+#define CONFIG_CONS_INDEX			0
+#define CONFIG_BAUDRATE				115200
 #define CONFIG_SYS_BAUDRATE_TABLE		{ 9600, 19200, 38400, \
 						57600, 115200 }
 
@@ -87,10 +97,34 @@
 #define CONFIG_NAND_FSMC
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_ONFI_DETECTION
+#define CONFIG_SYS_NAND_QUIET_TEST
+
+/*
+ * Command support defines
+ */
+#define CONFIG_CMD_I2C
+#define CONFIG_CMD_NAND
+#define CONFIG_CMD_ENV
+#define CONFIG_CMD_MEMORY
+#define CONFIG_CMD_RUN
+#define CONFIG_CMD_SAVES
+#define CONFIG_CMD_NET
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_DHCP
+
+/* This must be included AFTER the definition of CONFIG_COMMANDS (if any) */
+#include <config_cmd_default.h>
 
 /*
  * Default Environment Varible definitions
  */
+#if defined(CONFIG_SPEAR_USBTTY)
+#define CONFIG_BOOTDELAY			-1
+#else
+#define CONFIG_BOOTDELAY			1
+#endif
+
 #define CONFIG_ENV_OVERWRITE
 
 /*
@@ -135,6 +169,11 @@
 						"bootm 0x1600000"
 #endif
 
+#define CONFIG_BOOTARGS				"console=ttyAMA0,115200 " \
+						"mem=128M " \
+						"root="CONFIG_FSMTDBLK \
+						"rootfstype=jffs2"
+
 #define CONFIG_NFSBOOTCOMMAND						\
 	"bootp; "							\
 	"setenv bootargs root=/dev/nfs rw "				\
@@ -149,20 +188,38 @@
 		"console=ttyAMA0,115200 $(othbootargs);"		\
 	CONFIG_BOOTCOMMAND
 
+
 #define CONFIG_ENV_SIZE				0x02000
 #define CONFIG_SYS_MONITOR_BASE			CONFIG_SYS_TEXT_BASE
 
 /* Miscellaneous configurable options */
 #define CONFIG_ARCH_CPU_INIT
+#define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_BOOT_PARAMS_ADDR			0x00000100
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_MISC_INIT_R
+#define CONFIG_ZERO_BOOTDELAY_CHECK
+#define CONFIG_AUTOBOOT_KEYED
+#define CONFIG_AUTOBOOT_STOP_STR		" "
+#define CONFIG_AUTOBOOT_PROMPT			\
+		"Hit SPACE in %d seconds to stop autoboot.\n", bootdelay
 
 #define CONFIG_SYS_MEMTEST_START		0x00800000
 #define CONFIG_SYS_MEMTEST_END			0x04000000
 #define CONFIG_SYS_MALLOC_LEN			(1024*1024)
+#define CONFIG_IDENT_STRING			"-SPEAr"
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_SYS_PROMPT			"u-boot> "
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_CBSIZE			256
+#define CONFIG_SYS_PBSIZE			(CONFIG_SYS_CBSIZE + \
+						sizeof(CONFIG_SYS_PROMPT) + 16)
+#define CONFIG_SYS_MAXARGS			16
+#define CONFIG_SYS_BARGSIZE			CONFIG_SYS_CBSIZE
 #define CONFIG_SYS_LOAD_ADDR			0x00800000
+#define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 

@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/tv/gm7121.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #if 0
 #include <linux/module.h>
 #include <asm/uaccess.h>
@@ -131,7 +115,7 @@ static int tv_pin_config(u32 bon)
 			if(!bon) {
 				gpio_info->mul_sel = 7;
 			}
-			hdl = disp_sys_gpio_request_simple(gpio_info, 1);
+			hdl = disp_sys_gpio_request(gpio_info, 1);
 			disp_sys_gpio_release(hdl, 2);
 		}
 	}
@@ -190,8 +174,8 @@ static s32 gm7121_tv_get_mode(void)
 
 static s32 gm7121_tv_set_mode(disp_tv_mode tv_mode)
 {
-	printf("gm7121_tv_set_mode, mode=%u\n", (unsigned int)tv_mode);
-	g_tv_mode = tv_mode;
+		printf("gm7121_tv_set_mode, mode=%d\n", (unsigned int)tv_mode);
+    g_tv_mode = tv_mode;
 
     return 0;
 }
@@ -240,9 +224,9 @@ static s32 gm7121_tv_get_interface_para(void* para)
 	intf_para.clk_phase = 2;
 	intf_para.sync_polarity = 0;
 	if(g_tv_mode == DISP_TV_MOD_NTSC)
-		intf_para.fdelay = 2;/*ntsc*/
+		intf_para.fdelay = 1;//ntsc
 	else
-		intf_para.fdelay = 1;/*pal*/
+		intf_para.fdelay = 2;//pal
 
 	if(para)
 		memcpy(para, &intf_para, sizeof(disp_vdevice_interface_para));

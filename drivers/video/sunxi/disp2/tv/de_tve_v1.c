@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/tv/de_tve_v1.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "drv_tv.h"
 #include "de_tvec.h"
 
@@ -41,7 +25,7 @@ s32 tve_low_set_sid_base(void __iomem *address)
 	return 0;
 }
 
-s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, s32 *offset,
+s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, u32 *offset,
 		 u32 *dac_type, u32 num)
 {
 	u32 val = (*cali) ? (*cali) : 0x285;
@@ -274,6 +258,10 @@ u32 tve_low_get_sid(u32 index)
 {
 	u32 cali_value = 0;
 
-	cali_value = sid_read_key(0x10);
+	if (sid_reg_base) {
+		cali_value = readl(sid_reg_base + index);
+		cali_value &= 0x000003ff;
+	}
+
 	return cali_value;
 }

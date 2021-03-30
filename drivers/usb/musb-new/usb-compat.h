@@ -1,7 +1,6 @@
 #ifndef __USB_COMPAT_H__
 #define __USB_COMPAT_H__
 
-#include <dm.h>
 #include "usb.h"
 
 struct usb_hcd {
@@ -49,7 +48,6 @@ struct urb {
 	list_add_tail(&urb->urb_list, &urb->ep->urb_list);	\
 	ret; })
 #define usb_hcd_unlink_urb_from_ep(hcd, urb)	list_del_init(&urb->urb_list)
-#define usb_hcd_check_unlink_urb(hdc, urb, status)	0
 
 static inline void usb_hcd_giveback_urb(struct usb_hcd *hcd,
 					struct urb *urb,
@@ -67,40 +65,24 @@ static inline int usb_hcd_unmap_urb_for_dma(struct usb_hcd *hcd,
 	return 0;
 }
 
-#ifdef CONFIG_DM_USB
-static inline struct usb_device *usb_dev_get_parent(struct usb_device *udev)
+static inline u16 find_tt(struct usb_device *dev)
 {
-	struct udevice *parent = udev->dev->parent;
+	u8 chid;
+	u8 hub;
 
-	/*
-	 * When called from usb-uclass.c: usb_scan_device() udev->dev points
-	 * to the parent udevice, not the actual udevice belonging to the
-	 * udev as the device is not instantiated yet.
-	 *
-	 * If dev is an usb-bus, then we are called from usb_scan_device() for
-	 * an usb-device plugged directly into the root port, return NULL.
-	 */
-	if (device_get_uclass_id(udev->dev) == UCLASS_USB)
-		return NULL;
+	/* Find out the nearest parent which is high speed */
+	while (dev->parent->parent != NULL)
+		if (dev->parent->speed != USB_SPEED_HIGH)
+			dev = dev->parent;
+		else
+			break;
 
-	/*
-	 * If these 2 are not the same we are being called from
-	 * usb_scan_device() and udev itself is the parent.
-	 */
-	if (dev_get_parent_priv(udev->dev) != udev)
-		return udev;
+	/* determine the port address at that hub */
+	hub = dev->parent->devnum;
+	for (chid = 0; chid < USB_MAXCHILDREN; chid++)
+		if (dev->parent->children[chid] == dev)
+			break;
 
-	/* We are being called normally, use the parent pointer */
-	if (device_get_uclass_id(parent) == UCLASS_USB_HUB)
-		return dev_get_parent_priv(parent);
-
-	return NULL;
+	return (hub << 8) | chid;
 }
-#else
-static inline struct usb_device *usb_dev_get_parent(struct usb_device *dev)
-{
-	return dev->parent;
-}
-#endif
-
 #endif /* __USB_COMPAT_H__ */

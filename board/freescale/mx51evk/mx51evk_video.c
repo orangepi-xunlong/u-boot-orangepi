@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  * Fabio Estevam <fabio.estevam@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -75,7 +76,7 @@ void setup_iomux_lcd(void)
 int board_video_skip(void)
 {
 	int ret;
-	char const *e = env_get("panel");
+	char const *e = getenv("panel");
 
 	if (e) {
 		if (strcmp(e, "claa") == 0) {

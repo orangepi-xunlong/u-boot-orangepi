@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * SATA Wrapper Register map
  *
  * (C) Copyright 2013
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _TI_SATA_H

@@ -1,19 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_csc_type.h
+/*****************************************************************************
+ *  All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
+ *  File name   :       de_csc_type.h
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ *  Description :       display engine 2.0 csc struct declaration
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+ *  History     :       2014/05/16  vito cheng  v0.1  Initial version
+****************************************************************************/
+
 #ifndef __DE_CSC_TYPE_H__
 #define __DE_CSC_TYPE_H__
 

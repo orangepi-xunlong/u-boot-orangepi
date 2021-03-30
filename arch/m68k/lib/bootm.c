@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -112,8 +113,7 @@ static void set_clocks_in_mhz (bd_t *kbd)
 {
 	char *s;
 
-	s = env_get("clocks_in_mhz");
-	if (s) {
+	if ((s = getenv("clocks_in_mhz")) != NULL) {
 		/* convert all clock information to MHz */
 		kbd->bi_intfreq /= 1000000L;
 		kbd->bi_busfreq /= 1000000L;

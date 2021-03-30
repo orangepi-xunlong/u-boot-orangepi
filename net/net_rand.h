@@ -16,11 +16,11 @@
  */
 static inline unsigned int seed_mac(void)
 {
-	unsigned char enetaddr[ARP_HLEN];
+	unsigned char enetaddr[6];
 	unsigned int seed;
 
 	/* get our mac */
-	memcpy(enetaddr, eth_get_ethaddr(), ARP_HLEN);
+	eth_getenv_enetaddr("ethaddr", enetaddr);
 
 	seed = enetaddr[5];
 	seed ^= enetaddr[4] << 8;

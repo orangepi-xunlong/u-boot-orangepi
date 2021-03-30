@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  armboot - Startup Code for ARM1176 CPU-core
  *
@@ -6,6 +5,8 @@
  *
  * Copyright (C) 2008
  * Guennadi Liakhovetki, DENX Software Engineering, <lg@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * 2007-09-21 - Restructured codes by jsgood (jsgood.yang@samsung.com)
  * 2007-09-21 - Added MoviNAND and OneNAND boot codes by
@@ -15,7 +16,7 @@
 
 #include <asm-offsets.h>
 #include <config.h>
-#include <linux/linkage.h>
+#include <version.h>
 
 #ifndef CONFIG_SYS_PHY_UBOOT_BASE
 #define CONFIG_SYS_PHY_UBOOT_BASE	CONFIG_SYS_UBOOT_BASE
@@ -37,11 +38,6 @@
 	.globl reset
 
 reset:
-	/* Allow the board to save important registers */
-	b	save_boot_params
-.globl	save_boot_params_ret
-save_boot_params_ret:
-
 	/*
 	 * set the cpu to SVC32 mode
 	 */
@@ -83,7 +79,7 @@ cpu_init_crit:
 	mrc	p15, 0, r0, c1, c0, 0
 	bic	r0, r0, #0x00002300	@ clear bits 13, 9:8 (--V- --RS)
 	bic	r0, r0, #0x00000087	@ clear bits 7, 2:0 (B--- -CAM)
-	orr	r0, r0, #0x00000002	@ set bit 1 (A) Align
+	orr	r0, r0, #0x00000002	@ set bit 2 (A) Align
 	orr	r0, r0, #0x00001000	@ set bit 12 (I) I-Cache
 
 	/* Prepare to disable the MMU */
@@ -100,6 +96,28 @@ mmu_disable:
 	mov	pc, r2
 mmu_disable_phys:
 
+#ifdef CONFIG_DISABLE_TCM
+	/*
+	 * Disable the TCMs
+	 */
+	mrc	p15, 0, r0, c0, c0, 2	/* Return TCM details */
+	cmp	r0, #0
+	beq	skip_tcmdisable
+	mov	r1, #0
+	mov	r2, #1
+	tst	r0, r2
+	mcrne	p15, 0, r1, c9, c1, 1	/* Disable Instruction TCM if present*/
+	tst	r0, r2, LSL #16
+	mcrne	p15, 0, r1, c9, c1, 0	/* Disable Data TCM if present*/
+skip_tcmdisable:
+#endif
+#endif
+
+#ifdef CONFIG_PERIPORT_REMAP
+	/* Peri port setup */
+	ldr	r0, =CONFIG_PERIPORT_BASE
+	orr	r0, r0, #CONFIG_PERIPORT_SIZE
+	mcr	p15,0,r0,c15,c2,4
 #endif
 
 	/*
@@ -115,7 +133,3 @@ mmu_disable_phys:
 c_runtime_cpu_setup:
 
 	mov	pc, lr
-
-WEAK(save_boot_params)
-	b	save_boot_params_ret	/* back to my caller */
-ENDPROC(save_boot_params)

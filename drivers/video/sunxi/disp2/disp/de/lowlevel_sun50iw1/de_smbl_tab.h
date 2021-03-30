@@ -1,22 +1,6 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_smbl_tab.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "de_smbl.h"
 
-#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
+#if defined(SUPPORT_SMBL)
 u16 pwrsv_lgc_tab[1408][256];
 
 

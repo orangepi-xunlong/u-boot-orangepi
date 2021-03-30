@@ -8,7 +8,7 @@
  */
 
 #include <common.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/gpio.h>
 
 #define RESOURCE_LABEL_SIZE	16
@@ -138,7 +138,7 @@ int peripheral_request(unsigned short per, const char *label)
 		return 0;
 
 	if (!(per & P_DEFINED))
-		return -EINVAL;
+		return -ENODEV;
 
 	BUG_ON(ident >= MAX_RESOURCES);
 

@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -21,7 +22,7 @@ int checkboard(void)
 	return 0;
 };
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	u32 dramsize;
 #ifdef CONFIG_CF_SBF
@@ -74,9 +75,7 @@ int dram_init(void)
 
 	udelay(100);
 #endif
-	gd->ram_size = dramsize << 1;
-
-	return 0;
+	return (dramsize << 1);
 };
 
 int testdram(void)
@@ -87,7 +86,7 @@ int testdram(void)
 	return (0);
 }
 
-#if defined(CONFIG_IDE)
+#if defined(CONFIG_CMD_IDE)
 #include <ata.h>
 
 int ide_preinit(void)

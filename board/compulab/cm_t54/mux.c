@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Pinmux configuration for Compulab CM-T54 board
  *
  * Copyright (C) 2014, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Dmitry Lifshitz <lifshitz@compulab.co.il>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CM_T54_MUX_DATA_H
@@ -74,10 +75,10 @@ const struct pad_conf_entry wkup_padconf_array_essential[] = {
 };
 
 /*
- * Routine: set_muxconf_regs
+ * Routine: set_muxconf_regs_essential
  * Description: setup board pinmux configuration.
  */
-void set_muxconf_regs(void)
+void set_muxconf_regs_essential(void)
 {
 	do_set_mux((*ctrl)->control_padconf_core_base,
 		   core_padconf_array_essential,

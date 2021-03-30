@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +12,8 @@
 #include <fsl_ddr_dimm_params.h>
 #include <asm/io.h>
 #include <asm/fsl_law.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_SYS_DDR_RAW_TIMING
 #define CONFIG_SYS_DRAM_SIZE	1024

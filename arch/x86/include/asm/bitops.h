@@ -14,10 +14,6 @@
  * bit 0 is the LSB of addr; bit 32 is the LSB of (addr+1).
  */
 
-#include <asm-generic/bitops/fls.h>
-#include <asm-generic/bitops/__fls.h>
-#include <asm-generic/bitops/fls64.h>
-
 #ifdef CONFIG_SMP
 #define LOCK_PREFIX "lock ; "
 #else
@@ -336,20 +332,6 @@ static __inline__ unsigned long ffz(unsigned long word)
 #ifdef __KERNEL__
 
 /**
- * __ffs - find first set bit in word
- * @word: The word to search
- *
- * Undefined if no bit exists, so code should check against 0 first.
- */
-static inline unsigned long __ffs(unsigned long word)
-{
-	__asm__("rep; bsf %1,%0"
-		: "=r" (word)
-		: "rm" (word));
-	return word;
-}
-
-/**
  * ffs - find first bit set
  * @x: the word to search
  *
@@ -364,8 +346,7 @@ static __inline__ int ffs(int x)
 	__asm__("bsfl %1,%0\n\t"
 		"jnz 1f\n\t"
 		"movl $-1,%0\n"
-		"1:" : "=r" (r) : "rm" (x));
-
+		"1:" : "=r" (r) : "g" (x));
 	return r+1;
 }
 #define PLATFORM_FFS

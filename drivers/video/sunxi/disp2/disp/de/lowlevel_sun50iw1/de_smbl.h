@@ -1,19 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_smbl.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+//*********************************************************************************************************************
+//  All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+//
+//  File name   :	de_smbl.h
+//
+//  Description :	display engine 2.0 smbl basic function declaration
+//
+//  History     :	2014/05/15  vito cheng  v0.1  Initial version
+//
+//*********************************************************************************************************************
 #ifndef __DE_SMBL_H__
 #define __DE_SMBL_H__
 
@@ -32,7 +26,7 @@ int de_smbl_get_hist(unsigned int sel, unsigned int *cnt);
 int de_smbl_get_status(unsigned int sel);
 int de_smbl_init(unsigned int sel, uintptr_t reg_base);
 
-#if defined(CONFIG_DISP2_SUNXI_SUPPORT_SMBL)
+#if defined(SUPPORT_SMBL)
 extern u16 pwrsv_lgc_tab[1408][256];
 extern u8 smbl_filter_coeff[272];
 extern u8 hist_thres_drc[8];

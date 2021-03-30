@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Aeronix Zipit Z2 configuration file
  *
  * Copyright (C) 2009-2010 Marek Vasut <marek.vasut@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -12,7 +13,10 @@
  * High Level Board Configuration Options
  */
 #define	CONFIG_CPU_PXA27X		1	/* Marvell PXA270 CPU */
+#define	CONFIG_ZIPITZ2		1	/* Zipit Z2 board */
+#define	CONFIG_SYS_TEXT_BASE	0x0
 
+#undef	CONFIG_BOARD_LATE_INIT
 #undef	CONFIG_SKIP_LOWLEVEL_INIT
 #define	CONFIG_PREBOOT
 
@@ -20,8 +24,12 @@
  * Environment settings
  */
 #define	CONFIG_ENV_OVERWRITE
+#define CONFIG_ENV_IS_IN_FLASH		1
 #define CONFIG_ENV_ADDR			0x40000
-#define CONFIG_ENV_SIZE			0x10000
+#define CONFIG_ENV_SIZE			0x20000
+
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_DCACHE_OFF
 
 #define	CONFIG_SYS_MALLOC_LEN		(128*1024)
 #define	CONFIG_ARCH_CPU_INIT
@@ -31,28 +39,49 @@
 	"then "								\
 		"source 0xa0000000; "					\
 	"else "								\
-		"bootm 0x50000; "					\
+		"bootm 0x60000; "					\
 	"fi; "
+#define	CONFIG_BOOTARGS							\
+	"console=tty0 console=ttyS2,115200 fbcon=rotate:3"
 #define	CONFIG_TIMESTAMP
+#define	CONFIG_BOOTDELAY		2	/* Autoboot delay */
 #define	CONFIG_CMDLINE_TAG
 #define	CONFIG_SETUP_MEMORY_TAGS
+#define	CONFIG_SYS_TEXT_BASE		0x0
+#define	CONFIG_LZMA			/* LZMA compression support */
 
 /*
  * Serial Console Configuration
  * STUART - the lower serial port on Colibri board
  */
+#define	CONFIG_PXA_SERIAL
 #define	CONFIG_STUART			1
+#define CONFIG_CONS_INDEX		2
+#define	CONFIG_BAUDRATE			115200
 
 /*
  * Bootloader Components Configuration
  */
+#include <config_cmd_default.h>
+
+#undef	CONFIG_CMD_NET
+#undef	CONFIG_CMD_NFS
+#define	CONFIG_CMD_ENV
+#undef	CONFIG_CMD_IMLS
+#define	CONFIG_CMD_MMC
+#define	CONFIG_CMD_SPI
 
 /*
  * MMC Card Configuration
  */
 #ifdef	CONFIG_CMD_MMC
+#define	CONFIG_MMC
+#define	CONFIG_GENERIC_MMC
 #define	CONFIG_PXA_MMC_GENERIC
 #define	CONFIG_SYS_MMC_BASE		0xF0000000
+#define	CONFIG_CMD_FAT
+#define CONFIG_CMD_EXT2
+#define	CONFIG_DOS_PARTITION
 #endif
 
 /*
@@ -60,9 +89,17 @@
  */
 #ifdef	CONFIG_CMD_SPI
 #define	CONFIG_SOFT_SPI
-#define	CONFIG_LCD_ROTATION
+#define	CONFIG_LCD
 #define	CONFIG_PXA_LCD
 #define	CONFIG_LMS283GF05
+#define	CONFIG_VIDEO_LOGO
+#define	CONFIG_CMD_BMP
+#define	CONFIG_SPLASH_SCREEN
+#define	CONFIG_SPLASH_SCREEN_ALIGN
+#define	CONFIG_VIDEO_BMP_GZIP
+#define	CONFIG_VIDEO_BMP_RLE8
+#define	CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(2 << 20)
+#undef	SPI_INIT
 
 #define	SPI_DELAY	udelay(10)
 #define	SPI_SDA(val)	zipitz2_spi_sda(val)
@@ -75,11 +112,32 @@ unsigned char zipitz2_spi_read(void);
 #endif
 #endif
 
+/*
+ * KGDB
+ */
+#ifdef	CONFIG_CMD_KGDB
+#define	CONFIG_KGDB_BAUDRATE		230400		/* speed to run kgdb serial port */
+#endif
+
+/*
+ * HUSH Shell Configuration
+ */
+#define	CONFIG_SYS_HUSH_PARSER		1
+
+#define	CONFIG_SYS_LONGHELP				/* undef to save memory	*/
+#ifdef	CONFIG_SYS_HUSH_PARSER
+#define	CONFIG_SYS_PROMPT		"$ "		/* Monitor Command Prompt */
+#endif
+#define	CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size */
+#define	CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
+#define	CONFIG_SYS_MAXARGS		16		/* max number of command args */
+#define	CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
 #define	CONFIG_SYS_DEVICE_NULLDEV	1
 
 /*
  * Clock Configuration
  */
+#undef	CONFIG_SYS_CLKS_IN_HZ
 #define CONFIG_SYS_CPUSPEED		0x190		/* standard setting for 312MHz; L=16, N=1.5, A=0, SDCLK!=SystemBus */
 
 /*
@@ -186,7 +244,5 @@ unsigned char zipitz2_spi_read(void);
 #define CONFIG_SYS_MCATT1_VAL	0x0001c787
 #define CONFIG_SYS_MCIO0_VAL	0x0001430f
 #define CONFIG_SYS_MCIO1_VAL	0x0001430f
-
-#include "pxa-common.h"
 
 #endif	/* __CONFIG_H */

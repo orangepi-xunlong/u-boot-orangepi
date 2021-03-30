@@ -1,19 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0+
-#
-# (C) Copyright 2006
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# (C) Copyright 2001
-# Erik Theisen, Wave 7 Optics, etheisen@mindspring.com.
 
-#ccflags-y += -DDEBUG
+obj-$(CONFIG_ARCH_SUN50IW1P1) += sunxi_pwm_sun50iw1p1.o
+obj-$(CONFIG_ARCH_SUN50IW2P1) += sunxi_pwm_sun50iw1p1.o
+obj-$(CONFIG_ARCH_SUN8IW10P1) += sunxi_pwm_enhance.o
+obj-$(CONFIG_ARCH_SUN8IW11P1) += sunxi_pwm_enhance.o
 
-obj-$(CONFIG_DM_PWM)		+= pwm-uclass.o
-
-obj-$(CONFIG_PWM_EXYNOS)	+= exynos_pwm.o
-obj-$(CONFIG_PWM_IMX)		+= pwm-imx.o pwm-imx-util.o
-obj-$(CONFIG_PWM_ROCKCHIP)	+= rk_pwm.o
-obj-$(CONFIG_PWM_SANDBOX)	+= sandbox_pwm.o
-obj-$(CONFIG_PWM_TEGRA)		+= tegra_pwm.o
-obj-$(CONFIG_PWM_SUNXI)         += sunxi_pwm.o
-obj-$(CONFIG_PWM_SUNXI_NEW)     += sunxi_pwm_enhance.o

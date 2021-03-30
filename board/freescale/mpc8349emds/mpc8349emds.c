@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -18,10 +19,8 @@
 #endif
 
 #if defined(CONFIG_OF_LIBFDT)
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #endif
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int fixed_sdram(void);
 void sdram_init(void);
@@ -47,13 +46,13 @@ int board_early_init_f (void)
 
 #define ns2clk(ns) (ns / (1000000000 / CONFIG_8349_CLKIN) + 1)
 
-int dram_init(void)
+phys_size_t initdram (int board_type)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	phys_size_t msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -ENXIO;
+		return -1;
 
 	/* DDR SDRAM - Main SODIMM */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
@@ -74,10 +73,8 @@ int dram_init(void)
 	 */
 	sdram_init();
 
-	/* set total bus SDRAM size(bytes)  -- DDR */
-	gd->ram_size = msize;
-
-	return 0;
+	/* return total bus SDRAM size(bytes)  -- DDR */
+	return msize;
 }
 
 #if !defined(CONFIG_SPD_EEPROM)
@@ -276,13 +273,11 @@ void spi_cs_deactivate(struct spi_slave *slave)
 #endif /* CONFIG_HARD_SPI */
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-
-	return 0;
 }
 #endif

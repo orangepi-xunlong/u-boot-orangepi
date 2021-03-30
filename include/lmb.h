@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 #ifndef _LINUX_LMB_H
 #define _LINUX_LMB_H
 #ifdef __KERNEL__
@@ -8,6 +7,8 @@
  * Logical memory blocks.
  *
  * Copyright (C) 2001 Peter Bergner, IBM Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #define MAX_LMB_REGIONS 8

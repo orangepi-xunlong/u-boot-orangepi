@@ -11,7 +11,7 @@
  * Some are available on 2.4 kernels; several are available, but not
  * yet pushed in the 2.6 mainline tree.
  *
- * Ported to U-Boot by: Thomas Smits <ts.smits@gmail.com> and
+ * Ported to U-boot by: Thomas Smits <ts.smits@gmail.com> and
  *                      Remy Bohmer <linux@bohmer.net>
  */
 #ifdef CONFIG_USB_GADGET_NET2280
@@ -91,6 +91,12 @@
 #define gadget_is_atmel_usba(g)	0
 #endif
 
+#ifdef CONFIG_USB_GADGET_S3C2410
+#define gadget_is_s3c2410(g)    (!strcmp("s3c2410_udc", (g)->name))
+#else
+#define gadget_is_s3c2410(g)    0
+#endif
+
 #ifdef CONFIG_USB_GADGET_AT91
 #define gadget_is_at91(g)	(!strcmp("at91_udc", (g)->name))
 #else
@@ -119,10 +125,17 @@
 #endif
 
 /* Mentor high speed "dual role" controller, in peripheral role */
-#ifdef CONFIG_USB_MUSB_GADGET
+#ifdef CONFIG_MUSB_GADGET
 #define gadget_is_musbhdrc(g)	(!strcmp("musb-hdrc", (g)->name))
 #else
 #define gadget_is_musbhdrc(g)	0
+#endif
+
+/* from Montavista kernel (?) */
+#ifdef CONFIG_USB_GADGET_MPC8272
+#define gadget_is_mpc8272(g)	(!strcmp("mpc8272_udc", (g)->name))
+#else
+#define gadget_is_mpc8272(g)	0
 #endif
 
 #ifdef CONFIG_USB_GADGET_M66592
@@ -143,13 +156,11 @@
 #define gadget_is_fotg210(g)        0
 #endif
 
-#ifdef CONFIG_USB_DWC3_GADGET
-#define gadget_is_dwc3(g)        (!strcmp("dwc3-gadget", (g)->name))
+#ifdef CONFIG_ALLWINNER
+#define gadget_is_softwinner_otg(g)    (!strcmp("sunxi_usb_udc", (g)->name))
 #else
-#define gadget_is_dwc3(g)        0
+#define gadget_is_softwinner_otg(g)    0
 #endif
-
-
 
 /*
  * CONFIG_USB_GADGET_SX2
@@ -194,6 +205,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x09;
 	else if (gadget_is_pxa27x(gadget))
 		return 0x10;
+	else if (gadget_is_s3c2410(gadget))
+		return 0x11;
 	else if (gadget_is_at91(gadget))
 		return 0x12;
 	else if (gadget_is_imx(gadget))
@@ -202,6 +215,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x14;
 	else if (gadget_is_musbhdrc(gadget))
 		return 0x15;
+	else if (gadget_is_mpc8272(gadget))
+		return 0x16;
 	else if (gadget_is_atmel_usba(gadget))
 		return 0x17;
 	else if (gadget_is_fsl_usb2(gadget))
@@ -213,6 +228,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 	else if (gadget_is_ci(gadget))
 		return 0x21;
 	else if (gadget_is_fotg210(gadget))
+		return 0x22;
+	else if (gadget_is_softwinner_otg(gadget))
 		return 0x22;
 	return -ENOENT;
 }

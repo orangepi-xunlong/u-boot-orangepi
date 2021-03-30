@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008-2009 Samsung Electronics
  * Kyungmin Park <kyungmin.park@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +16,7 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 
-int onenand_board_init(struct mtd_info *mtd)
+void onenand_board_init(struct mtd_info *mtd)
 {
 	struct onenand_chip *this = mtd->priv;
 	struct s5pc100_clock *clk =
@@ -64,6 +65,4 @@ int onenand_board_init(struct mtd_info *mtd)
 	writel(value, &onenand->int_err_mask);
 
 	s3c_onenand_init(mtd);
-
-	return 0;
 }

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 SAMSUNG Electronics
  * Rajeshwari Shinde <rajeshwari.s@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,34 +13,33 @@
 #include <tmu.h>
 #include <netdev.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
 #include <asm/arch/board.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/dwmmc.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/mmc.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/power.h>
-#include <asm/arch/system.h>
+#include <power/pmic.h>
 #include <asm/arch/sromc.h>
 #include <lcd.h>
-#include <i2c.h>
-#include <usb.h>
-#include <dwc3-uboot.h>
 #include <samsung/misc.h>
-#include <dm/pinctrl.h>
-#include <dm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-__weak int exynos_early_init_f(void)
+int __exynos_early_init_f(void)
 {
 	return 0;
 }
+int exynos_early_init_f(void)
+	__attribute__((weak, alias("__exynos_early_init_f")));
 
-__weak int exynos_power_init(void)
+int __exynos_power_init(void)
 {
 	return 0;
 }
+int exynos_power_init(void)
+	__attribute__((weak, alias("__exynos_power_init")));
 
 #if defined CONFIG_EXYNOS_TMU
 /* Boot Time Thermal Analysis for SoC temperature threshold breach */
@@ -85,20 +85,17 @@ int board_init(void)
 	}
 	boot_temp_check();
 #endif
-#ifdef CONFIG_TZSW_RESERVED_DRAM_SIZE
-	/* The last few MB of memory can be reserved for secure firmware */
-	ulong size = CONFIG_TZSW_RESERVED_DRAM_SIZE;
 
-	gd->ram_size -= size;
-	gd->bd->bi_dram[CONFIG_NR_DRAM_BANKS - 1].size -= size;
+#ifdef CONFIG_EXYNOS_SPI
+	spi_init();
 #endif
 	return exynos_init();
 }
 
 int dram_init(void)
 {
-	unsigned int i;
-	unsigned long addr;
+	int i;
+	u32 addr;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		addr = CONFIG_SYS_SDRAM_BASE + (i * SDRAM_BANK_SIZE);
@@ -107,10 +104,10 @@ int dram_init(void)
 	return 0;
 }
 
-int dram_init_banksize(void)
+void dram_init_banksize(void)
 {
-	unsigned int i;
-	unsigned long addr, size;
+	int i;
+	u32 addr, size;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		addr = CONFIG_SYS_SDRAM_BASE + (i * SDRAM_BANK_SIZE);
@@ -119,13 +116,10 @@ int dram_init_banksize(void)
 		gd->bd->bi_dram[i].start = addr;
 		gd->bd->bi_dram[i].size = size;
 	}
-
-	return 0;
 }
 
 static int board_uart_init(void)
 {
-#ifndef CONFIG_PINCTRL_EXYNOS
 	int err, uart_id, ret = 0;
 
 	for (uart_id = PERIPH_ID_UART0; uart_id <= PERIPH_ID_UART3; uart_id++) {
@@ -137,18 +131,13 @@ static int board_uart_init(void)
 		}
 	}
 	return ret;
-#else
-	return 0;
-#endif
 }
 
 #ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
 	int err;
-#ifdef CONFIG_BOARD_TYPES
-	set_board_type();
-#endif
+
 	err = board_uart_init();
 	if (err) {
 		debug("UART init failed\n");
@@ -163,7 +152,7 @@ int board_early_init_f(void)
 }
 #endif
 
-#if defined(CONFIG_POWER) || defined(CONFIG_DM_PMIC)
+#if defined(CONFIG_POWER)
 int power_init_board(void)
 {
 	set_ps_hold_ctrl();
@@ -172,6 +161,7 @@ int power_init_board(void)
 }
 #endif
 
+#ifdef CONFIG_OF_CONTROL
 #ifdef CONFIG_SMC911X
 static int decode_sromc(const void *blob, struct fdt_sromc *config)
 {
@@ -249,40 +239,23 @@ int board_eth_init(bd_t *bis)
 	return 0;
 }
 
-#ifdef CONFIG_MMC
-static int init_mmc(void)
-{
-#ifdef CONFIG_MMC_SDHCI
-	return exynos_mmc_init(gd->fdt_blob);
-#else
-	return 0;
-#endif
-}
-
-static int init_dwmmc(void)
-{
-#ifdef CONFIG_MMC_DW
-	return exynos_dwmmc_init(gd->fdt_blob);
-#else
-	return 0;
-#endif
-}
-
+#ifdef CONFIG_GENERIC_MMC
 int board_mmc_init(bd_t *bis)
 {
 	int ret;
+#ifdef CONFIG_DWMMC
+	/* dwmmc initializattion for available channels */
+	ret = exynos_dwmmc_init(gd->fdt_blob);
+	if (ret)
+		debug("dwmmc init failed\n");
+#endif
 
-	if (get_boot_mode() == BOOT_MODE_SD) {
-		ret = init_mmc();
-		ret |= init_dwmmc();
-	} else {
-		ret = init_dwmmc();
-		ret |= init_mmc();
-	}
-
+#ifdef CONFIG_SDHCI
+	/* mmc initializattion for available channels */
+	ret = exynos_mmc_init(gd->fdt_blob);
 	if (ret)
 		debug("mmc init failed\n");
-
+#endif
 	return ret;
 }
 #endif
@@ -290,18 +263,15 @@ int board_mmc_init(bd_t *bis)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
-	const char *board_info;
+	const char *board_name;
 
-	board_info = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
-	printf("Board: %s\n", board_info ? board_info : "unknown");
-#ifdef CONFIG_BOARD_TYPES
-	board_info = get_board_type();
-	if (board_info)
-		printf("Type:  %s\n", board_info);
-#endif
+	board_name = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
+	printf("Board: %s\n", board_name ? board_name : "unknown");
+
 	return 0;
 }
 #endif
+#endif /* CONFIG_OF_CONTROL */
 
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
@@ -322,6 +292,18 @@ int board_late_init(void)
 }
 #endif
 
+int arch_early_init_r(void)
+{
+#ifdef CONFIG_CROS_EC
+	if (cros_ec_board_init()) {
+		printf("%s: Failed to init EC\n", __func__);
+		return 0;
+	}
+#endif
+
+	return 0;
+}
+
 #ifdef CONFIG_MISC_INIT_R
 int misc_init_r(void)
 {
@@ -339,39 +321,3 @@ int misc_init_r(void)
 	return 0;
 }
 #endif
-
-void reset_misc(void)
-{
-	struct gpio_desc gpio = {};
-	int node;
-
-	node = fdt_node_offset_by_compatible(gd->fdt_blob, 0,
-			"samsung,emmc-reset");
-	if (node < 0)
-		return;
-
-	gpio_request_by_name_nodev(offset_to_ofnode(node), "reset-gpio", 0,
-				   &gpio, GPIOD_IS_OUT);
-
-	if (dm_gpio_is_valid(&gpio)) {
-		/*
-		 * Reset eMMC
-		 *
-		 * FIXME: Need to optimize delay time. Minimum 1usec pulse is
-		 *	  required by 'JEDEC Standard No.84-A441' (eMMC)
-		 *	  document but real delay time is expected to greater
-		 *	  than 1usec.
-		 */
-		dm_gpio_set_value(&gpio, 0);
-		mdelay(10);
-		dm_gpio_set_value(&gpio, 1);
-	}
-}
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-#ifdef CONFIG_USB_DWC3
-	dwc3_uboot_exit(index);
-#endif
-	return 0;
-}

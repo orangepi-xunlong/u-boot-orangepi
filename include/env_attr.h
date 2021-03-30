@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Joe Hershberger, National Instruments, joe.hershberger@ni.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ENV_ATTR_H__
@@ -15,14 +16,13 @@
  *	attributes = [^,:\s]*
  *	entry = name[:attributes]
  *	list = entry[,list]
- * It will call the "callback" function with the "name" and "attributes"
+ * It will call the "callback" function with the "name" and attribute as "value"
  * The callback may return a non-0 to abort the list walk.
  * This return value will be passed through to the caller.
  * 0 is returned on success.
  */
-int env_attr_walk(const char *attr_list,
-	int (*callback)(const char *name, const char *attributes, void *priv),
-	void *priv);
+extern int env_attr_walk(const char *attr_list,
+	int (*callback)(const char *name, const char *value));
 
 /*
  * env_attr_lookup takes as input an "attr_list" with the same form as above.
@@ -33,6 +33,7 @@ int env_attr_walk(const char *attr_list,
  * "attr_list" is NULL.
  * Returns 0 on success.
  */
-int env_attr_lookup(const char *attr_list, const char *name, char *attributes);
+extern int env_attr_lookup(const char *attr_list, const char *name,
+	char *attributes);
 
 #endif /* __ENV_ATTR_H__ */

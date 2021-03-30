@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 #ifndef _DS1722_H_
 #define _DS1722_H_

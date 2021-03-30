@@ -1,17 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007, 2012 Freescale Semiconductor, Inc.
  * Hayden Fraser (Hayden.Fraser@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/immap.h>
 #include <asm/io.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
@@ -20,7 +19,7 @@ int checkboard(void)
 	return 0;
 };
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	/*
 	 * Check to see if the SDRAM has already been initialized
@@ -67,9 +66,7 @@ int dram_init(void)
 		*(u32 *) (CONFIG_SYS_SDRAM_BASE + 0x800) = 0xa5a5a5a5;
 	}
 
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
-
-	return 0;
+	return CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
 }
 
 int testdram(void)
@@ -80,7 +77,7 @@ int testdram(void)
 	return (0);
 }
 
-#ifdef CONFIG_IDE
+#ifdef CONFIG_CMD_IDE
 #include <ata.h>
 int ide_preinit(void)
 {
@@ -125,4 +122,4 @@ void ide_set_reset(int idereset)
 		setbits_8(&ata->cr, 0x01);
 	}
 }
-#endif				/* CONFIG_IDE */
+#endif				/* CONFIG_CMD_IDE */

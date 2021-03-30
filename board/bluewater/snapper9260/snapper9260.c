@@ -1,23 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Bluewater Systems Snapper 9260/9G20 modules
  *
  * (C) Copyright 2011 Bluewater Systems
  *   Author: Andre Renaud <andre@bluewatersys.com>
  *   Author: Ryan Mallon <ryan@bluewatersys.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
-#include <asm/mach-types.h>
 #include <asm/arch/at91sam9260_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
-#include <asm/arch/clk.h>
+#include <asm/arch/at91_pmc.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/atmel_serial.h>
 #include <net.h>
 #include <netdev.h>
 #include <i2c.h>
@@ -31,9 +28,11 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static void macb_hw_init(void)
 {
+	struct at91_pmc *pmc   = (struct at91_pmc  *)ATMEL_BASE_PMC;
 	struct at91_port *pioa = (struct at91_port *)ATMEL_BASE_PIOA;
 
-	at91_periph_clk_enable(ATMEL_ID_EMAC0);
+	/* Enable clock */
+	writel(1 << ATMEL_ID_EMAC0, &pmc->pcer);
 
 	/* Disable pull-ups to prevent PHY going into test mode */
 	writel(pin_to_mask(AT91_PIN_PA14) |
@@ -96,19 +95,20 @@ static void nand_hw_init(void)
 	       &smc->cs[3].mode);
 
 	/* Configure RDY/BSY */
-	gpio_request(CONFIG_SYS_NAND_READY_PIN, "nand_rdy");
-	gpio_direction_input(CONFIG_SYS_NAND_READY_PIN);
+	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
 
 	/* Enable NandFlash */
-	gpio_request(CONFIG_SYS_NAND_ENABLE_PIN, "nand_ce");
-	gpio_direction_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
+	at91_set_gpio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
 }
 
 int board_init(void)
 {
-	at91_periph_clk_enable(ATMEL_ID_PIOA);
-	at91_periph_clk_enable(ATMEL_ID_PIOB);
-	at91_periph_clk_enable(ATMEL_ID_PIOC);
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
+	/* Enable PIO clocks */
+	writel((1 << ATMEL_ID_PIOA) |
+	       (1 << ATMEL_ID_PIOB) |
+	       (1 << ATMEL_ID_PIOC), &pmc->pcer);
 
 	/* The mach-type is the same for both Snapper 9260 and 9G20 */
 	gd->bd->bi_arch_number = MACH_TYPE_SNAPPER_9260;
@@ -140,12 +140,3 @@ int dram_init(void)
 void reset_phy(void)
 {
 }
-
-static struct atmel_serial_platdata at91sam9260_serial_plat = {
-	.base_addr = ATMEL_BASE_DBGU,
-};
-
-U_BOOT_DEVICE(at91sam9260_serial) = {
-	.name	= "serial_atmel",
-	.platdata = &at91sam9260_serial_plat,
-};

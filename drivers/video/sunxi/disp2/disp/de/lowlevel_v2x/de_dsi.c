@@ -1,27 +1,11 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_dsi.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "de_feat.h"
 #include "de_dsi_type.h"
 #include "de_dsi.h"
 
-#if defined(SUPPORT_DSI)
+#if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
 
-static volatile struct __de_dsi_dev_t *dsi_dev[DEVICE_DSI_NUM];
-static volatile struct __de_dsi_dphy_dev_t *dphy_dev[DEVICE_DSI_NUM];
+static volatile struct __de_dsi_dev_t *dsi_dev[2];
+static volatile struct __de_dsi_dphy_dev_t *dphy_dev[1];
 
 u32 dsi_pixel_bits[4] = { 24, 24, 18, 16 };
 u32 dsi_lane_den[4] = { 0x1, 0x3, 0x7, 0xf };
@@ -168,8 +152,7 @@ s32 dsi_start(u32 sel, enum __dsi_start_t func)
 	dsi_dev[sel]->dsi_basic_ctl0.bits.inst_st = 0;
 	dsi_dev[sel]->dsi_basic_ctl0.bits.inst_st = 1;
 	if (func == DSI_START_HSC)
-		dsi_dev[sel]->dsi_inst_func[DSI_INST_ID_LP11].bits.lane_cen =
-		    (dsi_dev[sel]->dsi_pixel_ctl0.bits.pd_plug_dis) ? 0 : 1;
+		dsi_dev[sel]->dsi_inst_func[DSI_INST_ID_LP11].bits.lane_cen = 0;
 
 	return 0;
 }
@@ -201,23 +184,6 @@ s32 dsi_close(u32 sel)
 	dphy_dev[sel]->dphy_ana1.bits.reg_vttmode =	1;
 	*/
 
-	return 0;
-}
-
-/**
- * @name       dsi_mode_switch
- * @brief      switch dsi mode between cmd and video mode
- * @param[IN]  sel: dsi module index; en:1-->video mode
- *             0--> cmd mode
- * @return     alway return 0
- */
-__s32 dsi_mode_switch(__u32 sel, __u32 cmd_en, __u32 lp_en)
-{
-	return 0;
-}
-
-__s32 dsi_gen_short_rd(__u32 sel, __u8 *para_p, __u8 para_num, __u8 *result)
-{
 	return 0;
 }
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * am35x.c - TI's AM35x platform specific usb wrapper functions.
  *
@@ -7,6 +6,8 @@
  * Based on drivers/usb/musb/da8xx.c
  *
  * Copyright (c) 2010 Texas Instruments Incorporated
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

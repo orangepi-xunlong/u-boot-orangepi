@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Ilya Yanok, Emcraft Systems
  *
  * Based on ti/evm/evm.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,9 +17,9 @@
 #include <asm/omap_gpio.h>
 #include <asm/arch/dss.h>
 #include <asm/arch/clock.h>
-#include <errno.h>
+#include "errno.h"
 #include <i2c.h>
-#ifdef CONFIG_USB_EHCI_HCD
+#ifdef CONFIG_USB_EHCI
 #include <usb.h>
 #include <asm/ehci-omap.h>
 #endif
@@ -32,7 +33,7 @@ DECLARE_GLOBAL_DATA_PTR;
 /* Address of the framebuffer in RAM. */
 #define FB_START_ADDRESS 0x88000000
 
-#ifdef CONFIG_USB_EHCI_HCD
+#ifdef CONFIG_USB_EHCI
 static struct omap_usbhs_board_data usbhs_bdata = {
 	.port_mode[0] = OMAP_EHCI_PORT_MODE_PHY,
 	.port_mode[1] = OMAP_USBHS_PORT_MODE_UNUSED,
@@ -82,7 +83,7 @@ int board_late_init(void)
 	if (gpio_get_value(HOT_WATER_BUTTON))
 		return 0;
 
-	env_set("bootcmd", "run swupdate");
+	setenv("bootcmd", "run swupdate");
 
 	return 0;
 }
@@ -99,7 +100,7 @@ void set_muxconf_regs(void)
 	MUX_MCX();
 }
 
-#if defined(CONFIG_MMC_OMAP_HS)
+#if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);

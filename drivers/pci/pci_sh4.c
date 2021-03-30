@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * SH4 PCI Controller (PCIC) for U-Boot.
  * (C) Dustin McIntire (dustin@sensoria.com)
@@ -6,6 +5,8 @@
  * (C) 2008 Yusuke Goda <goda.yusuke@renesas.com>
  *
  * u-boot/arch/sh/cpu/sh4/pci-sh4.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

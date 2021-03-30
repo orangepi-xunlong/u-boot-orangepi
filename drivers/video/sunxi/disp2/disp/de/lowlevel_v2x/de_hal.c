@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_hal.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "de_hal.h"
 
 static unsigned int g_device_fps[DE_NUM] = { 60 };
@@ -232,101 +216,8 @@ de_calc_overlay_scaler_para(unsigned int screen_id,
 	return 0;
 }
 
-int de_al_lyr_apply_direct_show(unsigned int screen_id,
-			struct disp_layer_config_data *data,
-			unsigned int layer_num, bool direct_show)
-{
-	unsigned int display_width, display_height;
-	unsigned int i;
-
-	if (!direct_show)
-		return 0;
-
-	de_rtmx_get_display_size(screen_id, &display_width, &display_height);
-
-	for (i = 0; i < layer_num; i++, data++) {
-		struct disp_rect64 *crop64;
-		struct disp_rect crop;
-		struct disp_rect frame;
-		struct disp_rect *screen_win;
-
-		if (!data->config.enable)
-			continue;
-
-		crop64 = &data->config.info.fb.crop;
-		screen_win = &data->config.info.screen_win;
-		crop.x = crop64->x >> VSU_FB_FRAC_BITWIDTH;
-		crop.y = crop64->y >> VSU_FB_FRAC_BITWIDTH;
-		crop.width = crop64->width >> VSU_FB_FRAC_BITWIDTH;
-		crop.height = crop64->height >> VSU_FB_FRAC_BITWIDTH;
-
-		frame.x = 0;
-		frame.y = 0;
-		/*
-		 * If source is larger than screen, crop the source.
-		 * And if source is smaller than screen,
-		 * make frame para center in the screen
-		 */
-		if (crop.width > display_width) {
-			crop.x = (crop.width - display_width) >> 1;
-			crop.width = display_width;
-			frame.x = 0;
-		} else {
-			crop.x = 0;
-			frame.x = (display_width - crop.width) >> 1;
-		}
-
-		if (crop.height > display_height) {
-			crop.y = (crop.height - display_height) >> 1;
-			crop.height = display_height;
-			frame.y = 0;
-		} else {
-			crop.y = 0;
-			crop.height = (crop.height >> 2) << 2;
-			frame.y = (display_height - crop.height) >> 1;
-		}
-
-		frame.width = crop.width;
-		frame.height = crop.height;
-
-		crop64->x = (long long)crop.x << VSU_FB_FRAC_BITWIDTH;
-		crop64->y = (long long)crop.y << VSU_FB_FRAC_BITWIDTH;
-		crop64->width = (unsigned long long)crop.width
-		    << VSU_FB_FRAC_BITWIDTH;
-		crop64->height = (unsigned long long)crop.height
-		    << VSU_FB_FRAC_BITWIDTH;
-		screen_win->x = frame.x;
-		screen_win->y = frame.y;
-		screen_win->width = frame.width;
-		screen_win->height = frame.height;
-	}
-
-	return 0;
-}
-
-static enum de_color_space __cs_transform(enum disp_color_space cs)
-{
-	enum de_color_space cs_inner;
-
-	switch (cs) {
-	case DISP_BT709:
-	case DISP_BT709_F:
-		cs_inner = DE_BT709;
-		break;
-	case DISP_BT601:
-	case DISP_BT601_F:
-		cs_inner = DE_BT601;
-		break;
-	default:
-		cs_inner = DE_BT601;
-		break;
-	}
-
-	return cs_inner;
-}
-
 int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
-		    unsigned int layer_num, bool direct_show)
+		    unsigned int layer_num)
 {
 	unsigned char i, j, k, chn, vi_chn, layno;
 	unsigned char haddr[LAYER_MAX_NUM_PER_CHN][3];
@@ -341,22 +232,19 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 	false}, chn_dirty[CHN_NUM] = {
 	false};
 	bool chn_is_yuv[CHN_NUM] = { false };
-	enum de_color_space cs[CHN_NUM];
+	enum disp_color_space cs[CHN_NUM];
 	unsigned char layer_zorder[CHN_NUM] = { 0 }, chn_index;
 	unsigned char pipe_used[CHN_NUM] = { 0 };
 	unsigned int pipe_sel[CHN_NUM] = { 0 };
 	struct de_rect pipe_rect[CHN_NUM] = { {0} };
 	struct disp_rect dispsize[CHN_NUM] = { {0} };
 	struct disp_layer_config_data *data1;
-	unsigned int color = 0xff000000;
-
 	data1 = data;
 
 	chn = de_feat_get_num_chns(screen_id);
 	vi_chn = de_feat_get_num_vi_chns(screen_id);
 	layno = LAYER_MAX_NUM_PER_CHN;
 
-	de_al_lyr_apply_direct_show(screen_id, data, layer_num, direct_show);
 	/* parse zorder of channel */
 	data1 = data;
 	for (i = 0; i < layer_num; i++) {
@@ -365,8 +253,8 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 			if (data1->config.info.fb.format >=
 			    DISP_FORMAT_YUV444_I_AYUV) {
 				chn_is_yuv[data1->config.channel] = true;
-				cs[data1->config.channel] = __cs_transform(
-				    data1->config.info.fb.color_space);
+				cs[data1->config.channel] =
+				    data1->config.info.fb.color_space;
 			}
 			if (data1->flag)
 				chn_dirty[data1->config.channel] = true;
@@ -427,9 +315,8 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 	for (j = 0, k = 0; j < vi_chn; j++) {
 		format[j] = 0;
 		for (i = 0; i < layno; i++) {
-			if ((data[k].config.enable == 1) &&
-			    (data[k].config.info.fb.format >=
-			     DISP_FORMAT_YUV422_I_YVYU))
+			if (data[k].config.info.fb.format >=
+			    DISP_FORMAT_YUV422_I_YVYU)
 				format[j] = data[k].config.info.fb.format;
 			k++;
 		}
@@ -442,37 +329,20 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 
 	for (j = 0; j < vi_chn; j++) {
 		if (chn_used[j]) {
-			struct disp_csc_config csc_cfg;
-
-			/*
-			 * We need to disable csc function when on direct show,
-			 * And  to enable csc function if needed otherwise.
-			 * When the input format of csc module is the same width
-			 * the output, the csc function will be disable.
+			/* de_fcc_csc_set(screen_id, j,
+			 * chn_is_yuv[j], 0); mode: FIXME
 			 */
-			if (direct_show) {
-				csc_cfg.in_fmt = DE_YUV;
-				csc_cfg.in_mode = DE_BT601;
-				csc_cfg.out_fmt = DE_YUV;
-				csc_cfg.out_mode = DE_BT601;
-
-				color = (16 << 16) | (128 << 8) | (128 << 0);
-			} else {
-				csc_cfg.in_fmt = (chn_is_yuv[j]) ?
-				    DE_YUV : DE_RGB;
-				csc_cfg.in_mode = cs[j];
-				csc_cfg.out_fmt = DE_RGB;
-				csc_cfg.out_mode = DE_BT601;
-
-				color = 0;
-			}
+			struct disp_csc_config csc_cfg;
+			csc_cfg.in_fmt = (chn_is_yuv[j]) ? DE_YUV : DE_RGB;
+			csc_cfg.in_mode = cs[j];
+			csc_cfg.out_fmt = DE_RGB;
+			csc_cfg.out_mode = DISP_BT601;
 			csc_cfg.out_color_range = DISP_COLOR_RANGE_0_255;
 			csc_cfg.brightness = 50;
 			csc_cfg.contrast = 50;
 			csc_cfg.saturation = 50;
 			csc_cfg.hue = 50;
 			de_ccsc_apply(screen_id, j, &csc_cfg);
-			de_rtmx_set_blend_color(screen_id, j, color);
 		}
 	}
 
@@ -625,7 +495,7 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 		__inf("sel=%d, pipe_rect[%d]=<%d,%d,%d,%d>\n", screen_id, i,
 		      pipe_rect[i].x, pipe_rect[i].y, pipe_rect[i].w,
 		      pipe_rect[i].h);
-		de_rtmx_set_pipe_cfg(screen_id, i, color, pipe_rect[i]);
+		de_rtmx_set_pipe_cfg(screen_id, i, 0xff000000, pipe_rect[i]);
 		de_rtmx_set_route(screen_id, i, pipe_sel[i]);
 		de_rtmx_set_premul(screen_id, i, premode[i]);
 	}
@@ -641,31 +511,10 @@ int de_al_lyr_apply(unsigned int screen_id, struct disp_layer_config_data *data,
 	return 0;
 }
 
-int de_al_mgr_apply_color(unsigned int screen_id, struct disp_csc_config *cfg)
-{
-	struct disp_csc_config csc_cfg;
-
-	de_rtmx_set_background_color(screen_id, cfg->color);
-
-	de_dcsc_get_config(screen_id, &csc_cfg);
-	csc_cfg.in_fmt = DISP_CSC_TYPE_RGB;
-	csc_cfg.in_mode = DE_BT601;
-
-	csc_cfg.out_fmt = cfg->out_fmt;
-	csc_cfg.out_mode = cfg->out_mode;
-	csc_cfg.out_color_range = cfg->out_color_range;
-	csc_cfg.brightness = 50;
-	csc_cfg.contrast = 50;
-	csc_cfg.saturation = 50;
-	csc_cfg.hue = 50;
-	de_dcsc_apply(screen_id, &csc_cfg);
-
-	return 0;
-}
-
 int de_al_mgr_apply(unsigned int screen_id, struct disp_manager_data *data)
 {
 	struct disp_csc_config csc_cfg;
+	struct disp_csc_config csc_cfg_temp;
 	int color =
 	    (data->config.back_color.alpha << 24) | (data->config.back_color.
 						     red << 16)
@@ -674,20 +523,8 @@ int de_al_mgr_apply(unsigned int screen_id, struct disp_manager_data *data)
 
 	g_de_blank[screen_id] = data->config.blank;
 
-	if ((data->flag & MANAGER_ENABLE_DIRTY)
-	    || (data->flag & MANAGER_COLOR_SPACE_DIRTY)) {
-		csc_cfg.color = color;
-		csc_cfg.out_fmt =
-		    (DISP_CSC_TYPE_RGB == data->config.cs) ? DE_RGB : DE_YUV;
-		if ((data->config.size.width < 1280)
-		    && (data->config.size.height < 720))
-			csc_cfg.out_mode = DE_BT601;
-		else
-			csc_cfg.out_mode = DE_BT709;
-		csc_cfg.out_color_range = data->config.color_range;
-		de_al_mgr_apply_color(screen_id, &csc_cfg);
-	}
-
+	if (data->flag & MANAGER_BACK_COLOR_DIRTY)
+		de_rtmx_set_background_color(screen_id, color);
 	if (data->flag & MANAGER_SIZE_DIRTY) {
 		de_rtmx_set_blend_size(screen_id, data->config.size.width,
 				       data->config.size.height);
@@ -700,6 +537,27 @@ int de_al_mgr_apply(unsigned int screen_id, struct disp_manager_data *data)
 		de_rtmx_mux(screen_id, data->config.hwdev_index);
 #endif
 		de_rtmx_set_outitl(screen_id, data->config.interlace);
+	}
+
+	if (data->flag & MANAGER_COLOR_SPACE_DIRTY) {
+		de_dcsc_get_config(screen_id, &csc_cfg_temp);
+		csc_cfg.enhance_mode = csc_cfg_temp.enhance_mode;
+		csc_cfg.in_fmt = DISP_CSC_TYPE_RGB;
+		csc_cfg.in_mode = DISP_BT601;
+
+		csc_cfg.out_fmt =
+		    (DISP_CSC_TYPE_RGB == data->config.cs) ? DE_RGB : DE_YUV;
+		if ((data->config.size.width < 1280)
+		    && (data->config.size.height < 720))
+			csc_cfg.out_mode = DISP_BT601;
+		else
+			csc_cfg.out_mode = DISP_BT709;
+		csc_cfg.out_color_range = data->config.color_range;
+		csc_cfg.brightness = 50;
+		csc_cfg.contrast = 50;
+		csc_cfg.saturation = 50;
+		csc_cfg.hue = 50;
+		de_dcsc_apply(screen_id, &csc_cfg);
 	}
 
 	return 0;

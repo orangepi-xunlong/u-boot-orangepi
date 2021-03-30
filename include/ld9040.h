@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * ld9040 AMOLED LCD panel driver.
  *
  * Copyright (C) 2012 Samsung Electronics
  * Donghwa Lee <dh09.lee@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LD9040_H_

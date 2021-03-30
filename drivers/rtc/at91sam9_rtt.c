@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Reinhard Meyer, reinhard.meyer@emk-elektronik.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -22,7 +23,7 @@
 #include <command.h>
 #include <rtc.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_rtt.h>
 #include <asm/arch/at91_gpbr.h>
@@ -43,7 +44,7 @@ int rtc_get (struct rtc_time *tmp)
 	} while (tim!=tim2);
 	off = readl(&gpbr->reg[AT91_GPBR_INDEX_TIMEOFF]);
 	/* off==0 means time is invalid, but we ignore that */
-	rtc_to_tm(tim+off, tmp);
+	to_tm (tim+off, tmp);
 	return 0;
 }
 
@@ -53,7 +54,8 @@ int rtc_set (struct rtc_time *tmp)
 	at91_gpbr_t *gpbr = (at91_gpbr_t *) ATMEL_BASE_GPBR;
 	ulong tim;
 
-	tim = rtc_mktime(tmp);
+	tim = mktime (tmp->tm_year, tmp->tm_mon, tmp->tm_mday,
+		      tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
 
 	/* clear alarm, set prescaler to 32768, clear counter */
 	writel(32768+AT91_RTT_RTTRST, &rtt->mr);

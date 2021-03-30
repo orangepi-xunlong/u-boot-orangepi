@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- *  U-Boot - x86 Startup Code
+ *  U-boot - x86 Startup Code
  *
  * (C) Copyright 2008-2011
  * Graeme Russ, <graeme.russ@gmail.com>
  *
  * (C) Copyright 2002,2003
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/global_data.h>
@@ -20,16 +21,18 @@
 .code16
 .globl start16
 start16:
-	/* Save BIST */
-	movl	%eax, %ecx
-
 	/* Set the Cold Boot / Hard Reset flag */
 	movl	$GD_FLG_COLD_BOOT, %ebx
 
-	xorl	%eax, %eax
-	movl	%eax, %cr3	/* Invalidate TLB */
+	/*
+	 * First we let the BSP do some early initialization
+	 * this code have to map the flash to its final position
+	 */
+	jmp	board_init16
+.globl board_init16_ret
+board_init16_ret:
 
-	/* Turn off cache (this might require a 486-class CPU) */
+	/* Turn of cache (this might require a 486-class CPU) */
 	movl	%cr0, %eax
 	orl	$(X86_CR0_NW | X86_CR0_CD), %eax
 	movl	%eax, %cr0
@@ -47,11 +50,9 @@ o32 cs	lgdt	gdt_ptr
 	/* Flush the prefetch queue */
 	jmp	ff
 ff:
-
-	/* Finally restore BIST and jump to the 32-bit initialization code */
+	/* Finally jump to the 32bit initialization code */
 	movw	$code32start, %ax
 	movw	%ax, %bp
-	movl	%ecx, %eax
 o32 cs	ljmp	*(%bp)
 
 	/* 48-bit far pointer */
@@ -63,19 +64,18 @@ idt_ptr:
 	.word	0		/* limit */
 	.long	0		/* base */
 
-	/*
-	 * The following Global Descriptor Table is just enough to get us into
-	 * 'Flat Protected Mode' - It will be discarded as soon as the final
-	 * GDT is setup in a safe location in RAM
-	 */
+/*
+ * The following Global Descriptor Table is just enough to get us into
+ * 'Flat Protected Mode' - It will be discarded as soon as the final
+ * GDT is setup in a safe location in RAM
+ */
 gdt_ptr:
-	.word	0x1f		/* limit (31 bytes = 4 GDT entries - 1) */
-	.long	BOOT_SEG + gdt_rom	/* base */
+	.word	0x20		/* limit (32 bytes = 4 GDT entries) */
+	.long	BOOT_SEG + gdt	/* base */
 
-	/* Some CPUs are picky about GDT alignment... */
-	.align	16
-.globl gdt_rom
-gdt_rom:
+/* Some CPUs are picky about GDT alignment... */
+.align 16
+gdt:
 	/*
 	 * The GDT table ...
 	 *

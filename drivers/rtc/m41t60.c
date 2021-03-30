@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Larry Johnson, lrj@acm.org
@@ -7,6 +6,8 @@
  *
  * (C) Copyright 2002
  * Andrew May, Viasat Inc, amay@viasat.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -199,7 +200,7 @@ int rtc_set(struct rtc_time *tmp)
 void rtc_reset(void)
 {
 	uchar *const data = rtc_validate();
-	char const *const s = env_get("rtccal");
+	char const *const s = getenv("rtccal");
 
 	if (!data)
 		return;

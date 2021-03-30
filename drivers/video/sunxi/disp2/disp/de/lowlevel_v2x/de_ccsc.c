@@ -1,19 +1,13 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_ccsc.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+/******************************************************************************
+*All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+*
+*File name   :de_ccsc.c
+*
+*Description :display engine 2.0 channel csc basic function definition
+*
+*History     :2014/05/16  vito cheng  v0.1  Initial version
+******************************************************************************/
+
 #include "de_rtmx.h"
 #include "de_csc_type.h"
 #include "de_vep_table.h"
@@ -22,11 +16,7 @@
 
 #define CCSC00_OFST	0xAA050
 /* device0 channel0 (or device1 channel0 support vep) */
-#if defined(CONFIG_MACH_SUN8IW17)
-#define CCSC01_OFST 0xF0000
-#else
 #define CCSC01_OFST 0xFA050
-#endif /*endif CONFIG_MACH_SUN8IW17 */
 /* device0 channel1 (or device1 channel1 support vep) */
 #define CCSC10_OFST 0xA0000
 /* device1 channel0 not support vep */

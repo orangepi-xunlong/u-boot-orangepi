@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_core.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __HDMI_CORE_H__
 #define __HDMI_CORE_H__
 
@@ -40,18 +24,7 @@
 #define HDMI3840_2160P_30   (1+0x100)
 #define HDMI3840_2160P_25   (2+0x100)
 #define HDMI3840_2160P_24   (3+0x100)
-#define HDMI4096_2160P_24   (4+0x100)
 #define HDMI_EDID_LEN 1024
-
-#define HDMI1280_1024       (1+0x110)
-#define HDMI1024_768        (2+0x110)
-#define HDMI900_540         (3+0x110)
-#define HDMI1920_720        (4 + 0x110)
-
-#define HDMI_DT0             (0 + 0x120)
-#define HDMI_DT1             (1 + 0x120)
-#define HDMI_DT2             (2 + 0x120)
-#define HDMI_DT3             (3 + 0x120)
 
 #define HDMI_State_Idle 			 0x00
 #define HDMI_State_Wait_Hpd			 0x02
@@ -86,7 +59,6 @@ typedef struct audio_timing
     s32   CH_STATUS1;
 }HDMI_AUDIO_INFO;
 
-extern s32 hdmi_get_work_mode(void);
 extern s32 hdmi_core_initial(bool sw_only);
 extern void hdmi_core_exit(void);
 extern void hdmi_core_set_base_addr(uintptr_t base_addr);
@@ -126,7 +98,6 @@ extern u32 is_exp;
 extern void hdmi_delay_ms(unsigned long ms);
 extern void hdmi_delay_us(unsigned long us);
 extern unsigned int hdmi_get_soc_version(void);
-extern unsigned int hdmi_clk_get_div(void);
-s32 hdmi_core_get_supported_vic(int init_vic);
+
 #endif
 

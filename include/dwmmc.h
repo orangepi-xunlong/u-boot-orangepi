@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012 SAMSUNG Electronics
  * Jaehoon Chung <jh80.chung@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DWMMC_HW_H
@@ -104,8 +105,6 @@
 
 /* Status Register */
 #define DWMCI_BUSY		(1 << 9)
-#define DWMCI_FIFO_MASK		0x1fff
-#define DWMCI_FIFO_SHIFT	17
 
 /* FIFOTH Register */
 #define MSIZE(x)		((x) << 28)
@@ -130,24 +129,8 @@
 /* quirks */
 #define DWMCI_QUIRK_DISABLE_SMU		(1 << 0)
 
-/**
- * struct dwmci_host - Information about a designware MMC host
- *
- * @name:	Device name
- * @ioaddr:	Base I/O address of controller
- * @quirks:	Quick flags - see DWMCI_QUIRK_...
- * @caps:	Capabilities - see MMC_MODE_...
- * @bus_hz:	Bus speed in Hz, if @get_mmc_clk() is NULL
- * @div:	Arbitrary clock divider value for use by controller
- * @dev_index:	Arbitrary device index for use by controller
- * @dev_id:	Arbitrary device ID for use by controller
- * @buswidth:	Bus width in bits (8 or 4)
- * @fifoth_val:	Value for FIFOTH register (or 0 to leave unset)
- * @mmc:	Pointer to generic MMC structure for this device
- * @priv:	Private pointer for use by controller
- */
 struct dwmci_host {
-	const char *name;
+	char *name;
 	void *ioaddr;
 	unsigned int quirks;
 	unsigned int caps;
@@ -158,33 +141,15 @@ struct dwmci_host {
 	int dev_index;
 	int dev_id;
 	int buswidth;
+	u32 clksel_val;
 	u32 fifoth_val;
 	struct mmc *mmc;
-	void *priv;
 
 	void (*clksel)(struct dwmci_host *host);
 	void (*board_init)(struct dwmci_host *host);
+	unsigned int (*get_mmc_clk)(struct dwmci_host *host);
 
-	/**
-	 * Get / set a particular MMC clock frequency
-	 *
-	 * This is used to request the current clock frequency of the clock
-	 * that drives the DWMMC peripheral. The caller will then use this
-	 * information to work out the divider it needs to achieve the
-	 * required MMC bus clock frequency. If you want to handle the
-	 * clock external to DWMMC, use @freq to select the frequency and
-	 * return that value too. Then DWMMC will put itself in bypass mode.
-	 *
-	 * @host:	DWMMC host
-	 * @freq:	Frequency the host is trying to achieve
-	 */
-	unsigned int (*get_mmc_clk)(struct dwmci_host *host, uint freq);
-#ifndef CONFIG_BLK
 	struct mmc_config cfg;
-#endif
-
-	/* use fifo mode to read and write data */
-	bool fifo_mode;
 };
 
 struct dwmci_idmac {
@@ -192,7 +157,7 @@ struct dwmci_idmac {
 	u32 cnt;
 	u32 addr;
 	u32 next_addr;
-} __aligned(ARCH_DMA_MINALIGN);
+};
 
 static inline void dwmci_writel(struct dwmci_host *host, int reg, u32 val)
 {
@@ -223,77 +188,5 @@ static inline u8 dwmci_readb(struct dwmci_host *host, int reg)
 	return readb(host->ioaddr + reg);
 }
 
-#ifdef CONFIG_BLK
-/**
- * dwmci_setup_cfg() - Set up the configuration for DWMMC
- *
- * This is used to set up a DWMMC device when you are using CONFIG_BLK.
- *
- * This should be called from your MMC driver's probe() method once you have
- * the information required.
- *
- * Generally your driver will have a platform data structure which holds both
- * the configuration (struct mmc_config) and the MMC device info (struct mmc).
- * For example:
- *
- * struct rockchip_mmc_plat {
- *	struct mmc_config cfg;
- *	struct mmc mmc;
- * };
- *
- * ...
- *
- * Inside U_BOOT_DRIVER():
- *	.platdata_auto_alloc_size = sizeof(struct rockchip_mmc_plat),
- *
- * To access platform data:
- *	struct rockchip_mmc_plat *plat = dev_get_platdata(dev);
- *
- * See rockchip_dw_mmc.c for an example.
- *
- * @cfg:	Configuration structure to fill in (generally &plat->mmc)
- * @host:	DWMMC host
- * @max_clk:	Maximum supported clock speed in HZ (e.g. 150000000)
- * @min_clk:	Minimum supported clock speed in HZ (e.g. 400000)
- */
-void dwmci_setup_cfg(struct mmc_config *cfg, struct dwmci_host *host,
-		u32 max_clk, u32 min_clk);
-
-/**
- * dwmci_bind() - Set up a new MMC block device
- *
- * This is used to set up a DWMMC block device when you are using CONFIG_BLK.
- * It should be called from your driver's bind() method.
- *
- * See rockchip_dw_mmc.c for an example.
- *
- * @dev:	Device to set up
- * @mmc:	Pointer to mmc structure (normally &plat->mmc)
- * @cfg:	Empty configuration structure (generally &plat->cfg). This is
- *		normally all zeroes at this point. The only purpose of passing
- *		this in is to set mmc->cfg to it.
- * @return 0 if OK, -ve if the block device could not be created
- */
-int dwmci_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg);
-
-#else
-/**
- * add_dwmci() - Add a new DWMMC interface
- *
- * This is used when you are not using CONFIG_BLK. Convert your driver over!
- *
- * @host:	DWMMC host structure
- * @max_clk:	Maximum supported clock speed in HZ (e.g. 150000000)
- * @min_clk:	Minimum supported clock speed in HZ (e.g. 400000)
- * @return 0 if OK, -ve on error
- */
 int add_dwmci(struct dwmci_host *host, u32 max_clk, u32 min_clk);
-#endif /* !CONFIG_BLK */
-
-#ifdef CONFIG_DM_MMC
-/* Export the operations to drivers */
-int dwmci_probe(struct udevice *dev);
-extern const struct dm_mmc_ops dm_dwmci_ops;
-#endif
-
 #endif	/* __DWMMC_HW_H */

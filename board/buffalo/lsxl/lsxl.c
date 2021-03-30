@@ -1,24 +1,23 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012 Michael Walle
  * Michael Walle <michael@walle.cc>
  *
  * Based on sheevaplug/sheevaplug.c by
  *   Marvell Semiconductor <www.marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <environment.h>
 #include <net.h>
 #include <malloc.h>
 #include <netdev.h>
 #include <miiphy.h>
-#include <spi.h>
-#include <spi_flash.h>
-#include <asm/arch/soc.h>
+#include <asm/arch/kirkwood.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/gpio.h>
+#include <spi_flash.h>
 
 #include "lsxl.h"
 
@@ -52,9 +51,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the below configuration configures mainly initial LED status
 	 */
-	mvebu_config_gpio(LSXL_OE_VAL_LOW,
-			  LSXL_OE_VAL_HIGH,
-			  LSXL_OE_LOW, LSXL_OE_HIGH);
+	kw_config_gpio(LSXL_OE_VAL_LOW,
+			LSXL_OE_VAL_HIGH,
+			LSXL_OE_LOW, LSXL_OE_HIGH);
 
 	/*
 	 * Multi-Purpose Pins Functionality configuration
@@ -168,7 +167,7 @@ static void set_led(int state)
 int board_init(void)
 {
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
 
 	set_led(LED_POWER_BLINKING);
 
@@ -203,7 +202,7 @@ void check_enetaddr(void)
 {
 	uchar enetaddr[6];
 
-	if (!eth_env_get_enetaddr("ethaddr", enetaddr)) {
+	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
 		/* signal unset/invalid ethaddr to user */
 		set_led(LED_INFO_BLINKING);
 	}
@@ -227,8 +226,20 @@ static void erase_environment(void)
 
 static void rescue_mode(void)
 {
+	uchar enetaddr[6];
+
 	printf("Entering rescue mode..\n");
-	env_set("bootsource", "rescue");
+#ifdef CONFIG_RANDOM_MACADDR
+	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
+		eth_random_addr(enetaddr);
+		if (eth_setenv_enetaddr("ethaddr", enetaddr)) {
+			printf("Failed to set ethernet address\n");
+				set_led(LED_ALARM_BLINKING);
+			return;
+		}
+	}
+#endif
+	setenv("bootsource", "rescue");
 }
 
 static void check_push_button(void)

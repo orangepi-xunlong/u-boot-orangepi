@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2010,2011 NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,7 +10,9 @@
 #include <asm/io.h>
 #include <i2c.h>
 
-static struct udevice *tps6586x_dev;
+static int bus_num;		/* I2C bus we are on */
+#define I2C_ADDRESS		0x34	/* chip requires this address */
+static char inited;		/* 1 if we have been inited */
 
 enum {
 	/* Registers that we access */
@@ -34,9 +37,13 @@ static int tps6586x_read(int reg)
 	int	i;
 	uchar	data;
 	int	retval = -1;
+	int	old_bus_num;
+
+	old_bus_num = i2c_get_bus_num();
+	i2c_set_bus_num(bus_num);
 
 	for (i = 0; i < MAX_I2C_RETRY; ++i) {
-		if (!dm_i2c_read(tps6586x_dev, reg,  &data, 1)) {
+		if (!i2c_read(I2C_ADDRESS, reg, 1, &data, 1)) {
 			retval = (int)data;
 			goto exit;
 		}
@@ -46,6 +53,7 @@ static int tps6586x_read(int reg)
 	}
 
 exit:
+	i2c_set_bus_num(old_bus_num);
 	debug("pmu_read %x=%x\n", reg, retval);
 	if (retval < 0)
 		debug("%s: failed to read register %#x: %d\n", __func__, reg,
@@ -57,9 +65,13 @@ static int tps6586x_write(int reg, uchar *data, uint len)
 {
 	int	i;
 	int	retval = -1;
+	int	old_bus_num;
+
+	old_bus_num = i2c_get_bus_num();
+	i2c_set_bus_num(bus_num);
 
 	for (i = 0; i < MAX_I2C_RETRY; ++i) {
-		if (!dm_i2c_write(tps6586x_dev, reg, data, len)) {
+		if (!i2c_write(I2C_ADDRESS, reg, 1, data, len)) {
 			retval = 0;
 			goto exit;
 		}
@@ -69,6 +81,7 @@ static int tps6586x_write(int reg, uchar *data, uint len)
 	}
 
 exit:
+	i2c_set_bus_num(old_bus_num);
 	debug("pmu_write %x=%x: ", reg, retval);
 	for (i = 0; i < len; i++)
 		debug("%x ", data[i]);
@@ -96,14 +109,14 @@ static int read_voltages(int *sm0, int *sm1)
 	ctrl1 = tps6586x_read(SUPPLY_CONTROL1);
 	ctrl2 = tps6586x_read(SUPPLY_CONTROL2);
 	if (ctrl1 == -1 || ctrl2 == -1)
-		return -ENOTSUPP;
+		return -1;
 
 	/* Figure out whether V1 or V2 is selected */
 	is_v2 = (ctrl1 | ctrl2) & CTRL_SM0_SUPPLY2;
 	*sm0 = tps6586x_read(is_v2 ? SM0_VOLTAGE_V2 : SM0_VOLTAGE_V1);
 	*sm1 = tps6586x_read(is_v2 ? SM1_VOLTAGE_V2 : SM1_VOLTAGE_V1);
 	if (*sm0 == -1 || *sm1 == -1)
-		return -ENOTSUPP;
+		return -1;
 
 	return 0;
 }
@@ -128,7 +141,7 @@ static int set_voltage(int reg, int data, int rate)
 	/* write v1, v2 and rate, then trigger */
 	if (tps6586x_write(reg, buff, 3) ||
 	    tps6586x_write(SUPPLY_CONTROL1, &control_bit, 1))
-		return -ENOTSUPP;
+		return -1;
 
 	return 0;
 }
@@ -150,7 +163,7 @@ int tps6586x_set_pwm_mode(int mask)
 	uchar val;
 	int ret;
 
-	assert(tps6586x_dev);
+	assert(inited);
 	ret = tps6586x_read(PFM_MODE);
 	if (ret != -1) {
 		val = (uchar)ret;
@@ -171,12 +184,12 @@ int tps6586x_adjust_sm0_sm1(int sm0_target, int sm1_target, int step, int rate,
 	int sm0, sm1;
 	int bad;
 
-	assert(tps6586x_dev);
+	assert(inited);
 
 	/* get current voltage settings */
 	if (read_voltages(&sm0, &sm1)) {
 		debug("%s: Cannot read voltage settings\n", __func__);
-		return -EINVAL;
+		return -1;
 	}
 
 	/*
@@ -188,7 +201,7 @@ int tps6586x_adjust_sm0_sm1(int sm0_target, int sm1_target, int step, int rate,
 	if (min_sm0_over_sm1 != -1 && sm0 < sm1 + min_sm0_over_sm1) {
 		debug("%s: SM0 is %d, SM1 is %d, but min_sm0_over_sm1 is %d\n",
 		      __func__, sm0, sm1, min_sm0_over_sm1);
-		return -EINVAL;
+		return -1;
 	}
 
 	/*
@@ -239,12 +252,13 @@ int tps6586x_adjust_sm0_sm1(int sm0_target, int sm1_target, int step, int rate,
 	}
 	debug("%d-%d   %d-%d   done\n", sm0, sm0_target, sm1, sm1_target);
 
-	return bad ? -EINVAL : 0;
+	return bad ? -1 : 0;
 }
 
-int tps6586x_init(struct udevice *dev)
+int tps6586x_init(int bus)
 {
-	tps6586x_dev = dev;
+	bus_num = bus;
+	inited = 1;
 
 	return 0;
 }

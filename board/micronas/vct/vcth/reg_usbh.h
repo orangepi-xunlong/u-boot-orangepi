@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009 Stefan Roese <sr@denx.de>, DENX Software Engineering
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #define USBH_BASE		0x00080000

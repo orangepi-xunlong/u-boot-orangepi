@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __TRACE_H
@@ -88,7 +89,14 @@ int trace_list_calls(void *buff, int buff_size, unsigned int *needed);
  */
 void trace_set_enabled(int enabled);
 
+#ifdef CONFIG_TRACE_EARLY
 int trace_early_init(void);
+#else
+static inline int trace_early_init(void)
+{
+	return 0;
+}
+#endif
 
 /**
  * Init the trace system

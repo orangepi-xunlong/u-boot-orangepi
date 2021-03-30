@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -23,7 +24,7 @@
 
 #include "../common/ngpixis.h"
 #include "../common/fman.h"
-#include <fsl_dtsec.h>
+#include <asm/fsl_dtsec.h>
 
 #define EMI_NONE	0xffffffff
 #define EMI_MASK	0xf0000000

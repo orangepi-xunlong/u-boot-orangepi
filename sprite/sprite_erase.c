@@ -24,167 +24,181 @@
 #include <config.h>
 #include <common.h>
 #include <sunxi_mbr.h>
-#include <sunxi_nand.h>
-#include <sunxi_flash.h>
-#include <sunxi_board.h>
-#include <malloc.h>
-#include <sprite_verify.h>
-#include <part_efi.h>
-#include <fdt_support.h>
-#include <securestorage.h>
+#include <sys_config.h>
 #include "sprite_privatedata.h"
-#include <nand.h>
-#include <sprite_download.h>
-
-DECLARE_GLOBAL_DATA_PTR;
-
-int sunxi_sprite_erase_flash(void *img_mbr_buffer)
+#include "sprite_verify.h"
+#include <securestorage.h>
+#include <fdt_support.h>
+#include <sys_config_old.h>
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
+int sunxi_sprite_erase_flash(void  *img_mbr_buffer)
 {
-
-	int nodeoffset;
 	uint32_t need_erase_flag = 0;
-	int mbr_num = SUNXI_MBR_COPY_NUM;
 	char buf[SUNXI_MBR_SIZE * SUNXI_MBR_COPY_NUM];
+	//int  ret;
+	//int nodeoffset;
+    
 
-	/* nand will erase boot block at this stage */
-	if (sunxi_sprite_erase(0, img_mbr_buffer) > 0) {
+	if(sunxi_sprite_erase(0, img_mbr_buffer) > 0)
+	{
 		printf("flash already erased\n");
 		return 0;
 	}
+	//获取擦除信息，查看是否需要擦除flash
+	script_parser_fetch("platform", "eraseflag", (int *)&need_erase_flag, 1);
+	//nodeoffset =  fdt_path_offset(working_fdt,FDT_PATH_PLATFORM);
+	//if(nodeoffset > 0)
+	//{
+	//	fdt_getprop_u32(working_fdt,nodeoffset,"eraseflag",&need_erase_flag);
+	//}
 
-	nodeoffset = fdt_path_offset (working_fdt,"/soc/platform" );
-	fdt_getprop_u32(working_fdt, nodeoffset, "eraseflag", &need_erase_flag);
-
-	printf("need erase flash: %d\n", need_erase_flag);
-
-	if (need_erase_flag == 0x12) {
-		sunxi_flash_force_erase();
-#if CONFIG_SUNXI_SECURE_STORAGE
-		sunxi_secure_storage_erase_all();
-#endif
-		return 0;
+	if(need_erase_flag)
+	{
+		printf("do need erase flash\n");
+	}
+	else
+	{
+		printf("not need erase flash\n");
 	}
 
-	if (need_erase_flag == 0x11) {
+	//当要求强制擦除，不处理私有数据
+	if(need_erase_flag == 0x11)
+	{
 		printf("force erase flash\n");
-		sunxi_flash_erase(1, img_mbr_buffer);
+		sunxi_sprite_erase(1, img_mbr_buffer);
+
 		return 0;
 	}
-
-	if (sunxi_sprite_init(1)) {
-		debug("sunxi sprite pre init fail, we have to erase it\n");
-		goto __ERROR_END;
-
-	}
-
-	if (get_boot_storage_type() == STORAGE_NOR)
-		mbr_num = 1;
-
-#ifdef CONFIG_SUNXI_UBIFS
-	if (nand_use_ubi()) {
-		ubi_nand_probe_uboot();
-		ubi_nand_attach_mtd();
-	}
-#endif
-
-	if (!sunxi_sprite_probe_prvt(img_mbr_buffer)) {
+	//检测不到private分区，即不用保护用户数据
+	if(!sunxi_sprite_probe_prvt(img_mbr_buffer))
+	{
 		printf("no part need to protect user data\n");
 		sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
-		sunxi_sprite_exit(1);
+
 		return 0;
 	}
+	//当初始化失败的时候，直接擦除，不处理私有数据
+	if(sunxi_sprite_init(1))
+	{
+		debug("sunxi sprite pre init fail, we have to erase it\n");
+		sunxi_sprite_exit(1);
+		sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
 
-	if (sunxi_sprite_read_mbr(buf,  mbr_num)) {
-		printf("read local mbr on flash failed\n");
-		goto __ERROR_END;
+		return 0;
 	}
+	debug("nand pre init ok\n");
+	//读出量产介质上的MBR
+	if(!sunxi_sprite_read(0, (SUNXI_MBR_SIZE * SUNXI_MBR_COPY_NUM)/512, buf))
+	{
+		printf("read local mbr on flash failed\n");
+		sunxi_sprite_exit(1);
+		sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
 
-	if (sunxi_sprite_verify_mbr(buf)) {
+		return 0;
+	}
+	//校验MBR
+	if(sunxi_sprite_verify_mbr(buf))
+	{
 		printf("the mbr on flash is bad\n");
-		goto __ERROR_END;
+		sunxi_sprite_exit(1);
+		sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
+
+		return 0;
 	}
 	printf("begin to store data\n");
-	if (sunxi_sprite_store_part_data(buf) < 0) {
+	if(sunxi_sprite_store_part_data(buf) < 0)
+	{
 		sunxi_sprite_exit(1);
+
 		return -1;
 	}
 	sunxi_sprite_exit(1);
-
+	printf("need_erase_flag = %d\n", need_erase_flag);
+	//开始擦除
 	printf("begin to erase\n");
 	sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
+	//开始回写private
 	printf("finish erase\n");
 	sunxi_sprite_init(0);
 	printf("rewrite\n");
-	sunxi_sprite_download_mbr(img_mbr_buffer, ALIGN(sizeof(sunxi_mbr_t) * mbr_num, CONFIG_SYS_CACHELINE_SIZE));
-	sunxi_flash_write_end();
+	if(sunxi_sprite_restore_part_data(img_mbr_buffer))
+    {
+    	sunxi_sprite_exit(0);
 
-	memset(buf, 0, SUNXI_MBR_SIZE * SUNXI_MBR_COPY_NUM);
-	if (sunxi_sprite_read_mbr(buf,  mbr_num)) {
-		printf("read local mbr on flash failed\n");
-		goto __ERROR_END;
-	}
-
-	if (sunxi_sprite_restore_part_data(buf)) {
-		sunxi_flash_write_end();
-		sunxi_sprite_exit(0);
-		return -1;
-	}
-	sunxi_flash_write_end();
+    	return -1;
+    }
 	printf("flash exit\n");
 	sunxi_sprite_exit(0);
 
-	return 0;
-__ERROR_END:
-	sunxi_sprite_exit(1);
-	sunxi_sprite_erase(need_erase_flag, img_mbr_buffer);
-	return 0;
+    return 0;
 }
 
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
 int sunxi_sprite_force_erase_key(void)
 {
 	char buf[SUNXI_MBR_SIZE * SUNXI_MBR_COPY_NUM];
-	int mbr_num = SUNXI_MBR_COPY_NUM;
-	int ret     = 0;
-
-	if (sunxi_sprite_init(1)) {
+	if(sunxi_sprite_init(1))
+	{
 		printf("sunxi sprite pre init fail\n");
 		return -1;
 	}
-
-	if (get_boot_storage_type() == STORAGE_NOR)
-		mbr_num = 1;
-
-	if (sunxi_sprite_read_mbr(buf, mbr_num)) {
+	//读出量产介质上的MBR
+	if(!sunxi_sprite_read(0, (SUNXI_MBR_SIZE * SUNXI_MBR_COPY_NUM)/512, buf))
+	{
 		printf("read local mbr on flash failed\n");
 		sunxi_sprite_exit(1);
+
 		return -1;
 	}
-
-	if (sunxi_sprite_verify_mbr(buf)) {
+	//校验MBR
+	if(sunxi_sprite_verify_mbr(buf))
+	{
 		printf("the mbr on flash is bad\n");
 		sunxi_sprite_exit(1);
+
 		return -1;
 	}
-
-	ret = sunxi_sprite_erase_private_key(buf);
-	if (ret) {
-		if (ret == -2) {
-			/*
-			 * private not exist, no private key
-			 * assume erase done, not failed
-			 */
-		} else {
-			printf("erase private key fail\n");
-			return -1;
-		}
+	if(sunxi_sprite_erase_private_key(buf))
+	{
+		printf("erase private key fail \n");
+		return -1;
 	}
-
 #ifdef CONFIG_SUNXI_SECURE_STORAGE
-	if (sunxi_secure_storage_init())
-		return -1;
-	if (sunxi_secure_storage_erase_all() == -1)
-		return -1;
+    if(sunxi_secure_storage_init())
+        return -1;	
+	if(sunxi_secure_storage_erase_all() == -1)
+        return -1;
 #endif
-	printf("erase key success\n");
+	printf("erase key success \n");
 	return 0;
 }

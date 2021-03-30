@@ -1,14 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  (C) Copyright 2010,2011
  *  NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
-#include <asm/mach-types.h>
 #include <asm/arch/tegra.h>
-#include <asm/arch-tegra/board.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch/gpio.h>
@@ -20,12 +19,14 @@
 void gpio_early_init_uart(void)
 {
 	/* Enable UART via GPIO_PI3 (port 8, bit 3) so serial console works */
-	gpio_request(TEGRA_GPIO(I, 3), "uart_en");
-	gpio_direction_output(TEGRA_GPIO(I, 3), 0);
+#ifndef CONFIG_SPL_BUILD
+	gpio_request(GPIO_PI3, NULL);
+#endif
+	gpio_direction_output(GPIO_PI3, 0);
 }
 #endif
 
-#ifdef CONFIG_MMC_SDHCI_TEGRA
+#ifdef CONFIG_TEGRA_MMC
 /*
  * Routine: pin_mux_mmc
  * Description: setup the pin muxes/tristate values for the SDMMC(s)
@@ -44,12 +45,6 @@ void pin_mux_mmc(void)
 
 void pin_mux_usb(void)
 {
-	/* For USB0's GPIO PD0. For now, since we have no pinmux in fdt */
+	/* For USB's GPIO PD0. For now, since we have no pinmux in fdt */
 	pinmux_tristate_disable(PMUX_PINGRP_SLXK);
-	/* For USB1's ULPI signals */
-	funcmux_select(PERIPH_ID_USB2, FUNCMUX_USB2_ULPI);
-	pinmux_set_func(PMUX_PINGRP_CDEV2, PMUX_FUNC_PLLP_OUT4);
-	pinmux_tristate_disable(PMUX_PINGRP_CDEV2);
-	/* USB1 PHY reset GPIO */
-	pinmux_tristate_disable(PMUX_PINGRP_UAC);
 }

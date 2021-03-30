@@ -41,12 +41,6 @@ extern "C" {
 
 struct jdec_private;
 
-/* default TINYJPEG_FMT_BGRA32 */
-#define TJ_SUPPORT_YUV420P	0
-#define TJ_SUPPORT_RGB24	0
-#define TJ_SUPPORT_BGR24	0
-#define TJ_SUPPORT_GREY		0
-
 /* Flags that can be set by any applications */
 #define TINYJPEG_FLAGS_MJPEG_TABLE	(1<<1)
 

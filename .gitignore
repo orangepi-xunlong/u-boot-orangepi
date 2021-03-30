@@ -30,12 +30,10 @@
 #
 # Top-level generic files
 #
-fit-dtb.blob
 /MLO*
-/SPL*
+/SPL
 /System.map
 /u-boot*
-/boards.cfg
 
 #
 # git files that we don't want to ignore even it they are dot-files
@@ -46,16 +44,21 @@ fit-dtb.blob
 #
 # Generated files
 #
+
 /LOG
+/errlog
+/reloc_off
+
 /spl/
 /tpl/
-/defconfig
 
 #
 # Generated include files
 #
 /include/config/
 /include/generated/
+/include/spl-autoconf.mk
+/include/tpl-autoconf.mk
 
 # stgit generated dirs
 patches-*
@@ -86,6 +89,8 @@ GTAGS
 *~
 \#*#
 
-# gcc code coverage files
-*.gcda
-*.gcno
+/cur.log
+
+# OrangePi external
+!sunxi_spl/fes_init/main/fes_init.lds
+sunxi_spl/boot0/boot0.lds

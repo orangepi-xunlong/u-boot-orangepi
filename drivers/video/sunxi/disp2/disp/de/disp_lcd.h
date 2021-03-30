@@ -1,25 +1,10 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_lcd.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #ifndef __DISP_LCD_H__
 #define __DISP_LCD_H__
 
 #include "disp_private.h"
 
-#define LCD_GPIO_NUM 8
+#define LCD_GPIO_NUM 6
 #define LCD_POWER_NUM 4
 #define LCD_POWER_STR_LEN 32
 #define LCD_GPIO_REGU_NUM 3
@@ -64,9 +49,5 @@ s32 disp_lcd_gpio_set_direction(struct disp_device* lcd, u32 io_index, u32 direc
 s32 disp_lcd_gpio_get_value(struct disp_device* lcd,u32 io_index);
 s32 disp_lcd_gpio_set_value(struct disp_device* lcd, u32 io_index, u32 data);
 s32 disp_lcd_is_enabled(struct disp_device* lcd);
-
-#if defined(SUPPORT_EINK) && defined(CONFIG_EINK_PANEL_USED)
-extern int diplay_finish_flag;
-#endif
 
 #endif

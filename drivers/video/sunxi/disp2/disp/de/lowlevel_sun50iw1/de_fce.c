@@ -1,20 +1,14 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_fce.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
-#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
+//*********************************************************************************************************************
+//  All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+//
+//  File name   :	de_fce.c
+//
+//  Description :	display engine 2.0 fce basic function definition
+//
+//  History     :	2014/04/01  vito cheng  v0.1  Initial version
+//					2014/04/25	vito cheng  v0.11 Add block updated function
+//*********************************************************************************************************************
+
 #include "de_fce_type.h"
 #include "de_rtmx.h"
 #include "de_enhance.h"
@@ -741,7 +735,12 @@ static void auto_bws_model(unsigned int width, unsigned int height, unsigned int
 		//printk("p_hist_data->hist_mean=%d blk0/1=%d/%d\n", p_hist_data->hist_mean, p_hist_data->black_thr0, p_hist_data->black_thr1);
 
 	    //bright
-	    if (p_hist_data->hist_mean > 16) {
+	    if (p_hist_data->hist_mean<=16)
+	    {
+			slope_black_lmt=slope_black_lmt;
+	    }
+	    else
+	    {
 			int step=slope_black_lmt-256;
 			if (step<0)
 				step=0;
@@ -988,4 +987,5 @@ int de_ce_tasklet(unsigned int screen_id, unsigned int chno, unsigned int frame_
 
 	return 0;
 }
-#endif
+
+

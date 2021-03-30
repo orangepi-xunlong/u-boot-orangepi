@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: LGPL-2.0+ */
 /*
  * Copyright 2008 Extreme Engineering Solutions, Inc.
+ *
+ * SPDX-License-Identifier:	LGPL-2.0+
  */
 
 #ifndef __MINGW_SUPPORT_H_

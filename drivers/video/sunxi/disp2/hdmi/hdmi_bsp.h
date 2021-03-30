@@ -1,29 +1,21 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/hdmi_bsp.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __HDMI_BSP_H_
 #define __HDMI_BSP_H_
 
-#include <compiler.h>
-#if defined(CONFIG_MACH_SUN50IW2)
+#if defined(CONFIG_ARCH_SUN50IW2P1)
 #define HDMI_USING_INNER_BIAS 1
 #endif
 
+#define LINUX_OS
+
+#if defined(__LIB__)
+#if defined(__ARM64__)
+#define uintptr_t unsigned long
+#else
+#define uintptr_t unsigned int
+#endif
 
 #define __iomem
+#endif
 typedef struct
 {
 	void (*delay_us) (unsigned long us);
@@ -44,26 +36,10 @@ enum color_space
 struct video_para
 {
 	unsigned int 			vic;
-	enum color_space		csc;
+	enum color_space	csc;
 	unsigned char			is_hdmi;
 	unsigned char			is_yuv;
 	unsigned char			is_hcts;
-	unsigned int    pixel_clk;
-	unsigned int    clk_div;
-	unsigned int    pixel_repeat;
-	unsigned int    x_res;
-	unsigned int    y_res;
-	unsigned int    hor_total_time;
-	unsigned int    hor_back_porch;
-	unsigned int    hor_front_porch;
-	unsigned int    hor_sync_time;
-	unsigned int    ver_total_time;
-	unsigned int    ver_back_porch;
-	unsigned int    ver_front_porch;
-	unsigned int    ver_sync_time;
-	unsigned int    hor_sync_polarity; /* 0: negative, 1: positive */
-	unsigned int    ver_sync_polarity; /* 0: negative, 1: positive */
-	unsigned int    b_interlace;
 };
 
 enum audio_type

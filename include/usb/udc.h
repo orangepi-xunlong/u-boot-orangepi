@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #ifndef USB_UDC_H
 #define USB_UDC_H
 
@@ -10,8 +12,8 @@
 #define EP_MAX_PACKET_SIZE	64
 #endif
 
-#if !defined(CONFIG_PPC)
-/* mpc8xx_udc.h will set these values */
+#if !defined(CONFIG_PPC) && !defined(CONFIG_OMAP1510)
+/* omap1510_udc.h and mpc8xx_udc.h will set these values */
 #define UDC_OUT_PACKET_SIZE     EP_MAX_PACKET_SIZE
 #define UDC_IN_PACKET_SIZE      EP_MAX_PACKET_SIZE
 #define UDC_INT_PACKET_SIZE     EP_MAX_PACKET_SIZE

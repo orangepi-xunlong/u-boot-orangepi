@@ -21,15 +21,10 @@
 #include <net.h>
 #include <netdev.h>
 #include <cpsw.h>
-#include <linux/errno.h>
-#include <asm/gpio.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 #include <phy.h>
 #include <asm/arch/cpu.h>
-#include <dm.h>
-#include <fdt_support.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define BITMASK(bits)		(BIT(bits) - 1)
 #define PHY_REG_MASK		0x1f
@@ -41,23 +36,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GIGABITEN		BIT(7)
 #define FULLDUPLEXEN		BIT(0)
 #define MIIEN			BIT(15)
-
-/* reg offset */
-#define CPSW_HOST_PORT_OFFSET	0x108
-#define CPSW_SLAVE0_OFFSET	0x208
-#define CPSW_SLAVE1_OFFSET	0x308
-#define CPSW_SLAVE_SIZE		0x100
-#define CPSW_CPDMA_OFFSET	0x800
-#define CPSW_HW_STATS		0x900
-#define CPSW_STATERAM_OFFSET	0xa00
-#define CPSW_CPTS_OFFSET	0xc00
-#define CPSW_ALE_OFFSET		0xd00
-#define CPSW_SLIVER0_OFFSET	0xd80
-#define CPSW_SLIVER1_OFFSET	0xdc0
-#define CPSW_BD_OFFSET		0x2000
-#define CPSW_MDIO_DIV		0xff
-
-#define AM335X_GMII_SEL_OFFSET	0x630
 
 /* DMA Registers */
 #define CPDMA_TXCONTROL		0x004
@@ -225,18 +203,6 @@ struct cpdma_chan {
 	void			*hdp, *cp, *rxfree;
 };
 
-/* AM33xx SoC specific definitions for the CONTROL port */
-#define AM33XX_GMII_SEL_MODE_MII	0
-#define AM33XX_GMII_SEL_MODE_RMII	1
-#define AM33XX_GMII_SEL_MODE_RGMII	2
-
-#define AM33XX_GMII_SEL_RGMII1_IDMODE	BIT(4)
-#define AM33XX_GMII_SEL_RGMII2_IDMODE	BIT(5)
-#define AM33XX_GMII_SEL_RMII1_IO_CLK_EN	BIT(6)
-#define AM33XX_GMII_SEL_RMII2_IO_CLK_EN	BIT(7)
-
-#define GMII_SEL_MODE_MASK		0x3
-
 #define desc_write(desc, fld, val)	__raw_writel((u32)(val), &(desc)->fld)
 #define desc_read(desc, fld)		__raw_readl(&(desc)->fld)
 #define desc_read_ptr(desc, fld)	((void *)__raw_readl(&(desc)->fld))
@@ -245,18 +211,12 @@ struct cpdma_chan {
 #define chan_read(chan, fld)		__raw_readl((chan)->fld)
 #define chan_read_ptr(chan, fld)	((void *)__raw_readl((chan)->fld))
 
-#define for_active_slave(slave, priv) \
-	slave = (priv)->slaves + (priv)->data.active_slave; if (slave)
 #define for_each_slave(slave, priv) \
 	for (slave = (priv)->slaves; slave != (priv)->slaves + \
 				(priv)->data.slaves; slave++)
 
 struct cpsw_priv {
-#ifdef CONFIG_DM_ETH
-	struct udevice			*dev;
-#else
 	struct eth_device		*dev;
-#endif
 	struct cpsw_platform_data	data;
 	int				host_port;
 
@@ -273,6 +233,7 @@ struct cpsw_priv {
 	struct phy_device		*phydev;
 	struct mii_dev			*bus;
 
+	u32				mdio_link;
 	u32				phy_mask;
 };
 
@@ -327,7 +288,7 @@ static inline void cpsw_ale_get_addr(u32 *ale_entry, u8 *addr)
 		addr[i] = cpsw_ale_get_field(ale_entry, 40 - 8*i, 8);
 }
 
-static inline void cpsw_ale_set_addr(u32 *ale_entry, const u8 *addr)
+static inline void cpsw_ale_set_addr(u32 *ale_entry, u8 *addr)
 {
 	int i;
 
@@ -359,7 +320,7 @@ static int cpsw_ale_write(struct cpsw_priv *priv, int idx, u32 *ale_entry)
 	return idx;
 }
 
-static int cpsw_ale_match_addr(struct cpsw_priv *priv, const u8 *addr)
+static int cpsw_ale_match_addr(struct cpsw_priv *priv, u8* addr)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS];
 	int type, idx;
@@ -412,7 +373,7 @@ static int cpsw_ale_find_ageable(struct cpsw_priv *priv)
 	return -ENOENT;
 }
 
-static int cpsw_ale_add_ucast(struct cpsw_priv *priv, const u8 *addr,
+static int cpsw_ale_add_ucast(struct cpsw_priv *priv, u8 *addr,
 			      int port, int flags)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
@@ -437,8 +398,7 @@ static int cpsw_ale_add_ucast(struct cpsw_priv *priv, const u8 *addr,
 	return 0;
 }
 
-static int cpsw_ale_add_mcast(struct cpsw_priv *priv, const u8 *addr,
-			      int port_mask)
+static int cpsw_ale_add_mcast(struct cpsw_priv *priv, u8 *addr, int port_mask)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
 	int idx, mask;
@@ -560,7 +520,7 @@ static int cpsw_mdio_write(struct mii_dev *bus, int phy_id, int dev_addr,
 	return 0;
 }
 
-static void cpsw_mdio_init(const char *name, u32 mdio_base, u32 div)
+static void cpsw_mdio_init(char *name, u32 mdio_base, u32 div)
 {
 	struct mii_dev *bus = mdio_alloc();
 
@@ -581,7 +541,7 @@ static void cpsw_mdio_init(const char *name, u32 mdio_base, u32 div)
 
 	bus->read = cpsw_mdio_read;
 	bus->write = cpsw_mdio_write;
-	strcpy(bus->name, name);
+	sprintf(bus->name, name);
 
 	mdio_register(bus);
 }
@@ -601,36 +561,25 @@ static inline void setbit_and_wait_for_clear32(void *addr)
 static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 			       struct cpsw_priv *priv)
 {
-#ifdef CONFIG_DM_ETH
-	struct eth_pdata *pdata = dev_get_platdata(priv->dev);
-
-	writel(mac_hi(pdata->enetaddr), &slave->regs->sa_hi);
-	writel(mac_lo(pdata->enetaddr), &slave->regs->sa_lo);
-#else
 	__raw_writel(mac_hi(priv->dev->enetaddr), &slave->regs->sa_hi);
 	__raw_writel(mac_lo(priv->dev->enetaddr), &slave->regs->sa_lo);
-#endif
 }
 
-static int cpsw_slave_update_link(struct cpsw_slave *slave,
+static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
 	struct phy_device *phy;
 	u32 mac_control = 0;
-	int ret = -ENODEV;
 
 	phy = priv->phydev;
+
 	if (!phy)
-		goto out;
+		return;
 
-	ret = phy_startup(phy);
-	if (ret)
-		goto out;
+	phy_startup(phy);
+	*link = phy->link;
 
-	if (link)
-		*link = phy->link;
-
-	if (phy->link) { /* link up */
+	if (*link) { /* link up */
 		mac_control = priv->data.mac_control;
 		if (phy->speed == 1000)
 			mac_control |= GIGABITEN;
@@ -641,7 +590,7 @@ static int cpsw_slave_update_link(struct cpsw_slave *slave,
 	}
 
 	if (mac_control == slave->mac_control)
-		goto out;
+		return;
 
 	if (mac_control) {
 		printf("link up on port %d, speed %d, %s duplex\n",
@@ -653,20 +602,28 @@ static int cpsw_slave_update_link(struct cpsw_slave *slave,
 
 	__raw_writel(mac_control, &slave->sliver->mac_control);
 	slave->mac_control = mac_control;
-
-out:
-	return ret;
 }
 
 static int cpsw_update_link(struct cpsw_priv *priv)
 {
-	int ret = -ENODEV;
+	int link = 0;
 	struct cpsw_slave *slave;
 
-	for_active_slave(slave, priv)
-		ret = cpsw_slave_update_link(slave, priv, NULL);
+	for_each_slave(slave, priv)
+		cpsw_slave_update_link(slave, priv, &link);
+	priv->mdio_link = readl(&mdio_regs->link);
+	return link;
+}
 
-	return ret;
+static int cpsw_check_link(struct cpsw_priv *priv)
+{
+	u32 link = 0;
+
+	link = __raw_readl(&mdio_regs->link) & priv->phy_mask;
+	if ((link) && (link == priv->mdio_link))
+		return 1;
+
+	return cpsw_update_link(priv);
 }
 
 static inline u32  cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
@@ -697,7 +654,7 @@ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	slave_port = cpsw_get_slave_port(priv, slave->slave_num);
 	cpsw_ale_port_state(priv, slave_port, ALE_PORT_STATE_FORWARD);
 
-	cpsw_ale_add_mcast(priv, net_bcast_ethaddr, 1 << slave_port);
+	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << slave_port);
 
 	priv->phy_mask |= 1 << slave->data->phy_addr;
 }
@@ -797,8 +754,9 @@ static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
 	return 0;
 }
 
-static int _cpsw_init(struct cpsw_priv *priv, u8 *enetaddr)
+static int cpsw_init(struct eth_device *dev, bd_t *bis)
 {
+	struct cpsw_priv	*priv = dev->priv;
 	struct cpsw_slave	*slave;
 	int i, ret;
 
@@ -823,15 +781,14 @@ static int _cpsw_init(struct cpsw_priv *priv, u8 *enetaddr)
 
 	cpsw_ale_port_state(priv, priv->host_port, ALE_PORT_STATE_FORWARD);
 
-	cpsw_ale_add_ucast(priv, enetaddr, priv->host_port, ALE_SECURE);
-	cpsw_ale_add_mcast(priv, net_bcast_ethaddr, 1 << priv->host_port);
+	cpsw_ale_add_ucast(priv, priv->dev->enetaddr, priv->host_port,
+			   ALE_SECURE);
+	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << priv->host_port);
 
-	for_active_slave(slave, priv)
+	for_each_slave(slave, priv)
 		cpsw_slave_init(slave, priv);
 
-	ret = cpsw_update_link(priv);
-	if (ret)
-		goto out;
+	cpsw_update_link(priv);
 
 	/* init descriptor pool */
 	for (i = 0; i < NUM_DESCS; i++) {
@@ -898,7 +855,7 @@ static int _cpsw_init(struct cpsw_priv *priv, u8 *enetaddr)
 
 	/* submit rx descs */
 	for (i = 0; i < PKTBUFSRX; i++) {
-		ret = cpdma_submit(priv, &priv->rx_chan, net_rx_packets[i],
+		ret = cpdma_submit(priv, &priv->rx_chan, NetRxPackets[i],
 				   PKTSIZE);
 		if (ret < 0) {
 			printf("error %d submitting rx desc\n", ret);
@@ -906,12 +863,13 @@ static int _cpsw_init(struct cpsw_priv *priv, u8 *enetaddr)
 		}
 	}
 
-out:
-	return ret;
+	return 0;
 }
 
-static void _cpsw_halt(struct cpsw_priv *priv)
+static void cpsw_halt(struct eth_device *dev)
 {
+	struct cpsw_priv	*priv = dev->priv;
+
 	writel(0, priv->dma_regs + CPDMA_TXCONTROL);
 	writel(0, priv->dma_regs + CPDMA_RXCONTROL);
 
@@ -921,16 +879,21 @@ static void _cpsw_halt(struct cpsw_priv *priv)
 	/* clear dma state */
 	setbit_and_wait_for_clear32(priv->dma_regs + CPDMA_SOFTRESET);
 
+	priv->data.control(0);
 }
 
-static int _cpsw_send(struct cpsw_priv *priv, void *packet, int length)
+static int cpsw_send(struct eth_device *dev, void *packet, int length)
 {
+	struct cpsw_priv	*priv = dev->priv;
 	void *buffer;
 	int len;
 	int timeout = CPDMA_TIMEOUT;
 
+	if (!cpsw_check_link(priv))
+		return -EIO;
+
 	flush_dcache_range((unsigned long)packet,
-			   (unsigned long)packet + ALIGN(length, PKTALIGN));
+			   (unsigned long)packet + length);
 
 	/* first reap completed packets */
 	while (timeout-- &&
@@ -945,21 +908,22 @@ static int _cpsw_send(struct cpsw_priv *priv, void *packet, int length)
 	return cpdma_submit(priv, &priv->tx_chan, packet, length);
 }
 
-static int _cpsw_recv(struct cpsw_priv *priv, uchar **pkt)
+static int cpsw_recv(struct eth_device *dev)
 {
+	struct cpsw_priv	*priv = dev->priv;
 	void *buffer;
 	int len;
-	int ret;
 
-	ret = cpdma_process(priv, &priv->rx_chan, &buffer, &len);
-	if (ret < 0)
-		return ret;
+	cpsw_check_link(priv);
 
-	invalidate_dcache_range((unsigned long)buffer,
-				(unsigned long)buffer + PKTSIZE_ALIGN);
-	*pkt = buffer;
+	while (cpdma_process(priv, &priv->rx_chan, &buffer, &len) >= 0) {
+		invalidate_dcache_range((unsigned long)buffer,
+					(unsigned long)buffer + PKTSIZE_ALIGN);
+		NetReceive(buffer, len);
+		cpdma_submit(priv, &priv->rx_chan, buffer, PKTSIZE);
+	}
 
-	return len;
+	return 0;
 }
 
 static void cpsw_slave_setup(struct cpsw_slave *slave, int slave_num,
@@ -973,14 +937,15 @@ static void cpsw_slave_setup(struct cpsw_slave *slave, int slave_num,
 	slave->sliver	= regs + data->sliver_reg_ofs;
 }
 
-static int cpsw_phy_init(struct cpsw_priv *priv, struct cpsw_slave *slave)
+static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 {
+	struct cpsw_priv *priv = (struct cpsw_priv *)dev->priv;
 	struct phy_device *phydev;
 	u32 supported = PHY_GBIT_FEATURES;
 
 	phydev = phy_connect(priv->bus,
 			slave->data->phy_addr,
-			priv->dev,
+			dev,
 			slave->data->phy_if);
 
 	if (!phydev)
@@ -989,25 +954,36 @@ static int cpsw_phy_init(struct cpsw_priv *priv, struct cpsw_slave *slave)
 	phydev->supported &= supported;
 	phydev->advertising = phydev->supported;
 
-#ifdef CONFIG_DM_ETH
-	if (slave->data->phy_of_handle)
-		dev_set_of_offset(phydev->dev, slave->data->phy_of_handle);
-#endif
-
 	priv->phydev = phydev;
 	phy_config(phydev);
 
 	return 1;
 }
 
-int _cpsw_register(struct cpsw_priv *priv)
+int cpsw_register(struct cpsw_platform_data *data)
 {
+	struct cpsw_priv	*priv;
 	struct cpsw_slave	*slave;
-	struct cpsw_platform_data *data = &priv->data;
 	void			*regs = (void *)data->cpsw_base;
+	struct eth_device	*dev;
+
+	dev = calloc(sizeof(*dev), 1);
+	if (!dev)
+		return -ENOMEM;
+
+	priv = calloc(sizeof(*priv), 1);
+	if (!priv) {
+		free(dev);
+		return -ENOMEM;
+	}
+
+	priv->data = *data;
+	priv->dev = dev;
 
 	priv->slaves = malloc(sizeof(struct cpsw_slave) * data->slaves);
 	if (!priv->slaves) {
+		free(dev);
+		free(priv);
 		return -ENOMEM;
 	}
 
@@ -1025,71 +1001,6 @@ int _cpsw_register(struct cpsw_priv *priv)
 		idx = idx + 1;
 	}
 
-	cpsw_mdio_init(priv->dev->name, data->mdio_base, data->mdio_div);
-	priv->bus = miiphy_get_dev_by_name(priv->dev->name);
-	for_active_slave(slave, priv)
-		cpsw_phy_init(priv, slave);
-
-	return 0;
-}
-
-#ifndef CONFIG_DM_ETH
-static int cpsw_init(struct eth_device *dev, bd_t *bis)
-{
-	struct cpsw_priv	*priv = dev->priv;
-
-	return _cpsw_init(priv, dev->enetaddr);
-}
-
-static void cpsw_halt(struct eth_device *dev)
-{
-	struct cpsw_priv *priv = dev->priv;
-
-	return _cpsw_halt(priv);
-}
-
-static int cpsw_send(struct eth_device *dev, void *packet, int length)
-{
-	struct cpsw_priv	*priv = dev->priv;
-
-	return _cpsw_send(priv, packet, length);
-}
-
-static int cpsw_recv(struct eth_device *dev)
-{
-	struct cpsw_priv *priv = dev->priv;
-	uchar *pkt = NULL;
-	int len;
-
-	len = _cpsw_recv(priv, &pkt);
-
-	if (len > 0) {
-		net_process_received_packet(pkt, len);
-		cpdma_submit(priv, &priv->rx_chan, pkt, PKTSIZE);
-	}
-
-	return len;
-}
-
-int cpsw_register(struct cpsw_platform_data *data)
-{
-	struct cpsw_priv	*priv;
-	struct eth_device	*dev;
-	int ret;
-
-	dev = calloc(sizeof(*dev), 1);
-	if (!dev)
-		return -ENOMEM;
-
-	priv = calloc(sizeof(*priv), 1);
-	if (!priv) {
-		free(dev);
-		return -ENOMEM;
-	}
-
-	priv->dev = dev;
-	priv->data = *data;
-
 	strcpy(dev->name, "cpsw");
 	dev->iobase	= 0;
 	dev->init	= cpsw_init;
@@ -1100,372 +1011,10 @@ int cpsw_register(struct cpsw_platform_data *data)
 
 	eth_register(dev);
 
-	ret = _cpsw_register(priv);
-	if (ret < 0) {
-		eth_unregister(dev);
-		free(dev);
-		free(priv);
-		return ret;
-	}
+	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
+	priv->bus = miiphy_get_dev_by_name(dev->name);
+	for_each_slave(slave, priv)
+		cpsw_phy_init(dev, slave);
 
 	return 1;
 }
-#else
-static int cpsw_eth_start(struct udevice *dev)
-{
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	return _cpsw_init(priv, pdata->enetaddr);
-}
-
-static int cpsw_eth_send(struct udevice *dev, void *packet, int length)
-{
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	return _cpsw_send(priv, packet, length);
-}
-
-static int cpsw_eth_recv(struct udevice *dev, int flags, uchar **packetp)
-{
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	return _cpsw_recv(priv, packetp);
-}
-
-static int cpsw_eth_free_pkt(struct udevice *dev, uchar *packet,
-				   int length)
-{
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	return cpdma_submit(priv, &priv->rx_chan, packet, PKTSIZE);
-}
-
-static void cpsw_eth_stop(struct udevice *dev)
-{
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	return _cpsw_halt(priv);
-}
-
-
-static int cpsw_eth_probe(struct udevice *dev)
-{
-	struct cpsw_priv *priv = dev_get_priv(dev);
-
-	priv->dev = dev;
-
-	return _cpsw_register(priv);
-}
-
-static const struct eth_ops cpsw_eth_ops = {
-	.start		= cpsw_eth_start,
-	.send		= cpsw_eth_send,
-	.recv		= cpsw_eth_recv,
-	.free_pkt	= cpsw_eth_free_pkt,
-	.stop		= cpsw_eth_stop,
-};
-
-static inline fdt_addr_t cpsw_get_addr_by_node(const void *fdt, int node)
-{
-	return fdtdec_get_addr_size_auto_noparent(fdt, node, "reg", 0, NULL,
-						  false);
-}
-
-static void cpsw_gmii_sel_am3352(struct cpsw_priv *priv,
-				 phy_interface_t phy_mode)
-{
-	u32 reg;
-	u32 mask;
-	u32 mode = 0;
-	bool rgmii_id = false;
-	int slave = priv->data.active_slave;
-
-	reg = readl(priv->data.gmii_sel);
-
-	switch (phy_mode) {
-	case PHY_INTERFACE_MODE_RMII:
-		mode = AM33XX_GMII_SEL_MODE_RMII;
-		break;
-
-	case PHY_INTERFACE_MODE_RGMII:
-		mode = AM33XX_GMII_SEL_MODE_RGMII;
-		break;
-	case PHY_INTERFACE_MODE_RGMII_ID:
-	case PHY_INTERFACE_MODE_RGMII_RXID:
-	case PHY_INTERFACE_MODE_RGMII_TXID:
-		mode = AM33XX_GMII_SEL_MODE_RGMII;
-		rgmii_id = true;
-		break;
-
-	case PHY_INTERFACE_MODE_MII:
-	default:
-		mode = AM33XX_GMII_SEL_MODE_MII;
-		break;
-	};
-
-	mask = GMII_SEL_MODE_MASK << (slave * 2) | BIT(slave + 6);
-	mode <<= slave * 2;
-
-	if (priv->data.rmii_clock_external) {
-		if (slave == 0)
-			mode |= AM33XX_GMII_SEL_RMII1_IO_CLK_EN;
-		else
-			mode |= AM33XX_GMII_SEL_RMII2_IO_CLK_EN;
-	}
-
-	if (rgmii_id) {
-		if (slave == 0)
-			mode |= AM33XX_GMII_SEL_RGMII1_IDMODE;
-		else
-			mode |= AM33XX_GMII_SEL_RGMII2_IDMODE;
-	}
-
-	reg &= ~mask;
-	reg |= mode;
-
-	writel(reg, priv->data.gmii_sel);
-}
-
-static void cpsw_gmii_sel_dra7xx(struct cpsw_priv *priv,
-				 phy_interface_t phy_mode)
-{
-	u32 reg;
-	u32 mask;
-	u32 mode = 0;
-	int slave = priv->data.active_slave;
-
-	reg = readl(priv->data.gmii_sel);
-
-	switch (phy_mode) {
-	case PHY_INTERFACE_MODE_RMII:
-		mode = AM33XX_GMII_SEL_MODE_RMII;
-		break;
-
-	case PHY_INTERFACE_MODE_RGMII:
-	case PHY_INTERFACE_MODE_RGMII_ID:
-	case PHY_INTERFACE_MODE_RGMII_RXID:
-	case PHY_INTERFACE_MODE_RGMII_TXID:
-		mode = AM33XX_GMII_SEL_MODE_RGMII;
-		break;
-
-	case PHY_INTERFACE_MODE_MII:
-	default:
-		mode = AM33XX_GMII_SEL_MODE_MII;
-		break;
-	};
-
-	switch (slave) {
-	case 0:
-		mask = GMII_SEL_MODE_MASK;
-		break;
-	case 1:
-		mask = GMII_SEL_MODE_MASK << 4;
-		mode <<= 4;
-		break;
-	default:
-		dev_err(priv->dev, "invalid slave number...\n");
-		return;
-	}
-
-	if (priv->data.rmii_clock_external)
-		dev_err(priv->dev, "RMII External clock is not supported\n");
-
-	reg &= ~mask;
-	reg |= mode;
-
-	writel(reg, priv->data.gmii_sel);
-}
-
-static void cpsw_phy_sel(struct cpsw_priv *priv, const char *compat,
-			 phy_interface_t phy_mode)
-{
-	if (!strcmp(compat, "ti,am3352-cpsw-phy-sel"))
-		cpsw_gmii_sel_am3352(priv, phy_mode);
-	if (!strcmp(compat, "ti,am43xx-cpsw-phy-sel"))
-		cpsw_gmii_sel_am3352(priv, phy_mode);
-	else if (!strcmp(compat, "ti,dra7xx-cpsw-phy-sel"))
-		cpsw_gmii_sel_dra7xx(priv, phy_mode);
-}
-
-static int cpsw_eth_ofdata_to_platdata(struct udevice *dev)
-{
-	struct eth_pdata *pdata = dev_get_platdata(dev);
-	struct cpsw_priv *priv = dev_get_priv(dev);
-	struct gpio_desc *mode_gpios;
-	const char *phy_mode;
-	const char *phy_sel_compat = NULL;
-	const void *fdt = gd->fdt_blob;
-	int node = dev_of_offset(dev);
-	int subnode;
-	int slave_index = 0;
-	int active_slave;
-	int num_mode_gpios;
-	int ret;
-
-	pdata->iobase = devfdt_get_addr(dev);
-	priv->data.version = CPSW_CTRL_VERSION_2;
-	priv->data.bd_ram_ofs = CPSW_BD_OFFSET;
-	priv->data.ale_reg_ofs = CPSW_ALE_OFFSET;
-	priv->data.cpdma_reg_ofs = CPSW_CPDMA_OFFSET;
-	priv->data.mdio_div = CPSW_MDIO_DIV;
-	priv->data.host_port_reg_ofs = CPSW_HOST_PORT_OFFSET,
-
-	pdata->phy_interface = -1;
-
-	priv->data.cpsw_base = pdata->iobase;
-	priv->data.channels = fdtdec_get_int(fdt, node, "cpdma_channels", -1);
-	if (priv->data.channels <= 0) {
-		printf("error: cpdma_channels not found in dt\n");
-		return -ENOENT;
-	}
-
-	priv->data.slaves = fdtdec_get_int(fdt, node, "slaves", -1);
-	if (priv->data.slaves <= 0) {
-		printf("error: slaves not found in dt\n");
-		return -ENOENT;
-	}
-	priv->data.slave_data = malloc(sizeof(struct cpsw_slave_data) *
-				       priv->data.slaves);
-
-	priv->data.ale_entries = fdtdec_get_int(fdt, node, "ale_entries", -1);
-	if (priv->data.ale_entries <= 0) {
-		printf("error: ale_entries not found in dt\n");
-		return -ENOENT;
-	}
-
-	priv->data.bd_ram_ofs = fdtdec_get_int(fdt, node, "bd_ram_size", -1);
-	if (priv->data.bd_ram_ofs <= 0) {
-		printf("error: bd_ram_size not found in dt\n");
-		return -ENOENT;
-	}
-
-	priv->data.mac_control = fdtdec_get_int(fdt, node, "mac_control", -1);
-	if (priv->data.mac_control <= 0) {
-		printf("error: ale_entries not found in dt\n");
-		return -ENOENT;
-	}
-
-	num_mode_gpios = gpio_get_list_count(dev, "mode-gpios");
-	if (num_mode_gpios > 0) {
-		mode_gpios = malloc(sizeof(struct gpio_desc) *
-				    num_mode_gpios);
-		gpio_request_list_by_name(dev, "mode-gpios", mode_gpios,
-					  num_mode_gpios, GPIOD_IS_OUT);
-		free(mode_gpios);
-	}
-
-	active_slave = fdtdec_get_int(fdt, node, "active_slave", 0);
-	priv->data.active_slave = active_slave;
-
-	fdt_for_each_subnode(subnode, fdt, node) {
-		int len;
-		const char *name;
-
-		name = fdt_get_name(fdt, subnode, &len);
-		if (!strncmp(name, "mdio", 4)) {
-			u32 mdio_base;
-
-			mdio_base = cpsw_get_addr_by_node(fdt, subnode);
-			if (mdio_base == FDT_ADDR_T_NONE) {
-				pr_err("Not able to get MDIO address space\n");
-				return -ENOENT;
-			}
-			priv->data.mdio_base = mdio_base;
-		}
-
-		if (!strncmp(name, "slave", 5)) {
-			u32 phy_id[2];
-
-			if (slave_index >= priv->data.slaves)
-				continue;
-			phy_mode = fdt_getprop(fdt, subnode, "phy-mode", NULL);
-			if (phy_mode)
-				priv->data.slave_data[slave_index].phy_if =
-					phy_get_interface_by_name(phy_mode);
-
-			priv->data.slave_data[slave_index].phy_of_handle =
-				fdtdec_lookup_phandle(fdt, subnode,
-						      "phy-handle");
-
-			if (priv->data.slave_data[slave_index].phy_of_handle >= 0) {
-				priv->data.slave_data[slave_index].phy_addr =
-						fdtdec_get_int(gd->fdt_blob,
-							       priv->data.slave_data[slave_index].phy_of_handle,
-							       "reg", -1);
-			} else {
-				fdtdec_get_int_array(fdt, subnode, "phy_id",
-						     phy_id, 2);
-				priv->data.slave_data[slave_index].phy_addr =
-						phy_id[1];
-			}
-			slave_index++;
-		}
-
-		if (!strncmp(name, "cpsw-phy-sel", 12)) {
-			priv->data.gmii_sel = cpsw_get_addr_by_node(fdt,
-								    subnode);
-
-			if (priv->data.gmii_sel == FDT_ADDR_T_NONE) {
-				pr_err("Not able to get gmii_sel reg address\n");
-				return -ENOENT;
-			}
-
-			if (fdt_get_property(fdt, subnode, "rmii-clock-ext",
-					     NULL))
-				priv->data.rmii_clock_external = true;
-
-			phy_sel_compat = fdt_getprop(fdt, subnode, "compatible",
-						     NULL);
-			if (!phy_sel_compat) {
-				pr_err("Not able to get gmii_sel compatible\n");
-				return -ENOENT;
-			}
-		}
-	}
-
-	priv->data.slave_data[0].slave_reg_ofs = CPSW_SLAVE0_OFFSET;
-	priv->data.slave_data[0].sliver_reg_ofs = CPSW_SLIVER0_OFFSET;
-
-	if (priv->data.slaves == 2) {
-		priv->data.slave_data[1].slave_reg_ofs = CPSW_SLAVE1_OFFSET;
-		priv->data.slave_data[1].sliver_reg_ofs = CPSW_SLIVER1_OFFSET;
-	}
-
-	ret = ti_cm_get_macid(dev, active_slave, pdata->enetaddr);
-	if (ret < 0) {
-		pr_err("cpsw read efuse mac failed\n");
-		return ret;
-	}
-
-	pdata->phy_interface = priv->data.slave_data[active_slave].phy_if;
-	if (pdata->phy_interface == -1) {
-		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
-		return -EINVAL;
-	}
-
-	/* Select phy interface in control module */
-	cpsw_phy_sel(priv, phy_sel_compat, pdata->phy_interface);
-
-	return 0;
-}
-
-
-static const struct udevice_id cpsw_eth_ids[] = {
-	{ .compatible = "ti,cpsw" },
-	{ .compatible = "ti,am335x-cpsw" },
-	{ }
-};
-
-U_BOOT_DRIVER(eth_cpsw) = {
-	.name	= "eth_cpsw",
-	.id	= UCLASS_ETH,
-	.of_match = cpsw_eth_ids,
-	.ofdata_to_platdata = cpsw_eth_ofdata_to_platdata,
-	.probe	= cpsw_eth_probe,
-	.ops	= &cpsw_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct cpsw_priv),
-	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
-	.flags = DM_FLAG_ALLOC_PRIV_DMA,
-};
-#endif /* CONFIG_DM_ETH */

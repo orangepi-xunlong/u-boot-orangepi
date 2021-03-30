@@ -1,19 +1,4 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_lcd/de_lcd.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #include "de_lcd_type.h"
 #include "de_lcd.h"
 
@@ -23,37 +8,6 @@ static volatile struct __de_lcd_top_dev_t *lcd_top[1];
 #endif
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
-/**
- * @name       rgb_src_sel(for sun50iw6 soc)
- * @brief      select the source of tcon rgb output
- * @param[IN]  src:0-->tcon_lcd0,1-->tcon_tv0
- * @param[OUT] none
- * @return     return 0 if successfull
- */
-s32 rgb_src_sel(u32 src)
-{
-	if (src > 1)
-		return -1;
-	lcd_top[0]->tcon_tv_setup.bits.rgb0_src_sel = src;
-	return 0;
-}
-/**
- * @name       dsi_src_sel
- * @brief      select the video source of dsi module
- * @param[IN]  sel:dsi module index; src:0 or 1
- * @param[OUT] none
- * @return     return 0 if successful
- */
-s32 dsi_src_sel(u32 sel, u32 src)
-{
-	if (sel >= DEVICE_DSI_NUM || src > 1)
-		return -1;
-	if (sel == 0)
-		lcd_top[0]->dsi_src_select.bits.dsi0_src_sel = src;
-	else
-		lcd_top[0]->dsi_src_select.bits.dsi1_src_sel = src;
-	return 0;
-}
 /* sel: the index of timing controller */
 s32 tcon0_out_to_gpio(u32 sel)
 {
@@ -87,21 +41,13 @@ s32 tcon1_out_to_gpio(u32 sel)
  */
 s32 tcon1_tv_clk_enable(u32 sel, u32 en)
 {
-	unsigned int tcon_index = -1;
 	if (sel >= DEVICE_NUM)
 		return -1;
 
-	if (!de_feat_get_tcon_type(sel))
-		return -1;
-
-	tcon_index = de_feat_get_tcon_index(sel);
-	if (tcon_index < 0)
-		return -1;
-
-	if (tcon_index == 0) {
+	if (2 == sel) {
 		lcd_top[0]->tcon_tv_setup.bits.tv0_clk_src = TV_CLK_F_TVE;
 		lcd_top[0]->tcon_clk_gate.bits.tv0_clk_gate = en;
-	} else if (tcon_index == 1) {
+	} else if (3 == sel) {
 		lcd_top[0]->tcon_tv_setup.bits.tv1_clk_src = TV_CLK_F_TVE;
 		lcd_top[0]->tcon_clk_gate.bits.tv1_clk_gate = en;
 	}
@@ -118,33 +64,25 @@ s32 tcon1_tv_clk_enable(u32 sel, u32 en)
  */
 s32 tcon1_hdmi_clk_enable(u32 sel, u32 en)
 {
-	unsigned int tcon_index;
-
 	if (sel >= DEVICE_NUM)
 		return -1;
-	if (!de_feat_get_tcon_type(sel))
-		return -1;
 
-	tcon_index = de_feat_get_tcon_index(sel);
-	if (tcon_index < 0)
-		return -1;
-
-	if (tcon_index == 0)
+	if (2 == sel)
 		lcd_top[0]->tcon_clk_gate.bits.tv0_clk_gate = en;
 	else
 		lcd_top[0]->tcon_clk_gate.bits.tv1_clk_gate = en;
 
 	if (en) {
-		if (tcon_index == 0)
+		if (2 == sel)
 			lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 1;
-		else if (tcon_index == 1)
+		else if (3 == sel)
 			lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 2;
 	} else {
 		/* disable tcon output to hdmi */
-		if (((tcon_index == 0)
-		     && (lcd_top[0]->tcon_clk_gate.bits.hdmi_src == 1))
-		    || ((tcon_index == 1)
-			&& (lcd_top[0]->tcon_clk_gate.bits.hdmi_src == 2))) {
+		if (((2 == sel)
+		     && (1 == lcd_top[0]->tcon_clk_gate.bits.hdmi_src))
+		    || ((3 == sel)
+			&& (2 == lcd_top[0]->tcon_clk_gate.bits.hdmi_src))) {
 			lcd_top[0]->tcon_clk_gate.bits.hdmi_src = 0;
 		}
 	}
@@ -161,12 +99,10 @@ s32 tcon1_hdmi_clk_enable(u32 sel, u32 en)
  */
 s32 tcon0_dsi_clk_enable(u32 sel, u32 en)
 {
-#if defined(CONFIG_MACH_SUN8IW17)
-	lcd_top[0]->tcon_clk_gate.bits.lcd1_dsi_clk_gate = en;
-#else
-	if (sel == 0)
+	/* only tcon0 support dsi on sun8iw11 platform */
+	if (0 == sel)
 		lcd_top[0]->tcon_clk_gate.bits.dsi_clk_gate = en;
-#endif
+
 	return 0;
 }
 
@@ -179,34 +115,13 @@ s32 tcon0_dsi_clk_enable(u32 sel, u32 en)
  */
 s32 tcon_de_attach(u32 tcon_index, u32 de_index)
 {
-	unsigned int tcon_real_index = 0;
-
 	if ((de_index >= DE_NUM) || (tcon_index >= DEVICE_NUM))
 		return -1;
-	tcon_real_index = de_feat_get_tcon_index(tcon_index);
-	if (tcon_real_index < 0)
-		return -1;
-	if (de_feat_get_tcon_type(tcon_index)) {
-		if (tcon_real_index < 2)
-			tcon_real_index += 2;
-		else
-			tcon_real_index += 4;
-	} else {
-		if (tcon_real_index > 2)
-			tcon_real_index += 2;
-	}
-	if (de_index == 0)
-		lcd_top[0]->tcon_de_perh.bits.de_port0_perh = tcon_real_index;
-	else if (de_index == 1)
-		lcd_top[0]->tcon_de_perh.bits.de_port1_perh = tcon_real_index;
 
-	if (lcd_top[0]->tcon_de_perh.bits.de_port0_perh ==
-	    lcd_top[0]->tcon_de_perh.bits.de_port1_perh) {
-		if (de_index == 0)
-			lcd_top[0]->tcon_de_perh.bits.de_port1_perh += 1;
-		else
-			lcd_top[0]->tcon_de_perh.bits.de_port0_perh += 1;
-	}
+	if (0 == de_index)
+		lcd_top[0]->tcon_de_perh.bits.de_port0_perh = tcon_index;
+	else if (1 == de_index)
+		lcd_top[0]->tcon_de_perh.bits.de_port1_perh = tcon_index;
 
 	return 0;
 }
@@ -433,7 +348,6 @@ uintptr_t tcon_get_reg_base(u32 sel)
 
 s32 tcon_init(u32 sel)
 {
-	lcd_dev[sel]->tcon_gctl.bits.io_map_sel = 0;
 	lcd_dev[sel]->tcon0_ctl.bits.tcon0_en = 0;
 	lcd_dev[sel]->tcon1_ctl.bits.tcon1_en = 0;
 	lcd_dev[sel]->tcon_gctl.bits.tcon_en = 0;
@@ -449,7 +363,6 @@ s32 tcon_exit(u32 sel)
 	lcd_dev[sel]->tcon_gctl.bits.tcon_en = 0;
 	lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0;
 
-	lcd_dev[sel]->tcon_gctl.bits.io_map_sel = 1;
 	return 0;
 }
 
@@ -489,11 +402,6 @@ u32 tcon_get_start_delay(u32 sel, u32 tcon_index)
 		return lcd_dev[sel]->tcon1_ctl.bits.start_delay;
 
 	return 0;
-}
-
-u32 tcon0_get_cpu_tri2_start_delay(u32 sel)
-{
-	return lcd_dev[sel]->tcon0_cpu_tri2.bits.start_delay;
 }
 
 u32 tcon_get_cur_line(u32 sel, u32 tcon_index)
@@ -560,15 +468,6 @@ s32 tcon0_open(u32 sel, disp_panel_para *panel)
 		lcd_dev[sel]->tcon0_ctl.bits.tcon0_en = 1;
 		if (panel->lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE)
 			tcon_irq_enable(sel, LCD_IRQ_TCON0_CNTR);
-#if defined(SUPPORT_DSI) && !defined(DSI_VERSION_40)
-		else if (panel->lcd_dsi_if == LCD_DSI_IF_VIDEO_MODE ||
-			 panel->lcd_dsi_if == LCD_DSI_IF_BURST_MODE) {
-			tcon_irq_enable(sel, LCD_IRQ_TCON0_VBLK);
-			lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0xf;
-		}
-#endif
-		else
-			lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0xf;
 	}
 
 	return 0;
@@ -584,41 +483,12 @@ s32 tcon0_close(u32 sel)
 	lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0x0;
 #if defined(HAVE_DEVICE_COMMON_MODULE) && defined(SUPPORT_DSI)
 	tcon0_dsi_clk_enable(sel, 0);
-	if (lcd_dev[sel]->tcon_sync_ctl.bits.dsi_num &&
-	    sel + 1 < DEVICE_DSI_NUM)
-		tcon0_dsi_clk_enable(sel + 1, 0);
 #endif
-
-#ifdef CONFIG_EINK_PANEL_USED
-	/* eink panel no need to delay, for faster display */
-#else
 	disp_delay_ms(30);
-#endif
 
 	return 1;
 }
 
-s32 tcon0_simple_close(u32 sel)
-{
-
-	tcon_irq_disable(sel, LCD_IRQ_TCON0_CNTR);
-	tcon_irq_disable(sel, LCD_IRQ_TCON0_VBLK);
-	tcon_irq_disable(sel, LCD_IRQ_TCON0_TRIF);
-
-	lcd_dev[sel]->tcon0_ctl.bits.tcon0_en = 0;
-	lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0x0;
-
-	return 1;
-}
-
-s32 tcon0_simple_open(u32 sel)
-{
-	tcon_irq_enable(sel, LCD_IRQ_TCON0_VBLK);
-	lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0xf;
-	lcd_dev[sel]->tcon0_ctl.bits.tcon0_en = 1;
-
-	return 1;
-}
 static s32 tcon0_cfg_mode_auto(u32 sel, disp_panel_para *panel)
 {
 	s32 start_delay;
@@ -641,13 +511,13 @@ static s32 tcon0_cfg_mode_auto(u32 sel, disp_panel_para *panel)
 			    panel->lcd_y / 2 - 1;
 			lcd_dev[sel]->tcon0_basic2.bits.vt =
 			    (panel->lcd_hv_syuv_fdly ==
-			     LCD_HV_SRGB_FDLY_2LINE) ? 625 : 525;
+			     LCD_HV_SRGB_FDLY_2LINE) ? 525 : 625;
 			start_delay = panel->lcd_vt / 2 - panel->lcd_y / 2 - 10;
 		} else {
 			lcd_dev[sel]->tcon0_basic0.bits.y = panel->lcd_y - 1;
 			lcd_dev[sel]->tcon0_basic2.bits.vt =
 			    (panel->lcd_hv_syuv_fdly ==
-			     LCD_HV_SRGB_FDLY_2LINE) ? 1250 : 1050;
+			     LCD_HV_SRGB_FDLY_2LINE) ? 1050 : 1250;
 		}
 
 		lcd_dev[sel]->tcon0_basic1.bits.ht =
@@ -750,11 +620,7 @@ static s32 tcon0_cfg_mode_tri(u32 sel, disp_panel_para *panel)
 s32 tcon0_cfg(u32 sel, disp_panel_para *panel)
 {
 	if ((panel->lcd_if == LCD_IF_HV) || (panel->lcd_if == LCD_IF_EXT_DSI)) {
-#ifdef CONFIG_EINK_PANEL_USED
-		lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 2;
-#else
 		lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 0;
-#endif
 		lcd_dev[sel]->tcon0_hv_ctl.bits.hv_mode = panel->lcd_hv_if;
 		lcd_dev[sel]->tcon0_hv_ctl.bits.srgb_seq =
 		    panel->lcd_hv_srgb_seq;
@@ -797,128 +663,18 @@ s32 tcon0_cfg(u32 sel, disp_panel_para *panel)
 			tcon0_cfg_mode_tri(sel, panel);
 		lcd_dev[sel]->tcon0_cpu_tri4.bits.en = 0;
 	} else if (panel->lcd_if == LCD_IF_DSI) {
-		lcd_dev[sel]->tcon_sync_ctl.bits.dsi_num =
-		    (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI) ? 1 : 0;
-		lcd_dev[sel]->tcon0_3d_fifo.bits.fifo_3d_setting =
-		    1; /*normal fifo*/
-
-		/*sync setting between master lcd and slave lcd*/
-		if (panel->lcd_tcon_mode < DISP_TCON_DUAL_DSI) {
-			lcd_dev[sel]->tcon_sync_ctl.bits.master_slave =
-			    (panel->lcd_tcon_mode == DISP_TCON_SLAVE_MODE) ? 1
-									   : 0;
-
-			if (panel->lcd_tcon_mode <
-			    DISP_TCON_SLAVE_MODE) { /*master tcon*/
-				lcd_dev[sel]->tcon_sync_pos.bits.sync_line_num =
-				    panel->lcd_sync_line_num;
-				lcd_dev[sel]
-				    ->tcon_sync_pos.bits.sync_pixel_num =
-				    panel->lcd_sync_pixel_num;
-				lcd_dev[sel]
-				    ->tcon_sync_ctl.bits.ctrl_sync_mode =
-				    (panel->lcd_tcon_mode ==
-				     DISP_TCON_MASTER_SYNC_EVERY_FRAME)
-					? 1
-					: 0;
-			} else { /*slave tcon*/
-				lcd_dev[sel]->tcon_slave_stop.bits.stop_val =
-				    panel->lcd_slave_stop_pos;
-			}
-		} else {
-			if (!panel->lcd_tcon_en_odd_even) {
-				/*enable 3D FIFO*/
-				lcd_dev[sel]
-				    ->tcon0_3d_fifo.bits.fifo_3d_setting = 2;
-			}
-			lcd_dev[sel]
-			    ->tcon0_3d_fifo.bits.fifo_3d_half_line_size =
-			    panel->lcd_x / 2 - 1;
-			lcd_dev[sel]->tcon0_3d_fifo.bits.fifo_3d_bist_en = 0;
-		}
-#if defined(SUPPORT_DSI) && !defined(DSI_VERSION_40)
-		if (panel->lcd_dsi_if == LCD_DSI_IF_VIDEO_MODE ||
-		    panel->lcd_dsi_if == LCD_DSI_IF_BURST_MODE) {
-			panel->lcd_fresh_mode = 0;
-			lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 0;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.hv_mode =
-			    panel->lcd_hv_if;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.srgb_seq =
-			    panel->lcd_hv_srgb_seq;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.syuv_seq =
-			    panel->lcd_hv_syuv_seq;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.syuv_fdly =
-			    panel->lcd_hv_syuv_fdly;
-			panel->lcd_fresh_mode = 0;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.res0 = 0;
-			lcd_dev[sel]->tcon0_hv_ctl.bits.ccir_csc_dis = 1;
-			tcon0_cfg_mode_auto(sel, panel);
-#if defined(HAVE_DEVICE_COMMON_MODULE)
-			if (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI) {
-				dsi_src_sel(0, 0); /*same source*/
-				dsi_src_sel(1, 1);
-				tcon0_dsi_clk_enable(0, 1);
-				tcon0_dsi_clk_enable(1, 1);
-			} else {
-				dsi_src_sel(sel, 0); /*different source*/
-				tcon0_dsi_clk_enable(sel, 1);
-			}
-#endif
-		} else
-#endif
-		{
-			lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 1;
-#if defined(DSI_VERSION_40)
-			lcd_dev[sel]->tcon0_cpu_ctl.bits.cpu_mode = MODE_DSI;
-#else
-			lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 1;
-			lcd_dev[sel]->tcon0_cpu_ctl.bits.flush = 1;
-			lcd_dev[sel]->tcon0_cpu_ctl.bits.cpu_mode = MODE0_16BIT;
-#endif
-			lcd_dev[sel]->tcon_ecfifo_ctl.bits.ecc_fifo_setting =
-			    (1 << 3);
-			panel->lcd_fresh_mode =
-			    (panel->lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) ? 1
-									   : 0;
-			tcon0_cfg_mode_tri(sel, panel);
-#if defined(DSI_VERSION_28)
-			lcd_dev[sel]->tcon0_cpu_tri4.bits.data = 0x460;
-			lcd_dev[sel]->tcon0_cpu_tri4.bits.a1 = 0;
-			lcd_dev[sel]->tcon0_cpu_tri5.bits.data = 0x4e0;
-			lcd_dev[sel]->tcon0_cpu_tri5.bits.a1 = 0;
-			lcd_dev[sel]->tcon0_cpu_tri4.bits.en = 1;
-#endif
+		lcd_dev[sel]->tcon0_ctl.bits.tcon0_if = 1;
+		lcd_dev[sel]->tcon0_cpu_ctl.bits.cpu_mode = 0x1;
+		lcd_dev[sel]->tcon_ecfifo_ctl.bits.ecc_fifo_setting = (1 << 3);
+		panel->lcd_fresh_mode =
+		    (panel->lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) ? 1 : 0;
+		tcon0_cfg_mode_tri(sel, panel);
 #if defined(HAVE_DEVICE_COMMON_MODULE) && defined(SUPPORT_DSI)
-			if (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI) {
-				tcon0_dsi_clk_enable(0, 1);
-				tcon0_dsi_clk_enable(1, 1);
-			} else
-				tcon0_dsi_clk_enable(sel, 1);
+		tcon0_dsi_clk_enable(sel, 1);
 #endif
-		}
 	}
 
 	tcon0_frm(sel, panel->lcd_frm);
-
-	/*fsync config*/
-	lcd_dev[sel]->fsync_gen_ctrl.bits.fsync_gen_en = panel->lcd_fsync_en;
-	tcon_set_fsync_pol(sel, panel->lcd_fsync_pol);
-
-	/*follow vsync's pol*/
-	lcd_dev[sel]->fsync_gen_ctrl.bits.sel_vsync_en =
-	    lcd_dev[sel]->tcon1_io_pol.bits.io0_inv;
-
-	if (panel->lcd_fsync_act_time) {
-		tcon_set_fsync_active_time(sel, panel->lcd_fsync_act_time);
-	} else {
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act0_time =
-		    panel->lcd_ht / 4;
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act1_time =
-		    panel->lcd_ht / 4;
-	}
-
-	lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_dis_time =
-	    (panel->lcd_fsync_dis_time) ? panel->lcd_fsync_dis_time : 1;
 
 	lcd_dev[sel]->tcon0_ctl.bits.rb_swap = panel->lcd_rb_swap;
 	lcd_dev[sel]->tcon0_io_tri.bits.rgb_endian = panel->lcd_rgb_endian;
@@ -926,8 +682,6 @@ s32 tcon0_cfg(u32 sel, disp_panel_para *panel)
 	lcd_dev[sel]->tcon_volume_ctl.bits.safe_period_fifo_num =
 	    panel->lcd_dclk_freq * 15;
 	lcd_dev[sel]->tcon0_io_pol.bits.sync_inv = panel->lcd_hv_sync_polarity;
-	lcd_dev[sel]->fsync_gen_ctrl.bits.hsync_pol_sel =
-	    !panel->lcd_hv_sync_polarity;
 	switch (panel->lcd_hv_clk_phase) {
 	case 0:
 		lcd_dev[sel]->tcon0_io_pol.bits.clk_inv = 0;
@@ -1192,31 +946,6 @@ s32 tcon1_close(u32 sel)
 	return 0;
 }
 
-#ifdef TCON_POL_CORRECT
-u32 tcom1_cfg_correct(u32 sel, struct disp_video_timings *timing)
-{
-	if (timing->pixel_clk > 27000000)
-		lcd_dev[sel]->tcon0_io_pol.bits.sync_inv
-			= (timing->hor_sync_polarity ? 0 : 1)
-			| ((timing->ver_sync_polarity ? 0 : 1) << 1);
-	else
-		lcd_dev[sel]->tcon0_io_pol.bits.sync_inv = 0;
-
-	return 0;
-}
-#endif
-
-s32 tcon_set_sync_pol(u32 sel, u32 ver_pol, u32 hor_pol)
-{
-#if defined(HAVE_DEVICE_COMMON_MODULE)
-	lcd_dev[sel]->tcon0_io_pol.bits.sync_inv = hor_pol | (ver_pol << 1);
-#else
-	lcd_dev[sel]->tcon1_io_pol.bits.io0_inv = ver_pol;
-	lcd_dev[sel]->tcon1_io_pol.bits.io1_inv = hor_pol;
-#endif
-	return 0;
-}
-
 s32 tcon1_cfg(u32 sel, struct disp_video_timings *timing)
 {
 	u32 start_delay;
@@ -1285,56 +1014,8 @@ s32 tcon1_cfg_ex(u32 sel, disp_panel_para *panel)
 	return 0;
 }
 
-s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff, u32 is_yuv)
+s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff)
 {
-#if defined(CONFIG_MACH_SUN8IW12)
-	if (is_yuv) {
-		lcd_dev[sel]->tcon_ceu_coef_rr.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_rg.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_rb.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_rc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_gr.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gg.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_gb.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_br.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_bg.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bb.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_rv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_rv.bits.min = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_gv.bits.min = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_bv.bits.min = 0;
-	} else {
-		lcd_dev[sel]->tcon_ceu_coef_rr.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_rg.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_rb.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_rc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_gr.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gg.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gb.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_gc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_br.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bg.bits.value = 0x100;
-		lcd_dev[sel]->tcon_ceu_coef_bb.bits.value = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bc.bits.value = 0;
-
-		lcd_dev[sel]->tcon_ceu_coef_rv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_rv.bits.min = 0;
-		lcd_dev[sel]->tcon_ceu_coef_gv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_gv.bits.min = 0;
-		lcd_dev[sel]->tcon_ceu_coef_bv.bits.max = 255;
-		lcd_dev[sel]->tcon_ceu_coef_bv.bits.min = 0;
-	}
-	lcd_dev[sel]->tcon_ceu_ctl.bits.ceu_en = 1;
-#else
 	/*
 	 * plane sequence:
 	 * v: 16~240
@@ -1368,7 +1049,6 @@ s32 tcon1_hdmi_color_remap(u32 sel, u32 onoff, u32 is_yuv)
 	else
 		lcd_dev[sel]->tcon_ceu_ctl.bits.ceu_en = 0;
 
-#endif
 	return 0;
 }
 
@@ -1428,8 +1108,6 @@ s32 tcon1_set_timming(u32 sel, struct disp_video_timings *timming)
 	lcd_dev[sel]->tcon1_io_tri.bits.io3_output_tri_en = 1;
 	lcd_dev[sel]->tcon1_io_tri.bits.data_output_tri_en = 0xffffff;
 #endif
-	/*select the source of hdmi*/
-	lcd_dev[0]->tcon_mul_ctl.bits.hdmi_src = sel;
 	return 0;
 }
 
@@ -1805,70 +1483,4 @@ s32 tcon_cmap(u32 sel, u32 mode, unsigned int lcd_cmap_tbl[2][3][4])
 		lcd_dev[sel]->tcon_cmap_ctl.bits.cmap_en = 1;
 	}
 	return 0;
-}
-
-/**
- * @name       :tcon_set_fsync_pol
- * @brief      :set fsync's polarity
- * @param[IN]  :sel:tcon index
- * @param[IN]  :pol:polarity. 1:positive;0:negative
- *	positive:
- *           +---------+
- *  ---------+         +-----------
- *
- *	negative:
- *  ---------+         +------------
- *	     +---------+
- *
- * @return     :always 0
- */
-s32 tcon_set_fsync_pol(u32 sel, u32 pol)
-{
-	if (pol) {
-		lcd_dev[sel]->tcon_gint0.bits.tcon_irq_flag |= 0x00000004;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_dis_value = 0;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_act0_value = 1;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_act1_value = 1;
-	} else {
-		lcd_dev[sel]->tcon_gint0.bits.tcon_irq_flag &= 0xfffffffb;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_dis_value = 1;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_act0_value = 0;
-		lcd_dev[sel]->fsync_gen_ctrl.bits.sensor_act1_value = 0;
-	}
-	return 0;
-}
-
-/**
- * @name       :tcon_set_fsync_active_time
- * @brief      :set tcon fsync's active time
- * @param[IN]  :sel:tcon index
- * @param[IN]  :pixel_num:number of pixel time(Tpixel) to set
- *
- * Tpixel = 1/fps*1e9/vt/ht, unit:ns
- *
- * @return     :0 if success
- */
-s32 tcon_set_fsync_active_time(u32 sel, u32 pixel_num)
-{
-	/*4095*2*/
-	if (pixel_num > 8190 || pixel_num <= 0)
-		return -1;
-
-	if (pixel_num > 4095) {
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act0_time = 4095;
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act1_time =
-		    pixel_num - 4095;
-	} else {
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act0_time =
-		    pixel_num / 2;
-		lcd_dev[sel]->fsync_gen_dly.bits.sensor_act1_time =
-		    pixel_num - pixel_num / 2;
-	}
-
-	return 0;
-}
-
-void tcon_show_builtin_patten(u32 sel, u32 patten)
-{
-	lcd_dev[sel]->tcon0_ctl.bits.src_sel = patten;
 }

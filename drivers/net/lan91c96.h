@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*------------------------------------------------------------------------
  * lan91c96.h
  *
@@ -8,6 +7,8 @@
  * Copyright (C) 2001 Standard Microsystems Corporation (SMSC)
  *       Developed by Simple Network Magic Corporation (SNMC)
  * Copyright (C) 1996 by Erik Stahlman (ES)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file contains register information and access macros for
  * the LAN91C96 single chip ethernet controller.  It is a modified

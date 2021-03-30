@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <dirent.h>
@@ -24,7 +24,6 @@
 #include <asm/sections.h>
 #include <asm/state.h>
 #include <os.h>
-#include <rtc_def.h>
 
 /* Operating System Interface */
 
@@ -107,12 +106,10 @@ void os_exit(int exit_code)
 static struct termios orig_term;
 static bool term_setup;
 
-void os_fd_restore(void)
+static void os_fd_restore(void)
 {
-	if (term_setup) {
+	if (term_setup)
 		tcsetattr(0, TCSANOW, &orig_term);
-		term_setup = false;
-	}
 }
 
 /* Put tty into raw mode so <tab> and <ctrl+c> work */
@@ -122,6 +119,7 @@ void os_tty_raw(int fd, bool allow_sigs)
 
 	if (term_setup)
 		return;
+	term_setup = true;
 
 	/* If not a tty, don't complain */
 	if (tcgetattr(fd, &orig_term))
@@ -135,7 +133,6 @@ void os_tty_raw(int fd, bool allow_sigs)
 	if (tcsetattr(fd, TCSANOW, &term))
 		return;
 
-	term_setup = true;
 	atexit(os_fd_restore);
 }
 
@@ -313,24 +310,21 @@ void os_dirent_free(struct os_dirent_node *node)
 
 int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 {
-	struct dirent *entry;
+	struct dirent entry, *result;
 	struct os_dirent_node *head, *node, *next;
 	struct stat buf;
 	DIR *dir;
 	int ret;
 	char *fname;
-	char *old_fname;
 	int len;
-	int dirlen;
 
 	*headp = NULL;
 	dir = opendir(dirname);
 	if (!dir)
 		return -1;
 
-	/* Create a buffer upfront, with typically sufficient size */
-	dirlen = strlen(dirname) + 2;
-	len = dirlen + 256;
+	/* Create a buffer for the maximum filename length */
+	len = sizeof(entry.d_name) + strlen(dirname) + 2;
 	fname = malloc(len);
 	if (!fname) {
 		ret = -ENOMEM;
@@ -338,33 +332,18 @@ int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 	}
 
 	for (node = head = NULL;; node = next) {
-		errno = 0;
-		entry = readdir(dir);
-		if (!entry) {
-			ret = errno;
+		ret = readdir_r(dir, &entry, &result);
+		if (ret || !result)
 			break;
-		}
-		next = malloc(sizeof(*node) + strlen(entry->d_name) + 1);
+		next = malloc(sizeof(*node) + strlen(entry.d_name) + 1);
 		if (!next) {
 			os_dirent_free(head);
 			ret = -ENOMEM;
 			goto done;
 		}
-		if (dirlen + strlen(entry->d_name) > len) {
-			len = dirlen + strlen(entry->d_name);
-			old_fname = fname;
-			fname = realloc(fname, len);
-			if (!fname) {
-				free(old_fname);
-				free(next);
-				os_dirent_free(head);
-				ret = -ENOMEM;
-				goto done;
-			}
-		}
 		next->next = NULL;
-		strcpy(next->name, entry->d_name);
-		switch (entry->d_type) {
+		strcpy(next->name, entry.d_name);
+		switch (entry.d_type) {
 		case DT_REG:
 			next->type = OS_FILET_REG;
 			break;
@@ -374,8 +353,6 @@ int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 		case DT_LNK:
 			next->type = OS_FILET_LNK;
 			break;
-		default:
-			next->type = OS_FILET_UNKNOWN;
 		}
 		next->size = 0;
 		snprintf(fname, len, "%s/%s", dirname, next->name);
@@ -383,14 +360,13 @@ int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 			next->size = buf.st_size;
 		if (node)
 			node->next = next;
-		else
-			head = next;
+		if (!head)
+			head = node;
 	}
 	*headp = head;
 
 done:
 	closedir(dir);
-	free(fname);
 	return ret;
 }
 
@@ -403,13 +379,13 @@ const char *os_dirent_typename[OS_FILET_COUNT] = {
 
 const char *os_dirent_get_typename(enum os_dirent_t type)
 {
-	if (type >= OS_FILET_REG && type < OS_FILET_COUNT)
+	if (type >= 0 && type < OS_FILET_COUNT)
 		return os_dirent_typename[type];
 
 	return os_dirent_typename[OS_FILET_UNKNOWN];
 }
 
-int os_get_filesize(const char *fname, loff_t *size)
+ssize_t os_get_filesize(const char *fname)
 {
 	struct stat buf;
 	int ret;
@@ -417,8 +393,7 @@ int os_get_filesize(const char *fname, loff_t *size)
 	ret = stat(fname, &buf);
 	if (ret)
 		return ret;
-	*size = buf.st_size;
-	return 0;
+	return buf.st_size;
 }
 
 void os_putc(int ch)
@@ -452,11 +427,11 @@ int os_read_ram_buf(const char *fname)
 {
 	struct sandbox_state *state = state_get_current();
 	int fd, ret;
-	loff_t size;
+	int size;
 
-	ret = os_get_filesize(fname, &size);
-	if (ret < 0)
-		return ret;
+	size = os_get_filesize(fname);
+	if (size < 0)
+		return -ENOENT;
 	if (size != state->ram_size)
 		return -ENOSPC;
 	fd = open(fname, O_RDONLY);
@@ -559,72 +534,4 @@ int os_jump_to_image(const void *dest, int size)
 		return err;
 
 	return unlink(fname);
-}
-
-int os_find_u_boot(char *fname, int maxlen)
-{
-	struct sandbox_state *state = state_get_current();
-	const char *progname = state->argv[0];
-	int len = strlen(progname);
-	char *p;
-	int fd;
-
-	if (len >= maxlen || len < 4)
-		return -ENOSPC;
-
-	/* Look for 'u-boot' in the same directory as 'u-boot-spl' */
-	strcpy(fname, progname);
-	if (!strcmp(fname + len - 4, "-spl")) {
-		fname[len - 4] = '\0';
-		fd = os_open(fname, O_RDONLY);
-		if (fd >= 0) {
-			close(fd);
-			return 0;
-		}
-	}
-
-	/* Look for 'u-boot' in the parent directory of spl/ */
-	p = strstr(fname, "/spl/");
-	if (p) {
-		strcpy(p, p + 4);
-		fd = os_open(fname, O_RDONLY);
-		if (fd >= 0) {
-			close(fd);
-			return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int os_spl_to_uboot(const char *fname)
-{
-	struct sandbox_state *state = state_get_current();
-	char *argv[state->argc + 1];
-	int ret;
-
-	memcpy(argv, state->argv, sizeof(char *) * (state->argc + 1));
-	argv[0] = (char *)fname;
-	ret = execv(fname, argv);
-	if (ret)
-		return ret;
-
-	return unlink(fname);
-}
-
-void os_localtime(struct rtc_time *rt)
-{
-	time_t t = time(NULL);
-	struct tm *tm;
-
-	tm = localtime(&t);
-	rt->tm_sec = tm->tm_sec;
-	rt->tm_min = tm->tm_min;
-	rt->tm_hour = tm->tm_hour;
-	rt->tm_mday = tm->tm_mday;
-	rt->tm_mon = tm->tm_mon + 1;
-	rt->tm_year = tm->tm_year + 1900;
-	rt->tm_wday = tm->tm_wday;
-	rt->tm_yday = tm->tm_yday;
-	rt->tm_isdst = tm->tm_isdst;
 }

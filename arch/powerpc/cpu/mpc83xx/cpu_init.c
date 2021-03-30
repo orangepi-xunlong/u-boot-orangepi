@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2004-2009 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <mpc83xx.h>
 #include <ioports.h>
 #include <asm/io.h>
-#include <asm/processor.h>
 #ifdef CONFIG_USB_EHCI_FSL
-#include <usb/ehci-ci.h>
+#include <usb/ehci-fsl.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -205,7 +205,8 @@ void cpu_init_f (volatile immap_t * im)
 	/* Pointer is writable since we allocated a register for it */
 	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
 
-	/* global data region was cleared in start.S */
+	/* Clear initial global data */
+	memset ((void *) gd, 0, sizeof (gd_t));
 
 	/* system performance tweaking */
 	clrsetbits_be32(&im->arbiter.acr, acr_mask, acr_val);
@@ -483,7 +484,7 @@ int prt_83xx_rsr(void)
 		RSR_SRS,  "External/Internal Soft"}, {
 		RSR_HRS,  "External/Internal Hard"}
 	};
-	static int n = ARRAY_SIZE(bits);
+	static int n = sizeof bits / sizeof bits[0];
 	ulong rsr = gd->arch.reset_status;
 	int i;
 	char *sep;

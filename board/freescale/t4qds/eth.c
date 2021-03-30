@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -20,9 +21,8 @@
 #include <fsl_mdio.h>
 #include <miiphy.h>
 #include <phy.h>
-#include <fsl_dtsec.h>
+#include <asm/fsl_dtsec.h>
 #include <asm/fsl_serdes.h>
-#include <hwconfig.h>
 #include "../common/qixis.h"
 #include "../common/fman.h"
 
@@ -152,7 +152,7 @@ static int t4240qds_mdio_init(char *realbusname, u8 muxval)
 	bus->read = t4240qds_mdio_read;
 	bus->write = t4240qds_mdio_write;
 	bus->reset = t4240qds_mdio_reset;
-	strcpy(bus->name, t4240qds_mdio_name_for_muxval(muxval));
+	sprintf(bus->name, t4240qds_mdio_name_for_muxval(muxval));
 
 	pmdio->realbus = miiphy_get_dev_by_name(realbusname);
 
@@ -173,10 +173,6 @@ void board_ft_fman_fixup_port(void *blob, char * prop, phys_addr_t pa,
 				enum fm_port port, int offset)
 {
 	int interface = fm_info_get_enet_if(port);
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	u32 prtcl2 = in_be32(&gur->rcwsr[4]) & FSL_CORENET2_RCWSR4_SRDS2_PRTCL;
-
-	prtcl2 >>= FSL_CORENET2_RCWSR4_SRDS2_PRTCL_SHIFT;
 
 	if (interface == PHY_INTERFACE_MODE_SGMII ||
 	    interface == PHY_INTERFACE_MODE_QSGMII) {
@@ -266,76 +262,6 @@ void board_ft_fman_fixup_port(void *blob, char * prop, phys_addr_t pa,
 		default:
 			break;
 		}
-	} else if (interface == PHY_INTERFACE_MODE_XGMII &&
-		  ((prtcl2 == 55) || (prtcl2 == 57))) {
-		/*
-		 * if the 10G is XFI, check hwconfig to see what is the
-		 * media type, there are two types, fiber or copper,
-		 * fix the dtb accordingly.
-		 */
-		int media_type = 0;
-		struct fixed_link f_link;
-		char lane_mode[20] = {"10GBASE-KR"};
-		char buf[32] = "serdes-2,";
-		int off;
-
-		switch (port) {
-		case FM1_10GEC1:
-			if (hwconfig_sub("fsl_10gkr_copper", "fm1_10g1")) {
-				media_type = 1;
-				fdt_set_phy_handle(blob, prop, pa,
-						   "phy_xfi1");
-				sprintf(buf, "%s%s%s", buf, "lane-a,",
-					(char *)lane_mode);
-			}
-			break;
-		case FM1_10GEC2:
-			if (hwconfig_sub("fsl_10gkr_copper", "fm1_10g2")) {
-				media_type = 1;
-				fdt_set_phy_handle(blob, prop, pa,
-						   "phy_xfi2");
-				sprintf(buf, "%s%s%s", buf, "lane-b,",
-					(char *)lane_mode);
-			}
-			break;
-		case FM2_10GEC1:
-			if (hwconfig_sub("fsl_10gkr_copper", "fm2_10g1")) {
-				media_type = 1;
-				fdt_set_phy_handle(blob, prop, pa,
-						   "phy_xfi3");
-				sprintf(buf, "%s%s%s", buf, "lane-d,",
-					(char *)lane_mode);
-			}
-			break;
-		case FM2_10GEC2:
-			if (hwconfig_sub("fsl_10gkr_copper", "fm2_10g2")) {
-				media_type = 1;
-				fdt_set_phy_handle(blob, prop, pa,
-						   "phy_xfi4");
-				sprintf(buf, "%s%s%s", buf, "lane-c,",
-					(char *)lane_mode);
-			}
-			break;
-		default:
-			return;
-		}
-
-		if (!media_type) {
-			/* fixed-link is used for XFI fiber cable */
-			fdt_delprop(blob, offset, "phy-handle");
-			f_link.phy_id = port;
-			f_link.duplex = 1;
-			f_link.link_speed = 10000;
-			f_link.pause = 0;
-			f_link.asym_pause = 0;
-			fdt_setprop(blob, offset, "fixed-link", &f_link,
-				    sizeof(f_link));
-		} else {
-			/* set property for copper cable */
-			off = fdt_node_offset_by_compat_reg(blob,
-					"fsl,fman-memac-mdio", pa + 0x1000);
-			fdt_setprop_string(blob, off, "lane-instance", buf);
-		}
 	}
 }
 
@@ -369,23 +295,8 @@ void fdt_fixup_board_enet(void *fdt)
 			break;
 		case PHY_INTERFACE_MODE_XGMII:
 			/* check if it's XFI interface for 10g */
-			if ((prtcl2 == 55) || (prtcl2 == 57)) {
-				if (i == FM1_10GEC1 && hwconfig_sub(
-					"fsl_10gkr_copper", "fm1_10g1"))
-					fdt_status_okay_by_alias(
-					fdt, "xfi_pcs_mdio1");
-				if (i == FM1_10GEC2 && hwconfig_sub(
-					"fsl_10gkr_copper", "fm1_10g2"))
-					fdt_status_okay_by_alias(
-					fdt, "xfi_pcs_mdio2");
-				if (i == FM2_10GEC1 && hwconfig_sub(
-					"fsl_10gkr_copper", "fm2_10g1"))
-					fdt_status_okay_by_alias(
-					fdt, "xfi_pcs_mdio3");
-				if (i == FM2_10GEC2 && hwconfig_sub(
-					"fsl_10gkr_copper", "fm2_10g2"))
-					fdt_status_okay_by_alias(
-					fdt, "xfi_pcs_mdio4");
+			if ((prtcl2 == 56) || (prtcl2 == 57)) {
+				fdt_status_okay_by_alias(fdt, "emi2_xfislot3");
 				break;
 			}
 			switch (i) {
@@ -549,7 +460,7 @@ int board_eth_init(bd_t *bis)
 		fm_info_set_phy_address(FM1_DTSEC4, slot_qsgmii_phyaddr[2][3]);
 		fm_info_set_phy_address(FM1_DTSEC5, slot_qsgmii_phyaddr[1][0]);
 		fm_info_set_phy_address(FM1_DTSEC6, slot_qsgmii_phyaddr[1][1]);
-		if ((srds_prtcl_s2 != 55) && (srds_prtcl_s2 != 57)) {
+		if ((srds_prtcl_s2 != 56) && (srds_prtcl_s2 != 57)) {
 			fm_info_set_phy_address(FM1_DTSEC9,
 						slot_qsgmii_phyaddr[1][3]);
 			fm_info_set_phy_address(FM1_DTSEC10,
@@ -564,7 +475,7 @@ int board_eth_init(bd_t *bis)
 		fm_info_set_phy_address(FM1_DTSEC4, slot_qsgmii_phyaddr[2][3]);
 		fm_info_set_phy_address(FM1_DTSEC5, slot_qsgmii_phyaddr[1][0]);
 		fm_info_set_phy_address(FM1_DTSEC6, slot_qsgmii_phyaddr[1][1]);
-		if ((srds_prtcl_s2 != 55) && (srds_prtcl_s2 != 57)) {
+		if ((srds_prtcl_s2 != 56) && (srds_prtcl_s2 != 57)) {
 			fm_info_set_phy_address(FM1_DTSEC9,
 						slot_qsgmii_phyaddr[1][2]);
 			fm_info_set_phy_address(FM1_DTSEC10,
@@ -579,7 +490,7 @@ int board_eth_init(bd_t *bis)
 	case 48:
 		fm_info_set_phy_address(FM1_DTSEC5, slot_qsgmii_phyaddr[1][0]);
 		fm_info_set_phy_address(FM1_DTSEC6, slot_qsgmii_phyaddr[1][1]);
-		if ((srds_prtcl_s2 != 55) && (srds_prtcl_s2 != 57)) {
+		if ((srds_prtcl_s2 != 56) && (srds_prtcl_s2 != 57)) {
 			fm_info_set_phy_address(FM1_DTSEC10,
 						slot_qsgmii_phyaddr[1][2]);
 			fm_info_set_phy_address(FM1_DTSEC9,
@@ -656,18 +567,13 @@ int board_eth_init(bd_t *bis)
 		idx = i - FM1_10GEC1;
 		switch (fm_info_get_enet_if(i)) {
 		case PHY_INTERFACE_MODE_XGMII:
-			if ((srds_prtcl_s2 == 55) || (srds_prtcl_s2 == 57)) {
-				/* A fake PHY address to make U-Boot happy */
-				fm_info_set_phy_address(i, i);
-			} else {
-				lane = serdes_get_first_lane(FSL_SRDS_1,
+			lane = serdes_get_first_lane(FSL_SRDS_1,
 						XAUI_FM1_MAC9 + idx);
-				if (lane < 0)
-					break;
-				slot = lane_to_slot_fsm1[lane];
-				if (QIXIS_READ(present2) & (1 << (slot - 1)))
-					fm_disable_port(i);
-			}
+			if (lane < 0)
+				break;
+			slot = lane_to_slot_fsm1[lane];
+			if (QIXIS_READ(present2) & (1 << (slot - 1)))
+				fm_disable_port(i);
 			mdio_mux[i] = EMI2;
 			fm_info_set_mdio(i, mii_dev_for_muxval(mdio_mux[i]));
 			break;
@@ -760,7 +666,7 @@ int board_eth_init(bd_t *bis)
 		fm_info_set_phy_address(FM2_DTSEC3, slot_qsgmii_phyaddr[4][2]);
 		fm_info_set_phy_address(FM2_DTSEC4, slot_qsgmii_phyaddr[4][3]);
 		break;
-	case 55:
+	case 56:
 	case 57:
 		/* XFI in Slot3, SGMII in Slot4 */
 		fm_info_set_phy_address(FM2_DTSEC1, slot_qsgmii_phyaddr[4][0]);
@@ -837,18 +743,13 @@ int board_eth_init(bd_t *bis)
 		idx = i - FM2_10GEC1;
 		switch (fm_info_get_enet_if(i)) {
 		case PHY_INTERFACE_MODE_XGMII:
-			if ((srds_prtcl_s2 == 55) || (srds_prtcl_s2 == 57)) {
-				/* A fake PHY address to make U-Boot happy */
-				fm_info_set_phy_address(i, i);
-			} else {
-				lane = serdes_get_first_lane(FSL_SRDS_2,
+			lane = serdes_get_first_lane(FSL_SRDS_2,
 						XAUI_FM2_MAC9 + idx);
-				if (lane < 0)
-					break;
-				slot = lane_to_slot_fsm2[lane];
-				if (QIXIS_READ(present2) & (1 << (slot - 1)))
-					fm_disable_port(i);
-			}
+			if (lane < 0)
+				break;
+			slot = lane_to_slot_fsm2[lane];
+			if (QIXIS_READ(present2) & (1 << (slot - 1)))
+				fm_disable_port(i);
 			mdio_mux[i] = EMI2;
 			fm_info_set_mdio(i, mii_dev_for_muxval(mdio_mux[i]));
 			break;

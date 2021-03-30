@@ -1,19 +1,4 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_lcd.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+
 #include "de_lcd_type.h"
 #include "de_lcd.h"
 
@@ -351,15 +336,11 @@ static s32 tcon0_cfg_mode_auto(u32 sel, disp_panel_para * panel)
   {
 	if (panel->lcd_interlace){
 		lcd_dev[sel]->tcon0_basic0.bits.y = panel->lcd_y/2 - 1;
-		lcd_dev[sel]->tcon0_basic2.bits.vt =
-		    (panel->lcd_hv_syuv_fdly == LCD_HV_SRGB_FDLY_2LINE) ? 625
-									: 525;
-		start_delay = panel->lcd_vt / 2 - panel->lcd_y / 2 - 10;
+		lcd_dev[sel]->tcon0_basic2.bits.vt = (panel->lcd_hv_syuv_fdly == LCD_HV_SRGB_FDLY_2LINE)? 525:625;
+			start_delay = panel->lcd_vt/2-panel->lcd_y/2-10;
 	  } else {
 		lcd_dev[sel]->tcon0_basic0.bits.y = panel->lcd_y - 1;
-		lcd_dev[sel]->tcon0_basic2.bits.vt =
-		    (panel->lcd_hv_syuv_fdly == LCD_HV_SRGB_FDLY_2LINE) ? 1250
-									: 1050;
+		lcd_dev[sel]->tcon0_basic2.bits.vt = (panel->lcd_hv_syuv_fdly == LCD_HV_SRGB_FDLY_2LINE)? 1050:1250;
 	  }
 
       lcd_dev[sel]->tcon0_basic1.bits.ht = (panel->lcd_ht==0)? 0:(panel->lcd_ht*2-1);
@@ -589,15 +570,6 @@ s32 tcon0_tri_busy(u32 sel)
 }
 
 
-s32 tcon0_cpu_set_auto_mode(u32 sel)
-{
-	/* trigger mode 0 */
-	lcd_dev[sel]->tcon0_cpu_ctl.bits.auto_ = 1;
-	/* trigger mode 1 */
-	lcd_dev[sel]->tcon0_cpu_ctl.bits.flush = 0;
-	return 0;
-}
-
 s32 tcon0_tri_start(u32 sel)
 {
 	lcd_dev[sel]->tcon0_cpu_ctl.bits.trigger_start = 0;
@@ -701,43 +673,6 @@ s32 tcon0_cpu_wr_24b(u32 sel, u32 index, u32 data)
 s32 tcon0_cpu_rd_24b(u32 sel, u32 index, u32 *data)
 {
 	return -1;
-}
-
-s32 tcon0_cpu_rd_24b_data(u32 sel, u32 index, u32 *data, u32 size)
-{
-	u32 count = 0;
-	u32 tmp;
-	int i = 0;
-
-	tcon0_cpu_wr_24b_index(sel, tcon0_cpu_16b_to_24b(index));
-
-	count = 0;
-	while ((tcon0_cpu_busy(sel)) && (count < 50)) {
-		count++;
-		disp_delay_us(100);
-	}
-
-	lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 0;
-	lcd_dev[sel]->tcon0_cpu_ctl.bits.ca = 1;
-	tmp = lcd_dev[sel]->tcon0_cpu_rd.bits.data_rd0;
-	lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 1;
-
-	for (i = 0; i < size; i++) {
-		count = 0;
-		while ((tcon0_cpu_busy(sel)) && (count < 50)) {
-			count++;
-			disp_delay_us(100);
-		}
-
-		lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 0;
-		lcd_dev[sel]->tcon0_cpu_ctl.bits.ca = 1;
-		tmp = lcd_dev[sel]->tcon0_cpu_rd.bits.data_rd0;
-		lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 1;
-
-		*data++ = tcon0_cpu_24b_to_16b(tmp);
-	}
-
-	return 0;
 }
 
 s32 tcon0_cpu_wr_16b(u32 sel, u32 index, u32 data)
@@ -1328,7 +1263,3 @@ s32 tcon_cmap(u32 sel, u32 mode,unsigned int lcd_cmap_tbl[2][3][4])
     return 0;
 }
 
-void tcon_show_builtin_patten(u32 sel, u32 patten)
-{
-	lcd_dev[sel]->tcon0_ctl.bits.src_sel = patten;
-}

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments Incorporated, <www.ti.com>
  *
  *	Sricharan R		<r.sricharan@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _EVM5430_MUX_DATA_H
 #define _EVM5430_MUX_DATA_H

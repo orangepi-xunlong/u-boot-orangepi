@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Nobuhiro Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AG101_H
@@ -68,6 +69,8 @@
 #define CONFIG_RESERVED_04_BASE		0x98C00000
 /* Compat Flash Controller */
 #define CONFIG_FTCFC010_BASE		0x98D00000
+/* SD Controller */
+#define CONFIG_FTSDC010_BASE		0x98E00000
 
 /* Synchronous Serial Port Controller (SSP) I2S/AC97 */
 #define CONFIG_FTSSP010_02_BASE		0x99400000

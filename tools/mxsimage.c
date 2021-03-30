@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX23/i.MX28 SB image generator
  *
  * Copyright (C) 2012-2013 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifdef CONFIG_MXS
@@ -21,37 +22,6 @@
 #include "pbl_crc32.h"
 #include <image.h>
 
-/*
- * OpenSSL 1.1.0 and newer compatibility functions:
- * https://wiki.openssl.org/index.php/1.1_API_Changes
- */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
-static void *OPENSSL_zalloc(size_t num)
-{
-	void *ret = OPENSSL_malloc(num);
-
-	if (ret != NULL)
-		memset(ret, 0, num);
-	return ret;
-}
-
-EVP_MD_CTX *EVP_MD_CTX_new(void)
-{
-	return OPENSSL_zalloc(sizeof(EVP_MD_CTX));
-}
-
-void EVP_MD_CTX_free(EVP_MD_CTX *ctx)
-{
-	EVP_MD_CTX_cleanup(ctx);
-	OPENSSL_free(ctx);
-}
-
-int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx)
-{
-	return EVP_CIPHER_CTX_cleanup(ctx);
-}
-#endif
 
 /*
  * DCD block
@@ -155,7 +125,7 @@ struct sb_image_ctx {
 	unsigned int			in_section:1;
 	unsigned int			in_dcd:1;
 	/* Image configuration */
-	unsigned int			display_progress:1;
+	unsigned int			verbose_boot:1;
 	unsigned int			silent_dump:1;
 	char				*input_filename;
 	char				*output_filename;
@@ -174,8 +144,8 @@ struct sb_image_ctx {
 	struct sb_dcd_ctx		*dcd_head;
 	struct sb_dcd_ctx		*dcd_tail;
 
-	EVP_CIPHER_CTX			*cipher_ctx;
-	EVP_MD_CTX			*md_ctx;
+	EVP_CIPHER_CTX			cipher_ctx;
+	EVP_MD_CTX			md_ctx;
 	uint8_t				digest[32];
 	struct sb_key_dictionary_key	sb_dict_key;
 
@@ -203,26 +173,24 @@ struct sb_image_ctx {
  */
 static int sb_aes_init(struct sb_image_ctx *ictx, uint8_t *iv, int enc)
 {
-	EVP_CIPHER_CTX *ctx;
+	EVP_CIPHER_CTX *ctx = &ictx->cipher_ctx;
 	int ret;
 
 	/* If there is no init vector, init vector is all zeroes. */
 	if (!iv)
 		iv = ictx->image_key;
 
-	ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX_init(ctx);
 	ret = EVP_CipherInit(ctx, EVP_aes_128_cbc(), ictx->image_key, iv, enc);
-	if (ret == 1) {
+	if (ret == 1)
 		EVP_CIPHER_CTX_set_padding(ctx, 0);
-		ictx->cipher_ctx = ctx;
-	}
 	return ret;
 }
 
 static int sb_aes_crypt(struct sb_image_ctx *ictx, uint8_t *in_data,
 			uint8_t *out_data, int in_len)
 {
-	EVP_CIPHER_CTX *ctx = ictx->cipher_ctx;
+	EVP_CIPHER_CTX *ctx = &ictx->cipher_ctx;
 	int ret, outlen;
 	uint8_t *outbuf;
 
@@ -247,13 +215,13 @@ err:
 
 static int sb_aes_deinit(EVP_CIPHER_CTX *ctx)
 {
-	return EVP_CIPHER_CTX_reset(ctx);
+	return EVP_CIPHER_CTX_cleanup(ctx);
 }
 
 static int sb_aes_reinit(struct sb_image_ctx *ictx, int enc)
 {
 	int ret;
-	EVP_CIPHER_CTX *ctx = ictx->cipher_ctx;
+	EVP_CIPHER_CTX *ctx = &ictx->cipher_ctx;
 	struct sb_boot_image_header *sb_header = &ictx->payload;
 	uint8_t *iv = sb_header->iv;
 
@@ -308,7 +276,7 @@ static int sb_get_time(time_t time, struct tm *tm)
 
 static void sb_encrypt_sb_header(struct sb_image_ctx *ictx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 	struct sb_boot_image_header *sb_header = &ictx->payload;
 	uint8_t *sb_header_ptr = (uint8_t *)sb_header;
 
@@ -319,7 +287,7 @@ static void sb_encrypt_sb_header(struct sb_image_ctx *ictx)
 
 static void sb_encrypt_sb_sections_header(struct sb_image_ctx *ictx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 	struct sb_section_ctx *sctx = ictx->sect_head;
 	struct sb_sections_header *shdr;
 	uint8_t *sb_sections_header_ptr;
@@ -339,7 +307,7 @@ static void sb_encrypt_sb_sections_header(struct sb_image_ctx *ictx)
 
 static void sb_encrypt_key_dictionary_key(struct sb_image_ctx *ictx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 
 	sb_aes_crypt(ictx, ictx->image_key, ictx->sb_dict_key.key,
 		     sizeof(ictx->sb_dict_key.key));
@@ -348,7 +316,7 @@ static void sb_encrypt_key_dictionary_key(struct sb_image_ctx *ictx)
 
 static void sb_decrypt_key_dictionary_key(struct sb_image_ctx *ictx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 
 	EVP_DigestUpdate(md_ctx, &ictx->sb_dict_key, sizeof(ictx->sb_dict_key));
 	sb_aes_crypt(ictx, ictx->sb_dict_key.key, ictx->image_key,
@@ -358,7 +326,7 @@ static void sb_decrypt_key_dictionary_key(struct sb_image_ctx *ictx)
 static void sb_encrypt_tag(struct sb_image_ctx *ictx,
 		struct sb_cmd_ctx *cctx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 	struct sb_command *cmd = &cctx->payload;
 
 	sb_aes_crypt(ictx, (uint8_t *)cmd,
@@ -369,8 +337,8 @@ static void sb_encrypt_tag(struct sb_image_ctx *ictx,
 static int sb_encrypt_image(struct sb_image_ctx *ictx)
 {
 	/* Start image-wide crypto. */
-	ictx->md_ctx = EVP_MD_CTX_new();
-	EVP_DigestInit(ictx->md_ctx, EVP_sha1());
+	EVP_MD_CTX_init(&ictx->md_ctx);
+	EVP_DigestInit(&ictx->md_ctx, EVP_sha1());
 
 	/*
 	 * SB image header.
@@ -411,7 +379,7 @@ static int sb_encrypt_image(struct sb_image_ctx *ictx)
 			} else if (ccmd->header.tag == ROM_LOAD_CMD) {
 				sb_aes_crypt(ictx, cctx->data, cctx->data,
 					     cctx->length);
-				EVP_DigestUpdate(ictx->md_ctx, cctx->data,
+				EVP_DigestUpdate(&ictx->md_ctx, cctx->data,
 						 cctx->length);
 			}
 
@@ -426,12 +394,11 @@ static int sb_encrypt_image(struct sb_image_ctx *ictx)
 	 */
 	sb_aes_reinit(ictx, 1);
 
-	EVP_DigestFinal(ictx->md_ctx, ictx->digest, NULL);
-	EVP_MD_CTX_free(ictx->md_ctx);
+	EVP_DigestFinal(&ictx->md_ctx, ictx->digest, NULL);
 	sb_aes_crypt(ictx, ictx->digest, ictx->digest, sizeof(ictx->digest));
 
 	/* Stop the encryption session. */
-	sb_aes_deinit(ictx->cipher_ctx);
+	sb_aes_deinit(&ictx->cipher_ctx);
 
 	return 0;
 }
@@ -1341,8 +1308,8 @@ static int sb_prefill_image_header(struct sb_image_ctx *ictx)
 		sizeof(struct sb_sections_header) / SB_BLOCK_SIZE;
 	hdr->timestamp_us = sb_get_timestamp() * 1000000;
 
-	hdr->flags = ictx->display_progress ?
-		SB_IMAGE_FLAG_DISPLAY_PROGRESS : 0;
+	/* FIXME -- add proper config option */
+	hdr->flags = ictx->verbose_boot ? SB_IMAGE_FLAG_VERBOSE : 0,
 
 	/* FIXME -- We support only default key */
 	hdr->key_count = 1;
@@ -1355,7 +1322,7 @@ static int sb_postfill_image_header(struct sb_image_ctx *ictx)
 	struct sb_boot_image_header *hdr = &ictx->payload;
 	struct sb_section_ctx *sctx = ictx->sect_head;
 	uint32_t kd_size, sections_blocks;
-	EVP_MD_CTX *md_ctx;
+	EVP_MD_CTX md_ctx;
 
 	/* The main SB header size in blocks. */
 	hdr->image_blocks = hdr->header_blocks;
@@ -1392,14 +1359,13 @@ static int sb_postfill_image_header(struct sb_image_ctx *ictx)
 		hdr->key_dictionary_block + kd_size / SB_BLOCK_SIZE;
 
 	/* Compute header digest. */
-	md_ctx = EVP_MD_CTX_new();
+	EVP_MD_CTX_init(&md_ctx);
 
-	EVP_DigestInit(md_ctx, EVP_sha1());
-	EVP_DigestUpdate(md_ctx, hdr->signature1,
+	EVP_DigestInit(&md_ctx, EVP_sha1());
+	EVP_DigestUpdate(&md_ctx, hdr->signature1,
 			 sizeof(struct sb_boot_image_header) -
 			 sizeof(hdr->digest));
-	EVP_DigestFinal(md_ctx, hdr->digest, NULL);
-	EVP_MD_CTX_free(md_ctx);
+	EVP_DigestFinal(&md_ctx, hdr->digest, NULL);
 
 	return 0;
 }
@@ -1450,7 +1416,7 @@ static int sb_parse_line(struct sb_image_ctx *ictx, struct sb_cmd_list *cmd)
 {
 	char *tok;
 	char *line = cmd->cmd;
-	char *rptr = NULL;
+	char *rptr;
 	int ret;
 
 	/* Analyze the identifier on this line first. */
@@ -1461,12 +1427,6 @@ static int sb_parse_line(struct sb_image_ctx *ictx, struct sb_cmd_list *cmd)
 	}
 
 	cmd->cmd = rptr;
-
-	/* set DISPLAY_PROGRESS flag */
-	if (!strcmp(tok, "DISPLAYPROGRESS")) {
-		ictx->display_progress = 1;
-		return 0;
-	}
 
 	/* DCD */
 	if (!strcmp(tok, "DCD")) {
@@ -1655,12 +1615,12 @@ static int sb_verify_image_header(struct sb_image_ctx *ictx,
 	struct tm tm;
 	int sz, ret = 0;
 	unsigned char digest[20];
-	EVP_MD_CTX *md_ctx;
+	EVP_MD_CTX md_ctx;
 	unsigned long size;
 
 	/* Start image-wide crypto. */
-	ictx->md_ctx = EVP_MD_CTX_new();
-	EVP_DigestInit(ictx->md_ctx, EVP_sha1());
+	EVP_MD_CTX_init(&ictx->md_ctx);
+	EVP_DigestInit(&ictx->md_ctx, EVP_sha1());
 
 	soprintf(ictx, "---------- Verifying SB Image Header ----------\n");
 
@@ -1671,13 +1631,12 @@ static int sb_verify_image_header(struct sb_image_ctx *ictx,
 	}
 
 	/* Compute header digest. */
-	md_ctx = EVP_MD_CTX_new();
-	EVP_DigestInit(md_ctx, EVP_sha1());
-	EVP_DigestUpdate(md_ctx, hdr->signature1,
+	EVP_MD_CTX_init(&md_ctx);
+	EVP_DigestInit(&md_ctx, EVP_sha1());
+	EVP_DigestUpdate(&md_ctx, hdr->signature1,
 			 sizeof(struct sb_boot_image_header) -
 			 sizeof(hdr->digest));
-	EVP_DigestFinal(md_ctx, digest, NULL);
-	EVP_MD_CTX_free(md_ctx);
+	EVP_DigestFinal(&md_ctx, digest, NULL);
 
 	sb_aes_init(ictx, NULL, 1);
 	sb_encrypt_sb_header(ictx);
@@ -1722,11 +1681,10 @@ static int sb_verify_image_header(struct sb_image_ctx *ictx,
 		 ntohs(hdr->component_version.minor),
 		 ntohs(hdr->component_version.revision));
 
-	if (hdr->flags & ~SB_IMAGE_FLAGS_MASK)
+	if (hdr->flags & ~SB_IMAGE_FLAG_VERBOSE)
 		ret = -EINVAL;
 	soprintf(ictx, "%s Image flags:                  %s\n", stat[!!ret],
-		 hdr->flags & SB_IMAGE_FLAG_DISPLAY_PROGRESS ?
-		 "Display_progress" : "");
+		 hdr->flags & SB_IMAGE_FLAG_VERBOSE ? "Verbose_boot" : "");
 	if (ret)
 		return ret;
 
@@ -1796,7 +1754,7 @@ static int sb_verify_image_header(struct sb_image_ctx *ictx,
 static void sb_decrypt_tag(struct sb_image_ctx *ictx,
 		struct sb_cmd_ctx *cctx)
 {
-	EVP_MD_CTX *md_ctx = ictx->md_ctx;
+	EVP_MD_CTX *md_ctx = &ictx->md_ctx;
 	struct sb_command *cmd = &cctx->payload;
 
 	sb_aes_crypt(ictx, (uint8_t *)&cctx->c_payload,
@@ -1853,7 +1811,7 @@ static int sb_verify_command(struct sb_image_ctx *ictx,
 
 		*tsize += size;
 
-		EVP_DigestUpdate(ictx->md_ctx, cctx->data, asize);
+		EVP_DigestUpdate(&ictx->md_ctx, cctx->data, asize);
 		sb_aes_crypt(ictx, cctx->data, cctx->data, asize);
 
 		if (ccmd->load.crc32 != pbl_crc32(0,
@@ -2042,8 +2000,7 @@ static int sb_verify_image_end(struct sb_image_ctx *ictx,
 	}
 
 	/* Check the image digest. */
-	EVP_DigestFinal(ictx->md_ctx, ictx->digest, NULL);
-	EVP_MD_CTX_free(ictx->md_ctx);
+	EVP_DigestFinal(&ictx->md_ctx, ictx->digest, NULL);
 
 	/* Decrypt the image digest from the input image. */
 	sb_aes_reinit(ictx, 0);
@@ -2119,7 +2076,7 @@ err_verify:
 	soprintf(ictx, "Verification %s\n", ret ? "FAILED" : "PASSED");
 
 	/* Stop the encryption session. */
-	sb_aes_deinit(ictx->cipher_ctx);
+	sb_aes_deinit(&ictx->cipher_ctx);
 
 	fclose(fp);
 	return ret;
@@ -2330,6 +2287,7 @@ static int mxsimage_generate(struct image_tool_params *params,
 
 	ctx.cfg_filename = params->imagename;
 	ctx.output_filename = params->imagefile;
+	ctx.verbose_boot = 1;
 
 	ret = sb_build_tree_from_cfg(&ctx);
 	if (ret)
@@ -2348,18 +2306,25 @@ fail:
 /*
  * mxsimage parameters
  */
-U_BOOT_IMAGE_TYPE(
-	mxsimage,
-	"Freescale MXS Boot Image support",
-	0,
-	NULL,
-	mxsimage_check_params,
-	mxsimage_verify_header,
-	mxsimage_print_header,
-	mxsimage_set_header,
-	NULL,
-	mxsimage_check_image_types,
-	NULL,
-	mxsimage_generate
-);
+static struct image_type_params mxsimage_params = {
+	.name		= "Freescale MXS Boot Image support",
+	.header_size	= 0,
+	.hdr		= NULL,
+	.check_image_type = mxsimage_check_image_types,
+	.verify_header	= mxsimage_verify_header,
+	.print_header	= mxsimage_print_header,
+	.set_header	= mxsimage_set_header,
+	.check_params	= mxsimage_check_params,
+	.vrec_header	= mxsimage_generate,
+};
+
+void init_mxs_image_type(void)
+{
+	register_image_type(&mxsimage_params);
+}
+
+#else
+void init_mxs_image_type(void)
+{
+}
 #endif

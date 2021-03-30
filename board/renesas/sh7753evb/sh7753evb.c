@@ -1,15 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012  Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <environment.h>
 #include <malloc.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/mmc.h>
-#include <spi.h>
 #include <spi_flash.h>
 
 int checkboard(void)
@@ -113,7 +112,6 @@ static void set_mac_to_sh_giga_eth_register(int channel, char *mac_string)
 	writel(val, &ether->malr);
 }
 
-#if defined(CONFIG_SH_32BIT)
 /*****************************************************************
  * This PMB must be set on this timing. The lowlevel_init is run on
  * Area 0(phys 0x00000000), so we have to map it.
@@ -155,22 +153,30 @@ static void set_pmb_on_board_init(void)
 	writel(mk_pmb_addr_val(0x98), PMB_ADDR_BASE(7));
 	writel(mk_pmb_data_val(0x58, 0, 1, 1, 0, 1, 1), PMB_DATA_BASE(7));
 }
-#endif
 
 int board_init(void)
 {
 	struct gether_control_regs *gether = GETHER_CONTROL_BASE;
 
 	init_gpio();
-#if defined(CONFIG_SH_32BIT)
 	set_pmb_on_board_init();
-#endif
 
 	/* Sets TXnDLY to B'010 */
 	writel(0x00000202, &gether->gbecont);
 
 	init_usb_phy();
 	init_gether_mdio();
+
+	return 0;
+}
+
+int dram_init(void)
+{
+	DECLARE_GLOBAL_DATA_PTR;
+
+	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
+	printf("DRAM:  %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
 
 	return 0;
 }
@@ -237,10 +243,10 @@ static void init_ethernet_mac(void)
 	for (i = 0; i < SH7753EVB_ETHERNET_NUM_CH; i++) {
 		get_sh_eth_mac(i, mac_string, buf);
 		if (i == 0)
-			env_set("ethaddr", mac_string);
+			setenv("ethaddr", mac_string);
 		else {
 			sprintf(env_string, "eth%daddr", i);
-			env_set(env_string, mac_string);
+			setenv(env_string, mac_string);
 		}
 		set_mac_to_sh_giga_eth_register(i, mac_string);
 	}

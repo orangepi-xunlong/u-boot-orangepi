@@ -1,33 +1,35 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
  * Heungjun Kim <riverful.kim@samsung.com>
  * Kyungmin Park <kyungmin.park@samsung.com>
  * Donghwa Lee <dh09.lee@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <lcd.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
 #include <asm/arch/cpu.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/mipi_dsim.h>
 #include <asm/arch/watchdog.h>
 #include <asm/arch/power.h>
 #include <power/pmic.h>
-#include <usb/dwc2_udc.h>
+#include <usb/s3c_udc.h>
 #include <power/max8997_pmic.h>
 #include <power/max8997_muic.h>
 #include <power/battery.h>
 #include <power/max17042_fg.h>
-#include <power/pmic.h>
 #include <libtizen.h>
 #include <usb.h>
 #include <usb_mass_storage.h>
 
 #include "setup.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 unsigned int board_rev;
 
@@ -39,7 +41,7 @@ u32 get_board_rev(void)
 #endif
 
 static void check_hw_revision(void);
-struct dwc2_plat_otg_data s5pc210_otg_data;
+struct s3c_plat_otg_data s5pc210_otg_data;
 
 int exynos_init(void)
 {
@@ -49,7 +51,22 @@ int exynos_init(void)
 	return 0;
 }
 
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
+void i2c_init_board(void)
+{
+	int err;
+
+	/* I2C_5 -> PMIC */
+	err = exynos_pinmux_config(PERIPH_ID_I2C5, PINMUX_FLAG_NONE);
+	if (err) {
+		debug("I2C%d not configured\n", (I2C_5));
+		return;
+	}
+
+	/* I2C_8 -> FG */
+	gpio_direction_output(EXYNOS4_GPIO_Y40, 1);
+	gpio_direction_output(EXYNOS4_GPIO_Y41, 1);
+}
+
 static void trats_low_power_mode(void)
 {
 	struct exynos4_clock *clk =
@@ -107,11 +124,158 @@ static void trats_low_power_mode(void)
 	writel(0x0, &clk->gate_ip_image);	/* IMAGE */
 	writel(0x0, &clk->gate_ip_gps);	/* GPS */
 }
-#endif
+
+static int pmic_init_max8997(void)
+{
+	struct pmic *p = pmic_get("MAX8997_PMIC");
+	int i = 0, ret = 0;
+	u32 val;
+
+	if (pmic_probe(p))
+		return -1;
+
+	/* BUCK1 VARM: 1.2V */
+	val = (1200000 - 650000) / 25000;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK1DVS1, val);
+	val = ENBUCK | ACTIVE_DISCHARGE;		/* DVS OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK1CTRL, val);
+
+	/* BUCK2 VINT: 1.1V */
+	val = (1100000 - 650000) / 25000;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK2DVS1, val);
+	val = ENBUCK | ACTIVE_DISCHARGE;		/* DVS OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK2CTRL, val);
+
+
+	/* BUCK3 G3D: 1.1V - OFF */
+	ret |= pmic_reg_read(p, MAX8997_REG_BUCK3CTRL, &val);
+	val &= ~ENBUCK;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK3CTRL, val);
+
+	val = (1100000 - 750000) / 50000;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK3DVS, val);
+
+	/* BUCK4 CAMISP: 1.2V - OFF */
+	ret |= pmic_reg_read(p, MAX8997_REG_BUCK4CTRL, &val);
+	val &= ~ENBUCK;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK4CTRL, val);
+
+	val = (1200000 - 650000) / 25000;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK4DVS, val);
+
+	/* BUCK5 VMEM: 1.2V */
+	val = (1200000 - 650000) / 25000;
+	for (i = 0; i < 8; i++)
+		ret |= pmic_reg_write(p, MAX8997_REG_BUCK5DVS1 + i, val);
+
+	val = ENBUCK | ACTIVE_DISCHARGE;		/* DVS OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK5CTRL, val);
+
+	/* BUCK6 CAM AF: 2.8V */
+	/* No Voltage Setting Register */
+	/* GNSLCT 3.0X */
+	val = GNSLCT;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK6CTRL, val);
+
+	/* BUCK7 VCC_SUB: 2.0V */
+	val = (2000000 - 750000) / 50000;
+	ret |= pmic_reg_write(p, MAX8997_REG_BUCK7DVS, val);
+
+	/* LDO1 VADC: 3.3V */
+	val = max8997_reg_ldo(3300000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO1CTRL, val);
+
+	/* LDO1 Disable active discharging */
+	ret |= pmic_reg_read(p, MAX8997_REG_LDO1CONFIG, &val);
+	val &= ~LDO_ADE;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO1CONFIG, val);
+
+	/* LDO2 VALIVE: 1.1V */
+	val = max8997_reg_ldo(1100000) | EN_LDO;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO2CTRL, val);
+
+	/* LDO3 VUSB/MIPI: 1.1V */
+	val = max8997_reg_ldo(1100000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO3CTRL, val);
+
+	/* LDO4 VMIPI: 1.8V */
+	val = max8997_reg_ldo(1800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO4CTRL, val);
+
+	/* LDO5 VHSIC: 1.2V */
+	val = max8997_reg_ldo(1200000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO5CTRL, val);
+
+	/* LDO6 VCC_1.8V_PDA: 1.8V */
+	val = max8997_reg_ldo(1800000) | EN_LDO;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO6CTRL, val);
+
+	/* LDO7 CAM_ISP: 1.8V */
+	val = max8997_reg_ldo(1800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO7CTRL, val);
+
+	/* LDO8 VDAC/VUSB: 3.3V */
+	val = max8997_reg_ldo(3300000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO8CTRL, val);
+
+	/* LDO9 VCC_2.8V_PDA: 2.8V */
+	val = max8997_reg_ldo(2800000) | EN_LDO;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO9CTRL, val);
+
+	/* LDO10 VPLL: 1.1V */
+	val = max8997_reg_ldo(1100000) | EN_LDO;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO10CTRL, val);
+
+	/* LDO11 TOUCH: 2.8V */
+	val = max8997_reg_ldo(2800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO11CTRL, val);
+
+	/* LDO12 VTCAM: 1.8V */
+	val = max8997_reg_ldo(1800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO12CTRL, val);
+
+	/* LDO13 VCC_3.0_LCD: 3.0V */
+	val = max8997_reg_ldo(3000000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO13CTRL, val);
+
+	/* LDO14 MOTOR: 3.0V */
+	val = max8997_reg_ldo(3000000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO14CTRL, val);
+
+	/* LDO15 LED_A: 2.8V */
+	val = max8997_reg_ldo(2800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO15CTRL, val);
+
+	/* LDO16 CAM_SENSOR: 1.8V */
+	val = max8997_reg_ldo(1800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO16CTRL, val);
+
+	/* LDO17 VTF: 2.8V */
+	val = max8997_reg_ldo(2800000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO17CTRL, val);
+
+	/* LDO18 TOUCH_LED 3.3V */
+	val = max8997_reg_ldo(3300000) | DIS_LDO;	/* OFF */
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO18CTRL, val);
+
+	/* LDO21 VDDQ: 1.2V */
+	val = max8997_reg_ldo(1200000) | EN_LDO;
+	ret |= pmic_reg_write(p, MAX8997_REG_LDO21CTRL, val);
+
+	/* SAFEOUT for both 1 and 2: 4.9V, Active discharge, Enable */
+	val = (SAFEOUT_4_90V << 0) | (SAFEOUT_4_90V << 2) |
+		ACTDISSAFEO1 | ACTDISSAFEO2 | ENSAFEOUT1 | ENSAFEOUT2;
+	ret |= pmic_reg_write(p, MAX8997_REG_SAFEOUTCTRL, val);
+
+	if (ret) {
+		puts("MAX8997 PMIC setting error!\n");
+		return -1;
+	}
+	return 0;
+}
 
 int exynos_power_init(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	int chrg, ret;
 	struct power_battery *pb;
 	struct pmic *p_fg, *p_chrg, *p_muic, *p_bat;
@@ -123,7 +287,9 @@ int exynos_power_init(void)
 	 * The FUEL_GAUGE is marked as I2C9 on the schematic, but connected
 	 * to logical I2C adapter 1
 	 */
-	ret = power_fg_init(I2C_9);
+	ret = pmic_init(I2C_5);
+	ret |= pmic_init_max8997();
+	ret |= power_fg_init(I2C_9);
 	ret |= power_muic_init(I2C_5);
 	ret |= power_bat_init(0);
 	if (ret)
@@ -173,7 +339,6 @@ int exynos_power_init(void)
 
 	if (pb->bat->state == CHARGE && chrg == CHARGER_USB)
 		puts("CHARGE Battery !\n");
-#endif
 
 	return 0;
 }
@@ -181,17 +346,12 @@ int exynos_power_init(void)
 static unsigned int get_hw_revision(void)
 {
 	int hwrev = 0;
-	char str[10];
 	int i;
 
 	/* hw_rev[3:0] == GPE1[3:0] */
-	for (i = 0; i < 4; i++) {
-		int pin = i + EXYNOS4_GPIO_E10;
-
-		sprintf(str, "hw_rev%d", i);
-		gpio_request(pin, str);
-		gpio_cfg_pin(pin, S5P_GPIO_INPUT);
-		gpio_set_pull(pin, S5P_GPIO_PULL_NONE);
+	for (i = EXYNOS4_GPIO_E10; i < EXYNOS4_GPIO_E14; i++) {
+		gpio_cfg_pin(i, S5P_GPIO_INPUT);
+		gpio_set_pull(i, S5P_GPIO_PULL_NONE);
 	}
 
 	udelay(1);
@@ -217,64 +377,42 @@ static void check_hw_revision(void)
 #ifdef CONFIG_USB_GADGET
 static int s5pc210_phy_control(int on)
 {
-	struct udevice *dev;
-	int reg, ret;
+	int ret = 0;
+	u32 val = 0;
+	struct pmic *p = pmic_get("MAX8997_PMIC");
+	if (!p)
+		return -ENODEV;
 
-	ret = pmic_get("max8997-pmic", &dev);
-	if (ret)
-		return ret;
+	if (pmic_probe(p))
+		return -1;
 
 	if (on) {
-		reg = pmic_reg_read(dev, MAX8997_REG_SAFEOUTCTRL);
-		reg |= ENSAFEOUT1;
-		ret = pmic_reg_write(dev, MAX8997_REG_SAFEOUTCTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
-		reg = pmic_reg_read(dev, MAX8997_REG_LDO3CTRL);
-		reg |= EN_LDO;
-		ret = pmic_reg_write(dev, MAX8997_REG_LDO3CTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
-		reg = pmic_reg_read(dev, MAX8997_REG_LDO8CTRL);
-		reg |= EN_LDO;
-		ret = pmic_reg_write(dev, MAX8997_REG_LDO8CTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
-	} else {
-		reg = pmic_reg_read(dev, MAX8997_REG_LDO8CTRL);
-		reg &= DIS_LDO;
-		ret = pmic_reg_write(dev, MAX8997_REG_LDO8CTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
-		reg = pmic_reg_read(dev, MAX8997_REG_LDO3CTRL);
-		reg &= DIS_LDO;
-		ret = pmic_reg_write(dev, MAX8997_REG_LDO3CTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
-		reg = pmic_reg_read(dev, MAX8997_REG_SAFEOUTCTRL);
-		reg &= ~ENSAFEOUT1;
-		ret = pmic_reg_write(dev, MAX8997_REG_SAFEOUTCTRL, reg);
-		if (ret) {
-			puts("MAX8997 setting error!\n");
-			return ret;
-		}
+		ret |= pmic_set_output(p, MAX8997_REG_SAFEOUTCTRL,
+				      ENSAFEOUT1, LDO_ON);
+		ret |= pmic_reg_read(p, MAX8997_REG_LDO3CTRL, &val);
+		ret |= pmic_reg_write(p, MAX8997_REG_LDO3CTRL, EN_LDO | val);
 
+		ret |= pmic_reg_read(p, MAX8997_REG_LDO8CTRL, &val);
+		ret |= pmic_reg_write(p, MAX8997_REG_LDO8CTRL, EN_LDO | val);
+	} else {
+		ret |= pmic_reg_read(p, MAX8997_REG_LDO8CTRL, &val);
+		ret |= pmic_reg_write(p, MAX8997_REG_LDO8CTRL, DIS_LDO | val);
+
+		ret |= pmic_reg_read(p, MAX8997_REG_LDO3CTRL, &val);
+		ret |= pmic_reg_write(p, MAX8997_REG_LDO3CTRL, DIS_LDO | val);
+		ret |= pmic_set_output(p, MAX8997_REG_SAFEOUTCTRL,
+				      ENSAFEOUT1, LDO_OFF);
+	}
+
+	if (ret) {
+		puts("MAX8997 LDO setting error!\n");
+		return -1;
 	}
 
 	return 0;
 }
 
-struct dwc2_plat_otg_data s5pc210_otg_data = {
+struct s3c_plat_otg_data s5pc210_otg_data = {
 	.phy_control	= s5pc210_phy_control,
 	.regs_phy	= EXYNOS4_USBPHY_BASE,
 	.regs_otg	= EXYNOS4_USBOTG_BASE,
@@ -285,21 +423,16 @@ struct dwc2_plat_otg_data s5pc210_otg_data = {
 int board_usb_init(int index, enum usb_init_type init)
 {
 	debug("USB_udc_probe\n");
-	return dwc2_udc_probe(&s5pc210_otg_data);
+	return s3c_udc_probe(&s5pc210_otg_data);
 }
 
 int g_dnl_board_usb_cable_connected(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	struct pmic *muic = pmic_get("MAX8997_MUIC");
 	if (!muic)
 		return 0;
 
 	return !!muic->chrg->chrg_type(muic);
-#else
-	return false;
-#endif
-
 }
 #endif
 
@@ -384,7 +517,6 @@ static void board_power_init(void)
 static void exynos_uart_init(void)
 {
 	/* UART_SEL GPY4[7] (part2) at EXYNOS4 */
-	gpio_request(EXYNOS4_GPIO_Y47, "uart_sel");
 	gpio_set_pull(EXYNOS4_GPIO_Y47, S5P_GPIO_PULL_UP);
 	gpio_direction_output(EXYNOS4_GPIO_Y47, 1);
 }
@@ -402,7 +534,6 @@ int exynos_early_init_f(void)
 
 void exynos_reset_lcd(void)
 {
-	gpio_request(EXYNOS4_GPIO_Y45, "lcd_reset");
 	gpio_direction_output(EXYNOS4_GPIO_Y45, 1);
 	udelay(10000);
 	gpio_direction_output(EXYNOS4_GPIO_Y45, 0);
@@ -412,7 +543,6 @@ void exynos_reset_lcd(void)
 
 int lcd_power(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	int ret = 0;
 	struct pmic *p = pmic_get("MAX8997_PMIC");
 	if (!p)
@@ -430,13 +560,12 @@ int lcd_power(void)
 		puts("MAX8997 LDO setting error!\n");
 		return -1;
 	}
-#endif
+
 	return 0;
 }
 
 int mipi_power(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	int ret = 0;
 	struct pmic *p = pmic_get("MAX8997_PMIC");
 	if (!p)
@@ -454,11 +583,10 @@ int mipi_power(void)
 		puts("MAX8997 LDO setting error!\n");
 		return -1;
 	}
-#endif
+
 	return 0;
 }
 
-#ifdef CONFIG_LCD
 void exynos_lcd_misc_init(vidinfo_t *vid)
 {
 #ifdef CONFIG_TIZEN
@@ -466,7 +594,6 @@ void exynos_lcd_misc_init(vidinfo_t *vid)
 #endif
 #ifdef CONFIG_S6E8AX0
 	s6e8ax0_init();
-	env_set("lcdinfo", "lcd=s6e8ax0");
+	setenv("lcdinfo", "lcd=s6e8ax0");
 #endif
 }
-#endif

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
  * (C) Copyright 2012 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _GLOBALTIMER_H_
 #define _GLOBALTIMER_H_

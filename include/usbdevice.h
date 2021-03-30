@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2003
  * Gerry Hamel, geh@ti.com, Texas Instruments
@@ -12,6 +11,8 @@
  *	Stuart Lynne <sl@lineo.com>,
  *	Tom Rushworth <tbr@lineo.com>,
  *	Bruce Balden <balden@lineo.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __USBDCORE_H__
@@ -339,8 +340,8 @@ struct usb_bus_instance;
 /*
  * standard feature selectors
  */
-#define USB_ENDPOINT_HALT		0x00
-#define USB_DEVICE_REMOTE_WAKEUP	0x01
+//#define USB_ENDPOINT_HALT		0x00
+//#define USB_DEVICE_REMOTE_WAKEUP	0x01
 #define USB_TEST_MODE			0x02
 
 
@@ -438,7 +439,7 @@ typedef enum usb_device_event {
 	DEVICE_HUB_RESET,	/* bi  - bus has been unplugged */
 	DEVICE_DESTROY,		/* bi  - device instance should be destroyed */
 
-	DEVICE_HOTPLUG,		/* bi  - a hotplug event has occurred */
+	DEVICE_HOTPLUG,		/* bi  - a hotplug event has occured */
 
 	DEVICE_FUNCTION_PRIVATE,	/* function - private */
 

@@ -1,7 +1,25 @@
 /*
- * (C) Copyright 2018 allwinnertech  <wangwei@allwinnertech.com>
+ * (C) Copyright 2007-2013
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Jerry Wang <wangflord@allwinnertech.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * See file CREDITS for list of people who contributed to this
+ * project.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
 #ifndef __SMC_H__
@@ -26,36 +44,23 @@ int arm_svc_write_sec_reg(u32 val,ulong reg);
 int arm_svc_arisc_startup(ulong cfg_base);
 int arm_svc_arisc_wait_ready(void);
 int arm_svc_arisc_fake_poweroff(void);
-int arm_svc_fake_poweroff(void);
 u32 arm_svc_arisc_read_pmu(ulong addr);
 int arm_svc_arisc_write_pmu(ulong addr,u32 value);
 
 int arm_svc_efuse_read(void *key_buf, void *read_buf);
 int arm_svc_efuse_write(void *key_buf);
 int arm_svc_probe_secure_mode(void);
-int arm_svc_customer_encrypt(u32 customer_reserved_id);
+int arm_svc_poweroff(void);
 
 
 int smc_init(void);
 
-int smc_tee_check_hash(const char *name, u8 *hash);
+
 int smc_tee_ssk_encrypt(char *out_buf, char *in_buf, int len, int *out_len);
 int smc_tee_ssk_decrypt(char *out_buf, char *in_buf, int len);
 int smc_tee_rssk_encrypt(char *out_buf, char *in_buf, int len, int *out_len);
 int smc_aes_rssk_decrypt_to_keysram(void);
 int smc_aes_algorithm(char *out_buf, char *in_buf, int data_len, char* pkey, int key_mode, int decrypt);
 int smc_tee_keybox_store(const char *name, char *in_buf, int len);
-int smc_tee_probe_drm_configure(ulong *drm_base, ulong *drm_size);
-
-
-int arm_svc_set_cpu_on(int cpu, uint entry);
-int arm_svc_set_cpu_off(int cpu);
-int arm_svc_set_cpu_wfi(void);
-
-/*for multi cluster*/
-int sunxi_smc_set_cpu_entry(u32 entry, int cpu);
-/*for multi cluster*/
-int sunxi_smc_set_cpu_off(void);
-
 
 #endif

@@ -1,19 +1,30 @@
 /*
- *
- * (C) Copyright 2018-2020
+ * (C) Copyright 2007-2013
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Jerry Wang <wangflord@allwinnertech.com>
- * wangwei <wangwei@allwinnertech.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * See file CREDITS for list of people who contributed to this
+ * project.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
-
+#include <config.h>
 #include <common.h>
 #include <malloc.h>
 #include <sunxi_mbr.h>
-#include <part_efi.h>
-#include <sunxi_flash.h>
-#include <sys_partition.h>
 
 #define  SUNXI_SPRITE_PROTECT_DATA_MAX    (16)
 #define  SUNXI_SPRITE_PROTECT_PART        "private"
@@ -26,65 +37,54 @@ struct private_part_info
 };
 
 struct private_part_info  part_info[SUNXI_SPRITE_PROTECT_DATA_MAX];
-
-
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
 int sunxi_sprite_store_part_data(void *buffer)
 {
-	int i, j, index;
-	char part_name[PARTNAME_SZ] = {0};
-	u32  part_len = 0;
-	u32  part_start = 0;
-	gpt_header *gpt_head = (gpt_header *)(buffer + GPT_HEAD_OFFSET);
-	gpt_entry  *entry    = (gpt_entry*)(buffer + GPT_ENTRY_OFFSET);
+	int i, j;
 
-	/* check GPT first*/
-	if(gpt_head->signature != GPT_HEADER_SIGNATURE) {
-		printf("not GPT table\n");
-		return -1;
-	}
-
-	for(i=0, j =0; i<gpt_head->num_partition_entries; i++)
+	j = 0;
+	sunxi_mbr_t  *mbr = (sunxi_mbr_t *)buffer;
+	for(i=0;i<mbr->PartCount;i++)
 	{
-		memset(part_name, 0x0, sizeof(part_name));
-		for(index = 0; index < PARTNAME_SZ; index++ ) {
-			part_name[index] = (char)(entry[i].partition_name[index]);
-		}
-		printf("part %d name %s\n", i, part_name);
-		printf("keydata = 0x%x\n", entry[i].attributes.fields.keydata);
-		if( (!strcmp((const char *)part_name, SUNXI_SPRITE_PROTECT_PART))
-			|| entry[i].attributes.fields.keydata == 0x1)
+		printf("part name %s\n", mbr->array[i].name);
+		printf("keydata = 0x%x\n", mbr->array[i].keydata);
+		if( (!strcmp((const char *)mbr->array[i].name, SUNXI_SPRITE_PROTECT_PART)) || (mbr->array[i].keydata == 0x8000))
 		{
-			int storage_type = get_boot_storage_type();
-			int logic_offset;
-			if (get_boot_work_mode() == WORK_MODE_CARD_PRODUCT ||
-				storage_type == STORAGE_EMMC || storage_type == STORAGE_EMMC3
-				|| storage_type == STORAGE_SD) {
-				logic_offset = 40960;
-			} else {
-				logic_offset = 0;
-			}
-			part_start =  entry[i].starting_lba - logic_offset;
-			part_len = entry[i].ending_lba - entry[i].starting_lba + 1;
-			printf("find keypart %s\n", part_name);
-			printf("keypart read start: 0x%x, sectors 0x%x\n", part_start, part_len);
+			printf("find keypart %s\n", mbr->array[i].name);
+			printf("keypart read start: 0x%x, sectors 0x%x\n", mbr->array[i].addrlo, mbr->array[i].lenlo);
 
-			part_info[j].part_buf = (char *)memalign(CONFIG_SYS_CACHELINE_SIZE, ALIGN(part_len * 512, CONFIG_SYS_CACHELINE_SIZE));
+			part_info[j].part_buf = (char *)malloc(mbr->array[i].lenlo * 512);
 			if(!part_info[j].part_buf)
 			{
-				printf("cant malloc memory for part %s, sectors 0x%x\n", part_name, part_len);
+				printf("sprite protect private data fail: cant malloc memory for part %s, sectors 0x%x\n", mbr->array[i].name, mbr->array[i].lenlo);
 
 				goto __sunxi_sprite_store_part_data_fail;
 			}
-			if(!sunxi_sprite_read(part_start, part_len, (void *)part_info[j].part_buf))
+			if(!sunxi_sprite_read(mbr->array[i].addrlo, mbr->array[i].lenlo, (void *)part_info[j].part_buf))
 			{
-				printf("read private data error\n");
+				printf("sunxi sprite error : read private data error\n");
 
 				goto __sunxi_sprite_store_part_data_fail;
 			}
-			printf("keypart part %s read  0x%x, sectors 0x%x\n", part_name, part_start, part_len);
+			printf("keypart part %s read end: 0x%x, sectors 0x%x\n", mbr->array[i].name, mbr->array[i].addrlo, mbr->array[i].lenlo);
 
-			part_info[j].part_sectors = part_len;
-			strcpy(part_info[j].part_name, (const char *)part_name);
+			part_info[j].part_sectors = mbr->array[i].lenlo;
+			strcpy(part_info[j].part_name, (const char *)mbr->array[i].name);
 
 			j ++;
 		}
@@ -111,80 +111,100 @@ __sunxi_sprite_store_part_data_fail:
 
 	return -1;
 }
-
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
 int sunxi_sprite_restore_part_data(void *buffer)
 {
-	int i, j = 0, index;
-	char part_name[PARTNAME_SZ] = { 0 };
-	u32 part_len		    = 0;
-	u32 part_start		    = 0;
-	gpt_header *gpt_head	= (gpt_header *)(buffer + GPT_HEAD_OFFSET);
-	gpt_entry *entry	    = (gpt_entry *)(buffer + GPT_ENTRY_OFFSET);
-	uint down_sectors;
+	int i, j;
+	int ret = -1;
+	uint      down_sectors;
+	sunxi_mbr_t  *mbr = (sunxi_mbr_t *)buffer;
 
-	/* check GPT first*/
-	if (gpt_head->signature != GPT_HEADER_SIGNATURE) {
-		printf("not GPT table\n");
-		goto __sunxi_sprite_restore_part_data_fail;
-	}
+	j = 0;
+	while(part_info[j].part_buf)
+	{
+		for(i=0;i<mbr->PartCount;i++)
+		{
+			if(!strcmp(part_info[j].part_name, (const char*)mbr->array[i].name))
+			{
+				if(part_info[j].part_sectors > mbr->array[i].lenlo)
+				{
+					printf("origin sectors 0x%x, new part sectors 0x%x\n", part_info[j].part_sectors, mbr->array[i].lenlo);
+					printf("fix it, only store less sectors\n");
 
-	while (part_info[j].part_buf) {
-		down_sectors = part_info[j].part_sectors;
-		for (i = 0; i < gpt_head->num_partition_entries; i++) {
-			memset(part_name, 0x0, sizeof(part_name));
-			for (index = 0; index < PARTNAME_SZ; index++) {
-				part_name[index] =
-					(char)(entry[i].partition_name[index]);
-			}
-			int storage_type = get_boot_storage_type();
-			int logic_offset;
-			if (get_boot_work_mode() == WORK_MODE_CARD_PRODUCT ||
-				storage_type == STORAGE_EMMC || storage_type == STORAGE_EMMC3
-				|| storage_type == STORAGE_SD) {
-				logic_offset = 40960;
-			} else {
-				logic_offset = 0;
-			}
-			part_start =  entry[i].starting_lba - logic_offset;
-			part_len = entry[i].ending_lba - entry[i].starting_lba + 1;
-			if (!strcmp((const char *)part_name,
-				    part_info[j].part_name)) {
-				if (part_len < down_sectors) {
-					printf("restore part %s too small, part_len:%d down_sectors:%d\n",
-					       part_name, part_len,
-					       down_sectors);
-					down_sectors = part_len;
+					down_sectors = mbr->array[i].lenlo;
 				}
-				printf("keypart write start: 0x%x, sectors 0x%x\n",
-				       part_start, down_sectors);
-				if (!sunxi_sprite_write(
-					    part_start, down_sectors,
-					    (void *)part_info[j].part_buf)) {
+				else
+				{
+					down_sectors = part_info[j].part_sectors;
+				}
+
+				printf("keypart write start: 0x%x, sectors 0x%x\n", mbr->array[i].addrlo, down_sectors);
+				if(!sunxi_sprite_write(mbr->array[i].addrlo, down_sectors, (void *)part_info[j].part_buf))
+				{
 					printf("sunxi sprite error : write private data error\n");
 
 					goto __sunxi_sprite_restore_part_data_fail;
 				}
+
+				printf("keypart write end: 0x%x, sectors 0x%x\n", mbr->array[i].addrlo, down_sectors);
+
+				break;
 			}
 		}
-		j++;
+		j ++;
 	}
-
-	if (!j)
+	if(!j)
+	{
 		printf("there is no private part need rewrite\n");
-
-	return 0;
+	}
+	ret = 0;
 
 __sunxi_sprite_restore_part_data_fail:
-	for (i = 0; i < j; i++) {
-		if (part_info[i].part_buf)
+	for(i=0;i<j;i++)
+	{
+		if(part_info[i].part_buf)
+		{
 			free(part_info[i].part_buf);
+		}
 		else
+		{
 			break;
+		}
 	}
 
-	return -1;
+	return ret;
 }
-
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
 int sunxi_sprite_probe_prvt(void  *buffer)
 {
 	int i;
@@ -203,6 +223,22 @@ int sunxi_sprite_probe_prvt(void  *buffer)
 	return 0;
 }
 
+/*
+************************************************************************************************************
+*
+*                                             function
+*
+*    name          :
+*
+*    parmeters     :
+*
+*    return        :
+*
+*    note          :
+*
+*
+************************************************************************************************************
+*/
 int sunxi_sprite_erase_private_key(void *buffer)
 {
 	int count = 0;
@@ -210,7 +246,7 @@ int sunxi_sprite_erase_private_key(void *buffer)
 	int i = 0 , len = 1024 * 1024;
 	sunxi_mbr_t  *mbr = (sunxi_mbr_t *)buffer;
 	char *fill_zero = NULL;
-
+	
 	for(i=0;i<mbr->PartCount;i++)
 	{
 		if( (!strcmp((const char *)mbr->array[i].name, SUNXI_SPRITE_PROTECT_PART)) || (mbr->array[i].keydata == 0x8000))
@@ -221,27 +257,27 @@ int sunxi_sprite_erase_private_key(void *buffer)
 			break;
 		}
 	}
-
+	
 	if(i >= mbr->PartCount)
 	{
 		printf("private part is not exit \n");
-		return -2;
+		return -1;
 	}
-
-	fill_zero = (char *)memalign(CONFIG_SYS_CACHELINE_SIZE, ALIGN(len, CONFIG_SYS_CACHELINE_SIZE));
+	
+	fill_zero = (char *)malloc(len);
 	if(fill_zero == NULL)
 	{
 		printf("no enough memory to malloc \n");
 		return -1;
 	}
-
+	
 	memset(fill_zero , 0x0, len);
 	flash_sectors = len / 512;
 	for(i = 0; i < count ; i++)
 	{
 		if(!sunxi_sprite_write(flash_start + i * flash_sectors, flash_sectors, (void *)fill_zero))
 		{
-			printf("write flash from 0x%x, sectors 0x%x failed\n", flash_start + i * flash_sectors, flash_sectors);
+			printf("sunxi_sprite_erase_private_key err: write flash from 0x%x, sectors 0x%x failed\n", flash_start + i * flash_sectors, flash_sectors);
 			return -1;
 		}
 

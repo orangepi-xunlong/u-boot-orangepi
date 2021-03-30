@@ -1,18 +1,8 @@
 /*
- * drivers/video/sunxi/disp2/tv/tv_ac200_lowlevel.c
+ * aw1683_tve_sw.c
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ *  Created on: 2015.1.26
+ *      Author: A
  */
 #include "tv_ac200.h"
 #include "tv_ac200_lowlevel.h"
@@ -31,7 +21,7 @@ s32 aw1683_wr_reg(__u16 sub_addr, __u16 data)
 	pexcTmp[0] = pexcTmp[1];
 	pexcTmp[1] = excTmp;
 
-	//ac200_twi_addr
+	//CONFIG_SYS_I2C_SLAVE
 	tmpData = (u32)(sub_addr>>8) & 0xff;
 
 	pexcTmp = (__u8*)&tmpData;
@@ -39,14 +29,14 @@ s32 aw1683_wr_reg(__u16 sub_addr, __u16 data)
 	pexcTmp[0] = pexcTmp[1];
 	pexcTmp[1] = excTmp;
 
-	ret = i2c_write((uchar)ac200_twi_addr, (__u32)0xfe ,1 , (__u8*)&tmpData,2);
+	ret = i2c_write((uchar)CONFIG_SYS_I2C_SLAVE, (__u32)0xfe ,1 , (__u8*)&tmpData,2);
 #if DEBUG
 	printf("------write------tmpdata = 0x%x, ret1 = 0x%x\n", tmpData, ret);
 #endif
 	tmpData = sub_addr & 0xff;
 
 
-	ret = i2c_write((uchar)ac200_twi_addr, tmpData ,1 , (__u8*)&data,2);
+	ret = i2c_write((uchar)CONFIG_SYS_I2C_SLAVE, tmpData ,1 , (__u8*)&data,2);
 #if DEBUG
 	printf("-------write-----tmpdata = 0x%x, ret2 = 0x%x\n", tmpData, ret);
 #endif
@@ -70,13 +60,13 @@ s32 aw1683_rd_reg(__u16 sub_addr, __u16 *data)
 	pexcTmp[0] = pexcTmp[1];
 	pexcTmp[1] = excTmp;
 
-	ret = i2c_write((uchar)ac200_twi_addr, i2cFixAddr ,1 , (__u8*)&tmpData,2);
+	ret = i2c_write((uchar)CONFIG_SYS_I2C_SLAVE, i2cFixAddr ,1 , (__u8*)&tmpData,2);
 #if DEBUG
 	printf("-------read-----tmpdata1 = 0x%x, ret1 = 0x%x\n", tmpData, ret);
 #endif
 
 	tmpData = (u32)(sub_addr & 0xff);
-	ret = i2c_read((uchar)ac200_twi_addr, tmpData,1,(__u8*)data, 2);
+	ret = i2c_read((uchar)CONFIG_SYS_I2C_SLAVE, tmpData,1,(__u8*)data, 2);
 #if DEBUG
 	printf("------read-----tmpdata2 = 0x%x, ret2 = 0x%x\n", tmpData, ret);
 #endif
@@ -88,28 +78,11 @@ s32 aw1683_rd_reg(__u16 sub_addr, __u16 *data)
 	return ret;
 }
 
-s32 aw1683_tve_init(const u16 *p_dac_cali, const u16 *p_bandgap)
+s32 aw1683_tve_init(void)
 {
 	u16 data = 0;
-	u16 try_count = 0;
-
-	if (p_dac_cali == NULL || p_bandgap == NULL)
-		return -1;
 
 	aw1683_wr_reg(0x0002, 0x0001);	//close chip reset
-	aw1683_rd_reg(0x0002, &data);
-	for (try_count = 0; try_count < 10 && data != 0x0001; ++try_count) {
-		aw1683_wr_reg(0x0002, 0x0001); // close chip reset
-		aw1683_rd_reg(0x0002, &data);
-	}
-	if (data != 0x0001) {
-		printf("close chip reset failed after %d times\n", try_count);
-		return -1;
-	}
-
-	if (*p_bandgap != 0)
-		aw1683_wr_reg(0x0050, *p_bandgap | 0x8000 | (0xa << 6));
-
 
 	//clk for tve
 	aw1683_wr_reg(0x001a, 0x0003);
@@ -120,24 +93,39 @@ s32 aw1683_tve_init(const u16 *p_dac_cali, const u16 *p_bandgap)
 	aw1683_wr_reg(0x0018, 0x000f);
 
 	//sid for tve
-	if (*p_dac_cali == 0)
-		aw1683_rd_reg(0x8002, &data);
-	else
-		data = *p_dac_cali;
-	if (data == 0)
+	aw1683_rd_reg(0x8002, &data);
+	if(data == 0)
+	{
 		aw1683_wr_reg(0x4306, 0x28f);
-	else if (data < 0x3f5 && data > 0)
+	}
+	else if(data < 0x3f5 && data > 0)
+	{
 		aw1683_wr_reg(0x4306, data + 10);
+	}
 	else
+	{
 		aw1683_wr_reg(0x4306, data);
 
+	} if(data == 0)
+	{
+		aw1683_wr_reg(0x4306, 0x28f);
+	}
+	else if(data < 0x3f5 && data > 0)
+	{
+		aw1683_wr_reg(0x4306, data + 10);
+	}
+		else
+	{
+		aw1683_wr_reg(0x4306, data);
+
+	}
 	//tve anto check
 	aw1683_wr_reg(0x4008,0x12a0);	//dac enable
 	aw1683_wr_reg(0x400a,0x4300);	//dac value
 	aw1683_wr_reg(0x40f4,0x0230);	//dac level
 	aw1683_wr_reg(0x40f8,0x0064);	//detect start
 	aw1683_wr_reg(0x40fa,0x0c80);	//detect periods 100ms
-	aw1683_wr_reg(0x4040, 0x000f);  /*debounce 3 */
+	aw1683_wr_reg(0x4040,0x0002);	//debounce 3
 	aw1683_wr_reg(0x4030,0x0001);	//dac enable
 
 	return 0;
@@ -297,17 +285,9 @@ s32 aw1683_tve_set_mode(u32 mode)
 
 s32 aw1683_tve_open(void)
 {
-	u16 data = 0;
 	aw1683_wr_reg(0x4008,0x02a1);
 	aw1683_wr_reg(0x4000,0x0301);
-	aw1683_rd_reg(0x4008, &data);
-	if (data != 0x02a1) {
-		return -1;
-	}
-	aw1683_rd_reg(0x4000, &data);
-	if (data != 0x0301) {
-		return -1;
-	}
+
 	return 0;
 }
 
@@ -318,3 +298,4 @@ s32 aw1683_tve_close(void)
 
 	return 0;
 }
+

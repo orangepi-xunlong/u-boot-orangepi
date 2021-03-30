@@ -16,25 +16,24 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program;
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include "arisc_i.h"
 #include <smc.h>
 #include <sunxi_board.h>
 
-/*
- * if all value are zero , compile will not allocate space to this global variable.
- * use them before uboot Relocation will cause error.
- */
-struct dts_cfg dts_cfg = {
-	.dram_para = {0x1, 0x1}
+//if all value are zero , compile will not allocate space to this global variable.
+//use them before uboot Relocation will cause error.
+struct dts_cfg dts_cfg =
+{
+	.dram_para = {0x1,0x1}
 };
-
-struct dts_cfg_64 dts_cfg_64 = {
-	.dram_para = {0x1, 0x1}
+struct dts_cfg_64 dts_cfg_64 =
+{
+	.dram_para = {0x1,0x1}
 };
-
 unsigned int arisc_debug_level = 2;
 #if 0 //boot load scp,so not need this param
 static int get_image_addr_size(phys_addr_t *image_addr, size_t *image_size)
@@ -44,14 +43,15 @@ static int get_image_addr_size(phys_addr_t *image_addr, size_t *image_size)
 	size_t size;
 
 	/* Obtain a reference to the image by querying the platform layer */
-	header = &uboot_spare_head;
-	offset = header->boot_ext[2].data[0];
-	size = header->boot_ext[2].data[1];
+        header = &uboot_spare_head;
+        offset = header->boot_ext[2].data[0];
+        size = header->boot_ext[2].data[1];
 
-	if (0 == offset || 0 == size) {
-		printf("arisc image file not found\n");
-		return -1;
-	}
+        if(0 == offset || 0 == size)
+        {
+                printf("arisc image file not found\n");
+                return -1;
+        }
 
 	*image_addr = (ptrdiff_t)CONFIG_SYS_TEXT_BASE + offset;
 	*image_size = size;
@@ -70,7 +70,7 @@ int arisc_dvfs_cfg_vf_table(void)
 	u32    vf_table_count = 0;
 	u32    vf_table_type = 0;
 
-	/* nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, "allwinner,dvfs_table"); */
+	//nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, "allwinner,dvfs_table");
 	nodeoffset = fdt_path_offset(working_fdt, "/dvfs_table");
 
 	if (IS_ERR_VALUE(nodeoffset)) {
@@ -87,7 +87,7 @@ int arisc_dvfs_cfg_vf_table(void)
 	}
 	ARISC_INF("%s: vf table type [%d=%s]\n", __func__, vf_table_type, vf_table_main_key);
 
-	/* nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, vf_table_main_key); */
+	//nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, vf_table_main_key);
 	nodeoffset = fdt_path_offset(working_fdt, vf_table_main_key);
 	if (IS_ERR_VALUE(nodeoffset)) {
 		ARISC_ERR("get [%s] device node error\n", vf_table_main_key);
@@ -150,13 +150,14 @@ static int sunxi_arisc_parse_cfg(void)
 
 	dts_cfg.msgbox.base = (phys_addr_t)value[1];
 	dts_cfg.msgbox.size = (size_t)value[3];
+
 	dts_cfg.msgbox.status = fdtdec_get_is_enabled(working_fdt, nodeoffset);
 
 	ARISC_INF("msgbox base:0x%p, size:0x%zx, status:%u\n",
 		(void *)dts_cfg.msgbox.base, dts_cfg.msgbox.size, dts_cfg.msgbox.status);
 
 	/* parse hwspinlock node */
-	/* nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, "allwinner,sunxi-hwspinlock"); */
+	//nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, "allwinner,sunxi-hwspinlock");
 	nodeoffset = fdt_path_offset(working_fdt, "/soc/hwspinlock");
 	if (IS_ERR_VALUE(nodeoffset)) {
 		ARISC_ERR("get [allwinner,sunxi-hwspinlock] device node error\n");
@@ -170,6 +171,7 @@ static int sunxi_arisc_parse_cfg(void)
 
 	dts_cfg.hwspinlock.base = (phys_addr_t)value[1];
 	dts_cfg.hwspinlock.size = (size_t)value[3];
+
 	dts_cfg.hwspinlock.status = fdtdec_get_is_enabled(working_fdt, nodeoffset);
 
 	ARISC_INF("hwspinlock base:0x%p, size:0x%zx, status:%u\n",
@@ -254,7 +256,8 @@ static void sunxi_arisc_transform_cfg(void)
 
 int sunxi_arisc_probe(void)
 {
-	if (!sunxi_probe_secure_monitor()) {
+	if(!sunxi_probe_secure_monitor())
+	{
 		return 0;
 	}
 
@@ -281,7 +284,7 @@ int sunxi_arisc_probe(void)
 
 int sunxi_arisc_wait_ready(void)
 {
-	if (get_boot_work_mode() != WORK_MODE_BOOT)
+	if(get_boot_work_mode()!= WORK_MODE_BOOT)
 		return 0;
 
 	arm_svc_arisc_wait_ready();

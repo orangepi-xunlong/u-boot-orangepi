@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_feat.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _DE_FEAT_H_
 #define _DE_FEAT_H_
 
@@ -28,26 +12,13 @@
 #define VEP_NUM  1
 
 #define SUPPORT_DSI
+//#define SUPPORT_SMBL
 #define SUPPORT_HDMI
-#define SUPPORT_LVDS
+#define CONFIG_USE_AC200
+
 #define DSI_VERSION_40
 //#define SUPPORT_TV
 //#define LVDS_REVERT
-#define SUPPORT_LVDS
-
-/*common macro define*/
-
-#ifndef CLK_NUM_PER_DSI
-#define CLK_NUM_PER_DSI 1
-#endif
-
-#if defined(DEVICE_DSI_NUM)
-/* total number of DSI clk */
-#define CLK_DSI_NUM  (CLK_NUM_PER_DSI * DEVICE_DSI_NUM)
-#else
-#define CLK_DSI_NUM  CLK_NUM_PER_DSI
-#define DEVICE_DSI_NUM 1
-#endif /*endif DEVICE_DSI_NUM */
 
 struct de_feat {
 	const int num_screens;//indicate layer manager number

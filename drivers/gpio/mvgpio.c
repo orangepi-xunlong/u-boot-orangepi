@@ -1,16 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011
  * eInfochips Ltd. <www.einfochips.com>
- * Written-by: Ajay Bhargav <contact@8051projects.net>
+ * Written-by: Ajay Bhargav <ajay.bhargav@einfochips.com>
  *
  * (C) Copyright 2010
  * Marvell Semiconductor <www.marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include "mvgpio.h"
 #include <asm/gpio.h>
 

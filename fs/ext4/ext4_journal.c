@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -11,6 +10,7 @@
  * Written by Stephen C. Tweedie <sct@redhat.com>
  *
  * Copyright 1998-2000 Red Hat, Inc --- All Rights Reserved
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -151,7 +151,7 @@ int ext4fs_log_gdt(char *gd_table)
  * journal_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_log_journal(char *journal_buffer, uint32_t blknr)
+int ext4fs_log_journal(char *journal_buffer, long int blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	short i;
@@ -183,18 +183,14 @@ int ext4fs_log_journal(char *journal_buffer, uint32_t blknr)
  * metadata_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_put_metadata(char *metadata_buffer, uint32_t blknr)
+int ext4fs_put_metadata(char *metadata_buffer, long int blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	if (!metadata_buffer) {
 		printf("Invalid input arguments %s\n", __func__);
 		return -EINVAL;
 	}
-	if (dirty_block_ptr[gd_index]->buf)
-		assert(dirty_block_ptr[gd_index]->blknr == blknr);
-	else
-		dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
-
+	dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
 	if (!dirty_block_ptr[gd_index]->buf)
 		return -ENOMEM;
 	memcpy(dirty_block_ptr[gd_index]->buf, metadata_buffer, fs->blksz);
@@ -219,7 +215,7 @@ void print_revoke_blks(char *revk_blk)
 	printf("total bytes %d\n", max);
 
 	while (offset < max) {
-		blocknr = be32_to_cpu(*((__be32 *)(revk_blk + offset)));
+		blocknr = be32_to_cpu(*((long int *)(revk_blk + offset)));
 		printf("revoke blknr is %ld\n", blocknr);
 		offset += 4;
 	}
@@ -306,7 +302,7 @@ int check_blknr_for_revoke(long int blknr, int sequence_no)
 			max = be32_to_cpu(header->r_count);
 
 			while (offset < max) {
-				blocknr = be32_to_cpu(*((__be32 *)
+				blocknr = be32_to_cpu(*((long int *)
 						  (revk_blk + offset)));
 				if (blocknr == blknr)
 					goto found;
@@ -355,7 +351,7 @@ void recover_transaction(int prev_desc_logical_no)
 	ofs = sizeof(struct journal_header_t);
 
 	do {
-		tag = (struct ext3_journal_block_tag *)(p_jdb + ofs);
+		tag = (struct ext3_journal_block_tag *)&p_jdb[ofs];
 		ofs += sizeof(struct ext3_journal_block_tag);
 
 		if (ofs > fs->blksz)
@@ -424,7 +420,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 		       temp_buff);
 	jsb = (struct journal_superblock_t *) temp_buff;
 
-	if (le32_to_cpu(fs->sb->feature_incompat) & EXT3_FEATURE_INCOMPAT_RECOVER) {
+	if (fs->sb->feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER) {
 		if (recovery_flag == RECOVER)
 			printf("Recovery required\n");
 	} else {
@@ -466,7 +462,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 			ofs = sizeof(struct journal_header_t);
 			do {
 				tag = (struct ext3_journal_block_tag *)
-				    (p_jdb + ofs);
+				    &p_jdb[ofs];
 				ofs += sizeof(struct ext3_journal_block_tag);
 				if (ofs > fs->blksz)
 					break;
@@ -521,14 +517,11 @@ int ext4fs_check_journal_state(int recovery_flag)
 
 end:
 	if (recovery_flag == RECOVER) {
-		uint32_t new_feature_incompat;
 		jsb->s_start = cpu_to_be32(1);
 		jsb->s_sequence = cpu_to_be32(be32_to_cpu(jsb->s_sequence) + 1);
 		/* get the superblock */
 		ext4_read_superblock((char *)fs->sb);
-		new_feature_incompat = le32_to_cpu(fs->sb->feature_incompat);
-		new_feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
-		fs->sb->feature_incompat = cpu_to_le32(new_feature_incompat);
+		fs->sb->feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
 
 		/* Update the super block */
 		put_ext4((uint64_t) (SUPERBLOCK_SIZE),

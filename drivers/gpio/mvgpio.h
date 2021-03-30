@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011
  * eInfochips Ltd. <www.einfochips.com>
- * Written-by: Ajay Bhargav <contact@8051projects.net>
+ * Written-by: Ajay Bhargav <ajay.bhargav@einfochips.com>
  *
  * (C) Copyright 2010
  * Marvell Semiconductor <www.marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MVGPIO_H__
@@ -13,8 +14,9 @@
 
 #include <common.h>
 
+#ifdef CONFIG_SHEEVA_88SV331xV5
 /*
- * GPIO Register map for Marvell SOCs
+ * GPIO Register map for SHEEVA 88SV331xV5
  */
 struct gpio_reg {
 	u32 gplr;	/* Pin Level Register - 0x0000 */
@@ -49,5 +51,8 @@ struct gpio_reg {
 	u32 pad12[2];
 	u32 apmask;	/* Bitwise Mask of Edge Detect Register - 0x009C */
 };
+#else
+#error "CPU core subversion not defined"
+#endif
 
 #endif /* __MVGPIO_H__ */

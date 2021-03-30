@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Cirrus Logic EP93xx PLL support.
  *
  * Copyright (C) 2009 Matthias Kaehlcke <matthias@kaehlcke.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -38,7 +39,7 @@ static ulong get_PLLCLK(uint32_t *pllreg)
 }
 
 /* return FCLK frequency */
-ulong get_FCLK(void)
+ulong get_FCLK()
 {
 	const uint8_t fclk_divisors[] = { 1, 2, 4, 8, 16, 1, 1, 1 };
 	struct syscon_regs *syscon = (struct syscon_regs *)SYSCON_BASE;

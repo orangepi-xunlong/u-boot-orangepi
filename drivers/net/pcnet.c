@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002 Wolfgang Grandegger, wg@denx.de.
  *
  * This driver for AMD PCnet network controllers is derived from the
  * Linux driver pcnet32.c written 1996-1999 by Thomas Bogendoerfer.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -133,14 +134,8 @@ static int pcnet_recv (struct eth_device *dev);
 static void pcnet_halt (struct eth_device *dev);
 static int pcnet_probe (struct eth_device *dev, bd_t * bis, int dev_num);
 
-static inline pci_addr_t pcnet_virt_to_mem(const struct eth_device *dev,
-						void *addr)
-{
-	pci_dev_t devbusfn = (pci_dev_t)(unsigned long)dev->priv;
-	void *virt_addr = addr;
-
-	return pci_virt_to_mem(devbusfn, virt_addr);
-}
+#define PCI_TO_MEM(d, a) pci_virt_to_mem((pci_dev_t)d->priv, (a))
+#define PCI_TO_MEM_LE(d,a) (u32)(cpu_to_le32(PCI_TO_MEM(d,a)))
 
 static struct pci_device_id supported[] = {
 	{PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_LANCE},
@@ -154,7 +149,6 @@ int pcnet_initialize(bd_t *bis)
 	struct eth_device *dev;
 	u16 command, status;
 	int dev_nr = 0;
-	u32 bar;
 
 	PCNET_DEBUG1("\npcnet_initialize...\n");
 
@@ -176,18 +170,19 @@ int pcnet_initialize(bd_t *bis)
 			break;
 		}
 		memset(dev, 0, sizeof(*dev));
-		dev->priv = (void *)(unsigned long)devbusfn;
+		dev->priv = (void *)devbusfn;
 		sprintf(dev->name, "pcnet#%d", dev_nr);
 
 		/*
 		 * Setup the PCI device.
 		 */
-		pci_read_config_dword(devbusfn, PCI_BASE_ADDRESS_0, &bar);
-		dev->iobase = pci_io_to_phys(devbusfn, bar);
+		pci_read_config_dword(devbusfn, PCI_BASE_ADDRESS_0,
+				      (unsigned int *)&dev->iobase);
+		dev->iobase = pci_io_to_phys(devbusfn, dev->iobase);
 		dev->iobase &= ~0xf;
 
-		PCNET_DEBUG1("%s: devbusfn=0x%x iobase=0x%lx: ",
-			     dev->name, devbusfn, (unsigned long)dev->iobase);
+		PCNET_DEBUG1("%s: devbusfn=0x%x iobase=0x%x: ",
+			     dev->name, devbusfn, dev->iobase);
 
 		command = PCI_COMMAND_IO | PCI_COMMAND_MASTER;
 		pci_write_config_word(devbusfn, PCI_COMMAND, command);
@@ -294,7 +289,7 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 {
 	struct pcnet_uncached_priv *uc;
 	int i, val;
-	unsigned long addr;
+	u32 addr;
 
 	PCNET_DEBUG1("%s: pcnet_init...\n", dev->name);
 
@@ -332,18 +327,16 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 	 * must be aligned on 16-byte boundaries.
 	 */
 	if (lp == NULL) {
-		addr = (unsigned long)malloc(sizeof(pcnet_priv_t) + 0x10);
+		addr = (u32)malloc(sizeof(pcnet_priv_t) + 0x10);
 		addr = (addr + 0xf) & ~0xf;
 		lp = (pcnet_priv_t *)addr;
 
-		addr = (unsigned long)memalign(ARCH_DMA_MINALIGN,
-					       sizeof(*lp->uc));
+		addr = (u32)memalign(ARCH_DMA_MINALIGN, sizeof(*lp->uc));
 		flush_dcache_range(addr, addr + sizeof(*lp->uc));
 		addr = UNCACHED_SDRAM(addr);
 		lp->uc = (struct pcnet_uncached_priv *)addr;
 
-		addr = (unsigned long)memalign(ARCH_DMA_MINALIGN,
-					       sizeof(*lp->rx_buf));
+		addr = (u32)memalign(ARCH_DMA_MINALIGN, sizeof(*lp->rx_buf));
 		flush_dcache_range(addr, addr + sizeof(*lp->rx_buf));
 		lp->rx_buf = (void *)addr;
 	}
@@ -359,8 +352,7 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 	 */
 	lp->cur_rx = 0;
 	for (i = 0; i < RX_RING_SIZE; i++) {
-		addr = pcnet_virt_to_mem(dev, (*lp->rx_buf)[i]);
-		uc->rx_ring[i].base = cpu_to_le32(addr);
+		uc->rx_ring[i].base = PCI_TO_MEM_LE(dev, (*lp->rx_buf)[i]);
 		uc->rx_ring[i].buf_length = cpu_to_le16(-PKT_BUF_SZ);
 		uc->rx_ring[i].status = cpu_to_le16(0x8000);
 		PCNET_DEBUG1
@@ -391,10 +383,8 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 
 	uc->init_block.tlen_rlen = cpu_to_le16(TX_RING_LEN_BITS |
 					       RX_RING_LEN_BITS);
-	addr = pcnet_virt_to_mem(dev, uc->rx_ring);
-	uc->init_block.rx_ring = cpu_to_le32(addr);
-	addr = pcnet_virt_to_mem(dev, uc->tx_ring);
-	uc->init_block.tx_ring = cpu_to_le32(addr);
+	uc->init_block.rx_ring = PCI_TO_MEM_LE(dev, uc->rx_ring);
+	uc->init_block.tx_ring = PCI_TO_MEM_LE(dev, uc->tx_ring);
 
 	PCNET_DEBUG1("\ntlen_rlen=0x%x rx_ring=0x%x tx_ring=0x%x\n",
 		     uc->init_block.tlen_rlen,
@@ -404,7 +394,7 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 	 * Tell the controller where the Init Block is located.
 	 */
 	barrier();
-	addr = pcnet_virt_to_mem(dev, &lp->uc->init_block);
+	addr = PCI_TO_MEM(dev, &lp->uc->init_block);
 	pcnet_write_csr(dev, 1, addr & 0xffff);
 	pcnet_write_csr(dev, 2, (addr >> 16) & 0xffff);
 
@@ -434,7 +424,6 @@ static int pcnet_init(struct eth_device *dev, bd_t *bis)
 static int pcnet_send(struct eth_device *dev, void *packet, int pkt_len)
 {
 	int i, status;
-	u32 addr;
 	struct pcnet_tx_head *entry = &lp->uc->tx_ring[lp->cur_tx];
 
 	PCNET_DEBUG2("Tx%d: %d bytes from 0x%p ", lp->cur_tx, pkt_len,
@@ -462,10 +451,9 @@ static int pcnet_send(struct eth_device *dev, void *packet, int pkt_len)
 	 * Setup Tx ring. Caution: the write order is important here,
 	 * set the status with the "ownership" bits last.
 	 */
-	addr = pcnet_virt_to_mem(dev, packet);
 	writew(-pkt_len, &entry->length);
 	writel(0, &entry->misc);
-	writel(addr, &entry->base);
+	writel(PCI_TO_MEM(dev, packet), &entry->base);
 	writew(0x8300, &entry->status);
 
 	/* Trigger an immediate send poll. */
@@ -519,7 +507,7 @@ static int pcnet_recv (struct eth_device *dev)
 				buf = (*lp->rx_buf)[lp->cur_rx];
 				invalidate_dcache_range((unsigned long)buf,
 					(unsigned long)buf + pkt_len);
-				net_process_received_packet(buf, pkt_len);
+				NetReceive(buf, pkt_len);
 				PCNET_DEBUG2("Rx%d: %d bytes from 0x%p\n",
 					     lp->cur_rx, pkt_len, buf);
 			}

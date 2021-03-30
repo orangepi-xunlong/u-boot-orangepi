@@ -1,17 +1,22 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Atmel Corporation
  *		      Bo Shen <voice.shen@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <mmc.h>
 #include <asm/io.h>
 #include <asm/arch/sama5d3_smc.h>
 #include <asm/arch/at91_common.h>
+#include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/clk.h>
-#include <debug_uart.h>
+#include <atmel_mci.h>
+#include <net.h>
+#include <netdev.h>
 #include <spl.h>
 #include <asm/arch/atmel_mpddrc.h>
 #include <asm/arch/at91_wdt.h>
@@ -61,26 +66,24 @@ static void sama5d3_xplained_usb_hw_init(void)
 #ifdef CONFIG_GENERIC_ATMEL_MCI
 static void sama5d3_xplained_mci0_hw_init(void)
 {
+	at91_mci_hw_init();
+
 	at91_set_pio_output(AT91_PIO_PORTE, 2, 0);	/* MCI0 Power */
 }
 #endif
 
-#ifdef CONFIG_DEBUG_UART_BOARD_INIT
-void board_debug_uart_init(void)
-{
-	at91_seriald_hw_init();
-}
-#endif
-
-#ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
-#ifdef CONFIG_DEBUG_UART
-	debug_uart_init();
-#endif
+	at91_periph_clk_enable(ATMEL_ID_PIOA);
+	at91_periph_clk_enable(ATMEL_ID_PIOB);
+	at91_periph_clk_enable(ATMEL_ID_PIOC);
+	at91_periph_clk_enable(ATMEL_ID_PIOD);
+	at91_periph_clk_enable(ATMEL_ID_PIOE);
+
+	at91_seriald_hw_init();
+
 	return 0;
 }
-#endif
 
 int board_init(void)
 {
@@ -96,6 +99,10 @@ int board_init(void)
 #ifdef CONFIG_GENERIC_ATMEL_MCI
 	sama5d3_xplained_mci0_hw_init();
 #endif
+#ifdef CONFIG_MACB
+	at91_gmac_hw_init();
+	at91_macb_hw_init();
+#endif
 	return 0;
 }
 
@@ -107,20 +114,36 @@ int dram_init(void)
 	return 0;
 }
 
+int board_eth_init(bd_t *bis)
+{
+#ifdef CONFIG_MACB
+	macb_eth_initialize(0, (void *)ATMEL_BASE_GMAC, 0x00);
+	macb_eth_initialize(0, (void *)ATMEL_BASE_EMAC, 0x00);
+#endif
+	return 0;
+}
+
+#ifdef CONFIG_GENERIC_ATMEL_MCI
+int board_mmc_init(bd_t *bis)
+{
+	atmel_mci_init((void *)ATMEL_BASE_MCI0);
+
+	return 0;
+}
+#endif
+
 /* SPL */
 #ifdef CONFIG_SPL_BUILD
 void spl_board_init(void)
 {
-#ifdef CONFIG_SD_BOOT
-#ifdef CONFIG_GENERIC_ATMEL_MCI
+#ifdef CONFIG_SYS_USE_MMC
 	sama5d3_xplained_mci0_hw_init();
-#endif
-#elif CONFIG_NAND_BOOT
+#elif CONFIG_SYS_USE_NANDFLASH
 	sama5d3_xplained_nand_hw_init();
 #endif
 }
 
-static void ddr2_conf(struct atmel_mpddrc_config *ddr2)
+static void ddr2_conf(struct atmel_mpddr *ddr2)
 {
 	ddr2->md = (ATMEL_MPDDRC_MD_DBW_32_BITS | ATMEL_MPDDRC_MD_DDR2_SDRAM);
 
@@ -161,20 +184,22 @@ static void ddr2_conf(struct atmel_mpddrc_config *ddr2)
 
 void mem_init(void)
 {
-	struct atmel_mpddrc_config ddr2;
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+	struct atmel_mpddr ddr2;
 
 	ddr2_conf(&ddr2);
 
-	/* Enable MPDDR clock */
+	/* enable MPDDR clock */
 	at91_periph_clk_enable(ATMEL_ID_MPDDRC);
-	at91_system_clk_enable(AT91_PMC_DDR);
+	writel(0x4, &pmc->scer);
 
 	/* DDRAM2 Controller initialize */
-	ddr2_init(ATMEL_BASE_MPDDRC, ATMEL_BASE_DDRCS, &ddr2);
+	ddr2_init(ATMEL_BASE_DDRCS, &ddr2);
 }
 
 void at91_pmc_init(void)
 {
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 	u32 tmp;
 
 	tmp = AT91_PMC_PLLAR_29 |
@@ -183,7 +208,7 @@ void at91_pmc_init(void)
 	      AT91_PMC_PLLXR_DIV(1);
 	at91_plla_init(tmp);
 
-	at91_pllicpr_init(AT91_PMC_IPLL_PLLA(0x3));
+	writel(0x3 << 8, &pmc->pllicpr);
 
 	tmp = AT91_PMC_MCKR_MDIV_4 |
 	      AT91_PMC_MCKR_CSS_PLLA;

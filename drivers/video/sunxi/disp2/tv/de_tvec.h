@@ -1,42 +1,20 @@
-/*
- * Allwinner SoCs tv driver.
- *
- * Copyright (C) 2016 Allwinner.
- *
- * This file is licensed under the terms of the GNU General Public
- * License version 2.  This program is licensed "as is" without any
- * warranty of any kind, whether express or implied.
- */
 #ifndef __DE_TVE_H__
 #define __DE_TVE_H__
 
 #include <common.h>
 
-#if defined(CONFIG_MACH_SUN8IW11)
+#if defined(CONFIG_ARCH_SUN8IW11P1)
 #define TVE_TOP_SUPPORT
-#define TVE_DEVICE_NUM 2
-#define TVE_TOP_DEVIVE_NUM 1
-#define TVE_DAC_NUM 4
-#elif defined(CONFIG_MACH_SUN50IW2)
+#define TVE_DEVICE_NUM          2
+#define TVE_TOP_DEVIVE_NUM      1
+#define TVE_DAC_NUM             4
+
+#elif defined(CONFIG_ARCH_SUN50IW2P1)
 /* #define TVE_TOP_SUPPORT */
-#define TVE_DEVICE_NUM 1
-#define TVE_TOP_DEVIVE_NUM 1
-#define TVE_DAC_NUM 1
-#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16) ||        \
-	defined(CONFIG_MACH_SUN50IW9)
-#define TVE_TOP_SUPPORT
-#define TVE_DEVICE_NUM 1
-#define TVE_TOP_DEVIVE_NUM 1
-#define TVE_DAC_NUM 1
-#elif defined(CONFIG_MACH_SUN8IW17)
-#define TVE_TOP_SUPPORT
-#define TVE_DEVICE_NUM 1
-#define TVE_TOP_DEVIVE_NUM 1
-#define TVE_DAC_NUM 1
-#else
-#define TVE_DEVICE_NUM 1
-#define TVE_TOP_DEVIVE_NUM 1
-#define TVE_DAC_NUM 1
+#define TVE_DEVICE_NUM          1
+#define TVE_TOP_DEVIVE_NUM      1
+#define TVE_DAC_NUM             1
+
 #endif
 
 /* tv encoder registers offset */
@@ -119,8 +97,7 @@
 
 s32 tve_low_set_reg_base(u32 sel, void __iomem *address);
 s32 tve_low_set_top_reg_base(void __iomem *address);
-s32 tve_low_set_sid_base(void __iomem *address);
-s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, s32 *offset, u32 *dac_type,
+s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, u32 *offset, u32 *dac_type,
 			u32 num);
 s32 tve_low_open(u32 sel);
 s32 tve_low_close(u32 sel);
@@ -133,6 +110,5 @@ s32 tve_low_dac_autocheck_disable(u32 sel);
 u32 tve_low_get_sid(u32 index);
 s32 tve_low_enhance(u32 sel, u32 mode);
 s32 tve_low_dac_enable(u32 sel);
-extern uint sid_read_key(uint key_index);
 
 #endif

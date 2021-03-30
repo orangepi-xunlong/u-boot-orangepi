@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
  * DENX Software Engineering
@@ -19,6 +18,8 @@
  *		some functions added to address abstraction
  *
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
@@ -47,11 +48,10 @@ int main(int argc, char **argv)
 	char *fdtfile = NULL;
 	char *nodename = NULL;
 	char *propertyname = NULL;
-	char cmdname[256];
+	char cmdname[50];
 	int c;
 
-	strncpy(cmdname, *argv, sizeof(cmdname) - 1);
-	cmdname[sizeof(cmdname) - 1] = '\0';
+	strcpy(cmdname, *argv);
 	while ((c = getopt(argc, argv, "f:n:p:")) != -1)
 		switch (c) {
 		case 'f':

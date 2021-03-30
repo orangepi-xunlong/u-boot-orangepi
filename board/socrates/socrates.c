@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Sergei Poselenov, Emcraft Systems, sposelenov@emcraft.com.
@@ -8,6 +7,8 @@
  * Xianghua Xiao, (X.Xiao@motorola.com)
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,7 +17,7 @@
 #include <asm/immap_85xx.h>
 #include <ioports.h>
 #include <flash.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/io.h>
 #include <i2c.h>
@@ -37,7 +38,7 @@ int checkboard (void)
 	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	char buf[64];
 	int f;
-	int i = env_get_f("serial#", buf, sizeof(buf));
+	int i = getenv_f("serial#", buf, sizeof(buf));
 #ifdef CONFIG_PCI
 	char *src;
 #endif
@@ -216,8 +217,9 @@ int board_early_init_r (void)
 }
 #endif /* CONFIG_BOARD_EARLY_INIT_R */
 
-#ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+void
+ft_board_setup(void *blob, bd_t *bd)
 {
 	u32 val[12];
 	int rc, i = 0;
@@ -249,10 +251,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 	if (rc)
 		printf("Unable to update localbus ranges, err=%s\n",
 		       fdt_strerror(rc));
-
-	return 0;
 }
-#endif /* CONFIG_OF_BOARD_SETUP */
+#endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
 
 #define DEFAULT_BRIGHTNESS	25
 #define BACKLIGHT_ENABLE	(1 << 31)
@@ -377,7 +377,7 @@ static void board_backlight_brightness(int br)
 
 		/* LEDs on */
 		reg = in_be32((void *)(CONFIG_SYS_FPGA_BASE + 0x0c));
-		if (!(reg & BACKLIGHT_ENABLE))
+		if (!(reg & BACKLIGHT_ENABLE));
 			out_be32((void *)(CONFIG_SYS_FPGA_BASE + 0x0c),
 				 reg | BACKLIGHT_ENABLE);
 	} else {
@@ -408,7 +408,7 @@ void board_backlight_switch (int flag)
 		printf ("hwmon IC init failed\n");
 
 	if (flag) {
-		param = env_get("brightness");
+		param = getenv("brightness");
 		rc = param ? simple_strtol(param, NULL, 10) : -1;
 		if (rc < 0)
 			rc = DEFAULT_BRIGHTNESS;

@@ -1,25 +1,10 @@
-/*
- * include/clk/clk_plat.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __MACH_SUNXI_CLK__H
 #define __MACH_SUNXI_CLK__H
 #include "asm/io.h"
 #include <common.h>
 #include <malloc.h>
-/*#include <linux/compat.h>*/
+#include <asm/arch/timer.h>
+#include <asm/arch/platform.h>
 #include <linux/list.h>
 
 
@@ -72,12 +57,10 @@
 #define CLK_IGNORE_DISABLE      BIT11 /* for sunxi use */
 #define CLK_RATE_FLAT_FACTORS   BIT12 /* for sunxi use */
 #define CLK_RATE_FLAT_DELAY     BIT13 /* for sunxi use */
-#define CLK_NO_DISABLE          BIT20 /* for sunxi use */
-#define CLK_IGNORE_ENABLE_DISABLE BIT21 /* for sunxi use */
 
 
-/*#define mdelay(ms) __msdelay(ms)*/
-/*#define udelay(us) __udelay(us)*/
+#define mdelay(ms) __msdelay(ms)
+#define udelay(us) __usdelay(us)
 #define to_clk_factor(_hw) container_of(_hw, struct sunxi_clk_factors, hw)
 #define SETMASK(width, shift)   ((width?((-1U) >> (32-width)):0)  << (shift))
 #define CLRMASK(width, shift)   (~(SETMASK(width, shift)))
@@ -85,7 +68,6 @@
             (((reg) & SETMASK(width, shift)) >> (shift))
 #define SET_BITS(shift, width, reg, val) \
             (((reg) & CLRMASK(width, shift)) | (val << (shift)))
-#define DEFINE_SPINLOCK(lock) int lock
 
 
 typedef unsigned char u8;

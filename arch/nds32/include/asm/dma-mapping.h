@@ -1,12 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Andes Technology Corporation
  * Ken Kuo, Andes Technology Corporation <ken_kuo@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ASM_NDS_DMA_MAPPING_H
 #define __ASM_NDS_DMA_MAPPING_H
 
-#include <linux/dma-direction.h>
+enum dma_data_direction {
+	DMA_BIDIRECTIONAL	= 0,
+	DMA_TO_DEVICE		= 1,
+	DMA_FROM_DEVICE		= 2,
+};
 
 static void *dma_alloc_coherent(size_t len, unsigned long *handle)
 {

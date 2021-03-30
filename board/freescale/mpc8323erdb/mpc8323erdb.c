@@ -15,13 +15,11 @@
 #include <i2c.h>
 #include <miiphy.h>
 #include <command.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #if defined(CONFIG_PCI)
 #include <pci.h>
 #endif
 #include <asm/mmu.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* UCC3 */
@@ -70,23 +68,21 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 
 int fixed_sdram(void);
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32) im)
-		return -ENXIO;
+		return -1;
 
 	/* DDR SDRAM - Main SODIMM */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
 
 	msize = fixed_sdram();
 
-	/* set total bus SDRAM size(bytes)  -- DDR */
-	gd->ram_size = msize * 1024 * 1024;
-
-	return 0;
+	/* return total bus SDRAM size(bytes)  -- DDR */
+	return (msize * 1024 * 1024);
 }
 
 /*************************************************************************
@@ -176,14 +172,12 @@ void pci_init_board(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-
-	return 0;
 }
 #endif
 
@@ -216,7 +210,7 @@ int mac_read_from_eeprom(void)
 						buf[i * 6 + 4], buf[i * 6 + 5]);
 					sprintf((char *)enetvar,
 						i ? "eth%daddr" : "ethaddr", i);
-					env_set((char *)enetvar, str);
+					setenv((char *)enetvar, str);
 				}
 			}
 		}

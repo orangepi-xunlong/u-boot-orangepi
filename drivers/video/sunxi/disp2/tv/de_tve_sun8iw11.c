@@ -9,7 +9,6 @@
 
 #include "drv_tv.h"
 #include "de_tvec.h"
-#include <efuse_map.h>
 
 static unsigned int dac_info[TVE_DEVICE_NUM][TVE_DAC_NUM];
 static void __iomem *tve_reg_base[TVE_DEVICE_NUM];
@@ -19,7 +18,7 @@ static unsigned int dac_type_info[TVE_DEVICE_NUM][TVE_DAC_NUM];
 s32 tve_low_set_reg_base(u32 sel, void __iomem *address)
 {
 	if (sel > 2)
-		printf("sel is %u,err!", sel);
+		printf("sel is %d,err!", sel);
 	else
 		tve_reg_base[sel] = address;
 	return 0;
@@ -31,17 +30,15 @@ s32 tve_low_set_top_reg_base(void __iomem *address)
 	return 0;
 }
 
-s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, s32 *offset, u32 *dac_type,
+s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, u32 *offset, u32 *dac_type,
 			u32 num)
 {
 	u32 i = 0;
-	s32 dac_cal = 0;
+	u32 dac_cal = 0;
 	u32 dac_type_set = 0;
 
-	/* init dac config as disable status first */
 	for (i = 0; i < TVE_DAC_NUM; i++)
 		dac_type_info[sel][i] = 7;
-
 	for (i = 0; i < num; i++) {
 		dac_info[sel][dac_no[i]] = 1;
 		dac_type_info[sel][dac_no[i]] = dac_type[i];
@@ -49,13 +46,13 @@ s32 tve_low_init(u32 sel, u32 *dac_no, u32 *cali, s32 *offset, u32 *dac_type,
 
 	for (i = 0; i < TVE_DAC_NUM; i++) {
 		if (dac_info[sel][i]) {
-			dac_cal = (s32)cali[i] + offset[i];
+			dac_cal = cali[i]+offset[i];
 			TVE_TOP_WUINT32(TVE_TOP_020 + 0x020*i,
-					(i<<4)|((sel+1)<<0));
+				(i<<4)|((sel+1)<<0));
 			TVE_TOP_WUINT32(TVE_TOP_02C + 0x020*i, 0x023a);
 			TVE_TOP_WUINT32(TVE_TOP_030 + 0x020*i, 0x0010);
 			TVE_TOP_WUINT32(TVE_TOP_028 + 0x020*i,
-					((0x8000|dac_cal)<<16)|0x4200);
+				((0x8000|dac_cal)<<16)|0x4200);
 		}
 
 	}
@@ -71,10 +68,11 @@ s32 tve_low_dac_enable(u32 sel)
 {
 	u32 i = 0;
 
-	for (i = 0; i < TVE_DAC_NUM; i++) {
+	for (i = 0; i < 4; i++) {
 		if (dac_info[sel][i])
 			TVE_TOP_SET_BIT(TVE_TOP_028 + 0x020*i, 1<<0);
 	}
+
 
 	return 0;
 }
@@ -82,8 +80,7 @@ s32 tve_low_dac_enable(u32 sel)
 s32 tve_low_dac_disable(u32 sel)
 {
 	u32 i = 0;
-
-	for (i = 0; i < TVE_DAC_NUM; i++) {
+	for (i = 0; i < 4; i++) {
 		if (dac_info[sel][i])
 			TVE_TOP_CLR_BIT(TVE_TOP_028 + 0x020*i, 1<<0);
 	}
@@ -145,8 +142,8 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 		TVE_CLR_BIT(sel, TVE_000, 0x1<<0);
 		TVE_WUINT32(sel, TVE_130, reg_sync);
 		TVE_WUINT32(sel, TVE_014, 0x00820020);
-		TVE_WUINT32(sel, TVE_130, 0x20050013);
-		TVE_WUINT32(sel, TVE_380, (deflick == 0)
+		TVE_WUINT32(sel, TVE_130, 0x20050000);
+		TVE_WUINT32(sel, TVE_380, (0 == deflick)
 					? 0x00000000 : 0x0<<10 | 0x3<<8);
 		break;
 	case DISP_TV_MOD_NTSC:
@@ -181,8 +178,8 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 		TVE_WUINT32(sel, TVE_000, 0x00300000);
 		TVE_CLR_BIT(sel, TVE_000, 0x1<<0);
 		TVE_WUINT32(sel, TVE_130, reg_sync);
-		TVE_WUINT32(sel, TVE_130, 0x20050364);
-		TVE_WUINT32(sel, TVE_380, (deflick == 0)
+		TVE_WUINT32(sel, TVE_130, 0x20050370);
+		TVE_WUINT32(sel, TVE_380, (0 == deflick)
 					? 0x00000000 : 0x0<<10 | 0x3<<8);
 		break;
 	case DISP_TV_MOD_480I:
@@ -471,8 +468,6 @@ s32 tve_low_set_tv_mode(u32 sel, enum disp_tv_mode mode, u32 cali)
 	case DISP_VGA_MOD_1280_800P_60:
 	case DISP_VGA_MOD_1366_768P_60:
 	case DISP_VGA_MOD_1440_900P_60:
-	case DISP_VGA_MOD_1600_900P_60:
-	case DISP_VGA_MOD_1280_720P_60:
 	case DISP_VGA_MOD_1920_1080P_60:
 	case DISP_VGA_MOD_1920_1200P_60:
 		TVE_WUINT32(sel, TVE_004, 0x08000000);
@@ -492,7 +487,7 @@ s32 tve_low_get_dac_status(u32 sel)
 	u32 result = 0;
 	u32 i = 0;
 
-	for (i = 0; i < TVE_DAC_NUM; i++) {
+	for (i = 0; i < 4; i++) {
 		if (dac_info[sel][i] == 1) {
 			readval = (TVE_RUINT32(sel, TVE_038)>>(8*i))&3;
 			if (readval == 1) {
@@ -510,14 +505,9 @@ s32 tve_low_dac_autocheck_enable(u32 sel)
 
 	TVE_SET_BIT(sel, TVE_000, 0x80000000);	/* tvclk enable */
 	TVE_WUINT32(sel, TVE_0F8, 0x00000200);
-#if defined(CONFIG_MACH_SUN50IW9)
-	TVE_WUINT32(sel, TVE_0FC, 0x014700FF);	/* 10ms x 10 */
-	TVE_SET_BIT(sel, TVE_030, 0x80000000); /* new detect mode */
-#else
 	TVE_WUINT32(sel, TVE_0FC, 0x0A3C00FF);	/* 20ms x 10 */
-#endif
 	TVE_WUINT32(sel, TVE_03C, 0x00009999);
-	for (i = 0; i < TVE_DAC_NUM; i++) {
+	for (i = 0; i < 4; i++) {
 		if (dac_info[sel][i] == 1)
 			TVE_SET_BIT(sel, TVE_030, 1<<i);/* detect enable */
 	}
@@ -529,59 +519,44 @@ s32 tve_low_dac_autocheck_disable(u32 sel)
 {
 	u8 i = 0;
 
-	for (i = 0; i < TVE_DAC_NUM; i++) {
+	for (i = 0; i < 4; i++) {
 		if (dac_info[sel][i] == 1)
 			TVE_CLR_BIT(sel, TVE_030, 1<<i);
 	}
 	return 0;
 }
 
-#if defined (CONFIG_MACH_SUN50IW9)
 u32 tve_low_get_sid(u32 index)
 {
-	u32 efuse = 0;
+/*
+	u32 cali_value = 0;
+	void __iomem * sid_sram_base = (void __iomem *)SUNXI_SID_VBASE + 0x200;
 
-	efuse = (readl(0x0300622c) >> 16) + (readl(0x03006230) << 16);
-
-	if (efuse > 5)
-		efuse -= 5;
-
-	return efuse;
+	cali_value = get_wvalue(sid_sram_base + index);
+	cali_value &= 0x000003ff;
+	return cali_value;
+*/
+	return 0;
 }
-#else
-u32 tve_low_get_sid(u32 index)
-{
-	s32 ret = 0;
-	s32 buf_len = 32 * TVE_DAC_NUM;
-	u32 efuse[TVE_DAC_NUM] = {0};
 
-	if (index > TVE_DAC_NUM - 1)
-		return 0;
-
-	ret = sunxi_efuse_read(EFUSE_TV_OUT_NAME, &efuse, &buf_len);
-	if (ret < 0)
-		return 0;
-
-	return efuse[index];
-}
-#endif
 
 s32 tve_low_enhance(u32 sel, u32 mode)
 {
-	if (mode == 0) {
+	if (0 == mode) {
 		TVE_CLR_BIT(sel, TVE_000, 0xf<<10); /* deflick off */
 		TVE_SET_BIT(sel, TVE_000, 0x5<<10); /* deflick is 5 */
 		TVE_SET_BIT(sel, TVE_00C, 0x1<<31); /* lti on */
 		TVE_SET_BIT(sel, TVE_00C, 0x1<<16); /* notch off */
-	} else if (mode == 1) {
+	} else if (1 == mode) {
 		TVE_CLR_BIT(sel, TVE_000, 0xf<<10);
 		TVE_SET_BIT(sel, TVE_000, 0x5<<10);
 		TVE_SET_BIT(sel, TVE_00C, 0x1<<31);
 		TVE_CLR_BIT(sel, TVE_00C, 0x1<<16);
-	} else if (mode == 2) {
+	} else if (2 == mode) {
 		TVE_CLR_BIT(sel, TVE_000, 0xf<<10);
 		TVE_CLR_BIT(sel, TVE_00C, 0x1<<31);
 		TVE_SET_BIT(sel, TVE_00C, 0x1<<16);
 	}
 	return 0;
 }
+

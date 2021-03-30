@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Generic bounce buffer implementation
  *
  * Copyright (C) 2012 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -22,7 +23,7 @@ static int addr_aligned(struct bounce_buffer *state)
 
 	/* Check if length is aligned */
 	if (state->len != state->len_aligned) {
-		debug("Unaligned buffer length %zu\n", state->len);
+		debug("Unaligned buffer length %d\n", state->len);
 		return 0;
 	}
 

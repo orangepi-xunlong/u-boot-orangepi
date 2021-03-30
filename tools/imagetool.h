@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  *
  * Written by Guilherme Maciel Ferreira <guilherme.maciel.ferreira@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _IMAGETOOL_H_
@@ -11,28 +12,18 @@
 #include "os_support.h"
 #include <errno.h>
 #include <fcntl.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 #include <u-boot/sha1.h>
-
 #include "fdt_host.h"
 
 #define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))
 
 #define IH_ARCH_DEFAULT		IH_ARCH_INVALID
-
-/* Information about a file that needs to be placed into the FIT */
-struct content_info {
-	struct content_info *next;
-	int type;		/* File type (IH_TYPE_...) */
-	const char *fname;
-};
 
 /*
  * This structure defines all such variables those are initialized by
@@ -66,17 +57,6 @@ struct image_tool_params {
 	const char *keydest;	/* Destination .dtb for public key */
 	const char *comment;	/* Comment to add to signature node */
 	int require_keys;	/* 1 to mark signing keys as 'required' */
-	int file_size;		/* Total size of output file */
-	int orig_file_size;	/* Original size for file before padding */
-	bool auto_its;		/* Automatically create the .its file */
-	int fit_image_type;	/* Image type to put into the FIT */
-	char *fit_ramdisk;	/* Ramdisk file to include */
-	struct content_info *content_head;	/* List of files to include */
-	struct content_info *content_tail;
-	bool external_data;	/* Store data outside the FIT */
-	bool quiet;		/* Don't output text in normal operation */
-	unsigned int external_offset;	/* Add padding to external data */
-	const char *engine_id;	/* Engine to use for signing */
 };
 
 /*
@@ -120,15 +100,14 @@ struct image_type_params {
 	void (*set_header) (void *, struct stat *, int,
 					struct image_tool_params *);
 	/*
-	 * This function is used by the command to retrieve a component
-	 * (sub-image) from the image (i.e. dumpimage -i <image> -p <position>
-	 * <sub-image-name>).
+	 * This function is used by the command to retrieve a data file from
+	 * the image (i.e. dumpimage -i <image> -p <position> <data_file>).
 	 * Thus the code to extract a file from an image must be put here.
 	 *
 	 * Returns 0 if the file was successfully retrieved from the image,
 	 * or a negative value on error.
 	 */
-	int (*extract_subimage)(void *, struct image_tool_params *);
+	int (*extract_datafile) (void *, struct image_tool_params *);
 	/*
 	 * Some image generation support for ex (default image type) supports
 	 * more than one type_ids, this callback function is used to check
@@ -148,159 +127,49 @@ struct image_type_params {
 	 */
 	int (*vrec_header) (struct image_tool_params *,
 		struct image_type_params *);
+	/* pointer to the next registered entry in linked list */
+	struct image_type_params *next;
 };
 
-/**
- * imagetool_get_type() - find the image type params for a given image type
- *
- * It scans all registers image type supports
- * checks the input type for each supported image type
- *
- * if successful,
- *     returns respective image_type_params pointer if success
- * if input type_id is not supported by any of image_type_support
- *     returns NULL
+/*
+ * Tool registration function.
  */
-struct image_type_params *imagetool_get_type(int type);
+typedef void (*imagetool_register_t)(struct image_type_params *);
 
 /*
- * imagetool_verify_print_header() - verifies the image header
- *
- * Scan registered image types and verify the image_header for each
- * supported image type. If verification is successful, this prints
- * the respective header.
- *
- * @return 0 on success, negative if input image format does not match with
- * any of supported image types
+ * Initializes all image types with the given registration callback
+ * function.
+ * An image tool uses this function to initialize all image types.
  */
-int imagetool_verify_print_header(
-	void *ptr,
-	struct stat *sbuf,
-	struct image_type_params *tparams,
-	struct image_tool_params *params);
+void register_image_tool(imagetool_register_t image_register);
 
-/**
- * imagetool_save_subimage - store data into a file
- * @file_name: name of the destination file
- * @file_data: data to be written
- * @file_len: the amount of data to store
- *
- * imagetool_save_subimage() store file_len bytes of data pointed by file_data
- * into the file name by file_name.
- *
- * returns:
- *     zero in case of success or a negative value if fail.
+/*
+ * Register a image type within a tool.
+ * An image type uses this function to register itself within
+ * all tools.
  */
-int imagetool_save_subimage(
-	const char *file_name,
-	ulong file_data,
-	ulong file_len);
-
-/**
- * imagetool_get_filesize() - Utility function to obtain the size of a file
- *
- * This function prints a message if an error occurs, showing the error that
- * was obtained.
- *
- * @params:	mkimage parameters
- * @fname:	filename to check
- * @return size of file, or -ve value on error
- */
-int imagetool_get_filesize(struct image_tool_params *params, const char *fname);
-
-/**
- * imagetool_get_source_date() - Get timestamp for build output.
- *
- * Gets a timestamp for embedding it in a build output. If set
- * SOURCE_DATE_EPOCH is used. Else the given fallback value is returned. Prints
- * an error message if SOURCE_DATE_EPOCH contains an invalid value and returns
- * 0.
- *
- * @params:	mkimage parameters
- * @fallback:	timestamp to use if SOURCE_DATE_EPOCH isn't set
- * @return timestamp based on SOURCE_DATE_EPOCH
- */
-time_t imagetool_get_source_date(
-	struct image_tool_params *params,
-	time_t fallback);
+void register_image_type(struct image_type_params *tparams);
 
 /*
  * There is a c file associated with supported image type low level code
  * for ex. default_image.c, fit_image.c
+ * init_xxx_type() is the only function referred by image tool core to avoid
+ * a single lined header file, you can define them here
+ *
+ * Supported image types init functions
  */
-
+void init_default_image_type(void);
+void init_atmel_image_type(void);
+void init_pbl_image_type(void);
+void init_ais_image_type(void);
+void init_kwb_image_type(void);
+void init_imx_image_type(void);
+void init_mxs_image_type(void);
+void init_fit_image_type(void);
+void init_ubl_image_type(void);
+void init_omap_image_type(void);
+void init_gpimage_type(void);
 
 void pbl_load_uboot(int fd, struct image_tool_params *mparams);
-
-#define ___cat(a, b) a ## b
-#define __cat(a, b) ___cat(a, b)
-
-/* we need some special handling for this host tool running eventually on
- * Darwin. The Mach-O section handling is a bit different than ELF section
- * handling. The differnces in detail are:
- *  a) we have segments which have sections
- *  b) we need a API call to get the respective section symbols */
-#if defined(__MACH__)
-#include <mach-o/getsect.h>
-
-#define INIT_SECTION(name)  do {					\
-		unsigned long name ## _len;				\
-		char *__cat(pstart_, name) = getsectdata("__TEXT",	\
-			#name, &__cat(name, _len));			\
-		char *__cat(pstop_, name) = __cat(pstart_, name) +	\
-			__cat(name, _len);				\
-		__cat(__start_, name) = (void *)__cat(pstart_, name);	\
-		__cat(__stop_, name) = (void *)__cat(pstop_, name);	\
-	} while (0)
-#define SECTION(name)   __attribute__((section("__TEXT, " #name)))
-
-struct image_type_params **__start_image_type, **__stop_image_type;
-#else
-#define INIT_SECTION(name) /* no-op for ELF */
-#define SECTION(name)   __attribute__((section(#name)))
-
-/* We construct a table of pointers in an ELF section (pointers generally
- * go unpadded by gcc).  ld creates boundary syms for us. */
-extern struct image_type_params *__start_image_type[], *__stop_image_type[];
-#endif /* __MACH__ */
-
-#if !defined(__used)
-# if __GNUC__ == 3 && __GNUC_MINOR__ < 3
-#  define __used			__attribute__((__unused__))
-# else
-#  define __used			__attribute__((__used__))
-# endif
-#endif
-
-#define U_BOOT_IMAGE_TYPE( \
-		_id, \
-		_name, \
-		_header_size, \
-		_header, \
-		_check_params, \
-		_verify_header, \
-		_print_header, \
-		_set_header, \
-		_extract_subimage, \
-		_check_image_type, \
-		_fflag_handle, \
-		_vrec_header \
-	) \
-	static struct image_type_params __cat(image_type_, _id) = \
-	{ \
-		.name = _name, \
-		.header_size = _header_size, \
-		.hdr = _header, \
-		.check_params = _check_params, \
-		.verify_header = _verify_header, \
-		.print_header = _print_header, \
-		.set_header = _set_header, \
-		.extract_subimage = _extract_subimage, \
-		.check_image_type = _check_image_type, \
-		.fflag_handle = _fflag_handle, \
-		.vrec_header = _vrec_header \
-	}; \
-	static struct image_type_params *SECTION(image_type) __used \
-		__cat(image_type_ptr_, _id) = &__cat(image_type_, _id)
 
 #endif /* _IMAGETOOL_H_ */

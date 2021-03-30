@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_rtmx_type.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __DE_RTMX_TYPE_H__
 #define __DE_RTMX_TYPE_H__
 
@@ -82,18 +66,18 @@ union __vi_lay_attr_reg_t {
 	unsigned int dwval;
 	struct {
 		unsigned int lay_en:1;
-		unsigned int alpmode:2;
-		unsigned int r0:1;
+		unsigned int r0:3;
 		unsigned int lay_fcolor_en:1;
 		unsigned int r1:3;
 		unsigned int lay_fmt:5;
 		unsigned int r2:2;
 		unsigned int ui_sel:1;
-		unsigned int alpctl:2;
-		unsigned int r3:2;
-		unsigned int brust:3;
+		unsigned int yburst:2;
+		unsigned int uburst:2;
+		unsigned int vburst:2;
+		unsigned int r3:1;
 		unsigned int lay_top_down:1;
-		unsigned int alpha:8;
+		unsigned int r4:8;
 	} bits;
 };
 /* 0x0+N*0x30(N=0,1,2,3) */
@@ -239,7 +223,9 @@ union __ui_lay_attr_reg_t {
 		unsigned int lay_fmt:5;
 		unsigned int r2:3;
 		unsigned int lay_alpctl:2;
-		unsigned int r3:5;
+		unsigned int r3:2;
+		unsigned int burst:2;
+		unsigned int r4:1;
 		unsigned int lay_top_down:1;
 		unsigned int lay_alpha:8;
 	} bits;

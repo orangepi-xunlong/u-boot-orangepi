@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011-2012 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +12,11 @@
 /* Main state record for the sandbox */
 static struct sandbox_state main_state;
 static struct sandbox_state *state;	/* Pointer to current state record */
+
+void state_record_exit(enum exit_type_id exit_type)
+{
+	state->exit_type = exit_type;
+}
 
 static int state_ensure_space(int extra_size)
 {
@@ -44,12 +49,12 @@ static int state_ensure_space(int extra_size)
 
 static int state_read_file(struct sandbox_state *state, const char *fname)
 {
-	loff_t size;
+	int size;
 	int ret;
 	int fd;
 
-	ret = os_get_filesize(fname, &size);
-	if (ret < 0) {
+	size = os_get_filesize(fname);
+	if (size < 0) {
 		printf("Cannot find sandbox state file '%s'\n", fname);
 		return -ENOENT;
 	}
@@ -153,7 +158,7 @@ int sandbox_read_state(struct sandbox_state *state, const char *fname)
 			return ret;
 	}
 
-	/* Call all the state read functions */
+	/* Call all the state read funtcions */
 	got_err = false;
 	blob = state->state_fdt;
 	io = ll_entry_start(struct sandbox_state_io, state_io);
@@ -337,30 +342,6 @@ struct sandbox_state *state_get_current(void)
 	return state;
 }
 
-void state_set_skip_delays(bool skip_delays)
-{
-	struct sandbox_state *state = state_get_current();
-
-	state->skip_delays = skip_delays;
-}
-
-bool state_get_skip_delays(void)
-{
-	struct sandbox_state *state = state_get_current();
-
-	return state->skip_delays;
-}
-
-void state_reset_for_test(struct sandbox_state *state)
-{
-	/* No reset yet, so mark it as such. Always allow power reset */
-	state->last_sysreset = SYSRESET_COUNT;
-	state->sysreset_allowed[SYSRESET_POWER] = true;
-
-	memset(&state->wdt, '\0', sizeof(state->wdt));
-	memset(state->spi, '\0', sizeof(state->spi));
-}
-
 int state_init(void)
 {
 	state = &main_state;
@@ -369,7 +350,6 @@ int state_init(void)
 	state->ram_buf = os_malloc(state->ram_size);
 	assert(state->ram_buf);
 
-	state_reset_for_test(state);
 	/*
 	 * Example of how to use GPIOs:
 	 *

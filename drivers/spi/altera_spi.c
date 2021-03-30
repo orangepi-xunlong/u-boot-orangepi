@@ -1,103 +1,138 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Altera SPI driver
  *
  * based on bfin_spi.c
  * Copyright (c) 2005-2008 Analog Devices Inc.
  * Copyright (C) 2010 Thomas Chou <thomas@wytron.com.tw>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
-#include <dm.h>
-#include <errno.h>
-#include <malloc.h>
-#include <fdtdec.h>
-#include <spi.h>
 #include <asm/io.h>
+#include <malloc.h>
+#include <spi.h>
 
-#define ALTERA_SPI_STATUS_RRDY_MSK	BIT(7)
-#define ALTERA_SPI_CONTROL_SSO_MSK	BIT(10)
+#define ALTERA_SPI_RXDATA	0
+#define ALTERA_SPI_TXDATA	4
+#define ALTERA_SPI_STATUS	8
+#define ALTERA_SPI_CONTROL	12
+#define ALTERA_SPI_SLAVE_SEL	20
 
-#ifndef CONFIG_ALTERA_SPI_IDLE_VAL
-#define CONFIG_ALTERA_SPI_IDLE_VAL	0xff
+#define ALTERA_SPI_STATUS_ROE_MSK	(0x8)
+#define ALTERA_SPI_STATUS_TOE_MSK	(0x10)
+#define ALTERA_SPI_STATUS_TMT_MSK	(0x20)
+#define ALTERA_SPI_STATUS_TRDY_MSK	(0x40)
+#define ALTERA_SPI_STATUS_RRDY_MSK	(0x80)
+#define ALTERA_SPI_STATUS_E_MSK	(0x100)
+
+#define ALTERA_SPI_CONTROL_IROE_MSK	(0x8)
+#define ALTERA_SPI_CONTROL_ITOE_MSK	(0x10)
+#define ALTERA_SPI_CONTROL_ITRDY_MSK	(0x40)
+#define ALTERA_SPI_CONTROL_IRRDY_MSK	(0x80)
+#define ALTERA_SPI_CONTROL_IE_MSK	(0x100)
+#define ALTERA_SPI_CONTROL_SSO_MSK	(0x400)
+
+#ifndef CONFIG_SYS_ALTERA_SPI_LIST
+#define CONFIG_SYS_ALTERA_SPI_LIST { CONFIG_SYS_SPI_BASE }
 #endif
 
-struct altera_spi_regs {
-	u32	rxdata;
-	u32	txdata;
-	u32	status;
-	u32	control;
-	u32	_reserved;
-	u32	slave_sel;
-};
+static ulong altera_spi_base_list[] = CONFIG_SYS_ALTERA_SPI_LIST;
 
-struct altera_spi_platdata {
-	struct altera_spi_regs *regs;
+struct altera_spi_slave {
+	struct spi_slave slave;
+	ulong base;
 };
+#define to_altera_spi_slave(s) container_of(s, struct altera_spi_slave, slave)
 
-struct altera_spi_priv {
-	struct altera_spi_regs *regs;
-};
-
-static void spi_cs_activate(struct udevice *dev, uint cs)
+__attribute__((weak))
+int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
-	struct udevice *bus = dev->parent;
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-	struct altera_spi_regs *const regs = priv->regs;
-
-	writel(1 << cs, &regs->slave_sel);
-	writel(ALTERA_SPI_CONTROL_SSO_MSK, &regs->control);
+	return bus < ARRAY_SIZE(altera_spi_base_list) && cs < 32;
 }
 
-static void spi_cs_deactivate(struct udevice *dev)
+__attribute__((weak))
+void spi_cs_activate(struct spi_slave *slave)
 {
-	struct udevice *bus = dev->parent;
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-	struct altera_spi_regs *const regs = priv->regs;
-
-	writel(0, &regs->control);
-	writel(0, &regs->slave_sel);
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
+	writel(1 << slave->cs, altspi->base + ALTERA_SPI_SLAVE_SEL);
+	writel(ALTERA_SPI_CONTROL_SSO_MSK, altspi->base + ALTERA_SPI_CONTROL);
 }
 
-static int altera_spi_claim_bus(struct udevice *dev)
+__attribute__((weak))
+void spi_cs_deactivate(struct spi_slave *slave)
 {
-	struct udevice *bus = dev->parent;
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-	struct altera_spi_regs *const regs = priv->regs;
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
+	writel(0, altspi->base + ALTERA_SPI_CONTROL);
+	writel(0, altspi->base + ALTERA_SPI_SLAVE_SEL);
+}
 
-	writel(0, &regs->control);
-	writel(0, &regs->slave_sel);
+void spi_init(void)
+{
+}
 
+void spi_set_speed(struct spi_slave *slave, uint hz)
+{
+	/* altera spi core does not support programmable speed */
+}
+
+struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
+				  unsigned int max_hz, unsigned int mode)
+{
+	struct altera_spi_slave *altspi;
+
+	if (!spi_cs_is_valid(bus, cs))
+		return NULL;
+
+	altspi = spi_alloc_slave(struct altera_spi_slave, bus, cs);
+	if (!altspi)
+		return NULL;
+
+	altspi->base = altera_spi_base_list[bus];
+	debug("%s: bus:%i cs:%i base:%lx\n", __func__,
+		bus, cs, altspi->base);
+
+	return &altspi->slave;
+}
+
+void spi_free_slave(struct spi_slave *slave)
+{
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
+	free(altspi);
+}
+
+int spi_claim_bus(struct spi_slave *slave)
+{
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
+
+	debug("%s: bus:%i cs:%i\n", __func__, slave->bus, slave->cs);
+	writel(0, altspi->base + ALTERA_SPI_CONTROL);
+	writel(0, altspi->base + ALTERA_SPI_SLAVE_SEL);
 	return 0;
 }
 
-static int altera_spi_release_bus(struct udevice *dev)
+void spi_release_bus(struct spi_slave *slave)
 {
-	struct udevice *bus = dev->parent;
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-	struct altera_spi_regs *const regs = priv->regs;
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
 
-	writel(0, &regs->slave_sel);
-
-	return 0;
+	debug("%s: bus:%i cs:%i\n", __func__, slave->bus, slave->cs);
+	writel(0, altspi->base + ALTERA_SPI_SLAVE_SEL);
 }
 
-static int altera_spi_xfer(struct udevice *dev, unsigned int bitlen,
-			    const void *dout, void *din, unsigned long flags)
-{
-	struct udevice *bus = dev->parent;
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-	struct altera_spi_regs *const regs = priv->regs;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+#ifndef CONFIG_ALTERA_SPI_IDLE_VAL
+# define CONFIG_ALTERA_SPI_IDLE_VAL 0xff
+#endif
 
+int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
+	     void *din, unsigned long flags)
+{
+	struct altera_spi_slave *altspi = to_altera_spi_slave(slave);
 	/* assume spi core configured to do 8 bit transfers */
-	unsigned int bytes = bitlen / 8;
-	const unsigned char *txp = dout;
-	unsigned char *rxp = din;
-	uint32_t reg, data, start;
+	uint bytes = bitlen / 8;
+	const uchar *txp = dout;
+	uchar *rxp = din;
 
 	debug("%s: bus:%i cs:%i bitlen:%i bytes:%i flags:%lx\n", __func__,
-	      bus->seq, slave_plat->cs, bitlen, bytes, flags);
-
+		slave->bus, slave->cs, bitlen, bytes, flags);
 	if (bitlen == 0)
 		goto done;
 
@@ -107,101 +142,27 @@ static int altera_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	}
 
 	/* empty read buffer */
-	if (readl(&regs->status) & ALTERA_SPI_STATUS_RRDY_MSK)
-		readl(&regs->rxdata);
-
+	if (readl(altspi->base + ALTERA_SPI_STATUS) &
+	    ALTERA_SPI_STATUS_RRDY_MSK)
+		readl(altspi->base + ALTERA_SPI_RXDATA);
 	if (flags & SPI_XFER_BEGIN)
-		spi_cs_activate(dev, slave_plat->cs);
+		spi_cs_activate(slave);
 
 	while (bytes--) {
-		if (txp)
-			data = *txp++;
-		else
-			data = CONFIG_ALTERA_SPI_IDLE_VAL;
-
-		debug("%s: tx:%x ", __func__, data);
-		writel(data, &regs->txdata);
-
-		start = get_timer(0);
-		while (1) {
-			reg = readl(&regs->status);
-			if (reg & ALTERA_SPI_STATUS_RRDY_MSK)
-				break;
-			if (get_timer(start) > (CONFIG_SYS_HZ / 1000)) {
-				debug("%s: Transmission timed out!\n", __func__);
-				return -1;
-			}
-		}
-
-		data = readl(&regs->rxdata);
+		uchar d = txp ? *txp++ : CONFIG_ALTERA_SPI_IDLE_VAL;
+		debug("%s: tx:%x ", __func__, d);
+		writel(d, altspi->base + ALTERA_SPI_TXDATA);
+		while (!(readl(altspi->base + ALTERA_SPI_STATUS) &
+			 ALTERA_SPI_STATUS_RRDY_MSK))
+			;
+		d = readl(altspi->base + ALTERA_SPI_RXDATA);
 		if (rxp)
-			*rxp++ = data & 0xff;
-
-		debug("rx:%x\n", data);
+			*rxp++ = d;
+		debug("rx:%x\n", d);
 	}
-
-done:
+ done:
 	if (flags & SPI_XFER_END)
-		spi_cs_deactivate(dev);
+		spi_cs_deactivate(slave);
 
 	return 0;
 }
-
-static int altera_spi_set_speed(struct udevice *bus, uint speed)
-{
-	return 0;
-}
-
-static int altera_spi_set_mode(struct udevice *bus, uint mode)
-{
-	return 0;
-}
-
-static int altera_spi_probe(struct udevice *bus)
-{
-	struct altera_spi_platdata *plat = dev_get_platdata(bus);
-	struct altera_spi_priv *priv = dev_get_priv(bus);
-
-	priv->regs = plat->regs;
-
-	return 0;
-}
-
-static int altera_spi_ofdata_to_platdata(struct udevice *bus)
-{
-	struct altera_spi_platdata *plat = dev_get_platdata(bus);
-
-	plat->regs = map_physmem(devfdt_get_addr(bus),
-				 sizeof(struct altera_spi_regs),
-				 MAP_NOCACHE);
-
-	return 0;
-}
-
-static const struct dm_spi_ops altera_spi_ops = {
-	.claim_bus	= altera_spi_claim_bus,
-	.release_bus	= altera_spi_release_bus,
-	.xfer		= altera_spi_xfer,
-	.set_speed	= altera_spi_set_speed,
-	.set_mode	= altera_spi_set_mode,
-	/*
-	 * cs_info is not needed, since we require all chip selects to be
-	 * in the device tree explicitly
-	 */
-};
-
-static const struct udevice_id altera_spi_ids[] = {
-	{ .compatible = "altr,spi-1.0" },
-	{}
-};
-
-U_BOOT_DRIVER(altera_spi) = {
-	.name	= "altera_spi",
-	.id	= UCLASS_SPI,
-	.of_match = altera_spi_ids,
-	.ops	= &altera_spi_ops,
-	.ofdata_to_platdata = altera_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct altera_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct altera_spi_priv),
-	.probe	= altera_spi_probe,
-};

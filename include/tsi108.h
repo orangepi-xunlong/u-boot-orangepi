@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*****************************************************************************
  * (C) Copyright 2003;  Tundra Semiconductor Corp.
  * (C) Copyright 2006;  Freescale Semiconductor Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *****************************************************************************/
 
 /*

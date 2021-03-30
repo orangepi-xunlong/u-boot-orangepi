@@ -1,37 +1,16 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_vdevice.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_vdevice.h"
-
-#if defined(CONFIG_DISP2_TV_AC200) || defined(CONFIG_DISP2_TV_GM7121)
 
 struct disp_vdevice_private_data {
 	u32 enabled;
 	bool suspended;
 
-	enum disp_tv_mode mode;
+	enum disp_output_type mode;
 
 	struct disp_device_func func;
 	struct disp_video_timings *video_info;
 	struct disp_vdevice_interface_para intf;
 
 	u32 irq_no;
-	u32                       frame_per_sec;
-	u32                       usec_per_line;
-	u32                       judge_line;
 
 	struct clk *clk;
 	struct clk *clk_parent;
@@ -94,12 +73,12 @@ static s32 vdevice_clk_config(struct disp_device *vdevice)
 	para = (disp_panel_para*)kmalloc(sizeof(disp_panel_para), GFP_KERNEL | __GFP_ZERO);
 	dclk_rate = vdevicep->video_info->pixel_clk * (vdevicep->video_info->pixel_repeat + 1);
 	para->lcd_if = vdevicep->intf.intf;
-	para->lcd_hv_if = vdevicep->intf.sub_intf;
 	para->lcd_dclk_freq = dclk_rate;
-	para->ccir_clk_div = vdevicep->intf.ccir_clk_div;
 	disp_al_lcd_get_clk_info(vdevice->disp, &clk_info, para);
 	kfree((void*)para);
 
+	/* calculate the clk rate */
+	clk_info.tcon_div = 11;//fixme
 	lcd_rate = dclk_rate * clk_info.tcon_div;
 	pll_rate = lcd_rate * clk_info.lcd_div;
 
@@ -147,47 +126,7 @@ static s32 vdevice_clk_disable(struct disp_device *vdevice)
 	return 0;
 }
 
-static s32 vdevice_calc_judge_line(struct disp_device *vdevice)
-{
-	struct disp_vdevice_private_data *vdevicep =
-	    disp_vdevice_get_priv(vdevice);
-	int start_delay, usec_start_delay;
-	int usec_judge_point;
-
-	if ((NULL == vdevice) || (NULL == vdevicep)) {
-		DE_WRN("null  hdl!\n");
-		return DIS_FAIL;
-	}
-
-	/*
-	 * usec_per_line = 1 / fps / vt * 1000000
-	 *               = 1 / (pixel_clk / vt / ht) / vt * 1000000
-	 *               = ht / pixel_clk * 1000000
-	 */
-	vdevicep->frame_per_sec = vdevicep->video_info->pixel_clk
-	    / vdevicep->video_info->hor_total_time
-	    / vdevicep->video_info->ver_total_time
-	    * (vdevicep->video_info->b_interlace + 1)
-	    / (vdevicep->video_info->trd_mode + 1);
-	vdevicep->usec_per_line = vdevicep->video_info->hor_total_time
-	    * 1000000 / vdevicep->video_info->pixel_clk;
-
-	start_delay =
-	    disp_al_device_get_start_delay(vdevice->hwdev_index);
-	usec_start_delay = start_delay * vdevicep->usec_per_line;
-
-	if (usec_start_delay <= 200)
-		usec_judge_point = usec_start_delay * 3 / 7;
-	else if (usec_start_delay <= 400)
-		usec_judge_point = usec_start_delay / 2;
-	else
-		usec_judge_point = 200;
-	vdevicep->judge_line = usec_judge_point
-	    / vdevicep->usec_per_line;
-
-	return 0;
-}
-
+//FIXME
 extern void sync_event_proc(u32 disp, bool timeout);
 #if defined(__LINUX_PLAT__)
 static s32 disp_vdevice_event_proc(int irq, void *parg)
@@ -196,14 +135,10 @@ static s32 disp_vdevice_event_proc(void *parg)
 #endif
 {
 	struct disp_device *vdevice = (struct disp_device*)parg;
-	struct disp_vdevice_private_data *vdevicep = NULL;
 	struct disp_manager *mgr = NULL;
 	u32 hwdev_index;
 
 	if (NULL == vdevice)
-		return DISP_IRQ_RETURN;
-	vdevicep = disp_vdevice_get_priv(vdevice);
-	if (NULL == vdevicep)
 		return DISP_IRQ_RETURN;
 
 	hwdev_index = vdevice->hwdev_index;
@@ -216,10 +151,10 @@ static s32 disp_vdevice_event_proc(void *parg)
 		if (NULL == mgr)
 			return DISP_IRQ_RETURN;
 
-		if (cur_line <= (start_delay - vdevicep->judge_line)) {
+		if (cur_line <= (start_delay-4)) {
 			sync_event_proc(mgr->disp, false);
 		} else {
-			sync_event_proc(mgr->disp, true);
+			sync_event_proc(mgr->disp, false);
 		}
 	}
 
@@ -313,7 +248,6 @@ static s32 disp_vdevice_sw_enable(struct disp_device* vdevice)
 
 	mutex_lock(&vdevicep->mlock);
 	memcpy(&vdevice->timings, vdevicep->video_info, sizeof(struct disp_video_timings));
-	vdevice_calc_judge_line(vdevice);
 	if (mgr->sw_enable)
 		mgr->sw_enable(mgr);
 
@@ -442,13 +376,8 @@ static s32 disp_vdevice_get_input_color_range(struct disp_device* vdevice)
 		DE_WRN("null  hdl!\n");
 		return DIS_FAIL;
 	}
-	if (vdevicep->func.get_input_csc == NULL)
-		return DIS_FAIL;
 
-	if (DISP_CSC_TYPE_RGB == vdevicep->func.get_input_csc())
-		return DISP_COLOR_RANGE_0_255;
-	else
-		return DISP_COLOR_RANGE_16_235;
+	return DISP_COLOR_RANGE_0_255;
 }
 
 static s32 disp_vdevice_suspend(struct disp_device* vdevice)
@@ -526,8 +455,6 @@ static s32 disp_vdevice_tcon_enable(struct disp_device* vdevice)
 	vdevicep->func.get_interface_para((void*)&(vdevicep->intf));
 
 	memcpy(&vdevice->timings, vdevicep->video_info, sizeof(struct disp_video_timings));
-
-	vdevice_calc_judge_line(vdevice);
 	if (mgr->enable)
 		mgr->enable(mgr);
 
@@ -606,7 +533,6 @@ static s32 disp_vdevice_tcon_simple_enable(struct disp_device* vdevice)
 
 	memcpy(&vdevice->timings, vdevicep->video_info, sizeof(struct disp_video_timings));
 
-	vdevice_calc_judge_line(vdevice);
 	disp_al_vdevice_cfg(vdevice->disp, &vdevice->timings, &vdevicep->intf);
 	disp_al_vdevice_enable(vdevice->disp);
 
@@ -631,68 +557,6 @@ static s32 disp_vdevice_tcon_simple_disable(struct disp_device* vdevice)
 	disp_al_vdevice_disable(vdevice->disp);
 
 	return 0;
-}
-
-static s32 disp_vdevice_get_fps(struct disp_device *vdevice)
-{
-	struct disp_vdevice_private_data *vdevicep =
-	    disp_vdevice_get_priv(vdevice);
-
-	if ((NULL == vdevice) || (NULL == vdevicep)) {
-		DE_WRN("null  hdl!\n");
-		return 0;
-	}
-
-	return vdevicep->frame_per_sec;
-}
-
-static bool disp_vdevice_check_config_dirty(struct disp_device *vdevice,
-					struct disp_device_config *config)
-{
-	bool ret = false;
-	struct disp_vdevice_private_data *vdevicep =
-	    disp_vdevice_get_priv(vdevice);
-
-	if ((vdevice == NULL) || (vdevicep == NULL)) {
-		DE_WRN("NULL hdl!\n");
-		ret = -1;
-		goto exit;
-	}
-
-	if ((vdevicep->enabled == 0) ||
-	    (config->mode != vdevicep->mode))
-		ret = true;
-
-exit:
-	return ret;
-}
-
-static s32 disp_vdevice_set_static_config(struct disp_device *vdevice,
-			       struct disp_device_config *config)
-{
-	return disp_vdevice_set_mode(vdevice, config->mode);
-}
-
-static s32 disp_vdevice_get_static_config(struct disp_device *vdevice,
-			      struct disp_device_config *config)
-{
-	int ret = 0;
-	struct disp_vdevice_private_data *vdevicep =
-	    disp_vdevice_get_priv(vdevice);
-
-	if ((vdevice == NULL) || (vdevicep == NULL)) {
-		DE_WRN("NULL hdl!\n");
-		ret = -1;
-		goto exit;
-	}
-
-	config->type = vdevice->type;
-	config->mode = vdevicep->mode;
-	if (vdevicep->func.get_input_csc)
-		config->format = vdevicep->func.get_input_csc();
-
-exit:
-	return ret;
 }
 
 struct disp_device* disp_vdevice_register(struct disp_vdevice_init_data *data)
@@ -749,17 +613,12 @@ struct disp_device* disp_vdevice_register(struct disp_vdevice_init_data *data)
 	vdevice->is_enabled = disp_vdevice_is_enabled;
 	vdevice->set_mode = disp_vdevice_set_mode;
 	vdevice->get_mode = disp_vdevice_get_mode;
-	vdevice->set_static_config = disp_vdevice_set_static_config;
-	vdevice->get_static_config = disp_vdevice_get_static_config;
-	vdevice->check_config_dirty = disp_vdevice_check_config_dirty;
 	vdevice->check_support_mode = disp_vdevice_check_support_mode;
 	vdevice->get_input_csc = disp_vdevice_get_input_csc;
 	vdevice->get_input_color_range = disp_vdevice_get_input_color_range;
 	vdevice->suspend = disp_vdevice_suspend;
 	vdevice->resume = disp_vdevice_resume;
 	vdevice->detect = disp_vdevice_detect;
-	vdevice->get_fps = disp_vdevice_get_fps;
-	vdevice->show_builtin_patten = disp_device_show_builtin_patten;
 
 	vdevice->priv_data = (void*)vdevicep;
 	vdevice->init(vdevice);
@@ -810,4 +669,3 @@ EXPORT_SYMBOL(disp_vdevice_register);
 EXPORT_SYMBOL(disp_vdevice_unregister);
 EXPORT_SYMBOL(disp_vdevice_get_source_ops);
 #endif
-#endif /*endif CONFIG_DISP2_TV_AC200 */

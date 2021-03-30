@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Author: Sergei Poselenov <sposelenov@emcraft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_dsi.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __DE_DSI_H_
 #define __DE_DSI_H_
 
@@ -202,8 +186,6 @@ s32 dsi_gen_wr_5para(u32 sel, u8 cmd, u8 para1, u8 para2, u8 para3, u8 para4,
 s32 dsi_dphy_cfg_0data(u32 sel, u32 code);
 s32 dsi_dphy_cfg_1data(u32 sel, u32 code, u32 data);
 s32 dsi_dphy_cfg_2data(u32 sel, u32 code, u32 data0, u32 data1);
-s32 dsi_gen_short_rd(__u32 sel, __u8 *para_p, __u8 para_num, __u8 *result);
-s32 dsi_mode_switch(__u32 sel, __u32 cmd_en, __u32 lp_en);
 
 extern u32 dsi_pixel_bits[4];
 extern u32 dsi_lane_den[4];

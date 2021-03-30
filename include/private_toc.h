@@ -35,21 +35,22 @@
 #define  SECURE_SWITCH_NORMAL  1
 #define  SECURE_NON_SECUREOS   2
 
-/*增加安全启动下，toc0的头部数据结构 */
-typedef struct {
-	u8 name[8];    /*字符串，可以更改，没有作限制 */
-	u32 magic;     /*必须是0x89119800 */
-	u32 check_sum; /*整个数据的校验和，参考现在boot0做法 */
+//增加安全启动下，toc0的头部数据结构
+typedef struct
+{
+	u8  name[8];	  //字符串，可以更改，没有作限制
+	u32 magic;	      //必须是0x89119800
+	u32 check_sum;    //整个数据的校验和，参考现在boot0做法
 
-	u32 serial_num; /*序列号，可以更改，没有限制 */
-	u32 status;     /*可以更改，没有限制 */
+	u32 serial_num;   //序列号，可以更改，没有限制
+	u32 status;       //可以更改，没有限制
 
-	u32 items_nr;     /*总的项目个数，对TOC0来说，必须是2 */
-	u32 length;       /*TOC0的长度 */
-	u8  platform[4];  /*toc_platform[0]标示启动介质 */
-			/*0：nand；1：卡0；2：卡2；3：spinor */
-	u32 reserved[2];  /*保留位 */
-	u32 end;          /*表示头部结构体结束，必须是0x3b45494d */
+	u32 items_nr;	  //总的项目个数，对TOC0来说，必须是2
+	u32 length;	      //TOC0的长度
+	u8  platform[4];  //toc_platform[0]标示启动介质
+                      //0：nand；1：卡0；2：卡2；3：spinor
+	u32 reserved[2];  //保留位
+	u32 end;          //表示头部结构体结束，必须是0x3b45494d
 
 }
 toc0_private_head_t;
@@ -69,7 +70,6 @@ typedef struct sbrom_toc1_head_info
 	u32  version_main;	//only one byte
 	u32  version_sub;   //two bytes
 	u32  reserved[3];	//reserved for future
-
 	u32  end;
 }
 sbrom_toc1_head_info_t;
@@ -104,64 +104,29 @@ typedef struct sbrom_toc0_config
                 							// 0-23放nand，24-31存放卡0，32-39放卡2
                 							// 40-49存放spi
 	char   				storage_data[384];  // 0-159,存储nand信息；160-255,存放卡信息
-	unsigned int       secure_dram_mbytes; //
-	unsigned int       drm_start_mbytes;   //
-	unsigned int       drm_size_mbytes;    //
-	unsigned int       boot_cpu;           //
-	special_gpio_cfg    a15_power_gpio;  //the gpio config is to a15 extern power enable gpio
-	unsigned int       next_exe_pa;
-	unsigned int       secure_without_OS;   //secure boot without semelis
-	unsigned char       debug_mode;         //1:turn on printf; 0 :turn off printf
-	unsigned char       power_mode;          /* 0:axp , 1: dummy pmu  */
-	unsigned char       reserver[2];
+	unsigned int        secure_dram_mbytes; //
+	unsigned int        drm_start_mbytes;   //
+	unsigned int        drm_size_mbytes;    //
+	unsigned int        boot_cpu;           //
+	special_gpio_cfg    a15_power_gpio;     //the gpio config is to a15 extern power enable gpio
+	unsigned int        next_exe_pa;
+    unsigned int        secure_without_OS;  //secure boot without semelis
+    unsigned char       debug_mode;         //1:turn on printf; 0 :turn off printf
+	unsigned char       power_mdoe;         //1:use dummy axp;  1 :use axp
+	unsigned char       reserve[2];
 	unsigned int		card_work_mode;
 	unsigned int      	res[2];   			// 总共1024字节
 
 }
 sbrom_toc0_config_t;
 
-#define RSA_BIT			(2048)
-#define PK_MAX_LEN_BIT		(RSA_BIT*2)
-#define PK_MAX_LEN_BYTE		(PK_MAX_LEN_BIT >> 3)
-
-typedef struct SBROM_TOC0_KEY_ITEM_info {
-	unsigned int	vendor_id;
-	unsigned int	KEY0_PK_mod_len;
-	unsigned int	KEY0_PK_e_len;
-	unsigned int	KEY1_PK_mod_len;
-	unsigned int	KEY1_PK_e_len;
-	unsigned int	sign_len;
-	unsigned char	KEY0_PK[PK_MAX_LEN_BYTE];
-	unsigned char	KEY1_PK[PK_MAX_LEN_BYTE];
-	unsigned char	reserve[32];
-	unsigned char	sign[256];
-} SBROM_TOC0_KEY_ITEM_info_t;
-
-typedef struct SBROM_TOC0_ITEM_info {
-	u32 name;
-	u32 data_offset;
-	u32 data_len;
-	u32 status;
-	u32 type;
-	u32 run_addr;
-	u32 reserved_1;
-	u32 end;
-}  SBROM_TOC0_ITEM_info_t;
-
 #define ITEM_PARAMETER_NAME             "parameter"
-#define ITEM_OPTEE_NAME			"optee"
-#define ITEM_SCP_NAME			"scp"
-#define ITEM_MONITOR_NAME		"monitor"
-#define ITEM_UBOOT_NAME			"u-boot"
-#define ITEM_LOGO_NAME			"logo"
-#define ITEM_DTB_NAME			"dtb"
-#define ITEM_SOCCFG_NAME		"soc-cfg"
-#define ITEM_BDCFG_NAME			"board-cfg"
-#define ITEM_ESM_IMG_NAME          "esm-img"
-#define ITEM_SHUTDOWNCHARGE_LOGO_NAME	"shutdowncharge"
-#define ITEM_ANDROIDCHARGE_LOGO_NAME	"androidcharge"
-#define ITEM_EMMC_FW_NAME		"emmc-fw"
-#define ITEM_NAME_SBROMSW_KEY		0x010303
+#define ITEM_SCP_NAME             "scp"
+#define ITEM_MONITOR_NAME         "monitor"
+#define ITEM_UBOOT_NAME           "u-boot"
+#define ITEM_LOGO_NAME            "logo"
+#define ITEM_SHUTDOWNCHARGE_LOGO_NAME   "shutdowncharge"
+#define ITEM_ANDROIDCHARGE_LOGO_NAME    "androidcharge"
 
 #endif     //  ifndef __toc_h
 

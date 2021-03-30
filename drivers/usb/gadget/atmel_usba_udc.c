@@ -1,14 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Driver for the Atmel USBA high speed USB device controller
  * [Original from Linux kernel: drivers/usb/gadget/atmel_usba_udc.c]
  *
  * Copyright (C) 2005-2013 Atmel Corporation
  *			   Bo Shen <voice.shen@atmel.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include <asm/gpio.h>
 #include <asm/hardware.h>
 #include <linux/list.h>
@@ -170,7 +171,7 @@ usba_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descriptor *desc)
 {
 	struct usba_ep *ep = to_usba_ep(_ep);
 	struct usba_udc *udc = ep->udc;
-	unsigned long flags = 0, ept_cfg, maxpacket;
+	unsigned long flags, ept_cfg, maxpacket;
 	unsigned int nr_trans;
 
 	DBG(DBG_GADGET, "%s: ep_enable: desc=%p\n", ep->ep.name, desc);
@@ -273,7 +274,7 @@ static int usba_ep_disable(struct usb_ep *_ep)
 	struct usba_ep *ep = to_usba_ep(_ep);
 	struct usba_udc *udc = ep->udc;
 	LIST_HEAD(req_list);
-	unsigned long flags = 0;
+	unsigned long flags;
 
 	DBG(DBG_GADGET, "ep_disable: %s\n", ep->ep.name);
 
@@ -338,7 +339,7 @@ usba_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	struct usba_request *req = to_usba_req(_req);
 	struct usba_ep *ep = to_usba_ep(_ep);
 	struct usba_udc *udc = ep->udc;
-	unsigned long flags = 0;
+	unsigned long flags;
 	int ret;
 
 	DBG(DBG_GADGET | DBG_QUEUE | DBG_REQ, "%s: queue req %p, len %u\n",
@@ -400,7 +401,7 @@ static int usba_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 static int usba_ep_set_halt(struct usb_ep *_ep, int value)
 {
 	struct usba_ep *ep = to_usba_ep(_ep);
-	unsigned long flags = 0;
+	unsigned long flags;
 	int ret = 0;
 
 	DBG(DBG_GADGET, "endpoint %s: %s HALT\n", ep->ep.name,
@@ -479,7 +480,7 @@ static int usba_udc_get_frame(struct usb_gadget *gadget)
 static int usba_udc_wakeup(struct usb_gadget *gadget)
 {
 	struct usba_udc *udc = to_usba_udc(gadget);
-	unsigned long flags = 0;
+	unsigned long flags;
 	u32 ctrl;
 	int ret = -EINVAL;
 
@@ -498,7 +499,7 @@ static int
 usba_udc_set_selfpowered(struct usb_gadget *gadget, int is_selfpowered)
 {
 	struct usba_udc *udc = to_usba_udc(gadget);
-	unsigned long flags = 0;
+	unsigned long flags;
 
 	spin_lock_irqsave(&udc->lock, flags);
 	if (is_selfpowered)
@@ -1061,6 +1062,7 @@ static void usba_ep_irq(struct usba_udc *udc, struct usba_ep *ep)
 	if ((epstatus & epctrl) & USBA_RX_BK_RDY) {
 		DBG(DBG_BUS, "%s: RX data ready\n", ep->ep.name);
 		receive_data(ep);
+		usba_ep_writel(ep, CLR_STA, USBA_RX_BK_RDY);
 	}
 }
 
@@ -1198,7 +1200,7 @@ static struct usba_udc controller = {
 	},
 };
 
-int usb_gadget_handle_interrupts(int index)
+int usb_gadget_handle_interrupts(void)
 {
 	struct usba_udc *udc = &controller;
 
@@ -1227,7 +1229,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	ret = driver->bind(&udc->gadget);
 	if (ret) {
-		pr_err("driver->bind() returned %d\n", ret);
+		error("driver->bind() returned %d\n", ret);
 		udc->driver = NULL;
 	}
 
@@ -1239,7 +1241,7 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	struct usba_udc *udc = &controller;
 
 	if (!driver || !driver->unbind || !driver->disconnect) {
-		pr_err("bad paramter\n");
+		error("bad paramter\n");
 		return -EINVAL;
 	}
 
@@ -1260,7 +1262,7 @@ static struct usba_ep *usba_udc_pdata(struct usba_platform_data *pdata,
 
 	eps = malloc(sizeof(struct usba_ep) * pdata->num_ep);
 	if (!eps) {
-		pr_err("failed to alloc eps\n");
+		error("failed to alloc eps\n");
 		return NULL;
 	}
 

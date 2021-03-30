@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Corscience GmbH & Co. KG, <www.corscience.de>
@@ -8,6 +7,8 @@
  *
  * Derived from Devkit8000 code by
  * Frederik Kriewitz <frederik@kriewitz.eu>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <twl4030.h>
@@ -119,11 +120,11 @@ int misc_init_r(void)
 	print_hwversion(&eeprom);
 
 	twl4030_power_init();
-	status_led_set(0, CONFIG_LED_STATUS_ON);
-	status_led_set(1, CONFIG_LED_STATUS_ON);
-	status_led_set(2, CONFIG_LED_STATUS_ON);
+	status_led_set(0, STATUS_LED_ON);
+	status_led_set(1, STATUS_LED_ON);
+	status_led_set(2, STATUS_LED_ON);
 
-	omap_die_id_display();
+	dieid_num_r();
 
 	return 0;
 }
@@ -139,17 +140,10 @@ void set_muxconf_regs(void)
 	MUX_TRICORDER();
 }
 
-#if defined(CONFIG_MMC)
+#if defined(CONFIG_GENERIC_MMC) && !(defined(CONFIG_SPL_BUILD))
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
-}
-#endif
-
-#if defined(CONFIG_MMC)
-void board_mmc_power_init(void)
-{
-	twl4030_power_mmc_init(0);
 }
 #endif
 

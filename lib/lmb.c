@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Procedures for maintaining information about logical memory blocks.
  *
  * Peter Bergner, IBM Corp.	June 2001.
  * Copyright (C) 2001 Peter Bergner.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -235,7 +236,7 @@ long lmb_reserve(struct lmb *lmb, phys_addr_t base, phys_size_t size)
 	return lmb_add_region(_rgn, base, size);
 }
 
-static long lmb_overlaps_region(struct lmb_region *rgn, phys_addr_t base,
+long lmb_overlaps_region(struct lmb_region *rgn, phys_addr_t base,
 				phys_size_t size)
 {
 	unsigned long i;
@@ -294,10 +295,7 @@ phys_addr_t __lmb_alloc_base(struct lmb *lmb, phys_size_t size, ulong align, phy
 		if (max_addr == LMB_ALLOC_ANYWHERE)
 			base = lmb_align_down(lmbbase + lmbsize - size, align);
 		else if (lmbbase < max_addr) {
-			base = lmbbase + lmbsize;
-			if (base < lmbbase)
-				base = -1;
-			base = min(base, max_addr);
+			base = min(lmbbase + lmbsize, max_addr);
 			base = lmb_align_down(base - size, align);
 		} else
 			continue;
@@ -334,12 +332,14 @@ int lmb_is_reserved(struct lmb *lmb, phys_addr_t addr)
 	return 0;
 }
 
-__weak void board_lmb_reserve(struct lmb *lmb)
+void __board_lmb_reserve(struct lmb *lmb)
 {
 	/* please define platform specific board_lmb_reserve() */
 }
+void board_lmb_reserve(struct lmb *lmb) __attribute__((weak, alias("__board_lmb_reserve")));
 
-__weak void arch_lmb_reserve(struct lmb *lmb)
+void __arch_lmb_reserve(struct lmb *lmb)
 {
 	/* please define platform specific arch_lmb_reserve() */
 }
+void arch_lmb_reserve(struct lmb *lmb) __attribute__((weak, alias("__arch_lmb_reserve")));

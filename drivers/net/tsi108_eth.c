@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /***********************************************************************
  *
  * Copyright (c) 2005 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Description:
  *   Ethernet interface for Tundra TSI108 bridge chip
@@ -803,11 +804,11 @@ static int tsi108_eth_probe (struct eth_device *dev, bd_t * bis)
 	rx_descr_current = rx_descr;
 	for (index = 0; index < NUM_RX_DESC; index++) {
 		/* make sure the receive buffers are not in cache */
-		invalidate_dcache_range((unsigned long)net_rx_packets[index],
-					(unsigned long)net_rx_packets[index] +
+		invalidate_dcache_range((unsigned long)NetRxPackets[index],
+					(unsigned long)NetRxPackets[index] +
 					RX_BUFFER_SIZE);
 		rx_descr->start_addr0 =
-		    cpu_to_le32((vuint32) net_rx_packets[index]);
+		    cpu_to_le32((vuint32) NetRxPackets[index]);
 		rx_descr->start_addr1 = 0;
 		rx_descr->next_descr_addr0 =
 		    cpu_to_le32((vuint32) (rx_descr + 1));
@@ -965,7 +966,7 @@ static int tsi108_eth_recv (struct eth_device *dev)
 
 			/*** process packet ***/
 			buffer = (uchar *)(le32_to_cpu(rx_descr->start_addr0));
-			net_process_received_packet(buffer, length);
+			NetReceive(buffer, length);
 
 			invalidate_dcache_range ((unsigned long)buffer,
 						(unsigned long)buffer +

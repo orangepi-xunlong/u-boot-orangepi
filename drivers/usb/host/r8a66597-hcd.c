@@ -1,15 +1,26 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * R8A66597 HCD (Host Controller Driver) for u-boot
  *
  * Copyright (C) 2008  Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  */
 
 #include <common.h>
-#include <console.h>
 #include <usb.h>
 #include <asm/io.h>
-#include <linux/iopoll.h>
 
 #include "r8a66597.h"
 
@@ -19,6 +30,7 @@
 #define R8A66597_DPRINT(...)
 #endif
 
+static const char hcd_name[] = "r8a66597_hcd";
 static struct r8a66597 gr8a66597;
 
 static void get_hub_data(struct usb_device *dev, u16 *hub_devnum, u16 *hubport)
@@ -81,7 +93,6 @@ static int r8a66597_clock_enable(struct r8a66597 *r8a66597)
 		}
 	} while ((tmp & USBE) != USBE);
 	r8a66597_bclr(r8a66597, USBE, SYSCFG0);
-#if !defined(CONFIG_RZA_USB)
 	r8a66597_mdfy(r8a66597, CONFIG_R8A66597_XTAL, XTAL, SYSCFG0);
 
 	i = 0;
@@ -94,20 +105,6 @@ static int r8a66597_clock_enable(struct r8a66597 *r8a66597)
 			return -1;
 		}
 	} while ((tmp & SCKE) != SCKE);
-#else
-	/*
-	 * RZ/A Only:
-	 * Bits XTAL(UCKSEL) and UPLLE in SYSCFG0 for USB0 controls both USB0
-	 * and USB1, so we must always set the USB0 register
-	 */
-#if (CONFIG_R8A66597_XTAL == 1)
-	setbits(le16, R8A66597_BASE0, XTAL);
-#endif
-	mdelay(1);
-	setbits(le16, R8A66597_BASE0, UPLLE);
-	mdelay(1);
-	r8a66597_bset(r8a66597, SUSPM, SUSPMODE0);
-#endif /* CONFIG_RZA_USB */
 #endif	/* #if defined(CONFIG_SUPERH_ON_CHIP_R8A66597) */
 
 	return 0;
@@ -115,22 +112,12 @@ static int r8a66597_clock_enable(struct r8a66597 *r8a66597)
 
 static void r8a66597_clock_disable(struct r8a66597 *r8a66597)
 {
-#if !defined(CONFIG_RZA_USB)
 	r8a66597_bclr(r8a66597, SCKE, SYSCFG0);
 	udelay(1);
 #if !defined(CONFIG_SUPERH_ON_CHIP_R8A66597)
 	r8a66597_bclr(r8a66597, PLLC, SYSCFG0);
 	r8a66597_bclr(r8a66597, XCKE, SYSCFG0);
 	r8a66597_bclr(r8a66597, USBE, SYSCFG0);
-#endif
-#else
-	r8a66597_bclr(r8a66597, SUSPM, SUSPMODE0);
-
-	clrbits(le16, R8A66597_BASE0, UPLLE);
-	mdelay(1);
-	r8a66597_bclr(r8a66597, USBE, SYSCFG0);
-	mdelay(1);
-
 #endif
 }
 
@@ -142,9 +129,7 @@ static void r8a66597_enable_port(struct r8a66597 *r8a66597, int port)
 	r8a66597_bset(r8a66597, val, get_syscfg_reg(port));
 	r8a66597_bset(r8a66597, HSE, get_syscfg_reg(port));
 
-#if !defined(CONFIG_RZA_USB)
 	r8a66597_write(r8a66597, BURST | CPU_ADR_RD_WR, get_dmacfg_reg(port));
-#endif
 }
 
 static void r8a66597_disable_port(struct r8a66597 *r8a66597, int port)
@@ -174,9 +159,7 @@ static int enable_controller(struct r8a66597 *r8a66597)
 	if (ret < 0)
 		return ret;
 
-#if !defined(CONFIG_RZA_USB)
 	r8a66597_bset(r8a66597, CONFIG_R8A66597_LDRV & LDRV, PINCFG);
-#endif
 	r8a66597_bset(r8a66597, USBE, SYSCFG0);
 
 	r8a66597_bset(r8a66597, INTL, SOFCFG);
@@ -294,25 +277,11 @@ static int send_setup_packet(struct r8a66597 *r8a66597, struct usb_device *dev,
 	unsigned long setup_addr = USBREQ;
 	u16 intsts1;
 	int timeout = 3000;
-#if defined(CONFIG_RZA_USB)
-	u16 dcpctr;
-#endif
 	u16 devsel = setup->request == USB_REQ_SET_ADDRESS ? 0 : dev->devnum;
 
 	r8a66597_write(r8a66597, make_devsel(devsel) |
 				 (8 << dev->maxpacketsize), DCPMAXP);
 	r8a66597_write(r8a66597, ~(SIGN | SACK), INTSTS1);
-
-#if defined(CONFIG_RZA_USB)
-	dcpctr = r8a66597_read(r8a66597, DCPCTR);
-	if ((dcpctr & PID) == PID_BUF) {
-		if (readw_poll_timeout(r8a66597->reg + DCPCTR, dcpctr,
-				       dcpctr & BSTS, 1000) < 0) {
-			printf("DCPCTR BSTS timeout!\n");
-			return -ETIMEDOUT;
-		}
-	}
-#endif
 
 	for (i = 0; i < 4; i++) {
 		r8a66597_write(r8a66597, le16_to_cpu(p[i]), setup_addr);
@@ -581,6 +550,9 @@ static int check_usb_device_connecting(struct r8a66597 *r8a66597)
 	return -1;	/* fail */
 }
 
+/* based on usb_ohci.c */
+#define min_t(type, x, y) \
+		({ type __x = (x); type __y = (y); __x < __y ? __x : __y; })
 /*-------------------------------------------------------------------------*
  * Virtual Root Hub
  *-------------------------------------------------------------------------*/

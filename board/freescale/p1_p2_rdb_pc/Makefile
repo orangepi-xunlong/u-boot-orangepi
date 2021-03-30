@@ -1,6 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright 2010-2011 Freescale Semiconductor, Inc.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 MINIMAL=
 
@@ -11,14 +13,17 @@ endif
 endif
 
 ifdef MINIMAL
-obj-y	+= spl_minimal.o
+
+obj-y	+= spl_minimal.o tlb.o law.o
+
 else
 ifdef CONFIG_SPL_BUILD
-obj-y	+= spl.o
-endif
-obj-y	+= p1_p2_rdb_pc.o
-obj-y	+= ddr.o
+obj-y += spl.o
 endif
 
-obj-y	+= law.o
-obj-y	+= tlb.o
+obj-y        += p1_p2_rdb_pc.o
+obj-y        += ddr.o
+obj-y        += law.o
+obj-y        += tlb.o
+
+endif

@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * mcf5282.h -- Definitions for Motorola Coldfire 5282
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /****************************************************************************/

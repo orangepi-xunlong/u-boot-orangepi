@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -81,16 +82,16 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	(defined(CONFIG_SPL) && !defined(CONFIG_SPL_COMMON_INIT_DDR))
 	/* *I*G - eSDHC/eSPI/NAND boot */
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
+			MAS3_SX|MAS3_SW|MAS3_SR, 0,
 			0, 8, BOOKE_PAGESZ_1G, 1),
 
-#if defined(CONFIG_TARGET_P1020MBG) || defined(CONFIG_TARGET_P1020RDB_PD)
+#if defined(CONFIG_P1020MBG) || defined(CONFIG_P1020RDB_PD)
 	/* 2G DDR on P1020MBG, map the second 1G */
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
 			CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 			0, 9, BOOKE_PAGESZ_1G, 1),
-#endif /* TARGET_P1020MBG */
+#endif /* P1020MBG */
 #endif /* RAMBOOT/SPL */
 
 #ifdef CONFIG_SYS_INIT_L2_ADDR

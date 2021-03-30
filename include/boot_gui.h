@@ -1,19 +1,3 @@
-/*
- * include/boot_gui.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __BOOT_GUI_H__
 #define __BOOT_GUI_H__
 
@@ -25,12 +9,6 @@ enum {
 	FB_ID_3,
 	FB_ID_NUM, /* excuse me: it is not the number of framebuffer */
 	FB_ID_INVALID,
-};
-
-enum {
-	FB_PIXEL_ALPHA_MODE = 0,
-	FB_GLOBAL_ALPHA_MODE,
-	FB_GLOBAL_PIXEL_ALPHA_MODE,
 };
 
 typedef struct color {
@@ -96,13 +74,8 @@ extern int fb_init(void);
 extern int fb_quit(void);
 extern struct canvas *fb_lock(const unsigned int fb_id);
 extern int fb_unlock(unsigned int fb_id, rect_t *dirty_rects, int count);
-extern int fb_set_alpha_mode(unsigned int fb_id,
-	unsigned char alpha_mode, unsigned char alpha_value);
 
 extern int save_disp_cmd(void);
-
-extern int boot_gui_init(void);
-extern int save_disp_cmdline(void);
 
 #endif /* #ifdef CONFIG_BOOT_GUI */
 

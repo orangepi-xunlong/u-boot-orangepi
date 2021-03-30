@@ -15,7 +15,7 @@
     defined(__sun__)	 || \
     defined(__APPLE__)
 # include <inttypes.h>
-#elif defined(__linux__) || defined(__WIN32__) || defined(__MINGW32__) || defined(__OpenBSD__)
+#elif defined(__linux__) || defined(__WIN32__) || defined(__MINGW32__)
 # include <stdint.h>
 #endif
 
@@ -48,19 +48,6 @@
 # include <machine/endian.h>
 typedef unsigned long ulong;
 #endif
-#ifdef __FreeBSD__
-# include <sys/endian.h> /* htole32 and friends */
-# define __BYTE_ORDER BYTE_ORDER
-# define __LITTLE_ENDIAN LITTLE_ENDIAN
-# define __BIG_ENDIAN BIG_ENDIAN
-#elif defined(__OpenBSD__)
-# include <endian.h>
-# define __BYTE_ORDER BYTE_ORDER
-# define __LITTLE_ENDIAN LITTLE_ENDIAN
-# define __BIG_ENDIAN BIG_ENDIAN
-#endif
-
-#include <time.h>
 
 typedef uint8_t __u8;
 typedef uint16_t __u16;
@@ -120,14 +107,6 @@ typedef unsigned int uint;
 
 #else /* !USE_HOSTCC */
 
-#ifdef CONFIG_USE_STDINT
-/* Provided by gcc. */
-#include <stdint.h>
-#else
-/* Type for `void *' pointers. */
-typedef unsigned long int uintptr_t;
-#endif
-
 #include <linux/string.h>
 #include <linux/types.h>
 #include <asm/byteorder.h>
@@ -144,7 +123,13 @@ typedef unsigned long int uintptr_t;
 #define __WORDSIZE	32
 #endif
 
+/* Type for `void *' pointers. */
+typedef unsigned long int uintptr_t;
+
 #endif /* USE_HOSTCC */
+
+/* compiler options */
+#define uninitialized_var(x)		x = x
 
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)

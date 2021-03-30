@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * sbc8349.c -- WindRiver SBC8349 board support.
  * Copyright (c) 2006-2007 Wind River Systems, Inc.
  *
  * Paul Gortmaker <paul.gortmaker@windriver.com>
  * Based on board/mpc8349emds/mpc8349emds.c (and previous 834x releases.)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,10 +16,8 @@
 #include <spd_sdram.h>
 #include <miiphy.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #endif
-
-DECLARE_GLOBAL_DATA_PTR;
 
 int fixed_sdram(void);
 void sdram_init(void);
@@ -36,7 +35,7 @@ int board_early_init_f (void)
 
 #define ns2clk(ns) (ns / (1000000000 / CONFIG_8349_CLKIN) + 1)
 
-int dram_init(void)
+phys_size_t initdram (int board_type)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -62,10 +61,8 @@ int dram_init(void)
 	 */
 	ddr_enable_ecc(msize * 1024 * 1024);
 #endif
-	/* set total bus SDRAM size(bytes)  -- DDR */
-	gd->ram_size = msize * 1024 * 1024;
-
-	return 0;
+	/* return total bus SDRAM size(bytes)  -- DDR */
+	return (msize * 1024 * 1024);
 }
 
 #if !defined(CONFIG_SPD_EEPROM)
@@ -217,13 +214,11 @@ void sdram_init(void)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-
-	return 0;
 }
 #endif

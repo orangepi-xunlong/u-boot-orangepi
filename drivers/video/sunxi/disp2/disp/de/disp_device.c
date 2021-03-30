@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/disp_device.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_device.h"
 
 static LIST_HEAD(device_list);
@@ -126,11 +110,5 @@ s32 disp_device_unregister(struct disp_device *dispdev)
 {
 	list_del(&dispdev->list);
 	return 0;
-}
-
-void disp_device_show_builtin_patten(struct disp_device *dispdev, u32 patten)
-{
-	if (dispdev)
-		disp_al_show_builtin_patten(dispdev->hwdev_index, patten);
 }
 

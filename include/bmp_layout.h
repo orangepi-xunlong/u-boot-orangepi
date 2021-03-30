@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /* (C) Copyright 2002
  * Detlev Zundel, DENX Software Engineering, dzu@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************/
@@ -10,17 +11,17 @@
 #ifndef _BMP_H_
 #define _BMP_H_
 
-struct __packed bmp_color_table_entry {
+typedef struct bmp_color_table_entry {
 	__u8	blue;
 	__u8	green;
 	__u8	red;
 	__u8	reserved;
-};
+} __attribute__ ((packed)) bmp_color_table_entry_t;
 
 /* When accessing these fields, remember that they are stored in little
    endian format, so use linux macros, e.g. le32_to_cpu(width)          */
 
-struct __packed bmp_header {
+typedef struct bmp_header {
 	/* Header */
 	char signature[2];
 	__u32	file_size;
@@ -39,14 +40,15 @@ struct __packed bmp_header {
 	__u32	colors_used;
 	__u32	colors_important;
 	/* ColorTable */
-};
 
-struct bmp_image {
-	struct bmp_header header;
+} __attribute__ ((packed)) bmp_header_t;
+
+typedef struct bmp_image {
+	bmp_header_t header;
 	/* We use a zero sized array just as a placeholder for variable
 	   sized array */
-	struct bmp_color_table_entry color_table[0];
-};
+	bmp_color_table_entry_t color_table[0];
+} bmp_image_t;
 
 /* Data in the bmp_image is aligned to this length */
 #define BMP_DATA_ALIGN	4
@@ -55,11 +57,5 @@ struct bmp_image {
 #define BMP_BI_RGB	0
 #define BMP_BI_RLE8	1
 #define BMP_BI_RLE4	2
-
-struct lzma_header {
-	char signature[4];
-	u32 file_size;
-	u32 original_file_size;
-};
 
 #endif							/* _BMP_H_ */

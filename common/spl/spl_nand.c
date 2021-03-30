@@ -1,86 +1,22 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011
  * Corscience GmbH & Co. KG - Simon Schwarz <schwarz@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <config.h>
 #include <spl.h>
 #include <asm/io.h>
 #include <nand.h>
-#include <linux/libfdt_env.h>
-#include <fdt.h>
 
-#if defined(CONFIG_SPL_NAND_RAW_ONLY)
-int spl_nand_load_image(struct spl_image_info *spl_image,
-			struct spl_boot_device *bootdev)
+void spl_nand_load_image(void)
 {
-	nand_init();
-
-	nand_spl_load_image(CONFIG_SYS_NAND_U_BOOT_OFFS,
-			    CONFIG_SYS_NAND_U_BOOT_SIZE,
-			    (void *)CONFIG_SYS_NAND_U_BOOT_DST);
-	spl_set_header_raw_uboot(spl_image);
-	nand_deselect();
-
-	return 0;
-}
-#else
-
-static ulong spl_nand_fit_read(struct spl_load_info *load, ulong offs,
-			       ulong size, void *dst)
-{
-	int ret;
-
-	ret = nand_spl_load_image(offs, size, dst);
-	if (!ret)
-		return size;
-	else
-		return 0;
-}
-
-static int spl_nand_load_element(struct spl_image_info *spl_image,
-				 int offset, struct image_header *header)
-{
-	int err;
-
-	err = nand_spl_load_image(offset, sizeof(*header), (void *)header);
-	if (err)
-		return err;
-
-	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
-	    image_get_magic(header) == FDT_MAGIC) {
-		struct spl_load_info load;
-
-		debug("Found FIT\n");
-		load.dev = NULL;
-		load.priv = NULL;
-		load.filename = NULL;
-		load.bl_len = 1;
-		load.read = spl_nand_fit_read;
-		return spl_load_simple_fit(spl_image, &load, offset, header);
-	} else {
-		err = spl_parse_image_header(spl_image, header);
-		if (err)
-			return err;
-		return nand_spl_load_image(offset, spl_image->size,
-					   (void *)(ulong)spl_image->load_addr);
-	}
-}
-
-static int spl_nand_load_image(struct spl_image_info *spl_image,
-			       struct spl_boot_device *bootdev)
-{
-	int err;
 	struct image_header *header;
 	int *src __attribute__((unused));
 	int *dst __attribute__((unused));
 
-#ifdef CONFIG_SPL_NAND_SOFTECC
-	debug("spl: nand - using sw ecc\n");
-#else
 	debug("spl: nand - using hw ecc\n");
-#endif
 	nand_init();
 
 	/*use CONFIG_SYS_TEXT_BASE as temporary storage area */
@@ -108,18 +44,14 @@ static int spl_nand_load_image(struct spl_image_info *spl_image,
 
 		/* load linux */
 		nand_spl_load_image(CONFIG_SYS_NAND_SPL_KERNEL_OFFS,
-			sizeof(*header), (void *)header);
-		err = spl_parse_image_header(spl_image, header);
-		if (err)
-			return err;
+			CONFIG_SYS_NAND_PAGE_SIZE, (void *)header);
+		spl_parse_image_header(header);
 		if (header->ih_os == IH_OS_LINUX) {
 			/* happy - was a linux */
-			err = nand_spl_load_image(
-				CONFIG_SYS_NAND_SPL_KERNEL_OFFS,
-				spl_image->size,
-				(void *)spl_image->load_addr);
+			nand_spl_load_image(CONFIG_SYS_NAND_SPL_KERNEL_OFFS,
+				spl_image.size, (void *)spl_image.load_addr);
 			nand_deselect();
-			return err;
+			return;
 		} else {
 			puts("The Expected Linux image was not "
 				"found. Please check your NAND "
@@ -129,25 +61,24 @@ static int spl_nand_load_image(struct spl_image_info *spl_image,
 	}
 #endif
 #ifdef CONFIG_NAND_ENV_DST
-	spl_nand_load_element(spl_image, CONFIG_ENV_OFFSET, header);
+	nand_spl_load_image(CONFIG_ENV_OFFSET,
+		CONFIG_SYS_NAND_PAGE_SIZE, (void *)header);
+	spl_parse_image_header(header);
+	nand_spl_load_image(CONFIG_ENV_OFFSET, spl_image.size,
+		(void *)spl_image.load_addr);
 #ifdef CONFIG_ENV_OFFSET_REDUND
-	spl_nand_load_element(spl_image, CONFIG_ENV_OFFSET_REDUND, header);
+	nand_spl_load_image(CONFIG_ENV_OFFSET_REDUND,
+		CONFIG_SYS_NAND_PAGE_SIZE, (void *)header);
+	spl_parse_image_header(header);
+	nand_spl_load_image(CONFIG_ENV_OFFSET_REDUND, spl_image.size,
+		(void *)spl_image.load_addr);
 #endif
 #endif
 	/* Load u-boot */
-	err = spl_nand_load_element(spl_image, CONFIG_SYS_NAND_U_BOOT_OFFS,
-				    header);
-#ifdef CONFIG_SYS_NAND_U_BOOT_OFFS_REDUND
-#if CONFIG_SYS_NAND_U_BOOT_OFFS != CONFIG_SYS_NAND_U_BOOT_OFFS_REDUND
-	if (err)
-		err = spl_nand_load_element(spl_image,
-					    CONFIG_SYS_NAND_U_BOOT_OFFS_REDUND,
-					    header);
-#endif
-#endif
+	nand_spl_load_image(CONFIG_SYS_NAND_U_BOOT_OFFS,
+		sizeof(*header), (void *)header);
+	spl_parse_image_header(header);
+	nand_spl_load_image(CONFIG_SYS_NAND_U_BOOT_OFFS,
+		spl_image.size, (void *)spl_image.load_addr);
 	nand_deselect();
-	return err;
 }
-#endif
-/* Use priorty 1 so that Ubi can override this */
-SPL_LOAD_IMAGE_METHOD("NAND", 1, BOOT_DEVICE_NAND, spl_nand_load_image);

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,7 +11,7 @@
 #include <asm/immap_85xx.h>
 #include <asm/io.h>
 #include <miiphy.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
@@ -53,7 +54,7 @@ static uint sd_ifc_mux;
 
 struct cpld_data {
 	u8 cpld_ver; /* cpld revision */
-#if defined(CONFIG_TARGET_P1010RDB_PA)
+#if defined(CONFIG_P1010RDB_PA)
 	u8 pcba_ver; /* pcb revision number */
 	u8 twindie_ddr3;
 	u8 res1[6];
@@ -68,7 +69,7 @@ struct cpld_data {
 	u8 por1; /* POR Options */
 	u8 por2; /* POR Options */
 	u8 por3; /* POR Options */
-#elif defined(CONFIG_TARGET_P1010RDB_PB)
+#elif defined(CONFIG_P1010RDB_PB)
 	u8 rom_loc;
 #endif
 };
@@ -76,9 +77,10 @@ struct cpld_data {
 int board_early_init_f(void)
 {
 	ccsr_gpio_t *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
-	struct fsl_ifc ifc = {(void *)CONFIG_SYS_IFC_ADDR, (void *)NULL};
+	struct fsl_ifc *ifc = (void *)CONFIG_SYS_IFC_ADDR;
+
 	/* Clock configuration to access CPLD using IFC(GPCM) */
-	setbits_be32(&ifc.gregs->ifc_gcr, 1 << IFC_GCR_TBCTL_TRN_TIME_SHIFT);
+	setbits_be32(&ifc->ifc_gcr, 1 << IFC_GCR_TBCTL_TRN_TIME_SHIFT);
 	/*
 	* Reset PCIe slots via GPIO4
 	*/
@@ -91,7 +93,7 @@ int board_early_init_f(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	int flash_esel = find_tlb_idx((void *)flashbase, 1);
+	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -102,14 +104,8 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	if (flash_esel == -1) {
-		/* very unlikely unless something is messed up */
-		puts("Error: Could not find TLB for FLASH BASE\n");
-		flash_esel = 2;	/* give our best effort to continue */
-	} else {
-		/* invalidate existing TLB entry for flash */
-		disable_tlb(flash_esel);
-	}
+	/* invalidate existing TLB entry for flash */
+	disable_tlb(flash_esel);
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
@@ -134,7 +130,7 @@ int config_board_mux(int ctrl_type)
 	ccsr_gur_t __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u8 tmp;
 
-#if defined(CONFIG_TARGET_P1010RDB_PA)
+#if defined(CONFIG_P1010RDB_PA)
 	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
 
 	switch (ctrl_type) {
@@ -170,7 +166,7 @@ int config_board_mux(int ctrl_type)
 	default:
 		break;
 	}
-#elif defined(CONFIG_TARGET_P1010RDB_PB)
+#elif defined(CONFIG_P1010RDB_PB)
 	uint orig_bus = i2c_get_bus_num();
 	i2c_set_bus_num(I2C_PCA9557_BUS_NUM);
 
@@ -244,7 +240,7 @@ int config_board_mux(int ctrl_type)
 	return 0;
 }
 
-#ifdef CONFIG_TARGET_P1010RDB_PB
+#ifdef CONFIG_P1010RDB_PB
 int i2c_pca9557_read(int type)
 {
 	u8 val;
@@ -274,9 +270,9 @@ int checkboard(void)
 	u8 val;
 
 	cpu = gd->arch.cpu;
-#if defined(CONFIG_TARGET_P1010RDB_PA)
+#if defined(CONFIG_P1010RDB_PA)
 	printf("Board: %sRDB-PA, ", cpu->name);
-#elif defined(CONFIG_TARGET_P1010RDB_PB)
+#elif defined(CONFIG_P1010RDB_PB)
 	printf("Board: %sRDB-PB, ", cpu->name);
 	i2c_set_bus_num(I2C_PCA9557_BUS_NUM);
 	i2c_init(CONFIG_SYS_FSL_I2C_SPEED, CONFIG_SYS_FSL_I2C_SLAVE);
@@ -289,10 +285,10 @@ int checkboard(void)
 	config_board_mux(MUX_TYPE_IFC);
 #endif
 
-#if defined(CONFIG_TARGET_P1010RDB_PA)
+#if defined(CONFIG_P1010RDB_PA)
 	val = (in_8(&cpld_data->pcba_ver) & 0xf);
 	printf("PCB: v%x.0\n", val);
-#elif defined(CONFIG_TARGET_P1010RDB_PB)
+#elif defined(CONFIG_P1010RDB_PB)
 	val = in_8(&cpld_data->cpld_ver);
 	printf("CPLD: v%x.%x, ", val >> 4, val & 0xf);
 	printf("PCB: v%x.0, ", i2c_pca9557_read(I2C_READ_PCB_VER));
@@ -325,9 +321,9 @@ int checkboard(void)
 	return 0;
 }
 
+#ifdef CONFIG_TSEC_ENET
 int board_eth_init(bd_t *bis)
 {
-#ifdef CONFIG_TSEC_ENET
 	struct fsl_pq_mdio_info mdio_info;
 	struct tsec_info_struct tsec_info[4];
 	struct cpu_type *cpu;
@@ -361,10 +357,10 @@ int board_eth_init(bd_t *bis)
 	fsl_pq_mdio_init(bis, &mdio_info);
 
 	tsec_eth_init(bis, tsec_info, num);
-#endif
 
 	return pci_eth_init(bis);
 }
+#endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
 void fdt_del_flexcan(void *blob)
@@ -442,7 +438,7 @@ void fdt_disable_uart1(void *blob)
 	}
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -452,8 +448,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	ft_cpu_setup(blob, bd);
 
-	base = env_get_bootm_low();
-	size = env_get_bootm_size();
+	base = getenv_bootm_low();
+	size = getenv_bootm_size();
 
 #if defined(CONFIG_PCI)
 	FT_FSL_PCI_SETUP;
@@ -462,7 +458,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
 #if defined(CONFIG_HAS_FSL_DR_USB)
-	fsl_fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_dr_usb(blob, bd);
 #endif
 
        /* P1014 and it's derivatives don't support CAN and eTSEC3 */
@@ -494,8 +490,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 		fdt_del_flexcan(blob);
 		fdt_disable_uart1(blob);
 	}
-
-	return 0;
 }
 #endif
 
@@ -543,13 +537,12 @@ int misc_init_r(void)
 	else if (hwconfig("ifc"))
 		config_board_mux(MUX_TYPE_IFC);
 
-#ifdef CONFIG_TARGET_P1010RDB_PB
+#ifdef CONFIG_P1010RDB_PB
 	setbits_be32(&gur->pmuxcr2, MPC85xx_PMUXCR2_GPIO01_DRVVBUS);
 #endif
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
 static int pin_mux_cmd(cmd_tbl_t *cmdtp, int flag, int argc,
 				char * const argv[])
 {
@@ -569,4 +562,3 @@ U_BOOT_CMD(
 	"configure multiplexing pin for IFC/SDHC bus in runtime",
 	"bus_type (e.g. mux sdhc)"
 );
-#endif

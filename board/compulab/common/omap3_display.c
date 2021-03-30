@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012 - 2013 CompuLab, Ltd. <www.compulab.co.il>
  *
  * Authors: Nikita Kiryanov <nikita@compulab.co.il>
  *
  * Parsing code based on linux/drivers/video/pxafb.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,6 +16,8 @@
 #include <lcd.h>
 #include <scf0403_lcd.h>
 #include <asm/arch-omap3/dss.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 enum display_type {
 	NONE,
@@ -397,7 +400,7 @@ void lcd_ctrl_init(void *lcdbase)
 {
 	struct prcm *prcm = (struct prcm *)PRCM_BASE;
 	char *custom_lcd;
-	char *displaytype = env_get("displaytype");
+	char *displaytype = getenv("displaytype");
 
 	if (displaytype == NULL)
 		return;
@@ -405,7 +408,7 @@ void lcd_ctrl_init(void *lcdbase)
 	lcd_def = env_parse_displaytype(displaytype);
 	/* If we did not recognize the preset, check if it's an env variable */
 	if (lcd_def == NONE) {
-		custom_lcd = env_get(displaytype);
+		custom_lcd = getenv(displaytype);
 		if (custom_lcd == NULL || parse_customlcd(custom_lcd) < 0)
 			return;
 	}

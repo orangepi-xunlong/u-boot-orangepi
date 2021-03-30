@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * mode_string implementation for busybox
  *
  * Copyright (C) 2003  Manuel Novoa III  <mjn3@codepoet.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Aug 13, 2003

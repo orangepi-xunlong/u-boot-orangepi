@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PCMCIA_H
@@ -14,10 +15,32 @@
  * Allow configuration to select PCMCIA slot,
  * or try to generate a useful default
  */
-#if defined(CONFIG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA) || \
+    (defined(CONFIG_CMD_IDE) && \
+	(defined(CONFIG_IDE_8xx_PCCARD) || defined(CONFIG_IDE_8xx_DIRECT) ) )
 
 #if !defined(CONFIG_PCMCIA_SLOT_A) && !defined(CONFIG_PCMCIA_SLOT_B)
+
+#if defined(CONFIG_TQM8xxL) || defined(CONFIG_SVM_SC8xx)
+# define	CONFIG_PCMCIA_SLOT_B	/* The TQM8xxL use SLOT_B	*/
+#elif defined(CONFIG_SPD823TS)		/* The SPD8xx  use SLOT_B	*/
+# define CONFIG_PCMCIA_SLOT_B
+#elif defined(CONFIG_IVMS8) || defined(CONFIG_IVML24)	/* The IVM* use SLOT_A	*/
+# define CONFIG_PCMCIA_SLOT_A
+#elif defined(CONFIG_LWMON)		/* The LWMON  use SLOT_B	*/
+# define CONFIG_PCMCIA_SLOT_B
+#elif defined(CONFIG_ICU862)		/* The ICU862 use SLOT_B	*/
+# define CONFIG_PCMCIA_SLOT_B
+#elif defined(CONFIG_R360MPI)		/* The R360MPI use SLOT_B	*/
+# define CONFIG_PCMCIA_SLOT_B
+#elif defined(CONFIG_ATC)		/* The ATC use SLOT_A	*/
+# define CONFIG_PCMCIA_SLOT_A
+#elif defined(CONFIG_UC100)		/* The UC100 use SLOT_B	        */
+# define CONFIG_PCMCIA_SLOT_B
+#else
 # error "PCMCIA Slot not configured"
+#endif
+
 #endif /* !defined(CONFIG_PCMCIA_SLOT_A) && !defined(CONFIG_PCMCIA_SLOT_B) */
 
 /* Make sure exactly one slot is defined - we support only one for now */
@@ -48,6 +71,17 @@
 #endif
 
 /*
+ * The TQM850L hardware has two pins swapped! Grrrrgh!
+ */
+#ifdef	CONFIG_TQM850L
+#define __MY_PCMCIA_GCRX_CXRESET	PCMCIA_GCRX_CXOE
+#define __MY_PCMCIA_GCRX_CXOE		PCMCIA_GCRX_CXRESET
+#else
+#define __MY_PCMCIA_GCRX_CXRESET	PCMCIA_GCRX_CXRESET
+#define __MY_PCMCIA_GCRX_CXOE		PCMCIA_GCRX_CXOE
+#endif
+
+/*
  * This structure is used to address each window in the PCMCIA controller.
  *
  * Keep in mind that we assume that pcmcia_win_t[n+1] is mapped directly
@@ -58,6 +92,115 @@ typedef struct {
 	ulong	br;
 	ulong	or;
 } pcmcia_win_t;
+
+/*
+ * Definitions for PCMCIA control registers to operate in IDE mode
+ *
+ * All timing related setup (PCMCIA_SHT, PCMCIA_SST, PCMCIA_SL)
+ * to be done later (depending on CPU clock)
+ */
+
+/* Window 0:
+ *	Base: 0xFE100000	CS1
+ *	Port Size:     2 Bytes
+ *	Port Size:    16 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR0		0xFE100000
+#define CONFIG_SYS_PCMCIA_POR0	    (	PCMCIA_BSIZE_2	\
+			    |	PCMCIA_PPS_16	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 1:
+ *	Base: 0xFE100080	CS1
+ *	Port Size:     8 Bytes
+ *	Port Size:     8 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR1		0xFE100080
+#define CONFIG_SYS_PCMCIA_POR1	    (	PCMCIA_BSIZE_8	\
+			    |	PCMCIA_PPS_8	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 2:
+ *	Base: 0xFE100100	CS2
+ *	Port Size:     8 Bytes
+ *	Port Size:     8 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR2		0xFE100100
+#define CONFIG_SYS_PCMCIA_POR2	    (	PCMCIA_BSIZE_8	\
+			    |	PCMCIA_PPS_8	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 3:
+ *	not used
+ */
+#define CONFIG_SYS_PCMCIA_PBR3		0
+#define CONFIG_SYS_PCMCIA_POR3		0
+
+/* Window 4:
+ *	Base: 0xFE100C00	CS1
+ *	Port Size:     2 Bytes
+ *	Port Size:    16 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR4		0xFE100C00
+#define CONFIG_SYS_PCMCIA_POR4	    (	PCMCIA_BSIZE_2	\
+			    |	PCMCIA_PPS_16	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 5:
+ *	Base: 0xFE100C80	CS1
+ *	Port Size:     8 Bytes
+ *	Port Size:     8 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR5		0xFE100C80
+#define CONFIG_SYS_PCMCIA_POR5	    (	PCMCIA_BSIZE_8	\
+			    |	PCMCIA_PPS_8	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 6:
+ *	Base: 0xFE100D00	CS2
+ *	Port Size:     8 Bytes
+ *	Port Size:     8 Bit
+ *	Common Memory Space
+ */
+
+#define CONFIG_SYS_PCMCIA_PBR6		0xFE100D00
+#define CONFIG_SYS_PCMCIA_POR6	    (	PCMCIA_BSIZE_8	\
+			    |	PCMCIA_PPS_8	\
+			    |	PCMCIA_PRS_MEM	\
+			    |	PCMCIA_SLOT_x	\
+			    |	PCMCIA_PV	\
+			    )
+
+/* Window 7:
+ *	not used
+ */
+#define CONFIG_SYS_PCMCIA_PBR7		0
+#define CONFIG_SYS_PCMCIA_POR7		0
 
 /**********************************************************************/
 
@@ -132,6 +275,15 @@ typedef struct {
 #define CISTPL_IDE_HAS_INDEX	0x20
 #define CISTPL_IDE_IOIS16	0x40
 
+#endif
+
+#ifdef	CONFIG_8xx
+extern u_int *pcmcia_pgcrx[];
+#define	PCMCIA_PGCRX(slot)	(*pcmcia_pgcrx[slot])
+#endif
+
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+extern int check_ide_device(int slot);
 #endif
 
 #endif /* _PCMCIA_H */

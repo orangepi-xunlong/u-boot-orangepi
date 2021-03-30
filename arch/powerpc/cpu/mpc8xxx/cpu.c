@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
  *
  * This file is derived from arch/powerpc/cpu/mpc85xx/cpu.c and
  * arch/powerpc/cpu/mpc86xx/cpu.c. Basically this file contains
  * cpu specific common code for 85xx/86xx processors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -15,7 +15,6 @@
 #include <netdev.h>
 #include <asm/cache.h>
 #include <asm/io.h>
-#include <vsc9953.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -66,6 +65,7 @@ static struct cpu_type cpu_type_list[] = {
 	CPU_TYPE_ENTRY(T4080, T4080, 4),
 	CPU_TYPE_ENTRY(B4860, B4860, 0),
 	CPU_TYPE_ENTRY(G4860, G4860, 0),
+	CPU_TYPE_ENTRY(G4060, G4060, 0),
 	CPU_TYPE_ENTRY(B4440, B4440, 0),
 	CPU_TYPE_ENTRY(B4460, B4460, 0),
 	CPU_TYPE_ENTRY(G4440, G4440, 0),
@@ -77,10 +77,6 @@ static struct cpu_type cpu_type_list[] = {
 	CPU_TYPE_ENTRY(T1020, T1020, 0),
 	CPU_TYPE_ENTRY(T1021, T1021, 0),
 	CPU_TYPE_ENTRY(T1022, T1022, 0),
-	CPU_TYPE_ENTRY(T1024, T1024, 0),
-	CPU_TYPE_ENTRY(T1023, T1023, 0),
-	CPU_TYPE_ENTRY(T1014, T1014, 0),
-	CPU_TYPE_ENTRY(T1013, T1013, 0),
 	CPU_TYPE_ENTRY(T2080, T2080, 0),
 	CPU_TYPE_ENTRY(T2081, T2081, 0),
 	CPU_TYPE_ENTRY(BSC9130, 9130, 1),
@@ -132,53 +128,6 @@ u32 compute_ppc_cpumask(void)
 
 	return mask;
 }
-
-#ifdef CONFIG_HETROGENOUS_CLUSTERS
-u32 compute_dsp_cpumask(void)
-{
-	ccsr_gur_t *gur = (void __iomem *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	int i = CONFIG_DSP_CLUSTER_START, count = 0;
-	u32 cluster, type, dsp_mask = 0;
-
-	do {
-		int j;
-		cluster = in_be32(&gur->tp_cluster[i].lower);
-		for (j = 0; j < TP_INIT_PER_CLUSTER; j++) {
-			type = init_type(cluster, j);
-			if (type) {
-				if (TP_ITYP_TYPE(type) == TP_ITYP_TYPE_SC)
-					dsp_mask |= 1 << count;
-				count++;
-			}
-		}
-		i++;
-	} while ((cluster & TP_CLUSTER_EOC) != TP_CLUSTER_EOC);
-
-	return dsp_mask;
-}
-
-int fsl_qoriq_dsp_core_to_cluster(unsigned int core)
-{
-	ccsr_gur_t *gur = (void __iomem *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	int count = 0, i = CONFIG_DSP_CLUSTER_START;
-	u32 cluster;
-
-	do {
-		int j;
-		cluster = in_be32(&gur->tp_cluster[i].lower);
-		for (j = 0; j < TP_INIT_PER_CLUSTER; j++) {
-			if (init_type(cluster, j)) {
-				if (count == core)
-					return i;
-				count++;
-			}
-		}
-		i++;
-	} while ((cluster & TP_CLUSTER_EOC) != TP_CLUSTER_EOC);
-
-	return -1;	/* cannot identify the cluster */
-}
-#endif
 
 int fsl_qoriq_core_to_cluster(unsigned int core)
 {
@@ -245,43 +194,8 @@ __weak u32 cpu_mask(void)
 	return cpu->mask;
 }
 
-#ifdef CONFIG_HETROGENOUS_CLUSTERS
-__weak u32 cpu_dsp_mask(void)
-{
-	ccsr_pic_t __iomem *pic = (void *)CONFIG_SYS_MPC8xxx_PIC_ADDR;
-	struct cpu_type *cpu = gd->arch.cpu;
-
-	/* better to query feature reporting register than just assume 1 */
-	if (cpu == &cpu_type_unknown)
-		return ((in_be32(&pic->frr) & MPC8xxx_PICFRR_NCPU_MASK) >>
-			 MPC8xxx_PICFRR_NCPU_SHIFT) + 1;
-
-	if (cpu->dsp_num_cores == 0)
-		return compute_dsp_cpumask();
-
-	return cpu->dsp_mask;
-}
-
 /*
- * Return the number of SC/DSP cores on this SOC.
- */
-__weak int cpu_num_dspcores(void)
-{
-	struct cpu_type *cpu = gd->arch.cpu;
-
-	/*
-	 * Report # of cores in terms of the cpu_mask if we haven't
-	 * figured out how many there are yet
-	 */
-	if (cpu->dsp_num_cores == 0)
-		return hweight32(cpu_dsp_mask());
-
-	return cpu->dsp_num_cores;
-}
-#endif
-
-/*
- * Return the number of PPC cores on this SOC.
+ * Return the number of cores on this SOC.
  */
 __weak int cpu_numcores(void)
 {
@@ -297,7 +211,6 @@ __weak int cpu_numcores(void)
 	return cpu->num_cores;
 }
 
-
 /*
  * Check if the given core ID is valid
  *
@@ -308,7 +221,7 @@ int is_core_valid(unsigned int core)
 	return !!((1 << core) & cpu_mask());
 }
 
-int arch_cpu_init(void)
+int probecpu (void)
 {
 	uint svr;
 	uint ver;
@@ -331,12 +244,6 @@ int fixup_cpu(void)
 		cpu->num_cores = cpu_numcores();
 	}
 
-#ifdef CONFIG_HETROGENOUS_CLUSTERS
-	if (cpu->dsp_num_cores == 0) {
-		cpu->dsp_mask = cpu_dsp_mask();
-		cpu->dsp_num_cores = cpu_num_dspcores();
-	}
-#endif
 	return 0;
 }
 
@@ -360,10 +267,6 @@ int cpu_eth_init(bd_t *bis)
 
 #ifdef CONFIG_FMAN_ENET
 	fm_standard_init(bis);
-#endif
-
-#ifdef CONFIG_VSC9953
-	vsc9953_init(bis);
 #endif
 	return 0;
 }

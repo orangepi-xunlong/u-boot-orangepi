@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *                    Dave Liu <daveliu@freescale.com>
@@ -11,6 +10,8 @@
  *
  * (C) Copyright 2008 - 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -22,14 +23,10 @@
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <pci.h>
-#include <linux/libfdt.h>
+#include <libfdt.h>
 #include <post.h>
 
 #include "../common/common.h"
-
-DECLARE_GLOBAL_DATA_PTR;
-
-static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* port pin dir open_drain assign */
@@ -193,7 +190,6 @@ int board_early_init_r(void)
 
 int misc_init_r(void)
 {
-	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 
@@ -262,11 +258,11 @@ int last_stage_init(void)
 	mv88e_sw_reset(name, CONFIG_KM_MVEXTSW_ADDR);
 
 	if (piggy_present()) {
-		env_set("ethact", "UEC2");
-		env_set("netdev", "eth1");
+		setenv("ethact", "UEC2");
+		setenv("netdev", "eth1");
 		puts("using PIGGY for network boot\n");
 	} else {
-		env_set("netdev", "eth0");
+		setenv("netdev", "eth0");
 		puts("using frontport for network boot\n");
 	}
 #endif
@@ -279,7 +275,7 @@ int last_stage_init(void)
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		env_set("actual_bank", "0");
+		setenv("actual_bank", "0");
 	}
 #endif
 	set_km_env();
@@ -329,13 +325,13 @@ static int fixed_sdram(void)
 	return msize;
 }
 
-int dram_init(void)
+phys_size_t initdram(int board_type)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((in_be32(&im->sysconf.immrbar) & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -ENXIO;
+		return -1;
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
 		CONFIG_SYS_DDR_BASE & LAWBAR_BAR);
@@ -349,9 +345,7 @@ int dram_init(void)
 #endif
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	gd->ram_size = msize * 1024 * 1024;
-
-	return 0;
+	return msize * 1024 * 1024;
 }
 
 int checkboard(void)
@@ -364,17 +358,17 @@ int checkboard(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+#if defined(CONFIG_OF_BOARD_SETUP)
+void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-
-	return 0;
 }
+#endif
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ivm_read_eeprom();
 	return 0;
 }
 #endif

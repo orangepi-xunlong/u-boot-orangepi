@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale MXS UARTAPP Register Definitions
  *
@@ -6,12 +5,14 @@
  *
  * Based on code from LTIB:
  * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ARCH_ARM___MXS_UARTAPP_H
 #define __ARCH_ARM___MXS_UARTAPP_H
 
-#include <asm/mach-imx/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef __ASSEMBLY__
 struct mxs_uartapp_regs {

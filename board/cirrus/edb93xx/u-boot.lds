@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *
  * Copyright (C) 2013
@@ -8,6 +7,8 @@
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
@@ -20,7 +21,6 @@ SECTIONS
 	. = ALIGN(4);
 	.text : {
 		*(.__image_copy_start)
-		*(.vectors)
 		arch/arm/cpu/arm920t/start.o (.text*)
 		. = 0x1000;
 

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Calxeda, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -104,9 +105,12 @@ static inline void *menu_item_destroy(struct menu *m,
 	return NULL;
 }
 
-__weak void menu_display_statusline(struct menu *m)
+void __menu_display_statusline(struct menu *m)
 {
+	return;
 }
+void menu_display_statusline(struct menu *m)
+	__attribute__ ((weak, alias("__menu_display_statusline")));
 
 /*
  * Display a menu so the user can make a choice of an item. First display its
@@ -201,9 +205,6 @@ static inline int menu_interactive_choice(struct menu *m, void **choice)
 				choice_item = menu_item_by_key(m, cbuf);
 				if (!choice_item)
 					printf("%s not found\n", cbuf);
-			} else if (readret == -1)  {
-				printf("<INTERRUPT>\n");
-				return -EINTR;
 			} else {
 				return menu_default_choice(m, choice);
 			}
@@ -349,7 +350,7 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
  * make it obvious what the key for each entry is.
  *
  * item_choice - If not NULL, will be called when asking the user to choose an
- * item. Returns a key string corresponding to the chosen item or NULL if
+ * item. Returns a key string corresponding to the choosen item or NULL if
  * no item has been selected.
  *
  * item_choice_data - Will be passed as the argument to the item_choice function

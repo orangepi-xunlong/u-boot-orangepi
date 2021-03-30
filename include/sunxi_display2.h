@@ -1,19 +1,3 @@
-/*
- * include/sunxi_display2.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __SUNXI_DISPLAY2_H__
 #define __SUNXI_DISPLAY2_H__
 
@@ -73,10 +57,6 @@ enum disp_pixel_format
 	DISP_FORMAT_ABGR_1555                    = 0x11,
 	DISP_FORMAT_RGBA_5551                    = 0x12,
 	DISP_FORMAT_BGRA_5551                    = 0x13,
-	DISP_FORMAT_A2R10G10B10                  = 0x14,
-	DISP_FORMAT_A2B10G10R10                  = 0x15,
-	DISP_FORMAT_R10G10B10A2                  = 0x16,
-	DISP_FORMAT_B10G10R10A2                  = 0x17,
 
 	/* SP: semi-planar, P:planar, I:interleaved
 	 * UVUV: U in the LSBs;     VUVU: V in the LSBs */
@@ -96,23 +76,7 @@ enum disp_pixel_format
 	DISP_FORMAT_YUV420_SP_VUVU               = 0x4d,
 	DISP_FORMAT_YUV411_SP_UVUV               = 0x4e,
 	DISP_FORMAT_YUV411_SP_VUVU               = 0x4f,
-	DISP_FORMAT_8BIT_GRAY                    = 0x50,
-	DISP_FORMAT_YUV444_I_AYUV_10BIT          = 0x51,
-	DISP_FORMAT_YUV444_I_VUYA_10BIT          = 0x52,
-	DISP_FORMAT_YUV422_I_YVYU_10BIT          = 0x53,
-	DISP_FORMAT_YUV422_I_YUYV_10BIT          = 0x54,
-	DISP_FORMAT_YUV422_I_UYVY_10BIT          = 0x55,
-	DISP_FORMAT_YUV422_I_VYUY_10BIT          = 0x56,
-	DISP_FORMAT_YUV444_P_10BIT               = 0x57,
-	DISP_FORMAT_YUV422_P_10BIT               = 0x58,
-	DISP_FORMAT_YUV420_P_10BIT               = 0x59,
-	DISP_FORMAT_YUV411_P_10BIT               = 0x5a,
-	DISP_FORMAT_YUV422_SP_UVUV_10BIT         = 0x5b,
-	DISP_FORMAT_YUV422_SP_VUVU_10BIT         = 0x5c,
-	DISP_FORMAT_YUV420_SP_UVUV_10BIT         = 0x5d,
-	DISP_FORMAT_YUV420_SP_VUVU_10BIT         = 0x5e,
-	DISP_FORMAT_YUV411_SP_UVUV_10BIT         = 0x5f,
-	DISP_FORMAT_YUV411_SP_VUVU_10BIT         = 0x60,
+	DISP_FORMAT_8BIT_GRAY				= 0x50,
 };
 
 enum disp_3d_out_mode
@@ -133,55 +97,16 @@ enum disp_3d_out_mode
 
 enum disp_color_space
 {
-	DISP_UNDEF = 0x00,
-	DISP_UNDEF_F = 0x01,
-	DISP_GBR = 0x100,
-	DISP_BT709 = 0x101,
-	DISP_FCC = 0x102,
-	DISP_BT470BG = 0x103,
-	DISP_BT601 = 0x104,
-	DISP_SMPTE240M = 0x105,
-	DISP_YCGCO = 0x106,
-	DISP_BT2020NC = 0x107,
-	DISP_BT2020C = 0x108,
-	DISP_GBR_F = 0x200,
-	DISP_BT709_F = 0x201,
-	DISP_FCC_F = 0x202,
-	DISP_BT470BG_F = 0x203,
-	DISP_BT601_F = 0x204,
-	DISP_SMPTE240M_F = 0x205,
-	DISP_YCGCO_F = 0x206,
-	DISP_BT2020NC_F = 0x207,
-	DISP_BT2020C_F = 0x208,
-	DISP_RESERVED = 0x300,
-	DISP_RESERVED_F = 0x301,
+	DISP_BT601  = 0,
+	DISP_BT709  = 1,
+	DISP_YCC    = 2,
 };
 
 enum disp_csc_type
 {
 	DISP_CSC_TYPE_RGB        = 0,
-	DISP_CSC_TYPE_YUV444     = 1,
-	DISP_CSC_TYPE_YUV422     = 2,
-	DISP_CSC_TYPE_YUV420     = 3,
-};
-
-enum disp_data_bits {
-	DISP_DATA_8BITS    = 0,
-	DISP_DATA_10BITS   = 1,
-	DISP_DATA_12BITS   = 2,
-	DISP_DATA_16BITS   = 3,
-};
-
-enum disp_dvi_hdmi {
-	DISP_DVI_HDMI_UNDEFINED = 0,
-	DISP_DVI = 1,
-	DISP_HDMI = 2,
-};
-
-enum disp_scan_info {
-	DISP_SCANINFO_NO_DATA = 0,
-	OVERSCAN = 1,
-	UNDERSCAN = 2,
+	DISP_CSC_TYPE_YUV1       = 1,//HDMI
+	DISP_CSC_TYPE_YUV2       = 2,//TV
 };
 
 enum disp_color_range
@@ -198,7 +123,6 @@ enum disp_output_type
 	DISP_OUTPUT_TYPE_TV     = 2,
 	DISP_OUTPUT_TYPE_HDMI   = 4,
 	DISP_OUTPUT_TYPE_VGA    = 8,
-	DISP_OUTPUT_TYPE_EDP    = 32, /*16 for vdpo*/
 };
 
 enum disp_tv_mode
@@ -230,32 +154,7 @@ enum disp_tv_mode
 	DISP_TV_MOD_3840_2160P_30HZ     = 0x1c,
 	DISP_TV_MOD_3840_2160P_25HZ     = 0x1d,
 	DISP_TV_MOD_3840_2160P_24HZ     = 0x1e,
-	DISP_TV_MOD_4096_2160P_24HZ     = 0x1f,
-	DISP_TV_MOD_4096_2160P_25HZ     = 0x20,
-	DISP_TV_MOD_4096_2160P_30HZ     = 0x21,
-	DISP_TV_MOD_3840_2160P_60HZ     = 0x22,
-	DISP_TV_MOD_4096_2160P_60HZ     = 0x23,
-	DISP_TV_MOD_3840_2160P_50HZ     = 0x24,
-	DISP_TV_MOD_4096_2160P_50HZ     = 0x25,
-	DISP_TV_MOD_2560_1440P_60HZ     = 0x26,
-	DISP_TV_MOD_1440_2560P_70HZ     = 0x27,
-	DISP_TV_MOD_1080_1920P_60HZ	= 0x28,
-	DISP_TV_MOD_1280_1024P_60HZ     = 0x41,
-	DISP_TV_MOD_1024_768P_60HZ      = 0x42,
-	DISP_TV_MOD_900_540P_60HZ       = 0x43,
-	DISP_TV_MOD_1920_720P_60HZ      = 0x44,
-
-	/*Just for the solution of hdmi edid detailed timiming block*/
-	DISP_HDMI_MOD_DT0                = 0x4a,
-	DISP_HDMI_MOD_DT1                = 0x4b,
-	DISP_HDMI_MOD_DT2                = 0x4c,
-	DISP_HDMI_MOD_DT3                = 0x4d,
-	/*
-	 * vga
-	 * NOTE:macro'value of new solution must between
-	 * DISP_VGA_MOD_640_480P_60 and DISP_VGA_MOD_MAX_NUM
-	 * or you have to modify is_vag_mode function in drv_tv.h
-	 */
+	/* vga */
 	DISP_VGA_MOD_640_480P_60         = 0x50,
 	DISP_VGA_MOD_800_600P_60         = 0x51,
 	DISP_VGA_MOD_1024_768P_60        = 0x52,
@@ -264,13 +163,8 @@ enum disp_tv_mode
 	DISP_VGA_MOD_1366_768P_60        = 0x55,
 	DISP_VGA_MOD_1440_900P_60        = 0x56,
 	DISP_VGA_MOD_1920_1080P_60       = 0x57,
-	DISP_VGA_MOD_1920_1200P_60 = 0x58,
-	DISP_TV_MOD_3840_1080P_30 = 0x59,
-	DISP_VGA_MOD_1280_720P_60        = 0x5a,
-	DISP_VGA_MOD_1600_900P_60        = 0x5b,
-	DISP_VGA_MOD_MAX_NUM             = 0x5c,
-
-	DISP_TV_MODE_NUM
+	DISP_VGA_MOD_1920_1200P_60       = 0x58,
+	DISP_TV_MODE_NUM                 = 0x59,
 };
 
 //FIXME:still need?
@@ -303,56 +197,10 @@ enum disp_scan_flags
 	DISP_SCAN_INTERLACED_EVEN_FLD_FIRST   = 1 << 1,//interlace,even field first
 };
 
-enum disp_eotf {
-	DISP_EOTF_RESERVED = 0x000,
-	DISP_EOTF_BT709 = 0x001,
-	DISP_EOTF_UNDEF = 0x002,
-	DISP_EOTF_GAMMA22 = 0x004, /* SDR */
-	DISP_EOTF_GAMMA28 = 0x005,
-	DISP_EOTF_BT601 = 0x006,
-	DISP_EOTF_SMPTE240M = 0x007,
-	DISP_EOTF_LINEAR = 0x008,
-	DISP_EOTF_LOG100 = 0x009,
-	DISP_EOTF_LOG100S10 = 0x00a,
-	DISP_EOTF_IEC61966_2_4 = 0x00b,
-	DISP_EOTF_BT1361 = 0x00c,
-	DISP_EOTF_IEC61966_2_1 = 0X00d,
-	DISP_EOTF_BT2020_0 = 0x00e,
-	DISP_EOTF_BT2020_1 = 0x00f,
-	DISP_EOTF_SMPTE2084 = 0x010, /* HDR10 */
-	DISP_EOTF_SMPTE428_1 = 0x011,
-	DISP_EOTF_ARIB_STD_B67 = 0x012, /* HLG */
-};
-
-/* disp_atw_mode - mode for asynchronous time warp
- *
- * @NORMAL_MODE: dual buffer, left eye and right eye buffer is individual
- * @LEFT_RIGHT_MODE: single buffer, the left half of each line buffer
- *		     is for left eye, the right half is for the right eye
- * @UP_DOWN_MODE: single buffer, the first half of the total buffer
- *		  is for the left eye, the second half is for the right eye
- */
-enum disp_atw_mode {
-	NORMAL_MODE,
-	LEFT_RIGHT_MODE,
-	UP_DOWN_MODE,
-};
-
 struct disp_output
 {
 	unsigned int type;
 	unsigned int mode;
-};
-
-enum disp_transform {
-	DISP_TRANSFORM_ROT_0         = 0x00,
-	DISP_TRANSFORM_ROT_90        = 0x01,
-	DISP_TRANSFORM_ROT_180       = 0x02,
-	DISP_TRANSFORM_ROT_270       = 0x03,
-	DISP_TRANSFORM_FLIP_H        = 0x04,
-	DISP_TRANSFORM_ROT_90_FLIP_H = 0x05,
-	DISP_TRANSFORM_FLIP_V        = 0x06,
-	DISP_TRANSFORM_ROT_90_FLIP_V = 0x07,
 };
 
 struct disp_rect64
@@ -409,128 +257,6 @@ struct disp_layer_config
 	unsigned int layer_id;
 };
 
-/* disp_atw_info - asynchronous time wrap infomation
- *
- * @used: indicate if the atw funtion is used
- * @mode: atw mode
- * @b_row: the row number of the micro block
- * @b_col: the column number of the micro block
- * @cof_addr: the address of buffer contaied coefficient for atw
- */
-struct disp_atw_info {
-	bool used;
-	enum disp_atw_mode mode;
-	unsigned int b_row;
-	unsigned int b_col;
-	unsigned long long cof_addr;
-};
-
-/* disp_fb_info2 - image buffer info v2
- *
- * @addr: buffer address for each plane
- * @size: size<width,height> for each buffer, unit:pixels
- * @align: align for each buffer, unit:bytes
- * @format: pixel format
- * @color_space: color space
- * @trd_right_addr: the right-eye buffer address for each plane,
- *                  valid when frame-packing 3d buffer input
- * @pre_multiply: indicate the pixel use premultiplied alpha
- * @crop: crop rectangle for buffer to be display
- * @flag: indicate stereo/non-stereo buffer
- * @scan: indicate interleave/progressive scan type, and the scan order
- * @metadata_buf: the phy_address to the buffer contained metadata for fbc/hdr
- * @metadata_size: the size of metadata buffer, unit:bytes
- * @metadata_flag: the flag to indicate the type of metadata buffer
- *	0     : no metadata
- *	1 << 0: hdr static metadata
- *	1 << 1: hdr dynamic metadata
- *	1 << 4:	frame buffer compress(fbc) metadata
- *	x     : all type could be "or" together
- */
-struct disp_fb_info2 {
-	unsigned long long       addr[3];
-	struct disp_rectsz       size[3];
-	unsigned int             align[3];
-	enum disp_pixel_format   format;
-	enum disp_color_space    color_space;
-	unsigned int             trd_right_addr[3];
-	bool                     pre_multiply;
-	struct disp_rect64       crop;
-	enum disp_buffer_flags   flags;
-	enum disp_scan_flags     scan;
-	enum disp_eotf           eotf;
-	unsigned int             fbd_en;
-	unsigned long long       metadata_buf;
-	unsigned int             metadata_size;
-	unsigned int             metadata_flag;
-};
-
-
-/**
- * disp_snr_info
- */
-struct disp_snr_info {
-	unsigned char en;
-	unsigned char demo_en;
-	struct disp_rect demo_win;
-	unsigned char y_strength;
-	unsigned char u_strength;
-	unsigned char v_strength;
-	unsigned char th_ver_line;
-	unsigned char th_hor_line;
-};
-
-/* disp_layer_info2 - layer info v2
- *
- * @mode: buffer/clolor mode, when in color mode, the layer is widthout buffer
- * @zorder: the zorder of layer, 0~max-layer-number
- * @alpha_mode:
- *	0: pixel alpha;
- *	1: global alpha
- *	2: mixed alpha, compositing width pixel alpha before global alpha
- * @alpha_value: global alpha value, valid when alpha_mode is not pixel alpha
- * @screen_win: the rectangle on the screen for fb to be display
- * @b_trd_out: indicate if 3d display output
- * @out_trd_mode: 3d output mode, valid when b_trd_out is true
- * @color: the color value to be display, valid when layer is in color mode
- * @fb: the framebuffer info related width the layer, valid when in buffer mode
- * @id: frame id, the user could get the frame-id display currently by
- *	DISP_LAYER_GET_FRAME_ID ioctl
- * @atw: asynchronous time wrap information
- */
-struct disp_layer_info2 {
-	enum disp_layer_mode      mode;
-	unsigned char             zorder;
-	unsigned char             alpha_mode;
-	unsigned char             alpha_value;
-	struct disp_rect          screen_win;
-	bool                      b_trd_out;
-	enum disp_3d_out_mode     out_trd_mode;
-	union {
-		unsigned int            color;
-		struct disp_fb_info2    fb;
-	};
-
-	unsigned int              id;
-	struct disp_atw_info      atw;
-	enum disp_transform transform;
-	struct disp_snr_info snr;
-};
-
-/* disp_layer_config2 - layer config v2
- *
- * @info: layer info
- * @enable: indicate to enable/disable the layer
- * @channel: the channel index of the layer, 0~max-channel-number
- * @layer_id: the layer index of the layer widthin it's channel
- */
-struct disp_layer_config2 {
-	struct disp_layer_info2 info;
-	bool enable;
-	unsigned int channel;
-	unsigned int layer_id;
-};
-
 struct disp_colorkey
 {
     struct disp_color      ck_max;
@@ -553,56 +279,6 @@ struct disp_capture_info
 	struct disp_rect window;  // capture window, rectangle of screen to be captured
 	                          //capture the whole screen if window eq ZERO
 	struct disp_s_frame out_frame;
-};
-
-/* disp_device_config - display deivce config
- *
- * @type: output type
- * @mode: output mode
- * @format: data format
- * @bits:   data bits
- * @eotf:   electro-optical transfer function
- *	    SDR  : DISP_EOTF_GAMMA22
- *	    HDR10: DISP_EOTF_SMPTE2084
- *	    HLG  : DISP_EOTF_ARIB_STD_B67
- * @cs:     color space type
- *	    DISP_BT601: SDR for SD resolution(< 720P)
- *	    DISP_BT709: SDR for HD resolution(>= 720P)
- *	    DISP_BT2020NC: HDR10 or HLG or wide-color-gamut
- */
-struct disp_device_config {
-	enum disp_output_type   type;
-	enum disp_tv_mode       mode;
-	enum disp_csc_type      format;
-	enum disp_data_bits     bits;
-	enum disp_eotf          eotf;
-	enum disp_color_space   cs;
-	enum disp_dvi_hdmi	dvi_hdmi;
-	enum disp_color_range	range;
-	enum disp_scan_info	scan;
-	unsigned int	aspect_ratio;
-	unsigned int            reserve1;
-};
-
-/* disp_device_dynamic_config - display deivce dynamic config
- *
- * @metadata_buf: the phy_address to the buffer contained metadata for fbc/hdr
- * @metadata_size: the size of metadata buffer, unit:bytes
- * @metadata_flag: the flag to indicate the type of metadata buffer
- *	0     : no metadata
- *	1 << 0: hdr static metadata
- *	1 << 1: hdr dynamic metadata
- *	1 << 4:	frame buffer compress(fbc) metadata
- *	x     : all type could be "or" together
- * @vmap:vmap a block contigous phys memory into virtual space
- * @vunmap: release virtual mapping obtained by vmap()
- */
-struct disp_device_dynamic_config {
-	unsigned long long       metadata_buf;
-	unsigned int             metadata_size;
-	unsigned int             metadata_flag;
-	void *(*vmap)(unsigned long phys_addr, unsigned long size);
-	void (*vunmap)(const void *vaddr);
 };
 
 struct disp_video_timings
@@ -659,25 +335,20 @@ enum disp_init_mode
 	DISP_INIT_MODE_TWO_DIFF_SCREEN_SAME_CONTENTS = 5,//fb0 for two different screen(screen0 layer is normal layer, screen1 layer is scaler layer);
 };
 
-struct disp_tv_func {
-	int (*tv_enable)(u32 sel);
-	int (*tv_disable)(u32 sel);
-	int (*tv_suspend)(u32 sel);
-	int (*tv_resume)(u32 sel);
-	int (*tv_get_mode)(u32 sel);
-	int (*tv_set_mode)(u32 sel, enum disp_tv_mode tv_mod);
-	int (*tv_get_input_csc)(u32 sel);
-	int (*tv_get_video_timing_info)(u32 sel,
-					struct disp_video_timings **video_info);
-	int (*tv_mode_support)(u32 sel, enum disp_tv_mode mode);
-	int (*tv_hot_plugging_detect)(u32 state);
-	int (*tv_set_enhance_mode)(u32 sel, u32 mode);
-	int (*tv_get_hpd_status)(u32 sel);
-	int (*tv_irq_enable)(u32 sel, u32 irq_id, u32 en);
-	int (*tv_irq_query)(u32 sel);
-	unsigned int (*tv_get_cur_line)(u32 sel);
-	int (*tv_get_startdelay)(u32 sel);
-	void (*tv_show_builtin_patten)(u32 sel, u32 patten);
+struct disp_tv_func
+{
+		int (*tv_enable)(u32 sel);
+		int (*tv_disable)(u32 sel);
+		int (*tv_suspend)(u32 sel);
+		int (*tv_resume)(u32 sel);
+		int (*tv_get_mode)(u32 sel);
+		int (*tv_set_mode)(u32 sel, enum disp_tv_mode tv_mod);
+		int (*tv_get_input_csc) (u32 sel);
+		int (* tv_get_video_timing_info) (u32 sel, struct disp_video_timings **video_info);
+		int (*tv_mode_support) (u32 sel, enum disp_tv_mode mode);
+		int (*tv_hot_plugging_detect)(u32 state);
+		int (*tv_set_enhance_mode)(u32 sel, u32 mode);
+		int (*tv_get_hpd_status)(u32 sel);
 };
 
 /* disp_vdevice_interface_para - vdevice interaface parameter
@@ -713,8 +384,6 @@ struct disp_vdevice_interface_para
 	unsigned int fdelay;
 	unsigned int clk_phase;
 	unsigned int sync_polarity;
-	unsigned int ccir_clk_div;
-	unsigned int input_csc;
 };
 
 struct disp_vdevice_source_ops
@@ -729,10 +398,8 @@ struct disp_device_func
 {
 	int (*enable)(void);
 	int (*disable)(void);
-	int (*get_work_mode)(void);
 	int (*set_mode)(u32 mode);
 	int (*mode_support)(u32 mode);
-	int (*get_support_mode)(u32 init_mode);
 	int (*get_HPD_status)(void);
 	int (*get_input_csc)(void);
 	int (*get_video_timing_info)(struct disp_video_timings **video_info);
@@ -742,10 +409,6 @@ struct disp_device_func
 	int (*late_resume)(void);
 	int (*get_interface_para)(void *para);
 	int (*get_edid)(uintptr_t *edid_addr);
-	int (*set_static_config)(struct disp_device_config *config);
-	int (*get_static_config)(struct disp_device_config *config);
-	int (*set_dynamic_config)(struct disp_device_dynamic_config *config);
-	int (*get_dynamic_config)(struct disp_device_dynamic_config *config);
 };
 
 struct disp_vdevice_init_data
@@ -777,11 +440,6 @@ enum disp_tv_output
     DISP_VGA = 5,
 };
 
-enum disp_hdmi_work_mode {
-	DISP_HDMI_SEMI_AUTO = 0,
-	DISP_HDMI_FULL_AUTO = 1,
-};
-
 enum tag_DISP_CMD
 {
 	//----disp global----
@@ -803,10 +461,6 @@ enum tag_DISP_CMD
 	DISP_GET_OUTPUT = 0x10,
 	DISP_SET_COLOR_RANGE = 0x11,
 	DISP_GET_COLOR_RANGE = 0x12,
-	DISP_HWC_CUSTOM = 0x13,
-	DISP_DEVICE_SET_CONFIG = 0x14,
-	DISP_DEVICE_GET_CONFIG = 0x15,
-	DISP_SET_KSC_PARA = 0x16,
 
 	//----layer----
 	DISP_LAYER_ENABLE = 0x40,
@@ -818,22 +472,13 @@ enum tag_DISP_CMD
 	DISP_LAYER_GET_FRAME_ID = 0x46,
 	DISP_LAYER_SET_CONFIG = 0x47,
 	DISP_LAYER_GET_CONFIG = 0x48,
-	/*
-	 * LAYER_S(G)ET_CONFIG2 takes disp_layer_config2,
-	 * it will support more featuras
-	 */
-	DISP_LAYER_SET_CONFIG2 = 0x49,
-	DISP_LAYER_GET_CONFIG2 = 0x4a,
 
 	//----hdmi----
 	DISP_HDMI_SUPPORT_MODE = 0xc4,
 	DISP_SET_TV_HPD = 0xc5,
 	DISP_HDMI_GET_EDID = 0xc6,
 	DISP_HDMI_GET_HPD_STATUS = 0xc7,
-	DISP_HDMI_GET_SUPPORT_MODE = 0xc9,
-	DISP_HDMI_GET_WORK_MODE = 0xca,
-
-	DISP_TV_GET_HPD_STATUS = 0xc8,
+        DISP_TV_GET_HPD_STATUS = 0xc8,
 	//----lcd----
 	DISP_LCD_ENABLE = 0x100,
 	DISP_LCD_DISABLE = 0x101,
@@ -889,36 +534,8 @@ enum tag_DISP_CMD
 	DISP_EINK_GET_TEMP = 0x404,
 };
 
-enum {
-	ROTATION_SW_0 = 0,
-	ROTATION_SW_90 = 1,
-	ROTATION_SW_180 = 2,
-	ROTATION_SW_270 = 3,
-};
-
-/* struct disp_ksc_info - keystone correction struct
- *
- * @enable: 1:enable; 0:disable
- * @first_line_width: the width in pixel of first line you want
- * @ration: ration is 12-bit Fixed point decimal with 5-bit interger (<= 256)
- *	    direction = 0:
- *	    last_line_width = first_line_width + (lcd_y-1)*ration_double
- *	    ration_double = (last_line_width - first_line_width) / (lcd_y -1)
- *	    direction = 1:
- *	    last_line_width = first_line_width - (lcd_y-1)*ration_double
- *	    ration_double = (first_line_width - last_line_width) / (lcd_y -1)
- *	    ration = int(ration_double * pow(2, 12))
- * @direction: see above
- *
- */
-struct disp_ksc_info {
-	unsigned int enable;
-	unsigned int first_line_width;
-	unsigned int ration;
-	unsigned int direction;
-};
-
 #define FBIOGET_LAYER_HDL_0 0x4700
 #define FBIOGET_LAYER_HDL_1 0x4701
 
 #endif
+

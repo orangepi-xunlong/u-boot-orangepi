@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2004
  * DENX Software Engineering
  * Wolfgang Denk, wd@denx.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MKIIMAGE_H_
@@ -43,5 +44,6 @@ static inline ulong map_to_sysmem(void *ptr)
 #define MKIMAGE_MAX_TMPFILE_LEN		256
 #define MKIMAGE_DEFAULT_DTC_OPTIONS	"-I dts -O dtb -p 500"
 #define MKIMAGE_MAX_DTC_CMDLINE_LEN	512
+#define MKIMAGE_DTC			"dtc"   /* assume dtc is in $PATH */
 
 #endif /* _MKIIMAGE_H_ */

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common board functions for siemens AM335X based boards
  * (C) Copyright 2013 Siemens Schweiz AG
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FACTORYSET_H
@@ -19,12 +20,10 @@ struct factorysetcontainer {
 #endif
 	unsigned char serial[MAX_STRING_LENGTH];
 	int version;
-	uchar asn[MAX_STRING_LENGTH];
-	uchar comp_version[MAX_STRING_LENGTH];
 };
 
 int factoryset_read_eeprom(int i2c_addr);
-int factoryset_env_set(void);
+int factoryset_setenv(void);
 extern struct factorysetcontainer factory_dat;
 
 #endif /* __FACTORYSET_H */

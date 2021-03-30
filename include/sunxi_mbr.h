@@ -36,8 +36,10 @@
 #define     SUNXI_MBR_RESERVED          (SUNXI_MBR_SIZE - 32 - 4 - (SUNXI_MBR_MAX_PART_COUNT * sizeof(sunxi_partition)))   //mbr保留的空间
 #define     SUNXI_DL_RESERVED           (SUNXI_DL_SIZE - 32 - (SUNXI_MBR_MAX_PART_COUNT * sizeof(dl_one_part_info)))
 
-#define     SUNXI_LOCKED               (0xAA)
-#define     SUNXI_UNLOCKED                (0xA5)
+#define     SUNXI_NOLOCK                (0)
+#define     SUNXI_LOCKING               (0xAA)
+#define     SUNXI_RELOCKING             (0xA0)
+#define     SUNXI_UNLOCK                (0xA5)
 /* partition information */
 typedef struct sunxi_partition_t
 {

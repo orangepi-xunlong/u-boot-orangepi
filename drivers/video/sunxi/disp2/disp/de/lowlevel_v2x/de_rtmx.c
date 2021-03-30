@@ -1,19 +1,15 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_v2x/de_rtmx.c
+/**
+ *All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
+ *File name   :de_rtmx.c
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ *Description :display engine 2.0 realtime mixer
+ *             processing base functions implement
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *History     :2014/02/08  iptang  v0.1  Initial version
  *
- */
+*/
+
 #include "de_rtmx.h"
 #include "de_rtmx_type.h"
 #include "de_scaler.h"
@@ -179,10 +175,8 @@ int de_rtmx_init(unsigned int sel, uintptr_t reg_base)
 
 	de_base = reg_base;
 
-	if (sel > DE_NUM) {
+	if (sel > de_feat_get_num_screens())
 		__wrn("sel %d out of range\n", sel);
-		return -1;
-	}
 
 	vi_chno = de_feat_get_num_vi_chns(sel);
 	ui_chno = de_feat_get_num_ui_chns(sel);
@@ -469,6 +463,9 @@ int de_rtmx_set_lay_cfg(unsigned int sel, unsigned int chno, unsigned int layno,
 	int vi_chno = de_feat_get_num_vi_chns(sel);
 
 	if (chno >= vi_chno) {
+		struct __ui_lay_reg_t *lyr_cfg =
+		    &de200_rtmx[sel].ui_ovl[chno-vi_chno]->ui_lay_cfg[layno];
+
 		de200_rtmx[sel].ui_ovl[chno -
 				       vi_chno]->ui_lay_cfg[layno].lay_attr.
 		    bits.lay_en = cfg->en;
@@ -484,6 +481,8 @@ int de_rtmx_set_lay_cfg(unsigned int sel, unsigned int chno, unsigned int layno,
 		de200_rtmx[sel].ui_ovl[chno -
 				       vi_chno]->ui_lay_cfg[layno].lay_attr.
 		    bits.lay_alpctl = cfg->premul_ctl;
+		/* Using burst 4 for better efficiency */
+		lyr_cfg->lay_attr.bits.burst = 0x1;
 		de200_rtmx[sel].ui_ovl[chno -
 				       vi_chno]->ui_lay_cfg[layno].lay_attr.
 		    bits.lay_top_down = cfg->top_bot_en;
@@ -507,6 +506,9 @@ int de_rtmx_set_lay_cfg(unsigned int sel, unsigned int chno, unsigned int layno,
 
 		ui_attr_block[sel][chno - vi_chno][layno].dirty = 1;
 	} else {
+		struct __vi_lay_reg_t *lyr_cfg =
+		    &de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno];
+
 		if (DE_FORMAT_YUV422_I_VYUY == cfg->fmt) {
 			ui_sel = 0x0;
 			fmt = 0x0;
@@ -554,17 +556,15 @@ int de_rtmx_set_lay_cfg(unsigned int sel, unsigned int chno, unsigned int layno,
 		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
 		    lay_en = cfg->en;
 		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
-		    alpmode = cfg->alpha_mode;
-		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
-		    alpctl = cfg->premul_ctl;
-		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
-		    alpha = cfg->alpha;
-		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
 		    lay_fcolor_en = cfg->fcolor_en;
 		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
 		    lay_fmt = fmt;
 		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
 		    ui_sel = ui_sel;
+		/* Using burst 4 for better efficiency */
+		lyr_cfg->lay_attr.bits.yburst = 0x1;
+		lyr_cfg->lay_attr.bits.uburst = 0x1;
+		lyr_cfg->lay_attr.bits.vburst = 0x1;
 		de200_rtmx[sel].vi_ovl[chno]->vi_lay_cfg[layno].lay_attr.bits.
 		    lay_top_down = cfg->top_bot_en;
 
@@ -831,29 +831,29 @@ int de_rtmx_get_3d_in_single_size(enum de_3d_in_mode inmode,
 
 	switch (inmode) {
 	case DE_3D_SRC_MODE_TB:
-		/*size->w = size->w;*/
+		size->w = size->w;
 		size->h = size->h >> 1;
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	case DE_3D_SRC_MODE_SSF:
 	case DE_3D_SRC_MODE_SSH:
 		size->w = size->w >> 1;
-		/*size->h = size->h;*/
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->h = size->h;
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	case DE_3D_SRC_MODE_LI:
-		/*size->w = size->w;*/
+		size->w = size->w;
 		size->h = size->h >> 1;
-		/*size->x = size->x;*/
+		size->x = size->x;
 		size->y = size->y >> 1;
 		break;
 	case DE_3D_SRC_MODE_FP:
-		/*size->w = size->w;*/
-		/*size->h = size->h;*/
-		/*size->x = size->x;*/
-		/*size->y = size->y;*/
+		size->w = size->w;
+		size->h = size->h;
+		size->x = size->x;
+		size->y = size->y;
 		break;
 	default:
 		/* undefine input mode */
@@ -1213,11 +1213,10 @@ int de_rtmx_set_overlay_size(unsigned int sel, unsigned int chno,
 	return 0;
 }
 
-static int de_rtmx_get_coarse_fac(unsigned int sel, unsigned int chno,
-				  unsigned int ovl_w, unsigned int ovl_h,
-				  unsigned int vsu_outw, unsigned int vsu_outh,
-				  unsigned int fmt, unsigned int lcd_fps,
-				  unsigned int lcd_height,
+static int de_rtmx_get_coarse_fac(unsigned int sel, unsigned int ovl_w,
+				  unsigned int ovl_h, unsigned int vsu_outw,
+				  unsigned int vsu_outh, unsigned int fmt,
+				  unsigned int lcd_fps, unsigned int lcd_height,
 				  unsigned int de_freq_mhz, unsigned int *yhm,
 				  unsigned int *yhn, unsigned int *yvm,
 				  unsigned int *yvn, unsigned int *chm,
@@ -1283,17 +1282,8 @@ static int de_rtmx_get_coarse_fac(unsigned int sel, unsigned int chno,
 	*chn = 0;
 	*midyw = ovl_w;
 	*midcw = ovl_w >> wshift;
-	if ((format > 2) && (ovl_w == vsu_outw) && (ovl_h == vsu_outh)) {
-		*yvm = 0;
-		*yvn = 0;
-		*cvm = 0;
-		*cvn = 0;
-		*midyh = ovl_h;
-		*midch = ovl_h >> hshift;
-		return status;
-	}
 
-	linebuf = de_feat_get_scale_linebuf_for_yuv(sel, chno);
+	linebuf = de_feat_get_scale_linebuf(sel);
 	if ((ovl_w > linebuf)
 	    && (ovl_w > 8 * vsu_outw)) {
 		tmpyhn = (linebuf < (8 * vsu_outw)) ?
@@ -1421,10 +1411,10 @@ int de_rtmx_set_coarse_fac(unsigned int sel, unsigned char chno,
 	int status;
 
 	status =
-	    de_rtmx_get_coarse_fac(sel, chno, ovl_w, ovl_h, vsu_outw, vsu_outh,
-				   fmt, lcd_fps, lcd_height, de_freq_mhz, &yhm,
-				   &yhn, &yvm, &yvn, &chm, &chn, &cvm, &cvn,
-				   midyw, midyh, midcw, midch);
+	    de_rtmx_get_coarse_fac(sel, ovl_w, ovl_h, vsu_outw, vsu_outh, fmt,
+				   lcd_fps, lcd_height, de_freq_mhz, &yhm, &yhn,
+				   &yvm, &yvn, &chm, &chn, &cvm, &cvn, midyw,
+				   midyh, midcw, midch);
 
 	de200_rtmx[sel].vi_ovl[chno]->vi_hori_ds[0].bits.m = yhm;
 	de200_rtmx[sel].vi_ovl[chno]->vi_hori_ds[0].bits.n = yhn;

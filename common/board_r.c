@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2002-2006
@@ -7,67 +6,120 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <api.h>
 /* TODO: can we just include all these headers whether needed or not? */
 #if defined(CONFIG_CMD_BEDBUG)
 #include <bedbug/type.h>
 #endif
-#include <command.h>
-#include <console.h>
+#ifdef CONFIG_HAS_DATAFLASH
+#include <dataflash.h>
+#endif
 #include <dm.h>
 #include <environment.h>
 #include <fdtdec.h>
+#if defined(CONFIG_CMD_IDE)
 #include <ide.h>
+#endif
 #include <initcall.h>
+#ifdef CONFIG_PS2KBD
+#include <keyboard.h>
+#endif
 #if defined(CONFIG_CMD_KGDB)
 #include <kgdb.h>
 #endif
+#include <logbuff.h>
 #include <malloc.h>
-#include <mapmem.h>
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
 #endif
 #include <mmc.h>
 #include <nand.h>
-#include <of_live.h>
 #include <onenand_uboot.h>
 #include <scsi.h>
 #include <serial.h>
 #include <spi.h>
 #include <stdio_dev.h>
-#include <timer.h>
 #include <trace.h>
 #include <watchdog.h>
 #ifdef CONFIG_ADDR_MAP
 #include <asm/mmu.h>
 #endif
 #include <asm/sections.h>
+#ifdef CONFIG_X86
+#include <asm/init_helpers.h>
+#endif
 #include <dm/root.h>
 #include <linux/compiler.h>
 #include <linux/err.h>
-#include <efi_loader.h>
 #include <fdt_support.h>
 
-#ifdef CONFIG_ARCH_SUNXI
+#if defined(CONFIG_ALLWINNER)
+#include <private_uboot.h>
 #include <sunxi_board.h>
-#include <sunxi_flash.h>
-#endif
-#ifdef CONFIG_SOUND_SUNXI_BOOT_TONE
-#include <sunxi_boot_tone.h>
+#include <sys_partition.h>
+#include <sys_config.h>
+#include <sys_config_old.h>
+#include <smc.h>
+#include <securestorage.h>
+#include <arisc.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
 ulong monitor_flash_len;
 
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-extern int auto_update_check(void);
+#ifdef CONFIG_ARCH_HOMELET
+static int sunxi_prepare_hdcpkey(void)
+{
+	int hdcpkey_enable=0;
+	int ret = 0;
+	sunxi_secure_storage_info_t secure_object;
+
+	ret = script_parser_fetch("hdmi", "hdmi_hdcp_enable", &hdcpkey_enable, 1);
+	if ((ret) || (hdcpkey_enable != 1)) {
+		printf("hdcp is closed by sys config.\n");
+		return 0;
+	}
+
+	memset(&secure_object, 0, sizeof(secure_object));
+	ret = sunxi_secure_storage_init();
+	if (ret) {
+		printf("sunxi init secure storage failed\n");
+		return -1;
+	}
+
+	ret = sunxi_secure_object_up("hdcpkey",(void*)&secure_object,sizeof(secure_object));
+	if (ret) {
+		printf("probe hdcp key failed\n");
+		return -1;
+	}
+
+#if 0
+	printf("***** hdcpdata:\n");
+	sunxi_dump(secure_object.key_data, 288);
 #endif
 
-__weak int board_flash_wp_on(void)
+	ret = smc_tee_keybox_store("hdcpkey", (void*)&secure_object, sizeof(secure_object));
+	if (ret) {
+		printf("ssk encrypt failed\n");
+		return -1;
+	}
+
+	ret = smc_aes_rssk_decrypt_to_keysram();
+	if (ret) {
+		printf("push hdcp key failed\n");
+		return -1;
+	}
+	printf("load hdcpkey success.\n");
+	return 0;
+}
+#endif
+
+int __board_flash_wp_on(void)
 {
 	/*
 	 * Most flashes can't be detected when write protection is enabled,
@@ -77,9 +129,15 @@ __weak int board_flash_wp_on(void)
 	return 0;
 }
 
-__weak void cpu_secondary_init_r(void)
+int board_flash_wp_on(void)
+	__attribute__ ((weak, alias("__board_flash_wp_on")));
+
+void __cpu_secondary_init_r(void)
 {
 }
+
+void cpu_secondary_init_r(void)
+	__attribute__ ((weak, alias("__cpu_secondary_init_r")));
 
 static int initr_secondary_cpu(void)
 {
@@ -104,56 +162,12 @@ static int initr_trace(void)
 	return 0;
 }
 
-
-#ifdef CONFIG_SUNXI_LEDC
-static int initr_ledc(void)
-{
-	int node;
-	int led_count, led_r, led_g, led_b;
-	int workmode = get_boot_work_mode();
-
-	if (workmode != WORK_MODE_BOOT)
-		return 0;
-
-	printf("%s\n", __func__);
-
-	node =  fdt_path_offset(working_fdt, "ledc");
-	if (node < 0) {
-		printf("unable to find ledc node in device tree.\n");
-		return 0;
-	}
-	if (!fdtdec_get_is_enabled(working_fdt, node)) {
-		printf("ledc disabled in device tree\n");
-		return 0;
-	}
-
-	if (fdt_getprop_u32(working_fdt, node, "led_count", &led_count) < 0)
-		led_count = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_r", &led_r) < 0)
-		led_r = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_g", &led_g) < 0)
-		led_g = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_b", &led_b) < 0)
-		led_b = 0;
-
-	if (led_r == 0 && led_g == 0 && led_b == 0)
-		return 0;
-
-	sunxi_ledc_init();
-
-	debug("count:%d G:%d R:%d B:%d\n", led_count, led_g, led_r, led_b);
-	sunxi_set_led_brightness(led_count, led_g, led_r, led_b);
-	return 0;
-}
-#endif
 static int initr_reloc(void)
 {
-	/* tell others: relocation done */
-	gd->flags |= GD_FLG_RELOC | GD_FLG_FULL_MALLOC_INIT;
-	set_working_fdt_addr((ulong)gd->fdt_blob);
+	set_working_fdt_addr((void*)gd->fdt_blob);
+	
+	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
+	bootstage_mark_name(BOOTSTAGE_ID_START_UBOOT_R, "board_init_r");
 	return 0;
 }
 
@@ -178,10 +192,11 @@ __weak int fixup_cpu(void)
 static int initr_reloc_global_data(void)
 {
 #ifdef __ARM__
-	monitor_flash_len = _end - __image_copy_start;
-#elif defined(CONFIG_NDS32) || defined(CONFIG_RISCV)
-	monitor_flash_len = (ulong)&_end - (ulong)&_start;
-#elif !defined(CONFIG_SANDBOX) && !defined(CONFIG_NIOS2)
+	
+	//ulong head_align_size = get_spare_head_size();
+	monitor_flash_len = _end - __image_copy_start;// + head_align_size;
+	
+#elif !defined(CONFIG_SANDBOX)
 	monitor_flash_len = (ulong)&__init_end - gd->relocaddr;
 #endif
 #if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
@@ -208,17 +223,6 @@ static int initr_reloc_global_data(void)
 	 */
 	gd->env_addr += gd->relocaddr - CONFIG_SYS_MONITOR_BASE;
 #endif
-#ifdef CONFIG_OF_EMBED
-	/*
-	 * The fdt_blob needs to be moved to new relocation address
-	 * incase of FDT blob is embedded with in image
-	 */
-	gd->fdt_blob += gd->reloc_off;
-#endif
-#ifdef CONFIG_EFI_LOADER
-	efi_runtime_relocate(gd->relocaddr, NULL);
-#endif
-
 	return 0;
 }
 
@@ -228,148 +232,36 @@ static int initr_serial(void)
 	return 0;
 }
 
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_MIPS)
-static int initr_trap(void)
-{
-	/*
-	 * Setup trap handlers
-	 */
-#if defined(CONFIG_PPC)
-	trap_init(gd->relocaddr);
-#else
-	trap_init(CONFIG_SYS_SDRAM_BASE);
+#ifdef CONFIG_AUTO_UPDATE
+extern int auto_update_check(void);
 #endif
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_ADDR_MAP
-static int initr_addr_map(void)
-{
-	init_addr_map();
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_POST
-static int initr_post_backlog(void)
-{
-	post_output_backlog();
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_SYS_INIT_RAM_LOCK) && defined(CONFIG_E500)
-static int initr_unlock_ram_in_cache(void)
-{
-	unlock_ram_in_cache();	/* it's time to unlock D-cache in e500 */
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_PCI
-static int initr_pci(void)
-{
-#ifndef CONFIG_DM_PCI
-	pci_init();
-#endif
-
-	return 0;
-}
-#endif
-
-static int initr_barrier(void)
-{
-#ifdef CONFIG_PPC
-	/* TODO: Can we not use dmb() macros for this? */
-	asm("sync ; isync");
-#endif
-	return 0;
-}
-
+extern int sunxi_widevine_keybox_install(void);
+extern void mem_noncache_malloc_init(uint noncache_start, uint noncache_size);
 static int initr_malloc(void)
 {
 	ulong malloc_start;
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
-	debug("Pre-reloc malloc() used %#lx bytes (%ld KB)\n", gd->malloc_ptr,
-	      gd->malloc_ptr / 1024);
-#endif
-	/* The malloc area is immediately below the monitor copy in DRAM */
 	malloc_start = gd->relocaddr - TOTAL_MALLOC_LEN;
 	mem_malloc_init((ulong)map_sysmem(malloc_start, TOTAL_MALLOC_LEN),
 			TOTAL_MALLOC_LEN);
-	return 0;
-}
+	debug("malloc start addr is %lx, size %dk \n",malloc_start,TOTAL_MALLOC_LEN>>10 );
 
-static int initr_console_record(void)
+#ifdef  CONFIG_NONCACHE_MEMORY
 {
-#if defined(CONFIG_CONSOLE_RECORD)
-	return console_record_init();
-#else
-	return 0;
-#endif
-}
-
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-static int initr_noncached(void)
-{
-	noncached_init();
-	return 0;
+	mem_noncache_malloc_init(gd->malloc_noncache_start, CONFIG_NONCACHE_MEMORY_SIZE);
+	debug("no cache malloc start addr is %lx, size %dk \n",gd->malloc_noncache_start,TOTAL_MALLOC_LEN>>10 );
 }
 #endif
-
-#ifdef CONFIG_OF_LIVE
-static int initr_of_live(void)
-{
-	int ret;
-
-	bootstage_start(BOOTSTAGE_ID_ACCUM_OF_LIVE, "of_live");
-	ret = of_live_build(gd->fdt_blob, (struct device_node **)&gd->of_root);
-	bootstage_accum(BOOTSTAGE_ID_ACCUM_OF_LIVE);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_DM
-static int initr_dm(void)
-{
-	int ret;
-
-	/* Save the pre-reloc driver model and start a new one */
-	gd->dm_root_f = gd->dm_root;
-	gd->dm_root = NULL;
-#ifdef CONFIG_TIMER
-	gd->timer = NULL;
-#endif
-	bootstage_start(BOOTSTATE_ID_ACCUM_DM_R, "dm_r");
-	ret = dm_init_and_scan(false);
-	bootstage_accum(BOOTSTATE_ID_ACCUM_DM_R);
-	if (ret)
-		return ret;
-#ifdef CONFIG_TIMER_EARLY
-	ret = dm_timer_init();
-	if (ret)
-		return ret;
-#endif
-
-	return 0;
-}
-#endif
-
-static int initr_bootstage(void)
-{
-	bootstage_mark_name(BOOTSTAGE_ID_START_UBOOT_R, "board_init_r");
-
+	
 	return 0;
 }
 
 __weak int power_init_board(void)
 {
+#ifdef CONFIG_SUNXI_AXP
+	extern int axp_reinit(void);
+	axp_reinit();
+#endif
 	return 0;
 }
 
@@ -379,179 +271,22 @@ static int initr_announce(void)
 	return 0;
 }
 
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-static int initr_manual_reloc_cmdtable(void)
+
+
+#ifdef CONFIG_GENERIC_MMC
+int initr_mmc(void)
 {
-	fixup_cmdtable(ll_entry_start(cmd_tbl_t, cmd),
-		       ll_entry_count(cmd_tbl_t, cmd));
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_MTD_NOR_FLASH)
-static int initr_flash(void)
-{
-	ulong flash_size = 0;
-	bd_t *bd = gd->bd;
-
-	puts("Flash: ");
-
-	if (board_flash_wp_on())
-		printf("Uninitialized - Write Protect On\n");
-	else
-		flash_size = flash_init();
-
-	print_size(flash_size, "");
-#ifdef CONFIG_SYS_FLASH_CHECKSUM
-	/*
-	 * Compute and print flash CRC if flashchecksum is set to 'y'
-	 *
-	 * NOTE: Maybe we should add some WATCHDOG_RESET()? XXX
-	 */
-	if (env_get_yesno("flashchecksum") == 1) {
-		const uchar *flash_base = (const uchar *)CONFIG_SYS_FLASH_BASE;
-
-		printf("  CRC: %08X", crc32(0,
-					    flash_base,
-					    flash_size));
-	}
-#endif /* CONFIG_SYS_FLASH_CHECKSUM */
-	putc('\n');
-
-	/* update start of FLASH memory    */
-#ifdef CONFIG_SYS_FLASH_BASE
-	bd->bi_flashstart = CONFIG_SYS_FLASH_BASE;
-#endif
-	/* size of FLASH memory (final value) */
-	bd->bi_flashsize = flash_size;
-
-#if defined(CONFIG_SYS_UPDATE_FLASH_SIZE)
-	/* Make a update of the Memctrl. */
-	update_flash_size(flash_size);
-#endif
-
-#if defined(CONFIG_OXC) || defined(CONFIG_RMU)
-	/* flash mapped at end of memory map */
-	bd->bi_flashoffset = CONFIG_SYS_TEXT_BASE + flash_size;
-#elif CONFIG_SYS_MONITOR_BASE == CONFIG_SYS_FLASH_BASE
-	bd->bi_flashoffset = monitor_flash_len;	/* reserved area for monitor */
-#endif
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_PPC) && !defined(CONFIG_DM_SPI)
-static int initr_spi(void)
-{
-	/* MPC8xx does this here */
-#ifdef CONFIG_MPC8XX_SPI
-#if !defined(CONFIG_ENV_IS_IN_EEPROM)
-	spi_init_f();
-#endif
-	spi_init_r();
-#endif
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_CMD_NAND
-/* go init the NAND */
-static int initr_nand(void)
-{
-	puts("NAND:  ");
-	nand_init();
-	printf("%lu MiB\n", nand_size() / 1024);
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_CMD_ONENAND)
-/* go init the NAND */
-static int initr_onenand(void)
-{
-	puts("NAND:  ");
-	onenand_init();
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_MMC
-static int initr_mmc(void)
-{
-	/*not call this func for sunxi plat*/
-#ifndef CONFIG_ARCH_SUNXI
 	puts("MMC:   ");
 	mmc_initialize(gd->bd);
-#endif
 	return 0;
 }
 #endif
 
-#ifdef CONFIG_ARCH_SUNXI
-static int initr_sunxi_plat(void)
-{
-	__maybe_unused int ret = 0;
-
-#ifdef CONFIG_BOOT_GUI
-	sunxi_early_logo_display();
-#endif
-
-#ifdef CONFIG_SUNXI_BOX_STANDBY
-	do_box_standby();
-#endif
-
-#ifdef CONFIG_ATF_BOX_STANDBY
-	atf_box_standby();
-#endif
-
-#ifdef CONFIG_IR_BOOT_RECOVERY
-	check_ir_boot_recovery();
-#endif
-#if defined(CONFIG_SUNXI_HOMLET)
-	sunxi_boot_init_gpio();
-#endif
-
-#ifdef CONFIG_RECOVERY_KEY
-	check_recovery_key();
-#endif
-	tick_printf("flash init start\n");
-
-#ifdef CONFIG_SUNXI_FLASH
-	ret = sunxi_flash_init_ext();
-#endif
-#ifdef CONFIG_SUNXI_UBIFS
-	int workmode = get_boot_work_mode();
-
-	if (workmode == WORK_MODE_BOOT && nand_use_ubi()) {
-		ubi_nand_probe_uboot();
-		ubi_nand_attach_mtd();
-	}
-#endif
-
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-	auto_update_check();
-#endif
-
-	return ret;
-}
-
-static int sunxi_burn_key(void)
-{
-#ifdef CONFIG_CMD_SUNXI_AUTO_FEL
-	sunxi_auto_fel_by_usb();
-#endif
-#ifdef CONFIG_SUNXI_BURN
-	pr_msg("try to burn key\n");
-	sunxi_keydata_burn_by_usb();
-#endif
-	return 0;
-}
-#endif
 
 /*
  * Tell if it's OK to load the environment early in boot.
  *
- * If CONFIG_OF_CONTROL is defined, we'll check with the FDT to see
+ * If CONFIG_OF_CONFIG is defined, we'll check with the FDT to see
  * if this is OK (defaulting to saying it's OK).
  *
  * NOTE: Loading the environment early can be a bad idea if security is
@@ -577,27 +312,11 @@ static int initr_env(void)
 		env_relocate();
 	else
 		set_default_env(NULL);
-#ifdef CONFIG_OF_CONTROL
-	env_set_addr("fdtcontroladdr", gd->fdt_blob);
-#endif
 
 	/* Initialize from environment */
-	load_addr = env_get_ulong("loadaddr", 16, load_addr);
-
+	load_addr = getenv_ulong("loadaddr", 16, load_addr);
 	return 0;
 }
-
-#ifdef CONFIG_SYS_BOOTPARAMS_LEN
-static int initr_malloc_bootparams(void)
-{
-	gd->bd->bi_boot_params = (ulong)malloc(CONFIG_SYS_BOOTPARAMS_LEN);
-	if (!gd->bd->bi_boot_params) {
-		puts("WARNING: Cannot allocate space for boot parameters\n");
-		return -ENOMEM;
-	}
-	return 0;
-}
-#endif
 
 static int initr_jumptable(void)
 {
@@ -605,14 +324,6 @@ static int initr_jumptable(void)
 	return 0;
 }
 
-#if defined(CONFIG_API)
-static int initr_api(void)
-{
-	/* Initialize API */
-	api_init();
-	return 0;
-}
-#endif
 
 /* enable exceptions */
 #ifdef CONFIG_ARM
@@ -623,195 +334,189 @@ static int initr_enable_interrupts(void)
 }
 #endif
 
-#ifdef CONFIG_CMD_NET
-static int initr_ethaddr(void)
-{
-	bd_t *bd = gd->bd;
-
-	/* kept around for legacy kernels only ... ignore the next section */
-	eth_env_get_enetaddr("ethaddr", bd->bi_enetaddr);
-#ifdef CONFIG_HAS_ETH1
-	eth_env_get_enetaddr("eth1addr", bd->bi_enet1addr);
-#endif
-#ifdef CONFIG_HAS_ETH2
-	eth_env_get_enetaddr("eth2addr", bd->bi_enet2addr);
-#endif
-#ifdef CONFIG_HAS_ETH3
-	eth_env_get_enetaddr("eth3addr", bd->bi_enet3addr);
-#endif
-#ifdef CONFIG_HAS_ETH4
-	eth_env_get_enetaddr("eth4addr", bd->bi_enet4addr);
-#endif
-#ifdef CONFIG_HAS_ETH5
-	eth_env_get_enetaddr("eth5addr", bd->bi_enet5addr);
-#endif
-	return 0;
-}
-#endif /* CONFIG_CMD_NET */
-
-#ifdef CONFIG_CMD_KGDB
-static int initr_kgdb(void)
-{
-	puts("KGDB:  ");
-	kgdb_init();
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_LED_STATUS)
-static int initr_status_led(void)
-{
-#if defined(CONFIG_LED_STATUS_BOOT)
-	status_led_set(CONFIG_LED_STATUS_BOOT, CONFIG_LED_STATUS_BLINKING);
-#else
-	status_led_init();
-#endif
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
-static int initr_scsi(void)
-{
-	puts("SCSI:  ");
-	scsi_init();
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_BITBANGMII
-static int initr_bbmii(void)
-{
-	bb_miiphy_init();
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_CMD_NET
-static int initr_net(void)
-{
-	puts("Net:   ");
-	eth_initialize();
-#if defined(CONFIG_RESET_PHY_R)
-	debug("Reset Ethernet PHY\n");
-	reset_phy();
-#endif
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_POST
-static int initr_post(void)
-{
-	post_run(NULL, POST_RAM | post_bootmode_get(0));
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_IDE)
-static int initr_pcmcia(void)
-{
-	puts("PCMCIA:");
-	pcmcia_init();
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_IDE)
-static int initr_ide(void)
-{
-	puts("IDE:   ");
-#if defined(CONFIG_START_IDE)
-	if (board_start_ide())
-		ide_init();
-#else
-	ide_init();
-#endif
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_PRAM)
-/*
- * Export available size of memory for Linux, taking into account the
- * protected RAM at top of memory
- */
-int initr_mem(void)
-{
-	ulong pram = 0;
-	char memsz[32];
-
-	pram = env_get_ulong("pram", 10, CONFIG_PRAM);
-	sprintf(memsz, "%ldk", (long int)((gd->ram_size / 1024) - pram));
-	env_set("mem", memsz);
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_CMD_BEDBUG
-static int initr_bedbug(void)
-{
-	bedbug_init();
-
-	return 0;
-}
-#endif
 
 static int run_main_loop(void)
 {
-#ifdef CONFIG_SANDBOX
-	sandbox_main_loop_init();
-#endif
+	sunxi_tick_printf("inter uboot shell\n");
 	/* main_loop() can return to retry autoboot, if so just run it again */
 	for (;;)
 		main_loop();
 	return 0;
 }
 
+extern int script_init(void);
+extern int PowerCheck(void);
+extern int sunxi_keydata_burn_by_usb(void);
+#if defined(CONFIG_BOX_STANDBY)
+extern int do_box_standby(void);
+#endif
+
+static int initr_sunxi_base(void)
+{
+	board_late_init();
+	return 0;
+}
+
+static int sunxi_burn_key(void)
+{
+
+#ifdef CONFIG_SUNXI_KEY_BURN
+	sunxi_keydata_burn_by_usb();
+#endif
+	return 0;
+}
+
+
+#ifdef  CONFIG_SUNXI_DISPLAY
+extern int sunxi_hdcp_keybox_install(void);
+int display_for_hdcp (void)
+{
+	int hdcpkey_enable=0;
+	int ret = 0;
+	sunxi_secure_storage_info_t secure_object;
+
+	ret = script_parser_fetch("hdmi_para", "hdmi_hdcp_enable", &hdcpkey_enable, 1);
+	if((ret) || (hdcpkey_enable != 1))
+	{
+		board_display_device_open();
+		board_display_layer_request();
+		return 0;
+	}
+
+	memset(&secure_object, 0, sizeof(secure_object));
+	ret = sunxi_secure_storage_init();
+	if(ret)
+	{
+		printf("sunxi init secure storage failed\n");
+		return -1;
+	}
+
+	ret = sunxi_secure_object_up("hdcpkey",(void*)&secure_object,sizeof(secure_object));
+	if(ret)
+	{
+		printf("probe hdcp key failed\n");
+		return -1;
+	}
+
+	ret = smc_tee_keybox_store("hdcpkey", (void*)&secure_object, sizeof(secure_object));
+	if (ret) {
+		printf("ssk encrypt failed\n");
+
+		return -1;
+	}
+
+	ret = smc_aes_rssk_decrypt_to_keysram();
+	if(ret)
+	{
+		printf("push hdcp key failed\n");
+		return -1;
+	}
+
+	board_display_device_open();
+	board_display_layer_request();
+	return 0;
+}
+
+static int initr_sunxi_display(void)
+{
+
+	int workmode = uboot_spare_head.boot_data.work_mode;
+	if(!((workmode == WORK_MODE_BOOT) ||
+		(workmode == WORK_MODE_CARD_PRODUCT) ||
+		(workmode == WORK_MODE_SPRITE_RECOVERY)))
+	{
+		return 0;
+	}
+	tick_printf("start\n");
+	drv_disp_init();
+
+#ifndef CONFIG_ARCH_HOMELET
+	#ifdef CONFIG_SUNXI_HDCP_IN_SECURESTORAGE
+	display_for_hdcp();
+	#else
+	#ifndef CONFIG_BOOT_GUI
+	board_display_device_open();
+	board_display_layer_request();
+	#else
+	disp_devices_open();
+	fb_init();
+	#endif
+	#endif
+#else
+	#ifdef CONFIG_SUNXI_HDCP_IN_SECURESTORAGE
+	sunxi_prepare_hdcpkey();
+	#endif
+
+	#ifndef CONFIG_BOOT_GUI
+	board_display_device_open();
+	board_display_layer_request();
+	#else
+	disp_devices_open();
+	fb_init();
+	#endif
+
+#endif
+	tick_printf("end\n");
+	return 0;
+}
+#endif
+
+extern int sunxi_led_init(void);
+extern int sunxi_led_exit(int status);
+
+static int initr_sunxi_flash(void)
+{
+	int ret = 0;
+
+	ret = sunxi_flash_handle_init();
+	if(!ret)
+	{
+		sunxi_partition_init();
+	}
+    sunxi_led_exit(ret);
+	return ret;
+
+}
+static int platform_dma_init(void)
+{
+#ifdef CONFIG_SUNXI_DMA
+	extern void sunxi_dma_init(void);
+	sunxi_dma_init();
+#endif
+	return 0;
+}
+static int usb_net_init(void)
+{
+#if defined(CONFIG_CMD_NET)
+	puts("Net:   ");
+	eth_initialize(gd->bd);
+#if defined(CONFIG_RESET_PHY_R)
+	debug("Reset Ethernet PHY\n");
+	reset_phy();
+#endif
+#endif
+	return 0;
+}
+__weak int show_platform_info(void)
+{
+	return 0;
+}
+
 /*
  * Over time we hope to remove these functions with code fragments and
- * stub functions, and instead call the relevant function directly.
+ * stub funtcions, and instead call the relevant function directly.
  *
  * We also hope to remove most of the driver-related init and do it if/when
  * the driver is later used.
  *
  * TODO: perhaps reset the watchdog in the initcall function after each call?
  */
-static init_fnc_t init_sequence_r[] = {
+init_fnc_t init_sequence_r[] = {
 	initr_trace,
 	initr_reloc,
 	/* TODO: could x86/PPC have this also perhaps? */
 #ifdef CONFIG_ARM
 	initr_caches,
-	/* Note: For Freescale LS2 SoCs, new MMU table is created in DDR.
-	 *	 A temporary mapping of IFC high region is since removed,
-	 *	 so environmental variables in NOR flash is not available
-	 *	 until board_init() is called below to remap IFC to high
-	 *	 region.
-	 */
-#endif
-	initr_reloc_global_data,
-#if defined(CONFIG_SYS_INIT_RAM_LOCK) && defined(CONFIG_E500)
-	initr_unlock_ram_in_cache,
-#endif
-	initr_barrier,
-	initr_malloc,
-	log_init,
-	initr_bootstage,	/* Needs malloc() but has its own timer */
-	initr_console_record,
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-	initr_noncached,
-#endif
-	bootstage_relocate,
-#ifdef CONFIG_OF_LIVE
-	initr_of_live,
-#endif
-#ifdef CONFIG_DM
-	initr_dm,
-#endif
-#if defined(CONFIG_ARM) || defined(CONFIG_NDS32) || defined(CONFIG_RISCV)
 	board_init,	/* Setup chipselects */
 #endif
 	/*
@@ -820,197 +525,105 @@ static init_fnc_t init_sequence_r[] = {
 	 * davinci SOC's is added. Remove this check once all the board
 	 * implement this.
 	 */
-#ifdef CONFIG_CLOCKS
-	set_cpu_clk_info, /* Setup clock information */
-#endif
-#ifdef CONFIG_EFI_LOADER
-	efi_memory_init,
-#endif
-	stdio_init_tables,
+	initr_reloc_global_data,
 	initr_serial,
 	initr_announce,
-	INIT_FUNC_WATCHDOG_RESET
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-	initr_manual_reloc_cmdtable,
-#endif
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_MIPS)
-	initr_trap,
-#endif
-#ifdef CONFIG_ADDR_MAP
-	initr_addr_map,
-#endif
-#if defined(CONFIG_BOARD_EARLY_INIT_R)
-	board_early_init_r,
-#endif
-#ifdef CONFIG_SUNXI_LEDC
-	initr_ledc,
-#endif
-	INIT_FUNC_WATCHDOG_RESET
-#ifdef CONFIG_POST
-	initr_post_backlog,
-#endif
-	INIT_FUNC_WATCHDOG_RESET
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_EARLY_PCI_INIT)
-	/*
-	 * Do early PCI configuration _before_ the flash gets initialised,
-	 * because PCU resources are crucial for flash access on some boards.
-	 */
-	initr_pci,
-#endif
-#ifdef CONFIG_ARCH_EARLY_INIT_R
-	arch_early_init_r,
-#endif
+	show_platform_info,
+	initr_malloc,
+	script_init,
+	bootstage_relocate,
 	power_init_board,
-#ifdef CONFIG_MTD_NOR_FLASH
-	initr_flash,
-#endif
-	INIT_FUNC_WATCHDOG_RESET
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_X86)
-	/* initialize higher level parts of CPU like time base and timers */
-	cpu_init_r,
-#endif
-#ifdef CONFIG_PPC
-	initr_spi,
-#endif
-#ifdef CONFIG_CMD_NAND
-	initr_nand,
-#endif
-#ifdef CONFIG_CMD_ONENAND
-	initr_onenand,
-#endif
-#ifdef CONFIG_MMC
-	initr_mmc,
-#endif
-#ifdef CONFIG_SYS_BOOTPARAMS_LEN
-	initr_malloc_bootparams,
-#endif
-	INIT_FUNC_WATCHDOG_RESET
 	initr_secondary_cpu,
-#if defined(CONFIG_ID_EEPROM) || defined(CONFIG_SYS_I2C_MAC_OFFSET)
-	mac_read_from_eeprom,
-#endif
-	INIT_FUNC_WATCHDOG_RESET
-#if defined(CONFIG_PCI) && !defined(CONFIG_SYS_EARLY_PCI_INIT)
-	/*
-	 * Do pci configuration
-	 */
-	initr_pci,
-#endif
-	stdio_add_devices,
+	stdio_init,
 	initr_jumptable,
-#ifdef CONFIG_API
-	initr_api,
-#endif
 	console_init_r,		/* fully init console as a device */
-#ifdef CONFIG_DISPLAY_BOARDINFO_LATE
-	console_announce_r,
-	show_board_info,
-#endif
-#ifdef CONFIG_ARCH_MISC_INIT
-	arch_misc_init,		/* miscellaneous arch-dependent init */
-#endif
-#ifdef CONFIG_MISC_INIT_R
-	misc_init_r,		/* miscellaneous platform-dependent init */
-#endif
-	INIT_FUNC_WATCHDOG_RESET
-#ifdef CONFIG_CMD_KGDB
-	initr_kgdb,
-#endif
 	interrupt_init,
-#ifdef CONFIG_ARM
+#if defined(CONFIG_ARM) || defined(CONFIG_x86)
 	initr_enable_interrupts,
 #endif
-#ifdef CONFIG_ARCH_SUNXI
-	initr_sunxi_plat,
+#ifdef CONFIG_SUNXI
+	platform_dma_init,
+	//sunxi_arisc_probe,   //call this func here for optimize boot time
+#if defined(CONFIG_BOX_STANDBY)
+	do_box_standby,
 #endif
-	initr_env,
-	board_env_late_init,
-#if defined(CONFIG_MICROBLAZE) || defined(CONFIG_M68K)
-	timer_init,		/* initialize timer */
-#endif
-#if defined(CONFIG_LED_STATUS)
-	initr_status_led,
-#endif
-	/* PPC has a udelay(20) here dating from 2002. Why? */
-#ifdef CONFIG_CMD_NET
-	initr_ethaddr,
-#endif
-#ifdef CONFIG_ARCH_SUNXI
+	sunxi_led_init,
+	check_physical_key_early, //call the func here for check sprite mode
+	initr_sunxi_flash,
 	sunxi_burn_key,
+#ifdef  CONFIG_SUNXI_DISPLAY
+	initr_sunxi_display,
 #endif
-
-#ifdef CONFIG_BOARD_LATE_INIT
-	board_late_init,
+#ifdef CONFIG_AUTO_UPDATE
+	auto_update_check,
 #endif
-#if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
-	INIT_FUNC_WATCHDOG_RESET
-	initr_scsi,
+	PowerCheck,
+	initr_env,
+	initr_sunxi_base,
+#ifdef CONFIG_SUNXI_SECURE_STORAGE
+	sunxi_widevine_keybox_install,
 #endif
-#ifdef CONFIG_BITBANGMII
-	initr_bbmii,
+	//sunxi_arisc_wait_ready,  // must call this func here,because will call power_check later.
 #endif
-#ifdef CONFIG_CMD_NET
-	INIT_FUNC_WATCHDOG_RESET
-	initr_net,
-#endif
-#ifdef CONFIG_POST
-	initr_post,
-#endif
-#if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_IDE)
-	initr_pcmcia,
-#endif
-#if defined(CONFIG_IDE)
-	initr_ide,
-#endif
-#ifdef CONFIG_LAST_STAGE_INIT
-	INIT_FUNC_WATCHDOG_RESET
-	/*
-	 * Some parts can be only initialized if all others (like
-	 * Interrupts) are up and running (i.e. the PC-style ISA
-	 * keyboard).
-	 */
-	last_stage_init,
-#endif
-#ifdef CONFIG_CMD_BEDBUG
-	INIT_FUNC_WATCHDOG_RESET
-	initr_bedbug,
-#endif
-#if defined(CONFIG_PRAM)
-	initr_mem,
-#endif
-
-#ifdef CONFIG_SOUND_SUNXI_BOOT_TONE
-	sunxi_boot_tone_play,
-#endif
+	usb_net_init,
 	run_main_loop,
 };
 
+extern ulong _reset_vec;
+extern ulong _undefined_instruction;
+extern ulong _software_interrupt;
+extern ulong _prefetch_abort;
+extern ulong _data_abort;
+extern ulong _not_used;
+extern ulong _irq;
+extern ulong _fiq;
+
+#ifndef CONFIG_ARM64
+#ifdef CONFIG_USE_IRQ
+void intr_vector_fix(void)
+{
+	int i = 0;
+	ulong * vec_array[8] = {0};
+	vec_array[i++] = &_reset_vec;
+	vec_array[i++] = &_undefined_instruction;
+	vec_array[i++] = &_software_interrupt;
+	vec_array[i++] = &_prefetch_abort;
+	vec_array[i++] = &_data_abort;
+	vec_array[i++] = &_not_used;
+	vec_array[i++] = &_irq;
+	vec_array[i++] = &_fiq;
+
+	for(i =0; i < 8; i++)
+	{
+		debug("before fix: vector %d, addr %lx ,value 0x%lx\n", i ,(ulong)vec_array[i], *(vec_array[i]));
+		*(vec_array[i]) +=  (gd->reloc_off);
+		debug("after  fix: vector %d, addr %lx ,value 0x%lx\n", i ,(ulong)vec_array[i], *(vec_array[i]));
+	}
+}
+#endif
+#endif
+
 void board_init_r(gd_t *new_gd, ulong dest_addr)
 {
-	/*
-	 * Set up the new global data pointer. So far only x86 does this
-	 * here.
-	 * TODO(sjg@chromium.org): Consider doing this for all archs, or
-	 * dropping the new_gd parameter.
-	 */
-#if CONFIG_IS_ENABLED(X86_64)
-	arch_setup_gd(new_gd);
-#endif
 
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	int i;
 #endif
 
-#if !defined(CONFIG_X86) && !defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
+#ifndef CONFIG_X86
 	gd = new_gd;
 #endif
-	gd->flags &= ~GD_FLG_LOG_READY;
 
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	for (i = 0; i < ARRAY_SIZE(init_sequence_r); i++)
 		init_sequence_r[i] += gd->reloc_off;
 #endif
 
+#ifndef CONFIG_ARM64
+#ifdef CONFIG_USE_IRQ
+	intr_vector_fix();
+#endif
+#endif
 	if (initcall_run_list(init_sequence_r))
 		hang();
 

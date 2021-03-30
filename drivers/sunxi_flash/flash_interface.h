@@ -1,46 +1,33 @@
 
-// SPDX-License-Identifier: GPL-2.0+
-/*
- * (C) Copyright 2018-2020
- * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
- * wangwei <wangwei@allwinnertech.com>
- *
- */
-
 #ifndef _SUNXI_FLASH_INTERFACE_
 #define _SUNXI_FLASH_INTERFACE_
 
+extern int (* sunxi_flash_init_pt)(int stage);
+extern int (* sunxi_flash_read_pt) (uint start_block, uint nblock, void *buffer);
+extern int (* sunxi_flash_read_sequence) (uint start_block, uint nblock, void *buffer) ;
+extern int (* sunxi_flash_write_pt)(uint start_block, uint nblock, void *buffer);
+extern uint (* sunxi_flash_size_pt)(void) ;
+extern int (* sunxi_flash_exit_pt) (int force);
+extern int (* sunxi_flash_flush_pt) (void);
+extern int (* sunxi_flash_phyread_pt) (unsigned int start_block, unsigned int nblock, void *buffer);
+extern int (* sunxi_flash_phywrite_pt)(unsigned int start_block, unsigned int nblock, void *buffer);
 
-typedef struct _sunxi_flash_desc {
-
-	lbaint_t	lba;		/* number of blocks */
-	unsigned long	blksz;		/* block size */
-	int (*probe)(void);
-	int (*init)(int stage, int);
-	int (*exit)(int force);
-	int	(*read)(uint start_block, uint nblock, void *buffer);
-	int	(*write)(uint start_block, uint nblock, void *buffer);
-	int (*erase)(int erase, void *mbr_buffer);
-	int (*force_erase)(void);
-	int (*flush)(void);
-	uint (*size)(void) ;
-	int (*phyread) (unsigned int start_block, unsigned int nblock, void *buffer);
-	int (*phywrite)(unsigned int start_block, unsigned int nblock, void *buffer);
-	int (*secstorage_read)( int item, unsigned char *buf, unsigned int len) ;
-	int (*secstorage_write) (int item, unsigned char *buf, unsigned int len);
-	int (*download_spl) (unsigned char *buf, int len, unsigned int ext);
-	int (*download_toc) (unsigned char *buf, int len, unsigned int ext);
-	int (*write_end) (void);
-	int (*erase_area)(uint start_bloca, uint nblock);
-
-}sunxi_flash_desc;
+extern int (* sunxi_sprite_init_pt)(int stage) ;
+extern int (* sunxi_sprite_read_pt) (uint start_block, uint nblock, void *buffer) ;
+extern int (* sunxi_sprite_write_pt)(uint start_block, uint nblock, void *buffer) ;
+extern int (* sunxi_sprite_erase_pt)(int erase, void *mbr_buffer);
+extern uint (* sunxi_sprite_size_pt)(void);
+extern int (* sunxi_sprite_exit_pt) (int force) ;
+extern int (* sunxi_sprite_flush_pt)(void);
+extern int (* sunxi_sprite_force_erase_pt)(void)  ;
+extern int (* sunxi_sprite_phyread_pt) (unsigned int start_block, unsigned int nblock, void *buffer);
+extern int (* sunxi_sprite_phywrite_pt)(unsigned int start_block, unsigned int nblock, void *buffer);
 
 
-extern sunxi_flash_desc sunxi_nand_desc;
-extern sunxi_flash_desc sunxi_sdmmc_desc;
-extern sunxi_flash_desc sunxi_spinor_desc;
+extern int  nand_init_for_boot(int workmode);
+extern int  nand_init_for_sprite(int workmode);
 
-extern sunxi_flash_desc sunxi_sdmmcs_desc;
-
-
+extern int  sdmmc_init_for_boot(int workmode, int card_no);
+extern int  sdmmc_init_for_sprite(int workmode);
+extern int  sdmmc_init_card0_for_sprite(void);
 #endif

@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/disp_al.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #include "disp_al.h"
 #include "de_hal.h"
 
@@ -96,7 +80,7 @@ int disp_al_manager_disable_irq(unsigned int disp)
 
 int disp_al_enhance_apply(unsigned int disp, struct disp_enhance_config *config)
 {
-	if (config->flags & ENH_MODE_DIRTY) {
+	if (config->flags & ENHANCE_MODE_DIRTY) {
 		struct disp_csc_config csc_config;
 		de_dcsc_get_config(disp, &csc_config);
 		csc_config.enhance_mode = (config->info.mode >> 16);
@@ -273,13 +257,6 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para * panel, panel_extend_para *e
 	return 0;
 }
 
-int disp_al_lcd_cfg_ext(u32 screen_id, panel_extend_para *extend_panel)
-{
-	tcon0_cfg_ext(screen_id, extend_panel);
-
-	return 0;
-}
-
 int disp_al_lcd_enable(u32 screen_id, disp_panel_para * panel)
 {
 	tcon0_open(screen_id, panel);
@@ -318,14 +295,12 @@ int disp_al_lcd_query_irq(u32 screen_id, __lcd_irq_id_t irq_id, disp_panel_para 
 	int ret = 0;
 
 #if defined(SUPPORT_DSI) && defined(DSI_VERSION_40)
-	if (panel && LCD_IF_DSI == panel->lcd_if &&
-	    LCD_DSI_IF_COMMAND_MODE != panel->lcd_dsi_if) {
-		__dsi_irq_id_t dsi_irq = (LCD_IRQ_TCON0_VBLK == irq_id)
-					     ? DSI_IRQ_VIDEO_VBLK
-					     : DSI_IRQ_VIDEO_LINE;
+	if (LCD_IF_DSI == panel->lcd_if) {
+		__dsi_irq_id_t dsi_irq = (LCD_IRQ_TCON0_VBLK == irq_id)?DSI_IRQ_VIDEO_VBLK:DSI_IRQ_VIDEO_LINE;
 
 		return dsi_irq_query(screen_id, dsi_irq);
-	} else
+	}
+	else
 #endif
 		return tcon_irq_query(screen_id, irq_id);
 
@@ -500,11 +475,7 @@ int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info, st
 	struct lcd_clk_info clk_info;
 	disp_panel_para info;
 
-	if(para->sub_intf == LCD_HV_IF_CCIR656_2CYC){
-		al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_TV;
-	}
-	else
-		al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_LCD;
+	al_priv.output_type[screen_id] = (u32)DISP_OUTPUT_TYPE_LCD;
 	al_priv.output_mode[screen_id] = (u32)para->intf;
 	al_priv.output_fps[screen_id] = video_info->pixel_clk / video_info->hor_total_time /\
 		video_info->ver_total_time;
@@ -538,8 +509,6 @@ int disp_al_vdevice_cfg(u32 screen_id, struct disp_video_timings *video_info, st
 	clk_info.tcon_div = 11;//fixme
 	tcon0_set_dclk_div(screen_id, clk_info.tcon_div);
 
-	if (LCD_HV_IF_CCIR656_2CYC == info.lcd_hv_if)
-		tcon1_yuv_range(screen_id, 1);
 	if (0 != tcon0_cfg(screen_id, &info))
 		DE_WRN("lcd cfg fail!\n");
 	else
@@ -581,7 +550,7 @@ int disp_al_device_get_start_delay(u32 screen_id)
 {
 	u32 tcon_index = al_priv.tcon_index[screen_id];
 
-	tcon_index = (al_priv.tcon_index[screen_id] == 0)?0:1;
+	tcon_index = (al_priv.output_type[screen_id] == (u32)DISP_OUTPUT_TYPE_LCD)?0:1;
 	return tcon_get_start_delay(screen_id, tcon_index);
 }
 
@@ -716,7 +685,3 @@ int disp_al_get_display_size(unsigned int screen_id, unsigned int *width, unsign
 	return 0;
 }
 
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten)
-{
-	tcon_show_builtin_patten(hwdev_index, patten);
-}

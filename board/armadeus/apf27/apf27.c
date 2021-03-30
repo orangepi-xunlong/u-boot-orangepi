@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008-2013 Eric Jarrige <eric.jarrige@armadeus.org>
  *
  * based on the files by
  * Sascha Hauer, Pengutronix
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +16,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/gpio.h>
 #include <asm/gpio.h>
-#include <linux/errno.h>
+#include <asm/errno.h>
 #include "apf27.h"
 #include "crc.h"
 #include "fpga.h"
@@ -118,7 +119,7 @@ static int apf27_devices_init(void)
 	mx27_fec_init_pins();
 #endif
 
-#ifdef CONFIG_MMC_MXC
+#ifdef CONFIG_MXC_MMC
 	mx27_sd2_init_pins();
 	imx_gpio_mode((GPIO_PORTF | GPIO_OUT | GPIO_PUEN | GPIO_GPIO | 16));
 	gpio_request(PC_PWRON, "pc_pwron");
@@ -192,7 +193,7 @@ int dram_init(void)
 	return 0;
 }
 
-int dram_init_banksize(void)
+void dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size  = get_ram_size((void *)PHYS_SDRAM_1,
@@ -203,8 +204,6 @@ int dram_init_banksize(void)
 					     PHYS_SDRAM_2_SIZE);
 	else
 		gd->bd->bi_dram[1].size = 0;
-
-	return 0;
 }
 
 ulong board_get_usable_ram_top(ulong total_size)

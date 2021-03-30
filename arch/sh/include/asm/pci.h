@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * SH4 PCI Controller (PCIC) for U-Boot.
  * (C) Dustin McIntire (dustin@sensoria.com)
@@ -6,6 +5,8 @@
  * (C) 2008 Yusuke Goda <goda.yusuke@renesas.com>
  *
  * u-boot/include/asm-sh/pci.h
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _ASM_PCI_H_
 #define _ASM_PCI_H_

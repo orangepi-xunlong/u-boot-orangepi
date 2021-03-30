@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
-#include <tpm.h>
 #include <asm/state.h>
 #include <asm/unaligned.h>
 #include <linux/crc8.h>
@@ -57,7 +56,7 @@ enum {
  */
 static struct tpm_state {
 	uint8_t nvdata[NV_SEQ_COUNT][NV_DATA_SIZE];
-} g_state;
+} state;
 
 /**
  * sandbox_tpm_read_state() - read the sandbox EC state from the state file
@@ -83,7 +82,7 @@ static int sandbox_tpm_read_state(const void *blob, int node)
 		sprintf(prop_name, "nvdata%d", i);
 		prop = fdt_getprop(blob, node, prop_name, &len);
 		if (prop && len == NV_DATA_SIZE)
-			memcpy(g_state.nvdata[i], prop, NV_DATA_SIZE);
+			memcpy(state.nvdata[i], prop, NV_DATA_SIZE);
 	}
 
 	return 0;
@@ -111,7 +110,7 @@ static int sandbox_tpm_write_state(void *blob, int node)
 		char prop_name[20];
 
 		sprintf(prop_name, "nvdata%d", i);
-		fdt_setprop(blob, node, prop_name, g_state.nvdata[i],
+		fdt_setprop(blob, node, prop_name, state.nvdata[i],
 			    NV_DATA_SIZE);
 	}
 
@@ -136,11 +135,10 @@ static int index_to_seq(uint32_t index)
 	return -1;
 }
 
-static int sandbox_tpm_xfer(struct udevice *dev, const uint8_t *sendbuf,
-			    size_t send_size, uint8_t *recvbuf,
-			    size_t *recv_len)
+int tis_sendrecv(const u8 *sendbuf, size_t send_size,
+		 u8 *recvbuf, size_t *recv_len)
 {
-	struct tpm_state *tpm = dev_get_priv(dev);
+	struct tpm_state *tpm = &state;
 	uint32_t code, index, length, type;
 	uint8_t *data;
 	int seq;
@@ -213,10 +211,10 @@ static int sandbox_tpm_xfer(struct udevice *dev, const uint8_t *sendbuf,
 
 			data = recvbuf + TPM_RESPONSE_HEADER_LENGTH +
 					sizeof(uint32_t);
-			memset(&rsk, 0, sizeof(struct rollback_space_kernel));
 			rsk.struct_version = 2;
 			rsk.uid = ROLLBACK_SPACE_KERNEL_UID;
-			rsk.crc8 = crc8(0, (unsigned char *)&rsk,
+			rsk.kernel_versions = 0;
+			rsk.crc8 = crc8((unsigned char *)&rsk,
 					offsetof(struct rollback_space_kernel,
 						 crc8));
 			memcpy(data, &rsk, sizeof(rsk));
@@ -243,50 +241,20 @@ static int sandbox_tpm_xfer(struct udevice *dev, const uint8_t *sendbuf,
 	return 0;
 }
 
-static int sandbox_tpm_get_desc(struct udevice *dev, char *buf, int size)
+int tis_open(void)
 {
-	if (size < 15)
-		return -ENOSPC;
-
-	return snprintf(buf, size, "sandbox TPM");
-}
-
-static int sandbox_tpm_probe(struct udevice *dev)
-{
-	struct tpm_state *tpm = dev_get_priv(dev);
-
-	memcpy(tpm, &g_state, sizeof(*tpm));
-
+	printf("%s\n", __func__);
 	return 0;
 }
 
-static int sandbox_tpm_open(struct udevice *dev)
+int tis_close(void)
 {
+	printf("%s\n", __func__);
 	return 0;
 }
 
-static int sandbox_tpm_close(struct udevice *dev)
+int tis_init(void)
 {
+	printf("%s\n", __func__);
 	return 0;
 }
-
-static const struct tpm_ops sandbox_tpm_ops = {
-	.open		= sandbox_tpm_open,
-	.close		= sandbox_tpm_close,
-	.get_desc	= sandbox_tpm_get_desc,
-	.xfer		= sandbox_tpm_xfer,
-};
-
-static const struct udevice_id sandbox_tpm_ids[] = {
-	{ .compatible = "google,sandbox-tpm" },
-	{ }
-};
-
-U_BOOT_DRIVER(sandbox_tpm) = {
-	.name   = "sandbox_tpm",
-	.id     = UCLASS_TPM,
-	.of_match = sandbox_tpm_ids,
-	.ops    = &sandbox_tpm_ops,
-	.probe	= sandbox_tpm_probe,
-	.priv_auto_alloc_size = sizeof(struct tpm_state),
-};

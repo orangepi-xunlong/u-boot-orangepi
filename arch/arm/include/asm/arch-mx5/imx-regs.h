@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_MX5_IMX_REGS_H__
@@ -201,6 +202,11 @@
  */
 #define WBED		1
 
+#define CS0_128					0
+#define CS0_64M_CS1_64M				1
+#define CS0_64M_CS1_32M_CS2_32M			2
+#define CS0_32M_CS1_32M_CS2_32M_CS3_32M		3
+
 /*
  * CSPI register definitions
  */
@@ -287,6 +293,17 @@
 #define DP_OP_216	((6 << 4) + ((3 - 1)  << 0))
 #define DP_MFD_216	(4 - 1)
 #define DP_MFN_216	3
+
+#define CHIP_REV_1_0            0x10
+#define CHIP_REV_1_1            0x11
+#define CHIP_REV_2_0            0x20
+#define CHIP_REV_2_5		0x25
+#define CHIP_REV_3_0            0x30
+
+#define BOARD_REV_1_0           0x0
+#define BOARD_REV_2_0           0x1
+
+#define BOARD_VER_OFFSET	0x8
 
 #define IMX_IIM_BASE            (IIM_BASE_ADDR)
 
@@ -397,7 +414,8 @@ struct weim {
 
 #if defined(CONFIG_MX51)
 struct iomuxc {
-	u32	gpr[2];
+	u32	gpr0;
+	u32	gpr1;
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;
@@ -406,7 +424,9 @@ struct iomuxc {
 };
 #elif defined(CONFIG_MX53)
 struct iomuxc {
-	u32	gpr[3];
+	u32	gpr0;
+	u32	gpr1;
+	u32	gpr2;
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;
@@ -414,39 +434,6 @@ struct iomuxc {
 	u32	omux4;
 };
 #endif
-
-#define IOMUXC_GPR2_BITMAP_SPWG	0
-#define IOMUXC_GPR2_BITMAP_JEIDA	1
-
-#define IOMUXC_GPR2_BIT_MAPPING_CH0_OFFSET	6
-#define IOMUXC_GPR2_BIT_MAPPING_CH0_MASK	(1 << IOMUXC_GPR2_BIT_MAPPING_CH0_OFFSET)
-#define IOMUXC_GPR2_BIT_MAPPING_CH0_JEIDA	(IOMUXC_GPR2_BITMAP_JEIDA << \
-						 IOMUXC_GPR2_BIT_MAPPING_CH0_OFFSET)
-#define IOMUXC_GPR2_BIT_MAPPING_CH0_SPWG	(IOMUXC_GPR2_BITMAP_SPWG << \
-						 IOMUXC_GPR2_BIT_MAPPING_CH0_OFFSET)
-
-#define IOMUXC_GPR2_DATA_WIDTH_18	0
-#define IOMUXC_GPR2_DATA_WIDTH_24	1
-
-#define IOMUXC_GPR2_DATA_WIDTH_CH0_OFFSET	5
-#define IOMUXC_GPR2_DATA_WIDTH_CH0_MASK		(1 << IOMUXC_GPR2_DATA_WIDTH_CH0_OFFSET)
-#define IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT	(IOMUXC_GPR2_DATA_WIDTH_18 << \
-						 IOMUXC_GPR2_DATA_WIDTH_CH0_OFFSET)
-#define IOMUXC_GPR2_DATA_WIDTH_CH0_24BIT	(IOMUXC_GPR2_DATA_WIDTH_24 << \
-						 IOMUXC_GPR2_DATA_WIDTH_CH0_OFFSET)
-
-#define IOMUXC_GPR2_MODE_DISABLED	0
-#define IOMUXC_GPR2_MODE_ENABLED_DI0	1
-#define IOMUXC_GPR2_MODE_ENABLED_DI1	3
-
-#define IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET	0
-#define IOMUXC_GPR2_LVDS_CH0_MODE_MASK		(3 << IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
-#define IOMUXC_GPR2_LVDS_CH0_MODE_DISABLED	(IOMUXC_GPR2_MODE_DISABLED << \
-						 IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
-#define IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI0	(IOMUXC_GPR2_MODE_ENABLED_DI0 << \
-						 IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
-#define IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI1	(IOMUXC_GPR2_MODE_ENABLED_DI1 << \
-						 IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
 
 /* System Reset Controller (SRC) */
 struct src {
@@ -539,23 +526,6 @@ struct fuse_bank4_regs {
 	u32	fuse8_31[0x18];
 };
 #endif
-
-#define PWMCR_PRESCALER(x)	(((x - 1) & 0xFFF) << 4)
-#define PWMCR_DOZEEN		(1 << 24)
-#define PWMCR_WAITEN		(1 << 23)
-#define PWMCR_DBGEN		(1 << 22)
-#define PWMCR_CLKSRC_IPG_HIGH	(2 << 16)
-#define PWMCR_CLKSRC_IPG	(1 << 16)
-#define PWMCR_EN		(1 << 0)
-
-struct pwm_regs {
-	u32	cr;
-	u32	sr;
-	u32	ir;
-	u32	sar;
-	u32	pr;
-	u32	cnr;
-};
 
 #endif /* __ASSEMBLER__*/
 

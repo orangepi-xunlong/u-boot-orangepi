@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -13,6 +12,8 @@
  *
  * (C) Copyright 2009
  * Ilya Yanok, Emcraft Systems Ltd, <yanok@emcraft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -26,14 +27,14 @@ void reset_cpu(ulong ignored)
 {
 	struct wdog_regs *regs = (struct wdog_regs *)IMX_WDT_BASE;
 	/* Disable watchdog and set Time-Out field to 0 */
-	writew(0x0000, &regs->wcr);
+	writel(0x00000000, &regs->wcr);
 
 	/* Write Service Sequence */
-	writew(0x5555, &regs->wsr);
-	writew(0xAAAA, &regs->wsr);
+	writel(0x00005555, &regs->wsr);
+	writel(0x0000AAAA, &regs->wsr);
 
 	/* Enable watchdog */
-	writew(WCR_WDE, &regs->wcr);
+	writel(WCR_WDE, &regs->wcr);
 
 	while (1);
 	/*NOTREACHED*/

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * ARIO Data Networks, Inc. dchiu@ariodata.com
@@ -7,6 +6,8 @@
  * The LEOX team <team@leox.org>, http://www.leox.org
  *
  * Based on MontaVista DS1743 code and U-Boot mc146818 code
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

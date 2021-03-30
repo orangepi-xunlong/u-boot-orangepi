@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Manage Keyboard Matrices
  *
  * Copyright (c) 2012 The Chromium OS Authors.
  * (C) Copyright 2004 DENX Software Engineering, Wolfgang Denk, wd@denx.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <dm.h>
+#include <fdtdec.h>
 #include <key_matrix.h>
 #include <malloc.h>
 #include <linux/input.h>
@@ -104,7 +105,7 @@ int key_matrix_decode(struct key_matrix *config, struct key_matrix_key keys[],
  * @param pos           Returns position of map_keycode, if found, else -1
  * @return map  Pointer to allocated map
  */
-static uchar *create_keymap(struct key_matrix *config, const u32 *data, int len,
+static uchar *create_keymap(struct key_matrix *config, u32 *data, int len,
 			    int map_keycode, int *pos)
 {
 	uchar *map;
@@ -137,32 +138,33 @@ static uchar *create_keymap(struct key_matrix *config, const u32 *data, int len,
 	return map;
 }
 
-int key_matrix_decode_fdt(struct udevice *dev, struct key_matrix *config)
+int key_matrix_decode_fdt(struct key_matrix *config, const void *blob, int node)
 {
-	const u32 *prop;
+	const struct fdt_property *prop;
 	int proplen;
 	uchar *plain_keycode;
 
-	prop = dev_read_prop(dev, "linux,keymap", &proplen);
+	prop = fdt_get_property(blob, node, "linux,keymap", &proplen);
 	/* Basic keymap is required */
 	if (!prop) {
 		debug("%s: cannot find keycode-plain map\n", __func__);
 		return -1;
 	}
 
-	plain_keycode = create_keymap(config, prop, proplen, KEY_FN,
-				      &config->fn_pos);
+	plain_keycode = create_keymap(config, (u32 *)prop->data,
+		proplen, KEY_FN, &config->fn_pos);
 	config->plain_keycode = plain_keycode;
 	/* Conversion error -> fail */
 	if (!config->plain_keycode)
 		return -1;
 
-	prop = dev_read_prop(dev, "linux,fn-keymap", &proplen);
+	prop = fdt_get_property(blob, node, "linux,fn-keymap", &proplen);
 	/* fn keymap is optional */
 	if (!prop)
 		goto done;
 
-	config->fn_keycode = create_keymap(config, prop, proplen, -1, NULL);
+	config->fn_keycode = create_keymap(config, (u32 *)prop->data,
+		proplen, -1, NULL);
 	/* Conversion error -> fail */
 	if (!config->fn_keycode) {
 		free(plain_keycode);

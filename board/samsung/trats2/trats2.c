@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Samsung Electronics Co., Ltd. All rights reserved.
  * Sanghee Kim <sh0130.kim@samsung.com>
  * Piotr Wilczek <p.wilczek@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <lcd.h>
-#include <asm/gpio.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/power.h>
 #include <asm/arch/mipi_dsim.h>
@@ -20,8 +20,10 @@
 #include <libtizen.h>
 #include <errno.h>
 #include <usb.h>
-#include <usb/dwc2_udc.h>
+#include <usb/s3c_udc.h>
 #include <usb_mass_storage.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static unsigned int board_rev = -1;
 
@@ -30,7 +32,6 @@ static inline u32 get_model_rev(void);
 static void check_hw_revision(void)
 {
 	int modelrev = 0;
-	char str[12];
 	int i;
 
 	/*
@@ -39,22 +40,13 @@ static void check_hw_revision(void)
 	 * TRM say that it may cause unexcepted state and leakage current.
 	 * and pull-none is only for output function.
 	 */
-	for (i = 0; i < 2; i++) {
-		int pin = i + EXYNOS4X12_GPIO_M10;
-
-		sprintf(str, "model_rev%d", i);
-		gpio_request(pin, str);
-		gpio_cfg_pin(pin, S5P_GPIO_INPUT);
-	}
+	for (i = EXYNOS4X12_GPIO_M10; i < EXYNOS4X12_GPIO_M12; i++)
+		gpio_cfg_pin(i, S5P_GPIO_INPUT);
 
 	/* GPM1[5:2]: HW_REV[3:0] */
-	for (i = 0; i < 4; i++) {
-		int pin = i + EXYNOS4X12_GPIO_M12;
-
-		sprintf(str, "hw_rev%d", i);
-		gpio_request(pin, str);
-		gpio_cfg_pin(pin, S5P_GPIO_INPUT);
-		gpio_set_pull(pin, S5P_GPIO_PULL_NONE);
+	for (i = EXYNOS4X12_GPIO_M12; i < EXYNOS4X12_GPIO_M16; i++) {
+		gpio_cfg_pin(i, S5P_GPIO_INPUT);
+		gpio_set_pull(i, S5P_GPIO_PULL_NONE);
 	}
 
 	/* GPM1[1:0]: MODEL_REV[1:0] */
@@ -97,12 +89,54 @@ static void board_external_gpio_init(void)
 	gpio_set_pull(EXYNOS4X12_GPIO_X37, S5P_GPIO_PULL_NONE);	/* HDMI_HPD */
 }
 
+#ifdef CONFIG_SYS_I2C_INIT_BOARD
+static void board_init_i2c(void)
+{
+	int err;
+
+	/* I2C_7 */
+	err = exynos_pinmux_config(PERIPH_ID_I2C7, PINMUX_FLAG_NONE);
+	if (err) {
+		debug("I2C%d not configured\n", (I2C_7));
+		return;
+	}
+
+	/* I2C_8 */
+	gpio_direction_output(EXYNOS4X12_GPIO_F14, 1);
+	gpio_direction_output(EXYNOS4X12_GPIO_F15, 1);
+
+	/* I2C_9 */
+	gpio_direction_output(EXYNOS4X12_GPIO_M21, 1);
+	gpio_direction_output(EXYNOS4X12_GPIO_M20, 1);
+}
+#endif
+
+#ifdef CONFIG_SYS_I2C_SOFT
+int get_soft_i2c_scl_pin(void)
+{
+	if (I2C_ADAP_HWNR)
+		return EXYNOS4X12_GPIO_M21; /* I2C9 */
+	else
+		return EXYNOS4X12_GPIO_F14; /* I2C8 */
+}
+
+int get_soft_i2c_sda_pin(void)
+{
+	if (I2C_ADAP_HWNR)
+		return EXYNOS4X12_GPIO_M20; /* I2C9 */
+	else
+		return EXYNOS4X12_GPIO_F15; /* I2C8 */
+}
+#endif
+
 int exynos_early_init_f(void)
 {
 	board_external_gpio_init();
 
 	return 0;
 }
+
+static int pmic_init_max77686(void);
 
 int exynos_init(void)
 {
@@ -127,11 +161,15 @@ int exynos_init(void)
 
 int exynos_power_init(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	int chrg;
 	struct power_battery *pb;
 	struct pmic *p_chrg, *p_muic, *p_fg, *p_bat;
 
+#ifdef CONFIG_SYS_I2C_INIT_BOARD
+	board_init_i2c();
+#endif
+	pmic_init(I2C_7);		/* I2C adapter 7 - bus name s3c24x0_7 */
+	pmic_init_max77686();
 	pmic_init_max77693(I2C_10);	/* I2C adapter 10 - bus name soft1 */
 	power_muic_init(I2C_10);	/* I2C adapter 10 - bus name soft1 */
 	power_fg_init(I2C_9);		/* I2C adapter 9 - bus name soft0 */
@@ -183,14 +221,13 @@ int exynos_power_init(void)
 
 	if (pb->bat->state == CHARGE && chrg == CHARGER_USB)
 		puts("CHARGE Battery !\n");
-#endif
+
 	return 0;
 }
 
 #ifdef CONFIG_USB_GADGET
 static int s5pc210_phy_control(int on)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	int ret = 0;
 	unsigned int val;
 	struct pmic *p, *p_pmic, *p_muic;
@@ -247,11 +284,11 @@ static int s5pc210_phy_control(int on)
 
 	if (ret)
 		return -1;
-#endif
+
 	return 0;
 }
 
-struct dwc2_plat_otg_data s5pc210_otg_data = {
+struct s3c_plat_otg_data s5pc210_otg_data = {
 	.phy_control	= s5pc210_phy_control,
 	.regs_phy	= EXYNOS4X12_USBPHY_BASE,
 	.regs_otg	= EXYNOS4X12_USBOTG_BASE,
@@ -262,22 +299,71 @@ struct dwc2_plat_otg_data s5pc210_otg_data = {
 int board_usb_init(int index, enum usb_init_type init)
 {
 	debug("USB_udc_probe\n");
-	return dwc2_udc_probe(&s5pc210_otg_data);
+	return s3c_udc_probe(&s5pc210_otg_data);
 }
 
 int g_dnl_board_usb_cable_connected(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	struct pmic *muic = pmic_get("MAX77693_MUIC");
 	if (!muic)
 		return 0;
 
 	return !!muic->chrg->chrg_type(muic);
-#else
-	return false;
-#endif
 }
 #endif
+
+static int pmic_init_max77686(void)
+{
+	struct pmic *p = pmic_get("MAX77686_PMIC");
+
+	if (pmic_probe(p))
+		return -1;
+
+	/* BUCK/LDO Output Voltage */
+	max77686_set_ldo_voltage(p, 21, 2800000);	/* LDO21 VTF_2.8V */
+	max77686_set_ldo_voltage(p, 23, 3300000);	/* LDO23 TSP_AVDD_3.3V*/
+	max77686_set_ldo_voltage(p, 24, 1800000);	/* LDO24 TSP_VDD_1.8V */
+
+	/* BUCK/LDO Output Mode */
+	max77686_set_buck_mode(p, 1, OPMODE_STANDBY);	/* BUCK1 VMIF_1.1V_AP */
+	max77686_set_buck_mode(p, 2, OPMODE_ON);	/* BUCK2 VARM_1.0V_AP */
+	max77686_set_buck_mode(p, 3, OPMODE_ON);	/* BUCK3 VINT_1.0V_AP */
+	max77686_set_buck_mode(p, 4, OPMODE_ON);	/* BUCK4 VG3D_1.0V_AP */
+	max77686_set_buck_mode(p, 5, OPMODE_ON);	/* BUCK5 VMEM_1.2V_AP */
+	max77686_set_buck_mode(p, 6, OPMODE_ON);	/* BUCK6 VCC_SUB_1.35V*/
+	max77686_set_buck_mode(p, 7, OPMODE_ON);	/* BUCK7 VCC_SUB_2.0V */
+	max77686_set_buck_mode(p, 8, OPMODE_OFF);	/* VMEM_VDDF_2.85V */
+	max77686_set_buck_mode(p, 9, OPMODE_OFF);	/* CAM_ISP_CORE_1.2V*/
+
+	max77686_set_ldo_mode(p, 1, OPMODE_LPM);	/* LDO1 VALIVE_1.0V_AP*/
+	max77686_set_ldo_mode(p, 2, OPMODE_STANDBY);	/* LDO2 VM1M2_1.2V_AP */
+	max77686_set_ldo_mode(p, 3, OPMODE_LPM);	/* LDO3 VCC_1.8V_AP */
+	max77686_set_ldo_mode(p, 4, OPMODE_LPM);	/* LDO4 VCC_2.8V_AP */
+	max77686_set_ldo_mode(p, 5, OPMODE_OFF);	/* LDO5_VCC_1.8V_IO */
+	max77686_set_ldo_mode(p, 6, OPMODE_STANDBY);	/* LDO6 VMPLL_1.0V_AP */
+	max77686_set_ldo_mode(p, 7, OPMODE_STANDBY);	/* LDO7 VPLL_1.0V_AP */
+	max77686_set_ldo_mode(p, 8, OPMODE_LPM);	/* LDO8 VMIPI_1.0V_AP */
+	max77686_set_ldo_mode(p, 9, OPMODE_OFF);	/* CAM_ISP_MIPI_1.2*/
+	max77686_set_ldo_mode(p, 10, OPMODE_LPM);	/* LDO10 VMIPI_1.8V_AP*/
+	max77686_set_ldo_mode(p, 11, OPMODE_STANDBY);	/* LDO11 VABB1_1.8V_AP*/
+	max77686_set_ldo_mode(p, 12, OPMODE_LPM);	/* LDO12 VUOTG_3.0V_AP*/
+	max77686_set_ldo_mode(p, 13, OPMODE_OFF);	/* LDO13 VC2C_1.8V_AP */
+	max77686_set_ldo_mode(p, 14, OPMODE_STANDBY);	/* VABB02_1.8V_AP */
+	max77686_set_ldo_mode(p, 15, OPMODE_STANDBY);	/* LDO15 VHSIC_1.0V_AP*/
+	max77686_set_ldo_mode(p, 16, OPMODE_STANDBY);	/* LDO16 VHSIC_1.8V_AP*/
+	max77686_set_ldo_mode(p, 17, OPMODE_OFF);	/* CAM_SENSOR_CORE_1.2*/
+	max77686_set_ldo_mode(p, 18, OPMODE_OFF);	/* CAM_ISP_SEN_IO_1.8V*/
+	max77686_set_ldo_mode(p, 19, OPMODE_OFF);	/* LDO19 VT_CAM_1.8V */
+	max77686_set_ldo_mode(p, 20, OPMODE_ON);	/* LDO20 VDDQ_PRE_1.8V*/
+	max77686_set_ldo_mode(p, 21, OPMODE_OFF);	/* LDO21 VTF_2.8V */
+	max77686_set_ldo_mode(p, 22, OPMODE_OFF);	/* LDO22 VMEM_VDD_2.8V*/
+	max77686_set_ldo_mode(p, 23, OPMODE_OFF);	/* LDO23 TSP_AVDD_3.3V*/
+	max77686_set_ldo_mode(p, 24, OPMODE_OFF);	/* LDO24 TSP_VDD_1.8V */
+	max77686_set_ldo_mode(p, 25, OPMODE_OFF);	/* LDO25 VCC_3.3V_LCD */
+	max77686_set_ldo_mode(p, 26, OPMODE_OFF);	/*LDO26 VCC_3.0V_MOTOR*/
+
+	return 0;
+}
 
 /*
  * LCD
@@ -286,25 +372,21 @@ int g_dnl_board_usb_cable_connected(void)
 #ifdef CONFIG_LCD
 int mipi_power(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	struct pmic *p = pmic_get("MAX77686_PMIC");
 
 	/* LDO8 VMIPI_1.0V_AP */
 	max77686_set_ldo_mode(p, 8, OPMODE_ON);
 	/* LDO10 VMIPI_1.8V_AP */
 	max77686_set_ldo_mode(p, 10, OPMODE_ON);
-#endif
 
 	return 0;
 }
 
 void exynos_lcd_power_on(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
 	struct pmic *p = pmic_get("MAX77686_PMIC");
 
 	/* LCD_2.2V_EN: GPC0[1] */
-	gpio_request(EXYNOS4X12_GPIO_C01, "lcd_2v2_en");
 	gpio_set_pull(EXYNOS4X12_GPIO_C01, S5P_GPIO_PULL_UP);
 	gpio_direction_output(EXYNOS4X12_GPIO_C01, 1);
 
@@ -312,13 +394,11 @@ void exynos_lcd_power_on(void)
 	pmic_probe(p);
 	max77686_set_ldo_voltage(p, 25, 3100000);
 	max77686_set_ldo_mode(p, 25, OPMODE_LPM);
-#endif
 }
 
 void exynos_reset_lcd(void)
 {
 	/* reset lcd */
-	gpio_request(EXYNOS4X12_GPIO_F21, "lcd_reset");
 	gpio_direction_output(EXYNOS4X12_GPIO_F21, 0);
 	udelay(10);
 	gpio_set_value(EXYNOS4X12_GPIO_F21, 1);

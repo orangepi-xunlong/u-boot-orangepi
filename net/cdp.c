@@ -6,7 +6,6 @@
  *	Copyright 2000 Roland Borde
  *	Copyright 2000 Paolo Scaffardi
  *	Copyright 2000-2002 Wolfgang Denk, wd@denx.de
- *	SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -18,7 +17,7 @@
 #include "cdp.h"
 
 /* Ethernet bcast address */
-const u8 net_cdp_ethaddr[6] = { 0x01, 0x00, 0x0c, 0xcc, 0xcc, 0xcc };
+const uchar NetCDPAddr[6] = { 0x01, 0x00, 0x0c, 0xcc, 0xcc, 0xcc };
 
 #define CDP_DEVICE_ID_TLV		0x0001
 #define CDP_ADDRESS_TLV			0x0002
@@ -36,16 +35,17 @@ const u8 net_cdp_ethaddr[6] = { 0x01, 0x00, 0x0c, 0xcc, 0xcc, 0xcc };
 
 #define CDP_TIMEOUT			250UL	/* one packet every 250ms */
 
-static int cdp_seq;
-static int cdp_ok;
+static int CDPSeq;
+static int CDPOK;
 
-ushort cdp_native_vlan;
-ushort cdp_appliance_vlan;
+ushort CDPNativeVLAN;
+ushort CDPApplianceVLAN;
 
-static const uchar cdp_snap_hdr[8] = {
+static const uchar CDP_SNAP_hdr[8] = {
 	0xAA, 0xAA, 0x03, 0x00, 0x00, 0x0C, 0x20, 0x00 };
 
-static ushort cdp_compute_csum(const uchar *buff, ushort len)
+static ushort
+CDP_compute_csum(const uchar *buff, ushort len)
 {
 	ushort csum;
 	int     odd;
@@ -103,7 +103,8 @@ static ushort cdp_compute_csum(const uchar *buff, ushort len)
 	return csum;
 }
 
-static int cdp_send_trigger(void)
+static int
+CDPSendTrigger(void)
 {
 	uchar *pkt;
 	ushort *s;
@@ -116,20 +117,20 @@ static int cdp_send_trigger(void)
 	char buf[32];
 #endif
 
-	pkt = net_tx_packet;
+	pkt = NetTxPacket;
 	et = (struct ethernet_hdr *)pkt;
 
 	/* NOTE: trigger sent not on any VLAN */
 
 	/* form ethernet header */
-	memcpy(et->et_dest, net_cdp_ethaddr, 6);
-	memcpy(et->et_src, net_ethaddr, 6);
+	memcpy(et->et_dest, NetCDPAddr, 6);
+	memcpy(et->et_src, NetOurEther, 6);
 
 	pkt += ETHER_HDR_SIZE;
 
 	/* SNAP header */
-	memcpy((uchar *)pkt, cdp_snap_hdr, sizeof(cdp_snap_hdr));
-	pkt += sizeof(cdp_snap_hdr);
+	memcpy((uchar *)pkt, CDP_SNAP_hdr, sizeof(CDP_SNAP_hdr));
+	pkt += sizeof(CDP_SNAP_hdr);
 
 	/* CDP header */
 	*pkt++ = 0x02;				/* CDP version 2 */
@@ -143,7 +144,7 @@ static int cdp_send_trigger(void)
 #ifdef CONFIG_CDP_DEVICE_ID
 	*s++ = htons(CDP_DEVICE_ID_TLV);
 	*s++ = htons(CONFIG_CDP_DEVICE_ID);
-	sprintf(buf, CONFIG_CDP_DEVICE_ID_PREFIX "%pm", net_ethaddr);
+	sprintf(buf, CONFIG_CDP_DEVICE_ID_PREFIX "%pm", NetOurEther);
 	memcpy((uchar *)s, buf, 16);
 	s += 16 / 2;
 #endif
@@ -205,33 +206,34 @@ static int cdp_send_trigger(void)
 #endif
 
 	/* length of ethernet packet */
-	len = (uchar *)s - ((uchar *)net_tx_packet + ETHER_HDR_SIZE);
+	len = (uchar *)s - ((uchar *)NetTxPacket + ETHER_HDR_SIZE);
 	et->et_protlen = htons(len);
 
-	len = ETHER_HDR_SIZE + sizeof(cdp_snap_hdr);
-	chksum = cdp_compute_csum((uchar *)net_tx_packet + len,
-				  (uchar *)s - (net_tx_packet + len));
+	len = ETHER_HDR_SIZE + sizeof(CDP_SNAP_hdr);
+	chksum = CDP_compute_csum((uchar *)NetTxPacket + len,
+				  (uchar *)s - (NetTxPacket + len));
 	if (chksum == 0)
 		chksum = 0xFFFF;
 	*cp = htons(chksum);
 
-	net_send_packet(net_tx_packet, (uchar *)s - net_tx_packet);
+	NetSendPacket(NetTxPacket, (uchar *)s - NetTxPacket);
 	return 0;
 }
 
-static void cdp_timeout_handler(void)
+static void
+CDPTimeout(void)
 {
-	cdp_seq++;
+	CDPSeq++;
 
-	if (cdp_seq < 3) {
-		net_set_timeout_handler(CDP_TIMEOUT, cdp_timeout_handler);
-		cdp_send_trigger();
+	if (CDPSeq < 3) {
+		NetSetTimeout(CDP_TIMEOUT, CDPTimeout);
+		CDPSendTrigger();
 		return;
 	}
 
 	/* if not OK try again */
-	if (!cdp_ok)
-		net_start_again();
+	if (!CDPOK)
+		NetStartAgain();
 	else
 		net_set_state(NETLOOP_SUCCESS);
 }
@@ -244,15 +246,15 @@ void cdp_receive(const uchar *pkt, unsigned len)
 	ushort vlan, nvlan;
 
 	/* minimum size? */
-	if (len < sizeof(cdp_snap_hdr) + 4)
+	if (len < sizeof(CDP_SNAP_hdr) + 4)
 		goto pkt_short;
 
 	/* check for valid CDP SNAP header */
-	if (memcmp(pkt, cdp_snap_hdr, sizeof(cdp_snap_hdr)) != 0)
+	if (memcmp(pkt, CDP_SNAP_hdr, sizeof(CDP_SNAP_hdr)) != 0)
 		return;
 
-	pkt += sizeof(cdp_snap_hdr);
-	len -= sizeof(cdp_snap_hdr);
+	pkt += sizeof(CDP_SNAP_hdr);
+	len -= sizeof(CDP_SNAP_hdr);
 
 	/* Version of CDP protocol must be >= 2 and TTL != 0 */
 	if (pkt[0] < 0x02 || pkt[1] == 0)
@@ -266,7 +268,7 @@ void cdp_receive(const uchar *pkt, unsigned len)
 		printf("**WARNING: CDP packet received with a protocol version "
 				"%d > 2\n", pkt[0] & 0xff);
 
-	if (cdp_compute_csum(pkt, len) != 0)
+	if (CDP_compute_csum(pkt, len) != 0)
 		return;
 
 	pkt += 4;
@@ -337,27 +339,28 @@ void cdp_receive(const uchar *pkt, unsigned len)
 		}
 	}
 
-	cdp_appliance_vlan = vlan;
-	cdp_native_vlan = nvlan;
+	CDPApplianceVLAN = vlan;
+	CDPNativeVLAN = nvlan;
 
-	cdp_ok = 1;
+	CDPOK = 1;
 	return;
 
-pkt_short:
+ pkt_short:
 	printf("** CDP packet is too short\n");
 	return;
 }
 
-void cdp_start(void)
+void
+CDPStart(void)
 {
 	printf("Using %s device\n", eth_get_name());
-	cdp_seq = 0;
-	cdp_ok = 0;
+	CDPSeq = 0;
+	CDPOK = 0;
 
-	cdp_native_vlan = htons(-1);
-	cdp_appliance_vlan = htons(-1);
+	CDPNativeVLAN = htons(-1);
+	CDPApplianceVLAN = htons(-1);
 
-	net_set_timeout_handler(CDP_TIMEOUT, cdp_timeout_handler);
+	NetSetTimeout(CDP_TIMEOUT, CDPTimeout);
 
-	cdp_send_trigger();
+	CDPSendTrigger();
 }

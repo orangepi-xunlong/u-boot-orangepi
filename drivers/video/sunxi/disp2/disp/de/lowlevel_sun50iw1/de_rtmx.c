@@ -1,19 +1,14 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/de_rtmx.c
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
+//*********************************************************************************************************************
+//  All Winner Tech, All Right Reserved. 2014-2015 Copyright (c)
+//
+//  File name   :	de_rtmx.c
+//
+//  Description :	display engine 2.0 realtime mixer processing base functions implement
+//
+//  History     :	2014/02/08  iptang  v0.1  Initial version
+//
+//*********************************************************************************************************************
+
 #include "de_rtmx.h"
 #include "de_rtmx_type.h"
 
@@ -661,29 +656,29 @@ int de_rtmx_get_3d_in_single_size(de_3d_in_mode inmode, de_rect64 *size)
 	switch(inmode)
 	{
 		case DE_3D_SRC_MODE_TB:
-			/*size->w = size->w;*/
+			size->w = size->w;
 			size->h = size->h>>1;
-			/*size->x = size->x;*/
-			/*size->y = size->y;*/
+			size->x = size->x;
+			size->y = size->y;
 			break;
 		case DE_3D_SRC_MODE_SSF:
 		case DE_3D_SRC_MODE_SSH:
 			size->w = size->w>>1;
-			/*size->h = size->h;*/
-			/*size->x = size->x;*/
-			/*size->y = size->y;*/
+			size->h = size->h;
+			size->x = size->x;
+			size->y = size->y;
 			break;
 		case DE_3D_SRC_MODE_LI:
-			/*size->w = size->w;*/
+			size->w = size->w;
 			size->h = size->h>>1;
-			/*size->x = size->x;*/
+			size->x = size->x;
 			size->y = size->y>>1;
 			break;
 		case DE_3D_SRC_MODE_FP:
-			/*size->w = size->w;*/
-			/*size->h = size->h;*/
-			/*size->x = size->x;*/
-			/*size->y = size->y;*/
+			size->w = size->w;
+			size->h = size->h;
+			size->x = size->x;
+			size->y = size->y;
 			break;
 		default:
 			//undefine input mode
@@ -797,7 +792,7 @@ int de_rtmx_get_3d_in(unsigned char fmt, de_rect crop, de_fb *size, unsigned int
 	{
 		if ((trdinmode == DE_3D_SRC_MODE_FP))
 		{
-			pitchr[0]=pitch[0] = DISPALIGN(size[0].w * ycnt,align[0]) / ycnt;
+			pitchr[0]=pitch[0] = DISPALIGN(size[0].w,align[0]);
 			pitchr[1]=pitch[1] = 0;
 			pitchr[2]=pitch[2] = 0;
 
@@ -807,7 +802,7 @@ int de_rtmx_get_3d_in(unsigned char fmt, de_rect crop, de_fb *size, unsigned int
 		}
 		else if ((trdinmode == DE_3D_SRC_MODE_TB))
 		{
-			pitchr[0]=pitch[0] = DISPALIGN(size[0].w * ycnt,align[0]) / ycnt;
+			pitchr[0]=pitch[0] = DISPALIGN(size[0].w,align[0]);
 			pitchr[1]=pitch[1] = 0;
 			pitchr[2]=pitch[2] = 0;
 
@@ -817,7 +812,8 @@ int de_rtmx_get_3d_in(unsigned char fmt, de_rect crop, de_fb *size, unsigned int
 		}
 		else if ((trdinmode == DE_3D_SRC_MODE_SSF)||(trdinmode == DE_3D_SRC_MODE_SSH))
 		{
-			pitchr[0]=pitch[0] = DISPALIGN(size[0].w * ycnt,align[0]) / ycnt;
+
+			pitchr[0]=pitch[0] = DISPALIGN(size[0].w,align[0]);
 			pitchr[1]=pitch[1] = 0;
 			pitchr[2]=pitch[2] = 0;
 
@@ -1066,26 +1062,8 @@ static int de_rtmx_get_coarse_fac(unsigned int sel, unsigned int ovl_w, unsigned
 	ovl_h = ovl_h & (~((1<<hshift)-1));
 
 	status = 0x0;
-
 	//horizontal Y channel
-	if(ovl_w > 4096)
-	{
-		tmpyhn = ovl_w>>1;
-		tmpyhn = tmpyhn & (~((1<<wshift)-1));
-		tmpyhm = ovl_w;
-		*yhm   = tmpyhm;
-		*yhn   = tmpyhn;
-		*chm   = *yhm;
-		*chn   = *yhn;
-
-		//actually fetch horizontal pixel Y channel
-		*midyw = tmpyhn;
-
-		//actually fetch horizontal pixel C channel
-		*midcw = tmpyhn>>wshift;
-		status = 0x1;
-	}
-	else if(ovl_w > 8*vsu_outw)
+	if (ovl_w > 8*vsu_outw)
 	{
 		tmpyhn = 8*vsu_outw;
 		tmpyhn = tmpyhn & (~((1<<wshift)-1));

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*-------------------------------------------------------------------------
  * Filename:      mini_inflate.h
  * Version:       $Id: mini_inflate.h,v 1.2 2002/01/17 00:53:20 nyet Exp $
@@ -6,6 +5,9 @@
  * Author:        Russ Dill <Russ.Dill@asu.edu>
  * Description:   Mini deflate implementation
  *-----------------------------------------------------------------------*/
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 typedef __SIZE_TYPE__ size;
 

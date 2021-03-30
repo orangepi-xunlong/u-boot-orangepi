@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/hdmi/dev_hdmi.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef __DEV_DISPLAY_H__
 #define __DEV_DISPLAY_H__
 
@@ -27,7 +11,6 @@ int hdmi_mmap(struct file *file, struct vm_area_struct * vma);
 long hdmi_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
 u32 hdmi_get_vic(u32 mode);
-u8 hdmi_get_work_mode(void);
 
 extern s32 hdmi_init(struct platform_device *pdev);
 extern s32 hdmi_exit(void);

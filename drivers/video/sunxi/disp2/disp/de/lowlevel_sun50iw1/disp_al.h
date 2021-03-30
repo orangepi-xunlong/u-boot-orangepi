@@ -1,19 +1,3 @@
-/*
- * drivers/video/sunxi/disp2/disp/de/lowlevel_sun50iw1/disp_al.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _DISP_AL_H_
 #define _DISP_AL_H_
 
@@ -66,7 +50,6 @@ int disp_al_capture_apply(unsigned int disp, struct disp_capture_config *cfg);
 int disp_al_capture_get_status(unsigned int disp);
 
 int disp_al_lcd_cfg(u32 screen_id, disp_panel_para * panel, panel_extend_para *extend_panel);
-int disp_al_lcd_cfg_ext(u32 screen_id, panel_extend_para *extend_panel);
 int disp_al_lcd_enable(u32 screen_id, disp_panel_para * panel);
 int disp_al_lcd_disable(u32 screen_id, disp_panel_para * panel);
 int disp_al_lcd_query_irq(u32 screen_id, __lcd_irq_id_t irq_id, disp_panel_para * panel);
@@ -99,28 +82,5 @@ int disp_al_device_get_status(u32 screen_id);
 
 int disp_al_get_fb_info(unsigned int sel, struct disp_layer_info *info);
 int disp_al_get_display_size(unsigned int sel, unsigned int *width, unsigned int *height);
-void disp_al_show_builtin_patten(u32 hwdev_index, u32 patten);
-
-static inline s32 disp_al_capture_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline s32 disp_al_capture_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_capture_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_rcq_update(u32 disp, u32 en) { return 0; }
-
-static inline s32 disp_al_manager_set_all_rcq_head_dirty(u32 disp, u32 dirty) { return 0; }
-
-static inline s32 disp_al_manager_set_irq_enable(u32 disp, u32 irq_flag, u32 en) { return 0; }
-
-static inline u32 disp_al_manager_query_irq_state(u32 disp, u32 irq_state) { return 0; }
-
-static inline int disp_al_device_set_de_id(u32 screen_id, u32 de_id) { return 0; }
-
-static inline int disp_al_device_set_de_use_rcq(u32 screen_id, u32 use_rcq) { return 0; }
-
-static inline int disp_al_device_set_output_type(u32 screen_id, u32 output_type) { return 0; }
 
 #endif

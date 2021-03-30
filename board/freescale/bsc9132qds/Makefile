@@ -1,6 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright 2013 Freescale Semiconductor, Inc.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 MINIMAL=
 
@@ -11,11 +13,14 @@ endif
 endif
 
 ifdef MINIMAL
-obj-y	+= spl_minimal.o
+
+obj-y	+= spl_minimal.o tlb.o law.o
+
 else
+
 obj-y	+= bsc9132qds.o
 obj-y	+= ddr.o
-endif
-
 obj-y	+= law.o
 obj-y	+= tlb.o
+
+endif
