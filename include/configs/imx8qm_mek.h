@@ -15,7 +15,6 @@
 #define CONFIG_SYS_MONITOR_LEN				(1024 * 1024)
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR		0x800
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION		0
 
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/armv8/u-boot-spl.lds"
 #define CONFIG_SPL_STACK		0x013E000
@@ -35,8 +34,6 @@
 
 #define CONFIG_REMAKE_ELF
 
-#define CONFIG_BOARD_EARLY_INIT_F
-
 /* Flat Device Tree Definitions */
 #define CONFIG_OF_BOARD_SETUP
 
@@ -44,8 +41,6 @@
 #define USDHC1_BASE_ADDR                0x5B010000
 #define USDHC2_BASE_ADDR                0x5B020000
 #define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
-
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
@@ -157,12 +152,10 @@
 #define CONFIG_SYS_INIT_SP_ADDR         0x80200000
 
 /* Default environment is in SD */
-#define CONFIG_SYS_MMC_ENV_PART		0	/* user area */
 
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 
 /* On LPDDR4 board, USDHC1 is for eMMC, USDHC2 is for SD on CPU board */
-#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
 #define CONFIG_SYS_FSL_USDHC_NUM	2
 
@@ -174,9 +167,6 @@
 #define PHYS_SDRAM_2			0x880000000
 #define PHYS_SDRAM_1_SIZE		0x80000000	/* 2 GB */
 #define PHYS_SDRAM_2_SIZE		0x100000000	/* 4 GB */
-
-/* Serial */
-#define CONFIG_BAUDRATE			115200
 
 /* Generic Timer Definitions */
 #define COUNTER_FREQUENCY		8000000	/* 8MHz */

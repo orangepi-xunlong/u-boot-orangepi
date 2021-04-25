@@ -30,8 +30,6 @@
 #define CONFIG_REVISION_TAG
 #define CONFIG_SYS_MALLOC_LEN		(10 * SZ_1M)
 
-#define CONFIG_MXC_UART
-
 /* SATA Configs */
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_DWC_AHSATA_PORT_ID	0
@@ -57,9 +55,6 @@
 #define CONFIG_FEC_MXC_PHYADDR		4
 
 /* Serial Flash */
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_LOADADDR	0x12000000
 
@@ -202,16 +197,12 @@
 #define CONFIG_SYS_FSL_USDHC_NUM        3
 
 /* Framebuffer */
-#ifdef CONFIG_VIDEO
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
-#endif
 
 #define CONFIG_IMX6_PWM_PER_CLK         66000000
 

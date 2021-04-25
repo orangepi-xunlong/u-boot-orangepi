@@ -53,7 +53,7 @@ err_read_id:
 	return ret;
 }
 
-#ifndef CONFIG_DM_SPI_FLASH
+#if !CONFIG_IS_ENABLED(DM_SPI_FLASH)
 struct spi_flash *spi_flash_probe(unsigned int busnum, unsigned int cs,
 				  unsigned int max_hz, unsigned int spi_mode)
 {
@@ -119,7 +119,7 @@ static int spi_flash_std_erase(struct udevice *dev, u32 offset, size_t len)
 	struct erase_info instr;
 
 	if (offset % mtd->erasesize || len % mtd->erasesize) {
-		printf("SF: Erase offset/length not multiple of erase size\n");
+		debug("SF: Erase offset/length not multiple of erase size\n");
 		return -EINVAL;
 	}
 
@@ -160,8 +160,8 @@ static const struct udevice_id spi_flash_std_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(spi_flash_std) = {
-	.name		= "spi_flash_std",
+U_BOOT_DRIVER(jedec_spi_nor) = {
+	.name		= "jedec_spi_nor",
 	.id		= UCLASS_SPI_FLASH,
 	.of_match	= spi_flash_std_ids,
 	.probe		= spi_flash_std_probe,
@@ -169,5 +169,7 @@ U_BOOT_DRIVER(spi_flash_std) = {
 	.priv_auto_alloc_size = sizeof(struct spi_flash),
 	.ops		= &spi_flash_std_ops,
 };
+
+U_BOOT_DRIVER_ALIAS(jedec_spi_nor, spansion_m25p16)
 
 #endif /* CONFIG_DM_SPI_FLASH */

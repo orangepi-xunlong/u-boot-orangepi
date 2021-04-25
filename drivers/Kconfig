@@ -10,9 +10,13 @@ source "drivers/ata/Kconfig"
 
 source "drivers/axi/Kconfig"
 
+source "drivers/bus/Kconfig"
+
 source "drivers/block/Kconfig"
 
 source "drivers/bootcount/Kconfig"
+
+source "drivers/button/Kconfig"
 
 source "drivers/cache/Kconfig"
 
@@ -131,6 +135,8 @@ source "drivers/w1/Kconfig"
 source "drivers/w1-eeprom/Kconfig"
 
 source "drivers/watchdog/Kconfig"
+
+source "drivers/xen/Kconfig"
 
 config PHYS_TO_BUS
 	bool "Custom physical to bus address mapping"

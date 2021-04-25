@@ -31,8 +31,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
-
 #define CONFIG_SYS_CLK_FREQ	get_board_sys_clk() /* sysclk for MPC85xx */
 #define CONFIG_DDR_CLK_FREQ	get_board_ddr_clk() /* ddrclk for MPC85xx */
 #define CONFIG_ICS307_REFCLK_HZ	33333000  /* ICS307 clock chip ref freq */
@@ -44,11 +42,6 @@
 #define CONFIG_BTB			/* toggle branch predition */
 
 #define CONFIG_ENABLE_36BIT_PHYS	1
-
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP			1
-#define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
-#endif
 
 /*
  * Config the L2 Cache as L2 SRAM
@@ -117,8 +110,6 @@
 #ifndef CONFIG_SPD_EEPROM
 #error ("CONFIG_SPD_EEPROM is required")
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * Memory map
@@ -443,8 +434,6 @@
 #define CONFIG_SYS_ISA_IO_BASE_ADDRESS VIDEO_IO_OFFSET
 #endif
 
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #ifndef CONFIG_PCI_PNP
 	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCIE3_IO_BUS

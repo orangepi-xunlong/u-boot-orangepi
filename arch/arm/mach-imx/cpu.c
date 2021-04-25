@@ -8,6 +8,7 @@
 
 #include <bootm.h>
 #include <common.h>
+#include <dm.h>
 #include <init.h>
 #include <log.h>
 #include <net.h>
@@ -96,7 +97,13 @@ const char *get_imx_type(u32 imxtype)
 {
 	switch (imxtype) {
 	case MXC_CPU_IMX8MP:
-		return "8MP";	/* Quad-core version of the imx8mp */
+		return "8MP[8]";	/* Quad-core version of the imx8mp */
+	case MXC_CPU_IMX8MPD:
+		return "8MP Dual[3]";	/* Dual-core version of the imx8mp */
+	case MXC_CPU_IMX8MPL:
+		return "8MP Lite[4]";	/* Quad-core Lite version of the imx8mp */
+	case MXC_CPU_IMX8MP6:
+		return "8MP[6]";	/* Quad-core version of the imx8mp, NPU fused */
 	case MXC_CPU_IMX8MN:
 		return "8MNano Quad"; /* Quad-core version */
 	case MXC_CPU_IMX8MND:
@@ -229,7 +236,7 @@ int print_cpuinfo(void)
 }
 #endif
 
-int cpu_eth_init(bd_t *bis)
+int cpu_eth_init(struct bd_info *bis)
 {
 	int rc = -ENODEV;
 
@@ -245,7 +252,7 @@ int cpu_eth_init(bd_t *bis)
  * Initializes on-chip MMC controllers.
  * to override, implement board_mmc_init()
  */
-int cpu_mmc_init(bd_t *bis)
+int cpu_mmc_init(struct bd_info *bis)
 {
 	return fsl_esdhc_mmc_init(bis);
 }

@@ -19,7 +19,6 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 #ifdef CONFIG_VIDEO_FSL_DCU_FB
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_SYS_FSL_DCU_LE
@@ -30,9 +29,6 @@
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 2 * SZ_1M)
-
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* NAND support */
 #define CONFIG_SYS_NAND_ONFI_DETECTION
@@ -80,8 +76,7 @@
 	"ubi read ${fdt_addr_r} dtb && " \
 	"run fdt_fixup && bootz ${kernel_addr_r} - ${fdt_addr_r}\0" \
 
-#define CONFIG_BOOTCOMMAND "run ubiboot; " \
-	"setenv fdtfile ${soc}-colibri-${fdt_board}.dtb && run distro_bootcmd;"
+#define CONFIG_BOOTCOMMAND "run ubiboot || run distro_bootcmd;"
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \

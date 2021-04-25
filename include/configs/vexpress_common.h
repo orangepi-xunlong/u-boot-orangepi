@@ -135,7 +135,6 @@
 #define CONFIG_SYS_SERIAL0		V2M_UART0
 #define CONFIG_SYS_SERIAL1		V2M_UART1
 
-#define CONFIG_ARM_PL180_MMCI
 #define CONFIG_ARM_PL180_MMCI_BASE	V2M_MMCI
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT	127
 #define CONFIG_ARM_PL180_MMCI_CLOCK_FREQ 6250000
@@ -230,7 +229,6 @@
  * We don't know which end has the small erase blocks so we use the penultimate
  * sector location for the environment
  */
-#define CONFIG_ENV_OVERWRITE		1
 
 /* Store environment at top of flash */
 #define CONFIG_SYS_FLASH_EMPTY_INFO	/* flinfo indicates empty blocks */

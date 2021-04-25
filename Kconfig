@@ -5,6 +5,10 @@
 #
 mainmenu "U-Boot $(UBOOTVERSION) Configuration"
 
+comment "Compiler: $(CC_VERSION_TEXT)"
+
+source "scripts/Kconfig.include"
+
 # Allow defaults in arch-specific code to override any given here
 source "arch/Kconfig"
 
@@ -62,12 +66,62 @@ config CC_OPTIMIZE_FOR_SIZE
 
 	  This option is enabled by default for U-Boot.
 
+config OPTIMIZE_INLINING
+	bool "Allow compiler to uninline functions marked 'inline' in full U-Boot"
+	default n
+	help
+	  This option determines if U-Boot forces gcc to inline the functions
+	  developers have marked 'inline'. Doing so takes away freedom from gcc to
+	  do what it thinks is best, which is desirable in some cases for size
+	  reasons.
+
+config SPL_OPTIMIZE_INLINING
+	bool "Allow compiler to uninline functions marked 'inline' in SPL"
+	depends on SPL
+	default n
+	help
+	  This option determines if U-Boot forces gcc to inline the functions
+	  developers have marked 'inline'. Doing so takes away freedom from gcc to
+	  do what it thinks is best, which is desirable in some cases for size
+	  reasons.
+
+config TPL_OPTIMIZE_INLINING
+	bool "Allow compiler to uninline functions marked 'inline' in TPL"
+	depends on TPL
+	default n
+	help
+	  This option determines if U-Boot forces gcc to inline the functions
+	  developers have marked 'inline'. Doing so takes away freedom from gcc to
+	  do what it thinks is best, which is desirable in some cases for size
+	  reasons.
+
 config CC_COVERAGE
 	bool "Enable code coverage analysis"
 	depends on SANDBOX
 	help
 	  Enabling this option will pass "--coverage" to gcc to compile
 	  and link code instrumented for coverage analysis.
+
+config CC_HAS_ASM_INLINE
+	def_bool $(success,echo 'void foo(void) { asm inline (""); }' | $(CC) -x c - -c -o /dev/null)
+
+config XEN
+	bool "Select U-Boot be run as a bootloader for XEN Virtual Machine"
+	help
+	  Enabling this option will make U-Boot be run as a bootloader
+	  for XEN [1] Virtual Machine.
+
+	  Xen is a virtual machine monitor (VMM) or a type-1 hypervisor with support
+	  for para-virtualization. Xen can organize the safe execution of several
+	  virtual machines on the same physical system with performance close to
+	  native. It is used as the basis for a number of different commercial and
+	  open source applications, such as: server virtualization, Infrastructure
+	  as a Service (IaaS), desktop virtualization, security applications,
+	  embedded and hardware appliances.
+	  Xen has a special VM called Domain-0 that runs the Dom0 kernel and allows
+	  Xen to use the device drivers for the Domain-0 kernel by default.
+
+	  [1] - https://xenproject.org/
 
 config DISTRO_DEFAULTS
 	bool "Select defaults suitable for booting general purpose Linux distributions"
@@ -240,9 +294,28 @@ config PHYS_64BIT
 	  This can be used not only for 64bit SoCs, but also for
 	  large physical address extension on 32bit SoCs.
 
+config HAS_ROM
+	bool
+	select BINMAN
+	help
+	  Enables building of a u-boot.rom target. This collects U-Boot and
+	  any necessary binary blobs.
+
+config ROM_NEEDS_BLOBS
+	bool
+	depends on HAS_ROM
+	help
+	  Enable this if building the u-boot.rom target needs binary blobs, and
+	  so cannot be done normally. In this case, U-Boot will only build the
+	  ROM if the required blobs exist. If not, you will see an warning like:
+
+	    Image 'main-section' is missing external blobs and is non-functional:
+	      intel-descriptor intel-me intel-refcode intel-vga intel-mrc
+
 config BUILD_ROM
 	bool "Build U-Boot as BIOS replacement"
-	depends on X86
+	depends on HAS_ROM
+	default y if !ROM_NEEDS_BLOBS
 	help
 	  This option allows to build a ROM version of U-Boot.
 	  The build process generally requires several binary blobs
@@ -266,7 +339,7 @@ config BUILD_TARGET
 	default "u-boot-with-spl.sfp" if TARGET_SOCFPGA_GEN5
 	default "u-boot-spl.kwb" if ARCH_MVEBU && SPL
 	default "u-boot-elf.srec" if RCAR_GEN3
-	default "u-boot.itb" if SPL_LOAD_FIT && (ARCH_ROCKCHIP || \
+	default "u-boot.itb" if !BINMAN && SPL_LOAD_FIT && (ARCH_ROCKCHIP || \
 				ARCH_SUNXI || RISCV || ARCH_ZYNQMP)
 	default "u-boot.kwb" if ARCH_KIRKWOOD
 	default "u-boot-with-spl.bin" if ARCH_AT91 && SPL_NAND_SUPPORT
@@ -314,6 +387,41 @@ config PLATFORM_ELFENTRY
 	default "__start" if MIPS
 	default "_start"
 
+config STACK_SIZE
+	hex "Define max stack size that can be used by U-Boot"
+	default 0x4000000 if ARCH_VERSAL || ARCH_ZYNQMP
+	default 0x200000 if MICROBLAZE
+	default 0x1000000
+	help
+	  Define Max stack size that can be used by U-Boot. This value is used
+	  by the UEFI sub-system. On some boards initrd_high is calculated as
+	  base stack pointer minus this stack size.
+
+config SYS_HAS_SRAM
+	bool
+	default y if TARGET_PIC32MZDASK
+	default y if TARGET_DEVKIT8000
+	default y if TARGET_TRICORDER
+	default n
+	help
+	  Enable this to allow support for the on board SRAM.
+	  SRAM base address is controlled by CONFIG_SYS_SRAM_BASE.
+	  SRAM size is controlled by CONFIG_SYS_SRAM_SIZE.
+
+config SYS_SRAM_BASE
+	hex
+	default 0x80000000 if TARGET_PIC32MZDASK
+	default 0x40200000 if TARGET_DEVKIT8000
+	default 0x40200000 if TARGET_TRICORDER
+	default 0x0
+
+config SYS_SRAM_SIZE
+	hex
+	default 0x00080000 if TARGET_PIC32MZDASK
+	default 0x10000 if TARGET_DEVKIT8000
+	default 0x10000 if TARGET_TRICORDER
+	default 0x0
+
 endmenu		# General setup
 
 menu "Boot images"
@@ -358,12 +466,26 @@ config FIT_ENABLE_SHA256_SUPPORT
 	help
 	  Enable this to support SHA256 checksum of FIT image contents. A
 	  SHA256 checksum is a 256-bit (32-byte) hash value used to check that
-	  the image contents have not been corrupted. SHA256 is recommended
-	  for use in secure applications since (as at 2016) there is no known
-	  feasible attack that could produce a 'collision' with differing
-	  input data. Use this for the highest security. Note that only the
-	  SHA256 variant is supported: SHA512 and others are not currently
-	  supported in U-Boot.
+	  the image contents have not been corrupted.
+
+config FIT_ENABLE_SHA384_SUPPORT
+	bool "Support SHA384 checksum of FIT image contents"
+	default n
+	select SHA384
+	help
+	  Enable this to support SHA384 checksum of FIT image contents. A
+	  SHA384 checksum is a 384-bit (48-byte) hash value used to check that
+	  the image contents have not been corrupted. Use this for the highest
+	  security.
+
+config FIT_ENABLE_SHA512_SUPPORT
+	bool "Support SHA512 checksum of FIT image contents"
+	default n
+	select SHA512
+	help
+	  Enable this to support SHA512 checksum of FIT image contents. A
+	  SHA512 checksum is a 512-bit (64-byte) hash value used to check that
+	  the image contents have not been corrupted.
 
 config FIT_SIGNATURE
 	bool "Enable signature verification of FIT uImages"
@@ -459,6 +581,8 @@ config SPL_FIT_SIGNATURE
 	bool "Enable signature verification of FIT firmware within SPL"
 	depends on SPL_DM
 	select SPL_FIT
+	select SPL_CRYPTO_SUPPORT
+	select SPL_HASH_SUPPORT
 	select SPL_RSA
 	select SPL_RSA_VERIFY
 	select SPL_IMAGE_SIGN_INFO
@@ -473,6 +597,14 @@ config SPL_LOAD_FIT
 	  of a FIT (Flat Image Tree) which provides more flexibility. In
 	  particular it can handle selecting from multiple device tree
 	  and passing the correct one to U-Boot.
+
+config SPL_LOAD_FIT_ADDRESS
+	hex "load address of fit image"
+	depends on SPL_LOAD_FIT
+	default 0x0
+	help
+	  Specify the load address of the fit image that will be loaded
+	  by SPL.
 
 config SPL_LOAD_FIT_APPLY_OVERLAY
 	bool "Enable SPL applying DT overlays from FIT"
@@ -525,9 +657,13 @@ config SPL_FIT_SOURCE
 	  U-Boot FIT image. This could specify further image to load and/or
 	  execute.
 
+config USE_SPL_FIT_GENERATOR
+	bool "Use a script to generate the .its script"
+	default y if SPL_FIT
+
 config SPL_FIT_GENERATOR
 	string ".its file generator script for U-Boot FIT image"
-	depends on SPL_FIT
+	depends on USE_SPL_FIT_GENERATOR
 	default "board/sunxi/mksunxi_fit_atf.sh" if SPL_LOAD_FIT && ARCH_SUNXI
 	default "arch/arm/mach-rockchip/make_fit_atf.py" if SPL_LOAD_FIT && ARCH_ROCKCHIP
 	default "arch/arm/mach-zynqmp/mkimage_fit_atf.sh" if SPL_LOAD_FIT && ARCH_ZYNQMP

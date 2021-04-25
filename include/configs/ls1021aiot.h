@@ -138,11 +138,6 @@
 #define CONFIG_SPI_FLASH_SPANSION
 #endif
 
-/* DM SPI */
-#if defined(CONFIG_FSL_DSPI) || defined(CONFIG_FSL_QSPI)
-#define CONFIG_DM_SPI_FLASH
-#endif
-
 /*
  * eTSEC
  */
@@ -218,16 +213,6 @@
 #endif
 
 #define CONFIG_SYS_QE_FW_ADDR	0x67f40000
-
-/*
- * Environment
- */
-
-#define CONFIG_ENV_OVERWRITE
-
-#if defined(CONFIG_SD_BOOT)
-#define CONFIG_SYS_MMC_ENV_DEV	0
-#endif
 
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_OF_STDOUT_VIA_ALIAS

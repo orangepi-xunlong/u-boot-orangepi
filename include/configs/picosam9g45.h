@@ -28,11 +28,9 @@
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
-#define CONFIG_AT91_GPIO
 #define CONFIG_AT91_GPIO_PULLUP	1	/* keep pullups on peripheral pins */
 
 /* serial console */
-#define CONFIG_ATMEL_USART
 #define CONFIG_USART_BASE		ATMEL_BASE_DBGU
 #define	CONFIG_USART_ID			ATMEL_ID_SYS
 
@@ -108,7 +106,6 @@
 #define CONFIG_SYS_SPL_MALLOC_START	0x20080000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x00080000
 
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
 
 #define CONFIG_SPL_ATMEL_SIZE

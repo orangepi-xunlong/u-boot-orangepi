@@ -13,6 +13,8 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <dt-structs.h>
+#include <mapmem.h>
 
 enum mxc_gpio_direction {
 	MXC_GPIO_DIRECTION_IN,
@@ -22,6 +24,10 @@ enum mxc_gpio_direction {
 #define GPIO_PER_BANK			32
 
 struct mxc_gpio_plat {
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	/* Put this first since driver model will copy the data here */
+	struct dtd_gpio_mxc dtplat;
+#endif
 	int bank_index;
 	struct gpio_regs *regs;
 };
@@ -280,6 +286,12 @@ static int mxc_gpio_probe(struct udevice *dev)
 	int banknum;
 	char name[18], *str;
 
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	struct dtd_gpio_mxc *dtplat = &plat->dtplat;
+
+	plat->regs = map_sysmem(dtplat->reg[0], dtplat->reg[1]);
+#endif
+
 	banknum = plat->bank_index;
 	if (IS_ENABLED(CONFIG_ARCH_IMX8))
 		sprintf(name, "GPIO%d_", banknum);
@@ -295,43 +307,24 @@ static int mxc_gpio_probe(struct udevice *dev)
 	return 0;
 }
 
+static int mxc_gpio_ofdata_to_platdata(struct udevice *dev)
+{
+	struct mxc_gpio_plat *plat = dev_get_platdata(dev);
+	if (!CONFIG_IS_ENABLED(OF_PLATDATA)) {
+		fdt_addr_t addr;
+		addr = dev_read_addr(dev);
+		if (addr == FDT_ADDR_T_NONE)
+			return -EINVAL;
+
+		plat->regs = (struct gpio_regs *)addr;
+	}
+	plat->bank_index = dev->req_seq;
+
+	return 0;
+}
+
 static int mxc_gpio_bind(struct udevice *dev)
 {
-	struct mxc_gpio_plat *plat = dev->platdata;
-	fdt_addr_t addr;
-
-	/*
-	 * If platdata already exsits, directly return.
-	 * Actually only when DT is not supported, platdata
-	 * is statically initialized in U_BOOT_DEVICES.Here
-	 * will return.
-	 */
-	if (plat)
-		return 0;
-
-	addr = devfdt_get_addr(dev);
-	if (addr == FDT_ADDR_T_NONE)
-		return -EINVAL;
-
-	/*
-	 * TODO:
-	 * When every board is converted to driver model and DT is supported,
-	 * this can be done by auto-alloc feature, but not using calloc
-	 * to alloc memory for platdata.
-	 *
-	 * For example mxc_plat below uses platform data rather than device
-	 * tree.
-	 *
-	 * NOTE: DO NOT COPY this code if you are using device tree.
-	 */
-	plat = calloc(1, sizeof(*plat));
-	if (!plat)
-		return -ENOMEM;
-
-	plat->regs = (struct gpio_regs *)addr;
-	plat->bank_index = dev->req_seq;
-	dev->platdata = plat;
-
 	return 0;
 }
 
@@ -345,10 +338,14 @@ U_BOOT_DRIVER(gpio_mxc) = {
 	.id	= UCLASS_GPIO,
 	.ops	= &gpio_mxc_ops,
 	.probe	= mxc_gpio_probe,
+	.ofdata_to_platdata = mxc_gpio_ofdata_to_platdata,
+	.platdata_auto_alloc_size = sizeof(struct mxc_gpio_plat),
 	.priv_auto_alloc_size = sizeof(struct mxc_bank_info),
 	.of_match = mxc_gpio_ids,
 	.bind	= mxc_gpio_bind,
 };
+
+U_BOOT_DRIVER_ALIAS(gpio_mxc, fsl_imx6q_gpio)
 
 #if !CONFIG_IS_ENABLED(OF_CONTROL)
 static const struct mxc_gpio_plat mxc_plat[] = {

@@ -149,14 +149,16 @@ void reset_cpu(ulong addr)
 /*
  * Board specific ethernet initialization routine.
  */
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int rc = 0;
+#ifndef CONFIG_DM_ETH
 #ifdef CONFIG_SMC91111
 	rc = smc91111_initialize(0, CONFIG_SMC91111_BASE);
 #endif
 #ifdef CONFIG_SMC911X
 	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+#endif
 #endif
 	return rc;
 }

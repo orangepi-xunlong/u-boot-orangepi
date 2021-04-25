@@ -181,8 +181,6 @@
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #endif
 
-#define CONFIG_ENV_OVERWRITE
-
 #define CONFIG_DDR_CLK_FREQ	66666666 /* DDRCLK on P1010 RDB */
 #define CONFIG_SYS_CLK_FREQ	66666666 /* SYSCLK for P1010 RDB */
 
@@ -195,11 +193,6 @@
 
 
 #define CONFIG_ENABLE_36BIT_PHYS
-
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP			1
-#define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
-#endif
 
 /* DDR Setup */
 #define CONFIG_SYS_DDR_RAW_TIMING
@@ -643,7 +636,6 @@ extern unsigned long get_sdram_size(void);
  */
 #if defined(CONFIG_SDCARD)
 #define CONFIG_FSL_FIXED_MMC_LOCATION
-#define CONFIG_SYS_MMC_ENV_DEV		0
 #elif defined(CONFIG_MTD_RAW_NAND)
 #ifdef CONFIG_TPL_BUILD
 #define SPL_ENV_ADDR		(CONFIG_SYS_INIT_L2_ADDR + (160 << 10))

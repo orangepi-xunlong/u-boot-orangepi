@@ -66,8 +66,6 @@
 #define CONFIG_PCIE3			/* PCIE controller 3 */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
-
 /*
  * These can be toggled for performance analysis, otherwise use default.
  */
@@ -79,9 +77,6 @@
 #endif
 
 #define CONFIG_ENABLE_36BIT_PHYS
-
-#define CONFIG_ADDR_MAP
-#define CONFIG_SYS_NUM_ADDR_MAP		64	/* number of TLB1 entries */
 
 /*
  *  Config the L3 Cache as L3 SRAM
@@ -278,11 +273,6 @@
 #define CONFIG_HVBOOT					\
 	"setenv bootargs config-addr=0x60000000; "	\
 	"bootm 0x01000000 - 0x00f00000"
-
-#if defined(CONFIG_SPIFLASH)
-#elif defined(CONFIG_SDCARD)
-#define CONFIG_SYS_MMC_ENV_DEV          0
-#endif
 
 #define CONFIG_SYS_CLK_FREQ	66666666
 #define CONFIG_DDR_CLK_FREQ	133333333

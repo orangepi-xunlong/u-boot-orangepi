@@ -15,7 +15,6 @@
 
 #define CONFIG_SYS_MALLOC_LEN		(64 * 1024 * 1024)
 
-#define CONFIG_MXC_UART
 #ifdef CONFIG_SERIAL_CONSOLE_UART1
 #if defined(CONFIG_MX6SL)
 #define CONFIG_MXC_UART_BASE		UART1_IPS_BASE_ADDR
@@ -27,7 +26,6 @@
 #else
 #error please define serial console (CONFIG_SERIAL_CONSOLE_UARTx)
 #endif
-#define CONFIG_BAUDRATE			115200
 
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + 16)
 

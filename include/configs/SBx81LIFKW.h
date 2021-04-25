@@ -38,8 +38,6 @@
  * for your console driver.
  */
 
-#define CONFIG_CONS_INDEX	1	/*Console on UART0 */
-
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
@@ -86,12 +84,10 @@
  * Ethernet Driver configuration
  */
 #ifdef CONFIG_CMD_NET
-#define CONFIG_NETCONSOLE	/* include NetConsole support */
 #define CONFIG_NET_MULTI	/* specify more that one ports available */
 #define CONFIG_MVGBE	/* Enable kirkwood Gbe Controller Driver */
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable a single port */
 #define CONFIG_PHY_BASE_ADR	0x01
-#define CONFIG_ENV_OVERWRITE	/* ethaddr can be reprogrammed */
 #endif /* CONFIG_CMD_NET */
 
 #define CONFIG_SYS_LOAD_ADDR  0x1000000      /* default location for tftp and bootm */

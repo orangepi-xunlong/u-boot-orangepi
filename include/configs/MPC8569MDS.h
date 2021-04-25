@@ -16,7 +16,6 @@
 #define CONFIG_FSL_PCI_INIT	1	/* use common fsl pci init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
-#define CONFIG_ENV_OVERWRITE
 
 #ifndef __ASSEMBLY__
 extern unsigned long get_clock_freq(void);
@@ -108,8 +107,6 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_DDR_ERR_INT_EN       0x0000000d
 #define CONFIG_SYS_DDR_ERR_DIS          0x00000000
 #define CONFIG_SYS_DDR_SBE              0x00010000
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * Local Bus Definitions
@@ -396,8 +393,6 @@ extern unsigned long get_clock_freq(void);
 #endif /* CONFIG_QE */
 
 #if defined(CONFIG_PCI)
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 

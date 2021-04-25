@@ -10,10 +10,13 @@
 #include <efi.h>
 #include <efi_api.h>
 #include <efi_loader.h>
+#include <efi_variable.h>
 #include <tee.h>
 #include <malloc.h>
 #include <mm_communication.h>
 
+#define OPTEE_PAGE_SIZE BIT(12)
+extern struct efi_var_file __efi_runtime_data *efi_var_buf;
 static efi_uintn_t max_buffer_size;	/* comm + var + func + data */
 static efi_uintn_t max_payload_size;	/* func + data */
 
@@ -99,25 +102,25 @@ static efi_status_t optee_mm_communicate(void *comm_buf, ulong dsize)
 	param[1].attr = TEE_PARAM_ATTR_TYPE_VALUE_OUTPUT;
 
 	rc = tee_invoke_func(conn.tee, &arg, 2, param);
-	if (rc)
-		return EFI_INVALID_PARAMETER;
 	tee_shm_free(shm);
 	tee_close_session(conn.tee, conn.session);
+	if (rc || arg.ret != TEE_SUCCESS)
+		return EFI_DEVICE_ERROR;
 
 	switch (param[1].u.value.a) {
-	case ARM_SMC_MM_RET_SUCCESS:
+	case ARM_SVC_SPM_RET_SUCCESS:
 		ret = EFI_SUCCESS;
 		break;
 
-	case ARM_SMC_MM_RET_INVALID_PARAMS:
+	case ARM_SVC_SPM_RET_INVALID_PARAMS:
 		ret = EFI_INVALID_PARAMETER;
 		break;
 
-	case ARM_SMC_MM_RET_DENIED:
+	case ARM_SVC_SPM_RET_DENIED:
 		ret = EFI_ACCESS_DENIED;
 		break;
 
-	case ARM_SMC_MM_RET_NO_MEMORY:
+	case ARM_SVC_SPM_RET_NO_MEMORY:
 		ret = EFI_OUT_OF_RESOURCES;
 		break;
 
@@ -236,32 +239,123 @@ efi_status_t EFIAPI get_max_payload(efi_uintn_t *size)
 	if (ret != EFI_SUCCESS)
 		goto out;
 
+	/* Make sure the buffer is big enough for storing variables */
+	if (var_payload->size < MM_VARIABLE_ACCESS_HEADER_SIZE + 0x20) {
+		ret = EFI_DEVICE_ERROR;
+		goto out;
+	}
 	*size = var_payload->size;
+	/*
+	 * Although the max payload is configurable on StMM, we only share a
+	 * single page from OP-TEE for the non-secure buffer used to communicate
+	 * with StMM. Since OP-TEE will reject to map anything bigger than that,
+	 * make sure we are in bounds.
+	 */
+	if (*size > OPTEE_PAGE_SIZE)
+		*size = OPTEE_PAGE_SIZE - MM_COMMUNICATE_HEADER_SIZE  -
+			MM_VARIABLE_COMMUNICATE_SIZE;
+	/*
+	 * There seems to be a bug in EDK2 miscalculating the boundaries and
+	 * size checks, so deduct 2 more bytes to fulfill this requirement. Fix
+	 * it up here to ensure backwards compatibility with older versions
+	 * (cf. StandaloneMmPkg/Drivers/StandaloneMmCpu/AArch64/EventHandle.c.
+	 * sizeof (EFI_MM_COMMUNICATE_HEADER) instead the size minus the
+	 * flexible array member).
+	 *
+	 * size is guaranteed to be > 2 due to checks on the beginning.
+	 */
+	*size -= 2;
+out:
+	free(comm_buf);
+	return ret;
+}
+
+/*
+ * StMM can store internal attributes and properties for variables, i.e enabling
+ * R/O variables
+ */
+static efi_status_t set_property_int(u16 *variable_name, efi_uintn_t name_size,
+				     const efi_guid_t *vendor,
+				     struct var_check_property *var_property)
+{
+	struct smm_variable_var_check_property *smm_property;
+	efi_uintn_t payload_size;
+	u8 *comm_buf = NULL;
+	efi_status_t ret;
+
+	payload_size = sizeof(*smm_property) + name_size;
+	if (payload_size > max_payload_size) {
+		ret = EFI_INVALID_PARAMETER;
+		goto out;
+	}
+	comm_buf = setup_mm_hdr((void **)&smm_property, payload_size,
+				SMM_VARIABLE_FUNCTION_VAR_CHECK_VARIABLE_PROPERTY_SET,
+				&ret);
+	if (!comm_buf)
+		goto out;
+
+	guidcpy(&smm_property->guid, vendor);
+	smm_property->name_size = name_size;
+	memcpy(&smm_property->property, var_property,
+	       sizeof(smm_property->property));
+	memcpy(smm_property->name, variable_name, name_size);
+
+	ret = mm_communicate(comm_buf, payload_size);
 
 out:
 	free(comm_buf);
 	return ret;
 }
 
-/**
- * efi_get_variable() - retrieve value of a UEFI variable
- *
- * This function implements the GetVariable runtime service.
- *
- * See the Unified Extensible Firmware Interface (UEFI) specification for
- * details.
- *
- * @name:		name of the variable
- * @guid:		vendor GUID
- * @attr:		attributes of the variable
- * @data_size:		size of the buffer to which the variable value is copied
- * @data:		buffer to which the variable value is copied
- * Return:		status code
- */
-efi_status_t EFIAPI efi_get_variable(u16 *name, const efi_guid_t *guid,
-				     u32 *attr, efi_uintn_t *data_size,
-				     void *data)
+static efi_status_t get_property_int(u16 *variable_name, efi_uintn_t name_size,
+				     const efi_guid_t *vendor,
+				     struct var_check_property *var_property)
 {
+	struct smm_variable_var_check_property *smm_property;
+	efi_uintn_t payload_size;
+	u8 *comm_buf = NULL;
+	efi_status_t ret;
+
+	memset(var_property, 0, sizeof(*var_property));
+	payload_size = sizeof(*smm_property) + name_size;
+	if (payload_size > max_payload_size) {
+		ret = EFI_INVALID_PARAMETER;
+		goto out;
+	}
+	comm_buf = setup_mm_hdr((void **)&smm_property, payload_size,
+				SMM_VARIABLE_FUNCTION_VAR_CHECK_VARIABLE_PROPERTY_GET,
+				&ret);
+	if (!comm_buf)
+		goto out;
+
+	guidcpy(&smm_property->guid, vendor);
+	smm_property->name_size = name_size;
+	memcpy(smm_property->name, variable_name, name_size);
+
+	ret = mm_communicate(comm_buf, payload_size);
+	/*
+	 * Currently only R/O property is supported in StMM.
+	 * Variables that are not set to R/O will not set the property in StMM
+	 * and the call will return EFI_NOT_FOUND. We are setting the
+	 * properties to 0x0 so checking against that is enough for the
+	 * EFI_NOT_FOUND case.
+	 */
+	if (ret == EFI_NOT_FOUND)
+		ret = EFI_SUCCESS;
+	if (ret != EFI_SUCCESS)
+		goto out;
+	memcpy(var_property, &smm_property->property, sizeof(*var_property));
+
+out:
+	free(comm_buf);
+	return ret;
+}
+
+efi_status_t efi_get_variable_int(u16 *variable_name, const efi_guid_t *vendor,
+				  u32 *attributes, efi_uintn_t *data_size,
+				  void *data, u64 *timep)
+{
+	struct var_check_property var_property;
 	struct smm_variable_access *var_acc;
 	efi_uintn_t payload_size;
 	efi_uintn_t name_size;
@@ -269,15 +363,13 @@ efi_status_t EFIAPI efi_get_variable(u16 *name, const efi_guid_t *guid,
 	u8 *comm_buf = NULL;
 	efi_status_t ret;
 
-	EFI_ENTRY("\"%ls\" %pUl %p %p %p", name, guid, attr, data_size, data);
-
-	if (!name || !guid || !data_size) {
+	if (!variable_name || !vendor || !data_size) {
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
 	}
 
 	/* Check payload size */
-	name_size = u16_strsize(name);
+	name_size = u16_strsize(variable_name);
 	if (name_size > max_payload_size - MM_VARIABLE_ACCESS_HEADER_SIZE) {
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
@@ -300,11 +392,11 @@ efi_status_t EFIAPI efi_get_variable(u16 *name, const efi_guid_t *guid,
 		goto out;
 
 	/* Fill in contents */
-	guidcpy(&var_acc->guid, guid);
+	guidcpy(&var_acc->guid, vendor);
 	var_acc->data_size = tmp_dsize;
 	var_acc->name_size = name_size;
-	var_acc->attr = attr ? *attr : 0;
-	memcpy(var_acc->name, name, name_size);
+	var_acc->attr = attributes ? *attributes : 0;
+	memcpy(var_acc->name, variable_name, name_size);
 
 	/* Communicate */
 	ret = mm_communicate(comm_buf, payload_size);
@@ -315,8 +407,16 @@ efi_status_t EFIAPI efi_get_variable(u16 *name, const efi_guid_t *guid,
 	if (ret != EFI_SUCCESS)
 		goto out;
 
-	if (attr)
-		*attr = var_acc->attr;
+	ret = get_property_int(variable_name, name_size, vendor, &var_property);
+	if (ret != EFI_SUCCESS)
+		goto out;
+
+	if (attributes) {
+		*attributes = var_acc->attr;
+		if (var_property.property & VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY)
+			*attributes |= EFI_VARIABLE_READ_ONLY;
+	}
+
 	if (data)
 		memcpy(data, (u8 *)var_acc->name + var_acc->name_size,
 		       var_acc->data_size);
@@ -325,37 +425,19 @@ efi_status_t EFIAPI efi_get_variable(u16 *name, const efi_guid_t *guid,
 
 out:
 	free(comm_buf);
-	return EFI_EXIT(ret);
+	return ret;
 }
 
-/**
- * efi_get_next_variable_name() - enumerate the current variable names
- *
- * @variable_name_size:	size of variable_name buffer in bytes
- * @variable_name:	name of uefi variable's name in u16
- * @guid:		vendor's guid
- *
- * This function implements the GetNextVariableName service.
- *
- * See the Unified Extensible Firmware Interface (UEFI) specification for
- * details.
- *
- * Return: status code
- */
-efi_status_t EFIAPI efi_get_next_variable_name(efi_uintn_t *variable_name_size,
-					       u16 *variable_name,
-					       efi_guid_t *guid)
+efi_status_t efi_get_next_variable_name_int(efi_uintn_t *variable_name_size,
+					    u16 *variable_name,
+					    efi_guid_t *guid)
 {
 	struct smm_variable_getnext *var_getnext;
 	efi_uintn_t payload_size;
 	efi_uintn_t out_name_size;
 	efi_uintn_t in_name_size;
-	efi_uintn_t tmp_dsize;
-	efi_uintn_t name_size;
 	u8 *comm_buf = NULL;
 	efi_status_t ret;
-
-	EFI_ENTRY("%p \"%ls\" %pUl", variable_name_size, variable_name, guid);
 
 	if (!variable_name_size || !variable_name || !guid) {
 		ret = EFI_INVALID_PARAMETER;
@@ -370,20 +452,14 @@ efi_status_t EFIAPI efi_get_next_variable_name(efi_uintn_t *variable_name_size,
 		goto out;
 	}
 
-	name_size = u16_strsize(variable_name);
-	if (name_size > max_payload_size - MM_VARIABLE_GET_NEXT_HEADER_SIZE) {
+	if (in_name_size > max_payload_size - MM_VARIABLE_GET_NEXT_HEADER_SIZE) {
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
 	}
 
 	/* Trim output buffer size */
-	tmp_dsize = *variable_name_size;
-	if (name_size + tmp_dsize >
-			max_payload_size - MM_VARIABLE_GET_NEXT_HEADER_SIZE) {
-		tmp_dsize = max_payload_size -
-				MM_VARIABLE_GET_NEXT_HEADER_SIZE -
-				name_size;
-	}
+	if (out_name_size > max_payload_size - MM_VARIABLE_GET_NEXT_HEADER_SIZE)
+		out_name_size = max_payload_size - MM_VARIABLE_GET_NEXT_HEADER_SIZE;
 
 	payload_size = MM_VARIABLE_GET_NEXT_HEADER_SIZE + out_name_size;
 	comm_buf = setup_mm_hdr((void **)&var_getnext, payload_size,
@@ -409,42 +485,26 @@ efi_status_t EFIAPI efi_get_next_variable_name(efi_uintn_t *variable_name_size,
 		goto out;
 
 	guidcpy(guid, &var_getnext->guid);
-	memcpy(variable_name, (u8 *)var_getnext->name,
-	       var_getnext->name_size);
+	memcpy(variable_name, var_getnext->name, var_getnext->name_size);
 
 out:
 	free(comm_buf);
-	return EFI_EXIT(ret);
+	return ret;
 }
 
-/**
- * efi_set_variable() - set value of a UEFI variable
- *
- * This function implements the SetVariable runtime service.
- *
- * See the Unified Extensible Firmware Interface (UEFI) specification for
- * details.
- *
- * @name:		name of the variable
- * @guid:		vendor GUID
- * @attr:		attributes of the variable
- * @data_size:		size of the buffer with the variable value
- * @data:		buffer with the variable value
- * Return:		status code
- */
-efi_status_t EFIAPI efi_set_variable(u16 *name, const efi_guid_t *guid,
-				     u32 attr, efi_uintn_t data_size,
-				     const void *data)
+efi_status_t efi_set_variable_int(u16 *variable_name, const efi_guid_t *vendor,
+				  u32 attributes, efi_uintn_t data_size,
+				  const void *data, bool ro_check)
 {
+	efi_status_t ret, alt_ret = EFI_SUCCESS;
+	struct var_check_property var_property;
 	struct smm_variable_access *var_acc;
 	efi_uintn_t payload_size;
 	efi_uintn_t name_size;
 	u8 *comm_buf = NULL;
-	efi_status_t ret;
+	bool ro;
 
-	EFI_ENTRY("\"%ls\" %pUl %x %zu %p", name, guid, attr, data_size, data);
-
-	if (!name || name[0] == 0 || !guid) {
+	if (!variable_name || variable_name[0] == 0 || !vendor) {
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
 	}
@@ -452,67 +512,90 @@ efi_status_t EFIAPI efi_set_variable(u16 *name, const efi_guid_t *guid,
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
 	}
-
 	/* Check payload size */
-	name_size = u16_strsize(name);
+	name_size = u16_strsize(variable_name);
 	payload_size = MM_VARIABLE_ACCESS_HEADER_SIZE + name_size + data_size;
 	if (payload_size > max_payload_size) {
 		ret = EFI_INVALID_PARAMETER;
 		goto out;
 	}
 
-	/* Get communication buffer and initialize header */
+	/*
+	 * Allocate the buffer early, before switching to RW (if needed)
+	 * so we won't need to account for any failures in reading/setting
+	 * the properties, if the allocation fails
+	 */
 	comm_buf = setup_mm_hdr((void **)&var_acc, payload_size,
 				SMM_VARIABLE_FUNCTION_SET_VARIABLE, &ret);
 	if (!comm_buf)
 		goto out;
 
+	ro = !!(attributes & EFI_VARIABLE_READ_ONLY);
+	attributes &= EFI_VARIABLE_MASK;
+
+	/*
+	 * The API has the ability to override RO flags. If no RO check was
+	 * requested switch the variable to RW for the duration of this call
+	 */
+	ret = get_property_int(variable_name, name_size, vendor,
+			       &var_property);
+	if (ret != EFI_SUCCESS)
+		goto out;
+
+	if (var_property.property & VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY) {
+		/* Bypass r/o check */
+		if (!ro_check) {
+			var_property.property &= ~VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY;
+			ret = set_property_int(variable_name, name_size, vendor, &var_property);
+			if (ret != EFI_SUCCESS)
+				goto out;
+		} else {
+			ret = EFI_WRITE_PROTECTED;
+			goto out;
+		}
+	}
+
 	/* Fill in contents */
-	guidcpy(&var_acc->guid, guid);
+	guidcpy(&var_acc->guid, vendor);
 	var_acc->data_size = data_size;
 	var_acc->name_size = name_size;
-	var_acc->attr = attr;
-	memcpy(var_acc->name, name, name_size);
+	var_acc->attr = attributes;
+	memcpy(var_acc->name, variable_name, name_size);
 	memcpy((u8 *)var_acc->name + name_size, data, data_size);
 
 	/* Communicate */
 	ret = mm_communicate(comm_buf, payload_size);
+	if (ret != EFI_SUCCESS)
+		alt_ret = ret;
 
+	if (ro && !(var_property.property & VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY)) {
+		var_property.revision = VAR_CHECK_VARIABLE_PROPERTY_REVISION;
+		var_property.property |= VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY;
+		var_property.attributes = attributes;
+		var_property.minsize = 1;
+		var_property.maxsize = var_acc->data_size;
+		ret = set_property_int(variable_name, name_size, vendor, &var_property);
+	}
+
+	if (alt_ret != EFI_SUCCESS)
+		goto out;
+
+	if (!u16_strcmp(variable_name, L"PK"))
+		alt_ret = efi_init_secure_state();
 out:
 	free(comm_buf);
-	return EFI_EXIT(ret);
+	return alt_ret == EFI_SUCCESS ? ret : alt_ret;
 }
 
-/**
- * efi_query_variable_info() - get information about EFI variables
- *
- * This function implements the QueryVariableInfo() runtime service.
- *
- * See the Unified Extensible Firmware Interface (UEFI) specification for
- * details.
- *
- * @attributes:				bitmask to select variables to be
- *					queried
- * @maximum_variable_storage_size:	maximum size of storage area for the
- *					selected variable types
- * @remaining_variable_storage_size:	remaining size of storage are for the
- *					selected variable types
- * @maximum_variable_size:		maximum size of a variable of the
- *					selected type
- * Returns:				status code
- */
-efi_status_t EFIAPI __efi_runtime
-efi_query_variable_info(u32 attributes, u64 *max_variable_storage_size,
-			u64 *remain_variable_storage_size,
-			u64 *max_variable_size)
+efi_status_t efi_query_variable_info_int(u32 attributes,
+					 u64 *max_variable_storage_size,
+					 u64 *remain_variable_storage_size,
+					 u64 *max_variable_size)
 {
 	struct smm_variable_query_info *mm_query_info;
 	efi_uintn_t payload_size;
 	efi_status_t ret;
 	u8 *comm_buf;
-
-	EFI_ENTRY("%x %p %p %p", attributes, max_variable_storage_size,
-		  remain_variable_storage_size, max_variable_size);
 
 	payload_size = sizeof(*mm_query_info);
 	comm_buf = setup_mm_hdr((void **)&mm_query_info, payload_size,
@@ -532,40 +615,7 @@ efi_query_variable_info(u32 attributes, u64 *max_variable_storage_size,
 
 out:
 	free(comm_buf);
-	return EFI_EXIT(ret);
-}
-
-/**
- * efi_get_variable_runtime() - runtime implementation of GetVariable()
- *
- * @variable_name:	name of the variable
- * @guid:		vendor GUID
- * @attributes:		attributes of the variable
- * @data_size:		size of the buffer to which the variable value is copied
- * @data:		buffer to which the variable value is copied
- * Return:		status code
- */
-static efi_status_t __efi_runtime EFIAPI
-efi_get_variable_runtime(u16 *variable_name, const efi_guid_t *guid,
-			 u32 *attributes, efi_uintn_t *data_size, void *data)
-{
-	return EFI_UNSUPPORTED;
-}
-
-/**
- * efi_get_next_variable_name_runtime() - runtime implementation of
- *					  GetNextVariable()
- *
- * @variable_name_size:	size of variable_name buffer in byte
- * @variable_name:	name of uefi variable's name in u16
- * @guid:		vendor's guid
- * Return:              status code
- */
-static efi_status_t __efi_runtime EFIAPI
-efi_get_next_variable_name_runtime(efi_uintn_t *variable_name_size,
-				   u16 *variable_name, efi_guid_t *guid)
-{
-	return EFI_UNSUPPORTED;
+	return ret;
 }
 
 /**
@@ -617,8 +667,10 @@ efi_set_variable_runtime(u16 *variable_name, const efi_guid_t *guid,
  */
 void efi_variables_boot_exit_notify(void)
 {
-	u8 *comm_buf;
 	efi_status_t ret;
+	u8 *comm_buf;
+	loff_t len;
+	struct efi_var_file *var_buf;
 
 	comm_buf = setup_mm_hdr(NULL, 0,
 				SMM_VARIABLE_FUNCTION_EXIT_BOOT_SERVICE, &ret);
@@ -630,6 +682,18 @@ void efi_variables_boot_exit_notify(void)
 	if (ret != EFI_SUCCESS)
 		log_err("Unable to notify StMM for ExitBootServices\n");
 	free(comm_buf);
+
+	/*
+	 * Populate the list for runtime variables.
+	 * asking EFI_VARIABLE_RUNTIME_ACCESS is redundant, since
+	 * efi_var_mem_notify_exit_boot_services will clean those, but that's fine
+	 */
+	ret = efi_var_collect(&var_buf, &len, EFI_VARIABLE_RUNTIME_ACCESS);
+	if (ret != EFI_SUCCESS)
+		log_err("Can't populate EFI variables. No runtime variables will be available\n");
+	else
+		memcpy(efi_var_buf, var_buf, len);
+	free(var_buf);
 
 	/* Update runtime service table */
 	efi_runtime_services.query_variable_info =
@@ -650,6 +714,11 @@ efi_status_t efi_init_variables(void)
 {
 	efi_status_t ret;
 
+	/* Create a cached copy of the variables that will be enabled on ExitBootServices() */
+	ret = efi_var_mem_init();
+	if (ret != EFI_SUCCESS)
+		return ret;
+
 	ret = get_max_payload(&max_payload_size);
 	if (ret != EFI_SUCCESS)
 		return ret;
@@ -657,6 +726,10 @@ efi_status_t efi_init_variables(void)
 	max_buffer_size = MM_COMMUNICATE_HEADER_SIZE +
 			  MM_VARIABLE_COMMUNICATE_SIZE +
 			  max_payload_size;
+
+	ret = efi_init_secure_state();
+	if (ret != EFI_SUCCESS)
+		return ret;
 
 	return EFI_SUCCESS;
 }

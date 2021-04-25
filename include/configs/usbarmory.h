@@ -15,13 +15,11 @@
 #include <asm/arch/imx-regs.h>
 
 /* U-Boot environment */
-#define CONFIG_SYS_MMC_ENV_DEV	0
 
 /* U-Boot general configurations */
 #define CONFIG_SYS_CBSIZE	512
 
 /* UART */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* SD/MMC */

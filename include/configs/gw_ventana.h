@@ -43,7 +43,6 @@
 #define CONFIG_IMX_THERMAL
 
 /* Serial */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	       UART2_BASE
 
 #if !defined(CONFIG_SPI_FLASH) && defined(CONFIG_SPL_NAND_SUPPORT)
@@ -116,14 +115,12 @@
 #define CONFIG_MXC_USB_PORTSC     (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS      0
 #define CONFIG_USBD_HS
-#define CONFIG_NETCONSOLE
 
 /* Framebuffer and LCD */
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 #define CONFIG_VIDEO_BMP_LOGO
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_HIDE_LOGO_VERSION  /* Custom config to hide U-boot version */
 
 /* Miscellaneous configurable options */
@@ -147,10 +144,6 @@
  */
 
 /* Persistent Environment Config */
-#if defined(CONFIG_ENV_IS_IN_MMC)
-  #define CONFIG_SYS_MMC_ENV_DEV         0
-  #define CONFIG_SYS_MMC_ENV_PART        1
-#endif
 
 /* Environment */
 #define CONFIG_IPADDR             192.168.1.1

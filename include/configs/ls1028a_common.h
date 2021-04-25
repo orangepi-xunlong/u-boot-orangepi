@@ -7,7 +7,6 @@
 #define __L1028A_COMMON_H
 
 #define CONFIG_REMAKE_ELF
-#define CONFIG_FSL_LAYERSCAPE
 #define CONFIG_MP
 
 #include <asm/arch/stream_id_lsch3.h>
@@ -29,7 +28,7 @@
 /*
  * SMP Definitinos
  */
-#define CPU_RELEASE_ADDR		secondary_boot_func
+#define CPU_RELEASE_ADDR		secondary_boot_addr
 
 /* Generic Timer Definitions */
 #define COUNTER_FREQUENCY		25000000	/* 25MHz */
@@ -43,12 +42,10 @@
 #endif
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX       1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE     1
 #define CONFIG_SYS_NS16550_CLK          (get_bus_freq(0) / 2)
 
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 /* Miscellaneous configurable options */
@@ -59,9 +56,6 @@
 
 #define CONFIG_HWCONFIG
 #define HWCONFIG_BUFFER_SIZE		128
-
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
@@ -88,10 +82,6 @@
 					sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE /* Boot args buffer */
 
-#ifndef CONFIG_CMDLINE_EDITING
-#define CONFIG_CMDLINE_EDITING		1
-#endif
-
 #define CONFIG_SYS_MAXARGS		64	/* max command args */
 
 #define CONFIG_SYS_BOOTM_LEN   (64 << 20)      /* Increase max gunzip size */
@@ -101,7 +91,6 @@
 #define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
 #endif
 
-#define CONFIG_SYS_MMC_ENV_DEV         0
 #define OCRAM_NONSECURE_SIZE		0x00010000
 #define CONFIG_SYS_FSL_QSPI_BASE	0x20000000
 

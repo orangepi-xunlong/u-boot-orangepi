@@ -12,6 +12,7 @@
 #include <dm/test.h>
 #include <dm/device-internal.h>
 #include <linux/err.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 /* Base test of the clk uclass */
@@ -33,7 +34,7 @@ static int dm_test_clk_base(struct unit_test_state *uts)
 	return 0;
 }
 
-DM_TEST(dm_test_clk_base, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk_base, UT_TESTF_SCAN_FDT);
 
 static int dm_test_clk(struct unit_test_state *uts)
 {
@@ -160,7 +161,7 @@ static int dm_test_clk(struct unit_test_state *uts)
 						   SANDBOX_CLK_ID_UART1));
 	return 0;
 }
-DM_TEST(dm_test_clk, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk, UT_TESTF_SCAN_FDT);
 
 static int dm_test_clk_bulk(struct unit_test_state *uts)
 {
@@ -198,4 +199,4 @@ static int dm_test_clk_bulk(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_clk_bulk, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk_bulk, UT_TESTF_SCAN_FDT);

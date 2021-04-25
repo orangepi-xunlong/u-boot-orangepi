@@ -10,6 +10,7 @@
 
 #define APLL_HZ		(600 * MHz)
 #define GPLL_HZ		(594 * MHz)
+#define CPLL_HZ		(500 * MHz)
 
 #define CORE_PERI_HZ	150000000
 #define CORE_ACLK_HZ	300000000

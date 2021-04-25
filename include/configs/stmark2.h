@@ -19,12 +19,6 @@
 
 #define CONFIG_TIMESTAMP
 
-#define CONFIG_BOOTARGS						\
-	"console=ttyS0,115200 root=/dev/ram0 rw "		\
-		"rootfstype=ramfs "				\
-		"rdinit=/bin/init "				\
-		"devtmpfs.mount=1"
-
 #define CONFIG_BOOTCOMMAND					\
 	"sf probe 0:1 50000000; "				\
 	"sf read ${loadaddr} 0x100000 ${kern_size}; "		\
@@ -137,8 +131,6 @@
 #if defined(CONFIG_CF_SBF)
 #define CONFIG_ENV_IS_IN_SPI_FLASH	1
 #endif
-
-#undef CONFIG_ENV_OVERWRITE
 
 /* Cache Configuration */
 #define CONFIG_SYS_CACHELINE_SIZE	16

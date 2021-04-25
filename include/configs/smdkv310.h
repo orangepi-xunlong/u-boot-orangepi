@@ -30,9 +30,6 @@
 /* select serial console configuration */
 #define EXYNOS4_DEFAULT_UART_OFFSET	0x010000
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /* MMC SPL */
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define COPY_BL2_FNPTR_ADDR	0x00002488
@@ -62,7 +59,6 @@
 /* MIU (Memory Interleaving Unit) */
 #define CONFIG_MIU_2BIT_INTERLEAVED
 
-#define CONFIG_SYS_MMC_ENV_DEV		0
 #define RESERVE_BLOCK_SIZE		(512)
 #define BL1_SIZE			(16 << 10) /*16 K reserved for BL1*/
 

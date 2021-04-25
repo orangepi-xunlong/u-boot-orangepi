@@ -10,7 +10,9 @@
 #include <remoteproc.h>
 #include <asm/io.h>
 #include <dm/test.h>
+#include <test/test.h>
 #include <test/ut.h>
+
 /**
  * dm_test_remoteproc_base() - test the operations after initializations
  * @uts:	unit test state
@@ -66,7 +68,7 @@ static int dm_test_remoteproc_base(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_remoteproc_base, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_remoteproc_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 #define DEVICE_TO_PHYSICAL_OFFSET	0x1000
 /**
@@ -254,4 +256,4 @@ static int dm_test_remoteproc_elf(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_remoteproc_elf, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_remoteproc_elf, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

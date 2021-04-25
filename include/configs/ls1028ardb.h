@@ -38,10 +38,10 @@
 #define QIXIS_LBMAP_ALTBANK		0x00
 #define QIXIS_LBMAP_SD			0x00
 #define QIXIS_LBMAP_EMMC		0x00
-#define QIXIS_LBMAP_QSPI		0x00
+#define QIXIS_LBMAP_XSPI		0x00
 #define QIXIS_RCW_SRC_SD		0xf8
 #define QIXIS_RCW_SRC_EMMC		0xf9
-#define QIXIS_RCW_SRC_QSPI		0xff
+#define QIXIS_RCW_SRC_XSPI		0xff
 #define QIXIS_RST_CTL_RESET		0x31
 #define QIXIS_RCFG_CTL_RECONFIG_IDLE	0x10
 #define QIXIS_RCFG_CTL_RECONFIG_START	0x11
@@ -112,13 +112,6 @@
 			"run scan_dev_for_boot; "            \
 		  "fi; "                                   \
 		"done\0"                                   \
-	"scan_dev_for_boot="				  \
-		"echo Scanning ${devtype} "		  \
-				"${devnum}:${distro_bootpart}...; "  \
-		"for prefix in ${boot_prefixes}; do "	  \
-			"run scan_dev_for_scripts; "	  \
-		"done;"					  \
-		"\0"					  \
 	"boot_a_script="				  \
 		"load ${devtype} ${devnum}:${distro_bootpart} "  \
 			"${scriptaddr} ${prefix}${script}; "    \

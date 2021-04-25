@@ -39,11 +39,9 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 
 /* Environment */
-#define CONFIG_ENV_OVERWRITE
 
 /* Booting Linux */
 #define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttyAMA0,115200n8 "
 #define CONFIG_BOOTCOMMAND	"run ${bootpri} ; run ${bootsec}"
 #define CONFIG_LOADADDR		0x42000000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR

@@ -66,8 +66,6 @@
  */
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_SYS_BAUDRATE_TABLE { 4800, 9600, 19200, 38400, 57600, 115200 }
 
 /* USB device configuration */
@@ -103,7 +101,6 @@
 #define CONFIG_VIDEO_LOGO
 #define VIDEO_FB_16BPP_PIXEL_SWAP
 #define VIDEO_FB_16BPP_WORD_SWAP
-#define CONFIG_SPLASH_SCREEN
 
 /* functions for cfb_console */
 #define VIDEO_KBD_INIT_FCT		rx51_kp_init()

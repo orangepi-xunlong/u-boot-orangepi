@@ -64,17 +64,15 @@ int irq_read_and_clear(struct irq *irq)
 }
 
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-int irq_get_by_index_platdata(struct udevice *dev, int index,
-			      struct phandle_1_arg *cells, struct irq *irq)
+int irq_get_by_driver_info(struct udevice *dev,
+			   struct phandle_1_arg *cells, struct irq *irq)
 {
 	int ret;
 
-	if (index != 0)
-		return -ENOSYS;
-	ret = uclass_get_device(UCLASS_IRQ, 0, &irq->dev);
+	ret = device_get_by_driver_info(cells->node, &irq->dev);
 	if (ret)
 		return ret;
-	irq->id = cells[0].arg[0];
+	irq->id = cells->arg[0];
 
 	return 0;
 }
@@ -154,8 +152,6 @@ int irq_request(struct udevice *dev, struct irq *irq)
 	const struct irq_ops *ops;
 
 	log_debug("(dev=%p, irq=%p)\n", dev, irq);
-	if (!irq)
-		return 0;
 	ops = irq_get_ops(dev);
 
 	irq->dev = dev;
@@ -172,10 +168,26 @@ int irq_first_device_type(enum irq_dev_t type, struct udevice **devp)
 
 	ret = uclass_first_device_drvdata(UCLASS_IRQ, type, devp);
 	if (ret)
-		return log_msg_ret("find", ret);
+		return ret;
 
 	return 0;
 }
+
+#if CONFIG_IS_ENABLED(ACPIGEN)
+int irq_get_acpi(const struct irq *irq, struct acpi_irq *acpi_irq)
+{
+	struct irq_ops *ops;
+
+	if (!irq_is_valid(irq))
+		return -EINVAL;
+
+	ops = irq_get_ops(irq->dev);
+	if (!ops->get_acpi)
+		return -ENOSYS;
+
+	return ops->get_acpi(irq, acpi_irq);
+}
+#endif
 
 UCLASS_DRIVER(irq) = {
 	.id		= UCLASS_IRQ,

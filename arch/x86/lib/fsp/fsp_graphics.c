@@ -98,6 +98,7 @@ static int fsp_video_probe(struct udevice *dev)
 	 * For IGD, it seems to be always on BAR2.
 	 */
 	vesa->phys_base_ptr = dm_pci_read_bar32(dev, 2);
+	gd->fb_base = vesa->phys_base_ptr;
 
 	ret = vbe_setup_video_priv(vesa, uc_priv, plat);
 	if (ret)
@@ -106,14 +107,24 @@ static int fsp_video_probe(struct udevice *dev)
 	mtrr_add_request(MTRR_TYPE_WRCOMB, vesa->phys_base_ptr, 256 << 20);
 	mtrr_commit(true);
 
-	printf("%dx%dx%d\n", uc_priv->xsize, uc_priv->ysize,
-	       vesa->bits_per_pixel);
+	printf("%dx%dx%d @ %x\n", uc_priv->xsize, uc_priv->ysize,
+	       vesa->bits_per_pixel, vesa->phys_base_ptr);
 
 	return 0;
 
 err:
 	printf("No video mode configured in FSP!\n");
 	return ret;
+}
+
+static int fsp_video_bind(struct udevice *dev)
+{
+	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+
+	/* Set the maximum supported resolution */
+	plat->size = 2560 * 1600 * 4;
+
+	return 0;
 }
 
 static const struct udevice_id fsp_video_ids[] = {
@@ -125,7 +136,9 @@ U_BOOT_DRIVER(fsp_video) = {
 	.name	= "fsp_video",
 	.id	= UCLASS_VIDEO,
 	.of_match = fsp_video_ids,
+	.bind	= fsp_video_bind,
 	.probe	= fsp_video_probe,
+	.flags	= DM_FLAG_PRE_RELOC,
 };
 
 static struct pci_device_id fsp_video_supported[] = {

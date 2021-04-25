@@ -60,9 +60,9 @@
 #define CONFIG_SYS_FSL_PBL_RCW	\
 		"board/freescale/ls1021atsn/ls102xa_rcw_sd.cfg"
 
-#ifdef CONFIG_SECURE_BOOT
+#ifdef CONFIG_NXP_ESBC
 #define CONFIG_U_BOOT_HDR_SIZE		(16 << 10)
-#endif /* ifdef CONFIG_SECURE_BOOT */
+#endif /* ifdef CONFIG_NXP_ESBC */
 
 #define CONFIG_SPL_MAX_SIZE		0x1a000
 #define CONFIG_SPL_STACK		0x1001d000
@@ -97,14 +97,11 @@
 #define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #ifndef CONFIG_DM_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #endif
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
-
-#define CONFIG_BAUDRATE			115200
 
 /* I2C */
 #ifndef CONFIG_DM_I2C
@@ -239,11 +236,6 @@
 #endif
 
 /* Environment */
-#define CONFIG_ENV_OVERWRITE
-
-#if defined(CONFIG_SD_BOOT)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 #define CONFIG_SYS_BOOTM_LEN		0x8000000 /* 128 MB */
 

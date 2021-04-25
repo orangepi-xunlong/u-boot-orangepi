@@ -132,5 +132,5 @@
 };
 
 &vdd_log {
-	regulator-init-microvolt = <900000>;
+	regulator-init-microvolt = <930000>;
 };

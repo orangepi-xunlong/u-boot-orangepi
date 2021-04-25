@@ -26,7 +26,7 @@ static void dump_hdr(struct acpi_table_header *hdr)
 	printf("%.*s %08lx %06x", ACPI_NAME_LEN, hdr->signature,
 	       (ulong)map_to_sysmem(hdr), hdr->length);
 	if (has_hdr) {
-		printf(" (v%02d %.6s %.8s %u %.4s %d)\n", hdr->revision,
+		printf(" (v%02d %.6s %.8s %x %.4s %x)\n", hdr->revision,
 		       hdr->oem_id, hdr->oem_table_id, hdr->oem_revision,
 		       hdr->aslc_id, hdr->aslc_revision);
 	} else {
@@ -153,6 +153,17 @@ static int do_acpi_list(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
+static int do_acpi_items(struct cmd_tbl *cmdtp, int flag, int argc,
+			 char *const argv[])
+{
+	bool dump_contents;
+
+	dump_contents = argc >= 2 && !strcmp("-d", argv[1]);
+	acpi_dump_items(dump_contents ? ACPI_DUMP_CONTENTS : ACPI_DUMP_LIST);
+
+	return 0;
+}
+
 static int do_acpi_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 			char *const argv[])
 {
@@ -160,8 +171,6 @@ static int do_acpi_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 	char sig[ACPI_NAME_LEN];
 	int ret;
 
-	if (argc < 2)
-		return CMD_RET_USAGE;
 	name = argv[1];
 	if (strlen(name) != ACPI_NAME_LEN) {
 		printf("Table name '%s' must be four characters\n", name);
@@ -179,8 +188,10 @@ static int do_acpi_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 
 static char acpi_help_text[] =
 	"list - list ACPI tables\n"
+	"acpi items [-d]  - List/dump each piece of ACPI data from devices\n"
 	"acpi dump <name> - Dump ACPI table";
 
 U_BOOT_CMD_WITH_SUBCMDS(acpi, "ACPI tables", acpi_help_text,
 	U_BOOT_SUBCMD_MKENT(list, 1, 1, do_acpi_list),
+	U_BOOT_SUBCMD_MKENT(items, 2, 1, do_acpi_items),
 	U_BOOT_SUBCMD_MKENT(dump, 2, 1, do_acpi_dump));

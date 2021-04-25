@@ -22,7 +22,7 @@ DECLARE_GLOBAL_DATA_PTR;
 int cache_enable_ways(void)
 {
 	const void *blob = gd->fdt_blob;
-	int node = (-FDT_ERR_NOTFOUND);
+	int node;
 	fdt_addr_t base;
 	u32 config;
 	u32 ways;
@@ -35,7 +35,8 @@ int cache_enable_ways(void)
 	if (node < 0)
 		return node;
 
-	base = fdtdec_get_addr(blob, node, "reg");
+	base = fdtdec_get_addr_size_auto_parent(blob, 0, node, "reg", 0,
+						NULL, false);
 	if (base == FDT_ADDR_T_NONE)
 		return FDT_ADDR_T_NONE;
 

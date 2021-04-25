@@ -65,8 +65,6 @@
 /* BOOTP/DHCP options */
 #define CONFIG_BOOTP_NISDOMAIN
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_DNS2
-#define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_BOOTP_TIMEOFFSET
 #undef CONFIG_BOOTP_VENDOREX
 
@@ -138,10 +136,6 @@
 #define CONFIG_BOOTCOMMAND "run autoboot"
 
 /* Boot Argument Buffer Size */
-
-/* SRAM config */
-#define CONFIG_SYS_SRAM_START              0x40200000
-#define CONFIG_SYS_SRAM_SIZE               0x10000
 
 /* Defines for SPL */
 

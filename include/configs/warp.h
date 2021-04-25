@@ -17,7 +17,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(35 * SZ_1M) /* Increase due to DFU */
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_IPS_BASE_ADDR
 
 /* MMC Configs */
@@ -37,8 +36,6 @@
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 /* VDD voltage 1.65 - 1.95 */
 #define CONFIG_SYS_SD_VOLTAGE		0x00000080

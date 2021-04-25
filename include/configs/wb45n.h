@@ -20,10 +20,8 @@
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY	/* required until (g)pio is fixed */
-#define CONFIG_AT91_GPIO
 
 /* serial console */
-#define CONFIG_ATMEL_USART
 #define CONFIG_USART_BASE   ATMEL_BASE_DBGU
 #define CONFIG_USART_ID     ATMEL_ID_SYS
 
@@ -57,7 +55,6 @@
 #define CONFIG_NET_RETRY_COUNT      20
 #define CONFIG_MACB_SEARCH_PHY
 #define CONFIG_ETHADDR              C0:EE:40:00:00:00
-#define CONFIG_ENV_OVERWRITE        1
 
 /* System */
 #define CONFIG_SYS_LOAD_ADDR        0x22000000	/* load address */
@@ -84,10 +81,6 @@
 #else
 #error No boot method selected, please select 'CONFIG_SYS_USE_NANDFLASH'
 #endif
-
-#define CONFIG_BOOTARGS     "console=ttyS0,115200 earlyprintk " \
-                            "rw noinitrd mem=64M "              \
-                            "rootfstype=ubifs root=ubi0:rootfs ubi.mtd=6"
 
 #define CONFIG_EXTRA_ENV_SETTINGS       \
     "_mtd=mtdparts default; setenv bootargs ${bootargs} ${mtdparts}\0" \
@@ -120,8 +113,6 @@
 #define CONFIG_SYS_MCKR             0x1301
 #define CONFIG_SYS_MCKR_CSS         0x1302
 
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_BASE
 #define CONFIG_SYS_NAND_U_BOOT_OFFS 0x20000
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_SIZE   0x800

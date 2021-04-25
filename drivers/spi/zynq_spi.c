@@ -36,9 +36,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_SPI_CR_SS_SHIFT		10	/* Slave select shift */
 
 #define ZYNQ_SPI_FIFO_DEPTH		128
-#ifndef CONFIG_SYS_ZYNQ_SPI_WAIT
-#define CONFIG_SYS_ZYNQ_SPI_WAIT	(CONFIG_SYS_HZ/100)	/* 10 ms */
-#endif
+#define ZYNQ_SPI_WAIT			(CONFIG_SYS_HZ / 100)	/* 10 ms */
 
 /* zynq spi register set */
 struct zynq_spi_regs {
@@ -79,7 +77,7 @@ static int zynq_spi_ofdata_to_platdata(struct udevice *bus)
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 
-	plat->regs = (struct zynq_spi_regs *)devfdt_get_addr(bus);
+	plat->regs = dev_read_addr_ptr(bus);
 
 	/* FIXME: Use 250MHz as a suitable default */
 	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
@@ -251,7 +249,7 @@ static int zynq_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		ts = get_timer(0);
 		status = readl(&regs->isr);
 		while (!(status & ZYNQ_SPI_IXR_TXOW_MASK)) {
-			if (get_timer(ts) > CONFIG_SYS_ZYNQ_SPI_WAIT) {
+			if (get_timer(ts) > ZYNQ_SPI_WAIT) {
 				printf("spi_xfer: Timeout! TX FIFO not full\n");
 				return -1;
 			}

@@ -82,6 +82,22 @@ static void setup_iodomain(void)
 	rk_setreg(&pmugrf->soc_con0, 0 << PMUGRF_CON0_PMU1830_VOL_SHIFT);
 }
 
+static void init_vdd_center(void)
+{
+	struct udevice *regulator;
+	struct dm_regulator_uclass_platdata *uc_pdata;
+	int ret;
+
+	ret = regulator_get_by_platname("vdd_center", &regulator);
+	if (ret)
+		return;
+
+	uc_pdata = dev_get_uclass_platdata(regulator);
+	ret = regulator_set_value(regulator, uc_pdata->init_uV);
+	if (ret)
+		debug("%s vdd_center init fail! ret %d\n", __func__, ret);
+}
+
 /*
  * Swap mmc0 and mmc1 in boot_targets if booted from SD-Card.
  *
@@ -173,6 +189,7 @@ int misc_init_r(void)
 	int ret;
 
 	setup_iodomain();
+	init_vdd_center();
 	set_board_info();
 
 	ret = rockchip_cpuid_from_efuse(cpuid_offset, cpuid_length, cpuid);
@@ -285,7 +302,7 @@ int checkboard(void)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	char *env;
 

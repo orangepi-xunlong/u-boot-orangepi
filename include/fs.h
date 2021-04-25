@@ -15,6 +15,7 @@ struct cmd_tbl;
 #define FS_TYPE_SANDBOX	3
 #define FS_TYPE_UBIFS	4
 #define FS_TYPE_BTRFS	5
+#define FS_TYPE_SQUASHFS 6
 
 struct blk_desc;
 
@@ -258,5 +259,16 @@ int do_fs_uuid(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
  * possible to store the type directly in env.
  */
 int do_fs_type(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+
+/**
+ * do_fs_types - List supported filesystems.
+ *
+ * @cmdtp: Command information for fstypes
+ * @flag: Command flags (CMD_FLAG_...)
+ * @argc: Number of arguments
+ * @argv: List of arguments
+ * @return result (see enum command_ret_t)
+ */
+int do_fs_types(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[]);
 
 #endif /* _FS_H */

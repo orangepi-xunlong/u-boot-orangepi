@@ -8,8 +8,20 @@
 
 / {
 	aliases {
+		cpu1 = &cpu1;
+		cpu2 = &cpu2;
+		cpu3 = &cpu3;
+		cpu4 = &cpu4;
 		spi0 = &qspi0;
 		spi2 = &qspi2;
+	};
+
+	config {
+		u-boot,spl-payload-offset = <0x105000>; /* loader2 @1044KB */
+	};
+
+	memory@80000000 {
+		u-boot,dm-spl;
 	};
 
 	hfclk {
@@ -20,6 +32,14 @@
 		u-boot,dm-spl;
 	};
 
+};
+
+&qspi0 {
+	u-boot,dm-spl;
+
+	flash@0 {
+		u-boot,dm-spl;
+	};
 };
 
 &qspi2 {

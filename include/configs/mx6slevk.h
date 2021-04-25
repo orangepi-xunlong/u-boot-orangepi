@@ -19,7 +19,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(3 * SZ_1M)
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_IPS_BASE_ADDR
 
 /* MMC Configs */
@@ -132,9 +131,6 @@
 #endif
 
 #define CONFIG_SYS_FSL_USDHC_NUM	3
-#if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC2*/
-#endif
 
 #define CONFIG_IMX_THERMAL
 

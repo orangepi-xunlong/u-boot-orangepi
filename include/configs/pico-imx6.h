@@ -27,7 +27,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(35 * SZ_1M) /* Increase due to DFU */
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configuration */
@@ -134,7 +133,6 @@
  * write the direct value here
  */
 #define CONFIG_BOARD_SIZE_LIMIT		715776
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 /* Ethernet Configuration */
 #define CONFIG_FEC_MXC
@@ -146,8 +144,6 @@
 
 /* Framebuffer */
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO

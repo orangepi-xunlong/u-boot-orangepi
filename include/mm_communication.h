@@ -52,14 +52,14 @@ struct efi_mm_communicate_header {
 #define MM_COMMUNICATE_HEADER_SIZE \
 	(sizeof(struct efi_mm_communicate_header))
 
-/* Defined in EDK2 ArmPkg/Include/IndustryStandard/ArmStdSmc.h */
+/* Defined in EDK2 ArmPkg/Include/IndustryStandard/ArmMmSvc.h */
 
-/* MM return error codes */
-#define ARM_SMC_MM_RET_SUCCESS              0
-#define ARM_SMC_MM_RET_NOT_SUPPORTED       -1
-#define ARM_SMC_MM_RET_INVALID_PARAMS      -2
-#define ARM_SMC_MM_RET_DENIED              -3
-#define ARM_SMC_MM_RET_NO_MEMORY           -4
+/* SPM return error codes */
+#define ARM_SVC_SPM_RET_SUCCESS               0
+#define ARM_SVC_SPM_RET_NOT_SUPPORTED        -1
+#define ARM_SVC_SPM_RET_INVALID_PARAMS       -2
+#define ARM_SVC_SPM_RET_DENIED               -3
+#define ARM_SVC_SPM_RET_NO_MEMORY            -5
 
 /* Defined in EDK2 MdeModulePkg/Include/Guid/SmmVariableCommon.h */
 
@@ -203,6 +203,49 @@ struct smm_variable_query_info {
 	u64 remaining_variable_storage;
 	u64 max_variable_size;
 	u32 attr;
+};
+
+#define VAR_CHECK_VARIABLE_PROPERTY_REVISION 0x0001
+#define VAR_CHECK_VARIABLE_PROPERTY_READ_ONLY BIT(0)
+/**
+ * struct var_check_property - Used to store variable properties in StMM
+ *
+ * @revision:   magic revision number for variable property checking
+ * @property:   properties mask for the variable used in StMM.
+ *              Currently RO flag is supported
+ * @attributes: variable attributes used in StMM checking when properties
+ *              for a variable are enabled
+ * @minsize:    minimum allowed size for variable payload checked against
+ *              smm_variable_access->datasize in StMM
+ * @maxsize:    maximum allowed size for variable payload checked against
+ *              smm_variable_access->datasize in StMM
+ *
+ * Defined in EDK2 as VAR_CHECK_VARIABLE_PROPERTY.
+ */
+struct var_check_property {
+	u16         revision;
+	u16         property;
+	u32         attributes;
+	efi_uintn_t minsize;
+	efi_uintn_t maxsize;
+};
+
+/**
+ * struct smm_variable_var_check_property - Used to communicate variable
+ *                                          properties with StMM
+ *
+ * @guid:       vendor GUID
+ * @name_size:  size of EFI name
+ * @property:   variable properties struct
+ * @name:       variable name
+ *
+ * Defined in EDK2 as SMM_VARIABLE_COMMUNICATE_VAR_CHECK_VARIABLE_PROPERTY.
+ */
+struct smm_variable_var_check_property {
+	efi_guid_t                guid;
+	efi_uintn_t               name_size;
+	struct var_check_property property;
+	u16                       name[];
 };
 
 #endif /* _MM_COMMUNICATION_H_ */

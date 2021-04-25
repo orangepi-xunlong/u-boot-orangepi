@@ -32,7 +32,6 @@
  */
 #define CONFIG_FSL_IIM
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* PMIC Controller */
@@ -67,12 +66,8 @@
 
 /* Framebuffer and LCD */
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_ETHPRIME		"FEC0"
 
@@ -192,6 +187,5 @@
  * write the direct value here
  */
 #define CONFIG_BOARD_SIZE_LIMIT		785408
-#define CONFIG_SYS_MMC_ENV_DEV 0
 
 #endif

@@ -148,6 +148,18 @@ F:	include/configs/meson64_android.h
 F:	doc/board/amlogic/
 N:	meson
 
+ARM ASPEED
+M:	Ryan Chen <ryan_chen@aspeedtech.com>
+M:	Chia-Wei Wang <chiawei_wang@aspeedtech.com>
+R:	Aspeed BMC SW team <BMC-SW@aspeedtech.com>
+S:	Maintained
+F:	arch/arm/mach-aspeed/
+F:	arch/arm/include/asm/arch-aspeed/
+F:	board/aspeed/
+F:	drivers/clk/aspeed/
+F:	drivers/pinctrl/aspeed/
+N:	aspeed
+
 ARM BROADCOM BCM283X
 M:	Matthias Brugger <mbrugger@suse.com>
 S:	Maintained
@@ -181,7 +193,10 @@ F:	board/cortina/common/
 F:	drivers/gpio/cortina_gpio.c
 F:	drivers/watchdog/cortina_wdt.c
 F:	drivers/serial/serial_cortina.c
+F:	drivers/led/led_cortina.c
 F:	drivers/mmc/ca_dw_mmc.c
+F:	drivers/i2c/i2c-cortina.c
+F:	drivers/i2c/i2c-cortina.h
 
 ARM/CZ.NIC TURRIS MOX SUPPORT
 M:	Marek Behun <marek.behun@nic.cz>
@@ -215,6 +230,13 @@ S:	Maintained
 F:	arch/arm/cpu/armv8/hisilicon
 F:	arch/arm/include/asm/arch-hi6220/
 F:	arch/arm/include/asm/arch-hi3660/
+
+ARM IPQ40XX
+M:	Robert Marko <robert.marko@sartura.hr>
+M:	Luka Kovacic <luka.kovacic@sartura.hr>
+M:	Luka Perkov <luka.perkov@sartura.hr>
+S:	Maintained
+F:	arch/arm/mach-ipq40xx/
 
 ARM MARVELL KIRKWOOD ARMADA-XP ARMADA-38X ARMADA-37XX ARMADA-7K/8K
 M:	Stefan Roese <sr@denx.de>
@@ -270,6 +292,23 @@ T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-atmel.git
 F:	arch/arm/mach-at91/
 F:	board/atmel/
 F:	drivers/misc/microchip_flexcom.c
+
+ARM NEXELL S5P4418
+M:	Stefan Bosch <stefan_b@posteo.net>
+S:	Maintained
+F:	arch/arm/cpu/armv7/s5p4418/
+F:	arch/arm/dts/s5p4418*
+F:	arch/arm/mach-nexell/
+F:	board/friendlyarm/
+F:	configs/s5p4418_nanopi2_defconfig
+F:	doc/README.s5p4418
+F:	drivers/gpio/nx_gpio.c
+F:	drivers/i2c/nx_i2c.c
+F:	drivers/mmc/nexell_dw_mmc_dm.c
+F:	drivers/pinctrl/nexell/
+F:	drivers/video/nexell/
+F:	drivers/video/nexell_display.c
+F:	include/configs/s5p4418_nanopi2.h
 
 ARM OWL
 M:	Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
@@ -467,9 +506,7 @@ F:	arch/arm/mach-u8500/
 F:	drivers/timer/nomadik-mtu-timer.c
 
 ARM UNIPHIER
-M:	Masahiro Yamada <yamada.masahiro@socionext.com>
-S:	Maintained
-T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-uniphier.git
+S:	Orphan (Since 2020-09)
 F:	arch/arm/mach-uniphier/
 F:	configs/uniphier_*_defconfig
 N:	uniphier
@@ -582,7 +619,7 @@ F:	drivers/mtd/jedec_flash.c
 CLOCK
 M:	Lukasz Majewski <lukma@denx.de>
 S:	Maintained
-T:	git git://git.denx.de/u-boot-dfu.git
+T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-clk.git
 F:	drivers/clk/
 F:	drivers/clk/imx/
 
@@ -633,6 +670,7 @@ F:	include/pe.h
 F:	include/asm-generic/pe.h
 F:	lib/charset.c
 F:	lib/efi*/
+F:	test/lib/efi_*
 F:	test/py/tests/test_efi*
 F:	test/py/tests/test_efi*/
 F:	test/unicode_ut.c
@@ -686,6 +724,7 @@ M:	Priyanka Jain <priyanka.jain@nxp.com>
 S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-fsl-qoriq.git
 F:	drivers/watchdog/sp805_wdt.c
+F:	drivers/watchdog/sbsa_gwdt.c
 
 I2C
 M:	Heiko Schocher <hs@denx.de>
@@ -699,6 +738,7 @@ S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/u-boot.git
 F:	common/log*
 F:	cmd/log.c
+F:	doc/develop/logging.rst
 F:	test/log/
 F:	test/py/tests/test_log.py
 
@@ -737,7 +777,10 @@ F:	board/cortina/common/
 F:	drivers/gpio/cortina_gpio.c
 F:	drivers/watchdog/cortina_wdt.c
 F:	drivers/serial/serial_cortina.c
+F:	drivers/led/led_cortina.c
 F:	drivers/mmc/ca_dw_mmc.c
+F:	drivers/i2c/i2c-cortina.c
+F:	drivers/i2c/i2c-cortina.h
 
 MIPS MSCC
 M:	Gregory CLEMENT <gregory.clement@bootlin.com>
@@ -763,6 +806,13 @@ MIPS JZ4780
 M:	Ezequiel Garcia <ezequiel@collabora.com>
 S:	Maintained
 F:	arch/mips/mach-jz47xx/
+
+MIPS Octeon
+M:	Aaron Williams <awilliams@marvell.com>
+S:	Maintained
+F:	arch/mips/mach-octeon/
+F:	arch/mips/include/asm/arch-octeon/
+F:	arch/mips/dts/mrvl,cn73xx.dtsi
 
 MMC
 M:	Peng Fan <peng.fan@nxp.com>
@@ -830,7 +880,7 @@ S:	Maintained
 F:	arch/powerpc/
 
 POWERPC MPC8XX
-M:	Christophe Leroy <christophe.leroy@csgroup.eu>
+M:	Christophe Leroy <christophe.leroy@c-s.fr>
 S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-mpc8xx.git
 F:	arch/powerpc/cpu/mpc8xx/
@@ -872,6 +922,13 @@ T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-riscv.git
 F:	arch/riscv/
 F:	cmd/riscv/
 F:	tools/prelink-riscv.c
+
+RISC-V KENDRYTE
+M:	Sean Anderson <seanga2@gmail.com>
+S:	Maintained
+F:	doc/device-tree-bindings/mfd/kendryte,k210-sysctl.txt
+F:	drivers/clk/kendryte/
+F:	include/kendryte/
 
 RNG
 M:	Sughosh Ganu <sughosh.ganu@linaro.org>
@@ -923,6 +980,31 @@ M:	Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
 S:	Maintained
 F:	drivers/spmi/
 F:	include/spmi/
+
+SQUASHFS
+M:	Joao Marcos Costa <joaomarcos.costa@bootlin.com>
+R:	Thomas Petazzoni <thomas.petazzoni@bootlin.com>
+R:	Miquel Raynal <miquel.raynal@bootlin.com>
+S:	Maintained
+F:	fs/squashfs/
+F:	include/sqfs.h
+F:	cmd/sqfs.c
+F:	test/py/tests/test_fs/test_squashfs/
+
+TARGET_BCMNS3
+M:	Bharat Gooty <bharat.gooty@broadcom.com>
+M:	Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
+S:	Maintained
+F:	board/broadcom/bcmns3/
+F:	doc/README.bcmns3
+F:	configs/bcm_ns3_defconfig
+F:	include/configs/bcm_ns3.h
+F:	include/dt-bindings/memory/bcm-ns3-mc.h
+F:	arch/arm/Kconfig
+F:	arch/arm/dts/ns3-board.dts
+F:	arch/arm/dts/ns3.dtsi
+F:	arch/arm/cpu/armv8/bcmns3
+F:	arch/arm/include/asm/arch-bcmns3/
 
 TDA19988 HDMI ENCODER
 M:	Liviu Dudau <liviu.dudau@foss.arm.com>
@@ -1014,6 +1096,22 @@ S:	Maintained
 T:	git https://gitlab.denx.de/u-boot/custodians/u-boot-x86.git
 F:	arch/x86/
 F:	cmd/x86/
+
+XEN
+M:	Anastasiia Lukianenko <anastasiia_lukianenko@epam.com>
+M:	Oleksandr Andrushchenko <oleksandr_andrushchenko@epam.com>
+S:	Maintained
+F:	arch/arm/cpu/armv8/xen/
+F:	arch/arm/include/asm/xen.h
+F:	arch/arm/include/asm/xen/
+F:	cmd/pvblock.c
+F:	drivers/serial/serial_xen.c
+F:	drivers/xen/
+F:	include/pvblock.h
+F:	include/xen/
+F:	include/xen.h
+F:	lib/sscanf.c
+F:	test/lib/sscanf.c
 
 XTENSA
 M:	Max Filippov <jcmvbkbc@gmail.com>

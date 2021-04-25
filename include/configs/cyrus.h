@@ -48,11 +48,8 @@
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
-
 #if defined(CONFIG_SDCARD)
 #define CONFIG_FSL_FIXED_MMC_LOCATION
-#define CONFIG_SYS_MMC_ENV_DEV          0
 #endif
 
 /*
@@ -69,11 +66,6 @@
 #endif
 
 #define CONFIG_ENABLE_36BIT_PHYS
-
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP
-#define CONFIG_SYS_NUM_ADDR_MAP		64	/* number of TLB1 entries */
-#endif
 
 /* test POST memory test */
 #undef CONFIG_POST

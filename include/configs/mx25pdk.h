@@ -43,11 +43,9 @@
 /* Memory Test */
 
 /* Serial Info */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* No NOR flash present */
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 /* U-Boot general configuration */
 #define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size  */
@@ -57,7 +55,6 @@
 /* Ethernet */
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_MXC_PHYADDR		0x1f
-#define CONFIG_ENV_OVERWRITE
 
 /* ESDHC driver */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	IMX_MMC_SDHC1_BASE

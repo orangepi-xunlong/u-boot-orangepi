@@ -66,12 +66,17 @@ struct bd_info;
 #define is_imx8mnl() (is_cpu_type(MXC_CPU_IMX8MNL))
 #define is_imx8mndl() (is_cpu_type(MXC_CPU_IMX8MNDL))
 #define is_imx8mnsl() (is_cpu_type(MXC_CPU_IMX8MNSL))
-#define is_imx8mp() (is_cpu_type(MXC_CPU_IMX8MP))
+#define is_imx8mp() (is_cpu_type(MXC_CPU_IMX8MP)  || is_cpu_type(MXC_CPU_IMX8MPD) || \
+	is_cpu_type(MXC_CPU_IMX8MPL) || is_cpu_type(MXC_CPU_IMX8MP6))
+#define is_imx8mpd() (is_cpu_type(MXC_CPU_IMX8MPD))
+#define is_imx8mpl() (is_cpu_type(MXC_CPU_IMX8MPL))
+#define is_imx8mp6() (is_cpu_type(MXC_CPU_IMX8MP6))
 
 #define is_imx8qxp() (is_cpu_type(MXC_CPU_IMX8QXP))
 
 #ifdef CONFIG_MX6
-#define IMX6_SRC_GPR10_BMODE		BIT(28)
+#define IMX6_SRC_GPR10_BMODE			BIT(28)
+#define IMX6_SRC_GPR10_PERSIST_SECONDARY_BOOT	BIT(30)
 
 #define IMX6_BMODE_MASK			GENMASK(7, 0)
 #define	IMX6_BMODE_SHIFT		4
@@ -118,6 +123,11 @@ u32 imx6_src_get_boot_mode(void);
 void gpr_init(void);
 
 #endif /* CONFIG_MX6 */
+
+#ifdef CONFIG_MX7
+#define IMX7_SRC_GPR10_BMODE			BIT(28)
+#define IMX7_SRC_GPR10_PERSIST_SECONDARY_BOOT	BIT(30)
+#endif
 
 /* address translation table */
 struct rproc_att {

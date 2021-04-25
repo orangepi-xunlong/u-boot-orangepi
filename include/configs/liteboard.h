@@ -19,7 +19,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configs */
@@ -122,8 +121,6 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* FLASH and environment organization */
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_MMC_ENV_PART		0
 #define CONFIG_MMCROOT			"/dev/mmcblk0p2"
 
 /* USB Configs */

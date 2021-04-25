@@ -187,6 +187,12 @@ int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 
 	return 0;
 }
+
+#define SDPV_BCD_DEVICE 0x500
+int g_dnl_get_board_bcd_device_number(int gcnum)
+{
+	return SDPV_BCD_DEVICE;
+}
 #endif
 
 #if defined(CONFIG_SPL_MMC_SUPPORT)
@@ -293,8 +299,7 @@ __weak void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 						CSF_PAD_SIZE, offset)) {
 			image_entry();
 		} else {
-			puts("spl: ERROR:  image authentication fail\n");
-			hang();
+			panic("spl: ERROR:  image authentication fail\n");
 		}
 	}
 }
@@ -320,8 +325,7 @@ void board_spl_fit_post_load(ulong load_addr, size_t length)
 	if (imx_hab_authenticate_image(load_addr,
 				       offset + IVT_SIZE + CSF_PAD_SIZE,
 				       offset)) {
-		puts("spl: ERROR:  image authentication unsuccessful\n");
-		hang();
+		panic("spl: ERROR:  image authentication unsuccessful\n");
 	}
 }
 #endif

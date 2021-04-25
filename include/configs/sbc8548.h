@@ -51,8 +51,6 @@
 #define CONFIG_SYS_PCI_64BIT    1	/* enable 64-bit PCI resources */
 #endif
 
-#define CONFIG_ENV_OVERWRITE
-
 #define CONFIG_INTERRUPTS		/* enable pci, srio, ddr interrupts */
 
 /*
@@ -117,8 +115,6 @@
 	#define CONFIG_SYS_SDRAM_SIZE	256		/* DDR is 256MB */
 	#define CONFIG_SYS_DDR_CONTROL	0xc300c000
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * FLASH on the Local Bus
@@ -434,8 +430,6 @@
 #endif
 
 #if defined(CONFIG_PCI)
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 

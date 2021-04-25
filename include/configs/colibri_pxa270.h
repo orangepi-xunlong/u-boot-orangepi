@@ -19,7 +19,6 @@
 /*
  * Environment settings
  */
-#define	CONFIG_ENV_OVERWRITE
 #define	CONFIG_SYS_MALLOC_LEN		(128 * 1024)
 #define	CONFIG_BOOTCOMMAND						\
 	"if fatload mmc 0 0xa0000000 uImage; then "			\
@@ -69,8 +68,6 @@
 
 #define	CONFIG_BOOTP_BOOTFILESIZE
 #endif
-
-#define	CONFIG_SYS_DEVICE_NULLDEV	1
 
 /*
  * Clock Configuration

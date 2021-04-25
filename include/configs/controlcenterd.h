@@ -41,11 +41,6 @@
 
 #define CONFIG_ENABLE_36BIT_PHYS
 
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP
-#define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
-#endif
-
 #define CONFIG_L2_CACHE
 #define CONFIG_BTB
 
@@ -273,7 +268,6 @@
 #if defined(CONFIG_TRAILBLAZER)
 #elif defined(CONFIG_RAMBOOT_SDCARD)
 #define CONFIG_FSL_FIXED_MMC_LOCATION
-#define CONFIG_SYS_MMC_ENV_DEV	0
 #endif
 
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */

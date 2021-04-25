@@ -18,9 +18,6 @@
 
 /* Total Size of Environment Sector */
 
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /* Environment */
 #ifndef CONFIG_ENV_IS_NOWHERE
 /* Environment in MMC */
@@ -139,9 +136,6 @@
 #endif
 
 /* MMC */
-#ifdef CONFIG_FSL_USDHC
-# define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 /* NAND */
 #ifdef CONFIG_NAND_MXS
@@ -171,8 +165,6 @@
 #ifdef CONFIG_VIDEO_IPUV3
 # define CONFIG_IMX_VIDEO_SKIP
 
-# define CONFIG_SPLASH_SCREEN
-# define CONFIG_SPLASH_SCREEN_ALIGN
 # define CONFIG_BMP_16BPP
 # define CONFIG_VIDEO_BMP_RLE8
 # define CONFIG_VIDEO_LOGO

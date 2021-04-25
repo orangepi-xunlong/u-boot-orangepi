@@ -8,6 +8,7 @@ ifndef CONFIG_SPL_BUILD
 obj-y += boot.o
 obj-$(CONFIG_CMD_BOOTM) += bootm.o
 obj-y += help.o
+obj-y += panic.o
 obj-y += version.o
 
 # command
@@ -32,6 +33,7 @@ obj-$(CONFIG_CMD_BOOTSTAGE) += bootstage.o
 obj-$(CONFIG_CMD_BOOTZ) += bootz.o
 obj-$(CONFIG_CMD_BOOTI) += booti.o
 obj-$(CONFIG_CMD_BTRFS) += btrfs.o
+obj-$(CONFIG_CMD_BUTTON) += button.o
 obj-$(CONFIG_CMD_CACHE) += cache.o
 obj-$(CONFIG_CMD_CBFS) += cbfs.o
 obj-$(CONFIG_CMD_CLK) += clk.o
@@ -61,7 +63,7 @@ obj-$(CONFIG_CMD_EXT4) += ext4.o
 obj-$(CONFIG_CMD_EXT2) += ext2.o
 obj-$(CONFIG_CMD_FAT) += fat.o
 obj-$(CONFIG_CMD_FDT) += fdt.o
-obj-$(CONFIG_CMD_FITUPD) += fitupd.o
+obj-$(CONFIG_CMD_SQUASHFS) += sqfs.o
 obj-$(CONFIG_CMD_FLASH) += flash.o
 obj-$(CONFIG_CMD_FPGA) += fpga.o
 obj-$(CONFIG_CMD_FPGAD) += fpgad.o
@@ -84,6 +86,7 @@ obj-$(CONFIG_CMD_LED) += led.o
 obj-$(CONFIG_CMD_LICENSE) += license.o
 obj-y += load.o
 obj-$(CONFIG_CMD_LOG) += log.o
+obj-$(CONFIG_CMD_LSBLK) += lsblk.o
 obj-$(CONFIG_ID_EEPROM) += mac.o
 obj-$(CONFIG_CMD_MD5SUM) += md5sum.o
 obj-$(CONFIG_CMD_MEMORY) += mem.o
@@ -96,6 +99,7 @@ obj-$(CONFIG_CMD_MMC) += mmc.o
 obj-$(CONFIG_MP) += mp.o
 obj-$(CONFIG_CMD_MTD) += mtd.o
 obj-$(CONFIG_CMD_MTDPARTS) += mtdparts.o
+obj-$(CONFIG_CMD_CLONE) += clone.o
 ifneq ($(CONFIG_CMD_NAND)$(CONFIG_CMD_SF),)
 obj-y += legacy-mtd-utils.o
 endif
@@ -120,6 +124,7 @@ obj-$(CONFIG_CMD_REISER) += reiser.o
 obj-$(CONFIG_CMD_REMOTEPROC) += remoteproc.o
 obj-$(CONFIG_CMD_RNG) += rng.o
 obj-$(CONFIG_CMD_ROCKUSB) += rockusb.o
+obj-$(CONFIG_CMD_RTC) += rtc.o
 obj-$(CONFIG_SANDBOX) += host.o
 obj-$(CONFIG_CMD_SATA) += sata.o
 obj-$(CONFIG_CMD_NVME) += nvme.o
@@ -169,6 +174,7 @@ obj-$(CONFIG_CMD_DFU) += dfu.o
 obj-$(CONFIG_CMD_GPT) += gpt.o
 obj-$(CONFIG_CMD_ETHSW) += ethsw.o
 obj-$(CONFIG_CMD_AXI) += axi.o
+obj-$(CONFIG_CMD_PVBLOCK) += pvblock.o
 
 # Power
 obj-$(CONFIG_CMD_PMIC) += pmic.o

@@ -64,6 +64,8 @@ endif
 
 config GIC_V3_ITS
 	bool "ARM GICV3 ITS"
+	select REGMAP
+	select SYSCON
 	help
 	  ARM GICV3 Interrupt translation service (ITS).
 	  Basic support for programming locality specific peripheral
@@ -501,23 +503,6 @@ config TPL_USE_ARCH_MEMSET
 	  Such an implementation may be faster under some conditions
 	  but may increase the binary size.
 
-config SET_STACK_SIZE
-	bool "Enable an option to set max stack size that can be used"
-	default y if ARCH_VERSAL || ARCH_ZYNQMP || ARCH_ZYNQ
-	help
-	  This will enable an option to set max stack size that can be
-	  used by U-Boot.
-
-config STACK_SIZE
-	hex "Define max stack size that can be used by U-Boot"
-	depends on SET_STACK_SIZE
-	default 0x4000000 if ARCH_VERSAL || ARCH_ZYNQMP
-	default 0x1000000 if ARCH_ZYNQ
-	help
-	  Define Max stack size that can be used by U-Boot so that the
-	  initrd_high will be calculated as base stack pointer minus this
-	  stack size.
-
 config ARM64_SUPPORT_AARCH32
 	bool "ARM64 system support AArch32 execution state"
 	depends on ARM64
@@ -532,6 +517,7 @@ choice
 config ARCH_AT91
 	bool "Atmel AT91"
 	select SPL_BOARD_INIT if SPL && !TARGET_SMARTWEB
+	select SPL_SEPARATE_BSS if SPL
 
 config TARGET_EDB93XX
 	bool "Support edb93xx"
@@ -549,6 +535,7 @@ config TARGET_GPLUGD
 config ARCH_DAVINCI
 	bool "TI DaVinci"
 	select CPU_ARM926EJS
+	select SPL_DM_SPI if SPL
 	imply CMD_SAVES
 	help
 	  Support for TI's DaVinci platform.
@@ -566,6 +553,8 @@ config ARCH_MVEBU
 	select DM_SERIAL
 	select DM_SPI
 	select DM_SPI_FLASH
+	select SPL_DM_SPI if SPL
+	select SPL_DM_SPI_FLASH if SPL
 	select OF_CONTROL
 	select OF_SEPARATE
 	select SPI
@@ -728,6 +717,15 @@ config TARGET_BCMNS2
 	  ARMv8 Cortex-A57 processors targeting a broad range of networking
 	  applications.
 
+config TARGET_BCMNS3
+	bool "Support Broadcom NS3"
+	select ARM64
+	select BOARD_LATE_INIT
+	help
+	  Support for Broadcom Northstar 3 SoCs. NS3 is a octo-core 64-bit
+	  ARMv8 Cortex-A72 processors targeting a broad range of networking
+	  applications.
+
 config ARCH_EXYNOS
 	bool "Samsung EXYNOS"
 	select DM
@@ -761,6 +759,17 @@ config ARCH_INTEGRATOR
 	select DM
 	select DM_SERIAL
 	select PL01X_SERIAL
+	imply CMD_DM
+
+config ARCH_IPQ40XX
+	bool "Qualcomm IPQ40xx SoCs"
+	select CPU_V7A
+	select DM
+	select DM_GPIO
+	select DM_SERIAL
+	select PINCTRL
+	select CLK
+	select OF_CONTROL
 	imply CMD_DM
 
 config ARCH_KEYSTONE
@@ -884,7 +893,7 @@ config ARCH_MX7
 config ARCH_MX6
 	bool "Freescale MX6"
 	select CPU_V7A
-	select SYS_FSL_HAS_SEC if IMX_HAB
+	select SYS_FSL_HAS_SEC
 	select SYS_FSL_SEC_COMPAT_4
 	select SYS_FSL_SEC_LE
 	imply MXC_GPIO
@@ -901,9 +910,15 @@ config ARCH_MX5
 	select CPU_V7A
 	imply MXC_GPIO
 
+config ARCH_NEXELL
+	bool "Nexell S5P4418/S5P6818 SoC"
+	select ENABLE_ARM_SOC_BOOT0_HOOK
+	select DM
+
 config ARCH_OWL
 	bool "Actions Semi OWL SoCs"
 	select DM
+	select DM_ETH
 	select DM_SERIAL
 	select OWL_SERIAL
 	select CLK
@@ -985,6 +1000,8 @@ config ARCH_SOCFPGA
 	imply FAT_WRITE
 	imply SPL
 	imply SPL_DM
+	imply SPL_DM_SPI
+	imply SPL_DM_SPI_FLASH
 	imply SPL_LIBDISK_SUPPORT
 	imply SPL_MMC_SUPPORT
 	imply SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
@@ -1068,6 +1085,7 @@ config ARCH_VERSAL
 	select DM_SERIAL
 	select OF_CONTROL
 	imply BOARD_LATE_INIT
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 config ARCH_VF610
 	bool "Freescale Vybrid"
@@ -1093,6 +1111,8 @@ config ARCH_ZYNQ
 	select SPL_BOARD_INIT if SPL
 	select SPL_CLK if SPL
 	select SPL_DM if SPL
+	select SPL_DM_SPI if SPL
+	select SPL_DM_SPI_FLASH if SPL
 	select SPL_OF_CONTROL if SPL
 	select SPL_SEPARATE_BSS if SPL
 	select SUPPORT_SPL
@@ -1101,6 +1121,7 @@ config ARCH_ZYNQ
 	imply CMD_CLK
 	imply CMD_DM
 	imply CMD_SPL
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 	imply FAT_WRITE
 
 config ARCH_ZYNQMP_R5
@@ -1131,6 +1152,8 @@ config ARCH_ZYNQMP
 	select OF_CONTROL
 	select SPL_BOARD_INIT if SPL
 	select SPL_CLK if SPL
+	select SPL_DM_SPI if SPI
+	select SPL_DM_SPI_FLASH if SPL_DM_SPI
 	select SPL_DM_MAILBOX if SPL
 	select SPL_FIRMWARE if SPL
 	select SPL_SEPARATE_BSS if SPL
@@ -1138,6 +1161,7 @@ config ARCH_ZYNQMP
 	select ZYNQMP_IPI
 	imply BOARD_LATE_INIT
 	imply CMD_DM
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 	imply FAT_WRITE
 	imply MP
 	imply DM_USB_GADGET
@@ -1169,10 +1193,19 @@ config TARGET_VEXPRESS64_JUNO
 	select DM_SERIAL
 	select ARM_PSCI_FW
 	select PSCI_RESET
-	select DM
+	select DM_ETH
 	select BLK
 	select USB
 	select DM_USB
+
+config TARGET_TOTAL_COMPUTE
+	bool "Support Total Compute Platform"
+	select ARM64
+	select PL01X_SERIAL
+	select DM
+	select DM_SERIAL
+	select DM_MMC
+	select DM_GPIO
 
 config TARGET_LS2080A_EMU
 	bool "Support ls2080a_emu"
@@ -1447,6 +1480,8 @@ config TARGET_LS1021AQDS
 	select SUPPORT_SPL
 	select SYS_FSL_DDR
 	select FSL_DDR_INTERACTIVE
+	select DM_SPI_FLASH if FSL_DSPI || FSL_QSPI
+	select SPI_FLASH_DATAFLASH if FSL_DSPI || FSL_QSPI
 	imply SCSI
 
 config TARGET_LS1021ATWR
@@ -1460,6 +1495,7 @@ config TARGET_LS1021ATWR
 	select CPU_V7_HAS_VIRT
 	select LS1_DEEP_SLEEP
 	select SUPPORT_SPL
+	select DM_SPI_FLASH if FSL_DSPI || FSL_QSPI
 	imply SCSI
 
 config TARGET_LS1021ATSN
@@ -1484,6 +1520,7 @@ config TARGET_LS1021AIOT
 	select CPU_V7_HAS_NONSEC
 	select CPU_V7_HAS_VIRT
 	select SUPPORT_SPL
+	select DM_SPI_FLASH if FSL_DSPI || FSL_QSPI
 	imply SCSI
 	help
 	  Support for Freescale LS1021AIOT platform.
@@ -1501,6 +1538,8 @@ config TARGET_LS1043AQDS
 	select BOARD_LATE_INIT
 	select SUPPORT_SPL
 	select FSL_DDR_INTERACTIVE if !SPL
+	select FSL_DSPI if !SPL_NO_DSPI
+	select DM_SPI_FLASH if FSL_DSPI
 	imply SCSI
 	imply SCSI_AHCI
 	help
@@ -1515,6 +1554,8 @@ config TARGET_LS1043ARDB
 	select BOARD_EARLY_INIT_F
 	select BOARD_LATE_INIT
 	select SUPPORT_SPL
+	select FSL_DSPI if !SPL_NO_DSPI
+	select DM_SPI_FLASH if FSL_DSPI
 	help
 	  Support for Freescale LS1043ARDB platform.
 
@@ -1680,6 +1721,8 @@ config ARCH_ROCKCHIP
 	select OF_CONTROL
 	select SPI
 	select SPL_DM if SPL
+	select SPL_DM_SPI if SPL
+	select SPL_DM_SPI_FLASH if SPL
 	select SYS_MALLOC_F
 	select SYS_THUMB_BUILD if !ARM64
 	imply ADC
@@ -1695,6 +1738,24 @@ config ARCH_ROCKCHIP
 	imply USB_FUNCTION_FASTBOOT
 	select OF_LIBFDT
 	select OF_LIBFDT_OVERLAY
+
+config ARCH_OCTEONTX
+	bool "Support OcteonTX SoCs"
+	select DM
+	select ARM64
+	select OF_CONTROL
+	select OF_LIVE
+	select BOARD_LATE_INIT
+	select SYS_CACHE_SHIFT_7
+
+config ARCH_OCTEONTX2
+	bool "Support OcteonTX2 SoCs"
+	select DM
+	select ARM64
+	select OF_CONTROL
+	select OF_LIVE
+	select BOARD_LATE_INIT
+	select SYS_CACHE_SHIFT_7
 
 config TARGET_THUNDERX_88XX
 	bool "Support ThunderX 88xx"
@@ -1720,6 +1781,14 @@ config TARGET_PRESIDIO_ASIC
 	bool "Support Cortina Presidio ASIC Platform"
 	select ARM64
 
+config TARGET_XENGUEST_ARM64
+	bool "Xen guest ARM64"
+	select ARM64
+	select XEN
+	select OF_CONTROL
+	select LINUX_KERNEL_IMAGE_HEADER
+	select XEN_SERIAL
+	select SSCANF
 endchoice
 
 config ARCH_SUPPORT_TFABOOT
@@ -1774,6 +1843,8 @@ source "arch/arm/mach-highbank/Kconfig"
 
 source "arch/arm/mach-integrator/Kconfig"
 
+source "arch/arm/mach-ipq40xx/Kconfig"
+
 source "arch/arm/mach-k3/Kconfig"
 
 source "arch/arm/mach-keystone/Kconfig"
@@ -1783,6 +1854,10 @@ source "arch/arm/mach-kirkwood/Kconfig"
 source "arch/arm/mach-lpc32xx/Kconfig"
 
 source "arch/arm/mach-mvebu/Kconfig"
+
+source "arch/arm/mach-octeontx/Kconfig"
+
+source "arch/arm/mach-octeontx2/Kconfig"
 
 source "arch/arm/cpu/armv7/ls102xa/Kconfig"
 
@@ -1860,11 +1935,17 @@ source "arch/arm/cpu/armv8/Kconfig"
 
 source "arch/arm/mach-imx/Kconfig"
 
+source "arch/arm/mach-nexell/Kconfig"
+
+source "board/armltd/total_compute/Kconfig"
+
 source "board/bosch/shc/Kconfig"
 source "board/bosch/guardian/Kconfig"
 source "board/CarMediaLab/flea3/Kconfig"
 source "board/Marvell/aspenite/Kconfig"
 source "board/Marvell/gplugd/Kconfig"
+source "board/Marvell/octeontx/Kconfig"
+source "board/Marvell/octeontx2/Kconfig"
 source "board/armadeus/apf27/Kconfig"
 source "board/armltd/vexpress/Kconfig"
 source "board/armltd/vexpress64/Kconfig"
@@ -1877,6 +1958,7 @@ source "board/broadcom/bcm968580xref/Kconfig"
 source "board/broadcom/bcmcygnus/Kconfig"
 source "board/broadcom/bcmnsp/Kconfig"
 source "board/broadcom/bcmns2/Kconfig"
+source "board/broadcom/bcmns3/Kconfig"
 source "board/cavium/thunderx/Kconfig"
 source "board/cirrus/edb93xx/Kconfig"
 source "board/eets/pdu001/Kconfig"
@@ -1902,12 +1984,11 @@ source "board/freescale/lx2160a/Kconfig"
 source "board/freescale/mx35pdk/Kconfig"
 source "board/freescale/s32v234evb/Kconfig"
 source "board/grinn/chiliboard/Kconfig"
-source "board/gumstix/pepper/Kconfig"
 source "board/hisilicon/hikey/Kconfig"
 source "board/hisilicon/hikey960/Kconfig"
 source "board/hisilicon/poplar/Kconfig"
 source "board/isee/igep003x/Kconfig"
-source "board/silica/pengwyn/Kconfig"
+source "board/myir/mys_6ulx/Kconfig"
 source "board/spear/spear300/Kconfig"
 source "board/spear/spear310/Kconfig"
 source "board/spear/spear320/Kconfig"
@@ -1915,14 +1996,15 @@ source "board/spear/spear600/Kconfig"
 source "board/spear/x600/Kconfig"
 source "board/st/stv0991/Kconfig"
 source "board/tcl/sl50/Kconfig"
-source "board/birdland/bav335x/Kconfig"
 source "board/toradex/colibri_pxa270/Kconfig"
 source "board/variscite/dart_6ul/Kconfig"
 source "board/vscom/baltos/Kconfig"
 source "board/xilinx/Kconfig"
 source "board/xilinx/zynq/Kconfig"
 source "board/xilinx/zynqmp/Kconfig"
+source "board/xilinx/versal/Kconfig"
 source "board/phytium/durian/Kconfig"
+source "board/xen/xenguest_arm64/Kconfig"
 
 source "arch/arm/Kconfig.debug"
 
@@ -1932,5 +2014,3 @@ config SPL_LDSCRIPT
 	default "arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds" if (ARCH_MX23 || ARCH_MX28) && !SPL_FRAMEWORK
 	default "arch/arm/cpu/arm1136/u-boot-spl.lds" if CPU_ARM1136
 	default "arch/arm/cpu/armv8/u-boot-spl.lds" if ARM64
-
-

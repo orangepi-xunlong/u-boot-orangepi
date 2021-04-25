@@ -24,7 +24,6 @@
  * write the direct value here
  */
 #define CONFIG_BOARD_SIZE_LIMIT		785408
-#define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_MMCROOT			"/dev/mmcblk0p2"
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 
@@ -42,9 +41,6 @@
 
 /* UART */
 #define LPUART_BASE			LPUART4_RBASE
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* Physical Memory Map */
 

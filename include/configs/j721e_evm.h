@@ -20,11 +20,10 @@
 #define CONFIG_SYS_SDRAM_BASE1		0x880000000
 
 /* SPL Loader Configuration */
-#ifdef CONFIG_TARGET_J721E_A72_EVM
+#if defined(CONFIG_TARGET_J721E_A72_EVM) || defined(CONFIG_TARGET_J7200_A72_EVM)
 #define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SPL_TEXT_BASE +	\
 					 CONFIG_SYS_K3_NON_SECURE_MSRAM_SIZE)
 /* Image load address in RAM for DFU boot*/
-#define CONFIG_SPL_LOAD_FIT_ADDRESS	0x81000000
 #else
 /*
  * Maximum size in memory allocated to the SPL BSS. Keep it as tight as
@@ -48,7 +47,6 @@
 #define CONFIG_SYS_SPL_MALLOC_START	0x84000000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_16M
 /* Image load address in RAM for DFU boot*/
-#define CONFIG_SPL_LOAD_FIT_ADDRESS	0x80080000
 #endif
 
 #ifdef CONFIG_SYS_K3_SPL_ATF
@@ -129,7 +127,7 @@
 	DFU_ALT_INFO_RAM \
 	DFU_ALT_INFO_OSPI
 
-#ifdef CONFIG_TARGET_J721E_A72_EVM
+#if defined(CONFIG_TARGET_J721E_A72_EVM) || defined(CONFIG_TARGET_J7200_A72_EVM)
 #define EXTRA_ENV_J721E_BOARD_SETTINGS_MTD				\
 	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"				\
 	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"
@@ -152,9 +150,5 @@
 #include <configs/ti_armv7_common.h>
 
 /* MMC ENV related defines */
-#ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_MMC_ENV_PART	1
-#endif
 
 #endif /* __CONFIG_J721E_EVM_H */

@@ -23,8 +23,8 @@
 		pci0 = &pci0;
 		pci1 = &pci1;
 		pci2 = &pci2;
-		remoteproc1 = &rproc_1;
-		remoteproc2 = &rproc_2;
+		remoteproc0 = &rproc_1;
+		remoteproc1 = &rproc_2;
 		rtc0 = &rtc_0;
 		rtc1 = &rtc_1;
 		spi0 = "/spi@0";
@@ -49,6 +49,20 @@
 	audio: audio-codec {
 		compatible = "sandbox,audio-codec";
 		#sound-dai-cells = <1>;
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		summer {
+			gpios = <&gpio_a 3 0>;
+			label = "summer";
+		};
+
+		christmas {
+			gpios = <&gpio_a 4 0>;
+			label = "christmas";
+		};
 	};
 
 	cros_ec: cros-ec {
@@ -111,7 +125,9 @@
 		uint-value = <(-1234)>;
 		int64-value = /bits/ 64 <0x1111222233334444>;
 		int-array = <5678 9123 4567>;
+		str-value = "test string";
 		interrupts-extended = <&irq 3 0>;
+		acpi,name = "GHIJ";
 	};
 
 	junk {
@@ -133,6 +149,7 @@
 	};
 
 	bind-test {
+		compatible = "simple-bus";
 		bind-test-child1 {
 			compatible = "sandbox,phy";
 			#phy-cells = <1>;
@@ -253,12 +270,19 @@
 		compatible = "denx,u-boot-devres-test";
 	};
 
-	acpi-test {
+	acpi_test1: acpi-test {
 		compatible = "denx,u-boot-acpi-test";
+		acpi-ssdt-test-data = "ab";
+		acpi-dsdt-test-data = "hi";
+		child {
+			compatible = "denx,u-boot-acpi-test";
+		};
 	};
 
-	acpi-test2 {
+	acpi_test2: acpi-test2 {
 		compatible = "denx,u-boot-acpi-test";
+		acpi-ssdt-test-data = "cd";
+		acpi-dsdt-test-data = "jk";
 	};
 
 	clocks {
@@ -346,22 +370,22 @@
 			hog_input_active_low {
 				gpio-hog;
 				input;
-				gpios = <0 GPIO_ACTIVE_LOW>;
+				gpios = <10 GPIO_ACTIVE_LOW>;
 			};
 			hog_input_active_high {
 				gpio-hog;
 				input;
-				gpios = <1 GPIO_ACTIVE_HIGH>;
+				gpios = <11 GPIO_ACTIVE_HIGH>;
 			};
 			hog_output_low {
 				gpio-hog;
 				output-low;
-				gpios = <2 GPIO_ACTIVE_HIGH>;
+				gpios = <12 GPIO_ACTIVE_HIGH>;
 			};
 			hog_output_high {
 				gpio-hog;
 				output-high;
-				gpios = <3 GPIO_ACTIVE_HIGH>;
+				gpios = <13 GPIO_ACTIVE_HIGH>;
 			};
 		};
 
@@ -392,6 +416,14 @@
 			reg = <0x2c>;
 			compatible = "i2c-eeprom";
 			sandbox,emul = <&emul_eeprom>;
+			partitions {
+				compatible = "fixed-partitions";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				bootcount_i2c: bootcount@10 {
+					reg = <10 2>;
+				};
+			};
 		};
 
 		rtc_0: rtc@43 {
@@ -437,6 +469,11 @@
 		compatible = "u-boot,bootcount-rtc";
 		rtc = <&rtc_1>;
 		offset = <0x13>;
+	};
+
+	bootcount {
+		compatible = "u-boot,bootcount-i2c-eeprom";
+		i2c-eeprom = <&bootcount_i2c>;
 	};
 
 	adc@0 {
@@ -510,6 +547,10 @@
 			compatible = "sandbox,cpu_sandbox";
 			u-boot,dm-pre-reloc;
 		};
+	};
+
+	chipid: chipid {
+		compatible = "sandbox,soc";
 	};
 
 	i2s: i2s {
@@ -625,8 +666,9 @@
 		bus-range = <0x00 0xff>;
 		#address-cells = <3>;
 		#size-cells = <2>;
-		ranges = <0x02000000 0 0x30000000 0x30000000 0 0x2000
-				0x01000000 0 0x40000000 0x40000000 0 0x2000>;
+		ranges = <0x02000000 0 0x30000000 0x30000000 0 0x2000 // MEM0
+			  0x02000000 0 0x31000000 0x31000000 0 0x2000 // MEM1
+			  0x01000000 0 0x40000000 0x40000000 0 0x2000>;
 		sandbox,dev-info = <0x08 0x00 0x1234 0x5678
 				    0x0c 0x00 0x1234 0x5678
 				    0x10 0x00 0x1234 0x5678>;
@@ -830,6 +872,8 @@
 		hub {
 			compatible = "usb-hub";
 			usb,device-class = <9>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			hub-emul {
 				compatible = "sandbox,usb-hub";
 				#address-cells = <1>;
@@ -857,6 +901,13 @@
 					compatible = "sandbox,usb-keyb";
 				};
 
+			};
+
+			usbstor@1 {
+				reg = <1>;
+			};
+			usbstor@3 {
+				reg = <3>;
 			};
 		};
 	};
@@ -909,6 +960,7 @@
 		setting = "sunrise ohoka";
 		other-node = "/some-bus/c-test@5";
 		int-values = <0x1937 72993>;
+		u-boot,acpi-ssdt-order = <&acpi_test2 &acpi_test1>;
 		chosen-test {
 			compatible = "denx,u-boot-fdt-test";
 			reg = <9 1>;
@@ -1048,6 +1100,27 @@
 
 	mdio: mdio-test {
 		compatible = "sandbox,mdio";
+	};
+
+	pm-bus-test {
+		compatible = "simple-pm-bus";
+		clocks = <&clk_sandbox 4>;
+		power-domains = <&pwrdom 1>;
+	};
+
+	resetc2: syscon-reset {
+		compatible = "syscon-reset";
+		#reset-cells = <1>;
+		regmap = <&syscon0>;
+		offset = <1>;
+		mask = <0x27FFFFFF>;
+		assert-high = <0>;
+	};
+
+	syscon-reset-test {
+		compatible = "sandbox,misc_sandbox";
+		resets = <&resetc2 15>, <&resetc2 30>, <&resetc2 60>;
+		reset-names = "valid", "no_mask", "out_of_range";
 	};
 };
 

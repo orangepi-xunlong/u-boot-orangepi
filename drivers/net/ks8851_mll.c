@@ -505,7 +505,7 @@ static void ks8851_mll_write_hwaddr_common(struct ks_net *ks, u8 enetaddr[6])
 }
 
 #ifndef CONFIG_DM_ETH
-static int ks8851_mll_init(struct eth_device *dev, bd_t *bd)
+static int ks8851_mll_init(struct eth_device *dev, struct bd_info *bd)
 {
 	struct ks_net *ks = container_of(dev, struct ks_net, dev);
 
@@ -642,7 +642,7 @@ static int ks8851_ofdata_to_platdata(struct udevice *dev)
 	struct ks_net *ks = dev_get_priv(dev);
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 
-	pdata->iobase = devfdt_get_addr(dev);
+	pdata->iobase = dev_read_addr(dev);
 	ks->iobase = pdata->iobase;
 
 	return 0;

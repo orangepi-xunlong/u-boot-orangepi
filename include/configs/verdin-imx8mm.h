@@ -9,15 +9,10 @@
 #include <asm/arch/imx-regs.h>
 #include <linux/sizes.h>
 
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_CSF_SIZE			SZ_8K
-#endif
-
 #define CONFIG_SPL_MAX_SIZE		(148 * 1024)
 #define CONFIG_SYS_MONITOR_LEN		SZ_512K
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SYS_UBOOT_BASE	\
 	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
@@ -87,11 +82,8 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#define CONFIG_ENV_OVERWRITE
 #if defined(CONFIG_ENV_IS_IN_MMC)
 /* Environment in eMMC, before config block at the end of 1st "boot sector" */
-#define CONFIG_SYS_MMC_ENV_DEV		0	/* USDHC1 eMMC */
-#define CONFIG_SYS_MMC_ENV_PART	1
 #endif
 
 /* Size of malloc() pool */

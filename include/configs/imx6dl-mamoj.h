@@ -18,9 +18,6 @@
 
 /* Total Size of Environment Sector */
 
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /* Environment */
 #ifndef CONFIG_ENV_IS_NOWHERE
 /* Environment in MMC */
@@ -46,7 +43,6 @@
 #define CONFIG_MXC_UART_BASE		UART3_BASE
 
 /* MMC */
-#define CONFIG_SYS_MMC_ENV_DEV		2
 
 /* Ethernet */
 #define CONFIG_FEC_MXC_PHYADDR		1

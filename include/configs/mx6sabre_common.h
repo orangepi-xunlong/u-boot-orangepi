@@ -17,8 +17,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(10 * SZ_1M)
 
-#define CONFIG_MXC_UART
-
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 
@@ -172,8 +170,6 @@
 
 /* Framebuffer */
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO

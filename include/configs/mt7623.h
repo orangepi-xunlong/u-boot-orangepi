@@ -27,8 +27,6 @@
 #define CONFIG_SYS_NONCACHED_MEMORY	SZ_1M
 
 /* Environment */
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* Preloader -> Uboot */
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_TEXT_BASE + SZ_2M - \
@@ -51,13 +49,11 @@
 	"fdt_high=" FDT_HIGH "\0"			\
 	"kernel_addr_r=0x84000000\0"			\
 	"fdt_addr_r=" FDT_HIGH "\0"			\
-	"fdtfile=mt7623n-bananapi-bpi-r2.dtb" "\0"
+	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
 /* Ethernet */
 #define CONFIG_IPADDR			192.168.1.1
 #define CONFIG_SERVERIP			192.168.1.2
-
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 #ifdef CONFIG_DISTRO_DEFAULTS
 

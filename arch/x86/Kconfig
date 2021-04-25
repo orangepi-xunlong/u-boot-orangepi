@@ -203,6 +203,9 @@ config SPL_X86_32BIT_INIT
 	help
 	  This is enabled when 32-bit init is in SPL
 
+config USE_EARLY_BOARD_INIT
+	bool
+
 config RESET_SEG_START
 	hex
 	depends on X86_RESET_VECTOR
@@ -360,6 +363,8 @@ config HAVE_FSP
 	bool "Add an Firmware Support Package binary"
 	depends on !EFI
 	select USE_HOB
+	select HAS_ROM
+	select ROM_NEEDS_BLOBS
 	help
 	  Select this option to add an Firmware Support Package binary to
 	  the resulting U-Boot image. It is a binary blob which U-Boot uses
@@ -519,6 +524,8 @@ config ENABLE_MRC_CACHE
 
 config HAVE_MRC
 	bool "Add a System Agent binary"
+	select HAS_ROM
+	select ROM_NEEDS_BLOBS
 	depends on !HAVE_FSP
 	help
 	  Select this option to add a System Agent binary to
@@ -590,8 +597,13 @@ config HAVE_REFCODE
           Various peripherals may fail to work.
 
 config HAVE_MICROCODE
-	bool
+	bool "Board requires a microcode binary"
 	default y if !FSP_VERSION2
+	help
+	  Enable this if the board requires microcode to be loaded on boot.
+	  Typically this is handed by the FSP for modern boards, but for
+	  some older boards, it must be programmed by U-Boot, and that form
+	  part of the image.
 
 config SMP
 	bool "Enable Symmetric Multiprocessing"
@@ -602,6 +614,13 @@ config SMP
 	  obtained using the 'cpu' command. If this option is disabled, then
 	  only one CPU will be enabled regardless of the number of CPUs
 	  available.
+
+config SMP_AP_WORK
+	bool
+	depends on SMP
+	help
+	 Allow APs to do other work after initialisation instead of going
+	 to sleep.
 
 config MAX_CPUS
 	int "Maximum number of CPUs permitted"
@@ -717,6 +736,7 @@ config HAVE_ITSS
 
 config HAVE_P2SB
 	bool "Enable P2SB"
+	depends on P2SB
 	help
 	  Select this to include the driver for the Primary to
 	  Sideband Bridge (P2SB) which is found on several Intel
@@ -794,7 +814,7 @@ config S3_VGA_ROM_RUN
 	  graphics console won't work without VGA options ROMs. Set it to N
 	  if your kernel is only on a serial console.
 
-config STACK_SIZE
+config STACK_SIZE_RESUME
 	hex
 	depends on HAVE_ACPI_RESUME
 	default 0x1000

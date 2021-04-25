@@ -41,7 +41,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_INTERRUPTS		/* enable pci, srio, ddr interrupts */
 
 #define CONFIG_BAT_RW		1	/* Use common BAT rw code */
@@ -175,8 +174,6 @@
 #undef CONFIG_SPD_EEPROM
 #define CONFIG_SYS_SDRAM_SIZE	256
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 #define CONFIG_SYS_INIT_RAM_LOCK	1
 #ifndef CONFIG_SYS_INIT_RAM_LOCK

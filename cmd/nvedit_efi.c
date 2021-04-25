@@ -9,11 +9,13 @@
 #include <common.h>
 #include <command.h>
 #include <efi_loader.h>
+#include <efi_variable.h>
 #include <env.h>
 #include <exports.h>
 #include <hexdump.h>
 #include <malloc.h>
 #include <mapmem.h>
+#include <rtc.h>
 #include <uuid.h>
 #include <linux/kernel.h>
 
@@ -34,6 +36,7 @@ static const struct {
 	{EFI_VARIABLE_RUNTIME_ACCESS, "RT"},
 	{EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS, "AW"},
 	{EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS, "AT"},
+	{EFI_VARIABLE_READ_ONLY, "RO"},
 };
 
 static const struct {
@@ -49,8 +52,7 @@ static const struct {
 	{EFI_CERT_TYPE_PKCS7_GUID, "EFI_CERT_TYPE_PKCS7_GUID"},
 };
 
-/* "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" */
-static char unknown_guid[37];
+static const char unknown_guid[] = "";
 
 /**
  * efi_guid_to_str() - convert guid to readable name
@@ -68,9 +70,6 @@ static const char *efi_guid_to_str(const efi_guid_t *guid)
 		if (!guidcmp(guid, &efi_guid_text[i].guid))
 			return efi_guid_text[i].text;
 
-	uuid_bin_to_str((unsigned char *)guid->b, unknown_guid,
-			UUID_STR_FORMAT_GUID);
-
 	return unknown_guid;
 }
 
@@ -87,20 +86,22 @@ static void efi_dump_single_var(u16 *name, const efi_guid_t *guid, bool verbose)
 {
 	u32 attributes;
 	u8 *data;
+	u64 time;
+	struct rtc_time tm;
 	efi_uintn_t size;
 	int count, i;
 	efi_status_t ret;
 
 	data = NULL;
 	size = 0;
-	ret = EFI_CALL(efi_get_variable(name, guid, &attributes, &size, data));
+	ret = efi_get_variable_int(name, guid, &attributes, &size, data, &time);
 	if (ret == EFI_BUFFER_TOO_SMALL) {
 		data = malloc(size);
 		if (!data)
 			goto out;
 
-		ret = EFI_CALL(efi_get_variable(name, guid, &attributes, &size,
-						data));
+		ret = efi_get_variable_int(name, guid, &attributes, &size,
+					   data, &time);
 	}
 	if (ret == EFI_NOT_FOUND) {
 		printf("Error: \"%ls\" not defined\n", name);
@@ -109,13 +110,16 @@ static void efi_dump_single_var(u16 *name, const efi_guid_t *guid, bool verbose)
 	if (ret != EFI_SUCCESS)
 		goto out;
 
-	printf("%ls:\n    %s:", name, efi_guid_to_str(guid));
+	rtc_to_tm(time, &tm);
+	printf("%ls:\n    %pUl %s\n", name, guid, efi_guid_to_str(guid));
+	if (attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS)
+		printf("    %04d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year,
+		       tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	printf("    ");
 	for (count = 0, i = 0; i < ARRAY_SIZE(efi_var_attrs); i++)
 		if (attributes & efi_var_attrs[i].mask) {
 			if (count)
 				putc('|');
-			else
-				putc(' ');
 			count++;
 			puts(efi_var_attrs[i].text);
 		}
@@ -126,50 +130,6 @@ static void efi_dump_single_var(u16 *name, const efi_guid_t *guid, bool verbose)
 
 out:
 	free(data);
-}
-
-/**
- * efi_dump_vars() - show information about named UEFI variables
- *
- * @argc:	Number of arguments (variables)
- * @argv:	Argument (variable name) array
- * @verbose:	if true, dump data
- * Return:	CMD_RET_SUCCESS on success, or CMD_RET_RET_FAILURE
- *
- * Show information encoded in named UEFI variables
- */
-static int efi_dump_vars(int argc,  char *const argv[],
-			 const efi_guid_t *guid, bool verbose)
-{
-	u16 *var_name16, *p;
-	efi_uintn_t buf_size, size;
-
-	buf_size = 128;
-	var_name16 = malloc(buf_size);
-	if (!var_name16)
-		return CMD_RET_FAILURE;
-
-	for (; argc > 0; argc--, argv++) {
-		size = (utf8_utf16_strlen(argv[0]) + 1) * sizeof(u16);
-		if (buf_size < size) {
-			buf_size = size;
-			p = realloc(var_name16, buf_size);
-			if (!p) {
-				free(var_name16);
-				return CMD_RET_FAILURE;
-			}
-			var_name16 = p;
-		}
-
-		p = var_name16;
-		utf8_utf16_strcpy(&p, argv[0]);
-
-		efi_dump_single_var(var_name16, guid, verbose);
-	}
-
-	free(var_name16);
-
-	return CMD_RET_SUCCESS;
 }
 
 static bool match_name(int argc, char *const argv[], u16 *var_name16)
@@ -217,10 +177,7 @@ static int efi_dump_var_all(int argc,  char *const argv[],
 	efi_uintn_t buf_size, size;
 	efi_guid_t guid;
 	efi_status_t ret;
-
-	if (argc && guid_p)
-		/* simplified case */
-		return efi_dump_vars(argc, argv, guid_p, verbose);
+	bool match = false;
 
 	buf_size = 128;
 	var_name16 = malloc(buf_size);
@@ -251,12 +208,17 @@ static int efi_dump_var_all(int argc,  char *const argv[],
 			return CMD_RET_FAILURE;
 		}
 
-		if ((!guid_p || !guidcmp(guid_p, &guid)) &&
-		    (!argc || match_name(argc, argv, var_name16)))
+		if (guid_p && guidcmp(guid_p, &guid))
+			continue;
+		if (!argc || match_name(argc, argv, var_name16)) {
+			match = true;
 			efi_dump_single_var(var_name16, &guid, verbose);
+		}
 	}
-
 	free(var_name16);
+
+	if (!match && argc == 1)
+		printf("Error: \"%s\" not defined\n", argv[0]);
 
 	return CMD_RET_SUCCESS;
 }
@@ -278,9 +240,8 @@ static int efi_dump_var_all(int argc,  char *const argv[],
 int do_env_print_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
-	efi_guid_t guid;
-	const efi_guid_t *guid_p;
-	bool default_guid, guid_any, verbose;
+	const efi_guid_t *guid_p = NULL;
+	bool verbose = true;
 	efi_status_t ret;
 
 	/* Initialize EFI drivers */
@@ -291,44 +252,24 @@ int do_env_print_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 		return CMD_RET_FAILURE;
 	}
 
-	default_guid = true;
-	guid_any = false;
-	verbose = true;
 	for (argc--, argv++; argc > 0 && argv[0][0] == '-'; argc--, argv++) {
 		if (!strcmp(argv[0], "-guid")) {
+			efi_guid_t guid;
+
 			if (argc == 1)
 				return CMD_RET_USAGE;
-
-			/* -a already specified */
-			if (!default_guid && guid_any)
-				return CMD_RET_USAGE;
-
 			argc--;
 			argv++;
 			if (uuid_str_to_bin(argv[0], guid.b,
 					    UUID_STR_FORMAT_GUID))
 				return CMD_RET_USAGE;
-			default_guid = false;
-		} else if (!strcmp(argv[0], "-all")) {
-			/* -guid already specified */
-			if (!default_guid && !guid_any)
-				return CMD_RET_USAGE;
-
-			guid_any = true;
-			default_guid = false;
+			guid_p = (const efi_guid_t *)guid.b;
 		} else if (!strcmp(argv[0], "-n")) {
 			verbose = false;
 		} else {
 			return CMD_RET_USAGE;
 		}
 	}
-
-	if (guid_any)
-		guid_p = NULL;
-	else if (default_guid)
-		guid_p = &efi_global_variable_guid;
-	else
-		guid_p = (const efi_guid_t *)guid.b;
 
 	/* enumerate and show all UEFI variables */
 	return efi_dump_var_all(argc, argv, guid_p, verbose);
@@ -510,8 +451,7 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 			argv++;
 			if (uuid_str_to_bin(argv[0], guid.b,
 					    UUID_STR_FORMAT_GUID)) {
-				printf("## Guid not specified or in XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX format\n");
-				return CMD_RET_FAILURE;
+				return CMD_RET_USAGE;
 			}
 			default_guid = false;
 		} else if (!strcmp(argv[0], "-bs")) {
@@ -533,7 +473,7 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 			argc--;
 			argv++;
 			addr = simple_strtoul(argv[0], &ep, 16);
-			if (*ep != ',')
+			if (*ep != ':')
 				return CMD_RET_USAGE;
 
 			/* 0 should be allowed for delete */
@@ -559,8 +499,8 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	if (verbose) {
-		printf("GUID: %s\n", efi_guid_to_str((const efi_guid_t *)
-						     &guid));
+		printf("GUID: %pUl %s\n", &guid,
+		       efi_guid_to_str((const efi_guid_t *)&guid));
 		printf("Attributes: 0x%x\n", attributes);
 	}
 
@@ -592,8 +532,8 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 	p = var_name16;
 	utf8_utf16_strncpy(&p, var_name, len + 1);
 
-	ret = EFI_CALL(efi_set_variable(var_name16, &guid, attributes,
-					size, value));
+	ret = efi_set_variable_int(var_name16, &guid, attributes, size, value,
+				   true);
 	unmap_sysmem(value);
 	if (ret == EFI_SUCCESS) {
 		ret = CMD_RET_SUCCESS;

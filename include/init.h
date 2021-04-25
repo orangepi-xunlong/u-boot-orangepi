@@ -142,6 +142,28 @@ int arch_reserve_stacks(void);
 int arch_reserve_mmu(void);
 
 /**
+ * arch_setup_bdinfo() - Architecture dependent boardinfo setup
+ *
+ * Architecture-specific routine for populating various boardinfo fields of
+ * gd->bd. It is called during the generic board init sequence.
+ *
+ * If an implementation is not provided, it will just be a nop stub.
+ *
+ * Return: 0 if OK
+ */
+int arch_setup_bdinfo(void);
+
+/**
+ * setup_bdinfo() - Generic boardinfo setup
+ *
+ * Routine for populating various generic boardinfo fields of
+ * gd->bd. It is called during the generic board init sequence.
+ *
+ * Return: 0 if OK
+ */
+int setup_bdinfo(void);
+
+/**
  * init_cache_f_r() - Turn on the cache in preparation for relocation
  *
  * Return: 0 if OK, -ve on error
@@ -213,6 +235,7 @@ int set_cpu_clk_info(void);
 int update_flash_size(int flash_size);
 int arch_early_init_r(void);
 void pci_init(void);
+void pci_ep_init(void);
 int misc_init_r(void);
 #if defined(CONFIG_VID)
 int init_func_vid(void);
@@ -260,6 +283,15 @@ void relocate_code(ulong start_addr_sp, struct global_data *new_gd,
 		   ulong relocaddr)
 	__attribute__ ((noreturn));
 #endif
+
+/* Print a numeric value (for use in arch_print_bdinfo()) */
+void bdinfo_print_num(const char *name, ulong value);
+
+/* Print a clock speed in MHz */
+void bdinfo_print_mhz(const char *name, unsigned long hz);
+
+/* Show arch-specific information for the 'bd' command */
+void arch_print_bdinfo(void);
 
 #endif	/* __ASSEMBLY__ */
 /* Put only stuff here that the assembler can digest */

@@ -15,6 +15,7 @@
 #include <asm/test.h>
 #include <dm/test.h>
 #include <dm/util.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 /* Simple test of sandbox SPI flash */
@@ -64,7 +65,7 @@ static int dm_test_spi_flash(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_spi_flash, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_spi_flash, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Functional test that sandbox SPI flash works correctly */
 static int dm_test_spi_flash_func(struct unit_test_state *uts)
@@ -92,4 +93,4 @@ static int dm_test_spi_flash_func(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_spi_flash_func, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_spi_flash_func, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

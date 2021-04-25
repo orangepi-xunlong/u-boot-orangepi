@@ -671,45 +671,6 @@ static void fsl_esdhc_get_cfg_common(struct fsl_esdhc_priv *priv,
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 }
 
-#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
-void mmc_adapter_card_type_ident(void)
-{
-	u8 card_id;
-	u8 value;
-
-	card_id = QIXIS_READ(present) & QIXIS_SDID_MASK;
-	gd->arch.sdhc_adapter = card_id;
-
-	switch (card_id) {
-	case QIXIS_ESDHC_ADAPTER_TYPE_EMMC45:
-		value = QIXIS_READ(brdcfg[5]);
-		value |= (QIXIS_DAT4 | QIXIS_DAT5_6_7);
-		QIXIS_WRITE(brdcfg[5], value);
-		break;
-	case QIXIS_ESDHC_ADAPTER_TYPE_SDMMC_LEGACY:
-		value = QIXIS_READ(pwr_ctl[1]);
-		value |= QIXIS_EVDD_BY_SDHC_VS;
-		QIXIS_WRITE(pwr_ctl[1], value);
-		break;
-	case QIXIS_ESDHC_ADAPTER_TYPE_EMMC44:
-		value = QIXIS_READ(brdcfg[5]);
-		value |= (QIXIS_SDCLKIN | QIXIS_SDCLKOUT);
-		QIXIS_WRITE(brdcfg[5], value);
-		break;
-	case QIXIS_ESDHC_ADAPTER_TYPE_RSV:
-		break;
-	case QIXIS_ESDHC_ADAPTER_TYPE_MMC:
-		break;
-	case QIXIS_ESDHC_ADAPTER_TYPE_SD:
-		break;
-	case QIXIS_ESDHC_NO_ADAPTER:
-		break;
-	default:
-		break;
-	}
-}
-#endif
-
 #ifdef CONFIG_OF_LIBFDT
 __weak int esdhc_status_fixup(void *blob, const char *compat)
 {
@@ -746,7 +707,7 @@ static void esdhc_disable_for_no_card(void *blob)
 }
 #endif
 
-void fdt_fixup_esdhc(void *blob, bd_t *bd)
+void fdt_fixup_esdhc(void *blob, struct bd_info *bd)
 {
 	const char *compat = "fsl,esdhc";
 
@@ -797,7 +758,7 @@ static const struct mmc_ops esdhc_ops = {
 	.set_ios	= esdhc_set_ios,
 };
 
-int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
+int fsl_esdhc_initialize(struct bd_info *bis, struct fsl_esdhc_cfg *cfg)
 {
 	struct fsl_esdhc_plat *plat;
 	struct fsl_esdhc_priv *priv;
@@ -852,7 +813,7 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	return 0;
 }
 
-int fsl_esdhc_mmc_init(bd_t *bis)
+int fsl_esdhc_mmc_init(struct bd_info *bis)
 {
 	struct fsl_esdhc_cfg *cfg;
 

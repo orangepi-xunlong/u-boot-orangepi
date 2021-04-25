@@ -10,6 +10,7 @@
 #include <dm/test.h>
 #include <dm/uclass-internal.h>
 #include <cpu.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 static int dm_test_cpu(struct unit_test_state *uts)
@@ -46,4 +47,4 @@ static int dm_test_cpu(struct unit_test_state *uts)
 	return 0;
 }
 
-DM_TEST(dm_test_cpu, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cpu, UT_TESTF_SCAN_FDT);

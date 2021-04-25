@@ -254,11 +254,7 @@ __weak int dram_init_banksize(void)
 static int init_func_i2c(void)
 {
 	puts("I2C:   ");
-#ifdef CONFIG_SYS_I2C
 	i2c_init_all();
-#else
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-#endif
 	puts("ready\n");
 	return 0;
 }
@@ -502,11 +498,12 @@ static int reserve_malloc(void)
 static int reserve_board(void)
 {
 	if (!gd->bd) {
-		gd->start_addr_sp = reserve_stack_aligned(sizeof(bd_t));
-		gd->bd = (bd_t *)map_sysmem(gd->start_addr_sp, sizeof(bd_t));
-		memset(gd->bd, '\0', sizeof(bd_t));
+		gd->start_addr_sp = reserve_stack_aligned(sizeof(struct bd_info));
+		gd->bd = (struct bd_info *)map_sysmem(gd->start_addr_sp,
+						      sizeof(struct bd_info));
+		memset(gd->bd, '\0', sizeof(struct bd_info));
 		debug("Reserving %zu Bytes for Board Info at: %08lx\n",
-		      sizeof(bd_t), gd->start_addr_sp);
+		      sizeof(struct bd_info), gd->start_addr_sp);
 	}
 	return 0;
 }
@@ -537,7 +534,7 @@ static int reserve_fdt(void)
 	 * will be relocated with other data.
 	 */
 	if (gd->fdt_blob) {
-		gd->fdt_size = ALIGN(fdt_totalsize(gd->fdt_blob) + 0x1000, 32);
+		gd->fdt_size = ALIGN(fdt_totalsize(gd->fdt_blob), 32);
 
 		gd->start_addr_sp = reserve_stack_aligned(gd->fdt_size);
 		gd->new_fdt = map_sysmem(gd->start_addr_sp, gd->fdt_size);
@@ -597,62 +594,25 @@ static int display_new_sp(void)
 	return 0;
 }
 
-#if defined(CONFIG_M68K) || defined(CONFIG_MIPS) || defined(CONFIG_PPC) || \
-	defined(CONFIG_SH)
-static int setup_board_part1(void)
+__weak int arch_setup_bdinfo(void)
 {
-	bd_t *bd = gd->bd;
-
-	/*
-	 * Save local variables to board info struct
-	 */
-	bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;	/* start of memory */
-	bd->bi_memsize = gd->ram_size;			/* size in bytes */
-
-#ifdef CONFIG_SYS_SRAM_BASE
-	bd->bi_sramstart = CONFIG_SYS_SRAM_BASE;	/* start of SRAM */
-	bd->bi_sramsize = CONFIG_SYS_SRAM_SIZE;		/* size  of SRAM */
-#endif
-
-#if defined(CONFIG_E500) || defined(CONFIG_MPC86xx)
-	bd->bi_immr_base = CONFIG_SYS_IMMR;	/* base  of IMMR register     */
-#endif
-#if defined(CONFIG_M68K)
-	bd->bi_mbar_base = CONFIG_SYS_MBAR;	/* base of internal registers */
-#endif
-#if defined(CONFIG_MPC83xx)
-	bd->bi_immrbar = CONFIG_SYS_IMMR;
-#endif
-
 	return 0;
 }
-#endif
 
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K)
-static int setup_board_part2(void)
+int setup_bdinfo(void)
 {
-	bd_t *bd = gd->bd;
+	struct bd_info *bd = gd->bd;
 
-	bd->bi_intfreq = gd->cpu_clk;	/* Internal Freq, in Hz */
-	bd->bi_busfreq = gd->bus_clk;	/* Bus Freq,      in Hz */
-#if defined(CONFIG_CPM2)
-	bd->bi_cpmfreq = gd->arch.cpm_clk;
-	bd->bi_brgfreq = gd->arch.brg_clk;
-	bd->bi_sccfreq = gd->arch.scc_clk;
-	bd->bi_vco = gd->arch.vco_out;
-#endif /* CONFIG_CPM2 */
-#if defined(CONFIG_M68K) && defined(CONFIG_PCI)
-	bd->bi_pcifreq = gd->pci_clk;
-#endif
-#if defined(CONFIG_EXTRA_CLOCK)
-	bd->bi_inpfreq = gd->arch.inp_clk;	/* input Freq in Hz */
-	bd->bi_vcofreq = gd->arch.vco_clk;	/* vco Freq in Hz */
-	bd->bi_flbfreq = gd->arch.flb_clk;	/* flexbus Freq in Hz */
-#endif
+	bd->bi_memstart = gd->ram_base;  /* start of memory */
+	bd->bi_memsize = gd->ram_size;   /* size in bytes */
 
-	return 0;
+	if (IS_ENABLED(CONFIG_SYS_HAS_SRAM)) {
+		bd->bi_sramstart = CONFIG_SYS_SRAM_BASE; /* start of SRAM */
+		bd->bi_sramsize = CONFIG_SYS_SRAM_SIZE;  /* size  of SRAM */
+	}
+
+	return arch_setup_bdinfo();
 }
-#endif
 
 #ifdef CONFIG_POST
 static int init_post(void)
@@ -670,7 +630,7 @@ static int reloc_fdt(void)
 	if (gd->flags & GD_FLG_SKIP_RELOC)
 		return 0;
 	if (gd->new_fdt) {
-		memcpy(gd->new_fdt, gd->fdt_blob, gd->fdt_size);
+		memcpy(gd->new_fdt, gd->fdt_blob, fdt_totalsize(gd->fdt_blob));
 		gd->fdt_blob = gd->new_fdt;
 	}
 #endif
@@ -955,6 +915,9 @@ static const init_fnc_t init_sequence_f[] = {
 	 *  - board info struct
 	 */
 	setup_dest_addr,
+#ifdef CONFIG_OF_BOARD_FIXUP
+	fix_fdt,
+#endif
 #ifdef CONFIG_PRAM
 	reserve_pram,
 #endif
@@ -974,18 +937,9 @@ static const init_fnc_t init_sequence_f[] = {
 	reserve_stacks,
 	dram_init_banksize,
 	show_dram_config,
-#if defined(CONFIG_M68K) || defined(CONFIG_MIPS) || defined(CONFIG_PPC) || \
-	defined(CONFIG_SH)
-	setup_board_part1,
-#endif
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K)
 	INIT_FUNC_WATCHDOG_RESET
-	setup_board_part2,
-#endif
+	setup_bdinfo,
 	display_new_sp,
-#ifdef CONFIG_OF_BOARD_FIXUP
-	fix_fdt,
-#endif
 	INIT_FUNC_WATCHDOG_RESET
 	reloc_fdt,
 	reloc_bootstage,

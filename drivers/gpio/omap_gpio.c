@@ -41,11 +41,6 @@ struct gpio_bank {
 
 #endif
 
-static inline int get_gpio_index(int gpio)
-{
-	return gpio & 0x1f;
-}
-
 int gpio_is_valid(int gpio)
 {
 	return (gpio >= 0) && (gpio < OMAP_MAX_GPIO);
@@ -122,6 +117,10 @@ static int _get_gpio_value(const struct gpio_bank *bank, int gpio)
 }
 
 #if !CONFIG_IS_ENABLED(DM_GPIO)
+static inline int get_gpio_index(int gpio)
+{
+	return gpio & 0x1f;
+}
 
 static inline const struct gpio_bank *get_gpio_bank(int gpio)
 {
@@ -309,7 +308,7 @@ static int omap_gpio_bind(struct udevice *dev)
 	if (plat)
 		return 0;
 
-	base_addr = devfdt_get_addr(dev);
+	base_addr = dev_read_addr(dev);
 	if (base_addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -348,7 +347,7 @@ static int omap_gpio_ofdata_to_platdata(struct udevice *dev)
 	struct omap_gpio_platdata *plat = dev_get_platdata(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 

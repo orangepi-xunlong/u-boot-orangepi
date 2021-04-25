@@ -220,8 +220,6 @@
 
 #define CONFIG_83XX_PCI_STREAMING
 
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #if !defined(CONFIG_PCI_PNP)
 	#define PCI_ENET0_IOADDR	0xFIXME
@@ -317,7 +315,6 @@
 /*
  * Environment Configuration
  */
-#define CONFIG_ENV_OVERWRITE
 
 #if defined(CONFIG_TSEC_ENET)
 #define CONFIG_HAS_ETH1

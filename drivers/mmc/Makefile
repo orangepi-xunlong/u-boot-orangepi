@@ -36,6 +36,7 @@ obj-$(CONFIG_MVEBU_MMC) += mvebu_mmc.o
 obj-$(CONFIG_MMC_OMAP_HS)		+= omap_hsmmc.o
 obj-$(CONFIG_MMC_MXC)			+= mxcmmc.o
 obj-$(CONFIG_MMC_MXS)			+= mxsmmc.o
+obj-$(CONFIG_MMC_OCTEONTX)		+= octeontx_hsmmc.o
 obj-$(CONFIG_MMC_PCI)			+= pci_mmc.o
 obj-$(CONFIG_PXA_MMC_GENERIC) += pxa_mmc_gen.o
 obj-$(CONFIG_$(SPL_TPL_)SUPPORT_EMMC_RPMB) += rpmb.o
@@ -44,6 +45,7 @@ obj-$(CONFIG_SH_MMCIF) += sh_mmcif.o
 obj-$(CONFIG_SH_SDHI) += sh_sdhi.o
 obj-$(CONFIG_STM32_SDMMC2) += stm32_sdmmc2.o
 obj-$(CONFIG_JZ47XX_MMC) += jz_mmc.o
+obj-$(CONFIG_NEXELL_DWMMC) += nexell_dw_mmc.o
 
 # SDHCI
 obj-$(CONFIG_MMC_SDHCI)			+= sdhci.o

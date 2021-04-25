@@ -110,9 +110,6 @@
 /*
  * Environment Configuration
  */
-#define CONFIG_ENV_OVERWRITE
-
-#define CONFIG_BAUDRATE 115200
 
 #define CONFIG_HOSTNAME		"ccdc"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"

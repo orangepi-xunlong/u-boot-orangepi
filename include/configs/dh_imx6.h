@@ -48,7 +48,6 @@
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_USDHC_NUM	3
-#define CONFIG_SYS_MMC_ENV_DEV		2 /* 1 = SDHC3, 2 = SDHC4 (eMMC) */
 
 /* SATA Configs */
 #define CONFIG_LBA48
@@ -60,9 +59,7 @@
 #endif
 
 /* UART */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
-#define CONFIG_BAUDRATE			115200
 
 /* USB Configs */
 #ifdef CONFIG_CMD_USB
@@ -90,9 +87,6 @@
 #undef CONFIG_WATCHDOG
 #define CONFIG_HW_WATCHDOG
 #endif
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_LOADADDR			0x12000000
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR

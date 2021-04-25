@@ -8,6 +8,16 @@ menuconfig NET
 
 if NET
 
+config BOOTP_SEND_HOSTNAME
+	bool "Send hostname to DNS server"
+	help
+	  Some DHCP servers are capable to do a dynamic update of a
+	  DNS server. To do this, they need the hostname of the DHCP
+	  requester.
+	  If CONFIG_BOOTP_SEND_HOSTNAME is defined, the content
+          of the "hostname" environment variable is passed as
+          option 12 to the DHCP server.
+
 config NET_RANDOM_ETHADDR
 	bool "Random ethaddr if unset"
 	help
@@ -48,5 +58,14 @@ config TFTP_BLOCKSIZE
 	  1468 (MTU minus eth.hdrs) provides a good throughput with
 	  almost-MTU block sizes.
 	  You can also activate CONFIG_IP_DEFRAG to set a larger block.
+
+config TFTP_WINDOWSIZE
+	int "TFTP window size"
+	default 1
+	help
+	  Default TFTP window size.
+	  RFC7440 defines an optional window size of transmits,
+	  before an ack response is required.
+	  The default TFTP implementation implies a window size of 1.
 
 endif   # if NET

@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <malloc.h>
+#include <acpi/acpi_device.h>
 #include <asm/gpio.h>
 #include <dm/device_compat.h>
 #include <linux/bug.h>
@@ -68,6 +69,45 @@ static int gpio_to_device(unsigned int gpio, struct gpio_desc *desc)
 	return ret ? ret : -ENOENT;
 }
 
+#if CONFIG_IS_ENABLED(DM_GPIO_LOOKUP_LABEL)
+/**
+ * dm_gpio_lookup_label() - look for name in gpio device
+ *
+ * search in uc_priv, if there is a gpio with labelname same
+ * as name.
+ *
+ * @name:	name which is searched
+ * @uc_priv:	gpio_dev_priv pointer.
+ * @offset:	gpio offset within the device
+ * @return:	0 if found, -ENOENT if not.
+ */
+static int dm_gpio_lookup_label(const char *name,
+				struct gpio_dev_priv *uc_priv, ulong *offset)
+{
+	int len;
+	int i;
+
+	*offset = -1;
+	len = strlen(name);
+	for (i = 0; i < uc_priv->gpio_count; i++) {
+		if (!uc_priv->name[i])
+			continue;
+		if (!strncmp(name, uc_priv->name[i], len)) {
+			*offset = i;
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+#else
+static int
+dm_gpio_lookup_label(const char *name, struct gpio_dev_priv *uc_priv,
+		     ulong *offset)
+{
+	return -ENOENT;
+}
+#endif
+
 int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 {
 	struct gpio_dev_priv *uc_priv = NULL;
@@ -96,6 +136,13 @@ int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 			if (!strict_strtoul(name + len, 10, &offset))
 				break;
 		}
+
+		/*
+		 * if we did not found a gpio through its bank
+		 * name, we search for a valid gpio label.
+		 */
+		if (!dm_gpio_lookup_label(name, uc_priv, &offset))
+			break;
 	}
 
 	if (!dev)
@@ -808,6 +855,27 @@ int gpio_get_status(struct udevice *dev, int offset, char *buf, int buffsize)
 
 	return 0;
 }
+
+#if CONFIG_IS_ENABLED(ACPIGEN)
+int gpio_get_acpi(const struct gpio_desc *desc, struct acpi_gpio *gpio)
+{
+	struct dm_gpio_ops *ops;
+
+	memset(gpio, '\0', sizeof(*gpio));
+	if (!dm_gpio_is_valid(desc)) {
+		/* Indicate that the GPIO is not valid */
+		gpio->pin_count = 0;
+		gpio->pins[0] = 0;
+		return -EINVAL;
+	}
+
+	ops = gpio_get_ops(desc->dev);
+	if (!ops->get_acpi)
+		return -ENOSYS;
+
+	return ops->get_acpi(desc, gpio);
+}
+#endif
 
 int gpio_claim_vector(const int *gpio_num_array, const char *fmt)
 {

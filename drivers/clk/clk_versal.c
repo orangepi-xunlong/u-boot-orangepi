@@ -68,23 +68,6 @@
 #define CLOCK_NODE_TYPE_DIV	4
 #define CLOCK_NODE_TYPE_GATE	6
 
-enum pm_query_id {
-	PM_QID_INVALID,
-	PM_QID_CLOCK_GET_NAME,
-	PM_QID_CLOCK_GET_TOPOLOGY,
-	PM_QID_CLOCK_GET_FIXEDFACTOR_PARAMS,
-	PM_QID_CLOCK_GET_PARENTS,
-	PM_QID_CLOCK_GET_ATTRIBUTES,
-	PM_QID_PINCTRL_GET_NUM_PINS,
-	PM_QID_PINCTRL_GET_NUM_FUNCTIONS,
-	PM_QID_PINCTRL_GET_NUM_FUNCTION_GROUPS,
-	PM_QID_PINCTRL_GET_FUNCTION_NAME,
-	PM_QID_PINCTRL_GET_FUNCTION_GROUPS,
-	PM_QID_PINCTRL_GET_PIN_GROUPS,
-	PM_QID_CLOCK_GET_NUM_CLOCKS,
-	PM_QID_CLOCK_GET_MAX_DIVISOR,
-};
-
 enum clk_type {
 	CLK_TYPE_OUTPUT,
 	CLK_TYPE_EXTERNAL,
@@ -117,7 +100,6 @@ struct versal_clk_priv {
 	struct versal_clock *clk;
 };
 
-static ulong alt_ref_clk;
 static ulong pl_alt_ref_clk;
 static ulong ref_clk;
 
@@ -548,8 +530,7 @@ int soc_clk_dump(void)
 
 	printf("\n ****** VERSAL CLOCKS *****\n");
 
-	printf("alt_ref_clk:%ld pl_alt_ref_clk:%ld ref_clk:%ld\n",
-	       alt_ref_clk, pl_alt_ref_clk, ref_clk);
+	printf("pl_alt_ref_clk:%ld ref_clk:%ld\n", pl_alt_ref_clk, ref_clk);
 	for (i = 0; i < clock_max_idx; i++) {
 		debug("%s\n", clock[i].clk_name);
 		ret = versal_get_clock_type(i, &type);
@@ -666,10 +647,6 @@ static int versal_clk_probe(struct udevice *dev)
 	struct versal_clk_priv *priv = dev_get_priv(dev);
 
 	debug("%s\n", __func__);
-
-	ret = versal_clock_get_freq_by_name("alt_ref_clk", dev, &alt_ref_clk);
-	if (ret < 0)
-		return -EINVAL;
 
 	ret = versal_clock_get_freq_by_name("pl_alt_ref_clk",
 					    dev, &pl_alt_ref_clk);

@@ -6,6 +6,7 @@
 #
 
 from collections import OrderedDict
+import glob
 import os
 import sys
 from patman import tools
@@ -50,6 +51,18 @@ def _FindBinmanNode(dtb):
         if node.name == 'binman':
             return node
     return None
+
+def GetEntryModules(include_testing=True):
+    """Get a set of entry class implementations
+
+    Returns:
+        Set of paths to entry class filenames
+    """
+    our_path = os.path.dirname(os.path.realpath(__file__))
+    glob_list = glob.glob(os.path.join(our_path, 'etype/*.py'))
+    return set([os.path.splitext(os.path.basename(item))[0]
+                for item in glob_list
+                if include_testing or '_testing' not in item])
 
 def WriteEntryDocs(modules, test_missing=None):
     """Write out documentation for all entries
@@ -110,7 +123,7 @@ def ReadEntry(image_fname, entry_path, decomp=True):
         data extracted from the entry
     """
     global Image
-    from image import Image
+    from binman.image import Image
 
     image = Image.FromFile(image_fname)
     entry = image.FindEntryPath(entry_path)
@@ -387,7 +400,7 @@ def PrepareImagesAndDtbs(dtb_fname, select_images, update_fdt):
 
 
 def ProcessImage(image, update_fdt, write_map, get_contents=True,
-                 allow_resize=True):
+                 allow_resize=True, allow_missing=False):
     """Perform all steps for this image, including checking and # writing it.
 
     This means that errors found with a later image will be reported after
@@ -402,8 +415,13 @@ def ProcessImage(image, update_fdt, write_map, get_contents=True,
             the contents is already present
         allow_resize: True to allow entries to change size (this does a re-pack
             of the entries), False to raise an exception
+        allow_missing: Allow blob_ext objects to be missing
+
+    Returns:
+        True if one or more external blobs are missing, False if all are present
     """
     if get_contents:
+        image.SetAllowMissing(allow_missing)
         image.GetEntryContents()
     image.GetEntryOffsets()
 
@@ -448,6 +466,12 @@ def ProcessImage(image, update_fdt, write_map, get_contents=True,
     image.BuildImage()
     if write_map:
         image.WriteMap()
+    missing_list = []
+    image.CheckMissing(missing_list)
+    if missing_list:
+        tout.Warning("Image '%s' is missing external blobs and is non-functional: %s" %
+                     (image.name, ' '.join([e.name for e in missing_list])))
+    return bool(missing_list)
 
 
 def Binman(args):
@@ -472,7 +496,7 @@ def Binman(args):
         return 0
 
     # Put these here so that we can import this module without libfdt
-    from image import Image
+    from binman.image import Image
     from binman import state
 
     if args.cmd in ['ls', 'extract', 'replace']:
@@ -522,13 +546,17 @@ def Binman(args):
 
             images = PrepareImagesAndDtbs(dtb_fname, args.image,
                                           args.update_fdt)
+            missing = False
             for image in images.values():
-                ProcessImage(image, args.update_fdt, args.map)
+                missing |= ProcessImage(image, args.update_fdt, args.map,
+                                        allow_missing=args.allow_missing)
 
             # Write the updated FDTs to our output files
             for dtb_item in state.GetAllFdts():
                 tools.WriteFile(dtb_item._fname, dtb_item.GetContents())
 
+            if missing:
+                tout.Warning("Some images are invalid")
         finally:
             tools.FinaliseOutputDir()
     finally:

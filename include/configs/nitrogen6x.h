@@ -17,9 +17,7 @@
 #define CONFIG_SYS_MALLOC_LEN		(10 * 1024 * 1024)
 
 #define CONFIG_USBD_HS
-#define CONFIG_NETCONSOLE
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	       UART2_BASE
 
 /* I2C Configs */
@@ -59,8 +57,6 @@
 
 /* Framebuffer and LCD */
 #define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (6 * 1024 * 1024)
 #define CONFIG_BMP_16BPP
@@ -145,10 +141,6 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* Environment organization */
-
-#if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 /*
  * PCI express

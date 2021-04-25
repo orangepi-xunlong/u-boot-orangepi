@@ -50,19 +50,25 @@
 };
 
 &gmac {
-	assigned-clocks = <&cru SCLK_MAC_EXTCLK>, <&cru SCLK_MAC>;
-	assigned-clock-parents = <&ext_gmac>, <&cru SCLK_MAC_EXTCLK>;
-	clock_in_out = "input";
-	phy-supply = <&vcc_phy>;
-	phy-mode = "rgmii";
-	pinctrl-names = "default";
-	pinctrl-0 = <&rgmii_pins>;
-	snps,reset-gpio = <&gpio2 RK_PD0 GPIO_ACTIVE_LOW>;
-	snps,reset-active-low;
-	snps,reset-delays-us = <0 10000 1000000>;
-	tx_delay = <0x30>;
-	rx_delay = <0x10>;
-	status = "okay";
+        assigned-clocks = <&cru SCLK_MAC_SRC>;
+        assigned-clock-rates = <50000000>;
+        clock_in_out = "output";
+        phy-supply = <&vcc_phy>;
+        phy-mode = "rmii";
+        phy-handle = <&phy>;
+        status = "okay";
+
+        mdio {
+                compatible = "snps,dwmac-mdio";
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                phy: phy@0 {
+                        compatible = "ethernet-phy-id1234.d400", "ethernet-phy-ieee802.3-c22";
+                        reg = <0>;
+                        phy-is-integrated;
+                };
+        };
 };
 
 &emmc {

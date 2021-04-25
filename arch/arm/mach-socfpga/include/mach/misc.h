@@ -20,7 +20,7 @@ extern struct bsel bsel_str[];
 #ifdef CONFIG_FPGA
 void socfpga_fpga_add(void *fpga_desc);
 #else
-inline void socfpga_fpga_add(void *fpga_desc) {}
+static inline void socfpga_fpga_add(void *fpga_desc) {}
 #endif
 
 #ifdef CONFIG_TARGET_SOCFPGA_GEN5
@@ -37,6 +37,11 @@ static inline bool socfpga_is_booting_from_fpga(void)
 #ifdef CONFIG_TARGET_SOCFPGA_ARRIA10
 void socfpga_init_security_policies(void);
 void socfpga_sdram_remap_zero(void);
+#endif
+
+#if defined(CONFIG_TARGET_SOCFPGA_STRATIX10) || \
+	defined(CONFIG_TARGET_SOCFPGA_AGILEX)
+int is_fpga_config_ready(void);
 #endif
 
 void do_bridge_reset(int enable, unsigned int mask);

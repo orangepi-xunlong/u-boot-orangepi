@@ -19,22 +19,12 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
 
-/* general purpose I/O */
-#if !CONFIG_IS_ENABLED(DM_GPIO)
-#define CONFIG_AT91_GPIO
-#endif
-
 /*
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 #ifdef CONFIG_SD_BOOT
-
-#ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
-
 #define CONFIG_BOOTCOMMAND	"if test ! -n ${dtb_name}; then "	\
 				    "setenv dtb_name at91-${board_name}.dtb; " \
 				"fi; "					\

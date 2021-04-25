@@ -270,6 +270,12 @@ config SPL_CMD_TLV_EEPROM
 	help
 	  Read system EEPROM data block in ONIE Tlvinfo format from SPL.
 
+config CMD_SBI
+	bool "sbi"
+	depends on RISCV_SMODE && SBI_V02
+	help
+	  Display information about the SBI implementation.
+
 endmenu
 
 menu "Boot commands"
@@ -378,6 +384,7 @@ config CMD_BOOTEFI_HELLO_COMPILE
 config CMD_BOOTEFI_HELLO
 	bool "Allow booting a standard EFI hello world for testing"
 	depends on CMD_BOOTEFI_HELLO_COMPILE
+	default y if CMD_BOOTEFI_SELFTEST
 	help
 	  This adds a standard EFI hello world application to U-Boot so that
 	  it can be used with the 'bootefi hello' command. This is useful
@@ -488,13 +495,6 @@ config CMD_SPL_WRITE_SIZE
 	  This provides the size of the command-line argument area in NAND
 	  flash used by Falcon-mode boot. See the documentation until CMD_SPL
 	  for detail.
-
-config CMD_FITUPD
-	bool "fitImage update command"
-	depends on UPDATE_TFTP
-	help
-	  Implements the 'fitupd' command, which allows to automatically
-	  store software updates present on a TFTP server in NOR Flash
 
 config CMD_THOR_DOWNLOAD
 	bool "thor - TIZEN 'thor' download"
@@ -607,7 +607,19 @@ config CMD_NVEDIT_INFO
 	  This command can be optionally used for evaluation in scripts:
 	  [-d] : evaluate whether default environment is used
 	  [-p] : evaluate whether environment can be persisted
+	  [-q] : quiet output
 	  The result of multiple evaluations will be combined with AND.
+
+config CMD_NVEDIT_LOAD
+	bool "env load"
+	help
+	  Load all environment variables from the compiled-in persistent
+	  storage.
+
+config CMD_NVEDIT_SELECT
+	bool "env select"
+	help
+	  Select the compiled-in persistent storage of environment variables.
 
 endmenu
 
@@ -718,6 +730,20 @@ config CMD_MEMORY
 	    base - print or set address offset
 	    loop - initialize loop on address range
 
+config CMD_MEM_SEARCH
+	bool "ms - Memory search"
+	help
+	  Memory-search command
+
+	  This allows searching through a region of memory looking for hex
+	  data (byte, 16-bit word, 32-bit long, also 64-bit on machines that
+	  support it). It is also possible to search for a string. The
+	  command accepts a memory range and a list of values to search for.
+	  The values need to appear in memory in the same order they are given
+	  in the command. At most 10 matches can be returned at a time, but
+	  pressing return will show the next 10 matches. Environment variables
+	  are set for use with scripting (memmatches, memaddr, mempos).
+
 config CMD_MX_CYCLIC
 	bool "Enable cyclic md/mw commands"
 	depends on CMD_MEMORY
@@ -750,6 +776,18 @@ config SYS_ALT_MEMTEST
 	bool "Alternative test"
 	help
 	  Use a more complete alternative memory test.
+
+if SYS_ALT_MEMTEST
+
+config SYS_ALT_MEMTEST_BITFLIP
+	bool "Bitflip test"
+	default y
+	help
+	  The alternative memory test includes bitflip test since 2020.07.
+	  The bitflip test significantly increases the overall test time.
+	  Bitflip test can optionally be disabled here.
+
+endif
 
 config SYS_MEMTEST_START
 	hex "default start address for mtest"
@@ -834,7 +872,7 @@ config CMD_ARMFLASH
 config CMD_ADC
 	bool "adc - Access Analog to Digital Converters info and data"
 	select ADC
-	select DM_REGULATOR
+	depends on DM_REGULATOR
 	help
 	  Shows ADC device info and permit printing one-shot analog converted
 	  data from a named Analog to Digital Converter.
@@ -1088,6 +1126,13 @@ config CMD_LOADS
 	help
 	  Load an S-Record file over serial line
 
+config CMD_LSBLK
+	depends on BLK
+	bool "lsblk - list block drivers and devices"
+	help
+	  Print list of available block device drivers, and for each, the list
+	  of known block devices.
+
 config CMD_MMC
 	bool "mmc"
 	help
@@ -1120,6 +1165,14 @@ config CMD_MMC_SWRITE
 	  images to eMMC.
 
 endif
+
+config CMD_CLONE
+	bool "clone"
+	depends on BLK
+	help
+	  Enable storage cloning over block devices, useful for
+	  initial flashing by external block device without network
+	  or usb support.
 
 config CMD_MTD
 	bool "mtd"
@@ -1334,6 +1387,13 @@ config CMD_USB_MASS_STORAGE
 	select USB_FUNCTION_MASS_STORAGE
 	help
 	  USB mass storage support
+
+config CMD_PVBLOCK
+	bool "Xen para-virtualized block device"
+	depends on XEN
+	select PVBLOCK
+	help
+	  Xen para-virtualized block device support
 
 config CMD_VIRTIO
 	bool "virtio"
@@ -1664,6 +1724,17 @@ config CMD_BLOCK_CACHE
 	  during development, but also allows the cache to be disabled when
 	  it might hurt performance (e.g. when using the ums command).
 
+config CMD_BUTTON
+	bool "button"
+	depends on BUTTON
+	default y if BUTTON
+	help
+	  Enable the 'button' command which allows to get the status of
+	  buttons supported by the board. The buttonss can be listed with
+	  'button list' and state can be known with 'button <label>'.
+	  Any button drivers can be controlled with this command, e.g.
+	  button_gpio.
+
 config CMD_CACHE
 	bool "icache or dcache"
 	help
@@ -1717,6 +1788,12 @@ config CMD_DATE
 	help
 	  Enable the 'date' command for getting/setting the time/date in RTC
 	  devices.
+
+config CMD_RTC
+	bool "rtc"
+	depends on DM_RTC
+	help
+	  Enable the 'rtc' command for low-level access to RTC devices.
 
 config CMD_TIME
 	bool "time"
@@ -2037,6 +2114,12 @@ config CMD_FAT
 	select FS_FAT
 	help
 	  Support for the FAT fs
+
+config CMD_SQUASHFS
+	bool "SquashFS command support"
+	select FS_SQUASHFS
+	help
+	  Enables SquashFS filesystem commands (e.g. load, ls).
 
 config CMD_FS_GENERIC
 	bool "filesystem commands"

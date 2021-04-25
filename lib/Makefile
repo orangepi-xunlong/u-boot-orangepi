@@ -61,6 +61,7 @@ obj-$(CONFIG_$(SPL_)MD5) += md5.o
 obj-$(CONFIG_$(SPL_)RSA) += rsa/
 obj-$(CONFIG_SHA1) += sha1.o
 obj-$(CONFIG_SHA256) += sha256.o
+obj-$(CONFIG_SHA512_ALGO) += sha512.o
 
 obj-$(CONFIG_$(SPL_)ZLIB) += zlib/
 obj-$(CONFIG_$(SPL_)ZSTD) += zstd/
@@ -122,6 +123,7 @@ else
 # Main U-Boot always uses the full printf support
 obj-y += vsprintf.o strto.o
 obj-$(CONFIG_OID_REGISTRY) += oid_registry.o
+obj-$(CONFIG_SSCANF) += sscanf.o
 endif
 
 obj-y += date.o

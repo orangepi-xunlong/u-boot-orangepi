@@ -232,7 +232,7 @@ int checkboard(void)
 	return 0;
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	cpu_eth_init(bis); /* Built in controller(s) come first */
 	return pci_eth_init(bis);
@@ -240,6 +240,9 @@ int board_eth_init(bd_t *bis)
 
 int board_late_init(void)
 {
+	if (env_get("fdtfile"))
+		return 0;
+
 	cf_read_tlv_data();
 
 	if (sr_product_is(&cf_tlv_data, "Clearfog Base"))

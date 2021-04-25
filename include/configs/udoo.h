@@ -18,7 +18,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(2 * SZ_1M)
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART2_BASE
 
 /* SATA Configs */
@@ -85,7 +84,5 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* Environment organization */
-
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 #endif			       /* __CONFIG_H * */

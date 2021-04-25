@@ -7,8 +7,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_ARMV7_PSCI_1_0
-
 #define CONFIG_ARMV7_SECURE_BASE	OCRAM_BASE_S_ADDR
 
 #define CONFIG_SYS_FSL_CLK
@@ -363,11 +361,6 @@ unsigned long get_board_ddr_clk(void);
  * MMC
  */
 
-/* DM SPI */
-#if defined(CONFIG_FSL_DSPI) || defined(CONFIG_FSL_QSPI)
-#define CONFIG_DM_SPI_FLASH
-#endif
-
 /*
  * Video
  */
@@ -479,11 +472,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Environment
  */
-#define CONFIG_ENV_OVERWRITE
-
-#if defined(CONFIG_SD_BOOT)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 #include <asm/fsl_secure_boot.h>
 #define CONFIG_SYS_BOOTM_LEN	(64 << 20) /* Increase max gunzip size */

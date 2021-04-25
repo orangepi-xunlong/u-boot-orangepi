@@ -15,7 +15,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(10 * SZ_1M)
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART2_BASE
 
 /* MMC Configuration */
@@ -76,7 +75,6 @@
 /* Environment organization */
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
-	#define CONFIG_SYS_MMC_ENV_DEV		0
 	#define CONFIG_DYNAMIC_MMC_DEVNO
 #endif
 

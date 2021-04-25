@@ -6,6 +6,12 @@ config ENV_SUPPORT
 config SAVEENV
 	def_bool y if CMD_SAVEENV
 
+config ENV_OVERWRITE
+	bool "Enable overwriting environment"
+	help
+	  Use this to permit overriding of certain environmental variables
+	  like Ethernet and Serial
+
 config ENV_IS_NOWHERE
 	bool "Environment is not stored"
 	default y if !ENV_IS_IN_EEPROM && !ENV_IS_IN_EXT4 && \
@@ -66,6 +72,7 @@ config ENV_IS_IN_FAT
 config ENV_IS_IN_EXT4
 	bool "Environment is in a EXT4 filesystem"
 	depends on !CHAIN_OF_TRUST
+	select FS_EXT4
 	select EXT4_WRITE
 	help
 	  Define this if you want to use the EXT4 file system for the environment.
@@ -434,6 +441,10 @@ config ENV_FAT_DEVICE_AND_PART
 	                   If none, first valid partition in device D. If no
 	                   partition table then means device D.
 
+	  If ENV_FAT_INTERFACE is set to "mmc" then device 'D' can be omitted,
+	  leaving the string starting with a colon, and the boot device will
+	  be used.
+
 config ENV_FAT_FILE
 	string "Name of the FAT file to use for the environment"
 	depends on ENV_IS_IN_FAT
@@ -469,7 +480,7 @@ config ENV_EXT4_DEVICE_AND_PART
 config ENV_EXT4_FILE
 	string "Name of the EXT4 file to use for the environment"
 	depends on ENV_IS_IN_EXT4
-	default "uboot.env"
+	default "/uboot.env"
 	help
 	  It's a string of the EXT4 file name. This file use to store the
 	  environment (explicit path to the file)
@@ -567,6 +578,25 @@ config SYS_RELOC_GD_ENV_ADDR
 	  Relocate the early env_addr pointer so we know it is not inside
 	  the binary. Some systems need this and for the rest, it doesn't hurt.
 
+config SYS_MMC_ENV_DEV
+	int "mmc device number"
+	depends on ENV_IS_IN_MMC || ENV_IS_IN_FAT || SYS_LS_PPA_FW_IN_MMC || \
+		CMD_MVEBU_BUBT || FMAN_ENET || QE
+	default 0
+	help
+	  MMC device number on the platform where the environment is stored.
+
+config SYS_MMC_ENV_PART
+	int "mmc partition number"
+	depends on ENV_IS_IN_MMC || ENV_IS_IN_FAT
+	default 0
+	help
+	  MMC hardware partition device number on the platform where the
+	  environment is stored.  Note that this is not related to any software
+	  defined partition table but instead if we are in the user area, which is
+	  partition 0 or the first boot partition, which is 1 or some other defined
+	  partition.
+
 config USE_DEFAULT_ENV_FILE
 	bool "Create default environment from file"
 	help
@@ -603,6 +633,23 @@ config DELAY_ENVIRONMENT
 	  that so that the environment is not available until explicitly loaded
 	  later by U-Boot code. With CONFIG_OF_CONTROL this is instead
 	  controlled by the value of /config/load-environment.
+
+config ENV_APPEND
+	bool "Always append the environment with new data"
+	default n
+	help
+	  If defined, the environment hash table is only ever appended with new
+	  data, but the existing hash table can never be dropped and reloaded
+	  with newly imported data. This may be used in combination with static
+	  flags to e.g. to protect variables which must not be modified.
+
+config ENV_WRITEABLE_LIST
+	bool "Permit write access only to listed variables"
+	default n
+	help
+	  If defined, only environment variables which explicitly set the 'w'
+	  writeable flag can be written and modified at runtime. No variables
+	  can be otherwise created, written or imported into the environment.
 
 config ENV_ACCESS_IGNORE_FORCE
 	bool "Block forced environment operations"

@@ -9,6 +9,7 @@
 #include <generic-phy.h>
 #include <log.h>
 #include <dm/test.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 /* Base test of the phy uclass */
@@ -46,13 +47,13 @@ static int dm_test_phy_base(struct unit_test_state *uts)
 	ut_assert(phy2.dev != phy3.dev);
 
 	/* Try to get a non-existing phy */
-	ut_asserteq(-ENODEV, uclass_get_device(UCLASS_PHY, 3, &dev));
+	ut_asserteq(-ENODEV, uclass_get_device(UCLASS_PHY, 4, &dev));
 	ut_asserteq(-ENODATA, generic_phy_get_by_name(parent,
 					"phy_not_existing", &phy1_method1));
 
 	return 0;
 }
-DM_TEST(dm_test_phy_base, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_phy_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test of the phy uclass using the sandbox phy driver operations */
 static int dm_test_phy_ops(struct unit_test_state *uts)
@@ -110,7 +111,7 @@ static int dm_test_phy_ops(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_phy_ops, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_phy_ops, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 static int dm_test_phy_bulk(struct unit_test_state *uts)
 {
@@ -143,4 +144,4 @@ static int dm_test_phy_bulk(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_phy_bulk, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_phy_bulk, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

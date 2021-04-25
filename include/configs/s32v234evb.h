@@ -34,10 +34,6 @@
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
-/* Config CACHE */
-
-#define CONFIG_SYS_FULL_VA
-
 /* Enable passing of ATAGs */
 #define CONFIG_CMDLINE_TAG
 
@@ -60,8 +56,6 @@
 #define CONFIG_DEBUG_UART_LINFLEXUART
 #define CONFIG_DEBUG_UART_BASE		LINFLEXUART_BASE
 
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_SYS_UART_PORT		(1)
 
 #define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC_BASE_ADDR
@@ -151,11 +145,6 @@
 #define CONFIG_SYS_MALLOC_BASE		(DDR_BASE_ADDR)
 #endif
 
-#if 0
-/* Configure PXE */
-#define CONFIG_BOOTP_PXE_CLIENTARCH	0x100
-#endif
-
 /* Physical memory map */
 /* EVB board has 2x256 MB DDR chips, DDR0 and DDR1, u-boot is using just one */
 #define PHYS_SDRAM			(DDR_BASE_ADDR)
@@ -171,8 +160,6 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* environment organization */
-
-#define CONFIG_SYS_MMC_ENV_DEV		0
 
 
 #define CONFIG_BOOTP_BOOTFILESIZE

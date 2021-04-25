@@ -18,7 +18,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_INTERRUPTS		/* enable pci, srio, ddr interrupts */
 
 #ifndef __ASSEMBLY__
@@ -62,8 +61,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #ifndef CONFIG_SPD_EEPROM
 #error ("CONFIG_SPD_EEPROM is required")
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * Memory map
@@ -258,8 +255,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_ISA_IO_BASE_ADDRESS VIDEO_IO_OFFSET
 #endif
 
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #ifndef CONFIG_PCI_PNP
 	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCI1_IO_BUS

@@ -10,9 +10,9 @@ choice
 
 config ARC
 	bool "ARC architecture"
-	select ARCH_EARLY_INIT_R
 	select ARC_TIMER
 	select CLK
+	select DM
 	select HAVE_PRIVATE_LIBGCC
 	select SUPPORT_OF_CONTROL
 	select TIMER
@@ -139,6 +139,7 @@ config SANDBOX
 	imply ACPI_PMC
 	imply ACPI_PMC_SANDBOX
 	imply CMD_PMC
+	imply CMD_CLONE
 
 config SH
 	bool "SuperH architecture"
@@ -160,6 +161,7 @@ config X86
 	select TIMER
 	select USE_PRIVATE_LIBGCC
 	select X86_TSC_TIMER
+	imply HAS_ROM if X86_RESET_VECTOR
 	imply BLK
 	imply CMD_DM
 	imply CMD_FPGA_LOADMK
@@ -190,6 +192,7 @@ config X86
 	imply PCH
 	imply RTC_MC146818
 	imply IRQ
+	imply ACPIGEN if !QEMU
 
 	# Thing to enable for when SPL/TPL are enabled: SPL
 	imply SPL_DM

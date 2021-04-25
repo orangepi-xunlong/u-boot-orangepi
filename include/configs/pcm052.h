@@ -20,9 +20,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 2 * SZ_1M)
 
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /* NAND support */
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 
@@ -158,8 +155,5 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* environment organization */
-#ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 #endif

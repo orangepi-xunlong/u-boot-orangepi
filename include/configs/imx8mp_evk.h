@@ -10,15 +10,12 @@
 #include <linux/stringify.h>
 #include <asm/arch/imx-regs.h>
 
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_CSF_SIZE			0x2000 /* 8K region */
-#endif
+#define CONFIG_SYS_BOOTM_LEN		(32 * SZ_1M)
 
 #define CONFIG_SPL_MAX_SIZE		(152 * 1024)
 #define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SYS_UBOOT_BASE	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
 #ifdef CONFIG_SPL_BUILD
@@ -53,11 +50,10 @@
 	"image=Image\0" \
 	"console=ttymxc1,115200 earlycon=ec_imx6q,0x30890000,115200\0" \
 	"fdt_addr=0x43000000\0"			\
-	"fdt_high=0xffffffffffffffff\0"		\
 	"boot_fdt=try\0" \
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"initrd_addr=0x43800000\0"		\
-	"initrd_high=0xffffffffffffffff\0" \
+	"bootm_size=0x10000000\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
@@ -124,8 +120,6 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
 
 /* Size of malloc() pool */

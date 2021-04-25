@@ -57,12 +57,6 @@
 						"saveenv; " \
 						"fi; "
 
-/* Autoboot options */
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT	\
-	"Enter passphrase to stop autoboot, booting in %d seconds\n"
-#define CONFIG_AUTOBOOT_STOP_STR "123"
-
 #include <asm/arch/imx-regs.h>
 #include <linux/sizes.h>
 
@@ -73,9 +67,6 @@
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 4 * SZ_1M)
-
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* NAND support */
 #define CONFIG_SYS_NAND_ONFI_DETECTION

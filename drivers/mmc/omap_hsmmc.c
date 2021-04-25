@@ -175,6 +175,8 @@ static inline struct omap_hsmmc_data *omap_hsmmc_get_data(struct mmc *mmc)
 	return (struct omap_hsmmc_data *)mmc->priv;
 #endif
 }
+
+#if defined(CONFIG_OMAP34XX) || defined(CONFIG_IODELAY_RECALIBRATION)
 static inline struct mmc_config *omap_hsmmc_get_cfg(struct mmc *mmc)
 {
 #if CONFIG_IS_ENABLED(DM_MMC)
@@ -184,6 +186,7 @@ static inline struct mmc_config *omap_hsmmc_get_cfg(struct mmc *mmc)
 	return &((struct omap_hsmmc_data *)mmc->priv)->cfg;
 #endif
 }
+#endif
 
 #if defined(OMAP_HSMMC_USE_GPIO) && !CONFIG_IS_ENABLED(DM_MMC)
 static int omap_mmc_setup_gpio_in(int gpio, const char *label)
@@ -840,7 +843,7 @@ static int omap_hsmmc_init_setup(struct mmc *mmc)
 	omap_hsmmc_conf_bus_power(mmc, (reg_val & VS33_3V3SUP) ?
 			  MMC_SIGNAL_VOLTAGE_330 : MMC_SIGNAL_VOLTAGE_180);
 #else
-	writel(DTW_1_BITMODE | SDBP_PWROFF | SDVS_3V0, &mmc_base->hctl);
+	writel(DTW_1_BITMODE | SDBP_PWROFF | SDVS_3V3, &mmc_base->hctl);
 	writel(readl(&mmc_base->capa) | VS33_3V3SUP | VS18_1V8SUP,
 		&mmc_base->capa);
 #endif
@@ -1908,7 +1911,7 @@ static int omap_hsmmc_ofdata_to_platdata(struct udevice *dev)
 	int node = dev_of_offset(dev);
 	int ret;
 
-	plat->base_addr = map_physmem(devfdt_get_addr(dev),
+	plat->base_addr = map_physmem(dev_read_addr(dev),
 				      sizeof(struct hsmmc *),
 				      MAP_NOCACHE);
 
@@ -1930,7 +1933,7 @@ static int omap_hsmmc_ofdata_to_platdata(struct udevice *dev)
 		plat->controller_flags |= of_data->controller_flags;
 
 #ifdef CONFIG_OMAP54XX
-	fixups = platform_fixups_mmc(devfdt_get_addr(dev));
+	fixups = platform_fixups_mmc(dev_read_addr(dev));
 	if (fixups) {
 		plat->hw_rev = fixups->hw_rev;
 		cfg->host_caps &= ~fixups->unsupported_caps;

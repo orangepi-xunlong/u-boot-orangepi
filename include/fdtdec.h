@@ -445,6 +445,19 @@ int fdtdec_get_pci_bar32(const struct udevice *dev, struct fdt_pci_addr *addr,
 			 u32 *bar);
 
 /**
+ * Look at the bus range property of a device node and return the pci bus
+ * range for this node.
+ * The property must hold one fdt_pci_addr with a length.
+ * @param blob		FDT blob
+ * @param node		node to examine
+ * @param res		the resource structure to return the bus range
+ * @return 0 if ok, negative on error
+ */
+
+int fdtdec_get_pci_bus_range(const void *blob, int node,
+			     struct fdt_resource *res);
+
+/**
  * Look up a 32-bit integer property in a node and return it. The property
  * must have at least 4 bytes of data. The value of the first cell is
  * returned.
@@ -909,26 +922,6 @@ int fdtdec_decode_display_timing(const void *blob, int node, int index,
 				 struct display_timing *config);
 
 /**
- * fdtdec_setup_mem_size_base_fdt() - decode and setup gd->ram_size and
- * gd->ram_start
- *
- * Decode the /memory 'reg' property to determine the size and start of the
- * first memory bank, populate the global data with the size and start of the
- * first bank of memory.
- *
- * This function should be called from a boards dram_init(). This helper
- * function allows for boards to query the device tree for DRAM size and start
- * address instead of hard coding the value in the case where the memory size
- * and start address cannot be detected automatically.
- *
- * @param blob		FDT blob
- *
- * @return 0 if OK, -EINVAL if the /memory node or reg property is missing or
- * invalid
- */
-int fdtdec_setup_mem_size_base_fdt(const void *blob);
-
-/**
  * fdtdec_setup_mem_size_base() - decode and setup gd->ram_size and
  * gd->ram_start
  *
@@ -947,23 +940,21 @@ int fdtdec_setup_mem_size_base_fdt(const void *blob);
 int fdtdec_setup_mem_size_base(void);
 
 /**
- * fdtdec_setup_memory_banksize_fdt() - decode and populate gd->bd->bi_dram
+ * fdtdec_setup_mem_size_base_lowest() - decode and setup gd->ram_size and
+ * gd->ram_start by lowest available memory base
  *
- * Decode the /memory 'reg' property to determine the address and size of the
- * memory banks. Use this data to populate the global data board info with the
- * phys address and size of memory banks.
+ * Decode the /memory 'reg' property to determine the lowest start of the memory
+ * bank bank and populate the global data with it.
  *
- * This function should be called from a boards dram_init_banksize(). This
- * helper function allows for boards to query the device tree for memory bank
- * information instead of hard coding the information in cases where it cannot
- * be detected automatically.
- *
- * @param blob		FDT blob
+ * This function should be called from a boards dram_init(). This helper
+ * function allows for boards to query the device tree for DRAM size and start
+ * address instead of hard coding the value in the case where the memory size
+ * and start address cannot be detected automatically.
  *
  * @return 0 if OK, -EINVAL if the /memory node or reg property is missing or
  * invalid
  */
-int fdtdec_setup_memory_banksize_fdt(const void *blob);
+int fdtdec_setup_mem_size_base_lowest(void);
 
 /**
  * fdtdec_setup_memory_banksize() - decode and populate gd->bd->bi_dram

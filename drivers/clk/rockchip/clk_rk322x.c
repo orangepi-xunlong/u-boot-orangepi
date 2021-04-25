@@ -42,6 +42,7 @@ enum {
 /* use integer mode*/
 static const struct pll_div apll_init_cfg = PLL_DIVISORS(APLL_HZ, 1, 3, 1);
 static const struct pll_div gpll_init_cfg = PLL_DIVISORS(GPLL_HZ, 2, 2, 1);
+static const struct pll_div cpll_init_cfg = PLL_DIVISORS(CPLL_HZ, 2, 3, 1);
 
 static int rkclk_set_pll(struct rk322x_cru *cru, enum rk_clk_id clk_id,
 			 const struct pll_div *div)
@@ -91,11 +92,13 @@ static void rkclk_init(struct rk322x_cru *cru)
 	rk_clrsetreg(&cru->cru_mode_con,
 		     GPLL_MODE_MASK | APLL_MODE_MASK,
 		     GPLL_MODE_SLOW << GPLL_MODE_SHIFT |
-		     APLL_MODE_SLOW << APLL_MODE_SHIFT);
+		     APLL_MODE_SLOW << APLL_MODE_SHIFT |
+		     CPLL_MODE_SLOW << CPLL_MODE_SHIFT);
 
 	/* init pll */
 	rkclk_set_pll(cru, CLK_ARM, &apll_init_cfg);
 	rkclk_set_pll(cru, CLK_GENERAL, &gpll_init_cfg);
+	rkclk_set_pll(cru, CLK_CODEC, &cpll_init_cfg);
 
 	/*
 	 * select apll as cpu/core clock pll source and
@@ -168,7 +171,8 @@ static void rkclk_init(struct rk322x_cru *cru)
 	rk_clrsetreg(&cru->cru_mode_con,
 		     GPLL_MODE_MASK | APLL_MODE_MASK,
 		     GPLL_MODE_NORM << GPLL_MODE_SHIFT |
-		     APLL_MODE_NORM << APLL_MODE_SHIFT);
+		     APLL_MODE_NORM << APLL_MODE_SHIFT |
+		     CPLL_MODE_NORM << CPLL_MODE_SHIFT);
 }
 
 /* Get pll rate by id */
@@ -258,11 +262,10 @@ static ulong rk322x_mac_set_clk(struct rk322x_cru *cru, uint freq)
 		ulong pll_rate;
 		u8 div;
 
-		if ((con >> MAC_PLL_SEL_SHIFT) & MAC_PLL_SEL_MASK)
+		if (con & MAC_PLL_SEL_MASK)
 			pll_rate = GPLL_HZ;
 		else
-			/* CPLL is not set */
-			return -EPERM;
+			pll_rate = CPLL_HZ;
 
 		div = DIV_ROUND_UP(pll_rate, freq) - 1;
 		if (div <= 0x1f)
@@ -391,6 +394,7 @@ static ulong rk322x_clk_set_rate(struct clk *clk, ulong rate)
 	case CLK_DDR:
 		new_rate = rk322x_ddr_set_clk(priv->cru, rate);
 		break;
+	case SCLK_MAC_SRC:
 	case SCLK_MAC:
 		new_rate = rk322x_mac_set_clk(priv->cru, rate);
 		break;

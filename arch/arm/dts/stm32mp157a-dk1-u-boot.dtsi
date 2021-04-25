@@ -16,6 +16,7 @@
 	config {
 		u-boot,boot-led = "heartbeat";
 		u-boot,error-led = "error";
+		u-boot,mmc-env-partition = "ssbl";
 		st,adc_usb_pd = <&adc1 18>, <&adc1 19>;
 		st,fastboot-gpios = <&gpioa 13 GPIO_ACTIVE_LOW>;
 		st,stm32prog-gpios = <&gpioa 14 GPIO_ACTIVE_LOW>;
@@ -133,15 +134,6 @@
 		CLK_LPTIM45_LSE
 	>;
 
-	/* VCO = 1300.0 MHz => P = 650 (CPU) */
-	pll1: st,pll@0 {
-		compatible = "st,stm32mp1-pll";
-		reg = <0>;
-		cfg = < 2 80 0 0 0 PQR(1,0,0) >;
-		frac = < 0x800 >;
-		u-boot,dm-pre-reloc;
-	};
-
 	/* VCO = 1066.0 MHz => P = 266 (AXI), Q = 533 (GPU), R = 533 (DDR) */
 	pll2: st,pll@1 {
 		compatible = "st,stm32mp1-pll";
@@ -171,8 +163,6 @@
 
 &sdmmc1 {
 	u-boot,dm-spl;
-	broken-cd;
-	/delete-property/ cd-gpios;
 };
 
 &sdmmc1_b4_pins_a {
@@ -203,5 +193,4 @@
 
 &usbotg_hs {
 	u-boot,force-b-session-valid;
-	hnp-srp-disable;
 };

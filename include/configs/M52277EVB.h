@@ -74,7 +74,6 @@
 
 /* LCD */
 #ifdef CONFIG_CMD_BMP
-#define CONFIG_SPLASH_SCREEN
 #define CONFIG_LCD_LOGO
 #define CONFIG_SHARP_LQ035Q7DH06
 #endif
@@ -164,7 +163,6 @@
  * Environment is not embedded in u-boot. First time runing may have env
  * crc error warning if there is no correct environment on the flash.
  */
-#define CONFIG_ENV_OVERWRITE		1
 
 /*-----------------------------------------------------------------------
  * FLASH organization

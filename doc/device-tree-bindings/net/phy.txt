@@ -8,6 +8,19 @@ Required properties:
 
  - reg : The ID number for the phy, usually a small integer
 
+Optional Properties:
+
+- compatible: Compatible list, may contain
+  "ethernet-phy-ieee802.3-c22" or "ethernet-phy-ieee802.3-c45" for
+  PHYs that implement IEEE802.3 clause 22 or IEEE802.3 clause 45
+  specifications. If neither of these are specified, the default is to
+  assume clause 22.
+
+- phy-is-integrated: If set, indicates that the PHY is integrated into the same
+  physical package as the Ethernet MAC. If needed, muxers should be configured
+  to ensure the integrated PHY is used. The absence of this property indicates
+  the muxers should be configured so that the external PHY is used.
+
 Example:
 
 ethernet-phy@0 {

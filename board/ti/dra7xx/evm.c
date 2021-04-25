@@ -12,6 +12,7 @@
 #include <common.h>
 #include <env.h>
 #include <fdt_support.h>
+#include <fastboot.h>
 #include <image.h>
 #include <init.h>
 #include <spl.h>
@@ -920,7 +921,7 @@ err:
 #endif
 
 #if defined(CONFIG_MMC)
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);
@@ -1017,7 +1018,7 @@ int board_early_init_f(void)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -1050,8 +1051,11 @@ int board_fit_config_name_match(const char *name)
 #endif
 
 #if CONFIG_IS_ENABLED(FASTBOOT) && !CONFIG_IS_ENABLED(ENV_IS_NOWHERE)
-int fastboot_set_reboot_flag(void)
+int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 {
+	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
+		return -ENOTSUPP;
+
 	printf("Setting reboot to fastboot flag ...\n");
 	env_set("dofastboot", "1");
 	env_save();

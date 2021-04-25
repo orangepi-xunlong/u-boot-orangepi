@@ -266,7 +266,7 @@ board_init_f():
 		version as needed.
 	- preloader_console_init() can be called here in extremis
 	- should set up SDRAM, and anything needed to make the UART work
-	- these is no need to clear BSS, it will be done by crt0.S
+	- there is no need to clear BSS, it will be done by crt0.S
 	- for specific scenarios on certain architectures an early BSS *can*
 	  be made available (via CONFIG_SPL_EARLY_BSS by moving the clearing
 	  of BSS prior to entering board_init_f()) but doing so is discouraged.
@@ -559,19 +559,6 @@ The following options need to be configured:
 		such as ARM architectural timer initialization.
 
 - Linux Kernel Interface:
-		CONFIG_CLOCKS_IN_MHZ
-
-		U-Boot stores all clock information in Hz
-		internally. For binary compatibility with older Linux
-		kernels (which expect the clocks passed in the
-		bd_info data to be in MHz) the environment variable
-		"clocks_in_mhz" can be defined so that U-Boot
-		converts clock data to MHZ before passing it to the
-		Linux kernel.
-		When CONFIG_CLOCKS_IN_MHZ is defined, a definition of
-		"clocks_in_mhz=1" is automatically included in the
-		default environment.
-
 		CONFIG_MEMSIZE_IN_BYTES		[relevant for MIPS only]
 
 		When transferring memsize parameter to Linux, some versions
@@ -669,11 +656,6 @@ The following options need to be configured:
 
 		Define this variable to enable hw flow control in serial driver.
 		Current user of this option is drivers/serial/nsl16550.c driver
-
-- Console Baudrate:
-		CONFIG_BAUDRATE - in bps
-		Select one of the baudrates listed in
-		CONFIG_SYS_BAUDRATE_TABLE, see below.
 
 - Autoboot Command:
 		CONFIG_BOOTCOMMAND
@@ -888,14 +870,6 @@ The following options need to be configured:
 		CONFIG_E1000_SPI_GENERIC
 		Allow generic access to the SPI bus on the Intel 8257x, for
 		example with the "sspi" command.
-
-		CONFIG_EEPRO100
-		Support for Intel 82557/82559/82559ER chips.
-		Optional CONFIG_EEPRO100_SROM_WRITE enables EEPROM
-		write routine for first time initialisation.
-
-		CONFIG_TULIP
-		Support for Digital 2114x chips.
 
 		CONFIG_NATSEMI
 		Support for National dp83815 chips.
@@ -1276,48 +1250,6 @@ The following options need to be configured:
 		Enables an 'i2c edid' command which can read EDID
 		information over I2C from an attached LCD display.
 
-- Splash Screen Support: CONFIG_SPLASH_SCREEN
-
-		If this option is set, the environment is checked for
-		a variable "splashimage". If found, the usual display
-		of logo, copyright and system information on the LCD
-		is suppressed and the BMP image at the address
-		specified in "splashimage" is loaded instead. The
-		console is redirected to the "nulldev", too. This
-		allows for a "silent" boot where a splash screen is
-		loaded very quickly after power-on.
-
-		CONFIG_SPLASHIMAGE_GUARD
-
-		If this option is set, then U-Boot will prevent the environment
-		variable "splashimage" from being set to a problematic address
-		(see doc/README.displaying-bmps).
-		This option is useful for targets where, due to alignment
-		restrictions, an improperly aligned BMP image will cause a data
-		abort. If you think you will not have problems with unaligned
-		accesses (for example because your toolchain prevents them)
-		there is no need to set this option.
-
-		CONFIG_SPLASH_SCREEN_ALIGN
-
-		If this option is set the splash image can be freely positioned
-		on the screen. Environment variable "splashpos" specifies the
-		position as "x,y". If a positive number is given it is used as
-		number of pixel from left/top. If a negative number is given it
-		is used as number of pixel from right/bottom. You can also
-		specify 'm' for centering the image.
-
-		Example:
-		setenv splashpos m,m
-			=> image at center of screen
-
-		setenv splashpos 30,20
-			=> image at x = 30 and y = 20
-
-		setenv splashpos -10,m
-			=> vertically centered image
-			   at x = dspWidth - bmpWidth - 9
-
 - Gzip compressed BMP image support: CONFIG_VIDEO_BMP_GZIP
 
 		If this option is set, additionally to standard BMP
@@ -1427,7 +1359,6 @@ The following options need to be configured:
 
 		CONFIG_BOOTP_NISDOMAIN
 		CONFIG_BOOTP_BOOTFILESIZE
-		CONFIG_BOOTP_SEND_HOSTNAME
 		CONFIG_BOOTP_NTPSERVER
 		CONFIG_BOOTP_TIMEOFFSET
 		CONFIG_BOOTP_VENDOREX
@@ -1441,13 +1372,6 @@ The following options need to be configured:
 		instead of starting over.  This can be used to fail over
 		to Link-local IP address configuration if the DHCP server
 		is not available.
-
-		CONFIG_BOOTP_SEND_HOSTNAME - Some DHCP servers are capable
-		to do a dynamic update of a DNS server. To do this, they
-		need the hostname of the DHCP requester.
-		If CONFIG_BOOTP_SEND_HOSTNAME is defined, the content
-		of the "hostname" environment variable is passed as
-		option 12 to the DHCP server.
 
 		CONFIG_BOOTP_DHCP_REQUEST_DELAY
 
@@ -2283,10 +2207,6 @@ The following options need to be configured:
 		parameters from when MMC is being used in raw mode
 		(for falcon mode)
 
-		CONFIG_SYS_MMCSD_FS_BOOT_PARTITION
-		Partition on the MMC to load U-Boot from when the MMC is being
-		used in fs mode
-
 		CONFIG_SPL_FS_LOAD_PAYLOAD_NAME
 		Filename to read to load U-Boot when reading from filesystem
 
@@ -2307,23 +2227,9 @@ The following options need to be configured:
 		CONFIG_SPL_SKIP_RELOCATE
 		Avoid SPL relocation
 
-		CONFIG_SPL_NAND_BASE
-		Include nand_base.c in the SPL.  Requires
-		CONFIG_SPL_NAND_DRIVERS.
-
-		CONFIG_SPL_NAND_DRIVERS
-		SPL uses normal NAND drivers, not minimal drivers.
-
 		CONFIG_SPL_NAND_IDENT
 		SPL uses the chip ID list to identify the NAND flash.
 		Requires CONFIG_SPL_NAND_BASE.
-
-		CONFIG_SPL_NAND_ECC
-		Include standard software ECC in the SPL
-
-		CONFIG_SPL_NAND_SIMPLE
-		Support for NAND boot using simple NAND drivers that
-		expose the cmd_ctrl() interface.
 
 		CONFIG_SPL_UBI
 		Support for a lightweight UBI (fastmap) scanner and
@@ -3260,6 +3166,7 @@ md	- memory display
 mm	- memory modify (auto-incrementing)
 nm	- memory modify (constant address)
 mw	- memory write (fill)
+ms	- memory search
 cp	- memory copy
 cmp	- memory compare
 crc32	- checksum calculation
@@ -3495,6 +3402,11 @@ List of environment variables (most likely not complete):
 		  downloads succeed with high packet loss rates, or with
 		  unreliable TFTP servers or client hardware.
 
+  tftpwindowsize	- if this is set, the value is used for TFTP's
+		  window size as described by RFC 7440.
+		  This means the count of blocks we can receive before
+		  sending ack to server.
+
   vlan		- When set to a value < 4095 the traffic over
 		  Ethernet is encapsulated/received over 802.1q
 		  VLAN tagged frames.
@@ -3504,6 +3416,15 @@ List of environment variables (most likely not complete):
 		  be either the default (28000), or a value based on
 		  CONFIG_NET_RETRY_COUNT, if defined. This value has
 		  precedence over the valu based on CONFIG_NET_RETRY_COUNT.
+
+  memmatches	- Number of matches found by the last 'ms' command, in hex
+
+  memaddr	- Address of the last match found by the 'ms' command, in hex,
+		  or 0 if none
+
+  mempos	- Index position of the last match found by the 'ms' command,
+		  in units of the size (.b, .w, .l) of the search
+
 
 The following image location variables contain the location of images
 used in booting. The "Image" column gives the role of the image and is

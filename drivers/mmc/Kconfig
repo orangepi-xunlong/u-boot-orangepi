@@ -66,7 +66,6 @@ config MMC_SPI_CRC_ON
 
 config ARM_PL180_MMCI
 	bool "ARM AMBA Multimedia Card Interface and compatible support"
-	depends on DM_MMC && OF_CONTROL
 	help
 	  This selects the ARM(R) AMBA(R) PrimeCell Multimedia Card
 	  Interface (PL180, PL181 and compatible) support.
@@ -264,6 +263,14 @@ config MMC_DW_SNPS
 	  This selects support for Synopsys DesignWare Memory Card Interface driver
 	  extensions used in various Synopsys ARC devboards.
 
+config NEXELL_DWMMC
+	bool "Nexell SD/MMC controller support"
+	depends on ARCH_NEXELL
+	depends on MMC_DW
+	depends on DM_MMC
+	depends on PINCTRL_NEXELL
+	default y
+
 config MMC_MESON_GX
 	bool "Meson GX EMMC controller support"
 	depends on DM_MMC && BLK && ARCH_MESON
@@ -297,6 +304,23 @@ config MMC_PCI
 	help
 	  This selects PCI-based MMC controllers.
 	  If you have an MMC controller on a PCI bus, say Y here.
+
+config MMC_OCTEONTX
+	bool "Marvell OcteonTX Multimedia Card Interface support"
+	depends on (ARCH_OCTEONTX || ARCH_OCTEONTX2)
+	depends on DM_MMC
+	help
+	  This selects the OcteonTX Multimedia card Interface.
+	  If you have an OcteonTX/TX2 board with a Multimedia Card slot,
+	  say Y here.
+
+	  If unsure, say N.
+
+config PXA_MMC_GENERIC
+	bool "Support for MMC controllers on PXA"
+	help
+	  This selects MMC controllers on PXA.
+	  If you are on a PXA architecture, say Y here.
 
 	  If unsure, say N.
 
@@ -638,7 +662,6 @@ config TEGRA124_MMC_DISABLE_EXT_LOOPBACK
 
 config MMC_SDHCI_ZYNQ
 	bool "Arasan SDHCI controller support"
-	depends on ARCH_ZYNQ || ARCH_ZYNQMP || ARCH_VERSAL
 	depends on DM_MMC && OF_CONTROL && BLK
 	depends on MMC_SDHCI
 	help

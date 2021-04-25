@@ -172,7 +172,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_PCI_SKIP_HOST_BRIDGE
 
-#undef CONFIG_EEPRO100
 #undef CONFIG_PCI_SCAN_SHOW	/* show pci devices on startup */
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID	0x1957	/* Freescale */
 
@@ -243,7 +242,6 @@
 /*
  * Environment Configuration
  */
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_HAS_ETH0		/* add support for "ethaddr" */
 #define CONFIG_HAS_ETH1		/* add support for "eth1addr" */

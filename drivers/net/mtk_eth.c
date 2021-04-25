@@ -1094,7 +1094,8 @@ static int mtk_phy_probe(struct udevice *dev)
 static void mtk_sgmii_init(struct mtk_eth_priv *priv)
 {
 	/* Set SGMII GEN2 speed(2.5G) */
-	clrsetbits_le32(priv->sgmii_base + SGMSYS_GEN2_SPEED,
+	clrsetbits_le32(priv->sgmii_base + ((priv->soc == SOC_MT7622) ?
+			SGMSYS_GEN2_SPEED : SGMSYS_GEN2_SPEED_V2),
 			SGMSYS_SPEED_2500, SGMSYS_SPEED_2500);
 
 	/* Disable SGMII AN */
@@ -1418,7 +1419,7 @@ static int mtk_eth_ofdata_to_platdata(struct udevice *dev)
 
 	priv->soc = dev_get_driver_data(dev);
 
-	pdata->iobase = devfdt_get_addr(dev);
+	pdata->iobase = dev_read_addr(dev);
 
 	/* get corresponding ethsys phandle */
 	ret = dev_read_phandle_with_args(dev, "mediatek,ethsys", NULL, 0, 0,

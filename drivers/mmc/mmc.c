@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008, Freescale Semiconductor, Inc
+ * Copyright 2020 NXP
  * Andy Fleming
  *
  * Based vaguely on the Linux code
@@ -1753,6 +1754,11 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		mmc_set_bus_width(mmc, 1);
 		mmc_select_mode(mmc, MMC_LEGACY);
 		mmc_set_clock(mmc, mmc->tran_speed, MMC_CLK_ENABLE);
+#if CONFIG_IS_ENABLED(MMC_WRITE)
+		err = sd_read_ssr(mmc);
+		if (err)
+			pr_warn("unable to read ssr\n");
+#endif
 		return 0;
 	}
 
@@ -2784,9 +2790,6 @@ int mmc_get_op_cond(struct mmc *mmc)
 	if (mmc->has_init)
 		return 0;
 
-#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
-	mmc_adapter_card_type_ident();
-#endif
 	err = mmc_power_init(mmc);
 	if (err)
 		return err;
@@ -2831,7 +2834,7 @@ retry:
 	if (err)
 		return err;
 
-	/* The internal partition reset to user partition(0) at every CMD0*/
+	/* The internal partition reset to user partition(0) at every CMD0 */
 	mmc_get_blk_desc(mmc)->hwpart = 0;
 
 	/* Test for SD version 2 */
@@ -2974,13 +2977,13 @@ int mmc_set_dsr(struct mmc *mmc, u16 val)
 }
 
 /* CPU-specific MMC initializations */
-__weak int cpu_mmc_init(bd_t *bis)
+__weak int cpu_mmc_init(struct bd_info *bis)
 {
 	return -1;
 }
 
 /* board-specific MMC initializations. */
-__weak int board_mmc_init(bd_t *bis)
+__weak int board_mmc_init(struct bd_info *bis)
 {
 	return -1;
 }
@@ -2991,7 +2994,7 @@ void mmc_set_preinit(struct mmc *mmc, int preinit)
 }
 
 #if CONFIG_IS_ENABLED(DM_MMC)
-static int mmc_probe(bd_t *bis)
+static int mmc_probe(struct bd_info *bis)
 {
 	int ret, i;
 	struct uclass *uc;
@@ -3020,7 +3023,7 @@ static int mmc_probe(bd_t *bis)
 	return 0;
 }
 #else
-static int mmc_probe(bd_t *bis)
+static int mmc_probe(struct bd_info *bis)
 {
 	if (board_mmc_init(bis) < 0)
 		cpu_mmc_init(bis);
@@ -3029,7 +3032,7 @@ static int mmc_probe(bd_t *bis)
 }
 #endif
 
-int mmc_initialize(bd_t *bis)
+int mmc_initialize(struct bd_info *bis)
 {
 	static int initialized = 0;
 	int ret;
@@ -3068,9 +3071,6 @@ int mmc_init_device(int num)
 	m = mmc_get_mmc_dev(dev);
 	if (!m)
 		return 0;
-#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
-	mmc_set_preinit(m, 1);
-#endif
 	if (m->preinit)
 		mmc_start_init(m);
 

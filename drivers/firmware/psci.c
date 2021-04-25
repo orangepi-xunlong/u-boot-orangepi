@@ -19,13 +19,18 @@
 #include <linux/errno.h>
 #include <linux/printk.h>
 #include <linux/psci.h>
+#include <asm/system.h>
 
 #define DRIVER_NAME "psci"
 
 #define PSCI_METHOD_HVC 1
 #define PSCI_METHOD_SMC 2
 
+#if CONFIG_IS_ENABLED(EFI_LOADER)
 int __efi_runtime_data psci_method;
+#else
+int psci_method __attribute__ ((section(".data")));
+#endif
 
 unsigned long __efi_runtime invoke_psci_fn
 		(unsigned long function_id, unsigned long arg0,
@@ -68,6 +73,11 @@ static int psci_bind(struct udevice *dev)
 static int psci_probe(struct udevice *dev)
 {
 	const char *method;
+
+#if defined(CONFIG_ARM64)
+	if (current_el() == 3)
+		return -EINVAL;
+#endif
 
 	method = ofnode_read_string(dev_ofnode(dev), "method");
 	if (!method) {

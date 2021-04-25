@@ -32,8 +32,12 @@ struct fdt_region;
 #define CONFIG_FIT_VERBOSE	1 /* enable fit_format_{error,warning}() */
 #define CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT 1
 #define CONFIG_FIT_ENABLE_SHA256_SUPPORT
+#define CONFIG_FIT_ENABLE_SHA384_SUPPORT
+#define CONFIG_FIT_ENABLE_SHA512_SUPPORT
 #define CONFIG_SHA1
 #define CONFIG_SHA256
+#define CONFIG_SHA384
+#define CONFIG_SHA512
 
 #define IMAGE_ENABLE_IGNORE	0
 #define IMAGE_INDENT_STRING	""
@@ -90,6 +94,20 @@ struct fdt_region;
 #define IMAGE_ENABLE_SHA256	1
 #else
 #define IMAGE_ENABLE_SHA256	0
+#endif
+
+#if defined(CONFIG_FIT_ENABLE_SHA384_SUPPORT) || \
+	defined(CONFIG_SPL_SHA384_SUPPORT)
+#define IMAGE_ENABLE_SHA384	1
+#else
+#define IMAGE_ENABLE_SHA384	0
+#endif
+
+#if defined(CONFIG_FIT_ENABLE_SHA512_SUPPORT) || \
+	defined(CONFIG_SPL_SHA512_SUPPORT)
+#define IMAGE_ENABLE_SHA512	1
+#else
+#define IMAGE_ENABLE_SHA512	0
 #endif
 
 #endif /* IMAGE_ENABLE_FIT */
@@ -308,6 +326,7 @@ enum {
 	IH_COMP_LZMA,			/* lzma  Compression Used	*/
 	IH_COMP_LZO,			/* lzo   Compression Used	*/
 	IH_COMP_LZ4,			/* lz4   Compression Used	*/
+	IH_COMP_ZSTD,			/* zstd   Compression Used	*/
 
 	IH_COMP_COUNT,
 };
@@ -393,7 +412,7 @@ typedef struct bootm_headers {
 	ulong		initrd_end;
 	ulong		cmdline_start;
 	ulong		cmdline_end;
-	bd_t		*kbd;
+	struct bd_info		*kbd;
 #endif
 
 	int		verify;		/* env_get("verify")[0] != 'n' */
@@ -736,7 +755,7 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 		  ulong *initrd_start, ulong *initrd_end);
 int boot_get_cmdline(struct lmb *lmb, ulong *cmd_start, ulong *cmd_end);
 #ifdef CONFIG_SYS_BOOT_GET_KBD
-int boot_get_kbd(struct lmb *lmb, bd_t **kbd);
+int boot_get_kbd(struct lmb *lmb, struct bd_info **kbd);
 #endif /* CONFIG_SYS_BOOT_GET_KBD */
 #endif /* !USE_HOSTCC */
 

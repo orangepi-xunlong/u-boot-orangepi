@@ -133,14 +133,16 @@ enum dcache_option {
 
 static inline unsigned int current_el(void)
 {
-	unsigned int el;
+	unsigned long el;
+
 	asm volatile("mrs %0, CurrentEL" : "=r" (el) : : "cc");
-	return el >> 2;
+	return 3 & (el >> 2);
 }
 
 static inline unsigned int get_sctlr(void)
 {
-	unsigned int el, val;
+	unsigned int el;
+	unsigned long val;
 
 	el = current_el();
 	if (el == 1)
@@ -153,7 +155,7 @@ static inline unsigned int get_sctlr(void)
 	return val;
 }
 
-static inline void set_sctlr(unsigned int val)
+static inline void set_sctlr(unsigned long val)
 {
 	unsigned int el;
 
@@ -205,7 +207,7 @@ int __asm_invalidate_l3_icache(void);
 void __asm_switch_ttbr(u64 new_ttbr);
 
 /*
- * Switch from EL3 to EL2 for ARMv8
+ * armv8_switch_to_el2() - switch from EL3 to EL2 for ARMv8
  *
  * @args:        For loading 64-bit OS, fdt address.
  *               For loading 32-bit OS, zero.
@@ -220,7 +222,7 @@ void __asm_switch_ttbr(u64 new_ttbr);
 void __noreturn armv8_switch_to_el2(u64 args, u64 mach_nr, u64 fdt_addr,
 				    u64 arg4, u64 entry_point, u64 es_flag);
 /*
- * Switch from EL2 to EL1 for ARMv8
+ * armv8_switch_to_el1() - switch from EL2 to EL1 for ARMv8
  *
  * @args:        For loading 64-bit OS, fdt address.
  *               For loading 32-bit OS, zero.
@@ -246,11 +248,12 @@ void flush_l3_cache(void);
 void mmu_change_region_attr(phys_addr_t start, size_t size, u64 attrs);
 
 /*
- *Issue a secure monitor call in accordance with ARM "SMC Calling convention",
+ * smc_call() - issue a secure monitor call
+ *
+ * Issue a secure monitor call in accordance with ARM "SMC Calling convention",
  * DEN0028A
  *
  * @args: input and output arguments
- *
  */
 void smc_call(struct pt_regs *args);
 
@@ -442,10 +445,16 @@ static inline void set_dacr(unsigned int val)
 #define TTBCR_EPD0		(0 << 7)
 
 /*
- * Memory types
+ * VMSAv8-32 Long-descriptor format memory region attributes
+ * (ARM Architecture Reference Manual section G5.7.4 [DDI0487E.a])
+ *
+ * MAIR0[ 7: 0] 0x00 Device-nGnRnE (aka Strongly-Ordered)
+ * MAIR0[15: 8] 0xaa Outer/Inner Write-Through, Read-Allocate No Write-Allocate
+ * MAIR0[23:16] 0xee Outer/Inner Write-Back, Read-Allocate No Write-Allocate
+ * MAIR0[31:24] 0xff Outer/Inner Write-Back, Read-Allocate Write-Allocate
  */
-#define MEMORY_ATTRIBUTES	((0x00 << (0 * 8)) | (0x88 << (1 * 8)) | \
-				 (0xcc << (2 * 8)) | (0xff << (3 * 8)))
+#define MEMORY_ATTRIBUTES	((0x00 << (0 * 8)) | (0xaa << (1 * 8)) | \
+				 (0xee << (2 * 8)) | (0xff << (3 * 8)))
 
 /* options available for data cache on each page */
 enum dcache_option {
@@ -468,7 +477,16 @@ enum dcache_option {
 #define TTB_SECT_B_MASK		(1 << 2)
 #define TTB_SECT			(2 << 0)
 
-/* options available for data cache on each page */
+/*
+ * Short-descriptor format memory region attributes, without TEX remap
+ * (ARM Architecture Reference Manual section G5.7.2 [DDI0487E.a])
+ *
+ * TEX[0] C  B
+ *   0    0  0   Device-nGnRnE (aka Strongly-Ordered)
+ *   0    1  0   Outer/Inner Write-Through, Read-Allocate No Write-Allocate
+ *   0    1  1   Outer/Inner Write-Back, Read-Allocate No Write-Allocate
+ *   1    1  1   Outer/Inner Write-Back, Read-Allocate Write-Allocate
+ */
 enum dcache_option {
 	DCACHE_OFF = TTB_SECT_DOMAIN(0) | TTB_SECT_XN_MASK | TTB_SECT,
 	DCACHE_WRITETHROUGH = DCACHE_OFF | TTB_SECT_C_MASK,
@@ -519,10 +537,12 @@ enum {
 #endif
 
 /**
+ * mmu_page_table_flush() - register an update to page tables
+ *
  * Register an update to the page tables, and flush the TLB
  *
- * \param start		start address of update in page table
- * \param stop		stop address of update in page table
+ * @start:	start address of update in page table
+ * @stop:	stop address of update in page table
  */
 void mmu_page_table_flush(unsigned long start, unsigned long stop);
 
@@ -583,11 +603,26 @@ s32 psci_features(u32 function_id, u32 psci_fid);
 void save_boot_params_ret(void);
 
 /**
+ * mmu_set_region_dcache_behaviour_phys() - set virt/phys mapping
+ *
+ * Change the virt/phys mapping and cache settings for a region.
+ *
+ * @virt:	virtual start address of memory region to change
+ * @phys:	physical address for the memory region to set
+ * @size:	size of memory region to change
+ * @option:	dcache option to select
+ */
+void mmu_set_region_dcache_behaviour_phys(phys_addr_t virt, phys_addr_t phys,
+					size_t size, enum dcache_option option);
+
+/**
+ * mmu_set_region_dcache_behaviour() - set cache settings
+ *
  * Change the cache settings for a region.
  *
- * \param start		start address of memory region to change
- * \param size		size of memory region to change
- * \param option	dcache option to select
+ * @start:	start address of memory region to change
+ * @size:	size of memory region to change
+ * @option:	dcache option to select
  */
 void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 				     enum dcache_option option);

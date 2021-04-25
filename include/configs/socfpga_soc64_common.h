@@ -49,7 +49,6 @@
 /*
  * U-Boot environment configurations
  */
-#define CONFIG_SYS_MMC_ENV_DEV		0	/* device 0 */
 
 /*
  * QSPI support
@@ -79,7 +78,6 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
  * CONFIG_BOOTARGS goes into the environment value "bootargs".
  * Do note the value will override also the chosen node in FDT blob.
  */
-#define CONFIG_BOOTARGS "earlycon"
 #define CONFIG_BOOTCOMMAND "run fatscript; run mmcload;run linux_qspi_enable;" \
 			   "run mmcboot"
 
@@ -195,7 +193,6 @@ unsigned int cm_get_l4_sys_free_clk_hz(void);
 					- CONFIG_SYS_SPL_MALLOC_SIZE)
 
 /* SPL SDMMC boot support */
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
 
 #endif	/* __CONFIG_SOCFPGA_SOC64_COMMON_H__ */

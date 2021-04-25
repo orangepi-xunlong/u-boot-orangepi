@@ -41,6 +41,8 @@
 #include <power/regulator.h>
 #include <usb/dwc2_udc.h>
 
+#include "../../st/common/stusb160x.h"
+
 /* SYSCFG registers */
 #define SYSCFG_BOOTR		0x00
 #define SYSCFG_PMCSETR		0x04
@@ -83,6 +85,12 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USB_WARNING_LOW_THRESHOLD_UV	660000
 #define USB_START_LOW_THRESHOLD_UV	1230000
 #define USB_START_HIGH_THRESHOLD_UV	2150000
+
+int board_early_init_f(void)
+{
+	/* nothing to do, only used in SPL */
+	return 0;
+}
 
 int checkboard(void)
 {
@@ -127,112 +135,65 @@ int checkboard(void)
 
 static void board_key_check(void)
 {
-#if defined(CONFIG_FASTBOOT) || defined(CONFIG_CMD_STM32PROG)
 	ofnode node;
 	struct gpio_desc gpio;
 	enum forced_boot_mode boot_mode = BOOT_NORMAL;
+
+	if (!IS_ENABLED(CONFIG_FASTBOOT) && !IS_ENABLED(CONFIG_CMD_STM32PROG))
+		return;
 
 	node = ofnode_path("/config");
 	if (!ofnode_valid(node)) {
 		debug("%s: no /config node?\n", __func__);
 		return;
 	}
-#ifdef CONFIG_FASTBOOT
-	if (gpio_request_by_name_nodev(node, "st,fastboot-gpios", 0,
-				       &gpio, GPIOD_IS_IN)) {
-		debug("%s: could not find a /config/st,fastboot-gpios\n",
-		      __func__);
-	} else {
-		if (dm_gpio_get_value(&gpio)) {
-			puts("Fastboot key pressed, ");
-			boot_mode = BOOT_FASTBOOT;
-		}
+	if (IS_ENABLED(CONFIG_FASTBOOT)) {
+		if (gpio_request_by_name_nodev(node, "st,fastboot-gpios", 0,
+					       &gpio, GPIOD_IS_IN)) {
+			debug("%s: could not find a /config/st,fastboot-gpios\n",
+			      __func__);
+		} else {
+			if (dm_gpio_get_value(&gpio)) {
+				puts("Fastboot key pressed, ");
+				boot_mode = BOOT_FASTBOOT;
+			}
 
-		dm_gpio_free(NULL, &gpio);
-	}
-#endif
-#ifdef CONFIG_CMD_STM32PROG
-	if (gpio_request_by_name_nodev(node, "st,stm32prog-gpios", 0,
-				       &gpio, GPIOD_IS_IN)) {
-		debug("%s: could not find a /config/st,stm32prog-gpios\n",
-		      __func__);
-	} else {
-		if (dm_gpio_get_value(&gpio)) {
-			puts("STM32Programmer key pressed, ");
-			boot_mode = BOOT_STM32PROG;
+			dm_gpio_free(NULL, &gpio);
 		}
-		dm_gpio_free(NULL, &gpio);
 	}
-#endif
-
+	if (IS_ENABLED(CONFIG_CMD_STM32PROG)) {
+		if (gpio_request_by_name_nodev(node, "st,stm32prog-gpios", 0,
+					       &gpio, GPIOD_IS_IN)) {
+			debug("%s: could not find a /config/st,stm32prog-gpios\n",
+			      __func__);
+		} else {
+			if (dm_gpio_get_value(&gpio)) {
+				puts("STM32Programmer key pressed, ");
+				boot_mode = BOOT_STM32PROG;
+			}
+			dm_gpio_free(NULL, &gpio);
+		}
+	}
 	if (boot_mode != BOOT_NORMAL) {
 		puts("entering download mode...\n");
 		clrsetbits_le32(TAMP_BOOT_CONTEXT,
 				TAMP_BOOT_FORCED_MASK,
 				boot_mode);
 	}
-#endif
 }
 
-#if defined(CONFIG_USB_GADGET) && defined(CONFIG_USB_GADGET_DWC2_OTG)
-
-/* STMicroelectronics STUSB1600 Type-C controller */
-#define STUSB1600_CC_CONNECTION_STATUS		0x0E
-
-/* STUSB1600_CC_CONNECTION_STATUS bitfields */
-#define STUSB1600_CC_ATTACH			BIT(0)
-
-static int stusb1600_init(struct udevice **dev_stusb1600)
-{
-	ofnode node;
-	struct udevice *dev, *bus;
-	int ret;
-	u32 chip_addr;
-
-	*dev_stusb1600 = NULL;
-
-	/* if node stusb1600 is present, means DK1 or DK2 board */
-	node = ofnode_by_compatible(ofnode_null(), "st,stusb1600");
-	if (!ofnode_valid(node))
-		return -ENODEV;
-
-	ret = ofnode_read_u32(node, "reg", &chip_addr);
-	if (ret)
-		return -EINVAL;
-
-	ret = uclass_get_device_by_ofnode(UCLASS_I2C, ofnode_get_parent(node),
-					  &bus);
-	if (ret) {
-		printf("bus for stusb1600 not found\n");
-		return -ENODEV;
-	}
-
-	ret = dm_i2c_probe(bus, chip_addr, 0, &dev);
-	if (!ret)
-		*dev_stusb1600 = dev;
-
-	return ret;
-}
-
-static int stusb1600_cable_connected(struct udevice *dev)
-{
-	u8 status;
-
-	if (dm_i2c_read(dev, STUSB1600_CC_CONNECTION_STATUS, &status, 1))
-		return 0;
-
-	return status & STUSB1600_CC_ATTACH;
-}
-
-#include <usb/dwc2_udc.h>
 int g_dnl_board_usb_cable_connected(void)
 {
-	struct udevice *stusb1600;
 	struct udevice *dwc2_udc_otg;
 	int ret;
 
-	if (!stusb1600_init(&stusb1600))
-		return stusb1600_cable_connected(stusb1600);
+	if (!IS_ENABLED(CONFIG_USB_GADGET_DWC2_OTG))
+		return -ENODEV;
+
+	/* if typec stusb160x is present, means DK1 or DK2 board */
+	ret = stusb160x_cable_connected();
+	if (ret >= 0)
+		return ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_USB_GADGET_GENERIC,
 					  DM_GET_DRIVER(dwc2_udc_otg),
@@ -243,14 +204,17 @@ int g_dnl_board_usb_cable_connected(void)
 	return dwc2_udc_B_session_valid(dwc2_udc_otg);
 }
 
+#ifdef CONFIG_USB_GADGET_DOWNLOAD
 #define STM32MP1_G_DNL_DFU_PRODUCT_NUM 0xdf11
 #define STM32MP1_G_DNL_FASTBOOT_PRODUCT_NUM 0x0afb
 
 int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
-	if (!strcmp(name, "usb_dnl_dfu"))
+	if (IS_ENABLED(CONFIG_DFU_OVER_USB) &&
+	    !strcmp(name, "usb_dnl_dfu"))
 		put_unaligned(STM32MP1_G_DNL_DFU_PRODUCT_NUM, &dev->idProduct);
-	else if (!strcmp(name, "usb_dnl_fastboot"))
+	else if (IS_ENABLED(CONFIG_FASTBOOT) &&
+		 !strcmp(name, "usb_dnl_fastboot"))
 		put_unaligned(STM32MP1_G_DNL_FASTBOOT_PRODUCT_NUM,
 			      &dev->idProduct);
 	else
@@ -258,8 +222,7 @@ int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 
 	return 0;
 }
-
-#endif /* CONFIG_USB_GADGET */
+#endif /* CONFIG_USB_GADGET_DOWNLOAD */
 
 static int get_led(struct udevice **dev, char *led_string)
 {
@@ -325,7 +288,6 @@ static void __maybe_unused led_error_blink(u32 nb_blink)
 		hang();
 }
 
-#ifdef CONFIG_ADC
 static int board_check_usb_power(void)
 {
 	struct ofnode_phandle_args adc_args;
@@ -337,6 +299,10 @@ static int board_check_usb_power(void)
 	int ret, uV, adc_count;
 	u32 nb_blink;
 	u8 i;
+
+	if (!IS_ENABLED(CONFIG_ADC))
+		return -ENODEV;
+
 	node = ofnode_path("/config");
 	if (!ofnode_valid(node)) {
 		debug("%s: no /config node?\n", __func__);
@@ -459,18 +425,14 @@ static int board_check_usb_power(void)
 
 	return 0;
 }
-#endif /* CONFIG_ADC */
 
 static void sysconf_init(void)
 {
-#ifndef CONFIG_TFABOOT
 	u8 *syscfg;
-#ifdef CONFIG_DM_REGULATOR
 	struct udevice *pwr_dev;
 	struct udevice *pwr_reg;
 	struct udevice *dev;
 	u32 otp = 0;
-#endif
 	int ret;
 	u32 bootr, val;
 
@@ -488,7 +450,6 @@ static void sysconf_init(void)
 	bootr |= (bootr & SYSCFG_BOOTR_BOOT_MASK) << SYSCFG_BOOTR_BOOTPD_SHIFT;
 	writel(bootr, syscfg + SYSCFG_BOOTR);
 
-#ifdef CONFIG_DM_REGULATOR
 	/* High Speed Low Voltage Pad mode Enable for SPI, SDMMC, ETH, QSPI
 	 * and TRACE. Needed above ~50MHz and conditioned by AFMUX selection.
 	 * The customer will have to disable this for low frequencies
@@ -505,7 +466,7 @@ static void sysconf_init(void)
 	ret = uclass_get_device_by_driver(UCLASS_PMIC,
 					  DM_GET_DRIVER(stm32mp_pwr_pmic),
 					  &pwr_dev);
-	if (!ret) {
+	if (!ret && IS_ENABLED(CONFIG_DM_REGULATOR)) {
 		ret = uclass_get_device_by_driver(UCLASS_MISC,
 						  DM_GET_DRIVER(stm32mp_bsec),
 						  &dev);
@@ -542,7 +503,6 @@ static void sysconf_init(void)
 			debug("VDD unknown");
 		}
 	}
-#endif
 
 	/* activate automatic I/O compensation
 	 * warning: need to ensure CSI enabled and ready in clock driver
@@ -559,16 +519,17 @@ static void sysconf_init(void)
 	}
 
 	clrbits_le32(syscfg + SYSCFG_CMPCR, SYSCFG_CMPCR_SW_CTRL);
-#endif
 }
 
-#ifdef CONFIG_DM_REGULATOR
 /* Fix to make I2C1 usable on DK2 for touchscreen usage in kernel */
 static int dk2_i2c1_fix(void)
 {
 	ofnode node;
 	struct gpio_desc hdmi, audio;
 	int ret = 0;
+
+	if (!IS_ENABLED(CONFIG_DM_REGULATOR))
+		return -ENODEV;
 
 	node = ofnode_path("/soc/i2c@40012000/hdmi-transmitter@39");
 	if (!ofnode_valid(node)) {
@@ -627,7 +588,6 @@ static bool board_is_dk2(void)
 
 	return false;
 }
-#endif
 
 static bool board_is_ev1(void)
 {
@@ -664,31 +624,25 @@ static void board_ev1_init(void)
 /* board dependent setup after realloc */
 int board_init(void)
 {
-	struct udevice *dev;
-
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = STM32_DDR_BASE + 0x100;
 
-	/* probe all PINCTRL for hog */
-	for (uclass_first_device(UCLASS_PINCTRL, &dev);
-	     dev;
-	     uclass_next_device(&dev)) {
-		pr_debug("probe pincontrol = %s\n", dev->name);
-	}
+	if (CONFIG_IS_ENABLED(DM_GPIO_HOG))
+		gpio_hog_probe_all();
 
 	board_key_check();
 
 	if (board_is_ev1())
 		board_ev1_init();
 
-#ifdef CONFIG_DM_REGULATOR
 	if (board_is_dk2())
 		dk2_i2c1_fix();
 
-	regulators_enable_boot_on(_DEBUG);
-#endif
+	if (IS_ENABLED(CONFIG_DM_REGULATOR))
+		regulators_enable_boot_on(_DEBUG);
 
-	sysconf_init();
+	if (!IS_ENABLED(CONFIG_TFABOOT))
+		sysconf_init();
 
 	if (CONFIG_IS_ENABLED(LED))
 		led_default_state();
@@ -700,52 +654,50 @@ int board_init(void)
 
 int board_late_init(void)
 {
-#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	const void *fdt_compat;
 	int fdt_compat_len;
 	int ret;
 	u32 otp;
 	struct udevice *dev;
 	char buf[10];
+	char dtb_name[256];
+	int buf_len;
 
-	fdt_compat = fdt_getprop(gd->fdt_blob, 0, "compatible",
-				 &fdt_compat_len);
-	if (fdt_compat && fdt_compat_len) {
-		if (strncmp(fdt_compat, "st,", 3) != 0) {
-			env_set("board_name", fdt_compat);
-		} else {
-			char dtb_name[256];
-			int buf_len = sizeof(dtb_name);
+	if (IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)) {
+		fdt_compat = fdt_getprop(gd->fdt_blob, 0, "compatible",
+					 &fdt_compat_len);
+		if (fdt_compat && fdt_compat_len) {
+			if (strncmp(fdt_compat, "st,", 3) != 0) {
+				env_set("board_name", fdt_compat);
+			} else {
+				env_set("board_name", fdt_compat + 3);
 
-			env_set("board_name", fdt_compat + 3);
+				buf_len = sizeof(dtb_name);
+				strncpy(dtb_name, fdt_compat + 3, buf_len);
+				buf_len -= strlen(fdt_compat + 3);
+				strncat(dtb_name, ".dtb", buf_len);
+				env_set("fdtfile", dtb_name);
+			}
+		}
+		ret = uclass_get_device_by_driver(UCLASS_MISC,
+						  DM_GET_DRIVER(stm32mp_bsec),
+						  &dev);
 
-			strncpy(dtb_name, fdt_compat + 3, buf_len);
-			buf_len -= strlen(fdt_compat + 3);
-			strncat(dtb_name, ".dtb", buf_len);
-			env_set("fdtfile", dtb_name);
+		if (!ret)
+			ret = misc_read(dev, STM32_BSEC_SHADOW(BSEC_OTP_BOARD),
+					&otp, sizeof(otp));
+		if (ret > 0 && otp) {
+			snprintf(buf, sizeof(buf), "0x%04x", otp >> 16);
+			env_set("board_id", buf);
+
+			snprintf(buf, sizeof(buf), "0x%04x",
+				 ((otp >> 8) & 0xF) - 1 + 0xA);
+			env_set("board_rev", buf);
 		}
 	}
-	ret = uclass_get_device_by_driver(UCLASS_MISC,
-					  DM_GET_DRIVER(stm32mp_bsec),
-					  &dev);
 
-	if (!ret)
-		ret = misc_read(dev, STM32_BSEC_SHADOW(BSEC_OTP_BOARD),
-				&otp, sizeof(otp));
-	if (!ret && otp) {
-		snprintf(buf, sizeof(buf), "0x%04x", otp >> 16);
-		env_set("board_id", buf);
-
-		snprintf(buf, sizeof(buf), "0x%04x",
-			 ((otp >> 8) & 0xF) - 1 + 0xA);
-		env_set("board_rev", buf);
-	}
-#endif
-
-#ifdef CONFIG_ADC
 	/* for DK1/DK2 boards */
 	board_check_usb_power();
-#endif /* CONFIG_ADC */
 
 	return 0;
 }
@@ -833,26 +785,33 @@ enum env_location env_get_location(enum env_operation op, int prio)
 		return ENVL_UNKNOWN;
 
 	switch (bootmode & TAMP_BOOT_DEVICE_MASK) {
-#ifdef CONFIG_ENV_IS_IN_EXT4
 	case BOOT_FLASH_SD:
 	case BOOT_FLASH_EMMC:
-		return ENVL_EXT4;
-#endif
-#ifdef CONFIG_ENV_IS_IN_UBI
+		if (CONFIG_IS_ENABLED(ENV_IS_IN_MMC))
+			return ENVL_MMC;
+		else if (CONFIG_IS_ENABLED(ENV_IS_IN_EXT4))
+			return ENVL_EXT4;
+		else
+			return ENVL_NOWHERE;
+
 	case BOOT_FLASH_NAND:
 	case BOOT_FLASH_SPINAND:
-		return ENVL_UBI;
-#endif
-#ifdef CONFIG_ENV_IS_IN_SPI_FLASH
+		if (CONFIG_IS_ENABLED(ENV_IS_IN_UBI))
+			return ENVL_UBI;
+		else
+			return ENVL_NOWHERE;
+
 	case BOOT_FLASH_NOR:
-		return ENVL_SPI_FLASH;
-#endif
+		if (CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH))
+			return ENVL_SPI_FLASH;
+		else
+			return ENVL_NOWHERE;
+
 	default:
 		return ENVL_NOWHERE;
 	}
 }
 
-#if defined(CONFIG_ENV_IS_IN_EXT4)
 const char *env_ext4_get_intf(void)
 {
 	u32 bootmode = get_bootmode();
@@ -873,19 +832,25 @@ const char *env_ext4_get_dev_part(void)
 
 	return dev_part[(bootmode & TAMP_BOOT_INSTANCE_MASK) - 1];
 }
-#endif
+int mmc_get_env_dev(void)
+{
+	u32 bootmode = get_bootmode();
+
+	return (bootmode & TAMP_BOOT_INSTANCE_MASK) - 1;
+}
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
-#ifdef CONFIG_FDT_FIXUP_PARTITIONS
-	struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
 		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_SPINAND},
 		{ "st,stm32mp15-fmc2",		MTD_DEV_TYPE_NAND, },
+		{ "st,stm32mp1-fmc2-nfc",	MTD_DEV_TYPE_NAND, },
 	};
-	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
-#endif
+
+	if (IS_ENABLED(CONFIG_FDT_FIXUP_PARTITIONS))
+		fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 
 	return 0;
 }

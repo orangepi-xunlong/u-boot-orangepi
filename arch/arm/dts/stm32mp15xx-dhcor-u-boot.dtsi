@@ -21,6 +21,10 @@
 	};
 };
 
+&flash0 {
+	u-boot,dm-spl;
+};
+
 &gpiof {
 	snor-nwp {
 		gpio-hog;
@@ -47,6 +51,23 @@
 
 &qspi {
 	u-boot,dm-spl;
+};
+
+&qspi_clk_pins_a {
+	u-boot,dm-spl;
+	pins {
+		u-boot,dm-spl;
+	};
+};
+
+&qspi_bk1_pins_a {
+	u-boot,dm-spl;
+	pins1 {
+		u-boot,dm-spl;
+	};
+	pins2 {
+		u-boot,dm-spl;
+	};
 };
 
 &rcc {
@@ -114,15 +135,6 @@
 		CLK_LPTIM45_LSE
 	>;
 
-	/* VCO = 1300.0 MHz => P = 650 (CPU) */
-	pll1: st,pll@0 {
-		compatible = "st,stm32mp1-pll";
-		reg = <0>;
-		cfg = < 2 80 0 0 0 PQR(1,0,0) >;
-		frac = < 0x800 >;
-		u-boot,dm-pre-reloc;
-	};
-
 	/* VCO = 1066.0 MHz => P = 266 (AXI), Q = 533 (GPU), R = 533 (DDR) */
 	pll2: st,pll@1 {
 		compatible = "st,stm32mp1-pll";
@@ -141,11 +153,11 @@
 		u-boot,dm-pre-reloc;
 	};
 
-	/* VCO = 600.0 MHz => P = 100, Q = 50, R = 100 */
+	/* VCO = 600.0 MHz => P = 99, Q = 74, R = 99 */
 	pll4: st,pll@3 {
 		compatible = "st,stm32mp1-pll";
 		reg = <3>;
-		cfg = < 1 49 5 11 5 PQR(1,1,1) >;
+		cfg = < 3 98 5 7 5 PQR(1,1,1) >;
 		u-boot,dm-pre-reloc;
 	};
 };

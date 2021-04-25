@@ -146,7 +146,7 @@ static void reuse_omap_atags(struct tag_omap *t)
 			}
 			break;
 		case OMAP_TAG_UART:
-			if (!t->u.uart.enabled_uarts)
+			if (t->u.uart.enabled_uarts)
 				serial_was_console_enabled = 1;
 			break;
 		case OMAP_TAG_SERIAL_CONSOLE:
@@ -672,7 +672,7 @@ int rx51_kp_getc(struct stdio_dev *sdev)
  * Routine: board_mmc_init
  * Description: Initialize mmc devices.
  */
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);

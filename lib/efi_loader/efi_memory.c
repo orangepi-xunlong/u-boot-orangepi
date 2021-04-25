@@ -235,7 +235,7 @@ static s64 efi_mem_carve_out(struct efi_mem_list *map,
  * @start:		start address, must be a multiple of EFI_PAGE_SIZE
  * @pages:		number of pages to add
  * @memory_type:	type of memory added
- * @overlap_only_ram:	the memory area must overlap existing
+ * @overlap_only_ram:	region may only overlap RAM
  * Return:		status code
  */
 static efi_status_t efi_add_memory_map_pg(u64 start, u64 pages,
@@ -762,7 +762,7 @@ static void add_u_boot_and_runtime(void)
 	unsigned long runtime_start, runtime_end, runtime_pages;
 	unsigned long runtime_mask = EFI_PAGE_MASK;
 	unsigned long uboot_start, uboot_pages;
-	unsigned long uboot_stack_size = 16 * 1024 * 1024;
+	unsigned long uboot_stack_size = CONFIG_STACK_SIZE;
 
 	/* Add U-Boot */
 	uboot_start = ((uintptr_t)map_sysmem(gd->start_addr_sp, 0) -

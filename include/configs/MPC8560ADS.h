@@ -30,7 +30,6 @@
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 #undef CONFIG_ETHER_ON_FCC             /* cpm FCC ethernet support */
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_RESET_PHY_R	1	/* Call reset_phy() */
 
 /*
@@ -112,8 +111,6 @@
 #endif
 
 #define CONFIG_SYS_FLASH_EMPTY_INFO
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * Local Bus Definitions
@@ -233,8 +230,6 @@
 #define CONFIG_SYS_PCI1_IO_SIZE	0x100000	/* 1M */
 
 #if defined(CONFIG_PCI)
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #if !defined(CONFIG_PCI_PNP)
     #define PCI_ENET0_IOADDR	0xe0000000

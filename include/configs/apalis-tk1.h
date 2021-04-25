@@ -12,18 +12,12 @@
 
 #include "tegra124-common.h"
 
-#define CONFIG_ARCH_MISC_INIT
-
 /* Board-specific serial config */
 #define CONFIG_TEGRA_ENABLE_UARTA
 #define CONFIG_SYS_NS16550_COM1		NV_PA_APB_UARTA_BASE
 
 #define FDT_MODULE			"apalis-v1.2"
 #define FDT_MODULE_V1_0			"apalis"
-
-/* Environment in eMMC, before config block at the end of 1st "boot sector" */
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_MMC_ENV_PART		1
 
 /* PCI host support */
 #undef CONFIG_PCI_SCAN_SHOW

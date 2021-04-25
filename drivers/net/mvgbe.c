@@ -821,7 +821,7 @@ error1:
 }
 
 #ifndef CONFIG_DM_ETH
-int mvgbe_initialize(bd_t *bis)
+int mvgbe_initialize(struct bd_info *bis)
 {
 	struct mvgbe_device *dmvgbe;
 	struct eth_device *dev;
@@ -997,7 +997,7 @@ static int mvgbe_ofdata_to_platdata(struct udevice *dev)
 	int pnode;
 	unsigned long addr;
 
-	pdata->iobase = devfdt_get_addr(dev);
+	pdata->iobase = dev_read_addr(dev);
 	pdata->phy_interface = -1;
 
 	pnode = fdt_node_offset_by_compatible(blob, node,

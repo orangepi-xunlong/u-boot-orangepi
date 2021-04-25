@@ -8,6 +8,7 @@
 #include <common.h>
 #include <bootstage.h>
 #include <command.h>
+#include <dm.h>
 #include <env.h>
 #include <log.h>
 #include <net.h>
@@ -23,12 +24,12 @@ DECLARE_GLOBAL_DATA_PTR;
  * CPU and board-specific Ethernet initializations.  Aliased function
  * signals caller to move on
  */
-static int __def_eth_init(bd_t *bis)
+static int __def_eth_init(struct bd_info *bis)
 {
 	return -1;
 }
-int cpu_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
-int board_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+int cpu_eth_init(struct bd_info *bis) __attribute__((weak, alias("__def_eth_init")));
+int board_eth_init(struct bd_info *bis) __attribute__((weak, alias("__def_eth_init")));
 
 #ifdef CONFIG_API
 static struct {

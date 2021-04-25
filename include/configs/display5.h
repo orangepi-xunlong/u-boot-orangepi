@@ -64,10 +64,6 @@
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_USDHC_NUM	2
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_BAUDRATE			115200
-
 #ifndef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND "if run check_em_pad; then " \
 	     "run recovery;" \

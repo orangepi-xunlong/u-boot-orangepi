@@ -53,7 +53,7 @@ static int fit_add_file_data(struct image_tool_params *params, size_t size_inc,
 	}
 
 	/* for first image creation, add a timestamp at offset 0 i.e., root  */
-	if (params->datafile) {
+	if (params->datafile || params->reset_timestamp) {
 		time_t time = imagetool_get_source_date(params->cmdname,
 							sbuf.st_mtime);
 		ret = fit_set_timestamp(ptr, 0, time);
@@ -388,7 +388,7 @@ static int fit_build(struct image_tool_params *params, const char *fname)
 	size = fit_calc_size(params);
 	if (size < 0)
 		return -1;
-	buf = malloc(size);
+	buf = calloc(1, size);
 	if (!buf) {
 		fprintf(stderr, "%s: Out of memory (%d bytes)\n",
 			params->cmdname, size);
@@ -467,7 +467,7 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 	 * Allocate space to hold the image data we will extract,
 	 * extral space allocate for image alignment to prevent overflow.
 	 */
-	buf = malloc(fit_size + (align_size * image_number));
+	buf = calloc(1, fit_size + (align_size * image_number));
 	if (!buf) {
 		ret = -ENOMEM;
 		goto err_munmap;
@@ -572,7 +572,7 @@ static int fit_import_data(struct image_tool_params *params, const char *fname)
 
 	/* Allocate space to hold the new FIT */
 	size = sbuf.st_size + 16384;
-	fdt = malloc(size);
+	fdt = calloc(1, size);
 	if (!fdt) {
 		fprintf(stderr, "%s: Failed to allocate memory (%d bytes)\n",
 			__func__, size);
@@ -606,8 +606,8 @@ static int fit_import_data(struct image_tool_params *params, const char *fname)
 			continue;
 		debug("Importing data size %x\n", len);
 
-		ret = fdt_setprop(fdt, node, "data", fdt + data_base + buf_ptr,
-				  len);
+		ret = fdt_setprop(fdt, node, "data",
+				  old_fdt + data_base + buf_ptr, len);
 		if (ret) {
 			debug("%s: Failed to write property: %s\n", __func__,
 			      fdt_strerror(ret));
@@ -673,7 +673,7 @@ static int copyfile(const char *src, const char *dst)
 		goto out;
 	}
 
-	buf = malloc(512);
+	buf = calloc(1, 512);
 	if (!buf) {
 		printf("Can't allocate buffer to copy file\n");
 		goto out;

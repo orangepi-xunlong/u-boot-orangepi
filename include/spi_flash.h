@@ -9,9 +9,10 @@
 #ifndef _SPI_FLASH_H_
 #define _SPI_FLASH_H_
 
-#include <dm.h>	/* Because we dereference struct udevice here */
 #include <linux/types.h>
 #include <linux/mtd/spi-nor.h>
+
+struct udevice;
 
 /* by default ENV use the same parameters than SF command */
 #ifndef CONFIG_ENV_SPI_BUS
@@ -39,7 +40,7 @@ struct dm_spi_flash_ops {
 /* Access the serial operations for a device */
 #define sf_get_ops(dev) ((struct dm_spi_flash_ops *)(dev)->driver->ops)
 
-#ifdef CONFIG_DM_SPI_FLASH
+#if CONFIG_IS_ENABLED(DM_SPI_FLASH)
 /**
  * spi_flash_read_dm() - Read data from SPI flash
  *

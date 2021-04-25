@@ -60,11 +60,9 @@
 
 /* GPIOs and IO expander */
 #define CONFIG_ATMEL_LEGACY
-#define CONFIG_AT91_GPIO
 #define CONFIG_AT91_GPIO_PULLUP		1
 
 /* UARTs/Serial console */
-#define CONFIG_ATMEL_USART
 
 /* Boot options */
 #define CONFIG_SYS_LOAD_ADDR		0x23000000
@@ -72,7 +70,6 @@
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 /* Environment settings */
-#define CONFIG_ENV_OVERWRITE
 
 #define	CONFIG_EXTRA_ENV_SETTINGS	\
 	"ethaddr=00:00:00:00:00:00\0" \

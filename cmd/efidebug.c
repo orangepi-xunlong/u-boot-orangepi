@@ -9,6 +9,7 @@
 #include <common.h>
 #include <command.h>
 #include <efi_loader.h>
+#include <efi_rng.h>
 #include <exports.h>
 #include <hexdump.h>
 #include <log.h>
@@ -247,6 +248,10 @@ static const struct {
 	{
 		"Load File2",
 		EFI_LOAD_FILE2_PROTOCOL_GUID,
+	},
+	{
+		"Random Number Generator",
+		EFI_RNG_PROTOCOL_GUID,
 	},
 	{
 		"Simple Network",
@@ -1126,8 +1131,9 @@ static int do_efi_test_bootmgr(struct cmd_tbl *cmdtp, int flag,
 	efi_uintn_t exit_data_size = 0;
 	u16 *exit_data = NULL;
 	efi_status_t ret;
+	void *load_options = NULL;
 
-	ret = efi_bootmgr_load(&image);
+	ret = efi_bootmgr_load(&image, &load_options);
 	printf("efi_bootmgr_load() returned: %ld\n", ret & ~EFI_ERROR_MASK);
 
 	/* We call efi_start_image() even if error for test purpose. */
@@ -1138,6 +1144,7 @@ static int do_efi_test_bootmgr(struct cmd_tbl *cmdtp, int flag,
 
 	efi_restore_gd();
 
+	free(load_options);
 	return CMD_RET_SUCCESS;
 }
 

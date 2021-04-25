@@ -8,8 +8,6 @@
 
 #include "ls1088a_common.h"
 
-#define CONFIG_SYS_MMC_ENV_DEV		0
-
 #if defined(CONFIG_TFABOOT) || \
 	defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 #ifndef CONFIG_SPL_BUILD
@@ -524,6 +522,7 @@
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
+	func(USB, usb, 0) \
 	func(SCSI, scsi, 0) \
 	func(DHCP, dhcp, na)
 #include <config_distro_bootcmd.h>

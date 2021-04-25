@@ -212,8 +212,6 @@
 #define CONFIG_PCIE2	/* PCIE controller 2 (slot 2) */
 #define CONFIG_SYS_PCI_64BIT	/* enable 64-bit PCI resources */
 
-#define CONFIG_ENV_OVERWRITE
-
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
 #define CONFIG_LBA48
 
@@ -232,11 +230,6 @@
 #define CONFIG_BTB
 
 #define CONFIG_ENABLE_36BIT_PHYS
-
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP			1
-#define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
-#endif
 
 #define CONFIG_SYS_CCSRBAR		0xffe00000
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
@@ -299,8 +292,6 @@
 #define CONFIG_SYS_DDR_MODE_2		0x8000c000
 #define CONFIG_SYS_DDR_INTERVAL		0x0C300000
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * Memory map
@@ -704,7 +695,6 @@
  */
 #if defined(CONFIG_SDCARD)
 #define CONFIG_FSL_FIXED_MMC_LOCATION
-#define CONFIG_SYS_MMC_ENV_DEV	0
 #elif defined(CONFIG_MTD_RAW_NAND)
 #define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
 #ifdef CONFIG_TPL_BUILD

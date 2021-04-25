@@ -110,8 +110,10 @@ int hcreate_r(size_t nel, struct hsearch_data *htab)
 	}
 
 	/* There is still another table active. Return with error. */
-	if (htab->table != NULL)
+	if (htab->table != NULL) {
+		__set_errno(EINVAL);
 		return 0;
+	}
 
 	/* Change nel to the first prime number not smaller as nel. */
 	nel |= 1;		/* make odd */
@@ -124,8 +126,10 @@ int hcreate_r(size_t nel, struct hsearch_data *htab)
 	/* allocate memory and zero out */
 	htab->table = (struct env_entry_node *)calloc(htab->size + 1,
 						sizeof(struct env_entry_node));
-	if (htab->table == NULL)
+	if (htab->table == NULL) {
+		__set_errno(ENOMEM);
 		return 0;
+	}
 
 	/* everything went alright */
 	return 1;
@@ -822,6 +826,10 @@ int himport_r(struct hsearch_data *htab,
 	if (nvars)
 		memcpy(localvars, vars, sizeof(vars[0]) * nvars);
 
+#if CONFIG_IS_ENABLED(ENV_APPEND)
+	flag |= H_NOCLEAR;
+#endif
+
 	if ((flag & H_NOCLEAR) == 0 && !nvars) {
 		/* Destroy old hash table if one exists */
 		debug("Destroy Hash Table: %p table = %p\n", htab,
@@ -942,9 +950,12 @@ int himport_r(struct hsearch_data *htab,
 		e.data = value;
 
 		hsearch_r(e, ENV_ENTER, &rv, htab, flag);
-		if (rv == NULL)
+#if !CONFIG_IS_ENABLED(ENV_WRITEABLE_LIST)
+		if (rv == NULL) {
 			printf("himport_r: can't insert \"%s=%s\" into hash table\n",
 				name, value);
+		}
+#endif
 
 		debug("INSERT: table %p, filled %d/%d rv %p ==> name=\"%s\" value=\"%s\"\n",
 			htab, htab->filled, htab->size,

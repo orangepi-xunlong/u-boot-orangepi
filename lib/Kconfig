@@ -1,5 +1,18 @@
 menu "Library routines"
 
+config ADDR_MAP
+	bool "Enable support for non-identity virtual-physical mappings"
+	help
+	  Enables helper code for implementing non-identity virtual-physical
+	  memory mappings for 32bit CPUs.
+
+config SYS_NUM_ADDR_MAP
+	int "Size of the address-map table"
+	depends on ADDR_MAP
+	default 16
+	help
+	  Sets the number of entries in the virtual-physical mapping table.
+
 config BCH
 	bool "Enable Software based BCH ECC"
 	help
@@ -66,6 +79,10 @@ config SPL_SPRINTF
 
 config TPL_SPRINTF
 	bool
+
+config SSCANF
+	bool
+	default n
 
 config STRTO
 	bool
@@ -345,6 +362,29 @@ config SHA256
 	  The SHA256 algorithm produces a 256-bit (32-byte) hash value
 	  (digest).
 
+config SHA512_ALGO
+	bool "Enable SHA512 algorithm"
+	help
+	  This option enables support of internal SHA512 algorithm.
+
+config SHA512
+	bool "Enable SHA512 support"
+	depends on SHA512_ALGO
+	help
+	  This option enables support of hashing using SHA512 algorithm.
+	  The hash is calculated in software.
+	  The SHA512 algorithm produces a 512-bit (64-byte) hash value
+	  (digest).
+
+config SHA384
+	bool "Enable SHA384 support"
+	depends on SHA512_ALGO
+	help
+	  This option enables support of hashing using SHA384 algorithm.
+	  The hash is calculated in software.
+	  The SHA384 algorithm produces a 384-bit (48-byte) hash value
+	  (digest).
+
 config SHA_HW_ACCEL
 	bool "Enable hashing using hardware"
 	help
@@ -423,6 +463,13 @@ config GZIP
 	default y
 	help
 	  This enables support for GZIP compression algorithm.
+
+config ZLIB_UNCOMPRESS
+	bool "Enables zlib's uncompress() functionality"
+	help
+	  This enables an extra zlib functionality: the uncompress() function,
+	  which decompresses data from a buffer into another, knowing their
+	  sizes. Unlike gunzip(), there is no header parsing.
 
 config GZIP_COMPRESSED
 	bool

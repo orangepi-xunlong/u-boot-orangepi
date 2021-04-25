@@ -116,7 +116,10 @@ static int serial_getc_check(struct uart_port *port)
 		handle_error(port);
 	if (sci_in(port, SCLSR) & SCxSR_ORER(port))
 		handle_error(port);
-	return status & (SCIF_DR | SCxSR_RDxF(port));
+	status &= (SCIF_DR | SCxSR_RDxF(port));
+	if (status)
+		return status;
+	return scif_rxfill(port);
 }
 
 static int sh_serial_getc_generic(struct uart_port *port)
@@ -211,7 +214,7 @@ static int sh_serial_ofdata_to_platdata(struct udevice *dev)
 	fdt_addr_t addr;
 	int ret;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (!addr)
 		return -EINVAL;
 

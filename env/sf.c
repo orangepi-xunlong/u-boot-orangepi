@@ -38,7 +38,7 @@ static struct spi_flash *env_flash;
 
 static int setup_flash_device(void)
 {
-#ifdef CONFIG_DM_SPI_FLASH
+#if CONFIG_IS_ENABLED(DM_SPI_FLASH)
 	struct udevice *new;
 	int	ret;
 
@@ -172,7 +172,7 @@ static int env_sf_load(void)
 				    CONFIG_ENV_SIZE, tmp_env2);
 
 	ret = env_import_redund((char *)tmp_env1, read1_fail, (char *)tmp_env2,
-				read2_fail);
+				read2_fail, H_EXTERNAL);
 
 	spi_flash_free(env_flash);
 	env_flash = NULL;
@@ -265,7 +265,7 @@ static int env_sf_load(void)
 		goto err_read;
 	}
 
-	ret = env_import(buf, 1);
+	ret = env_import(buf, 1, H_EXTERNAL);
 	if (!ret)
 		gd->env_valid = ENV_VALID;
 
@@ -305,7 +305,7 @@ static int env_sf_init(void)
 
 U_BOOT_ENV_LOCATION(sf) = {
 	.location	= ENVL_SPI_FLASH,
-	ENV_NAME("SPI Flash")
+	ENV_NAME("SPIFlash")
 	.load		= env_sf_load,
 	.save		= CONFIG_IS_ENABLED(SAVEENV) ? ENV_SAVE_PTR(env_sf_save) : NULL,
 #if defined(INITENV) && (CONFIG_ENV_ADDR != 0x0)

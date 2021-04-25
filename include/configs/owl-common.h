@@ -12,7 +12,6 @@
 
 /* SDRAM Definitions */
 #define CONFIG_SYS_SDRAM_BASE		0x0
-#define CONFIG_SYS_SDRAM_SIZE		0x80000000
 
 /* Generic Timer Definitions */
 #define COUNTER_FREQUENCY		(24000000)	/* 24MHz */
@@ -28,9 +27,6 @@
  * proper place.
  */
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_TEXT_BASE + 0x7ff00)
-
-/* UART Definitions */
-#define CONFIG_BAUDRATE			115200
 
 /* Console configuration */
 #define CONFIG_SYS_CBSIZE		1024	/* Console buffer size */

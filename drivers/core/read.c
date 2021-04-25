@@ -10,6 +10,7 @@
 #include <mapmem.h>
 #include <asm/types.h>
 #include <asm/io.h>
+#include <linux/ioport.h>
 
 int dev_read_u32(const struct udevice *dev, const char *propname, u32 *outp)
 {
@@ -167,7 +168,7 @@ void *dev_read_addr_ptr(const struct udevice *dev)
 {
 	fdt_addr_t addr = dev_read_addr(dev);
 
-	return (addr == FDT_ADDR_T_NONE) ? NULL : map_sysmem(addr, 0);
+	return (addr == FDT_ADDR_T_NONE) ? NULL : (void *)(uintptr_t)addr;
 }
 
 void *dev_remap_addr(const struct udevice *dev)
@@ -275,15 +276,17 @@ int dev_read_alias_seq(const struct udevice *dev, int *devnump)
 {
 	ofnode node = dev_ofnode(dev);
 	const char *uc_name = dev->uclass->uc_drv->name;
-	int ret;
+	int ret = -ENOTSUPP;
 
 	if (ofnode_is_np(node)) {
 		ret = of_alias_get_id(ofnode_to_np(node), uc_name);
 		if (ret >= 0)
 			*devnump = ret;
 	} else {
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 		ret = fdtdec_get_alias_seq(gd->fdt_blob, uc_name,
 					   ofnode_to_offset(node), devnump);
+#endif
 	}
 
 	return ret;
@@ -356,4 +359,20 @@ fdt_addr_t dev_read_addr_pci(const struct udevice *dev)
 int dev_get_child_count(const struct udevice *dev)
 {
 	return ofnode_get_child_count(dev_ofnode(dev));
+}
+
+int dev_read_pci_bus_range(const struct udevice *dev,
+			   struct resource *res)
+{
+	const u32 *values;
+	int len;
+
+	values = dev_read_prop(dev, "bus-range", &len);
+	if (!values || len < sizeof(*values) * 2)
+		return -EINVAL;
+
+	res->start = *values++;
+	res->end = *values;
+
+	return 0;
 }

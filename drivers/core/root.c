@@ -12,6 +12,7 @@
 #include <log.h>
 #include <malloc.h>
 #include <linux/libfdt.h>
+#include <dm/acpi.h>
 #include <dm/device.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
@@ -26,7 +27,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static const struct driver_info root_info = {
+static struct driver_info root_info = {
 	.name		= "root_driver",
 };
 
@@ -347,6 +348,10 @@ int dm_init_and_scan(bool pre_reloc_only)
 {
 	int ret;
 
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	dm_populate_phandle_data();
+#endif
+
 	ret = dm_init(IS_ENABLED(CONFIG_OF_LIVE));
 	if (ret) {
 		debug("dm_init() failed: %d\n", ret);
@@ -373,10 +378,22 @@ int dm_init_and_scan(bool pre_reloc_only)
 	return 0;
 }
 
+#ifdef CONFIG_ACPIGEN
+static int root_acpi_get_name(const struct udevice *dev, char *out_name)
+{
+	return acpi_copy_name(out_name, "\\_SB");
+}
+
+struct acpi_ops root_acpi_ops = {
+	.get_name	= root_acpi_get_name,
+};
+#endif
+
 /* This is the root driver - all drivers are children of this */
 U_BOOT_DRIVER(root_driver) = {
 	.name	= "root_driver",
 	.id	= UCLASS_ROOT,
+	ACPI_OPS_PTR(&root_acpi_ops)
 };
 
 /* This is the root uclass */

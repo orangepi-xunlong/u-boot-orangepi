@@ -17,15 +17,8 @@
 #define CONFIG_SYS_BOOK3E_HV		/* Category E.HV supported */
 #define CONFIG_ENABLE_36BIT_PHYS
 
-#ifdef CONFIG_PHYS_64BIT
-#define CONFIG_ADDR_MAP		1
-#define CONFIG_SYS_NUM_ADDR_MAP	64	/* number of TLB1 entries */
-#endif
-
 #define CONFIG_SYS_FSL_CPC		/* Corenet Platform Cache */
 #define CONFIG_SYS_NUM_CPC		CONFIG_SYS_NUM_DDR_CTLRS
-
-#define CONFIG_ENV_OVERWRITE
 
 /* support deep sleep */
 #ifdef CONFIG_ARCH_T1024
@@ -137,11 +130,6 @@
 #define CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS	\
 		(0x300000000ull | CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR)
 #define CONFIG_RESET_VECTOR_ADDRESS 0xfffffffc
-#endif
-
-#if defined(CONFIG_SPIFLASH)
-#elif defined(CONFIG_SDCARD)
-#define CONFIG_SYS_MMC_ENV_DEV		0
 #endif
 
 #ifndef __ASSEMBLY__

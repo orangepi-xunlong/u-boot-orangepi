@@ -43,6 +43,12 @@
 		interrupts = <1 9 0x4>;
 	};
 
+	gic_lpi_base: syscon@0x80000000 {
+		compatible = "gic-lpi-base";
+		reg = <0x0 0x80000000 0x0 0x200000>;
+		max-gic-redistributors = <16>;
+	};
+
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <1 13 0x8>, /* Physical Secure PPI, active-low */
@@ -193,6 +199,28 @@
 		num-cs = <6>;
 	};
 
+	gpio0: gpio@2300000 {
+		compatible = "fsl,qoriq-gpio";
+		reg = <0x0 0x2300000 0x0 0x10000>;
+		interrupts = <0 36 4>;
+		gpio-controller;
+		little-endian;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+
+	gpio1: gpio@2310000 {
+		compatible = "fsl,qoriq-gpio";
+		reg = <0x0 0x2310000 0x0 0x10000>;
+		interrupts = <0 36 4>;
+		gpio-controller;
+		little-endian;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+
 	gpio2: gpio@2320000 {
 		compatible = "fsl,qoriq-gpio";
 		reg = <0x0 0x2320000 0x0 0x10000>;
@@ -202,6 +230,24 @@
 		#gpio-cells = <2>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
+	};
+
+	gpio3: gpio@2330000 {
+		compatible = "fsl,qoriq-gpio";
+		reg = <0x0 0x2330000 0x0 0x10000>;
+		interrupts = <0 37 4>;
+		gpio-controller;
+		little-endian;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+	};
+
+	watchdog@23a0000 {
+		compatible = "arm,sbsa-gwdt";
+		reg = <0x0 0x23a0000 0 0x1000>,
+		      <0x0 0x2390000 0 0x1000>;
+		timeout-sec = <30>;
 	};
 
 	usb0: usb3@3100000 {
@@ -284,13 +330,14 @@
 		reg = <0x00 0x03400000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03480000 0x0 0x40000   /* LUT registers */
 		       0x00 0x034c0000 0x0 0x40000   /* PF control registers */
-		       0x80 0x00000000 0x0 0x1000>; /* configuration space */
+		       0x80 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0x80 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0x80 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0x80 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	pcie@3500000 {
@@ -298,14 +345,15 @@
 		reg = <0x00 0x03500000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03580000 0x0 0x40000   /* LUT registers */
 		       0x00 0x035c0000 0x0 0x40000   /* PF control registers */
-		       0x88 0x00000000 0x0 0x1000>; /* configuration space */
+		       0x88 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		num-lanes = <2>;
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0x88 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0x88 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0x88 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	pcie@3600000 {
@@ -313,13 +361,14 @@
 		reg = <0x00 0x03600000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03680000 0x0 0x40000   /* LUT registers */
 		       0x00 0x036c0000 0x0 0x40000   /* PF control registers */
-		       0x90 0x00000000 0x0 0x1000>; /* configuration space */
+		       0x90 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0x90 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0x90 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0x90 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	pcie@3700000 {
@@ -327,13 +376,14 @@
 		reg = <0x00 0x03700000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03780000 0x0 0x40000   /* LUT registers */
 		       0x00 0x037c0000 0x0 0x40000   /* PF control registers */
-		       0x98 0x00000000 0x0 0x1000>; /* configuration space */
+		       0x98 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0x98 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0x98 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0x98 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	pcie@3800000 {
@@ -341,13 +391,14 @@
 		reg = <0x00 0x03800000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03880000 0x0 0x40000   /* LUT registers */
 		       0x00 0x038c0000 0x0 0x40000   /* PF control registers */
-		       0xa0 0x00000000 0x0 0x1000>; /* configuration space */
+		       0xa0 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0xa0 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0xa0 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0xa0 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	pcie@3900000 {
@@ -355,13 +406,14 @@
 		reg = <0x00 0x03900000 0x0 0x80000   /* PAB registers */
 		       0x00 0x03980000 0x0 0x40000   /* LUT registers */
 		       0x00 0x039c0000 0x0 0x40000   /* PF control registers */
-		       0xa8 0x00000000 0x0 0x1000>; /* configuration space */
+		       0xa8 0x00000000 0x0 0x2000>; /* configuration space */
 		reg-names = "ccsr", "lut", "pf_ctrl", "config";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		device_type = "pci";
 		bus-range = <0x0 0xff>;
-		ranges = <0x82000000 0x0 0x40000000 0xa8 0x40000000 0x0 0x40000000>;
+		ranges = <0x81000000 0x0 0x00000000 0xa8 0x00020000 0x0 0x00010000   /* downstream I/O */
+			  0x82000000 0x0 0x40000000 0xa8 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
 	};
 
 	fsl_mc: fsl-mc@80c000000 {

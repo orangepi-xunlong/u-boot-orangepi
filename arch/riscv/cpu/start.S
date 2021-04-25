@@ -65,6 +65,8 @@ _start:
 #else
 	li	t0, SIE_SSIE
 #endif
+	/* Clear any pending IPIs */
+	csrc	MODE_PREFIX(ip), t0
 	csrs	MODE_PREFIX(ie), t0
 #endif
 
@@ -191,6 +193,7 @@ spl_stack_gd_setup:
 	mv	sp, s0
 #endif
 
+#if CONFIG_IS_ENABLED(SMP)
 	/* set new stack and global data pointer on secondary harts */
 spl_secondary_hart_stack_gd_setup:
 	la	a0, secondary_hart_relocate
@@ -205,6 +208,7 @@ spl_secondary_hart_stack_gd_setup:
 	la	a0, secondary_harts_relocation_error
 	jal	printf
 	jal	hang
+#endif
 
 	/* set new global data pointer on main hart */
 1:	mv	gp, s0

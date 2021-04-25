@@ -244,7 +244,7 @@ class Series(dict):
             add_maintainers: Either:
                 True/False to call the get_maintainers to CC maintainers
                 List of maintainers to include (for testing)
-            limit: Limit the length of the Cc list
+            limit: Limit the length of the Cc list (None if no limit)
         Return:
             Filename of temp file created
         """
@@ -263,7 +263,8 @@ class Series(dict):
             if type(add_maintainers) == type(cc):
                 cc += add_maintainers
             elif add_maintainers:
-                cc += get_maintainer.GetMaintainer(commit.patch)
+                dir_list = [os.path.join(gitutil.GetTopLevel(), 'scripts')]
+                cc += get_maintainer.GetMaintainer(dir_list, commit.patch)
             for x in set(cc) & set(settings.bounces):
                 print(col.Color(col.YELLOW, 'Skipping "%s"' % x))
             cc = set(cc) - set(settings.bounces)

@@ -40,7 +40,6 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_DNS2
 
 #define CONFIG_HOSTNAME	"apf27"
 #define CONFIG_ROOTPATH	"/tftpboot/" __stringify(CONFIG_BOARD_NAME) "-root"
@@ -65,7 +64,6 @@
  */
 #define	ACFG_MONITOR_OFFSET		0x00000000
 #define	CONFIG_SYS_MONITOR_LEN		0x00100000	/* 1MiB */
-#define	CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_RANGE		0X00080000	/* 512kB */
 #define	CONFIG_FIRMWARE_OFFSET		0x00200000
 #define	CONFIG_FIRMWARE_SIZE		0x00080000	/* 512kB  */
@@ -145,7 +143,6 @@
 /*
  * Serial Driver
  */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /*

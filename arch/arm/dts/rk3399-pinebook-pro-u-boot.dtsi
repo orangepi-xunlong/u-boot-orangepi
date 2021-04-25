@@ -14,6 +14,10 @@
 	chosen {
 		u-boot,spl-boot-order = "same-as-spl", &spiflash, &sdhci, &sdmmc;
 	};
+
+	config {
+		u-boot,spl-payload-offset = <0x60000>; /* @ 384KB */
+	};
 };
 
 &i2c0 {
@@ -22,6 +26,10 @@
 
 &rk808 {
 	u-boot,dm-pre-reloc;
+};
+
+&rng {
+	status = "okay";
 };
 
 &sdhci {

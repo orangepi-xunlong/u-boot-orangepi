@@ -93,9 +93,6 @@
 # define DFU_ALT_INFO
 #endif
 
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /* enable preboot to be loaded before CONFIG_BOOTDELAY */
 
 /* Boot configuration */
@@ -199,7 +196,6 @@
 /* Default environment */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-	"fdt_high=0x20000000\0"		\
 	"scriptaddr=0x20000\0"	\
 	"script_size_f=0x40000\0"	\
 	"fdt_addr_r=0x1f00000\0"        \
@@ -232,7 +228,6 @@
 
 /* MMC support */
 #ifdef CONFIG_MMC_SDHCI_ZYNQ
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
 #endif
 
@@ -274,7 +269,5 @@
 /* BSS setup */
 #define CONFIG_SPL_BSS_START_ADDR	0x100000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x100000
-
-#define CONFIG_SPL_LOAD_FIT_ADDRESS 0x10000000
 
 #endif /* __CONFIG_ZYNQ_COMMON_H */

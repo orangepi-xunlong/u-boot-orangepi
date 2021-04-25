@@ -19,7 +19,6 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configs */
@@ -149,8 +148,6 @@
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* environment organization */
-#define CONFIG_SYS_MMC_ENV_DEV		1	/* USDHC2 */
-#define CONFIG_SYS_MMC_ENV_PART		0	/* user area */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
 
 #define CONFIG_IMX_THERMAL

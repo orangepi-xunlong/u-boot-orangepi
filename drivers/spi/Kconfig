@@ -155,12 +155,26 @@ config FSL_QSPI
 	  used to access the SPI NOR flash on platforms embedding this
 	  Freescale IP core.
 
+config FSL_QSPI_AHB_FULL_MAP
+	bool "Use full AHB memory map space"
+	depends on FSL_QSPI
+	default y if ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_IMX8M
+	help
+	  Enable the Freescale QSPI driver to use full AHB memory map space for
+	  flash access.
+
 config ICH_SPI
 	bool "Intel ICH SPI driver"
 	help
 	  Enable the Intel ICH SPI driver. This driver can be used to
 	  access the SPI NOR flash on platforms embedding this Intel
 	  ICH IP core.
+
+config KIRKWOOD_SPI
+	bool "Marvell Kirkwood SPI Driver"
+	help
+	  Enable support for SPI on various Marvell SoCs, such as
+	  Kirkwood and Armada 375.
 
 config MESON_SPIFC
 	bool "Amlogic Meson SPI Flash Controller driver"
@@ -225,6 +239,21 @@ config NXP_FSPI
 	help
 	  Enable the NXP FlexSPI (FSPI) driver. This driver can be used to
 	  access the SPI NOR flash on platforms embedding this NXP IP core.
+
+config OCTEON_SPI
+	bool "Octeon SPI driver"
+	depends on DM_PCI && (ARCH_OCTEON || ARCH_OCTEONTX || ARCH_OCTEONTX2)
+	help
+	  Enable the Octeon SPI driver. This driver can be used to
+	  access the SPI NOR flash on Octeon II/III and OcteonTX/TX2
+	  SoC platforms.
+
+config OMAP3_SPI
+	bool "McSPI driver for OMAP"
+	help
+	  SPI master controller for OMAP24XX and later Multichannel SPI
+	  (McSPI). This driver be used to access SPI chips on platforms
+	  embedding this OMAP3 McSPI IP core.
 
 config PIC32_SPI
 	bool "Microchip PIC32 SPI driver"
@@ -417,23 +446,10 @@ config SH_QSPI
 	  Enable the Renesas Quad SPI controller driver. This driver can be
 	  used on Renesas SoCs.
 
-config KIRKWOOD_SPI
-	bool "Marvell Kirkwood SPI Driver"
-	help
-	  Enable support for SPI on various Marvell SoCs, such as
-	  Kirkwood and Armada 375.
-
 config MXC_SPI
 	bool "MXC SPI Driver"
 	help
 	  Enable the MXC SPI controller driver. This driver can be used
 	  on various i.MX SoCs such as i.MX31/35/51/6/7.
-
-config OMAP3_SPI
-	bool "McSPI driver for OMAP"
-	help
-	  SPI master controller for OMAP24XX and later Multichannel SPI
-	  (McSPI). This driver be used to access SPI chips on platforms
-	  embedding this OMAP3 McSPI IP core.
 
 endif # menu "SPI Support"
