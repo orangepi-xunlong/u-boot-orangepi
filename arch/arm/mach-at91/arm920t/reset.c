@@ -14,6 +14,7 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_st.h>
@@ -23,7 +24,7 @@ void  __attribute__((weak)) board_reset(void)
 	/* true empty function for defining weak symbol */
 }
 
-void reset_cpu(ulong ignored)
+void reset_cpu(void)
 {
 	at91_st_t *st = (at91_st_t *) ATMEL_BASE_ST;
 

@@ -6,6 +6,9 @@
 #include <common.h>
 #include <i2c.h>
 #include <fdt_support.h>
+#include <asm/cache.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
@@ -18,15 +21,18 @@
 #include <ahci.h>
 #include <hwconfig.h>
 #include <mmc.h>
+#include <env_internal.h>
 #include <scsi.h>
 #include <fm_eth.h>
 #include <fsl_esdhc.h>
 #include <fsl_mmdc.h>
 #include <spl.h>
 #include <netdev.h>
+#include <fsl_sec.h>
 #include "../common/qixis.h"
 #include "ls1012aqds_qixis.h"
 #include "ls1012aqds_pfe.h"
+#include <net/pfe_eth/pfe/pfe_hw.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -55,6 +61,16 @@ int checkboard(void)
 	return 0;
 }
 
+#ifdef CONFIG_TFABOOT
+int dram_init(void)
+{
+	gd->ram_size = tfa_get_dram_size();
+	if (!gd->ram_size)
+		gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+
+	return 0;
+}
+#else
 int dram_init(void)
 {
 	static const struct fsl_mmdc_info mparam = {
@@ -74,7 +90,6 @@ int dram_init(void)
 	};
 
 	mmdc_init(&mparam);
-
 	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
 #if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
 	/* This will break-before-make MMU for DDR */
@@ -83,6 +98,7 @@ int dram_init(void)
 
 	return 0;
 }
+#endif
 
 int board_early_init_f(void)
 {
@@ -95,10 +111,26 @@ int board_early_init_f(void)
 int misc_init_r(void)
 {
 	u8 mux_sdhc_cd = 0x80;
+	int bus_num = 0;
 
-	i2c_set_bus_num(0);
+#if CONFIG_IS_ENABLED(DM_I2C)
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(bus_num, CONFIG_SYS_I2C_FPGA_ADDR,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
+		return ret;
+	}
+	dm_i2c_write(dev, 0x5a, &mux_sdhc_cd, 1);
+#else
+	i2c_set_bus_num(bus_num);
 
 	i2c_write(CONFIG_SYS_I2C_FPGA_ADDR, 0x5a, 1, &mux_sdhc_cd, 1);
+#endif
+
 	return 0;
 }
 #endif
@@ -110,8 +142,9 @@ int board_init(void)
 
 	/* Set CCI-400 control override register to enable barrier
 	 * transaction */
-	out_le32(&cci->ctrl_ord,
-		 CCI400_CTRLORD_EN_BARRIER);
+	if (current_el() == 3)
+		out_le32(&cci->ctrl_ord,
+			 CCI400_CTRLORD_EN_BARRIER);
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_A010315
 	erratum_a010315();
@@ -121,11 +154,22 @@ int board_init(void)
 	gd->env_addr = (ulong)&default_environment[0];
 #endif
 
+#ifdef CONFIG_FSL_CAAM
+	sec_init();
+#endif
+
 #ifdef CONFIG_FSL_LS_PPA
 	ppa_init();
 #endif
 	return 0;
 }
+
+#ifdef CONFIG_FSL_PFE
+void board_quiesce_devices(void)
+{
+	pfe_command_stop(0, NULL);
+}
+#endif
 
 int esdhc_status_fixup(void *blob, const char *compat)
 {
@@ -245,7 +289,7 @@ static void fdt_fsl_fixup_of_pfe(void *blob)
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	arch_fixup_fdt(blob);
 

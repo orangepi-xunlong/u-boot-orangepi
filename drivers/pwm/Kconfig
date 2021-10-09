@@ -9,6 +9,15 @@ config DM_PWM
 	  frequency/period can be controlled along with the proportion of that
 	  time that the signal is high.
 
+config PWM_CROS_EC
+	bool "Enable support for the Chrome OS EC PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found on several Chrome OS devices and controlled by
+	  the Chrome OS embedded controller. It may be used to control the
+	  screen brightness and/or the keyboard backlight depending on the
+	  device.
+
 config PWM_EXYNOS
 	bool "Enable support for the Exynos PWM"
 	depends on DM_PWM
@@ -17,6 +26,25 @@ config PWM_EXYNOS
 	  supports a programmable period and duty cycle. A 32-bit counter is
 	  used. It provides 5 channels which can be independently
 	  programmed. Channel 4 (the last) is normally used as a timer.
+
+config PWM_IMX
+	bool "Enable support for i.MX27 and later PWM"
+	help
+	  This PWM is found i.MX27 and later i.MX SoCs.
+
+config PWM_MESON
+	bool "Enable support for Amlogic Meson SoCs PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found on Amlogic Meson SoCs. It supports a
+	  programmable period and duty cycle for 2 independant channels.
+
+config PWM_MTK
+	bool "Enable support for MediaTek PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found on MT7622, MT7623, and MT7629. It supports a
+	  programmable period and duty cycle.
 
 config PWM_ROCKCHIP
 	bool "Enable support for the Rockchip PWM"
@@ -35,6 +63,12 @@ config PWM_SANDBOX
 	  useful. The PWM can be enabled but is not connected to any outputs
 	  so this is not very useful.
 
+config PWM_SIFIVE
+	bool "Enable support for SiFive PWM"
+	depends on DM_PWM
+	help
+	  This PWM is found SiFive's FU540 and other SoCs.
+
 config PWM_TEGRA
 	bool "Enable support for the Tegra PWM"
 	depends on DM_PWM
@@ -44,25 +78,16 @@ config PWM_TEGRA
 	  32KHz clock is supported by the driver but the duty cycle is
 	  configurable.
 
-menu "PWM_SUNXI"
-choice
-	prompt "SUNXI PWM SELECT"
-
 config PWM_SUNXI
-	bool "Enable Sunxi PWM"
-	depends on ARCH_SUNXI
+	bool "Enable support for the Allwinner Sunxi PWM"
+	depends on DM_PWM
 	help
-	  This PWM is Base PWM framework driver for sunxi.
+	  This PWM is found on H3, A64 and other Allwinner SoCs. It supports a
+	  programmable period and duty cycle. A 16-bit counter is used.
 
-config PWM_SUNXI_NEW
-	bool "Enable Sunxi Enhance PWM"
-	depends on ARCH_SUNXI
+config PWM_TI_EHRPWM
+	bool "Enable support for EHRPWM PWM"
+	depends on DM_PWM && ARCH_OMAP2PLUS
+	default y
 	help
-	  This PWM is Enhance PWM framework driver for sunxi.
-config PWM_NOT_USE
-	bool "NOT USE PWM"
-	depends on ARCH_SUNXI
-	help
-	 no use pwm
-endchoice
-endmenu
+	  PWM driver support for the EHRPWM controller found on TI SOCs.

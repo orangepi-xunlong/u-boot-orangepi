@@ -7,7 +7,9 @@
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/io.h>
 #include <linux/sizes.h>
 
@@ -251,7 +253,7 @@ static int uniphier_clk_probe(struct udevice *dev)
 	struct uniphier_clk_priv *priv = dev_get_priv(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev->parent);
+	addr = dev_read_addr(dev->parent);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -340,6 +342,6 @@ U_BOOT_DRIVER(uniphier_clk) = {
 	.id = UCLASS_CLK,
 	.of_match = uniphier_clk_match,
 	.probe = uniphier_clk_probe,
-	.priv_auto_alloc_size = sizeof(struct uniphier_clk_priv),
+	.priv_auto	= sizeof(struct uniphier_clk_priv),
 	.ops = &uniphier_clk_ops,
 };

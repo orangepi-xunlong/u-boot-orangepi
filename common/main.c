@@ -8,33 +8,32 @@
 
 #include <common.h>
 #include <autoboot.h>
+#include <bootstage.h>
 #include <cli.h>
+#include <command.h>
 #include <console.h>
+#include <env.h>
+#include <init.h>
+#include <net.h>
 #include <version.h>
-
-/*
- * Board-specific Platform code can reimplement show_boot_progress () if needed
- */
-__weak void show_boot_progress(int val) {}
+#include <efi_loader.h>
 
 static void run_preboot_environment_command(void)
 {
-#ifdef CONFIG_PREBOOT
 	char *p;
 
 	p = env_get("preboot");
 	if (p != NULL) {
-# ifdef CONFIG_AUTOBOOT_KEYED
-		int prev = disable_ctrlc(1);	/* disable Control C checking */
-# endif
+		int prev = 0;
+
+		if (IS_ENABLED(CONFIG_AUTOBOOT_KEYED))
+			prev = disable_ctrlc(1); /* disable Ctrl-C checking */
 
 		run_command_list(p, -1, 0);
 
-# ifdef CONFIG_AUTOBOOT_KEYED
-		disable_ctrlc(prev);	/* restore Control C checking */
-# endif
+		if (IS_ENABLED(CONFIG_AUTOBOOT_KEYED))
+			disable_ctrlc(prev);	/* restore Ctrl-C checking */
 	}
-#endif /* CONFIG_PREBOOT */
 }
 
 /* We come here after U-Boot is initialised and ready to process commands */
@@ -44,17 +43,19 @@ void main_loop(void)
 
 	bootstage_mark_name(BOOTSTAGE_ID_MAIN_LOOP, "main_loop");
 
-#ifdef CONFIG_VERSION_VARIABLE
-	env_set("ver", version_string);  /* set version variable */
-#endif /* CONFIG_VERSION_VARIABLE */
+	if (IS_ENABLED(CONFIG_VERSION_VARIABLE))
+		env_set("ver", version_string);  /* set version variable */
 
 	cli_init();
 
-	run_preboot_environment_command();
+	if (IS_ENABLED(CONFIG_USE_PREBOOT))
+		run_preboot_environment_command();
 
-#if defined(CONFIG_UPDATE_TFTP)
-	update_tftp(0UL, NULL, NULL);
-#endif /* CONFIG_UPDATE_TFTP */
+	if (IS_ENABLED(CONFIG_UPDATE_TFTP))
+		update_tftp(0UL, NULL, NULL);
+
+	if (IS_ENABLED(CONFIG_EFI_CAPSULE_ON_DISK_EARLY))
+		efi_launch_capsules();
 
 	s = bootdelay_process();
 	if (cli_process_fdt(&s))

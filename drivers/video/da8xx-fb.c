@@ -13,8 +13,12 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <malloc.h>
 #include <memalign.h>
 #include <video_fb.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 

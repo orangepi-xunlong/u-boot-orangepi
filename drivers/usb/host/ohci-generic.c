@@ -6,6 +6,9 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <log.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <dm/ofnode.h>
 #include <generic-phy.h>
 #include <reset.h>
@@ -38,13 +41,13 @@ static int ohci_setup_phy(struct udevice *dev, int index)
 	} else {
 		ret = generic_phy_init(&priv->phy);
 		if (ret) {
-			dev_err(dev, "failed to init usb phy\n");
+			dev_dbg(dev, "failed to init usb phy\n");
 			return ret;
 		}
 
 		ret = generic_phy_power_on(&priv->phy);
 		if (ret) {
-			dev_err(dev, "failed to power on usb phy\n");
+			dev_dbg(dev, "failed to power on usb phy\n");
 			return generic_phy_exit(&priv->phy);
 		}
 	}
@@ -60,13 +63,13 @@ static int ohci_shutdown_phy(struct udevice *dev)
 	if (generic_phy_valid(&priv->phy)) {
 		ret = generic_phy_power_off(&priv->phy);
 		if (ret) {
-			dev_err(dev, "failed to power off usb phy\n");
+			dev_dbg(dev, "failed to power off usb phy\n");
 			return ret;
 		}
 
 		ret = generic_phy_exit(&priv->phy);
 		if (ret) {
-			dev_err(dev, "failed to power off usb phy\n");
+			dev_dbg(dev, "failed to power off usb phy\n");
 			return ret;
 		}
 	}
@@ -76,13 +79,14 @@ static int ohci_shutdown_phy(struct udevice *dev)
 
 static int ohci_usb_probe(struct udevice *dev)
 {
-	struct ohci_regs *regs = (struct ohci_regs *)devfdt_get_addr(dev);
+	struct ohci_regs *regs = dev_read_addr_ptr(dev);
 	struct generic_ohci *priv = dev_get_priv(dev);
 	int i, err, ret, clock_nb, reset_nb;
 
 	err = 0;
 	priv->clock_count = 0;
-	clock_nb = dev_count_phandle_with_args(dev, "clocks", "#clock-cells");
+	clock_nb = dev_count_phandle_with_args(dev, "clocks", "#clock-cells",
+					       0);
 	if (clock_nb > 0) {
 		priv->clocks = devm_kcalloc(dev, clock_nb, sizeof(struct clk),
 					    GFP_KERNEL);
@@ -95,7 +99,7 @@ static int ohci_usb_probe(struct udevice *dev)
 				break;
 
 			err = clk_enable(&priv->clocks[i]);
-			if (err) {
+			if (err && err != -ENOSYS) {
 				dev_err(dev, "failed to enable clock %d\n", i);
 				clk_free(&priv->clocks[i]);
 				goto clk_err;
@@ -108,7 +112,8 @@ static int ohci_usb_probe(struct udevice *dev)
 	}
 
 	priv->reset_count = 0;
-	reset_nb = dev_count_phandle_with_args(dev, "resets", "#reset-cells");
+	reset_nb = dev_count_phandle_with_args(dev, "resets", "#reset-cells",
+					       0);
 	if (reset_nb > 0) {
 		priv->resets = devm_kcalloc(dev, reset_nb,
 					    sizeof(struct reset_ctl),
@@ -193,6 +198,6 @@ U_BOOT_DRIVER(ohci_generic) = {
 	.probe = ohci_usb_probe,
 	.remove = ohci_usb_remove,
 	.ops	= &ohci_usb_ops,
-	.priv_auto_alloc_size = sizeof(struct generic_ohci),
+	.priv_auto	= sizeof(struct generic_ohci),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
 };

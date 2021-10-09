@@ -1,15 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  *  EHCI HCD (Host Controller Driver) for USB.
  *
  *  Copyright (C) 2013,2014 Renesas Electronics Corporation
  *  Copyright (C) 2014 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
- *
- *  SPDX-License-Identifier:     GPL-2.0
  */
 
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/ehci-rmobile.h>
+#include <linux/delay.h>
 #include "ehci.h"
 
 #if defined(CONFIG_R8A7740)

@@ -41,7 +41,7 @@
 				"fi;" \
 			"fi;" \
 		"fi;\0" \
-	"mmcloados=run args_mmc; " \
+	"mmcloados=" \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
 			"if run loadfdt; then " \
 				"bootz ${loadaddr} - ${fdtaddr}; " \
@@ -56,13 +56,14 @@
 			"bootz; " \
 		"fi;\0" \
 	"mmcboot=mmc dev ${mmcdev}; " \
-		"setenv devnum ${mmcdev}; " \
-		"setenv devtype mmc; " \
+		"devnum=${mmcdev}; " \
+		"devtype=mmc; " \
 		"if mmc rescan; then " \
 			"echo SD/MMC found on device ${mmcdev};" \
 			"if run loadimage; then " \
+				"run args_mmc; " \
 				"if test ${boot_fit} -eq 1; then " \
-					"run loadfit; " \
+					"run run_fit; " \
 				"else " \
 					"run mmcloados;" \
 				"fi;" \

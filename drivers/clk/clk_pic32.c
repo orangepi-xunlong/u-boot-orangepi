@@ -8,9 +8,13 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <div64.h>
+#include <time.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
 #include <dm/lists.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <mach/pic32.h>
 #include <dt-bindings/clock/microchip,clock.h>
 
@@ -418,8 +422,7 @@ U_BOOT_DRIVER(pic32_clk) = {
 	.name		= "pic32_clk",
 	.id		= UCLASS_CLK,
 	.of_match	= pic32_clk_ids,
-	.flags		= DM_FLAG_PRE_RELOC,
 	.ops		= &pic32_pic32_clk_ops,
 	.probe		= pic32_clk_probe,
-	.priv_auto_alloc_size = sizeof(struct pic32_clk_priv),
+	.priv_auto	= sizeof(struct pic32_clk_priv),
 };

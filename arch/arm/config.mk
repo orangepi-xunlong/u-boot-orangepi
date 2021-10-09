@@ -11,12 +11,19 @@ CONFIG_STANDALONE_LOAD_ADDR = 0xc100000
 endif
 endif
 
-CFLAGS_NON_EFI := -fno-pic -ffixed-r9 -ffunction-sections -fdata-sections
+CFLAGS_NON_EFI := -fno-pic -ffixed-r9 -ffunction-sections -fdata-sections \
+		  -fstack-protector-strong
 CFLAGS_EFI := -fpic -fshort-wchar
 
+ifneq ($(CONFIG_LTO)$(CONFIG_USE_PRIVATE_LIBGCC),yy)
 LDFLAGS_FINAL += --gc-sections
-PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections \
-		     -fno-common -ffixed-r9
+endif
+
+ifndef CONFIG_LTO
+PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections
+endif
+
+PLATFORM_RELFLAGS += -fno-common -ffixed-r9
 PLATFORM_RELFLAGS += $(call cc-option, -msoft-float) \
       $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 
@@ -122,7 +129,7 @@ endif
 
 ifneq ($(CONFIG_SPL_BUILD),y)
 # Check that only R_ARM_RELATIVE relocations are generated.
-ALL-y += checkarmreloc
+INPUTS-y += checkarmreloc
 # The movt / movw can hardcode 16 bit parts of the addresses in the
 # instruction. Relocation is not supported for that case, so disable
 # such usage by requiring word relocations.
@@ -134,15 +141,11 @@ endif
 ifdef CONFIG_ARM64
 OBJCOPYFLAGS += -j .text -j .secure_text -j .secure_data -j .rodata -j .data \
 		-j .u_boot_list -j .rela.dyn -j .got -j .got.plt \
-		-j .binman_sym_table
+		-j .binman_sym_table -j .text_rest
 else
-ifeq ($(CONFIG_ARCH_SUNXI),y)
-
-OBJCOPYFLAGS += -j .head
-endif
 OBJCOPYFLAGS += -j .text -j .secure_text -j .secure_data -j .rodata -j .hash \
 		-j .data -j .got -j .got.plt -j .u_boot_list -j .rel.dyn \
-		-j .binman_sym_table
+		-j .binman_sym_table -j .text_rest
 endif
 
 # if a dtb section exists we always have to include it
@@ -158,17 +161,17 @@ endif
 ifneq ($(CONFIG_IMX_CONFIG),)
 ifdef CONFIG_SPL
 ifndef CONFIG_SPL_BUILD
-ALL-y += SPL
+INPUTS-y += SPL
 endif
 else
 ifeq ($(CONFIG_OF_SEPARATE),y)
-ALL-y += u-boot-dtb.imx
+INPUTS-y += u-boot-dtb.imx
 else
-ALL-y += u-boot.imx
+INPUTS-y += u-boot.imx
 endif
 endif
 ifneq ($(CONFIG_VF610),)
-ALL-y += u-boot.vyb
+INPUTS-y += u-boot.vyb
 endif
 endif
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause
 /*
  * (C) Copyright 2015 Google, Inc
  * Copyright 2014 Rockchip Inc.
@@ -11,17 +11,21 @@
 #include <dm.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <hang.h>
+#include <init.h>
+#include <log.h>
 #include <ram.h>
 #include <regmap.h>
 #include <syscon.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3188.h>
-#include <asm/arch/ddr_rk3188.h>
-#include <asm/arch/grf_rk3188.h>
-#include <asm/arch/pmu_rk3188.h>
-#include <asm/arch/sdram.h>
-#include <asm/arch/sdram_common.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru_rk3188.h>
+#include <asm/arch-rockchip/ddr_rk3188.h>
+#include <asm/arch-rockchip/grf_rk3188.h>
+#include <asm/arch-rockchip/pmu_rk3188.h>
+#include <asm/arch-rockchip/sdram.h>
+#include <asm/arch-rockchip/sdram_rk3288.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 
 struct chan_info {
@@ -805,15 +809,15 @@ error:
 static int setup_sdram(struct udevice *dev)
 {
 	struct dram_info *priv = dev_get_priv(dev);
-	struct rk3188_sdram_params *params = dev_get_platdata(dev);
+	struct rk3188_sdram_params *params = dev_get_plat(dev);
 
 	return sdram_init(priv, params);
 }
 
-static int rk3188_dmc_ofdata_to_platdata(struct udevice *dev)
+static int rk3188_dmc_of_to_plat(struct udevice *dev)
 {
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
-	struct rk3188_sdram_params *params = dev_get_platdata(dev);
+	struct rk3188_sdram_params *params = dev_get_plat(dev);
 	int ret;
 
 	/* rk3188 supports only one-channel */
@@ -839,7 +843,7 @@ static int rk3188_dmc_ofdata_to_platdata(struct udevice *dev)
 		printf("%s: Cannot read rockchip,sdram-params\n", __func__);
 		return -EINVAL;
 	}
-	ret = regmap_init_mem(dev, &params->map);
+	ret = regmap_init_mem(dev_ofnode(dev), &params->map);
 	if (ret)
 		return ret;
 #endif
@@ -849,9 +853,9 @@ static int rk3188_dmc_ofdata_to_platdata(struct udevice *dev)
 #endif /* CONFIG_SPL_BUILD */
 
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-static int conv_of_platdata(struct udevice *dev)
+static int conv_of_plat(struct udevice *dev)
 {
-	struct rk3188_sdram_params *plat = dev_get_platdata(dev);
+	struct rk3188_sdram_params *plat = dev_get_plat(dev);
 	struct dtd_rockchip_rk3188_dmc *of_plat = &plat->of_plat;
 	int ret;
 
@@ -862,9 +866,8 @@ static int conv_of_platdata(struct udevice *dev)
 	memcpy(&plat->base, of_plat->rockchip_sdram_params, sizeof(plat->base));
 	/* rk3188 supports dual-channel, set default channel num to 2 */
 	plat->num_channels = 1;
-	ret = regmap_init_mem_platdata(dev, of_plat->reg,
-				       ARRAY_SIZE(of_plat->reg) / 2,
-				       &plat->map);
+	ret = regmap_init_mem_plat(dev, of_plat->reg,
+				   ARRAY_SIZE(of_plat->reg) / 2, &plat->map);
 	if (ret)
 		return ret;
 
@@ -875,7 +878,7 @@ static int conv_of_platdata(struct udevice *dev)
 static int rk3188_dmc_probe(struct udevice *dev)
 {
 #ifdef CONFIG_SPL_BUILD
-	struct rk3188_sdram_params *plat = dev_get_platdata(dev);
+	struct rk3188_sdram_params *plat = dev_get_plat(dev);
 	struct regmap *map;
 	struct udevice *dev_clk;
 	int ret;
@@ -886,7 +889,7 @@ static int rk3188_dmc_probe(struct udevice *dev)
 
 #ifdef CONFIG_SPL_BUILD
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-	ret = conv_of_platdata(dev);
+	ret = conv_of_plat(dev);
 	if (ret)
 		return ret;
 #endif
@@ -941,17 +944,17 @@ static const struct udevice_id rk3188_dmc_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(dmc_rk3188) = {
+U_BOOT_DRIVER(rockchip_rk3188_dmc) = {
 	.name = "rockchip_rk3188_dmc",
 	.id = UCLASS_RAM,
 	.of_match = rk3188_dmc_ids,
 	.ops = &rk3188_dmc_ops,
 #ifdef CONFIG_SPL_BUILD
-	.ofdata_to_platdata = rk3188_dmc_ofdata_to_platdata,
+	.of_to_plat = rk3188_dmc_of_to_plat,
 #endif
 	.probe = rk3188_dmc_probe,
-	.priv_auto_alloc_size = sizeof(struct dram_info),
+	.priv_auto	= sizeof(struct dram_info),
 #ifdef CONFIG_SPL_BUILD
-	.platdata_auto_alloc_size = sizeof(struct rk3188_sdram_params),
+	.plat_auto	= sizeof(struct rk3188_sdram_params),
 #endif
 };

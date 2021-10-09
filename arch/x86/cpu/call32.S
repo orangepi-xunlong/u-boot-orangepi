@@ -4,7 +4,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <asm/global_data.h>
 #include <asm/msr-index.h>
 #include <asm/processor-flags.h>
 
@@ -32,8 +31,7 @@ cpu_call32:
 	push	%rdi	/* 32-bit code segment */
 	lea	compat(%rip), %rax
 	push	%rax
-	.byte	0x48	/* REX prefix to force 64-bit far return */
-	retf
+	retfq
 .code32
 compat:
 	/*
@@ -60,4 +58,4 @@ compat:
 	/* Jump to the required target */
 	pushl	%edi	/* 32-bit code segment */
 	pushl	%esi	/* 32-bit target address */
-	retf
+	retfl

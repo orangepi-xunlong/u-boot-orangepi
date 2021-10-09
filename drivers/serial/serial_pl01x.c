@@ -11,11 +11,16 @@
 /* Simple U-Boot driver for the PrimeCell PL010/PL011 UARTs */
 
 #include <common.h>
+#include <asm/global_data.h>
+/* For get_bus_freq() */
+#include <clock_legacy.h>
 #include <dm.h>
+#include <clk.h>
 #include <errno.h>
 #include <watchdog.h>
 #include <asm/io.h>
 #include <serial.h>
+#include <dm/device_compat.h>
 #include <dm/platform_data/serial_pl01x.h>
 #include <linux/compiler.h>
 #include "serial_pl01x_internal.h"
@@ -25,8 +30,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #ifndef CONFIG_DM_SERIAL
 
 static volatile unsigned char *const port[] = CONFIG_PL01x_PORTS;
-static enum pl01x_type pl01x_type __attribute__ ((section(".data")));
-static struct pl01x_regs *base_regs __attribute__ ((section(".data")));
+static enum pl01x_type pl01x_type __section(".data");
+static struct pl01x_regs *base_regs __section(".data");
 #define NUM_PORTS (sizeof(port)/sizeof(port[0]))
 
 #endif
@@ -149,21 +154,24 @@ static int pl01x_generic_setbrg(struct pl01x_regs *regs, enum pl01x_type type,
 		unsigned int remainder;
 		unsigned int fraction;
 
-		/*
-		* Set baud rate
-		*
-		* IBRD = UART_CLK / (16 * BAUD_RATE)
-		* FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE)))
-		*		/ (16 * BAUD_RATE))
-		*/
-		temp = 16 * baudrate;
-		divider = clock / temp;
-		remainder = clock % temp;
-		temp = (8 * remainder) / baudrate;
-		fraction = (temp >> 1) + (temp & 1);
+		/* Without a valid clock rate we cannot set up the baudrate. */
+		if (clock) {
+			/*
+			 * Set baud rate
+			 *
+			 * IBRD = UART_CLK / (16 * BAUD_RATE)
+			 * FBRD = RND((64 * MOD(UART_CLK,(16 * BAUD_RATE)))
+			 *		/ (16 * BAUD_RATE))
+			 */
+			temp = 16 * baudrate;
+			divider = clock / temp;
+			remainder = clock % temp;
+			temp = (8 * remainder) / baudrate;
+			fraction = (temp >> 1) + (temp & 1);
 
-		writel(divider, &regs->pl011_ibrd);
-		writel(fraction, &regs->pl011_fbrd);
+			writel(divider, &regs->pl011_ibrd);
+			writel(fraction, &regs->pl011_fbrd);
+		}
 
 		pl011_set_line_control(regs);
 		/* Finally, enable the UART */
@@ -274,7 +282,7 @@ __weak struct serial_device *default_serial_console(void)
 
 int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
 {
-	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
+	struct pl01x_serial_plat *plat = dev_get_plat(dev);
 	struct pl01x_priv *priv = dev_get_priv(dev);
 
 	if (!plat->skip_init) {
@@ -287,7 +295,7 @@ int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
 
 int pl01x_serial_probe(struct udevice *dev)
 {
-	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
+	struct pl01x_serial_plat *plat = dev_get_plat(dev);
 	struct pl01x_priv *priv = dev_get_priv(dev);
 
 	priv->regs = (struct pl01x_regs *)plat->base;
@@ -337,17 +345,38 @@ static const struct udevice_id pl01x_serial_id[] ={
 	{}
 };
 
-int pl01x_serial_ofdata_to_platdata(struct udevice *dev)
-{
-	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
-	fdt_addr_t addr;
+#ifndef CONFIG_PL011_CLOCK
+#define CONFIG_PL011_CLOCK 0
+#endif
 
-	addr = devfdt_get_addr(dev);
+int pl01x_serial_of_to_plat(struct udevice *dev)
+{
+	struct pl01x_serial_plat *plat = dev_get_plat(dev);
+	struct clk clk;
+	fdt_addr_t addr;
+	int ret;
+
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
 	plat->base = addr;
-	plat->clock = dev_read_u32_default(dev, "clock", 1);
+	plat->clock = dev_read_u32_default(dev, "clock", CONFIG_PL011_CLOCK);
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (!ret) {
+		ret = clk_enable(&clk);
+		if (ret && ret != -ENOSYS) {
+			dev_err(dev, "failed to enable clock\n");
+			return ret;
+		}
+
+		plat->clock = clk_get_rate(&clk);
+		if (IS_ERR_VALUE(plat->clock)) {
+			dev_err(dev, "failed to get rate\n");
+			return plat->clock;
+		}
+		debug("%s: CLK %d\n", __func__, plat->clock);
+	}
 	plat->type = dev_get_driver_data(dev);
 	plat->skip_init = dev_read_bool(dev, "skip-init");
 
@@ -359,12 +388,12 @@ U_BOOT_DRIVER(serial_pl01x) = {
 	.name	= "serial_pl01x",
 	.id	= UCLASS_SERIAL,
 	.of_match = of_match_ptr(pl01x_serial_id),
-	.ofdata_to_platdata = of_match_ptr(pl01x_serial_ofdata_to_platdata),
-	.platdata_auto_alloc_size = sizeof(struct pl01x_serial_platdata),
+	.of_to_plat = of_match_ptr(pl01x_serial_of_to_plat),
+	.plat_auto	= sizeof(struct pl01x_serial_plat),
 	.probe = pl01x_serial_probe,
 	.ops	= &pl01x_serial_ops,
 	.flags = DM_FLAG_PRE_RELOC,
-	.priv_auto_alloc_size = sizeof(struct pl01x_priv),
+	.priv_auto	= sizeof(struct pl01x_priv),
 };
 
 #endif

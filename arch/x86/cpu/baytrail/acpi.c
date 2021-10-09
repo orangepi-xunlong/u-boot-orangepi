@@ -6,13 +6,14 @@
 #include <common.h>
 #include <cpu.h>
 #include <dm.h>
-#include <dm/uclass-internal.h>
-#include <asm/acpi_s3.h>
-#include <asm/acpi_table.h>
+#include <log.h>
+#include <acpi/acpi_s3.h>
+#include <acpi/acpi_table.h>
 #include <asm/io.h>
 #include <asm/tables.h>
 #include <asm/arch/global_nvs.h>
 #include <asm/arch/iomap.h>
+#include <dm/uclass-internal.h>
 
 void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
 		      void *dsdt)
@@ -138,7 +139,7 @@ void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
 	header->checksum = table_compute_checksum(fadt, header->length);
 }
 
-void acpi_create_gnvs(struct acpi_global_nvs *gnvs)
+int acpi_create_gnvs(struct acpi_global_nvs *gnvs)
 {
 	struct udevice *dev;
 	int ret;
@@ -158,16 +159,17 @@ void acpi_create_gnvs(struct acpi_global_nvs *gnvs)
 		gnvs->iuart_en = 1;
 	else
 		gnvs->iuart_en = 0;
+
+	return 0;
 }
 
-#ifdef CONFIG_HAVE_ACPI_RESUME
 /*
  * The following two routines are called at a very early stage, even before
  * FSP 2nd phase API fsp_init() is called. Registers off ACPI_BASE_ADDRESS
  * and PMC_BASE_ADDRESS are accessed, so we need make sure the base addresses
  * of these two blocks are programmed by either U-Boot or FSP.
  *
- * It has been verified that 1st phase API (see arch/x86/lib/fsp/fsp_car.S)
+ * It has been verified that 1st phase API (see arch/x86/lib/fsp1/fsp_car.S)
  * on Intel BayTrail SoC already initializes these two base addresses so
  * we are safe to access these registers here.
  */
@@ -203,4 +205,3 @@ void chipset_clear_sleep_state(void)
 	pm1_cnt = inl(ACPI_BASE_ADDRESS + PM1_CNT);
 	outl(pm1_cnt & ~(SLP_TYP), ACPI_BASE_ADDRESS + PM1_CNT);
 }
-#endif

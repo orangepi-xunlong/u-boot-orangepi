@@ -7,12 +7,13 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <thor.h>
 #include <dfu.h>
 #include <g_dnl.h>
 #include <usb.h>
 
-int do_thor_down(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_thor_down(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc < 4)
 		return CMD_RET_USAGE;
@@ -30,32 +31,42 @@ int do_thor_down(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		goto done;
 
 	int controller_index = simple_strtoul(usb_controller, NULL, 0);
-	ret = board_usb_init(controller_index, USB_INIT_DEVICE);
+	ret = usb_gadget_initialize(controller_index);
 	if (ret) {
-		pr_err("USB init failed: %d", ret);
+		pr_err("USB init failed: %d\n", ret);
 		ret = CMD_RET_FAILURE;
 		goto exit;
 	}
 
-	g_dnl_register("usb_dnl_thor");
+	ret = g_dnl_register("usb_dnl_thor");
+	if (ret) {
+		pr_err("g_dnl_register failed %d\n", ret);
+		ret = CMD_RET_FAILURE;
+		goto exit;
+	}
 
 	ret = thor_init();
 	if (ret) {
-		pr_err("THOR DOWNLOAD failed: %d", ret);
+		pr_err("THOR DOWNLOAD failed: %d\n", ret);
 		ret = CMD_RET_FAILURE;
 		goto exit;
 	}
 
-	ret = thor_handle();
-	if (ret) {
-		pr_err("THOR failed: %d", ret);
-		ret = CMD_RET_FAILURE;
-		goto exit;
-	}
-
+	do {
+		ret = thor_handle();
+		if (ret == THOR_DFU_REINIT_NEEDED) {
+			dfu_free_entities();
+			ret = dfu_init_env_entities(interface, devstring);
+		}
+		if (ret) {
+			pr_err("THOR failed: %d\n", ret);
+			ret = CMD_RET_FAILURE;
+			goto exit;
+		}
+	} while (ret == 0);
 exit:
 	g_dnl_unregister();
-	board_usb_cleanup(controller_index, USB_INIT_DEVICE);
+	usb_gadget_release(controller_index);
 done:
 	dfu_free_entities();
 
@@ -65,7 +76,7 @@ done:
 U_BOOT_CMD(thordown, CONFIG_SYS_MAXARGS, 1, do_thor_down,
 	   "TIZEN \"THOR\" downloader",
 	   "<USB_controller> <interface> <dev>\n"
-	   "  - device software upgrade via LTHOR TIZEN dowload\n"
+	   "  - device software upgrade via LTHOR TIZEN download\n"
 	   "    program via <USB_controller> on device <dev>,\n"
 	   "	attached to interface <interface>\n"
 );

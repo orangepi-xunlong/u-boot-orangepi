@@ -8,7 +8,11 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <env.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
@@ -203,9 +207,9 @@ u32 get_board_rev(void)
  * called prior to booting kernel or by 'fdt boardsetup' command
  *
  */
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
-	struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "physmap-flash.0", MTD_DEV_TYPE_NOR, },  /* NOR flash */
 		{ "mxc_nand", MTD_DEV_TYPE_NAND, }, /* NAND flash */
 	};

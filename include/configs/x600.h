@@ -27,7 +27,6 @@
 #define CONFIG_SYS_SPL_LEN			CONFIG_SPL_PAD_TO
 #define CONFIG_SYS_UBOOT_BASE			(CONFIG_SYS_FLASH_BASE + \
 						 CONFIG_SYS_SPL_LEN)
-#define CONFIG_SYS_UBOOT_START			CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_MONITOR_BASE			CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_MONITOR_LEN			0x60000
 
@@ -62,11 +61,8 @@
 #define CONFIG_NAND_ECC_BCH
 
 /* UBI/UBI config options */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 
 /* Ethernet config options */
-#define CONFIG_MII
 #define CONFIG_PHY_RESET_DELAY			10000		/* in usec */
 
 #define CONFIG_SPEAR_GPIO
@@ -78,7 +74,6 @@
 #define CONFIG_SYS_I2C_SLAVE			0x02
 #define CONFIG_I2C_CHIPADDRESS			0x50
 
-#define CONFIG_RTC_M41T62	1
 #define CONFIG_SYS_I2C_RTC_ADDR	0x68
 
 /* FPGA config options */
@@ -91,24 +86,12 @@
 /*
  * U-Boot Environment placing definitions.
  */
-#define CONFIG_ENV_SECT_SIZE			0x00010000
-#define CONFIG_ENV_ADDR				(CONFIG_SYS_MONITOR_BASE + \
-						 CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_ENV_SIZE				0x02000
-#define CONFIG_ENV_ADDR_REDUND			(CONFIG_ENV_ADDR + \
-						 CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND			(CONFIG_ENV_SIZE)
 
 /* Miscellaneous configurable options */
-#define CONFIG_ARCH_CPU_INIT
 #define CONFIG_BOOT_PARAMS_ADDR			0x00000100
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_MISC_INIT_R
-#define CONFIG_MX_CYCLIC		/* enable mdc/mwc commands      */
 
-#define CONFIG_SYS_MEMTEST_START		0x00800000
-#define CONFIG_SYS_MEMTEST_END			0x04000000
 #define CONFIG_SYS_MALLOC_LEN			(8 << 20)
 #define CONFIG_SYS_LOAD_ADDR			0x00800000
 
@@ -185,7 +168,6 @@
 	"\0"
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS			1
 #define PHYS_SDRAM_1				0x00000000
 #define PHYS_SDRAM_1_MAXSIZE			0x40000000
 
@@ -205,7 +187,6 @@
 /*
  * SPL related defines
  */
-#define CONFIG_SPL_TEXT_BASE		0xd2800b00
 #define CONFIG_SPL_MAX_SIZE		(CONFIG_SRAM_SIZE - 0xb00)
 #define	CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/spear"
 

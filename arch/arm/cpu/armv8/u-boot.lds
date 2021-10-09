@@ -25,6 +25,19 @@ SECTIONS
 	{
 		*(.__image_copy_start)
 		CPUDIR/start.o (.text*)
+	}
+
+	/* This needs to come before *(.text*) */
+	.efi_runtime : {
+                __efi_runtime_start = .;
+		*(.text.efi_runtime*)
+		*(.rodata.efi_runtime*)
+		*(.data.efi_runtime*)
+                __efi_runtime_stop = .;
+	}
+
+	.text_rest :
+	{
 		*(.text*)
 	}
 
@@ -45,6 +58,10 @@ SECTIONS
 		AT(ADDR(.__secure_start) + SIZEOF(.__secure_start))
 	{
 		*(._secure.text)
+		. = ALIGN(8);
+		__secure_svc_tbl_start = .;
+		KEEP(*(._secure_svc_tbl_entries))
+		__secure_svc_tbl_end = .;
 	}
 
 	.secure_data : AT(LOADADDR(.secure_text) + SIZEOF(.secure_text))
@@ -98,17 +115,10 @@ SECTIONS
 
 	. = ALIGN(8);
 
-	.efi_runtime : {
-                __efi_runtime_start = .;
-		*(efi_runtime_text)
-		*(efi_runtime_data)
-                __efi_runtime_stop = .;
-	}
-
 	.efi_runtime_rel : {
                 __efi_runtime_rel_start = .;
-		*(.relaefi_runtime_text)
-		*(.relaefi_runtime_data)
+		*(.rel*.efi_runtime)
+		*(.rel*.efi_runtime.*)
                 __efi_runtime_rel_stop = .;
 	}
 

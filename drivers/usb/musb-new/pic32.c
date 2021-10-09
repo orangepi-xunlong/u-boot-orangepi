@@ -10,6 +10,11 @@
  */
 
 #include <common.h>
+#include <dm.h>
+#include <asm/global_data.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/usb/musb.h>
 #include "linux-compat.h"
 #include "musb_core.h"
@@ -251,9 +256,11 @@ static int musb_usb_probe(struct udevice *dev)
 	ret = musb_lowlevel_init(mdata);
 #else
 	pic32_musb_plat.mode = MUSB_PERIPHERAL;
-	ret = musb_register(&pic32_musb_plat, &pdata->dev, mregs);
+	mdata->host = musb_register(&pic32_musb_plat, &pdata->dev, mregs);
+	if (!mdata->host)
+		return -EIO;
 #endif
-	if (ret == 0)
+	if ((ret == 0) && mdata->host)
 		printf("PIC32 MUSB OTG\n");
 
 	return ret;
@@ -282,6 +289,6 @@ U_BOOT_DRIVER(usb_musb) = {
 #ifdef CONFIG_USB_MUSB_HOST
 	.ops		= &musb_usb_ops,
 #endif
-	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
-	.priv_auto_alloc_size = sizeof(struct pic32_musb_data),
+	.plat_auto	= sizeof(struct usb_plat),
+	.priv_auto	= sizeof(struct pic32_musb_data),
 };

@@ -7,6 +7,11 @@
 
 #include <common.h>
 #include <debug_uart.h>
+#include <flash.h>
+#include <init.h>
+#include <net.h>
+#include <vsprintf.h>
+#include <asm/global_data.h>
 #include <linux/sizes.h>
 #include <asm/arch/at91sam9263.h>
 #include <asm/arch/at91sam9_smc.h>

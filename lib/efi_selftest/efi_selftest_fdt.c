@@ -13,13 +13,15 @@
 #include <efi_selftest.h>
 #include <linux/libfdt.h>
 
-static struct efi_boot_services *boottime;
+static const struct efi_system_table *systemtab;
+static const struct efi_boot_services *boottime;
 static const char *fdt;
 
-/* This should be sufficent for */
+/* This should be sufficient for */
 #define BUFFERSIZE 0x100000
 
-static efi_guid_t fdt_guid = EFI_FDT_GUID;
+static const efi_guid_t fdt_guid = EFI_FDT_GUID;
+static const efi_guid_t acpi_guid = EFI_ACPI_TABLE_GUID;
 
 /*
  * Convert FDT value to host endianness.
@@ -40,35 +42,48 @@ static uint32_t f2h(fdt32_t val)
 	return *(uint32_t *)buf;
 }
 
-/*
- * Return the value of a property of the FDT root node.
+/**
+ * get_property() - return value of a property of an FDT node
  *
- * @name	name of the property
+ * A property of the root node or one of its direct children can be
+ * retrieved.
+ *
+ * @property	name of the property
+ * @node	name of the node or NULL for root node
  * @return	value of the property
  */
-static char *get_property(const u16 *property)
+static char *get_property(const u16 *property, const u16 *node)
 {
 	struct fdt_header *header = (struct fdt_header *)fdt;
+	const fdt32_t *end;
 	const fdt32_t *pos;
 	const char *strings;
+	size_t level = 0;
+	const char *nodelabel = NULL;
 
-	if (!header)
+	if (!header) {
+		efi_st_error("Missing device tree\n");
 		return NULL;
+	}
 
 	if (f2h(header->magic) != FDT_MAGIC) {
-		printf("Wrong magic\n");
+		efi_st_error("Wrong device tree magic\n");
 		return NULL;
 	}
 
 	pos = (fdt32_t *)(fdt + f2h(header->off_dt_struct));
+	end = &pos[f2h(header->totalsize) >> 2];
 	strings = fdt + f2h(header->off_dt_strings);
 
-	for (;;) {
+	for (; pos < end;) {
 		switch (f2h(pos[0])) {
 		case FDT_BEGIN_NODE: {
-			char *c = (char *)&pos[1];
+			const char *c = (char *)&pos[1];
 			size_t i;
 
+			if (level == 1)
+				nodelabel = c;
+			++level;
 			for (i = 0; c[i]; ++i)
 				;
 			pos = &pos[2 + (i >> 2)];
@@ -80,7 +95,10 @@ static char *get_property(const u16 *property)
 			efi_status_t ret;
 
 			/* Check if this is the property to be returned */
-			if (!efi_st_strcmp_16_8(property, label)) {
+			if (!efi_st_strcmp_16_8(property, label) &&
+			    ((level == 1 && !node) ||
+			     (level == 2 && node &&
+			      !efi_st_strcmp_16_8(node, nodelabel)))) {
 				char *str;
 				efi_uintn_t len = f2h(prop->len);
 
@@ -94,7 +112,7 @@ static char *get_property(const u16 *property)
 					EFI_LOADER_DATA, len + 1,
 					(void **)&str);
 				if (ret != EFI_SUCCESS) {
-					efi_st_printf("AllocatePool failed\n");
+					efi_st_error("AllocatePool failed\n");
 					return NULL;
 				}
 				boottime->copy_mem(str, &pos[3], len);
@@ -107,12 +125,38 @@ static char *get_property(const u16 *property)
 			break;
 		}
 		case FDT_NOP:
-			pos = &pos[1];
+			++pos;
 			break;
+		case FDT_END_NODE:
+			--level;
+			++pos;
+			break;
+		case FDT_END:
+			return NULL;
 		default:
+			efi_st_error("Invalid device tree token\n");
 			return NULL;
 		}
 	}
+	efi_st_error("Missing FDT_END token\n");
+	return NULL;
+}
+
+/**
+ * efi_st_get_config_table() - get configuration table
+ *
+ * @guid:	GUID of the configuration table
+ * Return:	pointer to configuration table or NULL
+ */
+static void *efi_st_get_config_table(const efi_guid_t *guid)
+{
+	size_t i;
+
+	for (i = 0; i < systab.nr_tables; i++) {
+		if (!guidcmp(guid, &systemtab->tables[i].guid))
+			return systemtab->tables[i].table;
+	}
+	return NULL;
 }
 
 /*
@@ -125,21 +169,22 @@ static char *get_property(const u16 *property)
 static int setup(const efi_handle_t img_handle,
 		 const struct efi_system_table *systable)
 {
-	efi_uintn_t i;
+	void *acpi;
 
+	systemtab = systable;
 	boottime = systable->boottime;
 
-	/* Find configuration tables */
-	for (i = 0; i < systable->nr_tables; ++i) {
-		if (!efi_st_memcmp(&systable->tables[i].guid, &fdt_guid,
-				   sizeof(efi_guid_t)))
-			fdt = systable->tables[i].table;
-	}
+	acpi = efi_st_get_config_table(&acpi_guid);
+	fdt = efi_st_get_config_table(&fdt_guid);
+
 	if (!fdt) {
 		efi_st_error("Missing device tree\n");
 		return EFI_ST_FAILURE;
 	}
-
+	if (acpi) {
+		efi_st_error("Found ACPI table and device tree\n");
+		return EFI_ST_FAILURE;
+	}
 	return EFI_ST_SUCCESS;
 }
 
@@ -153,7 +198,7 @@ static int execute(void)
 	char *str;
 	efi_status_t ret;
 
-	str = get_property(L"compatible");
+	str = get_property(L"compatible", NULL);
 	if (str) {
 		efi_st_printf("compatible: %s\n", str);
 		ret = boottime->free_pool(str);
@@ -162,15 +207,30 @@ static int execute(void)
 			return EFI_ST_FAILURE;
 		}
 	} else {
-		efi_st_printf("Missing property 'compatible'\n");
+		efi_st_error("Missing property 'compatible'\n");
 		return EFI_ST_FAILURE;
 	}
-	str = get_property(L"serial-number");
+	str = get_property(L"serial-number", NULL);
 	if (str) {
 		efi_st_printf("serial-number: %s\n", str);
 		ret = boottime->free_pool(str);
 		if (ret != EFI_SUCCESS) {
 			efi_st_error("FreePool failed\n");
+			return EFI_ST_FAILURE;
+		}
+	}
+	str = get_property(L"boot-hartid", L"chosen");
+	if (IS_ENABLED(CONFIG_RISCV)) {
+		if (str) {
+			efi_st_printf("boot-hartid: %u\n",
+				      f2h(*(fdt32_t *)str));
+			ret = boottime->free_pool(str);
+			if (ret != EFI_SUCCESS) {
+				efi_st_error("FreePool failed\n");
+				return EFI_ST_FAILURE;
+			}
+		} else {
+			efi_st_error("boot-hartid not found\n");
 			return EFI_ST_FAILURE;
 		}
 	}
@@ -183,5 +243,4 @@ EFI_UNIT_TEST(fdt) = {
 	.phase = EFI_EXECUTE_BEFORE_BOOTTIME_EXIT,
 	.setup = setup,
 	.execute = execute,
-	.on_request = true,
 };

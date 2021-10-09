@@ -5,10 +5,16 @@
  * Author: Tim Harvey <tharvey@gateworks.com>
  */
 
+#include <common.h>
+#include <command.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <common.h>
 #include <i2c.h>
 #include <linux/ctype.h>
+
+#include <asm/arch/sys_proto.h>
 
 #include "ventana_eeprom.h"
 #include "gsc.h"
@@ -70,7 +76,7 @@ static void read_hwmon(const char *name, uint reg, uint size)
 		puts("fRD\n");
 	} else {
 		ui = buf[0] | (buf[1]<<8) | (buf[2]<<16);
-		if (reg == GSC_HWMON_TEMP && ui > 0x8000)
+		if (size == 2 && ui > 0x8000)
 			ui -= 0xffff;
 		if (ui == 0xffffff)
 			puts("invalid\n");
@@ -140,6 +146,10 @@ int gsc_info(int verbose)
 		read_hwmon("VDD_IO4",  GSC_HWMON_VDD_IO4, 3);
 		read_hwmon("VDD_GPS",  GSC_HWMON_VDD_IO3, 3);
 		break;
+	case '9': /* GW590x */
+		read_hwmon("AMONBMON",  GSC_HWMON_VDD_IO3, 3);
+		read_hwmon("BAT_VOLT",  GSC_HWMON_VDD_EXT, 3);
+		read_hwmon("BAT_TEMP",  GSC_HWMON_VDD_IO4, 2);
 	}
 	return 0;
 }
@@ -171,9 +181,95 @@ int gsc_boot_wd_disable(void)
 	return 1;
 }
 
+/* determine BOM revision from model */
+int get_bom_rev(const char *str)
+{
+	int  rev_bom = 0;
+	int i;
+
+	for (i = strlen(str) - 1; i > 0; i--) {
+		if (str[i] == '-')
+			break;
+		if (str[i] >= '1' && str[i] <= '9') {
+			rev_bom = str[i] - '0';
+			break;
+		}
+	}
+	return rev_bom;
+}
+
+/* determine PCB revision from model */
+char get_pcb_rev(const char *str)
+{
+	char rev_pcb = 'A';
+	int i;
+
+	for (i = strlen(str) - 1; i > 0; i--) {
+		if (str[i] == '-')
+			break;
+		if (str[i] >= 'A') {
+			rev_pcb = str[i];
+			break;
+		}
+	}
+	return rev_pcb;
+}
+
+/*
+ * get dt name based on model and detail level:
+ */
+const char *gsc_get_dtb_name(int level, char *buf, int sz)
+{
+	const char *model = (const char *)ventana_info.model;
+	const char *pre = is_mx6dq() ? "imx6q-" : "imx6dl-";
+	int modelno, rev_pcb, rev_bom;
+
+	/* a few board models are dt equivalents to other models */
+	if (strncasecmp(model, "gw5906", 6) == 0)
+		model = "gw552x-d";
+	else if (strncasecmp(model, "gw5908", 6) == 0)
+		model = "gw53xx-f";
+	else if (strncasecmp(model, "gw5905", 6) == 0)
+		model = "gw5904-a";
+
+	modelno = ((model[2] - '0') * 1000)
+		  + ((model[3] - '0') * 100)
+		  + ((model[4] - '0') * 10)
+		  + (model[5] - '0');
+	rev_pcb = tolower(get_pcb_rev(model));
+	rev_bom = get_bom_rev(model);
+
+	/* compare model/rev/bom in order of most specific to least */
+	snprintf(buf, sz, "%s%04d", pre, modelno);
+	switch (level) {
+	case 0: /* full model first (ie gw5400-a1) */
+		if (rev_bom) {
+			snprintf(buf, sz, "%sgw%04d-%c%d", pre, modelno, rev_pcb, rev_bom);
+			break;
+		}
+		fallthrough;
+	case 1: /* don't care about bom rev (ie gw5400-a) */
+		snprintf(buf, sz, "%sgw%04d-%c", pre, modelno, rev_pcb);
+		break;
+	case 2: /* don't care about the pcb rev (ie gw5400) */
+		snprintf(buf, sz, "%sgw%04d", pre, modelno);
+		break;
+	case 3: /* look for generic model (ie gw540x) */
+		snprintf(buf, sz, "%sgw%03dx", pre, modelno / 10);
+		break;
+	case 4: /* look for more generic model (ie gw54xx) */
+		snprintf(buf, sz, "%sgw%02dxx", pre, modelno / 100);
+		break;
+	default: /* give up */
+		return NULL;
+	}
+
+	return buf;
+}
+
 #if defined(CONFIG_CMD_GSC) && !defined(CONFIG_SPL_BUILD)
-static int do_gsc_sleep(cmd_tbl_t *cmdtp, int flag, int argc,
-			char * const argv[])
+static int do_gsc_sleep(struct cmd_tbl *cmdtp, int flag, int argc,
+			char *const argv[])
 {
 	unsigned char reg;
 	unsigned long secs = 0;
@@ -214,7 +310,8 @@ error:
 	return CMD_RET_FAILURE;
 }
 
-static int do_gsc_wd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_gsc_wd(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	unsigned char reg;
 
@@ -253,7 +350,7 @@ static int do_gsc_wd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return CMD_RET_SUCCESS;
 }
 
-static int do_gsc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_gsc(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc < 2)
 		return gsc_info(1);

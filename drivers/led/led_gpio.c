@@ -8,6 +8,8 @@
 #include <dm.h>
 #include <errno.h>
 #include <led.h>
+#include <log.h>
+#include <malloc.h>
 #include <asm/gpio.h>
 #include <dm/lists.h>
 
@@ -55,13 +57,19 @@ static enum led_state_t gpio_led_get_state(struct udevice *dev)
 
 static int led_gpio_probe(struct udevice *dev)
 {
-	struct led_uc_plat *uc_plat = dev_get_uclass_platdata(dev);
+	struct led_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 	struct led_gpio_priv *priv = dev_get_priv(dev);
+	int ret;
 
 	/* Ignore the top-level LED node */
 	if (!uc_plat->label)
 		return 0;
-	return gpio_request_by_name(dev, "gpios", 0, &priv->gpio, GPIOD_IS_OUT);
+
+	ret = gpio_request_by_name(dev, "gpios", 0, &priv->gpio, GPIOD_IS_OUT);
+	if (ret)
+		return ret;
+
+	return 0;
 }
 
 static int led_gpio_remove(struct udevice *dev)
@@ -91,17 +99,14 @@ static int led_gpio_bind(struct udevice *parent)
 		const char *label;
 
 		label = ofnode_read_string(node, "label");
-		if (!label) {
-			debug("%s: node %s has no label\n", __func__,
-			      ofnode_get_name(node));
-			return -EINVAL;
-		}
+		if (!label)
+			label = ofnode_get_name(node);
 		ret = device_bind_driver_to_node(parent, "gpio_led",
 						 ofnode_get_name(node),
 						 node, &dev);
 		if (ret)
 			return ret;
-		uc_plat = dev_get_uclass_platdata(dev);
+		uc_plat = dev_get_uclass_plat(dev);
 		uc_plat->label = label;
 	}
 
@@ -123,7 +128,7 @@ U_BOOT_DRIVER(led_gpio) = {
 	.id	= UCLASS_LED,
 	.of_match = led_gpio_ids,
 	.ops	= &gpio_led_ops,
-	.priv_auto_alloc_size = sizeof(struct led_gpio_priv),
+	.priv_auto	= sizeof(struct led_gpio_priv),
 	.bind	= led_gpio_bind,
 	.probe	= led_gpio_probe,
 	.remove	= led_gpio_remove,

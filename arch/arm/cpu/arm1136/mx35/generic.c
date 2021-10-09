@@ -7,15 +7,20 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <command.h>
 #include <div64.h>
+#include <init.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#ifdef CONFIG_FSL_ESDHC
-#include <fsl_esdhc.h>
+#ifdef CONFIG_FSL_ESDHC_IMX
+#include <fsl_esdhc_imx.h>
 #endif
 #include <netdev.h>
 #include <spl.h>
@@ -27,7 +32,7 @@
 
 #define CCM_GET_DIVIDER(x, m, o) (((x) & (m)) >> (o))
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
@@ -376,8 +381,8 @@ u32 imx_get_fecclk(void)
 }
 #endif
 
-int do_mx35_showclocks(cmd_tbl_t *cmdtp,
-	int flag, int argc, char * const argv[])
+int do_mx35_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	u32 cpufreq = get_mcu_main_clk();
 	printf("mx35 cpu clock: %dMHz\n", cpufreq / 1000000);
@@ -435,7 +440,7 @@ int print_cpuinfo(void)
  * Initializes on-chip ethernet controllers.
  * to override, implement board_eth_init()
  */
-int cpu_eth_init(bd_t *bis)
+int cpu_eth_init(struct bd_info *bis)
 {
 	int rc = -ENODEV;
 
@@ -446,12 +451,12 @@ int cpu_eth_init(bd_t *bis)
 	return rc;
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 /*
  * Initializes on-chip MMC controllers.
  * to override, implement board_mmc_init()
  */
-int cpu_mmc_init(bd_t *bis)
+int cpu_mmc_init(struct bd_info *bis)
 {
 	return fsl_esdhc_mmc_init(bis);
 }
@@ -459,7 +464,7 @@ int cpu_mmc_init(bd_t *bis)
 
 int get_clocks(void)
 {
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 #if CONFIG_SYS_FSL_ESDHC_ADDR == MMC_SDHC2_BASE_ADDR
 	gd->arch.sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 #elif CONFIG_SYS_FSL_ESDHC_ADDR == MMC_SDHC3_BASE_ADDR

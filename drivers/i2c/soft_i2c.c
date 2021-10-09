@@ -12,7 +12,7 @@
  * Neil Russell.
  *
  * NOTE: This driver should be converted to driver model before June 2017.
- * Please see doc/driver-model/i2c-howto.txt for instructions.
+ * Please see doc/driver-model/i2c-howto.rst for instructions.
  */
 
 #include <common.h>
@@ -25,6 +25,8 @@
 #endif
 #endif
 #include <i2c.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 
 #if defined(CONFIG_SOFT_I2C_GPIO_SCL)
 # include <asm/gpio.h>

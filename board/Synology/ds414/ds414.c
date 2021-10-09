@@ -5,15 +5,20 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <miiphy.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <linux/bitops.h>
 #include <linux/mbus.h>
 
 #include "../drivers/ddr/marvell/axp/ddr3_hw_training.h"
 #include "../arch/arm/mach-mvebu/serdes/axp/high_speed_env_spec.h"
 #include "../arch/arm/mach-mvebu/serdes/axp/board_env_spec.h"
+
+#include "cmd_syno.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -115,14 +120,14 @@ MV_DRAM_MODES *ddr3_get_static_ddr_mode(void)
 	return &ds414_ddr_modes[0];
 }
 
-MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	return &ds414_serdes_cfg[0];
 }
 
 u8 board_sat_r_get(u8 dev_num, u8 reg)
 {
-	return (0x1 << 1 | 1);
+	return 0xf;	/* All PEX ports support PCIe Gen2 */
 }
 
 int board_early_init_f(void)
@@ -173,6 +178,15 @@ int board_init(void)
 	pwr_mng_ctrl_reg &= ~(BIT(29) | BIT(30));		/* SATA1 link and core */
 	reg_write(POWER_MNG_CTRL_REG, pwr_mng_ctrl_reg);
 
+	return 0;
+}
+
+int misc_init_r(void)
+{
+	if (!env_get("ethaddr")) {
+		puts("Incomplete environment, populating from SPI flash\n");
+		do_syno_populate(0, NULL);
+	}
 	return 0;
 }
 

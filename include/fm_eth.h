@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
+ * Copyright 2019 NXP
  */
 
 #ifndef __FM_ETH_H__
@@ -41,8 +42,19 @@ enum fm_eth_type {
 	FM_ETH_10G_E,
 };
 
+/* Historically, on FMan v3 platforms, the first MDIO bus has been used for
+ * Clause 22 PHYs and the second MDIO bus for 10G Clause 45 PHYs (thus the
+ * TGEC name).
+ *
+ * On LS1046A-FRWY, the QSGMII PHY is connected to the second MDIO bus,
+ * and no TGEC ports are present on-board.
+ */
 #ifdef CONFIG_SYS_FMAN_V3
+#ifdef CONFIG_TARGET_LS1046AFRWY
+#define CONFIG_SYS_FM1_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfd000)
+#else
 #define CONFIG_SYS_FM1_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfc000)
+#endif
 #define CONFIG_SYS_FM1_TGEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM1_ADDR + 0xfd000)
 #if (CONFIG_SYS_NUM_FMAN == 2)
 #define CONFIG_SYS_FM2_DTSEC_MDIO_ADDR	(CONFIG_SYS_FSL_FM2_ADDR + 0xfc000)
@@ -187,10 +199,10 @@ struct memac_mdio_info {
 	char *name;
 };
 
-int fm_tgec_mdio_init(bd_t *bis, struct tgec_mdio_info *info);
-int fm_memac_mdio_init(bd_t *bis, struct memac_mdio_info *info);
+int fm_tgec_mdio_init(struct bd_info *bis, struct tgec_mdio_info *info);
+int fm_memac_mdio_init(struct bd_info *bis, struct memac_mdio_info *info);
 
-int fm_standard_init(bd_t *bis);
+int fm_standard_init(struct bd_info *bis);
 void fman_enet_init(void);
 void fdt_fixup_fman_ethernet(void *fdt);
 phy_interface_t fm_info_get_enet_if(enum fm_port port);

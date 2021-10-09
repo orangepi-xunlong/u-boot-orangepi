@@ -9,8 +9,12 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <reset-uclass.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 #define MAX_RESETS	32
 
@@ -52,7 +56,7 @@ static int bcm6345_reset_request(struct reset_ctl *rst)
 }
 
 struct reset_ops bcm6345_reset_reset_ops = {
-	.free = bcm6345_reset_free,
+	.rfree = bcm6345_reset_free,
 	.request = bcm6345_reset_request,
 	.rst_assert = bcm6345_reset_assert,
 	.rst_deassert = bcm6345_reset_deassert,
@@ -66,14 +70,10 @@ static const struct udevice_id bcm6345_reset_ids[] = {
 static int bcm6345_reset_probe(struct udevice *dev)
 {
 	struct bcm6345_reset_priv *priv = dev_get_priv(dev);
-	fdt_addr_t addr;
-	fdt_size_t size;
 
-	addr = devfdt_get_addr_size_index(dev, 0, &size);
-	if (addr == FDT_ADDR_T_NONE)
+	priv->regs = dev_remap_addr(dev);
+	if (!priv->regs)
 		return -EINVAL;
-
-	priv->regs = ioremap(addr, size);
 
 	return 0;
 }
@@ -84,5 +84,5 @@ U_BOOT_DRIVER(bcm6345_reset) = {
 	.of_match = bcm6345_reset_ids,
 	.ops = &bcm6345_reset_reset_ops,
 	.probe = bcm6345_reset_probe,
-	.priv_auto_alloc_size = sizeof(struct bcm6345_reset_priv),
+	.priv_auto	= sizeof(struct bcm6345_reset_priv),
 };

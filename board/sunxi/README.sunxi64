@@ -12,37 +12,79 @@ file describes how to make full use of the 64-bit capabilities.
 Quick Start / Overview
 ======================
 - Build the ARM Trusted Firmware binary (see "ARM Trusted Firmware (ATF)" below)
+  $ cd /src/arm-trusted-firmware
+  $ make PLAT=sun50i_a64 DEBUG=1 bl31
+- Build the SCP firmware binary (see "SCP firmware (Crust)" below)
+  $ cd /src/crust
+  $ make pine64_plus_defconfig && make -j5 scp
 - Build U-Boot (see "SPL/U-Boot" below)
+  $ export BL31=/path/to/bl31.bin
+  $ export SCP=/src/crust/build/scp/scp.bin
+  $ make pine64_plus_defconfig && make -j5
 - Transfer to an uSD card (see "microSD card" below)
+  $ dd if=u-boot-sunxi-with-spl.bin of=/dev/sdx bs=8k seek=1
 - Boot and enjoy!
 
 Building the firmware
 =====================
 
-The Allwinner A64/H5 firmware consists of three parts: U-Boot's SPL, an
-ARM Trusted Firmware (ATF) build and the U-Boot proper.
-The SPL will load both ATF and U-Boot proper along with the right device
-tree blob (.dtb) and will pass execution to ATF (in EL3), which in turn will
-drop into the U-Boot proper (in EL2).
-As the ATF binary will become part of the U-Boot image file, you will need
-to build it first.
+The Allwinner A64/H5/H6 firmware consists of several parts: U-Boot's SPL,
+ARM Trusted Firmware (ATF), optional System Control Processor (SCP) firmware
+(e.g. Crust), and the U-Boot proper.
+
+The SPL will load all of the other firmware binaries into RAM, along with the
+right device tree blob (.dtb), and will pass execution to ATF (in EL3). If SCP
+firmware was loaded, ATF will power on the SCP and wait for it to boot.
+ATF will then drop into U-Boot proper (in EL2).
+
+As the ATF binary and SCP firmware will become part of the U-Boot image file,
+you will need to build them first.
 
  ARM Trusted Firmware (ATF)
 ----------------------------
-Checkout the "allwinner" branch from the github repository [1] and build it:
+Checkout the latest master branch from the official ATF repository [1] and
+build it:
 $ export CROSS_COMPILE=aarch64-linux-gnu-
-$ make PLAT=sun50iw1p1 DEBUG=1 bl31
-The resulting binary is build/sun50iw1p1/debug/bl31.bin. Either put the
+$ make PLAT=sun50i_a64 DEBUG=1 bl31
+The resulting binary is build/sun50i_a64/debug/bl31.bin. Either put the
 location of this file into the BL31 environment variable or copy this to
 the root of your U-Boot build directory (or create a symbolic link).
-$ export BL31=/src/arm-trusted-firmware/build/sun50iw1p1/debug/bl31.bin
+$ export BL31=/src/arm-trusted-firmware/build/sun50i_a64/debug/bl31.bin
   (adjust the actual path accordingly)
+The platform target "sun50i_a64" covers all boards with either an Allwinner
+A64 or H5 SoC (since they are very similar). For boards with an Allwinner H6
+SoC use "sun50i_h6".
 
 If you run into size issues with the resulting U-Boot image file, it might
 help to use a release build, by using "DEBUG=0" when building bl31.bin.
 As sometimes the ATF build process is a bit picky about the toolchain used,
 or if you can't be bothered with building ATF, there are known working
 binaries in the firmware repository[3], purely for convenience reasons.
+
+ SCP firmware (Crust)
+----------------------
+SCP firmware is responsible for implementing system suspend/resume, and (on
+boards without a PMIC) soft poweroff/on. ATF contains fallback code for CPU
+power control, so SCP firmware is optional if you don't need either of these
+features. It runs on the AR100, with is an or1k CPU, not ARM, so it needs a
+different cross toolchain.
+
+There is one SCP firmware implementation currently available, Crust:
+$ git clone https://github.com/crust-firmware/crust
+$ cd crust
+$ export CROSS_COMPILE=or1k-linux-musl-
+$ make pine64_plus_defconfig
+$ make scp
+
+The same configuration generally works on any board with the same SoC (A64, H5,
+or H6), so if there is no config for your board, use one for a similar board.
+
+Like for ATF, U-Boot finds the SCP firmware binary via an environment variable:
+$ export SCP=/src/crust/build/scp/scp.bin
+
+If you do not want to use SCP firmware, you can silence the warning from binman
+by pointing it to an empty file:
+$ export SCP=/dev/null
 
  SPL/U-Boot
 ------------
@@ -59,7 +101,8 @@ $ make pine64_plus_defconfig
 $ make
 
 This will build the SPL in spl/sunxi-spl.bin and a FIT image called u-boot.itb,
-which contains the rest of the firmware.
+which contains the rest of the firmware. u-boot-sunxi-with-spl.bin joins those
+two components in one convenient image file.
 
 
 Boot process
@@ -91,6 +134,9 @@ by using the USB-OTG interface and a host port on another computer.
 As the FEL mode is controlled by the boot ROM, it expects to be running in
 AArch32. For now the AArch64 SPL cannot properly return into FEL mode, so the
 feature is disabled in the configuration at the moment.
+The repository in [3] contains FEL capable SPL binaries, built using an
+off-tree branch to generate 32-bit ARM code (along with instructions
+how to re-create them).
 
 microSD card
 ------------
@@ -130,7 +176,7 @@ U-Boot prompt on the serial console.
 
 (Legacy) boot0 method
 ---------------------
-boot0 is Allwiner's secondary program loader and it can be used as some kind
+boot0 is Allwinner's secondary program loader and it can be used as some kind
 of SPL replacement to get U-Boot up and running from an microSD card.
 For some time using boot0 was the only option to get the Pine64 booted.
 With working DRAM init code in U-Boot's SPL this is no longer necessary,
@@ -165,6 +211,6 @@ Then write this image to a microSD card, replacing /dev/sdx with the right
 device file (see above):
 $ dd if=firmware.img of=/dev/sdx bs=8k seek=1
 
-[1] https://github.com/apritzel/arm-trusted-firmware.git
+[1] https://github.com/ARM-software/arm-trusted-firmware.git
 [2] git://github.com/linux-sunxi/sunxi-tools.git
 [3] https://github.com/apritzel/pine64/

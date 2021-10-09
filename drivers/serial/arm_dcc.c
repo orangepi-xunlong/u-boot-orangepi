@@ -19,7 +19,7 @@
 #include <dm.h>
 #include <serial.h>
 
-#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7)
+#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7A) || defined(CONFIG_CPU_V7R)
 /*
  * ARMV6 & ARMV7
  */
@@ -155,7 +155,6 @@ U_BOOT_DRIVER(serial_dcc) = {
 	.id	= UCLASS_SERIAL,
 	.of_match = arm_dcc_ids,
 	.ops	= &arm_dcc_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
 
 #ifdef CONFIG_DEBUG_UART_ARM_DCC

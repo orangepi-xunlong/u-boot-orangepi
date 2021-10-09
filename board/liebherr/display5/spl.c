@@ -5,7 +5,15 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <image.h>
+#include <init.h>
+#include <log.h>
+#include <serial.h>
 #include <spl.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -16,9 +24,11 @@
 #include <asm/arch/imx-regs.h>
 #include "asm/arch/iomux.h"
 #include <asm/mach-imx/iomux-v3.h>
-#include <environment.h>
-#include <fsl_esdhc.h>
+#include <asm/gpio.h>
+#include <fsl_esdhc_imx.h>
 #include <netdev.h>
+#include <bootcount.h>
+#include <watchdog.h>
 #include "common.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -101,6 +111,80 @@ static const struct mx6_ddr3_cfg mt41k128m16jt_125 = {
 	.trasmin = 3500,
 };
 
+iomux_v3_cfg_t const uart_console_pads[] = {
+	/* UART5 */
+	MX6_PAD_CSI0_DAT14__UART5_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_CSI0_DAT15__UART5_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_CSI0_DAT18__UART5_RTS_B | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_CSI0_DAT19__UART5_CTS_B | MUX_PAD_CTRL(UART_PAD_CTRL),
+};
+
+void displ5_set_iomux_uart_spl(void)
+{
+	SETUP_IOMUX_PADS(uart_console_pads);
+}
+
+iomux_v3_cfg_t const misc_pads_spl[] = {
+	/* Emergency recovery pin */
+	MX6_PAD_EIM_D29__GPIO3_IO29 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+void displ5_set_iomux_misc_spl(void)
+{
+	SETUP_IOMUX_PADS(misc_pads_spl);
+}
+
+#ifdef CONFIG_MXC_SPI
+iomux_v3_cfg_t const ecspi2_pads[] = {
+	/* SPI2, NOR Flash nWP, CS0 */
+	MX6_PAD_CSI0_DAT10__ECSPI2_MISO	| MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_CSI0_DAT9__ECSPI2_MOSI	| MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_CSI0_DAT8__ECSPI2_SCLK	| MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_CSI0_DAT11__GPIO5_IO29	| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD3_DAT5__GPIO7_IO00	| MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+int board_spi_cs_gpio(unsigned int bus, unsigned int cs)
+{
+	if (bus != 1 || cs != 0)
+		return -EINVAL;
+
+	return IMX_GPIO_NR(5, 29);
+}
+
+void displ5_set_iomux_ecspi_spl(void)
+{
+	SETUP_IOMUX_PADS(ecspi2_pads);
+}
+
+#else
+void displ5_set_iomux_ecspi_spl(void) {}
+#endif
+
+#ifdef CONFIG_FSL_ESDHC_IMX
+iomux_v3_cfg_t const usdhc4_pads[] = {
+	MX6_PAD_SD4_CLK__SD4_CLK	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_CMD__SD4_CMD	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT0__SD4_DATA0	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT1__SD4_DATA1	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT2__SD4_DATA2	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT3__SD4_DATA3	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT4__SD4_DATA4	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT5__SD4_DATA5	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT6__SD4_DATA6	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT7__SD4_DATA7	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_NANDF_ALE__SD4_RESET	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
+};
+
+void displ5_set_iomux_usdhc_spl(void)
+{
+	SETUP_IOMUX_PADS(usdhc4_pads);
+}
+
+#else
+void displ5_set_iomux_usdhc_spl(void) {}
+#endif
+
 static void ccgr_init(void)
 {
 	struct mxc_ccm_reg *ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
@@ -113,6 +197,49 @@ static void ccgr_init(void)
 	writel(0x0F0000C3, &ccm->CCGR5);
 	writel(0x000003FF, &ccm->CCGR6);
 }
+
+#ifdef CONFIG_MX6_DDRCAL
+static void spl_dram_print_cal(struct mx6_ddr_sysinfo const *sysinfo)
+{
+	struct mx6_mmdc_calibration calibration = {0};
+
+	mmdc_read_calibration(sysinfo, &calibration);
+
+	debug(".p0_mpdgctrl0\t= 0x%08X\n", calibration.p0_mpdgctrl0);
+	debug(".p0_mpdgctrl1\t= 0x%08X\n", calibration.p0_mpdgctrl1);
+	debug(".p0_mprddlctl\t= 0x%08X\n", calibration.p0_mprddlctl);
+	debug(".p0_mpwrdlctl\t= 0x%08X\n", calibration.p0_mpwrdlctl);
+	debug(".p0_mpwldectrl0\t= 0x%08X\n", calibration.p0_mpwldectrl0);
+	debug(".p0_mpwldectrl1\t= 0x%08X\n", calibration.p0_mpwldectrl1);
+	debug(".p1_mpdgctrl0\t= 0x%08X\n", calibration.p1_mpdgctrl0);
+	debug(".p1_mpdgctrl1\t= 0x%08X\n", calibration.p1_mpdgctrl1);
+	debug(".p1_mprddlctl\t= 0x%08X\n", calibration.p1_mprddlctl);
+	debug(".p1_mpwrdlctl\t= 0x%08X\n", calibration.p1_mpwrdlctl);
+	debug(".p1_mpwldectrl0\t= 0x%08X\n", calibration.p1_mpwldectrl0);
+	debug(".p1_mpwldectrl1\t= 0x%08X\n", calibration.p1_mpwldectrl1);
+}
+
+static void spl_dram_perform_cal(struct mx6_ddr_sysinfo const *sysinfo)
+{
+	int ret;
+
+	/* Perform DDR DRAM calibration */
+	udelay(100);
+	ret = mmdc_do_write_level_calibration(sysinfo);
+	if (ret) {
+		printf("DDR: Write level calibration error [%d]\n", ret);
+		return;
+	}
+
+	ret = mmdc_do_dqs_calibration(sysinfo);
+	if (ret) {
+		printf("DDR: DQS calibration error [%d]\n", ret);
+		return;
+	}
+
+	spl_dram_print_cal(sysinfo);
+}
+#endif /* CONFIG_MX6_DDRCAL */
 
 static void spl_dram_init(void)
 {
@@ -140,6 +267,10 @@ static void spl_dram_init(void)
 
 	mx6dq_dram_iocfg(64, &mx6_ddr_ioregs, &mx6_grp_ioregs);
 	mx6_dram_cfg(&sysinfo, &mx6_4x256mx16_mmdc_calib, &mt41k128m16jt_125);
+
+#ifdef CONFIG_MX6_DDRCAL
+	spl_dram_perform_cal(&sysinfo);
+#endif
 }
 
 #ifdef CONFIG_SPL_SPI_SUPPORT
@@ -158,7 +289,7 @@ static struct fsl_esdhc_cfg usdhc_cfg = {
 	.max_bus_width = 8,
 };
 
-int board_mmc_init(bd_t *bd)
+int board_mmc_init(struct bd_info *bd)
 {
 	displ5_set_iomux_usdhc_spl();
 
@@ -193,8 +324,26 @@ void board_init_f(ulong dummy)
 	/* Clear the BSS. */
 	memset(__bss_start, 0, __bss_end - __bss_start);
 
+	displ5_set_iomux_misc_spl();
+
+	/* Initialize and reset WDT in SPL */
+	hw_watchdog_init();
+	WATCHDOG_RESET();
+
 	/* load/boot image from boot device */
 	board_init_r(NULL, 0);
+}
+
+#define EM_PAD IMX_GPIO_NR(3, 29)
+int board_check_emergency_pad(void)
+{
+	int ret;
+
+	ret = gpio_direction_input(EM_PAD);
+	if (ret)
+		return ret;
+
+	return !gpio_get_value(EM_PAD);
 }
 
 void board_boot_order(u32 *spl_boot_list)
@@ -205,22 +354,29 @@ void board_boot_order(u32 *spl_boot_list)
 	spl_boot_list[2] = BOOT_DEVICE_UART;
 	spl_boot_list[3] = BOOT_DEVICE_NONE;
 
+	/*
+	 * In case of emergency PAD pressed, we always boot
+	 * to proper u-boot and perform recovery tasks there.
+	 */
+	if (board_check_emergency_pad())
+		return;
+
 #ifdef CONFIG_SPL_ENV_SUPPORT
 	/* 'fastboot' */
 	const char *s;
 
-	env_init();
-	env_load();
+	if (env_init() || env_load())
+		return;
 
 	s = env_get("BOOT_FROM");
-	if (s && strcmp(s, "ACTIVE") == 0) {
+	if (s && !bootcount_error() && strcmp(s, "ACTIVE") == 0) {
 		spl_boot_list[0] = BOOT_DEVICE_MMC1;
 		spl_boot_list[1] = spl_boot_device();
 	}
 #endif
 }
 
-void reset_cpu(ulong addr) {}
+void reset_cpu(void) {}
 
 #ifdef CONFIG_SPL_LOAD_FIT
 int board_fit_config_name_match(const char *name)

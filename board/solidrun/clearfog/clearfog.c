@@ -4,21 +4,24 @@
  */
 
 #include <common.h>
+#include <env.h>
 #include <i2c.h>
+#include <init.h>
 #include <miiphy.h>
+#include <net.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+#include "../common/tlv_data.h"
 
-#include "../drivers/ddr/marvell/a38x/ddr3_a38x_topology.h"
+#include "../drivers/ddr/marvell/a38x/ddr3_init.h"
 #include <../serdes/a38x/high_speed_env_spec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#define ETH_PHY_CTRL_REG		0
-#define ETH_PHY_CTRL_POWER_DOWN_BIT	11
-#define ETH_PHY_CTRL_POWER_DOWN_MASK	(1 << ETH_PHY_CTRL_POWER_DOWN_BIT)
 
 /*
  * Those values and defines are taken from the Marvell U-Boot version
@@ -32,22 +35,20 @@ DECLARE_GLOBAL_DATA_PTR;
 #define BOARD_GPP_POL_LOW	0x0
 #define BOARD_GPP_POL_MID	0x0
 
-/* IO expander on Marvell GP board includes e.g. fan enabling */
-struct marvell_io_exp {
-	u8 chip;
-	u8 addr;
-	u8 val;
-};
+static struct tlv_data cf_tlv_data;
 
-static struct marvell_io_exp io_exp[] = {
-	{ 0x20, 2, 0x40 },	/* Deassert both mini pcie reset signals */
-	{ 0x20, 6, 0xf9 },
-	{ 0x20, 2, 0x46 },	/* rst signals and ena USB3 current limiter */
-	{ 0x20, 6, 0xb9 },
-	{ 0x20, 3, 0x00 },	/* Set SFP_TX_DIS to zero */
-	{ 0x20, 7, 0xbf },	/* Drive SFP_TX_DIS to zero */
-};
+static void cf_read_tlv_data(void)
+{
+	static bool read_once;
 
+	if (read_once)
+		return;
+	read_once = true;
+
+	read_tlv_data(&cf_tlv_data);
+}
+
+/* The starting board_serdes_map reflects original Clearfog Pro usage */
 static struct serdes_map board_serdes_map[] = {
 	{SATA0, SERDES_SPEED_3_GBPS, SERDES_DEFAULT_MODE, 0, 0},
 	{SGMII1, SERDES_SPEED_1_25_GBPS, SERDES_DEFAULT_MODE, 0, 0},
@@ -57,8 +58,62 @@ static struct serdes_map board_serdes_map[] = {
 	{SGMII2, SERDES_SPEED_1_25_GBPS, SERDES_DEFAULT_MODE, 0, 0},
 };
 
+void config_cfbase_serdes_map(void)
+{
+	board_serdes_map[4].serdes_type = USB3_HOST0;
+	board_serdes_map[4].serdes_speed = SERDES_SPEED_5_GBPS;
+	board_serdes_map[4].serdes_mode = SERDES_DEFAULT_MODE;
+}
+
 int hws_board_topology_load(struct serdes_map **serdes_map_array, u8 *count)
 {
+	cf_read_tlv_data();
+
+	/* Apply build configuration options before runtime configuration */
+	if (IS_ENABLED(CONFIG_CLEARFOG_SFP_25GB))
+		board_serdes_map[5].serdes_speed = SERDES_SPEED_3_125_GBPS;
+
+	if (IS_ENABLED(CONFIG_CLEARFOG_CON2_SATA)) {
+		board_serdes_map[4].serdes_type = SATA2;
+		board_serdes_map[4].serdes_speed = SERDES_SPEED_3_GBPS;
+		board_serdes_map[4].serdes_mode = SERDES_DEFAULT_MODE;
+		board_serdes_map[4].swap_rx = 1;
+	}
+
+	if (IS_ENABLED(CONFIG_CLEARFOG_CON3_SATA)) {
+		board_serdes_map[2].serdes_type = SATA1;
+		board_serdes_map[2].serdes_speed = SERDES_SPEED_3_GBPS;
+		board_serdes_map[2].serdes_mode = SERDES_DEFAULT_MODE;
+		board_serdes_map[2].swap_rx = 1;
+	}
+
+	/* Apply runtime detection changes */
+	if (sr_product_is(&cf_tlv_data, "Clearfog GTR")) {
+		board_serdes_map[0].serdes_type = PEX0;
+		board_serdes_map[0].serdes_speed = SERDES_SPEED_5_GBPS;
+		board_serdes_map[0].serdes_mode = PEX_ROOT_COMPLEX_X1;
+	} else if (sr_product_is(&cf_tlv_data, "Clearfog Pro")) {
+		/* handle recognized product as noop, no adjustment required */
+	} else if (sr_product_is(&cf_tlv_data, "Clearfog Base")) {
+		config_cfbase_serdes_map();
+	} else {
+		/*
+		 * Fallback to static default. EEPROM TLV support is not
+		 * enabled, runtime detection failed, hardware support is not
+		 * present, EEPROM is corrupt, or an unrecognized product name
+		 * is present.
+		 */
+		if (IS_ENABLED(CONFIG_SPL_CMD_TLV_EEPROM))
+			puts("EEPROM TLV detection failed: ");
+		puts("Using static config for ");
+		if (IS_ENABLED(CONFIG_TARGET_CLEARFOG_BASE)) {
+			puts("Clearfog Base.\n");
+			config_cfbase_serdes_map();
+		} else {
+			puts("Clearfog Pro.\n");
+		}
+	}
+
 	*serdes_map_array = board_serdes_map;
 	*count = ARRAY_SIZE(board_serdes_map);
 	return 0;
@@ -69,7 +124,8 @@ int hws_board_topology_load(struct serdes_map **serdes_map_array, u8 *count)
  * be used by the DDR3 init code in the SPL U-Boot version to configure
  * the DDR3 controller.
  */
-static struct hws_topology_map board_topology_map = {
+static struct mv_ddr_topology_map board_topology_map = {
+	DEBUG_LEVEL_ERROR,
 	0x1, /* active interfaces */
 	/* cs_mask, mirror, dqs_swap, ck_swap X PUPs */
 	{ { { {0x1, 0, 0, 0},
@@ -78,18 +134,38 @@ static struct hws_topology_map board_topology_map = {
 	      {0x1, 0, 0, 0},
 	      {0x1, 0, 0, 0} },
 	    SPEED_BIN_DDR_1600K,	/* speed_bin */
-	    BUS_WIDTH_16,		/* memory_width */
-	    MEM_4G,			/* mem_size */
-	    DDR_FREQ_800,		/* frequency */
+	    MV_DDR_DEV_WIDTH_16BIT,	/* memory_width */
+	    MV_DDR_DIE_CAP_4GBIT,	/* mem_size */
+	    MV_DDR_FREQ_800,		/* frequency */
 	    0, 0,			/* cas_wl cas_l */
-	    HWS_TEMP_LOW,		/* temperature */
-	    HWS_TIM_DEFAULT} },		/* timing */
-	5,				/* Num Of Bus Per Interface*/
-	BUS_MASK_32BIT			/* Busses mask */
+	    MV_DDR_TEMP_LOW,		/* temperature */
+	    MV_DDR_TIM_DEFAULT} },	/* timing */
+	BUS_MASK_32BIT,			/* Busses mask */
+	MV_DDR_CFG_DEFAULT,		/* ddr configuration data source */
+	NOT_COMBINED,			/* ddr twin-die combined */
+	{ {0} },			/* raw spd data */
+	{0},				/* timing parameters */
+	{ {0} },			/* electrical configuration */
+	{0,},				/* electrical parameters */
+	0x3,				/* clock enable mask */
 };
 
-struct hws_topology_map *ddr3_get_topology_map(void)
+struct mv_ddr_topology_map *mv_ddr_topology_map_get(void)
 {
+	struct if_params *ifp = &board_topology_map.interface_params[0];
+
+	cf_read_tlv_data();
+
+	switch (cf_tlv_data.ram_size) {
+	case 4:
+	default:
+		ifp->memory_size = MV_DDR_DIE_CAP_4GBIT;
+		break;
+	case 8:
+		ifp->memory_size = MV_DDR_DIE_CAP_8GBIT;
+		break;
+	}
+
 	/* Return the board topology as defined in the board code */
 	return &board_topology_map;
 }
@@ -123,8 +199,6 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
-	int i;
-
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
@@ -139,22 +213,50 @@ int board_init(void)
 	setbits_le32(MVEBU_GPIO0_BASE + 0x0, BIT(19));
 	mdelay(10);
 
-	/* Init I2C IO expanders */
-	for (i = 0; i < ARRAY_SIZE(io_exp); i++)
-		i2c_write(io_exp[i].chip, io_exp[i].addr, 1, &io_exp[i].val, 1);
-
 	return 0;
 }
 
 int checkboard(void)
 {
-	puts("Board: SolidRun ClearFog\n");
+	char *board = "Clearfog Pro";
+	if (IS_ENABLED(CONFIG_TARGET_CLEARFOG_BASE))
+		board = "Clearfog Base";
+
+	cf_read_tlv_data();
+	if (strlen(cf_tlv_data.tlv_product_name[0]) > 0)
+		board = cf_tlv_data.tlv_product_name[0];
+
+	printf("Board: SolidRun %s", board);
+	if (strlen(cf_tlv_data.tlv_product_name[1]) > 0)
+		printf(", %s", cf_tlv_data.tlv_product_name[1]);
+	puts("\n");
 
 	return 0;
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	cpu_eth_init(bis); /* Built in controller(s) come first */
 	return pci_eth_init(bis);
+}
+
+int board_late_init(void)
+{
+	if (env_get("fdtfile"))
+		return 0;
+
+	cf_read_tlv_data();
+
+	if (sr_product_is(&cf_tlv_data, "Clearfog Base"))
+		env_set("fdtfile", "armada-388-clearfog-base.dtb");
+	else if (sr_product_is(&cf_tlv_data, "Clearfog GTR S4"))
+		env_set("fdtfile", "armada-385-clearfog-gtr-s4.dtb");
+	else if (sr_product_is(&cf_tlv_data, "Clearfog GTR L8"))
+		env_set("fdtfile", "armada-385-clearfog-gtr-l8.dtb");
+	else if (IS_ENABLED(CONFIG_TARGET_CLEARFOG_BASE))
+		env_set("fdtfile", "armada-388-clearfog-base.dtb");
+	else
+		env_set("fdtfile", "armada-388-clearfog-pro.dtb");
+
+	return 0;
 }

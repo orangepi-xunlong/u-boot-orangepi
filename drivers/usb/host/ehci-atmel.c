@@ -8,13 +8,15 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <usb.h>
 #include <asm/io.h>
 #include <asm/arch/clk.h>
 
 #include "ehci.h"
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 
 int ehci_hcd_init(int index, enum usb_init_type init,
 		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
@@ -93,7 +95,7 @@ static int ehci_atmel_probe(struct udevice *dev)
 	/*
 	 * Get the base address for EHCI controller from the device node
 	 */
-	hcd_base = devfdt_get_addr(dev);
+	hcd_base = dev_read_addr(dev);
 	if (hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the EHCI register base address\n");
 		return -ENXIO;
@@ -122,8 +124,8 @@ U_BOOT_DRIVER(ehci_atmel) = {
 	.probe		= ehci_atmel_probe,
 	.remove		= ehci_deregister,
 	.ops		= &ehci_usb_ops,
-	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
-	.priv_auto_alloc_size = sizeof(struct ehci_atmel_priv),
+	.plat_auto	= sizeof(struct usb_plat),
+	.priv_auto	= sizeof(struct ehci_atmel_priv),
 	.flags		= DM_FLAG_ALLOC_PRIV_DMA,
 };
 

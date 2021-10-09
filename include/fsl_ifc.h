@@ -10,6 +10,7 @@
 #ifdef CONFIG_FSL_IFC
 #include <config.h>
 #include <common.h>
+#include <part.h>
 #ifdef CONFIG_ARM
 #include <asm/arch/soc.h>
 #endif
@@ -51,6 +52,8 @@
 /* Machine Select */
 #define CSPR_MSEL			0x00000006
 #define CSPR_MSEL_SHIFT			1
+/* External Transceiver Enable */
+#define CSPR_TE			0x00000010
 /* NOR */
 #define CSPR_MSEL_NOR			0x00000000
 /* NAND */
@@ -70,7 +73,7 @@
 #define IFC_AMASK_MASK			0xFFFF0000
 #define IFC_AMASK_SHIFT			16
 #define IFC_AMASK(n)			(IFC_AMASK_MASK << \
-					(__ilog2(n) - IFC_AMASK_SHIFT))
+					(LOG2(n) - IFC_AMASK_SHIFT))
 
 /*
  * Chip Select Option Register IFC_NAND Machine
@@ -111,7 +114,7 @@
 /* Pages Per Block */
 #define CSOR_NAND_PB_MASK		0x00000700
 #define CSOR_NAND_PB_SHIFT		8
-#define CSOR_NAND_PB(n)		((__ilog2(n) - 5) << CSOR_NAND_PB_SHIFT)
+#define CSOR_NAND_PB(n)		((LOG2(n) - 5) << CSOR_NAND_PB_SHIFT)
 /* Time for Read Enable High to Output High Impedance */
 #define CSOR_NAND_TRHZ_MASK		0x0000001C
 #define CSOR_NAND_TRHZ_SHIFT		2
@@ -137,7 +140,7 @@
 #define CSOR_NOR_ADM_SHIFT_SHIFT	13
 #define CSOR_NOR_ADM_SHIFT(n)	((n) << CSOR_NOR_ADM_SHIFT_SHIFT)
 /* Type of the NOR device hooked */
-#define CSOR_NOR_NOR_MODE_AYSNC_NOR	0x00000000
+#define CSOR_NOR_NOR_MODE_ASYNC_NOR	0x00000000
 #define CSOR_NOR_NOR_MODE_AVD_NOR	0x00000020
 /* Time for Read Enable High to Output High Impedance */
 #define CSOR_NOR_TRHZ_MASK		0x0000001C
@@ -164,7 +167,7 @@
 /* GPCM Timeout Count */
 #define CSOR_GPCM_GPTO_MASK		0x0F000000
 #define CSOR_GPCM_GPTO_SHIFT		24
-#define CSOR_GPCM_GPTO(n)	((__ilog2(n) - 8) << CSOR_GPCM_GPTO_SHIFT)
+#define CSOR_GPCM_GPTO(n)	((LOG2(n) - 8) << CSOR_GPCM_GPTO_SHIFT)
 /* GPCM External Access Termination mode for read access */
 #define CSOR_GPCM_RGETA_EXT		0x00080000
 /* GPCM External Access Termination mode for write access */
@@ -644,7 +647,7 @@ enum ifc_nand_fir_opcodes {
  */
 #define IFC_NAND_NCR_FTOCNT_MASK	0x1E000000
 #define IFC_NAND_NCR_FTOCNT_SHIFT	25
-#define IFC_NAND_NCR_FTOCNT(n)	((_ilog2(n) - 8)  << IFC_NAND_NCR_FTOCNT_SHIFT)
+#define IFC_NAND_NCR_FTOCNT(n)	((LOG2(n) - 8)  << IFC_NAND_NCR_FTOCNT_SHIFT)
 
 /*
  * NAND_AUTOBOOT_TRGR
@@ -727,7 +730,7 @@ enum ifc_nand_fir_opcodes {
 /* Sequence Timeout Count */
 #define IFC_NORCR_STOCNT_MASK		0x000F0000
 #define IFC_NORCR_STOCNT_SHIFT		16
-#define IFC_NORCR_STOCNT(n)	((__ilog2(n) - 8) << IFC_NORCR_STOCNT_SHIFT)
+#define IFC_NORCR_STOCNT(n)	((LOG2(n) - 8) << IFC_NORCR_STOCNT_SHIFT)
 
 /*
  * GPCM Machine specific registers
@@ -891,8 +894,8 @@ struct fsl_ifc_nand {
 	u32 nand_erattr1;
 	u32 res19[0x10];
 	u32 nand_fsr;
-	u32 res20[0x3];
-	u32 nand_eccstat[6];
+	u32 res20[0x1];
+	u32 nand_eccstat[8];
 	u32 res21[0x1c];
 	u32 nanndcr;
 	u32 res22[0x2];
@@ -1029,6 +1032,23 @@ struct fsl_ifc_runtime {
 struct fsl_ifc {
 	struct fsl_ifc_fcm *gregs;
 	struct fsl_ifc_runtime *rregs;
+};
+
+struct ifc_regs {
+	const char *name;
+	u32 pr;
+	u32 pr_ext;
+	u32 amask;
+	u32 or;
+	u32 ftim[4];
+	u32 or_ext;
+	u32 pr_final;
+	u32 amask_final;
+};
+
+struct ifc_regs_info {
+	struct ifc_regs *regs;
+	u32 cs_size;
 };
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_IFC_A002769

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) STMicroelectronics SA 2017
- * Author(s): Patrice CHOTARD, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice CHOTARD, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #ifndef __STM32_RCC_H_
@@ -40,8 +40,10 @@ struct stm32_clk_info {
 };
 
 enum soc_family {
-	STM32F4,
+	STM32F42X,
+	STM32F469,
 	STM32F7,
+	STM32MP1,
 };
 
 enum apb {

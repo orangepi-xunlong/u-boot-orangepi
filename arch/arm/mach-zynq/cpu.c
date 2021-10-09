@@ -4,13 +4,46 @@
  * Copyright (C) 2012 Xilinx, Inc. All rights reserved.
  */
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <zynqpl.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/arch/clk.h>
-#include <asm/arch/sys_proto.h>
 #include <asm/arch/hardware.h>
+#include <asm/arch/ps7_init_gpl.h>
+#include <asm/arch/sys_proto.h>
 
 #define ZYNQ_SILICON_VER_MASK	0xF0000000
 #define ZYNQ_SILICON_VER_SHIFT	28
+
+#if CONFIG_IS_ENABLED(FPGA)
+xilinx_desc fpga = {
+	.family = xilinx_zynq,
+	.iface = devcfg,
+	.operations = &zynq_op,
+};
+#endif
+
+static const struct {
+	u8 idcode;
+#if defined(CONFIG_FPGA)
+	u32 fpga_size;
+#endif
+	char *devicename;
+} zynq_fpga_descs[] = {
+	ZYNQ_DESC(7Z007S),
+	ZYNQ_DESC(7Z010),
+	ZYNQ_DESC(7Z012S),
+	ZYNQ_DESC(7Z014S),
+	ZYNQ_DESC(7Z015),
+	ZYNQ_DESC(7Z020),
+	ZYNQ_DESC(7Z030),
+	ZYNQ_DESC(7Z035),
+	ZYNQ_DESC(7Z045),
+	ZYNQ_DESC(7Z100),
+	{ /* Sentinel */ },
+};
 
 int arch_cpu_init(void)
 {
@@ -45,17 +78,68 @@ unsigned int zynq_get_silicon_version(void)
 						>> ZYNQ_SILICON_VER_SHIFT;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	zynq_slcr_cpu_reset();
 	while (1)
 		;
 }
 
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 void enable_caches(void)
 {
 	/* Enable D-cache. I-cache is already enabled in start.S */
 	dcache_enable();
+}
+#endif
+
+static int __maybe_unused cpu_desc_id(void)
+{
+	u32 idcode;
+	u8 i;
+
+	idcode = zynq_slcr_get_idcode();
+	for (i = 0; zynq_fpga_descs[i].idcode; i++) {
+		if (zynq_fpga_descs[i].idcode == idcode)
+			return i;
+	}
+
+	return -ENODEV;
+}
+
+#if defined(CONFIG_ARCH_EARLY_INIT_R)
+int arch_early_init_r(void)
+{
+#if CONFIG_IS_ENABLED(FPGA)
+	int cpu_id = cpu_desc_id();
+
+	if (cpu_id < 0)
+		return 0;
+
+	fpga.size = zynq_fpga_descs[cpu_id].fpga_size;
+	fpga.name = zynq_fpga_descs[cpu_id].devicename;
+	fpga_init();
+	fpga_add(fpga_xilinx, &fpga);
+#endif
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_DISPLAY_CPUINFO
+int print_cpuinfo(void)
+{
+	u32 version;
+	int cpu_id = cpu_desc_id();
+
+	if (cpu_id < 0)
+		return 0;
+
+	version = zynq_get_silicon_version() << 1;
+	if (version > (PCW_SILICON_VERSION_3 << 1))
+		version += 1;
+
+	printf("CPU:   Zynq %s\n", zynq_fpga_descs[cpu_id].devicename);
+	printf("Silicon: v%d.%d\n", version >> 1, version & 1);
+	return 0;
 }
 #endif

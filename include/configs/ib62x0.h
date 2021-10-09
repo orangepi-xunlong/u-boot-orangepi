@@ -15,33 +15,11 @@
 #define CONFIG_KW88F6281		/* SOC Name */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
-/* Add target to build it automatically upon "make" */
-#define CONFIG_BUILD_TARGET     "u-boot.kwb"
-
-/*
- * Compression configuration
- */
-#define CONFIG_BZIP2
-
-/*
- * Commands configuration
- */
-#define CONFIG_SYS_MVFS
-
-/*
- * mv-common.h should be defined after CMD configs since it used them
- * to enable certain macros
- */
 #include "mv-common.h"
 
 /*
  * Environment variables configuration
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_ENV_SECT_SIZE	0x20000
-#endif
-#define CONFIG_ENV_SIZE		0x20000
-#define CONFIG_ENV_OFFSET	0xe0000
 
 /*
  * Default environment variables
@@ -78,9 +56,6 @@
  */
 #ifdef CONFIG_IDE
 #define __io
-#define CONFIG_IDE_PREINIT
-#define CONFIG_MVSATA_IDE_USE_PORT0
-#define CONFIG_MVSATA_IDE_USE_PORT1
 #define CONFIG_SYS_ATA_IDE0_OFFSET	MV_SATA_PORT0_OFFSET
 #define CONFIG_SYS_ATA_IDE1_OFFSET	MV_SATA_PORT1_OFFSET
 #endif /* CONFIG_IDE */

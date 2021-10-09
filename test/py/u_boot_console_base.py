@@ -17,6 +17,7 @@ import u_boot_spawn
 
 # Regexes for text we expect U-Boot to send to the console.
 pattern_u_boot_spl_signon = re.compile('(U-Boot SPL \\d{4}\\.\\d{2}[^\r\n]*\\))')
+pattern_u_boot_spl2_signon = re.compile('(U-Boot SPL \\d{4}\\.\\d{2}[^\r\n]*\\))')
 pattern_u_boot_main_signon = re.compile('(U-Boot \\d{4}\\.\\d{2}[^\r\n]*\\))')
 pattern_stop_autoboot_prompt = re.compile('Hit any key to stop autoboot: ')
 pattern_unknown_command = re.compile('Unknown command \'.*\' - try \'help\'')
@@ -28,6 +29,7 @@ PAT_RE = 1
 
 bad_pattern_defs = (
     ('spl_signon', pattern_u_boot_spl_signon),
+    ('spl2_signon', pattern_u_boot_spl2_signon),
     ('main_signon', pattern_u_boot_main_signon),
     ('stop_autoboot_prompt', pattern_stop_autoboot_prompt),
     ('unknown_command', pattern_unknown_command),
@@ -304,7 +306,17 @@ class ConsoleBase(object):
             # Wait for something U-Boot will likely never send. This will
             # cause the console output to be read and logged.
             self.p.expect(['This should never match U-Boot output'])
-        except u_boot_spawn.Timeout:
+        except:
+            # We expect a timeout, since U-Boot won't print what we waited
+            # for. Squash it when it happens.
+            #
+            # Squash any other exception too. This function is only used to
+            # drain (and log) the U-Boot console output after a failed test.
+            # The U-Boot process will be restarted, or target board reset, once
+            # this function returns. So, we don't care about detecting any
+            # additional errors, so they're squashed so that the rest of the
+            # post-test-failure cleanup code can continue operation, and
+            # correctly terminate any log sections, etc.
             pass
         finally:
             self.p.timeout = orig_timeout
@@ -343,11 +355,19 @@ class ConsoleBase(object):
                                                  'n') == 'y'
             env_spl_skipped = self.config.env.get('env__spl_skipped',
                                                   False)
+            env_spl2_skipped = self.config.env.get('env__spl2_skipped',
+                                                  True)
             if config_spl and config_spl_serial_support and not env_spl_skipped:
                 m = self.p.expect([pattern_u_boot_spl_signon] +
                                   self.bad_patterns)
                 if m != 0:
                     raise Exception('Bad pattern found on SPL console: ' +
+                                    self.bad_pattern_ids[m - 1])
+            if not env_spl2_skipped:
+                m = self.p.expect([pattern_u_boot_spl2_signon] +
+                                  self.bad_patterns)
+                if m != 0:
+                    raise Exception('Bad pattern found on SPL2 console: ' +
                                     self.bad_pattern_ids[m - 1])
             m = self.p.expect([pattern_u_boot_main_signon] + self.bad_patterns)
             if m != 0:

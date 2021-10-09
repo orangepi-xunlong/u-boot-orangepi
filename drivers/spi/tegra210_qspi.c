@@ -2,16 +2,22 @@
 /*
  * NVIDIA Tegra210 QSPI controller driver
  *
- * (C) Copyright 2015 NVIDIA Corporation <www.nvidia.com>
+ * (C) Copyright 2015-2020 NVIDIA Corporation <www.nvidia.com>
+ *
  */
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/clk_rst.h>
 #include <spi.h>
 #include <fdtdec.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include "tegra_spi.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -40,10 +46,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define QSPI_CMD1_BITLEN_SHIFT		0
 
 /* COMMAND2 */
-#define QSPI_CMD2_TX_CLK_TAP_DELAY	BIT(6)
-#define QSPI_CMD2_TX_CLK_TAP_DELAY_MASK	GENMASK(11,6)
-#define QSPI_CMD2_RX_CLK_TAP_DELAY	BIT(0)
-#define QSPI_CMD2_RX_CLK_TAP_DELAY_MASK	GENMASK(5,0)
+#define QSPI_CMD2_TX_CLK_TAP_DELAY_SHIFT	10
+#define QSPI_CMD2_TX_CLK_TAP_DELAY_MASK	GENMASK(14,10)
+#define QSPI_CMD2_RX_CLK_TAP_DELAY_SHIFT	0
+#define QSPI_CMD2_RX_CLK_TAP_DELAY_MASK	GENMASK(7,0)
 
 /* TRANSFER STATUS */
 #define QSPI_XFER_STS_RDY		BIT(30)
@@ -92,13 +98,11 @@ struct tegra210_qspi_priv {
 	int last_transaction_us;
 };
 
-static int tegra210_qspi_ofdata_to_platdata(struct udevice *bus)
+static int tegra210_qspi_of_to_plat(struct udevice *bus)
 {
-	struct tegra_spi_platdata *plat = bus->platdata;
-	const void *blob = gd->fdt_blob;
-	int node = dev_of_offset(bus);
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 
-	plat->base = devfdt_get_addr(bus);
+	plat->base = dev_read_addr(bus);
 	plat->periph_id = clock_decode_periph_id(bus);
 
 	if (plat->periph_id == PERIPH_ID_NONE) {
@@ -108,10 +112,11 @@ static int tegra210_qspi_ofdata_to_platdata(struct udevice *bus)
 	}
 
 	/* Use 500KHz as a suitable default */
-	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
-					500000);
-	plat->deactivate_delay_us = fdtdec_get_int(blob, node,
-					"spi-deactivate-delay", 0);
+	plat->frequency = dev_read_u32_default(bus, "spi-max-frequency",
+					       500000);
+	plat->deactivate_delay_us = dev_read_u32_default(bus,
+							 "spi-deactivate-delay",
+							 0);
 	debug("%s: base=%#08lx, periph_id=%d, max-frequency=%d, deactivate_delay=%d\n",
 	      __func__, plat->base, plat->periph_id, plat->frequency,
 	      plat->deactivate_delay_us);
@@ -121,28 +126,35 @@ static int tegra210_qspi_ofdata_to_platdata(struct udevice *bus)
 
 static int tegra210_qspi_probe(struct udevice *bus)
 {
-	struct tegra_spi_platdata *plat = dev_get_platdata(bus);
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 	struct tegra210_qspi_priv *priv = dev_get_priv(bus);
 
 	priv->regs = (struct qspi_regs *)plat->base;
+	struct qspi_regs *regs = priv->regs;
 
 	priv->last_transaction_us = timer_get_us();
 	priv->freq = plat->frequency;
 	priv->periph_id = plat->periph_id;
 
+	debug("%s: Freq = %u, id = %d\n", __func__, priv->freq,
+	      priv->periph_id);
 	/* Change SPI clock to correct frequency, PLLP_OUT0 source */
 	clock_start_periph_pll(priv->periph_id, CLOCK_ID_PERIPH, priv->freq);
+
+	/* Set tap delays here, clock change above resets QSPI controller */
+	u32 reg = (0x09 << QSPI_CMD2_TX_CLK_TAP_DELAY_SHIFT) |
+		   (0x0C << QSPI_CMD2_RX_CLK_TAP_DELAY_SHIFT);
+	writel(reg, &regs->command2);
+	debug("%s: COMMAND2 = %08x\n", __func__, readl(&regs->command2));
 
 	return 0;
 }
 
-static int tegra210_qspi_claim_bus(struct udevice *bus)
+static int tegra210_qspi_claim_bus(struct udevice *dev)
 {
+	struct udevice *bus = dev->parent;
 	struct tegra210_qspi_priv *priv = dev_get_priv(bus);
 	struct qspi_regs *regs = priv->regs;
-
-	/* Change SPI clock to correct frequency, PLLP_OUT0 source */
-	clock_start_periph_pll(priv->periph_id, CLOCK_ID_PERIPH, priv->freq);
 
 	debug("%s: FIFO STATUS = %08x\n", __func__, readl(&regs->fifo_status));
 
@@ -163,7 +175,7 @@ static int tegra210_qspi_claim_bus(struct udevice *bus)
 static void spi_cs_activate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra_spi_plat *pdata = dev_get_plat(bus);
 	struct tegra210_qspi_priv *priv = dev_get_priv(bus);
 
 	/* If it's too soon to do another transaction, wait */
@@ -187,7 +199,7 @@ static void spi_cs_activate(struct udevice *dev)
 static void spi_cs_deactivate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra_spi_plat *pdata = dev_get_plat(bus);
 	struct tegra210_qspi_priv *priv = dev_get_priv(bus);
 
 	setbits_le32(&priv->regs->command1, QSPI_CMD1_CS_SW_VAL);
@@ -212,7 +224,7 @@ static int tegra210_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 	int num_bytes, tm, ret;
 
 	debug("%s: slave %u:%u dout %p din %p bitlen %u\n",
-	      __func__, bus->seq, spi_chip_select(dev), dout, din, bitlen);
+	      __func__, dev_seq(bus), spi_chip_select(dev), dout, din, bitlen);
 	if (bitlen % 8)
 		return -1;
 	num_bytes = bitlen / 8;
@@ -369,7 +381,7 @@ static int tegra210_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 
 static int tegra210_qspi_set_speed(struct udevice *bus, uint speed)
 {
-	struct tegra_spi_platdata *plat = bus->platdata;
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 	struct tegra210_qspi_priv *priv = dev_get_priv(bus);
 
 	if (speed > plat->frequency)
@@ -411,9 +423,9 @@ U_BOOT_DRIVER(tegra210_qspi) = {
 	.id = UCLASS_SPI,
 	.of_match = tegra210_qspi_ids,
 	.ops = &tegra210_qspi_ops,
-	.ofdata_to_platdata = tegra210_qspi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct tegra_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct tegra210_qspi_priv),
-	.per_child_auto_alloc_size = sizeof(struct spi_slave),
+	.of_to_plat = tegra210_qspi_of_to_plat,
+	.plat_auto	= sizeof(struct tegra_spi_plat),
+	.priv_auto	= sizeof(struct tegra210_qspi_priv),
+	.per_child_auto	= sizeof(struct spi_slave),
 	.probe = tegra210_qspi_probe,
 };

@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: LGPL-2.1
- *
+// SPDX-License-Identifier: LGPL-2.1
+/*
  *  Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *  based on:
  *  FIPS-180-1 compliant SHA-1 implementation

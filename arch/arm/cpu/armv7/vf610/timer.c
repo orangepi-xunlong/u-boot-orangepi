@@ -4,10 +4,14 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <div64.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
+#include <linux/delay.h>
 
 static struct pit_reg *cur_pit = (struct pit_reg *)PIT_BASE_ADDR;
 
@@ -57,14 +61,9 @@ unsigned long long get_ticks(void)
 	return (((unsigned long long)gd->arch.tbu) << 32) | gd->arch.tbl;
 }
 
-ulong get_timer_masked(void)
-{
-	return tick_to_time(get_ticks());
-}
-
 ulong get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks()) - base;
 }
 
 /* delay x useconds AND preserve advance timstamp value */

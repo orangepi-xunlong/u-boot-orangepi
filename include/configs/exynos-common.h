@@ -14,8 +14,8 @@
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <linux/sizes.h>
+#include <linux/stringify.h>
 
-#define CONFIG_ARCH_CPU_INIT
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 /* Keep L2 Cache Disabled */
@@ -27,15 +27,11 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_INITRD_TAG
-#define CONFIG_ENV_OVERWRITE
 
 /* Size of malloc() pool before and after relocation */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 << 20))
 
 /* select serial console configuration */
-
-/* SD/MMC configuration */
-#define CONFIG_BOUNCE_BUFFER
 
 /* PWM */
 #define CONFIG_PWM

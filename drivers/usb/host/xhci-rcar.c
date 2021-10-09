@@ -9,10 +9,14 @@
 #include <clk.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <log.h>
+#include <malloc.h>
 #include <usb.h>
 #include <wait_bit.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 #include "xhci-rcar-r8a779x_usb3_v3.h"
 
 /* Register Offset */
@@ -25,7 +29,7 @@
 #define RCAR_USB3_DL_CTRL_FW_SUCCESS	BIT(4)
 #define RCAR_USB3_DL_CTRL_FW_SET_DATA0	BIT(8)
 
-struct rcar_xhci_platdata {
+struct rcar_xhci_plat {
 	fdt_addr_t	hcd_base;
 	struct clk	clk;
 };
@@ -36,7 +40,7 @@ struct rcar_xhci_platdata {
  */
 struct rcar_xhci {
 	struct xhci_ctrl ctrl;	/* Needs to come first in this struct! */
-	struct usb_platdata usb_plat;
+	struct usb_plat usb_plat;
 	struct xhci_hccr *hcd;
 };
 
@@ -72,7 +76,7 @@ static int xhci_rcar_download_fw(struct rcar_xhci *ctx, const u32 *fw_data,
 
 static int xhci_rcar_probe(struct udevice *dev)
 {
-	struct rcar_xhci_platdata *plat = dev_get_platdata(dev);
+	struct rcar_xhci_plat *plat = dev_get_plat(dev);
 	struct rcar_xhci *ctx = dev_get_priv(dev);
 	struct xhci_hcor *hcor;
 	int len, ret;
@@ -117,19 +121,22 @@ err_clk:
 
 static int xhci_rcar_deregister(struct udevice *dev)
 {
-	struct rcar_xhci_platdata *plat = dev_get_platdata(dev);
+	int ret;
+	struct rcar_xhci_plat *plat = dev_get_plat(dev);
+
+	ret = xhci_deregister(dev);
 
 	clk_disable(&plat->clk);
 	clk_free(&plat->clk);
 
-	return xhci_deregister(dev);
+	return ret;
 }
 
-static int xhci_rcar_ofdata_to_platdata(struct udevice *dev)
+static int xhci_rcar_of_to_plat(struct udevice *dev)
 {
-	struct rcar_xhci_platdata *plat = dev_get_platdata(dev);
+	struct rcar_xhci_plat *plat = dev_get_plat(dev);
 
-	plat->hcd_base = devfdt_get_addr(dev);
+	plat->hcd_base = dev_read_addr(dev);
 	if (plat->hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the XHCI register base address\n");
 		return -ENXIO;
@@ -139,6 +146,7 @@ static int xhci_rcar_ofdata_to_platdata(struct udevice *dev)
 }
 
 static const struct udevice_id xhci_rcar_ids[] = {
+	{ .compatible = "renesas,rcar-gen3-xhci" },
 	{ .compatible = "renesas,xhci-r8a7795" },
 	{ .compatible = "renesas,xhci-r8a7796" },
 	{ .compatible = "renesas,xhci-r8a77965" },
@@ -152,8 +160,8 @@ U_BOOT_DRIVER(usb_xhci) = {
 	.remove		= xhci_rcar_deregister,
 	.ops		= &xhci_usb_ops,
 	.of_match	= xhci_rcar_ids,
-	.ofdata_to_platdata = xhci_rcar_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct rcar_xhci_platdata),
-	.priv_auto_alloc_size = sizeof(struct rcar_xhci),
+	.of_to_plat = xhci_rcar_of_to_plat,
+	.plat_auto	= sizeof(struct rcar_xhci_plat),
+	.priv_auto	= sizeof(struct rcar_xhci),
 	.flags		= DM_FLAG_ALLOC_PRIV_DMA,
 };

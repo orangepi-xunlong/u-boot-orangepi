@@ -10,12 +10,19 @@
  */
 
 #include <common.h>
+#include <eeprom.h>
+#include <env.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
 #include <miiphy.h>
 #include <command.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
+#include <u-boot/crc.h>
 #if defined(CONFIG_PCI)
 #include <pci.h>
 #endif
@@ -79,7 +86,7 @@ int dram_init(void)
 		return -ENXIO;
 
 	/* DDR SDRAM - Main SODIMM */
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE & LAWBAR_BAR;
 
 	msize = fixed_sdram();
 
@@ -176,7 +183,7 @@ void pci_init_board(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI

@@ -6,8 +6,10 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <gzip.h>
 
-static int do_zip(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_zip(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	unsigned long src, dst;
 	unsigned long src_len, dst_len = ~0UL;
@@ -28,7 +30,7 @@ static int do_zip(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (gzip((void *) dst, &dst_len, (void *) src, src_len) != 0)
 		return 1;
 
-	printf("Compressed size: %ld = 0x%lX\n", dst_len, dst_len);
+	printf("Compressed size: %lu = 0x%lX\n", dst_len, dst_len);
 	env_set_hex("filesize", dst_len);
 
 	return 0;

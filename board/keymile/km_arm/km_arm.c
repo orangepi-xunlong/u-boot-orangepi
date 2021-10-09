@@ -12,11 +12,15 @@
  */
 
 #include <common.h>
+#include <env.h>
 #include <i2c.h>
+#include <init.h>
 #include <nand.h>
+#include <net.h>
 #include <netdev.h>
 #include <miiphy.h>
 #include <spi.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -50,9 +54,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PHY_MARVELL_88E1118R_LED_CTRL_REG		0x0010
 
 #define PHY_MARVELL_88E1118R_LED_CTRL_RESERVED		0x1000
-#define PHY_MARVELL_88E1118R_LED_CTRL_LED0_1000MB	(0x7<<0)
-#define PHY_MARVELL_88E1118R_LED_CTRL_LED1_ACT		(0x3<<4)
-#define PHY_MARVELL_88E1118R_LED_CTRL_LED2_LINK		(0x0<<8)
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED0_1000MB	(0x7 << 0)
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED1_ACT		(0x3 << 4)
+#define PHY_MARVELL_88E1118R_LED_CTRL_LED2_LINK		(0x0 << 8)
 
 /* I/O pin to erase flash RGPP09 = MPP43 */
 #define KM_FLASH_ERASE_ENABLE	43
@@ -66,11 +70,7 @@ static const u32 kwmpp_config[] = {
 	MPP4_NF_IO6,
 	MPP5_NF_IO7,
 	MPP6_SYSRST_OUTn,
-#if defined(KM_PCIE_RESET_MPP7)
-	MPP7_GPO,
-#else
 	MPP7_PEX_RST_OUTn,
-#endif
 #if defined(CONFIG_SYS_I2C_SOFT)
 	MPP8_GPIO,		/* SDA */
 	MPP9_GPIO,		/* SCL */
@@ -119,26 +119,6 @@ static const u32 kwmpp_config[] = {
 };
 
 static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
-
-#if defined(CONFIG_KM_MGCOGE3UN)
-/*
- * Wait for startup OK from mgcoge3ne
- */
-static int startup_allowed(void)
-{
-	unsigned char buf;
-
-	/*
-	 * Read CIRQ16 bit (bit 0)
-	 */
-	if (i2c_read(BOCO, REG_IRQ_CIRQ2, 1, &buf, 1) != 0)
-		printf("%s: Error reading Boco\n", __func__);
-	else
-		if ((buf & MASK_RBI_DEFECT_16) == MASK_RBI_DEFECT_16)
-			return 1;
-	return 0;
-}
-#endif
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061)|defined(CONFIG_KM_PIGGY4_88E6352))
 /*
@@ -190,6 +170,7 @@ static void set_bootcount_addr(void)
 {
 	uchar buf[32];
 	unsigned int bootcountaddr;
+
 	bootcountaddr = gd->ram_size - BOOTCOUNT_ADDR;
 	sprintf((char *)buf, "0x%x", bootcountaddr);
 	env_set("bootcountaddr", (char *)buf);
@@ -197,40 +178,8 @@ static void set_bootcount_addr(void)
 
 int misc_init_r(void)
 {
-#if defined(CONFIG_KM_MGCOGE3UN)
-	char *wait_for_ne;
-	u8 dip_switch = kw_gpio_get_value(KM_FLASH_ERASE_ENABLE);
-	wait_for_ne = env_get("waitforne");
-
-	if ((wait_for_ne != NULL) && (dip_switch == 0)) {
-		if (strcmp(wait_for_ne, "true") == 0) {
-			int cnt = 0;
-			int abort = 0;
-			puts("NE go: ");
-			while (startup_allowed() == 0) {
-				if (tstc()) {
-					(void) getc(); /* consume input */
-					abort = 1;
-					break;
-				}
-				udelay(200000);
-				cnt++;
-				if (cnt == 5)
-					puts("wait\b\b\b\b");
-				if (cnt == 10) {
-					cnt = 0;
-					puts("    \b\b\b\b");
-				}
-			}
-			if (abort == 1)
-				printf("\nAbort waiting for ne\n");
-			else
-				puts("OK\n");
-		}
-	}
-#endif
-
-	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN,
+			CONFIG_PIGGY_MAC_ADDRESS_OFFSET);
 
 	initialize_unit_leds();
 	set_km_env();
@@ -245,7 +194,7 @@ int board_early_init_f(void)
 
 	/* set the 2 bitbang i2c pins as output gpios */
 	tmp = readl(MVEBU_GPIO0_BASE + 4);
-	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS) , MVEBU_GPIO0_BASE + 4);
+	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS), MVEBU_GPIO0_BASE + 4);
 #endif
 	/* adjust SDRAM size for bank 0 */
 	mvebu_sdram_size_adjust(0);
@@ -291,7 +240,7 @@ int board_init(void)
 
 int board_late_init(void)
 {
-#if (defined(CONFIG_KM_COGE5UN) | defined(CONFIG_KM_MGCOGE3UN))
+#if defined(CONFIG_KM_COGE5UN)
 	u8 dip_switch = kw_gpio_get_value(KM_FLASH_ERASE_ENABLE);
 
 	/* if pin 1 do full erase */
@@ -310,27 +259,46 @@ int board_late_init(void)
 	return 0;
 }
 
-int board_spi_claim_bus(struct spi_slave *slave)
+static const u32 spi_mpp_config[] = {
+	MPP1_SPI_MOSI,
+	MPP2_SPI_SCK,
+	MPP3_SPI_MISO,
+	0
+};
+
+static u32 spi_mpp_backup[4];
+
+int mvebu_board_spi_claim_bus(struct udevice *dev)
 {
+	spi_mpp_backup[3] = 0;
+
+	/* set new spi mpp config and save current one */
+	kirkwood_mpp_conf(spi_mpp_config, spi_mpp_backup);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 0);
 
 	return 0;
 }
 
-void board_spi_release_bus(struct spi_slave *slave)
+int mvebu_board_spi_release_bus(struct udevice *dev)
 {
+	/* restore saved mpp config */
+	kirkwood_mpp_conf(spi_mpp_backup, NULL);
+
 	kw_gpio_set_value(KM_FLASH_GPIO_PIN, 1);
+
+	return 0;
 }
 
 #if (defined(CONFIG_KM_PIGGY4_88E6061))
 
 #define	PHY_LED_SEL_REG		0x18
 #define PHY_LED0_LINK		(0x5)
-#define PHY_LED1_ACT		(0x8<<4)
-#define PHY_LED2_INT		(0xe<<8)
+#define PHY_LED1_ACT		(0x8 << 4)
+#define PHY_LED2_INT		(0xe << 8)
 #define	PHY_SPEC_CTRL_REG	0x1c
-#define PHY_RGMII_CLK_STABLE	(0x1<<10)
-#define PHY_CLSA		(0x1<<1)
+#define PHY_RGMII_CLK_STABLE	(0x1 << 10)
+#define PHY_CLSA		(0x1 << 1)
 
 /* Configure and enable MV88E3018 PHY */
 void reset_phy(void)
@@ -441,8 +409,8 @@ void reset_phy(void)
 		return;
 
 	/* check for Marvell 88E1118R Gigabit PHY (PIGGY3) */
-	if ((oui == PHY_MARVELL_OUI) &&
-	    (model == PHY_MARVELL_88E1118R_MODEL)) {
+	if (oui == PHY_MARVELL_OUI &&
+	    model == PHY_MARVELL_88E1118R_MODEL) {
 		/* set page register to 3 */
 		if (miiphy_write(name, CONFIG_PHY_BASE_ADR,
 				 PHY_MARVELL_PAGE_REG,
@@ -471,7 +439,6 @@ void reset_phy(void)
 	}
 }
 #endif
-
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
@@ -512,22 +479,23 @@ int get_scl(void)
 
 int post_hotkeys_pressed(void)
 {
-#if defined(CONFIG_KM_COGE5UN)
-	return kw_gpio_get_value(KM_POST_EN_L);
-#else
-	return !kw_gpio_get_value(KM_POST_EN_L);
-#endif
+	if (IS_ENABLED(CONFIG_KM_COGE5UN))
+		return kw_gpio_get_value(KM_POST_EN_L);
+	else
+		return !kw_gpio_get_value(KM_POST_EN_L);
 }
 
 ulong post_word_load(void)
 {
-	void* addr = (void *) (gd->ram_size - BOOTCOUNT_ADDR + POST_WORD_OFF);
+	void *addr = (void *)(gd->ram_size - BOOTCOUNT_ADDR + POST_WORD_OFF);
+
 	return in_le32(addr);
 
 }
 void post_word_store(ulong value)
 {
-	void* addr = (void *) (gd->ram_size - BOOTCOUNT_ADDR + POST_WORD_OFF);
+	void *addr = (void *)(gd->ram_size - BOOTCOUNT_ADDR + POST_WORD_OFF);
+
 	out_le32(addr, value);
 }
 
@@ -536,14 +504,14 @@ int arch_memory_test_prepare(u32 *vstart, u32 *size, phys_addr_t *phys_offset)
 	*vstart = CONFIG_SYS_SDRAM_BASE;
 
 	/* we go up to relocation plus a 1 MB margin */
-	*size = CONFIG_SYS_TEXT_BASE - (1<<20);
+	*size = CONFIG_SYS_TEXT_BASE - (1 << 20);
 
 	return 0;
 }
 #endif
 
 #if defined(CONFIG_SYS_EEPROM_WREN)
-int eeprom_write_enable(unsigned dev_addr, int state)
+int eeprom_write_enable(unsigned int dev_addr, int state)
 {
 	kw_gpio_set_value(KM_KIRKWOOD_ENV_WP, !state);
 

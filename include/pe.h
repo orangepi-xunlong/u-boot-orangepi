@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Portable Executable binary format structures
  *
  *  Copyright (c) 2016 Alexander Graf
  *
  *  Based on wine code
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _PE_H
@@ -34,22 +33,6 @@ typedef struct _IMAGE_DOS_HEADER {
 	uint16_t e_res2[10];	/* 28: Reserved words */
 	uint32_t e_lfanew;	/* 3c: Offset to extended header */
 } IMAGE_DOS_HEADER, *PIMAGE_DOS_HEADER;
-
-#define IMAGE_DOS_SIGNATURE		0x5A4D     /* MZ   */
-#define IMAGE_NT_SIGNATURE		0x00004550 /* PE00 */
-
-#define IMAGE_FILE_MACHINE_I386		0x014c
-#define IMAGE_FILE_MACHINE_ARM		0x01c0
-#define IMAGE_FILE_MACHINE_THUMB	0x01c2
-#define IMAGE_FILE_MACHINE_ARMNT	0x01c4
-#define IMAGE_FILE_MACHINE_AMD64	0x8664
-#define IMAGE_FILE_MACHINE_ARM64	0xaa64
-#define IMAGE_FILE_MACHINE_RISCV32	0x5032
-#define IMAGE_FILE_MACHINE_RISCV64	0x5064
-
-#define IMAGE_NT_OPTIONAL_HDR32_MAGIC	0x10b
-#define IMAGE_NT_OPTIONAL_HDR64_MAGIC	0x20b
-#define IMAGE_SUBSYSTEM_EFI_APPLICATION	10
 
 typedef struct _IMAGE_FILE_HEADER {
 	uint16_t Machine;
@@ -172,6 +155,8 @@ typedef struct _IMAGE_SECTION_HEADER {
 	uint32_t Characteristics;
 } IMAGE_SECTION_HEADER, *PIMAGE_SECTION_HEADER;
 
+/* Indices for Optional Header Data Directories */
+#define IMAGE_DIRECTORY_ENTRY_SECURITY		4
 #define IMAGE_DIRECTORY_ENTRY_BASERELOC         5
 
 typedef struct _IMAGE_BASE_RELOCATION
@@ -202,10 +187,13 @@ typedef struct _IMAGE_RELOCATION
 #define IMAGE_REL_BASED_MIPS_JMPADDR            5
 #define IMAGE_REL_BASED_ARM_MOV32A              5 /* yes, 5 too */
 #define IMAGE_REL_BASED_ARM_MOV32               5 /* yes, 5 too */
+#define IMAGE_REL_BASED_RISCV_HI20		5 /* yes, 5 too */
 #define IMAGE_REL_BASED_SECTION                 6
 #define IMAGE_REL_BASED_REL                     7
 #define IMAGE_REL_BASED_ARM_MOV32T              7 /* yes, 7 too */
 #define IMAGE_REL_BASED_THUMB_MOV32             7 /* yes, 7 too */
+#define IMAGE_REL_BASED_RISCV_LOW12I		7 /* yes, 7 too */
+#define IMAGE_REL_BASED_RISCV_LOW12S		8
 #define IMAGE_REL_BASED_MIPS_JMPADDR16          9
 #define IMAGE_REL_BASED_IA64_IMM64              9 /* yes, 9 too */
 #define IMAGE_REL_BASED_DIR64                   10
@@ -265,5 +253,21 @@ typedef struct _IMAGE_RELOCATION
 #define IMAGE_REL_AMD64_SREL32          0x000E
 #define IMAGE_REL_AMD64_PAIR            0x000F
 #define IMAGE_REL_AMD64_SSPAN32         0x0010
+
+/* certificate appended to PE image */
+typedef struct _WIN_CERTIFICATE {
+	uint32_t dwLength;
+	uint16_t wRevision;
+	uint16_t wCertificateType;
+	uint8_t bCertificate[];
+} WIN_CERTIFICATE, *LPWIN_CERTIFICATE;
+
+/* Definitions for the contents of the certs data block */
+#define WIN_CERT_TYPE_PKCS_SIGNED_DATA	0x0002
+#define WIN_CERT_TYPE_EFI_OKCS115	0x0EF0
+#define WIN_CERT_TYPE_EFI_GUID		0x0EF1
+
+#define WIN_CERT_REVISION_1_0		0x0100
+#define WIN_CERT_REVISION_2_0		0x0200
 
 #endif /* _PE_H */

@@ -7,10 +7,12 @@
 
 /*
  * sbc8548 board configuration file
- * Please refer to doc/README.sbc8548 for more info.
+ * Please refer to board/sbc8548/README for more info.
  */
 #ifndef __CONFIG_H
 #define __CONFIG_H
+
+#include <linux/stringify.h>
 
 /*
  * Top level Makefile configuration choices
@@ -48,11 +50,6 @@
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT    1	/* enable 64-bit PCI resources */
 #endif
-#ifdef CONFIG_PCIE1
-#define CONFIG_FSL_PCIE_RESET   1	/* need PCIe reset errata */
-#endif
-
-#define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_INTERRUPTS		/* enable pci, srio, ddr interrupts */
 
@@ -76,14 +73,11 @@
 #define CONFIG_ENABLE_36BIT_PHYS	1
 
 #undef	CONFIG_SYS_DRAM_TEST			/* memory test, takes time */
-#define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
-#define CONFIG_SYS_MEMTEST_END		0x00400000
 
 #define CONFIG_SYS_CCSRBAR		0xe0000000
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
 
 /* DDR Setup */
-#undef CONFIG_FSL_DDR_INTERACTIVE
 #undef CONFIG_DDR_ECC			/* only for ECC DDR module */
 /*
  * A hardware errata caused the LBC SDRAM SPD and the DDR2 SPD
@@ -121,8 +115,6 @@
 	#define CONFIG_SYS_SDRAM_SIZE	256		/* DDR is 256MB */
 	#define CONFIG_SYS_DDR_CONTROL	0xc300c000
 #endif
-
-#undef CONFIG_CLOCKS_IN_MHZ
 
 /*
  * FLASH on the Local Bus
@@ -245,8 +237,6 @@
 
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 
 /* CS5 = Local bus peripherals controlled by the EPLD */
@@ -440,8 +430,6 @@
 #endif
 
 #if defined(CONFIG_PCI)
-#undef CONFIG_EEPRO100
-#undef CONFIG_TULIP
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
@@ -449,7 +437,6 @@
 
 #if defined(CONFIG_TSEC_ENET)
 
-#define CONFIG_MII		1	/* MII PHY management */
 #define CONFIG_TSEC1	1
 #define CONFIG_TSEC1_NAME	"eTSEC0"
 #define CONFIG_TSEC2	1
@@ -468,20 +455,6 @@
 /* Options are: eTSEC[0-3] */
 #define CONFIG_ETHPRIME		"eTSEC0"
 #endif	/* CONFIG_TSEC_ENET */
-
-/*
- * Environment
- */
-#define CONFIG_ENV_SIZE		0x2000
-#if CONFIG_SYS_TEXT_BASE == 0xfff00000	/* Boot from 64MB SODIMM */
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x80000)
-#define CONFIG_ENV_SECT_SIZE	0x80000	/* 512K(one sector) for env */
-#elif CONFIG_SYS_TEXT_BASE == 0xfffa0000	/* Boot from 8MB soldered flash */
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
-#define CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
-#else
-#warning undefined environment size/location.
-#endif
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */

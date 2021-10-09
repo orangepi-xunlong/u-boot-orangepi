@@ -7,6 +7,12 @@ config FSL_CAAM
 	  Module (CAAM), also known as the SEC version 4 (SEC4). The driver uses
 	  Job Ring as interface to communicate with CAAM.
 
+config CAAM_64BIT
+	bool
+	default y if PHYS_64BIT && !ARCH_IMX8M
+	help
+	  Select Crypto driver for 64 bits CAAM version
+
 config SYS_FSL_HAS_SEC
 	bool
 	help
@@ -45,3 +51,17 @@ config SYS_FSL_SEC_COMPAT
 
 config SYS_FSL_SEC_LE
 	bool "Little-endian access to Freescale Secure Boot"
+
+if FSL_CAAM
+
+config FSL_CAAM_RNG
+	bool "Enable Random Number Generator support"
+	depends on DM_RNG
+	default y
+	help
+	  Enable support for the hardware based random number generator
+	  module of the CAAM. The random data is fetched from the DRGB
+	  using the prediction resistance flag which means the DRGB is
+	  reseeded from the TRNG every time random data is generated.
+
+endif

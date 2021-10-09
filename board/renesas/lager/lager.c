@@ -8,14 +8,21 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <env_internal.h>
+#include <hang.h>
+#include <init.h>
 #include <malloc.h>
 #include <netdev.h>
 #include <dm.h>
+#include <asm/global_data.h>
 #include <dm/platform_data/serial_sh.h>
 #include <asm/processor.h>
 #include <asm/mach-types.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
@@ -94,7 +101,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-	if (fdtdec_setup_memory_size() != 0)
+	if (fdtdec_setup_mem_size_base() != 0)
 		return -EINVAL;
 
 	return 0;
@@ -109,7 +116,7 @@ int dram_init_banksize(void)
 
 /* KSZ8041NL/RNL */
 #define PHY_CONTROL1		0x1E
-#define PHY_LED_MODE		0xC0000
+#define PHY_LED_MODE		0xC000
 #define PHY_LED_MODE_ACK	0x4000
 int board_phy_config(struct phy_device *phydev)
 {
@@ -121,7 +128,7 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	struct udevice *dev;
 	const u8 pmic_bus = 2;

@@ -11,13 +11,14 @@
 #include <efi_api.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <linux/compiler.h>
 #include <asm/io.h>
 #include <serial.h>
 
 /* Information about the efi console */
 struct serial_efi_priv {
-	struct efi_simple_input_interface *con_in;
+	struct efi_simple_text_input_protocol *con_in;
 	struct efi_simple_text_output_protocol *con_out;
 	struct efi_input_key key;
 	bool have_key;
@@ -149,8 +150,7 @@ U_BOOT_DRIVER(serial_efi) = {
 	.name	= "serial_efi",
 	.id	= UCLASS_SERIAL,
 	.of_match = serial_efi_ids,
-	.priv_auto_alloc_size = sizeof(struct serial_efi_priv),
+	.priv_auto	= sizeof(struct serial_efi_priv),
 	.probe = serial_efi_probe,
 	.ops	= &serial_efi_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

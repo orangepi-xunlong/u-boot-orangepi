@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2018 Ãlvaro FernÃ¡ndez Rojas <noltari@gmail.com>
+ * Copyright (C) 2018 Álvaro Fernández Rojas <noltari@gmail.com>
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 #define GPIO_BASE_6362			0x10000080
 

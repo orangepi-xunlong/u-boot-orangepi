@@ -9,14 +9,28 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
 #include <asm/io.h>
 #include <asm/arch/soc.h>
-#ifdef CONFIG_KIRKWOOD
+#ifdef CONFIG_ARCH_KIRKWOOD
 #include <asm/arch/mpp.h>
 #endif
 #include <asm/arch-mvebu/spi.h>
+
+struct mvebu_spi_dev {
+	bool			is_errata_50mhz_ac;
+};
+
+struct mvebu_spi_plat {
+	struct kwspi_registers *spireg;
+	bool is_errata_50mhz_ac;
+};
+
+struct mvebu_spi_priv {
+	struct kwspi_registers *spireg;
+};
 
 static void _spi_cs_activate(struct kwspi_registers *reg)
 {
@@ -93,178 +107,73 @@ static int _spi_xfer(struct kwspi_registers *reg, unsigned int bitlen,
 	return 0;
 }
 
-#ifndef CONFIG_DM_SPI
-
-static struct kwspi_registers *spireg =
-	(struct kwspi_registers *)MVEBU_SPI_BASE;
-
-#ifdef CONFIG_KIRKWOOD
-static u32 cs_spi_mpp_back[2];
-#endif
-
-struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
-				unsigned int max_hz, unsigned int mode)
-{
-	struct spi_slave *slave;
-	u32 data;
-#ifdef CONFIG_KIRKWOOD
-	static const u32 kwspi_mpp_config[2][2] = {
-		{ MPP0_SPI_SCn, 0 }, /* if cs == 0 */
-		{ MPP7_SPI_SCn, 0 } /* if cs != 0 */
-	};
-#endif
-
-	if (!spi_cs_is_valid(bus, cs))
-		return NULL;
-
-	slave = spi_alloc_slave_base(bus, cs);
-	if (!slave)
-		return NULL;
-
-	writel(KWSPI_SMEMRDY, &spireg->ctrl);
-
-	/* calculate spi clock prescaller using max_hz */
-	data = ((CONFIG_SYS_TCLK / 2) / max_hz) + 0x10;
-	data = data < KWSPI_CLKPRESCL_MIN ? KWSPI_CLKPRESCL_MIN : data;
-	data = data > KWSPI_CLKPRESCL_MASK ? KWSPI_CLKPRESCL_MASK : data;
-
-	/* program spi clock prescaller using max_hz */
-	writel(KWSPI_ADRLEN_3BYTE | data, &spireg->cfg);
-	debug("data = 0x%08x\n", data);
-
-	writel(KWSPI_SMEMRDIRQ, &spireg->irq_cause);
-	writel(KWSPI_IRQMASK, &spireg->irq_mask);
-
-#ifdef CONFIG_KIRKWOOD
-	/* program mpp registers to select  SPI_CSn */
-	kirkwood_mpp_conf(kwspi_mpp_config[cs ? 1 : 0], cs_spi_mpp_back);
-#endif
-
-	return slave;
-}
-
-void spi_free_slave(struct spi_slave *slave)
-{
-#ifdef CONFIG_KIRKWOOD
-	kirkwood_mpp_conf(cs_spi_mpp_back, NULL);
-#endif
-	free(slave);
-}
-
-#if defined(CONFIG_SYS_KW_SPI_MPP)
-u32 spi_mpp_backup[4];
-#endif
-
-__attribute__((weak)) int board_spi_claim_bus(struct spi_slave *slave)
-{
-	return 0;
-}
-
-int spi_claim_bus(struct spi_slave *slave)
-{
-#if defined(CONFIG_SYS_KW_SPI_MPP)
-	u32 config;
-	u32 spi_mpp_config[4];
-
-	config = CONFIG_SYS_KW_SPI_MPP;
-
-	if (config & MOSI_MPP6)
-		spi_mpp_config[0] = MPP6_SPI_MOSI;
-	else
-		spi_mpp_config[0] = MPP1_SPI_MOSI;
-
-	if (config & SCK_MPP10)
-		spi_mpp_config[1] = MPP10_SPI_SCK;
-	else
-		spi_mpp_config[1] = MPP2_SPI_SCK;
-
-	if (config & MISO_MPP11)
-		spi_mpp_config[2] = MPP11_SPI_MISO;
-	else
-		spi_mpp_config[2] = MPP3_SPI_MISO;
-
-	spi_mpp_config[3] = 0;
-	spi_mpp_backup[3] = 0;
-
-	/* set new spi mpp and save current mpp config */
-	kirkwood_mpp_conf(spi_mpp_config, spi_mpp_backup);
-#endif
-
-	return board_spi_claim_bus(slave);
-}
-
-__attribute__((weak)) void board_spi_release_bus(struct spi_slave *slave)
-{
-}
-
-void spi_release_bus(struct spi_slave *slave)
-{
-#if defined(CONFIG_SYS_KW_SPI_MPP)
-	kirkwood_mpp_conf(spi_mpp_backup, NULL);
-#endif
-
-	board_spi_release_bus(slave);
-}
-
-#ifndef CONFIG_SPI_CS_IS_VALID
-/*
- * you can define this function board specific
- * define above CONFIG in board specific config file and
- * provide the function in board specific src file
- */
-int spi_cs_is_valid(unsigned int bus, unsigned int cs)
-{
-	return bus == 0 && (cs == 0 || cs == 1);
-}
-#endif
-
-void spi_init(void)
-{
-}
-
-void spi_cs_activate(struct spi_slave *slave)
-{
-	_spi_cs_activate(spireg);
-}
-
-void spi_cs_deactivate(struct spi_slave *slave)
-{
-	_spi_cs_deactivate(spireg);
-}
-
-int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
-	     const void *dout, void *din, unsigned long flags)
-{
-	return _spi_xfer(spireg, bitlen, dout, din, flags);
-}
-
-#else
-
-/* Here now the DM part */
-
-struct mvebu_spi_dev {
-	bool			is_errata_50mhz_ac;
-};
-
-struct mvebu_spi_platdata {
-	struct kwspi_registers *spireg;
-	bool is_errata_50mhz_ac;
-};
-
-struct mvebu_spi_priv {
-	struct kwspi_registers *spireg;
-};
-
 static int mvebu_spi_set_speed(struct udevice *bus, uint hz)
 {
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
+	struct dm_spi_bus *spi = dev_get_uclass_priv(bus);
 	struct kwspi_registers *reg = plat->spireg;
-	u32 data;
+	u32 data, divider;
+	unsigned int spr, sppr;
 
-	/* calculate spi clock prescaller using max_hz */
-	data = ((CONFIG_SYS_TCLK / 2) / hz) + 0x10;
-	data = data < KWSPI_CLKPRESCL_MIN ? KWSPI_CLKPRESCL_MIN : data;
-	data = data > KWSPI_CLKPRESCL_MASK ? KWSPI_CLKPRESCL_MASK : data;
+	if (spi->max_hz && (hz > spi->max_hz)) {
+		debug("%s: limit speed to the max_hz of the bus %d\n",
+		      __func__, spi->max_hz);
+		hz = spi->max_hz;
+	}
+
+	/*
+	 * Calculate spi clock prescaller using max_hz.
+	 * SPPR is SPI Baud Rate Pre-selection, it holds bits 5 and 7:6 in
+	 * SPI Interface Configuration Register;
+	 * SPR is SPI Baud Rate Selection, it holds bits 3:0 in SPI Interface
+	 * Configuration Register.
+	 * The SPR together with the SPPR define the SPI CLK frequency as
+	 * follows:
+	 * SPI actual frequency = core_clk / (SPR * (2 ^ SPPR))
+	 */
+	divider = DIV_ROUND_UP(CONFIG_SYS_TCLK, hz);
+	if (divider < 16) {
+		/* This is the easy case, divider is less than 16 */
+		spr = divider;
+		sppr = 0;
+
+	} else {
+		unsigned int two_pow_sppr;
+		/*
+		 * Find the highest bit set in divider. This and the
+		 * three next bits define SPR (apart from rounding).
+		 * SPPR is then the number of zero bits that must be
+		 * appended:
+		 */
+		sppr = fls(divider) - 4;
+
+		/*
+		 * As SPR only has 4 bits, we have to round divider up
+		 * to the next multiple of 2 ** sppr.
+		 */
+		two_pow_sppr = 1 << sppr;
+		divider = (divider + two_pow_sppr - 1) & -two_pow_sppr;
+
+		/*
+		 * recalculate sppr as rounding up divider might have
+		 * increased it enough to change the position of the
+		 * highest set bit. In this case the bit that now
+		 * doesn't make it into SPR is 0, so there is no need to
+		 * round again.
+		 */
+		sppr = fls(divider) - 4;
+		spr = divider >> sppr;
+
+		/*
+		 * Now do range checking. SPR is constructed to have a
+		 * width of 4 bits, so this is fine for sure. So we
+		 * still need to check for sppr to fit into 3 bits:
+		 */
+		if (sppr > 7)
+			return -EINVAL;
+	}
+
+	data = ((sppr & 0x6) << 5) | ((sppr & 0x1) << 4) | spr;
 
 	/* program spi clock prescaler using max_hz */
 	writel(KWSPI_ADRLEN_3BYTE | data, &reg->cfg);
@@ -275,7 +184,7 @@ static int mvebu_spi_set_speed(struct udevice *bus, uint hz)
 
 static void mvebu_spi_50mhz_ac_timing_erratum(struct udevice *bus, uint mode)
 {
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 	struct kwspi_registers *reg = plat->spireg;
 	u32 data;
 
@@ -308,7 +217,7 @@ static void mvebu_spi_50mhz_ac_timing_erratum(struct udevice *bus, uint mode)
 
 static int mvebu_spi_set_mode(struct udevice *bus, uint mode)
 {
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 	struct kwspi_registers *reg = plat->spireg;
 	u32 data = readl(&reg->cfg);
 
@@ -333,27 +242,42 @@ static int mvebu_spi_xfer(struct udevice *dev, unsigned int bitlen,
 			  const void *dout, void *din, unsigned long flags)
 {
 	struct udevice *bus = dev->parent;
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 
 	return _spi_xfer(plat->spireg, bitlen, dout, din, flags);
+}
+
+__attribute__((weak)) int mvebu_board_spi_claim_bus(struct udevice *dev)
+{
+	return 0;
 }
 
 static int mvebu_spi_claim_bus(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 
 	/* Configure the chip-select in the CTRL register */
 	clrsetbits_le32(&plat->spireg->ctrl,
 			KWSPI_CS_MASK << KWSPI_CS_SHIFT,
 			spi_chip_select(dev) << KWSPI_CS_SHIFT);
 
+	return mvebu_board_spi_claim_bus(dev);
+}
+
+__attribute__((weak)) int mvebu_board_spi_release_bus(struct udevice *dev)
+{
 	return 0;
+}
+
+static int mvebu_spi_release_bus(struct udevice *dev)
+{
+	return mvebu_board_spi_release_bus(dev);
 }
 
 static int mvebu_spi_probe(struct udevice *bus)
 {
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 	struct kwspi_registers *reg = plat->spireg;
 
 	writel(KWSPI_SMEMRDY, &reg->ctrl);
@@ -363,13 +287,13 @@ static int mvebu_spi_probe(struct udevice *bus)
 	return 0;
 }
 
-static int mvebu_spi_ofdata_to_platdata(struct udevice *bus)
+static int mvebu_spi_of_to_plat(struct udevice *bus)
 {
-	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct mvebu_spi_plat *plat = dev_get_plat(bus);
 	const struct mvebu_spi_dev *drvdata =
 		(struct mvebu_spi_dev *)dev_get_driver_data(bus);
 
-	plat->spireg = (struct kwspi_registers *)devfdt_get_addr(bus);
+	plat->spireg = dev_read_addr_ptr(bus);
 	plat->is_errata_50mhz_ac = drvdata->is_errata_50mhz_ac;
 
 	return 0;
@@ -377,6 +301,7 @@ static int mvebu_spi_ofdata_to_platdata(struct udevice *bus)
 
 static const struct dm_spi_ops mvebu_spi_ops = {
 	.claim_bus	= mvebu_spi_claim_bus,
+	.release_bus	= mvebu_spi_release_bus,
 	.xfer		= mvebu_spi_xfer,
 	.set_speed	= mvebu_spi_set_speed,
 	.set_mode	= mvebu_spi_set_mode,
@@ -427,9 +352,8 @@ U_BOOT_DRIVER(mvebu_spi) = {
 	.id = UCLASS_SPI,
 	.of_match = mvebu_spi_ids,
 	.ops = &mvebu_spi_ops,
-	.ofdata_to_platdata = mvebu_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct mvebu_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct mvebu_spi_priv),
+	.of_to_plat = mvebu_spi_of_to_plat,
+	.plat_auto	= sizeof(struct mvebu_spi_plat),
+	.priv_auto	= sizeof(struct mvebu_spi_priv),
 	.probe = mvebu_spi_probe,
 };
-#endif

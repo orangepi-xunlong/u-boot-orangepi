@@ -6,6 +6,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
 #include <panel.h>
 #include <syscon.h>
@@ -13,8 +14,10 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/dc.h>
+#include <linux/delay.h>
 #include "displayport.h"
 #include "sor.h"
+#include <linux/err.h>
 
 #define DEBUG_SOR 0
 
@@ -533,7 +536,8 @@ static int tegra_dc_sor_power_up(struct udevice *dev, int is_lvds)
 #if DEBUG_SOR
 static void dump_sor_reg(struct tegra_dc_sor_data *sor)
 {
-#define DUMP_REG(a) printk(BIOS_INFO, "%-32s  %03x  %08x\n",		\
+#define DUMP_REG(a) printk(BIOS_INFO, \
+		"%-32s  %03x  %08x\n",		\
 		#a, a, tegra_sor_readl(sor, a));
 
 	DUMP_REG(SUPER_STATE0);
@@ -667,8 +671,8 @@ static void tegra_dc_sor_config_panel(struct tegra_dc_sor_data *sor,
 			      CSTM_ROTCLK_DEFAULT_MASK |
 			      CSTM_LVDS_EN_ENABLE,
 			      2 << CSTM_ROTCLK_SHIFT |
-			      is_lvds ? CSTM_LVDS_EN_ENABLE :
-			      CSTM_LVDS_EN_DISABLE);
+			      (is_lvds ? CSTM_LVDS_EN_ENABLE :
+			      CSTM_LVDS_EN_DISABLE));
 
 	 tegra_dc_sor_config_pwm(sor, 1024, 1024);
 }
@@ -1038,7 +1042,7 @@ static int tegra_sor_set_backlight(struct udevice *dev, int percent)
 	return 0;
 }
 
-static int tegra_sor_ofdata_to_platdata(struct udevice *dev)
+static int tegra_sor_of_to_plat(struct udevice *dev)
 {
 	struct tegra_dc_sor_data *priv = dev_get_priv(dev);
 	int ret;
@@ -1073,7 +1077,7 @@ U_BOOT_DRIVER(sor_tegra) = {
 	.name	= "sor_tegra",
 	.id	= UCLASS_VIDEO_BRIDGE,
 	.of_match = tegra_sor_ids,
-	.ofdata_to_platdata = tegra_sor_ofdata_to_platdata,
+	.of_to_plat = tegra_sor_of_to_plat,
 	.ops	= &tegra_sor_ops,
-	.priv_auto_alloc_size = sizeof(struct tegra_dc_sor_data),
+	.priv_auto	= sizeof(struct tegra_dc_sor_data),
 };

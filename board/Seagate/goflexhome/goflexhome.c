@@ -12,7 +12,11 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
+#include <init.h>
 #include <miiphy.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/mach-types.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>

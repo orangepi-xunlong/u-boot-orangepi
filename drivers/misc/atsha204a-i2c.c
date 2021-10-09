@@ -15,6 +15,10 @@
 #include <i2c.h>
 #include <errno.h>
 #include <atsha204a-i2c.h>
+#include <log.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
+#include <u-boot/crc.h>
 
 #define ATSHA204A_TWLO			60
 #define ATSHA204A_TRANSACTION_TIMEOUT	100000
@@ -379,7 +383,7 @@ int atsha204a_get_random(struct udevice *dev, u8 *buffer, size_t max)
 	return 0;
 }
 
-static int atsha204a_ofdata_to_platdata(struct udevice *dev)
+static int atsha204a_of_to_plat(struct udevice *dev)
 {
 	fdt_addr_t *priv = dev_get_priv(dev);
 	fdt_addr_t addr;
@@ -403,6 +407,6 @@ U_BOOT_DRIVER(atsha204) = {
 	.name			= "atsha204",
 	.id			= UCLASS_MISC,
 	.of_match		= atsha204a_ids,
-	.ofdata_to_platdata	= atsha204a_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(fdt_addr_t),
+	.of_to_plat	= atsha204a_of_to_plat,
+	.priv_auto	= sizeof(fdt_addr_t),
 };

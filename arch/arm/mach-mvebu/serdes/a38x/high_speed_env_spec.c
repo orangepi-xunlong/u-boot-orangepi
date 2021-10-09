@@ -8,16 +8,12 @@
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <linux/delay.h>
 
 #include "high_speed_env_spec.h"
 #include "sys_env_lib.h"
 #include "ctrl_pex.h"
 
-#if defined(CONFIG_ARMADA_38X)
-#elif defined(CONFIG_ARMADA_39X)
-#else
-#error "No device is defined"
-#endif
 
 
 /*
@@ -78,11 +74,6 @@ u8 selectors_serdes_rev2_map[LAST_SERDES_TYPE][MAX_SERDES_LANES] = {
 	{ NA,    0x6,    NA,	 NA,	 0x4,	 NA,     NA  }, /* USB3_HOST0 */
 	{ NA,    NA,     NA,	 0x5,	 NA,	 0x4,    NA  }, /* USB3_HOST1 */
 	{ NA,    NA,     NA,	 0x6,	 0x5,	 0x5,    NA  }, /* USB3_DEVICE */
-#ifdef CONFIG_ARMADA_39X
-	{ NA,    NA,     0x5,	 NA,	 0x8,	 NA,     0x2 }, /* SGMII3 */
-	{ NA,    NA,     NA,	 0x8,	 0x9,	 0x8,    0x4 }, /* XAUI */
-	{ NA,    NA,     NA,	 NA,	 NA,	 0x8,    0x4 }, /* RXAUI */
-#endif
 	{ 0x0,   0x0,    0x0,	 0x0,	 0x0,	 0x0,    NA  }  /* DEFAULT_SERDES */
 };
 
@@ -532,7 +523,7 @@ struct op_params pex_and_usb3_tx_config_params3[] = {
 struct op_params pex_by4_config_params[] = {
 	/* unit_base_reg, unit_offset, mask, data, wait_time, num_of_loops */
 	{GLOBAL_CLK_SRC_HI, 0x800, 0x7, {0x5, 0x0, 0x0, 0x2}, 0, 0},
-	/* Lane Alignement enable */
+	/* Lane Alignment enable */
 	{LANE_ALIGN_REG0, 0x800, 0x1000, {0x0, 0x0, 0x0, 0x0}, 0, 0},
 	/* Max PLL phy config */
 	{CALIBRATION_CTRL_REG, 0x800, 0x1000, {0x1000, 0x1000, 0x1000, 0x1000},
@@ -597,6 +588,8 @@ struct op_params pex_electrical_config_serdes_rev2_params[] = {
 	{LANE_CFG4_REG, 0x800, 0x8, {0x8}, 0, 0},
 	/* tximpcal_th and rximpcal_th */
 	{VTHIMPCAL_CTRL_REG, 0x800, 0xff00, {0x3000}, 0, 0},
+	/* Force receiver detected */
+	{LANE_CFG0_REG, 0x800, 0x8000, {0x8000}, 0, 0},
 };
 
 /* PEX - configuration seq for REF_CLOCK_25MHz */
@@ -669,12 +662,29 @@ struct op_params usb2_power_up_params[] = {
 	{0xc200c, 0x0 /*NA*/, 0x1000000, {0x1000000}, 0, 0},
 	/* Phy0 register 3  - TX Channel control 0 */
 	{0xc400c, 0x0 /*NA*/, 0x1000000, {0x1000000}, 0, 0},
-	/* check PLLCAL_DONE is set and IMPCAL_DONE is set */
+	/* Decrease the amplitude of the low speed eye to meet the spec */
+	{0xc000c, 0x0 /*NA*/, 0xf000, {0x1000}, 0, 0},
+	{0xc200c, 0x0 /*NA*/, 0xf000, {0x1000}, 0, 0},
+	{0xc400c, 0x0 /*NA*/, 0xf000, {0x1000}, 0, 0},
+	/* Change the High speed impedance threshold */
+	{0xc0008, 0x0 /*NA*/, 0x700, {CONFIG_ARMADA_38X_HS_IMPEDANCE_THRESH << 8}, 0, 0},
+	{0xc2008, 0x0 /*NA*/, 0x700, {CONFIG_ARMADA_38X_HS_IMPEDANCE_THRESH << 8}, 0, 0},
+	{0xc4008, 0x0 /*NA*/, 0x700, {CONFIG_ARMADA_38X_HS_IMPEDANCE_THRESH << 8}, 0, 0},
+	/* Change the squelch level of the receiver to meet the receiver electrical measurements (squelch and receiver sensitivity tests) */
+	{0xc0014, 0x0 /*NA*/, 0xf, {0x8}, 0, 0},
+	{0xc2014, 0x0 /*NA*/, 0xf, {0x8}, 0, 0},
+	{0xc4014, 0x0 /*NA*/, 0xf, {0x8}, 0, 0},
+	/* Check PLLCAL_DONE is set and IMPCAL_DONE is set */
 	{0xc0008, 0x0 /*NA*/, 0x80800000, {0x80800000}, 1, 1000},
-	/* check REG_SQCAL_DONE  is set */
+	/* Check REG_SQCAL_DONE  is set */
 	{0xc0018, 0x0 /*NA*/, 0x80000000, {0x80000000}, 1, 1000},
-	/* check PLL_READY  is set */
-	{0xc0000, 0x0 /*NA*/, 0x80000000, {0x80000000}, 1, 1000}
+	/* Check PLL_READY  is set */
+	{0xc0000, 0x0 /*NA*/, 0x80000000, {0x80000000}, 1, 1000},
+	/* Start calibrate of high seed impedance */
+	{0xc0008, 0x0 /*NA*/, 0x2000, {0x2000}, 0, 0},
+	{0x0, 0x0 /*NA*/, 0x0, {0x0}, 10, 0},
+	/* De-assert  the calibration signal */
+	{0xc0008, 0x0 /*NA*/, 0x2000, {0x0}, 0, 0},
 };
 
 /*
@@ -778,11 +788,9 @@ struct op_params serdes_power_down_params[] = {
  */
 u8 hws_ctrl_serdes_rev_get(void)
 {
-#ifdef CONFIG_ARMADA_38X
 	/* for A38x-Z1 */
 	if (sys_env_device_rev_get() == MV_88F68XX_Z1_ID)
 		return MV_SERDES_REV_1_2;
-#endif
 
 	/* for A39x-Z1, A38x-A0 */
 	return MV_SERDES_REV_2_1;
@@ -1331,9 +1339,6 @@ enum serdes_seq serdes_type_and_speed_to_speed_seq(enum serdes_type serdes_type,
 	case SGMII0:
 	case SGMII1:
 	case SGMII2:
-#ifdef CONFIG_ARMADA_39X
-	case SGMII3:
-#endif
 		if (baud_rate == SERDES_SPEED_1_25_GBPS)
 			seq_id = SGMII_1_25_SPEED_CONFIG_SEQ;
 		else if (baud_rate == SERDES_SPEED_3_125_GBPS)
@@ -1342,14 +1347,6 @@ enum serdes_seq serdes_type_and_speed_to_speed_seq(enum serdes_type serdes_type,
 	case QSGMII:
 		seq_id = QSGMII_5_SPEED_CONFIG_SEQ;
 		break;
-#ifdef CONFIG_ARMADA_39X
-	case XAUI:
-		seq_id = XAUI_3_125_SPEED_CONFIG_SEQ;
-		break;
-	case RXAUI:
-		seq_id = RXAUI_6_25_SPEED_CONFIG_SEQ;
-		break;
-#endif
 	default:
 		return SERDES_LAST_SEQ;
 	}
@@ -1364,16 +1361,16 @@ static void print_topology_details(const struct serdes_map *serdes_map,
 
 	DEBUG_INIT_S("board SerDes lanes topology details:\n");
 
-	DEBUG_INIT_S(" | Lane #  | Speed |  Type       |\n");
+	DEBUG_INIT_S(" | Lane # | Speed |  Type       |\n");
 	DEBUG_INIT_S(" --------------------------------\n");
 	for (lane_num = 0; lane_num < count; lane_num++) {
 		if (serdes_map[lane_num].serdes_type == DEFAULT_SERDES)
 			continue;
 		DEBUG_INIT_S(" |   ");
 		DEBUG_INIT_D(hws_get_physical_serdes_num(lane_num), 1);
-		DEBUG_INIT_S("    |  ");
+		DEBUG_INIT_S("    |   ");
 		DEBUG_INIT_D(serdes_map[lane_num].serdes_speed, 2);
-		DEBUG_INIT_S("   |  ");
+		DEBUG_INIT_S("   | ");
 		DEBUG_INIT_S((char *)
 			     serdes_type_to_string[serdes_map[lane_num].
 						   serdes_type]);
@@ -2034,13 +2031,6 @@ int hws_ref_clock_set(u32 serdes_num, enum serdes_type serdes_type,
 				     (serdes_num,
 				      PEX_CONFIG_REF_CLOCK_100MHZ_SEQ));
 			return MV_OK;
-#ifdef CONFIG_ARMADA_39X
-		case REF_CLOCK_40MHZ:
-			CHECK_STATUS(mv_seq_exec
-				     (serdes_num,
-				      PEX_CONFIG_REF_CLOCK_40MHZ_SEQ));
-			return MV_OK;
-#endif
 		default:
 			printf
 			    ("%s: Error: ref_clock %d for SerDes lane #%d, type %d is not supported\n",
@@ -2084,22 +2074,6 @@ int hws_ref_clock_set(u32 serdes_num, enum serdes_type serdes_type,
 			return MV_BAD_PARAM;
 		}
 		break;
-#ifdef CONFIG_ARMADA_39X
-	case SGMII3:
-	case XAUI:
-	case RXAUI:
-		if (ref_clock == REF_CLOCK_25MHZ) {
-			data1 = POWER_AND_PLL_CTRL_REG_25MHZ_VAL_1;
-		} else if (ref_clock == REF_CLOCK_40MHZ) {
-			data1 = POWER_AND_PLL_CTRL_REG_40MHZ_VAL;
-		} else {
-			printf
-			    ("hws_ref_clock_set: ref clock is not valid for serdes type %d\n",
-			     serdes_type);
-			return MV_BAD_PARAM;
-		}
-		break;
-#endif
 	default:
 		DEBUG_INIT_S("hws_ref_clock_set: not supported serdes type\n");
 		return MV_BAD_PARAM;

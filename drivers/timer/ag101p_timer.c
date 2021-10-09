@@ -58,23 +58,22 @@ struct atftmr_timer_regs {
 	u32	int_mask;		/* 0x38 */
 };
 
-struct atftmr_timer_platdata {
+struct atftmr_timer_plat {
 	struct atftmr_timer_regs *regs;
 };
 
-static int atftmr_timer_get_count(struct udevice *dev, u64 *count)
+static u64 atftmr_timer_get_count(struct udevice *dev)
 {
-	struct atftmr_timer_platdata *plat = dev->platdata;
+	struct atftmr_timer_plat *plat = dev_get_plat(dev);
 	struct atftmr_timer_regs *const regs = plat->regs;
 	u32 val;
 	val = readl(&regs->t3_counter);
-	*count = timer_conv_64(val);
-	return 0;
+	return timer_conv_64(val);
 }
 
 static int atftmr_timer_probe(struct udevice *dev)
 {
-	struct atftmr_timer_platdata *plat = dev->platdata;
+	struct atftmr_timer_plat *plat = dev_get_plat(dev);
 	struct atftmr_timer_regs *const regs = plat->regs;
 	u32 cr;
 	writel(0, &regs->t3_load);
@@ -89,10 +88,10 @@ static int atftmr_timer_probe(struct udevice *dev)
 	return 0;
 }
 
-static int atftme_timer_ofdata_to_platdata(struct udevice *dev)
+static int atftme_timer_of_to_plat(struct udevice *dev)
 {
-	struct atftmr_timer_platdata *plat = dev_get_platdata(dev);
-	plat->regs = map_physmem(devfdt_get_addr(dev),
+	struct atftmr_timer_plat *plat = dev_get_plat(dev);
+	plat->regs = map_physmem(dev_read_addr(dev),
 				 sizeof(struct atftmr_timer_regs),
 				 MAP_NOCACHE);
 	return 0;
@@ -111,9 +110,8 @@ U_BOOT_DRIVER(altera_timer) = {
 	.name	= "ag101p_timer",
 	.id	= UCLASS_TIMER,
 	.of_match = ag101p_timer_ids,
-	.ofdata_to_platdata = atftme_timer_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct atftmr_timer_platdata),
+	.of_to_plat = atftme_timer_of_to_plat,
+	.plat_auto	= sizeof(struct atftmr_timer_plat),
 	.probe = atftmr_timer_probe,
 	.ops	= &ag101p_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

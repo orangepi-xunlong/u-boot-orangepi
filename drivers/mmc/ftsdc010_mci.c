@@ -11,9 +11,12 @@
 
 #include <common.h>
 #include <clk.h>
+#include <log.h>
 #include <malloc.h>
 #include <part.h>
 #include <mmc.h>
+#include <asm/global_data.h>
+#include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/errno.h>
 #include <asm/byteorder.h>
@@ -387,13 +390,13 @@ static void ftsdc_setup_cfg(struct mmc_config *cfg, const char *name, int buswid
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 }
 
-static int ftsdc010_mmc_ofdata_to_platdata(struct udevice *dev)
+static int ftsdc010_mmc_of_to_plat(struct udevice *dev)
 {
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	struct ftsdc_priv *priv = dev_get_priv(dev);
 	struct ftsdc010_chip *chip = &priv->chip;
 	chip->name = dev->name;
-	chip->ioaddr = (void *)devfdt_get_addr(dev);
+	chip->ioaddr = dev_read_addr_ptr(dev);
 	chip->buswidth = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 					"bus-width", 4);
 	chip->priv = dev;
@@ -422,7 +425,7 @@ static int ftsdc010_mmc_ofdata_to_platdata(struct udevice *dev)
 
 static int ftsdc010_mmc_probe(struct udevice *dev)
 {
-	struct ftsdc010_plat *plat = dev_get_platdata(dev);
+	struct ftsdc010_plat *plat = dev_get_plat(dev);
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct ftsdc_priv *priv = dev_get_priv(dev);
 	struct ftsdc010_chip *chip = &priv->chip;
@@ -437,7 +440,7 @@ static int ftsdc010_mmc_probe(struct udevice *dev)
 	chip->priv = dev;
 	chip->dev_index = 1;
 	memcpy(priv->minmax, dtplat->clock_freq_min_max, sizeof(priv->minmax));
-	ret = clk_get_by_index_platdata(dev, 0, dtplat->clocks, &priv->clk);
+	ret = clk_get_by_driver_info(dev, dtplat->clocks, &priv->clk);
 	if (ret < 0)
 		return ret;
 #endif
@@ -457,13 +460,13 @@ static int ftsdc010_mmc_probe(struct udevice *dev)
 
 int ftsdc010_mmc_bind(struct udevice *dev)
 {
-	struct ftsdc010_plat *plat = dev_get_platdata(dev);
+	struct ftsdc010_plat *plat = dev_get_plat(dev);
 
 	return mmc_bind(dev, &plat->mmc, &plat->cfg);
 }
 
 static const struct udevice_id ftsdc010_mmc_ids[] = {
-	{ .compatible = "andestech,atsdc010" },
+	{ .compatible = "andestech,atfsdc010" },
 	{ }
 };
 
@@ -471,10 +474,10 @@ U_BOOT_DRIVER(ftsdc010_mmc) = {
 	.name		= "ftsdc010_mmc",
 	.id		= UCLASS_MMC,
 	.of_match	= ftsdc010_mmc_ids,
-	.ofdata_to_platdata = ftsdc010_mmc_ofdata_to_platdata,
+	.of_to_plat = ftsdc010_mmc_of_to_plat,
 	.ops		= &dm_ftsdc010_mmc_ops,
 	.bind		= ftsdc010_mmc_bind,
 	.probe		= ftsdc010_mmc_probe,
-	.priv_auto_alloc_size = sizeof(struct ftsdc_priv),
-	.platdata_auto_alloc_size = sizeof(struct ftsdc010_plat),
+	.priv_auto	= sizeof(struct ftsdc_priv),
+	.plat_auto	= sizeof(struct ftsdc010_plat),
 };

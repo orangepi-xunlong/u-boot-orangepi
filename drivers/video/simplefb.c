@@ -7,11 +7,13 @@
 #include <dm.h>
 #include <fdtdec.h>
 #include <fdt_support.h>
+#include <log.h>
 #include <video.h>
+#include <asm/global_data.h>
 
 static int simple_video_probe(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	const void *blob = gd->fdt_blob;
 	const int node = dev_of_offset(dev);
@@ -68,5 +70,4 @@ U_BOOT_DRIVER(simple_video) = {
 	.id	= UCLASS_VIDEO,
 	.of_match = simple_video_ids,
 	.probe	= simple_video_probe,
-	.flags	= DM_FLAG_PRE_RELOC,
 };

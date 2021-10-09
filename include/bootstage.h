@@ -170,6 +170,8 @@ enum bootstage_id {
 	 * rough boot timing information.
 	 */
 	BOOTSTAGE_ID_AWAKE,
+	BOOTSTAGE_ID_START_TPL,
+	BOOTSTAGE_ID_END_TPL,
 	BOOTSTAGE_ID_START_SPL,
 	BOOTSTAGE_ID_END_SPL,
 	BOOTSTAGE_ID_START_UBOOT_F,
@@ -181,6 +183,7 @@ enum bootstage_id {
 	BOOTSTAGE_ID_BOOTM_START,
 	BOOTSTAGE_ID_BOOTM_HANDOFF,
 	BOOTSTAGE_ID_MAIN_LOOP,
+	BOOTSTAGE_ID_ENTER_CLI_LOOP,
 	BOOTSTAGE_KERNELREAD_START,
 	BOOTSTAGE_KERNELREAD_STOP,
 	BOOTSTAGE_ID_BOARD_INIT,
@@ -196,9 +199,12 @@ enum bootstage_id {
 	BOOTSTAGE_ID_ACCUM_DECOMP,
 	BOOTSTAGE_ID_ACCUM_OF_LIVE,
 	BOOTSTAGE_ID_FPGA_INIT,
-	BOOTSTATE_ID_ACCUM_DM_SPL,
-	BOOTSTATE_ID_ACCUM_DM_F,
-	BOOTSTATE_ID_ACCUM_DM_R,
+	BOOTSTAGE_ID_ACCUM_DM_SPL,
+	BOOTSTAGE_ID_ACCUM_DM_F,
+	BOOTSTAGE_ID_ACCUM_DM_R,
+	BOOTSTAGE_ID_ACCUM_FSP_M,
+	BOOTSTAGE_ID_ACCUM_FSP_S,
+	BOOTSTAGE_ID_ACCUM_MMAP_SPI,
 
 	/* a few spare for the user, from here */
 	BOOTSTAGE_ID_USER,
@@ -332,7 +338,7 @@ int bootstage_stash(void *base, int size);
  * @param base	Base address of memory buffer
  * @param size	Size of memory buffer (-1 if unknown)
  * @return 0 if unstashed ok, -ENOENT if bootstage info not found, -ENOSPC if
- *	there is not space for read the stacked data, or other error if
+ *	there is not space for read the stashed data, or other error if
  *	something else went wrong
  */
 int bootstage_unstash(const void *base, int size);

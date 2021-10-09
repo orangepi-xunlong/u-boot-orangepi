@@ -30,21 +30,20 @@ tested on both gig copper and gig fiber boards
  */
 
 #include <common.h>
+#include <command.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <memalign.h>
+#include <net.h>
 #include <pci.h>
+#include <linux/delay.h>
 #include "e1000.h"
+#include <asm/cache.h>
 
 #define TOUT_LOOP   100000
-
-#ifdef CONFIG_DM_ETH
-#define virt_to_bus(devno, v)	dm_pci_virt_to_mem(devno, (void *) (v))
-#define bus_to_phys(devno, a)	dm_pci_mem_to_phys(devno, a)
-#else
-#define virt_to_bus(devno, v)	pci_virt_to_mem(devno, (void *) (v))
-#define bus_to_phys(devno, a)	pci_mem_to_phys(devno, a)
-#endif
 
 #define E1000_DEFAULT_PCI_PBA	0x00000030
 #define E1000_DEFAULT_PCIE_PBA	0x000a0026
@@ -862,7 +861,6 @@ e1000_read_eeprom(struct e1000_hw *hw, uint16_t offset,
 	return E1000_SUCCESS;
 }
 
-#ifndef CONFIG_DM_ETH
 /******************************************************************************
  *  e1000_write_eeprom_srwr - Write to Shadow Ram using EEWR
  *  @hw: pointer to the HW structure
@@ -1028,7 +1026,6 @@ static int32_t e1000_update_eeprom_checksum_i210(struct e1000_hw *hw)
 out:
 	return ret_val;
 }
-#endif
 
 /******************************************************************************
  * Verifies that the EEPROM has a valid checksum
@@ -1636,6 +1633,11 @@ e1000_reset_hw(struct e1000_hw *hw)
 	E1000_WRITE_REG(hw, RCTL, 0);
 	E1000_WRITE_REG(hw, TCTL, E1000_TCTL_PSP);
 	E1000_WRITE_FLUSH(hw);
+
+	if (hw->mac_type == e1000_igb) {
+		E1000_WRITE_REG(hw, RXPBS, I210_RXPBSIZE_DEFAULT);
+		E1000_WRITE_REG(hw, TXPBS, I210_TXPBSIZE_DEFAULT);
+	}
 
 	/* The tbi_compatibility_on Flag must be cleared when Rctl is cleared. */
 	hw->tbi_compatibility_on = false;
@@ -5139,7 +5141,7 @@ fill_rx(struct e1000_hw *hw)
 	rd = rx_base + rx_tail;
 	rx_tail = (rx_tail + 1) % 8;
 	memset(rd, 0, 16);
-	rd->buffer_addr = cpu_to_le64((unsigned long)packet);
+	rd->buffer_addr = cpu_to_le64(virt_to_phys(packet));
 
 	/*
 	 * Make sure there are no stale data in WB over this area, which
@@ -5170,8 +5172,8 @@ e1000_configure_tx(struct e1000_hw *hw)
 	unsigned long tipg, tarc;
 	uint32_t ipgr1, ipgr2;
 
-	E1000_WRITE_REG(hw, TDBAL, lower_32_bits((unsigned long)tx_base));
-	E1000_WRITE_REG(hw, TDBAH, upper_32_bits((unsigned long)tx_base));
+	E1000_WRITE_REG(hw, TDBAL, lower_32_bits(virt_to_phys(tx_base)));
+	E1000_WRITE_REG(hw, TDBAH, upper_32_bits(virt_to_phys(tx_base)));
 
 	E1000_WRITE_REG(hw, TDLEN, 128);
 
@@ -5315,8 +5317,8 @@ e1000_configure_rx(struct e1000_hw *hw)
 		E1000_WRITE_FLUSH(hw);
 	}
 	/* Setup the Base and Length of the Rx Descriptor Ring */
-	E1000_WRITE_REG(hw, RDBAL, lower_32_bits((unsigned long)rx_base));
-	E1000_WRITE_REG(hw, RDBAH, upper_32_bits((unsigned long)rx_base));
+	E1000_WRITE_REG(hw, RDBAL, lower_32_bits(virt_to_phys(rx_base)));
+	E1000_WRITE_REG(hw, RDBAH, upper_32_bits(virt_to_phys(rx_base)));
 
 	E1000_WRITE_REG(hw, RDLEN, 128);
 
@@ -5377,7 +5379,7 @@ static int _e1000_transmit(struct e1000_hw *hw, void *txpacket, int length)
 	txp = tx_base + tx_tail;
 	tx_tail = (tx_tail + 1) % 8;
 
-	txp->buffer_addr = cpu_to_le64(virt_to_bus(hw->pdev, nv_packet));
+	txp->buffer_addr = cpu_to_le64(virt_to_phys(nv_packet));
 	txp->lower.data = cpu_to_le32(hw->txd_cmd | length);
 	txp->upper.data = 0;
 
@@ -5627,7 +5629,7 @@ e1000_disable(struct eth_device *nic)
 INIT - set up ethernet interface(s)
 ***************************************************************************/
 static int
-e1000_init(struct eth_device *nic, bd_t *bis)
+e1000_init(struct eth_device *nic, struct bd_info *bis)
 {
 	struct e1000_hw *hw = nic->priv;
 
@@ -5648,17 +5650,32 @@ e1000_poll(struct eth_device *nic)
 
 	return len ? 1 : 0;
 }
+#endif /* !CONFIG_DM_ETH */
 
+#ifdef CONFIG_DM_ETH
+static int e1000_write_hwaddr(struct udevice *dev)
+#else
 static int e1000_write_hwaddr(struct eth_device *dev)
+#endif
 {
 #ifndef CONFIG_E1000_NO_NVM
-	unsigned char *mac = dev->enetaddr;
 	unsigned char current_mac[6];
+#ifdef CONFIG_DM_ETH
+	struct eth_pdata *plat = dev_get_plat(dev);
+	struct e1000_hw *hw = dev_get_priv(dev);
+	u8 *mac = plat->enetaddr;
+#else
 	struct e1000_hw *hw = dev->priv;
+	u8 *mac = dev->enetaddr;
+#endif
 	uint16_t data[3];
 	int ret_val, i;
 
 	DEBUGOUT("%s: mac=%pM\n", __func__, mac);
+
+	if ((hw->eeprom.type == e1000_eeprom_invm) &&
+	    !(E1000_READ_REG(hw, EECD) & E1000_EECD_FLASH_DETECTED_I210))
+		return -ENOSYS;
 
 	memset(current_mac, 0, 6);
 
@@ -5688,12 +5705,13 @@ static int e1000_write_hwaddr(struct eth_device *dev)
 #endif
 }
 
+#ifndef CONFIG_DM_ETH
 /**************************************************************************
 PROBE - Look for an adapter, this routine's visible to the outside
 You should omit the last argument struct pci_device * for a non-PCI NIC
 ***************************************************************************/
 int
-e1000_initialize(bd_t * bis)
+e1000_initialize(struct bd_info * bis)
 {
 	unsigned int i;
 	pci_dev_t devno;
@@ -5757,8 +5775,8 @@ struct e1000_hw *e1000_find_card(unsigned int cardnum)
 #endif /* !CONFIG_DM_ETH */
 
 #ifdef CONFIG_CMD_E1000
-static int do_e1000(cmd_tbl_t *cmdtp, int flag,
-		int argc, char * const argv[])
+static int do_e1000(struct cmd_tbl *cmdtp, int flag, int argc,
+		    char *const argv[])
 {
 	unsigned char *mac = NULL;
 #ifdef CONFIG_DM_ETH
@@ -5783,7 +5801,7 @@ static int do_e1000(cmd_tbl_t *cmdtp, int flag,
 	e1000_name(name, cardnum);
 	ret = uclass_get_device_by_name(UCLASS_ETH, name, &dev);
 	if (!ret) {
-		plat = dev_get_platdata(dev);
+		plat = dev_get_plat(dev);
 		mac = plat->enetaddr;
 	}
 #else
@@ -5832,7 +5850,7 @@ U_BOOT_CMD(
 #ifdef CONFIG_DM_ETH
 static int e1000_eth_start(struct udevice *dev)
 {
-	struct eth_pdata *plat = dev_get_platdata(dev);
+	struct eth_pdata *plat = dev_get_plat(dev);
 	struct e1000_hw *hw = dev_get_priv(dev);
 
 	return _e1000_init(hw, plat->enetaddr);
@@ -5878,7 +5896,7 @@ static int e1000_free_pkt(struct udevice *dev, uchar *packet, int length)
 
 static int e1000_eth_probe(struct udevice *dev)
 {
-	struct eth_pdata *plat = dev_get_platdata(dev);
+	struct eth_pdata *plat = dev_get_plat(dev);
 	struct e1000_hw *hw = dev_get_priv(dev);
 	int ret;
 
@@ -5914,6 +5932,7 @@ static const struct eth_ops e1000_eth_ops = {
 	.recv	= e1000_eth_recv,
 	.stop	= e1000_eth_stop,
 	.free_pkt = e1000_free_pkt,
+	.write_hwaddr = e1000_write_hwaddr,
 };
 
 static const struct udevice_id e1000_eth_ids[] = {
@@ -5928,8 +5947,8 @@ U_BOOT_DRIVER(eth_e1000) = {
 	.bind	= e1000_eth_bind,
 	.probe	= e1000_eth_probe,
 	.ops	= &e1000_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct e1000_hw),
-	.platdata_auto_alloc_size = sizeof(struct eth_pdata),
+	.priv_auto	= sizeof(struct e1000_hw),
+	.plat_auto	= sizeof(struct eth_pdata),
 };
 
 U_BOOT_PCI_DEVICE(eth_e1000, e1000_supported);

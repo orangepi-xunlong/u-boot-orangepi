@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011 Calxeda, Inc.
+ * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  */
 
 #include <common.h>
@@ -35,10 +36,12 @@ struct menu {
 	int timeout;
 	char *title;
 	int prompt;
+	void (*display_statusline)(struct menu *);
 	void (*item_data_print)(void *);
 	char *(*item_choice)(void *);
 	void *item_choice_data;
 	struct list_head items;
+	int item_cnt;
 };
 
 /*
@@ -104,10 +107,6 @@ static inline void *menu_item_destroy(struct menu *m,
 	return NULL;
 }
 
-__weak void menu_display_statusline(struct menu *m)
-{
-}
-
 /*
  * Display a menu so the user can make a choice of an item. First display its
  * title, if any, and then each item in the menu.
@@ -118,7 +117,8 @@ static inline void menu_display(struct menu *m)
 		puts(m->title);
 		putc('\n');
 	}
-	menu_display_statusline(m);
+	if (m->display_statusline)
+		m->display_statusline(m);
 
 	menu_items_iter(m, menu_item_print, NULL);
 }
@@ -194,8 +194,7 @@ static inline int menu_interactive_choice(struct menu *m, void **choice)
 
 		if (!m->item_choice) {
 			readret = cli_readline_into_buffer("Enter choice: ",
-							   cbuf,
-							   m->timeout / 10);
+							   cbuf, m->timeout);
 
 			if (readret >= 0) {
 				choice_item = menu_item_by_key(m, cbuf);
@@ -272,7 +271,7 @@ int menu_get_choice(struct menu *m, void **choice)
 	if (!m || !choice)
 		return -EINVAL;
 
-	if (!m->prompt)
+	if (!m->prompt || m->item_cnt == 1)
 		return menu_default_choice(m, choice);
 
 	return menu_interactive_choice(m, choice);
@@ -324,6 +323,7 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
 	item->data = item_data;
 
 	list_add_tail(&item->list, &m->items);
+	m->item_cnt++;
 
 	return 1;
 }
@@ -342,6 +342,9 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
  * timeout. If 1, the user will be prompted for input regardless of the value
  * of timeout.
  *
+ * display_statusline - If not NULL, will be called to show a statusline when
+ * the menu is displayed.
+ *
  * item_data_print - If not NULL, will be called for each item when the menu
  * is displayed, with the pointer to the item's data passed as the argument.
  * If NULL, each item's key will be printed instead.  Since an item's key is
@@ -358,6 +361,7 @@ int menu_item_add(struct menu *m, char *item_key, void *item_data)
  * insufficient memory available to create the menu.
  */
 struct menu *menu_create(char *title, int timeout, int prompt,
+				void (*display_statusline)(struct menu *),
 				void (*item_data_print)(void *),
 				char *(*item_choice)(void *),
 				void *item_choice_data)
@@ -372,9 +376,11 @@ struct menu *menu_create(char *title, int timeout, int prompt,
 	m->default_item = NULL;
 	m->prompt = prompt;
 	m->timeout = timeout;
+	m->display_statusline = display_statusline;
 	m->item_data_print = item_data_print;
 	m->item_choice = item_choice;
 	m->item_choice_data = item_choice_data;
+	m->item_cnt = 0;
 
 	if (title) {
 		m->title = strdup(title);

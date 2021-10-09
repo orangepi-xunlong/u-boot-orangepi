@@ -48,9 +48,10 @@ enum {
 	GSC_HWMON_VBATT		= 0x08,
 	GSC_HWMON_VDD_5P0	= 0x0b,
 	GSC_HWMON_VDD_CORE	= 0x0e,
+	GSC_HWMON_VDD_SOC	= 0x11,
 	GSC_HWMON_VDD_HIGH	= 0x14,
 	GSC_HWMON_VDD_DDR	= 0x17,
-	GSC_HWMON_VDD_SOC	= 0x11,
+	GSC_HWMON_VDD_EXT	= 0x1a,
 	GSC_HWMON_VDD_1P8	= 0x1d,
 	GSC_HWMON_VDD_IO2	= 0x20,
 	GSC_HWMON_VDD_2P5	= 0x23,
@@ -66,5 +67,6 @@ int gsc_i2c_read(uchar chip, uint addr, int alen, uchar *buf, int len);
 int gsc_i2c_write(uchar chip, uint addr, int alen, uchar *buf, int len);
 int gsc_info(int verbose);
 int gsc_boot_wd_disable(void);
+const char *gsc_get_dtb_name(int level, char *buf, int sz);
 #endif
 

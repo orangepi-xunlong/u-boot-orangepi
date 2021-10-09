@@ -8,13 +8,16 @@
 
 #include <common.h>
 #include <dm.h>
+#include <env.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <malloc.h>
 #include <net.h>
+#include <asm/eth.h>
 #include <dm/test.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
-#include <asm/eth.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 #define DM_TEST_ETH_NUM		4
@@ -37,7 +40,7 @@ static int dm_test_eth(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_eth, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_eth, UT_TESTF_SCAN_FDT);
 
 static int dm_test_eth_alias(struct unit_test_state *uts)
 {
@@ -46,12 +49,12 @@ static int dm_test_eth_alias(struct unit_test_state *uts)
 	ut_assertok(net_loop(PING));
 	ut_asserteq_str("eth@10002000", env_get("ethact"));
 
-	env_set("ethact", "eth1");
+	env_set("ethact", "eth6");
 	ut_assertok(net_loop(PING));
 	ut_asserteq_str("eth@10004000", env_get("ethact"));
 
-	/* Expected to fail since eth2 is not defined in the device tree */
-	env_set("ethact", "eth2");
+	/* Expected to fail since eth1 is not defined in the device tree */
+	env_set("ethact", "eth1");
 	ut_assertok(net_loop(PING));
 	ut_asserteq_str("eth@10002000", env_get("ethact"));
 
@@ -61,7 +64,7 @@ static int dm_test_eth_alias(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_eth_alias, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_eth_alias, UT_TESTF_SCAN_FDT);
 
 static int dm_test_eth_prime(struct unit_test_state *uts)
 {
@@ -81,7 +84,7 @@ static int dm_test_eth_prime(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_eth_prime, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_eth_prime, UT_TESTF_SCAN_FDT);
 
 /**
  * This test case is trying to test the following scenario:
@@ -103,7 +106,7 @@ static int dm_test_eth_act(struct unit_test_state *uts)
 	const char *ethname[DM_TEST_ETH_NUM] = {"eth@10002000", "eth@10003000",
 						"sbe5", "eth@10004000"};
 	const char *addrname[DM_TEST_ETH_NUM] = {"ethaddr", "eth5addr",
-						 "eth3addr", "eth1addr"};
+						 "eth3addr", "eth6addr"};
 	char ethaddr[DM_TEST_ETH_NUM][18];
 	int i;
 
@@ -142,7 +145,7 @@ static int dm_test_eth_act(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_eth_act, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_eth_act, UT_TESTF_SCAN_FDT);
 
 /* The asserts include a return on fail; cleanup in the caller */
 static int _dm_test_eth_rotate1(struct unit_test_state *uts)
@@ -186,15 +189,15 @@ static int dm_test_eth_rotate(struct unit_test_state *uts)
 
 	/* Invalidate eth1's MAC address */
 	memset(ethaddr, '\0', sizeof(ethaddr));
-	strncpy(ethaddr, env_get("eth1addr"), 17);
-	/* Must disable access protection for eth1addr before clearing */
-	env_set(".flags", "eth1addr");
-	env_set("eth1addr", NULL);
+	strncpy(ethaddr, env_get("eth6addr"), 17);
+	/* Must disable access protection for eth6addr before clearing */
+	env_set(".flags", "eth6addr");
+	env_set("eth6addr", NULL);
 
 	retval = _dm_test_eth_rotate1(uts);
 
 	/* Restore the env */
-	env_set("eth1addr", ethaddr);
+	env_set("eth6addr", ethaddr);
 	env_set("ethrotate", NULL);
 
 	if (!retval) {
@@ -214,7 +217,7 @@ static int dm_test_eth_rotate(struct unit_test_state *uts)
 
 	return retval;
 }
-DM_TEST(dm_test_eth_rotate, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_eth_rotate, UT_TESTF_SCAN_FDT);
 
 /* The asserts include a return on fail; cleanup in the caller */
 static int _dm_test_net_retry(struct unit_test_state *uts)
@@ -224,7 +227,7 @@ static int _dm_test_net_retry(struct unit_test_state *uts)
 	 * the active device should be eth0
 	 */
 	sandbox_eth_disable_response(1, true);
-	env_set("ethact", "eth@10004000");
+	env_set("ethact", "lan1");
 	env_set("netretry", "yes");
 	sandbox_eth_skip_timeout();
 	ut_assertok(net_loop(PING));
@@ -234,11 +237,11 @@ static int _dm_test_net_retry(struct unit_test_state *uts)
 	 * eth1 is disabled and netretry is no, so the ping should fail and the
 	 * active device should be eth1
 	 */
-	env_set("ethact", "eth@10004000");
+	env_set("ethact", "lan1");
 	env_set("netretry", "no");
 	sandbox_eth_skip_timeout();
-	ut_asserteq(-ETIMEDOUT, net_loop(PING));
-	ut_asserteq_str("eth@10004000", env_get("ethact"));
+	ut_asserteq(-ENONET, net_loop(PING));
+	ut_asserteq_str("lan1", env_get("ethact"));
 
 	return 0;
 }
@@ -257,4 +260,174 @@ static int dm_test_net_retry(struct unit_test_state *uts)
 
 	return retval;
 }
-DM_TEST(dm_test_net_retry, DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_net_retry, UT_TESTF_SCAN_FDT);
+
+static int sb_check_arp_reply(struct udevice *dev, void *packet,
+			      unsigned int len)
+{
+	struct eth_sandbox_priv *priv = dev_get_priv(dev);
+	struct ethernet_hdr *eth = packet;
+	struct arp_hdr *arp;
+	/* Used by all of the ut_assert macros */
+	struct unit_test_state *uts = priv->priv;
+
+	if (ntohs(eth->et_protlen) != PROT_ARP)
+		return 0;
+
+	arp = packet + ETHER_HDR_SIZE;
+
+	if (ntohs(arp->ar_op) != ARPOP_REPLY)
+		return 0;
+
+	/* This test would be worthless if we are not waiting */
+	ut_assert(arp_is_waiting());
+
+	/* Validate response */
+	ut_asserteq_mem(eth->et_src, net_ethaddr, ARP_HLEN);
+	ut_asserteq_mem(eth->et_dest, priv->fake_host_hwaddr, ARP_HLEN);
+	ut_assert(eth->et_protlen == htons(PROT_ARP));
+
+	ut_assert(arp->ar_hrd == htons(ARP_ETHER));
+	ut_assert(arp->ar_pro == htons(PROT_IP));
+	ut_assert(arp->ar_hln == ARP_HLEN);
+	ut_assert(arp->ar_pln == ARP_PLEN);
+	ut_asserteq_mem(&arp->ar_sha, net_ethaddr, ARP_HLEN);
+	ut_assert(net_read_ip(&arp->ar_spa).s_addr == net_ip.s_addr);
+	ut_asserteq_mem(&arp->ar_tha, priv->fake_host_hwaddr, ARP_HLEN);
+	ut_assert(net_read_ip(&arp->ar_tpa).s_addr ==
+		  string_to_ip("1.1.2.4").s_addr);
+
+	return 0;
+}
+
+static int sb_with_async_arp_handler(struct udevice *dev, void *packet,
+				     unsigned int len)
+{
+	struct eth_sandbox_priv *priv = dev_get_priv(dev);
+	struct ethernet_hdr *eth = packet;
+	struct arp_hdr *arp = packet + ETHER_HDR_SIZE;
+	int ret;
+
+	/*
+	 * If we are about to generate a reply to ARP, first inject a request
+	 * from another host
+	 */
+	if (ntohs(eth->et_protlen) == PROT_ARP &&
+	    ntohs(arp->ar_op) == ARPOP_REQUEST) {
+		/* Make sure sandbox_eth_recv_arp_req() knows who is asking */
+		priv->fake_host_ipaddr = string_to_ip("1.1.2.4");
+
+		ret = sandbox_eth_recv_arp_req(dev);
+		if (ret)
+			return ret;
+	}
+
+	sandbox_eth_arp_req_to_reply(dev, packet, len);
+	sandbox_eth_ping_req_to_reply(dev, packet, len);
+
+	return sb_check_arp_reply(dev, packet, len);
+}
+
+static int dm_test_eth_async_arp_reply(struct unit_test_state *uts)
+{
+	net_ping_ip = string_to_ip("1.1.2.2");
+
+	sandbox_eth_set_tx_handler(0, sb_with_async_arp_handler);
+	/* Used by all of the ut_assert macros in the tx_handler */
+	sandbox_eth_set_priv(0, uts);
+
+	env_set("ethact", "eth@10002000");
+	ut_assertok(net_loop(PING));
+	ut_asserteq_str("eth@10002000", env_get("ethact"));
+
+	sandbox_eth_set_tx_handler(0, NULL);
+
+	return 0;
+}
+
+DM_TEST(dm_test_eth_async_arp_reply, UT_TESTF_SCAN_FDT);
+
+static int sb_check_ping_reply(struct udevice *dev, void *packet,
+			       unsigned int len)
+{
+	struct eth_sandbox_priv *priv = dev_get_priv(dev);
+	struct ethernet_hdr *eth = packet;
+	struct ip_udp_hdr *ip;
+	struct icmp_hdr *icmp;
+	/* Used by all of the ut_assert macros */
+	struct unit_test_state *uts = priv->priv;
+
+	if (ntohs(eth->et_protlen) != PROT_IP)
+		return 0;
+
+	ip = packet + ETHER_HDR_SIZE;
+
+	if (ip->ip_p != IPPROTO_ICMP)
+		return 0;
+
+	icmp = (struct icmp_hdr *)&ip->udp_src;
+
+	if (icmp->type != ICMP_ECHO_REPLY)
+		return 0;
+
+	/* This test would be worthless if we are not waiting */
+	ut_assert(arp_is_waiting());
+
+	/* Validate response */
+	ut_asserteq_mem(eth->et_src, net_ethaddr, ARP_HLEN);
+	ut_asserteq_mem(eth->et_dest, priv->fake_host_hwaddr, ARP_HLEN);
+	ut_assert(eth->et_protlen == htons(PROT_IP));
+
+	ut_assert(net_read_ip(&ip->ip_src).s_addr == net_ip.s_addr);
+	ut_assert(net_read_ip(&ip->ip_dst).s_addr ==
+		  string_to_ip("1.1.2.4").s_addr);
+
+	return 0;
+}
+
+static int sb_with_async_ping_handler(struct udevice *dev, void *packet,
+				      unsigned int len)
+{
+	struct eth_sandbox_priv *priv = dev_get_priv(dev);
+	struct ethernet_hdr *eth = packet;
+	struct arp_hdr *arp = packet + ETHER_HDR_SIZE;
+	int ret;
+
+	/*
+	 * If we are about to generate a reply to ARP, first inject a request
+	 * from another host
+	 */
+	if (ntohs(eth->et_protlen) == PROT_ARP &&
+	    ntohs(arp->ar_op) == ARPOP_REQUEST) {
+		/* Make sure sandbox_eth_recv_arp_req() knows who is asking */
+		priv->fake_host_ipaddr = string_to_ip("1.1.2.4");
+
+		ret = sandbox_eth_recv_ping_req(dev);
+		if (ret)
+			return ret;
+	}
+
+	sandbox_eth_arp_req_to_reply(dev, packet, len);
+	sandbox_eth_ping_req_to_reply(dev, packet, len);
+
+	return sb_check_ping_reply(dev, packet, len);
+}
+
+static int dm_test_eth_async_ping_reply(struct unit_test_state *uts)
+{
+	net_ping_ip = string_to_ip("1.1.2.2");
+
+	sandbox_eth_set_tx_handler(0, sb_with_async_ping_handler);
+	/* Used by all of the ut_assert macros in the tx_handler */
+	sandbox_eth_set_priv(0, uts);
+
+	env_set("ethact", "eth@10002000");
+	ut_assertok(net_loop(PING));
+	ut_asserteq_str("eth@10002000", env_get("ethact"));
+
+	sandbox_eth_set_tx_handler(0, NULL);
+
+	return 0;
+}
+
+DM_TEST(dm_test_eth_async_ping_reply, UT_TESTF_SCAN_FDT);

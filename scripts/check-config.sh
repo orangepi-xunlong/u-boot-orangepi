@@ -17,6 +17,15 @@
 set -e
 set -u
 
+PROG_NAME="${0##*/}"
+
+usage() {
+	echo "$PROG_NAME <path to u-boot.cfg> <path to whitelist file> <source dir>"
+	exit 1
+}
+
+[ $# -ge 3 ] || usage
+
 path="$1"
 whitelist="$2"
 srctree="$3"
@@ -30,14 +39,14 @@ new_adhoc="${path}.adhoc"
 export LC_ALL=C
 export LC_COLLATE=C
 
-cat ${path} |sed -n 's/^#define \(CONFIG_[A-Za-z0-9_]*\).*/\1/p' |sort |uniq \
+cat ${path} |sed -nr 's/^#define (CONFIG_[A-Za-z0-9_]*).*/\1/p' |sort |uniq \
 	>${configs}
 
 comm -23 ${configs} ${whitelist} > ${suspects}
 
-cat `find ${srctree} -name "Kconfig*"` |sed -n \
-	-e 's/^\s*config *\([A-Za-z0-9_]*\).*$/CONFIG_\1/p' \
-	-e 's/^\s*menuconfig \([A-Za-z0-9_]*\).*$/CONFIG_\1/p' \
+cat `find ${srctree} -name "Kconfig*"` |sed -nr \
+	-e 's/^[[:blank:]]*config *([A-Za-z0-9_]*).*$/CONFIG_\1/p' \
+	-e 's/^[[:blank:]]*menuconfig ([A-Za-z0-9_]*).*$/CONFIG_\1/p' \
 	|sort |uniq > ${ok}
 comm -23 ${suspects} ${ok} >${new_adhoc}
 if [ -s ${new_adhoc} ]; then

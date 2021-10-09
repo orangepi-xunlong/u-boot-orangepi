@@ -4,11 +4,12 @@
  */
 
 #include <common.h>
+#include <asm/cache.h>
 #include <asm/psci.h>
 #include <asm/system.h>
 #include <asm/armv8/sec_firmware.h>
 
-#ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
+#if CONFIG_IS_ENABLED(ARMV8_SEC_FIRMWARE_SUPPORT)
 int psci_update_dt(void *fdt)
 {
 	/*

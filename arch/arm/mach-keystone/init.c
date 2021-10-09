@@ -7,12 +7,16 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <ns16550.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/arch/msmc.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/psc_defs.h>
+#include <linux/bitops.h>
 
 #define MAX_PCI_PORTS		2
 enum pci_mode	{
@@ -181,14 +185,14 @@ int arch_cpu_init(void)
 	 * driver doesn't handle this.
 	 */
 #ifndef CONFIG_DM_SERIAL
-	NS16550_init((NS16550_t)(CONFIG_SYS_NS16550_COM2),
+	ns16550_init((struct ns16550 *)(CONFIG_SYS_NS16550_COM2),
 		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 #endif
 
 	return 0;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	volatile u32 *rstctrl = (volatile u32 *)(KS2_RSTCTRL);
 	u32 tmp;
@@ -204,7 +208,7 @@ void reset_cpu(ulong addr)
 
 void enable_caches(void)
 {
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 	/* Enable D-cache. I-cache is already enabled in start.S */
 	dcache_enable();
 #endif

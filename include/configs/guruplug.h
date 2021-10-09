@@ -17,7 +17,6 @@
 /*
  * Standard filesystems
  */
-#define CONFIG_SYS_MVFS
 
 /*
  * mv-plug-common.h should be defined after CMD configs since it used them
@@ -28,15 +27,15 @@
 /*
  *  Environment variables configurations
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_ENV_SECT_SIZE		0x20000	/* 128K */
-#endif
 /*
  * max 4k env size is enough, but in case of nand
  * it has to be rounded to sector size
  */
-#define CONFIG_ENV_SIZE			0x20000	/* 128k */
-#define CONFIG_ENV_OFFSET		0xE0000	/* env starts here */
+/*
+ * Environment is right behind U-Boot in flash. Make sure U-Boot
+ * doesn't grow into the environment area.
+ */
+#define CONFIG_BOARD_SIZE_LIMIT		CONFIG_ENV_OFFSET
 
 /*
  * Default environment variables
@@ -66,12 +65,5 @@
 #define CONFIG_MVGBE_PORTS	{1, 1}	/* enable both ports */
 #define CONFIG_PHY_BASE_ADR	0
 #endif /* CONFIG_CMD_NET */
-
-/*
- * SATA Driver configuration
- */
-#ifdef CONFIG_MVSATA_IDE
-#define CONFIG_SYS_ATA_IDE0_OFFSET	MV_SATA_PORT0_OFFSET
-#endif /*CONFIG_MVSATA_IDE*/
 
 #endif /* _CONFIG_GURUPLUG_H */

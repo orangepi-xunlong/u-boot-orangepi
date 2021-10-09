@@ -4,43 +4,63 @@
  * Logic PD - http://www.logicpd.com
  */
 
-/ {
-	model = "LogicPD Zoom OMAP3 Development Kit";
+#include "omap3-u-boot.dtsi"
 
-	chosen {
-		stdout-path = &uart1;
+/ {
+	aliases {
+		/delete-property/ serial1;
+		/delete-property/ serial2;
+	};
+
+	ethernet@08000000 {
+		compatible = "smsc,lan9221","smsc,lan9115";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x08000000 0xff>;
+		bank-width = <2>;
+		vddvario-supply = <&vddvario>;
+		vdd33a-supply = <&vdd33a>;
+		reg-io-width = <4>;
+		smsc,save-mac-address;
 	};
 };
 
 &i2c1 {
 	clock-frequency = <400000>;
+	/delete-property/ u-boot,dm-spl;
 };
 
 &i2c2 {
 	clock-frequency = <400000>;
 };
 
-&mmc1 {
-	cd-inverted;
+&gpio1 {
+	/delete-property/ u-boot,dm-spl;
 };
 
-&mmc2 {
-      status = "disabled";
+&gpio2 {
+	/delete-property/ u-boot,dm-spl;
 };
 
-&mmc3 {
-      status = "disabled";
+&gpio3 {
+	/delete-property/ u-boot,dm-spl;
 };
 
-&uart1 {
-	reg-shift = <2>;
+&gpio4 {
+	/delete-property/ u-boot,dm-spl;
 };
 
-&uart2 {
-	reg-shift = <2>;
+&gpio5 {
+	/delete-property/ u-boot,dm-spl;
 };
 
-&uart3 {
-	reg-shift = <2>;
+&gpio6 {
+	/delete-property/ u-boot,dm-spl;
 };
 
+/delete-node/ &bandgap;
+/delete-node/ &uart2;
+/delete-node/ &uart3;
+/delete-node/ &mmc2;
+/delete-node/ &mmc3;
+/delete-node/ &thermal_zones;

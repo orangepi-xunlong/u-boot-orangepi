@@ -9,12 +9,13 @@
 #include <version.h>
 #include <linux/compiler.h>
 #ifdef CONFIG_SYS_COREBOOT
-#include <asm/arch/sysinfo.h>
+#include <asm/cb_sysinfo.h>
 #endif
 
 const char __weak version_string[] = U_BOOT_VERSION_STRING;
 
-static int do_version(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_version(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
 

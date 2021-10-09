@@ -19,7 +19,11 @@
 #include <common.h>
 #include <config.h>
 #include <dm.h>
+#include <malloc.h>
+#include <asm/global_data.h>
 #include <dm/device-internal.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
 #include <dm/root.h>
@@ -29,6 +33,8 @@
 #include <asm/gpio.h>
 #include <asm/system.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -542,13 +548,14 @@ static int armada_37xx_gpiochip_register(struct udevice *parent,
 	int subnode;
 	char *name;
 
-	/* Lookup GPIO driver */
+	/* FIXME: Should not need to lookup GPIO uclass */
 	drv = lists_uclass_lookup(UCLASS_GPIO);
 	if (!drv) {
 		puts("Cannot find GPIO driver\n");
 		return -ENOENT;
 	}
 
+	/* FIXME: Use livtree and check the result of device_bind() below */
 	fdt_for_each_subnode(subnode, blob, node) {
 		if (fdtdec_get_bool(blob, subnode, "gpio-controller")) {
 			ret = 0;
@@ -562,9 +569,8 @@ static int armada_37xx_gpiochip_register(struct udevice *parent,
 	sprintf(name, "armada-37xx-gpio");
 
 	/* Create child device UCLASS_GPIO and bind it */
-	device_bind(parent, &armada_37xx_gpio_driver, name, NULL, subnode,
-		    &dev);
-	dev_set_of_offset(dev, subnode);
+	device_bind(parent, &armada_37xx_gpio_driver, name, NULL,
+		    offset_to_ofnode(subnode), &dev);
 
 	return 0;
 }
@@ -587,7 +593,7 @@ int armada_37xx_pinctrl_probe(struct udevice *dev)
 	info->data = (struct armada_37xx_pin_data *)dev_get_driver_data(dev);
 	pin_data = info->data;
 
-	info->base = (void __iomem *)devfdt_get_addr(dev);
+	info->base = dev_read_addr_ptr(dev);
 	if (!info->base) {
 		pr_err("unable to find regmap\n");
 		return -ENODEV;
@@ -638,6 +644,6 @@ U_BOOT_DRIVER(armada_37xx_pinctrl) = {
 	.id = UCLASS_PINCTRL,
 	.of_match = of_match_ptr(armada_37xx_pinctrl_of_match),
 	.probe = armada_37xx_pinctrl_probe,
-	.priv_auto_alloc_size = sizeof(struct armada_37xx_pinctrl),
+	.priv_auto	= sizeof(struct armada_37xx_pinctrl),
 	.ops = &armada_37xx_pinctrl_ops,
 };

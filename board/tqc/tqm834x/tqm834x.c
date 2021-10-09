@@ -5,14 +5,19 @@
  */
 
 #include <common.h>
+#include <fdt_support.h>
+#include <init.h>
 #include <ioports.h>
+#include <log.h>
 #include <mpc83xx.h>
+#include <asm/global_data.h>
 #include <asm/mpc8349_pci.h>
 #include <i2c.h>
 #include <miiphy.h>
 #include <asm/mmu.h>
 #include <pci.h>
 #include <flash.h>
+#include <linux/delay.h>
 #include <mtd/cfi_flash.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -72,13 +77,13 @@ int dram_init(void)
 	int cs;
 
 	/* during size detection, set up the max DDRLAW size */
-	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE;
+	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_SDRAM_BASE;
 	im->sysconf.ddrlaw[0].ar = (LAWAR_EN | LAWAR_SIZE_2G);
 
 	/* set CS bounds to maximum size */
 	for(cs = 0; cs < 4; ++cs) {
 		set_cs_bounds(cs,
-			CONFIG_SYS_DDR_BASE + (cs * DDR_MAX_SIZE_PER_CS),
+			CONFIG_SYS_SDRAM_BASE + (cs * DDR_MAX_SIZE_PER_CS),
 			DDR_MAX_SIZE_PER_CS);
 
 		set_cs_config(cs, INITIAL_CS_CONFIG);
@@ -102,7 +107,7 @@ int dram_init(void)
 		debug("\nDetecting Bank%d\n", cs);
 
 		bank_size = get_ddr_bank_size(cs,
-			(long *)(CONFIG_SYS_DDR_BASE + size));
+			(long *)(CONFIG_SYS_SDRAM_BASE + size));
 		size += bank_size;
 
 		debug("DDR Bank%d size: %ld MiB\n\n", cs, bank_size >> 20);
@@ -235,8 +240,8 @@ static int detect_num_flash_banks(void)
 	debug("Number of flash banks detected: %d\n", cfi_flash_num_flash_banks);
 
 	/* set OR0 and BR0 */
-	set_lbc_or(0, CONFIG_SYS_OR_TIMING_FLASH |
-		   (-(total_size) & OR_GPCM_AM));
+	set_lbc_or(0, OR_GPCM_CSNT | OR_GPCM_ACS_DIV4 | OR_GPCM_SCY_5 |
+		   OR_GPCM_TRLX | (-(total_size) & OR_GPCM_AM));
 	set_lbc_br(0, (CONFIG_SYS_FLASH_BASE & BR_BA) |
 		   (BR_MS_GPCM | BR_PS_32 | BR_V));
 
@@ -415,7 +420,7 @@ static void set_ddr_config(void) {
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 

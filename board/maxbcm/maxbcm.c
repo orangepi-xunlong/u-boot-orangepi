@@ -4,7 +4,9 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <miiphy.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -95,7 +97,7 @@ MV_DRAM_MODES *ddr3_get_static_ddr_mode(void)
 	return &maxbcm_ddr_modes[0];
 }
 
-MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	return &maxbcm_serdes_cfg[0];
 }

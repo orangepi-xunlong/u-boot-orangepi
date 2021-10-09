@@ -1,15 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) ARM Ltd 2015
  *
  * Author: Liviu Dudau <Liviu.Dudau@arm.com>
- *
- * SPDX-Licence-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <linux/bitops.h>
 #include <pci_ids.h>
+#include <linux/delay.h>
 #include "pcie.h"
 
 /* XpressRICH3 support */
@@ -70,9 +72,9 @@
 					 JUNO_RESET_STATUS_PHY | \
 					 JUNO_RESET_STATUS_RC)
 
-void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
-			unsigned long trsl_addr, int window_size,
-			int trsl_param)
+static void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
+				 unsigned long trsl_addr, int window_size,
+				 int trsl_param)
 {
 	/* X3PCI_ATR_SRC_ADDR_LOW:
 	     - bit 0: enable entry,
@@ -92,7 +94,7 @@ void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
 	       ((u64)1) << window_size, trsl_param);
 }
 
-void xr3pci_setup_atr(void)
+static void xr3pci_setup_atr(void)
 {
 	/* setup PCIe to CPU address translation tables */
 	unsigned long base = XR3_CONFIG_BASE + XR3PCI_ATR_PCIE_WIN0;
@@ -139,7 +141,7 @@ void xr3pci_setup_atr(void)
 			     XR3_PCI_MEMSPACE64_SIZE, XR3PCI_ATR_TRSLID_PCIE_MEMORY);
 }
 
-void xr3pci_init(void)
+static void xr3pci_init(void)
 {
 	u32 val;
 	int timeout = 200;
@@ -191,5 +193,9 @@ void xr3pci_init(void)
 
 void vexpress64_pcie_init(void)
 {
+	/* Initialise and configure the PCIe host bridge. */
 	xr3pci_init();
+
+	/* Register the now ECAM complaint PCIe host controller with U-Boot. */
+	pci_init();
 }

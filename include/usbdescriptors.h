@@ -227,7 +227,7 @@ struct usb_device_descriptor {
 	u8 bNumConfigurations;
 } __attribute__ ((packed));
 
-#if defined(CONFIG_USBD_HS) || defined(CONFIG_SUNXI_USB)
+#if defined(CONFIG_USBD_HS)
 struct usb_qualifier_descriptor {
 	u8 bLength;
 	u8 bDescriptorType;

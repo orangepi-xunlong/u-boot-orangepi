@@ -1,49 +1,73 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI application disk support
  *
  *  Copyright (c) 2016 Alexander Graf
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
+
+#define LOG_CATEGORY LOGC_EFI
 
 #include <common.h>
 #include <blk.h>
 #include <dm.h>
 #include <efi_loader.h>
-#include <inttypes.h>
+#include <fs.h>
+#include <log.h>
 #include <part.h>
 #include <malloc.h>
 
-const efi_guid_t efi_block_io_guid = BLOCK_IO_GUID;
+struct efi_system_partition efi_system_partition;
 
+const efi_guid_t efi_block_io_guid = EFI_BLOCK_IO_PROTOCOL_GUID;
+const efi_guid_t efi_system_partition_guid = PARTITION_SYSTEM_GUID;
+
+/**
+ * struct efi_disk_obj - EFI disk object
+ *
+ * @header:	EFI object header
+ * @ops:	EFI disk I/O protocol interface
+ * @ifname:	interface name for block device
+ * @dev_index:	device index of block device
+ * @media:	block I/O media information
+ * @dp:		device path to the block device
+ * @part:	partition
+ * @volume:	simple file system protocol of the partition
+ * @offset:	offset into disk for simple partition
+ * @desc:	internal block device descriptor
+ */
 struct efi_disk_obj {
-	/* Generic EFI object parent class data */
-	struct efi_object parent;
-	/* EFI Interface callback struct for block I/O */
+	struct efi_object header;
 	struct efi_block_io ops;
-	/* U-Boot ifname for block device */
 	const char *ifname;
-	/* U-Boot dev_index for block device */
 	int dev_index;
-	/* EFI Interface Media descriptor struct, referenced by ops */
 	struct efi_block_io_media media;
-	/* EFI device path to this block device */
 	struct efi_device_path *dp;
-	/* partition # */
 	unsigned int part;
-	/* handle to filesys proto (for partition objects) */
 	struct efi_simple_file_system_protocol *volume;
-	/* Offset into disk for simple partitions */
 	lbaint_t offset;
-	/* Internal block device */
 	struct blk_desc *desc;
 };
 
+/**
+ * efi_disk_reset() - reset block device
+ *
+ * This function implements the Reset service of the EFI_BLOCK_IO_PROTOCOL.
+ *
+ * As U-Boot's block devices do not have a reset function simply return
+ * EFI_SUCCESS.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * @this:			pointer to the BLOCK_IO_PROTOCOL
+ * @extended_verification:	extended verification
+ * Return:			status code
+ */
 static efi_status_t EFIAPI efi_disk_reset(struct efi_block_io *this,
 			char extended_verification)
 {
 	EFI_ENTRY("%p, %x", this, extended_verification);
-	return EFI_EXIT(EFI_DEVICE_ERROR);
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
 enum efi_disk_direction {
@@ -67,12 +91,12 @@ static efi_status_t efi_disk_rw_blocks(struct efi_block_io *this,
 	blocks = buffer_size / blksz;
 	lba += diskobj->offset;
 
-	debug("EFI: %s:%d blocks=%x lba=%"PRIx64" blksz=%x dir=%d\n", __func__,
-	      __LINE__, blocks, lba, blksz, direction);
+	EFI_PRINT("blocks=%x lba=%llx blksz=%x dir=%d\n",
+		  blocks, lba, blksz, direction);
 
 	/* We only support full block access */
 	if (buffer_size & (blksz - 1))
-		return EFI_DEVICE_ERROR;
+		return EFI_BAD_BUFFER_SIZE;
 
 	if (direction == EFI_DISK_READ)
 		n = blk_dread(desc, lba, blocks, buffer);
@@ -82,7 +106,7 @@ static efi_status_t efi_disk_rw_blocks(struct efi_block_io *this,
 	/* We don't do interrupts, so check for timers cooperatively */
 	efi_timer_check();
 
-	debug("EFI: %s:%d n=%lx blocks=%x\n", __func__, __LINE__, n, blocks);
+	EFI_PRINT("n=%lx blocks=%x\n", n, blocks);
 
 	if (n != blocks)
 		return EFI_DEVICE_ERROR;
@@ -90,12 +114,42 @@ static efi_status_t efi_disk_rw_blocks(struct efi_block_io *this,
 	return EFI_SUCCESS;
 }
 
+/**
+ * efi_disk_read_blocks() - reads blocks from device
+ *
+ * This function implements the ReadBlocks service of the EFI_BLOCK_IO_PROTOCOL.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * @this:			pointer to the BLOCK_IO_PROTOCOL
+ * @media_id:			id of the medium to be read from
+ * @lba:			starting logical block for reading
+ * @buffer_size:		size of the read buffer
+ * @buffer:			pointer to the destination buffer
+ * Return:			status code
+ */
 static efi_status_t EFIAPI efi_disk_read_blocks(struct efi_block_io *this,
 			u32 media_id, u64 lba, efi_uintn_t buffer_size,
 			void *buffer)
 {
 	void *real_buffer = buffer;
 	efi_status_t r;
+
+	if (!this)
+		return EFI_INVALID_PARAMETER;
+	/* TODO: check for media changes */
+	if (media_id != this->media->media_id)
+		return EFI_MEDIA_CHANGED;
+	if (!this->media->media_present)
+		return EFI_NO_MEDIA;
+	/* media->io_align is a power of 2 or 0 */
+	if (this->media->io_align &&
+	    (uintptr_t)buffer & (this->media->io_align - 1))
+		return EFI_INVALID_PARAMETER;
+	if (lba * this->media->block_size + buffer_size >
+	    (this->media->last_block + 1) * this->media->block_size)
+		return EFI_INVALID_PARAMETER;
 
 #ifdef CONFIG_EFI_LOADER_BOUNCE_BUFFER
 	if (buffer_size > EFI_LOADER_BOUNCE_BUFFER_SIZE) {
@@ -112,7 +166,7 @@ static efi_status_t EFIAPI efi_disk_read_blocks(struct efi_block_io *this,
 	real_buffer = efi_bounce_buffer;
 #endif
 
-	EFI_ENTRY("%p, %x, %" PRIx64 ", %zx, %p", this, media_id, lba,
+	EFI_ENTRY("%p, %x, %llx, %zx, %p", this, media_id, lba,
 		  buffer_size, buffer);
 
 	r = efi_disk_rw_blocks(this, media_id, lba, buffer_size, real_buffer,
@@ -125,12 +179,45 @@ static efi_status_t EFIAPI efi_disk_read_blocks(struct efi_block_io *this,
 	return EFI_EXIT(r);
 }
 
+/**
+ * efi_disk_write_blocks() - writes blocks to device
+ *
+ * This function implements the WriteBlocks service of the
+ * EFI_BLOCK_IO_PROTOCOL.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * @this:			pointer to the BLOCK_IO_PROTOCOL
+ * @media_id:			id of the medium to be written to
+ * @lba:			starting logical block for writing
+ * @buffer_size:		size of the write buffer
+ * @buffer:			pointer to the source buffer
+ * Return:			status code
+ */
 static efi_status_t EFIAPI efi_disk_write_blocks(struct efi_block_io *this,
 			u32 media_id, u64 lba, efi_uintn_t buffer_size,
 			void *buffer)
 {
 	void *real_buffer = buffer;
 	efi_status_t r;
+
+	if (!this)
+		return EFI_INVALID_PARAMETER;
+	if (this->media->read_only)
+		return EFI_WRITE_PROTECTED;
+	/* TODO: check for media changes */
+	if (media_id != this->media->media_id)
+		return EFI_MEDIA_CHANGED;
+	if (!this->media->media_present)
+		return EFI_NO_MEDIA;
+	/* media->io_align is a power of 2 or 0 */
+	if (this->media->io_align &&
+	    (uintptr_t)buffer & (this->media->io_align - 1))
+		return EFI_INVALID_PARAMETER;
+	if (lba * this->media->block_size + buffer_size >
+	    (this->media->last_block + 1) * this->media->block_size)
+		return EFI_INVALID_PARAMETER;
 
 #ifdef CONFIG_EFI_LOADER_BOUNCE_BUFFER
 	if (buffer_size > EFI_LOADER_BOUNCE_BUFFER_SIZE) {
@@ -147,7 +234,7 @@ static efi_status_t EFIAPI efi_disk_write_blocks(struct efi_block_io *this,
 	real_buffer = efi_bounce_buffer;
 #endif
 
-	EFI_ENTRY("%p, %x, %" PRIx64 ", %zx, %p", this, media_id, lba,
+	EFI_ENTRY("%p, %x, %llx, %zx, %p", this, media_id, lba,
 		  buffer_size, buffer);
 
 	/* Populate bounce buffer if necessary */
@@ -160,9 +247,22 @@ static efi_status_t EFIAPI efi_disk_write_blocks(struct efi_block_io *this,
 	return EFI_EXIT(r);
 }
 
+/**
+ * efi_disk_flush_blocks() - flushes modified data to the device
+ *
+ * This function implements the FlushBlocks service of the
+ * EFI_BLOCK_IO_PROTOCOL.
+ *
+ * As we always write synchronously nothing is done here.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * @this:			pointer to the BLOCK_IO_PROTOCOL
+ * Return:			status code
+ */
 static efi_status_t EFIAPI efi_disk_flush_blocks(struct efi_block_io *this)
 {
-	/* We always write synchronously */
 	EFI_ENTRY("%p", this);
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -174,15 +274,17 @@ static const struct efi_block_io block_io_disk_template = {
 	.flush_blocks = &efi_disk_flush_blocks,
 };
 
-/*
- * Get the simple file system protocol for a file device path.
+/**
+ * efi_fs_from_path() - retrieve simple file system protocol
+ *
+ * Gets the simple file system protocol for a file device path.
  *
  * The full path provided is split into device part and into a file
  * part. The device part is used to find the handle on which the
  * simple file system protocol is installed.
  *
- * @full_path	device path including device and file
- * @return	simple file system protocol
+ * @full_path:	device path including device and file
+ * Return:	simple file system protocol
  */
 struct efi_simple_file_system_protocol *
 efi_fs_from_path(struct efi_device_path *full_path)
@@ -215,16 +317,39 @@ efi_fs_from_path(struct efi_device_path *full_path)
 	return handler->protocol_interface;
 }
 
-/*
- * Create a handle for a partition or disk
+/**
+ * efi_fs_exists() - check if a partition bears a file system
  *
- * @parent	parent handle
- * @dp_parent	parent device path
- * @if_typename interface name for block device
- * @desc	internal block device
- * @dev_index   device index for block device
- * @offset	offset into disk for simple partitions
- * @return	disk object
+ * @desc:	block device descriptor
+ * @part:	partition number
+ * Return:	1 if a file system exists on the partition
+ *		0 otherwise
+ */
+static int efi_fs_exists(struct blk_desc *desc, int part)
+{
+	if (fs_set_blk_dev_with_part(desc, part))
+		return 0;
+
+	if (fs_get_type() == FS_TYPE_ANY)
+		return 0;
+
+	fs_close();
+
+	return 1;
+}
+
+/**
+ * efi_disk_add_dev() - create a handle for a partition or disk
+ *
+ * @parent:		parent handle
+ * @dp_parent:		parent device path
+ * @if_typename:	interface name for block device
+ * @desc:		internal block device
+ * @dev_index:		device index for block device
+ * @part_info:		partition info
+ * @part:		partition
+ * @disk:		pointer to receive the created handle
+ * Return:		disk object
  */
 static efi_status_t efi_disk_add_dev(
 				efi_handle_t parent,
@@ -232,11 +357,13 @@ static efi_status_t efi_disk_add_dev(
 				const char *if_typename,
 				struct blk_desc *desc,
 				int dev_index,
-				lbaint_t offset,
+				struct disk_partition *part_info,
 				unsigned int part,
 				struct efi_disk_obj **disk)
 {
 	struct efi_disk_obj *diskobj;
+	struct efi_object *handle;
+	const efi_guid_t *guid = NULL;
 	efi_status_t ret;
 
 	/* Don't add empty devices */
@@ -248,30 +375,66 @@ static efi_status_t efi_disk_add_dev(
 		return EFI_OUT_OF_RESOURCES;
 
 	/* Hook up to the device list */
-	efi_add_handle(&diskobj->parent);
+	efi_add_handle(&diskobj->header);
 
 	/* Fill in object data */
-	if (part) {
+	if (part_info) {
 		struct efi_device_path *node = efi_dp_part_node(desc, part);
+		struct efi_handler *handler;
+		void *protocol_interface;
+
+		/* Parent must expose EFI_BLOCK_IO_PROTOCOL */
+		ret = efi_search_protocol(parent, &efi_block_io_guid, &handler);
+		if (ret != EFI_SUCCESS)
+			goto error;
+
+		/*
+		 * Link the partition (child controller) to the block device
+		 * (controller).
+		 */
+		ret = efi_protocol_open(handler, &protocol_interface, NULL,
+					&diskobj->header,
+					EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER);
+		if (ret != EFI_SUCCESS)
+				goto error;
 
 		diskobj->dp = efi_dp_append_node(dp_parent, node);
 		efi_free_pool(node);
+		diskobj->offset = part_info->start;
+		diskobj->media.last_block = part_info->size - 1;
+		if (part_info->bootable & PART_EFI_SYSTEM_PARTITION)
+			guid = &efi_system_partition_guid;
 	} else {
 		diskobj->dp = efi_dp_from_part(desc, part);
+		diskobj->offset = 0;
+		diskobj->media.last_block = desc->lba - 1;
 	}
 	diskobj->part = part;
-	ret = efi_add_protocol(diskobj->parent.handle, &efi_block_io_guid,
-			       &diskobj->ops);
+
+	/*
+	 * Install the device path and the block IO protocol.
+	 *
+	 * InstallMultipleProtocolInterfaces() checks if the device path is
+	 * already installed on an other handle and returns EFI_ALREADY_STARTED
+	 * in this case.
+	 */
+	handle = &diskobj->header;
+	ret = EFI_CALL(efi_install_multiple_protocol_interfaces(
+			&handle, &efi_guid_device_path, diskobj->dp,
+			&efi_block_io_guid, &diskobj->ops,
+			guid, NULL, NULL));
 	if (ret != EFI_SUCCESS)
 		return ret;
-	ret = efi_add_protocol(diskobj->parent.handle, &efi_guid_device_path,
-			       diskobj->dp);
-	if (ret != EFI_SUCCESS)
-		return ret;
-	if (part >= 1) {
+
+	/*
+	 * On partitions or whole disks without partitions install the
+	 * simple file system protocol if a file system is available.
+	 */
+	if ((part || desc->part_type == PART_TYPE_UNKNOWN) &&
+	    efi_fs_exists(desc, part)) {
 		diskobj->volume = efi_simple_file_system(desc, part,
 							 diskobj->dp);
-		ret = efi_add_protocol(diskobj->parent.handle,
+		ret = efi_add_protocol(&diskobj->header,
 				       &efi_simple_file_system_protocol_guid,
 				       diskobj->volume);
 		if (ret != EFI_SUCCESS)
@@ -280,32 +443,61 @@ static efi_status_t efi_disk_add_dev(
 	diskobj->ops = block_io_disk_template;
 	diskobj->ifname = if_typename;
 	diskobj->dev_index = dev_index;
-	diskobj->offset = offset;
 	diskobj->desc = desc;
 
 	/* Fill in EFI IO Media info (for read/write callbacks) */
 	diskobj->media.removable_media = desc->removable;
 	diskobj->media.media_present = 1;
+	/*
+	 * MediaID is just an arbitrary counter.
+	 * We have to change it if the medium is removed or changed.
+	 */
+	diskobj->media.media_id = 1;
 	diskobj->media.block_size = desc->blksz;
 	diskobj->media.io_align = desc->blksz;
-	diskobj->media.last_block = desc->lba - offset;
-	if (part != 0)
+	if (part)
 		diskobj->media.logical_partition = 1;
 	diskobj->ops.media = &diskobj->media;
 	if (disk)
 		*disk = diskobj;
+
+	EFI_PRINT("BlockIO: part %u, present %d, logical %d, removable %d"
+		  ", offset " LBAF ", last_block %llu\n",
+		  diskobj->part,
+		  diskobj->media.media_present,
+		  diskobj->media.logical_partition,
+		  diskobj->media.removable_media,
+		  diskobj->offset,
+		  diskobj->media.last_block);
+
+	/* Store first EFI system partition */
+	if (part && !efi_system_partition.if_type) {
+		if (part_info->bootable & PART_EFI_SYSTEM_PARTITION) {
+			efi_system_partition.if_type = desc->if_type;
+			efi_system_partition.devnum = desc->devnum;
+			efi_system_partition.part = part;
+			EFI_PRINT("EFI system partition: %s %x:%x\n",
+				  blk_get_if_type_name(desc->if_type),
+				  desc->devnum, part);
+		}
+	}
 	return EFI_SUCCESS;
+error:
+	efi_delete_handle(&diskobj->header);
+	return ret;
 }
 
-/*
- * Create handles and protocols for the partitions of a block device
+/**
+ * efi_disk_create_partitions() - create handles and protocols for partitions
  *
- * @parent		handle of the parent disk
- * @blk_desc		block device
- * @if_typename		interface type
- * @diskid		device number
- * @pdevname		device name
- * @return		number of partitions created
+ * Create handles and protocols for the partitions of a block device.
+ *
+ * @parent:		handle of the parent disk
+ * @desc:		block device
+ * @if_typename:	interface type
+ * @diskid:		device number
+ * @pdevname:		device name
+ * Return:		number of partitions created
  */
 int efi_disk_create_partitions(efi_handle_t parent, struct blk_desc *desc,
 			       const char *if_typename, int diskid,
@@ -313,7 +505,6 @@ int efi_disk_create_partitions(efi_handle_t parent, struct blk_desc *desc,
 {
 	int disks = 0;
 	char devname[32] = { 0 }; /* dp->str is u16[32] long */
-	disk_partition_t info;
 	int part;
 	struct efi_device_path *dp = NULL;
 	efi_status_t ret;
@@ -326,14 +517,16 @@ int efi_disk_create_partitions(efi_handle_t parent, struct blk_desc *desc,
 
 	/* Add devices for each partition */
 	for (part = 1; part <= MAX_SEARCH_PARTITIONS; part++) {
+		struct disk_partition info;
+
 		if (part_get_info(desc, part, &info))
 			continue;
-		snprintf(devname, sizeof(devname), "%s:%d", pdevname,
+		snprintf(devname, sizeof(devname), "%s:%x", pdevname,
 			 part);
 		ret = efi_disk_add_dev(parent, dp, if_typename, desc, diskid,
-				       info.start, part, NULL);
+				       &info, part, NULL);
 		if (ret != EFI_SUCCESS) {
-			printf("Adding partition %s failed\n", pdevname);
+			log_err("Adding partition %s failed\n", pdevname);
 			continue;
 		}
 		disks++;
@@ -342,16 +535,20 @@ int efi_disk_create_partitions(efi_handle_t parent, struct blk_desc *desc,
 	return disks;
 }
 
-/*
+/**
+ * efi_disk_register() - register block devices
+ *
  * U-Boot doesn't have a list of all online disk devices. So when running our
  * EFI payload, we scan through all of the potentially available ones and
  * store them in our object pool.
+ *
+ * This function is called in efi_init_obj_list().
  *
  * TODO(sjg@chromium.org): Actually with CONFIG_BLK, U-Boot does have this.
  * Consider converting the code to look up devices as needed. The EFI device
  * could be a child of the UCLASS_BLK block device, perhaps.
  *
- * This gets called from do_bootefi_exec().
+ * Return:	status code
  */
 efi_status_t efi_disk_register(void)
 {
@@ -363,27 +560,27 @@ efi_status_t efi_disk_register(void)
 
 	for (uclass_first_device_check(UCLASS_BLK, &dev); dev;
 	     uclass_next_device_check(&dev)) {
-		struct blk_desc *desc = dev_get_uclass_platdata(dev);
+		struct blk_desc *desc = dev_get_uclass_plat(dev);
 		const char *if_typename = blk_get_if_type_name(desc->if_type);
 
 		/* Add block device for the full device */
-		printf("Scanning disk %s...\n", dev->name);
+		log_info("Scanning disk %s...\n", dev->name);
 		ret = efi_disk_add_dev(NULL, NULL, if_typename,
-					desc, desc->devnum, 0, 0, &disk);
+					desc, desc->devnum, NULL, 0, &disk);
 		if (ret == EFI_NOT_READY) {
-			printf("Disk %s not ready\n", dev->name);
+			log_notice("Disk %s not ready\n", dev->name);
 			continue;
 		}
 		if (ret) {
-			printf("ERROR: failure to add disk device %s, r = %lu\n",
-			       dev->name, ret & ~EFI_ERROR_MASK);
+			log_err("ERROR: failure to add disk device %s, r = %lu\n",
+				dev->name, ret & ~EFI_ERROR_MASK);
 			return ret;
 		}
 		disks++;
 
 		/* Partitions show up as block devices in EFI */
 		disks += efi_disk_create_partitions(
-					disk->parent.handle, desc, if_typename,
+					&disk->header, desc, if_typename,
 					desc->devnum, dev->name);
 	}
 #else
@@ -399,7 +596,7 @@ efi_status_t efi_disk_register(void)
 			continue;
 
 		if_typename = cur_drvr->if_typename;
-		printf("Scanning disks on %s...\n", if_typename);
+		log_info("Scanning disks on %s...\n", if_typename);
 		for (i = 0; i < 4; i++) {
 			struct blk_desc *desc;
 			char devname[32] = { 0 }; /* dp->str is u16[32] long */
@@ -415,26 +612,55 @@ efi_status_t efi_disk_register(void)
 
 			/* Add block device for the full device */
 			ret = efi_disk_add_dev(NULL, NULL, if_typename, desc,
-					       i, 0, 0, &disk);
+					       i, NULL, 0, &disk);
 			if (ret == EFI_NOT_READY) {
-				printf("Disk %s not ready\n", devname);
+				log_notice("Disk %s not ready\n", devname);
 				continue;
 			}
 			if (ret) {
-				printf("ERROR: failure to add disk device %s, r = %lu\n",
-				       devname, ret & ~EFI_ERROR_MASK);
+				log_err("ERROR: failure to add disk device %s, r = %lu\n",
+					devname, ret & ~EFI_ERROR_MASK);
 				return ret;
 			}
 			disks++;
 
 			/* Partitions show up as block devices in EFI */
-			disks += efi_disk_create_partitions(
-						disk->parent.handle, desc,
-						if_typename, i, devname);
+			disks += efi_disk_create_partitions
+						(&disk->header, desc,
+						 if_typename, i, devname);
 		}
 	}
 #endif
-	printf("Found %d disks\n", disks);
+	log_info("Found %d disks\n", disks);
 
 	return EFI_SUCCESS;
+}
+
+/**
+ * efi_disk_is_system_part() - check if handle refers to an EFI system partition
+ *
+ * @handle:	handle of partition
+ *
+ * Return:	true if handle refers to an EFI system partition
+ */
+bool efi_disk_is_system_part(efi_handle_t handle)
+{
+	struct efi_handler *handler;
+	struct efi_disk_obj *diskobj;
+	struct disk_partition info;
+	efi_status_t ret;
+	int r;
+
+	/* check if this is a block device */
+	ret = efi_search_protocol(handle, &efi_block_io_guid, &handler);
+	if (ret != EFI_SUCCESS)
+		return false;
+
+	diskobj = container_of(handle, struct efi_disk_obj, header);
+
+	r = part_get_info(diskobj->desc, diskobj->part, &info);
+	if (r)
+		return false;
+
+	return !!(info.bootable & PART_EFI_SYSTEM_PARTITION);
 }

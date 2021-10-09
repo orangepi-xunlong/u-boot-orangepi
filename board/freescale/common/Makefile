@@ -48,12 +48,10 @@ obj-$(CONFIG_TARGET_MPC8548CDS)	+= cds_pci_ft.o
 obj-$(CONFIG_TARGET_MPC8555CDS)	+= cds_pci_ft.o
 
 obj-$(CONFIG_TARGET_MPC8536DS)	+= ics307_clk.o
-obj-$(CONFIG_TARGET_MPC8572DS)	+= ics307_clk.o
 obj-$(CONFIG_TARGET_P1022DS)		+= ics307_clk.o
 obj-$(CONFIG_P2020DS)		+= ics307_clk.o
 obj-$(CONFIG_TARGET_P3041DS)		+= ics307_clk.o
 obj-$(CONFIG_TARGET_P4080DS)		+= ics307_clk.o
-obj-$(CONFIG_TARGET_P5020DS)		+= ics307_clk.o
 obj-$(CONFIG_TARGET_P5040DS)		+= ics307_clk.o
 obj-$(CONFIG_VSC_CROSSBAR)    += vsc3316_3308.o
 obj-$(CONFIG_IDT8T49N222A)	+= idt8t49n222a_serdes_clk.o
@@ -64,6 +62,8 @@ obj-$(CONFIG_POWER_MC34VR500)	+= mc34vr500.o
 
 obj-$(CONFIG_LS102XA_STREAM_ID)	+= ls102xa_stream_id.o
 
+obj-$(CONFIG_EMC2305)              += emc2305.o
+
 # deal with common files for P-series corenet based devices
 obj-$(CONFIG_TARGET_P2041RDB)	+= p_corenet/
 obj-$(CONFIG_TARGET_P3041DS)	+= p_corenet/
@@ -73,7 +73,7 @@ obj-$(CONFIG_TARGET_P5040DS)	+= p_corenet/
 
 obj-$(CONFIG_LAYERSCAPE_NS_ACCESS)	+= ns_access.o
 
-ifdef CONFIG_SECURE_BOOT
+ifdef CONFIG_NXP_ESBC
 obj-$(CONFIG_CMD_ESBC_VALIDATE) += fsl_validate.o cmd_esbc_validate.o
 endif
 obj-$(CONFIG_CHAIN_OF_TRUST) += fsl_chain_of_trust.o

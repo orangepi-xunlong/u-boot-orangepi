@@ -35,6 +35,9 @@ extern char * strcat(char *, const char *);
 #ifndef __HAVE_ARCH_STRNCAT
 extern char * strncat(char *, const char *, __kernel_size_t);
 #endif
+#ifndef __HAVE_ARCH_STRLCAT
+size_t strlcat(char *, const char *, size_t);
+#endif
 #ifndef __HAVE_ARCH_STRCMP
 extern int strcmp(const char *,const char *);
 #endif
@@ -91,8 +94,14 @@ extern __kernel_size_t strnlen(const char *,__kernel_size_t);
 size_t strcspn(const char *s, const char *reject);
 #endif
 
+#ifdef CONFIG_SANDBOX
+# define strdup		sandbox_strdup
+# define strndup		sandbox_strndup
+#endif
+
 #ifndef __HAVE_ARCH_STRDUP
 extern char * strdup(const char *);
+extern char * strndup(const char *, size_t);
 #endif
 #ifndef __HAVE_ARCH_STRSWAB
 extern char * strswab(const char *);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <dt-bindings/memory/stm32-sdram.h>
@@ -37,6 +37,8 @@
 			clocks = <&rcc 0 STM32F4_AHB3_CLOCK(FMC)>;
 			pinctrl-0 = <&fmc_pins>;
 			pinctrl-names = "default";
+			st,syscfg = <&syscfg>;
+			st,swp_fmc = <1>;
 			u-boot,dm-pre-reloc;
 
 			/*
@@ -68,79 +70,60 @@
 	u-boot,dm-pre-reloc;
 };
 
-&clk_lse {
-	u-boot,dm-pre-reloc;
-};
-
 &clk_i2s_ckin {
 	u-boot,dm-pre-reloc;
 };
 
-&pwrcfg {
-	u-boot,dm-pre-reloc;
-};
-
-&rcc {
+&clk_lse {
 	u-boot,dm-pre-reloc;
 };
 
 &gpioa {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpiob {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpioc {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpiod {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpioe {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpiof {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpiog {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpioh {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpioi {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpioj {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &gpiok {
-	compatible = "st,stm32-gpio";
 	u-boot,dm-pre-reloc;
 };
 
 &pinctrl {
-	usart1_pins_a: usart1@0	{
+	usart1_pins_a: usart1-0	{
 		u-boot,dm-pre-reloc;
 		pins1 {
 			u-boot,dm-pre-reloc;
@@ -200,4 +183,16 @@
 			u-boot,dm-pre-reloc;
 		};
 	};
+};
+
+&pwrcfg {
+	u-boot,dm-pre-reloc;
+};
+
+&rcc {
+	u-boot,dm-pre-reloc;
+};
+
+&timer5 {
+	u-boot,dm-pre-reloc;
 };

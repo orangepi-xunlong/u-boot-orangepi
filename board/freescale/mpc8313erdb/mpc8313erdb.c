@@ -6,6 +6,9 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <fdt_support.h>
+#include <init.h>
 #if defined(CONFIG_OF_LIBFDT)
 #include <linux/libfdt.h>
 #endif
@@ -17,6 +20,7 @@
 #if defined(CONFIG_MPC83XX_GPIO) && !defined(CONFIG_SPL_BUILD)
 #include <asm/gpio.h>
 #endif
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -115,7 +119,7 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
@@ -129,7 +133,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 void board_init_f(ulong bootflag)
 {
 	board_early_init_f();
-	NS16550_init((NS16550_t)(CONFIG_SYS_IMMR + 0x4500),
+	ns16550_init((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500),
 		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 	puts("NAND boot... ");
 	timer_init();
@@ -149,8 +153,8 @@ void putc(char c)
 		return;
 
 	if (c == '\n')
-		NS16550_putc((NS16550_t)(CONFIG_SYS_IMMR + 0x4500), '\r');
+		ns16550_putc((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500), '\r');
 
-	NS16550_putc((NS16550_t)(CONFIG_SYS_IMMR + 0x4500), c);
+	ns16550_putc((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500), c);
 }
 #endif

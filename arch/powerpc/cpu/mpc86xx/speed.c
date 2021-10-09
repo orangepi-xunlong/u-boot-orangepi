@@ -9,7 +9,9 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <mpc86xx.h>
+#include <asm/global_data.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 

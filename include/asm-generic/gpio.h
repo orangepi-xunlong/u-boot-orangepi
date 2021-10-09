@@ -8,7 +8,9 @@
 #define _ASM_GENERIC_GPIO_H_
 
 #include <dm/ofnode.h>
+#include <linux/bitops.h>
 
+struct acpi_gpio;
 struct ofnode_phandle_args;
 
 /*
@@ -117,11 +119,20 @@ struct udevice;
 struct gpio_desc {
 	struct udevice *dev;	/* Device, NULL for invalid GPIO */
 	unsigned long flags;
-#define GPIOD_REQUESTED		(1 << 0)	/* Requested/claimed */
-#define GPIOD_IS_OUT		(1 << 1)	/* GPIO is an output */
-#define GPIOD_IS_IN		(1 << 2)	/* GPIO is an input */
-#define GPIOD_ACTIVE_LOW	(1 << 3)	/* value has active low */
-#define GPIOD_IS_OUT_ACTIVE	(1 << 4)	/* set output active */
+#define GPIOD_IS_OUT		BIT(1)	/* GPIO is an output */
+#define GPIOD_IS_IN		BIT(2)	/* GPIO is an input */
+#define GPIOD_ACTIVE_LOW	BIT(3)	/* GPIO is active when value is low */
+#define GPIOD_IS_OUT_ACTIVE	BIT(4)	/* set output active */
+#define GPIOD_OPEN_DRAIN	BIT(5)	/* GPIO is open drain type */
+#define GPIOD_OPEN_SOURCE	BIT(6)	/* GPIO is open source type */
+#define GPIOD_PULL_UP		BIT(7)	/* GPIO has pull-up enabled */
+#define GPIOD_PULL_DOWN		BIT(8)	/* GPIO has pull-down enabled */
+
+/* Flags for updating the above */
+#define GPIOD_MASK_DIR		(GPIOD_IS_OUT | GPIOD_IS_IN | \
+					GPIOD_IS_OUT_ACTIVE)
+#define GPIOD_MASK_DSTYPE	(GPIOD_OPEN_DRAIN | GPIOD_OPEN_SOURCE)
+#define GPIOD_MASK_PULL		(GPIOD_PULL_UP | GPIOD_PULL_DOWN)
 
 	uint offset;		/* GPIO offset within the device */
 	/*
@@ -248,14 +259,34 @@ int gpio_xlate_offs_flags(struct udevice *dev, struct gpio_desc *desc,
  */
 struct dm_gpio_ops {
 	int (*request)(struct udevice *dev, unsigned offset, const char *label);
-	int (*free)(struct udevice *dev, unsigned offset);
+	int (*rfree)(struct udevice *dev, unsigned int offset);
+
+	/**
+	 * direction_input() - deprecated
+	 *
+	 * Equivalent to set_flags(...GPIOD_IS_IN)
+	 */
 	int (*direction_input)(struct udevice *dev, unsigned offset);
+
+	/**
+	 * direction_output() - deprecated
+	 *
+	 * Equivalent to set_flags(...GPIOD_IS_OUT) with GPIOD_IS_OUT_ACTIVE
+	 * also set if @value
+	 */
 	int (*direction_output)(struct udevice *dev, unsigned offset,
 				int value);
+
 	int (*get_value)(struct udevice *dev, unsigned offset);
+
+	/**
+	 * set_value() - Sets the GPIO value of an output
+	 *
+	 * If the driver provides an @set_flags() method then that is used
+	 * in preference to this, with GPIOD_IS_OUT_ACTIVE set according to
+	 * @value.
+	 */
 	int (*set_value)(struct udevice *dev, unsigned offset, int value);
-	int (*get_open_drain)(struct udevice *dev, unsigned offset);
-	int (*set_open_drain)(struct udevice *dev, unsigned offset, int value);
 	/**
 	 * get_function() Get the GPIO function
 	 *
@@ -290,6 +321,70 @@ struct dm_gpio_ops {
 	 */
 	int (*xlate)(struct udevice *dev, struct gpio_desc *desc,
 		     struct ofnode_phandle_args *args);
+
+	/**
+	 * set_flags() - Adjust GPIO flags
+	 *
+	 * This function should set up the GPIO configuration according to the
+	 * information provided by @flags.
+	 *
+	 * If any flags cannot be set (e.g. the driver or hardware does not
+	 * support them or this particular GPIO does not have the requested
+	 * feature), the driver should return -EINVAL.
+	 *
+	 * The uclass checks that flags do not obviously conflict (e.g. input
+	 * and output). If the driver finds other conflicts it should return
+	 * -ERECALLCONFLICT
+	 *
+	 * Note that GPIOD_ACTIVE_LOW should be ignored, since the uclass
+	 * adjusts for it automatically. For example, for an output GPIO,
+	 * GPIOD_ACTIVE_LOW causes GPIOD_IS_OUT_ACTIVE to be inverted by the
+	 * uclass, so the driver always sees the value that should be set at the
+	 * pin (1=high, 0=low).
+	 *
+	 * This method is required and should be implemented by new drivers. At
+	 * some point, it will supersede direction_input() and
+	 * direction_output(), which wil be removed.
+	 *
+	 * @dev:	GPIO device
+	 * @offset:	GPIO offset within that device
+	 * @flags:	New flags value (GPIOD_...)
+	 *
+	 * @return 0 if OK, -EINVAL if unsupported, -ERECALLCONFLICT if flags
+	 *	conflict in some *	non-obvious way and were not applied,
+	 *	other -ve on error
+	 */
+	int (*set_flags)(struct udevice *dev, unsigned int offset, ulong flags);
+
+	/**
+	 * get_flags() - Get GPIO flags
+	 *
+	 * This function return the GPIO flags used. It should read this from
+	 * the hardware directly.
+	 *
+	 * This method is optional.
+	 *
+	 * @dev:	GPIO device
+	 * @offset:	GPIO offset within that device
+	 * @flagsp:	place to put the current flags value
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*get_flags)(struct udevice *dev, unsigned int offset,
+			 ulong *flagsp);
+
+#if CONFIG_IS_ENABLED(ACPIGEN)
+	/**
+	 * get_acpi() - Get the ACPI info for a GPIO
+	 *
+	 * This converts a GPIO to an ACPI structure for adding to the ACPI
+	 * tables.
+	 *
+	 * @desc:	GPIO description to convert
+	 * @gpio:	Output ACPI GPIO information
+	 * @return ACPI pin number or -ve on error
+	 */
+	int (*get_acpi)(const struct gpio_desc *desc, struct acpi_gpio *gpio);
+#endif
 };
 
 /**
@@ -349,6 +444,23 @@ const char *gpio_get_bank_info(struct udevice *dev, int *offset_count);
 int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc);
 
 /**
+ * gpio_hog_lookup_name() - Look up a named GPIO and return the gpio descr.
+ *
+ * @name:	Name to look up
+ * @desc:	Returns GPIO description, on success, else NULL
+ * @return:	Returns 0 if OK, else -ENODEV
+ */
+int gpio_hog_lookup_name(const char *name, struct gpio_desc **desc);
+
+/**
+ * gpio_hog_probe_all() - probe all gpio devices with
+ * gpio-hog subnodes.
+ *
+ * @return:	Returns return value from device_probe()
+ */
+int gpio_hog_probe_all(void);
+
+/**
  * gpio_lookup_name - Look up a GPIO name and return its details
  *
  * This is used to convert a named GPIO into a device, offset and GPIO
@@ -384,6 +496,31 @@ int gpio_get_values_as_int(const int *gpio_list);
  * @return resulting integer value, or -ve on error
  */
 int dm_gpio_get_values_as_int(const struct gpio_desc *desc_list, int count);
+
+/**
+ * dm_gpio_get_values_as_int_base3() - Create a base-3 int from a list of GPIOs
+ *
+ * This uses pull-ups/pull-downs to figure out whether a GPIO line is externally
+ * pulled down, pulled up or floating. This allows three different strap values
+ * for each pin:
+ *    0 : external pull-down
+ *    1 : external pull-up
+ *    2 : floating
+ *
+ * With this it is possible to obtain more combinations from the same number of
+ * strapping pins, when compared to dm_gpio_get_values_as_int(). The external
+ * pull resistors should be made stronger that the internal SoC pull resistors,
+ * for this to work.
+ *
+ * With 2 pins, 6 combinations are possible, compared with 4
+ * With 3 pins, 27 are possible, compared with 8
+ *
+ * @desc_list: List of GPIOs to collect
+ * @count: Number of GPIOs
+ * @return resulting integer value, or -ve on error
+ */
+int dm_gpio_get_values_as_int_base3(struct gpio_desc *desc_list,
+				    int count);
 
 /**
  * gpio_claim_vector() - claim a number of GPIOs for input
@@ -425,7 +562,7 @@ int gpio_claim_vector(const int *gpio_num_array, const char *fmt);
  * @list_name:	Name of GPIO list (e.g. "board-id-gpios")
  * @index:	Index number of the GPIO in that list use request (0=first)
  * @desc:	Returns GPIO description information. If there is no such
- *		GPIO, dev->dev will be NULL.
+ *		GPIO, @desc->dev will be NULL.
  * @flags:	Indicates the GPIO input/output settings (GPIOD_...)
  * @return 0 if OK, -ENOENT if the GPIO does not exist, -EINVAL if there is
  * something wrong with the list, or other -ve for another error (e.g.
@@ -504,6 +641,23 @@ int gpio_request_list_by_name_nodev(ofnode node, const char *list_name,
 				    int flags);
 
 /**
+ * gpio_dev_request_index() - request single GPIO from gpio device
+ *
+ * @dev:	GPIO device
+ * @nodename:	Name of node for which gpio gets requested, used
+ *		for the gpio label name
+ * @list_name:	Name of GPIO list (e.g. "board-id-gpios")
+ * @index:	Index number of the GPIO in that list use request (0=first)
+ * @flags:	GPIOD_* flags
+ * @dtflags:	GPIO flags read from DT defined see GPIOD_*
+ * @desc:	returns GPIO descriptor filled from this function
+ * @return:	return value from gpio_request_tail()
+ */
+int gpio_dev_request_index(struct udevice *dev, const char *nodename,
+			   char *list_name, int index, int flags,
+			   int dtflags, struct gpio_desc *desc);
+
+/**
  * dm_gpio_free() - Free a single GPIO
  *
  * This frees a single GPIOs previously returned from gpio_request_by_name().
@@ -553,55 +707,29 @@ int dm_gpio_get_value(const struct gpio_desc *desc);
 int dm_gpio_set_value(const struct gpio_desc *desc, int value);
 
 /**
- * dm_gpio_get_open_drain() - Check if open-drain-mode of a GPIO is active
+ * dm_gpio_clrset_flags() - Update flags
  *
- * This checks if open-drain-mode for a GPIO is enabled or not. This method is
- * optional.
+ * This updates the flags as directled. Note that desc->flags is updated by this
+ * function on success. If any changes cannot be made, best efforts are made.
  *
- * @desc:	GPIO description containing device, offset and flags,
- *		previously returned by gpio_request_by_name()
- * @return Value of open drain mode for GPIO (0 for inactive, 1 for active) or
- *	   -ve on error
- */
-int dm_gpio_get_open_drain(struct gpio_desc *desc);
-
-/**
- * dm_gpio_set_open_drain() - Switch open-drain-mode of a GPIO on or off
- *
- * This enables or disables open-drain mode for a GPIO. This method is
- * optional; if the driver does not support it, nothing happens when the method
- * is called.
- *
- * In open-drain mode, instead of actively driving the output (Push-pull
- * output), the GPIO's pin is connected to the collector (for a NPN transistor)
- * or the drain (for a MOSFET) of a transistor, respectively. The pin then
- * either forms an open circuit or a connection to ground, depending on the
- * state of the transistor.
+ * By use of @clr and @set any of flags can be individually updated, or left
+ * alone
  *
  * @desc:	GPIO description containing device, offset and flags,
  *		previously returned by gpio_request_by_name()
- * @return 0 if OK, -ve on error
+ * @clr:	Flags to clear (GPIOD_...)
+ * @set:	Flags to set (GPIOD_...)
+ * @return 0 if OK, -EINVAL if the flags had obvious conflicts,
+ * -ERECALLCONFLICT if there was a non-obvious hardware conflict when attempting
+ * to set the flags
  */
-int dm_gpio_set_open_drain(struct gpio_desc *desc, int value);
+int dm_gpio_clrset_flags(struct gpio_desc *desc, ulong clr, ulong set);
 
 /**
- * dm_gpio_set_dir() - Set the direction for a GPIO
+ * dm_gpio_set_dir_flags() - Set direction using description and added flags
  *
- * This sets up the direction according tot the provided flags. It will do
- * nothing unless the direction is actually specified.
- *
- * @desc:	GPIO description containing device, offset and flags,
- *		previously returned by gpio_request_by_name()
- * @return 0 if OK, -ve on error
- */
-int dm_gpio_set_dir(struct gpio_desc *desc);
-
-/**
- * dm_gpio_set_dir_flags() - Set direction using specific flags
- *
- * This is like dm_gpio_set_dir() except that the flags value is provided
- * instead of being used from desc->flags. This is needed because in many
- * cases the GPIO description does not include direction information.
+ * This sets up the direction according to the provided flags and the GPIO
+ * description (desc->flags) which include direction information.
  * Note that desc->flags is updated by this function.
  *
  * @desc:	GPIO description containing device, offset and flags,
@@ -610,6 +738,33 @@ int dm_gpio_set_dir(struct gpio_desc *desc);
  * @return 0 if OK, -ve on error, in which case desc->flags is not updated
  */
 int dm_gpio_set_dir_flags(struct gpio_desc *desc, ulong flags);
+
+/**
+ * dm_gpios_clrset_flags() - Sets flags for a set of GPIOs
+ *
+ * This clears and sets flags individually for each GPIO.
+ *
+ * @desc:	List of GPIOs to update
+ * @count:	Number of GPIOs in the list
+ * @clr:	Flags to clear (GPIOD_...), e.g. GPIOD_MASK_DIR if you are
+ *		changing the direction
+ * @set:	Flags to set (GPIOD_...)
+ * @return 0 if OK, -ve on error
+ */
+int dm_gpios_clrset_flags(struct gpio_desc *desc, int count, ulong clr,
+			  ulong set);
+
+/**
+ * dm_gpio_get_flags() - Get flags
+ *
+ * Read the current flags
+ *
+ * @desc:	GPIO description containing device, offset and flags,
+ *		previously returned by gpio_request_by_name()
+ * @flags:	place to put the used flags
+ * @return 0 if OK, -ve on error, in which case desc->flags is not updated
+ */
+int dm_gpio_get_flags(struct gpio_desc *desc, ulong *flags);
 
 /**
  * gpio_get_number() - Get the global GPIO number of a GPIO
@@ -622,5 +777,64 @@ int dm_gpio_set_dir_flags(struct gpio_desc *desc, ulong flags);
  * @return GPIO number, or -ve if not found
  */
 int gpio_get_number(const struct gpio_desc *desc);
+
+/**
+ * gpio_get_acpi() - Get the ACPI pin for a GPIO
+ *
+ * This converts a GPIO to an ACPI pin number for adding to the ACPI
+ * tables. If the GPIO is invalid, the pin_count and pins[0] are set to 0
+ *
+ * @desc:	GPIO description to convert
+ * @gpio:	Output ACPI GPIO information
+ * @return ACPI pin number or -ve on error
+ */
+int gpio_get_acpi(const struct gpio_desc *desc, struct acpi_gpio *gpio);
+
+/**
+ * devm_gpiod_get_index - Resource-managed gpiod_get()
+ * @dev:	GPIO consumer
+ * @con_id:	function within the GPIO consumer
+ * @index:	index of the GPIO to obtain in the consumer
+ * @flags:	optional GPIO initialization flags
+ *
+ * Managed gpiod_get(). GPIO descriptors returned from this function are
+ * automatically disposed on device unbind.
+ * Return the GPIO descriptor corresponding to the function con_id of device
+ * dev, -ENOENT if no GPIO has been assigned to the requested function, or
+ * another IS_ERR() code if an error occurred while trying to acquire the GPIO.
+ */
+struct gpio_desc *devm_gpiod_get_index(struct udevice *dev, const char *id,
+				       unsigned int index, int flags);
+
+#define devm_gpiod_get(dev, id, flags) devm_gpiod_get_index(dev, id, 0, flags)
+/**
+ * gpiod_get_optional - obtain an optional GPIO for a given GPIO function
+ * @dev: GPIO consumer, can be NULL for system-global GPIOs
+ * @con_id: function within the GPIO consumer
+ * @index:	index of the GPIO to obtain in the consumer
+ * @flags: optional GPIO initialization flags
+ *
+ * This is equivalent to devm_gpiod_get(), except that when no GPIO was
+ * assigned to the requested function it will return NULL. This is convenient
+ * for drivers that need to handle optional GPIOs.
+ */
+struct gpio_desc *devm_gpiod_get_index_optional(struct udevice *dev,
+						const char *id,
+						unsigned int index,
+						int flags);
+
+#define devm_gpiod_get_optional(dev, id, flags) \
+	devm_gpiod_get_index_optional(dev, id, 0, flags)
+
+/**
+ * devm_gpiod_put - Resource-managed gpiod_put()
+ * @dev:	GPIO consumer
+ * @desc:	GPIO descriptor to dispose of
+ *
+ * Dispose of a GPIO descriptor obtained with devm_gpiod_get() or
+ * devm_gpiod_get_index(). Normally this function will not be called as the GPIO
+ * will be disposed of by the resource management code.
+ */
+void devm_gpiod_put(struct udevice *dev, struct gpio_desc *desc);
 
 #endif	/* _ASM_GENERIC_GPIO_H_ */

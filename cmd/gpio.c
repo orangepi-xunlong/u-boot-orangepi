@@ -10,7 +10,10 @@
 #include <command.h>
 #include <errno.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <asm/gpio.h>
+#include <linux/err.h>
 
 __weak int name_to_gpio(const char *name)
 {
@@ -18,10 +21,10 @@ __weak int name_to_gpio(const char *name)
 }
 
 enum gpio_cmd {
-	GPIO_INPUT,
-	GPIO_SET,
-	GPIO_CLEAR,
-	GPIO_TOGGLE,
+	GPIOC_INPUT,
+	GPIOC_SET,
+	GPIOC_CLEAR,
+	GPIOC_TOGGLE,
 };
 
 #if defined(CONFIG_DM_GPIO) && !defined(gpio_status)
@@ -34,7 +37,7 @@ enum {
 };
 
 static void gpio_get_description(struct udevice *dev, const char *bank_name,
-				 int offset, int *flagsp)
+				 int offset, int *flagsp, bool show_all)
 {
 	char buf[80];
 	int ret;
@@ -42,7 +45,7 @@ static void gpio_get_description(struct udevice *dev, const char *bank_name,
 	ret = gpio_get_function(dev, offset, NULL);
 	if (ret < 0)
 		goto err;
-	if (!(*flagsp & FLAG_SHOW_ALL) && ret == GPIOF_UNUSED)
+	if (!show_all && !(*flagsp & FLAG_SHOW_ALL) && ret == GPIOF_UNUSED)
 		return;
 	if ((*flagsp & FLAG_SHOW_BANK) && bank_name) {
 		if (*flagsp & FLAG_SHOW_NEWLINE) {
@@ -90,19 +93,19 @@ static int do_gpio_status(bool all, const char *gpio_name)
 		banklen = bank_name ? strlen(bank_name) : 0;
 
 		if (!gpio_name || !bank_name ||
-		    !strncmp(gpio_name, bank_name, banklen)) {
-			const char *p = NULL;
+		    !strncasecmp(gpio_name, bank_name, banklen)) {
+			const char *p;
 			int offset;
 
 			p = gpio_name + banklen;
 			if (gpio_name && *p) {
 				offset = simple_strtoul(p, NULL, 10);
 				gpio_get_description(dev, bank_name, offset,
-						     &flags);
+						     &flags, true);
 			} else {
 				for (offset = 0; offset < num_bits; offset++) {
 					gpio_get_description(dev, bank_name,
-							     offset, &flags);
+						     offset, &flags, false);
 				}
 			}
 		}
@@ -115,7 +118,8 @@ static int do_gpio_status(bool all, const char *gpio_name)
 }
 #endif
 
-static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_gpio(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
 	unsigned int gpio;
 	enum gpio_cmd sub_cmd;
@@ -158,11 +162,20 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* parse the behavior */
 	switch (*str_cmd) {
-		case 'i': sub_cmd = GPIO_INPUT;  break;
-		case 's': sub_cmd = GPIO_SET;    break;
-		case 'c': sub_cmd = GPIO_CLEAR;  break;
-		case 't': sub_cmd = GPIO_TOGGLE; break;
-		default:  goto show_usage;
+	case 'i':
+		sub_cmd = GPIOC_INPUT;
+		break;
+	case 's':
+		sub_cmd = GPIOC_SET;
+		break;
+	case 'c':
+		sub_cmd = GPIOC_CLEAR;
+		break;
+	case 't':
+		sub_cmd = GPIOC_TOGGLE;
+		break;
+	default:
+		goto show_usage;
 	}
 
 #if defined(CONFIG_DM_GPIO)
@@ -192,18 +205,18 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	/* finally, let's do it: set direction and exec command */
-	if (sub_cmd == GPIO_INPUT) {
+	if (sub_cmd == GPIOC_INPUT) {
 		gpio_direction_input(gpio);
 		value = gpio_get_value(gpio);
 	} else {
 		switch (sub_cmd) {
-		case GPIO_SET:
+		case GPIOC_SET:
 			value = 1;
 			break;
-		case GPIO_CLEAR:
+		case GPIOC_CLEAR:
 			value = 0;
 			break;
-		case GPIO_TOGGLE:
+		case GPIOC_TOGGLE:
 			value = gpio_get_value(gpio);
 			if (!IS_ERR_VALUE(value))
 				value = !value;
@@ -213,24 +226,41 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 		gpio_direction_output(gpio, value);
 	}
-	printf("gpio: pin %s (gpio %i) value is ", str_gpio, gpio);
-	if (IS_ERR_VALUE(value))
+	printf("gpio: pin %s (gpio %u) value is ", str_gpio, gpio);
+
+	if (IS_ERR_VALUE(value)) {
 		printf("unknown (ret=%d)\n", value);
-	else
+		goto err;
+	} else {
 		printf("%d\n", value);
-	if (sub_cmd != GPIO_INPUT && !IS_ERR_VALUE(value)) {
+	}
+
+	if (sub_cmd != GPIOC_INPUT && !IS_ERR_VALUE(value)) {
 		int nval = gpio_get_value(gpio);
 
-		if (IS_ERR_VALUE(nval))
+		if (IS_ERR_VALUE(nval)) {
 			printf("   Warning: no access to GPIO output value\n");
-		else if (nval != value)
+			goto err;
+		} else if (nval != value) {
 			printf("   Warning: value of pin is still %d\n", nval);
+			goto err;
+		}
 	}
 
 	if (ret != -EBUSY)
 		gpio_free(gpio);
 
-	return value;
+	/*
+	 * Whilst wrong, the legacy gpio input command returns the pin
+	 * value, or CMD_RET_FAILURE (which is indistinguishable from a
+	 * valid pin value).
+	 */
+	return (sub_cmd == GPIOC_INPUT) ? value : CMD_RET_SUCCESS;
+
+err:
+	if (ret != -EBUSY)
+		gpio_free(gpio);
+	return CMD_RET_FAILURE;
 }
 
 U_BOOT_CMD(gpio, 4, 0, do_gpio,

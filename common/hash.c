@@ -12,22 +12,34 @@
 #ifndef USE_HOSTCC
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <hw_sha.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/errno.h>
+#include <u-boot/crc.h>
 #else
 #include "mkimage.h"
 #include <time.h>
-#include <image.h>
 #endif /* !USE_HOSTCC*/
 
 #include <hash.h>
+#include <image.h>
 #include <u-boot/crc.h>
 #include <u-boot/sha1.h>
 #include <u-boot/sha256.h>
+#include <u-boot/sha512.h>
 #include <u-boot/md5.h>
+
+#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
+DECLARE_GLOBAL_DATA_PTR;
+#endif
+
+static void reloc_update(void);
 
 #if defined(CONFIG_SHA1) && !defined(CONFIG_SHA_PROG_HW_ACCEL)
 static int hash_init_sha1(struct hash_algo *algo, void **ctxp)
@@ -84,6 +96,90 @@ static int hash_finish_sha256(struct hash_algo *algo, void *ctx, void
 	return 0;
 }
 #endif
+
+#if defined(CONFIG_SHA384) && !defined(CONFIG_SHA_PROG_HW_ACCEL)
+static int hash_init_sha384(struct hash_algo *algo, void **ctxp)
+{
+	sha512_context *ctx = malloc(sizeof(sha512_context));
+	sha384_starts(ctx);
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_sha384(struct hash_algo *algo, void *ctx,
+			      const void *buf, unsigned int size, int is_last)
+{
+	sha384_update((sha512_context *)ctx, buf, size);
+	return 0;
+}
+
+static int hash_finish_sha384(struct hash_algo *algo, void *ctx, void
+			      *dest_buf, int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	sha384_finish((sha512_context *)ctx, dest_buf);
+	free(ctx);
+	return 0;
+}
+#endif
+
+#if defined(CONFIG_SHA512) && !defined(CONFIG_SHA_PROG_HW_ACCEL)
+static int hash_init_sha512(struct hash_algo *algo, void **ctxp)
+{
+	sha512_context *ctx = malloc(sizeof(sha512_context));
+	sha512_starts(ctx);
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_sha512(struct hash_algo *algo, void *ctx,
+			      const void *buf, unsigned int size, int is_last)
+{
+	sha512_update((sha512_context *)ctx, buf, size);
+	return 0;
+}
+
+static int hash_finish_sha512(struct hash_algo *algo, void *ctx, void
+			      *dest_buf, int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	sha512_finish((sha512_context *)ctx, dest_buf);
+	free(ctx);
+	return 0;
+}
+#endif
+
+
+static int hash_init_crc16_ccitt(struct hash_algo *algo, void **ctxp)
+{
+	uint16_t *ctx = malloc(sizeof(uint16_t));
+	*ctx = 0;
+	*ctxp = ctx;
+	return 0;
+}
+
+static int hash_update_crc16_ccitt(struct hash_algo *algo, void *ctx,
+				   const void *buf, unsigned int size,
+				   int is_last)
+{
+	*((uint16_t *)ctx) = crc16_ccitt(*((uint16_t *)ctx), buf, size);
+	return 0;
+}
+
+static int hash_finish_crc16_ccitt(struct hash_algo *algo, void *ctx,
+				   void *dest_buf, int size)
+{
+	if (size < algo->digest_size)
+		return -1;
+
+	*((uint16_t *)dest_buf) = *((uint16_t *)ctx);
+	free(ctx);
+	return 0;
+}
 
 static int hash_init_crc32(struct hash_algo *algo, void **ctxp)
 {
@@ -159,6 +255,57 @@ static struct hash_algo hash_algo[] = {
 #endif
 	},
 #endif
+#ifdef CONFIG_SHA384
+	{
+		.name		= "sha384",
+		.digest_size	= SHA384_SUM_LEN,
+		.chunk_size	= CHUNKSZ_SHA384,
+#ifdef CONFIG_SHA512_HW_ACCEL
+		.hash_func_ws	= hw_sha384,
+#else
+		.hash_func_ws	= sha384_csum_wd,
+#endif
+#if defined(CONFIG_SHA512_HW_ACCEL) && defined(CONFIG_SHA_PROG_HW_ACCEL)
+		.hash_init	= hw_sha_init,
+		.hash_update	= hw_sha_update,
+		.hash_finish	= hw_sha_finish,
+#else
+		.hash_init	= hash_init_sha384,
+		.hash_update	= hash_update_sha384,
+		.hash_finish	= hash_finish_sha384,
+#endif
+	},
+#endif
+#ifdef CONFIG_SHA512
+	{
+		.name		= "sha512",
+		.digest_size	= SHA512_SUM_LEN,
+		.chunk_size	= CHUNKSZ_SHA512,
+#ifdef CONFIG_SHA512_HW_ACCEL
+		.hash_func_ws	= hw_sha512,
+#else
+		.hash_func_ws	= sha512_csum_wd,
+#endif
+#if defined(CONFIG_SHA512_HW_ACCEL) && defined(CONFIG_SHA_PROG_HW_ACCEL)
+		.hash_init	= hw_sha_init,
+		.hash_update	= hw_sha_update,
+		.hash_finish	= hw_sha_finish,
+#else
+		.hash_init	= hash_init_sha512,
+		.hash_update	= hash_update_sha512,
+		.hash_finish	= hash_finish_sha512,
+#endif
+	},
+#endif
+	{
+		.name		= "crc16-ccitt",
+		.digest_size	= 2,
+		.chunk_size	= CHUNKSZ,
+		.hash_func_ws	= crc16_ccitt_wd_buf,
+		.hash_init	= hash_init_crc16_ccitt,
+		.hash_update	= hash_update_crc16_ccitt,
+		.hash_finish	= hash_finish_crc16_ccitt,
+	},
 	{
 		.name		= "crc32",
 		.digest_size	= 4,
@@ -172,15 +319,37 @@ static struct hash_algo hash_algo[] = {
 
 /* Try to minimize code size for boards that don't want much hashing */
 #if defined(CONFIG_SHA256) || defined(CONFIG_CMD_SHA1SUM) || \
-	defined(CONFIG_CRC32_VERIFY) || defined(CONFIG_CMD_HASH)
+	defined(CONFIG_CRC32_VERIFY) || defined(CONFIG_CMD_HASH) || \
+	defined(CONFIG_SHA384) || defined(CONFIG_SHA512)
 #define multi_hash()	1
 #else
 #define multi_hash()	0
 #endif
 
+static void reloc_update(void)
+{
+#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
+	int i;
+	static bool done;
+
+	if (!done) {
+		done = true;
+		for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
+			hash_algo[i].name += gd->reloc_off;
+			hash_algo[i].hash_func_ws += gd->reloc_off;
+			hash_algo[i].hash_init += gd->reloc_off;
+			hash_algo[i].hash_update += gd->reloc_off;
+			hash_algo[i].hash_finish += gd->reloc_off;
+		}
+	}
+#endif
+}
+
 int hash_lookup_algo(const char *algo_name, struct hash_algo **algop)
 {
 	int i;
+
+	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -197,6 +366,8 @@ int hash_progressive_lookup_algo(const char *algo_name,
 				 struct hash_algo **algop)
 {
 	int i;
+
+	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -376,8 +547,8 @@ static void hash_show(struct hash_algo *algo, ulong addr, ulong len, uint8_t *ou
 		printf("%02x", output[i]);
 }
 
-int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
-		 int argc, char * const argv[])
+int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
+		 int flag, int argc, char *const argv[])
 {
 	ulong addr, len;
 

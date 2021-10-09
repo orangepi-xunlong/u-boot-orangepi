@@ -35,6 +35,8 @@
 			"setenv name_fdt keystone-k2g-evm.dtb; " \
 		"else if test $board_name = 66AK2GIC; then " \
 			 "setenv name_fdt keystone-k2g-ice.dtb; " \
+		"else if test $board_name = 66AK2GI1; then " \
+			 "setenv name_fdt keystone-k2g-ice.dtb; " \
 		"else if test $name_fdt = undefined; then " \
 			"echo WARNING: Could not determine device tree to use;"\
 		"fi;fi;fi;fi; setenv fdtfile ${name_fdt}\0" \
@@ -69,11 +71,8 @@
 	"run run_mon_hs; "						\
 	"run init_${boot}; "						\
 	"run get_fit_${boot}; "						\
-	"bootm ${fit_loadaddr}#${name_fdt}"
+	"bootm ${addr_fit}#${name_fdt}"
 #endif
-
-/* SPL SPI Loader Configuration */
-#define CONFIG_SPL_TEXT_BASE		0x0c0a0000
 
 /* NAND Configuration */
 #define CONFIG_SYS_NAND_PAGE_2K
@@ -84,13 +83,7 @@
 #define CONFIG_KSNET_MDIO_PHY_CONFIG_ENABLE
 #define PHY_ANEG_TIMEOUT	10000 /* PHY needs longer aneg time */
 
-#define CONFIG_ENV_SIZE			(256 << 10)  /* 256 KiB */
-
-#define CONFIG_SF_DEFAULT_BUS		1
-#define CONFIG_SF_DEFAULT_CS		0
-
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_CADENCE_QSPI
 #define CONFIG_CQSPI_REF_CLK 384000000
 #endif
 

@@ -7,7 +7,11 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <pci.h>
+#include <asm/bitops.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 
 #if defined(CONFIG_OF_LIBFDT)
 #include <linux/libfdt.h>
@@ -182,7 +186,7 @@ void mpc83xx_pcislave_unlock(int bus)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT)
-void ft_pci_setup(void *blob, bd_t *bd)
+void ft_pci_setup(void *blob, struct bd_info *bd)
 {
 	int nodeoffset;
 	int tmp[2];

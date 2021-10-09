@@ -6,10 +6,11 @@
 
 #include <common.h>
 #include <ide.h>
+#include <init.h>
+#include <net.h>
 #include <netdev.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-#include <asm/pci.h>
 
 int checkboard(void)
 {
@@ -45,13 +46,9 @@ void ide_set_reset(int idereset)
 	}
 }
 
-static struct pci_controller hose;
-void pci_init_board(void)
-{
-	pci_sh7751_init(&hose);
-}
-
-int board_eth_init(bd_t *bis)
+#ifndef CONFIG_DM_ETH
+int board_eth_init(struct bd_info *bis)
 {
 	return pci_eth_init(bis);
 }
+#endif

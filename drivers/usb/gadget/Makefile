@@ -7,8 +7,8 @@ obj-$(CONFIG_USB_GADGET) += epautoconf.o config.o usbstring.o
 obj-$(CONFIG_USB_ETHER) += epautoconf.o config.o usbstring.o
 
 ifdef CONFIG_SPL_BUILD
-obj-$(CONFIG_SPL_USB_GADGET_SUPPORT) += g_dnl.o
-obj-$(CONFIG_SPL_DFU_SUPPORT) += f_dfu.o
+obj-$(CONFIG_SPL_USB_GADGET) += g_dnl.o
+obj-$(CONFIG_SPL_DFU) += f_dfu.o
 obj-$(CONFIG_SPL_USB_SDP_SUPPORT) += f_sdp.o
 endif
 
@@ -20,6 +20,7 @@ obj-$(CONFIG_USB_GADGET_BCM_UDC_OTG_PHY) += bcm_udc_otg_phy.o
 obj-$(CONFIG_USB_GADGET_DWC2_OTG) += dwc2_udc_otg.o
 obj-$(CONFIG_USB_GADGET_DWC2_OTG_PHY) += dwc2_udc_otg_phy.o
 obj-$(CONFIG_USB_GADGET_FOTG210) += fotg210.o
+obj-$(CONFIG_USB_GADGET_MAX3420) += max3420_udc.o
 obj-$(CONFIG_CI_UDC)	+= ci_udc.o
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_USB_GADGET_DOWNLOAD) += g_dnl.o

@@ -28,15 +28,14 @@
 
 	aliases {
 		serial2 = &uart_AO_B;
+		ethernet0 = &ethmac;
 	};
 
 	gpio-keys-polled {
 		compatible = "gpio-keys-polled";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		poll-interval = <100>;
 
-		button@0 {
+		power-button {
 			label = "power";
 			linux,code = <KEY_POWER>;
 			gpios = <&gpio_ao GPIOAO_2 GPIO_ACTIVE_LOW>;
@@ -66,10 +65,18 @@
 	};
 };
 
+&cec_AO {
+	status = "okay";
+	pinctrl-0 = <&ao_cec_pins>;
+	pinctrl-names = "default";
+	hdmi-phandle = <&hdmi_tx>;
+};
+
 &hdmi_tx {
 	status = "okay";
 	pinctrl-0 = <&hdmi_hpd_pins>, <&hdmi_i2c_pins>;
 	pinctrl-names = "default";
+	hdmi-supply = <&hdmi_5v>;
 };
 
 &hdmi_tx_tmds_port {
@@ -101,7 +108,63 @@
 };
 
 &ir {
-	linux,rc-map-name = "rc-geekbox";
+	linux,rc-map-name = "rc-khadas";
+};
+
+&gpio_ao {
+	gpio-line-names = "UART TX",
+			  "UART RX",
+			  "Power Key In",
+			  "J9 Header Pin35",
+			  "J9 Header Pin16",
+			  "J9 Header Pin15",
+			  "J9 Header Pin33",
+			  "IR In",
+			  "HDMI CEC",
+			  "SYS LED",
+			  /* GPIO_TEST_N */
+			  "";
+};
+
+&gpio {
+	gpio-line-names = /* Bank GPIOZ */
+			  "", "", "", "", "", "", "",
+			  "", "", "", "", "", "", "",
+			  "Power OFF",
+			  "VCCK Enable",
+			  /* Bank GPIOH */
+			  "HDMI HPD", "HDMI SDA", "HDMI SCL",
+			  "HDMI_5V_EN", "SPDIF",
+			  "J9 Header Pin37",
+			  "J9 Header Pin30",
+			  "J9 Header Pin29",
+			  "J9 Header Pin32",
+			  "J9 Header Pin31",
+			  /* Bank BOOT */
+			  "eMMC D0", "eMMC D1", "eMMC D2", "eMMC D3",
+			  "eMMC D4", "eMMC D5", "eMMC D6", "eMMC D7",
+			  "eMMC Clk", "eMMC Reset", "eMMC CMD",
+			  "", "BOOT_MODE", "", "", "eMMC Data Strobe",
+			  /* Bank CARD */
+			  "SDCard D1", "SDCard D0", "SDCard CLK", "SDCard CMD",
+			  "SDCard D3", "SDCard D2", "SDCard Det",
+			  /* Bank GPIODV */
+			  "", "", "", "", "", "", "", "", "", "", "", "",
+			  "", "", "", "", "", "", "", "", "", "", "", "",
+			  "I2C A SDA", "I2C A SCK", "I2C B SDA", "I2C B SCK",
+			  "VCCK Regulator", "VDDEE Regulator",
+			  /* Bank GPIOX */
+			  "WIFI SDIO D0", "WIFI SDIO D1", "WIFI SDIO D2",
+			  "WIFI SDIO D3", "WIFI SDIO CLK", "WIFI SDIO CMD",
+			  "WIFI Power Enable", "WIFI WAKE HOST",
+			  "Bluetooth PCM DOUT", "Bluetooth PCM DIN",
+			  "Bluetooth PCM SYNC", "Bluetooth PCM CLK",
+			  "Bluetooth UART TX", "Bluetooth UART RX",
+			  "Bluetooth UART CTS", "Bluetooth UART RTS",
+			  "WIFI 32K", "Bluetooth Enable",
+			  "Bluetooth WAKE HOST",
+			  /* Bank GPIOCLK */
+			  "", "J9 Header Pin39";
 };
 
 &pwm_AO_ab {
@@ -123,6 +186,16 @@
 	};
 };
 
+&uart_A {
+	bluetooth {
+		compatible = "brcm,bcm43438-bt";
+		shutdown-gpios = <&gpio GPIOX_17 GPIO_ACTIVE_HIGH>;
+		max-speed = <2000000>;
+		clocks = <&wifi32k>;
+		clock-names = "lpo";
+	};
+};
+
 /* This is brought out on the Linux_RX (18) and Linux_TX (19) pins: */
 &uart_AO {
 	status = "okay";
@@ -133,4 +206,8 @@
 	status = "okay";
 	pinctrl-0 = <&uart_ao_b_pins>;
 	pinctrl-names = "default";
+};
+
+&usb {
+	dr_mode = "peripheral";
 };

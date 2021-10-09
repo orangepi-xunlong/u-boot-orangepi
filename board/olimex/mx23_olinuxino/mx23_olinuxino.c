@@ -6,6 +6,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/iomux-mx23.h>
@@ -15,6 +17,7 @@
 #ifdef CONFIG_LED_STATUS
 #include <status_led.h>
 #endif
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -53,18 +56,6 @@ int dram_init(void)
 {
 	return mxs_dram_init();
 }
-
-#ifdef	CONFIG_CMD_MMC
-static int mx23_olx_mmc_cd(int id)
-{
-	return 1;	/* Card always present */
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	return mxsmmc_initialize(bis, 0, NULL, mx23_olx_mmc_cd);
-}
-#endif
 
 int board_init(void)
 {

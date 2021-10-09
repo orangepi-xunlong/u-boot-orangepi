@@ -6,10 +6,12 @@
  */
 
 #include <hexdump.h>
+#include <malloc.h>
 #include <ubi_uboot.h>
 #include "ubi.h"
 #ifndef __UBOOT__
 #include <linux/debugfs.h>
+#include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #endif
@@ -109,6 +111,7 @@ void ubi_dump_vol_info(const struct ubi_volume *vol)
 	printf("\tlast_eb_bytes   %d\n", vol->last_eb_bytes);
 	printf("\tcorrupted       %d\n", vol->corrupted);
 	printf("\tupd_marker      %d\n", vol->upd_marker);
+	printf("\tskip_check      %d\n", vol->skip_check);
 
 	if (vol->name_len <= UBI_VOL_NAME_MAX &&
 	    strnlen(vol->name, vol->name_len + 1) == vol->name_len) {

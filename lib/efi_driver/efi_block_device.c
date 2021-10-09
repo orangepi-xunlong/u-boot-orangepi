@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI block driver
  *
  *  Copyright (c) 2017 Heinrich Schuchardt
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  *
  * The EFI uclass creates a handle for this driver and installs the
  * driver binding protocol on it.
@@ -29,7 +28,11 @@
  * iPXE uses the simple file protocol to load Grub or the Linux Kernel.
  */
 
+#include <common.h>
+#include <blk.h>
+#include <dm.h>
 #include <efi_driver.h>
+#include <malloc.h>
 #include <dm/device-internal.h>
 #include <dm/root.h>
 
@@ -39,25 +42,25 @@
  * handle	handle of the controller on which this driver is installed
  * io		block io protocol proxied by this driver
  */
-struct efi_blk_priv {
+struct efi_blk_plat {
 	efi_handle_t		handle;
 	struct efi_block_io	*io;
 };
 
-/*
+/**
  * Read from block device
  *
- * @dev		device
- * @blknr	first block to be read
- * @blkcnt	number of blocks to read
- * @buffer	output buffer
- * @return	number of blocks transferred
+ * @dev:	device
+ * @blknr:	first block to be read
+ * @blkcnt:	number of blocks to read
+ * @buffer:	output buffer
+ * Return:	number of blocks transferred
  */
 static ulong efi_bl_read(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 			 void *buffer)
 {
-	struct efi_blk_priv *priv = dev->priv;
-	struct efi_block_io *io = priv->io;
+	struct efi_blk_plat *plat = dev_get_plat(dev);
+	struct efi_block_io *io = plat->io;
 	efi_status_t ret;
 
 	EFI_PRINT("%s: read '%s', from block " LBAFU ", " LBAFU " blocks\n",
@@ -73,20 +76,20 @@ static ulong efi_bl_read(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 	return blkcnt;
 }
 
-/*
+/**
  * Write to block device
  *
- * @dev		device
- * @blknr	first block to be write
- * @blkcnt	number of blocks to write
- * @buffer	input buffer
- * @return	number of blocks transferred
+ * @dev:	device
+ * @blknr:	first block to be write
+ * @blkcnt:	number of blocks to write
+ * @buffer:	input buffer
+ * Return:	number of blocks transferred
  */
 static ulong efi_bl_write(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 			  const void *buffer)
 {
-	struct efi_blk_priv *priv = dev->priv;
-	struct efi_block_io *io = priv->io;
+	struct efi_blk_plat *plat = dev_get_plat(dev);
+	struct efi_block_io *io = plat->io;
 	efi_status_t ret;
 
 	EFI_PRINT("%s: write '%s', from block " LBAFU ", " LBAFU " blocks\n",
@@ -103,30 +106,31 @@ static ulong efi_bl_write(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 	return blkcnt;
 }
 
-/*
+/**
  * Create partions for the block device.
  *
- * @handle	EFI handle of the block device
- * @dev		udevice of the block device
+ * @handle:	EFI handle of the block device
+ * @dev:	udevice of the block device
+ * Return:	number of partitions created
  */
 static int efi_bl_bind_partitions(efi_handle_t handle, struct udevice *dev)
 {
 	struct blk_desc *desc;
 	const char *if_typename;
 
-	desc = dev_get_uclass_platdata(dev);
+	desc = dev_get_uclass_plat(dev);
 	if_typename = blk_get_if_type_name(desc->if_type);
 
 	return efi_disk_create_partitions(handle, desc, if_typename,
 					  desc->devnum, dev->name);
 }
 
-/*
+/**
  * Create a block device for a handle
  *
- * @handle	handle
- * @interface	block io protocol
- * @return	0 = success
+ * @handle:	handle
+ * @interface:	block io protocol
+ * Return:	0 = success
  */
 static int efi_bl_bind(efi_handle_t handle, void *interface)
 {
@@ -136,7 +140,7 @@ static int efi_bl_bind(efi_handle_t handle, void *interface)
 	struct efi_object *obj = efi_search_obj(handle);
 	struct efi_block_io *io = interface;
 	int disks;
-	struct efi_blk_priv *priv;
+	struct efi_blk_plat *plat;
 
 	EFI_PRINT("%s: handle %p, interface %p\n", __func__, handle, io);
 
@@ -162,17 +166,17 @@ static int efi_bl_bind(efi_handle_t handle, void *interface)
 		return ret;
 	if (!bdev)
 		return -ENOENT;
-	/* Allocate priv */
+	/* Set the DM_FLAG_NAME_ALLOCED flag to avoid a memory leak */
+	device_set_name_alloced(bdev);
+
+	plat = dev_get_plat(bdev);
+	plat->handle = handle;
+	plat->io = interface;
+
 	ret = device_probe(bdev);
 	if (ret)
 		return ret;
 	EFI_PRINT("%s: block device '%s' created\n", __func__, bdev->name);
-
-	priv = bdev->priv;
-	priv->handle = handle;
-	priv->io = interface;
-
-	ret = blk_prepare_device(bdev);
 
 	/* Create handles for the partions of the block device */
 	disks = efi_bl_bind_partitions(handle, bdev);
@@ -192,7 +196,7 @@ U_BOOT_DRIVER(efi_blk) = {
 	.name			= "efi_blk",
 	.id			= UCLASS_BLK,
 	.ops			= &efi_blk_ops,
-	.priv_auto_alloc_size	= sizeof(struct efi_blk_priv),
+	.plat_auto	= sizeof(struct efi_blk_plat),
 };
 
 /* EFI driver operators */

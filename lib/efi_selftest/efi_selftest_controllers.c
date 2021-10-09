@@ -6,7 +6,7 @@
  *
  * This unit test checks the following protocol services:
  * ConnectController, DisconnectController,
- * InstallProtocol, UninstallProtocol,
+ * InstallProtocol, ReinstallProtocol, UninstallProtocol,
  * OpenProtocol, CloseProtcol, OpenProtocolInformation
  */
 
@@ -14,6 +14,8 @@
 
 #define NUMBER_OF_CHILD_CONTROLLERS 4
 
+static int interface1 = 1;
+static int interface2 = 2;
 static struct efi_boot_services *boottime;
 const efi_guid_t guid_driver_binding_protocol =
 			EFI_DRIVER_BINDING_PROTOCOL_GUID;
@@ -31,7 +33,7 @@ static efi_handle_t handle_driver;
  * Count child controllers
  *
  * @handle	handle on which child controllers are installed
- * @protocol	protocol for which the child controlles where installed
+ * @protocol	protocol for which the child controllers were installed
  * @count	number of child controllers
  * @return	status code
  */
@@ -132,6 +134,8 @@ static efi_status_t EFIAPI start(
 
 	/* Create child controllers */
 	for (i = 0; i < NUMBER_OF_CHILD_CONTROLLERS; ++i) {
+		/* Creating a new handle for the child controller */
+		handle_child_controller[i] = 0;
 		ret = boottime->install_protocol_interface(
 			&handle_child_controller[i], &guid_child_controller,
 			EFI_NATIVE_INTERFACE, NULL);
@@ -271,7 +275,7 @@ static int setup(const efi_handle_t img_handle,
 	/* Create controller handle */
 	ret = boottime->install_protocol_interface(
 			&handle_controller, &guid_controller,
-			EFI_NATIVE_INTERFACE, NULL);
+			EFI_NATIVE_INTERFACE, &interface1);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("InstallProtocolInterface failed\n");
 		return EFI_ST_FAILURE;
@@ -299,6 +303,7 @@ static int setup(const efi_handle_t img_handle,
  * Disconnect and destroy the remaining child controllers.
  *
  * Connect a controller to a driver.
+ * Reinstall the driver protocol on the controller.
  * Uninstall the driver protocol from the controller.
  */
 static int execute(void)
@@ -361,9 +366,35 @@ static int execute(void)
 		efi_st_error("Number of children %u != %u\n",
 			     (unsigned int)count, NUMBER_OF_CHILD_CONTROLLERS);
 	}
+	/* Try to uninstall controller protocol using the wrong interface */
+	ret = boottime->uninstall_protocol_interface(handle_controller,
+						     &guid_controller,
+						     &interface2);
+	if (ret == EFI_SUCCESS) {
+		efi_st_error(
+			"Interface not checked when uninstalling protocol\n");
+		return EFI_ST_FAILURE;
+	}
+	/* Reinstall controller protocol */
+	ret = boottime->reinstall_protocol_interface(handle_controller,
+						     &guid_controller,
+						     &interface1,
+						     &interface2);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to reinstall protocols\n");
+		return EFI_ST_FAILURE;
+	}
+	/* Check number of child controllers */
+	ret = count_child_controllers(handle_controller, &guid_controller,
+				      &count);
+	if (ret != EFI_SUCCESS || count != NUMBER_OF_CHILD_CONTROLLERS) {
+		efi_st_error("Number of children %u != %u\n",
+			     (unsigned int)count, NUMBER_OF_CHILD_CONTROLLERS);
+	}
 	/* Uninstall controller protocol */
 	ret = boottime->uninstall_protocol_interface(handle_controller,
-						     &guid_controller, NULL);
+						     &guid_controller,
+						     &interface2);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Failed to uninstall protocols\n");
 		return EFI_ST_FAILURE;

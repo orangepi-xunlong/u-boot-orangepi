@@ -3,8 +3,10 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <console.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <init.h>
 #include <malloc.h>
 #include <ns16550.h>
 #include <nand.h>
@@ -12,6 +14,7 @@
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <spi_flash.h>
+#include <asm/global_data.h>
 #include "../common/qixis.h"
 #include "t208xqds_qixis.h"
 #include "../common/spl.h"
@@ -79,7 +82,7 @@ void board_init_f(ulong bootflag)
 	plat_ratio = (in_be32(&gur->rcwsr[0]) >> 25) & 0x1f;
 	ccb_clk = sys_clk * plat_ratio / 2;
 
-	NS16550_init((NS16550_t)CONFIG_SYS_NS16550_COM1,
+	ns16550_init((struct ns16550 *)CONFIG_SYS_NS16550_COM1,
 		     ccb_clk / 16 / CONFIG_BAUDRATE);
 
 #if defined(CONFIG_SPL_MMC_BOOT)
@@ -95,13 +98,11 @@ void board_init_f(ulong bootflag)
 
 void board_init_r(gd_t *gd, ulong dest_addr)
 {
-	bd_t *bd;
+	struct bd_info *bd;
 
-	bd = (bd_t *)(gd + sizeof(gd_t));
-	memset(bd, 0, sizeof(bd_t));
+	bd = (struct bd_info *)(gd + sizeof(gd_t));
+	memset(bd, 0, sizeof(struct bd_info));
 	gd->bd = bd;
-	bd->bi_memstart = CONFIG_SYS_INIT_L3_ADDR;
-	bd->bi_memsize = CONFIG_SYS_L3_SIZE;
 
 	arch_cpu_init();
 	get_clocks();
@@ -111,19 +112,19 @@ void board_init_r(gd_t *gd, ulong dest_addr)
 
 #ifdef CONFIG_SPL_NAND_BOOT
 	nand_spl_load_image(CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE,
-			    (uchar *)CONFIG_ENV_ADDR);
+			    (uchar *)SPL_ENV_ADDR);
 #endif
 #ifdef CONFIG_SPL_MMC_BOOT
 	mmc_initialize(bd);
 	mmc_spl_load_image(CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE,
-			   (uchar *)CONFIG_ENV_ADDR);
+			   (uchar *)SPL_ENV_ADDR);
 #endif
 #ifdef CONFIG_SPL_SPI_BOOT
 	fsl_spi_spl_load_image(CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE,
-			       (uchar *)CONFIG_ENV_ADDR);
+			       (uchar *)SPL_ENV_ADDR);
 #endif
 
-	gd->env_addr  = (ulong)(CONFIG_ENV_ADDR);
+	gd->env_addr  = (ulong)(SPL_ENV_ADDR);
 	gd->env_valid = ENV_VALID;
 
 	i2c_init_all();

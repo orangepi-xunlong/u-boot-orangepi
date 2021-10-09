@@ -3,22 +3,21 @@
  * Copyright (C) 2017 NXP Semiconductors
  */
 
+#include <init.h>
+#include <net.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx7-pins.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <asm/io.h>
 #include <common.h>
-#include <fsl_esdhc.h>
 #include <i2c.h>
 #include <miiphy.h>
-#include <mmc.h>
-#include <netdev.h>
-#include <usb.h>
 #include <power/pmic.h>
 #include <power/pfuze3000_pmic.h>
 #include "../../freescale/common/pfuze.h"
@@ -28,19 +27,12 @@ DECLARE_GLOBAL_DATA_PTR;
 #define UART_PAD_CTRL  (PAD_CTL_DSE_3P3V_49OHM | \
 	PAD_CTL_PUS_PU100KOHM | PAD_CTL_HYS)
 
-#define USDHC_PAD_CTRL (PAD_CTL_DSE_3P3V_32OHM | PAD_CTL_SRE_SLOW | \
-	PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PUS_PU47KOHM)
-
-#define ENET_PAD_CTRL  (PAD_CTL_PUS_PU100KOHM | PAD_CTL_DSE_3P3V_49OHM)
-#define ENET_PAD_CTRL_MII  (PAD_CTL_DSE_3P3V_32OHM)
-
-#define ENET_RX_PAD_CTRL  (PAD_CTL_PUS_PU100KOHM | PAD_CTL_DSE_3P3V_49OHM)
-
 #define I2C_PAD_CTRL    (PAD_CTL_DSE_3P3V_32OHM | PAD_CTL_SRE_SLOW | \
 	PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PUS_PU100KOHM)
 
 #ifdef CONFIG_SYS_I2C_MXC
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
+
 /* I2C4 for PMIC */
 static struct i2c_pads_info i2c_pad_info4 = {
 	.scl = {
@@ -58,7 +50,12 @@ static struct i2c_pads_info i2c_pad_info4 = {
 
 int dram_init(void)
 {
-	gd->ram_size = PHYS_SDRAM_SIZE;
+	gd->ram_size = imx_ddr_size();
+
+	/* Subtract the defined OPTEE runtime firmware length */
+#ifdef CONFIG_OPTEE_TZDRAM_SIZE
+		gd->ram_size -= CONFIG_OPTEE_TZDRAM_SIZE;
+#endif
 
 	return 0;
 }
@@ -77,8 +74,11 @@ int power_init_board(void)
 
 	p = pmic_get("PFUZE3000");
 	ret = pmic_probe(p);
-	if (ret)
-		return ret;
+	if (ret) {
+		printf("Warning:  Cannot find PMIC PFUZE3000\n");
+		printf("\tPower consumption is not optimized.\n");
+		return 0;
+	}
 
 	pmic_reg_read(p, PFUZE3000_DEVICEID, &reg);
 	pmic_reg_read(p, PFUZE3000_REVID, &rev_id);
@@ -118,59 +118,7 @@ static iomux_v3_cfg_t const uart5_pads[] = {
 	MX7D_PAD_I2C4_SDA__UART5_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
-static iomux_v3_cfg_t const usdhc3_emmc_pads[] = {
-	MX7D_PAD_SD3_CLK__SD3_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_CMD__SD3_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA0__SD3_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA1__SD3_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA2__SD3_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA3__SD3_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA4__SD3_DATA4 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA5__SD3_DATA5 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA6__SD3_DATA6 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD3_DATA7__SD3_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_GPIO1_IO14__GPIO1_IO14 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-};
-
 #ifdef CONFIG_FEC_MXC
-static iomux_v3_cfg_t const fec1_pads[] = {
-	MX7D_PAD_SD2_CD_B__ENET1_MDIO | MUX_PAD_CTRL(ENET_PAD_CTRL_MII),
-	MX7D_PAD_SD2_WP__ENET1_MDC | MUX_PAD_CTRL(ENET_PAD_CTRL_MII),
-	MX7D_PAD_ENET1_RGMII_TXC__ENET1_RGMII_TXC | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD0__ENET1_RGMII_TD0 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD1__ENET1_RGMII_TD1 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD2__ENET1_RGMII_TD2 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD3__ENET1_RGMII_TD3 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TX_CTL__ENET1_RGMII_TX_CTL | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RXC__ENET1_RGMII_RXC | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RD2__ENET1_RGMII_RD2 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RD3__ENET1_RGMII_RD3 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_SD3_STROBE__GPIO6_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX7D_PAD_SD3_RESET_B__GPIO6_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-#define FEC1_RST_GPIO	IMX_GPIO_NR(6, 11)
-
-static void setup_iomux_fec(void)
-{
-	imx_iomux_v3_setup_multiple_pads(fec1_pads, ARRAY_SIZE(fec1_pads));
-
-	gpio_direction_output(FEC1_RST_GPIO, 0);
-	udelay(500);
-	gpio_set_value(FEC1_RST_GPIO, 1);
-}
-
-int board_eth_init(bd_t *bis)
-{
-	setup_iomux_fec();
-
-	return fecmxc_initialize_multi(bis, 0,
-		CONFIG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
-}
-
 static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
@@ -216,25 +164,6 @@ static void setup_iomux_uart(void)
 	imx_iomux_v3_setup_multiple_pads(uart5_pads, ARRAY_SIZE(uart5_pads));
 }
 
-static struct fsl_esdhc_cfg usdhc_cfg[1] = {
-	{USDHC3_BASE_ADDR},
-};
-
-int board_mmc_getcd(struct mmc *mmc)
-{
-	/* Assume uSDHC3 emmc is always present */
-	return 1;
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	imx_iomux_v3_setup_multiple_pads(
-			usdhc3_emmc_pads, ARRAY_SIZE(usdhc3_emmc_pads));
-	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
-
-	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
-}
-
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
@@ -246,11 +175,26 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#ifdef CONFIG_DM_VIDEO
+void setup_lcd(void)
+{
+	gpio_request(IMX_GPIO_NR(1, 11), "lcd_brightness");
+	gpio_request(IMX_GPIO_NR(1, 6), "lcd_enable");
+	/* Set Brightness to high */
+	gpio_direction_output(IMX_GPIO_NR(1, 11) , 1);
+	/* Set LCD enable to high */
+	gpio_direction_output(IMX_GPIO_NR(1, 6) , 1);
+}
+#endif
+
 int board_init(void)
 {
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
+#ifdef CONFIG_DM_VIDEO
+	setup_lcd();
+#endif
 #ifdef CONFIG_FEC_MXC
 	setup_fec();
 #endif
@@ -282,7 +226,22 @@ int checkboard(void)
 	return 0;
 }
 
-int board_usb_phy_mode(int port)
+static iomux_v3_cfg_t const usb_otg2_pads[] = {
+	MX7D_PAD_UART3_CTS_B__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+int board_ehci_hcd_init(int port)
 {
-	return USB_INIT_DEVICE;
+	switch (port) {
+	case 0:
+		break;
+	case 1:
+		imx_iomux_v3_setup_multiple_pads(usb_otg2_pads,
+						 ARRAY_SIZE(usb_otg2_pads));
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
 }
+

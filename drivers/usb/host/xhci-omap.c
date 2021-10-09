@@ -9,6 +9,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <usb.h>
 #include <linux/errno.h>
 #include <asm/omap_common.h>
@@ -19,7 +20,7 @@
 #include <linux/usb/dwc3.h>
 #include <linux/usb/xhci-omap.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 
 /* Declare global data pointer */
 static struct omap_xhci omap;

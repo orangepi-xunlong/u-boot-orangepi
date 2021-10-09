@@ -9,10 +9,11 @@
  * PCI Configuration space access support for MPC85xx PCI Bridge
  */
 #include <common.h>
+#include <asm/bitops.h>
 #include <asm/cpm_85xx.h>
 #include <pci.h>
 
-#if !defined(CONFIG_FSL_PCI_INIT)
+#if !defined(CONFIG_FSL_PCI_INIT) && !defined(CONFIG_DM_PCI)
 
 #ifndef CONFIG_SYS_PCI1_MEM_BUS
 #define CONFIG_SYS_PCI1_MEM_BUS CONFIG_SYS_PCI1_MEM_BASE

@@ -6,12 +6,13 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_rstc.h>
 
 /* Reset the cpu by telling the reset controller to do so */
-void reset_cpu(ulong ignored)
+void reset_cpu(void)
 {
 	at91_rstc_t *rstc = (at91_rstc_t *) ATMEL_BASE_RSTC;
 

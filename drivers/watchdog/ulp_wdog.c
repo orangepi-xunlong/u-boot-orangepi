@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 
@@ -76,7 +77,7 @@ void hw_watchdog_init(void)
 	hw_watchdog_reset();
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	struct wdog_regs *wdog = (struct wdog_regs *)WDOG_BASE_ADDR;
 

@@ -6,7 +6,9 @@
 #include <common.h>
 #include <dm.h>
 #include <ram.h>
+#include <asm/global_data.h>
 #include <dm/test.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -24,4 +26,4 @@ static int dm_test_ram_base(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_ram_base, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_ram_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

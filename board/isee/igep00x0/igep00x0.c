@@ -4,6 +4,10 @@
  * ISEE 2007 SL, <www.iseebcn.com>
  */
 #include <common.h>
+#include <env.h>
+#include <init.h>
+#include <malloc.h>
+#include <net.h>
 #include <status_led.h>
 #include <dm.h>
 #include <ns16550.h>
@@ -16,6 +20,7 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/delay.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/mtd/onenand.h>
@@ -24,14 +29,14 @@
 #include <fdt_support.h>
 #include "igep00x0.h"
 
-static const struct ns16550_platdata igep_serial = {
+static const struct ns16550_plat igep_serial = {
 	.base = OMAP34XX_UART3,
 	.reg_shift = 2,
 	.clock = V_NS16550_CLK,
 	.fcr = UART_FCR_DEFVAL,
 };
 
-U_BOOT_DEVICE(igep_uart) = {
+U_BOOT_DRVINFO(igep_uart) = {
 	"ns16550_serial",
 	&igep_serial
 };
@@ -127,7 +132,7 @@ static void setup_net_chip(void)
 	reset_net_chip(64);
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 #ifdef CONFIG_SMC911X
 	return smc911x_initialize(0, CONFIG_SMC911X_BASE);
@@ -154,10 +159,10 @@ static int ft_enable_by_compatible(void *blob, char *compat, int enable)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
-	static struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
 		{ "ti,omap2-onenand", MTD_DEV_TYPE_ONENAND, },
 	};

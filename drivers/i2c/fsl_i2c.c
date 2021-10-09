@@ -9,11 +9,15 @@
 #include <common.h>
 #include <command.h>
 #include <i2c.h>		/* Functional interface */
+#include <log.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/fsl_i2c.h>	/* HW definitions */
 #include <clk.h>
 #include <dm.h>
 #include <mapmem.h>
+#include <linux/delay.h>
 
 /* The maximum number of microseconds we will wait until another master has
  * released the bus.  If not defined in the board header file, then use a
@@ -36,7 +40,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 static const struct fsl_i2c_base *i2c_base[4] = {
 	(struct fsl_i2c_base *)(CONFIG_SYS_IMMR + CONFIG_SYS_FSL_I2C_OFFSET),
 #ifdef CONFIG_SYS_FSL_I2C2_OFFSET
@@ -199,7 +203,7 @@ static uint set_i2c_bus_speed(const struct fsl_i2c_base *base,
 	return speed;
 }
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 static uint get_i2c_clock(int bus)
 {
 	if (bus)
@@ -493,7 +497,7 @@ static uint __i2c_set_bus_speed(const struct fsl_i2c_base *base,
 	return 0;
 }
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 static void fsl_i2c_init(struct i2c_adapter *adap, int speed, int slaveadd)
 {
 	__i2c_init(i2c_base[adap->hwadapnr], speed, slaveadd,
@@ -570,7 +574,7 @@ static int fsl_i2c_set_bus_speed(struct udevice *bus, uint speed)
 	return __i2c_set_bus_speed(dev->base, speed, dev->i2c_clk);
 }
 
-static int fsl_i2c_ofdata_to_platdata(struct udevice *bus)
+static int fsl_i2c_of_to_plat(struct udevice *bus)
 {
 	struct fsl_i2c_dev *dev = dev_get_priv(bus);
 	struct clk clock;
@@ -583,7 +587,8 @@ static int fsl_i2c_ofdata_to_platdata(struct udevice *bus)
 	dev->index = dev_read_u32_default(bus, "cell-index", -1);
 	dev->slaveadd = dev_read_u32_default(bus, "u-boot,i2c-slave-addr",
 					     0x7f);
-	dev->speed = dev_read_u32_default(bus, "clock-frequency", 400000);
+	dev->speed = dev_read_u32_default(bus, "clock-frequency",
+					  I2C_SPEED_FAST_RATE);
 
 	if (!clk_get_by_index(bus, 0, &clock))
 		dev->i2c_clk = clk_get_rate(&clock);
@@ -645,8 +650,8 @@ U_BOOT_DRIVER(i2c_fsl) = {
 	.id = UCLASS_I2C,
 	.of_match = fsl_i2c_ids,
 	.probe = fsl_i2c_probe,
-	.ofdata_to_platdata = fsl_i2c_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct fsl_i2c_dev),
+	.of_to_plat = fsl_i2c_of_to_plat,
+	.priv_auto	= sizeof(struct fsl_i2c_dev),
 	.ops = &fsl_i2c_ops,
 };
 

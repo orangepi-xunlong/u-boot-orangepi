@@ -14,6 +14,8 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/prcm.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_SPL_BUILD
 void clock_init_safe(void)
@@ -115,11 +117,10 @@ void clock_set_pll1(unsigned int clk)
 	int k = 1;
 	int m = 1;
 
-	if (clk > 1152000000) {
+	if (clk >= 1368000000) {
+		k = 4;
+	} else if (clk >= 768000000) {
 		k = 2;
-	} else if (clk > 768000000) {
-		k = 3;
-		m = 2;
 	}
 
 	/* Switch to 24MHz clock while changing PLL1 */
@@ -135,11 +136,13 @@ void clock_set_pll1(unsigned int clk)
 	writel(CCM_PLL1_CTRL_EN | CCM_PLL1_CTRL_P(p) |
 	       CCM_PLL1_CTRL_N(clk / (24000000 * k / m)) |
 	       CCM_PLL1_CTRL_K(k) | CCM_PLL1_CTRL_M(m), &ccm->pll1_cfg);
-	sdelay(200);
+
+	while (!(readl(&ccm->pll1_cfg) & CCM_PLL1_CTRL_LOCK))
+		;
 
 	/* Switch CPU to PLL1 */
-	writel(AXI_DIV_3 << AXI_DIV_SHIFT |
-	       ATB_DIV_2 << ATB_DIV_SHIFT |
+	writel(AXI_DIV_4 << AXI_DIV_SHIFT |
+	       ATB_DIV_4 << ATB_DIV_SHIFT |
 	       CPU_CLK_SRC_PLL1 << CPU_CLK_SRC_SHIFT,
 	       &ccm->cpu_axi_cfg);
 }
@@ -149,7 +152,11 @@ void clock_set_pll3(unsigned int clk)
 {
 	struct sunxi_ccm_reg * const ccm =
 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+#ifdef CONFIG_SUNXI_DE2
+	const int m = 4; /* 6 MHz steps to allow higher frequency for DE2 */
+#else
 	const int m = 8; /* 3 MHz steps just like sun4i, sun5i and sun7i */
+#endif
 
 	if (clk == 0) {
 		clrbits_le32(&ccm->pll3_cfg, CCM_PLL3_CTRL_EN);

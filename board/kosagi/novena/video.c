@@ -10,6 +10,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -270,6 +272,7 @@ static void enable_lvds(struct display_info_t const *dev)
 		return;
 
 	/* ITE IT6251 power enable. */
+	gpio_request(NOVENA_ITE6251_PWR_GPIO, "ite6251-power");
 	gpio_direction_output(NOVENA_ITE6251_PWR_GPIO, 0);
 	mdelay(10);
 	gpio_direction_output(NOVENA_ITE6251_PWR_GPIO, 1);
@@ -447,6 +450,8 @@ void setup_display_lvds(void)
 	/* Init the LVDS-to-eDP chip and if it succeeded, enable backlight. */
 	ret = it6251_init();
 	if (!ret) {
+		gpio_request(NOVENA_BACKLIGHT_PWR_GPIO, "backlight-power");
+		gpio_request(NOVENA_BACKLIGHT_PWM_GPIO, "backlight-pwm");
 		/* Backlight power enable. */
 		gpio_direction_output(NOVENA_BACKLIGHT_PWR_GPIO, 1);
 		/* PWM backlight pin, always on for full brightness. */

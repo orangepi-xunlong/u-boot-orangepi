@@ -8,14 +8,15 @@
 #include <common.h>
 
 #include <command.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
 #include <linux/stddef.h>
 #include <errno.h>
 #include <memalign.h>
 #include <sata.h>
 #include <search.h>
 
-#if defined(CONFIG_ENV_SIZE_REDUND) || defined(CONFIG_ENV_OFFSET_REDUND)
+#if defined(CONFIG_ENV_OFFSET_REDUND)
 #error ENV REDUND not supported
 #endif
 
@@ -65,7 +66,7 @@ static int env_sata_save(void)
 		return 1;
 
 	printf("Writing to SATA(%d)...", env_sata);
-	if (write_env(sata, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, &env_new)) {
+	if (write_env(sata, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, (u_char *)env_new)) {
 		puts("failed\n");
 		return 1;
 	}
@@ -106,11 +107,11 @@ static void env_sata_load(void)
 	}
 
 	if (read_env(sata, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, buf)) {
-		set_default_env(NULL);
+		env_set_default(NULL, 0);
 		return -EIO;
 	}
 
-	return env_import(buf, 1);
+	return env_import(buf, 1, H_EXTERNAL);
 }
 
 U_BOOT_ENV_LOCATION(sata) = {

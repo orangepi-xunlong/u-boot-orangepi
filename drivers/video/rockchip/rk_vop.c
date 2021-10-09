@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2015 Google, Inc
  * Copyright 2014 Rockchip Inc.
@@ -8,18 +8,25 @@
 #include <clk.h>
 #include <display.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <edid.h>
+#include <log.h>
 #include <regmap.h>
+#include <reset.h>
 #include <syscon.h>
 #include <video.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
-#include <asm/hardware.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/edp_rk3288.h>
-#include <asm/arch/vop_rk3288.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/edp_rk3288.h>
+#include <asm/arch-rockchip/vop_rk3288.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
+#include <efi.h>
+#include <efi_loader.h>
+#include <linux/bitops.h>
+#include <linux/err.h>
 #include <power/regulator.h>
 #include "rk_vop.h"
 
@@ -32,14 +39,16 @@ enum vop_pol {
 	DCLK_INVERT    = 3
 };
 
-static void rkvop_enable(struct rk3288_vop *regs, ulong fbbase,
+static void rkvop_enable(struct udevice *dev, struct rk3288_vop *regs, ulong fbbase,
 			 int fb_bits_per_pixel,
-			 const struct display_timing *edid)
+			 const struct display_timing *edid,
+			 struct reset_ctl *dclk_rst)
 {
 	u32 lb_mode;
 	u32 rgb_mode;
 	u32 hactive = edid->hactive.typ;
 	u32 vactive = edid->vactive.typ;
+	int ret;
 
 	writel(V_ACT_WIDTH(hactive - 1) | V_ACT_HEIGHT(vactive - 1),
 	       &regs->win0_act_info);
@@ -87,6 +96,18 @@ static void rkvop_enable(struct rk3288_vop *regs, ulong fbbase,
 
 	writel(fbbase, &regs->win0_yrgb_mst);
 	writel(0x01, &regs->reg_cfg_done); /* enable reg config */
+
+	ret = reset_assert(dclk_rst);
+	if (ret) {
+		dev_warn(dev, "failed to assert dclk reset (ret=%d)\n", ret);
+		return;
+	}
+	udelay(20);
+
+	ret = reset_deassert(dclk_rst);
+	if (ret)
+		dev_warn(dev, "failed to deassert dclk reset (ret=%d)\n", ret);
+
 }
 
 static void rkvop_set_pin_polarity(struct udevice *dev,
@@ -118,10 +139,12 @@ static void rkvop_enable_output(struct udevice *dev, enum vop_modes mode)
 				V_EDP_OUT_EN(1));
 		break;
 
+#if defined(CONFIG_ROCKCHIP_RK3288)
 	case VOP_MODE_LVDS:
 		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
 				V_RGB_OUT_EN(1));
 		break;
+#endif
 
 	case VOP_MODE_MIPI:
 		clrsetbits_le32(&regs->sys_ctrl, M_ALL_OUT_EN,
@@ -231,12 +254,12 @@ static int rk_display_init(struct udevice *dev, ulong fbbase, ofnode ep_node)
 	struct clk clk;
 	enum video_log2_bpp l2bpp;
 	ofnode remote;
+	const char *compat;
+	struct reset_ctl dclk_rst;
 
-	debug("%s(%s, %lu, %s)\n", __func__,
+	debug("%s(%s, 0x%lx, %s)\n", __func__,
 	      dev_read_name(dev), fbbase, ofnode_get_name(ep_node));
 
-	vop_id = ofnode_read_s32_default(ep_node, "reg", -1);
-	debug("vop_id=%d\n", vop_id);
 	ret = ofnode_read_u32(ep_node, "remote-endpoint", &remote_phandle);
 	if (ret)
 		return ret;
@@ -278,8 +301,30 @@ static int rk_display_init(struct udevice *dev, ulong fbbase, ofnode ep_node)
 		if (disp)
 			break;
 	};
+	compat = ofnode_get_property(remote, "compatible", NULL);
+	if (!compat) {
+		debug("%s(%s): Failed to find compatible property\n",
+		      __func__, dev_read_name(dev));
+		return -EINVAL;
+	}
+	if (strstr(compat, "edp")) {
+		vop_id = VOP_MODE_EDP;
+	} else if (strstr(compat, "mipi")) {
+		vop_id = VOP_MODE_MIPI;
+	} else if (strstr(compat, "hdmi")) {
+		vop_id = VOP_MODE_HDMI;
+	} else if (strstr(compat, "cdn-dp")) {
+		vop_id = VOP_MODE_DP;
+	} else if (strstr(compat, "lvds")) {
+		vop_id = VOP_MODE_LVDS;
+	} else {
+		debug("%s(%s): Failed to find vop mode for %s\n",
+		      __func__, dev_read_name(dev), compat);
+		return -EINVAL;
+	}
+	debug("vop_id=%d\n", vop_id);
 
-	disp_uc_plat = dev_get_uclass_platdata(disp);
+	disp_uc_plat = dev_get_uclass_plat(disp);
 	debug("Found device '%s', disp_uc_priv=%p\n", disp->name, disp_uc_plat);
 	if (display_in_use(disp)) {
 		debug("   - device in use\n");
@@ -313,7 +358,9 @@ static int rk_display_init(struct udevice *dev, ulong fbbase, ofnode ep_node)
 	/* Set bitwidth for vop display according to vop mode */
 	switch (vop_id) {
 	case VOP_MODE_EDP:
+#if defined(CONFIG_ROCKCHIP_RK3288)
 	case VOP_MODE_LVDS:
+#endif
 		l2bpp = VIDEO_BPP16;
 		break;
 	case VOP_MODE_HDMI:
@@ -325,7 +372,14 @@ static int rk_display_init(struct udevice *dev, ulong fbbase, ofnode ep_node)
 	}
 
 	rkvop_mode_set(dev, &timing, vop_id);
-	rkvop_enable(regs, fbbase, 1 << l2bpp, &timing);
+
+	ret = reset_get_by_name(dev, "dclk", &dclk_rst);
+	if (ret) {
+		dev_err(dev, "failed to get dclk reset (ret=%d)\n", ret);
+		return ret;
+	}
+
+	rkvop_enable(dev, regs, fbbase, 1 << l2bpp, &timing, &dclk_rst);
 
 	ret = display_enable(disp, 1 << l2bpp, &timing);
 	if (ret)
@@ -358,14 +412,39 @@ void rk_vop_probe_regulators(struct udevice *dev,
 
 int rk_vop_probe(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct rk_vop_priv *priv = dev_get_priv(dev);
 	int ret = 0;
 	ofnode port, node;
+	struct reset_ctl ahb_rst;
 
 	/* Before relocation we don't need to do anything */
 	if (!(gd->flags & GD_FLG_RELOC))
 		return 0;
+
+	ret = reset_get_by_name(dev, "ahb", &ahb_rst);
+	if (ret) {
+		dev_err(dev, "failed to get ahb reset (ret=%d)\n", ret);
+		return ret;
+	}
+
+	ret = reset_assert(&ahb_rst);
+	if (ret) {
+		dev_err(dev, "failed to assert ahb reset (ret=%d)\n", ret);
+	return ret;
+	}
+	udelay(20);
+
+	ret = reset_deassert(&ahb_rst);
+	if (ret) {
+		dev_err(dev, "failed to deassert ahb reset (ret=%d)\n", ret);
+		return ret;
+	}
+
+#if defined(CONFIG_EFI_LOADER)
+	debug("Adding to EFI map %d @ %lx\n", plat->size, plat->base);
+	efi_add_memory_map(plat->base, plat->size, EFI_RESERVED_MEMORY_TYPE);
+#endif
 
 	priv->regs = (struct rk3288_vop *)dev_read_addr(dev);
 
@@ -400,7 +479,7 @@ int rk_vop_probe(struct udevice *dev)
 
 int rk_vop_bind(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 
 	plat->size = 4 * (CONFIG_VIDEO_ROCKCHIP_MAX_XRES *
 			  CONFIG_VIDEO_ROCKCHIP_MAX_YRES);

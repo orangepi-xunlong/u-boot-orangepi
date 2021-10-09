@@ -26,6 +26,8 @@ int cleanup_before_linux(void);
 /* drivers/video/sandbox_sdl.c */
 int sandbox_lcd_sdl_early_init(void);
 
+struct udevice;
+
 /**
  * pci_map_physmem() - map a PCI device into memory
  *
@@ -81,6 +83,16 @@ void sandbox_set_enable_pci_map(int enable);
  * control FDT.
  */
 int sandbox_read_fdt_from_file(void);
+
+/**
+ * sandbox_reset() - reset sandbox
+ *
+ * This functions implements the cold reboot of the sandbox. It relaunches the
+ * U-Boot binary with the same command line parameters as the original call.
+ * The PID of the process stays the same. All file descriptors that have not
+ * been opened with O_CLOEXEC stay open including stdin, stdout, stderr.
+ */
+void sandbox_reset(void);
 
 /* Exit sandbox (quit U-Boot) */
 void sandbox_exit(void);

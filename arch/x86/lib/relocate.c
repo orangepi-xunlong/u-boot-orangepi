@@ -15,8 +15,9 @@
  */
 
 #include <common.h>
-#include <inttypes.h>
+#include <log.h>
 #include <relocate.h>
+#include <asm/global_data.h>
 #include <asm/u-boot-x86.h>
 #include <asm/sections.h>
 #include <elf.h>
@@ -54,6 +55,15 @@ static void do_elf_reloc_fixups64(unsigned int text_base, uintptr_t size,
 	Elf64_Addr *offset_ptr_ram;
 
 	do {
+		unsigned long long type = ELF64_R_TYPE(re_src->r_info);
+
+		if (type != R_X86_64_RELATIVE) {
+			printf("%s: unsupported relocation type 0x%llx "
+			       "at %p, ", __func__, type, re_src);
+			printf("offset = 0x%llx\n", re_src->r_offset);
+			continue;
+		}
+
 		/* Get the location from the relocation entry */
 		offset_ptr_rom = (Elf64_Addr *)(uintptr_t)re_src->r_offset;
 
@@ -70,8 +80,7 @@ static void do_elf_reloc_fixups64(unsigned int text_base, uintptr_t size,
 				*offset_ptr_ram = gd->reloc_off +
 							re_src->r_addend;
 			} else {
-				debug("   %p: %lx: rom reloc %lx, ram %p, value %lx, limit %"
-				      PRIXPTR "\n",
+				debug("   %p: %lx: rom reloc %lx, ram %p, value %lx, limit %lX\n",
 				      re_src, (ulong)re_src->r_info,
 				      (ulong)re_src->r_offset, offset_ptr_ram,
 				      (ulong)*offset_ptr_ram, text_base + size);
@@ -93,6 +102,15 @@ static void do_elf_reloc_fixups32(unsigned int text_base, uintptr_t size,
 	Elf32_Addr *offset_ptr_ram;
 
 	do {
+		unsigned int type = ELF32_R_TYPE(re_src->r_info);
+
+		if (type != R_386_RELATIVE) {
+			printf("%s: unsupported relocation type 0x%x "
+			       "at %p, ", __func__, type, re_src);
+			printf("offset = 0x%x\n", re_src->r_offset);
+			continue;
+		}
+
 		/* Get the location from the relocation entry */
 		offset_ptr_rom = (Elf32_Addr *)(uintptr_t)re_src->r_offset;
 
@@ -109,11 +127,9 @@ static void do_elf_reloc_fixups32(unsigned int text_base, uintptr_t size,
 			    *offset_ptr_ram <= text_base + size) {
 				*offset_ptr_ram += gd->reloc_off;
 			} else {
-				debug("   %p: rom reloc %x, ram %p, value %x,"
-					" limit %" PRIXPTR "\n", re_src,
-					re_src->r_offset, offset_ptr_ram,
-					*offset_ptr_ram,
-					text_base + size);
+				debug("   %p: rom reloc %x, ram %p, value %x, limit %lX\n",
+				      re_src, re_src->r_offset, offset_ptr_ram,
+				      *offset_ptr_ram, text_base + size);
 			}
 		} else {
 			debug("   %p: rom reloc %x, last %p\n", re_src,

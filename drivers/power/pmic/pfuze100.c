@@ -9,9 +9,11 @@
 #include <errno.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/pfuze100_pmic.h>
+#include <power/pfuze3000_pmic.h>
 
 static const struct pmic_child_info pmic_children_info[] = {
 	/* sw[x], swbst */
@@ -23,14 +25,14 @@ static const struct pmic_child_info pmic_children_info[] = {
 
 static int pfuze100_reg_count(struct udevice *dev)
 {
-	return PFUZE100_NUM_OF_REGS;
+	return dev->driver_data == PFUZE3000 ? PFUZE3000_NUM_OF_REGS : PFUZE100_NUM_OF_REGS;
 }
 
 static int pfuze100_write(struct udevice *dev, uint reg, const uint8_t *buff,
 			  int len)
 {
 	if (dm_i2c_write(dev, reg, buff, len)) {
-		pr_err("write error to device: %p register: %#x!", dev, reg);
+		pr_err("write error to device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
@@ -40,7 +42,7 @@ static int pfuze100_write(struct udevice *dev, uint reg, const uint8_t *buff,
 static int pfuze100_read(struct udevice *dev, uint reg, uint8_t *buff, int len)
 {
 	if (dm_i2c_read(dev, reg, buff, len)) {
-		pr_err("read error from device: %p register: %#x!", dev, reg);
+		debug("read error from device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
@@ -54,7 +56,7 @@ static int pfuze100_bind(struct udevice *dev)
 
 	regulators_node = dev_read_subnode(dev, "regulators");
 	if (!ofnode_valid(regulators_node)) {
-		debug("%s: %s regulators subnode not found!", __func__,
+		debug("%s: %s regulators subnode not found!\n", __func__,
 		      dev->name);
 		return -ENXIO;
 	}

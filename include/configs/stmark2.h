@@ -19,12 +19,6 @@
 
 #define CONFIG_TIMESTAMP
 
-#define CONFIG_BOOTARGS						\
-	"console=ttyS0,115200 root=/dev/ram0 rw "		\
-		"rootfstype=ramfs "				\
-		"rdinit=/bin/init "				\
-		"devtmpfs.mount=1"
-
 #define CONFIG_BOOTCOMMAND					\
 	"sf probe 0:1 50000000; "				\
 	"sf read ${loadaddr} 0x100000 ${kern_size}; "		\
@@ -55,35 +49,16 @@
 #define CONFIG_SYS_MCFRRTC_BASE		0xFC0A8000
 
 /* spi not partitions */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_JFFS2_CMDLINE
 #define CONFIG_JFFS2_DEV		"nor0"
 
 /* Timer */
 #define CONFIG_MCFTMR
-#undef CONFIG_MCFPIT
 
 /* DSPI and Serial Flash */
 #define CONFIG_CF_DSPI
-#define CONFIG_SF_DEFAULT_SPEED		50000000
 #define CONFIG_SERIAL_FLASH
-#define CONFIG_HARD_SPI
-#define CONFIG_SPI_FLASH_ISSI
-#define CONFIG_ENV_SPI_BUS		0
-#define CONFIG_ENV_SPI_CS		1
 
 #define CONFIG_SYS_SBFHDR_SIZE		0x7
-
-#define CONFIG_SYS_DSPI_CTAR0		(DSPI_CTAR_TRSZ(7) | \
-					DSPI_CTAR_PCSSCK_1CLK | \
-					DSPI_CTAR_PASC(0) | \
-					DSPI_CTAR_PDT(0) | \
-					DSPI_CTAR_CSSCK(0) | \
-					DSPI_CTAR_ASC(0) | \
-					DSPI_CTAR_DT(1) | \
-					DSPI_CTAR_BR(6))
-#define CONFIG_SYS_DSPI_CTAR1		(CONFIG_SYS_DSPI_CTAR0)
-#define CONFIG_SYS_DSPI_CTAR2		(CONFIG_SYS_DSPI_CTAR0)
 
 /* Input, PCI, Flexbus, and VCO */
 #define CONFIG_EXTRA_CLOCK
@@ -121,8 +96,6 @@
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define CONFIG_SYS_SDRAM_SIZE		128	/* SDRAM size in MB */
 
-#define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE + 0x400)
-#define CONFIG_SYS_MEMTEST_END		((CONFIG_SYS_SDRAM_SIZE - 3) << 20)
 #define CONFIG_SYS_DRAM_TEST
 
 #if defined(CONFIG_CF_SBF)
@@ -156,13 +129,7 @@
 
 #if defined(CONFIG_CF_SBF)
 #define CONFIG_ENV_IS_IN_SPI_FLASH	1
-#define CONFIG_ENV_SPI_CS		1
-#define CONFIG_ENV_OFFSET		0x40000
-#define CONFIG_ENV_SIZE			0x2000
-#define CONFIG_ENV_SECT_SIZE		0x10000
 #endif
-
-#undef CONFIG_ENV_OVERWRITE
 
 /* Cache Configuration */
 #define CONFIG_SYS_CACHELINE_SIZE	16
@@ -184,4 +151,19 @@
 #define CACR_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
 					CONFIG_SYS_INIT_RAM_SIZE - 12)
 
+#ifdef CONFIG_MCFFEC
+#define CONFIG_MII_INIT			1
+#define CONFIG_SYS_DISCOVER_PHY
+#define CONFIG_SYS_RX_ETH_BUFFER	8
+#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
+/* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
+#ifndef CONFIG_SYS_DISCOVER_PHY
+#define FECDUPLEX			FULL
+#define FECSPEED			_100BASET
+#else
+#ifndef CONFIG_SYS_FAULT_ECHO_LINK_DOWN
+#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
+#endif
+#endif /* CONFIG_SYS_DISCOVER_PHY */
+#endif
 #endif /* __STMARK2_CONFIG_H */

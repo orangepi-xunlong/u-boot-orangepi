@@ -5,10 +5,14 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch-stv0991/hardware.h>
 #include <asm/arch-stv0991/stv0991_cgu.h>
 #include <asm/arch-stv0991/stv0991_gpt.h>
+#include <linux/delay.h>
 
 static struct stv0991_cgu_regs *const stv0991_cgu_regs = \
 				(struct stv0991_cgu_regs *) (CGU_BASE_ADDR);
@@ -20,6 +24,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define timestamp gd->arch.tbl
 #define lastdec gd->arch.lastinc
+
+static ulong get_timer_masked(void);
 
 int timer_init(void)
 {
@@ -73,7 +79,7 @@ void __udelay(unsigned long usec)
 		;
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	ulong now = READ_TIMER();
 
@@ -87,11 +93,6 @@ ulong get_timer_masked(void)
 	lastdec = now;
 
 	return timestamp;
-}
-
-void udelay_masked(unsigned long usec)
-{
-	return udelay(usec);
 }
 
 /*

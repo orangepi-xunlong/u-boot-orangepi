@@ -7,16 +7,39 @@
  */
 
 / {
-	chosen {
-		stdout-path = &serial2;
+	soc@1c00000 {
+		u-boot,dm-spl;
 	};
 
-	aliases {
-		i2c0 = &i2c0;
-		spi0 = &spi1;
+	nand {
+		compatible = "ti,davinci-nand";
+	};
+
+	panel {
+		u-boot,dm-pre-reloc;
 	};
 };
 
+&eth0 {
+	pinctrl-0 = <&mii_pins>, <&mdio_pins>;
+};
+
 &flash {
-	compatible = "m25p64", "spi-flash";
+	compatible = "m25p64", "jedec,spi-nor";
+};
+
+&mmc0 {
+	u-boot,dm-spl;
+};
+
+&serial2 {
+	u-boot,dm-spl;
+};
+
+&spi1 {
+	u-boot,dm-spl;
+};
+
+&gpio {
+	u-boot,dm-spl;
 };

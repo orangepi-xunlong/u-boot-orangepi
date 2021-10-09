@@ -9,12 +9,14 @@
 #include <dm.h>
 #include <fdtdec.h>
 #if (defined CONFIG_EXYNOS4 || defined CONFIG_EXYNOS5)
+#include <log.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/pinmux.h>
 #else
 #include <asm/arch/s3c24x0_cpu.h>
 #endif
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <i2c.h>
 #include "s3c24x0_i2c.h"
@@ -301,7 +303,7 @@ static int s3c24x0_i2c_xfer(struct udevice *dev, struct i2c_msg *msg,
 	return ret ? -EREMOTEIO : 0;
 }
 
-static int s3c_i2c_ofdata_to_platdata(struct udevice *dev)
+static int s3c_i2c_of_to_plat(struct udevice *dev)
 {
 	const void *blob = gd->fdt_blob;
 	struct s3c24x0_i2c_bus *i2c_bus = dev_get_priv(dev);
@@ -309,14 +311,15 @@ static int s3c_i2c_ofdata_to_platdata(struct udevice *dev)
 
 	node = dev_of_offset(dev);
 
-	i2c_bus->regs = (struct s3c24x0_i2c *)devfdt_get_addr(dev);
+	i2c_bus->regs = dev_read_addr_ptr(dev);
 
 	i2c_bus->id = pinmux_decode_periph_id(blob, node);
 
-	i2c_bus->clock_frequency = fdtdec_get_int(blob, node,
-						  "clock-frequency", 100000);
+	i2c_bus->clock_frequency =
+		dev_read_u32_default(dev, "clock-frequency",
+				     I2C_SPEED_STANDARD_RATE);
 	i2c_bus->node = node;
-	i2c_bus->bus_num = dev->seq;
+	i2c_bus->bus_num = dev_seq(dev);
 
 	exynos_pinmux_config(i2c_bus->id, 0);
 
@@ -340,7 +343,7 @@ U_BOOT_DRIVER(i2c_s3c) = {
 	.name	= "i2c_s3c",
 	.id	= UCLASS_I2C,
 	.of_match = s3c_i2c_ids,
-	.ofdata_to_platdata = s3c_i2c_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct s3c24x0_i2c_bus),
+	.of_to_plat = s3c_i2c_of_to_plat,
+	.priv_auto	= sizeof(struct s3c24x0_i2c_bus),
 	.ops	= &s3c_i2c_ops,
 };

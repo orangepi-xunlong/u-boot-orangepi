@@ -8,9 +8,13 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <log.h>
 #include <pci.h>
 #include <usb.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <usb/ehci-ci.h>
 #include <hwconfig.h>
 #include <fsl_usb.h>
@@ -25,7 +29,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
 #endif
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 struct ehci_fsl_priv {
 	struct ehci_ctrl ehci;
 	fdt_addr_t hcd_base;
@@ -34,7 +38,7 @@ struct ehci_fsl_priv {
 #endif
 
 static void set_txfifothresh(struct usb_ehci *, u32);
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int ehci_fsl_init(struct ehci_fsl_priv *priv, struct usb_ehci *ehci,
 		  struct ehci_hccr *hccr, struct ehci_hcor *hcor);
 #else
@@ -54,8 +58,8 @@ static int usb_phy_clk_valid(struct usb_ehci *ehci)
 	}
 }
 
-#ifdef CONFIG_DM_USB
-static int ehci_fsl_ofdata_to_platdata(struct udevice *dev)
+#if CONFIG_IS_ENABLED(DM_USB)
+static int ehci_fsl_of_to_plat(struct udevice *dev)
 {
 	struct ehci_fsl_priv *priv = dev_get_priv(dev);
 	const void *prop;
@@ -75,8 +79,12 @@ static int ehci_fsl_init_after_reset(struct ehci_ctrl *ctrl)
 	struct usb_ehci *ehci = NULL;
 	struct ehci_fsl_priv *priv = container_of(ctrl, struct ehci_fsl_priv,
 						   ehci);
-
+#ifdef CONFIG_PPC
+	ehci = (struct usb_ehci *)lower_32_bits(priv->hcd_base);
+#else
 	ehci = (struct usb_ehci *)priv->hcd_base;
+#endif
+
 	if (ehci_fsl_init(priv, ehci, priv->ehci.hccr, priv->ehci.hcor) < 0)
 		return -ENXIO;
 
@@ -93,19 +101,26 @@ static int ehci_fsl_probe(struct udevice *dev)
 	struct usb_ehci *ehci = NULL;
 	struct ehci_hccr *hccr;
 	struct ehci_hcor *hcor;
+	struct ehci_ctrl *ehci_ctrl = &priv->ehci;
 
 	/*
 	 * Get the base address for EHCI controller from the device node
 	 */
-	priv->hcd_base = devfdt_get_addr(dev);
+	priv->hcd_base = dev_read_addr(dev);
 	if (priv->hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the EHCI register base address\n");
 		return -ENXIO;
 	}
+#ifdef CONFIG_PPC
+	ehci = (struct usb_ehci *)lower_32_bits(priv->hcd_base);
+#else
 	ehci = (struct usb_ehci *)priv->hcd_base;
+#endif
 	hccr = (struct ehci_hccr *)(&ehci->caplength);
 	hcor = (struct ehci_hcor *)
 		((void *)hccr + HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
+
+	ehci_ctrl->has_fsl_erratum_a005275 = has_erratum_a005275();
 
 	if (ehci_fsl_init(priv, ehci, hccr, hcor) < 0)
 		return -ENXIO;
@@ -127,12 +142,12 @@ U_BOOT_DRIVER(ehci_fsl) = {
 	.name	= "ehci_fsl",
 	.id	= UCLASS_USB,
 	.of_match = ehci_usb_ids,
-	.ofdata_to_platdata = ehci_fsl_ofdata_to_platdata,
+	.of_to_plat = ehci_fsl_of_to_plat,
 	.probe = ehci_fsl_probe,
 	.remove = ehci_deregister,
 	.ops	= &ehci_usb_ops,
-	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
-	.priv_auto_alloc_size = sizeof(struct ehci_fsl_priv),
+	.plat_auto	= sizeof(struct usb_plat),
+	.priv_auto	= sizeof(struct ehci_fsl_priv),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
 };
 #else
@@ -145,6 +160,8 @@ U_BOOT_DRIVER(ehci_fsl) = {
 int ehci_hcd_init(int index, enum usb_init_type init,
 		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
+	struct ehci_ctrl *ehci_ctrl = container_of(hccr,
+					struct ehci_ctrl, hccr);
 	struct usb_ehci *ehci = NULL;
 
 	switch (index) {
@@ -163,6 +180,8 @@ int ehci_hcd_init(int index, enum usb_init_type init,
 	*hcor = (struct ehci_hcor *)((uint32_t) *hccr +
 			HC_LENGTH(ehci_readl(&(*hccr)->cr_capbase)));
 
+	ehci_ctrl->has_fsl_erratum_a005275 = has_erratum_a005275();
+
 	return ehci_fsl_init(index, ehci, *hccr, *hcor);
 }
 
@@ -176,7 +195,7 @@ int ehci_hcd_stop(int index)
 }
 #endif
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int ehci_fsl_init(struct ehci_fsl_priv *priv, struct usb_ehci *ehci,
 		  struct ehci_hccr *hccr, struct ehci_hcor *hcor)
 #else
@@ -185,7 +204,7 @@ static int ehci_fsl_init(int index, struct usb_ehci *ehci,
 #endif
 {
 	const char *phy_type = NULL;
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 	size_t len;
 	char current_usb_controller[5];
 #endif
@@ -211,7 +230,7 @@ static int ehci_fsl_init(int index, struct usb_ehci *ehci,
 	out_be32(&ehci->snoop2, 0x80000000 | SNOOP_SIZE_2GB);
 
 	/* Init phy */
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 	if (priv->phy_type)
 		phy_type = priv->phy_type;
 #else

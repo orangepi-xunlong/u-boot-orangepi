@@ -18,22 +18,35 @@
  */
 #undef DEBUG
 #include <common.h>
+#include <clk.h>
+#include <dm.h>
+#include <generic-phy.h>
+#include <log.h>
+#include <malloc.h>
+#include <reset.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
+#include <linux/bug.h>
+#include <linux/delay.h>
+
 #include <linux/errno.h>
 #include <linux/list.h>
-#include <malloc.h>
 
 #include <linux/usb/ch9.h>
+#include <linux/usb/otg.h>
 #include <linux/usb/gadget.h>
 
+#include <phys2bus.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 #include <asm/io.h>
 
 #include <asm/mach-types.h>
 
+#include <power/regulator.h>
+
 #include "dwc2_udc_otg_regs.h"
 #include "dwc2_udc_otg_priv.h"
-#include <usb/lin_gadget_compat.h>
 
 /***********************************************************/
 
@@ -141,7 +154,6 @@ static struct usb_ep_ops dwc2_ep_ops = {
 
 /***********************************************************/
 
-void __iomem		*regs_otg;
 struct dwc2_usbotg_reg *reg;
 
 bool dfu_usb_get_reset(void)
@@ -224,6 +236,7 @@ static int udc_enable(struct dwc2_udc *dev)
 	return 0;
 }
 
+#if !CONFIG_IS_ENABLED(DM_USB_GADGET)
 /*
   Register entry point for the peripheral controller driver.
 */
@@ -235,9 +248,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	debug_cond(DEBUG_SETUP != 0, "%s: %s\n", __func__, "no name");
 
-	if (!driver
-	    || (driver->speed != USB_SPEED_FULL
-		&& driver->speed != USB_SPEED_HIGH)
+	if (!driver || driver->speed < USB_SPEED_FULL
 	    || !driver->bind || !driver->disconnect || !driver->setup)
 		return -EINVAL;
 	if (!dev)
@@ -298,6 +309,52 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	udc_disable(dev);
 	return 0;
 }
+#else /* !CONFIG_IS_ENABLED(DM_USB_GADGET) */
+
+static int dwc2_gadget_start(struct usb_gadget *g,
+			     struct usb_gadget_driver *driver)
+{
+	struct dwc2_udc *dev = the_controller;
+
+	debug_cond(DEBUG_SETUP != 0, "%s: %s\n", __func__, "no name");
+
+	if (!driver || driver->speed < USB_SPEED_FULL ||
+	    !driver->bind || !driver->disconnect || !driver->setup)
+		return -EINVAL;
+
+	if (!dev)
+		return -ENODEV;
+
+	if (dev->driver)
+		return -EBUSY;
+
+	/* first hook up the driver ... */
+	dev->driver = driver;
+
+	debug_cond(DEBUG_SETUP != 0,
+		   "Registered gadget driver %s\n", dev->gadget.name);
+	return udc_enable(dev);
+}
+
+static int dwc2_gadget_stop(struct usb_gadget *g)
+{
+	struct dwc2_udc *dev = the_controller;
+
+	if (!dev)
+		return -ENODEV;
+
+	if (!dev->driver)
+		return -EINVAL;
+
+	dev->driver = 0;
+	stop_activity(dev, dev->driver);
+
+	udc_disable(dev);
+
+	return 0;
+}
+
+#endif /* !CONFIG_IS_ENABLED(DM_USB_GADGET) */
 
 /*
  *	done - retire a request; caller blocked irqs
@@ -401,6 +458,8 @@ static void reconfig_usbd(struct dwc2_udc *dev)
 	unsigned int uTemp = writel(CORE_SOFT_RESET, &reg->grstctl);
 	uint32_t dflt_gusbcfg;
 	uint32_t rx_fifo_sz, tx_fifo_sz, np_tx_fifo_sz;
+	u32 max_hw_ep;
+	int pdata_hw_ep;
 
 	debug("Reseting OTG controller\n");
 
@@ -483,10 +542,23 @@ static void reconfig_usbd(struct dwc2_udc *dev)
 	writel((np_tx_fifo_sz << 16) | rx_fifo_sz,
 	       &reg->gnptxfsiz);
 
-	for (i = 1; i < DWC2_MAX_HW_ENDPOINTS; i++)
-		writel((rx_fifo_sz + np_tx_fifo_sz + tx_fifo_sz*(i-1)) |
-			tx_fifo_sz << 16, &reg->dieptxf[i-1]);
+	/* retrieve the number of IN Endpoints (excluding ep0) */
+	max_hw_ep = (readl(&reg->ghwcfg4) & GHWCFG4_NUM_IN_EPS_MASK) >>
+		    GHWCFG4_NUM_IN_EPS_SHIFT;
+	pdata_hw_ep = dev->pdata->tx_fifo_sz_nb;
 
+	/* tx_fifo_sz_nb should equal to number of IN Endpoint */
+	if (pdata_hw_ep && max_hw_ep != pdata_hw_ep)
+		pr_warn("Got %d hw endpoint but %d tx-fifo-size in array !!\n",
+			max_hw_ep, pdata_hw_ep);
+
+	for (i = 0; i < max_hw_ep; i++) {
+		if (pdata_hw_ep)
+			tx_fifo_sz = dev->pdata->tx_fifo_sz_array[i];
+
+		writel((rx_fifo_sz + np_tx_fifo_sz + (tx_fifo_sz * i)) |
+			tx_fifo_sz << 16, &reg->dieptxf[i]);
+	}
 	/* Flush the RX FIFO */
 	writel(RX_FIFO_FLUSH, &reg->grstctl);
 	while (readl(&reg->grstctl) & RX_FIFO_FLUSH)
@@ -732,6 +804,10 @@ static void dwc2_fifo_flush(struct usb_ep *_ep)
 
 static const struct usb_gadget_ops dwc2_udc_ops = {
 	/* current versions must always be self-powered */
+#if CONFIG_IS_ENABLED(DM_USB_GADGET)
+	.udc_start		= dwc2_gadget_start,
+	.udc_stop		= dwc2_gadget_stop,
+#endif
 };
 
 static struct dwc2_udc memory = {
@@ -819,8 +895,6 @@ int dwc2_udc_probe(struct dwc2_plat_otg_data *pdata)
 
 	reg = (struct dwc2_usbotg_reg *)pdata->regs_otg;
 
-	/* regs_otg = (void *)pdata->regs_otg; */
-
 	dev->gadget.is_dualspeed = 1;	/* Hack only*/
 	dev->gadget.is_otg = 0;
 	dev->gadget.is_a_peripheral = 0;
@@ -845,12 +919,281 @@ int dwc2_udc_probe(struct dwc2_plat_otg_data *pdata)
 	return retval;
 }
 
-int usb_gadget_handle_interrupts(int index)
+int dwc2_udc_handle_interrupt(void)
 {
 	u32 intr_status = readl(&reg->gintsts);
 	u32 gintmsk = readl(&reg->gintmsk);
 
 	if (intr_status & gintmsk)
 		return dwc2_udc_irq(1, (void *)the_controller);
+
 	return 0;
 }
+
+#if !CONFIG_IS_ENABLED(DM_USB_GADGET)
+
+int usb_gadget_handle_interrupts(int index)
+{
+	return dwc2_udc_handle_interrupt();
+}
+
+#else /* CONFIG_IS_ENABLED(DM_USB_GADGET) */
+
+struct dwc2_priv_data {
+	struct clk_bulk		clks;
+	struct reset_ctl_bulk	resets;
+	struct phy_bulk phys;
+	struct udevice *usb33d_supply;
+};
+
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
+{
+	return dwc2_udc_handle_interrupt();
+}
+
+static int dwc2_phy_setup(struct udevice *dev, struct phy_bulk *phys)
+{
+	int ret;
+
+	ret = generic_phy_get_bulk(dev, phys);
+	if (ret)
+		return ret;
+
+	ret = generic_phy_init_bulk(phys);
+	if (ret)
+		return ret;
+
+	ret = generic_phy_power_on_bulk(phys);
+	if (ret)
+		generic_phy_exit_bulk(phys);
+
+	return ret;
+}
+
+static void dwc2_phy_shutdown(struct udevice *dev, struct phy_bulk *phys)
+{
+	generic_phy_power_off_bulk(phys);
+	generic_phy_exit_bulk(phys);
+}
+
+static int dwc2_udc_otg_of_to_plat(struct udevice *dev)
+{
+	struct dwc2_plat_otg_data *plat = dev_get_plat(dev);
+	ulong drvdata;
+	void (*set_params)(struct dwc2_plat_otg_data *data);
+	int ret;
+
+	if (usb_get_dr_mode(dev_ofnode(dev)) != USB_DR_MODE_PERIPHERAL &&
+	    usb_get_dr_mode(dev_ofnode(dev)) != USB_DR_MODE_OTG) {
+		dev_dbg(dev, "Invalid mode\n");
+		return -ENODEV;
+	}
+
+	plat->regs_otg = dev_read_addr(dev);
+
+	plat->rx_fifo_sz = dev_read_u32_default(dev, "g-rx-fifo-size", 0);
+	plat->np_tx_fifo_sz = dev_read_u32_default(dev, "g-np-tx-fifo-size", 0);
+
+	plat->tx_fifo_sz_nb =
+		dev_read_size(dev, "g-tx-fifo-size") / sizeof(u32);
+	if (plat->tx_fifo_sz_nb > DWC2_MAX_HW_ENDPOINTS)
+		plat->tx_fifo_sz_nb = DWC2_MAX_HW_ENDPOINTS;
+	if (plat->tx_fifo_sz_nb) {
+		ret = dev_read_u32_array(dev, "g-tx-fifo-size",
+					 plat->tx_fifo_sz_array,
+					 plat->tx_fifo_sz_nb);
+		if (ret)
+			return ret;
+	}
+
+	plat->force_b_session_valid =
+		dev_read_bool(dev, "u-boot,force-b-session-valid");
+
+	plat->force_vbus_detection =
+		dev_read_bool(dev, "u-boot,force-vbus-detection");
+
+	/* force plat according compatible */
+	drvdata = dev_get_driver_data(dev);
+	if (drvdata) {
+		set_params = (void *)drvdata;
+		set_params(plat);
+	}
+
+	return 0;
+}
+
+static void dwc2_set_stm32mp1_hsotg_params(struct dwc2_plat_otg_data *p)
+{
+	p->activate_stm_id_vb_detection = true;
+	p->usb_gusbcfg =
+		0 << 15		/* PHY Low Power Clock sel*/
+		| 0x9 << 10	/* USB Turnaround time (0x9 for HS phy) */
+		| 0 << 9	/* [0:HNP disable,1:HNP enable]*/
+		| 0 << 8	/* [0:SRP disable 1:SRP enable]*/
+		| 0 << 6	/* 0: high speed utmi+, 1: full speed serial*/
+		| 0x7 << 0;	/* FS timeout calibration**/
+
+	if (p->force_b_session_valid)
+		p->usb_gusbcfg |= 1 << 30; /* FDMOD: Force device mode */
+}
+
+static int dwc2_udc_otg_reset_init(struct udevice *dev,
+				   struct reset_ctl_bulk *resets)
+{
+	int ret;
+
+	ret = reset_get_bulk(dev, resets);
+	if (ret == -ENOTSUPP || ret == -ENOENT)
+		return 0;
+
+	if (ret)
+		return ret;
+
+	ret = reset_assert_bulk(resets);
+
+	if (!ret) {
+		udelay(2);
+		ret = reset_deassert_bulk(resets);
+	}
+	if (ret) {
+		reset_release_bulk(resets);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int dwc2_udc_otg_clk_init(struct udevice *dev,
+				 struct clk_bulk *clks)
+{
+	int ret;
+
+	ret = clk_get_bulk(dev, clks);
+	if (ret == -ENOSYS)
+		return 0;
+
+	if (ret)
+		return ret;
+
+	ret = clk_enable_bulk(clks);
+	if (ret) {
+		clk_release_bulk(clks);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int dwc2_udc_otg_probe(struct udevice *dev)
+{
+	struct dwc2_plat_otg_data *plat = dev_get_plat(dev);
+	struct dwc2_priv_data *priv = dev_get_priv(dev);
+	struct dwc2_usbotg_reg *usbotg_reg =
+		(struct dwc2_usbotg_reg *)plat->regs_otg;
+	int ret;
+
+	ret = dwc2_udc_otg_clk_init(dev, &priv->clks);
+	if (ret)
+		return ret;
+
+	ret = dwc2_udc_otg_reset_init(dev, &priv->resets);
+	if (ret)
+		return ret;
+
+	ret = dwc2_phy_setup(dev, &priv->phys);
+	if (ret)
+		return ret;
+
+	if (plat->activate_stm_id_vb_detection) {
+		if (CONFIG_IS_ENABLED(DM_REGULATOR) &&
+		    (!plat->force_b_session_valid ||
+		     plat->force_vbus_detection)) {
+			ret = device_get_supply_regulator(dev, "usb33d-supply",
+							  &priv->usb33d_supply);
+			if (ret) {
+				dev_err(dev, "can't get voltage level detector supply\n");
+				return ret;
+			}
+			ret = regulator_set_enable(priv->usb33d_supply, true);
+			if (ret) {
+				dev_err(dev, "can't enable voltage level detector supply\n");
+				return ret;
+			}
+		}
+
+		if (plat->force_b_session_valid &&
+		    !plat->force_vbus_detection) {
+			/* Override VBUS detection: enable then value*/
+			setbits_le32(&usbotg_reg->gotgctl, VB_VALOEN);
+			setbits_le32(&usbotg_reg->gotgctl, VB_VALOVAL);
+		} else {
+			/* Enable VBUS sensing */
+			setbits_le32(&usbotg_reg->ggpio,
+				     GGPIO_STM32_OTG_GCCFG_VBDEN);
+		}
+		if (plat->force_b_session_valid) {
+			/* Override B session bits: enable then value */
+			setbits_le32(&usbotg_reg->gotgctl, A_VALOEN | B_VALOEN);
+			setbits_le32(&usbotg_reg->gotgctl,
+				     A_VALOVAL | B_VALOVAL);
+		} else {
+			/* Enable ID detection */
+			setbits_le32(&usbotg_reg->ggpio,
+				     GGPIO_STM32_OTG_GCCFG_IDEN);
+		}
+	}
+
+	ret = dwc2_udc_probe(plat);
+	if (ret)
+		return ret;
+
+	the_controller->driver = 0;
+
+	ret = usb_add_gadget_udc((struct device *)dev, &the_controller->gadget);
+
+	return ret;
+}
+
+static int dwc2_udc_otg_remove(struct udevice *dev)
+{
+	struct dwc2_priv_data *priv = dev_get_priv(dev);
+
+	usb_del_gadget_udc(&the_controller->gadget);
+
+	reset_release_bulk(&priv->resets);
+
+	clk_release_bulk(&priv->clks);
+
+	dwc2_phy_shutdown(dev, &priv->phys);
+
+	return dm_scan_fdt_dev(dev);
+}
+
+static const struct udevice_id dwc2_udc_otg_ids[] = {
+	{ .compatible = "snps,dwc2" },
+	{ .compatible = "brcm,bcm2835-usb" },
+	{ .compatible = "st,stm32mp15-hsotg",
+	  .data = (ulong)dwc2_set_stm32mp1_hsotg_params },
+	{},
+};
+
+U_BOOT_DRIVER(dwc2_udc_otg) = {
+	.name	= "dwc2-udc-otg",
+	.id	= UCLASS_USB_GADGET_GENERIC,
+	.of_match = dwc2_udc_otg_ids,
+	.of_to_plat = dwc2_udc_otg_of_to_plat,
+	.probe = dwc2_udc_otg_probe,
+	.remove = dwc2_udc_otg_remove,
+	.plat_auto	= sizeof(struct dwc2_plat_otg_data),
+	.priv_auto	= sizeof(struct dwc2_priv_data),
+};
+
+int dwc2_udc_B_session_valid(struct udevice *dev)
+{
+	struct dwc2_plat_otg_data *plat = dev_get_plat(dev);
+	struct dwc2_usbotg_reg *usbotg_reg =
+		(struct dwc2_usbotg_reg *)plat->regs_otg;
+
+	return readl(&usbotg_reg->gotgctl) & B_SESSION_VALID;
+}
+#endif /* CONFIG_IS_ENABLED(DM_USB_GADGET) */

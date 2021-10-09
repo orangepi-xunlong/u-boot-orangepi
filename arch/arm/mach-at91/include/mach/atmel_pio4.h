@@ -9,6 +9,7 @@
 
 #ifndef __ASSEMBLY__
 
+#include <linux/bitops.h>
 struct atmel_pio4_port {
 	u32 mskr;		/* 0x00 PIO Mask Register */
 	u32 cfgr;		/* 0x04 PIO Configuration Register */
@@ -43,10 +44,16 @@ struct atmel_pio4_port {
 #define ATMEL_PIO_DIR_MASK		BIT(8)
 #define ATMEL_PIO_PUEN_MASK		BIT(9)
 #define ATMEL_PIO_PDEN_MASK		BIT(10)
+#define ATMEL_PIO_SR			BIT(11)
 #define ATMEL_PIO_IFEN_MASK		BIT(12)
 #define ATMEL_PIO_IFSCEN_MASK		BIT(13)
 #define ATMEL_PIO_OPD_MASK		BIT(14)
 #define ATMEL_PIO_SCHMITT_MASK		BIT(15)
+#define ATMEL_PIO_DRVSTR_MASK		GENMASK(17, 16)
+#define ATMEL_PIO_DRVSTR_LO		(1 << 16)
+#define ATMEL_PIO_DRVSTR_ME		(2 << 16)
+#define ATMEL_PIO_DRVSTR_HI		(3 << 16)
+#define ATMEL_PIO_DRVSTR_OFFSET		16
 #define ATMEL_PIO_CFGR_EVTSEL_MASK	GENMASK(26, 24)
 #define ATMEL_PIO_CFGR_EVTSEL_FALLING	(0 << 24)
 #define ATMEL_PIO_CFGR_EVTSEL_RISING	(1 << 24)
@@ -68,14 +75,14 @@ struct atmel_pio4_port {
 #define AT91_PIO_PORTC		0x2
 #define AT91_PIO_PORTD		0x3
 
-int atmel_pio4_set_gpio(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_a_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_b_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_c_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_d_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_e_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_f_periph(u32 port, u32 pin, u32 use_pullup);
-int atmel_pio4_set_g_periph(u32 port, u32 pin, u32 use_pullup);
+int atmel_pio4_set_gpio(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_a_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_b_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_c_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_d_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_e_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_f_periph(u32 port, u32 pin, u32 config);
+int atmel_pio4_set_g_periph(u32 port, u32 pin, u32 config);
 int atmel_pio4_set_pio_output(u32 port, u32 pin, u32 value);
 int atmel_pio4_get_pio_input(u32 port, u32 pin);
 

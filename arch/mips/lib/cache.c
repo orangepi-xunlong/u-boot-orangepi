@@ -5,13 +5,15 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <asm/cache.h>
 #include <asm/cacheops.h>
-#ifdef CONFIG_MIPS_L2_CACHE
 #include <asm/cm.h>
-#endif
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/mipsregs.h>
 #include <asm/system.h>
+#include <linux/bug.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -87,7 +89,7 @@ static inline unsigned long scache_line_size(void)
 #ifdef CONFIG_MIPS_L2_CACHE
 	return gd->arch.l2_line_size;
 #else
-	return 0;
+	return CONFIG_SYS_SCACHE_LINE_SIZE;
 #endif
 }
 
@@ -106,7 +108,7 @@ static inline unsigned long scache_line_size(void)
 	}								\
 } while (0)
 
-void flush_cache(ulong start_addr, ulong size)
+void __weak flush_cache(ulong start_addr, ulong size)
 {
 	unsigned long ilsize = icache_line_size();
 	unsigned long dlsize = dcache_line_size();
@@ -140,7 +142,7 @@ ops_done:
 	instruction_hazard_barrier();
 }
 
-void flush_dcache_range(ulong start_addr, ulong stop)
+void __weak flush_dcache_range(ulong start_addr, ulong stop)
 {
 	unsigned long lsize = dcache_line_size();
 	unsigned long slsize = scache_line_size();
@@ -158,7 +160,7 @@ void flush_dcache_range(ulong start_addr, ulong stop)
 	sync();
 }
 
-void invalidate_dcache_range(ulong start_addr, ulong stop)
+void __weak invalidate_dcache_range(ulong start_addr, ulong stop)
 {
 	unsigned long lsize = dcache_line_size();
 	unsigned long slsize = scache_line_size();
@@ -174,4 +176,24 @@ void invalidate_dcache_range(ulong start_addr, ulong stop)
 
 	/* ensure cache ops complete before any further memory accesses */
 	sync();
+}
+
+int dcache_status(void)
+{
+	unsigned int cca = read_c0_config() & CONF_CM_CMASK;
+	return cca != CONF_CM_UNCACHED;
+}
+
+void dcache_enable(void)
+{
+	puts("Not supported!\n");
+}
+
+void dcache_disable(void)
+{
+	/* change CCA to uncached */
+	change_c0_config(CONF_CM_CMASK, CONF_CM_UNCACHED);
+
+	/* ensure the pipeline doesn't contain now-invalid instructions */
+	instruction_hazard_barrier();
 }

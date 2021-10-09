@@ -6,6 +6,8 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm/pinctrl.h>
 #include <mach/ar71xx_regs.h>
@@ -130,7 +132,7 @@ static int qca953x_pinctrl_probe(struct udevice *dev)
 	struct qca953x_pinctrl_priv *priv = dev_get_priv(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -149,7 +151,7 @@ U_BOOT_DRIVER(pinctrl_qca953x) = {
 	.name		= "pinctrl_qca953x",
 	.id		= UCLASS_PINCTRL,
 	.of_match	= qca953x_pinctrl_ids,
-	.priv_auto_alloc_size = sizeof(struct qca953x_pinctrl_priv),
+	.priv_auto	= sizeof(struct qca953x_pinctrl_priv),
 	.ops		= &qca953x_pinctrl_ops,
 	.probe		= qca953x_pinctrl_probe,
 };

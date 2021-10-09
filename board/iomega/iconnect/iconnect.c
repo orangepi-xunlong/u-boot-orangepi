@@ -6,10 +6,12 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <miiphy.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
+#include <asm/global_data.h>
 #include "iconnect.h"
 
 DECLARE_GLOBAL_DATA_PTR;

@@ -8,18 +8,25 @@
 #include <autoboot.h>
 #include <bootretry.h>
 #include <cli.h>
+#include <command.h>
 #include <console.h>
+#include <env.h>
 #include <fdtdec.h>
+#include <hash.h>
+#include <log.h>
+#include <malloc.h>
+#include <memalign.h>
 #include <menu.h>
 #include <post.h>
+#include <time.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <u-boot/sha256.h>
-#ifdef CONFIG_ARCH_SUNXI
-#include <sunxi_board.h>
-#endif
+#include <bootcount.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MAX_DELAY_STOP_STR 32
+#define MAX_DELAY_STOP_STR 64
 
 #ifndef DEBUG_BOOTKEYS
 #define DEBUG_BOOTKEYS 0
@@ -29,9 +36,19 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /* Stored value of bootdelay, used by autoboot_command() */
 static int stored_bootdelay;
+static int menukey;
 
-#if defined(CONFIG_AUTOBOOT_KEYED)
-#if defined(CONFIG_AUTOBOOT_STOP_STR_SHA256)
+#ifdef CONFIG_AUTOBOOT_ENCRYPTION
+#define AUTOBOOT_STOP_STR_SHA256 CONFIG_AUTOBOOT_STOP_STR_SHA256
+#else
+#define AUTOBOOT_STOP_STR_SHA256 ""
+#endif
+
+#ifdef CONFIG_AUTOBOOT_USE_MENUKEY
+#define AUTOBOOT_MENUKEY CONFIG_AUTOBOOT_MENUKEY
+#else
+#define AUTOBOOT_MENUKEY 0
+#endif
 
 /*
  * Use a "constant-length" time compare function for this
@@ -50,12 +67,21 @@ static int slow_equals(u8 *a, u8 *b, int len)
 	return diff == 0;
 }
 
-static int passwd_abort(uint64_t etime)
+/**
+ * passwd_abort_sha256() - check for a hashed key sequence to abort booting
+ *
+ * This checks for the user entering a SHA256 hash within a given time.
+ *
+ * @etime: Timeout value ticks (stop when get_ticks() reachs this)
+ * @return 0 if autoboot should continue, 1 if it should stop
+ */
+static int passwd_abort_sha256(uint64_t etime)
 {
 	const char *sha_env_str = env_get("bootstopkeysha256");
 	u8 sha_env[SHA256_SUM_LEN];
-	u8 sha[SHA256_SUM_LEN];
-	char presskey[MAX_DELAY_STOP_STR];
+	u8 *sha;
+	char *presskey;
+	char *c;
 	const char *algo_name = "sha256";
 	u_int presskey_len = 0;
 	int abort = 0;
@@ -63,8 +89,16 @@ static int passwd_abort(uint64_t etime)
 	int ret;
 
 	if (sha_env_str == NULL)
-		sha_env_str = CONFIG_AUTOBOOT_STOP_STR_SHA256;
+		sha_env_str = AUTOBOOT_STOP_STR_SHA256;
 
+	presskey = malloc_cache_aligned(MAX_DELAY_STOP_STR);
+	c = strstr(sha_env_str, ":");
+	if (c && (c - sha_env_str < MAX_DELAY_STOP_STR)) {
+		/* preload presskey with salt */
+		memcpy(presskey, sha_env_str, c - sha_env_str);
+		presskey_len = c - sha_env_str;
+		sha_env_str = c + 1;
+	}
 	/*
 	 * Generate the binary value from the environment hash value
 	 * so that we can compare this value with the computed hash
@@ -76,6 +110,8 @@ static int passwd_abort(uint64_t etime)
 		return 0;
 	}
 
+	sha = malloc_cache_aligned(SHA256_SUM_LEN);
+	size = SHA256_SUM_LEN;
 	/*
 	 * We don't know how long the stop-string is, so we need to
 	 * generate the sha256 hash upon each input character and
@@ -84,10 +120,13 @@ static int passwd_abort(uint64_t etime)
 	do {
 		if (tstc()) {
 			/* Check for input string overflow */
-			if (presskey_len >= MAX_DELAY_STOP_STR)
+			if (presskey_len >= MAX_DELAY_STOP_STR) {
+				free(presskey);
+				free(sha);
 				return 0;
+			}
 
-			presskey[presskey_len++] = getc();
+			presskey[presskey_len++] = getchar();
 
 			/* Calculate sha256 upon each new char */
 			hash_block(algo_name, (const void *)presskey,
@@ -99,10 +138,20 @@ static int passwd_abort(uint64_t etime)
 		}
 	} while (!abort && get_ticks() <= etime);
 
+	free(presskey);
+	free(sha);
 	return abort;
 }
-#else
-static int passwd_abort(uint64_t etime)
+
+/**
+ * passwd_abort_key() - check for a key sequence to aborted booting
+ *
+ * This checks for the user entering a string within a given time.
+ *
+ * @etime: Timeout value ticks (stop when get_ticks() reachs this)
+ * @return 0 if autoboot should continue, 1 if it should stop
+ */
+static int passwd_abort_key(uint64_t etime)
 {
 	int abort = 0;
 	struct {
@@ -116,9 +165,9 @@ static int passwd_abort(uint64_t etime)
 	};
 
 	char presskey[MAX_DELAY_STOP_STR];
-	u_int presskey_len = 0;
-	u_int presskey_max = 0;
-	u_int i;
+	int presskey_len = 0;
+	int presskey_max = 0;
+	int i;
 
 #  ifdef CONFIG_AUTOBOOT_DELAY_STR
 	if (delaykey[0].str == NULL)
@@ -149,12 +198,12 @@ static int passwd_abort(uint64_t etime)
 	do {
 		if (tstc()) {
 			if (presskey_len < presskey_max) {
-				presskey[presskey_len++] = getc();
+				presskey[presskey_len++] = getchar();
 			} else {
 				for (i = 0; i < presskey_max - 1; i++)
 					presskey[i] = presskey[i + 1];
 
-				presskey[i] = getc();
+				presskey[i] = getchar();
 			}
 		}
 
@@ -178,13 +227,12 @@ static int passwd_abort(uint64_t etime)
 
 	return abort;
 }
-#endif
 
 /***************************************************************************
  * Watch for 'delay' seconds for autoboot stop or autoboot delay string.
  * returns: 0 -  no key string, allow autoboot 1 - got key string, abort
  */
-static int __abortboot(int bootdelay)
+static int abortboot_key_sequence(int bootdelay)
 {
 	int abort;
 	uint64_t etime = endtick(bootdelay);
@@ -197,46 +245,30 @@ static int __abortboot(int bootdelay)
 	printf(CONFIG_AUTOBOOT_PROMPT, bootdelay);
 #  endif
 
-	abort = passwd_abort(etime);
+	if (IS_ENABLED(CONFIG_AUTOBOOT_ENCRYPTION))
+		abort = passwd_abort_sha256(etime);
+	else
+		abort = passwd_abort_key(etime);
 	if (!abort)
 		debug_bootkeys("key timeout\n");
 
 	return abort;
 }
 
-# else	/* !defined(CONFIG_AUTOBOOT_KEYED) */
-
-#ifdef CONFIG_MENUKEY
-static int menukey;
-#endif
-
-static int __abortboot(int bootdelay)
+static int abortboot_single_key(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
 
-#ifdef CONFIG_MENUPROMPT
-	printf(CONFIG_MENUPROMPT);
-#else
 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
-#endif
 
 	/*
 	 * Check if key already pressed
 	 */
 	if (tstc()) {	/* we got a key press	*/
-		char input;
-		input = getc();  /* consume input	*/
-		if (input == 's' || input == 'S') {
-			puts("\b\b\b 0");
-			abort = 1;	/* don't auto boot	*/
-		}
-	}
-
-	if (sunxi_get_uboot_shell() == 1) {
-		abort = 1;
-		bootdelay = 0;
-		sunxi_set_uboot_shell(0);
+		getchar();	/* consume input	*/
+		puts("\b\b\b 0");
+		abort = 1;	/* don't auto boot	*/
 	}
 
 	while ((bootdelay > 0) && (!abort)) {
@@ -245,13 +277,13 @@ static int __abortboot(int bootdelay)
 		ts = get_timer(0);
 		do {
 			if (tstc()) {	/* we got a key press	*/
+				int key;
+
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
-# ifdef CONFIG_MENUKEY
-				menukey = getc();
-# else
-				(void) getc();  /* consume input	*/
-# endif
+				key = getchar();/* consume input	*/
+				if (IS_ENABLED(CONFIG_AUTOBOOT_USE_MENUKEY))
+					menukey = key;
 				break;
 			}
 			udelay(10000);
@@ -264,26 +296,27 @@ static int __abortboot(int bootdelay)
 
 	return abort;
 }
-# endif	/* CONFIG_AUTOBOOT_KEYED */
 
 static int abortboot(int bootdelay)
 {
 	int abort = 0;
 
-	if (bootdelay >= 0)
-		abort = __abortboot(bootdelay);
+	if (bootdelay >= 0) {
+		if (IS_ENABLED(CONFIG_AUTOBOOT_KEYED))
+			abort = abortboot_key_sequence(bootdelay);
+		else
+			abort = abortboot_single_key(bootdelay);
+	}
 
-#ifdef CONFIG_SILENT_CONSOLE
-	if (abort)
+	if (IS_ENABLED(CONFIG_SILENT_CONSOLE) && abort)
 		gd->flags &= ~GD_FLG_SILENT;
-#endif
 
 	return abort;
 }
 
 static void process_fdt_options(const void *blob)
 {
-#if defined(CONFIG_OF_CONTROL) && defined(CONFIG_SYS_TEXT_BASE)
+#ifdef CONFIG_SYS_TEXT_BASE
 	ulong addr;
 
 	/* Add an env variable to point to a kernel payload, if available */
@@ -295,39 +328,27 @@ static void process_fdt_options(const void *blob)
 	addr = fdtdec_get_config_int(gd->fdt_blob, "rootdisk-offset", 0);
 	if (addr)
 		env_set_addr("rootaddr", (void *)(CONFIG_SYS_TEXT_BASE + addr));
-#endif /* CONFIG_OF_CONTROL && CONFIG_SYS_TEXT_BASE */
+#endif /* CONFIG_SYS_TEXT_BASE */
 }
 
 const char *bootdelay_process(void)
 {
 	char *s;
 	int bootdelay;
-#ifdef CONFIG_BOOTCOUNT_LIMIT
-	unsigned long bootcount = 0;
-	unsigned long bootlimit = 0;
-#endif /* CONFIG_BOOTCOUNT_LIMIT */
 
-#ifdef CONFIG_BOOTCOUNT_LIMIT
-	bootcount = bootcount_load();
-	bootcount++;
-	bootcount_store(bootcount);
-	env_set_ulong("bootcount", bootcount);
-	bootlimit = env_get_ulong("bootlimit", 10, 0);
-#endif /* CONFIG_BOOTCOUNT_LIMIT */
+	bootcount_inc();
 
 	s = env_get("bootdelay");
 	bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
 
-#ifdef CONFIG_OF_CONTROL
-	bootdelay = fdtdec_get_config_int(gd->fdt_blob, "bootdelay",
-			bootdelay);
-#endif
+	if (IS_ENABLED(CONFIG_OF_CONTROL))
+		bootdelay = fdtdec_get_config_int(gd->fdt_blob, "bootdelay",
+						  bootdelay);
 
 	debug("### main_loop entered: bootdelay=%d\n\n", bootdelay);
 
-#if defined(CONFIG_MENU_SHOW)
-	bootdelay = menu_show(bootdelay);
-#endif
+	if (IS_ENABLED(CONFIG_AUTOBOOT_MENU_SHOW))
+		bootdelay = menu_show(bootdelay);
 	bootretry_init_cmd_timeout();
 
 #ifdef CONFIG_POST
@@ -335,16 +356,13 @@ const char *bootdelay_process(void)
 		s = env_get("failbootcmd");
 	} else
 #endif /* CONFIG_POST */
-#ifdef CONFIG_BOOTCOUNT_LIMIT
-	if (bootlimit && (bootcount > bootlimit)) {
-		printf("Warning: Bootlimit (%u) exceeded. Using altbootcmd.\n",
-		       (unsigned)bootlimit);
+	if (bootcount_error())
 		s = env_get("altbootcmd");
-	} else
-#endif /* CONFIG_BOOTCOUNT_LIMIT */
+	else
 		s = env_get("bootcmd");
 
-	process_fdt_options(gd->fdt_blob);
+	if (IS_ENABLED(CONFIG_OF_CONTROL))
+		process_fdt_options(gd->fdt_blob);
 	stored_bootdelay = bootdelay;
 
 	return s;
@@ -354,23 +372,26 @@ void autoboot_command(const char *s)
 {
 	debug("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
-	if (stored_bootdelay != -1 && s && !abortboot(stored_bootdelay)) {
-#if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
-		int prev = disable_ctrlc(1);	/* disable Control C checking */
-#endif
+	if (s && (stored_bootdelay == -2 ||
+		 (stored_bootdelay != -1 && !abortboot(stored_bootdelay)))) {
+		bool lock;
+		int prev;
+
+		lock = IS_ENABLED(CONFIG_AUTOBOOT_KEYED) &&
+			!IS_ENABLED(CONFIG_AUTOBOOT_KEYED_CTRLC);
+		if (lock)
+			prev = disable_ctrlc(1); /* disable Ctrl-C checking */
 
 		run_command_list(s, -1, 0);
 
-#if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
-		disable_ctrlc(prev);	/* restore Control C checking */
-#endif
+		if (lock)
+			disable_ctrlc(prev);	/* restore Ctrl-C checking */
 	}
 
-#ifdef CONFIG_MENUKEY
-	if (menukey == CONFIG_MENUKEY) {
+	if (IS_ENABLED(CONFIG_AUTOBOOT_USE_MENUKEY) &&
+	    menukey == AUTOBOOT_MENUKEY) {
 		s = env_get("menucmd");
 		if (s)
 			run_command_list(s, -1, 0);
 	}
-#endif /* CONFIG_MENUKEY */
 }

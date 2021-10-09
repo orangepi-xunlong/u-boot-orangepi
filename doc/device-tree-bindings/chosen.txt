@@ -42,6 +42,36 @@ Example
 	};
 };
 
+u-boot,bootcount-device property
+--------------------------------
+
+In a DM-based system, the bootcount may be stored in a device known to
+the DM framework (e.g. in a battery-backed SRAM area within a RTC
+device) managed by a device conforming to UCLASS_BOOTCOUNT.  If
+multiple such devices are present in a system concurrently, then the
+u-boot,bootcount-device property can select the preferred target.
+
+Example
+-------
+/ {
+	chosen {
+	        u-boot,bootcount-device = &bootcount-rv3029;
+	};
+
+	bootcount-rv3029: bootcount@0 {
+		compatible = "u-boot,bootcount-rtc";
+		rtc = &rv3029;
+		offset = <0x38>;
+	};
+
+	i2c2 {
+	        rv3029: rtc@56 {
+		                compatible = "mc,rv3029";
+		                reg = <0x56>;
+		};
+	};
+};
+
 u-boot,spl-boot-order property
 ------------------------------
 
@@ -72,4 +102,62 @@ Example
 	chosen {
 		u-boot,spl-boot-order = "same-as-spl", &sdmmc, "/sdhci@fe330000";
 	};
+};
+
+u-boot,spl-boot-device property
+-------------------------------
+
+This property is a companion-property to the u-boot,spl-boot-order and
+will be injected automatically by the SPL stage to notify a later stage
+of where said later stage was booted from.
+
+You should not define this property yourself in the device-tree, as it
+may be overwritten without warning.
+
+firmware-loader property
+------------------------
+Multiple file system firmware loader nodes could be defined in device trees for
+multiple storage type and their default partition, then a property
+"firmware-loader" can be used to pass default firmware loader
+node(default storage type) to the firmware loader driver.
+
+Example
+-------
+/ {
+	chosen {
+		firmware-loader = &fs_loader0;
+	};
+
+	fs_loader0: fs-loader@0 {
+		u-boot,dm-pre-reloc;
+		compatible = "u-boot,fs-loader";
+		phandlepart = <&mmc 1>;
+	};
+};
+
+u-boot,acpi-ssdt-order
+----------------------
+
+This provides the ordering to use when writing device data to the ACPI SSDT
+(Secondary System Descriptor Table). Each cell is a phandle pointer to a device
+node to add. The ACPI information is written in this order.
+
+If the ordering does not include all nodes, an error is generated.
+
+e820-entries
+------------
+
+This provides a way to add entries to the e820 table which tells the OS about
+the memory map. The property contains three sets of 64-bit values:
+
+   address   - Start address of region
+   size      - Size of region
+   flags     - Flags (E820_...)
+
+Example:
+
+chosen {
+	e820-entries = /bits/ 64 <
+		IOMAP_P2SB_BAR IOMAP P2SB_SIZE E820_RESERVED
+		MCH_BASE_ADDRESS     MCH_SIZE  E820_RESERVED>;
 };

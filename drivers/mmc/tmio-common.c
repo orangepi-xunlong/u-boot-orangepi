@@ -6,12 +6,16 @@
 
 #include <common.h>
 #include <clk.h>
+#include <cpu_func.h>
 #include <fdtdec.h>
 #include <mmc.h>
 #include <dm.h>
+#include <asm/global_data.h>
+#include <dm/device_compat.h>
 #include <dm/pinctrl.h>
 #include <linux/compat.h>
-#include <linux/dma-direction.h>
+#include <linux/delay.h>
+#include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/sizes.h>
 #include <power/regulator.h>
@@ -75,27 +79,7 @@ void tmio_sd_writel(struct tmio_sd_priv *priv,
 		writel(val, priv->regbase + reg);
 }
 
-static dma_addr_t __dma_map_single(void *ptr, size_t size,
-				   enum dma_data_direction dir)
-{
-	unsigned long addr = (unsigned long)ptr;
-
-	if (dir == DMA_FROM_DEVICE)
-		invalidate_dcache_range(addr, addr + size);
-	else
-		flush_dcache_range(addr, addr + size);
-
-	return addr;
-}
-
-static void __dma_unmap_single(dma_addr_t addr, size_t size,
-			       enum dma_data_direction dir)
-{
-	if (dir != DMA_TO_DEVICE)
-		invalidate_dcache_range(addr, addr + size);
-}
-
-static int tmio_sd_check_error(struct udevice *dev)
+static int tmio_sd_check_error(struct udevice *dev, struct mmc_cmd *cmd)
 {
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
 	u32 info2 = tmio_sd_readl(priv, TMIO_SD_INFO2);
@@ -116,7 +100,9 @@ static int tmio_sd_check_error(struct udevice *dev)
 
 	if (info2 & (TMIO_SD_INFO2_ERR_END | TMIO_SD_INFO2_ERR_CRC |
 		     TMIO_SD_INFO2_ERR_IDX)) {
-		dev_err(dev, "communication out of sync\n");
+		if ((cmd->cmdidx != MMC_CMD_SEND_TUNING_BLOCK) &&
+		    (cmd->cmdidx != MMC_CMD_SEND_TUNING_BLOCK_HS200))
+			dev_err(dev, "communication out of sync\n");
 		return -EILSEQ;
 	}
 
@@ -129,8 +115,8 @@ static int tmio_sd_check_error(struct udevice *dev)
 	return 0;
 }
 
-static int tmio_sd_wait_for_irq(struct udevice *dev, unsigned int reg,
-				    u32 flag)
+static int tmio_sd_wait_for_irq(struct udevice *dev, struct mmc_cmd *cmd,
+				unsigned int reg, u32 flag)
 {
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
 	long wait = 1000000;
@@ -142,7 +128,7 @@ static int tmio_sd_wait_for_irq(struct udevice *dev, unsigned int reg,
 			return -ETIMEDOUT;
 		}
 
-		ret = tmio_sd_check_error(dev);
+		ret = tmio_sd_check_error(dev, cmd);
 		if (ret)
 			return ret;
 
@@ -178,15 +164,15 @@ tmio_pio_read_fifo(64, q)
 tmio_pio_read_fifo(32, l)
 tmio_pio_read_fifo(16, w)
 
-static int tmio_sd_pio_read_one_block(struct udevice *dev, char *pbuf,
-					  uint blocksize)
+static int tmio_sd_pio_read_one_block(struct udevice *dev, struct mmc_cmd *cmd,
+				      char *pbuf, uint blocksize)
 {
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
 	int ret;
 
 	/* wait until the buffer is filled with data */
-	ret = tmio_sd_wait_for_irq(dev, TMIO_SD_INFO2,
-				       TMIO_SD_INFO2_BRE);
+	ret = tmio_sd_wait_for_irq(dev, cmd, TMIO_SD_INFO2,
+				   TMIO_SD_INFO2_BRE);
 	if (ret)
 		return ret;
 
@@ -231,15 +217,15 @@ tmio_pio_write_fifo(64, q)
 tmio_pio_write_fifo(32, l)
 tmio_pio_write_fifo(16, w)
 
-static int tmio_sd_pio_write_one_block(struct udevice *dev,
+static int tmio_sd_pio_write_one_block(struct udevice *dev, struct mmc_cmd *cmd,
 					   const char *pbuf, uint blocksize)
 {
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
 	int ret;
 
 	/* wait until the buffer becomes empty */
-	ret = tmio_sd_wait_for_irq(dev, TMIO_SD_INFO2,
-				    TMIO_SD_INFO2_BWE);
+	ret = tmio_sd_wait_for_irq(dev, cmd, TMIO_SD_INFO2,
+				   TMIO_SD_INFO2_BWE);
 	if (ret)
 		return ret;
 
@@ -255,7 +241,8 @@ static int tmio_sd_pio_write_one_block(struct udevice *dev,
 	return 0;
 }
 
-static int tmio_sd_pio_xfer(struct udevice *dev, struct mmc_data *data)
+static int tmio_sd_pio_xfer(struct udevice *dev, struct mmc_cmd *cmd,
+			    struct mmc_data *data)
 {
 	const char *src = data->src;
 	char *dest = data->dest;
@@ -263,10 +250,10 @@ static int tmio_sd_pio_xfer(struct udevice *dev, struct mmc_data *data)
 
 	for (i = 0; i < data->blocks; i++) {
 		if (data->flags & MMC_DATA_READ)
-			ret = tmio_sd_pio_read_one_block(dev, dest,
+			ret = tmio_sd_pio_read_one_block(dev, cmd, dest,
 							     data->blocksize);
 		else
-			ret = tmio_sd_pio_write_one_block(dev, src,
+			ret = tmio_sd_pio_write_one_block(dev, cmd, src,
 							      data->blocksize);
 		if (ret)
 			return ret;
@@ -338,18 +325,18 @@ static int tmio_sd_dma_xfer(struct udevice *dev, struct mmc_data *data)
 
 	tmp = tmio_sd_readl(priv, TMIO_SD_DMA_MODE);
 
+	tmp |= priv->idma_bus_width;
+
 	if (data->flags & MMC_DATA_READ) {
 		buf = data->dest;
 		dir = DMA_FROM_DEVICE;
 		/*
 		 * The DMA READ completion flag position differs on Socionext
 		 * and Renesas SoCs. It is bit 20 on Socionext SoCs and using
-		 * bit 17 is a hardware bug and forbidden. It is bit 17 on
-		 * Renesas SoCs and bit 20 does not work on them.
+		 * bit 17 is a hardware bug and forbidden. It is either bit 17
+		 * or bit 20 on Renesas SoCs, depending on SoC.
 		 */
-		poll_flag = (priv->caps & TMIO_SD_CAP_RCAR) ?
-			    TMIO_SD_DMA_INFO1_END_RD :
-			    TMIO_SD_DMA_INFO1_END_RD2;
+		poll_flag = priv->read_poll_flag;
 		tmp |= TMIO_SD_DMA_MODE_DIR_RD;
 	} else {
 		buf = (void *)data->src;
@@ -360,22 +347,35 @@ static int tmio_sd_dma_xfer(struct udevice *dev, struct mmc_data *data)
 
 	tmio_sd_writel(priv, tmp, TMIO_SD_DMA_MODE);
 
-	dma_addr = __dma_map_single(buf, len, dir);
+	dma_addr = dma_map_single(buf, len, dir);
 
 	tmio_sd_dma_start(priv, dma_addr);
 
 	ret = tmio_sd_dma_wait_for_irq(dev, poll_flag, data->blocks);
 
-	__dma_unmap_single(dma_addr, len, dir);
+	if (poll_flag == TMIO_SD_DMA_INFO1_END_RD)
+		udelay(1);
+
+	dma_unmap_single(dma_addr, len, dir);
 
 	return ret;
 }
 
 /* check if the address is DMA'able */
-static bool tmio_sd_addr_is_dmaable(unsigned long addr)
+static bool tmio_sd_addr_is_dmaable(struct mmc_data *data)
 {
+	uintptr_t addr = (uintptr_t)data->src;
+
 	if (!IS_ALIGNED(addr, TMIO_SD_DMA_MINALIGN))
 		return false;
+
+#if defined(CONFIG_RCAR_GEN3)
+	if (!(data->flags & MMC_DATA_READ) && !IS_ALIGNED(addr, 128))
+		return false;
+	/* Gen3 DMA has 32bit limit */
+	if (addr >> 32)
+		return false;
+#endif
 
 #if defined(CONFIG_ARCH_UNIPHIER) && !defined(CONFIG_ARM64) && \
 	defined(CONFIG_SPL_BUILD)
@@ -460,8 +460,8 @@ int tmio_sd_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		cmd->cmdidx, tmp, cmd->cmdarg);
 	tmio_sd_writel(priv, tmp, TMIO_SD_CMD);
 
-	ret = tmio_sd_wait_for_irq(dev, TMIO_SD_INFO1,
-				       TMIO_SD_INFO1_RSP);
+	ret = tmio_sd_wait_for_irq(dev, cmd, TMIO_SD_INFO1,
+				   TMIO_SD_INFO1_RSP);
 	if (ret)
 		return ret;
 
@@ -486,20 +486,21 @@ int tmio_sd_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 	if (data) {
 		/* use DMA if the HW supports it and the buffer is aligned */
 		if (priv->caps & TMIO_SD_CAP_DMA_INTERNAL &&
-		    tmio_sd_addr_is_dmaable((long)data->src))
+		    tmio_sd_addr_is_dmaable(data))
 			ret = tmio_sd_dma_xfer(dev, data);
 		else
-			ret = tmio_sd_pio_xfer(dev, data);
+			ret = tmio_sd_pio_xfer(dev, cmd, data);
+		if (ret)
+			return ret;
 
-		ret = tmio_sd_wait_for_irq(dev, TMIO_SD_INFO1,
-					       TMIO_SD_INFO1_CMP);
+		ret = tmio_sd_wait_for_irq(dev, cmd, TMIO_SD_INFO1,
+					   TMIO_SD_INFO1_CMP);
 		if (ret)
 			return ret;
 	}
 
-	tmio_sd_wait_for_irq(dev, TMIO_SD_INFO2, TMIO_SD_INFO2_SCLKDIVEN);
-
-	return ret;
+	return tmio_sd_wait_for_irq(dev, cmd, TMIO_SD_INFO2,
+				    TMIO_SD_INFO2_SCLKDIVEN);
 }
 
 static int tmio_sd_set_bus_width(struct tmio_sd_priv *priv,
@@ -543,55 +544,76 @@ static void tmio_sd_set_ddr_mode(struct tmio_sd_priv *priv,
 	tmio_sd_writel(priv, tmp, TMIO_SD_IF_MODE);
 }
 
-static void tmio_sd_set_clk_rate(struct tmio_sd_priv *priv,
-				     struct mmc *mmc)
+static ulong tmio_sd_clk_get_rate(struct tmio_sd_priv *priv)
+{
+	return priv->clk_get_rate(priv);
+}
+
+static void tmio_sd_set_clk_rate(struct tmio_sd_priv *priv, struct mmc *mmc)
 {
 	unsigned int divisor;
-	u32 val, tmp;
+	u32 tmp, val = 0;
+	ulong mclk;
 
-	if (!mmc->clock)
-		return;
+	if (mmc->clock) {
+		mclk = tmio_sd_clk_get_rate(priv);
 
-	divisor = DIV_ROUND_UP(priv->mclk, mmc->clock);
+		divisor = DIV_ROUND_UP(mclk, mmc->clock);
 
-	if (divisor <= 1)
-		val = (priv->caps & TMIO_SD_CAP_RCAR) ?
-		      TMIO_SD_CLKCTL_RCAR_DIV1 : TMIO_SD_CLKCTL_DIV1;
-	else if (divisor <= 2)
-		val = TMIO_SD_CLKCTL_DIV2;
-	else if (divisor <= 4)
-		val = TMIO_SD_CLKCTL_DIV4;
-	else if (divisor <= 8)
-		val = TMIO_SD_CLKCTL_DIV8;
-	else if (divisor <= 16)
-		val = TMIO_SD_CLKCTL_DIV16;
-	else if (divisor <= 32)
-		val = TMIO_SD_CLKCTL_DIV32;
-	else if (divisor <= 64)
-		val = TMIO_SD_CLKCTL_DIV64;
-	else if (divisor <= 128)
-		val = TMIO_SD_CLKCTL_DIV128;
-	else if (divisor <= 256)
-		val = TMIO_SD_CLKCTL_DIV256;
-	else if (divisor <= 512 || !(priv->caps & TMIO_SD_CAP_DIV1024))
-		val = TMIO_SD_CLKCTL_DIV512;
-	else
-		val = TMIO_SD_CLKCTL_DIV1024;
+		/* Do not set divider to 0xff in DDR mode */
+		if (mmc->ddr_mode && (divisor == 1))
+			divisor = 2;
+
+		if (divisor <= 1)
+			val = (priv->caps & TMIO_SD_CAP_RCAR) ?
+			      TMIO_SD_CLKCTL_RCAR_DIV1 : TMIO_SD_CLKCTL_DIV1;
+		else if (divisor <= 2)
+			val = TMIO_SD_CLKCTL_DIV2;
+		else if (divisor <= 4)
+			val = TMIO_SD_CLKCTL_DIV4;
+		else if (divisor <= 8)
+			val = TMIO_SD_CLKCTL_DIV8;
+		else if (divisor <= 16)
+			val = TMIO_SD_CLKCTL_DIV16;
+		else if (divisor <= 32)
+			val = TMIO_SD_CLKCTL_DIV32;
+		else if (divisor <= 64)
+			val = TMIO_SD_CLKCTL_DIV64;
+		else if (divisor <= 128)
+			val = TMIO_SD_CLKCTL_DIV128;
+		else if (divisor <= 256)
+			val = TMIO_SD_CLKCTL_DIV256;
+		else if (divisor <= 512 || !(priv->caps & TMIO_SD_CAP_DIV1024))
+			val = TMIO_SD_CLKCTL_DIV512;
+		else
+			val = TMIO_SD_CLKCTL_DIV1024;
+	}
 
 	tmp = tmio_sd_readl(priv, TMIO_SD_CLKCTL);
-	if (tmp & TMIO_SD_CLKCTL_SCLKEN &&
-	    (tmp & TMIO_SD_CLKCTL_DIV_MASK) == val)
-		return;
+	if (mmc->clock &&
+	    !((tmp & TMIO_SD_CLKCTL_SCLKEN) &&
+	      ((tmp & TMIO_SD_CLKCTL_DIV_MASK) == val))) {
+		/*
+		 * Stop the clock before changing its rate
+		 * to avoid a glitch signal
+		 */
+		tmp &= ~TMIO_SD_CLKCTL_SCLKEN;
+		tmio_sd_writel(priv, tmp, TMIO_SD_CLKCTL);
 
-	/* stop the clock before changing its rate to avoid a glitch signal */
-	tmp &= ~TMIO_SD_CLKCTL_SCLKEN;
-	tmio_sd_writel(priv, tmp, TMIO_SD_CLKCTL);
+		/* Change the clock rate. */
+		tmp &= ~TMIO_SD_CLKCTL_DIV_MASK;
+		tmp |= val;
+	}
 
-	tmp &= ~TMIO_SD_CLKCTL_DIV_MASK;
-	tmp |= val | TMIO_SD_CLKCTL_OFFEN;
-	tmio_sd_writel(priv, tmp, TMIO_SD_CLKCTL);
+	/* Enable or Disable the clock */
+	if (mmc->clk_disable) {
+		tmp |= TMIO_SD_CLKCTL_OFFEN;
+		tmp &= ~TMIO_SD_CLKCTL_SCLKEN;
+	} else {
+		tmp &= ~TMIO_SD_CLKCTL_OFFEN;
+		tmp |= TMIO_SD_CLKCTL_SCLKEN;
+	}
 
-	tmp |= TMIO_SD_CLKCTL_SCLKEN;
 	tmio_sd_writel(priv, tmp, TMIO_SD_CLKCTL);
 
 	udelay(1000);
@@ -614,26 +636,10 @@ static void tmio_sd_set_pins(struct udevice *dev)
 #endif
 
 #ifdef CONFIG_PINCTRL
-	switch (mmc->selected_mode) {
-	case MMC_LEGACY:
-	case SD_LEGACY:
-	case MMC_HS:
-	case SD_HS:
-	case MMC_HS_52:
-	case MMC_DDR_52:
-		pinctrl_select_state(dev, "default");
-		break;
-	case UHS_SDR12:
-	case UHS_SDR25:
-	case UHS_SDR50:
-	case UHS_DDR50:
-	case UHS_SDR104:
-	case MMC_HS_200:
+	if (mmc->signal_voltage == MMC_SIGNAL_VOLTAGE_180)
 		pinctrl_select_state(dev, "state_uhs");
-		break;
-	default:
-		break;
-	}
+	else
+		pinctrl_select_state(dev, "default");
 #endif
 }
 
@@ -646,11 +652,11 @@ int tmio_sd_set_ios(struct udevice *dev)
 	dev_dbg(dev, "clock %uHz, DDRmode %d, width %u\n",
 		mmc->clock, mmc->ddr_mode, mmc->bus_width);
 
+	tmio_sd_set_clk_rate(priv, mmc);
 	ret = tmio_sd_set_bus_width(priv, mmc);
 	if (ret)
 		return ret;
 	tmio_sd_set_ddr_mode(priv, mmc);
-	tmio_sd_set_clk_rate(priv, mmc);
 	tmio_sd_set_pins(dev);
 
 	return 0;
@@ -687,34 +693,40 @@ static void tmio_sd_host_init(struct tmio_sd_priv *priv)
 	 * This register dropped backward compatibility at version 0x10.
 	 * Write an appropriate value depending on the IP version.
 	 */
-	if (priv->version >= 0x10)
-		tmio_sd_writel(priv, 0x101, TMIO_SD_HOST_MODE);
-	else
+	if (priv->version >= 0x10) {
+		if (priv->caps & TMIO_SD_CAP_64BIT)
+			tmio_sd_writel(priv, 0x000, TMIO_SD_HOST_MODE);
+		else
+			tmio_sd_writel(priv, 0x101, TMIO_SD_HOST_MODE);
+	} else {
 		tmio_sd_writel(priv, 0x0, TMIO_SD_HOST_MODE);
+	}
 
 	if (priv->caps & TMIO_SD_CAP_DMA_INTERNAL) {
 		tmp = tmio_sd_readl(priv, TMIO_SD_DMA_MODE);
 		tmp |= TMIO_SD_DMA_MODE_ADDR_INC;
+		tmp |= priv->idma_bus_width;
 		tmio_sd_writel(priv, tmp, TMIO_SD_DMA_MODE);
 	}
 }
 
 int tmio_sd_bind(struct udevice *dev)
 {
-	struct tmio_sd_plat *plat = dev_get_platdata(dev);
+	struct tmio_sd_plat *plat = dev_get_plat(dev);
 
 	return mmc_bind(dev, &plat->mmc, &plat->cfg);
 }
 
 int tmio_sd_probe(struct udevice *dev, u32 quirks)
 {
-	struct tmio_sd_plat *plat = dev_get_platdata(dev);
+	struct tmio_sd_plat *plat = dev_get_plat(dev);
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	fdt_addr_t base;
+	ulong mclk;
 	int ret;
 
-	base = devfdt_get_addr(dev);
+	base = dev_read_addr(dev);
 	if (base == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -724,6 +736,8 @@ int tmio_sd_probe(struct udevice *dev, u32 quirks)
 
 #ifdef CONFIG_DM_REGULATOR
 	device_get_supply_regulator(dev, "vqmmc-supply", &priv->vqmmc_dev);
+	if (priv->vqmmc_dev)
+		regulator_set_value(priv->vqmmc_dev, 3300000);
 #endif
 
 	ret = mmc_of_parse(dev, &plat->cfg);
@@ -752,11 +766,16 @@ int tmio_sd_probe(struct udevice *dev, u32 quirks)
 
 	tmio_sd_host_init(priv);
 
+	mclk = tmio_sd_clk_get_rate(priv);
+
 	plat->cfg.voltages = MMC_VDD_165_195 | MMC_VDD_32_33 | MMC_VDD_33_34;
-	plat->cfg.f_min = priv->mclk /
+	plat->cfg.f_min = mclk /
 			(priv->caps & TMIO_SD_CAP_DIV1024 ? 1024 : 512);
-	plat->cfg.f_max = priv->mclk;
-	plat->cfg.b_max = U32_MAX; /* max value of TMIO_SD_SECCNT */
+	plat->cfg.f_max = mclk;
+	if (quirks & TMIO_SD_CAP_16BIT)
+		plat->cfg.b_max = U16_MAX; /* max value of TMIO_SD_SECCNT */
+	else
+		plat->cfg.b_max = U32_MAX; /* max value of TMIO_SD_SECCNT */
 
 	upriv->mmc = &plat->mmc;
 

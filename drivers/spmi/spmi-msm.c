@@ -11,7 +11,9 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <dm/device_compat.h>
 #include <spmi/spmi.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -155,7 +157,7 @@ static int msm_spmi_probe(struct udevice *dev)
 	bool is_v1;
 	int i;
 
-	priv->arb_chnl = devfdt_get_addr(dev);
+	priv->arb_chnl = dev_read_addr(dev);
 	priv->spmi_core = fdtdec_get_addr_size_auto_parent(gd->fdt_blob,
 			dev_of_offset(parent), node, "reg", 1, NULL, false);
 	priv->spmi_obs = fdtdec_get_addr_size_auto_parent(gd->fdt_blob,
@@ -193,5 +195,5 @@ U_BOOT_DRIVER(msm_spmi) = {
 	.of_match = msm_spmi_ids,
 	.ops = &msm_spmi_ops,
 	.probe = msm_spmi_probe,
-	.priv_auto_alloc_size = sizeof(struct msm_spmi_priv),
+	.priv_auto	= sizeof(struct msm_spmi_priv),
 };

@@ -8,7 +8,7 @@
 #include <serial.h>
 #include <asm/io.h>
 
-struct mvebu_platdata {
+struct mvebu_plat {
 	void __iomem *base;
 };
 
@@ -23,6 +23,7 @@ struct mvebu_platdata {
 #define UART_POSSR_REG		0x14
 
 #define UART_STATUS_RX_RDY	0x10
+#define UART_STATUS_TX_EMPTY	0x40
 #define UART_STATUS_TXFIFO_FULL	0x800
 
 #define UART_CTRL_RXFIFO_RESET	0x4000
@@ -32,7 +33,7 @@ struct mvebu_platdata {
 
 static int mvebu_serial_putc(struct udevice *dev, const char ch)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 	void __iomem *base = plat->base;
 
 	while (readl(base + UART_STATUS_REG) & UART_STATUS_TXFIFO_FULL)
@@ -45,7 +46,7 @@ static int mvebu_serial_putc(struct udevice *dev, const char ch)
 
 static int mvebu_serial_getc(struct udevice *dev)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 	void __iomem *base = plat->base;
 
 	while (!(readl(base + UART_STATUS_REG) & UART_STATUS_RX_RDY))
@@ -56,18 +57,23 @@ static int mvebu_serial_getc(struct udevice *dev)
 
 static int mvebu_serial_pending(struct udevice *dev, bool input)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 	void __iomem *base = plat->base;
 
-	if (readl(base + UART_STATUS_REG) & UART_STATUS_RX_RDY)
-		return 1;
+	if (input) {
+		if (readl(base + UART_STATUS_REG) & UART_STATUS_RX_RDY)
+			return 1;
+	} else {
+		if (!(readl(base + UART_STATUS_REG) & UART_STATUS_TX_EMPTY))
+			return 1;
+	}
 
 	return 0;
 }
 
 static int mvebu_serial_setbrg(struct udevice *dev, int baudrate)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 	void __iomem *base = plat->base;
 
 	/*
@@ -87,7 +93,7 @@ static int mvebu_serial_setbrg(struct udevice *dev, int baudrate)
 
 static int mvebu_serial_probe(struct udevice *dev)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 	void __iomem *base = plat->base;
 
 	/* reset FIFOs */
@@ -100,11 +106,11 @@ static int mvebu_serial_probe(struct udevice *dev)
 	return 0;
 }
 
-static int mvebu_serial_ofdata_to_platdata(struct udevice *dev)
+static int mvebu_serial_of_to_plat(struct udevice *dev)
 {
-	struct mvebu_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_plat *plat = dev_get_plat(dev);
 
-	plat->base = devfdt_get_addr_ptr(dev);
+	plat->base = dev_read_addr_ptr(dev);
 
 	return 0;
 }
@@ -125,11 +131,10 @@ U_BOOT_DRIVER(serial_mvebu) = {
 	.name	= "serial_mvebu",
 	.id	= UCLASS_SERIAL,
 	.of_match = mvebu_serial_ids,
-	.ofdata_to_platdata = mvebu_serial_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct mvebu_platdata),
+	.of_to_plat = mvebu_serial_of_to_plat,
+	.plat_auto	= sizeof(struct mvebu_plat),
 	.probe	= mvebu_serial_probe,
 	.ops	= &mvebu_serial_ops,
-	.flags	= DM_FLAG_PRE_RELOC,
 };
 
 #ifdef CONFIG_DEBUG_MVEBU_A3700_UART

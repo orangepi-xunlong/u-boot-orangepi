@@ -11,10 +11,12 @@
 #include <ahci.h>
 #include <dm.h>
 #include <dwc_ahsata.h>
-#include <environment.h>
-#include <fsl_esdhc.h>
+#include <env.h>
+#include <fsl_esdhc_imx.h>
+#include <init.h>
 #include <miiphy.h>
 #include <mtd_node.h>
+#include <net.h>
 #include <netdev.h>
 #include <errno.h>
 #include <usb.h>
@@ -25,6 +27,7 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/mxc_hdmi.h>
+#include <asm/global_data.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <asm/mach-imx/sata.h>
 #include <asm/mach-imx/video.h>
@@ -33,6 +36,7 @@
 #include <dm/platform_data/serial_mxc.h>
 #include <dm/device-internal.h>
 #include <jffs2/load_kernel.h>
+#include <linux/delay.h>
 #include "common.h"
 #include "../common/eeprom.h"
 #include "../common/common.h"
@@ -145,6 +149,11 @@ int board_video_skip(void)
 #else
 static inline void cm_fx6_setup_display(void) {}
 #endif /* CONFIG_VIDEO_IPUV3 */
+
+int ipu_displays_init(void)
+{
+	return board_video_skip();
+}
 
 #ifdef CONFIG_DWC_AHSATA
 static int cm_fx6_issd_gpios[] = {
@@ -450,7 +459,7 @@ static int handle_mac_address(char *env_var, uint eeprom_bus)
 
 #define SB_FX6_I2C_EEPROM_BUS	0
 #define NO_MAC_ADDR		"No MAC address found for %s\n"
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int err;
 
@@ -519,7 +528,7 @@ int cm_fx6_setup_ecspi(void) { return 0; }
 #ifdef CONFIG_OF_BOARD_SETUP
 #define USDHC3_PATH	"/soc/aips-bus@02100000/usdhc@02198000/"
 
-struct node_info nodes[] = {
+static const struct node_info nodes[] = {
 	/*
 	 * Both entries target the same flash chip. The st,m25p compatible
 	 * is used in the vendor device trees, while upstream uses (the
@@ -529,7 +538,7 @@ struct node_info nodes[] = {
 	{ "jedec,spi-nor",	MTD_DEV_TYPE_NOR,	},
 };
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	u32 baseboard_rev;
 	int nodeoffset;
@@ -608,7 +617,7 @@ int board_init(void)
 	cm_fx6_setup_display();
 
 	/* This should be done in the MMC driver when MX6 has a clock driver */
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 	if (IS_ENABLED(CONFIG_BLK)) {
 		int i;
 
@@ -716,13 +725,13 @@ u32 get_board_rev(void)
 	return cl_eeprom_get_board_rev(CONFIG_SYS_I2C_EEPROM_BUS);
 }
 
-static struct mxc_serial_platdata cm_fx6_mxc_serial_plat = {
+static struct mxc_serial_plat cm_fx6_mxc_serial_plat = {
 	.reg = (struct mxc_uart *)UART4_BASE,
 };
 
-U_BOOT_DEVICE(cm_fx6_serial) = {
+U_BOOT_DRVINFO(cm_fx6_serial) = {
 	.name	= "serial_mxc",
-	.platdata = &cm_fx6_mxc_serial_plat,
+	.plat = &cm_fx6_mxc_serial_plat,
 };
 
 #if CONFIG_IS_ENABLED(AHCI)

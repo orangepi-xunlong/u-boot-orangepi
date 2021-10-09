@@ -1,16 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  EFI application loader
  *
  *  Copyright (c) 2017 Heinrich Schuchardt
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _EFI_DRIVER_H
 #define _EFI_DRIVER_H 1
 
-#include <common.h>
-#include <dm.h>
 #include <efi_loader.h>
 
 /*

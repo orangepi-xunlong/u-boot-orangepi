@@ -9,6 +9,7 @@
 
 #include <common.h>
 #include <errno.h>
+#include <log.h>
 #include <pci.h>
 
 /*
@@ -35,13 +36,11 @@ void pciauto_setup_device(struct pci_controller *hose,
 	pci_size_t bar_size;
 	u16 cmdstat = 0;
 	int bar, bar_nr = 0;
-#ifndef CONFIG_PCI_ENUM_ONLY
 	u8 header_type;
 	int rom_addr;
 	pci_addr_t bar_value;
 	struct pci_region *bar_res;
 	int found_mem64 = 0;
-#endif
 	u16 class;
 
 	pci_hose_read_config_word(hose, dev, PCI_COMMAND, &cmdstat);
@@ -50,26 +49,20 @@ void pciauto_setup_device(struct pci_controller *hose,
 	for (bar = PCI_BASE_ADDRESS_0;
 		bar < PCI_BASE_ADDRESS_0 + (bars_num * 4); bar += 4) {
 		/* Tickle the BAR and get the response */
-#ifndef CONFIG_PCI_ENUM_ONLY
 		pci_hose_write_config_dword(hose, dev, bar, 0xffffffff);
-#endif
 		pci_hose_read_config_dword(hose, dev, bar, &bar_response);
 
 		/* If BAR is not implemented go to the next BAR */
 		if (!bar_response)
 			continue;
 
-#ifndef CONFIG_PCI_ENUM_ONLY
 		found_mem64 = 0;
-#endif
 
 		/* Check the BAR type and set our address mask */
 		if (bar_response & PCI_BASE_ADDRESS_SPACE) {
 			bar_size = ((~(bar_response & PCI_BASE_ADDRESS_IO_MASK))
 				   & 0xffff) + 1;
-#ifndef CONFIG_PCI_ENUM_ONLY
 			bar_res = io;
-#endif
 
 			debug("PCI Autoconfig: BAR %d, I/O, size=0x%llx, ",
 			      bar_nr, (unsigned long long)bar_size);
@@ -79,23 +72,18 @@ void pciauto_setup_device(struct pci_controller *hose,
 				u32 bar_response_upper;
 				u64 bar64;
 
-#ifndef CONFIG_PCI_ENUM_ONLY
 				pci_hose_write_config_dword(hose, dev, bar + 4,
 					0xffffffff);
-#endif
 				pci_hose_read_config_dword(hose, dev, bar + 4,
 					&bar_response_upper);
 
 				bar64 = ((u64)bar_response_upper << 32) | bar_response;
 
 				bar_size = ~(bar64 & PCI_BASE_ADDRESS_MEM_MASK) + 1;
-#ifndef CONFIG_PCI_ENUM_ONLY
 				found_mem64 = 1;
-#endif
 			} else {
 				bar_size = (u32)(~(bar_response & PCI_BASE_ADDRESS_MEM_MASK) + 1);
 			}
-#ifndef CONFIG_PCI_ENUM_ONLY
 			if (prefetch && (bar_response & PCI_BASE_ADDRESS_MEM_PREFETCH))
 				bar_res = prefetch;
 			else
@@ -104,11 +92,10 @@ void pciauto_setup_device(struct pci_controller *hose,
 			debug("PCI Autoconfig: BAR %d, %s, size=0x%llx, ",
 			      bar_nr, bar_res == prefetch ? "Prf" : "Mem",
 			      (unsigned long long)bar_size);
-#endif
 		}
 
-#ifndef CONFIG_PCI_ENUM_ONLY
-		if (pciauto_region_allocate(bar_res, bar_size, &bar_value) == 0) {
+		if (pciauto_region_allocate(bar_res, bar_size,
+					    &bar_value, found_mem64) == 0) {
 			/* Write it out and update our limit */
 			pci_hose_write_config_dword(hose, dev, bar, (u32)bar_value);
 
@@ -127,7 +114,6 @@ void pciauto_setup_device(struct pci_controller *hose,
 			}
 
 		}
-#endif
 		cmdstat |= (bar_response & PCI_BASE_ADDRESS_SPACE) ?
 			PCI_COMMAND_IO : PCI_COMMAND_MEMORY;
 
@@ -136,7 +122,6 @@ void pciauto_setup_device(struct pci_controller *hose,
 		bar_nr++;
 	}
 
-#ifndef CONFIG_PCI_ENUM_ONLY
 	/* Configure the expansion ROM address */
 	pci_hose_read_config_byte(hose, dev, PCI_HEADER_TYPE, &header_type);
 	header_type &= 0x7f;
@@ -150,7 +135,7 @@ void pciauto_setup_device(struct pci_controller *hose,
 			debug("PCI Autoconfig: ROM, size=%#x, ",
 			      (unsigned int)bar_size);
 			if (pciauto_region_allocate(mem, bar_size,
-						    &bar_value) == 0) {
+						    &bar_value, false) == 0) {
 				pci_hose_write_config_dword(hose, dev, rom_addr,
 							    bar_value);
 			}
@@ -158,7 +143,6 @@ void pciauto_setup_device(struct pci_controller *hose,
 			debug("\n");
 		}
 	}
-#endif
 
 	/* PCI_COMMAND_IO must be set for VGA device */
 	pci_hose_read_config_word(hose, dev, PCI_CLASS_DEVICE, &class);
@@ -375,7 +359,8 @@ int pciauto_config_device(struct pci_controller *hose, pci_dev_t dev)
 		      PCI_DEV(dev));
 		break;
 #endif
-#if defined(CONFIG_MPC834x) && !defined(CONFIG_VME8349)
+#if defined(CONFIG_ARCH_MPC834X) && !defined(CONFIG_TARGET_VME8349) && \
+		!defined(CONFIG_TARGET_CADDY2)
 	case PCI_CLASS_BRIDGE_OTHER:
 		/*
 		 * The host/PCI bridge 1 seems broken in 8349 - it presents

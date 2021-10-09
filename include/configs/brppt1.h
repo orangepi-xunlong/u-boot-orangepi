@@ -13,14 +13,11 @@
 
 #include <configs/bur_cfg_common.h>
 #include <configs/bur_am335x_common.h>
+#include <linux/stringify.h>
 /* ------------------------------------------------------------------------- */
-#define CONFIG_AM335X_LCD
-#define CONFIG_LCD_ROTATION
-#define CONFIG_LCD_DT_SIMPLEFB
-#define LCD_BPP				LCD_COLOR32
-
 /* memory */
 #define CONFIG_SYS_MALLOC_LEN		(5 * 1024 * 1024)
+#define CONFIG_SYS_BOOTM_LEN		SZ_32M
 
 /* Clock Defines */
 #define V_OSCK				26000000  /* Clock output from T2 */
@@ -29,26 +26,17 @@
 #define CONFIG_POWER_TPS65217
 
 /* Support both device trees and ATAGs. */
-#define CONFIG_USE_FDT			/* use fdt within board code */
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 /*#define CONFIG_MACH_TYPE		3589*/
 #define CONFIG_MACH_TYPE		0xFFFFFFFF /* TODO: check with kernel*/
 
-/* MMC/SD IP block */
-#if defined(CONFIG_EMMC_BOOT)
- #define CONFIG_SUPPORT_EMMC_BOOT
-#endif /* CONFIG_EMMC_BOOT */
-
 /*
- * When we have SPI or NAND flash we expect to be making use of mtdparts,
+ * When we have NAND flash we expect to be making use of mtdparts,
  * both for ease of use in U-Boot and for passing information on to
  * the Linux kernel.
  */
-#if defined(CONFIG_SPI_BOOT) || defined(CONFIG_NAND)
-#define CONFIG_MTD_DEVICE		/* Required for mtdparts */
-#endif /* CONFIG_SPI_BOOT, ... */
 
 #ifdef CONFIG_SPL_OS_BOOT
 #define CONFIG_SYS_SPL_ARGS_ADDR		0x80F80000
@@ -59,118 +47,105 @@
 #define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	0x80	/* 64KiB */
 
 /* NAND */
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 #define CONFIG_SYS_NAND_SPL_KERNEL_OFFS		0x140000
-#endif /* CONFIG_NAND */
+#endif /* CONFIG_MTD_RAW_NAND */
 #endif /* CONFIG_SPL_OS_BOOT */
 
-#ifdef CONFIG_NAND
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_ECC
+#ifdef CONFIG_MTD_RAW_NAND
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
-#endif /* CONFIG_NAND */
+#endif /* CONFIG_MTD_RAW_NAND */
 
-/* Always 64 KiB env size */
-#define CONFIG_ENV_SIZE			(64 << 10)
-
-#ifdef CONFIG_NAND
-#define NANDARGS \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
-	"nandargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"${optargs_rot} " \
-		"root=mtd6 " \
-		"rootfstype=jffs2\0" \
-	"kernelsize=0x400000\0" \
-	"nandboot=echo booting from nand ...; " \
-		"run nandargs; " \
-		"nand read ${loadaddr} kernel ${kernelsize}; " \
-		"bootz ${loadaddr} - ${dtbaddr}\0" \
-	"defboot=run nandboot\0" \
-	"bootlimit=1\0" \
-	"simplefb=1\0 " \
-	"altbootcmd=run usbscript\0"
+#ifdef CONFIG_MTD_RAW_NAND
+#define NANDTGTS \
+"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
+"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+"cfgscr=mw ${dtbaddr} 0; nand read ${cfgaddr} cfgscr && source ${cfgaddr};" \
+" fdt addr ${dtbaddr} || cp ${fdtcontroladdr} ${dtbaddr} 4000\0" \
+"nandargs=setenv bootargs console=${console} ${optargs} ${optargs_rot} " \
+	"root=mtd6 rootfstype=jffs2 b_mode=${b_mode}\0" \
+"b_nand=nand read ${loadaddr} kernel; nand read ${dtbaddr} dtb; " \
+	"run nandargs; run cfgscr; bootz ${loadaddr} - ${dtbaddr}\0" \
+"b_tgts_std=usb0 nand net\0" \
+"b_tgts_rcy=net usb0 nand\0" \
+"b_tgts_pme=usb0 nand net\0"
 #else
-#define NANDARGS ""
-#endif /* CONFIG_NAND */
+#define NANDTGTS ""
+#endif /* CONFIG_MTD_RAW_NAND */
 
-#ifdef CONFIG_MMC
-#define MMCARGS \
-"dtbdev=mmc\0" \
-"dtbpart=1:1\0" \
-"mmcroot0=setenv bootargs ${optargs_rot} ${optargs} console=${console}\0" \
-"mmcroot1=setenv bootargs ${optargs_rot} ${optargs} console=${console} " \
-	"root=/dev/mmcblk0p2 rootfstype=ext4\0" \
-"mmcboot0=echo booting Updatesystem from mmc (ext4-fs) ...; " \
-	"setenv simplefb 1; " \
-	"ext4load mmc 1:1 ${loadaddr} /${kernel}; " \
-	"ext4load mmc 1:1 ${ramaddr} /${ramdisk}; " \
-	"run mmcroot0; bootz ${loadaddr} ${ramaddr} ${dtbaddr};\0" \
-"mmcboot1=echo booting PPT-OS from mmc (ext4-fs) ...; " \
-	"setenv simplefb 0; " \
-	"ext4load mmc 1:2 ${loadaddr} /boot/${kernel}; " \
-	"run mmcroot1; bootz ${loadaddr} - ${dtbaddr};\0" \
-"defboot=ext4load mmc 1:2 ${loadaddr} /boot/PPTImage.md5 && run mmcboot1; " \
-	"ext4load mmc 1:1 ${dtbaddr} /$dtb && run mmcboot0; " \
-	"run ramboot; run usbscript;\0" \
-"bootlimit=1\0" \
-"altbootcmd=mmc dev 1; run mmcboot0;\0" \
-"upduboot=dhcp; " \
-	"tftp ${loadaddr} MLO && mmc write ${loadaddr} 100 100; " \
-	"tftp ${loadaddr} u-boot.img && mmc write ${loadaddr} 300 400;\0"
+#define MMCSPI_TGTS \
+"t30args#0=setenv bootargs ${optargs_rot} ${optargs} console=${console} " \
+	"b_mode=${b_mode} root=/dev/mmcblk0p2 rootfstype=ext4\0" \
+"b_t30lgcy#0=" \
+	"load ${loaddev}:2 ${loadaddr} /boot/PPTImage.md5 && " \
+	"load ${loaddev}:2 ${loadaddr} /boot/zImage && " \
+	"load ${loaddev}:2 ${dtbaddr} /boot/am335x-ppt30.dtb || " \
+	"load ${loaddev}:1 ${dtbaddr} am335x-ppt30-legacy.dtb; "\
+	"run t30args#0; run cfgscr; bootz ${loadaddr} - ${dtbaddr}\0" \
+"t30args#1=setenv bootargs ${optargs_rot} ${optargs} console=${console} " \
+	"b_mode=${b_mode}\0" \
+"b_t30lgcy#1=" \
+	"load ${loaddev}:1 ${loadaddr} zImage && " \
+	"load ${loaddev}:1 ${dtbaddr} am335x-ppt30.dtb && " \
+	"load ${loaddev}:1 ${ramaddr} rootfsPPT30.uboot && " \
+	"run t30args#1; run cfgscr; bootz ${loadaddr} ${ramaddr} ${dtbaddr}\0" \
+"b_mmc0=load ${loaddev}:1 ${scraddr} bootscr.img && source ${scraddr}\0" \
+"b_mmc1=load ${loaddev}:1 ${scraddr} /boot/bootscr.img && source ${scraddr}\0" \
+"b_tgts_std=mmc0 mmc1 t30lgcy#0 t30lgcy#1 usb0 net\0" \
+"b_tgts_rcy=t30lgcy#1 usb0 net\0" \
+"b_tgts_pme=net usb0 mmc0 mmc1\0" \
+"loaddev=mmc 1\0"
+
+#ifdef CONFIG_ENV_IS_IN_MMC
+#define MMCTGTS \
+MMCSPI_TGTS \
+"cfgscr=mw ${dtbaddr} 0;" \
+" mmc dev 1; mmc read ${cfgaddr} 200 80; source ${cfgaddr};" \
+" fdt addr ${dtbaddr} || cp ${fdtcontroladdr} ${dtbaddr} 4000\0"
 #else
-#define MMCARGS ""
+#define MMCTGTS ""
 #endif /* CONFIG_MMC */
+
+#ifdef CONFIG_SPI
+#define SPITGTS \
+MMCSPI_TGTS \
+"cfgscr=mw ${dtbaddr} 0;" \
+" sf probe; sf read ${cfgaddr} 0xC0000 10000; source ${cfgaddr};" \
+" fdt addr ${dtbaddr} || cp ${fdtcontroladdr} ${dtbaddr} 4000\0"
+#else
+#define SPITGTS ""
+#endif /* CONFIG_SPI */
+
+#define LOAD_OFFSET(x)			0x8##x
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 BUR_COMMON_ENV \
 "verify=no\0" \
 "autoload=0\0" \
-"dtb=bur-ppt-ts30.dtb\0" \
-"dtbaddr=0x80100000\0" \
-"loadaddr=0x80200000\0" \
-"ramaddr=0x80A00000\0" \
-"kernel=zImage\0" \
-"ramdisk=rootfs.cpio.uboot\0" \
+"scraddr=" __stringify(LOAD_OFFSET(0000000)) "\0" \
+"cfgaddr=" __stringify(LOAD_OFFSET(0020000)) "\0" \
+"dtbaddr=" __stringify(LOAD_OFFSET(0040000)) "\0" \
+"loadaddr=" __stringify(LOAD_OFFSET(0100000)) "\0" \
+"ramaddr=" __stringify(LOAD_OFFSET(2000000)) "\0" \
 "console=ttyO0,115200n8\0" \
 "optargs=consoleblank=0 quiet panic=2\0" \
-"nfsroot=/tftpboot/tseries/rootfs-small\0" \
-"nfsopts=nolock\0" \
-"ramargs=setenv bootargs ${optargs} console=${console} root=/dev/ram0\0" \
-"netargs=setenv bootargs console=${console} " \
-	"${optargs} " \
-	"root=/dev/nfs " \
-	"nfsroot=${serverip}:${nfsroot},${nfsopts} rw " \
-	"ip=dhcp\0" \
-"netboot=echo Booting from network ...; " \
-	"dhcp; " \
-	"tftp ${loadaddr} ${kernel}; " \
-	"tftp ${dtbaddr} ${dtb}; " \
-	"run netargs; " \
-	"bootz ${loadaddr} - ${dtbaddr}\0" \
-"ramboot=echo Booting from network into RAM ...; "\
-	"if dhcp; then; " \
-	"tftp ${loadaddr} ${kernel}; " \
-	"tftp ${ramaddr} ${ramdisk}; " \
-	"if ext4load ${dtbdev} ${dtbpart} ${dtbaddr} /${dtb}; " \
-	"then; else tftp ${dtbaddr} ${dtb}; fi;" \
-	"run mmcroot0; " \
-	"bootz ${loadaddr} ${ramaddr} ${dtbaddr}; fi;\0" \
-"netupdate=echo Updating UBOOT from Network (TFTP) ...; " \
-	"setenv autoload 0; " \
-	"dhcp && tftp 0x80000000 updateUBOOT.img && source;\0" \
-NANDARGS \
-MMCARGS
+"b_break=0\0" \
+"b_usb0=usb start && load usb 0 ${scraddr} bootscr.img && source ${scraddr}\0" \
+"b_net=tftp ${scraddr} netscript.img && source ${scraddr}\0" \
+MMCTGTS \
+SPITGTS \
+NANDTGTS \
+"b_deftgts=if test ${b_mode} = 12; then setenv b_tgts ${b_tgts_pme};" \
+" elif test ${b_mode} = 0; then setenv b_tgts ${b_tgts_rcy};" \
+" else setenv b_tgts ${b_tgts_std}; fi\0" \
+"b_default=run b_deftgts; for target in ${b_tgts};"\
+" do echo \"### booting ${target} ###\"; run b_${target};" \
+" if test ${b_break} = 1; then; exit; fi; done\0"
 #endif /* !CONFIG_SPL_BUILD*/
 
-#define CONFIG_BOOTCOMMAND \
-	"mmc dev 1; run defboot;"
-
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 /*
  * GPMC  block.  We support 1 device and the physical address to
  * access CS0 at is 0x8000000.
@@ -198,42 +173,12 @@ MMCARGS
 #define CONFIG_SYS_NAND_ECCBYTES	14
 
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
 
 #define CONFIG_NAND_OMAP_GPMC_WSCFG	1
-#endif /* CONFIG_NAND */
+#endif /* CONFIG_MTD_RAW_NAND */
 
-/* USB configuration */
-#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
-#define CONFIG_AM335X_USB0
-#define CONFIG_AM335X_USB0_MODE	MUSB_HOST
-#define CONFIG_AM335X_USB1
-#define CONFIG_AM335X_USB1_MODE MUSB_HOST
-
-#if defined(CONFIG_SPI_BOOT)
-/* McSPI IP block */
-#define CONFIG_SF_DEFAULT_SPEED		24000000
-
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_ENV_SECT_SIZE		(4 << 10) /* 4 KB sectors */
-#define CONFIG_ENV_OFFSET		(768 << 10) /* 768 KiB in */
-#define CONFIG_ENV_OFFSET_REDUND	(896 << 10) /* 896 KiB in */
-
-#elif defined(CONFIG_EMMC_BOOT)
-#define CONFIG_SYS_MMC_ENV_DEV		1
-#define CONFIG_SYS_MMC_ENV_PART		2
-#define CONFIG_ENV_OFFSET		0x40000	/* TODO: Adresse definieren */
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-
-#elif defined(CONFIG_NAND)
-/* No NAND env support in SPL */
-#define CONFIG_ENV_OFFSET		0x60000
+#if defined(CONFIG_ENV_IS_IN_NAND)
 #define CONFIG_SYS_ENV_SECT_SIZE	CONFIG_ENV_SIZE
-#else
-#error "no storage for Environment defined!"
 #endif
 
 #endif	/* ! __CONFIG_BRPPT1_H__ */

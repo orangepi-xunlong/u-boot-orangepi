@@ -15,24 +15,15 @@
 #ifdef CONFIG_AXP221_POWER
 #include <axp221.h>
 #endif
+#ifdef CONFIG_AXP305_POWER
+#include <axp305.h>
+#endif
 #ifdef CONFIG_AXP809_POWER
 #include <axp809.h>
 #endif
 #ifdef CONFIG_AXP818_POWER
 #include <axp818.h>
 #endif
-#ifdef CONFIG_AXP1516_POWER
-#include <axp1516.h>
-#endif
-
-#define PMU_PRE_FASTBOOT_MODE (0x0c)
-#define PMU_PRE_RECOVERY_MODE (0x10)
-#define PMU_PRE_FACTORY_MODE (0x0d)
-#define PMU_PRE_SYS_MODE (0x0e)
-#define PMU_PRE_CHARGE_MODE (0x0f)
-#define PMU_PRE_BOOT_MODE (0x02)
-#define PMU_SHORT_KEY_PRESSED (1 << 1)
-#define PMU_LONG_KEY_PRESSED (1 << 0)
 
 int axp_set_dcdc1(unsigned int mvolt);
 int axp_set_dcdc2(unsigned int mvolt);

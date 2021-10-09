@@ -10,8 +10,10 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <malloc.h>
 #include <sdhci.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/bitops.h>
 
@@ -86,7 +88,7 @@ static int msm_sdc_clk_init(struct udevice *dev)
 static int msm_sdc_probe(struct udevice *dev)
 {
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
-	struct msm_sdhc_plat *plat = dev_get_platdata(dev);
+	struct msm_sdhc_plat *plat = dev_get_plat(dev);
 	struct msm_sdhc *prv = dev_get_priv(dev);
 	struct sdhci_host *host = &prv->host;
 	u32 core_version, core_minor, core_major;
@@ -141,12 +143,16 @@ static int msm_sdc_probe(struct udevice *dev)
 		writel(caps, host->ioaddr + SDHCI_VENDOR_SPEC_CAPABILITIES0);
 	}
 
-	ret = sdhci_setup_cfg(&plat->cfg, host, 0, 0);
+	ret = mmc_of_parse(dev, &plat->cfg);
+	if (ret)
+		return ret;
+
 	host->mmc = &plat->mmc;
+	host->mmc->dev = dev;
+	ret = sdhci_setup_cfg(&plat->cfg, host, 0, 0);
 	if (ret)
 		return ret;
 	host->mmc->priv = &prv->host;
-	host->mmc->dev = dev;
 	upriv->mmc = host->mmc;
 
 	return sdhci_probe(dev);
@@ -162,7 +168,7 @@ static int msm_sdc_remove(struct udevice *dev)
 	return 0;
 }
 
-static int msm_ofdata_to_platdata(struct udevice *dev)
+static int msm_of_to_plat(struct udevice *dev)
 {
 	struct udevice *parent = dev->parent;
 	struct msm_sdhc *priv = dev_get_priv(dev);
@@ -170,7 +176,7 @@ static int msm_ofdata_to_platdata(struct udevice *dev)
 	int node = dev_of_offset(dev);
 
 	host->name = strdup(dev->name);
-	host->ioaddr = (void *)devfdt_get_addr(dev);
+	host->ioaddr = dev_read_addr_ptr(dev);
 	host->bus_width = fdtdec_get_int(gd->fdt_blob, node, "bus-width", 4);
 	host->index = fdtdec_get_uint(gd->fdt_blob, node, "index", 0);
 	priv->base = (void *)fdtdec_get_addr_size_auto_parent(gd->fdt_blob,
@@ -184,7 +190,7 @@ static int msm_ofdata_to_platdata(struct udevice *dev)
 
 static int msm_sdc_bind(struct udevice *dev)
 {
-	struct msm_sdhc_plat *plat = dev_get_platdata(dev);
+	struct msm_sdhc_plat *plat = dev_get_plat(dev);
 
 	return sdhci_bind(dev, &plat->mmc, &plat->cfg);
 }
@@ -198,11 +204,11 @@ U_BOOT_DRIVER(msm_sdc_drv) = {
 	.name		= "msm_sdc",
 	.id		= UCLASS_MMC,
 	.of_match	= msm_mmc_ids,
-	.ofdata_to_platdata = msm_ofdata_to_platdata,
+	.of_to_plat = msm_of_to_plat,
 	.ops		= &sdhci_ops,
 	.bind		= msm_sdc_bind,
 	.probe		= msm_sdc_probe,
 	.remove		= msm_sdc_remove,
-	.priv_auto_alloc_size = sizeof(struct msm_sdhc),
-	.platdata_auto_alloc_size = sizeof(struct msm_sdhc_plat),
+	.priv_auto	= sizeof(struct msm_sdhc),
+	.plat_auto	= sizeof(struct msm_sdhc_plat),
 };

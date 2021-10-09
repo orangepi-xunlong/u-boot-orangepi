@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2013 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <image.h>
+#include <init.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -21,14 +27,29 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+u8 get_hw_revision(void)
+{
+	u8 ver = CPLD_READ(hw_ver);
+
+	switch (ver) {
+	default:
+	case 0x1:
+		return 'C';
+	case 0x0:
+		return 'D';
+	case 0x2:
+		return 'E';
+	}
+}
+
 int checkboard(void)
 {
 	struct cpu_type *cpu = gd->arch.cpu;
 	static const char *freq[3] = {"100.00MHZ", "125.00MHz", "156.25MHZ"};
 
 	printf("Board: %sRDB, ", cpu->name);
-	printf("Board rev: 0x%02x CPLD ver: 0x%02x, boot from ",
-	       CPLD_READ(hw_ver), CPLD_READ(sw_ver));
+	printf("Board rev: %c CPLD ver: 0x%02x, boot from ",
+	       get_hw_revision(), CPLD_READ(sw_ver));
 
 #ifdef CONFIG_SDCARD
 	puts("SD/MMC\n");
@@ -110,7 +131,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -130,8 +151,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
-	fdt_fixup_fman_ethernet(blob);
+	fdt_fixup_board_fman_ethernet(blob);
 	fdt_fixup_board_enet(blob);
+	fdt_fixup_board_phy(blob);
 #endif
 
 	return 0;

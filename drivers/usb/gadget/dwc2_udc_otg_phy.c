@@ -18,6 +18,7 @@
  */
 
 #include <common.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/list.h>
 #include <malloc.h>
@@ -33,7 +34,6 @@
 
 #include "dwc2_udc_otg_regs.h"
 #include "dwc2_udc_otg_priv.h"
-#include <usb/lin_gadget_compat.h>
 
 #include <usb/dwc2_udc.h>
 

@@ -11,36 +11,57 @@
 
 #include <common.h>
 #include <api.h>
+#include <bootstage.h>
+#include <cpu_func.h>
+#include <exports.h>
+#include <flash.h>
+#include <hang.h>
+#include <image.h>
+#include <irq_func.h>
+#include <log.h>
+#include <net.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
+#include <u-boot/crc.h>
 /* TODO: can we just include all these headers whether needed or not? */
 #if defined(CONFIG_CMD_BEDBUG)
 #include <bedbug/type.h>
 #endif
+#include <binman.h>
 #include <command.h>
 #include <console.h>
 #include <dm.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
 #include <fdtdec.h>
 #include <ide.h>
+#include <init.h>
 #include <initcall.h>
 #if defined(CONFIG_CMD_KGDB)
 #include <kgdb.h>
 #endif
+#include <irq_func.h>
 #include <malloc.h>
 #include <mapmem.h>
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
 #endif
 #include <mmc.h>
+#include <mux.h>
 #include <nand.h>
 #include <of_live.h>
 #include <onenand_uboot.h>
+#include <pvblock.h>
 #include <scsi.h>
 #include <serial.h>
-#include <spi.h>
+#include <status_led.h>
 #include <stdio_dev.h>
 #include <timer.h>
 #include <trace.h>
 #include <watchdog.h>
+#ifdef CONFIG_XEN
+#include <xen.h>
+#endif
 #ifdef CONFIG_ADDR_MAP
 #include <asm/mmu.h>
 #endif
@@ -49,23 +70,17 @@
 #include <linux/compiler.h>
 #include <linux/err.h>
 #include <efi_loader.h>
-#include <fdt_support.h>
-
-#ifdef CONFIG_ARCH_SUNXI
-#include <sunxi_board.h>
-#include <sunxi_flash.h>
+#include <wdt.h>
+#if defined(CONFIG_GPIO_HOG)
+#include <asm/gpio.h>
 #endif
-#ifdef CONFIG_SOUND_SUNXI_BOOT_TONE
-#include <sunxi_boot_tone.h>
+#ifdef CONFIG_EFI_SETUP_EARLY
+#include <efi_loader.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
 ulong monitor_flash_len;
-
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-extern int auto_update_check(void);
-#endif
 
 __weak int board_flash_wp_on(void)
 {
@@ -77,21 +92,8 @@ __weak int board_flash_wp_on(void)
 	return 0;
 }
 
-__weak void cpu_secondary_init_r(void)
+__weak int cpu_secondary_init_r(void)
 {
-}
-
-static int initr_secondary_cpu(void)
-{
-	/*
-	 * after non-volatile devices & environment is setup and cpu code have
-	 * another round to deal with any initialization that might require
-	 * full access to the environment or loading of some image (firmware)
-	 * from a non-volatile device
-	 */
-	/* TODO: maybe define this for all archs? */
-	cpu_secondary_init_r();
-
 	return 0;
 }
 
@@ -104,56 +106,11 @@ static int initr_trace(void)
 	return 0;
 }
 
-
-#ifdef CONFIG_SUNXI_LEDC
-static int initr_ledc(void)
-{
-	int node;
-	int led_count, led_r, led_g, led_b;
-	int workmode = get_boot_work_mode();
-
-	if (workmode != WORK_MODE_BOOT)
-		return 0;
-
-	printf("%s\n", __func__);
-
-	node =  fdt_path_offset(working_fdt, "ledc");
-	if (node < 0) {
-		printf("unable to find ledc node in device tree.\n");
-		return 0;
-	}
-	if (!fdtdec_get_is_enabled(working_fdt, node)) {
-		printf("ledc disabled in device tree\n");
-		return 0;
-	}
-
-	if (fdt_getprop_u32(working_fdt, node, "led_count", &led_count) < 0)
-		led_count = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_r", &led_r) < 0)
-		led_r = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_g", &led_g) < 0)
-		led_g = 0;
-
-	if (fdt_getprop_u32(working_fdt, node, "led_b", &led_b) < 0)
-		led_b = 0;
-
-	if (led_r == 0 && led_g == 0 && led_b == 0)
-		return 0;
-
-	sunxi_ledc_init();
-
-	debug("count:%d G:%d R:%d B:%d\n", led_count, led_g, led_r, led_b);
-	sunxi_set_led_brightness(led_count, led_g, led_r, led_b);
-	return 0;
-}
-#endif
 static int initr_reloc(void)
 {
 	/* tell others: relocation done */
 	gd->flags |= GD_FLG_RELOC | GD_FLG_FULL_MALLOC_INIT;
-	set_working_fdt_addr((ulong)gd->fdt_blob);
+
 	return 0;
 }
 
@@ -198,15 +155,12 @@ static int initr_reloc_global_data(void)
 	 */
 	fixup_cpu();
 #endif
-#ifdef CONFIG_SYS_EXTRA_ENV_RELOC
+#ifdef CONFIG_SYS_RELOC_GD_ENV_ADDR
 	/*
-	 * Some systems need to relocate the env_addr pointer early because the
-	 * location it points to will get invalidated before env_relocate is
-	 * called.  One example is on systems that might use a L2 or L3 cache
-	 * in SRAM mode and initialize that cache from SRAM mode back to being
-	 * a cache in cpu_init_r.
+	 * Relocate the early env_addr pointer unless we know it is not inside
+	 * the binary. Some systems need this and for the rest, it doesn't hurt.
 	 */
-	gd->env_addr += gd->relocaddr - CONFIG_SYS_MONITOR_BASE;
+	gd->env_addr += gd->reloc_off;
 #endif
 #ifdef CONFIG_OF_EMBED
 	/*
@@ -216,32 +170,23 @@ static int initr_reloc_global_data(void)
 	gd->fdt_blob += gd->reloc_off;
 #endif
 #ifdef CONFIG_EFI_LOADER
+	/*
+	 * On the ARM architecture gd is mapped to a fixed register (r9 or x18).
+	 * As this register may be overwritten by an EFI payload we save it here
+	 * and restore it on every callback entered.
+	 */
+	efi_save_gd();
+
 	efi_runtime_relocate(gd->relocaddr, NULL);
 #endif
 
 	return 0;
 }
 
-static int initr_serial(void)
+__weak int arch_initr_trap(void)
 {
-	serial_initialize();
 	return 0;
 }
-
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_MIPS)
-static int initr_trap(void)
-{
-	/*
-	 * Setup trap handlers
-	 */
-#if defined(CONFIG_PPC)
-	trap_init(gd->relocaddr);
-#else
-	trap_init(CONFIG_SYS_SDRAM_BASE);
-#endif
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_ADDR_MAP
 static int initr_addr_map(void)
@@ -252,29 +197,10 @@ static int initr_addr_map(void)
 }
 #endif
 
-#ifdef CONFIG_POST
-static int initr_post_backlog(void)
-{
-	post_output_backlog();
-	return 0;
-}
-#endif
-
 #if defined(CONFIG_SYS_INIT_RAM_LOCK) && defined(CONFIG_E500)
 static int initr_unlock_ram_in_cache(void)
 {
 	unlock_ram_in_cache();	/* it's time to unlock D-cache in e500 */
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_PCI
-static int initr_pci(void)
-{
-#ifndef CONFIG_DM_PCI
-	pci_init();
-#endif
-
 	return 0;
 }
 #endif
@@ -297,43 +223,31 @@ static int initr_malloc(void)
 	      gd->malloc_ptr / 1024);
 #endif
 	/* The malloc area is immediately below the monitor copy in DRAM */
+	/*
+	 * This value MUST match the value of gd->start_addr_sp in board_f.c:
+	 * reserve_noncached().
+	 */
 	malloc_start = gd->relocaddr - TOTAL_MALLOC_LEN;
 	mem_malloc_init((ulong)map_sysmem(malloc_start, TOTAL_MALLOC_LEN),
 			TOTAL_MALLOC_LEN);
 	return 0;
 }
 
-static int initr_console_record(void)
-{
-#if defined(CONFIG_CONSOLE_RECORD)
-	return console_record_init();
-#else
-	return 0;
-#endif
-}
-
-#ifdef CONFIG_SYS_NONCACHED_MEMORY
-static int initr_noncached(void)
-{
-	noncached_init();
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_OF_LIVE
 static int initr_of_live(void)
 {
-	int ret;
+	if (CONFIG_IS_ENABLED(OF_LIVE)) {
+		int ret;
 
-	bootstage_start(BOOTSTAGE_ID_ACCUM_OF_LIVE, "of_live");
-	ret = of_live_build(gd->fdt_blob, (struct device_node **)&gd->of_root);
-	bootstage_accum(BOOTSTAGE_ID_ACCUM_OF_LIVE);
-	if (ret)
-		return ret;
+		bootstage_start(BOOTSTAGE_ID_ACCUM_OF_LIVE, "of_live");
+		ret = of_live_build(gd->fdt_blob,
+				    (struct device_node **)gd_of_root_ptr());
+		bootstage_accum(BOOTSTAGE_ID_ACCUM_OF_LIVE);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
-#endif
 
 #ifdef CONFIG_DM
 static int initr_dm(void)
@@ -346,20 +260,39 @@ static int initr_dm(void)
 #ifdef CONFIG_TIMER
 	gd->timer = NULL;
 #endif
-	bootstage_start(BOOTSTATE_ID_ACCUM_DM_R, "dm_r");
+	bootstage_start(BOOTSTAGE_ID_ACCUM_DM_R, "dm_r");
 	ret = dm_init_and_scan(false);
-	bootstage_accum(BOOTSTATE_ID_ACCUM_DM_R);
+	bootstage_accum(BOOTSTAGE_ID_ACCUM_DM_R);
 	if (ret)
 		return ret;
-#ifdef CONFIG_TIMER_EARLY
-	ret = dm_timer_init();
-	if (ret)
-		return ret;
-#endif
 
 	return 0;
 }
 #endif
+
+static int initr_dm_devices(void)
+{
+	int ret;
+
+	if (IS_ENABLED(CONFIG_TIMER_EARLY)) {
+		ret = dm_timer_init();
+		if (ret)
+			return ret;
+	}
+
+	if (IS_ENABLED(CONFIG_MULTIPLEXER)) {
+		/*
+		 * Initialize the multiplexer controls to their default state.
+		 * This must be done early as other drivers may unknowingly
+		 * rely on it.
+		 */
+		ret = dm_mux_init();
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
 
 static int initr_bootstage(void)
 {
@@ -382,17 +315,33 @@ static int initr_announce(void)
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 static int initr_manual_reloc_cmdtable(void)
 {
-	fixup_cmdtable(ll_entry_start(cmd_tbl_t, cmd),
-		       ll_entry_count(cmd_tbl_t, cmd));
+	fixup_cmdtable(ll_entry_start(struct cmd_tbl, cmd),
+		       ll_entry_count(struct cmd_tbl, cmd));
 	return 0;
 }
 #endif
 
+static int initr_binman(void)
+{
+	if (!CONFIG_IS_ENABLED(BINMAN_FDT))
+		return 0;
+
+	return binman_init();
+}
+
 #if defined(CONFIG_MTD_NOR_FLASH)
+__weak int is_flash_available(void)
+{
+	return 1;
+}
+
 static int initr_flash(void)
 {
 	ulong flash_size = 0;
-	bd_t *bd = gd->bd;
+	struct bd_info *bd = gd->bd;
+
+	if (!is_flash_available())
+		return 0;
 
 	puts("Flash: ");
 
@@ -440,20 +389,6 @@ static int initr_flash(void)
 }
 #endif
 
-#if defined(CONFIG_PPC) && !defined(CONFIG_DM_SPI)
-static int initr_spi(void)
-{
-	/* MPC8xx does this here */
-#ifdef CONFIG_MPC8XX_SPI
-#if !defined(CONFIG_ENV_IS_IN_EEPROM)
-	spi_init_f();
-#endif
-	spi_init_r();
-#endif
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_CMD_NAND
 /* go init the NAND */
 static int initr_nand(void)
@@ -478,72 +413,17 @@ static int initr_onenand(void)
 #ifdef CONFIG_MMC
 static int initr_mmc(void)
 {
-	/*not call this func for sunxi plat*/
-#ifndef CONFIG_ARCH_SUNXI
 	puts("MMC:   ");
 	mmc_initialize(gd->bd);
-#endif
 	return 0;
 }
 #endif
 
-#ifdef CONFIG_ARCH_SUNXI
-static int initr_sunxi_plat(void)
+#ifdef CONFIG_PVBLOCK
+static int initr_pvblock(void)
 {
-	__maybe_unused int ret = 0;
-
-#ifdef CONFIG_BOOT_GUI
-	sunxi_early_logo_display();
-#endif
-
-#ifdef CONFIG_SUNXI_BOX_STANDBY
-	do_box_standby();
-#endif
-
-#ifdef CONFIG_ATF_BOX_STANDBY
-	atf_box_standby();
-#endif
-
-#ifdef CONFIG_IR_BOOT_RECOVERY
-	check_ir_boot_recovery();
-#endif
-#if defined(CONFIG_SUNXI_HOMLET)
-	sunxi_boot_init_gpio();
-#endif
-
-#ifdef CONFIG_RECOVERY_KEY
-	check_recovery_key();
-#endif
-	tick_printf("flash init start\n");
-
-#ifdef CONFIG_SUNXI_FLASH
-	ret = sunxi_flash_init_ext();
-#endif
-#ifdef CONFIG_SUNXI_UBIFS
-	int workmode = get_boot_work_mode();
-
-	if (workmode == WORK_MODE_BOOT && nand_use_ubi()) {
-		ubi_nand_probe_uboot();
-		ubi_nand_attach_mtd();
-	}
-#endif
-
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-	auto_update_check();
-#endif
-
-	return ret;
-}
-
-static int sunxi_burn_key(void)
-{
-#ifdef CONFIG_CMD_SUNXI_AUTO_FEL
-	sunxi_auto_fel_by_usb();
-#endif
-#ifdef CONFIG_SUNXI_BURN
-	pr_msg("try to burn key\n");
-	sunxi_keydata_burn_by_usb();
-#endif
+	puts("PVBLOCK: ");
+	pvblock_init();
 	return 0;
 }
 #endif
@@ -561,13 +441,14 @@ static int sunxi_burn_key(void)
  */
 static int should_load_env(void)
 {
-#ifdef CONFIG_OF_CONTROL
-	return fdtdec_get_config_int(gd->fdt_blob, "load-environment", 1);
-#elif defined CONFIG_DELAY_ENVIRONMENT
-	return 0;
-#else
+	if (IS_ENABLED(CONFIG_OF_CONTROL))
+		return fdtdec_get_config_int(gd->fdt_blob,
+						"load-environment", 1);
+
+	if (IS_ENABLED(CONFIG_DELAY_ENVIRONMENT))
+		return 0;
+
 	return 1;
-#endif
 }
 
 static int initr_env(void)
@@ -576,13 +457,16 @@ static int initr_env(void)
 	if (should_load_env())
 		env_relocate();
 	else
-		set_default_env(NULL);
-#ifdef CONFIG_OF_CONTROL
-	env_set_addr("fdtcontroladdr", gd->fdt_blob);
-#endif
+		env_set_default(NULL, 0);
+
+	env_import_fdt();
+
+	if (IS_ENABLED(CONFIG_OF_CONTROL))
+		env_set_hex("fdtcontroladdr",
+			    (unsigned long)map_to_sysmem(gd->fdt_blob));
 
 	/* Initialize from environment */
-	load_addr = env_get_ulong("loadaddr", 16, load_addr);
+	image_load_addr = env_get_ulong("loadaddr", 16, image_load_addr);
 
 	return 0;
 }
@@ -599,52 +483,14 @@ static int initr_malloc_bootparams(void)
 }
 #endif
 
-static int initr_jumptable(void)
-{
-	jumptable_init();
-	return 0;
-}
-
-#if defined(CONFIG_API)
-static int initr_api(void)
-{
-	/* Initialize API */
-	api_init();
-	return 0;
-}
-#endif
-
-/* enable exceptions */
-#ifdef CONFIG_ARM
-static int initr_enable_interrupts(void)
-{
-	enable_interrupts();
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_CMD_NET
 static int initr_ethaddr(void)
 {
-	bd_t *bd = gd->bd;
+	struct bd_info *bd = gd->bd;
 
 	/* kept around for legacy kernels only ... ignore the next section */
 	eth_env_get_enetaddr("ethaddr", bd->bi_enetaddr);
-#ifdef CONFIG_HAS_ETH1
-	eth_env_get_enetaddr("eth1addr", bd->bi_enet1addr);
-#endif
-#ifdef CONFIG_HAS_ETH2
-	eth_env_get_enetaddr("eth2addr", bd->bi_enet2addr);
-#endif
-#ifdef CONFIG_HAS_ETH3
-	eth_env_get_enetaddr("eth3addr", bd->bi_enet3addr);
-#endif
-#ifdef CONFIG_HAS_ETH4
-	eth_env_get_enetaddr("eth4addr", bd->bi_enet4addr);
-#endif
-#ifdef CONFIG_HAS_ETH5
-	eth_env_get_enetaddr("eth5addr", bd->bi_enet5addr);
-#endif
+
 	return 0;
 }
 #endif /* CONFIG_CMD_NET */
@@ -675,15 +521,8 @@ static int initr_scsi(void)
 {
 	puts("SCSI:  ");
 	scsi_init();
+	puts("\n");
 
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_BITBANGMII
-static int initr_bbmii(void)
-{
-	bb_miiphy_init();
 	return 0;
 }
 #endif
@@ -709,16 +548,7 @@ static int initr_post(void)
 }
 #endif
 
-#if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_IDE)
-static int initr_pcmcia(void)
-{
-	puts("PCMCIA:");
-	pcmcia_init();
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_IDE)
+#if defined(CONFIG_IDE) && !defined(CONFIG_BLK)
 static int initr_ide(void)
 {
 	puts("IDE:   ");
@@ -750,15 +580,6 @@ int initr_mem(void)
 }
 #endif
 
-#ifdef CONFIG_CMD_BEDBUG
-static int initr_bedbug(void)
-{
-	bedbug_init();
-
-	return 0;
-}
-#endif
-
 static int run_main_loop(void)
 {
 #ifdef CONFIG_SANDBOX
@@ -771,10 +592,7 @@ static int run_main_loop(void)
 }
 
 /*
- * Over time we hope to remove these functions with code fragments and
- * stub functions, and instead call the relevant function directly.
- *
- * We also hope to remove most of the driver-related init and do it if/when
+ * We hope to remove most of the driver-related init and do it if/when
  * the driver is later used.
  *
  * TODO: perhaps reset the watchdog in the initcall function after each call?
@@ -800,18 +618,21 @@ static init_fnc_t init_sequence_r[] = {
 	initr_malloc,
 	log_init,
 	initr_bootstage,	/* Needs malloc() but has its own timer */
-	initr_console_record,
+#if defined(CONFIG_CONSOLE_RECORD)
+	console_record_init,
+#endif
 #ifdef CONFIG_SYS_NONCACHED_MEMORY
-	initr_noncached,
+	noncached_init,
 #endif
-	bootstage_relocate,
-#ifdef CONFIG_OF_LIVE
 	initr_of_live,
-#endif
 #ifdef CONFIG_DM
 	initr_dm,
 #endif
-#if defined(CONFIG_ARM) || defined(CONFIG_NDS32) || defined(CONFIG_RISCV)
+#ifdef CONFIG_ADDR_MAP
+	initr_addr_map,
+#endif
+#if defined(CONFIG_ARM) || defined(CONFIG_NDS32) || defined(CONFIG_RISCV) || \
+	defined(CONFIG_SANDBOX)
 	board_init,	/* Setup chipselects */
 #endif
 	/*
@@ -826,36 +647,39 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_EFI_LOADER
 	efi_memory_init,
 #endif
+	initr_binman,
+#ifdef CONFIG_FSP_VERSION2
+	arch_fsp_init_r,
+#endif
+	initr_dm_devices,
 	stdio_init_tables,
-	initr_serial,
+	serial_initialize,
 	initr_announce,
+#if CONFIG_IS_ENABLED(WDT)
+	initr_watchdog,
+#endif
 	INIT_FUNC_WATCHDOG_RESET
+#if defined(CONFIG_NEEDS_MANUAL_RELOC) && defined(CONFIG_BLOCK_CACHE)
+	blkcache_init,
+#endif
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	initr_manual_reloc_cmdtable,
 #endif
-#if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_MIPS)
-	initr_trap,
-#endif
-#ifdef CONFIG_ADDR_MAP
-	initr_addr_map,
-#endif
+	arch_initr_trap,
 #if defined(CONFIG_BOARD_EARLY_INIT_R)
 	board_early_init_r,
 #endif
-#ifdef CONFIG_SUNXI_LEDC
-	initr_ledc,
-#endif
 	INIT_FUNC_WATCHDOG_RESET
 #ifdef CONFIG_POST
-	initr_post_backlog,
+	post_output_backlog,
 #endif
 	INIT_FUNC_WATCHDOG_RESET
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_EARLY_PCI_INIT)
+#if defined(CONFIG_PCI_INIT_R) && defined(CONFIG_SYS_EARLY_PCI_INIT)
 	/*
 	 * Do early PCI configuration _before_ the flash gets initialised,
 	 * because PCU resources are crucial for flash access on some boards.
 	 */
-	initr_pci,
+	pci_init,
 #endif
 #ifdef CONFIG_ARCH_EARLY_INIT_R
 	arch_early_init_r,
@@ -869,9 +693,6 @@ static init_fnc_t init_sequence_r[] = {
 	/* initialize higher level parts of CPU like time base and timers */
 	cpu_init_r,
 #endif
-#ifdef CONFIG_PPC
-	initr_spi,
-#endif
 #ifdef CONFIG_CMD_NAND
 	initr_nand,
 #endif
@@ -881,25 +702,32 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_MMC
 	initr_mmc,
 #endif
+#ifdef CONFIG_XEN
+	xen_init,
+#endif
+#ifdef CONFIG_PVBLOCK
+	initr_pvblock,
+#endif
+	initr_env,
 #ifdef CONFIG_SYS_BOOTPARAMS_LEN
 	initr_malloc_bootparams,
 #endif
 	INIT_FUNC_WATCHDOG_RESET
-	initr_secondary_cpu,
+	cpu_secondary_init_r,
 #if defined(CONFIG_ID_EEPROM) || defined(CONFIG_SYS_I2C_MAC_OFFSET)
 	mac_read_from_eeprom,
 #endif
 	INIT_FUNC_WATCHDOG_RESET
-#if defined(CONFIG_PCI) && !defined(CONFIG_SYS_EARLY_PCI_INIT)
+#if defined(CONFIG_PCI_INIT_R) && !defined(CONFIG_SYS_EARLY_PCI_INIT)
 	/*
 	 * Do pci configuration
 	 */
-	initr_pci,
+	pci_init,
 #endif
 	stdio_add_devices,
-	initr_jumptable,
+	jumptable_init,
 #ifdef CONFIG_API
-	initr_api,
+	api_init,
 #endif
 	console_init_r,		/* fully init console as a device */
 #ifdef CONFIG_DISPLAY_BOARDINFO_LATE
@@ -917,14 +745,6 @@ static init_fnc_t init_sequence_r[] = {
 	initr_kgdb,
 #endif
 	interrupt_init,
-#ifdef CONFIG_ARM
-	initr_enable_interrupts,
-#endif
-#ifdef CONFIG_ARCH_SUNXI
-	initr_sunxi_plat,
-#endif
-	initr_env,
-	board_env_late_init,
 #if defined(CONFIG_MICROBLAZE) || defined(CONFIG_M68K)
 	timer_init,		/* initialize timer */
 #endif
@@ -935,10 +755,9 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_CMD_NET
 	initr_ethaddr,
 #endif
-#ifdef CONFIG_ARCH_SUNXI
-	sunxi_burn_key,
+#if defined(CONFIG_GPIO_HOG)
+	gpio_hog_probe_all,
 #endif
-
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
 #endif
@@ -947,7 +766,10 @@ static init_fnc_t init_sequence_r[] = {
 	initr_scsi,
 #endif
 #ifdef CONFIG_BITBANGMII
-	initr_bbmii,
+	bb_miiphy_init,
+#endif
+#ifdef CONFIG_PCI_ENDPOINT
+	pci_ep_init,
 #endif
 #ifdef CONFIG_CMD_NET
 	INIT_FUNC_WATCHDOG_RESET
@@ -956,10 +778,7 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_POST
 	initr_post,
 #endif
-#if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_IDE)
-	initr_pcmcia,
-#endif
-#if defined(CONFIG_IDE)
+#if defined(CONFIG_IDE) && !defined(CONFIG_BLK)
 	initr_ide,
 #endif
 #ifdef CONFIG_LAST_STAGE_INIT
@@ -973,14 +792,13 @@ static init_fnc_t init_sequence_r[] = {
 #endif
 #ifdef CONFIG_CMD_BEDBUG
 	INIT_FUNC_WATCHDOG_RESET
-	initr_bedbug,
+	bedbug_init,
 #endif
 #if defined(CONFIG_PRAM)
 	initr_mem,
 #endif
-
-#ifdef CONFIG_SOUND_SUNXI_BOOT_TONE
-	sunxi_boot_tone_play,
+#ifdef CONFIG_EFI_SETUP_EARLY
+	(init_fnc_t)efi_init_obj_list,
 #endif
 	run_main_loop,
 };

@@ -16,8 +16,6 @@
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 #define CONSOLE_DEV		"ttymxc0"
 
-#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
-
 #include "mx6sabre_common.h"
 
 /* Falcon Mode */
@@ -31,9 +29,6 @@
 #define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR        0x1000  /* 2MB */
 
 #define CONFIG_SYS_FSL_USDHC_NUM	3
-#if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC3 */
-#endif
 
 #ifdef CONFIG_CMD_PCI
 #define CONFIG_PCI_SCAN_SHOW

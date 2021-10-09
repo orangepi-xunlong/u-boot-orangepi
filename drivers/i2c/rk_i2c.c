@@ -11,11 +11,13 @@
 #include <dm.h>
 #include <errno.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/i2c.h>
-#include <asm/arch/periph.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/i2c.h>
+#include <asm/arch-rockchip/periph.h>
 #include <dm/pinctrl.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 
 /* i2c timerout */
@@ -29,6 +31,18 @@ struct rk_i2c {
 	struct clk clk;
 	struct i2c_regs *regs;
 	unsigned int speed;
+};
+
+enum {
+	RK_I2C_LEGACY,
+	RK_I2C_NEW,
+};
+
+/**
+ * @controller_type: i2c controller type
+ */
+struct rk_i2c_soc_data {
+	int controller_type;
 };
 
 static inline void rk_i2c_get_div(int div, int *divh, int *divl)
@@ -241,7 +255,6 @@ static int rk_i2c_read(struct rk_i2c *i2c, uchar chip, uint reg, uint r_len,
 	}
 
 i2c_exit:
-	rk_i2c_send_stop_bit(i2c);
 	rk_i2c_disable(i2c);
 
 	return err;
@@ -320,7 +333,6 @@ static int rk_i2c_write(struct rk_i2c *i2c, uchar chip, uint reg, uint r_len,
 	}
 
 i2c_exit:
-	rk_i2c_send_stop_bit(i2c);
 	rk_i2c_disable(i2c);
 
 	return err;
@@ -348,6 +360,9 @@ static int rockchip_i2c_xfer(struct udevice *bus, struct i2c_msg *msg,
 		}
 	}
 
+	rk_i2c_send_stop_bit(i2c);
+	rk_i2c_disable(i2c);
+
 	return 0;
 }
 
@@ -360,7 +375,7 @@ int rockchip_i2c_set_bus_speed(struct udevice *bus, unsigned int speed)
 	return 0;
 }
 
-static int rockchip_i2c_ofdata_to_platdata(struct udevice *bus)
+static int rockchip_i2c_of_to_plat(struct udevice *bus)
 {
 	struct rk_i2c *priv = dev_get_priv(bus);
 	int ret;
@@ -378,8 +393,37 @@ static int rockchip_i2c_ofdata_to_platdata(struct udevice *bus)
 static int rockchip_i2c_probe(struct udevice *bus)
 {
 	struct rk_i2c *priv = dev_get_priv(bus);
+	struct rk_i2c_soc_data *soc_data;
+	struct udevice *pinctrl;
+	int bus_nr;
+	int ret;
 
 	priv->regs = dev_read_addr_ptr(bus);
+
+	soc_data = (struct rk_i2c_soc_data*)dev_get_driver_data(bus);
+
+	if (soc_data->controller_type == RK_I2C_LEGACY) {
+		ret = dev_read_alias_seq(bus, &bus_nr);
+		if (ret < 0) {
+			debug("%s: Could not get alias for %s: %d\n",
+			 __func__, bus->name, ret);
+			return ret;
+		}
+
+		ret = uclass_get_device(UCLASS_PINCTRL, 0, &pinctrl);
+		if (ret) {
+			debug("%s: Cannot find pinctrl device\n", __func__);
+			return ret;
+		}
+
+		/* pinctrl will switch I2C to new type */
+		ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_I2C0 + bus_nr);
+		if (ret) {
+			debug("%s: Failed to switch I2C to new type %s: %d\n",
+				__func__, bus->name, ret);
+			return ret;
+		}
+	}
 
 	return 0;
 }
@@ -389,21 +433,66 @@ static const struct dm_i2c_ops rockchip_i2c_ops = {
 	.set_bus_speed	= rockchip_i2c_set_bus_speed,
 };
 
+static const struct rk_i2c_soc_data rk3066_soc_data = {
+	.controller_type = RK_I2C_LEGACY,
+};
+
+static const struct rk_i2c_soc_data rk3188_soc_data = {
+	.controller_type = RK_I2C_LEGACY,
+};
+
+static const struct rk_i2c_soc_data rk3228_soc_data = {
+	.controller_type = RK_I2C_NEW,
+};
+
+static const struct rk_i2c_soc_data rk3288_soc_data = {
+	.controller_type = RK_I2C_NEW,
+};
+
+static const struct rk_i2c_soc_data rk3328_soc_data = {
+	.controller_type = RK_I2C_NEW,
+};
+
+static const struct rk_i2c_soc_data rk3399_soc_data = {
+	.controller_type = RK_I2C_NEW,
+};
+
 static const struct udevice_id rockchip_i2c_ids[] = {
-	{ .compatible = "rockchip,rk3066-i2c" },
-	{ .compatible = "rockchip,rk3188-i2c" },
-	{ .compatible = "rockchip,rk3288-i2c" },
-	{ .compatible = "rockchip,rk3328-i2c" },
-	{ .compatible = "rockchip,rk3399-i2c" },
+	{
+		.compatible = "rockchip,rk3066-i2c",
+		.data = (ulong)&rk3066_soc_data,
+	},
+	{
+		.compatible = "rockchip,rk3188-i2c",
+		.data = (ulong)&rk3188_soc_data,
+	},
+	{
+		.compatible = "rockchip,rk3228-i2c",
+		.data = (ulong)&rk3228_soc_data,
+	},
+	{
+		.compatible = "rockchip,rk3288-i2c",
+		.data = (ulong)&rk3288_soc_data,
+	},
+	{
+		.compatible = "rockchip,rk3328-i2c",
+		.data = (ulong)&rk3328_soc_data,
+	},
+	{
+		.compatible = "rockchip,rk3399-i2c",
+		.data = (ulong)&rk3399_soc_data,
+	},
 	{ }
 };
 
-U_BOOT_DRIVER(i2c_rockchip) = {
-	.name	= "i2c_rockchip",
+U_BOOT_DRIVER(rockchip_rk3066_i2c) = {
+	.name	= "rockchip_rk3066_i2c",
 	.id	= UCLASS_I2C,
 	.of_match = rockchip_i2c_ids,
-	.ofdata_to_platdata = rockchip_i2c_ofdata_to_platdata,
+	.of_to_plat = rockchip_i2c_of_to_plat,
 	.probe	= rockchip_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct rk_i2c),
+	.priv_auto	= sizeof(struct rk_i2c),
 	.ops	= &rockchip_i2c_ops,
 };
+
+DM_DRIVER_ALIAS(rockchip_rk3066_i2c, rockchip_rk3288_i2c)

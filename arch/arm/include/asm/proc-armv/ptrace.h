@@ -37,6 +37,7 @@ struct pt_regs {
 #define FIQ_MODE	0x11
 #define IRQ_MODE	0x12
 #define SVC_MODE	0x13
+#define MON_MODE	0x16
 #define ABT_MODE	0x17
 #define HYP_MODE	0x1a
 #define UND_MODE	0x1b
@@ -85,7 +86,7 @@ struct pt_regs {
 #define user_mode(regs)	\
 	(((regs)->ARM_cpsr & 0xf) == 0)
 
-#ifdef CONFIG_ARM_THUMB
+#if CONFIG_IS_ENABLED(SYS_THUMB_BUILD)
 #define thumb_mode(regs) \
 	(((regs)->ARM_cpsr & T_BIT))
 #else

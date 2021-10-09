@@ -5,14 +5,19 @@
 
 #include <command.h>
 #include <common.h>
+#include <cpu_func.h>
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+__weak void reset_cpu(void)
 {
-	printf("Put your restart handler here\n");
-
-#ifdef DEBUG
 	/* Stop debug session here */
-	__asm__("brk");
-#endif
+	__builtin_arc_brk();
+}
+
+int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	printf("Resetting the board...\n");
+
+	reset_cpu();
+
 	return 0;
 }

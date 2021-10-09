@@ -11,10 +11,7 @@
 #ifndef __UBOOT_SPI_MEM_H
 #define __UBOOT_SPI_MEM_H
 
-#include <common.h>
-#include <dm.h>
-#include <errno.h>
-#include <spi.h>
+struct udevice;
 
 #define SPI_MEM_OP_CMD(__opcode, __buswidth)			\
 	{							\
@@ -60,10 +57,12 @@
 /**
  * enum spi_mem_data_dir - describes the direction of a SPI memory data
  *			   transfer from the controller perspective
+ * @SPI_MEM_NO_DATA: no data transferred
  * @SPI_MEM_DATA_IN: data coming from the SPI memory
  * @SPI_MEM_DATA_OUT: data sent the SPI memory
  */
 enum spi_mem_data_dir {
+	SPI_MEM_NO_DATA,
 	SPI_MEM_DATA_IN,
 	SPI_MEM_DATA_OUT,
 };
@@ -223,7 +222,7 @@ spi_controller_dma_map_mem_op_data(struct spi_controller *ctlr,
 				   const struct spi_mem_op *op,
 				   struct sg_table *sg)
 {
-	return -ENOTSUPP;
+	return -ENOSYS;
 }
 
 static inline void
@@ -240,6 +239,9 @@ int spi_mem_adjust_op_size(struct spi_slave *slave, struct spi_mem_op *op);
 bool spi_mem_supports_op(struct spi_slave *slave, const struct spi_mem_op *op);
 
 int spi_mem_exec_op(struct spi_slave *slave, const struct spi_mem_op *op);
+
+bool spi_mem_default_supports_op(struct spi_slave *mem,
+				 const struct spi_mem_op *op);
 
 #ifndef __UBOOT__
 int spi_mem_driver_register_with_owner(struct spi_mem_driver *drv,

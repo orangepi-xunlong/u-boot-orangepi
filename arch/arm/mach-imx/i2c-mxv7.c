@@ -6,6 +6,7 @@
 #include <malloc.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/mxc_i2c.h>
@@ -101,7 +102,7 @@ int setup_i2c(unsigned i2c_index, int speed, int slave_addr,
 	if (ret)
 		goto err_idle;
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 	bus_i2c_init(i2c_index, speed, slave_addr, force_idle_bus, p);
 #endif
 

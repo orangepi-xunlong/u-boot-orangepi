@@ -83,6 +83,20 @@ static inline int rsa_add_verify_data(struct image_sign_info *info,
 
 #if IMAGE_ENABLE_VERIFY
 /**
+ * rsa_verify_hash() - Verify a signature against a hash
+ *
+ * Verify a RSA PKCS1.5 signature against an expected hash.
+ *
+ * @info:	Specifies key and FIT information
+ * @hash:	Hash according to algorithm specified in @info
+ * @sig:	Signature
+ * @sig_len:	Number of bytes in signature
+ * @return 0 if verified, -ve on error
+ */
+int rsa_verify_hash(struct image_sign_info *info,
+		    const uint8_t *hash, uint8_t *sig, uint sig_len);
+
+/**
  * rsa_verify() - Verify a signature against some data
  *
  * Verify a RSA PKCS1.5 signature against an expected hash.
@@ -97,14 +111,52 @@ static inline int rsa_add_verify_data(struct image_sign_info *info,
 int rsa_verify(struct image_sign_info *info,
 	       const struct image_region region[], int region_count,
 	       uint8_t *sig, uint sig_len);
+
+int rsa_verify_with_pkey(struct image_sign_info *info,
+			 const void *hash, uint8_t *sig, uint sig_len);
+
+int padding_pkcs_15_verify(struct image_sign_info *info,
+			   uint8_t *msg, int msg_len,
+			   const uint8_t *hash, int hash_len);
+
+#ifdef CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT
+int padding_pss_verify(struct image_sign_info *info,
+		       uint8_t *msg, int msg_len,
+		       const uint8_t *hash, int hash_len);
+#endif /* CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT */
 #else
+static inline int rsa_verify_hash(struct image_sign_info *info,
+				  const uint8_t *hash,
+				  uint8_t *sig, uint sig_len)
+{
+	return -ENXIO;
+}
+
 static inline int rsa_verify(struct image_sign_info *info,
 		const struct image_region region[], int region_count,
 		uint8_t *sig, uint sig_len)
 {
 	return -ENXIO;
 }
+
+static inline int padding_pkcs_15_verify(struct image_sign_info *info,
+					 uint8_t *msg, int msg_len,
+					 const uint8_t *hash, int hash_len)
+{
+	return -ENXIO;
+}
+
+#ifdef CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT
+static inline int padding_pss_verify(struct image_sign_info *info,
+				     uint8_t *msg, int msg_len,
+				     const uint8_t *hash, int hash_len)
+{
+	return -ENXIO;
+}
+#endif /* CONFIG_FIT_ENABLE_RSASSA_PSS_SUPPORT */
 #endif
+
+#define RSA_DEFAULT_PADDING_NAME		"pkcs-1.5"
 
 #define RSA2048_BYTES	(2048 / 8)
 #define RSA4096_BYTES	(4096 / 8)

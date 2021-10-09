@@ -1,4 +1,4 @@
-if TARGET_VEXPRESS64_BASE_FVP || TARGET_VEXPRESS64_JUNO || TARGET_VEXPRESS64_BASE_FVP_DRAM
+if TARGET_VEXPRESS64_BASE_FVP || TARGET_VEXPRESS64_JUNO
 
 config SYS_BOARD
 	default "vexpress64"
@@ -8,5 +8,12 @@ config SYS_VENDOR
 
 config SYS_CONFIG_NAME
 	default "vexpress_aemv8a"
+
+config JUNO_DTB_PART
+	string "NOR flash partition holding DTB"
+	default "board.dtb"
+	help
+	  The ARM partition name in the NOR flash memory holding the
+	  device tree blob to configure U-Boot.
 
 endif

@@ -9,6 +9,10 @@
 #include <common.h>
 #include <hwconfig.h>
 #include <i2c.h>
+#include <init.h>
+#include <net.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <pci.h>
@@ -158,7 +162,7 @@ void pci_init_board(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void fdt_tsec1_fixup(void *fdt, bd_t *bd)
+void fdt_tsec1_fixup(void *fdt, struct bd_info *bd)
 {
 	const char disabled[] = "disabled";
 	const char *path;
@@ -187,7 +191,7 @@ void fdt_tsec1_fixup(void *fdt, bd_t *bd)
 	do_fixup_by_path(fdt, path, "status", disabled, sizeof(disabled), 1);
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
@@ -200,7 +204,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 }
 #endif
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	cpu_eth_init(bis);	/* Initialize TSECs first */
 	return pci_eth_init(bis);
@@ -217,7 +221,7 @@ int checkboard(void)
 void board_init_f(ulong bootflag)
 {
 	board_early_init_f();
-	NS16550_init((NS16550_t)(CONFIG_SYS_IMMR + 0x4500),
+	ns16550_init((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500),
 		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 	puts("NAND boot... ");
 	timer_init();
@@ -237,9 +241,9 @@ void putc(char c)
 		return;
 
 	if (c == '\n')
-		NS16550_putc((NS16550_t)(CONFIG_SYS_IMMR + 0x4500), '\r');
+		ns16550_putc((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500), '\r');
 
-	NS16550_putc((NS16550_t)(CONFIG_SYS_IMMR + 0x4500), c);
+	ns16550_putc((struct ns16550 *)(CONFIG_SYS_IMMR + 0x4500), c);
 }
 
 #endif /* CONFIG_NAND_SPL */

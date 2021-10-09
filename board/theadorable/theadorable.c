@@ -1,20 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2015-2016 Stefan Roese <sr@denx.de>
+ * Copyright (C) 2015-2019 Stefan Roese <sr@denx.de>
  */
 
 #include <common.h>
+#include <command.h>
+#include <console.h>
+#include <dm.h>
 #include <i2c.h>
+#include <init.h>
+#include <net.h>
 #include <pci.h>
+#if !defined(CONFIG_SPL_BUILD)
+#include <bootcount.h>
+#endif
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
-#include <linux/crc8.h>
+#include <linux/delay.h>
 #include <linux/mbus.h>
 #ifdef CONFIG_NET
 #include <netdev.h>
 #endif
+#include <u-boot/crc.h>
 #include "theadorable.h"
 
 #include "../drivers/ddr/marvell/axp/ddr3_hw_training.h"
@@ -42,6 +52,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define STM_I2C_BUS	1
 #define STM_I2C_ADDR	0x27
 #define REBOOT_DELAY	1000		/* reboot-delay in ms */
+#define ABORT_TIMEOUT	3000		/* 3 seconds reboot abort timeout */
 
 /* DDR3 static configuration */
 static MV_DRAM_MC_INIT ddr3_theadorable[MV_MAX_DDR3_STATIC_SIZE] = {
@@ -127,15 +138,27 @@ MV_DRAM_MODES *ddr3_get_static_ddr_mode(void)
 	return &board_ddr_modes[0];
 }
 
-MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	return &theadorable_serdes_cfg[0];
 }
 
 u8 board_sat_r_get(u8 dev_num, u8 reg)
 {
-	/* Bit 0 enables PCI 2.0 link capabilities instead of PCI 1.x */
-	return 0x01;
+	/* Bit x enables PCI 2.0 link capabilities instead of PCI 1.x */
+	return 0xe;	/* PEX port 0 is PCIe Gen1, PEX port 1..3 PCIe Gen2 */
+}
+
+#define PCIE_LNK_CTRL_STAT_2_OFF	0x0090
+#define PCIE_LNK_CTRL_STAT_2_DEEM_BIT	BIT(6)
+
+static void pcie_set_deemphasis(u32 base)
+{
+	u32 reg;
+
+	reg = readl((void *)base + PCIE_LNK_CTRL_STAT_2_OFF);
+	reg |= PCIE_LNK_CTRL_STAT_2_DEEM_BIT;
+	writel(reg, (void *)base + PCIE_LNK_CTRL_STAT_2_OFF);
 }
 
 int board_early_init_f(void)
@@ -158,6 +181,18 @@ int board_early_init_f(void)
 	writel(THEADORABLE_GPP_OUT_ENA_MID, MVEBU_GPIO1_BASE + 0x04);
 	writel(THEADORABLE_GPP_OUT_VAL_HIGH, MVEBU_GPIO2_BASE + 0x00);
 	writel(THEADORABLE_GPP_OUT_ENA_HIGH, MVEBU_GPIO2_BASE + 0x04);
+
+	/*
+	 * Set deephasis bit in the PCIe configuration of both PCIe ports
+	 * used on this board.
+	 *
+	 * This needs to be done very early, even before the SERDES setup
+	 * code is run. This way, the first link will already be established
+	 * with this setup. Testing has shown, that this results in a more
+	 * stable PCIe link with better signal quality.
+	 */
+	pcie_set_deemphasis(MVEBU_REG_PCIE_BASE);		/* Port 0 */
+	pcie_set_deemphasis(MVEBU_REG_PCIE_BASE + 0x2000);	/* Port 2 */
 
 	return 0;
 }
@@ -211,30 +246,14 @@ int checkboard(void)
 }
 
 #ifdef CONFIG_NET
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	cpu_eth_init(bis); /* Built in controller(s) come first */
 	return pci_eth_init(bis);
 }
 #endif
 
-int board_video_init(void)
-{
-	struct mvebu_lcd_info lcd_info;
-
-	/* Reserved memory area via CONFIG_SYS_MEM_TOP_HIDE */
-	lcd_info.fb_base	= gd->ram_size;
-	lcd_info.x_res		= 240;
-	lcd_info.x_fp		= 1;
-	lcd_info.x_bp		= 45;
-	lcd_info.y_res		= 320;
-	lcd_info.y_fp		= 1;
-	lcd_info.y_bp		= 3;
-
-	return mvebu_lcd_register_init(&lcd_info);
-}
-
-#ifdef CONFIG_BOARD_LATE_INIT
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_BOARD_LATE_INIT)
 int board_late_init(void)
 {
 	pci_dev_t bdf;
@@ -248,6 +267,7 @@ int board_late_init(void)
 	 */
 	bdf = pci_find_device(PCI_VENDOR_ID_PLX, 0x8619, 0);
 	if (bdf == -1) {
+		unsigned long start_time = get_timer(0);
 		u8 i2c_buf[8];
 		int ret;
 
@@ -255,6 +275,28 @@ int board_late_init(void)
 		bootcount = bootcount_load();
 		printf("Failed to find PLX PEX-switch (bootcount=%ld)\n",
 		       bootcount);
+
+		/*
+		 * The user can exit this boot-loop in the error case by
+		 * hitting Ctrl-C. So wait some time for this key here.
+		 */
+		printf("Continue booting with Ctrl-C, otherwise rebooting\n");
+		do {
+			/* Handle control-c and timeouts */
+			if (ctrlc()) {
+				printf("PEX error boot-loop aborted!\n");
+				return 0;
+			}
+		} while (get_timer(start_time) < ABORT_TIMEOUT);
+
+
+		/*
+		 * At this stage the bootcounter has not been incremented
+		 * yet. We need to do this manually here to get an actually
+		 * working bootcounter in this error case.
+		 */
+		bootcount_inc();
+
 		if (bootcount > PEX_SWITCH_NOT_FOUNT_LIMIT) {
 			printf("Issuing power-switch via uC!\n");
 
@@ -295,42 +337,107 @@ int board_late_init(void)
 #endif
 
 #if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_PCI)
-int do_pcie_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int pcie_get_link_speed_width(pci_dev_t bdf, int *speed, int *width)
 {
-	pci_dev_t bdf;
+	struct udevice *dev;
 	u16 ven_id, dev_id;
-
-	if (argc != 3)
-		return cmd_usage(cmdtp);
-
-	ven_id = simple_strtoul(argv[1], NULL, 16);
-	dev_id = simple_strtoul(argv[2], NULL, 16);
-
-	printf("Checking for PCIe device: VendorID 0x%04x, DeviceId 0x%04x\n",
-	       ven_id, dev_id);
+	u16 lnksta;
+	int ret;
+	int pos;
 
 	/*
-	 * Check if the PCIe device is detected (somtimes its not available
+	 * Check if the PCIe device is detected (sometimes its not available
 	 * on the PCIe bus)
 	 */
-	bdf = pci_find_device(ven_id, dev_id, 0);
-	if (bdf == -1) {
-		/* PCIe device not found! */
-		printf("Failed to find PCIe device\n");
-	} else {
-		/* PCIe device found! */
-		printf("PCIe device found, resetting board...\n");
+	ret = dm_pci_bus_find_bdf(bdf, &dev);
+	if (ret)
+		return -ENODEV;
 
-		/* default handling: SOFT reset */
-		do_reset(NULL, 0, 0, NULL);
-	}
+	/* PCIe device found */
+	dm_pci_read_config16(dev, PCI_VENDOR_ID, &ven_id);
+	dm_pci_read_config16(dev, PCI_DEVICE_ID, &dev_id);
+	printf("Detected PCIe device: VendorID 0x%04x DeviceId 0x%04x @ BDF %d.%d.%d\n",
+	       ven_id, dev_id, PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
+
+	/* Now read EXP_LNKSTA register */
+	pos = dm_pci_find_capability(dev, PCI_CAP_ID_EXP);
+	dm_pci_read_config16(dev, pos + PCI_EXP_LNKSTA, &lnksta);
+	*speed = lnksta & PCI_EXP_LNKSTA_CLS;
+	*width = (lnksta & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
 
 	return 0;
 }
 
+/*
+ * U-Boot cmd to test for the presence of the directly connected PCIe devices
+ * the theadorable board. This cmd can be used by U-Boot scripts for automated
+ * testing, if the PCIe setup is correct. Meaning, that all PCIe devices are
+ * correctly detected and the link speed and width is corrent.
+ *
+ * Here a short script that may be used for an automated test. It results in
+ * an endless reboot loop, if the PCIe devices are detected correctly. If at
+ * any time a problem is detected (PCIe device not available or link is
+ * incorrect), then booting will halt. So just use this "bootcmd" and let the
+ * board run over a longer time (e.g. one night) and if the board still reboots
+ * after this time, then everything is okay.
+ *
+ * bootcmd=echo bootcount=$bootcount; pcie ;if test $? -eq 0;
+ *         then echo PCIe status okay, resetting...; reset; else;
+ *         echo PCIe status NOT okay, hanging (bootcount=$bootcount); fi;
+ */
+int do_pcie_test(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	pci_dev_t bdf;
+	int speed;
+	int width;
+	int ret;
+
+	if (argc != 1)
+		return cmd_usage(cmdtp);
+
+	/*
+	 * Check if the PCIe device is detected (sometimes its not available
+	 * on the PCIe bus)
+	 */
+
+	/* Check for PCIe device on PCIe port/bus 0 */
+	bdf = PCI_BDF(0, 1, 0);
+	ret = pcie_get_link_speed_width(bdf, &speed, &width);
+	if (ret) {
+		/* PCIe device not found! */
+		printf("Failed to find PCIe device @ BDF %d.%d.%d\n",
+		       PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
+		return CMD_RET_FAILURE;
+	}
+
+	printf("Established speed=%d width=%d\n", speed, width);
+	if ((speed != 1 || width != 1)) {
+		printf("Detected incorrect speed/width!!!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	/* Check for PCIe device on PCIe port/bus 1 */
+	bdf = PCI_BDF(1, 1, 0);
+	ret = pcie_get_link_speed_width(bdf, &speed, &width);
+	if (ret) {
+		/* PCIe device not found! */
+		printf("Failed to find PCIe device @ BDF %d.%d.%d\n",
+		       PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf));
+		return CMD_RET_FAILURE;
+	}
+
+	printf("Established speed=%d width=%d\n", speed, width);
+	if ((speed != 2 || width != 4)) {
+		printf("Detected incorrect speed/width!!!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 U_BOOT_CMD(
-	pcie,   3,   0,     do_pcie_test,
-	"Test for presence of a PCIe device",
-	"<VendorID> <DeviceID>"
+	pcie,   1,   0,     do_pcie_test,
+	"Test for presence of a PCIe devices with correct link",
+	""
 );
 #endif

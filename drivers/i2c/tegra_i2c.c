@@ -9,6 +9,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/io.h>
 #include <clk.h>
 #include <reset.h>
@@ -18,6 +19,8 @@
 #endif
 #include <asm/arch/gpio.h>
 #include <asm/arch-tegra/tegra_i2c.h>
+#include <linux/delay.h>
+#include <linux/err.h>
 
 enum i2c_type {
 	TYPE_114,
@@ -359,7 +362,7 @@ static int tegra_i2c_probe(struct udevice *dev)
 	int ret;
 	bool is_dvc;
 
-	i2c_bus->id = dev->seq;
+	i2c_bus->id = dev_seq(dev);
 	i2c_bus->type = dev_get_driver_data(dev);
 	i2c_bus->regs = (struct i2c_ctlr *)dev_read_addr(dev);
 	if ((ulong)i2c_bus->regs == FDT_ADDR_T_NONE) {
@@ -405,7 +408,8 @@ static int tegra_i2c_probe(struct udevice *dev)
 	}
 	i2c_init_controller(i2c_bus);
 	debug("%s: controller bus %d at %p, speed %d: ",
-	      is_dvc ? "dvc" : "i2c", dev->seq, i2c_bus->regs, i2c_bus->speed);
+	      is_dvc ? "dvc" : "i2c", dev_seq(dev), i2c_bus->regs,
+	      i2c_bus->speed);
 
 	return 0;
 }
@@ -499,18 +503,7 @@ static int tegra_i2c_xfer(struct udevice *bus, struct i2c_msg *msg,
 
 int tegra_i2c_get_dvc_bus(struct udevice **busp)
 {
-	struct udevice *bus;
-
-	for (uclass_first_device(UCLASS_I2C, &bus);
-	     bus;
-	     uclass_next_device(&bus)) {
-		if (dev_get_driver_data(bus) == TYPE_DVC) {
-			*busp = bus;
-			return 0;
-		}
-	}
-
-	return -ENODEV;
+	return uclass_first_device_drvdata(UCLASS_I2C, TYPE_DVC, busp);
 }
 
 static const struct dm_i2c_ops tegra_i2c_ops = {
@@ -531,6 +524,6 @@ U_BOOT_DRIVER(i2c_tegra) = {
 	.id	= UCLASS_I2C,
 	.of_match = tegra_i2c_ids,
 	.probe	= tegra_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct i2c_bus),
+	.priv_auto	= sizeof(struct i2c_bus),
 	.ops	= &tegra_i2c_ops,
 };

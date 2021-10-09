@@ -1,5 +1,16 @@
 if ARM64
 
+config ARMV8_SPL_EXCEPTION_VECTORS
+	bool "Install crash dump exception vectors"
+	depends on SPL
+	default n
+	help
+	  The default exception vector table is only used for the crash
+	  dump, but still takes quite a lot of space in the image size.
+
+	  Say N here if you are running out of code space in the image
+	  and want to save some space at the cost of less debugging info.
+
 config ARMV8_MULTIENTRY
         bool "Enable multiple CPUs to enter into U-Boot"
 
@@ -44,8 +55,8 @@ config ARMV8_SPIN_TABLE
 menu "ARMv8 secure monitor firmware"
 config ARMV8_SEC_FIRMWARE_SUPPORT
 	bool "Enable ARMv8 secure monitor firmware framework support"
-	select OF_LIBFDT
 	select FIT
+	select OF_LIBFDT
 	help
 	  This framework is aimed at making secure monitor firmware load
 	  process brief.
@@ -54,16 +65,22 @@ config ARMV8_SEC_FIRMWARE_SUPPORT
 	    - Address of secure firmware.
 	    - Address to hold the return address from secure firmware.
 	    - Secure firmware FIT image related information.
-	      Such as: SEC_FIRMWARE_FIT_IMAGE and SEC_FIRMEWARE_FIT_CNF_NAME
+	      Such as: SEC_FIRMWARE_FIT_IMAGE and SEC_FIRMWARE_FIT_CNF_NAME
 	    - The target exception level that secure monitor firmware will
 	      return to.
 
 config SPL_ARMV8_SEC_FIRMWARE_SUPPORT
 	bool "Enable ARMv8 secure monitor firmware framework support for SPL"
-	select SPL_OF_LIBFDT
 	select SPL_FIT
+	select SPL_OF_LIBFDT
 	help
 	  Say Y here to support this framework in SPL phase.
+
+config SPL_RECOVER_DATA_SECTION
+	bool "save/restore SPL data section"
+	help
+	  Say Y here to save SPL data section for cold boot, and restore
+	  at warm boot in SPL phase.
 
 config SEC_FIRMWARE_ARMV8_PSCI
 	bool "PSCI implementation in secure monitor firmware"
@@ -85,16 +102,21 @@ endmenu
 config PSCI_RESET
 	bool "Use PSCI for reset and shutdown"
 	default y
+	select ARM_SMCCC if OF_CONTROL
 	depends on !ARCH_EXYNOS7 && !ARCH_BCM283X && \
-		   !TARGET_LS2080A_SIMU && !TARGET_LS2080AQDS && \
+		   !TARGET_LS2080AQDS && \
 		   !TARGET_LS2080ARDB && !TARGET_LS2080A_EMU && \
 		   !TARGET_LS1088ARDB && !TARGET_LS1088AQDS && \
 		   !TARGET_LS1012ARDB && !TARGET_LS1012AFRDM && \
 		   !TARGET_LS1012A2G5RDB && !TARGET_LS1012AQDS && \
+		   !TARGET_LS1012AFRWY && \
+		   !TARGET_LS1028ARDB && !TARGET_LS1028AQDS && \
 		   !TARGET_LS1043ARDB && !TARGET_LS1043AQDS && \
 		   !TARGET_LS1046ARDB && !TARGET_LS1046AQDS && \
-		   !TARGET_LS2081ARDB && \
-		   !ARCH_UNIPHIER && !TARGET_S32V234EVB
+		   !TARGET_LS1046AFRWY && \
+		   !TARGET_LS2081ARDB && !TARGET_LX2160ARDB && \
+		   !TARGET_LX2160AQDS && !TARGET_LX2162AQDS && \
+		   !ARCH_UNIPHIER
 	help
 	  Most armv8 systems have PSCI support enabled in EL3, either through
 	  ARM Trusted Firmware or other firmware.
@@ -131,6 +153,13 @@ config ARMV8_PSCI_CPUS_PER_CLUSTER
 	  of CPU cores, platforms with asymmetric clusters don't apply here.
 	  A value 0 or no definition of it works for single cluster system.
 	  System with multi-cluster should difine their own exact value.
+
+config ARMV8_EA_EL3_FIRST
+	bool "External aborts and SError interrupt exception are taken in EL3"
+	default n
+	help
+	  Exception handling at all exception levels for External Abort and
+	  SError interrupt exception are taken in EL3.
 
 if SYS_HAS_ARMV8_SECURE_BASE
 

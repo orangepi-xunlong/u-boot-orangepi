@@ -7,8 +7,10 @@
 #include <dm.h>
 #include <errno.h>
 #include <led.h>
+#include <log.h>
 #include <asm/io.h>
 #include <dm/lists.h>
+#include <linux/delay.h>
 
 #define LEDS_MAX		32
 #define LEDS_WAIT		100
@@ -30,8 +32,6 @@
 #define LED_CTRL_POL_MASK	(1 << LED_CTRL_POL_SHIFT)
 #define LED_CTRL_BUSY_SHIFT	3
 #define LED_CTRL_BUSY_MASK	(1 << LED_CTRL_BUSY_SHIFT)
-
-DECLARE_GLOBAL_DATA_PTR;
 
 struct bcm6358_led_priv {
 	void __iomem *regs;
@@ -113,9 +113,7 @@ static const struct led_ops bcm6358_led_ops = {
 
 static int bcm6358_led_probe(struct udevice *dev)
 {
-	struct led_uc_plat *uc_plat = dev_get_uclass_platdata(dev);
-	fdt_addr_t addr;
-	fdt_size_t size;
+	struct led_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 
 	/* Top-level LED node */
 	if (!uc_plat->label) {
@@ -123,17 +121,14 @@ static int bcm6358_led_probe(struct udevice *dev)
 		unsigned int clk_div;
 		u32 set_bits = 0;
 
-		addr = devfdt_get_addr_size_index(dev, 0, &size);
-		if (addr == FDT_ADDR_T_NONE)
+		regs = dev_remap_addr(dev);
+		if (!regs)
 			return -EINVAL;
 
-		regs = ioremap(addr, size);
-
-		if (fdtdec_get_bool(gd->fdt_blob, dev_of_offset(dev),
-				    "brcm,clk-dat-low"))
+		if (dev_read_bool(dev, "brcm,clk-dat-low"))
 			set_bits |= LED_CTRL_POL_MASK;
-		clk_div = fdtdec_get_uint(gd->fdt_blob, dev_of_offset(dev),
-					  "brcm,clk-div", LED_CTRL_CLK_1);
+		clk_div = dev_read_u32_default(dev, "brcm,clk-div",
+					       LED_CTRL_CLK_1);
 		switch (clk_div) {
 		case 8:
 			set_bits |= LED_CTRL_CLK_8;
@@ -157,21 +152,17 @@ static int bcm6358_led_probe(struct udevice *dev)
 		struct bcm6358_led_priv *priv = dev_get_priv(dev);
 		unsigned int pin;
 
-		addr = devfdt_get_addr_size_index(dev_get_parent(dev), 0,
-						  &size);
-		if (addr == FDT_ADDR_T_NONE)
+		priv->regs = dev_remap_addr(dev);
+		if (!priv->regs)
 			return -EINVAL;
 
-		pin = fdtdec_get_uint(gd->fdt_blob, dev_of_offset(dev), "reg",
-				      LEDS_MAX);
+		pin = dev_read_u32_default(dev, "reg", LEDS_MAX);
 		if (pin >= LEDS_MAX)
 			return -EINVAL;
 
-		priv->regs = ioremap(addr, size);
 		priv->pin = pin;
 
-		if (fdtdec_get_bool(gd->fdt_blob, dev_of_offset(dev),
-				    "active-low"))
+		if (dev_read_bool(dev, "active-low"))
 			priv->active_low = true;
 	}
 
@@ -180,31 +171,28 @@ static int bcm6358_led_probe(struct udevice *dev)
 
 static int bcm6358_led_bind(struct udevice *parent)
 {
-	const void *blob = gd->fdt_blob;
-	int node;
+	ofnode node;
 
-	for (node = fdt_first_subnode(blob, dev_of_offset(parent));
-	     node > 0;
-	     node = fdt_next_subnode(blob, node)) {
+	dev_for_each_subnode(node, parent) {
 		struct led_uc_plat *uc_plat;
 		struct udevice *dev;
 		const char *label;
 		int ret;
 
-		label = fdt_getprop(blob, node, "label", NULL);
+		label = ofnode_read_string(node, "label");
 		if (!label) {
 			debug("%s: node %s has no label\n", __func__,
-			      fdt_get_name(blob, node, NULL));
+			      ofnode_get_name(node));
 			return -EINVAL;
 		}
 
 		ret = device_bind_driver_to_node(parent, "bcm6358-led",
-						 fdt_get_name(blob, node, NULL),
-						 offset_to_ofnode(node), &dev);
+						 ofnode_get_name(node),
+						 node, &dev);
 		if (ret)
 			return ret;
 
-		uc_plat = dev_get_uclass_platdata(dev);
+		uc_plat = dev_get_uclass_plat(dev);
 		uc_plat->label = label;
 	}
 
@@ -222,6 +210,6 @@ U_BOOT_DRIVER(bcm6358_led) = {
 	.of_match = bcm6358_led_ids,
 	.bind = bcm6358_led_bind,
 	.probe = bcm6358_led_probe,
-	.priv_auto_alloc_size = sizeof(struct bcm6358_led_priv),
+	.priv_auto	= sizeof(struct bcm6358_led_priv),
 	.ops = &bcm6358_led_ops,
 };

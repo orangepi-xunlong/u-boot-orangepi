@@ -8,27 +8,13 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include "../board/xilinx/microblaze-generic/xparameters.h"
+/* Microblaze is microblaze_0 */
+#define XILINX_FSL_NUMBER	3
 
 /* MicroBlaze CPU */
 #define	MICROBLAZE_V5		1
 
-/* linear and spi flash memory */
-#ifdef XILINX_FLASH_START
-#define	FLASH
-#undef	SPIFLASH
-#undef	RAMENV	/* hold environment in flash */
-#else
-#ifdef XILINX_SPI_FLASH_BASEADDR
-#undef	FLASH
-#define	SPIFLASH
-#undef	RAMENV	/* hold environment in flash */
-#else
-#undef	FLASH
-#undef	SPIFLASH
-#define	RAMENV	/* hold environment in RAM */
-#endif
-#endif
+#define CONFIG_SYS_BOOTM_LEN	(64 * 1024 * 1024)
 
 /* uart */
 /* The following table includes the supported baudrates */
@@ -38,112 +24,23 @@
 /* setting reset address */
 /*#define	CONFIG_SYS_RESET_ADDRESS	CONFIG_SYS_TEXT_BASE*/
 
-/* gpio */
-#ifdef XILINX_GPIO_BASEADDR
-# define CONFIG_SYS_GPIO_0_ADDR		XILINX_GPIO_BASEADDR
-#endif
-
-/* watchdog */
-#if defined(XILINX_WATCHDOG_BASEADDR) && defined(XILINX_WATCHDOG_IRQ)
-# define CONFIG_WATCHDOG_BASEADDR	XILINX_WATCHDOG_BASEADDR
-# define CONFIG_WATCHDOG_IRQ		XILINX_WATCHDOG_IRQ
-# ifndef CONFIG_SPL_BUILD
-#  define CONFIG_HW_WATCHDOG
-#  define CONFIG_XILINX_TB_WATCHDOG
-# endif
-#endif
-
 #define CONFIG_SYS_MALLOC_LEN	0xC0000
 
 /* Stack location before relocation */
 #define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_TEXT_BASE - \
 					 CONFIG_SYS_MALLOC_F_LEN)
 
-/*
- * CFI flash memory layout - Example
- * CONFIG_SYS_FLASH_BASE = 0x2200_0000;
- * CONFIG_SYS_FLASH_SIZE = 0x0080_0000;	  8MB
- *
- * SECT_SIZE = 0x20000;			128kB is one sector
- * CONFIG_ENV_SIZE = SECT_SIZE;		128kB environment store
- *
- * 0x2200_0000	CONFIG_SYS_FLASH_BASE
- *					FREE		256kB
- * 0x2204_0000	CONFIG_ENV_ADDR
- *					ENV_AREA	128kB
- * 0x2206_0000
- *					FREE
- * 0x2280_0000	CONFIG_SYS_FLASH_BASE + CONFIG_SYS_FLASH_SIZE
- *
- */
-
-#ifdef FLASH
-# define CONFIG_SYS_FLASH_BASE		XILINX_FLASH_START
-# define CONFIG_SYS_FLASH_SIZE		XILINX_FLASH_SIZE
-# define CONFIG_SYS_FLASH_CFI		1
-# define CONFIG_FLASH_CFI_DRIVER	1
+#ifdef CONFIG_CFI_FLASH
 /* ?empty sector */
 # define CONFIG_SYS_FLASH_EMPTY_INFO	1
 /* max number of memory banks */
 # define CONFIG_SYS_MAX_FLASH_BANKS	1
 /* max number of sectors on one chip */
-# define CONFIG_SYS_MAX_FLASH_SECT	512
-/* hardware flash protection */
-# define CONFIG_SYS_FLASH_PROTECTION
-/* use buffered writes (20x faster) */
-# define	CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
-# ifdef	RAMENV
-#  define CONFIG_ENV_SIZE	0x1000
-#  define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
-
-# else	/* FLASH && !RAMENV */
-/* 128K(one sector) for env */
-#  define CONFIG_ENV_SECT_SIZE	0x20000
-#  define CONFIG_ENV_ADDR \
-			(CONFIG_SYS_FLASH_BASE + (2 * CONFIG_ENV_SECT_SIZE))
-#  define CONFIG_ENV_SIZE	0x20000
-# endif /* FLASH && !RAMBOOT */
-#else /* !FLASH */
-
-#ifdef SPIFLASH
-# define CONFIG_SYS_SPI_BASE		XILINX_SPI_FLASH_BASEADDR
-# define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
-# define CONFIG_SF_DEFAULT_SPEED	XILINX_SPI_FLASH_MAX_FREQ
-# define CONFIG_SF_DEFAULT_CS		XILINX_SPI_FLASH_CS
-
-# ifdef	RAMENV
-#  define CONFIG_ENV_SIZE	0x1000
-#  define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
-
-# else	/* SPIFLASH && !RAMENV */
-#  define CONFIG_ENV_SPI_MODE		SPI_MODE_3
-#  define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#  define CONFIG_ENV_SPI_CS		CONFIG_SF_DEFAULT_CS
-/* 128K(two sectors) for env */
-#  define CONFIG_ENV_SECT_SIZE	0x10000
-#  define CONFIG_ENV_SIZE	(2 * CONFIG_ENV_SECT_SIZE)
-/* Warning: adjust the offset in respect of other flash content and size */
-#  define CONFIG_ENV_OFFSET	(128 * CONFIG_ENV_SECT_SIZE) /* at 8MB */
-# endif /* SPIFLASH && !RAMBOOT */
-#else /* !SPIFLASH */
-
-/* ENV in RAM */
-# define CONFIG_ENV_SIZE	0x1000
-# define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
-#endif /* !SPIFLASH */
-#endif /* !FLASH */
-
-#if defined(XILINX_USE_ICACHE)
-# define CONFIG_ICACHE
-#else
-# undef CONFIG_ICACHE
+# define CONFIG_SYS_MAX_FLASH_SECT	2048
 #endif
 
-#if defined(XILINX_USE_DCACHE)
-# define CONFIG_DCACHE
-#else
-# undef CONFIG_DCACHE
-#endif
+#define CONFIG_ICACHE
+#define CONFIG_DCACHE
 
 #ifndef XILINX_DCACHE_BYTE_SIZE
 #define XILINX_DCACHE_BYTE_SIZE	32768
@@ -154,22 +51,6 @@
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
 
-#if defined(CONFIG_CMD_JFFS2)
-# define CONFIG_MTD_PARTITIONS
-#endif
-
-#if defined(CONFIG_CMD_UBI)
-# define CONFIG_MTD_PARTITIONS
-#endif
-
-#if defined(CONFIG_MTD_PARTITIONS)
-/* MTD partitions */
-#define CONFIG_MTD_DEVICE	/* needed for mtdparts commands */
-#define CONFIG_FLASH_CFI_MTD
-
-/* default mtd partition table */
-#endif
-
 /* size of console buffer */
 #define	CONFIG_SYS_CBSIZE	512
 /* max number of command args */
@@ -178,46 +59,96 @@
 #define	CONFIG_SYS_LOAD_ADDR	0
 
 #define	CONFIG_HOSTNAME		"microblaze-generic"
-#define	CONFIG_BOOTCOMMAND	"base 0;tftp 11000000 image.img;bootm"
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
 
-#define	CONFIG_PREBOOT	"echo U-BOOT for ${hostname};setenv preboot;echo"
-
-#ifndef CONFIG_EXTRA_ENV_SETTINGS
-#define	CONFIG_EXTRA_ENV_SETTINGS	"unlock=yes\0" \
-					"nor0=flash-0\0"\
-					"mtdparts=mtdparts=flash-0:"\
-					"256k(u-boot),256k(env),3m(kernel),"\
-					"1m(romfs),1m(cramfs),-(jffs2)\0"\
-					"nc=setenv stdout nc;"\
-					"setenv stdin nc\0" \
-					"serial=setenv stdout serial;"\
-					"setenv stdin serial\0"
+#if defined(CONFIG_CMD_PXE) && defined(CONFIG_CMD_DHCP)
+#define BOOT_TARGET_DEVICES_PXE(func)	func(PXE, pxe, na)
+#else
+#define BOOT_TARGET_DEVICES_PXE(func)
 #endif
 
-/* Enable flat device tree support */
-#define CONFIG_LMB		1
+#if defined(CONFIG_CMD_DHCP)
+#define BOOT_TARGET_DEVICES_DHCP(func)	func(DHCP, dhcp, na)
+#else
+#define BOOT_TARGET_DEVICES_DHCP(func)
+#endif
+
+#if defined(CONFIG_SPI_FLASH)
+# define BOOT_TARGET_DEVICES_QSPI(func) func(QSPI, qspi, na)
+#else
+# define BOOT_TARGET_DEVICES_QSPI(func)
+#endif
+
+#if defined(CONFIG_MTD_NOR_FLASH)
+# define BOOT_TARGET_DEVICES_NOR(func)  func(NOR, nor, na)
+#else
+# define BOOT_TARGET_DEVICES_NOR(func)
+#endif
+
+#define BOOTENV_DEV_NOR(devtypeu, devtypel, instance) \
+	"bootcmd_nor=cp.b ${script_offset_nor} ${scriptaddr} ${script_size_f} && " \
+		"echo NOR: Trying to boot script at ${scriptaddr} && " \
+		"source ${scriptaddr}; echo NOR: SCRIPT FAILED: continuing...;\0"
+
+#define BOOTENV_DEV_NAME_NOR(devtypeu, devtypel, instance) \
+	"nor "
+
+#define BOOTENV_DEV_QSPI(devtypeu, devtypel, instance) \
+	"bootcmd_qspi=sf probe 0 0 0 && " \
+	"sf read ${scriptaddr} ${script_offset_f} ${script_size_f} && " \
+	"echo QSPI: Trying to boot script at ${scriptaddr} && " \
+	"source ${scriptaddr}; echo QSPI: SCRIPT FAILED: continuing...;\0"
+
+#define BOOTENV_DEV_NAME_QSPI(devtypeu, devtypel, instance) \
+	"qspi "
+
+#define BOOT_TARGET_DEVICES_JTAG(func)	func(JTAG, jtag, na)
+
+#define BOOTENV_DEV_JTAG(devtypeu, devtypel, instance) \
+	"bootcmd_jtag=echo JTAG: Trying to boot script at ${scriptaddr} && " \
+		"source ${scriptaddr}; echo JTAG: SCRIPT FAILED: continuing...;\0"
+
+#define BOOTENV_DEV_NAME_JTAG(devtypeu, devtypel, instance) \
+	"jtag "
+
+#define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_DEVICES_JTAG(func) \
+	BOOT_TARGET_DEVICES_QSPI(func) \
+	BOOT_TARGET_DEVICES_NOR(func) \
+	BOOT_TARGET_DEVICES_DHCP(func) \
+	BOOT_TARGET_DEVICES_PXE(func)
+
+#include <config_distro_bootcmd.h>
+
+#ifndef CONFIG_EXTRA_ENV_SETTINGS
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"unlock=yes\0"\
+	"nor0=flash-0\0"\
+	"mtdparts=mtdparts=flash-0:"\
+	"256k(u-boot),256k(env),3m(kernel),"\
+	"1m(romfs),1m(cramfs),-(jffs2)\0"\
+	"nc=setenv stdout nc;"\
+	"setenv stdin nc\0" \
+	"serial=setenv stdout serial;"\
+	"setenv stdin serial\0"\
+	"script_size_f=0x40000\0"\
+	BOOTENV
+#endif
 
 #if defined(CONFIG_XILINX_AXIEMAC)
-# define CONFIG_MII		1
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1
-#else
-# undef CONFIG_MII
 #endif
 
 /* SPL part */
 
-#ifdef CONFIG_SYS_FLASH_BASE
-# define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_FLASH_BASE
-#endif
+#define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_TEXT_BASE
 
 /* for booting directly linux */
+#define CONFIG_SYS_FDT_BASE		(CONFIG_SYS_TEXT_BASE + \
+					0x40000)
 
-#define CONFIG_SYS_FDT_BASE		(CONFIG_SYS_FLASH_BASE + \
-					 0x40000)
-#define CONFIG_SYS_FDT_SIZE		(16<<10)
 #define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_TEXT_BASE + \
 					 0x1000000)
 
@@ -228,13 +159,10 @@
 #define CONFIG_SYS_INIT_RAM_SIZE	0x100000
 
 # define CONFIG_SPL_STACK_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
-					 CONFIG_SYS_INIT_RAM_SIZE - \
-					 CONFIG_SYS_MALLOC_F_LEN)
+					 CONFIG_SYS_INIT_RAM_SIZE)
 
 /* Just for sure that there is a space for stack */
 #define CONFIG_SPL_STACK_SIZE		0x100
-
-#define CONFIG_SYS_UBOOT_START		CONFIG_SYS_TEXT_BASE
 
 #define CONFIG_SPL_MAX_FOOTPRINT	(CONFIG_SYS_INIT_RAM_SIZE - \
 					 CONFIG_SYS_INIT_RAM_ADDR - \

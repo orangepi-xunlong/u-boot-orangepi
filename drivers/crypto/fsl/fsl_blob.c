@@ -5,9 +5,12 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <fsl_sec.h>
+#include <asm/cache.h>
 #include <linux/errno.h>
 #include "jobdesc.h"
 #include "desc.h"
@@ -61,6 +64,9 @@ int blob_decap(u8 *key_mod, u8 *src, u8 *dst, u32 len)
 	size = ALIGN(sizeof(int) * MAX_CAAM_DESCSIZE, ARCH_DMA_MINALIGN);
 	flush_dcache_range((unsigned long)desc,
 			   (unsigned long)desc + size);
+
+	flush_dcache_range((unsigned long)dst,
+			   (unsigned long)dst + size);
 
 	ret = run_descriptor_jr(desc);
 
@@ -126,6 +132,9 @@ int blob_encap(u8 *key_mod, u8 *src, u8 *dst, u32 len)
 	size = ALIGN(sizeof(int) * MAX_CAAM_DESCSIZE, ARCH_DMA_MINALIGN);
 	flush_dcache_range((unsigned long)desc,
 			   (unsigned long)desc + size);
+
+	flush_dcache_range((unsigned long)dst,
+			   (unsigned long)dst + size);
 
 	ret = run_descriptor_jr(desc);
 

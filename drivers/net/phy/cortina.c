@@ -3,14 +3,16 @@
  * Cortina CS4315/CS4340 10G PHY drivers
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2018 NXP
+ * Copyright 2018, 2020 NXP
  *
  */
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
 #include <malloc.h>
 #include <linux/ctype.h>
+#include <linux/delay.h>
 #include <linux/string.h>
 #include <linux/err.h>
 #include <phy.h>
@@ -27,7 +29,7 @@
 #error The Cortina PHY needs 10G support
 #endif
 
-#ifndef CORTINA_NO_FW_UPLOAD
+#ifndef CONFIG_SYS_CORTINA_NO_FW_UPLOAD
 struct cortina_reg_config cortina_reg_cfg[] = {
 	/* CS4315_enable_sr_mode */
 	{VILLA_GLOBAL_MSEQCLKCTRL, 0x8004},
@@ -176,8 +178,13 @@ void cs4340_upload_firmware(struct phy_device *phydev)
 		printf("MMC read: dev # %u, block # %u, count %u ...\n",
 		       dev, blk, cnt);
 		mmc_init(mmc);
+#ifdef CONFIG_BLK
+		(void)blk_dread(mmc_get_blk_desc(mmc), blk, cnt,
+						addr);
+#else
 		(void)mmc->block_dev.block_read(&mmc->block_dev, blk, cnt,
 						addr);
+#endif
 	}
 #endif
 
@@ -220,7 +227,7 @@ void cs4340_upload_firmware(struct phy_device *phydev)
 
 int cs4340_phy_init(struct phy_device *phydev)
 {
-#ifndef CORTINA_NO_FW_UPLOAD
+#ifndef CONFIG_SYS_CORTINA_NO_FW_UPLOAD
 	int timeout = 100;  /* 100ms */
 #endif
 	int reg_value;
@@ -231,7 +238,7 @@ int cs4340_phy_init(struct phy_device *phydev)
 	 * Boards designed with EEPROM attached to Cortina
 	 * does not require FW upload.
 	 */
-#ifndef CORTINA_NO_FW_UPLOAD
+#ifndef CONFIG_SYS_CORTINA_NO_FW_UPLOAD
 	/* step1: BIST test */
 	phy_write(phydev, 0x00, VILLA_GLOBAL_MSEQCLKCTRL,     0x0004);
 	phy_write(phydev, 0x00, VILLA_GLOBAL_LINE_SOFT_RESET, 0x0000);
@@ -284,6 +291,38 @@ int cs4340_startup(struct phy_device *phydev)
 	return 0;
 }
 
+int cs4223_phy_init(struct phy_device *phydev)
+{
+	int reg_value;
+
+	reg_value = phy_read(phydev, 0x00, CS4223_EEPROM_STATUS);
+	if (!(reg_value & CS4223_EEPROM_FIRMWARE_LOADDONE)) {
+		printf("%s CS4223 Firmware not present in EERPOM\n", __func__);
+		return -ENOSYS;
+	}
+
+	return 0;
+}
+
+int cs4223_config(struct phy_device *phydev)
+{
+	return cs4223_phy_init(phydev);
+}
+
+int cs4223_probe(struct phy_device *phydev)
+{
+	phydev->flags = PHY_FLAG_BROKEN_RESET;
+	return 0;
+}
+
+int cs4223_startup(struct phy_device *phydev)
+{
+	phydev->link = 1;
+	phydev->speed = SPEED_10000;
+	phydev->duplex = DUPLEX_FULL;
+	return 0;
+}
+
 struct phy_driver cs4340_driver = {
 	.name = "Cortina CS4315/CS4340",
 	.uid = PHY_UID_CS4340,
@@ -298,9 +337,23 @@ struct phy_driver cs4340_driver = {
 	.shutdown = &gen10g_shutdown,
 };
 
+struct phy_driver cs4223_driver = {
+	.name = "Cortina CS4223",
+	.uid = PHY_UID_CS4223,
+	.mask = 0x0ffff00f,
+	.features = PHY_10G_FEATURES,
+	.mmds = (MDIO_DEVS_PMAPMD | MDIO_DEVS_PCS |
+		 MDIO_DEVS_AN),
+	.config = &cs4223_config,
+	.probe	= &cs4223_probe,
+	.startup = &cs4223_startup,
+	.shutdown = &gen10g_shutdown,
+};
+
 int phy_cortina_init(void)
 {
 	phy_register(&cs4340_driver);
+	phy_register(&cs4223_driver);
 	return 0;
 }
 
@@ -319,7 +372,7 @@ int get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id)
 		return -EIO;
 	*phy_id |= (phy_reg & 0xffff);
 
-	if (*phy_id == PHY_UID_CS4340)
+	if ((*phy_id == PHY_UID_CS4340) || (*phy_id == PHY_UID_CS4223))
 		return 0;
 
 	/*

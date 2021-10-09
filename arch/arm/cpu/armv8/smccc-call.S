@@ -6,6 +6,10 @@
 #include <linux/arm-smccc.h>
 #include <generated/asm-offsets.h>
 
+#ifdef CONFIG_EFI_LOADER
+	.section	.text.efi_runtime
+#endif
+
 	.macro SMCCC instr
 	.cfi_startproc
 	\instr	#0

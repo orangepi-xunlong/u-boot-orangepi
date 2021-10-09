@@ -131,7 +131,8 @@ _start:
 	 * then (and always) gd struct space will be reserved
 	 */
 	move.l	%sp, -(%sp)
-	bsr	board_init_f_alloc_reserve
+	move.l	#board_init_f_alloc_reserve, %a1
+	jsr	(%a1)
 
 	/* update stack and frame-pointers */
 	move.l  %d0, %sp
@@ -139,7 +140,8 @@ _start:
 
 	/* initialize reserved area */
 	move.l	%d0, -(%sp)
-	bsr	board_init_f_init_reserve
+	move.l	#board_init_f_init_reserve, %a1
+	jsr	(%a1)
 
 	/* run low-level CPU init code (from flash) */
 	jbsr	cpu_init_f
@@ -153,7 +155,7 @@ _start:
 /******************************************************************************/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.

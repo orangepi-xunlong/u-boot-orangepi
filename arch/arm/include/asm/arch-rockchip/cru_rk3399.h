@@ -6,11 +6,9 @@
 #ifndef __ASM_ARCH_CRU_RK3399_H_
 #define __ASM_ARCH_CRU_RK3399_H_
 
-#include <common.h>
-
 /* Private data for the clock driver - used by rockchip_get_cru() */
 struct rk3399_clk_priv {
-	struct rk3399_cru *cru;
+	struct rockchip_cru *cru;
 };
 
 struct rk3399_pmuclk_priv {
@@ -33,7 +31,7 @@ struct rk3399_pmucru {
 };
 check_member(rk3399_pmucru, pmucru_gatedis_con[1], 0x134);
 
-struct rk3399_cru {
+struct rockchip_cru {
 	u32 apll_l_con[6];
 	u32 reserved[2];
 	u32 apll_b_con[6];
@@ -65,20 +63,24 @@ struct rk3399_cru {
 	u32 sdio0_con[2];
 	u32 sdio1_con[2];
 };
-check_member(rk3399_cru, sdio1_con[1], 0x594);
-#define MHz		1000000
+check_member(rockchip_cru, sdio1_con[1], 0x594);
 #define KHz		1000
 #define OSC_HZ		(24*MHz)
-#define APLL_HZ		(600*MHz)
+#define LPLL_HZ		(600*MHz)
+#define BPLL_HZ		(600*MHz)
 #define GPLL_HZ		(594*MHz)
 #define CPLL_HZ		(384*MHz)
 #define PPLL_HZ		(676*MHz)
 
 #define PMU_PCLK_HZ	(48*MHz)
 
-#define ACLKM_CORE_HZ	(300*MHz)
-#define ATCLK_CORE_HZ	(300*MHz)
-#define PCLK_DBG_HZ	(100*MHz)
+#define ACLKM_CORE_L_HZ	(300*MHz)
+#define ATCLK_CORE_L_HZ	(300*MHz)
+#define PCLK_DBG_L_HZ	(100*MHz)
+
+#define ACLKM_CORE_B_HZ	(300*MHz)
+#define ATCLK_CORE_B_HZ	(300*MHz)
+#define PCLK_DBG_B_HZ	(100*MHz)
 
 #define PERIHP_ACLK_HZ	(148500*KHz)
 #define PERIHP_HCLK_HZ	(148500*KHz)
@@ -97,5 +99,14 @@ enum apll_l_frequencies {
 	APLL_L_1600_MHZ,
 	APLL_L_600_MHZ,
 };
+
+enum apll_b_frequencies {
+	APLL_B_600_MHZ,
+};
+
+void rk3399_configure_cpu_l(struct rockchip_cru *cru,
+			    enum apll_l_frequencies apll_l_freq);
+void rk3399_configure_cpu_b(struct rockchip_cru *cru,
+			    enum apll_b_frequencies apll_b_freq);
 
 #endif	/* __ASM_ARCH_CRU_RK3399_H_ */

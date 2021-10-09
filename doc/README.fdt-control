@@ -56,7 +56,11 @@ In case you are wondering, OF stands for Open Firmware.
 Tools
 -----
 
-To use this feature you will need to get the device tree compiler here:
+To use this feature you will need to get the device tree compiler. This is
+provided by U-Boot automatically. If you have a system version of dtc
+(typically in the 'device-tree-compiler' package), it is currently not used.
+
+If you want to build your own dtc, it is kept here:
 
 	git://git.kernel.org/pub/scm/utils/dtc/dtc.git
 
@@ -118,13 +122,14 @@ the U-Boot image (including u-boot.bin). This is suitable for debugging
 and development only and is not recommended for production devices.
 
 If CONFIG_OF_SEPARATE is defined, then it will be built and placed in
-a u-boot.dtb file alongside u-boot.bin. A common approach is then to
+a u-boot.dtb file alongside u-boot-nodtb.bin. A common approach is then to
 join the two:
 
-	cat u-boot.bin u-boot.dtb >image.bin
+	cat u-boot-nodtb.bin u-boot.dtb >image.bin
 
 and then flash image.bin onto your board. Note that U-Boot creates
-u-boot-dtb.bin which does the above step for you also. If you are using
+u-boot-dtb.bin which does the above step for you also. Resulting
+u-boot.bin is a copy of u-boot-dtb.bin in this case. If you are using
 CONFIG_SPL_FRAMEWORK, then u-boot.img will be built to include the device
 tree binary.
 
@@ -168,6 +173,34 @@ After board configuration is done, fdt supported u-boot can be build in two ways
     $ make
 2)  build the user specified dts file
     $ make DEVICE_TREE=<dts-file-name>
+
+
+Relocation, SPL and TPL
+-----------------------
+
+U-Boot can be divided into three phases: TPL, SPL and U-Boot proper.
+
+The full device tree is available to U-Boot proper, but normally only a subset
+(or none at all) is available to TPL and SPL. See 'Pre-Relocation Support' and
+'SPL Support' in doc/driver-model/design.rst for more details.
+
+
+Using several DTBs in the SPL (CONFIG_SPL_MULTI_DTB)
+----------------------------------------------------
+In some rare cases it is desirable to let SPL be able to select one DTB among
+many. This usually not very useful as the DTB for the SPL is small and usually
+fits several platforms. However the DTB sometimes include information that do
+work on several platforms (like IO tuning parameters).
+In this case it is possible to use CONFIG_SPL_MULTI_DTB. This option appends to
+the SPL a FIT image containing several DTBs listed in SPL_OF_LIST.
+board_fit_config_name_match() is called to select the right DTB.
+
+If board_fit_config_name_match() relies on DM (DM driver to access an EEPROM
+containing the board ID for example), it possible to start with a generic DTB
+and then switch over to the right DTB after the detection. For this purpose,
+the platform code must call fdtdec_resetup(). Based on the returned flag, the
+platform may have to re-initiliaze the DM subusystem using dm_uninit() and
+dm_init_and_scan().
 
 
 Limitations

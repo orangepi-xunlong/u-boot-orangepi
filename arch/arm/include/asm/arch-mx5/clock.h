@@ -7,8 +7,6 @@
 #ifndef __ASM_ARCH_CLOCK_H
 #define __ASM_ARCH_CLOCK_H
 
-#include <common.h>
-
 #ifdef CONFIG_SYS_MX5_HCLK
 #define MXC_HCLK	CONFIG_SYS_MX5_HCLK
 #else
@@ -38,6 +36,7 @@ enum mxc_clock {
 	MXC_NFC_CLK,
 	MXC_PERIPH_CLK,
 	MXC_I2C_CLK,
+	MXC_LDB_CLK,
 };
 
 u32 imx_get_uartclk(void);

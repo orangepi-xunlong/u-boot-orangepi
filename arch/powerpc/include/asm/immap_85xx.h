@@ -272,6 +272,7 @@ typedef struct ccsr_gpio {
 	u32	gpier;
 	u32	gpimr;
 	u32	gpicr;
+	u32	gpibe;
 } ccsr_gpio_t;
 #endif
 
@@ -1785,11 +1786,10 @@ typedef struct ccsr_gur {
 #define FSL_CORENET_RCWSR13_EC1_FM1_DTSEC4_MII	0x20000000
 #define FSL_CORENET_RCWSR13_EC2	0x0c000000 /* bits 420..421 */
 #define FSL_CORENET_RCWSR13_EC2_FM1_DTSEC5_RGMII	0x00000000
-#define FSL_CORENET_RCWSR13_EC2_FM1_GPIO	0x10000000
-#define FSL_CORENET_RCWSR13_EC2_FM1_DTSEC5_MII	0x20000000
+#define FSL_CORENET_RCWSR13_EC2_FM1_GPIO	0x04000000
 #define FSL_CORENET_RCWSR13_MAC2_GMII_SEL	0x00000080
 #define FSL_CORENET_RCWSR13_MAC2_GMII_SEL_L2_SWITCH	0x00000000
-#define FSL_CORENET_RCWSR13_MAC2_GMII_SEL_ENET_PORT	0x80000000
+#define FSL_CORENET_RCWSR13_MAC2_GMII_SEL_ENET_PORT	0x00000080
 #define CONFIG_SYS_FSL_SCFG_PIXCLKCR_OFFSET	0x28
 #define PXCKEN_MASK	0x80000000
 #define PXCK_MASK	0x00FF0000
@@ -1808,7 +1808,7 @@ typedef struct ccsr_gur {
 #define PXCKEN_MASK				0x80000000
 #define PXCK_MASK				0x00FF0000
 #define PXCK_BITS_START				16
-#elif defined(CONFIG_ARCH_T2080) || defined(CONFIG_ARCH_T2081)
+#elif defined(CONFIG_ARCH_T2080)
 #define FSL_CORENET2_RCWSR4_SRDS1_PRTCL		0xff000000
 #define FSL_CORENET2_RCWSR4_SRDS1_PRTCL_SHIFT	24
 #define FSL_CORENET2_RCWSR4_SRDS2_PRTCL		0x00ff0000
@@ -1853,7 +1853,7 @@ typedef struct ccsr_gur {
 #define FSL_CORENET_RCWSR11_EC2_USB2			0x00100000
 #endif
 #if defined(CONFIG_ARCH_P2041) || \
-	defined(CONFIG_ARCH_P3041) || defined(CONFIG_ARCH_P5020)
+	defined(CONFIG_ARCH_P3041)
 #define FSL_CORENET_RCWSR11_EC1_FM1_DTSEC4_RGMII	0x00000000
 #define FSL_CORENET_RCWSR11_EC1_FM1_DTSEC4_MII		0x00800000
 #define FSL_CORENET_RCWSR11_EC1_FM1_DTSEC4_NONE		0x00c00000
@@ -1880,7 +1880,7 @@ typedef struct ccsr_gur {
 #define FSL_CORENET_RCWSR13_EC2_FM1_DTSEC6_RGMII	0x08000000
 #define FSL_CORENET_RCWSR13_EC2_FM1_GPIO		0x10000000
 #endif
-#if defined(CONFIG_ARCH_T2080) || defined(CONFIG_ARCH_T2081)
+#if defined(CONFIG_ARCH_T2080)
 #define FSL_CORENET_RCWSR13_EC1			0x60000000 /* bits 417..418 */
 #define FSL_CORENET_RCWSR13_EC1_DTSEC3_RGMII	0x00000000
 #define FSL_CORENET_RCWSR13_EC1_GPIO		0x40000000
@@ -2157,10 +2157,7 @@ typedef struct ccsr_gur {
 #define MPC85xx_PORDEVSR_SGMII4_DIS	0x04000000
 #define MPC85xx_PORDEVSR_SRDS2_IO_SEL	0x38000000
 #define MPC85xx_PORDEVSR_PCI1		0x00800000
-#if defined(CONFIG_ARCH_P1022)
-#define MPC85xx_PORDEVSR_IO_SEL		0x007c0000
-#define MPC85xx_PORDEVSR_IO_SEL_SHIFT	18
-#elif defined(CONFIG_ARCH_P1023)
+#if defined(CONFIG_ARCH_P1023)
 #define MPC85xx_PORDEVSR_IO_SEL		0x00600000
 #define MPC85xx_PORDEVSR_IO_SEL_SHIFT	21
 #else
@@ -2205,15 +2202,8 @@ typedef struct ccsr_gur {
 	u32	gpiocr;		/* GPIO control */
 #endif
 	u8	res3[12];
-#if defined(CONFIG_ARCH_MPC8569)
-	u32	plppar1;	/* Platform port pin assignment 1 */
-	u32	plppar2;	/* Platform port pin assignment 2 */
-	u32	plpdir1;	/* Platform port pin direction 1 */
-	u32	plpdir2;	/* Platform port pin direction 2 */
-#else
 	u32	gpoutdr;	/* General-purpose output data */
 	u8	res4[12];
-#endif
 	u32	gpindr;		/* General-purpose input data */
 	u8	res5[12];
 	u32	pmuxcr;		/* Alt. function signal multiplex control */
@@ -2284,12 +2274,6 @@ typedef struct ccsr_gur {
 #define MPC85xx_PMUXCR_QE10		0x00000020
 #define MPC85xx_PMUXCR_QE11		0x00000010
 #define MPC85xx_PMUXCR_QE12		0x00000008
-#endif
-#if defined(CONFIG_ARCH_P1022)
-#define MPC85xx_PMUXCR_TDM_MASK		0x0001cc00
-#define MPC85xx_PMUXCR_TDM		0x00014800
-#define MPC85xx_PMUXCR_SPI_MASK		0x00600000
-#define MPC85xx_PMUXCR_SPI		0x00000000
 #endif
 #if defined(CONFIG_ARCH_BSC9131)
 #define MPC85xx_PMUXCR_TSEC2_DMA_GPIO_IRQ	0x40000000
@@ -2369,10 +2353,6 @@ typedef struct ccsr_gur {
 #define MPC85xx_PMUXCR2_POST_EXPOSE		0x00004000
 #define MPC85xx_PMUXCR2_DEBUG_MUX_SEL_USBPHY	0x00002000
 #define MPC85xx_PMUXCR2_PLL_LKDT_EXPOSE		0x00001000
-#endif
-#if defined(CONFIG_ARCH_P1022)
-#define MPC85xx_PMUXCR2_ETSECUSB_MASK	0x001f8000
-#define MPC85xx_PMUXCR2_USB		0x00150000
 #endif
 #if defined(CONFIG_ARCH_BSC9131) || defined(CONFIG_ARCH_BSC9132)
 #if defined(CONFIG_ARCH_BSC9131)
@@ -2479,7 +2459,7 @@ typedef struct ccsr_gur {
 	u32	svr;		/* System version */
 	u8	res10[8];
 	u32	rstcr;		/* Reset control */
-#if defined(CONFIG_ARCH_MPC8568) || defined(CONFIG_ARCH_MPC8569)
+#if defined(CONFIG_ARCH_MPC8568)
 	u8	res11a[76];
 	par_io_t qe_par_io[7];
 	u8	res11b[1600];

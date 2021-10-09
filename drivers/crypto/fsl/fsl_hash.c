@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
 #include "jobdesc.h"
@@ -12,6 +14,7 @@
 #include "jr.h"
 #include "fsl_hash.h"
 #include <hw_sha.h>
+#include <asm/cache.h>
 #include <linux/errno.h>
 
 #define CRYPTO_MAX_ALG_NAME	80
@@ -83,8 +86,8 @@ static int caam_hash_update(void *hash_ctx, const void *buf,
 			    unsigned int size, int is_last,
 			    enum caam_hash_algos caam_algo)
 {
-	uint32_t final = 0;
-	phys_addr_t addr = virt_to_phys((void *)buf);
+	uint32_t final;
+	caam_dma_addr_t addr = virt_to_phys((void *)buf);
 	struct sha_ctx *ctx = hash_ctx;
 
 	if (ctx->sg_num >= MAX_SG_32) {
@@ -92,12 +95,12 @@ static int caam_hash_update(void *hash_ctx, const void *buf,
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_hi, (uint32_t)(addr >> 32));
 #else
 	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_hi, 0x0);
 #endif
-	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_lo, (uint32_t)addr);
+	sec_out32(&ctx->sg_tbl[ctx->sg_num].addr_lo, (caam_dma_addr_t)addr);
 
 	sec_out32(&ctx->sg_tbl[ctx->sg_num].len_flag,
 		  (size & SG_ENTRY_LENGTH_MASK));

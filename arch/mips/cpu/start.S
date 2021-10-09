@@ -17,19 +17,10 @@
 #endif
 
 #ifdef CONFIG_32BIT
-# define MIPS_RELOC	3
 # define STATUS_SET	0
 #endif
 
 #ifdef CONFIG_64BIT
-# ifdef CONFIG_SYS_LITTLE_ENDIAN
-#  define MIPS64_R_INFO(ssym, r_type3, r_type2, r_type) \
-	(((r_type) << 24) | ((r_type2) << 16) | ((r_type3) << 8) | (ssym))
-# else
-#  define MIPS64_R_INFO(ssym, r_type3, r_type2, r_type) \
-	((r_type) | ((r_type2) << 8) | ((r_type3) << 16) | (ssym) << 24)
-# endif
-# define MIPS_RELOC	MIPS64_R_INFO(0x00, 0x00, 0x12, 0x03)
 # define STATUS_SET	ST0_KX
 #endif
 
@@ -59,7 +50,8 @@
 		sp, sp, GD_SIZE		# reserve space for gd
 	and	sp, sp, t0		# force 16 byte alignment
 	move	k0, sp			# save gd pointer
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+    !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	li	t2, CONFIG_VAL(SYS_MALLOC_F_LEN)
 	PTR_SUBU \
 		sp, sp, t2		# reserve space for early malloc
@@ -71,38 +63,34 @@
 	move	t0, k0
 1:
 	PTR_S	zero, 0(t0)
+	PTR_ADDIU t0, PTRSIZE
 	blt	t0, t1, 1b
-	 PTR_ADDIU t0, PTRSIZE
+	 nop
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+    !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	PTR_S	sp, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 #endif
 	.endm
 
 ENTRY(_start)
-	/* U-Boot entry point */
+	/*
+	 * U-Boot entry point.
+	 * Do not add instructions to the branch delay slot! Some SoC's
+	 * like Octeon might patch the final U-Boot binary at this location
+	 * with additional boot headers.
+	 */
 	b	reset
-	 mtc0	zero, CP0_COUNT	# clear cp0 count for most accurate boot timing
+	 nop
 
-#if defined(CONFIG_SYS_XWAY_EBU_BOOTCFG)
+#if defined(CONFIG_MIPS_INSERT_BOOT_CONFIG)
 	/*
-	 * Almost all Lantiq XWAY SoC devices have an external bus unit (EBU) to
-	 * access external NOR flashes. If the board boots from NOR flash the
-	 * internal BootROM does a blind read at address 0xB0000010 to read the
-	 * initial configuration for that EBU in order to access the flash
-	 * device with correct parameters. This config option is board-specific.
+	 * Store some board-specific boot configuration. This is used by some
+	 * MIPS systems like Malta.
 	 */
 	.org 0x10
-	.word CONFIG_SYS_XWAY_EBU_BOOTCFG
-	.word 0x0
-#endif
-#if defined(CONFIG_MALTA)
-	/*
-	 * Linux expects the Board ID here.
-	 */
-	.org 0x10
-	.word 0x00000420	# 0x420 (Malta Board with CoreLV)
-	.word 0x00000000
+	.word CONFIG_MIPS_BOOT_CONFIG_WORD0
+	.word CONFIG_MIPS_BOOT_CONFIG_WORD1
 #endif
 
 #if defined(CONFIG_ROM_EXCEPTION_VECTORS)
@@ -140,6 +128,7 @@ ENTRY(_start)
 #endif
 
 reset:
+	mtc0	zero, CP0_COUNT	# clear cp0 count for most accurate boot timing
 #if __mips_isa_rev >= 6
 	mfc0	t0, CP0_CONFIG, 5
 	and	t0, t0, MIPS_CONF5_VP
@@ -155,7 +144,7 @@ reset:
 	and	t0, t0, (1 << 31)
 #else
 1:	mfc0	t0, CP0_EBASE
-	and	t0, t0, EBASE_CPUNUM
+	and	t0, t0, MIPS_EBASE_CPUNUM
 #endif
 
 	/* Hang if this isn't the first CPU in the system */
@@ -212,12 +201,11 @@ wr_done:
 	/* Clear timer interrupt (CP0_COUNT cleared on branch to 'reset') */
 	mtc0	zero, CP0_COMPARE
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-	mfc0	t0, CP0_CONFIG
-	and	t0, t0, MIPS_CONF_IMPL
-	or	t0, t0, CONF_CM_UNCACHED
-	mtc0	t0, CP0_CONFIG
-	ehb
+#ifdef CONFIG_MIPS_CACHE_DISABLE
+	/* Disable caches */
+	PTR_LA	t9, mips_cache_disable
+	jalr	t9
+	 nop
 #endif
 
 #ifdef CONFIG_MIPS_CM
@@ -227,6 +215,13 @@ wr_done:
 #endif
 
 #ifdef CONFIG_MIPS_INIT_STACK_IN_SRAM
+#ifdef CONFIG_MIPS_SRAM_INIT
+	/* Initialize the SRAM first */
+	PTR_LA	t9, mips_sram_init
+	jalr	t9
+	 nop
+#endif
+
 	/* Set up initial stack and global data */
 	setup_stack_gd
 
@@ -245,12 +240,21 @@ wr_done:
 	jalr	t9
 	 nop
 # endif
+#endif
 
+#ifdef CONFIG_MIPS_MACH_EARLY_INIT
+	bal	mips_mach_early_init
+	 nop
+#endif
+
+#ifdef CONFIG_MIPS_CACHE_SETUP
 	/* Initialize caches... */
 	PTR_LA	t9, mips_cache_reset
 	jalr	t9
 	 nop
+#endif
 
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
 # ifndef CONFIG_SYS_MIPS_CACHE_INIT_RAM_LOAD
 	/* Initialize any external memory */
 	PTR_LA	t9, lowlevel_init

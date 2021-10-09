@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/spr_misc.h>
@@ -49,20 +51,16 @@ int arch_cpu_init(void)
 #if defined(CONFIG_USB_EHCI_SPEAR)
 	periph1_clken |= PERIPH_USBH1 | PERIPH_USBH2;
 #endif
+#if defined(CONFIG_SPEAR_GPIO)
+	periph1_clken |= MISC_GPIO3ENB | MISC_GPIO4ENB;
+#endif
+#if defined(CONFIG_PL022_SPI)
+	periph1_clken |= MISC_SSP1ENB | MISC_SSP2ENB | MISC_SSP3ENB;
+#endif
 
 	writel(periph1_clken, &misc_p->periph1_clken);
 
 	return 0;
-}
-
-void enable_caches(void)
-{
-#ifndef CONFIG_SYS_ICACHE_OFF
-	icache_enable();
-#endif
-#ifndef CONFIG_SYS_DCACHE_OFF
-	dcache_enable();
-#endif
 }
 
 #ifdef CONFIG_DISPLAY_CPUINFO
@@ -84,7 +82,7 @@ int print_cpuinfo(void)
 #endif
 
 #if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_NAND_ECC_BCH) && defined(CONFIG_NAND_FSMC)
-static int do_switch_ecc(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_switch_ecc(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
 	if (argc != 2)
