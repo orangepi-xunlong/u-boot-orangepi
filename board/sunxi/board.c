@@ -308,6 +308,7 @@ int board_init(void)
 	 * the whole register to zero so we are doing the same.
 	 */
 	writel(0x0, SUNXI_SRAMC_BASE);
+	writel(0x0, 0x07010254);
 #endif
 
 #if CONFIG_IS_ENABLED(DM_I2C)
