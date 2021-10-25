@@ -11,8 +11,8 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	model = "OrangePi 3";
-	compatible = "xunlong,orangepi-3", "allwinner,sun50i-h6";
+	model = "OrangePi 3 LTS";
+	compatible = "xunlong,orangepi-3-lts", "allwinner,sun50i-h6";
 
 	aliases {
 		serial0 = &uart0;
