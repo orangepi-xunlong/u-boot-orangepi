@@ -89,3 +89,10 @@ GTAGS
 # gcc code coverage files
 *.gcda
 *.gcno
+
+boot_package.cfg
+dts
+*.dtb
+*.dtbo
+*.fex
+sys_config
