@@ -634,6 +634,8 @@ static struct phy_driver *generic_for_interface(phy_interface_t interface)
 	return &genphy_driver;
 }
 
+#define YT_8531C_PHY_ID 0x4f51e91b
+
 static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 					 phy_interface_t interface)
 {
@@ -641,6 +643,10 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 	int phy_id = phydev->phy_id;
 	struct phy_driver *drv = NULL;
 
+	if(phy_id == YT_8531C_PHY_ID)
+		env_set("ethernet_phy", "yt8531c");
+	else
+		env_set("ethernet_phy", "rtl8211f");
 	list_for_each(entry, &phy_drivers) {
 		drv = list_entry(entry, struct phy_driver, list);
 		if ((drv->uid & drv->mask) == (phy_id & drv->mask))
