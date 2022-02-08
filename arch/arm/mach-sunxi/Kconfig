@@ -86,6 +86,31 @@ config DRAM_SUN50I_H616_UNKNOWN_FEATURE
 	---help---
 	  Select this when DRAM on your H616 board needs this unknown
 	  feature.
+
+config DRAM_SUN50I_H616_TRIM_SIZE
+	bool "H616 DRAM trim size"
+	help
+	  Due to unknown issue, some H616 based boards may need to trim
+	  size a bit.
+
+choice
+	prompt "H616 DRAM Type and Timing"
+	default SUNXI_DRAM_H616_DDR3_1333
+
+config SUNXI_DRAM_H616_DDR3_1333
+	bool "DDR3-1333 timings on the H616 DRAM controller"
+	help
+	  This option is the DDR3-1333 timing used by the stock boot0
+	  by Allwinner.
+
+
+config SUNXI_DRAM_H616_LPDDR4
+	bool "LPDDR4 timings on the H616 DRAM controller"
+	help
+	  This option is the LPDDR4 timing used by the stock boot0 by
+	  Allwinner.
+
+endchoice
 endif
 
 config SUN6I_P2WI

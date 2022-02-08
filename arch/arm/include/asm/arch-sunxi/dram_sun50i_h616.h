@@ -36,7 +36,9 @@ struct sunxi_mctl_com_reg {
 	u32 maer0;		/* 0x020 master enable register 0 */
 	u32 maer1;		/* 0x024 master enable register 1 */
 	u32 maer2;		/* 0x028 master enable register 2 */
-	u8 reserved_0x02c[468];	/* 0x02c */
+	u8 reserved_0x02c[36];	/* 0x02c */
+	u32 unk_0x050;		/* 0x050 */
+	u8 reserved_0x054[428];	/* 0x054 */
 	u32 bwcr;		/* 0x200 bandwidth control register */
 	u8 reserved_0x204[12];	/* 0x204 */
 	/*
@@ -130,6 +132,7 @@ check_member(sunxi_mctl_ctl_reg, unk_0x4240, 0x4240);
 #define MSTR_DEVICETYPE_LPDDR2	BIT(2)
 #define MSTR_DEVICETYPE_LPDDR3	BIT(3)
 #define MSTR_DEVICETYPE_DDR4	BIT(4)
+#define MSTR_DEVICETYPE_LPDDR4	BIT(5)
 #define MSTR_DEVICETYPE_MASK	GENMASK(5, 0)
 #define MSTR_2TMODE		BIT(10)
 #define MSTR_BUSWIDTH_FULL	(0 << 12)
@@ -144,6 +147,7 @@ struct dram_para {
 	u8 rows;
 	u8 ranks;
 	u8 bus_full_width;
+	bool size_fix;
 };
 
 
