@@ -59,8 +59,9 @@ obj-$(CONFIG_MMC_SDHCI_TEGRA)		+= tegra_mmc.o
 obj-$(CONFIG_MMC_SDHCI_XENON)		+= xenon_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_ZYNQ)		+= zynq_sdhci.o
 
-obj-$(CONFIG_MMC_SUNXI)			+= sunxi_mmc.o sunxi_mmc_tuning.o sunxi_mmc_interface.o sunxi_host_mmc.o
+obj-$(CONFIG_MMC_SUNXI)			+= sunxi_mmc.o sunxi_mmc_tuning.o sunxi_mmc_interface.o
 obj-$(CONFIG_MMC_UNIPHIER)		+= tmio-common.o uniphier-sd.o
 obj-$(CONFIG_RENESAS_SDHI)		+= tmio-common.o renesas-sdhi.o
 obj-$(CONFIG_MMC_BCM2835)		+= bcm2835_sdhost.o
 
+obj-$(CONFIG_MMC_SUNXI)                 += host/

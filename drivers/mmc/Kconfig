@@ -518,6 +518,12 @@ config MMC_SUNXI
 	help
 	  This selects support for the SD/MMC Host Controller on
 	  Allwinner sunxi SoCs.
+config MMC_DEBUG_SUNXI
+	bool "Allwinner sunxi SD/MMC Debug enable"
+	depends on MMC_SUNXI
+	default n
+	help
+	  This enables can print message which use MMCDBG and MMCPRINT
 
 config MMC_SUNXI_HAS_NEW_MODE
 	bool "Allwinner sunxi SD/MMC Host Controller new mode support"

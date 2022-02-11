@@ -35,12 +35,43 @@ ulong mmc_bwrite(struct udevice *dev, lbaint_t start, lbaint_t blkcnt,
 ulong mmc_berase(struct udevice *dev, lbaint_t start, lbaint_t blkcnt);
 
 ulong mmc_mmc_erase(struct udevice *dev, lbaint_t start, lbaint_t blkcnt, unsigned int *skip_space);
+
+int mmc_mmc_trim(struct udevice *dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_discard(struct udevice *dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_sanitize(struct udevice *dev);
+
+int mmc_mmc_secure_erase(struct udevice *dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space);
+
+int mmc_mmc_secure_trim(struct udevice *dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_secure_wipe(struct udevice *dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space);
+
 #else
 ulong mmc_bwrite(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
 		 const void *src);
 ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt);
 
-ulong mmc_mmc_erase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt, unsigned int *skip_space);
+ulong mmc_mmc_erase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
+			unsigned int *skip_space);
+
+int mmc_mmc_trim(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_discard(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_sanitize(struct blk_desc *block_dev);
+
+int mmc_mmc_secure_erase(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space);
+
+int mmc_mmc_secure_trim(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt);
+
+int mmc_mmc_secure_wipe(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space);
+
 #endif
 
 #else /* CONFIG_SPL_MMC_WRITE is not defined */
@@ -66,6 +97,39 @@ static inline unsigned long mmc_mmc_erase(struct udevice *dev,
 {
 	return 0;
 }
+
+static inline int mmc_mmc_trim(struct udevice *dev, unsigned int start, unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_discard(struct udevice *dev, unsigned int start, unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_sanitize(struct udevice *dev)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_erase(struct udevice *dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_trim(struct udevice *dev, unsigned int start, unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_wipe(struct udevice *dev, unsigned int start, unsigned int blkcnt,
+				unsigned int *skip_space)
+{
+	return 0;
+}
+
 #else
 static inline unsigned long mmc_berase(struct blk_desc *block_dev,
 				       lbaint_t start, lbaint_t blkcnt)
@@ -85,6 +149,40 @@ static inline unsigned long mmc_mmc_erase(struct blk_desc *block_dev,
 {
 	return 0;
 }
+
+static inline int mmc_mmc_trim(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_discard(struct blk_desc *block_dev, unsigned int start, unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_sanitize(struct blk_desc *block_dev)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_erase(struct blk_desc *block_dev, unsigned int start,
+		unsigned int blkcnt, unsigned int *skip_space)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_trim(struct blk_desc *block_dev, unsigned int start,
+		unsigned int blkcnt)
+{
+	return 0;
+}
+
+static inline int mmc_mmc_secure_wipe(struct blk_desc *block_dev, unsigned int start,
+		unsigned int blkcnt, unsigned int *skip_space)
+{
+	return 0;
+}
+
 #endif
 
 #endif /* CONFIG_SPL_BUILD */

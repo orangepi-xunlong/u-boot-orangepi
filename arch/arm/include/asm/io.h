@@ -192,6 +192,8 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
+#define IOMEM_ADDR(a)		((volatile void __iomem *)((unsigned long)(a)))
+#define GET_LO32(a)			((unsigned long)(a) & 0xffffffff)
 /*
  * Now, pick up the machine-defined IO definitions
  */

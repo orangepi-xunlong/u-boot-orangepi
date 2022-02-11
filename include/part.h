@@ -104,6 +104,7 @@ int part_get_info(struct blk_desc *dev_desc, int part, disk_partition_t *info);
 int part_get_info_whole_disk(struct blk_desc *dev_desc, disk_partition_t *info);
 
 void part_print(struct blk_desc *dev_desc);
+void part_print_fake(struct blk_desc *dev_desc);
 void part_init(struct blk_desc *dev_desc);
 void dev_print(struct blk_desc *dev_desc);
 

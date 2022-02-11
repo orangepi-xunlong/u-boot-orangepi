@@ -46,5 +46,9 @@
 #define isb()	ISB
 #define dsb()	DSB
 #define dmb()	DMB
+#define wmb()	while (0) {\
+			asm volatile ("DSB");\
+			asm volatile ("ISB");\
+		};
 #endif	/* __ASSEMBLY__ */
 #endif	/* __BARRIERS_H__ */

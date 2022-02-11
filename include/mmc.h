@@ -106,11 +106,15 @@
 #define MMC_CMD_SET_BLOCKLEN		16
 #define MMC_CMD_READ_SINGLE_BLOCK	17
 #define MMC_CMD_READ_MULTIPLE_BLOCK	18
-#define MMC_CMD_SEND_TUNING_BLOCK		19
+#define MMC_CMD_SEND_TUNING_BLOCK	19
 #define MMC_CMD_SEND_TUNING_BLOCK_HS200	21
 #define MMC_CMD_SET_BLOCK_COUNT         23
 #define MMC_CMD_WRITE_SINGLE_BLOCK	24
 #define MMC_CMD_WRITE_MULTIPLE_BLOCK	25
+#define MMC_CMD_SET_WRITE_PROT          28
+#define MMC_CMD_CLR_WRITE_PROT          29
+#define MMC_CMD_SEND_WRITE_PROT         30
+#define MMC_CMD_SEND_WRITE_PROT_TYPE    31
 #define MMC_CMD_ERASE_GROUP_START	35
 #define MMC_CMD_ERASE_GROUP_END		36
 #define MMC_CMD_ERASE			38
@@ -227,6 +231,7 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_WR_REL_PARAM		166	/* R */
 #define EXT_CSD_WR_REL_SET		167	/* R/W */
 #define EXT_CSD_RPMB_MULT		168	/* RO */
+#define EXT_CSD_USER_WP			171	/* R/W */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
 #define EXT_CSD_BOOT_BUS_WIDTH		177
 #define EXT_CSD_PART_CONF		179	/* R/W */
@@ -234,7 +239,7 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
 #define EXT_CSD_REV			192	/* RO */
-#define EXT_CSD_STRUCTURE              194     /* RO */
+#define EXT_CSD_STRUCTURE		194     /* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
 #define EXT_CSD_SEC_CNT			212	/* RO, 4 bytes */
 #define EXT_CSD_HC_WP_GRP_SIZE		221	/* RO */
@@ -276,6 +281,14 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_CARD_TYPE_HS400_1_2V    (1<<7)  /* Card can run at 200MHz DDR, 1.8V */
 #define EXT_CSD_CARD_TYPE_HS400         (EXT_CSD_CARD_TYPE_HS400_1_8V | \
 					EXT_CSD_CARD_TYPE_HS400_1_2V)
+
+/* -- EXT_CSD[171] USER_WP */
+#define MMC_SWITCH_USER_WP_PERM_PSWD_DIS    (0x1 << 7)
+#define MMC_SWITCH_USER_WP_CD_PERM_WP_DIS   (0x1 << 6)
+#define MMC_SWITCH_USER_WP_US_PERM_WP_DIS   (0x1 << 4)
+#define MMC_SWITCH_USER_WP_US_PWR_WP_DIS    (0x1 << 3)
+#define MMC_SWITCH_USER_WP_US_PERM_WP_EN    (0x1 << 2)
+#define MMC_SWITCH_USER_WP_US_PWR_WP_EN     (0x1 << 0)
 
 /* -- EXT_CSD[183] BUS_WIDTH */
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
@@ -615,7 +628,6 @@ struct mmc_config {
 	uint sample_mode;
 
 	uint io_is_1v8;
-	uint pc_bias;
 
 	uint cal_delay_unit;
 #define BOOT0_PARA_USE_INTERNAL_DEFAULT_TIMING_PARA (1U<<0)
@@ -652,6 +664,7 @@ struct mmc_config {
 #define DRV_PARA_DISABLE_MMC_MODE_HS400     (1 << 8) /* can run at 200MHz with DDR mode -- HS400 */
 #define DRV_PARA_ENABLE_EMMC_HW_RST         (1 << 16) /* support to enable eMMC HW Rst when product */
 	u32 host_caps_mask;
+	u32 retune_caps_mask;
 
 	u32 force_boot_tuning;
 
@@ -814,6 +827,9 @@ struct mmc {
 	uint secure_erase_timeout;
 	uint secure_trim_timeout;
 
+	//u64 wp_grp_size; /* write protect group size */
+	//u64 csd_perm_wp;
+	//u64 csd_wp_grp_size;
 	uchar secure_feature; // extcsd[231]
 };
 #pragma pack()
@@ -967,6 +983,7 @@ int mmc_voltage_to_mv(enum mmc_voltage voltage);
  * @return 0 if OK, -ve on error
  */
 int mmc_set_clock(struct mmc *mmc, uint clock, bool disable);
+int mmc_set_bus_width(struct mmc *mmc, uint width);
 
 struct mmc *find_mmc_device(int dev_num);
 int mmc_set_dev(int dev_num);
@@ -1071,6 +1088,7 @@ int sunxi_mmc_tuning_exit(void);
 int sunxi_switch_to_best_bus(struct mmc *mmc);
 
 int mmc_exit(void);
+void mmc_update_config_for_dragonboard(int card_no);
 void mmc_update_config_for_sdly(struct mmc *mmc);
 unsigned int sunxi_select_freq(struct mmc *mmc, int speed_md,
 			int freq_index);

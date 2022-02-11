@@ -16,6 +16,7 @@
 #include "video_misc_hal.h"
 #include <sys_partition.h>
 #include <asm/global_data.h>
+#include <mmc_cmd.h>
 
 #if defined(CONFIG_BOOT_PARAMETER)
 #include <sunxi_bootparam.h>
@@ -174,6 +175,9 @@ int hal_fat_fsload(char *part_name, char *file_name, char *buf, ulong length)
 
 	char len[16] = {0};
 	char load_addr[16];
+
+	char *const mmc_argv[3] = {"mmc", "part", NULL};
+	do_mmcops(NULL, 0, 3, mmc_argv);
 
 	char *const part_argv[6] = {"ext2load", "mmc", "0",
 				    load_addr, file_name,     NULL};

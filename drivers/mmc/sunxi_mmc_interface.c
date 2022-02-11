@@ -15,9 +15,9 @@
 #include "mmc_private.h"
 #include "mmc_def.h"
 
-#if 0
 int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value);
 
+#if 0
 static int mmc_wp_grp_aligned(struct mmc *mmc, unsigned int from, unsigned int nr)
 {
 	if (!mmc->wp_grp_size)
@@ -72,7 +72,6 @@ static int mmc_set_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 	cmd.cmdidx = MMC_CMD_SET_WRITE_PROT;
 	cmd.resp_type = MMC_RSP_R1b;
 	cmd.cmdarg = mmc->high_capacity ? wp_grp_sect_addr : wp_grp_sect_addr*512;
-	cmd.flags = 0;
 
 	err = mmc_send_cmd(mmc, &cmd, NULL);
 	if (err)
@@ -91,7 +90,6 @@ static int mmc_clr_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 	cmd.cmdidx = MMC_CMD_CLR_WRITE_PROT;
 	cmd.resp_type = MMC_RSP_R1b;
 	cmd.cmdarg = mmc->high_capacity ? wp_grp_sect_addr : wp_grp_sect_addr*512;
-	cmd.flags = 0;
 
 	err = mmc_send_cmd(mmc, &cmd, NULL);
 	if (err)
@@ -101,7 +99,6 @@ static int mmc_clr_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 }
 
 
-#if 0
 static int mmc_clear_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 {
 	struct mmc_cmd cmd;
@@ -112,7 +109,6 @@ static int mmc_clear_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 	cmd.cmdidx = MMC_CMD_CLR_WRITE_PROT;
 	cmd.resp_type = MMC_RSP_R1b;
 	cmd.cmdarg = mmc->high_capacity ? wp_grp_sect_addr : wp_grp_sect_addr*512;
-	cmd.flags = 0;
 
 	err = mmc_send_cmd(mmc, &cmd, NULL);
 	if (err)
@@ -120,7 +116,6 @@ static int mmc_clear_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 
 	return 0;
 }
-#endif
 
 static int mmc_send_wp(struct mmc *mmc, u32 wp_grp_sect_addr, u8 *wp_sta)
 {
@@ -134,7 +129,6 @@ static int mmc_send_wp(struct mmc *mmc, u32 wp_grp_sect_addr, u8 *wp_sta)
 	cmd.cmdidx = MMC_CMD_SEND_WRITE_PROT;
 	cmd.resp_type = MMC_RSP_R1;
 	cmd.cmdarg = mmc->high_capacity ? wp_grp_sect_addr : wp_grp_sect_addr*512;
-	cmd.flags = 0;
 
 	data.dest = (char *)wp_sta;
 	data.blocks = 1;
@@ -160,7 +154,6 @@ static int mmc_send_wp_type(struct mmc *mmc, u32 wp_grp_sect_addr, u8 *wp_type)
 	cmd.cmdidx = MMC_CMD_SEND_WRITE_PROT_TYPE;
 	cmd.resp_type = MMC_RSP_R1;
 	cmd.cmdarg = mmc->high_capacity ? wp_grp_sect_addr : wp_grp_sect_addr*512;
-	cmd.flags = 0;
 
 	data.dest = (char *)wp_type;
 	data.blocks = 1;
@@ -183,7 +176,7 @@ static int mmc_set_one_poweron_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 {
 	s32 err = 0, ret = 0;
 	u32 rval = 0;
-	char ext_csd[512];
+	u8 ext_csd[512];
 
 	if (mmc->csd_perm_wp) {
 		MMCINFO("the entire device are write protected by csd[13]\n");
@@ -237,7 +230,7 @@ static int mmc_set_one_poweron_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 		goto ERR_OUT;
 	}
 
-	__msdelay(100);
+	mdelay(100);
 
 ERR_OUT:
 	return err;
@@ -247,7 +240,7 @@ static int mmc_set_one_permanent_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 {
 	s32 err = 0, ret = 0;
 	u32 rval = 0;
-	char ext_csd[512];
+	u8 ext_csd[512];
 
 	if (mmc->csd_perm_wp) {
 		MMCINFO("the entire device are write protected by csd[13]\n");
@@ -297,18 +290,17 @@ static int mmc_set_one_permanent_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 		goto ERR_OUT;
 	}
 
-	__msdelay(100);
+	mdelay(100);
 
 ERR_OUT:
 	return err;
 }
 
-
 static int mmc_set_one_temporary_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 {
 	s32 err = 0, ret = 0;
 	u32 rval = 0;
-	char ext_csd[512];
+	u8 ext_csd[512];
 
 	if (mmc->csd_perm_wp) {
 		MMCINFO("the entire device are write protected by csd[13]\n");
@@ -359,7 +351,7 @@ static int mmc_set_one_temporary_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 		goto ERR_OUT;
 	}
 
-	__msdelay(100);
+	mdelay(100);
 	MMCINFO("******set US_TEM_WP_EN ok\n");
 ERR_OUT:
 	return err;
@@ -380,7 +372,7 @@ static int mmc_clr_one_tem_wp(struct mmc *mmc, u32 wp_grp_sect_addr)
 		err = -1;
 	}
 
-	__msdelay(100);
+	mdelay(100);
 
 	return err;
 }
@@ -439,6 +431,7 @@ ERR_OUT:
 	return err;
 }
 
+#endif
 /*
 * --argument
 * @mmc:
@@ -456,6 +449,7 @@ ERR_OUT:
 *    0-ok, execute write protect operation successfully.
 *    others-fail.
 */
+#if 0
 int mmc_user_write_protect(struct mmc *mmc, u32 wp_type, u32 align_type,
 	u32 from, u32 nr)
 {
@@ -571,7 +565,7 @@ int mmc_user_write_protect(struct mmc *mmc, u32 wp_type, u32 align_type,
 ERR_OUT:
 	return ret;
 }
-
+#endif
 /*
 * --argument
 * @mmc:
@@ -585,6 +579,7 @@ ERR_OUT:
 *    0-ok, execute clear temporary write protection successfully.
 *    others-fail.
 */
+#if 0
 int mmc_user_clr_tem_write_protect(struct mmc *mmc, u32 align_type,
 	u32 from, u32 nr)
 {
@@ -667,7 +662,7 @@ int mmc_user_clr_tem_write_protect(struct mmc *mmc, u32 align_type,
 ERR_OUT:
 	return ret;
 }
-
+#endif
 /*
 * --argument
 * @dev_num: card number
@@ -679,7 +674,7 @@ ERR_OUT:
 *    others-fail.
 *    only support write protect group size aligned @from and @nr.
 */
-
+#if 0
 int mmc_clr_tem_wp(int dev_num, unsigned start, unsigned blkcnt)
 {
 	struct mmc *mmc = find_mmc_device(dev_num);
@@ -706,7 +701,7 @@ int mmc_clr_tem_wp(int dev_num, unsigned start, unsigned blkcnt)
 			__FUNCTION__, start, blkcnt);
 	}
 
-	if (!(mmc->cfg->platform_caps.drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
+	if (!(mmc->cfg->drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
 		MMCINFO("don't support write protect operation!!\n");
 		ret = -1;
 		goto ERR_RET;
@@ -722,7 +717,6 @@ ERR_RET:
 }
 
 
-
 int mmc_user_scan_wp_sta(struct mmc *mmc)
 {
 	s32 err = 0, ret = 0;
@@ -735,7 +729,7 @@ int mmc_user_scan_wp_sta(struct mmc *mmc)
 	u32 sta, val = 0;
 	int i, j, k;
 
-	if (!(mmc->cfg->platform_caps.drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
+	if (!(mmc->cfg->drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
 		MMCINFO("don't support write protect operation!!\n");
 		return -1;
 	}
@@ -779,7 +773,7 @@ int mmc_user_scan_wp_sta(struct mmc *mmc)
 					wp_addr = mmc->wp_grp_size * (i + j*4 + k);
 					/*MMCINFO("%d %d %d, 0x%x, sta %d\n", i, j, k, wp_addr, sta);
 					*/
-					if (wp_hit_cnt <= 10) {
+					if (wp_hit_cnt < 10) {
 						wp_hit_addr[wp_hit_cnt] = wp_addr;
 						wp_hit_type[wp_hit_cnt] = sta;
 					}
@@ -823,7 +817,7 @@ int mmc_user_scan_wp_sta(struct mmc *mmc)
 ERR_OUT:
 	return err;
 }
-
+#endif
 
 /*
 * --argument
@@ -841,6 +835,7 @@ ERR_OUT:
 *    only support write protect group size aligned @from and @nr.
 */
 
+#if 0
 int mmc_mmc_user_write_protect(int dev_num, unsigned wp_type, unsigned start, unsigned blkcnt)
 {
 	struct mmc *mmc = find_mmc_device(dev_num);
@@ -867,7 +862,7 @@ int mmc_mmc_user_write_protect(int dev_num, unsigned wp_type, unsigned start, un
 			__FUNCTION__, start, blkcnt);
 	}
 
-	if (!(mmc->cfg->platform_caps.drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
+	if (!(mmc->cfg->drv_wp_feature & DRV_PARA_ENABLE_EMMC_USER_PART_WP)) {
 		MMCINFO("don't support write protect operation!!\n");
 		ret = -1;
 		goto ERR_RET;
@@ -911,7 +906,6 @@ ERR_RET:
 	MMCDBG("end %s %d\n", __FUNCTION__, ret);
 	return ret;
 }
-
 
 
 
@@ -1643,68 +1637,20 @@ out:
 
 int mmc_init_blk_ops(struct mmc *mmc)
 {
-#if 0
-#ifndef CONFIG_SUNXI_SECURE_STORAGE
-	mmc->block_dev.block_read 	= mmc_bread;
-	mmc->block_dev.block_write 	= mmc_bwrite;
-	mmc->block_dev.block_erase 	= mmc_berase;
-	mmc->block_dev.block_read_mass_pro		= mmc_bread_mass_pro;
-	mmc->block_dev.block_write_mass_pro		= mmc_bwrite_mass_pro;
-	mmc->block_dev.block_read_emmc_bootp	= mmc_read_bootp;
-	mmc->block_dev.block_write_emmc_bootp	= mmc_write_bootp;
-	mmc->block_dev.block_enable_bootop		= mmc_enable_bootop;
-	mmc->block_dev.block_get_boot_cap		= mmc_get_boot_cap;
-
-	mmc->block_dev.block_read_secure	= NULL;
-	mmc->block_dev.block_write_secure	= NULL;
-	mmc->block_dev.block_get_item_secure	= NULL;
-
-	mmc->block_dev.block_secure_wipe = mmc_secure_wipe;
+	mmc->block_dev.block_read = mmc_bread;
+	mmc->block_dev.block_write = mmc_bwrite;
 	mmc->block_dev.block_mmc_erase = mmc_mmc_erase;
+	mmc->block_dev.block_erase = mmc_berase;
 	mmc->block_dev.block_mmc_trim = mmc_mmc_trim;
 	mmc->block_dev.block_mmc_discard = mmc_mmc_discard;
 	mmc->block_dev.block_mmc_sanitize = mmc_mmc_sanitize;
 	mmc->block_dev.block_mmc_secure_erase = mmc_mmc_secure_erase;
 	mmc->block_dev.block_mmc_secure_trim = mmc_mmc_secure_trim;
+	mmc->block_dev.block_mmc_secure_wipe = mmc_mmc_secure_wipe;
 
-	mmc->block_dev.block_mmc_user_get_wp_grp_size = mmc_mmc_user_get_wp_grp_size;
-	mmc->block_dev.block_mmc_user_write_protect = mmc_mmc_user_write_protect;
-	mmc->block_dev.block_mmc_clr_tem_wp = mmc_clr_tem_wp;
-
-#else
-	mmc->block_dev.block_read	= mmc_bread_secure;
-	mmc->block_dev.block_write	= mmc_bwrite_secure;
-	mmc->block_dev.block_erase	= mmc_berase_secure;
-	mmc->block_dev.block_read_mass_pro	= mmc_bread_mass_pro_secure;
-	mmc->block_dev.block_write_mass_pro	= mmc_bwrite_mass_pro_secure;
-	mmc->block_dev.block_read_emmc_bootp	= mmc_read_bootp;
-	mmc->block_dev.block_write_emmc_bootp	= mmc_write_bootp;
-	mmc->block_dev.block_enable_bootop		= mmc_enable_bootop;
-	mmc->block_dev.block_get_boot_cap		= mmc_get_boot_cap;
-
-	mmc->block_dev.block_read_secure	= sdmmc_secure_storage_read;
-	mmc->block_dev.block_read_secure_backup
-			= sdmmc_secure_storage_read_backup;
-	mmc->block_dev.block_write_secure	= sdmmc_secure_storage_write;
-	mmc->block_dev.block_get_item_secure	= get_sdmmc_secure_storage_max_item;
-
-	mmc->block_dev.block_secure_wipe	= mmc_secure_wipe_secure;
-	mmc->block_dev.block_mmc_erase = mmc_mmc_erase_secure;
-	mmc->block_dev.block_mmc_trim = mmc_mmc_trim_secure;
-	mmc->block_dev.block_mmc_discard = mmc_mmc_discard_secure;
-	mmc->block_dev.block_mmc_sanitize = mmc_mmc_sanitize_secure;
-	mmc->block_dev.block_mmc_secure_erase = mmc_mmc_secure_erase_secure;
-	mmc->block_dev.block_mmc_secure_trim = mmc_mmc_secure_trim_secure;
-
-	mmc->block_dev.block_mmc_user_get_wp_grp_size = mmc_mmc_user_get_wp_grp_size;
-	mmc->block_dev.block_mmc_user_write_protect = mmc_mmc_user_write_protect;
-	mmc->block_dev.block_mmc_clr_tem_wp = mmc_clr_tem_wp;
-#endif
-#endif
-	mmc->block_dev.block_read = mmc_bread;
-	mmc->block_dev.block_write = mmc_bwrite;
-	mmc->block_dev.block_mmc_erase = mmc_mmc_erase;
-	mmc->block_dev.block_erase = mmc_berase;
+	//mmc->block_dev.block_mmc_user_get_wp_grp_size = mmc_mmc_user_get_wp_grp_size;
+	//mmc->block_dev.block_mmc_user_write_protect = mmc_mmc_user_write_protect;
+	//mmc->block_dev.block_mmc_clr_tem_wp = mmc_clr_tem_wp;
 
 	return 0;
 }

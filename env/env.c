@@ -198,7 +198,7 @@ int env_load(void)
 		if (!env_has_inited(drv->location))
 			continue;
 
-		tick_printf("Loading Environment from %s... ", drv->name);
+		tick_printf("Loading Environment from %s... \n", drv->name);
 		ret = drv->load();
 		if (ret)
 			printf("Failed (%d)\n", ret);
