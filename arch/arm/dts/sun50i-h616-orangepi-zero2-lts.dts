@@ -154,8 +154,11 @@
 				regulator-name = "vcc1v8";
 			};
 
-			bldo2 {
-				/* unused */
+			reg_bldo2: bldo2 {
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8";
 			};
 
 			bldo3 {
@@ -166,8 +169,11 @@
 				/* unused */
 			};
 
-			cldo1 {
-				/* reserved */
+			reg_cldo1: cldo1 {
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-vcc-pg";
 			};
 
 			cldo2 {
