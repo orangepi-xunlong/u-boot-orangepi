@@ -1,6 +1,4 @@
 /*
- * Copyright (C) 2020 Yu-Tung Chang <mtwget@gmail.com>
- *
  * This file is dual-licensed: you can use it either under the terms
  * of the GPL or the X11 license, at your option. Note that this dual
  * licensing only applies to this file, and not this project as a
@@ -43,26 +41,39 @@
 #include "sun8i-h3-nanopi.dtsi"
 
 / {
-	model = "FriendlyARM ZeroPi";
+	model = "FriendlyElec ZeroPi";
 	compatible = "friendlyarm,zeropi", "allwinner,sun8i-h3";
-
-	aliases {
-		ethernet0 = &emac;
-	};
 
 	reg_gmac_3v3: gmac-3v3 {
 		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gmac_power_pin_nanopi>;
 		regulator-name = "gmac-3v3";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		startup-delay-us = <100000>;
 		enable-active-high;
-		gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>; /* PD6 */
+		gpio = <&pio 3 6 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&ehci0 {
+	status = "okay";
+};
+
+&ohci0 {
+	status = "okay";
+};
+
+&pio {
+	gmac_power_pin_nanopi: gmac_power_pin@0 {
+		pins = "PD6";
+		function = "gpio_out";
 	};
 };
 
 &external_mdio {
-	ext_rgmii_phy: ethernet-phy@7 {
+	ext_rgmii_phy: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <7>;
 	};
@@ -73,7 +84,7 @@
 	pinctrl-0 = <&emac_rgmii_pins>;
 	phy-supply = <&reg_gmac_3v3>;
 	phy-handle = <&ext_rgmii_phy>;
-	phy-mode = "rgmii-id";
+	phy-mode = "rgmii";
 
 	allwinner,leds-active-low;
 	status = "okay";
@@ -81,5 +92,9 @@
 
 &usb_otg {
 	status = "okay";
-	dr_mode = "host";
+	dr_mode = "peripheral";
+};
+
+&usbphy {
+	usb0_id_det-gpios = <&pio 6 12 GPIO_ACTIVE_HIGH>; /* PG12 */
 };

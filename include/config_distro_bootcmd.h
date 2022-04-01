@@ -430,6 +430,15 @@
 	BOOTENV_SHARED_EFI \
 	BOOTENV_SHARED_VIRTIO \
 	"boot_prefixes=/ /boot/\0" \
+	"splashpos=m,m\0" \
+	"splashimage=66000000\0" \
+	"loadsplash= " \
+		"for prefix in ${boot_prefixes}; do " \
+			"if test -e mmc 0 ${prefix}boot.bmp; then " \
+				"load mmc 0 ${splashimage} ${prefix}boot.bmp; " \
+				"bmp d ${splashimage}; " \
+			"fi; " \
+		"done\0" \
 	"boot_scripts=boot.scr.uimg boot.scr\0" \
 	"boot_script_dhcp=boot.scr.uimg\0" \
 	BOOTENV_BOOT_TARGETS \

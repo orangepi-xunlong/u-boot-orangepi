@@ -11,8 +11,11 @@ void clock_init_safe(void)
 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 
 	/* this seems to enable PLLs on H616 */
-	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616))
+	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616)) {
 		setbits_le32(SUNXI_PRCM_BASE + 0x250, 0x10);
+		/* enable GPU */
+		writel(0, 0x7010254);
+	}
 
 	clock_set_pll1(408000000);
 

@@ -27,4 +27,6 @@
  */
 #include <configs/sunxi-common.h>
 
+#define CONFIG_MACH_TYPE	(0x1029)
+
 #endif /* __CONFIG_H */

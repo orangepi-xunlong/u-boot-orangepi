@@ -27,6 +27,7 @@
 #include <asm/arch/timer.h>
 #include <asm/arch/tzpc.h>
 #include <asm/arch/mmc.h>
+#include <asm/arch/prcm.h>
 
 #include <linux/compiler.h>
 
@@ -78,6 +79,11 @@ ulong board_get_usable_ram_top(ulong total_size)
 
 static int gpio_init(void)
 {
+#if defined(CONFIG_MACH_SUNXI_H3_H5)
+	/* enable R_PIO GPIO access */
+	prcm_apb0_enable(PRCM_APB0_GATE_PIO);
+#endif
+
 	__maybe_unused uint val;
 #if CONFIG_CONS_INDEX == 1 && defined(CONFIG_UART0_PORT_F)
 #if defined(CONFIG_MACH_SUN4I) || \

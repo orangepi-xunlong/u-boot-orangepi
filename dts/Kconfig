@@ -259,6 +259,12 @@ config SPL_OF_LIST
 	  device tree files (without the directory or .dtb suffix)
 	  separated by <space>.
 
+if ARCH_SUNXI
+config BOOT_PROCESS_MULTI_DTB
+	bool "Adjust default board DT as necessary at boot"
+	default n
+endif
+
 choice
 	prompt "SPL OF LIST compression"
 	depends on SPL_MULTI_DTB_FIT

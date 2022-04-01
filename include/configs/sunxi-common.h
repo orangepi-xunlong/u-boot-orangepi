@@ -223,6 +223,16 @@ extern int soft_i2c_gpio_scl;
 #define CONFIG_VIDEO_LCD_I2C_BUS	-1 /* NA, but necessary to compile */
 #endif
 
+#if defined CONFIG_VIDEO || defined CONFIG_DM_VIDEO
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_BMP_16BPP
+#define CONFIG_BMP_24BPP
+#define CONFIG_BMP_32BPP
+#define CONFIG_VIDEO_BMP_RLE8
+#endif
+
 /* Ethernet support */
 
 #ifdef CONFIG_USB_EHCI_HCD
@@ -396,6 +406,11 @@ extern int soft_i2c_gpio_scl;
 #ifdef CONFIG_USB_KEYBOARD
 #define CONSOLE_STDIN_SETTINGS \
 	"stdin=serial,usbkbd\0"
+#if defined CONFIG_VIDEO || defined CONFIG_DM_VIDEO
+#define CONSOLE_STDIN_SETTINGS \
+	"preboot=run loadsplash; usb start\0" \
+	"stdin=serial,usbkbd\0"
+#endif
 #else
 #define CONSOLE_STDIN_SETTINGS \
 	"stdin=serial\0"

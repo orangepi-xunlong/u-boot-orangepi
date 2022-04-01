@@ -74,6 +74,19 @@
 		clocks = <&rtc 1>;
 		clock-names = "ext_clock";
 	};
+
+	reg_usb1_vbus: usb1-vbus {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb1_vbus_pin_opiwin>;
+		regulator-name = "usb1-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-boot-on;
+		enable-active-high;
+		gpio = <&pio 3 7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
 };
 
 &codec {
@@ -183,6 +196,13 @@
 
 &r_ir {
 	status = "okay";
+};
+
+&pio {
+	usb1_vbus_pin_opiwin: usb1_vbus_pin@0 {
+		allwinner,pins = "PD7";
+		allwinner,function = "gpio_out";
+	};
 };
 
 &r_rsb {

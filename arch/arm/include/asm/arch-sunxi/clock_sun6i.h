@@ -208,6 +208,7 @@ struct sunxi_ccm_reg {
 #define CCM_PLL1_CTRL_N(n)		((((n) - 1) & 0x1f) << 8)
 #define CCM_PLL1_CTRL_P(n)		(((n) & 0x3) << 16)
 #define CCM_PLL1_CTRL_EN		(0x1 << 31)
+#define CCM_PLL1_CTRL_LOCK		(0x1 << 28)
 
 #define CCM_PLL3_CTRL_M_SHIFT		0
 #define CCM_PLL3_CTRL_M_MASK		(0xf << CCM_PLL3_CTRL_M_SHIFT)

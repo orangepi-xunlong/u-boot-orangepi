@@ -778,7 +778,7 @@ config AUTOBOOT_FLUSH_STDIN
 config AUTOBOOT_PROMPT
 	string "Autoboot stop prompt"
 	depends on AUTOBOOT_KEYED
-	default "Autoboot in %d seconds\\n"
+	default "Autoboot in %d seconds, press <Space> to stop\\n"
 	help
 	  This string is displayed before the boot delay selected by
 	  CONFIG_BOOTDELAY starts. If it is not defined	there is no
@@ -833,6 +833,7 @@ config AUTOBOOT_DELAY_STR
 config AUTOBOOT_STOP_STR
 	string "Stop autobooting via specific input key / string"
 	depends on AUTOBOOT_KEYED && !AUTOBOOT_ENCRYPTION
+	default " "
 	help
 	  This option enables stopping (aborting) of the automatic
 	  boot feature only by issuing a specific input key or

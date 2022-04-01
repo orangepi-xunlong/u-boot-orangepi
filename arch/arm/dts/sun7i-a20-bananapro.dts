@@ -60,6 +60,17 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con_in: endpoint {
+				remote-endpoint = <&hdmi_out_con>;
+			};
+		};
+	};
+
 	leds {
 		compatible = "gpio-leds";
 
@@ -91,11 +102,16 @@
 };
 
 &ahci {
-	status = "okay";
+    target-supply = <&reg_ahci_5v>;
+    status = "okay";
 };
 
 &codec {
 	status = "okay";
+};
+
+&de {
+    status = "okay";
 };
 
 &ehci0 {
@@ -116,6 +132,16 @@
 
 	phy1: ethernet-phy@1 {
 		reg = <1>;
+	};
+};
+
+&hdmi {
+	status = "okay";
+};
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
 	};
 };
 

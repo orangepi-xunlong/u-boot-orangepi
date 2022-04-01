@@ -597,6 +597,9 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
 	sun8i-h2-plus-libretech-all-h3-cc.dtb \
 	sun8i-h2-plus-orangepi-r1.dtb \
 	sun8i-h2-plus-orangepi-zero.dtb \
+	sun8i-h2-plus-nanopi-duo.dtb \
+	sun8i-h2-plus-sunvell-r69.dtb \
+	sun8i-h3-zeropi.dtb \
 	sun8i-h3-bananapi-m2-plus.dtb \
 	sun8i-h3-bananapi-m2-plus-v1.2.dtb \
 	sun8i-h3-beelink-x2.dtb \
@@ -608,9 +611,13 @@ dtb-$(CONFIG_MACH_SUN8I_H3) += \
 	sun8i-h3-nanopi-m1-plus.dtb \
 	sun8i-h3-nanopi-neo.dtb \
 	sun8i-h3-nanopi-neo-air.dtb \
+	sun8i-h3-nanopi-r1.dtb \
+	sun8i-h3-nanopi-duo2.dtb \
 	sun8i-h3-orangepi-2.dtb \
 	sun8i-h3-orangepi-lite.dtb \
 	sun8i-h3-orangepi-one.dtb \
+	sun8i-h3-beelink-x2.dtb \
+	sun8i-h3-orangepi-zero-plus2.dtb \
 	sun8i-h3-orangepi-pc.dtb \
 	sun8i-h3-orangepi-pc-plus.dtb \
 	sun8i-h3-orangepi-plus.dtb \
@@ -630,10 +637,13 @@ dtb-$(CONFIG_MACH_SUN50I_H5) += \
 	sun50i-h5-libretech-all-h3-cc.dtb \
 	sun50i-h5-libretech-all-h3-it.dtb \
 	sun50i-h5-libretech-all-h5-cc.dtb \
+	sun50i-h5-nanopi-m1-plus2.dtb \
 	sun50i-h5-nanopi-neo2.dtb \
+	sun50i-h5-nanopi-neo-core2.dtb \
 	sun50i-h5-nanopi-neo-plus2.dtb \
 	sun50i-h5-orangepi-zero-plus.dtb \
 	sun50i-h5-orangepi-pc2.dtb \
+	sun50i-h5-nanopi-k1-plus.dtb \
 	sun50i-h5-orangepi-prime.dtb \
 	sun50i-h5-orangepi-zero-plus2.dtb
 dtb-$(CONFIG_MACH_SUN50I_H6) += \
@@ -642,6 +652,7 @@ dtb-$(CONFIG_MACH_SUN50I_H6) += \
 	sun50i-h6-orangepi-lite2.dtb \
 	sun50i-h6-orangepi-one-plus.dtb \
 	sun50i-h6-pine-h64.dtb \
+	sun50i-h6-pine-h64-model-b.dtb \
 	sun50i-h6-tanix-tx6.dtb
 dtb-$(CONFIG_MACH_SUN50I_H616) += \
 	sun50i-h616-orangepi-zero2.dtb
