@@ -6,10 +6,12 @@
 #include <common.h>
 #include <fsl_ddr_sdram.h>
 #include <fsl_ddr_dimm_params.h>
+#include <asm/global_data.h>
 #include "ddr.h"
 #ifdef CONFIG_FSL_DEEP_SLEEP
 #include <fsl_sleep.h>
 #endif
+#include <log.h>
 #include <asm/arch/clock.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -97,6 +99,17 @@ found:
 	popts->cpo_sample = 0x61;
 }
 
+#ifdef CONFIG_TFABOOT
+int fsl_initdram(void)
+{
+	gd->ram_size = tfa_get_dram_size();
+
+	if (!gd->ram_size)
+		gd->ram_size = fsl_ddr_sdram_size();
+
+	return 0;
+}
+#else
 int fsl_initdram(void)
 {
 	phys_size_t dram_size;
@@ -117,3 +130,4 @@ int fsl_initdram(void)
 
 	return 0;
 }
+#endif

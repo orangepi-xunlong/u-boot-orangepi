@@ -9,6 +9,7 @@
  */
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
 #include <linux/compiler.h>
 
 static int parse_argv(const char *);
@@ -19,10 +20,15 @@ void __weak invalidate_icache_all(void)
 	puts("No arch specific invalidate_icache_all available!\n");
 }
 
-static int do_icache(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+__weak void noncached_set_region(void)
+{
+}
+
+static int do_icache(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	switch (argc) {
-	case 2:			/* on / off	*/
+	case 2:			/* on / off / flush */
 		switch (parse_argv(argv[1])) {
 		case 0:
 			icache_disable();
@@ -33,6 +39,8 @@ static int do_icache(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		case 2:
 			invalidate_icache_all();
 			break;
+		default:
+			return CMD_RET_USAGE;
 		}
 		break;
 	case 1:			/* get status */
@@ -51,20 +59,24 @@ void __weak flush_dcache_all(void)
 	/* please define arch specific flush_dcache_all */
 }
 
-static int do_dcache(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_dcache(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	switch (argc) {
-	case 2:			/* on / off */
+	case 2:			/* on / off / flush */
 		switch (parse_argv(argv[1])) {
 		case 0:
 			dcache_disable();
 			break;
 		case 1:
 			dcache_enable();
+			noncached_set_region();
 			break;
 		case 2:
 			flush_dcache_all();
 			break;
+		default:
+			return CMD_RET_USAGE;
 		}
 		break;
 	case 1:			/* get status */

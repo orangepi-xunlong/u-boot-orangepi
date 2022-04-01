@@ -5,9 +5,12 @@
 
 #include <common.h>
 #include <dm.h>
+#include <part.h>
 #include <usb.h>
+#include <asm/global_data.h>
 #include <asm/state.h>
 #include <dm/test.h>
+#include <test/test.h>
 #include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -15,38 +18,30 @@ DECLARE_GLOBAL_DATA_PTR;
 /* Test that block devices can be created */
 static int dm_test_blk_base(struct unit_test_state *uts)
 {
-	struct udevice *blk, *usb_blk, *dev;
-
-	/* Make sure there are no block devices */
-	ut_asserteq(-ENODEV, uclass_get_device_by_seq(UCLASS_BLK, 0, &blk));
+	struct udevice *blk1, *blk3, *dev;
 
 	/* Create two, one the parent of the other */
 	ut_assertok(blk_create_device(gd->dm_root, "sandbox_host_blk", "test",
-				      IF_TYPE_HOST, 1, 512, 2, &blk));
-	ut_assertok(blk_create_device(blk, "usb_storage_blk", "test",
-				      IF_TYPE_USB, 3, 512, 2, &usb_blk));
+				      IF_TYPE_HOST, 1, 512, 2, &blk1));
+	ut_assertok(blk_create_device(blk1, "sandbox_host_blk", "test",
+				      IF_TYPE_HOST, 3, 512, 2, &blk3));
 
 	/* Check we can find them */
 	ut_asserteq(-ENODEV, blk_get_device(IF_TYPE_HOST, 0, &dev));
 	ut_assertok(blk_get_device(IF_TYPE_HOST, 1, &dev));
-	ut_asserteq_ptr(blk, dev);
-
-	ut_asserteq(-ENODEV, blk_get_device(IF_TYPE_USB, 0, &dev));
-	ut_assertok(blk_get_device(IF_TYPE_USB, 3, &dev));
-	ut_asserteq_ptr(usb_blk, dev);
+	ut_asserteq_ptr(blk1, dev);
+	ut_assertok(blk_get_device(IF_TYPE_HOST, 3, &dev));
+	ut_asserteq_ptr(blk3, dev);
 
 	/* Check we can iterate */
 	ut_assertok(blk_first_device(IF_TYPE_HOST, &dev));
-	ut_asserteq_ptr(blk, dev);
-	ut_asserteq(-ENODEV, blk_next_device(&dev));
-
-	ut_assertok(blk_first_device(IF_TYPE_USB, &dev));
-	ut_asserteq_ptr(usb_blk, dev);
-	ut_asserteq(-ENODEV, blk_next_device(&dev));
+	ut_asserteq_ptr(blk1, dev);
+	ut_assertok(blk_next_device(&dev));
+	ut_asserteq_ptr(blk3, dev);
 
 	return 0;
 }
-DM_TEST(dm_test_blk_base, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_blk_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 static int count_blk_devices(void)
 {
@@ -92,7 +87,7 @@ static int dm_test_blk_usb(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_blk_usb, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_blk_usb, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test that we can find block devices without probing them */
 static int dm_test_blk_find(struct unit_test_state *uts)
@@ -113,7 +108,7 @@ static int dm_test_blk_find(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_blk_find, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_blk_find, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test that block device numbering works as expected */
 static int dm_test_blk_devnum(struct unit_test_state *uts)
@@ -142,13 +137,13 @@ static int dm_test_blk_devnum(struct unit_test_state *uts)
 		 * Check that the block device devnum matches its parent's
 		 * sequence number
 		 */
-		desc = dev_get_uclass_platdata(dev);
+		desc = dev_get_uclass_plat(dev);
 		ut_asserteq(desc->devnum, i);
 	}
 
 	return 0;
 }
-DM_TEST(dm_test_blk_devnum, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_blk_devnum, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test that we can get a block from its parent */
 static int dm_test_blk_get_from_parent(struct unit_test_state *uts)
@@ -166,4 +161,59 @@ static int dm_test_blk_get_from_parent(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_blk_get_from_parent, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+DM_TEST(dm_test_blk_get_from_parent, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+
+/* Test iteration through block devices */
+static int dm_test_blk_iter(struct unit_test_state *uts)
+{
+	struct udevice *dev;
+	int i;
+
+	/*
+	 * See sandbox test.dts - it has:
+	 *
+	 *   mmc0 - removable
+	 *   mmc1 - removable
+	 *   mmc2 - fixed
+	 */
+	ut_assertok(blk_first_device_err(BLKF_FIXED, &dev));
+	ut_asserteq_str("mmc2.blk", dev->name);
+	ut_asserteq(-ENODEV, blk_next_device_err(BLKF_FIXED, &dev));
+
+	ut_assertok(blk_first_device_err(BLKF_REMOVABLE, &dev));
+	ut_asserteq_str("mmc1.blk", dev->name);
+	ut_assertok(blk_next_device_err(BLKF_REMOVABLE, &dev));
+	ut_asserteq_str("mmc0.blk", dev->name);
+	ut_asserteq(-ENODEV, blk_next_device_err(BLKF_REMOVABLE, &dev));
+
+	ut_assertok(blk_first_device_err(BLKF_BOTH, &dev));
+	ut_asserteq_str("mmc2.blk", dev->name);
+	ut_assertok(blk_next_device_err(BLKF_BOTH, &dev));
+	ut_asserteq_str("mmc1.blk", dev->name);
+	ut_assertok(blk_next_device_err(BLKF_BOTH, &dev));
+	ut_asserteq_str("mmc0.blk", dev->name);
+	ut_asserteq(-ENODEV, blk_next_device_err(BLKF_FIXED, &dev));
+
+	ut_asserteq(1, blk_count_devices(BLKF_FIXED));
+	ut_asserteq(2, blk_count_devices(BLKF_REMOVABLE));
+	ut_asserteq(3, blk_count_devices(BLKF_BOTH));
+
+	i = 0;
+	blk_foreach_probe(BLKF_FIXED, dev)
+		ut_asserteq_str((i++, "mmc2.blk"), dev->name);
+	ut_asserteq(1, i);
+
+	i = 0;
+	blk_foreach_probe(BLKF_REMOVABLE, dev)
+		ut_asserteq_str(i++ ? "mmc0.blk" : "mmc1.blk", dev->name);
+	ut_asserteq(2, i);
+
+	i = 0;
+	blk_foreach_probe(BLKF_BOTH, dev)
+		ut_asserteq_str((++i == 1 ? "mmc2.blk" : i == 2 ?
+			"mmc1.blk" : "mmc0.blk"), dev->name);
+	ut_asserteq(3, i);
+
+	return 0;
+}
+DM_TEST(dm_test_blk_iter, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

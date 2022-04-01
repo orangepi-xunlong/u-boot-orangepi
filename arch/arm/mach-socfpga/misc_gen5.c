@@ -4,9 +4,14 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <env.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <linux/bitops.h>
 #include <linux/libfdt.h>
 #include <altera.h>
 #include <miiphy.h>
@@ -27,113 +32,30 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static struct pl310_regs *const pl310 =
 	(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
-static struct socfpga_system_manager *sysmgr_regs =
-	(struct socfpga_system_manager *)SOCFPGA_SYSMGR_ADDRESS;
 static struct nic301_registers *nic301_regs =
 	(struct nic301_registers *)SOCFPGA_L3REGS_ADDRESS;
 static struct scu_registers *scu_regs =
 	(struct scu_registers *)SOCFPGA_MPUSCU_ADDRESS;
 
 /*
- * DesignWare Ethernet initialization
+ * FPGA programming support for SoC FPGA Cyclone V
  */
-#ifdef CONFIG_ETH_DESIGNWARE
-void dwmac_deassert_reset(const unsigned int of_reset_id,
-				 const u32 phymode)
-{
-	u32 physhift, reset;
-
-	if (of_reset_id == EMAC0_RESET) {
-		physhift = SYSMGR_EMACGRP_CTRL_PHYSEL0_LSB;
-		reset = SOCFPGA_RESET(EMAC0);
-	} else if (of_reset_id == EMAC1_RESET) {
-		physhift = SYSMGR_EMACGRP_CTRL_PHYSEL1_LSB;
-		reset = SOCFPGA_RESET(EMAC1);
-	} else {
-		printf("GMAC: Invalid reset ID (%i)!\n", of_reset_id);
-		return;
-	}
-
-	/* configure to PHY interface select choosed */
-	clrsetbits_le32(&sysmgr_regs->emacgrp_ctrl,
-			SYSMGR_EMACGRP_CTRL_PHYSEL_MASK << physhift,
-			phymode << physhift);
-
-	/* Release the EMAC controller from reset */
-	socfpga_per_reset(reset, 0);
-}
-
-static u32 dwmac_phymode_to_modereg(const char *phymode, u32 *modereg)
-{
-	if (!phymode)
-		return -EINVAL;
-
-	if (!strcmp(phymode, "mii") || !strcmp(phymode, "gmii")) {
-		*modereg = SYSMGR_EMACGRP_CTRL_PHYSEL_ENUM_GMII_MII;
-		return 0;
-	}
-
-	if (!strcmp(phymode, "rgmii")) {
-		*modereg = SYSMGR_EMACGRP_CTRL_PHYSEL_ENUM_RGMII;
-		return 0;
-	}
-
-	if (!strcmp(phymode, "rmii")) {
-		*modereg = SYSMGR_EMACGRP_CTRL_PHYSEL_ENUM_RMII;
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
-static int socfpga_eth_reset(void)
-{
-	const void *fdt = gd->fdt_blob;
-	struct fdtdec_phandle_args args;
-	const char *phy_mode;
-	u32 phy_modereg;
-	int nodes[2];	/* Max. two GMACs */
-	int ret, count;
-	int i, node;
-
-	/* Put both GMACs into RESET state. */
-	socfpga_per_reset(SOCFPGA_RESET(EMAC0), 1);
-	socfpga_per_reset(SOCFPGA_RESET(EMAC1), 1);
-
-	count = fdtdec_find_aliases_for_id(fdt, "ethernet",
-					   COMPAT_ALTERA_SOCFPGA_DWMAC,
-					   nodes, ARRAY_SIZE(nodes));
-	for (i = 0; i < count; i++) {
-		node = nodes[i];
-		if (node <= 0)
-			continue;
-
-		ret = fdtdec_parse_phandle_with_args(fdt, node, "resets",
-						     "#reset-cells", 1, 0,
-						     &args);
-		if (ret || (args.args_count != 1)) {
-			debug("GMAC%i: Failed to parse DT 'resets'!\n", i);
-			continue;
-		}
-
-		phy_mode = fdt_getprop(fdt, node, "phy-mode", NULL);
-		ret = dwmac_phymode_to_modereg(phy_mode, &phy_modereg);
-		if (ret) {
-			debug("GMAC%i: Failed to parse DT 'phy-mode'!\n", i);
-			continue;
-		}
-
-		dwmac_deassert_reset(args.args[0], phy_modereg);
-	}
-
-	return 0;
-}
-#else
-static int socfpga_eth_reset(void)
-{
-	return 0;
+static Altera_desc altera_fpga[] = {
+	{
+		/* Family */
+		Altera_SoCFPGA,
+		/* Interface type */
+		fast_passive_parallel,
+		/* No limitation as additional data will be ignored */
+		-1,
+		/* No device function table */
+		NULL,
+		/* Base interface address specified in driver */
+		NULL,
+		/* No cookie implementation */
+		0
+	},
 };
-#endif
 
 static const struct {
 	const u16	pn;
@@ -159,6 +81,8 @@ static const struct {
 	{ 0x2d02, "Cyclone V, SE/A6 or SX/C6 or ST/D6", "cv_se_a6" },
 	/* Arria V */
 	{ 0x2d03, "Arria V, D5", "av_d5" },
+	/* Arria V ST/SX */
+	{ 0x2d13, "Arria V, ST/D3 or SX/B3", "av_st_d3" },
 };
 
 static int socfpga_fpga_id(const bool print_id)
@@ -198,8 +122,9 @@ static int socfpga_fpga_id(const bool print_id)
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo(void)
 {
-	const u32 bsel =
-		SYSMGR_GET_BOOTINFO_BSEL(readl(&sysmgr_regs->bootinfo));
+	const u32 bootinfo = readl(socfpga_get_sysmgr_addr() +
+				   SYSMGR_GEN5_BOOTINFO);
+	const u32 bsel = SYSMGR_GET_BOOTINFO_BSEL(bootinfo);
 
 	puts("CPU:   Altera SoCFPGA Platform\n");
 	socfpga_fpga_id(1);
@@ -212,12 +137,13 @@ int print_cpuinfo(void)
 #ifdef CONFIG_ARCH_MISC_INIT
 int arch_misc_init(void)
 {
-	const u32 bsel = readl(&sysmgr_regs->bootinfo) & 0x7;
+	const u32 bsel = readl(socfpga_get_sysmgr_addr() +
+			       SYSMGR_GEN5_BOOTINFO) & 0x7;
 	const int fpga_id = socfpga_fpga_id(0);
 	env_set("bootmode", bsel_str[bsel].mode);
 	if (fpga_id >= 0)
 		env_set("fpgatype", socfpga_fpga_model[fpga_id].var);
-	return socfpga_eth_reset();
+	return 0;
 }
 #endif
 
@@ -234,6 +160,29 @@ static void socfpga_nic301_slave_ns(void)
 	writel(0x1, &nic301_regs->sdrdata);
 }
 
+void socfpga_sdram_remap_zero(void)
+{
+	u32 remap;
+
+	socfpga_nic301_slave_ns();
+
+	/*
+	 * Private components security:
+	 * U-Boot : configure private timer, global timer and cpu component
+	 * access as non secure for kernel stage (as required by Linux)
+	 */
+	setbits_le32(&scu_regs->sacr, 0xfff);
+
+	/* Configure the L2 controller to make SDRAM start at 0 */
+	remap = 0x1; /* remap.mpuzero */
+	/* Keep fpga bridge enabled when running from FPGA onchip RAM */
+	if (socfpga_is_booting_from_fpga())
+		remap |= 0x8; /* remap.hps2fpga */
+	writel(remap, &nic301_regs->remap);
+
+	writel(0x1, &pl310->pl310_addr_filter_start);
+}
+
 static u32 iswgrp_handoff[8];
 
 int arch_early_init_r(void)
@@ -247,115 +196,58 @@ int arch_early_init_r(void)
 	 * to support that old code, we write it here instead of in the
 	 * reset_cpu() function just before resetting the CPU.
 	 */
-	writel(0xae9efebc, &sysmgr_regs->romcodegrp_warmramgrp_enable);
+	writel(0xae9efebc,
+	       socfpga_get_sysmgr_addr() + SYSMGR_GEN5_WARMRAMGRP_EN);
 
 	for (i = 0; i < 8; i++)	/* Cache initial SW setting regs */
-		iswgrp_handoff[i] = readl(&sysmgr_regs->iswgrp_handoff[i]);
+		iswgrp_handoff[i] = readl(socfpga_get_sysmgr_addr() +
+					  SYSMGR_ISWGRP_HANDOFF_OFFSET(i));
 
 	socfpga_bridges_reset(1);
 
-	socfpga_nic301_slave_ns();
-
-	/*
-	 * Private components security:
-	 * U-Boot : configure private timer, global timer and cpu component
-	 * access as non secure for kernel stage (as required by Linux)
-	 */
-	setbits_le32(&scu_regs->sacr, 0xfff);
-
-	/* Configure the L2 controller to make SDRAM start at 0 */
-#ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
-	writel(0x2, &nic301_regs->remap);
-#else
-	writel(0x1, &nic301_regs->remap);	/* remap.mpuzero */
-	writel(0x1, &pl310->pl310_addr_filter_start);
-#endif
+	socfpga_sdram_remap_zero();
 
 	/* Add device descriptor to FPGA device table */
-	socfpga_fpga_add();
-
-#ifdef CONFIG_DESIGNWARE_SPI
-	/* Get Designware SPI controller out of reset */
-	socfpga_per_reset(SOCFPGA_RESET(SPIM0), 0);
-	socfpga_per_reset(SOCFPGA_RESET(SPIM1), 0);
-#endif
-
-#ifdef CONFIG_NAND_DENALI
-	socfpga_per_reset(SOCFPGA_RESET(NAND), 0);
-#endif
+	socfpga_fpga_add(&altera_fpga[0]);
 
 	return 0;
 }
 
 #ifndef CONFIG_SPL_BUILD
-static struct socfpga_reset_manager *reset_manager_base =
-	(struct socfpga_reset_manager *)SOCFPGA_RSTMGR_ADDRESS;
 static struct socfpga_sdr_ctrl *sdr_ctrl =
 	(struct socfpga_sdr_ctrl *)SDR_CTRLGRP_ADDRESS;
 
-static void socfpga_sdram_apply_static_cfg(void)
+void do_bridge_reset(int enable, unsigned int mask)
 {
-	const u32 applymask = 0x8;
-	u32 val = readl(&sdr_ctrl->static_cfg) | applymask;
+	int i;
 
-	/*
-	 * SDRAM staticcfg register specific:
-	 * When applying the register setting, the CPU must not access
-	 * SDRAM. Luckily for us, we can abuse i-cache here to help us
-	 * circumvent the SDRAM access issue. The idea is to make sure
-	 * that the code is in one full i-cache line by branching past
-	 * it and back. Once it is in the i-cache, we execute the core
-	 * of the code and apply the register settings.
-	 *
-	 * The code below uses 7 instructions, while the Cortex-A9 has
-	 * 32-byte cachelines, thus the limit is 8 instructions total.
-	 */
-	asm volatile(
-		".align	5			\n"
-		"	b	2f		\n"
-		"1:	str	%0,	[%1]	\n"
-		"	dsb			\n"
-		"	isb			\n"
-		"	b	3f		\n"
-		"2:	b	1b		\n"
-		"3:	nop			\n"
-	: : "r"(val), "r"(&sdr_ctrl->static_cfg) : "memory", "cc");
-}
+	if (enable) {
+		socfpga_bridges_set_handoff_regs(!(mask & BIT(0)),
+						 !(mask & BIT(1)),
+						 !(mask & BIT(2)));
+		for (i = 0; i < 2; i++) {	/* Reload SW setting cache */
+			iswgrp_handoff[i] =
+				readl(socfpga_get_sysmgr_addr() +
+				      SYSMGR_ISWGRP_HANDOFF_OFFSET(i));
+		}
 
-static int do_bridge(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	if (argc != 2)
-		return CMD_RET_USAGE;
-
-	argv++;
-
-	switch (*argv[0]) {
-	case 'e':	/* Enable */
-		writel(iswgrp_handoff[2], &sysmgr_regs->fpgaintfgrp_module);
-		socfpga_sdram_apply_static_cfg();
+		writel(iswgrp_handoff[2],
+		       socfpga_get_sysmgr_addr() +
+		       SYSMGR_GEN5_FPGAINFGRP_MODULE);
 		writel(iswgrp_handoff[3], &sdr_ctrl->fpgaport_rst);
-		writel(iswgrp_handoff[0], &reset_manager_base->brg_mod_reset);
+		writel(iswgrp_handoff[0],
+		       socfpga_get_rstmgr_addr() + RSTMGR_GEN5_BRGMODRST);
 		writel(iswgrp_handoff[1], &nic301_regs->remap);
-		break;
-	case 'd':	/* Disable */
-		writel(0, &sysmgr_regs->fpgaintfgrp_module);
+
+		writel(0x7, socfpga_get_rstmgr_addr() + RSTMGR_GEN5_BRGMODRST);
+		writel(iswgrp_handoff[0],
+		       socfpga_get_rstmgr_addr() + RSTMGR_GEN5_BRGMODRST);
+	} else {
+		writel(0, socfpga_get_sysmgr_addr() +
+		       SYSMGR_GEN5_FPGAINFGRP_MODULE);
 		writel(0, &sdr_ctrl->fpgaport_rst);
-		socfpga_sdram_apply_static_cfg();
-		writel(0, &reset_manager_base->brg_mod_reset);
+		writel(0x7, socfpga_get_rstmgr_addr() + RSTMGR_GEN5_BRGMODRST);
 		writel(1, &nic301_regs->remap);
-		break;
-	default:
-		return CMD_RET_USAGE;
 	}
-
-	return 0;
 }
-
-U_BOOT_CMD(
-	bridge, 2, 1, do_bridge,
-	"SoCFPGA HPS FPGA bridge control",
-	"enable  - Enable HPS-to-FPGA, FPGA-to-HPS, LWHPS-to-FPGA bridges\n"
-	"bridge disable - Enable HPS-to-FPGA, FPGA-to-HPS, LWHPS-to-FPGA bridges\n"
-	""
-);
 #endif

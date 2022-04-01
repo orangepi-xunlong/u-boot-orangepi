@@ -6,8 +6,10 @@
  */
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <ide.h>
 #include "part_amiga.h"
+#include <part.h>
 
 #ifdef CONFIG_HAVE_BLOCK_DEVICE
 
@@ -133,7 +135,7 @@ struct rigid_disk_block *get_rdisk(struct blk_desc *dev_desc)
 
     s = env_get("amiga_scanlimit");
     if (s)
-	limit = simple_strtoul(s, NULL, 10);
+	limit = dectoul(s, NULL);
     else
 	limit = AMIGA_BLOCK_LIMIT;
 
@@ -173,7 +175,7 @@ struct bootcode_block *get_bootcode(struct blk_desc *dev_desc)
 
     s = env_get("amiga_scanlimit");
     if (s)
-	limit = simple_strtoul(s, NULL, 10);
+	limit = dectoul(s, NULL);
     else
 	limit = AMIGA_BLOCK_LIMIT;
 
@@ -290,7 +292,7 @@ static struct partition_block *find_partition(struct blk_desc *dev_desc,
  * Get info about a partition
  */
 static int part_get_info_amiga(struct blk_desc *dev_desc, int part,
-				    disk_partition_t *info)
+				    struct disk_partition *info)
 {
     struct partition_block *p = find_partition(dev_desc, part-1);
     struct amiga_part_geometry *g;

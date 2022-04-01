@@ -51,31 +51,28 @@ In case you have questions about, problems with or contributions for
 U-Boot, you should send a message to the U-Boot mailing list at
 <u-boot@lists.denx.de>. There is also an archive of previous traffic
 on the mailing list - please search the archive before asking FAQ's.
-Please see http://lists.denx.de/pipermail/u-boot and
-http://dir.gmane.org/gmane.comp.boot-loaders.u-boot
-
+Please see https://lists.denx.de/pipermail/u-boot and
+https://marc.info/?l=u-boot
 
 Where to get source code:
 =========================
 
 The U-Boot source code is maintained in the Git repository at
-git://www.denx.de/git/u-boot.git ; you can browse it online at
-http://www.denx.de/cgi-bin/gitweb.cgi?p=u-boot.git;a=summary
+https://source.denx.de/u-boot/u-boot.git ; you can browse it online at
+https://source.denx.de/u-boot/u-boot
 
-The "snapshot" links on this page allow you to download tarballs of
+The "Tags" links on this page allow you to download tarballs of
 any version you might be interested in. Official releases are also
-available for FTP download from the ftp://ftp.denx.de/pub/u-boot/
-directory.
-
-Pre-built (and tested) images are available from
-ftp://ftp.denx.de/pub/u-boot/images/
+available from the DENX file server through HTTPS or FTP.
+https://ftp.denx.de/pub/u-boot/
+ftp://ftp.denx.de/pub/u-boot/
 
 
 Where we come from:
 ===================
 
 - start from 8xxrom sources
-- create PPCBoot project (http://sourceforge.net/projects/ppcboot)
+- create PPCBoot project (https://sourceforge.net/projects/ppcboot)
 - clean up code
 - make it easier to add custom boards
 - make it possible to add other [PowerPC] CPUs
@@ -83,11 +80,11 @@ Where we come from:
   * Provide extended interface to Linux boot loader
   * S-Record download
   * network boot
-  * PCMCIA / CompactFlash / ATA disk / SCSI ... boot
-- create ARMBoot project (http://sourceforge.net/projects/armboot)
+  * ATA disk / SCSI ... boot
+- create ARMBoot project (https://sourceforge.net/projects/armboot)
 - add other CPU families (starting with ARM)
-- create U-Boot project (http://sourceforge.net/projects/u-boot)
-- current project page: see http://www.denx.de/wiki/U-Boot
+- create U-Boot project (https://sourceforge.net/projects/u-boot)
+- current project page: see https://www.denx.de/wiki/U-Boot
 
 
 Names and Spelling:
@@ -131,7 +128,7 @@ Examples:
 Directory Hierarchy:
 ====================
 
-/arch			Architecture specific files
+/arch			Architecture-specific files
   /arc			Files generic to ARC architecture
   /arm			Files generic to ARM architecture
   /m68k			Files generic to m68k architecture
@@ -139,21 +136,22 @@ Directory Hierarchy:
   /mips			Files generic to MIPS architecture
   /nds32		Files generic to NDS32 architecture
   /nios2		Files generic to Altera NIOS2 architecture
-  /openrisc		Files generic to OpenRISC architecture
   /powerpc		Files generic to PowerPC architecture
   /riscv		Files generic to RISC-V architecture
   /sandbox		Files generic to HW-independent "sandbox"
   /sh			Files generic to SH architecture
   /x86			Files generic to x86 architecture
-/api			Machine/arch independent API for external apps
-/board			Board dependent files
+  /xtensa		Files generic to Xtensa architecture
+/api			Machine/arch-independent API for external apps
+/board			Board-dependent files
 /cmd			U-Boot commands functions
-/common			Misc architecture independent functions
+/common			Misc architecture-independent functions
 /configs		Board default configuration files
 /disk			Code for disk drive partition handling
-/doc			Documentation (don't expect too much)
-/drivers		Commonly used device drivers
-/dts			Contains Makefile for building internal U-Boot fdt.
+/doc			Documentation (a mix of ReST and READMEs)
+/drivers		Device drivers
+/dts			Makefile for building internal U-Boot fdt.
+/env			Environment support
 /examples		Example code for standalone applications, etc.
 /fs			Filesystem code (cramfs, ext2, jffs2, etc.)
 /include		Header Files
@@ -163,7 +161,7 @@ Directory Hierarchy:
 /post			Power On Self Test
 /scripts		Various build scripts and Makefiles
 /test			Various unit test files
-/tools			Tools to build S-Record or U-Boot images, etc.
+/tools			Tools to build and sign FIT images, etc.
 
 Software Configuration:
 =======================
@@ -212,7 +210,7 @@ board. This allows feature development which is not board- or architecture-
 specific to be undertaken on a native platform. The sandbox is also used to
 run some of U-Boot's tests.
 
-See board/sandbox/README.sandbox for more details.
+See doc/arch/sandbox.rst for more details.
 
 
 Board Initialisation Flow:
@@ -266,7 +264,14 @@ board_init_f():
 		version as needed.
 	- preloader_console_init() can be called here in extremis
 	- should set up SDRAM, and anything needed to make the UART work
-	- these is no need to clear BSS, it will be done by crt0.S
+	- there is no need to clear BSS, it will be done by crt0.S
+	- for specific scenarios on certain architectures an early BSS *can*
+	  be made available (via CONFIG_SPL_EARLY_BSS by moving the clearing
+	  of BSS prior to entering board_init_f()) but doing so is discouraged.
+	  Instead it is strongly recommended to architect any code changes
+	  or additions such to not depend on the availability of BSS during
+	  board_init_f() as indicated in other sections of this README to
+	  maintain compatibility and consistency across the entire code base.
 	- must return normally from this function (don't call board_init_r()
 		directly)
 
@@ -330,11 +335,6 @@ The following options need to be configured:
 - CPU Type:	Define exactly one, e.g. CONFIG_MPC85XX.
 
 - Board Type:	Define exactly one, e.g. CONFIG_MPC8540ADS.
-
-- Marvell Family Member
-		CONFIG_SYS_MVFS		- define it if you want to enable
-					  multiple fs option at one time
-					  for marvell soc family
 
 - 85xx CPU Options:
 		CONFIG_SYS_PPC64
@@ -423,8 +423,7 @@ The following options need to be configured:
 
 		CONFIG_SYS_FSL_DDR
 		Freescale DDR driver in use. This type of DDR controller is
-		found in mpc83xx, mpc85xx, mpc86xx as well as some ARM core
-		SoCs.
+		found in mpc83xx, mpc85xx as well as some ARM core SoCs.
 
 		CONFIG_SYS_FSL_DDR_ADDR
 		Freescale DDR memory-mapped register base.
@@ -491,10 +490,6 @@ The following options need to be configured:
 		PBI commands can be used to configure SoC before it starts the execution.
 		Please refer doc/README.pblimage for more details
 
-		CONFIG_SPL_FSL_PBL
-		It adds a target to create boot binary having SPL binary in PBI format
-		concatenated with u-boot binary.
-
 		CONFIG_SYS_FSL_DDR_BE
 		Defines the DDR controller register space as Big Endian
 
@@ -533,25 +528,6 @@ The following options need to be configured:
 		pointer. This is needed for the temporary stack before
 		relocation.
 
-		CONFIG_SYS_MIPS_CACHE_MODE
-
-		Cache operation mode for the MIPS CPU.
-		See also arch/mips/include/asm/mipsregs.h.
-		Possible values are:
-			CONF_CM_CACHABLE_NO_WA
-			CONF_CM_CACHABLE_WA
-			CONF_CM_UNCACHED
-			CONF_CM_CACHABLE_NONCOHERENT
-			CONF_CM_CACHABLE_CE
-			CONF_CM_CACHABLE_COW
-			CONF_CM_CACHABLE_CUW
-			CONF_CM_CACHABLE_ACCELERATED
-
-		CONFIG_SYS_XWAY_EBU_BOOTCFG
-
-		Special option for Lantiq XWAY SoCs for booting from NOR flash.
-		See also arch/mips/cpu/mips32/start.S.
-
 		CONFIG_XWAY_SWAP_BYTES
 
 		Enable compilation of tools/xway-swap-bytes needed for Lantiq
@@ -580,19 +556,6 @@ The following options need to be configured:
 		such as ARM architectural timer initialization.
 
 - Linux Kernel Interface:
-		CONFIG_CLOCKS_IN_MHZ
-
-		U-Boot stores all clock information in Hz
-		internally. For binary compatibility with older Linux
-		kernels (which expect the clocks passed in the
-		bd_info data to be in MHz) the environment variable
-		"clocks_in_mhz" can be defined so that U-Boot
-		converts clock data to MHZ before passing it to the
-		Linux kernel.
-		When CONFIG_CLOCKS_IN_MHZ is defined, a definition of
-		"clocks_in_mhz=1" is automatically included in the
-		default environment.
-
 		CONFIG_MEMSIZE_IN_BYTES		[relevant for MIPS only]
 
 		When transferring memsize parameter to Linux, some versions
@@ -611,7 +574,6 @@ The following options need to be configured:
 		 * The bootm command automatically updates the fdt
 
 		OF_TBCLK - The timebase frequency.
-		OF_STDOUT_PATH - The path to the console device
 
 		boards with QUICC Engines require OF_QE to set UCC MAC
 		addresses
@@ -642,7 +604,7 @@ The following options need to be configured:
 		This setting is mandatory for all boards that have only one
 		machine type and must be used to specify the machine type
 		number as it appears in the ARM machine registry
-		(see http://www.arm.linux.org.uk/developer/machines/).
+		(see https://www.arm.linux.org.uk/developer/machines/).
 		Only boards that have multiple machine types supported
 		in a single configuration file and the machine type is
 		runtime discoverable, do not have to use this setting.
@@ -654,12 +616,10 @@ The following options need to be configured:
 		serverip, gatewayip, hostname, othbootargs.
 		It loads the vxWorks image pointed bootfile.
 
-		Note: If a "bootargs" environment is defined, it will overwride
+		Note: If a "bootargs" environment is defined, it will override
 		the defaults discussed just above.
 
 - Cache Configuration:
-		CONFIG_SYS_ICACHE_OFF - Do not enable instruction cache in U-Boot
-		CONFIG_SYS_DCACHE_OFF - Do not enable data cache in U-Boot
 		CONFIG_SYS_L2CACHE_OFF- Do not enable L2 cache in U-Boot
 
 - Cache Configuration for ARM:
@@ -669,10 +629,6 @@ The following options need to be configured:
 					controller register space
 
 - Serial Ports:
-		CONFIG_PL010_SERIAL
-
-		Define this if you want support for Amba PrimeCell PL010 UARTs.
-
 		CONFIG_PL011_SERIAL
 
 		Define this if you want support for Amba PrimeCell PL011 UARTs.
@@ -693,11 +649,6 @@ The following options need to be configured:
 		Define this variable to enable hw flow control in serial driver.
 		Current user of this option is drivers/serial/nsl16550.c driver
 
-- Console Baudrate:
-		CONFIG_BAUDRATE - in bps
-		Select one of the baudrates listed in
-		CONFIG_SYS_BAUDRATE_TABLE, see below.
-
 - Autoboot Command:
 		CONFIG_BOOTCOMMAND
 		Only needed when CONFIG_BOOTDELAY is enabled;
@@ -710,22 +661,6 @@ The following options need to be configured:
 		"ramboot" and "nfsboot" respectively, and can be used
 		as a convenience, when switching between booting from
 		RAM and NFS.
-
-- Pre-Boot Commands:
-		CONFIG_PREBOOT
-
-		When this option is #defined, the existence of the
-		environment variable "preboot" will be checked
-		immediately before starting the CONFIG_BOOTDELAY
-		countdown and/or running the auto-boot command resp.
-		entering interactive mode.
-
-		This feature is especially useful when "preboot" is
-		automatically generated or modified. For an example
-		see the LWMON board specific code: here "preboot" is
-		modified when the user holds down a certain
-		combination of keys on the (special) keyboard when
-		booting the systems
 
 - Serial Download Echo Mode:
 		CONFIG_LOADS_ECHO
@@ -807,8 +742,14 @@ The following options need to be configured:
 		SoC, then define this variable and provide board
 		specific code for the "hw_watchdog_reset" function.
 
-		CONFIG_AT91_HW_WDT_TIMEOUT
-		specify the timeout in seconds. default 2 seconds.
+		CONFIG_SYS_WATCHDOG_FREQ
+		Some platforms automatically call WATCHDOG_RESET()
+		from the timer interrupt handler every
+		CONFIG_SYS_WATCHDOG_FREQ interrupts. If not set by the
+		board configuration file, a default of CONFIG_SYS_HZ/2
+		(i.e. 500) is used. Setting CONFIG_SYS_WATCHDOG_FREQ
+		to 0 disables calling WATCHDOG_RESET() from the timer
+		interrupt.
 
 - Real-Time Clock:
 
@@ -879,9 +820,6 @@ The following options need to be configured:
 		CONFIG_EFI_PARTITION   GPT partition table, common when EFI is the
 				       bootloader.  Note 2TB partition limit; see
 				       disk/part_efi.c
-		CONFIG_MTD_PARTITIONS  Memory Technology Device partition table.
-
-		If IDE or SCSI support is enabled (CONFIG_IDE or
 		CONFIG_SCSI) you must configure support for at
 		least one non-MTD partition type as well.
 
@@ -934,16 +872,6 @@ The following options need to be configured:
 		Allow generic access to the SPI bus on the Intel 8257x, for
 		example with the "sspi" command.
 
-		CONFIG_EEPRO100
-		Support for Intel 82557/82559/82559ER chips.
-		Optional CONFIG_EEPRO100_SROM_WRITE enables EEPROM
-		write routine for first time initialisation.
-
-		CONFIG_TULIP
-		Support for Digital 2114x chips.
-		Optional CONFIG_TULIP_SELECT_MEDIA for board specific
-		modem chip initialisation (KS8761/QS6611).
-
 		CONFIG_NATSEMI
 		Support for National dp83815 chips.
 
@@ -985,9 +913,6 @@ The following options need to be configured:
 			Define this to use i/o functions instead of macros
 			(some hardware wont work with macros)
 
-		CONFIG_DRIVER_TI_EMAC
-		Support for davinci emac
-
 			CONFIG_SYS_DAVINCI_EMAC_PHY_COUNT
 			Define this if you have more then 3 PHYs.
 
@@ -1014,10 +939,6 @@ The following options need to be configured:
 
 			CONFIG_SH_ETHER_CACHE_WRITEBACK
 			If this option is set, the driver enables cache flush.
-
-- PWM Support:
-		CONFIG_PWM_IMX
-		Support for PWM module on the imx6.
 
 - TPM Support:
 		CONFIG_TPM
@@ -1169,19 +1090,9 @@ The following options need to be configured:
 			CONFIG_SH_MMCIF_CLK
 			Define the clock frequency for MMCIF
 
-		CONFIG_SUPPORT_EMMC_BOOT
-		Enable some additional features of the eMMC boot partitions.
-
-		CONFIG_SUPPORT_EMMC_RPMB
-		Enable the commands for reading, writing and programming the
-		key for the Replay Protection Memory Block partition in eMMC.
-
 - USB Device Firmware Update (DFU) class support:
 		CONFIG_DFU_OVER_USB
 		This enables the USB portion of the DFU USB class
-
-		CONFIG_DFU_MMC
-		This enables support for exposing (e)MMC devices via DFU.
 
 		CONFIG_DFU_NAND
 		This enables support for exposing NAND devices via DFU.
@@ -1340,75 +1251,6 @@ The following options need to be configured:
 		Enables an 'i2c edid' command which can read EDID
 		information over I2C from an attached LCD display.
 
-- Splash Screen Support: CONFIG_SPLASH_SCREEN
-
-		If this option is set, the environment is checked for
-		a variable "splashimage". If found, the usual display
-		of logo, copyright and system information on the LCD
-		is suppressed and the BMP image at the address
-		specified in "splashimage" is loaded instead. The
-		console is redirected to the "nulldev", too. This
-		allows for a "silent" boot where a splash screen is
-		loaded very quickly after power-on.
-
-		CONFIG_SPLASHIMAGE_GUARD
-
-		If this option is set, then U-Boot will prevent the environment
-		variable "splashimage" from being set to a problematic address
-		(see doc/README.displaying-bmps).
-		This option is useful for targets where, due to alignment
-		restrictions, an improperly aligned BMP image will cause a data
-		abort. If you think you will not have problems with unaligned
-		accesses (for example because your toolchain prevents them)
-		there is no need to set this option.
-
-		CONFIG_SPLASH_SCREEN_ALIGN
-
-		If this option is set the splash image can be freely positioned
-		on the screen. Environment variable "splashpos" specifies the
-		position as "x,y". If a positive number is given it is used as
-		number of pixel from left/top. If a negative number is given it
-		is used as number of pixel from right/bottom. You can also
-		specify 'm' for centering the image.
-
-		Example:
-		setenv splashpos m,m
-			=> image at center of screen
-
-		setenv splashpos 30,20
-			=> image at x = 30 and y = 20
-
-		setenv splashpos -10,m
-			=> vertically centered image
-			   at x = dspWidth - bmpWidth - 9
-
-- Gzip compressed BMP image support: CONFIG_VIDEO_BMP_GZIP
-
-		If this option is set, additionally to standard BMP
-		images, gzipped BMP images can be displayed via the
-		splashscreen support or the bmp command.
-
-- Run length encoded BMP image (RLE8) support: CONFIG_VIDEO_BMP_RLE8
-
-		If this option is set, 8-bit RLE compressed BMP images
-		can be displayed via the splashscreen support or the
-		bmp command.
-
-- Compression support:
-		CONFIG_GZIP
-
-		Enabled by default to support gzip compressed images.
-
-		CONFIG_BZIP2
-
-		If this option is set, support for bzip2 compressed
-		images is included. If not, only uncompressed and gzip
-		compressed images are supported.
-
-		NOTE: the bzip2 algorithm requires a lot of RAM, so
-		the malloc area (as defined by CONFIG_SYS_MALLOC_LEN) should
-		be at least 4MB.
-
 - MII/PHY support:
 		CONFIG_PHY_CLOCK_FREQ (ppc4xx)
 
@@ -1463,15 +1305,6 @@ The following options need to be configured:
 		forwarded through a router.
 		(Environment variable "netmask")
 
-- Multicast TFTP Mode:
-		CONFIG_MCAST_TFTP
-
-		Defines whether you want to support multicast TFTP as per
-		rfc-2090; for example to work with atftp.  Lets lots of targets
-		tftp down the same boot image concurrently.  Note: the Ethernet
-		driver in use must provide a function: mcast() to join/leave a
-		multicast group.
-
 - BOOTP Recovery Mode:
 		CONFIG_BOOTP_RANDOM_DELAY
 
@@ -1515,7 +1348,6 @@ The following options need to be configured:
 
 		CONFIG_BOOTP_NISDOMAIN
 		CONFIG_BOOTP_BOOTFILESIZE
-		CONFIG_BOOTP_SEND_HOSTNAME
 		CONFIG_BOOTP_NTPSERVER
 		CONFIG_BOOTP_TIMEOFFSET
 		CONFIG_BOOTP_VENDOREX
@@ -1529,13 +1361,6 @@ The following options need to be configured:
 		instead of starting over.  This can be used to fail over
 		to Link-local IP address configuration if the DHCP server
 		is not available.
-
-		CONFIG_BOOTP_SEND_HOSTNAME - Some DHCP servers are capable
-		to do a dynamic update of a DNS server. To do this, they
-		need the hostname of the DHCP requester.
-		If CONFIG_BOOTP_SEND_HOSTNAME is defined, the content
-		of the "hostname" environment variable is passed as
-		option 12 to the DHCP server.
 
 		CONFIG_BOOTP_DHCP_REQUEST_DELAY
 
@@ -1636,18 +1461,13 @@ The following options need to be configured:
 		In such cases CONFIG_GPIO_LED_INVERTED_TABLE may be defined
 		with a list of GPIO LEDs that have inverted polarity.
 
-- I2C Support:	CONFIG_SYS_I2C
+- I2C Support:	CONFIG_SYS_I2C_LEGACY
 
-		This enable the NEW i2c subsystem, and will allow you to use
+		Note: This is deprecated in favour of driver model. Use
+		CONFIG_DM_I2C instead.
+
+		This enable the legacy i2c subsystem, and will allow you to use
 		i2c commands at the u-boot command line (as long as you set
-		CONFIG_CMD_I2C in CONFIG_COMMANDS) and communicate with i2c
-		based realtime clock chips or other i2c devices. See
-		common/cmd_i2c.c for a description of the command line
-		interface.
-
-		ported i2c driver to the new framework:
-		- drivers/i2c/soft_i2c.c:
-		  - activate first bus with CONFIG_SYS_I2C_SOFT define
 		    CONFIG_SYS_I2C_SOFT_SPEED and CONFIG_SYS_I2C_SOFT_SLAVE
 		    for defining speed and slave address
 		  - activate second bus with I2C_SOFT_DECLARATIONS2 define
@@ -1703,16 +1523,6 @@ The following options need to be configured:
 		  - activate this driver with CONFIG_SYS_I2C_RCAR
 		  - This driver adds 4 i2c buses
 
-		  - CONFIG_SYS_RCAR_I2C0_BASE for setting the register channel 0
-		  - CONFIG_SYS_RCAR_I2C0_SPEED for for the speed channel 0
-		  - CONFIG_SYS_RCAR_I2C1_BASE for setting the register channel 1
-		  - CONFIG_SYS_RCAR_I2C1_SPEED for for the speed channel 1
-		  - CONFIG_SYS_RCAR_I2C2_BASE for setting the register channel 2
-		  - CONFIG_SYS_RCAR_I2C2_SPEED for for the speed channel 2
-		  - CONFIG_SYS_RCAR_I2C3_BASE for setting the register channel 3
-		  - CONFIG_SYS_RCAR_I2C3_SPEED for for the speed channel 3
-		  - CONFIF_SYS_RCAR_I2C_NUM_CONTROLLERS for number of i2c buses
-
 		- drivers/i2c/sh_i2c.c:
 		  - activate this driver with CONFIG_SYS_I2C_SH
 		  - This driver adds from 2 to 5 i2c buses
@@ -1741,11 +1551,6 @@ The following options need to be configured:
 		  - CONFIG_SYS_OMAP24_I2C_SLAVE3 slave addr channel 3
 		  - CONFIG_SYS_OMAP24_I2C_SPEED4 speed channel 4
 		  - CONFIG_SYS_OMAP24_I2C_SLAVE4 slave addr channel 4
-
-		- drivers/i2c/zynq_i2c.c
-		  - activate this driver with CONFIG_SYS_I2C_ZYNQ
-		  - set CONFIG_SYS_I2C_ZYNQ_SPEED for speed setting
-		  - set CONFIG_SYS_I2C_ZYNQ_SLAVE for slave addr
 
 		- drivers/i2c/s3c24x0_i2c.c:
 		  - activate this driver with CONFIG_SYS_I2C_S3C24X0
@@ -1966,14 +1771,6 @@ The following options need to be configured:
 		SPI configuration items (port pins to use, etc). For
 		an example, see include/configs/sacsng.h.
 
-		CONFIG_HARD_SPI
-
-		Enables a hardware SPI driver for general-purpose reads
-		and writes.  As with CONFIG_SOFT_SPI, the board configuration
-		must define a list of chip-select function pointers.
-		Currently supported on some MPC8xxx processors.	 For an
-		example, see include/configs/mpc8349emds.h.
-
 		CONFIG_SYS_SPI_MXC_WAIT
 		Timeout for waiting until spi transfer completed.
 		default: (CONFIG_SYS_HZ/100)     /* 10 ms */
@@ -2040,13 +1837,6 @@ The following options need to be configured:
 		200 ms.
 
 - Configuration Management:
-		CONFIG_BUILD_TARGET
-
-		Some SoCs need special image types (e.g. U-Boot binary
-		with a special header) as build targets. By defining
-		CONFIG_BUILD_TARGET in the SoC / board header, this
-		special image will be automatically built upon calling
-		make / buildman.
 
 		CONFIG_IDENT_STRING
 
@@ -2141,13 +1931,6 @@ The following options need to be configured:
 		try longer timeout such as
 		#define CONFIG_NFS_TIMEOUT 10000UL
 
-- Command Interpreter:
-		CONFIG_SYS_PROMPT_HUSH_PS2
-
-		This defines the secondary prompt string, which is
-		printed when the command interpreter needs more input
-		to complete a command. Usually "> ".
-
 	Note:
 
 		In the current implementation, the local variables
@@ -2212,21 +1995,6 @@ The following options need to be configured:
 		this is instead controlled by the value of
 		/config/load-environment.
 
-- Serial Flash support
-		Usage requires an initial 'sf probe' to define the serial
-		flash parameters, followed by read/write/erase/update
-		commands.
-
-		The following defaults may be provided by the platform
-		to handle the common case when only a single serial
-		flash is present on the system.
-
-		CONFIG_SF_DEFAULT_BUS		Bus identifier
-		CONFIG_SF_DEFAULT_CS		Chip-select
-		CONFIG_SF_DEFAULT_MODE 		(see include/spi.h)
-		CONFIG_SF_DEFAULT_SPEED		in Hz
-
-
 - TFTP Fixed UDP Port:
 		CONFIG_TFTP_PORT
 
@@ -2247,171 +2015,6 @@ The following options need to be configured:
 		A better solution is to properly configure the firewall,
 		but sometimes that is not allowed.
 
-- Show boot progress:
-		CONFIG_SHOW_BOOT_PROGRESS
-
-		Defining this option allows to add some board-
-		specific code (calling a user-provided function
-		"show_boot_progress(int)") that enables you to show
-		the system's boot progress on some display (for
-		example, some LED's) on your board. At the moment,
-		the following checkpoints are implemented:
-
-
-Legacy uImage format:
-
-  Arg	Where			When
-    1	common/cmd_bootm.c	before attempting to boot an image
-   -1	common/cmd_bootm.c	Image header has bad	 magic number
-    2	common/cmd_bootm.c	Image header has correct magic number
-   -2	common/cmd_bootm.c	Image header has bad	 checksum
-    3	common/cmd_bootm.c	Image header has correct checksum
-   -3	common/cmd_bootm.c	Image data   has bad	 checksum
-    4	common/cmd_bootm.c	Image data   has correct checksum
-   -4	common/cmd_bootm.c	Image is for unsupported architecture
-    5	common/cmd_bootm.c	Architecture check OK
-   -5	common/cmd_bootm.c	Wrong Image Type (not kernel, multi)
-    6	common/cmd_bootm.c	Image Type check OK
-   -6	common/cmd_bootm.c	gunzip uncompression error
-   -7	common/cmd_bootm.c	Unimplemented compression type
-    7	common/cmd_bootm.c	Uncompression OK
-    8	common/cmd_bootm.c	No uncompress/copy overwrite error
-   -9	common/cmd_bootm.c	Unsupported OS (not Linux, BSD, VxWorks, QNX)
-
-    9	common/image.c		Start initial ramdisk verification
-  -10	common/image.c		Ramdisk header has bad	   magic number
-  -11	common/image.c		Ramdisk header has bad	   checksum
-   10	common/image.c		Ramdisk header is OK
-  -12	common/image.c		Ramdisk data   has bad	   checksum
-   11	common/image.c		Ramdisk data   has correct checksum
-   12	common/image.c		Ramdisk verification complete, start loading
-  -13	common/image.c		Wrong Image Type (not PPC Linux ramdisk)
-   13	common/image.c		Start multifile image verification
-   14	common/image.c		No initial ramdisk, no multifile, continue.
-
-   15	arch/<arch>/lib/bootm.c All preparation done, transferring control to OS
-
-  -30	arch/powerpc/lib/board.c	Fatal error, hang the system
-  -31	post/post.c		POST test failed, detected by post_output_backlog()
-  -32	post/post.c		POST test failed, detected by post_run_single()
-
-   34	common/cmd_doc.c	before loading a Image from a DOC device
-  -35	common/cmd_doc.c	Bad usage of "doc" command
-   35	common/cmd_doc.c	correct usage of "doc" command
-  -36	common/cmd_doc.c	No boot device
-   36	common/cmd_doc.c	correct boot device
-  -37	common/cmd_doc.c	Unknown Chip ID on boot device
-   37	common/cmd_doc.c	correct chip ID found, device available
-  -38	common/cmd_doc.c	Read Error on boot device
-   38	common/cmd_doc.c	reading Image header from DOC device OK
-  -39	common/cmd_doc.c	Image header has bad magic number
-   39	common/cmd_doc.c	Image header has correct magic number
-  -40	common/cmd_doc.c	Error reading Image from DOC device
-   40	common/cmd_doc.c	Image header has correct magic number
-   41	common/cmd_ide.c	before loading a Image from a IDE device
-  -42	common/cmd_ide.c	Bad usage of "ide" command
-   42	common/cmd_ide.c	correct usage of "ide" command
-  -43	common/cmd_ide.c	No boot device
-   43	common/cmd_ide.c	boot device found
-  -44	common/cmd_ide.c	Device not available
-   44	common/cmd_ide.c	Device available
-  -45	common/cmd_ide.c	wrong partition selected
-   45	common/cmd_ide.c	partition selected
-  -46	common/cmd_ide.c	Unknown partition table
-   46	common/cmd_ide.c	valid partition table found
-  -47	common/cmd_ide.c	Invalid partition type
-   47	common/cmd_ide.c	correct partition type
-  -48	common/cmd_ide.c	Error reading Image Header on boot device
-   48	common/cmd_ide.c	reading Image Header from IDE device OK
-  -49	common/cmd_ide.c	Image header has bad magic number
-   49	common/cmd_ide.c	Image header has correct magic number
-  -50	common/cmd_ide.c	Image header has bad	 checksum
-   50	common/cmd_ide.c	Image header has correct checksum
-  -51	common/cmd_ide.c	Error reading Image from IDE device
-   51	common/cmd_ide.c	reading Image from IDE device OK
-   52	common/cmd_nand.c	before loading a Image from a NAND device
-  -53	common/cmd_nand.c	Bad usage of "nand" command
-   53	common/cmd_nand.c	correct usage of "nand" command
-  -54	common/cmd_nand.c	No boot device
-   54	common/cmd_nand.c	boot device found
-  -55	common/cmd_nand.c	Unknown Chip ID on boot device
-   55	common/cmd_nand.c	correct chip ID found, device available
-  -56	common/cmd_nand.c	Error reading Image Header on boot device
-   56	common/cmd_nand.c	reading Image Header from NAND device OK
-  -57	common/cmd_nand.c	Image header has bad magic number
-   57	common/cmd_nand.c	Image header has correct magic number
-  -58	common/cmd_nand.c	Error reading Image from NAND device
-   58	common/cmd_nand.c	reading Image from NAND device OK
-
-  -60	common/env_common.c	Environment has a bad CRC, using default
-
-   64	net/eth.c		starting with Ethernet configuration.
-  -64	net/eth.c		no Ethernet found.
-   65	net/eth.c		Ethernet found.
-
-  -80	common/cmd_net.c	usage wrong
-   80	common/cmd_net.c	before calling net_loop()
-  -81	common/cmd_net.c	some error in net_loop() occurred
-   81	common/cmd_net.c	net_loop() back without error
-  -82	common/cmd_net.c	size == 0 (File with size 0 loaded)
-   82	common/cmd_net.c	trying automatic boot
-   83	common/cmd_net.c	running "source" command
-  -83	common/cmd_net.c	some error in automatic boot or "source" command
-   84	common/cmd_net.c	end without errors
-
-FIT uImage format:
-
-  Arg	Where			When
-  100	common/cmd_bootm.c	Kernel FIT Image has correct format
- -100	common/cmd_bootm.c	Kernel FIT Image has incorrect format
-  101	common/cmd_bootm.c	No Kernel subimage unit name, using configuration
- -101	common/cmd_bootm.c	Can't get configuration for kernel subimage
-  102	common/cmd_bootm.c	Kernel unit name specified
- -103	common/cmd_bootm.c	Can't get kernel subimage node offset
-  103	common/cmd_bootm.c	Found configuration node
-  104	common/cmd_bootm.c	Got kernel subimage node offset
- -104	common/cmd_bootm.c	Kernel subimage hash verification failed
-  105	common/cmd_bootm.c	Kernel subimage hash verification OK
- -105	common/cmd_bootm.c	Kernel subimage is for unsupported architecture
-  106	common/cmd_bootm.c	Architecture check OK
- -106	common/cmd_bootm.c	Kernel subimage has wrong type
-  107	common/cmd_bootm.c	Kernel subimage type OK
- -107	common/cmd_bootm.c	Can't get kernel subimage data/size
-  108	common/cmd_bootm.c	Got kernel subimage data/size
- -108	common/cmd_bootm.c	Wrong image type (not legacy, FIT)
- -109	common/cmd_bootm.c	Can't get kernel subimage type
- -110	common/cmd_bootm.c	Can't get kernel subimage comp
- -111	common/cmd_bootm.c	Can't get kernel subimage os
- -112	common/cmd_bootm.c	Can't get kernel subimage load address
- -113	common/cmd_bootm.c	Image uncompress/copy overwrite error
-
-  120	common/image.c		Start initial ramdisk verification
- -120	common/image.c		Ramdisk FIT image has incorrect format
-  121	common/image.c		Ramdisk FIT image has correct format
-  122	common/image.c		No ramdisk subimage unit name, using configuration
- -122	common/image.c		Can't get configuration for ramdisk subimage
-  123	common/image.c		Ramdisk unit name specified
- -124	common/image.c		Can't get ramdisk subimage node offset
-  125	common/image.c		Got ramdisk subimage node offset
- -125	common/image.c		Ramdisk subimage hash verification failed
-  126	common/image.c		Ramdisk subimage hash verification OK
- -126	common/image.c		Ramdisk subimage for unsupported architecture
-  127	common/image.c		Architecture check OK
- -127	common/image.c		Can't get ramdisk subimage data/size
-  128	common/image.c		Got ramdisk subimage data/size
-  129	common/image.c		Can't get ramdisk load address
- -129	common/image.c		Got ramdisk load address
-
- -130	common/cmd_doc.c	Incorrect FIT image format
-  131	common/cmd_doc.c	FIT image format OK
-
- -140	common/cmd_ide.c	Incorrect FIT image format
-  141	common/cmd_ide.c	FIT image format OK
-
- -150	common/cmd_nand.c	Incorrect FIT image format
-  151	common/cmd_nand.c	FIT image format OK
-
-- Standalone program support:
 		CONFIG_STANDALONE_LOAD_ADDR
 
 		This option defines a board specific value for the
@@ -2442,17 +2045,6 @@ FIT uImage format:
 		for a more detailed description refer to doc/README.update.
 
 - MTD Support (mtdparts command, UBI support)
-		CONFIG_MTD_DEVICE
-
-		Adds the MTD device infrastructure from the Linux kernel.
-		Needed for mtdparts command support.
-
-		CONFIG_MTD_PARTITIONS
-
-		Adds the MTD partitioning infrastructure from the Linux
-		kernel. Needed for UBI support.
-
-- UBI support
 		CONFIG_MTD_UBI_WL_THRESHOLD
 		This parameter defines the maximum difference between the highest
 		erase counter value and the lowest erase counter value of eraseblocks
@@ -2534,9 +2126,6 @@ FIT uImage format:
 		When defined, the linker checks that the actual size does
 		not exceed it.
 
-		CONFIG_SPL_TEXT_BASE
-		TEXT_BASE for linking the SPL binary.
-
 		CONFIG_SPL_RELOC_TEXT_BASE
 		Address to relocate to.  If unspecified, this is equal to
 		CONFIG_SPL_TEXT_BASE (i.e. no relocation is done).
@@ -2603,10 +2192,6 @@ FIT uImage format:
 		parameters from when MMC is being used in raw mode
 		(for falcon mode)
 
-		CONFIG_SYS_MMCSD_FS_BOOT_PARTITION
-		Partition on the MMC to load U-Boot from when the MMC is being
-		used in fs mode
-
 		CONFIG_SPL_FS_LOAD_PAYLOAD_NAME
 		Filename to read to load U-Boot when reading from filesystem
 
@@ -2627,19 +2212,9 @@ FIT uImage format:
 		CONFIG_SPL_SKIP_RELOCATE
 		Avoid SPL relocation
 
-		CONFIG_SPL_NAND_BASE
-		Include nand_base.c in the SPL.  Requires
-		CONFIG_SPL_NAND_DRIVERS.
-
-		CONFIG_SPL_NAND_DRIVERS
-		SPL uses normal NAND drivers, not minimal drivers.
-
-		CONFIG_SPL_NAND_ECC
-		Include standard software ECC in the SPL
-
-		CONFIG_SPL_NAND_SIMPLE
-		Support for NAND boot using simple NAND drivers that
-		expose the cmd_ctrl() interface.
+		CONFIG_SPL_NAND_IDENT
+		SPL uses the chip ID list to identify the NAND flash.
+		Requires CONFIG_SPL_NAND_BASE.
 
 		CONFIG_SPL_UBI
 		Support for a lightweight UBI (fastmap) scanner and
@@ -2660,9 +2235,6 @@ FIT uImage format:
 		CONFIG_SYS_NAND_ECCBYTES
 		Defines the size and behavior of the NAND that SPL uses
 		to read U-Boot
-
-		CONFIG_SPL_NAND_BOOT
-		Add support NAND boot
 
 		CONFIG_SYS_NAND_U_BOOT_OFFS
 		Location in NAND to read U-Boot from
@@ -2695,7 +2267,7 @@ FIT uImage format:
 		use an arch-specific makefile fragment instead, for
 		example if more than one image needs to be produced.
 
-		CONFIG_FIT_SPL_PRINT
+		CONFIG_SPL_FIT_PRINT
 		Printing information about a FIT image adds quite a bit of
 		code to SPL. So this is normally disabled in SPL. Use this
 		option to re-enable it. This will affect the output of the
@@ -2744,7 +2316,7 @@ typically in board_init_f() and board_init_r().
 Configuration Settings:
 -----------------------
 
-- CONFIG_SYS_SUPPORT_64BIT_DATA: Defined automatically if compiled as 64-bit.
+- MEM_SUPPORT_64BIT_DATA: Defined automatically if compiled as 64-bit.
 		Optionally it can be defined to support 64-bit memory commands.
 
 - CONFIG_SYS_LONGHELP: Defined when you want long help messages included;
@@ -2768,14 +2340,6 @@ Configuration Settings:
 
 - CONFIG_SYS_BAUDRATE_TABLE:
 		List of legal baudrate settings for this board.
-
-- CONFIG_SYS_MEMTEST_START, CONFIG_SYS_MEMTEST_END:
-		Begin and End addresses of the area used by the
-		simple memory test.
-
-- CONFIG_SYS_MEMTEST_SCRATCH:
-		Scratch address used by the alternate memory test
-		You only need to set this if address zero isn't writeable
 
 - CONFIG_SYS_MEM_RESERVE_SECURE
 		Only implemented for ARMv8 for now.
@@ -3033,15 +2597,6 @@ Configuration Settings:
 	regular expression. This allows multiple variables to define the same
 	flags without explicitly listing them for each variable.
 
-- CONFIG_ENV_ACCESS_IGNORE_FORCE
-	If defined, don't allow the -f switch to env set override variable
-	access flags.
-
-- CONFIG_USE_STDINT
-	If stdint.h is available with your toolchain you can define this
-	option to enable it. You can provide option 'USE_STDINT=1' when
-	building U-Boot to enable this.
-
 The following definitions that deal with the placement and management
 of environment data (variable area); in general, we support the
 following configurations:
@@ -3159,32 +2714,6 @@ Low Level (hardware related) configuration options:
 		If this macro is defined, then CONFIG_SYS_CCSRBAR_PHYS will be
 		forced to a value that ensures that CCSR is not relocated.
 
-- Floppy Disk Support:
-		CONFIG_SYS_FDC_DRIVE_NUMBER
-
-		the default drive number (default value 0)
-
-		CONFIG_SYS_ISA_IO_STRIDE
-
-		defines the spacing between FDC chipset registers
-		(default value 1)
-
-		CONFIG_SYS_ISA_IO_OFFSET
-
-		defines the offset of register from address. It
-		depends on which part of the data bus is connected to
-		the FDC chipset. (default value 0)
-
-		If CONFIG_SYS_ISA_IO_STRIDE CONFIG_SYS_ISA_IO_OFFSET and
-		CONFIG_SYS_FDC_DRIVE_NUMBER are undefined, they take their
-		default value.
-
-		if CONFIG_SYS_FDC_HW_INIT is defined, then the function
-		fdc_hw_init() is called at the beginning of the FDC
-		setup. fdc_hw_init() must be provided by the board
-		source code. It is used to make hardware-dependent
-		initializations.
-
 - CONFIG_IDE_AHB:
 		Most IDE controllers were designed to be connected with PCI
 		interface. Only few of them were designed for AHB interface.
@@ -3247,16 +2776,6 @@ Low Level (hardware related) configuration options:
   CONFIG_SYS_OR3_PRELIM, CONFIG_SYS_BR3_PRELIM:
 		Memory Controller Definitions: BR2/3 and OR2/3 (SDRAM)
 
-- CONFIG_PCI_ENUM_ONLY
-		Only scan through and get the devices on the buses.
-		Don't do any setup work, presumably because someone or
-		something has already done it, and we don't need to do it
-		a second time.	Useful for platforms that are pre-booted
-		by coreboot or similar.
-
-- CONFIG_PCI_INDIRECT_BRIDGE:
-		Enable support for indirect PCI bridges.
-
 - CONFIG_SYS_SRIO:
 		Chip has SRIO or not
 
@@ -3272,7 +2791,7 @@ Low Level (hardware related) configuration options:
 - CONFIG_SYS_SRIOn_MEM_VIRT:
 		Virtual Address of SRIO port 'n' memory region
 
-- CONFIG_SYS_SRIOn_MEM_PHYS:
+- CONFIG_SYS_SRIOn_MEM_PHYxS:
 		Physical Address of SRIO port 'n' memory region
 
 - CONFIG_SYS_SRIOn_MEM_SIZE:
@@ -3283,8 +2802,8 @@ Low Level (hardware related) configuration options:
 		a 16 bit bus.
 		Not all NAND drivers use this symbol.
 		Example of drivers that use it:
-		- drivers/mtd/nand/ndfc.c
-		- drivers/mtd/nand/mxc_nand.c
+		- drivers/mtd/nand/raw/ndfc.c
+		- drivers/mtd/nand/raw/mxc_nand.c
 
 - CONFIG_SYS_NDFC_EBC0_CFG
 		Sets the EBC0_CFG register for the NDFC. If not defined
@@ -3340,7 +2859,7 @@ Low Level (hardware related) configuration options:
 		Add the "loopw" memory command. This only takes effect if
 		the memory commands are activated globally (CONFIG_CMD_MEMORY).
 
-- CONFIG_MX_CYCLIC
+- CONFIG_CMD_MX_CYCLIC
 		Add the "mdc" and "mwc" memory commands. These are cyclic
 		"md/mw" commands.
 		Examples:
@@ -3371,14 +2890,16 @@ Low Level (hardware related) configuration options:
 		instruction cache) is still performed.
 
 - CONFIG_SPL_BUILD
-		Modifies the behaviour of start.S when compiling a loader
-		that is executed before the actual U-Boot. E.g. when
-		compiling a NAND SPL.
+		Set when the currently-running compilation is for an artifact
+		that will end up in the SPL (as opposed to the TPL or U-Boot
+		proper). Code that needs stage-specific behavior should check
+		this.
 
 - CONFIG_TPL_BUILD
-		Modifies the behaviour of start.S  when compiling a loader
-		that is executed after the SPL and before the actual U-Boot.
-		It is loaded by the SPL.
+		Set when the currently-running compilation is for an artifact
+		that will end up in the TPL (as opposed to the SPL or U-Boot
+		proper). Code that needs stage-specific behavior should check
+		this.
 
 - CONFIG_SYS_MPC85XX_NO_RESETVEC
 		Only for 85xx systems. If this variable is specified, the section
@@ -3401,7 +2922,7 @@ Low Level (hardware related) configuration options:
 - CONFIG_SYS_NAND_NO_SUBPAGE_WRITE
 		Option to disable subpage write in NAND driver
 		driver that uses this:
-		drivers/mtd/nand/davinci_nand.c
+		drivers/mtd/nand/raw/davinci_nand.c
 
 Freescale QE/FMAN Firmware Support:
 -----------------------------------
@@ -3414,12 +2935,12 @@ within that device.
 
 - CONFIG_SYS_FMAN_FW_ADDR
 	The address in the storage device where the FMAN microcode is located.  The
-	meaning of this address depends on which CONFIG_SYS_QE_FW_IN_xxx macro
+	meaning of this address depends on which CONFIG_SYS_QE_FMAN_FW_IN_xxx macro
 	is also specified.
 
 - CONFIG_SYS_QE_FW_ADDR
 	The address in the storage device where the QE microcode is located.  The
-	meaning of this address depends on which CONFIG_SYS_QE_FW_IN_xxx macro
+	meaning of this address depends on which CONFIG_SYS_QE_FMAN_FW_IN_xxx macro
 	is also specified.
 
 - CONFIG_SYS_QE_FMAN_FW_LENGTH
@@ -3487,7 +3008,7 @@ Building U-Boot has been tested in several native build environments
 and in many different cross environments. Of course we cannot support
 all possibly existing versions of cross development tools in all
 (potentially obsolete) versions. In case of tool chain problems we
-recommend to use the ELDK (see http://www.denx.de/wiki/DULG/ELDK)
+recommend to use the ELDK (see https://www.denx.de/wiki/DULG/ELDK)
 which is extensively used to build and test U-Boot.
 
 If you are not using a native environment, it is assumed that you
@@ -3499,16 +3020,6 @@ necessary. For example using the ELDK on a 4xx CPU, please enter:
 	$ CROSS_COMPILE=ppc_4xx-
 	$ export CROSS_COMPILE
 
-Note: If you wish to generate Windows versions of the utilities in
-      the tools directory you can use the MinGW toolchain
-      (http://www.mingw.org).  Set your HOST tools to the MinGW
-      toolchain and execute 'make tools'.  For example:
-
-       $ make HOSTCC=i586-mingw32msvc-gcc HOSTSTRIP=i586-mingw32msvc-strip tools
-
-      Binaries such as tools/mkimage.exe will be created which can
-      be executed on computers running Windows.
-
 U-Boot is intended to be simple to build. After installing the
 sources you must configure U-Boot for one specific board type. This
 is done by typing:
@@ -3516,9 +3027,9 @@ is done by typing:
 	make NAME_defconfig
 
 where "NAME_defconfig" is the name of one of the existing configu-
-rations; see boards.cfg for supported names.
+rations; see configs/*_defconfig for supported names.
 
-Note: for some board special configuration names may exist; check if
+Note: for some boards special configuration names may exist; check if
       additional information is available from the board vendor; for
       instance, the TQM823L systems are available without (standard)
       or with LCD support. You can select such additional "features"
@@ -3595,7 +3106,7 @@ Testing of U-Boot Modifications, Ports to New Hardware, etc.:
 If you have modified U-Boot sources (for instance added a new board
 or support for new devices, a new CPU, etc.) you are expected to
 provide feedback to the other developers. The feedback normally takes
-the form of a "patch", i. e. a context diff against a certain (latest
+the form of a "patch", i.e. a context diff against a certain (latest
 official or latest in the git repository) version of U-Boot sources.
 
 But before you submit such a patch, please verify that your modifi-
@@ -3630,6 +3141,7 @@ md	- memory display
 mm	- memory modify (auto-incrementing)
 nm	- memory modify (constant address)
 mw	- memory write (fill)
+ms	- memory search
 cp	- memory copy
 cmp	- memory compare
 crc32	- checksum calculation
@@ -3637,6 +3149,7 @@ i2c	- I2C sub-system
 sspi	- SPI utility commands
 base	- print or set address offset
 printenv- print environment variables
+pwm	- control pwm channels
 setenv	- set environment variables
 saveenv - save environment variables to persistent storage
 protect - enable or disable FLASH write protection
@@ -3716,6 +3229,8 @@ List of environment variables (most likely not complete):
 		  a hexadecimal number and defines the size of the region
 		  allowed for use by the bootm command. See also "bootm_low"
 		  environment variable.
+
+  bootstopkeysha256, bootdelaykey, bootstopkey	- See README.autoboot
 
   updatefile	- Location of the software update file on a TFTP server, used
 		  by the automatic software update feature. Please refer to
@@ -3863,6 +3378,11 @@ List of environment variables (most likely not complete):
 		  downloads succeed with high packet loss rates, or with
 		  unreliable TFTP servers or client hardware.
 
+  tftpwindowsize	- if this is set, the value is used for TFTP's
+		  window size as described by RFC 7440.
+		  This means the count of blocks we can receive before
+		  sending ack to server.
+
   vlan		- When set to a value < 4095 the traffic over
 		  Ethernet is encapsulated/received over 802.1q
 		  VLAN tagged frames.
@@ -3872,6 +3392,19 @@ List of environment variables (most likely not complete):
 		  be either the default (28000), or a value based on
 		  CONFIG_NET_RETRY_COUNT, if defined. This value has
 		  precedence over the valu based on CONFIG_NET_RETRY_COUNT.
+
+  memmatches	- Number of matches found by the last 'ms' command, in hex
+
+  memaddr	- Address of the last match found by the 'ms' command, in hex,
+		  or 0 if none
+
+  mempos	- Index position of the last match found by the 'ms' command,
+		  in units of the size (.b, .w, .l) of the search
+
+  zbootbase	- (x86 only) Base address of the bzImage 'setup' block
+
+  zbootaddr	- (x86 only) Address of the loaded bzImage, typically
+		  BZIMAGE_LOAD_ADDR which is 0x100000
 
 The following image location variables contain the location of images
 used in booting. The "Image" column gives the role of the image and is
@@ -3962,48 +3495,18 @@ If CONFIG_REGEX is defined, the variable_name above is evaluated as a
 regular expression. This allows multiple variables to be connected to
 the same callback without explicitly listing them all out.
 
+The signature of the callback functions is:
 
-Command Line Parsing:
-=====================
+    int callback(const char *name, const char *value, enum env_op op, int flags)
 
-There are two different command line parsers available with U-Boot:
-the old "simple" one, and the much more powerful "hush" shell:
+* name - changed environment variable
+* value - new value of the environment variable
+* op - operation (create, overwrite, or delete)
+* flags - attributes of the environment variable change, see flags H_* in
+  include/search.h
 
-Old, simple command line parser:
---------------------------------
+The return value is 0 if the variable change is accepted and 1 otherwise.
 
-- supports environment variables (through setenv / saveenv commands)
-- several commands on one line, separated by ';'
-- variable substitution using "... ${name} ..." syntax
-- special characters ('$', ';') can be escaped by prefixing with '\',
-  for example:
-	setenv bootcmd bootm \${address}
-- You can also escape text by enclosing in single apostrophes, for example:
-	setenv addip 'setenv bootargs $bootargs ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname::off'
-
-Hush shell:
------------
-
-- similar to Bourne shell, with control structures like
-  if...then...else...fi, for...do...done; while...do...done,
-  until...do...done, ...
-- supports environment ("global") variables (through setenv / saveenv
-  commands) and local shell variables (through standard shell syntax
-  "name=value"); only environment variables can be used with "run"
-  command
-
-General rules:
---------------
-
-(1) If a command line (or an environment variable executed by a "run"
-    command) contains several commands separated by semicolon, and
-    one of these commands fails, then the remaining commands will be
-    executed anyway.
-
-(2) If you execute several variables with one call to run (i. e.
-    calling run with a list of variables as arguments), any failing
-    command will cause "run" to terminate, i. e. the remaining
-    variables are not executed.
 
 Note for Redundant Ethernet Interfaces:
 =======================================
@@ -4278,16 +3781,8 @@ when your kernel is intended to use an initial ramdisk:
 	Load Address: 0x00000000
 	Entry Point:  0x00000000
 
-The "dumpimage" is a tool to disassemble images built by mkimage. Its "-i"
-option performs the converse operation of the mkimage's second form (the "-d"
-option). Given an image built by mkimage, the dumpimage extracts a "data file"
-from the image:
-
-	tools/dumpimage -i image -T type -p position data_file
-	  -i ==> extract from the 'image' a specific 'data_file'
-	  -T ==> set image type to 'type'
-	  -p ==> 'position' (starting at 0) of the 'data_file' inside the 'image'
-
+The "dumpimage" tool can be used to disassemble or list the contents of images
+built by mkimage. See dumpimage's help output (-h) for details.
 
 Installing a Linux Image:
 -------------------------
@@ -4619,7 +4114,7 @@ consider minicom to be broken, and recommend not to use it. Under
 Unix, I recommend to use C-Kermit for general purpose use (and
 especially for kermit binary protocol download ("loadb" command), and
 use "cu" for S-Record download ("loads" command).  See
-http://www.denx.de/wiki/view/DULG/SystemSetup#Section_4.3.
+https://www.denx.de/wiki/view/DULG/SystemSetup#Section_4.3.
 for help with kermit.
 
 
@@ -4787,7 +4282,7 @@ On ARM, the following registers are used:
     Note: on ARM, only R_ARM_RELATIVE relocations are supported.
 
 On Nios II, the ABI is documented here:
-	http://www.altera.com/literature/hb/nios2/n2cpu_nii51016.pdf
+	https://www.altera.com/literature/hb/nios2/n2cpu_nii51016.pdf
 
     ==> U-Boot will use gp to hold a pointer to the global data
 
@@ -4938,8 +4433,8 @@ int main(int argc, char *argv[])
 
 	while (learning) {
 		Read the README file in the top level directory;
-		Read http://www.denx.de/twiki/bin/view/DULG/Manual;
-		Read applicable doc/*.README;
+		Read https://www.denx.de/wiki/bin/view/DULG/Manual;
+		Read applicable doc/README.*;
 		Read the source, Luke;
 		/* find . -name "*.[chS]" | xargs grep -i <keyword> */
 	}
@@ -5019,7 +4514,7 @@ Since the number of patches for U-Boot is growing, we need to
 establish some rules. Submissions which do not conform to these rules
 may be rejected, even when they contain important and valuable stuff.
 
-Please see http://www.denx.de/wiki/U-Boot/Patches for details.
+Please see https://www.denx.de/wiki/U-Boot/Patches for details.
 
 Patches shall be sent to the u-boot mailing list <u-boot@lists.denx.de>;
 see https://lists.denx.de/listinfo/u-boot
@@ -5033,8 +4528,6 @@ it:
 
 * For new features: a description of the feature and your
   implementation.
-
-* A CHANGELOG entry as plaintext (separate from the patch)
 
 * For major contributions, add a MAINTAINERS file with your
   information and associated file and directory references.

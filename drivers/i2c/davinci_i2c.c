@@ -8,18 +8,20 @@
  * --------------------------------------------------------
  *
  * NOTE: This driver should be converted to driver model before June 2017.
- * Please see doc/driver-model/i2c-howto.txt for instructions.
+ * Please see doc/driver-model/i2c-howto.rst for instructions.
  */
 
 #include <common.h>
 #include <i2c.h>
 #include <dm.h>
+#include <log.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/i2c_defs.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include "davinci_i2c.h"
 
-#ifdef CONFIG_DM_I2C
+#if CONFIG_IS_ENABLED(DM_I2C)
 /* Information about i2c controller */
 struct i2c_bus {
 	int			id;
@@ -338,7 +340,7 @@ static int _davinci_i2c_probe_chip(struct i2c_regs *i2c_base, uint8_t chip)
 	return rc;
 }
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 static struct i2c_regs *davinci_get_base(struct i2c_adapter *adap)
 {
 	switch (adap->hwadapnr) {
@@ -468,8 +470,8 @@ static int davinci_i2c_probe(struct udevice *dev)
 {
 	struct i2c_bus *i2c_bus = dev_get_priv(dev);
 
-	i2c_bus->id = dev->seq;
-	i2c_bus->regs = (struct i2c_regs *)devfdt_get_addr(dev);
+	i2c_bus->id = dev_seq(dev);
+	i2c_bus->regs = dev_read_addr_ptr(dev);
 
 	i2c_bus->speed = 100000;
 	 _davinci_i2c_init(i2c_bus->regs, i2c_bus->speed, 0);
@@ -502,7 +504,7 @@ U_BOOT_DRIVER(i2c_davinci) = {
 	.id	= UCLASS_I2C,
 	.of_match = davinci_i2c_ids,
 	.probe	= davinci_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct i2c_bus),
+	.priv_auto	= sizeof(struct i2c_bus),
 	.ops	= &davinci_i2c_ops,
 };
 

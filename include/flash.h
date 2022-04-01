@@ -21,9 +21,10 @@ typedef struct {
 	ulong	flash_id;		/* combined device & manufacturer code	*/
 	ulong	start[CONFIG_SYS_MAX_FLASH_SECT];   /* virtual sector start address */
 	uchar	protect[CONFIG_SYS_MAX_FLASH_SECT]; /* sector protection status	*/
-#ifdef CONFIG_SYS_FLASH_CFI
 	uchar	portwidth;		/* the width of the port		*/
 	uchar	chipwidth;		/* the width of the chip		*/
+	uchar	chip_lsb;		/* extra Least Significant Bit in the */
+					/* address of chip	*/
 	ushort	buffer_size;		/* # of bytes in write buffer		*/
 	ulong	erase_blk_tout;		/* maximum block erase timeout		*/
 	ulong	write_tout;		/* maximum write timeout		*/
@@ -43,8 +44,7 @@ typedef struct {
 	ulong   addr_unlock2;		/* unlock address 2 for AMD flash roms  */
 	uchar   sr_supported;		/* status register supported            */
 	const char *name;		/* human-readable name	                */
-#endif
-#ifdef CONFIG_MTD
+#ifdef CONFIG_DM_MTD
 	struct mtd_info *mtd;
 #endif
 #ifdef CONFIG_CFI_FLASH			/* DM-specific parts */
@@ -84,20 +84,20 @@ typedef unsigned long flash_sect_t;
 
 /* Prototypes */
 
-extern unsigned long flash_init (void);
-extern void flash_print_info (flash_info_t *);
-extern int flash_erase	(flash_info_t *, int, int);
-extern int flash_sect_erase (ulong addr_first, ulong addr_last);
-extern int flash_sect_protect (int flag, ulong addr_first, ulong addr_last);
-extern int flash_sect_roundb (ulong *addr);
-extern unsigned long flash_sector_size(flash_info_t *info, flash_sect_t sect);
-extern void flash_set_verbose(uint);
+unsigned long flash_init(void);
+void flash_print_info(flash_info_t *info);
+int flash_erase(flash_info_t *info, int s_first, int s_last);
+int flash_sect_erase(ulong addr_first, ulong addr_last);
+int flash_sect_protect(int flag, ulong addr_first, ulong addr_last);
+int flash_sect_roundb(ulong *addr);
+unsigned long flash_sector_size(flash_info_t *info, flash_sect_t sect);
+void flash_set_verbose(uint v);
 
 /* common/flash.c */
-extern void flash_protect (int flag, ulong from, ulong to, flash_info_t *info);
-extern int flash_write (char *, ulong, ulong);
-extern flash_info_t *addr2info (ulong);
-extern int write_buff (flash_info_t *info, uchar *src, ulong addr, ulong cnt);
+void flash_protect(int flag, ulong from, ulong to, flash_info_t *info);
+int flash_write(char *src, ulong addr, ulong cnt);
+flash_info_t *addr2info(ulong addr);
+int write_buff(flash_info_t *info, uchar *src, ulong addr, ulong cnt);
 
 /* drivers/mtd/cfi_mtd.c */
 #ifdef CONFIG_FLASH_CFI_MTD
@@ -116,6 +116,13 @@ extern ulong board_flash_get_legacy(ulong base, int banknum, flash_info_t *info)
 extern int jedec_flash_match(flash_info_t *info, ulong base);
 #define CFI_CMDSET_AMD_LEGACY		0xFFF0
 #endif
+
+/**
+ * flash_perror() - Print a flash error
+ *
+ * @err: Error number of message to print (ERR_... as below)
+ */
+void flash_perror(int err);
 
 /*-----------------------------------------------------------------------
  * return codes from flash_write():

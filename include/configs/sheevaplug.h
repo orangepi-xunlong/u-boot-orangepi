@@ -14,34 +14,20 @@
  */
 #define CONFIG_FEROCEON_88FR131	1	/* CPU Core subversion */
 
-/*
- * Commands configuration
- */
-
-/*
- * Standard filesystems
- */
-#define CONFIG_SYS_MVFS
-
-/*
- * mv-plug-common.h should be defined after CMD configs since it used them
- * to enable certain macros
- */
 #include "mv-plug-common.h"
 
 /*
  *  Environment variables configurations
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_ENV_SECT_SIZE		0x20000	/* 128K */
-#endif
 /*
  * max 4k env size is enough, but in case of nand
  * it has to be rounded to sector size
  */
-#define CONFIG_ENV_SIZE			0x20000	/* 128k */
-#define CONFIG_ENV_ADDR			0x80000
-#define CONFIG_ENV_OFFSET		0x80000	/* env starts here */
+/*
+ * Environment is right behind U-Boot in flash. Make sure U-Boot
+ * doesn't grow into the environment area.
+ */
+#define CONFIG_BOARD_SIZE_LIMIT		CONFIG_ENV_OFFSET
 
 /*
  * Default environment variables
@@ -65,23 +51,11 @@
 #endif /* CONFIG_CMD_NET */
 
 /*
- * SDIO/MMC Card Configuration
- */
-#ifdef CONFIG_CMD_MMC
-#define CONFIG_MVEBU_MMC
-#define CONFIG_SYS_MMC_BASE KW_SDIO_BASE
-#endif /* CONFIG_CMD_MMC */
-
-/*
  * SATA driver configuration
  */
-#ifdef CONFIG_IDE
-#define __io
-#define CONFIG_IDE_PREINIT
-#define CONFIG_MVSATA_IDE_USE_PORT0
-#define CONFIG_MVSATA_IDE_USE_PORT1
-#define CONFIG_SYS_ATA_IDE0_OFFSET	MV_SATA_PORT0_OFFSET
-#define CONFIG_SYS_ATA_IDE1_OFFSET	MV_SATA_PORT1_OFFSET
-#endif /* CONFIG_IDE */
+#ifdef CONFIG_SATA
+#define CONFIG_SYS_SATA_MAX_DEVICE	2
+#define CONFIG_LBA48
+#endif /* CONFIG_SATA */
 
 #endif /* _CONFIG_SHEEVAPLUG_H */

@@ -6,11 +6,17 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <command.h>
-#include <environment.h>
+#include <dm.h>
+#include <env.h>
+#include <log.h>
 #include <net.h>
 #include <phy.h>
+#include <asm/global_data.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
+#include <net/pcap.h>
 #include "eth_internal.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -19,12 +25,12 @@ DECLARE_GLOBAL_DATA_PTR;
  * CPU and board-specific Ethernet initializations.  Aliased function
  * signals caller to move on
  */
-static int __def_eth_init(bd_t *bis)
+static int __def_eth_init(struct bd_info *bis)
 {
 	return -1;
 }
-int cpu_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
-int board_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+int cpu_eth_init(struct bd_info *bis) __attribute__((weak, alias("__def_eth_init")));
+int board_eth_init(struct bd_info *bis) __attribute__((weak, alias("__def_eth_init")));
 
 #ifdef CONFIG_API
 static struct {
@@ -108,7 +114,7 @@ static int on_ethaddr(const char *name, const char *value, enum env_op op,
 		return 0;
 
 	/* look for an index after "eth" */
-	index = simple_strtoul(name + 3, NULL, 10);
+	index = dectoul(name + 3, NULL);
 
 	dev = eth_devices;
 	do {
@@ -116,7 +122,7 @@ static int on_ethaddr(const char *name, const char *value, enum env_op op,
 			switch (op) {
 			case env_op_create:
 			case env_op_overwrite:
-				eth_parse_enetaddr(value, dev->enetaddr);
+				string_to_enetaddr(value, dev->enetaddr);
 				eth_write_hwaddr(dev, "eth", dev->index);
 				break;
 			case env_op_delete:
@@ -247,16 +253,16 @@ int eth_initialize(void)
 	 */
 	if (board_eth_init != __def_eth_init) {
 		if (board_eth_init(gd->bd) < 0)
-			pr_err("Board Net Initialization Failed\n");
+			printf("Board Net Initialization Failed\n");
 	} else if (cpu_eth_init != __def_eth_init) {
 		if (cpu_eth_init(gd->bd) < 0)
-			pr_err("CPU Net Initialization Failed\n");
+			printf("CPU Net Initialization Failed\n");
 	} else {
-		pr_msg("Net Initialization Skipped\n");
+		printf("Net Initialization Skipped\n");
 	}
 
 	if (!eth_devices) {
-		pr_err("No ethernet found.\n");
+		log_err("No ethernet found.\n");
 		bootstage_error(BOOTSTAGE_ID_NET_ETH_START);
 	} else {
 		struct eth_device *dev = eth_devices;
@@ -291,7 +297,6 @@ int eth_initialize(void)
 	return num_devices;
 }
 
-#ifdef CONFIG_MCAST_TFTP
 /* Multicast.
  * mcast_addr: multicast ipaddr from which multicast Mac is made
  * join: 1=join, 0=leave.
@@ -310,39 +315,12 @@ int eth_mcast_join(struct in_addr mcast_ip, int join)
 	return eth_current->mcast(eth_current, mcast_mac, join);
 }
 
-/* the 'way' for ethernet-CRC-32. Spliced in from Linux lib/crc32.c
- * and this is the ethernet-crc method needed for TSEC -- and perhaps
- * some other adapter -- hash tables
- */
-#define CRCPOLY_LE 0xedb88320
-u32 ether_crc(size_t len, unsigned char const *p)
-{
-	int i;
-	u32 crc;
-	crc = ~0;
-	while (len--) {
-		crc ^= *p++;
-		for (i = 0; i < 8; i++)
-			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-	}
-	/* an reverse the bits, cuz of way they arrive -- last-first */
-	crc = (crc >> 16) | (crc << 16);
-	crc = (crc >> 8 & 0x00ff00ff) | (crc << 8 & 0xff00ff00);
-	crc = (crc >> 4 & 0x0f0f0f0f) | (crc << 4 & 0xf0f0f0f0);
-	crc = (crc >> 2 & 0x33333333) | (crc << 2 & 0xcccccccc);
-	crc = (crc >> 1 & 0x55555555) | (crc << 1 & 0xaaaaaaaa);
-	return crc;
-}
-
-#endif
-
-
 int eth_init(void)
 {
 	struct eth_device *old_current;
 
 	if (!eth_current) {
-		puts("No ethernet found.\n");
+		log_err("No ethernet found.\n");
 		return -ENODEV;
 	}
 
@@ -380,10 +358,17 @@ int eth_is_active(struct eth_device *dev)
 
 int eth_send(void *packet, int length)
 {
+	int ret;
+
 	if (!eth_current)
 		return -ENODEV;
 
-	return eth_current->send(eth_current, packet, length);
+	ret = eth_current->send(eth_current, packet, length);
+#if defined(CONFIG_CMD_PCAP)
+	if (ret >= 0)
+		pcap_post(packet, length, true);
+#endif
+	return ret;
 }
 
 int eth_rx(void)

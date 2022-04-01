@@ -14,6 +14,7 @@
 #include <efi.h>
 #include <efi_api.h>
 #include <errno.h>
+#include <malloc.h>
 #include <ns16550.h>
 #include <asm/cpu.h>
 #include <asm/io.h>
@@ -66,7 +67,7 @@ void putc(const char ch)
 		putc('\r');
 
 	if (use_uart) {
-		NS16550_t com_port = (NS16550_t)0x3f8;
+		struct ns16550 *com_port = (struct ns16550 *)0x3f8;
 
 		while ((inb((ulong)&com_port->lsr) & UART_LSR_THRE) == 0)
 			;
@@ -268,12 +269,17 @@ static void add_entry_addr(struct efi_priv *priv, enum efi_entry_t type,
  * This function is called by our EFI start-up code. It handles running
  * U-Boot. If it returns, EFI will continue.
  */
-efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
+efi_status_t EFIAPI efi_main(efi_handle_t image,
+			     struct efi_system_table *sys_table)
 {
 	struct efi_priv local_priv, *priv = &local_priv;
 	struct efi_boot_services *boot = sys_table->boottime;
 	struct efi_mem_desc *desc;
 	struct efi_entry_memmap map;
+	struct efi_gop *gop;
+	struct efi_entry_gopmode mode;
+	struct efi_entry_systable table;
+	efi_guid_t efi_gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 	efi_uintn_t key, desc_size, size;
 	efi_status_t ret;
 	u32 version;
@@ -281,7 +287,8 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 
 	ret = efi_init(priv, "Payload", image, sys_table);
 	if (ret) {
-		printhex2(ret); puts(" efi_init() failed\n");
+		printhex2(ret);
+		puts(" efi_init() failed\n");
 		return ret;
 	}
 	global_priv = priv;
@@ -294,7 +301,8 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 	size = 0;
 	ret = boot->get_memory_map(&size, NULL, &key, &desc_size, &version);
 	if (ret != EFI_BUFFER_TOO_SMALL) {
-		printhex2(BITS_PER_LONG);
+		printhex2(EFI_BITS_PER_LONG);
+		putc(' ');
 		printhex2(ret);
 		puts(" No memory map\n");
 		return ret;
@@ -303,12 +311,24 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 	desc = efi_malloc(priv, size, &ret);
 	if (!desc) {
 		printhex2(ret);
-		puts(" No memory for memory descriptor: ");
+		puts(" No memory for memory descriptor\n");
 		return ret;
 	}
 	ret = setup_info_table(priv, size + 128);
 	if (ret)
 		return ret;
+
+	ret = boot->locate_protocol(&efi_gop_guid, NULL, (void **)&gop);
+	if (ret) {
+		puts(" GOP unavailable\n");
+	} else {
+		mode.fb_base = gop->mode->fb_base;
+		mode.fb_size = gop->mode->fb_size;
+		mode.info_size = gop->mode->info_size;
+		add_entry_addr(priv, EFIET_GOP_MODE, &mode, sizeof(mode),
+			       gop->mode->info,
+			       sizeof(struct efi_gop_mode_info));
+	}
 
 	ret = boot->get_memory_map(&size, desc, &key, &desc_size, &version);
 	if (ret) {
@@ -316,6 +336,9 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 		puts(" Can't get memory map\n");
 		return ret;
 	}
+
+	table.sys_table = (ulong)sys_table;
+	add_entry_addr(priv, EFIET_SYS_TABLE, &table, sizeof(table), NULL, 0);
 
 	ret = boot->exit_boot_services(image, key);
 	if (ret) {
@@ -343,13 +366,13 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 		}
 	}
 
+	/* The EFI UART won't work now, switch to a debug one */
+	use_uart = true;
+
 	map.version = version;
 	map.desc_size = desc_size;
 	add_entry_addr(priv, EFIET_MEMORY_MAP, &map, sizeof(map), desc, size);
 	add_entry_addr(priv, EFIET_END, NULL, 0, 0, 0);
-
-	/* The EFI UART won't work now, switch to a debug one */
-	use_uart = true;
 
 	memcpy((void *)CONFIG_SYS_TEXT_BASE, _binary_u_boot_bin_start,
 	       (ulong)_binary_u_boot_bin_end -

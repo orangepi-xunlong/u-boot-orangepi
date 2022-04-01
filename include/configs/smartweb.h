@@ -50,7 +50,6 @@
 
 /* setting board specific options */
 #define CONFIG_MACH_TYPE		MACH_TYPE_SMARTWEB
-#define CONFIG_ENV_OVERWRITE    1 /* Overwrite ethaddr / serial# */
 #define CONFIG_SYS_AUTOLOAD "yes"
 #define CONFIG_RESET_TO_RETRY
 
@@ -62,7 +61,6 @@
  * SDRAM: 1 bank, 64 MB, base address 0x20000000
  * Already initialized before u-boot gets started.
  */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		ATMEL_BASE_CS1
 #define CONFIG_SYS_SDRAM_SIZE		(64 * SZ_1M)
 
@@ -70,15 +68,12 @@
  * Perform a SDRAM Memtest from the start of SDRAM
  * till the beginning of the U-Boot position in RAM.
  */
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - 0x100000)
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN \
 	ROUND(3 * CONFIG_ENV_SIZE + (4 * SZ_1M), 0x1000)
 
 /* NAND flash settings */
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -87,15 +82,11 @@
 #define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIN_PC14
 #define CONFIG_SYS_NAND_READY_PIN	AT91_PIN_PC13
 
-#define CONFIG_MTD_DEVICE
-
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
-#define CONFIG_AT91_GPIO		/* enable the GPIO features */
 #define CONFIG_AT91_GPIO_PULLUP	1	/* keep pullups on peripheral pins */
 
 /* serial console */
-#define CONFIG_ATMEL_USART
 #define CONFIG_USART_BASE		ATMEL_BASE_DBGU
 #define CONFIG_USART_ID			ATMEL_ID_SYS
 
@@ -116,13 +107,6 @@
 	"root=/dev/nfs ip=dhcp nfsroot=${serverip}:/srv/nfs/rootfs; "	\
 	"dhcp"
 
-/* Enable the watchdog */
-#define CONFIG_AT91SAM9_WATCHDOG
-#if !defined(CONFIG_SPL_BUILD)
-#define CONFIG_HW_WATCHDOG
-#endif
-#define CONFIG_AT91_HW_WDT_TIMEOUT	15
-
 #if !defined(CONFIG_SPL_BUILD)
 /* USB configuration */
 #define CONFIG_USB_ATMEL
@@ -134,13 +118,10 @@
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 
 /* USB DFU support */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 
 #define CONFIG_USB_GADGET_AT91
 
 /* DFU class support */
-#define CONFIG_SYS_DFU_DATA_BUF_SIZE	SZ_1M
 #define DFU_MANIFEST_POLL_TIMEOUT	25000
 #endif
 
@@ -157,10 +138,7 @@
 /*
  * The NAND Flash partitions:
  */
-#define CONFIG_ENV_OFFSET		(0x100000)
-#define CONFIG_ENV_OFFSET_REDUND	(0x180000)
 #define CONFIG_ENV_RANGE		(SZ_512K)
-#define CONFIG_ENV_SIZE			(SZ_128K)
 
 /*
  * Predefined environment variables.
@@ -187,7 +165,6 @@
 #endif
 
 /* Defines for SPL */
-#define CONFIG_SPL_TEXT_BASE		0x0
 #define CONFIG_SPL_MAX_SIZE		(SZ_4K)
 
 #define CONFIG_SPL_BSS_START_ADDR	CONFIG_SYS_SDRAM_BASE
@@ -198,9 +175,6 @@
 
 #define CONFIG_SYS_NAND_ENABLE_PIN_SPL	(2*32 + 14)
 #define CONFIG_SYS_USE_NANDFLASH	1
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_ECC
 #define CONFIG_SPL_NAND_RAW_ONLY
 #define CONFIG_SPL_NAND_SOFTECC
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
@@ -230,8 +204,7 @@
 #define CONFIG_SYS_MCKR_CSS		(0x02 | CONFIG_SYS_MCKR)
 #define CONFIG_SYS_AT91_PLLB		0x10483f0e
 
-#if defined(CONFIG_SPL_BUILD)
-#define CONFIG_SYS_ICACHE_OFF
-#define CONFIG_SYS_DCACHE_OFF
-#endif
+#define CONFIG_SPL_PAD_TO		CONFIG_SYS_NAND_U_BOOT_OFFS
+#define CONFIG_SYS_SPL_LEN		CONFIG_SPL_PAD_TO
+
 #endif /* __CONFIG_H */

@@ -5,8 +5,13 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <image.h>
+#include <init.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -89,7 +94,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -109,7 +114,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 	fdt_fixup_board_enet(blob);
 #endif
 
@@ -143,4 +150,23 @@ void board_detail(void)
 		puts("I2C normal addressing\n");
 		break;
 	}
+}
+
+ulong *cs4340_get_fw_addr(void)
+{
+	ulong cortina_fw_addr = CONFIG_CORTINA_FW_ADDR;
+
+#ifdef CONFIG_SYS_CORTINA_FW_IN_NOR
+	u8 sw;
+
+	sw = CPLD_READ(vbank);
+	sw = sw & CPLD_BANK_SEL_MASK;
+
+	if (sw == 0)
+		cortina_fw_addr = CORTINA_FW_ADDR_IFCNOR;
+	else if (sw == 4)
+		cortina_fw_addr = CORTINA_FW_ADDR_IFCNOR_ALTBANK;
+#endif
+
+	return (ulong *)cortina_fw_addr;
 }

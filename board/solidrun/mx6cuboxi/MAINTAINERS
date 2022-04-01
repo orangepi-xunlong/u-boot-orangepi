@@ -1,5 +1,6 @@
 MX6CUBOXI BOARD
-M:	Fabio Estevam <fabio.estevam@nxp.com>
+M:	Baruch Siach <baruch@tkos.co.il>
+M:	Fabio Estevam <festevam@gmail.com>
 S:	Maintained
 F:	board/solidrun/mx6cuboxi/
 F:	include/configs/mx6cuboxi.h

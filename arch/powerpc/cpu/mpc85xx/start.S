@@ -33,7 +33,7 @@
 #endif
 
 #if !defined(CONFIG_SPL) && !defined(CONFIG_SYS_RAMBOOT) && \
-	!defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SRIO_PCIE_BOOT_SLAVE)
+	!defined(CONFIG_NXP_ESBC) && !defined(CONFIG_SRIO_PCIE_BOOT_SLAVE)
 #define NOR_BOOT
 #endif
 
@@ -123,7 +123,7 @@ _start_e500:
 #endif
 
 
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_E500MC) && \
+#if defined(CONFIG_NXP_ESBC) && defined(CONFIG_E500MC) && \
 	!defined(CONFIG_E6500)
 	/* ISBC uses L2 as stack.
 	 * Disable L2 cache here so that u-boot can enable it later
@@ -344,39 +344,6 @@ l2_disabled:
 	mtspr	DBCR0,r0
 #endif
 
-#ifdef CONFIG_ARCH_MPC8569
-#define CONFIG_SYS_LBC_ADDR (CONFIG_SYS_CCSRBAR_DEFAULT + 0x5000)
-#define CONFIG_SYS_LBCR_ADDR (CONFIG_SYS_LBC_ADDR + 0xd0)
-
-	/* MPC8569 Rev.0 silcon needs to set bit 13 of LBCR to allow elBC to
-	 * use address space which is more than 12bits, and it must be done in
-	 * the 4K boot page. So we set this bit here.
-	 */
-
-	/* create a temp mapping TLB0[0] for LBCR  */
-	create_tlb0_entry 0, \
-		0, BOOKE_PAGESZ_4K, \
-		CONFIG_SYS_LBC_ADDR, MAS2_I|MAS2_G, \
-		CONFIG_SYS_LBC_ADDR, MAS3_SW|MAS3_SR, \
-		0, r6
-
-	/* Set LBCR register */
-	lis     r4,CONFIG_SYS_LBCR_ADDR@h
-	ori     r4,r4,CONFIG_SYS_LBCR_ADDR@l
-
-	lis     r5,CONFIG_SYS_LBC_LBCR@h
-	ori     r5,r5,CONFIG_SYS_LBC_LBCR@l
-	stw     r5,0(r4)
-	isync
-
-	/* invalidate this temp TLB */
-	lis	r4,CONFIG_SYS_LBC_ADDR@h
-	ori	r4,r4,CONFIG_SYS_LBC_ADDR@l
-	tlbivax	0,r4
-	isync
-
-#endif /* CONFIG_ARCH_MPC8569 */
-
 /*
  * Search for the TLB that covers the code we're executing, and shrink it
  * so that it covers only this 4K page.  That will ensure that any other
@@ -467,7 +434,7 @@ nexti:	mflr	r1		/* R1 = our PC */
 	blt	1b
 
 #if defined(CONFIG_SYS_PPC_E500_DEBUG_TLB) && !defined(MINIMAL_SPL) && \
-	!defined(CONFIG_SECURE_BOOT)
+	!defined(CONFIG_NXP_ESBC)
 /*
  * TLB entry for debuggging in AS1
  * Create temporary TLB entry in AS0 to handle debug exception
@@ -1065,7 +1032,7 @@ create_init_ram_area:
 		0xffc00000, MAS3_SX|MAS3_SW|MAS3_SR, \
 		0, r6
 
-#elif !defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SECURE_BOOT)
+#elif !defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_NXP_ESBC)
 	/* create a temp mapping in AS = 1 for Flash mapping
 	 * created by PBL for ISBC code
 	 */
@@ -1080,7 +1047,7 @@ create_init_ram_area:
  * and for targets with CONFIG_SPL like T1, T2, T4, only for
  * u-boot-spl i.e. CONFIG_SPL_BUILD
  */
-#elif defined(CONFIG_RAMBOOT_PBL) && defined(CONFIG_SECURE_BOOT) && \
+#elif defined(CONFIG_RAMBOOT_PBL) && defined(CONFIG_NXP_ESBC) && \
 	(!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
 	/* create a temp mapping in AS = 1 for mapping CONFIG_SYS_MONITOR_BASE
 	 * to L3 Address configured by PBL for ISBC code
@@ -1216,6 +1183,9 @@ _start_cont:
 	mr	r1,r3		/* Transfer to SP(r1) */
 
 	GET_GOT
+	/* Needed for -msingle-pic-base */
+	bl	_GLOBAL_OFFSET_TABLE_@local-4
+	mflr	r30
 
 	/* Pass our potential ePAPR device tree pointer to cpu_init_early_f */
 	mr	r3, r24
@@ -1546,7 +1516,7 @@ write_tlb:
 	blr
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.

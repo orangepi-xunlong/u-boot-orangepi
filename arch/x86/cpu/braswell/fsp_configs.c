@@ -5,7 +5,9 @@
 
 #include <common.h>
 #include <fdtdec.h>
-#include <asm/fsp/fsp_support.h>
+#include <log.h>
+#include <asm/fsp1/fsp_support.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -40,7 +42,7 @@ __weak void update_fsp_gpio_configs(struct gpio_family **family,
  * If the device tree does not specify an integer setting, use the default
  * provided in Intel's Braswell release FSP/BraswellFsp.bsf file.
  */
-void update_fsp_configs(struct fsp_config_data *config,
+void fsp_update_configs(struct fsp_config_data *config,
 			struct fspinit_rtbuf *rt_buf)
 {
 	struct upd_region *fsp_upd = &config->fsp_upd;

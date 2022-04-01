@@ -11,12 +11,16 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <init.h>
+#include <log.h>
 #include <pch.h>
 #include <asm/cpu.h>
 #include <asm/cpu_common.h>
+#include <asm/global_data.h>
 #include <asm/intel_regs.h>
 #include <asm/io.h>
 #include <asm/lapic.h>
@@ -139,7 +143,7 @@ int checkcpu(void)
 
 		/* System is not happy after keyboard reset... */
 		debug("Issuing CF9 warm reset\n");
-		reset_cpu(0);
+		reset_cpu();
 	}
 
 	ret = cpu_common_init();
@@ -199,6 +203,5 @@ int print_cpuinfo(void)
 void board_debug_uart_init(void)
 {
 	/* This enables the debug UART */
-	pci_x86_write_config(NULL, PCH_LPC_DEV, LPC_EN, COMA_LPC_EN,
-			     PCI_SIZE_16);
+	pci_x86_write_config(PCH_LPC_DEV, LPC_EN, COMA_LPC_EN, PCI_SIZE_16);
 }

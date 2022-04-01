@@ -8,8 +8,7 @@
 #include <common.h>
 #include <command.h>
 #include <rtc.h>
-
-#if defined(CONFIG_CMD_DATE)
+#include <linux/delay.h>
 
 /* GPP Pins */
 #define DATA		0x200
@@ -328,5 +327,3 @@ int rtc_set(struct rtc_time *tmp)
 
 	return 0;
 }
-
-#endif

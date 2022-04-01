@@ -15,10 +15,6 @@
 #if defined(CONFIG_MPC8xx)
 #include <asm/immap_8xx.h>
 #endif
-#ifdef CONFIG_MPC86xx
-#include <mpc86xx.h>
-#include <asm/immap_86xx.h>
-#endif
 #ifdef CONFIG_MPC85xx
 #include <mpc85xx.h>
 #include <asm/immap_85xx.h>
@@ -121,6 +117,7 @@ void print_reginfo(void);
 void interrupt_init_cpu(unsigned *);
 void timer_interrupt_cpu(struct pt_regs *);
 unsigned long search_exception_table(unsigned long addr);
+void upmconfig(uint upm, uint *table, uint size);
 
 #endif /* !__ASSEMBLY__ */
 

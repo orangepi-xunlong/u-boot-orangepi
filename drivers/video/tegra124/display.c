@@ -6,12 +6,15 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <dm.h>
 #include <edid.h>
 #include <errno.h>
 #include <display.h>
 #include <edid.h>
 #include <lcd.h>
+#include <log.h>
+#include <part.h>
 #include <video.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -19,6 +22,7 @@
 #include <asm/arch/pwm.h>
 #include <asm/arch-tegra/dc.h>
 #include <dm/uclass-internal.h>
+#include <linux/delay.h>
 #include "displayport.h"
 
 /* return in 1000ths of a Hertz */
@@ -347,7 +351,7 @@ static int display_init(struct udevice *dev, void *lcdbase,
 		return ret;
 	}
 
-	disp_uc_plat = dev_get_uclass_platdata(dp_dev);
+	disp_uc_plat = dev_get_uclass_plat(dp_dev);
 	debug("Found device '%s', disp_uc_priv=%p\n", dp_dev->name,
 	      disp_uc_plat);
 	disp_uc_plat->src_dev = dev;
@@ -461,7 +465,7 @@ static int tegra124_lcd_init(struct udevice *dev, void *lcdbase,
 
 static int tegra124_lcd_probe(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	ulong start;
 	int ret;
 
@@ -478,7 +482,7 @@ static int tegra124_lcd_probe(struct udevice *dev)
 
 static int tegra124_lcd_bind(struct udevice *dev)
 {
-	struct video_uc_platdata *uc_plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 
 	uc_plat->size = LCD_MAX_WIDTH * LCD_MAX_HEIGHT *
 			(1 << VIDEO_BPP16) / 8;

@@ -27,6 +27,41 @@
 u64 of_translate_address(const struct device_node *no, const __be32 *in_addr);
 
 /**
+ * of_translate_dma_address() - translate a device-tree DMA address to a CPU
+ *				address
+ *
+ * Translate a DMA address from the device-tree into a CPU physical address,
+ * this walks up the tree and applies the various bus mappings on the way.
+ *
+ * Note: We consider that crossing any level with #size-cells == 0 to mean
+ * that translation is impossible (that is we are not dealing with a value
+ * that can be mapped to a cpu physical address). This is not really specified
+ * that way, but this is traditionally the way IBM at least do things
+ *
+ * @np: node to check
+ * @in_addr: pointer to input DMA address
+ * @return translated DMA address or OF_BAD_ADDR on error
+ */
+u64 of_translate_dma_address(const struct device_node *no, const __be32 *in_addr);
+
+
+/**
+ * of_get_dma_range() - get dma-ranges for a specific DT node
+ *
+ * Get DMA ranges for a specifc node, this is useful to perform bus->cpu and
+ * cpu->bus address translations
+ *
+ * @param blob		Pointer to device tree blob
+ * @param node_offset	Node DT offset
+ * @param cpu		Pointer to variable storing the range's cpu address
+ * @param bus		Pointer to variable storing the range's bus address
+ * @param size		Pointer to variable storing the range's size
+ * @return translated DMA address or OF_BAD_ADDR on error
+ */
+int of_get_dma_range(const struct device_node *dev, phys_addr_t *cpu,
+		     dma_addr_t *bus, u64 *size);
+
+/**
  * of_get_address() - obtain an address from a node
  *
  * Extract an address from a node, returns the region size and the address

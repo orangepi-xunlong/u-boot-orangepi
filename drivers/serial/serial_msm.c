@@ -12,19 +12,27 @@
 #include <clk.h>
 #include <dm.h>
 #include <errno.h>
+#include <malloc.h>
 #include <serial.h>
 #include <watchdog.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
+#include <dm/pinctrl.h>
 
 /* Serial registers - this driver works in uartdm mode*/
 
 #define UARTDM_DMRX             0x34 /* Max RX transfer length */
+#define UARTDM_DMEN             0x3C /* DMA/data-packing mode */
 #define UARTDM_NCF_TX           0x40 /* Number of chars to TX */
 
 #define UARTDM_RXFS             0x50 /* RX channel status register */
 #define UARTDM_RXFS_BUF_SHIFT   0x7  /* Number of bytes in the packing buffer */
 #define UARTDM_RXFS_BUF_MASK    0x7
+#define UARTDM_MR1				 0x00
+#define UARTDM_MR2				 0x04
+#define UARTDM_CSR				 0xA0
 
 #define UARTDM_SR                0xA4 /* Status register */
 #define UARTDM_SR_RX_READY       (1 << 0) /* Word is the receiver FIFO */
@@ -45,6 +53,10 @@
 #define UARTDM_TF               0x100 /* UART Transmit FIFO register */
 #define UARTDM_RF               0x140 /* UART Receive FIFO register */
 
+#define UART_DM_CLK_RX_TX_BIT_RATE 0xCC
+#define MSM_BOOT_UART_DM_8_N_1_MODE 0x34
+#define MSM_BOOT_UART_DM_CMD_RESET_RX 0x10
+#define MSM_BOOT_UART_DM_CMD_RESET_TX 0x20
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -52,6 +64,7 @@ struct msm_serial_data {
 	phys_addr_t base;
 	unsigned chars_cnt; /* number of buffered chars */
 	uint32_t chars_buf; /* buffered chars */
+	uint32_t clk_bit_rate; /* data mover mode bit rate register value */
 };
 
 static int msm_serial_fetch(struct udevice *dev)
@@ -179,30 +192,49 @@ static int msm_uart_clk_init(struct udevice *dev)
 	return 0;
 }
 
+static void uart_dm_init(struct msm_serial_data *priv)
+{
+	/* Delay initialization for a bit to let pins stabilize if necessary */
+	mdelay(5);
+
+	writel(priv->clk_bit_rate, priv->base + UARTDM_CSR);
+	writel(0x0, priv->base + UARTDM_MR1);
+	writel(MSM_BOOT_UART_DM_8_N_1_MODE, priv->base + UARTDM_MR2);
+	writel(MSM_BOOT_UART_DM_CMD_RESET_RX, priv->base + UARTDM_CR);
+	writel(MSM_BOOT_UART_DM_CMD_RESET_TX, priv->base + UARTDM_CR);
+
+	/* Make sure BAM/single character mode is disabled */
+	writel(0x0, priv->base + UARTDM_DMEN);
+}
 static int msm_serial_probe(struct udevice *dev)
 {
+	int ret;
 	struct msm_serial_data *priv = dev_get_priv(dev);
 
-	msm_uart_clk_init(dev); /* Ignore return value and hope clock was
-				  properly initialized by earlier loaders */
+	/* No need to reinitialize the UART after relocation */
+	if (gd->flags & GD_FLG_RELOC)
+		return 0;
 
-	if (readl(priv->base + UARTDM_SR) & UARTDM_SR_UART_OVERRUN)
-		writel(UARTDM_CR_CMD_RESET_ERR, priv->base + UARTDM_CR);
+	ret = msm_uart_clk_init(dev);
+	if (ret)
+		return ret;
 
-	writel(0, priv->base + UARTDM_IMR);
-	writel(UARTDM_CR_CMD_STALE_EVENT_DISABLE, priv->base + UARTDM_CR);
-	msm_serial_fetch(dev);
+	pinctrl_select_state(dev, "uart");
+	uart_dm_init(priv);
 
 	return 0;
 }
 
-static int msm_serial_ofdata_to_platdata(struct udevice *dev)
+static int msm_serial_of_to_plat(struct udevice *dev)
 {
 	struct msm_serial_data *priv = dev_get_priv(dev);
 
-	priv->base = devfdt_get_addr(dev);
+	priv->base = dev_read_addr(dev);
 	if (priv->base == FDT_ADDR_T_NONE)
 		return -EINVAL;
+
+	priv->clk_bit_rate = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), 
+							"bit-rate", UART_DM_CLK_RX_TX_BIT_RATE);
 
 	return 0;
 }
@@ -216,8 +248,8 @@ U_BOOT_DRIVER(serial_msm) = {
 	.name	= "serial_msm",
 	.id	= UCLASS_SERIAL,
 	.of_match = msm_serial_ids,
-	.ofdata_to_platdata = msm_serial_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct msm_serial_data),
+	.of_to_plat = msm_serial_of_to_plat,
+	.priv_auto	= sizeof(struct msm_serial_data),
 	.probe = msm_serial_probe,
 	.ops	= &msm_serial_ops,
 };

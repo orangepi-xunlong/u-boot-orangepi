@@ -20,7 +20,6 @@
 #define CONFIG_MACH_TYPE MACH_TYPE_ETHERNUT5
 
 /* CPU information */
-#define CONFIG_ARCH_CPU_INIT
 
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768	/* slow clock xtal */
@@ -33,40 +32,27 @@
 				GENERATED_GBL_DATA_SIZE)
 
 /* 128MB SDRAM in 1 bank */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0x20000000
 #define CONFIG_SYS_SDRAM_SIZE		(128 << 20)
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE
 #define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (1 << 20))
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE \
-					- CONFIG_SYS_MALLOC_LEN)
 
 /* 512kB on-chip NOR flash */
 # define CONFIG_SYS_MAX_FLASH_BANKS	1
 # define CONFIG_SYS_FLASH_BASE		0x00200000 /* AT91SAM9XE_FLASH_BASE */
 # define CONFIG_AT91_EFLASH
 # define CONFIG_SYS_MAX_FLASH_SECT	32
-# define CONFIG_SYS_FLASH_PROTECTION	/* First stage loader in sector 0 */
 # define CONFIG_EFLASH_PROTSECTORS	1
 
 
 /* bootstrap + u-boot + env + linux in dataflash on CS0 */
-#define CONFIG_ENV_OFFSET	0x3DE000
-#define CONFIG_ENV_SIZE		(132 << 10)
-#define CONFIG_ENV_SECT_SIZE	CONFIG_ENV_SIZE
-#define CONFIG_ENV_SPI_MAX_HZ	15000000
-
-#ifndef MINIMAL_LOADER
-#endif
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x40000000
 #define CONFIG_SYS_NAND_DBW_8
-#define CONFIG_NAND_ATMEL
 /* our ALE is AD21 */
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
 /* our CLE is AD22 */
@@ -76,7 +62,6 @@
 
 /* JFFS2 */
 #ifdef CONFIG_CMD_JFFS2
-#define CONFIG_JFFS2_CMDLINE
 #define CONFIG_JFFS2_NAND
 #endif
 
@@ -106,14 +91,13 @@
 
 /* RTC */
 #if defined(CONFIG_CMD_DATE) || defined(CONFIG_CMD_SNTP)
-#define CONFIG_RTC_PCF8563
 #define CONFIG_SYS_I2C_RTC_ADDR		0x51
 #endif
 
 /* I2C */
 #define CONFIG_SYS_MAX_I2C_BUS	1
 
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_SOFT			/* I2C bit-banged */
 #define CONFIG_SYS_I2C_SOFT_SPEED	100000
 #define CONFIG_SYS_I2C_SOFT_SLAVE	0
@@ -145,8 +129,6 @@
 #endif
 
 /* File systems */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 
 /* Boot command */
 #define CONFIG_CMDLINE_TAG

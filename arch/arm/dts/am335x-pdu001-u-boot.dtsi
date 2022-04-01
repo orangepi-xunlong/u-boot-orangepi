@@ -3,6 +3,8 @@
  * Copyright (C) 2018 EETS GmbH - https://www.eets.ch/
  */
 
+#include "am33xx-u-boot.dtsi"
+
 / {
 	ocp {
 		u-boot,dm-pre-reloc;
@@ -11,6 +13,20 @@
 
 &l4_wkup {
 	u-boot,dm-pre-reloc;
+};
+
+&l4_per {
+
+	segment@300000 {
+
+		target-module@e000 {
+			u-boot,dm-pre-reloc;
+
+			lcdc: lcdc@0 {
+				u-boot,dm-pre-reloc;
+			};
+		};
+	};
 };
 
 &scm {
@@ -29,7 +45,15 @@
 	u-boot,dm-pre-reloc;
 };
 
+&mmc1 {
+	u-boot,dm-pre-reloc;
+};
+
 &mmc1_pins {
+	u-boot,dm-pre-reloc;
+};
+
+&mmc2 {
 	u-boot,dm-pre-reloc;
 };
 

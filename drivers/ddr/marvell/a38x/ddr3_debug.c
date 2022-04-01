@@ -3,14 +3,9 @@
  * Copyright (C) Marvell International Ltd. and its affiliates
  */
 
-#include <common.h>
-#include <i2c.h>
-#include <spl.h>
-#include <asm/io.h>
-#include <asm/arch/cpu.h>
-#include <asm/arch/soc.h>
-
 #include "ddr3_init.h"
+#include "mv_ddr_training_db.h"
+#include "mv_ddr_regs.h"
 
 u8 is_reg_dump = 0;
 u8 debug_pbs = DEBUG_LEVEL_ERROR;
@@ -18,7 +13,12 @@ u8 debug_pbs = DEBUG_LEVEL_ERROR;
 /*
  * API to change flags outside of the lib
  */
-#ifndef SILENT_LIB
+#if defined(SILENT_LIB)
+void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
+{
+	/* do nothing */
+}
+#else /* SILENT_LIB */
 /* Debug flags for other Training modules */
 u8 debug_training_static = DEBUG_LEVEL_ERROR;
 u8 debug_training = DEBUG_LEVEL_ERROR;
@@ -28,7 +28,14 @@ u8 debug_training_ip = DEBUG_LEVEL_ERROR;
 u8 debug_training_bist = DEBUG_LEVEL_ERROR;
 u8 debug_training_hw_alg = DEBUG_LEVEL_ERROR;
 u8 debug_training_access = DEBUG_LEVEL_ERROR;
-u8 debug_training_a38x = DEBUG_LEVEL_ERROR;
+u8 debug_training_device = DEBUG_LEVEL_ERROR;
+
+
+void mv_ddr_user_log_level_set(enum ddr_lib_debug_block block)
+{
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+	ddr3_hws_set_log_level(block, tm->debug_level);
+};
 
 void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
 {
@@ -52,7 +59,7 @@ void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
 		debug_training_hw_alg = level;
 		break;
 	case DEBUG_BLOCK_DEVICE:
-		debug_training_a38x = level;
+		debug_training_device = level;
 		break;
 	case DEBUG_BLOCK_ACCESS:
 		debug_training_access = level;
@@ -72,24 +79,31 @@ void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
 		debug_pbs = level;
 		debug_training_hw_alg = level;
 		debug_training_access = level;
-		debug_training_a38x = level;
+		debug_training_device = level;
 	}
 }
-#else
-void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
-{
-	return;
-}
-#endif
+#endif /* SILENT_LIB */
 
-struct hws_tip_config_func_db config_func_info[HWS_MAX_DEVICE_NUM];
+#if defined(DDR_VIEWER_TOOL)
+static char *convert_freq(enum mv_ddr_freq freq);
+#if defined(EXCLUDE_SWITCH_DEBUG)
+u32 ctrl_sweepres[ADLL_LENGTH][MAX_INTERFACE_NUM][MAX_BUS_NUM];
+u32 ctrl_adll[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
+u32 ctrl_adll1[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
+u32 ctrl_level_phase[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
+#endif /* EXCLUDE_SWITCH_DEBUG */
+#endif /* DDR_VIEWER_TOOL */
+
+struct hws_tip_config_func_db config_func_info[MAX_DEVICE_NUM];
 u8 is_default_centralization = 0;
 u8 is_tune_result = 0;
 u8 is_validate_window_per_if = 0;
 u8 is_validate_window_per_pup = 0;
 u8 sweep_cnt = 1;
 u32 is_bist_reset_bit = 1;
-static struct hws_xsb_info xsb_info[HWS_MAX_DEVICE_NUM];
+u8 is_run_leveling_sweep_tests;
+
+static struct hws_xsb_info xsb_info[MAX_DEVICE_NUM];
 
 /*
  * Dump Dunit & Phy registers
@@ -98,13 +112,14 @@ int ddr3_tip_reg_dump(u32 dev_num)
 {
 	u32 if_id, reg_addr, data_value, bus_id;
 	u32 read_data[MAX_INTERFACE_NUM];
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	printf("-- dunit registers --\n");
 	for (reg_addr = 0x1400; reg_addr < 0x19f0; reg_addr += 4) {
 		printf("0x%x ", reg_addr);
 		for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-			VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+			VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 			CHECK_STATUS(ddr3_tip_if_read
 				     (dev_num, ACCESS_TYPE_UNICAST,
 				      if_id, reg_addr, read_data,
@@ -118,11 +133,11 @@ int ddr3_tip_reg_dump(u32 dev_num)
 	for (reg_addr = 0; reg_addr <= 0xff; reg_addr++) {
 		printf("0x%x ", reg_addr);
 		for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-			VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+			VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 			for (bus_id = 0;
-			     bus_id < tm->num_of_bus_per_interface;
+			     bus_id < octets_per_if_num;
 			     bus_id++) {
-				VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+				VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 				CHECK_STATUS(ddr3_tip_bus_read
 					     (dev_num, if_id,
 					      ACCESS_TYPE_UNICAST, bus_id,
@@ -131,9 +146,9 @@ int ddr3_tip_reg_dump(u32 dev_num)
 				printf("0x%x ", data_value);
 			}
 			for (bus_id = 0;
-			     bus_id < tm->num_of_bus_per_interface;
+			     bus_id < octets_per_if_num;
 			     bus_id++) {
-				VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+				VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 				CHECK_STATUS(ddr3_tip_bus_read
 					     (dev_num, if_id,
 					      ACCESS_TYPE_UNICAST, bus_id,
@@ -184,51 +199,55 @@ int ddr3_tip_get_device_info(u32 dev_num, struct ddr3_device_info *info_ptr)
 	return MV_FAIL;
 }
 
-#ifndef EXCLUDE_SWITCH_DEBUG
+#if defined(DDR_VIEWER_TOOL)
 /*
  * Convert freq to character string
  */
-static char *convert_freq(enum hws_ddr_freq freq)
+static char *convert_freq(enum mv_ddr_freq freq)
 {
 	switch (freq) {
-	case DDR_FREQ_LOW_FREQ:
-		return "DDR_FREQ_LOW_FREQ";
-	case DDR_FREQ_400:
+	case MV_DDR_FREQ_LOW_FREQ:
+		return "MV_DDR_FREQ_LOW_FREQ";
+
+	case MV_DDR_FREQ_400:
 		return "400";
 
-	case DDR_FREQ_533:
+	case MV_DDR_FREQ_533:
 		return "533";
-	case DDR_FREQ_667:
+
+	case MV_DDR_FREQ_667:
 		return "667";
 
-	case DDR_FREQ_800:
+	case MV_DDR_FREQ_800:
 		return "800";
 
-	case DDR_FREQ_933:
+	case MV_DDR_FREQ_933:
 		return "933";
 
-	case DDR_FREQ_1066:
+	case MV_DDR_FREQ_1066:
 		return "1066";
-	case DDR_FREQ_311:
+
+	case MV_DDR_FREQ_311:
 		return "311";
 
-	case DDR_FREQ_333:
+	case MV_DDR_FREQ_333:
 		return "333";
 
-	case DDR_FREQ_467:
+	case MV_DDR_FREQ_467:
 		return "467";
 
-	case DDR_FREQ_850:
+	case MV_DDR_FREQ_850:
 		return "850";
 
-	case DDR_FREQ_900:
+	case MV_DDR_FREQ_900:
 		return "900";
 
-	case DDR_FREQ_360:
-		return "DDR_FREQ_360";
+	case MV_DDR_FREQ_360:
+		return "MV_DDR_FREQ_360";
 
-	case DDR_FREQ_1000:
-		return "DDR_FREQ_1000";
+	case MV_DDR_FREQ_1000:
+		return "MV_DDR_FREQ_1000";
+
 	default:
 		return "Unknown Frequency";
 	}
@@ -279,7 +298,7 @@ static char *convert_mem_size(u32 dev_id)
 int print_device_info(u8 dev_num)
 {
 	struct ddr3_device_info info_ptr;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	CHECK_STATUS(ddr3_tip_get_device_info(dev_num, &info_ptr));
 	printf("=== DDR setup START===\n");
@@ -302,7 +321,7 @@ void hws_ddr3_tip_sweep_test(int enable)
 		is_validate_window_per_pup = 0;
 	}
 }
-#endif
+#endif /* DDR_VIEWER_TOOL */
 
 char *ddr3_tip_convert_tune_result(enum hws_result tune_result)
 {
@@ -324,13 +343,13 @@ char *ddr3_tip_convert_tune_result(enum hws_result tune_result)
 int ddr3_tip_print_log(u32 dev_num, u32 mem_addr)
 {
 	u32 if_id = 0;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
-#ifndef EXCLUDE_SWITCH_DEBUG
+#if defined(DDR_VIEWER_TOOL)
 	if ((is_validate_window_per_if != 0) ||
 	    (is_validate_window_per_pup != 0)) {
 		u32 is_pup_log = 0;
-		enum hws_ddr_freq freq;
+		enum mv_ddr_freq freq;
 
 		freq = tm->interface_params[first_active_if].memory_freq;
 
@@ -340,16 +359,22 @@ int ddr3_tip_print_log(u32 dev_num, u32 mem_addr)
 		/* print sweep windows */
 		ddr3_tip_run_sweep_test(dev_num, sweep_cnt, 1, is_pup_log);
 		ddr3_tip_run_sweep_test(dev_num, sweep_cnt, 0, is_pup_log);
+#if defined(EXCLUDE_SWITCH_DEBUG)
+		if (is_run_leveling_sweep_tests == 1) {
+			ddr3_tip_run_leveling_sweep_test(dev_num, sweep_cnt, 0, is_pup_log);
+			ddr3_tip_run_leveling_sweep_test(dev_num, sweep_cnt, 1, is_pup_log);
+		}
+#endif /* EXCLUDE_SWITCH_DEBUG */
 		ddr3_tip_print_all_pbs_result(dev_num);
 		ddr3_tip_print_wl_supp_result(dev_num);
 		printf("===VALIDATE WINDOW LOG END ===\n");
 		CHECK_STATUS(ddr3_tip_restore_dunit_regs(dev_num));
 		ddr3_tip_reg_dump(dev_num);
 	}
-#endif
+#endif /* DDR_VIEWER_TOOL */
 
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 
 		DEBUG_TRAINING_IP(DEBUG_LEVEL_INFO,
 				  ("IF %d Status:\n", if_id));
@@ -479,6 +504,7 @@ int ddr3_tip_print_log(u32 dev_num, u32 mem_addr)
 	return MV_OK;
 }
 
+#if !defined(EXCLUDE_DEBUG_PRINTS)
 /*
  * Print stability log info
  */
@@ -487,17 +513,17 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 	u8 if_id = 0, csindex = 0, bus_id = 0, idx = 0;
 	u32 reg_data;
 	u32 read_data[MAX_INTERFACE_NUM];
-	u32 max_cs = hws_ddr3_tip_max_cs_get();
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	unsigned int max_cs = mv_ddr_cs_num_get();
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	/* Title print */
 	for (if_id = 0; if_id < MAX_INTERFACE_NUM; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 		printf("Title: I/F# , Tj, Calibration_n0, Calibration_p0, Calibration_n1, Calibration_p1, Calibration_n2, Calibration_p2,");
 		for (csindex = 0; csindex < max_cs; csindex++) {
 			printf("CS%d , ", csindex);
 			printf("\n");
-			VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 			printf("VWTx, VWRx, WL_tot, WL_ADLL, WL_PH, RL_Tot, RL_ADLL, RL_PH, RL_Smp, Cen_tx, Cen_rx, Vref, DQVref,");
 			printf("\t\t");
 			for (idx = 0; idx < 11; idx++)
@@ -511,7 +537,7 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 
 	/* Data print */
 	for (if_id = 0; if_id < MAX_INTERFACE_NUM; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 
 		printf("Data: %d,%d,", if_id,
 		       (config_func_info[dev_num].tip_get_temperature != NULL)
@@ -538,11 +564,11 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 			printf("CS%d , ", csindex);
 			for (bus_id = 0; bus_id < MAX_BUS_NUM; bus_id++) {
 				printf("\n");
-				VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+				VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST,
 						  bus_id, DDR_PHY_DATA,
-						  RESULT_DB_PHY_REG_ADDR +
+						  RESULT_PHY_REG +
 						  csindex, &reg_data);
 				printf("%d,%d,", (reg_data & 0x1f),
 				       ((reg_data & 0x3e0) >> 5));
@@ -550,8 +576,8 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST,
 						  bus_id, DDR_PHY_DATA,
-						  WL_PHY_REG +
-						  csindex * 4, &reg_data);
+						  WL_PHY_REG(csindex),
+						  &reg_data);
 				printf("%d,%d,%d,",
 				       (reg_data & 0x1f) +
 				       ((reg_data & 0x1c0) >> 6) * 32,
@@ -561,16 +587,16 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 				CHECK_STATUS(ddr3_tip_if_read
 					     (dev_num, ACCESS_TYPE_UNICAST,
 					      if_id,
-					      READ_DATA_SAMPLE_DELAY,
+					      RD_DATA_SMPL_DLYS_REG,
 					      read_data, MASK_ALL_BITS));
 				read_data[if_id] =
 					(read_data[if_id] &
-					 (0xf << (4 * csindex))) >>
-					(4 * csindex);
+					 (0x1f << (8 * csindex))) >>
+					(8 * csindex);
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST, bus_id,
 						  DDR_PHY_DATA,
-						  RL_PHY_REG + csindex * 4,
+						  RL_PHY_REG(csindex),
 						  &reg_data);
 				printf("%d,%d,%d,%d,",
 				       (reg_data & 0x1f) +
@@ -583,35 +609,25 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST, bus_id,
 						  DDR_PHY_DATA,
-						  WRITE_CENTRALIZATION_PHY_REG
-						  + csindex * 4, &reg_data);
+						  CTX_PHY_REG(csindex),
+						  &reg_data);
 				printf("%d,", (reg_data & 0x3f));
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST, bus_id,
 						  DDR_PHY_DATA,
-						  READ_CENTRALIZATION_PHY_REG
-						  + csindex * 4, &reg_data);
+						  CRX_PHY_REG(csindex),
+						   &reg_data);
 				printf("%d,", (reg_data & 0x1f));
 				/* Vref */
 				ddr3_tip_bus_read(dev_num, if_id,
 						  ACCESS_TYPE_UNICAST, bus_id,
 						  DDR_PHY_DATA,
-						  PAD_CONFIG_PHY_REG,
+						  PAD_CFG_PHY_REG,
 						  &reg_data);
 				printf("%d,", (reg_data & 0x7));
 				/* DQVref */
 				/* Need to add the Read Function from device */
 				printf("%d,", 0);
-				printf("\t\t");
-				for (idx = 0; idx < 11; idx++) {
-					ddr3_tip_bus_read(dev_num, if_id,
-							  ACCESS_TYPE_UNICAST,
-							  bus_id, DDR_PHY_DATA,
-							  0xd0 +
-							  12 * csindex +
-							  idx, &reg_data);
-					printf("%d,", (reg_data & 0x3f));
-				}
 				printf("\t\t");
 				for (idx = 0; idx < 11; idx++) {
 					ddr3_tip_bus_read(dev_num, if_id,
@@ -639,6 +655,7 @@ int ddr3_tip_print_stability_log(u32 dev_num)
 
 	return MV_OK;
 }
+#endif /* EXCLUDE_DEBUG_PRINTS */
 
 /*
  * Register XSB information
@@ -652,30 +669,30 @@ int ddr3_tip_register_xsb_info(u32 dev_num, struct hws_xsb_info *xsb_info_table)
 /*
  * Read ADLL Value
  */
-int read_adll_value(u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
-		    int reg_addr, u32 mask)
+int ddr3_tip_read_adll_value(u32 dev_num, u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
+			     u32 reg_addr, u32 mask)
 {
 	u32 data_value;
 	u32 if_id = 0, bus_id = 0;
-	u32 dev_num = 0;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	/*
 	 * multi CS support - reg_addr is calucalated in calling function
 	 * with CS offset
 	 */
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
-		for (bus_id = 0; bus_id < tm->num_of_bus_per_interface;
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+		for (bus_id = 0; bus_id < octets_per_if_num;
 		     bus_id++) {
-			VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 			CHECK_STATUS(ddr3_tip_bus_read(dev_num, if_id,
 						       ACCESS_TYPE_UNICAST,
 						       bus_id,
 						       DDR_PHY_DATA, reg_addr,
 						       &data_value));
 			pup_values[if_id *
-				   tm->num_of_bus_per_interface + bus_id] =
+				   octets_per_if_num + bus_id] =
 				data_value & mask;
 		}
 	}
@@ -686,24 +703,25 @@ int read_adll_value(u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
 /*
  * Write ADLL Value
  */
-int write_adll_value(u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
-		     int reg_addr)
+int ddr3_tip_write_adll_value(u32 dev_num, u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
+			      u32 reg_addr)
 {
 	u32 if_id = 0, bus_id = 0;
-	u32 dev_num = 0, data;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	u32 data;
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	/*
 	 * multi CS support - reg_addr is calucalated in calling function
 	 * with CS offset
 	 */
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
-		for (bus_id = 0; bus_id < tm->num_of_bus_per_interface;
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+		for (bus_id = 0; bus_id < octets_per_if_num;
 		     bus_id++) {
-			VALIDATE_ACTIVE(tm->bus_act_mask, bus_id);
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
 			data = pup_values[if_id *
-					  tm->num_of_bus_per_interface +
+					  octets_per_if_num +
 					  bus_id];
 			CHECK_STATUS(ddr3_tip_bus_write(dev_num,
 							ACCESS_TYPE_UNICAST,
@@ -717,23 +735,78 @@ int write_adll_value(u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
 	return 0;
 }
 
-#ifndef EXCLUDE_SWITCH_DEBUG
-u32 rl_version = 1;		/* 0 - old RL machine */
-struct hws_tip_config_func_db config_func_info[HWS_MAX_DEVICE_NUM];
+/**
+ * Read Phase Value
+ */
+int read_phase_value(u32 dev_num, u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
+		     int reg_addr, u32 mask)
+{
+	u32  data_value;
+	u32 if_id = 0, bus_id = 0;
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+
+	/* multi CS support - reg_addr is calucalated in calling function with CS offset */
+	for (if_id = 0; if_id < MAX_INTERFACE_NUM; if_id++) {
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+		for (bus_id = 0; bus_id < octets_per_if_num; bus_id++) {
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
+			CHECK_STATUS(ddr3_tip_bus_read(dev_num, if_id,
+						       ACCESS_TYPE_UNICAST,
+						       bus_id,
+						       DDR_PHY_DATA, reg_addr,
+						       &data_value));
+			pup_values[if_id * octets_per_if_num + bus_id] = data_value & mask;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Write Leveling Value
+ */
+int write_leveling_value(u32 dev_num, u32 pup_values[MAX_INTERFACE_NUM * MAX_BUS_NUM],
+			 u32 pup_ph_values[MAX_INTERFACE_NUM * MAX_BUS_NUM], int reg_addr)
+{
+	u32 if_id = 0, bus_id = 0;
+	u32 data;
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+
+	/* multi CS support - reg_addr is calucalated in calling function with CS offset */
+	for (if_id = 0; if_id < MAX_INTERFACE_NUM; if_id++) {
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+		for (bus_id = 0 ; bus_id < octets_per_if_num ; bus_id++) {
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_id);
+			data = pup_values[if_id * octets_per_if_num + bus_id] +
+			       pup_ph_values[if_id * octets_per_if_num + bus_id];
+			CHECK_STATUS(ddr3_tip_bus_write(dev_num,
+							ACCESS_TYPE_UNICAST,
+							if_id,
+							ACCESS_TYPE_UNICAST,
+							bus_id,
+							DDR_PHY_DATA,
+							reg_addr,
+							data));
+		}
+	}
+
+	return 0;
+}
+
+#if !defined(EXCLUDE_SWITCH_DEBUG)
+struct hws_tip_config_func_db config_func_info[MAX_DEVICE_NUM];
 u32 start_xsb_offset = 0;
 u8 is_rl_old = 0;
 u8 is_freq_old = 0;
 u8 is_dfs_disabled = 0;
 u32 default_centrlization_value = 0x12;
-u32 vref = 0x4;
 u32 activate_select_before_run_alg = 1, activate_deselect_after_run_alg = 1,
 	rl_test = 0, reset_read_fifo = 0;
 int debug_acc = 0;
 u32 ctrl_sweepres[ADLL_LENGTH][MAX_INTERFACE_NUM][MAX_BUS_NUM];
 u32 ctrl_adll[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
-u8 cs_mask_reg[] = {
-	0, 4, 8, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
 
 u32 xsb_test_table[][8] = {
 	{0x00000000, 0x11111111, 0x22222222, 0x33333333, 0x44444444, 0x55555555,
@@ -756,18 +829,17 @@ u32 xsb_test_table[][8] = {
 	 0xffffffff, 0xffffffff}
 };
 
-static int ddr3_tip_access_atr(u32 dev_num, u32 flag_id, u32 value, u32 **ptr);
-
 int ddr3_tip_print_adll(void)
 {
 	u32 bus_cnt = 0, if_id, data_p1, data_p2, ui_data3, dev_num = 0;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
-		for (bus_cnt = 0; bus_cnt < GET_TOPOLOGY_NUM_OF_BUSES();
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+		for (bus_cnt = 0; bus_cnt < octets_per_if_num;
 		     bus_cnt++) {
-			VALIDATE_ACTIVE(tm->bus_act_mask, bus_cnt);
+			VALIDATE_BUS_ACTIVE(tm->bus_act_mask, bus_cnt);
 			CHECK_STATUS(ddr3_tip_bus_read
 				     (dev_num, if_id,
 				      ACCESS_TYPE_UNICAST, bus_cnt,
@@ -788,396 +860,46 @@ int ddr3_tip_print_adll(void)
 	return MV_OK;
 }
 
-/*
- * Set attribute value
- */
-int ddr3_tip_set_atr(u32 dev_num, u32 flag_id, u32 value)
-{
-	int ret;
-	u32 *ptr_flag = NULL;
+#endif /* EXCLUDE_SWITCH_DEBUG */
 
-	ret = ddr3_tip_access_atr(dev_num, flag_id, value, &ptr_flag);
-	if (ptr_flag != NULL) {
-		printf("ddr3_tip_set_atr Flag ID 0x%x value is set to 0x%x (was 0x%x)\n",
-		       flag_id, value, *ptr_flag);
-		*ptr_flag = value;
-	} else {
-		printf("ddr3_tip_set_atr Flag ID 0x%x value is set to 0x%x\n",
-		       flag_id, value);
-	}
-
-	return ret;
-}
-
-/*
- * Access attribute
- */
-static int ddr3_tip_access_atr(u32 dev_num, u32 flag_id, u32 value, u32 **ptr)
-{
-	u32 tmp_val = 0, if_id = 0, pup_id = 0;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
-
-	*ptr = NULL;
-
-	switch (flag_id) {
-	case 0:
-		*ptr = (u32 *)&(tm->if_act_mask);
-		break;
-
-	case 0x1:
-		*ptr = (u32 *)&mask_tune_func;
-		break;
-
-	case 0x2:
-		*ptr = (u32 *)&low_freq;
-		break;
-
-	case 0x3:
-		*ptr = (u32 *)&medium_freq;
-		break;
-
-	case 0x4:
-		*ptr = (u32 *)&generic_init_controller;
-		break;
-
-	case 0x5:
-		*ptr = (u32 *)&rl_version;
-		break;
-
-	case 0x8:
-		*ptr = (u32 *)&start_xsb_offset;
-		break;
-
-	case 0x20:
-		*ptr = (u32 *)&is_rl_old;
-		break;
-
-	case 0x21:
-		*ptr = (u32 *)&is_freq_old;
-		break;
-
-	case 0x23:
-		*ptr = (u32 *)&is_dfs_disabled;
-		break;
-
-	case 0x24:
-		*ptr = (u32 *)&is_pll_before_init;
-		break;
-
-	case 0x25:
-		*ptr = (u32 *)&is_adll_calib_before_init;
-		break;
-#ifdef STATIC_ALGO_SUPPORT
-	case 0x26:
-		*ptr = (u32 *)&(silicon_delay[0]);
-		break;
-
-	case 0x27:
-		*ptr = (u32 *)&wl_debug_delay;
-		break;
-#endif
-	case 0x28:
-		*ptr = (u32 *)&is_tune_result;
-		break;
-
-	case 0x29:
-		*ptr = (u32 *)&is_validate_window_per_if;
-		break;
-
-	case 0x2a:
-		*ptr = (u32 *)&is_validate_window_per_pup;
-		break;
-
-	case 0x30:
-		*ptr = (u32 *)&sweep_cnt;
-		break;
-
-	case 0x31:
-		*ptr = (u32 *)&is_bist_reset_bit;
-		break;
-
-	case 0x32:
-		*ptr = (u32 *)&is_dfs_in_init;
-		break;
-
-	case 0x33:
-		*ptr = (u32 *)&p_finger;
-		break;
-
-	case 0x34:
-		*ptr = (u32 *)&n_finger;
-		break;
-
-	case 0x35:
-		*ptr = (u32 *)&init_freq;
-		break;
-
-	case 0x36:
-		*ptr = (u32 *)&(freq_val[DDR_FREQ_LOW_FREQ]);
-		break;
-
-	case 0x37:
-		*ptr = (u32 *)&start_pattern;
-		break;
-
-	case 0x38:
-		*ptr = (u32 *)&end_pattern;
-		break;
-
-	case 0x39:
-		*ptr = (u32 *)&phy_reg0_val;
-		break;
-
-	case 0x4a:
-		*ptr = (u32 *)&phy_reg1_val;
-		break;
-
-	case 0x4b:
-		*ptr = (u32 *)&phy_reg2_val;
-		break;
-
-	case 0x4c:
-		*ptr = (u32 *)&phy_reg3_val;
-		break;
-
-	case 0x4e:
-		*ptr = (u32 *)&sweep_pattern;
-		break;
-
-	case 0x50:
-		*ptr = (u32 *)&is_rzq6;
-		break;
-
-	case 0x51:
-		*ptr = (u32 *)&znri_data_phy_val;
-		break;
-
-	case 0x52:
-		*ptr = (u32 *)&zpri_data_phy_val;
-		break;
-
-	case 0x53:
-		*ptr = (u32 *)&finger_test;
-		break;
-
-	case 0x54:
-		*ptr = (u32 *)&n_finger_start;
-		break;
-
-	case 0x55:
-		*ptr = (u32 *)&n_finger_end;
-		break;
-
-	case 0x56:
-		*ptr = (u32 *)&p_finger_start;
-		break;
-
-	case 0x57:
-		*ptr = (u32 *)&p_finger_end;
-		break;
-
-	case 0x58:
-		*ptr = (u32 *)&p_finger_step;
-		break;
-
-	case 0x59:
-		*ptr = (u32 *)&n_finger_step;
-		break;
-
-	case 0x5a:
-		*ptr = (u32 *)&znri_ctrl_phy_val;
-		break;
-
-	case 0x5b:
-		*ptr = (u32 *)&zpri_ctrl_phy_val;
-		break;
-
-	case 0x5c:
-		*ptr = (u32 *)&is_reg_dump;
-		break;
-
-	case 0x5d:
-		*ptr = (u32 *)&vref;
-		break;
-
-	case 0x5e:
-		*ptr = (u32 *)&mode2_t;
-		break;
-
-	case 0x5f:
-		*ptr = (u32 *)&xsb_validate_type;
-		break;
-
-	case 0x60:
-		*ptr = (u32 *)&xsb_validation_base_address;
-		break;
-
-	case 0x67:
-		*ptr = (u32 *)&activate_select_before_run_alg;
-		break;
-
-	case 0x68:
-		*ptr = (u32 *)&activate_deselect_after_run_alg;
-		break;
-
-	case 0x69:
-		*ptr = (u32 *)&odt_additional;
-		break;
-
-	case 0x70:
-		*ptr = (u32 *)&debug_mode;
-		break;
-
-	case 0x71:
-		*ptr = (u32 *)&pbs_pattern;
-		break;
-
-	case 0x72:
-		*ptr = (u32 *)&delay_enable;
-		break;
-
-	case 0x73:
-		*ptr = (u32 *)&ck_delay;
-		break;
-
-	case 0x74:
-		*ptr = (u32 *)&ck_delay_16;
-		break;
-
-	case 0x75:
-		*ptr = (u32 *)&ca_delay;
-		break;
-
-	case 0x100:
-		*ptr = (u32 *)&debug_dunit;
-		break;
-
-	case 0x101:
-		debug_acc = (int)value;
-		break;
-
-	case 0x102:
-		debug_training = (u8)value;
-		break;
-
-	case 0x103:
-		debug_training_bist = (u8)value;
-		break;
-
-	case 0x104:
-		debug_centralization = (u8)value;
-		break;
-
-	case 0x105:
-		debug_training_ip = (u8)value;
-		break;
-
-	case 0x106:
-		debug_leveling = (u8)value;
-		break;
-
-	case 0x107:
-		debug_pbs = (u8)value;
-		break;
-
-	case 0x108:
-		debug_training_static = (u8)value;
-		break;
-
-	case 0x109:
-		debug_training_access = (u8)value;
-		break;
-
-	case 0x112:
-		*ptr = &start_pattern;
-		break;
-
-	case 0x113:
-		*ptr = &end_pattern;
-		break;
-
-	default:
-		if ((flag_id >= 0x200) && (flag_id < 0x210)) {
-			if_id = flag_id - 0x200;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].memory_freq);
-		} else if ((flag_id >= 0x210) && (flag_id < 0x220)) {
-			if_id = flag_id - 0x210;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].speed_bin_index);
-		} else if ((flag_id >= 0x220) && (flag_id < 0x230)) {
-			if_id = flag_id - 0x220;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].bus_width);
-		} else if ((flag_id >= 0x230) && (flag_id < 0x240)) {
-			if_id = flag_id - 0x230;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].memory_size);
-		} else if ((flag_id >= 0x240) && (flag_id < 0x250)) {
-			if_id = flag_id - 0x240;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].cas_l);
-		} else if ((flag_id >= 0x250) && (flag_id < 0x260)) {
-			if_id = flag_id - 0x250;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].cas_wl);
-		} else if ((flag_id >= 0x270) && (flag_id < 0x2cf)) {
-			if_id = (flag_id - 0x270) / MAX_BUS_NUM;
-			pup_id = (flag_id - 0x270) % MAX_BUS_NUM;
-			*ptr = (u32 *)&(tm->interface_params[if_id].
-					as_bus_params[pup_id].is_ck_swap);
-		} else if ((flag_id >= 0x2d0) && (flag_id < 0x32f)) {
-			if_id = (flag_id - 0x2d0) / MAX_BUS_NUM;
-			pup_id = (flag_id - 0x2d0) % MAX_BUS_NUM;
-			*ptr = (u32 *)&(tm->interface_params[if_id].
-					as_bus_params[pup_id].is_dqs_swap);
-		} else if ((flag_id >= 0x330) && (flag_id < 0x38f)) {
-			if_id = (flag_id - 0x330) / MAX_BUS_NUM;
-			pup_id = (flag_id - 0x330) % MAX_BUS_NUM;
-			*ptr = (u32 *)&(tm->interface_params[if_id].
-					as_bus_params[pup_id].cs_bitmask);
-		} else if ((flag_id >= 0x390) && (flag_id < 0x3ef)) {
-			if_id = (flag_id - 0x390) / MAX_BUS_NUM;
-			pup_id = (flag_id - 0x390) % MAX_BUS_NUM;
-			*ptr = (u32 *)&(tm->interface_params
-					[if_id].as_bus_params
-					[pup_id].mirror_enable_bitmask);
-		} else if ((flag_id >= 0x500) && (flag_id <= 0x50f)) {
-			tmp_val = flag_id - 0x320;
-			*ptr = (u32 *)&(clamp_tbl[tmp_val]);
-		} else {
-			DEBUG_TRAINING_IP(DEBUG_LEVEL_ERROR,
-					  ("flag_id out of boundary %d\n",
-					   flag_id));
-			return MV_BAD_PARAM;
-		}
-	}
-
-	return MV_OK;
-}
-
-#ifndef EXCLUDE_SWITCH_DEBUG
+#if defined(DDR_VIEWER_TOOL)
 /*
  * Print ADLL
  */
 int print_adll(u32 dev_num, u32 adll[MAX_INTERFACE_NUM * MAX_BUS_NUM])
 {
 	u32 i, j;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
-	for (j = 0; j < tm->num_of_bus_per_interface; j++) {
-		VALIDATE_ACTIVE(tm->bus_act_mask, j);
-		for (i = 0; i < MAX_INTERFACE_NUM; i++) {
-			printf("%d ,",
-			       adll[i * tm->num_of_bus_per_interface + j]);
-		}
+	for (j = 0; j < octets_per_if_num; j++) {
+		VALIDATE_BUS_ACTIVE(tm->bus_act_mask, j);
+		for (i = 0; i < MAX_INTERFACE_NUM; i++)
+			printf("%d ,", adll[i * octets_per_if_num + j]);
 	}
 	printf("\n");
 
 	return MV_OK;
 }
-#endif
 
+int print_ph(u32 dev_num, u32 adll[MAX_INTERFACE_NUM * MAX_BUS_NUM])
+{
+	u32 i, j;
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+
+	for (j = 0; j < octets_per_if_num; j++) {
+		VALIDATE_BUS_ACTIVE(tm->bus_act_mask, j);
+		for (i = 0; i < MAX_INTERFACE_NUM; i++)
+			printf("%d ,", adll[i * octets_per_if_num + j] >> 6);
+	}
+	printf("\n");
+
+	return MV_OK;
+}
+#endif /* DDR_VIEWER_TOOL */
+
+#if !defined(EXCLUDE_SWITCH_DEBUG)
 /* byte_index - only byte 0, 1, 2, or 3, oxff - test all bytes */
 static u32 ddr3_tip_compare(u32 if_id, u32 *p_src, u32 *p_dst,
 			    u32 byte_index)
@@ -1190,7 +912,7 @@ static u32 ddr3_tip_compare(u32 if_id, u32 *p_src, u32 *p_dst,
 		 0xff) ? (u32) 0xffffffff : (u32) (0xff << (byte_index * 8));
 	for (burst_cnt = 0; burst_cnt < EXT_ACCESS_BURST_LENGTH; burst_cnt++) {
 		if ((p_src[burst_cnt] & addr_offset) !=
-		    (p_dst[burst_cnt] & addr_offset))
+		    (p_dst[if_id] & addr_offset))
 			b_is_fail = 1;
 	}
 
@@ -1212,69 +934,9 @@ static u32 ddr3_tip_compare(u32 if_id, u32 *p_src, u32 *p_dst,
 
 	return b_is_fail;
 }
+#endif /* EXCLUDE_SWITCH_DEBUG */
 
-/* test_type = 0-tx , 1-rx */
-int ddr3_tip_sweep_test(u32 dev_num, u32 test_type,
-			u32 mem_addr, u32 is_modify_adll,
-			u32 start_if, u32 end_if, u32 startpup, u32 endpup)
-{
-	u32 bus_cnt = 0, adll_val = 0, if_id, ui_prev_adll, ui_mask_bit,
-		end_adll, start_adll;
-	u32 reg_addr = 0;
-	struct hws_topology_map *tm = ddr3_get_topology_map();
-
-	if (test_type == 0) {
-		reg_addr = 1;
-		ui_mask_bit = 0x3f;
-		start_adll = 0;
-		end_adll = ui_mask_bit;
-	} else {
-		reg_addr = 3;
-		ui_mask_bit = 0x1f;
-		start_adll = 0;
-		end_adll = ui_mask_bit;
-	}
-
-	DEBUG_TRAINING_IP(DEBUG_LEVEL_INFO,
-			  ("==============================\n"));
-	DEBUG_TRAINING_IP(DEBUG_LEVEL_INFO,
-			  ("Test type %d (0-tx, 1-rx)\n", test_type));
-
-	for (if_id = start_if; if_id <= end_if; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
-		for (bus_cnt = startpup; bus_cnt < endpup; bus_cnt++) {
-			CHECK_STATUS(ddr3_tip_bus_read
-				     (dev_num, if_id, ACCESS_TYPE_UNICAST,
-				      bus_cnt, DDR_PHY_DATA, reg_addr,
-				      &ui_prev_adll));
-
-			for (adll_val = start_adll; adll_val <= end_adll;
-			     adll_val++) {
-				if (is_modify_adll == 1) {
-					CHECK_STATUS(ddr3_tip_bus_read_modify_write
-						     (dev_num,
-						      ACCESS_TYPE_UNICAST,
-						      if_id, bus_cnt,
-						      DDR_PHY_DATA, reg_addr,
-						      adll_val, ui_mask_bit));
-				}
-			}
-			if (is_modify_adll == 1) {
-				CHECK_STATUS(ddr3_tip_bus_write
-					     (dev_num, ACCESS_TYPE_UNICAST,
-					      if_id, ACCESS_TYPE_UNICAST,
-					      bus_cnt, DDR_PHY_DATA, reg_addr,
-					      ui_prev_adll));
-			}
-			DEBUG_TRAINING_IP(DEBUG_LEVEL_INFO, ("\n"));
-		}
-		DEBUG_TRAINING_IP(DEBUG_LEVEL_INFO, ("\n"));
-	}
-
-	return MV_OK;
-}
-
-#ifndef EXCLUDE_SWITCH_DEBUG
+#if defined(DDR_VIEWER_TOOL)
 /*
  * Sweep validation
  */
@@ -1282,21 +944,23 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 			    u32 mode)
 {
 	u32 pup = 0, start_pup = 0, end_pup = 0;
-	u32 adll = 0;
+	u32 adll = 0, rep = 0, pattern_idx = 0;
 	u32 res[MAX_INTERFACE_NUM] = { 0 };
 	int if_id = 0;
 	u32 adll_value = 0;
-	int reg = (direction == 0) ? WRITE_CENTRALIZATION_PHY_REG :
-		READ_CENTRALIZATION_PHY_REG;
+	u32 reg;
 	enum hws_access_type pup_access;
 	u32 cs;
-	u32 max_cs = hws_ddr3_tip_max_cs_get();
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	unsigned int max_cs = mv_ddr_cs_num_get();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+
+	repeat_num = 2;
 
 	if (mode == 1) {
 		/* per pup */
 		start_pup = 0;
-		end_pup = tm->num_of_bus_per_interface - 1;
+		end_pup = octets_per_if_num - 1;
 		pup_access = ACCESS_TYPE_UNICAST;
 	} else {
 		start_pup = 0;
@@ -1305,11 +969,12 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 	}
 
 	for (cs = 0; cs < max_cs; cs++) {
+		reg = (direction == 0) ? CTX_PHY_REG(cs) : CRX_PHY_REG(cs);
 		for (adll = 0; adll < ADLL_LENGTH; adll++) {
 			for (if_id = 0;
 			     if_id <= MAX_INTERFACE_NUM - 1;
 			     if_id++) {
-				VALIDATE_ACTIVE
+				VALIDATE_IF_ACTIVE
 					(tm->if_act_mask,
 					 if_id);
 				for (pup = start_pup; pup <= end_pup; pup++) {
@@ -1321,10 +986,9 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 
 		for (adll = 0; adll < (MAX_INTERFACE_NUM * MAX_BUS_NUM); adll++)
 			ctrl_adll[adll] = 0;
-		/* Save DQS value(after algorithm run) */
-		read_adll_value(ctrl_adll,
-				(reg + (cs * CS_REGISTER_ADDR_OFFSET)),
-				MASK_ALL_BITS);
+			/* Save DQS value(after algorithm run) */
+			ddr3_tip_read_adll_value(dev_num, ctrl_adll,
+						 reg, MASK_ALL_BITS);
 
 		/*
 		 * Sweep ADLL  from 0:31 on all I/F on all Pup and perform
@@ -1332,38 +996,43 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 		 */
 		for (pup = start_pup; pup <= end_pup; pup++) {
 			for (adll = 0; adll < ADLL_LENGTH; adll++) {
-				adll_value =
-					(direction == 0) ? (adll * 2) : adll;
-				CHECK_STATUS(ddr3_tip_bus_write
-					     (dev_num, ACCESS_TYPE_MULTICAST, 0,
-					      pup_access, pup, DDR_PHY_DATA,
-					      reg + CS_REG_VALUE(cs),
-					      adll_value));
-				hws_ddr3_run_bist(dev_num, sweep_pattern, res,
-						  cs);
-				/* ddr3_tip_reset_fifo_ptr(dev_num); */
-				for (if_id = 0;
-				     if_id <= MAX_INTERFACE_NUM - 1;
-				     if_id++) {
-					VALIDATE_ACTIVE
-						(tm->if_act_mask,
-						 if_id);
-					ctrl_sweepres[adll][if_id][pup]
-						= res[if_id];
-					if (mode == 1) {
-						CHECK_STATUS
-							(ddr3_tip_bus_write
-							 (dev_num,
-							  ACCESS_TYPE_UNICAST,
-							  if_id,
-							  ACCESS_TYPE_UNICAST,
-							  pup,
-							  DDR_PHY_DATA,
-							  reg + CS_REG_VALUE(cs),
-							  ctrl_adll[if_id *
-								    cs *
-								    tm->num_of_bus_per_interface
-								    + pup]));
+				for (rep = 0; rep < repeat_num; rep++) {
+					for (pattern_idx = PATTERN_KILLER_DQ0;
+					     pattern_idx < PATTERN_LAST;
+					     pattern_idx++) {
+						adll_value =
+							(direction == 0) ? (adll * 2) : adll;
+						CHECK_STATUS(ddr3_tip_bus_write
+							     (dev_num, ACCESS_TYPE_MULTICAST, 0,
+							      pup_access, pup, DDR_PHY_DATA,
+							      reg, adll_value));
+						hws_ddr3_run_bist(dev_num, sweep_pattern, res,
+								  cs);
+						/* ddr3_tip_reset_fifo_ptr(dev_num); */
+						for (if_id = 0;
+						     if_id < MAX_INTERFACE_NUM;
+						     if_id++) {
+							VALIDATE_IF_ACTIVE
+								(tm->if_act_mask,
+								 if_id);
+							ctrl_sweepres[adll][if_id][pup]
+								+= res[if_id];
+							if (mode == 1) {
+								CHECK_STATUS
+									(ddr3_tip_bus_write
+									 (dev_num,
+									  ACCESS_TYPE_UNICAST,
+									  if_id,
+									  ACCESS_TYPE_UNICAST,
+									  pup,
+									  DDR_PHY_DATA,
+									  reg,
+									  ctrl_adll[if_id *
+										    cs *
+										    octets_per_if_num
+										    + pup]));
+							}
+						}
 					}
 				}
 			}
@@ -1371,10 +1040,10 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 		printf("Final, CS %d,%s, Sweep, Result, Adll,", cs,
 		       ((direction == 0) ? "TX" : "RX"));
 		for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-			VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+			VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 			if (mode == 1) {
 				for (pup = start_pup; pup <= end_pup; pup++) {
-					VALIDATE_ACTIVE(tm->bus_act_mask, pup);
+					VALIDATE_BUS_ACTIVE(tm->bus_act_mask, pup);
 					printf("I/F%d-PHY%d , ", if_id, pup);
 				}
 			} else {
@@ -1391,9 +1060,9 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 			for (if_id = 0;
 			     if_id <= MAX_INTERFACE_NUM - 1;
 			     if_id++) {
-				VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+				VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 				for (pup = start_pup; pup <= end_pup; pup++) {
-					printf("%d , ",
+					printf("%8d , ",
 					       ctrl_sweepres[adll][if_id]
 					       [pup]);
 				}
@@ -1405,11 +1074,9 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 		 * Write back to the phy the Rx DQS value, we store in
 		 * the beginning.
 		 */
-		write_adll_value(ctrl_adll,
-				 (reg + cs * CS_REGISTER_ADDR_OFFSET));
+		ddr3_tip_write_adll_value(dev_num, ctrl_adll, reg);
 		/* print adll results */
-		read_adll_value(ctrl_adll, (reg + cs * CS_REGISTER_ADDR_OFFSET),
-				MASK_ALL_BITS);
+		ddr3_tip_read_adll_value(dev_num, ctrl_adll, reg, MASK_ALL_BITS);
 		printf("%s, DQS, ADLL,,,", (direction == 0) ? "Tx" : "Rx");
 		print_adll(dev_num, ctrl_adll);
 	}
@@ -1418,16 +1085,214 @@ int ddr3_tip_run_sweep_test(int dev_num, u32 repeat_num, u32 direction,
 	return 0;
 }
 
-void print_topology(struct hws_topology_map *topology_db)
+#if defined(EXCLUDE_SWITCH_DEBUG)
+int ddr3_tip_run_leveling_sweep_test(int dev_num, u32 repeat_num,
+				     u32 direction, u32 mode)
+{
+	u32 pup = 0, start_pup = 0, end_pup = 0, start_adll = 0;
+	u32 adll = 0, rep = 0, pattern_idx = 0;
+	u32 read_data[MAX_INTERFACE_NUM];
+	u32 res[MAX_INTERFACE_NUM] = { 0 };
+	int if_id = 0, gap = 0;
+	u32 adll_value = 0;
+	u32 reg;
+	enum hws_access_type pup_access;
+	u32 cs;
+	unsigned int max_cs = mv_ddr_cs_num_get();
+	u32 octets_per_if_num = ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE);
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
+
+	if (mode == 1) { /* per pup */
+		start_pup = 0;
+		end_pup = octets_per_if_num - 1;
+		pup_access = ACCESS_TYPE_UNICAST;
+	} else {
+		start_pup = 0;
+		end_pup = 0;
+		pup_access = ACCESS_TYPE_MULTICAST;
+	}
+
+	for (cs = 0; cs < max_cs; cs++) {
+		reg = (direction == 0) ? WL_PHY_REG(cs) : RL_PHY_REG(cs);
+		for (adll = 0; adll < ADLL_LENGTH; adll++) {
+			for (if_id = 0; if_id < MAX_INTERFACE_NUM; if_id++) {
+				VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+				for (pup = start_pup; pup <= end_pup; pup++)
+					ctrl_sweepres[adll][if_id][pup] = 0;
+			}
+		}
+
+		for (adll = 0; adll < MAX_INTERFACE_NUM * MAX_BUS_NUM; adll++) {
+			ctrl_adll[adll] = 0;
+			ctrl_level_phase[adll] = 0;
+			ctrl_adll1[adll] = 0;
+		}
+
+		/* save leveling value after running algorithm */
+		ddr3_tip_read_adll_value(dev_num, ctrl_adll, reg, 0x1f);
+		read_phase_value(dev_num, ctrl_level_phase, reg, 0x7 << 6);
+
+		if (direction == 0)
+			ddr3_tip_read_adll_value(dev_num, ctrl_adll1,
+						 CTX_PHY_REG(cs), MASK_ALL_BITS);
+
+		/* Sweep ADLL from 0 to 31 on all interfaces, all pups,
+		 * and perform BIST on each stage
+		 */
+		for (pup = start_pup; pup <= end_pup; pup++) {
+			for (adll = 0; adll < ADLL_LENGTH; adll++) {
+				for (rep = 0; rep < repeat_num; rep++) {
+					adll_value = (direction == 0) ? (adll * 2) : (adll * 3);
+					for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
+						start_adll = ctrl_adll[if_id * cs * octets_per_if_num + pup] +
+							     (ctrl_level_phase[if_id * cs *
+									     octets_per_if_num +
+									     pup] >> 6) * 32;
+
+						if (direction == 0)
+							start_adll = (start_adll > 32) ? (start_adll - 32) : 0;
+						else
+							start_adll = (start_adll > 48) ? (start_adll - 48) : 0;
+
+						adll_value += start_adll;
+
+						gap = ctrl_adll1[if_id * cs * octets_per_if_num + pup] -
+						      ctrl_adll[if_id * cs * octets_per_if_num + pup];
+						gap = (((adll_value % 32) + gap) % 64);
+
+						adll_value = ((adll_value % 32) +
+							       (((adll_value - (adll_value % 32)) / 32) << 6));
+
+						CHECK_STATUS(ddr3_tip_bus_write(dev_num,
+										ACCESS_TYPE_UNICAST,
+										if_id,
+										pup_access,
+										pup,
+										DDR_PHY_DATA,
+										reg,
+										adll_value));
+						if (direction == 0)
+							CHECK_STATUS(ddr3_tip_bus_write(dev_num,
+											ACCESS_TYPE_UNICAST,
+											if_id,
+											pup_access,
+											pup,
+											DDR_PHY_DATA,
+											CTX_PHY_REG(cs),
+											gap));
+					}
+
+					for (pattern_idx = PATTERN_KILLER_DQ0;
+					     pattern_idx < PATTERN_LAST;
+					     pattern_idx++) {
+						hws_ddr3_run_bist(dev_num, sweep_pattern, res, cs);
+						ddr3_tip_reset_fifo_ptr(dev_num);
+						for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
+							VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+							if (pup != 4) { /* TODO: remove literal */
+								ctrl_sweepres[adll][if_id][pup] += res[if_id];
+							} else {
+								CHECK_STATUS(ddr3_tip_if_read(dev_num,
+											      ACCESS_TYPE_UNICAST,
+											      if_id,
+											      0x1458,
+											      read_data,
+											      MASK_ALL_BITS));
+								ctrl_sweepres[adll][if_id][pup] += read_data[if_id];
+								CHECK_STATUS(ddr3_tip_if_write(dev_num,
+											       ACCESS_TYPE_UNICAST,
+											       if_id,
+											       0x1458,
+											       0x0,
+											       0xFFFFFFFF));
+								CHECK_STATUS(ddr3_tip_if_write(dev_num,
+											       ACCESS_TYPE_UNICAST,
+											       if_id,
+											       0x145C,
+											       0x0,
+											       0xFFFFFFFF));
+							}
+						}
+					}
+				}
+			}
+
+			for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
+				start_adll = ctrl_adll[if_id * cs * octets_per_if_num + pup] +
+					     ctrl_level_phase[if_id * cs * octets_per_if_num + pup];
+				CHECK_STATUS(ddr3_tip_bus_write(dev_num, ACCESS_TYPE_UNICAST, if_id, pup_access, pup,
+								DDR_PHY_DATA, reg, start_adll));
+				if (direction == 0)
+					CHECK_STATUS(ddr3_tip_bus_write(dev_num,
+									ACCESS_TYPE_UNICAST,
+									if_id,
+									pup_access,
+									pup,
+									DDR_PHY_DATA,
+									CTX_PHY_REG(cs),
+									ctrl_adll1[if_id *
+										   cs *
+										   octets_per_if_num +
+										   pup]));
+			}
+		}
+
+		printf("Final,CS %d,%s,Leveling,Result,Adll,", cs, ((direction == 0) ? "TX" : "RX"));
+
+		for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
+			VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+			if (mode == 1) {
+				for (pup = start_pup; pup <= end_pup; pup++) {
+					VALIDATE_BUS_ACTIVE(tm->bus_act_mask, pup);
+					printf("I/F%d-PHY%d , ", if_id, pup);
+				}
+			} else {
+				printf("I/F%d , ", if_id);
+			}
+		}
+		printf("\n");
+
+		for (adll = 0; adll < ADLL_LENGTH; adll++) {
+			adll_value = (direction == 0) ? ((adll * 2) - 32) : ((adll * 3) - 48);
+			printf("Final,%s,LevelingSweep,Result, %d ,", ((direction == 0) ? "TX" : "RX"), adll_value);
+
+			for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
+				VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
+				for (pup = start_pup; pup <= end_pup; pup++)
+					printf("%8d , ", ctrl_sweepres[adll][if_id][pup]);
+			}
+			printf("\n");
+		}
+
+		/* write back to the phy the Rx DQS value, we store in the beginning */
+		write_leveling_value(dev_num, ctrl_adll, ctrl_level_phase, reg);
+		if (direction == 0)
+			ddr3_tip_write_adll_value(dev_num, ctrl_adll1, CTX_PHY_REG(cs));
+
+		/* print adll results */
+		ddr3_tip_read_adll_value(dev_num, ctrl_adll, reg, MASK_ALL_BITS);
+		printf("%s,DQS,Leveling,,,", (direction == 0) ? "Tx" : "Rx");
+		print_adll(dev_num, ctrl_adll);
+		print_ph(dev_num, ctrl_level_phase);
+	}
+	ddr3_tip_reset_fifo_ptr(dev_num);
+
+	return 0;
+}
+#endif /* EXCLUDE_SWITCH_DEBUG */
+
+void print_topology(struct mv_ddr_topology_map *topology_db)
 {
 	u32 ui, uj;
+	u32 dev_num = 0;
 
 	printf("\tinterface_mask: 0x%x\n", topology_db->if_act_mask);
-	printf("\tNum Bus:  %d\n", topology_db->num_of_bus_per_interface);
+	printf("\tNumber of buses: 0x%x\n",
+	       ddr3_tip_dev_attr_get(dev_num, MV_ATTR_OCTET_PER_INTERFACE));
 	printf("\tbus_act_mask: 0x%x\n", topology_db->bus_act_mask);
 
 	for (ui = 0; ui < MAX_INTERFACE_NUM; ui++) {
-		VALIDATE_ACTIVE(topology_db->if_act_mask, ui);
+		VALIDATE_IF_ACTIVE(topology_db->if_act_mask, ui);
 		printf("\n\tInterface ID: %d\n", ui);
 		printf("\t\tDDR Frequency: %s\n",
 		       convert_freq(topology_db->
@@ -1465,8 +1330,9 @@ void print_topology(struct hws_topology_map *topology_db)
 		}
 	}
 }
-#endif
+#endif /* DDR_VIEWER_TOOL */
 
+#if !defined(EXCLUDE_SWITCH_DEBUG)
 /*
  * Execute XSB Test transaction (rd/wr/both)
  */
@@ -1476,10 +1342,10 @@ int run_xsb_test(u32 dev_num, u32 mem_addr, u32 write_type,
 	u32 seq = 0, if_id = 0, addr, cnt;
 	int ret = MV_OK, ret_tmp;
 	u32 data_read[MAX_INTERFACE_NUM];
-	struct hws_topology_map *tm = ddr3_get_topology_map();
+	struct mv_ddr_topology_map *tm = mv_ddr_topology_map_get();
 
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
-		VALIDATE_ACTIVE(tm->if_act_mask, if_id);
+		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);
 		addr = mem_addr;
 		for (cnt = 0; cnt <= burst_length; cnt++) {
 			seq = (seq + 1) % 8;
@@ -1509,13 +1375,7 @@ int run_xsb_test(u32 dev_num, u32 mem_addr, u32 write_type,
 }
 
 #else /*EXCLUDE_SWITCH_DEBUG */
-
-u32 rl_version = 1;		/* 0 - old RL machine */
-u32 vref = 0x4;
 u32 start_xsb_offset = 0;
-u8 cs_mask_reg[] = {
-	0, 4, 8, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
 
 int run_xsb_test(u32 dev_num, u32 mem_addr, u32 write_type,
 		 u32 read_type, u32 burst_length)
@@ -1523,4 +1383,4 @@ int run_xsb_test(u32 dev_num, u32 mem_addr, u32 write_type,
 	return MV_OK;
 }
 
-#endif
+#endif /* EXCLUDE_SWITCH_DEBUG */

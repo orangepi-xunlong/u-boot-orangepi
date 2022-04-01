@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/sama5d3_smc.h>
 #include <asm/arch/at91_common.h>
@@ -17,6 +19,8 @@
 #include <asm/arch/at91_wdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+extern void at91_pda_detect(void);
 
 #ifdef CONFIG_NAND_ATMEL
 void sama5d3_xplained_nand_hw_init(void)
@@ -72,6 +76,14 @@ void board_debug_uart_init(void)
 }
 #endif
 
+#ifdef CONFIG_BOARD_LATE_INIT
+int board_late_init(void)
+{
+	at91_pda_detect();
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
@@ -119,6 +131,13 @@ void spl_board_init(void)
 	sama5d3_xplained_nand_hw_init();
 #endif
 }
+
+#ifdef CONFIG_SPL_OS_BOOT
+int spl_start_uboot(void)
+{
+	return 0;
+}
+#endif
 
 static void ddr2_conf(struct atmel_mpddrc_config *ddr2)
 {

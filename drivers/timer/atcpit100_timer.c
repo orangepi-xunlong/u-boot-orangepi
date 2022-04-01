@@ -64,32 +64,31 @@ struct atctmr_timer_regs {
 	u32	int_mask;	/* 0x38 */
 };
 
-struct atcpit_timer_platdata {
+struct atcpit_timer_plat {
 	u32 *regs;
 };
 
-static int atcpit_timer_get_count(struct udevice *dev, u64 *count)
+static u64 atcpit_timer_get_count(struct udevice *dev)
 {
-	struct atcpit_timer_platdata *plat = dev_get_platdata(dev);
+	struct atcpit_timer_plat *plat = dev_get_plat(dev);
 	u32 val;
 	val = ~(REG32_TMR(CH_CNT(1))+0xffffffff);
-	*count = timer_conv_64(val);
-	return 0;
+	return timer_conv_64(val);
 }
 
 static int atcpit_timer_probe(struct udevice *dev)
 {
-	struct atcpit_timer_platdata *plat = dev_get_platdata(dev);
+	struct atcpit_timer_plat *plat = dev_get_plat(dev);
 	REG32_TMR(CH_REL(1)) = 0xffffffff;
 	REG32_TMR(CH_CTL(1)) = APB_CLK|TMR_32;
 	REG32_TMR(CH_EN) |= CH_TMR_EN(1 , 0);
 	return 0;
 }
 
-static int atcpit_timer_ofdata_to_platdata(struct udevice *dev)
+static int atcpit_timer_of_to_plat(struct udevice *dev)
 {
-	struct atcpit_timer_platdata *plat = dev_get_platdata(dev);
-	plat->regs = map_physmem(devfdt_get_addr(dev) , 0x100 , MAP_NOCACHE);
+	struct atcpit_timer_plat *plat = dev_get_plat(dev);
+	plat->regs = map_physmem(dev_read_addr(dev), 0x100 , MAP_NOCACHE);
 	return 0;
 }
 
@@ -106,9 +105,8 @@ U_BOOT_DRIVER(atcpit100_timer) = {
 	.name	= "atcpit100_timer",
 	.id	= UCLASS_TIMER,
 	.of_match = atcpit_timer_ids,
-	.ofdata_to_platdata = atcpit_timer_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct atcpit_timer_platdata),
+	.of_to_plat = atcpit_timer_of_to_plat,
+	.plat_auto	= sizeof(struct atcpit_timer_plat),
 	.probe = atcpit_timer_probe,
 	.ops	= &atcpit_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

@@ -8,6 +8,8 @@
 #ifndef _CLK_H_
 #define _CLK_H_
 
+#include <dm/ofnode.h>
+#include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/types.h>
 
@@ -19,9 +21,9 @@
  * clock provider. This API provides a standard means for drivers to enable and
  * disable clocks, and to set the rate at which they oscillate.
  *
- * A driver that implements UCLASS_CLOCK is a clock provider. A provider will
+ * A driver that implements UCLASS_CLK is a clock provider. A provider will
  * often implement multiple separate clocks, since the hardware it manages
- * often has this capability. clock_uclass.h describes the interface which
+ * often has this capability. clk-uclass.h describes the interface which
  * clock providers must implement.
  *
  * Clock consumers/clients are the HW modules driven by the clock signals. This
@@ -39,11 +41,17 @@ struct udevice;
  * other clock APIs to identify which clock signal to operate upon.
  *
  * @dev: The device which implements the clock signal.
+ * @rate: The clock rate (in HZ).
+ * @flags: Flags used across common clock structure (e.g. CLK_)
+ *         Clock IP blocks specific flags (i.e. mux, div, gate, etc) are defined
+ *         in struct's for those devices (e.g. struct clk_mux).
  * @id: The clock signal ID within the provider.
+ * @data: An optional data field for scenarios where a single integer ID is not
+ *	  sufficient. If used, it can be populated through an .of_xlate op and
+ *	  processed during the various clock ops.
  *
- * Currently, the clock API assumes that a single integer ID is enough to
- * identify and configure any clock signal for any clock provider. If this
- * assumption becomes invalid in the future, the struct could be expanded to
+ * Should additional information to identify and configure any clock signal
+ * for any provider be required in the future, the struct could be expanded to
  * either (a) add more fields to allow clock providers to store additional
  * information, or (b) replace the id field with an opaque pointer, which the
  * provider would dynamically allocated during its .of_xlate op, and process
@@ -52,11 +60,14 @@ struct udevice;
  */
 struct clk {
 	struct udevice *dev;
+	long long rate;	/* in HZ */
+	u32 flags;
+	int enable_count;
 	/*
-	 * Written by of_xlate. We assume a single id is enough for now. In the
-	 * future, we might add more fields here.
+	 * Written by of_xlate. In the future, we might add more fields here.
 	 */
 	unsigned long id;
+	unsigned long data;
 };
 
 /**
@@ -78,11 +89,11 @@ struct clk_bulk {
 
 #if CONFIG_IS_ENABLED(OF_CONTROL) && CONFIG_IS_ENABLED(CLK)
 struct phandle_1_arg;
-int clk_get_by_index_platdata(struct udevice *dev, int index,
-			      struct phandle_1_arg *cells, struct clk *clk);
+int clk_get_by_driver_info(struct udevice *dev,
+			   struct phandle_1_arg *cells, struct clk *clk);
 
 /**
- * clock_get_by_index - Get/request a clock by integer index.
+ * clk_get_by_index - Get/request a clock by integer index.
  *
  * This looks up and requests a clock. The index is relative to the client
  * device; each device is assumed to have n clocks associated with it somehow,
@@ -99,7 +110,21 @@ int clk_get_by_index_platdata(struct udevice *dev, int index,
 int clk_get_by_index(struct udevice *dev, int index, struct clk *clk);
 
 /**
- * clock_get_bulk - Get/request all clocks of a device.
+ * clk_get_by_index_nodev - Get/request a clock by integer index
+ * without a device.
+ *
+ * This is a version of clk_get_by_index() that does not use a device.
+ *
+ * @node:	The client ofnode.
+ * @index:	The index of the clock to request, within the client's list of
+ *		clocks.
+ * @clock	A pointer to a clock struct to initialize.
+ * @return 0 if OK, or a negative error code.
+ */
+int clk_get_by_index_nodev(ofnode node, int index, struct clk *clk);
+
+/**
+ * clk_get_bulk - Get/request all clocks of a device.
  *
  * This looks up and requests all clocks of the client device; each device is
  * assumed to have n clocks associated with it somehow, and this function finds
@@ -114,7 +139,7 @@ int clk_get_by_index(struct udevice *dev, int index, struct clk *clk);
 int clk_get_bulk(struct udevice *dev, struct clk_bulk *bulk);
 
 /**
- * clock_get_by_name - Get/request a clock by name.
+ * clk_get_by_name - Get/request a clock by name.
  *
  * This looks up and requests a clock. The name is relative to the client
  * device; each device is assumed to have n clocks associated with it somehow,
@@ -131,6 +156,65 @@ int clk_get_bulk(struct udevice *dev, struct clk_bulk *bulk);
 int clk_get_by_name(struct udevice *dev, const char *name, struct clk *clk);
 
 /**
+ * clk_get_by_name_nodev - Get/request a clock by name without a device.
+ *
+ * This is a version of clk_get_by_name() that does not use a device.
+ *
+ * @node:	The client ofnode.
+ * @name:	The name of the clock to request, within the client's list of
+ *		clocks.
+ * @clock:	A pointer to a clock struct to initialize.
+ * @return 0 if OK, or a negative error code.
+ */
+int clk_get_by_name_nodev(ofnode node, const char *name, struct clk *clk);
+
+/**
+ * clk_get_optional_nodev - Get/request an optinonal clock by name
+ *		without a device.
+ * @node:	The client ofnode.
+ * @name:	The name of the clock to request.
+ * @name:	The name of the clock to request, within the client's list of
+ *		clocks.
+ * @clock:	A pointer to a clock struct to initialize.
+ *
+ * Behaves the same as clk_get_by_name_nodev() except where there is
+ * no clock producer, in this case, skip the error number -ENODATA, and
+ * the function returns 0.
+ */
+int clk_get_optional_nodev(ofnode node, const char *name, struct clk *clk);
+
+/**
+ * devm_clk_get - lookup and obtain a managed reference to a clock producer.
+ * @dev: device for clock "consumer"
+ * @id: clock consumer ID
+ *
+ * Returns a struct clk corresponding to the clock producer, or
+ * valid IS_ERR() condition containing errno.  The implementation
+ * uses @dev and @id to determine the clock consumer, and thereby
+ * the clock producer.  (IOW, @id may be identical strings, but
+ * clk_get may return different clock producers depending on @dev.)
+ *
+ * Drivers must assume that the clock source is not enabled.
+ *
+ * devm_clk_get should not be called from within interrupt context.
+ *
+ * The clock will automatically be freed when the device is unbound
+ * from the bus.
+ */
+struct clk *devm_clk_get(struct udevice *dev, const char *id);
+
+/**
+ * devm_clk_get_optional - lookup and obtain a managed reference to an optional
+ *			   clock producer.
+ * @dev: device for clock "consumer"
+ * @id: clock consumer ID
+ *
+ * Behaves the same as devm_clk_get() except where there is no clock producer.
+ * In this case, instead of returning -ENOENT, the function returns NULL.
+ */
+struct clk *devm_clk_get_optional(struct udevice *dev, const char *id);
+
+/**
  * clk_release_all() - Disable (turn off)/Free an array of previously
  * requested clocks.
  *
@@ -143,6 +227,19 @@ int clk_get_by_name(struct udevice *dev, const char *name, struct clk *clk);
  * @return zero on success, or -ve error code.
  */
 int clk_release_all(struct clk *clk, int count);
+
+/**
+ * devm_clk_put	- "free" a managed clock source
+ * @dev: device used to acquire the clock
+ * @clk: clock source acquired with devm_clk_get()
+ *
+ * Note: drivers must ensure that all clk_enable calls made on this
+ * clock source are balanced by clk_disable calls prior to calling
+ * this function.
+ *
+ * clk_put should not be called from within interrupt context.
+ */
+void devm_clk_put(struct udevice *dev, struct clk *clk);
 
 #else
 static inline int clk_get_by_index(struct udevice *dev, int index,
@@ -162,24 +259,61 @@ static inline int clk_get_by_name(struct udevice *dev, const char *name,
 	return -ENOSYS;
 }
 
+static inline int
+clk_get_by_name_nodev(ofnode node, const char *name, struct clk *clk)
+{
+	return -ENOSYS;
+}
+
+static inline int
+clk_get_optional_nodev(ofnode node, const char *name, struct clk *clk)
+{
+	return -ENOSYS;
+}
+
 static inline int clk_release_all(struct clk *clk, int count)
 {
 	return -ENOSYS;
 }
 #endif
 
+/**
+ * enum clk_defaults_stage - What stage clk_set_defaults() is called at
+ * @CLK_DEFAULTS_PRE: Called before probe. Setting of defaults for clocks owned
+ *                    by this clock driver will be defered until after probing.
+ * @CLK_DEFAULTS_POST: Called after probe. Only defaults for clocks owned by
+ *                     this clock driver will be set.
+ * @CLK_DEFAULTS_POST_FORCE: Called after probe, and always set defaults, even
+ *                           before relocation. Usually, defaults are not set
+ *                           pre-relocation to avoid setting them twice (when
+ *                           the device is probed again post-relocation). This
+ *                           may incur a performance cost as device tree
+ *                           properties must be parsed for a second time.
+ *                           However, when not using SPL, pre-relocation may be
+ *                           the only time we can set defaults for some clocks
+ *                           (such as those used for the RAM we will relocate
+ *                           into).
+ */
+enum clk_defaults_stage {
+	CLK_DEFAULTS_PRE = 0,
+	CLK_DEFAULTS_POST = 1,
+	CLK_DEFAULTS_POST_FORCE,
+};
+
 #if (CONFIG_IS_ENABLED(OF_CONTROL) && !CONFIG_IS_ENABLED(OF_PLATDATA)) && \
 	CONFIG_IS_ENABLED(CLK)
+
 /**
  * clk_set_defaults - Process 'assigned-{clocks/clock-parents/clock-rates}'
  *                    properties to configure clocks
  *
  * @dev:        A device to process (the ofnode associated with this device
  *              will be processed).
+ * @stage:	The stage of the probing process this function is called during.
  */
-int clk_set_defaults(struct udevice *dev);
+int clk_set_defaults(struct udevice *dev, enum clk_defaults_stage stage);
 #else
-static inline int clk_set_defaults(struct udevice *dev)
+static inline int clk_set_defaults(struct udevice *dev, int stage)
 {
 	return 0;
 }
@@ -201,6 +335,7 @@ static inline int clk_release_bulk(struct clk_bulk *bulk)
 	return clk_release_all(bulk->clks, bulk->count);
 }
 
+#if CONFIG_IS_ENABLED(CLK)
 /**
  * clk_request - Request a clock by provider-specific ID.
  *
@@ -218,7 +353,7 @@ static inline int clk_release_bulk(struct clk_bulk *bulk)
 int clk_request(struct udevice *dev, struct clk *clk);
 
 /**
- * clock_free - Free a previously requested clock.
+ * clk_free - Free a previously requested clock.
  *
  * @clock:	A clock struct that was previously successfully requested by
  *		clk_request/get_by_*().
@@ -234,6 +369,47 @@ int clk_free(struct clk *clk);
  * @return clock rate in Hz, or -ve error code.
  */
 ulong clk_get_rate(struct clk *clk);
+
+/**
+ * clk_get_parent() - Get current clock's parent.
+ *
+ * @clk:	A clock struct that was previously successfully requested by
+ *		clk_request/get_by_*().
+ * @return pointer to parent's struct clk, or error code passed as pointer
+ */
+struct clk *clk_get_parent(struct clk *clk);
+
+/**
+ * clk_get_parent_rate() - Get parent of current clock rate.
+ *
+ * @clk:	A clock struct that was previously successfully requested by
+ *		clk_request/get_by_*().
+ * @return clock rate in Hz, or -ve error code.
+ */
+long long clk_get_parent_rate(struct clk *clk);
+
+/**
+ * clk_round_rate() - Adjust a rate to the exact rate a clock can provide
+ *
+ * This answers the question "if I were to pass @rate to clk_set_rate(),
+ * what clock rate would I end up with?" without changing the hardware
+ * in any way.  In other words:
+ *
+ *   rate = clk_round_rate(clk, r);
+ *
+ * and:
+ *
+ *   rate = clk_set_rate(clk, r);
+ *
+ * are equivalent except the former does not modify the clock hardware
+ * in any way.
+ *
+ * @clk: A clock struct that was previously successfully requested by
+ *       clk_request/get_by_*().
+ * @rate: desired clock rate in Hz.
+ * @return rounded rate in Hz, or -ve error code.
+ */
+ulong clk_round_rate(struct clk *clk, ulong rate);
 
 /**
  * clk_set_rate() - Set current clock rate.
@@ -292,6 +468,130 @@ int clk_disable(struct clk *clk);
  */
 int clk_disable_bulk(struct clk_bulk *bulk);
 
+/**
+ * clk_is_match - check if two clk's point to the same hardware clock
+ * @p: clk compared against q
+ * @q: clk compared against p
+ *
+ * Returns true if the two struct clk pointers both point to the same hardware
+ * clock node.
+ *
+ * Returns false otherwise. Note that two NULL clks are treated as matching.
+ */
+bool clk_is_match(const struct clk *p, const struct clk *q);
+
+/**
+ * clk_get_by_id() - Get the clock by its ID
+ *
+ * @id:	The clock ID to search for
+ *
+ * @clkp:	A pointer to clock struct that has been found among added clocks
+ *              to UCLASS_CLK
+ * @return zero on success, or -ENOENT on error
+ */
+int clk_get_by_id(ulong id, struct clk **clkp);
+
+/**
+ * clk_dev_binded() - Check whether the clk has a device binded
+ *
+ * @clk		A pointer to the clk
+ *
+ * @return true on binded, or false on no
+ */
+bool clk_dev_binded(struct clk *clk);
+
+#else /* CONFIG_IS_ENABLED(CLK) */
+
+static inline int clk_request(struct udevice *dev, struct clk *clk)
+{
+	return -ENOSYS;
+}
+
+static inline int clk_free(struct clk *clk)
+{
+	return 0;
+}
+
+static inline ulong clk_get_rate(struct clk *clk)
+{
+	return -ENOSYS;
+}
+
+static inline struct clk *clk_get_parent(struct clk *clk)
+{
+	return ERR_PTR(-ENOSYS);
+}
+
+static inline long long clk_get_parent_rate(struct clk *clk)
+{
+	return -ENOSYS;
+}
+
+static inline ulong clk_round_rate(struct clk *clk, ulong rate)
+{
+	return -ENOSYS;
+}
+
+static inline ulong clk_set_rate(struct clk *clk, ulong rate)
+{
+	return -ENOSYS;
+}
+
+static inline int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	return -ENOSYS;
+}
+
+static inline int clk_enable(struct clk *clk)
+{
+	return 0;
+}
+
+static inline int clk_enable_bulk(struct clk_bulk *bulk)
+{
+	return 0;
+}
+
+static inline int clk_disable(struct clk *clk)
+{
+	return 0;
+}
+
+static inline int clk_disable_bulk(struct clk_bulk *bulk)
+{
+	return 0;
+}
+
+static inline bool clk_is_match(const struct clk *p, const struct clk *q)
+{
+	return false;
+}
+
+static inline int clk_get_by_id(ulong id, struct clk **clkp)
+{
+	return -ENOSYS;
+}
+
+static inline bool clk_dev_binded(struct clk *clk)
+{
+	return false;
+}
+#endif /* CONFIG_IS_ENABLED(CLK) */
+
+/**
+ * clk_valid() - check if clk is valid
+ *
+ * @clk:	the clock to check
+ * @return true if valid, or false
+ */
+static inline bool clk_valid(struct clk *clk)
+{
+	return clk && !!clk->dev;
+}
+
 int soc_clk_dump(void);
 
 #endif
+
+#define clk_prepare_enable(clk) clk_enable(clk)
+#define clk_disable_unprepare(clk) clk_disable(clk)

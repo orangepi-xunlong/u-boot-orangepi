@@ -20,8 +20,6 @@
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
 
-#define CONFIG_MISC_INIT_R
-
 #define CONFIG_CMDLINE_TAG			/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
@@ -30,7 +28,6 @@
 /*
  * Size of malloc() pool
  */
-#define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB sector */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (128 << 10) + \
 					2 * 1024 * 1024)
 /*
@@ -53,16 +50,13 @@
  * select serial console configuration
  */
 #define CONFIG_SYS_NS16550_COM1		OMAP34XX_UART1
-#define CONFIG_SERIAL1			/* UART1 */
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
 /* EHCI */
 #define CONFIG_OMAP_EHCI_PHY1_RESET_GPIO	25
 
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50		/* base address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1		/* bytes of address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW	0x07
@@ -85,9 +79,6 @@
 #define CONFIG_SYS_MAXARGS		32	/* max number of command */
 						/* args */
 /* memtest works on */
-#define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
-#define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + \
-					0x01F00000) /* 31MB */
 
 #define CONFIG_SYS_LOAD_ADDR		(OMAP34XX_SDRC_CS0) /* default load */
 								/* address */
@@ -103,7 +94,6 @@
 /*
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	2	/* CS1 may or may not be populated */
 #define PHYS_SDRAM_1		OMAP34XX_SDRC_CS0
 #define PHYS_SDRAM_2		OMAP34XX_SDRC_CS1
 
@@ -115,11 +105,6 @@
 
 /* Redundant Environment */
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		0x180000
-#define CONFIG_ENV_ADDR			0x180000
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + \
-						2 * CONFIG_SYS_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	0x4020f800
@@ -132,11 +117,6 @@
  * ethernet support, EMAC
  *
  */
-#define CONFIG_DRIVER_TI_EMAC
-#define CONFIG_DRIVER_TI_EMAC_USE_RMII
-#define CONFIG_MII
-#define CONFIG_BOOTP_DNS2
-#define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT 10
 
 /* Defines for SPL */
@@ -144,11 +124,6 @@
 #define CONFIG_SPL_NAND_SOFTECC
 #define CONFIG_SPL_NAND_WORKSPACE	0x8f07f000 /* below BSS */
 
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_ECC
-
-#define CONFIG_SPL_TEXT_BASE		0x40200000 /*CONFIG_SYS_SRAM_START*/
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
 					 CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
@@ -158,7 +133,6 @@
 #define CONFIG_SPL_BSS_START_ADDR	0x8f080000 /* end of RAM */
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
 
 /* FAT */
@@ -188,9 +162,6 @@
 
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	0x80000
-
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 /* Setup MTD for NAND on the SOM */
 

@@ -9,6 +9,8 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/mach-types.h>
@@ -22,6 +24,7 @@
 #include <netdev.h>
 #include <i2c.h>
 #include <pca953x.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -125,7 +128,7 @@ int board_init(void)
 	return 0;
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	return macb_eth_initialize(0, (void *)ATMEL_BASE_EMAC0, 0x1f);
 }
@@ -141,11 +144,11 @@ void reset_phy(void)
 {
 }
 
-static struct atmel_serial_platdata at91sam9260_serial_plat = {
+static struct atmel_serial_plat at91sam9260_serial_plat = {
 	.base_addr = ATMEL_BASE_DBGU,
 };
 
-U_BOOT_DEVICE(at91sam9260_serial) = {
+U_BOOT_DRVINFO(at91sam9260_serial) = {
 	.name	= "serial_atmel",
-	.platdata = &at91sam9260_serial_plat,
+	.plat = &at91sam9260_serial_plat,
 };

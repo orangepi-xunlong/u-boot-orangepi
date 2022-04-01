@@ -7,6 +7,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <linux/bitops.h>
 #include <linux/compiler.h>
 #include <serial.h>
 
@@ -18,7 +19,7 @@ struct meson_uart {
 	u32 misc;
 };
 
-struct meson_serial_platdata {
+struct meson_serial_plat {
 	struct meson_uart *reg;
 };
 
@@ -56,7 +57,7 @@ static void meson_serial_init(struct meson_uart *uart)
 
 static int meson_serial_probe(struct udevice *dev)
 {
-	struct meson_serial_platdata *plat = dev->platdata;
+	struct meson_serial_plat *plat = dev_get_plat(dev);
 	struct meson_uart *const uart = plat->reg;
 
 	meson_serial_init(uart);
@@ -64,20 +65,42 @@ static int meson_serial_probe(struct udevice *dev)
 	return 0;
 }
 
+static void meson_serial_rx_error(struct udevice *dev)
+{
+	struct meson_serial_plat *plat = dev_get_plat(dev);
+	struct meson_uart *const uart = plat->reg;
+	u32 val = readl(&uart->control);
+
+	/* Clear error */
+	val |= AML_UART_CLR_ERR;
+	writel(val, &uart->control);
+	val &= ~AML_UART_CLR_ERR;
+	writel(val, &uart->control);
+
+	/* Remove spurious byte from fifo */
+	readl(&uart->rfifo);
+}
+
 static int meson_serial_getc(struct udevice *dev)
 {
-	struct meson_serial_platdata *plat = dev->platdata;
+	struct meson_serial_plat *plat = dev_get_plat(dev);
 	struct meson_uart *const uart = plat->reg;
+	uint32_t status = readl(&uart->status);
 
-	if (readl(&uart->status) & AML_UART_RX_EMPTY)
+	if (status & AML_UART_RX_EMPTY)
 		return -EAGAIN;
+
+	if (status & AML_UART_ERR) {
+		meson_serial_rx_error(dev);
+		return -EIO;
+	}
 
 	return readl(&uart->rfifo) & 0xff;
 }
 
 static int meson_serial_putc(struct udevice *dev, const char ch)
 {
-	struct meson_serial_platdata *plat = dev->platdata;
+	struct meson_serial_plat *plat = dev_get_plat(dev);
 	struct meson_uart *const uart = plat->reg;
 
 	if (readl(&uart->status) & AML_UART_TX_FULL)
@@ -90,22 +113,35 @@ static int meson_serial_putc(struct udevice *dev, const char ch)
 
 static int meson_serial_pending(struct udevice *dev, bool input)
 {
-	struct meson_serial_platdata *plat = dev->platdata;
+	struct meson_serial_plat *plat = dev_get_plat(dev);
 	struct meson_uart *const uart = plat->reg;
 	uint32_t status = readl(&uart->status);
 
-	if (input)
-		return !(status & AML_UART_RX_EMPTY);
-	else
+	if (input) {
+		if (status & AML_UART_RX_EMPTY)
+			return false;
+
+		/*
+		 * Handle and drop any RX error here to avoid
+		 * returning true here when an error byte is in the FIFO
+		 */
+		if (status & AML_UART_ERR) {
+			meson_serial_rx_error(dev);
+			return false;
+		}
+
+		return true;
+	} else {
 		return !(status & AML_UART_TX_FULL);
+	}
 }
 
-static int meson_serial_ofdata_to_platdata(struct udevice *dev)
+static int meson_serial_of_to_plat(struct udevice *dev)
 {
-	struct meson_serial_platdata *plat = dev->platdata;
+	struct meson_serial_plat *plat = dev_get_plat(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -132,9 +168,8 @@ U_BOOT_DRIVER(serial_meson) = {
 	.of_match	= meson_serial_ids,
 	.probe		= meson_serial_probe,
 	.ops		= &meson_serial_ops,
-	.flags		= DM_FLAG_PRE_RELOC,
-	.ofdata_to_platdata = meson_serial_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct meson_serial_platdata),
+	.of_to_plat = meson_serial_of_to_plat,
+	.plat_auto	= sizeof(struct meson_serial_plat),
 };
 
 #ifdef CONFIG_DEBUG_UART_MESON

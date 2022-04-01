@@ -4,9 +4,13 @@
  */
 
 #include <common.h>
+#include <autoboot.h>
+#include <bloblist.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <os.h>
+#include <asm/malloc.h>
 #include <asm/state.h>
 
 /* Main state record for the sandbox */
@@ -16,14 +20,14 @@ static struct sandbox_state *state;	/* Pointer to current state record */
 static int state_ensure_space(int extra_size)
 {
 	void *blob = state->state_fdt;
-	int used, size, free;
+	int used, size, free_bytes;
 	void *buf;
 	int ret;
 
 	used = fdt_off_dt_strings(blob) + fdt_size_dt_strings(blob);
 	size = fdt_totalsize(blob);
-	free = size - used;
-	if (free > extra_size)
+	free_bytes = size - used;
+	if (free_bytes > extra_size)
 		return 0;
 
 	size = used + extra_size;
@@ -75,6 +79,10 @@ static int state_read_file(struct sandbox_state *state, const char *fname)
 err_read:
 	os_close(fd);
 err_open:
+	/*
+	 * tainted scalar, since size is obtained from the file. But we can rely
+	 * on os_malloc() to handle invalid values.
+	 */
 	os_free(state->state_fdt);
 	state->state_fdt = NULL;
 
@@ -355,10 +363,37 @@ void state_reset_for_test(struct sandbox_state *state)
 {
 	/* No reset yet, so mark it as such. Always allow power reset */
 	state->last_sysreset = SYSRESET_COUNT;
-	state->sysreset_allowed[SYSRESET_POWER] = true;
+	state->sysreset_allowed[SYSRESET_POWER_OFF] = true;
+	state->sysreset_allowed[SYSRESET_COLD] = true;
+	state->allow_memio = false;
 
 	memset(&state->wdt, '\0', sizeof(state->wdt));
 	memset(state->spi, '\0', sizeof(state->spi));
+
+	/*
+	 * Set up the memory tag list. Use the top of emulated SDRAM for the
+	 * first tag number, since that address offset is outside the legal
+	 * range, and can be assumed to be a tag.
+	 */
+	INIT_LIST_HEAD(&state->mapmem_head);
+	state->next_tag = state->ram_size;
+}
+
+bool autoboot_keyed(void)
+{
+	struct sandbox_state *state = state_get_current();
+
+	return IS_ENABLED(CONFIG_AUTOBOOT_KEYED) && state->autoboot_keyed;
+}
+
+bool autoboot_set_keyed(bool autoboot_keyed)
+{
+	struct sandbox_state *state = state_get_current();
+	bool old_val = state->autoboot_keyed;
+
+	state->autoboot_keyed = autoboot_keyed;
+
+	return old_val;
 }
 
 int state_init(void)
@@ -367,7 +402,10 @@ int state_init(void)
 
 	state->ram_size = CONFIG_SYS_SDRAM_SIZE;
 	state->ram_buf = os_malloc(state->ram_size);
-	assert(state->ram_buf);
+	if (!state->ram_buf) {
+		printf("Out of memory\n");
+		os_exit(1);
+	}
 
 	state_reset_for_test(state);
 	/*
@@ -383,9 +421,13 @@ int state_uninit(void)
 {
 	int err;
 
+	log_info("Writing sandbox state\n");
 	state = &main_state;
 
-	if (state->write_ram_buf && !state->ram_buf_rm) {
+	/* Finish the bloblist, so that it is correct before writing memory */
+	bloblist_finish();
+
+	if (state->write_ram_buf) {
 		err = os_write_ram_buf(state->ram_buf_fname);
 		if (err) {
 			printf("Failed to write RAM buffer\n");
@@ -404,8 +446,8 @@ int state_uninit(void)
 	if (state->jumped_fname)
 		os_unlink(state->jumped_fname);
 
-	if (state->state_fdt)
-		os_free(state->state_fdt);
+	os_free(state->state_fdt);
+	os_free(state->ram_buf);
 	memset(state, '\0', sizeof(*state));
 
 	return 0;

@@ -200,21 +200,34 @@
 #define DDRMC_CR78_Q_FULLNESS(v)			(((v) & 0x7) << 24)
 #define DDRMC_CR78_BUR_ON_FLY_BIT(v)			((v) & 0xf)
 #define DDRMC_CR79_CTLUPD_AREF(v)			(((v) & 0x1) << 24)
-#define DDRMC_CR82_INT_MASK				0x10000000
+#define DDRMC_CR80_MC_INIT_COMPLETE			(1 << 8)
+#define DDRMC_CR82_INT_MASK				(1 << 28)
 #define DDRMC_CR87_ODT_WR_MAPCS0(v)			((v) << 24)
 #define DDRMC_CR87_ODT_RD_MAPCS0(v)			((v) << 16)
 #define DDRMC_CR88_TODTL_CMD(v)				(((v) & 0x1f) << 16)
 #define DDRMC_CR89_AODT_RWSMCS(v)			((v) & 0xf)
 #define DDRMC_CR91_R2W_SMCSDL(v)			(((v) & 0x7) << 16)
+#define DDRMC_CR93_SW_LVL_MODE_OFF			(8)
+#define DDRMC_CR93_SW_LVL_MODE(v) (((v) & 0x3) << DDRMC_CR93_SW_LVL_MODE_OFF)
+#define DDRMC_CR93_SWLVL_LOAD				BIT(16)
+#define DDRMC_CR93_SWLVL_START				BIT(24)
+#define DDRMC_CR94_SWLVL_EXIT				BIT(0)
+#define DDRMC_CR94_SWLVL_OP_DONE			BIT(8)
+#define DDRMC_CR94_SWLVL_RESP_0_OFF			(24)
+#define DDRMC_CR95_SWLVL_RESP_1_OFF			(0)
 #define DDRMC_CR96_WLMRD(v)				(((v) & 0x3f) << 8)
 #define DDRMC_CR96_WLDQSEN(v)				((v) & 0x3f)
 #define DDRMC_CR97_WRLVL_EN				(1 << 24)
 #define DDRMC_CR98_WRLVL_DL_0(v)			((v) & 0xffff)
 #define DDRMC_CR99_WRLVL_DL_1(v)			((v) & 0xffff)
+#define DDRMC_CR101_PHY_RDLVL_EDGE_OFF			(24)
+#define DDRMC_CR101_PHY_RDLVL_EDGE BIT(DDRMC_CR101_PHY_RDLVL_EDGE_OFF)
 #define DDRMC_CR102_RDLVL_GT_REGEN			(1 << 16)
 #define DDRMC_CR102_RDLVL_REG_EN			(1 << 8)
-#define DDRMC_CR105_RDLVL_DL_0(v)			(((v) & 0xff) << 8)
+#define DDRMC_CR105_RDLVL_DL_0_OFF			(8)
+#define DDRMC_CR105_RDLVL_DL_0(v) (((v) & 0xff) << DDRMC_CR105_RDLVL_DL_0_OFF)
 #define DDRMC_CR106_RDLVL_GTDL_0(v)			((v) & 0xff)
+#define DDRMC_CR110_RDLVL_DL_1_OFF			(0)
 #define DDRMC_CR110_RDLVL_DL_1(v)			((v) & 0xff)
 #define DDRMC_CR110_RDLVL_GTDL_1(v)			(((v) & 0xff) << 16)
 #define DDRMC_CR114_RDLVL_GTDL_2(v)			(((v) & 0xffff) << 8)
@@ -239,7 +252,7 @@
 #define DDRMC_CR132_RDLAT_ADJ(v)			((v) & 0x3f)
 #define DDRMC_CR137_PHYCTL_DL(v)			(((v) & 0xf) << 16)
 #define DDRMC_CR138_PHY_WRLV_MXDL(v)			(((v) & 0xffff) << 16)
-#define DDRMC_CR138_PHYDRAM_CK_EN(v)			(((v) & 0x8) << 8)
+#define DDRMC_CR138_PHYDRAM_CK_EN(v)			(((v) & 0x7) << 8)
 #define DDRMC_CR139_PHY_WRLV_RESPLAT(v)			(((v) & 0xff) << 24)
 #define DDRMC_CR139_PHY_WRLV_LOAD(v)			(((v) & 0xff) << 16)
 #define DDRMC_CR139_PHY_WRLV_DLL(v)			(((v) & 0xff) << 8)
@@ -276,6 +289,8 @@
 #define SRC_SRSR_WDOG_M4				(0x1 << 4)
 #define SRC_SRSR_WDOG_A5				(0x1 << 3)
 #define SRC_SRSR_POR_RST				(0x1 << 0)
+#define SRC_SBMR1_BOOTCFG1_SDMMC        BIT(6)
+#define SRC_SBMR1_BOOTCFG1_MMC          BIT(4)
 #define SRC_SBMR2_BMOD_MASK             (0x3 << 24)
 #define SRC_SBMR2_BMOD_SHIFT            24
 #define SRC_SBMR2_BMOD_FUSES            0x0
@@ -287,6 +302,7 @@
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
+#include <linux/bitops.h>
 
 /* System Reset Controller (SRC) */
 struct src {
@@ -459,6 +475,6 @@ struct mscm {
 	u32 cpxcfg3;
 };
 
-#endif	/* __ASSEMBLER__*/
+#endif	/* __ASSEMBLY__ */
 
 #endif	/* __ASM_ARCH_IMX_REGS_H__ */

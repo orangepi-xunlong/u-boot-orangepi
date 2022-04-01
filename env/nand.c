@@ -15,24 +15,22 @@
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
+#include <asm/global_data.h>
 #include <linux/stddef.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <nand.h>
 #include <search.h>
 #include <errno.h>
+#include <u-boot/crc.h>
 
 #if defined(CONFIG_CMD_SAVEENV) && defined(CONFIG_CMD_NAND) && \
 		!defined(CONFIG_SPL_BUILD)
 #define CMD_SAVEENV
-#elif defined(CONFIG_ENV_OFFSET_REDUND)
+#elif defined(CONFIG_ENV_OFFSET_REDUND) && !defined(CONFIG_SPL_BUILD)
 #error CONFIG_ENV_OFFSET_REDUND must have CONFIG_CMD_SAVEENV & CONFIG_CMD_NAND
-#endif
-
-#if defined(CONFIG_ENV_SIZE_REDUND) &&	\
-	(CONFIG_ENV_SIZE_REDUND != CONFIG_ENV_SIZE)
-#error CONFIG_ENV_SIZE_REDUND should be the same as CONFIG_ENV_SIZE
 #endif
 
 #ifndef CONFIG_ENV_RANGE
@@ -40,11 +38,9 @@
 #endif
 
 #if defined(ENV_IS_EMBEDDED)
-env_t *env_ptr = &environment;
+static env_t *env_ptr = &environment;
 #elif defined(CONFIG_NAND_ENV_DST)
-env_t *env_ptr = (env_t *)CONFIG_NAND_ENV_DST;
-#else /* ! ENV_IS_EMBEDDED */
-env_t *env_ptr;
+static env_t *env_ptr = (env_t *)CONFIG_NAND_ENV_DST;
 #endif /* ENV_IS_EMBEDDED */
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -327,7 +323,7 @@ static int env_nand_load(void)
 	tmp_env2 = (env_t *)malloc(CONFIG_ENV_SIZE);
 	if (tmp_env1 == NULL || tmp_env2 == NULL) {
 		puts("Can't allocate buffers for environment\n");
-		set_default_env("!malloc() failed");
+		env_set_default("malloc() failed", 0);
 		ret = -EIO;
 		goto done;
 	}
@@ -336,7 +332,7 @@ static int env_nand_load(void)
 	read2_fail = readenv(CONFIG_ENV_OFFSET_REDUND, (u_char *) tmp_env2);
 
 	ret = env_import_redund((char *)tmp_env1, read1_fail, (char *)tmp_env2,
-				read2_fail);
+				read2_fail, H_EXTERNAL);
 
 done:
 	free(tmp_env1);
@@ -366,18 +362,18 @@ static int env_nand_load(void)
 	if (mtd && !get_nand_env_oob(mtd, &nand_env_oob_offset)) {
 		printf("Found Environment offset in OOB..\n");
 	} else {
-		set_default_env("!no env offset in OOB");
+		env_set_default("no env offset in OOB", 0);
 		return;
 	}
 #endif
 
 	ret = readenv(CONFIG_ENV_OFFSET, (u_char *)buf);
 	if (ret) {
-		set_default_env("!readenv() failed");
+		env_set_default("readenv() failed", 0);
 		return -EIO;
 	}
 
-	return env_import(buf, 1);
+	return env_import(buf, 1, H_EXTERNAL);
 #endif /* ! ENV_IS_EMBEDDED */
 
 	return 0;

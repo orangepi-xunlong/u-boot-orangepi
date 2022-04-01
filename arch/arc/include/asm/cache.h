@@ -16,6 +16,9 @@
  */
 #define ARCH_DMA_MINALIGN	128
 
+/* CONFIG_SYS_CACHELINE_SIZE is used a lot in drivers */
+#define CONFIG_SYS_CACHELINE_SIZE	ARCH_DMA_MINALIGN
+
 #if defined(ARC_MMU_ABSENT)
 #define CONFIG_ARC_MMU_VER 0
 #elif defined(CONFIG_ARC_MMU_V2)
@@ -36,6 +39,13 @@ static const inline int is_ioc_enabled(void)
 {
 	return IS_ENABLED(CONFIG_ARC_DBG_IOC_ENABLE);
 }
+
+/*
+ * We export SLC control functions to use them in platform configuration code.
+ * They maust not be used in any generic code!
+ */
+void slc_enable(void);
+void slc_disable(void);
 
 #endif /* __ASSEMBLY__ */
 

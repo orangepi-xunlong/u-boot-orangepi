@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015-2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2021 NXP
  */
 
 /*
@@ -10,12 +10,25 @@
  * files.
  */
 
+#include <dm.h>
+#include <dm/device-internal.h>
+#include <image.h>
+#include <log.h>
+#include <malloc.h>
+#include <linux/bitops.h>
 #include <net/pfe_eth/pfe_eth.h>
 #include <net/pfe_eth/pfe_firmware.h>
+#include <spi_flash.h>
+#ifdef CONFIG_CHAIN_OF_TRUST
+#include <fsl_validate.h>
+#endif
 
-#define PFE_FIRMEWARE_FIT_CNF_NAME	"config@1"
+#define PFE_FIRMWARE_FIT_CNF_NAME	"config@1"
 
-static const void *pfe_fit_addr = (void *)CONFIG_SYS_LS_PFE_FW_ADDR;
+static const void *pfe_fit_addr;
+#ifdef CONFIG_CHAIN_OF_TRUST
+static const void *pfe_esbc_hdr_addr;
+#endif
 
 /*
  * PFE elf firmware loader.
@@ -96,7 +109,7 @@ static int pfe_get_fw(const void **data,
 	char *desc;
 	int ret = 0;
 
-	conf_node_name = PFE_FIRMEWARE_FIT_CNF_NAME;
+	conf_node_name = PFE_FIRMWARE_FIT_CNF_NAME;
 
 	conf_node_off = fit_conf_get_node(pfe_fit_addr, conf_node_name);
 	if (conf_node_off < 0) {
@@ -147,11 +160,82 @@ static int pfe_fit_check(void)
 		return ret;
 	}
 
-	if (!fit_check_format(pfe_fit_addr)) {
+	if (fit_check_format(pfe_fit_addr, IMAGE_SIZE_INVAL)) {
 		printf("PFE Firmware: Bad firmware image (bad FIT header)\n");
 		ret = -1;
 		return ret;
 	}
+
+	return ret;
+}
+
+int pfe_spi_flash_init(void)
+{
+	struct spi_flash *pfe_flash;
+	struct udevice *new;
+	int ret = 0;
+	void *addr = malloc(CONFIG_SYS_LS_PFE_FW_LENGTH);
+
+	if (!addr)
+		return -ENOMEM;
+
+	ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS,
+				     CONFIG_ENV_SPI_CS,
+				     CONFIG_ENV_SPI_MAX_HZ,
+				     CONFIG_ENV_SPI_MODE,
+				     &new);
+	if (ret) {
+		printf("SF: failed to probe spi\n");
+		free(addr);
+		device_remove(new, DM_REMOVE_NORMAL);
+		return ret;
+	}
+
+
+	pfe_flash = dev_get_uclass_priv(new);
+	if (!pfe_flash) {
+		printf("SF: probe for pfe failed\n");
+		free(addr);
+		device_remove(new, DM_REMOVE_NORMAL);
+		return -ENODEV;
+	}
+
+	ret = spi_flash_read(pfe_flash,
+			     CONFIG_SYS_LS_PFE_FW_ADDR,
+			     CONFIG_SYS_LS_PFE_FW_LENGTH,
+			     addr);
+	if (ret) {
+		printf("SF: read for pfe failed\n");
+		free(addr);
+		spi_flash_free(pfe_flash);
+		return ret;
+	}
+
+#ifdef CONFIG_CHAIN_OF_TRUST
+	void *hdr_addr = malloc(CONFIG_SYS_LS_PFE_ESBC_LENGTH);
+
+	if (!hdr_addr) {
+		free(addr);
+		spi_flash_free(pfe_flash);
+		return -ENOMEM;
+	}
+
+	ret = spi_flash_read(pfe_flash,
+			     CONFIG_SYS_LS_PFE_ESBC_ADDR,
+			     CONFIG_SYS_LS_PFE_ESBC_LENGTH,
+			     hdr_addr);
+	if (ret) {
+		printf("SF: failed to read pfe esbc header\n");
+		free(addr);
+		free(hdr_addr);
+		spi_flash_free(pfe_flash);
+		return ret;
+	}
+
+	pfe_esbc_hdr_addr = hdr_addr;
+#endif
+	pfe_fit_addr = addr;
+	spi_flash_free(pfe_flash);
 
 	return ret;
 }
@@ -168,17 +252,103 @@ static int pfe_fit_check(void)
  */
 int pfe_firmware_init(void)
 {
+#define PFE_KEY_HASH	NULL
 	char *pfe_firmware_name;
 	const void *raw_image_addr;
 	size_t raw_image_size = 0;
 	u8 *pfe_firmware;
+#ifdef CONFIG_CHAIN_OF_TRUST
+	uintptr_t pfe_esbc_hdr = 0;
+	uintptr_t pfe_img_addr = 0;
+#endif
 	int ret = 0;
-	int fw_count;
+	int fw_count, max_fw_count;
+	const char *p;
+
+	ret = pfe_spi_flash_init();
+	if (ret)
+		goto err;
 
 	ret = pfe_fit_check();
 	if (ret)
 		goto err;
 
+#ifdef CONFIG_CHAIN_OF_TRUST
+	pfe_esbc_hdr = (uintptr_t)pfe_esbc_hdr_addr;
+	pfe_img_addr = (uintptr_t)pfe_fit_addr;
+	if (fsl_check_boot_mode_secure() != 0) {
+		/*
+		 * In case of failure in validation, fsl_secboot_validate
+		 * would not return back in case of Production environment
+		 * with ITS=1. In Development environment (ITS=0 and
+		 * SB_EN=1), the function may return back in case of
+		 * non-fatal failures.
+		 */
+		ret = fsl_secboot_validate(pfe_esbc_hdr,
+					   PFE_KEY_HASH,
+					   &pfe_img_addr);
+		if (ret != 0)
+			printf("PFE firmware(s) validation failed\n");
+		else
+			printf("PFE firmware(s) validation Successful\n");
+	}
+#endif
+
+	p = env_get("load_util");
+	if (!p) {
+		max_fw_count = 2;
+	} else {
+		max_fw_count = dectoul(p, NULL);
+		if (max_fw_count)
+			max_fw_count = 3;
+		else
+			max_fw_count = 2;
+	}
+
+	for (fw_count = 0; fw_count < max_fw_count; fw_count++) {
+		switch (fw_count) {
+		case 0:
+			pfe_firmware_name = "class_slowpath";
+			break;
+		case 1:
+			pfe_firmware_name = "tmu_slowpath";
+			break;
+		case 2:
+			pfe_firmware_name = "util_slowpath";
+			break;
+		}
+
+		if (pfe_get_fw(&raw_image_addr, &raw_image_size,
+			       pfe_firmware_name)) {
+			printf("%s firmware couldn't be found in FIT image\n",
+			       pfe_firmware_name);
+			break;
+		}
+		pfe_firmware = malloc(raw_image_size);
+		if (!pfe_firmware)
+			return -ENOMEM;
+		memcpy((void *)pfe_firmware, (void *)raw_image_addr,
+		       raw_image_size);
+
+		switch (fw_count) {
+		case 0:
+			env_set_addr("class_elf_firmware", pfe_firmware);
+			env_set_addr("class_elf_size", (void *)raw_image_size);
+			break;
+		case 1:
+			env_set_addr("tmu_elf_firmware", pfe_firmware);
+			env_set_addr("tmu_elf_size", (void *)raw_image_size);
+			break;
+		case 2:
+			env_set_addr("util_elf_firmware", pfe_firmware);
+			env_set_addr("util_elf_size", (void *)raw_image_size);
+			break;
+		}
+	}
+
+	raw_image_addr = NULL;
+	pfe_firmware = NULL;
+	raw_image_size = 0;
 	for (fw_count = 0; fw_count < 2; fw_count++) {
 		if (fw_count == 0)
 			pfe_firmware_name = "class";

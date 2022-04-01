@@ -9,8 +9,12 @@
 
 #include <common.h>
 #include <config.h>
+#include <init.h>
+#include <log.h>
 #include <spl.h>
 #include <image.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mach-types.h>
 
@@ -22,7 +26,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * WARNING: This is going away very soon. Don't use it and don't submit
  * pafches that rely on it. The global_data area is set up in crt0.S.
  */
-gd_t gdata __attribute__ ((section(".data")));
+gd_t gdata __section(".data");
 #endif
 
 /*

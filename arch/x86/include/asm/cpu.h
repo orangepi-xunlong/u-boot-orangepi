@@ -55,6 +55,7 @@ enum {
 	X86_SYSCON_PINCONF,	/* Intel x86 pin configuration */
 	X86_SYSCON_PMU,		/* Power Management Unit */
 	X86_SYSCON_SCU,		/* System Controller Unit */
+	X86_SYSCON_PUNIT,	/* Power unit */
 };
 
 struct cpuid_result {
@@ -286,5 +287,14 @@ u32 cpu_get_family_model(void);
  * @return the CPU ID masked with 0xf
  */
 u32 cpu_get_stepping(void);
+
+/**
+ * cpu_phys_address_size() - Get the physical address size in bits
+ *
+ * This is 32 for older CPUs but newer ones may support 36.
+ *
+ * @return address size (typically 32 or 36)
+ */
+int cpu_phys_address_size(void);
 
 #endif

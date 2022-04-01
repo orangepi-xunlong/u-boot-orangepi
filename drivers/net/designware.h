@@ -7,7 +7,10 @@
 #ifndef _DW_ETH_H
 #define _DW_ETH_H
 
-#ifdef CONFIG_DM_GPIO
+#include <asm/cache.h>
+#include <net.h>
+
+#if CONFIG_IS_ENABLED(DM_GPIO)
 #include <asm-generic/gpio.h>
 #endif
 
@@ -235,7 +238,7 @@ struct dw_eth_dev {
 #ifndef CONFIG_DM_ETH
 	struct eth_device *dev;
 #endif
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct gpio_desc reset_gpio;
 #endif
 #ifdef CONFIG_CLK
@@ -248,7 +251,7 @@ struct dw_eth_dev {
 };
 
 #ifdef CONFIG_DM_ETH
-int designware_eth_ofdata_to_platdata(struct udevice *dev);
+int designware_eth_of_to_plat(struct udevice *dev);
 int designware_eth_probe(struct udevice *dev);
 extern const struct eth_ops designware_eth_ops;
 

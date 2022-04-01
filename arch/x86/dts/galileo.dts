@@ -9,8 +9,10 @@
 #include <dt-bindings/interrupt-router/intel-irq.h>
 
 /include/ "skeleton.dtsi"
+/include/ "reset.dtsi"
 /include/ "rtc.dtsi"
-/include/ "tsc_timer.dtsi"
+
+#include "tsc_timer.dtsi"
 
 / {
 	model = "Intel Galileo";
@@ -38,10 +40,6 @@
 			reg = <0>;
 			intel,apic-id = <0>;
 		};
-	};
-
-	tsc-timer {
-		clock-frequency = <400000000>;
 	};
 
 	mrc {
@@ -97,7 +95,7 @@
 			#size-cells = <1>;
 
 			irq-router {
-				compatible = "intel,quark-irq-router";
+				compatible = "intel,irq-router";
 				intel,pirq-config = "pci";
 				intel,actl-addr = <0x58>;
 				intel,pirq-link = <0x60 8>;
@@ -138,7 +136,7 @@
 					#address-cells = <1>;
 					reg = <0>;
 					compatible = "winbond,w25q64",
-						"spi-flash";
+						"jedec,spi-nor";
 					memory-map = <0xff800000 0x00800000>;
 					rw-mrc-cache {
 						label = "rw-mrc-cache";
@@ -159,6 +157,34 @@
 				u-boot,dm-pre-reloc;
 				reg = <0x20 0x20>;
 				bank-name = "B";
+			};
+		};
+	};
+
+	smbios {
+		compatible = "u-boot,sysinfo-smbios";
+
+		/*
+		 * Override the default product name U-Boot reports in the
+		 * SMBIOS table, to be compatible with the Intel provided UEFI
+		 * BIOS, as Linux kernel drivers
+		 * (drivers/mfd/intel_quark_i2c_gpio.c and
+		 * drivers/net/ethernet/stmicro/stmmac/stmmac_pci.c) make use of
+		 * it to do different board level configuration.
+		 *
+		 * This can be "Galileo" for GEN1 Galileo board.
+		 */
+		smbios {
+			system {
+				product = "GalileoGen2";
+			};
+
+			baseboard {
+				product = "GalileoGen2";
+			};
+
+			chassis {
+				product = "GalileoGen2";
 			};
 		};
 	};

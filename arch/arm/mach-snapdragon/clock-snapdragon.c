@@ -30,7 +30,7 @@ void clk_enable_cbc(phys_addr_t cbcr)
 		;
 }
 
-void clk_enable_gpll0(phys_addr_t base, const struct gpll0_ctrl *gpll0)
+void clk_enable_gpll0(phys_addr_t base, const struct pll_vote_clk *gpll0)
 {
 	if (readl(base + gpll0->status) & gpll0->status_bit)
 		return; /* clock already enabled */
@@ -41,15 +41,30 @@ void clk_enable_gpll0(phys_addr_t base, const struct gpll0_ctrl *gpll0)
 		;
 }
 
-#define APPS_CMD_RGCR_UPDATE BIT(0)
+#define BRANCH_ON_VAL (0)
+#define BRANCH_NOC_FSM_ON_VAL BIT(29)
+#define BRANCH_CHECK_MASK GENMASK(31, 28)
 
-/* Update clock command via CMD_RGCR */
-void clk_bcr_update(phys_addr_t apps_cmd_rgcr)
+void clk_enable_vote_clk(phys_addr_t base, const struct vote_clk *vclk)
 {
-	setbits_le32(apps_cmd_rgcr, APPS_CMD_RGCR_UPDATE);
+	u32 val;
+
+	setbits_le32(base + vclk->ena_vote, vclk->vote_bit);
+	do {
+		val = readl(base + vclk->cbcr_reg);
+		val &= BRANCH_CHECK_MASK;
+	} while ((val != BRANCH_ON_VAL) && (val != BRANCH_NOC_FSM_ON_VAL));
+}
+
+#define APPS_CMD_RCGR_UPDATE BIT(0)
+
+/* Update clock command via CMD_RCGR */
+void clk_bcr_update(phys_addr_t apps_cmd_rcgr)
+{
+	setbits_le32(apps_cmd_rcgr, APPS_CMD_RCGR_UPDATE);
 
 	/* Wait for frequency to be updated. */
-	while (readl(apps_cmd_rgcr) & APPS_CMD_RGCR_UPDATE)
+	while (readl(apps_cmd_rcgr) & APPS_CMD_RCGR_UPDATE)
 		;
 }
 
@@ -99,7 +114,7 @@ static int msm_clk_probe(struct udevice *dev)
 {
 	struct msm_clk_priv *priv = dev_get_priv(dev);
 
-	priv->base = devfdt_get_addr(dev);
+	priv->base = dev_read_addr(dev);
 	if (priv->base == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -128,6 +143,6 @@ U_BOOT_DRIVER(clk_msm) = {
 	.id		= UCLASS_CLK,
 	.of_match	= msm_clk_ids,
 	.ops		= &msm_clk_ops,
-	.priv_auto_alloc_size = sizeof(struct msm_clk_priv),
+	.priv_auto	= sizeof(struct msm_clk_priv),
 	.probe		= msm_clk_probe,
 };

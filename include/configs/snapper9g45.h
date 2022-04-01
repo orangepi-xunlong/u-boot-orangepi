@@ -25,19 +25,14 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT_ONLY
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		ATMEL_BASE_CS6
 #define CONFIG_SYS_SDRAM_SIZE		(128 * 1024 * 1024) /* 64MB */
 #define CONFIG_SYS_INIT_SP_ADDR		(ATMEL_BASE_SRAM + 0x1000 - \
 					 GENERATED_GBL_DATA_SIZE)
 
 /* Mem test settings */
-#define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + (1024 * 1024))
 
 /* NAND Flash */
-#define CONFIG_NAND_ATMEL
-#define CONFIG_ATMEL_NAND_HWECC
 #define CONFIG_SYS_NAND_ECC_BASE	ATMEL_BASE_ECC
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
@@ -54,7 +49,6 @@
 #define CONFIG_RESET_PHY_R
 #define CONFIG_AT91_WANTS_COMMON_PHY
 #define CONFIG_TFTP_PORT
-#define CONFIG_TFTP_TSIZE
 
 /* MMC */
 #define CONFIG_GENERIC_ATMEL_MCI
@@ -65,11 +59,9 @@
 
 /* GPIOs and IO expander */
 #define CONFIG_ATMEL_LEGACY
-#define CONFIG_AT91_GPIO
 #define CONFIG_AT91_GPIO_PULLUP		1
 
 /* UARTs/Serial console */
-#define CONFIG_ATMEL_USART
 
 /* Boot options */
 #define CONFIG_SYS_LOAD_ADDR		0x23000000
@@ -77,9 +69,6 @@
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 /* Environment settings */
-#define CONFIG_ENV_OFFSET		(512 << 10)
-#define CONFIG_ENV_SIZE			(256 << 10)
-#define CONFIG_ENV_OVERWRITE
 
 #define	CONFIG_EXTRA_ENV_SETTINGS	\
 	"ethaddr=00:00:00:00:00:00\0" \
@@ -105,10 +94,5 @@
 
 /* U-Boot memory settings */
 #define CONFIG_SYS_MALLOC_LEN		(1 << 20)
-
-/* Command line configuration */
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_CACHE
 
 #endif /* __CONFIG_H */

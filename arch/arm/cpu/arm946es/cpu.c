@@ -14,6 +14,8 @@
 
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <irq_func.h>
 #include <asm/system.h>
 #include <asm/io.h>
 
@@ -28,7 +30,7 @@ int cleanup_before_linux (void)
 	 * we turn off caches etc ...
 	 */
 
-	disable_interrupts ();
+	disable_interrupts();
 
 	/* ARM926E-S needs the protection unit enabled for the icache to have
 	 * been enabled	 - left for possible later use
@@ -54,7 +56,7 @@ static void cache_flush (void)
 
 #ifndef CONFIG_ARCH_INTEGRATOR
 
-__attribute__((noreturn)) void reset_cpu(ulong addr __attribute__((unused)))
+__attribute__((noreturn)) void reset_cpu(void)
 {
 	writew(0x0, 0xfffece10);
 	writew(0x8, 0xfffece10);

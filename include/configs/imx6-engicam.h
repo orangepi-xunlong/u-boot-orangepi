@@ -10,26 +10,19 @@
 #define __IMX6_ENGICAM_CONFIG_H
 
 #include <linux/sizes.h>
+#include <linux/stringify.h>
 #include "mx6_common.h"
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
 
 /* Total Size of Environment Sector */
-#define CONFIG_ENV_SIZE			SZ_128K
-
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* Environment */
 #ifndef CONFIG_ENV_IS_NOWHERE
 /* Environment in MMC */
 # if defined(CONFIG_ENV_IS_IN_MMC)
-#  define CONFIG_ENV_OFFSET		0x100000
 /* Environment in NAND */
-# elif defined(CONFIG_ENV_IS_IN_NAND)
-#  define CONFIG_ENV_OFFSET		0x400000
-#  define CONFIG_ENV_SECT_SIZE		CONFIG_ENV_SIZE
 # endif
 #endif
 
@@ -37,6 +30,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"splashpos=m,m\0" \
+	"splashimage=" __stringify(CONFIG_LOADADDR) "\0" \
 	"image=uImage\0" \
 	"fit_image=fit.itb\0" \
 	"fdt_high=0xffffffff\0" \
@@ -56,6 +50,7 @@
 	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
 	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
 	"loadfit=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${fit_image}\0" \
+	"altbootcmd=run recoveryboot\0"\
 	"fitboot=echo Booting FIT image from mmc ...; " \
 		"run mmcargs; " \
 		"bootm ${loadaddr}\0" \
@@ -97,13 +92,16 @@
 		"run ubiargs; " \
 		"nand read ${loadaddr} kernel 0x800000; " \
 		"nand read ${fdt_addr} dtb 0x100000; " \
-		"bootm ${loadaddr} - ${fdt_addr}\0"
+		"bootm ${loadaddr} - ${fdt_addr}\0" \
+	"recoveryboot=if test ${modeboot} = mmcboot; then " \
+			"run mmcboot; " \
+		"else " \
+			"run nandboot; " \
+		"fi\0"
 
 #define CONFIG_BOOTCOMMAND		"run $modeboot"
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x8000000)
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 #define CONFIG_SYS_HZ			1000
@@ -117,7 +115,6 @@
 #endif
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
@@ -139,9 +136,6 @@
 #endif
 
 /* MMC */
-#ifdef CONFIG_FSL_USDHC
-# define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
 
 /* NAND */
 #ifdef CONFIG_NAND_MXS
@@ -153,30 +147,13 @@
 # define CONFIG_SYS_NAND_U_BOOT_OFFS	0x200000
 
 /* MTD device */
-# define CONFIG_MTD_DEVICE
-# define CONFIG_MTD_PARTITIONS
-#endif
-
-/* Ethernet */
-#ifdef CONFIG_FEC_MXC
-# ifdef CONFIG_TARGET_MX6Q_ICORE_RQS
-#  define CONFIG_FEC_MXC_PHYADDR	3
-#  define CONFIG_FEC_XCV_TYPE		RGMII
-# else
-#  define CONFIG_FEC_MXC_PHYADDR	0
-#  define CONFIG_FEC_XCV_TYPE		RMII
-# endif
-
-# define CONFIG_MII
 #endif
 
 /* Falcon Mode */
 #ifdef CONFIG_SPL_OS_BOOT
 # define CONFIG_SPL_FS_LOAD_ARGS_NAME	"args"
 # define CONFIG_SPL_FS_LOAD_KERNEL_NAME	"uImage"
-# define CONFIG_CMD_SPL
 # define CONFIG_SYS_SPL_ARGS_ADDR	0x18000000
-# define CONFIG_CMD_SPL_WRITE_SIZE	(128 * SZ_1K)
 
 /* MMC support: args@1MB kernel@2MB */
 # define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR		0x800   /* 1MB */
@@ -188,10 +165,6 @@
 #ifdef CONFIG_VIDEO_IPUV3
 # define CONFIG_IMX_VIDEO_SKIP
 
-# define CONFIG_SPLASH_SCREEN
-# define CONFIG_SPLASH_SCREEN_ALIGN
-# define CONFIG_BMP_16BPP
-# define CONFIG_VIDEO_BMP_RLE8
 # define CONFIG_VIDEO_LOGO
 # define CONFIG_VIDEO_BMP_LOGO
 #endif

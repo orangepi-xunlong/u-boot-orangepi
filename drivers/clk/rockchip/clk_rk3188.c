@@ -9,18 +9,23 @@
 #include <dm.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <mapmem.h>
 #include <syscon.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3188.h>
-#include <asm/arch/grf_rk3188.h>
-#include <asm/arch/hardware.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru_rk3188.h>
+#include <asm/arch-rockchip/grf_rk3188.h>
+#include <asm/arch-rockchip/hardware.h>
 #include <dt-bindings/clock/rk3188-cru.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dm/uclass-internal.h>
+#include <linux/delay.h>
+#include <linux/err.h>
 #include <linux/log2.h>
+#include <linux/stringify.h>
 
 enum rk3188_clk_type {
 	RK3188_CRU,
@@ -533,7 +538,7 @@ static struct clk_ops rk3188_clk_ops = {
 	.set_rate	= rk3188_clk_set_rate,
 };
 
-static int rk3188_clk_ofdata_to_platdata(struct udevice *dev)
+static int rk3188_clk_of_to_plat(struct udevice *dev)
 {
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	struct rk3188_clk_priv *priv = dev_get_priv(dev);
@@ -556,12 +561,16 @@ static int rk3188_clk_probe(struct udevice *dev)
 
 #ifdef CONFIG_SPL_BUILD
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-	struct rk3188_clk_plat *plat = dev_get_platdata(dev);
+	struct rk3188_clk_plat *plat = dev_get_plat(dev);
 
 	priv->cru = map_sysmem(plat->dtd.reg[0], plat->dtd.reg[1]);
 #endif
 
 	rkclk_init(priv->cru, priv->grf, priv->has_bwadj);
+
+	/* Init CPU frequency */
+	rkclk_configure_cpu(priv->cru, priv->grf, APLL_SAFE_HZ,
+			    priv->has_bwadj);
 #endif
 
 	return 0;
@@ -584,10 +593,10 @@ static int rk3188_clk_bind(struct udevice *dev)
 						    cru_glb_srst_fst_value);
 		priv->glb_srst_snd_value = offsetof(struct rk3188_cru,
 						    cru_glb_srst_snd_value);
-		sys_child->priv = priv;
+		dev_set_priv(sys_child, priv);
 	}
 
-#if CONFIG_IS_ENABLED(CONFIG_RESET_ROCKCHIP)
+#if CONFIG_IS_ENABLED(RESET_ROCKCHIP)
 	ret = offsetof(struct rk3188_cru, cru_softrst_con[0]);
 	ret = rockchip_reset_bind(dev, ret, 9);
 	if (ret)
@@ -607,10 +616,10 @@ U_BOOT_DRIVER(rockchip_rk3188_cru) = {
 	.name			= "rockchip_rk3188_cru",
 	.id			= UCLASS_CLK,
 	.of_match		= rk3188_clk_ids,
-	.priv_auto_alloc_size	= sizeof(struct rk3188_clk_priv),
-	.platdata_auto_alloc_size = sizeof(struct rk3188_clk_plat),
+	.priv_auto	= sizeof(struct rk3188_clk_priv),
+	.plat_auto	= sizeof(struct rk3188_clk_plat),
 	.ops			= &rk3188_clk_ops,
 	.bind			= rk3188_clk_bind,
-	.ofdata_to_platdata	= rk3188_clk_ofdata_to_platdata,
+	.of_to_plat	= rk3188_clk_of_to_plat,
 	.probe			= rk3188_clk_probe,
 };

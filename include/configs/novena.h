@@ -9,7 +9,6 @@
 #define __CONFIG_H
 
 /* System configurations */
-#define CONFIG_MISC_INIT_R
 #define CONFIG_KEYBOARD
 
 #include "mx6_common.h"
@@ -19,27 +18,18 @@
 /* U-Boot general configurations */
 
 /* U-Boot environment */
-#define CONFIG_ENV_SIZE			(16 * 1024)
 /*
  * Environment is on MMC, starting at offset 512KiB from start of the card.
  * Please place first partition at offset 1MiB from the start of the card
  * as recommended by GNU/fdisk. See below for details:
  * http://homepage.ntlworld.com./jonathan.deboynepollard/FGA/disc-partition-alignment.html
  */
-#ifdef CONFIG_CMD_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_OFFSET		(512 * 1024)
-#define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
-#define CONFIG_ENV_OFFSET_REDUND	\
-		(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#endif
 
 /* Booting Linux */
 #define CONFIG_BOOTFILE			"fitImage"
 #define CONFIG_HOSTNAME			"novena"
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
@@ -51,27 +41,18 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#define CONFIG_SYS_MEMTEST_START	0x10000000
-#define CONFIG_SYS_MEMTEST_END		0x20000000
-
 #define CONFIG_SYS_MALLOC_LEN		(64 * 1024 * 1024)
 
 /* SPL */
 #include "imx6_spl.h"			/* common IMX6 SPL configuration */
 
 /* Ethernet Configuration */
-#ifdef CONFIG_CMD_NET
-#define CONFIG_FEC_MXC
-#define CONFIG_MII
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_XCV_TYPE		RGMII
-#define CONFIG_ETHPRIME			"FEC"
-#define CONFIG_FEC_MXC_PHYADDR		0x7
-#define CONFIG_ARP_TIMEOUT		200UL
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_DM_ETH
 #endif
 
 /* I2C */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -105,15 +86,9 @@
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
 /* SATA Configs */
-#ifdef CONFIG_CMD_SATA
-#define CONFIG_SYS_SATA_MAX_DEVICE	1
-#define CONFIG_DWC_AHSATA_PORT_ID	0
-#define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 #define CONFIG_LBA48
-#endif
 
 /* UART */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART2_BASE
 
 /* USB Configs */
@@ -123,19 +98,12 @@
 #define CONFIG_MXC_USB_FLAGS		0
 /* Gadget part */
 #define CONFIG_USBD_HS
-#define CONFIG_NETCONSOLE
 #endif
 
 /* Video output */
-#ifdef CONFIG_VIDEO
-#define CONFIG_VIDEO_IPUV3
-#define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
-#endif
 
 /* Extra U-Boot environment. */
 #ifndef CONFIG_SPL_BUILD
@@ -153,6 +121,8 @@
 	"ramdisk_addr_r=0x28000000\0"		   			\
 	"fdt_addr_r=0x18000000\0"					\
 	"fdtfile=imx6q-novena.dtb\0"					\
+	"stdout=serial,vidconsole\0"					\
+	"stderr=serial,vidconsole\0"					\
 	"addcons="							\
 		"setenv bootargs ${bootargs} "				\
 		"console=${consdev},${baudrate}\0"			\

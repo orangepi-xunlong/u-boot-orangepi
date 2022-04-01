@@ -8,15 +8,21 @@
 
 #include <common.h>
 #include <console.h>
+#include <cpu_func.h>
+#include <log.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <fs.h>
 #include <zynqpl.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 
 #define DEVCFG_CTRL_PCFG_PROG_B		0x40000000
 #define DEVCFG_CTRL_PCFG_AES_EFUSE_MASK	0x00001000
+#define DEVCFG_CTRL_PCAP_RATE_EN_MASK	0x02000000
+#define DEVCFG_CTRL_PCFG_AES_EN_MASK	0x00000E00
 #define DEVCFG_ISR_FATAL_ERROR_MASK	0x00740040
 #define DEVCFG_ISR_ERROR_FLAGS_MASK	0x00340840
 #define DEVCFG_ISR_RX_FIFO_OV		0x00040000
@@ -199,7 +205,7 @@ static int zynq_dma_xfer_init(bitstream_type bstype)
 	/* Clear loopback bit */
 	clrbits_le32(&devcfg_base->mctrl, DEVCFG_MCTRL_PCAP_LPBK);
 
-	if (bstype != BIT_PARTIAL) {
+	if (bstype != BIT_PARTIAL && bstype != BIT_NONE) {
 		zynq_slcr_devcfg_disable();
 
 		/* Setting PCFG_PROG_B signal to high */
@@ -309,7 +315,7 @@ static u32 *zynq_align_dma_buffer(u32 *buf, u32 len, u32 swap)
 		if (new_buf > buf) {
 			debug("%s: Aligned buffer is after buffer start\n",
 			      __func__);
-			new_buf -= ARCH_DMA_MINALIGN;
+			new_buf = (u32 *)((u32)new_buf - ARCH_DMA_MINALIGN);
 		}
 		printf("%s: Align buffer at %x to %x(swap %d)\n", __func__,
 		       (u32)buf, (u32)new_buf, swap);
@@ -407,10 +413,12 @@ static int zynq_load(xilinx_desc *desc, const void *buf, size_t bsize,
 	if (bstype != BIT_PARTIAL)
 		zynq_slcr_devcfg_enable();
 
+	puts("INFO:post config was not run, please run manually if needed\n");
+
 	return FPGA_SUCCESS;
 }
 
-#if defined(CONFIG_CMD_FPGA_LOADFS)
+#if defined(CONFIG_CMD_FPGA_LOADFS) && !defined(CONFIG_SPL_BUILD)
 static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 		       fpga_fs_info *fsinfo)
 {
@@ -420,7 +428,8 @@ static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 	loff_t blocksize, actread;
 	loff_t pos = 0;
 	int fstype;
-	char *interface, *dev_part, *filename;
+	char *interface, *dev_part;
+	const char *filename;
 
 	blocksize = fsinfo->blocksize;
 	interface = fsinfo->interface;
@@ -493,7 +502,75 @@ static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 
 struct xilinx_fpga_op zynq_op = {
 	.load = zynq_load,
-#if defined(CONFIG_CMD_FPGA_LOADFS)
+#if defined(CONFIG_CMD_FPGA_LOADFS) && !defined(CONFIG_SPL_BUILD)
 	.loadfs = zynq_loadfs,
 #endif
 };
+
+#ifdef CONFIG_CMD_ZYNQ_AES
+/*
+ * Load the encrypted image from src addr and decrypt the image and
+ * place it back the decrypted image into dstaddr.
+ */
+int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
+		      u8 bstype)
+{
+	u32 isr_status, ts;
+
+	if (srcaddr < SZ_1M || dstaddr < SZ_1M) {
+		printf("%s: src and dst addr should be > 1M\n",
+		       __func__);
+		return FPGA_FAIL;
+	}
+
+	/* Check AES engine is enabled */
+	if (!(readl(&devcfg_base->ctrl) &
+	      DEVCFG_CTRL_PCFG_AES_EN_MASK)) {
+		printf("%s: AES engine is not enabled\n", __func__);
+		return FPGA_FAIL;
+	}
+
+	if (zynq_dma_xfer_init(bstype)) {
+		printf("%s: zynq_dma_xfer_init FAIL\n", __func__);
+		return FPGA_FAIL;
+	}
+
+	writel((readl(&devcfg_base->ctrl) | DEVCFG_CTRL_PCAP_RATE_EN_MASK),
+	       &devcfg_base->ctrl);
+
+	debug("%s: Source = 0x%08X\n", __func__, (u32)srcaddr);
+	debug("%s: Size = %zu\n", __func__, srclen);
+
+	/* flush(clean & invalidate) d-cache range buf */
+	flush_dcache_range((u32)srcaddr, (u32)srcaddr +
+			roundup(srclen << 2, ARCH_DMA_MINALIGN));
+	/*
+	 * Flush destination address range only if image is not
+	 * bitstream.
+	 */
+	if (bstype == BIT_NONE && dstaddr != 0xFFFFFFFF)
+		flush_dcache_range((u32)dstaddr, (u32)dstaddr +
+				   roundup(dstlen << 2, ARCH_DMA_MINALIGN));
+
+	if (zynq_dma_transfer(srcaddr | 1, srclen, dstaddr | 1, dstlen))
+		return FPGA_FAIL;
+
+	if (bstype == BIT_FULL) {
+		isr_status = readl(&devcfg_base->int_sts);
+		/* Check FPGA configuration completion */
+		ts = get_timer(0);
+		while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
+			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+				printf("%s: Timeout wait for FPGA to config\n",
+				       __func__);
+				return FPGA_FAIL;
+			}
+			isr_status = readl(&devcfg_base->int_sts);
+		}
+		printf("%s: FPGA config done\n", __func__);
+		zynq_slcr_devcfg_enable();
+	}
+
+	return FPGA_SUCCESS;
+}
+#endif

@@ -4,7 +4,11 @@
  */
 
 #include <console.h>
+#include <time.h>
 #include <watchdog.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+#include <linux/errno.h>
 
 /* USB Vendor Requests */
 #define USB_VENDOR_REQUEST_WRITE_REGISTER	0xA0
@@ -94,7 +98,7 @@
 #define LAN7X_MAC_RX_MAX_SIZE(mtu) \
 	((mtu) << 16)			/* Max frame size */
 #define LAN7X_MAC_RX_MAX_SIZE_DEFAULT \
-	LAN7X_MAC_RX_MAX_SIZE(ETH_FRAME_LEN + 4 /* VLAN */ + 4 /* CRC */)
+	LAN7X_MAC_RX_MAX_SIZE(PKTSIZE_ALIGN + 4 /* VLAN */ + 4 /* CRC */)
 
 /* Timeouts */
 #define USB_CTRL_SET_TIMEOUT_MS		5000
@@ -122,6 +126,10 @@ int lan7x_write_reg(struct usb_device *udev, u32 index, u32 data);
 
 int lan7x_read_reg(struct usb_device *udev, u32 index, u32 *data);
 
+/*
+ * FIXME: Code should not be in header files. Nive this to a file common to
+ * the two drivers.
+ */
 static inline int lan7x_wait_for_bit(struct usb_device *udev,
 				     const char *prefix, const u32 reg,
 				     const u32 mask, const bool set,

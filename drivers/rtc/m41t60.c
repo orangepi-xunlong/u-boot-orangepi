@@ -17,10 +17,10 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <log.h>
 #include <rtc.h>
 #include <i2c.h>
-
-#if defined(CONFIG_SYS_I2C_RTC_ADDR) && defined(CONFIG_CMD_DATE)
 
 /*
  * Convert between century and "century bits" (CB1 and CB0).  These routines
@@ -214,7 +214,7 @@ void rtc_reset(void)
 	 * the M41T60 documentation for further details.
 	 */
 	if (s) {
-		unsigned long const l = simple_strtoul(s, 0, 16);
+		unsigned long const l = hextoul(s, 0);
 
 		if (l <= 0x3F) {
 			if ((data[RTC_CTRL] & 0x3F) != l) {
@@ -237,4 +237,3 @@ void rtc_reset(void)
 	}
 	rtc_dump("end reset");
 }
-#endif /* CONFIG_RTC_M41T60 && CONFIG_SYS_I2C_RTC_ADDR && CONFIG_CMD_DATE */

@@ -25,6 +25,9 @@
 
 #define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))
 
+#define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+#define ALIGN(x, a)		__ALIGN_MASK((x), (typeof(x))(a) - 1)
+
 #define IH_ARCH_DEFAULT		IH_ARCH_INVALID
 
 /* Information about a file that needs to be placed into the FIT */
@@ -64,6 +67,7 @@ struct image_tool_params {
 	const char *outfile;	/* Output filename */
 	const char *keydir;	/* Directory holding private keys */
 	const char *keydest;	/* Destination .dtb for public key */
+	const char *keyfile;	/* Filename of private or public key */
 	const char *comment;	/* Comment to add to signature node */
 	int require_keys;	/* 1 to mark signing keys as 'required' */
 	int file_size;		/* Total size of output file */
@@ -76,7 +80,9 @@ struct image_tool_params {
 	bool external_data;	/* Store data outside the FIT */
 	bool quiet;		/* Don't output text in normal operation */
 	unsigned int external_offset;	/* Add padding to external data */
+	int bl_len;		/* Block length in byte for external data */
 	const char *engine_id;	/* Engine to use for signing */
+	bool reset_timestamp;	/* Reset the timestamp on an existing image */
 };
 
 /*
@@ -121,9 +127,9 @@ struct image_type_params {
 					struct image_tool_params *);
 	/*
 	 * This function is used by the command to retrieve a component
-	 * (sub-image) from the image (i.e. dumpimage -i <image> -p <position>
-	 * <sub-image-name>).
-	 * Thus the code to extract a file from an image must be put here.
+	 * (sub-image) from the image (i.e. dumpimage -p <position>
+	 * -o <component-outfile> <image>). Thus the code to extract a file
+	 * from an image must be put here.
 	 *
 	 * Returns 0 if the file was successfully retrieved from the image,
 	 * or a negative value on error.
@@ -179,6 +185,25 @@ int imagetool_verify_print_header(
 	struct image_type_params *tparams,
 	struct image_tool_params *params);
 
+/*
+ * imagetool_verify_print_header_by_type() - verifies the image header
+ *
+ * Verify the image_header for the image type given by tparams.
+ * If verification is successful, this prints the respective header.
+ * @ptr: pointer the the image header
+ * @sbuf: stat information about the file pointed to by ptr
+ * @tparams: image type parameters
+ * @params: mkimage parameters
+ *
+ * @return 0 on success, negative if input image format does not match with
+ * the given image type
+ */
+int imagetool_verify_print_header_by_type(
+	void *ptr,
+	struct stat *sbuf,
+	struct image_type_params *tparams,
+	struct image_tool_params *params);
+
 /**
  * imagetool_save_subimage - store data into a file
  * @file_name: name of the destination file
@@ -216,12 +241,12 @@ int imagetool_get_filesize(struct image_tool_params *params, const char *fname);
  * an error message if SOURCE_DATE_EPOCH contains an invalid value and returns
  * 0.
  *
- * @params:	mkimage parameters
+ * @cmdname:	command name
  * @fallback:	timestamp to use if SOURCE_DATE_EPOCH isn't set
  * @return timestamp based on SOURCE_DATE_EPOCH
  */
 time_t imagetool_get_source_date(
-	struct image_tool_params *params,
+	const char *cmdname,
 	time_t fallback);
 
 /*
@@ -231,6 +256,10 @@ time_t imagetool_get_source_date(
 
 
 void pbl_load_uboot(int fd, struct image_tool_params *mparams);
+int zynqmpbif_copy_image(int fd, struct image_tool_params *mparams);
+int imx8image_copy_image(int fd, struct image_tool_params *mparams);
+int imx8mimage_copy_image(int fd, struct image_tool_params *mparams);
+int rockchip_copy_image(int fd, struct image_tool_params *mparams);
 
 #define ___cat(a, b) a ## b
 #define __cat(a, b) ___cat(a, b)
@@ -245,14 +274,14 @@ void pbl_load_uboot(int fd, struct image_tool_params *mparams);
 
 #define INIT_SECTION(name)  do {					\
 		unsigned long name ## _len;				\
-		char *__cat(pstart_, name) = getsectdata("__TEXT",	\
+		char *__cat(pstart_, name) = getsectdata("__DATA",	\
 			#name, &__cat(name, _len));			\
 		char *__cat(pstop_, name) = __cat(pstart_, name) +	\
 			__cat(name, _len);				\
 		__cat(__start_, name) = (void *)__cat(pstart_, name);	\
 		__cat(__stop_, name) = (void *)__cat(pstop_, name);	\
 	} while (0)
-#define SECTION(name)   __attribute__((section("__TEXT, " #name)))
+#define SECTION(name)   __attribute__((section("__DATA, " #name)))
 
 struct image_type_params **__start_image_type, **__stop_image_type;
 #else

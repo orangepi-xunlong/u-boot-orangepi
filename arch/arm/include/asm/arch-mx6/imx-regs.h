@@ -372,6 +372,7 @@
 #include <asm/mach-imx/regs-lcdif.h>
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
+#include <linux/bitops.h>
 
 /* only for i.MX6SX/UL */
 #define WDOG3_BASE_ADDR (((is_mx6ul() || is_mx6ull()) ?	\
@@ -667,46 +668,10 @@ struct gpc {
 #define IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI0		(IOMUXC_GPR2_MODE_ENABLED_DI0<<IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
 #define IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI1		(IOMUXC_GPR2_MODE_ENABLED_DI1<<IOMUXC_GPR2_LVDS_CH0_MODE_OFFSET)
 
-/* ECSPI registers */
-struct cspi_regs {
-	u32 rxdata;
-	u32 txdata;
-	u32 ctrl;
-	u32 cfg;
-	u32 intr;
-	u32 dma;
-	u32 stat;
-	u32 period;
-};
-
 /*
  * CSPI register definitions
  */
-#define MXC_ECSPI
-#define MXC_CSPICTRL_EN		(1 << 0)
-#define MXC_CSPICTRL_MODE	(1 << 1)
-#define MXC_CSPICTRL_XCH	(1 << 2)
-#define MXC_CSPICTRL_MODE_MASK (0xf << 4)
-#define MXC_CSPICTRL_CHIPSELECT(x)	(((x) & 0x3) << 12)
-#define MXC_CSPICTRL_BITCOUNT(x)	(((x) & 0xfff) << 20)
-#define MXC_CSPICTRL_PREDIV(x)	(((x) & 0xF) << 12)
-#define MXC_CSPICTRL_POSTDIV(x)	(((x) & 0xF) << 8)
-#define MXC_CSPICTRL_SELCHAN(x)	(((x) & 0x3) << 18)
-#define MXC_CSPICTRL_MAXBITS	0xfff
-#define MXC_CSPICTRL_TC		(1 << 7)
-#define MXC_CSPICTRL_RXOVF	(1 << 6)
-#define MXC_CSPIPERIOD_32KHZ	(1 << 15)
-#define MAX_SPI_BYTES	32
 #define SPI_MAX_NUM	4
-
-/* Bit position inside CTRL register to be associated with SS */
-#define MXC_CSPICTRL_CHAN	18
-
-/* Bit position inside CON register to be associated with SS */
-#define MXC_CSPICON_PHA		0  /* SCLK phase control */
-#define MXC_CSPICON_POL		4  /* SCLK polarity */
-#define MXC_CSPICON_SSPOL	12 /* SS polarity */
-#define MXC_CSPICON_CTL		20 /* inactive state of SCLK */
 #if defined(CONFIG_MX6SLL) || defined(CONFIG_MX6SL) || \
 	defined(CONFIG_MX6DL) || defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
 #define MXC_SPI_BASE_ADDRESSES \
@@ -996,5 +961,12 @@ struct pwm_regs {
 	u32	pr;
 	u32	cnr;
 };
-#endif /* __ASSEMBLER__*/
+
+/*
+ * If ROM fail back to USB recover mode, USBPH0_PWD will be clear to use USB
+ * If boot from the other mode, USB0_PWD will keep reset value
+ */
+#define	is_boot_from_usb(void) (!(readl(USB_PHY0_BASE_ADDR) & (1<<20)))
+
+#endif /* __ASSEMBLY__ */
 #endif /* __ASM_ARCH_MX6_IMX_REGS_H__ */

@@ -4,12 +4,19 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <env.h>
+#include <rand.h>
+#include <time.h>
+#include <uuid.h>
 #include <linux/ctype.h>
 #include <errno.h>
 #include <common.h>
 #include <asm/io.h>
 #include <part_efi.h>
 #include <malloc.h>
+#include <dm/uclass.h>
+#include <rng.h>
 
 /*
  * UUID - Universally Unique IDentifier - 128 bits unique number.
@@ -91,7 +98,8 @@ static const struct {
 	{"linux",	PARTITION_LINUX_FILE_SYSTEM_DATA_GUID},
 	{"raid",	PARTITION_LINUX_RAID_GUID},
 	{"swap",	PARTITION_LINUX_SWAP_GUID},
-	{"lvm",		PARTITION_LINUX_LVM_GUID}
+	{"lvm",		PARTITION_LINUX_LVM_GUID},
+	{"u-boot-env",	PARTITION_U_BOOT_ENVIRONMENT},
 };
 
 /*
@@ -117,20 +125,19 @@ int uuid_guid_get_bin(const char *guid_str, unsigned char *guid_bin)
  * uuid_guid_get_str() - this function get string for GUID.
  *
  * @param guid_bin - pointer to string with partition type guid [16B]
- * @param guid_str - pointer to allocated partition type string [7B]
+ *
+ * Returns NULL if the type GUID is not known.
  */
-int uuid_guid_get_str(unsigned char *guid_bin, char *guid_str)
+const char *uuid_guid_get_str(const unsigned char *guid_bin)
 {
 	int i;
 
-	*guid_str = 0;
 	for (i = 0; i < ARRAY_SIZE(list_guid); i++) {
 		if (!memcmp(list_guid[i].guid.b, guid_bin, 16)) {
-			strcpy(guid_str, list_guid[i].string);
-			return 0;
+			return list_guid[i].string;
 		}
 	}
-	return -ENODEV;
+	return NULL;
 }
 #endif
 
@@ -141,7 +148,8 @@ int uuid_guid_get_str(unsigned char *guid_bin, char *guid_str)
  * @param uuid_bin - pointer to allocated array for big endian output [16B]
  * @str_format     - UUID string format: 0 - UUID; 1 - GUID
  */
-int uuid_str_to_bin(char *uuid_str, unsigned char *uuid_bin, int str_format)
+int uuid_str_to_bin(const char *uuid_str, unsigned char *uuid_bin,
+		    int str_format)
 {
 	uint16_t tmp16;
 	uint32_t tmp32;
@@ -156,26 +164,26 @@ int uuid_str_to_bin(char *uuid_str, unsigned char *uuid_bin, int str_format)
 	}
 
 	if (str_format == UUID_STR_FORMAT_STD) {
-		tmp32 = cpu_to_be32(simple_strtoul(uuid_str, NULL, 16));
+		tmp32 = cpu_to_be32(hextoul(uuid_str, NULL));
 		memcpy(uuid_bin, &tmp32, 4);
 
-		tmp16 = cpu_to_be16(simple_strtoul(uuid_str + 9, NULL, 16));
+		tmp16 = cpu_to_be16(hextoul(uuid_str + 9, NULL));
 		memcpy(uuid_bin + 4, &tmp16, 2);
 
-		tmp16 = cpu_to_be16(simple_strtoul(uuid_str + 14, NULL, 16));
+		tmp16 = cpu_to_be16(hextoul(uuid_str + 14, NULL));
 		memcpy(uuid_bin + 6, &tmp16, 2);
 	} else {
-		tmp32 = cpu_to_le32(simple_strtoul(uuid_str, NULL, 16));
+		tmp32 = cpu_to_le32(hextoul(uuid_str, NULL));
 		memcpy(uuid_bin, &tmp32, 4);
 
-		tmp16 = cpu_to_le16(simple_strtoul(uuid_str + 9, NULL, 16));
+		tmp16 = cpu_to_le16(hextoul(uuid_str + 9, NULL));
 		memcpy(uuid_bin + 4, &tmp16, 2);
 
-		tmp16 = cpu_to_le16(simple_strtoul(uuid_str + 14, NULL, 16));
+		tmp16 = cpu_to_le16(hextoul(uuid_str + 14, NULL));
 		memcpy(uuid_bin + 6, &tmp16, 2);
 	}
 
-	tmp16 = cpu_to_be16(simple_strtoul(uuid_str + 19, NULL, 16));
+	tmp16 = cpu_to_be16(hextoul(uuid_str + 19, NULL));
 	memcpy(uuid_bin + 8, &tmp16, 2);
 
 	tmp64 = cpu_to_be64(simple_strtoull(uuid_str + 24, NULL, 16));
@@ -187,17 +195,20 @@ int uuid_str_to_bin(char *uuid_str, unsigned char *uuid_bin, int str_format)
 /*
  * uuid_bin_to_str() - convert big endian binary data to string UUID or GUID.
  *
- * @param uuid_bin - pointer to binary data of UUID (big endian) [16B]
- * @param uuid_str - pointer to allocated array for output string [37B]
- * @str_format     - UUID string format: 0 - UUID; 1 - GUID
+ * @param uuid_bin:	pointer to binary data of UUID (big endian) [16B]
+ * @param uuid_str:	pointer to allocated array for output string [37B]
+ * @str_format:		bit 0: 0 - UUID; 1 - GUID
+ *			bit 1: 0 - lower case; 2 - upper case
  */
-void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format)
+void uuid_bin_to_str(const unsigned char *uuid_bin, char *uuid_str,
+		     int str_format)
 {
 	const u8 uuid_char_order[UUID_BIN_LEN] = {0, 1, 2, 3, 4, 5, 6, 7, 8,
 						  9, 10, 11, 12, 13, 14, 15};
 	const u8 guid_char_order[UUID_BIN_LEN] = {3, 2, 1, 0, 5, 4, 7, 6, 8,
 						  9, 10, 11, 12, 13, 14, 15};
 	const u8 *char_order;
+	const char *format;
 	int i;
 
 	/*
@@ -205,13 +216,17 @@ void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format)
 	 * 4B-2B-2B-2B-6B
 	 * be be be be be
 	 */
-	if (str_format == UUID_STR_FORMAT_STD)
-		char_order = uuid_char_order;
-	else
+	if (str_format & UUID_STR_FORMAT_GUID)
 		char_order = guid_char_order;
+	else
+		char_order = uuid_char_order;
+	if (str_format & UUID_STR_UPPER_CASE)
+		format = "%02X";
+	else
+		format = "%02x";
 
 	for (i = 0; i < 16; i++) {
-		sprintf(uuid_str, "%02x", uuid_bin[char_order[i]]);
+		sprintf(uuid_str, format, uuid_bin[char_order[i]]);
 		uuid_str += 2;
 		switch (i) {
 		case 3:
@@ -234,23 +249,38 @@ void uuid_bin_to_str(unsigned char *uuid_bin, char *uuid_str, int str_format)
 #if defined(CONFIG_RANDOM_UUID) || defined(CONFIG_CMD_UUID)
 void gen_rand_uuid(unsigned char *uuid_bin)
 {
-	struct uuid uuid;
-	unsigned int *ptr = (unsigned int *)&uuid;
-	int i;
+	u32 ptr[4];
+	struct uuid *uuid = (struct uuid *)ptr;
+	int i, ret;
+	struct udevice *devp;
+	u32 randv = 0;
+
+	if (IS_ENABLED(CONFIG_DM_RNG)) {
+		ret = uclass_get_device(UCLASS_RNG, 0, &devp);
+		if (ret) {
+			ret = dm_rng_read(devp, &randv, sizeof(randv));
+			if (ret < 0)
+				randv = 0;
+		}
+	}
+	if (randv)
+		srand(randv);
+	else
+		srand(get_ticks() + rand());
 
 	/* Set all fields randomly */
-	for (i = 0; i < sizeof(struct uuid) / sizeof(*ptr); i++)
-		*(ptr + i) = cpu_to_be32(rand());
+	for (i = 0; i < 4; i++)
+		ptr[i] = rand();
 
-	clrsetbits_be16(&uuid.time_hi_and_version,
+	clrsetbits_be16(&uuid->time_hi_and_version,
 			UUID_VERSION_MASK,
 			UUID_VERSION << UUID_VERSION_SHIFT);
 
-	clrsetbits_8(&uuid.clock_seq_hi_and_reserved,
+	clrsetbits_8(&uuid->clock_seq_hi_and_reserved,
 		     UUID_VARIANT_MASK,
 		     UUID_VARIANT << UUID_VARIANT_SHIFT);
 
-	memcpy(uuid_bin, &uuid, sizeof(struct uuid));
+	memcpy(uuid_bin, uuid, 16);
 }
 
 /*
@@ -271,8 +301,8 @@ void gen_rand_uuid_str(char *uuid_str, int str_format)
 	uuid_bin_to_str(uuid_bin, uuid_str, str_format);
 }
 
-#ifdef CONFIG_CMD_UUID
-int do_uuid(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_CMD_UUID)
+int do_uuid(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char uuid[UUID_STR_LEN + 1];
 	int str_format;

@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/arch/sysmap.h>
 
@@ -12,7 +13,7 @@
 #define CLKS_SHIFT	20		/* Clock period shift */
 #define LD_SHIFT	0		/* Reload value shift */
 
-void reset_cpu(ulong ignored)
+void reset_cpu(void)
 {
 	/*
 	 * Set WD enable, RST enable,

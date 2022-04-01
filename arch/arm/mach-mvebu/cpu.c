@@ -5,11 +5,16 @@
 
 #include <common.h>
 #include <ahci.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/mbus.h>
 #include <asm/io.h>
 #include <asm/pl310.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <asm/spl.h>
 #include <sdhci.h>
 
 #define DDR_BASE_CS_OFF(n)	(0x0000 + ((n) << 3))
@@ -23,6 +28,11 @@ static struct mbus_win windows[] = {
 	/* NOR */
 	{ MBUS_BOOTROM_BASE, MBUS_BOOTROM_SIZE,
 	  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_BOOTROM },
+
+#ifdef CONFIG_ARMADA_MSYS
+	/* DFX */
+	{ MBUS_DFX_BASE, MBUS_DFX_SIZE, CPU_TARGET_DFX, 0 },
+#endif
 };
 
 void lowlevel_init(void)
@@ -33,7 +43,7 @@ void lowlevel_init(void)
 	 */
 }
 
-void reset_cpu(unsigned long ignored)
+void reset_cpu(void)
 {
 	struct mvebu_system_registers *reg =
 		(struct mvebu_system_registers *)MVEBU_SYSTEM_REG_BASE;
@@ -69,6 +79,65 @@ int mvebu_soc_family(void)
 	}
 
 	return MVEBU_SOC_UNKNOWN;
+}
+
+u32 get_boot_device(void)
+{
+	u32 val;
+	u32 boot_device;
+
+	/*
+	 * First check, if UART boot-mode is active. This can only
+	 * be done, via the bootrom error register. Here the
+	 * MSB marks if the UART mode is active.
+	 */
+	val = readl(CONFIG_BOOTROM_ERR_REG);
+	boot_device = (val & BOOTROM_ERR_MODE_MASK) >> BOOTROM_ERR_MODE_OFFS;
+	debug("BOOTROM_REG=0x%08x boot_device=0x%x\n", val, boot_device);
+	if (boot_device == BOOTROM_ERR_MODE_UART)
+		return BOOT_DEVICE_UART;
+
+#ifdef CONFIG_ARMADA_38X
+	/*
+	 * If the bootrom error code contains any other than zeros it's an
+	 * error condition and the bootROM has fallen back to UART boot
+	 */
+	boot_device = (val & BOOTROM_ERR_CODE_MASK) >> BOOTROM_ERR_CODE_OFFS;
+	if (boot_device)
+		return BOOT_DEVICE_UART;
+#endif
+
+	/*
+	 * Now check the SAR register for the strapped boot-device
+	 */
+	val = readl(CONFIG_SAR_REG);	/* SAR - Sample At Reset */
+	boot_device = (val & BOOT_DEV_SEL_MASK) >> BOOT_DEV_SEL_OFFS;
+	debug("SAR_REG=0x%08x boot_device=0x%x\n", val, boot_device);
+	switch (boot_device) {
+#ifdef BOOT_FROM_NAND
+	case BOOT_FROM_NAND:
+		return BOOT_DEVICE_NAND;
+#endif
+#ifdef BOOT_FROM_MMC
+	case BOOT_FROM_MMC:
+	case BOOT_FROM_MMC_ALT:
+		return BOOT_DEVICE_MMC1;
+#endif
+	case BOOT_FROM_UART:
+#ifdef BOOT_FROM_UART_ALT
+	case BOOT_FROM_UART_ALT:
+#endif
+		return BOOT_DEVICE_UART;
+#ifdef BOOT_FROM_SATA
+	case BOOT_FROM_SATA:
+	case BOOT_FROM_SATA_ALT:
+		return BOOT_DEVICE_SATA;
+#endif
+	case BOOT_FROM_SPI:
+		return BOOT_DEVICE_SPI;
+	default:
+		return BOOT_DEVICE_BOOTROM;
+	};
 }
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
@@ -121,6 +190,14 @@ static const struct sar_freq_modes sar_freq_tab[] = {
 	{ 0x13,  0x0, 2000, 1000, 933 },
 	{ 0xff, 0xff,    0,    0,   0 }	/* 0xff marks end of array */
 };
+#elif defined(CONFIG_ARMADA_MSYS)
+static const struct sar_freq_modes sar_freq_tab[] = {
+	{  0x0,	0x0,  400,  400, 400 },
+	{  0x2, 0x0,  667,  333, 667 },
+	{  0x3, 0x0,  800,  400, 800 },
+	{  0x5, 0x0,  800,  400, 800 },
+	{ 0xff, 0xff,    0,   0,   0 }	/* 0xff marks end of array */
+};
 #else
 /* SAR frequency values for Armada XP */
 static const struct sar_freq_modes sar_freq_tab[] = {
@@ -144,7 +221,7 @@ void get_sar_freq(struct sar_freq_modes *sar_freq)
 	u32 freq;
 	int i;
 
-#if defined(CONFIG_ARMADA_375)
+#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_MSYS)
 	val = readl(CONFIG_SAR2_REG);	/* SAR - Sample At Reset */
 #else
 	val = readl(CONFIG_SAR_REG);	/* SAR - Sample At Reset */
@@ -160,7 +237,7 @@ void get_sar_freq(struct sar_freq_modes *sar_freq)
 #endif
 	for (i = 0; sar_freq_tab[i].val != 0xff; i++) {
 		if (sar_freq_tab[i].val == freq) {
-#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_38X)
+#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_38X) || defined(CONFIG_ARMADA_MSYS)
 			*sar_freq = sar_freq_tab[i];
 			return;
 #else
@@ -261,6 +338,23 @@ int print_cpuinfo(void)
 		case MV_88F68XX_A0_ID:
 			puts("A0");
 			break;
+		case MV_88F68XX_B0_ID:
+			puts("B0");
+			break;
+		default:
+			printf("?? (%x)", revid);
+			break;
+		}
+	}
+
+	if (mvebu_soc_family() == MVEBU_SOC_MSYS) {
+		switch (revid) {
+		case 3:
+			puts("A0");
+			break;
+		case 4:
+			puts("A1");
+			break;
 		default:
 			printf("?? (%x)", revid);
 			break;
@@ -280,10 +374,8 @@ int print_cpuinfo(void)
  * and sets the correct windows sizes and base addresses accordingly.
  *
  * These values are set in the scratch registers by the Marvell
- * DDR3 training code, which is executed by the BootROM before the
- * main payload (U-Boot) is executed. This training code is currently
- * only available in the Marvell U-Boot version. It needs to be
- * ported to mainline U-Boot SPL at some point.
+ * DDR3 training code, which is executed by the SPL before the
+ * main payload (U-Boot) is executed.
  */
 static void update_sdram_window_sizes(void)
 {
@@ -471,6 +563,8 @@ u32 mvebu_get_nand_clock(void)
 
 	if (mvebu_soc_family() == MVEBU_SOC_A38X)
 		reg = MVEBU_DFX_DIV_CLK_CTRL(1);
+	else if (mvebu_soc_family() == MVEBU_SOC_MSYS)
+		reg = MVEBU_DFX_DIV_CLK_CTRL(8);
 	else
 		reg = MVEBU_CORE_DIV_CLK_CTRL(1);
 
@@ -490,8 +584,8 @@ int arch_misc_init(void)
 }
 #endif /* CONFIG_ARCH_MISC_INIT */
 
-#ifdef CONFIG_MMC_SDHCI_MV
-int board_mmc_init(bd_t *bis)
+#if defined(CONFIG_MMC_SDHCI_MV) && !defined(CONFIG_DM_MMC)
+int board_mmc_init(struct bd_info *bis)
 {
 	mv_sdh_init(MVEBU_SDIO_BASE, 0, 0,
 		    SDHCI_QUIRK_32BIT_DMA_ADDR | SDHCI_QUIRK_WAIT_SEND_CMD);
@@ -500,7 +594,6 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-#ifdef CONFIG_SCSI_AHCI_PLAT
 #define AHCI_VENDOR_SPECIFIC_0_ADDR	0xa0
 #define AHCI_VENDOR_SPECIFIC_0_DATA	0xa4
 
@@ -512,6 +605,10 @@ static void ahci_mvebu_mbus_config(void __iomem *base)
 {
 	const struct mbus_dram_target_info *dram;
 	int i;
+
+	/* mbus is not initialized in SPL; keep the ROM settings */
+	if (IS_ENABLED(CONFIG_SPL_BUILD))
+		return;
 
 	dram = mvebu_mbus_dram_info();
 
@@ -544,11 +641,19 @@ static void ahci_mvebu_regret_option(void __iomem *base)
 	writel(0x80, base + AHCI_VENDOR_SPECIFIC_0_DATA);
 }
 
+int board_ahci_enable(void)
+{
+	ahci_mvebu_mbus_config((void __iomem *)MVEBU_SATA0_BASE);
+	ahci_mvebu_regret_option((void __iomem *)MVEBU_SATA0_BASE);
+
+	return 0;
+}
+
+#ifdef CONFIG_SCSI_AHCI_PLAT
 void scsi_init(void)
 {
 	printf("MVEBU SATA INIT\n");
-	ahci_mvebu_mbus_config((void __iomem *)MVEBU_SATA0_BASE);
-	ahci_mvebu_regret_option((void __iomem *)MVEBU_SATA0_BASE);
+	board_ahci_enable();
 	ahci_init((void __iomem *)MVEBU_SATA0_BASE);
 }
 #endif

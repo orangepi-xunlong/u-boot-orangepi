@@ -8,18 +8,19 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <usb.h>
 #include <linux/errno.h>
 #include <linux/compat.h>
 #include <linux/usb/xhci-fsl.h>
 #include <linux/usb/dwc3.h>
-#include "xhci.h"
+#include <usb/xhci.h>
 #include <fsl_errata.h>
 #include <fsl_usb.h>
 #include <dm.h>
 
 /* Declare global data pointer */
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 static struct fsl_xhci fsl_xhci;
 unsigned long ctr_addr[] = FSL_USB_XHCI_ADDR;
 #else
@@ -107,7 +108,7 @@ static int fsl_xhci_core_exit(struct fsl_xhci *fsl_xhci)
 	return 0;
 }
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int xhci_fsl_probe(struct udevice *dev)
 {
 	struct xhci_fsl_priv *priv = dev_get_priv(dev);
@@ -119,7 +120,7 @@ static int xhci_fsl_probe(struct udevice *dev)
 	/*
 	 * Get the base address for XHCI controller from the device node
 	 */
-	priv->hcd_base = devfdt_get_addr(dev);
+	priv->hcd_base = dev_read_addr(dev);
 	if (priv->hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the XHCI register base address\n");
 		return -ENXIO;
@@ -168,8 +169,8 @@ U_BOOT_DRIVER(xhci_fsl) = {
 	.probe = xhci_fsl_probe,
 	.remove = xhci_fsl_remove,
 	.ops	= &xhci_usb_ops,
-	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
-	.priv_auto_alloc_size = sizeof(struct xhci_fsl_priv),
+	.plat_auto	= sizeof(struct usb_plat),
+	.priv_auto	= sizeof(struct xhci_fsl_priv),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
 };
 #else

@@ -5,6 +5,7 @@
 
 #include <common.h>
 #include <ahci.h>
+#include <scsi.h>
 #include <dm.h>
 #include <pci.h>
 
@@ -28,6 +29,7 @@ static const struct udevice_id ahci_pci_ids[] = {
 U_BOOT_DRIVER(ahci_pci) = {
 	.name	= "ahci_pci",
 	.id	= UCLASS_AHCI,
+	.ops	= &scsi_ops,
 	.of_match = ahci_pci_ids,
 	.bind	= ahci_pci_bind,
 	.probe = ahci_pci_probe,
@@ -35,6 +37,7 @@ U_BOOT_DRIVER(ahci_pci) = {
 
 static struct pci_device_id ahci_pci_supported[] = {
 	{ PCI_DEVICE_CLASS(PCI_CLASS_STORAGE_SATA_AHCI, ~0) },
+	{ PCI_DEVICE(0x1b21, 0x0611) },
 	{},
 };
 

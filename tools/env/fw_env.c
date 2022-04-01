@@ -10,6 +10,7 @@
 #define _GNU_SOURCE
 
 #include <compiler.h>
+#include <env.h>
 #include <errno.h>
 #include <env_flags.h>
 #include <fcntl.h>
@@ -24,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <u-boot/crc.h>
 #include <unistd.h>
 #include <dirent.h>
 
@@ -110,6 +112,7 @@ struct environment {
 	unsigned char *flags;
 	char *data;
 	enum flag_scheme flag_scheme;
+	int dirty;
 };
 
 static struct environment environment = {
@@ -117,10 +120,6 @@ static struct environment environment = {
 };
 
 static int have_redund_env;
-
-static unsigned char active_flag = 1;
-/* obsolete_flag must be 0 to efficiently set it on NOR flash without erasing */
-static unsigned char obsolete_flag = 0;
 
 #define DEFAULT_ENV_INSTANCE_STATIC
 #include <env_default.h>
@@ -508,6 +507,9 @@ int fw_env_flush(struct env_opts *opts)
 	if (!opts)
 		opts = &default_opts;
 
+	if (!environment.dirty)
+		return 0;
+
 	/*
 	 * Update CRC
 	 */
@@ -553,7 +555,8 @@ int fw_env_write(char *name, char *value)
 
 	deleting = (oldval && !(value && strlen(value)));
 	creating = (!oldval && (value && strlen(value)));
-	overwriting = (oldval && (value && strlen(value)));
+	overwriting = (oldval && (value && strlen(value) &&
+				  strcmp(oldval, value)));
 
 	/* check for permission */
 	if (deleting) {
@@ -593,6 +596,7 @@ int fw_env_write(char *name, char *value)
 		/* Nothing to do */
 		return 0;
 
+	environment.dirty = 1;
 	if (deleting || overwriting) {
 		if (*++nxt == '\0') {
 			*env = '\0';
@@ -737,7 +741,8 @@ int fw_env_set(int argc, char *argv[], struct env_opts *opts)
 int fw_parse_script(char *fname, struct env_opts *opts)
 {
 	FILE *fp;
-	char dump[1024];	/* Maximum line length in the file */
+	char *line = NULL;
+	size_t linesize = 0;
 	char *name;
 	char *val;
 	int lineno = 0;
@@ -763,36 +768,34 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 		}
 	}
 
-	while (fgets(dump, sizeof(dump), fp)) {
+	while ((len = getline(&line, &linesize, fp)) != -1) {
 		lineno++;
-		len = strlen(dump);
 
 		/*
-		 * Read a whole line from the file. If the line is too long
-		 * or is not terminated, reports an error and exit.
+		 * Read a whole line from the file. If the line is not
+		 * terminated, reports an error and exit.
 		 */
-		if (dump[len - 1] != '\n') {
+		if (line[len - 1] != '\n') {
 			fprintf(stderr,
-				"Line %d not corrected terminated or too long\n",
+				"Line %d not correctly terminated\n",
 				lineno);
 			ret = -1;
 			break;
 		}
 
 		/* Drop ending line feed / carriage return */
-		dump[--len] = '\0';
-		if (len && dump[len - 1] == '\r')
-			dump[--len] = '\0';
+		line[--len] = '\0';
+		if (len && line[len - 1] == '\r')
+			line[--len] = '\0';
 
 		/* Skip comment or empty lines */
-		if (len == 0 || dump[0] == '#')
+		if (len == 0 || line[0] == '#')
 			continue;
 
 		/*
-		 * Search for variable's name,
-		 * remove leading whitespaces
+		 * Search for variable's name remove leading whitespaces
 		 */
-		name = skip_blanks(dump);
+		name = skip_blanks(line);
 		if (!name)
 			continue;
 
@@ -829,6 +832,7 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 		}
 
 	}
+	free(line);
 
 	/* Close file if not stdin */
 	if (strcmp(fname, "-") != 0)
@@ -842,10 +846,10 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 }
 
 /**
- * environment_end() - compute offset of first byte right after environemnt
+ * environment_end() - compute offset of first byte right after environment
  * @dev - index of enviroment buffer
  * Return:
- *  device offset of first byte right after environemnt
+ *  device offset of first byte right after environment
  */
 off_t environment_end(int dev)
 {
@@ -942,9 +946,15 @@ static int flash_read_buf(int dev, int fd, void *buf, size_t count,
 		lseek(fd, blockstart + block_seek, SEEK_SET);
 
 		rc = read(fd, buf + processed, readlen);
-		if (rc != readlen) {
+		if (rc == -1) {
 			fprintf(stderr, "Read error on %s: %s\n",
 				DEVNAME(dev), strerror(errno));
+			return -1;
+		}
+		if (rc != readlen) {
+			fprintf(stderr,
+				"Read error on %s: Attempted to read %zd bytes but got %d\n",
+				DEVNAME(dev), readlen, rc);
 			return -1;
 		}
 #ifdef DEBUG
@@ -985,6 +995,7 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 				   of the data */
 	loff_t blockstart;	/* running start of the current block -
 				   MEMGETBADBLOCK needs 64 bits */
+	int was_locked = 0;	/* flash lock flag */
 	int rc;
 
 	/*
@@ -1070,6 +1081,12 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 	}
 
 	erase.length = erasesize;
+	if (DEVTYPE(dev) != MTD_ABSENT) {
+		was_locked = ioctl(fd, MEMISLOCKED, &erase);
+		/* treat any errors as unlocked flash */
+		if (was_locked < 0)
+			was_locked = 0;
+	}
 
 	/* This only runs once on NOR flash and SPI-dataflash */
 	while (processed < write_total) {
@@ -1089,7 +1106,8 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 
 		if (DEVTYPE(dev) != MTD_ABSENT) {
 			erase.start = blockstart;
-			ioctl(fd, MEMUNLOCK, &erase);
+			if (was_locked)
+				ioctl(fd, MEMUNLOCK, &erase);
 			/* These do not need an explicit erase cycle */
 			if (DEVTYPE(dev) != MTD_DATAFLASH)
 				if (ioctl(fd, MEMERASE, &erase) != 0) {
@@ -1117,8 +1135,10 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 			return -1;
 		}
 
-		if (DEVTYPE(dev) != MTD_ABSENT)
-			ioctl(fd, MEMLOCK, &erase);
+		if (DEVTYPE(dev) != MTD_ABSENT) {
+			if (was_locked)
+				ioctl(fd, MEMLOCK, &erase);
+		}
 
 		processed += erasesize;
 		block_seek = 0;
@@ -1138,19 +1158,24 @@ static int flash_flag_obsolete(int dev, int fd, off_t offset)
 {
 	int rc;
 	struct erase_info_user erase;
+	char tmp = ENV_REDUND_OBSOLETE;
+	int was_locked;	/* flash lock flag */
 
+	was_locked = ioctl(fd, MEMISLOCKED, &erase);
 	erase.start = DEVOFFSET(dev);
 	erase.length = DEVESIZE(dev);
-	/* This relies on the fact, that obsolete_flag == 0 */
+	/* This relies on the fact, that ENV_REDUND_OBSOLETE == 0 */
 	rc = lseek(fd, offset, SEEK_SET);
 	if (rc < 0) {
 		fprintf(stderr, "Cannot seek to set the flag on %s\n",
 			DEVNAME(dev));
 		return rc;
 	}
-	ioctl(fd, MEMUNLOCK, &erase);
-	rc = write(fd, &obsolete_flag, sizeof(obsolete_flag));
-	ioctl(fd, MEMLOCK, &erase);
+	if (was_locked)
+		ioctl(fd, MEMUNLOCK, &erase);
+	rc = write(fd, &tmp, sizeof(tmp));
+	if (was_locked)
+		ioctl(fd, MEMLOCK, &erase);
 	if (rc < 0)
 		perror("Could not set obsolete flag");
 
@@ -1168,7 +1193,7 @@ static int flash_write(int fd_current, int fd_target, int dev_target)
 		(*environment.flags)++;
 		break;
 	case FLAG_BOOLEAN:
-		*environment.flags = active_flag;
+		*environment.flags = ENV_REDUND_ACTIVE;
 		break;
 	default:
 		fprintf(stderr, "Unimplemented flash scheme %u\n",
@@ -1183,7 +1208,7 @@ static int flash_write(int fd_current, int fd_target, int dev_target)
 
 	if (IS_UBI(dev_target)) {
 		if (ubi_update_start(fd_target, CUR_ENVSIZE) < 0)
-			return 0;
+			return -1;
 		return ubi_write(fd_target, environment.image, CUR_ENVSIZE);
 	}
 
@@ -1317,7 +1342,7 @@ static int flash_io_write(int fd_current)
 			rc = -1;
 		}
 
-		if (target_temp) {
+		if (rc >= 0 && target_temp) {
 			int dir_fd;
 
 			dir_fd = open(dname, O_DIRECTORY | O_RDONLY);
@@ -1441,6 +1466,7 @@ int fw_env_open(struct env_opts *opts)
 				"Warning: Bad CRC, using default environment\n");
 			memcpy(environment.data, default_environment,
 			       sizeof(default_environment));
+			environment.dirty = 1;
 		}
 	} else {
 		flag0 = *environment.flags;
@@ -1494,6 +1520,16 @@ int fw_env_open(struct env_opts *opts)
 		crc1_ok = (crc1 == redundant->crc);
 		flag1 = redundant->flags;
 
+		/*
+		 * environment.data still points to ((struct
+		 * env_image_redundant *)addr0)->data. If the two
+		 * environments differ, or one has bad crc, force a
+		 * write-out by marking the environment dirty.
+		 */
+		if (memcmp(environment.data, redundant->data, ENV_SIZE) ||
+		    !crc0_ok || !crc1_ok)
+			environment.dirty = 1;
+
 		if (crc0_ok && !crc1_ok) {
 			dev_current = 0;
 		} else if (!crc0_ok && crc1_ok) {
@@ -1503,15 +1539,16 @@ int fw_env_open(struct env_opts *opts)
 				"Warning: Bad CRC, using default environment\n");
 			memcpy(environment.data, default_environment,
 			       sizeof(default_environment));
+			environment.dirty = 1;
 			dev_current = 0;
 		} else {
 			switch (environment.flag_scheme) {
 			case FLAG_BOOLEAN:
-				if (flag0 == active_flag &&
-				    flag1 == obsolete_flag) {
+				if (flag0 == ENV_REDUND_ACTIVE &&
+				    flag1 == ENV_REDUND_OBSOLETE) {
 					dev_current = 0;
-				} else if (flag0 == obsolete_flag &&
-					   flag1 == active_flag) {
+				} else if (flag0 == ENV_REDUND_OBSOLETE &&
+					   flag1 == ENV_REDUND_ACTIVE) {
 					dev_current = 1;
 				} else if (flag0 == flag1) {
 					dev_current = 0;
@@ -1566,7 +1603,7 @@ int fw_env_open(struct env_opts *opts)
 		free(addr0);
 
 	if (addr1)
-		free(addr0);
+		free(addr1);
 
 	return ret;
 }
@@ -1630,6 +1667,9 @@ static int check_device_config(int dev)
 			goto err;
 		}
 		DEVTYPE(dev) = mtdinfo.type;
+		if (DEVESIZE(dev) == 0 && ENVSECTORS(dev) == 0 &&
+		    mtdinfo.type == MTD_NORFLASH)
+			DEVESIZE(dev) = mtdinfo.erasesize;
 		if (DEVESIZE(dev) == 0)
 			/* Assume the erase size is the same as the env-size */
 			DEVESIZE(dev) = ENVSIZE(dev);
@@ -1742,7 +1782,7 @@ static int parse_config(struct env_opts *opts)
 
 		if (ENVSIZE(0) != ENVSIZE(1)) {
 			fprintf(stderr,
-				"Redundant environments have unequal size");
+				"Redundant environments have unequal size\n");
 			return -1;
 		}
 	}
@@ -1760,19 +1800,20 @@ static int get_config(char *fname)
 	FILE *fp;
 	int i = 0;
 	int rc;
-	char dump[128];
+	char *line = NULL;
+	size_t linesize = 0;
 	char *devname;
 
 	fp = fopen(fname, "r");
 	if (fp == NULL)
 		return -1;
 
-	while (i < 2 && fgets(dump, sizeof(dump), fp)) {
-		/* Skip incomplete conversions and comment strings */
-		if (dump[0] == '#')
+	while (i < 2 && getline(&line, &linesize, fp) != -1) {
+		/* Skip comment strings */
+		if (line[0] == '#')
 			continue;
 
-		rc = sscanf(dump, "%ms %lli %lx %lx %lx",
+		rc = sscanf(line, "%ms %lli %lx %lx %lx",
 			    &devname,
 			    &DEVOFFSET(i),
 			    &ENVSIZE(i), &DEVESIZE(i), &ENVSECTORS(i));
@@ -1788,6 +1829,7 @@ static int get_config(char *fname)
 
 		i++;
 	}
+	free(line);
 	fclose(fp);
 
 	have_redund_env = i - 1;

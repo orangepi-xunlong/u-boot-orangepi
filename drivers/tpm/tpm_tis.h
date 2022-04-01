@@ -40,6 +40,7 @@ struct tpm_chip {
 	int is_open;
 	int locality;
 	u32 vend_dev;
+	u8 rid;
 	unsigned long timeout_a, timeout_b, timeout_c, timeout_d;  /* msec */
 	ulong chip_type;
 };
@@ -103,6 +104,7 @@ struct tpm_cmd_t {
 /* Max number of iterations after i2c NAK */
 #define MAX_COUNT		3
 
+#ifndef __TPM_V2_H
 /*
  * Max number of iterations after i2c NAK for 'long' commands
  *
@@ -126,5 +128,6 @@ enum tis_status {
 	TPM_STS_DATA_AVAIL		= 0x10,
 	TPM_STS_DATA_EXPECT		= 0x08,
 };
+#endif
 
 #endif

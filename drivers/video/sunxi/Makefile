@@ -1,13 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
-# Copyright (c) 2015 Allwinnertech, Inc.
-# Tyle <tyle at allwinnertech.com>
-#
-#
+# (C) Copyright 2000-2007
+# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
-obj-$(CONFIG_DISP2_SUNXI) += disp2/
-
-obj-$(CONFIG_BOOT_GUI) += bootGUI/
-
-obj-y += logo_display/
-obj-$(CONFIG_EINK200_SUNXI) += disp2/eink200/
-obj-$(CONFIG_EINK200_SUNXI) += common/eink_v2.o
+obj-$(CONFIG_VIDEO_SUNXI) += sunxi_display.o simplefb_common.o lcdc.o tve_common.o ../videomodes.o
+obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o simplefb_common.o lcdc.o sunxi_lcd.o

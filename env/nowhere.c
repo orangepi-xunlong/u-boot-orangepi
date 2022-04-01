@@ -9,7 +9,9 @@
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
+#include <asm/global_data.h>
 #include <linux/stddef.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -26,8 +28,25 @@ static int env_nowhere_init(void)
 	return 0;
 }
 
+static int env_nowhere_load(void)
+{
+	/*
+	 * for SPL, set env_valid = ENV_INVALID is enough as env_get_char()
+	 * return the default env if env_get is used
+	 * and SPL don't used env_import to reduce its size
+	 * For U-Boot proper, import the default environment to allow reload.
+	 */
+	if (!IS_ENABLED(CONFIG_SPL_BUILD))
+		env_set_default(NULL, 0);
+
+	gd->env_valid	= ENV_INVALID;
+
+	return 0;
+}
+
 U_BOOT_ENV_LOCATION(nowhere) = {
 	.location	= ENVL_NOWHERE,
 	.init		= env_nowhere_init,
+	.load		= env_nowhere_load,
 	ENV_NAME("nowhere")
 };

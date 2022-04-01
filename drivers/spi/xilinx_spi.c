@@ -16,10 +16,12 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
 #include <asm/io.h>
 #include <wait_bit.h>
+#include <linux/bitops.h>
 
 /*
  * [0]: http://www.xilinx.com/support/documentation
@@ -74,9 +76,7 @@
 				SPICR_SPE)
 #define XILSPI_SPICR_DFLT_OFF	(SPICR_MASTER_INHIBIT | SPICR_MANUAL_SS)
 
-#ifndef CONFIG_XILINX_SPI_IDLE_VAL
-#define CONFIG_XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
-#endif
+#define XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
 
 #define XILINX_SPISR_TIMEOUT	10000 /* in milliseconds */
 
@@ -174,7 +174,7 @@ static u32 xilinx_spi_fill_txfifo(struct udevice *bus, const u8 *txp,
 
 	while (txbytes && !(readl(&regs->spisr) & SPISR_TX_FULL) &&
 	       i < priv->fifo_depth) {
-		d = txp ? *txp++ : CONFIG_XILINX_SPI_IDLE_VAL;
+		d = txp ? *txp++ : XILINX_SPI_IDLE_VAL;
 		debug("spi_xfer: tx:%x ", d);
 		/* write out and wait for processing (receive data) */
 		writel(d & SPIDTR_8BIT_MASK, &regs->spidtr);
@@ -211,10 +211,10 @@ static void xilinx_spi_startup_block(struct udevice *dev, unsigned int bytes,
 	struct udevice *bus = dev_get_parent(dev);
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
 	struct xilinx_spi_regs *regs = priv->regs;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	const unsigned char *txp = dout;
 	unsigned char *rxp = din;
-	u32 reg, count;
+	u32 reg;
 	u32 txbytes = bytes;
 	u32 rxbytes = bytes;
 
@@ -224,10 +224,10 @@ static void xilinx_spi_startup_block(struct udevice *dev, unsigned int bytes,
 	 * it sets txp to the initial value for the normal operation.
 	 */
 	for ( ; priv->startup < 2; priv->startup++) {
-		count = xilinx_spi_fill_txfifo(bus, txp, txbytes);
+		xilinx_spi_fill_txfifo(bus, txp, txbytes);
 		reg = readl(&regs->spicr) & ~SPICR_MASTER_INHIBIT;
 		writel(reg, &regs->spicr);
-		count = xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
+		xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
 		txp = din;
 
 		if (priv->startup) {
@@ -244,18 +244,18 @@ static int xilinx_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	struct udevice *bus = dev_get_parent(dev);
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
 	struct xilinx_spi_regs *regs = priv->regs;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	/* assume spi core configured to do 8 bit transfers */
 	unsigned int bytes = bitlen / XILSPI_MAX_XFER_BITS;
 	const unsigned char *txp = dout;
 	unsigned char *rxp = din;
 	u32 txbytes = bytes;
 	u32 rxbytes = bytes;
-	u32 reg, count, timeout;
+	u32 reg, count;
 	int ret;
 
 	debug("spi_xfer: bus:%i cs:%i bitlen:%i bytes:%i flags:%lx\n",
-	      bus->seq, slave_plat->cs, bitlen, bytes, flags);
+	      dev_seq(bus), slave_plat->cs, bitlen, bytes, flags);
 
 	if (bitlen == 0)
 		goto done;
@@ -314,8 +314,7 @@ static int xilinx_spi_set_speed(struct udevice *bus, uint speed)
 
 	priv->freq = speed;
 
-	debug("xilinx_spi_set_speed: regs=%p, speed=%d\n", priv->regs,
-	      priv->freq);
+	debug("%s: regs=%p, speed=%d\n", __func__, priv->regs, priv->freq);
 
 	return 0;
 }
@@ -324,7 +323,7 @@ static int xilinx_spi_set_mode(struct udevice *bus, uint mode)
 {
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
 	struct xilinx_spi_regs *regs = priv->regs;
-	uint32_t spicr;
+	u32 spicr;
 
 	spicr = readl(&regs->spicr);
 	if (mode & SPI_LSB_FIRST)
@@ -339,8 +338,7 @@ static int xilinx_spi_set_mode(struct udevice *bus, uint mode)
 	writel(spicr, &regs->spicr);
 	priv->mode = mode;
 
-	debug("xilinx_spi_set_mode: regs=%p, mode=%d\n", priv->regs,
-	      priv->mode);
+	debug("%s: regs=%p, mode=%d\n", __func__, priv->regs, priv->mode);
 
 	return 0;
 }
@@ -364,6 +362,6 @@ U_BOOT_DRIVER(xilinx_spi) = {
 	.id	= UCLASS_SPI,
 	.of_match = xilinx_spi_ids,
 	.ops	= &xilinx_spi_ops,
-	.priv_auto_alloc_size = sizeof(struct xilinx_spi_priv),
+	.priv_auto	= sizeof(struct xilinx_spi_priv),
 	.probe	= xilinx_spi_probe,
 };

@@ -9,6 +9,7 @@
 #define __CONFIG_H
 
 #include <asm/arch/imx-regs.h>
+#include <linux/stringify.h>
 
 #define CONFIG_SYS_FSL_CLK
 
@@ -19,15 +20,8 @@
 /* Enable passing of ATAGs */
 #define CONFIG_CMDLINE_TAG
 
-#ifdef CONFIG_CMD_FUSE
-#define CONFIG_MXC_OCOTP
-#endif
-
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 2 * 1024 * 1024)
-
-/* Allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* NAND support */
 #define CONFIG_SYS_NAND_ONFI_DETECTION
@@ -37,29 +31,18 @@
 #define CONFIG_SYS_NAND_BASE		NFC_BASE_ADDR
 
 /* Dynamic MTD partition support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 #endif
 
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
 
 #define CONFIG_FEC_MXC
-#define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		RMII
 #define CONFIG_FEC_MXC_PHYADDR          0
 
-/* QSPI Configs*/
-
-#ifdef CONFIG_FSL_QSPI
-#define FSL_QSPI_FLASH_SIZE		(1 << 24)
-#define FSL_QSPI_FLASH_NUM		2
-#define CONFIG_SYS_FSL_QSPI_LE
-#endif
-
 /* I2C Configs */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -177,11 +160,7 @@
 
 /* Miscellaneous configurable options */
 
-#define CONFIG_SYS_MEMTEST_START	0x80010000
-#define CONFIG_SYS_MEMTEST_END		0x87C00000
-
 /* Physical memory map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			(0x80000000)
 #define PHYS_SDRAM_SIZE			(128 * 1024 * 1024)
 
@@ -194,18 +173,8 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_ENV_SIZE			(8 * 1024)
-
-#define CONFIG_ENV_OFFSET		(12 * 64 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
-
 #ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_SIZE			(64 * 2048)
-#define CONFIG_ENV_SECT_SIZE		(64 * 2048)
 #define CONFIG_ENV_RANGE		(512 * 1024)
-#define CONFIG_ENV_OFFSET		0x180000
 #endif
 
 #endif

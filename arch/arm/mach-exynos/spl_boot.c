@@ -5,7 +5,11 @@
 
 #include <common.h>
 #include <config.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 
+#include <asm/cache.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/dmc.h>
@@ -107,7 +111,7 @@ static void exynos_spi_copy(unsigned int uboot_size, unsigned int uboot_addr)
 {
 	int upto, todo;
 	int i, timeout = 100;
-	struct exynos_spi *regs = (struct exynos_spi *)CONFIG_ENV_SPI_BASE;
+	struct exynos_spi *regs = (struct exynos_spi *)CONFIG_SYS_SPI_BASE;
 
 	set_spi_clk(PERIPH_ID_SPI1, 50000000); /* set spi clock to 50Mhz */
 	/* set the spi1 GPIO */
@@ -275,7 +279,7 @@ void memzero(void *s, size_t n)
  */
 static void setup_global_data(gd_t *gdp)
 {
-	gd = gdp;
+	set_gd(gdp);
 	memzero((void *)gd, sizeof(gd_t));
 	gd->flags |= GD_FLG_RELOC;
 	gd->baudrate = CONFIG_BAUDRATE;

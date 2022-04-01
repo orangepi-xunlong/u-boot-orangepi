@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI watchdog
  *
  *  Copyright (c) 2017 Heinrich Schuchardt
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -14,7 +13,9 @@
 
 static struct efi_event *watchdog_timer_event;
 
-/*
+/**
+ * efi_watchdog_timer_notify() - resets system upon watchdog event
+ *
  * Reset the system when the watchdog event is notified.
  *
  * @event:	the watchdog event
@@ -26,19 +27,18 @@ static void EFIAPI efi_watchdog_timer_notify(struct efi_event *event,
 	EFI_ENTRY("%p, %p", event, context);
 
 	printf("\nEFI: Watchdog timeout\n");
-	EFI_CALL_VOID(efi_runtime_services.reset_system(EFI_RESET_COLD,
-							EFI_SUCCESS, 0, NULL));
+	do_reset(NULL, 0, 0, NULL);
 
 	EFI_EXIT(EFI_UNSUPPORTED);
 }
 
-/*
- * Reset the watchdog timer.
+/**
+ * efi_set_watchdog() - resets the watchdog timer
  *
  * This function is used by the SetWatchdogTimer service.
  *
  * @timeout:		seconds before reset by watchdog
- * @return:		status code
+ * Return:		status code
  */
 efi_status_t efi_set_watchdog(unsigned long timeout)
 {
@@ -54,10 +54,12 @@ efi_status_t efi_set_watchdog(unsigned long timeout)
 	return r;
 }
 
-/*
- * Initialize the EFI watchdog.
+/**
+ * efi_watchdog_register() - initializes the EFI watchdog
  *
- * This function is called by efi_init_obj_list()
+ * This function is called by efi_init_obj_list().
+ *
+ * Return:	status code
  */
 efi_status_t efi_watchdog_register(void)
 {

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2017 NXP
+ * Copyright 2017, 2019-2021 NXP
  * Copyright 2015 Freescale Semiconductor
  */
 
@@ -13,7 +13,9 @@
 #ifdef CONFIG_TARGET_LS2081ARDB
 #define CONFIG_QIXIS_I2C_ACCESS
 #endif
+#if !CONFIG_IS_ENABLED(DM_I2C)
 #define CONFIG_SYS_I2C_EARLY_INIT
+#endif
 #endif
 
 #define I2C_MUX_CH_VOL_MONITOR		0xa
@@ -57,7 +59,6 @@ unsigned long get_board_sys_clk(void);
 #ifdef CONFIG_SYS_FSL_HAS_DP_DDR
 #define CONFIG_DP_DDR_DIMM_SLOTS_PER_CTLR	1
 #endif
-#define CONFIG_FSL_DDR_BIST	/* enable built-in memory test */
 
 /* SATA */
 #define CONFIG_SCSI_AHCI_PLAT
@@ -70,8 +71,7 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_SCSI_MAX_DEVICE		(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
 						CONFIG_SYS_SCSI_MAX_LUN)
 
-#ifndef CONFIG_FSL_QSPI
-/* undefined CONFIG_FSL_DDR_SYNC_REFRESH for simulator */
+#if !defined(CONFIG_FSL_QSPI) || defined(CONFIG_TFABOOT)
 
 #define CONFIG_SYS_NOR0_CSPR_EXT	(0x0)
 #define CONFIG_SYS_NOR_AMASK		IFC_AMASK(128*1024*1024)
@@ -102,9 +102,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_IFC_CCR	0x01000000
 
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45 /* count down from 45/5: 9..1 */
 
@@ -196,7 +193,7 @@ unsigned long get_board_sys_clk(void);
 					FTIM2_GPCM_TWP(0x3E))
 #define CONFIG_SYS_CS3_FTIM3		0x0
 
-#if defined(CONFIG_SPL) && defined(CONFIG_NAND)
+#if defined(CONFIG_SPL) && defined(CONFIG_MTD_RAW_NAND)
 #define CONFIG_SYS_CSPR2_EXT		CONFIG_SYS_NOR0_CSPR_EXT
 #define CONFIG_SYS_CSPR2		CONFIG_SYS_NOR0_CSPR_EARLY
 #define CONFIG_SYS_CSPR2_FINAL		CONFIG_SYS_NOR0_CSPR
@@ -215,9 +212,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS0_FTIM2		CONFIG_SYS_NAND_FTIM2
 #define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NAND_FTIM3
 
-#define CONFIG_ENV_OFFSET		(2048 * 1024)
-#define CONFIG_ENV_SECT_SIZE		0x20000
-#define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_SPL_PAD_TO		0x80000
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	(1024 * 1024)
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(512 * 1024)
@@ -239,10 +233,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS2_FTIM1		CONFIG_SYS_NAND_FTIM1
 #define CONFIG_SYS_CS2_FTIM2		CONFIG_SYS_NAND_FTIM2
 #define CONFIG_SYS_CS2_FTIM3		CONFIG_SYS_NAND_FTIM3
-
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x300000)
-#define CONFIG_ENV_SECT_SIZE		0x20000
-#define CONFIG_ENV_SIZE			0x2000
 #endif
 
 /* Debug Server firmware */
@@ -280,16 +270,8 @@ unsigned long get_board_sys_clk(void);
 #define I2C_MUX_CH_DEFAULT      0x8
 
 /* SPI */
-#if defined(CONFIG_FSL_QSPI) || defined(CONFIG_FSL_DSPI)
-#define CONFIG_SPI_FLASH
-#ifdef CONFIG_FSL_DSPI
+#if defined(CONFIG_FSL_DSPI)
 #define CONFIG_SPI_FLASH_STMICRO
-#endif
-#ifdef CONFIG_FSL_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
-#endif
-#define FSL_QSPI_FLASH_SIZE		SZ_64M	/* 64MB */
-#define FSL_QSPI_FLASH_NUM		2
 #endif
 
 /*
@@ -297,7 +279,6 @@ unsigned long get_board_sys_clk(void);
  */
 #define RTC
 #ifdef CONFIG_TARGET_LS2081ARDB
-#define CONFIG_RTC_PCF8563		1
 #define CONFIG_SYS_I2C_RTC_ADDR         0x51
 #else
 #define CONFIG_RTC_DS3231               1
@@ -319,13 +300,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_PCI_SCAN_SHOW
 #endif
 
-/*  MMC  */
-#ifdef CONFIG_MMC
-#define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
-#endif
-
-#define CONFIG_MISC_INIT_R
-
 #define BOOT_TARGET_DEVICES(func) \
 	func(USB, usb, 0) \
 	func(MMC, mmc, 0) \
@@ -333,33 +307,64 @@ unsigned long get_board_sys_clk(void);
 	func(DHCP, dhcp, na)
 #include <config_distro_bootcmd.h>
 
+#ifdef CONFIG_TFABOOT
+#define QSPI_MC_INIT_CMD				\
+	"sf probe 0:0; "				\
+	"sf read 0x80640000 0x640000 0x80000; "		\
+	"env exists secureboot && "			\
+	"esbc_validate 0x80640000 && "			\
+	"esbc_validate 0x80680000; "			\
+	"sf read 0x80a00000 0xa00000 0x200000; "	\
+	"sf read 0x80e00000 0xe00000 0x100000; "	\
+	"fsl_mc start mc 0x80a00000 0x80e00000 \0"
+#define SD_MC_INIT_CMD				\
+	"mmcinfo;mmc read 0x80a00000 0x5000 0x1000;" \
+	"mmc read 0x80e00000 0x7000 0x800;"	\
+	"env exists secureboot && "		\
+	"mmc read 0x80640000 0x3200 0x20 && "	\
+	"mmc read 0x80680000 0x3400 0x20 && "	\
+	"esbc_validate 0x80640000 && "		\
+	"esbc_validate 0x80680000 ;"		\
+	"fsl_mc start mc 0x80a00000 0x80e00000\0"
+#define IFC_MC_INIT_CMD				\
+	"env exists secureboot && "	\
+	"esbc_validate 0x580640000 && "		\
+	"esbc_validate 0x580680000; "		\
+	"fsl_mc start mc 0x580a00000 0x580e00000 \0"
+#else
 #ifdef CONFIG_QSPI_BOOT
-#define MC_INIT_CMD				\
-	"mcinitcmd=env exists secureboot && "	\
-	"esbc_validate 0x20700000 && "		\
-	"esbc_validate 0x20740000;"		\
-	"fsl_mc start mc 0x20a00000 0x20e00000 \0"
+#define MC_INIT_CMD					\
+	"mcinitcmd=sf probe 0:0; "			\
+	"sf read 0x80640000 0x640000 0x80000; "		\
+	"env exists secureboot && "			\
+	"esbc_validate 0x80640000 && "			\
+	"esbc_validate 0x80680000; "			\
+	"sf read 0x80a00000 0xa00000 0x200000; "	\
+	"sf read 0x80e00000 0xe00000 0x100000; "	\
+	"fsl_mc start mc 0x80a00000 0x80e00000 \0"
 #elif defined(CONFIG_SD_BOOT)
 #define MC_INIT_CMD                             \
-	"mcinitcmd=mmcinfo;mmc read 0x80000000 0x5000 0x800;" \
-	"mmc read 0x80100000 0x7000 0x800;"	\
+	"mcinitcmd=mmcinfo;mmc read 0x80a00000 0x5000 0x1000;" \
+	"mmc read 0x80e00000 0x7000 0x800;"	\
 	"env exists secureboot && "		\
-	"mmc read 0x80700000 0x3800 0x10 && "	\
-	"mmc read 0x80740000 0x3A00 0x10 && "	\
-	"esbc_validate 0x80700000 && "		\
-	"esbc_validate 0x80740000 ;"		\
-	"fsl_mc start mc 0x80000000 0x80100000\0" \
+	"mmc read 0x80640000 0x3200 0x20 && "	\
+	"mmc read 0x80680000 0x3400 0x20 && "	\
+	"esbc_validate 0x80640000 && "		\
+	"esbc_validate 0x80680000 ;"		\
+	"fsl_mc start mc 0x80a00000 0x80e00000\0" \
 	"mcmemsize=0x70000000\0"
 #else
 #define MC_INIT_CMD				\
 	"mcinitcmd=env exists secureboot && "	\
-	"esbc_validate 0x580700000 && "		\
-	"esbc_validate 0x580740000; "		\
+	"esbc_validate 0x580640000 && "		\
+	"esbc_validate 0x580680000; "		\
 	"fsl_mc start mc 0x580a00000 0x580e00000 \0"
+#endif
 #endif
 
 /* Initial environment variables */
 #undef CONFIG_EXTRA_ENV_SETTINGS
+#ifdef CONFIG_TFABOOT
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"hwconfig=fsl_ddr:bank_intlv=auto\0"	\
 	"ramdisk_addr=0x800000\0"		\
@@ -374,7 +379,70 @@ unsigned long get_board_sys_clk(void);
 	"scripthdraddr=0x80080000\0"		\
 	"fdtheader_addr_r=0x80100000\0"		\
 	"kernelheader_addr_r=0x80200000\0"	\
-	"kernelheader_addr=0x580800000\0"	\
+	"kernelheader_addr=0x580600000\0"	\
+	"kernel_addr_r=0x81000000\0"		\
+	"kernelheader_size=0x40000\0"		\
+	"fdt_addr_r=0x90000000\0"		\
+	"load_addr=0xa0000000\0"		\
+	"kernel_size=0x2800000\0"		\
+	"kernel_addr_sd=0x8000\0"		\
+	"kernel_size_sd=0x14000\0"              \
+	"console=ttyAMA0,38400n8\0"		\
+	"mcmemsize=0x70000000\0"		\
+	"sd_bootcmd=echo Trying load from SD ..;" \
+	"mmcinfo; mmc read $load_addr "		\
+	"$kernel_addr_sd $kernel_size_sd && "	\
+	"bootm $load_addr#$board\0"             \
+	QSPI_MC_INIT_CMD				\
+	BOOTENV					\
+	"boot_scripts=ls2088ardb_boot.scr\0"	\
+	"boot_script_hdr=hdr_ls2088ardb_bs.out\0"	\
+	"scan_dev_for_boot_part="		\
+		"part list ${devtype} ${devnum} devplist; "	\
+		"env exists devplist || setenv devplist 1; "	\
+		"for distro_bootpart in ${devplist}; do "	\
+			"if fstype ${devtype} "			\
+				"${devnum}:${distro_bootpart} "	\
+				"bootfstype; then "		\
+				"run scan_dev_for_boot; "	\
+			"fi; "					\
+		"done\0"					\
+	"boot_a_script="					\
+		"load ${devtype} ${devnum}:${distro_bootpart} "	\
+			"${scriptaddr} ${prefix}${script}; "	\
+		"env exists secureboot && load ${devtype} "	\
+			"${devnum}:${distro_bootpart} "		\
+			"${scripthdraddr} ${prefix}${boot_script_hdr} "	\
+			"&& esbc_validate ${scripthdraddr};"	\
+		"source ${scriptaddr}\0"			\
+	"qspi_bootcmd=echo Trying load from qspi..;"		\
+		"sf probe && sf read $load_addr "		\
+		"$kernel_start $kernel_size ; env exists secureboot &&"	\
+		"sf read $kernelheader_addr_r $kernelheader_start "	\
+		"$kernelheader_size && esbc_validate ${kernelheader_addr_r}; "\
+		" bootm $load_addr#$board\0"			\
+	"nor_bootcmd=echo Trying load from nor..;"		\
+		"cp.b $kernel_addr $load_addr "			\
+		"$kernel_size ; env exists secureboot && "	\
+		"cp.b $kernelheader_addr $kernelheader_addr_r "	\
+		"$kernelheader_size && esbc_validate ${kernelheader_addr_r}; "\
+		"bootm $load_addr#$board\0"
+#else
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"hwconfig=fsl_ddr:bank_intlv=auto\0"	\
+	"ramdisk_addr=0x800000\0"		\
+	"ramdisk_size=0x2000000\0"		\
+	"fdt_high=0xa0000000\0"			\
+	"initrd_high=0xffffffffffffffff\0"	\
+	"fdt_addr=0x64f00000\0"			\
+	"kernel_addr=0x581000000\0"		\
+	"kernel_start=0x1000000\0"		\
+	"kernelheader_start=0x600000\0"		\
+	"scriptaddr=0x80000000\0"		\
+	"scripthdraddr=0x80080000\0"		\
+	"fdtheader_addr_r=0x80100000\0"		\
+	"kernelheader_addr_r=0x80200000\0"	\
+	"kernelheader_addr=0x580600000\0"	\
 	"kernel_addr_r=0x81000000\0"		\
 	"kernelheader_size=0x40000\0"		\
 	"fdt_addr_r=0x90000000\0"		\
@@ -402,18 +470,13 @@ unsigned long get_board_sys_clk(void);
 				"run scan_dev_for_boot; "	\
 			"fi; "					\
 		"done\0"					\
-	"scan_dev_for_boot="					\
-		"echo Scanning ${devtype} "			\
-			"${devnum}:${distro_bootpart}...; "	\
-		"for prefix in ${boot_prefixes}; do "		\
-			"run scan_dev_for_scripts; "		\
-		"done;\0"					\
 	"boot_a_script="					\
 		"load ${devtype} ${devnum}:${distro_bootpart} "	\
 			"${scriptaddr} ${prefix}${script}; "	\
 		"env exists secureboot && load ${devtype} "	\
 			"${devnum}:${distro_bootpart} "		\
-			"${scripthdraddr} ${prefix}${boot_script_hdr} "	\
+			"${scripthdraddr} ${prefix}${boot_script_hdr}; " \
+			"env exists secureboot "	\
 			"&& esbc_validate ${scripthdraddr};"	\
 		"source ${scriptaddr}\0"			\
 	"qspi_bootcmd=echo Trying load from qspi..;"		\
@@ -428,22 +491,57 @@ unsigned long get_board_sys_clk(void);
 		"cp.b $kernelheader_addr $kernelheader_addr_r "	\
 		"$kernelheader_size && esbc_validate ${kernelheader_addr_r}; "\
 		"bootm $load_addr#$board\0"
+#endif
 
+#ifdef CONFIG_TFABOOT
+#define QSPI_NOR_BOOTCOMMAND						\
+			"sf probe 0:0; "				\
+			"sf read 0x806c0000 0x6c0000 0x40000; "		\
+			"env exists mcinitcmd && env exists secureboot "\
+			"&& esbc_validate 0x806c0000; "			\
+			"sf read 0x80d00000 0xd00000 0x100000; "	\
+			"env exists mcinitcmd && "			\
+			"fsl_mc lazyapply dpl 0x80d00000; "		\
+			"run distro_bootcmd;run qspi_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
+
+/* Try to boot an on-SD kernel first, then do normal distro boot */
+#define SD_BOOTCOMMAND						\
+			"env exists mcinitcmd && env exists secureboot "\
+			"&& mmcinfo && mmc read $load_addr 0x3600 0x800 " \
+			"&& esbc_validate $load_addr; "			\
+			"env exists mcinitcmd && run mcinitcmd "	\
+			"&& mmc read 0x80d00000 0x6800 0x800 "		\
+			"&& fsl_mc lazyapply dpl 0x80d00000; "		\
+			"run distro_bootcmd;run sd_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
+
+/* Try to boot an on-NOR kernel first, then do normal distro boot */
+#define IFC_NOR_BOOTCOMMAND						\
+			"env exists mcinitcmd && env exists secureboot "\
+			"&& esbc_validate 0x5806C0000; env exists mcinitcmd "\
+			"&& fsl_mc lazyapply dpl 0x580d00000;"		\
+			"run distro_bootcmd;run nor_bootcmd; "		\
+			"env exists secureboot && esbc_halt;"
+#else
 #undef CONFIG_BOOTCOMMAND
 #ifdef CONFIG_QSPI_BOOT
 /* Try to boot an on-QSPI kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
+			"sf probe 0:0; "				\
+			"sf read 0x806c0000 0x6c0000 0x40000; "		\
 			"env exists mcinitcmd && env exists secureboot "\
-			"&& esbc_validate 0x20780000; "			\
+			"&& esbc_validate 0x806C0000; "			\
+			"sf read 0x80d00000 0xd00000 0x100000; "	\
 			"env exists mcinitcmd && "			\
-			"fsl_mc lazyapply dpl 0x20d00000; "		\
+			"fsl_mc lazyapply dpl 0x80d00000; "		\
 			"run distro_bootcmd;run qspi_bootcmd; "		\
 			"env exists secureboot && esbc_halt;"
 #elif defined(CONFIG_SD_BOOT)
 /* Try to boot an on-SD kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
 			"env exists mcinitcmd && env exists secureboot "\
-			"&& mmcinfo && mmc read $load_addr 0x3c00 0x800 " \
+			"&& mmcinfo && mmc read $load_addr 0x3600 0x800 " \
 			"&& esbc_validate $load_addr; "			\
 			"env exists mcinitcmd && run mcinitcmd "	\
 			"&& mmc read 0x88000000 0x6800 0x800 "		\
@@ -454,25 +552,14 @@ unsigned long get_board_sys_clk(void);
 /* Try to boot an on-NOR kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
 			"env exists mcinitcmd && env exists secureboot "\
-			"&& esbc_validate 0x580780000; env exists mcinitcmd "\
+			"&& esbc_validate 0x5806C0000; env exists mcinitcmd "\
 			"&& fsl_mc lazyapply dpl 0x580d00000;"		\
 			"run distro_bootcmd;run nor_bootcmd; "		\
 			"env exists secureboot && esbc_halt;"
 #endif
+#endif
 
 /* MAC/PHY configuration */
-#ifdef CONFIG_FSL_MC_ENET
-#define CONFIG_PHYLIB_10G
-#define CONFIG_PHY_AQUANTIA
-#define CONFIG_PHY_CORTINA
-#define	CONFIG_SYS_CORTINA_FW_IN_NOR
-#ifdef CONFIG_QSPI_BOOT
-#define CONFIG_CORTINA_FW_ADDR		0x20980000
-#else
-#define CONFIG_CORTINA_FW_ADDR		0x580980000
-#endif
-#define CONFIG_CORTINA_FW_LENGTH	0x40000
-
 #define CORTINA_PHY_ADDR1	0x10
 #define CORTINA_PHY_ADDR2	0x11
 #define CORTINA_PHY_ADDR3	0x12
@@ -482,11 +569,7 @@ unsigned long get_board_sys_clk(void);
 #define AQ_PHY_ADDR3		0x02
 #define AQ_PHY_ADDR4		0x03
 #define AQR405_IRQ_MASK		0x36
-
-#define CONFIG_MII
 #define CONFIG_ETHPRIME		"DPMAC1@xgmii"
-#define CONFIG_PHY_AQUANTIA
-#endif
 
 #include <asm/fsl_secure_boot.h>
 

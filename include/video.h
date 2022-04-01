@@ -13,14 +13,29 @@
 #ifndef _VIDEO_H_
 #define _VIDEO_H_
 
-#ifdef CONFIG_DM_VIDEO
-
 #include <stdio_dev.h>
 
-struct video_uc_platdata {
+struct udevice;
+
+/**
+ * struct video_uc_plat - uclass platform data for a video device
+ *
+ * This holds information that the uclass needs to know about each device. It
+ * is accessed using dev_get_uclass_plat(dev). See 'Theory of operation' at
+ * the top of video-uclass.c for details on how this information is set.
+ *
+ * @align: Frame-buffer alignment, indicating the memory boundary the frame
+ *	buffer should start on. If 0, 1MB is assumed
+ * @size: Frame-buffer size, in bytes
+ * @base: Base address of frame buffer, 0 if not yet known
+ * @copy_base: Base address of a hardware copy of the frame buffer. See
+ *	CONFIG_VIDEO_COPY.
+ */
+struct video_uc_plat {
 	uint align;
 	uint size;
 	ulong base;
+	ulong copy_base;
 };
 
 enum video_polarity {
@@ -55,19 +70,24 @@ enum video_log2_bpp {
  * @xsize:	Number of pixel columns (e.g. 1366)
  * @ysize:	Number of pixels rows (e.g.. 768)
  * @rot:	Display rotation (0=none, 1=90 degrees clockwise, etc.)
- * @bpix:	Encoded bits per pixel
+ * @bpix:	Encoded bits per pixel (enum video_log2_bpp)
  * @vidconsole_drv_name:	Driver to use for the text console, NULL to
  *		select automatically
  * @font_size:	Font size in pixels (0 to use a default value)
  * @fb:		Frame buffer
  * @fb_size:	Frame buffer size
- * @line_length:	Length of each frame buffer line, in bytes
+ * @copy_fb:	Copy of the frame buffer to keep up to date; see struct
+ *		video_uc_plat
+ * @line_length:	Length of each frame buffer line, in bytes. This can be
+ *		set by the driver, but if not, the uclass will set it after
+ *		probing
  * @colour_fg:	Foreground colour (pixel value)
  * @colour_bg:	Background colour (pixel value)
  * @flush_dcache:	true to enable flushing of the data cache after
  *		the LCD is updated
  * @cmap:	Colour map for 8-bit-per-pixel displays
  * @fg_col_idx:	Foreground color code (bit 3 = bold, bit 0-2 = color)
+ * @bg_col_idx:	Background color code (bit 3 = bold, bit 0-2 = color)
  */
 struct video_priv {
 	/* Things set up by the driver: */
@@ -84,16 +104,26 @@ struct video_priv {
 	 */
 	void *fb;
 	int fb_size;
+	void *copy_fb;
 	int line_length;
 	u32 colour_fg;
 	u32 colour_bg;
 	bool flush_dcache;
 	ushort *cmap;
 	u8 fg_col_idx;
+	u8 bg_col_idx;
 };
 
-/* Placeholder - there are no video operations at present */
+/**
+ * struct video_ops - structure for keeping video operations
+ * @video_sync: Synchronize FB with device. Some device like SPI based LCD
+ *		displays needs synchronization when data in an FB is available.
+ *		For these devices implement video_sync hook to call a sync
+ *		function. vid is pointer to video device udevice. Function
+ *		should return 0 on success video_sync and error code otherwise
+ */
 struct video_ops {
+	int (*video_sync)(struct udevice *vid);
 };
 
 #define video_get_ops(dev)        ((struct video_ops *)(dev)->driver->ops)
@@ -103,7 +133,7 @@ struct video_ops {
  *
  * Note: This function is for internal use.
  *
- * This uses the uclass platdata's @size and @align members to figure out
+ * This uses the uclass plat's @size and @align members to figure out
  * a size and position for each frame buffer as part of the pre-relocation
  * process of determining the post-relocation memory layout.
  *
@@ -116,23 +146,30 @@ struct video_ops {
  */
 int video_reserve(ulong *addrp);
 
+#ifdef CONFIG_DM_VIDEO
 /**
  * video_clear() - Clear a device's frame buffer to background color.
  *
  * @dev:	Device to clear
+ * @return 0
  */
-void video_clear(struct udevice *dev);
+int video_clear(struct udevice *dev);
+#endif /* CONFIG_DM_VIDEO */
 
 /**
  * video_sync() - Sync a device's frame buffer with its hardware
  *
+ * @vid:	Device to sync
+ * @force:	True to force a sync even if there was one recently (this is
+ *		very expensive on sandbox)
+ *
+ * @return: 0 on success, error code otherwise
+ *
  * Some frame buffers are cached or have a secondary frame buffer. This
  * function syncs these up so that the current contents of the U-Boot frame
  * buffer are displayed to the user.
- *
- * @dev:	Device to sync
  */
-void video_sync(struct udevice *vid);
+int video_sync(struct udevice *vid, bool force);
 
 /**
  * video_sync_all() - Sync all devices' frame buffers with there hardware
@@ -188,21 +225,51 @@ void video_set_flush_dcache(struct udevice *dev, bool flush);
 /**
  * Set default colors and attributes
  *
- * @priv	device information
+ * @dev:	video device
+ * @invert	true to invert colours
  */
-void video_set_default_colors(struct video_priv *priv);
+void video_set_default_colors(struct udevice *dev, bool invert);
 
-#endif /* CONFIG_DM_VIDEO */
+#ifdef CONFIG_VIDEO_COPY
+/**
+ * vidconsole_sync_copy() - Sync back to the copy framebuffer
+ *
+ * This ensures that the copy framebuffer has the same data as the framebuffer
+ * for a particular region. It should be called after the framebuffer is updated
+ *
+ * @from and @to can be in either order. The region between them is synced.
+ *
+ * @dev: Vidconsole device being updated
+ * @from: Start/end address within the framebuffer (->fb)
+ * @to: Other address within the frame buffer
+ * @return 0 if OK, -EFAULT if the start address is before the start of the
+ *	frame buffer start
+ */
+int video_sync_copy(struct udevice *dev, void *from, void *to);
+
+/**
+ * video_sync_copy_all() - Sync the entire framebuffer to the copy
+ *
+ * @dev: Vidconsole device being updated
+ * @return 0 (always)
+ */
+int video_sync_copy_all(struct udevice *dev);
+#else
+static inline int video_sync_copy(struct udevice *dev, void *from, void *to)
+{
+	return 0;
+}
+
+static inline int video_sync_copy_all(struct udevice *dev)
+{
+	return 0;
+}
+
+#endif
 
 #ifndef CONFIG_DM_VIDEO
 
 /* Video functions */
-
-struct stdio_dev;
-
-int	video_init(void *videobase);
-void	video_putc(struct stdio_dev *dev, const char c);
-void	video_puts(struct stdio_dev *dev, const char *s);
 
 /**
  * Display a BMP format bitmap on the screen
@@ -272,6 +339,6 @@ int lg4573_spi_startup(unsigned int bus, unsigned int cs,
  */
 void video_get_info_str(int line_number, char *info);
 
-#endif /* CONFIG_DM_VIDEO */
+#endif /* !CONFIG_DM_VIDEO */
 
 #endif

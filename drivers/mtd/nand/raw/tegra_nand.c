@@ -7,12 +7,17 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <memalign.h>
 #include <nand.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch-tegra/clk_rst.h>
+#include <dm/device_compat.h>
+#include <linux/bug.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
 #include <fdtdec.h>
@@ -986,7 +991,7 @@ U_BOOT_DRIVER(tegra_nand) = {
 	.id = UCLASS_MTD,
 	.of_match = tegra_nand_dt_ids,
 	.probe = tegra_probe,
-	.priv_auto_alloc_size = sizeof(struct tegra_nand_info),
+	.priv_auto	= sizeof(struct tegra_nand_info),
 };
 
 void board_nand_init(void)
@@ -995,7 +1000,7 @@ void board_nand_init(void)
 	int ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_MTD,
-					  DM_GET_DRIVER(tegra_nand), &dev);
+					  DM_DRIVER_GET(tegra_nand), &dev);
 	if (ret && ret != -ENODEV)
 		pr_err("Failed to initialize %s. (error %d)\n", dev->name,
 		       ret);

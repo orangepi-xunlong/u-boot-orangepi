@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2011-2013 Pali Rohár <pali.rohar@gmail.com>
+ * (C) Copyright 2011-2013 Pali Rohár <pali@kernel.org>
  */
 
 #include <common.h>
 #include <command.h>
 #include <ansi.h>
+#include <env.h>
+#include <log.h>
 #include <menu.h>
 #include <watchdog.h>
 #include <malloc.h>
+#include <linux/delay.h>
 #include <linux/string.h>
 
 /* maximum bootmenu entries */
@@ -42,6 +45,7 @@ enum bootmenu_key {
 	KEY_UP,
 	KEY_DOWN,
 	KEY_SELECT,
+	KEY_QUIT,
 };
 
 static char *bootmenu_getoption(unsigned short int n)
@@ -96,7 +100,7 @@ static void bootmenu_autoboot_loop(struct bootmenu_data *menu,
 			}
 
 			menu->delay = -1;
-			c = getc();
+			c = getchar();
 
 			switch (c) {
 			case '\e':
@@ -105,6 +109,9 @@ static void bootmenu_autoboot_loop(struct bootmenu_data *menu,
 				break;
 			case '\r':
 				*key = KEY_SELECT;
+				break;
+			case 0x3: /* ^C */
+				*key = KEY_QUIT;
 				break;
 			default:
 				*key = KEY_NONE;
@@ -133,12 +140,24 @@ static void bootmenu_loop(struct bootmenu_data *menu,
 {
 	int c;
 
-	while (!tstc()) {
-		WATCHDOG_RESET();
-		mdelay(10);
+	if (*esc == 1) {
+		if (tstc()) {
+			c = getchar();
+		} else {
+			WATCHDOG_RESET();
+			mdelay(10);
+			if (tstc())
+				c = getchar();
+			else
+				c = '\e';
+		}
+	} else {
+		while (!tstc()) {
+			WATCHDOG_RESET();
+			mdelay(10);
+		}
+		c = getchar();
 	}
-
-	c = getc();
 
 	switch (*esc) {
 	case 0:
@@ -154,7 +173,9 @@ static void bootmenu_loop(struct bootmenu_data *menu,
 			*esc = 2;
 			*key = KEY_NONE;
 		} else {
-			*esc = 0;
+		/* Alone ESC key was pressed */
+			*key = KEY_QUIT;
+			*esc = (c == '\e') ? 1 : 0;
 		}
 		break;
 	case 2:
@@ -184,6 +205,10 @@ static void bootmenu_loop(struct bootmenu_data *menu,
 	/* enter key was pressed */
 	if (c == '\r')
 		*key = KEY_SELECT;
+
+	/* ^C was pressed */
+	if (c == 0x3)
+		*key = KEY_QUIT;
 }
 
 static char *bootmenu_choice_entry(void *data)
@@ -217,6 +242,12 @@ static char *bootmenu_choice_entry(void *data)
 		case KEY_SELECT:
 			iter = menu->first;
 			for (i = 0; i < menu->active; ++i)
+				iter = iter->next;
+			return iter->key;
+		case KEY_QUIT:
+			/* Quit by choosing the last entry - U-Boot console */
+			iter = menu->first;
+			while (iter->next)
 				iter = iter->next;
 			return iter->key;
 		default:
@@ -253,6 +284,7 @@ static struct bootmenu_data *bootmenu_create(int delay)
 
 	int len;
 	char *sep;
+	char *default_str;
 	struct bootmenu_entry *entry;
 
 	menu = malloc(sizeof(struct bootmenu_data));
@@ -262,6 +294,10 @@ static struct bootmenu_data *bootmenu_create(int delay)
 	menu->delay = delay;
 	menu->active = 0;
 	menu->first = NULL;
+
+	default_str = env_get("bootmenu_default");
+	if (default_str)
+		menu->active = (int)simple_strtol(default_str, NULL, 10);
 
 	while ((option = bootmenu_getoption(i))) {
 		sep = strchr(option, '=');
@@ -346,11 +382,45 @@ static struct bootmenu_data *bootmenu_create(int delay)
 	}
 
 	menu->count = i;
+
+	if ((menu->active >= menu->count)||(menu->active < 0)) { //ensure active menuitem is inside menu
+		printf("active menuitem (%d) is outside menu (0..%d)\n",menu->active,menu->count-1);
+		menu->active=0;
+	}
+
 	return menu;
 
 cleanup:
 	bootmenu_destroy(menu);
 	return NULL;
+}
+
+static void menu_display_statusline(struct menu *m)
+{
+	struct bootmenu_entry *entry;
+	struct bootmenu_data *menu;
+
+	if (menu_default_choice(m, (void *)&entry) < 0)
+		return;
+
+	menu = entry->menu;
+
+	printf(ANSI_CURSOR_POSITION, 1, 1);
+	puts(ANSI_CLEAR_LINE);
+	printf(ANSI_CURSOR_POSITION, 2, 1);
+	puts("  *** U-Boot Boot Menu ***");
+	puts(ANSI_CLEAR_LINE_TO_END);
+	printf(ANSI_CURSOR_POSITION, 3, 1);
+	puts(ANSI_CLEAR_LINE);
+
+	/* First 3 lines are bootmenu header + 2 empty lines between entries */
+	printf(ANSI_CURSOR_POSITION, menu->count + 5, 1);
+	puts(ANSI_CLEAR_LINE);
+	printf(ANSI_CURSOR_POSITION, menu->count + 6, 1);
+	puts("  Press UP/DOWN to move, ENTER to select, ESC/CTRL+C to quit");
+	puts(ANSI_CLEAR_LINE_TO_END);
+	printf(ANSI_CURSOR_POSITION, menu->count + 7, 1);
+	puts(ANSI_CLEAR_LINE);
 }
 
 static void bootmenu_show(int delay)
@@ -384,8 +454,9 @@ static void bootmenu_show(int delay)
 	if (!bootmenu)
 		return;
 
-	menu = menu_create(NULL, bootmenu->delay, 1, bootmenu_print_entry,
-			   bootmenu_choice_entry, bootmenu);
+	menu = menu_create(NULL, bootmenu->delay, 1, menu_display_statusline,
+			   bootmenu_print_entry, bootmenu_choice_entry,
+			   bootmenu);
 	if (!menu) {
 		bootmenu_destroy(bootmenu);
 		return;
@@ -433,35 +504,7 @@ cleanup:
 #endif
 }
 
-void menu_display_statusline(struct menu *m)
-{
-	struct bootmenu_entry *entry;
-	struct bootmenu_data *menu;
-
-	if (menu_default_choice(m, (void *)&entry) < 0)
-		return;
-
-	menu = entry->menu;
-
-	printf(ANSI_CURSOR_POSITION, 1, 1);
-	puts(ANSI_CLEAR_LINE);
-	printf(ANSI_CURSOR_POSITION, 2, 1);
-	puts("  *** U-Boot Boot Menu ***");
-	puts(ANSI_CLEAR_LINE_TO_END);
-	printf(ANSI_CURSOR_POSITION, 3, 1);
-	puts(ANSI_CLEAR_LINE);
-
-	/* First 3 lines are bootmenu header + 2 empty lines between entries */
-	printf(ANSI_CURSOR_POSITION, menu->count + 5, 1);
-	puts(ANSI_CLEAR_LINE);
-	printf(ANSI_CURSOR_POSITION, menu->count + 6, 1);
-	puts("  Press UP/DOWN to move, ENTER to select");
-	puts(ANSI_CLEAR_LINE_TO_END);
-	printf(ANSI_CURSOR_POSITION, menu->count + 7, 1);
-	puts(ANSI_CLEAR_LINE);
-}
-
-#ifdef CONFIG_MENU_SHOW
+#ifdef CONFIG_AUTOBOOT_MENU_SHOW
 int menu_show(int bootdelay)
 {
 	bootmenu_show(bootdelay);
@@ -469,7 +512,7 @@ int menu_show(int bootdelay)
 }
 #endif
 
-int do_bootmenu(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_bootmenu(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *delay_str = NULL;
 	int delay = 10;

@@ -30,10 +30,10 @@ config STI_RESET
 
 config STM32_RESET
 	bool "Enable the STM32 reset"
-	depends on STM32 || ARCH_STM32MP
+	depends on ARCH_STM32 || ARCH_STM32MP
 	help
 	  Support for reset controllers on STMicroelectronics STM32 family SoCs.
-	  This resset driver is compatible with STM32 F4/F7 and H7 SoCs.
+	  This reset driver is compatible with STM32 F4/F7 and H7 SoCs.
 
 config TEGRA_CAR_RESET
 	bool "Enable Tegra CAR-based reset driver"
@@ -48,6 +48,14 @@ config TEGRA186_RESET
 	help
 	  Enable support for manipulating Tegra's on-SoC reset signals via IPC
 	  requests to the BPMP (Boot and Power Management Processor).
+
+config RESET_TI_SCI
+	bool "TI System Control Interface (TI SCI) reset driver"
+	depends on DM_RESET && TI_SCI_PROTOCOL
+	help
+	  This enables the reset driver support over TI System Control Interface
+	  available on some new TI's SoCs. If you wish to use reset resources
+	  managed by the TI System Controller, say Y here. Otherwise, say N.
 
 config RESET_BCM6345
 	bool "Reset controller driver for BCM6345"
@@ -64,15 +72,23 @@ config RESET_UNIPHIER
 	  Say Y if you want to control reset signals provided by System Control
 	  block, Media I/O block, Peripheral Block.
 
-config AST2500_RESET
+config RESET_AST2500
 	bool "Reset controller driver for AST2500 SoCs"
-	depends on DM_RESET && WDT_ASPEED
+	depends on DM_RESET
 	default y if ASPEED_AST2500
 	help
-	  Support for reset controller on AST2500 SoC. This controller uses
-	  watchdog to reset different peripherals and thus only supports
-	  resets that are supported by watchdog. The main limitation though
-	  is that some reset signals, like I2C or MISC reset multiple devices.
+	  Support for reset controller on AST2500 SoC.
+	  Say Y if you want to control reset signals of different peripherals
+	  through System Control Unit (SCU).
+
+config RESET_AST2600
+	bool "Reset controller driver for AST2600 SoCs"
+	depends on DM_RESET
+	default y if ASPEED_AST2600
+	help
+	  Support for reset controller on AST2600 SoC.
+	  Say Y if you want to control reset signals of different peripherals
+	  through System Control Unit (SCU).
 
 config RESET_ROCKCHIP
 	bool "Reset controller driver for Rockchip SoCs"
@@ -82,6 +98,13 @@ config RESET_ROCKCHIP
 	  Support for reset controller on rockchip SoC. The main limitation
 	  though is that some reset signals, like I2C or MISC reset multiple
 	  devices.
+
+config RESET_HSDK
+	bool "Synopsys HSDK Reset Driver"
+	depends on DM_RESET && TARGET_HSDK
+	default y
+	help
+	  This enables the reset controller driver for HSDK board.
 
 config RESET_MESON
 	bool "Reset controller driver for Amlogic Meson SoCs"
@@ -97,5 +120,90 @@ config RESET_SOCFPGA
 	default y
 	help
 	  Support for reset controller on SoCFPGA platform.
+
+config RESET_MEDIATEK
+	bool "Reset controller driver for MediaTek SoCs"
+	depends on DM_RESET && ARCH_MEDIATEK && CLK
+	default y
+	help
+	  Support for reset controller on MediaTek SoCs.
+
+config RESET_MTMIPS
+	bool "Reset controller driver for MediaTek MIPS platform"
+	depends on DM_RESET && ARCH_MTMIPS
+	default y
+	help
+	  Support for reset controller on MediaTek MIPS platform.
+
+config RESET_SUNXI
+	bool "RESET support for Allwinner SoCs"
+	depends on DM_RESET && ARCH_SUNXI
+	default y
+	help
+	  This enables support for common reset driver for
+	  Allwinner SoCs.
+
+config RESET_HISILICON
+	bool "Reset controller driver for HiSilicon SoCs"
+	depends on DM_RESET
+	help
+	  Support for reset controller on HiSilicon SoCs.
+
+config RESET_IMX7
+	bool "i.MX7/8 Reset Driver"
+	depends on DM_RESET && (ARCH_MX7 || ARCH_IMX8M)
+	default y
+	help
+	  Support for reset controller on i.MX7/8 SoCs.
+
+config RESET_IPQ419
+	bool "Reset driver for Qualcomm IPQ40xx SoCs"
+	depends on DM_RESET && ARCH_IPQ40XX
+	default y
+	help
+	  Support for reset controller on Qualcomm
+	  IPQ40xx SoCs.
+
+config RESET_SIFIVE
+	bool "Reset Driver for SiFive SoC's"
+	depends on DM_RESET && CLK_SIFIVE_PRCI && (TARGET_SIFIVE_UNLEASHED || TARGET_SIFIVE_UNMATCHED)
+	default y
+	help
+	  PRCI module within SiFive SoC's provides mechanism to reset
+	  different hw blocks like DDR, gemgxl. With this driver we leverage
+	  U-Boot's reset framework to reset these hardware blocks.
+
+config RESET_SYSCON
+	bool "Enable generic syscon reset driver support"
+	depends on DM_RESET
+	help
+	  Support generic syscon mapped register reset devices.
+
+config RESET_RASPBERRYPI
+	bool "Raspberry Pi 4 Firmware Reset Controller Driver"
+	depends on DM_RESET && ARCH_BCM283X
+	default USB_XHCI_PCI
+	help
+	  Raspberry Pi 4's co-processor controls some of the board's HW
+	  initialization process, but it's up to Linux to trigger it when
+	  relevant. This driver provides a reset controller capable of
+	  interfacing with RPi4's co-processor and model these firmware
+	  initialization routines as reset lines.
+
+config RESET_SCMI
+	bool "Enable SCMI reset domain driver"
+	select SCMI_FIRMWARE
+	help
+	  Enable this option if you want to support reset controller
+	  devices exposed by a SCMI agent based on SCMI reset domain
+	  protocol communication with a SCMI server.
+
+config RESET_ZYNQMP
+	bool "Reset Driver for Xilinx ZynqMP SoC's"
+	depends on DM_RESET && ZYNQMP_FIRMWARE
+	help
+	  Support for reset controller on Xilinx ZynqMP SoC. Driver is only
+	  passing request via Xilinx firmware interface to TF-A and PMU
+	  firmware.
 
 endmenu

@@ -10,8 +10,17 @@
  * Steve Sakoman  <steve@sakoman.com>
  */
 #include <common.h>
+#include <env.h>
+#include <fdt_support.h>
+#include <fastboot.h>
+#include <image.h>
+#include <init.h>
+#include <spl.h>
+#include <net.h>
 #include <palmas.h>
 #include <sata.h>
+#include <serial.h>
+#include <asm/global_data.h>
 #include <linux/string.h>
 #include <asm/gpio.h>
 #include <usb.h>
@@ -24,11 +33,10 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/sata.h>
-#include <environment.h>
 #include <dwc3-uboot.h>
 #include <dwc3-omap-uboot.h>
+#include <i2c.h>
 #include <ti-usb-phy-uboot.h>
-#include <miiphy.h>
 
 #include "mux_data.h"
 #include "../common/board_detect.h"
@@ -44,16 +52,16 @@
 #define board_ti_get_emif_size()	board_ti_get_emif1_size() +	\
 					board_ti_get_emif2_size()
 
-#ifdef CONFIG_DRIVER_TI_CPSW
-#include <cpsw.h>
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 /* GPIO 7_11 */
 #define GPIO_DDR_VTT_EN 203
 
 #define SYSINFO_BOARD_NAME_MAX_LEN	37
+
+/* I2C I/O Expander */
+#define NAND_PCF8575_ADDR	0x21
+#define NAND_PCF8575_I2C_BUS_NUM	0
 
 const struct omap_sysinfo sysinfo = {
 	"Board: UNKNOWN(DRA7 EVM) REV UNKNOWN\n"
@@ -646,6 +654,19 @@ int dram_init_banksize(void)
 	return 0;
 }
 
+#if CONFIG_IS_ENABLED(DM_USB) && CONFIG_IS_ENABLED(OF_CONTROL)
+static int device_okay(const char *path)
+{
+	int node;
+
+	node = fdt_path_offset(gd->fdt_blob, path);
+	if (node < 0)
+		return 0;
+
+	return fdtdec_get_is_enabled(gd->fdt_blob, node);
+}
+#endif
+
 int board_late_init(void)
 {
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
@@ -684,6 +705,12 @@ int board_late_init(void)
 	 */
 	if (board_is_dra71x_evm())
 		palmas_i2c_write_u8(LP873X_I2C_SLAVE_ADDR, 0x9, 0x7);
+#endif
+#if CONFIG_IS_ENABLED(DM_USB) && CONFIG_IS_ENABLED(OF_CONTROL)
+	if (device_okay("/ocp/omap_dwc3_1@48880000"))
+		enable_usb_clocks(0);
+	if (device_okay("/ocp/omap_dwc3_2@488c0000"))
+		enable_usb_clocks(1);
 #endif
 	return 0;
 }
@@ -758,6 +785,44 @@ void set_muxconf_regs(void)
 		     early_padconf, ARRAY_SIZE(early_padconf));
 }
 
+#if defined(CONFIG_MTD_RAW_NAND)
+static int nand_sw_detect(void)
+{
+	int rc;
+	uchar data[2];
+	struct udevice *dev;
+
+	rc = i2c_get_chip_for_busnum(NAND_PCF8575_I2C_BUS_NUM,
+				     NAND_PCF8575_ADDR, 0, &dev);
+	if (rc)
+		return -1;
+
+	rc = dm_i2c_read(dev, 0, (uint8_t *)&data, sizeof(data));
+	if (rc)
+		return -1;
+
+	/* We are only interested in P10 and P11 on PCF8575 which is equal to
+	 * bits 8 and 9.
+	 */
+	data[1] = data[1] & 0x3;
+
+	/* Ensure only P11 is set and P10 is cleared. This ensures only
+	 * NAND (P10) is configured and not NOR (P11) which are both low
+	 * true signals. NAND and NOR settings should not be enabled at
+	 * the same time.
+	 */
+	if (data[1] == 0x2)
+		return 0;
+
+	return -1;
+}
+#else
+int nand_sw_detect(void)
+{
+	return -1;
+}
+#endif
+
 #ifdef CONFIG_IODELAY_RECALIBRATION
 void recalibrate_iodelay(void)
 {
@@ -777,6 +842,19 @@ void recalibrate_iodelay(void)
 			npads = ARRAY_SIZE(dra71x_core_padconf_array);
 			iodelay = dra71_iodelay_cfg_array;
 			niodelays = ARRAY_SIZE(dra71_iodelay_cfg_array);
+			/* If SW8 on the EVM is set to enable NAND then
+			 * overwrite the pins used by VOUT3 with NAND.
+			 */
+			if (!nand_sw_detect()) {
+				delta_pads = dra71x_nand_padconf_array;
+				delta_npads =
+					ARRAY_SIZE(dra71x_nand_padconf_array);
+			} else {
+				delta_pads = dra71x_vout3_padconf_array;
+				delta_npads =
+					ARRAY_SIZE(dra71x_vout3_padconf_array);
+			}
+
 		} else if (board_is_dra72x_revc_or_later()) {
 			delta_pads = dra72x_rgmii_padconf_array_revc;
 			delta_npads =
@@ -844,7 +922,7 @@ err:
 #endif
 
 #if defined(CONFIG_MMC)
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);
@@ -896,110 +974,6 @@ const struct mmc_platform_fixups *platform_fixups_mmc(uint32_t addr)
 }
 #endif
 
-#ifdef CONFIG_USB_DWC3
-static struct dwc3_device usb_otg_ss1 = {
-	.maximum_speed = USB_SPEED_SUPER,
-	.base = DRA7_USB_OTG_SS1_BASE,
-	.tx_fifo_resize = false,
-	.index = 0,
-};
-
-static struct dwc3_omap_device usb_otg_ss1_glue = {
-	.base = (void *)DRA7_USB_OTG_SS1_GLUE_BASE,
-	.utmi_mode = DWC3_OMAP_UTMI_MODE_SW,
-	.index = 0,
-};
-
-static struct ti_usb_phy_device usb_phy1_device = {
-	.pll_ctrl_base = (void *)DRA7_USB3_PHY1_PLL_CTRL,
-	.usb2_phy_power = (void *)DRA7_USB2_PHY1_POWER,
-	.usb3_phy_power = (void *)DRA7_USB3_PHY1_POWER,
-	.index = 0,
-};
-
-static struct dwc3_device usb_otg_ss2 = {
-	.maximum_speed = USB_SPEED_SUPER,
-	.base = DRA7_USB_OTG_SS2_BASE,
-	.tx_fifo_resize = false,
-	.index = 1,
-};
-
-static struct dwc3_omap_device usb_otg_ss2_glue = {
-	.base = (void *)DRA7_USB_OTG_SS2_GLUE_BASE,
-	.utmi_mode = DWC3_OMAP_UTMI_MODE_SW,
-	.index = 1,
-};
-
-static struct ti_usb_phy_device usb_phy2_device = {
-	.usb2_phy_power = (void *)DRA7_USB2_PHY2_POWER,
-	.index = 1,
-};
-
-int board_usb_init(int index, enum usb_init_type init)
-{
-	enable_usb_clocks(index);
-	switch (index) {
-	case 0:
-		if (init == USB_INIT_DEVICE) {
-			usb_otg_ss1.dr_mode = USB_DR_MODE_PERIPHERAL;
-			usb_otg_ss1_glue.vbus_id_status = OMAP_DWC3_VBUS_VALID;
-		} else {
-			usb_otg_ss1.dr_mode = USB_DR_MODE_HOST;
-			usb_otg_ss1_glue.vbus_id_status = OMAP_DWC3_ID_GROUND;
-		}
-
-		ti_usb_phy_uboot_init(&usb_phy1_device);
-		dwc3_omap_uboot_init(&usb_otg_ss1_glue);
-		dwc3_uboot_init(&usb_otg_ss1);
-		break;
-	case 1:
-		if (init == USB_INIT_DEVICE) {
-			usb_otg_ss2.dr_mode = USB_DR_MODE_PERIPHERAL;
-			usb_otg_ss2_glue.vbus_id_status = OMAP_DWC3_VBUS_VALID;
-		} else {
-			usb_otg_ss2.dr_mode = USB_DR_MODE_HOST;
-			usb_otg_ss2_glue.vbus_id_status = OMAP_DWC3_ID_GROUND;
-		}
-
-		ti_usb_phy_uboot_init(&usb_phy2_device);
-		dwc3_omap_uboot_init(&usb_otg_ss2_glue);
-		dwc3_uboot_init(&usb_otg_ss2);
-		break;
-	default:
-		printf("Invalid Controller Index\n");
-	}
-
-	return 0;
-}
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-	switch (index) {
-	case 0:
-	case 1:
-		ti_usb_phy_uboot_exit(index);
-		dwc3_uboot_exit(index);
-		dwc3_omap_uboot_exit(index);
-		break;
-	default:
-		printf("Invalid Controller Index\n");
-	}
-	disable_usb_clocks(index);
-	return 0;
-}
-
-int usb_gadget_handle_interrupts(int index)
-{
-	u32 status;
-
-	status = dwc3_omap_uboot_interrupt_status(index);
-	if (status)
-		dwc3_uboot_handle_interrupt(index);
-
-	return 0;
-}
-#endif
-
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_OS_BOOT)
 int spl_start_uboot(void)
 {
@@ -1015,106 +989,6 @@ int spl_start_uboot(void)
 #endif
 
 	return 0;
-}
-#endif
-
-#ifdef CONFIG_DRIVER_TI_CPSW
-extern u32 *const omap_si_rev;
-
-static void cpsw_control(int enabled)
-{
-	/* VTP can be added here */
-
-	return;
-}
-
-static struct cpsw_slave_data cpsw_slaves[] = {
-	{
-		.slave_reg_ofs	= 0x208,
-		.sliver_reg_ofs	= 0xd80,
-		.phy_addr	= 2,
-	},
-	{
-		.slave_reg_ofs	= 0x308,
-		.sliver_reg_ofs	= 0xdc0,
-		.phy_addr	= 3,
-	},
-};
-
-static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= CPSW_MDIO_BASE,
-	.cpsw_base		= CPSW_BASE,
-	.mdio_div		= 0xff,
-	.channels		= 8,
-	.cpdma_reg_ofs		= 0x800,
-	.slaves			= 2,
-	.slave_data		= cpsw_slaves,
-	.ale_reg_ofs		= 0xd00,
-	.ale_entries		= 1024,
-	.host_port_reg_ofs	= 0x108,
-	.hw_stats_reg_ofs	= 0x900,
-	.bd_ram_ofs		= 0x2000,
-	.mac_control		= (1 << 5),
-	.control		= cpsw_control,
-	.host_port_num		= 0,
-	.version		= CPSW_CTRL_VERSION_2,
-};
-
-int board_eth_init(bd_t *bis)
-{
-	int ret;
-	uint8_t mac_addr[6];
-	uint32_t mac_hi, mac_lo;
-	uint32_t ctrl_val;
-
-	/* try reading mac address from efuse */
-	mac_lo = readl((*ctrl)->control_core_mac_id_0_lo);
-	mac_hi = readl((*ctrl)->control_core_mac_id_0_hi);
-	mac_addr[0] = (mac_hi & 0xFF0000) >> 16;
-	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
-	mac_addr[2] = mac_hi & 0xFF;
-	mac_addr[3] = (mac_lo & 0xFF0000) >> 16;
-	mac_addr[4] = (mac_lo & 0xFF00) >> 8;
-	mac_addr[5] = mac_lo & 0xFF;
-
-	if (!env_get("ethaddr")) {
-		printf("<ethaddr> not set. Validating first E-fuse MAC\n");
-
-		if (is_valid_ethaddr(mac_addr))
-			eth_env_set_enetaddr("ethaddr", mac_addr);
-	}
-
-	mac_lo = readl((*ctrl)->control_core_mac_id_1_lo);
-	mac_hi = readl((*ctrl)->control_core_mac_id_1_hi);
-	mac_addr[0] = (mac_hi & 0xFF0000) >> 16;
-	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
-	mac_addr[2] = mac_hi & 0xFF;
-	mac_addr[3] = (mac_lo & 0xFF0000) >> 16;
-	mac_addr[4] = (mac_lo & 0xFF00) >> 8;
-	mac_addr[5] = mac_lo & 0xFF;
-
-	if (!env_get("eth1addr")) {
-		if (is_valid_ethaddr(mac_addr))
-			eth_env_set_enetaddr("eth1addr", mac_addr);
-	}
-
-	ctrl_val = readl((*ctrl)->control_core_control_io1) & (~0x33);
-	ctrl_val |= 0x22;
-	writel(ctrl_val, (*ctrl)->control_core_control_io1);
-
-	if (*omap_si_rev == DRA722_ES1_0)
-		cpsw_data.active_slave = 1;
-
-	if (board_is_dra72x_revc_or_later()) {
-		cpsw_slaves[0].phy_if = PHY_INTERFACE_MODE_RGMII_ID;
-		cpsw_slaves[1].phy_if = PHY_INTERFACE_MODE_RGMII_ID;
-	}
-
-	ret = cpsw_register(&cpsw_data);
-	if (ret < 0)
-		printf("Error %d registering CPSW switch\n", ret);
-
-	return ret;
 }
 #endif
 
@@ -1145,7 +1019,7 @@ int board_early_init_f(void)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -1177,8 +1051,22 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
+#if CONFIG_IS_ENABLED(FASTBOOT) && !CONFIG_IS_ENABLED(ENV_IS_NOWHERE)
+int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
+{
+	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
+		return -ENOTSUPP;
+
+	printf("Setting reboot to fastboot flag ...\n");
+	env_set("dofastboot", "1");
+	env_save();
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_TI_SECURE_DEVICE
-void board_fit_image_post_process(void **p_image, size_t *p_size)
+void board_fit_image_post_process(const void *fit, int node, void **p_image,
+				  size_t *p_size)
 {
 	secure_boot_verify_image(p_image, p_size);
 }

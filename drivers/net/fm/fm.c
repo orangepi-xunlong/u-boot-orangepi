@@ -4,19 +4,25 @@
  *	Dave Liu <daveliu@freescale.com>
  */
 #include <common.h>
+#include <env.h>
 #include <malloc.h>
 #include <asm/io.h>
 #include <linux/errno.h>
+#include <u-boot/crc.h>
+#ifdef CONFIG_DM_ETH
+#include <dm.h>
+#endif
 
 #include "fm.h"
 #include <fsl_qe.h>		/* For struct qe_firmware */
 
-#ifdef CONFIG_SYS_QE_FMAN_FW_IN_NAND
 #include <nand.h>
-#elif defined(CONFIG_SYS_QE_FW_IN_SPIFLASH)
 #include <spi_flash.h>
-#elif defined(CONFIG_SYS_QE_FMAN_FW_IN_MMC)
 #include <mmc.h>
+
+#ifdef CONFIG_ARM64
+#include <asm/armv8/mmu.h>
+#include <asm/arch/cpu.h>
 #endif
 
 struct fm_muram muram[CONFIG_SYS_NUM_FMAN];
@@ -347,6 +353,102 @@ static void fm_init_qmi(struct fm_qmi_common *qmi)
 }
 
 /* Init common part of FM, index is fm num# like fm as above */
+#ifdef CONFIG_TFABOOT
+int fm_init_common(int index, struct ccsr_fman *reg)
+{
+	int rc;
+	void *addr = NULL;
+	enum boot_src src = get_boot_src();
+
+	if (src == BOOT_SOURCE_IFC_NOR) {
+		addr = (void *)(CONFIG_SYS_FMAN_FW_ADDR +
+				CONFIG_SYS_FSL_IFC_BASE);
+#ifdef CONFIG_CMD_NAND
+	} else if (src == BOOT_SOURCE_IFC_NAND) {
+		size_t fw_length = CONFIG_SYS_QE_FMAN_FW_LENGTH;
+
+		addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
+
+		rc = nand_read(get_nand_dev_by_index(0),
+			       (loff_t)CONFIG_SYS_FMAN_FW_ADDR,
+			       &fw_length, (u_char *)addr);
+		if (rc == -EUCLEAN) {
+			printf("NAND read of FMAN firmware at offset 0x%x failed %d\n",
+			       CONFIG_SYS_FMAN_FW_ADDR, rc);
+		}
+#endif
+	} else if (src == BOOT_SOURCE_QSPI_NOR) {
+		struct spi_flash *ucode_flash;
+
+		addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
+		int ret = 0;
+
+#if CONFIG_IS_ENABLED(DM_SPI_FLASH)
+		struct udevice *new;
+
+		/* speed and mode will be read from DT */
+		ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS,
+					     CONFIG_ENV_SPI_CS, 0, 0, &new);
+
+		ucode_flash = dev_get_uclass_priv(new);
+#else
+		ucode_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS,
+					      CONFIG_ENV_SPI_CS,
+					      CONFIG_ENV_SPI_MAX_HZ,
+					      CONFIG_ENV_SPI_MODE);
+#endif
+		if (!ucode_flash) {
+			printf("SF: probe for ucode failed\n");
+		} else {
+			ret = spi_flash_read(ucode_flash,
+					     CONFIG_SYS_FMAN_FW_ADDR +
+					     CONFIG_SYS_FSL_QSPI_BASE,
+					     CONFIG_SYS_QE_FMAN_FW_LENGTH,
+					     addr);
+			if (ret)
+				printf("SF: read for ucode failed\n");
+			spi_flash_free(ucode_flash);
+		}
+	} else if (src == BOOT_SOURCE_SD_MMC) {
+		int dev = CONFIG_SYS_MMC_ENV_DEV;
+
+		addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
+		u32 cnt = CONFIG_SYS_QE_FMAN_FW_LENGTH / 512;
+		u32 blk = CONFIG_SYS_FMAN_FW_ADDR / 512;
+		struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
+
+		if (!mmc) {
+			printf("\nMMC cannot find device for ucode\n");
+		} else {
+			printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
+			       dev, blk, cnt);
+			mmc_init(mmc);
+			(void)blk_dread(mmc_get_blk_desc(mmc), blk, cnt,
+						addr);
+		}
+	} else {
+		addr = NULL;
+	}
+
+	/* Upload the Fman microcode if it's present */
+	rc = fman_upload_firmware(index, &reg->fm_imem, addr);
+	if (rc)
+		return rc;
+	env_set_addr("fman_ucode", addr);
+
+	fm_init_muram(index, &reg->muram);
+	fm_init_qmi(&reg->fm_qmi_common);
+	fm_init_fpm(&reg->fm_fpm);
+
+	/* clear DMA status */
+	setbits_be32(&reg->fm_dma.fmdmsr, FMDMSR_CLEAR_ALL);
+
+	/* set DMA mode */
+	setbits_be32(&reg->fm_dma.fmdmmr, FMDMMR_SBER);
+
+	return fm_init_bmi(index, &reg->fm_bmi_common);
+}
+#else
 int fm_init_common(int index, struct ccsr_fman *reg)
 {
 	int rc;
@@ -363,12 +465,12 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		printf("NAND read of FMAN firmware at offset 0x%x failed %d\n",
 			CONFIG_SYS_FMAN_FW_ADDR, rc);
 	}
-#elif defined(CONFIG_SYS_QE_FW_IN_SPIFLASH)
+#elif defined(CONFIG_SYS_QE_FMAN_FW_IN_SPIFLASH)
 	struct spi_flash *ucode_flash;
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 	int ret = 0;
 
-#ifdef CONFIG_DM_SPI_FLASH
+#if CONFIG_IS_ENABLED(DM_SPI_FLASH)
 	struct udevice *new;
 
 	/* speed and mode will be read from DT */
@@ -402,7 +504,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
 				dev, blk, cnt);
 		mmc_init(mmc);
-		(void)mmc->block_dev.block_read(&mmc->block_dev, blk, cnt,
+		(void)blk_dread(mmc_get_blk_desc(mmc), blk, cnt,
 						addr);
 	}
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_REMOTE)
@@ -429,3 +531,81 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 
 	return fm_init_bmi(index, &reg->fm_bmi_common);
 }
+#endif
+
+#ifdef CONFIG_DM_ETH
+struct fman_priv {
+	struct ccsr_fman *reg;
+	unsigned int fman_id;
+};
+
+static const struct udevice_id fman_ids[] = {
+	{ .compatible = "fsl,fman" },
+	{}
+};
+
+static int fman_probe(struct udevice *dev)
+{
+	struct fman_priv *priv = dev_get_priv(dev);
+
+	priv->reg = (struct ccsr_fman *)(uintptr_t)dev_read_addr(dev);
+
+	if (dev_read_u32(dev, "cell-index", &priv->fman_id)) {
+		printf("FMan node property cell-index missing\n");
+		return -EINVAL;
+	}
+
+	return fm_init_common(priv->fman_id, priv->reg);
+}
+
+static int fman_remove(struct udevice *dev)
+{
+	return 0;
+}
+
+int fman_id(struct udevice *dev)
+{
+	struct fman_priv *priv = dev_get_priv(dev);
+
+	return priv->fman_id;
+}
+
+void *fman_port(struct udevice *dev, int num)
+{
+	struct fman_priv *priv = dev_get_priv(dev);
+
+	return &priv->reg->port[num - 1].fm_bmi;
+}
+
+void *fman_mdio(struct udevice *dev, enum fm_mac_type type, int num)
+{
+	struct fman_priv *priv = dev_get_priv(dev);
+	void *res = NULL;
+
+	switch (type) {
+#ifdef CONFIG_SYS_FMAN_V3
+	case FM_MEMAC:
+		res = &priv->reg->memac[num].fm_memac_mdio;
+		break;
+#else
+	case FM_DTSEC:
+		res = &priv->reg->mac_1g[num].fm_mdio.miimcfg;
+		break;
+	case FM_TGEC:
+		res = &priv->reg->mac_10g[num].fm_10gec_mdio;
+		break;
+#endif
+	}
+	return res;
+}
+
+U_BOOT_DRIVER(fman) = {
+	.name = "fman",
+	.id = UCLASS_SIMPLE_BUS,
+	.of_match = fman_ids,
+	.probe = fman_probe,
+	.remove = fman_remove,
+	.priv_auto	= sizeof(struct fman_priv),
+	.flags = DM_FLAG_ALLOC_PRIV_DMA,
+};
+#endif /* CONFIG_DM_ETH */

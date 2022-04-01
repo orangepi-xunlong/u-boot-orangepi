@@ -1,19 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
+ * Copyright 2018 NXP
  *
  * Based on CAAM driver in drivers/crypto/caam in Linux
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <linux/kernel.h>
+#include <log.h>
 #include <malloc.h>
 #include "fsl_sec.h"
 #include "jr.h"
 #include "jobdesc.h"
 #include "desc_constr.h"
+#include <time.h>
+#include <asm/cache.h>
 #ifdef CONFIG_FSL_CORENET
+#include <asm/cache.h>
 #include <asm/fsl_pamu.h>
 #endif
+#include <dm/lists.h>
+#include <linux/delay.h>
 
 #define CIRC_CNT(head, tail, size)	(((head) - (tail)) & (size - 1))
 #define CIRC_SPACE(head, tail, size)	CIRC_CNT((tail), (head) + 1, (size))
@@ -27,10 +36,10 @@ uint32_t sec_offset[CONFIG_SYS_FSL_MAX_NUM_OF_SEC] = {
 };
 
 #define SEC_ADDR(idx)	\
-	((CONFIG_SYS_FSL_SEC_ADDR + sec_offset[idx]))
+	(ulong)((CONFIG_SYS_FSL_SEC_ADDR + sec_offset[idx]))
 
 #define SEC_JR0_ADDR(idx)	\
-	(SEC_ADDR(idx) +	\
+	(ulong)(SEC_ADDR(idx) +	\
 	 (CONFIG_SYS_FSL_JR0_OFFSET - CONFIG_SYS_FSL_SEC_OFFSET))
 
 struct jobring jr0[CONFIG_SYS_FSL_MAX_NUM_OF_SEC];
@@ -75,16 +84,16 @@ static void jr_initregs(uint8_t sec_idx)
 {
 	struct jr_regs *regs = (struct jr_regs *)SEC_JR0_ADDR(sec_idx);
 	struct jobring *jr = &jr0[sec_idx];
-	phys_addr_t ip_base = virt_to_phys((void *)jr->input_ring);
-	phys_addr_t op_base = virt_to_phys((void *)jr->output_ring);
+	caam_dma_addr_t ip_base = virt_to_phys((void *)jr->input_ring);
+	caam_dma_addr_t op_base = virt_to_phys((void *)jr->output_ring);
 
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	sec_out32(&regs->irba_h, ip_base >> 32);
 #else
 	sec_out32(&regs->irba_h, 0x0);
 #endif
 	sec_out32(&regs->irba_l, (uint32_t)ip_base);
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	sec_out32(&regs->orba_h, op_base >> 32);
 #else
 	sec_out32(&regs->orba_h, 0x0);
@@ -110,8 +119,8 @@ static int jr_init(uint8_t sec_idx)
 	jr->liodn = DEFAULT_JR_LIODN;
 #endif
 	jr->size = JR_SIZE;
-	jr->input_ring = (dma_addr_t *)memalign(ARCH_DMA_MINALIGN,
-				JR_SIZE * sizeof(dma_addr_t));
+	jr->input_ring = (caam_dma_addr_t *)memalign(ARCH_DMA_MINALIGN,
+				JR_SIZE * sizeof(caam_dma_addr_t));
 	if (!jr->input_ring)
 		return -1;
 
@@ -122,7 +131,7 @@ static int jr_init(uint8_t sec_idx)
 	if (!jr->output_ring)
 		return -1;
 
-	memset(jr->input_ring, 0, JR_SIZE * sizeof(dma_addr_t));
+	memset(jr->input_ring, 0, JR_SIZE * sizeof(caam_dma_addr_t));
 	memset(jr->output_ring, 0, jr->op_size);
 
 	start_jr0(sec_idx);
@@ -141,7 +150,7 @@ static int jr_sw_cleanup(uint8_t sec_idx)
 	jr->read_idx = 0;
 	jr->write_idx = 0;
 	memset(jr->info, 0, sizeof(jr->info));
-	memset(jr->input_ring, 0, jr->size * sizeof(dma_addr_t));
+	memset(jr->input_ring, 0, jr->size * sizeof(caam_dma_addr_t));
 	memset(jr->output_ring, 0, jr->size * sizeof(struct op_ring));
 
 	return 0;
@@ -187,7 +196,7 @@ static int jr_enqueue(uint32_t *desc_addr,
 	uint32_t desc_word;
 	int length = desc_len(desc_addr);
 	int i;
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	uint32_t *addr_hi, *addr_lo;
 #endif
 
@@ -201,7 +210,7 @@ static int jr_enqueue(uint32_t *desc_addr,
 		sec_out32((uint32_t *)&desc_addr[i], desc_word);
 	}
 
-	phys_addr_t desc_phys_addr = virt_to_phys(desc_addr);
+	caam_dma_addr_t desc_phys_addr = virt_to_phys(desc_addr);
 
 	jr->info[head].desc_phys_addr = desc_phys_addr;
 	jr->info[head].callback = (void *)callback;
@@ -214,7 +223,7 @@ static int jr_enqueue(uint32_t *desc_addr,
 				  sizeof(struct jr_info), ARCH_DMA_MINALIGN);
 	flush_dcache_range(start, end);
 
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	/* Write the 64 bit Descriptor address on Input Ring.
 	 * The 32 bit hign and low part of the address will
 	 * depend on endianness of SEC block.
@@ -233,11 +242,11 @@ static int jr_enqueue(uint32_t *desc_addr,
 #else
 	/* Write the 32 bit Descriptor address on Input Ring. */
 	sec_out32(&jr->input_ring[head], desc_phys_addr);
-#endif /* ifdef CONFIG_PHYS_64BIT */
+#endif /* ifdef CONFIG_CAAM_64BIT */
 
 	start = (unsigned long)&jr->input_ring[head] & ~(ARCH_DMA_MINALIGN - 1);
 	end = ALIGN((unsigned long)&jr->input_ring[head] +
-		     sizeof(dma_addr_t), ARCH_DMA_MINALIGN);
+		     sizeof(caam_dma_addr_t), ARCH_DMA_MINALIGN);
 	flush_dcache_range(start, end);
 
 	jr->head = (head + 1) & (jr->size - 1);
@@ -263,7 +272,7 @@ static int jr_dequeue(int sec_idx)
 	int idx, i, found;
 	void (*callback)(uint32_t status, void *arg);
 	void *arg = NULL;
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	uint32_t *addr_hi, *addr_lo;
 #else
 	uint32_t *addr;
@@ -274,8 +283,8 @@ static int jr_dequeue(int sec_idx)
 
 		found = 0;
 
-		phys_addr_t op_desc;
-	#ifdef CONFIG_PHYS_64BIT
+		caam_dma_addr_t op_desc;
+	#ifdef CONFIG_CAAM_64BIT
 		/* Read the 64 bit Descriptor address from Output Ring.
 		 * The 32 bit hign and low part of the address will
 		 * depend on endianness of SEC block.
@@ -295,7 +304,7 @@ static int jr_dequeue(int sec_idx)
 		/* Read the 32 bit Descriptor address from Output Ring. */
 		addr = (uint32_t *)&jr->output_ring[jr->tail].desc;
 		op_desc = sec_in32(addr);
-	#endif /* ifdef CONFIG_PHYS_64BIT */
+	#endif /* ifdef CONFIG_CAAM_64BIT */
 
 		uint32_t status = sec_in32(&jr->output_ring[jr->tail].status);
 
@@ -348,8 +357,8 @@ static void desc_done(uint32_t status, void *arg)
 
 static inline int run_descriptor_jr_idx(uint32_t *desc, uint8_t sec_idx)
 {
-	unsigned long long timeval = get_ticks();
-	unsigned long long timeout = usec2ticks(CONFIG_SEC_DEQ_TIMEOUT);
+	unsigned long long timeval = 0;
+	unsigned long long timeout = CONFIG_USEC_DEQ_TIMEOUT;
 	struct result op;
 	int ret = 0;
 
@@ -362,9 +371,10 @@ static inline int run_descriptor_jr_idx(uint32_t *desc, uint8_t sec_idx)
 		goto out;
 	}
 
-	timeval = get_ticks();
-	timeout = usec2ticks(CONFIG_SEC_DEQ_TIMEOUT);
 	while (op.done != 1) {
+		udelay(1);
+		timeval += 1;
+
 		ret = jr_dequeue(sec_idx);
 		if (ret) {
 			debug("Error in SEC deq\n");
@@ -372,7 +382,7 @@ static inline int run_descriptor_jr_idx(uint32_t *desc, uint8_t sec_idx)
 			goto out;
 		}
 
-		if ((get_ticks() - timeval) > timeout) {
+		if (timeval > timeout) {
 			debug("SEC Dequeue timed out\n");
 			ret = JQ_DEQ_TO_ERR;
 			goto out;
@@ -441,7 +451,52 @@ int sec_reset(void)
 	return sec_reset_idx(0);
 }
 #ifndef CONFIG_SPL_BUILD
-static int instantiate_rng(uint8_t sec_idx)
+static int deinstantiate_rng(u8 sec_idx, int state_handle_mask)
+{
+	u32 *desc;
+	int sh_idx, ret = 0;
+	int desc_size = ALIGN(sizeof(u32) * 2, ARCH_DMA_MINALIGN);
+
+	desc = memalign(ARCH_DMA_MINALIGN, desc_size);
+	if (!desc) {
+		debug("cannot allocate RNG init descriptor memory\n");
+		return -ENOMEM;
+	}
+
+	for (sh_idx = 0; sh_idx < RNG4_MAX_HANDLES; sh_idx++) {
+		/*
+		 * If the corresponding bit is set, then it means the state
+		 * handle was initialized by us, and thus it needs to be
+		 * deinitialized as well
+		 */
+
+		if (state_handle_mask & RDSTA_IF(sh_idx)) {
+			/*
+			 * Create the descriptor for deinstantating this state
+			 * handle.
+			 */
+			inline_cnstr_jobdesc_rng_deinstantiation(desc, sh_idx);
+			flush_dcache_range((unsigned long)desc,
+					   (unsigned long)desc + desc_size);
+
+			ret = run_descriptor_jr_idx(desc, sec_idx);
+			if (ret) {
+				printf("SEC%u:  RNG4 SH%d deinstantiation failed with error 0x%x\n",
+				       sec_idx, sh_idx, ret);
+				ret = -EIO;
+				break;
+			}
+
+			printf("SEC%u:  Deinstantiated RNG4 SH%d\n",
+			       sec_idx, sh_idx);
+		}
+	}
+
+	free(desc);
+	return ret;
+}
+
+static int instantiate_rng(u8 sec_idx, int gen_sk)
 {
 	u32 *desc;
 	u32 rdsta_val;
@@ -461,11 +516,20 @@ static int instantiate_rng(uint8_t sec_idx)
 		 * If the corresponding bit is set, this state handle
 		 * was initialized by somebody else, so it's left alone.
 		 */
-		rdsta_val = sec_in32(&rng->rdsta) & RNG_STATE_HANDLE_MASK;
-		if (rdsta_val & (1 << sh_idx))
-			continue;
+		rdsta_val = sec_in32(&rng->rdsta);
+		if (rdsta_val & (RDSTA_IF(sh_idx))) {
+			if (rdsta_val & RDSTA_PR(sh_idx))
+				continue;
 
-		inline_cnstr_jobdesc_rng_instantiation(desc, sh_idx);
+			printf("SEC%u:  RNG4 SH%d was instantiated w/o prediction resistance. Tearing it down\n",
+			       sec_idx, sh_idx);
+
+			ret = deinstantiate_rng(sec_idx, RDSTA_IF(sh_idx));
+			if (ret)
+				break;
+		}
+
+		inline_cnstr_jobdesc_rng_instantiation(desc, sh_idx, gen_sk);
 		size = roundup(sizeof(uint32_t) * 6, ARCH_DMA_MINALIGN);
 		flush_dcache_range((unsigned long)desc,
 				   (unsigned long)desc + size);
@@ -473,11 +537,11 @@ static int instantiate_rng(uint8_t sec_idx)
 		ret = run_descriptor_jr_idx(desc, sec_idx);
 
 		if (ret)
-			printf("RNG: Instantiation failed with error 0x%x\n",
-			       ret);
+			printf("SEC%u:  RNG4 SH%d instantiation failed with error 0x%x\n",
+			       sec_idx, sh_idx, ret);
 
-		rdsta_val = sec_in32(&rng->rdsta) & RNG_STATE_HANDLE_MASK;
-		if (!(rdsta_val & (1 << sh_idx))) {
+		rdsta_val = sec_in32(&rng->rdsta);
+		if (!(rdsta_val & RDSTA_IF(sh_idx))) {
 			free(desc);
 			return -1;
 		}
@@ -493,9 +557,17 @@ static int instantiate_rng(uint8_t sec_idx)
 static u8 get_rng_vid(uint8_t sec_idx)
 {
 	ccsr_sec_t *sec = (void *)SEC_ADDR(sec_idx);
-	u32 cha_vid = sec_in32(&sec->chavid_ls);
+	u8 vid;
 
-	return (cha_vid & SEC_CHAVID_RNG_LS_MASK) >> SEC_CHAVID_LS_RNG_SHIFT;
+	if (caam_get_era() < 10) {
+		vid = (sec_in32(&sec->chavid_ls) & SEC_CHAVID_RNG_LS_MASK)
+		       >> SEC_CHAVID_LS_RNG_SHIFT;
+	} else {
+		vid = (sec_in32(&sec->vreg.rng) & CHA_VER_VID_MASK)
+		       >> CHA_VER_VID_SHIFT;
+	}
+
+	return vid;
 }
 
 /*
@@ -533,14 +605,15 @@ static void kick_trng(int ent_delay, uint8_t sec_idx)
 
 static int rng_init(uint8_t sec_idx)
 {
-	int ret, ent_delay = RTSDCTL_ENT_DLY_MIN;
+	int ret, gen_sk, ent_delay = RTSDCTL_ENT_DLY_MIN;
 	ccsr_sec_t __iomem *sec = (ccsr_sec_t __iomem *)SEC_ADDR(sec_idx);
 	struct rng4tst __iomem *rng =
 			(struct rng4tst __iomem *)&sec->rng;
 	u32 inst_handles;
 
+	gen_sk = !(sec_in32(&rng->rdsta) & RDSTA_SKVN);
 	do {
-		inst_handles = sec_in32(&rng->rdsta) & RNG_STATE_HANDLE_MASK;
+		inst_handles = sec_in32(&rng->rdsta) & RDSTA_MASK;
 
 		/*
 		 * If either of the SH's were instantiated by somebody else
@@ -561,10 +634,10 @@ static int rng_init(uint8_t sec_idx)
 		 * interval, leading to a sucessful initialization of
 		 * the RNG.
 		 */
-		ret = instantiate_rng(sec_idx);
+		ret = instantiate_rng(sec_idx, gen_sk);
 	} while ((ret == -1) && (ent_delay < RTSDCTL_ENT_DLY_MAX));
 	if (ret) {
-		printf("RNG: Failed to instantiate RNG\n");
+		printf("SEC%u:  Failed to instantiate RNG\n", sec_idx);
 		return ret;
 	}
 
@@ -578,8 +651,6 @@ int sec_init_idx(uint8_t sec_idx)
 {
 	ccsr_sec_t *sec = (void *)SEC_ADDR(sec_idx);
 	uint32_t mcr = sec_in32(&sec->mcfgr);
-	uint32_t jrown_ns;
-	int i;
 	int ret = 0;
 
 #ifdef CONFIG_FSL_CORENET
@@ -589,7 +660,7 @@ int sec_init_idx(uint8_t sec_idx)
 #endif
 
 	if (!(sec_idx < CONFIG_SYS_FSL_MAX_NUM_OF_SEC)) {
-		printf("SEC initialization failed\n");
+		printf("SEC%u:  initialization failed\n", sec_idx);
 		return -1;
 	}
 
@@ -607,7 +678,7 @@ int sec_init_idx(uint8_t sec_idx)
 	mcr = (mcr & ~MCFGR_AWCACHE_MASK) | (0x2 << MCFGR_AWCACHE_SHIFT);
 #endif
 
-#ifdef CONFIG_PHYS_64BIT
+#ifdef CONFIG_CAAM_64BIT
 	mcr |= (1 << MCFGR_PS_SHIFT);
 #endif
 	sec_out32(&sec->mcfgr, mcr);
@@ -635,16 +706,9 @@ int sec_init_idx(uint8_t sec_idx)
 #endif
 #endif
 
-	/* Set ownership of job rings to non-TrustZone mode by default */
-	for (i = 0; i < ARRAY_SIZE(sec->jrliodnr); i++) {
-		jrown_ns = sec_in32(&sec->jrliodnr[i].ms);
-		jrown_ns |= JROWN_NS | JRMID_NS;
-		sec_out32(&sec->jrliodnr[i].ms, jrown_ns);
-	}
-
 	ret = jr_init(sec_idx);
 	if (ret < 0) {
-		printf("SEC initialization failed\n");
+		printf("SEC%u:  initialization failed\n", sec_idx);
 		return -1;
 	}
 
@@ -658,10 +722,18 @@ int sec_init_idx(uint8_t sec_idx)
 #ifndef CONFIG_SPL_BUILD
 	if (get_rng_vid(sec_idx) >= 4) {
 		if (rng_init(sec_idx) < 0) {
-			printf("SEC%u: RNG instantiation failed\n", sec_idx);
+			printf("SEC%u:  RNG instantiation failed\n", sec_idx);
 			return -1;
 		}
-		printf("SEC%u: RNG instantiated\n", sec_idx);
+
+		if (IS_ENABLED(CONFIG_DM_RNG)) {
+			ret = device_bind_driver(NULL, "caam-rng", "caam-rng",
+						 NULL);
+			if (ret)
+				printf("Couldn't bind rng driver (%d)\n", ret);
+		}
+
+		printf("SEC%u:  RNG instantiated\n", sec_idx);
 	}
 #endif
 	return ret;

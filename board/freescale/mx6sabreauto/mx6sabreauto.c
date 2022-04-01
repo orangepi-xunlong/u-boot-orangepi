@@ -6,11 +6,16 @@
  */
 
 #include <common.h>
+#include <image.h>
+#include <init.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/mx6-pins.h>
+#include <env.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/iomux-v3.h>
@@ -18,9 +23,8 @@
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/spi.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <miiphy.h>
-#include <netdev.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
 #include <input.h>
@@ -74,23 +78,6 @@ static iomux_v3_cfg_t const uart4_pads[] = {
 	IOMUX_PADS(PAD_KEY_ROW0__UART4_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL)),
 };
 
-static iomux_v3_cfg_t const enet_pads[] = {
-	IOMUX_PADS(PAD_KEY_COL1__ENET_MDIO		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_KEY_COL2__ENET_MDC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TXC__RGMII_TXC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TD0__RGMII_TD0		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TD1__RGMII_TD1		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TD2__RGMII_TD2		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TD3__RGMII_TD3		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_TX_CTL__RGMII_TX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_ENET_REF_CLK__ENET_TX_CLK	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RXC__RGMII_RXC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RD0__RGMII_RD0		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RD1__RGMII_RD1		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RD2__RGMII_RD2		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RD3__RGMII_RD3		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-	IOMUX_PADS(PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
-};
 
 /* I2C2 PMIC, iPod, Tuner, Codec, Touch, HDMI EDID, MIPI CSI2 card */
 static struct i2c_pads_info mx6q_i2c_pad_info1 = {
@@ -158,44 +145,6 @@ static iomux_v3_cfg_t const i2c3_pads[] = {
 static iomux_v3_cfg_t const port_exp[] = {
 	IOMUX_PADS(PAD_SD2_DAT0__GPIO1_IO15	| MUX_PAD_CTRL(NO_PAD_CTRL)),
 };
-
-/*Define for building port exp gpio, pin starts from 0*/
-#define PORTEXP_IO_NR(chip, pin) \
-	((chip << 5) + pin)
-
-/*Get the chip addr from a ioexp gpio*/
-#define PORTEXP_IO_TO_CHIP(gpio_nr) \
-	(gpio_nr >> 5)
-
-/*Get the pin number from a ioexp gpio*/
-#define PORTEXP_IO_TO_PIN(gpio_nr) \
-	(gpio_nr & 0x1f)
-
-static int port_exp_direction_output(unsigned gpio, int value)
-{
-	int ret;
-
-	i2c_set_bus_num(2);
-	ret = i2c_probe(PORTEXP_IO_TO_CHIP(gpio));
-	if (ret)
-		return ret;
-
-	ret = pca953x_set_dir(PORTEXP_IO_TO_CHIP(gpio),
-		(1 << PORTEXP_IO_TO_PIN(gpio)),
-		(PCA953X_DIR_OUT << PORTEXP_IO_TO_PIN(gpio)));
-
-	if (ret)
-		return ret;
-
-	ret = pca953x_set_val(PORTEXP_IO_TO_CHIP(gpio),
-		(1 << PORTEXP_IO_TO_PIN(gpio)),
-		(value << PORTEXP_IO_TO_PIN(gpio)));
-
-	if (ret)
-		return ret;
-
-	return 0;
-}
 
 #ifdef CONFIG_MTD_NOR_FLASH
 static iomux_v3_cfg_t const eimnor_pads[] = {
@@ -295,10 +244,6 @@ static void setup_iomux_eimnor(void)
 }
 #endif
 
-static void setup_iomux_enet(void)
-{
-	SETUP_IOMUX_PADS(enet_pads);
-}
 
 static iomux_v3_cfg_t const usdhc3_pads[] = {
 	IOMUX_PADS(PAD_SD3_CLK__SD3_CLK		| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
@@ -320,7 +265,7 @@ static void setup_iomux_uart(void)
 	SETUP_IOMUX_PADS(uart4_pads);
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 static struct fsl_esdhc_cfg usdhc_cfg[1] = {
 	{USDHC3_BASE_ADDR},
 };
@@ -331,7 +276,7 @@ int board_mmc_getcd(struct mmc *mmc)
 	return !gpio_get_value(IMX_GPIO_NR(6, 15));
 }
 
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	SETUP_IOMUX_PADS(usdhc3_pads);
 
@@ -375,26 +320,6 @@ static void setup_gpmi_nand(void)
 	setbits_le32(&mxc_ccm->CCGR0, MXC_CCM_CCGR0_APBHDMA_MASK);
 }
 #endif
-
-static void setup_fec(void)
-{
-	if (is_mx6dqp()) {
-		/*
-		 * select ENET MAC0 TX clock from PLL
-		 */
-		imx_iomux_set_gpr_register(5, 9, 1, 1);
-		enable_fec_anatop_clock(0, ENET_125MHZ);
-	}
-
-	setup_iomux_enet();
-}
-
-int board_eth_init(bd_t *bis)
-{
-	setup_fec();
-
-	return cpu_eth_init(bis);
-}
 
 u32 get_board_rev(void)
 {
@@ -501,6 +426,7 @@ iomux_v3_cfg_t const backlight_pads[] = {
 
 static void setup_iomux_backlight(void)
 {
+	gpio_request(IMX_GPIO_NR(2, 9), "backlight");
 	gpio_direction_output(IMX_GPIO_NR(2, 9), 1);
 	SETUP_IOMUX_PADS(backlight_pads);
 }
@@ -594,6 +520,7 @@ int board_init(void)
 	else
 		setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &mx6dl_i2c_pad_info1);
 	/* I2C 3 Steer */
+	gpio_request(IMX_GPIO_NR(5, 4), "steer logic");
 	gpio_direction_output(IMX_GPIO_NR(5, 4), 1);
 	SETUP_IOMUX_PADS(i2c3_pads);
 #ifndef CONFIG_SYS_FLASH_CFI
@@ -602,6 +529,7 @@ int board_init(void)
 	else
 		setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &mx6dl_i2c_pad_info2);
 #endif
+	gpio_request(IMX_GPIO_NR(1, 15), "expander en");
 	gpio_direction_output(IMX_GPIO_NR(1, 15), 1);
 	SETUP_IOMUX_PADS(port_exp);
 
@@ -678,19 +606,10 @@ int checkboard(void)
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
-#define USB_HOST1_PWR     PORTEXP_IO_NR(0x32, 7)
-#define USB_OTG_PWR       PORTEXP_IO_NR(0x34, 1)
-
-iomux_v3_cfg_t const usb_otg_pads[] = {
-	IOMUX_PADS(PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(NO_PAD_CTRL)),
-};
-
 int board_ehci_hcd_init(int port)
 {
 	switch (port) {
 	case 0:
-		SETUP_IOMUX_PADS(usb_otg_pads);
-
 		/*
 		  * Set daisy chain for otg_pin_id on 6q.
 		 *  For 6dl, this bit is reserved.
@@ -703,29 +622,6 @@ int board_ehci_hcd_init(int port)
 		printf("MXC USB port %d not yet supported\n", port);
 		return -EINVAL;
 	}
-	return 0;
-}
-
-int board_ehci_power(int port, int on)
-{
-	switch (port) {
-	case 0:
-		if (on)
-			port_exp_direction_output(USB_OTG_PWR, 1);
-		else
-			port_exp_direction_output(USB_OTG_PWR, 0);
-		break;
-	case 1:
-		if (on)
-			port_exp_direction_output(USB_HOST1_PWR, 1);
-		else
-			port_exp_direction_output(USB_HOST1_PWR, 0);
-		break;
-	default:
-		printf("MXC USB port %d not yet supported\n", port);
-		return -EINVAL;
-	}
-
 	return 0;
 }
 #endif
@@ -1095,5 +991,23 @@ void board_init_f(ulong dummy)
 
 	/* load/boot image from boot device */
 	board_init_r(NULL, 0);
+}
+#endif
+
+#ifdef CONFIG_SPL_LOAD_FIT
+int board_fit_config_name_match(const char *name)
+{
+	if (is_mx6dq()) {
+		if (!strcmp(name, "imx6q-sabreauto"))
+			return 0;
+	} else if (is_mx6dqp()) {
+		if (!strcmp(name, "imx6qp-sabreauto"))
+			return 0;
+	} else if (is_mx6dl()) {
+		if (!strcmp(name, "imx6dl-sabreauto"))
+			return 0;
+	}
+
+	return -1;
 }
 #endif

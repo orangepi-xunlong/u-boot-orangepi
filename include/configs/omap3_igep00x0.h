@@ -9,24 +9,14 @@
 #ifndef __IGEP00X0_H
 #define __IGEP00X0_H
 
-#define CONFIG_NR_DRAM_BANKS            2
-
 #include <configs/ti_omap3_common.h>
 
 /*
  * We are only ever GP parts and will utilize all of the "downloaded image"
  * area in SRAM which starts at 0x40200000 and ends at 0x4020FFFF (64KB).
  */
-#undef CONFIG_SPL_TEXT_BASE
-#define CONFIG_SPL_TEXT_BASE		0x40200000
-
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_REVISION_TAG		1
-
-/* GPIO banks */
-#define CONFIG_OMAP3_GPIO_2		/* GPIO32..63   is in GPIO bank 2 */
-#define CONFIG_OMAP3_GPIO_4		/* GPIO96..127  is in GPIO bank 4 */
 
 /* TPS65950 */
 #define PBIASLITEVMODE1			(1 << 8)
@@ -39,16 +29,6 @@
 #define IGEP0030_USB_TRANSCEIVER_RESET		54
 #define GPIO_IGEP00X0_BOARD_DETECTION		28
 #define GPIO_IGEP00X0_REVISION_DETECTION	129
-
-/* USB device configuration */
-#define CONFIG_USB_DEVICE		1
-#define CONFIG_USB_TTY			1
-
-/* Change these to suit your needs */
-#define CONFIG_USBD_VENDORID		0x0451
-#define CONFIG_USBD_PRODUCTID		0x5678
-#define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
-#define CONFIG_USBD_PRODUCT_NAME	"IGEP"
 
 #ifndef CONFIG_SPL_BUILD
 
@@ -91,9 +71,6 @@
 
 #endif
 
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_SYS_MTDPARTS_RUNTIME
-
 /* OneNAND config */
 #define CONFIG_USE_ONENAND_BOARD_INIT
 #define CONFIG_SYS_ONENAND_BASE		ONENAND_MAP
@@ -116,25 +93,5 @@
 #define CONFIG_SYS_NAND_ECCSIZE		512
 #define CONFIG_SYS_NAND_ECCBYTES	14
 #define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_BCH8_CODE_HW_DETECTION_SW
-
-/* UBI configuration */
-#define CONFIG_SPL_UBI			1
-#define CONFIG_SPL_UBI_MAX_VOL_LEBS	256
-#define CONFIG_SPL_UBI_MAX_PEB_SIZE	(256*1024)
-#define CONFIG_SPL_UBI_MAX_PEBS		4096
-#define CONFIG_SPL_UBI_VOL_IDS		8
-#define CONFIG_SPL_UBI_LOAD_MONITOR_ID	0
-#define CONFIG_SPL_UBI_LOAD_KERNEL_ID	3
-#define CONFIG_SPL_UBI_LOAD_ARGS_ID	4
-#define CONFIG_SPL_UBI_PEB_OFFSET	4
-#define CONFIG_SPL_UBI_VID_OFFSET	512
-#define CONFIG_SPL_UBI_LEB_START	2048
-#define CONFIG_SPL_UBI_INFO_ADDR	0x88080000
-
-/* environment organization */
-#define CONFIG_ENV_UBI_PART		"UBI"
-#define CONFIG_ENV_UBI_VOLUME		"config"
-#define CONFIG_ENV_UBI_VOLUME_REDUND	"config_r"
-#define CONFIG_ENV_SIZE			(32*1024)
 
 #endif /* __IGEP00X0_H */

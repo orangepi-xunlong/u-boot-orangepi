@@ -5,13 +5,15 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <video.h>
 #include <asm/arch/mbox.h>
 #include <asm/arch/msg.h>
+#include <asm/cache.h>
 
 static int bcm2835_video_probe(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	int ret;
 	int w, h, pitch;
@@ -19,13 +21,15 @@ static int bcm2835_video_probe(struct udevice *dev)
 
 	debug("bcm2835: Query resolution...\n");
 	ret = bcm2835_get_video_size(&w, &h);
-	if (ret)
+	if (ret || w == 0 || h == 0)
 		return -EIO;
 
 	debug("bcm2835: Setting up display for %d x %d\n", w, h);
 	ret = bcm2835_set_video_params(&w, &h, 32, BCM2835_MBOX_PIXEL_ORDER_RGB,
 				       BCM2835_MBOX_ALPHA_MODE_IGNORED,
 				       &fb_base, &fb_size, &pitch);
+	if (ret)
+		return -EIO;
 
 	debug("bcm2835: Final resolution is %d x %d\n", w, h);
 
@@ -48,6 +52,8 @@ static int bcm2835_video_probe(struct udevice *dev)
 
 static const struct udevice_id bcm2835_video_ids[] = {
 	{ .compatible = "brcm,bcm2835-hdmi" },
+	{ .compatible = "brcm,bcm2711-hdmi0" },
+	{ .compatible = "brcm,bcm2708-fb" },
 	{ }
 };
 

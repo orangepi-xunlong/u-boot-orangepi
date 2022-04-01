@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
+ * Copyright 2020 NXP
  * Copyright 2016 Freescale Semiconductor
  */
 
@@ -70,6 +71,26 @@
 			bus-width = <4>;
 		};
 
+		gpio0: gpio@2300000 {
+			compatible = "fsl,qoriq-gpio";
+			reg = <0x0 0x2300000 0x0 0x10000>;
+			interrupts = <0 66 0x4>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
+		gpio1: gpio@2310000 {
+			compatible = "fsl,qoriq-gpio";
+			reg = <0x0 0x2310000 0x0 0x10000>;
+			interrupts = <0 67 0x4>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
 		i2c0: i2c@2180000 {
 			compatible = "fsl,vf610-i2c";
 			#address-cells = <1>;
@@ -107,18 +128,16 @@
 		};
 
 		qspi: quadspi@1550000 {
-			compatible = "fsl,vf610-qspi";
+			compatible = "fsl,ls1021a-qspi";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x0 0x1550000 0x0 0x10000>,
 				<0x0 0x40000000 0x0 0x4000000>;
 			reg-names = "QuadSPI", "QuadSPI-memory";
-			num-cs = <1>;
-			big-endian;
 			status = "disabled";
 		};
 
-		pcie@3400000 {
+		pcie1: pcie@3400000 {
 			compatible = "fsl,ls-pcie", "snps,dw-pcie";
 			reg = <0x00 0x03400000 0x0 0x80000   /* dbi registers */
 			       0x00 0x03480000 0x0 0x40000   /* lut registers */
@@ -132,6 +151,16 @@
 			bus-range = <0x0 0xff>;
 			ranges = <0x81000000 0x0 0x00000000 0x40 0x00020000 0x0 0x00010000   /* downstream I/O */
 				  0x82000000 0x0 0x40000000 0x40 0x40000000 0x0 0x40000000>; /* non-prefetchable memory */
+		};
+
+		sata: sata@3200000 {
+			compatible = "fsl,ls1012a-ahci";
+			reg = <0x0 0x3200000 0x0 0x10000 /* ccsr sata base */
+			       0x0 0x20140520 0x0 0x4>;	 /* ecc sata addr */
+			reg-names = "sata-base", "ecc-addr";
+			interrupts = <0 69 4>;
+			clocks = <&clockgen 4 0>;
+			status = "disabled";
 		};
 
 		usb0: usb2@8600000 {

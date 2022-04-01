@@ -17,8 +17,14 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
+#include <cpu_func.h>
 #include <dm.h>
+#include <env.h>
+#include <init.h>
+#include <net.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm/platform_data/serial_pl01x.h>
 #include "arm-ebi.h"
@@ -27,7 +33,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static const struct pl01x_serial_platdata serial_platdata = {
+static const struct pl01x_serial_plat serial_plat = {
 	.base = 0x16000000,
 #ifdef CONFIG_ARCH_CINTEGRATOR
 	.type = TYPE_PL011,
@@ -38,9 +44,9 @@ static const struct pl01x_serial_platdata serial_platdata = {
 #endif
 };
 
-U_BOOT_DEVICE(integrator_serials) = {
+U_BOOT_DRVINFO(integrator_serials) = {
 	.name = "serial_pl01x",
-	.platdata = &serial_platdata,
+	.plat = &serial_plat,
 };
 
 void peripheral_power_enable (void);
@@ -108,7 +114,7 @@ extern void cm_remap(void);
 	writel(SC_CTRL_FLASHVPP | SC_CTRL_FLASHWP, SC_CTRLS);
 #endif
 
-	icache_enable ();
+	icache_enable();
 
 	return 0;
 }
@@ -169,13 +175,12 @@ extern void dram_query(void);
 }
 
 #ifdef CONFIG_CMD_NET
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int rc = 0;
 #ifdef CONFIG_SMC91111
 	rc = smc91111_initialize(0, CONFIG_SMC91111_BASE);
 #endif
-	rc += pci_eth_init(bis);
 	return rc;
 }
 #endif

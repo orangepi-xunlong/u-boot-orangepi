@@ -62,33 +62,42 @@ config DWC_AHCI
 config DWC_AHSATA
 	bool "Enable DWC AHSATA driver support"
 	select LIBATA
+	depends on BLK
 	help
 	  Enable this driver to support the DWC AHSATA SATA controller found
 	  in i.MX5 and i.MX6 SoCs.
 
+config DWC_AHSATA_AHCI
+	bool "Enable DWC AHSATA AHCI driver support"
+	depends on DWC_AHSATA
+	depends on AHCI
+	default y
+	help
+	  Enable this option unless you need your private ahci implementation
+
 config FSL_SATA
 	bool "Enable Freescale SATA controller driver support"
+	select AHCI
 	select LIBATA
+	depends on BLK
 	help
 	  Enable this driver to support the SATA controller found in
 	  some Freescale PowerPC SoCs.
 
-config MVSATA_IDE
-	bool "Enable Marvell SATA controller driver support via IDE interface"
-	help
-	  Enable this driver to support the SATA controller found in
-	  some Marvell SoCs, running in IDE compatibility mode using PIO.
-
 config SATA_MV
 	bool "Enable Marvell SATA controller driver support"
+	select AHCI
 	select LIBATA
+	depends on BLK
 	help
 	  Enable this driver to support the SATA controller found in
 	  some Marvell SoCs.
 
 config SATA_SIL
 	bool "Enable Silicon Image SIL3131 / SIL3132 / SIL3124 SATA driver support"
+	select AHCI
 	select LIBATA
+	depends on BLK
 	help
 	  Enable this driver to support the SIL3131, SIL3132 and SIL3124
 	  SATA controllers.
@@ -98,5 +107,32 @@ config SATA_SIL3114
 	select LIBATA
 	help
 	  Enable this driver to support the SIL3114 SATA controllers.
+
+config SUNXI_AHCI
+	bool "Enable Allwinner SATA driver support"
+	depends on AHCI
+	default y if ARCH_SUNXI
+	help
+	  Enable this driver to support the SATA controllers found in the
+	  Allwinner A10, A20 and R40 SoCs.
+
+config AHCI_MVEBU
+	bool "Marvell EBU AHCI SATA support"
+	depends on ARCH_MVEBU || ARCH_OCTEON
+	depends on AHCI
+	select SCSI_AHCI
+	select DM_SCSI
+	help
+	  This option enables support for the Marvell EBU SoC's
+	  onboard AHCI SATA.
+
+	  If unsure, say N.
+
+config MTK_AHCI
+	bool "Enable Mediatek AHCI driver support"
+	depends on AHCI
+	help
+	  Enable this driver to support Sata devices through
+	  Mediatek AHCI controller (e.g. MT7622).
 
 endmenu

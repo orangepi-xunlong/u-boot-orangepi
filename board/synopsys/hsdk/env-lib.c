@@ -5,6 +5,8 @@
  */
 
 #include "env-lib.h"
+#include <env.h>
+#include <log.h>
 
 #define MAX_CMD_LEN	25
 
@@ -250,9 +252,9 @@ static int arg_read_set(const struct env_map_common *map, u32 i, int argc,
 	char *endp = argv[1];
 
 	if (map[i].type == ENV_HEX)
-		map[i].val->val = simple_strtoul(argv[1], &endp, 16);
+		map[i].val->val = hextoul(argv[1], &endp);
 	else
-		map[i].val->val = simple_strtoul(argv[1], &endp, 10);
+		map[i].val->val = dectoul(argv[1], &endp);
 
 	map[i].val->set = true;
 

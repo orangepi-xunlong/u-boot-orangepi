@@ -11,14 +11,13 @@
 #include <timer.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
+#include <linux/bitops.h>
 
 /* Timer register bits */
 #define TCLR_START			BIT(0)	/* Start=1 */
 #define TCLR_AUTO_RELOAD		BIT(1)	/* Auto reload */
 #define TCLR_PRE_EN			BIT(5)	/* Pre-scaler enable */
 #define TCLR_PTV_SHIFT			(2)	/* Pre-scaler shift value */
-
-#define TIMER_CLOCK             (V_SCLK / (2 << CONFIG_SYS_PTV))
 
 struct omap_gptimer_regs {
 	unsigned int tidr;		/* offset 0x00 */
@@ -47,13 +46,11 @@ struct omap_timer_priv {
 	struct omap_gptimer_regs *regs;
 };
 
-static int omap_timer_get_count(struct udevice *dev, u64 *count)
+static u64 omap_timer_get_count(struct udevice *dev)
 {
 	struct omap_timer_priv *priv = dev_get_priv(dev);
 
-	*count = readl(&priv->regs->tcrr);
-
-	return 0;
+	return timer_conv_64(readl(&priv->regs->tcrr));
 }
 
 static int omap_timer_probe(struct udevice *dev)
@@ -61,10 +58,14 @@ static int omap_timer_probe(struct udevice *dev)
 	struct timer_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct omap_timer_priv *priv = dev_get_priv(dev);
 
-	uc_priv->clock_rate = TIMER_CLOCK;
+	if (!uc_priv->clock_rate)
+		uc_priv->clock_rate = V_SCLK;
+
+	uc_priv->clock_rate /= (2 << CONFIG_SYS_PTV);
 
 	/* start the counter ticking up, reload value on overflow */
 	writel(0, &priv->regs->tldr);
+	writel(0, &priv->regs->tcrr);
 	/* enable timer */
 	writel((CONFIG_SYS_PTV << 2) | TCLR_PRE_EN | TCLR_AUTO_RELOAD |
 	       TCLR_START, &priv->regs->tclr);
@@ -72,11 +73,11 @@ static int omap_timer_probe(struct udevice *dev)
 	return 0;
 }
 
-static int omap_timer_ofdata_to_platdata(struct udevice *dev)
+static int omap_timer_of_to_plat(struct udevice *dev)
 {
 	struct omap_timer_priv *priv = dev_get_priv(dev);
 
-	priv->regs = map_physmem(devfdt_get_addr(dev),
+	priv->regs = map_physmem(dev_read_addr(dev),
 				 sizeof(struct omap_gptimer_regs), MAP_NOCACHE);
 
 	return 0;
@@ -98,9 +99,8 @@ U_BOOT_DRIVER(omap_timer) = {
 	.name	= "omap_timer",
 	.id	= UCLASS_TIMER,
 	.of_match = omap_timer_ids,
-	.ofdata_to_platdata = omap_timer_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct omap_timer_priv),
+	.of_to_plat = omap_timer_of_to_plat,
+	.priv_auto	= sizeof(struct omap_timer_priv),
 	.probe = omap_timer_probe,
 	.ops	= &omap_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

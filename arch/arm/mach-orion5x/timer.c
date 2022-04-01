@@ -8,7 +8,11 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 
 #define UBOOT_CNTR	0	/* counter to use for uboot timer */
 
@@ -78,7 +82,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define timestamp gd->arch.tbl
 #define lastdec gd->arch.lastinc
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	ulong now = read_timer();
 
@@ -164,7 +168,7 @@ unsigned long long get_ticks(void)
  * This function is derived from PowerPC code (timebase clock frequency).
  * On ARM it returns the number of timer ticks per second.
  */
-ulong get_tbclk (void)
+ulong get_tbclk(void)
 {
 	return (ulong)CONFIG_SYS_HZ;
 }

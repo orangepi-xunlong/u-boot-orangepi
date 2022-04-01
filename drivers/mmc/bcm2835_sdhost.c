@@ -36,7 +36,11 @@
 #include <asm/arch/msg.h>
 #include <asm/arch/mbox.h>
 #include <asm/unaligned.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/compat.h>
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/sizes.h>
@@ -163,7 +167,6 @@ struct bcm2835_host {
 	int			clock;		/* Current clock speed */
 	unsigned int		max_clk;	/* Max possible freq */
 	unsigned int		blocks;		/* remaining PIO blocks */
-	int			irq;		/* Device IRQ */
 
 	u32			ns_per_fifo_word;
 
@@ -173,14 +176,7 @@ struct bcm2835_host {
 
 	struct mmc_cmd	*cmd;		/* Current command */
 	struct mmc_data		*data;		/* Current data request */
-	bool			data_complete:1;/* Data finished before cmd */
 	bool			use_busy:1;	/* Wait for busy interrupt */
-	bool			wait_data_complete:1;	/* Wait for data */
-
-	/* for threaded irq handler */
-	bool			irq_block;
-	bool			irq_busy;
-	bool			irq_data;
 
 	struct udevice		*dev;
 	struct mmc		*mmc;
@@ -189,22 +185,22 @@ struct bcm2835_host {
 
 static void bcm2835_dumpregs(struct bcm2835_host *host)
 {
-	dev_dbg(dev, "=========== REGISTER DUMP ===========\n");
-	dev_dbg(dev, "SDCMD  0x%08x\n", readl(host->ioaddr + SDCMD));
-	dev_dbg(dev, "SDARG  0x%08x\n", readl(host->ioaddr + SDARG));
-	dev_dbg(dev, "SDTOUT 0x%08x\n", readl(host->ioaddr + SDTOUT));
-	dev_dbg(dev, "SDCDIV 0x%08x\n", readl(host->ioaddr + SDCDIV));
-	dev_dbg(dev, "SDRSP0 0x%08x\n", readl(host->ioaddr + SDRSP0));
-	dev_dbg(dev, "SDRSP1 0x%08x\n", readl(host->ioaddr + SDRSP1));
-	dev_dbg(dev, "SDRSP2 0x%08x\n", readl(host->ioaddr + SDRSP2));
-	dev_dbg(dev, "SDRSP3 0x%08x\n", readl(host->ioaddr + SDRSP3));
-	dev_dbg(dev, "SDHSTS 0x%08x\n", readl(host->ioaddr + SDHSTS));
-	dev_dbg(dev, "SDVDD  0x%08x\n", readl(host->ioaddr + SDVDD));
-	dev_dbg(dev, "SDEDM  0x%08x\n", readl(host->ioaddr + SDEDM));
-	dev_dbg(dev, "SDHCFG 0x%08x\n", readl(host->ioaddr + SDHCFG));
-	dev_dbg(dev, "SDHBCT 0x%08x\n", readl(host->ioaddr + SDHBCT));
-	dev_dbg(dev, "SDHBLC 0x%08x\n", readl(host->ioaddr + SDHBLC));
-	dev_dbg(dev, "===========================================\n");
+	dev_dbg(host->dev, "=========== REGISTER DUMP ===========\n");
+	dev_dbg(host->dev, "SDCMD  0x%08x\n", readl(host->ioaddr + SDCMD));
+	dev_dbg(host->dev, "SDARG  0x%08x\n", readl(host->ioaddr + SDARG));
+	dev_dbg(host->dev, "SDTOUT 0x%08x\n", readl(host->ioaddr + SDTOUT));
+	dev_dbg(host->dev, "SDCDIV 0x%08x\n", readl(host->ioaddr + SDCDIV));
+	dev_dbg(host->dev, "SDRSP0 0x%08x\n", readl(host->ioaddr + SDRSP0));
+	dev_dbg(host->dev, "SDRSP1 0x%08x\n", readl(host->ioaddr + SDRSP1));
+	dev_dbg(host->dev, "SDRSP2 0x%08x\n", readl(host->ioaddr + SDRSP2));
+	dev_dbg(host->dev, "SDRSP3 0x%08x\n", readl(host->ioaddr + SDRSP3));
+	dev_dbg(host->dev, "SDHSTS 0x%08x\n", readl(host->ioaddr + SDHSTS));
+	dev_dbg(host->dev, "SDVDD  0x%08x\n", readl(host->ioaddr + SDVDD));
+	dev_dbg(host->dev, "SDEDM  0x%08x\n", readl(host->ioaddr + SDEDM));
+	dev_dbg(host->dev, "SDHCFG 0x%08x\n", readl(host->ioaddr + SDHCFG));
+	dev_dbg(host->dev, "SDHBCT 0x%08x\n", readl(host->ioaddr + SDHBCT));
+	dev_dbg(host->dev, "SDHBLC 0x%08x\n", readl(host->ioaddr + SDHBLC));
+	dev_dbg(host->dev, "===========================================\n");
 }
 
 static void bcm2835_reset_internal(struct bcm2835_host *host)
@@ -240,17 +236,9 @@ static void bcm2835_reset_internal(struct bcm2835_host *host)
 	writel(host->cdiv, host->ioaddr + SDCDIV);
 }
 
-static int bcm2835_finish_command(struct bcm2835_host *host);
-
-static void bcm2835_wait_transfer_complete(struct bcm2835_host *host)
+static int bcm2835_wait_transfer_complete(struct bcm2835_host *host)
 {
-	int timediff;
-	u32 alternate_idle;
-
-	alternate_idle = (host->data->flags & MMC_DATA_READ) ?
-		SDEDM_FSM_READWAIT : SDEDM_FSM_WRITESTART1;
-
-	timediff = 0;
+	ulong tstart_ms = get_timer(0);
 
 	while (1) {
 		u32 edm, fsm;
@@ -261,21 +249,28 @@ static void bcm2835_wait_transfer_complete(struct bcm2835_host *host)
 		if ((fsm == SDEDM_FSM_IDENTMODE) ||
 		    (fsm == SDEDM_FSM_DATAMODE))
 			break;
-		if (fsm == alternate_idle) {
+
+		if ((fsm == SDEDM_FSM_READWAIT) ||
+		    (fsm == SDEDM_FSM_WRITESTART1) ||
+		    (fsm == SDEDM_FSM_READDATA)) {
 			writel(edm | SDEDM_FORCE_DATA_MODE,
 			       host->ioaddr + SDEDM);
 			break;
 		}
 
-		/* Error out after 100000 register reads (~1s) */
-		if (timediff++ == 100000) {
+		/* Error out after ~1s */
+		ulong tlapse_ms = get_timer(tstart_ms);
+		if ( tlapse_ms > 1000 /* ms */ ) {
+
 			dev_err(host->dev,
-				"wait_transfer_complete - still waiting after %d retries\n",
-				timediff);
+				"wait_transfer_complete - still waiting after %lu ms\n",
+				tlapse_ms);
 			bcm2835_dumpregs(host);
-			return;
+			return -ETIMEDOUT;
 		}
 	}
+
+	return 0;
 }
 
 static int bcm2835_transfer_block_pio(struct bcm2835_host *host, bool is_read)
@@ -322,6 +317,9 @@ static int bcm2835_transfer_block_pio(struct bcm2835_host *host, bool is_read)
 			      fsm_state != SDEDM_FSM_READCRC)) ||
 			    (!is_read &&
 			     (fsm_state != SDEDM_FSM_WRITEDATA &&
+			      fsm_state != SDEDM_FSM_WRITEWAIT1 &&
+			      fsm_state != SDEDM_FSM_WRITEWAIT2 &&
+			      fsm_state != SDEDM_FSM_WRITECRC &&
 			      fsm_state != SDEDM_FSM_WRITESTART1 &&
 			      fsm_state != SDEDM_FSM_WRITESTART2))) {
 				hsts = readl(host->ioaddr + SDHSTS);
@@ -358,9 +356,8 @@ static int bcm2835_transfer_pio(struct bcm2835_host *host)
 
 	is_read = (host->data->flags & MMC_DATA_READ) != 0;
 	ret = bcm2835_transfer_block_pio(host, is_read);
-
-	if (host->wait_data_complete)
-		bcm2835_wait_transfer_complete(host);
+	if (ret)
+		return ret;
 
 	sdhsts = readl(host->ioaddr + SDHSTS);
 	if (sdhsts & (SDHSTS_CRC16_ERROR |
@@ -379,21 +376,8 @@ static int bcm2835_transfer_pio(struct bcm2835_host *host)
 	return ret;
 }
 
-static void bcm2835_set_transfer_irqs(struct bcm2835_host *host)
-{
-	u32 all_irqs = SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN |
-		SDHCFG_BUSY_IRPT_EN;
-
-	host->hcfg = (host->hcfg & ~all_irqs) |
-		SDHCFG_DATA_IRPT_EN |
-		SDHCFG_BUSY_IRPT_EN;
-
-	writel(host->hcfg, host->ioaddr + SDHCFG);
-}
-
-static
-void bcm2835_prepare_data(struct bcm2835_host *host, struct mmc_cmd *cmd,
-			  struct mmc_data *data)
+static void bcm2835_prepare_data(struct bcm2835_host *host, struct mmc_cmd *cmd,
+				 struct mmc_data *data)
 {
 	WARN_ON(host->data);
 
@@ -401,13 +385,8 @@ void bcm2835_prepare_data(struct bcm2835_host *host, struct mmc_cmd *cmd,
 	if (!data)
 		return;
 
-	host->wait_data_complete = cmd->cmdidx != MMC_CMD_READ_MULTIPLE_BLOCK;
-	host->data_complete = false;
-
 	/* Use PIO */
 	host->blocks = data->blocks;
-
-	bcm2835_set_transfer_irqs(host);
 
 	writel(data->blocksize, host->ioaddr + SDHBCT);
 	writel(data->blocks, host->ioaddr + SDHBLC);
@@ -483,36 +462,6 @@ static int bcm2835_send_command(struct bcm2835_host *host, struct mmc_cmd *cmd,
 	return 0;
 }
 
-static int bcm2835_transfer_complete(struct bcm2835_host *host)
-{
-	int ret = 0;
-
-	WARN_ON(!host->data_complete);
-
-	host->data = NULL;
-
-	return ret;
-}
-
-static void bcm2835_finish_data(struct bcm2835_host *host)
-{
-	host->hcfg &= ~(SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN);
-	writel(host->hcfg, host->ioaddr + SDHCFG);
-
-	host->data_complete = true;
-
-	if (host->cmd) {
-		/* Data managed to finish before the
-		 * command completed. Make sure we do
-		 * things in the proper order.
-		 */
-		dev_dbg(dev, "Finished early - HSTS %08x\n",
-			readl(host->ioaddr + SDHSTS));
-	} else {
-		bcm2835_transfer_complete(host);
-	}
-}
-
 static int bcm2835_finish_command(struct bcm2835_host *host)
 {
 	struct mmc_cmd *cmd = host->cmd;
@@ -562,8 +511,6 @@ static int bcm2835_finish_command(struct bcm2835_host *host)
 
 	/* Processed actual command. */
 	host->cmd = NULL;
-	if (host->data && host->data_complete)
-		ret = bcm2835_transfer_complete(host);
 
 	return ret;
 }
@@ -608,159 +555,44 @@ static int bcm2835_check_data_error(struct bcm2835_host *host, u32 intmask)
 	return ret;
 }
 
-static void bcm2835_busy_irq(struct bcm2835_host *host)
+static int bcm2835_transmit(struct bcm2835_host *host)
 {
-	if (WARN_ON(!host->cmd)) {
-		bcm2835_dumpregs(host);
-		return;
-	}
-
-	if (WARN_ON(!host->use_busy)) {
-		bcm2835_dumpregs(host);
-		return;
-	}
-	host->use_busy = false;
-
-	bcm2835_finish_command(host);
-}
-
-static void bcm2835_data_irq(struct bcm2835_host *host, u32 intmask)
-{
+	u32 intmask = readl(host->ioaddr + SDHSTS);
 	int ret;
 
-	/*
-	 * There are no dedicated data/space available interrupt
-	 * status bits, so it is necessary to use the single shared
-	 * data/space available FIFO status bits. It is therefore not
-	 * an error to get here when there is no data transfer in
-	 * progress.
-	 */
-	if (!host->data)
-		return;
-
+	/* Check for errors */
 	ret = bcm2835_check_data_error(host, intmask);
 	if (ret)
-		goto finished;
+		return ret;
 
-	if (host->data->flags & MMC_DATA_WRITE) {
-		/* Use the block interrupt for writes after the first block */
-		host->hcfg &= ~(SDHCFG_DATA_IRPT_EN);
-		host->hcfg |= SDHCFG_BLOCK_IRPT_EN;
-		writel(host->hcfg, host->ioaddr + SDHCFG);
-		bcm2835_transfer_pio(host);
-	} else {
-		bcm2835_transfer_pio(host);
+	ret = bcm2835_check_cmd_error(host, intmask);
+	if (ret)
+		return ret;
+
+	/* Handle wait for busy end */
+	if (host->use_busy && (intmask & SDHSTS_BUSY_IRPT)) {
+		writel(SDHSTS_BUSY_IRPT, host->ioaddr + SDHSTS);
+		host->use_busy = false;
+		bcm2835_finish_command(host);
+	}
+
+	/* Handle PIO data transfer */
+	if (host->data) {
+		ret = bcm2835_transfer_pio(host);
+		if (ret)
+			return ret;
 		host->blocks--;
-		if ((host->blocks == 0))
-			goto finished;
-	}
-	return;
-
-finished:
-	host->hcfg &= ~(SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN);
-	writel(host->hcfg, host->ioaddr + SDHCFG);
-}
-
-static void bcm2835_data_threaded_irq(struct bcm2835_host *host)
-{
-	if (!host->data)
-		return;
-	if ((host->blocks == 0))
-		bcm2835_finish_data(host);
-}
-
-static void bcm2835_block_irq(struct bcm2835_host *host)
-{
-	if (WARN_ON(!host->data)) {
-		bcm2835_dumpregs(host);
-		return;
-	}
-
-	WARN_ON(!host->blocks);
-	if ((--host->blocks == 0))
-		bcm2835_finish_data(host);
-	else
-		bcm2835_transfer_pio(host);
-}
-
-static irqreturn_t bcm2835_irq(int irq, void *dev_id)
-{
-	irqreturn_t result = IRQ_NONE;
-	struct bcm2835_host *host = dev_id;
-	u32 intmask;
-
-	intmask = readl(host->ioaddr + SDHSTS);
-
-	writel(SDHSTS_BUSY_IRPT |
-	       SDHSTS_BLOCK_IRPT |
-	       SDHSTS_SDIO_IRPT |
-	       SDHSTS_DATA_FLAG,
-	       host->ioaddr + SDHSTS);
-
-	if (intmask & SDHSTS_BLOCK_IRPT) {
-		bcm2835_check_data_error(host, intmask);
-		host->irq_block = true;
-		result = IRQ_WAKE_THREAD;
-	}
-
-	if (intmask & SDHSTS_BUSY_IRPT) {
-		if (!bcm2835_check_cmd_error(host, intmask)) {
-			host->irq_busy = true;
-			result = IRQ_WAKE_THREAD;
-		} else {
-			result = IRQ_HANDLED;
+		if (host->blocks == 0) {
+			/* Wait for command to complete for real */
+			ret = bcm2835_wait_transfer_complete(host);
+			if (ret)
+				return ret;
+			/* Transfer complete */
+			host->data = NULL;
 		}
 	}
 
-	/* There is no true data interrupt status bit, so it is
-	 * necessary to qualify the data flag with the interrupt
-	 * enable bit.
-	 */
-	if ((intmask & SDHSTS_DATA_FLAG) &&
-	    (host->hcfg & SDHCFG_DATA_IRPT_EN)) {
-		bcm2835_data_irq(host, intmask);
-		host->irq_data = true;
-		result = IRQ_WAKE_THREAD;
-	}
-
-	return result;
-}
-
-static irqreturn_t bcm2835_threaded_irq(int irq, void *dev_id)
-{
-	struct bcm2835_host *host = dev_id;
-
-	if (host->irq_block) {
-		host->irq_block = false;
-		bcm2835_block_irq(host);
-	}
-
-	if (host->irq_busy) {
-		host->irq_busy = false;
-		bcm2835_busy_irq(host);
-	}
-
-	if (host->irq_data) {
-		host->irq_data = false;
-		bcm2835_data_threaded_irq(host);
-	}
-
-	return IRQ_HANDLED;
-}
-
-static void bcm2835_irq_poll(struct bcm2835_host *host)
-{
-	u32 intmask;
-
-	while (1) {
-		intmask = readl(host->ioaddr + SDHSTS);
-		if (intmask & (SDHSTS_BUSY_IRPT | SDHSTS_BLOCK_IRPT |
-			       SDHSTS_SDIO_IRPT | SDHSTS_DATA_FLAG)) {
-			bcm2835_irq(0, host);
-			bcm2835_threaded_irq(0, host);
-			return;
-		}
-	}
+	return 0;
 }
 
 static void bcm2835_set_clock(struct bcm2835_host *host, unsigned int clock)
@@ -864,8 +696,11 @@ static int bcm2835_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 	}
 
 	/* Wait for completion of busy signal or data transfer */
-	while (host->use_busy || host->data)
-		bcm2835_irq_poll(host);
+	while (host->use_busy || host->data) {
+		ret = bcm2835_transmit(host);
+		if (ret)
+			break;
+	}
 
 	return ret;
 }
@@ -903,7 +738,7 @@ static void bcm2835_add_host(struct bcm2835_host *host)
 	cfg->f_min = host->max_clk / SDCDIV_MAX_CDIV;
 	cfg->b_max = 65535;
 
-	dev_dbg(dev, "f_max %d, f_min %d\n",
+	dev_dbg(host->dev, "f_max %d, f_min %d\n",
 		cfg->f_max, cfg->f_min);
 
 	/* host controller capabilities */
@@ -920,7 +755,7 @@ static void bcm2835_add_host(struct bcm2835_host *host)
 
 static int bcm2835_probe(struct udevice *dev)
 {
-	struct bcm2835_plat *plat = dev_get_platdata(dev);
+	struct bcm2835_plat *plat = dev_get_plat(dev);
 	struct bcm2835_host *host = dev_get_priv(dev);
 	struct mmc *mmc = mmc_get_mmc_dev(dev);
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
@@ -931,7 +766,7 @@ static int bcm2835_probe(struct udevice *dev)
 	upriv->mmc = &plat->mmc;
 	plat->cfg.name = dev->name;
 
-	host->phys_addr = devfdt_get_addr(dev);
+	host->phys_addr = dev_read_addr(dev);
 	if (host->phys_addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -960,7 +795,7 @@ static const struct dm_mmc_ops bcm2835_ops = {
 
 static int bcm2835_bind(struct udevice *dev)
 {
-	struct bcm2835_plat *plat = dev_get_platdata(dev);
+	struct bcm2835_plat *plat = dev_get_plat(dev);
 
 	return mmc_bind(dev, &plat->mmc, &plat->cfg);
 }
@@ -971,7 +806,7 @@ U_BOOT_DRIVER(bcm2835_sdhost) = {
 	.of_match = bcm2835_match,
 	.bind = bcm2835_bind,
 	.probe = bcm2835_probe,
-	.priv_auto_alloc_size = sizeof(struct bcm2835_host),
-	.platdata_auto_alloc_size = sizeof(struct bcm2835_plat),
+	.priv_auto	= sizeof(struct bcm2835_host),
+	.plat_auto	= sizeof(struct bcm2835_plat),
 	.ops = &bcm2835_ops,
 };

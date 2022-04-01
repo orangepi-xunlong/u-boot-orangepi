@@ -6,10 +6,12 @@
  * Author: Rick Chen (rick@andestech.com)
  */
 
-#include <clk.h>
 #include <common.h>
+#include <clk.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm.h>
 
@@ -199,7 +201,7 @@ static int __atcspi200_spi_xfer(struct nds_spi_slave *ns,
 		size_t cmd_len = ns->cmd_len;
 		unsigned long data_len = bitlen / 8;
 		int rf_cnt;
-		int ret = 0;
+		int ret = 0, timeout = 0;
 
 		max_tran_len = ns->max_transfer_length;
 		switch (flags) {
@@ -230,22 +232,23 @@ static int __atcspi200_spi_xfer(struct nds_spi_slave *ns,
 			break;
 		}
 		if (data_out)
-			debug("spi_xfer: data_out %08X(%p) data_in %08X(%p) data_len %u\n",
+			debug("spi_xfer: data_out %08X(%p) data_in %08X(%p) data_len %lu\n",
 			      *(uint *)data_out, data_out, *(uint *)data_in,
 			      data_in, data_len);
 		num_chunks = DIV_ROUND_UP(data_len, max_tran_len);
 		din = data_in;
 		dout = data_out;
 		while (num_chunks--) {
-			tran_len = min(data_len, (size_t)max_tran_len);
+			tran_len = min((size_t)data_len, (size_t)max_tran_len);
 			ns->tran_len = tran_len;
 			num_blks = DIV_ROUND_UP(tran_len , CHUNK_SIZE);
 			num_bytes = (tran_len) % CHUNK_SIZE;
+			timeout = SPI_TIMEOUT;
 			if(num_bytes == 0)
 				num_bytes = CHUNK_SIZE;
 			__atcspi200_spi_start(ns);
 
-			while (num_blks) {
+			while (num_blks && (timeout--)) {
 				event = in_le32(&ns->regs->status);
 				if ((event & TXEPTY) && (data_out)) {
 					__nspi_espi_tx(ns, dout);
@@ -266,6 +269,11 @@ static int __atcspi200_spi_xfer(struct nds_spi_slave *ns,
 						num_blks -= CHUNK_SIZE;
 						din = (unsigned char *)din + rx_bytes;
 					}
+				}
+
+				if (!timeout) {
+					debug("spi_xfer: %s() timeout\n", __func__);
+					break;
 				}
 			}
 
@@ -308,8 +316,8 @@ static int atcspi200_spi_set_mode(struct udevice *bus, uint mode)
 
 static int atcspi200_spi_claim_bus(struct udevice *dev)
 {
-	struct dm_spi_slave_platdata *slave_plat =
-		dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat =
+		dev_get_parent_plat(dev);
 	struct udevice *bus = dev->parent;
 	struct nds_spi_slave *ns = dev_get_priv(bus);
 
@@ -377,7 +385,7 @@ static int atcspi200_ofdata_to_platadata(struct udevice *bus)
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 
-	ns->regs = map_physmem(devfdt_get_addr(bus),
+	ns->regs = map_physmem(dev_read_addr(bus),
 				 sizeof(struct atcspi200_spi_regs),
 				 MAP_NOCACHE);
 	if (!ns->regs) {
@@ -407,7 +415,7 @@ U_BOOT_DRIVER(atcspi200_spi) = {
 	.id = UCLASS_SPI,
 	.of_match = atcspi200_spi_ids,
 	.ops = &atcspi200_spi_ops,
-	.ofdata_to_platdata = atcspi200_ofdata_to_platadata,
-	.priv_auto_alloc_size = sizeof(struct nds_spi_slave),
+	.of_to_plat = atcspi200_ofdata_to_platadata,
+	.priv_auto	= sizeof(struct nds_spi_slave),
 	.probe = atcspi200_spi_probe,
 };

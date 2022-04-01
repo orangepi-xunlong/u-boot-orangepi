@@ -22,8 +22,10 @@
 #include <common.h>
 #include <config.h>
 #include <command.h>
+#include <eeprom.h>
 #include <i2c.h>
 #include <eeprom_layout.h>
+#include <linux/delay.h>
 
 #ifndef	CONFIG_SYS_I2C_SPEED
 #define	CONFIG_SYS_I2C_SPEED	50000
@@ -59,6 +61,10 @@
 #endif
 #endif
 
+#if CONFIG_IS_ENABLED(DM_I2C)
+static int eeprom_i2c_bus;
+#endif
+
 __weak int eeprom_write_enable(unsigned dev_addr, int state)
 {
 	return 0;
@@ -66,13 +72,10 @@ __weak int eeprom_write_enable(unsigned dev_addr, int state)
 
 void eeprom_init(int bus)
 {
-	/* SPI EEPROM */
-#if defined(CONFIG_MPC8XX_SPI) && !defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
-	spi_init_f();
-#endif
-
 	/* I2C EEPROM */
-#if defined(CONFIG_SYS_I2C)
+#if CONFIG_IS_ENABLED(DM_I2C)
+	eeprom_i2c_bus = bus;
+#elif defined(CONFIG_SYS_I2C_LEGACY)
 	if (bus >= 0)
 		i2c_set_bus_num(bus);
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
@@ -107,7 +110,7 @@ static int eeprom_len(unsigned offset, unsigned end)
 
 	/*
 	 * For a FRAM device there is no limit on the number of the
-	 * bytes that can be ccessed with the single read or write
+	 * bytes that can be accessed with the single read or write
 	 * operation.
 	 */
 #if !defined(CONFIG_SYS_I2C_FRAM)
@@ -129,26 +132,32 @@ static int eeprom_rw_block(unsigned offset, uchar *addr, unsigned alen,
 {
 	int ret = 0;
 
-	/* SPI */
-#if defined(CONFIG_MPC8XX_SPI) && !defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
-	if (read)
-		spi_read(addr, alen, buffer, len);
-	else
-		spi_write(addr, alen, buffer, len);
-#else	/* I2C */
+#if CONFIG_IS_ENABLED(DM_I2C)
+	struct udevice *dev;
 
-#if defined(CONFIG_SYS_I2C_EEPROM_BUS)
-	i2c_set_bus_num(CONFIG_SYS_I2C_EEPROM_BUS);
-#endif
+	ret = i2c_get_chip_for_busnum(eeprom_i2c_bus, addr[0],
+				      alen - 1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       eeprom_i2c_bus);
+		return CMD_RET_FAILURE;
+	}
+
+	if (read)
+		ret = dm_i2c_read(dev, offset, buffer, len);
+	else
+		ret = dm_i2c_write(dev, offset, buffer, len);
+
+#else /* Non DM I2C support - will be removed */
 
 	if (read)
 		ret = i2c_read(addr[0], offset, alen - 1, buffer, len);
 	else
 		ret = i2c_write(addr[0], offset, alen - 1, buffer, len);
-
+#endif /* CONFIG_DM_I2C */
 	if (ret)
-		ret = 1;
-#endif
+		ret = CMD_RET_FAILURE;
+
 	return ret;
 }
 
@@ -159,6 +168,10 @@ static int eeprom_rw(unsigned dev_addr, unsigned offset, uchar *buffer,
 	unsigned alen, len;
 	int rcode = 0;
 	uchar addr[3];
+
+#if defined(CONFIG_SYS_I2C_EEPROM_BUS)
+	eeprom_init(CONFIG_SYS_I2C_EEPROM_BUS);
+#endif
 
 	while (offset < end) {
 		alen = eeprom_addr(dev_addr, offset, addr);
@@ -225,7 +238,7 @@ static int parse_numeric_param(char *str)
  * @returns:	number of arguments parsed or CMD_RET_USAGE if error
  */
 static int parse_i2c_bus_addr(int *i2c_bus, ulong *i2c_addr, int argc,
-			      char * const argv[], int argc_no_bus_addr)
+			      char *const argv[], int argc_no_bus_addr)
 {
 	int argc_no_bus = argc_no_bus_addr + 1;
 	int argc_bus_addr = argc_no_bus_addr + 2;
@@ -296,7 +309,7 @@ static int eeprom_execute_command(enum eeprom_action action, int i2c_bus,
 {
 	int rcode = 0;
 	const char *const fmt =
-		"\nEEPROM @0x%lX %s: addr %08lx  off %04lx  count %ld ... ";
+		"\nEEPROM @0x%lX %s: addr 0x%08lx  off 0x%04lx  count %ld ... ";
 #ifdef CONFIG_CMD_EEPROM_LAYOUT
 	struct eeprom_layout layout;
 #endif
@@ -343,7 +356,7 @@ static int eeprom_execute_command(enum eeprom_action action, int i2c_bus,
 }
 
 #define NEXT_PARAM(argc, index)	{ (argc)--; (index)++; }
-int do_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_eeprom(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int layout_ver = LAYOUT_VERSION_AUTODETECT;
 	enum eeprom_action action = EEPROM_ACTION_INVALID;

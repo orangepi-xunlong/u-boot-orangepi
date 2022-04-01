@@ -36,7 +36,7 @@
 	is-dual = <0>;
 	num-cs = <1>;
 	flash@0 {
-		compatible = "st,m25p80", "n25q256a";
+		compatible = "st,m25p80", "n25q256a", "jedec,spi-nor";
 		m25p,fast-read;
 		reg = <0x0>;
 		spi-tx-bus-width = <1>;
@@ -44,23 +44,23 @@
 		spi-max-frequency = <100000000>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		partition@qspi-u-boot-spl {
+		partition@0 {
 			label = "qspi-u-boot-spl";
 			reg = <0x00000 0x10000>;
 		};
-		partition@qspi-u-boot-img {
+		partition@10000 {
 			label = "qspi-u-boot-img";
 			reg = <0x10000 0x60000>;
 		};
-		partition@qspi-device-tree {
+		partition@70000 {
 			label = "qspi-device-tree";
 			reg = <0x70000 0x10000>;
 		};
-		partition@qspi-linux {
+		partition@80000 {
 			label = "qspi-linux";
 			reg = <0x80000 0x400000>;
 		};
-		partition@qspi-rootfs {
+		partition@480000 {
 			label = "qspi-rootfs";
 			reg = <0x480000 0x1b80000>;
 		};

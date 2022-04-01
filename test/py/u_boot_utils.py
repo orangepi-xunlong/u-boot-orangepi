@@ -8,6 +8,7 @@ import inspect
 import os
 import os.path
 import pytest
+import signal
 import sys
 import time
 import re
@@ -120,7 +121,7 @@ def wait_until_open_succeeds(fn):
         An open file handle to the file.
     """
 
-    for i in xrange(100):
+    for i in range(100):
         fh = attempt_to_open_file(fn)
         if fh:
             return fh
@@ -143,7 +144,7 @@ def wait_until_file_open_fails(fn, ignore_errors):
         Nothing.
     """
 
-    for i in xrange(100):
+    for i in range(100):
         fh = attempt_to_open_file(fn)
         if not fh:
             return
@@ -235,6 +236,13 @@ def find_ram_base(u_boot_console):
         if ram_base is None:
             ram_base = -1
             raise Exception('Failed to find RAM bank start in `bdinfo`')
+
+    # We don't want ram_base to be zero as some functions test if the given
+    # address is NULL (0). Besides, on some RISC-V targets the low memory
+    # is protected that prevents S-mode U-Boot from access.
+    # Let's add 2MiB then (size of an ARM LPAE/v8 section).
+
+    ram_base += 1024 * 1024 * 2
 
     return ram_base
 
@@ -332,3 +340,38 @@ def crc32(u_boot_console, address, count):
     assert m, 'CRC32 operation failed.'
 
     return m.group(1)
+
+def waitpid(pid, timeout=60, kill=False):
+    """Wait a process to terminate by its PID
+
+    This is an alternative to a os.waitpid(pid, 0) call that works on
+    processes that aren't children of the python process.
+
+    Args:
+        pid: PID of a running process.
+        timeout: Time in seconds to wait.
+        kill: Whether to forcibly kill the process after timeout.
+
+    Returns:
+        True, if the process ended on its own.
+        False, if the process was killed by this function.
+
+    Raises:
+        TimeoutError, if the process is still running after timeout.
+    """
+    try:
+        for _ in range(timeout):
+            os.kill(pid, 0)
+            time.sleep(1)
+
+        if kill:
+            os.kill(pid, signal.SIGKILL)
+            return False
+
+    except ProcessLookupError:
+        return True
+
+    raise TimeoutError(
+        "Process with PID {} did not terminate after {} seconds."
+        .format(pid, timeout)
+    )

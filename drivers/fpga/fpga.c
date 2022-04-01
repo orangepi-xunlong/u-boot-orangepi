@@ -6,9 +6,12 @@
 
 /* Generic FPGA support */
 #include <common.h>             /* core U-Boot definitions */
+#include <init.h>
+#include <log.h>
 #include <xilinx.h>             /* xilinx specific definitions */
 #include <altera.h>             /* altera specific definitions */
 #include <lattice.h>
+#include <dm/device_compat.h>
 
 /* Local definitions */
 #ifndef CONFIG_MAX_FPGA_DEVICES
@@ -203,6 +206,35 @@ int fpga_fsload(int devnum, const void *buf, size_t size,
 #if defined(CONFIG_FPGA_XILINX)
 			ret_val = xilinx_loadfs(desc->devdesc, buf, size,
 						fpga_fsinfo);
+#else
+			fpga_no_sup((char *)__func__, "Xilinx devices");
+#endif
+			break;
+		default:
+			printf("%s: Invalid or unsupported device type %d\n",
+			       __func__, desc->devtype);
+		}
+	}
+
+	return ret_val;
+}
+#endif
+
+#if defined(CONFIG_CMD_FPGA_LOAD_SECURE)
+int fpga_loads(int devnum, const void *buf, size_t size,
+	       struct fpga_secure_info *fpga_sec_info)
+{
+	int ret_val = FPGA_FAIL;
+
+	const fpga_desc *desc = fpga_validate(devnum, buf, size,
+					      (char *)__func__);
+
+	if (desc) {
+		switch (desc->devtype) {
+		case fpga_xilinx:
+#if defined(CONFIG_FPGA_XILINX)
+			ret_val = xilinx_loads(desc->devdesc, buf, size,
+					       fpga_sec_info);
 #else
 			fpga_no_sup((char *)__func__, "Xilinx devices");
 #endif

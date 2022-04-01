@@ -40,10 +40,24 @@ config DM_WARN
 	depends on DM
 	default y
 	help
+	  Enable this to see warnings related to driver model.
+
+	  Warnings may help with debugging, such as when expected devices do
+	  not bind correctly. If the option is disabled, dm_warn() is compiled
+	  out - it will do nothing when called.
+
+config SPL_DM_WARN
+	bool "Enable warnings in driver model wuth SPL"
+	depends on SPL_DM
+	help
+	  Enable this to see warnings related to driver model in SPL
+
 	  The dm_warn() function can use up quite a bit of space for its
 	  strings. By default this is disabled for SPL builds to save space.
-	  This will cause dm_warn() to be compiled out - it will do nothing
-	  when called.
+
+	  Warnings may help with debugging, such as when expected devices do
+	  not bind correctly. If the option is disabled, dm_warn() is compiled
+	  out - it will do nothing when called.
 
 config DM_DEBUG
 	bool "Enable debug messages in driver model core"
@@ -57,12 +71,20 @@ config DM_DEVICE_REMOVE
 	default y
 	help
 	  We can save some code space by dropping support for removing a
-	  device. This is not normally required in SPL, so by default this
-	  option is disabled for SPL.
+	  device.
 
 	  Note that this may have undesirable results in the USB subsystem as
 	  it causes unplugged devices to linger around in the dm-tree, and it
 	  causes USB host controllers to not be stopped when booting the OS.
+
+config SPL_DM_DEVICE_REMOVE
+	bool "Support device removal in SPL"
+	depends on SPL_DM
+	default n
+	help
+	  We can save some code space by dropping support for removing a
+	  device. This is not normally required in SPL, so by default this
+	  option is disabled for SPL.
 
 config DM_STDIO
 	bool "Support stdio registration"
@@ -84,12 +106,38 @@ config DM_SEQ_ALIAS
 
 config SPL_DM_SEQ_ALIAS
 	bool "Support numbered aliases in device tree in SPL"
-	depends on DM
+	depends on SPL_DM
 	default n
 	help
 	  Most boards will have a '/aliases' node containing the path to
 	  numbered devices (e.g. serial0 = &serial0). This feature can be
 	  disabled if it is not required, to save code space in SPL.
+
+config SPL_DM_INLINE_OFNODE
+	bool "Inline some ofnode functions which are seldom used in SPL"
+	depends on SPL_DM
+	default y
+	help
+	  This applies to several ofnode functions (see ofnode.h) which are
+	  seldom used. Inlining them can help reduce code size.
+
+config TPL_DM_INLINE_OFNODE
+	bool "Inline some ofnode functions which are seldom used in TPL"
+	depends on TPL_DM
+	default y
+	help
+	  This applies to several ofnode functions (see ofnode.h) which are
+	  seldom used. Inlining them can help reduce code size.
+
+config DM_DMA
+	bool "Support per-device DMA constraints"
+	depends on DM
+	default n
+	help
+	  Enable this to extract per-device DMA constraints, only supported on
+	  device-tree systems for now. This is needed in order translate
+	  addresses on systems where different buses have different views of
+	  the physical address space.
 
 config REGMAP
 	bool "Support register maps"
@@ -187,6 +235,27 @@ config SPL_SIMPLE_BUS
 	  Supports the 'simple-bus' driver, which is used on some systems
 	  in SPL.
 
+config SIMPLE_BUS_CORRECT_RANGE
+	bool "Decode the 'simple-bus' <range> by honoring the #address-cells and #size-cells"
+	depends on SIMPLE_BUS
+	default y if SANDBOX
+	help
+	  Decoding the 'simple-bus' <range> by honoring the #address-cells
+	  and #size-cells of parent/child bus. If unset, #address-cells of
+	  parent bus is assumed to be 1, #address-cells and #size-cells of
+	  child bus is also assumed to be 1, to save some spaces of using
+	  an advanced API to decode the <range>, which benefits SPL image
+	  builds that have size limits.
+
+	  If you are unsure about this, Say N here.
+
+config SIMPLE_PM_BUS
+	bool "Support simple-pm-bus driver"
+	depends on DM && OF_CONTROL && CLK && POWER_DOMAIN
+	help
+	  Supports the 'simple-pm-bus' driver, which is used for busses that
+	  have power domains and/or clocks which need to be enabled before use.
+
 config OF_TRANSLATE
 	bool "Translate addresses using fdt_translate_address"
 	depends on DM && OF_CONTROL
@@ -217,6 +286,15 @@ config SPL_OF_TRANSLATE
 	  used for the address translation. This function is faster and
 	  smaller in size than fdt_translate_address().
 
+config TRANSLATION_OFFSET
+	bool "Platforms specific translation offset"
+	depends on DM && OF_CONTROL
+	help
+	  Some platforms need a special address translation. Those
+	  platforms (e.g. mvebu in SPL) can configure a translation
+	  offset by enabling this option and setting the translation_offset
+	  variable in the GD in their platform- / board-specific code.
+
 config OF_ISA_BUS
 	bool
 	depends on OF_TRANSLATE
@@ -224,7 +302,7 @@ config OF_ISA_BUS
 	  Is this option is enabled then support for the ISA bus will
 	  be included for addresses read from DT. This is something that
 	  should be known to be required or not based upon the board
-	  being targetted, and whether or not it makes use of an ISA bus.
+	  being targeted, and whether or not it makes use of an ISA bus.
 
 	  The bus is matched based upon its node name equalling "isa". The
 	  busses #address-cells should equal 2, with the first cell being
@@ -243,5 +321,26 @@ config OF_ISA_BUS
 config DM_DEV_READ_INLINE
 	bool
 	default y if !OF_LIVE
+
+config ACPIGEN
+	bool "Support ACPI table generation in driver model"
+	default y if SANDBOX || (GENERATE_ACPI_TABLE && !QEMU)
+	select LIB_UUID
+	help
+	  This option enables generation of ACPI tables using driver-model
+	  devices. It adds a new operation struct to each driver, to support
+	  things like generating device-specific tables and returning the ACPI
+	  name of a device.
+
+config BOUNCE_BUFFER
+	bool "Include bounce buffer API"
+	help
+	  Some peripherals support DMA from a subset of physically
+	  addressable memory only.  To support such peripherals, the
+	  bounce buffer API uses a temporary buffer: it copies data
+	  to/from DMA regions while managing cache operations.
+
+	  A second possible use of bounce buffers is their ability to
+	  provide aligned buffers for DMA operations.
 
 endmenu

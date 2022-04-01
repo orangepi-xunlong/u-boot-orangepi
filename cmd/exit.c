@@ -7,15 +7,13 @@
 #include <common.h>
 #include <command.h>
 
-static int do_exit(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_exit(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
-	int r;
-
-	r = 0;
 	if (argc > 1)
-		r = simple_strtoul(argv[1], NULL, 10);
+		return dectoul(argv[1], NULL);
 
-	return -r - 2;
+	return 0;
 }
 
 U_BOOT_CMD(

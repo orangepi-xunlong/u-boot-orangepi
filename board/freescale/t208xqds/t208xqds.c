@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2013 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <image.h>
+#include <init.h>
+#include <log.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -15,6 +22,7 @@
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
+#include "../common/i2c_mux.h"
 
 #include "../common/qixis.h"
 #include "../common/vsc3316_3308.h"
@@ -72,22 +80,9 @@ int checkboard(void)
 	return 0;
 }
 
-int select_i2c_ch_pca9547(u8 ch)
-{
-	int ret;
-
-	ret = i2c_write(I2C_MUX_PCA_ADDR_PRI, 0, 1, &ch, 1);
-	if (ret) {
-		puts("PCA: failed to select proper channel\n");
-		return ret;
-	}
-
-	return 0;
-}
-
 int i2c_multiplexer_select_vid_channel(u8 channel)
 {
-	return select_i2c_ch_pca9547(channel);
+	return select_i2c_ch_pca9547(channel, 0);
 }
 
 int brd_mux_lane_to_slot(void)
@@ -190,76 +185,6 @@ int brd_mux_lane_to_slot(void)
 		 */
 		 QIXIS_WRITE(brdcfg[12], 0x1a);
 		 break;
-#elif defined(CONFIG_TARGET_T2081QDS)
-	case 0x50:
-	case 0x51:
-		/* SD1(A:D) => SLOT2 XAUI
-		 * SD1(E)   => SLOT1 PCIe4 x1
-		 * SD1(F:H) => SLOT3 SGMII
-		 */
-		QIXIS_WRITE(brdcfg[12], 0x98);
-		QIXIS_WRITE(brdcfg[13], 0x70);
-		break;
-	case 0x6a:
-	case 0x6b:
-		/* SD1(A:D) => XFI SFP Module
-		 * SD1(E)   => SLOT1 PCIe4 x1
-		 * SD1(F:H) => SLOT3 SGMII
-		 */
-		QIXIS_WRITE(brdcfg[12], 0x80);
-		QIXIS_WRITE(brdcfg[13], 0x70);
-		break;
-	case 0x6c:
-	case 0x6d:
-		/* SD1(A:B) => XFI SFP Module
-		 * SD1(C:D) => SLOT2 SGMII
-		 * SD1(E:H) => SLOT1 PCIe4 x4
-		 */
-		QIXIS_WRITE(brdcfg[12], 0xe8);
-		QIXIS_WRITE(brdcfg[13], 0x0);
-		break;
-	case 0xaa:
-	case 0xab:
-		/* SD1(A:D) => SLOT2 PCIe3 x4
-		 * SD1(F:H) => SLOT1 SGMI4 x4
-		 */
-		QIXIS_WRITE(brdcfg[12], 0xf8);
-		QIXIS_WRITE(brdcfg[13], 0x0);
-		break;
-	case 0xca:
-	case 0xcb:
-		/* SD1(A)   => SLOT2 PCIe3 x1
-		 * SD1(B)   => SLOT7 SGMII
-		 * SD1(C)   => SLOT6 SGMII
-		 * SD1(D)   => SLOT5 SGMII
-		 * SD1(E)   => SLOT1 PCIe4 x1
-		 * SD1(F:H) => SLOT3 SGMII
-		 */
-		QIXIS_WRITE(brdcfg[12], 0x80);
-		QIXIS_WRITE(brdcfg[13], 0x70);
-		break;
-	case 0xde:
-	case 0xdf:
-		/* SD1(A:D) => SLOT2 PCIe3 x4
-		 * SD1(E)   => SLOT1 PCIe4 x1
-		 * SD1(F)   => SLOT4 PCIe1 x1
-		 * SD1(G)   => SLOT3 PCIe2 x1
-		 * SD1(H)   => SLOT7 SGMII
-		 */
-		QIXIS_WRITE(brdcfg[12], 0x98);
-		QIXIS_WRITE(brdcfg[13], 0x25);
-		break;
-	case 0xf2:
-		/* SD1(A)   => SLOT2 PCIe3 x1
-		 * SD1(B:D) => SLOT7 SGMII
-		 * SD1(E)   => SLOT1 PCIe4 x1
-		 * SD1(F)   => SLOT4 PCIe1 x1
-		 * SD1(G)   => SLOT3 PCIe2 x1
-		 * SD1(H)   => SLOT7 SGMII
-		 */
-		QIXIS_WRITE(brdcfg[12], 0x81);
-		QIXIS_WRITE(brdcfg[13], 0xa5);
-		break;
 #endif
 	default:
 		printf("WARNING: unsupported for SerDes1 Protocol %d\n",
@@ -327,6 +252,33 @@ int brd_mux_lane_to_slot(void)
 	return 0;
 }
 
+static void esdhc_adapter_card_ident(void)
+{
+	u8 card_id, value;
+
+	card_id = QIXIS_READ(present) & QIXIS_SDID_MASK;
+
+	switch (card_id) {
+	case QIXIS_ESDHC_ADAPTER_TYPE_EMMC45:
+		value = QIXIS_READ(brdcfg[5]);
+		value |= (QIXIS_DAT4 | QIXIS_DAT5_6_7);
+		QIXIS_WRITE(brdcfg[5], value);
+		break;
+	case QIXIS_ESDHC_ADAPTER_TYPE_SDMMC_LEGACY:
+		value = QIXIS_READ(pwr_ctl[1]);
+		value |= QIXIS_EVDD_BY_SDHC_VS;
+		QIXIS_WRITE(pwr_ctl[1], value);
+		break;
+	case QIXIS_ESDHC_ADAPTER_TYPE_EMMC44:
+		value = QIXIS_READ(brdcfg[5]);
+		value |= (QIXIS_SDCLKIN | QIXIS_SDCLKOUT);
+		QIXIS_WRITE(brdcfg[5], value);
+		break;
+	default:
+		break;
+	}
+}
+
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
@@ -365,8 +317,8 @@ int board_early_init_r(void)
 		printf("Warning: Adjusting core voltage failed.\n");
 
 	brd_mux_lane_to_slot();
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
-
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
+	esdhc_adapter_card_ident();
 	return 0;
 }
 
@@ -443,7 +395,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -463,7 +415,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 	fdt_fixup_board_enet(blob);
 #endif
 

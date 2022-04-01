@@ -15,11 +15,6 @@
  * for DDR ECC byte filling in the SPL before loading the main
  * U-Boot into it.
  */
-#define CONFIG_SYS_TCLK		250000000	/* 250MHz */
-
-/*
- * Commands configuration
- */
 
 /*
  * The debugging version enables USB support via defconfig.
@@ -28,7 +23,7 @@
  */
 
 /* I2C */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_MVTWSI
 #define CONFIG_I2C_MVTWSI_BASE0		MVEBU_TWSI_BASE
 #define CONFIG_I2C_MVTWSI_BASE1		MVEBU_TWSI1_BASE
@@ -39,20 +34,9 @@
 #define CONFIG_EHCI_IS_TDI
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 3
 
-/* SPI NOR flash default params, used by sf commands */
-#define CONFIG_SF_DEFAULT_SPEED		27777777 /* for fast SPL booting */
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
-
 /* Environment in SPI NOR flash */
-#define CONFIG_ENV_OFFSET		(1 << 20) /* 1MiB in */
-#define CONFIG_ENV_SIZE			(64 << 10) /* 64KiB */
-#define CONFIG_ENV_SECT_SIZE		(256 << 10) /* 256KiB sectors */
-#define CONFIG_ENV_OVERWRITE
 
-#define CONFIG_PHY_MARVELL		/* there is a marvell phy */
 #define PHY_ANEG_TIMEOUT	8000	/* PHY needs a longer aneg time */
-
-#define CONFIG_PREBOOT
 
 /* Keep device tree and initrd in lower memory so the kernel can access them */
 #define CONFIG_EXTRA_ENV_SETTINGS	\
@@ -62,13 +46,6 @@
 /* SATA support */
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_LBA48
-
-/* PCIe support */
-#ifdef CONFIG_CMD_PCI
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_PCI_MVEBU
-#endif
-#endif
 
 /* Enable LCD and reserve 512KB from top of memory*/
 #define CONFIG_SYS_MEM_TOP_HIDE		0x80000
@@ -103,7 +80,6 @@
 
 /* SPL */
 /* Defines for SPL */
-#define CONFIG_SPL_TEXT_BASE		0x40004030
 #define CONFIG_SPL_MAX_SIZE		((128 << 10) - 0x4030)
 
 #define CONFIG_SPL_BSS_START_ADDR	(0x40000000 + (128 << 10))
@@ -115,10 +91,6 @@
 
 #define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
 #define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
-
-/* SPL related SPI defines */
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x1a000
-#define CONFIG_SYS_U_BOOT_OFFS		CONFIG_SYS_SPI_U_BOOT_OFFS
 
 /* Enable DDR support in SPL (DDR3 training from Marvell bin_hdr) */
 #define CONFIG_DDR_FIXED_SIZE		(2 << 20)	/* 2GiB */

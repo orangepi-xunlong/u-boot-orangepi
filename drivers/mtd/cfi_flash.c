@@ -19,13 +19,20 @@
 #include <common.h>
 #include <console.h>
 #include <dm.h>
+#include <env.h>
 #include <errno.h>
 #include <fdt_support.h>
+#include <flash.h>
+#include <init.h>
+#include <irq_func.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <linux/delay.h>
 #include <mtd/cfi_flash.h>
 #include <watchdog.h>
 
@@ -177,7 +184,8 @@ __maybe_weak u64 flash_read64(void *addr)
 /*-----------------------------------------------------------------------
  */
 #if defined(CONFIG_ENV_IS_IN_FLASH) || defined(CONFIG_ENV_ADDR_REDUND) || \
-	(CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE)
+	(defined(CONFIG_SYS_MONITOR_BASE) && \
+	(CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE))
 static flash_info_t *flash_get_info(ulong base)
 {
 	int i;
@@ -210,7 +218,7 @@ flash_map(flash_info_t *info, flash_sect_t sect, uint offset)
 {
 	unsigned int byte_offset = offset * info->portwidth;
 
-	return (void *)(info->start[sect] + byte_offset);
+	return (void *)(info->start[sect] + (byte_offset << info->chip_lsb));
 }
 
 static inline void flash_unmap(flash_info_t *info, flash_sect_t sect,
@@ -1910,12 +1918,27 @@ static int __flash_detect_cfi(flash_info_t *info, struct cfi_qry *qry)
 			flash_read_cfi(info, qry, FLASH_OFFSET_CFI_RESP,
 				       sizeof(struct cfi_qry));
 			info->interface	= le16_to_cpu(qry->interface_desc);
+			/* Some flash chips can support multiple bus widths.
+			 * In this case, override the interface width and
+			 * limit it to the port width.
+			 */
+			if ((info->interface == FLASH_CFI_X8X16) &&
+					(info->portwidth == FLASH_CFI_8BIT)) {
+				debug("Overriding 16-bit interface width to"
+						" 8-bit port width\n");
+				info->interface = FLASH_CFI_X8;
+			} else if ((info->interface == FLASH_CFI_X16X32) &&
+					(info->portwidth == FLASH_CFI_16BIT)) {
+				debug("Overriding 16-bit interface width to"
+						" 16-bit port width\n");
+				info->interface = FLASH_CFI_X16;
+			}
 
 			info->cfi_offset = flash_offset_cfi[cfi_offset];
 			debug("device interface is %d\n",
 			      info->interface);
-			debug("found port %d chip %d ",
-			      info->portwidth, info->chipwidth);
+			debug("found port %d chip %d chip_lsb %d ",
+			      info->portwidth, info->chipwidth, info->chip_lsb);
 			debug("port %d bits chip %d bits\n",
 			      info->portwidth << CFI_FLASH_SHIFT_WIDTH,
 			      info->chipwidth << CFI_FLASH_SHIFT_WIDTH);
@@ -1954,9 +1977,23 @@ static int flash_detect_cfi(flash_info_t *info, struct cfi_qry *qry)
 	     info->portwidth <= FLASH_CFI_64BIT; info->portwidth <<= 1) {
 		for (info->chipwidth = FLASH_CFI_BY8;
 		     info->chipwidth <= info->portwidth;
-		     info->chipwidth <<= 1)
+		     info->chipwidth <<= 1) {
+			/*
+			 * First, try detection without shifting the addresses
+			 * for 8bit devices (16bit wide connection)
+			 */
+			info->chip_lsb = 0;
 			if (__flash_detect_cfi(info, qry))
 				return 1;
+
+			/*
+			 * Not detected, so let's try with shifting
+			 * for 8bit devices
+			 */
+			info->chip_lsb = 1;
+			if (__flash_detect_cfi(info, qry))
+				return 1;
+		}
 	}
 	debug("not found\n");
 	return 0;
@@ -2239,12 +2276,12 @@ ulong flash_get_size(phys_addr_t base, int banknum)
 					flash_unlock_seq(info, 0);
 					flash_write_cmd(info, 0,
 							info->addr_unlock1,
-							FLASH_CMD_READ_ID);
+							AMD_CMD_SET_PPB_ENTRY);
 					info->protect[sect_cnt] =
-						flash_isset(
-							info, sect_cnt,
-							FLASH_OFFSET_PROTECT,
-							FLASH_STATUS_PROTECT);
+						!flash_isset(info, sect_cnt,
+							     0, 0x01);
+					flash_write_cmd(info, 0, 0,
+							info->cmd_reset);
 					break;
 				default:
 					/* default: not protected */
@@ -2328,7 +2365,8 @@ static void flash_protect_default(void)
 #endif
 
 	/* Monitor protection ON by default */
-#if (CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE) && \
+#if defined(CONFIG_SYS_MONITOR_BASE) && \
+	(CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE) && \
 	(!defined(CONFIG_MONITOR_IS_IN_RAM))
 	flash_protect(FLAG_PROTECT_SET,
 		      CONFIG_SYS_MONITOR_BASE,
@@ -2460,29 +2498,17 @@ unsigned long flash_init(void)
 #ifdef CONFIG_CFI_FLASH /* for driver model */
 static int cfi_flash_probe(struct udevice *dev)
 {
-	const fdt32_t *cell;
-	int addrc, sizec;
-	int len, idx;
+	fdt_addr_t addr;
+	int idx;
 
-	addrc = dev_read_addr_cells(dev);
-	sizec = dev_read_size_cells(dev);
-
-	/* decode regs; there may be multiple reg tuples. */
-	cell = dev_read_prop(dev, "reg", &len);
-	if (!cell)
-		return -ENOENT;
-	idx = 0;
-	len /= sizeof(fdt32_t);
-	while (idx < len) {
-		phys_addr_t addr;
-
-		addr = dev_translate_address(dev, cell + idx);
+	for (idx = 0; idx < CFI_MAX_FLASH_BANKS; idx++) {
+		addr = dev_read_addr_index(dev, idx);
+		if (addr == FDT_ADDR_T_NONE)
+			break;
 
 		flash_info[cfi_flash_num_flash_banks].dev = dev;
 		flash_info[cfi_flash_num_flash_banks].base = addr;
 		cfi_flash_num_flash_banks++;
-
-		idx += addrc + sizec;
 	}
 	gd->bd->bi_flashstart = flash_info[0].base;
 

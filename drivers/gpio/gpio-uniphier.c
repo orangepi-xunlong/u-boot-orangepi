@@ -142,7 +142,7 @@ static int uniphier_gpio_probe(struct udevice *dev)
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -166,6 +166,6 @@ U_BOOT_DRIVER(uniphier_gpio) = {
 	.id	= UCLASS_GPIO,
 	.of_match = uniphier_gpio_match,
 	.probe	= uniphier_gpio_probe,
-	.priv_auto_alloc_size = sizeof(struct uniphier_gpio_priv),
+	.priv_auto	= sizeof(struct uniphier_gpio_priv),
 	.ops	= &uniphier_gpio_ops,
 };

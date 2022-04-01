@@ -5,6 +5,8 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <power-domain-uclass.h>
 #include <asm/io.h>
 #include <asm/power-domain.h>
@@ -75,7 +77,7 @@ static const struct udevice_id sandbox_power_domain_ids[] = {
 
 struct power_domain_ops sandbox_power_domain_ops = {
 	.request = sandbox_power_domain_request,
-	.free = sandbox_power_domain_free,
+	.rfree = sandbox_power_domain_free,
 	.on = sandbox_power_domain_on,
 	.off = sandbox_power_domain_off,
 };
@@ -86,7 +88,7 @@ U_BOOT_DRIVER(sandbox_power_domain) = {
 	.of_match = sandbox_power_domain_ids,
 	.bind = sandbox_power_domain_bind,
 	.probe = sandbox_power_domain_probe,
-	.priv_auto_alloc_size = sizeof(struct sandbox_power_domain),
+	.priv_auto	= sizeof(struct sandbox_power_domain),
 	.ops = &sandbox_power_domain_ops,
 };
 

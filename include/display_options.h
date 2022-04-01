@@ -24,7 +24,7 @@ void print_size(uint64_t size, const char *suffix);
 /**
  * print_freq() - Print a frequency with a suffix
  *
- * Print frequencies as "x.xx GHz", "xxx KHz", etc as needed; allow for
+ * Print frequencies as "x.xx GHz", "xxx kHz", etc as needed; allow for
  * optional trailing string (like "\n")
  *
  * @freq:	Frequency to print in Hz
@@ -46,6 +46,31 @@ void print_freq(uint64_t freq, const char *suffix);
  */
 int print_buffer(ulong addr, const void *data, uint width, uint count,
 		 uint linelen);
+
+/*
+ * Maximum length of an output line is when width == 1
+ *	9 for address,
+ *	a space, two hex digits and an ASCII character for each byte
+ *	2 spaces between the hex and ASCII
+ *	\0 terminator
+ */
+#define HEXDUMP_MAX_BUF_LENGTH(bytes)	(9 + (bytes) * 4 + 3)
+
+/**
+ * hexdump_line() - Print out a single line of a hex dump
+ *
+ * @addr:	Starting address to display at start of line
+ * @data:	pointer to data buffer
+ * @width:	data value width.  May be 1, 2, or 4.
+ * @count:	number of values to display
+ * @linelen:	Number of values to print per line; specify 0 for default length
+ * @out:	Output buffer to hold the dump
+ * @size:	Size of output buffer in bytes
+ * @return number of bytes processed, if OK, -ENOSPC if buffer too small
+ *
+ */
+int hexdump_line(ulong addr, const void *data, uint width, uint count,
+		 uint linelen, char *out, int size);
 
 /**
  * display_options() - display the version string / build tag

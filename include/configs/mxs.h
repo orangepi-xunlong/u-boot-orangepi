@@ -45,14 +45,12 @@
 
 /* SPL */
 #ifndef CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_NO_CPU_SUPPORT_CODE
+#define CONFIG_SPL_NO_CPU_SUPPORT
 #define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mxs"
 #endif
 
 /* Memory sizes */
 #define CONFIG_SYS_MALLOC_LEN		0x00400000	/* 4 MB for malloc */
-#define CONFIG_SYS_MEMTEST_START	0x40000000	/* Memtest start adr */
-#define CONFIG_SYS_MEMTEST_END		0x40400000	/* 4 MB RAM test */
 
 /* OCRAM at 0x0 ; 32kB on MX23 ; 128kB on MX28 */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x00000000
@@ -80,7 +78,6 @@
  * As for the SPL, we must avoid the first 4 KiB as well, but we load the
  * IVT and CST to 0x8000, so we don't need to waste the subsequent 4 KiB.
  */
-#define CONFIG_SPL_TEXT_BASE		0x00001000
 
 /* U-Boot general configuration */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O buffer size */
@@ -95,12 +92,6 @@
 /*
  * Drivers
  */
-
-/* APBH DMA */
-
-/* GPIO */
-#define CONFIG_MXS_GPIO
-
 /*
  * DUART Serial Driver.
  * Conflicts with AUART driver which can be set by board.
@@ -111,7 +102,6 @@
 
 /* FEC Ethernet on SoC */
 #ifdef CONFIG_FEC_MXC
-#define CONFIG_MII
 #ifndef CONFIG_ETHPRIME
 #define CONFIG_ETHPRIME			"FEC0"
 #endif
@@ -123,11 +113,6 @@
 /* LCD */
 #ifdef CONFIG_VIDEO
 #define CONFIG_VIDEO_MXS
-#endif
-
-/* MMC */
-#ifdef CONFIG_CMD_MMC
-#define CONFIG_BOUNCE_BUFFER
 #endif
 
 /* NAND */
@@ -144,7 +129,6 @@
 
 /* SPI */
 #ifdef CONFIG_CMD_SPI
-#define CONFIG_HARD_SPI
 #define CONFIG_SPI_HALF_DUPLEX
 #endif
 

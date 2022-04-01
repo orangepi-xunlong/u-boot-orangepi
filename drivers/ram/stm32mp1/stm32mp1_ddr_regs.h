@@ -7,6 +7,7 @@
 #define _RAM_STM32MP1_DDR_REGS_H
 
 /* DDR3/LPDDR2/LPDDR3 Controller (DDRCTRL) registers */
+#include <linux/bitops.h>
 struct stm32mp1_ddrctl {
 	u32 mstr ;		/* 0x0 Master*/
 	u32 stat;		/* 0x4 Operating Mode Status*/
@@ -234,6 +235,8 @@ struct stm32mp1_ddrphy {
 
 /* DDRCTRL REGISTERS */
 #define DDRCTRL_MSTR_DDR3			BIT(0)
+#define DDRCTRL_MSTR_LPDDR2			BIT(2)
+#define DDRCTRL_MSTR_LPDDR3			BIT(3)
 #define DDRCTRL_MSTR_DATA_BUS_WIDTH_MASK	GENMASK(13, 12)
 #define DDRCTRL_MSTR_DATA_BUS_WIDTH_FULL	(0 << 12)
 #define DDRCTRL_MSTR_DATA_BUS_WIDTH_HALF	(1 << 12)
@@ -258,6 +261,7 @@ struct stm32mp1_ddrphy {
 
 #define DDRCTRL_MRSTAT_MR_WR_BUSY		BIT(0)
 
+#define DDRCTRL_PWRCTL_SELFREF_EN		BIT(0)
 #define DDRCTRL_PWRCTL_POWERDOWN_EN		BIT(1)
 #define DDRCTRL_PWRCTL_SELFREF_SW		BIT(5)
 
@@ -330,6 +334,7 @@ struct stm32mp1_ddrphy {
 
 #define DDRPHYC_DXNGCR_DXEN			BIT(0)
 
+#define DDRPHYC_DXNDLLCR_DLLSRST		BIT(30)
 #define DDRPHYC_DXNDLLCR_DLLDIS			BIT(31)
 #define DDRPHYC_DXNDLLCR_SDPHASE_MASK		GENMASK(17, 14)
 #define DDRPHYC_DXNDLLCR_SDPHASE_SHIFT		14

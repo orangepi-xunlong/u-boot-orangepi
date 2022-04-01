@@ -11,9 +11,9 @@
 #include <cpu.h>
 #include <dm.h>
 #include <errno.h>
+#include <init.h>
 #include <asm/io.h>
-
-DECLARE_GLOBAL_DATA_PTR;
+#include <linux/bitops.h>
 
 #define REV_CHIPID_SHIFT		16
 #define REV_CHIPID_MASK			(0xffff << REV_CHIPID_SHIFT)
@@ -67,6 +67,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define REG_BCM63268_MISC_STRAPBUS	0x1814
 #define STRAPBUS_63268_FCVO_SHIFT	21
 #define STRAPBUS_63268_FCVO_MASK	(0xf << STRAPBUS_63268_FCVO_SHIFT)
+
+#define REG_BCM6838_OTP_BRCMBITS0	0x440
+#define VIPER_6838_FREQ_SHIFT		18
+#define VIPER_6838_FREQ_MASK		(0x7 << VIPER_6838_FREQ_SHIFT)
 
 struct bmips_cpu_priv;
 
@@ -274,6 +278,26 @@ static ulong bcm63268_get_cpu_freq(struct bmips_cpu_priv *priv)
 	}
 }
 
+static ulong bcm6838_get_cpu_freq(struct bmips_cpu_priv *priv)
+{
+	unsigned int mips_viper_freq;
+
+	mips_viper_freq = readl_be(priv->regs + REG_BCM6838_OTP_BRCMBITS0);
+	mips_viper_freq = (mips_viper_freq & VIPER_6838_FREQ_MASK)
+		>> VIPER_6838_FREQ_SHIFT;
+
+	switch (mips_viper_freq) {
+	case 0x0:
+		return 600000000;
+	case 0x1:
+		return 400000000;
+	case 0x2:
+		return 240000000;
+	default:
+		return 0;
+	}
+}
+
 static int bcm6328_get_cpu_count(struct bmips_cpu_priv *priv)
 {
 	u32 val = readl_be(priv->regs + REG_BCM6328_OTP);
@@ -348,8 +372,14 @@ static const struct bmips_cpu_hw bmips_cpu_bcm63268 = {
 	.get_cpu_count = bcm6358_get_cpu_count,
 };
 
+static const struct bmips_cpu_hw bmips_cpu_bcm6838 = {
+	.get_cpu_desc = bmips_short_cpu_desc,
+	.get_cpu_freq = bcm6838_get_cpu_freq,
+	.get_cpu_count = bcm6358_get_cpu_count,
+};
+
 /* Generic CPU Ops */
-static int bmips_cpu_get_desc(struct udevice *dev, char *buf, int size)
+static int bmips_cpu_get_desc(const struct udevice *dev, char *buf, int size)
 {
 	struct bmips_cpu_priv *priv = dev_get_priv(dev);
 	const struct bmips_cpu_hw *hw = priv->hw;
@@ -357,7 +387,7 @@ static int bmips_cpu_get_desc(struct udevice *dev, char *buf, int size)
 	return hw->get_cpu_desc(priv, buf, size);
 }
 
-static int bmips_cpu_get_info(struct udevice *dev, struct cpu_info *info)
+static int bmips_cpu_get_info(const struct udevice *dev, struct cpu_info *info)
 {
 	struct bmips_cpu_priv *priv = dev_get_priv(dev);
 	const struct bmips_cpu_hw *hw = priv->hw;
@@ -370,7 +400,7 @@ static int bmips_cpu_get_info(struct udevice *dev, struct cpu_info *info)
 	return 0;
 }
 
-static int bmips_cpu_get_count(struct udevice *dev)
+static int bmips_cpu_get_count(const struct udevice *dev)
 {
 	struct bmips_cpu_priv *priv = dev_get_priv(dev);
 	const struct bmips_cpu_hw *hw = priv->hw;
@@ -378,7 +408,7 @@ static int bmips_cpu_get_count(struct udevice *dev)
 	return hw->get_cpu_count(priv);
 }
 
-static int bmips_cpu_get_vendor(struct udevice *dev, char *buf, int size)
+static int bmips_cpu_get_vendor(const struct udevice *dev, char *buf, int size)
 {
 	snprintf(buf, size, "Broadcom");
 
@@ -395,10 +425,9 @@ static const struct cpu_ops bmips_cpu_ops = {
 /* BMIPS CPU driver */
 int bmips_cpu_bind(struct udevice *dev)
 {
-	struct cpu_platdata *plat = dev_get_parent_platdata(dev);
+	struct cpu_plat *plat = dev_get_parent_plat(dev);
 
-	plat->cpu_id = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
-		"reg", -1);
+	plat->cpu_id = dev_read_u32_default(dev, "reg", -1);
 	plat->device_id = read_c0_prid();
 
 	return 0;
@@ -409,14 +438,11 @@ int bmips_cpu_probe(struct udevice *dev)
 	struct bmips_cpu_priv *priv = dev_get_priv(dev);
 	const struct bmips_cpu_hw *hw =
 		(const struct bmips_cpu_hw *)dev_get_driver_data(dev);
-	fdt_addr_t addr;
-	fdt_size_t size;
 
-	addr = devfdt_get_addr_size_index(dev_get_parent(dev), 0, &size);
-	if (addr == FDT_ADDR_T_NONE)
+	priv->regs = dev_remap_addr(dev_get_parent(dev));
+	if (!priv->regs)
 		return -EINVAL;
 
-	priv->regs = ioremap(addr, size);
 	priv->hw = hw;
 
 	return 0;
@@ -450,6 +476,9 @@ static const struct udevice_id bmips_cpu_ids[] = {
 	}, {
 		.compatible = "brcm,bcm63268-cpu",
 		.data = (ulong)&bmips_cpu_bcm63268,
+	}, {
+		.compatible = "brcm,bcm6838-cpu",
+		.data = (ulong)&bmips_cpu_bcm6838,
 	},
 	{ /* sentinel */ }
 };
@@ -460,7 +489,7 @@ U_BOOT_DRIVER(bmips_cpu_drv) = {
 	.of_match = bmips_cpu_ids,
 	.bind = bmips_cpu_bind,
 	.probe = bmips_cpu_probe,
-	.priv_auto_alloc_size = sizeof(struct bmips_cpu_priv),
+	.priv_auto	= sizeof(struct bmips_cpu_priv),
 	.ops = &bmips_cpu_ops,
 	.flags = DM_FLAG_PRE_RELOC,
 };

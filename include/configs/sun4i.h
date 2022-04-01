@@ -11,12 +11,6 @@
  * A10 specific configuration
  */
 
-#ifdef CONFIG_USB_EHCI_HCD
-#define CONFIG_USB_EHCI_SUNXI
-#endif
-
-#define CONFIG_SUNXI_USB_PHYS	3
-
 /*
  * Include common sunxi configuration where most the settings are
  */

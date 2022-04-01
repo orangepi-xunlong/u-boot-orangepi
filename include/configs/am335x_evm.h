@@ -31,13 +31,7 @@
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
-/* Custom script for NOR */
-#define CONFIG_SYS_LDSCRIPT		"board/ti/am335x/u-boot.lds"
-
-/* Always 128 KiB env size */
-#define CONFIG_ENV_SIZE			SZ_128K
-
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 #define NANDARGS \
 	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
 	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
@@ -56,21 +50,18 @@
 #define NANDARGS ""
 #endif
 
-#define BOOTENV_DEV_LEGACY_MMC(devtypeu, devtypel, instance) \
-	"bootcmd_" #devtypel #instance "=" \
-	"setenv mmcdev " #instance"; "\
-	"setenv bootpart " #instance":2 ; "\
-	"run mmcboot\0"
-
-#define BOOTENV_DEV_NAME_LEGACY_MMC(devtypeu, devtypel, instance) \
-	#devtypel #instance " "
-
 #define BOOTENV_DEV_NAND(devtypeu, devtypel, instance) \
 	"bootcmd_" #devtypel "=" \
 	"run nandboot\0"
 
 #define BOOTENV_DEV_NAME_NAND(devtypeu, devtypel, instance) \
 	#devtypel #instance " "
+
+#if CONFIG_IS_ENABLED(CMD_USB)
+# define BOOT_TARGET_USB(func) func(USB, usb, 0)
+#else
+# define BOOT_TARGET_USB(func)
+#endif
 
 #if CONFIG_IS_ENABLED(CMD_PXE)
 # define BOOT_TARGET_PXE(func) func(PXE, pxe, na)
@@ -86,10 +77,9 @@
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
-	func(LEGACY_MMC, legacy_mmc, 0) \
 	func(MMC, mmc, 1) \
-	func(LEGACY_MMC, legacy_mmc, 1) \
 	func(NAND, nand, 0) \
+	BOOT_TARGET_USB(func) \
 	BOOT_TARGET_PXE(func) \
 	BOOT_TARGET_DHCP(func)
 
@@ -97,16 +87,11 @@
 
 #ifndef CONFIG_SPL_BUILD
 #include <environment/ti/dfu.h>
-#include <environment/ti/mmc.h>
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
-	DEFAULT_MMC_TI_ARGS \
-	DEFAULT_FIT_TI_ARGS \
-	"bootpart=0:2\0" \
-	"bootdir=/boot\0" \
-	"bootfile=zImage\0" \
 	"fdtfile=undefined\0" \
+	"finduuid=part uuid mmc 0:2 uuid\0" \
 	"console=ttyO0,115200n8\0" \
 	"partitions=" \
 		"uuid_disk=${uuid_gpt_disk};" \
@@ -153,6 +138,8 @@
 			"setenv fdtfile am335x-bonegreen-wireless.dtb; fi; " \
 		"if test $board_name = BBBL; then " \
 			"setenv fdtfile am335x-boneblue.dtb; fi; " \
+		"if test $board_name = BBEN; then " \
+			"setenv fdtfile am335x-sancloud-bbe.dtb; fi; " \
 		"if test $board_name = A33515BB; then " \
 			"setenv fdtfile am335x-evm.dtb; fi; " \
 		"if test $board_name = A335X_SK; then " \
@@ -197,7 +184,7 @@
 /* USB gadget RNDIS */
 #endif
 
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 /* NAND: device related configs */
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE / \
@@ -224,7 +211,7 @@
 #ifdef CONFIG_SPL_OS_BOOT
 #define CONFIG_SYS_NAND_SPL_KERNEL_OFFS	0x00200000 /* kernel offset */
 #endif
-#endif /* !CONFIG_NAND */
+#endif /* !CONFIG_MTD_RAW_NAND */
 
 /*
  * For NOR boot, we must set this to the start of where NOR is mapped
@@ -238,7 +225,6 @@
  * add mass storage support and for gadget we add both RNDIS ethernet
  * and DFU.
  */
-#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 #define CONFIG_AM335X_USB0
 #define CONFIG_AM335X_USB0_MODE	MUSB_PERIPHERAL
 #define CONFIG_AM335X_USB1
@@ -251,7 +237,6 @@
 #ifdef CONFIG_SPL_BUILD
 #undef CONFIG_DM_MMC
 #undef CONFIG_TIMER
-#undef CONFIG_DM_USB
 #endif
 
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_USB_ETHER)
@@ -280,37 +265,14 @@
  */
 #if defined(CONFIG_SPI_BOOT)
 /* SPL related */
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
-
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#define CONFIG_ENV_SECT_SIZE		(4 << 10) /* 4 KB sectors */
-#define CONFIG_ENV_OFFSET		(768 << 10) /* 768 KiB in */
-#define CONFIG_ENV_OFFSET_REDUND	(896 << 10) /* 896 KiB in */
 #elif defined(CONFIG_EMMC_BOOT)
-#define CONFIG_SYS_MMC_ENV_DEV		1
-#define CONFIG_SYS_MMC_ENV_PART		0
-#define CONFIG_ENV_OFFSET		0x260000
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
 #define CONFIG_SYS_MMC_MAX_DEVICE	2
-#elif defined(CONFIG_NOR_BOOT)
-#define CONFIG_ENV_SECT_SIZE		(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		(512 << 10)	/* 512 KiB */
-#define CONFIG_ENV_OFFSET_REDUND	(768 << 10)	/* 768 KiB */
 #elif defined(CONFIG_ENV_IS_IN_NAND)
-#define CONFIG_ENV_OFFSET		0x001c0000
-#define CONFIG_ENV_OFFSET_REDUND	0x001e0000
 #define CONFIG_SYS_ENV_SECT_SIZE	CONFIG_SYS_NAND_BLOCK_SIZE
 #endif
 
-/* SPI flash. */
-#define CONFIG_SF_DEFAULT_SPEED		24000000
-
 /* Network. */
-#define CONFIG_PHY_SMSC
 /* Enable Atheros phy driver */
-#define CONFIG_PHY_ATHEROS
 
 /*
  * NOR Size = 16 MiB
@@ -325,11 +287,6 @@
  * 0x4C0000 - 0xFFFFFF : Userland (11 MiB + 256 KiB)
  */
 #if defined(CONFIG_NOR)
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
-#define CONFIG_SYS_FLASH_PROTECTION
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_FLASH_CFI_MTD
 #define CONFIG_SYS_MAX_FLASH_SECT	128
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_FLASH_BASE		(0x08000000)

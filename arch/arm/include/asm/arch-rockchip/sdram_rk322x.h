@@ -5,14 +5,9 @@
 #ifndef _ASM_ARCH_SDRAM_RK322X_H
 #define _ASM_ARCH_SDRAM_RK322X_H
 
-#include <common.h>
-
-enum {
-	DDR3		= 3,
-	LPDDR2		= 5,
-	LPDDR3		= 6,
-	UNUSED		= 0xFF,
-};
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
 
 struct rk322x_sdram_channel {
 	/*

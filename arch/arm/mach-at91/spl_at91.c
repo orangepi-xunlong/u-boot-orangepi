@@ -9,6 +9,10 @@
  */
 
 #include <common.h>
+#include <hang.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91sam9_matrix.h>
@@ -75,8 +79,20 @@ void __weak spl_board_init(void)
 
 void board_init_f(ulong dummy)
 {
+#if CONFIG_IS_ENABLED(OF_CONTROL)
+	int ret;
+
+	ret = spl_early_init();
+	if (ret) {
+		debug("spl_early_init() failed: %d\n", ret);
+		hang();
+	}
+#endif
+
 	lowlevel_clock_init();
+#if !defined(CONFIG_WDT_AT91)
 	at91_disable_wdt();
+#endif
 
 	/*
 	 * At this stage the main oscillator is supposed to be enabled

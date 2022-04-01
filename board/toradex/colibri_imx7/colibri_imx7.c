@@ -1,23 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016 Toradex AG
+ * Copyright (C) 2016-2018 Toradex AG
  */
 
+#include <common.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <net.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx7-pins.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
-#include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/io.h>
 #include <common.h>
 #include <dm.h>
 #include <dm/platform_data/serial_mxc.h>
 #include <fdt_support.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <jffs2/load_kernel.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 #include <mmc.h>
 #include <miiphy.h>
@@ -33,9 +38,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL  (PAD_CTL_DSE_3P3V_49OHM | \
 	PAD_CTL_PUS_PU100KOHM | PAD_CTL_HYS)
-
-#define USDHC_PAD_CTRL (PAD_CTL_DSE_3P3V_32OHM | PAD_CTL_SRE_SLOW | \
-	PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PUS_PU47KOHM)
 
 #define ENET_PAD_CTRL  (PAD_CTL_PUS_PU100KOHM | PAD_CTL_DSE_3P3V_49OHM)
 #define ENET_PAD_CTRL_MII  (PAD_CTL_DSE_3P3V_32OHM)
@@ -53,7 +55,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size((void *)PHYS_SDRAM, PHYS_SDRAM_SIZE);
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM, imx_ddr_size());
 
 	return 0;
 }
@@ -65,24 +67,13 @@ static iomux_v3_cfg_t const uart1_pads[] = {
 	MX7D_PAD_SAI2_TX_SYNC__UART1_DTE_RTS | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
-static iomux_v3_cfg_t const usdhc1_pads[] = {
-	MX7D_PAD_SD1_CLK__SD1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD1_CMD__SD1_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD1_DATA0__SD1_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD1_DATA1__SD1_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD1_DATA2__SD1_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX7D_PAD_SD1_DATA3__SD1_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-
-	MX7D_PAD_GPIO1_IO00__GPIO1_IO0 | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
 #ifdef CONFIG_USB_EHCI_MX7
 static iomux_v3_cfg_t const usb_cdet_pads[] = {
 	MX7D_PAD_ENET1_CRS__GPIO7_IO14 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 #endif
 
-#ifdef CONFIG_NAND_MXS
+#ifdef CONFIG_TARGET_COLIBRI_IMX7_NAND
 static iomux_v3_cfg_t const gpmi_pads[] = {
 	MX7D_PAD_SD3_DATA0__NAND_DATA00 | MUX_PAD_CTRL(NAND_PAD_CTRL),
 	MX7D_PAD_SD3_DATA1__NAND_DATA01 | MUX_PAD_CTRL(NAND_PAD_CTRL),
@@ -110,32 +101,7 @@ static void setup_gpmi_nand(void)
 }
 #endif
 
-#ifdef CONFIG_VIDEO_MXS
-static iomux_v3_cfg_t const lcd_pads[] = {
-	MX7D_PAD_LCD_CLK__LCD_CLK | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_ENABLE__LCD_ENABLE | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_HSYNC__LCD_HSYNC | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_VSYNC__LCD_VSYNC | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA00__LCD_DATA0 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA01__LCD_DATA1 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA02__LCD_DATA2 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA03__LCD_DATA3 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA04__LCD_DATA4 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA05__LCD_DATA5 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA06__LCD_DATA6 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA07__LCD_DATA7 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA08__LCD_DATA8 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA09__LCD_DATA9 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA10__LCD_DATA10 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA11__LCD_DATA11 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA12__LCD_DATA12 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA13__LCD_DATA13 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA14__LCD_DATA14 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA15__LCD_DATA15 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA16__LCD_DATA16 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-	MX7D_PAD_LCD_DATA17__LCD_DATA17 | MUX_PAD_CTRL(LCD_PAD_CTRL),
-};
-
+#ifdef CONFIG_DM_VIDEO
 static iomux_v3_cfg_t const backlight_pads[] = {
 	/* Backlight On */
 	MX7D_PAD_SD1_WP__GPIO5_IO1 | MUX_PAD_CTRL(NO_PAD_CTRL),
@@ -149,8 +115,6 @@ static iomux_v3_cfg_t const backlight_pads[] = {
 
 static int setup_lcd(void)
 {
-	imx_iomux_v3_setup_multiple_pads(lcd_pads, ARRAY_SIZE(lcd_pads));
-
 	imx_iomux_v3_setup_multiple_pads(backlight_pads, ARRAY_SIZE(backlight_pads));
 
 	/* Set BL_ON */
@@ -165,100 +129,23 @@ static int setup_lcd(void)
 }
 #endif
 
-#ifdef CONFIG_FEC_MXC
-static iomux_v3_cfg_t const fec1_pads[] = {
-#ifndef CONFIG_COLIBRI_IMX7_EXT_PHYCLK
-	MX7D_PAD_GPIO1_IO12__CCM_ENET_REF_CLK1 | MUX_PAD_CTRL(ENET_PAD_CTRL) | MUX_MODE_SION,
-#else
-	MX7D_PAD_GPIO1_IO12__CCM_ENET_REF_CLK1 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-#endif
-	MX7D_PAD_SD2_CD_B__ENET1_MDIO | MUX_PAD_CTRL(ENET_PAD_CTRL_MII),
-	MX7D_PAD_SD2_WP__ENET1_MDC | MUX_PAD_CTRL(ENET_PAD_CTRL_MII),
-	MX7D_PAD_ENET1_RGMII_RD0__ENET1_RGMII_RD0 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RD1__ENET1_RGMII_RD1 | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RXC__ENET1_RX_ER | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL	  | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD0__ENET1_RGMII_TD0 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TD1__ENET1_RGMII_TD1 | MUX_PAD_CTRL(ENET_PAD_CTRL),
-	MX7D_PAD_ENET1_RGMII_TX_CTL__ENET1_RGMII_TX_CTL | MUX_PAD_CTRL(ENET_PAD_CTRL),
-};
-
-static void setup_iomux_fec(void)
+/*
+ * Backlight off before OS handover
+ */
+void board_preboot_os(void)
 {
-	imx_iomux_v3_setup_multiple_pads(fec1_pads, ARRAY_SIZE(fec1_pads));
-}
+#ifdef CONFIG_DM_VIDEO
+	gpio_direction_output(GPIO_PWM_A, 1);
+	gpio_direction_output(GPIO_BL_ON, 0);
 #endif
+}
 
 static void setup_iomux_uart(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
 }
 
-#ifdef CONFIG_FSL_ESDHC
-
-#define USDHC1_CD_GPIO	IMX_GPIO_NR(1, 0)
-
-static struct fsl_esdhc_cfg usdhc_cfg[] = {
-	{USDHC1_BASE_ADDR, 0, 4},
-};
-
-int board_mmc_getcd(struct mmc *mmc)
-{
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	int ret = 0;
-
-	switch (cfg->esdhc_base) {
-	case USDHC1_BASE_ADDR:
-		ret = !gpio_get_value(USDHC1_CD_GPIO);
-		break;
-	}
-
-	return ret;
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	int i, ret;
-	/* USDHC1 is mmc0 */
-	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
-		switch (i) {
-		case 0:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
-			gpio_request(USDHC1_CD_GPIO, "usdhc1_cd");
-			gpio_direction_input(USDHC1_CD_GPIO);
-			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-			break;
-		default:
-			printf("Warning: you configured more USDHC controllers"
-				"(%d) than supported by the board\n", i + 1);
-			return -EINVAL;
-		}
-
-		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_FEC_MXC
-int board_eth_init(bd_t *bis)
-{
-	int ret;
-
-	setup_iomux_fec();
-
-	ret = fecmxc_initialize_multi(bis, 0,
-		CONFIG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
-	if (ret)
-		printf("FEC1 MXC: %s:failed\n", __func__);
-
-	return ret;
-}
-
 static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
@@ -282,12 +169,6 @@ static int setup_fec(void)
 	return set_clk_enet(ENET_50MHZ);
 }
 
-int board_phy_config(struct phy_device *phydev)
-{
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-	return 0;
-}
 #endif
 
 int board_early_init_f(void)
@@ -306,35 +187,13 @@ int board_init(void)
 	setup_fec();
 #endif
 
-#ifdef CONFIG_NAND_MXS
+#ifdef CONFIG_TARGET_COLIBRI_IMX7_NAND
 	setup_gpmi_nand();
-#endif
-
-#ifdef CONFIG_VIDEO_MXS
-	setup_lcd();
 #endif
 
 #ifdef CONFIG_USB_EHCI_MX7
 	imx_iomux_v3_setup_multiple_pads(usb_cdet_pads, ARRAY_SIZE(usb_cdet_pads));
 	gpio_request(USB_CDET_GPIO, "usb-cdet-gpio");
-#endif
-
-	return 0;
-}
-
-#ifdef CONFIG_CMD_BMODE
-static const struct boot_mode board_boot_modes[] = {
-	/* 4 bit bus width */
-	{"nand", MAKE_CFGVAL(0x40, 0x34, 0x00, 0x00)},
-	{"sd1", MAKE_CFGVAL(0x10, 0x10, 0x00, 0x00)},
-	{NULL, 0},
-};
-#endif
-
-int board_late_init(void)
-{
-#ifdef CONFIG_CMD_BMODE
-	add_board_boot_modes(board_boot_modes);
 #endif
 
 	return 0;
@@ -348,7 +207,7 @@ int power_init_board(void)
 	int ret;
 
 
-	ret = pmic_get("rn5t567", &dev);
+	ret = pmic_get("rn5t567@33", &dev);
 	if (ret)
 		return ret;
 	ver = pmic_reg_read(dev, RN5T567_LSIVER);
@@ -378,11 +237,11 @@ int power_init_board(void)
 	return 0;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	struct udevice *dev;
 
-	pmic_get("rn5t567", &dev);
+	pmic_get("rn5t567@33", &dev);
 
 	/* Use PMIC to reset, set REPWRTIM to 0 and REPWRON to 1 */
 	pmic_reg_write(dev, RN5T567_REPCNT, 0x1);
@@ -405,11 +264,49 @@ int checkboard(void)
 }
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
+#if defined(CONFIG_IMX_BOOTAUX) && defined(CONFIG_ARCH_FIXUP_FDT_MEMORY)
+	int up;
+
+	up = arch_auxiliary_core_check_up(0);
+	if (up) {
+		int ret;
+		int areas = 1;
+		u64 start[2], size[2];
+
+		/*
+		 * Reserve 1MB of memory for M4 (1MiB is also the minimum
+		 * alignment for Linux due to MMU section size restrictions).
+		 */
+		start[0] = gd->bd->bi_dram[0].start;
+		size[0] = SZ_256M - SZ_1M;
+
+		/* If needed, create a second entry for memory beyond 256M */
+		if (gd->bd->bi_dram[0].size > SZ_256M) {
+			start[1] = gd->bd->bi_dram[0].start + SZ_256M;
+			size[1] = gd->bd->bi_dram[0].size - SZ_256M;
+			areas = 2;
+		}
+
+		ret = fdt_set_usable_memory(blob, start, size, areas);
+		if (ret) {
+			eprintf("Cannot set usable memory\n");
+			return ret;
+		}
+	} else {
+		int off;
+
+		off = fdt_node_offset_by_compatible(blob, -1,
+						    "fsl,imx7d-rpmsg");
+		if (off > 0)
+			fdt_status_disabled(blob, off);
+	}
+#endif
 #if defined(CONFIG_FDT_FIXUP_PARTITIONS)
-	static struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "fsl,imx7d-gpmi-nand", MTD_DEV_TYPE_NAND, }, /* NAND flash */
+		{ "fsl,imx6q-gpmi-nand", MTD_DEV_TYPE_NAND, },
 	};
 
 	/* Update partition nodes using info from mtdparts env var */
@@ -457,4 +354,23 @@ int board_usb_phy_mode(int port)
 		return USB_INIT_HOST;
 	}
 }
+
+#if defined(CONFIG_BOARD_LATE_INIT)
+int board_late_init(void)
+{
+#if defined(CONFIG_DM_VIDEO)
+	setup_lcd();
+#endif
+
+#if defined(CONFIG_CMD_USB_SDP)
+	if (is_boot_from_usb()) {
+		printf("Serial Downloader recovery mode, using sdp command\n");
+		env_set("bootdelay", "0");
+		env_set("bootcmd", "sdp 0");
+	}
+#endif
+	return 0;
+}
+#endif /* CONFIG_BOARD_LATE_INIT */
+
 #endif

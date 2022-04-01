@@ -4,11 +4,13 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/fsl_serdes.h>
 #include <asm/immap_85xx.h>
 #include <asm/io.h>
 #include <asm/processor.h>
 #include <asm/fsl_law.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <fsl_errata.h>
 #include "fsl_corenet2_serdes.h"
@@ -390,7 +392,7 @@ const char *serdes_clock_to_string(u32 clock)
 	case SRDS_PLLCR0_RFCK_SEL_161_13:
 		return "161.1328123";
 	default:
-#if defined(CONFIG_TARGET_T4240QDS) || defined(CONFIG_TARGET_T4160QDS)
+#if defined(CONFIG_TARGET_T4240QDS)
 		return "???";
 #else
 		return "122.88";

@@ -16,10 +16,11 @@
 #ifndef _MV_COMMON_H
 #define _MV_COMMON_H
 
+#include <linux/stringify.h>
+
 /*
  * High Level Configuration Options (easy to change)
  */
-#define CONFIG_MARVELL		1
 
 /*
  * Custom CONFIG_SYS_TEXT_BASE can be done in <board>.h
@@ -27,10 +28,6 @@
 
 /* additions for new ARM relocation support */
 #define CONFIG_SYS_SDRAM_BASE	0x00000000
-
-/*
- * CLKs configurations
- */
 
 /*
  * NS16550 Configuration
@@ -42,16 +39,16 @@
 #define CONFIG_SYS_NS16550_COM1		MV_UART_CONSOLE_BASE
 #endif
 
-/*
- * Serial Port configuration
- * The following definitions let you select what serial you want to use
- * for your console driver.
- */
+#if defined(CONFIG_ARMADA_38X) && !defined(CONFIG_SYS_BAUDRATE_TABLE)
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 300, 600, 1200, 1800, 2400, 4800, \
+					  9600, 19200, 38400, 57600, 115200, \
+					  230400, 460800, 500000, 576000, \
+					  921600, 1000000, 1152000, 1500000, \
+					  2000000, 2500000, 3125000, 4000000, \
+					  5200000 }
+#endif
 
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, \
-					  115200,230400, 460800, 921600 }
 /* auto boot */
-#define CONFIG_PREBOOT
 
 /*
  * For booting Linux, the board info and command line data
@@ -72,26 +69,12 @@
 /*
  * Other required minimal configurations
  */
-#define CONFIG_ARCH_CPU_INIT	/* call arch_cpu_init() */
 #define CONFIG_SYS_LOAD_ADDR	0x00800000	/* default load adr- 8M */
-#define CONFIG_SYS_MEMTEST_START 0x00800000	/* 8M */
-#define CONFIG_SYS_MEMTEST_END	0x00ffffff	/*(_16M -1) */
 #define CONFIG_SYS_RESET_ADDRESS 0xffff0000	/* Rst Vector Adr */
 #define CONFIG_SYS_MAXARGS	32	/* max number of command args */
 
 /* ====> Include platform Common Definitions */
 #include <asm/arch/config.h>
-
-/*
- * DRAM Banks configuration, Custom config can be done in <board>.h
- */
-#ifndef CONFIG_NR_DRAM_BANKS
-#define CONFIG_NR_DRAM_BANKS	CONFIG_NR_DRAM_BANKS_MAX
-#else
-#if (CONFIG_NR_DRAM_BANKS > CONFIG_NR_DRAM_BANKS_MAX)
-#error CONFIG_NR_DRAM_BANKS Configurated more than available
-#endif
-#endif /* CONFIG_NR_DRAM_BANKS */
 
 /* ====> Include driver Common Definitions */
 /*
@@ -99,20 +82,6 @@
  */
 #ifdef CONFIG_CMD_NAND
 #define CONFIG_SYS_MAX_NAND_DEVICE     1
-#endif
-
-/*
- * Common SPI Flash configuration
- */
-#ifdef CONFIG_CMD_SF
-#endif
-
-/*
- * File system
- */
-#ifdef CONFIG_SYS_MVFS
-#define CONFIG_MTD_DEVICE               /* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS
 #endif
 
 #endif /* _MV_COMMON_H */

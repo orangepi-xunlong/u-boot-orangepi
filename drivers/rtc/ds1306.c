@@ -18,8 +18,7 @@
 #include <command.h>
 #include <rtc.h>
 #include <spi.h>
-
-#if defined(CONFIG_CMD_DATE)
+#include <linux/delay.h>
 
 #define	RTC_SECONDS		0x00
 #define	RTC_MINUTES		0x01
@@ -73,7 +72,7 @@ int rtc_get (struct rtc_time *tmp)
 
 	/* Now we can enable the DS1306 RTC */
 	immap->im_cpm.cp_pbdat |= PB_SPI_CE;
-	udelay (10);
+	udelay(10);
 
 	/* Shift out the address (0) of the time in the Clock Chip */
 	soft_spi_send (0);
@@ -107,7 +106,7 @@ int rtc_get (struct rtc_time *tmp)
 
 	/* Now we can disable the DS1306 RTC */
 	immap->im_cpm.cp_pbdat &= ~PB_SPI_CE;	/* Disable DS1306 Chip */
-	udelay (10);
+	udelay(10);
 
 	rtc_calc_weekday(tmp);	/* Determine the day of week */
 
@@ -129,7 +128,7 @@ int rtc_set (struct rtc_time *tmp)
 
 	/* Now we can enable the DS1306 RTC */
 	immap->im_cpm.cp_pbdat |= PB_SPI_CE;	/* Enable DS1306 Chip */
-	udelay (10);
+	udelay(10);
 
 	/* First disable write protect in the clock chip control register */
 	soft_spi_send (0x8F);	/* send address of the control register */
@@ -137,11 +136,11 @@ int rtc_set (struct rtc_time *tmp)
 
 	/* Now disable the DS1306 to terminate the write */
 	immap->im_cpm.cp_pbdat &= ~PB_SPI_CE;
-	udelay (10);
+	udelay(10);
 
 	/* Now enable the DS1306 to initiate a new write */
 	immap->im_cpm.cp_pbdat |= PB_SPI_CE;
-	udelay (10);
+	udelay(10);
 
 	/* Next, send the address of the clock time write registers */
 	soft_spi_send (0x80);	/* send address of the first time register */
@@ -158,11 +157,11 @@ int rtc_set (struct rtc_time *tmp)
 
 	/* Now we can disable the Clock chip to terminate the burst write */
 	immap->im_cpm.cp_pbdat &= ~PB_SPI_CE;	/* Disable DS1306 Chip */
-	udelay (10);
+	udelay(10);
 
 	/* Now we can enable the Clock chip to initiate a new write */
 	immap->im_cpm.cp_pbdat |= PB_SPI_CE;	/* Enable DS1306 Chip */
-	udelay (10);
+	udelay(10);
 
 	/* First we Enable write protect in the clock chip control register */
 	soft_spi_send (0x8F);	/* send address of the control register */
@@ -170,7 +169,7 @@ int rtc_set (struct rtc_time *tmp)
 
 	/* Now disable the DS1306 */
 	immap->im_cpm.cp_pbdat &= ~PB_SPI_CE;	/*  Disable DS1306 Chip */
-	udelay (10);
+	udelay(10);
 
 	/* Set standard MPC8xx clock to the same time so Linux will
 	 * see the time even if it doesn't have a DS1306 clock driver.
@@ -206,7 +205,7 @@ static void init_spi (void)
 	immap->im_cpm.cp_pbdir |= (PB_SPIMOSI | PB_SPI_CE | PB_SPISCK);
 
 	immap->im_cpm.cp_pbdir &= ~PB_SPIMISO;	/* Make MISO pin an input */
-	udelay (10);
+	udelay(10);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -229,10 +228,10 @@ static void soft_spi_send (unsigned char n)
 			immap->im_cpm.cp_pbdat |= PB_SPIMOSI;	/* Set MOSI to 1 */
 		else
 			immap->im_cpm.cp_pbdat &= ~PB_SPIMOSI;	/* Set MOSI to 0 */
-		udelay (10);
+		udelay(10);
 
 		immap->im_cpm.cp_pbdat &= ~PB_SPISCK;	/* Lower SCK */
-		udelay (10);
+		udelay(10);
 
 		bitpos >>= 1;	/* Shift for next bit position */
 	}
@@ -255,11 +254,11 @@ static unsigned char soft_spi_read (void)
 	/* Read 8 bits here */
 	for (i = 0; i < 8; i++) {	/* Do 8 bits in loop */
 		immap->im_cpm.cp_pbdat |= PB_SPISCK;	/* Raise SCK */
-		udelay (10);
+		udelay(10);
 		if (immap->im_cpm.cp_pbdat & PB_SPIMISO)	/* Get a bit of data */
 			spi_byte |= bitpos;	/* Set data accordingly */
 		immap->im_cpm.cp_pbdat &= ~PB_SPISCK;	/* Lower SCK */
-		udelay (10);
+		udelay(10);
 		bitpos >>= 1;	/* Shift for next bit position */
 	}
 
@@ -437,5 +436,3 @@ static void rtc_write (unsigned char reg, unsigned char val)
 }
 
 #endif /* end of code exclusion (see #ifdef CONFIG_SXNI855T above) */
-
-#endif

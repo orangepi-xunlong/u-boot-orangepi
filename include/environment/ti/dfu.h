@@ -13,7 +13,7 @@
 	"boot part 0 1;" \
 	"rootfs part 0 2;" \
 	"MLO fat 0 1;" \
-	"MLO.raw raw 0x100 0x100;" \
+	"MLO.raw raw 0x100 0x200;" \
 	"u-boot.img.raw raw 0x300 0x1000;" \
 	"u-env.raw raw 0x1300 0x200;" \
 	"spl-os-args.raw raw 0x1500 0x200;" \
@@ -29,7 +29,7 @@
 	"boot part 1 1;" \
 	"rootfs part 1 2;" \
 	"MLO fat 1 1;" \
-	"MLO.raw raw 0x100 0x100;" \
+	"MLO.raw raw 0x100 0x200;" \
 	"u-boot.img.raw raw 0x300 0x1000;" \
 	"u-env.raw raw 0x1300 0x200;" \
 	"spl-os-args.raw raw 0x1500 0x200;" \
@@ -39,7 +39,7 @@
 	"u-boot.img fat 1 1;" \
 	"uEnv.txt fat 1 1\0"
 
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 #define DFU_ALT_INFO_NAND \
 	"dfu_alt_info_nand=" \
 	"SPL part 0 1;" \

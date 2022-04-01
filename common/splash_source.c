@@ -7,16 +7,20 @@
 
 #include <common.h>
 #include <bmp_layout.h>
+#include <command.h>
+#include <env.h>
 #include <errno.h>
 #include <fs.h>
 #include <fdt_support.h>
 #include <image.h>
+#include <log.h>
 #include <nand.h>
 #include <sata.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <splash.h>
 #include <usb.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -33,7 +37,7 @@ static int splash_sf_read_raw(u32 bmp_load_addr, int offset, size_t read_size)
 			return -ENODEV;
 	}
 
-	return spi_flash_read(sf, offset, read_size, (void *)bmp_load_addr);
+	return spi_flash_read(sf, offset, read_size, (void *)(uintptr_t)bmp_load_addr);
 }
 #else
 static int splash_sf_read_raw(u32 bmp_load_addr, int offset, size_t read_size)
@@ -94,7 +98,7 @@ static int splash_load_raw(struct splash_location *location, u32 bmp_load_addr)
 	if (res < 0)
 		return res;
 
-	bmp_hdr = (struct bmp_header *)bmp_load_addr;
+	bmp_hdr = (struct bmp_header *)(uintptr_t)bmp_load_addr;
 	bmp_size = le32_to_cpu(bmp_hdr->file_size);
 
 	if (bmp_load_addr + bmp_size >= gd->start_addr_sp)
@@ -303,8 +307,12 @@ static int splash_load_fit(struct splash_location *location, u32 bmp_load_addr)
 {
 	int res;
 	int node_offset;
-	int splash_offset;
-	int splash_size;
+	const char *splash_file;
+	const void *internal_splash_data;
+	size_t internal_splash_size;
+	int external_splash_addr;
+	int external_splash_size;
+	bool is_splash_external = false;
 	struct image_header *img_header;
 	const u32 *fit_header;
 	u32 fit_size;
@@ -329,41 +337,56 @@ static int splash_load_fit(struct splash_location *location, u32 bmp_load_addr)
 	if (res < 0)
 		return res;
 
-	res = fit_check_format(fit_header);
-	if (!res) {
+	res = fit_check_format(fit_header, IMAGE_SIZE_INVAL);
+	if (res) {
 		debug("Could not find valid FIT image\n");
-		return -EINVAL;
+		return res;
 	}
 
-	node_offset = fit_image_get_node(fit_header, location->name);
+	/* Get the splash image node */
+	splash_file = env_get("splashfile");
+	if (!splash_file)
+		splash_file = SPLASH_SOURCE_DEFAULT_FILE_NAME;
+
+	node_offset = fit_image_get_node(fit_header, splash_file);
 	if (node_offset < 0) {
 		debug("Could not find splash image '%s' in FIT\n",
-		      location->name);
+		      splash_file);
 		return -ENOENT;
 	}
 
-	res = fit_image_get_data_offset(fit_header, node_offset,
-					&splash_offset);
-	if (res < 0) {
-		printf("Failed to load splash image (err=%d)\n", res);
-		return res;
+	/* Extract the splash data from FIT */
+	/* 1. Test if splash is in FIT internal data. */
+	if (!fit_image_get_data(fit_header, node_offset, &internal_splash_data, &internal_splash_size))
+		memmove((void *)bmp_load_addr, internal_splash_data, internal_splash_size);
+	/* 2. Test if splash is in FIT external data with fixed position. */
+	else if (!fit_image_get_data_position(fit_header, node_offset, &external_splash_addr))
+		is_splash_external = true;
+	/* 3. Test if splash is in FIT external data with offset. */
+	else if (!fit_image_get_data_offset(fit_header, node_offset, &external_splash_addr)) {
+		/* Align data offset to 4-byte boundary */
+		fit_size = ALIGN(fdt_totalsize(fit_header), 4);
+		/* External splash offset means the offset by end of FIT header */
+		external_splash_addr += location->offset + fit_size;
+		is_splash_external = true;
+	} else {
+		printf("Failed to get splash image from FIT\n");
+		return -ENODATA;
 	}
 
-	res = fit_image_get_data_size(fit_header, node_offset, &splash_size);
-	if (res < 0) {
-		printf("Failed to load splash image (err=%d)\n", res);
-		return res;
+	if (is_splash_external) {
+		res = fit_image_get_data_size(fit_header, node_offset, &external_splash_size);
+		if (res < 0) {
+			printf("Failed to get size of splash image (err=%d)\n", res);
+			return res;
+		}
+
+		/* Read in the splash data */
+		location->offset = external_splash_addr;
+		res = splash_storage_read_raw(location, bmp_load_addr, external_splash_size);
+		if (res < 0)
+			return res;
 	}
-
-	/* Align data offset to 4-byte boundrary */
-	fit_size = fdt_totalsize(fit_header);
-	fit_size = (fit_size + 3) & ~3;
-
-	/* Read in the splash data */
-	location->offset = (location->offset + fit_size + splash_offset);
-	res = splash_storage_read_raw(location, bmp_load_addr , splash_size);
-	if (res < 0)
-		return res;
 
 	return 0;
 }
@@ -391,7 +414,7 @@ int splash_source_load(struct splash_location *locations, uint size)
 	if (env_splashimage_value == NULL)
 		return -ENOENT;
 
-	bmp_load_addr = simple_strtoul(env_splashimage_value, 0, 16);
+	bmp_load_addr = hextoul(env_splashimage_value, 0);
 	if (bmp_load_addr == 0) {
 		printf("Error: bad splashimage address specified\n");
 		return -EFAULT;

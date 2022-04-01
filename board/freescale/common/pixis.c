@@ -266,8 +266,8 @@ static void set_px_go_with_watchdog(void)
 /* Disable the watchdog
  *
  */
-static int pixis_disable_watchdog_cmd(cmd_tbl_t *cmdtp, int flag, int argc,
-				      char * const argv[])
+static int pixis_disable_watchdog_cmd(struct cmd_tbl *cmdtp, int flag, int argc,
+				      char *const argv[])
 {
 	/* Disable the VELA sequencer and the watchdog */
 	clrbits_8(pixis_base + PIXIS_VCTL, 9);
@@ -285,7 +285,8 @@ U_BOOT_CMD(
 
 /* Enable or disable SGMII mode for a TSEC
  */
-static int pixis_set_sgmii(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int pixis_set_sgmii(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	int which_tsec = -1;
 	unsigned char mask;
@@ -402,16 +403,17 @@ static unsigned long strfractoint(char *strptr)
 		mulconst = 1;
 		for (i = 0; i < j; i++)
 			mulconst *= 10;
-		decval = simple_strtoul(decarr, NULL, 10);
+		decval = dectoul(decarr, NULL);
 	}
 
-	intval = simple_strtoul(intarr, NULL, 10);
+	intval = dectoul(intarr, NULL);
 	intval = intval * mulconst;
 
 	return intval + decval;
 }
 
-static int pixis_reset_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int pixis_reset_cmd(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	unsigned int i;
 	char *p_cf = NULL;
@@ -487,9 +489,9 @@ static int pixis_reset_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const ar
 		unsigned long corepll;
 		unsigned long mpxpll;
 
-		sysclk = simple_strtoul(p_cf_sysclk, NULL, 10);
+		sysclk = dectoul(p_cf_sysclk, NULL);
 		corepll = strfractoint(p_cf_corepll);
-		mpxpll = simple_strtoul(p_cf_mpxpll, NULL, 10);
+		mpxpll = dectoul(p_cf_mpxpll, NULL);
 
 		if (!(set_px_sysclk(sysclk)
 		      && set_px_corepll(corepll)

@@ -9,6 +9,8 @@
 #ifndef __SDHCI_HW_H
 #define __SDHCI_HW_H
 
+#include <linux/bitops.h>
+#include <linux/types.h>
 #include <asm/io.h>
 #include <mmc.h>
 #include <asm/gpio.h>
@@ -144,7 +146,23 @@
 
 #define SDHCI_ACMD12_ERR	0x3C
 
-/* 3E-3F reserved */
+#define SDHCI_HOST_CONTROL2	0x3E
+#define  SDHCI_CTRL_UHS_MASK	0x0007
+#define  SDHCI_CTRL_UHS_SDR12	0x0000
+#define  SDHCI_CTRL_UHS_SDR25	0x0001
+#define  SDHCI_CTRL_UHS_SDR50	0x0002
+#define  SDHCI_CTRL_UHS_SDR104	0x0003
+#define  SDHCI_CTRL_UHS_DDR50	0x0004
+#define  SDHCI_CTRL_HS400	0x0005 /* Non-standard */
+#define  SDHCI_CTRL_VDD_180	0x0008
+#define  SDHCI_CTRL_DRV_TYPE_MASK	0x0030
+#define  SDHCI_CTRL_DRV_TYPE_B	0x0000
+#define  SDHCI_CTRL_DRV_TYPE_A	0x0010
+#define  SDHCI_CTRL_DRV_TYPE_C	0x0020
+#define  SDHCI_CTRL_DRV_TYPE_D	0x0030
+#define  SDHCI_CTRL_EXEC_TUNING	0x0040
+#define  SDHCI_CTRL_TUNED_CLK	0x0080
+#define  SDHCI_CTRL_PRESET_VAL_ENABLE	0x8000
 
 #define SDHCI_CAPABILITIES	0x40
 #define  SDHCI_TIMEOUT_CLK_MASK	0x0000003F
@@ -166,6 +184,11 @@
 #define  SDHCI_CAN_64BIT	BIT(28)
 
 #define SDHCI_CAPABILITIES_1	0x44
+#define  SDHCI_SUPPORT_SDR50	0x00000001
+#define  SDHCI_SUPPORT_SDR104	0x00000002
+#define  SDHCI_SUPPORT_DDR50	0x00000004
+#define  SDHCI_USE_SDR50_TUNING	0x00002000
+
 #define  SDHCI_CLOCK_MUL_MASK	0x00FF0000
 #define  SDHCI_CLOCK_MUL_SHIFT	16
 
@@ -181,6 +204,7 @@
 /* 55-57 reserved */
 
 #define SDHCI_ADMA_ADDRESS	0x58
+#define SDHCI_ADMA_ADDRESS_HI	0x5c
 
 /* 60-FB reserved */
 
@@ -220,6 +244,7 @@
 #define SDHCI_QUIRK_BROKEN_HISPD_MODE	BIT(5)
 #define SDHCI_QUIRK_WAIT_SEND_CMD	(1 << 6)
 #define SDHCI_QUIRK_USE_WIDE8		(1 << 8)
+#define SDHCI_QUIRK_NO_1_8_V		(1 << 9)
 
 /* to make gcc happy */
 struct sdhci_host;
@@ -240,9 +265,43 @@ struct sdhci_ops {
 #endif
 	int	(*get_cd)(struct sdhci_host *host);
 	void	(*set_control_reg)(struct sdhci_host *host);
-	void	(*set_ios_post)(struct sdhci_host *host);
+	int	(*set_ios_post)(struct sdhci_host *host);
 	void	(*set_clock)(struct sdhci_host *host, u32 div);
+	int (*platform_execute_tuning)(struct mmc *host, u8 opcode);
+	int (*set_delay)(struct sdhci_host *host);
+	int	(*deferred_probe)(struct sdhci_host *host);
 };
+
+#define ADMA_MAX_LEN	65532
+#ifdef CONFIG_DMA_ADDR_T_64BIT
+#define ADMA_DESC_LEN	16
+#else
+#define ADMA_DESC_LEN	8
+#endif
+#define ADMA_TABLE_NO_ENTRIES (CONFIG_SYS_MMC_MAX_BLK_COUNT * \
+			       MMC_MAX_BLOCK_LEN) / ADMA_MAX_LEN
+
+#define ADMA_TABLE_SZ (ADMA_TABLE_NO_ENTRIES * ADMA_DESC_LEN)
+
+/* Decriptor table defines */
+#define ADMA_DESC_ATTR_VALID		BIT(0)
+#define ADMA_DESC_ATTR_END		BIT(1)
+#define ADMA_DESC_ATTR_INT		BIT(2)
+#define ADMA_DESC_ATTR_ACT1		BIT(4)
+#define ADMA_DESC_ATTR_ACT2		BIT(5)
+
+#define ADMA_DESC_TRANSFER_DATA		ADMA_DESC_ATTR_ACT2
+#define ADMA_DESC_LINK_DESC	(ADMA_DESC_ATTR_ACT1 | ADMA_DESC_ATTR_ACT2)
+
+struct sdhci_adma_desc {
+	u8 attr;
+	u8 reserved;
+	u16 len;
+	u32 addr_lo;
+#ifdef CONFIG_DMA_ADDR_T_64BIT
+	u32 addr_hi;
+#endif
+} __packed;
 
 struct sdhci_host {
 	const char *name;
@@ -264,6 +323,18 @@ struct sdhci_host {
 	uint	voltages;
 
 	struct mmc_config cfg;
+	void *align_buffer;
+	bool force_align_buffer;
+	dma_addr_t start_addr;
+	int flags;
+#define USE_SDMA	(0x1 << 0)
+#define USE_ADMA	(0x1 << 1)
+#define USE_ADMA64	(0x1 << 2)
+#define USE_DMA		(USE_SDMA | USE_ADMA | USE_ADMA64)
+	dma_addr_t adma_addr;
+#if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
+	struct sdhci_adma_desc *adma_desc_table;
+#endif
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
@@ -369,10 +440,10 @@ static inline u8 sdhci_readb(struct sdhci_host *host, int reg)
  * ...
  *
  * Inside U_BOOT_DRIVER():
- *	.platdata_auto_alloc_size = sizeof(struct msm_sdhc_plat),
+ *	.plat_auto	= sizeof(struct msm_sdhc_plat),
  *
  * To access platform data:
- *	struct msm_sdhc_plat *plat = dev_get_platdata(dev);
+ *	struct msm_sdhc_plat *plat = dev_get_plat(dev);
  *
  * See msm_sdhci.c for an example.
  *
@@ -415,11 +486,27 @@ int sdhci_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg);
 int add_sdhci(struct sdhci_host *host, u32 f_max, u32 f_min);
 #endif /* !CONFIG_BLK */
 
+void sdhci_set_uhs_timing(struct sdhci_host *host);
 #ifdef CONFIG_DM_MMC
 /* Export the operations to drivers */
 int sdhci_probe(struct udevice *dev);
+int sdhci_set_clock(struct mmc *mmc, unsigned int clock);
+
+/**
+ * sdhci_set_control_reg - Set control registers
+ *
+ * This is used set up control registers for voltage level and UHS speed
+ * mode.
+ *
+ * @host: SDHCI host structure
+ */
+void sdhci_set_control_reg(struct sdhci_host *host);
 extern const struct dm_mmc_ops sdhci_ops;
 #else
 #endif
+
+struct sdhci_adma_desc *sdhci_adma_init(void);
+void sdhci_prepare_adma_table(struct sdhci_adma_desc *table,
+			      struct mmc_data *data, dma_addr_t addr);
 
 #endif /* __SDHCI_HW_H */

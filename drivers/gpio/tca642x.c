@@ -21,6 +21,7 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <i2c.h>
 #include <tca642x.h>
 
@@ -212,7 +213,25 @@ static int tca642x_info(uchar chip)
 	return 0;
 }
 
-static cmd_tbl_t cmd_tca642x[] = {
+static int tca642x_get_bank(int pin)
+{
+	int gpio_bank;
+
+	if (pin <= 7) {
+		gpio_bank = 0;
+	} else if ((pin >= 10) && (pin <= 17)) {
+		gpio_bank = 1;
+	} else if ((pin >= 20) && (pin <= 27)) {
+		gpio_bank = 2;
+	} else {
+		printf("Requested pin is not available\n");
+		gpio_bank = -1;
+	}
+
+	return gpio_bank;
+}
+
+static struct cmd_tbl cmd_tca642x[] = {
 	U_BOOT_CMD_MKENT(device, 3, 0, (void *)TCA642X_CMD_DEVICE, "", ""),
 	U_BOOT_CMD_MKENT(output, 4, 0, (void *)TCA642X_CMD_OUTPUT, "", ""),
 	U_BOOT_CMD_MKENT(input, 3, 0, (void *)TCA642X_CMD_INPUT, "", ""),
@@ -220,15 +239,16 @@ static cmd_tbl_t cmd_tca642x[] = {
 	U_BOOT_CMD_MKENT(info, 2, 0, (void *)TCA642X_CMD_INFO, "", ""),
 };
 
-static int do_tca642x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_tca642x(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	static uchar chip = CONFIG_SYS_I2C_TCA642X_ADDR;
 	int ret = CMD_RET_USAGE, val;
-	uint8_t gpio_bank = 0;
+	int gpio_bank = 0;
 	uint8_t bank_shift;
 	ulong ul_arg2 = 0;
 	ulong ul_arg3 = 0;
-	cmd_tbl_t *c;
+	struct cmd_tbl *c;
 
 	c = find_cmd_tbl(argv[1], cmd_tca642x, ARRAY_SIZE(cmd_tca642x));
 
@@ -242,23 +262,11 @@ static int do_tca642x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* arg2 used as chip number or pin number */
 	if (argc > 2)
-		ul_arg2 = simple_strtoul(argv[2], NULL, 10);
+		ul_arg2 = dectoul(argv[2], NULL);
 
 	/* arg3 used as pin or invert value */
-	if (argc > 3) {
-		ul_arg3 = simple_strtoul(argv[3], NULL, 10) & 0x1;
-		if (ul_arg2 <= 7) {
-			gpio_bank = 0;
-		} else if ((ul_arg2 >= 10) && (ul_arg2 <= 17)) {
-			gpio_bank = 1;
-		} else if ((ul_arg2 >= 20) && (ul_arg2 <= 27)) {
-			gpio_bank = 2;
-		} else {
-			printf("Requested pin is not available\n");
-			ret = CMD_RET_FAILURE;
-			goto error;
-		}
-	}
+	if (argc > 3)
+		ul_arg3 = dectoul(argv[3], NULL) & 0x1;
 
 	switch ((int)c->cmd) {
 	case TCA642X_CMD_INFO:
@@ -275,6 +283,11 @@ static int do_tca642x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		break;
 
 	case TCA642X_CMD_INPUT:
+		gpio_bank = tca642x_get_bank(ul_arg2);
+		if (gpio_bank < 0) {
+			ret = CMD_RET_FAILURE;
+			goto error;
+		}
 		bank_shift = ul_arg2 - (gpio_bank * 10);
 		ret = tca642x_set_dir(chip, gpio_bank, (1 << bank_shift),
 				TCA642X_DIR_IN << bank_shift);
@@ -289,6 +302,11 @@ static int do_tca642x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		break;
 
 	case TCA642X_CMD_OUTPUT:
+		gpio_bank = tca642x_get_bank(ul_arg2);
+		if (gpio_bank < 0) {
+			ret = CMD_RET_FAILURE;
+			goto error;
+		}
 		bank_shift = ul_arg2 - (gpio_bank * 10);
 		ret = tca642x_set_dir(chip, gpio_bank, (1 << bank_shift),
 				(TCA642X_DIR_OUT << bank_shift));
@@ -301,6 +319,11 @@ static int do_tca642x(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		break;
 
 	case TCA642X_CMD_INVERT:
+		gpio_bank = tca642x_get_bank(ul_arg2);
+		if (gpio_bank < 0) {
+			ret = CMD_RET_FAILURE;
+			goto error;
+		}
 		bank_shift = ul_arg2 - (gpio_bank * 10);
 		ret = tca642x_set_pol(chip, gpio_bank, (1 << bank_shift),
 					(ul_arg3 << bank_shift));

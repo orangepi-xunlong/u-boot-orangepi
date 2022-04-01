@@ -7,7 +7,7 @@
 #include "zynq-7000.dtsi"
 
 / {
-	model = "Zynq ZC702 Development Board";
+	model = "Xilinx ZC702 board";
 	compatible = "xlnx,zynq-zc702", "xlnx,zynq-7000";
 
 	aliases {
@@ -16,6 +16,7 @@
 		serial0 = &uart1;
 		spi0 = &qspi;
 		mmc0 = &sdhci0;
+		usb0 = &usb0;
 	};
 
 	memory@0 {
@@ -30,8 +31,6 @@
 
 	gpio-keys {
 		compatible = "gpio-keys";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		autorepeat;
 		sw14 {
 			label = "sw14";
@@ -52,7 +51,7 @@
 	leds {
 		compatible = "gpio-leds";
 
-		ds23 {
+		led-ds23 {
 			label = "ds23";
 			gpios = <&gpio0 10 0>;
 			linux,default-trigger = "heartbeat";
@@ -69,6 +68,12 @@
 	ocm: sram@fffc0000 {
 		compatible = "mmio-sram";
 		reg = <0xfffc0000 0x10000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0xfffc0000 0x10000>;
+		ocm-sram@0 {
+			reg = <0x0 0x10000>;
+		};
 	};
 };
 
@@ -182,17 +187,17 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <7>;
-			hwmon@52 {
+			hwmon@34 {
 				compatible = "ti,ucd9248";
-				reg = <52>;
+				reg = <0x34>;
 			};
-			hwmon@53 {
+			hwmon@35 {
 				compatible = "ti,ucd9248";
-				reg = <53>;
+				reg = <0x35>;
 			};
-			hwmon@54 {
+			hwmon@36 {
 				compatible = "ti,ucd9248";
-				reg = <54>;
+				reg = <0x36>;
 			};
 		};
 	};
@@ -208,7 +213,7 @@
 		conf {
 			groups = "can0_9_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-rx {
@@ -231,7 +236,7 @@
 		conf {
 			groups = "ethernet0_0_grp";
 			slew-rate = <0>;
-			io-standard = <4>;
+			power-source = <4>;
 		};
 
 		conf-rx {
@@ -254,7 +259,7 @@
 		conf-mdio {
 			groups = "mdio0_0_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 			bias-disable;
 		};
 	};
@@ -272,7 +277,7 @@
 				 "gpio0_10_grp", "gpio0_11_grp", "gpio0_12_grp",
 				 "gpio0_13_grp", "gpio0_14_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-pull-up {
@@ -296,7 +301,7 @@
 			groups = "i2c0_10_grp";
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 	};
 
@@ -309,7 +314,7 @@
 		conf {
 			groups = "gpio0_50_grp", "gpio0_51_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 	};
 
@@ -322,7 +327,7 @@
 		conf {
 			groups = "sdio0_2_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 			bias-disable;
 		};
 
@@ -336,7 +341,7 @@
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		mux-wp {
@@ -349,7 +354,7 @@
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 	};
 
@@ -362,7 +367,7 @@
 		conf {
 			groups = "uart1_10_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-rx {
@@ -385,7 +390,7 @@
 		conf {
 			groups = "usb0_0_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-rx {
@@ -404,6 +409,14 @@
 &qspi {
 	u-boot,dm-pre-reloc;
 	status = "okay";
+	num-cs = <1>;
+	flash@0 {
+		compatible = "n25q128a11", "jedec,spi-nor";
+		reg = <0x0>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <4>;
+		spi-max-frequency = <50000000>;
+	};
 };
 
 &sdhci0 {

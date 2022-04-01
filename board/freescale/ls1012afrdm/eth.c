@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <net.h>
 #include <asm/io.h>
 #include <netdev.h>
 #include <fm_eth.h>
@@ -17,6 +18,7 @@
 #include <asm/arch-fsl-layerscape/config.h>
 #include <asm/arch-fsl-layerscape/immap_lsch2.h>
 #include <asm/arch/fsl_serdes.h>
+#include <linux/delay.h>
 #include <net/pfe_eth/pfe_eth.h>
 #include <dm/platform_data/pfe_dm_eth.h>
 
@@ -112,12 +114,12 @@ static struct pfe_eth_pdata pfe_pdata1 = {
 	},
 };
 
-U_BOOT_DEVICE(ls1012a_pfe0) = {
+U_BOOT_DRVINFO(ls1012a_pfe0) = {
 	.name = "pfe_eth",
-	.platdata = &pfe_pdata0,
+	.plat = &pfe_pdata0,
 };
 
-U_BOOT_DEVICE(ls1012a_pfe1) = {
+U_BOOT_DRVINFO(ls1012a_pfe1) = {
 	.name = "pfe_eth",
-	.platdata = &pfe_pdata1,
+	.plat = &pfe_pdata1,
 };

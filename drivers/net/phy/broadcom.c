@@ -5,9 +5,9 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
-#include <config.h>
 #include <common.h>
 #include <phy.h>
+#include <linux/delay.h>
 
 /* Broadcom BCM54xx -- taken from linux sungem_phy */
 #define MIIM_BCM54xx_AUXCNTL			0x18

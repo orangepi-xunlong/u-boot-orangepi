@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Extensible Firmware Interface
  * Based on 'Extensible Firmware Interface Specification' version 0.9,
@@ -19,29 +20,43 @@
 #include <linux/string.h>
 #include <linux/types.h>
 
-#if CONFIG_EFI_STUB_64BIT || (!defined(CONFIG_EFI_STUB) && defined(__x86_64__))
-/* EFI uses the Microsoft ABI which is not the default for GCC */
+/* Type INTN in UEFI specification */
+#define efi_intn_t ssize_t
+/* Type UINTN in UEFI specification*/
+#define efi_uintn_t size_t
+
+/*
+ * EFI on x86_64 uses the Microsoft ABI which is not the default for GCC.
+ *
+ * There are two scenarios for EFI on x86_64: building a 64-bit EFI stub
+ * codes (CONFIG_EFI_STUB_64BIT) and building a 64-bit U-Boot (CONFIG_X86_64).
+ * Either needs to be properly built with the '-m64' compiler flag, and hence
+ * it is enough to only check the compiler provided define __x86_64__ here.
+ */
+#ifdef __x86_64__
 #define EFIAPI __attribute__((ms_abi))
+#define efi_va_list __builtin_ms_va_list
+#define efi_va_start __builtin_ms_va_start
+#define efi_va_arg __builtin_va_arg
+#define efi_va_end __builtin_ms_va_end
 #else
 #define EFIAPI asmlinkage
-#endif
+#define efi_va_list va_list
+#define efi_va_start va_start
+#define efi_va_arg va_arg
+#define efi_va_end va_end
+#endif /* __x86_64__ */
+
+#define EFI32_LOADER_SIGNATURE	"EL32"
+#define EFI64_LOADER_SIGNATURE	"EL64"
 
 struct efi_device_path;
 
 typedef struct {
 	u8 b[16];
-} efi_guid_t;
+} efi_guid_t __attribute__((aligned(8)));
 
-#define EFI_BITS_PER_LONG	BITS_PER_LONG
-
-/*
- * With 64-bit EFI stub, EFI_BITS_PER_LONG has to be 64. EFI_STUB is set
- * in lib/efi/Makefile, when building the stub.
- */
-#if defined(CONFIG_EFI_STUB_64BIT) && defined(EFI_STUB)
-#undef EFI_BITS_PER_LONG
-#define EFI_BITS_PER_LONG	64
-#endif
+#define EFI_BITS_PER_LONG	(sizeof(long) * 8)
 
 /* Bit mask for EFI status code with error */
 #define EFI_ERROR_MASK (1UL << (EFI_BITS_PER_LONG - 1))
@@ -81,20 +96,25 @@ typedef struct {
 #define EFI_IP_ADDRESS_CONFLICT		(EFI_ERROR_MASK | 34)
 #define EFI_HTTP_ERROR			(EFI_ERROR_MASK | 35)
 
-#define EFI_WARN_DELETE_FAILURE	2
+#define EFI_WARN_UNKNOWN_GLYPH		1
+#define EFI_WARN_DELETE_FAILURE		2
+#define EFI_WARN_WRITE_FAILURE		3
+#define EFI_WARN_BUFFER_TOO_SMALL	4
+#define EFI_WARN_STALE_DATA		5
+#define EFI_WARN_FILE_SYSTEM		6
+#define EFI_WARN_RESET_REQUIRED		7
 
 typedef unsigned long efi_status_t;
 typedef u64 efi_physical_addr_t;
 typedef u64 efi_virtual_addr_t;
-typedef void *efi_handle_t;
+typedef struct efi_object *efi_handle_t;
 
 #define EFI_GUID(a, b, c, d0, d1, d2, d3, d4, d5, d6, d7) \
-	((efi_guid_t) \
 	{{ (a) & 0xff, ((a) >> 8) & 0xff, ((a) >> 16) & 0xff, \
 		((a) >> 24) & 0xff, \
 		(b) & 0xff, ((b) >> 8) & 0xff, \
 		(c) & 0xff, ((c) >> 8) & 0xff, \
-		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) } })
+		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) } }
 
 /* Generic EFI table header */
 struct efi_table_hdr {
@@ -105,8 +125,36 @@ struct efi_table_hdr {
 	u32 reserved;
 };
 
+/* Allocation types for calls to boottime->allocate_pages*/
+/**
+ * enum efi_allocate_type - address restriction for memory allocation
+ */
+enum efi_allocate_type {
+	/**
+	 * @EFI_ALLOCATE_ANY_PAGES:
+	 * Allocate any block of sufficient size. Ignore memory address.
+	 */
+	EFI_ALLOCATE_ANY_PAGES,
+	/**
+	 * @EFI_ALLOCATE_MAX_ADDRESS:
+	 * Allocate a memory block with an uppermost address less or equal
+	 * to the indicated address.
+	 */
+	EFI_ALLOCATE_MAX_ADDRESS,
+	/**
+	 * @EFI_ALLOCATE_ADDRESS:
+	 * Allocate a memory block starting at the indicatged adress.
+	 */
+	EFI_ALLOCATE_ADDRESS,
+	/**
+	 * @EFI_MAX_ALLOCATE_TYPE:
+	 * Value use for range checking.
+	 */
+	EFI_MAX_ALLOCATE_TYPE,
+};
+
 /* Enumeration of memory types introduced in UEFI */
-enum efi_mem_type {
+enum efi_memory_type {
 	EFI_RESERVED_MEMORY_TYPE,
 	/*
 	 * The code portions of a loaded application.
@@ -159,29 +207,38 @@ enum efi_mem_type {
 	 * part of the processor.
 	 */
 	EFI_PAL_CODE,
+	/*
+	 * Byte addressable non-volatile memory.
+	 */
+	EFI_PERSISTENT_MEMORY_TYPE,
+	/*
+	 * Unaccepted memory must be accepted by boot target before usage.
+	 */
+	EFI_UNACCEPTED_MEMORY_TYPE,
 
 	EFI_MAX_MEMORY_TYPE,
-	EFI_TABLE_END,	/* For efi_build_mem_table() */
 };
 
 /* Attribute values */
-enum {
-	EFI_MEMORY_UC_SHIFT	= 0,	/* uncached */
-	EFI_MEMORY_WC_SHIFT	= 1,	/* write-coalescing */
-	EFI_MEMORY_WT_SHIFT	= 2,	/* write-through */
-	EFI_MEMORY_WB_SHIFT	= 3,	/* write-back */
-	EFI_MEMORY_UCE_SHIFT	= 4,	/* uncached, exported */
-	EFI_MEMORY_WP_SHIFT	= 12,	/* write-protect */
-	EFI_MEMORY_RP_SHIFT	= 13,	/* read-protect */
-	EFI_MEMORY_XP_SHIFT	= 14,	/* execute-protect */
-	EFI_MEMORY_RUNTIME_SHIFT = 63,	/* range requires runtime mapping */
-
-	EFI_MEMORY_RUNTIME = 1ULL << EFI_MEMORY_RUNTIME_SHIFT,
-	EFI_MEM_DESC_VERSION	= 1,
-};
+#define EFI_MEMORY_UC		((u64)0x0000000000000001ULL)	/* uncached */
+#define EFI_MEMORY_WC		((u64)0x0000000000000002ULL)	/* write-coalescing */
+#define EFI_MEMORY_WT		((u64)0x0000000000000004ULL)	/* write-through */
+#define EFI_MEMORY_WB		((u64)0x0000000000000008ULL)	/* write-back */
+#define EFI_MEMORY_UCE		((u64)0x0000000000000010ULL)	/* uncached, exported */
+#define EFI_MEMORY_WP		((u64)0x0000000000001000ULL)	/* write-protect */
+#define EFI_MEMORY_RP		((u64)0x0000000000002000ULL)	/* read-protect */
+#define EFI_MEMORY_XP		((u64)0x0000000000004000ULL)	/* execute-protect */
+#define EFI_MEMORY_NV		((u64)0x0000000000008000ULL)	/* non-volatile */
+#define EFI_MEMORY_MORE_RELIABLE \
+				((u64)0x0000000000010000ULL)	/* higher reliability */
+#define EFI_MEMORY_RO		((u64)0x0000000000020000ULL)	/* read-only */
+#define EFI_MEMORY_SP		((u64)0x0000000000040000ULL)	/* specific-purpose memory (SPM) */
+#define EFI_MEMORY_CPU_CRYPTO	((u64)0x0000000000080000ULL)	/* cryptographically protectable */
+#define EFI_MEMORY_RUNTIME	((u64)0x8000000000000000ULL)	/* range requires runtime mapping */
+#define EFI_MEM_DESC_VERSION	1
 
 #define EFI_PAGE_SHIFT		12
-#define EFI_PAGE_SIZE		(1UL << EFI_PAGE_SHIFT)
+#define EFI_PAGE_SIZE		(1ULL << EFI_PAGE_SHIFT)
 #define EFI_PAGE_MASK		(EFI_PAGE_SIZE - 1)
 
 struct efi_mem_desc {
@@ -194,12 +251,6 @@ struct efi_mem_desc {
 };
 
 #define EFI_MEMORY_DESCRIPTOR_VERSION 1
-
-/* Allocation types for calls to boottime->allocate_pages*/
-#define EFI_ALLOCATE_ANY_PAGES		0
-#define EFI_ALLOCATE_MAX_ADDRESS	1
-#define EFI_ALLOCATE_ADDRESS		2
-#define EFI_MAX_ALLOCATE_TYPE		3
 
 /* Types and defines for Time Services */
 #define EFI_TIME_ADJUST_DAYLIGHT 0x1
@@ -242,6 +293,8 @@ struct efi_open_protocol_info_entry {
 enum efi_entry_t {
 	EFIET_END,	/* Signals this is the last (empty) entry */
 	EFIET_MEMORY_MAP,
+	EFIET_GOP_MODE,
+	EFIET_SYS_TABLE,
 
 	/* Number of entries */
 	EFIET_MEMORY_COUNT,
@@ -296,6 +349,49 @@ struct efi_entry_memmap {
 	u32 desc_size;
 	u64 spare;
 	struct efi_mem_desc desc[];
+};
+
+/**
+ * struct efi_entry_gopmode - a GOP mode table passed to U-Boot
+ *
+ * @fb_base:	EFI's framebuffer base address
+ * @fb_size:	EFI's framebuffer size
+ * @info_size:	GOP mode info structure size
+ * @info:	Start address of the GOP mode info structure
+ */
+struct efi_entry_gopmode {
+	efi_physical_addr_t fb_base;
+	/*
+	 * Not like the ones in 'struct efi_gop_mode' which are 'unsigned
+	 * long', @fb_size and @info_size have to be 'u64' here. As the EFI
+	 * stub codes may have different bit size from the U-Boot payload,
+	 * using 'long' will cause mismatch between the producer (stub) and
+	 * the consumer (payload).
+	 */
+	u64 fb_size;
+	u64 info_size;
+	/*
+	 * We cannot directly use 'struct efi_gop_mode_info info[]' here as
+	 * it causes compiler to complain: array type has incomplete element
+	 * type 'struct efi_gop_mode_info'.
+	 */
+	struct /* efi_gop_mode_info */ {
+		u32 version;
+		u32 width;
+		u32 height;
+		u32 pixel_format;
+		u32 pixel_bitmask[4];
+		u32 pixels_per_scanline;
+	} info[];
+};
+
+/**
+ * struct efi_entry_systable - system table passed to U-Boot
+ *
+ * @sys_table:	EFI system table address
+ */
+struct efi_entry_systable {
+	efi_physical_addr_t sys_table;
 };
 
 static inline struct efi_mem_desc *efi_get_next_mem_desc(
@@ -415,18 +511,5 @@ void efi_putc(struct efi_priv *priv, const char ch);
  * of the requested type, -EPROTONOSUPPORT if the table has the wrong version
  */
 int efi_info_get(enum efi_entry_t type, void **datap, int *sizep);
-
-/**
- * efi_build_mem_table() - make a sorted copy of the memory table
- *
- * @map:	Pointer to EFI memory map table
- * @size:	Size of table in bytes
- * @skip_bs:	True to skip boot-time memory and merge it with conventional
- *		memory. This will significantly reduce the number of table
- *		entries.
- * @return pointer to the new table. It should be freed with free() by the
- *	   caller
- */
-void *efi_build_mem_table(struct efi_entry_memmap *map, int size, bool skip_bs);
 
 #endif /* _LINUX_EFI_H */

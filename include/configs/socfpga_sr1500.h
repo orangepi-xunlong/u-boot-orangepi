@@ -17,10 +17,7 @@
 /* Ethernet on SoC (EMAC) */
 #define CONFIG_PHY_INTERFACE_MODE	PHY_INTERFACE_MODE_RGMII
 /* The PHY is autodetected, so no MII PHY address is needed here */
-#define CONFIG_PHY_MARVELL
 #define PHY_ANEG_TIMEOUT	8000
-
-/* Environment */
 
 /* Enable SPI NOR flash reset, needed for SPI booting */
 #define CONFIG_SPI_N25Q256A_RESET
@@ -31,25 +28,6 @@
 #define CONFIG_SYS_BOOTCOUNT_BE
 
 /* Environment setting for SPI flash */
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_SECT_SIZE	(64 * 1024)
-#define CONFIG_ENV_SIZE		(16 * 1024)
-#define CONFIG_ENV_OFFSET	0x000e0000
-#define CONFIG_ENV_OFFSET_REDUND (CONFIG_ENV_OFFSET + CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SPI_BUS	0
-#define CONFIG_ENV_SPI_CS	0
-#define CONFIG_ENV_SPI_MODE	SPI_MODE_3
-#define CONFIG_ENV_SPI_MAX_HZ	100000000	/* Use max of 100MHz */
-#define CONFIG_SF_DEFAULT_SPEED	100000000
-
-/*
- * The QSPI NOR flash layout on SR1500:
- *
- * 0000.0000 - 0003.ffff: SPL (4 times)
- * 0004.0000 - 000d.ffff: U-Boot
- * 000e.0000 - 000e.ffff: env1
- * 000f.0000 - 000f.ffff: env2
- */
 
 /* The rest of the configuration is shared */
 #include <configs/socfpga_common.h>

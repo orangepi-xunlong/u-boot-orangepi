@@ -9,6 +9,7 @@
 #include <common.h>
 #include <exports.h>
 #include <spi.h>
+#include <linux/delay.h>
 
 #define CMD_ID    0x9f
 #define CMD_STAT  0xd7
@@ -115,7 +116,7 @@ static char *getline(void)
 	}
 }
 
-int atmel_df_pow2(int argc, char * const argv[])
+int atmel_df_pow2(int argc, char *const argv[])
 {
 	/* Print the ABI version */
 	app_startup(argv);
@@ -125,8 +126,6 @@ int atmel_df_pow2(int argc, char * const argv[])
 		printf("Can't run\n\n");
 		return 1;
 	}
-
-	spi_init();
 
 	while (1) {
 		struct spi_slave *slave;
@@ -142,11 +141,12 @@ int atmel_df_pow2(int argc, char * const argv[])
 		if (line[0] == '\0')
 			continue;
 
-		bus = cs = simple_strtoul(line, &p, 10);
+		bus = dectoul(line, &p);
+		cs = bus;
 		if (*p) {
 			if (*p == ':') {
 				++p;
-				cs = simple_strtoul(p, &p, 10);
+				cs = dectoul(p, &p);
 			}
 			if (*p) {
 				puts("invalid format, please try again\n");

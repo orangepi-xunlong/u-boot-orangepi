@@ -78,6 +78,24 @@ lr	.req	x30
 .endm
 
 /*
+ * Branch if we are not in the highest exception level
+ */
+.macro	branch_if_not_highest_el, xreg, label
+	switch_el \xreg, 3f, 2f, 1f
+
+2:	mrs	\xreg, ID_AA64PFR0_EL1
+	and	\xreg, \xreg, #(ID_AA64PFR0_EL1_EL3)
+	cbnz	\xreg, \label
+	b	3f
+
+1:	mrs	\xreg, ID_AA64PFR0_EL1
+	and	\xreg, \xreg, #(ID_AA64PFR0_EL1_EL3 | ID_AA64PFR0_EL1_EL2)
+	cbnz	\xreg, \label
+
+3:
+.endm
+
+/*
  * Branch if current processor is a Cortex-A57 core.
  */
 .macro	branch_if_a57_core, xreg, a57_label
@@ -192,6 +210,10 @@ lr	.req	x30
 	ldr	\tmp, =(SCR_EL3_RW_AARCH64 | SCR_EL3_HCE_EN |\
 			SCR_EL3_SMD_DIS | SCR_EL3_RES1 |\
 			SCR_EL3_NS_EN)
+#endif
+
+#ifdef CONFIG_ARMV8_EA_EL3_FIRST
+	orr	\tmp, \tmp, #SCR_EL3_EA_EN
 #endif
 	msr	scr_el3, \tmp
 

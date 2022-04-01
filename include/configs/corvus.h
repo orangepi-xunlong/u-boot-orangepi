@@ -36,7 +36,6 @@
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
-#define CONFIG_AT91_GPIO
 #define CONFIG_AT91_GPIO_PULLUP	1	/* keep pullups on peripheral pins */
 
 /* serial console */
@@ -55,7 +54,6 @@
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE           ATMEL_BASE_CS6
 #define CONFIG_SYS_SDRAM_SIZE		0x08000000
 
@@ -64,7 +62,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_BASE			ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -74,6 +71,7 @@
 #define CONFIG_SYS_NAND_MASK_CLE		(1 << 22)
 #define CONFIG_SYS_NAND_ENABLE_PIN		AT91_PIN_PC14
 #define CONFIG_SYS_NAND_READY_PIN		AT91_PIN_PC8
+#define CONFIG_SYS_NAND_DRIVER_ECC_LAYOUT
 #endif
 
 /* Ethernet */
@@ -82,19 +80,12 @@
 #define CONFIG_NET_RETRY_COUNT		20
 #define CONFIG_AT91_WANTS_COMMON_PHY
 
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-
 /* DFU class support */
-#define CONFIG_SYS_DFU_DATA_BUF_SIZE	(SZ_1M)
 #define DFU_MANIFEST_POLL_TIMEOUT	25000
 
 #define CONFIG_SYS_LOAD_ADDR	ATMEL_BASE_CS6
 
 /* bootstrap + u-boot + env in nandflash */
-#define CONFIG_ENV_OFFSET		0x100000
-#define CONFIG_ENV_OFFSET_REDUND	0x180000
-#define CONFIG_ENV_SIZE			SZ_128K
 
 #define CONFIG_BOOTCOMMAND						\
 	"nand read 0x70000000 0x200000 0x300000;"			\
@@ -107,16 +98,12 @@
 				SZ_4M, 0x1000)
 
 /* Defines for SPL */
-#define CONFIG_SPL_TEXT_BASE		0x300000
 #define CONFIG_SPL_MAX_SIZE		(12 * SZ_1K)
 #define CONFIG_SPL_STACK		(SZ_16K)
 
 #define CONFIG_SPL_BSS_START_ADDR	CONFIG_SPL_MAX_SIZE
 #define CONFIG_SPL_BSS_MAX_SIZE		(SZ_2K)
 
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_ECC
 #define CONFIG_SPL_NAND_RAW_ONLY
 #define CONFIG_SPL_NAND_SOFTECC
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
@@ -143,5 +130,8 @@
 #define CONFIG_SYS_AT91_PLLA		0x20c73f03
 #define CONFIG_SYS_MCKR			0x1301
 #define CONFIG_SYS_MCKR_CSS		0x1302
+
+#define CONFIG_SPL_PAD_TO		CONFIG_SYS_NAND_U_BOOT_OFFS
+#define CONFIG_SYS_SPL_LEN		CONFIG_SPL_PAD_TO
 
 #endif

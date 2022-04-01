@@ -17,8 +17,6 @@
  /* High Level Configuration Options */
 #define CONFIG_MX35
 
-#define CONFIG_SYS_DCACHE_OFF
-
 #define CONFIG_MACH_TYPE		MACH_TYPE_FLEA3
 
 /* Set TEXT at the beginning of the NOR flash */
@@ -38,7 +36,7 @@
 /*
  * Hardware drivers
  */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -49,11 +47,7 @@
 /*
  * UART (console)
  */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART3_BASE
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /*
  * Command definition
@@ -71,8 +65,6 @@
 #define IMX_FEC_BASE	FEC_BASE_ADDR
 #define CONFIG_FEC_MXC_PHYADDR	0x1
 
-#define CONFIG_MII
-
 #define CONFIG_ARP_TIMEOUT	200UL
 
 /*
@@ -83,15 +75,11 @@
 /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	32	/* max number of command args */
 
-#define CONFIG_SYS_MEMTEST_START	0	/* memtest works on */
-#define CONFIG_SYS_MEMTEST_END		0x10000
-
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 
 /*
  * Physical Memory Map
  */
-#define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM_1		CSD0_BASE_ADDR
 #define PHYS_SDRAM_1_SIZE	(128 * 1024 * 1024)
 
@@ -106,9 +94,6 @@
 /*
  * MTD Command for mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_FLASH_CFI_MTD
-#define CONFIG_MTD_PARTITIONS
 
 /*
  * FLASH and environment organization
@@ -120,25 +105,13 @@
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
 
-#define CONFIG_ENV_SECT_SIZE	(64 * 1024)
-#define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
-
 /* Address and size of Redundant Environment Sector	*/
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#define CONFIG_ENV_SIZE_REDUND	CONFIG_ENV_SIZE
-
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
-				CONFIG_SYS_MONITOR_LEN)
 
 /*
  * CFI FLASH driver setup
  */
-#define CONFIG_SYS_FLASH_CFI		/* Flash memory is CFI compliant */
-#define CONFIG_FLASH_CFI_DRIVER
 
 /* A non-standard buffered write algorithm */
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	/* faster */
-#define CONFIG_SYS_FLASH_PROTECTION	/* Use hardware sector protection */
 
 /*
  * NAND FLASH driver setup

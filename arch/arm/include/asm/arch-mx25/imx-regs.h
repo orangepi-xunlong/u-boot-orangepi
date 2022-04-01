@@ -269,18 +269,6 @@ struct epit_regs {
 	u32 cnr;	/* Counter register */
 };
 
-/* CSPI registers */
-struct cspi_regs {
-	u32 rxdata;
-	u32 txdata;
-	u32 ctrl;
-	u32 intr;
-	u32 dma;
-	u32 stat;
-	u32 period;
-	u32 test;
-};
-
 #endif
 
 #define ARCH_MXC
@@ -354,12 +342,18 @@ struct cspi_regs {
 #define IMX_GPIO2_BASE		(0x53FD0000)
 #define IMX_SDMA_BASE		(0x53FD4000)
 #define IMX_WDT_BASE		(0x53FDC000)
+#define WDOG1_BASE_ADDR	IMX_WDT_BASE
 #define IMX_PWM1_BASE		(0x53FE0000)
 #define IMX_RTIC_BASE		(0x53FEC000)
 #define IMX_IIM_BASE		(0x53FF0000)
 #define IIM_BASE_ADDR		IMX_IIM_BASE
 #define IMX_USB_BASE		(0x53FF4000)
-#define IMX_USB_PORT_OFFSET	0x200
+/*
+ * This is in contradiction to the imx25 reference manual, which says that
+ * port 1's registers start at 0x53FF4200. The correct base address for
+ * port 1 is 0x53FF4400. The kernel uses 0x53FF4400 as well.
+ */
+#define IMX_USB_PORT_OFFSET	0x400
 #define IMX_CSI_BASE		(0x53FF8000)
 #define IMX_DRYICE_BASE		(0x53FFC000)
 
@@ -502,24 +496,6 @@ struct cspi_regs {
 /*
  * CSPI register definitions
  */
-#define MXC_CSPI
-#define MXC_CSPICTRL_EN		(1 << 0)
-#define MXC_CSPICTRL_MODE	(1 << 1)
-#define MXC_CSPICTRL_XCH	(1 << 2)
-#define MXC_CSPICTRL_SMC	(1 << 3)
-#define MXC_CSPICTRL_POL	(1 << 4)
-#define MXC_CSPICTRL_PHA	(1 << 5)
-#define MXC_CSPICTRL_SSCTL	(1 << 6)
-#define MXC_CSPICTRL_SSPOL	(1 << 7)
-#define MXC_CSPICTRL_CHIPSELECT(x)	(((x) & 0x3) << 12)
-#define MXC_CSPICTRL_BITCOUNT(x)	(((x) & 0xfff) << 20)
-#define MXC_CSPICTRL_DATARATE(x)	(((x) & 0x7) << 16)
-#define MXC_CSPICTRL_TC		(1 << 7)
-#define MXC_CSPICTRL_RXOVF	(1 << 6)
-#define MXC_CSPICTRL_MAXBITS	0xfff
-#define MXC_CSPIPERIOD_32KHZ	(1 << 15)
-#define MAX_SPI_BYTES	4
-
 #define MXC_SPI_BASE_ADDRESSES \
 	IMX_CSPI1_BASE, \
 	IMX_CSPI2_BASE, \

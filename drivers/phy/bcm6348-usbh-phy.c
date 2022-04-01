@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2018 Ãlvaro FernÃ¡ndez Rojas <noltari@gmail.com>
+ * Copyright (C) 2018 Álvaro Fernández Rojas <noltari@gmail.com>
  *
  * Derived from linux/arch/mips/bcm63xx/usb-common.c:
  *	Copyright 2008 Maxime Bizon <mbizon@freebox.fr>
@@ -11,9 +11,12 @@
 #include <clk.h>
 #include <dm.h>
 #include <generic-phy.h>
+#include <log.h>
+#include <malloc.h>
 #include <reset.h>
 #include <asm/io.h>
 #include <dm/device.h>
+#include <linux/bitops.h>
 
 #define USBH_SETUP_PORT1_EN	BIT(0)
 
@@ -44,15 +47,11 @@ static int bcm6348_usbh_probe(struct udevice *dev)
 	struct bcm6348_usbh_priv *priv = dev_get_priv(dev);
 	struct reset_ctl rst_ctl;
 	struct clk clk;
-	fdt_addr_t addr;
-	fdt_size_t size;
 	int ret;
 
-	addr = devfdt_get_addr_size_index(dev, 0, &size);
-	if (addr == FDT_ADDR_T_NONE)
+	priv->regs = dev_remap_addr(dev);
+	if (!priv->regs)
 		return -EINVAL;
-
-	priv->regs = ioremap(addr, size);
 
 	/* enable usbh clock */
 	ret = clk_get_by_name(dev, "usbh", &clk);
@@ -88,6 +87,6 @@ U_BOOT_DRIVER(bcm6348_usbh) = {
 	.id = UCLASS_PHY,
 	.of_match = bcm6348_usbh_ids,
 	.ops = &bcm6348_usbh_ops,
-	.priv_auto_alloc_size = sizeof(struct bcm6348_usbh_priv),
+	.priv_auto	= sizeof(struct bcm6348_usbh_priv),
 	.probe = bcm6348_usbh_probe,
 };

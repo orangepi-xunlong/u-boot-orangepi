@@ -23,15 +23,10 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_DIMM_SLOTS_PER_CTLR	1
 /* Physical Memory Map */
 #define CONFIG_CHIP_SELECTS_PER_CTRL	4
-#define CONFIG_NR_DRAM_BANKS		2
 
 #define CONFIG_DDR_SPD
 #define SPD_EEPROM_ADDRESS		0x51
 #define CONFIG_SYS_SPD_BUS_NUM		0
-
-#ifndef CONFIG_SPL
-#define CONFIG_FSL_DDR_INTERACTIVE	/* Interactive debugging */
-#endif
 
 #define CONFIG_DDR_ECC
 #ifdef CONFIG_DDR_ECC
@@ -44,26 +39,9 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SPI_FLASH_STMICRO	/* cs0 */
 #define CONFIG_SPI_FLASH_SST		/* cs1 */
 #define CONFIG_SPI_FLASH_EON		/* cs2 */
-#if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
-#define CONFIG_SF_DEFAULT_BUS		1
-#define CONFIG_SF_DEFAULT_CS		0
-#endif
-#endif
-
-/* QSPI */
-#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
-#ifdef CONFIG_FSL_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
-#define FSL_QSPI_FLASH_SIZE		(1 << 24)
-#define FSL_QSPI_FLASH_NUM		2
-#endif
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
-#define CONFIG_FMAN_ENET
-#define CONFIG_PHY_VITESSE
-#define CONFIG_PHY_REALTEK
-#define CONFIG_PHYLIB_10G
 #define RGMII_PHY1_ADDR		0x1
 #define RGMII_PHY2_ADDR		0x2
 #define SGMII_CARD_PORT1_PHY_ADDR 0x1C
@@ -111,9 +89,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_FLASH_BASE_PHYS_EARLY	0x00000000
 
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45	/* count down from 45/5: 9..1 */
 #endif
@@ -231,7 +206,8 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(768 << 10)
 #endif
 
-#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
+#if defined(CONFIG_TFABOOT) || \
+	defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 #define CONFIG_QIXIS_I2C_ACCESS
 #define CONFIG_SYS_I2C_EARLY_INIT
 #endif
@@ -286,6 +262,40 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_FPGA_FTIM3		0x0
 #endif
 
+#ifdef CONFIG_TFABOOT
+#define CONFIG_SYS_CSPR0_EXT		CONFIG_SYS_NOR0_CSPR_EXT
+#define CONFIG_SYS_CSPR0		CONFIG_SYS_NOR0_CSPR
+#define CONFIG_SYS_AMASK0		CONFIG_SYS_NOR_AMASK
+#define CONFIG_SYS_CSOR0		CONFIG_SYS_NOR_CSOR
+#define CONFIG_SYS_CS0_FTIM0		CONFIG_SYS_NOR_FTIM0
+#define CONFIG_SYS_CS0_FTIM1		CONFIG_SYS_NOR_FTIM1
+#define CONFIG_SYS_CS0_FTIM2		CONFIG_SYS_NOR_FTIM2
+#define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NOR_FTIM3
+#define CONFIG_SYS_CSPR1_EXT		CONFIG_SYS_NOR1_CSPR_EXT
+#define CONFIG_SYS_CSPR1		CONFIG_SYS_NOR1_CSPR
+#define CONFIG_SYS_AMASK1		CONFIG_SYS_NOR_AMASK
+#define CONFIG_SYS_CSOR1		CONFIG_SYS_NOR_CSOR
+#define CONFIG_SYS_CS1_FTIM0		CONFIG_SYS_NOR_FTIM0
+#define CONFIG_SYS_CS1_FTIM1		CONFIG_SYS_NOR_FTIM1
+#define CONFIG_SYS_CS1_FTIM2		CONFIG_SYS_NOR_FTIM2
+#define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NOR_FTIM3
+#define CONFIG_SYS_CSPR2_EXT		CONFIG_SYS_NAND_CSPR_EXT
+#define CONFIG_SYS_CSPR2		CONFIG_SYS_NAND_CSPR
+#define CONFIG_SYS_AMASK2		CONFIG_SYS_NAND_AMASK
+#define CONFIG_SYS_CSOR2		CONFIG_SYS_NAND_CSOR
+#define CONFIG_SYS_CS2_FTIM0		CONFIG_SYS_NAND_FTIM0
+#define CONFIG_SYS_CS2_FTIM1		CONFIG_SYS_NAND_FTIM1
+#define CONFIG_SYS_CS2_FTIM2		CONFIG_SYS_NAND_FTIM2
+#define CONFIG_SYS_CS2_FTIM3		CONFIG_SYS_NAND_FTIM3
+#define CONFIG_SYS_CSPR3_EXT		CONFIG_SYS_FPGA_CSPR_EXT
+#define CONFIG_SYS_CSPR3		CONFIG_SYS_FPGA_CSPR
+#define CONFIG_SYS_AMASK3		CONFIG_SYS_FPGA_AMASK
+#define CONFIG_SYS_CSOR3		CONFIG_SYS_FPGA_CSOR
+#define CONFIG_SYS_CS3_FTIM0		CONFIG_SYS_FPGA_FTIM0
+#define CONFIG_SYS_CS3_FTIM1		CONFIG_SYS_FPGA_FTIM1
+#define CONFIG_SYS_CS3_FTIM2		CONFIG_SYS_FPGA_FTIM2
+#define CONFIG_SYS_CS3_FTIM3		CONFIG_SYS_FPGA_FTIM3
+#else
 #ifdef CONFIG_NAND_BOOT
 #define CONFIG_SYS_CSPR0_EXT		CONFIG_SYS_NAND_CSPR_EXT
 #define CONFIG_SYS_CSPR0		CONFIG_SYS_NAND_CSPR
@@ -353,6 +363,7 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_CS3_FTIM2		CONFIG_SYS_FPGA_FTIM2
 #define CONFIG_SYS_CS3_FTIM3		CONFIG_SYS_FPGA_FTIM3
 #endif
+#endif
 
 /*
  * I2C bus multiplexer
@@ -387,10 +398,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_MISC_INIT_R
-
-#define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		0x9fffffff
 
 #define CONFIG_SYS_HZ			1000
 
@@ -402,34 +409,33 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Environment
  */
-#define CONFIG_ENV_OVERWRITE
-
-#ifdef CONFIG_NAND_BOOT
-#define CONFIG_ENV_SIZE			0x2000
-#define CONFIG_ENV_OFFSET		(12 * CONFIG_SYS_NAND_BLOCK_SIZE)
-#elif defined(CONFIG_SD_BOOT)
-#define CONFIG_ENV_OFFSET		(3 * 1024 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_SIZE			0x2000
-#elif defined(CONFIG_QSPI_BOOT)
-#define CONFIG_ENV_SIZE			0x2000          /* 8KB */
-#define CONFIG_ENV_OFFSET		0x300000        /* 3MB */
-#define CONFIG_ENV_SECT_SIZE		0x10000
-#else
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x300000)
-#define CONFIG_ENV_SECT_SIZE		0x20000
-#define CONFIG_ENV_SIZE			0x20000
-#endif
 
 #define CONFIG_CMDLINE_TAG
 
 #undef CONFIG_BOOTCOMMAND
-#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
-#define CONFIG_BOOTCOMMAND		"sf probe && sf read $kernel_load "    \
-					"e0000 f00000 && bootm $kernel_load"
+#ifdef CONFIG_TFABOOT
+#define IFC_NAND_BOOTCOMMAND "run distro_bootcmd; run nand_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#define QSPI_NOR_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd"	\
+			   "env exists secureboot && esbc_halt;;"
+#define IFC_NOR_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#define SD_BOOTCOMMAND "run distro_bootcmd; run sd_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
 #else
-#define CONFIG_BOOTCOMMAND		"cp.b $kernel_start $kernel_load "     \
-					"$kernel_size && bootm $kernel_load"
+#if defined(CONFIG_QSPI_BOOT)
+#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#elif defined(CONFIG_NAND_BOOT)
+#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nand_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#elif defined(CONFIG_SD_BOOT)
+#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run sd_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#else
+#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd; "	\
+			   "env exists secureboot && esbc_halt;;"
+#endif
 #endif
 
 #include <asm/fsl_secure_boot.h>

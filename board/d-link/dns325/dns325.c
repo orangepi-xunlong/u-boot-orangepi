@@ -10,12 +10,16 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <miiphy.h>
+#include <net.h>
 #include <netdev.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/gpio.h>
+#include <asm/global_data.h>
 #include "dns325.h"
 
 DECLARE_GLOBAL_DATA_PTR;

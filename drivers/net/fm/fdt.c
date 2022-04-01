@@ -3,7 +3,10 @@
  * Copyright 2016 Freescale Semiconductor, Inc.
  */
 #include <asm/io.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <fsl_qe.h>	/* For struct qe_firmware */
+#include <u-boot/crc.h>
 
 #ifdef CONFIG_SYS_DPAA_FMAN
 /**
@@ -39,7 +42,7 @@ void fdt_fixup_fman_firmware(void *blob)
 	if (!p)
 		return;
 
-	fmanfw = (struct qe_firmware *)simple_strtoul(p, NULL, 16);
+	fmanfw = (struct qe_firmware *)hextoul(p, NULL);
 	if (!fmanfw)
 		return;
 

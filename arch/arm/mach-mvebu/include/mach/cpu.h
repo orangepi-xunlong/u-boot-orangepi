@@ -34,6 +34,7 @@ enum cpu_target {
 	CPU_TARGET_PCIE02 = 0x4,
 	CPU_TARGET_ETH01 = 0x7,
 	CPU_TARGET_PCIE13 = 0x8,
+	CPU_TARGET_DFX = 0x8,
 	CPU_TARGET_SASRAM = 0x9,
 	CPU_TARGET_SATA01 = 0xa, /* A38X */
 	CPU_TARGET_NAND = 0xd,
@@ -68,15 +69,19 @@ enum {
 	MVEBU_SOC_UNKNOWN,
 };
 
+#define MVEBU_SDRAM_SIZE_MAX	0xc0000000
+
 /*
  * Default Device Address MAP BAR values
  */
-#define MBUS_PCI_MEM_BASE	0xE8000000
+#define MBUS_PCI_MEM_BASE	MVEBU_SDRAM_SIZE_MAX
 #define MBUS_PCI_MEM_SIZE	(128 << 20)
 #define MBUS_PCI_IO_BASE	0xF1100000
 #define MBUS_PCI_IO_SIZE	(64 << 10)
 #define MBUS_SPI_BASE		0xF4000000
 #define MBUS_SPI_SIZE		(8 << 20)
+#define MBUS_DFX_BASE		0xF6000000
+#define MBUS_DFX_SIZE		(1 << 20)
 #define MBUS_BOOTROM_BASE	0xF8000000
 #define MBUS_BOOTROM_SIZE	(8 << 20)
 
@@ -137,9 +142,13 @@ int mvebu_mbus_probe(struct mbus_win windows[], int count);
 int mvebu_soc_family(void);
 u32 mvebu_get_nand_clock(void);
 
-void return_to_bootrom(void);
+void __noreturn return_to_bootrom(void);
 
+#ifndef CONFIG_DM_MMC
 int mv_sdh_init(unsigned long regbase, u32 max_clk, u32 min_clk, u32 quirks);
+#endif
+
+u32 get_boot_device(void);
 
 void get_sar_freq(struct sar_freq_modes *sar_freq);
 
@@ -156,17 +165,25 @@ int serdes_phy_config(void);
  */
 int ddr3_init(void);
 
-struct mvebu_lcd_info {
-	u32 fb_base;
-	int x_res;
-	int y_res;
-	int x_fp;		/* frontporch */
-	int y_fp;
-	int x_bp;		/* backporch */
-	int y_bp;
-};
+/* Auto Voltage Scaling */
+#if defined(CONFIG_ARMADA_38X)
+void mv_avs_init(void);
+void mv_rtc_config(void);
+#else
+static inline void mv_avs_init(void) {}
+static inline void mv_rtc_config(void) {}
+#endif
 
-int mvebu_lcd_register_init(struct mvebu_lcd_info *lcd_info);
+/* A8K dram functions */
+u64 a8k_dram_scan_ap_sz(void);
+int a8k_dram_init_banksize(void);
+
+/* A3700 dram functions */
+int a3700_dram_init(void);
+int a3700_dram_init_banksize(void);
+
+/* A3700 PCIe regions fixer for device tree */
+int a3700_fdt_fix_pcie_regions(void *blob);
 
 /*
  * get_ref_clk

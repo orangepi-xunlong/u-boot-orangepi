@@ -6,7 +6,12 @@
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <init.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
+#include <asm/ptrace.h>
 #include <linux/libfdt.h>
+#include <linux/sizes.h>
 #include <pci.h>
 #include <asm/io.h>
 #include <asm/system.h>
@@ -43,18 +48,28 @@ const struct mbus_dram_target_info *mvebu_mbus_dram_info(void)
 	return NULL;
 }
 
-/* DRAM init code ... */
-
-int dram_init_banksize(void)
+__weak int dram_init_banksize(void)
 {
-	fdtdec_setup_memory_banksize();
-
-	return 0;
+	if (CONFIG_IS_ENABLED(ARMADA_8K))
+		return a8k_dram_init_banksize();
+	else if (CONFIG_IS_ENABLED(ARMADA_3700))
+		return a3700_dram_init_banksize();
+	else
+		return fdtdec_setup_memory_banksize();
 }
 
-int dram_init(void)
+__weak int dram_init(void)
 {
-	if (fdtdec_setup_memory_size() != 0)
+	if (CONFIG_IS_ENABLED(ARMADA_8K)) {
+		gd->ram_size = a8k_dram_scan_ap_sz();
+		if (gd->ram_size != 0)
+			return 0;
+	}
+
+	if (CONFIG_IS_ENABLED(ARMADA_3700))
+		return a3700_dram_init();
+
+	if (fdtdec_setup_mem_size_base() != 0)
 		return -EINVAL;
 
 	return 0;
@@ -89,10 +104,9 @@ int arch_early_init_r(void)
 	/* Cause the SATA device to do its early init */
 	uclass_first_device(UCLASS_AHCI, &dev);
 
-#ifdef CONFIG_DM_PCI
 	/* Trigger PCIe devices detection */
-	pci_init();
-#endif
+	if (IS_ENABLED(CONFIG_PCI))
+		pci_init();
 
 	return 0;
 }

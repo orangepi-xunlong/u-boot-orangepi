@@ -8,11 +8,12 @@
 #define _MACH_SYSMAP_APQ8016_H
 
 #define GICD_BASE			(0x0b000000)
-#define GICC_BASE			(0x0a20c000)
+#define GICC_BASE			(0x0b002000)
 
 /* Clocks: (from CLK_CTL_BASE)  */
 #define GPLL0_STATUS			(0x2101C)
 #define APCS_GPLL_ENA_VOTE		(0x45000)
+#define APCS_CLOCK_BRANCH_ENA_VOTE (0x45004)
 
 #define SDCC_BCR(n)			((n * 0x1000) + 0x41000)
 #define SDCC_CMD_RCGR(n)		((n * 0x1000) + 0x41004)

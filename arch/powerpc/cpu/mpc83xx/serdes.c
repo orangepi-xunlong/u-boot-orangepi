@@ -8,10 +8,13 @@
  * Author: Li Yang <leoli@freescale.com>
  */
 
+#ifndef CONFIG_MPC83XX_SERDES
+
 #include <config.h>
 #include <common.h>
 #include <asm/io.h>
 #include <asm/fsl_mpc83xx_serdes.h>
+#include <linux/delay.h>
 
 /* SerDes registers */
 #define FSL_SRDSCR0_OFFS		0x0
@@ -148,3 +151,5 @@ void fsl_setup_serdes(u32 offset, char proto, u32 rfcks, char vdd)
 	tmp |= FSL_SRDSRSTCTL_RST;
 	out_be32(regs + FSL_SRDSRSTCTL_OFFS, tmp);
 }
+
+#endif /* !CONFIG_MPC83XX_SERDES */

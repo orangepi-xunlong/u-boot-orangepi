@@ -14,8 +14,10 @@
  * (C) Copyright 2006 by Harald Welte <hwelte at hmw-consulting.de>
  */
 
+#include <env.h>
 #include <errno.h>
 #include <common.h>
+#include <log.h>
 #include <malloc.h>
 
 #include <linux/usb/ch9.h>
@@ -595,6 +597,11 @@ dfu_handle(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 	debug("req_type: 0x%x ctrl->bRequest: 0x%x f_dfu->dfu_state: 0x%x\n",
 	       req_type, ctrl->bRequest, f_dfu->dfu_state);
 
+#ifdef CONFIG_DFU_TIMEOUT
+	/* Forbid aborting by timeout. Next dfu command may update this */
+	dfu_set_timeout(0);
+#endif
+
 	if (req_type == USB_TYPE_STANDARD) {
 		if (ctrl->bRequest == USB_REQ_GET_DESCRIPTOR &&
 		    (w_value >> 8) == DFU_DT_FUNC) {
@@ -748,6 +755,7 @@ static void dfu_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	if (f_dfu->function) {
 		i = alt_num;
+		i++; /* free DFU Functional Descriptor */
 		while (i) {
 			free(f_dfu->function[--i]);
 			f_dfu->function[i] = NULL;

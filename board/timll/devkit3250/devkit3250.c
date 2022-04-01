@@ -6,12 +6,15 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/emc.h>
 #include <asm/arch/wdt.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -35,7 +38,7 @@ void reset_periph(void)
 
 int board_early_init_f(void)
 {
-	lpc32xx_uart_init(CONFIG_SYS_LPC32XX_UART);
+	lpc32xx_uart_init(CONFIG_CONS_INDEX);
 	lpc32xx_i2c_init(1);
 	lpc32xx_i2c_init(2);
 	lpc32xx_ssp_init();

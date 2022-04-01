@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/lp873x.h>
@@ -24,7 +25,7 @@ static int lp873x_write(struct udevice *dev, uint reg, const uint8_t *buff,
 			  int len)
 {
 	if (dm_i2c_write(dev, reg, buff, len)) {
-		pr_err("write error to device: %p register: %#x!", dev, reg);
+		pr_err("write error to device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
@@ -34,7 +35,7 @@ static int lp873x_write(struct udevice *dev, uint reg, const uint8_t *buff,
 static int lp873x_read(struct udevice *dev, uint reg, uint8_t *buff, int len)
 {
 	if (dm_i2c_read(dev, reg, buff, len)) {
-		pr_err("read error from device: %p register: %#x!", dev, reg);
+		pr_err("read error from device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
@@ -48,7 +49,7 @@ static int lp873x_bind(struct udevice *dev)
 
 	regulators_node = dev_read_subnode(dev, "regulators");
 	if (!ofnode_valid(regulators_node)) {
-		debug("%s: %s regulators subnode not found!", __func__,
+		debug("%s: %s regulators subnode not found!\n", __func__,
 		      dev->name);
 		return -ENXIO;
 	}

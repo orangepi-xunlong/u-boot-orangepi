@@ -10,6 +10,8 @@
 /* TODO(sjg@chromium.org): Drop fdtdec.h include */
 #include <fdtdec.h>
 #include <dm/of.h>
+#include <dm/of_access.h>
+#include <log.h>
 
 /* Enable checks to protect against invalid calls */
 #undef OF_CHECKS
@@ -48,7 +50,7 @@ struct resource;
  *	is not a really a pointer to a node: it is an offset value. See above.
  */
 typedef union ofnode_union {
-	const struct device_node *np;	/* will be used for future live tree */
+	const struct device_node *np;
 	long of_offset;
 } ofnode;
 
@@ -59,7 +61,32 @@ struct ofnode_phandle_args {
 };
 
 /**
- * _ofnode_to_np() - convert an ofnode to a live DT node pointer
+ * ofprop - reference to a property of a device tree node
+ *
+ * This struct hold the reference on one property of one node,
+ * using struct ofnode and an offset within the flat device tree or either
+ * a pointer to a struct property in the live device tree.
+ *
+ * Thus we can reference arguments in both the live tree and the flat tree.
+ *
+ * The property reference can also hold a null reference. This corresponds to
+ * a struct property NULL pointer or an offset of -1.
+ *
+ * @node: Pointer to device node
+ * @offset: Pointer into flat device tree, used for flat tree.
+ * @prop: Pointer to property, used for live treee.
+ */
+
+struct ofprop {
+	ofnode node;
+	union {
+		int offset;
+		const struct property *prop;
+	};
+};
+
+/**
+ * ofnode_to_np() - convert an ofnode to a live DT node pointer
  *
  * This cannot be called if the reference contains an offset.
  *
@@ -102,7 +129,7 @@ static inline bool ofnode_valid(ofnode node)
 	if (of_live_active())
 		return node.np != NULL;
 	else
-		return node.of_offset != -1;
+		return node.of_offset >= 0;
 }
 
 /**
@@ -118,7 +145,7 @@ static inline ofnode offset_to_ofnode(int of_offset)
 	if (of_live_active())
 		node.np = NULL;
 	else
-		node.of_offset = of_offset;
+		node.of_offset = of_offset >= 0 ? of_offset : -1;
 
 	return node;
 }
@@ -157,8 +184,8 @@ static inline bool ofnode_is_np(ofnode node)
 	 * live tree is in use.
 	 */
 	assert(!ofnode_valid(node) ||
-	       (of_live_active() ? _ofnode_to_np(node)
-				  : _ofnode_to_np(node)));
+	       (of_live_active() ? ofnode_to_np(node)
+				  : ofnode_to_np(node)));
 #endif
 	return of_live_active() && ofnode_valid(node);
 }
@@ -192,6 +219,28 @@ static inline ofnode ofnode_null(void)
 	return node;
 }
 
+static inline ofnode ofnode_root(void)
+{
+	ofnode node;
+
+	if (of_live_active())
+		node.np = gd_of_root();
+	else
+		node.of_offset = 0;
+
+	return node;
+}
+
+/**
+ * ofnode_name_eq() - Check if the node name is equivalent to a given name
+ *                    ignoring the unit address
+ *
+ * @node:	valid node reference that has to be compared
+ * @name:	name that has to be compared with the node name
+ * @return true if matches, false if it doesn't match
+ */
+bool ofnode_name_eq(ofnode node, const char *name);
+
 /**
  * ofnode_read_u32() - Read a 32-bit integer from a property
  *
@@ -201,6 +250,18 @@ static inline ofnode ofnode_null(void)
  * @return 0 if OK, -ve on error
  */
 int ofnode_read_u32(ofnode node, const char *propname, u32 *outp);
+
+/**
+ * ofnode_read_u32_index() - Read a 32-bit integer from a multi-value property
+ *
+ * @ref:	valid node reference to read property from
+ * @propname:	name of the property to read from
+ * @index:	index of the integer to return
+ * @outp:	place to put value (if found)
+ * @return 0 if OK, -ve on error
+ */
+int ofnode_read_u32_index(ofnode node, const char *propname, int index,
+			  u32 *outp);
 
 /**
  * ofnode_read_s32() - Read a 32-bit integer from a property
@@ -224,7 +285,20 @@ static inline int ofnode_read_s32(ofnode node, const char *propname,
  * @def:	default value to return if the property has no value
  * @return property value, or @def if not found
  */
-int ofnode_read_u32_default(ofnode ref, const char *propname, u32 def);
+u32 ofnode_read_u32_default(ofnode ref, const char *propname, u32 def);
+
+/**
+ * ofnode_read_u32_index_default() - Read a 32-bit integer from a multi-value
+ *                                   property
+ *
+ * @ref:	valid node reference to read property from
+ * @propname:	name of the property to read from
+ * @index:	index of the integer to return
+ * @def:	default value to return if the property has no value
+ * @return property value, or @def if not found
+ */
+u32 ofnode_read_u32_index_default(ofnode ref, const char *propname, int index,
+				  u32 def);
 
 /**
  * ofnode_read_s32_default() - Read a 32-bit integer from a property
@@ -237,9 +311,40 @@ int ofnode_read_u32_default(ofnode ref, const char *propname, u32 def);
 int ofnode_read_s32_default(ofnode node, const char *propname, s32 def);
 
 /**
- * ofnode_read_string() - Read a string from a property
+ * ofnode_read_u64() - Read a 64-bit integer from a property
+ *
+ * @node:	valid node reference to read property from
+ * @propname:	name of the property to read from
+ * @outp:	place to put value (if found)
+ * @return 0 if OK, -ve on error
+ */
+int ofnode_read_u64(ofnode node, const char *propname, u64 *outp);
+
+/**
+ * ofnode_read_u64_default() - Read a 64-bit integer from a property
  *
  * @ref:	valid node reference to read property from
+ * @propname:	name of the property to read from
+ * @def:	default value to return if the property has no value
+ * @return property value, or @def if not found
+ */
+u64 ofnode_read_u64_default(ofnode node, const char *propname, u64 def);
+
+/**
+ * ofnode_read_prop() - Read a property from a node
+ *
+ * @node:	valid node reference to read property from
+ * @propname:	name of the property to read
+ * @sizep:	if non-NULL, returns the size of the property, or an error code
+		if not found
+ * @return property value, or NULL if there is no such property
+ */
+const void *ofnode_read_prop(ofnode node, const char *propname, int *sizep);
+
+/**
+ * ofnode_read_string() - Read a string from a property
+ *
+ * @node:	valid node reference to read property from
  * @propname:	name of the property to read
  * @return string from property value, or NULL if there is no such property
  */
@@ -252,6 +357,7 @@ const char *ofnode_read_string(ofnode node, const char *propname);
  * @propname:	name of the property to read
  * @out_values:	pointer to return value, modified only if return value is 0
  * @sz:		number of array elements to read
+ * @return 0 if OK, -ve on error
  *
  * Search for a property in a device node and read 32-bit value(s) from
  * it. Returns 0 on success, -EINVAL if the property does not exist,
@@ -282,6 +388,51 @@ bool ofnode_read_bool(ofnode node, const char *propname);
  */
 ofnode ofnode_find_subnode(ofnode node, const char *subnode_name);
 
+#if CONFIG_IS_ENABLED(DM_INLINE_OFNODE)
+#include <asm/global_data.h>
+
+static inline bool ofnode_is_enabled(ofnode node)
+{
+	if (ofnode_is_np(node)) {
+		return of_device_is_available(ofnode_to_np(node));
+	} else {
+		return fdtdec_get_is_enabled(gd->fdt_blob,
+					     ofnode_to_offset(node));
+	}
+}
+
+static inline ofnode ofnode_first_subnode(ofnode node)
+{
+	assert(ofnode_valid(node));
+	if (ofnode_is_np(node))
+		return np_to_ofnode(node.np->child);
+
+	return offset_to_ofnode(
+		fdt_first_subnode(gd->fdt_blob, ofnode_to_offset(node)));
+}
+
+static inline ofnode ofnode_next_subnode(ofnode node)
+{
+	assert(ofnode_valid(node));
+	if (ofnode_is_np(node))
+		return np_to_ofnode(node.np->sibling);
+
+	return offset_to_ofnode(
+		fdt_next_subnode(gd->fdt_blob, ofnode_to_offset(node)));
+}
+#else
+/**
+ * ofnode_is_enabled() - Checks whether a node is enabled.
+ * This looks for a 'status' property. If this exists, then returns true if
+ * the status is 'okay' and false otherwise. If there is no status property,
+ * it returns true on the assumption that anything mentioned should be enabled
+ * by default.
+ *
+ * @node: node to examine
+ * @return false (not enabled) or true (enabled)
+ */
+bool ofnode_is_enabled(ofnode node);
+
 /**
  * ofnode_first_subnode() - find the first subnode of a parent node
  *
@@ -299,6 +450,7 @@ ofnode ofnode_first_subnode(ofnode node);
  * has no more siblings)
  */
 ofnode ofnode_next_subnode(ofnode node);
+#endif /* DM_INLINE_OFNODE */
 
 /**
  * ofnode_get_parent() - get the ofnode's parent (enclosing ofnode)
@@ -312,9 +464,19 @@ ofnode ofnode_get_parent(ofnode node);
  * ofnode_get_name() - get the name of a node
  *
  * @node: valid node to look up
- * @return name or node
+ * @return name of node
  */
 const char *ofnode_get_name(ofnode node);
+
+/**
+ * ofnode_get_path() - get the full path of a node
+ *
+ * @node: valid node to look up
+ * @buf: buffer to write the node path into
+ * @buflen: buffer size
+ * @return 0 if OK, -ve on error
+ */
+int ofnode_get_path(ofnode node, char *buf, int buflen);
 
 /**
  * ofnode_get_by_phandle() - get ofnode from phandle
@@ -332,6 +494,37 @@ ofnode ofnode_get_by_phandle(uint phandle);
  * @return size of property if present, or -EINVAL if not
  */
 int ofnode_read_size(ofnode node, const char *propname);
+
+/**
+ * ofnode_get_addr_size_index() - get an address/size from a node
+ *				  based on index
+ *
+ * This reads the register address/size from a node based on index
+ *
+ * @node: node to read from
+ * @index: Index of address to read (0 for first)
+ * @size: Pointer to size of the address
+ * @return address, or FDT_ADDR_T_NONE if not present or invalid
+ */
+phys_addr_t ofnode_get_addr_size_index(ofnode node, int index,
+				       fdt_size_t *size);
+
+/**
+ * ofnode_get_addr_size_index_notrans() - get an address/size from a node
+ *					  based on index, without address
+ *					  translation
+ *
+ * This reads the register address/size from a node based on index.
+ * The resulting address is not translated. Useful for example for on-disk
+ * addresses.
+ *
+ * @node: node to read from
+ * @index: Index of address to read (0 for first)
+ * @size: Pointer to size of the address
+ * @return address, or FDT_ADDR_T_NONE if not present or invalid
+ */
+phys_addr_t ofnode_get_addr_size_index_notrans(ofnode node, int index,
+					       fdt_size_t *size);
 
 /**
  * ofnode_get_addr_index() - get an address from a node
@@ -353,6 +546,16 @@ phys_addr_t ofnode_get_addr_index(ofnode node, int index);
  * @return address, or FDT_ADDR_T_NONE if not present or invalid
  */
 phys_addr_t ofnode_get_addr(ofnode node);
+
+/**
+ * ofnode_get_size() - get size from a node
+ *
+ * This reads the register size from a node
+ *
+ * @node: node to read from
+ * @return size of the address, or FDT_SIZE_T_NONE if not present or invalid
+ */
+fdt_size_t ofnode_get_size(ofnode node);
 
 /**
  * ofnode_stringlist_search() - find a string in a string list and return index
@@ -459,12 +662,13 @@ int ofnode_parse_phandle_with_args(ofnode node, const char *list_name,
  * @node:	device tree node containing a list
  * @list_name:	property name that contains a list
  * @cells_name:	property name that specifies phandles' arguments count
+ * @cells_count: Cell count to use if @cells_name is NULL
  * @return number of phandle on success, -ENOENT if @list_name does not
  *      exist, -EINVAL if a phandle was not found, @cells_name could not
  *      be found.
  */
 int ofnode_count_phandle_with_args(ofnode node, const char *list_name,
-				   const char *cells_name);
+				   const char *cells_name, int cell_count);
 
 /**
  * ofnode_path() - find a node by full path
@@ -475,20 +679,59 @@ int ofnode_count_phandle_with_args(ofnode node, const char *list_name,
 ofnode ofnode_path(const char *path);
 
 /**
- * ofnode_get_chosen_prop() - get the value of a chosen property
+ * ofnode_read_chosen_prop() - get the value of a chosen property
  *
  * This looks for a property within the /chosen node and returns its value
  *
  * @propname: Property name to look for
+ * @sizep: Returns size of property, or FDT_ERR_... error code if function
+ *	returns NULL
+ * @return property value if found, else NULL
  */
-const char *ofnode_get_chosen_prop(const char *propname);
+const void *ofnode_read_chosen_prop(const char *propname, int *sizep);
 
 /**
- * ofnode_get_chosen_node() - get the chosen node
+ * ofnode_read_chosen_string() - get the string value of a chosen property
  *
- * @return the chosen node if present, else ofnode_null()
+ * This looks for a property within the /chosen node and returns its value,
+ * checking that it is a valid nul-terminated string
+ *
+ * @propname: Property name to look for
+ * @return string value if found, else NULL
  */
-ofnode ofnode_get_chosen_node(const char *name);
+const char *ofnode_read_chosen_string(const char *propname);
+
+/**
+ * ofnode_get_chosen_node() - get a referenced node from the chosen node
+ *
+ * This looks up a named property in the chosen node and uses that as a path to
+ * look up a code.
+ *
+ * @return the referenced node if present, else ofnode_null()
+ */
+ofnode ofnode_get_chosen_node(const char *propname);
+
+/**
+ * ofnode_read_aliases_prop() - get the value of a aliases property
+ *
+ * This looks for a property within the /aliases node and returns its value
+ *
+ * @propname: Property name to look for
+ * @sizep: Returns size of property, or FDT_ERR_... error code if function
+ *	returns NULL
+ * @return property value if found, else NULL
+ */
+const void *ofnode_read_aliases_prop(const char *propname, int *sizep);
+
+/**
+ * ofnode_get_aliases_node() - get a referenced node from the aliases node
+ *
+ * This looks up a named property in the aliases node and uses that as a path to
+ * look up a code.
+ *
+ * @return the referenced node if present, else ofnode_null()
+ */
+ofnode ofnode_get_aliases_node(const char *propname);
 
 struct display_timing;
 /**
@@ -507,7 +750,7 @@ int ofnode_decode_display_timing(ofnode node, int index,
 				 struct display_timing *config);
 
 /**
- * ofnode_get_property()- - get a pointer to the value of a node property
+ * ofnode_get_property() - get a pointer to the value of a node property
  *
  * @node: node to read
  * @propname: property to read
@@ -515,6 +758,42 @@ int ofnode_decode_display_timing(ofnode node, int index,
  * @return pointer to property, or NULL if not found
  */
 const void *ofnode_get_property(ofnode node, const char *propname, int *lenp);
+
+/**
+ * ofnode_get_first_property()- get the reference of the first property
+ *
+ * Get reference to the first property of the node, it is used to iterate
+ * and read all the property with ofnode_get_property_by_prop().
+ *
+ * @node: node to read
+ * @prop: place to put argument reference
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+int ofnode_get_first_property(ofnode node, struct ofprop *prop);
+
+/**
+ * ofnode_get_next_property() - get the reference of the next property
+ *
+ * Get reference to the next property of the node, it is used to iterate
+ * and read all the property with ofnode_get_property_by_prop().
+ *
+ * @prop: reference of current argument and place to put reference of next one
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+int ofnode_get_next_property(struct ofprop *prop);
+
+/**
+ * ofnode_get_property_by_prop() - get a pointer to the value of a property
+ *
+ * Get value for the property identified by the provided reference.
+ *
+ * @prop: reference on property
+ * @propname: If non-NULL, place to property name on success,
+ * @lenp: If non-NULL, place to put length on success
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+const void *ofnode_get_property_by_prop(const struct ofprop *prop,
+					const char **propname, int *lenp);
 
 /**
  * ofnode_is_available() - check if a node is marked available
@@ -574,6 +853,19 @@ int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
 			 const char *propname, struct fdt_pci_addr *addr);
 
 /**
+ * ofnode_read_pci_vendev() - look up PCI vendor and device id
+ *
+ * Look at the compatible property of a device node that represents a PCI
+ * device and extract pci vendor id and device id from it.
+ *
+ * @param node		node to examine
+ * @param vendor	vendor id of the pci device
+ * @param device	device id of the pci device
+ * @return 0 if ok, negative on error
+ */
+int ofnode_read_pci_vendev(ofnode node, u16 *vendor, u16 *device);
+
+/**
  * ofnode_read_addr_cells() - Get the number of address cells for a node
  *
  * This walks back up the tree to find the closest #address-cells property
@@ -627,21 +919,71 @@ int ofnode_read_simple_size_cells(ofnode node);
  * After relocation and jumping into the real U-Boot binary it is possible to
  * determine if a node was bound in one of SPL/TPL stages.
  *
- * There are 3 settings currently in use
- * -
+ * There are 4 settings currently in use
+ * - u-boot,dm-pre-proper: U-Boot proper pre-relocation only
  * - u-boot,dm-pre-reloc: legacy and indicates any of TPL or SPL
  *   Existing platforms only use it to indicate nodes needed in
  *   SPL. Should probably be replaced by u-boot,dm-spl for
  *   new platforms.
+ * - u-boot,dm-spl: SPL and U-Boot pre-relocation
+ * - u-boot,dm-tpl: TPL and U-Boot pre-relocation
  *
  * @node: node to check
- * @eturns true if node is needed in SPL/TL, false otherwise
+ * @return true if node is needed in SPL/TL, false otherwise
  */
 bool ofnode_pre_reloc(ofnode node);
 
+/**
+ * ofnode_read_resource() - Read a resource from a node
+ *
+ * Read resource information from a node at the given index
+ *
+ * @node: Node to read from
+ * @index: Index of resource to read (0 = first)
+ * @res: Returns resource that was read, on success
+ * @return 0 if OK, -ve on error
+ */
 int ofnode_read_resource(ofnode node, uint index, struct resource *res);
+
+/**
+ * ofnode_read_resource_byname() - Read a resource from a node by name
+ *
+ * Read resource information from a node matching the given name. This uses a
+ * 'reg-names' string list property with the names matching the associated
+ * 'reg' property list.
+ *
+ * @node: Node to read from
+ * @name: Name of resource to read
+ * @res: Returns resource that was read, on success
+ * @return 0 if OK, -ve on error
+ */
 int ofnode_read_resource_byname(ofnode node, const char *name,
 				struct resource *res);
+
+/**
+ * ofnode_by_compatible() - Find the next compatible node
+ *
+ * Find the next node after @from that is compatible with @compat
+ *
+ * @from: ofnode to start from (use ofnode_null() to start at the beginning)
+ * @compat: Compatible string to match
+ * @return ofnode found, or ofnode_null() if none
+ */
+ofnode ofnode_by_compatible(ofnode from, const char *compat);
+
+/**
+ * ofnode_by_prop_value() - Find the next node with given property value
+ *
+ * Find the next node after @from that has a @propname with a value
+ * @propval and a length @proplen.
+ *
+ * @from: ofnode to start from (use ofnode_null() to start at the
+ * beginning) @propname: property name to check @propval: property value to
+ * search for @proplen: length of the value in propval @return ofnode
+ * found, or ofnode_null() if none
+ */
+ofnode ofnode_by_prop_value(ofnode from, const char *propname,
+			    const void *propval, int proplen);
 
 /**
  * ofnode_for_each_subnode() - iterate over all subnodes of a parent
@@ -668,7 +1010,15 @@ int ofnode_read_resource_byname(ofnode node, const char *name,
 	     node = ofnode_next_subnode(node))
 
 /**
- * ofnode_translate_address() - Tranlate a device-tree address
+ * ofnode_get_child_count() - get the child count of a ofnode
+ *
+ * @node: valid node to get its child count
+ * @return the number of subnodes
+ */
+int ofnode_get_child_count(ofnode parent);
+
+/**
+ * ofnode_translate_address() - Translate a device-tree address
  *
  * Translate an address from the device-tree into a CPU physical address. This
  * function walks up the tree and applies the various bus mappings along the
@@ -680,4 +1030,91 @@ int ofnode_read_resource_byname(ofnode node, const char *name,
  * @return the translated address; OF_BAD_ADDR on error
  */
 u64 ofnode_translate_address(ofnode node, const fdt32_t *in_addr);
+
+/**
+ * ofnode_translate_dma_address() - Translate a device-tree DMA address
+ *
+ * Translate a DMA address from the device-tree into a CPU physical address.
+ * This function walks up the tree and applies the various bus mappings along
+ * the way.
+ *
+ * @ofnode: Device tree node giving the context in which to translate the
+ *          DMA address
+ * @in_addr: pointer to the DMA address to translate
+ * @return the translated DMA address; OF_BAD_ADDR on error
+ */
+u64 ofnode_translate_dma_address(ofnode node, const fdt32_t *in_addr);
+
+/**
+ * ofnode_get_dma_range() - get dma-ranges for a specific DT node
+ *
+ * Get DMA ranges for a specifc node, this is useful to perform bus->cpu and
+ * cpu->bus address translations
+ *
+ * @param blob		Pointer to device tree blob
+ * @param node_offset	Node DT offset
+ * @param cpu		Pointer to variable storing the range's cpu address
+ * @param bus		Pointer to variable storing the range's bus address
+ * @param size		Pointer to variable storing the range's size
+ * @return translated DMA address or OF_BAD_ADDR on error
+ */
+int ofnode_get_dma_range(ofnode node, phys_addr_t *cpu, dma_addr_t *bus,
+			 u64 *size);
+
+/**
+ * ofnode_device_is_compatible() - check if the node is compatible with compat
+ *
+ * This allows to check whether the node is comaptible with the compat.
+ *
+ * @node:	Device tree node for which compatible needs to be verified.
+ * @compat:	Compatible string which needs to verified in the given node.
+ * @return true if OK, false if the compatible is not found
+ */
+int ofnode_device_is_compatible(ofnode node, const char *compat);
+
+/**
+ * ofnode_write_prop() - Set a property of a ofnode
+ *
+ * Note that the value passed to the function is *not* allocated by the
+ * function itself, but must be allocated by the caller if necessary.
+ *
+ * @node:	The node for whose property should be set
+ * @propname:	The name of the property to set
+ * @len:	The length of the new value of the property
+ * @value:	The new value of the property (must be valid prior to calling
+ *		the function)
+ * @return 0 if successful, -ve on error
+ */
+int ofnode_write_prop(ofnode node, const char *propname, int len,
+		      const void *value);
+
+/**
+ * ofnode_write_string() - Set a string property of a ofnode
+ *
+ * Note that the value passed to the function is *not* allocated by the
+ * function itself, but must be allocated by the caller if necessary.
+ *
+ * @node:	The node for whose string property should be set
+ * @propname:	The name of the string property to set
+ * @value:	The new value of the string property (must be valid prior to
+ *		calling the function)
+ * @return 0 if successful, -ve on error
+ */
+int ofnode_write_string(ofnode node, const char *propname, const char *value);
+
+/**
+ * ofnode_set_enabled() - Enable or disable a device tree node given by its
+ *			  ofnode
+ *
+ * This function effectively sets the node's "status" property to either "okay"
+ * or "disable", hence making it available for driver model initialization or
+ * not.
+ *
+ * @node:	The node to enable
+ * @value:	Flag that tells the function to either disable or enable the
+ *		node
+ * @return 0 if successful, -ve on error
+ */
+int ofnode_set_enabled(ofnode node, bool value);
+
 #endif

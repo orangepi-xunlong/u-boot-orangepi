@@ -18,19 +18,21 @@
 #include <common.h>
 #include <config.h>
 #include <command.h>
+#include <env.h>
 #include <part.h>
 #include <vsprintf.h>
 
 enum cmd_part_info {
 	CMD_PART_INFO_START = 0,
 	CMD_PART_INFO_SIZE,
+	CMD_PART_INFO_NUMBER
 };
 
-static int do_part_uuid(int argc, char * const argv[])
+static int do_part_uuid(int argc, char *const argv[])
 {
 	int part;
 	struct blk_desc *dev_desc;
-	disk_partition_t info;
+	struct disk_partition info;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
@@ -49,7 +51,7 @@ static int do_part_uuid(int argc, char * const argv[])
 	return 0;
 }
 
-static int do_part_list(int argc, char * const argv[])
+static int do_part_list(int argc, char *const argv[])
 {
 	int ret;
 	struct blk_desc *desc;
@@ -88,9 +90,9 @@ static int do_part_list(int argc, char * const argv[])
 	if (var != NULL) {
 		int p;
 		char str[512] = { '\0', };
-		disk_partition_t info;
+		struct disk_partition info;
 
-		for (p = 1; p < 128; p++) {
+		for (p = 1; p < MAX_SEARCH_PARTITIONS; p++) {
 			char t[5];
 			int r = part_get_info(desc, p, &info);
 
@@ -112,10 +114,10 @@ static int do_part_list(int argc, char * const argv[])
 	return 0;
 }
 
-static int do_part_info(int argc, char * const argv[], enum cmd_part_info param)
+static int do_part_info(int argc, char *const argv[], enum cmd_part_info param)
 {
 	struct blk_desc *desc;
-	disk_partition_t info;
+	struct disk_partition info;
 	char buf[512] = { 0 };
 	char *endp;
 	int part;
@@ -138,7 +140,7 @@ static int do_part_info(int argc, char * const argv[], enum cmd_part_info param)
 			return 1;
 	} else {
 		part = part_get_info_by_name(desc, argv[2], &info);
-		if (part == -1)
+		if (part < 0)
 			return 1;
 	}
 
@@ -148,6 +150,9 @@ static int do_part_info(int argc, char * const argv[], enum cmd_part_info param)
 		break;
 	case CMD_PART_INFO_SIZE:
 		snprintf(buf, sizeof(buf), LBAF, info.size);
+		break;
+	case CMD_PART_INFO_NUMBER:
+		snprintf(buf, sizeof(buf), "0x%x", part);
 		break;
 	default:
 		printf("** Unknown cmd_part_info value: %d\n", param);
@@ -162,17 +167,43 @@ static int do_part_info(int argc, char * const argv[], enum cmd_part_info param)
 	return 0;
 }
 
-static int do_part_start(int argc, char * const argv[])
+static int do_part_start(int argc, char *const argv[])
 {
 	return do_part_info(argc, argv, CMD_PART_INFO_START);
 }
 
-static int do_part_size(int argc, char * const argv[])
+static int do_part_size(int argc, char *const argv[])
 {
 	return do_part_info(argc, argv, CMD_PART_INFO_SIZE);
 }
 
-static int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_part_number(int argc, char *const argv[])
+{
+	return do_part_info(argc, argv, CMD_PART_INFO_NUMBER);
+}
+
+static int do_part_types(int argc, char * const argv[])
+{
+	struct part_driver *drv = ll_entry_start(struct part_driver,
+						 part_driver);
+	const int n_ents = ll_entry_count(struct part_driver, part_driver);
+	struct part_driver *entry;
+	int i = 0;
+
+	puts("Supported partition tables");
+
+	for (entry = drv; entry != drv + n_ents; entry++) {
+		printf("%c %s", i ? ',' : ':', entry->name);
+		i++;
+	}
+	if (!i)
+		puts(": <none>");
+	puts("\n");
+	return CMD_RET_SUCCESS;
+}
+
+static int do_part(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
 	if (argc < 2)
 		return CMD_RET_USAGE;
@@ -185,7 +216,10 @@ static int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return do_part_start(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "size"))
 		return do_part_size(argc - 2, argv + 2);
-
+	else if (!strcmp(argv[1], "number"))
+		return do_part_number(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "types"))
+		return do_part_types(argc - 2, argv + 2);
 	return CMD_RET_USAGE;
 }
 
@@ -206,5 +240,10 @@ U_BOOT_CMD(
 	"      part can be either partition number or partition name\n"
 	"part size <interface> <dev> <part> <varname>\n"
 	"    - set environment variable to the size of the partition (in blocks)\n"
-	"      part can be either partition number or partition name"
+	"      part can be either partition number or partition name\n"
+	"part number <interface> <dev> <part> <varname>\n"
+	"    - set environment variable to the partition number using the partition name\n"
+	"      part must be specified as partition name\n"
+	"part types\n"
+	"    - list supported partition table types"
 );

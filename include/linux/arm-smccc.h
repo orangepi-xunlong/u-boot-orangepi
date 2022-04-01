@@ -11,8 +11,8 @@
  * http://infocenter.arm.com/help/topic/com.arm.doc.den0028a/index.html
  */
 
-#define ARM_SMCCC_STD_CALL		0
-#define ARM_SMCCC_FAST_CALL		1
+#define ARM_SMCCC_STD_CALL		0UL
+#define ARM_SMCCC_FAST_CALL		1UL
 #define ARM_SMCCC_TYPE_SHIFT		31
 
 #define ARM_SMCCC_SMC_32		0
@@ -120,16 +120,6 @@ asmlinkage void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 #define arm_smccc_hvc(...) __arm_smccc_hvc(__VA_ARGS__, NULL)
 
 #define arm_smccc_hvc_quirk(...) __arm_smccc_hvc(__VA_ARGS__)
-
-u32 __sunxi_smc_call(ulong arg0, ulong arg1, ulong arg2, ulong arg3);
-
-
-static inline u32 sunxi_smc_call_atf(ulong arg0, ulong arg1, ulong arg2, ulong arg3)
-{
-	return __sunxi_smc_call(arg0, arg1, arg2, arg3);
-}
-
-
 
 #endif /*__ASSEMBLY__*/
 #endif /*__LINUX_ARM_SMCCC_H*/

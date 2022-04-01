@@ -15,10 +15,12 @@
 
 #include "imagetool.h"
 #include "mkimage.h"
+#include <u-boot/crc.h>
 
 #include <image.h>
 #include <tee/optee.h>
 #include <u-boot/crc.h>
+#include <imximage.h>
 
 static image_header_t header;
 
@@ -100,13 +102,15 @@ static void image_set_header(void *ptr, struct stat *sbuf, int ifd,
 				sizeof(image_header_t)),
 			sbuf->st_size - sizeof(image_header_t));
 
-	time = imagetool_get_source_date(params, sbuf->st_mtime);
+	time = imagetool_get_source_date(params->cmdname, sbuf->st_mtime);
 	ep = params->ep;
 	addr = params->addr;
 
 	if (params->type == IH_TYPE_FIRMWARE_IVT)
 		/* Add size of CSF minus IVT */
-		imagesize = sbuf->st_size - sizeof(image_header_t) + 0x1FE0;
+		imagesize = sbuf->st_size - sizeof(image_header_t)
+			    + 0x2060 - sizeof(flash_header_v2_t);
+
 	else
 		imagesize = sbuf->st_size - sizeof(image_header_t);
 

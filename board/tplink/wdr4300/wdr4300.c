@@ -4,15 +4,18 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/addrspace.h>
 #include <asm/types.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <mach/ath79.h>
 #include <mach/ar71xx_regs.h>
 #include <mach/ddr.h>
 #include <debug_uart.h>
 
-#ifdef CONFIG_USB
+#ifdef CONFIG_USB_HOST
 static void wdr4300_usb_start(void)
 {
 	void __iomem *gpio_regs = map_physmem(AR71XX_GPIO_BASE,

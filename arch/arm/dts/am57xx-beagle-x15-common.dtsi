@@ -433,6 +433,7 @@
 
 	bus-width = <4>;
 	cd-gpios = <&gpio6 27 GPIO_ACTIVE_LOW>; /* gpio 219 */
+	no-1-8-v;
 };
 
 &mmc2 {
@@ -527,13 +528,13 @@
 };
 
 &dss {
-	status = "ok";
+	status = "okay";
 
 	vdda_video-supply = <&ldoln_reg>;
 };
 
 &hdmi {
-	status = "ok";
+	status = "okay";
 	vdda-supply = <&ldo4_reg>;
 
 	port {
@@ -544,7 +545,7 @@
 };
 
 &pcie1_rc {
-	status = "ok";
+	status = "okay";
 	gpios = <&gpio2 8 GPIO_ACTIVE_LOW>;
 };
 

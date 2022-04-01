@@ -17,6 +17,8 @@
 #include <config.h>
 #include <phy.h>
 
+#define TSEC_MDIO_REGS_OFFSET	0x520
+
 #ifndef CONFIG_DM_ETH
 
 #ifdef CONFIG_ARCH_LS1021A
@@ -27,7 +29,7 @@
 #define TSEC_MDIO_OFFSET	0x01000
 #endif
 
-#define CONFIG_SYS_MDIO_BASE_ADDR (MDIO_BASE_ADDR + 0x520)
+#define CONFIG_SYS_MDIO_BASE_ADDR (MDIO_BASE_ADDR + TSEC_MDIO_REGS_OFFSET)
 
 #define TSEC_GET_REGS(num, offset) \
 	(struct tsec __iomem *)\
@@ -392,6 +394,10 @@ struct tsec {
 
 #define TX_BUF_CNT	2
 
+struct tsec_data {
+	u32 mdio_regs_off;
+};
+
 struct tsec_private {
 	struct txbd8 __iomem txbd[TX_BUF_CNT];
 	struct rxbd8 __iomem rxbd[PKTBUFSRX];
@@ -424,8 +430,9 @@ struct tsec_info_struct {
 };
 
 #ifndef CONFIG_DM_ETH
-int tsec_standard_init(bd_t *bis);
-int tsec_eth_init(bd_t *bis, struct tsec_info_struct *tsec_info, int num);
+int tsec_standard_init(struct bd_info *bis);
+int tsec_eth_init(struct bd_info *bis, struct tsec_info_struct *tsec_info,
+		  int num);
 #endif
 
 #endif /* __TSEC_H */

@@ -43,6 +43,7 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 /dts-v1/;
+#include <dt-bindings/gpio/gpio.h>
 #include "sama5d27_som1.dtsi"
 
 / {
@@ -52,6 +53,18 @@
 	chosen {
 		u-boot,dm-pre-reloc;
 		stdout-path = &uart1;
+	};
+
+	onewire_tm: onewire {
+		gpios = <&pioA 17 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_onewire_tm_default>;
+		status = "okay";
+
+		w1_eeprom: w1_eeprom@0 {
+			compatible = "maxim,ds24b33";
+			status = "okay";
+		};
 	};
 
 	ahb {
@@ -207,6 +220,11 @@
 					pinctrl_usba_vbus: usba_vbus {
 						pinmux = <PIN_PA31__GPIO>;
 						bias-disable;
+					};
+
+					pinctrl_onewire_tm_default: onewire_tm_default {
+						pinmux = <PIN_PA17__GPIO>;
+						bias-pull-up;
 					};
 				};
 			};

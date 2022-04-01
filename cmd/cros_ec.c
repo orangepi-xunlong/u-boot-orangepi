@@ -10,6 +10,8 @@
 #include <command.h>
 #include <cros_ec.h>
 #include <dm.h>
+#include <flash.h>
+#include <log.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
 
@@ -23,11 +25,11 @@ static const char * const ec_current_image_name[] = {"unknown", "RO", "RW"};
  * @param argv List of remaining parameters
  * @return flash region (EC_FLASH_REGION_...) or -1 on error
  */
-static int cros_ec_decode_region(int argc, char * const argv[])
+static int cros_ec_decode_region(int argc, char *const argv[])
 {
 	if (argc > 0) {
 		if (0 == strcmp(*argv, "rw"))
-			return EC_FLASH_REGION_RW;
+			return EC_FLASH_REGION_ACTIVE;
 		else if (0 == strcmp(*argv, "ro"))
 			return EC_FLASH_REGION_RO;
 
@@ -49,8 +51,8 @@ static int cros_ec_decode_region(int argc, char * const argv[])
  * @return 0 for ok, 1 for a usage error or -ve for ec command error
  *	(negative EC_RES_...)
  */
-static int do_read_write(struct cros_ec_dev *dev, int is_write, int argc,
-			 char * const argv[])
+static int do_read_write(struct udevice *dev, int is_write, int argc,
+			 char *const argv[])
 {
 	uint32_t offset, size = -1U, region_size;
 	unsigned long addr;
@@ -63,11 +65,11 @@ static int do_read_write(struct cros_ec_dev *dev, int is_write, int argc,
 		return 1;
 	if (argc < 4)
 		return 1;
-	addr = simple_strtoul(argv[3], &endp, 16);
+	addr = hextoul(argv[3], &endp);
 	if (*argv[3] == 0 || *endp != 0)
 		return 1;
 	if (argc > 4) {
-		size = simple_strtoul(argv[4], &endp, 16);
+		size = hextoul(argv[4], &endp);
 		if (*argv[4] == 0 || *endp != 0)
 			return 1;
 	}
@@ -92,10 +94,173 @@ static int do_read_write(struct cros_ec_dev *dev, int is_write, int argc,
 	return 0;
 }
 
-static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static const char *const feat_name[64] = {
+	"limited",
+	"flash",
+	"pwm_fan",
+	"pwm_keyb",
+	"lightbar",
+	"led",
+	"motion_sense",
+	"keyb",
+	"pstore",
+	"port80",
+	"thermal",
+	"bklight_switch",
+	"wifi_switch",
+	"host_events",
+	"gpio",
+	"i2c",
+	"charger",
+	"battery",
+	"smart_battery",
+	"hang_detect",
+	"pmu",
+	"sub_mcu",
+	"usb_pd",
+	"usb_mux",
+	"motion_sense_fifo",
+	"vstore",
+	"usbc_ss_mux_virtual",
+	"rtc",
+	"fingerprint",
+	"touchpad",
+	"rwsig",
+	"device_event",
+	"unified_wake_masks",
+	"host_event64",
+	"exec_in_ram",
+	"cec",
+	"motion_sense_tight_timestamps",
+	"refined_tablet_mode_hysteresis",
+	"efs2",
+	"scp",
+	"ish",
+	"typec_cmd",
+	"typec_require_ap_mode_entry",
+	"typec_mux_require_ap_ack",
+};
+
+static int do_show_features(struct udevice *dev)
 {
-	struct cros_ec_dev *dev;
-	struct udevice *udev;
+	u64 feat;
+	int ret;
+	uint i;
+
+	ret = cros_ec_get_features(dev, &feat);
+	if (ret)
+		return ret;
+	for (i = 0; i < ARRAY_SIZE(feat_name); i++) {
+		if (feat & (1ULL << i)) {
+			if (feat_name[i])
+				printf("%s\n", feat_name[i]);
+			else
+				printf("unknown %d\n", i);
+		}
+	}
+
+	return 0;
+}
+
+static const char *const switch_name[8] = {
+	"lid open",
+	"power button pressed",
+	"write-protect disabled",
+	NULL,
+	"dedicated recovery",
+	NULL,
+	NULL,
+	NULL,
+};
+
+static int do_show_switches(struct udevice *dev)
+{
+	uint switches;
+	int ret;
+	uint i;
+
+	ret = cros_ec_get_switches(dev);
+	if (ret < 0)
+		return log_msg_ret("get", ret);
+	switches = ret;
+	for (i = 0; i < ARRAY_SIZE(switch_name); i++) {
+		uint mask = 1 << i;
+
+		if (switches & mask) {
+			if (switch_name[i])
+				printf("%s\n", switch_name[i]);
+			else
+				printf("unknown %02x\n", mask);
+		}
+	}
+
+	return 0;
+}
+
+static const char *const event_name[] = {
+	"lid_closed",
+	"lid_open",
+	"power_button",
+	"ac_connected",
+	"ac_disconnected",
+	"battery_low",
+	"battery_critical",
+	"battery",
+	"thermal_threshold",
+	"device",
+	"thermal",
+	"usb_charger",
+	"key_pressed",
+	"interface_ready",
+	"keyboard_recovery",
+	"thermal_shutdown",
+	"battery_shutdown",
+	"throttle_start",
+	"throttle_stop",
+	"hang_detect",
+	"hang_reboot",
+	"pd_mcu",
+	"battery_status",
+	"panic",
+	"keyboard_fastboot",
+	"rtc",
+	"mkbp",
+	"usb_mux",
+	"mode_change",
+	"keyboard_recovery_hw_reinit",
+	"extended",
+	"invalid",
+};
+
+static int do_show_events(struct udevice *dev)
+{
+	u32 events;
+	int ret;
+	uint i;
+
+	ret = cros_ec_get_host_events(dev, &events);
+	if (ret)
+		return ret;
+	printf("%08x\n", events);
+	for (i = 0; i < ARRAY_SIZE(event_name); i++) {
+		enum host_event_code code = i + 1;
+		u64 mask = EC_HOST_EVENT_MASK(code);
+
+		if (events & mask) {
+			if (event_name[i])
+				printf("%s\n", event_name[i]);
+			else
+				printf("unknown code %#x\n", code);
+		}
+	}
+
+	return 0;
+}
+
+static int do_cros_ec(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
+{
+	struct udevice *dev;
 	const char *cmd;
 	int ret = 0;
 
@@ -105,10 +270,10 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	cmd = argv[1];
 	if (0 == strcmp("init", cmd)) {
 		/* Remove any existing device */
-		ret = uclass_find_device(UCLASS_CROS_EC, 0, &udev);
+		ret = uclass_find_device(UCLASS_CROS_EC, 0, &dev);
 		if (!ret)
-			device_remove(udev, DM_REMOVE_NORMAL);
-		ret = uclass_get_device(UCLASS_CROS_EC, 0, &udev);
+			device_remove(dev, DM_REMOVE_NORMAL);
+		ret = uclass_get_device(UCLASS_CROS_EC, 0, &dev);
 		if (ret) {
 			printf("Could not init cros_ec device (err %d)\n", ret);
 			return 1;
@@ -116,12 +281,11 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 0;
 	}
 
-	ret = uclass_get_device(UCLASS_CROS_EC, 0, &udev);
+	ret = uclass_get_device(UCLASS_CROS_EC, 0, &dev);
 	if (ret) {
 		printf("Cannot get cros-ec device (err=%d)\n", ret);
 		return 1;
 	}
-	dev = dev_get_uclass_priv(udev);
 	if (0 == strcmp("id", cmd)) {
 		char id[MSG_BYTES];
 
@@ -139,7 +303,16 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 		printf("rows     = %u\n", info.rows);
 		printf("cols     = %u\n", info.cols);
-		printf("switches = %#x\n", info.switches);
+	} else if (!strcmp("features", cmd)) {
+		ret = do_show_features(dev);
+
+		if (ret)
+			printf("Error: %d\n", ret);
+	} else if (!strcmp("switches", cmd)) {
+		ret = do_show_switches(dev);
+
+		if (ret)
+			printf("Error: %d\n", ret);
 	} else if (0 == strcmp("curimage", cmd)) {
 		enum ec_current_image image;
 
@@ -152,7 +325,7 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		struct ec_response_vboot_hash hash;
 		int i;
 
-		if (cros_ec_read_hash(dev, &hash)) {
+		if (cros_ec_read_hash(dev, EC_VBOOT_HASH_OFFSET_ACTIVE, &hash)) {
 			debug("%s: Could not read KBC hash\n", __func__);
 			return 1;
 		}
@@ -179,7 +352,7 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			region = cros_ec_decode_region(argc - 2, argv + 2);
 			if (region == EC_FLASH_REGION_RO)
 				cmd = EC_REBOOT_JUMP_RO;
-			else if (region == EC_FLASH_REGION_RW)
+			else if (region == EC_FLASH_REGION_ACTIVE)
 				cmd = EC_REBOOT_JUMP_RW;
 			else
 				return CMD_RET_USAGE;
@@ -190,13 +363,10 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			return 1;
 		}
 	} else if (0 == strcmp("events", cmd)) {
-		uint32_t events;
+		ret = do_show_events(dev);
 
-		if (cros_ec_get_host_events(dev, &events)) {
-			debug("%s: Could not read host events\n", __func__);
-			return 1;
-		}
-		printf("0x%08x\n", events);
+		if (ret)
+			printf("Error: %d\n", ret);
 	} else if (0 == strcmp("clrevents", cmd)) {
 		uint32_t events = 0x7fffffff;
 
@@ -262,7 +432,8 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		unsigned long result;
 
 		if (argc <= 2) {
-			ret = cros_ec_read_vbnvcontext(dev, block);
+			ret = cros_ec_read_nvdata(dev, block,
+						  EC_VBNV_BLOCK_SIZE);
 			if (!ret) {
 				printf("vbnv_block: ");
 				for (i = 0; i < EC_VBNV_BLOCK_SIZE; i++)
@@ -288,7 +459,8 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				strict_strtoul(buf, 16, &result);
 				block[i] = result;
 			}
-			ret = cros_ec_write_vbnvcontext(dev, block);
+			ret = cros_ec_write_nvdata(dev, block,
+						   EC_VBNV_BLOCK_SIZE);
 		}
 		if (ret) {
 			debug("%s: Could not %s VbNvContext\n", __func__,
@@ -329,16 +501,16 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		if (argc < 3)
 			return CMD_RET_USAGE;
-		index = simple_strtoul(argv[2], &endp, 10);
+		index = dectoul(argv[2], &endp);
 		if (*argv[2] == 0 || *endp != 0)
 			return CMD_RET_USAGE;
 		if (argc > 3) {
-			state = simple_strtoul(argv[3], &endp, 10);
+			state = dectoul(argv[3], &endp);
 			if (*argv[3] == 0 || *endp != 0)
 				return CMD_RET_USAGE;
-			ret = cros_ec_set_ldo(udev, index, state);
+			ret = cros_ec_set_ldo(dev, index, state);
 		} else {
-			ret = cros_ec_get_ldo(udev, index, &state);
+			ret = cros_ec_get_ldo(dev, index, &state);
 			if (!ret) {
 				printf("LDO%d: %s\n", index,
 				       state == EC_LDO_STATE_ON ?
@@ -349,6 +521,15 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (ret) {
 			debug("%s: Could not access LDO%d\n", __func__, index);
 			return ret;
+		}
+	} else if (!strcmp("sku", cmd)) {
+		ret = cros_ec_get_sku_id(dev);
+
+		if (ret >= 0) {
+			printf("%d\n", ret);
+			ret = 0;
+		} else {
+			printf("Error: %d\n", ret);
 		}
 	} else {
 		return CMD_RET_USAGE;
@@ -368,10 +549,13 @@ U_BOOT_CMD(
 	"init                Re-init CROS-EC (done on startup automatically)\n"
 	"crosec id                  Read CROS-EC ID\n"
 	"crosec info                Read CROS-EC info\n"
+	"crosec features            Read CROS-EC features\n"
+	"crosec switches            Read CROS-EC switches\n"
 	"crosec curimage            Read CROS-EC current image\n"
 	"crosec hash                Read CROS-EC hash\n"
 	"crosec reboot [rw | ro | cold]  Reboot CROS-EC\n"
 	"crosec events              Read CROS-EC host events\n"
+	"crosec eventsb             Read CROS-EC host events_b\n"
 	"crosec clrevents [mask]    Clear CROS-EC host events\n"
 	"crosec regioninfo <ro|rw>  Read image info\n"
 	"crosec flashinfo           Read flash info\n"
@@ -380,6 +564,7 @@ U_BOOT_CMD(
 	"crosec write <ro|rw> <addr> [<size>]  Write EC image\n"
 	"crosec vbnvcontext [hexstring]        Read [write] VbNvContext from EC\n"
 	"crosec ldo <idx> [<state>] Switch/Read LDO state\n"
+	"crosec sku                 Read board SKU ID\n"
 	"crosec test                run tests on cros_ec\n"
 	"crosec version             Read CROS-EC version"
 );

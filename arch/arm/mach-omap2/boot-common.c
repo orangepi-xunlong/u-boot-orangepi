@@ -9,8 +9,9 @@
 
 #include <common.h>
 #include <ahci.h>
-#include <environment.h>
+#include <log.h>
 #include <spl.h>
+#include <asm/global_data.h>
 #include <asm/omap_common.h>
 #include <asm/arch/omap.h>
 #include <asm/arch/mmc_host_def.h>
@@ -93,7 +94,7 @@ void save_omap_boot_params(void)
 			sys_boot_device = 1;
 			break;
 #endif
-#if defined(BOOT_DEVICE_USB) && !defined(CONFIG_SPL_USB_SUPPORT)
+#if defined(BOOT_DEVICE_USB) && !defined(CONFIG_SPL_USB_STORAGE)
 		case BOOT_DEVICE_USB:
 			sys_boot_device = 1;
 			break;
@@ -103,12 +104,12 @@ void save_omap_boot_params(void)
 			sys_boot_device = 1;
 			break;
 #endif
-#if defined(BOOT_DEVICE_CPGMAC) && !defined(CONFIG_SPL_ETH_SUPPORT)
+#if defined(BOOT_DEVICE_CPGMAC) && !defined(CONFIG_SPL_ETH)
 		case BOOT_DEVICE_CPGMAC:
 			sys_boot_device = 1;
 			break;
 #endif
-#if defined(BOOT_DEVICE_DFU) && !defined(CONFIG_SPL_DFU_SUPPORT)
+#if defined(BOOT_DEVICE_DFU) && !defined(CONFIG_SPL_DFU)
 		case BOOT_DEVICE_DFU:
 			sys_boot_device = 1;
 			break;
@@ -188,27 +189,26 @@ u32 spl_boot_device(void)
 	return gd->arch.omap_boot_device;
 }
 
-u32 spl_boot_mode(const u32 boot_device)
+u32 spl_mmc_boot_mode(const u32 boot_device)
 {
 	return gd->arch.omap_boot_mode;
 }
 
 void spl_board_init(void)
 {
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
 	/* Prepare console output */
 	preloader_console_init();
-#endif
+
 #if defined(CONFIG_SPL_NAND_SUPPORT) || defined(CONFIG_SPL_ONENAND_SUPPORT)
 	gpmc_init();
 #endif
-#ifdef CONFIG_SPL_I2C_SUPPORT
+#if defined(CONFIG_SPL_I2C) && !CONFIG_IS_ENABLED(DM_I2C)
 	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
 #endif
-#if defined(CONFIG_AM33XX) && defined(CONFIG_SPL_MUSB_NEW_SUPPORT)
+#if defined(CONFIG_AM33XX) && defined(CONFIG_SPL_MUSB_NEW)
 	arch_misc_init();
 #endif
-#if defined(CONFIG_HW_WATCHDOG)
+#if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
 	hw_watchdog_init();
 #endif
 #ifdef CONFIG_AM33XX
@@ -234,15 +234,5 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 void arch_preboot_os(void)
 {
 	ahci_reset((void __iomem *)DWC_AHSATA_BASE);
-}
-#endif
-
-#if defined(CONFIG_USB_FUNCTION_FASTBOOT) && !defined(CONFIG_ENV_IS_NOWHERE)
-int fb_set_reboot_flag(void)
-{
-	printf("Setting reboot to fastboot flag ...\n");
-	env_set("dofastboot", "1");
-	env_save();
-	return 0;
 }
 #endif

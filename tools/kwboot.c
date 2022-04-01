@@ -26,12 +26,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#ifdef __GNUC__
-#define PACKED __attribute((packed))
-#else
-#define PACKED
-#endif
-
 /*
  * Marvell BootROM UART Sensing
  */
@@ -68,7 +62,7 @@ struct kwboot_block {
 	uint8_t _pnum;
 	uint8_t data[128];
 	uint8_t csum;
-} PACKED;
+} __packed;
 
 #define KWBOOT_BLK_RSP_TIMEO 1000 /* ms */
 
@@ -182,7 +176,7 @@ kwboot_tty_recv(int fd, void *buf, size_t len, int timeo)
 		}
 
 		n = read(fd, buf, len);
-		if (n < 0)
+		if (n <= 0)
 			goto out;
 
 		buf = (char *)buf + n;
@@ -286,6 +280,7 @@ kwboot_bootmsg(int tty, void *msg)
 {
 	int rc;
 	char c;
+	int count;
 
 	if (msg == NULL)
 		kwboot_printv("Please reboot the target into UART boot mode...");
@@ -297,10 +292,12 @@ kwboot_bootmsg(int tty, void *msg)
 		if (rc)
 			break;
 
-		rc = kwboot_tty_send(tty, msg, 8);
-		if (rc) {
-			usleep(msg_req_delay * 1000);
-			continue;
+		for (count = 0; count < 128; count++) {
+			rc = kwboot_tty_send(tty, msg, 8);
+			if (rc) {
+				usleep(msg_req_delay * 1000);
+				continue;
+			}
 		}
 
 		rc = kwboot_tty_recv(tty, &c, 1, msg_rsp_timeo);
@@ -426,6 +423,9 @@ kwboot_xmodem(int tty, const void *_data, size_t size)
 
 	kwboot_printv("Sending boot image...\n");
 
+	sleep(2); /* flush isn't effective without it */
+	tcflush(tty, TCIOFLUSH);
+
 	do {
 		struct kwboot_block block;
 		int n;
@@ -465,8 +465,8 @@ kwboot_term_pipe(int in, int out, char *quit, int *s)
 	ssize_t nin, nout;
 	char _buf[128], *buf = _buf;
 
-	nin = read(in, buf, sizeof(buf));
-	if (nin < 0)
+	nin = read(in, buf, sizeof(_buf));
+	if (nin <= 0)
 		return -1;
 
 	if (quit) {
@@ -479,13 +479,14 @@ kwboot_term_pipe(int in, int out, char *quit, int *s)
 					return 0;
 				buf++;
 				nin--;
-			} else
+			} else {
 				while (*s > 0) {
 					nout = write(out, quit, *s);
 					if (nout <= 0)
 						return -1;
 					(*s) -= nout;
 				}
+			}
 		}
 	}
 
@@ -558,7 +559,9 @@ kwboot_terminal(int tty)
 		}
 	} while (quit[s] != 0);
 
-	tcsetattr(in, TCSANOW, &otio);
+	if (in >= 0)
+		tcsetattr(in, TCSANOW, &otio);
+	printf("\n");
 out:
 	return rc;
 }
@@ -631,7 +634,7 @@ kwboot_img_patch_hdr(void *img, size_t size)
 	}
 
 	image_ver = image_version(img);
-	if (image_ver < 0) {
+	if (image_ver != 0 && image_ver != 1) {
 		fprintf(stderr, "Invalid image header version\n");
 		errno = EINVAL;
 		goto out;
@@ -641,6 +644,11 @@ kwboot_img_patch_hdr(void *img, size_t size)
 		hdrsz = sizeof(*hdr);
 	else
 		hdrsz = KWBHEADER_V1_SIZE(hdr);
+
+	if (size < hdrsz) {
+		errno = EINVAL;
+		goto out;
+	}
 
 	csum = kwboot_img_csum8(hdr, hdrsz) - hdr->checksum;
 	if (csum != hdr->checksum) {
@@ -821,7 +829,7 @@ main(int argc, char **argv)
 			perror("debugmsg");
 			goto out;
 		}
-	} else {
+	} else if (bootmsg) {
 		rc = kwboot_bootmsg(tty, bootmsg);
 		if (rc) {
 			perror("bootmsg");

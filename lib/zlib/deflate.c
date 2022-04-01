@@ -50,6 +50,7 @@
 /* @(#) $Id$ */
 
 #include "deflate.h"
+#include <u-boot/crc.h>
 
 const char deflate_copyright[] =
    " deflate 1.2.5 Copyright 1995-2010 Jean-loup Gailly and Mark Adler ";
@@ -1283,7 +1284,7 @@ local void check_match(s, start, match, length)
     }
     if (z_verbose > 1) {
         fprintf(stderr,"\\[%d,%d]", start-match, length);
-        do { putc(s->window[start++], stderr); } while (--length != 0);
+	do { putc(s->window[start++]); } while (--length != 0);
     }
 }
 #else

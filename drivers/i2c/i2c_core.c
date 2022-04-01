@@ -9,6 +9,8 @@
  */
 #include <common.h>
 #include <i2c.h>
+#include <linker_lists.h>
+#include <asm/global_data.h>
 
 struct i2c_adapter *i2c_get_adapter(int index)
 {

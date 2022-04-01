@@ -7,16 +7,21 @@
  * All rights reserved.
  */
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/byteorder.h>
+#include <asm/cache.h>
 #include <asm/unaligned.h>
 #include <usb.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <watchdog.h>
+#include <dm/device_compat.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 
 #include "ehci.h"
 
@@ -30,7 +35,7 @@
  */
 #define HCHALT_TIMEOUT (8 * 1000)
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 static struct ehci_ctrl ehcic[CONFIG_USB_MAX_CONTROLLER_COUNT];
 #endif
 
@@ -111,7 +116,7 @@ static struct descriptor {
 
 static struct ehci_ctrl *ehci_get_ctrl(struct usb_device *udev)
 {
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 	return dev_get_priv(usb_get_bus(udev->dev));
 #else
 	return udev->controller;
@@ -296,6 +301,73 @@ static void ehci_update_endpt2_dev_n_port(struct usb_device *udev,
 				     QH_ENDPT2_HUBADDR(hubaddr));
 }
 
+static int ehci_enable_async(struct ehci_ctrl *ctrl)
+{
+	u32 cmd;
+	int ret;
+
+	/* Enable async. schedule. */
+	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
+	if (cmd & CMD_ASE)
+		return 0;
+
+	cmd |= CMD_ASE;
+	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
+
+	ret = handshake((uint32_t *)&ctrl->hcor->or_usbsts, STS_ASS, STS_ASS,
+			100 * 1000);
+	if (ret < 0)
+		printf("EHCI fail timeout STS_ASS set\n");
+
+	return ret;
+}
+
+static int ehci_disable_async(struct ehci_ctrl *ctrl)
+{
+	u32 cmd;
+	int ret;
+
+	if (ctrl->async_locked)
+		return 0;
+
+	/* Disable async schedule. */
+	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
+	if (!(cmd & CMD_ASE))
+		return 0;
+
+	cmd &= ~CMD_ASE;
+	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
+
+	ret = handshake((uint32_t *)&ctrl->hcor->or_usbsts, STS_ASS, 0,
+			100 * 1000);
+	if (ret < 0)
+		printf("EHCI fail timeout STS_ASS reset\n");
+
+	return ret;
+}
+
+static int ehci_iaa_cycle(struct ehci_ctrl *ctrl)
+{
+	u32 cmd, status;
+	int ret;
+
+	/* Enable Interrupt on Async Advance Doorbell. */
+	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
+	cmd |= CMD_IAAD;
+	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
+
+	ret = handshake(&ctrl->hcor->or_usbsts, STS_IAA, STS_IAA,
+			10 * 1000); /* 10ms timeout */
+	if (ret < 0)
+		printf("EHCI fail timeout STS_IAA set\n");
+
+	status = ehci_readl(&ctrl->hcor->or_usbsts);
+	if (status & STS_IAA)
+		ehci_writel(&ctrl->hcor->or_usbsts, STS_IAA);
+
+	return ret;
+}
+
 static int
 ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 		   int length, struct devrequest *req)
@@ -307,9 +379,8 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 	volatile struct qTD *vtd;
 	unsigned long ts;
 	uint32_t *tdp;
-	uint32_t endpt, maxpacket, token, usbsts;
+	uint32_t endpt, maxpacket, token, usbsts, qhtoken;
 	uint32_t c, toggle;
-	uint32_t cmd;
 	int timeout;
 	int ret = 0;
 	struct ehci_ctrl *ctrl = ehci_get_ctrl(dev);
@@ -409,9 +480,15 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 	endpt = QH_ENDPT1_RL(8) | QH_ENDPT1_C(c) |
 		QH_ENDPT1_MAXPKTLEN(maxpacket) | QH_ENDPT1_H(0) |
 		QH_ENDPT1_DTC(QH_ENDPT1_DTC_DT_FROM_QTD) |
-		QH_ENDPT1_EPS(ehci_encode_speed(dev->speed)) |
 		QH_ENDPT1_ENDPT(usb_pipeendpoint(pipe)) | QH_ENDPT1_I(0) |
 		QH_ENDPT1_DEVADDR(usb_pipedevice(pipe));
+
+	/* Force FS for fsl HS quirk */
+	if (!ctrl->has_fsl_erratum_a005275)
+		endpt |= QH_ENDPT1_EPS(ehci_encode_speed(dev->speed));
+	else
+		endpt |= QH_ENDPT1_EPS(ehci_encode_speed(QH_FULL_SPEED));
+
 	qh->qh_endpt1 = cpu_to_hc32(endpt);
 	endpt = QH_ENDPT2_MULT(1) | QH_ENDPT2_UFCMASK(0) | QH_ENDPT2_UFSMASK(0);
 	qh->qh_endpt2 = cpu_to_hc32(endpt);
@@ -545,23 +622,12 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 	flush_dcache_range((unsigned long)qtd,
 			   ALIGN_END_ADDR(struct qTD, qtd, qtd_count));
 
-	/* Set async. queue head pointer. */
-	ehci_writel(&ctrl->hcor->or_asynclistaddr, virt_to_phys(&ctrl->qh_list));
-
 	usbsts = ehci_readl(&ctrl->hcor->or_usbsts);
 	ehci_writel(&ctrl->hcor->or_usbsts, (usbsts & 0x3f));
 
-	/* Enable async. schedule. */
-	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
-	cmd |= CMD_ASE;
-	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
-
-	ret = handshake((uint32_t *)&ctrl->hcor->or_usbsts, STS_ASS, STS_ASS,
-			100 * 1000);
-	if (ret < 0) {
-		printf("EHCI fail timeout STS_ASS set\n");
+	ret = ehci_enable_async(ctrl);
+	if (ret)
 		goto fail;
-	}
 
 	/* Wait for TDs to be processed. */
 	ts = get_timer(0);
@@ -581,6 +647,16 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 			break;
 		WATCHDOG_RESET();
 	} while (get_timer(ts) < timeout);
+	qhtoken = hc32_to_cpu(qh->qh_overlay.qt_token);
+
+	ctrl->qh_list.qh_link = cpu_to_hc32(virt_to_phys(&ctrl->qh_list) | QH_LINK_TYPE_QH);
+	flush_dcache_range((unsigned long)&ctrl->qh_list,
+		ALIGN_END_ADDR(struct QH, &ctrl->qh_list, 1));
+
+	/* Set IAAD, poll IAA */
+	ret = ehci_iaa_cycle(ctrl);
+	if (ret)
+		goto fail;
 
 	/*
 	 * Invalidate the memory area occupied by buffer
@@ -599,25 +675,16 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 	if (QT_TOKEN_GET_STATUS(token) & QT_TOKEN_STATUS_ACTIVE)
 		printf("EHCI timed out on TD - token=%#x\n", token);
 
-	/* Disable async schedule. */
-	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
-	cmd &= ~CMD_ASE;
-	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
-
-	ret = handshake((uint32_t *)&ctrl->hcor->or_usbsts, STS_ASS, 0,
-			100 * 1000);
-	if (ret < 0) {
-		printf("EHCI fail timeout STS_ASS reset\n");
+	ret = ehci_disable_async(ctrl);
+	if (ret)
 		goto fail;
-	}
 
-	token = hc32_to_cpu(qh->qh_overlay.qt_token);
-	if (!(QT_TOKEN_GET_STATUS(token) & QT_TOKEN_STATUS_ACTIVE)) {
-		debug("TOKEN=%#x\n", token);
-		switch (QT_TOKEN_GET_STATUS(token) &
+	if (!(QT_TOKEN_GET_STATUS(qhtoken) & QT_TOKEN_STATUS_ACTIVE)) {
+		debug("TOKEN=%#x\n", qhtoken);
+		switch (QT_TOKEN_GET_STATUS(qhtoken) &
 			~(QT_TOKEN_STATUS_SPLITXSTATE | QT_TOKEN_STATUS_PERR)) {
 		case 0:
-			toggle = QT_TOKEN_GET_DT(token);
+			toggle = QT_TOKEN_GET_DT(qhtoken);
 			usb_settoggle(dev, usb_pipeendpoint(pipe),
 				       usb_pipeout(pipe), toggle);
 			dev->status = 0;
@@ -635,11 +702,11 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 			break;
 		default:
 			dev->status = USB_ST_CRC_ERR;
-			if (QT_TOKEN_GET_STATUS(token) & QT_TOKEN_STATUS_HALTED)
+			if (QT_TOKEN_GET_STATUS(qhtoken) & QT_TOKEN_STATUS_HALTED)
 				dev->status |= USB_ST_STALLED;
 			break;
 		}
-		dev->act_len = length - QT_TOKEN_GET_TOTALBYTES(token);
+		dev->act_len = length - QT_TOKEN_GET_TOTALBYTES(qhtoken);
 	} else {
 		dev->act_len = 0;
 #ifndef CONFIG_USB_EHCI_FARADAY
@@ -832,6 +899,10 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 			} else {
 				int ret;
 
+				/* Disable chirp for HS erratum */
+				if (ctrl->has_fsl_erratum_a005275)
+					reg |= PORTSC_FSL_PFSC;
+
 				reg |= EHCI_PS_PR;
 				reg &= ~EHCI_PS_PE;
 				ehci_writel(status_reg, reg);
@@ -963,7 +1034,7 @@ static void ehci_setup_ops(struct ehci_ctrl *ctrl, const struct ehci_ops *ops)
 	}
 }
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 void ehci_set_controller_priv(int index, void *priv, const struct ehci_ops *ops)
 {
 	struct ehci_ctrl *ctrl = &ehcic[index];
@@ -1087,7 +1158,7 @@ static int ehci_common_init(struct ehci_ctrl *ctrl, uint tweaks)
 	return 0;
 }
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 int usb_lowlevel_stop(int index)
 {
 	ehci_shutdown(&ehcic[index]);
@@ -1372,13 +1443,10 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	debug("Exit create_int_queue\n");
 	return result;
 fail3:
-	if (result->tds)
-		free(result->tds);
+	free(result->tds);
 fail2:
-	if (result->first)
-		free(result->first);
-	if (result)
-		free(result);
+	free(result->first);
+	free(result);
 fail1:
 	return NULL;
 }
@@ -1472,7 +1540,8 @@ out:
 }
 
 static int _ehci_submit_int_msg(struct usb_device *dev, unsigned long pipe,
-				void *buffer, int length, int interval)
+				void *buffer, int length, int interval,
+				bool nonblock)
 {
 	void *backbuffer;
 	struct int_queue *queue;
@@ -1508,7 +1577,17 @@ static int _ehci_submit_int_msg(struct usb_device *dev, unsigned long pipe,
 	return result;
 }
 
-#ifndef CONFIG_DM_USB
+static int _ehci_lock_async(struct ehci_ctrl *ctrl, int lock)
+{
+	ctrl->async_locked = lock;
+
+	if (lock)
+		return 0;
+
+	return ehci_disable_async(ctrl);
+}
+
+#if !CONFIG_IS_ENABLED(DM_USB)
 int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 			    void *buffer, int length)
 {
@@ -1522,9 +1601,10 @@ int submit_control_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 }
 
 int submit_int_msg(struct usb_device *dev, unsigned long pipe,
-		   void *buffer, int length, int interval)
+		   void *buffer, int length, int interval, bool nonblock)
 {
-	return _ehci_submit_int_msg(dev, pipe, buffer, length, interval);
+	return _ehci_submit_int_msg(dev, pipe, buffer, length, interval,
+				    nonblock);
 }
 
 struct int_queue *create_int_queue(struct usb_device *dev,
@@ -1544,9 +1624,16 @@ int destroy_int_queue(struct usb_device *dev, struct int_queue *queue)
 {
 	return _ehci_destroy_int_queue(dev, queue);
 }
+
+int usb_lock_async(struct usb_device *dev, int lock)
+{
+	struct ehci_ctrl *ctrl = ehci_get_ctrl(dev);
+
+	return _ehci_lock_async(ctrl, lock);
+}
 #endif
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int ehci_submit_control_msg(struct udevice *dev, struct usb_device *udev,
 				   unsigned long pipe, void *buffer, int length,
 				   struct devrequest *setup)
@@ -1566,10 +1653,11 @@ static int ehci_submit_bulk_msg(struct udevice *dev, struct usb_device *udev,
 
 static int ehci_submit_int_msg(struct udevice *dev, struct usb_device *udev,
 			       unsigned long pipe, void *buffer, int length,
-			       int interval)
+			       int interval, bool nonblock)
 {
 	debug("%s: dev='%s', udev=%p\n", __func__, dev->name, udev);
-	return _ehci_submit_int_msg(udev, pipe, buffer, length, interval);
+	return _ehci_submit_int_msg(udev, pipe, buffer, length, interval,
+				    nonblock);
 }
 
 static struct int_queue *ehci_create_int_queue(struct udevice *dev,
@@ -1604,6 +1692,13 @@ static int ehci_get_max_xfer_size(struct udevice *dev, size_t *size)
 	*size = SIZE_MAX;
 
 	return 0;
+}
+
+static int ehci_lock_async(struct udevice *dev, int lock)
+{
+	struct ehci_ctrl *ctrl = dev_get_priv(dev);
+
+	return _ehci_lock_async(ctrl, lock);
 }
 
 int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
@@ -1672,6 +1767,73 @@ struct dm_usb_ops ehci_usb_ops = {
 	.poll_int_queue = ehci_poll_int_queue,
 	.destroy_int_queue = ehci_destroy_int_queue,
 	.get_max_xfer_size  = ehci_get_max_xfer_size,
+	.lock_async = ehci_lock_async,
 };
 
+#endif
+
+#ifdef CONFIG_PHY
+int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index)
+{
+	int ret;
+
+	if (!phy)
+		return 0;
+
+	ret = generic_phy_get_by_index(dev, index, phy);
+	if (ret) {
+		if (ret != -ENOENT) {
+			dev_err(dev, "failed to get usb phy\n");
+			return ret;
+		}
+	} else {
+		ret = generic_phy_init(phy);
+		if (ret) {
+			dev_dbg(dev, "failed to init usb phy\n");
+			return ret;
+		}
+
+		ret = generic_phy_power_on(phy);
+		if (ret) {
+			dev_dbg(dev, "failed to power on usb phy\n");
+			return generic_phy_exit(phy);
+		}
+	}
+
+	return 0;
+}
+
+int ehci_shutdown_phy(struct udevice *dev, struct phy *phy)
+{
+	int ret = 0;
+
+	if (!phy)
+		return 0;
+
+	if (generic_phy_valid(phy)) {
+		ret = generic_phy_power_off(phy);
+		if (ret) {
+			dev_dbg(dev, "failed to power off usb phy\n");
+			return ret;
+		}
+
+		ret = generic_phy_exit(phy);
+		if (ret) {
+			dev_dbg(dev, "failed to power off usb phy\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+#else
+int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index)
+{
+	return 0;
+}
+
+int ehci_shutdown_phy(struct udevice *dev, struct phy *phy)
+{
+	return 0;
+}
 #endif

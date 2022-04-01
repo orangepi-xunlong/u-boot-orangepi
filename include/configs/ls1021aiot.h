@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
+ * Copyright 2019 NXP
  */
 
 #ifndef __CONFIG_H
@@ -64,12 +65,11 @@
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_ENV_SUPPORT
 #define CONFIG_SPL_MPC8XXX_INIT_DDR_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-#define CONFIG_SPL_WATCHDOG_SUPPORT
+#define CONFIG_SPL_I2C
+#define CONFIG_SPL_WATCHDOG
 #define CONFIG_SPL_MMC_SUPPORT
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0xe8
 
-#define CONFIG_SPL_TEXT_BASE	0x10000000
 #define CONFIG_SPL_MAX_SIZE		0x1a000
 #define CONFIG_SPL_STACK		0x1001d000
 #define CONFIG_SPL_PAD_TO		0x1c000
@@ -82,10 +82,10 @@
 #define CONFIG_SYS_MONITOR_LEN		0x80000
 #endif
 
-#define CONFIG_NR_DRAM_BANKS		1
-
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x80000000UL
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
+
+#define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
 /*
  * Serial Port
@@ -97,8 +97,13 @@
 /*
  * I2C
  */
-#define CONFIG_CMD_I2C
-#define CONFIG_SYS_I2C
+
+#if !CONFIG_IS_ENABLED(DM_I2C)
+#define CONFIG_SYS_I2C_LEGACY
+#else
+#define CONFIG_I2C_SET_DEFAULT_BUS_NUM
+#define CONFIG_I2C_DEFAULT_BUS_NUMBER 0
+#endif
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -114,7 +119,6 @@
 /*
  * MMC
  */
-#define CONFIG_CMD_MMC
 
 /* SATA */
 #define CONFIG_SCSI_AHCI_PLAT
@@ -132,19 +136,6 @@
 /* SPI */
 #if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 #define CONFIG_SPI_FLASH_SPANSION
-
-/* QSPI */
-#define QSPI0_AMBA_BASE			0x40000000
-#define FSL_QSPI_FLASH_SIZE		(1 << 24)
-#define FSL_QSPI_FLASH_NUM		2
-#define CONFIG_SPI_FLASH_BAR
-#define CONFIG_SPI_FLASH_SPANSION
-#endif
-
-/* DM SPI */
-#if defined(CONFIG_FSL_DSPI) || defined(CONFIG_FSL_QSPI)
-#define CONFIG_CMD_SF
-#define CONFIG_DM_SPI_FLASH
 #endif
 
 /*
@@ -152,7 +143,6 @@
  */
 
 #ifdef CONFIG_TSEC_ENET
-#define CONFIG_MII
 #define CONFIG_MII_DEFAULT_TSEC		1
 #define CONFIG_TSEC1			1
 #define CONFIG_TSEC1_NAME		"eTSEC1"
@@ -170,8 +160,6 @@
 
 #define CONFIG_ETHPRIME			"eTSEC2"
 
-#define CONFIG_PHY_ATHEROS
-
 #define CONFIG_HAS_ETH0
 #define CONFIG_HAS_ETH1
 #define CONFIG_HAS_ETH2
@@ -187,8 +175,6 @@
 #define CONFIG_PCI_SCAN_SHOW
 #endif
 
-#define CONFIG_CMD_MII
-
 #define CONFIG_CMDLINE_TAG
 
 #define CONFIG_PEN_ADDR_BIG_ENDIAN
@@ -203,16 +189,12 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 	"bootargs=root=/dev/ram0 rw console=ttyS0,115200\0" \
-"initrd_high=0xffffffff\0"	\
-"fdt_high=0xffffffff\0"
+"initrd_high=0xffffffff\0"
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
-
-#define CONFIG_CMD_GREPENV
-#define CONFIG_CMD_MEMINFO
+#define CONFIG_SYS_BOOTMAPSZ		(256 << 20)
 
 #define CONFIG_SYS_LOAD_ADDR		0x82000000
 
@@ -232,26 +214,8 @@
 
 #define CONFIG_SYS_QE_FW_ADDR	0x67f40000
 
-/*
- * Environment
- */
-
-#define CONFIG_ENV_OVERWRITE
-
-#if defined(CONFIG_SD_BOOT)
-#define CONFIG_ENV_OFFSET		0x100000
-#define CONFIG_SYS_MMC_ENV_DEV	0
-#define CONFIG_ENV_SIZE			0x2000
-#elif defined(CONFIG_QSPI_BOOT)
-#define CONFIG_ENV_SIZE			0x2000
-#define CONFIG_ENV_OFFSET		0x100000
-#define CONFIG_ENV_SECT_SIZE	0x10000
-#endif
-
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_OF_STDOUT_VIA_ALIAS
-
-#define CONFIG_MISC_INIT_R
 
 #include <asm/fsl_secure_boot.h>
 

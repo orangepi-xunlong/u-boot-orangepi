@@ -6,15 +6,17 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/tps65090.h>
 
 static int tps65090_fet_probe(struct udevice *dev)
 {
-	struct dm_regulator_uclass_platdata *uc_pdata;
+	struct dm_regulator_uclass_plat *uc_pdata;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	uc_pdata->type = REGULATOR_TYPE_OTHER;
 	uc_pdata->mode_count = 0;

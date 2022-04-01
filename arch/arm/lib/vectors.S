@@ -19,7 +19,11 @@
  * for the non-boot0 case or by a boot0-header.
  */
         .macro ARM_VECTORS
+#ifdef CONFIG_ARCH_K3
+	ldr     pc, _reset
+#else
 	b	reset
+#endif
 	ldr	pc, _undefined_instruction
 	ldr	pc, _software_interrupt
 	ldr	pc, _prefetch_abort
@@ -64,7 +68,6 @@
  *   (2) inserts the vector table using ARM_VECTORS as appropriate
  */
 #include <asm/arch/boot0.h>
-
 #else
 
 /*
@@ -94,6 +97,7 @@ _start:
  *************************************************************************
  */
 
+	.globl  _reset
 	.globl	_undefined_instruction
 	.globl	_software_interrupt
 	.globl	_prefetch_abort
@@ -102,6 +106,9 @@ _start:
 	.globl	_irq
 	.globl	_fiq
 
+#ifdef CONFIG_ARCH_K3
+_reset:			.word reset
+#endif
 _undefined_instruction:	.word undefined_instruction
 _software_interrupt:	.word software_interrupt
 _prefetch_abort:	.word prefetch_abort
@@ -133,7 +140,7 @@ not_used:
 irq:
 fiq:
 1:
-	bl	1b			/* hang and never return */
+	b	1b			/* hang and never return */
 
 #else	/* !CONFIG_SPL_BUILD */
 
@@ -145,19 +152,6 @@ IRQ_STACK_START_IN:
 #else
 	.word	0x0badc0de
 #endif
-
-
-/* IRQ stack memory (calculated at run-time) */
-.globl IRQ_STACK_START
-IRQ_STACK_START:
-	.word	0x0badc0de
-
-/* IRQ stack memory (calculated at run-time) */
-.globl FIQ_STACK_START
-FIQ_STACK_START:
-	.word 0x0badc0de
-
-
 
 @
 @ IRQ stack frame.
@@ -283,26 +277,6 @@ not_used:
 	bl	do_not_used
 
 
-#ifdef CONFIG_ARCH_SUNXI
-	
-		.align	5
-	irq:
-		get_irq_stack
-		irq_save_user_regs
-		bl	do_irq
-		irq_restore_user_regs
-	
-		.align	5
-	fiq:
-		get_fiq_stack
-		/* someone ought to write a more effiction fiq_save_user_regs */
-		irq_save_user_regs
-		bl	do_fiq
-		irq_restore_user_regs
-	
-#else
-
-
 	.align	5
 irq:
 	get_bad_stack
@@ -314,5 +288,5 @@ fiq:
 	get_bad_stack
 	bad_save_user_regs
 	bl	do_fiq
-#endif
+
 #endif	/* CONFIG_SPL_BUILD */

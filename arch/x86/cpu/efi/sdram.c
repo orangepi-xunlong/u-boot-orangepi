@@ -5,6 +5,8 @@
 
 #include <common.h>
 #include <efi.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/u-boot-x86.h>
 
 DECLARE_GLOBAL_DATA_PTR;

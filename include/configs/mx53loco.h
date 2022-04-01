@@ -24,28 +24,19 @@
 
 #define CONFIG_REVISION_TAG
 
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
 
-/* Eth Configs */
-#define CONFIG_MII
-
-#define CONFIG_FEC_MXC
-#define IMX_FEC_BASE	FEC_BASE_ADDR
-#define CONFIG_FEC_MXC_PHYADDR	0x1F
-
 /* USB Configs */
-#define CONFIG_USB_EHCI_MX5
 #define CONFIG_MXC_USB_PORT	1
 #define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* I2C Configs */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -59,9 +50,6 @@
 #define CONFIG_POWER_FSL_MC13892
 #define CONFIG_SYS_DIALOG_PMIC_I2C_ADDR	0x48
 #define CONFIG_SYS_FSL_PMIC_I2C_ADDR	0x8
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
 
 /* Command definition */
 
@@ -144,13 +132,9 @@
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 
-#define CONFIG_SYS_MEMTEST_START       0x70000000
-#define CONFIG_SYS_MEMTEST_END         0x70010000
-
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS	2
 #define PHYS_SDRAM_1			CSD0_BASE_ADDR
 #define PHYS_SDRAM_1_SIZE		(gd->bd->bi_dram[0].size)
 #define PHYS_SDRAM_2			CSD1_BASE_ADDR
@@ -166,10 +150,17 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-/* environment organization */
-#define CONFIG_ENV_OFFSET      (6 * 64 * 1024)
-#define CONFIG_ENV_SIZE        (8 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV 0
+/* Environment starts at 768k = 768 * 1024 = 786432 */
+/*
+ * Detect overlap between U-Boot image and environment area in build-time
+ *
+ * CONFIG_BOARD_SIZE_LIMIT = CONFIG_ENV_OFFSET - u-boot.imx offset
+ * CONFIG_BOARD_SIZE_LIMIT = 768k - 1k = 767k = 785408
+ *
+ * Currently CONFIG_BOARD_SIZE_LIMIT does not handle expressions, so
+ * write the direct value here
+ */
+#define CONFIG_BOARD_SIZE_LIMIT		785408
 
 #ifdef CONFIG_CMD_SATA
 	#define CONFIG_SYS_SATA_MAX_DEVICE      1
@@ -179,11 +170,6 @@
 #endif
 
 /* Framebuffer and LCD */
-#define CONFIG_PREBOOT
-#define CONFIG_VIDEO_IPUV3
-#define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 
 #endif				/* __CONFIG_H */

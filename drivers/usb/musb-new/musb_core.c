@@ -65,6 +65,9 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -77,7 +80,11 @@
 #include <linux/io.h>
 #else
 #include <common.h>
+#include <dm.h>
+#include <dm/device_compat.h>
 #include <usb.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -1007,6 +1014,7 @@ void musb_stop(struct musb *musb)
 	 *  - ...
 	 */
 	musb_platform_try_idle(musb, 0);
+	musb_platform_exit(musb);
 }
 
 #ifndef __UBOOT__
@@ -1518,7 +1526,7 @@ static int __devinit musb_core_init(u16 musb_type, struct musb *musb)
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_SOC_OMAP2430) || defined(CONFIG_SOC_OMAP3430) || \
-	defined(CONFIG_ARCH_OMAP4)
+	defined(CONFIG_ARCH_OMAP4) || defined(CONFIG_ARCH_U8500)
 
 static irqreturn_t generic_interrupt(int irq, void *__hci)
 {
@@ -1858,7 +1866,11 @@ allocate_instance(struct device *dev,
 	musb->ctrl_base = mbase;
 	musb->nIrq = -ENODEV;
 	musb->config = config;
+#ifdef __UBOOT__
+	assert_noisy(musb->config->num_eps <= MUSB_C_NUM_EPS);
+#else
 	BUG_ON(musb->config->num_eps > MUSB_C_NUM_EPS);
+#endif
 	for (epnum = 0, ep = musb->endpoints;
 			epnum < musb->config->num_eps;
 			epnum++, ep++) {

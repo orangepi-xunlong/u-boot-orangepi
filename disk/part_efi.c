@@ -7,23 +7,35 @@
 /*
  * NOTE:
  *   when CONFIG_SYS_64BIT_LBA is not defined, lbaint_t is 32 bits; this
- *   limits the maximum size of addressable storage to < 2 Terra Bytes
+ *   limits the maximum size of addressable storage to < 2 tebibytes
  */
-#include <asm/unaligned.h>
 #include <common.h>
+#include <blk.h>
+#include <log.h>
+#include <part.h>
+#include <uuid.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
+#include <asm/unaligned.h>
 #include <command.h>
 #include <fdtdec.h>
 #include <ide.h>
-#include <inttypes.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <part_efi.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
+#include <u-boot/crc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_HAVE_BLOCK_DEVICE
+
+/* GUID for basic data partitons */
+#if CONFIG_IS_ENABLED(EFI_PARTITION)
+static const efi_guid_t partition_basic_data_guid = PARTITION_BASIC_DATA_GUID;
+#endif
+
 /**
  * efi_crc32() - EFI version of crc32 function
  * @buf: buffer to calculate crc32 of
@@ -47,6 +59,8 @@ static int is_gpt_valid(struct blk_desc *dev_desc, u64 lba,
 static gpt_entry *alloc_read_gpt_entries(struct blk_desc *dev_desc,
 					 gpt_header *pgpt_head);
 static int is_pte_valid(gpt_entry * pte);
+static int find_valid_gpt(struct blk_desc *dev_desc, gpt_header *gpt_head,
+			  gpt_entry **pgpt_pte);
 
 static char *print_efiname(gpt_entry *pte)
 {
@@ -62,13 +76,17 @@ static char *print_efiname(gpt_entry *pte)
 	return name;
 }
 
-static efi_guid_t system_guid = PARTITION_SYSTEM_GUID;
+static const efi_guid_t system_guid = PARTITION_SYSTEM_GUID;
 
-static inline int is_bootable(gpt_entry *p)
+static int get_bootable(gpt_entry *p)
 {
-	return p->attributes.fields.legacy_bios_bootable ||
-		!memcmp(&(p->partition_type_guid), &system_guid,
-			sizeof(efi_guid_t));
+	int ret = 0;
+
+	if (!memcmp(&p->partition_type_guid, &system_guid, sizeof(efi_guid_t)))
+		ret |=  PART_EFI_SYSTEM_PARTITION;
+	if (p->attributes.fields.legacy_bios_bootable)
+		ret |=  PART_BOOTABLE;
+	return ret;
 }
 
 static int validate_gpt_header(gpt_header *gpt_h, lbaint_t lba,
@@ -78,11 +96,11 @@ static int validate_gpt_header(gpt_header *gpt_h, lbaint_t lba,
 	uint32_t calc_crc32;
 
 	/* Check the GPT header signature */
-	if (le64_to_cpu(gpt_h->signature) != GPT_HEADER_SIGNATURE) {
+	if (le64_to_cpu(gpt_h->signature) != GPT_HEADER_SIGNATURE_UBOOT) {
 		printf("%s signature is wrong: 0x%llX != 0x%llX\n",
 		       "GUID Partition Table Header",
 		       le64_to_cpu(gpt_h->signature),
-		       GPT_HEADER_SIGNATURE);
+		       GPT_HEADER_SIGNATURE_UBOOT);
 		return -1;
 	}
 
@@ -188,23 +206,14 @@ int get_disk_guid(struct blk_desc * dev_desc, char *guid)
 	unsigned char *guid_bin;
 
 	/* This function validates AND fills in the GPT header and PTE */
-	if (is_gpt_valid(dev_desc, GPT_PRIMARY_PARTITION_TABLE_LBA,
-			 gpt_head, &gpt_pte) != 1) {
-		printf("%s: *** ERROR: Invalid GPT ***\n", __func__);
-		if (is_gpt_valid(dev_desc, dev_desc->lba - 1,
-				 gpt_head, &gpt_pte) != 1) {
-			printf("%s: *** ERROR: Invalid Backup GPT ***\n",
-			       __func__);
-			return -EINVAL;
-		} else {
-			printf("%s: ***        Using Backup GPT ***\n",
-			       __func__);
-		}
-	}
+	if (find_valid_gpt(dev_desc, gpt_head, &gpt_pte) != 1)
+		return -EINVAL;
 
 	guid_bin = gpt_head->disk_guid.b;
 	uuid_bin_to_str(guid_bin, guid, UUID_STR_FORMAT_GUID);
 
+	/* Remember to free pte */
+	free(gpt_pte);
 	return 0;
 }
 
@@ -217,19 +226,8 @@ void part_print_efi(struct blk_desc *dev_desc)
 	unsigned char *uuid_bin;
 
 	/* This function validates AND fills in the GPT header and PTE */
-	if (is_gpt_valid(dev_desc, GPT_PRIMARY_PARTITION_TABLE_LBA,
-			 gpt_head, &gpt_pte) != 1) {
-		printf("%s: *** ERROR: Invalid GPT ***\n", __func__);
-		if (is_gpt_valid(dev_desc, (dev_desc->lba - 1),
-				 gpt_head, &gpt_pte) != 1) {
-			printf("%s: *** ERROR: Invalid Backup GPT ***\n",
-			       __func__);
-			return;
-		} else {
-			printf("%s: ***        Using Backup GPT ***\n",
-			       __func__);
-		}
-	}
+	if (find_valid_gpt(dev_desc, gpt_head, &gpt_pte) != 1)
+		return;
 
 	debug("%s: gpt-entry at %p\n", __func__, gpt_pte);
 
@@ -251,10 +249,11 @@ void part_print_efi(struct blk_desc *dev_desc)
 		uuid_bin = (unsigned char *)gpt_pte[i].partition_type_guid.b;
 		uuid_bin_to_str(uuid_bin, uuid, UUID_STR_FORMAT_GUID);
 		printf("\ttype:\t%s\n", uuid);
-#ifdef CONFIG_PARTITION_TYPE_GUID
-		if (!uuid_guid_get_str(uuid_bin, uuid))
-			printf("\ttype:\t%s\n", uuid);
-#endif
+		if (CONFIG_IS_ENABLED(PARTITION_TYPE_GUID)) {
+			const char *type = uuid_guid_get_str(uuid_bin);
+			if (type)
+				printf("\ttype:\t%s\n", type);
+		}
 		uuid_bin = (unsigned char *)gpt_pte[i].unique_partition_guid.b;
 		uuid_bin_to_str(uuid_bin, uuid, UUID_STR_FORMAT_GUID);
 		printf("\tguid:\t%s\n", uuid);
@@ -266,7 +265,7 @@ void part_print_efi(struct blk_desc *dev_desc)
 }
 
 int part_get_info_efi(struct blk_desc *dev_desc, int part,
-		      disk_partition_t *info)
+		      struct disk_partition *info)
 {
 	ALLOC_CACHE_ALIGN_BUFFER_PAD(gpt_header, gpt_head, 1, dev_desc->blksz);
 	gpt_entry *gpt_pte = NULL;
@@ -278,19 +277,8 @@ int part_get_info_efi(struct blk_desc *dev_desc, int part,
 	}
 
 	/* This function validates AND fills in the GPT header and PTE */
-	if (is_gpt_valid(dev_desc, GPT_PRIMARY_PARTITION_TABLE_LBA,
-			gpt_head, &gpt_pte) != 1) {
-		printf("%s: *** ERROR: Invalid GPT ***\n", __func__);
-		if (is_gpt_valid(dev_desc, (dev_desc->lba - 1),
-				 gpt_head, &gpt_pte) != 1) {
-			printf("%s: *** ERROR: Invalid Backup GPT ***\n",
-			       __func__);
-			return -1;
-		} else {
-			printf("%s: ***        Using Backup GPT ***\n",
-			       __func__);
-		}
-	}
+	if (find_valid_gpt(dev_desc, gpt_head, &gpt_pte) != 1)
+		return -1;
 
 	if (part > le32_to_cpu(gpt_head->num_partition_entries) ||
 	    !is_pte_valid(&gpt_pte[part - 1])) {
@@ -307,10 +295,10 @@ int part_get_info_efi(struct blk_desc *dev_desc, int part,
 		     - info->start;
 	info->blksz = dev_desc->blksz;
 
-	sprintf((char *)info->name, "%s",
-			print_efiname(&gpt_pte[part - 1]));
+	snprintf((char *)info->name, sizeof(info->name), "%s",
+		 print_efiname(&gpt_pte[part - 1]));
 	strcpy((char *)info->type, "U-Boot");
-	info->bootable = is_bootable(&gpt_pte[part - 1]);
+	info->bootable = get_bootable(&gpt_pte[part - 1]);
 #if CONFIG_IS_ENABLED(PARTITION_UUIDS)
 	uuid_bin_to_str(gpt_pte[part - 1].unique_partition_guid.b, info->uuid,
 			UUID_STR_FORMAT_GUID);
@@ -350,8 +338,6 @@ static int set_protective_mbr(struct blk_desc *dev_desc)
 {
 	/* Setup the Protective MBR */
 	ALLOC_CACHE_ALIGN_BUFFER_PAD(legacy_mbr, p_mbr, 1, dev_desc->blksz);
-	memset(p_mbr, 0, sizeof(*p_mbr));
-
 	if (p_mbr == NULL) {
 		printf("%s: calloc failed!\n", __func__);
 		return -1;
@@ -362,6 +348,10 @@ static int set_protective_mbr(struct blk_desc *dev_desc)
 		pr_err("** Can't read from device %d **\n", dev_desc->devnum);
 		return -1;
 	}
+
+	/* Clear all data in MBR except of backed up boot code */
+	memset((char *)p_mbr + MSDOS_MBR_BOOT_CODE_SIZE, 0, sizeof(*p_mbr) -
+			MSDOS_MBR_BOOT_CODE_SIZE);
 
 	/* Append signature */
 	p_mbr->signature = MSDOS_MBR_SIGNATURE;
@@ -429,7 +419,7 @@ int write_gpt_table(struct blk_desc *dev_desc,
 
 int gpt_fill_pte(struct blk_desc *dev_desc,
 		 gpt_header *gpt_h, gpt_entry *gpt_e,
-		 disk_partition_t *partitions, int parts)
+		 struct disk_partition *partitions, int parts)
 {
 	lbaint_t offset = (lbaint_t)le64_to_cpu(gpt_h->first_usable_lba);
 	lbaint_t last_usable_lba = (lbaint_t)
@@ -500,12 +490,12 @@ int gpt_fill_pte(struct blk_desc *dev_desc,
 		} else {
 			/* default partition type GUID */
 			memcpy(bin_type_guid,
-			       &PARTITION_BASIC_DATA_GUID, 16);
+			       &partition_basic_data_guid, 16);
 		}
 #else
 		/* partition type GUID */
 		memcpy(gpt_e[i].partition_type_guid.b,
-			&PARTITION_BASIC_DATA_GUID, 16);
+			&partition_basic_data_guid, 16);
 #endif
 
 #if CONFIG_IS_ENABLED(PARTITION_UUIDS)
@@ -523,7 +513,7 @@ int gpt_fill_pte(struct blk_desc *dev_desc,
 		memset(&gpt_e[i].attributes, 0,
 		       sizeof(gpt_entry_attributes));
 
-		if (partitions[i].bootable)
+		if (partitions[i].bootable & PART_BOOTABLE)
 			gpt_e[i].attributes.fields.legacy_bios_bootable = 1;
 
 		/* partition name */
@@ -597,7 +587,7 @@ static uint32_t partition_entries_offset(struct blk_desc *dev_desc)
 int gpt_fill_header(struct blk_desc *dev_desc, gpt_header *gpt_h,
 		char *str_guid, int parts_count)
 {
-	gpt_h->signature = cpu_to_le64(GPT_HEADER_SIGNATURE);
+	gpt_h->signature = cpu_to_le64(GPT_HEADER_SIGNATURE_UBOOT);
 	gpt_h->revision = cpu_to_le32(GPT_HEADER_REVISION_V1);
 	gpt_h->header_size = cpu_to_le32(sizeof(gpt_header));
 	gpt_h->my_lba = cpu_to_le64(1);
@@ -619,7 +609,7 @@ int gpt_fill_header(struct blk_desc *dev_desc, gpt_header *gpt_h,
 }
 
 int gpt_restore(struct blk_desc *dev_desc, char *str_disk_guid,
-		disk_partition_t *partitions, int parts_count)
+		struct disk_partition *partitions, int parts_count)
 {
 	gpt_header *gpt_h;
 	gpt_entry *gpt_e;
@@ -662,9 +652,18 @@ err:
 	return ret;
 }
 
-static void gpt_convert_efi_name_to_char(char *s, efi_char16_t *es, int n)
+/**
+ * gpt_convert_efi_name_to_char() - convert u16 string to char string
+ *
+ * TODO: this conversion only supports ANSI characters
+ *
+ * @s:	target buffer
+ * @es:	u16 string to be converted
+ * @n:	size of target buffer
+ */
+static void gpt_convert_efi_name_to_char(char *s, void *es, int n)
 {
-	char *ess = (char *)es;
+	char *ess = es;
 	int i, j;
 
 	memset(s, '\0', n);
@@ -690,6 +689,19 @@ int gpt_verify_headers(struct blk_desc *dev_desc, gpt_header *gpt_head,
 		       __func__);
 		return -1;
 	}
+
+	/* Free pte before allocating again */
+	free(*gpt_pte);
+
+	/*
+	 * Check that the alternate_lba entry points to the last LBA
+	 */
+	if (le64_to_cpu(gpt_head->alternate_lba) != (dev_desc->lba - 1)) {
+		printf("%s: *** ERROR: Misplaced Backup GPT ***\n",
+		       __func__);
+		return -1;
+	}
+
 	if (is_gpt_valid(dev_desc, (dev_desc->lba - 1),
 			 gpt_head, gpt_pte) != 1) {
 		printf("%s: *** ERROR: Invalid Backup GPT ***\n",
@@ -701,7 +713,7 @@ int gpt_verify_headers(struct blk_desc *dev_desc, gpt_header *gpt_head,
 }
 
 int gpt_verify_partitions(struct blk_desc *dev_desc,
-			  disk_partition_t *partitions, int parts,
+			  struct disk_partition *partitions, int parts,
 			  gpt_header *gpt_head, gpt_entry **gpt_pte)
 {
 	char efi_str[PARTNAME_SZ + 1];
@@ -866,6 +878,9 @@ int write_mbr_and_gpt_partitions(struct blk_desc *dev_desc, void *buf)
 		return 1;
 	}
 
+	/* Update the partition table entries*/
+	part_init(dev_desc);
+
 	return 0;
 }
 #endif
@@ -918,7 +933,7 @@ static int is_pmbr_valid(legacy_mbr * mbr)
  * gpt is a GPT header ptr, filled on return.
  * ptes is a PTEs ptr, filled on return.
  *
- * Description: returns 1 if valid,  0 on error.
+ * Description: returns 1 if valid,  0 on error, 2 if ignored header
  * If valid, returns pointers to PTEs.
  */
 static int is_gpt_valid(struct blk_desc *dev_desc, u64 lba,
@@ -942,6 +957,12 @@ static int is_gpt_valid(struct blk_desc *dev_desc, u64 lba,
 	if (blk_dread(dev_desc, (lbaint_t)lba, 1, pgpt_head) != 1) {
 		printf("*** ERROR: Can't read GPT header ***\n");
 		return 0;
+	}
+
+	/* Invalid but nothing to yell about. */
+	if (le64_to_cpu(pgpt_head->signature) == GPT_HEADER_CHROMEOS_IGNORE) {
+		debug("ChromeOS 'IGNOREME' GPT header found and ignored\n");
+		return 2;
 	}
 
 	if (validate_gpt_header(pgpt_head, (lbaint_t)lba, dev_desc->lba))
@@ -972,6 +993,40 @@ static int is_gpt_valid(struct blk_desc *dev_desc, u64 lba,
 	}
 
 	/* We're done, all's well */
+	return 1;
+}
+
+/**
+ * find_valid_gpt() - finds a valid GPT header and PTEs
+ *
+ * gpt is a GPT header ptr, filled on return.
+ * ptes is a PTEs ptr, filled on return.
+ *
+ * Description: returns 1 if found a valid gpt,  0 on error.
+ * If valid, returns pointers to PTEs.
+ */
+static int find_valid_gpt(struct blk_desc *dev_desc, gpt_header *gpt_head,
+			  gpt_entry **pgpt_pte)
+{
+	int r;
+
+	r = is_gpt_valid(dev_desc, GPT_PRIMARY_PARTITION_TABLE_LBA, gpt_head,
+			 pgpt_pte);
+
+	if (r != 1) {
+		if (r != 2)
+			printf("%s: *** ERROR: Invalid GPT ***\n", __func__);
+
+		if (is_gpt_valid(dev_desc, (dev_desc->lba - 1), gpt_head,
+				 pgpt_pte) != 1) {
+			printf("%s: *** ERROR: Invalid Backup GPT ***\n",
+			       __func__);
+			return 0;
+		}
+		if (r != 2)
+			printf("%s: ***        Using Backup GPT ***\n",
+			       __func__);
+	}
 	return 1;
 }
 
@@ -1072,4 +1127,4 @@ U_BOOT_PART_TYPE(a_efi) = {
 	.print		= part_print_ptr(part_print_efi),
 	.test		= part_test_efi,
 };
-#endif
+#endif /* CONFIG_HAVE_BLOCK_DEVICE */

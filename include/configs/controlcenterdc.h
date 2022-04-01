@@ -13,7 +13,6 @@
 #define CONFIG_CUSTOMER_BOARD_SUPPORT
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
-#define CONFIG_BOARD_LATE_INIT
 
 /*
  * TEXT_BASE needs to be below 16MiB, since this area is scrubbed
@@ -21,25 +20,7 @@
  * U-Boot into it.
  */
 
-#define CONFIG_SYS_TCLK		250000000	/* 250MHz */
-
 #define CONFIG_LOADADDR 		1000000
-
-/*
- * Commands configuration
- */
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_SPI
-
-/* SPI NOR flash default params, used by sf commands */
-#define CONFIG_SF_DEFAULT_BUS		1
-#define CONFIG_SF_DEFAULT_SPEED		1000000
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
-
-/*
- * SDIO/MMC Card Configuration
- */
-#define CONFIG_SYS_MMC_BASE		MVEBU_SDIO_BASE
 
 /*
  * SATA/SCSI/AHCI configuration
@@ -54,26 +35,17 @@
 #define CONFIG_EHCI_IS_TDI
 
 /* Environment in SPI NOR flash */
-#define CONFIG_ENV_SPI_BUS		1
-#define CONFIG_ENV_OFFSET		(1 << 20) /* 1MiB in */
-#define CONFIG_ENV_SIZE			(64 << 10) /* 64KiB */
-#define CONFIG_ENV_SECT_SIZE		(256 << 10) /* 256KiB sectors */
 
-#define CONFIG_PHY_MARVELL		/* there is a marvell phy */
 #define PHY_ANEG_TIMEOUT	8000	/* PHY needs a longer aneg time */
 
 /* PCIe support */
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_PCI
-#define CONFIG_PCI_MVEBU
-#define CONFIG_PCI_PNP
 #define CONFIG_PCI_SCAN_SHOW
 #endif
 
 /*
  * Software (bit-bang) MII driver configuration
  */
-#define CONFIG_BITBANGMII		/* bit-bang MII PHY management */
 #define CONFIG_BITBANGMII_MULTI
 
 /* SPL */
@@ -92,10 +64,8 @@
 #define CONFIG_SPL_SIZE			(160 << 10)
 
 #if defined(CONFIG_SECURED_MODE_IMAGE)
-#define CONFIG_SPL_TEXT_BASE		0x40002614
 #define CONFIG_SPL_MAX_SIZE		(CONFIG_SPL_SIZE - 0x2614)
 #else
-#define CONFIG_SPL_TEXT_BASE		0x40000030
 #define CONFIG_SPL_MAX_SIZE		(CONFIG_SPL_SIZE - 0x30)
 #endif
 
@@ -111,21 +81,11 @@
 
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-
-#if CONFIG_SPL_BOOT_DEVICE == SPL_BOOT_SPI_NOR_FLASH
-/* SPL related SPI defines */
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x30000
-#define CONFIG_SYS_U_BOOT_OFFS		CONFIG_SYS_SPI_U_BOOT_OFFS
-#endif
+#define CONFIG_SPL_I2C
 
 #if CONFIG_SPL_BOOT_DEVICE == SPL_BOOT_SDIO_MMC_CARD
 /* SPL related MMC defines */
 #define CONFIG_SPL_MMC_SUPPORT
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION 1
-#define CONFIG_SYS_MMC_U_BOOT_OFFS		(168 << 10)
-#define CONFIG_SYS_U_BOOT_OFFS			CONFIG_SYS_MMC_U_BOOT_OFFS
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	(CONFIG_SYS_U_BOOT_OFFS / 512)
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_FIXED_SDHCI_ALIGNED_BUFFER	0x00180000	/* in SDRAM */
 #endif
@@ -134,15 +94,10 @@
 /*
  * Environment Configuration
  */
-#define CONFIG_ENV_OVERWRITE
-
-#define CONFIG_BAUDRATE 115200
 
 #define CONFIG_HOSTNAME		"ccdc"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"ccdc.img"
-
-#define CONFIG_PREBOOT		/* enable preboot variable */
 
 #define CONFIG_EXTRA_ENV_SETTINGS						\
 	"netdev=eth1\0"						\

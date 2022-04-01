@@ -6,8 +6,6 @@
 #ifndef __ASM_ARCH_CRU_RK3328_H_
 #define __ASM_ARCH_CRU_RK3328_H_
 
-#include <common.h>
-
 struct rk3328_clk_priv {
 	struct rk3328_cru *cru;
 	ulong rate;
@@ -65,5 +63,8 @@ enum apll_frequencies {
 	APLL_816_MHZ,
 	APLL_600_MHZ,
 };
+
+void rk3328_configure_cpu(struct rk3328_cru *cru,
+			  enum apll_frequencies apll_freq);
 
 #endif	/* __ASM_ARCH_CRU_RK3328_H_ */

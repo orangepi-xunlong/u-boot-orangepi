@@ -7,18 +7,10 @@
 #ifndef __VEXPRESS_AEMV8A_H
 #define __VEXPRESS_AEMV8A_H
 
-#ifdef CONFIG_TARGET_VEXPRESS64_BASE_FVP
-#ifndef CONFIG_SEMIHOSTING
-#error CONFIG_TARGET_VEXPRESS64_BASE_FVP requires CONFIG_SEMIHOSTING
-#endif
-#define CONFIG_ARMV8_SWITCH_TO_EL1
-#endif
-
 #define CONFIG_REMAKE_ELF
 
 /* Link Definitions */
-#if defined(CONFIG_TARGET_VEXPRESS64_BASE_FVP) || \
-	defined(CONFIG_TARGET_VEXPRESS64_BASE_FVP_DRAM)
+#ifdef CONFIG_TARGET_VEXPRESS64_BASE_FVP
 /* ATF loads u-boot here for BASE_FVP model */
 #define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SYS_SDRAM_BASE + 0x03f00000)
 #elif CONFIG_TARGET_VEXPRESS64_JUNO
@@ -76,7 +68,7 @@
 #define V2M_SYS_CFGSTAT			(V2M_SYSREGS + 0x0a8)
 
 /* Generic Timer Definitions */
-#define COUNTER_FREQUENCY		(0x1800000)	/* 24MHz */
+#define COUNTER_FREQUENCY		24000000	/* 24MHz */
 
 /* Generic Interrupt Controller Definitions */
 #ifdef CONFIG_GICV3
@@ -84,8 +76,7 @@
 #define GICR_BASE			(0x2f100000)
 #else
 
-#if defined(CONFIG_TARGET_VEXPRESS64_BASE_FVP) || \
-	defined(CONFIG_TARGET_VEXPRESS64_BASE_FVP_DRAM)
+#ifdef CONFIG_TARGET_VEXPRESS64_BASE_FVP
 #define GICD_BASE			(0x2f000000)
 #define GICC_BASE			(0x2c000000)
 #elif CONFIG_TARGET_VEXPRESS64_JUNO
@@ -105,12 +96,10 @@
 
 /* PL011 Serial Configuration */
 #ifdef CONFIG_TARGET_VEXPRESS64_JUNO
-#define CONFIG_PL011_CLOCK		7273800
+#define CONFIG_PL011_CLOCK		7372800
 #else
 #define CONFIG_PL011_CLOCK		24000000
 #endif
-
-/*#define CONFIG_MENU_SHOW*/
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
@@ -126,19 +115,50 @@
 #define CONFIG_SYS_SDRAM_BASE	PHYS_SDRAM_1
 
 #ifdef CONFIG_TARGET_VEXPRESS64_JUNO
-#define CONFIG_NR_DRAM_BANKS		2
 #define PHYS_SDRAM_2			(0x880000000)
 #define PHYS_SDRAM_2_SIZE		0x180000000
-#else
-#define CONFIG_NR_DRAM_BANKS		1
+#elif CONFIG_TARGET_VEXPRESS64_BASE_FVP && CONFIG_NR_DRAM_BANKS == 2
+#define PHYS_SDRAM_2			(0x880000000)
+#define PHYS_SDRAM_2_SIZE		0x80000000
 #endif
 
 /* Enable memtest */
-#define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1
-#define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)
 
 /* Initial environment variables */
 #ifdef CONFIG_TARGET_VEXPRESS64_JUNO
+/* Copy the kernel and FDT to DRAM memory and boot */
+#define BOOTENV_DEV_AFS(devtypeu, devtypel, instance) \
+	"bootcmd_afs="							\
+		"afs load ${kernel_name} ${kernel_addr_r} ;"\
+		"if test $? -eq 1; then "\
+		"  echo Loading ${kernel_alt_name} instead of ${kernel_name}; "\
+		"  afs load ${kernel_alt_name} ${kernel_addr_r};"\
+		"fi ; "\
+		"afs load ${fdtfile} ${fdt_addr_r} ;"\
+		"if test $? -eq 1; then "\
+		"  echo Loading ${fdt_alt_name} instead of ${fdtfile}; "\
+		"  afs load ${fdt_alt_name} ${fdt_addr_r}; "\
+		"fi ; "\
+		"fdt addr ${fdt_addr_r}; fdt resize; " \
+		"if afs load  ${ramdisk_name} ${ramdisk_addr_r} ; "\
+		"then "\
+		"  setenv ramdisk_param ${ramdisk_addr_r}; "\
+		"else "\
+		"  setenv ramdisk_param -; "\
+		"fi ; " \
+		"booti ${kernel_addr_r} ${ramdisk_param} ${fdt_addr_r}\0"
+#define BOOTENV_DEV_NAME_AFS(devtypeu, devtypel, instance) "afs "
+
+#define BOOT_TARGET_DEVICES(func)	\
+	func(USB, usb, 0)		\
+	func(SATA, sata, 0)		\
+	func(SATA, sata, 1)		\
+	func(PXE, pxe, na)		\
+	func(DHCP, dhcp, na)		\
+	func(AFS, afs, na)
+
+#include <config_distro_bootcmd.h>
+
 /*
  * Defines where the kernel and FDT exist in NOR flash and where it will
  * be copied into DRAM
@@ -146,36 +166,13 @@
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 				"kernel_name=norkern\0"	\
 				"kernel_alt_name=Image\0"	\
-				"kernel_addr=0x80080000\0" \
-				"initrd_name=ramdisk.img\0"	\
-				"initrd_addr=0x84000000\0"	\
+				"kernel_addr_r=0x80080000\0" \
+				"ramdisk_name=ramdisk.img\0"	\
+				"ramdisk_addr_r=0x88000000\0"	\
 				"fdtfile=board.dtb\0" \
 				"fdt_alt_name=juno\0" \
-				"fdt_addr=0x83000000\0" \
-				"fdt_high=0xffffffffffffffff\0" \
-				"initrd_high=0xffffffffffffffff\0" \
-
-/* Copy the kernel and FDT to DRAM memory and boot */
-#define CONFIG_BOOTCOMMAND	"afs load ${kernel_name} ${kernel_addr} ; " \
-				"if test $? -eq 1; then "\
-				"  echo Loading ${kernel_alt_name} instead of "\
-				"${kernel_name}; "\
-				"  afs load ${kernel_alt_name} ${kernel_addr};"\
-				"fi ; "\
-				"afs load  ${fdtfile} ${fdt_addr} ; " \
-				"if test $? -eq 1; then "\
-				"  echo Loading ${fdt_alt_name} instead of "\
-				"${fdtfile}; "\
-				"  afs load ${fdt_alt_name} ${fdt_addr}; "\
-				"fi ; "\
-				"fdt addr ${fdt_addr}; fdt resize; " \
-				"if afs load  ${initrd_name} ${initrd_addr} ; "\
-				"then "\
-				"  setenv initrd_param ${initrd_addr}; "\
-				"  else setenv initrd_param -; "\
-				"fi ; " \
-				"booti ${kernel_addr} ${initrd_param} ${fdt_addr}"
-
+				"fdt_addr_r=0x80000000\0" \
+				BOOTENV
 
 #elif CONFIG_TARGET_VEXPRESS64_BASE_FVP
 #define CONFIG_EXTRA_ENV_SETTINGS	\
@@ -185,29 +182,28 @@
 				"initrd_addr=0x88000000\0"	\
 				"fdtfile=devtree.dtb\0"		\
 				"fdt_addr=0x83000000\0"		\
-				"fdt_high=0xffffffffffffffff\0"	\
-				"initrd_high=0xffffffffffffffff\0"
+				"boot_name=boot.img\0"		\
+				"boot_addr=0x8007f800\0"
 
-#define CONFIG_BOOTCOMMAND	"smhload ${kernel_name} ${kernel_addr}; " \
-				"smhload ${fdtfile} ${fdt_addr}; " \
-				"smhload ${initrd_name} ${initrd_addr} "\
-				"initrd_end; " \
-				"fdt addr ${fdt_addr}; fdt resize; " \
-				"fdt chosen ${initrd_addr} ${initrd_end}; " \
-				"booti $kernel_addr - $fdt_addr"
-
-
-#elif CONFIG_TARGET_VEXPRESS64_BASE_FVP_DRAM
-#define CONFIG_EXTRA_ENV_SETTINGS	\
-				"kernel_addr=0x80080000\0"	\
-				"initrd_addr=0x84000000\0"	\
-				"fdt_addr=0x83000000\0"		\
-				"fdt_high=0xffffffffffffffff\0"	\
-				"initrd_high=0xffffffffffffffff\0"
-
-#define CONFIG_BOOTCOMMAND	"booti $kernel_addr $initrd_addr $fdt_addr"
-
-
+#ifndef CONFIG_BOOTCOMMAND
+#define CONFIG_BOOTCOMMAND	"if smhload ${boot_name} ${boot_addr}; then " \
+				"  set bootargs; " \
+				"  abootimg addr ${boot_addr}; " \
+				"  abootimg get dtb --index=0 fdt_addr; " \
+				"  bootm ${boot_addr} ${boot_addr} " \
+				"  ${fdt_addr}; " \
+				"else; " \
+				"  set fdt_high 0xffffffffffffffff; " \
+				"  set initrd_high 0xffffffffffffffff; " \
+				"  smhload ${kernel_name} ${kernel_addr}; " \
+				"  smhload ${fdtfile} ${fdt_addr}; " \
+				"  smhload ${initrd_name} ${initrd_addr} "\
+				"  initrd_end; " \
+				"  fdt addr ${fdt_addr}; fdt resize; " \
+				"  fdt chosen ${initrd_addr} ${initrd_end}; " \
+				"  booti $kernel_addr - $fdt_addr; " \
+				"fi"
+#endif
 #endif
 
 /* Monitor Command Prompt */
@@ -220,26 +216,22 @@
 #define CONFIG_SYS_MAX_FLASH_SECT	259
 /* Store environment at top of flash in the same location as blank.img */
 /* in the Juno firmware. */
-#define CONFIG_ENV_ADDR			0x0BFC0000
-#define CONFIG_ENV_SECT_SIZE		0x00010000
 #else
 #define CONFIG_SYS_FLASH_BASE		0x0C000000
 /* 256 x 256KiB sectors */
 #define CONFIG_SYS_MAX_FLASH_SECT	256
 /* Store environment at top of flash */
-#define CONFIG_ENV_ADDR			0x0FFC0000
-#define CONFIG_ENV_SECT_SIZE		0x00040000
 #endif
 
-#define CONFIG_SYS_FLASH_CFI		1
-#define CONFIG_FLASH_CFI_DRIVER		1
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_32BIT
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE /* use buffered writes */
-#define CONFIG_SYS_FLASH_PROTECTION	/* The devices have real protection */
+#ifdef CONFIG_USB_EHCI_HCD
+#define CONFIG_USB_OHCI_NEW
+#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS 1
+#endif
+
 #define CONFIG_SYS_FLASH_EMPTY_INFO	/* flinfo indicates empty blocks */
 #define FLASH_MAX_SECTOR_SIZE		0x00040000
-#define CONFIG_ENV_SIZE			CONFIG_ENV_SECT_SIZE
 
 #endif /* __VEXPRESS_AEMV8A_H */

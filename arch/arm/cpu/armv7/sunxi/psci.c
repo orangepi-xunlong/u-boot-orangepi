@@ -8,6 +8,7 @@
  */
 #include <config.h>
 #include <common.h>
+#include <asm/cache.h>
 
 #include <asm/arch/cpu.h>
 #include <asm/arch/cpucfg.h>
@@ -242,14 +243,15 @@ out:
 	cp15_write_scr(scr);
 }
 
-int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc)
+int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc,
+			 u32 context_id)
 {
 	struct sunxi_cpucfg_reg *cpucfg =
 		(struct sunxi_cpucfg_reg *)SUNXI_CPUCFG_BASE;
 	u32 cpu = (mpidr & 0x3);
 
-	/* store target PC */
-	psci_save_target_pc(cpu, pc);
+	/* store target PC and context id */
+	psci_save(cpu, pc, context_id);
 
 	/* Set secondary core power on PC */
 	sunxi_set_entry_address(&psci_cpu_entry);
@@ -275,7 +277,7 @@ int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc)
 	return ARM_PSCI_RET_SUCCESS;
 }
 
-void __secure psci_cpu_off(void)
+s32 __secure psci_cpu_off(void)
 {
 	psci_cpu_off_common();
 

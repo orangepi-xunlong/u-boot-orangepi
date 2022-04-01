@@ -7,6 +7,7 @@
  */
 
 #include <common.h>
+#include <eeprom.h>
 #include <i2c.h>
 #include <eeprom_layout.h>
 #include <eeprom_field.h>
@@ -152,7 +153,7 @@ u32 cl_eeprom_get_board_rev(uint eeprom_bus)
 	 */
 	if (cl_eeprom_layout == LAYOUT_LEGACY) {
 		sprintf(str, "%x", board_rev);
-		board_rev = simple_strtoul(str, NULL, 10);
+		board_rev = dectoul(str, NULL);
 	}
 
 	return board_rev;
@@ -410,7 +411,7 @@ struct eeprom_field layout_legacy[5] = {
 #define layout_legacy layout_unknown
 #endif
 
-#if defined(CONFIG_CM_T3X) || defined(CONFIG_CM_T3517)
+#if defined(CONFIG_CM_T3X)
 struct eeprom_field layout_v1[12] = {
 	{ "Major Revision",      2, NULL, DEFINE_PRINT_UPDATE(bin_ver) },
 	{ "Minor Revision",      2, NULL, DEFINE_PRINT_UPDATE(bin_ver) },

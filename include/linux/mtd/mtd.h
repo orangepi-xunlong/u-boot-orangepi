@@ -129,8 +129,8 @@ struct mtd_oob_region {
 struct mtd_ooblayout_ops {
 	int (*ecc)(struct mtd_info *mtd, int section,
 		   struct mtd_oob_region *oobecc);
-	int (*free)(struct mtd_info *mtd, int section,
-		    struct mtd_oob_region *oobfree);
+	int (*rfree)(struct mtd_info *mtd, int section,
+		     struct mtd_oob_region *oobfree);
 };
 
 /*
@@ -332,15 +332,14 @@ struct mtd_info {
 };
 
 #if IS_ENABLED(CONFIG_DM)
-static inline void mtd_set_of_node(struct mtd_info *mtd,
-				   const struct device_node *np)
+static inline void mtd_set_ofnode(struct mtd_info *mtd, ofnode node)
 {
-	mtd->dev->node.np = np;
+	dev_set_ofnode(mtd->dev, node);
 }
 
-static inline const struct device_node *mtd_get_of_node(struct mtd_info *mtd)
+static inline const ofnode mtd_get_ofnode(struct mtd_info *mtd)
 {
-	return mtd->dev->node.np;
+	return dev_ofnode(mtd->dev);
 }
 #else
 struct device_node;
@@ -582,39 +581,21 @@ static inline int del_mtd_partitions(struct mtd_info *mtd)
 }
 #endif
 
+#if defined(CONFIG_MTD_PARTITIONS) && CONFIG_IS_ENABLED(DM) && \
+    CONFIG_IS_ENABLED(OF_CONTROL)
+int add_mtd_partitions_of(struct mtd_info *master);
+#else
+static inline int add_mtd_partitions_of(struct mtd_info *master)
+{
+	return 0;
+}
+#endif
+
 struct mtd_info *__mtd_next_device(int i);
 #define mtd_for_each_device(mtd)			\
 	for ((mtd) = __mtd_next_device(0);		\
 	     (mtd) != NULL;				\
 	     (mtd) = __mtd_next_device(mtd->index + 1))
-
-int mtd_arg_off(const char *arg, int *idx, loff_t *off, loff_t *size,
-		loff_t *maxsize, int devtype, uint64_t chipsize);
-int mtd_arg_off_size(int argc, char *const argv[], int *idx, loff_t *off,
-		     loff_t *size, loff_t *maxsize, int devtype,
-		     uint64_t chipsize);
-
-/*
- * Debugging macro and defines
- */
-#define MTD_DEBUG_LEVEL0	(0)	/* Quiet   */
-#define MTD_DEBUG_LEVEL1	(1)	/* Audible */
-#define MTD_DEBUG_LEVEL2	(2)	/* Loud    */
-#define MTD_DEBUG_LEVEL3	(3)	/* Noisy   */
-
-#ifdef CONFIG_MTD_DEBUG
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (n <= CONFIG_MTD_DEBUG_VERBOSE)	\
-			printk(KERN_INFO args);		\
-	} while (0)
-#else /* CONFIG_MTD_DEBUG */
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (0)					\
-			printk(KERN_INFO args);		\
-	} while (0)
-#endif /* CONFIG_MTD_DEBUG */
 
 /* drivers/mtd/mtdcore.c */
 void mtd_get_len_incl_bad(struct mtd_info *mtd, uint64_t offset,
@@ -627,13 +608,4 @@ int mtd_search_alternate_name(const char *mtdname, char *altname,
 			      unsigned int max_len);
 
 #endif
-
-/* sunxi mtd functions */
-int sunxi_do_mtdparts(int flag, int argc, char * const argv[]);
-char *sunxi_get_mtdparts_name(u16 mtd_partnum);
-u64 sunxi_get_mtdpart_size(u16 mtd_partnum);
-u16 sunxi_get_mtd_num_parts(void);
-u64 sunxi_get_mtdpart_offset(u16 mtd_partnum);
-void sunxi_set_defualt_mtdpart(const char *mtdids, const char *mtdparts);
-extern void set_default_env(const char *s);
 #endif /* __MTD_MTD_H__ */

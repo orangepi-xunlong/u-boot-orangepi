@@ -11,6 +11,8 @@
  */
 #include <common.h>
 #include <binman_sym.h>
+#include <image.h>
+#include <log.h>
 #include <mapmem.h>
 #include <spl.h>
 #include <linux/libfdt.h>
@@ -35,7 +37,7 @@ static int spl_ram_load_image(struct spl_image_info *spl_image,
 
 	header = (struct image_header *)CONFIG_SPL_LOAD_FIT_ADDRESS;
 
-#if CONFIG_IS_ENABLED(DFU_SUPPORT)
+#if CONFIG_IS_ENABLED(DFU)
 	if (bootdev->boot_device == BOOT_DEVICE_DFU)
 		spl_dfu_cmd(0, "dfu_alt_info_ram", "ram", "0");
 #endif
@@ -49,7 +51,7 @@ static int spl_ram_load_image(struct spl_image_info *spl_image,
 		load.read = spl_ram_load_read;
 		spl_load_simple_fit(spl_image, &load, 0, header);
 	} else {
-		ulong u_boot_pos = binman_sym(ulong, u_boot_any, pos);
+		ulong u_boot_pos = binman_sym(ulong, u_boot_any, image_pos);
 
 		debug("Legacy image\n");
 		/*
@@ -63,8 +65,8 @@ static int spl_ram_load_image(struct spl_image_info *spl_image,
 			 * No binman support or no information. For now, fix it
 			 * to the address pointed to by U-Boot.
 			 */
-			u_boot_pos = CONFIG_SYS_TEXT_BASE -
-					sizeof(struct image_header);
+			u_boot_pos = (ulong)spl_get_load_buffer(-sizeof(*header),
+								sizeof(*header));
 		}
 		header = (struct image_header *)map_sysmem(u_boot_pos, 0);
 
@@ -76,7 +78,7 @@ static int spl_ram_load_image(struct spl_image_info *spl_image,
 #if CONFIG_IS_ENABLED(RAM_DEVICE)
 SPL_LOAD_IMAGE_METHOD("RAM", 0, BOOT_DEVICE_RAM, spl_ram_load_image);
 #endif
-#if CONFIG_IS_ENABLED(DFU_SUPPORT)
+#if CONFIG_IS_ENABLED(DFU)
 SPL_LOAD_IMAGE_METHOD("DFU", 0, BOOT_DEVICE_DFU, spl_ram_load_image);
 #endif
 

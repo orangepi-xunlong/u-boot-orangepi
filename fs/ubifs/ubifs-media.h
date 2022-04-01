@@ -90,8 +90,8 @@
  * the maximum amount of data which one data node can have or which can be
  * attached to an inode node.
  */
-#define UBIFS_BLOCK_SIZE  8192
-#define UBIFS_BLOCK_SHIFT 13
+#define UBIFS_BLOCK_SIZE  4096
+#define UBIFS_BLOCK_SHIFT 12
 
 /* UBIFS padding byte pattern (must not be first or last byte of node magic) */
 #define UBIFS_PADDING_BYTE 0xCE

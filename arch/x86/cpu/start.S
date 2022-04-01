@@ -2,6 +2,18 @@
 /*
  *  U-Boot - x86 Startup Code
  *
+ * This is always the first code to run from the U-Boot source. To spell it out:
+ *
+ * 1. When TPL (Tertiary Program Loader) is enabled, the boot flow is
+ * TPL->SPL->U-Boot and this file is used for TPL. Then start_from_tpl.S is used
+ * for SPL and start_from_spl.S is used for U-Boot proper.
+ *
+ * 2. When SPL (Secondary Program Loader) is enabled, but not TPL, the boot
+ * flow is SPL->U-Boot and this file is used for SPL. Then start_from_spl.S is
+ * used for U-Boot proper.
+ *
+ * 3. When neither TPL nor SPL is used, this file is used for U-Boot proper.
+ *
  * (C) Copyright 2008-2011
  * Graeme Russ, <graeme.russ@gmail.com>
  *
@@ -10,14 +22,14 @@
  */
 
 #include <config.h>
-#include <asm/global_data.h>
 #include <asm/post.h>
 #include <asm/processor.h>
 #include <asm/processor-flags.h>
 #include <generated/generic-asm-offsets.h>
 #include <generated/asm-offsets.h>
+#include <linux/linkage.h>
 
-.section .text
+.section .text.start
 .code32
 .globl _start
 .type _start, @function
@@ -39,9 +51,6 @@ _x86boot_start:
 	movl	%eax, %cr0
 	wbinvd
 
-	/* Tell 32-bit code it is being entered from an in-RAM copy */
-	movl	$GD_FLG_WARM_BOOT, %ebx
-
 	/*
 	 * Zero the BIST (Built-In Self Test) value since we don't have it.
 	 * It must be 0 or the previous loader would have reported an error.
@@ -54,11 +63,7 @@ _x86boot_start:
 	.align	4
 	.long	0x12345678
 _start:
-	/*
-	 * This is the 32-bit cold-reset entry point, coming from start16.
-	 * Set %ebx to GD_FLG_COLD_BOOT to indicate this.
-	 */
-	movl	$GD_FLG_COLD_BOOT, %ebx
+	/* This is the 32-bit cold-reset entry point, coming from start16 */
 
 	/* Save BIST */
 	movl	%eax, %ebp
@@ -71,7 +76,7 @@ _start:
 	lgdt	gdt_ptr2
 #endif
 
-	/* Load the segement registers to match the GDT loaded in start16.S */
+	/* Load the segment registers to match the GDT loaded in start16.S */
 	movl	$(X86_GDT_ENTRY_32BIT_DS * X86_GDT_ENTRY_SIZE), %eax
 	movw	%ax, %fs
 	movw	%ax, %ds
@@ -82,6 +87,7 @@ _start:
 	/* Clear the interrupt vectors */
 	lidt	blank_idt_ptr
 
+#ifdef CONFIG_USE_EARLY_BOARD_INIT
 	/*
 	 * Critical early platform init - generally not used, we prefer init
 	 * to happen later when we have a console, in case something goes
@@ -90,13 +96,15 @@ _start:
 	jmp	early_board_init
 .globl early_board_init_ret
 early_board_init_ret:
+#endif
+
 	post_code(POST_START)
 
 	/* Initialise Cache-As-RAM */
 	jmp	car_init
 .globl car_init_ret
 car_init_ret:
-#ifndef CONFIG_HAVE_FSP
+#ifdef CONFIG_USE_CAR
 	/*
 	 * We now have CONFIG_SYS_CAR_SIZE bytes of Cache-As-RAM (or SRAM,
 	 * or fully initialised SDRAM - we really don't care which)
@@ -118,6 +126,7 @@ car_init_ret:
 #endif
 #else
 	/*
+	 * Instructions for FSP1, but not FSP2:
 	 * U-Boot enters here twice. For the first time it comes from
 	 * car_init_done() with esp points to a temporary stack and esi
 	 * set to zero. For the second time it comes from fsp_init_done()
@@ -136,12 +145,13 @@ car_init_ret:
 
 	/* Get address of global_data */
 	mov	%fs:0, %edx
-#ifdef CONFIG_HAVE_FSP
+#if defined(CONFIG_USE_HOB) && !defined(CONFIG_USE_CAR)
 	/* Store the HOB list if we have one */
 	test	%esi, %esi
 	jz	skip_hob
 	movl	%esi, GD_HOB_LIST(%edx)
 
+#ifdef CONFIG_HAVE_FSP
 	/*
 	 * After fsp_init() returns, the stack has already been switched to a
 	 * place within system memory as defined by CONFIG_FSP_TEMP_RAM_ADDR.
@@ -150,6 +160,7 @@ car_init_ret:
 	 */
 	subl	$CONFIG_FSP_SYS_MALLOC_F_LEN, %esp
 	movl	%esp, GD_MALLOC_BASE(%edx)
+#endif
 skip_hob:
 #else
 	/* Store table pointer */
@@ -184,20 +195,32 @@ board_init_f_r_trampoline:
 	movl	%eax, %esp
 
 	/* See if we need to disable CAR */
-.weak	car_uninit
-	movl	$car_uninit, %eax
-	cmpl	$0, %eax
-	jz	1f
-
 	call	car_uninit
-1:
+
 	/* Re-enter U-Boot by calling board_init_f_r() */
 	call	board_init_f_r
+
+#ifdef CONFIG_TPL
+.globl jump_to_spl
+.type jump_to_spl, @function
+jump_to_spl:
+	/* Reset stack to the top of CAR space */
+	movl	$(CONFIG_SYS_CAR_ADDR + CONFIG_SYS_CAR_SIZE - 4), %esp
+#ifdef CONFIG_DCACHE_RAM_MRC_VAR_SIZE
+	subl	$CONFIG_DCACHE_RAM_MRC_VAR_SIZE, %esp
+#endif
+
+	jmp	*%eax
+#endif
 
 die:
 	hlt
 	jmp	die
 	hlt
+
+WEAK(car_uninit)
+	ret
+ENDPROC(car_uninit)
 
 blank_idt_ptr:
 	.word	0		/* limit */

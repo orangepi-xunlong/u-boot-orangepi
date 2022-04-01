@@ -4,13 +4,19 @@
  * Peter Griffin <peter.griffin@linaro.org>
  */
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
+#include <fdt_support.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <dm/platform_data/serial_pl01x.h>
 #include <errno.h>
 #include <malloc.h>
 #include <netdev.h>
 #include <asm/io.h>
 #include <usb.h>
+#include <linux/delay.h>
 #include <power/hi6553_pmic.h>
 #include <asm-generic/gpio.h>
 #include <asm/arch/dwmmc.h>
@@ -21,7 +27,7 @@
 #include <asm/armv8/mmu.h>
 
 /*TODO drop this table in favour of device tree */
-static const struct hikey_gpio_platdata hi6220_gpio[] = {
+static const struct hikey_gpio_plat hi6220_gpio[] = {
 	{ 0, HI6220_GPIO_BASE(0)},
 	{ 1, HI6220_GPIO_BASE(1)},
 	{ 2, HI6220_GPIO_BASE(2)},
@@ -45,7 +51,7 @@ static const struct hikey_gpio_platdata hi6220_gpio[] = {
 
 };
 
-U_BOOT_DEVICES(hi6220_gpios) = {
+U_BOOT_DRVINFOS(hi6220_gpios) = {
 	{ "gpio_hi6220", &hi6220_gpio[0] },
 	{ "gpio_hi6220", &hi6220_gpio[1] },
 	{ "gpio_hi6220", &hi6220_gpio[2] },
@@ -72,7 +78,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #if !CONFIG_IS_ENABLED(OF_CONTROL)
 
-static const struct pl01x_serial_platdata serial_platdata = {
+static const struct pl01x_serial_plat serial_plat = {
 #if CONFIG_CONS_INDEX == 1
 	.base = HI6220_UART0_BASE,
 #elif CONFIG_CONS_INDEX == 4
@@ -84,9 +90,9 @@ static const struct pl01x_serial_platdata serial_platdata = {
 	.clock = 19200000
 };
 
-U_BOOT_DEVICE(hikey_seriala) = {
+U_BOOT_DRVINFO(hikey_seriala) = {
 	.name = "serial_pl01x",
-	.platdata = &serial_platdata,
+	.plat = &serial_plat,
 };
 #endif
 
@@ -424,7 +430,7 @@ int power_init_board(void)
 	return 0;
 }
 
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	int ret;
 
@@ -480,7 +486,7 @@ int dram_init_banksize(void)
 	return 0;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	writel(0x48698284, &ao_sc->stat0);
 	wfi();

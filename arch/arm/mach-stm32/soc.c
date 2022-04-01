@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
-#include <asm/armv7m_mpu.h>
+#include <asm/armv7_mpu.h>
 
 int arch_cpu_init(void)
 {
@@ -18,17 +19,15 @@ int arch_cpu_init(void)
 		 */
 #if defined(CONFIG_STM32F4)
 		{ 0x00000000, REGION_0, XN_DIS, PRIV_RW_USR_RW,
-		O_I_WB_RD_WR_ALLOC, REGION_16MB },
+		O_I_WB_RD_WR_ALLOC, REGION_512MB },
 #endif
 
-#if defined(CONFIG_STM32F7)
+		{ 0x90000000, REGION_1, XN_DIS, PRIV_RW_USR_RW,
+		SHARED_WRITE_BUFFERED, REGION_256MB },
+
+#if defined(CONFIG_STM32F7) || defined(CONFIG_STM32H7)
 		{ 0xC0000000, REGION_0, XN_DIS, PRIV_RW_USR_RW,
-		O_I_WB_RD_WR_ALLOC, REGION_16MB },
-#endif
-
-#if defined(CONFIG_STM32H7)
-		{ 0xD0000000, REGION_0, XN_DIS, PRIV_RW_USR_RW,
-		O_I_WB_RD_WR_ALLOC, REGION_32MB },
+		O_I_WB_RD_WR_ALLOC, REGION_512MB },
 #endif
 	};
 

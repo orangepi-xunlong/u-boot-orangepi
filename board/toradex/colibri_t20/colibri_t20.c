@@ -4,16 +4,20 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch-tegra/ap.h>
 #include <asm/arch-tegra/board.h>
 #include <asm/arch-tegra/tegra.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <i2c.h>
 #include <nand.h>
+#include <linux/delay.h>
 #include "../common/tdx-common.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -75,7 +79,7 @@ int checkboard(void)
 }
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	return ft_common_board_setup(blob, bd);
 }
@@ -149,5 +153,14 @@ void pin_mux_display(void)
 
 	pinmux_set_func(PMUX_PINGRP_SDC, PMUX_FUNC_PWM);
 	pinmux_tristate_disable(PMUX_PINGRP_SDC);
+}
+
+/*
+ * Backlight off before OS handover
+ */
+void board_preboot_os(void)
+{
+	gpio_request(TEGRA_GPIO(T, 4), "BL_ON");
+	gpio_direction_output(TEGRA_GPIO(T, 4), 0);
 }
 #endif

@@ -4,10 +4,15 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
+#define LOG_CATEGORY UCLASS_TPM
+
 #include <common.h>
 #include <dm.h>
-#include <tpm.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <linux/unaligned/be_byteshift.h>
+#include <tpm-v1.h>
+#include <tpm-v2.h>
 #include "tpm_internal.h"
 
 int tpm_open(struct udevice *dev)
@@ -71,7 +76,7 @@ int tpm_xfer(struct udevice *dev, const uint8_t *sendbuf, size_t send_size,
 	struct tpm_ops *ops = tpm_get_ops(dev);
 	ulong start, stop;
 	uint count, ordinal;
-	int ret, ret2;
+	int ret, ret2 = 0;
 
 	if (ops->xfer)
 		return ops->xfer(dev, sendbuf, send_size, recvbuf, recv_size);
@@ -84,15 +89,15 @@ int tpm_xfer(struct udevice *dev, const uint8_t *sendbuf, size_t send_size,
 	ordinal = get_unaligned_be32(sendbuf + TPM_CMD_ORDINAL_BYTE);
 
 	if (count == 0) {
-		debug("no data\n");
+		log_debug("no data\n");
 		return -ENODATA;
 	}
 	if (count > send_size) {
-		debug("invalid count value %x %zx\n", count, send_size);
+		log_debug("invalid count value %x %zx\n", count, send_size);
 		return -E2BIG;
 	}
 
-	debug("%s: Calling send\n", __func__);
+	log_debug("%s: Calling send\n", __func__);
 	ret = ops->send(dev, sendbuf, send_size);
 	if (ret < 0)
 		return ret;
@@ -119,14 +124,24 @@ int tpm_xfer(struct udevice *dev, const uint8_t *sendbuf, size_t send_size,
 		}
 	} while (ret);
 
-	ret2 = ops->cleanup ? ops->cleanup(dev) : 0;
+	if (ret) {
+		if (ops->cleanup) {
+			ret2 = ops->cleanup(dev);
+			if (ret2)
+				return log_msg_ret("cleanup", ret2);
+		}
+		return log_msg_ret("xfer", ret);
+	}
 
-	return ret2 ? ret2 : ret;
+	return 0;
 }
 
 UCLASS_DRIVER(tpm) = {
-	.id             = UCLASS_TPM,
-	.name           = "tpm",
-	.flags          = DM_UC_FLAG_SEQ_ALIAS,
-	.per_device_auto_alloc_size	= sizeof(struct tpm_chip_priv),
+	.id		= UCLASS_TPM,
+	.name		= "tpm",
+	.flags		= DM_UC_FLAG_SEQ_ALIAS,
+#if CONFIG_IS_ENABLED(OF_CONTROL) && !CONFIG_IS_ENABLED(OF_PLATDATA)
+	.post_bind	= dm_scan_fdt_dev,
+#endif
+	.per_device_auto	= sizeof(struct tpm_chip_priv),
 };

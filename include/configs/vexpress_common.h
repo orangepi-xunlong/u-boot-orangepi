@@ -111,16 +111,13 @@
 #define SYS_ID				V2M_SYSREGS
 #define CONFIG_REVISION_TAG		1
 
-#define CONFIG_SYS_MEMTEST_START	V2M_BASE
-#define CONFIG_SYS_MEMTEST_END		0x20000000
-
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
 #define CONFIG_SYS_L2CACHE_OFF		1
 #define CONFIG_INITRD_TAG		1
 
 /* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128 * 1024)
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 512 * 1024) /* >= 512 KiB */
 
 #define SCTL_BASE			V2M_SYSCTL
 #define VEXPRESS_FLASHPROG_FLVPPEN	(1 << 0)
@@ -138,7 +135,6 @@
 #define CONFIG_SYS_SERIAL0		V2M_UART0
 #define CONFIG_SYS_SERIAL1		V2M_UART1
 
-#define CONFIG_ARM_PL180_MMCI
 #define CONFIG_ARM_PL180_MMCI_BASE	V2M_MMCI
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT	127
 #define CONFIG_ARM_PL180_MMCI_CLOCK_FREQ 6250000
@@ -151,7 +147,6 @@
 #define LINUX_BOOT_PARAM_ADDR		(V2M_BASE + 0x2000)
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		2
 #define PHYS_SDRAM_1			(V2M_BASE)	/* SDRAM Bank #1 */
 #define PHYS_SDRAM_2			(((unsigned int)V2M_BASE) + \
 					((unsigned int)0x20000000))
@@ -208,12 +203,11 @@
 			"devtmpfs.mount=0  vmalloc=256M\0" \
 		"bootflash=run flashargs; " \
 			"cp ${ramdisk_addr} ${ramdisk_addr_r} ${maxramdisk}; " \
-			"bootm ${kernel_addr} ${ramdisk_addr_r}\0"
+			"bootm ${kernel_addr} ${ramdisk_addr_r}\0" \
+		"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
 /* FLASH and environment organization */
 #define PHYS_FLASH_SIZE			0x04000000	/* 64MB */
-#define CONFIG_SYS_FLASH_CFI		1
-#define CONFIG_FLASH_CFI_DRIVER		1
 #define CONFIG_SYS_FLASH_SIZE		0x04000000
 #define CONFIG_SYS_MAX_FLASH_BANKS	2
 #define CONFIG_SYS_FLASH_BASE0		V2M_NOR0
@@ -229,24 +223,14 @@
 #define FLASH_MAX_SECTOR_SIZE		0x00040000	/* 256 KB sectors */
 
 /* Room required on the stack for the environment data */
-#define CONFIG_ENV_SIZE			FLASH_MAX_SECTOR_SIZE
-
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE /* use buffered writes */
 
 /*
  * Amount of flash used for environment:
  * We don't know which end has the small erase blocks so we use the penultimate
  * sector location for the environment
  */
-#define CONFIG_ENV_SECT_SIZE		FLASH_MAX_SECTOR_SIZE
-#define CONFIG_ENV_OVERWRITE		1
 
 /* Store environment at top of flash */
-#define CONFIG_ENV_OFFSET		(PHYS_FLASH_SIZE - \
-					(2 * CONFIG_ENV_SECT_SIZE))
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE1 + \
-					 CONFIG_ENV_OFFSET)
-#define CONFIG_SYS_FLASH_PROTECTION	/* The devices have real protection */
 #define CONFIG_SYS_FLASH_EMPTY_INFO	/* flinfo indicates empty blocks */
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE0, \
 					  CONFIG_SYS_FLASH_BASE1 }

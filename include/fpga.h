@@ -15,10 +15,13 @@
 
 /* fpga_xxxx function return value definitions */
 #define FPGA_SUCCESS		0
-#define FPGA_FAIL		-1
+#define FPGA_FAIL		1
 
 /* device numbers must be non-negative */
 #define FPGA_INVALID_DEVICE	-1
+
+#define FPGA_ENC_USR_KEY	1
+#define FPGA_NO_ENC_OR_NO_AUTH	2
 
 /* root data type defintions */
 typedef enum {			/* typedef fpga_type */
@@ -38,9 +41,15 @@ typedef struct {                /* typedef fpga_desc */
 	unsigned int blocksize;
 	char *interface;
 	char *dev_part;
-	char *filename;
+	const char *filename;
 	int fstype;
 } fpga_fs_info;
+
+struct fpga_secure_info {
+	u8 *userkey_addr;
+	u8 authflag;
+	u8 encflag;
+};
 
 typedef enum {
 	BIT_FULL = 0,
@@ -58,6 +67,8 @@ int fpga_load(int devnum, const void *buf, size_t bsize,
 	      bitstream_type bstype);
 int fpga_fsload(int devnum, const void *buf, size_t size,
 		fpga_fs_info *fpga_fsinfo);
+int fpga_loads(int devnum, const void *buf, size_t size,
+	       struct fpga_secure_info *fpga_sec_info);
 int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 		       bitstream_type bstype);
 int fpga_dump(int devnum, const void *buf, size_t bsize);

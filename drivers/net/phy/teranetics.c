@@ -5,9 +5,9 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
-#include <config.h>
 #include <common.h>
 #include <phy.h>
+#include <linux/delay.h>
 
 #ifndef CONFIG_PHYLIB_10G
 #error The Teranetics PHY needs 10G support

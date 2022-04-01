@@ -17,7 +17,7 @@ struct altera_sysid_regs {
 	u32	timestamp;	/* Timestamp */
 };
 
-struct altera_sysid_platdata {
+struct altera_sysid_plat {
 	struct altera_sysid_regs *regs;
 };
 
@@ -35,7 +35,7 @@ void display_sysid(void)
 	if (ret)
 		return;
 	ret = misc_read(dev, 0, &sysid, sizeof(sysid));
-	if (ret)
+	if (ret < 0)
 		return;
 
 	stamp = sysid[1];
@@ -44,7 +44,7 @@ void display_sysid(void)
 	printf("SYSID: %08x, %s", sysid[0], asc);
 }
 
-int do_sysid(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_sysid(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	display_sysid();
 	return 0;
@@ -59,7 +59,7 @@ U_BOOT_CMD(
 static int altera_sysid_read(struct udevice *dev,
 			     int offset, void *buf, int size)
 {
-	struct altera_sysid_platdata *plat = dev->platdata;
+	struct altera_sysid_plat *plat = dev_get_plat(dev);
 	struct altera_sysid_regs *const regs = plat->regs;
 	u32 *sysid = buf;
 
@@ -69,11 +69,11 @@ static int altera_sysid_read(struct udevice *dev,
 	return 0;
 }
 
-static int altera_sysid_ofdata_to_platdata(struct udevice *dev)
+static int altera_sysid_of_to_plat(struct udevice *dev)
 {
-	struct altera_sysid_platdata *plat = dev_get_platdata(dev);
+	struct altera_sysid_plat *plat = dev_get_plat(dev);
 
-	plat->regs = map_physmem(devfdt_get_addr(dev),
+	plat->regs = map_physmem(dev_read_addr(dev),
 				 sizeof(struct altera_sysid_regs),
 				 MAP_NOCACHE);
 
@@ -93,7 +93,7 @@ U_BOOT_DRIVER(altera_sysid) = {
 	.name	= "altera_sysid",
 	.id	= UCLASS_MISC,
 	.of_match = altera_sysid_ids,
-	.ofdata_to_platdata = altera_sysid_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct altera_sysid_platdata),
+	.of_to_plat = altera_sysid_of_to_plat,
+	.plat_auto	= sizeof(struct altera_sysid_plat),
 	.ops	= &altera_sysid_ops,
 };

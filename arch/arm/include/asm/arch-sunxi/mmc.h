@@ -34,12 +34,10 @@ struct sunxi_mmc {
 	u32 cbcr;		/* 0x48 CIU byte count */
 	u32 bbcr;		/* 0x4c BIU byte count */
 	u32 dbgc;		/* 0x50 debug enable */
-	u32 csdc;		/* 0x54 CRC status detect control register */
+	u32 res0;		/* 0x54 reserved */
 	u32 a12a;		/* 0x58 Auto command 12 argument */
 	u32 ntsr;		/* 0x5c	New timing set register */
-	u32 res1[6];
-	u32 hwrst;		/* 0x78 SMC eMMC Hardware Reset Register */
-	u32 res6;		/* 0x7c */
+	u32 res1[8];
 	u32 dmac;		/* 0x80 internal DMA control */
 	u32 dlba;		/* 0x84 internal DMA descr list base address */
 	u32 idst;		/* 0x88 internal DMA status */
@@ -47,19 +45,10 @@ struct sunxi_mmc {
 	u32 chda;		/* 0x90 */
 	u32 cbda;		/* 0x94 */
 	u32 res2[26];
-#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_MACH_SUN50I_H6) || defined(CONFIG_MACH_SUN8IW16) || defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN50IW9) || defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MACH_SUN8IW15) || defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN50IW11)
-	u32 thld;	/* 0x100 */
-	u32 res4[2];    /*  (0x104~0x10b) */
-	u32 dsbd;              /* (0x10c) eMMC4.5 DDR Start Bit Detection Control */
-	u32 res5[12];  /* (0x110~0x13c) */
-#if (!defined(CONFIG_MACH_SUN8IW7))
-	u32 drv_dl;    /* (0x140) drive delay control register*/
-	u32 samp_dl;   /* (0x144) sample delay control register*/
-	u32 ds_dl;     /* (0x148) data strobe delay control register */
-#else
-	u32 res7[3];
-#endif
-	u32 res3[45];
+#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_SUN50I_GEN_H6)
+	u32 res3[17];
+	u32 samp_dl;
+	u32 res4[46];
 #endif
 	u32 fifo;		/* 0x100 / 0x200 FIFO access address */
 };
@@ -84,7 +73,6 @@ struct sunxi_mmc {
 #define SUNXI_MMC_CMD_WRITE		(0x1 << 10)
 #define SUNXI_MMC_CMD_AUTO_STOP		(0x1 << 12)
 #define SUNXI_MMC_CMD_WAIT_PRE_OVER	(0x1 << 13)
-#define SUNXI_MMC_CMD_STOP_ABORT	(0x1 << 14)
 #define SUNXI_MMC_CMD_SEND_INIT_SEQ	(0x1 << 15)
 #define SUNXI_MMC_CMD_UPCLK_ONLY	(0x1 << 21)
 #define SUNXI_MMC_CMD_START		(0x1 << 31)
@@ -131,6 +119,7 @@ struct sunxi_mmc {
 #define SUNXI_MMC_STATUS_CARD_PRESENT		(0x1 << 8)
 #define SUNXI_MMC_STATUS_CARD_DATA_BUSY		(0x1 << 9)
 #define SUNXI_MMC_STATUS_DATA_FSM_BUSY		(0x1 << 10)
+#define SUNXI_MMC_STATUS_FIFO_LEVEL(reg)	(((reg) >> 17) & 0x3fff)
 
 #define SUNXI_MMC_NTSR_MODE_SEL_NEW		(0x1 << 31)
 
@@ -144,6 +133,7 @@ struct sunxi_mmc {
 #define SUNXI_MMC_COMMON_CLK_GATE		(1 << 16)
 #define SUNXI_MMC_COMMON_RESET			(1 << 18)
 
-#define SUNXI_MMMC_1X_2X_MODE_CTL_REG	(0x03000024)
+#define SUNXI_MMC_CAL_DL_SW_EN		(0x1 << 7)
+
 struct mmc *sunxi_mmc_init(int sdc_no);
 #endif /* _SUNXI_MMC_H */

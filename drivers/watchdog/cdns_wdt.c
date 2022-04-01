@@ -8,11 +8,13 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <wdt.h>
 #include <clk.h>
+#include <div64.h>
+#include <dm/device_compat.h>
+#include <linux/err.h>
 #include <linux/io.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 struct cdns_regs {
 	u32 zmr;	/* WD Zero mode register, offset - 0x0 */
@@ -23,7 +25,6 @@ struct cdns_regs {
 
 struct cdns_wdt_priv {
 	bool rst;
-	u32 timeout;
 	struct cdns_regs *regs;
 };
 
@@ -142,12 +143,12 @@ static int cdns_wdt_start(struct udevice *dev, u64 timeout, ulong flags)
 		return -1;
 	}
 
-	debug("%s: CLK_FREQ %ld, timeout %lld\n", __func__, clk_f, timeout);
+	/* Calculate timeout in seconds and restrict to min and max value */
+	do_div(timeout, 1000);
+	timeout = max_t(u64, timeout, CDNS_WDT_MIN_TIMEOUT);
+	timeout = min_t(u64, timeout, CDNS_WDT_MAX_TIMEOUT);
 
-	if ((timeout < CDNS_WDT_MIN_TIMEOUT) ||
-	    (timeout > CDNS_WDT_MAX_TIMEOUT)) {
-		timeout = priv->timeout;
-	}
+	debug("%s: CLK_FREQ %ld, timeout %lld\n", __func__, clk_f, timeout);
 
 	if (clk_f <= CDNS_WDT_CLK_75MHZ) {
 		prescaler = CDNS_WDT_PRESCALE_512;
@@ -214,6 +215,45 @@ static int cdns_wdt_stop(struct udevice *dev)
 }
 
 /**
+ * cdns_wdt_expire_now - Expire the watchdog.
+ *
+ * @dev: Watchdog device
+ * @flags: Driver flags
+ *
+ * Access WDT and configure with minimal counter value to expire ASAP.
+ * Expiration issues system reset. When DEBUG is enabled count should be
+ * bigger to at least see debug message.
+ *
+ * Return: Always 0
+ */
+static int cdns_wdt_expire_now(struct udevice *dev, ulong flags)
+{
+	struct cdns_wdt_priv *priv = dev_get_priv(dev);
+	u32 data, count = 0;
+
+#if defined(DEBUG)
+	count = 0x40; /* Increase the value if you need more time */
+	debug("%s: Expire wdt%u\n", __func__, dev_seq(dev));
+#endif
+
+	cdns_wdt_writereg(&priv->regs->zmr, CDNS_WDT_ZMR_ZKEY_VAL);
+
+	count = (count << 2) & CDNS_WDT_CCR_CRV_MASK;
+
+	/* Write counter access key first to be able write to register */
+	data = count | CDNS_WDT_REGISTER_ACCESS_KEY;
+	cdns_wdt_writereg(&priv->regs->ccr, data);
+
+	data = CDNS_WDT_ZMR_WDEN_MASK |  CDNS_WDT_ZMR_RSTEN_MASK |
+		CDNS_WDT_ZMR_ZKEY_VAL;
+
+	cdns_wdt_writereg(&priv->regs->zmr, data);
+	cdns_wdt_writereg(&priv->regs->restart, CDNS_WDT_RESTART_KEY);
+
+	return 0;
+}
+
+/**
  * cdns_wdt_probe - Probe call for the device.
  *
  * @dev: Handle to the udevice structure.
@@ -222,28 +262,22 @@ static int cdns_wdt_stop(struct udevice *dev)
  */
 static int cdns_wdt_probe(struct udevice *dev)
 {
-	debug("%s: Probing wdt%u\n", __func__, dev->seq);
-
-	cdns_wdt_stop(dev);
+	debug("%s: Probing wdt%u\n", __func__, dev_seq(dev));
 
 	return 0;
 }
 
-static int cdns_wdt_ofdata_to_platdata(struct udevice *dev)
+static int cdns_wdt_of_to_plat(struct udevice *dev)
 {
-	int node = dev_of_offset(dev);
 	struct cdns_wdt_priv *priv = dev_get_priv(dev);
 
-	priv->regs = devfdt_get_addr_ptr(dev);
+	priv->regs = (struct cdns_regs *)dev_read_addr(dev);
 	if (IS_ERR(priv->regs))
 		return PTR_ERR(priv->regs);
 
-	priv->timeout = fdtdec_get_int(gd->fdt_blob, node, "timeout-sec",
-				       CDNS_WDT_DEFAULT_TIMEOUT);
+	priv->rst = dev_read_bool(dev, "reset-on-timeout");
 
-	priv->rst = fdtdec_get_bool(gd->fdt_blob, node, "reset-on-timeout");
-
-	debug("%s: timeout %d, reset %d\n", __func__, priv->timeout, priv->rst);
+	debug("%s: reset %d\n", __func__, priv->rst);
 
 	return 0;
 }
@@ -252,6 +286,7 @@ static const struct wdt_ops cdns_wdt_ops = {
 	.start = cdns_wdt_start,
 	.reset = cdns_wdt_reset,
 	.stop = cdns_wdt_stop,
+	.expire_now = cdns_wdt_expire_now,
 };
 
 static const struct udevice_id cdns_wdt_ids[] = {
@@ -264,7 +299,7 @@ U_BOOT_DRIVER(cdns_wdt) = {
 	.id = UCLASS_WDT,
 	.of_match = cdns_wdt_ids,
 	.probe = cdns_wdt_probe,
-	.priv_auto_alloc_size = sizeof(struct cdns_wdt_priv),
-	.ofdata_to_platdata = cdns_wdt_ofdata_to_platdata,
+	.priv_auto	= sizeof(struct cdns_wdt_priv),
+	.of_to_plat = cdns_wdt_of_to_plat,
 	.ops = &cdns_wdt_ops,
 };

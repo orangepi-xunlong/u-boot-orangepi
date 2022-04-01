@@ -6,8 +6,11 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
+#include <net.h>
 #include <usb.h>
+#include <asm/cache.h>
 #include <dm/device-internal.h>
 
 #include "usb_ether.h"
@@ -271,7 +274,7 @@ int usb_host_eth_scan(int mode)
 	}
 
 	usb_max_eth_dev = 0;
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 	/*
 	 * TODO: We should add U_BOOT_USB_DEVICE() declarations to each USB
 	 * Ethernet driver and then most of this file can be removed.

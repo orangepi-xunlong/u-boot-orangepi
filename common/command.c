@@ -9,23 +9,29 @@
  */
 
 #include <common.h>
+#include <compiler.h>
 #include <command.h>
 #include <console.h>
+#include <env.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <linux/ctype.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * Use puts() instead of printf() to avoid printf buffer overflow
  * for long help messages
  */
 
-int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
-	     int argc, char * const argv[])
+int _do_help(struct cmd_tbl *cmd_start, int cmd_items, struct cmd_tbl *cmdtp,
+	     int flag, int argc, char *const argv[])
 {
 	int i;
 	int rcode = 0;
 
 	if (argc == 1) {	/* show list of commands */
-		cmd_tbl_t *cmd_array[cmd_items];
+		struct cmd_tbl *cmd_array[cmd_items];
 		int i, j, swaps;
 
 		/* Make array of commands from .uboot_cmd section */
@@ -40,7 +46,7 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 			for (j = 0; j < i; ++j) {
 				if (strcmp(cmd_array[j]->name,
 					   cmd_array[j + 1]->name) > 0) {
-					cmd_tbl_t *tmp;
+					struct cmd_tbl *tmp;
 					tmp = cmd_array[j];
 					cmd_array[j] = cmd_array[j + 1];
 					cmd_array[j + 1] = tmp;
@@ -82,11 +88,12 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 }
 
 /* find command table entry for a command */
-cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
+struct cmd_tbl *find_cmd_tbl(const char *cmd, struct cmd_tbl *table,
+			     int table_len)
 {
 #ifdef CONFIG_CMDLINE
-	cmd_tbl_t *cmdtp;
-	cmd_tbl_t *cmdtp_temp = table;	/* Init value */
+	struct cmd_tbl *cmdtp;
+	struct cmd_tbl *cmdtp_temp = table;	/* Init value */
 	const char *p;
 	int len;
 	int n_found = 0;
@@ -116,14 +123,14 @@ cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
 	return NULL;	/* not found or ambiguous command */
 }
 
-cmd_tbl_t *find_cmd(const char *cmd)
+struct cmd_tbl *find_cmd(const char *cmd)
 {
-	cmd_tbl_t *start = ll_entry_start(cmd_tbl_t, cmd);
-	const int len = ll_entry_count(cmd_tbl_t, cmd);
+	struct cmd_tbl *start = ll_entry_start(struct cmd_tbl, cmd);
+	const int len = ll_entry_count(struct cmd_tbl, cmd);
 	return find_cmd_tbl(cmd, start, len);
 }
 
-int cmd_usage(const cmd_tbl_t *cmdtp)
+int cmd_usage(const struct cmd_tbl *cmdtp)
 {
 	printf("%s - %s\n\n", cmdtp->name, cmdtp->usage);
 
@@ -142,31 +149,47 @@ int cmd_usage(const cmd_tbl_t *cmdtp)
 }
 
 #ifdef CONFIG_AUTO_COMPLETE
+static char env_complete_buf[512];
 
-int var_complete(int argc, char * const argv[], char last_char, int maxv, char *cmdv[])
+int var_complete(int argc, char *const argv[], char last_char, int maxv,
+		 char *cmdv[])
 {
-	static char tmp_buf[512];
 	int space;
 
 	space = last_char == '\0' || isblank(last_char);
 
 	if (space && argc == 1)
-		return env_complete("", maxv, cmdv, sizeof(tmp_buf), tmp_buf);
+		return env_complete("", maxv, cmdv, sizeof(env_complete_buf),
+				    env_complete_buf, false);
 
 	if (!space && argc == 2)
-		return env_complete(argv[1], maxv, cmdv, sizeof(tmp_buf), tmp_buf);
+		return env_complete(argv[1], maxv, cmdv,
+				    sizeof(env_complete_buf),
+				    env_complete_buf, false);
 
 	return 0;
 }
 
+static int dollar_complete(int argc, char *const argv[], char last_char,
+			   int maxv, char *cmdv[])
+{
+	/* Make sure the last argument starts with a $. */
+	if (argc < 1 || argv[argc - 1][0] != '$' ||
+	    last_char == '\0' || isblank(last_char))
+		return 0;
+
+	return env_complete(argv[argc - 1], maxv, cmdv, sizeof(env_complete_buf),
+			    env_complete_buf, true);
+}
+
 /*************************************************************************************/
 
-static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv, char *cmdv[])
+int complete_subcmdv(struct cmd_tbl *cmdtp, int count, int argc,
+		     char *const argv[], char last_char,
+		     int maxv, char *cmdv[])
 {
 #ifdef CONFIG_CMDLINE
-	cmd_tbl_t *cmdtp = ll_entry_start(cmd_tbl_t, cmd);
-	const int count = ll_entry_count(cmd_tbl_t, cmd);
-	const cmd_tbl_t *cmdend = cmdtp + count;
+	const struct cmd_tbl *cmdend = cmdtp + count;
 	const char *p;
 	int len, clen;
 	int n_found = 0;
@@ -193,7 +216,7 @@ static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv
 
 	/* more than one arg or one but the start of the next */
 	if (argc > 1 || last_char == '\0' || isblank(last_char)) {
-		cmdtp = find_cmd(argv[0]);
+		cmdtp = find_cmd_tbl(argv[0], cmdtp, count);
 		if (cmdtp == NULL || cmdtp->complete == NULL) {
 			cmdv[0] = NULL;
 			return 0;
@@ -238,6 +261,18 @@ static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv
 #endif
 }
 
+static int complete_cmdv(int argc, char *const argv[], char last_char,
+			 int maxv, char *cmdv[])
+{
+#ifdef CONFIG_CMDLINE
+	return complete_subcmdv(ll_entry_start(struct cmd_tbl, cmd),
+				ll_entry_count(struct cmd_tbl, cmd), argc, argv,
+				last_char, maxv, cmdv);
+#else
+	return 0;
+#endif
+}
+
 static int make_argv(char *s, int argvsz, char *argv[])
 {
 	int argc = 0;
@@ -268,7 +303,8 @@ static int make_argv(char *s, int argvsz, char *argv[])
 	return argc;
 }
 
-static void print_argv(const char *banner, const char *leader, const char *sep, int linemax, char * const argv[])
+static void print_argv(const char *banner, const char *leader, const char *sep,
+		       int linemax, char *const argv[])
 {
 	int ll = leader != NULL ? strlen(leader) : 0;
 	int sl = sep != NULL ? strlen(sep) : 0;
@@ -295,7 +331,7 @@ static void print_argv(const char *banner, const char *leader, const char *sep, 
 	printf("\n");
 }
 
-static int find_common_prefix(char * const argv[])
+static int find_common_prefix(char *const argv[])
 {
 	int i, len;
 	char *anchor, *s, *t;
@@ -329,8 +365,13 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 	int i, j, k, len, seplen, argc;
 	int cnt;
 	char last_char;
+#ifdef CONFIG_CMDLINE_PS_SUPPORT
+	const char *ps_prompt = env_get("PS1");
+#else
+	const char *ps_prompt = CONFIG_SYS_PROMPT;
+#endif
 
-	if (strcmp(prompt, CONFIG_SYS_PROMPT) != 0)
+	if (strcmp(prompt, ps_prompt) != 0)
 		return 0;	/* not in normal console */
 
 	cnt = strlen(buf);
@@ -345,9 +386,14 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 	/* separate into argv */
 	argc = make_argv(tmp_buf, sizeof(argv)/sizeof(argv[0]), argv);
 
-	/* do the completion and return the possible completions */
-	i = complete_cmdv(argc, argv, last_char,
-			  sizeof(cmdv) / sizeof(cmdv[0]), cmdv);
+	/* first try a $ completion */
+	i = dollar_complete(argc, argv, last_char,
+			    sizeof(cmdv) / sizeof(cmdv[0]), cmdv);
+	if (!i) {
+		/* do the completion and return the possible completions */
+		i = complete_cmdv(argc, argv, last_char,
+				  sizeof(cmdv) / sizeof(cmdv[0]), cmdv);
+	}
 
 	/* no match; bell and out */
 	if (i == 0) {
@@ -362,13 +408,21 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 	sep = NULL;
 	seplen = 0;
 	if (i == 1) { /* one match; perfect */
-		k = strlen(argv[argc - 1]);
+		if (last_char != '\0' && !isblank(last_char))
+			k = strlen(argv[argc - 1]);
+		else
+			k = 0;
+
 		s = cmdv[0] + k;
 		len = strlen(s);
 		sep = " ";
 		seplen = 1;
 	} else if (i > 1 && (j = find_common_prefix(cmdv)) != 0) { /* more */
-		k = strlen(argv[argc - 1]);
+		if (last_char != '\0' && !isblank(last_char))
+			k = strlen(argv[argc - 1]);
+		else
+			k = 0;
+
 		j -= k;
 		if (j > 0) {
 			s = cmdv[0] + k;
@@ -423,24 +477,21 @@ int cmd_get_data_size(char* arg, int default_size)
 			return 2;
 		case 'l':
 			return 4;
-#ifdef CONFIG_SYS_SUPPORT_64BIT_DATA
-		case 'q':
-			return 8;
-#endif
 		case 's':
-			return -2;
+			return CMD_DATA_SIZE_STR;
+		case 'q':
+			if (MEM_SUPPORT_64BIT_DATA)
+				return 8;
+			/* no break */
 		default:
-			return -1;
+			return CMD_DATA_SIZE_ERR;
 		}
 	}
 	return default_size;
 }
 #endif
 
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-DECLARE_GLOBAL_DATA_PTR;
-
-void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
+void fixup_cmdtable(struct cmd_tbl *cmdtp, int size)
 {
 	int	i;
 
@@ -450,13 +501,18 @@ void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
 	for (i = 0; i < size; i++) {
 		ulong addr;
 
+		addr = (ulong)(cmdtp->cmd_rep) + gd->reloc_off;
+		cmdtp->cmd_rep =
+			(int (*)(struct cmd_tbl *, int, int,
+				 char * const [], int *))addr;
+
 		addr = (ulong)(cmdtp->cmd) + gd->reloc_off;
 #ifdef DEBUG_COMMANDS
 		printf("Command \"%s\": 0x%08lx => 0x%08lx\n",
 		       cmdtp->name, (ulong)(cmdtp->cmd), addr);
 #endif
-		cmdtp->cmd =
-			(int (*)(struct cmd_tbl_s *, int, int, char * const []))addr;
+		cmdtp->cmd = (int (*)(struct cmd_tbl *, int, int,
+				      char *const []))addr;
 		addr = (ulong)(cmdtp->name) + gd->reloc_off;
 		cmdtp->name = (char *)addr;
 		if (cmdtp->usage) {
@@ -479,7 +535,30 @@ void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
 		cmdtp++;
 	}
 }
-#endif
+
+int cmd_always_repeatable(struct cmd_tbl *cmdtp, int flag, int argc,
+			  char *const argv[], int *repeatable)
+{
+	*repeatable = 1;
+
+	return cmdtp->cmd(cmdtp, flag, argc, argv);
+}
+
+int cmd_never_repeatable(struct cmd_tbl *cmdtp, int flag, int argc,
+			 char *const argv[], int *repeatable)
+{
+	*repeatable = 0;
+
+	return cmdtp->cmd(cmdtp, flag, argc, argv);
+}
+
+int cmd_discard_repeatable(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
+{
+	int repeatable;
+
+	return cmdtp->cmd_rep(cmdtp, flag, argc, argv, &repeatable);
+}
 
 /**
  * Call a command function. This should be the only route in U-Boot to call
@@ -490,23 +569,39 @@ void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
  * @param flag		Some flags normally 0 (see CMD_FLAG_.. above)
  * @param argc		Number of arguments (arg 0 must be the command text)
  * @param argv		Arguments
+ * @param repeatable	Can the command be repeated
  * @return 0 if command succeeded, else non-zero (CMD_RET_...)
  */
-static int cmd_call(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
+		    char *const argv[], int *repeatable)
 {
 	int result;
 
-	result = (cmdtp->cmd)(cmdtp, flag, argc, argv);
+	result = cmdtp->cmd_rep(cmdtp, flag, argc, argv, repeatable);
 	if (result)
 		debug("Command failed, result=%d\n", result);
 	return result;
 }
 
-enum command_ret_t cmd_process(int flag, int argc, char * const argv[],
+enum command_ret_t cmd_process(int flag, int argc, char *const argv[],
 			       int *repeatable, ulong *ticks)
 {
 	enum command_ret_t rc = CMD_RET_SUCCESS;
-	cmd_tbl_t *cmdtp;
+	struct cmd_tbl *cmdtp;
+
+#if defined(CONFIG_SYS_XTRACE)
+	char *xtrace;
+
+	xtrace = env_get("xtrace");
+	if (xtrace) {
+		puts("+");
+		for (int i = 0; i < argc; i++) {
+			puts(" ");
+			puts(argv[i]);
+		}
+		puts("\n");
+	}
+#endif
 
 	/* Look up command in command table */
 	cmdtp = find_cmd(argv[0]);
@@ -533,24 +628,29 @@ enum command_ret_t cmd_process(int flag, int argc, char * const argv[],
 
 	/* If OK so far, then do the command */
 	if (!rc) {
+		int newrep;
+
 		if (ticks)
 			*ticks = get_timer(0);
-		rc = cmd_call(cmdtp, flag, argc, argv);
+		rc = cmd_call(cmdtp, flag, argc, argv, &newrep);
 		if (ticks)
 			*ticks = get_timer(*ticks);
-		*repeatable &= cmdtp->repeatable;
+		*repeatable &= newrep;
 	}
 	if (rc == CMD_RET_USAGE)
 		rc = cmd_usage(cmdtp);
 	return rc;
 }
 
-int cmd_process_error(cmd_tbl_t *cmdtp, int err)
+int cmd_process_error(struct cmd_tbl *cmdtp, int err)
 {
+	if (err == CMD_RET_USAGE)
+		return CMD_RET_USAGE;
+
 	if (err) {
 		printf("Command '%s' failed: Error %d\n", cmdtp->name, err);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 
-	return 0;
+	return CMD_RET_SUCCESS;
 }

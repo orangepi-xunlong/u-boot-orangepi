@@ -31,6 +31,24 @@
 		device_type = "memory";
 		reg = <0x0 0x0 0x0 0x40000000>;
 	};
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+};
+
+&mmc0 {
+	status = "okay";
+	non-removable;
+	bus-width = <8>;
+};
+
+&mmc1 {
+	status = "okay";
+	bus-width = <4>;
 };
 
 &uart2 {

@@ -32,7 +32,7 @@
 				dmas = <0>, <0>;	/*  Do not use DMA for spi0 */
 
 				spi_flash@0 {
-					compatible = "spi-flash";
+					compatible = "jedec,spi-nor";
 					spi-max-frequency = <50000000>;
 					reg = <0>;
 				};
@@ -57,7 +57,7 @@
 			};
 
 			i2c1: i2c@f0018000 {
-				ov2640: camera@0x30 {
+				ov2640: camera@30 {
 					compatible = "ovti,ov2640";
 					reg = <0x30>;
 					pinctrl-names = "default";
@@ -221,8 +221,6 @@
 		compatible = "gpio-keys";
 		status = "okay";
 
-		#address-cells = <1>;
-		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_keys>;
 

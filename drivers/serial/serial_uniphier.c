@@ -7,6 +7,9 @@
 
 #include <common.h>
 #include <dm.h>
+#include <linux/bitfield.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/io.h>
 #include <linux/serial_reg.h>
 #include <linux/sizes.h>
@@ -14,104 +17,140 @@
 #include <serial.h>
 #include <fdtdec.h>
 
-/*
- * Note: Register map is slightly different from that of 16550.
- */
-struct uniphier_serial {
-	u32 rx;			/* In:  Receive buffer */
-#define tx rx			/* Out: Transmit buffer */
-	u32 ier;		/* Interrupt Enable Register */
-	u32 iir;		/* In: Interrupt ID Register */
-	u32 char_fcr;		/* Charactor / FIFO Control Register */
-	u32 lcr_mcr;		/* Line/Modem Control Register */
-#define LCR_SHIFT	8
-#define LCR_MASK	(0xff << (LCR_SHIFT))
-	u32 lsr;		/* In: Line Status Register */
-	u32 msr;		/* In: Modem Status Register */
-	u32 __rsv0;
-	u32 __rsv1;
-	u32 dlr;		/* Divisor Latch Register */
-};
+#define UNIPHIER_UART_REGSHIFT		2
 
-struct uniphier_serial_private_data {
-	struct uniphier_serial __iomem *membase;
+#define UNIPHIER_UART_RX		(0 << (UNIPHIER_UART_REGSHIFT))
+#define UNIPHIER_UART_TX		UNIPHIER_UART_RX
+/* bit[15:8] = CHAR, bit[7:0] = FCR */
+#define UNIPHIER_UART_CHAR_FCR		(3 << (UNIPHIER_UART_REGSHIFT))
+#define   UNIPHIER_UART_FCR_MASK		GENMASK(7, 0)
+/* bit[15:8] = LCR, bit[7:0] = MCR */
+#define UNIPHIER_UART_LCR_MCR		(4 << (UNIPHIER_UART_REGSHIFT))
+#define   UNIPHIER_UART_LCR_MASK		GENMASK(15, 8)
+#define UNIPHIER_UART_LSR		(5 << (UNIPHIER_UART_REGSHIFT))
+/* Divisor Latch Register */
+#define UNIPHIER_UART_DLR		(9 << (UNIPHIER_UART_REGSHIFT))
+
+struct uniphier_serial_priv {
+	void __iomem *membase;
 	unsigned int uartclk;
 };
 
-#define uniphier_serial_port(dev)	\
-	((struct uniphier_serial_private_data *)dev_get_priv(dev))->membase
-
 static int uniphier_serial_setbrg(struct udevice *dev, int baudrate)
 {
-	struct uniphier_serial_private_data *priv = dev_get_priv(dev);
-	struct uniphier_serial __iomem *port = uniphier_serial_port(dev);
-	const unsigned int mode_x_div = 16;
+	struct uniphier_serial_priv *priv = dev_get_priv(dev);
+	static const unsigned int mode_x_div = 16;
 	unsigned int divisor;
 
 	divisor = DIV_ROUND_CLOSEST(priv->uartclk, mode_x_div * baudrate);
 
-	writel(divisor, &port->dlr);
+	/* flush the trasmitter before changing hw setting */
+	while (!(readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_TEMT))
+		;
+
+	writel(divisor, priv->membase + UNIPHIER_UART_DLR);
 
 	return 0;
 }
 
 static int uniphier_serial_getc(struct udevice *dev)
 {
-	struct uniphier_serial __iomem *port = uniphier_serial_port(dev);
+	struct uniphier_serial_priv *priv = dev_get_priv(dev);
 
-	if (!(readl(&port->lsr) & UART_LSR_DR))
+	if (!(readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_DR))
 		return -EAGAIN;
 
-	return readl(&port->rx);
+	return readl(priv->membase + UNIPHIER_UART_RX);
 }
 
 static int uniphier_serial_putc(struct udevice *dev, const char c)
 {
-	struct uniphier_serial __iomem *port = uniphier_serial_port(dev);
+	struct uniphier_serial_priv *priv = dev_get_priv(dev);
 
-	if (!(readl(&port->lsr) & UART_LSR_THRE))
+	if (!(readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_THRE))
 		return -EAGAIN;
 
-	writel(c, &port->tx);
+	writel(c, priv->membase + UNIPHIER_UART_TX);
 
 	return 0;
 }
 
 static int uniphier_serial_pending(struct udevice *dev, bool input)
 {
-	struct uniphier_serial __iomem *port = uniphier_serial_port(dev);
+	struct uniphier_serial_priv *priv = dev_get_priv(dev);
 
 	if (input)
-		return readl(&port->lsr) & UART_LSR_DR;
+		return readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_DR;
 	else
-		return !(readl(&port->lsr) & UART_LSR_THRE);
+		return !(readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_THRE);
 }
+
+/*
+ * SPL does not have enough memory footprint for the clock driver.
+ * Hardcode clock frequency for each SoC.
+ */
+struct uniphier_serial_clk_data {
+	const char *compatible;
+	unsigned int clk_rate;
+};
+
+static const struct uniphier_serial_clk_data uniphier_serial_clk_data[] = {
+	{ .compatible = "socionext,uniphier-ld4",  .clk_rate = 36864000 },
+	{ .compatible = "socionext,uniphier-pro4", .clk_rate = 73728000 },
+	{ .compatible = "socionext,uniphier-sld8", .clk_rate = 80000000 },
+	{ .compatible = "socionext,uniphier-pro5", .clk_rate = 73728000 },
+	{ .compatible = "socionext,uniphier-pxs2", .clk_rate = 88888888 },
+	{ .compatible = "socionext,uniphier-ld6b", .clk_rate = 88888888 },
+	{ .compatible = "socionext,uniphier-ld11", .clk_rate = 58823529 },
+	{ .compatible = "socionext,uniphier-ld20", .clk_rate = 58823529 },
+	{ .compatible = "socionext,uniphier-pxs3", .clk_rate = 58823529 },
+	{ /* sentinel */ },
+};
 
 static int uniphier_serial_probe(struct udevice *dev)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-	struct uniphier_serial_private_data *priv = dev_get_priv(dev);
-	struct uniphier_serial __iomem *port;
+	struct uniphier_serial_priv *priv = dev_get_priv(dev);
+	const struct uniphier_serial_clk_data *clk_data;
+	ofnode root_node;
 	fdt_addr_t base;
 	u32 tmp;
 
-	base = devfdt_get_addr(dev);
+	base = dev_read_addr(dev);
 	if (base == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
-	port = devm_ioremap(dev, base, SZ_64);
-	if (!port)
+	priv->membase = devm_ioremap(dev, base, SZ_64);
+	if (!priv->membase)
 		return -ENOMEM;
 
-	priv->membase = port;
+	root_node = ofnode_path("/");
+	clk_data = uniphier_serial_clk_data;
+	while (clk_data->compatible) {
+		if (ofnode_device_is_compatible(root_node,
+						clk_data->compatible))
+			break;
+		clk_data++;
+	}
 
-	priv->uartclk = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
-				       "clock-frequency", 0);
+	if (WARN_ON(!clk_data->compatible))
+		return -ENOTSUPP;
 
-	tmp = readl(&port->lcr_mcr);
-	tmp &= ~LCR_MASK;
-	tmp |= UART_LCR_WLEN8 << LCR_SHIFT;
-	writel(tmp, &port->lcr_mcr);
+	priv->uartclk = clk_data->clk_rate;
+
+	/* flush the trasmitter before changing hw setting */
+	while (!(readl(priv->membase + UNIPHIER_UART_LSR) & UART_LSR_TEMT))
+		;
+
+	/* enable FIFO */
+	tmp = readl(priv->membase + UNIPHIER_UART_CHAR_FCR);
+	tmp &= ~UNIPHIER_UART_FCR_MASK;
+	tmp |= FIELD_PREP(UNIPHIER_UART_FCR_MASK, UART_FCR_ENABLE_FIFO);
+	writel(tmp, priv->membase + UNIPHIER_UART_CHAR_FCR);
+
+	tmp = readl(priv->membase + UNIPHIER_UART_LCR_MCR);
+	tmp &= ~UNIPHIER_UART_LCR_MASK;
+	tmp |= FIELD_PREP(UNIPHIER_UART_LCR_MASK, UART_LCR_WLEN8);
+	writel(tmp, priv->membase + UNIPHIER_UART_LCR_MCR);
 
 	return 0;
 }
@@ -133,6 +172,6 @@ U_BOOT_DRIVER(uniphier_serial) = {
 	.id = UCLASS_SERIAL,
 	.of_match = uniphier_uart_of_match,
 	.probe = uniphier_serial_probe,
-	.priv_auto_alloc_size = sizeof(struct uniphier_serial_private_data),
+	.priv_auto	= sizeof(struct uniphier_serial_priv),
 	.ops = &uniphier_serial_ops,
 };

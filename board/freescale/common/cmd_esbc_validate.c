@@ -5,10 +5,11 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <fsl_validate.h>
 
-int do_esbc_halt(cmd_tbl_t *cmdtp, int flag, int argc,
-				char * const argv[])
+int do_esbc_halt(struct cmd_tbl *cmdtp, int flag, int argc,
+		 char *const argv[])
 {
 	if (fsl_check_boot_mode_secure() == 0) {
 		printf("Boot Mode is Non-Secure. Not entering spin loop.\n");
@@ -23,8 +24,8 @@ loop:
 }
 
 #ifndef CONFIG_SPL_BUILD
-static int do_esbc_validate(cmd_tbl_t *cmdtp, int flag, int argc,
-				char * const argv[])
+static int do_esbc_validate(struct cmd_tbl *cmdtp, int flag, int argc,
+			    char *const argv[])
 {
 	char *hash_str = NULL;
 	uintptr_t haddr;
@@ -39,7 +40,7 @@ static int do_esbc_validate(cmd_tbl_t *cmdtp, int flag, int argc,
 		hash_str = argv[2];
 
 	/* First argument - header address -32/64bit */
-	haddr = (uintptr_t)simple_strtoul(argv[1], NULL, 16);
+	haddr = (uintptr_t)hextoul(argv[1], NULL);
 
 	/* With esbc_validate command, Image address must be
 	 * part of header. So, the function is called

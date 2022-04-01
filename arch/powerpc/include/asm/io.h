@@ -10,7 +10,10 @@
 #include <asm/byteorder.h>
 
 #ifdef CONFIG_ADDR_MAP
+#include <asm/global_data.h>
 #include <addr_map.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 #define SIO_CONFIG_RA   0x398
@@ -282,23 +285,41 @@ static inline void out_be32(volatile unsigned __iomem *addr, u32 val)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
+#define readb_be(addr)							\
+	__raw_readb((__force unsigned *)(addr))
+#define readw_be(addr)							\
+	be16_to_cpu(__raw_readw((__force unsigned *)(addr)))
+#define readl_be(addr)							\
+	be32_to_cpu(__raw_readl((__force unsigned *)(addr)))
+#define readq_be(addr)							\
+	be64_to_cpu(__raw_readq((__force unsigned *)(addr)))
+
+#define writeb_be(val, addr)						\
+	__raw_writeb((val), (__force unsigned *)(addr))
+#define writew_be(val, addr)						\
+	__raw_writew(cpu_to_be16((val)), (__force unsigned *)(addr))
+#define writel_be(val, addr)						\
+	__raw_writel(cpu_to_be32((val)), (__force unsigned *)(addr))
+#define writeq_be(val, addr)						\
+	__raw_writeq(cpu_to_be64((val)), (__force unsigned *)(addr))
+
 static inline void *phys_to_virt(phys_addr_t paddr)
 {
 #ifdef CONFIG_ADDR_MAP
-	return addrmap_phys_to_virt(paddr);
-#else
-	return (void *)((unsigned long)paddr);
+	if (gd->flags & GD_FLG_RELOC)
+		return addrmap_phys_to_virt(paddr);
 #endif
+	return (void *)((unsigned long)paddr);
 }
 #define phys_to_virt phys_to_virt
 
 static inline phys_addr_t virt_to_phys(void * vaddr)
 {
 #ifdef CONFIG_ADDR_MAP
-	return addrmap_virt_to_phys(vaddr);
-#else
-	return (phys_addr_t)((unsigned long)vaddr);
+	if (gd->flags & GD_FLG_RELOC)
+		return addrmap_virt_to_phys(vaddr);
 #endif
+	return (phys_addr_t)((unsigned long)vaddr);
 }
 #define virt_to_phys virt_to_phys
 

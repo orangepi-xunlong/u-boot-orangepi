@@ -6,8 +6,11 @@
  * HALE electronic GmbH, <helmut.raiger@hale.at>
  */
 #include <common.h>
+#include <env.h>
+#include <log.h>
 #include <malloc.h>
 #include <video_fb.h>
+#include <linux/delay.h>
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -817,7 +820,7 @@ void *video_hw_init(void)
 	if (penv) {
 		/* decide if it is a string */
 		if (penv[0] <= '9') {
-			videomode = (int) simple_strtoul(penv, NULL, 16);
+			videomode = (int)hextoul(penv, NULL);
 			tmp = 1;
 		}
 	} else {

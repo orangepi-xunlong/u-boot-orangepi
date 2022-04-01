@@ -7,19 +7,85 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <dm.h>
+#include <log.h>
 #include <malloc.h>
+#include <time.h>
 #include <timer.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/i8254.h>
 #include <asm/ibmpc.h>
 #include <asm/msr.h>
 #include <asm/u-boot-x86.h>
+#include <linux/delay.h>
 
 #define MAX_NUM_FREQS	9
 
+#define INTEL_FAM6_SKYLAKE_MOBILE	0x4E
+#define INTEL_FAM6_ATOM_GOLDMONT	0x5C /* Apollo Lake */
+#define INTEL_FAM6_SKYLAKE_DESKTOP	0x5E
+#define INTEL_FAM6_ATOM_GOLDMONT_X	0x5F /* Denverton */
+#define INTEL_FAM6_KABYLAKE_MOBILE	0x8E
+#define INTEL_FAM6_KABYLAKE_DESKTOP	0x9E
+
 DECLARE_GLOBAL_DATA_PTR;
+
+/*
+ * native_calibrate_tsc
+ * Determine TSC frequency via CPUID, else return 0.
+ */
+static unsigned long native_calibrate_tsc(void)
+{
+	struct cpuid_result tsc_info;
+	unsigned int crystal_freq;
+
+	if (gd->arch.x86_vendor != X86_VENDOR_INTEL)
+		return 0;
+
+	if (cpuid_eax(0) < 0x15)
+		return 0;
+
+	tsc_info = cpuid(0x15);
+
+	if (tsc_info.ebx == 0 || tsc_info.eax == 0)
+		return 0;
+
+	crystal_freq = tsc_info.ecx / 1000;
+	if (!CONFIG_IS_ENABLED(X86_TSC_TIMER_NATIVE) && !crystal_freq) {
+		switch (gd->arch.x86_model) {
+		case INTEL_FAM6_SKYLAKE_MOBILE:
+		case INTEL_FAM6_SKYLAKE_DESKTOP:
+		case INTEL_FAM6_KABYLAKE_MOBILE:
+		case INTEL_FAM6_KABYLAKE_DESKTOP:
+			crystal_freq = 24000;	/* 24.0 MHz */
+			break;
+		case INTEL_FAM6_ATOM_GOLDMONT_X:
+			crystal_freq = 25000;	/* 25.0 MHz */
+			break;
+		case INTEL_FAM6_ATOM_GOLDMONT:
+			crystal_freq = 19200;	/* 19.2 MHz */
+			break;
+		default:
+			return 0;
+		}
+	}
+
+	return (crystal_freq * tsc_info.ebx / tsc_info.eax) / 1000;
+}
+
+static unsigned long cpu_mhz_from_cpuid(void)
+{
+	if (gd->arch.x86_vendor != X86_VENDOR_INTEL)
+		return 0;
+
+	if (cpuid_eax(0) < 0x16)
+		return 0;
+
+	return cpuid_eax(0x16);
+}
 
 /*
  * According to Intel 64 and IA-32 System Programming Guide,
@@ -307,7 +373,7 @@ void __udelay(unsigned long usec)
 	u64 now = get_ticks();
 	u64 stop;
 
-	stop = now + usec * get_tbclk_mhz();
+	stop = now + (u64)usec * get_tbclk_mhz();
 
 	while ((int64_t)(stop - get_ticks()) > 0)
 #if defined(CONFIG_QEMU) && defined(CONFIG_SMP)
@@ -321,58 +387,91 @@ void __udelay(unsigned long usec)
 #endif
 }
 
-static int tsc_timer_get_count(struct udevice *dev, u64 *count)
+static u64 tsc_timer_get_count(struct udevice *dev)
 {
 	u64 now_tick = rdtsc();
 
-	*count = now_tick - gd->arch.tsc_base;
-
-	return 0;
+	return now_tick - gd->arch.tsc_base;
 }
 
-static void tsc_timer_ensure_setup(void)
+static void tsc_timer_ensure_setup(bool early)
 {
-	if (gd->arch.tsc_base)
+	if (gd->arch.tsc_inited)
 		return;
-	gd->arch.tsc_base = rdtsc();
+	if (IS_ENABLED(CONFIG_X86_TSC_READ_BASE))
+		gd->arch.tsc_base = rdtsc();
 
-	/*
-	 * If there is no clock frequency specified in the device tree,
-	 * calibrate it by ourselves.
-	 */
 	if (!gd->arch.clock_rate) {
 		unsigned long fast_calibrate;
 
-		fast_calibrate = cpu_mhz_from_msr();
-		if (!fast_calibrate) {
-			fast_calibrate = quick_pit_calibrate();
-			if (!fast_calibrate)
-				panic("TSC frequency is ZERO");
-		}
+		fast_calibrate = native_calibrate_tsc();
+		if (fast_calibrate)
+			goto done;
 
-		gd->arch.clock_rate = fast_calibrate * 1000000;
+		/* Reduce code size by dropping other methods */
+		if (CONFIG_IS_ENABLED(X86_TSC_TIMER_NATIVE))
+			panic("no timer");
+
+		fast_calibrate = cpu_mhz_from_cpuid();
+		if (fast_calibrate)
+			goto done;
+
+		fast_calibrate = cpu_mhz_from_msr();
+		if (fast_calibrate)
+			goto done;
+
+		fast_calibrate = quick_pit_calibrate();
+		if (fast_calibrate)
+			goto done;
+
+		if (early)
+			gd->arch.clock_rate = CONFIG_X86_TSC_TIMER_FREQ;
+		else
+			return;
+
+done:
+		if (!gd->arch.clock_rate)
+			gd->arch.clock_rate = fast_calibrate * 1000000;
 	}
+	gd->arch.tsc_inited = true;
 }
 
 static int tsc_timer_probe(struct udevice *dev)
 {
 	struct timer_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
-	tsc_timer_ensure_setup();
-	uc_priv->clock_rate = gd->arch.clock_rate;
+	/* Try hardware calibration first */
+	tsc_timer_ensure_setup(false);
+	if (!gd->arch.clock_rate) {
+		/*
+		 * Use the clock frequency specified in the
+		 * device tree as last resort
+		 */
+		if (!uc_priv->clock_rate)
+			panic("TSC frequency is ZERO");
+	} else {
+		uc_priv->clock_rate = gd->arch.clock_rate;
+	}
 
 	return 0;
 }
 
 unsigned long notrace timer_early_get_rate(void)
 {
-	tsc_timer_ensure_setup();
+	/*
+	 * When TSC timer is used as the early timer, be warned that the timer
+	 * clock rate can only be calibrated via some hardware ways. Specifying
+	 * it in the device tree won't work for the early timer.
+	 */
+	tsc_timer_ensure_setup(true);
 
 	return gd->arch.clock_rate;
 }
 
 u64 notrace timer_early_get_count(void)
 {
+	tsc_timer_ensure_setup(true);
+
 	return rdtsc() - gd->arch.tsc_base;
 }
 
@@ -380,16 +479,17 @@ static const struct timer_ops tsc_timer_ops = {
 	.get_count = tsc_timer_get_count,
 };
 
+#if !CONFIG_IS_ENABLED(OF_PLATDATA)
 static const struct udevice_id tsc_timer_ids[] = {
 	{ .compatible = "x86,tsc-timer", },
 	{ }
 };
+#endif
 
-U_BOOT_DRIVER(tsc_timer) = {
-	.name	= "tsc_timer",
+U_BOOT_DRIVER(x86_tsc_timer) = {
+	.name	= "x86_tsc_timer",
 	.id	= UCLASS_TIMER,
-	.of_match = tsc_timer_ids,
+	.of_match = of_match_ptr(tsc_timer_ids),
 	.probe = tsc_timer_probe,
 	.ops	= &tsc_timer_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

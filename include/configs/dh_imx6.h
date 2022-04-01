@@ -23,7 +23,6 @@
 
 /* SPL */
 #include "imx6_spl.h"			/* common IMX6 SPL configuration */
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x11400
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.imx"
 
 /* Miscellaneous configurable options */
@@ -33,9 +32,6 @@
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
 
-#define CONFIG_BOUNCE_BUFFER
-#define CONFIG_BZIP2
-
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(4 * SZ_1M)
 
@@ -43,52 +39,21 @@
 #define CONFIG_SYS_BOOTCOUNT_BE
 
 /* FEC ethernet */
-#define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		RMII
 #define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		0
 #define CONFIG_ARP_TIMEOUT		200UL
 
-/* Fuses */
-#ifdef CONFIG_CMD_FUSE
-#define CONFIG_MXC_OCOTP
-#endif
-
-/* I2C Configs */
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_MXC
-#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
-#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
-#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
-#define CONFIG_SYS_I2C_SPEED		100000
-
 /* MMC Configs */
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_USDHC_NUM	3
-#define CONFIG_SYS_MMC_ENV_DEV		2 /* 1 = SDHC3, 2 = SDHC4 (eMMC) */
 
 /* SATA Configs */
-#ifdef CONFIG_CMD_SATA
-#define CONFIG_SYS_SATA_MAX_DEVICE	1
-#define CONFIG_DWC_AHSATA_PORT_ID	0
-#define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 #define CONFIG_LBA48
-#endif
-
-/* SPI Flash Configs */
-#ifdef CONFIG_CMD_SF
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		25000000
-#define CONFIG_SF_DEFAULT_MODE		(SPI_MODE_0)
-#endif
 
 /* UART */
-#define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
-#define CONFIG_BAUDRATE			115200
 
 /* USB Configs */
 #ifdef CONFIG_CMD_USB
@@ -101,7 +66,6 @@
 
 /* USB Gadget (DFU, UMS) */
 #if defined(CONFIG_CMD_DFU) || defined(CONFIG_CMD_USB_MASS_STORAGE)
-#define CONFIG_SYS_DFU_DATA_BUF_SIZE	(16 * 1024 * 1024)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
 
 /* USB IDs */
@@ -111,12 +75,11 @@
 #endif
 
 /* Watchdog */
+#if defined(CONFIG_SPL_BUILD)
+#undef CONFIG_WDT
+#undef CONFIG_WATCHDOG
 #define CONFIG_HW_WATCHDOG
-#define CONFIG_IMX_WATCHDOG
-#define CONFIG_WATCHDOG_TIMEOUT_MSECS	60000
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
+#endif
 
 #define CONFIG_LOADADDR			0x12000000
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
@@ -147,7 +110,6 @@
 #endif
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
@@ -160,24 +122,6 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#define CONFIG_SYS_MEMTEST_START	0x10000000
-#define CONFIG_SYS_MEMTEST_END		0x20000000
-#define CONFIG_SYS_MEMTEST_SCRATCH	0x10800000
-
 /* Environment */
-#define CONFIG_ENV_SIZE			(16 * 1024)
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-
-#if defined(CONFIG_ENV_IS_IN_SPI_FLASH)
-#define CONFIG_ENV_OFFSET		(1024 * 1024)
-#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
-#define CONFIG_ENV_OFFSET_REDUND	\
-	(CONFIG_ENV_OFFSET + CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
-#define CONFIG_ENV_SPI_BUS		CONFIG_SF_DEFAULT_BUS
-#define CONFIG_ENV_SPI_CS		CONFIG_SF_DEFAULT_CS
-#define CONFIG_ENV_SPI_MODE		CONFIG_SF_DEFAULT_MODE
-#define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#endif
 
 #endif	/* __DH_IMX6_CONFIG_H */

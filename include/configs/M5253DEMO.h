@@ -6,6 +6,8 @@
 #ifndef _M5253DEMO_H
 #define _M5253DEMO_H
 
+#include <linux/stringify.h>
+
 #define CONFIG_MCFTMR
 
 #define CONFIG_MCFUART
@@ -17,21 +19,10 @@
 /* Configuration for environment
  * Environment is embedded in u-boot in the second sector of the flash
  */
-#ifdef CONFIG_MONITOR_IS_IN_RAM
-#	define CONFIG_ENV_OFFSET		0x4000
-#	define CONFIG_ENV_SECT_SIZE	0x1000
-#else
-#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x4000)
-#	define CONFIG_ENV_SECT_SIZE	0x1000
-#endif
 
 #define LDS_BOARD_TEXT \
 	. = DEFINED(env_offset) ? env_offset : .; \
 	env/embedded.o(.text*);
-
-/*
- * Command line configuration.
- */
 
 #ifdef CONFIG_IDE
 /* ATA */
@@ -79,7 +70,7 @@
 #define CONFIG_HOSTNAME		"M5253DEMO"
 
 /* I2C */
-#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_LEGACY
 #define CONFIG_SYS_I2C_FSL
 #define CONFIG_SYS_FSL_I2C_SPEED	80000
 #define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
@@ -90,9 +81,6 @@
 #define CONFIG_SYS_I2C_PINMUX_SET	(0)
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
-
-#define CONFIG_SYS_MEMTEST_START	0x400
-#define CONFIG_SYS_MEMTEST_END		0x380000
 
 #undef CONFIG_SYS_PLL_BYPASS		/* bypass PLL for test purpose */
 #define CONFIG_SYS_FAST_CLK
@@ -156,14 +144,12 @@
 #define FLASH_SST6401B		0x200
 #define SST_ID_xF6401B		0x236D236D
 
-#undef CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
 /*
  * Unable to use CFI driver, due to incompatible sector erase command by SST.
  * Amd/Atmel use 0x30 for sector erase, SST use 0x50.
  * 0x30 is block erase in SST
  */
-#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CONFIG_SYS_FLASH_SIZE		0x800000
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CONFIG_FLASH_CFI_LEGACY

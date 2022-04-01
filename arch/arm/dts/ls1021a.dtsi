@@ -96,7 +96,46 @@
 			sdhci,auto-cmd12;
 			big-endian;
 			bus-width = <4>;
-			status = "disabled";
+		};
+
+		gpio0: gpio@2300000 {
+			compatible = "fsl,ls1021a-gpio", "fsl,qoriq-gpio";
+			reg = <0x2300000 0x10000>;
+			interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
+		gpio1: gpio@2310000 {
+			compatible = "fsl,ls1021a-gpio", "fsl,qoriq-gpio";
+			reg = <0x2310000 0x10000>;
+			interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
+		gpio2: gpio@2320000 {
+			compatible = "fsl,ls1021a-gpio", "fsl,qoriq-gpio";
+			reg = <0x2320000 0x10000>;
+			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
+		gpio3: gpio@2330000 {
+			compatible = "fsl,ls1021a-gpio", "fsl,qoriq-gpio";
+			reg = <0x2330000 0x10000>;
+			interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 		};
 
 		scfg: scfg@1570000 {
@@ -170,14 +209,12 @@
 		};
 
 		qspi: quadspi@1550000 {
-			compatible = "fsl,vf610-qspi";
+			compatible = "fsl,ls1021a-qspi";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x1550000 0x10000>,
-				<0x40000000 0x4000000>;
+				<0x40000000 0x1000000>;
 			reg-names = "QuadSPI", "QuadSPI-memory";
-			num-cs = <2>;
-			big-endian;
 			status = "disabled";
 		};
 
@@ -351,12 +388,36 @@
 				 <&platform_clk 1>;
 		};
 
+		enet0: ethernet@2d10000 {
+			compatible = "fsl,etsec2";
+			reg = <0x2d10000 0x1000>;
+			status = "disabled";
+		};
+
+		enet1: ethernet@2d50000 {
+			compatible = "fsl,etsec2";
+			reg = <0x2d50000 0x1000>;
+			status = "disabled";
+		};
+
+		enet2: ethernet@2d90000 {
+			compatible = "fsl,etsec2";
+			reg = <0x2d90000 0x1000>;
+			status = "disabled";
+		};
+
 		mdio0: mdio@2d24000 {
-			compatible = "gianfar";
-			device_type = "mdio";
+			compatible = "fsl,etsec2-mdio";
+			reg = <0x2d24000 0x4000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x2d24000 0x4000>;
+		};
+
+		mdio1: mdio@2d64000 {
+			compatible = "fsl,etsec2-mdio";
+			reg = <0x2d64000 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 		};
 
 		usb@8600000 {
@@ -403,6 +464,14 @@
 			bus-range = <0x0 0xff>;
 			ranges = <0x81000000 0x0 0x00000000 0x34020000 0x0 0x00010000   /* downstream I/O */
 				  0x82000000 0x0 0x38000000 0x38000000 0x0 0x08000000>; /* non-prefetchable memory */
+		};
+
+		sata: sata@3200000 {
+			compatible = "fsl,ls1021a-ahci";
+			reg = <0x3200000 0x10000 0x20220520 0x4>;
+			reg-names = "sata-base", "ecc-addr";
+			interrupts = <0 101 4>;
+			status = "disabled";
 		};
 	};
 };

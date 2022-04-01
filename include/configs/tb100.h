@@ -38,7 +38,6 @@
  * Until Realtek PHY driver is fixed fall back to generic PHY driver
  * which implements all required functionality and behaves much more stable.
  *
- * #define CONFIG_PHY_REALTEK
  *
  */
 
@@ -47,16 +46,6 @@
  */
 #define ETH0_BASE_ADDRESS		0xFE100000
 #define ETH1_BASE_ADDRESS		0xFE110000
-
-/*
- * Command line configuration
- */
-
-/*
- * Environment settings
- */
-#define CONFIG_ENV_SIZE			SZ_2K
-#define CONFIG_ENV_OFFSET		0
 
 /*
  * Environment configuration

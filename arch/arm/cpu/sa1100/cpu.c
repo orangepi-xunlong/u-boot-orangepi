@@ -15,6 +15,8 @@
 
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <irq_func.h>
 #include <asm/system.h>
 #include <asm/io.h>
 
@@ -29,7 +31,7 @@ int cleanup_before_linux (void)
 	 * just disable everything that can disturb booting linux
 	 */
 
-	disable_interrupts ();
+	disable_interrupts();
 
 	/* turn off I-cache */
 	icache_disable();
@@ -53,7 +55,7 @@ static void cache_flush (void)
 #define RSRR	0x00
 #define RCSR	0x04
 
-__attribute__((noreturn)) void reset_cpu(ulong addr __attribute__((unused)))
+__attribute__((noreturn)) void reset_cpu(void)
 {
 	/* repeat endlessly */
 	while (1) {

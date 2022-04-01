@@ -22,13 +22,13 @@
 
 #define SUNXI_GPIOS_PER_BANK	SUNXI_GPIO_A_NR
 
-struct sunxi_gpio_platdata {
+struct sunxi_gpio_plat {
 	struct sunxi_gpio *regs;
 	const char *bank_name;	/* Name of bank, e.g. "B" */
 	int gpio_count;
 };
 
-#ifndef CONFIG_DM_GPIO
+#if !CONFIG_IS_ENABLED(DM_GPIO)
 static int sunxi_gpio_output(u32 pin, u32 val)
 {
 	u32 dat;
@@ -116,7 +116,7 @@ int sunxi_name_to_gpio(const char *name)
 		return -1;
 	return group * 32 + pin;
 }
-#endif
+#endif /* DM_GPIO */
 
 int sunxi_name_to_gpio_bank(const char *name)
 {
@@ -132,7 +132,7 @@ int sunxi_name_to_gpio_bank(const char *name)
 	return -1;
 }
 
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 /* TODO(sjg@chromium.org): Remove this function and use device tree */
 int sunxi_name_to_gpio(const char *name)
 {
@@ -158,7 +158,7 @@ int sunxi_name_to_gpio(const char *name)
 
 static int sunxi_gpio_direction_input(struct udevice *dev, unsigned offset)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 
 	sunxi_gpio_set_cfgbank(plat->regs, offset, SUNXI_GPIO_INPUT);
 
@@ -168,7 +168,7 @@ static int sunxi_gpio_direction_input(struct udevice *dev, unsigned offset)
 static int sunxi_gpio_direction_output(struct udevice *dev, unsigned offset,
 				       int value)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 	u32 num = GPIO_NUM(offset);
 
 	sunxi_gpio_set_cfgbank(plat->regs, offset, SUNXI_GPIO_OUTPUT);
@@ -179,7 +179,7 @@ static int sunxi_gpio_direction_output(struct udevice *dev, unsigned offset,
 
 static int sunxi_gpio_get_value(struct udevice *dev, unsigned offset)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 	u32 num = GPIO_NUM(offset);
 	unsigned dat;
 
@@ -192,7 +192,7 @@ static int sunxi_gpio_get_value(struct udevice *dev, unsigned offset)
 static int sunxi_gpio_set_value(struct udevice *dev, unsigned offset,
 				int value)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 	u32 num = GPIO_NUM(offset);
 
 	clrsetbits_le32(&plat->regs->dat, 1 << num, value ? (1 << num) : 0);
@@ -201,7 +201,7 @@ static int sunxi_gpio_set_value(struct udevice *dev, unsigned offset,
 
 static int sunxi_gpio_get_function(struct udevice *dev, unsigned offset)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 	int func;
 
 	func = sunxi_gpio_get_cfgbank(plat->regs, offset);
@@ -260,7 +260,7 @@ static char *gpio_bank_name(int bank)
 
 static int gpio_sunxi_probe(struct udevice *dev)
 {
-	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
+	struct sunxi_gpio_plat *plat = dev_get_plat(dev);
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
 	/* Tell the uclass how many GPIOs we have */
@@ -285,7 +285,7 @@ static int gpio_sunxi_bind(struct udevice *parent)
 {
 	struct sunxi_gpio_soc_data *soc_data =
 		(struct sunxi_gpio_soc_data *)dev_get_driver_data(parent);
-	struct sunxi_gpio_platdata *plat = parent->platdata;
+	struct sunxi_gpio_plat *plat = dev_get_plat(parent);
 	struct sunxi_gpio_reg *ctlr;
 	int bank, ret;
 
@@ -293,9 +293,9 @@ static int gpio_sunxi_bind(struct udevice *parent)
 	if (plat)
 		return 0;
 
-	ctlr = (struct sunxi_gpio_reg *)devfdt_get_addr(parent);
+	ctlr = dev_read_addr_ptr(parent);
 	for (bank = 0; bank < soc_data->no_banks; bank++) {
-		struct sunxi_gpio_platdata *plat;
+		struct sunxi_gpio_plat *plat;
 		struct udevice *dev;
 
 		plat = calloc(1, sizeof(*plat));
@@ -305,11 +305,10 @@ static int gpio_sunxi_bind(struct udevice *parent)
 		plat->bank_name = gpio_bank_name(soc_data->start + bank);
 		plat->gpio_count = SUNXI_GPIOS_PER_BANK;
 
-		ret = device_bind(parent, parent->driver,
-					plat->bank_name, plat, -1, &dev);
+		ret = device_bind(parent, parent->driver, plat->bank_name, plat,
+				  dev_ofnode(parent), &dev);
 		if (ret)
 			return ret;
-		dev_set_of_offset(dev, dev_of_offset(parent));
 	}
 
 	return 0;
@@ -351,15 +350,20 @@ static const struct udevice_id sunxi_gpio_ids[] = {
 	ID("allwinner,sun8i-a83t-pinctrl",	a_all),
 	ID("allwinner,sun8i-h3-pinctrl",	a_all),
 	ID("allwinner,sun8i-r40-pinctrl",	a_all),
+	ID("allwinner,sun8i-v3-pinctrl",	a_all),
 	ID("allwinner,sun8i-v3s-pinctrl",	a_all),
 	ID("allwinner,sun9i-a80-pinctrl",	a_all),
 	ID("allwinner,sun50i-a64-pinctrl",	a_all),
+	ID("allwinner,sun50i-h6-pinctrl",	a_all),
+	ID("allwinner,sun50i-h616-pinctrl",	a_all),
 	ID("allwinner,sun6i-a31-r-pinctrl",	l_2),
 	ID("allwinner,sun8i-a23-r-pinctrl",	l_1),
 	ID("allwinner,sun8i-a83t-r-pinctrl",	l_1),
 	ID("allwinner,sun8i-h3-r-pinctrl",	l_1),
 	ID("allwinner,sun9i-a80-r-pinctrl",	l_3),
 	ID("allwinner,sun50i-a64-r-pinctrl",	l_1),
+	ID("allwinner,sun50i-h6-r-pinctrl",	l_2),
+	ID("allwinner,sun50i-h616-r-pinctrl",	l_1),
 	{ }
 };
 
@@ -371,4 +375,4 @@ U_BOOT_DRIVER(gpio_sunxi) = {
 	.bind	= gpio_sunxi_bind,
 	.probe	= gpio_sunxi_probe,
 };
-#endif
+#endif /* DM_GPIO */

@@ -11,6 +11,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <env.h>
 #include <errno.h>
 #include <pci.h>
 #include <asm/io.h>
@@ -98,7 +99,7 @@ __weak int pci_skip_dev(struct pci_controller *hose, pci_dev_t dev)
 	return 0;
 }
 
-#if !defined(CONFIG_DM_PCI) || defined(CONFIG_DM_PCI_COMPAT)
+#if defined(CONFIG_DM_PCI_COMPAT)
 /* Get a virtual address associated with a BAR region */
 void *pci_map_bar(pci_dev_t pdev, int bar, int flags)
 {
@@ -360,4 +361,4 @@ pci_dev_t pci_find_class(uint find_class, int index)
 
 	return -ENODEV;
 }
-#endif /* !CONFIG_DM_PCI || CONFIG_DM_PCI_COMPAT */
+#endif /* CONFIG_DM_PCI_COMPAT */

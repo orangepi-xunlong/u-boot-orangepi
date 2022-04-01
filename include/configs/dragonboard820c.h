@@ -11,10 +11,7 @@
 #include <linux/sizes.h>
 #include <asm/arch/sysmap-apq8096.h>
 
-#define CONFIG_MISC_INIT_R /* To stop autoboot */
-
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		2
 
 #define PHYS_SDRAM_SIZE			0xC0000000
 #define PHYS_SDRAM_1			0x80000000
@@ -26,7 +23,6 @@
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x7fff0)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x80000)
 #define CONFIG_SYS_BOOTM_LEN		SZ_64M
-#define CONFIG_SYS_LDSCRIPT	"board/qualcomm/dragonboard820c/u-boot.lds"
 
 /* Generic Timer Definitions */
 #define COUNTER_FREQUENCY		19000000
@@ -53,8 +49,6 @@
 	"scriptaddr=0x90000000\0"\
 	"pxefile_addr_r=0x90100000\0"\
 	BOOTENV
-
-#define CONFIG_ENV_SIZE			0x4000
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + SZ_8M)

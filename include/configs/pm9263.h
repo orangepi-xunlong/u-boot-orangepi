@@ -5,7 +5,7 @@
  * Lead Tech Design <www.leadtechdesign.com>
  * Ilko Iliev <www.ronetix.at>
  *
- * Configuation settings for the RONETIX PM9263 board.
+ * Configuration settings for the RONETIX PM9263 board.
  */
 
 #ifndef __CONFIG_H
@@ -26,7 +26,6 @@
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
 
 #define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9263"
-#define CONFIG_ARCH_CPU_INIT
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_PM9263
 
@@ -168,13 +167,10 @@
 #define CONFIG_BOOTP_BOOTFILESIZE	1
 
 /* SDRAM */
-#define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM		0x20000000
 #define PHYS_SDRAM_SIZE		0x04000000	/* 64 megs */
 
 /* NOR flash, if populated */
-#define CONFIG_SYS_FLASH_CFI		1
-#define CONFIG_FLASH_CFI_DRIVER		1
 #define PHYS_FLASH_1			0x10000000
 #define CONFIG_SYS_FLASH_BASE		PHYS_FLASH_1
 #define CONFIG_SYS_MAX_FLASH_SECT	256
@@ -182,7 +178,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x40000000
 #define CONFIG_SYS_NAND_DBW_8		1
@@ -195,7 +190,6 @@
 
 #endif
 
-#define CONFIG_JFFS2_CMDLINE		1
 #define CONFIG_JFFS2_NAND		1
 #define CONFIG_JFFS2_DEV		"nand0" /* NAND device jffs2 lives on */
 #define CONFIG_JFFS2_PART_OFFSET	0	/* start of jffs2 partition */
@@ -210,12 +204,6 @@
 					 AT91_MATRIX_SCFG_DEFMSTR_TYPE_FIXED	| \
 					 AT91_MATRIX_SCFG_SLOT_CYCLE(255))
 
-/* Ethernet */
-#define CONFIG_MACB			1
-#define CONFIG_RMII			1
-#define CONFIG_NET_RETRY_COUNT		20
-#define CONFIG_RESET_PHY_R		1
-
 /* USB */
 #define CONFIG_USB_ATMEL
 #define CONFIG_USB_ATMEL_CLK_SEL_PLLB
@@ -227,9 +215,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR			0x22000000	/* load address */
 
-#define CONFIG_SYS_MEMTEST_START		PHYS_SDRAM
-#define CONFIG_SYS_MEMTEST_END			0x23e00000
-
 #define CONFIG_SYS_USE_FLASH	1
 #undef CONFIG_SYS_USE_DATAFLASH
 #undef CONFIG_SYS_USE_NANDFLASH
@@ -237,10 +222,6 @@
 #ifdef CONFIG_SYS_USE_DATAFLASH
 
 /* bootstrap + u-boot + env + linux in dataflash on CS0 */
-#define CONFIG_ENV_OFFSET	0x4200
-#define CONFIG_ENV_SIZE		0x4200
-#define CONFIG_ENV_SECT_SIZE	0x210
-#define CONFIG_ENV_SPI_MAX_HZ	15000000
 #define CONFIG_BOOTCOMMAND	"sf probe 0; " \
 				"sf read 0x22000000 0x84000 0x294000; " \
 				"bootm 0x22000000"
@@ -248,18 +229,9 @@
 #elif defined(CONFIG_SYS_USE_NANDFLASH) /* CFG_USE_NANDFLASH */
 
 /* bootstrap + u-boot + env + linux in nandflash */
-#define CONFIG_ENV_OFFSET		0x60000
-#define CONFIG_ENV_OFFSET_REDUND	0x80000
-#define CONFIG_ENV_SIZE		0x20000		/* 1 sector = 128 kB */
 #define CONFIG_BOOTCOMMAND	"nand read 0x22000000 0xA0000 0x200000; bootm"
 
 #elif defined(CONFIG_SYS_USE_FLASH) /* CFG_USE_FLASH */
-
-#define CONFIG_ENV_OFFSET	0x40000
-#define CONFIG_ENV_SECT_SIZE	0x10000
-#define	CONFIG_ENV_SIZE		0x10000
-#define CONFIG_ENV_OVERWRITE	1
-
 /* JFFS Partition offset set */
 #define CONFIG_SYS_JFFS2_FIRST_BANK	0
 #define CONFIG_SYS_JFFS2_NUM_BANKS	1

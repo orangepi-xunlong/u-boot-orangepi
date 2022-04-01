@@ -8,9 +8,19 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <fastboot.h>
+#include <fdt_support.h>
+#include <image.h>
+#include <init.h>
+#include <malloc.h>
+#include <net.h>
 #include <palmas.h>
 #include <sata.h>
+#include <serial.h>
 #include <usb.h>
+#include <errno.h>
+#include <asm/global_data.h>
 #include <asm/omap_common.h>
 #include <asm/omap_sec_common.h>
 #include <asm/emif.h>
@@ -23,16 +33,22 @@
 #include <asm/arch/sata.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/omap.h>
-#include <environment.h>
 #include <usb.h>
 #include <linux/usb/gadget.h>
 #include <dwc3-uboot.h>
 #include <dwc3-omap-uboot.h>
 #include <ti-usb-phy-uboot.h>
 #include <mmc.h>
+#include <dm/uclass.h>
+#include <hang.h>
 
 #include "../common/board_detect.h"
+#include "../common/cape_detect.h"
 #include "mux_data.h"
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+static int board_bootmode_has_emmc(void);
+#endif
 
 #define board_is_x15()		board_ti_is("BBRDX15_")
 #define board_is_x15_revb1()	(board_ti_is("BBRDX15_") && \
@@ -46,6 +62,11 @@
 #define board_is_am574x_idk()	board_ti_is("AM574IDK")
 #define board_is_am572x_idk()	board_ti_is("AM572IDK")
 #define board_is_am571x_idk()	board_ti_is("AM571IDK")
+#define board_is_bbai()		board_ti_is("BBONE-AI")
+
+#define board_is_ti_idk()	board_is_am574x_idk() || \
+				board_is_am572x_idk() || \
+				board_is_am571x_idk()
 
 #ifdef CONFIG_DRIVER_TI_CPSW
 #include <cpsw.h>
@@ -54,8 +75,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #define GPIO_ETH_LCD		GPIO_TO_PIN(2, 22)
-/* GPIO 7_11 */
-#define GPIO_DDR_VTT_EN 203
+#define GPIO_DDR_VTT_EN		GPIO_TO_PIN(7, 11)
 
 /* Touch screen controller to identify the LCD */
 #define OSD_TS_FT_BUS_ADDRESS	0
@@ -95,12 +115,19 @@ static const struct dmm_lisa_map_regs am574x_idk_lisa_regs = {
 	.is_ma_present  = 0x1
 };
 
+static const struct dmm_lisa_map_regs bbai_lisa_regs = {
+	.dmm_lisa_map_3 = 0x80640100,
+	.is_ma_present  = 0x1
+};
+
 void emif_get_dmm_regs(const struct dmm_lisa_map_regs **dmm_lisa_regs)
 {
 	if (board_is_am571x_idk())
 		*dmm_lisa_regs = &am571x_idk_lisa_regs;
 	else if (board_is_am574x_idk())
 		*dmm_lisa_regs = &am574x_idk_lisa_regs;
+	else if (board_is_bbai())
+		*dmm_lisa_regs = &bbai_lisa_regs;
 	else
 		*dmm_lisa_regs = &beagle_x15_lisa_regs;
 }
@@ -504,6 +531,14 @@ void do_board_detect(void)
 				  CONFIG_EEPROM_CHIP_ADDRESS);
 	if (rc)
 		printf("ti_i2c_eeprom_init failed %d\n", rc);
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+	rc = board_bootmode_has_emmc();
+	if (!rc)
+		rc = ti_emmc_boardid_get();
+	if (rc)
+		printf("ti_emmc_boardid_get failed %d\n", rc);
+#endif
 }
 
 #else	/* CONFIG_SPL_BUILD */
@@ -519,6 +554,14 @@ void do_board_detect(void)
 	if (rc)
 		printf("ti_i2c_eeprom_init failed %d\n", rc);
 
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+	rc = board_bootmode_has_emmc();
+	if (!rc)
+		rc = ti_emmc_boardid_get();
+	if (rc)
+		printf("ti_emmc_boardid_get failed %d\n", rc);
+#endif
+
 	if (board_is_x15())
 		bname = "BeagleBoard X15";
 	else if (board_is_am572x_evm())
@@ -529,6 +572,8 @@ void do_board_detect(void)
 		bname = "AM572x IDK";
 	else if (board_is_am571x_idk())
 		bname = "AM571x IDK";
+	else if (board_is_bbai())
+		bname = "BeagleBone AI";
 
 	if (bname)
 		snprintf(sysinfo.board_string, SYSINFO_BOARD_NAME_MAX_LEN,
@@ -563,6 +608,8 @@ static void setup_board_eeprom_env(void)
 		name = "am572x_idk";
 	} else if (board_is_am571x_idk()) {
 		name = "am571x_idk";
+	} else if (board_is_bbai()) {
+		name = "am5729_beagleboneai";
 	} else {
 		printf("Unidentified board claims %s in eeprom header\n",
 		       board_ti_get_name());
@@ -623,42 +670,39 @@ void am57x_idk_lcd_detect(void)
 {
 	int r = -ENODEV;
 	char *idk_lcd = "no";
-	uint8_t buf = 0;
+	struct udevice *dev;
 
 	/* Only valid for IDKs */
-	if (board_is_x15() || board_is_am572x_evm())
+	if (!board_is_ti_idk())
 		return;
 
 	/* Only AM571x IDK has gpio control detect.. so check that */
 	if (board_is_am571x_idk() && !am571x_idk_needs_lcd())
 		goto out;
 
-	r = i2c_set_bus_num(OSD_TS_FT_BUS_ADDRESS);
+	r = i2c_get_chip_for_busnum(OSD_TS_FT_BUS_ADDRESS,
+				    OSD_TS_FT_CHIP_ADDRESS, 1, &dev);
 	if (r) {
-		printf("%s: Failed to set bus address to %d: %d\n",
-		       __func__, OSD_TS_FT_BUS_ADDRESS, r);
-		goto out;
-	}
-	r = i2c_probe(OSD_TS_FT_CHIP_ADDRESS);
-	if (r) {
+		printf("%s: Failed to get I2C device %d/%d (ret %d)\n",
+		       __func__, OSD_TS_FT_BUS_ADDRESS, OSD_TS_FT_CHIP_ADDRESS,
+		       r);
 		/* AM572x IDK has no explicit settings for optional LCD kit */
-		if (board_is_am571x_idk()) {
+		if (board_is_am571x_idk())
 			printf("%s: Touch screen detect failed: %d!\n",
 			       __func__, r);
-		}
 		goto out;
 	}
 
 	/* Read FT ID */
-	r = i2c_read(OSD_TS_FT_CHIP_ADDRESS, OSD_TS_FT_REG_ID, 1, &buf, 1);
-	if (r) {
+	r = dm_i2c_reg_read(dev, OSD_TS_FT_REG_ID);
+	if (r < 0) {
 		printf("%s: Touch screen ID read %d:0x%02x[0x%02x] failed:%d\n",
 		       __func__, OSD_TS_FT_BUS_ADDRESS, OSD_TS_FT_CHIP_ADDRESS,
 		       OSD_TS_FT_REG_ID, r);
 		goto out;
 	}
 
-	switch (buf) {
+	switch (r) {
 	case OSD_TS_FT_ID_5606:
 		idk_lcd = "osd101t2045";
 		break;
@@ -667,18 +711,44 @@ void am57x_idk_lcd_detect(void)
 		break;
 	default:
 		printf("%s: Unidentifed Touch screen ID 0x%02x\n",
-		       __func__, buf);
+		       __func__, r);
 		/* we will let default be "no lcd" */
 	}
 out:
 	env_set("idk_lcd", idk_lcd);
+
+	/*
+	 * On AM571x_IDK, no Display with J51 set to LCD is considered as an
+	 * invalid configuration and we prevent boot to get user attention.
+	 */
+	if (board_is_am571x_idk() && am571x_idk_needs_lcd() &&
+	    !strncmp(idk_lcd, "no", 2)) {
+		printf("%s: Invalid HW configuration: display not detected/supported but J51 is set. Remove J51 to boot without display.\n",
+		       __func__);
+		hang();
+	}
+
 	return;
 }
+
+#if CONFIG_IS_ENABLED(DM_USB) && CONFIG_IS_ENABLED(OF_CONTROL)
+static int device_okay(const char *path)
+{
+	int node;
+
+	node = fdt_path_offset(gd->fdt_blob, path);
+	if (node < 0)
+		return 0;
+
+	return fdtdec_get_is_enabled(gd->fdt_blob, node);
+}
+#endif
 
 int board_late_init(void)
 {
 	setup_board_eeprom_env();
 	u8 val;
+	struct udevice *dev;
 
 	/*
 	 * DEV_CTRL.DEV_ON = 1 please - else palmas switches off in 8 seconds
@@ -710,10 +780,22 @@ int board_late_init(void)
 
 	am57x_idk_lcd_detect();
 
+	/* Just probe the potentially supported cdce913 device */
+	uclass_get_device(UCLASS_CLK, 0, &dev);
+
+	if (board_is_bbai())
+		env_set("console", "ttyS0,115200n8");
+
 #if !defined(CONFIG_SPL_BUILD)
 	board_ti_set_ethaddr(2);
 #endif
 
+#if CONFIG_IS_ENABLED(DM_USB) && CONFIG_IS_ENABLED(OF_CONTROL)
+	if (device_okay("/ocp/omap_dwc3_1@48880000"))
+		enable_usb_clocks(0);
+	if (device_okay("/ocp/omap_dwc3_2@488c0000"))
+		enable_usb_clocks(1);
+#endif
 	return 0;
 }
 
@@ -721,6 +803,11 @@ void set_muxconf_regs(void)
 {
 	do_set_mux32((*ctrl)->control_padconf_core_base,
 		     early_padconf, ARRAY_SIZE(early_padconf));
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+	do_set_mux32((*ctrl)->control_padconf_core_base,
+		     emmc_padconf, ARRAY_SIZE(emmc_padconf));
+#endif
 }
 
 #ifdef CONFIG_IODELAY_RECALIBRATION
@@ -746,6 +833,11 @@ void recalibrate_iodelay(void)
 		pconf_sz = ARRAY_SIZE(core_padconf_array_essential_am571x_idk);
 		iod = iodelay_cfg_array_am571x_idk;
 		iod_sz = ARRAY_SIZE(iodelay_cfg_array_am571x_idk);
+	} else if (board_is_bbai()) {
+		pconf = core_padconf_array_essential_bbai;
+		pconf_sz = ARRAY_SIZE(core_padconf_array_essential_bbai);
+		iod = iodelay_cfg_array_bbai;
+		iod_sz = ARRAY_SIZE(iodelay_cfg_array_bbai);
 	} else {
 		/* Common for X15/GPEVM */
 		pconf = core_padconf_array_essential_x15;
@@ -809,7 +901,7 @@ err:
 #endif
 
 #if defined(CONFIG_MMC)
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);
@@ -863,93 +955,6 @@ int spl_start_uboot(void)
 	return 0;
 }
 #endif
-
-#ifdef CONFIG_USB_DWC3
-static struct dwc3_device usb_otg_ss2 = {
-	.maximum_speed = USB_SPEED_HIGH,
-	.base = DRA7_USB_OTG_SS2_BASE,
-	.tx_fifo_resize = false,
-	.index = 1,
-};
-
-static struct dwc3_omap_device usb_otg_ss2_glue = {
-	.base = (void *)DRA7_USB_OTG_SS2_GLUE_BASE,
-	.utmi_mode = DWC3_OMAP_UTMI_MODE_SW,
-	.index = 1,
-};
-
-static struct ti_usb_phy_device usb_phy2_device = {
-	.usb2_phy_power = (void *)DRA7_USB2_PHY2_POWER,
-	.index = 1,
-};
-
-int usb_gadget_handle_interrupts(int index)
-{
-	u32 status;
-
-	status = dwc3_omap_uboot_interrupt_status(index);
-	if (status)
-		dwc3_uboot_handle_interrupt(index);
-
-	return 0;
-}
-#endif /* CONFIG_USB_DWC3 */
-
-#if defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP)
-int board_usb_init(int index, enum usb_init_type init)
-{
-	enable_usb_clocks(index);
-	switch (index) {
-	case 0:
-		if (init == USB_INIT_DEVICE) {
-			printf("port %d can't be used as device\n", index);
-			disable_usb_clocks(index);
-			return -EINVAL;
-		}
-		break;
-	case 1:
-		if (init == USB_INIT_DEVICE) {
-#ifdef CONFIG_USB_DWC3
-			usb_otg_ss2.dr_mode = USB_DR_MODE_PERIPHERAL;
-			usb_otg_ss2_glue.vbus_id_status = OMAP_DWC3_VBUS_VALID;
-			ti_usb_phy_uboot_init(&usb_phy2_device);
-			dwc3_omap_uboot_init(&usb_otg_ss2_glue);
-			dwc3_uboot_init(&usb_otg_ss2);
-#endif
-		} else {
-			printf("port %d can't be used as host\n", index);
-			disable_usb_clocks(index);
-			return -EINVAL;
-		}
-
-		break;
-	default:
-		printf("Invalid Controller Index\n");
-	}
-
-	return 0;
-}
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-#ifdef CONFIG_USB_DWC3
-	switch (index) {
-	case 0:
-	case 1:
-		if (init == USB_INIT_DEVICE) {
-			ti_usb_phy_uboot_exit(index);
-			dwc3_uboot_exit(index);
-			dwc3_omap_uboot_exit(index);
-		}
-		break;
-	default:
-		printf("Invalid Controller Index\n");
-	}
-#endif
-	disable_usb_clocks(index);
-	return 0;
-}
-#endif /* defined(CONFIG_USB_DWC3) || defined(CONFIG_USB_XHCI_OMAP) */
 
 #ifdef CONFIG_DRIVER_TI_CPSW
 
@@ -1025,7 +1030,7 @@ static void u64_to_mac(u64 addr, u8 mac[6])
 	mac[0] = addr >> 40;
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int ret;
 	uint8_t mac_addr[6];
@@ -1131,7 +1136,7 @@ int board_early_init_f(void)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -1161,14 +1166,41 @@ int board_fit_config_name_match(const char *name)
 		return 0;
 	} else if (board_is_am571x_idk() && !strcmp(name, "am571x-idk")) {
 		return 0;
+	} else if (board_is_bbai() && !strcmp(name, "am5729-beagleboneai")) {
+		return 0;
 	}
 
 	return -1;
 }
 #endif
 
+#if CONFIG_IS_ENABLED(FASTBOOT) && !CONFIG_IS_ENABLED(ENV_IS_NOWHERE)
+int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
+{
+	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
+		return -ENOTSUPP;
+
+	printf("Setting reboot to fastboot flag ...\n");
+	env_set("dofastboot", "1");
+	env_save();
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+static int board_bootmode_has_emmc(void)
+{
+	/* Check that boot mode is same as BBAI */
+	if (gd->arch.omap_boot_mode != 2)
+		return -EIO;
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_TI_SECURE_DEVICE
-void board_fit_image_post_process(void **p_image, size_t *p_size)
+void board_fit_image_post_process(const void *fit, int node, void **p_image,
+				  size_t *p_size)
 {
 	secure_boot_verify_image(p_image, p_size);
 }

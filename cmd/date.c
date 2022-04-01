@@ -12,6 +12,7 @@
 #include <dm.h>
 #include <rtc.h>
 #include <i2c.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -29,7 +30,8 @@ int mk_date (const char *, struct rtc_time *);
 
 static struct rtc_time default_tm = { 0, 0, 0, 1, 1, 2000, 6, 0, 0 };
 
-static int do_date(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_date(struct cmd_tbl *cmdtp, int flag, int argc,
+		   char *const argv[])
 {
 	struct rtc_time tm;
 	int rcode = 0;
@@ -39,12 +41,15 @@ static int do_date(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #ifdef CONFIG_DM_RTC
 	struct udevice *dev;
 
-	rcode = uclass_get_device(UCLASS_RTC, 0, &dev);
+	rcode = uclass_get_device_by_seq(UCLASS_RTC, 0, &dev);
 	if (rcode) {
-		printf("Cannot find RTC: err=%d\n", rcode);
-		return CMD_RET_FAILURE;
+		rcode = uclass_get_device(UCLASS_RTC, 0, &dev);
+		if (rcode) {
+			printf("Cannot find RTC: err=%d\n", rcode);
+			return CMD_RET_FAILURE;
+		}
 	}
-#elif defined(CONFIG_SYS_I2C)
+#elif defined(CONFIG_SYS_I2C_LEGACY)
 	old_bus = i2c_get_bus_num();
 	i2c_set_bus_num(CONFIG_SYS_RTC_BUS_NUM);
 #else
@@ -117,7 +122,7 @@ static int do_date(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	/* switch back to original I2C bus */
-#ifdef CONFIG_SYS_I2C
+#ifdef CONFIG_SYS_I2C_LEGACY
 	i2c_set_bus_num(old_bus);
 #elif !defined(CONFIG_DM_RTC)
 	I2C_SET_BUS(old_bus);
@@ -159,18 +164,18 @@ int mk_date (const char *datestr, struct rtc_time *tmp)
 	int len, val;
 	char *ptr;
 
-	ptr = strchr (datestr,'.');
-	len = strlen (datestr);
+	ptr = strchr(datestr, '.');
+	len = strlen(datestr);
 
 	/* Set seconds */
 	if (ptr) {
 		int sec;
 
-		*ptr++ = '\0';
+		ptr++;
 		if ((len - (ptr - datestr)) != 2)
 			return (-1);
 
-		len = strlen (datestr);
+		len -= 3;
 
 		if (cnvrt2 (ptr, &sec))
 			return (-1);

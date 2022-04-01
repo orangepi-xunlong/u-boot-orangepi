@@ -17,6 +17,7 @@
 #define MXC_CPU_MX6Q		0x63
 #define MXC_CPU_MX6UL		0x64
 #define MXC_CPU_MX6ULL		0x65
+#define MXC_CPU_MX6ULZ		0x6B
 #define MXC_CPU_MX6SOLO		0x66 /* dummy */
 #define MXC_CPU_MX6SLL		0x67
 #define MXC_CPU_MX6D		0x6A
@@ -24,22 +25,61 @@
 #define MXC_CPU_MX6QP		0x69
 #define MXC_CPU_MX7S		0x71 /* dummy ID */
 #define MXC_CPU_MX7D		0x72
-#define MXC_CPU_MX8MQ		0x82
+#define MXC_CPU_IMX8MQ		0x82
+#define MXC_CPU_IMX8MD		0x83 /* dummy ID */
+#define MXC_CPU_IMX8MQL     0x84 /* dummy ID */
+#define MXC_CPU_IMX8MM		0x85 /* dummy ID */
+#define MXC_CPU_IMX8MML		0x86 /* dummy ID */
+#define MXC_CPU_IMX8MMD		0x87 /* dummy ID */
+#define MXC_CPU_IMX8MMDL	0x88 /* dummy ID */
+#define MXC_CPU_IMX8MMS		0x89 /* dummy ID */
+#define MXC_CPU_IMX8MMSL	0x8a /* dummy ID */
+#define MXC_CPU_IMX8MN		0x8b /* dummy ID */
+#define MXC_CPU_IMX8MND		0x8c /* dummy ID */
+#define MXC_CPU_IMX8MNS		0x8d /* dummy ID */
+#define MXC_CPU_IMX8MNL		0x8e /* dummy ID */
+#define MXC_CPU_IMX8MNDL		0x8f /* dummy ID */
+#define MXC_CPU_IMX8MNSL		0x181 /* dummy ID */
+#define MXC_CPU_IMX8MNUQ		0x182 /* dummy ID */
+#define MXC_CPU_IMX8MNUD		0x183 /* dummy ID */
+#define MXC_CPU_IMX8MNUS		0x184 /* dummy ID */
+#define MXC_CPU_IMX8MP		0x185/* dummy ID */
+#define MXC_CPU_IMX8MP6		0x186 /* dummy ID */
+#define MXC_CPU_IMX8MPL		0x187 /* dummy ID */
+#define MXC_CPU_IMX8MPD		0x188 /* dummy ID */
+#define MXC_CPU_IMX8QXP_A0	0x90 /* dummy ID */
+#define MXC_CPU_IMX8QM		0x91 /* dummy ID */
+#define MXC_CPU_IMX8QXP		0x92 /* dummy ID */
+
+#define MXC_CPU_IMX8ULP		0xA1 /* dummy ID */
+
+#define MXC_CPU_IMXRT1020	0xB4 /* dummy ID */
+#define MXC_CPU_IMXRT1050	0xB6 /* dummy ID */
+
 #define MXC_CPU_MX7ULP		0xE1 /* Temporally hard code */
 #define MXC_CPU_VF610		0xF6 /* dummy ID */
 
 #define MXC_SOC_MX6		0x60
 #define MXC_SOC_MX7		0x70
-#define MXC_SOC_MX8M		0x80
+#define MXC_SOC_IMX8M		0x80
+#define MXC_SOC_IMX8		0x90 /* dummy */
+#define MXC_SOC_IMXRT		0xB0 /* dummy */
 #define MXC_SOC_MX7ULP		0xE0 /* dummy */
 
 #define CHIP_REV_1_0            0x10
 #define CHIP_REV_1_1            0x11
 #define CHIP_REV_1_2            0x12
+#define CHIP_REV_1_3            0x13
 #define CHIP_REV_1_5            0x15
 #define CHIP_REV_2_0            0x20
+#define CHIP_REV_2_1            0x21
+#define CHIP_REV_2_2            0x22
 #define CHIP_REV_2_5            0x25
 #define CHIP_REV_3_0            0x30
+
+#define CHIP_REV_A		0x0
+#define CHIP_REV_B		0x1
+#define CHIP_REV_C		0x2
 
 #define BOARD_REV_1_0           0x0
 #define BOARD_REV_2_0           0x1

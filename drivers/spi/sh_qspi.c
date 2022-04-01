@@ -13,6 +13,7 @@
 #include <wait_bit.h>
 #include <asm/arch/rmobile.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 /* SH QSPI register bit masks <REG>_<BIT> */
 #define SPCR_MSTR	0x08
@@ -67,7 +68,7 @@ struct sh_qspi_regs {
 };
 
 struct sh_qspi_slave {
-#ifndef CONFIG_DM_SPI
+#if !CONFIG_IS_ENABLED(DM_SPI)
 	struct spi_slave	slave;
 #endif
 	struct sh_qspi_regs	*regs;
@@ -222,7 +223,7 @@ static int sh_qspi_xfer_common(struct sh_qspi_slave *ss, unsigned int bitlen,
 	return ret;
 }
 
-#ifndef CONFIG_DM_SPI
+#if !CONFIG_IS_ENABLED(DM_SPI)
 static inline struct sh_qspi_slave *to_sh_qspi(struct spi_slave *slave)
 {
 	return container_of(slave, struct sh_qspi_slave, slave);
@@ -301,7 +302,7 @@ static int sh_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 			const void *dout, void *din, unsigned long flags)
 {
 	struct udevice *bus = dev->parent;
-	struct sh_qspi_slave *ss = dev_get_platdata(bus);
+	struct sh_qspi_slave *ss = dev_get_plat(bus);
 
 	return sh_qspi_xfer_common(ss, bitlen, dout, din, flags);
 }
@@ -320,16 +321,16 @@ static int sh_qspi_set_mode(struct udevice *dev, uint mode)
 
 static int sh_qspi_probe(struct udevice *dev)
 {
-	struct sh_qspi_slave *ss = dev_get_platdata(dev);
+	struct sh_qspi_slave *ss = dev_get_plat(dev);
 
 	sh_qspi_init(ss);
 
 	return 0;
 }
 
-static int sh_qspi_ofdata_to_platdata(struct udevice *dev)
+static int sh_qspi_of_to_plat(struct udevice *dev)
 {
-	struct sh_qspi_slave *plat = dev_get_platdata(dev);
+	struct sh_qspi_slave *plat = dev_get_plat(dev);
 
 	plat->regs = (struct sh_qspi_regs *)dev_read_addr(dev);
 
@@ -352,8 +353,8 @@ U_BOOT_DRIVER(sh_qspi) = {
 	.id		= UCLASS_SPI,
 	.of_match	= sh_qspi_ids,
 	.ops		= &sh_qspi_ops,
-	.ofdata_to_platdata = sh_qspi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct sh_qspi_slave),
+	.of_to_plat = sh_qspi_of_to_plat,
+	.plat_auto	= sizeof(struct sh_qspi_slave),
 	.probe		= sh_qspi_probe,
 };
 #endif

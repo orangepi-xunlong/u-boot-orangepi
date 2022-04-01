@@ -14,6 +14,10 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
@@ -53,16 +57,6 @@ int timer_init(void)
 /*
  * timer without interrupts
  */
-ulong get_timer(ulong base)
-{
-	return get_timer_masked() - base;
-}
-
-void __udelay(unsigned long usec)
-{
-	udelay_masked(usec);
-}
-
 ulong get_timer_raw(void)
 {
 	at91_tc_t *tc = (at91_tc_t *) ATMEL_BASE_TC;
@@ -82,12 +76,17 @@ ulong get_timer_raw(void)
 	return gd->arch.tbl;
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	return get_timer_raw()/TIMER_LOAD_VAL;
 }
 
-void udelay_masked(unsigned long usec)
+ulong get_timer(ulong base)
+{
+	return get_timer_masked() - base;
+}
+
+void __udelay(unsigned long usec)
 {
 	u32 tmo;
 	u32 endtime;

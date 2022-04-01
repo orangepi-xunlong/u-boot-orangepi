@@ -57,14 +57,10 @@ single-used-m := $(sort $(filter-out $(multi-used-m),$(obj-m)))
 # objects depend on those (obviously)
 multi-objs-y := $(foreach m, $(multi-used-y), $($(m:.o=-objs)) $($(m:.o=-y)))
 multi-objs-m := $(foreach m, $(multi-used-m), $($(m:.o=-objs)) $($(m:.o=-y)))
-multi-objs   := $(multi-objs-y) $(multi-objs-m)
 
 # $(subdir-obj-y) is the list of objects in $(obj-y) which uses dir/ to
 # tell kbuild to descend
 subdir-obj-y := $(filter %/built-in.o, $(obj-y))
-
-# $(obj-dirs) is a list of directories that contain object files
-obj-dirs := $(dir $(multi-objs) $(obj-y))
 
 # Replace multi-part objects by their individual parts, look at local dir only
 real-objs-y := $(foreach m, $(filter-out $(subdir-obj-y), $(obj-y)), $(if $(strip $($(m:.o=-objs)) $($(m:.o=-y))),$($(m:.o=-objs)) $($(m:.o=-y)),$(m))) $(extra-y)
@@ -88,7 +84,6 @@ multi-used-m	:= $(addprefix $(obj)/,$(multi-used-m))
 multi-objs-y	:= $(addprefix $(obj)/,$(multi-objs-y))
 multi-objs-m	:= $(addprefix $(obj)/,$(multi-objs-m))
 subdir-ym	:= $(addprefix $(obj)/,$(subdir-ym))
-obj-dirs	:= $(addprefix $(obj)/,$(obj-dirs))
 
 # These flags are needed for modversions and compiling, so we define them here
 # already
@@ -97,10 +92,10 @@ obj-dirs	:= $(addprefix $(obj)/,$(obj-dirs))
 # Note: Files that end up in two or more modules are compiled without the
 #       KBUILD_MODNAME definition. The reason is that any made-up name would
 #       differ in different configs.
-name-fix = $(subst $(comma),_,$(subst -,_,$1))
-basename_flags = -D"KBUILD_BASENAME=KBUILD_STR($(call name-fix,$(basetarget)))"
+name-fix = $(squote)$(quote)$(subst $(comma),_,$(subst -,_,$1))$(quote)$(squote)
+basename_flags = -DKBUILD_BASENAME=$(call name-fix,$(basetarget))
 modname_flags  = $(if $(filter 1,$(words $(modname))),\
-                 -D"KBUILD_MODNAME=KBUILD_STR($(call name-fix,$(modname)))")
+                 -DKBUILD_MODNAME=$(call name-fix,$(modname)))
 
 orig_c_flags   = $(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(KBUILD_SUBDIR_CCFLAGS) \
                  $(ccflags-y) $(CFLAGS_$(basetarget).o)
@@ -144,15 +139,16 @@ else
 # $(call addtree,-I$(obj)) locates .h files in srctree, from generated .c files
 #   and locates generated .h files
 # FIXME: Replace both with specific CFLAGS* statements in the makefiles
-__c_flags	= $(call addtree,-I$(obj)) $(call flags,_c_flags)
-__a_flags	=                          $(call flags,_a_flags)
-__cpp_flags     =                          $(call flags,_cpp_flags)
+__c_flags	= $(if $(obj),$(call addtree,-I$(src)) -I$(obj)) \
+		  $(call flags,_c_flags)
+__a_flags	= $(call flags,_a_flags)
+__cpp_flags     = $(call flags,_cpp_flags)
 endif
 
 # Modified for U-Boot: LINUXINCLUDE -> UBOOTINCLUDE
 c_flags        = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(UBOOTINCLUDE)     \
 		 $(__c_flags) $(modkern_cflags)                           \
-		 -D"KBUILD_STR(s)=\#s" $(basename_flags) $(modname_flags)
+		 $(basename_flags) $(modname_flags)
 
 a_flags        = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(UBOOTINCLUDE)     \
 		 $(__a_flags) $(modkern_aflags)
@@ -160,7 +156,7 @@ a_flags        = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(UBOOTINCLUDE)     \
 cpp_flags      = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(UBOOTINCLUDE)     \
 		 $(__cpp_flags)
 
-ld_flags       = $(LDFLAGS) $(ldflags-y)
+ld_flags       = $(KBUILD_LDFLAGS) $(ldflags-y) $(LDFLAGS_$(@F))
 
 # Try these files in order to find the U-Boot-specific .dtsi include file
 u_boot_dtsi_options = $(strip $(wildcard $(dir $<)$(basename $(notdir $<))-u-boot.dtsi) \
@@ -209,47 +205,27 @@ $(foreach m, $(notdir $1), \
 	$(addprefix $(obj)/, $(foreach s, $3, $($(m:%$(strip $2)=%$(s)))))))
 endef
 
-ifdef REGENERATE_PARSERS
-
-# GPERF
-# ---------------------------------------------------------------------------
-quiet_cmd_gperf = GPERF $@
-      cmd_gperf = gperf -t --output-file $@ -a -C -E -g -k 1,3,$$ -p -t $<
-
-.PRECIOUS: $(src)/%.hash.c_shipped
-$(src)/%.hash.c_shipped: $(src)/%.gperf
-	$(call cmd,gperf)
-
 # LEX
 # ---------------------------------------------------------------------------
-LEX_PREFIX = $(if $(LEX_PREFIX_${baseprereq}),$(LEX_PREFIX_${baseprereq}),yy)
-
 quiet_cmd_flex = LEX     $@
-      cmd_flex = flex -o$@ -L -P $(LEX_PREFIX) $<
+      cmd_flex = $(LEX) -o$@ -L $<
 
-.PRECIOUS: $(src)/%.lex.c_shipped
-$(src)/%.lex.c_shipped: $(src)/%.l
-	$(call cmd,flex)
+$(obj)/%.lex.c: $(src)/%.l FORCE
+	$(call if_changed,flex)
 
 # YACC
 # ---------------------------------------------------------------------------
-YACC_PREFIX = $(if $(YACC_PREFIX_${baseprereq}),$(YACC_PREFIX_${baseprereq}),yy)
-
 quiet_cmd_bison = YACC    $@
-      cmd_bison = bison -o$@ -t -l -p $(YACC_PREFIX) $<
+      cmd_bison = $(YACC) -o$@ -t -l $<
 
-.PRECIOUS: $(src)/%.tab.c_shipped
-$(src)/%.tab.c_shipped: $(src)/%.y
-	$(call cmd,bison)
+$(obj)/%.tab.c: $(src)/%.y FORCE
+	$(call if_changed,bison)
 
 quiet_cmd_bison_h = YACC    $@
-      cmd_bison_h = bison -o/dev/null --defines=$@ -t -l -p $(YACC_PREFIX) $<
+      cmd_bison_h = $(YACC) -o/dev/null --defines=$@ -t -l $<
 
-.PRECIOUS: $(src)/%.tab.h_shipped
-$(src)/%.tab.h_shipped: $(src)/%.y
-	$(call cmd,bison_h)
-
-endif
+$(obj)/%.tab.h: $(src)/%.y FORCE
+	$(call if_changed,bison_h)
 
 # Shipped files
 # ===========================================================================
@@ -275,8 +251,7 @@ $(obj)/%: $(src)/%_shipped
 # ---------------------------------------------------------------------------
 
 quiet_cmd_ld = LD      $@
-cmd_ld = $(LD) $(LDFLAGS) $(ldflags-y) $(LDFLAGS_$(@F)) \
-	       $(filter-out FORCE,$^) -o $@
+cmd_ld = $(LD) $(ld_flags) $(filter-out FORCE,$^) -o $@
 
 # Objcopy
 # ---------------------------------------------------------------------------
@@ -293,6 +268,30 @@ cmd_gzip = (cat $(filter-out FORCE,$^) | gzip -n -f -9 > $@) || \
 
 # DTC
 # ---------------------------------------------------------------------------
+
+# Disable noisy checks by default
+ifeq ($(findstring 1,$(KBUILD_ENABLE_EXTRA_GCC_CHECKS)),)
+DTC_FLAGS += -Wno-unit_address_vs_reg \
+	-Wno-unit_address_format \
+	-Wno-avoid_unnecessary_addr_size \
+	-Wno-alias_paths \
+	-Wno-graph_child_address \
+	-Wno-graph_port \
+	-Wno-unique_unit_address \
+	-Wno-simple_bus_reg \
+	-Wno-pci_device_reg
+
+# U-Boot specific disables
+DTC_FLAGS += -Wno-pci_bridge \
+        -Wno-pci_device_bus_num
+endif
+
+ifneq ($(findstring 2,$(KBUILD_ENABLE_EXTRA_GCC_CHECKS)),)
+DTC_FLAGS += -Wnode_name_chars_strict \
+	-Wproperty_name_chars_strict
+endif
+
+DTC_FLAGS += $(DTC_FLAGS_$(basetarget))
 
 # Generate an assembly file to wrap the output of the device tree compiler
 quiet_cmd_dt_S_dtb= DTB     $@
@@ -312,16 +311,22 @@ cmd_dt_S_dtb=						\
 $(obj)/%.dtb.S: $(obj)/%.dtb
 	$(call cmd,dt_S_dtb)
 
+ifeq ($(CONFIG_OF_LIBFDT_OVERLAY),y)
+DTC_FLAGS += -@
+endif
+
 quiet_cmd_dtc = DTC     $@
 # Modified for U-Boot
 # Bring in any U-Boot-specific include at the end of the file
 cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
-	(cat $<; $(if $(u_boot_dtsi),echo '\#include "$(u_boot_dtsi)"')) > $(pre-tmp); \
-	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $(pre-tmp) ; \
+	(cat $<; $(if $(u_boot_dtsi),echo '$(pound)include "$(u_boot_dtsi)"')) > $(pre-tmp); \
+	$(HOSTCC) -E $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $(pre-tmp) ; \
 	$(DTC) -O dtb -o $@ -b 0 \
 		-i $(dir $<) $(DTC_FLAGS) \
-		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
-	cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
+		-d $(depfile).dtc.tmp $(dtc-tmp) || \
+		(echo "Check $(shell pwd)/$(pre-tmp) for errors" && false) \
+		; \
+	sed "s:$(pre-tmp):$(<):" $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
 
 $(obj)/%.dtb: $(src)/%.dts FORCE
 	$(call if_changed_dep,dtc)
@@ -337,7 +342,7 @@ quiet_cmd_dtco = DTCO    $@
 # No generation of assembly file either
 # Modified for U-Boot
 cmd_dtco = mkdir -p $(dir ${dtc-tmp}) ; \
-	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) - ; \
+	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
 	$(DTC) -@ -O dtb -o $@ -b 0 \
 		-i $(dir $<) $(DTC_FLAGS) \
 		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
@@ -398,24 +403,47 @@ $(obj)/%.efi: $(obj)/%_efi.so
 
 quiet_cmd_efi_ld = LD      $@
 cmd_efi_ld = $(LD) -nostdlib -znocombreloc -T $(EFI_LDS_PATH) -shared \
-		-Bsymbolic $^ -o $@
+		-Bsymbolic -s $^ -o $@
 
 EFI_LDS_PATH = $(srctree)/arch/$(ARCH)/lib/$(EFI_LDS)
 
-$(obj)/%_efi.so: $(obj)/%.o arch/$(ARCH)/lib/$(EFI_CRT0) \
-		arch/$(ARCH)/lib/$(EFI_RELOC)
+$(obj)/efi_crt0.o: $(srctree)/arch/$(ARCH)/lib/$(EFI_CRT0:.o=.S) FORCE
+	$(call if_changed_dep,as_o_S)
+
+$(obj)/efi_reloc.o: $(srctree)/arch/$(ARCH)/lib/$(EFI_RELOC:.o=.c) $(recordmcount_source) FORCE
+	$(call cmd,force_checksrc)
+	$(call if_changed_rule,cc_o_c)
+
+$(obj)/%_efi.so: $(obj)/%.o $(obj)/efi_crt0.o $(obj)/efi_reloc.o $(obj)/efi_freestanding.o
 	$(call cmd,efi_ld)
+
+targets += $(obj)/efi_crt0.o $(obj)/efi_reloc.o $(obj)/efi_freestanding.o
+
+CFLAGS_REMOVE_efi_reloc.o := $(LTO_CFLAGS)
+CFLAGS_REMOVE_efi_freestanding.o := $(LTO_CFLAGS)
 
 # ACPI
 # ---------------------------------------------------------------------------
+#
+# This first sends the file (typically dsdt.asl) through the preprocessor
+# resolve includes and any CONFIG options used. This produces dsdt.asl.tmp
+# which is pure ASL code. The Intel ASL (ACPI (Advanced Configuration and Power
+# Interface) Source Language compiler (iasl) then converts this ASL code into a
+# C file containing the hex data to build into U-Boot. This file is called
+# dsdt.hex (despite us setting the prefix to .../dsdt.asl.tmp) so must be
+# renamed to dsdt.c for consumption by the build system.
+ASL_TMP = $(patsubst %.c,%.asl.tmp,$@)
+
 quiet_cmd_acpi_c_asl= ASL     $<
 cmd_acpi_c_asl=         \
-	$(CPP) -x assembler-with-cpp -D__ASSEMBLY__ -P $(UBOOTINCLUDE) -o $<.tmp $<; \
-	iasl -p $< -tc $<.tmp $(if $(KBUILD_VERBOSE:1=), >/dev/null) && \
-	mv $(patsubst %.asl,%.hex,$<) $@
+	$(CPP) -x assembler-with-cpp -D__ASSEMBLY__ -D__ACPI__ \
+		-P $(UBOOTINCLUDE) -o $(ASL_TMP) $< && \
+	iasl -p $@ -tc $(ASL_TMP) $(if $(KBUILD_VERBOSE:1=), >/dev/null) && \
+	mv $(patsubst %.c,%.hex,$@) $@
 
 $(obj)/dsdt.c:    $(src)/dsdt.asl
 	$(call cmd,acpi_c_asl)
+	$(Q)sed -i -e "s,dsdt_aml_code,AmlCode," $@
 
 # Bzip2
 # ---------------------------------------------------------------------------
@@ -537,4 +565,42 @@ quiet_cmd_fdtgrep = FDTGREP $@
       cmd_fdtgrep = $(objtree)/tools/fdtgrep $(fdtgrep_props) -RT $< \
 		-n /chosen -n /config -O dtb | \
 	$(objtree)/tools/fdtgrep -r -O dtb - -o $@ \
+		-P u-boot,dm-pre-reloc -P u-boot,dm-spl -P u-boot,dm-tpl \
 		$(addprefix -P ,$(subst $\",,$(CONFIG_OF_SPL_REMOVE_PROPS)))
+
+# fdt_rm_props
+# ---------------------------------------------------------------------------
+# Pass the original device tree file through fdtgrep. This removes various
+# unused properties. The output is typically a smaller device tree file.
+quiet_cmd_fdt_rm_props = FDTGREP $@
+	cmd_fdt_rm_props = cat $< | $(objtree)/tools/fdtgrep -r -O dtb - -o $@ \
+			$(addprefix -P ,$(subst $\",,$(CONFIG_OF_REMOVE_PROPS)))
+
+# ASM offsets
+# ---------------------------------------------------------------------------
+
+# Default sed regexp - multiline due to syntax constraints
+define sed-offsets
+	"s:[[:space:]]*\.ascii[[:space:]]*\"\(.*\)\":\1:; \
+	/^->/{s:->#\(.*\):/* \1 */:; \
+	s:^->\([^ ]*\) [\$$#]*\([-0-9]*\) \(.*\):#define \1 \2 /* \3 */:; \
+	s:^->\([^ ]*\) [\$$#]*\([^ ]*\) \(.*\):#define \1 \2 /* \3 */:; \
+	s:->::; p;}"
+endef
+
+# Use filechk to avoid rebuilds when a header changes, but the resulting file
+# does not
+define filechk_offsets
+	(set -e; \
+	 echo "#ifndef $2"; \
+	 echo "#define $2"; \
+	 echo "/*"; \
+	 echo " * DO NOT MODIFY."; \
+	 echo " *"; \
+	 echo " * This file was generated by Kbuild"; \
+	 echo " */"; \
+	 echo ""; \
+	 sed -ne $(sed-offsets); \
+	 echo ""; \
+	 echo "#endif" )
+endef

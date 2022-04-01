@@ -22,22 +22,26 @@
  * Copyright 1997 -- 1999 Martin Mares <mj@atrey.karlin.mff.cuni.cz>
  */
 
+#define LOG_CATEGORY UCLASS_PCI
+
 #include <common.h>
 #include <bios_emul.h>
+#include <bootstage.h>
 #include <dm.h>
 #include <errno.h>
+#include <init.h>
+#include <log.h>
 #include <malloc.h>
 #include <pci.h>
 #include <pci_rom.h>
 #include <vbe.h>
 #include <video.h>
 #include <video_fb.h>
+#include <acpi/acpi_s3.h>
+#include <asm/global_data.h>
 #include <linux/screen_info.h>
 
-#ifdef CONFIG_X86
-#include <asm/acpi_s3.h>
 DECLARE_GLOBAL_DATA_PTR;
-#endif
 
 __weak bool board_should_run_oprom(struct udevice *dev)
 {
@@ -65,7 +69,7 @@ __weak uint32_t board_map_oprom_vendev(uint32_t vendev)
 
 static int pci_rom_probe(struct udevice *dev, struct pci_rom_header **hdrp)
 {
-	struct pci_child_platdata *pplat = dev_get_parent_platdata(dev);
+	struct pci_child_plat *pplat = dev_get_parent_plat(dev);
 	struct pci_rom_header *rom_header;
 	struct pci_rom_data *rom_data;
 	u16 rom_vendor, rom_device;
@@ -233,7 +237,7 @@ void setup_video(struct screen_info *screen_info)
 int dm_pci_run_vga_bios(struct udevice *dev, int (*int15_handler)(void),
 			int exec_method)
 {
-	struct pci_child_platdata *pplat = dev_get_parent_platdata(dev);
+	struct pci_child_plat *pplat = dev_get_parent_plat(dev);
 	struct pci_rom_header *rom = NULL, *ram = NULL;
 	int vesa_mode = -1;
 	bool emulate, alloced;
@@ -247,7 +251,7 @@ int dm_pci_run_vga_bios(struct udevice *dev, int (*int15_handler)(void),
 	}
 
 	if (!board_should_load_oprom(dev))
-		return -ENXIO;
+		return log_msg_ret("Should not load OPROM", -ENXIO);
 
 	ret = pci_rom_probe(dev, &rom);
 	if (ret)
@@ -306,7 +310,7 @@ int dm_pci_run_vga_bios(struct udevice *dev, int (*int15_handler)(void),
 			goto err;
 #endif
 	} else {
-#if defined(CONFIG_X86) && CONFIG_IS_ENABLED(X86_32BIT_INIT)
+#if defined(CONFIG_X86) && (CONFIG_IS_ENABLED(X86_32BIT_INIT) || CONFIG_TPL)
 		bios_set_interrupt_handler(0x15, int15_handler);
 
 		bios_run_on_x86(dev, (unsigned long)ram, vesa_mode,
@@ -325,12 +329,13 @@ err:
 #ifdef CONFIG_DM_VIDEO
 int vbe_setup_video_priv(struct vesa_mode_info *vesa,
 			 struct video_priv *uc_priv,
-			 struct video_uc_platdata *plat)
+			 struct video_uc_plat *plat)
 {
 	if (!vesa->x_resolution)
-		return -ENXIO;
+		return log_msg_ret("No x resolution", -ENXIO);
 	uc_priv->xsize = vesa->x_resolution;
 	uc_priv->ysize = vesa->y_resolution;
+	uc_priv->line_length = vesa->bytes_per_scanline;
 	switch (vesa->bits_per_pixel) {
 	case 32:
 	case 24:
@@ -342,7 +347,13 @@ int vbe_setup_video_priv(struct vesa_mode_info *vesa,
 	default:
 		return -EPROTONOSUPPORT;
 	}
-	plat->base = vesa->phys_base_ptr;
+
+	/* Use double buffering if enabled */
+	if (IS_ENABLED(CONFIG_VIDEO_COPY) && plat->base)
+		plat->copy_base = vesa->phys_base_ptr;
+	else
+		plat->base = vesa->phys_base_ptr;
+	log_debug("base = %lx, copy_base = %lx\n", plat->base, plat->copy_base);
 	plat->size = vesa->bytes_per_scanline * vesa->y_resolution;
 
 	return 0;
@@ -350,7 +361,7 @@ int vbe_setup_video_priv(struct vesa_mode_info *vesa,
 
 int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void))
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	int ret;
 
@@ -370,6 +381,15 @@ int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void))
 
 	ret = vbe_setup_video_priv(&mode_info.vesa, uc_priv, plat);
 	if (ret) {
+		if (ret == -ENFILE) {
+			/*
+			 * See video-uclass.c for how to set up reserved memory
+			 * in your video driver
+			 */
+			log_err("CONFIG_VIDEO_COPY enabled but driver '%s' set up no reserved memory\n",
+				dev->driver->name);
+		}
+
 		debug("No video mode configured\n");
 		return ret;
 	}

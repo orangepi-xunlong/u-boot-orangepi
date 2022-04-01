@@ -9,10 +9,13 @@
  * Haikun Wang (B53464@freescale.com)
  */
 
+#include <asm/global_data.h>
+#include <linux/math64.h>
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <common.h>
+#include <log.h>
 #include <spi.h>
 #include <malloc.h>
 #include <asm/io.h>
@@ -21,10 +24,15 @@
 #include <asm/arch/clock.h>
 #endif
 #include <fsl_dspi.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+
+/* linux/include/time.h */
+#define NSEC_PER_SEC	1000000000L
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* fsl_dspi_platdata flags */
+/* fsl_dspi_plat flags */
 #define DSPI_FLAG_REGMAP_ENDIAN_BIG	BIT(0)
 
 /* idle data value */
@@ -58,14 +66,14 @@ DECLARE_GLOBAL_DATA_PTR;
 					DSPI_CTAR_DT(15))
 
 /**
- * struct fsl_dspi_platdata - platform data for Freescale DSPI
+ * struct fsl_dspi_plat - platform data for Freescale DSPI
  *
  * @flags: Flags for DSPI DSPI_FLAG_...
  * @speed_hz: Default SCK frequency
  * @num_chipselect: Number of DSPI chipselect signals
  * @regs_addr: Base address of DSPI registers
  */
-struct fsl_dspi_platdata {
+struct fsl_dspi_plat {
 	uint flags;
 	uint speed_hz;
 	uint num_chipselect;
@@ -96,13 +104,6 @@ struct fsl_dspi_priv {
 	uint ctar_val[FSL_DSPI_MAX_CHIPSELECT];
 	struct dspi *regs;
 };
-
-#ifndef CONFIG_DM_SPI
-struct fsl_dspi {
-	struct spi_slave slave;
-	struct fsl_dspi_priv priv;
-};
-#endif
 
 __weak void cpu_dspi_port_conf(void)
 {
@@ -383,6 +384,40 @@ static int fsl_dspi_hz_to_spi_baud(int *pbr, int *br,
 	return -EINVAL;
 }
 
+static void ns_delay_scale(unsigned char *psc, unsigned char *sc, int delay_ns,
+			   unsigned long clkrate)
+{
+	int scale_needed, scale, minscale = INT_MAX;
+	int pscale_tbl[4] = {1, 3, 5, 7};
+	u32 remainder;
+	int i, j;
+
+	scale_needed = div_u64_rem((u64)delay_ns * clkrate, NSEC_PER_SEC,
+				   &remainder);
+	if (remainder)
+		scale_needed++;
+
+	for (i = 0; i < ARRAY_SIZE(pscale_tbl); i++)
+		for (j = 0; j <= DSPI_CTAR_SCALE_BITS; j++) {
+			scale = pscale_tbl[i] * (2 << j);
+			if (scale >= scale_needed) {
+				if (scale < minscale) {
+					minscale = scale;
+					*psc = i;
+					*sc = j;
+				}
+				break;
+			}
+		}
+
+	if (minscale == INT_MAX) {
+		pr_warn("Cannot find correct scale values for %dns delay at clkrate %ld, using max prescaler value",
+			delay_ns, clkrate);
+		*psc = ARRAY_SIZE(pscale_tbl) - 1;
+		*sc = DSPI_CTAR_SCALE_BITS;
+	}
+}
+
 static int fsl_dspi_cfg_speed(struct fsl_dspi_priv *priv, uint speed)
 {
 	int ret;
@@ -411,135 +446,14 @@ static int fsl_dspi_cfg_speed(struct fsl_dspi_priv *priv, uint speed)
 
 	return 0;
 }
-#ifndef CONFIG_DM_SPI
-int spi_cs_is_valid(unsigned int bus, unsigned int cs)
-{
-	if (((cs >= 0) && (cs < 8)) && ((bus >= 0) && (bus < 8)))
-		return 1;
-	else
-		return 0;
-}
 
-struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
-				  unsigned int max_hz, unsigned int mode)
-{
-	struct fsl_dspi *dspi;
-	uint mcr_cfg_val;
-
-	dspi = spi_alloc_slave(struct fsl_dspi, bus, cs);
-	if (!dspi)
-		return NULL;
-
-	cpu_dspi_port_conf();
-
-#ifdef CONFIG_SYS_FSL_DSPI_BE
-	dspi->priv.flags |= DSPI_FLAG_REGMAP_ENDIAN_BIG;
-#endif
-
-	dspi->priv.regs = (struct dspi *)MMAP_DSPI;
-
-#ifdef CONFIG_M68K
-	dspi->priv.bus_clk = gd->bus_clk;
-#else
-	dspi->priv.bus_clk = mxc_get_clock(MXC_DSPI_CLK);
-#endif
-	dspi->priv.speed_hz = FSL_DSPI_DEFAULT_SCK_FREQ;
-
-	/* default: all CS signals inactive state is high */
-	mcr_cfg_val = DSPI_MCR_MSTR | DSPI_MCR_PCSIS_MASK |
-		DSPI_MCR_CRXF | DSPI_MCR_CTXF;
-	fsl_dspi_init_mcr(&dspi->priv, mcr_cfg_val);
-
-	for (i = 0; i < FSL_DSPI_MAX_CHIPSELECT; i++)
-		dspi->priv.ctar_val[i] = DSPI_CTAR_DEFAULT_VALUE;
-
-#ifdef CONFIG_SYS_DSPI_CTAR0
-	if (FSL_DSPI_MAX_CHIPSELECT > 0)
-		dspi->priv.ctar_val[0] = CONFIG_SYS_DSPI_CTAR0;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR1
-	if (FSL_DSPI_MAX_CHIPSELECT > 1)
-		dspi->priv.ctar_val[1] = CONFIG_SYS_DSPI_CTAR1;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR2
-	if (FSL_DSPI_MAX_CHIPSELECT > 2)
-		dspi->priv.ctar_val[2] = CONFIG_SYS_DSPI_CTAR2;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR3
-	if (FSL_DSPI_MAX_CHIPSELECT > 3)
-		dspi->priv.ctar_val[3] = CONFIG_SYS_DSPI_CTAR3;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR4
-	if (FSL_DSPI_MAX_CHIPSELECT > 4)
-		dspi->priv.ctar_val[4] = CONFIG_SYS_DSPI_CTAR4;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR5
-	if (FSL_DSPI_MAX_CHIPSELECT > 5)
-		dspi->priv.ctar_val[5] = CONFIG_SYS_DSPI_CTAR5;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR6
-	if (FSL_DSPI_MAX_CHIPSELECT > 6)
-		dspi->priv.ctar_val[6] = CONFIG_SYS_DSPI_CTAR6;
-#endif
-#ifdef CONFIG_SYS_DSPI_CTAR7
-	if (FSL_DSPI_MAX_CHIPSELECT > 7)
-		dspi->priv.ctar_val[7] = CONFIG_SYS_DSPI_CTAR7;
-#endif
-
-	fsl_dspi_cfg_speed(&dspi->priv, max_hz);
-
-	/* configure transfer mode */
-	fsl_dspi_cfg_ctar_mode(&dspi->priv, cs, mode);
-
-	/* configure active state of CSX */
-	fsl_dspi_cfg_cs_active_state(&dspi->priv, cs, mode);
-
-	return &dspi->slave;
-}
-
-void spi_free_slave(struct spi_slave *slave)
-{
-	free(slave);
-}
-
-int spi_claim_bus(struct spi_slave *slave)
-{
-	uint sr_val;
-	struct fsl_dspi *dspi = (struct fsl_dspi *)slave;
-
-	cpu_dspi_claim_bus(slave->bus, slave->cs);
-
-	fsl_dspi_clr_fifo(&dspi->priv);
-
-	/* check module TX and RX status */
-	sr_val = dspi_read32(dspi->priv.flags, &dspi->priv.regs->sr);
-	if ((sr_val & DSPI_SR_TXRXS) != DSPI_SR_TXRXS) {
-		debug("DSPI RX/TX not ready!\n");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-void spi_release_bus(struct spi_slave *slave)
-{
-	struct fsl_dspi *dspi = (struct fsl_dspi *)slave;
-
-	dspi_halt(&dspi->priv, 1);
-	cpu_dspi_release_bus(slave->bus.slave->cs);
-}
-
-int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
-	     void *din, unsigned long flags)
-{
-	struct fsl_dspi *dspi = (struct fsl_dspi *)slave;
-	return dspi_xfer(&dspi->priv, slave->cs, bitlen, dout, din, flags);
-}
-#else
 static int fsl_dspi_child_pre_probe(struct udevice *dev)
 {
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	struct fsl_dspi_priv *priv = dev_get_priv(dev->parent);
+	u32 cs_sck_delay = 0, sck_cs_delay = 0;
+	unsigned char pcssck = 0, cssck = 0;
+	unsigned char pasc = 0, asc = 0;
 
 	if (slave_plat->cs >= priv->num_chipselect) {
 		debug("DSPI invalid chipselect number %d(max %d)!\n",
@@ -547,7 +461,20 @@ static int fsl_dspi_child_pre_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	priv->ctar_val[slave_plat->cs] = DSPI_CTAR_DEFAULT_VALUE;
+	ofnode_read_u32(dev_ofnode(dev), "fsl,spi-cs-sck-delay",
+			&cs_sck_delay);
+	ofnode_read_u32(dev_ofnode(dev), "fsl,spi-sck-cs-delay",
+			&sck_cs_delay);
+
+	/* Set PCS to SCK delay scale values */
+	ns_delay_scale(&pcssck, &cssck, cs_sck_delay, priv->bus_clk);
+
+	/* Set After SCK delay scale values */
+	ns_delay_scale(&pasc, &asc, sck_cs_delay, priv->bus_clk);
+
+	priv->ctar_val[slave_plat->cs] = DSPI_CTAR_DEFAULT_VALUE |
+					 DSPI_CTAR_PCSSCK(pcssck) |
+					 DSPI_CTAR_PASC(pasc);
 
 	debug("DSPI pre_probe slave device on CS %u, max_hz %u, mode 0x%x.\n",
 	      slave_plat->cs, slave_plat->max_hz, slave_plat->mode);
@@ -557,12 +484,12 @@ static int fsl_dspi_child_pre_probe(struct udevice *dev)
 
 static int fsl_dspi_probe(struct udevice *bus)
 {
-	struct fsl_dspi_platdata *plat = dev_get_platdata(bus);
+	struct fsl_dspi_plat *plat = dev_get_plat(bus);
 	struct fsl_dspi_priv *priv = dev_get_priv(bus);
 	struct dm_spi_bus *dm_spi_bus;
 	uint mcr_cfg_val;
 
-	dm_spi_bus = bus->uclass_priv;
+	dm_spi_bus = dev_get_uclass_priv(bus);
 
 	/* cpu speical pin muxing configure */
 	cpu_dspi_port_conf();
@@ -587,7 +514,7 @@ static int fsl_dspi_probe(struct udevice *bus)
 		DSPI_MCR_CRXF | DSPI_MCR_CTXF;
 	fsl_dspi_init_mcr(priv, mcr_cfg_val);
 
-	debug("%s probe done, bus-num %d.\n", bus->name, bus->seq);
+	debug("%s probe done, bus-num %d.\n", bus->name, dev_seq(bus));
 
 	return 0;
 }
@@ -597,13 +524,13 @@ static int fsl_dspi_claim_bus(struct udevice *dev)
 	uint sr_val;
 	struct fsl_dspi_priv *priv;
 	struct udevice *bus = dev->parent;
-	struct dm_spi_slave_platdata *slave_plat =
-		dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat =
+		dev_get_parent_plat(dev);
 
 	priv = dev_get_priv(bus);
 
 	/* processor special preparation work */
-	cpu_dspi_claim_bus(bus->seq, slave_plat->cs);
+	cpu_dspi_claim_bus(dev_seq(bus), slave_plat->cs);
 
 	/* configure transfer mode */
 	fsl_dspi_cfg_ctar_mode(priv, slave_plat->cs, priv->mode);
@@ -628,14 +555,14 @@ static int fsl_dspi_release_bus(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
 	struct fsl_dspi_priv *priv = dev_get_priv(bus);
-	struct dm_spi_slave_platdata *slave_plat =
-		dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat =
+		dev_get_parent_plat(dev);
 
 	/* halt module */
 	dspi_halt(priv, 1);
 
 	/* processor special release work */
-	cpu_dspi_release_bus(bus->seq, slave_plat->cs);
+	cpu_dspi_release_bus(dev_seq(bus), slave_plat->cs);
 
 	return 0;
 }
@@ -645,14 +572,14 @@ static int fsl_dspi_release_bus(struct udevice *dev)
  */
 static int fsl_dspi_bind(struct udevice *bus)
 {
-	debug("%s assigned req_seq %d.\n", bus->name, bus->req_seq);
+	debug("%s assigned seq %d.\n", bus->name, dev_seq(bus));
 	return 0;
 }
 
-static int fsl_dspi_ofdata_to_platdata(struct udevice *bus)
+static int fsl_dspi_of_to_plat(struct udevice *bus)
 {
 	fdt_addr_t addr;
-	struct fsl_dspi_platdata *plat = bus->platdata;
+	struct fsl_dspi_plat *plat = dev_get_plat(bus);
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 
@@ -662,7 +589,7 @@ static int fsl_dspi_ofdata_to_platdata(struct udevice *bus)
 	plat->num_chipselect =
 		fdtdec_get_int(blob, node, "num-cs", FSL_DSPI_MAX_CHIPSELECT);
 
-	addr = devfdt_get_addr(bus);
+	addr = dev_read_addr(bus);
 	if (addr == FDT_ADDR_T_NONE) {
 		debug("DSPI: Can't get base address or size\n");
 		return -ENOMEM;
@@ -684,7 +611,7 @@ static int fsl_dspi_xfer(struct udevice *dev, unsigned int bitlen,
 		const void *dout, void *din, unsigned long flags)
 {
 	struct fsl_dspi_priv *priv;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	struct udevice *bus;
 
 	bus = dev->parent;
@@ -735,11 +662,10 @@ U_BOOT_DRIVER(fsl_dspi) = {
 	.id	= UCLASS_SPI,
 	.of_match = fsl_dspi_ids,
 	.ops	= &fsl_dspi_ops,
-	.ofdata_to_platdata = fsl_dspi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct fsl_dspi_platdata),
-	.priv_auto_alloc_size = sizeof(struct fsl_dspi_priv),
+	.of_to_plat = fsl_dspi_of_to_plat,
+	.plat_auto	= sizeof(struct fsl_dspi_plat),
+	.priv_auto	= sizeof(struct fsl_dspi_priv),
 	.probe	= fsl_dspi_probe,
 	.child_pre_probe = fsl_dspi_child_pre_probe,
 	.bind = fsl_dspi_bind,
 };
-#endif

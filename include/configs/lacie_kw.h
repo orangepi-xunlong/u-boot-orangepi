@@ -40,20 +40,8 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
 /*
- * Commands configuration
- */
-#ifndef CONFIG_NETSPACE_MINI_V2 /* No USB ports on Network Space v2 Mini */
-#endif
-
-/*
- * Core clock definition
- */
-#define CONFIG_SYS_TCLK			166000000 /* 166MHz */
-
-/*
  * SDRAM configuration
  */
-#define CONFIG_NR_DRAM_BANKS		1
 
 /*
  * Different SDRAM configuration and size for some of the boards derived
@@ -72,39 +60,34 @@
 #include "mv-common.h"
 
 /* Remove or override few declarations from mv-common.h */
-#undef CONFIG_ENV_SPI_MAX_HZ
 #undef CONFIG_SYS_IDE_MAXBUS
 #undef CONFIG_SYS_IDE_MAXDEVICE
-#define CONFIG_ENV_SPI_MAX_HZ           20000000 /* 20Mhz */
 
 /*
  * Enable platform initialisation via misc_init_r() function
  */
-#define CONFIG_MISC_INIT_R
 
 /*
  * Ethernet Driver configuration
  */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_MVGBE_PORTS		{1, 0} /* enable port 0 only */
-#define CONFIG_NETCONSOLE
 #endif
 
 /*
  * SATA Driver configuration
  */
-#ifdef CONFIG_MVSATA_IDE
-#define CONFIG_SYS_ATA_IDE0_OFFSET      MV_SATA_PORT0_OFFSET
+
+#ifdef CONFIG_SATA
+#define CONFIG_SYS_64BIT_LBA
+#define CONFIG_LBA48
 #if defined(CONFIG_NETSPACE_MAX_V2) || defined(CONFIG_D2NET_V2) || \
 	defined(CONFIG_NET2BIG_V2)
-#define CONFIG_SYS_ATA_IDE1_OFFSET      MV_SATA_PORT1_OFFSET
-#define CONFIG_SYS_IDE_MAXBUS           2
-#define CONFIG_SYS_IDE_MAXDEVICE        2
+#define CONFIG_SYS_SATA_MAX_DEVICE	2
 #else
-#define CONFIG_SYS_IDE_MAXBUS           1
-#define CONFIG_SYS_IDE_MAXDEVICE        1
+#define CONFIG_SYS_SATA_MAX_DEVICE	1
 #endif
-#endif /* CONFIG_MVSATA_IDE */
+#endif /* CONFIG_SATA */
 
 /*
  * Enable GPI0 support
@@ -135,10 +118,6 @@
 /*
  * Environment variables configurations
  */
-#define CONFIG_ENV_SECT_SIZE		0x10000	/* 64KB */
-#define CONFIG_ENV_SIZE			0x1000	/* 4KB */
-#define CONFIG_ENV_ADDR			0x70000
-#define CONFIG_ENV_OFFSET		0x70000	/* env starts here */
 
 /*
  * Default environment variables
@@ -158,8 +137,8 @@
 		"set stdin $stdin,nc; "				\
 		"set stdout $stdout,nc; "			\
 		"set stderr $stderr,nc;\0"			\
-	"diskload=ide reset && "				\
-		"ext2load ide 0:1 $loadaddr /boot/$bootfile\0"	\
+	"diskload=sata init && "				\
+		"ext2load sata 0:1 $loadaddr /boot/$bootfile\0"	\
 	"usbload=usb start && "					\
 		"fatload usb 0:1 $loadaddr /boot/$bootfile\0"
 

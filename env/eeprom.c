@@ -9,8 +9,12 @@
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
+#include <eeprom.h>
+#include <env.h>
+#include <env_internal.h>
+#include <asm/global_data.h>
 #include <linux/stddef.h>
+#include <u-boot/crc.h>
 #if defined(CONFIG_I2C_ENV_EEPROM_BUS)
 #include <i2c.h>
 #endif
@@ -131,9 +135,11 @@ static int env_eeprom_load(void)
 		gd->env_valid = ENV_REDUND;
 	} else {
 		/* both ok - check serial */
-		if (flags[0] == ACTIVE_FLAG && flags[1] == OBSOLETE_FLAG)
+		if (flags[0] == ENV_REDUND_ACTIVE &&
+		    flags[1] == ENV_REDUND_OBSOLETE)
 			gd->env_valid = ENV_VALID;
-		else if (flags[0] == OBSOLETE_FLAG && flags[1] == ACTIVE_FLAG)
+		else if (flags[0] == ENV_REDUND_OBSOLETE &&
+			 flags[1] == ENV_REDUND_ACTIVE)
 			gd->env_valid = ENV_REDUND;
 		else if (flags[0] == 0xFF && flags[1] == 0)
 			gd->env_valid = ENV_REDUND;
@@ -183,7 +189,7 @@ static int env_eeprom_load(void)
 	eeprom_bus_read(CONFIG_SYS_DEF_EEPROM_ADDR,
 		off, (uchar *)buf_env, CONFIG_ENV_SIZE);
 
-	return env_import(buf_env, 1);
+	return env_import(buf_env, 1, H_EXTERNAL);
 }
 
 static int env_eeprom_save(void)
@@ -193,7 +199,7 @@ static int env_eeprom_save(void)
 	unsigned int off	= CONFIG_ENV_OFFSET;
 #ifdef CONFIG_ENV_OFFSET_REDUND
 	unsigned int off_red	= CONFIG_ENV_OFFSET_REDUND;
-	char flag_obsolete	= OBSOLETE_FLAG;
+	char flag_obsolete	= ENV_REDUND_OBSOLETE;
 #endif
 
 	rc = env_export(&env_new);
@@ -206,7 +212,7 @@ static int env_eeprom_save(void)
 		off_red	= CONFIG_ENV_OFFSET;
 	}
 
-	env_new.flags = ACTIVE_FLAG;
+	env_new.flags = ENV_REDUND_ACTIVE;
 #endif
 
 	rc = eeprom_bus_write(CONFIG_SYS_DEF_EEPROM_ADDR,

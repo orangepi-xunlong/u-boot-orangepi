@@ -3,7 +3,12 @@
  * Copyright (C) 2015  Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
+#define LOG_CATEGORY UCLASS_PINCTRL
+
 #include <common.h>
+#include <malloc.h>
+#include <asm/global_data.h>
+#include <dm/device_compat.h>
 #include <linux/libfdt.h>
 #include <linux/err.h>
 #include <linux/list.h>
@@ -14,18 +19,6 @@
 #include <dm/of_access.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-int pinctrl_decode_pin_config(const void *blob, int node)
-{
-	int flags = 0;
-
-	if (fdtdec_get_bool(blob, node, "bias-pull-up"))
-		flags |= 1 << PIN_CONFIG_BIAS_PULL_UP;
-	else if (fdtdec_get_bool(blob, node, "bias-pull-down"))
-		flags |= 1 << PIN_CONFIG_BIAS_PULL_DOWN;
-
-	return flags;
-}
 
 #if CONFIG_IS_ENABLED(PINCTRL_FULL)
 /**
@@ -76,7 +69,7 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 		 * If statename is not found in "pinctrl-names",
 		 * assume statename is just the integer state ID.
 		 */
-		state = simple_strtoul(statename, &end, 10);
+		state = dectoul(statename, &end);
 		if (*end)
 			return -EINVAL;
 	}
@@ -91,12 +84,18 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 		phandle = fdt32_to_cpu(*list++);
 		ret = uclass_get_device_by_phandle_id(UCLASS_PINCONFIG, phandle,
 						      &config);
-		if (ret)
-			return ret;
+		if (ret) {
+			dev_warn(dev, "%s: uclass_get_device_by_phandle_id: err=%d\n",
+				__func__, ret);
+			continue;
+		}
 
 		ret = pinctrl_config_one(config);
-		if (ret)
-			return ret;
+		if (ret) {
+			dev_warn(dev, "%s: pinctrl_config_one: err=%d\n",
+				__func__, ret);
+			continue;
+		}
 	}
 
 	return 0;
@@ -116,6 +115,9 @@ static int pinconfig_post_bind(struct udevice *dev)
 	ofnode node;
 	int ret;
 
+	if (!dev_has_ofnode(dev))
+		return 0;
+
 	dev_for_each_subnode(node, dev) {
 		if (pre_reloc_only &&
 		    !ofnode_pre_reloc(node))
@@ -126,6 +128,9 @@ static int pinconfig_post_bind(struct udevice *dev)
 		 */
 		ofnode_get_property(node, "compatible", &ret);
 		if (ret >= 0)
+			continue;
+		/* If this node has "gpio-controller" property, skip */
+		if (ofnode_read_bool(node, "gpio-controller"))
 			continue;
 
 		if (ret != -FDT_ERR_NOTFOUND)
@@ -145,7 +150,9 @@ static int pinconfig_post_bind(struct udevice *dev)
 
 UCLASS_DRIVER(pinconfig) = {
 	.id = UCLASS_PINCONFIG,
+#if CONFIG_IS_ENABLED(PINCONF_RECURSIVE)
 	.post_bind = pinconfig_post_bind,
+#endif
 	.name = "pinconfig",
 };
 
@@ -166,6 +173,104 @@ static int pinconfig_post_bind(struct udevice *dev)
 }
 #endif
 
+static int
+pinctrl_gpio_get_pinctrl_and_offset(struct udevice *dev, unsigned offset,
+				    struct udevice **pctldev,
+				    unsigned int *pin_selector)
+{
+	struct ofnode_phandle_args args;
+	unsigned gpio_offset, pfc_base, pfc_pins;
+	int ret;
+
+	ret = dev_read_phandle_with_args(dev, "gpio-ranges", NULL, 3,
+					 0, &args);
+	if (ret) {
+		dev_dbg(dev, "%s: dev_read_phandle_with_args: err=%d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	ret = uclass_get_device_by_ofnode(UCLASS_PINCTRL,
+					  args.node, pctldev);
+	if (ret) {
+		dev_dbg(dev,
+			"%s: uclass_get_device_by_of_offset failed: err=%d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	gpio_offset = args.args[0];
+	pfc_base = args.args[1];
+	pfc_pins = args.args[2];
+
+	if (offset < gpio_offset || offset > gpio_offset + pfc_pins) {
+		dev_dbg(dev,
+			"%s: GPIO can not be mapped to pincontrol pin\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	offset -= gpio_offset;
+	offset += pfc_base;
+	*pin_selector = offset;
+
+	return 0;
+}
+
+/**
+ * pinctrl_gpio_request() - request a single pin to be used as GPIO
+ *
+ * @dev: GPIO peripheral device
+ * @offset: the GPIO pin offset from the GPIO controller
+ * @return: 0 on success, or negative error code on failure
+ */
+int pinctrl_gpio_request(struct udevice *dev, unsigned offset)
+{
+	const struct pinctrl_ops *ops;
+	struct udevice *pctldev;
+	unsigned int pin_selector;
+	int ret;
+
+	ret = pinctrl_gpio_get_pinctrl_and_offset(dev, offset,
+						  &pctldev, &pin_selector);
+	if (ret)
+		return ret;
+
+	ops = pinctrl_get_ops(pctldev);
+	assert(ops);
+	if (!ops->gpio_request_enable)
+		return -ENOSYS;
+
+	return ops->gpio_request_enable(pctldev, pin_selector);
+}
+
+/**
+ * pinctrl_gpio_free() - free a single pin used as GPIO
+ *
+ * @dev: GPIO peripheral device
+ * @offset: the GPIO pin offset from the GPIO controller
+ * @return: 0 on success, or negative error code on failure
+ */
+int pinctrl_gpio_free(struct udevice *dev, unsigned offset)
+{
+	const struct pinctrl_ops *ops;
+	struct udevice *pctldev;
+	unsigned int pin_selector;
+	int ret;
+
+	ret = pinctrl_gpio_get_pinctrl_and_offset(dev, offset,
+						  &pctldev, &pin_selector);
+	if (ret)
+		return ret;
+
+	ops = pinctrl_get_ops(pctldev);
+	assert(ops);
+	if (!ops->gpio_disable_free)
+		return -ENOSYS;
+
+	return ops->gpio_disable_free(pctldev, pin_selector);
+}
+
 /**
  * pinctrl_select_state_simple() - simple implementation of pinctrl_select_state
  *
@@ -179,11 +284,14 @@ static int pinctrl_select_state_simple(struct udevice *dev)
 	int ret;
 
 	/*
-	 * For simplicity, assume the first device of PINCTRL uclass
-	 * is the correct one.  This is most likely OK as there is
-	 * usually only one pinctrl device on the system.
+	 * For most system, there is only one pincontroller device. But in
+	 * case of multiple pincontroller devices, probe the one with sequence
+	 * number 0 (defined by alias) to avoid race condition.
 	 */
-	ret = uclass_get_device(UCLASS_PINCTRL, 0, &pctldev);
+	ret = uclass_get_device_by_seq(UCLASS_PINCTRL, 0, &pctldev);
+	if (ret)
+		/* if not found, get the first one */
+		ret = uclass_get_device(UCLASS_PINCTRL, 0, &pctldev);
 	if (ret)
 		return ret;
 
@@ -198,6 +306,12 @@ static int pinctrl_select_state_simple(struct udevice *dev)
 
 int pinctrl_select_state(struct udevice *dev, const char *statename)
 {
+	/*
+	 * Some device which is logical like mmc.blk, do not have
+	 * a valid ofnode.
+	 */
+	if (!dev_has_ofnode(dev))
+		return 0;
 	/*
 	 * Try full-implemented pinctrl first.
 	 * If it fails or is not implemented, try simple one.
@@ -243,6 +357,40 @@ int pinctrl_get_gpio_mux(struct udevice *dev, int banknum, int index)
 	return ops->get_gpio_mux(dev, banknum, index);
 }
 
+int pinctrl_get_pins_count(struct udevice *dev)
+{
+	struct pinctrl_ops *ops = pinctrl_get_ops(dev);
+
+	if (!ops->get_pins_count)
+		return -ENOSYS;
+
+	return ops->get_pins_count(dev);
+}
+
+int pinctrl_get_pin_name(struct udevice *dev, int selector, char *buf,
+			 int size)
+{
+	struct pinctrl_ops *ops = pinctrl_get_ops(dev);
+
+	if (!ops->get_pin_name)
+		return -ENOSYS;
+
+	snprintf(buf, size, ops->get_pin_name(dev, selector));
+
+	return 0;
+}
+
+int pinctrl_get_pin_muxing(struct udevice *dev, int selector, char *buf,
+			   int size)
+{
+	struct pinctrl_ops *ops = pinctrl_get_ops(dev);
+
+	if (!ops->get_pin_muxing)
+		return -ENOSYS;
+
+	return ops->get_pin_muxing(dev, selector, buf, size);
+}
+
 /**
  * pinconfig_post_bind() - post binding for PINCTRL uclass
  * Recursively bind child nodes as pinconfig devices in case of full pinctrl.
@@ -250,7 +398,7 @@ int pinctrl_get_gpio_mux(struct udevice *dev, int banknum, int index)
  * @dev: pinctrl device
  * @return: 0 on success, or negative error code on failure
  */
-static int pinctrl_post_bind(struct udevice *dev)
+static int __maybe_unused pinctrl_post_bind(struct udevice *dev)
 {
 	const struct pinctrl_ops *ops = pinctrl_get_ops(dev);
 
@@ -273,7 +421,9 @@ static int pinctrl_post_bind(struct udevice *dev)
 
 UCLASS_DRIVER(pinctrl) = {
 	.id = UCLASS_PINCTRL,
+#if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	.post_bind = pinctrl_post_bind,
+#endif
 	.flags = DM_UC_FLAG_SEQ_ALIAS,
 	.name = "pinctrl",
 };

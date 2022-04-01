@@ -16,13 +16,18 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/clock.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
+static ulong get_timer_masked(void);
 
 /*
  * Nothing really to do with interrupts, just starts up a counter.
@@ -67,7 +72,7 @@ void __udelay(unsigned long usec)
 	}
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	/* current tick value */
 	ulong now = readl(&timer_base->tcrr) / (TIMER_CLOCK / CONFIG_SYS_HZ);

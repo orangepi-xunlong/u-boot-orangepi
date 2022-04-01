@@ -535,28 +535,20 @@ struct nvme_completion {
  */
 static inline u64 nvme_readq(__le64 volatile *regs)
 {
-#if BITS_PER_LONG == 64
-	return readq(regs);
-#else
 	__u32 *ptr = (__u32 *)regs;
 	u64 val_lo = readl(ptr);
 	u64 val_hi = readl(ptr + 1);
 
 	return val_lo + (val_hi << 32);
-#endif
 }
 
 static inline void nvme_writeq(const u64 val, __le64 volatile *regs)
 {
-#if BITS_PER_LONG == 64
-	writeq(val, regs);
-#else
 	__u32 *ptr = (__u32 *)regs;
 	u32 val_lo = lower_32_bits(val);
 	u32 val_hi = upper_32_bits(val);
 	writel(val_lo, ptr);
 	writel(val_hi, ptr + 1);
-#endif
 }
 
 struct nvme_bar {
@@ -637,11 +629,10 @@ struct nvme_ns {
 	struct list_head list;
 	struct nvme_dev *dev;
 	unsigned ns_id;
+	u8 eui64[8];
 	int devnum;
 	int lba_shift;
 	u8 flbas;
-	u64 mode_select_num_blocks;
-	u32 mode_select_block_len;
 };
 
 #endif /* __DRIVER_NVME_H__ */

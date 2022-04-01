@@ -22,7 +22,9 @@
  *	Syed Mohammed Khasim <khasim at ti.com>
  */
 
+#include <command.h>
 #include <twl4030.h>
+#include <linux/delay.h>
 
 /*
  * Power Reset
@@ -172,10 +174,48 @@ void twl4030_power_mmc_init(int dev_index)
 }
 
 #ifdef CONFIG_CMD_POWEROFF
-int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_poweroff(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	twl4030_power_off();
 
+	return 0;
+}
+#endif
+
+#if CONFIG_IS_ENABLED(DM_I2C)
+int twl4030_i2c_write_u8(u8 chip_no, u8 reg, u8 val)
+{
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(0, chip_no, 1, &dev);
+	if (ret) {
+		pr_err("unable to get I2C bus. ret %d\n", ret);
+		return ret;
+	}
+	ret = dm_i2c_reg_write(dev, reg, val);
+	if (ret) {
+		pr_err("writing to twl4030 failed. ret %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+
+int twl4030_i2c_read(u8 chip_no, u8 reg, u8 *valp, int len)
+{
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(0, chip_no, 1, &dev);
+	if (ret) {
+		pr_err("unable to get I2C bus. ret %d\n", ret);
+		return ret;
+	}
+	ret = dm_i2c_read(dev, reg, valp, len);
+	if (ret) {
+		pr_err("reading from twl4030 failed. ret %d\n", ret);
+		return ret;
+	}
 	return 0;
 }
 #endif

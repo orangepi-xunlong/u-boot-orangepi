@@ -19,7 +19,11 @@
 #include <common.h>
 #include <config.h>
 #include <dm.h>
+#include <malloc.h>
+#include <asm/global_data.h>
 #include <dm/device-internal.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
 #include <dm/root.h>
@@ -29,6 +33,8 @@
 #include <asm/gpio.h>
 #include <asm/system.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -154,10 +160,14 @@ static struct armada_37xx_pin_group armada_37xx_nb_groups[] = {
 	PIN_GRP_GPIO("jtag", 20, 5, BIT(0), "jtag"),
 	PIN_GRP_GPIO("sdio0", 8, 3, BIT(1), "sdio"),
 	PIN_GRP_GPIO("emmc_nb", 27, 9, BIT(2), "emmc"),
-	PIN_GRP_GPIO("pwm0", 11, 1, BIT(3), "pwm"),
-	PIN_GRP_GPIO("pwm1", 12, 1, BIT(4), "pwm"),
-	PIN_GRP_GPIO("pwm2", 13, 1, BIT(5), "pwm"),
-	PIN_GRP_GPIO("pwm3", 14, 1, BIT(6), "pwm"),
+	PIN_GRP_GPIO_3("pwm0", 11, 1, BIT(3) | BIT(20), 0, BIT(20), BIT(3),
+		       "pwm", "led"),
+	PIN_GRP_GPIO_3("pwm1", 11, 1, BIT(4) | BIT(21), 0, BIT(21), BIT(4),
+		       "pwm", "led"),
+	PIN_GRP_GPIO_3("pwm2", 11, 1, BIT(5) | BIT(22), 0, BIT(22), BIT(5),
+		       "pwm", "led"),
+	PIN_GRP_GPIO_3("pwm3", 11, 1, BIT(6) | BIT(23), 0, BIT(23), BIT(6),
+		       "pwm", "led"),
 	PIN_GRP_GPIO("pmic1", 7, 1, BIT(7), "pmic"),
 	PIN_GRP_GPIO("pmic0", 6, 1, BIT(8), "pmic"),
 	PIN_GRP_GPIO("i2c2", 2, 2, BIT(9), "i2c"),
@@ -171,11 +181,6 @@ static struct armada_37xx_pin_group armada_37xx_nb_groups[] = {
 	PIN_GRP_EXTRA("uart2", 9, 2, BIT(1) | BIT(13) | BIT(14) | BIT(19),
 		      BIT(1) | BIT(13) | BIT(14), BIT(1) | BIT(19),
 		      18, 2, "gpio", "uart"),
-	PIN_GRP_GPIO("led0_od", 11, 1, BIT(20), "led"),
-	PIN_GRP_GPIO("led1_od", 12, 1, BIT(21), "led"),
-	PIN_GRP_GPIO("led2_od", 13, 1, BIT(22), "led"),
-	PIN_GRP_GPIO("led3_od", 14, 1, BIT(23), "led"),
-
 };
 
 static struct armada_37xx_pin_group armada_37xx_sb_groups[] = {
@@ -542,13 +547,14 @@ static int armada_37xx_gpiochip_register(struct udevice *parent,
 	int subnode;
 	char *name;
 
-	/* Lookup GPIO driver */
+	/* FIXME: Should not need to lookup GPIO uclass */
 	drv = lists_uclass_lookup(UCLASS_GPIO);
 	if (!drv) {
 		puts("Cannot find GPIO driver\n");
 		return -ENOENT;
 	}
 
+	/* FIXME: Use livtree and check the result of device_bind() below */
 	fdt_for_each_subnode(subnode, blob, node) {
 		if (fdtdec_get_bool(blob, subnode, "gpio-controller")) {
 			ret = 0;
@@ -562,9 +568,8 @@ static int armada_37xx_gpiochip_register(struct udevice *parent,
 	sprintf(name, "armada-37xx-gpio");
 
 	/* Create child device UCLASS_GPIO and bind it */
-	device_bind(parent, &armada_37xx_gpio_driver, name, NULL, subnode,
-		    &dev);
-	dev_set_of_offset(dev, subnode);
+	device_bind(parent, &armada_37xx_gpio_driver, name, NULL,
+		    offset_to_ofnode(subnode), &dev);
 
 	return 0;
 }
@@ -587,7 +592,7 @@ int armada_37xx_pinctrl_probe(struct udevice *dev)
 	info->data = (struct armada_37xx_pin_data *)dev_get_driver_data(dev);
 	pin_data = info->data;
 
-	info->base = (void __iomem *)devfdt_get_addr(dev);
+	info->base = dev_read_addr_ptr(dev);
 	if (!info->base) {
 		pr_err("unable to find regmap\n");
 		return -ENODEV;
@@ -638,6 +643,6 @@ U_BOOT_DRIVER(armada_37xx_pinctrl) = {
 	.id = UCLASS_PINCTRL,
 	.of_match = of_match_ptr(armada_37xx_pinctrl_of_match),
 	.probe = armada_37xx_pinctrl_probe,
-	.priv_auto_alloc_size = sizeof(struct armada_37xx_pinctrl),
+	.priv_auto	= sizeof(struct armada_37xx_pinctrl),
 	.ops = &armada_37xx_pinctrl_ops,
 };

@@ -4,20 +4,54 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/dma.h>
 #include <asm/mach-imx/hab.h>
 #include <asm/mach-imx/rdc-sema.h>
 #include <asm/arch/imx-rdc.h>
+#include <asm/mach-imx/boot_mode.h>
 #include <asm/arch/crm_regs.h>
 #include <dm.h>
+#include <env.h>
 #include <imx_thermal.h>
 #include <fsl_sec.h>
 #include <asm/setup.h>
+#include <linux/delay.h>
+
+#define IOMUXC_GPR1		0x4
+#define BM_IOMUXC_GPR1_IRQ	0x1000
+
+#define GPC_LPCR_A7_BSC		0x0
+#define GPC_LPCR_M4		0x8
+#define GPC_SLPCR		0x14
+#define GPC_PGC_ACK_SEL_A7	0x24
+#define GPC_IMR1_CORE0		0x30
+#define GPC_IMR1_CORE1		0x40
+#define GPC_IMR1_M4		0x50
+#define GPC_PGC_CPU_MAPPING	0xec
+#define GPC_PGC_C0_PUPSCR	0x804
+#define GPC_PGC_SCU_TIMING	0x890
+#define GPC_PGC_C1_PUPSCR	0x844
+
+#define BM_LPCR_A7_BSC_IRQ_SRC_A7_WAKEUP	0x70000000
+#define BM_LPCR_A7_BSC_CPU_CLK_ON_LPM		0x4000
+#define BM_LPCR_M4_MASK_DSM_TRIGGER		0x80000000
+#define BM_SLPCR_EN_DSM				0x80000000
+#define BM_SLPCR_RBC_EN				0x40000000
+#define BM_SLPCR_REG_BYPASS_COUNT		0x3f000000
+#define BM_SLPCR_VSTBY				0x4
+#define BM_SLPCR_SBYOS				0x2
+#define BM_SLPCR_BYPASS_PMIC_READY		0x1
+#define BM_SLPCR_EN_A7_FASTWUP_WAIT_MODE	0x10000
+
+#define BM_GPC_PGC_ACK_SEL_A7_DUMMY_PUP_ACK	0x80000000
+#define BM_GPC_PGC_ACK_SEL_A7_DUMMY_PDN_ACK	0x8000
+
+#define BM_GPC_PGC_CORE_PUPSCR			0x7fff80
 
 #if defined(CONFIG_IMX_THERMAL)
 static const struct imx_thermal_plat imx7_thermal_plat = {
@@ -26,9 +60,9 @@ static const struct imx_thermal_plat imx7_thermal_plat = {
 	.fuse_word = 3,
 };
 
-U_BOOT_DEVICE(imx7_thermal) = {
+U_BOOT_DRVINFO(imx7_thermal) = {
 	.name = "imx_thermal",
-	.platdata = &imx7_thermal_plat,
+	.plat = &imx7_thermal_plat,
 };
 #endif
 
@@ -91,7 +125,7 @@ static void isolate_resource(void)
 }
 #endif
 
-#if defined(CONFIG_SECURE_BOOT)
+#if defined(CONFIG_IMX_HAB)
 struct imx_sec_config_fuse_t const imx_sec_config_fuse = {
 	.bank = 1,
 	.word = 3,
@@ -134,14 +168,6 @@ u32 __weak get_board_rev(void)
 }
 #endif
 
-/* enable all periherial can be accessed in nosec mode */
-static void init_csu(void)
-{
-	int i = 0;
-	for (i = 0; i < CSU_NUM_REGS; i++)
-		writel(CSU_INIT_SEC_LEVEL0, CSU_IPS_BASE_ADDR + i * 4);
-}
-
 static void imx_enet_mdio_fixup(void)
 {
 	struct iomuxc_gpr_base_regs *gpr_regs =
@@ -160,6 +186,124 @@ static void imx_enet_mdio_fixup(void)
 	}
 }
 
+static void init_cpu_basic(void)
+{
+	imx_enet_mdio_fixup();
+
+#ifdef CONFIG_APBH_DMA
+	/* Start APBH DMA */
+	mxs_dma_init();
+#endif
+}
+
+#ifdef CONFIG_IMX_BOOTAUX
+/*
+ * Table of mappings of physical mem regions in both
+ * Cortex-A7 and Cortex-M4 address spaces.
+ *
+ * For additional details check sections 2.1.2 and 2.1.3 in
+ * i.MX7Dual Applications Processor Reference Manual
+ *
+ */
+const struct rproc_att hostmap[] = {
+	/* aux core , host core,  size */
+	{ 0x00000000, 0x00180000, 0x8000 }, /* OCRAM_S */
+	{ 0x00180000, 0x00180000, 0x8000 }, /* OCRAM_S */
+	{ 0x20180000, 0x00180000, 0x8000 }, /* OCRAM_S */
+	{ 0x1fff8000, 0x007f8000, 0x8000 }, /* TCML */
+	{ 0x20000000, 0x00800000, 0x8000 }, /* TCMU */
+	{ 0x00900000, 0x00900000, 0x20000 }, /* OCRAM_128KB */
+	{ 0x20200000, 0x00900000, 0x20000 }, /* OCRAM_128KB */
+	{ 0x00920000, 0x00920000, 0x20000 }, /* OCRAM_EPDC */
+	{ 0x20220000, 0x00920000, 0x20000 }, /* OCRAM_EPDC */
+	{ 0x00940000, 0x00940000, 0x20000 }, /* OCRAM_PXP */
+	{ 0x20240000, 0x00940000, 0x20000 }, /* OCRAM_PXP */
+	{ 0x10000000, 0x80000000, 0x0fff0000 }, /* DDR Code alias */
+	{ 0x80000000, 0x80000000, 0x60000000 }, /* DDRC */
+	{ /* sentinel */ }
+};
+#endif
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+/* enable all periherial can be accessed in nosec mode */
+static void init_csu(void)
+{
+	int i = 0;
+
+	for (i = 0; i < CSU_NUM_REGS; i++)
+		writel(CSU_INIT_SEC_LEVEL0, CSU_IPS_BASE_ADDR + i * 4);
+}
+
+static void imx_gpcv2_init(void)
+{
+	u32 val, i;
+
+	/*
+	 * Force IOMUXC irq pending, so that the interrupt to GPC can be
+	 * used to deassert dsm_request signal when the signal gets
+	 * asserted unexpectedly.
+	 */
+	val = readl(IOMUXC_GPR_BASE_ADDR + IOMUXC_GPR1);
+	val |= BM_IOMUXC_GPR1_IRQ;
+	writel(val, IOMUXC_GPR_BASE_ADDR + IOMUXC_GPR1);
+
+	/* Initially mask all interrupts */
+	for (i = 0; i < 4; i++) {
+		writel(~0, GPC_IPS_BASE_ADDR + GPC_IMR1_CORE0 + i * 4);
+		writel(~0, GPC_IPS_BASE_ADDR + GPC_IMR1_CORE1 + i * 4);
+		writel(~0, GPC_IPS_BASE_ADDR + GPC_IMR1_M4 + i * 4);
+	}
+
+	/* set SCU timing */
+	writel((0x59 << 10) | 0x5B | (0x2 << 20),
+	       GPC_IPS_BASE_ADDR + GPC_PGC_SCU_TIMING);
+
+	/* only external IRQs to wake up LPM and core 0/1 */
+	val = readl(GPC_IPS_BASE_ADDR + GPC_LPCR_A7_BSC);
+	val |= BM_LPCR_A7_BSC_IRQ_SRC_A7_WAKEUP;
+	writel(val, GPC_IPS_BASE_ADDR + GPC_LPCR_A7_BSC);
+
+	/* set C0 power up timming per design requirement */
+	val = readl(GPC_IPS_BASE_ADDR + GPC_PGC_C0_PUPSCR);
+	val &= ~BM_GPC_PGC_CORE_PUPSCR;
+	val |= (0x1A << 7);
+	writel(val, GPC_IPS_BASE_ADDR + GPC_PGC_C0_PUPSCR);
+
+	/* set C1 power up timming per design requirement */
+	val = readl(GPC_IPS_BASE_ADDR + GPC_PGC_C1_PUPSCR);
+	val &= ~BM_GPC_PGC_CORE_PUPSCR;
+	val |= (0x1A << 7);
+	writel(val, GPC_IPS_BASE_ADDR + GPC_PGC_C1_PUPSCR);
+
+	/* dummy ack for time slot by default */
+	writel(BM_GPC_PGC_ACK_SEL_A7_DUMMY_PUP_ACK |
+		BM_GPC_PGC_ACK_SEL_A7_DUMMY_PDN_ACK,
+		GPC_IPS_BASE_ADDR + GPC_PGC_ACK_SEL_A7);
+
+	/* mask M4 DSM trigger */
+	writel(readl(GPC_IPS_BASE_ADDR + GPC_LPCR_M4) |
+		 BM_LPCR_M4_MASK_DSM_TRIGGER,
+		 GPC_IPS_BASE_ADDR + GPC_LPCR_M4);
+
+	/* set mega/fast mix in A7 domain */
+	writel(0x1, GPC_IPS_BASE_ADDR + GPC_PGC_CPU_MAPPING);
+
+	/* DSM related settings */
+	val = readl(GPC_IPS_BASE_ADDR + GPC_SLPCR);
+	val &= ~(BM_SLPCR_EN_DSM | BM_SLPCR_VSTBY | BM_SLPCR_RBC_EN |
+		BM_SLPCR_SBYOS | BM_SLPCR_BYPASS_PMIC_READY |
+		BM_SLPCR_REG_BYPASS_COUNT);
+	val |= BM_SLPCR_EN_A7_FASTWUP_WAIT_MODE;
+	writel(val, GPC_IPS_BASE_ADDR + GPC_SLPCR);
+
+	/*
+	 * disabling RBC need to delay at least 2 cycles of CKIL(32K)
+	 * due to hardware design requirement, which is
+	 * ~61us, here we use 65us for safe
+	 */
+	udelay(65);
+}
+
 int arch_cpu_init(void)
 {
 	init_aips();
@@ -168,12 +312,7 @@ int arch_cpu_init(void)
 	/* Disable PDE bit of WMCR register */
 	imx_wdog_disable_powerdown();
 
-	imx_enet_mdio_fixup();
-
-#ifdef CONFIG_APBH_DMA
-	/* Start APBH DMA */
-	mxs_dma_init();
-#endif
+	init_cpu_basic();
 
 #if CONFIG_IS_ENABLED(IMX_RDC)
 	isolate_resource();
@@ -181,8 +320,18 @@ int arch_cpu_init(void)
 
 	init_snvs();
 
+	imx_gpcv2_init();
+
 	return 0;
 }
+#else
+int arch_cpu_init(void)
+{
+	init_cpu_basic();
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_ARCH_MISC_INIT
 int arch_misc_init(void)
@@ -254,49 +403,36 @@ void set_wdog_reset(struct wdog_regs *wdog)
 	writew(reg, &wdog->wcr);
 }
 
-/*
- * cfg_val will be used for
- * Boot_cfg4[7:0]:Boot_cfg3[7:0]:Boot_cfg2[7:0]:Boot_cfg1[7:0]
- * After reset, if GPR10[28] is 1, ROM will copy GPR9[25:0]
- * to SBMR1, which will determine the boot device.
- */
-const struct boot_mode soc_boot_modes[] = {
-	{"ecspi1:0",	MAKE_CFGVAL(0x00, 0x60, 0x00, 0x00)},
-	{"ecspi1:1",	MAKE_CFGVAL(0x40, 0x62, 0x00, 0x00)},
-	{"ecspi1:2",	MAKE_CFGVAL(0x80, 0x64, 0x00, 0x00)},
-	{"ecspi1:3",	MAKE_CFGVAL(0xc0, 0x66, 0x00, 0x00)},
-
-	{"weim",	MAKE_CFGVAL(0x00, 0x50, 0x00, 0x00)},
-	{"qspi1",	MAKE_CFGVAL(0x10, 0x40, 0x00, 0x00)},
-	/* 4 bit bus width */
-	{"usdhc1",	MAKE_CFGVAL(0x10, 0x10, 0x00, 0x00)},
-	{"usdhc2",	MAKE_CFGVAL(0x10, 0x14, 0x00, 0x00)},
-	{"usdhc3",	MAKE_CFGVAL(0x10, 0x18, 0x00, 0x00)},
-	{"mmc1",	MAKE_CFGVAL(0x10, 0x20, 0x00, 0x00)},
-	{"mmc2",	MAKE_CFGVAL(0x10, 0x24, 0x00, 0x00)},
-	{"mmc3",	MAKE_CFGVAL(0x10, 0x28, 0x00, 0x00)},
-	{NULL,		0},
-};
-
 void s_init(void)
 {
-#if !defined CONFIG_SPL_BUILD
-	/* Enable SMP mode for CPU0, by setting bit 6 of Auxiliary Ctl reg */
-	asm volatile(
-			"mrc p15, 0, r0, c1, c0, 1\n"
-			"orr r0, r0, #1 << 6\n"
-			"mcr p15, 0, r0, c1, c0, 1\n");
-#endif
 	/* clock configuration. */
 	clock_init();
 
 	return;
 }
 
+#ifndef CONFIG_SPL_BUILD
+const struct boot_mode soc_boot_modes[] = {
+	{"normal",	MAKE_CFGVAL(0x00, 0x00, 0x00, 0x00)},
+	{"primary",	MAKE_CFGVAL_PRIMARY_BOOT},
+	{"secondary",	MAKE_CFGVAL_SECONDARY_BOOT},
+	{NULL,		0},
+};
+
+int boot_mode_getprisec(void)
+{
+	struct src *psrc = (struct src *)SRC_BASE_ADDR;
+
+	return !!(readl(&psrc->gpr10) & IMX7_SRC_GPR10_PERSIST_SECONDARY_BOOT);
+}
+#endif
+
 void reset_misc(void)
 {
-#ifdef CONFIG_VIDEO_MXS
+#ifndef CONFIG_SPL_BUILD
+#if defined(CONFIG_VIDEO_MXS) && !defined(CONFIG_DM_VIDEO)
 	lcdif_power_down();
+#endif
 #endif
 }
 

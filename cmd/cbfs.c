@@ -8,9 +8,10 @@
  */
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <cbfs.h>
 
-static int do_cbfs_init(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_cbfs_init(struct cmd_tbl *cmdtp, int flag, int argc,
 			char *const argv[])
 {
 	uintptr_t end_of_rom = 0xffffffff;
@@ -21,14 +22,13 @@ static int do_cbfs_init(cmd_tbl_t *cmdtp, int flag, int argc,
 		return 0;
 	}
 	if (argc == 2) {
-		end_of_rom = simple_strtoul(argv[1], &ep, 16);
+		end_of_rom = hextoul(argv[1], &ep);
 		if (*ep) {
 			puts("\n** Invalid end of ROM **\n");
 			return 1;
 		}
 	}
-	file_cbfs_init(end_of_rom);
-	if (file_cbfs_result != CBFS_SUCCESS) {
+	if (file_cbfs_init(end_of_rom)) {
 		printf("%s.\n", file_cbfs_error());
 		return 1;
 	}
@@ -44,7 +44,7 @@ U_BOOT_CMD(
 	"      CBFS is in. It defaults to 0xFFFFFFFF\n"
 );
 
-static int do_cbfs_fsload(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_cbfs_fsload(struct cmd_tbl *cmdtp, int flag, int argc,
 			  char *const argv[])
 {
 	const struct cbfs_cachenode *file;
@@ -58,15 +58,15 @@ static int do_cbfs_fsload(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 
 	/* parse offset and count */
-	offset = simple_strtoul(argv[1], NULL, 16);
+	offset = hextoul(argv[1], NULL);
 	if (argc == 4)
-		count = simple_strtoul(argv[3], NULL, 16);
+		count = hextoul(argv[3], NULL);
 	else
 		count = 0;
 
 	file = file_cbfs_find(argv[2]);
 	if (!file) {
-		if (file_cbfs_result == CBFS_FILE_NOT_FOUND)
+		if (cbfs_get_result() == CBFS_FILE_NOT_FOUND)
 			printf("%s: %s\n", file_cbfs_error(), argv[2]);
 		else
 			printf("%s.\n", file_cbfs_error());
@@ -91,7 +91,7 @@ U_BOOT_CMD(
 	"    - load binary file 'filename' from the cbfs to address 'addr'\n"
 );
 
-static int do_cbfs_ls(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_cbfs_ls(struct cmd_tbl *cmdtp, int flag, int argc,
 		      char *const argv[])
 {
 	const struct cbfs_cachenode *file = file_cbfs_get_first();
@@ -112,11 +112,20 @@ static int do_cbfs_ls(cmd_tbl_t *cmdtp, int flag, int argc,
 		printf(" %8d", file_cbfs_size(file));
 
 		switch (type) {
+		case CBFS_TYPE_BOOTBLOCK:
+			type_name = "bootblock";
+			break;
+		case CBFS_TYPE_CBFSHEADER:
+			type_name = "cbfs header";
+			break;
 		case CBFS_TYPE_STAGE:
 			type_name = "stage";
 			break;
 		case CBFS_TYPE_PAYLOAD:
 			type_name = "payload";
+			break;
+		case CBFS_TYPE_FIT:
+			type_name = "fit";
 			break;
 		case CBFS_TYPE_OPTIONROM:
 			type_name = "option rom";
@@ -136,10 +145,31 @@ static int do_cbfs_ls(cmd_tbl_t *cmdtp, int flag, int argc,
 		case CBFS_TYPE_MICROCODE:
 			type_name = "microcode";
 			break;
-		case CBFS_COMPONENT_CMOS_DEFAULT:
+		case CBFS_TYPE_FSP:
+			type_name = "fsp";
+			break;
+		case CBFS_TYPE_MRC:
+			type_name = "mrc";
+			break;
+		case CBFS_TYPE_MMA:
+			type_name = "mma";
+			break;
+		case CBFS_TYPE_EFI:
+			type_name = "efi";
+			break;
+		case CBFS_TYPE_STRUCT:
+			type_name = "struct";
+			break;
+		case CBFS_TYPE_CMOS_DEFAULT:
 			type_name = "cmos default";
 			break;
-		case CBFS_COMPONENT_CMOS_LAYOUT:
+		case CBFS_TYPE_SPD:
+			type_name = "spd";
+			break;
+		case CBFS_TYPE_MRC_CACHE:
+			type_name = "mrc cache";
+			break;
+		case CBFS_TYPE_CMOS_LAYOUT:
 			type_name = "cmos layout";
 			break;
 		case -1:
@@ -170,7 +200,7 @@ U_BOOT_CMD(
 	"    - list the files in the cbfs\n"
 );
 
-static int do_cbfs_fsinfo(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_cbfs_fsinfo(struct cmd_tbl *cmdtp, int flag, int argc,
 			  char *const argv[])
 {
 	const struct cbfs_header *header = file_cbfs_get_header();

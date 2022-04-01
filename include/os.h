@@ -19,40 +19,30 @@ struct sandbox_state;
 /**
  * Access to the OS read() system call
  *
- * \param fd	File descriptor as returned by os_open()
- * \param buf	Buffer to place data
- * \param count	Number of bytes to read
- * \return number of bytes read, or -1 on error
+ * @fd:		File descriptor as returned by os_open()
+ * @buf:	Buffer to place data
+ * @count:	Number of bytes to read
+ * Return:	number of bytes read, or -1 on error
  */
 ssize_t os_read(int fd, void *buf, size_t count);
 
 /**
- * Access to the OS read() system call with non-blocking access
- *
- * \param fd	File descriptor as returned by os_open()
- * \param buf	Buffer to place data
- * \param count	Number of bytes to read
- * \return number of bytes read, or -1 on error
- */
-ssize_t os_read_no_block(int fd, void *buf, size_t count);
-
-/**
  * Access to the OS write() system call
  *
- * \param fd	File descriptor as returned by os_open()
- * \param buf	Buffer containing data to write
- * \param count	Number of bytes to write
- * \return number of bytes written, or -1 on error
+ * @fd:		File descriptor as returned by os_open()
+ * @buf:	Buffer containing data to write
+ * @count:	Number of bytes to write
+ * Return:	number of bytes written, or -1 on error
  */
 ssize_t os_write(int fd, const void *buf, size_t count);
 
 /**
  * Access to the OS lseek() system call
  *
- * \param fd	File descriptor as returned by os_open()
- * \param offset	File offset (based on whence)
- * \param whence	Position offset is relative to (see below)
- * \return new file offset
+ * @fd:		File descriptor as returned by os_open()
+ * @offset:	File offset (based on whence)
+ * @whence:	Position offset is relative to (see below)
+ * Return:	new file offset
  */
 off_t os_lseek(int fd, off_t offset, int whence);
 
@@ -64,9 +54,9 @@ off_t os_lseek(int fd, off_t offset, int whence);
 /**
  * Access to the OS open() system call
  *
- * \param pathname	Pathname of file to open
- * \param flags		Flags, like OS_O_RDONLY, OS_O_RDWR
- * \return file descriptor, or -1 on error
+ * @pathname:	Pathname of file to open
+ * @flags:	Flags, like OS_O_RDONLY, OS_O_RDWR
+ * Return:	file descriptor, or -1 on error
  */
 int os_open(const char *pathname, int flags);
 
@@ -75,44 +65,45 @@ int os_open(const char *pathname, int flags);
 #define OS_O_RDWR	2
 #define OS_O_MASK	3	/* Mask for read/write flags */
 #define OS_O_CREAT	0100
+#define OS_O_TRUNC	01000
 
 /**
- * Access to the OS close() system call
+ * os_close() - access to the OS close() system call
  *
- * \param fd	File descriptor to close
- * \return 0 on success, -1 on error
+ * @fd:		File descriptor to close
+ * Return:	0 on success, -1 on error
  */
 int os_close(int fd);
 
 /**
- * Access to the OS unlink() system call
+ * os_unlink() - access to the OS unlink() system call
  *
- * \param pathname Path of file to delete
- * \return 0 for success, other for error
+ * @pathname:	Path of file to delete
+ * Return:	0 for success, other for error
  */
 int os_unlink(const char *pathname);
 
 /**
- * Access to the OS exit() system call
+ * os_exit() - access to the OS exit() system call
  *
  * This exits with the supplied return code, which should be 0 to indicate
  * success.
  *
- * @param exit_code	exit code for U-Boot
+ * @exit_code:	exit code for U-Boot
  */
 void os_exit(int exit_code) __attribute__((noreturn));
 
 /**
- * Put tty into raw mode to mimic serial console better
+ * os_tty_raw() - put tty into raw mode to mimic serial console better
  *
- * @param fd		File descriptor of stdin (normally 0)
- * @param allow_sigs	Allow Ctrl-C, Ctrl-Z to generate signals rather than
- *			be handled by U-Boot
+ * @fd:		File descriptor of stdin (normally 0)
+ * @allow_sigs:	Allow Ctrl-C, Ctrl-Z to generate signals rather than
+ *		be handled by U-Boot
  */
 void os_tty_raw(int fd, bool allow_sigs);
 
 /**
- * Restore the tty to its original mode
+ * os_fs_restore() - restore the tty to its original mode
  *
  * Call this to restore the original terminal mode, after it has been changed
  * by os_tty_raw(). This is an internal function.
@@ -120,164 +111,193 @@ void os_tty_raw(int fd, bool allow_sigs);
 void os_fd_restore(void);
 
 /**
- * Acquires some memory from the underlying os.
+ * os_malloc() - aquires some memory from the underlying os.
  *
- * \param length	Number of bytes to be allocated
- * \return Pointer to length bytes or NULL on error
+ * @length:	Number of bytes to be allocated
+ * Return:	Pointer to length bytes or NULL if @length is 0 or on error
  */
 void *os_malloc(size_t length);
 
 /**
- * Free memory previous allocated with os_malloc()/os_realloc()
+ * os_free() - free memory previous allocated with os_malloc()
  *
  * This returns the memory to the OS.
  *
- * \param ptr		Pointer to memory block to free
+ * @ptr:	Pointer to memory block to free. If this is NULL then this
+ *		function does nothing
  */
 void os_free(void *ptr);
 
 /**
- * Reallocate previously-allocated memory to increase/decrease space
+ * os_realloc() - reallocate memory
  *
- * This works in a similar way to the C library realloc() function. If
- * length is 0, then ptr is freed. Otherwise the space used by ptr is
- * expanded or reduced depending on whether length is larger or smaller
- * than before.
+ * This follows the semantics of realloc(), so can perform an os_malloc() or
+ * os_free() depending on @ptr and @length.
  *
- * If ptr is NULL, then this is similar to calling os_malloc().
- *
- * This function may need to move the memory block to make room for any
- * extra space, in which case the new pointer is returned.
- *
- * \param ptr		Pointer to memory block to reallocate
- * \param length	New length for memory block
- * \return pointer to new memory block, or NULL on failure or if length
- *	is 0.
+ * @ptr:	pointer to previously allocated memory of NULL
+ * @length:	number of bytes to allocate
+ * Return:	pointer to reallocated memory or NULL if @length is 0
  */
 void *os_realloc(void *ptr, size_t length);
 
 /**
- * Access to the usleep function of the os
+ * os_usleep() - access to the usleep function of the os
  *
- * \param usec Time to sleep in micro seconds
+ * @usec:	time to sleep in micro seconds
  */
 void os_usleep(unsigned long usec);
 
 /**
  * Gets a monotonic increasing number of nano seconds from the OS
  *
- * \return A monotonic increasing time scaled in nano seconds
+ * Return:	a monotonic increasing time scaled in nano seconds
  */
 uint64_t os_get_nsec(void);
 
 /**
  * Parse arguments and update sandbox state.
  *
- * @param state		Sandbox state to update
- * @param argc		Argument count
- * @param argv		Argument vector
- * @return 0 if ok, and program should continue;
- *	1 if ok, but program should stop;
- *	-1 on error: program should terminate.
+ * @state:	sandbox state to update
+ * @argc:	argument count
+ * @argv:	argument vector
+ * Return:
+ * *  0 if ok, and program should continue
+ * *  1 if ok, but program should stop
+ * * -1 on error: program should terminate
  */
 int os_parse_args(struct sandbox_state *state, int argc, char *argv[]);
 
 /*
+ * enum os_dirent_t - type of directory entry
+ *
  * Types of directory entry that we support. See also os_dirent_typename in
  * the C file.
  */
 enum os_dirent_t {
-	OS_FILET_REG,		/* Regular file */
-	OS_FILET_LNK,		/* Symbolic link */
-	OS_FILET_DIR,		/* Directory */
-	OS_FILET_UNKNOWN,	/* Something else */
-
+	/**
+	 * @OS_FILET_REG:	regular file
+	 */
+	OS_FILET_REG,
+	/**
+	 * @OS_FILET_LNK:	symbolic link
+	 */
+	OS_FILET_LNK,
+	/**
+	 * @OS_FILET_DIR:	directory
+	 */
+	OS_FILET_DIR,
+	/**
+	 * @OS_FILET_UNKNOWN:	something else
+	 */
+	OS_FILET_UNKNOWN,
+	/**
+	 * @OS_FILET_COUNT:	number of directory entry types
+	 */
 	OS_FILET_COUNT,
 };
 
-/** A directory entry node, containing information about a single dirent */
+/**
+ * struct os_dirent_node - directory node
+ *
+ * A directory entry node, containing information about a single dirent
+ *
+ */
 struct os_dirent_node {
-	struct os_dirent_node *next;	/* Pointer to next node, or NULL */
-	ulong size;			/* Size of file in bytes */
-	enum os_dirent_t type;		/* Type of entry */
-	char name[0];			/* Name of entry */
+	/**
+	 * @next:	pointer to next node, or NULL
+	 */
+	struct os_dirent_node *next;
+	/**
+	 * @size:	size of file in bytes
+	 */
+	ulong size;
+	/**
+	 * @type:	type of entry
+	 */
+	enum os_dirent_t type;
+	/**
+	 * @name:	name of entry
+	 */
+	char name[0];
 };
 
 /**
- * Get a directionry listing
+ * os_dirent_ls() - get a directory listing
  *
  * This allocates and returns a linked list containing the directory listing.
  *
- * @param dirname	Directory to examine
- * @param headp		Returns pointer to head of linked list, or NULL if none
- * @return 0 if ok, -ve on error
+ * @dirname:	directory to examine
+ * @headp:	on return pointer to head of linked list, or NULL if none
+ * Return:	0 if ok, -ve on error
  */
 int os_dirent_ls(const char *dirname, struct os_dirent_node **headp);
 
 /**
- * Free directory list
+ * os_dirent_free() - free directory list
  *
  * This frees a linked list containing a directory listing.
  *
- * @param node		Pointer to head of linked list
+ * @node:	pointer to head of linked list
  */
 void os_dirent_free(struct os_dirent_node *node);
 
 /**
- * Get the name of a directory entry type
+ * os_dirent_get_typename() - get the name of a directory entry type
  *
- * @param type		Type to check
- * @return string containing the name of that type, or "???" if none/invalid
+ * @type:	type to check
+ * Return:
+ * string containing the name of that type,
+ * or "???" if none/invalid
  */
 const char *os_dirent_get_typename(enum os_dirent_t type);
 
 /**
- * Get the size of a file
+ * os_get_filesize() - get the size of a file
  *
- * @param fname		Filename to check
- * @param size		size of file is returned if no error
- * @return 0 on success or -1 if an error ocurred
+ * @fname:	filename to check
+ * @size:	size of file is returned if no error
+ * Return:	0 on success or -1 if an error ocurred
  */
 int os_get_filesize(const char *fname, loff_t *size);
 
 /**
- * Write a character to the controlling OS terminal
+ * os_putc() - write a character to the controlling OS terminal
  *
  * This bypasses the U-Boot console support and writes directly to the OS
  * stdout file descriptor.
  *
- * @param ch	Character to write
+ * @ch:		haracter to write
  */
 void os_putc(int ch);
 
 /**
- * Write a string to the controlling OS terminal
+ * os_puts() - write a string to the controlling OS terminal
  *
  * This bypasses the U-Boot console support and writes directly to the OS
  * stdout file descriptor.
  *
- * @param str	String to write (note that \n is not appended)
+ * @str:	string to write (note that \n is not appended)
  */
 void os_puts(const char *str);
 
 /**
- * Write the sandbox RAM buffer to a existing file
+ * os_write_ram_buf() - write the sandbox RAM buffer to a existing file
  *
- * @param fname		Filename to write memory to (simple binary format)
- * @return 0 if OK, -ve on error
+ * @fname:	filename to write memory to (simple binary format)
+ * Return:	0 if OK, -ve on error
  */
 int os_write_ram_buf(const char *fname);
 
 /**
- * Read the sandbox RAM buffer from an existing file
+ * os_read_ram_buf() - read the sandbox RAM buffer from an existing file
  *
- * @param fname		Filename containing memory (simple binary format)
- * @return 0 if OK, -ve on error
+ * @fname:	filename containing memory (simple binary format)
+ * Return:	0 if OK, -ve on error
  */
 int os_read_ram_buf(const char *fname);
 
 /**
- * Jump to a new executable image
+ * os_jump_to_image() - jump to a new executable image
  *
  * This uses exec() to run a new executable image, after putting it in a
  * temporary file. The same arguments and environment are passed to this
@@ -290,24 +310,29 @@ int os_read_ram_buf(const char *fname);
  *			have access to this. It also means that the original
  *			memory filename passed to U-Boot will be left intact.
  *
- * @param dest		Buffer containing executable image
- * @param size		Size of buffer
+ * @dest:	buffer containing executable image
+ * @size:	size of buffer
+ * Return:	0 if OK, -ve on error
  */
 int os_jump_to_image(const void *dest, int size);
 
 /**
- * os_find_u_boot() - Determine the path to U-Boot proper
+ * os_find_u_boot() - determine the path to U-Boot proper
  *
  * This function is intended to be called from within sandbox SPL. It uses
  * a few heuristics to find U-Boot proper. Normally it is either in the same
  * directory, or the directory above (since u-boot-spl is normally in an
  * spl/ subdirectory when built).
  *
- * @fname:	Place to put full path to U-Boot
- * @maxlen:	Maximum size of @fname
- * @return 0 if OK, -NOSPC if the filename is too large, -ENOENT if not found
+ * @fname:	place to put full path to U-Boot
+ * @maxlen:	maximum size of @fname
+ * @use_img:	select the 'u-boot.img' file instead of the 'u-boot' ELF file
+ * @cur_prefix:	prefix of current executable, e.g. "spl" or "tpl"
+ * @next_prefix: prefix of executable to find, e.g. "spl" or ""
+ * Return:	0 if OK, -NOSPC if the filename is too large, -ENOENT if not found
  */
-int os_find_u_boot(char *fname, int maxlen);
+int os_find_u_boot(char *fname, int maxlen, bool use_img,
+		   const char *cur_prefix, const char *next_prefix);
 
 /**
  * os_spl_to_uboot() - Run U-Boot proper
@@ -315,19 +340,123 @@ int os_find_u_boot(char *fname, int maxlen);
  * When called from SPL, this runs U-Boot proper. The filename is obtained by
  * calling os_find_u_boot().
  *
- * @fname:	Full pathname to U-Boot executable
- * @return 0 if OK, -ve on error
+ * @fname:	full pathname to U-Boot executable
+ * Return:	0 if OK, -ve on error
  */
 int os_spl_to_uboot(const char *fname);
 
 /**
- * Read the current system time
+ * os_localtime() - read the current system time
  *
  * This reads the current Local Time and places it into the provided
  * structure.
  *
- * @param rt		Place to put system time
+ * @rt:		place to put system time
  */
 void os_localtime(struct rtc_time *rt);
+
+/**
+ * os_abort() - raise SIGABRT to exit sandbox (e.g. to debugger)
+ */
+void os_abort(void) __attribute__((noreturn));
+
+/**
+ * os_mprotect_allow() - Remove write-protection on a region of memory
+ *
+ * The start and length will be page-aligned before use.
+ *
+ * @start:	Region start
+ * @len:	Region length in bytes
+ * Return:	0 if OK, -1 on error from mprotect()
+ */
+int os_mprotect_allow(void *start, size_t len);
+
+/**
+ * os_write_file() - write a file to the host filesystem
+ *
+ * This can be useful when debugging for writing data out of sandbox for
+ * inspection by external tools.
+ *
+ * @name:	File path to write to
+ * @buf:	Data to write
+ * @size:	Size of data to write
+ * Return:	0 if OK, -ve on error
+ */
+int os_write_file(const char *name, const void *buf, int size);
+
+/**
+ * os_read_file() - Read a file from the host filesystem
+ *
+ * This can be useful when reading test data into sandbox for use by test
+ * routines. The data is allocated using os_malloc() and should be freed by
+ * the caller.
+ *
+ * @name:	File path to read from
+ * @bufp:	Returns buffer containing data read
+ * @sizep:	Returns size of data
+ * Return:	0 if OK, -ve on error
+ */
+int os_read_file(const char *name, void **bufp, int *sizep);
+
+/*
+ * os_find_text_base() - Find the text section in this running process
+ *
+ * This tries to find the address of the text section in this running process.
+ * It can be useful to map the address of functions to the address listed in
+ * the u-boot.map file.
+ *
+ * Return:	address if found, else NULL
+ */
+void *os_find_text_base(void);
+
+/**
+ * os_relaunch() - restart the sandbox
+ *
+ * This functions is used to implement the cold reboot of the sand box.
+ * @argv\[0] specifies the binary that is started while the calling process
+ * stops immediately. If the new binary cannot be started, the process is
+ * terminated and 1 is set as shell return code.
+ *
+ * The PID of the process stays the same. All file descriptors that have not
+ * been opened with O_CLOEXEC stay open including stdin, stdout, stderr.
+ *
+ * @argv:	NULL terminated list of command line parameters
+ */
+void os_relaunch(char *argv[]);
+
+/**
+ * os_setup_signal_handlers() - setup signal handlers
+ *
+ * Install signal handlers for SIGBUS and SIGSEGV.
+ *
+ * Return:	0 for success
+ */
+int os_setup_signal_handlers(void);
+
+/**
+ * os_signal_action() - handle a signal
+ *
+ * @sig:	signal
+ * @pc:		program counter
+ */
+void os_signal_action(int sig, unsigned long pc);
+
+/**
+ * os_get_time_offset() - get time offset
+ *
+ * Get the time offset from environment variable UBOOT_SB_TIME_OFFSET.
+ *
+ * Return:	offset in seconds
+ */
+long os_get_time_offset(void);
+
+/**
+ * os_set_time_offset() - set time offset
+ *
+ * Save the time offset in environment variable UBOOT_SB_TIME_OFFSET.
+ *
+ * @offset:	offset in seconds
+ */
+void os_set_time_offset(long offset);
 
 #endif

@@ -5,9 +5,13 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <reset-uclass.h>
+#include <linux/bitops.h>
 #include <linux/io.h>
-#include <asm/arch/hardware.h>
+#include <asm/arch-rockchip/hardware.h>
+#include <dm/device-internal.h>
 #include <dm/lists.h>
 /*
  * Each reg has 16 bits reset signal for devices
@@ -76,7 +80,7 @@ static int rockchip_reset_deassert(struct reset_ctl *reset_ctl)
 
 struct reset_ops rockchip_reset_ops = {
 	.request = rockchip_reset_request,
-	.free = rockchip_reset_free,
+	.rfree = rockchip_reset_free,
 	.rst_assert = rockchip_reset_assert,
 	.rst_deassert = rockchip_reset_deassert,
 };
@@ -118,7 +122,7 @@ int rockchip_reset_bind(struct udevice *pdev, u32 reg_offset, u32 reg_number)
 	priv = malloc(sizeof(struct rockchip_reset_priv));
 	priv->reset_reg_offset = reg_offset;
 	priv->reset_reg_num = reg_number;
-	rst_dev->priv = priv;
+	dev_set_priv(rst_dev, priv);
 
 	return 0;
 }
@@ -128,5 +132,5 @@ U_BOOT_DRIVER(rockchip_reset) = {
 	.id = UCLASS_RESET,
 	.probe = rockchip_reset_probe,
 	.ops = &rockchip_reset_ops,
-	.priv_auto_alloc_size = sizeof(struct rockchip_reset_priv),
+	.priv_auto	= sizeof(struct rockchip_reset_priv),
 };

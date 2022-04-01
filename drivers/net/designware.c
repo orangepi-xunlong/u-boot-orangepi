@@ -10,12 +10,22 @@
 
 #include <common.h>
 #include <clk.h>
+#include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <miiphy.h>
 #include <malloc.h>
+#include <net.h>
 #include <pci.h>
+#include <reset.h>
+#include <asm/cache.h>
+#include <dm/device_compat.h>
+#include <dm/device-internal.h>
+#include <dm/devres.h>
+#include <dm/lists.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <asm/io.h>
@@ -80,12 +90,11 @@ static int dw_mdio_write(struct mii_dev *bus, int addr, int devad, int reg,
 	return ret;
 }
 
-#if defined(CONFIG_DM_ETH) && defined(CONFIG_DM_GPIO)
-static int dw_mdio_reset(struct mii_dev *bus)
+#if defined(CONFIG_DM_ETH) && CONFIG_IS_ENABLED(DM_GPIO)
+static int __dw_mdio_reset(struct udevice *dev)
 {
-	struct udevice *dev = bus->priv;
 	struct dw_eth_dev *priv = dev_get_priv(dev);
-	struct dw_eth_pdata *pdata = dev_get_platdata(dev);
+	struct dw_eth_pdata *pdata = dev_get_plat(dev);
 	int ret;
 
 	if (!dm_gpio_is_valid(&priv->reset_gpio))
@@ -112,6 +121,63 @@ static int dw_mdio_reset(struct mii_dev *bus)
 
 	return 0;
 }
+
+static int dw_mdio_reset(struct mii_dev *bus)
+{
+	struct udevice *dev = bus->priv;
+
+	return __dw_mdio_reset(dev);
+}
+#endif
+
+#if IS_ENABLED(CONFIG_DM_MDIO)
+int designware_eth_mdio_read(struct udevice *mdio_dev, int addr, int devad, int reg)
+{
+	struct mdio_perdev_priv *pdata = dev_get_uclass_priv(mdio_dev);
+
+	return dw_mdio_read(pdata->mii_bus, addr, devad, reg);
+}
+
+int designware_eth_mdio_write(struct udevice *mdio_dev, int addr, int devad, int reg, u16 val)
+{
+	struct mdio_perdev_priv *pdata = dev_get_uclass_priv(mdio_dev);
+
+	return dw_mdio_write(pdata->mii_bus, addr, devad, reg, val);
+}
+
+#if CONFIG_IS_ENABLED(DM_GPIO)
+int designware_eth_mdio_reset(struct udevice *mdio_dev)
+{
+	struct mdio_perdev_priv *mdio_pdata = dev_get_uclass_priv(mdio_dev);
+	struct udevice *dev = mdio_pdata->mii_bus->priv;
+
+	return __dw_mdio_reset(dev->parent);
+}
+#endif
+
+static const struct mdio_ops designware_eth_mdio_ops = {
+	.read = designware_eth_mdio_read,
+	.write = designware_eth_mdio_write,
+#if CONFIG_IS_ENABLED(DM_GPIO)
+	.reset = designware_eth_mdio_reset,
+#endif
+};
+
+static int designware_eth_mdio_probe(struct udevice *dev)
+{
+	/* Use the priv data of parent */
+	dev_set_priv(dev, dev_get_priv(dev->parent));
+
+	return 0;
+}
+
+U_BOOT_DRIVER(designware_eth_mdio) = {
+	.name = "eth_designware_mdio",
+	.id = UCLASS_MDIO,
+	.probe = designware_eth_mdio_probe,
+	.ops = &designware_eth_mdio_ops,
+	.plat_auto = sizeof(struct mdio_perdev_priv),
+};
 #endif
 
 static int dw_mdio_init(const char *name, void *priv)
@@ -126,7 +192,7 @@ static int dw_mdio_init(const char *name, void *priv)
 	bus->read = dw_mdio_read;
 	bus->write = dw_mdio_write;
 	snprintf(bus->name, sizeof(bus->name), "%s", name);
-#if defined(CONFIG_DM_ETH) && defined(CONFIG_DM_GPIO)
+#if defined(CONFIG_DM_ETH) && CONFIG_IS_ENABLED(DM_GPIO)
 	bus->reset = dw_mdio_reset;
 #endif
 
@@ -134,6 +200,34 @@ static int dw_mdio_init(const char *name, void *priv)
 
 	return mdio_register(bus);
 }
+
+#if IS_ENABLED(CONFIG_DM_MDIO)
+static int dw_dm_mdio_init(const char *name, void *priv)
+{
+	struct udevice *dev = priv;
+	ofnode node;
+	int ret;
+
+	ofnode_for_each_subnode(node, dev_ofnode(dev)) {
+		const char *subnode_name = ofnode_get_name(node);
+		struct udevice *mdiodev;
+
+		if (strcmp(subnode_name, "mdio"))
+			continue;
+
+		ret = device_bind_driver_to_node(dev, "eth_designware_mdio",
+						 subnode_name, node, &mdiodev);
+		if (ret)
+			debug("%s: not able to bind mdio device node\n", __func__);
+
+		return 0;
+	}
+
+	printf("%s: mdio node is missing, registering legacy mdio bus", __func__);
+
+	return dw_mdio_init(name, priv);
+}
+#endif
 
 static void tx_descs_init(struct dw_eth_dev *priv)
 {
@@ -280,6 +374,15 @@ int designware_eth_init(struct dw_eth_dev *priv, u8 *enetaddr)
 
 	writel(readl(&dma_p->busmode) | DMAMAC_SRST, &dma_p->busmode);
 
+	/*
+	 * When a MII PHY is used, we must set the PS bit for the DMA
+	 * reset to succeed.
+	 */
+	if (priv->phydev->interface == PHY_INTERFACE_MODE_MII)
+		writel(readl(&mac_p->conf) | MII_PORTSELECT, &mac_p->conf);
+	else
+		writel(readl(&mac_p->conf) & ~MII_PORTSELECT, &mac_p->conf);
+
 	start = get_timer(0);
 	while (readl(&dma_p->busmode) & DMAMAC_SRST) {
 		if (get_timer(start) >= CONFIG_MACRESET_TIMEOUT) {
@@ -370,24 +473,28 @@ static int _dw_eth_send(struct dw_eth_dev *priv, void *packet, int length)
 		return -EPERM;
 	}
 
-	length = max(length, ETH_ZLEN);
-
 	memcpy((void *)data_start, packet, length);
+	if (length < ETH_ZLEN) {
+		memset(&((char *)data_start)[length], 0, ETH_ZLEN - length);
+		length = ETH_ZLEN;
+	}
 
 	/* Flush data to be sent */
 	flush_dcache_range(data_start, data_end);
 
 #if defined(CONFIG_DW_ALTDESCRIPTOR)
 	desc_p->txrx_status |= DESC_TXSTS_TXFIRST | DESC_TXSTS_TXLAST;
-	desc_p->dmamac_cntl |= (length << DESC_TXCTRL_SIZE1SHFT) &
-			       DESC_TXCTRL_SIZE1MASK;
+	desc_p->dmamac_cntl = (desc_p->dmamac_cntl & ~DESC_TXCTRL_SIZE1MASK) |
+			      ((length << DESC_TXCTRL_SIZE1SHFT) &
+			      DESC_TXCTRL_SIZE1MASK);
 
 	desc_p->txrx_status &= ~(DESC_TXSTS_MSK);
 	desc_p->txrx_status |= DESC_TXSTS_OWNBYDMA;
 #else
-	desc_p->dmamac_cntl |= ((length << DESC_TXCTRL_SIZE1SHFT) &
-			       DESC_TXCTRL_SIZE1MASK) | DESC_TXCTRL_TXLAST |
-			       DESC_TXCTRL_TXFIRST;
+	desc_p->dmamac_cntl = (desc_p->dmamac_cntl & ~DESC_TXCTRL_SIZE1MASK) |
+			      ((length << DESC_TXCTRL_SIZE1SHFT) &
+			      DESC_TXCTRL_SIZE1MASK) | DESC_TXCTRL_TXLAST |
+			      DESC_TXCTRL_TXFIRST;
 
 	desc_p->txrx_status = DESC_TXSTS_OWNBYDMA;
 #endif
@@ -466,17 +573,23 @@ static int _dw_free_pkt(struct dw_eth_dev *priv)
 static int dw_phy_init(struct dw_eth_dev *priv, void *dev)
 {
 	struct phy_device *phydev;
-	int mask = 0xffffffff, ret;
+	int ret;
 
-#ifdef CONFIG_PHY_ADDR
-	mask = 1 << CONFIG_PHY_ADDR;
-#endif
-
-	phydev = phy_find_by_mask(priv->bus, mask, priv->interface);
+#if IS_ENABLED(CONFIG_DM_MDIO) && IS_ENABLED(CONFIG_DM_ETH)
+	phydev = dm_eth_phy_connect(dev);
 	if (!phydev)
 		return -ENODEV;
+#else
+	int phy_addr = -1;
 
-	phy_connect_dev(phydev, dev);
+#ifdef CONFIG_PHY_ADDR
+	phy_addr = CONFIG_PHY_ADDR;
+#endif
+
+	phydev = phy_connect(priv->bus, phy_addr, dev, priv->interface);
+	if (!phydev)
+		return -ENODEV;
+#endif
 
 	phydev->supported &= PHY_GBIT_FEATURES;
 	if (priv->max_speed) {
@@ -493,7 +606,7 @@ static int dw_phy_init(struct dw_eth_dev *priv, void *dev)
 }
 
 #ifndef CONFIG_DM_ETH
-static int dw_eth_init(struct eth_device *dev, bd_t *bis)
+static int dw_eth_init(struct eth_device *dev, struct bd_info *bis)
 {
 	int ret;
 
@@ -591,7 +704,7 @@ int designware_initialize(ulong base_addr, u32 interface)
 #ifdef CONFIG_DM_ETH
 static int designware_eth_start(struct udevice *dev)
 {
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct dw_eth_dev *priv = dev_get_priv(dev);
 	int ret;
 
@@ -635,7 +748,7 @@ void designware_eth_stop(struct udevice *dev)
 
 int designware_eth_write_hwaddr(struct udevice *dev)
 {
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct dw_eth_dev *priv = dev_get_priv(dev);
 
 	return _dw_write_hwaddr(priv, pdata->enetaddr);
@@ -643,32 +756,34 @@ int designware_eth_write_hwaddr(struct udevice *dev)
 
 static int designware_eth_bind(struct udevice *dev)
 {
-#ifdef CONFIG_DM_PCI
-	static int num_cards;
-	char name[20];
+	if (IS_ENABLED(CONFIG_PCI)) {
+		static int num_cards;
+		char name[20];
 
-	/* Create a unique device name for PCI type devices */
-	if (device_is_on_pci_bus(dev)) {
-		sprintf(name, "eth_designware#%u", num_cards++);
-		device_set_name(dev, name);
+		/* Create a unique device name for PCI type devices */
+		if (device_is_on_pci_bus(dev)) {
+			sprintf(name, "eth_designware#%u", num_cards++);
+			device_set_name(dev, name);
+		}
 	}
-#endif
 
 	return 0;
 }
 
 int designware_eth_probe(struct udevice *dev)
 {
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct dw_eth_dev *priv = dev_get_priv(dev);
 	u32 iobase = pdata->iobase;
 	ulong ioaddr;
-	int ret;
+	int ret, err;
+	struct reset_ctl_bulk reset_bulk;
 #ifdef CONFIG_CLK
-	int i, err, clock_nb;
+	int i, clock_nb;
 
 	priv->clock_count = 0;
-	clock_nb = dev_count_phandle_with_args(dev, "clocks", "#clock-cells");
+	clock_nb = dev_count_phandle_with_args(dev, "clocks", "#clock-cells",
+					       0);
 	if (clock_nb > 0) {
 		priv->clocks = devm_kcalloc(dev, clock_nb, sizeof(struct clk),
 					    GFP_KERNEL);
@@ -710,12 +825,17 @@ int designware_eth_probe(struct udevice *dev)
 	}
 #endif
 
-#ifdef CONFIG_DM_PCI
+	ret = reset_get_bulk(dev, &reset_bulk);
+	if (ret)
+		dev_warn(dev, "Can't get reset: %d\n", ret);
+	else
+		reset_deassert_bulk(&reset_bulk);
+
 	/*
 	 * If we are on PCI bus, either directly attached to a PCI root port,
-	 * or via a PCI bridge, fill in platdata before we probe the hardware.
+	 * or via a PCI bridge, fill in plat before we probe the hardware.
 	 */
-	if (device_is_on_pci_bus(dev)) {
+	if (IS_ENABLED(CONFIG_PCI) && device_is_on_pci_bus(dev)) {
 		dm_pci_read_config32(dev, PCI_BASE_ADDRESS_0, &iobase);
 		iobase &= PCI_BASE_ADDRESS_MEM_MASK;
 		iobase = dm_pci_mem_to_phys(dev, iobase);
@@ -723,7 +843,6 @@ int designware_eth_probe(struct udevice *dev)
 		pdata->iobase = iobase;
 		pdata->phy_interface = PHY_INTERFACE_MODE_RMII;
 	}
-#endif
 
 	debug("%s, iobase=%x, priv=%p\n", __func__, iobase, priv);
 	ioaddr = iobase;
@@ -732,13 +851,27 @@ int designware_eth_probe(struct udevice *dev)
 	priv->interface = pdata->phy_interface;
 	priv->max_speed = pdata->max_speed;
 
-	dw_mdio_init(dev->name, dev);
+#if IS_ENABLED(CONFIG_DM_MDIO)
+	ret = dw_dm_mdio_init(dev->name, dev);
+#else
+	ret = dw_mdio_init(dev->name, dev);
+#endif
+	if (ret) {
+		err = ret;
+		goto mdio_err;
+	}
 	priv->bus = miiphy_get_dev_by_name(dev->name);
 
 	ret = dw_phy_init(priv, dev);
 	debug("%s, ret=%d\n", __func__, ret);
+	if (!ret)
+		return 0;
 
-	return ret;
+	/* continue here for cleanup if no PHY found */
+	err = ret;
+	mdio_unregister(priv->bus);
+	mdio_free(priv->bus);
+mdio_err:
 
 #ifdef CONFIG_CLK
 clk_err:
@@ -746,8 +879,8 @@ clk_err:
 	if (ret)
 		pr_err("failed to disable all clocks\n");
 
-	return err;
 #endif
+	return err;
 }
 
 static int designware_eth_remove(struct udevice *dev)
@@ -774,15 +907,15 @@ const struct eth_ops designware_eth_ops = {
 	.write_hwaddr		= designware_eth_write_hwaddr,
 };
 
-int designware_eth_ofdata_to_platdata(struct udevice *dev)
+int designware_eth_of_to_plat(struct udevice *dev)
 {
-	struct dw_eth_pdata *dw_pdata = dev_get_platdata(dev);
-#ifdef CONFIG_DM_GPIO
+	struct dw_eth_pdata *dw_pdata = dev_get_plat(dev);
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct dw_eth_dev *priv = dev_get_priv(dev);
 #endif
 	struct eth_pdata *pdata = &dw_pdata->eth_pdata;
 	const char *phy_mode;
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	int reset_flags = GPIOD_IS_OUT;
 #endif
 	int ret = 0;
@@ -799,7 +932,7 @@ int designware_eth_ofdata_to_platdata(struct udevice *dev)
 
 	pdata->max_speed = dev_read_u32_default(dev, "max-speed", 0);
 
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	if (dev_read_bool(dev, "snps,reset-active-low"))
 		reset_flags |= GPIOD_ACTIVE_LOW;
 
@@ -818,10 +951,9 @@ int designware_eth_ofdata_to_platdata(struct udevice *dev)
 
 static const struct udevice_id designware_eth_ids[] = {
 	{ .compatible = "allwinner,sun7i-a20-gmac" },
-	{ .compatible = "altr,socfpga-stmmac" },
 	{ .compatible = "amlogic,meson6-dwmac" },
-	{ .compatible = "amlogic,meson-gx-dwmac" },
 	{ .compatible = "st,stm32-dwmac" },
+	{ .compatible = "snps,arc-dwmac-3.70a" },
 	{ }
 };
 
@@ -829,13 +961,13 @@ U_BOOT_DRIVER(eth_designware) = {
 	.name	= "eth_designware",
 	.id	= UCLASS_ETH,
 	.of_match = designware_eth_ids,
-	.ofdata_to_platdata = designware_eth_ofdata_to_platdata,
+	.of_to_plat = designware_eth_of_to_plat,
 	.bind	= designware_eth_bind,
 	.probe	= designware_eth_probe,
 	.remove	= designware_eth_remove,
 	.ops	= &designware_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct dw_eth_dev),
-	.platdata_auto_alloc_size = sizeof(struct dw_eth_pdata),
+	.priv_auto	= sizeof(struct dw_eth_dev),
+	.plat_auto	= sizeof(struct dw_eth_pdata),
 	.flags = DM_FLAG_ALLOC_PRIV_DMA,
 };
 
