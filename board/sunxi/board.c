@@ -681,6 +681,11 @@ void sunxi_board_init(void)
 {
 	int power_failed = 0;
 
+#if defined(CONFIG_MACH_SUN50I_H6)
+	gpio_direction_output(SUNXI_GPL(4), 1);
+	gpio_direction_output(SUNXI_GPL(7), 0);
+#endif
+
 #ifdef CONFIG_MACH_SUN8I_H3
 	/* turn on power LED (PL10) on H3 boards */
 	gpio_direction_output(SUNXI_GPL(10), 1);
