@@ -82,6 +82,7 @@
 			};
 
 			reg_aldo2: aldo2 {
+				regulator-always-on;
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-name = "vcc-ac200";
