@@ -649,6 +649,11 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 	int phy_id = phydev->phy_id;
 	struct phy_driver *drv = NULL;
 
+	if(phy_id == YT_8531C_PHY_ID)
+		env_set("ethernet_phy", "yt8531c");
+	if(phy_id == RTL_8211F_PHY_ID)
+		env_set("ethernet_phy", "rtl8211f");
+
 	list_for_each(entry, &phy_drivers) {
 		drv = list_entry(entry, struct phy_driver, list);
 		if ((drv->uid & drv->mask) == (phy_id & drv->mask))

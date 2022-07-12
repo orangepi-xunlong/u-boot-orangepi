@@ -21,6 +21,9 @@
 
 struct udevice;
 
+#define YT_8531C_PHY_ID 0x4f51e91b
+#define RTL_8211F_PHY_ID 0x001cc916
+
 #define PHY_FIXED_ID		0xa5a55a5a
 #define PHY_NCSI_ID            0xbeefcafe
 
