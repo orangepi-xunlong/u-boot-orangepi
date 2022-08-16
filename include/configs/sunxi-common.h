@@ -177,7 +177,11 @@
 #define CONFIG_SPL_MAX_SIZE		0xbfa0		/* 48 KiB */
 #define LOW_LEVEL_SRAM_STACK		0x58000
 #else
-#define CONFIG_SPL_MAX_SIZE		0x7fa0		/* 32 KiB */
+#ifdef CONFIG_MACH_SUN50I_H6
+#define CONFIG_SPL_MAX_SIZE		0xbfa0		/* 48 KiB */
+#else
+#define CONFIG_SPL_MAX_SIZE		0x7fa0          /* 32 KiB */
+#endif
 /* end of SRAM A2 on H6 for now */
 #define LOW_LEVEL_SRAM_STACK		0x00118000
 #endif
@@ -188,8 +192,8 @@
 
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
-#ifndef CONFIG_MACH_SUN50I_H616
-#define CONFIG_SPL_PAD_TO		32768		/* decimal for 'dd' */
+#if !defined(CONFIG_MACH_SUN50I_H616) && !defined(CONFIG_MACH_SUN50I_H6)
+#define CONFIG_SPL_PAD_TO		32768
 #endif
 
 

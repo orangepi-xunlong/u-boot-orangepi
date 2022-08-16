@@ -13,12 +13,14 @@
 #include <asm/arch/rsb.h>
 #include <i2c.h>
 #include <asm/arch/pmic_bus.h>
+#include <asm/gpio.h>
 
 #define AXP152_I2C_ADDR			0x30
 
 #define AXP209_I2C_ADDR			0x34
 
 #define AXP305_I2C_ADDR			0x36
+#define AXP806_I2C_ADDR			0x36
 
 #define AXP221_CHIP_ADDR		0x68
 #define AXP221_CTRL_ADDR		0x3e
@@ -37,11 +39,15 @@ int pmic_bus_init(void)
 	if (!needs_init)
 		return 0;
 
-#if defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
+#if defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER || defined CONFIG_AXP806_POWER
 # ifdef CONFIG_MACH_SUN6I
 	p2wi_init();
 	ret = p2wi_change_to_p2wi_mode(AXP221_CHIP_ADDR, AXP221_CTRL_ADDR,
 				       AXP221_INIT_DATA);
+# elif defined CONFIG_AXP806_POWER
+	clock_twi_onoff(5, 1);
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN50I_H6_GPL_R_TWI);
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN50I_H6_GPL_R_TWI);
 # elif defined CONFIG_MACH_SUN8I_R40
 	/* Nothing. R40 uses the AXP221s in I2C mode */
 	ret = 0;
@@ -68,6 +74,8 @@ int pmic_bus_read(u8 reg, u8 *data)
 	return i2c_read(AXP209_I2C_ADDR, reg, 1, data, 1);
 #elif defined CONFIG_AXP305_POWER
 	return i2c_read(AXP305_I2C_ADDR, reg, 1, data, 1);
+#elif defined CONFIG_AXP806_POWER
+	return i2c_read(AXP806_I2C_ADDR, reg, 1, data, 1);
 #elif defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
 # ifdef CONFIG_MACH_SUN6I
 	return p2wi_read(reg, data);
@@ -87,6 +95,8 @@ int pmic_bus_write(u8 reg, u8 data)
 	return i2c_write(AXP209_I2C_ADDR, reg, 1, &data, 1);
 #elif defined CONFIG_AXP305_POWER
 	return i2c_write(AXP305_I2C_ADDR, reg, 1, &data, 1);
+#elif defined CONFIG_AXP806_POWER
+	return i2c_write(AXP806_I2C_ADDR, reg, 1, &data, 1);
 #elif defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
 # ifdef CONFIG_MACH_SUN6I
 	return p2wi_write(reg, data);
