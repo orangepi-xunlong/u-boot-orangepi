@@ -30,3 +30,12 @@ out:
 	return 0;
 }
 #endif
+
+int board_early_init_r(void)
+{
+	/* LED setup */
+	if (IS_ENABLED(CONFIG_LED))
+		led_default_state();
+
+	return 0;
+}

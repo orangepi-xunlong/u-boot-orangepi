@@ -62,6 +62,29 @@
 		#clock-cells = <0>;
 	};
 
+	leds: gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 =<&leds_gpio>;
+
+		power {
+			gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_HIGH>;
+			label = "power_led";
+			default-state = "on";
+		};
+
+		num {
+			gpios = <&gpio4 RK_PD5 GPIO_ACTIVE_HIGH>;
+			label = "num_led";
+			default-state = "off";
+		};
+
+		caps {
+			gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
+			label = "caps_led";
+			default-state = "off";
+		};
+	};
 };
 
 &emmc_phy {
@@ -368,6 +391,14 @@
                         rockchip,pins = <1 RK_PB6 RK_FUNC_GPIO &pcfg_pull_down>;
                 };
 
+	};
+
+	gpio-leds {
+		leds_gpio: leds-gpio {
+			rockchip,pins = <1 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>,
+					<4 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>,
+					<3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 	};
 };
 
