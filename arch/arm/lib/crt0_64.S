@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * crt0 - C-runtime startup Code for AArch64 U-Boot
  *
@@ -7,11 +6,14 @@
  *
  * (C) Copyright 2012
  * Albert ARIBAUD <albert.u.boot@aribaud.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <asm-offsets.h>
 #include <asm/macro.h>
+#include <asm/system.h>
 #include <linux/linkage.h>
 
 /*
@@ -64,6 +66,42 @@
  */
 
 ENTRY(_main)
+	/*
+	 * Enable instruction cache (if required), stack pointer,
+	 * data access alignment checks and SError.
+	 */
+#ifdef CONFIG_SPL_BUILD
+	mov x1, #CR_I
+#else
+	mov x1, #0
+#endif
+	switch_el x2, 3f, 2f, 1f
+3:	mrs	x0, sctlr_el3
+	orr	x0, x0, x1
+	msr	sctlr_el3, x0
+#ifndef CONFIG_SUPPORT_USBPLUG
+	msr	daifclr, #4			/* Enable SError. SCR_EL3.EA=1 was already set in start.S */
+#endif
+	b	0f
+2:	mrs	x0, sctlr_el2
+	orr	x0, x0, x1
+	msr	sctlr_el2, x0
+
+	mrs	x0, hcr_el2
+	orr	x0, x0, #HCR_EL2_TGE
+	orr	x0, x0, #HCR_EL2_AMO
+#if CONFIG_IS_ENABLED(IRQ)
+	orr	x0, x0, #HCR_EL2_IMO
+#endif
+	msr	hcr_el2, x0
+	msr	daifclr, #4
+	b	0f
+1:	mrs	x0, sctlr_el1
+	orr	x0, x0, x1
+	msr	sctlr_el1, x0
+	msr	daifclr, #4
+0:
+	isb
 
 /*
  * Set up initial C runtime environment and call board_init_f(0).
@@ -72,9 +110,6 @@ ENTRY(_main)
 	ldr	x0, =(CONFIG_TPL_STACK)
 #elif defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
 	ldr	x0, =(CONFIG_SPL_STACK)
-#elif defined(CONFIG_SYS_INIT_SP_BSS_OFFSET)
-	adr	x0, __bss_start
-	add	x0, x0, #CONFIG_SYS_INIT_SP_BSS_OFFSET
 #else
 	ldr	x0, =(CONFIG_SYS_INIT_SP_ADDR)
 #endif
@@ -85,11 +120,12 @@ ENTRY(_main)
 	/* set up gd here, outside any C code */
 	mov	x18, x0
 	bl	board_init_f_init_reserve
+	bl	board_init_f_boot_flags
 
-	mov	x0, #0
 	bl	board_init_f
 
-#if !defined(CONFIG_SPL_BUILD)
+#if (defined(CONFIG_SPL_BUILD) && !defined(CONFIG_TPL_BUILD) && !defined(CONFIG_SPL_SKIP_RELOCATE)) || \
+	!defined(CONFIG_SPL_BUILD)
 /*
  * Set up intermediate environment (new sp and gd) and call
  * relocate_code(addr_moni). Trick here is that we'll return
@@ -99,6 +135,7 @@ ENTRY(_main)
 	bic	sp, x0, #0xf	/* 16-byte alignment for ABI compliance */
 	ldr	x18, [x18, #GD_NEW_GD]		/* x18 <- gd->new_gd */
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
 	adr	lr, relocation_return
 #if CONFIG_POSITION_INDEPENDENT
 	/* Add in link-vs-runtime offset */
@@ -112,6 +149,7 @@ ENTRY(_main)
 	add	lr, lr, x9	/* new return address after relocation */
 	ldr	x0, [x18, #GD_RELOCADDR]	/* x0 <- gd->relocaddr */
 	b	relocate_code
+#endif
 
 relocation_return:
 

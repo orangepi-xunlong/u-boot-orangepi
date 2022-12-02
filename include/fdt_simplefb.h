@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Simplefb device tree support
  *
  * (C) Copyright 2015
  * Stephen Warren <swarren@wwwdotorg.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _FDT_SIMPLEFB_H_

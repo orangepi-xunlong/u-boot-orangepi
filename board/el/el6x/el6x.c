@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Stefano Babic <sbabic@denx.de>
  *
  * Based on other i.MX6 boards
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -24,7 +25,6 @@
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <input.h>
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 #include <asm/arch/mx6-ddr.h>

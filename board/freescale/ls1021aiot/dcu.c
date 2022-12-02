@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
  *
  * FSL DCU Framebuffer driver
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

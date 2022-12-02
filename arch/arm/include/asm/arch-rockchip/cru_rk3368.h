@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd
  * Author: Andy Yan <andy.yan@rock-chips.com>
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_CRU_RK3368_H
 #define _ASM_ARCH_CRU_RK3368_H
@@ -18,6 +18,12 @@ enum rk3368_pll_id {
 	GPLL,
 	NPLL,
 	PLL_COUNT,
+};
+
+struct rk3368_clk_info {
+	unsigned long id;
+	char *name;
+	bool is_cru;
 };
 
 struct rk3368_cru {
@@ -51,6 +57,14 @@ check_member(rk3368_cru, emmc_con[1], 0x41c);
 
 struct rk3368_clk_priv {
 	struct rk3368_cru *cru;
+	ulong armlclk_hz;
+	ulong armlclk_enter_hz;
+	ulong armlclk_init_hz;
+	ulong armbclk_hz;
+	ulong armbclk_enter_hz;
+	ulong armbclk_init_hz;
+	bool sync_kernel;
+	bool set_armclk_rate;
 };
 
 enum {
@@ -79,6 +93,49 @@ enum {
 	PLL_RESET			= 1,
 	PLL_RESET_MASK			= GENMASK(5, 5),
 
+	/* CLKSEL1CON */
+	CORE_ACLK_DIV_SHIFT		= 0,
+	CORE_ACLK_DIV_MASK		= 0x1f << CORE_ACLK_DIV_SHIFT,
+	CORE_DBG_DIV_SHIFT		= 8,
+	CORE_DBG_DIV_MASK		= 0x1f << CORE_DBG_DIV_SHIFT,
+
+	CORE_CLK_PLL_SEL_SHIFT		= 7,
+	CORE_CLK_PLL_SEL_MASK		= 1 << CORE_CLK_PLL_SEL_SHIFT,
+	CORE_CLK_PLL_SEL_APLL		= 0,
+	CORE_CLK_PLL_SEL_GPLL,
+	CORE_DIV_CON_SHIFT		= 0,
+	CORE_DIV_CON_MASK		= 0x1f << CORE_DIV_CON_SHIFT,
+
+	/* CLKSEL8CON */
+	PCLK_BUS_DIV_CON_SHIFT		= 12,
+	PCLK_BUS_DIV_CON_MASK		= 0x7 << PCLK_BUS_DIV_CON_SHIFT,
+	HCLK_BUS_DIV_CON_SHIFT		= 8,
+	HCLK_BUS_DIV_CON_MASK		= 0x3 << HCLK_BUS_DIV_CON_SHIFT,
+	CLK_BUS_PLL_SEL_CPLL		= 0,
+	CLK_BUS_PLL_SEL_GPLL		= 1,
+	CLK_BUS_PLL_SEL_SHIFT		= 7,
+	CLK_BUS_PLL_SEL_MASK		= 1 << CLK_BUS_PLL_SEL_SHIFT,
+	ACLK_BUS_DIV_CON_SHIFT		= 0,
+	ACLK_BUS_DIV_CON_MASK		= 0x1f << ACLK_BUS_DIV_CON_SHIFT,
+
+	/* CLKSEL9CON */
+	PCLK_PERI_DIV_CON_SHIFT		= 12,
+	PCLK_PERI_DIV_CON_MASK		= 0x3 << PCLK_PERI_DIV_CON_SHIFT,
+	HCLK_PERI_DIV_CON_SHIFT		= 8,
+	HCLK_PERI_DIV_CON_MASK		= 3 << HCLK_PERI_DIV_CON_SHIFT,
+	CLK_PERI_PLL_SEL_CPLL		= 0,
+	CLK_PERI_PLL_SEL_GPLL,
+	CLK_PERI_PLL_SEL_SHIFT		= 7,
+	CLK_PERI_PLL_SEL_MASK		= 1 << CLK_PERI_PLL_SEL_SHIFT,
+	ACLK_PERI_DIV_CON_SHIFT		= 0,
+	ACLK_PERI_DIV_CON_MASK		= 0x1f,
+
+	/* CLKSEL10CON */
+	CLK_CRYPTO_DIV_CON_SHIFT	= 14,
+	CLK_CRYPTO_DIV_CON_MASK		= 0x3 << CLK_CRYPTO_DIV_CON_SHIFT,
+	PCLK_ALIVE_DIV_CON_SHIFT	= 8,
+	PCLK_ALIVE_DIV_CON_MASK		= 0x1f << PCLK_ALIVE_DIV_CON_SHIFT,
+
 	/* CLKSEL12_CON */
 	MCU_STCLK_DIV_SHIFT		= 8,
 	MCU_STCLK_DIV_MASK		= GENMASK(10, 8),
@@ -88,6 +145,23 @@ enum {
 	MCU_PLL_SEL_GPLL		= 1,
 	MCU_CLK_DIV_SHIFT		= 0,
 	MCU_CLK_DIV_MASK		= GENMASK(4, 0),
+
+	/* CLKSEL19_CON */
+	ACLK_VOP_PLL_SEL_SHIFT		= 6,
+	ACLK_VOP_PLL_SEL_MASK		= GENMASK(7, 6),
+	ACLK_VOP_PLL_SEL_CPLL		= 0,
+	ACLK_VOP_PLL_SEL_GPLL		= 1,
+	ACLK_VOP_DIV_SHIFT		= 0,
+	ACLK_VOP_DIV_MASK		= GENMASK(4, 0),
+
+	/* CLKSEL20_CON */
+	DCLK_VOP_PLL_SEL_SHIFT		= 8,
+	DCLK_VOP_PLL_SEL_MASK		= GENMASK(9, 8),
+	DCLK_VOP_PLL_SEL_CPLL		= 0,
+	DCLK_VOP_PLL_SEL_GPLL		= 1,
+	DCLK_VOP_PLL_SEL_NPLL		= 2,
+	DCLK_VOP_DIV_SHIFT		= 0,
+	DCLK_VOP_DIV_MASK		= GENMASK(7, 0),
 
 	/* CLKSEL_CON25 */
 	CLK_SARADC_DIV_CON_SHIFT	= 8,

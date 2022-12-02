@@ -5,4 +5,3 @@
 #
 
 obj-y += ls1012ardb.o
-obj-$(CONFIG_FSL_PFE) += eth.o

@@ -1,13 +1,5 @@
 menu "Watchdog Timer Support"
 
-config WATCHDOG
-	bool "Enable U-Boot watchdog reset"
-	help
-	  This option enables U-Boot watchdog support where U-Boot is using
-	  watchdog_reset function to service watchdog device in U-Boot. Enable
-	  this option if you want to service enabled watchdog by U-Boot. Disable
-	  this option if you want U-Boot to start watchdog but never service it.
-
 config HW_WATCHDOG
 	bool
 
@@ -27,13 +19,6 @@ config OMAP_WATCHDOG
 	default y if AM33XX
 	help
 	  Say Y here to enable the OMAP3+ watchdog driver.
-
-config SUNXI_WATCHDOG
-	bool "sunxi watchdog"
-	depends on ARCH_SUNXI
-	select HW_WATCHDOG
-	help
-	  Say Y here to enable the sunxi watchdog driver.
 
 config TANGIER_WATCHDOG
 	bool "Intel Tangier watchdog"
@@ -63,9 +48,9 @@ config WDT_SANDBOX
 	bool "Enable Watchdog Timer support for Sandbox"
 	depends on SANDBOX && WDT
 	help
-	  Enable Watchdog Timer support in Sandbox. This is a dummy device that
-	  can be probed and supports all of the methods of WDT, but does not
-	  really do anything.
+		Enable Watchdog Timer support in Sandbox. This is a dummy device that
+		can be probed and supports all of the methods of WDT, but does not
+		really do anything.
 
 config WDT_ASPEED
 	bool "Aspeed ast2400/ast2500 watchdog timer support"
@@ -93,12 +78,10 @@ config WDT_ORION
 	   Select this to enable Orion watchdog timer, which can be found on some
 	   Marvell Armada chips.
 
-config WDT_CDNS
-	bool "Cadence watchdog timer support"
-	depends on WDT
-	imply WATCHDOG
+config ROCKCHIP_WATCHDOG
+	bool "Rockchip watchdog"
+	depends on WDT && ARCH_ROCKCHIP
 	help
-	   Select this to enable Cadence watchdog timer, which can be found on some
-	   Xilinx Microzed Platform.
+	  Say Y here to enable Rockchip watchdog driver.
 
 endmenu

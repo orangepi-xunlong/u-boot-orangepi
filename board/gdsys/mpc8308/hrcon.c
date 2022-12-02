@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
- * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
+ * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -31,6 +32,8 @@
 #include <pca9698.h>
 
 #include <miiphy.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_MUX_CHANNELS 2
 

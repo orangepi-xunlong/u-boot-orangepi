@@ -6,8 +6,4 @@
 # SPDX-License-Identifier: GPL-2.0
 #
 
-ifdef CONFIG_SPL_BUILD
-obj-y	:= alt_spl.o
-else
-obj-y	:= alt.o qos.o
-endif
+obj-y	:= alt.o qos.o ../rcar-common/common.o

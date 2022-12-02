@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /* (C) Copyright 2002
  * Detlev Zundel, DENX Software Engineering, dzu@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************/
@@ -55,11 +56,5 @@ struct bmp_image {
 #define BMP_BI_RGB	0
 #define BMP_BI_RLE8	1
 #define BMP_BI_RLE4	2
-
-struct lzma_header {
-	char signature[4];
-	u32 file_size;
-	u32 original_file_size;
-};
 
 #endif							/* _BMP_H_ */

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008-2011
  * Graeme Russ, <graeme.russ@gmail.com>
@@ -15,10 +14,14 @@
  *
  * Copyright 2015 ATS Advanced Telematics Systems GmbH
  * Copyright 2015 Konsulko Group, Matt Porter <mporter@konsulko.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * ARMv7M does not support ARM instruction mode. However, the

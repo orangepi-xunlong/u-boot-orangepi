@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
+ * SPDX-License-Identifier:	GPL-2.0+
+ *
  ********************************************************************
  * NOTE: This header file defines an interface to U-Boot. Including
  * this (unmodified) header file in another file is considered normal

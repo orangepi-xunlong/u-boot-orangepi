@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2006
  * Markus Klotzbuecher, mk@denx.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

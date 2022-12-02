@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -18,6 +17,8 @@
  * mailto:info@wawnet.biz
  *
  * (C) Copyright 2004 Texas Insturments
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

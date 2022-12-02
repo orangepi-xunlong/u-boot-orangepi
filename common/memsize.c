@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -26,8 +27,7 @@ DECLARE_GLOBAL_DATA_PTR;
 long get_ram_size(long *base, long maxsize)
 {
 	volatile long *addr;
-	long           save[31];
-	long           save_base;
+	long           save[32];
 	long           cnt;
 	long           val;
 	long           size;
@@ -43,7 +43,7 @@ long get_ram_size(long *base, long maxsize)
 
 	addr = base;
 	sync();
-	save_base = *addr;
+	save[i] = *addr;
 	sync();
 	*addr = 0;
 
@@ -51,7 +51,7 @@ long get_ram_size(long *base, long maxsize)
 	if ((val = *addr) != 0) {
 		/* Restore the original data before leaving the function. */
 		sync();
-		*base = save_base;
+		*addr = save[i];
 		for (cnt = 1; cnt < maxsize / sizeof(long); cnt <<= 1) {
 			addr  = base + cnt;
 			sync();
@@ -76,16 +76,9 @@ long get_ram_size(long *base, long maxsize)
 				addr  = base + cnt;
 				*addr = save[--i];
 			}
-			/* warning: don't restore save_base in this case,
-			 * it is already done in the loop because
-			 * base and base+size share the same physical memory
-			 * and *base is saved after *(base+size) modification
-			 * in first loop
-			 */
 			return (size);
 		}
 	}
-	*base = save_base;
 
 	return (maxsize);
 }

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _BOOTM_H
@@ -40,7 +41,7 @@ void lynxkdi_boot(image_header_t *hdr);
 
 boot_os_fn *bootm_os_get_boot_func(int os);
 
-int bootm_host_load_images(const void *fit, int cfg_noffset);
+int bootm_host_load_images(const void *fit, int cfg_noffset, int is_spl);
 
 int boot_selected_os(int argc, char * const argv[], int state,
 		     bootm_headers_t *images, boot_os_fn *boot_fn);
@@ -53,7 +54,9 @@ int bootm_find_images(int flag, int argc, char * const argv[]);
 int do_bootm_states(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		    int states, bootm_headers_t *images, int boot_progress);
 
-void arch_preboot_os(void);
+void arch_preboot_os(uint32_t bootm_state, bootm_headers_t *images);
+
+int board_do_bootm(int argc, char * const argv[]);
 
 /**
  * bootm_decomp_image() - decompress the operating system

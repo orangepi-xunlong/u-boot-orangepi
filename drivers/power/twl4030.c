@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2009 Wind River Systems, Inc.
  * Tom Rix <Tom.Rix at windriver.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * twl4030_power_reset_init is derived from code on omapzoom,
  * git://git.omapzoom.com/repo/u-boot.git

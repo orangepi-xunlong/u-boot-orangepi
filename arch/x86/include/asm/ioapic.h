@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * From coreboot file of the same name
  *
  * Copyright (C) 2010 coresystems GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __ASM_IOAPIC_H

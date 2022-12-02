@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * Texas Instruments Incorporated.
@@ -6,6 +5,8 @@
  *
  * Configuration settings for the TI EVM5430 board.
  * See ti_omap5_common.h for omap5 common settings.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_OMAP5_EVM_H
@@ -28,6 +29,7 @@
 
 #include <configs/ti_omap5_common.h>
 
+#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		UART3_BASE
 
 #define CONFIG_MISC_INIT_R
@@ -59,6 +61,8 @@
 
 #define CONSOLEDEV		"ttyO2"
 
+#define CONFIG_LIBATA
+#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	1
 #define CONFIG_SYS_SCSI_MAX_LUN		1

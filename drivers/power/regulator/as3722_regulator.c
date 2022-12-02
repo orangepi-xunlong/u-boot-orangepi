@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  *
  * Placeholder regulator driver for as3722.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

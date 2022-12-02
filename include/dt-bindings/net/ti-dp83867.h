@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * TI DP83867 PHY drivers
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  *
  */
 

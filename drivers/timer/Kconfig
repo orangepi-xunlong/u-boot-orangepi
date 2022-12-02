@@ -105,12 +105,11 @@ config AG101P_TIMER
 	help
 	  Select this to enable a timer for AG01P devices.
 
-config ATCPIT100_TIMER
-	bool "ATCPIT100 timer support"
-	depends on TIMER
+config AE3XX_TIMER
+	bool "AE3XX timer support"
+	depends on TIMER && NDS32
 	help
-	  Select this to enable a ATCPIT100 timer which will be embeded
-		in AE3XX, AE250 boards.
+	  Select this to enable a timer for AE3XX devices.
 
 config ROCKCHIP_TIMER
         bool "Rockchip timer support"
@@ -118,12 +117,5 @@ config ROCKCHIP_TIMER
 	help
 	  Select this to enable support for the timer found on
 	  Rockchip devices.
-
-config STM32_TIMER
-        bool "STM32 timer support"
-	depends on TIMER
-	help
-	  Select this to enable support for the timer found on
-	  STM32 devices.
 
 endmenu

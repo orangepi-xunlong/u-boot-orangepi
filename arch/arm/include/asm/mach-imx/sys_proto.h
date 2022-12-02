@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SYS_PROTO_H_
@@ -26,7 +27,6 @@
 
 #define is_mx6() (is_soc_type(MXC_SOC_MX6))
 #define is_mx7() (is_soc_type(MXC_SOC_MX7))
-#define is_mx8m() (is_soc_type(MXC_SOC_MX8M))
 
 #define is_mx6dqp() (is_cpu_type(MXC_CPU_MX6QP) || is_cpu_type(MXC_CPU_MX6DP))
 #define is_mx6dq() (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D))
@@ -81,8 +81,7 @@ enum imx6_bmode {
 	IMX6_BMODE_ESD,
 	IMX6_BMODE_MMC,
 	IMX6_BMODE_EMMC,
-	IMX6_BMODE_NAND_MIN,
-	IMX6_BMODE_NAND_MAX = 0xf,
+	IMX6_BMODE_NAND,
 };
 
 static inline u8 imx6_is_bmode_from_gpr9(void)
@@ -106,13 +105,7 @@ void set_chipselect_size(int const);
 
 void init_aips(void);
 void init_src(void);
-void init_snvs(void);
-void imx_wdog_disable_powerdown(void);
-
-int board_mmc_get_env_dev(int devno);
-
-int nxp_board_rev(void);
-char nxp_board_rev_string(void);
+void imx_set_wdog_powerdown(bool enable);
 
 /*
  * Initializes on-chip ethernet controllers.
@@ -127,7 +120,4 @@ void lcdif_power_down(void);
 int mxs_reset_block(struct mxs_register_32 *reg);
 int mxs_wait_mask_set(struct mxs_register_32 *reg, u32 mask, u32 timeout);
 int mxs_wait_mask_clr(struct mxs_register_32 *reg, u32 mask, u32 timeout);
-
-unsigned long call_imx_sip(unsigned long id, unsigned long reg0,
-			   unsigned long reg1, unsigned long reg2);
 #endif

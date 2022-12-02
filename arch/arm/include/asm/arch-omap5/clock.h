@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *
  *	Aneesh V <aneesh@ti.com>
  *	Sricharan R <r.sricharan@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _CLOCKS_OMAP5_H_
 #define _CLOCKS_OMAP5_H_
@@ -134,7 +135,7 @@
 
 /* CM_L3INIT_HSMMCn_CLKCTRL */
 #define HSMMC_CLKCTRL_CLKSEL_MASK		(1 << 24)
-#define HSMMC_CLKCTRL_CLKSEL_DIV_MASK		(3 << 25)
+#define HSMMC_CLKCTRL_CLKSEL_DIV_MASK		(1 << 25)
 
 /* CM_L3INIT_SATA_CLKCTRL */
 #define SATA_CLKCTRL_OPTFCLKEN_MASK		(1 << 8)
@@ -339,9 +340,6 @@
 /* Offset is 0.73V for LP873x */
 #define LP873X_BUCK_BASE_VOLT_UV		730000
 
-/* Offset is 0.73V for LP87565 */
-#define LP87565_BUCK_BASE_VOLT_UV		730000
-
 /* TPS659038 */
 #define TPS659038_I2C_SLAVE_ADDR		0x58
 #define TPS659038_REG_ADDR_SMPS12		0x23
@@ -355,18 +353,12 @@
 #define TPS65917_REG_ADDR_SMPS1		0x23
 #define TPS65917_REG_ADDR_SMPS2		0x27
 #define TPS65917_REG_ADDR_SMPS3		0x2F
-#define TPS65917_REG_ADDR_SMPS4		0x33
 
 /* LP873X */
 #define LP873X_I2C_SLAVE_ADDR		0x60
 #define LP873X_REG_ADDR_BUCK0		0x6
 #define LP873X_REG_ADDR_BUCK1		0x7
 #define LP873X_REG_ADDR_LDO1		0xA
-
-/* LP87565 */
-#define LP87565_I2C_SLAVE_ADDR		0x61
-#define LP87565_REG_ADDR_BUCK01		0xA
-#define LP87565_REG_ADDR_BUCK23		0xE
 
 /* TPS */
 #define TPS62361_I2C_SLAVE_ADDR		0x60

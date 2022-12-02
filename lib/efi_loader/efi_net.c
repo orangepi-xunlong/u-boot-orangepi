@@ -12,20 +12,13 @@
 #include <lcd.h>
 #include <malloc.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 static const efi_guid_t efi_net_guid = EFI_SIMPLE_NETWORK_GUID;
 static const efi_guid_t efi_pxe_guid = EFI_PXE_GUID;
 static struct efi_pxe_packet *dhcp_ack;
 static bool new_rx_packet;
 static void *new_tx_packet;
-/*
- * The notification function of this event is called in every timer cycle
- * to check if a new network packet has been received.
- */
-static struct efi_event *network_timer_event;
-/*
- * This event is signaled when a packet has been received.
- */
-static struct efi_event *wait_for_packet;
 
 struct efi_net_obj {
 	/* Generic EFI object parent class data */
@@ -33,6 +26,9 @@ struct efi_net_obj {
 	/* EFI Interface callback struct for network */
 	struct efi_simple_network net;
 	struct efi_simple_network_mode net_mode;
+	/* Device path to the network adapter */
+	struct efi_device_path_mac_addr dp_mac;
+	struct efi_device_path_file_path dp_end;
 	/* PXE struct to transmit dhcp data */
 	struct efi_pxe pxe;
 	struct efi_pxe_mode pxe_mode;
@@ -52,46 +48,14 @@ static efi_status_t EFIAPI efi_net_stop(struct efi_simple_network *this)
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-/*
- * Initialize network adapter and allocate transmit and receive buffers.
- *
- * This function implements the Initialize service of the
- * EFI_SIMPLE_NETWORK_PROTOCOL. See the Unified Extensible Firmware Interface
- * (UEFI) specification for details.
- *
- * @this:	pointer to the protocol instance
- * @extra_rx:	extra receive buffer to be allocated
- * @extra_tx:	extra transmit buffer to be allocated
- * @return:	status code
- */
 static efi_status_t EFIAPI efi_net_initialize(struct efi_simple_network *this,
 					      ulong extra_rx, ulong extra_tx)
 {
-	int ret;
-	efi_status_t r = EFI_SUCCESS;
-
 	EFI_ENTRY("%p, %lx, %lx", this, extra_rx, extra_tx);
 
-	if (!this) {
-		r = EFI_INVALID_PARAMETER;
-		goto error;
-	}
+	eth_init();
 
-	/* Setup packet buffers */
-	net_init();
-	/* Disable hardware and put it into the reset state */
-	eth_halt();
-	/* Set current device according to environment variables */
-	eth_set_current();
-	/* Get hardware ready for send and receive operations */
-	ret = eth_init();
-	if (ret < 0) {
-		eth_halt();
-		r = EFI_DEVICE_ERROR;
-	}
-
-error:
-	return EFI_EXIT(r);
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
 static efi_status_t EFIAPI efi_net_reset(struct efi_simple_network *this,
@@ -117,7 +81,9 @@ static efi_status_t EFIAPI efi_net_receive_filters(
 	EFI_ENTRY("%p, %x, %x, %x, %lx, %p", this, enable, disable,
 		  reset_mcast_filter, mcast_filter_count, mcast_filter);
 
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	/* XXX Do we care? */
+
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
 static efi_status_t EFIAPI efi_net_station_address(
@@ -126,7 +92,7 @@ static efi_status_t EFIAPI efi_net_station_address(
 {
 	EFI_ENTRY("%p, %x, %p", this, reset, new_mac);
 
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	return EFI_EXIT(EFI_INVALID_PARAMETER);
 }
 
 static efi_status_t EFIAPI efi_net_statistics(struct efi_simple_network *this,
@@ -135,7 +101,7 @@ static efi_status_t EFIAPI efi_net_statistics(struct efi_simple_network *this,
 {
 	EFI_ENTRY("%p, %x, %p, %p", this, reset, stat_size, stat_table);
 
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	return EFI_EXIT(EFI_INVALID_PARAMETER);
 }
 
 static efi_status_t EFIAPI efi_net_mcastiptomac(struct efi_simple_network *this,
@@ -155,7 +121,7 @@ static efi_status_t EFIAPI efi_net_nvdata(struct efi_simple_network *this,
 	EFI_ENTRY("%p, %x, %lx, %lx, %p", this, read_write, offset, buffer_size,
 		  buffer);
 
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	return EFI_EXIT(EFI_INVALID_PARAMETER);
 }
 
 static efi_status_t EFIAPI efi_net_get_status(struct efi_simple_network *this,
@@ -163,14 +129,9 @@ static efi_status_t EFIAPI efi_net_get_status(struct efi_simple_network *this,
 {
 	EFI_ENTRY("%p, %p, %p", this, int_status, txbuf);
 
-	efi_timer_check();
-
-	if (int_status) {
-		/* We send packets synchronously, so nothing is outstanding */
-		*int_status = EFI_SIMPLE_NETWORK_TRANSMIT_INTERRUPT;
-		if (new_rx_packet)
-			*int_status |= EFI_SIMPLE_NETWORK_RECEIVE_INTERRUPT;
-	}
+	/* We send packets synchronously, so nothing is outstanding */
+	if (int_status)
+		*int_status = 0;
 	if (txbuf)
 		*txbuf = new_tx_packet;
 
@@ -180,15 +141,12 @@ static efi_status_t EFIAPI efi_net_get_status(struct efi_simple_network *this,
 }
 
 static efi_status_t EFIAPI efi_net_transmit(struct efi_simple_network *this,
-		size_t header_size, size_t buffer_size, void *buffer,
+		ulong header_size, ulong buffer_size, void *buffer,
 		struct efi_mac_address *src_addr,
 		struct efi_mac_address *dest_addr, u16 *protocol)
 {
-	EFI_ENTRY("%p, %lu, %lu, %p, %p, %p, %p", this,
-		  (unsigned long)header_size, (unsigned long)buffer_size,
-		  buffer, src_addr, dest_addr, protocol);
-
-	efi_timer_check();
+	EFI_ENTRY("%p, %lx, %lx, %p, %p, %p, %p", this, header_size,
+		  buffer_size, buffer, src_addr, dest_addr, protocol);
 
 	if (header_size) {
 		/* We would need to create the header if header_size != 0 */
@@ -211,66 +169,29 @@ static efi_status_t EFIAPI efi_net_transmit(struct efi_simple_network *this,
 static void efi_net_push(void *pkt, int len)
 {
 	new_rx_packet = true;
-	wait_for_packet->is_signaled = true;
 }
 
-/*
- * Receive a packet from a network interface.
- *
- * This function implements the Receive service of the Simple Network Protocol.
- * See the UEFI spec for details.
- *
- * @this	the instance of the Simple Network Protocol
- * @header_size	size of the media header
- * @buffer_size	size of the buffer to receive the packet
- * @buffer	buffer to receive the packet
- * @src_addr	source MAC address
- * @dest_addr	destination MAC address
- * @protocol	protocol
- * @return	status code
- */
 static efi_status_t EFIAPI efi_net_receive(struct efi_simple_network *this,
-		size_t *header_size, size_t *buffer_size, void *buffer,
+		ulong *header_size, ulong *buffer_size, void *buffer,
 		struct efi_mac_address *src_addr,
 		struct efi_mac_address *dest_addr, u16 *protocol)
 {
-	struct ethernet_hdr *eth_hdr;
-	size_t hdr_size = sizeof(struct ethernet_hdr);
-	u16 protlen;
-
 	EFI_ENTRY("%p, %p, %p, %p, %p, %p, %p", this, header_size,
 		  buffer_size, buffer, src_addr, dest_addr, protocol);
 
-	efi_timer_check();
+	push_packet = efi_net_push;
+	eth_rx();
+	push_packet = NULL;
 
 	if (!new_rx_packet)
 		return EFI_EXIT(EFI_NOT_READY);
-	/* Check that we at least received an Ethernet header */
-	if (net_rx_packet_len < sizeof(struct ethernet_hdr)) {
-		new_rx_packet = false;
-		return EFI_EXIT(EFI_NOT_READY);
-	}
-	/* Fill export parameters */
-	eth_hdr = (struct ethernet_hdr *)net_rx_packet;
-	protlen = ntohs(eth_hdr->et_protlen);
-	if (protlen == 0x8100) {
-		hdr_size += 4;
-		protlen = ntohs(*(u16 *)&net_rx_packet[hdr_size - 2]);
-	}
-	if (header_size)
-		*header_size = hdr_size;
-	if (dest_addr)
-		memcpy(dest_addr, eth_hdr->et_dest, ARP_HLEN);
-	if (src_addr)
-		memcpy(src_addr, eth_hdr->et_src, ARP_HLEN);
-	if (protocol)
-		*protocol = protlen;
+
 	if (*buffer_size < net_rx_packet_len) {
 		/* Packet doesn't fit, try again with bigger buf */
 		*buffer_size = net_rx_packet_len;
 		return EFI_EXIT(EFI_BUFFER_TOO_SMALL);
 	}
-	/* Copy packet */
+
 	memcpy(buffer, net_rx_packet, net_rx_packet_len);
 	*buffer_size = net_rx_packet_len;
 	new_rx_packet = false;
@@ -288,62 +209,37 @@ void efi_net_set_dhcp_ack(void *pkt, int len)
 	memcpy(dhcp_ack, pkt, min(len, maxsize));
 }
 
-/*
- * Check if a new network packet has been received.
- *
- * This notification function is called in every timer cycle.
- *
- * @event	the event for which this notification function is registered
- * @context	event context - not used in this function
- */
-static void EFIAPI efi_network_timer_notify(struct efi_event *event,
-					    void *context)
-{
-	EFI_ENTRY("%p, %p", event, context);
-
-	if (!new_rx_packet) {
-		push_packet = efi_net_push;
-		eth_rx();
-		push_packet = NULL;
-	}
-	EFI_EXIT(EFI_SUCCESS);
-}
-
 /* This gets called from do_bootefi_exec(). */
-efi_status_t efi_net_register(void)
+int efi_net_register(void)
 {
 	struct efi_net_obj *netobj;
-	efi_status_t r;
+	struct efi_device_path_mac_addr dp_net = {
+		.dp.type = DEVICE_PATH_TYPE_MESSAGING_DEVICE,
+		.dp.sub_type = DEVICE_PATH_SUB_TYPE_MSG_MAC_ADDR,
+		.dp.length = sizeof(dp_net),
+	};
+	struct efi_device_path_file_path dp_end = {
+		.dp.type = DEVICE_PATH_TYPE_END,
+		.dp.sub_type = DEVICE_PATH_SUB_TYPE_END,
+		.dp.length = sizeof(dp_end),
+	};
 
 	if (!eth_get_dev()) {
 		/* No eth device active, don't expose any */
-		return EFI_SUCCESS;
+		return 0;
 	}
 
 	/* We only expose the "active" eth device, so one is enough */
 	netobj = calloc(1, sizeof(*netobj));
-	if (!netobj) {
-		printf("ERROR: Out of memory\n");
-		return EFI_OUT_OF_RESOURCES;
-	}
-
-	/* Hook net up to the device list */
-	efi_add_handle(&netobj->parent);
 
 	/* Fill in object data */
-	r = efi_add_protocol(netobj->parent.handle, &efi_net_guid,
-			     &netobj->net);
-	if (r != EFI_SUCCESS)
-		goto failure_to_add_protocol;
-	r = efi_add_protocol(netobj->parent.handle, &efi_guid_device_path,
-			     efi_dp_from_eth());
-	if (r != EFI_SUCCESS)
-		goto failure_to_add_protocol;
-	r = efi_add_protocol(netobj->parent.handle, &efi_pxe_guid,
-			     &netobj->pxe);
-	if (r != EFI_SUCCESS)
-		goto failure_to_add_protocol;
-	netobj->net.revision = EFI_SIMPLE_NETWORK_PROTOCOL_REVISION;
+	netobj->parent.protocols[0].guid = &efi_net_guid;
+	netobj->parent.protocols[0].protocol_interface = &netobj->net;
+	netobj->parent.protocols[1].guid = &efi_guid_device_path;
+	netobj->parent.protocols[1].protocol_interface = &netobj->dp_mac;
+	netobj->parent.protocols[2].guid = &efi_pxe_guid;
+	netobj->parent.protocols[2].protocol_interface = &netobj->pxe;
+	netobj->parent.handle = &netobj->net;
 	netobj->net.start = efi_net_start;
 	netobj->net.stop = efi_net_stop;
 	netobj->net.initialize = efi_net_initialize;
@@ -359,49 +255,18 @@ efi_status_t efi_net_register(void)
 	netobj->net.receive = efi_net_receive;
 	netobj->net.mode = &netobj->net_mode;
 	netobj->net_mode.state = EFI_NETWORK_STARTED;
+	netobj->dp_mac = dp_net;
+	netobj->dp_end = dp_end;
+	memcpy(netobj->dp_mac.mac.addr, eth_get_ethaddr(), 6);
 	memcpy(netobj->net_mode.current_address.mac_addr, eth_get_ethaddr(), 6);
-	netobj->net_mode.hwaddr_size = ARP_HLEN;
 	netobj->net_mode.max_packet_size = PKTSIZE;
 
 	netobj->pxe.mode = &netobj->pxe_mode;
 	if (dhcp_ack)
 		netobj->pxe_mode.dhcp_ack = *dhcp_ack;
 
-	/*
-	 * Create WaitForPacket event.
-	 */
-	r = efi_create_event(EVT_NOTIFY_WAIT, TPL_CALLBACK,
-			     efi_network_timer_notify, NULL, NULL,
-			     &wait_for_packet);
-	if (r != EFI_SUCCESS) {
-		printf("ERROR: Failed to register network event\n");
-		return r;
-	}
-	netobj->net.wait_for_packet = wait_for_packet;
-	/*
-	 * Create a timer event.
-	 *
-	 * The notification function is used to check if a new network packet
-	 * has been received.
-	 *
-	 * iPXE is running at TPL_CALLBACK most of the time. Use a higher TPL.
-	 */
-	r = efi_create_event(EVT_TIMER | EVT_NOTIFY_SIGNAL, TPL_NOTIFY,
-			     efi_network_timer_notify, NULL, NULL,
-			     &network_timer_event);
-	if (r != EFI_SUCCESS) {
-		printf("ERROR: Failed to register network event\n");
-		return r;
-	}
-	/* Network is time critical, create event in every timer cyle */
-	r = efi_set_timer(network_timer_event, EFI_TIMER_PERIODIC, 0);
-	if (r != EFI_SUCCESS) {
-		printf("ERROR: Failed to set network timer\n");
-		return r;
-	}
+	/* Hook net up to the device list */
+	list_add_tail(&netobj->parent.link, &efi_obj_list);
 
-	return EFI_SUCCESS;
-failure_to_add_protocol:
-	printf("ERROR: Failure to add protocol\n");
-	return r;
+	return 0;
 }

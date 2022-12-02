@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Porting to U-Boot:
  *
@@ -8,6 +7,8 @@
  * Lattice's ispVME Embedded Tool to load Lattice's FPGA:
  *
  * Lattice Semiconductor Corp. Copyright 2009
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _VME_OPCODE_H

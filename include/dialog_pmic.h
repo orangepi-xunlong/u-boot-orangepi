@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * da9053 register declarations.
  *
  * Copyright(c) 2009 Dialog Semiconductor Ltd.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DIALOG_PMIC_H__

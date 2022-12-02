@@ -1,7 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
+ * Xilinx ZC706 board DTS
+ *
  *  Copyright (C) 2011 - 2015 Xilinx
  *  Copyright (C) 2012 National Instruments Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /dts-v1/;
 #include "zynq-7000.dtsi"
@@ -47,7 +50,6 @@
 
 	ethernet_phy: ethernet-phy@7 {
 		reg = <7>;
-		device_type = "ethernet-phy";
 	};
 };
 
@@ -62,7 +64,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_default>;
 
-	i2c-mux@74 {
+	i2cswitch@74 {
 		compatible = "nxp,pca9548";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -102,7 +104,7 @@
 			#size-cells = <0>;
 			reg = <2>;
 			eeprom@54 {
-				compatible = "atmel,24c08";
+				compatible = "at,24c08";
 				reg = <0x54>;
 			};
 		};
@@ -329,8 +331,4 @@
 	usb-phy = <&usb_phy0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb0_default>;
-};
-
-&watchdog0 {
-	reset-on-timeout;
 };

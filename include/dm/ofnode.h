@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_OFNODE_H
@@ -56,6 +57,31 @@ struct ofnode_phandle_args {
 	ofnode node;
 	int args_count;
 	uint32_t args[OF_MAX_PHANDLE_ARGS];
+};
+
+/**
+ * ofprop - reference to a property of a device tree node
+ *
+ * This struct hold the reference on one property of one node,
+ * using struct ofnode and an offset within the flat device tree or either
+ * a pointer to a struct property in the live device tree.
+ *
+ * Thus we can reference arguments in both the live tree and the flat tree.
+ *
+ * The property reference can also hold a null reference. This corresponds to
+ * a struct property NULL pointer or an offset of -1.
+ *
+ * @node: Pointer to device node
+ * @offset: Pointer into flat device tree, used for flat tree.
+ * @prop: Pointer to property, used for live treee.
+ */
+
+struct ofprop {
+	ofnode node;
+	union {
+		int offset;
+		const struct property *prop;
+	};
 };
 
 /**
@@ -227,6 +253,16 @@ static inline int ofnode_read_s32(ofnode node, const char *propname,
 int ofnode_read_u32_default(ofnode ref, const char *propname, u32 def);
 
 /**
+ * ofnode_read_u64() - Read a 64-bit integer from a property
+ *
+ * @ref:	valid node reference to read property from
+ * @propname:	name of the property to read from
+ * @outp:	place to put value (if found)
+ * @return 0 if OK, -ve on error
+ */
+int ofnode_read_u64(ofnode node, const char *propname, u64 *outp);
+
+/**
  * ofnode_read_s32_default() - Read a 32-bit integer from a property
  *
  * @ref:	valid node reference to read property from
@@ -262,6 +298,19 @@ const char *ofnode_read_string(ofnode node, const char *propname);
  */
 int ofnode_read_u32_array(ofnode node, const char *propname,
 			  u32 *out_values, size_t sz);
+
+/**
+ * ofnode_write_u32_array() - Find and write an array of 32 bit integers
+ *
+ * @node:	valid node reference to read property from
+ * @propname:	name of the property to read
+ * @values:	pointer to update value, modified only if return value is 0
+ * @sz:		number of array elements to read
+ * @return 0 on success, -EINVAL if the property does not exist, -ENODATA
+ * if property does not have a value, and -EOVERFLOW is longer than sz.
+ */
+int ofnode_write_u32_array(ofnode node, const char *propname,
+			   u32 *values, size_t sz);
 
 /**
  * ofnode_read_bool() - read a boolean value from a property
@@ -507,7 +556,7 @@ int ofnode_decode_display_timing(ofnode node, int index,
 				 struct display_timing *config);
 
 /**
- * ofnode_get_property()- - get a pointer to the value of a node property
+ * ofnode_get_property() - get a pointer to the value of a node property
  *
  * @node: node to read
  * @propname: property to read
@@ -515,6 +564,42 @@ int ofnode_decode_display_timing(ofnode node, int index,
  * @return pointer to property, or NULL if not found
  */
 const void *ofnode_get_property(ofnode node, const char *propname, int *lenp);
+
+/**
+ * ofnode_get_first_property()- get the reference of the first property
+ *
+ * Get reference to the first property of the node, it is used to iterate
+ * and read all the property with ofnode_get_property_by_prop().
+ *
+ * @node: node to read
+ * @prop: place to put argument reference
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+int ofnode_get_first_property(ofnode node, struct ofprop *prop);
+
+/**
+ * ofnode_get_next_property() - get the reference of the next property
+ *
+ * Get reference to the next property of the node, it is used to iterate
+ * and read all the property with ofnode_get_property_by_prop().
+ *
+ * @prop: reference of current argument and place to put reference of next one
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+int ofnode_get_next_property(struct ofprop *prop);
+
+/**
+ * ofnode_get_property_by_prop() - get a pointer to the value of a property
+ *
+ * Get value for the property identified by the provided reference.
+ *
+ * @prop: reference on property
+ * @propname: If non-NULL, place to property name on success,
+ * @lenp: If non-NULL, place to put length on success
+ * @return 0 if OK, -ve on error. -FDT_ERR_NOTFOUND if not found
+ */
+const void *ofnode_get_property_by_prop(const struct ofprop *prop,
+					const char **propname, int *lenp);
 
 /**
  * ofnode_is_available() - check if a node is marked available

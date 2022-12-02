@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Atmel Corporation
  *		      Wenyou Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/hardware.h>
 #include <asm/io.h>
 #include <asm/arch/sama5_sfr.h>
 

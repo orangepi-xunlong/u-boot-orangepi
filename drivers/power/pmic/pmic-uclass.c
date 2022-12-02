@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014-2015 Samsung Electronics
  * Przemyslaw Marczak <p.marczak@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,8 +13,11 @@
 #include <dm/lists.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
+#include <dm/of_access.h>
 #include <power/pmic.h>
 #include <linux/ctype.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #if CONFIG_IS_ENABLED(PMIC_CHILDREN)
 int pmic_bind_children(struct udevice *pmic, ofnode parent,
@@ -26,8 +30,8 @@ int pmic_bind_children(struct udevice *pmic, ofnode parent,
 	const char *reg_name;
 	int bind_count = 0;
 	ofnode node;
-	int prefix_len;
 	int ret;
+	bool enable;
 
 	debug("%s for '%s' at node offset: %d\n", __func__, pmic->name,
 	      dev_of_offset(pmic));
@@ -37,17 +41,37 @@ int pmic_bind_children(struct udevice *pmic, ofnode parent,
 
 		debug("* Found child node: '%s'\n", node_name);
 
+		if (ofnode_is_np(node))
+			enable = of_device_is_available(ofnode_to_np(node));
+		else
+			enable = fdtdec_get_is_enabled(gd->fdt_blob,
+						       ofnode_to_offset(node));
+		if (!enable) {
+			debug("* But '%s' is disabled\n", node_name);
+			continue;
+		}
+
 		child = NULL;
 		for (info = child_info; info->prefix && info->driver; info++) {
 			debug("  - compatible prefix: '%s'\n", info->prefix);
 
-			prefix_len = strlen(info->prefix);
-			if (strncmp(info->prefix, node_name, prefix_len)) {
+			if (!strstr(node_name, info->prefix)) {
 				reg_name = ofnode_read_string(node,
 							      "regulator-name");
 				if (!reg_name)
 					continue;
-				if (strncmp(info->prefix, reg_name, prefix_len))
+				if (!strstr(reg_name, info->prefix))
+					continue;
+			}
+
+			/*
+			 * If some child info->prefix are the same, try to
+			 * distinguish them by parent addr.
+			 *
+			 * Example: pmic@20, pmic@1a...
+			 */
+			if (info->addr) {
+				if (!strstr(dev_read_name(pmic), info->addr))
 					continue;
 			}
 
@@ -163,6 +187,36 @@ int pmic_clrsetbits(struct udevice *dev, uint reg, uint clr, uint set)
 	byte = (ret & ~clr) | set;
 
 	return pmic_reg_write(dev, reg, byte);
+}
+
+int pmic_suspend(struct udevice *dev)
+{
+	const struct dm_pmic_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->suspend)
+		return -ENOSYS;
+
+	return ops->suspend(dev);
+}
+
+int pmic_resume(struct udevice *dev)
+{
+	const struct dm_pmic_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->resume)
+		return -ENOSYS;
+
+	return ops->resume(dev);
+}
+
+int pmic_shutdown(struct udevice *dev)
+{
+	const struct dm_pmic_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->shutdown)
+		return -ENOSYS;
+
+	return ops->shutdown(dev);
 }
 
 UCLASS_DRIVER(pmic) = {

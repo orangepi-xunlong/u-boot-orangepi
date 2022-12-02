@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * EMIF programming
  *
@@ -6,6 +5,8 @@
  * Texas Instruments, <www.ti.com>
  *
  * Aneesh V <aneesh@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -89,7 +90,8 @@ static const struct lpddr2_min_tck min_tck_jedec = {
 	.tFAW = 8
 };
 
-static const struct lpddr2_ac_timings *jedec_ac_timings[MAX_NUM_SPEEDBINS] = {
+static const struct lpddr2_ac_timings const*
+			jedec_ac_timings[MAX_NUM_SPEEDBINS] = {
 	&timings_jedec_200_mhz,
 	&timings_jedec_400_mhz
 };

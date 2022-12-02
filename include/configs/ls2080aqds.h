@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2017 NXP
  * Copyright 2015 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LS2_QDS_H
@@ -15,6 +16,7 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 #ifdef CONFIG_FSL_QSPI
+#undef CONFIG_CMD_IMLS
 #define CONFIG_QIXIS_I2C_ACCESS
 #define CONFIG_SYS_I2C_EARLY_INIT
 #define CONFIG_SYS_I2C_IFDR_DIV		0x7e
@@ -45,6 +47,8 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_FSL_DDR_BIST	/* enable built-in memory test */
 
 /* SATA */
+#define CONFIG_LIBATA
+#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
 
 #define CONFIG_SYS_SATA1			AHCI_BASE_ADDR1
@@ -288,8 +292,6 @@ unsigned long get_board_ddr_clk(void);
 
 /* SPI */
 #if defined(CONFIG_FSL_QSPI) || defined(CONFIG_FSL_DSPI)
-#define CONFIG_SPI_FLASH
-
 #ifdef CONFIG_FSL_DSPI
 #define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SPI_FLASH_SST
@@ -342,6 +344,7 @@ unsigned long get_board_ddr_clk(void);
 
 /*  MMC  */
 #ifdef CONFIG_MMC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
 #endif
 
@@ -430,6 +433,13 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_ETHPRIME		"DPMAC1@xgmii"
 
 #endif
+
+/*
+ * USB
+ */
+#define CONFIG_HAS_FSL_XHCI_USB
+#define CONFIG_USB_XHCI_FSL
+#define CONFIG_USB_MAX_CONTROLLER_COUNT		2
 
 #include <asm/fsl_secure_boot.h>
 

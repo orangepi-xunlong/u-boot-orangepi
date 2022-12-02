@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
@@ -6,6 +5,8 @@
  * Ilko Iliev <www.ronetix.at>
  *
  * Configuation settings for the RONETIX PM9261 board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -26,7 +27,9 @@
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000
 
 #define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9261"
+#define CONFIG_PM9261		1	/* on a Ronetix PM9261 Board	*/
 #define CONFIG_ARCH_CPU_INIT
+#define CONFIG_SYS_TEXT_BASE	0
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_PM9261
 
@@ -152,6 +155,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE	1
+#define CONFIG_BOOTP_BOOTPATH		1
+#define CONFIG_BOOTP_GATEWAY		1
+#define CONFIG_BOOTP_HOSTNAME		1
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS			1
@@ -159,7 +165,6 @@
 #define PHYS_SDRAM_SIZE				0x04000000	/* 64 megs */
 
 /* NAND flash */
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_BASE			0x40000000
 #define CONFIG_SYS_NAND_DBW_8			1
@@ -240,11 +245,20 @@
 
 #define CONFIG_BOOTCOMMAND	"run flashboot"
 
+#define MTDIDS_DEFAULT		"nor0=physmap-flash.0,nand0=nand"
+#define MTDPARTS_DEFAULT		\
+	"mtdparts=physmap-flash.0:"	\
+		"256k(u-boot)ro,"	\
+		"64k(u-boot-env)ro,"	\
+		"1408k(kernel),"	\
+		"-(rootfs);"		\
+	"nand:-(nand)"
+
 #define CONFIG_CON_ROT "fbcon=rotate:3 "
 
 #define CONFIG_EXTRA_ENV_SETTINGS				\
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"				\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"			\
+	"mtdids=" MTDIDS_DEFAULT "\0"				\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"			\
 	"partition=nand0,0\0"					\
 	"ramargs=setenv bootargs $(bootargs) $(mtdparts)\0"	\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "		\
@@ -262,6 +276,9 @@
 #else
 #error "Undefined memory device"
 #endif
+
+#define CONFIG_SYS_LONGHELP		1
+#define CONFIG_CMDLINE_EDITING	1
 
 /*
  * Size of malloc() pool

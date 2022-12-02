@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,7 +19,7 @@
 #include <ide.h>
 #include "part_mac.h"
 
-#ifdef CONFIG_HAVE_BLOCK_DEVICE
+#ifdef HAVE_BLOCK_DEVICE
 
 /* stdlib.h causes some compatibility problems; should fixe these! -- wd */
 #ifndef __ldiv_t_defined

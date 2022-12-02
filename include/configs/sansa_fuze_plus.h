@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_SANSA_FUZE_PLUS_H__
 #define __CONFIGS_SANSA_FUZE_PLUS_H__
+
+/* System configurations */
+#define CONFIG_MX23				/* i.MX23 SoC */
 
 /* U-Boot Commands */
 

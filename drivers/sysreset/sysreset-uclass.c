@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -43,6 +44,25 @@ int sysreset_walk(enum sysreset_t type)
 	return ret;
 }
 
+static void sysreset_walk_reboot_mode(const char *mode)
+{
+	struct sysreset_ops *ops;
+	struct udevice *dev;
+
+	if (!mode)
+		return;
+
+	for (uclass_first_device(UCLASS_SYSRESET, &dev);
+	     dev;
+	     uclass_next_device(&dev)) {
+		ops = sysreset_get_ops(dev);
+		if (ops && ops->request_by_mode) {
+			ops->request_by_mode(dev, mode);
+			break;
+		}
+	}
+}
+
 void sysreset_walk_halt(enum sysreset_t type)
 {
 	int ret;
@@ -66,10 +86,19 @@ void reset_cpu(ulong addr)
 	sysreset_walk_halt(SYSRESET_WARM);
 }
 
+void reboot(const char *mode)
+{
+	sysreset_walk_reboot_mode(mode);
+	flushc();
+	sysreset_walk_halt(SYSRESET_COLD);
+}
 
 int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	sysreset_walk_halt(SYSRESET_COLD);
+	if (argc > 1)
+		reboot(argv[1]);
+	else
+		reboot(NULL);
 
 	return 0;
 }

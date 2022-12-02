@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Gateworks Corporation
  * Author: Tim Harvey <tharvey@gateworks.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -19,6 +20,8 @@
 
 #include "gsc.h"
 #include "common.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define RTT_NOM_120OHM /* use 120ohm Rtt_nom vs 60ohm (lower power) */
 #define GSC_EEPROM_DDR_SIZE	0x2B	/* enum (512,1024,2048) MB */
@@ -623,6 +626,9 @@ void board_init_f(ulong dummy)
 	spl_dram_init(8 << ventana_info.sdram_width,
 		      16 << ventana_info.sdram_size,
 		      board_model);
+
+	/* Clear the BSS. */
+	memset(__bss_start, 0, __bss_end - __bss_start);
 }
 
 void board_boot_order(u32 *spl_boot_list)

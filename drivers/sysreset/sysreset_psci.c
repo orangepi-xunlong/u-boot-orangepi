@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -34,7 +35,8 @@ static struct sysreset_ops psci_sysreset_ops = {
 	.request = psci_sysreset_request,
 };
 
-U_BOOT_DRIVER(psci_sysreset) = {
+/* Add an 'a_' prefix so it comes the first sysreset path. */
+U_BOOT_DRIVER(a_psci_sysreset) = {
 	.name = "psci-sysreset",
 	.id = UCLASS_SYSRESET,
 	.ops = &psci_sysreset_ops,

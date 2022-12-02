@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 - 2016 Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -93,7 +94,7 @@ u32 spl_boot_device(void)
 	case EMMC_MODE:
 		return BOOT_DEVICE_MMC1;
 #endif
-#ifdef CONFIG_SPL_DFU_SUPPORT
+#ifdef CONFIG_SPL_DFU
 	case USB_MODE:
 		return BOOT_DEVICE_DFU;
 #endif
@@ -101,17 +102,34 @@ u32 spl_boot_device(void)
 	case SW_SATA_MODE:
 		return BOOT_DEVICE_SATA;
 #endif
-#ifdef CONFIG_SPL_SPI_SUPPORT
-	case QSPI_MODE_24BIT:
-	case QSPI_MODE_32BIT:
-		return BOOT_DEVICE_SPI;
-#endif
 	default:
 		printf("Invalid Boot Mode:0x%x\n", bootmode);
 		break;
 	}
 
 	return 0;
+}
+
+u32 spl_boot_mode(const u32 boot_device)
+{
+	switch (boot_device) {
+	case BOOT_DEVICE_RAM:
+		return 0;
+	case BOOT_DEVICE_MMC1:
+	case BOOT_DEVICE_MMC2:
+		return MMCSD_MODE_FS;
+	default:
+		puts("spl: error: unsupported device\n");
+		hang();
+	}
+}
+
+__weak void psu_init(void)
+{
+	 /*
+	  * This function is overridden by the one in
+	  * board/xilinx/zynqmp/(platform)/psu_init_gpl.c, if it exists.
+	  */
 }
 
 #ifdef CONFIG_SPL_OS_BOOT

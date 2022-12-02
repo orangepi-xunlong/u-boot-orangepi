@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009
  * Guennadi Liakhovetski, DENX Software Engineering, <lg@denx.de>
  *
  * Copyright (C) 2011
  * Stefano Babic, DENX Software Engineering, <sbabic@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <errno.h>
@@ -40,18 +41,18 @@ static unsigned long gpio_ports[] = {
 	[2] = GPIO3_BASE_ADDR,
 #if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX51) || \
 		defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX7) || defined(CONFIG_MX8M)
+		defined(CONFIG_MX7)
 	[3] = GPIO4_BASE_ADDR,
 #endif
 #if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX7) || defined(CONFIG_MX8M)
+		defined(CONFIG_MX7)
 	[4] = GPIO5_BASE_ADDR,
-#if !(defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL) || defined(CONFIG_MX8M))
+#ifndef CONFIG_MX6UL
 	[5] = GPIO6_BASE_ADDR,
 #endif
 #endif
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6) || defined(CONFIG_MX7)
-#if !(defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL))
+#ifndef CONFIG_MX6UL
 	[6] = GPIO7_BASE_ADDR,
 #endif
 #endif
@@ -157,6 +158,8 @@ int gpio_direction_output(unsigned gpio, int value)
 
 #ifdef CONFIG_DM_GPIO
 #include <fdtdec.h>
+DECLARE_GLOBAL_DATA_PTR;
+
 static int mxc_gpio_is_output(struct gpio_regs *regs, int offset)
 {
 	u32 val;
@@ -308,11 +311,6 @@ static int mxc_gpio_bind(struct udevice *dev)
 	 * When every board is converted to driver model and DT is supported,
 	 * this can be done by auto-alloc feature, but not using calloc
 	 * to alloc memory for platdata.
-	 *
-	 * For example mxc_plat below uses platform data rather than device
-	 * tree.
-	 *
-	 * NOTE: DO NOT COPY this code if you are using device tree.
 	 */
 	plat = calloc(1, sizeof(*plat));
 	if (!plat)
@@ -346,16 +344,12 @@ static const struct mxc_gpio_plat mxc_plat[] = {
 	{ 1, (struct gpio_regs *)GPIO2_BASE_ADDR },
 	{ 2, (struct gpio_regs *)GPIO3_BASE_ADDR },
 #if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX51) || \
-		defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX8M)
+		defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ 3, (struct gpio_regs *)GPIO4_BASE_ADDR },
 #endif
-#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX8M)
+#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ 4, (struct gpio_regs *)GPIO5_BASE_ADDR },
-#ifndef CONFIG_MX8M
 	{ 5, (struct gpio_regs *)GPIO6_BASE_ADDR },
-#endif
 #endif
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ 6, (struct gpio_regs *)GPIO7_BASE_ADDR },
@@ -367,16 +361,12 @@ U_BOOT_DEVICES(mxc_gpios) = {
 	{ "gpio_mxc", &mxc_plat[1] },
 	{ "gpio_mxc", &mxc_plat[2] },
 #if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX51) || \
-		defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX8M)
+		defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ "gpio_mxc", &mxc_plat[3] },
 #endif
-#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6) || \
-		defined(CONFIG_MX8M)
+#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ "gpio_mxc", &mxc_plat[4] },
-#ifndef CONFIG_MX8M
 	{ "gpio_mxc", &mxc_plat[5] },
-#endif
 #endif
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	{ "gpio_mxc", &mxc_plat[6] },

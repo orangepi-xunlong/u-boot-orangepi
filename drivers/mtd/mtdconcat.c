@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * MTD device concatenation layer
  *
@@ -6,6 +5,8 @@
  * Copyright © 2002-2010 David Woodhouse <dwmw2@infradead.org>
  *
  * NAND support by Christian Gan <cgan@iders.ca>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 

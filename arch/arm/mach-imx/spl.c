@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Gateworks Corporation
  * Copyright (C) 2011-2012 Freescale Semiconductor, Inc.
  *
  * Author: Tim Harvey <tharvey@gateworks.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -13,7 +14,6 @@
 #include <asm/spl.h>
 #include <spl.h>
 #include <asm/mach-imx/hab.h>
-#include <asm/mach-imx/boot_mode.h>
 #include <g_dnl.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -30,18 +30,6 @@ u32 spl_boot_device(void)
 	 * BOOT_MODE - see IMX6DQRM Table 8-1
 	 */
 	if (((bmode >> 24) & 0x03) == 0x01) /* Serial Downloader */
-		return BOOT_DEVICE_BOARD;
-
-	/*
-	 * The above method does not detect that the boot ROM used
-	 * serial downloader in case the boot ROM decided to use the
-	 * serial downloader as a fall back (primary boot source failed).
-	 *
-	 * Infer that the boot ROM used the USB serial downloader by
-	 * checking whether the USB PHY is currently active... This
-	 * assumes that SPL did not (yet) initialize the USB PHY...
-	 */
-	if (is_usbotg_phy_active())
 		return BOOT_DEVICE_BOARD;
 
 	/* BOOT_CFG1[7:4] - see IMX6DQRM Table 8-8 */
@@ -90,68 +78,20 @@ u32 spl_boot_device(void)
 	case IMX6_BMODE_EMMC:
 		return BOOT_DEVICE_MMC1;
 	/* NAND Flash: 8.5.2, Table 8-10 */
-	case IMX6_BMODE_NAND_MIN ... IMX6_BMODE_NAND_MAX:
+	case IMX6_BMODE_NAND:
 		return BOOT_DEVICE_NAND;
 	}
 	return BOOT_DEVICE_NONE;
 }
 
-#elif defined(CONFIG_MX7) || defined(CONFIG_MX8M)
-/* Translate iMX7/MX8M boot device to the SPL boot device enumeration */
-u32 spl_boot_device(void)
-{
-#if defined(CONFIG_MX7)
-	unsigned int bmode = readl(&src_base->sbmr2);
-
-	/*
-	 * Check for BMODE if serial downloader is enabled
-	 * BOOT_MODE - see IMX7DRM Table 6-24
-	 */
-	if (((bmode >> 24) & 0x03) == 0x01) /* Serial Downloader */
-		return BOOT_DEVICE_BOARD;
-
-	/*
-	 * The above method does not detect that the boot ROM used
-	 * serial downloader in case the boot ROM decided to use the
-	 * serial downloader as a fall back (primary boot source failed).
-	 *
-	 * Infer that the boot ROM used the USB serial downloader by
-	 * checking whether the USB PHY is currently active... This
-	 * assumes that SPL did not (yet) initialize the USB PHY...
-	 */
-	if (is_boot_from_usb())
-		return BOOT_DEVICE_BOARD;
-#endif
-
-	enum boot_device boot_device_spl = get_boot_device();
-
-	switch (boot_device_spl) {
-	case SD1_BOOT:
-	case MMC1_BOOT:
-	case SD2_BOOT:
-	case MMC2_BOOT:
-	case SD3_BOOT:
-	case MMC3_BOOT:
-		return BOOT_DEVICE_MMC1;
-	case NAND_BOOT:
-		return BOOT_DEVICE_NAND;
-	case SPI_NOR_BOOT:
-		return BOOT_DEVICE_SPI;
-	case USB_BOOT:
-		return BOOT_DEVICE_USB;
-	default:
-		return BOOT_DEVICE_NONE;
-	}
-}
-#endif /* CONFIG_MX6 || CONFIG_MX7 || CONFIG_MX8M */
-
-#ifdef CONFIG_SPL_USB_GADGET_SUPPORT
+#ifdef CONFIG_SPL_USB_GADGET
 int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
 	put_unaligned(CONFIG_USB_GADGET_PRODUCT_NUM + 0xfff, &dev->idProduct);
 
 	return 0;
 }
+#endif
 #endif
 
 #if defined(CONFIG_SPL_MMC_SUPPORT)
@@ -179,41 +119,9 @@ u32 spl_boot_mode(const u32 boot_device)
 
 #if defined(CONFIG_SECURE_BOOT)
 
-/*
- * +------------+  0x0 (DDR_UIMAGE_START) -
- * |   Header   |                          |
- * +------------+  0x40                    |
- * |            |                          |
- * |            |                          |
- * |            |                          |
- * |            |                          |
- * | Image Data |                          |
- * .            |                          |
- * .            |                           > Stuff to be authenticated ----+
- * .            |                          |                                |
- * |            |                          |                                |
- * |            |                          |                                |
- * +------------+                          |                                |
- * |            |                          |                                |
- * | Fill Data  |                          |                                |
- * |            |                          |                                |
- * +------------+ Align to ALIGN_SIZE      |                                |
- * |    IVT     |                          |                                |
- * +------------+ + IVT_SIZE              -                                 |
- * |            |                                                           |
- * |  CSF DATA  | <---------------------------------------------------------+
- * |            |
- * +------------+
- * |            |
- * | Fill Data  |
- * |            |
- * +------------+ + CSF_PAD_SIZE
- */
-
 __weak void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 {
 	typedef void __noreturn (*image_entry_noargs_t)(void);
-	uint32_t offset;
 
 	image_entry_noargs_t image_entry =
 		(image_entry_noargs_t)(unsigned long)spl_image->entry_point;
@@ -222,10 +130,8 @@ __weak void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 
 	/* HAB looks for the CSF at the end of the authenticated data therefore,
 	 * we need to subtract the size of the CSF from the actual filesize */
-	offset = spl_image->size - CONFIG_CSF_SIZE;
-	if (!imx_hab_authenticate_image(spl_image->load_addr,
-					offset + IVT_SIZE + CSF_PAD_SIZE,
-					offset)) {
+	if (authenticate_image(spl_image->load_addr,
+			       spl_image->size - CONFIG_CSF_SIZE)) {
 		image_entry();
 	} else {
 		puts("spl: ERROR:  image authentication unsuccessful\n");

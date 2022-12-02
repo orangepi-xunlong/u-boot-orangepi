@@ -22,6 +22,8 @@
 
 #define CONFIG_ENV_SIZE			(96 << 10)	/*  96 KiB */
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
@@ -57,8 +59,8 @@
 				"bootz ${loadaddr} - ${fdtaddr};" \
 			"fi;" \
 		"fi;\0" \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"nandroot=ubi0:rootfs rw ubi.mtd=1\0" \
 	"nandrootfstype=ubifs rootwait\0" \
 	"nandload=ubi part UBI; " \
@@ -101,15 +103,13 @@
 
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
+#define CONFIG_CONS_INDEX		1
 
 /* Ethernet support */
 #define CONFIG_PHY_SMSC
 
 /* NAND support */
 #define CONFIG_SYS_NAND_ONFI_DETECTION	1
-
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 /* SPL */
 

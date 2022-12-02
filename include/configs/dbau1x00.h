@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -11,6 +12,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_DBAU1X00		1
 #define CONFIG_SOC_AU1X00	1  /* alchemy series cpu */
 
 #ifdef CONFIG_DBAU1000
@@ -56,6 +58,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -64,6 +69,7 @@
 /*
  * Miscellaneous configurable options
  */
+#define	CONFIG_SYS_LONGHELP				/* undef to save memory      */
 
 #define CONFIG_SYS_MALLOC_LEN		128*1024
 

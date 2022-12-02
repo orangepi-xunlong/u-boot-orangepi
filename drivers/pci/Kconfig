@@ -26,16 +26,6 @@ config DM_PCI_COMPAT
 	  measure when porting a board to use driver model for PCI. Once the
 	  board is fully supported, this option should be disabled.
 
-config PCI_AARDVARK
-	bool "Enable Aardvark PCIe driver"
-	default n
-	depends on DM_PCI
-	depends on ARMADA_3700
-	help
-	  Say Y here if you want to enable PCIe controller support on
-	  Armada37x0 SoCs. The PCIe controller on Armada37x0 is based on
-	  Aardvark hardware.
-
 config PCI_PNP
 	bool "Enable Plug & Play support for PCI"
 	depends on PCI || DM_PCI
@@ -43,31 +33,15 @@ config PCI_PNP
 	help
 	  Enable PCI memory and I/O space resource allocation and assignment.
 
-config PCIE_ECAM_GENERIC
-	bool "Generic ECAM-based PCI host controller support"
-	default n
-	depends on DM_PCI
-	help
-	  Say Y here if you want to enable support for generic ECAM-based
-	  PCIe host controllers, such as the one emulated by QEMU.
-
 config PCIE_DW_MVEBU
 	bool "Enable Armada-8K PCIe driver (DesignWare core)"
+	default n
 	depends on DM_PCI
 	depends on ARMADA_8K
 	help
 	  Say Y here if you want to enable PCIe controller support on
 	  Armada-8K SoCs. The PCIe controller on Armada-8K is based on
 	  DesignWare hardware.
-
-config PCI_RCAR_GEN2
-	bool "Renesas RCar Gen2 PCIe driver"
-	depends on DM_PCI
-	depends on RCAR_32
-	help
-	  Say Y here if you want to enable PCIe controller support on
-	  Renesas RCar Gen2 SoCs. The PCIe controller on RCar Gen2 is
-	  also used to access EHCI USB controller on the SoC.
 
 config PCI_SANDBOX
 	bool "Sandbox PCI support"
@@ -104,5 +78,13 @@ config PCIE_LAYERSCAPE
 	  Support Layerscape PCIe. The Layerscape SoC may have one or several
 	  PCIe controllers. The PCIe may works in RC or EP mode according to
 	  RCW[HOST_AGT_PEX] setting.
+
+config PCIE_DW_ROCKCHIP
+	bool "Rockchip DesignWare PCIe controller"
+	depends on DM_PCI
+	depends on ARCH_ROCKCHIP
+	select CONFIG_DM_REGULATOR_GPIO
+	help
+	  Enables support for the DW PCIe controller in the Rockchip SoC.
 
 endif

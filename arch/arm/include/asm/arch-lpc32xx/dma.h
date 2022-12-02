@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * LPC32xx DMA Controller Interface
  *
@@ -6,6 +5,8 @@
  * @Author: Kevin Wells
  * @Descr: Definitions for LPC3250 chip
  * @References: NXP LPC3250 User's Guide
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_DMA_H

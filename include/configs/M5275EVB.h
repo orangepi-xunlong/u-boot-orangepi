@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Motorola MC5275EVB board.
  *
@@ -7,6 +6,8 @@
  *
  * Based off of M5272C3 board code by Josef Baumgartner
  * <josef.baumgartner@telex.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -20,6 +21,7 @@
  * High Level Configuration Options
  * (easy to change)
  */
+#define CONFIG_M5275EVB			/* define board type */
 
 #define CONFIG_MCFTMR
 
@@ -45,6 +47,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /* Available command configuration */
 
@@ -82,6 +87,8 @@
 #define CONFIG_SYS_I2C_PINMUX_REG	(gpio_reg->par_feci2c)
 #define CONFIG_SYS_I2C_PINMUX_CLR	(0xFFF0)
 #define CONFIG_SYS_I2C_PINMUX_SET	(0x000F)
+
+#define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x800000
 

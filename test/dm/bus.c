@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -104,7 +105,7 @@ UCLASS_DRIVER(testbus) = {
 /* Test that we can probe for children */
 static int dm_test_bus_children(struct unit_test_state *uts)
 {
-	int num_devices = 7;
+	int num_devices = 6;
 	struct udevice *bus;
 	struct uclass *uc;
 

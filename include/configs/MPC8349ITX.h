@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -49,6 +50,10 @@
 #define CONFIG_MPC834x		/* MPC834x family (8343, 8347, 8349) */
 #define CONFIG_MPC8349		/* MPC8349 specific */
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFEF00000
+#endif
+
 #define CONFIG_SYS_IMMR	0xE0000000	/* The IMMR is relocated to here */
 
 #define CONFIG_MISC_INIT_F
@@ -62,11 +67,13 @@
 /* The CF card interface on the back of the board */
 #define CONFIG_COMPACT_FLASH
 #define CONFIG_VSC7385_ENET	/* VSC7385 ethernet support */
+#define CONFIG_SATA_SIL3114	/* SIL3114 SATA controller */
 #define CONFIG_SYS_USB_HOST	/* use the EHCI USB controller */
 #endif
 
 #define CONFIG_RTC_DS1337
 #define CONFIG_SYS_I2C
+#define CONFIG_TSEC_ENET		/* TSEC Ethernet support */
 
 /*
  * Device configurations
@@ -132,6 +139,7 @@
 #ifdef CONFIG_SATA_SIL3114
 
 #define CONFIG_SYS_SATA_MAX_DEVICE      4
+#define CONFIG_LIBATA
 #define CONFIG_LBA48
 
 #endif
@@ -338,6 +346,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -459,6 +468,17 @@ boards, we say we have two, but don't display a message if we find only one. */
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+
+#if defined(CONFIG_COMPACT_FLASH) || defined(CONFIG_SATA_SIL3114) \
+				|| defined(CONFIG_USB_STORAGE)
+	#define CONFIG_SUPPORT_VFAT
+#endif
+
+#if defined(CONFIG_SATA_SIL3114) || defined(CONFIG_USB_STORAGE)
+#endif
 
 /* Watchdog */
 #undef CONFIG_WATCHDOG		/* watchdog disabled */
@@ -466,6 +486,9 @@ boards, we say we have two, but don't display a message if we find only one. */
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
+#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
+#define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
 
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_LOADADDR	800000	/* default location for tftp and bootm */

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * From Coreboot file of same name
  *
  * Copyright (C) 2007-2009 coresystems GmbH
  *               2012 secunet Security Networks AG
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _ASM_SPEEDSTEP_H

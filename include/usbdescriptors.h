@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2003
  * Gerry Hamel, geh@ti.com, Texas Instruments
@@ -13,6 +12,8 @@
  *	Stuart Lynne <sl@lineo.com>,
  *	Tom Rushworth <tbr@lineo.com>,
  *	Bruce Balden <balden@lineo.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* USB Descriptors - Create a complete description of all of the
@@ -227,7 +228,7 @@ struct usb_device_descriptor {
 	u8 bNumConfigurations;
 } __attribute__ ((packed));
 
-#if defined(CONFIG_USBD_HS) || defined(CONFIG_SUNXI_USB)
+#if defined(CONFIG_USBD_HS)
 struct usb_qualifier_descriptor {
 	u8 bLength;
 	u8 bDescriptorType;

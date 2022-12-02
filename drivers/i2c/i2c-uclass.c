@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,18 +11,10 @@
 #include <malloc.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
-#include <dm/pinctrl.h>
-#ifdef CONFIG_DM_GPIO
-#include <asm/gpio.h>
-#endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define I2C_MAX_OFFSET_LEN	4
-
-enum {
-	PIN_SDA = 0,
-	PIN_SCL,
-	PIN_COUNT,
-};
 
 /* Useful debugging function */
 void i2c_dump_msgs(struct i2c_msg *msg, int nmsgs)
@@ -233,6 +226,21 @@ int dm_i2c_reg_read(struct udevice *dev, uint offset)
 int dm_i2c_reg_write(struct udevice *dev, uint offset, uint value)
 {
 	uint8_t val = value;
+
+	return dm_i2c_write(dev, offset, &val, 1);
+}
+
+int dm_i2c_reg_clrset(struct udevice *dev, uint offset, u32 clr, u32 set)
+{
+	uint8_t val;
+	int ret;
+
+	ret = dm_i2c_read(dev, offset, &val, 1);
+	if (ret < 0)
+		return ret;
+
+	val &= ~clr;
+	val |= set;
 
 	return dm_i2c_write(dev, offset, &val, 1);
 }
@@ -454,110 +462,20 @@ int i2c_get_chip_offset_len(struct udevice *dev)
 	return chip->offset_len;
 }
 
-#ifdef CONFIG_DM_GPIO
-static void i2c_gpio_set_pin(struct gpio_desc *pin, int bit)
-{
-	if (bit)
-		dm_gpio_set_dir_flags(pin, GPIOD_IS_IN);
-	else
-		dm_gpio_set_dir_flags(pin, GPIOD_IS_OUT |
-					   GPIOD_ACTIVE_LOW |
-					   GPIOD_IS_OUT_ACTIVE);
-}
-
-static int i2c_gpio_get_pin(struct gpio_desc *pin)
-{
-	return dm_gpio_get_value(pin);
-}
-
-static int i2c_deblock_gpio_loop(struct gpio_desc *sda_pin,
-				 struct gpio_desc *scl_pin)
-{
-	int counter = 9;
-	int ret = 0;
-
-	i2c_gpio_set_pin(sda_pin, 1);
-	i2c_gpio_set_pin(scl_pin, 1);
-	udelay(5);
-
-	/*  Toggle SCL until slave release SDA */
-	while (counter-- >= 0) {
-		i2c_gpio_set_pin(scl_pin, 1);
-		udelay(5);
-		i2c_gpio_set_pin(scl_pin, 0);
-		udelay(5);
-		if (i2c_gpio_get_pin(sda_pin))
-			break;
-	}
-
-	/* Then, send I2C stop */
-	i2c_gpio_set_pin(sda_pin, 0);
-	udelay(5);
-
-	i2c_gpio_set_pin(scl_pin, 1);
-	udelay(5);
-
-	i2c_gpio_set_pin(sda_pin, 1);
-	udelay(5);
-
-	if (!i2c_gpio_get_pin(sda_pin) || !i2c_gpio_get_pin(scl_pin))
-		ret = -EREMOTEIO;
-
-	return ret;
-}
-
-static int i2c_deblock_gpio(struct udevice *bus)
-{
-	struct gpio_desc gpios[PIN_COUNT];
-	int ret, ret0;
-
-	ret = gpio_request_list_by_name(bus, "gpios", gpios,
-					ARRAY_SIZE(gpios), GPIOD_IS_IN);
-	if (ret != ARRAY_SIZE(gpios)) {
-		debug("%s: I2C Node '%s' has no 'gpios' property %s\n",
-		      __func__, dev_read_name(bus), bus->name);
-		if (ret >= 0) {
-			gpio_free_list(bus, gpios, ret);
-			ret = -ENOENT;
-		}
-		goto out;
-	}
-
-	ret = pinctrl_select_state(bus, "gpio");
-	if (ret) {
-		debug("%s: I2C Node '%s' has no 'gpio' pinctrl state. %s\n",
-		      __func__, dev_read_name(bus), bus->name);
-		goto out_no_pinctrl;
-	}
-
-	ret0 = i2c_deblock_gpio_loop(&gpios[PIN_SDA], &gpios[PIN_SCL]);
-
-	ret = pinctrl_select_state(bus, "default");
-	if (ret) {
-		debug("%s: I2C Node '%s' has no 'default' pinctrl state. %s\n",
-		      __func__, dev_read_name(bus), bus->name);
-	}
-
-	ret = !ret ? ret0 : ret;
-
-out_no_pinctrl:
-	gpio_free_list(bus, gpios, ARRAY_SIZE(gpios));
-out:
-	return ret;
-}
-#else
-static int i2c_deblock_gpio(struct udevice *bus)
-{
-	return -ENOSYS;
-}
-#endif // CONFIG_DM_GPIO
-
 int i2c_deblock(struct udevice *bus)
 {
 	struct dm_i2c_ops *ops = i2c_get_ops(bus);
 
+	/*
+	 * We could implement a software deblocking here if we could get
+	 * access to the GPIOs used by I2C, and switch them to GPIO mode
+	 * and then back to I2C. This is somewhat beyond our powers in
+	 * driver model at present, so for now just fail.
+	 *
+	 * See https://patchwork.ozlabs.org/patch/399040/
+	 */
 	if (!ops->deblock)
-		return i2c_deblock_gpio(bus);
+		return -ENOSYS;
 
 	return ops->deblock(bus);
 }
@@ -586,8 +504,14 @@ static int i2c_post_probe(struct udevice *dev)
 {
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 	struct dm_i2c_bus *i2c = dev_get_uclass_priv(dev);
+	int seq;
 
 	i2c->speed_hz = dev_read_u32_default(dev, "clock-frequency", 100000);
+
+	if (dev_read_alias_seq(dev, &seq) >= 0)
+		printf("I2c%d speed: %dHz\n", seq, i2c->speed_hz);
+	else
+		printf("I2c speed: %dHz\n", i2c->speed_hz);
 
 	return dm_i2c_set_bus_speed(dev, i2c->speed_hz);
 #else

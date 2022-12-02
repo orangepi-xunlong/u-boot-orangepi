@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2008,2009
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,6 +16,8 @@
 #include <pci.h>
 #include <asm/io.h>
 #include <asm/pci.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int pci_x86_read_config(struct udevice *bus, pci_dev_t bdf, uint offset,
 			ulong *valuep, enum pci_size_t size)

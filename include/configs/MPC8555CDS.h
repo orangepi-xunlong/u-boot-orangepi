@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2004, 2011 Freescale Semiconductor.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -15,8 +16,11 @@
 /* High Level Configuration Options */
 #define CONFIG_CPM2		1	/* has CPM2 */
 
+#define	CONFIG_SYS_TEXT_BASE	0xfff80000
+
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_FSL_VIA
@@ -225,6 +229,7 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024)	/* Reserved for malloc */
 
 /* Serial Port */
+#define CONFIG_CONS_INDEX     2
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -327,12 +332,18 @@ extern unsigned long get_clock_freq(void);
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
+#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
+#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -358,7 +369,7 @@ extern unsigned long get_clock_freq(void);
 
 #define CONFIG_IPADDR    192.168.1.253
 
-#define CONFIG_HOSTNAME  "unknown"
+#define CONFIG_HOSTNAME  unknown
 #define CONFIG_ROOTPATH  "/nfsroot"
 #define CONFIG_BOOTFILE  "your.uImage"
 

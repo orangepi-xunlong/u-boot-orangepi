@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Gateworks Corporation
  *
  * Author: Tim Harvey <tharvey@gateworks.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -21,7 +22,6 @@
 #include <asm/setup.h>
 #include <dm.h>
 #include <dm/platform_data/serial_mxc.h>
-#include <environment.h>
 #include <hwconfig.h>
 #include <i2c.h>
 #include <fdt_support.h>

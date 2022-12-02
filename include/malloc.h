@@ -908,9 +908,6 @@ void *realloc_simple(void *ptr, size_t size);
 
 /* Set up pre-relocation malloc() ready for use */
 int initf_malloc(void);
-void *malloc_align(size_t size, size_t align);
-void free_align(void *ptr);
-
 
 /* Public routines */
 

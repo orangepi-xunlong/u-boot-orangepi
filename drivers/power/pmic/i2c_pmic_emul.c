@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2015 Samsung Electronics
  *  Przemyslaw Marczak  <p.marczak@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <i2c.h>
 #include <power/pmic.h>
 #include <power/sandbox_pmic.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * struct sandbox_i2c_pmic_plat_data - platform data for the PMIC

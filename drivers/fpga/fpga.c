@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Generic FPGA support */
@@ -147,36 +148,26 @@ int fpga_add(fpga_type devtype, void *desc)
 {
 	int devnum = FPGA_INVALID_DEVICE;
 
-	if (!desc) {
-		printf("%s: NULL device descriptor\n", __func__);
-		return devnum;
-	}
-
 	if (next_desc < 0) {
 		printf("%s: FPGA support not initialized!\n", __func__);
 	} else if ((devtype > fpga_min_type) && (devtype < fpga_undefined)) {
-		if (next_desc < CONFIG_MAX_FPGA_DEVICES) {
-			devnum = next_desc;
-			desc_table[next_desc].devtype = devtype;
-			desc_table[next_desc++].devdesc = desc;
+		if (desc) {
+			if (next_desc < CONFIG_MAX_FPGA_DEVICES) {
+				devnum = next_desc;
+				desc_table[next_desc].devtype = devtype;
+				desc_table[next_desc++].devdesc = desc;
+			} else {
+				printf("%s: Exceeded Max FPGA device count\n",
+				       __func__);
+			}
 		} else {
-			printf("%s: Exceeded Max FPGA device count\n",
-			       __func__);
+			printf("%s: NULL device descriptor\n", __func__);
 		}
 	} else {
 		printf("%s: Unsupported FPGA type %d\n", __func__, devtype);
 	}
 
 	return devnum;
-}
-
-/*
- * Return 1 if the fpga data is partial.
- * This is only required for fpga drivers that support bitstream_type.
- */
-int __weak fpga_is_partial_data(int devnum, size_t img_len)
-{
-	return 0;
 }
 
 /*

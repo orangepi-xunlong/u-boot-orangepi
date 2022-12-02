@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX28 SPI driver
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * NOTE: This driver only supports the SPI-controller chipselects,
  *       GPIO driven chipselects are not supported.
@@ -37,6 +38,10 @@ struct mxs_spi_slave {
 static inline struct mxs_spi_slave *to_mxs_slave(struct spi_slave *slave)
 {
 	return container_of(slave, struct mxs_spi_slave, slave);
+}
+
+void spi_init(void)
+{
 }
 
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * bur_am335x_common.h
  *
@@ -6,6 +5,8 @@
  *
  * Copyright (C) 2016 Hannes Schmelzer <oe5hpm@oevsv.at> -
  * Bernecker & Rainer Industrieelektronik GmbH - http://www.br-automation.com
+ *
+ * SPDX-License-Identifier:        GPL-2.0+
  */
 
 #ifndef __BUR_AM335X_COMMON_H__
@@ -16,6 +17,7 @@
 /* Timer information */
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 #define CONFIG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
+#define CONFIG_SPL_AM33XX_ENABLE_RTC32K_OSC	/* enable 32kHz OSC at bootime */
 #define CONFIG_POWER_TPS65217
 
 #include <asm/arch/omap.h>
@@ -27,6 +29,7 @@
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
 
 /* Network defines */
+#define CONFIG_DRIVER_TI_CPSW		/* Driver for IP block */
 #define CONFIG_MII			/* Required in net/eth.c */
 #define CONFIG_PHY_NATSEMI
 
@@ -67,6 +70,8 @@
 
 /* I2C */
 #define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 
 /*
  * Our platforms make use of SPL to initalize the hardware (primarily
@@ -76,6 +81,7 @@
  * under common/spl/.  Given our generally common memory map, we set a
  * number of related defaults and sizes here.
  */
+#define CONFIG_SPL_FRAMEWORK
 /*
  * Place the image at the start of the ROM defined image space.
  * We limit our size to the ROM-defined downloaded image area, and use the
@@ -87,6 +93,8 @@
  *
  * ----------------------------------------------------------------------------
  */
+#undef  CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE		0x80800000
 #define CONFIG_SPL_BSS_START_ADDR	0x80A00000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000		/* 512 KB */
 #define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SPL_BSS_START_ADDR + \

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Marvell International Ltd.
  *
  * MVEBU USB HOST xHCI Controller
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +13,9 @@
 #include <power/regulator.h>
 #include <asm/gpio.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct mvebu_xhci_platdata {
 	fdt_addr_t hcd_base;

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Texas Instruments Keystone SerDes driver
  *
  * (C) Copyright 2014
  *     Texas Instruments Incorporated, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __TI_KEYSTONE_SERDES_H__

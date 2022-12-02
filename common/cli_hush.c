@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * sh.c -- a prototype Bourne shell grammar parser
  *      Intended to follow the original Thompson and Ritchie
@@ -71,6 +70,8 @@
  *      document how quoting rules not precisely followed for variable assignments
  *      maybe change map[] to use 2-bit entries
  *      (eventually) remove all the printf's
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #define __U_BOOT__
@@ -3696,7 +3697,7 @@ static int do_showvar(cmd_tbl_t *cmdtp, int flag, int argc,
 			}
 		}
 		if (k < 0) {
-			printf ("## Error: \"%s\" not defined\n", name);
+			//printf ("## Error: \"%s\" not defined\n", name);
 			rcode ++;
 		}
 	}

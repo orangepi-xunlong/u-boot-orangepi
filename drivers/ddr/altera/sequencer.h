@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Copyright Altera Corporation (C) 2012-2015
+ *
+ * SPDX-License-Identifier:    BSD-3-Clause
  */
 
 #ifndef _SEQUENCER_H_

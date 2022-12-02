@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Core registration and callback routines for MTD
  * drivers and users.
  *
  * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org>
  * Copyright © 2006      Red Hat UK Limited 
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -1181,10 +1182,10 @@ int mtd_ooblayout_free(struct mtd_info *mtd, int section,
 	if (!mtd || section < 0)
 		return -EINVAL;
 
-	if (!mtd->ooblayout || !mtd->ooblayout->free)
+	if (!mtd->ooblayout || !mtd->ooblayout->rfree)
 		return -ENOTSUPP;
 
-	return mtd->ooblayout->free(mtd, section, oobfree);
+	return mtd->ooblayout->rfree(mtd, section, oobfree);
 }
 EXPORT_SYMBOL_GPL(mtd_ooblayout_free);
 

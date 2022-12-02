@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Richard Jones, rjones@nexus-tech.net
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

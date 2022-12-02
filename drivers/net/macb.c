@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2005-2006 Atmel Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <clk.h>
@@ -50,22 +51,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MACB_TX_RING_SIZE		16
 #define MACB_TX_TIMEOUT		1000
 #define MACB_AUTONEG_TIMEOUT	5000000
-
-#ifdef CONFIG_MACB_ZYNQ
-/* INCR4 AHB bursts */
-#define MACB_ZYNQ_GEM_DMACR_BLENGTH		0x00000004
-/* Use full configured addressable space (8 Kb) */
-#define MACB_ZYNQ_GEM_DMACR_RXSIZE		0x00000300
-/* Use full configured addressable space (4 Kb) */
-#define MACB_ZYNQ_GEM_DMACR_TXSIZE		0x00000400
-/* Set RXBUF with use of 128 byte */
-#define MACB_ZYNQ_GEM_DMACR_RXBUF		0x00020000
-#define MACB_ZYNQ_GEM_DMACR_INIT \
-				(MACB_ZYNQ_GEM_DMACR_BLENGTH | \
-				MACB_ZYNQ_GEM_DMACR_RXSIZE | \
-				MACB_ZYNQ_GEM_DMACR_TXSIZE | \
-				MACB_ZYNQ_GEM_DMACR_RXBUF)
-#endif
 
 struct macb_dma_desc {
 	u32	addr;
@@ -476,25 +461,13 @@ static int macb_phy_find(struct macb_device *macb, const char *name)
 		phy_id = macb_mdio_read(macb, MII_PHYSID1);
 		if (phy_id != 0xffff) {
 			printf("%s: PHY present at %d\n", name, i);
-			return 0;
+			return 1;
 		}
 	}
 
 	/* PHY isn't up to snuff */
 	printf("%s: PHY not found\n", name);
 
-	return -ENODEV;
-}
-
-/**
- * macb_linkspd_cb - Linkspeed change callback function
- * @regs:	Base Register of MACB devices
- * @speed:	Linkspeed
- * Returns 0 when operation success and negative errno number
- * when operation failed.
- */
-int __weak macb_linkspd_cb(void *regs, unsigned int speed)
-{
 	return 0;
 }
 
@@ -510,20 +483,18 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	u32 ncfgr;
 	u16 phy_id, status, adv, lpa;
 	int media, speed, duplex;
-	int ret;
 	int i;
 
 	arch_get_mdio_control(name);
 	/* Auto-detect phy_addr */
-	ret = macb_phy_find(macb, name);
-	if (ret)
-		return ret;
+	if (!macb_phy_find(macb, name))
+		return 0;
 
 	/* Check if the PHY is up to snuff... */
 	phy_id = macb_mdio_read(macb, MII_PHYSID1);
 	if (phy_id == 0xffff) {
 		printf("%s: No PHY present\n", name);
-		return -ENODEV;
+		return 0;
 	}
 
 #ifdef CONFIG_PHYLIB
@@ -559,7 +530,7 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	if (!(status & BMSR_LSTATUS)) {
 		printf("%s: link down (status: 0x%04x)\n",
 		       name, status);
-		return -ENETDOWN;
+		return 0;
 	}
 
 	/* First check for GMAC and that it is GiB capable */
@@ -583,11 +554,7 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 
 			macb_writel(macb, NCFGR, ncfgr);
 
-			ret = macb_linkspd_cb(macb->regs, _1000BASET);
-			if (ret)
-				return ret;
-
-			return 0;
+			return 1;
 		}
 	}
 
@@ -606,21 +573,13 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 
 	ncfgr = macb_readl(macb, NCFGR);
 	ncfgr &= ~(MACB_BIT(SPD) | MACB_BIT(FD) | GEM_BIT(GBE));
-	if (speed) {
+	if (speed)
 		ncfgr |= MACB_BIT(SPD);
-		ret = macb_linkspd_cb(macb->regs, _100BASET);
-	} else {
-		ret = macb_linkspd_cb(macb->regs, _10BASET);
-	}
-
-	if (ret)
-		return ret;
-
 	if (duplex)
 		ncfgr |= MACB_BIT(FD);
 	macb_writel(macb, NCFGR, ncfgr);
 
-	return 0;
+	return 1;
 }
 
 static int gmac_init_multi_queues(struct macb_device *macb)
@@ -657,7 +616,6 @@ static int _macb_init(struct macb_device *macb, const char *name)
 	struct macb_device *macb = dev_get_priv(dev);
 #endif
 	unsigned long paddr;
-	int ret;
 	int i;
 
 	/*
@@ -690,10 +648,6 @@ static int _macb_init(struct macb_device *macb, const char *name)
 	macb->tx_head = 0;
 	macb->tx_tail = 0;
 	macb->next_rx_tail = 0;
-
-#ifdef CONFIG_MACB_ZYNQ
-	macb_writel(macb, DMACFG, MACB_ZYNQ_GEM_DMACR_INIT);
-#endif
 
 	macb_writel(macb, RBQP, macb->rx_ring_dma);
 	macb_writel(macb, TBQP, macb->tx_ring_dma);
@@ -755,12 +709,11 @@ static int _macb_init(struct macb_device *macb, const char *name)
 	}
 
 #ifdef CONFIG_DM_ETH
-	ret = macb_phy_init(dev, name);
+	if (!macb_phy_init(dev, name))
 #else
-	ret = macb_phy_init(macb, name);
+	if (!macb_phy_init(macb, name))
 #endif
-	if (ret)
-		return ret;
+		return -1;
 
 	/* Enable TX and RX */
 	macb_writel(macb, NCR, MACB_BIT(TE) | MACB_BIT(RE));
@@ -914,7 +867,7 @@ static int macb_recv(struct eth_device *netdev)
 		if (length >= 0) {
 			net_process_received_packet(packet, length);
 			reclaim_rx_buffers(macb, macb->next_rx_tail);
-		} else {
+		} else if (length < 0) {
 			return length;
 		}
 	}
@@ -1060,15 +1013,9 @@ static int macb_enable_clk(struct udevice *dev)
 	if (ret)
 		return -EINVAL;
 
-	/*
-	 * Zynq clock driver didn't support for enable or disable
-	 * clock. Hence, clk_enable() didn't apply for Zynq
-	 */
-#ifndef CONFIG_MACB_ZYNQ
 	ret = clk_enable(&clk);
 	if (ret)
 		return ret;
-#endif
 
 	clk_rate = clk_get_rate(&clk);
 	if (!clk_rate)
@@ -1136,24 +1083,12 @@ static int macb_eth_remove(struct udevice *dev)
 	return 0;
 }
 
-/**
- * macb_late_eth_ofdata_to_platdata
- * @dev:	udevice struct
- * Returns 0 when operation success and negative errno number
- * when operation failed.
- */
-int __weak macb_late_eth_ofdata_to_platdata(struct udevice *dev)
-{
-	return 0;
-}
-
 static int macb_eth_ofdata_to_platdata(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 
 	pdata->iobase = devfdt_get_addr(dev);
-
-	return macb_late_eth_ofdata_to_platdata(dev);
+	return 0;
 }
 
 static const struct udevice_id macb_eth_ids[] = {
@@ -1162,7 +1097,6 @@ static const struct udevice_id macb_eth_ids[] = {
 	{ .compatible = "atmel,sama5d2-gem" },
 	{ .compatible = "atmel,sama5d3-gem" },
 	{ .compatible = "atmel,sama5d4-gem" },
-	{ .compatible = "cdns,zynq-gem" },
 	{ }
 };
 

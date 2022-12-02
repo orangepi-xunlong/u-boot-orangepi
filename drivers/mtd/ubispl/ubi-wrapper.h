@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL 2.0+ OR BSD-3-Clause */
 /*
  * The parts taken from the kernel implementation are:
  *
@@ -7,6 +6,8 @@
  * UBISPL specific defines:
  *
  * Copyright (c) Thomas Gleixner <tglx@linutronix.de>
+ *
+ * SPDX-License-Identifier: GPL 2.0+ BSD-3-Clause
  */
 
 /*

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Samsung Electronics Co., Ltd. All rights reserved.
  * Sanghee Kim <sh0130.kim@samsung.com>
  * Piotr Wilczek <p.wilczek@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -22,6 +23,8 @@
 #include <usb.h>
 #include <usb/dwc2_udc.h>
 #include <usb_mass_storage.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static unsigned int board_rev = -1;
 

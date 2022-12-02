@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * g_dnl.c -- USB Downloader Gadget
  *
  * Copyright (C) 2012 Samsung Electronics
  * Lukasz Majewski  <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -50,7 +51,8 @@ static const char manufacturer[] = CONFIG_USB_GADGET_MANUFACTURER;
 void g_dnl_set_serialnumber(char *s)
 {
 	memset(g_dnl_serial, 0, MAX_STRING_SERIAL);
-	strncpy(g_dnl_serial, s, MAX_STRING_SERIAL - 1);
+	if (s)
+		strncpy(g_dnl_serial, s, MAX_STRING_SERIAL - 1);
 }
 
 static struct usb_device_descriptor device_desc = {

@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Clock specification for Xilinx ZynqMP
  *
- * (C) Copyright 2015 - 2018, Xilinx, Inc.
+ * (C) Copyright 2015, Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
-/ {
+&amba {
 	clk100: clk100 {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -25,7 +26,6 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <200000000>;
-		u-boot,dm-pre-reloc;
 	};
 
 	clk250: clk250 {

@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013-2015 Arcturus Networks, Inc
  *           http://www.arcturusnetworks.com/products/ucp1020/
  * based on board/freescale/p1_p2_rdb_pc/tlb.c
  * original copyright follows:
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -78,7 +79,7 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	(defined(CONFIG_SPL) && !defined(CONFIG_SPL_COMMON_INIT_DDR))
 	/* *I*G - eSDHC/eSPI/NAND boot */
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-		      MAS3_SX | MAS3_SW | MAS3_SR, MAS2_M,
+		      MAS3_SX | MAS3_SW | MAS3_SR, 0,
 		      0, 8, BOOKE_PAGESZ_1G, 1),
 
 #endif /* RAMBOOT/SPL */

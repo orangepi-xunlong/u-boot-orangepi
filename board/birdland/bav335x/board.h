@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * board.c
  *
@@ -6,6 +5,8 @@
  *
  * Copyright (c) 2012-2014, Birdland Audio - http://birdland.com/oem
  *
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _BOARD_H_

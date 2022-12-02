@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  *
  * Derived from drivers/spi/mpc8xxx_spi.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -248,7 +249,6 @@ struct mvebu_spi_dev {
 
 struct mvebu_spi_platdata {
 	struct kwspi_registers *spireg;
-	bool is_errata_50mhz_ac;
 };
 
 struct mvebu_spi_priv {
@@ -310,6 +310,7 @@ static int mvebu_spi_set_mode(struct udevice *bus, uint mode)
 {
 	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
 	struct kwspi_registers *reg = plat->spireg;
+	const struct mvebu_spi_dev *drvdata;
 	u32 data = readl(&reg->cfg);
 
 	data &= ~(KWSPI_CPHA | KWSPI_CPOL | KWSPI_RXLSBF | KWSPI_TXLSBF);
@@ -323,7 +324,8 @@ static int mvebu_spi_set_mode(struct udevice *bus, uint mode)
 
 	writel(data, &reg->cfg);
 
-	if (plat->is_errata_50mhz_ac)
+	drvdata = (struct mvebu_spi_dev *)dev_get_driver_data(bus);
+	if (drvdata->is_errata_50mhz_ac)
 		mvebu_spi_50mhz_ac_timing_erratum(bus, mode);
 
 	return 0;
@@ -366,11 +368,8 @@ static int mvebu_spi_probe(struct udevice *bus)
 static int mvebu_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
-	const struct mvebu_spi_dev *drvdata =
-		(struct mvebu_spi_dev *)dev_get_driver_data(bus);
 
 	plat->spireg = (struct kwspi_registers *)devfdt_get_addr(bus);
-	plat->is_errata_50mhz_ac = drvdata->is_errata_50mhz_ac;
 
 	return 0;
 }
@@ -386,10 +385,6 @@ static const struct dm_spi_ops mvebu_spi_ops = {
 	 */
 };
 
-static const struct mvebu_spi_dev armada_spi_dev_data = {
-	.is_errata_50mhz_ac = false,
-};
-
 static const struct mvebu_spi_dev armada_xp_spi_dev_data = {
 	.is_errata_50mhz_ac = false,
 };
@@ -403,10 +398,6 @@ static const struct mvebu_spi_dev armada_380_spi_dev_data = {
 };
 
 static const struct udevice_id mvebu_spi_ids[] = {
-	{
-		.compatible = "marvell,orion-spi",
-		.data = (ulong)&armada_spi_dev_data,
-	},
 	{
 		.compatible = "marvell,armada-375-spi",
 		.data = (ulong)&armada_375_spi_dev_data

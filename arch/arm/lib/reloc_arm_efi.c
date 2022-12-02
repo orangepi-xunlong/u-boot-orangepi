@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: BSD-3-Clause
 /*
  * reloc_arm.c - position-independent ARM ELF shared object relocator
  *
@@ -7,6 +6,8 @@
  * Contributed by David Mosberger <davidm@hpl.hp.com>.
  *
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  *
  * This file is taken and modified from the gnu-efi project.
  */

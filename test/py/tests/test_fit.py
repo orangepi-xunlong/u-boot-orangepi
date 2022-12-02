@@ -1,5 +1,6 @@
-# SPDX-License-Identifier:	GPL-2.0+
 # Copyright (c) 2013, Google Inc.
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 # Sanity check of the FIT handling in U-Boot
 
@@ -110,7 +111,6 @@ sb save hostfs 0 %(loadables2_addr)x %(loadables2_out)s %(loadables2_size)x
 
 @pytest.mark.boardspec('sandbox')
 @pytest.mark.buildconfigspec('fit_signature')
-@pytest.mark.requiredtool('dtc')
 def test_fit(u_boot_console):
     def make_fname(leaf):
         """Make a temporary filename

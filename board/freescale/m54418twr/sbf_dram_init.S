@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Board-specific sbf ddr/sdram init.
  *
  * (C) Copyright 2017 Angelo Dureghello <angelo@sysam.it>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 .global sbf_dram_init

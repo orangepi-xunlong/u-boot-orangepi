@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * MMCIF driver.
  *
  * Copyright (C)  2011 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _SH_MMCIF_H_

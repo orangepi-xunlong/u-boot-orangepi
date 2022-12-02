@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * [origin: Linux kernel linux/arch/arm/mach-at91/clock.c]
  *
  * Copyright (C) 2005 David Brownell
  * Copyright (C) 2005 Ivan Kokshaysky
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

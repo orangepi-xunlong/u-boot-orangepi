@@ -1,21 +1,24 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas RSK2+SH7264 board
  *
  * Copyright (C) 2011 Renesas Electronics Europe Ltd.
  * Copyright (C) 2008 Nobuhiro Iwamatsu
  * Copyright (C) 2008 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __RSK7264_H
 #define __RSK7264_H
 
 #define CONFIG_CPU_SH7264	1
+#define CONFIG_RSK7264		1
 
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_SYS_BAUDRATE_TABLE	{ CONFIG_BAUDRATE }
 
+#define CONFIG_SYS_LONGHELP	1	/* undef to save memory	*/
 #define CONFIG_SYS_PBSIZE	256	/* Buffer size for Console output */
 
 /* Serial */
@@ -23,6 +26,7 @@
 
 /* Memory */
 /* u-boot relocated to top 256KB of ram */
+#define CONFIG_SYS_TEXT_BASE		0x0CFC0000
 #define CONFIG_SYS_SDRAM_BASE		0x0C000000
 #define CONFIG_SYS_SDRAM_SIZE		(64 * 1024 * 1024)
 
@@ -51,5 +55,10 @@
 #define CONFIG_SH_SCIF_CLK_FREQ CONFIG_SYS_CLK_FREQ
 #define CMT_CLK_DIVIDER		32	/* 8 (default), 32, 128 or 512 */
 #define CONFIG_SH_CMT_CLK_FREQ (CONFIG_SYS_CLK_FREQ / CMT_CLK_DIVIDER)
+
+/* Network interface */
+#define CONFIG_SMC911X
+#define CONFIG_SMC911X_16_BIT
+#define CONFIG_SMC911X_BASE	0x28000000
 
 #endif	/* __RSK7264_H */

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012 Stephen Warren
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

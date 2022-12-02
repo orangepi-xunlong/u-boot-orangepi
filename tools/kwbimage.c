@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Image manipulator for Marvell SoCs
  *  supports Kirkwood, Dove, Armada 370, Armada XP, and Armada 38x
  *
  * (C) Copyright 2013 Thomas Petazzoni
  * <thomas.petazzoni@free-electrons.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Not implemented: support for the register headers in v1 images
  */
@@ -23,8 +24,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 static void RSA_get0_key(const RSA *r,
                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 {
@@ -36,7 +36,7 @@ static void RSA_get0_key(const RSA *r,
        *d = r->d;
 }
 
-#elif !defined(LIBRESSL_VERSION_NUMBER)
+#else
 void EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx)
 {
 	EVP_MD_CTX_reset(ctx);
@@ -1615,10 +1615,6 @@ static int kwbimage_verify_header(unsigned char *ptr, int image_size,
 				  struct image_tool_params *params)
 {
 	uint8_t checksum;
-	size_t header_size = kwbimage_header_size(ptr);
-
-	if (header_size > image_size)
-		return -FDT_ERR_BADSTRUCTURE;
 
 	if (!main_hdr_checksum_ok(ptr))
 		return -FDT_ERR_BADSTRUCTURE;

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Chip-specific header file for the SAMA5D3 family
  *
@@ -7,10 +6,17 @@
  *
  * Definitions for the SoC:
  * SAMA5D3
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef SAMA5D3_H
 #define SAMA5D3_H
+
+/*
+ * defines to be used in other places
+ */
+#define CONFIG_AT91FAMILY	/* it's a member of AT91 */
 
 /*
  * Peripheral identifiers/interrupts.

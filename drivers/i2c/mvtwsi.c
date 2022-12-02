@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Driver for the TWSI (i2c) controller found on the Marvell
  * orion5x and kirkwood SoC families.
  *
  * Author: Albert Aribaud <albert.u.boot@aribaud.net>
  * Copyright (c) 2010 Albert Aribaud.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -486,14 +487,10 @@ static uint __twsi_i2c_set_bus_speed(struct mvtwsi_registers *twsi,
 static void __twsi_i2c_init(struct mvtwsi_registers *twsi, int speed,
 			    int slaveadd, uint *actual_speed)
 {
-	uint tmp_speed;
-
 	/* Reset controller */
 	twsi_reset(twsi);
 	/* Set speed */
-	tmp_speed = __twsi_i2c_set_bus_speed(twsi, speed);
-	if (actual_speed)
-		*actual_speed = tmp_speed;
+	*actual_speed = __twsi_i2c_set_bus_speed(twsi, speed);
 	/* Set slave address; even though we don't use it */
 	writel(slaveadd, &twsi->slave_address);
 	writel(0, &twsi->xtnd_slave_addr);

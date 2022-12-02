@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Copyright (C) 2012-2017 Altera Corporation <www.altera.com>
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:    BSD-3-Clause
  */
 
 #ifndef _FPGA_MANAGER_GEN5_H_

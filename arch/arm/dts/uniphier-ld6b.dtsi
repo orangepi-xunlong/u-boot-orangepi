@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+ OR MIT
-//
-// Device Tree Source for UniPhier LD6b SoC
-//
-// Copyright (C) 2015-2016 Socionext Inc.
-//   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+/*
+ * Device Tree Source for UniPhier LD6b SoC
+ *
+ * Copyright (C) 2015-2016 Socionext Inc.
+ *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+ */
 
 /*
  * LD6b consists of two silicon dies: D-chip and A-chip.

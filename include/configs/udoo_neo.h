@@ -1,15 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014-2015 Freescale Semiconductor, Inc.
  * Copyright Jasbir Matharu
  * Copyright 2015 UDOO Team
  *
  * Configuration settings for the UDOO NEO board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <config_distro_defaults.h>
 #include "mx6_common.h"
 
 #include "imx6_spl.h"
@@ -26,6 +28,7 @@
 #define CONFIG_SYS_MMC_ENV_DEV		0  /*USDHC2*/
 
 /* Linux only */
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=ttymxc0,115200\0" \
 	"fdt_high=0xffffffff\0" \
@@ -56,6 +59,10 @@
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
 	func(DHCP, dhcp, na)
+
+#define CONFIG_BOOTCOMMAND \
+	"run findfdt; " \
+	"run distro_bootcmd"
 
 #include <config_distro_bootcmd.h>
 

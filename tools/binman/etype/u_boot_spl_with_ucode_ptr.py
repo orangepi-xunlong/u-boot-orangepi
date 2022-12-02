@@ -1,6 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2016 Google, Inc
 # Written by Simon Glass <sjg@chromium.org>
+#
+# SPDX-License-Identifier:      GPL-2.0+
 #
 # Entry-type module for an SPL binary with an embedded microcode pointer
 #
@@ -24,4 +25,4 @@ class Entry_u_boot_spl_with_ucode_ptr(Entry_u_boot_with_ucode_ptr):
         self.elf_fname = 'spl/u-boot-spl'
 
     def GetDefaultFilename(self):
-        return 'spl/u-boot-spl-nodtb.bin'
+        return 'spl/u-boot-spl.bin'

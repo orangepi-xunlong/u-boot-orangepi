@@ -1,4 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0+
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 ifdef CONFIG_SPL_BUILD
 obj-$(CONFIG_ARCH_UNIPHIER_LD4)		+= debug-uart-ld4.o

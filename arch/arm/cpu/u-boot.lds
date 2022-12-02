@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2004-2008 Texas Instruments
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -14,7 +15,7 @@ OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
-#ifndef CONFIG_CMDLINE
+#if !defined(CONFIG_CMDLINE) && !defined(CONFIG_U_BOOT_CMD_ALWAYS)
 	/DISCARD/ : { *(.u_boot_list_2_cmd_*) }
 #endif
 #if defined(CONFIG_ARMV7_SECURE_BASE) && defined(CONFIG_ARMV7_NONSEC)
@@ -35,18 +36,12 @@ SECTIONS
 	 */
 	/DISCARD/ : { *(.rel._secure*) }
 #endif
-	. = CONFIG_SYS_TEXT_BASE;
-	/*. = 0x00000000;*/
+	. = 0x00000000;
 
 	. = ALIGN(4);
-	.head :
-	{
-		*(.__image_copy_start)
-		CPUDIR/spare_head.o (.data*)
-	}
 	.text :
 	{
-		/* *(.__image_copy_start) */
+		*(.__image_copy_start)
 		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)
@@ -140,6 +135,23 @@ SECTIONS
 		KEEP(*(SORT(.u_boot_list*)));
 	}
 
+	/*
+	 * Stack unwinding tables
+	 */
+	. = ALIGN(8);
+	/* .ARM.exidx is sorted, so has to go in its own output section. */
+	.ARM.exidx : {
+		__exidx_start = .;
+		*(.ARM.exidx*)
+		__exidx_end = .;
+	}
+
+	.ARM.extab : {
+		__extab_start = .;
+		*(.ARM.extab*)
+		__extab_end = .;
+	}
+
 	. = ALIGN(4);
 
 	.__efi_runtime_start : {
@@ -170,7 +182,7 @@ SECTIONS
 		*(.__efi_runtime_rel_stop)
 	}
 
-	. = ALIGN(4);
+	. = ALIGN(8);
 
 	.image_copy_end :
 	{
@@ -193,6 +205,7 @@ SECTIONS
 
 	.end :
 	{
+		. = ALIGN(8);
 		*(.__end)
 	}
 

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Common SPI flash Interface
  *
  * Copyright (C) 2008 Atmel Corporation
  * Copyright (C) 2013 Jagannadha Sutradharudu Teki, Xilinx Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _SPI_FLASH_H_
@@ -13,18 +14,17 @@
 #include <linux/types.h>
 #include <linux/mtd/spi-nor.h>
 
-/* by default ENV use the same parameters than SF command */
-#ifndef CONFIG_ENV_SPI_BUS
-# define CONFIG_ENV_SPI_BUS	CONFIG_SF_DEFAULT_BUS
+#ifndef CONFIG_SF_DEFAULT_SPEED
+# define CONFIG_SF_DEFAULT_SPEED	1000000
 #endif
-#ifndef CONFIG_ENV_SPI_CS
-# define CONFIG_ENV_SPI_CS	CONFIG_SF_DEFAULT_CS
+#ifndef CONFIG_SF_DEFAULT_MODE
+# define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
 #endif
-#ifndef CONFIG_ENV_SPI_MAX_HZ
-# define CONFIG_ENV_SPI_MAX_HZ	CONFIG_SF_DEFAULT_SPEED
+#ifndef CONFIG_SF_DEFAULT_CS
+# define CONFIG_SF_DEFAULT_CS		0
 #endif
-#ifndef CONFIG_ENV_SPI_MODE
-# define CONFIG_ENV_SPI_MODE	CONFIG_SF_DEFAULT_MODE
+#ifndef CONFIG_SF_DEFAULT_BUS
+# define CONFIG_SF_DEFAULT_BUS		0
 #endif
 
 struct spi_slave;

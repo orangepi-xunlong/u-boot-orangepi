@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011 Logic Product Development <www.logicpd.com>
  *	Peter Barada <peter.barada@logicpd.com>
  *
  * Configuration settings for the Logic OMAP35x/DM37x SOM LV/Torpedo
  * reference boards.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -17,7 +18,16 @@
 #include <configs/ti_omap3_common.h>
 
 #ifdef CONFIG_SPL_BUILD
+/*
+ * Disable MMC DM for SPL build and can be re-enabled after adding
+ * DM support in SPL
+ */
+#undef CONFIG_DM_MMC
+#undef OMAP_HSMMC_USE_GPIO
+
 /* select serial console configuration for SPL */
+#undef CONFIG_CONS_INDEX
+#define CONFIG_CONS_INDEX              1
 #define CONFIG_SYS_NS16550_COM1                OMAP34XX_UART1
 #endif
 
@@ -28,6 +38,7 @@
  * order to allow for BCH8 to fit in.
  */
 #undef CONFIG_SPL_TEXT_BASE
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0x40200000
 
 #define CONFIG_MISC_INIT_R		/* misc_init_r dumps the die id */
@@ -38,8 +49,17 @@
 
 /* Hardware drivers */
 
+#define CONFIG_USB_OMAP3
+
 /* I2C */
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50	/* EEPROM AT24C64      */
+
+/* USB */
+#define CONFIG_USB_MUSB_OMAP2PLUS
+#define CONFIG_USB_MUSB_PIO_ONLY
+
+/* TWL4030 */
+#define CONFIG_TWL4030_USB
 
 /* Board NAND Info. */
 #ifdef CONFIG_NAND
@@ -65,20 +85,19 @@
 #define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_BCH8_CODE_HW_DETECTION_SW
 #define CONFIG_SYS_NAND_MAX_OOBFREE	2
 #define CONFIG_SYS_NAND_MAX_ECCPOS	56
-#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS		/* required for UBI partition support */
 #endif
 
 /* Environment information */
 
 #define CONFIG_PREBOOT \
 	"setenv preboot;"						\
+	"nand unlock;"							\
 	"saveenv;"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"	\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0"	\
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"mmcdev=0\0" \
 	"mmcroot=/dev/mmcblk0p2 rw\0" \
 	"mmcrootfstype=ext4 rootwait\0" \
@@ -152,10 +171,10 @@
 		"run loadramdisk\0" \
 	"mmcramboot=setenv bootfile uImage; " \
 		"run mmcrambootcommon; " \
-		"bootm ${loadaddr} ${rdaddr} ${fdtaddr}\0" \
+		"bootm ${loadaddr} ${rdaddr} ${fdtimage}\0" \
 	"mmcrambootz=setenv bootfile zImage; " \
 		"run mmcrambootcommon; " \
-		"bootz ${loadaddr} ${rdaddr} ${fdtaddr}\0" \
+		"bootz ${loadaddr} ${rdaddr} ${fdtimage}\0" \
 	"tftpboot=echo 'Booting kernel/ramdisk rootfs from tftp...'; " \
 		"run ramargs; " \
 		"run common_bootargs; " \
@@ -171,6 +190,7 @@
 		"tftpboot $loadaddr zImage;" \
 		"bootz $loadaddr\0" \
 	"nandbootcommon=echo 'Booting kernel from NAND...';" \
+		"nand unlock;" \
 		"run nandargs;" \
 		"run common_bootargs;" \
 		"run dump_bootargs;" \
@@ -202,10 +222,18 @@
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 
 #define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB */
+#define SMNAND_ENV_OFFSET		0x260000 /* environment starts here */
 
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		0x260000
-#define CONFIG_ENV_ADDR			0x260000
+#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
+
+/* SMSC922x Ethernet */
+#if defined(CONFIG_CMD_NET)
+#define CONFIG_SMC911X
+#define CONFIG_SMC911X_32_BIT
+#define CONFIG_SMC911X_BASE	0x08000000
+#endif /* (CONFIG_CMD_NET) */
 
 /* Defines for SPL */
 

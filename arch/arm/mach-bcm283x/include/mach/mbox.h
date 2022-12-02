@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012,2015 Stephen Warren
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _BCM2835_MBOX_H

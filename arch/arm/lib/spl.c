@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010-2012
  * Texas Instruments, <www.ti.com>
  *
  * Aneesh V <aneesh@ti.com>
  * Tom Rini <trini@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
-
 #include <common.h>
 #include <config.h>
 #include <spl.h>
@@ -47,15 +47,6 @@ void __weak board_init_f(ulong dummy)
  * image.
  */
 #ifdef CONFIG_SPL_OS_BOOT
-#ifdef CONFIG_ARM64
-void __noreturn jump_to_image_linux(struct spl_image_info *spl_image)
-{
-	debug("Entering kernel arg pointer: 0x%p\n", spl_image->arg);
-	cleanup_before_linux();
-	armv8_switch_to_el2((u64)spl_image->arg, 0, 0, 0,
-			    spl_image->entry_point, ES_TO_AARCH64);
-}
-#else
 void __noreturn jump_to_image_linux(struct spl_image_info *spl_image)
 {
 	unsigned long machid = 0xffffffff;
@@ -71,5 +62,4 @@ void __noreturn jump_to_image_linux(struct spl_image_info *spl_image)
 	cleanup_before_linux();
 	image_entry(0, machid, spl_image->arg);
 }
-#endif	/* CONFIG_ARM64 */
 #endif

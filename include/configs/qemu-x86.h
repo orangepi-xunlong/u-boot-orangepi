@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -34,6 +35,8 @@
 #define CONFIG_ATAPI
 
 /* SPI is not supported */
+
+#define CONFIG_SPL_FRAMEWORK
 
 #define CONFIG_SPL_TEXT_BASE		0xfffd0000
 

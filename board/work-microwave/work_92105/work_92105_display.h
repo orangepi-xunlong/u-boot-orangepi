@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * work_92105 display support interface
  *
@@ -8,6 +7,8 @@
  * The work_92105 display is a HD44780-compatible module
  * controlled through a MAX6957AAX SPI port expander, two
  * MAX518 I2C DACs and native LPC32xx GPO 15.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 void work_92105_display_init(void);

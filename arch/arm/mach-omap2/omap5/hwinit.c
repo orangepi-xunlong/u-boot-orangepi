@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * Functions for omap5 based boards.
@@ -10,6 +9,8 @@
  *	Aneesh V	<aneesh@ti.com>
  *	Steve Sakoman	<steve@sakoman.com>
  *	Sricharan	<r.sricharan@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <palmas.h>
@@ -22,6 +23,8 @@
 #include <asm/arch/gpio.h>
 #include <asm/emif.h>
 #include <asm/omap_common.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 u32 *const omap_si_rev = (u32 *)OMAP_SRAM_SCRATCH_OMAP_REV;
 
@@ -359,9 +362,6 @@ void init_omap_revision(void)
 	case OMAP5432_CONTROL_ID_CODE_ES2_0:
 		*omap_si_rev = OMAP5432_ES2_0;
 		break;
-	case DRA762_CONTROL_ID_CODE_ES1_0:
-		*omap_si_rev = DRA762_ES1_0;
-		break;
 	case DRA752_CONTROL_ID_CODE_ES1_0:
 		*omap_si_rev = DRA752_ES1_0;
 		break;
@@ -377,34 +377,10 @@ void init_omap_revision(void)
 	case DRA722_CONTROL_ID_CODE_ES2_0:
 		*omap_si_rev = DRA722_ES2_0;
 		break;
-	case DRA722_CONTROL_ID_CODE_ES2_1:
-		*omap_si_rev = DRA722_ES2_1;
-		break;
 	default:
 		*omap_si_rev = OMAP5430_SILICON_ID_INVALID;
 	}
 	init_cpu_configuration();
-}
-
-void init_package_revision(void)
-{
-	unsigned int die_id[4] = { 0 };
-	u8 package;
-
-	omap_die_id(die_id);
-	package = (die_id[2] >> 16) & 0x3;
-
-	if (is_dra76x()) {
-		switch (package) {
-		case DRA762_ABZ_PACKAGE:
-			*omap_si_rev = DRA762_ABZ_ES1_0;
-			break;
-		case DRA762_ACD_PACKAGE:
-		default:
-			*omap_si_rev = DRA762_ACD_ES1_0;
-			break;
-		}
-	}
 }
 
 void omap_die_id(unsigned int *die_id)
@@ -479,14 +455,10 @@ void v7_arch_cp15_set_acr(u32 acr, u32 cpu_midr, u32 cpu_rev_comb,
 }
 
 #if defined(CONFIG_PALMAS_POWER)
-__weak void board_mmc_poweron_ldo(uint voltage)
-{
-	palmas_mmc1_poweron_ldo(LDO1_VOLTAGE, LDO1_CTRL, voltage);
-}
-
 void vmmc_pbias_config(uint voltage)
 {
 	u32 value = 0;
+	struct vcores_data const *vcores = *omap_vcores;
 
 	value = readl((*ctrl)->control_pbias);
 	value &= ~SDCARD_PWRDNZ;
@@ -495,7 +467,15 @@ void vmmc_pbias_config(uint voltage)
 	value &= ~SDCARD_BIAS_PWRDNZ;
 	writel(value, (*ctrl)->control_pbias);
 
-	board_mmc_poweron_ldo(voltage);
+	if (vcores->core.pmic->i2c_slave_addr == 0x60) {
+		if (voltage == LDO_VOLT_3V0)
+			voltage = 0x19;
+		else if (voltage == LDO_VOLT_1V8)
+			voltage = 0xa;
+		lp873x_mmc1_poweron_ldo(voltage);
+	} else {
+		palmas_mmc1_poweron_ldo(voltage);
+	}
 
 	value = readl((*ctrl)->control_pbias);
 	value |= SDCARD_BIAS_PWRDNZ;

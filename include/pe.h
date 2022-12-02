@@ -11,8 +11,6 @@
 #ifndef _PE_H
 #define _PE_H
 
-#include <asm-generic/pe.h>
-
 typedef struct _IMAGE_DOS_HEADER {
 	uint16_t e_magic;	/* 00: MZ Header signature */
 	uint16_t e_cblp;	/* 02: Bytes on last page of file */
@@ -38,15 +36,11 @@ typedef struct _IMAGE_DOS_HEADER {
 #define IMAGE_DOS_SIGNATURE		0x5A4D     /* MZ   */
 #define IMAGE_NT_SIGNATURE		0x00004550 /* PE00 */
 
-#define IMAGE_FILE_MACHINE_I386		0x014c
 #define IMAGE_FILE_MACHINE_ARM		0x01c0
 #define IMAGE_FILE_MACHINE_THUMB	0x01c2
 #define IMAGE_FILE_MACHINE_ARMNT	0x01c4
 #define IMAGE_FILE_MACHINE_AMD64	0x8664
 #define IMAGE_FILE_MACHINE_ARM64	0xaa64
-#define IMAGE_FILE_MACHINE_RISCV32	0x5032
-#define IMAGE_FILE_MACHINE_RISCV64	0x5064
-
 #define IMAGE_NT_OPTIONAL_HDR32_MAGIC	0x10b
 #define IMAGE_NT_OPTIONAL_HDR64_MAGIC	0x20b
 #define IMAGE_SUBSYSTEM_EFI_APPLICATION	10

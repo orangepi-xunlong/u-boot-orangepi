@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 NXP Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -68,25 +69,22 @@ init_psci_node:
 #elif defined(CONFIG_ARMV7_PSCI_1_0) || defined(CONFIG_ARMV8_PSCI)
 	psci_ver = ARM_PSCI_VER_1_0;
 #endif
-	if (psci_ver >= ARM_PSCI_VER_1_0) {
+	switch (psci_ver) {
+	case ARM_PSCI_VER_1_0:
 		tmp = fdt_setprop_string(fdt, nodeoff,
 				"compatible", "arm,psci-1.0");
 		if (tmp)
 			return tmp;
-	}
-
-	if (psci_ver >= ARM_PSCI_VER_0_2) {
+	case ARM_PSCI_VER_0_2:
 		tmp = fdt_appendprop_string(fdt, nodeoff,
 				"compatible", "arm,psci-0.2");
 		if (tmp)
 			return tmp;
-	}
-
-#ifndef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
+	default:
 	/*
 	 * The Secure firmware framework isn't able to support PSCI version 0.1.
 	 */
-	if (psci_ver < ARM_PSCI_VER_0_2) {
+#ifndef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
 		tmp = fdt_appendprop_string(fdt, nodeoff,
 				"compatible", "arm,psci");
 		if (tmp)
@@ -107,8 +105,9 @@ init_psci_node:
 				ARM_PSCI_FN_MIGRATE);
 		if (tmp)
 			return tmp;
-	}
 #endif
+		break;
+	}
 
 	tmp = fdt_setprop_string(fdt, nodeoff, "method", "smc");
 	if (tmp)

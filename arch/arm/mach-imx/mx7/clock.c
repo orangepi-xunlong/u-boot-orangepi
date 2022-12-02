@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
  *
  * Author:
  *	Peng Fan <Peng.Fan@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -965,15 +966,15 @@ int set_clk_enet(enum enet_freq type)
 	clock_enable(CCGR_ENET2, 0);
 
 	switch (type) {
-	case ENET_125MHZ:
+	case ENET_125MHz:
 		enet1_ref = ENET1_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_125M_CLK;
 		enet2_ref = ENET2_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_125M_CLK;
 		break;
-	case ENET_50MHZ:
+	case ENET_50MHz:
 		enet1_ref = ENET1_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_50M_CLK;
 		enet2_ref = ENET2_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_50M_CLK;
 		break;
-	case ENET_25MHZ:
+	case ENET_25MHz:
 		enet1_ref = ENET1_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_25M_CLK;
 		enet2_ref = ENET2_REF_CLK_ROOT_FROM_PLL_ENET_MAIN_25M_CLK;
 		break;
@@ -1095,7 +1096,6 @@ void epdc_clock_disable(void)
 }
 #endif
 
-#ifndef CONFIG_SPL_BUILD
 /*
  * Dump some core clockes.
  */
@@ -1131,4 +1131,3 @@ U_BOOT_CMD(
 	"display clocks",
 	""
 );
-#endif

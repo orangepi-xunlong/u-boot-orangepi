@@ -1,10 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <stdint.h>
+#include <uboot_aes.h>
 
 /*
  * Programs using the library must check which API is available,
@@ -17,8 +19,12 @@ struct env_opts {
 #ifdef CONFIG_FILE
 	char *config_file;
 #endif
+	int aes_flag; /* Is AES encryption used? */
+	uint8_t aes_key[AES_KEY_LENGTH];
 	char *lockname;
 };
+
+int parse_aes_key(char *key, uint8_t *bin_key);
 
 /**
  * fw_printenv() - print one or several environment variables

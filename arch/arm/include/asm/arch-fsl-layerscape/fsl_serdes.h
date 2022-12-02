@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_SERDES_H__
@@ -8,7 +9,7 @@
 
 #include <config.h>
 
-#ifdef CONFIG_FSL_LSCH3
+#ifdef CONFIG_ARCH_LS2080A
 enum srds_prtcl {
 	/*
 	 * Nobody will check whether the device 'NONE' has been configured,
@@ -157,13 +158,10 @@ void fsl_serdes_init(void);
 int serdes_get_first_lane(u32 sd, enum srds_prtcl device);
 enum srds_prtcl serdes_get_prtcl(int serdes, int cfg, int lane);
 int is_serdes_prtcl_valid(int serdes, u32 prtcl);
-int serdes_get_number(int serdes, int cfg);
-void fsl_rgmii_init(void);
 
 #ifdef CONFIG_FSL_LSCH2
 const char *serdes_clock_to_string(u32 clock);
 int get_serdes_protocol(void);
-#endif
 #ifdef CONFIG_SYS_HAS_SERDES
 /* Get the volt of SVDD in unit mV */
 int get_serdes_volt(void);
@@ -171,6 +169,7 @@ int get_serdes_volt(void);
 int set_serdes_volt(int svdd);
 /* The target volt of SVDD in unit mV */
 int setup_serdes_volt(u32 svdd);
+#endif
 #endif
 
 #endif /* __FSL_SERDES_H__ */

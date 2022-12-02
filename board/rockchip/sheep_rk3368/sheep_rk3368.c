@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2017 Andy Yan
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #include <common.h>
 #include <asm/io.h>
@@ -8,12 +9,9 @@
 #include <asm/arch/grf_rk3368.h>
 #include <syscon.h>
 
-int mach_cpu_init(void)
-{
-	return 0;
-}
+DECLARE_GLOBAL_DATA_PTR;
 
-int board_init(void)
+int mach_cpu_init(void)
 {
 	return 0;
 }

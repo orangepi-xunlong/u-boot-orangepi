@@ -1,11 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * Copyright (c) 2015 Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define	LINUX_ARM_ZIMAGE_MAGIC	0x016f2818
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * HW data initialization for OMAP5
@@ -7,6 +6,8 @@
  * Texas Instruments, <www.ti.com>
  *
  * Sricharan R <r.sricharan@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <palmas.h>
@@ -110,16 +111,6 @@ static const struct dpll_params per_dpll_params_768mhz_dra7xx[NUM_SYS_CLKS] = {
 	{192, 12, 4, 1, 3, 4, 4, 2, -1, -1, -1, -1},		/* 26 MHz   */
 	{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},	/* 27 MHz   */
 	{10, 0, 4, 1, 3, 4, 4, 2, -1, -1, -1, -1},		/* 38.4 MHz */
-};
-
-static const struct dpll_params per_dpll_params_768mhz_dra76x[NUM_SYS_CLKS] = {
-	{32, 0, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 12 MHz   */
-	{96, 4, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 20 MHz   */
-	{160, 6, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 16.8 MHz */
-	{20, 0, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 19.2 MHz */
-	{192, 12, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 26 MHz   */
-	{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},	/* 27 MHz   */
-	{10, 0, 4, 1, 3, 4, 8, 2, -1, -1, -1, -1},		/* 38.4 MHz */
 };
 
 static const struct dpll_params iva_dpll_params_2330mhz[NUM_SYS_CLKS] = {
@@ -243,17 +234,6 @@ struct dplls omap5_dplls_es2 = {
 	.ddr = NULL
 };
 
-struct dplls dra76x_dplls = {
-	.mpu = mpu_dpll_params_1ghz,
-	.core = core_dpll_params_2128mhz_dra7xx,
-	.per = per_dpll_params_768mhz_dra76x,
-	.abe = abe_dpll_params_sysclk2_361267khz,
-	.iva = iva_dpll_params_2330mhz_dra7xx,
-	.usb = usb_dpll_params_1920mhz,
-	.ddr =	ddr_dpll_params_2664mhz,
-	.gmac = gmac_dpll_params_2000mhz,
-};
-
 struct dplls dra7xx_dplls = {
 	.mpu = mpu_dpll_params_1ghz,
 	.core = core_dpll_params_2128mhz_dra7xx,
@@ -303,22 +283,6 @@ struct pmic_data tps659038 = {
 	.pmic_bus_init	= gpi2c_init,
 	.pmic_write	= palmas_i2c_write_u8,
 	.gpio_en = 0,
-};
-
-/* The LP87565*/
-struct pmic_data lp87565 = {
-	.base_offset = LP873X_BUCK_BASE_VOLT_UV,
-	.step = 5000, /* 5 mV represented in uV */
-	/*
-	 * Offset codes 0 - 0x13 Invalid.
-	 * Offset codes 0x14 0x17 give 10mV steps
-	 * Offset codes 0x17 through 0x9D give 5mV steps
-	 * So let us start with our operating range from .73V
-	 */
-	.start_code = 0x17,
-	.i2c_slave_addr = 0x60,
-	.pmic_bus_init  = gpi2c_init,
-	.pmic_write     = palmas_i2c_write_u8,
 };
 
 /* The LP8732 and LP8733 are software-compatible, use common struct */
@@ -437,17 +401,17 @@ void enable_basic_clocks(void)
 	setbits_le32((*prcm)->cm_l4per_gpio4_clkctrl,
 			GPIO4_CLKCTRL_OPTFCLKEN_MASK);
 
-	/* Enable 192 MHz clock for MMC1 & MMC2 */
+	/* Enable 96 MHz clock for MMC1 & MMC2 */
 	setbits_le32((*prcm)->cm_l3init_hsmmc1_clkctrl,
 			HSMMC_CLKCTRL_CLKSEL_MASK);
 	setbits_le32((*prcm)->cm_l3init_hsmmc2_clkctrl,
 			HSMMC_CLKCTRL_CLKSEL_MASK);
 
 	/* Set the correct clock dividers for mmc */
-	clrbits_le32((*prcm)->cm_l3init_hsmmc1_clkctrl,
-		     HSMMC_CLKCTRL_CLKSEL_DIV_MASK);
-	clrbits_le32((*prcm)->cm_l3init_hsmmc2_clkctrl,
-		     HSMMC_CLKCTRL_CLKSEL_DIV_MASK);
+	setbits_le32((*prcm)->cm_l3init_hsmmc1_clkctrl,
+			HSMMC_CLKCTRL_CLKSEL_DIV_MASK);
+	setbits_le32((*prcm)->cm_l3init_hsmmc2_clkctrl,
+			HSMMC_CLKCTRL_CLKSEL_DIV_MASK);
 
 	/* Select 32KHz clock as the source of GPTIMER1 */
 	setbits_le32((*prcm)->cm_wkup_gptimer1_clkctrl,
@@ -745,14 +709,6 @@ void __weak hw_data_init(void)
 	*ctrl = &omap5_ctrl;
 	break;
 
-	case DRA762_ABZ_ES1_0:
-	case DRA762_ACD_ES1_0:
-	case DRA762_ES1_0:
-	*prcm = &dra7xx_prcm;
-	*dplls_data = &dra76x_dplls;
-	*ctrl = &dra7xx_ctrl;
-	break;
-
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
 	case DRA752_ES2_0:
@@ -763,7 +719,6 @@ void __weak hw_data_init(void)
 
 	case DRA722_ES1_0:
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 	*prcm = &dra7xx_prcm;
 	*dplls_data = &dra72x_dplls;
 	*ctrl = &dra7xx_ctrl;
@@ -792,16 +747,12 @@ void get_ioregs(const struct ctrl_ioregs **regs)
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
 	case DRA752_ES2_0:
-	case DRA762_ES1_0:
-	case DRA762_ACD_ES1_0:
-	case DRA762_ABZ_ES1_0:
 		*regs = &ioregs_dra7xx_es1;
 		break;
 	case DRA722_ES1_0:
 		*regs = &ioregs_dra72x_es1;
 		break;
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 		*regs = &ioregs_dra72x_es2;
 		break;
 

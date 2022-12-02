@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -389,7 +390,7 @@ void fsl_ddr_sync_memctl_refresh(unsigned int first_ctrl,
 
 void remove_unused_controllers(fsl_ddr_info_t *info)
 {
-#ifdef CONFIG_SYS_FSL_HAS_CCN504
+#ifdef CONFIG_FSL_LSCH3
 	int i;
 	u64 nodeid;
 	void *hnf_sam_ctrl = (void *)(CCI_HN_F_0_BASE + CCN_HN_F_SAM_CTL);

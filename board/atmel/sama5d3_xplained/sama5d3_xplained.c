@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Atmel Corporation
  *		      Bo Shen <voice.shen@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -111,11 +112,11 @@ int dram_init(void)
 #ifdef CONFIG_SPL_BUILD
 void spl_board_init(void)
 {
-#ifdef CONFIG_SD_BOOT
+#ifdef CONFIG_SYS_USE_MMC
 #ifdef CONFIG_GENERIC_ATMEL_MCI
 	sama5d3_xplained_mci0_hw_init();
 #endif
-#elif CONFIG_NAND_BOOT
+#elif CONFIG_SYS_USE_NANDFLASH
 	sama5d3_xplained_nand_hw_init();
 #endif
 }

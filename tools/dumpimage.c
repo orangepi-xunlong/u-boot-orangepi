@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Based on mkimage.c.
  *
  * Written by Guilherme Maciel Ferreira <guilherme.maciel.ferreira@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "dumpimage.h"

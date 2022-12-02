@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009 Sergey Kubushyn <ksi@koi8.net>
  * Copyright (C) 2009 - 2013 Heiko Schocher <hs@denx.de>
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2001
  * Gerald Van Baren, Custom IDEAS, vanbaren@cideas.com.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * The original I2C interface was
  *   (C) 2000 by Paolo Scaffardi (arsenio@tin.it)
@@ -188,6 +189,20 @@ int dm_i2c_reg_read(struct udevice *dev, uint offset);
  * @return 0 on success, -ve on error
  */
 int dm_i2c_reg_write(struct udevice *dev, uint offset, unsigned int val);
+
+/**
+ * dm_i2c_reg_clrset() - Apply bitmask to an I2C register
+ *
+ * Read value, apply bitmask and write modified value back to the
+ * given address in an I2C chip
+ *
+ * @dev:	Device to use for transfer
+ * @offset:	Address for the R/W operation
+ * @clr:	Bitmask of bits that should be cleared
+ * @set:	Bitmask of bits that should be set
+ * @return 0 on success, -ve on error
+ */
+int dm_i2c_reg_clrset(struct udevice *dev, uint offset, u32 clr, u32 set);
 
 /**
  * dm_i2c_xfer() - Transfer messages over I2C

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Marek Vasut <marek.vasut@gmail.com>
  *
  * Renesas RCar USB HOST xHCI Controller
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +13,7 @@
 #include <usb.h>
 #include <wait_bit.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 #include "xhci-rcar-r8a779x_usb3_v3.h"
 
 /* Register Offset */
@@ -54,18 +55,30 @@ static int xhci_rcar_download_fw(struct rcar_xhci *ctx, const u32 *fw_data,
 		setbits_le32(regs + RCAR_USB3_DL_CTRL,
 			     RCAR_USB3_DL_CTRL_FW_SET_DATA0);
 
+<<<<<<< HEAD
 		ret = wait_for_bit_le32(regs + RCAR_USB3_DL_CTRL,
 					RCAR_USB3_DL_CTRL_FW_SET_DATA0, false,
 					10, false);
+=======
+		ret = wait_for_bit("xhci-rcar", regs + RCAR_USB3_DL_CTRL,
+				   RCAR_USB3_DL_CTRL_FW_SET_DATA0, false,
+				   10, false);
+>>>>>>> e1cc60c... usb: xhci: Add Renesas R-Car xHCI driver
 		if (ret)
 			break;
 	}
 
 	clrbits_le32(regs + RCAR_USB3_DL_CTRL, RCAR_USB3_DL_CTRL_ENABLE);
 
+<<<<<<< HEAD
 	ret = wait_for_bit_le32(regs + RCAR_USB3_DL_CTRL,
 				RCAR_USB3_DL_CTRL_FW_SUCCESS, true,
 				10, false);
+=======
+	ret = wait_for_bit("xhci-rcar", regs + RCAR_USB3_DL_CTRL,
+			   RCAR_USB3_DL_CTRL_FW_SUCCESS, true,
+			   10, false);
+>>>>>>> e1cc60c... usb: xhci: Add Renesas R-Car xHCI driver
 
 	return ret;
 }
@@ -117,12 +130,15 @@ err_clk:
 
 static int xhci_rcar_deregister(struct udevice *dev)
 {
+	int ret;
 	struct rcar_xhci_platdata *plat = dev_get_platdata(dev);
+
+	ret = xhci_deregister(dev);
 
 	clk_disable(&plat->clk);
 	clk_free(&plat->clk);
 
-	return xhci_deregister(dev);
+	return ret;
 }
 
 static int xhci_rcar_ofdata_to_platdata(struct udevice *dev)

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2017 Google, Inc
+ *
+ * SPDX-License-Identifier: GPL-2.0
  */
 
 #include <common.h>
@@ -12,6 +13,8 @@
 #include <asm/io.h>
 #include <asm/arch/scu_ast2500.h>
 #include <asm/arch/wdt.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct ast2500_reset_priv {
 	/* WDT used to perform resets. */

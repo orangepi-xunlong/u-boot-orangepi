@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_IO_H
@@ -60,53 +61,49 @@
 #define readb(addr) (*(volatile unsigned char *) (addr))
 #define readw(addr) (*(volatile unsigned short *) (addr))
 #define readl(addr) (*(volatile unsigned int *) (addr))
-#define readq(addr) (*(volatile unsigned long long *) (addr))
 #define __raw_readb readb
 #define __raw_readw readw
 #define __raw_readl readl
-#define __raw_readq readq
 
 #define writeb(b,addr) (*(volatile unsigned char *) (addr) = (b))
 #define writew(b,addr) (*(volatile unsigned short *) (addr) = (b))
 #define writel(b,addr) (*(volatile unsigned int *) (addr) = (b))
-#define writeq(b,addr) (*(volatile unsigned long long *) (addr) = (b))
 #define __raw_writeb writeb
 #define __raw_writew writew
 #define __raw_writel writel
-#define __raw_writeq writeq
 
 #define memset_io(a,b,c)	memset((a),(b),(c))
 #define memcpy_fromio(a,b,c)	memcpy((a),(b),(c))
 #define memcpy_toio(a,b,c)	memcpy((a),(b),(c))
 
-#define out_arch(type, endian, a, v)	__raw_write##type(cpu_to_##endian(v), a)
-#define in_arch(type, endian, a)	endian##_to_cpu(__raw_read##type(a))
+#define write_arch(type, endian, a, v) __raw_write##type(cpu_to_##endian(v), a)
+#define read_arch(type, endian, a) endian##_to_cpu(__raw_read##type(a))
 
-#define out_le64(a, v)	out_arch(q, le64, a, v)
-#define out_le32(a, v)	out_arch(l, le32, a, v)
-#define out_le16(a, v)	out_arch(w, le16, a, v)
+#define write_le64(a, v)	write_arch(q, le64, a, v)
+#define write_le32(a, v)	write_arch(l, le32, a, v)
+#define write_le16(a, v)	write_arch(w, le16, a, v)
 
-#define in_le64(a)	in_arch(q, le64, a)
-#define in_le32(a)	in_arch(l, le32, a)
-#define in_le16(a)	in_arch(w, le16, a)
+#define read_le64(a)	read_arch(q, le64, a)
+#define read_le32(a)	read_arch(l, le32, a)
+#define read_le16(a)	read_arch(w, le16, a)
 
-#define out_be32(a, v)	out_arch(l, be32, a, v)
-#define out_be16(a, v)	out_arch(w, be16, a, v)
+#define write_be32(a, v)	write_arch(l, be32, a, v)
+#define write_be16(a, v)	write_arch(w, be16, a, v)
 
-#define in_be32(a)	in_arch(l, be32, a)
-#define in_be16(a)	in_arch(w, be16, a)
+#define read_be32(a)	read_arch(l, be32, a)
+#define read_be16(a)	read_arch(w, be16, a)
 
-#define out_8(a, v)	__raw_writeb(v, a)
-#define in_8(a)		__raw_readb(a)
+#define write_8(a, v)	__raw_writeb(v, a)
+#define read_8(a)	__raw_readb(a)
 
 #define clrbits(type, addr, clear) \
-	out_##type((addr), in_##type(addr) & ~(clear))
+	write_##type((addr), read_##type(addr) & ~(clear))
 
 #define setbits(type, addr, set) \
-	out_##type((addr), in_##type(addr) | (set))
+	write_##type((addr), read_##type(addr) | (set))
 
 #define clrsetbits(type, addr, clear, set) \
-	out_##type((addr), (in_##type(addr) & ~(clear)) | (set))
+	write_##type((addr), (read_##type(addr) & ~(clear)) | (set))
 
 #define clrbits_be32(addr, clear) clrbits(be32, addr, clear)
 #define setbits_be32(addr, set) setbits(be32, addr, set)
@@ -234,13 +231,40 @@ static inline void sync(void)
 }
 
 /*
+ * Given a physical address and a length, return a virtual address
+ * that can be used to access the memory range with the caching
+ * properties specified by "flags".
+ */
+#define MAP_NOCACHE	(0)
+#define MAP_WRCOMBINE	(0)
+#define MAP_WRBACK	(0)
+#define MAP_WRTHROUGH	(0)
+
+static inline void *
+map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+{
+	return (void *)(uintptr_t)paddr;
+}
+
+/*
+ * Take down a mapping set up by map_physmem().
+ */
+static inline void unmap_physmem(void *vaddr, unsigned long flags)
+{
+
+}
+
+static inline phys_addr_t virt_to_phys(void * vaddr)
+{
+	return (phys_addr_t)(uintptr_t)(vaddr);
+}
+
+/*
  * TODO: The kernel offers some more advanced versions of barriers, it might
  * have some advantages to use them instead of the simple one here.
  */
 #define dmb()		__asm__ __volatile__ ("" : : : "memory")
 #define __iormb()	dmb()
 #define __iowmb()	dmb()
-
-#include <asm-generic/io.h>
 
 #endif /* _ASM_IO_H */

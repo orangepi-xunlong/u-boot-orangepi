@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #ifndef _FS_H
 #define _FS_H
@@ -12,7 +13,6 @@
 #define FS_TYPE_EXT	2
 #define FS_TYPE_SANDBOX	3
 #define FS_TYPE_UBIFS	4
-#define FS_TYPE_BTRFS	5
 
 /*
  * Tell the fs layer which block device an partition to use for future
@@ -25,6 +25,15 @@
  * no known filesystem type could be recognized on it.
  */
 int fs_set_blk_dev(const char *ifname, const char *dev_part_str, int fstype);
+
+/*
+ * fs_get_fstype - Get filesystem type on the partition previously
+ * set by fs_set_blk_dev()
+ *
+ * @fstype_name: The return the name of filesystem type
+ * @return 0 if ok with valid *fstype_name, -1 on error conditions
+ */
+int fs_get_fstype(const char **fstype_name);
 
 /*
  * fs_set_blk_dev_with_part - Set current block device + partition

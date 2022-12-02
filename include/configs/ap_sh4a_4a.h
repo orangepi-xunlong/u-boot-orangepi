@@ -1,20 +1,26 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Alpha Project AP-SH4A-4A board
  *
  * Copyright (C) 2012 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AP_SH4A_4A_H
 #define __AP_SH4A_4A_H
 
 #define CONFIG_CPU_SH7734	1
+#define CONFIG_AP_SH4A_4A	1
 #define CONFIG_400MHZ_MODE	1
+/* #define CONFIG_533MHZ_MODE	1 */
+
+#define CONFIG_SYS_TEXT_BASE 0x8BFC0000
 
 #define CONFIG_DISPLAY_BOARDINFO
 #undef  CONFIG_SHOW_BOOT_PROGRESS
 
 /* Ether */
+#define CONFIG_SH_ETHER 1
 #define CONFIG_SH_ETHER_USE_PORT (0)
 #define CONFIG_SH_ETHER_PHY_ADDR (0x0)
 #define CONFIG_SH_ETHER_PHY_MODE (PHY_INTERFACE_MODE_GMII)
@@ -23,6 +29,7 @@
 #define CONFIG_BITBANGMII_MULTI
 
 /* undef to save memory	*/
+#define CONFIG_SYS_LONGHELP
 /* Monitor Command Prompt */
 /* Buffer size for Console output */
 #define CONFIG_SYS_PBSIZE		256
@@ -43,6 +50,7 @@
 #define CONFIG_SYS_MEMTEST_START (CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END	 (CONFIG_SYS_MEMTEST_START + CONFIG_SYS_SDRAM_SIZE)
 /* Enable alternate, more extensive, memory test */
+#undef  CONFIG_SYS_ALT_MEMTEST
 /* Scratch address used by the alternate memory test */
 #undef  CONFIG_SYS_MEMTEST_SCRATCH
 

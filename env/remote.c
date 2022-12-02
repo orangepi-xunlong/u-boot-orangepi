@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011-2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
@@ -48,7 +49,7 @@ static int env_remote_save(void)
 static int env_remote_load(void)
 {
 #ifndef ENV_IS_EMBEDDED
-	return env_import((char *)env_ptr, 1);
+	env_import((char *)env_ptr, 1);
 #endif
 
 	return 0;

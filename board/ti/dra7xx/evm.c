@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  * Texas Instruments Incorporated, <www.ti.com>
@@ -8,6 +7,8 @@
  * Based on previous work by:
  * Aneesh V       <aneesh@ti.com>
  * Steve Sakoman  <steve@sakoman.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <palmas.h>
@@ -33,7 +34,6 @@
 #include "mux_data.h"
 #include "../common/board_detect.h"
 
-#define board_is_dra76x_evm()		board_ti_is("DRA76/7x")
 #define board_is_dra74x_evm()		board_ti_is("5777xCPU")
 #define board_is_dra72x_evm()		board_ti_is("DRA72x-T")
 #define board_is_dra71x_evm()		board_ti_is("DRA79x,D")
@@ -209,56 +209,6 @@ const struct emif_regs emif2_ddr3_532_mhz_1cs_2G = {
 	.emif_rd_wr_exec_thresh         = 0x00000305
 };
 
-const struct emif_regs emif_1_regs_ddr3_666_mhz_1cs_dra76 = {
-	.sdram_config_init              = 0x61862B32,
-	.sdram_config                   = 0x61862B32,
-	.sdram_config2			= 0x00000000,
-	.ref_ctrl                       = 0x0000514C,
-	.ref_ctrl_final			= 0x0000144A,
-	.sdram_tim1                     = 0xD113783C,
-	.sdram_tim2                     = 0x30B47FE3,
-	.sdram_tim3                     = 0x409F8AD8,
-	.read_idle_ctrl                 = 0x00050000,
-	.zq_config                      = 0x5007190B,
-	.temp_alert_config              = 0x00000000,
-	.emif_ddr_phy_ctlr_1_init       = 0x0824400D,
-	.emif_ddr_phy_ctlr_1            = 0x0E24400D,
-	.emif_ddr_ext_phy_ctrl_1        = 0x04040100,
-	.emif_ddr_ext_phy_ctrl_2        = 0x006B009F,
-	.emif_ddr_ext_phy_ctrl_3        = 0x006B00A2,
-	.emif_ddr_ext_phy_ctrl_4        = 0x006B00A8,
-	.emif_ddr_ext_phy_ctrl_5        = 0x006B00A8,
-	.emif_rd_wr_lvl_rmp_win         = 0x00000000,
-	.emif_rd_wr_lvl_rmp_ctl         = 0x80000000,
-	.emif_rd_wr_lvl_ctl             = 0x00000000,
-	.emif_rd_wr_exec_thresh         = 0x00000305
-};
-
-const struct emif_regs emif_2_regs_ddr3_666_mhz_1cs_dra76 = {
-	.sdram_config_init              = 0x61862B32,
-	.sdram_config                   = 0x61862B32,
-	.sdram_config2			= 0x00000000,
-	.ref_ctrl                       = 0x0000514C,
-	.ref_ctrl_final			= 0x0000144A,
-	.sdram_tim1                     = 0xD113781C,
-	.sdram_tim2                     = 0x30B47FE3,
-	.sdram_tim3                     = 0x409F8AD8,
-	.read_idle_ctrl                 = 0x00050000,
-	.zq_config                      = 0x5007190B,
-	.temp_alert_config              = 0x00000000,
-	.emif_ddr_phy_ctlr_1_init       = 0x0824400D,
-	.emif_ddr_phy_ctlr_1            = 0x0E24400D,
-	.emif_ddr_ext_phy_ctrl_1        = 0x04040100,
-	.emif_ddr_ext_phy_ctrl_2        = 0x006B009F,
-	.emif_ddr_ext_phy_ctrl_3        = 0x006B00A2,
-	.emif_ddr_ext_phy_ctrl_4        = 0x006B00A8,
-	.emif_ddr_ext_phy_ctrl_5        = 0x006B00A8,
-	.emif_rd_wr_lvl_rmp_win         = 0x00000000,
-	.emif_rd_wr_lvl_rmp_ctl         = 0x80000000,
-	.emif_rd_wr_lvl_ctl             = 0x00000000,
-	.emif_rd_wr_exec_thresh         = 0x00000305
-};
-
 void emif_get_reg_dump(u32 emif_nr, const struct emif_regs **regs)
 {
 	u64 ram_size;
@@ -284,17 +234,8 @@ void emif_get_reg_dump(u32 emif_nr, const struct emif_regs **regs)
 			break;
 		}
 		break;
-	case DRA762_ABZ_ES1_0:
-	case DRA762_ACD_ES1_0:
-	case DRA762_ES1_0:
-		if (emif_nr == 1)
-			*regs = &emif_1_regs_ddr3_666_mhz_1cs_dra76;
-		else
-			*regs = &emif_2_regs_ddr3_666_mhz_1cs_dra76;
-		break;
 	case DRA722_ES1_0:
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 		if (ram_size < CONFIG_MAX_MEM_MAPPED)
 			*regs = &emif_1_regs_ddr3_666_mhz_1cs_dra_es1;
 		else
@@ -348,9 +289,6 @@ void emif_get_dmm_regs(const struct dmm_lisa_map_regs **dmm_lisa_regs)
 	ram_size = board_ti_get_emif_size();
 
 	switch (omap_revision()) {
-	case DRA762_ABZ_ES1_0:
-	case DRA762_ACD_ES1_0:
-	case DRA762_ES1_0:
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
 	case DRA752_ES2_0:
@@ -361,7 +299,6 @@ void emif_get_dmm_regs(const struct dmm_lisa_map_regs **dmm_lisa_regs)
 		break;
 	case DRA722_ES1_0:
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 	default:
 		if (ram_size < CONFIG_MAX_MEM_MAPPED)
 			*dmm_lisa_regs = &lisa_map_2G_x_2;
@@ -415,54 +352,6 @@ struct vcores_data dra752_volts = {
 	.iva.efuse.reg[OPP_HIGH]	= STD_FUSE_OPP_VMIN_IVA_HIGH,
 	.iva.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
 	.iva.addr	= TPS659038_REG_ADDR_SMPS8,
-	.iva.pmic	= &tps659038,
-	.iva.abb_tx_done_mask = OMAP_ABB_IVA_TXDONE_MASK,
-};
-
-struct vcores_data dra76x_volts = {
-	.mpu.value[OPP_NOM]	= VDD_MPU_DRA7_NOM,
-	.mpu.efuse.reg[OPP_NOM]	= STD_FUSE_OPP_VMIN_MPU_NOM,
-	.mpu.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.mpu.addr	= LP87565_REG_ADDR_BUCK01,
-	.mpu.pmic	= &lp87565,
-	.mpu.abb_tx_done_mask = OMAP_ABB_MPU_TXDONE_MASK,
-
-	.eve.value[OPP_NOM]	= VDD_EVE_DRA7_NOM,
-	.eve.value[OPP_OD]	= VDD_EVE_DRA7_OD,
-	.eve.value[OPP_HIGH]	= VDD_EVE_DRA7_HIGH,
-	.eve.efuse.reg[OPP_NOM]	= STD_FUSE_OPP_VMIN_DSPEVE_NOM,
-	.eve.efuse.reg[OPP_OD]	= STD_FUSE_OPP_VMIN_DSPEVE_OD,
-	.eve.efuse.reg[OPP_HIGH]	= STD_FUSE_OPP_VMIN_DSPEVE_HIGH,
-	.eve.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.eve.addr	= TPS65917_REG_ADDR_SMPS1,
-	.eve.pmic	= &tps659038,
-	.eve.abb_tx_done_mask = OMAP_ABB_EVE_TXDONE_MASK,
-
-	.gpu.value[OPP_NOM]	= VDD_GPU_DRA7_NOM,
-	.gpu.value[OPP_OD]	= VDD_GPU_DRA7_OD,
-	.gpu.value[OPP_HIGH]	= VDD_GPU_DRA7_HIGH,
-	.gpu.efuse.reg[OPP_NOM]	= STD_FUSE_OPP_VMIN_GPU_NOM,
-	.gpu.efuse.reg[OPP_OD]	= STD_FUSE_OPP_VMIN_GPU_OD,
-	.gpu.efuse.reg[OPP_HIGH]	= STD_FUSE_OPP_VMIN_GPU_HIGH,
-	.gpu.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.gpu.addr	= LP87565_REG_ADDR_BUCK23,
-	.gpu.pmic	= &lp87565,
-	.gpu.abb_tx_done_mask = OMAP_ABB_GPU_TXDONE_MASK,
-
-	.core.value[OPP_NOM]	= VDD_CORE_DRA7_NOM,
-	.core.efuse.reg[OPP_NOM]	= STD_FUSE_OPP_VMIN_CORE_NOM,
-	.core.efuse.reg_bits = DRA752_EFUSE_REGBITS,
-	.core.addr	= TPS65917_REG_ADDR_SMPS3,
-	.core.pmic	= &tps659038,
-
-	.iva.value[OPP_NOM]	= VDD_IVA_DRA7_NOM,
-	.iva.value[OPP_OD]	= VDD_IVA_DRA7_OD,
-	.iva.value[OPP_HIGH]	= VDD_IVA_DRA7_HIGH,
-	.iva.efuse.reg[OPP_NOM]	= STD_FUSE_OPP_VMIN_IVA_NOM,
-	.iva.efuse.reg[OPP_OD]	= STD_FUSE_OPP_VMIN_IVA_OD,
-	.iva.efuse.reg[OPP_HIGH]	= STD_FUSE_OPP_VMIN_IVA_HIGH,
-	.iva.efuse.reg_bits	= DRA752_EFUSE_REGBITS,
-	.iva.addr	= TPS65917_REG_ADDR_SMPS4,
 	.iva.pmic	= &tps659038,
 	.iva.abb_tx_done_mask = OMAP_ABB_IVA_TXDONE_MASK,
 };
@@ -658,10 +547,6 @@ int board_late_init(void)
 			name = "dra71x";
 		else
 			name = "dra72x";
-	} else if (is_dra76x_abz()) {
-		name = "dra76x_abz";
-	} else if (is_dra76x_acd()) {
-		name = "dra76x_acd";
 	} else {
 		name = "dra7xx";
 	}
@@ -677,13 +562,6 @@ int board_late_init(void)
 
 	omap_die_id_serial();
 	omap_set_fastboot_vars();
-
-	/*
-	 * Hook the LDO1 regulator to EN pin. This applies only to LP8733
-	 * Rest all regulators are hooked to EN Pin at reset.
-	 */
-	if (board_is_dra71x_evm())
-		palmas_i2c_write_u8(LP873X_I2C_SLAVE_ADDR, 0x9, 0x7);
 #endif
 	return 0;
 }
@@ -717,8 +595,6 @@ void do_board_detect(void)
 		bname = "DRA72x EVM";
 	} else if (board_is_dra71x_evm()) {
 		bname = "DRA71x EVM";
-	} else if (board_is_dra76x_evm()) {
-		bname = "DRA76x EVM";
 	} else {
 		/* If EEPROM is not populated */
 		if (is_dra72x())
@@ -741,8 +617,6 @@ void vcores_init(void)
 		*omap_vcores = &dra722_volts;
 	} else if (board_is_dra71x_evm()) {
 		*omap_vcores = &dra718_volts;
-	} else if (board_is_dra76x_evm()) {
-		*omap_vcores = &dra76x_volts;
 	} else {
 		/* If EEPROM is not populated */
 		if (is_dra72x())
@@ -769,7 +643,6 @@ void recalibrate_iodelay(void)
 	switch (omap_revision()) {
 	case DRA722_ES1_0:
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 		pads = dra72x_core_padconf_array_common;
 		npads = ARRAY_SIZE(dra72x_core_padconf_array_common);
 		if (board_is_dra71x_evm()) {
@@ -798,16 +671,8 @@ void recalibrate_iodelay(void)
 		iodelay = dra742_es1_1_iodelay_cfg_array;
 		niodelays = ARRAY_SIZE(dra742_es1_1_iodelay_cfg_array);
 		break;
-	case DRA762_ACD_ES1_0:
-	case DRA762_ES1_0:
-		pads = dra76x_core_padconf_array;
-		npads = ARRAY_SIZE(dra76x_core_padconf_array);
-		iodelay = dra76x_es1_0_iodelay_cfg_array;
-		niodelays = ARRAY_SIZE(dra76x_es1_0_iodelay_cfg_array);
-		break;
 	default:
 	case DRA752_ES2_0:
-	case DRA762_ABZ_ES1_0:
 		pads = dra74x_core_padconf_array;
 		npads = ARRAY_SIZE(dra74x_core_padconf_array);
 		iodelay = dra742_es2_0_iodelay_cfg_array;
@@ -830,11 +695,6 @@ void recalibrate_iodelay(void)
 		do_set_mux32((*ctrl)->control_padconf_core_base,
 			     delta_pads, delta_npads);
 
-	if (is_dra76x())
-		/* Set mux for MCAN instead of DCAN1 */
-		clrsetbits_le32((*ctrl)->control_core_control_spare_rw,
-				MCAN_SEL_ALT_MASK, MCAN_SEL);
-
 	/* Setup IOdelay configuration */
 	ret = do_set_iodelay((*ctrl)->iodelay_config_base, iodelay, niodelays);
 err:
@@ -849,50 +709,6 @@ int board_mmc_init(bd_t *bis)
 	omap_mmc_init(0, 0, 0, -1, -1);
 	omap_mmc_init(1, 0, 0, -1, -1);
 	return 0;
-}
-
-void board_mmc_poweron_ldo(uint voltage)
-{
-	if (board_is_dra71x_evm()) {
-		if (voltage == LDO_VOLT_3V0)
-			voltage = 0x19;
-		else if (voltage == LDO_VOLT_1V8)
-			voltage = 0xa;
-		lp873x_mmc1_poweron_ldo(voltage);
-	} else if (board_is_dra76x_evm()) {
-		palmas_mmc1_poweron_ldo(LDO4_VOLTAGE, LDO4_CTRL, voltage);
-	} else {
-		palmas_mmc1_poweron_ldo(LDO1_VOLTAGE, LDO1_CTRL, voltage);
-	}
-}
-
-static const struct mmc_platform_fixups dra7x_es1_1_mmc1_fixups = {
-	.hw_rev = "rev11",
-	.unsupported_caps = MMC_CAP(MMC_HS_200) |
-			    MMC_CAP(UHS_SDR104),
-	.max_freq = 96000000,
-};
-
-static const struct mmc_platform_fixups dra7x_es1_1_mmc23_fixups = {
-	.hw_rev = "rev11",
-	.unsupported_caps = MMC_CAP(MMC_HS_200) |
-			    MMC_CAP(UHS_SDR104) |
-			    MMC_CAP(UHS_SDR50),
-	.max_freq = 48000000,
-};
-
-const struct mmc_platform_fixups *platform_fixups_mmc(uint32_t addr)
-{
-	switch (omap_revision()) {
-	case DRA752_ES1_0:
-	case DRA752_ES1_1:
-		if (addr == OMAP_HSMMC1_BASE)
-			return &dra7x_es1_1_mmc1_fixups;
-		else
-			return &dra7x_es1_1_mmc23_fixups;
-	default:
-		return NULL;
-	}
 }
 #endif
 
@@ -1125,8 +941,8 @@ static inline void vtt_regulator_enable(void)
 	if (omap_hw_init_context() == OMAP_INIT_CONTEXT_UBOOT_AFTER_SPL)
 		return;
 
-	/* Do not enable VTT for DRA722 or DRA76x */
-	if (is_dra72x() || is_dra76x())
+	/* Do not enable VTT for DRA722 */
+	if (is_dra72x())
 		return;
 
 	/*
@@ -1166,10 +982,7 @@ int board_fit_config_name_match(const char *name)
 		} else if (!strcmp(name, "dra72-evm")) {
 			return 0;
 		}
-	} else if (is_dra76x_acd() && !strcmp(name, "dra76-evm")) {
-		return 0;
-	} else if (!is_dra72x() && !is_dra76x_acd() &&
-		   !strcmp(name, "dra7-evm")) {
+	} else if (!is_dra72x() && !strcmp(name, "dra7-evm")) {
 		return 0;
 	}
 

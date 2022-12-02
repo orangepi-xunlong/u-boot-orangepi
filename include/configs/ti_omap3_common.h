@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * ti_omap3_common.h
  *
  * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * For more details, please see the technical documents listed at
  *   http://www.ti.com/product/omap3530
@@ -20,6 +21,9 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/omap.h>
 
+/* The chip has SDRC controller */
+#define CONFIG_SDRC
+
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
@@ -27,16 +31,15 @@
 /* NS16550 Configuration */
 #define V_NS16550_CLK			48000000	/* 48MHz (APLL96/2) */
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
-#if defined(CONFIG_SPL_BUILD)
-#define CONFIG_SYS_NS16550_SERIAL
-#if !defined(CONFIG_DM_SERIAL)
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#endif /* !CONFIG_DM_SERIAL */
-#endif /* CONFIG_SPL_BUILD */
+#ifdef CONFIG_SPL_BUILD
+# define CONFIG_SYS_NS16550_SERIAL
+# define CONFIG_SYS_NS16550_REG_SIZE	(-4)
+#endif
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600, \
 					115200}
 
 /* Select serial console configuration */
+#define CONFIG_CONS_INDEX		3
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 #define CONFIG_SERIAL3			3

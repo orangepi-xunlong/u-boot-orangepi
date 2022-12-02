@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2009 Daniel Mack <daniel@caiaq.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 

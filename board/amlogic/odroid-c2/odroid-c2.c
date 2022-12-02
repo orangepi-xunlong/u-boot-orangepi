@@ -1,16 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Beniamino Galvani <b.galvani@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
 #include <asm/io.h>
 #include <asm/arch/gxbb.h>
 #include <asm/arch/sm.h>
-#include <asm/arch/eth.h>
-#include <asm/arch/mem.h>
+#include <phy.h>
 
 #define EFUSE_SN_OFFSET		20
 #define EFUSE_SN_SIZE		16
@@ -28,10 +27,16 @@ int misc_init_r(void)
 	char serial[EFUSE_SN_SIZE];
 	ssize_t len;
 
-	meson_gx_eth_init(PHY_INTERFACE_MODE_RGMII, 0);
+	/* Set RGMII mode */
+	setbits_le32(GXBB_ETH_REG_0, GXBB_ETH_REG_0_PHY_INTF |
+				     GXBB_ETH_REG_0_TX_PHASE(1) |
+				     GXBB_ETH_REG_0_TX_RATIO(4) |
+				     GXBB_ETH_REG_0_PHY_CLK_EN |
+				     GXBB_ETH_REG_0_CLK_EN);
 
 	/* Enable power and clock gate */
-	setbits_le32(GXBB_GCLK_MPEG_0, GXBB_GCLK_MPEG_0_I2C);
+	setbits_le32(GXBB_GCLK_MPEG_1, GXBB_GCLK_MPEG_1_ETH);
+	clrbits_le32(GXBB_MEM_PD_REG_0, GXBB_MEM_PD_REG_0_ETH_MASK);
 
 	/* Reset PHY on GPIOZ_14 */
 	clrbits_le32(GXBB_GPIO_EN(3), BIT(14));
@@ -52,13 +57,6 @@ int misc_init_r(void)
 		if (len == EFUSE_SN_SIZE) 
 			env_set("serial#", serial);
 	}
-
-	return 0;
-}
-
-int ft_board_setup(void *blob, bd_t *bd)
-{
-	meson_gx_init_reserved_memory(blob);
 
 	return 0;
 }

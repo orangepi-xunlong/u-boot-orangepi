@@ -22,11 +22,6 @@ choice
 
 config TARGET_AM3517_EVM
 	bool "AM3517 EVM"
-	select DM
-	select DM_SERIAL
-	select DM_GPIO
-	select DM_I2C
-	select DM_MMC
 
 config TARGET_MT_VENTOUX
 	bool "TeeJet Mt.Ventoux"
@@ -61,10 +56,6 @@ config TARGET_DEVKIT8000
 
 config TARGET_OMAP3_EVM
 	bool "TI OMAP3 EVM"
-	select DM
-	select DM_SERIAL
-	select DM_GPIO
-	select OMAP3_GPIO_3
 
 config TARGET_OMAP3_IGEP00X0
 	bool "IGEP"
@@ -120,7 +111,6 @@ config TARGET_OMAP3_LOGIC
 	select DM
 	select DM_SERIAL
 	select DM_GPIO
-	select OMAP3_GPIO_3
 	select OMAP3_GPIO_4
 	select OMAP3_GPIO_6
 
@@ -157,21 +147,6 @@ config TARGET_SNIPER
 	select OMAP3_GPIO_5
 	select OMAP3_GPIO_6
 
-endchoice
-
-choice
-	prompt "Memory Controller"
-	default SDRC
-
-config SDRC
-	bool "SDRC controller"
-	help
-	  The default memory controller on most OMAP3 boards is SDRC.
-
-config EMIF4
-	bool "EMIF4 controller"
-	help
-	  Enable this on boards like AM3517 which use EMIF4 controller
 endchoice
 
 config SPL_OMAP3_ID_NAND

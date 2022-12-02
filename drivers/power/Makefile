@@ -1,14 +1,19 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2009 Wind River Systems, Inc.
 # Tom Rix <Tom.Rix at windriver.com>
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
+
+obj-$(CONFIG_DM_CHARGE_DISPLAY)	+= charge-display-uclass.o
 
 obj-$(CONFIG_AXP152_POWER)	+= axp152.o
 obj-$(CONFIG_AXP209_POWER)	+= axp209.o
 obj-$(CONFIG_AXP221_POWER)	+= axp221.o
 obj-$(CONFIG_AXP809_POWER)	+= axp809.o
 obj-$(CONFIG_AXP818_POWER)	+= axp818.o
-obj-$(CONFIG_AXP1516_POWER)	+= axp1516.o
+obj-$(CONFIG_CHARGE_ANIMATION)	+= charge_animation.o
+obj-$(CONFIG_ROCKCHIP_PM)	+= rockchip_pm.o
 obj-$(CONFIG_EXYNOS_TMU)	+= exynos-tmu.o
 obj-$(CONFIG_FTPMU010_POWER)	+= ftpmu010.o
 obj-$(CONFIG_SY8106A_POWER)	+= sy8106a.o

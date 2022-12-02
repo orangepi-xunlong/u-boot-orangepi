@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015 Hans de Goede <hdegoede@redhat.com>
  * Copyright (C) 2017 Vasily Khoruzhick <anarsoul@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Registers at i2c address 0x38 */
@@ -82,6 +83,7 @@
 
 #define ANX9804_VID_CTRL1_REG					0x08
 #define ANX9804_VID_CTRL1_VID_EN				BIT(7)
+#define ANX9804_VID_CTRL1_DDR_CTRL				BIT(1)
 #define ANX9804_VID_CTRL1_EDGE					BIT(0)
 
 #define ANX9804_VID_CTRL2_REG					0x09

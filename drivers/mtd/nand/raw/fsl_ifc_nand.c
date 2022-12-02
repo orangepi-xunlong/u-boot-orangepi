@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /* Integrated Flash Controller NAND Machine Driver
  *
  * Copyright (c) 2012 Freescale Semiconductor, Inc
  *
  * Authors: Dipen Dudhat <Dipen.Dudhat@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

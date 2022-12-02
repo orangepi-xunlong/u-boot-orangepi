@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012-2014 Birdland Audio - http://birdland.com/oem
  * Copyright (c) 2004-2008 Texas Instruments
@@ -8,6 +7,8 @@
  *
  * See file CREDITS for list of people who contributed to this
  * project.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")

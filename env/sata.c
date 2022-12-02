@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010-2016 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
@@ -22,6 +23,8 @@
 #if !defined(CONFIG_ENV_OFFSET) || !defined(CONFIG_ENV_SIZE)
 #error CONFIG_ENV_OFFSET or CONFIG_ENV_SIZE not defined
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 __weak int sata_get_env_dev(void)
 {
@@ -110,7 +113,9 @@ static void env_sata_load(void)
 		return -EIO;
 	}
 
-	return env_import(buf, 1);
+	env_import(buf, 1);
+
+	return 0;
 }
 
 U_BOOT_ENV_LOCATION(sata) = {

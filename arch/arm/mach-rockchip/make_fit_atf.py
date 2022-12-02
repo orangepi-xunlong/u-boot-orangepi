@@ -13,6 +13,8 @@ import getopt
 
 # pip install pyelftools
 from elftools.elf.elffile import ELFFile
+from elftools.elf.sections import SymbolTableSection
+from elftools.elf.segments import Segment, InterpSegment, NoteSegment
 
 ELF_SEG_P_TYPE='p_type'
 ELF_SEG_P_PADDR='p_paddr'
@@ -21,11 +23,12 @@ ELF_SEG_P_OFFSET='p_offset'
 ELF_SEG_P_FILESZ='p_filesz'
 ELF_SEG_P_MEMSZ='p_memsz'
 
-DT_HEADER="""// SPDX-License-Identifier: GPL-2.0+ OR X11
-/*
+DT_HEADER="""/*
  * Copyright (C) 2017 Fuzhou Rockchip Electronics Co., Ltd
  *
  * Minimal dts for a SPL FIT image payload.
+ *
+ * SPDX-License-Identifier: GPL-2.0+  X11
  */
 /dts-v1/;
 
@@ -34,7 +37,7 @@ DT_HEADER="""// SPDX-License-Identifier: GPL-2.0+ OR X11
 	#address-cells = <1>;
 
 	images {
-		uboot@1 {
+		uboot {
 			description = "U-Boot (64-bit)";
 			data = /incbin/("u-boot-nodtb.bin");
 			type = "standalone";
@@ -42,11 +45,14 @@ DT_HEADER="""// SPDX-License-Identifier: GPL-2.0+ OR X11
 			arch = "arm64";
 			compression = "none";
 			load = <0x%08x>;
+			hash {
+				algo = "sha256";
+			};
 		};
 """
 
 DT_IMAGES_NODE_END="""
-    };
+	};
 """
 
 DT_END="""
@@ -68,6 +74,9 @@ def append_atf_node(file, atf_index, phy_addr):
     print >> file, '\t\t\tload = <0x%08x>;' % phy_addr
     if atf_index == 1:
         print >> file, '\t\t\tentry = <0x%08x>;' % phy_addr
+    print >> file, '\t\t\thash {'
+    print >> file, '\t\t\t\talgo = "sha256";'
+    print >> file, '\t\t\t};'
     print >> file, '\t\t};'
     print >> file, ''
 
@@ -78,27 +87,38 @@ def append_fdt_node(file, dtbs):
     cnt = 1
     for dtb in dtbs:
         dtname = os.path.basename(dtb)
-        print >> file, '\t\tfdt@%d {' % cnt
-        print >> file, '\t\t\tdescription = "%s";' % dtname
-        print >> file, '\t\t\tdata = /incbin/("%s");' % dtb
+        print >> file, '\t\tfdt {'
+        print >> file, '\t\t\tdescription = "U-Boot device tree blob";'
+        print >> file, '\t\t\tdata = /incbin/("u-boot.dtb");'
         print >> file, '\t\t\ttype = "flat_dt";'
+        print >> file, '\t\t\tarch = "arm64";'
         print >> file, '\t\t\tcompression = "none";'
+        print >> file, '\t\t\thash {'
+        print >> file, '\t\t\t\talgo = "sha256";'
+        print >> file, '\t\t\t};'
         print >> file, '\t\t};'
         print >> file, ''
         cnt = cnt + 1
 
 def append_conf_section(file, cnt, dtname, atf_cnt):
-    print >> file, '\t\tconfig@%d {' % cnt
-    print >> file, '\t\t\tdescription = "%s";' % dtname
+    print >> file, '\t\tconfig {'
+    print >> file, '\t\t\tdescription = "Rockchip armv8 with ATF";'
+    print >> file, '\t\t\trollback-index = <0x0>;'
     print >> file, '\t\t\tfirmware = "atf@1";'
-    print >> file, '\t\t\tloadables = "uboot@1",',
+    print >> file, '\t\t\tloadables = "uboot",',
     for i in range(1, atf_cnt):
         print >> file, '"atf@%d"' % (i+1),
         if i != (atf_cnt - 1):
             print >> file, ',',
         else:
             print >> file, ';'
-    print >> file, '\t\t\tfdt = "fdt@1";'
+    print >> file, '\t\t\tfdt = "fdt";'
+    print >> file, '\t\t\tsignature {'
+    print >> file, '\t\t\t\talgo = "sha256,rsa2048";'
+    print >> file, '\t\t\t\tpadding = "pss";'
+    print >> file, '\t\t\t\tkey-name-hint = "dev";'
+    print >> file, '\t\t\t\tsign-images = "fdt", "firmware", "loadables";'
+    print >> file, '\t\t\t};'
     print >> file, '\t\t};'
     print >> file, ''
 
@@ -108,7 +128,7 @@ def append_conf_node(file, dtbs, atf_cnt):
     """
     cnt = 1
     print >> file, '\tconfigurations {'
-    print >> file, '\t\tdefault = "config@1";'
+    print >> file, '\t\tdefault = "config";'
     for dtb in dtbs:
         dtname = os.path.basename(dtb)
         append_conf_section(file, cnt, dtname, atf_cnt)
@@ -192,8 +212,19 @@ def get_bl31_segments_info(bl31_file_name):
 
 def main():
     uboot_elf="./u-boot"
-    bl31_elf="./bl31.elf"
     FIT_ITS=sys.stdout
+
+    if "BL31" in os.environ:
+        bl31_elf=os.getenv("BL31");
+    elif os.path.isfile("./bl31.elf"):
+        bl31_elf = "./bl31.elf"
+    else:
+        os.system("echo 'int main(){}' > bl31.c")
+        os.system("${CROSS_COMPILE}gcc -c bl31.c -o bl31.elf")
+        bl31_elf = "./bl31.elf"
+        logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+        logging.warning(' BL31 file bl31.elf NOT found, resulting binary is non-functional')
+        logging.warning(' Please read Building section in doc/README.rockchip')
 
     opts, args = getopt.getopt(sys.argv[1:], "o:u:b:h")
     for opt, val in opts:

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011-2015 Panasonic Corporation
  * Copyright (C) 2015-2016 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/io.h>
@@ -16,6 +17,9 @@ void uniphier_ld4_clk_init(void)
 
 	/* deassert reset */
 	tmp = readl(SC_RSTCTRL);
+#ifdef CONFIG_UNIPHIER_ETH
+	tmp |= SC_RSTCTRL_NRST_ETHER;
+#endif
 #ifdef CONFIG_NAND_DENALI
 	tmp |= SC_RSTCTRL_NRST_NAND;
 #endif
@@ -24,6 +28,9 @@ void uniphier_ld4_clk_init(void)
 
 	/* provide clocks */
 	tmp = readl(SC_CLKCTRL);
+#ifdef CONFIG_UNIPHIER_ETH
+	tmp |= SC_CLKCTRL_CEN_ETHER;
+#endif
 #ifdef CONFIG_USB_EHCI_HCD
 	tmp |= SC_CLKCTRL_CEN_MIO | SC_CLKCTRL_CEN_STDMAC;
 #endif

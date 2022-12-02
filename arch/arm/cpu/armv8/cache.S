@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
  *
  * This file is based on sample code from ARMv8 ARM.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
@@ -130,6 +131,7 @@ ENDPROC(__asm_invalidate_dcache_all)
  */
 .pushsection .text.__asm_flush_dcache_range, "ax"
 ENTRY(__asm_flush_dcache_range)
+	isb
 	mrs	x3, ctr_el0
 	lsr	x3, x3, #16
 	and	x3, x3, #0xf
@@ -144,6 +146,7 @@ ENTRY(__asm_flush_dcache_range)
 	cmp	x0, x1
 	b.lo	1b
 	dsb	sy
+	isb
 	ret
 ENDPROC(__asm_flush_dcache_range)
 .popsection
@@ -170,6 +173,7 @@ ENTRY(__asm_invalidate_dcache_range)
 	cmp	x0, x1
 	b.lo	1b
 	dsb	sy
+	isb
 	ret
 ENDPROC(__asm_invalidate_dcache_range)
 .popsection

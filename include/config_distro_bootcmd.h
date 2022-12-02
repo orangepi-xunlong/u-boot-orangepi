@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014
  * NVIDIA Corporation <www.nvidia.com>
  *
  * Copyright 2014 Red Hat, Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _CONFIG_CMD_DISTRO_BOOTCMD_H
@@ -55,9 +56,32 @@
 	BOOT_TARGET_DEVICES_references_HOST_without_CONFIG_SANDBOX
 #endif
 
+#if ((defined CONFIG_CMD_PCI) && (defined CONFIG_CMD_NVME))
+#define BOOTENV_SHARED_NVME  BOOTENV_SHARED_BLKDEV(nvme)
+#define BOOTENV_DEV_NVME(devtypeu, devtypel, instance) \
+	"bootcmd_nvme=" \
+		"pci enum;" \
+		"nvme scan;" \
+		"setenv devnum 0;" \
+		"run nvme_boot;" \
+		"\0"
+#define BOOTENV_DEV_NAME_NVME(devtypeu, devtypel, instance)  "nvme "
+#else
+#define BOOTENV_SHARED_NVME
+#define BOOTENV_DEV_NVME(devtypeu, devtypel, instance) \
+	BOOT_TARGET_DEVICES_references_NVME_without_CONFIG_CMD_NVME
+#define BOOTENV_DEV_NAME_NVME(devtypeu, devtypel, instance) \
+	BOOT_TARGET_DEVICES_references_NVME_without_CONFIG_CMD_NVME
+#endif
+
 #ifdef CONFIG_CMD_MMC
 #define BOOTENV_SHARED_MMC	BOOTENV_SHARED_BLKDEV(mmc)
-#define BOOTENV_DEV_MMC		BOOTENV_DEV_BLKDEV
+#define BOOTENV_DEV_MMC(devtypeu, devtypel, instance) \
+        "bootcmd_mmc1=" \
+                "mmc list;" \
+                "setenv devnum 1;" \
+                "run mmc_boot;" \
+                "\0"
 #define BOOTENV_DEV_NAME_MMC	BOOTENV_DEV_NAME_BLKDEV
 #else
 #define BOOTENV_SHARED_MMC
@@ -70,15 +94,10 @@
 #ifdef CONFIG_CMD_UBIFS
 #define BOOTENV_SHARED_UBIFS \
 	"ubifs_boot=" \
-		"env exists bootubipart || " \
-			"env set bootubipart UBI; " \
-		"env exists bootubivol || " \
-			"env set bootubivol boot; " \
-		"if ubi part ${bootubipart} && " \
-			"ubifsmount ubi${devnum}:${bootubivol}; " \
-		"then " \
-			"setenv devtype ubi; " \
-			"run scan_dev_for_boot; " \
+		"if ubi part UBI && ubifsmount ubi${devnum}:boot; then "  \
+			"setenv devtype ubi; "                            \
+			"setenv bootpart 0; "                             \
+			"run scan_dev_for_boot; "                         \
 		"fi\0"
 #define BOOTENV_DEV_UBIFS	BOOTENV_DEV_BLKDEV
 #define BOOTENV_DEV_NAME_UBIFS	BOOTENV_DEV_NAME_BLKDEV
@@ -95,10 +114,6 @@
 #define BOOTEFI_NAME "bootaa64.efi"
 #elif defined(CONFIG_ARM)
 #define BOOTEFI_NAME "bootarm.efi"
-#elif defined(CONFIG_X86_RUN_32BIT)
-#define BOOTEFI_NAME "bootia32.efi"
-#elif defined(CONFIG_X86_RUN_64BIT)
-#define BOOTEFI_NAME "bootx64.efi"
 #endif
 #endif
 
@@ -120,16 +135,11 @@
 
 #define BOOTENV_SHARED_EFI                                                \
 	"boot_efi_binary="                                                \
-		"if fdt addr ${fdt_addr_r}; then "                        \
-			"bootefi bootmgr ${fdt_addr_r};"                  \
-		"else "                                                   \
-			"bootefi bootmgr ${fdtcontroladdr};"              \
-		"fi;"                                                     \
 		"load ${devtype} ${devnum}:${distro_bootpart} "           \
 			"${kernel_addr_r} efi/boot/"BOOTEFI_NAME"; "      \
 		"if fdt addr ${fdt_addr_r}; then "                        \
 			"bootefi ${kernel_addr_r} ${fdt_addr_r};"         \
-		"else "                                                   \
+		"else "                                                    \
 			"bootefi ${kernel_addr_r} ${fdtcontroladdr};"     \
 		"fi\0"                                                    \
 	\
@@ -327,6 +337,7 @@
 	BOOTENV_DEV_##devtypeu(devtypeu, devtypel, instance)
 #define BOOTENV \
 	BOOTENV_SHARED_HOST \
+	BOOTENV_SHARED_NVME \
 	BOOTENV_SHARED_MMC \
 	BOOTENV_SHARED_PCI \
 	BOOTENV_SHARED_USB \

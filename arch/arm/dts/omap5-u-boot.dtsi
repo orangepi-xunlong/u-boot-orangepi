@@ -8,31 +8,21 @@
  */
 
 /{
-	chosen {
-		tick-timer = &timer2;
-	};
-
 	ocp {
 		u-boot,dm-spl;
 
 		ocp2scp@4a090000 {
 			compatible = "ti,omap-ocp2scp", "simple-bus";
 		};
-
-		bandgap@4a0021e0 {
-			u-boot,dm-spl;
-		};
 	};
 };
 
 &uart1 {
 	u-boot,dm-spl;
-	reg-shift = <2>;
 };
 
 &uart3 {
 	u-boot,dm-spl;
-	reg-shift = <2>;
 };
 
 &mmc1 {
@@ -59,32 +49,11 @@
 	u-boot,dm-spl;
 
 	m25p80@0 {
-		compatible = "spi-flash";
 		u-boot,dm-spl;
 	};
 };
 
-&gpio1 {
-	u-boot,dm-spl;
-};
-
 &gpio2 {
-	u-boot,dm-spl;
-};
-
-&gpio3 {
-	u-boot,dm-spl;
-};
-
-&gpio4 {
-	u-boot,dm-spl;
-};
-
-&gpio5 {
-	u-boot,dm-spl;
-};
-
-&gpio6 {
 	u-boot,dm-spl;
 };
 

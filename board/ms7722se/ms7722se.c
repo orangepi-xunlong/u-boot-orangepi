@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007,2008
  * Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
@@ -7,6 +6,8 @@
  * Kenati Technologies, Inc.
  *
  * board/ms7722se/ms7722se.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

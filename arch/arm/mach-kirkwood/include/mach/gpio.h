@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * arch/asm-arm/mach-kirkwood/include/mach/gpio.h
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

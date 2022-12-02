@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010-2013 Freescale Semiconductor, Inc.
  * Copyright (C) 2014 Bachmann electronic GmbH
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -19,6 +20,8 @@
 #define CONFIG_MXC_UART_BASE           UART1_BASE
 
 /* SF Configs */
+#define CONFIG_SPI
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS  2
 #define CONFIG_SF_DEFAULT_CS   0
 #define CONFIG_SF_DEFAULT_SPEED 25000000
@@ -56,16 +59,19 @@
  * SATA Configs
  */
 #ifdef CONFIG_CMD_SATA
+#define CONFIG_DWC_AHSATA
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_DWC_AHSATA_PORT_ID	0
 #define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 #define CONFIG_LBA48
+#define CONFIG_LIBATA
 #endif
 
 /* SPL */
 #ifdef CONFIG_SPL
 #include "imx6_spl.h"
 #define CONFIG_SYS_SPI_U_BOOT_OFFS     (64 * 1024)
+#define CONFIG_SPL_SPI_LOAD
 #endif
 
 #define CONFIG_FEC_MXC

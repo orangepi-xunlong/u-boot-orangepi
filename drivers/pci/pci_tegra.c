@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2010, CompuLab, Ltd.
  * Author: Mike Rapoport <mike@compulab.co.il>
@@ -7,6 +6,8 @@
  * Copyright (c) 2008-2009, NVIDIA Corporation.
  *
  * Copyright (c) 2013-2014, NVIDIA Corporation.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #define pr_fmt(fmt) "tegra-pcie: " fmt
@@ -41,6 +42,8 @@
  * fixed to implement the standard APIs, and all drivers converted to solely
  * use the new standard APIs, with no ifdefs.
  */
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define AFI_AXI_BAR0_SZ	0x00
 #define AFI_AXI_BAR1_SZ	0x04
@@ -215,6 +218,8 @@ struct tegra_pcie_soc {
 };
 
 struct tegra_pcie {
+	struct pci_controller hose;
+
 	struct resource pads;
 	struct resource afi;
 	struct resource cs;

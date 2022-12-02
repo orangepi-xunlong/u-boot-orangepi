@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2008, 2010-2016 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP Semiconductor
+ * Copyright 2008, 2010-2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -749,9 +749,7 @@ unsigned int populate_memctl_options(const common_timing_params_t *common_dimm,
 	defined(CONFIG_SYS_FSL_DDR4)
 	const struct dynamic_odt *pdodt = odt_unknown;
 #endif
-#if (CONFIG_FSL_SDRAM_TYPE != SDRAM_TYPE_DDR4)
 	ulong ddr_freq;
-#endif
 
 	/*
 	 * Extract hwconfig from environment since we have not properly setup
@@ -1294,9 +1292,6 @@ done:
 	if (pdimm[0].n_ranks == 4)
 		popts->quad_rank_present = 1;
 
-	popts->package_3ds = pdimm->package_3ds;
-
-#if (CONFIG_FSL_SDRAM_TYPE != SDRAM_TYPE_DDR4)
 	ddr_freq = get_ddr_freq(ctrl_num) / 1000000;
 	if (popts->registered_dimm_en) {
 		popts->rcw_override = 1;
@@ -1310,7 +1305,6 @@ done:
 		else
 			popts->rcw_2 = 0x00300000;
 	}
-#endif
 
 	fsl_ddr_board_options(popts, pdimm, ctrl_num);
 

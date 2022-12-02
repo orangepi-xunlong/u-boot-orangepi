@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014-2016, Toradex AG
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -48,5 +49,8 @@
 /* output some informational messages, return the number FUSE_POR=1 */
 /* i.e. 0: unprogrammed, 3: programmed, other: undefined prog. state */
 unsigned pmic_init(void);
+
+/* programmes OTP fuses to values required on a Toradex Apalis iMX6 */
+int pf0100_prog(void);
 
 #endif /* PF0100_H_ */

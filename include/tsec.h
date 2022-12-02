@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  tsec.h
  *
@@ -8,6 +7,8 @@
  * (C) Copyright 2003, Motorola, Inc.
  * maintained by Xianghua Xiao (x.xiao@motorola.com)
  * author Andy Fleming
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __TSEC_H

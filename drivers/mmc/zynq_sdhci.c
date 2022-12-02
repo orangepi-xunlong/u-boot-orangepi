@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013 - 2015 Xilinx, Inc.
  *
  * Xilinx Zynq SD Host Controller Interface
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <clk.h>
@@ -14,6 +15,10 @@
 #include <sdhci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#ifndef CONFIG_ZYNQ_SDHCI_MIN_FREQ
+# define CONFIG_ZYNQ_SDHCI_MIN_FREQ	0
+#endif
 
 struct arasan_sdhci_plat {
 	struct mmc_config cfg;
@@ -53,7 +58,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 		       SDHCI_QUIRK_BROKEN_R1B;
 
 #ifdef CONFIG_ZYNQ_HISPD_BROKEN
-	host->quirks |= SDHCI_QUIRK_BROKEN_HISPD_MODE;
+	host->quirks |= SDHCI_QUIRK_NO_HISPD_BIT;
 #endif
 
 	host->max_clk = clock;

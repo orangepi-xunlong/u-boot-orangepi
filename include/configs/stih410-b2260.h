@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * (C) Copyright 2017
+ * Patrice Chotard, <patrice.chotard@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -11,36 +12,22 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_1			0x40000000
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-#define PHYS_SDRAM_1_SIZE		0x3E000000
+#define PHYS_SDRAM_1_SIZE		0x3FE00000
+#define CONFIG_SYS_TEXT_BASE		0x7D600000
 #define CONFIG_SYS_LOAD_ADDR		PHYS_SDRAM_1	/* default load addr */
 
 #define CONFIG_SYS_HZ_CLOCK		1000000000	/* 1 GHz */
 
 /* Environment */
-
-#define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
-
-#define BOOT_TARGET_DEVICES(func) \
-	func(MMC, mmc, 0) \
-	func(USB, usb, 0) \
-	func(DHCP, dhcp, na)
-#include <config_distro_bootcmd.h>
-#define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_EXTRA_ENV_SETTINGS				\
-			"kernel_addr_r=0x40000000\0"		\
-			"fdtfile=stih410-b2260.dtb\0"		\
-			"fdt_addr_r=0x47000000\0"		\
-			"scriptaddr=0x50000000\0"		\
-			"fdt_high=0xffffffffffffffff\0"		\
-			"initrd_high=0xffffffffffffffff\0"	\
-			"ramdisk_addr_r=0x48000000\0"		\
-			BOOTENV
-
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"board= B2260" \
+	"load_addr= #CONFIG_SYS_LOAD_ADDR \0"
 
 #define CONFIG_ENV_SIZE 0x4000
 
 /* Extra Commands */
 #define CONFIG_CMD_ASKENV
+#define CONFIG_SYS_LONGHELP
 
 #define CONFIG_SETUP_MEMORY_TAGS
 
@@ -57,16 +44,5 @@
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
-
-/* USB Configs */
-#define CONFIG_USB_OHCI_NEW
-#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
-
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_ASIX
-#define CONFIG_USB_ETHER_MCS7830
-#define CONFIG_USB_ETHER_SMSC95XX
-
-/* NET Configs */
 
 #endif /* __CONFIG_H */

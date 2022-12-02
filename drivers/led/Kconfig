@@ -1,11 +1,5 @@
 menu "LED Support"
 
-config SUNXI_LEDC
-	bool "Enable Support for sunxi ledc"
-	depends on LED
-	help
-	  This option enables support for ledc connected to the sunxi u-boot plantform.
-
 config LED
 	bool "Enable LED support"
 	depends on DM

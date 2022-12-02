@@ -17,10 +17,10 @@ config IMX_THERMAL
           cpufreq is used as the cooling device to throttle CPUs when the
           passive trip is crossed.
 
-config TI_DRA7_THERMAL
-        bool "Temperature sensor driver for TI dra7xx SOCs"
-        help
-	 Enable thermal support for for the Texas Instruments DRA752 SoC family.
-	 The driver supports reading CPU temperature.
+config ROCKCHIP_THERMAL
+	bool "Temperature sensor driver for Rockchip SoCs"
+	depends on CLK
+	help
+	  Support for Temperature Monitor (TEMPMON) found on Rockchip SoCs.
 
 endif # if DM_THERMAL

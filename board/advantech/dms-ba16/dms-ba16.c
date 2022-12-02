@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Timesys Corporation
  * Copyright 2016 Advantech Corporation
  * Copyright 2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -24,7 +25,6 @@
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <input.h>
 #include <pwm.h>
 DECLARE_GLOBAL_DATA_PTR;
 

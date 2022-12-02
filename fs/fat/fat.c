@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * fat.c
  *
@@ -6,6 +5,8 @@
  *
  * 2002-07-28 - rjones@nexus-tech.net - ported to ppcboot v1.1.6
  * 2003-03-10 - kharris@nexus-tech.net - ported to uboot
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -20,6 +21,12 @@
 #include <memalign.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
+
+#ifdef CONFIG_SUPPORT_VFAT
+static const int vfat_enabled = 1;
+#else
+static const int vfat_enabled = 0;
+#endif
 
 /*
  * Convert a string to lowercase.  Converts at most 'len' characters,
@@ -598,6 +605,9 @@ static int get_fs_info(fsdata *mydata)
 		return -1;
 	}
 
+	if (vfat_enabled)
+		debug("VFAT Support enabled\n");
+
 	debug("FAT%d, fat_sect: %d, fatlength: %d\n",
 	       mydata->fatsize, mydata->fat_sect, mydata->fatlength);
 	debug("Rootdir begins at cluster: %d, sector: %d, offset: %x\n"
@@ -700,14 +710,13 @@ static void fat_itr_child(fat_itr *itr, fat_itr *parent)
 	itr->fsdata = parent->fsdata;
 	if (clustnum > 0) {
 		itr->clust = clustnum;
-		itr->is_root = 0;
 	} else {
 		itr->clust = parent->fsdata->root_cluster;
-		itr->is_root = 1;
 	}
 	itr->dent = NULL;
 	itr->remaining = 0;
 	itr->last_cluster = 0;
+	itr->is_root = 0;
 }
 
 static void *next_cluster(fat_itr *itr)
@@ -847,7 +856,8 @@ static int fat_itr_next(fat_itr *itr)
 			continue;
 
 		if (dent->attr & ATTR_VOLUME) {
-			if ((dent->attr & ATTR_VFAT) == ATTR_VFAT &&
+			if (vfat_enabled &&
+			    (dent->attr & ATTR_VFAT) == ATTR_VFAT &&
 			    (dent->name[0] & LAST_LONG_ENTRY_MASK)) {
 				dent = extract_vfat_name(itr);
 				if (!dent)
@@ -999,9 +1009,6 @@ int file_fat_detectfs(void)
 	case IF_TYPE_MMC:
 		printf("MMC");
 		break;
-	case IF_TYPE_SUNXI_FLASH:
-		printf("SUNXI_FLASH");
-		break;
 	default:
 		printf("Unknown");
 	}
@@ -1098,7 +1105,7 @@ int file_fat_read_at(const char *filename, loff_t pos, void *buffer,
 	if (ret)
 		goto out_free_both;
 
-	debug("reading %s\n", filename);
+	printf("reading %s\n", filename);
 	ret = get_contents(&fsdata, itr->dent, pos, buffer, maxsize, actread);
 
 out_free_both:
@@ -1141,13 +1148,11 @@ typedef struct {
 
 int fat_opendir(const char *filename, struct fs_dir_stream **dirsp)
 {
-	fat_dir *dir;
+	fat_dir *dir = calloc(1, sizeof(*dir));
 	int ret;
 
-	dir = malloc_cache_aligned(sizeof(*dir));
 	if (!dir)
 		return -ENOMEM;
-	memset(dir, 0, sizeof(*dir));
 
 	ret = fat_itr_root(&dir->itr, &dir->fsdata);
 	if (ret)

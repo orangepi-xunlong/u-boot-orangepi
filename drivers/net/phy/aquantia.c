@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Aquantia PHY drivers
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
  */
 #include <config.h>
 #include <common.h>
-#include <dm.h>
 #include <phy.h>
 
 #ifndef CONFIG_PHYLIB_10G

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Boot related environment variable definitions on TI boards.
  *
  * (C) Copyright 2017 Linaro Ltd.
  * Sam Protsenko <semen.protsenko@linaro.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __TI_BOOT_H
@@ -28,26 +29,22 @@
 	"partitions=" PARTS_DEFAULT "\0" \
 	"optargs=\0" \
 	"dofastboot=0\0" \
-	"emmc_linux_boot=" \
-		"echo Trying to boot Linux from eMMC ...; " \
-		"setenv mmcdev 1; " \
-		"setenv bootpart 1:2; " \
-		"setenv mmcroot /dev/mmcblk0p2 rw; " \
-		"run mmcboot;\0" \
 	"emmc_android_boot=" \
-		"echo Trying to boot Android from eMMC ...; " \
 		"setenv eval_bootargs setenv bootargs $bootargs; " \
 		"run eval_bootargs; " \
 		"setenv mmcdev 1; " \
+		"setenv fdt_part 3; " \
+		"setenv boot_part 9; " \
 		"setenv machid fe6; " \
 		"mmc dev $mmcdev; " \
 		"mmc rescan; " \
-		"part start mmc ${mmcdev} environment fdt_start; " \
-		"part size mmc ${mmcdev} environment fdt_size; " \
-		"part start mmc ${mmcdev} boot boot_start; " \
-		"part size mmc ${mmcdev} boot boot_size; " \
+		"part start mmc ${mmcdev} ${fdt_part} fdt_start; " \
+		"part size mmc ${mmcdev} ${fdt_part} fdt_size; " \
+		"part start mmc ${mmcdev} ${boot_part} boot_start; " \
+		"part size mmc ${mmcdev} ${boot_part} boot_size; " \
 		"mmc read ${fdtaddr} ${fdt_start} ${fdt_size}; " \
 		"mmc read ${loadaddr} ${boot_start} ${boot_size}; " \
+		"echo Booting from eMMC ...; " \
 		"bootm $loadaddr $loadaddr $fdtaddr;\0"
 
 #ifdef CONFIG_OMAP54XX
@@ -64,18 +61,12 @@
 			"setenv fdtfile dra72-evm.dtb; fi;" \
 		"if test $board_name = dra71x; then " \
 			"setenv fdtfile dra71-evm.dtb; fi;" \
-		"if test $board_name = dra76x_acd; then " \
-			"setenv fdtfile dra76-evm.dtb; fi;" \
 		"if test $board_name = beagle_x15; then " \
 			"setenv fdtfile am57xx-beagle-x15.dtb; fi;" \
 		"if test $board_name = beagle_x15_revb1; then " \
 			"setenv fdtfile am57xx-beagle-x15-revb1.dtb; fi;" \
-		"if test $board_name = beagle_x15_revc; then " \
-			"setenv fdtfile am57xx-beagle-x15-revc.dtb; fi;" \
 		"if test $board_name = am572x_idk; then " \
 			"setenv fdtfile am572x-idk.dtb; fi;" \
-		"if test $board_name = am574x_idk; then " \
-			"setenv fdtfile am574x-idk.dtb; fi;" \
 		"if test $board_name = am57xx_evm; then " \
 			"setenv fdtfile am57xx-beagle-x15.dtb; fi;" \
 		"if test $board_name = am57xx_evm_reva3; then " \
@@ -98,7 +89,10 @@
 	"run findfdt; " \
 	"run envboot; " \
 	"run mmcboot;" \
-	"run emmc_linux_boot; " \
+	"setenv mmcdev 1; " \
+	"setenv bootpart 1:2; " \
+	"setenv mmcroot /dev/mmcblk0p2 rw; " \
+	"run mmcboot;" \
 	"run emmc_android_boot; " \
 	""
 

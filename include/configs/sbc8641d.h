@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2007 Wind River Systems <www.windriver.com>
  * Copyright 2007 Embedded Specialties, Inc.
@@ -7,6 +6,8 @@
  * Copyright 2006 Freescale Semiconductor.
  *
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -20,8 +21,11 @@
 #define __CONFIG_H
 
 /* High Level Configuration Options */
+#define CONFIG_SBC8641D		1	/* SBC8641D board specific */
 #define CONFIG_MP		1	/* support multiple processors */
 #define CONFIG_LINUX_RESET_VEC  0x100   /* Reset vector used by Linux */
+
+#define	CONFIG_SYS_TEXT_BASE	0xfff00000
 
 #ifdef RUN_DIAG
 #define CONFIG_SYS_DIAG_ADDR        0xff800000
@@ -43,6 +47,7 @@
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
 #define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BAT_RW		1	/* Use common BAT rw code */
@@ -230,6 +235,7 @@
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)   /* Reserved for malloc */
 
 /* Serial Port */
+#define CONFIG_CONS_INDEX     1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -293,6 +299,8 @@
 #endif
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
+
+#undef CONFIG_SCSI_AHCI
 
 #ifdef CONFIG_SCSI_AHCI
 #define CONFIG_SATA_ULI5288
@@ -447,7 +455,9 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
+#define CONFIG_CMDLINE_EDITING	1		/* add command line history */
 
 /*
  * For booting Linux, the board info and command line data
@@ -478,7 +488,7 @@
 
 #define CONFIG_IPADDR		192.168.0.50
 
-#define CONFIG_HOSTNAME		"sbc8641d"
+#define CONFIG_HOSTNAME		sbc8641d
 #define CONFIG_ROOTPATH		"/opt/eldk/ppc_74xx"
 #define CONFIG_BOOTFILE		"uImage"
 

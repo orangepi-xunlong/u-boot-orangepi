@@ -12,6 +12,18 @@ config DM_RESET
 	  although driving such reset isgnals using GPIOs may be more
 	  appropriate in this case.
 
+config SPL_DM_RESET
+        bool "Enable reset controllers using Driver Model in SPL"
+        depends on SPL_DM && OF_CONTROL
+        help
+          Enable support for the reset controller driver class. Many hardware
+          modules are equipped with a reset signal, typically driven by some
+          reset controller hardware module within the chip. In U-Boot, reset
+          controller drivers allow control over these reset signals. In some
+          cases this API is applicable to chips outside the CPU as well,
+          although driving such reset isgnals using GPIOs may be more
+          appropriate in this case.
+
 config SANDBOX_RESET
 	bool "Enable the sandbox reset test driver"
 	depends on DM_MAILBOX && SANDBOX
@@ -27,13 +39,6 @@ config STI_RESET
 	  Support for reset controllers on STMicroelectronics STiH407 family SoCs.
 	  Say Y if you want to control reset signals provided by system config
 	  block.
-
-config STM32_RESET
-	bool "Enable the STM32 reset"
-	depends on STM32 || ARCH_STM32MP
-	help
-	  Support for reset controllers on STMicroelectronics STM32 family SoCs.
-	  This resset driver is compatible with STM32 F4/F7 and H7 SoCs.
 
 config TEGRA_CAR_RESET
 	bool "Enable Tegra CAR-based reset driver"
@@ -76,26 +81,24 @@ config AST2500_RESET
 
 config RESET_ROCKCHIP
 	bool "Reset controller driver for Rockchip SoCs"
-	depends on DM_RESET && ARCH_ROCKCHIP && CLK
+	depends on DM_RESET && CLK
 	default y
 	help
-	  Support for reset controller on rockchip SoC. The main limitation
-	  though is that some reset signals, like I2C or MISC reset multiple
-	  devices.
+	  Support for reset controller on rockchip SoC. The main limitation though
+	  is that some reset signals, like I2C or MISC reset multiple devices.
 
-config RESET_MESON
-	bool "Reset controller driver for Amlogic Meson SoCs"
-	depends on DM_RESET && ARCH_MESON
-	imply REGMAP
-	default y
+config SPL_RESET_ROCKCHIP
+        bool "Reset controller driver for Rockchip SoCs in SPL"
+        depends on SPL_DM_RESET && SPL_CLK
+        help
+          Support for reset controller on rockchip SoC. The main limitation though
+          is that some reset signals, like I2C or MISC reset multiple devices.
+
+config RESET_SCMI
+	bool "Enable SCMI reset domain driver"
+	select SCMI_FIRMWARE
 	help
-	  Support for reset controller on Amlogic Meson SoC.
-
-config RESET_SOCFPGA
-	bool "Reset controller driver for SoCFPGA"
-	depends on DM_RESET && ARCH_SOCFPGA
-	default y
-	help
-	  Support for reset controller on SoCFPGA platform.
-
+	  Enable this option if you want to support reset controller
+	  devices exposed by a SCMI agent based on SCMI reset domain
+	  protocol communication with a SCMI server.
 endmenu

@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Helper for work with variadic macros
  *
  * 2017 Marek Behun, CZ.NIC, marek.behun@nic.cz
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __VARIADIC_MACRO_H__

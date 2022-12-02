@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * U-Boot - muldi3.c contains routines for mult and div
  *
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Generic function got from GNU gcc package, libgcc2.c */

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Designware DWC2 on-chip full/high speed USB device controllers
  * Copyright (C) 2005 for Samsung Electronics
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DWC2_UDC_OTG_PRIV__
@@ -12,7 +13,6 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/list.h>
-#include <usb/lin_gadget_compat.h>
 #include <usb/dwc2_udc.h>
 
 /*-------------------------------------------------------------------------*/
@@ -24,7 +24,6 @@
 #define EP_FIFO_SIZE2		1024
 /* ep0-control, ep1in-bulk, ep2out-bulk, ep3in-int */
 #define DWC2_MAX_ENDPOINTS	4
-#define DWC2_MAX_HW_ENDPOINTS	16
 
 #define WAIT_FOR_SETUP          0
 #define DATA_STATE_XMIT         1
@@ -85,6 +84,7 @@ struct dwc2_udc {
 	unsigned char usb_address;
 
 	unsigned req_pending:1, req_std:1;
+	unsigned connected:1;
 };
 
 #define ep_is_in(EP) (((EP)->bEndpointAddress&USB_DIR_IN) == USB_DIR_IN)

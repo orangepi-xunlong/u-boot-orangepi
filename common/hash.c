@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
  *
@@ -7,6 +6,8 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
@@ -389,7 +390,7 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 
 	if (multi_hash()) {
 		struct hash_algo *algo;
-		u8 *output;
+		uint8_t output[HASH_MAX_DIGEST_SIZE];
 		uint8_t vsum[HASH_MAX_DIGEST_SIZE];
 		void *buf;
 
@@ -403,9 +404,6 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 			puts("HASH_MAX_DIGEST_SIZE exceeded\n");
 			return 1;
 		}
-
-		output = memalign(ARCH_DMA_MINALIGN,
-				  sizeof(uint32_t) * HASH_MAX_DIGEST_SIZE);
 
 		buf = map_sysmem(addr, len);
 		algo->hash_func_ws(buf, len, output, algo->chunk_size);
@@ -442,8 +440,6 @@ int hash_command(const char *algo_name, int flags, cmd_tbl_t *cmdtp, int flag,
 				store_result(algo, output, *argv,
 					flags & HASH_FLAG_ENV);
 			}
-		unmap_sysmem(output);
-
 		}
 
 	/* Horrible code size hack for boards that just want crc32 */

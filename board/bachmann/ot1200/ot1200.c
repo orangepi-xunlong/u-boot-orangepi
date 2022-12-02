@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010-2013 Freescale Semiconductor, Inc.
  * Copyright (C) 2014, Bachmann electronic GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

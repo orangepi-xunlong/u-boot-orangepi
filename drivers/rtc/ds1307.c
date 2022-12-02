@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001, 2002, 2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  * Keith Outwater, keith_outwater@mvis.com`
  * Steven Scholz, steven.scholz@imc-berlin.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -183,8 +184,25 @@ int rtc_set (struct rtc_time *tmp)
  */
 void rtc_reset (void)
 {
+	struct rtc_time tmp;
+
 	rtc_write (RTC_SEC_REG_ADDR, 0x00);	/* clearing Clock Halt	*/
 	rtc_write (RTC_CTL_REG_ADDR, RTC_CTL_BIT_SQWE | RTC_CTL_BIT_RS1 | RTC_CTL_BIT_RS0);
+
+	tmp.tm_year = 1970;
+	tmp.tm_mon = 1;
+	tmp.tm_mday= 1;
+	tmp.tm_hour = 0;
+	tmp.tm_min = 0;
+	tmp.tm_sec = 0;
+
+	rtc_set(&tmp);
+
+	printf ( "RTC:   %4d-%02d-%02d %2d:%02d:%02d UTC\n",
+		tmp.tm_year, tmp.tm_mon, tmp.tm_mday,
+		tmp.tm_hour, tmp.tm_min, tmp.tm_sec);
+
+	return;
 }
 
 
@@ -303,6 +321,14 @@ read_rtc:
 static int ds1307_rtc_reset(struct udevice *dev)
 {
 	int ret;
+	struct rtc_time tmp = {
+		.tm_year = 1970,
+		.tm_mon = 1,
+		.tm_mday = 1,
+		.tm_hour = 0,
+		.tm_min = 0,
+		.tm_sec = 0,
+	};
 
 	/* clear Clock Halt */
 	ret = dm_i2c_reg_write(dev, RTC_SEC_REG_ADDR, 0x00);
@@ -313,6 +339,14 @@ static int ds1307_rtc_reset(struct udevice *dev)
 			       RTC_CTL_BIT_RS0);
 	if (ret < 0)
 		return ret;
+
+	ret = ds1307_rtc_set(dev, &tmp);
+	if (ret < 0)
+		return ret;
+
+	debug("RTC:   %4d-%02d-%02d %2d:%02d:%02d UTC\n",
+	      tmp.tm_year, tmp.tm_mon, tmp.tm_mday,
+	      tmp.tm_hour, tmp.tm_min, tmp.tm_sec);
 
 	return 0;
 }

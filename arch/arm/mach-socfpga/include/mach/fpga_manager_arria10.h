@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2017 Intel Corporation <www.intel.com>
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:    GPL-2.0
  */
 
 #ifndef _FPGA_MANAGER_ARRIA10_H_

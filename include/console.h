@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONSOLE_H
@@ -40,6 +41,11 @@ void console_record_reset(void);
  * This should be called to enable the console buffer.
  */
 void console_record_reset_enable(void);
+
+/**
+ * console_record_print_purge() - print record data and remove data from buffers
+ */
+void console_record_print_purge(void);
 
 /**
  * console_announce_r() - print a U-Boot console on non-serial consoles

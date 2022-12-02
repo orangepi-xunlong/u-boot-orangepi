@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014       Panasonic Corporation
  * Copyright (C) 2013-2014, Altera Corporation <www.altera.com>
  * Copyright (C) 2009-2010, Intel Corporation and its suppliers.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <dm.h>
@@ -1177,7 +1178,7 @@ static int denali_ooblayout_free(struct mtd_info *mtd, int section,
 
 static const struct mtd_ooblayout_ops denali_ooblayout_ops = {
 	.ecc = denali_ooblayout_ecc,
-	.free = denali_ooblayout_free,
+	.rfree = denali_ooblayout_free,
 };
 
 static int denali_multidev_fixup(struct denali_nand_info *denali)

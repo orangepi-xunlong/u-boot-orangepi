@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
+ * (C) Copyright 2017
+ * Vikas Manocha, <vikas.manocha@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,10 +16,13 @@
 #include <linux/errno.h>
 #include <linux/io.h>
 
+#define MAX_SIZE_BANK_NAME		5
 #define STM32_GPIOS_PER_BANK		16
 #define MODE_BITS(gpio_pin)		(gpio_pin * 2)
 #define MODE_BITS_MASK			3
 #define IN_OUT_BIT_INDEX(gpio_pin)	(1UL << (gpio_pin))
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static int stm32_gpio_direction_input(struct udevice *dev, unsigned offset)
 {
@@ -78,19 +82,21 @@ static int gpio_stm32_probe(struct udevice *dev)
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct stm32_gpio_priv *priv = dev_get_priv(dev);
 	fdt_addr_t addr;
-	const char *name;
+	char *name;
 
-	addr = dev_read_addr(dev);
+	addr = devfdt_get_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
 	priv->regs = (struct stm32_gpio_regs *)addr;
-	name = dev_read_string(dev, "st,bank-name");
+	name = (char *)fdtdec_locate_byte_array(gd->fdt_blob,
+						dev_of_offset(dev),
+						"st,bank-name",
+						MAX_SIZE_BANK_NAME);
 	if (!name)
 		return -EINVAL;
 	uc_priv->bank_name = name;
-	uc_priv->gpio_count = dev_read_u32_default(dev, "ngpios",
-						   STM32_GPIOS_PER_BANK);
+	uc_priv->gpio_count = STM32_GPIOS_PER_BANK;
 	debug("%s, addr = 0x%p, bank_name = %s\n", __func__, (u32 *)priv->regs,
 	      uc_priv->bank_name);
 

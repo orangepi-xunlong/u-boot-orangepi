@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Aries MA5D4 configuration
  * Copyright (C) 2015 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MA5D4EVK_CONFIG_H__
@@ -13,14 +14,11 @@
 #define CONFIG_SYS_USE_SERIALFLASH	1
 #define CONFIG_BOARD_LATE_INIT
 
-/* Timer */
-#define CONFIG_SYS_TIMER_COUNTER	0xfc06863c
-
 /*
  * Memory configurations
  */
 #define CONFIG_NR_DRAM_BANKS		1
-#define CONFIG_SYS_SDRAM_BASE		0x20000000
+#define CONFIG_SYS_SDRAM_BASE           ATMEL_BASE_DDRCS
 #define CONFIG_SYS_SDRAM_SIZE		0x10000000
 
 #ifdef CONFIG_SPL_BUILD
@@ -47,8 +45,8 @@
  * Serial Driver
  */
 #define CONFIG_ATMEL_USART
-#define CONFIG_USART_BASE		0xf802c000
-#define CONFIG_USART_ID			6
+#define CONFIG_USART_BASE		ATMEL_BASE_USART0
+#define CONFIG_USART_ID			ATMEL_ID_USART0
 
 /*
  * Ethernet
@@ -85,6 +83,7 @@
  * SPI NOR (boot memory)
  */
 #ifdef CONFIG_CMD_SF
+#define CONFIG_ATMEL_SPI
 #define CONFIG_ATMEL_SPI0
 #define CONFIG_SPI_FLASH_ATMEL
 #define CONFIG_SF_DEFAULT_BUS		0
@@ -98,6 +97,7 @@
 #ifdef CONFIG_CMD_USB
 
 /* USB device */
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	(1 * 1024 * 1024)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
 #endif
@@ -117,7 +117,7 @@
  * Extra Environments
  */
 #define CONFIG_PREBOOT		"run try_bootscript"
-#define CONFIG_HOSTNAME		"ma5d4evk"
+#define CONFIG_HOSTNAME		ma5d4evk
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"consdev=ttyS3\0"						\
@@ -195,6 +195,7 @@
 		"fi ; "							\
 		"fi\0"
 /* SPL */
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0x200000
 #define CONFIG_SPL_MAX_SIZE		0x10000
 #define CONFIG_SPL_BSS_START_ADDR	0x20000000
@@ -204,6 +205,7 @@
 
 #define CONFIG_SYS_MONITOR_LEN		(512 << 10)
 
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x10000
 
 #define CONFIG_SYS_USE_MMC

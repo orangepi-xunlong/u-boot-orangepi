@@ -1,15 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Hans-Joerg Frieden, Hyperion Entertainment
  * Hans-JoergF@hyperion-entertainment.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <command.h>
 #include <ide.h>
 #include "part_amiga.h"
 
-#ifdef CONFIG_HAVE_BLOCK_DEVICE
+#ifdef HAVE_BLOCK_DEVICE
 
 #undef AMIGA_DEBUG
 

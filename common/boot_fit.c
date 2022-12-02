@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2017
  * Texas Instruments, <www.ti.com>
  *
  * Franklin S Cooper Jr. <fcooper@ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <boot_fit.h>
@@ -61,7 +62,7 @@ void *locate_dtb_in_fit(const void *fit)
 	int ret;
 
 	size = fdt_totalsize(fit);
-	size = (size + 3) & ~3;
+	size = FIT_ALIGN(size);
 
 	header = (struct image_header *)fit;
 

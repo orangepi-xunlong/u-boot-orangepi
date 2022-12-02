@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Simple MTD partitioning layer
  *
  * Copyright © 2000 Nicolas Pitre <nico@fluxnic.net>
  * Copyright © 2002 Thomas Gleixner <gleixner@linutronix.de>
  * Copyright © 2000-2010 David Woodhouse <dwmw2@infradead.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -180,7 +181,6 @@ static int mtd_parse_partition(const char **_mtdparts,
 
 	return 0;
 }
-
 
 /**
  * mtd_parse_partitions - Create a partition array from an mtdparts definition

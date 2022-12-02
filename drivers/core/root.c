@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -223,7 +224,12 @@ static int dm_scan_fdt_live(struct udevice *parent,
 
 	for (np = node_parent->child; np; np = np->sibling) {
 		if (pre_reloc_only &&
-		    !of_find_property(np, "u-boot,dm-pre-reloc", NULL))
+#ifdef CONFIG_USING_KERNEL_DTB
+		    (!of_find_property(np, "u-boot,dm-pre-reloc", NULL) &&
+		     !of_find_property(np, "u-boot,dm-spl", NULL)))
+#else
+		     !of_find_property(np, "u-boot,dm-pre-reloc", NULL))
+#endif
 			continue;
 		if (!of_device_is_available(np)) {
 			pr_debug("   - ignoring disabled device\n");
@@ -234,6 +240,11 @@ static int dm_scan_fdt_live(struct udevice *parent,
 			ret = err;
 			debug("%s: ret=%d\n", np->name, ret);
 		}
+
+		/* There is no compatible in "/firmware", bind it by default. */
+		if (!pre_reloc_only && !strcmp(np->name, "firmware"))
+			ret = device_bind_driver_to_node(gd->dm_root,
+				"firmware", np->name, np_to_ofnode(np), NULL);
 	}
 
 	if (ret)
@@ -261,21 +272,11 @@ static int dm_scan_fdt_node(struct udevice *parent, const void *blob,
 			    int offset, bool pre_reloc_only)
 {
 	int ret = 0, err;
+	const char *name;
 
 	for (offset = fdt_first_subnode(blob, offset);
 	     offset > 0;
 	     offset = fdt_next_subnode(blob, offset)) {
-		/* "chosen" node isn't a device itself but may contain some: */
-		if (!strcmp(fdt_get_name(blob, offset, NULL), "chosen")) {
-			pr_debug("parsing subnodes of \"chosen\"\n");
-
-			err = dm_scan_fdt_node(parent, blob, offset,
-					       pre_reloc_only);
-			if (err && !ret)
-				ret = err;
-			continue;
-		}
-
 		if (pre_reloc_only &&
 		    !dm_fdt_pre_reloc(blob, offset))
 			continue;
@@ -289,6 +290,12 @@ static int dm_scan_fdt_node(struct udevice *parent, const void *blob,
 			debug("%s: ret=%d\n", fdt_get_name(blob, offset, NULL),
 			      ret);
 		}
+
+		/* There is no compatible in "/firmware", bind it by default. */
+		name = fdt_get_name(blob, offset, NULL);
+		if (name && !strcmp(name, "firmware"))
+			ret = device_bind_driver_to_node(parent, "firmware",
+					name, offset_to_ofnode(offset), NULL);
 	}
 
 	if (ret)
@@ -332,8 +339,7 @@ static int dm_scan_fdt_node(struct udevice *parent, const void *blob,
 
 int dm_extended_scan_fdt(const void *blob, bool pre_reloc_only)
 {
-	int ret;
-	ofnode node;
+	int node, ret;
 
 	ret = dm_scan_fdt(gd->fdt_blob, pre_reloc_only);
 	if (ret) {
@@ -342,18 +348,13 @@ int dm_extended_scan_fdt(const void *blob, bool pre_reloc_only)
 	}
 
 	/* bind fixed-clock */
-	node = ofnode_path("/clocks");
+	node = ofnode_to_offset(ofnode_path("/clocks"));
 	/* if no DT "clocks" node, no need to go further */
-	if (!ofnode_valid(node))
+	if (node < 0)
 		return ret;
 
-#if CONFIG_IS_ENABLED(OF_LIVE)
-	if (of_live_active())
-		ret = dm_scan_fdt_live(gd->dm_root, node.np, pre_reloc_only);
-	else
-#endif
-		ret = dm_scan_fdt_node(gd->dm_root, gd->fdt_blob, node.of_offset,
-				       pre_reloc_only);
+	ret = dm_scan_fdt_node(gd->dm_root, gd->fdt_blob, node,
+			       pre_reloc_only);
 	if (ret)
 		debug("dm_scan_fdt_node() failed: %d\n", ret);
 

@@ -34,6 +34,7 @@
 #define CONFIG_SYS_LDSCRIPT	"board/cirrus/edb93xx/u-boot.lds"
 
 #ifdef CONFIG_EDB9301
+#define CONFIG_EP9301
 #define CONFIG_MACH_TYPE		MACH_TYPE_EDB9301
 #define CONFIG_ENV_SECT_SIZE		0x00020000
 #elif defined(CONFIG_EDB9302)
@@ -75,9 +76,12 @@
 
 /* Monitor configuration */
 
+#define CONFIG_SYS_LONGHELP			/* Enable "long" help in mon */
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O buffer size */
 
 /* Serial port hardware configuration */
+#define CONFIG_PL010_SERIAL
+#define CONFIG_CONS_INDEX		0
 #define CONFIG_SYS_BAUDRATE_TABLE	{9600, 19200, 38400, 57600, \
                         115200, 230400}
 #define CONFIG_SYS_SERIAL0		0x808C0000
@@ -94,6 +98,7 @@
 #define CONFIG_DRIVER_EP93XX_MAC
 #define CONFIG_MII_SUPPRESS_PREAMBLE
 #define CONFIG_MII
+#define CONFIG_PHY_ADDR		1
 #undef CONFIG_NETCONSOLE
 
 /* SDRAM configuration */
@@ -179,6 +184,7 @@
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_MAX_FLASH_SECT	(256+8)
 
+#define CONFIG_SYS_TEXT_BASE		0x60000000
 #define PHYS_FLASH_1			CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_TEXT_BASE
 

@@ -1,6 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright 2010 Freescale Semiconductor, Inc.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 obj-y	+= law.o
 obj-y	+= ddr.o

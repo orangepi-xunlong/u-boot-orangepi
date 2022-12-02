@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __fdtdec_h
@@ -24,7 +24,7 @@
 typedef phys_addr_t fdt_addr_t;
 typedef phys_size_t fdt_size_t;
 #ifdef CONFIG_PHYS_64BIT
-#define FDT_ADDR_T_NONE (-1U)
+#define FDT_ADDR_T_NONE (-1ULL)
 #define fdt_addr_to_cpu(reg) be64_to_cpu(reg)
 #define fdt_size_to_cpu(reg) be64_to_cpu(reg)
 typedef fdt64_t fdt_val_t;
@@ -45,6 +45,10 @@ struct fdt_memory {
 #define SPL_BUILD	1
 #else
 #define SPL_BUILD	0
+#endif
+
+#if CONFIG_IS_ENABLED(OF_PRIOR_STAGE)
+extern phys_addr_t prior_stage_fdt_address;
 #endif
 
 /*
@@ -159,8 +163,7 @@ enum fdt_compat_id {
 	COMPAT_ALTERA_SOCFPGA_F2SDR0,           /* SoCFPGA fpga2SDRAM0 bridge */
 	COMPAT_ALTERA_SOCFPGA_F2SDR1,           /* SoCFPGA fpga2SDRAM1 bridge */
 	COMPAT_ALTERA_SOCFPGA_F2SDR2,           /* SoCFPGA fpga2SDRAM2 bridge */
-	COMPAT_ALTERA_SOCFPGA_FPGA0,		/* SOCFPGA FPGA manager */
-	COMPAT_ALTERA_SOCFPGA_NOC,		/* SOCFPGA Arria 10 NOC */
+	COMPAT_ROCKCHIP_NANDC,			/* Rockchip NAND controller */
 
 	COMPAT_COUNT,
 };
@@ -990,8 +993,7 @@ int fdtdec_setup(void);
 
 /**
  * Board-specific FDT initialization. Returns the address to a device tree blob.
- * Called when CONFIG_OF_BOARD is defined, or if CONFIG_OF_SEPARATE is defined
- * and the board implements it.
+ * Called when CONFIG_OF_BOARD is defined.
  */
 void *board_fdt_blob_setup(void);
 

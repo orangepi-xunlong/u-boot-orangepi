@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * From Coreboot src/southbridge/intel/bd82x6x/me.h
  *
@@ -7,6 +6,8 @@
  * easier to add new platform.
  *
  * Copyright (C) 2016 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __ASM_ME_COMMON_H

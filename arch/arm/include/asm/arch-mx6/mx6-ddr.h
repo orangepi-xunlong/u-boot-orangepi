@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Boundary Devices Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ASM_ARCH_MX6_DDR_H__
 #define __ASM_ARCH_MX6_DDR_H__
@@ -15,7 +16,7 @@
 #ifdef CONFIG_MX6SX
 #include "mx6sx-ddr.h"
 #else
-#if defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+#ifdef CONFIG_MX6UL
 #include "mx6ul-ddr.h"
 #else
 #ifdef CONFIG_MX6SL

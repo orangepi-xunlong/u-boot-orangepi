@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Author: Adrian Cox
  * Based on corenet_ds law files.
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>

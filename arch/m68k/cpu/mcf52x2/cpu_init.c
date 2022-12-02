@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Josef Baumgartner <josef.baumgartner@telex.de>
@@ -15,6 +14,8 @@
  *
  * MCF5275 additions
  * Copyright (C) 2008 Arthur Shipkowski (art@videon-central.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

@@ -9,7 +9,6 @@ config AHCI
 
 config SATA
 	bool "Support SATA controllers"
-	select HAVE_BLOCK_DEVICE
 	help
 	  This enables support for SATA (Serial Advanced Technology
 	  Attachment), a serial bus standard for connecting to hard drives and
@@ -58,45 +57,5 @@ config DWC_AHCI
 	help
 	  Enable this driver to support Sata devices through
 	  Synopsys DWC AHCI module.
-
-config DWC_AHSATA
-	bool "Enable DWC AHSATA driver support"
-	select LIBATA
-	help
-	  Enable this driver to support the DWC AHSATA SATA controller found
-	  in i.MX5 and i.MX6 SoCs.
-
-config FSL_SATA
-	bool "Enable Freescale SATA controller driver support"
-	select LIBATA
-	help
-	  Enable this driver to support the SATA controller found in
-	  some Freescale PowerPC SoCs.
-
-config MVSATA_IDE
-	bool "Enable Marvell SATA controller driver support via IDE interface"
-	help
-	  Enable this driver to support the SATA controller found in
-	  some Marvell SoCs, running in IDE compatibility mode using PIO.
-
-config SATA_MV
-	bool "Enable Marvell SATA controller driver support"
-	select LIBATA
-	help
-	  Enable this driver to support the SATA controller found in
-	  some Marvell SoCs.
-
-config SATA_SIL
-	bool "Enable Silicon Image SIL3131 / SIL3132 / SIL3124 SATA driver support"
-	select LIBATA
-	help
-	  Enable this driver to support the SIL3131, SIL3132 and SIL3124
-	  SATA controllers.
-
-config SATA_SIL3114
-	bool "Enable Silicon Image SIL3114 SATA driver support"
-	select LIBATA
-	help
-	  Enable this driver to support the SIL3114 SATA controllers.
 
 endmenu

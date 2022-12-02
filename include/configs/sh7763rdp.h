@@ -1,15 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas SH7763RDP board
  *
  * Copyright (C) 2008 Renesas Solutions Corp.
  * Copyright (C) 2008 Nobuhiro Iwamatsu <iwamatsu.nobuhiro@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SH7763RDP_H
 #define __SH7763RDP_H
 
 #define CONFIG_CPU_SH7763	1
+#define CONFIG_SH7763RDP	1
 #define __LITTLE_ENDIAN		1
 
 #define CONFIG_ENV_OVERWRITE    1
@@ -20,6 +22,8 @@
 /* SCIF */
 #define CONFIG_CONS_SCIF2		1
 
+#define CONFIG_SYS_TEXT_BASE	0x8FFC0000
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_PBSIZE		256	/* Buffer size for Console output */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }	/* List of legal baudrate
 												settings for this board */
@@ -74,6 +78,7 @@
 #define CONFIG_SYS_TMU_CLK_DIV		(4)	/* 4 (default), 16, 64, 256 or 1024 */
 
 /* Ether */
+#define CONFIG_SH_ETHER 1
 #define CONFIG_SH_ETHER_USE_PORT (1)
 #define CONFIG_SH_ETHER_PHY_ADDR (0x01)
 #define CONFIG_BITBANGMII

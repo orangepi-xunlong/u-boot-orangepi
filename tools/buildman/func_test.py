@@ -1,5 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0+
+#
 # Copyright (c) 2014 Google, Inc
+#
+# SPDX-License-Identifier:      GPL-2.0+
 #
 
 import os
@@ -229,10 +231,7 @@ class TestFunctional(unittest.TestCase):
         command.test_result = None
         result = self._RunBuildman('-H')
         help_file = os.path.join(self._buildman_dir, 'README')
-        # Remove possible extraneous strings
-        extra = '::::::::::::::\n' + help_file + '\n::::::::::::::\n'
-        gothelp = result.stdout.replace(extra, '')
-        self.assertEqual(len(gothelp), os.path.getsize(help_file))
+        self.assertEqual(len(result.stdout), os.path.getsize(help_file))
         self.assertEqual(0, len(result.stderr))
         self.assertEqual(0, result.return_code)
 

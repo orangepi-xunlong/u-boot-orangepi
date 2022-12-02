@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Device addresses
  *
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -48,17 +49,12 @@ fdt_addr_t devfdt_get_addr_index(struct udevice *dev, int index)
 
 		reg += index * (na + ns);
 
-		if (ns) {
-			/*
-			 * Use the full-fledged translate function for complex
-			 * bus setups.
-			 */
-			addr = fdt_translate_address((void *)gd->fdt_blob,
-						     dev_of_offset(dev), reg);
-		} else {
-			/* Non translatable if #size-cells == 0 */
-			addr = fdt_read_number(reg, na);
-		}
+		/*
+		 * Use the full-fledged translate function for complex
+		 * bus setups.
+		 */
+		addr = fdt_translate_address((void *)gd->fdt_blob,
+					     dev_of_offset(dev), reg);
 	} else {
 		/*
 		 * Use the "simple" translate function for less complex

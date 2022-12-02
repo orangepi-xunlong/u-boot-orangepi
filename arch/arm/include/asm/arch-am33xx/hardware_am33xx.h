@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * hardware_am33xx.h
  *
  * AM33xx hardware specific header
  *
  * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AM33XX_HARDWARE_AM33XX_H
@@ -14,11 +15,6 @@
 
 /* UART Base Address */
 #define UART0_BASE			0x44E09000
-#define UART1_BASE			0x48022000
-#define UART2_BASE			0x48024000
-#define UART3_BASE			0x481A6000
-#define UART4_BASE			0x481A8000
-#define UART5_BASE			0x481AA000
 
 /* GPIO Base address */
 #define GPIO2_BASE			0x481AC000

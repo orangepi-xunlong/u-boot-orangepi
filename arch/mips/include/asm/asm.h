@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 1995, 1996, 1997, 1999, 2001 by Ralf Baechle
  * Copyright (C) 1999 by Silicon Graphics, Inc.
@@ -10,6 +9,8 @@
  * Some of the routines below contain useless nops that will be optimized
  * away by gas in -O mode. These nops are however required to fill delay
  * slots in noreorder mode.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #ifndef __ASM_ASM_H
 #define __ASM_ASM_H

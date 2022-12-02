@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Hitachi Solution Engine 7750
  *
  * Copyright (C) 2007 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MS7750SE_H
@@ -11,6 +12,7 @@
 #define CONFIG_CPU_SH7750	1
 /* #define CONFIG_CPU_SH7751	1 */
 /* #define CONFIG_CPU_TYPE_R	1 */
+#define CONFIG_MS7750SE		1
 #define __LITTLE_ENDIAN__	1
 
 #define CONFIG_DISPLAY_BOARDINFO
@@ -26,8 +28,10 @@
 #define CONFIG_SYS_SDRAM_BASE		(0x8C000000)
 #define CONFIG_SYS_SDRAM_SIZE		(64 * 1024 * 1024)
 
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PBSIZE		256
 
+#define CONFIG_SYS_TEXT_BASE		0x8FFC0000
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - 0x100000)
 

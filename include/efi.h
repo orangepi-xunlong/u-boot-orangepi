@@ -19,7 +19,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 
-#if CONFIG_EFI_STUB_64BIT || (!defined(CONFIG_EFI_STUB) && defined(__x86_64__))
+#ifdef CONFIG_EFI_STUB_64BIT
 /* EFI uses the Microsoft ABI which is not the default for GCC */
 #define EFIAPI __attribute__((ms_abi))
 #else
@@ -81,8 +81,6 @@ typedef struct {
 #define EFI_IP_ADDRESS_CONFLICT		(EFI_ERROR_MASK | 34)
 #define EFI_HTTP_ERROR			(EFI_ERROR_MASK | 35)
 
-#define EFI_WARN_DELETE_FAILURE	2
-
 typedef unsigned long efi_status_t;
 typedef u64 efi_physical_addr_t;
 typedef u64 efi_virtual_addr_t;
@@ -122,7 +120,7 @@ enum efi_mem_type {
 	/* The code portions of a loaded Boot Services Driver */
 	EFI_BOOT_SERVICES_CODE,
 	/*
-	 * The data portions of a loaded Boot Services Driver and
+	 * The data portions of a loaded Boot Serves Driver and
 	 * the default data allocation type used by a Boot Services
 	 * Driver to allocate pool memory.
 	 */
@@ -227,9 +225,9 @@ struct efi_time_cap {
 };
 
 enum efi_locate_search_type {
-	ALL_HANDLES,
-	BY_REGISTER_NOTIFY,
-	BY_PROTOCOL
+	all_handles,
+	by_register_notify,
+	by_protocol
 };
 
 struct efi_open_protocol_info_entry {
@@ -323,25 +321,6 @@ extern char image_base[];
 
 /* Start and end of U-Boot image (for payload) */
 extern char _binary_u_boot_bin_start[], _binary_u_boot_bin_end[];
-
-/*
- * Variable Attributes
- */
-#define EFI_VARIABLE_NON_VOLATILE       0x0000000000000001
-#define EFI_VARIABLE_BOOTSERVICE_ACCESS 0x0000000000000002
-#define EFI_VARIABLE_RUNTIME_ACCESS     0x0000000000000004
-#define EFI_VARIABLE_HARDWARE_ERROR_RECORD 0x0000000000000008
-#define EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS 0x0000000000000010
-#define EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS 0x0000000000000020
-#define EFI_VARIABLE_APPEND_WRITE	0x0000000000000040
-
-#define EFI_VARIABLE_MASK	(EFI_VARIABLE_NON_VOLATILE | \
-				EFI_VARIABLE_BOOTSERVICE_ACCESS | \
-				EFI_VARIABLE_RUNTIME_ACCESS | \
-				EFI_VARIABLE_HARDWARE_ERROR_RECORD | \
-				EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS | \
-				EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS | \
-				EFI_VARIABLE_APPEND_WRITE)
 
 /**
  * efi_get_sys_table() - Get access to the main EFI system table

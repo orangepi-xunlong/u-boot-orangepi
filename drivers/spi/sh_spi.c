@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * SH SPI driver
  *
  * Copyright (C) 2011-2012 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -64,6 +65,10 @@ static int write_fifo_empty_wait(struct sh_spi *ss)
 		udelay(10);
 	}
 	return 0;
+}
+
+void spi_init(void)
+{
 }
 
 static void sh_spi_set_cs(struct sh_spi *ss, unsigned int cs)

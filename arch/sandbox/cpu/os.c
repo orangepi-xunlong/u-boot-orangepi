@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <dirent.h>
@@ -319,7 +319,6 @@ int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 	DIR *dir;
 	int ret;
 	char *fname;
-	char *old_fname;
 	int len;
 	int dirlen;
 
@@ -345,22 +344,15 @@ int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
 			break;
 		}
 		next = malloc(sizeof(*node) + strlen(entry->d_name) + 1);
-		if (!next) {
+		if (dirlen + strlen(entry->d_name) > len) {
+			len = dirlen + strlen(entry->d_name);
+			fname = realloc(fname, len);
+		}
+		if (!next || !fname) {
+			free(next);
 			os_dirent_free(head);
 			ret = -ENOMEM;
 			goto done;
-		}
-		if (dirlen + strlen(entry->d_name) > len) {
-			len = dirlen + strlen(entry->d_name);
-			old_fname = fname;
-			fname = realloc(fname, len);
-			if (!fname) {
-				free(old_fname);
-				free(next);
-				os_dirent_free(head);
-				ret = -ENOMEM;
-				goto done;
-			}
 		}
 		next->next = NULL;
 		strcpy(next->name, entry->d_name);
@@ -419,17 +411,6 @@ int os_get_filesize(const char *fname, loff_t *size)
 		return ret;
 	*size = buf.st_size;
 	return 0;
-}
-
-void os_putc(int ch)
-{
-	putchar(ch);
-}
-
-void os_puts(const char *str)
-{
-	while (*str)
-		os_putc(*str++);
 }
 
 int os_write_ram_buf(const char *fname)

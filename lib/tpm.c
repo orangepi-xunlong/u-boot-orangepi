@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 The Chromium OS Authors.
  * Coypright (c) 2013 Guntermann & Drunck GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -91,7 +92,6 @@ int pack_byte_string(uint8_t *str, size_t size, const char *format, ...)
 			break;
 		default:
 			debug("Couldn't recognize format string\n");
-			va_end(args);
 			return -1;
 		}
 
@@ -170,10 +170,8 @@ int unpack_byte_string(const uint8_t *str, size_t size, const char *format, ...)
 			return -1;
 		}
 
-		if (offset + length > size) {
-			va_end(args);
+		if (offset + length > size)
 			return -1;
-		}
 
 		switch (*format) {
 		case 'b':
@@ -1051,46 +1049,3 @@ uint32_t tpm_find_key_sha1(const uint8_t auth[20], const uint8_t
 #endif /* CONFIG_TPM_LOAD_KEY_BY_SHA1 */
 
 #endif /* CONFIG_TPM_AUTH_SESSIONS */
-
-uint32_t tpm_get_random(void *data, uint32_t count)
-{
-	const uint8_t command[14] = {
-		0x0, 0xc1,		/* TPM_TAG */
-		0x0, 0x0, 0x0, 0xe,	/* parameter size */
-		0x0, 0x0, 0x0, 0x46,	/* TPM_COMMAND_CODE */
-	};
-	const size_t length_offset = 10;
-	const size_t data_size_offset = 10;
-	const size_t data_offset = 14;
-	uint8_t buf[COMMAND_BUFFER_SIZE], response[COMMAND_BUFFER_SIZE];
-	size_t response_length = sizeof(response);
-	uint32_t data_size;
-	uint8_t *out = data;
-
-	while (count > 0) {
-		uint32_t this_bytes = min((size_t)count,
-					  sizeof (response) - data_offset);
-		uint32_t err;
-
-		if (pack_byte_string(buf, sizeof(buf), "sd",
-				     0, command, sizeof(command),
-				     length_offset, this_bytes))
-			return TPM_LIB_ERROR;
-		err = tpm_sendrecv_command(buf, response, &response_length);
-		if (err)
-			return err;
-		if (unpack_byte_string(response, response_length, "d",
-				       data_size_offset, &data_size))
-			return TPM_LIB_ERROR;
-		if (data_size > count)
-			return TPM_LIB_ERROR;
-		if (unpack_byte_string(response, response_length, "s",
-				       data_offset, out, data_size))
-			return TPM_LIB_ERROR;
-
-		count -= data_size;
-		out += data_size;
-	}
-
-	return 0;
-}

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * cmd_fs_uuid.c -- fsuuid command
  *
  * Copyright (C) 2014, Bachmann electronic GmbH
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>

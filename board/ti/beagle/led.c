@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2010 Texas Instruments, Inc.
  * Jason Kridner <jkridner@beagleboard.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <status_led.h>

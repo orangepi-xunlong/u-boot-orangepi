@@ -46,16 +46,18 @@ config BOOTSTAGE_REPORT
 		 29,916,167 26,005,792  bootm_start
 		 30,361,327    445,160  start_kernel
 
+config BOOTSTAGE_USER_COUNT
+	int "Number of boot ID numbers available for user use"
+	default 20
+	help
+	  This is the number of available user bootstage records.
+	  Each time you call bootstage_mark(BOOTSTAGE_ID_ALLOC, ...)
+	  a new ID will be allocated from this stash. If you exceed
+	  the limit, recording will stop.
+
 config BOOTSTAGE_RECORD_COUNT
 	int "Number of boot stage records to store"
 	default 30
-	help
-	  This is the size of the bootstage record list and is the maximum
-	  number of bootstage records that can be recorded.
-
-config SPL_BOOTSTAGE_RECORD_COUNT
-	int "Number of boot stage records to store for SPL"
-	default 5
 	help
 	  This is the size of the bootstage record list and is the maximum
 	  number of bootstage records that can be recorded.
@@ -109,6 +111,10 @@ config BOOTSTAGE_STASH_SIZE
 	  This should be large enough to hold the bootstage stash. A value of
 	  4096 (4KiB) is normally plenty.
 
+config BOOTSTAGE_PRINTF_TIMESTAMP
+	bool "Support printf timestamp"
+	help
+	  Enabling this will support printf timestamp.
 endmenu
 
 menu "Boot media"
@@ -172,6 +178,13 @@ config SPI_BOOT
 
 endmenu
 
+config PASS_DEVICE_SERIAL_BY_FDT
+	bool "Pass the device serial number to kernel through devicetree"
+	default y
+	help
+	  Enabling this will pass a device serial number to kernel by devicetree
+	  "serial-number" properties.
+
 config BOOTDELAY
 	int "delay in seconds before automatically booting"
 	default 2
@@ -200,22 +213,10 @@ config BOOTARGS
 	  CONFIG_BOOTARGS goes into the environment value "bootargs". Note that
 	  this value will also override the "chosen" node in FDT blob.
 
-config USE_BOOTCOMMAND
-	bool "Enable a default value for bootcmd"
+config IO_TRACE
+	bool "Enable iotrace"
 	help
-	  Provide a default value for the bootcmd entry in the environment.  If
-	  autoboot is enabled this is what will be run automatically.  Enable
-	  this option to be able to specify CONFIG_BOOTCOMMAND as a string.  If
-	  this option is disabled, CONFIG_BOOTCOMMAND will be undefined and
-	  won't take any space in U-Boot image.
-
-config BOOTCOMMAND
-	string "bootcmd value"
-	depends on USE_BOOTCOMMAND
-	default "run distro_bootcmd" if DISTRO_DEFAULTS
-	help
-	  This is the string of commands that will be used as bootcmd and if
-	  AUTOBOOT is set, automatically run.
+	  This enable iotrace feature.
 
 menu "Console"
 
@@ -237,7 +238,8 @@ config CONSOLE_RECORD
 config CONSOLE_RECORD_OUT_SIZE
 	hex "Output buffer size"
 	depends on CONSOLE_RECORD
-	default 0x400 if CONSOLE_RECORD
+	default 0x400 if CONSOLE_RECORD && !ARCH_ROCKCHIP
+	default 0x2000 if CONSOLE_RECORD && ARCH_ROCKCHIP
 	help
 	  Set the size of the console output buffer. When this fills up, no
 	  more data will be recorded until some is removed. The buffer is
@@ -252,6 +254,17 @@ config CONSOLE_RECORD_IN_SIZE
 	  tstc() and getc() will use this in preference to real device input.
 	  The buffer is allocated immediately after the malloc() region is
 	  ready.
+
+config CONSOLE_DISABLE_CLI
+	bool "disable ctrlc"
+	default n
+	help
+	  This disable CLI interactive in verified-boot.
+
+config DISABLE_CONSOLE
+	bool "disable console in & out"
+	help
+	 This disable console in & out.
 
 config IDENT_STRING
 	string "Board specific string to be added to uboot version string"
@@ -424,7 +437,6 @@ menu "Logging"
 
 config LOG
 	bool "Enable logging support"
-	select DM
 	help
 	  This enables support for logging of status and debug messages. These
 	  can be displayed on the console, recorded in a memory buffer, or
@@ -505,28 +517,7 @@ config LOG_TEST
 	  in various different ways to test that the logging system works
 	  correctly with varoius settings.
 
-config LOG_ERROR_RETURN
-	bool "Log all functions which return an error"
-	depends on LOG
-	help
-	  When an error is returned in U-Boot it is sometimes difficult to
-	  figure out the root cause. For eaxmple, reading from SPI flash may
-	  fail due to a problem in the SPI controller or due to the flash part
-	  not returning the expected information. This option changes
-	  log_ret() to log any errors it sees. With this option disabled,
-	  log_ret() is a nop.
-
-	  You can add log_ret() to all functions which return an error code.
-
 endmenu
-
-config SUPPORT_RAW_INITRD
-	bool "Enable raw initrd images"
-	help
-	  Note, defining the SUPPORT_RAW_INITRD allows user to supply
-	  kernel with raw initrd images. The syntax is slightly different, the
-	  address of the initrd must be augmented by it's size, in the following
-	  format: "<initrd address>:<initrd size>".
 
 config DEFAULT_FDT_FILE
 	string "Default fdt file"
@@ -555,26 +546,19 @@ config BOARD_LATE_INIT
 
 config DISPLAY_CPUINFO
 	bool "Display information about the CPU during start up"
-	default y if ARM || NIOS2 || X86 || XTENSA || M68K
+	default y if ARM || NIOS2 || X86 || XTENSA
 	help
 	  Display information about the CPU that U-Boot is running on
 	  when U-Boot starts up. The function print_cpuinfo() is called
 	  to do this.
 
 config DISPLAY_BOARDINFO
-	bool "Display information about the board during early start up"
+	bool "Display information about the board during start up"
 	default y if ARM || M68K || MIPS || PPC || SANDBOX || XTENSA
 	help
 	  Display information about the board that U-Boot is running on
 	  when U-Boot starts up. The board function checkboard() is called
 	  to do this.
-
-config DISPLAY_BOARDINFO_LATE
-	bool "Display information about the board during late start up"
-	help
-	  Display information about the board that U-Boot is running on after
-	  the relocation phase. The board function checkboard() is called to do
-	  this.
 
 menu "Start-up hooks"
 
@@ -610,16 +594,81 @@ config BOARD_EARLY_INIT_R
 	  relocation. With this option, U-Boot calls board_early_init_r()
 	  in the post-relocation init sequence.
 
-config LAST_STAGE_INIT
-	bool "Call board-specific as last setup step"
-	help
-	  Some boards need to perform initialisation immediately before control
-	  is passed to the command-line interpreter (e.g. for initializations
-	  that depend on later phases in the init sequence). With this option,
-	  U-Boot calls last_stage_init() before the command-line interpreter is
-	  started.
-
 endmenu
+
+menu "Android features support"
+config ANDROID_BOOTLOADER
+	bool "Support for Android Bootloader boot flow"
+	default n
+	depends on ANDROID_BOOT_IMAGE
+	help
+	  If enabled, adds support to boot an Android device following the
+	  Android Bootloader boot flow. This flow requires an Android Bootloader
+	  to handle the Android Bootloader Message stored in the Boot Control
+	  Block (BCB), normally in the "misc" partition of an Android device.
+	  The BCB is used to determine the boot mode of the device (normal mode,
+	  recovery mode or bootloader mode) and, if enabled, the slot to boot
+	  from in devices with multiple boot slots (A/B devices).
+
+config ANDROID_AB
+	bool "Support for Android A/B updates"
+	default n
+	help
+	  If enabled, adds support for the new Android A/B update model. This
+	  allows the bootloader to select which slot to boot from based on the
+	  information provided by userspace via the Android boot_ctrl HAL. This
+	  allows a bootloader to try a new version of the system but roll back
+	  to previous version if the new one didn't boot all the way.
+
+config ANDROID_WRITE_KEYBOX
+	bool "Support Write Keybox"
+	default y
+	depends on OPTEE_CLIENT
+	help
+	  This enable support write keybox to secure storage.
+
+config ANDROID_AVB
+	bool"Support Android Verified Boot"
+	default n
+	help
+	  If enabled, adds support the android verified boot. The avb get the
+	  digital signature and key from vemeta. Then use the RSA2048 and sha256
+	  to verify the boot images. The vbmeta must be matched with images,
+	  if not, verify failed.
+
+config ANDROID_AVB_ROLLBACK_INDEX
+	bool"Support Android Verified Boot Rollback Index"
+	default n
+	help
+	  If enabled, support the android verified boot rollback index.
+
+config ANDROID_KEYMASTER_CA
+	bool "Support Keymaster CA"
+	default y
+	depends on OPTEE_CLIENT
+	help
+	 This enable support read/write data in keymaster.
+
+config ANDROID_BOOT_IMAGE
+	bool "Enable support for Android Boot Images"
+	help
+	  This enables support for booting images which use the Android
+	  image format header.
+
+config ANDROID_BOOT_IMAGE_HASH
+	bool "Enable support for Android image hash verify"
+	depends on ANDROID_BOOT_IMAGE
+	select SHA1 if !DM_CRYPTO
+	help
+	  This enables support for Android image hash verify, the mkbootimg always use
+	  SHA1 for images.
+endmenu
+
+config SKIP_RELOCATE_UBOOT
+	bool "Skip U-Boot relocation"
+	default y if !ARM64 && !ARM64_BOOT_AARCH32
+	help
+	  This enable support for skipping U-Boot relocation.
 
 menu "Security support"
 
@@ -631,45 +680,7 @@ config HASH
 	  and the algorithms it supports are defined in common/hash.c. See
 	  also CMD_HASH for command-line access.
 
-config SUNXI_IMAGE_VERIFIER
-	bool "Sunxi image verify support"
-	default n
-	select SUNXI_CE_DRIVER
-	select OPENSSL
-
-config SUNXI_KEYBOX
-	bool "Sunxi keybox support"
-	default n
-
 endmenu
-
-menu "Update support"
-
-config UPDATE_TFTP
-	bool "Auto-update using fitImage via TFTP"
-	depends on FIT
-	help
-	  This option allows performing update of NOR with data in fitImage
-	  sent via TFTP boot.
-
-config UPDATE_TFTP_CNT_MAX
-	int "The number of connection retries during auto-update"
-	default 0
-	depends on UPDATE_TFTP
-
-config UPDATE_TFTP_MSEC_MAX
-	int "Delay in mSec to wait for the TFTP server during auto-update"
-	default 100
-	depends on UPDATE_TFTP
-
-config SUNXI_SERIAL
-	bool "Update snum to bootargs"
-	default n
-
-endmenu
-
-if ARCH_SUNXI
-source "board/sunxi/Kconfig"
-endif
 
 source "common/spl/Kconfig"
+source "common/usbplug/Kconfig"

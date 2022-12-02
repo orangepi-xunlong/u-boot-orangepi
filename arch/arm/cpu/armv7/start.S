@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * armboot - Startup Code for OMAP3530/ARM Cortex CPU-core
  *
@@ -10,6 +9,8 @@
  * Copyright (c) 2003	Richard Woodruff <r-woodruff2@ti.com>
  * Copyright (c) 2003	Kshitij <kshitij@ti.com>
  * Copyright (c) 2006-2008 Syed Mohammed Khasim <x0khasim@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
@@ -34,6 +35,8 @@
 #ifdef CONFIG_ARMV7_LPAE
 	.global	switch_to_hypervisor_ret
 #endif
+
+#if !CONFIG_IS_ENABLED(TINY_FRAMEWORK)
 
 reset:
 	/* Allow the board to save important registers */
@@ -61,6 +64,11 @@ switch_to_hypervisor_ret:
 	orr	r0, r0, #0xc0		@ disable FIQ and IRQ
 	msr	cpsr,r0
 
+	/* Enable ACTLR.SMP bit */
+	mrc	p15, 0, r0, c1, c0, 1
+	orr	r0, r0, #(1 << 6)	@ Enable ACTLR.SMP bit
+	mcr	p15, 0, r0, c1, c0, 1
+
 /*
  * Setup vector:
  * (OMAP4 spl TEXT_BASE is not 32 byte aligned.
@@ -76,6 +84,11 @@ switch_to_hypervisor_ret:
 	ldr	r0, =_start
 	mcr	p15, 0, r0, c12, c0, 0	@Set VBAR
 #endif
+
+	/* Enable Asynchronous external abort after vectors setup */
+	mrs	r0, cpsr
+	bic	r0, r0, #0x100		@ CPSR.A bit
+	msr	cpsr_x,r0
 
 	/* the mask ROM code should have PLL and others stable */
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
@@ -102,6 +115,8 @@ ENTRY(c_runtime_cpu_setup)
 	bx	lr
 
 ENDPROC(c_runtime_cpu_setup)
+
+#endif/* !CONFIG_IS_ENABLED(TINY_FRAMEWORK) */
 
 /*************************************************************************
  *
@@ -157,21 +172,6 @@ ENTRY(cpu_init_cp15)
 	orr	r0, r0, #0x00001000	@ set bit 12 (I) I-cache
 #endif
 	mcr	p15, 0, r0, c1, c0, 0
-
-#ifdef SUNXI_ARM_A53
-	/*
-	 *clear AFE,TRE bit in sctrl
-	 *non-secure: reset value is unknow
-	 *secure    : default value is 0
-	 *notice    : we must set the TRE bit to enable the memory
-	 *            arttribute configuration from the section table.
-	 */
-	MRC     p15, 0, r0, c1, c0, 0   @Read SCTLR
-	BIC     r0, r0, #(1<<28)        @clr TRE bit
-	BIC     r0, r0, #(1<<29)        @clr AEF bit
-	MCR     p15, 0, r0, c1, c0, 0   @Write SCTLR
-#endif
-
 
 #ifdef CONFIG_ARM_ERRATA_716044
 	mrc	p15, 0, r0, c1, c0, 0	@ read system control register
@@ -253,47 +253,55 @@ skip_errata_801819:
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_454179
-	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
-
 	cmp	r2, #0x21		@ Only on < r2p1
-	orrlt	r0, r0, #(0x3 << 6)	@ Set DBSM(BIT7) and IBE(BIT6) bits
+	bge	skip_errata_454179
 
+	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
+	orr	r0, r0, #(0x3 << 6)	@ Set DBSM(BIT7) and IBE(BIT6) bits
 	push	{r1-r5}			@ Save the cpu info registers
 	bl	v7_arch_cp15_set_acr
 	pop	{r1-r5}			@ Restore the cpu info - fall through
+
+skip_errata_454179:
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_430973
-	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
-
 	cmp	r2, #0x21		@ Only on < r2p1
-	orrlt	r0, r0, #(0x1 << 6)	@ Set IBE bit
+	bge	skip_errata_430973
 
+	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
+	orr	r0, r0, #(0x1 << 6)	@ Set IBE bit
 	push	{r1-r5}			@ Save the cpu info registers
 	bl	v7_arch_cp15_set_acr
 	pop	{r1-r5}			@ Restore the cpu info - fall through
+
+skip_errata_430973:
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_621766
-	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
-
 	cmp	r2, #0x21		@ Only on < r2p1
-	orrlt	r0, r0, #(0x1 << 5)	@ Set L1NEON bit
+	bge	skip_errata_621766
 
+	mrc	p15, 0, r0, c1, c0, 1	@ Read ACR
+	orr	r0, r0, #(0x1 << 5)	@ Set L1NEON bit
 	push	{r1-r5}			@ Save the cpu info registers
 	bl	v7_arch_cp15_set_acr
 	pop	{r1-r5}			@ Restore the cpu info - fall through
+
+skip_errata_621766:
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_725233
-	mrc	p15, 1, r0, c9, c0, 2	@ Read L2ACR
-
 	cmp	r2, #0x21		@ Only on < r2p1 (Cortex A8)
-	orrlt	r0, r0, #(0x1 << 27)	@ L2 PLD data forwarding disable
+	bge	skip_errata_725233
 
+	mrc	p15, 1, r0, c9, c0, 2	@ Read L2ACR
+	orr	r0, r0, #(0x1 << 27)	@ L2 PLD data forwarding disable
 	push	{r1-r5}			@ Save the cpu info registers
 	bl	v7_arch_cp15_set_l2aux_ctrl
 	pop	{r1-r5}			@ Restore the cpu info - fall through
+
+skip_errata_725233:
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_852421
@@ -306,6 +314,37 @@ skip_errata_801819:
 	mrc	p15, 0, r0, c15, c0, 1	@ read diagnostic register
 	orr	r0, r0, #1 << 12	@ set bit #12
 	mcr	p15, 0, r0, c15, c0, 1	@ write diagnostic register
+#endif
+
+#if defined(CONFIG_ARM_ZERO_CNTVOFF) && defined(CONFIG_SPL_BUILD)
+	/*
+	 * CNTVOFF usage constraints:
+	 * Only accessible from Hyp mode, or from Monitor mode when SCR.NS is
+	 * set to 1.
+	 */
+	/* switch to MON */
+	cps #22
+	isb
+
+	/* Update SCR.NS to non Secure mode */
+	mrc	p15, 0, r0, c1, c1, 0
+	orr r0, r0, #(1 << 0)
+	mcr	p15, 0, r0, c1, c1, 0
+	isb
+
+	/* set vtimer virtual offset 0 */
+	mov	r0, #0
+	mcrr	p15, 4, r0, r0, c14	@ CNTVOFF
+
+	/* Update SCR.NS to Secure mode */
+	mrc	p15, 0, r0, c1, c1, 0
+	bic r0, r0, #(1 << 0)
+	mcr	p15, 0, r0, c1, c1, 0
+	isb
+
+	/* switch back to SVC */
+	cps #19
+	isb
 #endif
 
 	mov	pc, r5			@ back to my caller

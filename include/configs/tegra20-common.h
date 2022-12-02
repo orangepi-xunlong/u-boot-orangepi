@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  (C) Copyright 2010-2012
  *  NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA20_COMMON_H_
@@ -21,6 +22,7 @@
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
+#define CONFIG_SYS_TEXT_BASE	0x00110000
 
 /*
  * Memory layout for where various images get loaded by boot scripts:

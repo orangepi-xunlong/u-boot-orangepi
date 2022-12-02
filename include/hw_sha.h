@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Header file for SHA hardware acceleration
  *
  * Copyright (c) 2012  Samsung Electronics
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __HW_SHA_H
 #define __HW_SHA_H

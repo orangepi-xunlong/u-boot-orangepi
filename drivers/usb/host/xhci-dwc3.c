@@ -1,22 +1,25 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
  *
  * DWC3 controller driver
  *
  * Author: Ramneek Mehresh<ramneek.mehresh@freescale.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
-#include <fdtdec.h>
 #include <generic-phy.h>
 #include <usb.h>
+#include <dwc3-uboot.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 #include <asm/io.h>
 #include <linux/usb/dwc3.h>
 #include <linux/usb/otg.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct xhci_dwc3_platdata {
 	struct phy *usb_phys;
@@ -109,113 +112,52 @@ void dwc3_set_fladj(struct dwc3 *dwc3_reg, u32 val)
 			GFLADJ_30MHZ(val));
 }
 
-#ifdef CONFIG_DM_USB
-static int xhci_dwc3_setup_phy(struct udevice *dev)
-{
-	struct xhci_dwc3_platdata *plat = dev_get_platdata(dev);
-	int i, ret, count;
-
-	/* Return if no phy declared */
-	if (!dev_read_prop(dev, "phys", NULL))
-		return 0;
-
-	count = dev_count_phandle_with_args(dev, "phys", "#phy-cells");
-	if (count <= 0)
-		return count;
-
-	plat->usb_phys = devm_kcalloc(dev, count, sizeof(struct phy),
-				      GFP_KERNEL);
-	if (!plat->usb_phys)
-		return -ENOMEM;
-
-	for (i = 0; i < count; i++) {
-		ret = generic_phy_get_by_index(dev, i, &plat->usb_phys[i]);
-		if (ret && ret != -ENOENT) {
-			pr_err("Failed to get USB PHY%d for %s\n",
-			       i, dev->name);
-			return ret;
-		}
-
-		++plat->num_phys;
-	}
-
-	for (i = 0; i < plat->num_phys; i++) {
-		ret = generic_phy_init(&plat->usb_phys[i]);
-		if (ret) {
-			pr_err("Can't init USB PHY%d for %s\n",
-			       i, dev->name);
-			goto phys_init_err;
-		}
-	}
-
-	for (i = 0; i < plat->num_phys; i++) {
-		ret = generic_phy_power_on(&plat->usb_phys[i]);
-		if (ret) {
-			pr_err("Can't power USB PHY%d for %s\n",
-			       i, dev->name);
-			goto phys_poweron_err;
-		}
-	}
-
-	return 0;
-
-phys_poweron_err:
-	for (; i >= 0; i--)
-		generic_phy_power_off(&plat->usb_phys[i]);
-
-	for (i = 0; i < plat->num_phys; i++)
-		generic_phy_exit(&plat->usb_phys[i]);
-
-	return ret;
-
-phys_init_err:
-	for (; i >= 0; i--)
-		generic_phy_exit(&plat->usb_phys[i]);
-
-	return ret;
-}
-
-static int xhci_dwc3_shutdown_phy(struct udevice *dev)
-{
-	struct xhci_dwc3_platdata *plat = dev_get_platdata(dev);
-	int i, ret;
-
-	for (i = 0; i < plat->num_phys; i++) {
-		if (!generic_phy_valid(&plat->usb_phys[i]))
-			continue;
-
-		ret = generic_phy_power_off(&plat->usb_phys[i]);
-		ret |= generic_phy_exit(&plat->usb_phys[i]);
-		if (ret) {
-			pr_err("Can't shutdown USB PHY%d for %s\n",
-			       i, dev->name);
-		}
-	}
-
-	return 0;
-}
-
+#if CONFIG_IS_ENABLED(DM_USB)
 static int xhci_dwc3_probe(struct udevice *dev)
 {
 	struct xhci_hcor *hcor;
 	struct xhci_hccr *hccr;
 	struct dwc3 *dwc3_reg;
 	enum usb_dr_mode dr_mode;
+	struct xhci_dwc3_platdata *plat = dev_get_platdata(dev);
+	const char *phy;
+	u32 reg;
 	int ret;
 
 	hccr = (struct xhci_hccr *)((uintptr_t)dev_read_addr(dev));
 	hcor = (struct xhci_hcor *)((uintptr_t)hccr +
 			HC_LENGTH(xhci_readl(&(hccr)->cr_capbase)));
 
-	ret = xhci_dwc3_setup_phy(dev);
-	if (ret)
+	ret = dwc3_setup_phy(dev, &plat->usb_phys, &plat->num_phys);
+	if (ret && (ret != -ENOTSUPP))
 		return ret;
 
 	dwc3_reg = (struct dwc3 *)((char *)(hccr) + DWC3_REG_OFFSET);
 
 	dwc3_core_init(dwc3_reg);
 
-	dr_mode = usb_get_dr_mode(dev_of_offset(dev));
+	/* Set dwc3 usb2 phy config */
+	reg = readl(&dwc3_reg->g_usb2phycfg[0]);
+
+	phy = dev_read_string(dev, "phy_type");
+	if (phy && strcmp(phy, "utmi_wide") == 0) {
+		reg |= DWC3_GUSB2PHYCFG_PHYIF;
+		reg &= ~DWC3_GUSB2PHYCFG_USBTRDTIM_MASK;
+		reg |= DWC3_GUSB2PHYCFG_USBTRDTIM_16BIT;
+	}
+
+	if (dev_read_bool(dev, "snps,dis_enblslpm-quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
+
+	if (dev_read_bool(dev, "snps,dis-u2-freeclk-exists-quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_U2_FREECLK_EXISTS;
+
+	if (dev_read_bool(dev, "snps,dis_u2_susphy_quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+
+	writel(reg, &dwc3_reg->g_usb2phycfg[0]);
+
+	dr_mode = usb_get_dr_mode(dev->node);
 	if (dr_mode == USB_DR_MODE_UNKNOWN)
 		/* by default set dual role mode to HOST */
 		dr_mode = USB_DR_MODE_HOST;
@@ -227,7 +169,9 @@ static int xhci_dwc3_probe(struct udevice *dev)
 
 static int xhci_dwc3_remove(struct udevice *dev)
 {
-	xhci_dwc3_shutdown_phy(dev);
+	struct xhci_dwc3_platdata *plat = dev_get_platdata(dev);
+
+	dwc3_shutdown_phy(dev, plat->usb_phys, plat->num_phys);
 
 	return xhci_deregister(dev);
 }

@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) 2015 Hans de Goede <hdegoede@redhat.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

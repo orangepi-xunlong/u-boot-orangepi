@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *
  * Aneesh V <aneesh@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef	_OMAP_COMMON_H_
 #define	_OMAP_COMMON_H_
@@ -595,8 +596,6 @@ extern struct prcm_regs const omap4_prcm;
 extern struct prcm_regs const dra7xx_prcm;
 extern struct dplls const **dplls_data;
 extern struct dplls dra7xx_dplls;
-extern struct dplls dra72x_dplls;
-extern struct dplls dra76x_dplls;
 extern struct vcores_data const **omap_vcores;
 extern const u32 sys_clk_array[8];
 extern struct omap_sys_ctrl_regs const **ctrl;
@@ -608,7 +607,6 @@ extern struct omap_sys_ctrl_regs const dra7xx_ctrl;
 
 extern struct pmic_data tps659038;
 extern struct pmic_data lp8733;
-extern struct pmic_data lp87565;
 
 void hw_data_init(void);
 
@@ -724,7 +722,6 @@ static inline u8 is_omap54xx(void)
 
 #define DRA7XX		0x07000000
 #define DRA72X		0x07200000
-#define DRA76X		0x07600000
 
 static inline u8 is_dra7xx(void)
 {
@@ -736,24 +733,6 @@ static inline u8 is_dra72x(void)
 {
 	extern u32 *const omap_si_rev;
 	return (*omap_si_rev & 0xFFF00000) == DRA72X;
-}
-
-static inline u8 is_dra76x(void)
-{
-	extern u32 *const omap_si_rev;
-	return (*omap_si_rev & 0xFFF00000) == DRA76X;
-}
-
-static inline u8 is_dra76x_abz(void)
-{
-	extern u32 *const omap_si_rev;
-	return (*omap_si_rev & 0xF) == 2;
-}
-
-static inline u8 is_dra76x_acd(void)
-{
-	extern u32 *const omap_si_rev;
-	return (*omap_si_rev & 0xF) == 3;
 }
 #endif
 
@@ -782,16 +761,12 @@ static inline u8 is_dra76x_acd(void)
 #define OMAP5432_ES2_0  0x54320200
 
 /* DRA7XX */
-#define DRA762_ES1_0	0x07620100
 #define DRA752_ES1_0	0x07520100
 #define DRA752_ES1_1	0x07520110
 #define DRA752_ES2_0	0x07520200
 #define DRA722_ES1_0	0x07220100
 #define DRA722_ES2_0	0x07220200
-#define DRA722_ES2_1	0x07220210
 
-#define DRA762_ABZ_ES1_0	0x07620102
-#define DRA762_ACD_ES1_0	0x07620103
 /*
  * silicon device type
  * Moving to common from cpu.h, since it is shared by various omap devices

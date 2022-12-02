@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015
  * Gerald Kerma <dreagle@doukki.net>
  * Tony Dinh <mibodhi@gmail.com>
  * Luka Perkov <luka.perkov@sartura.hr>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_NSA310S_H
@@ -22,7 +23,6 @@
 #define CONFIG_BZIP2
 
 /* commands configuration */
-#define CONFIG_SYS_MVFS
 
 /*
  * mv-common.h should be defined after CMD configs since it used them
@@ -48,10 +48,17 @@
 	"fdt addr 0x700000; fdt resize; fdt chosen; " \
 	"bootz 0x800000 - 0x700000"
 
+#define CONFIG_MTDPARTS \
+	"mtdparts=orion_nand:" \
+	"0xe0000@0x0(uboot)," \
+	"0x20000@0xe0000(uboot_env)," \
+	"0x100000@0x100000(second_stage_uboot)," \
+	"-@0x200000(root)\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=console=ttyS0,115200\0" \
 	"mtdids=nand0=orion_nand\0" \
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT \
+	"mtdparts="CONFIG_MTDPARTS \
 	"kernel=/boot/zImage\0" \
 	"fdt=/boot/nsa310s.dtb\0" \
 	"bootargs_root=ubi.mtd=3 root=ubi0:rootfs rootfstype=ubifs rw\0"
@@ -59,6 +66,7 @@
 /* Ethernet driver configuration */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_NETCONSOLE
+#define CONFIG_NET_MULTI
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable port 0 only */
 #define CONFIG_PHY_BASE_ADR	1
 #define CONFIG_RESET_PHY_R

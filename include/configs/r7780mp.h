@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas R7780MP board
  *
  * Copyright (C) 2007,2008 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
  * Copyright (C) 2008 Yusuke Goda <goda.yusuke@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __R7780RP_H
@@ -20,9 +21,11 @@
 
 #define CONFIG_ENV_OVERWRITE	1
 
+#define CONFIG_SYS_TEXT_BASE		0x0FFC0000
 #define CONFIG_SYS_SDRAM_BASE		(0x08000000)
 #define CONFIG_SYS_SDRAM_SIZE		(128 * 1024 * 1024)
 
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PBSIZE		256
 
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE)

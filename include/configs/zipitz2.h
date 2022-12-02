@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Aeronix Zipit Z2 configuration file
  *
  * Copyright (C) 2009-2010 Marek Vasut <marek.vasut@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -12,6 +13,7 @@
  * High Level Board Configuration Options
  */
 #define	CONFIG_CPU_PXA27X		1	/* Marvell PXA270 CPU */
+#define	CONFIG_SYS_TEXT_BASE		0x0
 
 #undef	CONFIG_SKIP_LOWLEVEL_INIT
 #define	CONFIG_PREBOOT
@@ -36,12 +38,14 @@
 #define	CONFIG_TIMESTAMP
 #define	CONFIG_CMDLINE_TAG
 #define	CONFIG_SETUP_MEMORY_TAGS
+#define	CONFIG_SYS_TEXT_BASE		0x0
 
 /*
  * Serial Console Configuration
  * STUART - the lower serial port on Colibri board
  */
 #define	CONFIG_STUART			1
+#define CONFIG_CONS_INDEX		2
 
 /*
  * Bootloader Components Configuration
@@ -74,6 +78,8 @@ void zipitz2_spi_scl(int);
 unsigned char zipitz2_spi_read(void);
 #endif
 #endif
+
+#define	CONFIG_SYS_LONGHELP				/* undef to save memory	*/
 
 #define	CONFIG_SYS_DEVICE_NULLDEV	1
 

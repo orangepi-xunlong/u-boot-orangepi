@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2017 Google, Inc
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <asm/arch/pinctrl.h>
 #include <asm/arch/scu_ast2500.h>
 #include <dm/pinctrl.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * This driver works with very simple configuration that has the same name

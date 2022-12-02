@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2007-2013 Tensilica, Inc.
  * Copyright (C) 2014 - 2016 Cadence Design Systems Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -97,8 +98,9 @@
 #define CONFIG_SYS_MEMORY_SIZE		CONFIG_SYS_SDRAM_SIZE
 #endif
 
-#define XTENSA_SYS_TEXT_ADDR		\
-	(MEMADDR(CONFIG_SYS_MEMORY_SIZE) - CONFIG_SYS_MONITOR_LEN)
+#define CONFIG_SYS_MEMORY_TOP		MEMADDR(CONFIG_SYS_MEMORY_SIZE)
+#define CONFIG_SYS_TEXT_ADDR		\
+	(CONFIG_SYS_MEMORY_TOP - CONFIG_SYS_MONITOR_LEN)
 
 /* Used by tftpboot; env var 'loadaddr' */
 #define CONFIG_SYS_LOAD_ADDR		MEMADDR(0x02000000)
@@ -120,6 +122,11 @@
 /* U-Boot autoboot configuration */
 /*==============================*/
 
+#define CONFIG_BOOT_RETRY_TIME		60	/* retry after 60 secs */
+
+#define CONFIG_AUTO_COMPLETE			/* Support tab autocompletion */
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_MX_CYCLIC
 #define CONFIG_SHOW_BOOT_PROGRESS
 
@@ -181,6 +188,7 @@
 
 /* Input clk to NS16550 (in Hz; the SYS_CLK_FREQ is in kHz) */
 #define CONFIG_SYS_NS16550_CLK		CONFIG_SYS_CLK_FREQ
+#define CONFIG_CONS_INDEX		1	/* use UART0 for console */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 /*======================*/

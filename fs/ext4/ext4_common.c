@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -16,6 +15,8 @@
  * Copyright (C) 2003, 2004  Free Software Foundation, Inc.
  *
  * ext4write : Based on generic ext4 protocol.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -2342,7 +2343,7 @@ int ext4fs_mount(unsigned part_length)
 
 	/* Make sure this is an ext2 filesystem. */
 	if (le16_to_cpu(data->sblock.magic) != EXT2_MAGIC)
-		goto fail_noerr;
+		goto fail;
 
 
 	if (le32_to_cpu(data->sblock.revision_level) == 0) {
@@ -2378,7 +2379,6 @@ int ext4fs_mount(unsigned part_length)
 	return 1;
 fail:
 	printf("Failed to mount ext2 filesystem...\n");
-fail_noerr:
 	free(data);
 	ext4fs_root = NULL;
 

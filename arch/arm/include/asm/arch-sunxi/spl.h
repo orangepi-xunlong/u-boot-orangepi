@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2011
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Tom Cubie <tangliang@allwinnertech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef	_ASM_ARCH_SPL_H_
 #define	_ASM_ARCH_SPL_H_
@@ -76,7 +77,5 @@ struct boot_file_head {
 typedef char boot_file_head_not_multiple_of_32[1 - 2*(sizeof(struct boot_file_head) % 32)];
 
 #define is_boot0_magic(addr)	(memcmp((void *)addr, BOOT0_MAGIC, 8) == 0)
-
-uint32_t sunxi_get_boot_device(void);
 
 #endif

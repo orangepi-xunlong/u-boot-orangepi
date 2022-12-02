@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *
  * BRIEF MODULE DESCRIPTION
@@ -7,6 +6,8 @@
  * Copyright 2000,2001 MontaVista Software Inc.
  * Author: MontaVista Software, Inc.
  *	   ppopov@mvista.com or source@mvista.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
  /*

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013 Gerhard Sittig <gsi@denx.de>
  * based on the U-Boot Asix driver as well as information
  * from the Linux Moschip driver
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

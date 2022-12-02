@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2017 Toradex, Inc.
  *
  * Configuration settings for the Toradex Apalis TK1 modules.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,6 +16,7 @@
 #define CONFIG_ARCH_MISC_INIT
 
 /* High-level configuration options */
+#define CONFIG_DISPLAY_BOARDINFO_LATE	/* Calls show_board_info() */
 
 /* Board-specific serial config */
 #define CONFIG_TEGRA_ENABLE_UARTA
@@ -51,6 +53,10 @@
 #define CONFIG_NETMASK		255.255.255.0
 #undef CONFIG_SERVERIP
 #define CONFIG_SERVERIP		192.168.10.1
+
+#define CONFIG_BOOTCOMMAND \
+	"run emmcboot; setenv fdtfile ${soc}-apalis-${fdt_board}.dtb && " \
+		"run distro_bootcmd"
 
 #define DFU_ALT_EMMC_INFO	"apalis-tk1.img raw 0x0 0x500 mmcpart 1; " \
 				"boot part 0 1 mmcpart 0; " \
@@ -145,6 +151,7 @@
 
 #define CONFIG_CMD_TIME
 
+#define CONFIG_SUPPORT_RAW_INITRD
 #define CONFIG_SYS_BOOT_RAMDISK_HIGH
 
 #include "tegra-common-usb-gadget.h"

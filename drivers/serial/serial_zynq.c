@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Michal Simek <monstr@monstr.eu>
  * Copyright (C) 2011-2012 Xilinx, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <clk.h>
@@ -15,6 +16,8 @@
 #include <linux/compiler.h>
 #include <serial.h>
 #include <asm/arch/hardware.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define ZYNQ_UART_SR_TXEMPTY	(1 << 3) /* TX FIFO empty */
 #define ZYNQ_UART_SR_TXACTIVE	(1 << 11)  /* TX active */

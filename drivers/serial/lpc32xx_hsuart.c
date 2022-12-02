@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011-2015 Vladimir Zapolskiy <vz@mleia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 
 #include <asm/arch/uart.h>
 #include <linux/compiler.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct lpc32xx_hsuart_priv {
 	struct hsuart_regs *hsuart;

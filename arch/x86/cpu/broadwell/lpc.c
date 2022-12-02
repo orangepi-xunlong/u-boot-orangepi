@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2016 Google, Inc
  *
  * From coreboot broadwell support
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>

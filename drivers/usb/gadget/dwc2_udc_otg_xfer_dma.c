@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * drivers/usb/gadget/dwc2_udc_otg_xfer_dma.c
  * Designware DWC2 on-chip full/high speed USB OTG 2.0 device controllers
@@ -15,6 +14,8 @@
  * Ported to u-boot:
  * Marek Szyprowski <m.szyprowski@samsung.com>
  * Lukasz Majewski <l.majewski@samsumg.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 static u8 clear_feature_num;
@@ -97,7 +98,7 @@ static int setdma_rx(struct dwc2_ep *ep, struct dwc2_request *req)
 
 	buf = req->req.buf + req->req.actual;
 	length = min_t(u32, req->req.length - req->req.actual,
-		       ep_num ? DMA_BUFFER_SIZE : ep->ep.maxpacket);
+		       ep_num ? DOEPT_SIZ_XFER_SIZE_MAX_EP : ep->ep.maxpacket);
 
 	ep->len = length;
 	ep->dma_buf = buf;
@@ -467,7 +468,7 @@ static void process_ep_out_intr(struct dwc2_udc *dev)
 static int dwc2_udc_irq(int irq, void *_dev)
 {
 	struct dwc2_udc *dev = _dev;
-	u32 intr_status;
+	u32 intr_status, gotgint;
 	u32 usb_status, gintmsk;
 	unsigned long flags = 0;
 
@@ -521,14 +522,24 @@ static int dwc2_udc_irq(int irq, void *_dev)
 		    && dev->driver) {
 			if (dev->driver->suspend)
 				dev->driver->suspend(&dev->gadget);
+		}
+	}
 
-			/* HACK to let gadget detect disconnected state */
+	if (intr_status & INT_OTG) {
+		gotgint = readl(&reg->gotgint);
+		debug_cond(DEBUG_ISR,
+			   "\tOTG interrupt: (GOTGINT):0x%x\n", gotgint);
+
+		if (gotgint & GOTGINT_SES_END_DET) {
+			debug_cond(DEBUG_ISR, "\t\tSession End Detected\n");
+			/* Let gadget detect disconnected state */
 			if (dev->driver->disconnect) {
 				spin_unlock_irqrestore(&dev->lock, flags);
 				dev->driver->disconnect(&dev->gadget);
 				spin_lock_irqsave(&dev->lock, flags);
 			}
 		}
+		writel(gotgint, &reg->gotgint);
 	}
 
 	if (intr_status & INT_RESUME) {
@@ -544,6 +555,9 @@ static int dwc2_udc_irq(int irq, void *_dev)
 	}
 
 	if (intr_status & INT_RESET) {
+		u32 temp;
+		u32 connected = dev->connected;
+
 		usb_status = readl(&reg->gotgctl);
 		debug_cond(DEBUG_ISR,
 			"\tReset interrupt - (GOTGCTL):0x%x\n", usb_status);
@@ -554,7 +568,15 @@ static int dwc2_udc_irq(int irq, void *_dev)
 				debug_cond(DEBUG_ISR,
 					"\t\tOTG core got reset (%d)!!\n",
 					reset_available);
-				reconfig_usbd(dev);
+				/* Reset device address to zero */
+				temp = readl(&reg->dcfg);
+				temp &= ~DCFG_DEVADDR_MASK;
+				writel(temp, &reg->dcfg);
+
+				/* Soft reset the core if connected */
+				if (connected)
+					reconfig_usbd(dev);
+
 				dev->ep0state = WAIT_FOR_SETUP;
 				reset_available = 0;
 				dwc2_udc_pre_setup();
@@ -721,7 +743,7 @@ static int write_fifo_ep0(struct dwc2_ep *ep, struct dwc2_request *req)
 	return 0;
 }
 
-static int dwc2_fifo_read(struct dwc2_ep *ep, u32 *cp, int max)
+static int dwc2_fifo_read(struct dwc2_ep *ep, void *cp, int max)
 {
 	invalidate_dcache_range((unsigned long)cp, (unsigned long)cp +
 				ROUND(max, CONFIG_SYS_CACHELINE_SIZE));
@@ -1275,7 +1297,7 @@ static void dwc2_ep0_setup(struct dwc2_udc *dev)
 	nuke(ep, -EPROTO);
 
 	/* read control req from fifo (8 bytes) */
-	dwc2_fifo_read(ep, (u32 *)usb_ctrl, 8);
+	dwc2_fifo_read(ep, usb_ctrl, 8);
 
 	debug_cond(DEBUG_SETUP != 0,
 		   "%s: bRequestType = 0x%x(%s), bRequest = 0x%x"
@@ -1348,7 +1370,7 @@ static void dwc2_ep0_setup(struct dwc2_udc *dev)
 			if (usb_ctrl->bRequestType
 				!= (USB_TYPE_STANDARD | USB_RECIP_DEVICE))
 				break;
-
+			dev->connected = 1;
 			udc_set_address(dev, usb_ctrl->wValue);
 			return;
 

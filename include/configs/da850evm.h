@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
  *
  * Based on davinci_dvevm.h. Original Copyrights follow:
  *
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -20,18 +21,11 @@
 #endif
 
 /*
-* Disable DM_* for SPL build and can be re-enabled after adding
-* DM support in SPL
-*/
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_DM_SPI
-#undef CONFIG_DM_SPI_FLASH
-#undef CONFIG_DM_I2C
-#undef CONFIG_DM_I2C_COMPAT
-#endif
-/*
  * SoC Configuration
  */
+#define CONFIG_MACH_DAVINCI_DA850_EVM
+#define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
+#define CONFIG_SOC_DA850		/* TI DA850 SoC */
 #define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		24000000
@@ -41,7 +35,11 @@
 #ifdef CONFIG_DIRECT_NOR_BOOT
 #define CONFIG_ARCH_CPU_INIT
 #define CONFIG_DA8XX_GPIO
+#define CONFIG_SYS_TEXT_BASE		0x60000000
 #define CONFIG_SYS_DV_NOR_BOOT_CFG	(0x11)
+#define CONFIG_DA850_LOWLEVEL
+#else
+#define CONFIG_SYS_TEXT_BASE		0xc1080000
 #endif
 
 /*
@@ -70,6 +68,20 @@
 /*
  * PLL configuration
  */
+#define CONFIG_SYS_DV_CLKMODE          0
+#define CONFIG_SYS_DA850_PLL0_POSTDIV  1
+#define CONFIG_SYS_DA850_PLL0_PLLDIV1  0x8000
+#define CONFIG_SYS_DA850_PLL0_PLLDIV2  0x8001
+#define CONFIG_SYS_DA850_PLL0_PLLDIV3  0x8002
+#define CONFIG_SYS_DA850_PLL0_PLLDIV4  0x8003
+#define CONFIG_SYS_DA850_PLL0_PLLDIV5  0x8002
+#define CONFIG_SYS_DA850_PLL0_PLLDIV6  CONFIG_SYS_DA850_PLL0_PLLDIV1
+#define CONFIG_SYS_DA850_PLL0_PLLDIV7  0x8005
+
+#define CONFIG_SYS_DA850_PLL1_POSTDIV  1
+#define CONFIG_SYS_DA850_PLL1_PLLDIV1  0x8000
+#define CONFIG_SYS_DA850_PLL1_PLLDIV2  0x8001
+#define CONFIG_SYS_DA850_PLL1_PLLDIV3  0x8002
 
 #define CONFIG_SYS_DA850_PLL0_PLLM     24
 #define CONFIG_SYS_DA850_PLL1_PLLM     21
@@ -118,22 +130,21 @@
 /*
  * Serial Driver info
  */
-
-#if defined(CONFIG_SPL_BUILD) || defined(CONFIG_DIRECT_NOR_BOOT)
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART2_BASE /* Base address of UART2 */
-#endif
 #define CONFIG_SYS_NS16550_CLK	clk_get(DAVINCI_UART2_CLKID)
+#define CONFIG_CONS_INDEX	1		/* use UART0 for console */
 
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_SPI_BASE		DAVINCI_SPI1_BASE
+#define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
 #define CONFIG_SF_DEFAULT_SPEED		30000000
 #define CONFIG_ENV_SPI_MAX_HZ	CONFIG_SF_DEFAULT_SPEED
-#endif
 
 #ifdef CONFIG_USE_SPIFLASH
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x8000
 #define CONFIG_SYS_SPI_U_BOOT_SIZE	0x40000
 #endif
@@ -141,16 +152,16 @@
 /*
  * I2C Configuration
  */
-#ifndef CONFIG_SPL_BUILD
+#define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_DAVINCI
+#define CONFIG_SYS_DAVINCI_I2C_SPEED		25000
+#define CONFIG_SYS_DAVINCI_I2C_SLAVE   10 /* Bogus, master-only in U-Boot */
 #define CONFIG_SYS_I2C_EXPANDER_ADDR   0x20
-#endif
 
 /*
  * Flash & Environment
  */
 #ifdef CONFIG_USE_NAND
-#define CONFIG_NAND_DAVINCI
 #define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
 #define CONFIG_ENV_SIZE			(128 << 10)
 #define	CONFIG_SYS_NAND_USE_FLASH_BBT
@@ -196,6 +207,7 @@
  */
 #ifdef CONFIG_DRIVER_TI_EMAC
 #define CONFIG_MII
+#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT	10
@@ -220,11 +232,6 @@
 #define CONFIG_ENV_SIZE			(64 << 10)
 #define CONFIG_ENV_OFFSET		(512 << 10)
 #define CONFIG_ENV_SECT_SIZE		(64 << 10)
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_SPI_FLASH_MTD
-#endif
-#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS		/* required for UBI partition support */
 #endif
 
 /*
@@ -235,6 +242,9 @@
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot Args Buffer Size */
 #define CONFIG_SYS_LOAD_ADDR	(PHYS_SDRAM_1 + 0x700000)
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_MX_CYCLIC
 
 /*
@@ -245,40 +255,16 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-
-#define CONFIG_BOOTCOMMAND \
-		"run envboot; " \
-		"run mmcboot; "
-
-#define DEFAULT_LINUX_BOOT_ENV \
-	"loadaddr=0xc0700000\0" \
-	"fdtaddr=0xc0600000\0" \
-	"scriptaddr=0xc0600000\0"
-
-#include <environment/ti/mmc.h>
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	DEFAULT_LINUX_BOOT_ENV \
-	DEFAULT_MMC_TI_ARGS \
-	"bootpart=0:2\0" \
-	"bootdir=/boot\0" \
-	"bootfile=zImage\0" \
-	"fdtfile=da850-evm.dtb\0" \
-	"boot_fdt=yes\0" \
-	"boot_fit=0\0" \
-	"console=ttyS2,115200n8\0" \
-	"hwconfig=dsp:wake=yes"
+#define CONFIG_EXTRA_ENV_SETTINGS	"hwconfig=dsp:wake=yes"
 
 #ifdef CONFIG_CMD_BDI
 #define CONFIG_CLOCKS
 #endif
 
-#ifdef CONFIG_USE_NAND
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
+#ifndef CONFIG_DRIVER_TI_EMAC
 #endif
 
-#if !defined(CONFIG_USE_NAND) && \
+#if !defined(CONFIG_NAND) && \
 	!defined(CONFIG_USE_NOR) && \
 	!defined(CONFIG_USE_SPIFLASH)
 #define CONFIG_ENV_SIZE		(16 << 10)
@@ -286,9 +272,11 @@
 
 #ifndef CONFIG_DIRECT_NOR_BOOT
 /* defines for SPL */
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SYS_TEXT_BASE - \
 						CONFIG_SYS_MALLOC_LEN)
 #define CONFIG_SYS_SPL_MALLOC_SIZE	CONFIG_SYS_MALLOC_LEN
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SPL_STACK	0x8001ff00
 #define CONFIG_SPL_TEXT_BASE	0x80000000
 #define CONFIG_SPL_MAX_FOOTPRINT	32768
@@ -296,6 +284,9 @@
 #endif
 
 /* Load U-Boot Image From MMC */
+#ifdef CONFIG_SPL_MMC_LOAD
+#undef CONFIG_SPL_SPI_LOAD
+#endif
 
 /* additions for new relocation code, must added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0xc0000000

@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Toradex Colibri PXA270 configuration file
  *
  * Copyright (C) 2010 Marek Vasut <marek.vasut@gmail.com>
  * Copyright (C) 2015-2016 Marcel Ziswiler <marcel@ziswiler.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__CONFIG_H
@@ -13,16 +14,21 @@
  * High Level Board Configuration Options
  */
 #define	CONFIG_CPU_PXA27X		1	/* Marvell PXA270 CPU */
+#define	CONFIG_SYS_TEXT_BASE		0x0
 /* Avoid overwriting factory configuration block */
 #define CONFIG_BOARD_SIZE_LIMIT		0x40000
 
 /* We will never enable dcache because we have to setup MMU first */
 #define CONFIG_SYS_DCACHE_OFF
 
+#define CONFIG_DISPLAY_BOARDINFO_LATE	/* Calls show_board_info() */
+
 /*
  * Environment settings
  */
 #define	CONFIG_ENV_OVERWRITE
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define	CONFIG_SYS_MALLOC_LEN		(128 * 1024)
 #define	CONFIG_ARCH_CPU_INIT
 #define	CONFIG_BOOTCOMMAND						\
@@ -72,9 +78,15 @@
 #define	CONFIG_NET_RETRY_COUNT		10
 
 #define	CONFIG_BOOTP_BOOTFILESIZE
+#define	CONFIG_BOOTP_BOOTPATH
+#define	CONFIG_BOOTP_GATEWAY
+#define	CONFIG_BOOTP_HOSTNAME
 #endif
 
+#undef	CONFIG_SYS_LONGHELP		/* Saves 10 KB */
 #define	CONFIG_SYS_DEVICE_NULLDEV	1
+#undef	CONFIG_CMDLINE_EDITING		/* Saves 2.5 KB */
+#undef	CONFIG_AUTO_COMPLETE		/* Saves 2.5 KB */
 
 /*
  * Clock Configuration

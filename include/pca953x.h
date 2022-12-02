@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright 2008 Extreme Engineering Solutions, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __PCA953X_H_

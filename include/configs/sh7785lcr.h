@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas Technology R0P7785LC0011RL board
  *
  * Copyright (C) 2008 Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SH7785LCR_H
 #define __SH7785LCR_H
 
 #define CONFIG_CPU_SH7785	1
+#define CONFIG_SH7785LCR	1
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"bootdevice=0:1\0"						\
@@ -19,6 +21,7 @@
 
 /* MEMORY */
 #if defined(CONFIG_SH_32BIT)
+#define CONFIG_SYS_TEXT_BASE		0x8FF80000
 /* 0x40000000 - 0x47FFFFFF does not use */
 #define CONFIG_SH_SDRAM_OFFSET		(0x8000000)
 #define SH7785LCR_SDRAM_PHYS_BASE	(0x40000000 + CONFIG_SH_SDRAM_OFFSET)
@@ -28,6 +31,7 @@
 #define SH7785LCR_FLASH_BANK_SIZE	(64 * 1024 * 1024)
 #define SH7785LCR_USB_BASE		(0xa6000000)
 #else
+#define CONFIG_SYS_TEXT_BASE		0x0FF80000
 #define SH7785LCR_SDRAM_BASE		(0x08000000)
 #define SH7785LCR_SDRAM_SIZE		(128 * 1024 * 1024)
 #define SH7785LCR_FLASH_BASE_1		(0xa0000000)
@@ -35,6 +39,7 @@
 #define SH7785LCR_USB_BASE		(0xb4000000)
 #endif
 
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PBSIZE		256
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }
 
@@ -46,6 +51,7 @@
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + \
 					(SH7785LCR_SDRAM_SIZE) - \
 					 4 * 1024 * 1024)
+#undef	CONFIG_SYS_ALT_MEMTEST
 #undef	CONFIG_SYS_MEMTEST_SCRATCH
 #undef	CONFIG_SYS_LOADS_BAUD_CHANGE
 

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Odroid XU3 device tree source
  *
  * Copyright (c) 2014 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -123,8 +124,8 @@
 
 				ldo15_reg: LDO15 {
 					regulator-name = "vdd_ldo15";
-					regulator-min-microvolt = <3300000>;
-					regulator-max-microvolt = <3300000>;
+					regulator-min-microvolt = <3100000>;
+					regulator-max-microvolt = <3100000>;
 					regulator-always-on;
 				};
 
@@ -136,7 +137,7 @@
 				};
 
 				ldo17_reg: LDO17 {
-					regulator-name = "vdd_ldo17";
+					regulator-name = "tsp_avdd";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
 					regulator-always-on;

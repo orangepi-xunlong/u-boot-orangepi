@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2008, Guennadi Liakhovetski <lg@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -60,7 +61,7 @@ static inline struct mxc_spi_slave *to_mxc_spi_slave(struct spi_slave *slave)
 static void mxc_spi_cs_activate(struct mxc_spi_slave *mxcs)
 {
 	if (CONFIG_IS_ENABLED(DM_SPI)) {
-		dm_gpio_set_value(&mxcs->ss, 1);
+		dm_gpio_set_value(&mxcs->ss, mxcs->ss_pol);
 	} else {
 		if (mxcs->gpio > 0)
 			gpio_set_value(mxcs->gpio, mxcs->ss_pol);
@@ -70,7 +71,7 @@ static void mxc_spi_cs_activate(struct mxc_spi_slave *mxcs)
 static void mxc_spi_cs_deactivate(struct mxc_spi_slave *mxcs)
 {
 	if (CONFIG_IS_ENABLED(DM_SPI)) {
-		dm_gpio_set_value(&mxcs->ss, 0);
+		dm_gpio_set_value(&mxcs->ss, !(mxcs->ss_pol));
 	} else {
 		if (mxcs->gpio > 0)
 			gpio_set_value(mxcs->gpio, !(mxcs->ss_pol));
@@ -224,8 +225,8 @@ int spi_xchg_single(struct mxc_spi_slave *mxcs, unsigned int bitlen,
 	u32 ts;
 	int status;
 
-	debug("%s: bitlen %d dout 0x%lx din 0x%lx\n",
-		__func__, bitlen, (ulong)dout, (ulong)din);
+	debug("%s: bitlen %d dout 0x%x din 0x%x\n",
+		__func__, bitlen, (u32)dout, (u32)din);
 
 	mxcs->ctrl_reg = (mxcs->ctrl_reg &
 		~MXC_CSPICTRL_BITCOUNT(MXC_CSPICTRL_MAXBITS)) |
@@ -400,6 +401,10 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen, const void *dout,
 	return mxc_spi_xfer_internal(mxcs, bitlen, dout, din, flags);
 }
 
+void spi_init(void)
+{
+}
+
 /*
  * Some SPI devices require active chip-select over multiple
  * transactions, we achieve this using a GPIO. Still, the SPI
@@ -500,11 +505,11 @@ static int mxc_spi_probe(struct udevice *bus)
 		return -EINVAL;
 	}
 
-	plat->base = devfdt_get_addr(bus);
+	plat->base = dev_get_addr(bus);
 	if (plat->base == FDT_ADDR_T_NONE)
 		return -ENODEV;
 
-	ret = dm_gpio_set_value(&plat->ss, 0);
+	ret = dm_gpio_set_value(&plat->ss, !(mxcs->ss_pol));
 	if (ret) {
 		dev_err(bus, "Setting cs error\n");
 		return ret;

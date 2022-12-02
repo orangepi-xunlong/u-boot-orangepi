@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 CompuLab, Ltd.
  * Author: Igor Grinberg <grinberg@compulab.co.il>
  *
  * Configuration settings for the CompuLab CM-T3517 board
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -14,11 +15,15 @@
  */
 #define CONFIG_CM_T3517	/* working with CM-T3517 */
 
+#define CONFIG_SYS_TEXT_BASE	0x80008000
+
 /*
  * This is needed for the DMA stuff.
  * Although the default iss 64, we still define it
  * to be on the safe side once the default is changed.
  */
+
+#define CONFIG_EMIF4	/* The chip has EMIF4 controller */
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
@@ -65,6 +70,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 #define CONFIG_SERIAL3			3	/* UART3 */
 
@@ -74,17 +80,21 @@
 					115200}
 
 /* USB */
+#define CONFIG_USB_MUSB_AM35X
 
 #ifndef CONFIG_USB_MUSB_AM35X
+#define CONFIG_USB_OMAP3
 #define CONFIG_OMAP_EHCI_PHY1_RESET_GPIO 146
 #define CONFIG_OMAP_EHCI_PHY2_RESET_GPIO 147
+#else /* !CONFIG_USB_MUSB_AM35X */
+#define CONFIG_USB_MUSB_PIO_ONLY
 #endif /* CONFIG_USB_MUSB_AM35X */
 
 /* commands to include */
-#define CONFIG_MTD_DEVICE	/* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS
 
 #define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	400000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1
 #define CONFIG_SYS_I2C_EEPROM_BUS	0
@@ -157,8 +167,11 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
 #define CONFIG_TIMESTAMP
 #define CONFIG_SYS_AUTOLOAD		"no"
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 #define CONFIG_SYS_MAXARGS		32	/* max number of command args */
 
@@ -189,13 +202,17 @@
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
 
-#define CONFIG_ENV_OFFSET		0x260000
-#define CONFIG_ENV_ADDR			0x260000
+#define SMNAND_ENV_OFFSET		0x260000 /* environment starts here */
+#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
 
 #if defined(CONFIG_CMD_NET)
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_MII
+#define CONFIG_SMC911X
+#define CONFIG_SMC911X_32_BIT
+#define CONFIG_SMC911X_BASE	(0x2C000000 + (16 << 20))
 #define CONFIG_ARP_TIMEOUT		200UL
 #define CONFIG_NET_RETRY_COUNT		5
 #endif /* CONFIG_CMD_NET */

@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015-2016 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <linux/io.h>
 #include <linux/err.h>
-#include <linux/kernel.h>
 #include <linux/sizes.h>
 #include <dm/pinctrl.h>
 
@@ -81,6 +81,9 @@ static int uniphier_pinconf_input_enable_legacy(struct udevice *dev,
 						unsigned int pin, int enable)
 {
 	struct uniphier_pinctrl_priv *priv = dev_get_priv(dev);
+	int pins_count = priv->socdata->pins_count;
+	const struct uniphier_pinctrl_pin *pins = priv->socdata->pins;
+	int i;
 
 	/*
 	 * Multiple pins share one input enable, per-pin disabling is
@@ -89,8 +92,17 @@ static int uniphier_pinconf_input_enable_legacy(struct udevice *dev,
 	if (!enable)
 		return -EINVAL;
 
-	/* Set all bits instead of having a bunch of pin data */
-	writel(U32_MAX, priv->base + UNIPHIER_PINCTRL_IECTRL);
+	for (i = 0; i < pins_count; i++) {
+		if (pins[i].number == pin) {
+			unsigned int iectrl;
+			u32 tmp;
+
+			iectrl = uniphier_pin_get_iectrl(pins[i].data);
+			tmp = readl(priv->base + UNIPHIER_PINCTRL_IECTRL);
+			tmp |= 1 << iectrl;
+			writel(tmp, priv->base + UNIPHIER_PINCTRL_IECTRL);
+		}
+	}
 
 	return 0;
 }

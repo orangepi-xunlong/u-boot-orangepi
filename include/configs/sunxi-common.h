@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012-2012 Henrik Nordstrom <henrik@henriknordstrom.net>
  *
@@ -7,6 +6,8 @@
  * Tom Cubie <tangliang@allwinnertech.com>
  *
  * Configuration settings for the Allwinner sunxi series of boards.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SUNXI_COMMON_CONFIG_H
@@ -14,15 +15,6 @@
 
 #include <asm/arch/cpu.h>
 #include <linux/stringify.h>
-
-#define MIN(x,y) (x < y ? x : y)
-
-#define SUNXI_STACKSIZE_IRQ    (4*1024)        /* IRQ stack */
-#define SUNXI_STACKSIZE_FIQ    (4*1024)        /* FIQ stack */
-
-#ifdef CONFIG_SUNXI_DEBUG
-#define DEBUG
-#endif
 
 #ifdef CONFIG_OLD_SUNXI_KERNEL_COMPAT
 /*
@@ -42,7 +34,6 @@
 
 #ifdef CONFIG_ARM64
 #define CONFIG_BUILD_TARGET "u-boot.itb"
-#define CONFIG_SYS_BOOTM_LEN		(32 << 20)
 #endif
 
 /* Serial & console */
@@ -55,7 +46,7 @@
 # define CONFIG_SYS_NS16550_COM2		SUNXI_UART1_BASE
 # define CONFIG_SYS_NS16550_COM3		SUNXI_UART2_BASE
 # define CONFIG_SYS_NS16550_COM4		SUNXI_UART3_BASE
-/*# define CONFIG_SYS_NS16550_COM5		SUNXI_R_UART_BASE*/
+# define CONFIG_SYS_NS16550_COM5		SUNXI_R_UART_BASE
 #endif
 
 /* CPU */
@@ -72,6 +63,7 @@
 #define SDRAM_OFFSET(x) 0x2##x
 #define CONFIG_SYS_SDRAM_BASE		0x20000000
 #define CONFIG_SYS_LOAD_ADDR		0x22000000 /* default load address */
+#define CONFIG_SYS_TEXT_BASE		0x2a000000
 /* Note SPL_STACK_R_ADDR is set through Kconfig, we include it here 
  * since it needs to fit in with the other values. By also #defining it
  * we get warnings if the Kconfig value mismatches. */
@@ -82,32 +74,34 @@
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define CONFIG_SYS_LOAD_ADDR		0x42000000 /* default load address */
 /* V3s do not have enough memory to place code at 0x4a000000 */
+#ifndef CONFIG_MACH_SUN8I_V3S
+#define CONFIG_SYS_TEXT_BASE		0x4a000000
+#else
+#define CONFIG_SYS_TEXT_BASE		0x42e00000
+#endif
 /* Note SPL_STACK_R_ADDR is set through Kconfig, we include it here 
  * since it needs to fit in with the other values. By also #defining it
  * we get warnings if the Kconfig value mismatches. */
 #define CONFIG_SPL_STACK_R_ADDR		0x4fe00000
 #define CONFIG_SPL_BSS_START_ADDR	0x4ff80000
-#define CONFIG_DRAM_PARA_ADDR		SDRAM_OFFSET(0800000)
-#endif
-
-/* Provide a default addr */
-#ifndef SUNXI_CFG_SBROMSW_BASE
-#define SUNXI_CFG_SBROMSW_BASE 0x20000
-#endif
-#ifndef SUNXI_CFG_TOC1_STORE_IN_DRAM_BASE
-#define SUNXI_CFG_TOC1_STORE_IN_DRAM_BASE SDRAM_OFFSET(2e00000)
 #endif
 
 #define CONFIG_SPL_BSS_MAX_SIZE		0x00080000 /* 512 KiB */
 
-
-#define CONFIG_SYS_INIT_RAM_ADDR	SUNXI_SYS_SRAM_BASE
-#define CONFIG_SYS_INIT_RAM_SIZE	SUNXI_SYS_SRAM_SIZE
-
-/*#define CONFIG_SUNXI_LOGBUFFER*/
-#define SUNXI_DISPLAY_FRAME_BUFFER_ADDR    SDRAM_OFFSET(6400000)
-#define SUNXI_DISPLAY_FRAME_BUFFER_SIZE    0x01000000
-
+#ifdef CONFIG_SUNXI_HIGH_SRAM
+/*
+ * The A80's A1 sram starts at 0x00010000 rather then at 0x00000000 and is
+ * slightly bigger. Note that it is possible to map the first 32 KiB of the
+ * A1 at 0x00000000 like with older SoCs by writing 0x16aa0001 to the
+ * undocumented 0x008000e0 SYS_CTRL register. Where the 16aa is a key and
+ * the 1 actually activates the mapping of the first 32 KiB to 0x00000000.
+ */
+#define CONFIG_SYS_INIT_RAM_ADDR	0x10000
+#define CONFIG_SYS_INIT_RAM_SIZE	0x08000	/* FIXME: 40 KiB ? */
+#else
+#define CONFIG_SYS_INIT_RAM_ADDR	0x0
+#define CONFIG_SYS_INIT_RAM_SIZE	0x8000	/* 32 KiB */
+#endif
 
 #define CONFIG_SYS_INIT_SP_OFFSET \
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
@@ -116,9 +110,11 @@
 
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_0			CONFIG_SYS_SDRAM_BASE
-#define PHYS_SDRAM_0_SIZE		0x20000000 /* 512 MiB */
+#define PHYS_SDRAM_0_SIZE		0x80000000 /* 2 GiB */
 
 #ifdef CONFIG_AHCI
+#define CONFIG_LIBATA
+#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
 #define CONFIG_SUNXI_AHCI
 #define CONFIG_SYS_64BIT_LBA
@@ -128,20 +124,15 @@
 					 CONFIG_SYS_SCSI_MAX_LUN)
 #endif
 
-#if 0
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_INITRD_TAG
 #define CONFIG_SERIAL_TAG
-#endif
 
 #ifdef CONFIG_NAND_SUNXI
 #define CONFIG_SYS_NAND_MAX_ECCPOS 1664
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #define CONFIG_SYS_MAX_NAND_DEVICE 8
-
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #endif
 
 #ifdef CONFIG_SPL_SPI_SUNXI
@@ -153,13 +144,19 @@
 #define CONFIG_MMC_SUNXI_SLOT		0
 #endif
 
+#if defined(CONFIG_ENV_IS_IN_MMC)
+#define CONFIG_SYS_MMC_ENV_DEV		0	/* first detected MMC controller */
+#define CONFIG_SYS_MMC_MAX_DEVICE	4
+#elif defined(CONFIG_ENV_IS_NOWHERE)
+#define CONFIG_ENV_SIZE			(128 << 10)
+#endif
 
-#if  defined (CONFIG_MACH_SUN8IW18) || defined (CONFIG_MACH_SUN8IW19)
-/* 20MB of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (20 << 20))
-#else
+#ifndef CONFIG_MACH_SUN8I_V3S
 /* 64MB of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (64 << 20))
+#else
+/* 2MB of malloc() pool */
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (2 << 20))
 #endif
 
 /*
@@ -174,6 +171,8 @@
 /* FLASH and environment organization */
 
 #define CONFIG_SYS_MONITOR_LEN		(768 << 10)	/* 768 KiB */
+
+#define CONFIG_SPL_FRAMEWORK
 
 #ifndef CONFIG_ARM64		/* AArch64 FEL support is not ready yet */
 #define CONFIG_SPL_BOARD_LOAD_IMAGE
@@ -200,33 +199,77 @@
 
 
 /* I2C */
+#if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER || \
+    defined CONFIG_SY8106A_POWER
+#endif
 
 #if defined CONFIG_I2C0_ENABLE || defined CONFIG_I2C1_ENABLE || \
     defined CONFIG_I2C2_ENABLE || defined CONFIG_I2C3_ENABLE || \
-    defined CONFIG_I2C4_ENABLE || defined CONFIG_I2C5_ENABLE || \
-    defined CONFIG_R_I2C0_ENABLE || defined CONFIG_R_I2C1_ENABLE
-/*#define CONFIG_SYS_I2C_MVTWSI*/
-/* #define CONFIG_SYS_I2C_SUNXI*/
+    defined CONFIG_I2C4_ENABLE || defined CONFIG_R_I2C_ENABLE
+#define CONFIG_SYS_I2C_MVTWSI
 #ifndef CONFIG_DM_I2C
 #define CONFIG_SYS_I2C
-/*#define CONFIG_SYS_I2C_SPEED	400000*/
-/*#define CONFIG_SYS_I2C_SLAVE		0x7f*/
+#define CONFIG_SYS_I2C_SPEED		400000
+#define CONFIG_SYS_I2C_SLAVE		0x7f
 #endif
 #endif
 
+#if defined CONFIG_VIDEO_LCD_PANEL_I2C && !(defined CONFIG_SPL_BUILD)
+#define CONFIG_SYS_I2C_SOFT
+#define CONFIG_SYS_I2C_SOFT_SPEED	50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE	0x00
+/* We use pin names in Kconfig and sunxi_name_to_gpio() */
+#define CONFIG_SOFT_I2C_GPIO_SDA	soft_i2c_gpio_sda
+#define CONFIG_SOFT_I2C_GPIO_SCL	soft_i2c_gpio_scl
+#ifndef __ASSEMBLY__
+extern int soft_i2c_gpio_sda;
+extern int soft_i2c_gpio_scl;
+#endif
+#define CONFIG_VIDEO_LCD_I2C_BUS	0 /* The lcd panel soft i2c is bus 0 */
+#define CONFIG_SYS_SPD_BUS_NUM		1 /* And the axp209 i2c bus is bus 1 */
+#else
+#define CONFIG_SYS_SPD_BUS_NUM		0 /* The axp209 i2c bus is bus 0 */
+#define CONFIG_VIDEO_LCD_I2C_BUS	-1 /* NA, but necessary to compile */
+#endif
 
 /* PMU */
+#if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER || \
+    defined CONFIG_AXP221_POWER || defined CONFIG_AXP818_POWER || \
+    defined CONFIG_SY8106A_POWER
+#endif
 
+#ifdef CONFIG_REQUIRE_SERIAL_CONSOLE
+#if CONFIG_CONS_INDEX == 1
+#ifdef CONFIG_MACH_SUN9I
+#define OF_STDOUT_PATH		"/soc/serial@07000000:115200"
+#else
+#define OF_STDOUT_PATH		"/soc@01c00000/serial@01c28000:115200"
+#endif
+#elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUN5I)
+#define OF_STDOUT_PATH		"/soc@01c00000/serial@01c28400:115200"
+#elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I)
+#define OF_STDOUT_PATH		"/soc@01c00000/serial@01c28800:115200"
+#elif CONFIG_CONS_INDEX == 5 && defined(CONFIG_MACH_SUN8I)
+#define OF_STDOUT_PATH		"/soc@01c00000/serial@01f02800:115200"
+#else
+#error Unsupported console port nr. Please fix stdout-path in sunxi-common.h.
+#endif
+#endif /* ifdef CONFIG_REQUIRE_SERIAL_CONSOLE */
 
 /* GPIO */
 #define CONFIG_SUNXI_GPIO
 
-#ifdef CONFIG_VIDEO_SUNXI
+#ifdef CONFIG_VIDEO
 /*
  * The amount of RAM to keep free at the top of RAM when relocating u-boot,
  * to use as framebuffer. This must be a multiple of 4096.
  */
 #define CONFIG_SUNXI_MAX_FB_SIZE (16 << 20)
+
+/* Do we want to initialize a simple FB? */
+#define CONFIG_VIDEO_DT_SIMPLEFB
+
+#define CONFIG_VIDEO_SUNXI
 
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_STD_TIMINGS
@@ -236,28 +279,45 @@
 /* allow both serial and cfb console. */
 /* stop x86 thinking in cfbconsole from trying to init a pc keyboard */
 
-#endif /* CONFIG_VIDEO_SUNXI */
+#endif /* CONFIG_VIDEO */
 
 /* Ethernet support */
-#ifdef CONFIG_SUN4I_EMAC
+#ifdef CONFIG_SUNXI_EMAC
+#define CONFIG_PHY_ADDR		1
 #define CONFIG_MII			/* MII PHY management		*/
 #endif
 
 #ifdef CONFIG_SUN7I_GMAC
+#define CONFIG_PHY_ADDR		1
 #define CONFIG_MII			/* MII PHY management		*/
 #define CONFIG_PHY_REALTEK
 #endif
 
 #ifdef CONFIG_USB_EHCI_HCD
-/* #define CONFIG_USB_OHCI_NEW */
-/* #define CONFIG_USB_OHCI_SUNXI */
-/* #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS 1 */
+#define CONFIG_USB_OHCI_NEW
+#define CONFIG_USB_OHCI_SUNXI
+#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS 1
 #endif
 
+#ifdef CONFIG_USB_MUSB_SUNXI
+#define CONFIG_USB_MUSB_PIO_ONLY
+#endif
+
+#ifdef CONFIG_USB_MUSB_GADGET
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
+#endif
+
+#ifdef CONFIG_USB_FUNCTION_MASS_STORAGE
+#endif
+
+#ifdef CONFIG_USB_KEYBOARD
+#define CONFIG_PREBOOT
+#endif
 
 #define CONFIG_MISC_INIT_R
 
 #ifndef CONFIG_SPL_BUILD
+#include <config_distro_defaults.h>
 
 #ifdef CONFIG_ARM64
 /*
@@ -284,7 +344,7 @@
  */
 #ifndef CONFIG_MACH_SUN8I_V3S
 #define BOOTM_SIZE     __stringify(0xa000000)
-#define KERNEL_ADDR_R  __stringify(SDRAM_OFFSET(1000000))
+#define KERNEL_ADDR_R  __stringify(SDRAM_OFFSET(2000000))
 #define FDT_ADDR_R     __stringify(SDRAM_OFFSET(3000000))
 #define SCRIPT_ADDR_R  __stringify(SDRAM_OFFSET(3100000))
 #define PXEFILE_ADDR_R __stringify(SDRAM_OFFSET(3200000))
@@ -319,28 +379,15 @@
 	"ramdisk ram " RAMDISK_ADDR_R " 0x4000000\0"
 
 #ifdef CONFIG_MMC
-#if CONFIG_MMC_SUNXI_SLOT_EXTRA != -1
-#define BOOTENV_DEV_MMC_AUTO(devtypeu, devtypel, instance)		\
-	BOOTENV_DEV_MMC(MMC, mmc, 0)					\
-	BOOTENV_DEV_MMC(MMC, mmc, 1)					\
-	"bootcmd_mmc_auto="						\
-		"if test ${mmc_bootdev} -eq 1; then "			\
-			"run bootcmd_mmc1; "				\
-			"run bootcmd_mmc0; "				\
-		"elif test ${mmc_bootdev} -eq 0; then "			\
-			"run bootcmd_mmc0; "				\
-			"run bootcmd_mmc1; "				\
-		"fi\0"
-
-#define BOOTENV_DEV_NAME_MMC_AUTO(devtypeu, devtypel, instance) \
-	"mmc_auto "
-
-#define BOOT_TARGET_DEVICES_MMC(func) func(MMC_AUTO, mmc_auto, na)
-#else
 #define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0)
+#if CONFIG_MMC_SUNXI_SLOT_EXTRA != -1
+#define BOOT_TARGET_DEVICES_MMC_EXTRA(func) func(MMC, mmc, 1)
+#else
+#define BOOT_TARGET_DEVICES_MMC_EXTRA(func)
 #endif
 #else
 #define BOOT_TARGET_DEVICES_MMC(func)
+#define BOOT_TARGET_DEVICES_MMC_EXTRA(func)
 #endif
 
 #ifdef CONFIG_AHCI
@@ -368,6 +415,7 @@
 #define BOOT_TARGET_DEVICES(func) \
 	func(FEL, fel, na) \
 	BOOT_TARGET_DEVICES_MMC(func) \
+	BOOT_TARGET_DEVICES_MMC_EXTRA(func) \
 	BOOT_TARGET_DEVICES_SCSI(func) \
 	BOOT_TARGET_DEVICES_USB(func) \
 	func(PXE, pxe, na) \
@@ -429,20 +477,6 @@
 #define SUNXI_MTDPARTS_DEFAULT
 #endif
 
-#define PARTS_DEFAULT \
-	"name=loader1,start=8k,size=32k,uuid=${uuid_gpt_loader1};" \
-	"name=loader2,size=984k,uuid=${uuid_gpt_loader2};" \
-	"name=esp,size=128M,bootable,uuid=${uuid_gpt_esp};" \
-	"name=system,size=-,uuid=${uuid_gpt_system};"
-
-#define UUID_GPT_ESP "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
-
-#ifdef CONFIG_ARM64
-#define UUID_GPT_SYSTEM "b921b045-1df0-41c3-af44-4c6f280d3fae"
-#else
-#define UUID_GPT_SYSTEM "69dad710-2ce4-4e3c-b16c-21a1d49abed3"
-#endif
-
 #define CONSOLE_ENV_SETTINGS \
 	CONSOLE_STDIN_SETTINGS \
 	CONSOLE_STDOUT_SETTINGS
@@ -450,7 +484,7 @@
 #ifdef CONFIG_ARM64
 #define FDTFILE "allwinner/" CONFIG_DEFAULT_DEVICE_TREE ".dtb"
 #else
-#define FDTFILE "sunxi/" CONFIG_DEFAULT_DEVICE_TREE ".dtb"
+#define FDTFILE CONFIG_DEFAULT_DEVICE_TREE ".dtb"
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -461,23 +495,11 @@
 	"console=ttyS0,115200\0" \
 	SUNXI_MTDIDS_DEFAULT \
 	SUNXI_MTDPARTS_DEFAULT \
-	"uuid_gpt_esp=" UUID_GPT_ESP "\0" \
-	"uuid_gpt_system=" UUID_GPT_SYSTEM "\0" \
-	"partitions=" PARTS_DEFAULT "\0" \
 	BOOTCMD_SUNXI_COMPAT \
 	BOOTENV
 
 #else /* ifndef CONFIG_SPL_BUILD */
 #define CONFIG_EXTRA_ENV_SETTINGS
 #endif
-
-#define SUNXI_SPRITE_ENV_SETTINGS	\
-	"bootdelay=0\0" \
-	"bootcmd=run sunxi_sprite_test\0" \
-	"console=ttyS0,115200\0" \
-	"sunxi_sprite_test=sprite_test read\0"
-
-#define CONFIG_BOARD_LATE_INIT
-#define CONFIG_BOARD_EARLY_INIT_R
 
 #endif /* _SUNXI_COMMON_CONFIG_H */

@@ -1,70 +1,33 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier:     GPL-2.0
 /*
- * (C) Copyright 2016 Rockchip Electronics Co., Ltd
+ * Copyright (C) 2020 Rockchip Electronics Co., Ltd
  */
 
-#include <common.h>
-#include <asm/armv8/mmu.h>
+#include <asm/io.h>
+#include <usb.h>
 #include <dwc3-uboot.h>
-#include <power/regulator.h>
-#include <usb.h>
+#include <linux/usb/phy-rockchip-inno-usb3.h>
 
-DECLARE_GLOBAL_DATA_PTR;
-
-int board_init(void)
-{
-	int ret;
-
-	ret = regulators_enable_boot_on(false);
-	if (ret)
-		debug("%s: Cannot enable boot on regulator\n", __func__);
-
-	return ret;
-}
-
-#if defined(CONFIG_USB_GADGET) && defined(CONFIG_USB_GADGET_DWC2_OTG)
-#include <usb.h>
-#include <usb/dwc2_udc.h>
-
-static struct dwc2_plat_otg_data rk3328_otg_data = {
-	.rx_fifo_sz	= 512,
-	.np_tx_fifo_sz	= 16,
-	.tx_fifo_sz	= 128,
+#if CONFIG_IS_ENABLED(USB_DWC3_GADGET)
+static struct dwc3_device dwc3_device_data = {
+	.maximum_speed = USB_SPEED_SUPER,
+	.base = 0xff600000,
+	.dr_mode = USB_DR_MODE_PERIPHERAL,
+	.index = 0,
+	.dis_u2_susphy_quirk = 1,
+	.dis_u1u2_quirk = 1,
+	.usb2_phyif_utmi_width = 16,
 };
+
+int usb_gadget_handle_interrupts(void)
+{
+	dwc3_uboot_handle_interrupt(0);
+	return 0;
+}
 
 int board_usb_init(int index, enum usb_init_type init)
 {
-	int node;
-	const char *mode;
-	bool matched = false;
-	const void *blob = gd->fdt_blob;
-
-	/* find the usb_otg node */
-	node = fdt_node_offset_by_compatible(blob, -1,
-					"rockchip,rk3328-usb");
-
-	while (node > 0) {
-		mode = fdt_getprop(blob, node, "dr_mode", NULL);
-		if (mode && strcmp(mode, "otg") == 0) {
-			matched = true;
-			break;
-		}
-
-		node = fdt_node_offset_by_compatible(blob, node,
-					"rockchip,rk3328-usb");
-	}
-	if (!matched) {
-		debug("Not found usb_otg device\n");
-		return -ENODEV;
-	}
-
-	rk3328_otg_data.regs_otg = fdtdec_get_addr(blob, node, "reg");
-
-	return dwc2_udc_probe(&rk3328_otg_data);
-}
-
-int board_usb_cleanup(int index, enum usb_init_type init)
-{
-	return 0;
+	rockchip_u3phy_uboot_init();
+	return dwc3_uboot_init(&dwc3_device_data);
 }
 #endif

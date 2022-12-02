@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * U-Boot addition to keep baudrate set by firmware
  * and also initialize before relocation.
  *
  * (C) Copyright 2016 Fabian Vogt <fvogt@suse.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 &soc {
@@ -17,9 +18,5 @@
 
 &uart1 {
 	skip-init;
-	u-boot,dm-pre-reloc;
-};
-
-&gpio {
 	u-boot,dm-pre-reloc;
 };

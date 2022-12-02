@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2012 The Chromium OS Authors.
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import command
@@ -43,5 +44,4 @@ def GetMaintainer(fname, verbose=False):
         return []
 
     stdout = command.Output(get_maintainer, '--norolestats', fname)
-    lines = stdout.splitlines()
-    return [ x.replace('"', '') for x in lines ]
+    return stdout.splitlines()

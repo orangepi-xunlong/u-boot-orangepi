@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2012 Bluegiga Technologies Oy
  *
@@ -9,11 +8,14 @@
  * Based on m28evk.h:
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_APX4DEVKIT_H__
 #define __CONFIGS_APX4DEVKIT_H__
 
 /* System configurations */
+#define CONFIG_MX28				/* i.MX28 SoC */
 #define CONFIG_MACH_TYPE	MACH_TYPE_APX4DEVKIT
 
 /* Memory configuration */
@@ -44,10 +46,6 @@
 #endif
 
 /* UBI and NAND partitioning */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-#endif
 
 /* FEC Ethernet on SoC */
 #ifdef CONFIG_CMD_NET
@@ -73,7 +71,7 @@
 
 /* Extra Environments */
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"verify=no\0" \
 	"bootcmd=run bootcmd_nand\0" \
 	"kernelargs=console=tty0 console=ttyAMA0,115200 consoleblank=0\0" \

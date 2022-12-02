@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
@@ -7,6 +6,8 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Alex Zuepke <azu@sysgo.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _U_BOOT_ARM_H_
@@ -37,7 +38,7 @@ int	arch_early_init_r(void);
 
 /* board/.../... */
 int	board_init(void);
-void	board_quiesce_devices(void);
+void	board_quiesce_devices(void *images);
 
 /* cpu/.../interrupt.c */
 int	arch_interrupt_init	(void);

@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+ OR MIT
-//
-// Device Tree Source for UniPhier LD4 Reference Board
-//
-// Copyright (C) 2015-2016 Socionext Inc.
-//   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+/*
+ * Device Tree Source for UniPhier LD4 Reference Board
+ *
+ * Copyright (C) 2015-2016 Socionext Inc.
+ *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+ */
 
 /dts-v1/;
 #include "uniphier-ld4.dtsi"
@@ -36,7 +38,7 @@
 };
 
 &ethsc {
-	interrupts = <1 8>;
+	interrupts = <0 49 4>;
 };
 
 &serial0 {
@@ -49,14 +51,6 @@
 
 &serial3 {
 	status = "okay";
-};
-
-&gpio {
-	xirq1 {
-		gpio-hog;
-		gpios = <UNIPHIER_GPIO_IRQ(1) 0>;
-		input;
-	};
 };
 
 &i2c0 {
@@ -75,6 +69,11 @@
 	status = "okay";
 };
 
-&nand {
-	status = "okay";
+/* for U-Boot only */
+&serial0 {
+	u-boot,dm-pre-reloc;
+};
+
+&pinctrl_uart0 {
+	u-boot,dm-pre-reloc;
 };

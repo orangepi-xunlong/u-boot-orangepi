@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Qualcomm APQ8016 based Dragonboard 410C board device tree source
  *
  * (C) Copyright 2015 Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -22,15 +23,10 @@
 		reg = <0 0x80000000 0 0x3da00000>;
 	};
 
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-	};
-
 	chosen {
 		stdout-path = "/soc/serial@78b0000";
 	};
+
 
 	soc {
 		#address-cells = <0x1>;
@@ -50,6 +46,11 @@
 			reg = <0x78b0000 0x200>;
 			u-boot,dm-pre-reloc;
 			clock = <&clkc 4>;
+		};
+
+		restart@4ab000 {
+			compatible = "qcom,pshold";
+			reg = <0x4ab000 0x4>;
 		};
 
 		soc_gpios: pinctrl@1000000 {
@@ -83,16 +84,6 @@
 			bus-width = <0x4>;
 			clock = <&clkc 1>;
 			clock-frequency = <200000000>;
-		};
-
-		wcnss {
-			bt {
-				compatible="qcom,wcnss-bt";
-			};
-
-			wifi {
-				compatible="qcom,wcnss-wlan";
-			};
 		};
 
 		spmi@200f000 {

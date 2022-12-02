@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  *
  * Configuation settings for the AT91SAM9260EK & AT91SAM9G20EK boards.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -22,6 +23,7 @@
  * Since the linker has to swallow that define, we must use a pure
  * hex number here!
  */
+#define CONFIG_SYS_TEXT_BASE		0x21f00000
 
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
@@ -48,6 +50,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE	1
+#define CONFIG_BOOTP_BOOTPATH		1
+#define CONFIG_BOOTP_GATEWAY		1
+#define CONFIG_BOOTP_HOSTNAME		1
 
 /*
  * SDRAM: 1 bank, min 32, max 128 MB
@@ -90,7 +95,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -153,6 +157,10 @@
 #define CONFIG_BOOTCOMMAND						\
 	"fatload mmc 0:1 0x22000000 uImage; bootm"
 #endif
+
+#define CONFIG_SYS_LONGHELP		1
+#define CONFIG_CMDLINE_EDITING	1
+#define CONFIG_AUTO_COMPLETE
 
 /*
  * Size of malloc() pool

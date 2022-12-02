@@ -18,6 +18,8 @@ source "drivers/cpu/Kconfig"
 
 source "drivers/crypto/Kconfig"
 
+source "drivers/rng/Kconfig"
+
 source "drivers/ddr/Kconfig"
 
 source "drivers/demo/Kconfig"
@@ -74,6 +76,10 @@ source "drivers/remoteproc/Kconfig"
 
 source "drivers/reset/Kconfig"
 
+source "drivers/rknand/Kconfig"
+
+source "drivers/rkflash/Kconfig"
+
 source "drivers/rtc/Kconfig"
 
 source "drivers/scsi/Kconfig"
@@ -85,8 +91,6 @@ source "drivers/sound/Kconfig"
 source "drivers/spi/Kconfig"
 
 source "drivers/spmi/Kconfig"
-
-source "drivers/sunxi_power/Kconfig"
 
 source "drivers/sysreset/Kconfig"
 
@@ -102,19 +106,7 @@ source "drivers/video/Kconfig"
 
 source "drivers/watchdog/Kconfig"
 
-source "drivers/sunxi_flash/Kconfig"
-
-source "drivers/sunxi_usb/Kconfig"
-
-source "drivers/smc/Kconfig"
-
-source "drivers/sunxi_crypto/Kconfig"
-
-source "drivers/phy_key/Kconfig"
-
-source "drivers/sunxi_ir/Kconfig"
-
-source "drivers/arisc/Kconfig"
+source "drivers/irq/Kconfig"
 
 config PHYS_TO_BUS
 	bool "Custom physical to bus address mapping"

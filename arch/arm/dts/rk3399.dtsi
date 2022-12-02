@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2016-2017 Fuzhou Rockchip Electronics Co., Ltd.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <dt-bindings/clock/rk3399-cru.h>
@@ -34,8 +35,6 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
-		mmc0 = &sdhci;
-		mmc1 = &sdmmc;
 	};
 
 	cpus {
@@ -119,6 +118,32 @@
 		};
 	};
 
+	display_subsystem: display-subsystem {
+		compatible = "rockchip,display-subsystem";
+		ports = <&vopb_out>, <&vopl_out>;
+		status = "okay";
+
+		route {
+			route_hdmi: route-hdmi {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopb_out_hdmi>;
+			};
+
+			route_edp: route-edp {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopb_out_edp>;
+			};
+		};
+	};
+
 	pmu_a53 {
 		compatible = "arm,cortex-a53-pmu";
 		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_LOW &ppi_cluster0>;
@@ -129,7 +154,7 @@
 		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_LOW &ppi_cluster1>;
 	};
 
-	psci {
+	psci: psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
 	};
@@ -175,6 +200,14 @@
 			clocks = <&cru ACLK_DMAC1_PERILP>;
 			clock-names = "apb_pclk";
 		};
+	};
+
+	crypto: crypto@ff8b0000 {
+		compatible = "rockchip,rk3399-crypto";
+		reg = <0x0 0xff8b0000 0x0 0x10000>;
+		clock-names = "sclk_crypto0", "sclk_crypto1";
+		clocks = <&cru SCLK_CRYPTO0>, <&cru SCLK_CRYPTO1>;
+		status = "disabled";
 	};
 
 	pcie0: pcie@f8000000 {
@@ -275,14 +308,13 @@
 	};
 
 	sdhci: sdhci@fe330000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-sdhci-5.1", "arasan,sdhci-5.1";
 		reg = <0x0 0xfe330000 0x0 0x10000>;
 		interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH 0>;
 		arasan,soc-ctl-syscon = <&grf>;
 		assigned-clocks = <&cru SCLK_EMMC>;
 		assigned-clock-rates = <200000000>;
-		max-frequency = <200000000>;
+		max-frequency = <150000000>;
 		clocks = <&cru SCLK_EMMC>, <&cru ACLK_EMMC>;
 		clock-names = "clk_xin", "clk_ahb";
 		clock-output-names = "emmc_cardclock";
@@ -349,45 +381,71 @@
 		status = "disabled";
 	};
 
-	dwc3_typec0: usb@fe800000 {
-		compatible = "rockchip,rk3399-xhci";
-		reg = <0x0 0xfe800000 0x0 0x100000>;
-		status = "disabled";
-		snps,dis-enblslpm-quirk;
-		snps,phyif-utmi-bits = <16>;
-		snps,dis-u2-freeclk-exists-quirk;
-		snps,dis-u2-susphy-quirk;
-
+	usbdrd3_0: usb0 {
+		compatible = "rockchip,rk3399-dwc3";
+		clocks = <&cru SCLK_USB3OTG0_REF>, <&cru SCLK_USB3OTG0_SUSPEND>,
+			 <&cru ACLK_USB3OTG0>, <&cru ACLK_USB3_GRF>;
+		clock-names = "ref_clk", "suspend_clk",
+			      "bus_clk", "grf_clk";
+		power-domains = <&power RK3399_PD_USB3>;
+		resets = <&cru SRST_A_USB3_OTG0>;
+		reset-names = "usb3-otg";
 		#address-cells = <2>;
 		#size-cells = <2>;
-		hub {
-			compatible = "usb-hub";
-			usb,device-class = <USB_CLASS_HUB>;
-		};
-		typec_phy0 {
-			compatible = "rockchip,rk3399-usb3-phy";
-			reg = <0x0 0xff7c0000 0x0 0x40000>;
+		ranges;
+		status = "disabled";
+
+		usbdrd_dwc3_0: dwc3@fe800000 {
+			compatible = "snps,dwc3";
+			reg = <0x0 0xfe800000 0x0 0x100000>;
+			interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH 0>;
+			dr_mode = "otg";
+			phys = <&u2phy0_otg>, <&tcphy0_usb3>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi_wide";
+			snps,dis_enblslpm_quirk;
+			snps,dis-u2-freeclk-exists-quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,tx-ipgap-linecheck-dis-quirk;
+			snps,xhci-slow-suspend-quirk;
+			snps,xhci-trb-ent-quirk;
+			snps,usb3-warm-reset-on-resume-quirk;
+			status = "disabled";
 		};
 	};
 
-	dwc3_typec1: usb@fe900000 {
-		compatible = "rockchip,rk3399-xhci";
-		reg = <0x0 0xfe900000 0x0 0x100000>;
-		status = "disabled";
-		snps,dis-enblslpm-quirk;
-		snps,phyif-utmi-bits = <16>;
-		snps,dis-u2-freeclk-exists-quirk;
-		snps,dis-u2-susphy-quirk;
-
+	usbdrd3_1: usb1 {
+		compatible = "rockchip,rk3399-dwc3";
+		clocks = <&cru SCLK_USB3OTG1_REF>, <&cru SCLK_USB3OTG1_SUSPEND>,
+			 <&cru ACLK_USB3OTG1>, <&cru ACLK_USB3_GRF>;
+		clock-names = "ref_clk", "suspend_clk",
+			      "bus_clk", "grf_clk";
+		power-domains = <&power RK3399_PD_USB3>;
+		resets = <&cru SRST_A_USB3_OTG1>;
+		reset-names = "usb3-otg";
 		#address-cells = <2>;
 		#size-cells = <2>;
-		hub {
-			compatible = "usb-hub";
-			usb,device-class = <USB_CLASS_HUB>;
-		};
-		typec_phy1 {
-			compatible = "rockchip,rk3399-usb3-phy";
-			reg = <0x0 0xff800000 0x0 0x40000>;
+		ranges;
+		status = "disabled";
+
+		usbdrd_dwc3_1: dwc3@fe900000 {
+			compatible = "snps,dwc3";
+			reg = <0x0 0xfe900000 0x0 0x100000>;
+			interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH 0>;
+			dr_mode = "host";
+			phys = <&u2phy1_otg>, <&tcphy1_usb3>;
+			phy-names = "usb2-phy", "usb3-phy";
+			phy_type = "utmi_wide";
+			snps,dis_enblslpm_quirk;
+			snps,dis-u2-freeclk-exists-quirk;
+			snps,dis_u2_susphy_quirk;
+			snps,dis-del-phy-power-chg-quirk;
+			snps,tx-ipgap-linecheck-dis-quirk;
+			snps,xhci-slow-suspend-quirk;
+			snps,xhci-trb-ent-quirk;
+			snps,usb3-warm-reset-on-resume-quirk;
+			status = "disabled";
 		};
 	};
 
@@ -1012,7 +1070,6 @@
 	};
 
 	pmugrf: syscon@ff320000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-pmugrf", "syscon", "simple-mfd";
 		reg = <0x0 0xff320000 0x0 0x1000>;
 		#address-cells = <1>;
@@ -1025,7 +1082,6 @@
 	};
 
 	pmusgrf: syscon@ff330000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-pmusgrf", "syscon";
 		reg = <0x0 0xff330000 0x0 0xe3d4>;
 	};
@@ -1090,7 +1146,7 @@
 		compatible = "rockchip,rk3399-pwm", "rockchip,rk3288-pwm";
 		reg = <0x0 0xff420000 0x0 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm0_pin>;
 		clocks = <&pmucru PCLK_RKPWM_PMU>;
 		clock-names = "pwm";
@@ -1101,7 +1157,7 @@
 		compatible = "rockchip,rk3399-pwm", "rockchip,rk3288-pwm";
 		reg = <0x0 0xff420010 0x0 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm1_pin>;
 		clocks = <&pmucru PCLK_RKPWM_PMU>;
 		clock-names = "pwm";
@@ -1112,7 +1168,7 @@
 		compatible = "rockchip,rk3399-pwm", "rockchip,rk3288-pwm";
 		reg = <0x0 0xff420020 0x0 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm2_pin>;
 		clocks = <&pmucru PCLK_RKPWM_PMU>;
 		clock-names = "pwm";
@@ -1123,7 +1179,7 @@
 		compatible = "rockchip,rk3399-pwm", "rockchip,rk3288-pwm";
 		reg = <0x0 0xff420030 0x0 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm3a_pin>;
 		clocks = <&pmucru PCLK_RKPWM_PMU>;
 		clock-names = "pwm";
@@ -1131,7 +1187,6 @@
 	};
 
 	cic: syscon@ff620000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-cic", "syscon";
 		reg = <0x0 0xff620000 0x0 0x100>;
 	};
@@ -1146,7 +1201,6 @@
 	};
 
 	dmc: dmc {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-dmc";
 		devfreq-events = <&dfi>;
 		interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1195,7 +1249,6 @@
 	};
 
 	pmucru: pmu-clock-controller@ff750000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-pmucru";
 		reg = <0x0 0xff750000 0x0 0x1000>;
 		rockchip,grf = <&pmugrf>;
@@ -1206,7 +1259,6 @@
 	};
 
 	cru: clock-controller@ff760000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-cru";
 		reg = <0x0 0xff760000 0x0 0x1000>;
 		rockchip,grf = <&grf>;
@@ -1231,7 +1283,6 @@
 	};
 
 	grf: syscon@ff770000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-grf", "syscon", "simple-mfd";
 		reg = <0x0 0xff770000 0x0 0x10000>;
 		#address-cells = <1>;
@@ -1313,6 +1364,72 @@
 			resets = <&cru SRST_PCIEPHY>;
 			reset-names = "phy";
 			status = "disabled";
+		};
+	};
+
+	tcphy0: phy@ff7c0000 {
+		compatible = "rockchip,rk3399-typec-phy";
+		reg = <0x0 0xff7c0000 0x0 0x40000>;
+		#phy-cells = <1>;
+		clocks = <&cru SCLK_UPHY0_TCPDCORE>,
+			 <&cru SCLK_UPHY0_TCPDPHY_REF>;
+		clock-names = "tcpdcore", "tcpdphy-ref";
+		assigned-clocks = <&cru SCLK_UPHY0_TCPDCORE>;
+		assigned-clock-rates = <50000000>;
+		power-domains = <&power RK3399_PD_TCPD0>;
+		resets = <&cru SRST_UPHY0>,
+			 <&cru SRST_UPHY0_PIPE_L00>,
+			 <&cru SRST_P_UPHY0_TCPHY>;
+		reset-names = "uphy", "uphy-pipe", "uphy-tcphy";
+		rockchip,grf = <&grf>;
+		rockchip,typec-conn-dir = <0xe580 0 16>;
+		rockchip,usb3tousb2-en = <0xe580 3 19>;
+		rockchip,usb3-host-disable = <0x2434 0 16>;
+		rockchip,usb3-host-port = <0x2434 12 28>;
+		rockchip,external-psm = <0xe588 14 30>;
+		rockchip,pipe-status = <0xe5c0 0 0>;
+		rockchip,uphy-dp-sel = <0x6268 19 19>;
+		status = "disabled";
+
+		tcphy0_dp: dp-port {
+			#phy-cells = <0>;
+		};
+
+		tcphy0_usb3: usb3-port {
+			#phy-cells = <0>;
+		};
+	};
+
+	tcphy1: phy@ff800000 {
+		compatible = "rockchip,rk3399-typec-phy";
+		reg = <0x0 0xff800000 0x0 0x40000>;
+		#phy-cells = <1>;
+		clocks = <&cru SCLK_UPHY1_TCPDCORE>,
+			 <&cru SCLK_UPHY1_TCPDPHY_REF>;
+		clock-names = "tcpdcore", "tcpdphy-ref";
+		assigned-clocks = <&cru SCLK_UPHY1_TCPDCORE>;
+		assigned-clock-rates = <50000000>;
+		power-domains = <&power RK3399_PD_TCPD1>;
+		resets = <&cru SRST_UPHY1>,
+			 <&cru SRST_UPHY1_PIPE_L00>,
+			 <&cru SRST_P_UPHY1_TCPHY>;
+		reset-names = "uphy", "uphy-pipe", "uphy-tcphy";
+		rockchip,grf = <&grf>;
+		rockchip,typec-conn-dir = <0xe58c 0 16>;
+		rockchip,usb3tousb2-en = <0xe58c 3 19>;
+		rockchip,usb3-host-disable = <0x2444 0 16>;
+		rockchip,usb3-host-port = <0x2444 12 28>;
+		rockchip,external-psm = <0xe594 14 30>;
+		rockchip,pipe-status = <0xe5c0 16 16>;
+		rockchip,uphy-dp-sel = <0x6268 3 19>;
+		status = "disabled";
+
+		tcphy1_dp: dp-port {
+			#phy-cells = <0>;
+		};
+
+		tcphy1_usb3: usb3-port {
+			#phy-cells = <0>;
 		};
 	};
 
@@ -1402,7 +1519,6 @@
 	};
 
 	vopl: vop@ff8f0000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-vop-lit";
 		reg = <0x0 0xff8f0000 0x0 0x3efc>;
 		interrupts = <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1415,7 +1531,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			vopl_out_mipi: endpoint@0 {
-				reg = <3>;
+				reg = <0>;
 				remote-endpoint = <&mipi_in_vopl>;
 			};
 
@@ -1423,11 +1539,15 @@
 				reg = <1>;
 				remote-endpoint = <&hdmi_in_vopl>;
 			};
+
+			vopl_out_edp: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&edp_in_vopl>;
+			};
 		};
 	};
 
 	vopb: vop@ff900000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-vop-big";
 		reg = <0x0 0xff900000 0x0 0x3efc>;
 		interrupts = <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1441,13 +1561,18 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			vopb_out_mipi: endpoint@0 {
-				reg = <3>;
+				reg = <0>;
 				remote-endpoint = <&mipi_in_vopb>;
 			};
 
 			vopb_out_hdmi: endpoint@1 {
 				reg = <1>;
 				remote-endpoint = <&hdmi_in_vopb>;
+			};
+
+			vopb_out_edp: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&edp_in_vopb>;
 			};
 		};
 	};
@@ -1463,7 +1588,7 @@
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&cru PCLK_HDMI_CTRL>, <&cru SCLK_HDMI_SFR>, <&cru PLL_VPLL>, <&cru PCLK_VIO_GRF>;
 		clock-names = "iahb", "isfr", "vpll", "grf";
-		status = "disabled";
+		status = "okay";
 
 		ports {
 			hdmi_in: port {
@@ -1511,8 +1636,43 @@
 		};
 	};
 
+	edp: edp@ff970000 {
+		compatible = "rockchip,rk3399-edp";
+		reg = <0x0 0xff970000 0x0 0x8000>;
+		interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH 0>;
+		clocks = <&cru PCLK_EDP>, <&cru PCLK_EDP_CTRL>;
+		clock-names = "dp", "pclk";
+		power-domains = <&power RK3399_PD_EDP>;
+		resets = <&cru SRST_P_EDP_CTRL>;
+		reset-names = "dp";
+		rockchip,grf = <&grf>;
+		status = "disabled";
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_hpd>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			edp_in: port@0 {
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				edp_in_vopb: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vopb_out_edp>;
+				};
+
+				edp_in_vopl: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vopl_out_edp>;
+				};
+			};
+		};
+	};
+
 	pinctrl: pinctrl {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3399-pinctrl";
 		rockchip,grf = <&grf>;
 		rockchip,pmu = <&pmugrf>;

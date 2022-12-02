@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007
  * Gerald Van Baren, Custom IDEAS, vanbaren@cideas.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FDT_SUPPORT_H
@@ -15,14 +16,8 @@ u32 fdt_getprop_u32_default_node(const void *fdt, int off, int cell,
 				const char *prop, const u32 dflt);
 u32 fdt_getprop_u32_default(const void *fdt, const char *path,
 				const char *prop, const u32 dflt);
-int fdt_getprop_u32(const void *fdt, int nodeoffset,
-			const char *name, uint32_t *val);
-int fdt_getprop_u64(const void *fdt, int nodeoffset,
-			const char *name,uint64_t *val);
-int fdt_getprop_string(const void *fdt, int nodeoffset,
-			const char *name, char **val);
-
-
+int fdt_setprop_uxx(void *fdt, int nodeoffset, const char *name,
+		    uint64_t val, int is_u64);
 /**
  * Add data to the root of the FDT before booting the OS.
  *
@@ -32,6 +27,24 @@ int fdt_getprop_string(const void *fdt, int nodeoffset,
  * @return 0 if ok, or -FDT_ERR_... on error
  */
 int fdt_root(void *fdt);
+
+/**
+ * Append info to bootargs
+ *
+ * @param fdt           FDT address in memory
+ * @param data          string info
+ * @return 0 if ok, else error
+ */
+int fdt_bootargs_append(void *fdt, char *data);
+
+/**
+ * Append ab info to bootargs
+ *
+ * @param fdt		FDT address in memory
+ * @param slot		slot info
+ * @return 0 if ok, else error
+ */
+int fdt_bootargs_append_ab(void *fdt, char *slot);
 
 /**
  * Add chosen data the FDT before booting the OS.
@@ -99,15 +112,9 @@ int fdt_fixup_memory(void *blob, u64 start, u64 size);
  *			property will be left untouched.
  * @return 0 if ok, or -1 or -FDT_ERR_... on error
  */
-#ifdef CONFIG_ARCH_FIXUP_FDT_MEMORY
 int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[], int banks);
-#else
-static inline int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[],
-					 int banks)
-{
-	return 0;
-}
-#endif
+
+int fdt_update_reserved_memory(void *blob, char *name, u64 start, u64 size);
 
 void fdt_fixup_ethernet(void *fdt);
 int fdt_find_and_setprop(void *fdt, const char *node, const char *prop,
@@ -175,6 +182,17 @@ int fdt_find_or_add_subnode(void *fdt, int parentoffset, const char *name);
  * @return 0 if ok, or -FDT_ERR_... on error
  */
 int ft_board_setup(void *blob, bd_t *bd);
+
+/**
+ * board_fdt_chosen_bootargs() - Arbitrarily amend fdt kernel command line
+ *
+ * This is used for late modification of kernel command line arguments just
+ * before they are added into the /chosen node in flat device tree.
+ *
+ * @fdt: fdt blob
+ * @return: pointer to kernel command line arguments in memory
+ */
+char *board_fdt_chosen_bootargs(void *fdt);
 
 /*
  * The keystone2 SOC requires all 32 bit aliased addresses to be converted
@@ -298,8 +316,5 @@ int fdtdec_get_int(const void *blob, int node, const char *prop_name,
 #endif
 #ifdef CONFIG_FMAN_ENET
 int fdt_update_ethernet_dt(void *blob);
-#endif
-#ifdef CONFIG_FSL_MC_ENET
-void fdt_fixup_board_enet(void *blob);
 #endif
 #endif /* ifndef __FDT_SUPPORT_H */

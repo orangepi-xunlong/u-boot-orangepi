@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _PART_H
 #define _PART_H
@@ -28,12 +29,19 @@ struct block_drvr {
 #define PART_TYPE_ISO		0x03
 #define PART_TYPE_AMIGA		0x04
 #define PART_TYPE_EFI		0x05
+#define PART_TYPE_RKPARM	0x06
+#define PART_TYPE_RKRAM		0x07
+#define PART_TYPE_ENV		0x08
 
 /* maximum number of partition entries supported by search */
 #define DOS_ENTRY_NUMBERS	8
 #define ISO_ENTRY_NUMBERS	64
 #define MAC_ENTRY_NUMBERS	64
 #define AMIGA_ENTRY_NUMBERS	8
+#define RKPARM_ENTRY_NUMBERS	128
+#define RKRAM_ENTRY_NUMBERS	6
+#define ENV_ENTRY_NUMBERS	64
+
 /*
  * Type string for U-Boot bootable partitions
  */
@@ -102,7 +110,7 @@ int part_get_info(struct blk_desc *dev_desc, int part, disk_partition_t *info);
  * a partition occupying the entire disk.
  */
 int part_get_info_whole_disk(struct blk_desc *dev_desc, disk_partition_t *info);
-
+const char *part_get_type(struct blk_desc *dev_desc);
 void part_print(struct blk_desc *dev_desc);
 void part_init(struct blk_desc *dev_desc);
 void dev_print(struct blk_desc *dev_desc);
@@ -173,21 +181,6 @@ int blk_get_device_part_str(const char *ifname, const char *dev_part_str,
 			    disk_partition_t *info, int allow_whole_dev);
 
 /**
- * part_get_info_by_name_type() - Search for a partition by name
- *                                for only specified partition type
- *
- * @param dev_desc - block device descriptor
- * @param gpt_name - the specified table entry name
- * @param info - returns the disk partition info
- * @param part_type - only search in partitions of this type
- *
- * @return - the partition number on match (starting on 1), -1 on no match,
- * otherwise error
- */
-int part_get_info_by_name_type(struct blk_desc *dev_desc, const char *name,
-			       disk_partition_t *info, int part_type);
-
-/**
  * part_get_info_by_name() - Search for a partition by name
  *                           among all available registered partitions
  *
@@ -201,6 +194,20 @@ int part_get_info_by_name_type(struct blk_desc *dev_desc, const char *name,
 int part_get_info_by_name(struct blk_desc *dev_desc,
 			      const char *name, disk_partition_t *info);
 
+/**
+ * part_get_info_by_name_strict() - Search for a partition by name
+ *                                  among all available registered partitions
+ *				    with strict name match
+ *
+ * @param dev_desc - block device descriptor
+ * @param gpt_name - the specified table entry name to be match strictly
+ * @param info - returns the disk partition info
+ *
+ * @return - the partition number on match (starting on 1), -1 on no match,
+ * otherwise error
+ */
+int part_get_info_by_name_strict(struct blk_desc *dev_desc, const char *name,
+				 disk_partition_t *info);
 /**
  * part_set_generic_name() - create generic partition like hda1 or sdb2
  *
@@ -226,6 +233,8 @@ static inline int part_get_info(struct blk_desc *dev_desc, int part,
 static inline int part_get_info_whole_disk(struct blk_desc *dev_desc,
 					   disk_partition_t *info)
 { return -1; }
+
+static inline const char *part_get_type(struct blk_desc *dev_desc) { return NULL; }
 static inline void part_print(struct blk_desc *dev_desc) {}
 static inline void part_init(struct blk_desc *dev_desc) {}
 static inline void dev_print(struct blk_desc *dev_desc) {}
@@ -241,21 +250,15 @@ static inline int blk_get_device_part_str(const char *ifname,
 #endif
 
 /*
- * We don't support printing partition information in SPL and only support
- * getting partition information in a few cases.
+ * We don't support printing partition information in SPL.
  */
 #ifdef CONFIG_SPL_BUILD
-# define part_print_ptr(x)	NULL
-# if defined(CONFIG_SPL_EXT_SUPPORT) || defined(CONFIG_SPL_FAT_SUPPORT) || \
-	defined(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION)
-#  define part_get_info_ptr(x)	x
-# else
-#  define part_get_info_ptr(x)	NULL
-# endif
+#define part_print_ptr(x)	NULL
 #else
-#define part_print_ptr(x)	x
-#define part_get_info_ptr(x)	x
+#define part_print_ptr(x)       x
 #endif
+
+#define part_get_info_ptr(x)	x
 
 
 struct part_driver {
@@ -444,5 +447,13 @@ int write_mbr_partition(struct blk_desc *dev_desc, void *buf);
 
 #endif
 
+#if CONFIG_IS_ENABLED(ENV_PARTITION)
+/**
+ * env_part_list_init() - pass partitons list to env part
+ *
+ * @param list - partitons list
+ */
+void env_part_list_init(const char *list);
+#endif
 
 #endif /* _PART_H */

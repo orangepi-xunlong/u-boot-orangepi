@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008, 2011 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -47,7 +48,7 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	 */
 	SET_TLB_ENTRY(1, CONFIG_SYS_LBC_SDRAM_BASE,
 		      CONFIG_SYS_LBC_SDRAM_BASE_PHYS,
-		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
+		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
 		      0, 2, BOOKE_PAGESZ_64M, 1),
 
 	/*

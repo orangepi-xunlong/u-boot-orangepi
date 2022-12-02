@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Sergei Poselenov, Emcraft Systems, sposelenov@emcraft.com.
@@ -7,6 +6,8 @@
  * Copyright 2004 Freescale Semiconductor.
  * (C) Copyright 2002,2003 Motorola,Inc.
  * Xianghua Xiao <X.Xiao@motorola.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -19,9 +20,14 @@
 /* High Level Configuration Options */
 #define CONFIG_SOCRATES		1
 
+#define	CONFIG_SYS_TEXT_BASE	0xfff80000
+
 #define CONFIG_PCI_INDIRECT_BRIDGE
 
+#define CONFIG_TSEC_ENET		/* tsec ethernet support	*/
+
 #define CONFIG_MISC_INIT_R	1	/* Call misc_init_r		*/
+#define CONFIG_BOARD_EARLY_INIT_R 1	/* Call board_early_init_r	*/
 
 /*
  * Only possible on E500 Version 2 or newer cores.
@@ -170,6 +176,7 @@
 
 /* Serial Port */
 
+#define CONFIG_CONS_INDEX     1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -179,6 +186,9 @@
 
 #define CONFIG_SYS_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
+
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
+#define CONFIG_AUTO_COMPLETE	1	/* add autocompletion support */
 
 /*
  * I2C
@@ -259,12 +269,16 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 #undef CONFIG_WATCHDOG			/* watchdog disabled		*/
 
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address		*/
 
 /*

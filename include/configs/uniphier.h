@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2012-2015 Panasonic Corporation
  * Copyright (C) 2015-2016 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* U-Boot - Common settings for UniPhier Family */
@@ -25,14 +26,21 @@
 #define CONFIG_TIMESTAMP
 
 /* FLASH related */
-#define CONFIG_MTD_DEVICE
+
+#define CONFIG_SMC911X_32_BIT
+/* dummy: referenced by examples/standalone/smc911x_eeprom.c */
+#define CONFIG_SMC911X_BASE	0
+
+#ifdef CONFIG_MICRO_SUPPORT_CARD
+#define CONFIG_SMC911X
+#endif
 
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
 
 #define CONFIG_SYS_MAX_FLASH_SECT	256
 #define CONFIG_SYS_MONITOR_BASE		0
-#define CONFIG_SYS_MONITOR_LEN		0x00090000	/* 576KB */
+#define CONFIG_SYS_MONITOR_LEN		0x00080000	/* 512KB */
 #define CONFIG_SYS_FLASH_BASE		0
 
 /*
@@ -47,9 +55,14 @@
 
 /* serial console configuration */
 
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
+
+#define CONFIG_CMDLINE_EDITING		/* add command line history	*/
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
+
+#define CONFIG_CONS_INDEX		1
 
 #define CONFIG_ENV_OFFSET			0x100000
 #define CONFIG_ENV_SIZE				0x2000
@@ -65,8 +78,13 @@
 
 #define CONFIG_SYS_MAX_NAND_DEVICE			1
 #define CONFIG_SYS_NAND_ONFI_DETECTION
+
+#define CONFIG_NAND_DENALI_ECC_SIZE			1024
+
 #define CONFIG_SYS_NAND_REGS_BASE			0x68100000
 #define CONFIG_SYS_NAND_DATA_BASE			0x68000000
+
+#define CONFIG_SYS_NAND_USE_FLASH_BBT
 #define CONFIG_SYS_NAND_BAD_BLOCK_POS			0
 
 /* SD/MMC */
@@ -84,9 +102,10 @@
 #define CONFIG_GATEWAYIP		192.168.11.1
 #define CONFIG_NETMASK			255.255.255.0
 
-#define CONFIG_LOADADDR			0x85000000
+#define CONFIG_LOADADDR			0x84000000
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-#define CONFIG_SYS_BOOTM_LEN		(32 << 20)
+
+#define CONFIG_CMDLINE_EDITING		/* add command line history	*/
 
 #if defined(CONFIG_ARM64)
 /* ARM Trusted Firmware */
@@ -112,7 +131,7 @@
 #define CONFIG_BOOTFILE			"fitImage"
 #define LINUXBOOT_ENV_SETTINGS \
 	"fit_addr=0x00100000\0" \
-	"fit_addr_r=0x85100000\0" \
+	"fit_addr_r=0x84100000\0" \
 	"fit_size=0x00f00000\0" \
 	"norboot=setexpr fit_addr $nor_base + $fit_addr &&" \
 		"bootm $fit_addr\0" \
@@ -125,7 +144,7 @@
 #ifdef CONFIG_ARM64
 #define CONFIG_BOOTFILE			"Image.gz"
 #define LINUXBOOT_CMD			"booti"
-#define KERNEL_ADDR_LOAD		"kernel_addr_load=0x85200000\0"
+#define KERNEL_ADDR_LOAD		"kernel_addr_load=0x84200000\0"
 #define KERNEL_ADDR_R			"kernel_addr_r=0x82080000\0"
 #else
 #define CONFIG_BOOTFILE			"zImage"
@@ -135,15 +154,15 @@
 #endif
 #define LINUXBOOT_ENV_SETTINGS \
 	"fdt_addr=0x00100000\0" \
-	"fdt_addr_r=0x85100000\0" \
+	"fdt_addr_r=0x84100000\0" \
 	"fdt_size=0x00008000\0" \
 	"kernel_addr=0x00200000\0" \
 	KERNEL_ADDR_LOAD \
 	KERNEL_ADDR_R \
-	"kernel_size=0x00e00000\0" \
-	"ramdisk_addr=0x01000000\0" \
-	"ramdisk_addr_r=0x86000000\0" \
-	"ramdisk_size=0x00800000\0" \
+	"kernel_size=0x00800000\0" \
+	"ramdisk_addr=0x00a00000\0" \
+	"ramdisk_addr_r=0x84a00000\0" \
+	"ramdisk_size=0x00600000\0" \
 	"ramdisk_file=rootfs.cpio.uboot\0" \
 	"boot_common=setexpr bootm_low $kernel_addr_r '&' fe000000 && " \
 		"if test $kernel_addr_load = $kernel_addr_r; then " \
@@ -178,6 +197,7 @@
 
 #define	CONFIG_EXTRA_ENV_SETTINGS				\
 	"netdev=eth0\0"						\
+	"verify=n\0"						\
 	"initrd_high=0xffffffffffffffff\0"			\
 	"nor_base=0x42000000\0"					\
 	"sramupdate=setexpr tmp_addr $nor_base + 0x50000 &&"	\
@@ -185,22 +205,21 @@
 		"setexpr tmp_addr $nor_base + 0x70000 && " \
 		"tftpboot $tmp_addr $third_image\0" \
 	"emmcupdate=mmcsetn &&"					\
-		"mmc dev $mmc_first_dev &&"			\
 		"mmc partconf $mmc_first_dev 0 1 1 &&"		\
 		"tftpboot $second_image && " \
 		"mmc write $loadaddr 0 100 && " \
 		"tftpboot $third_image && " \
-		"mmc write $loadaddr 100 f00\0" \
+		"mmc write $loadaddr 100 700\0" \
 	"nandupdate=nand erase 0 0x00100000 &&"			\
 		"tftpboot $second_image && " \
 		"nand write $loadaddr 0 0x00020000 && " \
 		"tftpboot $third_image && " \
-		"nand write $loadaddr 0x00020000 0x001e0000\0" \
+		"nand write $loadaddr 0x00020000 0x000e0000\0" \
 	"usbupdate=usb start &&" \
 		"tftpboot $second_image && " \
 		"usb write $loadaddr 0 100 && " \
 		"tftpboot $third_image && " \
-		"usb write $loadaddr 100 f00\0" \
+		"usb write $loadaddr 100 700\0" \
 	BOOT_IMAGES \
 	LINUXBOOT_ENV_SETTINGS
 
@@ -208,6 +227,8 @@
 
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_NR_DRAM_BANKS		3
+/* for LD20; the last 64 byte is used for dynamic DDR PHY training */
+#define CONFIG_SYS_MEM_TOP_HIDE		64
 
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_TEXT_BASE)
 
@@ -219,7 +240,9 @@
 #define CONFIG_SPL_TEXT_BASE		0x00100000
 #endif
 
-#define CONFIG_SPL_STACK		(0x00200000)
+#define CONFIG_SPL_STACK		(0x00100000)
+
+#define CONFIG_SPL_FRAMEWORK
 
 #define CONFIG_SYS_NAND_U_BOOT_OFFS		0x20000
 

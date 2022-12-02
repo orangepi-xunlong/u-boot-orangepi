@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef AT91_COMMON_H
@@ -24,7 +25,6 @@ void at91_lcd_hw_init(void);
 void at91_plla_init(u32 pllar);
 void at91_pllb_init(u32 pllar);
 void at91_mck_init(u32 mckr);
-void at91_mck_init_down(u32 mckr);
 void at91_pmc_init(void);
 void mem_init(void);
 void at91_phy_reset(void);
@@ -35,8 +35,5 @@ void at91_disable_wdt(void);
 void matrix_init(void);
 void redirect_int_from_saic_to_aic(void);
 void configure_2nd_sram_as_l2_cache(void);
-
-int at91_set_ethaddr(int offset);
-int at91_video_show_board_info(void);
 
 #endif /* AT91_COMMON_H */

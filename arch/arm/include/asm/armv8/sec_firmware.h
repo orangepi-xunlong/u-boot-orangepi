@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2016 NXP Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SEC_FIRMWARE_H_
@@ -8,10 +9,8 @@
 
 #define PSCI_INVALID_VER		0xffffffff
 #define SEC_JR3_OFFSET			0x40000
-#define WORD_MASK			0xffffffff
-#define WORD_SHIFT			32
 
-int sec_firmware_init(const void *, u32 *, u32 *, u32 *, u32 *);
+int sec_firmware_init(const void *, u32 *, u32 *);
 int _sec_firmware_entry(const void *, u32 *, u32 *);
 bool sec_firmware_is_valid(const void *);
 bool sec_firmware_support_hwrng(void);

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -9,6 +8,8 @@
  *
  * Sergej Stepanov <ste@ids.de>
  * Based on board/freescale/mpc8313erdb/mpc8313erdb.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

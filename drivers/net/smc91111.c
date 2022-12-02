@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*------------------------------------------------------------------------
  . smc91111.c
  . This is a driver for SMSC's 91C111 single-chip Ethernet device.
@@ -11,6 +10,7 @@
  .	 Developed by Simple Network Magic Corporation (SNMC)
  . Copyright (C) 1996 by Erik Stahlman (ES)
  .
+ * SPDX-License-Identifier:	GPL-2.0+
  .
  . Information contained in this file was obtained from the LAN91C111
  . manual from SMC.  To get a copy, if you really want one, you can find

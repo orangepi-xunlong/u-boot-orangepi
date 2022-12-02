@@ -14,6 +14,16 @@ config DM_GPIO
 	  particular GPIOs that they provide. The uclass interface
 	  is defined in include/asm-generic/gpio.h.
 
+config GPIO_HOG
+	bool "Enable GPIO hog support"
+	depends on DM_GPIO
+	default n
+	help
+	  Enable gpio hog support
+	  The GPIO chip may contain GPIO hog definitions. GPIO hogging
+	  is a mechanism providing automatic GPIO request and config-
+	  uration as part of the gpio-controller's driver probe function.
+
 config ALTERA_PIO
 	bool "Altera PIO driver"
 	depends on DM_GPIO
@@ -80,13 +90,6 @@ config IMX_RGPIO2P
 	help
 	  This driver supports i.MX7ULP Rapid GPIO2P controller.
 
-config HSDK_CREG_GPIO
-	bool "HSDK CREG GPIO griver"
-	depends on DM_GPIO
-	default n
-	help
-	  This driver supports CREG GPIOs on Synopsys HSDK SOC.
-
 config LPC32XX_GPIO
 	bool "LPC32XX GPIO driver"
 	depends on DM
@@ -107,11 +110,6 @@ config MSM_GPIO
 	  Supported devices:
 	  - APQ8016
 	  - MSM8916
-
-config MXC_GPIO
-	bool "Freescale/NXP MXC UART driver"
-	help
-	  Support GPIO controllers on various i.MX platforms
 
 config OMAP_GPIO
 	bool "TI OMAP GPIO driver"
@@ -147,12 +145,6 @@ config PCF8575_GPIO
 	 Support for PCF8575 I2C 16-bit GPIO expander. Most of these
 	 chips are from NXP and TI.
 
-config RCAR_GPIO
-	bool "Renesas RCar GPIO driver"
-	depends on DM_GPIO && ARCH_RMOBILE
-	help
-	  This driver supports the GPIO banks on Renesas RCar SoCs.
-
 config ROCKCHIP_GPIO
 	bool "Rockchip GPIO driver"
 	depends on DM_GPIO
@@ -161,6 +153,19 @@ config ROCKCHIP_GPIO
 	  a number of banks (different for each SoC type) each with 32 GPIOs.
 	  The GPIOs for a device are defined in the device tree with one node
 	  for each bank.
+
+config ROCKCHIP_GPIO_V2
+	bool "Rockchip GPIO driver version 2.0"
+	depends on ROCKCHIP_GPIO
+	default n
+	help
+	  Support GPIO access on Rockchip SoCs. The GPIOs are arranged into
+	  a number of banks (different for each SoC type) each with 32 GPIOs.
+	  The GPIOs for a device are defined in the device tree with one node
+	  for each bank.
+
+	  Support version 2.0 GPIO controller, which support write enable bits
+	  for some registers, such as dr, ddr.
 
 config SANDBOX_GPIO
 	bool "Enable sandbox GPIO driver"
@@ -182,11 +187,6 @@ config SANDBOX_GPIO_COUNT
 	  are specified using the device tree. But you can also have a number
 	  of 'anonymous' GPIOs that do not belong to any device or bank.
 	  Select a suitable value depending on your needs.
-
-config XILINX_GPIO
-	bool "Xilinx GPIO driver"
-	help
-	  This config enable the Xilinx GPIO driver for Microblaze.
 
 config CMD_TCA642X
 	bool "tca642x - Command to access tca642x state"
@@ -212,6 +212,12 @@ config TEGRA186_GPIO
 	  covers both the "main" and "AON" controller instances, even though
 	  they have slightly different register layout.
 
+config GPIO_MAX96752F
+	bool "Maxim MAX96752F GPIO"
+	depends on DM_GPIO && I2C_MUX_MAX96752F
+	help
+	  Say yes here to support Maxim MAX96752F GPIOs.
+
 config GPIO_UNIPHIER
 	bool "UniPhier GPIO"
 	depends on ARCH_UNIPHIER
@@ -234,7 +240,7 @@ config PIC32_GPIO
 
 config STM32F7_GPIO
 	bool "ST STM32 GPIO driver"
-	depends on DM_GPIO && (STM32 || ARCH_STM32MP)
+	depends on DM_GPIO && STM32
 	default y
 	help
 	  Device model driver support for STM32 GPIO controller. It should be
@@ -286,11 +292,11 @@ config DM_PCA953X
 	  Now, max 24 bits chips and PCA953X compatible chips are
 	  supported
 
-config MPC8XXX_GPIO
-	bool "Freescale MPC8XXX GPIO driver"
+config MPC85XX_GPIO
+	bool "Freescale MPC85XX GPIO driver"
 	depends on DM_GPIO
 	help
-	  This driver supports the built-in GPIO controller of MPC8XXX CPUs.
+	  This driver supports the built-in GPIO controller of MPC85XX CPUs.
 	  Each GPIO bank is identified by its own entry in the device tree,
 	  i.e.
 
@@ -308,4 +314,7 @@ config MPC8XXX_GPIO
 	  Aside from the standard functions of input/output mode, and output
 	  value setting, the open-drain feature, which can configure individual
 	  GPIOs to work as open-drain outputs, is supported.
+
+	  The driver has been tested on MPC85XX, but it is likely that other
+	  PowerQUICC III devices will work as well.
 endmenu

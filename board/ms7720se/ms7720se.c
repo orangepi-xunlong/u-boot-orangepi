@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007
  * Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
@@ -10,6 +9,8 @@
  * Kenati Technologies, Inc.
  *
  * board/ms7720se/ms7720se.c
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

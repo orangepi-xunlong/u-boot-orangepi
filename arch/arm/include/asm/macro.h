@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * include/asm-arm/macro.h
  *
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARM_MACRO_H__
@@ -75,6 +76,17 @@ lr	.req	x30
 	b.eq	\el2_label
 	cmp	\xreg, 0x4
 	b.eq	\el1_label
+.endm
+
+/*
+ * Branch if current processor is a Cortex-A35 core.
+ */
+.macro	branch_if_a35_core, xreg, a35_label
+	mrs	\xreg, midr_el1
+	lsr	\xreg, \xreg, #4
+	and	\xreg, \xreg, #0x00000FFF
+	cmp	\xreg, #0xD04		/* Cortex-A35 MPCore processor. */
+	b.eq	\a35_label
 .endm
 
 /*

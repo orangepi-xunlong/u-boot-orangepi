@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
  * Author: Andy Yan <andy.yan@rock-chips.com>
+ * SPDX-License-Identifier:     GPL-2.0
  */
 
 #include <common.h>
@@ -12,8 +12,12 @@
 
 int rockchip_get_clk(struct udevice **devp)
 {
+#ifndef CONFIG_SPL_BUILD
 	return uclass_get_device_by_driver(UCLASS_CLK,
 			DM_GET_DRIVER(clk_rv1108), devp);
+#else
+	return -1;
+#endif
 }
 
 void *rockchip_get_cru(void)

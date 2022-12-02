@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * dfu.c -- dfu command
  *
@@ -8,6 +7,8 @@
  * Copyright (C) 2012 Samsung Electronics
  * authors: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
  *	    Lukasz Majewski <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,15 +18,20 @@
 #include <g_dnl.h>
 #include <usb.h>
 #include <net.h>
+#include <android_avb/rk_avb_ops_user.h>
 
 int run_usb_dnl_gadget(int usbctrl_index, char *usb_dnl_gadget)
 {
 	bool dfu_reset = false;
 	int ret, i = 0;
+#ifdef CONFIG_ANDROID_AB
+	char select_slot[3] = {0};
+	unsigned int slot_number[2] = {0, 1};
+#endif
 
-	ret = board_usb_init(usbctrl_index, USB_INIT_DEVICE);
+	ret = usb_gadget_initialize(usbctrl_index);
 	if (ret) {
-		pr_err("board usb init failed\n");
+		pr_err("usb_gadget_initialize failed\n");
 		return CMD_RET_FAILURE;
 	}
 	g_dnl_clear_detach();
@@ -44,6 +50,19 @@ int run_usb_dnl_gadget(int usbctrl_index, char *usb_dnl_gadget)
 			 */
 			if (dfu_usb_get_reset()) {
 				dfu_reset = true;
+#ifdef CONFIG_ANDROID_AB
+				if (rk_avb_get_current_slot(select_slot))
+					printf("Obtain current slot failed!\n");
+				/*
+				 * After the firmware is successfully upgrade,
+				 * the device changes the slot priority during
+				 * reboot based on the current slot
+				 */
+				if (strcmp(select_slot, "_a") == 0)
+					rk_avb_set_slot_active(&slot_number[1]);
+				else
+					rk_avb_set_slot_active(&slot_number[0]);
+#endif
 				goto exit;
 			}
 
@@ -84,7 +103,7 @@ int run_usb_dnl_gadget(int usbctrl_index, char *usb_dnl_gadget)
 	}
 exit:
 	g_dnl_unregister();
-	board_usb_cleanup(usbctrl_index, USB_INIT_DEVICE);
+	usb_gadget_release(usbctrl_index);
 
 	if (dfu_reset)
 		do_reset(NULL, 0, 0, NULL);

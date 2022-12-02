@@ -1,7 +1,9 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 ifdef CONFIG_DM
 obj-$(CONFIG_DISPLAY) += display-uclass.o
@@ -28,6 +30,7 @@ obj-$(CONFIG_VIDEO_FSL_DCU_FB) += fsl_dcu_fb.o videomodes.o
 obj-$(CONFIG_PXA_LCD) += pxa_lcd.o
 obj-$(CONFIG_SCF0403_LCD) += scf0403_lcd.o
 obj-$(CONFIG_S6E8AX0) += s6e8ax0.o
+obj-$(CONFIG_S6E63D6) += s6e63d6.o
 obj-$(CONFIG_LD9040) += ld9040.o
 obj-$(CONFIG_VIDEO_BCM2835) += bcm2835.o
 obj-$(CONFIG_VIDEO_COREBOOT) += coreboot.o
@@ -49,11 +52,12 @@ obj-$(CONFIG_FORMIKE) += formike.o
 obj-$(CONFIG_LG4573) += lg4573.o
 obj-$(CONFIG_AM335X_LCD) += am335x-fb.o
 obj-$(CONFIG_VIDEO_DW_HDMI) += dw_hdmi.o
-obj-$(CONFIG_VIDEO_SIMPLE) += simplefb.o
+
 obj-${CONFIG_VIDEO_TEGRA124} += tegra124/
 obj-${CONFIG_EXYNOS_FB} += exynos/
 obj-${CONFIG_VIDEO_ROCKCHIP} += rockchip/
-obj-${CONFIG_VIDEO_STM32} += stm32/
+obj-${CONFIG_DRM_ROCKCHIP} += drm/
+obj-${CONFIG_ROCKCHIP_EINK} += rk_eink/
 
 obj-y += bridge/
 obj-y += sunxi/

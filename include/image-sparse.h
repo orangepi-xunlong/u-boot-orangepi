@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Broadcom Corporation.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <part.h>
@@ -36,4 +37,4 @@ static inline int is_sparse_image(void *buf)
 }
 
 void write_sparse_image(struct sparse_storage *info, const char *part_name,
-			void *data, unsigned sz);
+			void *data, unsigned sz, char *response);

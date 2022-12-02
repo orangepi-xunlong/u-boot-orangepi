@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Freescale Semiconductor, Inc.
  * Jason Liu <r64343@freescale.com>
  *
  * Configuration settings for Freescale MX53 low cost board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -22,12 +23,14 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(10 * 1024 * 1024)
 
+#define CONFIG_MXC_GPIO
 #define CONFIG_REVISION_TAG
 
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* MMC Configs */
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
 
@@ -62,13 +65,16 @@
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
+#define CONFIG_CONS_INDEX		1
 
 /* Command definition */
+#define CONFIG_SUPPORT_RAW_INITRD
 
 
 #define CONFIG_ETHPRIME		"FEC0"
 
 #define CONFIG_LOADADDR		0x72000000	/* loadaddr env var */
+#define CONFIG_SYS_TEXT_BASE    0x77800000
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
@@ -142,12 +148,16 @@
 #define CONFIG_ARP_TIMEOUT	200UL
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
+#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 
 #define CONFIG_SYS_MEMTEST_START       0x70000000
 #define CONFIG_SYS_MEMTEST_END         0x70010000
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
+
+#define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS	2
@@ -172,10 +182,12 @@
 #define CONFIG_SYS_MMC_ENV_DEV 0
 
 #ifdef CONFIG_CMD_SATA
+	#define CONFIG_DWC_AHSATA
 	#define CONFIG_SYS_SATA_MAX_DEVICE      1
 	#define CONFIG_DWC_AHSATA_PORT_ID       0
 	#define CONFIG_DWC_AHSATA_BASE_ADDR     SATA_BASE_ADDR
 	#define CONFIG_LBA48
+	#define CONFIG_LIBATA
 #endif
 
 /* Framebuffer and LCD */
@@ -185,5 +197,6 @@
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
+#define CONFIG_IPUV3_CLK	200000000
 
 #endif				/* __CONFIG_H */

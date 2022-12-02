@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX27 RTC Driver
  *
  * Copyright (C) 2012 Philippe Reynes <tremyfr@yahoo.fr>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -60,5 +61,9 @@ int rtc_set(struct rtc_time *time)
 
 void rtc_reset(void)
 {
-	/* nothing to do */
+	struct rtc_regs *rtc_regs = (struct rtc_regs *)IMX_RTC_BASE;
+
+	writel(0, &rtc_regs->dayr);
+	writel(0, &rtc_regs->hourmin);
+	writel(0, &rtc_regs->seconds);
 }

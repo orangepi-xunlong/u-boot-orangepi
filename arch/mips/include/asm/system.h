@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 1994 - 1999 by Ralf Baechle
  * Copyright (C) 1996 by Paul M. Antoine
@@ -9,14 +8,14 @@
  *
  * Kevin D. Kissell, kevink@mips.org and Carsten Langgaard, carstenl@mips.com
  * Copyright (C) 2000 MIPS Technologies, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #ifndef _ASM_SYSTEM_H
 #define _ASM_SYSTEM_H
 
-#include <asm/asm.h>
 #include <asm/sgidefs.h>
 #include <asm/ptrace.h>
-#include <linux/stringify.h>
 #if 0
 #include <linux/kernel.h>
 #endif
@@ -269,17 +268,6 @@ static inline void execution_hazard_barrier(void)
 		".set noreorder\n"
 		"ehb\n"
 		".set reorder");
-}
-
-static inline void instruction_hazard_barrier(void)
-{
-	unsigned long tmp;
-
-	asm volatile(
-	__stringify(PTR_LA) "\t%0, 1f\n"
-	"	jr.hb	%0\n"
-	"1:	.insn"
-	: "=&r"(tmp));
 }
 
 #endif /* _ASM_SYSTEM_H */

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -25,12 +26,11 @@ void cpu_init_f(immap_t __iomem *immr)
 
 	/* SYPCR - contains watchdog control (11-9) */
 
-#ifndef CONFIG_HW_WATCHDOG
-	/* deactivate watchdog if not enabled in config */
-	out_be32(&immr->im_siu_conf.sc_sypcr, CONFIG_SYS_SYPCR & ~SYPCR_SWE);
-#endif
+	out_be32(&immr->im_siu_conf.sc_sypcr, CONFIG_SYS_SYPCR);
 
-	WATCHDOG_RESET();
+#if defined(CONFIG_WATCHDOG)
+	reset_8xx_watchdog(immr);
+#endif /* CONFIG_WATCHDOG */
 
 	/* SIUMCR - contains debug pin configuration (11-6) */
 	setbits_be32(&immr->im_siu_conf.sc_siumcr, CONFIG_SYS_SIUMCR);

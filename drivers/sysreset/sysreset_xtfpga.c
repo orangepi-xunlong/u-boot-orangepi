@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Cadence Tensilica xtfpga system reset driver.
  *
  * (C) Copyright 2016 Cadence Design Systems Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * AXP221 and AXP223 driver
  *
@@ -7,6 +6,8 @@
  *
  * (C) Copyright 2014 Hans de Goede <hdegoede@redhat.com>
  * (C) Copyright 2013 Oliver Schinagl <oliver@schinagl.nl>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

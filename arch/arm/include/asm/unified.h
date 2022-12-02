@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * include/asm-arm/unified.h - Unified Assembler Syntax helper macros
  *
  * Copyright (C) 2008 ARM Limited
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __ASM_UNIFIED_H

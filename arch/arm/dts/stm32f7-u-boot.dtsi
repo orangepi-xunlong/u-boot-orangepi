@@ -1,11 +1,3 @@
-/{
-	soc {
-		timer5: timer@40000c00 {
-			u-boot,dm-pre-reloc;
-		};
-	};
-};
-
 &pinctrl {
 	usart1_pins_a: usart1@0	{
 		u-boot,dm-pre-reloc;
@@ -29,12 +21,4 @@
 	bank1: bank@0 {
 		 u-boot,dm-pre-reloc;
 	};
-};
-
-&pwrcfg {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_hse {
-	u-boot,dm-pre-reloc;
 };

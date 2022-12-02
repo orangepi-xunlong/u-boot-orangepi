@@ -66,7 +66,6 @@ static inline void atomic_long_sub(long i, atomic_long_t *l)
 	atomic64_sub(i, v);
 }
 
-#ifndef __UBOOT__
 static inline int atomic_long_sub_and_test(long i, atomic_long_t *l)
 {
 	atomic64_t *v = (atomic64_t *)l;
@@ -136,7 +135,6 @@ static inline long atomic_long_add_unless(atomic_long_t *l, long a, long u)
 	(atomic64_cmpxchg((atomic64_t *)(l), (old), (new)))
 #define atomic_long_xchg(v, new) \
 	(atomic64_xchg((atomic64_t *)(v), (new)))
-#endif  /*  __UBOOT__ */
 
 #else  /*  BITS_PER_LONG == 64  */
 

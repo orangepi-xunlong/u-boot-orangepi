@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __VSPRINTF_H
@@ -212,7 +213,4 @@ void print_grouped_ull(unsigned long long int_val, int digits);
 
 bool str2off(const char *p, loff_t *num);
 bool str2long(const char *p, ulong *num);
-
-int tick_printf(const char *fmt, ...);
-
 #endif

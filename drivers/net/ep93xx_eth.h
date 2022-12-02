@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009 Matthias Kaehlcke <matthias@kaehlcke.net>
  *
  * Copyright (C) 2004, 2005
  * Cory T. Tusar, Videon Central, Inc., <ctusar@videon-central.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _EP93XX_ETH_H

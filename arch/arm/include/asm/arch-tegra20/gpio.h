@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011, Google Inc. All rights reserved.
  * Portions Copyright 2011-2012 NVIDIA Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _TEGRA20_GPIO_H_

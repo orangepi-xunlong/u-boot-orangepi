@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: BSD-2-Clause */
 /*
  * U-Boot ARM EFI linker script
+ *
+ * SPDX-License-Identifier:	BSD-2-Clause
  *
  * Modified from elf_arm_efi.lds in gnu-efi
  */
@@ -54,13 +55,16 @@ SECTIONS
 	.rel.data : { *(.rel.data) *(.rel.data*) }
 	_data_size = . - _etext;
 
+	. = ALIGN(4096);
+	.dynsym   : { *(.dynsym) }
+	. = ALIGN(4096);
+	.dynstr   : { *(.dynstr) }
+	. = ALIGN(4096);
+	.note.gnu.build-id : { *(.note.gnu.build-id) }
 	/DISCARD/ : {
 		*(.rel.reloc)
 		*(.eh_frame)
 		*(.note.GNU-stack)
-		*(.dynsym)
-		*(.dynstr)
-		*(.note.gnu.build-id)
-		*(.comment)
 	}
+	.comment 0 : { *(.comment) }
 }

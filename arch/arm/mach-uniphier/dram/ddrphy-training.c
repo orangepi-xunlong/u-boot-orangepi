@@ -1,16 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011-2014 Panasonic Corporation
  * Copyright (C) 2015-2016 Socionext Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <linux/bitops.h>
-#include <linux/delay.h>
+#include <common.h>
 #include <linux/errno.h>
 #include <linux/io.h>
-#include <linux/kernel.h>
-#include <linux/printk.h>
-#include <time.h>
 
 #include "ddrphy-init.h"
 #include "ddrphy-regs.h"
@@ -111,7 +108,7 @@ int ddrphy_training(void __iomem *phy_base)
 	u32 init_flag = PHY_PIR_INIT;
 	u32 done_flag = PHY_PGSR0_IDONE;
 	int timeout = 50000; /* 50 msec is long enough */
-#ifdef DEBUG
+#ifdef DISPLAY_ELAPSED_TIME
 	ulong start = get_timer(0);
 #endif
 
@@ -124,7 +121,8 @@ int ddrphy_training(void __iomem *phy_base)
 
 	do {
 		if (--timeout < 0) {
-			pr_err("timeout during DDR training\n");
+			printf("%s: error: timeout during DDR training\n",
+								__func__);
 			return -ETIMEDOUT;
 		}
 		udelay(1);
@@ -133,13 +131,14 @@ int ddrphy_training(void __iomem *phy_base)
 
 	for (i = 0; i < ARRAY_SIZE(init_sequence); i++) {
 		if (pgsr0 & init_sequence[i].err_flag) {
-			pr_err("%s failed\n", init_sequence[i].description);
+			printf("%s: error: %s failed\n", __func__,
+						init_sequence[i].description);
 			return -EIO;
 		}
 	}
 
-#ifdef DEBUG
-	pr_debug("DDR training: elapsed time %ld msec\n", get_timer(start));
+#ifdef DISPLAY_ELAPSED_TIME
+	printf("%s: info: elapsed time %ld msec\n", get_timer(start));
 #endif
 
 	return 0;

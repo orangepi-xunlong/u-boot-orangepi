@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
  * Based on Atheros LSDK/QSDK
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <asm/types.h>
 #include <mach/ar71xx_regs.h>
 #include <mach/ath79.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define DDR_CTRL_UPD_EMR3S      BIT(5)
 #define DDR_CTRL_UPD_EMR2S      BIT(4)

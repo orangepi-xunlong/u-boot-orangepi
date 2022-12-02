@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * The file use ls102xa/timer.c as a reference.
  */
@@ -61,7 +62,7 @@ int timer_init(void)
 	unsigned long val, freq;
 
 	freq = CONFIG_SC_TIMER_CLK;
-	asm volatile("mcr p15, 0, %0, c14, c0, 0" : : "r" (freq));
+	asm("mcr p15, 0, %0, c14, c0, 0" : : "r" (freq));
 
 	writel(freq, &sctr->cntfid0);
 
@@ -81,7 +82,7 @@ unsigned long long get_ticks(void)
 {
 	unsigned long long now;
 
-	asm volatile("mrrc p15, 0, %Q0, %R0, c14" : "=r" (now));
+	asm("mrrc p15, 0, %Q0, %R0, c14" : "=r" (now));
 
 	gd->arch.tbl = (unsigned long)(now & 0xffffffff);
 	gd->arch.tbu = (unsigned long)(now >> 32);

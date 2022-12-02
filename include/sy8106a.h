@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2016
  * Jelle van der Waa <jelle@vdwaa.nl>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _SY8106A_PMIC_H_
 

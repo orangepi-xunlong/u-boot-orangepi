@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*-
  * Copyright (c) 2007-2008, Juniper Networks, Inc.
  * Copyright (c) 2008, Michael Trimarchi <trimarchimichael@yahoo.it>
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef USB_EHCI_H
 #define USB_EHCI_H
 
 #include <usb.h>
+#include <generic-phy.h>
 
 /* Section 2.2.3 - N_PORTS */
 #define MAX_HC_PORTS		15
@@ -251,6 +253,7 @@ struct ehci_ctrl {
 	int periodic_schedules;
 	int ntds;
 	struct ehci_ops ops;
+	struct usb_hub_descriptor hub;
 	void *priv;	/* client's private data */
 };
 
@@ -287,5 +290,9 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
 		  uint tweaks, enum usb_init_type init);
 int ehci_deregister(struct udevice *dev);
 extern struct dm_usb_ops ehci_usb_ops;
+
+/* EHCI PHY functions */
+int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index);
+int ehci_shutdown_phy(struct udevice *dev, struct phy *phy);
 
 #endif /* USB_EHCI_H */

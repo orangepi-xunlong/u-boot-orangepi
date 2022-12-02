@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *
  * (C) Copyright 2014 Freescale Semiconductor, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _THERMAL_H_

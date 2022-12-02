@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014 Hans de Goede <hdegoede@redhat.com>
  *
@@ -6,6 +5,8 @@
  * (C) Copyright 2007-2013
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * lixiang <lixiang@allwinnertech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,7 +20,7 @@ static int rsb_set_device_mode(void);
 
 static void rsb_cfg_io(void)
 {
-#if defined(CONFIG_MACH_SUN8I) || defined(CONFIG_SUNXI_NCAT)
+#ifdef CONFIG_MACH_SUN8I
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_pull(SUNXI_GPL(0), 1);
@@ -53,35 +54,15 @@ static void rsb_set_clk(void)
 
 	writel((cd_odly << 8) | div, &rsb->ccr);
 }
-#if defined(CONFIG_SUNXI_NCAT)
-static void prcm_rsb_enable(void)
-{
-	u32 reg_addr;
-	/* R_RSB Bus Gating Reset Reg */
-	reg_addr = SUNXI_PRCM_BASE + 0x1bc;
-
-	/* rsb reset */
-	setbits_le32(reg_addr, 1<<16);
-
-	/* rsb gating */
-	setbits_le32(reg_addr, 1<<0);
-
-}
-#endif
 
 int rsb_init(void)
 {
 	struct sunxi_rsb_reg * const rsb =
 		(struct sunxi_rsb_reg *)SUNXI_RSB_BASE;
 
-#if defined(CONFIG_SUNXI_NCAT)
-	prcm_rsb_enable();
-#elif defined(CONFIG_MACH_SUN8I)
 	/* Enable RSB and PIO clk, and de-assert their resets */
 	prcm_apb0_enable(PRCM_APB0_GATE_PIO | PRCM_APB0_GATE_RSB);
-#else
-#error unsupported MACH_SUNXI
-#endif
+
 	/* Setup external pins */
 	rsb_cfg_io();
 

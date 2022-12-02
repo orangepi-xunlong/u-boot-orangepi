@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Operating System Interface
  *
@@ -6,6 +5,7 @@
  * They are kept in a separate file so we can include system headers.
  *
  * Copyright (c) 2011 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __OS_H__
@@ -239,26 +239,6 @@ const char *os_dirent_get_typename(enum os_dirent_t type);
  * @return 0 on success or -1 if an error ocurred
  */
 int os_get_filesize(const char *fname, loff_t *size);
-
-/**
- * Write a character to the controlling OS terminal
- *
- * This bypasses the U-Boot console support and writes directly to the OS
- * stdout file descriptor.
- *
- * @param ch	Character to write
- */
-void os_putc(int ch);
-
-/**
- * Write a string to the controlling OS terminal
- *
- * This bypasses the U-Boot console support and writes directly to the OS
- * stdout file descriptor.
- *
- * @param str	String to write (note that \n is not appended)
- */
-void os_puts(const char *str);
 
 /**
  * Write the sandbox RAM buffer to a existing file

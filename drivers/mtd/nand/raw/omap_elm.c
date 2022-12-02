@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010-2011 Texas Instruments, <www.ti.com>
  * Mansoor Ahamed <mansoor.ahamed@ti.com>
@@ -10,6 +9,8 @@
  * 2. Supports only syndrome polynomial 0. i.e. poly local variable is
  *    always set to ELM_DEFAULT_POLY. Dont see need for other polynomial
  *    sets in uboot
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

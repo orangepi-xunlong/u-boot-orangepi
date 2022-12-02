@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 #ifndef __IMX_VIDEO_H_
 #define __IMX_VIDEO_H_

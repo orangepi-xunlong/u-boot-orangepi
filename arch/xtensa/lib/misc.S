@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Miscellaneous assembly functions.
  *
@@ -6,6 +5,8 @@
  * Copyright (C) 2014 - 2016 Cadence Design Systems Inc.
  *
  * Chris Zankel	<chris@zankel.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 

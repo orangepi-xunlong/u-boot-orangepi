@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * LPC32xx dram init
  *
@@ -11,6 +10,8 @@
  *
  * Actual CONFIG_LPC32XX_SDRAM_* parameters must be provided
  * by the board configuration file.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

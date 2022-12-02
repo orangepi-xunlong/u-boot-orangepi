@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007 Wind River Systemes, Inc. <www.windriver.com>
  * Copyright 2007 Embedded Specialties, Inc.
@@ -9,6 +8,8 @@
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013-2014 Altera Corporation <www.altera.com>
  * Copyright (C) 2009-2010, Intel Corporation and its suppliers.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DENALI_H__
@@ -10,6 +11,7 @@
 #include <linux/bitops.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/types.h>
+#include <reset.h>
 
 #define DEVICE_RESET				0x0
 #define     DEVICE_RESET__BANK(bank)			BIT(bank)
@@ -315,6 +317,7 @@ struct denali_nand_info {
 	void (*host_write)(struct denali_nand_info *denali, u32 addr, u32 data);
 	void (*setup_dma)(struct denali_nand_info *denali, dma_addr_t dma_addr,
 			  int page, int write);
+	struct reset_ctl_bulk resets;
 };
 
 #define DENALI_CAP_HW_ECC_FIXUP			BIT(0)

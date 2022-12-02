@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -119,11 +120,11 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 #if defined(CONFIG_RAMBOOT_PBL) && !defined(CONFIG_SPL_BUILD)
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE, CONFIG_SYS_DDR_SDRAM_BASE,
-		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
+		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
 		      0, 12, BOOKE_PAGESZ_1G, 1),
 	SET_TLB_ENTRY(1, CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
 		      CONFIG_SYS_DDR_SDRAM_BASE + 0x40000000,
-		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_M,
+		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
 		      0, 13, BOOKE_PAGESZ_1G, 1)
 #endif
 };

@@ -144,10 +144,9 @@
 		#size-cells = <1>;
 		ranges;
 
-		syscon: syscon@1c00000 {
-			compatible = "allwinner,sun8i-h3-system-controller",
-				     "syscon";
-			reg = <0x01c00000 0x1000>;
+		syscon: syscon@01c00000 {
+			compatible = "allwinner,sun8i-h3-syscon","syscon";
+			reg = <0x01c00000 0x34>;
 		};
 
 		dma: dma-controller@01c02000 {
@@ -340,12 +339,15 @@
 			interrupt-controller;
 			#interrupt-cells = <3>;
 
-			emac_rgmii_pins: emac0 {
-				pins = "PD0", "PD1", "PD2", "PD3", "PD4",
-				       "PD5", "PD7", "PD8", "PD9", "PD10",
-				       "PD12", "PD13", "PD15", "PD16", "PD17";
-				function = "emac";
-				drive-strength = <40>;
+			emac_rgmii_pins: emac0@0 {
+				allwinner,pins = "PD0", "PD1", "PD2", "PD3",
+						"PD4", "PD5", "PD7",
+						"PD8", "PD9", "PD10",
+						"PD12", "PD13", "PD15",
+						"PD16", "PD17";
+				allwinner,function = "emac";
+				allwinner,drive = <SUN4I_PINCTRL_40_MA>;
+				allwinner,pull = <SUN4I_PINCTRL_NO_PULL>;
 			};
 
 			mmc0_pins_a: mmc0@0 {
@@ -464,51 +466,16 @@
 
 		emac: ethernet@1c30000 {
 			compatible = "allwinner,sun8i-h3-emac";
-			syscon = <&syscon>;
-			reg = <0x01c30000 0x10000>;
+			reg = <0x01c30000 0x104>, <0x01c00030 0x4>;
+			reg-names = "emac", "syscon";
 			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "macirq";
-			resets = <&ccu RST_BUS_EMAC>;
-			reset-names = "stmmaceth";
-			clocks = <&ccu CLK_BUS_EMAC>;
-			clock-names = "stmmaceth";
+			resets = <&ccu RST_BUS_EMAC>, <&ccu RST_BUS_EPHY>;
+			reset-names = "ahb", "ephy";
+			clocks = <&ccu CLK_BUS_EMAC>, <&ccu CLK_BUS_EPHY>;
+			clock-names = "ahb", "ephy";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
-
-			mdio: mdio {
-				#address-cells = <1>;
-				#size-cells = <0>;
-				compatible = "snps,dwmac-mdio";
-			};
-
-			mdio-mux {
-				compatible = "allwinner,sun8i-h3-mdio-mux";
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				mdio-parent-bus = <&mdio>;
-				/* Only one MDIO is usable at the time */
-				internal_mdio: mdio@1 {
-					compatible = "allwinner,sun8i-h3-mdio-internal";
-					reg = <1>;
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					int_mii_phy: ethernet-phy@1 {
-						compatible = "ethernet-phy-ieee802.3-c22";
-						reg = <1>;
-						clocks = <&ccu CLK_BUS_EPHY>;
-						resets = <&ccu RST_BUS_EPHY>;
-					};
-				};
-
-				external_mdio: mdio@2 {
-					reg = <2>;
-					#address-cells = <1>;
-					#size-cells = <0>;
-				};
-			};
 		};
 
 		gic: interrupt-controller@01c81000 {

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002-2004
  * Brad Kemp, Seranoa Networks, Brad.Kemp@seranoa.com
@@ -11,6 +10,8 @@
  *
  * Copyright (C) 2006
  * Tolunay Orkun <listmember@orkun.us>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* The DEBUG define must be before common to enable debugging */

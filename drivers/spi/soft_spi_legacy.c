@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Gerald Van Baren, Custom IDEAS, vanbaren@cideas.com.
  *
  * Influenced by code from:
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -35,6 +36,13 @@ static inline struct soft_spi_slave *to_soft_spi(struct spi_slave *slave)
 /*=====================================================================*/
 /*                         Public Functions                            */
 /*=====================================================================*/
+
+/*-----------------------------------------------------------------------
+ * Initialization
+ */
+void spi_init (void)
+{
+}
 
 struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 		unsigned int max_hz, unsigned int mode)

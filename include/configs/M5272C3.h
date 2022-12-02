@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Motorola MC5272C3 board.
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -45,6 +46,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -79,7 +83,7 @@
 #	define CONFIG_GATEWAYIP	192.162.1.1
 #endif				/* CONFIG_MCFFEC */
 
-#define CONFIG_HOSTNAME		"M5272C3"
+#define CONFIG_HOSTNAME		M5272C3
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"netdev=eth0\0"				\
 	"loadaddr=10000\0"			\
@@ -91,6 +95,8 @@
 	"cp.b ${loadaddr} ffe00000 ${filesize};"\
 	"save\0"				\
 	""
+
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000
 #define CONFIG_SYS_MEMTEST_START	0x400

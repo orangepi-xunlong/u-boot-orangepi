@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * UniPhier UMC (Universal Memory Controller) registers
  *
  * Copyright (C) 2011-2014 Panasonic Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef ARCH_UMC_REGS_H

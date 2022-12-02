@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2016 NextThing Co
  * Copyright (c) 2016 Free Electrons
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -13,7 +14,6 @@
 
 #include <test/ut.h>
 #include <test/overlay.h>
-#include <test/suites.h>
 
 /* 4k ought to be enough for anybody */
 #define FDT_COPY_SIZE	(4 * SZ_1K)
@@ -221,11 +221,11 @@ int do_ut_overlay(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 						 overlay_test);
 	const int n_ents = ll_entry_count(struct unit_test, overlay_test);
 	struct unit_test_state *uts;
+	struct unit_test *test;
 	void *fdt_base = &__dtb_test_fdt_base_begin;
 	void *fdt_overlay = &__dtb_test_fdt_overlay_begin;
 	void *fdt_overlay_stacked = &__dtb_test_fdt_overlay_stacked_begin;
 	void *fdt_base_copy, *fdt_overlay_copy, *fdt_overlay_stacked_copy;
-	int ret = -ENOMEM;
 
 	uts = calloc(1, sizeof(*uts));
 	if (!uts)
@@ -236,16 +236,16 @@ int do_ut_overlay(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	fdt_base_copy = malloc(FDT_COPY_SIZE);
 	if (!fdt_base_copy)
-		goto err1;
+		return -ENOMEM;
 	uts->priv = fdt_base_copy;
 
 	fdt_overlay_copy = malloc(FDT_COPY_SIZE);
 	if (!fdt_overlay_copy)
-		goto err2;
+		return -ENOMEM;
 
 	fdt_overlay_stacked_copy = malloc(FDT_COPY_SIZE);
 	if (!fdt_overlay_stacked_copy)
-		goto err3;
+		return -ENOMEM;
 
 	/*
 	 * Resize the FDT to 4k so that we have room to operate on
@@ -279,15 +279,25 @@ int do_ut_overlay(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/* Apply the stacked overlay */
 	ut_assertok(fdt_overlay_apply(fdt_base_copy, fdt_overlay_stacked_copy));
 
-	ret = cmd_ut_category("overlay", tests, n_ents, argc, argv);
+	if (argc == 1)
+		printf("Running %d environment tests\n", n_ents);
+
+	for (test = tests; test < tests + n_ents; test++) {
+		if (argc > 1 && strcmp(argv[1], test->name))
+			continue;
+		printf("Test: %s\n", test->name);
+
+		uts->start = mallinfo();
+
+		test->func(uts);
+	}
+
+	printf("Failures: %d\n", uts->fail_count);
 
 	free(fdt_overlay_stacked_copy);
-err3:
 	free(fdt_overlay_copy);
-err2:
 	free(fdt_base_copy);
-err1:
 	free(uts);
 
-	return ret;
+	return uts->fail_count ? CMD_RET_FAILURE : 0;
 }

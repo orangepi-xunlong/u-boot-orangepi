@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013
  * ISEE 2007 SL - Enric Balletbo i Serra <eballetbo@iseebcn.com>
@@ -6,6 +5,8 @@
  * Based on common/spl/spl_nand.c
  * Copyright (C) 2011
  * Corscience GmbH & Co. KG - Simon Schwarz <schwarz@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <config.h>

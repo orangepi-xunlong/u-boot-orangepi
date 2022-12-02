@@ -1,14 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause */
 /*
  * crt0-efi-aarch64.S - PE/COFF header for aarch64 EFI applications
  *
  * Copright (C) 2014 Linaro Ltd. <ard.biesheuvel@linaro.org>
  *
+ * SPDX-License-Identifier:     GPL-2.0+     BSD-2-Clause
  *
  * This file is taken and modified from the gnu-efi project.
  */
-
-#include <asm-generic/pe.h>
 
 	.section	.text.head
 
@@ -64,7 +62,7 @@ extra_header_fields:
 	 */
 	.long	_start - ImageBase		/* SizeOfHeaders */
 	.long	0				/* CheckSum */
-	.short	IMAGE_SUBSYSTEM_EFI_APPLICATION /* Subsystem */
+	.short	EFI_SUBSYSTEM			/* Subsystem */
 	.short	0				/* DllCharacteristics */
 	.quad	0				/* SizeOfStackReserve */
 	.quad	0				/* SizeOfStackCommit */

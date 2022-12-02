@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /**
  * (C) Copyright 2014, Cavium Inc.
  * (C) Copyright 2017, Xilinx Inc.
  *
+ * SPDX-License-Identifier:	GPL-2.0+
 **/
 
 #include <asm-offsets.h>
@@ -146,7 +146,6 @@ void __efi_runtime EFIAPI efi_reset_system(
 	switch (reset_type) {
 	case EFI_RESET_COLD:
 	case EFI_RESET_WARM:
-	case EFI_RESET_PLATFORM_SPECIFIC:
 		psci_system_reset();
 		break;
 	case EFI_RESET_SHUTDOWN:

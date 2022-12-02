@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Special Function Register (SFR)
  *
  * Copyright (C) 2014 Atmel
  *		      Bo Shen <voice.shen@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SAMA5_SFR_H
@@ -26,9 +27,6 @@ struct atmel_sfr {
 	u32 aicredir;	/* 0x54 */
 	u32 l2cc_hramc;	/* 0x58 */
 };
-
-/* Register Mapping*/
-#define AT91_SFR_UTMICKTRIM	0x30	/* UTMI Clock Trimming Register */
 
 /* Bit field in DDRCFG */
 #define ATMEL_SFR_DDRCFG_FDQIEN		0x00010000
@@ -57,8 +55,6 @@ struct atmel_sfr {
 #define AT91_SFR_EBICFG_SCH1		(0x1 << 12)
 #define AT91_SFR_EBICFG_SCH1_OFF		(0x0 << 12)
 #define AT91_SFR_EBICFG_SCH1_ON			(0x1 << 12)
-
-#define AT91_UTMICKTRIM_FREQ		GENMASK(1, 0)
 
 /* Bit field in AICREDIR */
 #define ATMEL_SFR_AICREDIR_NSAIC	0x00000001

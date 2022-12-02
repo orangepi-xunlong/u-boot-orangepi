@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 Atmel Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <clk.h>
@@ -23,6 +24,8 @@
 
 #include "atmel_spi.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #ifndef CONFIG_DM_SPI
 
 static int spi_has_wdrbt(struct atmel_spi_slave *slave)
@@ -32,6 +35,11 @@ static int spi_has_wdrbt(struct atmel_spi_slave *slave)
 	ver = spi_readl(slave, VERSION);
 
 	return (ATMEL_SPI_VERSION_REV(ver) >= 0x210);
+}
+
+void spi_init()
+{
+
 }
 
 struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,

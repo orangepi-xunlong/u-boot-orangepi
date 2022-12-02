@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2010, STMicroelectronics - All Rights Reserved
- * Author(s): Vipin Kumar, <vipin.kumar@st.com> for STMicroelectronics.
+ * (C) Copyright 2010
+ * Vipin Kumar, STMicroelectronics, <vipin.kumar@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 static inline unsigned long get_macb_pclk_rate(unsigned int dev_id)

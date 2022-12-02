@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 Michal Simek
  *
@@ -6,6 +5,8 @@
  *
  * Based on Xilinx gmac driver:
  * (C) Copyright 2011 Xilinx
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <clk.h>
@@ -181,8 +182,6 @@ struct zynq_gem_priv {
 	int phy_of_handle;
 	struct mii_dev *bus;
 	struct clk clk;
-	u32 max_speed;
-	bool int_pcs;
 };
 
 static u32 phy_setup_op(struct zynq_gem_priv *priv, u32 phy_addr, u32 regnum,
@@ -325,8 +324,7 @@ static int zynq_phy_init(struct udevice *dev)
 	/* Enable only MDIO bus */
 	writel(ZYNQ_GEM_NWCTRL_MDEN_MASK, &regs->nwctrl);
 
-	if ((priv->interface != PHY_INTERFACE_MODE_SGMII) &&
-	    (priv->interface != PHY_INTERFACE_MODE_GMII)) {
+	if (priv->interface != PHY_INTERFACE_MODE_SGMII) {
 		ret = phy_detection(dev);
 		if (ret) {
 			printf("GEM PHY init failed\n");
@@ -341,12 +339,6 @@ static int zynq_phy_init(struct udevice *dev)
 
 	priv->phydev->supported &= supported | ADVERTISED_Pause |
 				  ADVERTISED_Asym_Pause;
-	if (priv->max_speed) {
-		ret = phy_set_supported(priv->phydev, priv->max_speed);
-		if (ret)
-			return ret;
-	}
-
 	priv->phydev->advertising = priv->phydev->supported;
 
 	if (priv->phy_of_handle > 0)
@@ -433,12 +425,7 @@ static int zynq_gem_init(struct udevice *dev)
 
 	nwconfig = ZYNQ_GEM_NWCFG_INIT;
 
-	/*
-	 * Set SGMII enable PCS selection only if internal PCS/PMA
-	 * core is used and interface is SGMII.
-	 */
-	if (priv->interface == PHY_INTERFACE_MODE_SGMII &&
-	    priv->int_pcs) {
+	if (priv->interface == PHY_INTERFACE_MODE_SGMII) {
 		nwconfig |= ZYNQ_GEM_NWCFG_SGMII_ENBL |
 			    ZYNQ_GEM_NWCFG_PCS_SEL;
 #ifdef CONFIG_ARM64
@@ -709,11 +696,6 @@ static int zynq_gem_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 	priv->interface = pdata->phy_interface;
-
-	priv->max_speed = fdtdec_get_uint(gd->fdt_blob, priv->phy_of_handle,
-					  "max-speed", SPEED_1000);
-	priv->int_pcs = fdtdec_get_bool(gd->fdt_blob, node,
-					"is-internal-pcspma");
 
 	printf("ZYNQ GEM: %lx, phyaddr %x, interface %s\n", (ulong)priv->iobase,
 	       priv->phyaddr, phy_string_for_interface(priv->interface));

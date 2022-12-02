@@ -7,8 +7,4 @@
 # SPDX-License-Identifier: GPL-2.0
 #
 
-ifdef CONFIG_SPL_BUILD
-obj-y	:= porter_spl.o
-else
-obj-y	:= porter.o qos.o
-endif
+obj-y	:= porter.o qos.o ../rcar-common/common.o

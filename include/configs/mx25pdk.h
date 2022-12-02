@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -10,7 +11,9 @@
 
 /* High Level Configuration Options */
 
+#define CONFIG_MX25
 #define CONFIG_SYS_TEXT_BASE		0x81200000
+#define CONFIG_MXC_GPIO
 #define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_SYS_TIMER_RATE		32768
@@ -48,16 +51,24 @@
 /* Serial Info */
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART1_BASE
+#define CONFIG_CONS_INDEX	1	/* use UART0 for console */
 
 /* No NOR flash present */
 #define CONFIG_ENV_OFFSET      (6 * 64 * 1024)
 #define CONFIG_ENV_SIZE        (8 * 1024)
 #define CONFIG_SYS_MMC_ENV_DEV		0
 
+#define CONFIG_SYS_MMC_ENV_DEV 0
+
 /* U-Boot general configuration */
+#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size  */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
+
+/* U-Boot commands */
 
 /* Ethernet */
 #define CONFIG_FEC_MXC
@@ -66,6 +77,7 @@
 #define CONFIG_ENV_OVERWRITE
 
 /* ESDHC driver */
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	IMX_MMC_SDHC1_BASE
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
 
@@ -126,11 +138,11 @@
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
 	"loadbootscript=" \
-		"load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
+		"fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
 		"source\0" \
-	"loadimage=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
-	"loadfdt=load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
+	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
+	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
@@ -184,5 +196,7 @@
 	   "else run netboot; fi"
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_AUTO_COMPLETE
 
 #endif /* __CONFIG_H */

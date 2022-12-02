@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 Amarula Solutions B.V.
  * Copyright (C) 2016 Engicam S.r.l.
  *
  * Configuration settings for the Engicam i.MX6 SOM Starter Kits.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __IMX6_ENGICAM_CONFIG_H
@@ -129,6 +130,11 @@
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
 					CONFIG_SYS_INIT_SP_OFFSET)
 
+/* FIT */
+#ifdef CONFIG_FIT
+# define CONFIG_IMAGE_FORMAT_LEGACY
+#endif
+
 /* UART */
 #ifdef CONFIG_MXC_UART
 # ifdef CONFIG_MX6UL
@@ -153,8 +159,6 @@
 # define CONFIG_SYS_NAND_U_BOOT_OFFS	0x200000
 
 /* MTD device */
-# define CONFIG_MTD_DEVICE
-# define CONFIG_MTD_PARTITIONS
 #endif
 
 /* Ethernet */
@@ -186,6 +190,7 @@
 
 /* Framebuffer */
 #ifdef CONFIG_VIDEO_IPUV3
+# define CONFIG_IPUV3_CLK		260000000
 # define CONFIG_IMX_VIDEO_SKIP
 
 # define CONFIG_SPLASH_SCREEN
@@ -198,13 +203,24 @@
 
 /* SPL */
 #ifdef CONFIG_SPL
-# ifdef CONFIG_ENV_IS_IN_NAND
+# ifdef CONFIG_NAND_MXS
 #  define CONFIG_SPL_NAND_SUPPORT
 # else
 #  define CONFIG_SPL_MMC_SUPPORT
 # endif
 
 # include "imx6_spl.h"
+# ifdef CONFIG_SPL_BUILD
+#  if defined(CONFIG_TARGET_MX6Q_ICORE_RQS) || defined(CONFIG_TARGET_MX6UL_ISIOT)
+#   define CONFIG_SYS_FSL_USDHC_NUM	2
+#  else
+#   define CONFIG_SYS_FSL_USDHC_NUM	1
+#  endif
+
+#  define CONFIG_SYS_FSL_ESDHC_ADDR	0
+#  undef CONFIG_DM_GPIO
+#  undef CONFIG_DM_MMC
+# endif
 #endif
 
 #endif /* __IMX6_ENGICAM_CONFIG_H */

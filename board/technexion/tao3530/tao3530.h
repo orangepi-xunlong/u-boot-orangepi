@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright TechNexion 2010
  * Edward Lin <linuxfae@technexion.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _TAO3530_H_
 #define _TAO3530_H_

@@ -1,18 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014      Panasonic Corporation
  * Copyright (C) 2015-2016 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <spl.h>
 #include <linux/libfdt.h>
 #include <nand.h>
-#include <stdio.h>
 #include <linux/io.h>
 #include <linux/printk.h>
-#include <../drivers/mtd/nand/denali.h>
+#include <../drivers/mtd/nand/raw/denali.h>
 
 #include "init.h"
 
@@ -93,7 +93,7 @@ int board_late_init(void)
 	printf("\n");
 
 	if (uniphier_set_fdt_file())
-		pr_warn("fdt_file environment was not set correctly\n");
+		printf("fdt_file environment was not set correctly\n");
 
 	return 0;
 }

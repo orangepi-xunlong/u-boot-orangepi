@@ -563,7 +563,6 @@
 			clocks = <&clk_s_c0_flexgen CLK_MMC_1>,
 				 <&clk_s_c0_flexgen CLK_RX_ICN_HVA>;
 			resets = <&softreset STIH407_MMC1_SOFTRESET>;
-			reset-names = "softreset";
 			bus-width = <4>;
 		};
 
@@ -655,7 +654,7 @@
 				compatible	= "snps,dwc3";
 				reg		= <0x09900000 0x100000>;
 				interrupts	= <GIC_SPI 155 IRQ_TYPE_NONE>;
-				dr_mode		= "peripheral";
+				dr_mode		= "host";
 				phy-names	= "usb2-phy", "usb3-phy";
 				phys		= <&usb2_picophy0>,
 						  <&phy_port2 PHY_TYPE_USB3>;

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright 2007 Freescale Semiconductor, Inc.
 # (C) Copyright 2002,2003 Motorola Inc.
@@ -6,6 +5,7 @@
 #
 # (C) Copyright 2004 Freescale Semiconductor. (MC86xx Port)
 # Jeff Brown
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 extra-y	= start.o

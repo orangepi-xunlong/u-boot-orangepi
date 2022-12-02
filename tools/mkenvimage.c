@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 Free Electrons
  * David Wagner <david.wagner@free-electrons.com>
@@ -6,6 +5,8 @@
  * Inspired from envcrc.c:
  * (C) Copyright 2001
  * Paolo Scaffardi, AIRVENT SAM s.p.a - RIMINI(ITALY), arsenio@tin.it
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <errno.h>
@@ -161,13 +162,13 @@ int main(int argc, char **argv)
 		txt_fd = STDIN_FILENO;
 
 		do {
-			filebuf = realloc(filebuf, filesize + readlen);
+			filebuf = realloc(filebuf, readlen);
 			if (!filebuf) {
 				fprintf(stderr, "Can't realloc memory for the input file buffer\n");
 				return EXIT_FAILURE;
 			}
 			readbytes = read(txt_fd, filebuf + filesize, readlen);
-			if (readbytes < 0) {
+			if (errno) {
 				fprintf(stderr, "Error while reading stdin: %s\n",
 						strerror(errno));
 				return EXIT_FAILURE;

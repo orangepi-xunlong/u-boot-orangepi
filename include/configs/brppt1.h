@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * brtpp1.h
  *
@@ -6,6 +5,8 @@
  *
  * Copyright (C) 2013 Hannes Schmelzer <oe5hpm@oevsv.at> -
  * Bernecker & Rainer Industrieelektronik GmbH - http://www.br-automation.com
+ *
+ * SPDX-License-Identifier:        GPL-2.0+
  */
 
 #ifndef __CONFIG_BRPPT1_H__
@@ -18,6 +19,11 @@
 #define CONFIG_LCD_ROTATION
 #define CONFIG_LCD_DT_SIMPLEFB
 #define LCD_BPP				LCD_COLOR32
+
+/* Bootcount using the RTC block */
+#define CONFIG_SYS_BOOTCOUNT_ADDR	0x44E3E000
+#define CONFIG_BOOTCOUNT_LIMIT
+#define CONFIG_BOOTCOUNT_AM33XX
 
 /* memory */
 #define CONFIG_SYS_MALLOC_LEN		(5 * 1024 * 1024)
@@ -46,9 +52,6 @@
  * both for ease of use in U-Boot and for passing information on to
  * the Linux kernel.
  */
-#if defined(CONFIG_SPI_BOOT) || defined(CONFIG_NAND)
-#define CONFIG_MTD_DEVICE		/* Required for mtdparts */
-#endif /* CONFIG_SPI_BOOT, ... */
 
 #ifdef CONFIG_SPL_OS_BOOT
 #define CONFIG_SYS_SPL_ARGS_ADDR		0x80F80000
@@ -77,8 +80,8 @@
 
 #ifdef CONFIG_NAND
 #define NANDARGS \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"nandargs=setenv bootargs console=${console} " \
 		"${optargs} " \
 		"${optargs_rot} " \
@@ -200,10 +203,22 @@ MMCARGS
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
 
+#define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
+#define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:" \
+					"128k(MLO)," \
+					"128k(MLO.backup)," \
+					"128k(dtb)," \
+					"128k(u-boot-env)," \
+					"512k(u-boot)," \
+					"4m(kernel),"\
+					"128m(rootfs),"\
+					"-(user)"
 #define CONFIG_NAND_OMAP_GPMC_WSCFG	1
 #endif /* CONFIG_NAND */
 
 /* USB configuration */
+#define CONFIG_USB_MUSB_DSPS
+#define CONFIG_USB_MUSB_PIO_ONLY
 #define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 #define CONFIG_AM335X_USB0
 #define CONFIG_AM335X_USB0_MODE	MUSB_HOST
@@ -214,6 +229,7 @@ MMCARGS
 /* McSPI IP block */
 #define CONFIG_SF_DEFAULT_SPEED		24000000
 
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x20000
 #define CONFIG_SYS_REDUNDAND_ENVIRONMENT
 #define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
@@ -235,5 +251,13 @@ MMCARGS
 #else
 #error "no storage for Environment defined!"
 #endif
+/*
+ * Common filesystems support.  When we have removable storage we
+ * enabled a number of useful commands and support.
+ */
+#if defined(CONFIG_MMC) || defined(CONFIG_USB_STORAGE)
+#define CONFIG_FS_EXT4
+#define CONFIG_EXT4_WRITE
+#endif /* CONFIG_MMC, ... */
 
 #endif	/* ! __CONFIG_BRPPT1_H__ */

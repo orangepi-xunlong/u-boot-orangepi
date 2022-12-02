@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Atmel Corporation
  *		      Wenyou Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,20 +10,11 @@
 #include <asm/arch/clk.h>
 #include <asm/arch/sama5d2.h>
 
-int cpu_is_sama5d2(void)
+char *get_cpu_name()
 {
-	unsigned int chip_id = get_chip_id();
-
-	return ((chip_id == ARCH_ID_SAMA5D2) ||
-		(chip_id == ARCH_ID_SAMA5D2_SIP)) ? 1 : 0;
-}
-
-char *get_cpu_name(void)
-{
-	unsigned int chip_id = get_chip_id();
 	unsigned int extension_id = get_extension_chip_id();
 
-	if (chip_id == ARCH_ID_SAMA5D2) {
+	if (cpu_is_sama5d2()) {
 		switch (extension_id) {
 		case ARCH_EXID_SAMA5D21CU:
 			return "SAMA5D21";
@@ -46,19 +38,6 @@ char *get_cpu_name(void)
 			return "SAMA5D28-CU";
 		case ARCH_EXID_SAMA5D28CN:
 			return "SAMA5D28-CN";
-		}
-	}
-
-	if ((chip_id == ARCH_ID_SAMA5D2) || (chip_id == ARCH_ID_SAMA5D2_SIP)) {
-		switch (extension_id) {
-		case ARCH_EXID_SAMA5D225C_D1M:
-			return "SAMA5D225 128M bits DDR2 SDRAM";
-		case ARCH_EXID_SAMA5D27C_D5M:
-			return "SAMA5D27 512M bits DDR2 SDRAM";
-		case ARCH_EXID_SAMA5D27C_D1G:
-			return "SAMA5D27 1G bits DDR2 SDRAM";
-		case ARCH_EXID_SAMA5D28C_D1G:
-			return "SAMA5D28 1G bits DDR2 SDRAM";
 		}
 	}
 

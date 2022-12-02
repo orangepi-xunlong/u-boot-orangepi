@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Texas Insturments
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

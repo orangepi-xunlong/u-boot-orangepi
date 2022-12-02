@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2010 Michal Simek
  *
  * Michal SIMEK <monstr@monstr.eu>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -40,6 +41,7 @@
 
 /* gpio */
 #ifdef XILINX_GPIO_BASEADDR
+# define CONFIG_XILINX_GPIO
 # define CONFIG_SYS_GPIO_0_ADDR		XILINX_GPIO_BASEADDR
 #endif
 
@@ -153,31 +155,30 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-
-#if defined(CONFIG_CMD_JFFS2)
-# define CONFIG_MTD_PARTITIONS
-#endif
-
-#if defined(CONFIG_CMD_UBI)
-# define CONFIG_MTD_PARTITIONS
-#endif
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 #if defined(CONFIG_MTD_PARTITIONS)
 /* MTD partitions */
-#define CONFIG_MTD_DEVICE	/* needed for mtdparts commands */
 #define CONFIG_FLASH_CFI_MTD
+#define MTDIDS_DEFAULT		"nor0=flash-0"
 
 /* default mtd partition table */
+#define MTDPARTS_DEFAULT	"mtdparts=flash-0:256k(u-boot),"\
+				"256k(env),3m(kernel),1m(romfs),"\
+				"1m(cramfs),-(jffs2)"
 #endif
 
 /* size of console buffer */
 #define	CONFIG_SYS_CBSIZE	512
 /* max number of command args */
 #define	CONFIG_SYS_MAXARGS	15
+#define	CONFIG_SYS_LONGHELP
 /* default load address */
 #define	CONFIG_SYS_LOAD_ADDR	0
 
-#define	CONFIG_HOSTNAME		"microblaze-generic"
+#define	CONFIG_HOSTNAME		XILINX_BOARD_NAME
 #define	CONFIG_BOOTCOMMAND	"base 0;tftp 11000000 image.img;bootm"
 
 /* architecture dependent code */
@@ -197,17 +198,28 @@
 					"setenv stdin serial\0"
 #endif
 
+#define CONFIG_CMDLINE_EDITING
+
 /* Enable flat device tree support */
 #define CONFIG_LMB		1
 
 #if defined(CONFIG_XILINX_AXIEMAC)
 # define CONFIG_MII		1
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1
+# define CONFIG_PHY_ATHEROS	1
+# define CONFIG_PHY_BROADCOM	1
+# define CONFIG_PHY_DAVICOM	1
+# define CONFIG_PHY_LXT		1
+# define CONFIG_PHY_MARVELL	1
+# define CONFIG_PHY_NATSEMI	1
+# define CONFIG_PHY_REALTEK	1
+# define CONFIG_PHY_VITESSE	1
 #else
 # undef CONFIG_MII
 #endif
 
 /* SPL part */
+#define CONFIG_SPL_FRAMEWORK
 
 #ifdef CONFIG_SYS_FLASH_BASE
 # define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_FLASH_BASE

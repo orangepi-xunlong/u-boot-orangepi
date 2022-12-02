@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2009 Wind River Systems, Inc.
  * Tom Rix <Tom.Rix@windriver.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  *
  * This work is derived from the linux 2.6.27 kernel source
  * To fetch, use the kernel repository
@@ -298,7 +299,7 @@ static int omap_gpio_probe(struct udevice *dev)
 
 static int omap_gpio_bind(struct udevice *dev)
 {
-	struct omap_gpio_platdata *plat = dev_get_platdata(dev);
+	struct omap_gpio_platdata *plat = dev->platdata;
 	fdt_addr_t base_addr;
 
 	if (plat)
@@ -313,10 +314,6 @@ static int omap_gpio_bind(struct udevice *dev)
 	* When every board is converted to driver model and DT is
 	* supported, this can be done by auto-alloc feature, but
 	* not using calloc to alloc memory for platdata.
-	*
-	* For example am33xx_gpio uses platform data rather than device tree.
-	*
-	* NOTE: DO NOT COPY this code if you are using device tree.
 	*/
 	plat = calloc(1, sizeof(*plat));
 	if (!plat)
@@ -344,7 +341,6 @@ U_BOOT_DRIVER(gpio_omap) = {
 	.bind	= omap_gpio_bind,
 	.probe	= omap_gpio_probe,
 	.priv_auto_alloc_size = sizeof(struct gpio_bank),
-	.flags = DM_FLAG_PRE_RELOC,
 };
 
 #endif /* CONFIG_DM_GPIO */

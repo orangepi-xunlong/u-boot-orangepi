@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Andestech ATCSPI200 SPI controller driver.
  *
  * Copyright 2017 Andes Technology, Inc.
  * Author: Rick Chen (rick@andestech.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <clk.h>
@@ -197,7 +198,7 @@ static int __atcspi200_spi_xfer(struct nds_spi_slave *ns,
 		int num_bytes;
 		u8 *cmd_buf = ns->cmd_buf;
 		size_t cmd_len = ns->cmd_len;
-		unsigned long data_len = bitlen / 8;
+		size_t data_len = bitlen / 8;
 		int rf_cnt;
 		int ret = 0;
 
@@ -229,10 +230,8 @@ static int __atcspi200_spi_xfer(struct nds_spi_slave *ns,
 			__atcspi200_spi_start(ns);
 			break;
 		}
-		if (data_out)
-			debug("spi_xfer: data_out %08X(%p) data_in %08X(%p) data_len %u\n",
-			      *(uint *)data_out, data_out, *(uint *)data_in,
-			      data_in, data_len);
+		debug("spi_xfer: data_out %08X(%p) data_in %08X(%p) data_len %u\n",
+		      *(uint *)data_out, data_out, *(uint *)data_in, data_in, data_len);
 		num_chunks = DIV_ROUND_UP(data_len, max_tran_len);
 		din = data_in;
 		dout = data_out;

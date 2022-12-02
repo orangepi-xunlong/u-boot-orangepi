@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Xilinx Zynq GPIO device driver
  *
@@ -6,6 +5,8 @@
  *
  * Most of code taken from linux kernel driver (linux/drivers/gpio/gpio-zynq.c)
  * Copyright (C) 2009 - 2014 Xilinx, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

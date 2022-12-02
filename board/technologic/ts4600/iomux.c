@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Savoir-faire Linux Inc.
  *
@@ -11,6 +10,8 @@
  *
  * Derived from MX28EVK code by
  *   Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

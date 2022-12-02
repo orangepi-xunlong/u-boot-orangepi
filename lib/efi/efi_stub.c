@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * EFI information obtained here:
  * http://wiki.phoenix.com/wiki/index.php/EFI_BOOT_SERVICES
@@ -19,6 +20,8 @@
 #include <asm/io.h>
 #include <linux/err.h>
 #include <linux/types.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_X86
 /*
@@ -179,7 +182,7 @@ static int get_codeseg32(void)
 				<< 16;
 		base <<= 12;	/* 4KB granularity */
 		limit <<= 12;
-		if ((desc & GDT_PRESENT) && (desc & GDT_NOTSYS) &&
+		if ((desc & GDT_PRESENT) && (desc && GDT_NOTSYS) &&
 		    !(desc & GDT_LONG) && (desc & GDT_4KB) &&
 		    (desc & GDT_32BIT) && (desc & GDT_CODE) &&
 		    CONFIG_SYS_TEXT_BASE > base &&
@@ -274,7 +277,7 @@ efi_status_t efi_main(efi_handle_t image, struct efi_system_table *sys_table)
 	struct efi_boot_services *boot = sys_table->boottime;
 	struct efi_mem_desc *desc;
 	struct efi_entry_memmap map;
-	efi_uintn_t key, desc_size, size;
+	ulong key, desc_size, size;
 	efi_status_t ret;
 	u32 version;
 	int cs32;

@@ -1,15 +1,15 @@
 #!/usr/bin/env python2
-# SPDX-License-Identifier: GPL-2.0+
 
 # Copyright (c) 2016 Google, Inc
 # Written by Simon Glass <sjg@chromium.org>
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 # Creates binary images from input files controlled by a description
 #
 
 """See README for more information"""
 
-import glob
 import os
 import sys
 import traceback
@@ -30,13 +30,11 @@ import cmdline
 import command
 import control
 
-def RunTests(debug):
+def RunTests():
     """Run the functional tests and any embedded doctests"""
-    import elf_test
     import entry_test
     import fdt_test
-    import ftest
-    import image_test
+    import func_test
     import test
     import doctest
 
@@ -46,15 +44,8 @@ def RunTests(debug):
         suite.run(result)
 
     sys.argv = [sys.argv[0]]
-    if debug:
-        sys.argv.append('-D')
-
-    # Run the entry tests first ,since these need to be the first to import the
-    # 'entry' module.
-    suite = unittest.TestLoader().loadTestsFromTestCase(entry_test.TestEntry)
-    suite.run(result)
-    for module in (ftest.TestFunctional, fdt_test.TestFdt, elf_test.TestElf,
-                   image_test.TestImage):
+    for module in (func_test.TestFunctional, fdt_test.TestFdt,
+                   entry_test.TestEntry):
         suite = unittest.TestLoader().loadTestsFromTestCase(module)
         suite.run(result)
 
@@ -62,41 +53,22 @@ def RunTests(debug):
     for test, err in result.errors:
         print test.id(), err
     for test, err in result.failures:
-        print err, result.failures
-    if result.errors or result.failures:
-      print 'binman tests FAILED'
-      return 1
-    return 0
+        print err
 
 def RunTestCoverage():
     """Run the tests and check that we get 100% coverage"""
     # This uses the build output from sandbox_spl to get _libfdt.so
-    cmd = ('PYTHONPATH=$PYTHONPATH:%s/sandbox_spl/tools coverage run '
+    cmd = ('PYTHONPATH=%s/sandbox_spl/tools coverage run '
             '--include "tools/binman/*.py" --omit "*test*,*binman.py" '
             'tools/binman/binman.py -t' % options.build_dir)
     os.system(cmd)
     stdout = command.Output('coverage', 'report')
-    lines = stdout.splitlines()
-
-    test_set= set([os.path.basename(line.split()[0])
-                     for line in lines if '/etype/' in line])
-    glob_list = glob.glob(os.path.join(our_path, 'etype/*.py'))
-    all_set = set([os.path.basename(item) for item in glob_list])
-    missing_list = all_set
-    missing_list.difference_update(test_set)
-    missing_list.remove('_testing.py')
-    coverage = lines[-1].split(' ')[-1]
-    ok = True
-    if missing_list:
-        print 'Missing tests for %s' % (', '.join(missing_list))
-        ok = False
+    coverage = stdout.splitlines()[-1].split(' ')[-1]
     if coverage != '100%':
         print stdout
         print "Type 'coverage html' to get a report in htmlcov/index.html"
-        print 'Coverage error: %s, but should be 100%%' % coverage
-        ok = False
-    if not ok:
-      raise ValueError('Test coverage failure')
+        raise ValueError('Coverage error: %s, but should be 100%%' % coverage)
+
 
 def RunBinman(options, args):
     """Main entry point to binman once arguments are parsed
@@ -114,7 +86,7 @@ def RunBinman(options, args):
         sys.tracebacklimit = 0
 
     if options.test:
-        ret_code = RunTests(options.debug)
+        RunTests()
 
     elif options.test_coverage:
         RunTestCoverage()

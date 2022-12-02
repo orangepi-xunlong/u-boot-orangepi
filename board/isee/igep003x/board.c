@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for IGEP COM AQUILA and SMARC AM335x based boards
  *
  * Copyright (C) 2013-2017, ISEE 2007 SL - http://www.isee.biz/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

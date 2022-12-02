@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * MPC8560 FCC Fast Ethernet
  * Copyright (c) 2003 Motorola,Inc.
@@ -8,6 +7,8 @@
  *
  * (C) Copyright 2000 Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

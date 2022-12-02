@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Tests for the driver model pmic API
  *
  * Copyright (c) 2015 Samsung Electronics
  * Przemyslaw Marczak <p.marczak@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,6 +20,8 @@
 #include <power/pmic.h>
 #include <power/sandbox_pmic.h>
 #include <test/ut.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* Test PMIC get method */
 static int dm_test_power_pmic_get(struct unit_test_state *uts)

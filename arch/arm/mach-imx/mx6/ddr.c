@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Gateworks Corporation
  * Author: Tim Harvey <tharvey@gateworks.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -82,23 +83,6 @@ static void modify_dg_result(u32 *reg_st0, u32 *reg_st1, u32 *reg_ctrl)
 	val_ctrl |= (dg_dl_abs_offset + dg_hc_del) << 16;
 
 	writel(val_ctrl, reg_ctrl);
-}
-
-static void correct_mpwldectr_result(void *reg)
-{
-	/* Limit is 200/256 of CK, which is WL_HC_DELx | 0x48. */
-	const unsigned int limit = 0x148;
-	u32 val = readl(reg);
-	u32 old = val;
-
-	if ((val & 0x17f) > limit)
-		val &= 0xffff << 16;
-
-	if (((val >> 16) & 0x17f) > limit)
-		val &= 0xffff;
-
-	if (old != val)
-		writel(val, reg);
 }
 
 int mmdc_do_write_level_calibration(struct mx6_ddr_sysinfo const *sysinfo)
@@ -190,13 +174,6 @@ int mmdc_do_write_level_calibration(struct mx6_ddr_sysinfo const *sysinfo)
 			writel(ldectrl[3], &mmdc1->mpwldectrl1);
 		}
 		errors |= 4;
-	}
-
-	correct_mpwldectr_result(&mmdc0->mpwldectrl0);
-	correct_mpwldectr_result(&mmdc0->mpwldectrl1);
-	if (sysinfo->dsize == 2) {
-		correct_mpwldectr_result(&mmdc1->mpwldectrl0);
-		correct_mpwldectr_result(&mmdc1->mpwldectrl1);
 	}
 
 	/*
@@ -654,7 +631,7 @@ void mx6sx_dram_iocfg(unsigned width,
 }
 #endif
 
-#if defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+#ifdef CONFIG_MX6UL
 void mx6ul_dram_iocfg(unsigned width,
 		      const struct mx6ul_iomux_ddr_regs *ddr,
 		      const struct mx6ul_iomux_grp_regs *grp)
@@ -931,7 +908,7 @@ void mx6sdl_dram_iocfg(unsigned width,
 #define MR(val, ba, cmd, cs1) \
 	((val << 16) | (1 << 15) | (cmd << 4) | (cs1 << 3) | ba)
 #define MMDC1(entry, value) do {					  \
-	if (!is_mx6sx() && !is_mx6ul() && !is_mx6ull() && !is_mx6sl())	  \
+	if (!is_mx6sx() && !is_mx6ul() && !is_mx6sl())			  \
 		mmdc1->entry = value;					  \
 	} while (0)
 
@@ -1238,7 +1215,7 @@ void mx6_ddr3_cfg(const struct mx6_ddr_sysinfo *sysinfo,
 	u16 mem_speed = ddr3_cfg->mem_speed;
 
 	mmdc0 = (struct mmdc_p_regs *)MMDC_P0_BASE_ADDR;
-	if (!is_mx6sx() && !is_mx6ul() && !is_mx6ull() && !is_mx6sl())
+	if (!is_mx6sx() && !is_mx6ul() && !is_mx6sl())
 		mmdc1 = (struct mmdc_p_regs *)MMDC_P1_BASE_ADDR;
 
 	/* Limit mem_speed for MX6D/MX6Q */

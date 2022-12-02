@@ -61,7 +61,6 @@
 		ethernet1 = &eth0;
 		ethernet2 = &eth1;
 		ethernet3 = &eth2;
-		spi1 = &spi1;
 	};
 
 	chosen {
@@ -331,9 +330,11 @@
 				status = "okay";
 			};
 
-			spi1: spi@10680 {
+			spi@10680 {
 				/*
-				 * CS0: W25Q32
+				 * We don't seem to have the W25Q32 on the
+				 * A1 Rev 2.0 boards, so disable SPI.
+				 * CS0: W25Q32 (doesn't appear to be present)
 				 * CS1:
 				 * CS2: mikrobus
 				 */
@@ -344,9 +345,10 @@
 				spi-flash@0 {
 					#address-cells = <1>;
 					#size-cells = <0>;
-					compatible = "w25q32", "jedec,spi-nor", "spi-flash";
+					compatible = "w25q32", "jedec,spi-nor";
 					reg = <0>; /* Chip select 0 */
 					spi-max-frequency = <3000000>;
+					status = "disabled";
 				};
 			};
 

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Joe Hershberger, National Instruments, joe.hershberger@ni.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ENV_CALLBACK_H__
@@ -44,7 +45,7 @@
 #define DNS_CALLBACK
 #endif
 
-#ifdef CONFIG_CMD_NET
+#ifdef CONFIG_NET
 #define NET_CALLBACKS \
 	"bootfile:bootfile," \
 	"ipaddr:ipaddr," \

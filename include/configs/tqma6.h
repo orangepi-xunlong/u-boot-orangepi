@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013, 2014, 2017 Markus Niebel <Markus.Niebel@tq-group.com>
  *
  * Configuration settings for the TQ Systems TQMa6<Q,D,DL,S> module.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -17,6 +18,11 @@
 /* #endif */
 
 /* place code in last 4 MiB of RAM */
+#if defined(CONFIG_TQMA6S)
+#define CONFIG_SYS_TEXT_BASE		0x2fc00000
+#elif defined(CONFIG_TQMA6Q) || defined(CONFIG_TQMA6DL)
+#define CONFIG_SYS_TEXT_BASE		0x4fc00000
+#endif
 
 #include "mx6_common.h"
 
@@ -29,6 +35,9 @@
 #endif
 
 #define CONFIG_MXC_UART
+
+/* SPI */
+#define CONFIG_MXC_SPI
 
 /* SPI Flash */
 

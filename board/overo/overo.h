@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Steve Sakoman <steve@sakoman.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _OVERO_H_
 #define _OVERO_H_

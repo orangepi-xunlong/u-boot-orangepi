@@ -1,8 +1,9 @@
 #!/usr/bin/python
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (C) 2017 Google, Inc
 # Written by Simon Glass <sjg@chromium.org>
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 """Device tree to platform data class

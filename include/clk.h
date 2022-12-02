@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  * Copyright (c) 2016, NVIDIA CORPORATION.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CLK_H_
@@ -246,6 +247,26 @@ ulong clk_get_rate(struct clk *clk);
 ulong clk_set_rate(struct clk *clk, ulong rate);
 
 /**
+ * clk_get_phase() - Get the phase shift of a clock signal.
+ *
+ * @clk:	A clock struct that was previously successfully requested by
+ *		clk_request/get_by_*().
+ * @return the phase shift of a clock node in degrees, otherwise returns
+ *		-ve error code.
+ */
+int clk_get_phase(struct clk *clk);
+
+/**
+ * clk_set_rate() - Adjust the phase shift of a clock signal.
+ *
+ * @clk:	A clock struct that was previously successfully requested by
+ *		clk_request/get_by_*().
+ * @degrees:	Numberof degrees the signal is shifted.
+ * @return 0 on success, or -ve error code.
+ */
+int clk_set_phase(struct clk *clk, int degrees);
+
+/**
  * clk_set_parent() - Set current clock parent.
  *
  * @clk:	A clock struct that was previously successfully requested by
@@ -294,4 +315,16 @@ int clk_disable_bulk(struct clk_bulk *bulk);
 
 int soc_clk_dump(void);
 
+int clks_probe(void);
+
+/**
+ * clk_valid() - check if clk is valid
+ *
+ * @clk:	the clock to check
+ * @return true if valid, or false
+ */
+static inline bool clk_valid(struct clk *clk)
+{
+	return !!clk->dev;
+}
 #endif

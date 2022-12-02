@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Wolfgang Denk, DENX Software Engineering, <wd@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,9 +10,7 @@
 #ifdef CONFIG_MIPS_L2_CACHE
 #include <asm/cm.h>
 #endif
-#include <asm/io.h>
 #include <asm/mipsregs.h>
-#include <asm/system.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -97,9 +96,6 @@ static inline unsigned long scache_line_size(void)
 	const unsigned int cache_ops[] = { ops };			\
 	unsigned int i;							\
 									\
-	if (!lsize)							\
-		break;							\
-									\
 	for (; addr <= aend; addr += lsize) {				\
 		for (i = 0; i < ARRAY_SIZE(cache_ops); i++)		\
 			mips_cache(cache_ops[i], addr);			\
@@ -120,24 +116,19 @@ void flush_cache(ulong start_addr, ulong size)
 		/* flush I-cache & D-cache simultaneously */
 		cache_loop(start_addr, start_addr + size, ilsize,
 			   HIT_WRITEBACK_INV_D, HIT_INVALIDATE_I);
-		goto ops_done;
+		return;
 	}
 
 	/* flush D-cache */
 	cache_loop(start_addr, start_addr + size, dlsize, HIT_WRITEBACK_INV_D);
 
 	/* flush L2 cache */
-	cache_loop(start_addr, start_addr + size, slsize, HIT_WRITEBACK_INV_SD);
+	if (slsize)
+		cache_loop(start_addr, start_addr + size, slsize,
+			   HIT_WRITEBACK_INV_SD);
 
 	/* flush I-cache */
 	cache_loop(start_addr, start_addr + size, ilsize, HIT_INVALIDATE_I);
-
-ops_done:
-	/* ensure cache ops complete before any further memory accesses */
-	sync();
-
-	/* ensure the pipeline doesn't contain now-invalid instructions */
-	instruction_hazard_barrier();
 }
 
 void flush_dcache_range(ulong start_addr, ulong stop)
@@ -152,10 +143,8 @@ void flush_dcache_range(ulong start_addr, ulong stop)
 	cache_loop(start_addr, stop, lsize, HIT_WRITEBACK_INV_D);
 
 	/* flush L2 cache */
-	cache_loop(start_addr, stop, slsize, HIT_WRITEBACK_INV_SD);
-
-	/* ensure cache ops complete before any further memory accesses */
-	sync();
+	if (slsize)
+		cache_loop(start_addr, stop, slsize, HIT_WRITEBACK_INV_SD);
 }
 
 void invalidate_dcache_range(ulong start_addr, ulong stop)
@@ -168,10 +157,8 @@ void invalidate_dcache_range(ulong start_addr, ulong stop)
 		return;
 
 	/* invalidate L2 cache */
-	cache_loop(start_addr, stop, slsize, HIT_INVALIDATE_SD);
+	if (slsize)
+		cache_loop(start_addr, stop, slsize, HIT_INVALIDATE_SD);
 
 	cache_loop(start_addr, stop, lsize, HIT_INVALIDATE_D);
-
-	/* ensure cache ops complete before any further memory accesses */
-	sync();
 }

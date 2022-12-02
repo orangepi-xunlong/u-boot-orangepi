@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Google Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _DISPLAY_H

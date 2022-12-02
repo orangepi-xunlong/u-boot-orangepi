@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
  *	Dave Liu <daveliu@freescale.com>
@@ -6,6 +5,8 @@
  * calculate the organization and timing parameter
  * from ddr3 spd, please refer to the spec
  * JEDEC standard No.21-C 4_01_02_11R18.pdf
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -185,6 +186,7 @@ unsigned int ddr_compute_dimm_parameters(const unsigned int ctrl_num,
 	 * BL8 -bit3, BC4 -bit2
 	 */
 	pdimm->burst_lengths_bitmask = 0x0c;
+	pdimm->row_density = __ilog2(pdimm->rank_density);
 
 	/* MTB - medium timebase
 	 * The unit in the SPD spec is ns,

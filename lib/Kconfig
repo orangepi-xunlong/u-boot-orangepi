@@ -15,56 +15,13 @@ config CC_OPTIMIZE_LIBS_FOR_SPEED
 
 	  If unsure, say N.
 
-config DYNAMIC_CRC_TABLE
-	bool "Enable Dynamic tables for CRC"
-	help
-	  Enable this option to calculate entries for CRC tables at runtime.
-	  This can be helpful when reducing the size of the build image
-
 config HAVE_PRIVATE_LIBGCC
-	bool
-
-config LIB_UUID
-	bool
-
-config PRINTF
-	bool
-	default y
-
-config SPL_PRINTF
-	bool
-	select SPL_SPRINTF
-	select SPL_STRTO if !USE_TINY_PRINTF
-
-config TPL_PRINTF
-	bool
-	select TPL_SPRINTF
-	select TPL_STRTO if !USE_TINY_PRINTF
-
-config SPRINTF
-	bool
-	default y
-
-config SPL_SPRINTF
-	bool
-
-config TPL_SPRINTF
-	bool
-
-config STRTO
-	bool
-	default y
-
-config SPL_STRTO
-	bool
-
-config TPL_STRTO
 	bool
 
 config USE_PRIVATE_LIBGCC
 	bool "Use private libgcc"
 	depends on HAVE_PRIVATE_LIBGCC
-	default y if HAVE_PRIVATE_LIBGCC && ((ARM && !ARM64) || MIPS) && (!CMD_SUNXI_JPEG)
+	default y if HAVE_PRIVATE_LIBGCC && ((ARM && !ARM64) || MIPS)
 	help
 	  This option allows you to use the built-in libgcc implementation
 	  of U-Boot instead of the one provided by the compiler.
@@ -77,6 +34,12 @@ config SYS_HZ
 	  The frequency of the timer returned by get_timer().
 	  get_timer() must operate in milliseconds and this option must be
 	  set to 1000.
+
+config SYS_STACK_SIZE
+	hex
+	default 0x200000
+	help
+	 The system stack size.
 
 config USE_TINY_PRINTF
 	bool "Enable tiny printf() version"
@@ -107,25 +70,14 @@ config REGEX
 	  regex support to some commands, for example "env grep" and
 	  "setexpr".
 
-choice
-	prompt "Pseudo-random library support type"
-	depends on NET_RANDOM_ETHADDR || RANDOM_UUID || CMD_UUID
-	default LIB_RAND
-	help
-	  Select the library to provide pseudo-random number generator
-	  functions.  LIB_HW_RAND supports certain hardware engines that
-	  provide this functionality.  If in doubt, select LIB_RAND.
-
 config LIB_RAND
-	bool "Pseudo-random library support"
-
-config LIB_HW_RAND
-	bool "HW Engine for random libray support"
-
-endchoice
+	bool "Pseudo-random library support "
+	help
+	  This library provides pseudo-random number generator functions.
 
 config SPL_TINY_MEMSET
 	bool "Use a very small memset() in SPL"
+	depends on SPL
 	help
 	  The faster memset() is the arch-specific one (if available) enabled
 	  by CONFIG_USE_ARCH_MEMSET. If that is not enabled, we can still get
@@ -146,7 +98,19 @@ config RBTREE
 	bool
 
 config BITREVERSE
-	bool "Bit reverse library from Linux"
+	bool
+
+config SYSMEM
+	bool "System memory management"
+	default y
+	help
+	  This enables support for system permanent memory management.
+
+config BIDRAM
+	bool "GD board bi_dram[] memory management"
+	default y
+	help
+	  This enables support for GD board bi_dram[] memory management.
 
 source lib/dhry/Kconfig
 
@@ -174,10 +138,19 @@ config TPM
 	  for the low-level TPM interface, but only one TPM is supported at
 	  a time by the TPM library.
 
-config OPENSSL
-	bool "Openssl support"
+endmenu
+
+menu "Boot Configuration"
+
+config XBC
+	bool "Boot Configuration support"
+	depends on ANDROID_BOOT_IMAGE
+	default n
 	help
-	  This enables support for X509 certificate decoding.
+	  This enables support of Boot Configuration which can be used
+	  to pass boot configuration parameters to user space. These
+	  parameters will show up in /proc/bootconfig similar to the kernel
+	  parameters that show up in /proc/cmdline
 
 endmenu
 
@@ -197,6 +170,14 @@ config SHA256
 	  This option enables support of hashing using SHA256 algorithm.
 	  The hash is calculated in software.
 	  The SHA256 algorithm produces a 256-bit (32-byte) hash value
+	  (digest).
+
+config SHA512
+	bool "Enable SHA512 support"
+	help
+	  This option enables support of hashing using SHA512 algorithm.
+	  The hash is calculated in software.
+	  The SHA512 algorithm produces a 512-bit (64-byte) hash value
 	  (digest).
 
 config SHA_HW_ACCEL
@@ -247,6 +228,14 @@ config LZMA
 	  a dictionary compression algorithm that provides a high compression
 	  ratio and fairly fast decompression speed. See also
 	  CONFIG_CMD_LZMADEC which provides a decode command.
+
+config SPL_LZMA
+	bool "Enable LZMA decompression support in SPL"
+	depends on SPL
+	help
+	  This enables support for LZMA (Lempel-Ziv-Markov chain algorithm),
+	  a dictionary compression algorithm that provides a high compression
+	  ratio and fairly fast decompression speed. See also
 
 config LZO
 	bool "Enable LZO decompression support"
@@ -299,16 +288,19 @@ config OF_LIBFDT_OVERLAY
 	help
 	  This enables the FDT library (libfdt) overlay support.
 
-config SUNXI_OVERLAY
-	bool "Enable the SXUNI FDT library overlay support"
-	depends on OF_LIBFDT_OVERLAY
-	default n
-	help
-	  This enables the SUNXI FDT library (libfdt) overlay support.
-
 config SPL_OF_LIBFDT
 	bool "Enable the FDT library for SPL"
 	default y if SPL_OF_CONTROL
+	help
+	  This enables the FDT library (libfdt). It provides functions for
+	  accessing binary device tree images in memory, such as adding and
+	  removing nodes and properties, scanning through the tree and finding
+	  particular compatible nodes. The library operates on a flattened
+	  version of the device tree.
+
+config TPL_OF_LIBFDT
+	bool "Enable the FDT library for TPL"
+	default y if TPL_OF_CONTROL
 	help
 	  This enables the FDT library (libfdt). It provides functions for
 	  accessing binary device tree images in memory, such as adding and
@@ -356,10 +348,21 @@ config SMBIOS_PRODUCT_NAME
 	  The product name to store in SMBIOS structures.
 	  Change this to override the default one (CONFIG_SYS_BOARD).
 
+config LIB_RATIONAL
+	bool "enable continued fraction calculation routines"
+
+config SPL_LIB_RATIONAL
+	bool "enable continued fraction calculation routines for SPL"
+	depends on SPL
+
 endmenu
 
 source lib/efi/Kconfig
 source lib/efi_loader/Kconfig
-source lib/optee/Kconfig
-
+source lib/avb/libavb/Kconfig
+source lib/avb/libavb_ab/Kconfig
+source lib/avb/libavb_atx/Kconfig
+source lib/avb/libavb_user/Kconfig
+source lib/avb/rk_avb_user/Kconfig
+source lib/optee_clientApi/Kconfig
 endmenu

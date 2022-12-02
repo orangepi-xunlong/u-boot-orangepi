@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23/i.MX28 Peripheral Base Addresses
  *
@@ -9,6 +8,8 @@
  * Copyright (C) 2008 Embedded Alley Solutions Inc.
  *
  * (C) Copyright 2009-2010 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MXS_REGS_BASE_H__

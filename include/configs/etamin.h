@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 Siemens Schweiz AG
  * (C) Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -7,6 +6,8 @@
  * U-Boot file:/include/configs/am335x_evm.h
  *
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_ETAMIN_H
@@ -69,6 +70,7 @@
 
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #define DDR_PLL_FREQ	303
+#undef CONFIG_SPL_AM33XX_ENABLE_RTC32K_OSC
 
 /* FWD Button = 27
  * SRV Button = 87 */
@@ -118,6 +120,7 @@
 
 
 
+#define CONFIG_DFU_MTD
 #undef COMMON_ENV_DFU_ARGS
 #define COMMON_ENV_DFU_ARGS	"dfu_args=run bootargs_defaults;" \
 				"setenv bootargs ${bootargs};" \
@@ -136,6 +139,26 @@
 	"u-boot.env0 mtddev;" \
 	"u-boot.env1 mtddev;" \
 	"rootfs mtddevubi" \
+
+#undef MTDIDS_NAME_STR
+#define MTDIDS_NAME_STR		"omap2-nand_concat"
+#undef MTDIDS_DEFAULT
+#define MTDIDS_DEFAULT		"nand2=" MTDIDS_NAME_STR
+
+#undef MTDPARTS_DEFAULT_V2
+#define MTDPARTS_DEFAULT_V2     "mtdparts=" MTDIDS_NAME_STR ":" \
+				"512k(spl)," \
+				"512k(spl.backup1)," \
+				"512k(spl.backup2)," \
+				"512k(spl.backup3)," \
+				"7680k(u-boot)," \
+				"2048k(u-boot.env0)," \
+				"2048k(u-boot.env1)," \
+				"2048k(mtdoops)," \
+				"-(rootfs)"
+
+#undef MTDPARTS_DEFAULT
+#define MTDPARTS_DEFAULT	MTDPARTS_DEFAULT_V2
 
 #undef CONFIG_ENV_SETTINGS_NAND_V2
 #define CONFIG_ENV_SETTINGS_NAND_V2 \

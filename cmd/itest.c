@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Tait Electronics Limited, Christchurch, New Zealand
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

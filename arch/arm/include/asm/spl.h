@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef	_ASM_SPL_H_
 #define	_ASM_SPL_H_
@@ -30,6 +31,10 @@ enum {
 	BOOT_DEVICE_DFU,
 	BOOT_DEVICE_XIP,
 	BOOT_DEVICE_BOOTROM,
+	BOOT_DEVICE_MTD_BLK_NAND,
+	BOOT_DEVICE_MTD_BLK_SPI_NAND,
+	BOOT_DEVICE_MTD_BLK_SPI_NOR,
+	BOOT_DEVICE_RKNAND,
 	BOOT_DEVICE_NONE
 };
 #endif

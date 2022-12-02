@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Sunxi platform display controller register and constant defines
  *
  * (C) Copyright 2014 Hans de Goede <hdegoede@redhat.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SUNXI_DISPLAY_H

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002 ELTEC Elektronik AG
  * Frank Gottschling <fgottschling@eltec.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* i8042.c - Intel 8042 keyboard driver routines */

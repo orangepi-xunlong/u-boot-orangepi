@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Benjamin Warren, biggerbadderben@gmail.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -10,6 +11,7 @@
 
 #ifndef _NETDEV_H_
 #define _NETDEV_H_
+#include <phy_interface.h>
 
 /*
  * Board and CPU-specific initialization functions
@@ -21,6 +23,8 @@
  */
 
 int board_eth_init(bd_t *bis);
+int board_interface_eth_init(struct udevice *dev,
+			     phy_interface_t interface_type);
 int cpu_eth_init(bd_t *bis);
 
 /* Driver initialization prototypes */
@@ -38,6 +42,8 @@ int dm9000_initialize(bd_t *bis);
 int dnet_eth_initialize(int id, void *regs, unsigned int phy_addr);
 int e1000_initialize(bd_t *bis);
 int eepro100_initialize(bd_t *bis);
+int enc28j60_initialize(unsigned int bus, unsigned int cs,
+	unsigned int max_hz, unsigned int mode);
 int ep93xx_eth_initialize(u8 dev_num, int base_addr);
 int eth_3com_initialize (bd_t * bis);
 int ethoc_initialize(u8 dev_num, int base_addr);
@@ -73,6 +79,17 @@ int tsi108_eth_initialize(bd_t *bis);
 int uec_standard_init(bd_t *bis);
 int uli526x_initialize(bd_t *bis);
 int armada100_fec_register(unsigned long base_addr);
+int xilinx_ll_temac_eth_init(bd_t *bis, unsigned long base_addr, int flags,
+						unsigned long ctrl_addr);
+/*
+ * As long as the Xilinx xps_ll_temac ethernet driver has not its own interface
+ * exported by a public hader file, we need a global definition at this point.
+ */
+#if defined(CONFIG_XILINX_LL_TEMAC)
+#define XILINX_LL_TEMAC_M_FIFO		0	/* use FIFO Ctrl */
+#define XILINX_LL_TEMAC_M_SDMA_PLB	(1 << 0)/* use SDMA Ctrl via PLB */
+#define XILINX_LL_TEMAC_M_SDMA_DCR	(1 << 1)/* use SDMA Ctrl via DCR */
+#endif
 
 /* Boards with PCI network controllers can call this from their board_eth_init()
  * function to initialize whatever's on board.
@@ -116,7 +133,11 @@ static inline int pci_eth_init(bd_t *bis)
 	return num;
 }
 
-struct mii_dev *fec_get_miibus(ulong base_addr, int dev_id);
+#ifdef CONFIG_DM_ETH
+struct mii_dev *fec_get_miibus(struct udevice *dev, int dev_id);
+#else
+struct mii_dev *fec_get_miibus(uint32_t base_addr, int dev_id);
+#endif
 
 #ifdef CONFIG_PHYLIB
 struct phy_device;

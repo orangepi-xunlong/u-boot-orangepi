@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007-2011 Freescale Semiconductor, Inc.
  *
@@ -7,6 +6,8 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -25,7 +26,6 @@
 #ifdef CONFIG_FSL_CORENET
 #include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
-#include <fsl_qbman.h>
 #endif
 #include <fsl_usb.h>
 #include <hwconfig.h>
@@ -52,6 +52,8 @@
 #ifdef CONFIG_U_QE
 #include <fsl_qe.h>
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_SYS_FSL_SINGLE_SOURCE_CLK
 /*
@@ -802,7 +804,7 @@ int cpu_init_r(void)
 #ifdef CONFIG_FSL_CORENET
 	set_liodns();
 #ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_qbman_portals();
+	setup_portals();
 #endif
 #endif
 

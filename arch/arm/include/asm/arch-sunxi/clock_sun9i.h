@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * sun9i clock register definitions
  *
  * (C) Copyright 2015 Hans de Goede <hdegoede@redhat.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SUNXI_CLOCK_SUN9I_H

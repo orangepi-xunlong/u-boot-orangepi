@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * am3517_evm.h - Default configuration for AM3517 EVM board.
  *
@@ -7,6 +6,8 @@
  * Based on omap3_evm_config.h
  *
  * Copyright (C) 2010 Texas Instruments Incorporated
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -14,32 +15,59 @@
 
 #define CONFIG_NR_DRAM_BANKS	2	/* CS1 may or may not be populated */
 
+#define CONFIG_EMIF4	/* The chip has EMIF4 controller */
+
 /*
  * 1MB into the SDRAM to allow for SPL's bss at the beginning of SDRAM
  * 64 bytes before this address should be set aside for u-boot.img's
  * header. That is 0x800FFFC0--0x80100000 should not be used for any
  * other needs.
  */
-
+#define CONFIG_SYS_TEXT_BASE		0x80100000
 #define CONFIG_SYS_SPL_MALLOC_START	0x80208000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x100000
 
-#include <configs/ti_omap3_common.h>
-#undef CONFIG_SDRC	/* Disable SDRC since we have EMIF4 */
+#include <asm/arch/cpu.h>		/* get chip and board defs */
+#include <asm/arch/omap.h>
 
 #define CONFIG_MISC_INIT_R
+#define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
+#define CONFIG_SETUP_MEMORY_TAGS
+#define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
+
+/* Clock Defines */
+#define V_OSCK			26000000	/* Clock output from T2 */
+#define V_SCLK			(V_OSCK >> 1)
+
+/* Size of malloc() pool */
+#define CONFIG_SYS_MALLOC_LEN		(16 << 20)
 
 /* Hardware drivers */
 
+/* NS16550 Configuration */
+#define V_NS16550_CLK			48000000	/* 48MHz (APLL96/2) */
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
+#define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
+
+/* select serial console configuration */
+#define CONFIG_CONS_INDEX		3
+#define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
+#define CONFIG_SERIAL3			3	/* UART3 on AM3517 EVM */
+
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
+#define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
+					115200}
 
 /*
  * USB configuration
  * Enable CONFIG_USB_MUSB_HOST for Host functionalities MSC, keyboard
  * Enable CONFIG_USB_MUSB_GADGET for Device functionalities.
  */
+#define CONFIG_USB_MUSB_AM35X
+#define CONFIG_USB_MUSB_PIO_ONLY
 
 #ifdef CONFIG_USB_MUSB_AM35X
 
@@ -54,12 +82,16 @@
 #endif /* CONFIG_USB_MUSB_AM35X */
 
 /* I2C */
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 
 /* Ethernet */
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_MII
 #define CONFIG_BOOTP_DEFAULT
+#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT		10
@@ -88,8 +120,6 @@
 #define CONFIG_SYS_NAND_MAX_ECCPOS	56
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x80000
-#define CONFIG_MTD_PARTITIONS		/* required for UBI partition support */
-#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
 /* NAND block size is 128 KiB.  Synchronize these values with
  * corresponding Device Tree entries in Linux:
  *  MLO(SPL)             4 * NAND_BLOCK_SIZE = 512 KiB  @ 0x000000
@@ -99,6 +129,17 @@
  *  DTB                  4 * NAND_BLOCK_SIZE = 512 KiB  @ 0xAA0000
  *  RootFS              Remaining Flash Space           @ 0xB20000
  */
+#define MTDIDS_DEFAULT "nand0=omap2-nand.0"
+#define MTDPARTS_DEFAULT "mtdparts=omap2-nand.0:"	\
+	"512k(MLO),"					\
+	"1920k(u-boot),"				\
+	"256k(u-boot-env),"				\
+	"8m(kernel),"					\
+	"512k(dtb),"					\
+	"-(rootfs)"
+#else
+#define MTDIDS_DEFAULT
+#define MTDPARTS_DEFAULT
 #endif /* CONFIG_NAND */
 
 /* Environment information */
@@ -114,8 +155,8 @@
 	"bootenv=uEnv.txt\0" \
 	"cmdline=\0" \
 	"optargs=\0" \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"mmcdev=0\0" \
 	"mmcpart=1\0" \
 	"mmcroot=/dev/mmcblk0p2 rw\0" \
@@ -168,25 +209,42 @@
 	"else run nandboot; fi"
 
 /* Miscellaneous configurable options */
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
 
 /* We set the max number of command args high to avoid HUSH bugs. */
 #define CONFIG_SYS_MAXARGS		64
 
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE \
-					+ sizeof(CONFIG_SYS_PROMPT) + 16)
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+/* Console I/O Buffer Size */
+#define CONFIG_SYS_CBSIZE		512
 
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0)
 #define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + \
 					0x01F00000) /* 31MB */
 
+#define CONFIG_SYS_LOAD_ADDR		(OMAP34XX_SDRC_CS0) /* default load */
+								/* address */
+
+/*
+ * AM3517 has 12 GP timers, they can be driven by the system clock
+ * (12/13/16.8/19.2/38.4MHz) or by 32KHz clock. We use 13MHz (V_SCLK).
+ * This rate is divided by a local divisor.
+ */
+#define CONFIG_SYS_TIMERBASE		OMAP34XX_GPT2
+#define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
+
 /* Physical Memory Map */
+#define PHYS_SDRAM_1			OMAP34XX_SDRC_CS0
+#define PHYS_SDRAM_2			OMAP34XX_SDRC_CS1
 #define CONFIG_SYS_CS0_SIZE		(256 * 1024 * 1024)
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	0x4020f800
 #define CONFIG_SYS_INIT_RAM_SIZE	0x800
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - \
+					 GENERATED_GBL_DATA_SIZE)
 
 /* FLASH and environment organization */
 
@@ -205,14 +263,17 @@
 
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
 #define CONFIG_ENV_SIZE			CONFIG_SYS_ENV_SECT_SIZE
-#define CONFIG_ENV_OFFSET		0x260000
-#define CONFIG_ENV_ADDR			0x260000
+#define SMNAND_ENV_OFFSET		0x260000 /* environment starts here */
+#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
 
 /* Defines for SPL */
-#undef CONFIG_SPL_TEXT_BASE
+#define CONFIG_SPL_FRAMEWORK
+#define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SPL_TEXT_BASE		0x40200000
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
+					 CONFIG_SPL_TEXT_BASE)
 
-#undef CONFIG_SPL_BSS_START_ADDR
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000		/* 512 KB */
 

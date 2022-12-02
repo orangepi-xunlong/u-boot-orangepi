@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale Vybrid vf610twr board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -37,10 +38,9 @@
 #define CONFIG_SYS_NAND_BASE		NFC_BASE_ADDR
 
 /* Dynamic MTD partition support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 #endif
 
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
 
@@ -69,7 +69,8 @@
 #define CONFIG_SYS_LOAD_ADDR		0x82000000
 
 /* We boot from the gfxRAM area of the OCRAM. */
-#define CONFIG_BOARD_SIZE_LIMIT		520192
+#define CONFIG_SYS_TEXT_BASE		0x3f408000
+#define CONFIG_BOARD_SIZE_LIMIT		524288
 
 /*
  * We do have 128MB of memory on the Vybrid Tower board. Leave the last
@@ -176,6 +177,8 @@
 	   "else run netboot; fi"
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
+#undef CONFIG_AUTO_COMPLETE
 
 #define CONFIG_SYS_MEMTEST_START	0x80010000
 #define CONFIG_SYS_MEMTEST_END		0x87C00000

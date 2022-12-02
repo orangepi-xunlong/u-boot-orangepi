@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2017 NXP
  * Copyright 2015 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LS2_RDB_H
@@ -9,11 +10,15 @@
 
 #include "ls2080a_common.h"
 
+#undef CONFIG_CONS_INDEX
+#define CONFIG_CONS_INDEX       2
+
 #ifdef CONFIG_FSL_QSPI
 #ifdef CONFIG_TARGET_LS2081ARDB
 #define CONFIG_QIXIS_I2C_ACCESS
 #endif
 #define CONFIG_SYS_I2C_EARLY_INIT
+#define CONFIG_DISPLAY_BOARDINFO_LATE
 #endif
 
 #define I2C_MUX_CH_VOL_MONITOR		0xa
@@ -60,6 +65,8 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_FSL_DDR_BIST	/* enable built-in memory test */
 
 /* SATA */
+#define CONFIG_LIBATA
+#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
 
 #define CONFIG_SYS_SATA1			AHCI_BASE_ADDR1
@@ -282,14 +289,18 @@ unsigned long get_board_sys_clk(void);
 /* SPI */
 #if defined(CONFIG_FSL_QSPI) || defined(CONFIG_FSL_DSPI)
 #define CONFIG_SPI_FLASH
-#ifdef CONFIG_FSL_DSPI
+#ifdef CONFIG_FSL_QSPI
 #define CONFIG_SPI_FLASH_STMICRO
 #endif
 #ifdef CONFIG_FSL_QSPI
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_SPI_FLASH_STMICRO
+#else
 #define CONFIG_SPI_FLASH_SPANSION
 #endif
 #define FSL_QSPI_FLASH_SIZE		SZ_64M	/* 64MB */
 #define FSL_QSPI_FLASH_NUM		2
+#endif
 #endif
 
 /*
@@ -321,10 +332,21 @@ unsigned long get_board_sys_clk(void);
 
 /*  MMC  */
 #ifdef CONFIG_MMC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
 #endif
 
 #define CONFIG_MISC_INIT_R
+
+/*
+ * USB
+ */
+#define CONFIG_HAS_FSL_XHCI_USB
+#define CONFIG_USB_XHCI_FSL
+#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
+
+#undef CONFIG_CMDLINE_EDITING
+#include <config_distro_defaults.h>
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(USB, usb, 0) \
@@ -339,17 +361,6 @@ unsigned long get_board_sys_clk(void);
 	"esbc_validate 0x20700000 && "		\
 	"esbc_validate 0x20740000;"		\
 	"fsl_mc start mc 0x20a00000 0x20e00000 \0"
-#elif defined(CONFIG_SD_BOOT)
-#define MC_INIT_CMD                             \
-	"mcinitcmd=mmcinfo;mmc read 0x80000000 0x5000 0x800;" \
-	"mmc read 0x80100000 0x7000 0x800;"	\
-	"env exists secureboot && "		\
-	"mmc read 0x80700000 0x3800 0x10 && "	\
-	"mmc read 0x80740000 0x3A00 0x10 && "	\
-	"esbc_validate 0x80700000 && "		\
-	"esbc_validate 0x80740000 ;"		\
-	"fsl_mc start mc 0x80000000 0x80100000\0" \
-	"mcmemsize=0x70000000\0"
 #else
 #define MC_INIT_CMD				\
 	"mcinitcmd=env exists secureboot && "	\
@@ -367,7 +378,7 @@ unsigned long get_board_sys_clk(void);
 	"fdt_high=0xa0000000\0"			\
 	"initrd_high=0xffffffffffffffff\0"	\
 	"fdt_addr=0x64f00000\0"			\
-	"kernel_addr=0x581000000\0"		\
+	"kernel_addr=0x65000000\0"		\
 	"kernel_start=0x1000000\0"		\
 	"kernelheader_start=0x800000\0"		\
 	"scriptaddr=0x80000000\0"		\
@@ -380,14 +391,7 @@ unsigned long get_board_sys_clk(void);
 	"fdt_addr_r=0x90000000\0"		\
 	"load_addr=0xa0000000\0"		\
 	"kernel_size=0x2800000\0"		\
-	"kernel_addr_sd=0x8000\0"		\
-	"kernel_size_sd=0x14000\0"              \
 	"console=ttyAMA0,38400n8\0"		\
-	"mcmemsize=0x70000000\0"		\
-	"sd_bootcmd=echo Trying load from SD ..;" \
-	"mmcinfo; mmc read $load_addr "		\
-	"$kernel_addr_sd $kernel_size_sd && "	\
-	"bootm $load_addr#$board\0"             \
 	MC_INIT_CMD				\
 	BOOTENV					\
 	"boot_scripts=ls2088ardb_boot.scr\0"	\
@@ -416,6 +420,9 @@ unsigned long get_board_sys_clk(void);
 			"${scripthdraddr} ${prefix}${boot_script_hdr} "	\
 			"&& esbc_validate ${scripthdraddr};"	\
 		"source ${scriptaddr}\0"			\
+	"installer=load mmc 0:2 $load_addr "			\
+		"/flex_installer_arm64.itb; "			\
+		"bootm $load_addr#ls2088ardb\0"			\
 	"qspi_bootcmd=echo Trying load from qspi..;"		\
 		"sf probe && sf read $load_addr "		\
 		"$kernel_start $kernel_size ; env exists secureboot &&"	\
@@ -438,18 +445,7 @@ unsigned long get_board_sys_clk(void);
 			"env exists mcinitcmd && "			\
 			"fsl_mc lazyapply dpl 0x20d00000; "		\
 			"run distro_bootcmd;run qspi_bootcmd; "		\
-			"env exists secureboot && esbc_halt;"
-#elif defined(CONFIG_SD_BOOT)
-/* Try to boot an on-SD kernel first, then do normal distro boot */
-#define CONFIG_BOOTCOMMAND						\
-			"env exists mcinitcmd && env exists secureboot "\
-			"&& mmcinfo && mmc read $load_addr 0x3c00 0x800 " \
-			"&& esbc_validate $load_addr; "			\
-			"env exists mcinitcmd && run mcinitcmd "	\
-			"&& mmc read 0x88000000 0x6800 0x800 "		\
-			"&& fsl_mc lazyapply dpl 0x88000000; "		\
-			"run distro_bootcmd;run sd_bootcmd; "		\
-			"env exists secureboot && esbc_halt;"
+			"env exists secureboot && esbc_halt; "
 #else
 /* Try to boot an on-NOR kernel first, then do normal distro boot */
 #define CONFIG_BOOTCOMMAND						\
@@ -457,7 +453,7 @@ unsigned long get_board_sys_clk(void);
 			"&& esbc_validate 0x580780000; env exists mcinitcmd "\
 			"&& fsl_mc lazyapply dpl 0x580d00000;"		\
 			"run distro_bootcmd;run nor_bootcmd; "		\
-			"env exists secureboot && esbc_halt;"
+			"env exists secureboot && esbc_halt; "
 #endif
 
 /* MAC/PHY configuration */

@@ -18,6 +18,14 @@ config USB_MUSB_GADGET
 	help
 	  Enables the MUSB USB dual-role controller in gadget mode.
 
+config USB_MUSB_DA8XX
+	bool "Enable DA8xx MUSB Controller"
+	depends on DM_USB
+	help
+	  Say y here to enable support for the dual role high
+	  speed USB controller based on the Mentor Graphics
+	  silicon IP.
+
 config USB_MUSB_TI
 	bool "Enable TI OTG USB controller"
 	depends on DM_USB
@@ -26,16 +34,6 @@ config USB_MUSB_TI
 	  Say y here to enable support for the dual role high
 	  speed USB controller based on the Mentor Graphics
 	  silicon IP.
-
-config USB_MUSB_OMAP2PLUS
-	tristate "OMAP2430 and onwards"
-	depends on ARCH_OMAP2PLUS
-
-config USB_MUSB_AM35X
-	bool "AM35x"
-
-config USB_MUSB_DSPS
-	bool "TI DSPS platforms"
 
 if USB_MUSB_HOST || USB_MUSB_GADGET
 
@@ -55,10 +53,3 @@ config USB_MUSB_SUNXI
 	used on almost all sunxi boards.
 
 endif
-
-config USB_MUSB_PIO_ONLY
-	bool "Disable DMA (always use PIO)"
-	default y if USB_MUSB_AM35X || USB_MUSB_PIC32 || USB_MUSB_OMAP2PLUS || USB_MUSB_DSPS || USB_MUSB_SUNXI
-	help
-	  All data is copied between memory and FIFO by the CPU.
-	  DMA controllers are ignored.

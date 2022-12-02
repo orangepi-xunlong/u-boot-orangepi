@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2016 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _ASM_ARCH_TIMER_H
 #define _ASM_ARCH_TIMER_H

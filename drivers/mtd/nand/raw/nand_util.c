@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * drivers/mtd/nand/raw/nand_util.c
  *
@@ -16,6 +15,8 @@
  * Artem Bityutskiy <dedekind1@gmail.com> from mtd-utils
  *
  * Copyright 2010 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -710,14 +711,6 @@ int nand_read_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
 	size_t used_for_read = 0;
 	u_char *p_buffer = buffer;
 	int need_skip;
-
-	if ((offset & (mtd->writesize - 1)) != 0) {
-		printf("Attempt to read non page-aligned data\n");
-		*length = 0;
-		if (actual)
-			*actual = 0;
-		return -EINVAL;
-	}
 
 	need_skip = check_skip_len(mtd, offset, *length, &used_for_read);
 

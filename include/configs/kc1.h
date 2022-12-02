@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Amazon Kindle Fire (first generation) codename kc1 config
  *
  * Copyright (C) 2016 Paul Kocialkowski <contact@paulk.fr>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -45,6 +46,7 @@
  * Memory
  */
 
+#define CONFIG_SYS_TEXT_BASE		0x80100000
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_SYS_INIT_SP_ADDR		(NON_SECURE_SRAM_END - \
 					 GENERATED_GBL_DATA_SIZE)
@@ -56,6 +58,8 @@
  */
 
 #define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	400000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 #define CONFIG_I2C_MULTI_BUS
 
 /*
@@ -74,6 +78,8 @@
  * SPL
  */
 
+#define CONFIG_SPL_FRAMEWORK
+
 #define CONFIG_SPL_TEXT_BASE		0x40300000
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
 					 CONFIG_SPL_TEXT_BASE)
@@ -86,6 +92,10 @@
  * Console
  */
 
+#define CONFIG_AUTO_COMPLETE
+
+#define CONFIG_SYS_LONGHELP
+
 #define CONFIG_SYS_CBSIZE	512
 
 /*
@@ -96,6 +106,7 @@
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000
 #define CONFIG_SYS_NS16550_COM3		UART3_BASE
+#define CONFIG_CONS_INDEX		3
 
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 4800, 9600, 19200, 38400, 57600, \
 					  115200 }
@@ -103,6 +114,9 @@
 /*
  * USB gadget
  */
+
+#define CONFIG_USB_MUSB_PIO_ONLY
+#define CONFIG_USB_MUSB_OMAP2PLUS
 
 /*
  * Environment
@@ -161,5 +175,6 @@
  */
 
 #include <config_defaults.h>
+#include <config_distro_defaults.h>
 
 #endif

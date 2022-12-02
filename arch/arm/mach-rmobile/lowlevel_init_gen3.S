@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * arch/arm/cpu/armv8/rcar_gen3/lowlevel_init.S
  *	This file is lowlevel initialize routine.
@@ -9,6 +8,8 @@
  *
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>

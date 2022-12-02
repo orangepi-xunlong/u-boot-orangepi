@@ -1,18 +1,36 @@
-// SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+ X11
  */
 
 /dts-v1/;
 #include "rk3288-evb.dtsi"
+#include "rk3288-u-boot.dtsi"
 
 / {
 	model = "Evb-RK3288";
 	compatible = "evb-rk3288,evb-rk3288", "rockchip,rk3288";
 
-	chosen {
-		stdout-path = &uart2;
+	adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 1>;
+		io-channel-names = "buttons";
+		keyup-threshold-microvolt = <1800000>;
+		u-boot,dm-pre-reloc;
+		status = "okay";
+
+		volumeup-key {
+			label = "volume up";
+			u-boot,dm-pre-reloc;
+			linux,code = <KEY_VOLUMEUP>;
+			press-threshold-microvolt = <1000>;
+		};
 	};
+};
+
+&crypto {
+	status = "okay";
 };
 
 &dmc {
@@ -26,31 +44,10 @@
 	rockchip,sdram-params = <0x20d266a4 0x5b6 2 533000000 6 9 0>;
 };
 
-&pinctrl {
-	u-boot,dm-pre-reloc;
-};
-
 &pwm1 {
 	status = "okay";
 };
 
 &uart2 {
-	u-boot,dm-pre-reloc;
 	reg-shift = <2>;
-};
-
-&sdmmc {
-	u-boot,dm-pre-reloc;
-};
-
-&emmc {
-	u-boot,dm-pre-reloc;
-};
-
-&gpio3 {
-	u-boot,dm-pre-reloc;
-};
-
-&gpio8 {
-	u-boot,dm-pre-reloc;
 };

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -117,6 +118,16 @@ int rtc_write32(struct udevice *dev, unsigned int reg, u32 value)
 	}
 
 	return 0;
+}
+
+int rtc_alarm_trigger(struct udevice *dev)
+{
+	const struct rtc_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->alarm_trigger)
+		return 0;
+
+	return ops->alarm_trigger(dev);
 }
 
 UCLASS_DRIVER(rtc) = {

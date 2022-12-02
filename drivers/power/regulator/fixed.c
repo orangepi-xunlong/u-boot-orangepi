@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2015 Samsung Electronics
  *
  *  Przemyslaw Marczak <p.marczak@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +13,8 @@
 #include <asm/gpio.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct fixed_regulator_platdata {
 	struct gpio_desc gpio; /* GPIO for regulator enable control */
@@ -33,8 +36,9 @@ static int fixed_regulator_ofdata_to_platdata(struct udevice *dev)
 
 	/* Set type to fixed */
 	uc_pdata->type = REGULATOR_TYPE_FIXED;
-
-	if (dev_read_bool(dev, "enable-active-high"))
+	if (!dev_read_bool(dev, "enable-active-high"))
+		flags |= GPIOD_ACTIVE_LOW;
+	if (dev_read_bool(dev, "regulator-boot-on"))
 		flags |= GPIOD_IS_OUT_ACTIVE;
 
 	/* Get fixed regulator optional enable GPIO desc */

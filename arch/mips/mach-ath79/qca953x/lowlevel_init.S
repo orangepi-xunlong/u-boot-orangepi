@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
  * Based on Atheros LSDK/QSDK
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <config.h>

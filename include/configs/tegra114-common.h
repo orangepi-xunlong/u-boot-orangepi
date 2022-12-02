@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _TEGRA114_COMMON_H_
@@ -20,6 +21,7 @@
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
+#define CONFIG_SYS_TEXT_BASE	0x80110000
 
 /*
  * Memory layout for where various images get loaded by boot scripts:

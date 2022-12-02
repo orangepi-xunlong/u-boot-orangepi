@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
@@ -19,10 +20,16 @@
 static int ubifs_initialized;
 static int ubifs_mounted;
 
-int cmd_ubifs_mount(char *vol_name)
+static int do_ubifs_mount(cmd_tbl_t *cmdtp, int flag, int argc,
+				char * const argv[])
 {
+	char *vol_name;
 	int ret;
 
+	if (argc != 2)
+		return CMD_RET_USAGE;
+
+	vol_name = argv[1];
 	debug("Using volume %s\n", vol_name);
 
 	if (ubifs_initialized == 0) {
@@ -36,19 +43,7 @@ int cmd_ubifs_mount(char *vol_name)
 
 	ubifs_mounted = 1;
 
-	return ret;
-}
-static int do_ubifs_mount(cmd_tbl_t *cmdtp, int flag, int argc,
-				char * const argv[])
-{
-	char *vol_name;
-
-	if (argc != 2)
-		return CMD_RET_USAGE;
-
-	vol_name = argv[1];
-
-	return cmd_ubifs_mount(vol_name);
+	return 0;
 }
 
 int ubifs_is_mounted(void)
@@ -56,18 +51,11 @@ int ubifs_is_mounted(void)
 	return ubifs_mounted;
 }
 
-int cmd_ubifs_umount(void)
+void cmd_ubifs_umount(void)
 {
-	if (ubifs_initialized == 0) {
-		printf("No UBIFS volume mounted!\n");
-		return -1;
-	}
-
 	uboot_ubifs_umount();
 	ubifs_mounted = 0;
 	ubifs_initialized = 0;
-
-	return 0;
 }
 
 static int do_ubifs_umount(cmd_tbl_t *cmdtp, int flag, int argc,
@@ -76,7 +64,14 @@ static int do_ubifs_umount(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 1)
 		return CMD_RET_USAGE;
 
-	return cmd_ubifs_umount();
+	if (ubifs_initialized == 0) {
+		printf("No UBIFS volume mounted!\n");
+		return -1;
+	}
+
+	cmd_ubifs_umount();
+
+	return 0;
 }
 
 static int do_ubifs_ls(cmd_tbl_t *cmdtp, int flag, int argc,

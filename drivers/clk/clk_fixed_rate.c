@@ -1,18 +1,7 @@
 /*
- * drivers/clk/clk_fixed_rate.c
+ * Copyright (C) 2016 Masahiro Yamada <yamada.masahiro@socionext.com>
  *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -40,8 +29,8 @@ const struct clk_ops clk_fixed_rate_ops = {
 static int clk_fixed_rate_ofdata_to_platdata(struct udevice *dev)
 {
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
-	to_clk_fixed_rate(dev)->fixed_rate =
-		dev_read_u32_default(dev, "clock-frequency", 0);
+	to_clk_fixed_rate(dev)->fixed_rate = dev_read_u32_default(dev,
+							"clock-frequency", 0);
 #endif
 
 	return 0;

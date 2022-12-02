@@ -1,13 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Wandboard.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <config_distro_defaults.h>
 #include "mx6_common.h"
 
 #include "imx6_spl.h"
@@ -23,10 +25,12 @@
 /* SATA Configs */
 
 #ifdef CONFIG_CMD_SATA
+#define CONFIG_DWC_AHSATA
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_DWC_AHSATA_PORT_ID	0
 #define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 #define CONFIG_LBA48
+#define CONFIG_LIBATA
 #endif
 
 #define CONFIG_SYS_MEMTEST_START	0x10000000
@@ -39,12 +43,6 @@
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_I2C_SPEED		100000
-
-/* PMIC */
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_PFUZE100
-#define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
 /* MMC Configuration */
 #define CONFIG_SYS_FSL_USDHC_NUM	2
@@ -73,10 +71,12 @@
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IPUV3_CLK 260000000
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 #endif
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=ttymxc0,115200\0" \
 	"splashpos=m,m\0" \
@@ -103,12 +103,6 @@
 			"fi; "	\
 		"fi\0" \
 	"findfdt="\
-		"if test $board_name = D1 && test $board_rev = MX6QP ; then " \
-			"setenv fdtfile imx6qp-wandboard-revd1.dtb; fi; " \
-		"if test $board_name = D1 && test $board_rev = MX6Q ; then " \
-			"setenv fdtfile imx6q-wandboard-revd1.dtb; fi; " \
-		"if test $board_name = D1 && test $board_rev = MX6DL ; then " \
-			"setenv fdtfile imx6dl-wandboard-revd1.dtb; fi; " \
 		"if test $board_name = C1 && test $board_rev = MX6Q ; then " \
 			"setenv fdtfile imx6q-wandboard.dtb; fi; " \
 		"if test $board_name = C1 && test $board_rev = MX6DL ; then " \
@@ -133,6 +127,11 @@
 	func(USB, usb, 0) \
 	func(PXE, pxe, na) \
 	func(DHCP, dhcp, na)
+
+#define CONFIG_BOOTCOMMAND \
+	   "run findfdt; " \
+	   "run finduuid; " \
+	   "run distro_bootcmd"
 
 #include <config_distro_bootcmd.h>
 

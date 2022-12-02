@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Copyright (C) 2007, Tensilica Inc.
  *
  * Based on the ARM version: Copyright (C) 1996-1998 Russell King.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _XTENSA_POSIX_TYPES_H
 #define _XTENSA_POSIX_TYPES_H

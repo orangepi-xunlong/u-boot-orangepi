@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  * Copyright (c) 2016, NVIDIA CORPORATION.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CLK_UCLASS_H
@@ -76,6 +77,23 @@ struct clk_ops {
 	 * @return new rate, or -ve error code.
 	 */
 	ulong (*set_rate)(struct clk *clk, ulong rate);
+	/**
+	 * clk_get_phase() - Get the phase shift of a clock signal.
+	 *
+	 * @clk:	The clock to manipulate.
+	 * @return the phase shift of a clock node in degrees,
+	 *		otherwise returns -ve error code.
+	 */
+	int (*get_phase)(struct clk *clk);
+
+	/**
+	 * clk_set_rate() - Adjust the phase shift of a clock signal.
+	 *
+	 * @clk:	The clock to manipulate.
+	 * @degrees:	Numberof degrees the signal is shifted.
+	 * @return 0 on success, or -ve error code.
+	 */
+	int (*set_phase)(struct clk *clk, int degrees);
 	/**
 	 * set_parent() - Set current clock parent
 	 *

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2005
  * 2N Telekomunikace, a.s. <www.2n.cz>
  * Ladislav Michl <michl@2n.cz>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -14,9 +15,11 @@
 #define CONFIG_SYS_NAND_BASE_LIST { CONFIG_SYS_NAND_BASE }
 #endif
 
+DECLARE_GLOBAL_DATA_PTR;
+
 int nand_curr_device = -1;
 
-struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
+static struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
 
 #ifndef CONFIG_SYS_NAND_SELF_INIT
 static struct nand_chip nand_chip[CONFIG_SYS_MAX_NAND_DEVICE];

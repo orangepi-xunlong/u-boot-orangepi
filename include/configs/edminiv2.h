@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010 Albert ARIBAUD <albert.u.boot@aribaud.net>
  *
@@ -6,6 +5,8 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_EDMINIV2_H
@@ -15,6 +16,7 @@
  * SPL
  */
 
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0xffff0000
 #define CONFIG_SPL_MAX_SIZE		0x0000fff0
 #define CONFIG_SPL_STACK		0x00020000
@@ -24,6 +26,7 @@
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x0001ffff
 #define CONFIG_SYS_UBOOT_BASE		0xfff90000
 #define CONFIG_SYS_UBOOT_START		0x00800000
+#define CONFIG_SYS_TEXT_BASE 		0x00800000
 
 /*
  * High Level Configuration Options (easy to change)
@@ -32,6 +35,7 @@
 #define CONFIG_MARVELL		1
 #define CONFIG_FEROCEON		1	/* CPU Core subversion */
 #define CONFIG_88F5182		1	/* SOC Name */
+#define CONFIG_MACH_EDMINIV2	1	/* Machine type */
 
 #include <asm/arch/orion5x.h>
 /*
@@ -83,6 +87,7 @@
  * for your console driver.
  */
 
+#define CONFIG_CONS_INDEX	1	/*Console on UART0 */
 #define CONFIG_SYS_BAUDRATE_TABLE \
 	{ 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 }
 
@@ -135,6 +140,7 @@
 #define __io
 #define CONFIG_IDE_PREINIT
 /* ED Mini V has an IDE-compatible SATA connector for port 1 */
+#define CONFIG_MVSATA_IDE
 #define CONFIG_MVSATA_IDE_USE_PORT1
 /* Needs byte-swapping for ATA data register */
 #define CONFIG_IDE_SWAP_IO
@@ -161,6 +167,7 @@
  */
 #ifdef CONFIG_CMD_USB
 #define ORION5X_USB20_HOST_PORT_BASE ORION5X_USB20_PORT0_BASE
+#define CONFIG_SUPPORT_VFAT
 #endif /* CONFIG_CMD_USB */
 
 /*
@@ -198,8 +205,10 @@
 #define CONFIG_SYS_RESET_ADDRESS	0xffff0000
 
 /* Enable command line editing */
+#define CONFIG_CMDLINE_EDITING
 
 /* provide extensive help */
+#define CONFIG_SYS_LONGHELP
 
 /* additions for new relocation code, must be added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Atmel Corporation
  *               Wenyou.Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -52,17 +53,16 @@ static ulong generic_clk_get_rate(struct clk *clk)
 	struct clk parent;
 	ulong clk_rate;
 	u32 tmp, gckdiv;
-	u8 clock_source, parent_index;
+	u8 parent_id;
 	int ret;
 
 	writel(clk->id & AT91_PMC_PCR_PID_MASK, &pmc->pcr);
 	tmp = readl(&pmc->pcr);
-	clock_source = (tmp >> AT91_PMC_PCR_GCKCSS_OFFSET) &
+	parent_id = (tmp >> AT91_PMC_PCR_GCKCSS_OFFSET) &
 		    AT91_PMC_PCR_GCKCSS_MASK;
 	gckdiv = (tmp >> AT91_PMC_PCR_GCKDIV_OFFSET) & AT91_PMC_PCR_GCKDIV_MASK;
 
-	parent_index = clock_source - 1;
-	ret = clk_get_by_index(dev_get_parent(clk->dev), parent_index, &parent);
+	ret = clk_get_by_index(dev_get_parent(clk->dev), parent_id, &parent);
 	if (ret)
 		return 0;
 
@@ -82,7 +82,7 @@ static ulong generic_clk_set_rate(struct clk *clk, ulong rate)
 	ulong tmp_rate, best_rate = rate, parent_rate;
 	int tmp_diff, best_diff = -1;
 	u32 div, best_div = 0;
-	u8 best_parent_index, best_clock_source = 0;
+	u8 best_parent_id = 0;
 	u8 i;
 	u32 tmp;
 	int ret;
@@ -98,7 +98,9 @@ static ulong generic_clk_set_rate(struct clk *clk, ulong rate)
 
 		for (div = 1; div < GENERATED_MAX_DIV + 2; div++) {
 			tmp_rate = DIV_ROUND_CLOSEST(parent_rate, div);
-			tmp_diff = abs(rate - tmp_rate);
+			if (rate < tmp_rate)
+				continue;
+			tmp_diff = rate - tmp_rate;
 
 			if (best_diff < 0 || best_diff > tmp_diff) {
 				best_rate = tmp_rate;
@@ -106,8 +108,7 @@ static ulong generic_clk_set_rate(struct clk *clk, ulong rate)
 
 				best_div = div - 1;
 				best_parent = parent;
-				best_parent_index = i;
-				best_clock_source = best_parent_index + 1;
+				best_parent_id = i;
 			}
 
 			if (!best_diff || tmp_rate < rate)
@@ -128,7 +129,7 @@ static ulong generic_clk_set_rate(struct clk *clk, ulong rate)
 	writel(clk->id & AT91_PMC_PCR_PID_MASK, &pmc->pcr);
 	tmp = readl(&pmc->pcr);
 	tmp &= ~(AT91_PMC_PCR_GCKDIV | AT91_PMC_PCR_GCKCSS);
-	tmp |= AT91_PMC_PCR_GCKCSS_(best_clock_source) |
+	tmp |= AT91_PMC_PCR_GCKCSS_(best_parent_id) |
 	       AT91_PMC_PCR_CMD_WRITE |
 	       AT91_PMC_PCR_GCKDIV_(best_div) |
 	       AT91_PMC_PCR_GCKEN;

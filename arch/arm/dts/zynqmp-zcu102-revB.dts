@@ -1,17 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * dts file for Xilinx ZynqMP ZCU102 RevB
  *
- * (C) Copyright 2016 - 2018, Xilinx, Inc.
+ * (C) Copyright 2016, Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "zynqmp-zcu102-revA.dts"
 
 / {
 	model = "ZynqMP ZCU102 RevB";
-	compatible = "xlnx,zynqmp-zcu102-revB", "xlnx,zynqmp-zcu102", "xlnx,zynqmp";
 };
 
 &gem3 {
@@ -26,12 +26,14 @@
 	/delete-node/ phy@21;
 };
 
+/* Different qspi 512Mbit version */
+
 /* Fix collision with u61 */
 &i2c0 {
-	i2c-mux@75 {
+	i2cswitch@75 {
 		i2c@2 {
 			max15303@1b { /* u8 */
-				compatible = "maxim,max15303";
+				compatible = "max15303";
 				reg = <0x1b>;
 			};
 			/delete-node/ max15303@20;

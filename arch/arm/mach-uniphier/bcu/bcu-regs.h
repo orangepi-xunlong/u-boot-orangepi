@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * UniPhier BCU (Bus Control Unit) registers
  *
  * Copyright (C) 2011-2014 Panasonic Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef ARCH_BCU_REGS_H

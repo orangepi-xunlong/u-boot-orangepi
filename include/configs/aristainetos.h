@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015
  * (C) Copyright 2014
@@ -8,12 +7,14 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6Q SabreSD board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ARISTAINETOS_CONFIG_H
 #define __ARISTAINETOS_CONFIG_H
 
 #define CONFIG_SYS_BOARD_VERSION	1
-#define CONFIG_HOSTNAME		"aristainetos"
+#define CONFIG_HOSTNAME		aristainetos
 #define CONFIG_BOARDNAME	"aristainetos"
 
 #define CONFIG_MXC_UART_BASE	UART5_BASE

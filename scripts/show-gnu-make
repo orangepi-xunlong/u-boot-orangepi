@@ -1,5 +1,4 @@
 #!/bin/sh
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Show the command name for GNU Make
 #
@@ -9,6 +8,9 @@
 # It is not a good idea to hard-code the command name in scripts
 # where where GNU Make is expected.
 # Call this helper script to get the command name for GNU Make.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 gnu_make=
 

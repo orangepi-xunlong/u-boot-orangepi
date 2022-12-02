@@ -8,7 +8,6 @@
 
 #include <dt-bindings/clock/imx6ul-clock.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include "imx6ull-pinfunc.h"
 #include "imx6ull-pinfunc-snvs.h"
@@ -39,11 +38,10 @@
 		serial5 = &uart6;
 		serial6 = &uart7;
 		serial7 = &uart8;
-		spi0 = &qspi;
-		spi1 = &ecspi1;
-		spi2 = &ecspi2;
-		spi3 = &ecspi3;
-		spi4 = &ecspi4;
+		spi0 = &ecspi1;
+		spi1 = &ecspi2;
+		spi2 = &ecspi3;
+		spi3 = &ecspi4;
 		usbphy0 = &usbphy1;
 		usbphy1 = &usbphy2;
 	};
@@ -1023,14 +1021,6 @@
 				clocks = <&clks IMX6UL_CLK_QSPI>,
 					 <&clks IMX6UL_CLK_QSPI>;
 				clock-names = "qspi_en", "qspi";
-				status = "disabled";
-			};
-
-			wdog3: wdog@021e4000 {
-				compatible = "fsl,imx6ul-wdt", "fsl,imx21-wdt";
-				reg = <0x021e4000 0x4000>;
-				interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clks IMX6UL_CLK_WDOG3>;
 				status = "disabled";
 			};
 

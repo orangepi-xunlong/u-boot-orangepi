@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009 Ilya Yanok, Emcraft Systems Ltd <yanok@emcraft.com>
  * (C) Copyright 2008 Armadeus Systems, nc
@@ -11,6 +10,8 @@
  *
  * This file is based on mpc4200fec.h
  * (C) Copyright Motorola, Inc., 2000
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FEC_MXC_H

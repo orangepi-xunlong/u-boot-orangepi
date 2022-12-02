@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +12,7 @@
 #include <u-boot/zlib.h>
 #include <asm/byteorder.h>
 #include <asm/bootm.h>
+#include <asm/setup.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

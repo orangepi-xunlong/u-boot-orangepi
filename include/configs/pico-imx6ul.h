@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015 Technexion Ltd.
  *
  * Configuration settings for the Technexion PICO-IMX6UL-EMMC board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __PICO_IMX6UL_CONFIG_H
 #define __PICO_IMX6UL_CONFIG_H
@@ -29,6 +30,7 @@
 
 /* MMC Configs */
 #define CONFIG_FSL_USDHC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC1_BASE_ADDR
 #define CONFIG_SUPPORT_EMMC_BOOT
 
@@ -40,15 +42,10 @@
 
 #define CONFIG_USBD_HS
 
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
+
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE SZ_16M
 #define DFU_DEFAULT_POLL_TIMEOUT 300
-
-#define CONFIG_DFU_ENV_SETTINGS \
-	"dfu_alt_info=uboot raw 0x2 0x400 mmcpart 1;" \
-		"boot part 0 1;" \
-		"/zImage ext4 0 1;" \
-		"/imx6ul-pico-hobbit.dtb ext4 0 1;" \
-		"rootfs part 0 2\0" \
 
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 
@@ -61,19 +58,14 @@
 	"fdt_addr=0x83000000\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
 	"mmcautodetect=yes\0" \
-	CONFIG_DFU_ENV_SETTINGS \
-	"finduuid=part uuid mmc 0:2 uuid\0" \
-	"partitions=" \
-		"uuid_disk=${uuid_gpt_disk};" \
-		"name=boot,size=16MiB;name=rootfs,size=0,uuid=${uuid_gpt_rootfs}\0" \
-	"setup_emmc=gpt write mmc 0 $partitions; reset;\0" \
+	"dfu_alt_info=boot raw 0x2 0x400 mmcpart 1\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
-		"root=PARTUUID=${uuid} rootwait rw\0" \
-	"loadimage=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
-	"loadfdt=load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
+		"root=${mmcroot}\0" \
+	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
+	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
 	"mmcboot=echo Booting from mmc ...; " \
-		"run finduuid; " \
 		"run mmcargs; " \
 		"if run loadfdt; then " \
 			"bootz ${loadaddr} - ${fdt_addr}; " \
@@ -119,6 +111,8 @@
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 #define CONFIG_SYS_HZ			1000
 
+#define CONFIG_CMDLINE_EDITING
+
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
@@ -150,5 +144,6 @@
 
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_SYS_MMC_ENV_PART		0
+#define CONFIG_MMCROOT			"/dev/mmcblk0p2"
 
 #endif /* __PICO_IMX6UL_CONFIG_H */

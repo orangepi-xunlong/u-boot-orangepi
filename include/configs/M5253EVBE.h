@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * Hayden Fraser (Hayden.Fraser@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _M5253EVBE_H
 #define _M5253EVBE_H
+
+#define CONFIG_M5253EVBE	/* define board type */
 
 #define CONFIG_MCFTMR
 
@@ -34,6 +37,9 @@
  * BOOTP options
  */
 #undef CONFIG_BOOTP_BOOTFILESIZE
+#undef CONFIG_BOOTP_BOOTPATH
+#undef CONFIG_BOOTP_GATEWAY
+#undef CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -55,6 +61,8 @@
 #define CONFIG_SYS_ATA_REG_OFFSET	0xA0	/* Offset for normal register accesses */
 #define CONFIG_SYS_ATA_ALT_OFFSET	0xC0	/* Offset for alternate registers */
 #define CONFIG_SYS_ATA_STRIDE		4	/* Interval between registers */
+
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
 

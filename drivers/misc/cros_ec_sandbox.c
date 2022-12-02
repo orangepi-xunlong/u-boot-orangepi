@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Chromium OS cros_ec driver - sandbox emulation
  *
  * Copyright (c) 2013 The Chromium OS Authors.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -49,6 +50,8 @@
  * Other features can be added, although a better path is probably to link
  * the EC image in with U-Boot (Vic has demonstrated a prototype for this).
  */
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define KEYBOARD_ROWS	8
 #define KEYBOARD_COLS	13

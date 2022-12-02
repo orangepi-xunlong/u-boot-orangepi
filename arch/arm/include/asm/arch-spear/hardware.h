@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2009, STMicroelectronics - All Rights Reserved
- * Author(s): Vipin Kumar, <vipin.kumar@st.com> for STMicroelectronics.
+ * (C) Copyright 2009
+ * Vipin Kumar, STMicroelectronics, <vipin.kumar@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_HARDWARE_H

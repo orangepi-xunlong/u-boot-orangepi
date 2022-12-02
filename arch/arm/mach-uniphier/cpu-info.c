@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013-2014 Panasonic Corporation
  * Copyright (C) 2015-2017 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <stdio.h>
+#include <common.h>
 #include <linux/errno.h>
 #include <linux/io.h>
-#include <linux/printk.h>
 
 #include "soc-info.h"
 
@@ -59,11 +59,11 @@ int print_cpuinfo(void)
 	printf(" (model %d, revision %d)\n", model, rev);
 
 	if (model < required_model) {
-		pr_err("Only model %d or newer is supported.\n",
+		printf("Only model %d or newer is supported.\n",
 		       required_model);
 		return -ENOTSUPP;
 	} else if (rev < required_rev) {
-		pr_err("Only revision %d or newer is supported.\n",
+		printf("Only revision %d or newer is supported.\n",
 		       required_rev);
 		return -ENOTSUPP;
 	}

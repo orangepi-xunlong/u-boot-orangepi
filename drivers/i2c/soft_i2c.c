@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2001, 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * This has been changed substantially by Gerald Van Baren, Custom IDEAS,
  * vanbaren@cideas.com.  It was heavily influenced by LiMon, written by
@@ -23,6 +24,9 @@
 #ifdef CONFIG_ATMEL_LEGACY
 #include <asm/arch/gpio.h>
 #endif
+#endif
+#if defined(CONFIG_8xx)
+#include <asm/io.h>
 #endif
 #include <i2c.h>
 

@@ -16,6 +16,8 @@
 #define CONFIG_QE		1	/* Has QE */
 #define CONFIG_MPC832x		1	/* MPC832x CPU specific */
 
+#define	CONFIG_SYS_TEXT_BASE	0xFE000000
+
 /*
  * System Clock Setup
  */
@@ -205,6 +207,7 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -214,6 +217,9 @@
 
 #define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR+0x4600)
+
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history */
+#define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -305,6 +311,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -315,6 +324,7 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -448,7 +458,7 @@
 
 #define CONFIG_NETDEV		"eth1"
 
-#define CONFIG_HOSTNAME		"mpc8323erdb"
+#define CONFIG_HOSTNAME		mpc8323erdb
 #define CONFIG_ROOTPATH		"/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 				/* U-Boot image on TFTP server */

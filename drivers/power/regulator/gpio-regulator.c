@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Texas Instruments Incorporated, <www.ti.com>
  * Keerthy <j-keerthy@ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -28,9 +29,7 @@ static int gpio_regulator_ofdata_to_platdata(struct udevice *dev)
 	struct dm_regulator_uclass_platdata *uc_pdata;
 	struct gpio_regulator_platdata *dev_pdata;
 	struct gpio_desc *gpio;
-	const void *blob = gd->fdt_blob;
-	int node = dev_of_offset(dev);
-	int ret, count, i, j;
+	int ret, len, i, j;
 	u32 states_array[8];
 
 	dev_pdata = dev_get_platdata(dev);
@@ -53,13 +52,17 @@ static int gpio_regulator_ofdata_to_platdata(struct udevice *dev)
 	if (ret)
 		debug("regulator gpio - not found! Error: %d", ret);
 
-	count = fdtdec_get_int_array_count(blob, node, "states",
-					   states_array, 8);
+	len = dev_read_size(dev, "states");
+	if (len < 0)
+		return len;
 
-	if (!count)
+	len /= sizeof(fdt32_t);
+
+	ret = dev_read_u32_array(dev, "states", states_array, len);
+	if (ret)
 		return -EINVAL;
 
-	for (i = 0, j = 0; i < count; i += 2) {
+	for (i = 0, j = 0; i < len; i += 2) {
 		dev_pdata->voltages[j] = states_array[i];
 		dev_pdata->states[j] = states_array[i + 1];
 		j++;

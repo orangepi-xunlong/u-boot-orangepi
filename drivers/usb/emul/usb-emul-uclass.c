@@ -1,13 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <usb.h>
 #include <dm/device-internal.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static int copy_to_unicode(char *buff, int length, const char *str)
 {
@@ -245,7 +248,8 @@ int usb_emul_bulk(struct udevice *emul, struct usb_device *udev,
 }
 
 int usb_emul_int(struct udevice *emul, struct usb_device *udev,
-		  unsigned long pipe, void *buffer, int length, int interval)
+		  unsigned long pipe, void *buffer, int length, int interval,
+		  bool nonblock)
 {
 	struct dm_usb_ops *ops = usb_get_emul_ops(emul);
 
@@ -253,7 +257,8 @@ int usb_emul_int(struct udevice *emul, struct usb_device *udev,
 		return -ENOSYS;
 	debug("%s: dev=%s\n", __func__, emul->name);
 
-	return ops->interrupt(emul, udev, pipe, buffer, length, interval);
+	return ops->interrupt(emul, udev, pipe, buffer, length, interval,
+			      nonblock);
 }
 
 int usb_emul_setup_device(struct udevice *dev, struct usb_string *strings,

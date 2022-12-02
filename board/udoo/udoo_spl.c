@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Udoo
  * Author: Tungyi Lin <tungyilin1127@gmail.com>
  *         Richard Hu <hakahu@gmail.com>
  * Based on board/wandboard/spl.c
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -20,6 +20,8 @@
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <spl.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_SPL_BUILD)
 #include <asm/arch/mx6-ddr.h>
@@ -250,5 +252,11 @@ void board_init_f(ulong dummy)
 
 	/* DDR initialization */
 	spl_dram_init();
+
+	/* Clear the BSS. */
+	memset(__bss_start, 0, __bss_end - __bss_start);
+
+	/* load/boot image from boot device */
+	board_init_r(NULL, 0);
 }
 #endif

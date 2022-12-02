@@ -1,9 +1,12 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2013 Google, Inc
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 obj-$(CONFIG_CMD_DM) += cmd_dm.o
 obj-$(CONFIG_UT_DM) += bus.o
+obj-$(CONFIG_UT_DM) += nop.o
 obj-$(CONFIG_UT_DM) += test-driver.o
 obj-$(CONFIG_UT_DM) += test-fdt.o
 obj-$(CONFIG_UT_DM) += test-main.o
@@ -42,4 +45,5 @@ obj-$(CONFIG_DM_VIDEO) += video.o
 obj-$(CONFIG_ADC) += adc.o
 obj-$(CONFIG_SPMI) += spmi.o
 obj-$(CONFIG_WDT) += wdt.o
+obj-$(CONFIG_SCMI_FIRMWARE) += scmi.o
 endif

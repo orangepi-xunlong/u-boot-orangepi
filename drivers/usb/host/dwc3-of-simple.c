@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * dwc3-of-simple.c - OF glue layer for simple integrations
  *
@@ -8,13 +7,16 @@
  *
  * Copyright (C) 2018 BayLibre, SAS
  * Author: Neil Armstrong <narmstron@baylibre.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
-#include <fdtdec.h>
 #include <reset.h>
 #include <clk.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct dwc3_of_simple {
 	struct clk_bulk		clks;

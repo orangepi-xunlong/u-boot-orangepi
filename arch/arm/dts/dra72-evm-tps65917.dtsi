@@ -132,19 +132,3 @@
 		ti,palmas-long-press-seconds = <6>;
 	};
 };
-
-&usb2_phy1 {
-	phy-supply = <&ldo4_reg>;
-};
-
-&usb2_phy2 {
-	phy-supply = <&ldo4_reg>;
-};
-
-&dss {
-	vdda_video-supply = <&ldo5_reg>;
-};
-
-&mmc1 {
-	vqmmc-supply = <&ldo1_reg>;
-};

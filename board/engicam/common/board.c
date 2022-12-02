@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Amarula Solutions B.V.
  * Copyright (C) 2016 Engicam S.r.l.
  * Author: Jagan Teki <jagan@amarulasolutions.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -31,35 +32,6 @@ static void mmc_late_init(void)
 }
 #endif
 
-static void setenv_fdt_file(void)
-{
-	const char *cmp_dtb = CONFIG_DEFAULT_DEVICE_TREE;
-
-	if (!strcmp(cmp_dtb, "imx6q-icore")) {
-		if (is_mx6dq())
-			env_set("fdt_file", "imx6q-icore.dtb");
-		else if (is_mx6dl() || is_mx6solo())
-			env_set("fdt_file", "imx6dl-icore.dtb");
-	} else if (!strcmp(cmp_dtb, "imx6q-icore-mipi")) {
-		if (is_mx6dq())
-			env_set("fdt_file", "imx6q-icore-mipi.dtb");
-		else if (is_mx6dl() || is_mx6solo())
-			env_set("fdt_file", "imx6dl-icore-mipi.dtb");
-	} else if (!strcmp(cmp_dtb, "imx6q-icore-rqs")) {
-		if (is_mx6dq())
-			env_set("fdt_file", "imx6q-icore-rqs.dtb");
-		else if (is_mx6dl() || is_mx6solo())
-			env_set("fdt_file", "imx6dl-icore-rqs.dtb");
-	} else if (!strcmp(cmp_dtb, "imx6ul-geam-kit"))
-		env_set("fdt_file", "imx6ul-geam-kit.dtb");
-	else if (!strcmp(cmp_dtb, "imx6ul-isiot-mmc"))
-		env_set("fdt_file", "imx6ul-isiot-emmc.dtb");
-	else if (!strcmp(cmp_dtb, "imx6ul-isiot-emmc"))
-		env_set("fdt_file", "imx6ul-isiot-emmc.dtb");
-	else if (!strcmp(cmp_dtb, "imx6ul-isiot-nand"))
-		env_set("fdt_file", "imx6ul-isiot-nand.dtb");
-}
-
 int board_late_init(void)
 {
 	switch ((imx6_src_get_boot_mode() & IMX6_BMODE_MASK) >>
@@ -73,7 +45,7 @@ int board_late_init(void)
 #endif
 		env_set("modeboot", "mmcboot");
 		break;
-	case IMX6_BMODE_NAND_MIN ... IMX6_BMODE_NAND_MAX:
+	case IMX6_BMODE_NAND:
 		env_set("modeboot", "nandboot");
 		break;
 	default:

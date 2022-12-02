@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale Layerscape MC I/O wrapper
  *
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.
  * Author: Prabhakar Kushwaha <prabhakar@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <fsl-mc/fsl_mc_sys.h>
@@ -51,10 +51,9 @@ int dpmac_close(struct fsl_mc_io *mc_io,
 }
 
 int dpmac_create(struct fsl_mc_io *mc_io,
-		 uint16_t dprc_token,
 		 uint32_t cmd_flags,
 		 const struct dpmac_cfg *cfg,
-		 uint32_t *obj_id)
+		 uint16_t *token)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -62,7 +61,7 @@ int dpmac_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_CREATE,
 					  cmd_flags,
-					  dprc_token);
+					  0);
 	DPMAC_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -71,25 +70,21 @@ int dpmac_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	MC_CMD_READ_OBJ_ID(cmd, *obj_id);
+	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
 
 	return 0;
 }
 
 int dpmac_destroy(struct fsl_mc_io *mc_io,
-		  uint16_t dprc_token,
 		  uint32_t cmd_flags,
-		  uint32_t obj_id)
+		  uint16_t token)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_DESTROY,
 					  cmd_flags,
-					  dprc_token);
-
-	/* set object id to destroy */
-	CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, obj_id);
+					  token);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -222,29 +217,6 @@ int dpmac_get_counter(struct fsl_mc_io *mc_io,
 		return err;
 
 	DPMAC_RSP_GET_COUNTER(cmd, *counter);
-
-	return 0;
-}
-
-int dpmac_get_api_version(struct fsl_mc_io *mc_io,
-			 u32 cmd_flags,
-			 u16 *major_ver,
-			 u16 *minor_ver)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_GET_API_VERSION,
-					  cmd_flags, 0);
-
-	/* send command to mc */
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	mc_cmd_read_api_version(&cmd, major_ver, minor_ver);
 
 	return 0;
 }

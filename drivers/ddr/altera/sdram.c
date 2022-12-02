@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright Altera Corporation (C) 2014-2015
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <errno.h>
@@ -10,6 +11,8 @@
 #include <asm/arch/sdram.h>
 #include <asm/arch/system_manager.h>
 #include <asm/io.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct sdram_prot_rule {
 	u32	sdram_start;	/* SDRAM start address */

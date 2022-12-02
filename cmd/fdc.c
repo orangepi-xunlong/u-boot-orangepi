@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG, d.peter@mpl.ch.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * Floppy Disk support

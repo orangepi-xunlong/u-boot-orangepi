@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014-2017 Broadcom.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ARCH_CONFIGS_H
@@ -18,6 +19,7 @@
 #define CONFIG_SYS_NS16550_CLK		100000000
 #define CONFIG_SYS_NS16550_CLK_DIV	54
 #define CONFIG_SERIAL_MULTI
+#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		0x18023000
 
 /* Ethernet */

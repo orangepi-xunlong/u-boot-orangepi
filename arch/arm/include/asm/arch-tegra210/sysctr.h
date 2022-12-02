@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013-2015
  * NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _TEGRA210_SYSCTR_H_

@@ -1,7 +1,9 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2014 - 2016 Xilinx, Inc.
 # Michal Simek <michal.simek@xilinx.com>
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 obj-y	:= zynqmp.o
 
@@ -22,10 +24,6 @@ ifdef_any_of = $(filter-out undefined,$(foreach v,$(1),$(origin $(v))))
 
 ifneq ($(call ifdef_any_of, CONFIG_ZYNQMP_PSU_INIT_ENABLED CONFIG_SPL_BUILD),)
 obj-y += $(init-objs)
-endif
-
-ifndef CONFIG_SPL_BUILD
-obj-$(CONFIG_CMD_ZYNQMP) += cmds.o
 endif
 
 # Suppress "warning: function declaration isn't a prototype"

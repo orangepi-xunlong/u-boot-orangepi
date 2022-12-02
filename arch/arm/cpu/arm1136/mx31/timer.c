@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -21,6 +22,8 @@
 #define GPTCR_FRR		(1 << 9)	/* Freerun / restart	*/
 #define GPTCR_CLKSOURCE_32	(4 << 6)	/* Clock source		*/
 #define GPTCR_TEN		1		/* Timer enable		*/
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* The 32768Hz 32-bit timer overruns in 131072 seconds */
 int timer_init(void)

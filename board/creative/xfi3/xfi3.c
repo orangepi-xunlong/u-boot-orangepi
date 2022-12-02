@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Creative ZEN X-Fi3 board
  *
@@ -7,6 +6,8 @@
  * Hardware investigation done by:
  *
  * Amaury Pouly <amaury.pouly@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

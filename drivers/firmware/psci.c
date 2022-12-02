@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Masahiro Yamada <yamada.masahiro@socionext.com>
  *
  * Based on drivers/firmware/psci.c from Linux:
  * Copyright (C) 2015 ARM Limited
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +13,6 @@
 #include <linux/libfdt.h>
 #include <linux/arm-smccc.h>
 #include <linux/errno.h>
-#include <linux/printk.h>
 #include <linux/psci.h>
 
 psci_fn *invoke_psci_fn;
@@ -48,7 +48,7 @@ static int psci_bind(struct udevice *dev)
 		ret = device_bind_driver(dev, "psci-sysreset", "psci-sysreset",
 					 NULL);
 		if (ret)
-			pr_debug("PSCI System Reset was not bound.\n");
+			debug("PSCI System Reset was not bound.\n");
 	}
 
 	return 0;
@@ -56,13 +56,11 @@ static int psci_bind(struct udevice *dev)
 
 static int psci_probe(struct udevice *dev)
 {
-	DECLARE_GLOBAL_DATA_PTR;
 	const char *method;
 
-	method = fdt_stringlist_get(gd->fdt_blob, dev_of_offset(dev), "method",
-				    0, NULL);
+	method = dev_read_prop(dev, "method", NULL);
 	if (!method) {
-		pr_warn("missing \"method\" property\n");
+		printf("missing \"method\" property\n");
 		return -ENXIO;
 	}
 
@@ -71,7 +69,7 @@ static int psci_probe(struct udevice *dev)
 	} else if (!strcmp("smc", method)) {
 		invoke_psci_fn = __invoke_psci_fn_smc;
 	} else {
-		pr_warn("invalid \"method\" property: %s\n", method);
+		printf("invalid \"method\" property: %s\n", method);
 		return -EINVAL;
 	}
 

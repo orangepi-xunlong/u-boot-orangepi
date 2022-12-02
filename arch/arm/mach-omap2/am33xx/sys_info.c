@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * sys_info.c
  *
@@ -9,6 +8,8 @@
  * Derived from Beagle Board and 3430 SDP code by
  *      Richard Woodruff <r-woodruff2@ti.com>
  *      Syed Mohammed Khasim <khasim@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -172,22 +173,6 @@ int am335x_get_efuse_mpu_max_freq(struct ctrl_dev *cdev)
 
 	/* unknown, use the PG1.0 max */
 	return MPUPLL_M_720;
-}
-
-int am335x_get_mpu_vdd(int sil_rev, int frequency)
-{
-	int sel_mask = am335x_get_tps65910_mpu_vdd(sil_rev, frequency);
-
-	switch (sel_mask) {
-	case TPS65910_OP_REG_SEL_1_3_2_5:
-		return 1325000;
-	case TPS65910_OP_REG_SEL_1_2_0:
-		return 1200000;
-	case TPS65910_OP_REG_SEL_1_1_0:
-		return 1100000;
-	default:
-		return 1262500;
-	}
 }
 
 int am335x_get_tps65910_mpu_vdd(int sil_rev, int frequency)

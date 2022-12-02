@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * [origin: arch/arm/cpu/arm926ejs/at91/cpu.c]
  *
@@ -8,6 +7,8 @@
  * Reinhard Meyer, reinhard.meyer@emk-elektronik.de
  * (C) Copyright 2009
  * Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

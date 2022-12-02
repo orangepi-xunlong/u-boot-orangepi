@@ -23,9 +23,10 @@ process_iocsr_config() {
 
 	(
 	cat << EOF
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Altera SoCFPGA IOCSR configuration
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #ifndef __SOCFPGA_IOCSR_CONFIG_H__
@@ -66,9 +67,10 @@ process_pinmux_config() {
 
 	(
 	cat << EOF
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Altera SoCFPGA PinMux configuration
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #ifndef __SOCFPGA_PINMUX_CONFIG_H__
@@ -102,9 +104,10 @@ process_pll_config() {
 
 	(
 	cat << EOF
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * Altera SoCFPGA Clock and PLL configuration
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #ifndef __SOCFPGA_PLL_CONFIG_H__

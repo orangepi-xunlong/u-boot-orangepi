@@ -1,13 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2004, 2007-2010, 2011-2012 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARC_ARCREGS_H
 #define _ASM_ARC_ARCREGS_H
 
 #include <asm/cache.h>
-#include <config.h>
 
 /*
  * ARC architecture has additional address space - auxiliary registers.
@@ -27,12 +27,6 @@
 #define ARC_AUX_IC_PTAG		0x1E
 #endif
 #define ARC_BCR_IC_BUILD	0x77
-#define AUX_AUX_CACHE_LIMIT		0x5D
-#define ARC_AUX_NON_VOLATILE_LIMIT	0x5E
-
-/* ICCM and DCCM auxiliary registers */
-#define ARC_AUX_DCCM_BASE	0x18	/* DCCM Base Addr ARCv2 */
-#define ARC_AUX_ICCM_BASE	0x208	/* ICCM Base Addr ARCv2 */
 
 /* Timer related auxiliary registers */
 #define ARC_AUX_TIMER0_CNT	0x21	/* Timer 0 count */
@@ -63,14 +57,7 @@
 #define ARC_AUX_SLC_INVALIDATE	0x905
 #define ARC_AUX_SLC_IVDL	0x910
 #define ARC_AUX_SLC_FLDL	0x912
-#define ARC_AUX_SLC_RGN_START	0x914
-#define ARC_AUX_SLC_RGN_START1	0x915
-#define ARC_AUX_SLC_RGN_END	0x916
-#define ARC_AUX_SLC_RGN_END1	0x917
 #define ARC_BCR_CLUSTER		0xcf
-
-/* MMU Management regs */
-#define ARC_AUX_MMU_BCR		0x06f
 
 /* IO coherency related auxiliary registers */
 #define ARC_AUX_IO_COH_ENABLE	0x500
@@ -85,19 +72,6 @@
 /* gcc builtin sr needs reg param to be long immediate */
 #define write_aux_reg(reg_immed, val)		\
 		__builtin_arc_sr((unsigned int)val, reg_immed)
-
-/* ARCNUM [15:8] - field to identify each core in a multi-core system */
-#define CPU_ID_GET()	((read_aux_reg(ARC_AUX_IDENTITY) & 0xFF00) >> 8)
-
-static const inline int is_isa_arcv2(void)
-{
-	return IS_ENABLED(CONFIG_ISA_ARCV2);
-}
-
-static const inline int is_isa_arcompact(void)
-{
-	return IS_ENABLED(CONFIG_ISA_ARCOMPACT);
-}
 #endif /* __ASSEMBLY__ */
 
 #endif /* _ASM_ARC_ARCREGS_H */

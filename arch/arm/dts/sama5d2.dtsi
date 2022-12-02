@@ -69,13 +69,6 @@
 			#size-cells = <1>;
 			u-boot,dm-pre-reloc;
 
-			hlcdc: hlcdc@f0000000 {
-				compatible = "atmel,at91sam9x5-hlcdc";
-				reg = <0xf0000000 0x2000>;
-				clocks = <&lcdc_clk>;
-				status = "disabled";
-			};
-
 			pmc: pmc@f0014000 {
 				compatible = "atmel,sama5d2-pmc", "syscon";
 				reg = <0xf0014000 0x160>;
@@ -129,7 +122,6 @@
 					compatible = "atmel,at91sam9x5-clk-utmi";
 					#clock-cells = <0>;
 					clocks = <&main>;
-					regmap-sfr = <&sfr>;
 					u-boot,dm-pre-reloc;
 				};
 
@@ -302,7 +294,6 @@
 						#clock-cells = <0>;
 						reg = <24>;
 						atmel,clk-output-range = <0 83000000>;
-						u-boot,dm-pre-reloc;
 					};
 
 					uart1_clk: uart1_clk@25 {
@@ -316,7 +307,6 @@
 						#clock-cells = <0>;
 						reg = <26>;
 						atmel,clk-output-range = <0 83000000>;
-						u-boot,dm-pre-reloc;
 					};
 
 					uart3_clk: uart3_clk@27 {
@@ -514,13 +504,11 @@
 					qspi0_clk: qspi0_clk@52 {
 						#clock-cells = <0>;
 						reg = <52>;
-						u-boot,dm-pre-reloc;
 					};
 
 					qspi1_clk: qspi1_clk@53 {
 						#clock-cells = <0>;
 						reg = <53>;
-						u-boot,dm-pre-reloc;
 					};
 				};
 
@@ -607,16 +595,6 @@
 				status = "disabled";
 			};
 
-			qspi1: spi@f0024000 {
-				compatible = "atmel,sama5d2-qspi";
-				reg = <0xf0024000 0x100>, <0xd8000000 0x08000000>;
-				reg-names = "qspi_base", "qspi_mmap";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				clocks = <&qspi1_clk>;
-				status = "disabled";
-			};
-
 			spi0: spi@f8000000 {
 				compatible = "atmel,at91rm9200-spi";
 				reg = <0xf8000000 0x100>;
@@ -637,26 +615,10 @@
 				status = "disabled";
 			};
 
-			uart0: serial@f801c000 {
-				compatible = "atmel,at91sam9260-usart";
-				reg = <0xf801c000 0x100>;
-				clocks = <&uart0_clk>;
-				clock-names = "usart";
-				status = "disabled";
-			};
-
 			uart1: serial@f8020000 {
 				compatible = "atmel,at91sam9260-usart";
 				reg = <0xf8020000 0x100>;
 				clocks = <&uart1_clk>;
-				clock-names = "usart";
-				status = "disabled";
-			};
-
-			uart2: serial@f8024000 {
-				compatible = "atmel,at91sam9260-usart";
-				reg = <0xf8024000 0x100>;
-				clocks = <&uart2_clk>;
 				clock-names = "usart";
 				status = "disabled";
 			};
@@ -698,11 +660,6 @@
 				status = "disabled";
 			};
 
-			sfr: sfr@f8030000 {
-				compatible = "atmel,sama5d2-sfr", "syscon";
-				reg = <0xf8030000 0x98>;
-			};
-
 			sckc@f8048050 {
 				compatible = "atmel,at91sam9x5-sckc";
 				reg = <0xf8048050 0x4>;
@@ -734,14 +691,6 @@
 				reg = <0xfc000000 0x100>;
 				#address-cells = <1>;
 				#size-cells = <0>;
-				status = "disabled";
-			};
-
-			uart3: serial@fc008000 {
-				compatible = "atmel,at91sam9260-usart";
-				reg = <0xfc008000 0x100>;
-				clocks = <&uart3_clk>;
-				clock-names = "usart";
 				status = "disabled";
 			};
 

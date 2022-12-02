@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -11,26 +12,12 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_SYS_HZ_CLOCK
-static inline u32 read_cntfrq(void)
-{
-	u32 frq;
-
-	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (frq));
-	return frq;
-}
-#endif
-
 int timer_init(void)
 {
 	gd->arch.tbl = 0;
 	gd->arch.tbu = 0;
 
-#ifdef CONFIG_SYS_HZ_CLOCK
 	gd->arch.timer_rate_hz = CONFIG_SYS_HZ_CLOCK;
-#else
-	gd->arch.timer_rate_hz = read_cntfrq();
-#endif
 	return 0;
 }
 
@@ -49,7 +36,7 @@ unsigned long long get_ticks(void)
 
 ulong timer_get_boot_us(void)
 {
-	return lldiv(get_ticks(), gd->arch.timer_rate_hz / 1000000);
+	return lldiv(get_ticks(), CONFIG_SYS_HZ_CLOCK / 1000000);
 }
 
 ulong get_tbclk(void)

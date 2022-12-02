@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common configuration header file for all Keystone II EVM platforms
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __CONFIG_KS2_EVM_H
@@ -16,6 +17,10 @@
 
 /* SoC Configuration */
 #define CONFIG_ARCH_CPU_INIT
+#define CONFIG_SYS_ARCH_TIMER
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE		0x0c000000
+#endif
 #define CONFIG_SPL_TARGET		"u-boot-spi.gph"
 #define CONFIG_SYS_DCACHE_OFF
 
@@ -46,6 +51,7 @@
 					CONFIG_SYS_SPL_MALLOC_SIZE + \
 					SPL_MALLOC_F_SIZE + \
 					KEYSTONE_SPL_STACK_SIZE - 4)
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	CONFIG_SPL_PAD_TO
 
 /* SRAM scratch space entries  */
@@ -63,6 +69,7 @@
 #endif
 #define CONFIG_SYS_NS16550_COM1		KS2_UART0_BASE
 #define CONFIG_SYS_NS16550_COM2		KS2_UART1_BASE
+#define CONFIG_CONS_INDEX		1
 
 #ifndef CONFIG_SOC_K2G
 #define CONFIG_SYS_NS16550_CLK		ks_clk_get_rate(KS2_CLK1_6)
@@ -92,6 +99,7 @@
 #define CONFIG_PHY_MARVELL
 #define CONFIG_MII
 #define CONFIG_BOOTP_DEFAULT
+#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT		32
@@ -160,7 +168,6 @@
 #define CONFIG_ENV_EEPROM_IS_ON_I2C
 
 /* NAND Configuration */
-#define CONFIG_NAND_DAVINCI
 #define CONFIG_KEYSTONE_RBL_NAND
 #define CONFIG_KEYSTONE_NAND_MAX_RBL_SIZE	CONFIG_ENV_OFFSET
 #define CONFIG_SYS_NAND_MASK_CLE		0x4000
@@ -174,14 +181,6 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_MAX_CHIPS		1
 #define CONFIG_SYS_NAND_NO_SUBPAGE_WRITE
-#define CONFIG_MTD_PARTITIONS
-
-/* USB Configuration */
-#define CONFIG_USB_XHCI_KEYSTONE
-#define CONFIG_USB_SS_BASE			KS2_USB_SS_BASE
-#define CONFIG_USB_HOST_XHCI_BASE		KS2_USB_HOST_XHCI_BASE
-#define CONFIG_DEV_USB_PHY_BASE			KS2_DEV_USB_PHY_BASE
-#define CONFIG_USB_PHY_CFG_BASE			KS2_USB_PHY_CFG_BASE
 
 /* U-Boot general configuration */
 #define CONFIG_MISC_INIT_R
@@ -257,7 +256,7 @@
 					"${bootdir}/${fit_bootfile}\0"	\
 	"get_uboot_net=dhcp ${loadaddr} ${tftp_root}/${name_uboot}\0"	\
 	"get_uboot_nfs=nfs ${loadaddr} ${nfs_root}/boot/${name_uboot}\0" \
-	"burn_uboot_spi=sf probe; sf erase 0 0x100000; "		\
+	"burn_uboot_spi=sf probe; sf erase 0 0x80000; "		\
 		"sf write ${loadaddr} 0 ${filesize}\0"		\
 	"burn_uboot_nand=nand erase 0 0x100000; "			\
 		"nand write ${loadaddr} 0 ${filesize}\0"		\

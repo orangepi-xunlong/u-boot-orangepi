@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2004-2006 Atmel Corporation
  *
  * Modified to support C structur SoC access by
  * Andreas Bießmann <biessmann@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <clk.h>

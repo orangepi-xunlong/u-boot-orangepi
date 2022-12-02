@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * omap.h
  *
@@ -9,6 +8,8 @@
  *
  * Derived from OMAP4 work by
  *	Aneesh V <aneesh@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _OMAP_H_

@@ -1,60 +1,33 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2017
+ * Copyright 2017 Rockchip Electronics Co., Ltd
+ * Frank Wang <frank.wang@rock-chips.com>
  *
- * Eddie Cai <eddie.cai.linux@gmail.com>
+ * SPDX-License-Identifier:	GPL-2.0+
  */
-#include <config.h>
-#include <common.h>
-#include <errno.h>
-#include <malloc.h>
-#include <memalign.h>
-#include <linux/usb/ch9.h>
-#include <linux/usb/gadget.h>
-#include <linux/usb/composite.h>
-#include <linux/compiler.h>
-#include <version.h>
-#include <g_dnl.h>
-#include <asm/arch/f_rockusb.h>
 
-static inline struct f_rockusb *func_to_rockusb(struct usb_function *f)
-{
-	return container_of(f, struct f_rockusb, usb_function);
-}
+#include <asm/io.h>
+#include <android_avb/avb_ops_user.h>
+#include <android_avb/rk_avb_ops_user.h>
+#include <asm/arch/boot_mode.h>
+#include <asm/arch/chip_info.h>
+#include <asm/arch/rk_atags.h>
+#include <write_keybox.h>
+#include <linux/mtd/mtd.h>
+#include <optee_include/OpteeClientInterface.h>
 
-static struct usb_endpoint_descriptor fs_ep_in = {
-	.bLength            = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType    = USB_DT_ENDPOINT,
-	.bEndpointAddress   = USB_DIR_IN,
-	.bmAttributes       = USB_ENDPOINT_XFER_BULK,
-	.wMaxPacketSize     = cpu_to_le16(64),
-};
+#ifdef CONFIG_ROCKCHIP_VENDOR_PARTITION
+#include <asm/arch/vendor.h>
+#endif
+#include <rockusb.h>
 
-static struct usb_endpoint_descriptor fs_ep_out = {
-	.bLength		= USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType	= USB_DT_ENDPOINT,
-	.bEndpointAddress	= USB_DIR_OUT,
-	.bmAttributes		= USB_ENDPOINT_XFER_BULK,
-	.wMaxPacketSize		= cpu_to_le16(64),
-};
+#define ROCKUSB_INTERFACE_CLASS	0xff
+#define ROCKUSB_INTERFACE_SUB_CLASS	0x06
+#define ROCKUSB_INTERFACE_PROTOCOL	0x05
 
-static struct usb_endpoint_descriptor hs_ep_in = {
-	.bLength		= USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType	= USB_DT_ENDPOINT,
-	.bEndpointAddress	= USB_DIR_IN,
-	.bmAttributes		= USB_ENDPOINT_XFER_BULK,
-	.wMaxPacketSize		= cpu_to_le16(512),
-};
+#define ROCKCHIP_FLASH_BLOCK_SIZE	1024
+#define ROCKCHIP_FLASH_PAGE_SIZE	4
 
-static struct usb_endpoint_descriptor hs_ep_out = {
-	.bLength		= USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType	= USB_DT_ENDPOINT,
-	.bEndpointAddress	= USB_DIR_OUT,
-	.bmAttributes		= USB_ENDPOINT_XFER_BULK,
-	.wMaxPacketSize		= cpu_to_le16(512),
-};
-
-static struct usb_interface_descriptor interface_desc = {
+static struct usb_interface_descriptor rkusb_intf_desc = {
 	.bLength		= USB_DT_INTERFACE_SIZE,
 	.bDescriptorType	= USB_DT_INTERFACE,
 	.bInterfaceNumber	= 0x00,
@@ -66,651 +39,886 @@ static struct usb_interface_descriptor interface_desc = {
 };
 
 static struct usb_descriptor_header *rkusb_fs_function[] = {
-	(struct usb_descriptor_header *)&interface_desc,
-	(struct usb_descriptor_header *)&fs_ep_in,
-	(struct usb_descriptor_header *)&fs_ep_out,
+	(struct usb_descriptor_header *)&rkusb_intf_desc,
+	(struct usb_descriptor_header *)&fsg_fs_bulk_in_desc,
+	(struct usb_descriptor_header *)&fsg_fs_bulk_out_desc,
+	NULL,
 };
 
 static struct usb_descriptor_header *rkusb_hs_function[] = {
-	(struct usb_descriptor_header *)&interface_desc,
-	(struct usb_descriptor_header *)&hs_ep_in,
-	(struct usb_descriptor_header *)&hs_ep_out,
+	(struct usb_descriptor_header *)&rkusb_intf_desc,
+	(struct usb_descriptor_header *)&fsg_hs_bulk_in_desc,
+	(struct usb_descriptor_header *)&fsg_hs_bulk_out_desc,
 	NULL,
 };
 
-static const char rkusb_name[] = "Rockchip Rockusb";
-
-static struct usb_string rkusb_string_defs[] = {
-	[0].s = rkusb_name,
-	{  }			/* end of list */
-};
-
-static struct usb_gadget_strings stringtab_rkusb = {
-	.language	= 0x0409,	/* en-us */
-	.strings	= rkusb_string_defs,
-};
-
-static struct usb_gadget_strings *rkusb_strings[] = {
-	&stringtab_rkusb,
+static struct usb_descriptor_header *rkusb_ss_function[] = {
+	(struct usb_descriptor_header *)&rkusb_intf_desc,
+	(struct usb_descriptor_header *)&fsg_ss_bulk_in_desc,
+	(struct usb_descriptor_header *)&fsg_ss_bulk_in_comp_desc,
+	(struct usb_descriptor_header *)&fsg_ss_bulk_out_desc,
+	(struct usb_descriptor_header *)&fsg_ss_bulk_out_comp_desc,
 	NULL,
 };
 
-static struct f_rockusb *rockusb_func;
-static void rx_handler_command(struct usb_ep *ep, struct usb_request *req);
-static int rockusb_tx_write_csw(u32 tag, int residue, u8 status, int size);
+struct rk_flash_info {
+	u32	flash_size;
+	u16	block_size;
+	u8	page_size;
+	u8	ecc_bits;
+	u8	access_time;
+	u8	manufacturer;
+	u8	flash_mask;
+} __packed;
 
-struct f_rockusb *get_rkusb(void)
+static int rkusb_rst_code; /* The subcode in reset command (0xFF) */
+
+int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
-	struct f_rockusb *f_rkusb = rockusb_func;
+	if (IS_RKUSB_UMS_DNL(name)) {
+		/* Fix to Rockchip's VID and PID */
+		dev->idVendor  = __constant_cpu_to_le16(0x2207);
+		dev->idProduct = __constant_cpu_to_le16(CONFIG_ROCKUSB_G_DNL_PID);
 
-	if (!f_rkusb) {
-		f_rkusb = memalign(CONFIG_SYS_CACHELINE_SIZE, sizeof(*f_rkusb));
-		if (!f_rkusb)
-			return 0;
-
-		rockusb_func = f_rkusb;
-		memset(f_rkusb, 0, sizeof(*f_rkusb));
-	}
-
-	if (!f_rkusb->buf_head) {
-		f_rkusb->buf_head = memalign(CONFIG_SYS_CACHELINE_SIZE,
-					     RKUSB_BUF_SIZE);
-		if (!f_rkusb->buf_head)
-			return 0;
-
-		f_rkusb->buf = f_rkusb->buf_head;
-		memset(f_rkusb->buf_head, 0, RKUSB_BUF_SIZE);
-	}
-	return f_rkusb;
-}
-
-static struct usb_endpoint_descriptor *rkusb_ep_desc(
-struct usb_gadget *g,
-struct usb_endpoint_descriptor *fs,
-struct usb_endpoint_descriptor *hs)
-{
-	if (gadget_is_dualspeed(g) && g->speed == USB_SPEED_HIGH)
-		return hs;
-	return fs;
-}
-
-static void rockusb_complete(struct usb_ep *ep, struct usb_request *req)
-{
-	int status = req->status;
-
-	if (!status)
-		return;
-	debug("status: %d ep '%s' trans: %d\n", status, ep->name, req->actual);
-}
-
-/* config the rockusb device*/
-static int rockusb_bind(struct usb_configuration *c, struct usb_function *f)
-{
-	int id;
-	struct usb_gadget *gadget = c->cdev->gadget;
-	struct f_rockusb *f_rkusb = func_to_rockusb(f);
-	const char *s;
-
-	id = usb_interface_id(c, f);
-	if (id < 0)
-		return id;
-	interface_desc.bInterfaceNumber = id;
-
-	id = usb_string_id(c->cdev);
-	if (id < 0)
-		return id;
-
-	rkusb_string_defs[0].id = id;
-	interface_desc.iInterface = id;
-
-	f_rkusb->in_ep = usb_ep_autoconfig(gadget, &fs_ep_in);
-	if (!f_rkusb->in_ep)
-		return -ENODEV;
-	f_rkusb->in_ep->driver_data = c->cdev;
-
-	f_rkusb->out_ep = usb_ep_autoconfig(gadget, &fs_ep_out);
-	if (!f_rkusb->out_ep)
-		return -ENODEV;
-	f_rkusb->out_ep->driver_data = c->cdev;
-
-	f->descriptors = rkusb_fs_function;
-
-	if (gadget_is_dualspeed(gadget)) {
-		hs_ep_in.bEndpointAddress = fs_ep_in.bEndpointAddress;
-		hs_ep_out.bEndpointAddress = fs_ep_out.bEndpointAddress;
-		f->hs_descriptors = rkusb_hs_function;
-	}
-
-	s = env_get("serial#");
-	if (s)
-		g_dnl_set_serialnumber((char *)s);
-
-	return 0;
-}
-
-static void rockusb_unbind(struct usb_configuration *c, struct usb_function *f)
-{
-	/* clear the configuration*/
-	memset(rockusb_func, 0, sizeof(*rockusb_func));
-}
-
-static void rockusb_disable(struct usb_function *f)
-{
-	struct f_rockusb *f_rkusb = func_to_rockusb(f);
-
-	usb_ep_disable(f_rkusb->out_ep);
-	usb_ep_disable(f_rkusb->in_ep);
-
-	if (f_rkusb->out_req) {
-		free(f_rkusb->out_req->buf);
-		usb_ep_free_request(f_rkusb->out_ep, f_rkusb->out_req);
-		f_rkusb->out_req = NULL;
-	}
-	if (f_rkusb->in_req) {
-		free(f_rkusb->in_req->buf);
-		usb_ep_free_request(f_rkusb->in_ep, f_rkusb->in_req);
-		f_rkusb->in_req = NULL;
-	}
-	if (f_rkusb->buf_head) {
-		free(f_rkusb->buf_head);
-		f_rkusb->buf_head = NULL;
-		f_rkusb->buf = NULL;
-	}
-}
-
-static struct usb_request *rockusb_start_ep(struct usb_ep *ep)
-{
-	struct usb_request *req;
-
-	req = usb_ep_alloc_request(ep, 0);
-	if (!req)
-		return NULL;
-
-	req->length = EP_BUFFER_SIZE;
-	req->buf = memalign(CONFIG_SYS_CACHELINE_SIZE, EP_BUFFER_SIZE);
-	if (!req->buf) {
-		usb_ep_free_request(ep, req);
-		return NULL;
-	}
-	memset(req->buf, 0, req->length);
-
-	return req;
-}
-
-static int rockusb_set_alt(struct usb_function *f, unsigned int interface,
-			   unsigned int alt)
-{
-	int ret;
-	struct usb_composite_dev *cdev = f->config->cdev;
-	struct usb_gadget *gadget = cdev->gadget;
-	struct f_rockusb *f_rkusb = func_to_rockusb(f);
-	const struct usb_endpoint_descriptor *d;
-
-	debug("%s: func: %s intf: %d alt: %d\n",
-	      __func__, f->name, interface, alt);
-
-	d = rkusb_ep_desc(gadget, &fs_ep_out, &hs_ep_out);
-	ret = usb_ep_enable(f_rkusb->out_ep, d);
-	if (ret) {
-		printf("failed to enable out ep\n");
-		return ret;
-	}
-
-	f_rkusb->out_req = rockusb_start_ep(f_rkusb->out_ep);
-	if (!f_rkusb->out_req) {
-		printf("failed to alloc out req\n");
-		ret = -EINVAL;
-		goto err;
-	}
-	f_rkusb->out_req->complete = rx_handler_command;
-
-	d = rkusb_ep_desc(gadget, &fs_ep_in, &hs_ep_in);
-	ret = usb_ep_enable(f_rkusb->in_ep, d);
-	if (ret) {
-		printf("failed to enable in ep\n");
-		goto err;
-	}
-
-	f_rkusb->in_req = rockusb_start_ep(f_rkusb->in_ep);
-	if (!f_rkusb->in_req) {
-		printf("failed alloc req in\n");
-		ret = -EINVAL;
-		goto err;
-	}
-	f_rkusb->in_req->complete = rockusb_complete;
-
-	ret = usb_ep_queue(f_rkusb->out_ep, f_rkusb->out_req, 0);
-	if (ret)
-		goto err;
-
-	return 0;
-err:
-	rockusb_disable(f);
-	return ret;
-}
-
-static int rockusb_add(struct usb_configuration *c)
-{
-	struct f_rockusb *f_rkusb = get_rkusb();
-	int status;
-
-	debug("%s: cdev: 0x%p\n", __func__, c->cdev);
-
-	f_rkusb->usb_function.name = "f_rockusb";
-	f_rkusb->usb_function.bind = rockusb_bind;
-	f_rkusb->usb_function.unbind = rockusb_unbind;
-	f_rkusb->usb_function.set_alt = rockusb_set_alt;
-	f_rkusb->usb_function.disable = rockusb_disable;
-	f_rkusb->usb_function.strings = rkusb_strings;
-
-	status = usb_add_function(c, &f_rkusb->usb_function);
-	if (status) {
-		free(f_rkusb);
-		rockusb_func = f_rkusb;
-	}
-	return status;
-}
-
-void rockusb_dev_init(char *dev_type, int dev_index)
-{
-	struct f_rockusb *f_rkusb = get_rkusb();
-
-	f_rkusb->dev_type = dev_type;
-	f_rkusb->dev_index = dev_index;
-}
-
-DECLARE_GADGET_BIND_CALLBACK(usb_dnl_rockusb, rockusb_add);
-
-static int rockusb_tx_write(const char *buffer, unsigned int buffer_size)
-{
-	struct usb_request *in_req = rockusb_func->in_req;
-	int ret;
-
-	memcpy(in_req->buf, buffer, buffer_size);
-	in_req->length = buffer_size;
-	usb_ep_dequeue(rockusb_func->in_ep, in_req);
-	ret = usb_ep_queue(rockusb_func->in_ep, in_req, 0);
-	if (ret)
-		printf("Error %d on queue\n", ret);
-	return 0;
-}
-
-static int rockusb_tx_write_str(const char *buffer)
-{
-	return rockusb_tx_write(buffer, strlen(buffer));
-}
-
-#ifdef DEBUG
-static void printcbw(char *buf)
-{
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
-
-	memcpy((char *)cbw, buf, USB_BULK_CB_WRAP_LEN);
-
-	debug("cbw: signature:%x\n", cbw->signature);
-	debug("cbw: tag=%x\n", cbw->tag);
-	debug("cbw: data_transfer_length=%d\n", cbw->data_transfer_length);
-	debug("cbw: flags=%x\n", cbw->flags);
-	debug("cbw: lun=%d\n", cbw->lun);
-	debug("cbw: length=%d\n", cbw->length);
-	debug("cbw: ucOperCode=%x\n", cbw->CDB[0]);
-	debug("cbw: ucReserved=%x\n", cbw->CDB[1]);
-	debug("cbw: dwAddress:%x %x %x %x\n", cbw->CDB[5], cbw->CDB[4],
-	      cbw->CDB[3], cbw->CDB[2]);
-	debug("cbw: ucReserved2=%x\n", cbw->CDB[6]);
-	debug("cbw: uslength:%x %x\n", cbw->CDB[8], cbw->CDB[7]);
-}
-
-static void printcsw(char *buf)
-{
-	ALLOC_CACHE_ALIGN_BUFFER(struct bulk_cs_wrap, csw,
-				 sizeof(struct bulk_cs_wrap));
-	memcpy((char *)csw, buf, USB_BULK_CS_WRAP_LEN);
-	debug("csw: signature:%x\n", csw->signature);
-	debug("csw: tag:%x\n", csw->tag);
-	debug("csw: residue:%x\n", csw->residue);
-	debug("csw: status:%x\n", csw->status);
-}
+		/* Enumerate as a loader device */
+#if defined(CONFIG_SUPPORT_USBPLUG)
+		dev->bcdUSB = cpu_to_le16(0x0200);
+#else
+		dev->bcdUSB = cpu_to_le16(0x0201);
 #endif
+	} else if (!strncmp(name, "usb_dnl_fastboot", 16)) {
+		/* Fix to Google's VID and PID */
+		dev->idVendor  = __constant_cpu_to_le16(0x18d1);
+		dev->idProduct = __constant_cpu_to_le16(0xd00d);
+	} else if (!strncmp(name, "usb_dnl_dfu", 11)) {
+		/* Fix to Rockchip's VID and PID for DFU */
+		dev->idVendor  = cpu_to_le16(0x2207);
+		dev->idProduct = cpu_to_le16(0x0107);
+	} else if (!strncmp(name, "usb_dnl_ums", 11)) {
+		dev->idVendor  = cpu_to_le16(0x2207);
+		dev->idProduct = cpu_to_le16(0x0010);
+	}
 
-static int rockusb_tx_write_csw(u32 tag, int residue, u8 status, int size)
-{
-	ALLOC_CACHE_ALIGN_BUFFER(struct bulk_cs_wrap, csw,
-				 sizeof(struct bulk_cs_wrap));
-	csw->signature = cpu_to_le32(USB_BULK_CS_SIG);
-	csw->tag = tag;
-	csw->residue = cpu_to_be32(residue);
-	csw->status = status;
-#ifdef DEBUG
-	printcsw((char *)&csw);
-#endif
-	return rockusb_tx_write((char *)csw, size);
+	return 0;
 }
 
-static unsigned int rx_bytes_expected(struct usb_ep *ep)
+__maybe_unused
+static inline void dump_cbw(struct fsg_bulk_cb_wrap *cbw)
 {
-	struct f_rockusb *f_rkusb = get_rkusb();
-	int rx_remain = f_rkusb->dl_size - f_rkusb->dl_bytes;
-	unsigned int rem;
-	unsigned int maxpacket = ep->maxpacket;
+	assert(!cbw);
 
-	if (rx_remain <= 0)
-		return 0;
-	else if (rx_remain > EP_BUFFER_SIZE)
-		return EP_BUFFER_SIZE;
-
-	rem = rx_remain % maxpacket;
-	if (rem > 0)
-		rx_remain = rx_remain + (maxpacket - rem);
-
-	return rx_remain;
+	debug("%s:\n", __func__);
+	debug("Signature %x\n", cbw->Signature);
+	debug("Tag %x\n", cbw->Tag);
+	debug("DataTransferLength %x\n", cbw->DataTransferLength);
+	debug("Flags %x\n", cbw->Flags);
+	debug("LUN %x\n", cbw->Lun);
+	debug("Length %x\n", cbw->Length);
+	debug("OptionCode %x\n", cbw->CDB[0]);
+	debug("SubCode %x\n", cbw->CDB[1]);
+	debug("SectorAddr %x\n", get_unaligned_be32(&cbw->CDB[2]));
+	debug("BlkSectors %x\n\n", get_unaligned_be16(&cbw->CDB[7]));
 }
 
-/* usb_request complete call back to handle down load image */
-static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
+static int rkusb_check_lun(struct fsg_common *common)
 {
-	struct f_rockusb *f_rkusb = get_rkusb();
-	unsigned int transfer_size = 0;
-	const unsigned char *buffer = req->buf;
-	unsigned int buffer_size = req->actual;
+	struct fsg_lun *curlun;
 
-	transfer_size = f_rkusb->dl_size - f_rkusb->dl_bytes;
-	if (!f_rkusb->desc) {
-		char *type = f_rkusb->dev_type;
-		int index = f_rkusb->dev_index;
+	/* Check the LUN */
+	if (common->lun >= 0 && common->lun < common->nluns) {
+		curlun = &common->luns[common->lun];
+		if (common->cmnd[0] != SC_REQUEST_SENSE) {
+			curlun->sense_data = SS_NO_SENSE;
+			curlun->info_valid = 0;
+		}
+	} else {
+		curlun = NULL;
+		common->bad_lun_okay = 0;
 
-		f_rkusb->desc = blk_get_dev(type, index);
-		if (!f_rkusb->desc ||
-		    f_rkusb->desc->type == DEV_TYPE_UNKNOWN) {
-			puts("invalid mmc device\n");
-			rockusb_tx_write_csw(f_rkusb->tag, 0, CSW_FAIL,
-					     USB_BULK_CS_WRAP_LEN);
-			return;
+		/*
+		 * INQUIRY and REQUEST SENSE commands are explicitly allowed
+		 * to use unsupported LUNs; all others may not.
+		 */
+		if (common->cmnd[0] != SC_INQUIRY &&
+		    common->cmnd[0] != SC_REQUEST_SENSE) {
+			debug("unsupported LUN %d\n", common->lun);
+			return -EINVAL;
 		}
 	}
 
-	if (req->status != 0) {
-		printf("Bad status: %d\n", req->status);
-		rockusb_tx_write_csw(f_rkusb->tag, 0, CSW_FAIL,
-				     USB_BULK_CS_WRAP_LEN);
-		return;
-	}
-
-	if (buffer_size < transfer_size)
-		transfer_size = buffer_size;
-
-	memcpy((void *)f_rkusb->buf, buffer, transfer_size);
-	f_rkusb->dl_bytes += transfer_size;
-	int blks = 0, blkcnt = transfer_size  / 512;
-
-	debug("dl %x bytes, %x blks, write lba %x, dl_size:%x, dl_bytes:%x, ",
-	      transfer_size, blkcnt, f_rkusb->lba, f_rkusb->dl_size,
-	      f_rkusb->dl_bytes);
-	blks = blk_dwrite(f_rkusb->desc, f_rkusb->lba, blkcnt, f_rkusb->buf);
-	if (blks != blkcnt) {
-		printf("failed writing to device %s: %d\n", f_rkusb->dev_type,
-		       f_rkusb->dev_index);
-		rockusb_tx_write_csw(f_rkusb->tag, 0, CSW_FAIL,
-				     USB_BULK_CS_WRAP_LEN);
-		return;
-	}
-	f_rkusb->lba += blkcnt;
-
-	/* Check if transfer is done */
-	if (f_rkusb->dl_bytes >= f_rkusb->dl_size) {
-		req->complete = rx_handler_command;
-		req->length = EP_BUFFER_SIZE;
-		f_rkusb->buf = f_rkusb->buf_head;
-		printf("transfer 0x%x bytes done\n", f_rkusb->dl_size);
-		f_rkusb->dl_size = 0;
-		rockusb_tx_write_csw(f_rkusb->tag, 0, CSW_GOOD,
-				     USB_BULK_CS_WRAP_LEN);
-	} else {
-		req->length = rx_bytes_expected(ep);
-		if (f_rkusb->buf == f_rkusb->buf_head)
-			f_rkusb->buf = f_rkusb->buf_head + EP_BUFFER_SIZE;
-		else
-			f_rkusb->buf = f_rkusb->buf_head;
-
-		debug("remain %x bytes, %x sectors\n", req->length,
-		      req->length / 512);
-	}
-
-	req->actual = 0;
-	usb_ep_queue(ep, req, 0);
+	return 0;
 }
 
-static void cb_test_unit_ready(struct usb_ep *ep, struct usb_request *req)
+static void __do_reset(struct usb_ep *ep, struct usb_request *req)
 {
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
+	u32 boot_flag = BOOT_NORMAL;
 
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
+	if (rkusb_rst_code == 0x03)
+		boot_flag = BOOT_BROM_DOWNLOAD;
 
-	rockusb_tx_write_csw(cbw->tag, cbw->data_transfer_length,
-			     CSW_GOOD, USB_BULK_CS_WRAP_LEN);
-}
+	rkusb_rst_code = 0; /* restore to default */
+	writel(boot_flag, (void *)CONFIG_ROCKCHIP_BOOT_MODE_REG);
 
-static void cb_read_storage_id(struct usb_ep *ep, struct usb_request *req)
-{
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
-	char emmc_id[] = "EMMC ";
-
-	printf("read storage id\n");
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
-	rockusb_tx_write_str(emmc_id);
-	rockusb_tx_write_csw(cbw->tag, cbw->data_transfer_length, CSW_GOOD,
-			     USB_BULK_CS_WRAP_LEN);
-}
-
-static void cb_write_lba(struct usb_ep *ep, struct usb_request *req)
-{
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
-	struct f_rockusb *f_rkusb = get_rkusb();
-	int sector_count;
-
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
-	sector_count = (int)get_unaligned_be16(&cbw->CDB[7]);
-	f_rkusb->lba = get_unaligned_be32(&cbw->CDB[2]);
-	f_rkusb->dl_size = sector_count * 512;
-	f_rkusb->dl_bytes = 0;
-	f_rkusb->tag = cbw->tag;
-	debug("require write %x bytes, %x sectors to lba %x\n",
-	      f_rkusb->dl_size, sector_count, f_rkusb->lba);
-
-	if (f_rkusb->dl_size == 0)  {
-		rockusb_tx_write_csw(cbw->tag, cbw->data_transfer_length,
-				     CSW_FAIL, USB_BULK_CS_WRAP_LEN);
-	} else {
-		req->complete = rx_handler_dl_image;
-		req->length = rx_bytes_expected(ep);
-	}
-}
-
-void __weak rkusb_set_reboot_flag(int flag)
-{
-	struct f_rockusb *f_rkusb = get_rkusb();
-
-	printf("rockkusb set reboot flag: %d\n", f_rkusb->reboot_flag);
-}
-
-static void compl_do_reset(struct usb_ep *ep, struct usb_request *req)
-{
-	struct f_rockusb *f_rkusb = get_rkusb();
-
-	rkusb_set_reboot_flag(f_rkusb->reboot_flag);
 	do_reset(NULL, 0, 0, NULL);
 }
 
-static void cb_reboot(struct usb_ep *ep, struct usb_request *req)
+static int rkusb_do_reset(struct fsg_common *common,
+			  struct fsg_buffhd *bh)
 {
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
-	struct f_rockusb *f_rkusb = get_rkusb();
+	common->data_size_from_cmnd = common->cmnd[4];
+	common->residue = 0;
+	bh->inreq->complete = __do_reset;
+	bh->state = BUF_STATE_EMPTY;
 
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
-	f_rkusb->reboot_flag = cbw->CDB[1];
-	rockusb_func->in_req->complete = compl_do_reset;
-	rockusb_tx_write_csw(cbw->tag, cbw->data_transfer_length, CSW_GOOD,
-			     USB_BULK_CS_WRAP_LEN);
+	rkusb_rst_code = !common->cmnd[1] ? 0xff : common->cmnd[1];
+	return 0;
 }
 
-static void cb_not_support(struct usb_ep *ep, struct usb_request *req)
+static int rkusb_do_test_unit_ready(struct fsg_common *common,
+				    struct fsg_buffhd *bh)
 {
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
+	struct blk_desc *desc = &ums[common->lun].block_dev;
 
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
-	printf("Rockusb command %x not support yet\n", cbw->CDB[0]);
-	rockusb_tx_write_csw(cbw->tag, 0, CSW_FAIL, USB_BULK_CS_WRAP_LEN);
+	if ((desc->if_type == IF_TYPE_MTD && desc->devnum == BLK_MTD_SPI_NOR) ||
+	    desc->if_type == IF_TYPE_SPINOR)
+		common->residue = 0x03 << 24; /* 128KB Max block xfer for SPI Nor */
+	else
+		common->residue = 0x06 << 24; /* Max block xfer support from host */
+
+	common->data_dir = DATA_DIR_NONE;
+	bh->state = BUF_STATE_EMPTY;
+
+	return 0;
 }
 
-static const struct cmd_dispatch_info cmd_dispatch_info[] = {
-	{
-		.cmd = K_FW_TEST_UNIT_READY,
-		.cb = cb_test_unit_ready,
-	},
-	{
-		.cmd = K_FW_READ_FLASH_ID,
-		.cb = cb_read_storage_id,
-	},
-	{
-		.cmd = K_FW_SET_DEVICE_ID,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_TEST_BAD_BLOCK,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_READ_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_WRITE_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_ERASE_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_WRITE_SPARE,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_READ_SPARE,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_ERASE_10_FORCE,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_GET_VERSION,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_LBA_READ_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_LBA_WRITE_10,
-		.cb = cb_write_lba,
-	},
-	{
-		.cmd = K_FW_ERASE_SYS_DISK,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SDRAM_READ_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SDRAM_WRITE_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SDRAM_EXECUTE,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_READ_FLASH_INFO,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_GET_CHIP_VER,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_LOW_FORMAT,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SET_RESET_FLAG,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SPI_READ_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SPI_WRITE_10,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_SESSION,
-		.cb = cb_not_support,
-	},
-	{
-		.cmd = K_FW_RESET,
-		.cb = cb_reboot,
-	},
-};
-
-static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
+static int rkusb_do_read_flash_id(struct fsg_common *common,
+				  struct fsg_buffhd *bh)
 {
-	void (*func_cb)(struct usb_ep *ep, struct usb_request *req) = NULL;
+	u8 *buf = (u8 *)bh->buf;
+	u32 len = 5;
+	enum if_type type = ums[common->lun].block_dev.if_type;
+	u32 devnum = ums[common->lun].block_dev.devnum;
+	const char *str;
 
-	ALLOC_CACHE_ALIGN_BUFFER(struct fsg_bulk_cb_wrap, cbw,
-				 sizeof(struct fsg_bulk_cb_wrap));
-	char *cmdbuf = req->buf;
-	int i;
+	switch (type) {
+	case IF_TYPE_MMC:
+		str = "EMMC ";
+		break;
+	case IF_TYPE_RKNAND:
+		str = "NAND ";
+		break;
+	case IF_TYPE_MTD:
+		if (devnum == BLK_MTD_SPI_NAND)
+			str ="SNAND";
+		else if (devnum == BLK_MTD_NAND)
+			str = "NAND ";
+		else
+			str = "NOR  ";
+		break;
+	default:
+		str = "UNKN "; /* unknown */
+		break;
+	}
 
-	if (req->status || req->length == 0)
-		return;
+	memcpy((void *)&buf[0], str, len);
 
-	memcpy((char *)cbw, req->buf, USB_BULK_CB_WRAP_LEN);
-#ifdef DEBUG
-	printcbw(req->buf);
+	/* Set data xfer size */
+	common->residue = common->data_size_from_cmnd = len;
+	common->data_size = len;
+
+	return len;
+}
+
+static int rkusb_do_test_bad_block(struct fsg_common *common,
+				   struct fsg_buffhd *bh)
+{
+	u8 *buf = (u8 *)bh->buf;
+	u32 len = 64;
+
+	memset((void *)&buf[0], 0, len);
+
+	/* Set data xfer size */
+	common->residue = common->data_size_from_cmnd = len;
+	common->data_size = len;
+
+	return len;
+}
+
+static int rkusb_do_read_flash_info(struct fsg_common *common,
+				    struct fsg_buffhd *bh)
+{
+	struct blk_desc *desc = &ums[common->lun].block_dev;
+	u8 *buf = (u8 *)bh->buf;
+	u32 len = sizeof(struct rk_flash_info);
+	struct rk_flash_info finfo = {
+		.block_size = ROCKCHIP_FLASH_BLOCK_SIZE,
+		.ecc_bits = 0,
+		.page_size = ROCKCHIP_FLASH_PAGE_SIZE,
+		.access_time = 40,
+		.manufacturer = 0,
+		.flash_mask = 0
+	};
+
+	finfo.flash_size = (u32)desc->lba;
+
+	if (desc->if_type == IF_TYPE_MTD &&
+	    (desc->devnum == BLK_MTD_NAND ||
+	    desc->devnum == BLK_MTD_SPI_NAND)) {
+		struct mtd_info *mtd = (struct mtd_info *)desc->bdev->priv;
+
+		if (mtd) {
+			finfo.block_size = mtd->erasesize >> 9;
+			finfo.page_size = mtd->writesize >> 9;
+		}
+	}
+
+	if (desc->if_type == IF_TYPE_MTD && desc->devnum == BLK_MTD_SPI_NOR) {
+		/* RV1126/RK3308 mtd spinor keep the former upgrade mode */
+#if !defined(CONFIG_ROCKCHIP_RV1126) && !defined(CONFIG_ROCKCHIP_RK3308)
+		finfo.block_size = 0x80; /* Aligned to 64KB */
+#else
+		finfo.block_size = ROCKCHIP_FLASH_BLOCK_SIZE;
+#endif
+	}
+
+	debug("Flash info: block_size= %x page_size= %x\n", finfo.block_size,
+	      finfo.page_size);
+
+	if (finfo.flash_size)
+		finfo.flash_mask = 1;
+
+	memset((void *)&buf[0], 0, len);
+	memcpy((void *)&buf[0], (void *)&finfo, len);
+
+	/* Set data xfer size */
+	common->residue = common->data_size_from_cmnd = len;
+        /* legacy upgrade_tool does not set correct transfer size */
+	common->data_size = len;
+
+	return len;
+}
+
+static int rkusb_do_get_chip_info(struct fsg_common *common,
+				  struct fsg_buffhd *bh)
+{
+	u8 *buf = (u8 *)bh->buf;
+	u32 len = common->data_size;
+	u32 chip_info[4];
+
+	memset((void *)chip_info, 0, sizeof(chip_info));
+	rockchip_rockusb_get_chip_info(chip_info);
+
+	memset((void *)&buf[0], 0, len);
+	memcpy((void *)&buf[0], (void *)chip_info, len);
+
+	/* Set data xfer size */
+	common->residue = common->data_size_from_cmnd = len;
+
+	return len;
+}
+
+static int rkusb_do_lba_erase(struct fsg_common *common,
+			      struct fsg_buffhd *bh)
+{
+	struct fsg_lun *curlun = &common->luns[common->lun];
+	u32 lba, amount;
+	loff_t file_offset;
+	int rc;
+
+	lba = get_unaligned_be32(&common->cmnd[2]);
+	if (lba >= curlun->num_sectors) {
+		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		rc = -EINVAL;
+		goto out;
+	}
+
+	file_offset = ((loff_t) lba) << 9;
+	amount = get_unaligned_be16(&common->cmnd[7]) << 9;
+	if (unlikely(amount == 0)) {
+		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
+		rc = -EIO;
+		goto out;
+	}
+
+	/* Perform the erase */
+	rc = ums[common->lun].erase_sector(&ums[common->lun],
+			       file_offset / SECTOR_SIZE,
+			       amount / SECTOR_SIZE);
+	if (!rc) {
+		curlun->sense_data = SS_MEDIUM_NOT_PRESENT;
+		rc = -EIO;
+	}
+
+out:
+	common->data_dir = DATA_DIR_NONE;
+	bh->state = BUF_STATE_EMPTY;
+
+	return rc;
+}
+
+static int rkusb_do_erase_force(struct fsg_common *common,
+				struct fsg_buffhd *bh)
+{
+	struct blk_desc *desc = &ums[common->lun].block_dev;
+	struct fsg_lun *curlun = &common->luns[common->lun];
+	u16 block_size = ROCKCHIP_FLASH_BLOCK_SIZE;
+	u32 lba, amount;
+	loff_t file_offset;
+	int rc;
+
+	lba = get_unaligned_be32(&common->cmnd[2]);
+	if (lba >= curlun->num_sectors) {
+		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		rc = -EINVAL;
+		goto out;
+	}
+
+	if (desc->if_type == IF_TYPE_MTD &&
+	    (desc->devnum == BLK_MTD_NAND ||
+	    desc->devnum == BLK_MTD_SPI_NAND)) {
+		struct mtd_info *mtd = (struct mtd_info *)desc->bdev->priv;
+
+		if (mtd)
+			block_size = mtd->erasesize >> 9;
+	}
+
+	file_offset = ((loff_t)lba) * block_size;
+	amount = get_unaligned_be16(&common->cmnd[7]) * block_size;
+
+	debug("%s lba= %x, nsec= %x\n", __func__, lba,
+	      (u32)get_unaligned_be16(&common->cmnd[7]));
+
+	if (unlikely(amount == 0)) {
+		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
+		rc = -EIO;
+		goto out;
+	}
+
+	/* Perform the erase */
+	rc = ums[common->lun].erase_sector(&ums[common->lun],
+					   file_offset,
+					   amount);
+	if (!rc) {
+		curlun->sense_data = SS_MEDIUM_NOT_PRESENT;
+		rc = -EIO;
+	}
+
+out:
+	common->data_dir = DATA_DIR_NONE;
+	bh->state = BUF_STATE_EMPTY;
+
+	return rc;
+}
+
+#ifdef CONFIG_ROCKCHIP_VENDOR_PARTITION
+static int rkusb_do_vs_write(struct fsg_common *common)
+{
+	struct fsg_lun		*curlun = &common->luns[common->lun];
+	u16			type = get_unaligned_be16(&common->cmnd[4]);
+	struct vendor_item	*vhead;
+	struct fsg_buffhd	*bh;
+	void			*data;
+	int			rc;
+
+	if (common->data_size >= (u32)65536) {
+		/* _MUST_ small than 64K */
+		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		return -EINVAL;
+	}
+
+	common->residue         = common->data_size;
+	common->usb_amount_left = common->data_size;
+
+	/* Carry out the file writes */
+	if (unlikely(common->data_size == 0))
+		return -EIO; /* No data to write */
+
+	for (;;) {
+		if (common->usb_amount_left > 0) {
+			/* Wait for the next buffer to become available */
+			bh = common->next_buffhd_to_fill;
+			if (bh->state != BUF_STATE_EMPTY)
+				goto wait;
+
+			/* Request the next buffer */
+			common->usb_amount_left      -= common->data_size;
+			bh->outreq->length	     = common->data_size;
+			bh->bulk_out_intended_length = common->data_size;
+			bh->outreq->short_not_ok     = 1;
+
+			START_TRANSFER_OR(common, bulk_out, bh->outreq,
+					  &bh->outreq_busy, &bh->state)
+				/*
+				 * Don't know what to do if
+				 * common->fsg is NULL
+				 */
+				return -EIO;
+			common->next_buffhd_to_fill = bh->next;
+		} else {
+			/* Then, wait for the data to become available */
+			bh = common->next_buffhd_to_drain;
+			if (bh->state != BUF_STATE_FULL)
+				goto wait;
+
+			common->next_buffhd_to_drain = bh->next;
+			bh->state = BUF_STATE_EMPTY;
+
+			/* Did something go wrong with the transfer? */
+			if (bh->outreq->status != 0) {
+				curlun->sense_data = SS_COMMUNICATION_FAILURE;
+				curlun->info_valid = 1;
+				break;
+			}
+
+			/* Perform the write */
+			vhead = (struct vendor_item *)bh->buf;
+			data  = bh->buf + sizeof(struct vendor_item);
+
+			if (!type) {
+				if (vhead->id == HDCP_14_HDMI_ID ||
+				    vhead->id == HDCP_14_HDMIRX_ID ||
+				    vhead->id == HDCP_14_DP_ID) {
+					rc = vendor_handle_hdcp(vhead);
+					if (rc < 0) {
+						curlun->sense_data = SS_WRITE_ERROR;
+						return -EIO;
+					}
+				}
+
+				/* Vendor storage */
+				rc = vendor_storage_write(vhead->id,
+							  (char __user *)data,
+							  vhead->size);
+				if (rc < 0) {
+					curlun->sense_data = SS_WRITE_ERROR;
+					return -EIO;
+				}
+			} else if (type == 1) {
+				/* RPMB */
+				rc =
+				write_keybox_to_secure_storage((u8 *)data,
+							       vhead->size);
+				if (rc < 0) {
+					curlun->sense_data = SS_WRITE_ERROR;
+					return -EIO;
+				}
+			} else if (type == 2) {
+				/* security storage */
+#ifdef CONFIG_RK_AVB_LIBAVB_USER
+				debug("%s call rk_avb_write_perm_attr %d, %d\n",
+				      __func__, vhead->id, vhead->size);
+				rc = rk_avb_write_perm_attr(vhead->id,
+							    (char __user *)data,
+							    vhead->size);
+				if (rc < 0) {
+					curlun->sense_data = SS_WRITE_ERROR;
+					return -EIO;
+				}
+#else
+				printf("Please enable CONFIG_RK_AVB_LIBAVB_USER\n");
+#endif
+			} else if (type == 3) {
+				/* efuse or otp*/
+#ifdef CONFIG_OPTEE_CLIENT
+				if (memcmp(data, "TAEK", 4) == 0) {
+					if (vhead->size - 8 != 32) {
+						printf("check ta encryption key size fail!\n");
+						curlun->sense_data = SS_WRITE_ERROR;
+						return -EIO;
+					}
+					if (trusty_write_ta_encryption_key((uint32_t *)(data + 8), 8) != 0) {
+						printf("trusty_write_ta_encryption_key error!");
+						curlun->sense_data = SS_WRITE_ERROR;
+						return -EIO;
+					}
+				} else if (memcmp(data, "EHUK", 4) == 0) {
+					if (vhead->size - 8 != 32) {
+						printf("check oem huk size fail!\n");
+						curlun->sense_data = SS_WRITE_ERROR;
+						return -EIO;
+					}
+					if (trusty_write_oem_huk((uint32_t *)(data + 8), 8) != 0) {
+						printf("trusty_write_oem_huk error!");
+						curlun->sense_data = SS_WRITE_ERROR;
+						return -EIO;
+					}
+				} else {
+					printf("Unknown tag\n");
+					curlun->sense_data = SS_WRITE_ERROR;
+					return -EIO;
+				}
+#else
+				printf("Please enable CONFIG_OPTEE_CLIENT\n");
+#endif
+			} else {
+				return -EINVAL;
+			}
+
+			common->residue -= common->data_size;
+
+			/* Did the host decide to stop early? */
+			if (bh->outreq->actual != bh->outreq->length)
+				common->short_packet_received = 1;
+			break; /* Command done */
+		}
+wait:
+		/* Wait for something to happen */
+		rc = sleep_thread(common);
+		if (rc)
+			return rc;
+	}
+
+	return -EIO; /* No default reply */
+}
+
+static int rkusb_do_vs_read(struct fsg_common *common)
+{
+	struct fsg_lun		*curlun = &common->luns[common->lun];
+	u16			type = get_unaligned_be16(&common->cmnd[4]);
+	struct vendor_item	*vhead;
+	struct fsg_buffhd	*bh;
+	void			*data;
+	int			rc;
+
+	if (common->data_size >= (u32)65536) {
+		/* _MUST_ small than 64K */
+		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
+		return -EINVAL;
+	}
+
+	common->residue         = common->data_size;
+	common->usb_amount_left = common->data_size;
+
+	/* Carry out the file reads */
+	if (unlikely(common->data_size == 0))
+		return -EIO; /* No default reply */
+
+	for (;;) {
+		/* Wait for the next buffer to become available */
+		bh = common->next_buffhd_to_fill;
+		while (bh->state != BUF_STATE_EMPTY) {
+			rc = sleep_thread(common);
+			if (rc)
+				return rc;
+		}
+
+		memset(bh->buf, 0, FSG_BUFLEN);
+		vhead = (struct vendor_item *)bh->buf;
+		data  = bh->buf + sizeof(struct vendor_item);
+		vhead->id = get_unaligned_be16(&common->cmnd[2]);
+
+		if (!type) {
+			/* Vendor storage */
+			rc = vendor_storage_read(vhead->id,
+						 (char __user *)data,
+						 common->data_size);
+			if (!rc) {
+				curlun->sense_data = SS_UNRECOVERED_READ_ERROR;
+				return -EIO;
+			}
+			vhead->size = rc;
+		} else if (type == 1) {
+			/* RPMB */
+			rc =
+			read_raw_data_from_secure_storage((u8 *)data,
+							  common->data_size);
+			if (!rc) {
+				curlun->sense_data = SS_UNRECOVERED_READ_ERROR;
+				return -EIO;
+			}
+			vhead->size = rc;
+		} else if (type == 2) {
+			/* security storage */
+#ifdef CONFIG_RK_AVB_LIBAVB_USER
+			rc = rk_avb_read_perm_attr(vhead->id,
+						   (char __user *)data,
+						   vhead->size);
+			if (rc < 0)
+				return -EIO;
+			vhead->size = rc;
+#else
+			printf("Please enable CONFIG_RK_AVB_LIBAVB_USER!\n");
+#endif
+		} else {
+			return -EINVAL;
+		}
+
+		common->residue   -= common->data_size;
+		bh->inreq->length = common->data_size;
+		bh->state         = BUF_STATE_FULL;
+
+		break; /* No more left to read */
+	}
+
+	return -EIO; /* No default reply */
+}
 #endif
 
-	for (i = 0; i < ARRAY_SIZE(cmd_dispatch_info); i++) {
-		if (cmd_dispatch_info[i].cmd == cbw->CDB[0]) {
-			func_cb = cmd_dispatch_info[i].cb;
-			break;
-		}
+static int rkusb_do_get_storage_info(struct fsg_common *common,
+				     struct fsg_buffhd *bh)
+{
+	enum if_type type = ums[common->lun].block_dev.if_type;
+	int devnum = ums[common->lun].block_dev.devnum;
+	u32 media = BOOT_TYPE_UNKNOWN;
+	u32 len = common->data_size;
+	u8 *buf = (u8 *)bh->buf;
+
+	if (len > 4)
+		len = 4;
+
+	switch (type) {
+	case IF_TYPE_MMC:
+		media = BOOT_TYPE_EMMC;
+		break;
+
+	case IF_TYPE_SD:
+		media = BOOT_TYPE_SD0;
+		break;
+
+	case IF_TYPE_MTD:
+		if (devnum == BLK_MTD_SPI_NAND)
+			media = BOOT_TYPE_MTD_BLK_SPI_NAND;
+		else if (devnum == BLK_MTD_NAND)
+			media = BOOT_TYPE_NAND;
+		else
+			media = BOOT_TYPE_MTD_BLK_SPI_NOR;
+		break;
+
+	case IF_TYPE_SCSI:
+		media = BOOT_TYPE_SATA;
+		break;
+
+	case IF_TYPE_RKNAND:
+		media = BOOT_TYPE_NAND;
+		break;
+
+	case IF_TYPE_NVME:
+		media = BOOT_TYPE_PCIE;
+		break;
+
+	default:
+		break;
 	}
 
-	if (!func_cb) {
-		printf("unknown command: %s\n", (char *)req->buf);
-		rockusb_tx_write_str("FAILunknown command");
-	} else {
-		if (req->actual < req->length) {
-			u8 *buf = (u8 *)req->buf;
+	memcpy((void *)&buf[0], (void *)&media, len);
+	common->residue = len;
+	common->data_size_from_cmnd = len;
 
-			buf[req->actual] = 0;
-			func_cb(ep, req);
-		} else {
-			puts("buffer overflow\n");
-			rockusb_tx_write_str("FAILbuffer overflow");
-		}
-	}
-
-	*cmdbuf = '\0';
-	req->actual = 0;
-	usb_ep_queue(ep, req, 0);
+	return len;
 }
+
+static int rkusb_do_read_capacity(struct fsg_common *common,
+				  struct fsg_buffhd *bh)
+{
+	u8 *buf = (u8 *)bh->buf;
+	u32 len = common->data_size;
+	enum if_type type = ums[common->lun].block_dev.if_type;
+	int devnum = ums[common->lun].block_dev.devnum;
+
+	/*
+	 * bit[0]: Direct LBA, 0: Disabled;
+	 * bit[1]: Vendor Storage API, 0: Disabed (default);
+	 * bit[2]: First 4M Access, 0: Disabled;
+	 * bit[3]: Read LBA On, 0: Disabed (default);
+	 * bit[4]: New Vendor Storage API, 0: Disabed;
+	 * bit[5]: Read uart data from ram
+	 * bit[6]: Read IDB config
+	 * bit[7]: Read SecureMode
+	 * bit[8]: New IDB feature
+	 * bit[9]: Get storage media info
+	 * bit[10:63}: Reserved.
+	 */
+	memset((void *)&buf[0], 0, len);
+	if (type == IF_TYPE_MMC || type == IF_TYPE_SD || type == IF_TYPE_NVME)
+		buf[0] = BIT(0) | BIT(2) | BIT(4);
+	else
+		buf[0] = BIT(0) | BIT(4);
+
+	if (type == IF_TYPE_MTD &&
+	    (devnum == BLK_MTD_NAND ||
+	    devnum == BLK_MTD_SPI_NAND))
+		buf[0] |= (1 << 6);
+
+#if !defined(CONFIG_ROCKCHIP_RV1126) && !defined(CONFIG_ROCKCHIP_RK3308)
+	if (type == IF_TYPE_MTD && devnum == BLK_MTD_SPI_NOR)
+		buf[0] |= (1 << 6);
+#endif
+
+#if defined(CONFIG_ROCKCHIP_NEW_IDB)
+	buf[1] = BIT(0);
+#endif
+	buf[1] |= BIT(1); /* Switch Storage */
+	buf[1] |= BIT(2); /* LBAwrite Parity */
+
+	/* Set data xfer size */
+	common->residue = len;
+	common->data_size_from_cmnd = len;
+
+	return len;
+}
+
+static void rkusb_fixup_cbwcb(struct fsg_common *common,
+			      struct fsg_buffhd *bh)
+{
+	struct usb_request      *req = bh->outreq;
+	struct fsg_bulk_cb_wrap *cbw = req->buf;
+
+	/* FIXME cbw.DataTransferLength was not set by Upgrade Tool */
+	common->data_size = le32_to_cpu(cbw->DataTransferLength);
+	if (common->data_size == 0) {
+		common->data_size =
+		get_unaligned_be16(&common->cmnd[7]) << 9;
+		printf("Trasfer Length NOT set, please use new version tool\n");
+		debug("%s %d, cmnd1 %x\n", __func__,
+		      get_unaligned_be16(&common->cmnd[7]),
+		      get_unaligned_be16(&common->cmnd[1]));
+	}
+	if (cbw->Flags & USB_BULK_IN_FLAG)
+		common->data_dir = DATA_DIR_TO_HOST;
+	else
+		common->data_dir = DATA_DIR_FROM_HOST;
+
+	/* Not support */
+	common->cmnd[1] = 0;
+}
+
+static int rkusb_cmd_process(struct fsg_common *common,
+			     struct fsg_buffhd *bh, int *reply)
+{
+	struct usb_request	*req = bh->outreq;
+	struct fsg_bulk_cb_wrap	*cbw = req->buf;
+	int rc;
+
+	dump_cbw(cbw);
+
+	if (rkusb_check_lun(common)) {
+		*reply = -EINVAL;
+		return RKUSB_RC_ERROR;
+	}
+
+	switch (common->cmnd[0]) {
+	case RKUSB_TEST_UNIT_READY:
+		*reply = rkusb_do_test_unit_ready(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_READ_FLASH_ID:
+		*reply = rkusb_do_read_flash_id(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_TEST_BAD_BLOCK:
+		*reply = rkusb_do_test_bad_block(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_ERASE_10_FORCE:
+		*reply = rkusb_do_erase_force(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_LBA_READ_10:
+		rkusb_fixup_cbwcb(common, bh);
+		common->cmnd[0] = SC_READ_10;
+		common->cmnd[1] = 0; /* Not support */
+		rc = RKUSB_RC_CONTINUE;
+		break;
+
+	case RKUSB_LBA_WRITE_10:
+		rkusb_fixup_cbwcb(common, bh);
+		common->cmnd[0] = SC_WRITE_10;
+		common->cmnd[1] = 0; /* Not support */
+		rc = RKUSB_RC_CONTINUE;
+		break;
+
+	case RKUSB_READ_FLASH_INFO:
+		*reply = rkusb_do_read_flash_info(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_GET_CHIP_VER:
+		*reply = rkusb_do_get_chip_info(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_LBA_ERASE:
+		*reply = rkusb_do_lba_erase(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+#ifdef CONFIG_ROCKCHIP_VENDOR_PARTITION
+	case RKUSB_VS_WRITE:
+		*reply = rkusb_do_vs_write(common);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_VS_READ:
+		*reply = rkusb_do_vs_read(common);
+		rc = RKUSB_RC_FINISHED;
+		break;
+#endif
+	case RKUSB_GET_STORAGE_MEDIA:
+		*reply = rkusb_do_get_storage_info(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_READ_CAPACITY:
+		*reply = rkusb_do_read_capacity(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_RESET:
+		*reply = rkusb_do_reset(common, bh);
+		rc = RKUSB_RC_FINISHED;
+		break;
+
+	case RKUSB_READ_10:
+	case RKUSB_WRITE_10:
+		printf("CMD Not support, pls use new version Tool\n");
+	case RKUSB_SET_DEVICE_ID:
+	case RKUSB_ERASE_10:
+	case RKUSB_WRITE_SPARE:
+	case RKUSB_READ_SPARE:
+	case RKUSB_GET_VERSION:
+	case RKUSB_ERASE_SYS_DISK:
+	case RKUSB_SDRAM_READ_10:
+	case RKUSB_SDRAM_WRITE_10:
+	case RKUSB_SDRAM_EXECUTE:
+	case RKUSB_LOW_FORMAT:
+	case RKUSB_SET_RESET_FLAG:
+	case RKUSB_SPI_READ_10:
+	case RKUSB_SPI_WRITE_10:
+	case RKUSB_SESSION:
+		/* Fall through */
+	default:
+		rc = RKUSB_RC_UNKNOWN_CMND;
+		break;
+	}
+
+	return rc;
+}
+
+int rkusb_do_check_parity(struct fsg_common *common)
+{
+	int ret = 0, rc;
+	u32 parity, i, usb_parity, lba, len;
+	static u32 usb_check_buffer[1024 * 256];
+
+	usb_parity = common->cmnd[9] | (common->cmnd[10] << 8) |
+			(common->cmnd[11] << 16) | (common->cmnd[12] << 24);
+
+	if (common->cmnd[0] == SC_WRITE_10 && (usb_parity)) {
+		lba = get_unaligned_be32(&common->cmnd[2]);
+		len = common->data_size_from_cmnd >> 9;
+		rc = blk_dread(&ums[common->lun].block_dev, lba, len, usb_check_buffer);
+		parity = 0x000055aa;
+		for (i = 0; i < len * 128; i++)
+			parity += usb_check_buffer[i];
+		if (!rc || parity != usb_parity)
+			common->phase_error = 1;
+	}
+
+	return ret;
+}
+
+DECLARE_GADGET_BIND_CALLBACK(rkusb_ums_dnl, fsg_add);

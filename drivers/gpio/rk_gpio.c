@@ -1,13 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  *
- * (C) Copyright 2008-2014 Rockchip Electronics
+ * (C) Copyright 2008-2020 Rockchip Electronics
  * Peter, Software Engineering, <superpeter.cai@gmail.com>.
+ * Jianqun Xu, Software Engineering, <jay.xu@rock-chips.com>.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
+#include <dm/of_access.h>
 #include <syscon.h>
 #include <linux/errno.h>
 #include <asm/gpio.h>
@@ -16,11 +19,33 @@
 #include <dm/pinctrl.h>
 #include <dt-bindings/clock/rk3288-cru.h>
 
-enum {
-	ROCKCHIP_GPIOS_PER_BANK		= 32,
-};
+#include "../pinctrl/rockchip/pinctrl-rockchip.h"
 
 #define OFFSET_TO_BIT(bit)	(1UL << (bit))
+
+#ifdef CONFIG_ROCKCHIP_GPIO_V2
+#define REG_L(R)	(R##_l)
+#define REG_H(R)	(R##_h)
+#define READ_REG(REG)	((readl(REG_L(REG)) & 0xFFFF) | \
+			((readl(REG_H(REG)) & 0xFFFF) << 16))
+#define WRITE_REG(REG, VAL)	\
+{\
+	writel(((VAL) & 0xFFFF) | 0xFFFF0000, REG_L(REG)); \
+	writel((((VAL) & 0xFFFF0000) >> 16) | 0xFFFF0000, REG_H(REG));\
+}
+#define CLRBITS_LE32(REG, MASK)	WRITE_REG(REG, READ_REG(REG) & ~(MASK))
+#define SETBITS_LE32(REG, MASK)	WRITE_REG(REG, READ_REG(REG) | (MASK))
+#define CLRSETBITS_LE32(REG, MASK, VAL)	WRITE_REG(REG, \
+				(READ_REG(REG) & ~(MASK)) | (VAL))
+
+#else
+#define READ_REG(REG)			readl(REG)
+#define WRITE_REG(REG, VAL)		writel(VAL, REG)
+#define CLRBITS_LE32(REG, MASK)		clrbits_le32(REG, MASK)
+#define SETBITS_LE32(REG, MASK)		setbits_le32(REG, MASK)
+#define CLRSETBITS_LE32(REG, MASK, VAL)	clrsetbits_le32(REG, MASK, VAL)
+#endif
+
 
 struct rockchip_gpio_priv {
 	struct rockchip_gpio_regs *regs;
@@ -34,7 +59,7 @@ static int rockchip_gpio_direction_input(struct udevice *dev, unsigned offset)
 	struct rockchip_gpio_priv *priv = dev_get_priv(dev);
 	struct rockchip_gpio_regs *regs = priv->regs;
 
-	clrbits_le32(&regs->swport_ddr, OFFSET_TO_BIT(offset));
+	CLRBITS_LE32(&regs->swport_ddr, OFFSET_TO_BIT(offset));
 
 	return 0;
 }
@@ -46,8 +71,8 @@ static int rockchip_gpio_direction_output(struct udevice *dev, unsigned offset,
 	struct rockchip_gpio_regs *regs = priv->regs;
 	int mask = OFFSET_TO_BIT(offset);
 
-	clrsetbits_le32(&regs->swport_dr, mask, value ? mask : 0);
-	setbits_le32(&regs->swport_ddr, mask);
+	CLRSETBITS_LE32(&regs->swport_dr, mask, value ? mask : 0);
+	SETBITS_LE32(&regs->swport_ddr, mask);
 
 	return 0;
 }
@@ -67,7 +92,7 @@ static int rockchip_gpio_set_value(struct udevice *dev, unsigned offset,
 	struct rockchip_gpio_regs *regs = priv->regs;
 	int mask = OFFSET_TO_BIT(offset);
 
-	clrsetbits_le32(&regs->swport_dr, mask, value ? mask : 0);
+	CLRSETBITS_LE32(&regs->swport_dr, mask, value ? mask : 0);
 
 	return 0;
 }
@@ -83,9 +108,16 @@ static int rockchip_gpio_get_function(struct udevice *dev, unsigned offset)
 	int ret;
 
 	ret = pinctrl_get_gpio_mux(priv->pinctrl, priv->bank, offset);
-	if (ret)
+	if (ret < 0) {
+		dev_err(dev, "fail to get gpio mux %d\n", ret);
 		return ret;
-	is_output = readl(&regs->swport_ddr) & OFFSET_TO_BIT(offset);
+	}
+
+	/* If it's not 0, then it is not a GPIO */
+	if (ret > 0)
+		return GPIOF_FUNC;
+
+	is_output = READ_REG(&regs->swport_ddr) & OFFSET_TO_BIT(offset);
 
 	return is_output ? GPIOF_OUTPUT : GPIOF_INPUT;
 #endif
@@ -95,19 +127,52 @@ static int rockchip_gpio_probe(struct udevice *dev)
 {
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct rockchip_gpio_priv *priv = dev_get_priv(dev);
-	char *end;
-	int ret;
+	struct rockchip_pinctrl_priv *pctrl_priv;
+	struct rockchip_pin_bank *bank;
+	char *end = NULL;
+	static int gpio;
+	int id = -1, ret;
 
 	priv->regs = dev_read_addr_ptr(dev);
-	ret = uclass_first_device_err(UCLASS_PINCTRL, &priv->pinctrl);
-	if (ret)
-		return ret;
+	ret = uclass_get_device_by_seq(UCLASS_PINCTRL, 0, &priv->pinctrl);
+	if (ret) {
+		ret = uclass_first_device_err(UCLASS_PINCTRL, &priv->pinctrl);
+		if (ret) {
+			dev_err(dev, "failed to get pinctrl device %d\n", ret);
+			return ret;
+		}
+	}
 
-	uc_priv->gpio_count = ROCKCHIP_GPIOS_PER_BANK;
+	pctrl_priv = dev_get_priv(priv->pinctrl);
+	if (!pctrl_priv) {
+		dev_err(dev, "failed to get pinctrl priv\n");
+		return -EINVAL;
+	}
+
 	end = strrchr(dev->name, '@');
-	priv->bank = trailing_strtoln(dev->name, end);
-	priv->name[0] = 'A' + priv->bank;
-	uc_priv->bank_name = priv->name;
+	if (end)
+		id = trailing_strtoln(dev->name, end);
+	else
+		dev_read_alias_seq(dev, &id);
+
+	if (id < 0)
+		id = gpio++;
+
+	if (id >= pctrl_priv->ctrl->nr_banks) {
+		dev_err(dev, "bank id invalid\n");
+		return -EINVAL;
+	}
+
+	bank = &pctrl_priv->ctrl->pin_banks[id];
+	if (bank->bank_num != id) {
+		dev_err(dev, "bank id mismatch with pinctrl\n");
+		return -EINVAL;
+	}
+
+	priv->bank = bank->bank_num;
+	uc_priv->gpio_count = bank->nr_pins;
+	uc_priv->gpio_base = bank->pin_base;
+	uc_priv->bank_name = bank->name;
 
 	return 0;
 }

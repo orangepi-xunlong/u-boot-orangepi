@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2011
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -9,6 +8,9 @@
 # (C) Copyright 2011
 # Texas Instruments Incorporated - http://www.ti.com/
 # Aneesh V <aneesh@ti.com>
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 # Based on top-level Makefile.
 #
 
@@ -48,8 +50,6 @@ endif
 include $(srctree)/config.mk
 include $(srctree)/arch/$(ARCH)/Makefile
 
-include $(srctree)/scripts/Makefile.lib
-
 # Enable garbage collection of un-used sections for SPL
 KBUILD_CFLAGS += -ffunction-sections -fdata-sections
 LDFLAGS_FINAL += --gc-sections
@@ -64,7 +64,14 @@ HAVE_VENDOR_COMMON_LIB = $(if $(wildcard $(srctree)/board/$(VENDOR)/common/Makef
 libs-y += $(if $(BOARDDIR),board/$(BOARDDIR)/)
 libs-$(HAVE_VENDOR_COMMON_LIB) += board/$(VENDOR)/common/
 
+ifeq ($(CONFIG_TPL_BUILD),y)
+ifndef CONFIG_TPL_TINY_FRAMEWORK
 libs-$(CONFIG_SPL_FRAMEWORK) += common/spl/
+endif
+else
+libs-$(CONFIG_SPL_FRAMEWORK) += common/spl/
+endif
+
 libs-y += common/init/
 
 # Special handling for a few options which support SPL/TPL
@@ -77,8 +84,11 @@ libs-$(CONFIG_SPL_LIBGENERIC_SUPPORT) += lib/
 endif
 
 libs-$(CONFIG_SPL_LIBDISK_SUPPORT) += disk/
+ifneq ($(CONFIG_SPL_DECOMP_HEADER),y)
 libs-y += drivers/
-libs-$(CONFIG_SPL_USB_GADGET_SUPPORT) += drivers/usb/dwc3/
+endif
+libs-$(CONFIG_SPL_USB_GADGET) += drivers/usb/dwc3/
+libs-$(CONFIG_SPL_USB_GADGET) += drivers/usb/cdns3/
 libs-y += dts/
 libs-y += fs/
 libs-$(CONFIG_SPL_POST_MEM_SUPPORT) += post/drivers/
@@ -142,7 +152,7 @@ MKIMAGEOUTPUT ?= /dev/null
 
 quiet_cmd_mkimage = MKIMAGE $@
 cmd_mkimage = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d $< $@ \
-	>$(MKIMAGEOUTPUT) $(if $(KBUILD_VERBOSE:0=), && cat $(MKIMAGEOUTPUT))
+	$(if $(KBUILD_VERBOSE:1=), >$(MKIMAGEOUTPUT))
 
 MKIMAGEFLAGS_MLO = -T omapimage -a $(CONFIG_SPL_TEXT_BASE)
 
@@ -239,8 +249,13 @@ $(obj)/$(SPL_BIN)-pad.bin: $(obj)/$(SPL_BIN)
 	@bss_size_str=$(shell $(NM) $< | awk 'BEGIN {size = 0} /__bss_size/ {size = $$1} END {print "ibase=16; " toupper(size)}' | bc); \
 	dd if=/dev/zero of=$@ bs=1 count=$${bss_size_str} 2>/dev/null;
 
+ifeq ($(CONFIG_TPL_BUILD),y)
+$(obj)/$(SPL_BIN).dtb: dts/dt-tpl.dtb FORCE
+	$(call if_changed,copy)
+else
 $(obj)/$(SPL_BIN).dtb: dts/dt-spl.dtb FORCE
 	$(call if_changed,copy)
+endif
 
 pythonpath = PYTHONPATH=scripts/dtc/pylibfdt
 
@@ -336,7 +351,8 @@ quiet_cmd_u-boot-spl ?= LD      $@
 		       $(patsubst $(obj)/%,%,$(u-boot-spl-main))  \
 		       $(patsubst $(obj)/%,%,$(u-boot-spl-platdata)) \
 		       --end-group \
-		       $(PLATFORM_LIBS) -Map $(SPL_BIN).map -o $(SPL_BIN))
+		       $(PLATFORM_LIBS) -Map $(SPL_BIN).map -o $(SPL_BIN) && \
+		       $(OBJDUMP) -t $(SPL_BIN) > $(SPL_BIN).sym)
 
 $(obj)/$(SPL_BIN): $(u-boot-spl-platdata) $(u-boot-spl-init) \
 		$(u-boot-spl-main) $(obj)/u-boot-spl.lds FORCE

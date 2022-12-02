@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Linaro
  * Jon Medhurst <tixy@linaro.org>
  *
  * TC2 specific code for Versatile Express.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/armv7.h>
@@ -17,7 +18,7 @@
 bool armv7_boot_nonsec_default(void)
 {
 #ifdef CONFIG_ARMV7_BOOT_SEC_DEFAULT
-	return false;
+	return false
 #else
 	/*
 	 * The Serial Configuration Controller (SCC) register at address 0x700

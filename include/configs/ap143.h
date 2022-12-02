@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -34,17 +35,27 @@
 					"mtdparts default;" \
 					"bootm 0x9f680000"
 
+#define MTDIDS_DEFAULT                  "nor0=spi-flash.0"
+#define MTDPARTS_DEFAULT                "mtdparts=spi-flash.0:" \
+					"256k(u-boot),64k(u-boot-env)," \
+					"6336k(rootfs),1472k(uImage)," \
+					"64k(ART)"
+
 #define CONFIG_ENV_SPI_MAX_HZ           25000000
 #define CONFIG_ENV_OFFSET               0x40000
 #define CONFIG_ENV_SECT_SIZE            0x10000
 #define CONFIG_ENV_SIZE                 0x10000
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_AUTO_COMPLETE
 
 /*
  * Diagnostics
  */
 #define CONFIG_SYS_MEMTEST_START        0x80100000
 #define CONFIG_SYS_MEMTEST_END          0x83f00000
+#define CONFIG_CMD_MEMTEST
 
 #endif  /* __CONFIG_H */

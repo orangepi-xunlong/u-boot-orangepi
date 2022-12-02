@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -9,7 +10,6 @@
  */
 
 #include <common.h>
-#include <clk.h>
 #include <dm.h>
 #include <errno.h>
 #include <miiphy.h>
@@ -17,10 +17,11 @@
 #include <pci.h>
 #include <linux/compiler.h>
 #include <linux/err.h>
-#include <linux/kernel.h>
 #include <asm/io.h>
 #include <power/regulator.h>
 #include "designware.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static int dw_mdio_read(struct mii_dev *bus, int addr, int devad, int reg)
 {
@@ -342,8 +343,6 @@ int designware_eth_enable(struct dw_eth_dev *priv)
 	return 0;
 }
 
-#define ETH_ZLEN	60
-
 static int _dw_eth_send(struct dw_eth_dev *priv, void *packet, int length)
 {
 	struct eth_dma_regs *dma_p = priv->dma_regs_p;
@@ -369,8 +368,6 @@ static int _dw_eth_send(struct dw_eth_dev *priv, void *packet, int length)
 		printf("CPU not owner of tx frame\n");
 		return -EPERM;
 	}
-
-	length = max(length, ETH_ZLEN);
 
 	memcpy((void *)data_start, packet, length);
 
@@ -664,35 +661,6 @@ int designware_eth_probe(struct udevice *dev)
 	u32 iobase = pdata->iobase;
 	ulong ioaddr;
 	int ret;
-#ifdef CONFIG_CLK
-	int i, err, clock_nb;
-
-	priv->clock_count = 0;
-	clock_nb = dev_count_phandle_with_args(dev, "clocks", "#clock-cells");
-	if (clock_nb > 0) {
-		priv->clocks = devm_kcalloc(dev, clock_nb, sizeof(struct clk),
-					    GFP_KERNEL);
-		if (!priv->clocks)
-			return -ENOMEM;
-
-		for (i = 0; i < clock_nb; i++) {
-			err = clk_get_by_index(dev, i, &priv->clocks[i]);
-			if (err < 0)
-				break;
-
-			err = clk_enable(&priv->clocks[i]);
-			if (err && err != -ENOSYS && err != -ENOTSUPP) {
-				pr_err("failed to enable clock %d\n", i);
-				clk_free(&priv->clocks[i]);
-				goto clk_err;
-			}
-			priv->clock_count++;
-		}
-	} else if (clock_nb != -ENOENT) {
-		pr_err("failed to get clock phandle(%d)\n", clock_nb);
-		return clock_nb;
-	}
-#endif
 
 #if defined(CONFIG_DM_REGULATOR)
 	struct udevice *phy_supply;
@@ -739,15 +707,6 @@ int designware_eth_probe(struct udevice *dev)
 	debug("%s, ret=%d\n", __func__, ret);
 
 	return ret;
-
-#ifdef CONFIG_CLK
-clk_err:
-	ret = clk_release_all(priv->clocks, priv->clock_count);
-	if (ret)
-		pr_err("failed to disable all clocks\n");
-
-	return err;
-#endif
 }
 
 static int designware_eth_remove(struct udevice *dev)
@@ -758,11 +717,7 @@ static int designware_eth_remove(struct udevice *dev)
 	mdio_unregister(priv->bus);
 	mdio_free(priv->bus);
 
-#ifdef CONFIG_CLK
-	return clk_release_all(priv->clocks, priv->clock_count);
-#else
 	return 0;
-#endif
 }
 
 const struct eth_ops designware_eth_ops = {

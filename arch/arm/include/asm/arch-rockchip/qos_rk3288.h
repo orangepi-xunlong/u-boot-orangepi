@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2016 Rockchip Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_QOS_RK3288_H
 #define _ASM_ARCH_QOS_RK3288_H

@@ -108,13 +108,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&emac_rgmii_pins>;
 	phy-mode = "rgmii";
-	phy-handle = <&ext_rgmii_phy>;
+	phy = <&phy1>;
 	status = "okay";
-};
 
-&external_mdio {
-	ext_rgmii_phy: ethernet-phy@1 {
-		compatible = "ethernet-phy-ieee802.3-c22";
+	phy1: ethernet-phy@1 {
 		reg = <1>;
 	};
 };

@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Sysam AMCORE board configuration
  *
  * (C) Copyright 2016  Angelo Dureghello <angelo@sysam.it>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __AMCORE_CONFIG_H
 #define __AMCORE_CONFIG_H
 
-#define CONFIG_HOSTNAME			"AMCORE"
+#define CONFIG_AMCORE
+#define CONFIG_HOSTNAME			AMCORE
 
 #define CONFIG_MCFTMR
 #define CONFIG_MCFUART
@@ -29,7 +31,9 @@
 		"cp.b 0x20000 0xfff00000 ${filesize}\0"
 
 /* undef to save memory	*/
+#undef	CONFIG_SYS_LONGHELP
 
+#define CONFIG_AUTO_COMPLETE		1 /* add autocompletion support	*/
 #define CONFIG_MX_CYCLIC		1 /* enable mdc/mwc commands	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000	/* default load address */

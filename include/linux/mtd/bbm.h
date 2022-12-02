@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  linux/include/linux/mtd/bbm.h
  *
@@ -10,6 +9,8 @@
  *
  *  Copyright © 2000-2005
  *  Thomas Gleixner <tglx@linuxtronix.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 #ifndef __LINUX_MTD_BBM_H

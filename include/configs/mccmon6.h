@@ -1,12 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016-2017
  * Lukasz Majewski, DENX Software Engineering, lukma@denx.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <config_distro_defaults.h>
 #include "mx6_common.h"
 
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
@@ -43,6 +45,7 @@
 #define CONFIG_SYS_MEMTEST_START	0x10000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 500 * SZ_1M)
 
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS  2
 #define CONFIG_SF_DEFAULT_CS   0
 #define CONFIG_SF_DEFAULT_SPEED 25000000
@@ -77,8 +80,18 @@
 #define CONFIG_SYS_FLASH_BANKS_SIZES	{ (32 * SZ_1M) }
 
 /* MTD support */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
+
+#define MTDIDS_DEFAULT                  "nor0=8000000.nor"
+#define MTDPARTS_DEFAULT  \
+	"mtdparts=8000000.nor:" \
+	"32m@0x0(mccmon6-image.nor)," \
+	"256k@0x40000(u-boot-env.nor)," \
+	"1m@0x80000(u-boot.nor)," \
+	"8m@0x180000(kernel.nor)," \
+	"8m@0x980000(swupdate-kernel.nor)," \
+	"8m@0x1180000(swupdate-rootfs.nor)," \
+	"128k@0x1980000(kernel-dtb.nor)," \
+	"128k@0x19C0000(swupdate-kernel-dtb.nor)"
 
 /* USB Configs */
 #define CONFIG_USB_MAX_CONTROLLER_COUNT	2
@@ -93,6 +106,7 @@
 #define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		1
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=ttymxc0,115200 quiet\0" \
 	"fdtfile=imx6q-mccmon6.dtb\0" \
@@ -125,7 +139,7 @@
 		"setenv kernelnor 0x08180000;" \
 		"setenv dtbnor 0x09980000;" \
 		"setenv bootargs console=${console} " \
-		CONFIG_MTDPARTS_DEFAULT " " \
+		""MTDPARTS_DEFAULT" " \
 		"root=/dev/mmcblk1 rootfstype=ext4 rw rootwait noinitrd;" \
 		"cp.l ${dtbnor} ${dtbloadaddr} 0x8000;" \
 		"bootm ${kernelnor} - ${dtbloadaddr};\0" \
@@ -138,7 +152,7 @@
 		"setenv swurootfsnor 0x09180000;" \
 		"setenv swudtbnor 0x099A0000;" \
 		"setenv bootargs console=${console} " \
-		CONFIG_MTDPARTS_DEFAULT " " \
+		""MTDPARTS_DEFAULT" " \
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}" \
 		    ":${hostname}::off root=/dev/ram rw;" \
 		"cp.l ${swurootfsnor} ${rootfsloadaddr} 0x200000;" \
@@ -170,7 +184,7 @@
 			  "fi;" \
 		     "fi;" \
 		"fi\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"fdt_addr=0x18000000\0" \
 	"bootdev=1\0" \
 	"bootpart=1\0" \

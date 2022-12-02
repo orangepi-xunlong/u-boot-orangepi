@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 The Chromium OS Authors.
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_GENERIC_GBL_DATA_H
@@ -22,6 +23,21 @@
 #ifndef __ASSEMBLY__
 #include <membuff.h>
 #include <linux/list.h>
+
+/* Never change the sequence of members !!! */
+struct pm_ctx {
+	unsigned long sp;
+	phys_addr_t cpu_resume_addr;
+	unsigned long suspend_regs[15];
+};
+
+struct pre_serial {
+	u32 using_pre_serial;
+	u32 enable;
+	u32 id;
+	u32 baudrate;
+	ulong addr;
+};
 
 typedef struct global_data {
 	bd_t *bd;
@@ -49,10 +65,9 @@ typedef struct global_data {
 #endif
 	unsigned long env_addr;		/* Address  of Environment struct */
 	unsigned long env_valid;	/* Environment valid? enum env_valid */
-	unsigned long env_has_init;	/* Bitmask of boolean of struct env_location offsets */
-	int env_load_location;
 
 	unsigned long ram_top;		/* Top address of RAM used by U-Boot */
+	unsigned long ram_top_ext_size;	/* Extend size of RAM top */
 	unsigned long relocaddr;	/* Start address of U-Boot in RAM */
 	phys_size_t ram_size;		/* RAM size */
 	unsigned long mon_len;		/* monitor len */
@@ -69,14 +84,15 @@ typedef struct global_data {
 #ifdef CONFIG_TIMER
 	struct udevice	*timer;		/* Timer instance for Driver Model */
 #endif
-
 	const void *fdt_blob;		/* Our device tree, NULL if none */
 	void *new_fdt;			/* Relocated FDT */
-	void *new_dtbo;			/*Relocated dtbo */
 	unsigned long fdt_size;		/* Space reserved for relocated FDT */
 #ifdef CONFIG_OF_LIVE
 	struct device_node *of_root;
+	struct device_node *of_root_f;  /* U-Boot of-root instance */
 #endif
+	const void *ufdt_blob;		/* Our U-Boot device tree, NULL if none */
+	const void *fdt_blob_kern;	/* Kernel dtb at the tail of u-boot.bin */
 	struct jt_funcs *jt;		/* jump table */
 	char env_buf[32];		/* buffer for env_get() before reloc. */
 #ifdef CONFIG_TRACE
@@ -116,50 +132,26 @@ typedef struct global_data {
 	struct bootstage_data *bootstage;	/* Bootstage information */
 	struct bootstage_data *new_bootstage;	/* Relocated bootstage info */
 #endif
+	phys_addr_t pm_ctx_phys;
+
+#ifdef CONFIG_BOOTSTAGE_PRINTF_TIMESTAMP
+	int new_line;
+#endif
+	struct pre_serial serial;
+	ulong sys_start_tick;		/* For report system start-up time */
+	int console_evt;		/* Console event, maybe some hotkey  */
 #ifdef CONFIG_LOG
 	int log_drop_count;		/* Number of dropped log messages */
 	int default_log_level;		/* For devices with no filters */
 	struct list_head log_head;	/* List of struct log_device */
-	int log_fmt;			/* Mask containing log format info */
 #endif
-#ifdef CONFIG_ARCH_SUNXI
-	long           securemode;
-	void          *parameter_mod_buf;
-	long           boot_card_num;
-	ulong          lockflag;
-	ulong          chargemode;
-
-	ulong          parameter_reloc_buf;
-	ulong          parameter_reloc_size;
-
-	ulong          malloc_noncache_start;
-
-	long           key_pressd_value;
-	long           axp_power_soft_id;
-	long           power_step_level;
-	long           pmu_suspend_chgcur;
-	long           pmu_runtime_chgcur;
-	long           limit_vol;
-	long           limit_cur;
-	long           limit_pcvol;
-	long           limit_pccur;
-	ulong          force_download_uboot;
-	ulong          vbus_status;//0: unknow 1:exist 2:not exist
-	ulong          debug_mode;
-	long           force_shell;
-	long           user_debug_mode;
-	ulong          layer_para;
-	ulong          layer_hd;
-	ulong          bootfile_mode;
-	int            pmu_saved_status;
-	int 		   need_shutdown;
-	int            logo_status_multiboot;
-	int            ir_detect_status;
-	bool			uboot_shell;
-	ulong          boot_logo_addr;
-
+#if CONFIG_IS_ENABLED(FIT_ROLLBACK_PROTECT)
+	u32 rollback_index;
 #endif
-
+#ifdef CONFIG_PSTORE
+	u64 pstore_addr;
+	u32 pstore_size;
+#endif
 } gd_t;
 #endif
 
@@ -188,5 +180,11 @@ typedef struct global_data {
 #define GD_FLG_ENV_DEFAULT	0x02000 /* Default variable flag	   */
 #define GD_FLG_SPL_EARLY_INIT	0x04000 /* Early SPL init is done	   */
 #define GD_FLG_LOG_READY	0x08000 /* Log system is ready for use	   */
+#define GD_FLG_KDTB_READY	0x10000 /* Kernel dtb is ready for use	   */
+
+#ifdef CONFIG_ARCH_ROCKCHIP
+/* BL32 is enabled */
+#define GD_FLG_BL32_ENABLED	0x20000
+#endif
 
 #endif /* __ASM_GENERIC_GBL_DATA_H */

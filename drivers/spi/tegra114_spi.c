@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * NVIDIA Tegra SPI controller (T114 and later)
  *
  * Copyright (c) 2010-2013 NVIDIA Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -12,6 +13,8 @@
 #include <asm/arch-tegra/clk_rst.h>
 #include <spi.h>
 #include "tegra_spi.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* COMMAND1 */
 #define SPI_CMD1_GO			BIT(31)

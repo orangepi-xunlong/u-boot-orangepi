@@ -1,9 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_BG0900_H__
 #define __CONFIGS_BG0900_H__
+
+/* System configurations */
+#define CONFIG_MX28				/* i.MX28 SoC */
 
 /* Memory configuration */
 #define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
@@ -23,6 +27,7 @@
 /* SPI */
 #ifdef CONFIG_CMD_SPI
 #define CONFIG_DEFAULT_SPI_BUS		2
+#define CONFIG_DEFAULT_SPI_CS		0
 #define CONFIG_DEFAULT_SPI_MODE		SPI_MODE_0
 
 /* SPI FLASH */

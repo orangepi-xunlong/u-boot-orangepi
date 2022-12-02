@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LS1043AQDS_QIXIS_H__
@@ -10,7 +11,7 @@
 
 /* BRDCFG4[4:7] select EC1 and EC2 as a pair */
 #define BRDCFG4_EMISEL_MASK		0xe0
-#define BRDCFG4_EMISEL_SHIFT		6
+#define BRDCFG4_EMISEL_SHIFT		5
 
 /* SYSCLK */
 #define QIXIS_SYSCLK_66			0x0

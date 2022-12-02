@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -17,6 +16,8 @@
  * (C) Copyright 2003 - 2004
  * Sysgo Real-Time Solutions, AG <www.elinos.com>
  * Pavel Bartusek <pba@sysgo.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -71,6 +72,34 @@ U_BOOT_CMD(ext4write, 7, 1, do_ext4_write,
 	   "    [sizebytes] [file offset]\n"
 	   "    - create a file in / directory");
 
+#endif
+
+#if defined(CONFIG_CMD_EXT4_SPARSE_WRITE)
+int do_ext4_sparse_write(cmd_tbl_t *cmdtp, int flag, int argc,
+			 char *const argv[])
+{
+	struct blk_desc *desc;
+	ulong buf, blk;
+
+	if (argc != 5)
+		return CMD_RET_USAGE;
+
+	desc = blk_get_dev(argv[1], simple_strtoul(argv[2], NULL, 16));
+	if (!desc) {
+		printf("Cannot get %s %s device\n", argv[1], argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	buf = simple_strtoul(argv[3], NULL, 16);
+	blk = simple_strtoul(argv[4], NULL, 16);
+
+	return ext4_unsparse(desc, (const u8 *)buf, blk) ?
+				CMD_RET_FAILURE : CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(ext4write_sparse, 5, 1, do_ext4_sparse_write,
+	   "Unsparse file and write to block",
+	   "<interface> <dev> <addr> <blk#>");
 #endif
 
 U_BOOT_CMD(

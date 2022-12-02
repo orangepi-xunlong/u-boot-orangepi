@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013-2014 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -46,18 +47,6 @@ int board_early_init_f(void)
 }
 
 #ifdef CONFIG_ISA_ARCV2
-
-void board_jump_and_run(ulong entry, int zero, int arch, uint params)
-{
-	void (*kernel_entry)(int zero, int arch, uint params);
-
-	kernel_entry = (void (*)(int, int, uint))entry;
-
-	smp_set_core_boot_addr(entry, -1);
-	smp_kick_all_cpus();
-	kernel_entry(zero, arch, params);
-}
-
 #define RESET_VECTOR_ADDR	0x0
 
 void smp_set_core_boot_addr(unsigned long addr, int corenr)

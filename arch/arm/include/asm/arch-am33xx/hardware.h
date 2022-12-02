@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * hardware.h
  *
  * hardware specific header
  *
  * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AM33XX_HARDWARE_H
@@ -52,19 +53,7 @@
 #define DDR_CONTROL_BASE_ADDR		0x44E11404
 
 /* UART */
-#if CONFIG_CONS_INDEX == 1
-#	define DEFAULT_UART_BASE UART0_BASE
-#elif CONFIG_CONS_INDEX == 2
-#	define DEFAULT_UART_BASE UART1_BASE
-#elif CONFIG_CONS_INDEX == 3
-#	define DEFAULT_UART_BASE UART2_BASE
-#elif CONFIG_CONS_INDEX == 4
-#	define DEFAULT_UART_BASE UART3_BASE
-#elif CONFIG_CONS_INDEX == 5
-#	define DEFAULT_UART_BASE UART4_BASE
-#elif CONFIG_CONS_INDEX == 6
-#	define DEFAULT_UART_BASE UART5_BASE
-#endif
+#define DEFAULT_UART_BASE		UART0_BASE
 
 /* GPMC Base address */
 #define GPMC_BASE			0x50000000

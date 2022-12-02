@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -67,7 +68,7 @@ static struct hws_topology_map board_topology_map = {
 	    BUS_WIDTH_8,		/* memory_width */
 	    MEM_2G,			/* mem_size */
 	    DDR_FREQ_800,		/* frequency */
-	    0, 0,			/* cas_wl cas_l */
+	    0, 0,			/* cas_l cas_wl */
 	    HWS_TEMP_LOW,		/* temperature */
 	    HWS_TIM_DEFAULT} },		/* timing */
 	5,				/* Num Of Bus Per Interface*/

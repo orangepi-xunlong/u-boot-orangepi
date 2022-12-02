@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * NVIDIA Inc, <www.nvidia.com>
  *
  * Allen Martin <amartin@nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <debug_uart.h>

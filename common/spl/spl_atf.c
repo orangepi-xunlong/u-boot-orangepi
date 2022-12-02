@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: BSD-3-Clause
 /*
  * Reference to the ARM TF Project,
  * plat/arm/common/arm_bl2_setup.c
@@ -7,6 +6,8 @@
  * Copyright (C) 2016 Rockchip Electronic Co.,Ltd
  * Written by Kever Yang <kever.yang@rock-chips.com>
  * Copyright (C) 2017 Theobroma Systems Design und Consulting GmbH
+ *
+ * SPDX-License-Identifier:     BSD-3-Clause
  */
 
 #include <common.h>
@@ -30,8 +31,11 @@ static struct bl31_params *bl2_to_bl31_params;
  *
  * @return bl31 params structure pointer
  */
-static struct bl31_params *bl2_plat_get_bl31_params(uintptr_t bl33_entry)
+static struct bl31_params *bl2_plat_get_bl31_params(struct spl_image_info *spl_image,
+						    uintptr_t bl32_entry,
+						    uintptr_t bl33_entry)
 {
+	struct entry_point_info *bl32_ep_info;
 	struct entry_point_info *bl33_ep_info;
 
 	/*
@@ -48,17 +52,24 @@ static struct bl31_params *bl2_plat_get_bl31_params(uintptr_t bl33_entry)
 	SET_PARAM_HEAD(bl2_to_bl31_params->bl31_image_info,
 		       ATF_PARAM_IMAGE_BINARY, ATF_VERSION_1, 0);
 
-	/* Fill BL32 related information if it exists */
+	if (bl32_entry == -1)
+		goto bl33_setup;
+
+	/* Fill BL32 related information */
 	bl2_to_bl31_params->bl32_ep_info = &bl31_params_mem.bl32_ep_info;
-	SET_PARAM_HEAD(bl2_to_bl31_params->bl32_ep_info, ATF_PARAM_EP,
-		       ATF_VERSION_1, 0);
+	bl32_ep_info = &bl31_params_mem.bl32_ep_info;
+	SET_PARAM_HEAD(bl32_ep_info, ATF_PARAM_EP, ATF_VERSION_1,
+		       ATF_EP_SECURE);
+
+	bl32_ep_info->pc = bl32_entry;
+	bl32_ep_info->spsr = SPSR_64(MODE_EL1, MODE_SP_ELX,
+				     DISABLE_ALL_EXECPTIONS);
+
 	bl2_to_bl31_params->bl32_image_info = &bl31_params_mem.bl32_image_info;
 	SET_PARAM_HEAD(bl2_to_bl31_params->bl32_image_info,
 		       ATF_PARAM_IMAGE_BINARY, ATF_VERSION_1, 0);
-#ifndef BL32_BASE
-	bl2_to_bl31_params->bl32_ep_info->pc = 0;
-#endif /* BL32_BASE */
 
+bl33_setup:
 	/* Fill BL33 related information */
 	bl2_to_bl31_params->bl33_ep_info = &bl31_params_mem.bl33_ep_info;
 	bl33_ep_info = &bl31_params_mem.bl33_ep_info;
@@ -70,6 +81,18 @@ static struct bl31_params *bl2_plat_get_bl31_params(uintptr_t bl33_entry)
 	bl33_ep_info->pc = bl33_entry;
 	bl33_ep_info->spsr = SPSR_64(MODE_EL2, MODE_SP_ELX,
 				     DISABLE_ALL_EXECPTIONS);
+
+	/*
+	 * Reference: arch/arm/lib/bootm.c
+	 * boot_jump_linux(bootm_headers_t *images, int flag)
+	 * {
+	 * 	......
+	 * 	armv8_switch_to_el2((u64)images->ft_addr, 0, 0, 0,
+	 * 			   images->ep, ES_TO_AARCH64);
+	 * }
+	 */
+	if (spl_image->next_stage == SPL_NEXT_STAGE_KERNEL)
+		bl33_ep_info->args.arg0 = (unsigned long)spl_image->fdt_addr;
 
 	bl2_to_bl31_params->bl33_image_info = &bl31_params_mem.bl33_image_info;
 	SET_PARAM_HEAD(bl2_to_bl31_params->bl33_image_info,
@@ -85,23 +108,21 @@ static inline void raw_write_daif(unsigned int daif)
 
 typedef void (*atf_entry_t)(struct bl31_params *params, void *plat_params);
 
-static void bl31_entry(uintptr_t bl31_entry, uintptr_t bl33_entry,
-		       uintptr_t fdt_addr)
+void bl31_entry(struct spl_image_info *spl_image,
+		uintptr_t bl31_entry, uintptr_t bl32_entry,
+		uintptr_t bl33_entry, uintptr_t fdt_addr)
 {
 	struct bl31_params *bl31_params;
 	atf_entry_t  atf_entry = (atf_entry_t)bl31_entry;
 
-	bl31_params = bl2_plat_get_bl31_params(bl33_entry);
-
-	raw_write_daif(SPSR_EXCEPTION_MASK);
-	dcache_disable();
+	bl31_params = bl2_plat_get_bl31_params(spl_image, bl32_entry, bl33_entry);
 
 	atf_entry((void *)bl31_params, (void *)fdt_addr);
 }
 
-static int spl_fit_images_find_uboot(void *blob)
+static int spl_fit_images_find(void *blob, int os)
 {
-	int parent, node, ndepth;
+	int parent, node;
 	const void *data;
 
 	if (!blob)
@@ -111,19 +132,14 @@ static int spl_fit_images_find_uboot(void *blob)
 	if (parent < 0)
 		return -FDT_ERR_NOTFOUND;
 
-	for (node = fdt_next_node(blob, parent, &ndepth);
-	     (node >= 0) && (ndepth > 0);
-	     node = fdt_next_node(blob, node, &ndepth)) {
-		if (ndepth != 1)
-			continue;
-
+	fdt_for_each_subnode(node, blob, parent) {
 		data = fdt_getprop(blob, node, FIT_OS_PROP, NULL);
 		if (!data)
 			continue;
 
-		if (genimg_get_os_id(data) == IH_OS_U_BOOT)
+		if (genimg_get_os_id(data) == os)
 			return node;
-	};
+	}
 
 	return -FDT_ERR_NOTFOUND;
 }
@@ -142,10 +158,22 @@ uintptr_t spl_fit_images_get_entry(void *blob, int node)
 
 void spl_invoke_atf(struct spl_image_info *spl_image)
 {
-	uintptr_t  bl33_entry = CONFIG_SYS_TEXT_BASE;
+	uintptr_t bl32_entry, bl33_entry;
 	void *blob = spl_image->fdt_addr;
 	uintptr_t platform_param = (uintptr_t)blob;
 	int node;
+
+	/*
+	 * Find the OP-TEE binary (in /fit-images) load address or
+	 * entry point (if different) and pass it as the BL3-2 entry
+	 * point, this is optional.
+	 * This will need to be extended to support Falcon mode.
+	 */
+	node = spl_fit_images_find(blob, IH_OS_OP_TEE);
+	if (node >= 0)
+		bl32_entry = spl_fit_images_get_entry(blob, node);
+	else
+		bl32_entry = spl_image->entry_point_bl32; /* optional */
 
 	/*
 	 * Find the U-Boot binary (in /fit-images) load addreess or
@@ -153,10 +181,11 @@ void spl_invoke_atf(struct spl_image_info *spl_image)
 	 * point.
 	 * This will need to be extended to support Falcon mode.
 	 */
-
-	node = spl_fit_images_find_uboot(blob);
+	node = spl_fit_images_find(blob, IH_OS_U_BOOT);
 	if (node >= 0)
 		bl33_entry = spl_fit_images_get_entry(blob, node);
+	else
+		bl33_entry = spl_image->entry_point_bl33;
 
 	/*
 	 * If ATF_NO_PLATFORM_PARAM is set, we override the platform
@@ -167,9 +196,13 @@ void spl_invoke_atf(struct spl_image_info *spl_image)
 	if (CONFIG_IS_ENABLED(ATF_NO_PLATFORM_PARAM))
 		platform_param = 0;
 
+	/* do cleanup */
+	spl_cleanup_before_jump(spl_image);
+
 	/*
 	 * We don't provide a BL3-2 entry yet, but this will be possible
 	 * using similar logic.
 	 */
-	bl31_entry(spl_image->entry_point, bl33_entry, platform_param);
+	bl31_entry(spl_image, spl_image->entry_point, bl32_entry,
+		   bl33_entry, platform_param);
 }

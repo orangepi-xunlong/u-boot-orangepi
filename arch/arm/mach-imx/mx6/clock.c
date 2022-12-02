@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -1219,20 +1220,6 @@ void enable_thermal_clk(void)
 	enable_pll3();
 }
 
-#ifdef CONFIG_MTD_NOR_FLASH
-void enable_eim_clk(unsigned char enable)
-{
-	u32 reg;
-
-	reg = __raw_readl(&imx_ccm->CCGR6);
-	if (enable)
-		reg |= MXC_CCM_CCGR6_EMI_SLOW_MASK;
-	else
-		reg &= ~MXC_CCM_CCGR6_EMI_SLOW_MASK;
-	__raw_writel(reg, &imx_ccm->CCGR6);
-}
-#endif
-
 unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -1275,7 +1262,6 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
 /*
  * Dump some core clockes.
  */
@@ -1477,6 +1463,20 @@ void select_ldb_di_clock_source(enum ldb_di_clock clk)
 }
 #endif
 
+#ifdef CONFIG_MTD_NOR_FLASH
+void enable_eim_clk(unsigned char enable)
+{
+	u32 reg;
+
+	reg = __raw_readl(&imx_ccm->CCGR6);
+	if (enable)
+		reg |= MXC_CCM_CCGR6_EMI_SLOW_MASK;
+	else
+		reg &= ~MXC_CCM_CCGR6_EMI_SLOW_MASK;
+	__raw_writel(reg, &imx_ccm->CCGR6);
+}
+#endif
+
 /***************************************************/
 
 U_BOOT_CMD(
@@ -1484,4 +1484,3 @@ U_BOOT_CMD(
 	"display clocks",
 	""
 );
-#endif

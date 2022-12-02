@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Logic PD, Inc.
  *
@@ -6,11 +5,12 @@
  *
  * Based on SabreSD by Fabio Estevam <fabio.estevam@nxp.com>
  * and updates by Jagan Teki <jagan@amarulasolutions.com>
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>
 #include <miiphy.h>
-#include <input.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <asm/io.h>

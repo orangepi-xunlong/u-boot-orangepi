@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Based on acpi.c from coreboot
  *
  * Copyright (C) 2015, Saket Sinha <saket.sinha89@gmail.com>
  * Copyright (C) 2016, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #define RSDP_SIG		"RSD PTR "	/* RSDP pointer signature */
@@ -327,15 +328,6 @@ void acpi_create_gnvs(struct acpi_global_nvs *gnvs);
  */
 void enter_acpi_mode(int pm1_cnt);
 ulong write_acpi_tables(ulong start);
-
-/**
- * acpi_get_rsdp_addr() - get ACPI RSDP table address
- *
- * This routine returns the ACPI RSDP table address in the system memory.
- *
- * @return:	ACPI RSDP table address
- */
-ulong acpi_get_rsdp_addr(void);
 
 /**
  * acpi_find_fadt() - find ACPI FADT table in the sytem memory

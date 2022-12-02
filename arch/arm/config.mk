@@ -1,7 +1,9 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2002
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 ifndef CONFIG_STANDALONE_LOAD_ADDR
 ifneq ($(CONFIG_ARCH_OMAP2PLUS),)
@@ -21,8 +23,9 @@ PLATFORM_RELFLAGS += $(call cc-option, -msoft-float) \
       $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 
 # LLVM support
-LLVM_RELFLAGS		:= $(call cc-option,-mllvm,) \
-			$(call cc-option,-mno-movt,)
+LLVMS_RELFLAGS		:= $(call cc-option,-mllvm,) \
+			$(call cc-option,-target arm-none-eabi,) \
+			$(call cc-option,-arm-use-movt=0,)
 PLATFORM_RELFLAGS	+= $(LLVM_RELFLAGS)
 
 PLATFORM_CPPFLAGS += -D__ARM__
@@ -65,8 +68,8 @@ endif
 checkgcc6:
 	@if test "$(call cc-name)" = "gcc" -a \
 			"$(call cc-version)" -lt "0600"; then \
-		echo '*** Your GCC is older than 6.0 and is not supported'; \
-		false; \
+		echo -n '*** Your GCC is older than 6.0 and will not be '; \
+		echo 'supported starting in v2018.01.'; \
 	fi
 
 
@@ -102,6 +105,12 @@ endif
 # needed for relocation
 LDFLAGS_u-boot += -pie
 
+ifndef CONFIG_SPL_SKIP_RELOCATE
+LDFLAGS_u-boot-spl = -pie
+else
+SPL_LDFLAGS_u-boot-spl =
+endif
+
 #
 # FIXME: binutils versions < 2.22 have a bug in the assembler where
 # branches to weak symbols can be incorrectly optimized in thumb mode
@@ -133,16 +142,11 @@ endif
 # limit ourselves to the sections we want in the .bin.
 ifdef CONFIG_ARM64
 OBJCOPYFLAGS += -j .text -j .secure_text -j .secure_data -j .rodata -j .data \
-		-j .u_boot_list -j .rela.dyn -j .got -j .got.plt \
-		-j .binman_sym_table
+		-j .u_boot_list -j .rela.dyn -j .got -j .got.plt
 else
-ifeq ($(CONFIG_ARCH_SUNXI),y)
-
-OBJCOPYFLAGS += -j .head
-endif
 OBJCOPYFLAGS += -j .text -j .secure_text -j .secure_data -j .rodata -j .hash \
 		-j .data -j .got -j .got.plt -j .u_boot_list -j .rel.dyn \
-		-j .binman_sym_table
+		-j .ARM.exidx -j .ARM.extab
 endif
 
 # if a dtb section exists we always have to include it

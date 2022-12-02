@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2011-2013, NVIDIA Corporation.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -15,6 +16,8 @@
 #include <asm/arch-tegra/dc.h>
 #include "displayport.h"
 #include "sor.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define DEBUG_SOR 0
 

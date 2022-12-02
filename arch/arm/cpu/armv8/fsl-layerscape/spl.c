@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014-2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -23,6 +24,23 @@ u32 spl_boot_device(void)
 	return BOOT_DEVICE_NAND;
 #endif
 	return 0;
+}
+
+u32 spl_boot_mode(const u32 boot_device)
+{
+	switch (spl_boot_device()) {
+	case BOOT_DEVICE_MMC1:
+#ifdef CONFIG_SPL_FAT_SUPPORT
+		return MMCSD_MODE_FS;
+#else
+		return MMCSD_MODE_RAW;
+#endif
+	case BOOT_DEVICE_NAND:
+		return 0;
+	default:
+		puts("spl: error: unsupported device\n");
+		hang();
+	}
 }
 
 #ifdef CONFIG_SPL_BUILD
@@ -67,9 +85,6 @@ void board_init_f(ulong dummy)
 #ifdef CONFIG_SPL_I2C_SUPPORT
 	i2c_init_all();
 #endif
-#ifdef CONFIG_VID
-	init_func_vid();
-#endif
 	dram_init();
 #ifdef CONFIG_SPL_FSL_LS_PPA
 #ifndef CONFIG_SYS_MEM_RESERVE_SECURE
@@ -102,29 +117,4 @@ void board_init_f(ulong dummy)
 	gd->arch.tlb_allocated = gd->arch.tlb_addr;
 #endif	/* CONFIG_SPL_FSL_LS_PPA */
 }
-
-#ifdef CONFIG_SPL_OS_BOOT
-/*
- * Return
- * 0 if booting into OS is selected
- * 1 if booting into U-Boot is selected
- */
-int spl_start_uboot(void)
-{
-	env_init();
-	if (env_get_yesno("boot_os") != 0)
-		return 0;
-
-	return 1;
-}
-#endif	/* CONFIG_SPL_OS_BOOT */
-#ifdef CONFIG_SPL_LOAD_FIT
-int board_fit_config_name_match(const char *name)
-{
-	/* Just empty function now - can't decide what to choose */
-	debug("%s: %s\n", __func__, name);
-
-	return 0;
-}
-#endif
 #endif /* CONFIG_SPL_BUILD */

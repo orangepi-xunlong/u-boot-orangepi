@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  *
  * Header file for the Marvell's Feroceon CPU core.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MVEBU_SOC_H
@@ -17,9 +18,6 @@
 #define SOC_88F6810_ID		0x6810
 #define SOC_88F6820_ID		0x6820
 #define SOC_88F6828_ID		0x6828
-#define SOC_98DX3236_ID		0xf410
-#define SOC_98DX3336_ID		0xf400
-#define SOC_98DX4251_ID		0xfc00
 
 /* A375 revisions */
 #define MV_88F67XX_A0_ID	0x3
@@ -110,16 +108,10 @@
 #define COMPHY_REFCLK_ALIGNMENT	(MVEBU_REGISTER(0x182f8))
 
 /* BootROM error register (also includes some status infos) */
-#if defined(CONFIG_ARMADA_38X)
-#define CONFIG_BOOTROM_ERR_REG	(MVEBU_REGISTER(0x182d0))
-#define BOOTROM_ERR_MODE_OFFS	0
-#define BOOTROM_ERR_MODE_MASK	(0xf << BOOTROM_ERR_MODE_OFFS)
-#else
 #define CONFIG_BOOTROM_ERR_REG	(MVEBU_REGISTER(0x182d0))
 #define BOOTROM_ERR_MODE_OFFS	28
 #define BOOTROM_ERR_MODE_MASK	(0xf << BOOTROM_ERR_MODE_OFFS)
 #define BOOTROM_ERR_MODE_UART	0x6
-#endif
 
 #if defined(CONFIG_ARMADA_375)
 /* SAR values for Armada 375 */
@@ -146,9 +138,7 @@
 #define BOOT_DEV_SEL_OFFS	4
 #define BOOT_DEV_SEL_MASK	(0x3f << BOOT_DEV_SEL_OFFS)
 
-#define BOOT_FROM_NAND		0x0A
 #define BOOT_FROM_UART		0x28
-#define BOOT_FROM_UART_ALT	0x3f
 #define BOOT_FROM_SPI		0x32
 #define BOOT_FROM_MMC		0x30
 #define BOOT_FROM_MMC_ALT	0x31

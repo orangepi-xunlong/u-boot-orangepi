@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 Timesys Corporation
  * Copyright (C) 2016 Advantech Corporation
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ADVANTECH_DMSBA16_CONFIG_H
@@ -32,17 +33,21 @@
 #define CONFIG_REVISION_TAG
 #define CONFIG_SYS_MALLOC_LEN		(10 * SZ_1M)
 
+#define CONFIG_MXC_GPIO
 #define CONFIG_MXC_UART
 
 #define CONFIG_MXC_OCOTP
 
 /* SATA Configs */
+#define CONFIG_DWC_AHSATA
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_DWC_AHSATA_PORT_ID	0
 #define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 #define CONFIG_LBA48
+#define CONFIG_LIBATA
 
 /* MMC Configs */
+#define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 #define CONFIG_BOUNCE_BUFFER
@@ -54,6 +59,7 @@
 #define CONFIG_MXC_USB_FLAGS	0
 
 #define CONFIG_USBD_HS
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
 /* Networking Configs */
 #define CONFIG_FEC_MXC
@@ -66,6 +72,7 @@
 
 /* Serial Flash */
 #ifdef CONFIG_CMD_SF
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		0
 #define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED	20000000
@@ -74,8 +81,10 @@
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
+#define CONFIG_CONS_INDEX	1
 
 #define CONFIG_LOADADDR	0x12000000
+#define CONFIG_SYS_TEXT_BASE	0x17800000
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
@@ -196,12 +205,16 @@
 #define CONFIG_ARP_TIMEOUT     200UL
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_SYS_MEMTEST_START       0x10000000
 #define CONFIG_SYS_MEMTEST_END         0x10010000
 #define CONFIG_SYS_MEMTEST_SCRATCH     0x10800000
 
 #define CONFIG_SYS_LOAD_ADDR           CONFIG_LOADADDR
+
+#define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
@@ -240,6 +253,7 @@
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IPUV3_CLK                260000000
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 #endif

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007-2009 Michal Simek
  * (C) Copyright 2003 Xilinx Inc.
  *
  * Michal SIMEK <monstr@monstr.eu>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

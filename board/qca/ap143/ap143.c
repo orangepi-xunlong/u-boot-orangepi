@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +12,8 @@
 #include <mach/ddr.h>
 #include <mach/ath79.h>
 #include <debug_uart.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_DEBUG_UART_BOARD_INIT
 void board_debug_uart_init(void)

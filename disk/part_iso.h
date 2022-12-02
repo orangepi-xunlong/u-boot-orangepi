@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland, d.peter@mpl.ch.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _PART_CD_H
 #define _PART_CD_H

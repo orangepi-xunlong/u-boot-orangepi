@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * (C) Copyright 2004, Psyent Corporation <www.psyent.com>
  * Scott McNutt <smcnutt@psyent.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +13,8 @@
 #include <errno.h>
 #include <timer.h>
 #include <asm/io.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* control register */
 #define ALTERA_TIMER_CONT	BIT(1)	/* Continuous mode */

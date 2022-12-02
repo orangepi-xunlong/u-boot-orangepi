@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -6,6 +5,8 @@
  * (C) Copyright 2010
  * Michael Zaidman, Kodak, michael.zaidman@kodak.com
  * post_word_{load|store} cleanup.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _POST_H
 #define _POST_H

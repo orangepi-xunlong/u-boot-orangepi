@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -95,9 +96,7 @@ int regmap_init_mem(struct udevice *dev, struct regmap **mapp)
 			range->start = r.start;
 			range->size = r.end - r.start + 1;
 		} else {
-			range->start = fdtdec_get_addr_size_fixed(gd->fdt_blob,
-					dev_of_offset(dev), "reg", index,
-					addr_len, size_len, &sz, true);
+			range->start = devfdt_get_addr_size_index(dev, index, &sz);
 			range->size = sz;
 		}
 	}
@@ -145,4 +144,18 @@ int regmap_write(struct regmap *map, uint offset, uint val)
 	writel(cpu_to_le32(val), ptr);
 
 	return 0;
+}
+
+int regmap_update_bits(struct regmap *map, uint offset, uint mask, uint val)
+{
+	uint reg;
+	int ret;
+
+	ret = regmap_read(map, offset, &reg);
+	if (ret)
+		return ret;
+
+	reg &= ~mask;
+
+	return regmap_write(map, offset, reg | val);
 }

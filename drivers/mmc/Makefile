@@ -1,7 +1,9 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 obj-y += mmc.o
 obj-$(CONFIG_$(SPL_)DM_MMC) += mmc-uclass.o
@@ -39,12 +41,12 @@ obj-$(CONFIG_SUPPORT_EMMC_RPMB) += rpmb.o
 obj-$(CONFIG_MMC_SANDBOX)		+= sandbox_mmc.o
 obj-$(CONFIG_SH_MMCIF) += sh_mmcif.o
 obj-$(CONFIG_SH_SDHI) += sh_sdhi.o
-obj-$(CONFIG_STM32_SDMMC2) += stm32_sdmmc2.o
 
 # SDHCI
 obj-$(CONFIG_MMC_SDHCI)			+= sdhci.o
 obj-$(CONFIG_MMC_SDHCI_ATMEL)		+= atmel_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_BCM2835)		+= bcm2835_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_BCMSTB)		+= bcmstb_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_CADENCE)		+= sdhci-cadence.o
 obj-$(CONFIG_MMC_SDHCI_KONA)		+= kona_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_MSM)		+= msm_sdhci.o
@@ -59,8 +61,5 @@ obj-$(CONFIG_MMC_SDHCI_TEGRA)		+= tegra_mmc.o
 obj-$(CONFIG_MMC_SDHCI_XENON)		+= xenon_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_ZYNQ)		+= zynq_sdhci.o
 
-obj-$(CONFIG_MMC_SUNXI)			+= sunxi_mmc.o sunxi_mmc_tuning.o sunxi_mmc_interface.o sunxi_host_mmc.o
-obj-$(CONFIG_MMC_UNIPHIER)		+= tmio-common.o uniphier-sd.o
-obj-$(CONFIG_RENESAS_SDHI)		+= tmio-common.o renesas-sdhi.o
-obj-$(CONFIG_MMC_BCM2835)		+= bcm2835_sdhost.o
-
+obj-$(CONFIG_MMC_SUNXI)			+= sunxi_mmc.o
+obj-$(CONFIG_MMC_UNIPHIER)		+= uniphier-sd.o

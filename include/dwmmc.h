@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012 SAMSUNG Electronics
  * Jaehoon Chung <jh80.chung@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DWMMC_HW_H
@@ -47,6 +48,7 @@
 #define DWMCI_IDINTEN		0x090
 #define DWMCI_DSCADDR		0x094
 #define DWMCI_BUFADDR		0x098
+#define DWMCI_CARDTHRCTL	0x100
 #define DWMCI_DATA		0x200
 
 /* Interrupt Mask register */
@@ -114,6 +116,10 @@
 #define RX_WMARK_SHIFT		16
 #define RX_WMARK_MASK		(0xfff << RX_WMARK_SHIFT)
 
+/* HCON Register */
+#define DMA_INTERFACE_IDMA		(0x0)
+#define SDMMC_GET_TRANS_MODE(x)		(((x)>>16) & 0x3)
+
 #define DWMCI_IDMAC_OWN		(1 << 31)
 #define DWMCI_IDMAC_CH		(1 << 4)
 #define DWMCI_IDMAC_FS		(1 << 3)
@@ -130,6 +136,18 @@
 /* quirks */
 #define DWMCI_QUIRK_DISABLE_SMU		(1 << 0)
 
+/*
+ * DWMCI_MSIZE is uses to set burst size of multiple transaction.
+ * The burst size is set to 128 if DWMCI_MSIZE is set to 0x6.
+ */
+#define DWMCI_MSIZE    0x6
+
+/* The DW MMC Controller Version */
+#define DW_MMC_240A		0x240a
+
+/* sdmmc cardthrctl set */
+#define DWMCI_CDTHRCTRL_CONFIG (1 + (0x200 << 16))
+
 /**
  * struct dwmci_host - Information about a designware MMC host
  *
@@ -145,6 +163,7 @@
  * @fifoth_val:	Value for FIFOTH register (or 0 to leave unset)
  * @mmc:	Pointer to generic MMC structure for this device
  * @priv:	Private pointer for use by controller
+ * @stride_pio: Provide the ability of accessing fifo with burst mode
  */
 struct dwmci_host {
 	const char *name;
@@ -161,6 +180,7 @@ struct dwmci_host {
 	u32 fifoth_val;
 	struct mmc *mmc;
 	void *priv;
+	bool stride_pio;
 
 	void (*clksel)(struct dwmci_host *host);
 	void (*board_init)(struct dwmci_host *host);
@@ -179,6 +199,7 @@ struct dwmci_host {
 	 * @freq:	Frequency the host is trying to achieve
 	 */
 	unsigned int (*get_mmc_clk)(struct dwmci_host *host, uint freq);
+	int (*execute_tuning)(struct dwmci_host *host, u32 opcode);
 #ifndef CONFIG_BLK
 	struct mmc_config cfg;
 #endif

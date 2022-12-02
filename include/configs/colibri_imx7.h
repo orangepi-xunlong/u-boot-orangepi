@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2016 Toradex AG
  *
@@ -6,6 +5,8 @@
  *
  * based on mx7dsabresd.h:
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __COLIBRI_IMX7_CONFIG_H
@@ -15,6 +16,11 @@
 
 /*#define CONFIG_DBG_MONITOR*/
 #define PHYS_SDRAM_SIZE			SZ_512M
+
+#define CONFIG_DISPLAY_BOARDINFO_LATE	/* Calls show_board_info() */
+
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(32 * SZ_1M)
@@ -99,7 +105,7 @@
 	"m4boot=;\0" \
 	"ip_dyn=yes\0" \
 	"kernel_file=zImage\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"setethupdate=if env exists ethaddr; then; else setenv ethaddr " \
 		"00:14:2d:00:00:00; fi; tftpboot ${loadaddr} " \
 		"${board}/flash_eth.img && source ${loadaddr}\0" \
@@ -118,6 +124,7 @@
 	"updlevel=2\0"
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP
 
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x0c000000)
@@ -159,8 +166,6 @@
 #define CONFIG_SYS_NAND_MX7_GPMI_62_ECC_BYTES
 
 /* Dynamic MTD partition support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE	/* needed for mtdparts commands */
 
 /* DMA stuff, needed for GPMI/MXS NAND support */
 
@@ -174,6 +179,8 @@
 #define CONFIG_IMX_THERMAL
 
 #define CONFIG_USBD_HS
+
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
 /* USB Device Firmware Update support */
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	SZ_16M

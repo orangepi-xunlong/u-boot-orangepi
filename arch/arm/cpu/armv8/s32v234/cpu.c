@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014-2016, Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <asm/io.h>
 #include <asm/arch/mc_me_regs.h>
 #include "cpu.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 u32 cpu_mask(void)
 {

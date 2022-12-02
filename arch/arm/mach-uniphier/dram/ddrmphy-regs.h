@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * UniPhier DDR MultiPHY registers
  *
  * Copyright (C) 2015-2017 Socionext Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef UNIPHIER_DDRMPHY_REGS_H

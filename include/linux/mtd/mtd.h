@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org> et al.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -79,6 +80,10 @@ struct mtd_erase_region_info {
  *		mode = MTD_OPS_PLACE_OOB or MTD_OPS_RAW)
  * @datbuf:	data buffer - if NULL only oob data are read/written
  * @oobbuf:	oob data buffer
+ *
+ * Note, it is allowed to read more than one OOB area at one go, but not write.
+ * The interface assumes that the OOB write requests program only one page's
+ * OOB area.
  */
 struct mtd_oob_ops {
 	unsigned int	mode;
@@ -129,8 +134,8 @@ struct mtd_oob_region {
 struct mtd_ooblayout_ops {
 	int (*ecc)(struct mtd_info *mtd, int section,
 		   struct mtd_oob_region *oobecc);
-	int (*free)(struct mtd_info *mtd, int section,
-		    struct mtd_oob_region *oobfree);
+	int (*rfree)(struct mtd_info *mtd, int section,
+		     struct mtd_oob_region *oobfree);
 };
 
 /*
@@ -392,7 +397,7 @@ static inline void mtd_set_ooblayout(struct mtd_info *mtd,
 	mtd->ooblayout = ooblayout;
 }
 
-static inline u32 mtd_oobavail(struct mtd_info *mtd, struct mtd_oob_ops *ops)
+static inline int mtd_oobavail(struct mtd_info *mtd, struct mtd_oob_ops *ops)
 {
 	return ops->mode == MTD_OPS_AUTO_OOB ? mtd->oobavail : mtd->oobsize;
 }
@@ -546,6 +551,30 @@ static inline void mtd_erase_callback(struct erase_info *instr)
 }
 #endif
 
+#ifdef __UBOOT__
+/*
+ * Debugging macro and defines
+ */
+#define MTD_DEBUG_LEVEL0	(0)	/* Quiet   */
+#define MTD_DEBUG_LEVEL1	(1)	/* Audible */
+#define MTD_DEBUG_LEVEL2	(2)	/* Loud    */
+#define MTD_DEBUG_LEVEL3	(3)	/* Noisy   */
+
+#ifdef CONFIG_MTD_DEBUG
+#define MTDDEBUG(n, args...)				\
+	do {						\
+		if (n <= CONFIG_MTD_DEBUG_VERBOSE)	\
+			printk(KERN_INFO args);		\
+	} while(0)
+#else /* CONFIG_MTD_DEBUG */
+#define MTDDEBUG(n, args...)				\
+	do {						\
+		if (0)					\
+			printk(KERN_INFO args);		\
+	} while(0)
+#endif /* CONFIG_MTD_DEBUG */
+#endif
+
 static inline int mtd_is_bitflip(int err) {
 	return err == -EUCLEAN;
 }
@@ -594,28 +623,6 @@ int mtd_arg_off_size(int argc, char *const argv[], int *idx, loff_t *off,
 		     loff_t *size, loff_t *maxsize, int devtype,
 		     uint64_t chipsize);
 
-/*
- * Debugging macro and defines
- */
-#define MTD_DEBUG_LEVEL0	(0)	/* Quiet   */
-#define MTD_DEBUG_LEVEL1	(1)	/* Audible */
-#define MTD_DEBUG_LEVEL2	(2)	/* Loud    */
-#define MTD_DEBUG_LEVEL3	(3)	/* Noisy   */
-
-#ifdef CONFIG_MTD_DEBUG
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (n <= CONFIG_MTD_DEBUG_VERBOSE)	\
-			printk(KERN_INFO args);		\
-	} while (0)
-#else /* CONFIG_MTD_DEBUG */
-#define MTDDEBUG(n, args...)				\
-	do {						\
-		if (0)					\
-			printk(KERN_INFO args);		\
-	} while (0)
-#endif /* CONFIG_MTD_DEBUG */
-
 /* drivers/mtd/mtdcore.c */
 void mtd_get_len_incl_bad(struct mtd_info *mtd, uint64_t offset,
 			  const uint64_t length, uint64_t *len_incl_bad,
@@ -627,13 +634,4 @@ int mtd_search_alternate_name(const char *mtdname, char *altname,
 			      unsigned int max_len);
 
 #endif
-
-/* sunxi mtd functions */
-int sunxi_do_mtdparts(int flag, int argc, char * const argv[]);
-char *sunxi_get_mtdparts_name(u16 mtd_partnum);
-u64 sunxi_get_mtdpart_size(u16 mtd_partnum);
-u16 sunxi_get_mtd_num_parts(void);
-u64 sunxi_get_mtdpart_offset(u16 mtd_partnum);
-void sunxi_set_defualt_mtdpart(const char *mtdids, const char *mtdparts);
-extern void set_default_env(const char *s);
 #endif /* __MTD_MTD_H__ */

@@ -41,10 +41,6 @@ Compile the ATF
   > cd arm-trusted-firmware
   > make realclean
   > make CROSS_COMPILE=aarch64-linux-gnu- PLAT=rk3399 bl31
-
-  Or you can get the bl31.elf directly from Rockchip:
-  cp rkbin/rk33/rk3399_bl31_v1.00.elf ../u-boot/bl31.elf
-
   Get bl31.elf in this step, copy it to U-Boot root dir:
   > cp bl31.elf ../u-boot/
 
@@ -56,7 +52,7 @@ Compile the U-Boot
   > export CROSS_COMPILE=aarch64-linux-gnu-
   > make evb-rk3399_defconfig
   for firefly-rk3399, use below instead:
-  > make firefly-rk3399_defconfig
+  > make evb-firefly_defconfig
   > make
   > make u-boot.itb
 
@@ -65,7 +61,7 @@ Compile the U-Boot
 Compile the rkdeveloptool
 =======================
   Follow instructions in latest README
-  > cd ../rkflashtool
+  > cd ../rkdeveloptool
   > autoreconf -i
   > ./configure
   > make
@@ -115,6 +111,6 @@ Power on(or reset with RESET KEY) with MASKROM KEY preesed, and then:
   > rkdeveloptool wl 0x6000 u-boot/trust.img
   > rkdeveloptool rd
 
-You should be able to get U-Boot log in console/UART2(baurdrate 1500000)
+You should be able to get U-Boot log message in console/UART2 now.
 For more detail, please reference to:
 http://opensource.rock-chips.com/wiki_Boot_option

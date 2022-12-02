@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Freescale MCF54418 TWR board.
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -17,6 +18,7 @@
  * High Level Configuration Options
  * (easy to change)
  */
+#define CONFIG_M54418TWR	/* M54418TWR board */
 
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
@@ -32,6 +34,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * NAND FLASH
@@ -84,7 +89,7 @@
 #endif			/* CONFIG_SYS_DISCOVER_PHY */
 #endif
 
-#define CONFIG_HOSTNAME		"M54418TWR"
+#define CONFIG_HOSTNAME		M54418TWR
 
 #if defined(CONFIG_CF_SBF)
 /* ST Micro serial flash */
@@ -171,6 +176,8 @@
 #define CONFIG_EXTRA_CLOCK
 
 #define CONFIG_PRAM			2048	/* 2048 KB */
+
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
@@ -283,15 +290,9 @@
  */
 #ifdef CONFIG_CMD_JFFS2
 #define CONFIG_JFFS2_DEV		"nand0"
-#define CONFIG_JFFS2_PART_OFFSET	(0x800000)
-#define CONFIG_MTD_DEVICE
 
 #endif
 
-#ifdef CONFIG_CMD_UBI
-#define CONFIG_MTD_DEVICE	/* needed for mtdparts command */
-#define CONFIG_MTD_PARTITIONS	/* mtdparts and UBI support */
-#endif
 /* Cache Configuration */
 #define CONFIG_SYS_CACHELINE_SIZE	16
 #define ICACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \

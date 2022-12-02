@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Samsung Electronics
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -92,9 +93,6 @@ int exynos_power_init(void)
 	struct udevice *dev;
 	int ret;
 
-#ifdef CONFIG_PMIC_S2MPS11
-	ret = pmic_get("s2mps11_pmic", &dev);
-#else
 	ret = pmic_get("max77686", &dev);
 	if (!ret) {
 		/* TODO(sjg@chromium.org): Move into the clock/pmic API */
@@ -114,7 +112,6 @@ int exynos_power_init(void)
 			s5m8767_enable_32khz_cp(dev);
 #endif
 	}
-#endif	/* CONFIG_PMIC_S2MPS11 */
 	if (ret == -ENODEV)
 		return 0;
 
@@ -179,7 +176,7 @@ char *get_dfu_alt_system(char *interface, char *devstr)
 {
 	char *info = "Not supported!";
 
-	if (board_is_odroidxu4() || board_is_odroidhc1())
+	if (board_is_odroidxu4())
 		return info;
 
 	return env_get("dfu_alt_system");
@@ -192,7 +189,7 @@ char *get_dfu_alt_boot(char *interface, char *devstr)
 	char *alt_boot;
 	int dev_num;
 
-	if (board_is_odroidxu4() || board_is_odroidhc1())
+	if (board_is_odroidxu4())
 		return info;
 
 	dev_num = simple_strtoul(devstr, NULL, 10);

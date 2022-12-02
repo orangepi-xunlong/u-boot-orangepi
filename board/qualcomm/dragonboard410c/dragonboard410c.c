@@ -1,35 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board init file for Dragonboard 410C
  *
  * (C) Copyright 2015 Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <usb.h>
 #include <asm/gpio.h>
-#include <fdt_support.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-/* pointer to the device tree ammended by the firmware */
-extern void *fw_dtb;
-
-void *board_fdt_blob_setup(void)
-{
-	if (fdt_magic(fw_dtb) != FDT_MAGIC) {
-		printf("Firmware provided invalid dtb!\n");
-		return NULL;
-	}
-
-	return fw_dtb;
-}
 
 int dram_init(void)
 {
 	gd->ram_size = PHYS_SDRAM_1_SIZE;
-
 	return 0;
 }
 
@@ -40,6 +26,7 @@ int dram_init_banksize(void)
 
 	return 0;
 }
+
 
 int board_prepare_usb(enum usb_init_type type)
 {
@@ -109,6 +96,11 @@ int board_prepare_usb(enum usb_init_type type)
 	return 0;
 }
 
+int board_init(void)
+{
+	return 0;
+}
+
 /* Check for vol- button - if pressed - stop autoboot */
 int misc_init_r(void)
 {
@@ -141,49 +133,4 @@ int misc_init_r(void)
 	}
 
 	return 0;
-}
-
-int board_init(void)
-{
-	return 0;
-}
-
-int ft_board_setup(void *blob, bd_t *bd)
-{
-	int offset, len, i;
-	const char *mac;
-	struct {
-		const char *compatible;
-		const char *property;
-	} fix[] = {
-		[0] = {
-			/* update the kernel's dtb with wlan mac */
-			.compatible = "qcom,wcnss-wlan",
-			.property = "local-mac-address",
-		},
-		[1] = {
-			/* update the kernel's dtb with bt mac */
-			.compatible = "qcom,wcnss-bt",
-			.property = "local-bd-address",
-		},
-	};
-
-	for (i = 0; i < sizeof(fix) / sizeof(fix[0]); i++) {
-		offset = fdt_node_offset_by_compatible(gd->fdt_blob, -1,
-						       fix[i].compatible);
-		if (offset < 0)
-			continue;
-
-		mac = fdt_getprop(gd->fdt_blob, offset, fix[i].property, &len);
-		if (mac)
-			do_fixup_by_compat(blob, fix[i].compatible,
-					   fix[i].property, mac, ARP_HLEN, 1);
-	}
-
-	return 0;
-}
-
-void reset_cpu(ulong addr)
-{
-	psci_system_reset();
 }

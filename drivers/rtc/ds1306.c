@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002 SIXNET, dge@sixnetio.com.
  *
  * (C) Copyright 2004, Li-Pro.Net <www.li-pro.net>
  * Stephan Linz <linz@li-pro.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

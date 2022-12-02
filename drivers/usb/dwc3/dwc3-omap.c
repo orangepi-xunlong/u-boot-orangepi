@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /**
  * dwc3-omap.c - OMAP Specific Glue layer
  *
@@ -11,11 +10,14 @@
  * to uboot.
  *
  * commit 7ee2566ff5 : usb: dwc3: dwc3-omap: get rid of ->prepare()/->complete()
+ *
+ * SPDX-License-Identifier:     GPL-2.0
  */
 
 #include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include <dm.h>
 #include <dwc3-omap-uboot.h>
 #include <linux/usb/dwc3-omap.h>
 #include <linux/ioport.h>
@@ -376,7 +378,7 @@ int dwc3_omap_uboot_init(struct dwc3_omap_device *omap_dev)
 	struct device		*dev = NULL;
 	struct dwc3_omap	*omap;
 
-	omap = devm_kzalloc(dev, sizeof(*omap), GFP_KERNEL);
+	omap = devm_kzalloc((struct udevice *)dev, sizeof(*omap), GFP_KERNEL);
 	if (!omap)
 		return -ENOMEM;
 

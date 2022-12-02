@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Simple malloc implementation
  *
  * Copyright (c) 2014 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -39,7 +40,7 @@ void *memalign_simple(size_t align, size_t bytes)
 	addr = ALIGN(gd->malloc_base + gd->malloc_ptr, align);
 	new_ptr = addr + bytes - gd->malloc_base;
 	if (new_ptr > gd->malloc_limit) {
-		debug("space exhausted\n");
+		printf("sys malloc pool space exhausted\n");
 		return NULL;
 	}
 

@@ -74,7 +74,6 @@ Add SNMP
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
 #include <net.h>
 #include <malloc.h>
 #include <linux/compiler.h>

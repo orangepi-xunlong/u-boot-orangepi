@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Chromium OS Matrix Keyboard
  *
  * Copyright (c) 2012 The Chromium OS Authors.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -13,6 +14,8 @@
 #include <keyboard.h>
 #include <key_matrix.h>
 #include <stdio_dev.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 enum {
 	KBC_MAX_KEYS		= 8,	/* Maximum keys held down at once */

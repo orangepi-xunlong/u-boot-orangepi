@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011-2012
  * Gerald Kerma <dreagle@doukki.net>
  * Luka Perkov <luka@openwrt.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_IB62x0_H
@@ -26,7 +27,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_SYS_MVFS
 
 /*
  * mv-common.h should be defined after CMD configs since it used them
@@ -56,10 +56,16 @@
 	"fdt addr 0x700000; fdt resize; fdt chosen; "			\
 	"bootz 0x800000 - 0x700000"
 
+#define CONFIG_MTDPARTS \
+	"mtdparts=orion_nand:"						\
+	"0xe0000@0x0(uboot),"						\
+	"0x20000@0xe0000(uboot_env),"					\
+	"-@0x100000(root)\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=console=ttyS0,115200\0"				\
 	"mtdids=nand0=orion_nand\0"					\
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT			\
+	"mtdparts="CONFIG_MTDPARTS					\
 	"kernel=/boot/zImage\0"						\
 	"fdt=/boot/ib62x0.dtb\0"					\
 	"bootargs_root=ubi.mtd=2 root=ubi0:rootfs rootfstype=ubifs rw\0"

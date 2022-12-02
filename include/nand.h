@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * (C) Copyright 2005
  * 2N Telekomunikace, a.s. <www.2n.cz>
  * Ladislav Michl <michl@2n.cz>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _NAND_H_
@@ -151,5 +152,8 @@ void sunxi_nand_init(void);
  * returns pointer to the nand device info structure or NULL on failure.
  */
 struct mtd_info *get_nand_dev_by_index(int dev);
+
+/* rockchip platform specific init functions */
+int rk_nand_init(void);
 
 #endif /* _NAND_H_ */

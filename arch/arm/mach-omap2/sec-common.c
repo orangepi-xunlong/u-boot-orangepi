@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * Common security related functions for OMAP devices
@@ -10,6 +9,8 @@
  * Andreas Dannenberg <dannenberg@ti.com>
  * Harinarayan Bhatta <harinarayan@ti.com>
  * Andrew F. Davis <afd@ti.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -40,9 +41,6 @@
 #define PPA_SERV_HAL_SETUP_EMIF_FW_REGION   (PPA_HAL_SERVICES_START_INDEX + 26)
 #define PPA_SERV_HAL_LOCK_EMIF_FW           (PPA_HAL_SERVICES_START_INDEX + 27)
 
-/* Offset of header size if image is signed as ISW */
-#define HEADER_SIZE_OFFSET	(0x6D)
-
 int tee_loaded = 0;
 
 /* Argument for PPA_SERV_HAL_TEE_LOAD_MASTER */
@@ -55,7 +53,7 @@ struct ppa_tee_load_info {
 	u32 tee_arg0;          /* argument to TEE jump function, in r0 */
 };
 
-static uint32_t secure_rom_call_args[5] __aligned(ARCH_DMA_MINALIGN) __section(".data");
+static uint32_t secure_rom_call_args[5] __aligned(ARCH_DMA_MINALIGN);
 
 u32 secure_rom_call(u32 service, u32 proc_id, u32 flag, ...)
 {
@@ -127,9 +125,6 @@ int secure_boot_verify_image(void **image, size_t *size)
 	}
 
 	*size = sig_addr - cert_addr;	/* Subtract out the signature size */
-	/* Subtract header if present */
-	if (strncmp((char *)sig_addr, "CERT_ISW_", 9) == 0)
-		*size -= ((u32 *)*image)[HEADER_SIZE_OFFSET];
 	cert_size = *size;
 
 	/* Check if image load address is 32-bit aligned */
@@ -167,16 +162,16 @@ auth_exit:
 	}
 
 	/*
-	 * Output notification of successful authentication to re-assure the
-	 * user that the secure code is being processed as expected. However
-	 * suppress any such log output in case of building for SPL and booting
-	 * via YMODEM. This is done to avoid disturbing the YMODEM serial
-	 * protocol transactions.
+	 * Output notification of successful authentication as well the name of
+	 * the signing certificate used to re-assure the user that the secure
+	 * code is being processed as expected. However suppress any such log
+	 * output in case of building for SPL and booting via YMODEM. This is
+	 * done to avoid disturbing the YMODEM serial protocol transactions.
 	 */
 	if (!(IS_ENABLED(CONFIG_SPL_BUILD) &&
 	      IS_ENABLED(CONFIG_SPL_YMODEM_SUPPORT) &&
 	      spl_boot_device() == BOOT_DEVICE_UART))
-		printf("Authentication passed\n");
+		printf("Authentication passed: %s\n", (char *)sig_addr);
 
 	return result;
 }
@@ -310,8 +305,12 @@ int secure_tee_install(u32 addr)
 
 	if ((hdr->magic != OPTEE_MAGIC) ||
 	    (hdr->version != OPTEE_VERSION) ||
-	    (tee_file_size > size)) {
-		printf("Error in TEE header. Check firewall and TEE sizes\n");
+	    (hdr->init_load_addr_hi != 0) ||
+	    (hdr->init_load_addr_lo < (sec_mem_start + sizeof(struct optee_header))) ||
+	    (tee_file_size > size) ||
+	    ((hdr->init_load_addr_lo + tee_file_size - 1) >
+	     (sec_mem_start + size - 1))) {
+		printf("Error in TEE header. Check load address and sizes\n");
 		unmap_sysmem(hdr);
 		return CMD_RET_FAILURE;
 	}

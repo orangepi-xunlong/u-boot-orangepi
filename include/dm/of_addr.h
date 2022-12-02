@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Taken from Linux v4.9 drivers/of/address.c
  *
  * Modified for U-Boot
  * Copyright (c) 2017 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_OF_ADDR_H

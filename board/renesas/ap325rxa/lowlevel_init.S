@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2008 Renesas Solutions Corp.
  * Copyright (C) 2008 Nobuhiro Iwamatsu <iwamatsu.nobuhiro@renesas.com>
  *
  * board/ap325rxa/lowlevel_init.S
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>

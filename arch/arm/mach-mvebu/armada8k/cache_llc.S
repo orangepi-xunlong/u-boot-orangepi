@@ -1,6 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2016 Marvell International Ltd.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
+ * https://spdx.org/licenses
  */
 
 #include <asm/arch-armada8k/cache_llc.h>

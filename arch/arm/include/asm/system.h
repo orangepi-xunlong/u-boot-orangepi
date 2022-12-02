@@ -78,6 +78,10 @@
 #define HCR_EL2_RW_AARCH64	(1 << 31) /* EL1 is AArch64                   */
 #define HCR_EL2_RW_AARCH32	(0 << 31) /* Lower levels are AArch32         */
 #define HCR_EL2_HCD_DIS		(1 << 29) /* Hypervisor Call disabled         */
+#define HCR_EL2_TGE		(1 << 27) /* Trap General Exceptions          */
+#define HCR_EL2_AMO		(1 << 5)  /* Asynchronous External Abort and SError Interrupt routing */
+#define HCR_EL2_IMO		(1 << 4)  /* Physical IRQ Routing */
+#define HCR_EL2_FMO		(1 << 3)  /* Physical FIQ Routing */
 
 /*
  * CPACR_EL1 bits definitions
@@ -175,6 +179,20 @@ static inline unsigned long read_mpidr(void)
 	return val;
 }
 
+static inline unsigned long get_daif(void)
+{
+	unsigned long daif;
+
+	asm volatile("mrs %0, daif" : "=r" (daif));
+
+	return daif;
+}
+
+static inline void disable_serror(void)
+{
+	asm volatile("msr daifset, #0x04");
+}
+
 #define BSP_COREID	0
 
 void __asm_flush_dcache_all(void);
@@ -215,8 +233,8 @@ void __asm_switch_ttbr(u64 new_ttbr);
  * @entry_point: kernel entry point
  * @es_flag:     execution state flag, ES_TO_AARCH64 or ES_TO_AARCH32
  */
-void __noreturn armv8_switch_to_el2(u64 args, u64 mach_nr, u64 fdt_addr,
-				    u64 arg4, u64 entry_point, u64 es_flag);
+void armv8_switch_to_el2(u64 args, u64 mach_nr, u64 fdt_addr,
+			 u64 arg4, u64 entry_point, u64 es_flag);
 /*
  * Switch from EL2 to EL1 for ARMv8
  *
@@ -352,6 +370,20 @@ static inline unsigned long get_cpsr(void)
 	return cpsr;
 }
 
+static inline void set_cpsr(unsigned long cpsr)
+{
+	asm volatile("msr cpsr_fsxc, %[cpsr]" : : [cpsr] "r" (cpsr));
+}
+
+static inline void disable_async_abort(void)
+{
+	unsigned long cpsr;
+
+	cpsr = get_cpsr();
+	cpsr &= ~(1 << 8);
+	set_cpsr(cpsr);
+}
+
 static inline int is_hyp(void)
 {
 #ifdef CONFIG_ARMV7_LPAE
@@ -403,6 +435,14 @@ static inline void set_dacr(unsigned int val)
 	asm volatile("mcr p15, 0, %0, c3, c0, 0	@ set DACR"
 	  : : "r" (val) : "cc");
 	isb();
+}
+
+static inline unsigned int read_mpidr(void)
+{
+	unsigned int mpidr;
+
+	asm volatile ("mrc p15, 0, %[mpidr], c0, c0, 5" : [mpidr] "=r" (mpidr));
+	return mpidr;
 }
 
 #ifdef CONFIG_ARMV7_LPAE

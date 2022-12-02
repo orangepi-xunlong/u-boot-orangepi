@@ -2388,50 +2388,6 @@ int initf_malloc(void)
 	return 0;
 }
 
-void *malloc_align(size_t size, size_t align)
-{
-	int *ret, *ret_align, *ret_tem;
-	int  tem;
-	if (size <= 0 && align <=0) {
-		return 0;
-	}
-	if ((align & 0x3)){
-		return NULL;
-	}
-	size =  size + align;
-	ret = (int *)malloc(size);
-	if (!ret) {
-		return NULL;
-	}
-
-	if (!((int)ret & (align-1))) {
-		/* the buffer is align
-		 * */
-		tem = (int)ret + align;
-		ret_align = (int *)(tem);
-		ret_tem = ret_align;
-		ret_tem--;
-		*ret_tem = (int)ret;
-	} else {
-		tem =(int)ret & ~(align-1);
-		tem = tem+align;
-		ret_align = (int *)(tem);
-		ret_tem = ret_align;
-		ret_tem--;
-		*ret_tem = (int)ret;
-	}
-	return (void *)ret_align;
-}
-
-void free_align(void *ptr)
-{
-	int *ret;
-	ret = (int *)ptr;
-	ret--;
-	free((void *)*ret);
-}
-
-
 /*
 
 History:

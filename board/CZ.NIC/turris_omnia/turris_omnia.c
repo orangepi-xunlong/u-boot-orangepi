@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Marek Behun <marek.behun@nic.cz>
  * Copyright (C) 2016 Tomas Hlavacek <tomas.hlavacek@nic.cz>
  *
  * Derived from the code for
  *   Marvell/db-88f6820-gp by Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <environment.h>
 #include <i2c.h>
 #include <miiphy.h>
 #include <netdev.h>
@@ -212,7 +212,7 @@ static struct hws_topology_map board_topology_map_1g = {
 	    BUS_WIDTH_16,		/* memory_width */
 	    MEM_4G,			/* mem_size */
 	    DDR_FREQ_800,		/* frequency */
-	    0, 0,			/* cas_wl cas_l */
+	    0, 0,			/* cas_l cas_wl */
 	    HWS_TEMP_NORMAL,		/* temperature */
 	    HWS_TIM_2T} },		/* timing (force 2t) */
 	5,				/* Num Of Bus Per Interface*/
@@ -231,7 +231,7 @@ static struct hws_topology_map board_topology_map_2g = {
 	    BUS_WIDTH_16,		/* memory_width */
 	    MEM_8G,			/* mem_size */
 	    DDR_FREQ_800,		/* frequency */
-	    0, 0,			/* cas_wl cas_l */
+	    0, 0,			/* cas_l cas_wl */
 	    HWS_TEMP_NORMAL,		/* temperature */
 	    HWS_TIM_2T} },		/* timing (force 2t) */
 	5,				/* Num Of Bus Per Interface*/

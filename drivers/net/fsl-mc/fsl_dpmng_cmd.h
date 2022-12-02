@@ -1,12 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
-/* Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+/* Copyright 2013-2015 Freescale Semiconductor Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __FSL_DPMNG_CMD_H
 #define __FSL_DPMNG_CMD_H
 
 /* Command IDs */
-#define DPMNG_CMDID_GET_VERSION			0x8311
+#define DPMNG_CMDID_GET_VERSION			0x831
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMNG_RSP_GET_VERSION(cmd, mc_ver_info) \

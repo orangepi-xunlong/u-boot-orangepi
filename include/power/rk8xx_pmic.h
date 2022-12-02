@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PMIC_RK8XX_H_
@@ -170,12 +171,105 @@ enum {
 };
 
 enum {
+	RK817_REG_SYS_CFG3 = 0xf4,
+};
+
+enum {
+	RK816_REG_DCDC_EN1 = 0x23,
+	RK816_REG_DCDC_EN2,
+	RK816_REG_DCDC_SLP_EN,
+	RK816_REG_LDO_SLP_EN,
+	RK816_REG_LDO_EN1 = 0x27,
+	RK816_REG_LDO_EN2,
+};
+
+enum {
 	RK805_ID = 0x8050,
+	RK806_ID = 0x8060,
 	RK808_ID = 0x0000,
+	RK809_ID = 0x8090,
+	RK816_ID = 0x8160,
+	RK817_ID = 0x8170,
 	RK818_ID = 0x8180,
 };
 
+enum {
+	RK817_POWER_EN0 = 0xb1,
+	RK817_POWER_EN1,
+	RK817_POWER_EN2,
+	RK817_POWER_EN3,
+};
+#define RK817_POWER_EN_SAVE0	0x99
+#define RK817_POWER_EN_SAVE1	0xa4
+
+#define RK817_ID_MSB	0xed
+#define RK817_ID_LSB	0xee
 #define RK8XX_ID_MSK	0xfff0
+
+#define RK817_PMIC_SYS_CFG1	0xf1
+#define RK817_PMIC_SYS_CFG3	0xf4
+#define RK817_GPIO_INT_CFG	0xfe
+
+#define RK8XX_ON_SOURCE		0xae
+#define RK8XX_OFF_SOURCE	0xaf
+#define RK817_BUCK4_CMIN	0xc6
+#define RK817_ON_SOURCE		0xf5
+#define RK817_OFF_SOURCE	0xf6
+#define RK817_NUM_OF_REGS	0xff
+
+#define RK8XX_DEVCTRL_REG	0x4b
+#define RK817_PWRON_KEY		0xf7
+#define RK8XX_LP_ACTION_MSK	BIT(6)
+#define RK8XX_LP_OFF		(0 << 6)
+#define RK8XX_LP_RESTART	(1 << 6)
+#define RK8XX_LP_OFF_MSK	BIT(4) | BIT(5)
+#define RK8XX_LP_TIME_6S	(0 << 4)
+#define RK8XX_LP_TIME_8S	(1 << 4)
+#define RK8XX_LP_TIME_10S	(2 << 4)
+#define RK8XX_LP_TIME_12S	(3 << 4)
+
+/* IRQ definitions */
+#define RK8XX_IRQ_PWRON_FALL		0
+#define RK8XX_IRQ_PWRON_RISE		1
+#define RK8XX_IRQ_PLUG_OUT		2
+#define RK8XX_IRQ_PLUG_IN		3
+#define RK8XX_IRQ_CHG_OK		4
+
+#define RK808_INT_STS_REG1		0x4c
+#define RK808_INT_MSK_REG1		0x4d
+#define RK808_IRQ_PLUG_OUT_MSK		BIT(1)
+
+#define RK805_INT_STS_REG		0x4c
+#define RK805_INT_MSK_REG		0x4d
+#define RK805_IRQ_PWRON_FALL_MSK	BIT(7)
+#define RK805_IRQ_PWRON_RISE_MSK	BIT(0)
+
+#define RK816_INT_STS_REG1		0x49
+#define RK816_INT_MSK_REG1		0x4a
+#define RK816_INT_STS_REG3		0x4e
+#define RK816_INT_STS_MSK_REG3		0x4f
+#define RK816_IRQ_PWRON_RISE_MSK	BIT(6)
+#define RK816_IRQ_PWRON_FALL_MSK	BIT(5)
+#define RK816_IRQ_PLUG_OUT_MSK		BIT(1)
+#define RK816_IRQ_CHR_OK_MSK		BIT(2)
+
+#define RK818_INT_STS_REG1		0x4c
+#define RK818_INT_MSK_REG1		0x4d
+#define RK818_IRQ_PLUG_OUT_MSK		BIT(1)
+#define RK818_IRQ_CHR_OK_MSK		BIT(2)
+
+#define	RK817_INT_STS_REG0		0xf8
+#define	RK817_INT_MSK_REG0		0xf9
+#define RK817_IRQ_PWRON_FALL_MSK	BIT(0)
+#define RK817_IRQ_PWRON_RISE_MSK	BIT(1)
+#define RK817_IRQ_PLUG_OUT_MSK		BIT(1)
+#define RK817_IRQ_PLUG_IN_MSK		BIT(0)
+
+struct reg_data {
+	u8 reg;
+	u8 val;
+	u8 mask;
+};
 
 struct rk8xx_reg_table {
 	char *name;
@@ -184,7 +278,15 @@ struct rk8xx_reg_table {
 };
 
 struct rk8xx_priv {
+	struct virq_chip *irq_chip;
+	struct spi_slave *slave;
 	int variant;
+	int irq;
+	int lp_off_time;
+	int lp_action;
+	uint8_t sleep_pin;
+	uint8_t rst_fun;
+	int not_save_power_en;
 };
 
 int rk8xx_spl_configure_buck(struct udevice *pmic, int buck, int uvolt);

@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Weidmüller Interface GmbH & Co. KG
  * Stefan Herbrechtsmeier <stefan.herbrechtsmeier@weidmueller.com>
  *
  * Copyright (C) 2013 Soren Brinkmann <soren.brinkmann@xilinx.com>
  * Copyright (C) 2013 Xilinx, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -393,7 +394,7 @@ static ulong zynq_clk_get_rate(struct clk *clk)
 		return zynq_clk_get_peripheral_rate(priv, id, two_divs);
 	case dma_clk:
 		return zynq_clk_get_cpu_rate(priv, cpu_2x_clk);
-	case usb0_aper_clk ... swdt_clk:
+	case usb0_aper_clk ... smc_aper_clk:
 		return zynq_clk_get_cpu_rate(priv, cpu_1x_clk);
 	default:
 		return -ENXIO;

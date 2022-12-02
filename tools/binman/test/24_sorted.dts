@@ -7,11 +7,11 @@
 	binman {
 		sort-by-pos;
 		u-boot {
-			pos = <22>;
+			pos = <10>;
 		};
 
 		u-boot-spl {
-			pos = <1>;
+			pos = <5>;
 		};
 	};
 };

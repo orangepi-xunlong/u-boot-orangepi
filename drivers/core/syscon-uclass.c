@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -42,6 +43,25 @@ static int syscon_pre_probe(struct udevice *dev)
 #else
 	return regmap_init_mem(dev, &priv->regmap);
 #endif
+}
+
+struct regmap *syscon_regmap_lookup_by_phandle(struct udevice *dev,
+					       const char *name)
+{
+	struct udevice *syscon;
+	struct regmap *r;
+	int err;
+
+	err = uclass_get_device_by_phandle(UCLASS_SYSCON, dev,
+					   name, &syscon);
+	if (err)
+		return ERR_PTR(err);
+
+	r = syscon_get_regmap(syscon);
+	if (!r)
+		return ERR_PTR(-ENODEV);
+
+	return r;
 }
 
 int syscon_get_by_driver_data(ulong driver_data, struct udevice **devp)

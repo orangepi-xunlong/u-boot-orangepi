@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 #include <common.h>
 #include <linux/libfdt.h>
@@ -22,7 +24,12 @@ int __weak show_board_info(void)
 	model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
 
 	if (model)
-		tick_printf("Model: %s\n", model);
+		printf("Model: %s\n", model);
+#endif
+
+#ifdef CONFIG_ARM64_BOOT_AARCH32
+	if (!(gd->flags & GD_FLG_RELOC))
+		printf("CPU: AArch32\n");
 #endif
 
 	return checkboard();

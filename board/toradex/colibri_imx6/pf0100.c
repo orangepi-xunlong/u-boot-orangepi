@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014-2016, Toradex AG
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -22,7 +23,7 @@
 /*#define DEBUG */
 
 /* use GPIO: EXT_IO1 to switch on VPGM, ON: 1 */
-static __maybe_unused iomux_v3_cfg_t const pmic_prog_pads[] = {
+static iomux_v3_cfg_t const pmic_prog_pads[] = {
 	MX6_PAD_NANDF_D3__GPIO2_IO03 | MUX_PAD_CTRL(NO_PAD_CTRL),
 #	define PMIC_PROG_VOLTAGE IMX_GPIO_NR(2, 3)
 };
@@ -143,8 +144,7 @@ unsigned pmic_init(void)
 	return programmed;
 }
 
-#ifndef CONFIG_SPL_BUILD
-static int pf0100_prog(void)
+int pf0100_prog(void)
 {
 	unsigned char bus = 1;
 	unsigned char val;
@@ -191,7 +191,7 @@ static int pf0100_prog(void)
 	return CMD_RET_SUCCESS;
 }
 
-static int do_pf0100_prog(cmd_tbl_t *cmdtp, int flag, int argc,
+int do_pf0100_prog(cmd_tbl_t *cmdtp, int flag, int argc,
 		char * const argv[])
 {
 	int ret;
@@ -209,4 +209,3 @@ U_BOOT_CMD(
 	"Program the OTP fuses on the PMIC PF0100",
 	""
 );
-#endif

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
  * Copyright (c) 2013 MundoReader S.L.
  * Author: Heiko Stuebner <heiko@sntech.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+ or X11
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -120,6 +121,16 @@
 		cpu_leakage: cpu_leakage@17 {
 			reg = <0x17 0x1>;
 		};
+	};
+
+	saradc: saradc@2006c000 {
+		compatible = "rockchip,saradc";
+		reg = <0x2006c000 0x100>;
+		interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
+		#io-channel-cells = <1>;
+		clocks = <&cru SCLK_SARADC>, <&cru PCLK_SARADC>;
+		clock-names = "saradc", "pclk_saradc";
+		status = "disabled";
 	};
 
 	timer3: timer@2000e000 {
@@ -544,22 +555,22 @@
 };
 
 &pwm0 {
-	pinctrl-names = "default";
+	pinctrl-names = "active";
 	pinctrl-0 = <&pwm0_out>;
 };
 
 &pwm1 {
-	pinctrl-names = "default";
+	pinctrl-names = "active";
 	pinctrl-0 = <&pwm1_out>;
 };
 
 &pwm2 {
-	pinctrl-names = "default";
+	pinctrl-names = "active";
 	pinctrl-0 = <&pwm2_out>;
 };
 
 &pwm3 {
-	pinctrl-names = "default";
+	pinctrl-names = "active";
 	pinctrl-0 = <&pwm3_out>;
 };
 

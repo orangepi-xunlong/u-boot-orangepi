@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2013-2015 Arcturus Networks, Inc.
  *           http://www.arcturusnetworks.com/products/ucp1020/
  * based on include/configs/p1_p2_rdb_pc.h
  * original copyright follows:
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -26,6 +27,7 @@
 
 #define CONFIG_BOARDNAME "uCP1020-64EE512-0U1-XR-T1"
 
+#define CONFIG_TSEC_ENET
 #define CONFIG_TSEC1
 #define CONFIG_TSEC3
 #define CONFIG_HAS_ETH0
@@ -44,6 +46,8 @@
 
 #define CONFIG_SYS_L2_SIZE	(256 << 10)
 
+#define CONFIG_LAST_STAGE_INIT
+
 #endif
 
 #if defined(CONFIG_TARGET_UCP1020)
@@ -53,6 +57,7 @@
 
 #define CONFIG_BOARDNAME_LOCAL "uCP1020-64EEE512-OU1-XR"
 
+#define CONFIG_TSEC_ENET
 #define CONFIG_TSEC1
 #define CONFIG_TSEC2
 #define CONFIG_TSEC3
@@ -76,12 +81,15 @@
 
 #define CONFIG_SYS_L2_SIZE	(256 << 10)
 
+#define CONFIG_LAST_STAGE_INIT
+
 #endif
 
 #ifdef CONFIG_SDCARD
 #define CONFIG_RAMBOOT_SDCARD
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
+#define CONFIG_SYS_TEXT_BASE		0x11000000
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
@@ -89,9 +97,13 @@
 #define CONFIG_RAMBOOT_SPIFLASH
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
+#define CONFIG_SYS_TEXT_BASE		0x11000000
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE		0xeff80000
+#endif
 #define CONFIG_SYS_TEXT_BASE_NOR	0xeff80000
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
@@ -106,7 +118,9 @@
 
 #define CONFIG_ENV_OVERWRITE
 
+#define CONFIG_SATA_SIL
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
+#define CONFIG_LIBATA
 #define CONFIG_LBA48
 
 #define CONFIG_SYS_CLK_FREQ	66666666
@@ -230,6 +244,8 @@
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 
+#define CONFIG_BOARD_EARLY_INIT_R	/* call board_early_init_r function */
+
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xffd00000 /* stack in RAM */
 /* Initial L1 address */
@@ -265,6 +281,7 @@
  * open - index 2
  * shorted - index 1
  */
+#define CONFIG_CONS_INDEX		1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -409,6 +426,7 @@
 #undef CONFIG_WATCHDOG			/* watchdog disabled */
 
 #ifdef CONFIG_MMC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
 #define CONFIG_MMC_SPI
 #endif
@@ -419,6 +437,8 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
+#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms tick */
 
@@ -468,7 +488,7 @@
 
 #endif
 
-#define CONFIG_HOSTNAME		"UCP1020"
+#define CONFIG_HOSTNAME		UCP1020
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin /* U-Boot image on TFTP server */

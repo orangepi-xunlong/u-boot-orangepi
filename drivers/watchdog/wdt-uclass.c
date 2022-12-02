@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2017 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,6 +10,8 @@
 #include <wdt.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 {

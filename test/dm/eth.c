@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2015 National Instruments
  *
  * (C) Copyright 2015
  * Joe Hershberger <joe.hershberger@ni.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -16,6 +17,8 @@
 #include <dm/uclass-internal.h>
 #include <asm/eth.h>
 #include <test/ut.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define DM_TEST_ETH_NUM		4
 
@@ -107,7 +110,6 @@ static int dm_test_eth_act(struct unit_test_state *uts)
 	char ethaddr[DM_TEST_ETH_NUM][18];
 	int i;
 
-	memset(ethaddr, '\0', sizeof(ethaddr));
 	net_ping_ip = string_to_ip("1.1.2.2");
 
 	/* Prepare the test scenario */
@@ -117,7 +119,7 @@ static int dm_test_eth_act(struct unit_test_state *uts)
 		ut_assertok(device_remove(dev[i], DM_REMOVE_NORMAL));
 
 		/* Invalidate MAC address */
-		strncpy(ethaddr[i], env_get(addrname[i]), 17);
+		strcpy(ethaddr[i], env_get(addrname[i]));
 		/* Must disable access protection for ethaddr before clearing */
 		env_set(".flags", addrname[i]);
 		env_set(addrname[i], NULL);
@@ -185,8 +187,7 @@ static int dm_test_eth_rotate(struct unit_test_state *uts)
 	net_ping_ip = string_to_ip("1.1.2.2");
 
 	/* Invalidate eth1's MAC address */
-	memset(ethaddr, '\0', sizeof(ethaddr));
-	strncpy(ethaddr, env_get("eth1addr"), 17);
+	strcpy(ethaddr, env_get("eth1addr"));
 	/* Must disable access protection for eth1addr before clearing */
 	env_set(".flags", "eth1addr");
 	env_set("eth1addr", NULL);
@@ -199,7 +200,7 @@ static int dm_test_eth_rotate(struct unit_test_state *uts)
 
 	if (!retval) {
 		/* Invalidate eth0's MAC address */
-		strncpy(ethaddr, env_get("ethaddr"), 17);
+		strcpy(ethaddr, env_get("ethaddr"));
 		/* Must disable access protection for ethaddr before clearing */
 		env_set(".flags", "ethaddr");
 		env_set("ethaddr", NULL);

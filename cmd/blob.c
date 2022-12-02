@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * Command for encapsulating/decapsulating blob of memory.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <malloc.h>
 #include <asm/byteorder.h>
 #include <linux/compiler.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * blob_decap() - Decapsulate the data as a blob

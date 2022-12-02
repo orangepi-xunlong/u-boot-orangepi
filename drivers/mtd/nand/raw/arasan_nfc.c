@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Arasan NAND Flash Controller Driver
  *
  * Copyright (C) 2014 - 2015 Xilinx, Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>

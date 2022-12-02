@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2015 Realtek Semiconductor Corp. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  *
  */
 
@@ -10,7 +11,6 @@
 #include <malloc.h>
 #include <memalign.h>
 #include <usb.h>
-#include <usb/lin_gadget_compat.h>
 #include <linux/mii.h>
 #include <linux/bitops.h>
 #include "usb_ether.h"

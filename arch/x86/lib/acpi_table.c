@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Based on acpi.c from coreboot
  *
  * Copyright (C) 2015, Saket Sinha <saket.sinha89@gmail.com>
  * Copyright (C) 2016, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -25,9 +26,6 @@
  * to a C array AmlCode[] (see dsdt.c).
  */
 extern const unsigned char AmlCode[];
-
-/* ACPI RSDP address to be used in boot parameters */
-static ulong acpi_rsdp_addr;
 
 static void acpi_write_rsdp(struct acpi_rsdp *rsdp, struct acpi_rsdt *rsdt,
 			    struct acpi_xsdt *xsdt)
@@ -359,7 +357,8 @@ void enter_acpi_mode(int pm1_cnt)
 }
 
 /*
- * QEMU's version of write_acpi_tables is defined in drivers/misc/qfw.c
+ * QEMU's version of write_acpi_tables is defined in
+ * arch/x86/cpu/qemu/acpi_table.c
  */
 ulong write_acpi_tables(ulong start)
 {
@@ -462,7 +461,6 @@ ulong write_acpi_tables(ulong start)
 
 	debug("current = %x\n", current);
 
-	acpi_rsdp_addr = (unsigned long)rsdp;
 	debug("ACPI: done\n");
 
 	/* Don't touch ACPI hardware on HW reduced platforms */
@@ -476,11 +474,6 @@ ulong write_acpi_tables(ulong start)
 	enter_acpi_mode(fadt->pm1a_cnt_blk);
 
 	return current;
-}
-
-ulong acpi_get_rsdp_addr(void)
-{
-	return acpi_rsdp_addr;
 }
 
 static struct acpi_rsdp *acpi_valid_rsdp(struct acpi_rsdp *rsdp)

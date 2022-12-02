@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_MVEBU_ARMADA_8K_H
@@ -10,6 +11,10 @@
  * High Level Configuration Options (easy to change)
  */
 #define CONFIG_SYS_TCLK		250000000	/* 250MHz */
+
+#define CONFIG_DISPLAY_BOARDINFO_LATE
+
+#define	CONFIG_SYS_TEXT_BASE	0x00000000
 
 /* additions for new ARM relocation support */
 #define CONFIG_SYS_SDRAM_BASE	0x00000000
@@ -41,12 +46,17 @@
 /*
  * Other required minimal configurations
  */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
 #define CONFIG_ARCH_CPU_INIT		/* call arch_cpu_init() */
 #define CONFIG_SYS_LOAD_ADDR	0x00800000	/* default load adr- 8M */
 #define CONFIG_SYS_MEMTEST_START 0x00800000	/* 8M */
 #define CONFIG_SYS_MEMTEST_END	0x00ffffff	/*(_16M -1) */
 #define CONFIG_SYS_RESET_ADDRESS 0xffff0000	/* Rst Vector Adr */
 #define CONFIG_SYS_MAXARGS	32	/* max number of command args */
+
+#define CONFIG_SYS_ALT_MEMTEST
 
 /* End of 16M scrubbed by training in bootrom */
 #define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SYS_TEXT_BASE + 0xFF0000)
@@ -61,6 +71,11 @@
 #define CONFIG_SF_DEFAULT_SPEED		1000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define CONFIG_ENV_SPI_MODE		CONFIG_SF_DEFAULT_MODE
+
+/* Environment in SPI NOR flash */
+#ifdef CONFIG_MVEBU_SPI_BOOT
+/* Environment in NAND flash */
+#endif
 
 #define CONFIG_ENV_OFFSET		0x180000 /* as Marvell U-Boot version */
 #define CONFIG_ENV_SIZE			(64 << 10) /* 64KiB */
@@ -85,7 +100,9 @@
 /*
  * SATA/SCSI/AHCI configuration
  */
+#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
+#define CONFIG_LIBATA
 #define CONFIG_LBA48
 #define CONFIG_SYS_64BIT_LBA
 
@@ -94,30 +111,13 @@
 #define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
 					 CONFIG_SYS_SCSI_MAX_LUN)
 
+#define CONFIG_SUPPORT_VFAT
+
 /*
  * PCI configuration
  */
 #ifdef CONFIG_PCIE_DW_MVEBU
 #define CONFIG_E1000
 #endif
-
-#define BOOT_TARGET_DEVICES(func) \
-	func(MMC, mmc, 1) \
-	func(MMC, mmc, 0) \
-	func(USB, usb, 0) \
-	func(SCSI, scsi, 0) \
-	func(PXE, pxe, na) \
-	func(DHCP, dhcp, na)
-
-#include <config_distro_bootcmd.h>
-
-#define CONFIG_EXTRA_ENV_SETTINGS	\
-	"scriptaddr=0x4d00000\0"	\
-	"pxefile_addr_r=0x4e00000\0"	\
-	"fdt_addr_r=0x4f00000\0"	\
-	"kernel_addr_r=0x5000000\0"	\
-	"ramdisk_addr_r=0x8000000\0"	\
-	"fdtfile=marvell/" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0" \
-	BOOTENV
 
 #endif /* _CONFIG_MVEBU_ARMADA_8K_H */

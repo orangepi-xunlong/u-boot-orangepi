@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013, Andreas Oetken.
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
 #include <common.h>
+#include <crypto.h>
 #include <fdtdec.h>
 #include <asm/byteorder.h>
 #include <linux/errno.h>
@@ -15,9 +17,9 @@
 #endif
 #include <u-boot/rsa.h>
 
-int hash_calculate(const char *name,
-		    const struct image_region region[],
-		    int region_count, uint8_t *checksum)
+int rsa_hash_calculate(const char *name,
+		       const struct image_region region[],
+		       int region_count, uint8_t *checksum)
 {
 	struct hash_algo *algo;
 	int ret = 0;
@@ -48,4 +50,51 @@ int hash_calculate(const char *name,
 		return ret;
 
 	return 0;
+}
+
+#if !defined(USE_HOSTCC)
+#if CONFIG_IS_ENABLED(FIT_HW_CRYPTO)
+int hw_rsa_hash_calculate(const char *name,
+			  const struct image_region region[],
+			  int region_count, uint8_t *checksum)
+
+{
+	struct udevice *dev;
+	sha_context ctx;
+
+	if (!name)
+		return -EINVAL;
+
+	if (!strcmp(name, "sha1"))
+		ctx.algo = CRYPTO_SHA1;
+	else if (!strcmp(name, "sha256"))
+		ctx.algo = CRYPTO_SHA256;
+	else
+		return -EPERM;
+
+	dev = crypto_get_device(ctx.algo);
+	if (!dev) {
+		printf("No crypto device for expected capability\n");
+		return -ENODEV;
+	}
+
+	return crypto_sha_regions_csum(dev, &ctx, region,
+				       region_count, checksum);
+}
+#endif
+#endif
+
+int hash_calculate(const char *name,
+		   const struct image_region region[],
+		   int region_count, uint8_t *checksum)
+{
+#if defined(USE_HOSTCC)
+	return rsa_hash_calculate(name, region, region_count, checksum);
+#else
+#if !CONFIG_IS_ENABLED(FIT_HW_CRYPTO)
+	return rsa_hash_calculate(name, region, region_count, checksum);
+#else
+	return hw_rsa_hash_calculate(name, region, region_count, checksum);
+#endif
+#endif
 }

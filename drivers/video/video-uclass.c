@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,6 +10,9 @@
 #include <stdio_dev.h>
 #include <video.h>
 #include <video_console.h>
+#ifdef CONFIG_DRM_ROCKCHIP
+#include <video_rockchip.h>
+#endif
 #include <dm/lists.h>
 #include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
@@ -68,10 +72,24 @@ static ulong alloc_fb(struct udevice *dev, ulong *addrp)
 
 int video_reserve(ulong *addrp)
 {
+#ifndef CONFIG_DRM_ROCKCHIP
 	struct udevice *dev;
+#endif
 	ulong size;
 
 	gd->video_top = *addrp;
+#ifdef CONFIG_DRM_ROCKCHIP
+	int cubic_lut_step = CONFIG_ROCKCHIP_CUBIC_LUT_SIZE;
+	/* This is depend on IC designed */
+	ulong cubic_lut_size = (cubic_lut_step * cubic_lut_step * cubic_lut_step + 1) / 2 * 16;
+	/* Max support 4 cubic lut */
+	cubic_lut_size = roundup(cubic_lut_size, PAGE_SIZE) << 2;
+
+	size = DRM_ROCKCHIP_FB_SIZE + MEMORY_POOL_SIZE + cubic_lut_size;
+	*addrp = *addrp - size;
+	*addrp &= ~((1 << 20) - 1);
+	debug("Reserving %lx Bytes for video at: %lx\n", size, *addrp);
+#else
 	for (uclass_find_first_device(UCLASS_VIDEO, &dev);
 	     dev;
 	     uclass_find_next_device(&dev)) {
@@ -79,6 +97,7 @@ int video_reserve(ulong *addrp)
 		debug("%s: Reserving %lx bytes at %lx for video device '%s'\n",
 		      __func__, size, *addrp, dev->name);
 	}
+#endif
 	gd->video_bottom = *addrp;
 	debug("Video frame buffers from %lx to %lx\n", gd->video_bottom,
 	      gd->video_top);
@@ -86,45 +105,21 @@ int video_reserve(ulong *addrp)
 	return 0;
 }
 
-void video_clear(struct udevice *dev)
+static int video_clear(struct udevice *dev)
 {
 	struct video_priv *priv = dev_get_uclass_priv(dev);
 
-	switch (priv->bpix) {
-	case VIDEO_BPP16: {
-		u16 *ppix = priv->fb;
-		u16 *end = priv->fb + priv->fb_size;
-
-		while (ppix < end)
-			*ppix++ = priv->colour_bg;
-		break;
-	}
-	case VIDEO_BPP32: {
+	if (priv->bpix == VIDEO_BPP32) {
 		u32 *ppix = priv->fb;
 		u32 *end = priv->fb + priv->fb_size;
 
 		while (ppix < end)
 			*ppix++ = priv->colour_bg;
-		break;
-	}
-	default:
+	} else {
 		memset(priv->fb, priv->colour_bg, priv->fb_size);
-		break;
 	}
-}
 
-void video_set_default_colors(struct video_priv *priv)
-{
-#ifdef CONFIG_SYS_WHITE_ON_BLACK
-	/* White is used when switching to bold, use light gray here */
-	priv->fg_col_idx = VID_LIGHT_GRAY;
-	priv->colour_fg = vid_console_color(priv, VID_LIGHT_GRAY);
-	priv->colour_bg = vid_console_color(priv, VID_BLACK);
-#else
-	priv->fg_col_idx = VID_BLACK;
-	priv->colour_fg = vid_console_color(priv, VID_BLACK);
-	priv->colour_bg = vid_console_color(priv, VID_WHITE);
-#endif
+	return 0;
 }
 
 /* Flush video activity to the caches */
@@ -216,11 +211,13 @@ static int video_post_probe(struct udevice *dev)
 	priv->line_length = priv->xsize * VNBYTES(priv->bpix);
 	priv->fb_size = priv->line_length * priv->ysize;
 
-	/* Set up colors  */
-	video_set_default_colors(priv);
-
-	if (!CONFIG_IS_ENABLED(NO_FB_CLEAR))
-		video_clear(dev);
+	/* Set up colours - we could in future support other colours */
+#ifdef CONFIG_SYS_WHITE_ON_BLACK
+	priv->colour_fg = 0xffffff;
+#else
+	priv->colour_bg = 0xffffff;
+#endif
+	video_clear(dev);
 
 	/*
 	 * Create a text console device. For now we always do this, although
@@ -271,7 +268,7 @@ static int video_post_bind(struct udevice *dev)
 	ulong size;
 
 	/* Before relocation there is nothing to do here */
-	if (!(gd->flags & GD_FLG_RELOC))
+	if ((!gd->flags & GD_FLG_RELOC))
 		return 0;
 	size = alloc_fb(dev, &addr);
 	if (addr < gd->video_bottom) {

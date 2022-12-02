@@ -9,9 +9,7 @@
 #ifndef __CHARSET_H_
 #define __CHARSET_H_
 
-#include <linux/types.h>
-
-#define MAX_UTF8_PER_UTF16 3
+#define MAX_UTF8_PER_UTF16 4
 
 /**
  * utf16_strlen() - Get the length of an utf16 string
@@ -54,7 +52,7 @@ uint16_t *utf16_strdup(const uint16_t *s);
  * Converts 'size' characters of the utf16 string 'src' to utf8
  * written to the 'dest' buffer.
  *
- * NOTE that a single utf16 character can generate up to 3 utf8
+ * NOTE that a single utf16 character can generate up to 4 utf8
  * characters.  See MAX_UTF8_PER_UTF16.
  *
  * @dest   the destination buffer to write the utf8 characters
@@ -63,18 +61,5 @@ uint16_t *utf16_strdup(const uint16_t *s);
  * @return the pointer to the first unwritten byte in 'dest'
  */
 uint8_t *utf16_to_utf8(uint8_t *dest, const uint16_t *src, size_t size);
-
-/**
- * utf8_to_utf16() - Convert an utf8 string to utf16
- *
- * Converts up to 'size' characters of the utf16 string 'src' to utf8
- * written to the 'dest' buffer. Stops at 0x00.
- *
- * @dest   the destination buffer to write the utf8 characters
- * @src    the source utf16 string
- * @size   maximum number of utf16 characters to convert
- * @return the pointer to the first unwritten byte in 'dest'
- */
-uint16_t *utf8_to_utf16(uint16_t *dest, const uint8_t *src, size_t size);
 
 #endif /* __CHARSET_H_ */

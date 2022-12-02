@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Freescale Semiconductor, Inc
  * Peng Fan <Peng.Fan@freescale.com>
+ *
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #include <common.h>
@@ -12,6 +13,8 @@
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/pfuze100_pmic.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static const struct pmic_child_info pmic_children_info[] = {
 	/* sw[x], swbst */

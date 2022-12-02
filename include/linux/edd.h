@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * linux/include/linux/edd.h
  *  Copyright (C) 2002, 2003, 2004 Dell Inc.
@@ -17,6 +16,8 @@
  * transferred into the edd structure, and in drivers/firmware/edd.c, that
  * information is used to identify BIOS boot disk.  The code in setup.S
  * is very sensitive to the size of these structures.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 #ifndef _LINUX_EDD_H
 #define _LINUX_EDD_H

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
@@ -6,6 +5,8 @@
  * (C) Copyright 2008
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "imagetool.h"
@@ -515,11 +516,11 @@ static void print_hdr_v2(struct imx_header *imx_hdr)
 			offs = (char *)&hdr_v2->data.dcd_table
 				- (char *)hdr_v2;
 
-			printf("HAB Blocks:   0x%08x 0x%08x 0x%08x\n",
+			printf("HAB Blocks:   %08x %08x %08x\n",
 			       (uint32_t)fhdr_v2->self, 0,
 			       hdr_v2->boot_data.size - imximage_ivt_offset -
 			       imximage_csf_size);
-			printf("DCD Blocks:   0x00910000 0x%08x 0x%08x\n",
+			printf("DCD Blocks:   00910000 %08x %08x\n",
 			       offs, be16_to_cpu(dcdlen));
 		}
 	} else {

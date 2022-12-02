@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Cirrus Logic CS8900A Ethernet
  *
@@ -21,6 +20,8 @@
  * target board.  Anything with a CL-PS7111 or EP7211 should be able to run
  * this code in bootstrap mode.  All the board specifics can be handled on
  * the host.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

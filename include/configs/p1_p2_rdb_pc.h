@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -69,9 +70,10 @@
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_FLASH_CFI_MTD
+#define MTDIDS_DEFAULT "nor0=ec000000.nor"
+#define MTDPARTS_DEFAULT "mtdparts=ec000000.nor:128k(dtb),6016k(kernel)," \
+			"57088k(fs),1m(vsc7385-firmware),1280k(u-boot)"
 #endif
 
 #if defined(CONFIG_TARGET_P1021RDB)
@@ -91,9 +93,18 @@
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_FLASH_CFI_MTD
+#ifdef CONFIG_PHYS_64BIT
+#define MTDIDS_DEFAULT "nor0=fef000000.nor"
+#define MTDPARTS_DEFAULT "mtdparts=fef000000.nor:256k(vsc7385-firmware)," \
+			"256k(dtb),4608k(kernel),9728k(fs)," \
+			"256k(qe-ucode-firmware),1280k(u-boot)"
+#else
+#define MTDIDS_DEFAULT "nor0=ef000000.nor"
+#define MTDPARTS_DEFAULT "mtdparts=ef000000.nor:256k(vsc7385-firmware)," \
+			"256k(dtb),4608k(kernel),9728k(fs)," \
+			"256k(qe-ucode-firmware),1280k(u-boot)"
+#endif
 #endif
 
 #if defined(CONFIG_TARGET_P1024RDB)
@@ -138,14 +149,23 @@
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_FLASH_CFI_MTD
+#ifdef CONFIG_PHYS_64BIT
+#define MTDIDS_DEFAULT "nor0=fef000000.nor"
+#define MTDPARTS_DEFAULT "mtdparts=fef000000.nor:256k(vsc7385-firmware)," \
+			"256k(dtb),4608k(kernel),9984k(fs),1280k(u-boot)"
+#else
+#define MTDIDS_DEFAULT "nor0=ef000000.nor"
+#define MTDPARTS_DEFAULT "mtdparts=ef000000.nor:256k(vsc7385-firmware)," \
+			"256k(dtb),4608k(kernel),9984k(fs),1280k(u-boot)"
+#endif
 #endif
 
 #ifdef CONFIG_SDCARD
+#define CONFIG_SPL_MMC_MINIMAL
 #define CONFIG_SPL_FLUSH_IMAGE
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+#define CONFIG_SYS_TEXT_BASE		0x11001000
 #define CONFIG_SPL_TEXT_BASE		0xf8f81000
 #define CONFIG_SPL_PAD_TO		0x20000
 #define CONFIG_SPL_MAX_SIZE		(128 * 1024)
@@ -165,6 +185,7 @@
 #define CONFIG_SPL_SPI_FLASH_MINIMAL
 #define CONFIG_SPL_FLUSH_IMAGE
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+#define CONFIG_SYS_TEXT_BASE		0x11001000
 #define CONFIG_SPL_TEXT_BASE		0xf8f81000
 #define CONFIG_SPL_PAD_TO		0x20000
 #define CONFIG_SPL_MAX_SIZE		(128 * 1024)
@@ -208,7 +229,12 @@
 #define CONFIG_SPL_PAD_TO		0x20000
 #define CONFIG_TPL_PAD_TO		0x20000
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+#define CONFIG_SYS_TEXT_BASE		0x11001000
 #define CONFIG_SYS_LDSCRIPT	"arch/powerpc/cpu/mpc85xx/u-boot-nand.lds"
+#endif
+
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE		0xeff40000
 #endif
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
@@ -232,9 +258,12 @@
 #define CONFIG_FSL_PCIE_RESET	/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT	/* enable 64-bit PCI resources */
 
+#define CONFIG_TSEC_ENET	/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
+#define CONFIG_SATA_SIL
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
+#define CONFIG_LIBATA
 #define CONFIG_LBA48
 
 #if defined(CONFIG_TARGET_P2020RDB)
@@ -425,6 +454,8 @@
 #endif
 #endif /* CONFIG_NAND_FSL_ELBC */
 
+#define CONFIG_BOARD_EARLY_INIT_R	/* call board_early_init_r function */
+
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xffd00000 /* stack in RAM */
 #ifdef CONFIG_PHYS_64BIT
@@ -550,6 +581,7 @@
  * open - index 2
  * shorted - index 1
  */
+#define CONFIG_CONS_INDEX		1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -766,7 +798,6 @@
 #ifdef CONFIG_USB_EHCI_HCD
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_EHCI_FSL
-#define CONFIG_EHCI_DESC_BIG_ENDIAN
 #endif
 #endif
 
@@ -775,6 +806,7 @@
 #endif
 
 #ifdef CONFIG_MMC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
 #endif
 
@@ -783,6 +815,8 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
+#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -800,7 +834,7 @@
 /*
  * Environment Configuration
  */
-#define CONFIG_HOSTNAME		"unknown"
+#define CONFIG_HOSTNAME		unknown
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin /* U-Boot image on TFTP server */

@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MVEBU_CPU_H
@@ -64,7 +65,6 @@ enum {
 	MVEBU_SOC_AXP,
 	MVEBU_SOC_A375,
 	MVEBU_SOC_A38X,
-	MVEBU_SOC_MSYS,
 	MVEBU_SOC_UNKNOWN,
 };
 

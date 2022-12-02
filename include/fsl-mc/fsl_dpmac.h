@@ -1,38 +1,37 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale Layerscape MC I/O wrapper
  *
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
- * Copyright 2017 NXP
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.
  * Author: Prabhakar Kushwaha <prabhakar@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_DPMAC_H
 #define __FSL_DPMAC_H
 
 /* DPMAC Version */
-#define DPMAC_VER_MAJOR				4
+#define DPMAC_VER_MAJOR				3
 #define DPMAC_VER_MINOR				2
 
 /* Command IDs */
-#define DPMAC_CMDID_CLOSE			0x8001
-#define DPMAC_CMDID_OPEN			0x80c1
-#define DPMAC_CMDID_CREATE			0x90c1
-#define DPMAC_CMDID_DESTROY			0x98c1
-#define DPMAC_CMDID_GET_API_VERSION             0xa0c1
+#define DPMAC_CMDID_CLOSE			0x800
+#define DPMAC_CMDID_OPEN			0x80c
+#define DPMAC_CMDID_CREATE			0x90c
+#define DPMAC_CMDID_DESTROY			0x900
 
-#define DPMAC_CMDID_GET_ATTR			0x0041
-#define DPMAC_CMDID_RESET			0x0051
+#define DPMAC_CMDID_GET_ATTR			0x004
+#define DPMAC_CMDID_RESET			0x005
 
-#define DPMAC_CMDID_MDIO_READ			0x0c01
-#define DPMAC_CMDID_MDIO_WRITE			0x0c11
-#define DPMAC_CMDID_GET_LINK_CFG		0x0c21
-#define DPMAC_CMDID_SET_LINK_STATE		0x0c31
-#define DPMAC_CMDID_GET_COUNTER			0x0c41
+#define DPMAC_CMDID_MDIO_READ			0x0c0
+#define DPMAC_CMDID_MDIO_WRITE			0x0c1
+#define DPMAC_CMDID_GET_LINK_CFG		0x0c2
+#define DPMAC_CMDID_SET_LINK_STATE		0x0c3
+#define DPMAC_CMDID_GET_COUNTER			0x0c4
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_CREATE(cmd, cfg) \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t,      cfg->mac_id)
+	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->mac_id)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_OPEN(cmd, dpmac_id) \
@@ -43,6 +42,8 @@
 do { \
 	MC_RSP_OP(cmd, 0, 0,  32, int,			attr->phy_id);\
 	MC_RSP_OP(cmd, 0, 32, 32, int,			attr->id);\
+	MC_RSP_OP(cmd, 1, 0,  16, uint16_t,		attr->version.major);\
+	MC_RSP_OP(cmd, 1, 16, 16, uint16_t,		attr->version.minor);\
 	MC_RSP_OP(cmd, 1, 32,  8, enum dpmac_link_type,	attr->link_type);\
 	MC_RSP_OP(cmd, 1, 40,  8, enum dpmac_eth_if,	attr->eth_if);\
 	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,		attr->max_rate);\
@@ -84,7 +85,7 @@ do { \
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_GET_COUNTER(cmd, type) \
-	MC_CMD_OP(cmd, 1, 0,  64, enum dpmac_counter, type)
+	MC_CMD_OP(cmd, 0, 0,  8, enum dpmac_counter, type)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_RSP_GET_COUNTER(cmd, counter) \
@@ -186,10 +187,9 @@ struct dpmac_cfg {
 /**
  * dpmac_create() - Create the DPMAC object.
  * @mc_io:	Pointer to MC portal's I/O object
- * @token:	Authentication token.
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @obj_id:	Returned obj_id; use in subsequent API calls
+ * @token:	Returned token; use in subsequent API calls
  *
  * Create the DPMAC object, allocate required resources and
  * perform required initialization.
@@ -206,24 +206,21 @@ struct dpmac_cfg {
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpmac_create(struct fsl_mc_io	*mc_io,
-		 uint16_t		token,
 		 uint32_t		cmd_flags,
 		 const struct dpmac_cfg	*cfg,
-		 uint32_t		*obj_id);
+		 uint16_t		*token);
 
 /**
  * dpmac_destroy() - Destroy the DPMAC object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
- * @token:	Authentication token.
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @obj_id:	DPMAC object id
+ * @token:	Token of DPMAC object
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpmac_destroy(struct fsl_mc_io	*mc_io,
-		  uint16_t		token,
 		  uint32_t		cmd_flags,
-		  uint32_t		obj_id);
+		  uint16_t		token);
 
 /* DPMAC IRQ Index and Events */
 
@@ -249,6 +246,15 @@ struct dpmac_attr {
 	enum dpmac_link_type	link_type;
 	enum dpmac_eth_if	eth_if;
 	uint32_t		max_rate;
+	/**
+	 * struct version - Structure representing DPMAC version
+	 * @major:	DPMAC major version
+	 * @minor:	DPMAC minor version
+	 */
+	struct {
+		uint16_t major;
+		uint16_t minor;
+	} version;
 };
 
 /**
@@ -458,19 +464,5 @@ int dpmac_get_counter(struct fsl_mc_io		*mc_io,
 		      uint16_t			token,
 		      enum dpmac_counter	 type,
 		      uint64_t			*counter);
-/**
- * dpmac_get_api_version - Retrieve DPMAC Major and Minor version info.
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @major_ver:	DPMAC major version
- * @minor_ver:	DPMAC minor version
- *
- * Return:     '0' on Success; Error code otherwise.
- */
-int dpmac_get_api_version(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t *major_ver,
-			  uint16_t *minor_ver);
 
 #endif /* __FSL_DPMAC_H */

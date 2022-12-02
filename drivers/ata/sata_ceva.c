@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 - 2016 Xilinx, Inc.
  * Michal Simek <michal.simek@xilinx.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <dm.h>
@@ -112,16 +113,11 @@ static int ceva_init_sata(ulong mmio)
 
 static int sata_ceva_probe(struct udevice *dev)
 {
-	int ret;
 	struct scsi_platdata *plat = dev_get_uclass_platdata(dev);
 
 	ceva_init_sata(plat->base);
 
-	ret = ahci_init_one_dm(dev);
-	if (ret)
-		return ret;
-
-	return ahci_start_ports_dm(dev);
+	return achi_init_one_dm(dev);
 }
 
 static const struct udevice_id sata_ceva_ids[] = {

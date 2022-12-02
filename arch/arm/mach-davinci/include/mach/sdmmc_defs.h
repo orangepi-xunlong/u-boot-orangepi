@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Davinci MMC Controller Defines - Based on Linux davinci_mmc.c
  *
  * Copyright (C) 2010 Texas Instruments Incorporated
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SDMMC_DEFS_H_

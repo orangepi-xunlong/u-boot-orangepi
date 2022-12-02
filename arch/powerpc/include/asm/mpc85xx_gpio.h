@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2010 eXMeritus, A Boeing Company
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef POWERPC_ASM_MPC85XX_GPIO_H_

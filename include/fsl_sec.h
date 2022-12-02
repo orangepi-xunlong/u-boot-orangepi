@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common internal memory map for some Freescale SoCs
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FSL_SEC_H
@@ -66,9 +67,6 @@ struct rng4tst {
 	};
 	u32 rsvd1[40];
 #define RNG_STATE0_HANDLE_INSTANTIATED	0x00000001
-#define RNG_STATE1_HANDLE_INSTANTIATED	0x00000002
-#define RNG_STATE_HANDLE_MASK	\
-	(RNG_STATE0_HANDLE_INSTANTIATED | RNG_STATE1_HANDLE_INSTANTIATED)
 	u32 rdsta;		/*RNG DRNG Status Register*/
 	u32 rsvd2[15];
 };
@@ -217,8 +215,6 @@ struct sg_entry {
 #define SG_ENTRY_OFFSET_SHIFT	0
 };
 
-#define BLOB_SIZE(x)		((x) + 32 + 16) /* Blob buffer size */
-
 #if defined(CONFIG_MX6) || defined(CONFIG_MX7)
 /* Job Ring Base Address */
 #define JR_BASE_ADDR(x) (CONFIG_SYS_FSL_SEC_ADDR + 0x1000 * (x + 1))
@@ -277,6 +273,8 @@ struct sg_entry {
 #define KS_G1			(1 << JR_MID)   /* CAAM only */
 #define PERM			0x0000B008      /* Clear on release, lock SMAP
 						 * lock SMAG group 1 Blob */
+
+#define BLOB_SIZE(x)       (x + 32 + 16) /* Blob buffer size */
 
 /* HAB WRAPPED KEY header */
 #define WRP_HDR_SIZE		0x08

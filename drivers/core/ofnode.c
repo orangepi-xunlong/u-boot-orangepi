@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -53,6 +54,21 @@ int ofnode_read_s32_default(ofnode node, const char *propname, s32 def)
 	ofnode_read_u32(node, propname, (u32 *)&def);
 
 	return def;
+}
+
+int ofnode_read_u64(ofnode node, const char *propname, u64 *outp)
+{
+	assert(ofnode_valid(node));
+	debug("%s: %s: ", __func__, propname);
+
+	if (ofnode_is_np(node)) {
+		return of_property_read_u64(ofnode_to_np(node), propname, outp);
+	} else {
+		printf("%s: not implement\n", __func__);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 bool ofnode_read_bool(ofnode node, const char *propname)
@@ -144,6 +160,21 @@ int ofnode_read_u32_array(ofnode node, const char *propname,
 	}
 }
 
+int ofnode_write_u32_array(ofnode node, const char *propname,
+			   u32 *values, size_t sz)
+{
+	assert(ofnode_valid(node));
+	debug("%s: %s: ", __func__, propname);
+
+	if (ofnode_is_np(node)) {
+		return of_write_u32_array(ofnode_to_np(node), propname,
+					 values, sz);
+	} else {
+		return fdt_setprop((void *)gd->fdt_blob, ofnode_to_offset(node),
+				   propname, values, sz);
+	}
+}
+
 ofnode ofnode_first_subnode(ofnode node)
 {
 	assert(ofnode_valid(node));
@@ -180,7 +211,10 @@ ofnode ofnode_get_parent(ofnode node)
 
 const char *ofnode_get_name(ofnode node)
 {
-	assert(ofnode_valid(node));
+	if(!ofnode_valid(node)){
+		debug("%s node not valid\n", __func__);
+		return NULL;
+	}
 	if (ofnode_is_np(node))
 		return strrchr(node.np->full_name, '/') + 1;
 
@@ -226,21 +260,13 @@ fdt_addr_t ofnode_get_addr_index(ofnode node, int index)
 		uint flags;
 		u64 size;
 		int na;
-		int ns;
 
 		prop_val = of_get_address(ofnode_to_np(node), index, &size,
 					  &flags);
 		if (!prop_val)
 			return FDT_ADDR_T_NONE;
-
-		ns = of_n_size_cells(ofnode_to_np(node));
-
-		if (IS_ENABLED(CONFIG_OF_TRANSLATE) && ns > 0) {
-			return of_translate_address(ofnode_to_np(node), prop_val);
-		} else {
-			na = of_n_addr_cells(ofnode_to_np(node));
-			return of_read_number(prop_val, na);
-		}
+		na = of_n_addr_cells(ofnode_to_np(node));
+		return of_read_number(prop_val, na);
 	} else {
 		return fdt_get_base_address(gd->fdt_blob,
 					    ofnode_to_offset(node));
@@ -330,8 +356,7 @@ int ofnode_parse_phandle_with_args(ofnode node, const char *list_name,
 		int ret;
 
 		ret = of_parse_phandle_with_args(ofnode_to_np(node),
-						 list_name, cells_name, index,
-						 &args);
+				list_name, cells_name, index, &args);
 		if (ret)
 			return ret;
 		ofnode_from_of_phandle_args(&args, out_args);
@@ -340,9 +365,8 @@ int ofnode_parse_phandle_with_args(ofnode node, const char *list_name,
 		int ret;
 
 		ret = fdtdec_parse_phandle_with_args(gd->fdt_blob,
-						     ofnode_to_offset(node),
-						     list_name, cells_name,
-						     cell_count, index, &args);
+				ofnode_to_offset(node), list_name, cells_name,
+				cell_count, index, &args);
 		if (ret)
 			return ret;
 		ofnode_from_fdtdec_phandle_args(&args, out_args);
@@ -488,6 +512,54 @@ const void *ofnode_get_property(ofnode node, const char *propname, int *lenp)
 				   propname, lenp);
 }
 
+int ofnode_get_first_property(ofnode node, struct ofprop *prop)
+{
+	prop->node = node;
+
+	if (ofnode_is_np(node)) {
+		prop->prop = of_get_first_property(ofnode_to_np(prop->node));
+		if (!prop->prop)
+			return -FDT_ERR_NOTFOUND;
+	} else {
+		prop->offset =
+			fdt_first_property_offset(gd->fdt_blob,
+						  ofnode_to_offset(prop->node));
+		if (prop->offset < 0)
+			return prop->offset;
+	}
+
+	return 0;
+}
+
+int ofnode_get_next_property(struct ofprop *prop)
+{
+	if (ofnode_is_np(prop->node)) {
+		prop->prop = of_get_next_property(ofnode_to_np(prop->node),
+						  prop->prop);
+		if (!prop->prop)
+			return -FDT_ERR_NOTFOUND;
+	} else {
+		prop->offset = fdt_next_property_offset(gd->fdt_blob,
+							prop->offset);
+		if (prop->offset  < 0)
+			return prop->offset;
+	}
+
+	return 0;
+}
+
+const void *ofnode_get_property_by_prop(const struct ofprop *prop,
+					const char **propname, int *lenp)
+{
+	if (ofnode_is_np(prop->node))
+		return of_get_property_by_prop(ofnode_to_np(prop->node),
+					       prop->prop, propname, lenp);
+	else
+		return fdt_getprop_by_offset(gd->fdt_blob,
+					     prop->offset,
+					     propname, lenp);
+}
+
 bool ofnode_is_available(ofnode node)
 {
 	if (ofnode_is_np(node))
@@ -570,10 +642,10 @@ int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
 				addr->phys_mid = fdt32_to_cpu(cell[1]);
 				addr->phys_lo = fdt32_to_cpu(cell[1]);
 				break;
+			} else {
+				cell += (FDT_PCI_ADDR_CELLS +
+					 FDT_PCI_SIZE_CELLS);
 			}
-
-			cell += (FDT_PCI_ADDR_CELLS +
-				 FDT_PCI_SIZE_CELLS);
 		}
 
 		if (i == num) {
@@ -582,9 +654,9 @@ int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
 		}
 
 		return 0;
+	} else {
+		ret = -EINVAL;
 	}
-
-	ret = -EINVAL;
 
 fail:
 	debug("(not found)\n");

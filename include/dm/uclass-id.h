@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_UCLASS_ID_H
@@ -18,7 +19,6 @@ enum uclass_id {
 	UCLASS_TEST_FDT,
 	UCLASS_TEST_BUS,
 	UCLASS_TEST_PROBE,
-	UCLASS_TEST_DUMMY,
 	UCLASS_SPI_EMUL,	/* sandbox SPI device emulator */
 	UCLASS_I2C_EMUL,	/* sandbox I2C device emulator */
 	UCLASS_PCI_EMUL,	/* sandbox PCI device emulator */
@@ -31,10 +31,11 @@ enum uclass_id {
 	UCLASS_BLK,		/* Block device */
 	UCLASS_CLK,		/* Clock source, e.g. used by peripherals */
 	UCLASS_CPU,		/* CPU, typically part of an SoC */
+	UCLASS_AMP,		/* Asymmetric Multi-Processing */
+	UCLASS_CODEC,		/* audio codec */
 	UCLASS_CROS_EC,		/* Chrome OS EC */
 	UCLASS_DISPLAY,		/* Display (e.g. DisplayPort, HDMI) */
 	UCLASS_DMA,		/* Direct Memory Access */
-	UCLASS_EFI,		/* EFI managed devices */
 	UCLASS_ETH,		/* Ethernet device */
 	UCLASS_GPIO,		/* Bank of general-purpose I/O pins */
 	UCLASS_FIRMWARE,	/* Firmware */
@@ -42,6 +43,7 @@ enum uclass_id {
 	UCLASS_I2C_EEPROM,	/* I2C EEPROM device */
 	UCLASS_I2C_GENERIC,	/* Generic I2C device */
 	UCLASS_I2C_MUX,		/* I2C multiplexer */
+	UCLASS_I2S,		/* I2S bus */
 	UCLASS_IDE,		/* IDE device */
 	UCLASS_IRQ,		/* Interrupt controller */
 	UCLASS_KEYBOARD,	/* Keyboard input device */
@@ -53,6 +55,7 @@ enum uclass_id {
 	UCLASS_MMC,		/* SD / MMC card or chip */
 	UCLASS_MOD_EXP,		/* RSA Mod Exp device */
 	UCLASS_MTD,		/* Memory Technology Device (MTD) device */
+	UCLASS_NOP,		/* No-op devices */
 	UCLASS_NORTHBRIDGE,	/* Intel Northbridge / SDRAM controller */
 	UCLASS_NVME,		/* NVM Express device */
 	UCLASS_PANEL,		/* Display panel, such as an LCD */
@@ -71,7 +74,10 @@ enum uclass_id {
 	UCLASS_REGULATOR,	/* Regulator device */
 	UCLASS_REMOTEPROC,	/* Remote Processor device */
 	UCLASS_RESET,		/* Reset controller device */
+	UCLASS_RKNAND,		/* Rockchip nand device with ftl */
+	UCLASS_RAMDISK,		/* Virtual ram disk */
 	UCLASS_RTC,		/* Real time clock device */
+	UCLASS_SCMI_AGENT,	/* Interface with an SCMI server */
 	UCLASS_SCSI,		/* SCSI device */
 	UCLASS_SERIAL,		/* Serial UART */
 	UCLASS_SPI,		/* SPI bus */
@@ -86,11 +92,27 @@ enum uclass_id {
 	UCLASS_USB,		/* USB bus */
 	UCLASS_USB_DEV_GENERIC,	/* USB generic device */
 	UCLASS_USB_HUB,		/* USB hub */
+	UCLASS_USB_GADGET_GENERIC,	/* USB generic device */
 	UCLASS_VIDEO,		/* Video or LCD device */
 	UCLASS_VIDEO_BRIDGE,	/* Video bridge, e.g. DisplayPort to LVDS */
 	UCLASS_VIDEO_CONSOLE,	/* Text console driver for video device */
+	UCLASS_VIDEO_CRTC,	/* Display Controller */
 	UCLASS_WDT,		/* Watchdot Timer driver */
 
+	UCLASS_FG,		/* Fuel gauge */
+	UCLASS_KEY,		/* Key */
+	UCLASS_RC,		/* Remote Controller */
+	UCLASS_CHARGE_DISPLAY,	/* Charge display */
+	UCLASS_DVFS,		/* DVFS policy */
+	UCLASS_IO_DOMAIN,	/* IO domain */
+	UCLASS_CRYPTO,		/* Crypto */
+	UCLASS_ETH_PHY,		/* Ethernet PHY device */
+	UCLASS_MDIO,		/* MDIO bus */
+	UCLASS_EBC,		/* EBC Controller for eink screen */
+	UCLASS_EINK_DISPLAY,	/* EINK screen display driver */
+	UCLASS_RNG,		/* Random Number Generator */
+	UCLASS_DMC,		/* Dynamic Memory Interface */
+	UCLASS_PD,		/* power delivery */
 	UCLASS_COUNT,
 	UCLASS_INVALID = -1,
 };

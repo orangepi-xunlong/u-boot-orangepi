@@ -1,11 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2017 Intel Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/scu.h>
 #include <asm/u-boot-x86.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * Miscellaneous platform dependent initializations

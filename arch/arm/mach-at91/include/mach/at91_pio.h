@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * [origin: Linux kernel include/asm-arm/arch-at91/at91_pio.h]
  *
@@ -8,6 +7,8 @@
  *
  * Parallel I/O Controller (PIO) - System peripherals registers.
  * Based on AT91RM9200 datasheet revision E.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef AT91_PIO_H

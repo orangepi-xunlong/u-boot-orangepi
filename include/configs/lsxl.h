@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2012 Michael Walle
  * Michael Walle <michael@walle.cc>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_LSXL_H
@@ -45,6 +46,7 @@
 #include "mv-common.h"
 
 /* loading initramfs images without uimage header */
+#define CONFIG_SUPPORT_RAW_INITRD
 
 /* ST M25P40 */
 #undef CONFIG_ENV_SPI_MAX_HZ
@@ -68,6 +70,7 @@
  * Default environment variables
  */
 #define CONFIG_LOADADDR		0x00800000
+#define CONFIG_BOOTCOMMAND	"run bootcmd_${bootsource}"
 
 #if defined(CONFIG_LSXHL)
 #define CONFIG_FDTFILE "kirkwood-lsxhl.dtb"

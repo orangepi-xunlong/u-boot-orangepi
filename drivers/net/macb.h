@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2005-2006 Atmel Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __DRIVERS_MACB_H__
 #define __DRIVERS_MACB_H__
@@ -10,7 +11,6 @@
 #define MACB_NCFGR				0x0004
 #define MACB_NSR				0x0008
 #define GEM_UR					0x000c
-#define MACB_DMACFG				0x0010
 #define MACB_TSR				0x0014
 #define MACB_RBQP				0x0018
 #define MACB_TBQP				0x001c

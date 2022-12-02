@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
  * Based on Atheros LSDK/QSDK and u-boot_mod project
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <config.h>

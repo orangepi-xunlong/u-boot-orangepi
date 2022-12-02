@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2008 Advanced Micro Devices, Inc.
  * Copyright (C) 2016 Bin Meng <bmeng.cn@gmail.com>
  *
  * Modified from coreboot src/arch/x86/acpi/statdef.asl
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Status and notification definitions */

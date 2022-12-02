@@ -1,6 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 if VENDOR_INTEL
 
@@ -15,15 +17,6 @@ config TARGET_BAYLEYBAY
 	  Intel quad-core Atom Processor E3800 with dual-channel DDR3L SODIMM
 	  4GB memory, HDMI/DP/VGA display, HD audio, SATA, USB2, USB3, SD, eMMC,
 	  PCIe and some other sensor interfaces.
-
-config TARGET_CHERRYHILL
-	bool "Cherry Hill"
-	help
-	  This is the Intel Cherry Hill Customer Reference Board. It is in a
-	  mini-ITX form factor containing the Intel Braswell SoC, which has
-	  a 64-bit quad-core, single-thread, Intel Atom processor, along with
-	  serial console, 10/100/1000 Ethernet, SD-Card, USB 2/3, SATA, PCIe,
-	  some GPIOs, one HDMI and two DP video out.
 
 config TARGET_COUGARCANYON2
 	bool "Cougar Canyon 2"
@@ -76,7 +69,6 @@ config TARGET_MINNOWMAX
 endchoice
 
 source "board/intel/bayleybay/Kconfig"
-source "board/intel/cherryhill/Kconfig"
 source "board/intel/cougarcanyon2/Kconfig"
 source "board/intel/crownbay/Kconfig"
 source "board/intel/edison/Kconfig"

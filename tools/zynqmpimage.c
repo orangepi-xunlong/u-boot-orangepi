@@ -1,11 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Michal Simek <michals@xilinx.com>
  * Copyright (C) 2015 Nathan Rossi <nathan@nathanrossi.com>
  *
+ * SPDX-License-Identifier:	GPL-2.0+
+ *
  * The following Boot Header format/structures and values are defined in the
  * following documents:
- *   * ug1085 ZynqMP TRM doc v1.4 (Chapter 11, Table 11-4)
+ *   * ug1085 ZynqMP TRM (Chapter 9, Table 9-3)
  *
  * Expected Header Size = 0x9C0
  * Forced as 'little' endian, 32-bit words
@@ -177,7 +178,7 @@ static void zynqmpimage_print_header(const void *ptr)
 	struct zynqmp_header *zynqhdr = (struct zynqmp_header *)ptr;
 	int i;
 
-	printf("Image Type   : Xilinx ZynqMP Boot Image support\n");
+	printf("Image Type   : Xilinx Zynq Boot Image support\n");
 	printf("Image Offset : 0x%08x\n", le32_to_cpu(zynqhdr->image_offset));
 	printf("Image Size   : %lu bytes (%lu bytes packed)\n",
 	       (unsigned long)le32_to_cpu(zynqhdr->image_size),
@@ -244,38 +245,16 @@ static int zynqmpimage_check_image_types(uint8_t type)
 	return EXIT_FAILURE;
 }
 
-static uint32_t fsize(FILE *fp)
+static int fsize(FILE *fp)
 {
-	int size, ret, origin;
+	int size;
+	int origin = ftell(fp);
 
-	origin = ftell(fp);
-	if (origin < 0) {
-		fprintf(stderr, "Incorrect file size\n");
-		fclose(fp);
-		exit(2);
-	}
-
-	ret = fseek(fp, 0L, SEEK_END);
-	if (ret) {
-		fprintf(stderr, "Incorrect file SEEK_END\n");
-		fclose(fp);
-		exit(3);
-	}
-
+	fseek(fp, 0L, SEEK_END);
 	size = ftell(fp);
-	if (size < 0) {
-		fprintf(stderr, "Incorrect file size\n");
-		fclose(fp);
-		exit(4);
-	}
 
 	/* going back */
-	ret = fseek(fp, origin, SEEK_SET);
-	if (ret) {
-		fprintf(stderr, "Incorrect file SEEK_SET to %d\n", origin);
-		fclose(fp);
-		exit(3);
-	}
+	fseek(fp, origin, SEEK_SET);
 
 	return size;
 }

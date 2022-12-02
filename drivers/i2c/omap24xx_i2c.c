@@ -47,6 +47,8 @@
 
 #include "omap24xx_i2c.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #define I2C_TIMEOUT	1000
 
 /* Absolutely safe for status update at 100 kHz I2C: */

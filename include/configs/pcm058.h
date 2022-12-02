@@ -1,13 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Stefano Babic <sbabic@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #ifndef __PCM058_CONFIG_H
 #define __PCM058_CONFIG_H
 
+#include <config_distro_defaults.h>
+
 #ifdef CONFIG_SPL
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
 #include "imx6_spl.h"
 #endif
@@ -25,6 +29,7 @@
 #define PHYS_SDRAM_SIZE		(1u * 1024 * 1024 * 1024)
 
 /* Early setup */
+#define CONFIG_DISPLAY_BOARDINFO_LATE
 
 
 /* Size of malloc() pool */
@@ -39,6 +44,7 @@
 #define CONFIG_FEC_MXC_PHYADDR		3
 
 /* SPI Flash */
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		0
 #define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED		20000000
@@ -61,8 +67,6 @@
 /* DMA stuff, needed for GPMI/MXS NAND support */
 
 /* Filesystem support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1

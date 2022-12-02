@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015 Linaro
  *
@@ -6,6 +5,8 @@
  *
  * Configuration for HiKey 96boards CE. Parts were derived from other ARM
  * configurations.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __HIKEY_H
@@ -18,9 +19,12 @@
 
 #define CONFIG_REMAKE_ELF
 
+#define CONFIG_SUPPORT_RAW_INITRD
+
 /* Physical Memory Map */
 
 /* CONFIG_SYS_TEXT_BASE needs to align with where ATF loads bl33.bin */
+#define CONFIG_SYS_TEXT_BASE		0x35000000
 
 #define CONFIG_NR_DRAM_BANKS		6
 #define PHYS_SDRAM_1			0x00000000
@@ -46,6 +50,9 @@
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + SZ_8M)
 
+/* Serial port PL010/PL011 through the device model */
+#define CONFIG_PL01X_SERIAL
+
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_DWC2_REG_ADDR 0xF72C0000
 /*#define CONFIG_DWC2_DFLT_SPEED_FULL*/
@@ -59,12 +66,14 @@
 /* SD/MMC configuration */
 #define CONFIG_BOUNCE_BUFFER
 
-/* Command line configuration */
+#define CONFIG_FS_EXT4
 
-#define CONFIG_MTD_PARTITIONS
+/* Command line configuration */
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
+
+#include <config_distro_defaults.h>
 
 /* Initial environment variables */
 
@@ -89,9 +98,12 @@
 
 /* Preserve environment on sd card */
 #define CONFIG_ENV_SIZE			0x1000
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
 
 /* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_MAXARGS		64	/* max command args */
 
 #endif /* __HIKEY_H */

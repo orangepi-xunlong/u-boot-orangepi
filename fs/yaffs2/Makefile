@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0
 # Makefile for YAFFS direct test
+#
+#
 # YAFFS: Yet another Flash File System. A NAND-flash specific file system.
 #
 # Copyright (C) 2003 Aleph One Ltd.
@@ -7,6 +8,7 @@
 #
 # Created by Charles Manning <charles@aleph1.co.uk>
 #
+# SPDX-License-Identifier:	GPL-2.0
 #
 
 obj-y := \

@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2014 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -65,13 +66,11 @@ static int i2c_eeprom_std_probe(struct udevice *dev)
 
 static const struct udevice_id i2c_eeprom_std_ids[] = {
 	{ .compatible = "i2c-eeprom", .data = 0 },
-	{ .compatible = "microchip,24aa02e48", .data = 3 },
 	{ .compatible = "atmel,24c01a", .data = 3 },
 	{ .compatible = "atmel,24c02", .data = 3 },
 	{ .compatible = "atmel,24c04", .data = 4 },
 	{ .compatible = "atmel,24c08a", .data = 4 },
 	{ .compatible = "atmel,24c16a", .data = 4 },
-	{ .compatible = "atmel,24mac402", .data = 4 },
 	{ .compatible = "atmel,24c32", .data = 5 },
 	{ .compatible = "atmel,24c64", .data = 5 },
 	{ .compatible = "atmel,24c128", .data = 6 },

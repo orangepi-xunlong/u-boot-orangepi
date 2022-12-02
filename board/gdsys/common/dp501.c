@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012
  * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Parade Technologies Inc. DP501 DisplayPort DVI/HDMI Transmitter */

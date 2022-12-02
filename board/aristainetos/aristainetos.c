@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -7,6 +6,8 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -27,7 +28,6 @@
 #include <asm/arch/crm_regs.h>
 #include <linux/fb.h>
 #include <ipu_pixfmt.h>
-#include <input.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <pwm.h>

@@ -43,26 +43,3 @@ config PWM_TEGRA
 	  four channels with a programmable period and duty cycle. Only a
 	  32KHz clock is supported by the driver but the duty cycle is
 	  configurable.
-
-menu "PWM_SUNXI"
-choice
-	prompt "SUNXI PWM SELECT"
-
-config PWM_SUNXI
-	bool "Enable Sunxi PWM"
-	depends on ARCH_SUNXI
-	help
-	  This PWM is Base PWM framework driver for sunxi.
-
-config PWM_SUNXI_NEW
-	bool "Enable Sunxi Enhance PWM"
-	depends on ARCH_SUNXI
-	help
-	  This PWM is Enhance PWM framework driver for sunxi.
-config PWM_NOT_USE
-	bool "NOT USE PWM"
-	depends on ARCH_SUNXI
-	help
-	 no use pwm
-endchoice
-endmenu

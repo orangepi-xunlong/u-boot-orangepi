@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -9,6 +10,8 @@
 #include <configs/x86-common.h>
 
 #undef CONFIG_TPM_TIS_BASE_ADDRESS
+
+#undef CONFIG_SCSI_AHCI
 
 #define CONFIG_STD_DEVICES_SETTINGS     "stdin=usbkbd,vga,serial\0" \
 					"stdout=vga,serial\0" \

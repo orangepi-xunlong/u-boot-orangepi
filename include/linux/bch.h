@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Generic binary BCH encoding/decoding library
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  *
  * Copyright © 2011 Parrot S.A.
  *

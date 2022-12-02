@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2013 Broadcom Corporation.
+ *
+ * SPDX-License-Identifier:      GPL-2.0+
  */
 
 #ifndef __BCM28155_AP_H
@@ -16,6 +17,7 @@
 /*
  * Memory configuration
  */
+#define CONFIG_SYS_TEXT_BASE		0xae000000
 
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
 #define CONFIG_SYS_SDRAM_SIZE		0x80000000
@@ -74,6 +76,7 @@
 /* Post pad 3 bytes after each reg addr */
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		13000000
+#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_COM1		0x3e000000
 
 /* must fit into GPT:u-boot-env partition */
@@ -93,6 +96,9 @@
  */
 
 /* version string, parser, etc */
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
 
 #define CONFIG_MX_CYCLIC
 

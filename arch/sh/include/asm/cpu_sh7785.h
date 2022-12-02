@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 #ifndef	_ASM_CPU_SH7785_H_
 #define	_ASM_CPU_SH7785_H_
 
@@ -6,6 +5,8 @@
  * Copyright (c) 2007,2008 Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
  * Copyright (c) 2008 Yusuke Goda <goda.yusuke@renesas.com>
  * Copyright (c) 2008 Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #define	CACHE_OC_NUM_WAYS	1

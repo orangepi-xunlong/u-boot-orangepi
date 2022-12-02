@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -45,7 +46,7 @@
 	"yocto_tty=" __stringify(DEF_ENV_YOCTO_TTY) "\0"	\
 	"start_eth=if test -n \"${eth_init}\";"			\
 		"then run eth_init;else sleep 0;fi\0"		\
-	"kernel-ver=4.8.0-54-generic\0"				\
+	"kernel-ver=4.8.0-54\0"					\
 	"boot=zboot 03000000 0 04000000 ${filesize}\0"		\
 	"mtdparts=mtdparts=intel-spi:4k(descriptor),7084k(me)," \
 		"8k(env1),8k(env2),64k(mrc),640k(u-boot),"	\
@@ -57,8 +58,7 @@
 	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"	\
 	"addmisc=setenv bootargs ${bootargs} "			\
 		"intel-spi.writeable=1 vmalloc=300M "		\
-		"pci=realloc=on,hpmemsize=0x12000000,"		\
-		"hpmemprefsize=0,hpiosize=0\0"	    		\
+		"pci=realloc=on,hpmemsize=0x12000000\0"		\
 	"bootcmd=if env exists recovery_status;"		\
 		"then run swupdate;"				\
 		"else run yocto_boot;run swupdate;"		\
@@ -68,9 +68,9 @@
 	"ubuntu_args_quiet=setenv bootargs "			\
 		"root=/dev/sda${ubuntu_part} ro quiet\0"	\
 	"ubuntu_load=load scsi 0:${ubuntu_part} 03000000 "	\
-		"/boot/vmlinuz-${kernel-ver};"			\
+		"/boot/vmlinuz-${kernel-ver}-generic;"		\
 		"load scsi 0:${ubuntu_part} 04000000 "		\
-		"/boot/initrd.img-${kernel-ver}\0"		\
+		"/boot/initrd.img-${kernel-ver}-generic\0"	\
 	"ubuntu_boot=run ubuntu_args_quiet addmtd addmisc "	\
 		"ubuntu_load boot\0"				\
 	"ubuntu_boot_console=run ubuntu_args addtty_ubuntu "	\
@@ -79,7 +79,7 @@
 	"net_boot=run start_eth net_args addtty_yocto addmtd addmisc;" \
 		"tftp 03000000 ${tftpdir}/bzImage;"		\
 		"load scsi 0:${ubuntu_part} 04000000 "		\
-		"/boot/initrd.img-${kernel-ver};"		\
+		"/boot/initrd.img-${kernel-ver}-generic;"	\
 		"run boot\0"					\
 	"yocto_args=setenv bootargs root=/dev/sda${yocto_part} " \
 		"panic=1\0"				\

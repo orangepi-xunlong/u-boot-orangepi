@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -15,6 +14,8 @@
  * based on code from grub2 fs/ext2.c and fs/fshelp.c by
  * GRUB  --  GRand Unified Bootloader
  * Copyright (C) 2003, 2004  Free Software Foundation, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __EXT_COMMON__

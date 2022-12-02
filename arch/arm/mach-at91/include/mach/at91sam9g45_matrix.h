@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Matrix-centric header file for the AT91SAM9M1x family
  *
@@ -6,6 +5,8 @@
  *
  * Memory Controllers (MATRIX, EBI) - System peripherals registers.
  * Based on AT91SAM9G45 preliminary datasheet.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef AT91SAM9G45_MATRIX_H

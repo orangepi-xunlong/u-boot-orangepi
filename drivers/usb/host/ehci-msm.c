@@ -1,17 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Qualcomm EHCI driver
  *
  * (C) Copyright 2015 Mateusz Kulikowski <mateusz.kulikowski@gmail.com>
  *
  * Based on Linux driver
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
-#include <fdtdec.h>
-#include <linux/libfdt.h>
 #include <usb.h>
 #include <usb/ehci-ci.h>
 #include <usb/ulpi.h>
@@ -145,7 +144,7 @@ static int ehci_usb_ofdata_to_platdata(struct udevice *dev)
 	struct msm_ehci_priv *priv = dev_get_priv(dev);
 
 	priv->ulpi_vp.port_num = 0;
-	priv->ehci = (void *)devfdt_get_addr(dev);
+	priv->ehci = dev_read_addr_ptr(dev);
 
 	if (priv->ehci == (void *)FDT_ADDR_T_NONE)
 		return -EINVAL;
@@ -172,5 +171,6 @@ U_BOOT_DRIVER(usb_ehci) = {
 	.remove = ehci_usb_remove,
 	.ops	= &ehci_usb_ops,
 	.priv_auto_alloc_size = sizeof(struct msm_ehci_priv),
+	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
 };

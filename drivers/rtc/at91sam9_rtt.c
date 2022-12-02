@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Reinhard Meyer, reinhard.meyer@emk-elektronik.de
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

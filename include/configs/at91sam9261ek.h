@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2008
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  *
  * Configuation settings for the AT91SAM9261EK board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -29,6 +30,7 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 #define CONFIG_ATMEL_LEGACY
+#define CONFIG_SYS_TEXT_BASE		0x21f00000
 
 /*
  * Hardware drivers
@@ -49,6 +51,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -59,7 +64,6 @@
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_BASE			0x40000000
 #define CONFIG_SYS_NAND_DBW_8
@@ -130,6 +134,10 @@
 #define CONFIG_ENV_SIZE		0x20000		/* 1 sector = 128 kB */
 #define CONFIG_BOOTCOMMAND	"nand read 0x22000000 0x200000 0x300000; bootm"
 #endif
+
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_AUTO_COMPLETE
 
 /*
  * Size of malloc() pool

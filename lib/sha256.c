@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+
- *
+/*
  * FIPS-180-2 compliant SHA-256 implementation
  *
  * Copyright (C) 2001-2003  Christophe Devine
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
@@ -254,6 +255,19 @@ void sha256_finish(sha256_context * ctx, uint8_t digest[32])
 	PUT_UINT32_BE(ctx->state[5], digest, 20);
 	PUT_UINT32_BE(ctx->state[6], digest, 24);
 	PUT_UINT32_BE(ctx->state[7], digest, 28);
+}
+
+/*
+ * Output = SHA-256( input buffer ).
+ */
+void sha256_csum(const unsigned char *input, unsigned int ilen,
+		 unsigned char *output)
+{
+	sha256_context ctx;
+
+	sha256_starts(&ctx);
+	sha256_update(&ctx, input, ilen);
+	sha256_finish(&ctx, output);
 }
 
 /*

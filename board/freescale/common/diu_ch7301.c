@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
  * Authors: Priyanka Jain <Priyanka.Jain@freescale.com>
@@ -6,6 +5,8 @@
  *
  * This file is copied and modified from the original t1040qds/diu.c.
  * Encoder can be used in T104x and LSx Platform.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

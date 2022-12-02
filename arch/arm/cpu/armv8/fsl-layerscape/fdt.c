@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014-2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -25,8 +26,6 @@
 #ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
 #include <asm/armv8/sec_firmware.h>
 #endif
-#include <asm/arch/speed.h>
-#include <fsl_qbman.h>
 
 int fdt_fixup_phy_connection(void *blob, int offset, phy_interface_t phyc)
 {
@@ -43,33 +42,6 @@ void ft_fixup_cpu(void *blob)
 	int addr_cells;
 	u64 val, core_id;
 	size_t *boot_code_size = &(__secondary_boot_code_size);
-	u32 mask = cpu_pos_mask();
-	int off_prev = -1;
-
-	off = fdt_path_offset(blob, "/cpus");
-	if (off < 0) {
-		puts("couldn't find /cpus node\n");
-		return;
-	}
-
-	fdt_support_default_count_cells(blob, off, &addr_cells, NULL);
-
-	off = fdt_node_offset_by_prop_value(blob, off_prev, "device_type",
-					    "cpu", 4);
-	while (off != -FDT_ERR_NOTFOUND) {
-		reg = (fdt32_t *)fdt_getprop(blob, off, "reg", 0);
-		if (reg) {
-			core_id = fdt_read_number(reg, addr_cells);
-			if (!test_bit(id_to_core(core_id), &mask)) {
-				fdt_del_node(blob, off);
-				off = off_prev;
-			}
-		}
-		off_prev = off;
-		off = fdt_node_offset_by_prop_value(blob, off_prev,
-						    "device_type", "cpu", 4);
-	}
-
 #if defined(CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT) && \
 	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI)
 	int node;
@@ -443,17 +415,10 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	fdt_fixup_esdhc(blob, bd);
 #endif
 
-#ifdef CONFIG_SYS_DPAA_QBMAN
-	fdt_fixup_bportals(blob);
-	fdt_fixup_qportals(blob);
-	do_fixup_by_compat_u32(blob, "fsl,qman",
-			       "clock-frequency", get_qman_freq(), 1);
-#endif
-
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_fman_firmware(blob);
 #endif
-#ifndef CONFIG_ARCH_LS1012A
+#ifndef CONFIG_LS1012A
 	fsl_fdt_disable_usb(blob);
 #endif
 #ifdef CONFIG_HAS_FEATURE_GIC64K_ALIGN

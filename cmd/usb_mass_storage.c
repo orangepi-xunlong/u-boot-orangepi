@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
  * Lukasz Majewski <l.majewski@samsung.com>
  *
  * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <errno.h>
@@ -160,8 +161,8 @@ static int do_usb_mass_storage(cmd_tbl_t *cmdtp, int flag,
 
 	controller_index = (unsigned int)(simple_strtoul(
 				usb_controller,	NULL, 0));
-	if (board_usb_init(controller_index, USB_INIT_DEVICE)) {
-		pr_err("Couldn't init USB controller.");
+	if (usb_gadget_initialize(controller_index)) {
+		pr_err("Couldn't init USB controller.\n");
 		rc = CMD_RET_FAILURE;
 		goto cleanup_ums_init;
 	}
@@ -231,7 +232,7 @@ static int do_usb_mass_storage(cmd_tbl_t *cmdtp, int flag,
 cleanup_register:
 	g_dnl_unregister();
 cleanup_board:
-	board_usb_cleanup(controller_index, USB_INIT_DEVICE);
+	usb_gadget_release(controller_index);
 cleanup_ums_init:
 	ums_fini();
 

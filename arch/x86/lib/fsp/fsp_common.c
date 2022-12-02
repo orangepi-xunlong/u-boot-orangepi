@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,6 +18,8 @@
 #include <asm/fsp/fsp_support.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+extern void ich_spi_config_opcode(struct udevice *dev);
 
 int checkcpu(void)
 {
@@ -47,6 +50,28 @@ int fsp_init_phase_pci(void)
 void board_final_cleanup(void)
 {
 	u32 status;
+
+#ifdef CONFIG_FSP_LOCKDOWN_SPI
+	struct udevice *dev;
+
+	/*
+	 * Some Intel FSP (like Braswell) does SPI lock-down during the call
+	 * to fsp_notify(INIT_PHASE_BOOT). But before SPI lock-down is done,
+	 * it's bootloader's responsibility to configure the SPI controller's
+	 * opcode registers properly otherwise SPI controller driver doesn't
+	 * know how to communicate with the SPI flash device.
+	 *
+	 * Note we cannot do such configuration elsewhere (eg: during the SPI
+	 * controller driver's probe() routine), because:
+	 *
+	 * 1). U-Boot SPI controller driver does not set the lock-down bit
+	 * 2). Any SPI transfer will corrupt the contents of these registers
+	 *
+	 * Hence we have to do it right here before SPI lock-down bit is set.
+	 */
+	if (!uclass_first_device_err(UCLASS_SPI, &dev))
+		ich_spi_config_opcode(dev);
+#endif
 
 	/* call into FspNotify */
 	debug("Calling into FSP (notify phase INIT_PHASE_BOOT): ");

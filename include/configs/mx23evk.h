@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX23 EVK board config
  *
  * Copyright (C) 2013 Otavio Salvador <otavio@ossystems.com.br>
  * on behalf of O.S. Systems Software LTDA.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_MX23EVK_H__
 #define __CONFIGS_MX23EVK_H__
 
 /* System configurations */
+#define CONFIG_MX23				/* i.MX23 SoC */
 #define CONFIG_MACH_TYPE	MACH_TYPE_MX23EVK
 
 /* U-Boot Commands */

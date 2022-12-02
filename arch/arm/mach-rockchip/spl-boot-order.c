@@ -1,14 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2017 Theobroma Systems Design und Consulting GmbH
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <mmc.h>
+#include <nand.h>
 #include <spl.h>
 
-#if CONFIG_IS_ENABLED(OF_CONTROL)
+#if CONFIG_IS_ENABLED(OF_CONTROL) && ! CONFIG_IS_ENABLED(OF_PLATDATA)
 /**
  * spl_node_to_boot_device() - maps from a DT-node to a SPL boot device
  * @node:	of_offset of the node
@@ -27,7 +29,6 @@
  *   -1, for unspecified failures
  *   a positive integer (from the BOOT_DEVICE_... family) on succes.
  */
-
 static int spl_node_to_boot_device(int node)
 {
 	struct udevice *parent;
@@ -70,7 +71,45 @@ static int spl_node_to_boot_device(int node)
 	 * soon.
 	 */
 	if (!uclass_get_device_by_of_offset(UCLASS_SPI_FLASH, node, &parent))
+#ifndef CONFIG_SPL_MTD_SUPPORT
 		return BOOT_DEVICE_SPI;
+#else
+		return BOOT_DEVICE_MTD_BLK_SPI_NOR;
+
+	if (!uclass_get_device_by_of_offset(UCLASS_MTD, node, &parent)) {
+		struct udevice *dev;
+		struct blk_desc *desc = NULL;
+
+		for (device_find_first_child(parent, &dev);
+		     dev;
+		     device_find_next_child(&dev)) {
+			if (device_get_uclass_id(dev) == UCLASS_BLK) {
+				desc = dev_get_uclass_platdata(dev);
+				break;
+			}
+		}
+
+		if (!desc)
+			return -ENOENT;
+
+		switch (desc->devnum) {
+		case 0:
+			return BOOT_DEVICE_MTD_BLK_NAND;
+		case 1:
+			return BOOT_DEVICE_MTD_BLK_SPI_NAND;
+		default:
+			return -ENOSYS;
+		}
+	}
+#endif
+
+	/*
+	 * This should eventually move into the SPL code, once SPL becomes
+	 * aware of the block-device layer.  Until then (and to avoid unneeded
+	 * delays in getting this feature out, it lives at the board-level).
+	 */
+	if (!uclass_get_device_by_of_offset(UCLASS_RKNAND, node, &parent))
+		return BOOT_DEVICE_RKNAND;
 
 	return -1;
 }

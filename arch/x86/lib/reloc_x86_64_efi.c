@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: BSD-3-Clause
 /*
  * reloc_x86_64.c - position independent x86_64 ELF shared object relocator
  * Copyright (C) 1999 Hewlett-Packard Co.
@@ -7,6 +6,8 @@
  * Contributed by Fenghua Yu <fenghua.yu@intel.com>.
  *
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #include <common.h>

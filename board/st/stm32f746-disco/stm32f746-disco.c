@@ -1,21 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016, STMicroelectronics - All Rights Reserved
- * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
+ * (C) Copyright 2016
+ * Vikas Manocha, <vikas.manocha@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
-#include <lcd.h>
 #include <ram.h>
 #include <spl.h>
-#include <splash.h>
-#include <st_logo_data.h>
-#include <video.h>
 #include <asm/io.h>
 #include <asm/armv7m.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/stm32_periph.h>
+#include <asm/arch/stm32_defs.h>
 #include <asm/arch/syscfg.h>
 #include <asm/gpio.h>
 
@@ -70,10 +69,24 @@ int dram_init_banksize(void)
 	return 0;
 }
 
-int board_early_init_f(void)
+#ifdef CONFIG_ETH_DESIGNWARE
+static int stmmac_setup(void)
 {
+	clock_setup(SYSCFG_CLOCK_CFG);
+	/* Set >RMII mode */
+	STM32_SYSCFG->pmc |= SYSCFG_PMC_MII_RMII_SEL;
+	clock_setup(STMMAC_CLOCK_CFG);
+
 	return 0;
 }
+
+int board_early_init_f(void)
+{
+	stmmac_setup();
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_SPL_BUILD
 #ifdef CONFIG_SPL_OS_BOOT
@@ -150,16 +163,5 @@ int board_late_init(void)
 int board_init(void)
 {
 	gd->bd->bi_boot_params = gd->bd->bi_dram[0].start + 0x100;
-
-#ifdef CONFIG_ETH_DESIGNWARE
-	/* Set >RMII mode */
-	STM32_SYSCFG->pmc |= SYSCFG_PMC_MII_RMII_SEL;
-#endif
-
-#if defined(CONFIG_CMD_BMP)
-	bmp_display((ulong)stmicroelectronics_uboot_logo_8bit_rle,
-		    BMP_ALIGN_CENTER, BMP_ALIGN_CENTER);
-#endif /* CONFIG_CMD_BMP */
-
 	return 0;
 }

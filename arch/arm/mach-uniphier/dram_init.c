@@ -1,18 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012-2015 Panasonic Corporation
  * Copyright (C) 2015-2017 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <fdt_support.h>
 #include <fdtdec.h>
 #include <linux/errno.h>
-#include <linux/kernel.h>
-#include <linux/printk.h>
 #include <linux/sizes.h>
-#include <asm/global_data.h>
 
 #include "sg-regs.h"
 #include "soc-info.h"
@@ -204,7 +202,6 @@ int dram_init(void)
 		return ret;
 
 	for (i = 0; i < ARRAY_SIZE(dram_map); i++) {
-		unsigned long max_size;
 
 		if (!dram_map[i].size)
 			break;
@@ -218,31 +215,8 @@ int dram_init(void)
 							dram_map[i].base)
 			break;
 
-		/*
-		 * Do not use memory that exceeds 32bit address range.  U-Boot
-		 * relocates itself to the end of the effectively available RAM.
-		 * This could be a problem for DMA engines that do not support
-		 * 64bit address (SDMA of SDHCI, UniPhier AV-ether, etc.)
-		 */
-		if (dram_map[i].base >= 1ULL << 32)
-			break;
-
-		max_size = (1ULL << 32) - dram_map[i].base;
-
-		if (dram_map[i].size > max_size) {
-			gd->ram_size += max_size;
-			break;
-		}
-
 		gd->ram_size += dram_map[i].size;
 	}
-
-	/*
-	 * LD20 uses the last 64 byte for each channel for dynamic
-	 * DDR PHY training
-	 */
-	if (uniphier_get_soc_id() == UNIPHIER_LD20_ID)
-		gd->ram_size -= 64;
 
 	return 0;
 }
@@ -290,8 +264,8 @@ int ft_board_setup(void *fdt, bd_t *bd)
 		if (ret)
 			return -ENOSPC;
 
-		pr_notice("   Reserved memory region for DRAM PHY training: addr=%lx size=%lx\n",
-			  rsv_addr, rsv_size);
+		printf("   Reserved memory region for DRAM PHY training: addr=%lx size=%lx\n",
+		       rsv_addr, rsv_size);
 	}
 
 	return 0;

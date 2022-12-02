@@ -84,8 +84,6 @@
 	};
 
 	i2c-gpio-0 {
-		#address-cells = <1>;
-		#size-cells = <0>;
 		status = "okay";
 
 		pcf8563@50 {

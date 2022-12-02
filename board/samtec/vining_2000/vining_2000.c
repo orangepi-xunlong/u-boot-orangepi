@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 samtec automotive software & electronics gmbh
  *
  * Author: Christoph Fritz <chf.fritz@googlemail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -17,7 +18,6 @@
 #include <asm/mach-imx/mxc_i2c.h>
 #include <linux/sizes.h>
 #include <common.h>
-#include <environment.h>
 #include <fsl_esdhc.h>
 #include <mmc.h>
 #include <i2c.h>

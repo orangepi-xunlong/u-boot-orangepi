@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Driver for the Zynq-7000 PS I2C controller
  * IP from Cadence (ID T-CS-PE-0007-100, Version R1p10f2)
@@ -7,6 +6,8 @@
  * Copyright (c) 2012 Joe Hershberger.
  *
  * Copyright (c) 2012-2013 Xilinx, Michal Simek
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * NOTE: This driver should be converted to driver model before June 2017.
  * Please see doc/driver-model/i2c-howto.txt for instructions.

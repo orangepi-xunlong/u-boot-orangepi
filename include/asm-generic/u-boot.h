@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  *
  * (C) Copyright 2000 - 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  ********************************************************************
  * NOTE: This header file defines an interface to U-Boot. Including
  * this (unmodified) header file in another file is considered normal
@@ -85,10 +86,13 @@ typedef struct bd_info {
 
 	ulong	        bi_arch_number;	/* unique id for this board */
 	ulong	        bi_boot_params;	/* where this board expects params */
+
+	/* same as android image header 'os_version' */
+	unsigned int	bi_andr_version;
 #ifdef CONFIG_NR_DRAM_BANKS
 	struct {			/* RAM configuration */
-		phys_addr_t start;
-		phys_size_t size;
+		u64 start;
+		u64 size;
 	} bi_dram[CONFIG_NR_DRAM_BANKS];
 #endif /* CONFIG_NR_DRAM_BANKS */
 } bd_t;

@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * (C) Copyright 2003
  * Kai-Uwe Bloem, Auerswald GmbH & Co KG, <linux-development@auerswald.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
@@ -248,7 +249,7 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		puts("OK\n");
 	}
 
-	flush_cache(dest, ALIGN(len, ARCH_DMA_MINALIGN));
+	flush_cache(dest, len);
 
 	env_set_hex("fileaddr", data);
 	env_set_hex("filesize", len);

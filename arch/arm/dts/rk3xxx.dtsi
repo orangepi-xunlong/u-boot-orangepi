@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
  * Copyright (c) 2013 MundoReader S.L.
  * Author: Heiko Stuebner <heiko@sntech.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+ or X11
  */
 
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -18,9 +19,9 @@
 		i2c2 = &i2c2;
 		i2c3 = &i2c3;
 		i2c4 = &i2c4;
-		mshc0 = &emmc;
-		mshc1 = &mmc0;
-		mshc2 = &mmc1;
+		mmc0 = &emmc;
+		mmc1 = &mmc0;
+		mmc2 = &mmc1;
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
@@ -134,7 +135,7 @@
 	};
 
 	noc: syscon@10128000 {
-		u-boot,dm-spl;
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3188-noc", "syscon";
 		reg = <0x10128000 0x2000>;
 	};
@@ -187,6 +188,7 @@
 	mmc0: dwmmc@10214000 {
 		compatible = "rockchip,rk2928-dw-mshc";
 		reg = <0x10214000 0x1000>;
+		max-frequency = <37500000>;
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_SDMMC>, <&cru SCLK_SDMMC>;
 		clock-names = "biu", "ciu";
@@ -197,6 +199,7 @@
 	mmc1: dwmmc@10218000 {
 		compatible = "rockchip,rk2928-dw-mshc";
 		reg = <0x10218000 0x1000>;
+		max-frequency = <37500000>;
 		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_SDIO>, <&cru SCLK_SDIO>;
 		clock-names = "biu", "ciu";
@@ -207,6 +210,7 @@
 	emmc: dwmmc@1021c000 {
 		compatible = "rockchip,rk2928-dw-mshc";
 		reg = <0x1021c000 0x1000>;
+		max-frequency = <37500000>;
 		interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_EMMC>, <&cru SCLK_EMMC>;
 		clock-names = "biu", "ciu";
@@ -217,13 +221,13 @@
 	pmu: pmu@20004000 {
 		compatible = "rockchip,rk3066-pmu", "syscon";
 		reg = <0x20004000 0x100>;
-		u-boot,dm-spl;
+		u-boot,dm-pre-reloc;
 	};
 
 	grf: grf@20008000 {
 		compatible = "syscon";
 		reg = <0x20008000 0x200>;
-		u-boot,dm-spl;
+		u-boot,dm-pre-reloc;
 	};
 
 	dmc: dmc@20020000 {
@@ -237,7 +241,7 @@
 		       0x20040000 0x294>;
 		clocks = <&cru PCLK_DDRUPCTL>, <&cru PCLK_PUBL>;
 		clock-names = "pclk_ddrupctl", "pclk_publ";
-		u-boot,dm-spl;
+		u-boot,dm-pre-reloc;
 	};
 
 	i2c0: i2c@2002d000 {

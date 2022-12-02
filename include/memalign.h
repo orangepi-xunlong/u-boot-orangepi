@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #ifndef __ALIGNMEM_H
@@ -111,7 +112,5 @@ static inline void *malloc_cache_aligned(size_t size)
 	return memalign(ARCH_DMA_MINALIGN, ALIGN(size, ARCH_DMA_MINALIGN));
 }
 #endif
-
-#define CACHE_LINE_SIZE (64)
 
 #endif /* __ALIGNMEM_H */

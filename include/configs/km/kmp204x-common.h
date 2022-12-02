@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013 Keymile AG
  * Valentin Longchamp <valentin.longchamp@keymile.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_KMP204X_H
 #define _CONFIG_KMP204X_H
+
+#define CONFIG_SYS_TEXT_BASE	0xfff40000
 
 #define CONFIG_KM_DEF_NETDEV	"netdev=eth0\0"
 
@@ -187,8 +190,14 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_BR1_PRELIM  CONFIG_SYS_QRIO_BR_PRELIM /* QRIO Base Address */
 #define CONFIG_SYS_OR1_PRELIM  CONFIG_SYS_QRIO_OR_PRELIM /* QRIO Options */
 
+/* bootcounter in QRIO */
+#define CONFIG_BOOTCOUNT_LIMIT
+#define CONFIG_SYS_BOOTCOUNT_ADDR	(CONFIG_SYS_QRIO_BASE + 0x20)
+
+#define CONFIG_BOARD_EARLY_INIT_R	/* call board_early_init_r function */
 #define CONFIG_MISC_INIT_F
 #define CONFIG_MISC_INIT_R
+#define CONFIG_LAST_STAGE_INIT
 
 #define CONFIG_HWCONFIG
 
@@ -216,6 +225,7 @@ unsigned long get_board_sys_clk(unsigned long dummy);
  * open - index 2
  * shorted - index 1
  */
+#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -286,6 +296,7 @@ int get_scl(void);
 #define CONFIG_SYS_PCIE3_IO_SIZE	0x00010000	/* 64k */
 
 /* Qman/Bman */
+#define CONFIG_SYS_DPAA_QBMAN		/* Support Q/Bman */
 #define CONFIG_SYS_BMAN_NUM_PORTALS	10
 #define CONFIG_SYS_BMAN_MEM_BASE	0xf4000000
 #define CONFIG_SYS_BMAN_MEM_PHYS	0xff4000000ull
@@ -380,6 +391,16 @@ int get_scl(void);
 #define CONFIG_KM_DEF_ENV "km-common=empty\0"
 #endif
 
+#ifndef MTDIDS_DEFAULT
+# define MTDIDS_DEFAULT		"nand0=fsl_elbc_nand"
+#endif /* MTDIDS_DEFAULT */
+
+#ifndef MTDPARTS_DEFAULT
+# define MTDPARTS_DEFAULT	"mtdparts="			\
+	"fsl_elbc_nand:"						\
+		"-(" CONFIG_KM_UBI_PARTITION_NAME_BOOT ");"
+#endif /* MTDPARTS_DEFAULT */
+
 /* architecture specific default bootargs */
 #define CONFIG_KM_DEF_BOOT_ARGS_CPU		""
 
@@ -390,7 +411,7 @@ int get_scl(void);
 		"cramfsload ${fdt_addr_r} "				\
 		"fdt_0x${IVM_BoardId}_0x${IVM_HWKey}.dtb\0"		\
 	"fdt_addr_r=" __stringify(CONFIG_KM_FDT_ADDR) "\0"		\
-	"u-boot="CONFIG_HOSTNAME "/u-boot.pbl\0"		\
+	"u-boot="__stringify(CONFIG_HOSTNAME) "/u-boot.pbl\0"		\
 	"update="							\
 		"sf probe 0;sf erase 0 +${filesize};"			\
 		"sf write ${load_addr_r} 0 ${filesize};\0"		\

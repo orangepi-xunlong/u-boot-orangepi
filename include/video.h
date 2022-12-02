@@ -67,7 +67,6 @@ enum video_log2_bpp {
  * @flush_dcache:	true to enable flushing of the data cache after
  *		the LCD is updated
  * @cmap:	Colour map for 8-bit-per-pixel displays
- * @fg_col_idx:	Foreground color code (bit 3 = bold, bit 0-2 = color)
  */
 struct video_priv {
 	/* Things set up by the driver: */
@@ -85,11 +84,10 @@ struct video_priv {
 	void *fb;
 	int fb_size;
 	int line_length;
-	u32 colour_fg;
-	u32 colour_bg;
+	int colour_fg;
+	int colour_bg;
 	bool flush_dcache;
 	ushort *cmap;
-	u8 fg_col_idx;
 };
 
 /* Placeholder - there are no video operations at present */
@@ -115,13 +113,6 @@ struct video_ops {
  * @return 0
  */
 int video_reserve(ulong *addrp);
-
-/**
- * video_clear() - Clear a device's frame buffer to background color.
- *
- * @dev:	Device to clear
- */
-void video_clear(struct udevice *dev);
 
 /**
  * video_sync() - Sync a device's frame buffer with its hardware
@@ -184,13 +175,6 @@ int video_get_ysize(struct udevice *dev);
  * @param flush		non-zero to flush cache after update, 0 to skip
  */
 void video_set_flush_dcache(struct udevice *dev, bool flush);
-
-/**
- * Set default colors and attributes
- *
- * @priv	device information
- */
-void video_set_default_colors(struct video_priv *priv);
 
 #endif /* CONFIG_DM_VIDEO */
 

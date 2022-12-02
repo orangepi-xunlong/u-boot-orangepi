@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2012
  * Altera Corporation <www.altera.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CADENCE_QSPI_H__
@@ -60,7 +61,7 @@ int cadence_qspi_apb_indirect_read_setup(struct cadence_spi_platdata *plat,
 int cadence_qspi_apb_indirect_read_execute(struct cadence_spi_platdata *plat,
 	unsigned int rxlen, u8 *rxbuf);
 int cadence_qspi_apb_indirect_write_setup(struct cadence_spi_platdata *plat,
-	unsigned int cmdlen, unsigned int tx_width, const u8 *cmdbuf);
+	unsigned int cmdlen, const u8 *cmdbuf);
 int cadence_qspi_apb_indirect_write_execute(struct cadence_spi_platdata *plat,
 	unsigned int txlen, const u8 *txbuf);
 

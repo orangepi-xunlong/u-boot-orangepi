@@ -1,11 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011
  * Corscience GmbH & Co. KG - Simon Schwarz <schwarz@corscience.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <config.h>
 #include <spl.h>
+#include <spl_rkfw.h>
 #include <asm/io.h>
 #include <nand.h>
 #include <linux/libfdt_env.h>
@@ -39,17 +41,51 @@ static ulong spl_nand_fit_read(struct spl_load_info *load, ulong offs,
 		return 0;
 }
 
+#ifdef CONFIG_SPL_LOAD_RKFW
+static ulong spl_nand_rkfw_read(struct spl_load_info *load, ulong offs,
+				ulong size, void *dst)
+{
+	int ret;
+
+	ret = nand_spl_load_image(offs * 512, size * 512, dst);
+	if (!ret)
+		return size;
+	else
+		return 0;
+}
+#endif
+
 static int spl_nand_load_element(struct spl_image_info *spl_image,
 				 int offset, struct image_header *header)
 {
 	int err;
 
+#ifdef CONFIG_SPL_LOAD_RKFW
+	struct spl_load_info load;
+	int ret;
+
+	load.dev = NULL;
+	load.priv = NULL;
+	load.filename = NULL;
+	load.bl_len = 1;
+	load.read = spl_nand_rkfw_read;
+
+	ret = spl_load_rkfw_image(spl_image, &load);
+	if (!ret || ret != -EAGAIN)
+		return ret;
+#endif
 	err = nand_spl_load_image(offset, sizeof(*header), (void *)header);
 	if (err)
 		return err;
 
+#ifdef CONFIG_SPL_FIT_IMAGE_MULTIPLE
+	if ((IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
+	     image_get_magic(header) == FDT_MAGIC) ||
+	     CONFIG_SPL_FIT_IMAGE_MULTIPLE > 1) {
+#else
 	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
 	    image_get_magic(header) == FDT_MAGIC) {
+#endif
 		struct spl_load_info load;
 
 		debug("Found FIT\n");

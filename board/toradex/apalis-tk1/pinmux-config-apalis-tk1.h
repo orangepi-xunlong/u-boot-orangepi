@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2016, Toradex, Inc.
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #ifndef _PINMUX_CONFIG_APALIS_TK1_H_

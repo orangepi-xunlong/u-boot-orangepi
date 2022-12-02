@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2009
  * Viresh Kumar, ST Microelectronics, viresh.kumar@st.com
  * Vipin Kumar, ST Microelectronics, vipin.kumar@st.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

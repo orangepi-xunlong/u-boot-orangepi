@@ -18,12 +18,9 @@
 #include <hexdump.h>
 #include <uuid.h>
 #include <stdarg.h>
-#include <linux/ctype.h>
-#include <linux/err.h>
 #include <linux/types.h>
 #include <linux/string.h>
-
-DECLARE_GLOBAL_DATA_PTR;
+#include <linux/ctype.h>
 
 #define noinline __attribute__((noinline))
 
@@ -296,27 +293,6 @@ static char *string16(char *buf, char *end, u16 *s, int field_width,
 	return buf;
 }
 
-#if defined(CONFIG_EFI_LOADER) && \
-	!defined(CONFIG_SPL_BUILD) && !defined(API_BUILD)
-static char *device_path_string(char *buf, char *end, void *dp, int field_width,
-				int precision, int flags)
-{
-	u16 *str;
-
-	/* If dp == NULL output the string '<NULL>' */
-	if (!dp)
-		return string16(buf, end, dp, field_width, precision, flags);
-
-	str = efi_dp_str((struct efi_device_path *)dp);
-	if (!str)
-		return ERR_PTR(-ENOMEM);
-
-	buf = string16(buf, end, str, field_width, precision, flags);
-	efi_free_pool(str);
-	return buf;
-}
-#endif
-
 #ifdef CONFIG_CMD_NET
 static char *mac_address_string(char *buf, char *end, u8 *addr, int field_width,
 				int precision, int flags)
@@ -449,12 +425,6 @@ static char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 #endif
 
 	switch (*fmt) {
-#if defined(CONFIG_EFI_LOADER) && \
-	!defined(CONFIG_SPL_BUILD) && !defined(API_BUILD)
-	case 'D':
-		return device_path_string(buf, end, ptr, field_width,
-					  precision, flags);
-#endif
 #ifdef CONFIG_CMD_NET
 	case 'a':
 		flags |= SPECIAL | ZEROPAD;
@@ -624,8 +594,6 @@ repeat:
 			str = pointer(fmt + 1, str, end,
 					va_arg(args, void *),
 					field_width, precision, flags);
-			if (IS_ERR(str))
-				return PTR_ERR(str);
 			/* Skip all alphanumeric pointer suffixes */
 			while (isalnum(fmt[1]))
 				fmt++;
@@ -775,46 +743,11 @@ int sprintf(char *buf, const char *fmt, ...)
 	return i;
 }
 
-#if CONFIG_IS_ENABLED(PRINTF)
-int tick_printf(const char *fmt, ...)
-{
-	va_list args;
-	uint i,msecond;
-	char printbuffer[CONFIG_SYS_PBSIZE+9-12];
-	char printbuffer_with_timestamp[CONFIG_SYS_PBSIZE];
-
-	if (gd->debug_mode == 0)
-		return 0;
-
-	va_start(args, fmt);
-
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	msecond=get_timer_masked();
-	vsprintf(printbuffer, fmt, args);
-	i = sprintf(printbuffer_with_timestamp, "[%02u.%03u]%s", msecond/1000, msecond%1000, printbuffer);
-
-	va_end(args);
-
-	/* Handle error */
-	if (i <= 0)
-		return i;
-	/* Print the string */
-	puts(printbuffer_with_timestamp);
-
-	return i;
-}
-
-
 int printf(const char *fmt, ...)
 {
 	va_list args;
 	uint i;
 	char printbuffer[CONFIG_SYS_PBSIZE];
-
-	if (gd->debug_mode == 0)
-		return 0;
 
 	va_start(args, fmt);
 
@@ -825,9 +758,6 @@ int printf(const char *fmt, ...)
 	i = vscnprintf(printbuffer, sizeof(printbuffer), fmt, args);
 	va_end(args);
 
-	/* Handle error */
-	if (i <= 0)
-		return i;
 	/* Print the string */
 	puts(printbuffer);
 	return i;
@@ -838,23 +768,25 @@ int vprintf(const char *fmt, va_list args)
 	uint i;
 	char printbuffer[CONFIG_SYS_PBSIZE];
 
-	if (gd->debug_mode == 0)
-		return 0;
-
 	/*
 	 * For this to work, printbuffer must be larger than
 	 * anything we ever want to print.
 	 */
 	i = vscnprintf(printbuffer, sizeof(printbuffer), fmt, args);
 
-	/* Handle error */
-	if (i <= 0)
-		return i;
 	/* Print the string */
 	puts(printbuffer);
 	return i;
 }
-#endif
+
+
+void __assert_fail(const char *assertion, const char *file, unsigned line,
+		   const char *function)
+{
+	/* This will not return */
+	panic("%s:%u: %s: Assertion `%s' failed.", file, line, function,
+	      assertion);
+}
 
 char *simple_itoa(ulong i)
 {

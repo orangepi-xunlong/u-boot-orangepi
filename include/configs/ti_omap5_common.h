@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * Texas Instruments Incorporated.
@@ -8,6 +7,8 @@
  *	Aneesh V <aneesh@ti.com>
  *
  * TI OMAP5 AND DRA7XX common configuration settings
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * For more details, please see the technical documents listed at
  * http://www.ti.com/product/omap5432
@@ -57,6 +58,7 @@
 #include <environment/ti/boot.h>
 #include <environment/ti/mmc.h>
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	DEFAULT_MMC_TI_ARGS \

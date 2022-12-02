@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Generic ULPI interface.
  *
@@ -13,6 +12,8 @@
  *
  * Original Copyrights follow:
  * Copyright (C) 2010 Nokia Corporation
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __USB_ULPI_H__

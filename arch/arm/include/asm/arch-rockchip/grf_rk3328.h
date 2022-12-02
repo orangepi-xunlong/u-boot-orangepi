@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SOC_ROCKCHIP_RK3328_GRF_H__
@@ -129,5 +130,6 @@ struct rk3328_sgrf_regs {
 	u32 hdcp_key_access_mask;
 };
 check_member(rk3328_sgrf_regs, hdcp_key_access_mask, 0x2a0);
+
 
 #endif	/* __SOC_ROCKCHIP_RK3328_GRF_H__ */

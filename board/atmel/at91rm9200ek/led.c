@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2006
  * Atmel Nordic AB <www.atmel.com>
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2010
  * Andreas Bießmann <andreas@biessmann.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

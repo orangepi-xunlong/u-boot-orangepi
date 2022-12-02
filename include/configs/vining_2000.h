@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 samtec automotive software & electronics gmbh
  *
  * Configuration settings for the Samtec VIN|ING 2000 board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -91,6 +92,7 @@
 #define CONFIG_PWM_IMX
 #define CONFIG_IMX6_PWM_PER_CLK 66000000
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_ENV_OFFSET		(8 * SZ_64K)
 #define CONFIG_ENV_SIZE			SZ_8K
 #define CONFIG_ENV_OFFSET_REDUND	(9 * SZ_64K)

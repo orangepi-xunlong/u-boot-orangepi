@@ -1,8 +1,10 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2007 - 2016 Michal Simek
 #
 # Michal SIMEK <monstr@monstr.eu>
+#
+# SPDX-License-Identifier:	GPL-2.0+
+#
 
 CPU_VER := $(shell echo $(CONFIG_XILINX_MICROBLAZE0_HW_VER))
 

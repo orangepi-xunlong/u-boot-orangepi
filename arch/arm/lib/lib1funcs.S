@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * linux/arch/arm/lib/lib1funcs.S: Optimized ARM division routines
  *
@@ -6,9 +5,12 @@
  *   - contributed to gcc-3.4 on Sep 30, 2003
  *   - adapted for the Linux kernel on Oct 2, 2003
  */
-/*
- * Copyright 1995, 1996, 1998, 1999, 2000, 2003 Free Software Foundation, Inc.
+
+/* Copyright 1995, 1996, 1998, 1999, 2000, 2003 Free Software Foundation, Inc.
+
+ * SPDX-License-Identifier:	GPL-2.0+
  */
+
 
 #include <linux/linkage.h>
 #include <asm/assembler.h>

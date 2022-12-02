@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Memory Setup stuff - taken from blob memsetup.S
  *
  * Copyright (C) 2009 Samsung Electronics
  * Kyungmin Park <kyungmin.park@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>

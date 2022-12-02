@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0
 # Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0
 
 # Logic to spawn a sub-process and interact with its stdio.
 

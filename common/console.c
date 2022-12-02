@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Paolo Scaffardi, AIRVENT SAM s.p.a - RIMINI(ITALY), arsenio@tin.it
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -18,11 +19,13 @@
 #include <exports.h>
 #include <environment.h>
 #include <watchdog.h>
-#include <private_uboot.h>
-#include <sunxi_board.h>
+#include <vsprintf.h>
+
+#ifdef CONFIG_PSTORE
+#include <asm/arch/pstore.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
-int script_parser_fetch(char *node_path, char *prop_name, int value[], int count);
 
 static int on_console(const char *name, const char *value, enum env_op op,
 	int flags)
@@ -257,6 +260,18 @@ static inline void console_doenv(int file, struct stdio_dev *dev)
 {
 	iomux_doenv(file, dev->name);
 }
+
+static void console_clear(int file)
+{
+	int i;
+	struct stdio_dev *dev;
+
+	for (i = 0; i < cd_count[file]; i++) {
+		dev = console_devices[file][i];
+		if (dev->clear != NULL)
+			dev->clear(dev);
+	}
+}
 #else
 static inline int console_getc(int file)
 {
@@ -282,6 +297,12 @@ static inline void console_puts_noserial(int file, const char *s)
 static inline void console_puts(int file, const char *s)
 {
 	stdio_devices[file]->puts(stdio_devices[file], s);
+}
+
+static inline void console_clear(int file)
+{
+	if (stdio_devices[file]->clear)
+		stdio_devices[file]->clear(stdio_devices[file]);
 }
 
 static inline void console_doenv(int file, struct stdio_dev *dev)
@@ -362,30 +383,10 @@ void fputs(int file, const char *s)
 		console_puts(file, s);
 }
 
-int uprintf(int log_level, const char *fmt, ...)
+void fclear(int file)
 {
-	va_list args;
-	uint i, msecond;
-	char printbuffer[CONFIG_SYS_PBSIZE - 12];
-	char printbuffer_with_timestamp[CONFIG_SYS_PBSIZE];
-
-	if ((log_level > gd->debug_mode) && (log_level >= 0)) {
-		return 0;
-	}
-
-	va_start(args, fmt);
-
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	msecond = get_timer_masked();
-	vsprintf(printbuffer, fmt, args);
-	i = sprintf(printbuffer_with_timestamp, "[%02u.%03u]%s",
-		    msecond / 1000, msecond % 1000, printbuffer);
-	va_end(args);
-	/* Print the string */
-	puts(printbuffer_with_timestamp);
-	return i;
+	if (file < MAX_FILES)
+		console_clear(file);
 }
 
 int fprintf(int file, const char *fmt, ...)
@@ -411,10 +412,8 @@ int fprintf(int file, const char *fmt, ...)
 
 int getc(void)
 {
-#ifdef CONFIG_DISABLE_CONSOLE
-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
+	if (!gd || gd->flags & GD_FLG_DISABLE_CONSOLE)
 		return 0;
-#endif
 
 	if (!gd->have_console)
 		return 0;
@@ -423,7 +422,7 @@ int getc(void)
 	if (gd->console_in.start) {
 		int ch;
 
-		ch = membuff_getbyte(&gd->console_in);
+		ch = membuff_getbyte((struct membuff *)&gd->console_in);
 		if (ch != -1)
 			return 1;
 	}
@@ -439,16 +438,14 @@ int getc(void)
 
 int tstc(void)
 {
-#ifdef CONFIG_DISABLE_CONSOLE
-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
+	if (!gd || gd->flags & GD_FLG_DISABLE_CONSOLE)
 		return 0;
-#endif
 
 	if (!gd->have_console)
 		return 0;
 #ifdef CONFIG_CONSOLE_RECORD
 	if (gd->console_in.start) {
-		if (membuff_peekbyte(&gd->console_in) != -1)
+		if (membuff_peekbyte((struct membuff *)&gd->console_in) != -1)
 			return 1;
 	}
 #endif
@@ -459,6 +456,16 @@ int tstc(void)
 
 	/* Send directly to the handler */
 	return serial_tstc();
+}
+
+void flushc(void)
+{
+	if (!gd || gd->flags & GD_FLG_DISABLE_CONSOLE)
+		return;
+
+#ifdef CONFIG_DEBUG_UART_NS16550
+	debug_uart_flushc();
+#endif
 }
 
 #define PRE_CONSOLE_FLUSHPOINT1_SERIAL			0
@@ -477,37 +484,6 @@ static void pre_console_putc(const char c)
 
 	unmap_sysmem(buffer);
 }
-
-#if 0
-typedef struct serial_hw
-{
-	volatile unsigned int rbr;		/* 0 */
-	volatile unsigned int ier;		/* 1 */
-	volatile unsigned int fcr;		/* 2 */
-	volatile unsigned int lcr;		/* 3 */
-	volatile unsigned int mcr;		/* 4 */
-	volatile unsigned int lsr;		/* 5 */
-	volatile unsigned int msr;		/* 6 */
-	volatile unsigned int sch;		/* 7 */
-}serial_hw_t;
-
-
-
-static void pre_console_puts(const char *s)
-{
-	serial_hw_t *serial_ctrl_base = (serial_hw_t *)(SUNXI_UART0_BASE);
-	while (*s) {
-		while((serial_ctrl_base->lsr & ( 1 << 6 )) == 0);
-		serial_ctrl_base->rbr = *s++;
-	}
-}
-#else
-static void pre_console_puts(const char *s)
-{
-	while (*s)
-		pre_console_putc(*s++);
-}
-#endif
 
 static void print_pre_console_buffer(int flushpoint)
 {
@@ -536,21 +512,18 @@ static void print_pre_console_buffer(int flushpoint)
 }
 #else
 static inline void pre_console_putc(const char c) {}
-static inline void pre_console_puts(const char *s) {}
 static inline void print_pre_console_buffer(int flushpoint) {}
 #endif
 
 void putc(const char c)
 {
-	if (gd->debug_mode == 0)
+	if (!gd || gd->flags & GD_FLG_DISABLE_CONSOLE)
 		return;
-#ifdef CONFIG_SANDBOX
-	/* sandbox can send characters to stdout before it has a console */
-	if (!gd || !(gd->flags & GD_FLG_SERIAL_READY)) {
-		os_putc(c);
-		return;
-	}
+
+#ifdef CONFIG_PSTORE
+	putc_to_ram(c);
 #endif
+
 #ifdef CONFIG_DEBUG_UART
 	/* if we don't have a console yet, use the debug UART */
 	if (!gd || !(gd->flags & GD_FLG_SERIAL_READY)) {
@@ -560,15 +533,10 @@ void putc(const char c)
 #endif
 #ifdef CONFIG_CONSOLE_RECORD
 	if (gd && (gd->flags & GD_FLG_RECORD) && gd->console_out.start)
-		membuff_putbyte(&gd->console_out, c);
+		membuff_putbyte((struct membuff *)&gd->console_out, c);
 #endif
 #ifdef CONFIG_SILENT_CONSOLE
 	if (gd->flags & GD_FLG_SILENT)
-		return;
-#endif
-
-#ifdef CONFIG_DISABLE_CONSOLE
-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
 		return;
 #endif
 
@@ -585,70 +553,100 @@ void putc(const char c)
 	}
 }
 
+#if ((!defined(CONFIG_SPL_BUILD) || !defined(CONFIG_USE_TINY_PRINTF)) && \
+	defined(CONFIG_BOOTSTAGE_PRINTF_TIMESTAMP))
+static void vspfunc(char *buf, size_t size, char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buf, size, format, ap);
+	va_end(ap);
+}
+
 void puts(const char *s)
 {
-	if (gd->debug_mode == 0)
-		return;
-#ifdef CONFIG_DEBUG_UART
-	if (!gd || !(gd->flags & GD_FLG_SERIAL_READY)) {
-		while (*s) {
-			int ch = *s++;
+	unsigned long ts_sec, ts_msec, ticks;
+	char pr_timestamp[32], *p;
 
-			printch(ch);
+	while (*s) {
+		if (*s == '\n') {
+			gd->new_line = 1;
+			putc(*s++);
+			continue;
 		}
-		return;
-	}
-#endif
-#ifdef CONFIG_CONSOLE_RECORD
-	if (gd && (gd->flags & GD_FLG_RECORD) && gd->console_out.start)
-		membuff_put(&gd->console_out, s, strlen(s));
-#endif
-#ifdef CONFIG_SILENT_CONSOLE
-	if (gd->flags & GD_FLG_SILENT)
-		return;
-#endif
 
-#ifdef CONFIG_DISABLE_CONSOLE
-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
-		return;
-#endif
+		if (gd->new_line) {
+			gd->new_line = 0;
+			ticks = (get_ticks() / 24ULL);
+			ts_sec = ticks / 1000000;
+			ts_msec = ticks % 1000000;
+			vspfunc(pr_timestamp, sizeof(pr_timestamp),
+				"[%5lu.%06lu] ", ts_sec, ts_msec);
+			p = pr_timestamp;
+			while (*p)
+				putc(*p++);
+		}
 
-	if (!gd->have_console)
-		return pre_console_puts(s);
-
-	if (gd->flags & GD_FLG_DEVINIT) {
-		/* Send to the standard output */
-		fputs(stdout, s);
-	} else {
-		/* Send directly to the handler */
-		pre_console_puts(s);
-		serial_puts(s);
+		putc(*s++);
 	}
 }
+#else
+void puts(const char *s)
+{
+	while (*s)
+		putc(*s++);
+}
+#endif
+
 
 #ifdef CONFIG_CONSOLE_RECORD
 int console_record_init(void)
 {
 	int ret;
 
-	ret = membuff_new(&gd->console_out, CONFIG_CONSOLE_RECORD_OUT_SIZE);
+	ret = membuff_new((struct membuff *)&gd->console_out,
+			  CONFIG_CONSOLE_RECORD_OUT_SIZE);
 	if (ret)
 		return ret;
-	ret = membuff_new(&gd->console_in, CONFIG_CONSOLE_RECORD_IN_SIZE);
+	ret = membuff_new((struct membuff *)&gd->console_in,
+			  CONFIG_CONSOLE_RECORD_IN_SIZE);
 
 	return ret;
 }
 
 void console_record_reset(void)
 {
-	membuff_purge(&gd->console_out);
-	membuff_purge(&gd->console_in);
+	membuff_purge((struct membuff *)&gd->console_out);
+	membuff_purge((struct membuff *)&gd->console_in);
 }
 
 void console_record_reset_enable(void)
 {
 	console_record_reset();
 	gd->flags |= GD_FLG_RECORD;
+}
+
+/* Print and remove data from buffer */
+void console_record_print_purge(void)
+{
+	unsigned long flags;
+	char c;
+
+	if (!gd || !(gd->flags & GD_FLG_RECORD))
+		return;
+
+	/* Remove some bits to avoid running unexpected branch in putc() */
+	flags = gd->flags;
+	gd->flags &= ~(GD_FLG_RECORD | GD_FLG_SILENT | GD_FLG_DISABLE_CONSOLE);
+
+	printf("\n\n## Console Record: \n");
+	while (!membuff_isempty((struct membuff *)&gd->console_out)) {
+		c = membuff_getbyte((struct membuff *)&gd->console_out);
+		putc(c);
+	}
+
+	gd->flags = flags;
 }
 #endif
 
@@ -770,10 +768,12 @@ int console_assign(int file, const char *devname)
 static void console_update_silent(void)
 {
 #ifdef CONFIG_SILENT_CONSOLE
-	if (env_get("silent") != NULL)
+	if (env_get("silent") != NULL) {
+		printf("U-Boot: enable silent console\n");
 		gd->flags |= GD_FLG_SILENT;
-	else
+	} else {
 		gd->flags &= ~GD_FLG_SILENT;
+	}
 #endif
 }
 
@@ -794,13 +794,8 @@ int console_announce_r(void)
 int console_init_f(void)
 {
 	gd->have_console = 1;
-	int debug_mode;
+
 	console_update_silent();
-	if (get_boot_work_mode() == WORK_MODE_BOOT)
-		script_parser_fetch("/soc/platform", "debug_mode", &debug_mode, 4);
-	else
-		debug_mode = 8;
-	gd->debug_mode = debug_mode;
 
 	print_pre_console_buffer(PRE_CONSOLE_FLUSHPOINT1_SERIAL);
 
@@ -810,25 +805,25 @@ int console_init_f(void)
 void stdio_print_current_devices(void)
 {
 	/* Print information */
-	debug("In:    ");
+	puts("In:    ");
 	if (stdio_devices[stdin] == NULL) {
-		debug("No input devices available!\n");
+		puts("No input devices available!\n");
 	} else {
-		debug ("%s\n", stdio_devices[stdin]->name);
+		printf ("%s\n", stdio_devices[stdin]->name);
 	}
 
-	debug("Out:   ");
+	puts("Out:   ");
 	if (stdio_devices[stdout] == NULL) {
-		debug("No output devices available!\n");
+		puts("No output devices available!\n");
 	} else {
-		debug ("%s\n", stdio_devices[stdout]->name);
+		printf ("%s\n", stdio_devices[stdout]->name);
 	}
 
-	debug("Err:   ");
+	puts("Err:   ");
 	if (stdio_devices[stderr] == NULL) {
-		debug("No error devices available!\n");
+		puts("No error devices available!\n");
 	} else {
-		debug ("%s\n", stdio_devices[stderr]->name);
+		printf ("%s\n", stdio_devices[stderr]->name);
 	}
 }
 
@@ -909,7 +904,7 @@ done:
 
 #ifdef CONFIG_SYS_CONSOLE_ENV_OVERWRITE
 	/* set the environment variables (will overwrite previous env settings) */
-	for (i = 0; i < MAX_FILES; i++) {
+	for (i = 0; i < 3; i++) {
 		env_set(stdio_names[i], stdio_devices[i]->name);
 	}
 #endif /* CONFIG_SYS_CONSOLE_ENV_OVERWRITE */
@@ -988,7 +983,7 @@ int console_init_r(void)
 #endif /* CONFIG_SYS_CONSOLE_INFO_QUIET */
 
 	/* Setting environment variables */
-	for (i = 0; i < MAX_FILES; i++) {
+	for (i = 0; i < 3; i++) {
 		env_set(stdio_names[i], stdio_devices[i]->name);
 	}
 

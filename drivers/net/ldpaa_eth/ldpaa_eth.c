@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2014-2016 Freescale Semiconductor
- * Copyright 2017 NXP
+ * Copyright (C) 2014 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -42,67 +42,80 @@ static int init_phy(struct eth_device *dev)
 #endif
 
 #ifdef DEBUG
-
-#define DPNI_STATS_PER_PAGE 6
-
-static const char *dpni_statistics[][DPNI_STATS_PER_PAGE] = {
-	{
-	"DPNI_CNT_ING_ALL_FRAMES",
-	"DPNI_CNT_ING_ALL_BYTES",
-	"DPNI_CNT_ING_MCAST_FRAMES",
-	"DPNI_CNT_ING_MCAST_BYTES",
-	"DPNI_CNT_ING_BCAST_FRAMES",
-	"DPNI_CNT_ING_BCAST_BYTES",
-	}, {
-	"DPNI_CNT_EGR_ALL_FRAMES",
-	"DPNI_CNT_EGR_ALL_BYTES",
-	"DPNI_CNT_EGR_MCAST_FRAMES",
-	"DPNI_CNT_EGR_MCAST_BYTES",
-	"DPNI_CNT_EGR_BCAST_FRAMES",
-	"DPNI_CNT_EGR_BCAST_BYTES",
-	}, {
-	"DPNI_CNT_ING_FILTERED_FRAMES",
-	"DPNI_CNT_ING_DISCARDED_FRAMES",
-	"DPNI_CNT_ING_NOBUFFER_DISCARDS",
-	"DPNI_CNT_EGR_DISCARDED_FRAMES",
-	"DPNI_CNT_EGR_CNF_FRAMES",
-	""
-	},
-};
-
-static void print_dpni_stats(const char *strings[],
-			     struct dpni_statistics dpni_stats)
-{
-	uint64_t *stat;
-	int i;
-
-	stat = (uint64_t *)&dpni_stats;
-	for (i = 0; i < DPNI_STATS_PER_PAGE; i++) {
-		if (strcmp(strings[i], "\0") == 0)
-			break;
-		printf("%s= %llu\n", strings[i], *stat);
-		stat++;
-	}
-}
-
 static void ldpaa_eth_get_dpni_counter(void)
 {
 	int err = 0;
-	unsigned int page = 0;
-	struct dpni_statistics dpni_stats;
+	u64 value;
 
-	printf("DPNI counters ..\n");
-	for (page = 0; page < 3; page++) {
-		err = dpni_get_statistics(dflt_mc_io, MC_CMD_NO_FLAGS,
-					  dflt_dpni->dpni_handle, page,
-					  &dpni_stats);
-		if (err < 0) {
-			printf("dpni_get_statistics: failed:");
-			printf("%d for page[%d]\n", err, page);
-			return;
-		}
-		print_dpni_stats(dpni_statistics[page], dpni_stats);
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME failed\n");
+		return;
 	}
+	printf("DPNI_CNT_ING_FRAME=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_BYTE,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_BYTE failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_BYTE=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME_DROP ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME_DROP failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_FRAME_DROP =%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_ING_FRAME_DISCARD,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_ING_FRAME_DISCARD failed\n");
+		return;
+	}
+	printf("DPNI_CNT_ING_FRAME_DISCARD=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_FRAME,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_FRAME failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_FRAME=%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_BYTE ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_BYTE failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_BYTE =%lld\n", value);
+
+	err = dpni_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
+		     dflt_dpni->dpni_handle,
+		     DPNI_CNT_EGR_FRAME_DISCARD ,
+		     &value);
+	if (err < 0) {
+		printf("dpni_get_counter: DPNI_CNT_EGR_FRAME_DISCARD failed\n");
+		return;
+	}
+	printf("DPNI_CNT_EGR_FRAME_DISCARD =%lld\n", value);
 }
 
 static void ldpaa_eth_get_dpmac_counter(struct eth_device *net_dev)
@@ -119,7 +132,6 @@ static void ldpaa_eth_get_dpmac_counter(struct eth_device *net_dev)
 		printf("dpmac_get_counter: DPMAC_CNT_ING_BYTE failed\n");
 		return;
 	}
-	printf("\nDPMAC counters ..\n");
 	printf("DPMAC_CNT_ING_BYTE=%lld\n", value);
 
 	err = dpmac_get_counter(dflt_mc_io, MC_CMD_NO_FLAGS,
@@ -322,7 +334,7 @@ static int ldpaa_eth_tx(struct eth_device *net_dev, void *buf, int len)
 					&buffer_start, 1);
 	} while (err == -EBUSY);
 
-	if (err <= 0) {
+	if (err < 0) {
 		printf("qbman_swp_acquire() failed\n");
 		return -ENOMEM;
 	}
@@ -380,6 +392,7 @@ error:
 static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 {
 	struct ldpaa_eth_priv *priv = (struct ldpaa_eth_priv *)net_dev->priv;
+	struct dpni_queue_attr rx_queue_attr;
 	struct dpmac_link_state	dpmac_link_state = { 0 };
 #ifdef DEBUG
 	struct dpni_link_state link_state;
@@ -387,7 +400,6 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 	int err = 0;
 	struct mii_dev *bus;
 	phy_interface_t enet_if;
-	struct dpni_queue d_queue;
 
 	if (net_dev->state == ETH_STATE_ACTIVE)
 		return 0;
@@ -496,10 +508,6 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 	}
 
 #ifdef DEBUG
-	printf("DPMAC link status: %d - ", dpmac_link_state.up);
-	dpmac_link_state.up == 0 ? printf("down\n") :
-	dpmac_link_state.up == 1 ? printf("up\n") : printf("error state\n");
-
 	err = dpni_get_link_state(dflt_mc_io, MC_CMD_NO_FLAGS,
 				  dflt_dpni->dpni_handle, &link_state);
 	if (err < 0) {
@@ -507,21 +515,20 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 		return err;
 	}
 
-	printf("DPNI link status: %d - ", link_state.up);
+	printf("link status: %d - ", link_state.up);
 	link_state.up == 0 ? printf("down\n") :
 	link_state.up == 1 ? printf("up\n") : printf("error state\n");
 #endif
 
-	memset(&d_queue, 0, sizeof(struct dpni_queue));
-	err = dpni_get_queue(dflt_mc_io, MC_CMD_NO_FLAGS,
-			     dflt_dpni->dpni_handle, DPNI_QUEUE_RX,
-			     0, 0, &d_queue);
+	/* TODO: support multiple Rx flows */
+	err = dpni_get_rx_flow(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle, 0, 0, &rx_queue_attr);
 	if (err) {
-		printf("dpni_get_queue failed\n");
-		goto err_get_queue;
+		printf("dpni_get_rx_flow() failed\n");
+		goto err_rx_flow;
 	}
 
-	priv->rx_dflt_fqid = d_queue.fqid;
+	priv->rx_dflt_fqid = rx_queue_attr.fqid;
 
 	err = dpni_get_qdid(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle,
 			    &priv->tx_qdid);
@@ -533,7 +540,7 @@ static int ldpaa_eth_open(struct eth_device *net_dev, bd_t *bd)
 	return priv->phydev->link;
 
 err_qdid:
-err_get_queue:
+err_rx_flow:
 	dpni_disable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 err_dpni_bind:
 	ldpaa_dpbp_free();
@@ -541,10 +548,7 @@ err_dpbp_setup:
 	dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 err_dpni_setup:
 err_dpamc_bind:
-	dpmac_close(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
-	dpmac_destroy(dflt_mc_io,
-		      dflt_dprc_handle,
-		      MC_CMD_NO_FLAGS, priv->dpmac_id);
+	dpmac_destroy(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
 err_dpmac_setup:
 	return err;
 }
@@ -571,14 +575,7 @@ static void ldpaa_eth_stop(struct eth_device *net_dev)
 	if (err < 0)
 		printf("dprc_disconnect() failed dpmac_endpoint\n");
 
-	err = dpmac_close(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
-	if (err < 0)
-		printf("dpmac_close() failed\n");
-
-	err = dpmac_destroy(dflt_mc_io,
-			    dflt_dprc_handle,
-			    MC_CMD_NO_FLAGS,
-			    priv->dpmac_id);
+	err = dpmac_destroy(dflt_mc_io, MC_CMD_NO_FLAGS, priv->dpmac_handle);
 	if (err < 0)
 		printf("dpmac_destroy() failed\n");
 
@@ -596,16 +593,9 @@ static void ldpaa_eth_stop(struct eth_device *net_dev)
 	}
 #endif
 
-	/* Free DPBP handle and reset. */
 	ldpaa_dpbp_free();
-
 	dpni_reset(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
-	if (err < 0)
-		printf("dpni_reset() failed\n");
-
 	dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
-	if (err < 0)
-		printf("dpni_close() failed\n");
 }
 
 static void ldpaa_dpbp_drain_cnt(int count)
@@ -721,7 +711,6 @@ static int ldpaa_dpbp_setup(void)
 	}
 
 	err = ldpaa_dpbp_seed(dflt_dpbp->dpbp_attr.bpid);
-
 	if (err) {
 		printf("Buffer seeding failed for DPBP %d (bpid=%d)\n",
 		       dflt_dpbp->dpbp_attr.id, dflt_dpbp->dpbp_attr.bpid);
@@ -750,19 +739,21 @@ static void ldpaa_dpbp_free(void)
 static int ldpaa_dpmac_version_check(struct fsl_mc_io *mc_io,
 				     struct ldpaa_eth_priv *priv)
 {
+	struct dpmac_attr attr;
 	int error;
-	uint16_t major_ver, minor_ver;
 
-	error = dpmac_get_api_version(dflt_mc_io, 0,
-					&major_ver,
-					&minor_ver);
-	if ((major_ver < DPMAC_VER_MAJOR) ||
-	    (major_ver == DPMAC_VER_MAJOR && minor_ver < DPMAC_VER_MINOR)) {
-		printf("DPMAC version mismatch found %u.%u,",
-		       major_ver, minor_ver);
-		printf("supported version is %u.%u\n",
-		       DPMAC_VER_MAJOR, DPMAC_VER_MINOR);
-		return error;
+	memset(&attr, 0, sizeof(struct dpmac_attr));
+	error = dpmac_get_attributes(mc_io, MC_CMD_NO_FLAGS,
+				     priv->dpmac_handle,
+				     &attr);
+	if (error == 0) {
+		if ((attr.version.major != DPMAC_VER_MAJOR) ||
+		    (attr.version.minor != DPMAC_VER_MINOR)) {
+			printf("DPMAC version mismatch found %u.%u,",
+			       attr.version.major, attr.version.minor);
+			printf("supported version is %u.%u\n",
+			       DPMAC_VER_MAJOR, DPMAC_VER_MINOR);
+		}
 	}
 
 	return error;
@@ -774,36 +765,14 @@ static int ldpaa_dpmac_setup(struct ldpaa_eth_priv *priv)
 	struct dpmac_cfg dpmac_cfg;
 
 	dpmac_cfg.mac_id = priv->dpmac_id;
-
-	err = dpmac_create(dflt_mc_io,
-			   dflt_dprc_handle,
-			   MC_CMD_NO_FLAGS, &dpmac_cfg,
-			   &priv->dpmac_id);
+	err = dpmac_create(dflt_mc_io, MC_CMD_NO_FLAGS, &dpmac_cfg,
+			  &priv->dpmac_handle);
 	if (err)
 		printf("dpmac_create() failed\n");
 
 	err = ldpaa_dpmac_version_check(dflt_mc_io, priv);
-	if (err < 0) {
+	if (err < 0)
 		printf("ldpaa_dpmac_version_check() failed: %d\n", err);
-		goto err_version_check;
-	}
-
-	err = dpmac_open(dflt_mc_io,
-			 MC_CMD_NO_FLAGS,
-			 priv->dpmac_id,
-			 &priv->dpmac_handle);
-	if (err < 0) {
-		printf("dpmac_open() failed: %d\n", err);
-		goto err_open;
-	}
-
-	return err;
-
-err_open:
-err_version_check:
-	dpmac_destroy(dflt_mc_io,
-		      dflt_dprc_handle,
-		      MC_CMD_NO_FLAGS, priv->dpmac_id);
 
 	return err;
 }
@@ -869,6 +838,7 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 		printf("dpni_open() failed\n");
 		goto err_open;
 	}
+
 	err = dpni_get_attributes(dflt_mc_io, MC_CMD_NO_FLAGS,
 				  dflt_dpni->dpni_handle,
 				  &dflt_dpni->dpni_attrs);
@@ -887,13 +857,12 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 	dflt_dpni->buf_layout.private_data_size = LDPAA_ETH_SWA_SIZE;
 	/* HW erratum mandates data alignment in multiples of 256 */
 	dflt_dpni->buf_layout.data_align = LDPAA_ETH_BUF_ALIGN;
-
 	/* ...rx, ... */
-	err = dpni_set_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
-				     dflt_dpni->dpni_handle,
-				     &dflt_dpni->buf_layout, DPNI_QUEUE_RX);
+	err = dpni_set_rx_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					dflt_dpni->dpni_handle,
+					&dflt_dpni->buf_layout);
 	if (err) {
-		printf("dpni_set_buffer_layout() failed");
+		printf("dpni_set_rx_buffer_layout() failed");
 		goto err_buf_layout;
 	}
 
@@ -901,22 +870,21 @@ static int ldpaa_dpni_setup(struct ldpaa_eth_priv *priv)
 	/* remove Rx-only options */
 	dflt_dpni->buf_layout.options &= ~(DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
 				      DPNI_BUF_LAYOUT_OPT_PARSER_RESULT);
-	err = dpni_set_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
-				     dflt_dpni->dpni_handle,
-				     &dflt_dpni->buf_layout, DPNI_QUEUE_TX);
+	err = dpni_set_tx_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					dflt_dpni->dpni_handle,
+					&dflt_dpni->buf_layout);
 	if (err) {
-		printf("dpni_set_buffer_layout() failed");
+		printf("dpni_set_tx_buffer_layout() failed");
 		goto err_buf_layout;
 	}
 
 	/* ... tx-confirm. */
 	dflt_dpni->buf_layout.options &= ~DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
-	err = dpni_set_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
-				     dflt_dpni->dpni_handle,
-				     &dflt_dpni->buf_layout,
-				     DPNI_QUEUE_TX_CONFIRM);
+	err = dpni_set_tx_conf_buffer_layout(dflt_mc_io, MC_CMD_NO_FLAGS,
+					     dflt_dpni->dpni_handle,
+					     &dflt_dpni->buf_layout);
 	if (err) {
-		printf("dpni_set_buffer_layout() failed");
+		printf("dpni_set_tx_conf_buffer_layout() failed");
 		goto err_buf_layout;
 	}
 
@@ -951,7 +919,8 @@ err_open:
 static int ldpaa_dpni_bind(struct ldpaa_eth_priv *priv)
 {
 	struct dpni_pools_cfg pools_params;
-	struct dpni_queue tx_queue;
+	struct dpni_tx_flow_cfg dflt_tx_flow;
+	struct dpni_tx_conf_cfg tx_conf_cfg;
 	int err = 0;
 
 	memset(&pools_params, 0, sizeof(pools_params));
@@ -965,22 +934,26 @@ static int ldpaa_dpni_bind(struct ldpaa_eth_priv *priv)
 		return err;
 	}
 
-	memset(&tx_queue, 0, sizeof(struct dpni_queue));
+	priv->tx_flow_id = DPNI_NEW_FLOW_ID;
+	memset(&dflt_tx_flow, 0, sizeof(dflt_tx_flow));
 
-	err = dpni_set_queue(dflt_mc_io, MC_CMD_NO_FLAGS,
-			     dflt_dpni->dpni_handle,
-			     DPNI_QUEUE_TX, 0, 0, &tx_queue);
-
+	dflt_tx_flow.use_common_tx_conf_queue = 0;
+	err = dpni_set_tx_flow(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle, &priv->tx_flow_id,
+			       &dflt_tx_flow);
 	if (err) {
-		printf("dpni_set_queue() failed\n");
+		printf("dpni_set_tx_flow() failed\n");
 		return err;
 	}
 
-	err = dpni_set_tx_confirmation_mode(dflt_mc_io, MC_CMD_NO_FLAGS,
-					    dflt_dpni->dpni_handle,
-					    DPNI_CONF_DISABLE);
+	memset(&tx_conf_cfg, 0, sizeof(struct dpni_tx_conf_cfg));
+	tx_conf_cfg.errors_only = true;
+	/*Set tx-conf and error configuration*/
+	err = dpni_set_tx_conf(dflt_mc_io, MC_CMD_NO_FLAGS,
+			       dflt_dpni->dpni_handle,
+			       priv->tx_flow_id, &tx_conf_cfg);
 	if (err) {
-		printf("dpni_set_tx_confirmation_mode() failed\n");
+		printf("dpni_set_tx_conf() failed\n");
 		return err;
 	}
 
@@ -1022,6 +995,7 @@ int ldpaa_eth_init(int dpmac_id, phy_interface_t enet_if)
 	struct eth_device		*net_dev = NULL;
 	struct ldpaa_eth_priv		*priv = NULL;
 	int				err = 0;
+
 
 	/* Net device */
 	net_dev = (struct eth_device *)malloc(sizeof(struct eth_device));

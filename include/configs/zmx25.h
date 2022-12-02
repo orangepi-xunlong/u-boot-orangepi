@@ -1,15 +1,19 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (c) 2011 Graf-Syteco, Matthias Weisser
  * <weisserm@arcor.de>
  *
  * Configuation settings for the zmx25 board
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 #include <asm/arch/imx-regs.h>
+
+#define CONFIG_MX25
+#define CONFIG_SYS_TEXT_BASE		0xA0000000
 
 #define CONFIG_SYS_TIMER_RATE		32768
 #define CONFIG_SYS_TIMER_COUNTER	\
@@ -35,10 +39,16 @@
  */
 
 /*
+ * GPIO
+ */
+#define CONFIG_MXC_GPIO
+
+/*
  * Serial
  */
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE	UART2_BASE
+#define CONFIG_CONS_INDEX	1	/* use UART2 for console */
 
 /*
  * Ethernet
@@ -51,6 +61,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -70,6 +83,7 @@
 #define CONFIG_MXC_USB_PORTSC	MXC_EHCI_MODE_SERIAL
 #define CONFIG_MXC_USB_FLAGS	(MXC_EHCI_INTERNAL_PHY | MXC_EHCI_IPPUE_DOWN)
 #define CONFIG_EHCI_IS_TDI
+#define CONFIG_SUPPORT_VFAT
 #endif /* CONFIG_CMD_USB */
 
 /* SDRAM */
@@ -102,6 +116,9 @@
 
 #define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM + (512*1024))
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM + PHYS_SDRAM_SIZE)
+
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_PREBOOT  ""
 

@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2009 Samsung Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
  * Kyungmin Park <kyungmin.park@samsung.com>
  *
  * Configuation settings for the SAMSUNG Universal (s5pc100) board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -14,6 +15,7 @@
 #define CONFIG_SAMSUNG		1	/* in a SAMSUNG core */
 #define CONFIG_S5P		1	/* which is in a S5P Family */
 #define CONFIG_S5PC110		1	/* which is in a S5PC110 */
+#define CONFIG_MACH_GONI	1	/* working with Goni */
 
 #include <linux/sizes.h>
 #include <asm/arch/cpu.h>		/* get chip and board defs */
@@ -27,11 +29,13 @@
 #define CONFIG_SYS_SDRAM_BASE		0x30000000
 
 /* Text Base */
+#define CONFIG_SYS_TEXT_BASE		0x34800000
 
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_INITRD_TAG
+#define CONFIG_CMDLINE_EDITING
 
 /* Size of malloc() pool before and after relocation */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 << 20))
@@ -51,6 +55,9 @@
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE SZ_32M
 #define DFU_DEFAULT_POLL_TIMEOUT 300
 
+/* TIZEN THOR downloader support */
+#define CONFIG_USB_FUNCTION_THOR
+
 /* USB Samsung's IDs */
 
 #define CONFIG_G_DNL_THOR_VENDOR_NUM 0x04E8
@@ -59,6 +66,15 @@
 #define CONFIG_G_DNL_UMS_PRODUCT_NUM 0xA4A5
 
 /* Actual modem binary size is 16MiB. Add 2MiB for bad block handling */
+#define MTDIDS_DEFAULT		"onenand0=samsung-onenand"
+#define MTDPARTS_DEFAULT	"mtdparts=samsung-onenand:1m(bootloader)"\
+				",256k(params)"\
+				",2816k(config)"\
+				",8m(csa)"\
+				",7m(kernel)"\
+				",1m(log)"\
+				",12m(modem)"\
+				",60m(qboot)\0"
 
 /* partitions definitions */
 #define PARTS_CSA			"csa-mmc"
@@ -88,7 +104,7 @@
 
 #define CONFIG_BOOTCOMMAND	"run mmcboot"
 
-#define CONFIG_DEFAULT_CONSOLE	"ttySAC2,115200n8"
+#define CONFIG_DEFAULT_CONSOLE	"console=ttySAC2,115200n8\0"
 
 #define CONFIG_RAMDISK_BOOT	"root=/dev/ram0 rw rootfstype=ext4" \
 		" ${console} ${meminfo}"
@@ -102,6 +118,8 @@
 #define CONFIG_MISC_INIT_R
 
 #define CONFIG_ENV_OVERWRITE
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	CONFIG_UPDATEB \
 	"updatek=" \
@@ -136,7 +154,7 @@
 	"bootchart=set opts init=/sbin/bootchartd; run bootcmd\0" \
 	"verify=n\0" \
 	"rootfstype=ext4\0" \
-	"console=" CONFIG_DEFAULT_CONSOLE "\0"\
+	"console=" CONFIG_DEFAULT_CONSOLE \
 	"meminfo=mem=80M mem=256M@0x40000000 mem=128M@0x50000000\0" \
 	"loaduimage=ext4load mmc ${mmcdev}:${mmcbootpart} 0x30007FC0 uImage\0" \
 	"mmcdev=0\0" \
@@ -149,6 +167,7 @@
 	"opts=always_resume=1\0" \
 	"dfu_alt_info=" CONFIG_DFU_ALT "\0"
 
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_PBSIZE	384	/* Print Buffer Size */
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
@@ -178,8 +197,14 @@
 #define CONFIG_SAMSUNG_ONENAND		1
 #define CONFIG_SYS_ONENAND_BASE		0xB0000000
 
+/* write support for filesystems */
+#define CONFIG_EXT4_WRITE
+
+/* GPT */
+
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - 0x1000000)
 
 #define CONFIG_USB_GADGET_DWC2_OTG_PHY
+#define CONFIG_USB_FUNCTION_MASS_STORAGE
 
 #endif	/* __CONFIG_H */

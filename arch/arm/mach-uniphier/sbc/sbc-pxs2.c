@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016-2017 Socionext Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/io.h>
@@ -16,5 +17,5 @@ void uniphier_pxs2_sbc_init(void)
 	/* system bus output enable */
 	writel(0x17, PC0CTRL);
 
-	uniphier_pin_init("system-bus");	/* PXs3 */
+	uniphier_pin_init("system_bus_grp");	/* PXs3 */
 }

@@ -1,13 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Common part of configuration settings for the AT91 SAMA5 board.
  *
  * Copyright (C) 2015 Atmel Corporation
  *		      Josh Wu <josh.wu@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AT91_SAMA5_COMMON_H
 #define __AT91_SAMA5_COMMON_H
+
+#include <asm/hardware.h>
+
+#define CONFIG_SYS_TEXT_BASE		0x26f00000
 
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK      32768
@@ -19,6 +24,8 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
 
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
+
 /* general purpose I/O */
 #ifndef CONFIG_DM_GPIO
 #define CONFIG_AT91_GPIO
@@ -29,12 +36,15 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
 
-#ifdef CONFIG_SD_BOOT
+#ifdef CONFIG_SYS_USE_MMC
 
 #ifdef CONFIG_ENV_IS_IN_MMC
 /* Use raw reserved sectors to save environment */
@@ -55,7 +65,7 @@
 
 #else
 
-#ifdef CONFIG_NAND_BOOT
+#ifdef CONFIG_SYS_USE_NANDFLASH
 /* u-boot env in nand flash */
 #define CONFIG_ENV_OFFSET		0xc0000
 #define CONFIG_ENV_OFFSET_REDUND	0x100000
@@ -63,7 +73,7 @@
 #define CONFIG_BOOTCOMMAND		"nand read 0x21000000 0x180000 0x80000;"	\
 					"nand read 0x22000000 0x200000 0x600000;"	\
 					"bootz 0x22000000 - 0x21000000"
-#elif CONFIG_SPI_BOOT
+#elif CONFIG_SYS_USE_SERIALFLASH
 /* u-boot env in serial flash, by default is bus 0 and cs 0 */
 #define CONFIG_ENV_OFFSET		0x6000
 #define CONFIG_ENV_SIZE			0x2000
@@ -75,6 +85,10 @@
 #endif
 
 #endif
+
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_AUTO_COMPLETE
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(4 * 1024 * 1024)

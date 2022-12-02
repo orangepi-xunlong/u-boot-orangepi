@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009, 2011 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2008, Excito Elektronik i Sk=E5ne AB
  *
  * Author: Tor Krill tor@excito.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

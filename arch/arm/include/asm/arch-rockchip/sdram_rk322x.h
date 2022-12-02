@@ -1,18 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_SDRAM_RK322X_H
 #define _ASM_ARCH_SDRAM_RK322X_H
 
 #include <common.h>
-
-enum {
-	DDR3		= 3,
-	LPDDR2		= 5,
-	LPDDR3		= 6,
-	UNUSED		= 0xFF,
-};
 
 struct rk322x_sdram_channel {
 	/*
@@ -276,21 +270,21 @@ struct rk322x_base_params {
 };
 
 /* PCT_DFISTCFG0 */
-#define DFI_INIT_START			BIT(0)
-#define DFI_DATA_BYTE_DISABLE_EN	BIT(2)
+#define DFI_INIT_START			(1 << 0)
+#define DFI_DATA_BYTE_DISABLE_EN	(1 << 2)
 
 /* PCT_DFISTCFG1 */
-#define DFI_DRAM_CLK_SR_EN		BIT(0)
-#define DFI_DRAM_CLK_DPD_EN		BIT(1)
+#define DFI_DRAM_CLK_SR_EN		(1 << 0)
+#define DFI_DRAM_CLK_DPD_EN		(1 << 1)
 
 /* PCT_DFISTCFG2 */
-#define DFI_PARITY_INTR_EN		BIT(0)
-#define DFI_PARITY_EN			BIT(1)
+#define DFI_PARITY_INTR_EN		(1 << 0)
+#define DFI_PARITY_EN			(1 << 1)
 
 /* PCT_DFILPCFG0 */
 #define TLP_RESP_TIME_SHIFT		16
-#define LP_SR_EN			BIT(8)
-#define LP_PD_EN			BIT(0)
+#define LP_SR_EN			(1 << 8)
+#define LP_PD_EN			(1 << 0)
 
 /* PCT_DFITCTRLDELAY */
 #define TCTRL_DELAY_TIME_SHIFT		0
@@ -308,44 +302,44 @@ struct rk322x_base_params {
 #define TDRAM_CLK_EN_TIME_SHIFT		0
 
 /* PCTL_DFIODTCFG */
-#define RANK0_ODT_WRITE_SEL		BIT(3)
-#define RANK1_ODT_WRITE_SEL		BIT(11)
+#define RANK0_ODT_WRITE_SEL		(1 << 3)
+#define RANK1_ODT_WRITE_SEL		(1 << 11)
 
 /* PCTL_DFIODTCFG1 */
 #define ODT_LEN_BL8_W_SHIFT		16
 
 /* PUBL_ACDLLCR */
-#define ACDLLCR_DLLDIS			BIT(31)
-#define ACDLLCR_DLLSRST			BIT(30)
+#define ACDLLCR_DLLDIS			(1 << 31)
+#define ACDLLCR_DLLSRST			(1 << 30)
 
 /* PUBL_DXDLLCR */
-#define DXDLLCR_DLLDIS			BIT(31)
-#define DXDLLCR_DLLSRST			BIT(30)
+#define DXDLLCR_DLLDIS			(1 << 31)
+#define DXDLLCR_DLLSRST			(1 << 30)
 
 /* PUBL_DLLGCR */
-#define DLLGCR_SBIAS			BIT(30)
+#define DLLGCR_SBIAS			(1 << 30)
 
 /* PUBL_DXGCR */
-#define DQSRTT				BIT(9)
-#define DQRTT				BIT(10)
+#define DQSRTT				(1 << 9)
+#define DQRTT				(1 << 10)
 
 /* PIR */
-#define PIR_INIT			BIT(0)
-#define PIR_DLLSRST			BIT(1)
-#define PIR_DLLLOCK			BIT(2)
-#define PIR_ZCAL			BIT(3)
-#define PIR_ITMSRST			BIT(4)
-#define PIR_DRAMRST			BIT(5)
-#define PIR_DRAMINIT			BIT(6)
-#define PIR_QSTRN			BIT(7)
-#define PIR_RVTRN			BIT(8)
-#define PIR_ICPC			BIT(16)
-#define PIR_DLLBYP			BIT(17)
-#define PIR_CTLDINIT			BIT(18)
-#define PIR_CLRSR			BIT(28)
-#define PIR_LOCKBYP			BIT(29)
-#define PIR_ZCALBYP			BIT(30)
-#define PIR_INITBYP			BIT(31)
+#define PIR_INIT			(1 << 0)
+#define PIR_DLLSRST			(1 << 1)
+#define PIR_DLLLOCK			(1 << 2)
+#define PIR_ZCAL			(1 << 3)
+#define PIR_ITMSRST			(1 << 4)
+#define PIR_DRAMRST			(1 << 5)
+#define PIR_DRAMINIT			(1 << 6)
+#define PIR_QSTRN			(1 << 7)
+#define PIR_RVTRN			(1 << 8)
+#define PIR_ICPC			(1 << 16)
+#define PIR_DLLBYP			(1 << 17)
+#define PIR_CTLDINIT			(1 << 18)
+#define PIR_CLRSR			(1 << 28)
+#define PIR_LOCKBYP			(1 << 29)
+#define PIR_ZCALBYP			(1 << 30)
+#define PIR_INITBYP			(1u << 31)
 
 /* PGCR */
 #define PGCR_DFTLMT_SHIFT		3
@@ -354,16 +348,16 @@ struct rk322x_base_params {
 #define PGCR_ITMDMD_SHIFT		0
 
 /* PGSR */
-#define PGSR_IDONE			BIT(0)
-#define PGSR_DLDONE			BIT(1)
-#define PGSR_ZCDONE			BIT(2)
-#define PGSR_DIDONE			BIT(3)
-#define PGSR_DTDONE			BIT(4)
-#define PGSR_DTERR			BIT(5)
-#define PGSR_DTIERR			BIT(6)
-#define PGSR_DFTERR			BIT(7)
-#define PGSR_RVERR			BIT(8)
-#define PGSR_RVEIRR			BIT(9)
+#define PGSR_IDONE			(1 << 0)
+#define PGSR_DLDONE			(1 << 1)
+#define PGSR_ZCDONE			(1 << 2)
+#define PGSR_DIDONE			(1 << 3)
+#define PGSR_DTDONE			(1 << 4)
+#define PGSR_DTERR			(1 << 5)
+#define PGSR_DTIERR			(1 << 6)
+#define PGSR_DFTERR			(1 << 7)
+#define PGSR_RVERR			(1 << 8)
+#define PGSR_RVEIRR			(1 << 9)
 
 /* PTR0 */
 #define PRT_ITMSRST_SHIFT		18
@@ -435,7 +429,7 @@ struct rk322x_base_params {
 #define ZDEN_SHIFT			28
 
 /* DDLGCR */
-#define SBIAS_BYPASS			BIT(23)
+#define SBIAS_BYPASS			(1 << 23)
 
 /* MCFG */
 #define MDDR_LPDDR2_CLK_STOP_IDLE_SHIFT	24
@@ -460,10 +454,10 @@ struct rk322x_base_params {
 #define BURSTLENGTH_SHIFT		20
 
 /* POWCTL */
-#define POWER_UP_START			BIT(0)
+#define POWER_UP_START			(1 << 0)
 
 /* POWSTAT */
-#define POWER_UP_DONE			BIT(0)
+#define POWER_UP_DONE			(1 << 0)
 
 /* MCMD */
 enum {

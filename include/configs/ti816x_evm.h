@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * ti816x_evm.h
  *
  * Copyright (C) 2013, Adeneo Embedded <www.adeneo-embedded.com>
  * Antoine Tenart, <atenart@adeneo-embedded.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_TI816X_EVM_H
@@ -17,8 +18,8 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 	DEFAULT_LINUX_BOOT_ENV \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 
 #define CONFIG_BOOTCOMMAND			\
 	"mmc rescan;"				\
@@ -55,6 +56,7 @@
 #define CONFIG_SERIAL1
 #define CONFIG_SERIAL2
 #define CONFIG_SERIAL3
+#define CONFIG_CONS_INDEX	1
 
 /*
  * GPMC NAND block.  We support 1 device and the physical address to
@@ -86,6 +88,18 @@
 #define CONFIG_SYS_NAND_ECCBYTES	14
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_BCH8_CODE_HW
+#define MTDIDS_DEFAULT			"nand0=nand.0"
+#define MTDPARTS_DEFAULT		"mtdparts=nand.0:" \
+					"128k(NAND.SPL)," \
+					"128k(NAND.SPL.backup1)," \
+					"128k(NAND.SPL.backup2)," \
+					"128k(NAND.SPL.backup3)," \
+					"256k(NAND.u-boot-spl-os)," \
+					"1m(NAND.u-boot)," \
+					"128k(NAND.u-boot-env)," \
+					"128k(NAND.u-boot-env.backup1)," \
+					"8m(NAND.kernel)," \
+					"-(NAND.file-system)"
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x000c0000
 #define CONFIG_ENV_OFFSET		0x001c0000
 #define CONFIG_ENV_OFFSET_REDUND	0x001e0000
@@ -97,10 +111,15 @@
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
 					 CONFIG_SPL_TEXT_BASE)
 
+#define CONFIG_SYS_TEXT_BASE        0x80800000
+
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_MII
+#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_NET_RETRY_COUNT	10
 
 /* Since SPL did pll and ddr initialization for us,

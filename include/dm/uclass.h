@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_UCLASS_H
@@ -36,6 +37,9 @@ struct uclass {
 	struct uclass_driver *uc_drv;
 	struct list_head dev_head;
 	struct list_head sibling_node;
+#ifdef CONFIG_USING_KERNEL_DTB_V2
+	struct list_head *u_boot_dev_head;
+#endif
 };
 
 struct driver;
@@ -71,11 +75,11 @@ struct udevice;
  * then this will be automatically allocated.
  * @per_child_auto_alloc_size: Each child device (of a parent in this
  * uclass) can hold parent data for the device/uclass. This value is only
- * used as a fallback if this member is 0 in the driver.
+ * used as a falback if this member is 0 in the driver.
  * @per_child_platdata_auto_alloc_size: A bus likes to store information about
  * its children. If non-zero this is the size of this data, to be allocated
  * in the child device's parent_platdata pointer. This value is only used as
- * a fallback if this member is 0 in the driver.
+ * a falback if this member is 0 in the driver.
  * @ops: Uclass operations, providing the consistent interface to devices
  * within the uclass.
  * @flags: Flags for this uclass (DM_UC_...)

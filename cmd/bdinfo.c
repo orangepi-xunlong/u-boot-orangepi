@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -376,8 +377,6 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	print_bi_dram(bd);
 
-	print_num("relocaddr", gd->relocaddr);
-	print_num("reloc off", gd->reloc_off);
 #if defined(CONFIG_CMD_NET)
 	print_eth_ip_addr();
 	print_mhz("ethspeed",	    bd->bi_ethspeed);

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Originally from Linux v4.9
  * Copyright (C) 1996-2005 Paul Mackerras.
@@ -12,6 +11,8 @@
  *
  * Modified for U-Boot
  * Copyright (c) 2017 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_OF_ACCESS_H
@@ -102,6 +103,46 @@ struct property *of_find_property(const struct device_node *np,
  */
 const void *of_get_property(const struct device_node *np, const char *name,
 			    int *lenp);
+
+/**
+ * of_get_first_property()- get to the pointer of the first property
+ *
+ * Get pointer to the first property of the node, it is used to iterate
+ * and read all the property with of_get_next_property_by_prop().
+ *
+ * @np: Pointer to device node
+ * @return pointer to property or NULL if not found
+ */
+const struct property *of_get_first_property(const struct device_node *np);
+
+/**
+ * of_get_next_property() - get to the pointer of the next property
+ *
+ * Get pointer to the next property of the node, it is used to iterate
+ * and read all the property with of_get_property_by_prop().
+ *
+ * @np: Pointer to device node
+ * @property: pointer of the current property
+ * @return pointer to next property or NULL if not found
+ */
+const struct property *of_get_next_property(const struct device_node *np,
+					    const struct property *property);
+
+/**
+ * of_get_property_by_prop() - get a property value of a node property
+ *
+ * Get value for the property identified by node and property pointer.
+ *
+ * @node: node to read
+ * @property: pointer of the property to read
+ * @propname: place to property name on success
+ * @lenp: place to put length on success
+ * @return pointer to property value or NULL if error
+ */
+const void *of_get_property_by_prop(const struct device_node *np,
+				    const struct property *property,
+				    const char **name,
+				    int *lenp);
 
 /**
  * of_device_is_compatible() - Check if the node matches given constraints
@@ -219,6 +260,22 @@ struct device_node *of_find_node_by_phandle(phandle handle);
 int of_read_u32(const struct device_node *np, const char *propname, u32 *outp);
 
 /**
+ * of_property_read_u64 - Find and read a 64 bit integer from a property
+ * @np:         device node from which the property value is to be read.
+ * @propname:   name of the property to be searched.
+ * @out_value:  pointer to return value, modified only if return value is 0.
+ *
+ * Search for a property in a device node and read a 64-bit value from
+ * it. Returns 0 on success, -EINVAL if the property does not exist,
+ * -ENODATA if property does not have a value, and -EOVERFLOW if the
+ * property data isn't large enough.
+ *
+ * The out_value is modified only if a valid u64 value can be decoded.
+ */
+int of_property_read_u64(const struct device_node *np, const char *propname,
+                         u64 *out_value);
+
+/**
  * of_read_u32_array() - Find and read an array of 32 bit integers
  *
  * Search for a property in a device node and read 32-bit value(s) from
@@ -233,6 +290,22 @@ int of_read_u32(const struct device_node *np, const char *propname, u32 *outp);
  */
 int of_read_u32_array(const struct device_node *np, const char *propname,
 		      u32 *out_values, size_t sz);
+
+/**
+ * of_write_u32_array() - Find and write an array of 32 bit integers
+ *
+ * Search for a property in a device node and write 32-bit value(s) to
+ * it.
+ *
+ * @np:		device node from which the property value is to be read.
+ * @propname:	name of the property to be searched.
+ * @values:	pointer to update value, modified only if return value is 0.
+ * @sz:		number of array elements to read
+ * @return 0 on success, -EINVAL if the property does not exist, -ENODATA
+ * if property does not have a value, and -EOVERFLOW is longer than sz.
+ */
+int of_write_u32_array(const struct device_node *np, const char *propname,
+		       u32 *values, size_t sz);
 
 /**
  * of_property_match_string() - Find string in a list and return index
@@ -391,6 +464,22 @@ int of_alias_scan(void);
  * @return alias ID, if found, else -ENODEV
  */
 int of_alias_get_id(const struct device_node *np, const char *stem);
+
+/**
+ * of_alias_get_dev - Get device_node by given stem and alias id
+ *
+ * Travels the lookup table to get the device_node by given stem and alias id.
+ *
+ * @stem:	Alias stem of the given device_node
+ * @id:         Alias id of the given device_node
+ * @return device_node, if found, else NULL
+ */
+struct device_node *of_alias_get_dev(const char *stem, int id);
+
+/**
+ * of_alias_dump - Dump of alias nodes added in aliases_lookup.
+ */
+struct device_node *of_alias_dump(void);
 
 /**
  * of_get_stdout() - Get node to use for stdout

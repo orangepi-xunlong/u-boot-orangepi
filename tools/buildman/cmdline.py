@@ -1,5 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0+
+#
 # Copyright (c) 2014 Google, Inc
+#
+# SPDX-License-Identifier:      GPL-2.0+
 #
 
 from optparse import OptionParser
@@ -30,8 +32,6 @@ def ParseArgs():
           help="Don't build, just configure each commit")
     parser.add_option('-e', '--show_errors', action='store_true',
           default=False, help='Show errors and warnings')
-    parser.add_option('-E', '--warnings-as-errors', action='store_true',
-          default=False, help='Treat all compiler warnings as errors')
     parser.add_option('-f', '--force-build', dest='force_build',
           action='store_true', default=False,
           help='Force build of boards even if already built')
@@ -82,8 +82,6 @@ def ParseArgs():
           default=False, help='Show a build summary')
     parser.add_option('-S', '--show-sizes', action='store_true',
           default=False, help='Show image size variation in summary')
-    parser.add_option('--skip-net-tests', action='store_true', default=False,
-                      help='Skip tests which need the network')
     parser.add_option('--step', type='int',
           default=1, help='Only build every n commits (0=just first and last)')
     parser.add_option('-t', '--test', action='store_true', dest='test',

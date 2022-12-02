@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Samsung Electronics
  *
  * Configuration settings for the SAMSUNG ORIGEN (EXYNOS4210) board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_ORIGEN_H
@@ -27,6 +28,8 @@
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x6000000)
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x3E00000)
 
+#define CONFIG_SYS_TEXT_BASE		0x43E00000
+
 #define CONFIG_MACH_TYPE		MACH_TYPE_ORIGEN
 
 /* select serial console configuration */
@@ -43,6 +46,8 @@
 #define S5P_CHECK_SLEEP			0x00000BAD
 #define S5P_CHECK_DIDLE			0xBAD00000
 #define S5P_CHECK_LPA			0xABAD0000
+
+#define CONFIG_SUPPORT_RAW_INITRD
 
 /* MMC SPL */
 #define COPY_BL2_FNPTR_ADDR	0x02020030

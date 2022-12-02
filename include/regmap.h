@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __REGMAP_H
@@ -44,6 +45,54 @@ int regmap_read(struct regmap *map, uint offset, uint *valp);
 
 #define regmap_read32(map, ptr, member, valp) \
 	regmap_read(map, (uint32_t *)(ptr)->member - (uint32_t *)(ptr), valp)
+
+/**
+ * regmap_read_poll_timeout - Poll until a condition is met or a timeout occurs
+ *
+ * @map:	Regmap to read from
+ * @addr:	Offset to poll
+ * @val:	Unsigned integer variable to read the value into
+ * @cond:	Break condition (usually involving @val)
+ * @sleep_us:	Maximum time to sleep between reads in us (0 tight-loops).
+ * @timeout_ms:	Timeout in ms, 0 means never timeout
+ *
+ * Returns 0 on success and -ETIMEDOUT upon a timeout or the regmap_read
+ * error return value in case of a error read. In the two former cases,
+ * the last read value at @addr is stored in @val. Must not be called
+ * from atomic context if sleep_us or timeout_us are used.
+ *
+ * This is modelled after the regmap_read_poll_timeout macros in linux but
+ * with millisecond timeout.
+ */
+#define regmap_read_poll_timeout(map, addr, val, cond, sleep_us, timeout_ms) \
+({ \
+	unsigned long __start = get_timer(0); \
+	int __ret; \
+	for (;;) { \
+		__ret = regmap_read((map), (addr), &(val)); \
+		if (__ret) \
+			break; \
+		if (cond) \
+			break; \
+		if ((timeout_ms) && get_timer(__start) > (timeout_ms)) { \
+			__ret = regmap_read((map), (addr), &(val)); \
+			break; \
+		} \
+		if ((sleep_us)) \
+			udelay((sleep_us)); \
+	} \
+	__ret ?: ((cond) ? 0 : -ETIMEDOUT); \
+})
+
+/**
+ * regmap_update_bits() - Perform a read/modify/write using a mask
+ *
+ * @map:	The map returned by regmap_init_mem*()
+ * @offset:	Offset of the memory
+ * @mask:	Mask to apply to the read value
+ * @val:	Value to apply to the value to write
+ */
+int regmap_update_bits(struct regmap *map, uint offset, uint mask, uint val);
 
 /**
  * regmap_init_mem() - Set up a new register map that uses memory access

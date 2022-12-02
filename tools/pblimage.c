@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012-2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include "imagetool.h"
 #include <image.h>
@@ -292,7 +293,7 @@ int pblimage_check_params(struct image_tool_params *params)
 		pbi_crc_cmd2 = 0;
 		pbl_cmd_initaddr = params->addr & PBL_ADDR_24BIT_MASK;
 		pbl_cmd_initaddr |= PBL_ACS_CONT_CMD;
-		pbl_cmd_initaddr += uboot_size;
+		pbl_cmd_initaddr |= uboot_size;
 		pbl_end_cmd[0] = 0x09610000;
 		pbl_end_cmd[1] = 0x00000000;
 		pbl_end_cmd[2] = 0x096100c0;

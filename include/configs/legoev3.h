@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016 David Lechner <david@lechnology.com>
  *
@@ -9,6 +8,8 @@
  * Based on davinci_dvevm.h. Original Copyrights follow:
  *
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -17,11 +18,16 @@
 /*
  * SoC Configuration
  */
+#define CONFIG_MACH_DAVINCI_DA850_EVM
+#define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
+#define CONFIG_SOC_DA850		/* TI DA850 SoC */
 #define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		24000000
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
+
+#define CONFIG_SYS_TEXT_BASE		0xc1080000
 
 /*
  * Memory Info
@@ -49,6 +55,20 @@
 /*
  * PLL configuration
  */
+#define CONFIG_SYS_DV_CLKMODE          0
+#define CONFIG_SYS_DA850_PLL0_POSTDIV  1
+#define CONFIG_SYS_DA850_PLL0_PLLDIV1  0x8000
+#define CONFIG_SYS_DA850_PLL0_PLLDIV2  0x8001
+#define CONFIG_SYS_DA850_PLL0_PLLDIV3  0x8002
+#define CONFIG_SYS_DA850_PLL0_PLLDIV4  0x8003
+#define CONFIG_SYS_DA850_PLL0_PLLDIV5  0x8002
+#define CONFIG_SYS_DA850_PLL0_PLLDIV6  CONFIG_SYS_DA850_PLL0_PLLDIV1
+#define CONFIG_SYS_DA850_PLL0_PLLDIV7  0x8005
+
+#define CONFIG_SYS_DA850_PLL1_POSTDIV  1
+#define CONFIG_SYS_DA850_PLL1_PLLDIV1  0x8000
+#define CONFIG_SYS_DA850_PLL1_PLLDIV2  0x8001
+#define CONFIG_SYS_DA850_PLL1_PLLDIV3  0x8002
 
 #define CONFIG_SYS_DA850_PLL0_PLLM     24
 #define CONFIG_SYS_DA850_PLL1_PLLM     21
@@ -101,6 +121,7 @@
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART1_BASE /* Base address of UART1 */
 #define CONFIG_SYS_NS16550_CLK	clk_get(DAVINCI_UART2_CLKID)
+#define CONFIG_CONS_INDEX	1		/* use UART0 for console */
 
 #define CONFIG_SYS_SPI_BASE		DAVINCI_SPI0_BASE
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI0_CLKID)
@@ -122,6 +143,9 @@
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot Args Buffer Size */
 #define CONFIG_SYS_LOAD_ADDR	(PHYS_SDRAM_1 + 0x700000)
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_MX_CYCLIC
 
 /*

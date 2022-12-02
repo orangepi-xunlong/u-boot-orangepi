@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland
@@ -8,6 +7,8 @@
  *
  * Most of this source has been derived from the Linux USB
  * project.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Stefan Roese <sr@denx.de>
  *
@@ -7,6 +6,8 @@
  *
  * Based on mx6qsabrelite.h which is:
  * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -53,17 +54,21 @@
 #define CONFIG_SYS_MEMTEST_START	0x10000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + (500 << 20))
 
-#define CONFIG_HOSTNAME			"titanium"
+#define CONFIG_HOSTNAME			titanium
 #define CONFIG_UBI_PART			ubi
 #define CONFIG_UBIFS_VOLUME		rootfs0
 
+#define MTDIDS_DEFAULT		"nand0=gpmi-nand"
+#define MTDPARTS_DEFAULT	"mtdparts=gpmi-nand:16M(uboot),512k(env1)," \
+				"512k(env2),-(ubi)"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"kernel=" CONFIG_HOSTNAME "/uImage\0"		\
+	"kernel=" __stringify(CONFIG_HOSTNAME) "/uImage\0"		\
 	"kernel_fs=/boot/uImage\0"					\
 	"kernel_addr=11000000\0"					\
-	"dtb=" CONFIG_HOSTNAME "/"				\
-		CONFIG_HOSTNAME ".dtb\0"			\
-	"dtb_fs=/boot/" CONFIG_HOSTNAME ".dtb\0"		\
+	"dtb=" __stringify(CONFIG_HOSTNAME) "/"				\
+		__stringify(CONFIG_HOSTNAME) ".dtb\0"			\
+	"dtb_fs=/boot/" __stringify(CONFIG_HOSTNAME) ".dtb\0"		\
 	"dtb_addr=12800000\0"						\
 	"script=boot.scr\0" \
 	"uimage=uImage\0" \
@@ -92,7 +97,7 @@
 	"rootpath=/opt/eldk-5.3/armv7a/rootfs-minimal-mtdutils\0"	\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
-	"ubifs=" CONFIG_HOSTNAME "/ubifs.img\0"		\
+	"ubifs=" __stringify(CONFIG_HOSTNAME) "/ubifs.img\0"		\
 	"part=" __stringify(CONFIG_UBI_PART) "\0"			\
 	"boot_vol=0\0"							\
 	"vol=" __stringify(CONFIG_UBIFS_VOLUME) "\0"			\
@@ -102,8 +107,8 @@
 	"upd_ubifs=run load_ubifs update_ubifs\0"			\
 	"init_ubi=nand erase.part ubi;ubi part ${part};"		\
 		"ubi create ${vol} c800000\0"				\
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"					\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"				\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nand_ubifs=run ubifs_mount ubifs_load ubifsargs addip"		\
 		" addcon addmtd;"					\
 		"bootm ${kernel_addr} - ${dtb_addr}\0"			\
@@ -165,7 +170,5 @@
 #endif /* CONFIG_CMD_NAND */
 
 /* UBI/UBIFS config options */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 
 #endif			       /* __CONFIG_H */

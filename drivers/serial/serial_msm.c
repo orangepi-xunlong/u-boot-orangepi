@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Qualcomm UART driver
  *
@@ -6,6 +5,8 @@
  *
  * UART will work in Data Mover mode.
  * Based on Linux driver.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

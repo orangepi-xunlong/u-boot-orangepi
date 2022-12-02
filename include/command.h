@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -110,8 +111,6 @@ extern int common_diskboot(cmd_tbl_t *cmdtp, const char *intf, int argc,
 extern int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 extern int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
-extern unsigned long do_go_exec(ulong (*entry)(int, char * const []), int argc,
-				char * const argv[]);
 /*
  * Error codes that commands return to cmd_process(). We use the standard 0
  * and 1 for success and failure, but add one more case - failure with a
@@ -221,5 +220,15 @@ int board_run_command(const char *cmdline);
 #define U_BOOT_CMD_MKENT(_name, _maxargs, _rep, _cmd, _usage, _help)	\
 	U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd,		\
 					_usage, _help, NULL)
+
+#ifdef CONFIG_U_BOOT_CMD_ALWAYS
+#define U_BOOT_CMD_ALWAYS(_name, _maxargs, _rep, _cmd, _usage, _help)	\
+	ll_entry_declare(cmd_tbl_t, _name, cmd) =			\
+			{ #_name, _maxargs, _rep, _cmd, _usage,		\
+				_CMD_HELP(_help) _CMD_COMPLETE(NULL) }
+#else
+#define U_BOOT_CMD_ALWAYS(_name, _maxargs, _rep, _cmd, _usage, _help)	\
+		U_BOOT_CMD(_name, _maxargs, _rep, _cmd, _usage, _help)
+#endif
 
 #endif	/* __COMMAND_H */

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -84,7 +85,6 @@ int _do_help(cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t *cmdtp, int flag,
 /* find command table entry for a command */
 cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
 {
-#ifdef CONFIG_CMDLINE
 	cmd_tbl_t *cmdtp;
 	cmd_tbl_t *cmdtp_temp = table;	/* Init value */
 	const char *p;
@@ -111,7 +111,6 @@ cmd_tbl_t *find_cmd_tbl(const char *cmd, cmd_tbl_t *table, int table_len)
 	if (n_found == 1) {			/* exactly one match */
 		return cmdtp_temp;
 	}
-#endif /* CONFIG_CMDLINE */
 
 	return NULL;	/* not found or ambiguous command */
 }
@@ -317,7 +316,7 @@ static int find_common_prefix(char * const argv[])
 	return len;
 }
 
-static char tmp_buf[CONFIG_SYS_CBSIZE + 1];	/* copy of console I/O buffer */
+static char tmp_buf[CONFIG_SYS_CBSIZE];	/* copy of console I/O buffer	*/
 
 int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 {

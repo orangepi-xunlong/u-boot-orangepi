@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland, d.peter@mpl.ch.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,7 +10,7 @@
 #include <asm/unaligned.h>
 #include "part_iso.h"
 
-#ifdef CONFIG_HAVE_BLOCK_DEVICE
+#ifdef HAVE_BLOCK_DEVICE
 
 /* #define	ISO_PART_DEBUG */
 

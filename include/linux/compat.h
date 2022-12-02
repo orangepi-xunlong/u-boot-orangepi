@@ -1,19 +1,3 @@
-/*
- * include/linux/compat.h
- *
- * Copyright (c) 2007-2019 Allwinnertech Co., Ltd.
- * Author: zhengxiaobin <zhengxiaobin@allwinnertech.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
 #ifndef _LINUX_COMPAT_H_
 #define _LINUX_COMPAT_H_
 
@@ -21,6 +5,7 @@
 #include <linux/types.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
+#include <stacktrace.h>
 
 struct unused {};
 typedef struct unused unused_t;
@@ -209,7 +194,6 @@ typedef unsigned long blkcnt_t;
 #define init_waitqueue_head(...)	do { } while (0)
 #define wait_event_interruptible(...)	0
 #define wake_up_interruptible(...)	do { } while (0)
-#define dump_stack(...)			do { } while (0)
 
 #define task_pid_nr(x)			0
 #define set_freezable(...)		do { } while (0)
@@ -347,7 +331,7 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp);
 
 typedef int irqreturn_t;
 
-/*struct timer_list {};*/
+struct timer_list {};
 struct notifier_block {};
 
 typedef unsigned long dmaaddr_t;

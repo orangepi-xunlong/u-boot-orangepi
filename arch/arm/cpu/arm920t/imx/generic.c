@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  arch/arm/mach-imx/generic.c
  *
@@ -7,6 +6,8 @@
  *  Copyright: Synertronixx GmbH
  *
  *  Common code for i.MX machines
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

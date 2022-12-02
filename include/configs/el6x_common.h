@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Stefano Babic <sbabic@denx.de>
  *
  * Configuration settings for the E+L i.MX6Q DO82 board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __EL6Q_COMMON_CONFIG_H
@@ -10,6 +11,7 @@
 
 #define CONFIG_BOARD_NAME		EL6Q
 
+#include <config_distro_defaults.h>
 #include "mx6_common.h"
 
 #define CONFIG_IMX_THERMAL
@@ -21,6 +23,7 @@
 
 #ifdef CONFIG_SPL
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
+#define CONFIG_SPL_SPI_LOAD
 #include "imx6_spl.h"
 #endif
 
@@ -43,6 +46,7 @@
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
 /* Commands */
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		3
 #define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED		20000000
@@ -52,8 +56,12 @@
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_MXC_UART_BASE	UART2_BASE
 
+/* Command definition */
+#undef CONFIG_CMD_IMLS
+
 #define CONFIG_BOARD_NAME	EL6Q
 
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS                                               \
 	"board="__stringify(CONFIG_BOARD_NAME)"\0"                              \
 	"cma_size="__stringify(EL6Q_CMA_SIZE)"\0"                               \
@@ -75,9 +83,15 @@
 	func(PXE, PXE, na) \
 	func(DHCP, dhcp, na)
 
+#define CONFIG_BOOTCOMMAND \
+	   "run findfdt; " \
+	   "run distro_bootcmd"
+
 #include <config_distro_bootcmd.h>
 
 #define CONFIG_ARP_TIMEOUT     200UL
+
+#define CONFIG_CMD_MEMTEST
 
 #define CONFIG_SYS_MEMTEST_START       0x10000000
 #define CONFIG_SYS_MEMTEST_END         0x10800000

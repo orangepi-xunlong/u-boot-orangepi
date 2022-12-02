@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Config file for Compulab CM-FX6 board
  *
  * Copyright (C) 2014, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Nikita Kiryanov <nikita@compulab.co.il>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_CM_FX6_H
@@ -47,10 +48,14 @@
 
 /* MTD support */
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
 #define CONFIG_SPI_FLASH_MTD
 #endif
+
+#define MTDIDS_DEFAULT		"nor0=spi0.0"
+#define MTDPARTS_DEFAULT	"mtdparts=spi0.0:" \
+				"768k(uboot)," \
+				"256k(uboot-environment)," \
+				"-(reserved)"
 
 /* Environment */
 #define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
@@ -61,16 +66,7 @@
 #define CONFIG_ENV_SIZE			(8 * 1024)
 #define CONFIG_ENV_OFFSET		(768 * 1024)
 
-#ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"fdt_high=0xffffffff\0" \
-	"initrd_high=0xffffffff\0" \
-	"fdt_addr_r=0x18000000\0" \
-	"ramdisk_addr_r=0x13000000\0" \
-	"kernel_addr_r=" __stringify(CONFIG_LOADADDR) "\0" \
-	"pxefile_addr_r=" __stringify(CONFIG_LOADADDR) "\0" \
-	"scriptaddr=" __stringify(CONFIG_LOADADDR) "\0" \
-	"fdtfile=undefined\0" \
 	"stdin=serial,usbkbd\0" \
 	"stdout=serial,vga\0" \
 	"stderr=serial,vga\0" \
@@ -79,20 +75,24 @@
 	"uImage=uImage-cm-fx6\0" \
 	"zImage=zImage-cm-fx6\0" \
 	"kernel=uImage-cm-fx6\0" \
+	"script=boot.scr\0" \
 	"dtb=cm-fx6.dtb\0" \
+	"bootm_low=18000000\0" \
+	"loadaddr=0x10800000\0" \
+	"fdtaddr=0x11000000\0" \
 	"console=ttymxc3,115200\0" \
 	"ethprime=FEC0\0" \
 	"video_hdmi=mxcfb0:dev=hdmi,1920x1080M-32@50,if=RGB32\0" \
 	"video_dvi=mxcfb0:dev=dvi,1280x800M-32@50,if=RGB32\0" \
-	"doboot=bootm ${kernel_addr_r}\0" \
+	"doboot=bootm ${loadaddr}\0" \
 	"doloadfdt=false\0" \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"setboottypez=setenv kernel ${zImage};" \
-		"setenv doboot bootz ${kernel_addr_r} - ${fdt_addr_r};" \
+		"setenv doboot bootz ${loadaddr} - ${fdtaddr};" \
 		"setenv doloadfdt true;\0" \
 	"setboottypem=setenv kernel ${uImage};" \
-		"setenv doboot bootm ${kernel_addr_r};" \
+		"setenv doboot bootm ${loadaddr};" \
 		"setenv doloadfdt false;\0"\
 	"mmcroot=/dev/mmcblk0p2 rw rootwait\0" \
 	"sataroot=/dev/sda2 rw rootwait\0" \
@@ -116,13 +116,17 @@
 	"run_eboot=echo Starting EBOOT ...; "\
 		"mmc dev 2 && " \
 		"mmc rescan && mmc read 10042000 a 400 && go 10042000\0" \
-	"loadkernel=load ${storagetype} ${storagedev} ${kernel_addr_r} ${kernel};\0"\
-	"loadfdt=load ${storagetype} ${storagedev} ${fdt_addr_r} ${dtb};\0" \
-	"nandloadkernel=nand read ${kernel_addr_r} 0 780000;\0" \
-	"nandloadfdt=nand read ${fdt_addr_r} 780000 80000;\0" \
+	"loadscript=load ${storagetype} ${storagedev} ${loadaddr} ${script};\0"\
+	"loadkernel=load ${storagetype} ${storagedev} ${loadaddr} ${kernel};\0"\
+	"loadfdt=load ${storagetype} ${storagedev} ${fdtaddr} ${dtb};\0" \
+	"bootscript=echo Running bootscript from ${storagetype} ...;" \
+		   "source ${loadaddr};\0" \
+	"nandloadkernel=nand read ${loadaddr} 0 780000;\0" \
+	"nandloadfdt=nand read ${fdtaddr} 780000 80000;\0" \
 	"setupmmcboot=setenv storagetype mmc; setenv storagedev 2;\0" \
 	"setupsataboot=setenv storagetype sata; setenv storagedev 0;\0" \
 	"setupnandboot=setenv storagetype nand;\0" \
+	"setupusbboot=setenv storagetype usb; setenv storagedev 0;\0" \
 	"storagebootcmd=echo Booting from ${storagetype} ...;" \
 			"run ${storagetype}args; run doboot;\0" \
 	"trybootk=if run loadkernel; then " \
@@ -131,41 +135,38 @@
 		"fi;" \
 		"run storagebootcmd;" \
 		"fi;\0" \
-	"trybootsmz=" \
+	"trybootsmz=if run loadscript; then " \
+			"run bootscript;" \
+		"fi;" \
 		"run setboottypem;" \
 		"run trybootk;" \
 		"run setboottypez;" \
-		"run trybootk;\0" \
-	"legacy_bootcmd=" \
-		"run setupmmcboot;" \
-		"mmc dev ${storagedev};" \
-		"if mmc rescan; then " \
-			"run trybootsmz;" \
+		"run trybootk;\0"
+
+#define CONFIG_BOOTCOMMAND \
+	"run setupmmcboot;" \
+	"mmc dev ${storagedev};" \
+	"if mmc rescan; then " \
+		"run trybootsmz;" \
+	"fi;" \
+	"run setupusbboot;" \
+	"if usb start; then "\
+		"if run loadscript; then " \
+			"run bootscript;" \
 		"fi;" \
-		"run setupsataboot;" \
-		"if sata init; then " \
-			"run trybootsmz;" \
-		"fi;" \
-		"run setupnandboot;" \
-		"run nandboot;\0" \
-	"findfdt="\
-		"if test $board_name = Utilite && test $board_rev = MX6Q ; then " \
-			"setenv fdtfile imx6q-utilite-pro.dtb; fi; " \
-		"if test $fdtfile = undefined; then " \
-			"echo WARNING: Could not determine dtb to use; fi; \0" \
-	BOOTENV
+	"fi;" \
+	"run setupsataboot;" \
+	"if sata init; then " \
+		"run trybootsmz;" \
+	"fi;" \
+	"run setupnandboot;" \
+	"run nandboot;"
 
 #define CONFIG_PREBOOT		"usb start;sf probe"
 
-#define BOOT_TARGET_DEVICES(func) \
-	func(USB, usb, 0) \
-	func(MMC, mmc, 2) \
-	func(SATA, sata, 0)
-
-#include <config_distro_bootcmd.h>
-#else
-#define CONFIG_EXTRA_ENV_SETTINGS
-#endif
+/* SPI */
+#define CONFIG_SPI
+#define CONFIG_MXC_SPI
 
 /* NAND */
 #ifndef CONFIG_SPL_BUILD
@@ -208,7 +209,9 @@
 
 /* SATA */
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
+#define CONFIG_LIBATA
 #define CONFIG_LBA48
+#define CONFIG_DWC_AHSATA
 #define CONFIG_DWC_AHSATA_PORT_ID	0
 #define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
 
@@ -223,9 +226,11 @@
 /* SPL */
 #include "imx6_spl.h"
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	(64 * 1024)
+#define CONFIG_SPL_SPI_LOAD
 
 /* Display */
 #define CONFIG_VIDEO_IPUV3
+#define CONFIG_IPUV3_CLK          260000000
 #define CONFIG_IMX_HDMI
 
 #define CONFIG_SPLASH_SCREEN

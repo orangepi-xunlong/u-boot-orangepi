@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Renesas SuperH MMCIF driver.
  *
  * Copyright (C)  2012 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
  * Copyright (C)  2012 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  *
  */
 #ifndef _SH_MMC_H_

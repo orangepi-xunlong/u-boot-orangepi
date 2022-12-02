@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * LPC32xx SLC NAND flash controller driver
  *

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /**
  * io.h - DesignWare USB3 DRD IO Header
  *
@@ -11,6 +10,8 @@
  * to uboot.
  *
  * commit 2c4cbe6e5a : usb: dwc3: add tracepoints to aid debugging
+ *
+ * SPDX-License-Identifier:     GPL-2.0
  *
  */
 

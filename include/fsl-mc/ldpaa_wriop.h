@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __LDPAA_WRIOP_H
@@ -68,6 +69,4 @@ void wriop_dpmac_disable(int);
 void wriop_dpmac_enable(int);
 phy_interface_t wriop_dpmac_enet_if(int, int);
 void wriop_init_dpmac_qsgmii(int, int);
-void wriop_init_rgmii(void);
-void wriop_init_dpmac_enet_if(int , phy_interface_t);
 #endif	/* __LDPAA_WRIOP_H */

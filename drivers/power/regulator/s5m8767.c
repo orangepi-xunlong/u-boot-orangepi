@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -11,6 +12,8 @@
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/s5m8767.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static const struct sec_voltage_desc buck_v1 = {
 	.max = 2225000,

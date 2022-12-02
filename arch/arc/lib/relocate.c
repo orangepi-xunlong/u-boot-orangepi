@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013-2014 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,9 +16,6 @@ DECLARE_GLOBAL_DATA_PTR;
 int copy_uboot_to_ram(void)
 {
 	size_t len = (size_t)&__image_copy_end - (size_t)&__image_copy_start;
-
-	if (gd->flags & GD_FLG_SKIP_RELOC)
-		return 0;
 
 	memcpy((void *)gd->relocaddr, (void *)&__image_copy_start, len);
 
@@ -41,9 +39,6 @@ int do_elf_reloc_fixups(void)
 {
 	Elf32_Rela *re_src = (Elf32_Rela *)(&__rel_dyn_start);
 	Elf32_Rela *re_end = (Elf32_Rela *)(&__rel_dyn_end);
-
-	if (gd->flags & GD_FLG_SKIP_RELOC)
-		return 0;
 
 	debug("Section .rela.dyn is located at %08x-%08x\n",
 	      (unsigned int)re_src, (unsigned int)re_end);

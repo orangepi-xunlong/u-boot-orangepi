@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Ilya Yanok, Emcraft Systems
  *
  * Based on omap3_evm_config.h
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -14,6 +15,8 @@
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_MCX
 
+#define CONFIG_EMIF4	/* The chip has EMIF4 controller */
+
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
 
@@ -21,6 +24,7 @@
  * Leave it at 0x80008000 to allow booting new u-boot.bin with X-loader
  * and older u-boot.bin with the new U-Boot SPL.
  */
+#define CONFIG_SYS_TEXT_BASE		0x80008000
 
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
@@ -59,6 +63,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 #define CONFIG_SERIAL3			3	/* UART3 */
 
@@ -72,10 +77,9 @@
 
 /* commands to include */
 
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
-
 #define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
 
 /* RTC */
 #define CONFIG_RTC_DS1337
@@ -104,8 +108,13 @@
 #define CONFIG_BOOTFILE		"uImage"
 
 /* Setup MTD for NAND on the SOM */
+#define MTDIDS_DEFAULT		"nand0=omap2-nand.0"
+#define MTDPARTS_DEFAULT	"mtdparts=omap2-nand.0:512k(MLO),"	\
+				"1m(u-boot),256k(env1),"		\
+				"256k(env2),6m(kernel),6m(k_recovery),"	\
+				"8m(fs_recovery),-(common_data)"
 
-#define CONFIG_HOSTNAME "mcx"
+#define CONFIG_HOSTNAME mcx
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"adddbg=setenv bootargs ${bootargs} trace_buf_size=64M\0"	\
 	"adddebug=setenv bootargs ${bootargs} earlyprintk=serial\0"	\
@@ -124,13 +133,13 @@
 	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
 	"baudrate=115200\0"						\
 	"consoledev=ttyO2\0"						\
-	"hostname=" CONFIG_HOSTNAME "\0"			\
+	"hostname=" __stringify(CONFIG_HOSTNAME) "\0"			\
 	"loadaddr=0x82000000\0"						\
 	"load=tftp ${loadaddr} ${u-boot}\0"				\
 	"load_k=tftp ${loadaddr} ${bootfile}\0"				\
 	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0"			\
 	"loadmlo=tftp ${loadaddr} ${mlo}\0"				\
-	"mlo=" CONFIG_HOSTNAME "/MLO\0"			\
+	"mlo=" __stringify(CONFIG_HOSTNAME) "/MLO\0"			\
 	"mmcargs=root=/dev/mmcblk0p2 rw "				\
 		"rootfstype=ext3 rootwait\0"				\
 	"mmcboot=echo Booting from mmc ...; "				\
@@ -144,7 +153,7 @@
 		"bootm ${loadaddr}\0"					\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
-	"u-boot=" CONFIG_HOSTNAME "/u-boot.img\0"		\
+	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.img\0"		\
 	"uboot_addr=0x80000\0"						\
 	"update=nandecc sw;nand erase ${uboot_addr} 100000;"		\
 		"nand write ${loadaddr} ${uboot_addr} 80000\0"		\
@@ -190,9 +199,13 @@
 	"bootcmd=mmc rescan;if fatload mmc 0 82000000 loadbootscr.scr;"	\
 		"then source 82000000;else run nandboot;fi\0"
 
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_CBSIZE		1024/* Console I/O Buffer Size */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
@@ -228,8 +241,8 @@
 
 /* Redundant Environment */
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		0x180000
-#define CONFIG_ENV_ADDR			0x180000
+#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + \
 						2 * CONFIG_SYS_ENV_SECT_SIZE)
 #define CONFIG_ENV_SIZE_REDUND		CONFIG_ENV_SIZE
@@ -250,6 +263,7 @@
 					 GENERATED_GBL_DATA_SIZE)
 
 /* Defines for SPL */
+#define CONFIG_SPL_FRAMEWORK
 
 #define CONFIG_SPL_NAND_BASE
 #define CONFIG_SPL_NAND_DRIVERS
@@ -295,6 +309,7 @@
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_MII
+#define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT 10

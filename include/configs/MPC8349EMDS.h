@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,6 +19,9 @@
 #define CONFIG_E300		1	/* E300 Family */
 #define CONFIG_MPC834x		1	/* MPC834x family */
 #define CONFIG_MPC8349		1	/* MPC8349 specific */
+#define CONFIG_MPC8349EMDS	1	/* MPC8349EMDS board specific */
+
+#define	CONFIG_SYS_TEXT_BASE	0xFE000000
 
 #define CONFIG_PCI_66M
 #ifdef CONFIG_PCI_66M
@@ -303,6 +307,7 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX     1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -312,6 +317,9 @@
 
 #define CONFIG_SYS_NS16550_COM1        (CONFIG_SYS_IMMR+0x4500)
 #define CONFIG_SYS_NS16550_COM2        (CONFIG_SYS_IMMR+0x4600)
+
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
+#define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -393,6 +401,7 @@
 /*
  * TSEC configuration
  */
+#define CONFIG_TSEC_ENET	/* TSEC ethernet support */
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -444,6 +453,9 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
@@ -454,6 +466,7 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 /*
@@ -684,7 +697,7 @@
 #define CONFIG_HAS_ETH0
 #endif
 
-#define CONFIG_HOSTNAME		"mpc8349emds"
+#define CONFIG_HOSTNAME		mpc8349emds
 #define CONFIG_ROOTPATH		"/nfsroot/rootfs"
 #define CONFIG_BOOTFILE		"uImage"
 

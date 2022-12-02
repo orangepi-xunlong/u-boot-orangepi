@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Hitachi Solution Engine 7720
  *
  * Copyright (C) 2007 Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MS7720SE_H
 #define __MS7720SE_H
 
 #define CONFIG_CPU_SH7720	1
+#define CONFIG_MS7720SE		1
 
 #define CONFIG_BOOTFILE		"/boot/zImage"
 #define CONFIG_LOADADDR		0x8E000000
@@ -21,6 +23,8 @@
 #define MS7720SE_FLASH_BASE_1		0xA0000000
 #define MS7720SE_FLASH_BANK_SIZE	(8 * 1024 * 1024)
 
+#define CONFIG_SYS_TEXT_BASE	0x8FFC0000
+#define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 #define CONFIG_SYS_PBSIZE	256	/* Buffer size for Console output */
 /* List of legal baudrate settings for this board */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 115200 }

@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Alexey Brodkin <abrodkin@synopsys.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <asm/io.h>
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
@@ -76,7 +78,7 @@ static int ohci_shutdown_phy(struct udevice *dev)
 
 static int ohci_usb_probe(struct udevice *dev)
 {
-	struct ohci_regs *regs = (struct ohci_regs *)devfdt_get_addr(dev);
+	struct ohci_regs *regs;
 	struct generic_ohci *priv = dev_get_priv(dev);
 	int i, err, ret, clock_nb, reset_nb;
 
@@ -95,7 +97,7 @@ static int ohci_usb_probe(struct udevice *dev)
 				break;
 
 			err = clk_enable(&priv->clocks[i]);
-			if (err) {
+			if (err && err != -ENOSYS) {
 				dev_err(dev, "failed to enable clock %d\n", i);
 				clk_free(&priv->clocks[i]);
 				goto clk_err;
@@ -138,6 +140,7 @@ static int ohci_usb_probe(struct udevice *dev)
 	if (err)
 		goto reset_err;
 
+	regs = map_physmem(dev_read_addr(dev), 0x100, MAP_NOCACHE);
 	err = ohci_register(dev, regs);
 	if (err)
 		goto phy_err;

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,6 +10,8 @@
 #include <os.h>
 #include <scsi.h>
 #include <usb.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * This driver emulates a USB keyboard using the USB HID specification (boot
@@ -178,7 +181,8 @@ static int sandbox_keyb_control(struct udevice *dev, struct usb_device *udev,
 }
 
 static int sandbox_keyb_interrupt(struct udevice *dev, struct usb_device *udev,
-		unsigned long pipe, void *buffer, int length, int interval)
+		unsigned long pipe, void *buffer, int length, int interval,
+		bool nonblock)
 {
 	struct sandbox_keyb_priv *priv = dev_get_priv(dev);
 	uint8_t *data = buffer;

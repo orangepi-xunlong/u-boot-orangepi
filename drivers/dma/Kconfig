@@ -34,7 +34,4 @@ config APBH_DMA_BURST8
 
 endif
 
-config SUNXI_DMA
-	bool "SUNXI DMA driver"
-
 endmenu # menu "DMA Support"

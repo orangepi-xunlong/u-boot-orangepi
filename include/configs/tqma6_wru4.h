@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015 Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_TQMA6_WRU4_H
@@ -33,6 +34,14 @@
 /* LED */
 
 /* Bootcounter */
+#define CONFIG_BOOTCOUNT_LIMIT
+#define CONFIG_SYS_BOOTCOUNT_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_BOOTCOUNT_BE
+
+/*
+ * Remove all unused interfaces / commands that are defined in
+ * the common header tqms6.h
+ */
+#undef CONFIG_MXC_SPI
 
 #endif /* __CONFIG_TQMA6_WRU4_H */

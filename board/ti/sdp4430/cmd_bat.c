@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010 Texas Instruments
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -38,4 +39,4 @@ U_BOOT_CMD(
 	"bat startcharge - start charging via USB\n"
 	"bat stopcharge - stop charging\n"
 );
-#endif /* CONFIG_CMD_BAT */
+#endif /* CONFIG_BAT_CMD */

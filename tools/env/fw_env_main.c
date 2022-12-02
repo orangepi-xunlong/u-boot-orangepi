@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -42,10 +43,11 @@
 static int do_printenv;
 
 static struct option long_options[] = {
+	{"aes", required_argument, NULL, 'a'},
 	{"config", required_argument, NULL, 'c'},
 	{"help", no_argument, NULL, 'h'},
 	{"script", required_argument, NULL, 's'},
-	{"noheader", no_argument, NULL, 'n'},
+	{"noheader", required_argument, NULL, 'n'},
 	{"lock", required_argument, NULL, 'l'},
 	{"version", no_argument, NULL, 'v'},
 	{NULL, 0, NULL, 0}
@@ -68,6 +70,9 @@ void usage_printenv(void)
 		"\n"
 		" -h, --help           print this help.\n"
 		" -v, --version        display version\n"
+#ifdef CONFIG_ENV_AES
+		" -a, --aes            aes key to access environment\n"
+#endif
 #ifdef CONFIG_FILE
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
@@ -84,6 +89,9 @@ void usage_env_set(void)
 		"\n"
 		" -h, --help           print this help.\n"
 		" -v, --version        display version\n"
+#ifdef CONFIG_ENV_AES
+		" -a, --aes            aes key to access environment\n"
+#endif
 #ifdef CONFIG_FILE
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
@@ -122,6 +130,13 @@ static void parse_common_args(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, ":a:c:l:h:v", long_options, NULL)) !=
 	       EOF) {
 		switch (c) {
+		case 'a':
+			if (parse_aes_key(optarg, env_opts.aes_key)) {
+				fprintf(stderr, "AES key parse error\n");
+				exit(EXIT_FAILURE);
+			}
+			env_opts.aes_flag = 1;
+			break;
 #ifdef CONFIG_FILE
 		case 'c':
 			env_opts.config_file = optarg;
@@ -238,7 +253,7 @@ int main(int argc, char *argv[])
 	argv += optind;
 
 	if (env_opts.lockname) {
-		lockname = malloc(strlen(env_opts.lockname) +
+		lockname = malloc(sizeof(env_opts.lockname) +
 				sizeof(CMD_PRINTENV) + 10);
 		if (!lockname) {
 			fprintf(stderr, "Unable allocate memory");

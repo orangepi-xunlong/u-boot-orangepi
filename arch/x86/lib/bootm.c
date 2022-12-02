@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
  *
  * Copyright (C) 2001  Erik Mouw (J.A.K.Mouw@its.tudelft.nl)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -103,7 +104,7 @@ static int boot_prep_linux(bootm_headers_t *images)
 		}
 		is_zimage = 1;
 #if defined(CONFIG_FIT)
-	} else if (images->fit_uname_os && is_zimage) {
+	} else if (images->fit_uname_os) {
 		ret = fit_image_get_data(images->fit_hdr_os,
 				images->fit_noffset_os,
 				(const void **)&data, &len);

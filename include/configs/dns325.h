@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011
  * Stefan Herbrechtsmeier <stefan@herbrechtsmeier.net>
@@ -7,6 +6,8 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_DNS325_H
@@ -27,7 +28,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_SYS_MVFS
 
 #define CONFIG_NR_DRAM_BANKS		1
 
@@ -81,6 +81,10 @@
 /*
  * Default environment variables
  */
+#define MTDIDS_DEFAULT			"nand0=orion_nand"
+
+#define MTDPARTS_DEFAULT		"mtdparts=orion_nand:" \
+	"896k(u-boot),128k(u-boot-env),5m(kernel),-(rootfs)\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"stdin=serial\0" \
@@ -89,7 +93,7 @@
 	"loadaddr=0x800000\0" \
 	"autoload=no\0" \
 	"console=ttyS0,115200\0" \
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT \
+	"mtdparts="MTDPARTS_DEFAULT \
 	"optargs=\0" \
 	"bootenv=uEnv.txt\0" \
 	"importbootenv=echo Importing environment ...; " \

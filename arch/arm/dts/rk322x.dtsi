@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2017 Fuzhou Rockchip Electronics Co., Ltd.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -90,6 +91,16 @@
 		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
+	memory@60000000 {
+		device_type = "memory";
+		reg = <0x60000000 0x40000000>;
+	};
+
+	psci: psci {
+		compatible      = "arm,psci-1.0";
+		method          = "smc";
+	};
+
 	timer {
 		compatible = "arm,armv7-timer";
 		arm,cpu-registers-not-fw-configured;
@@ -121,6 +132,14 @@
 			compatible = "rockchip,rk322x-ddr-sram";
 			reg = <0x1000 0x8000>;
 		};
+	};
+
+	crypto: crypto@100a0000 {
+		compatible = "rockchip,rk322x-crypto";
+		reg = <0x100a0000 0x10000>;
+		clock-names = "sclk_crypto";
+		clocks = <&cru SCLK_CRYPTO>;
+		status = "disabled";
 	};
 
 	i2s1: i2s1@100b0000 {
@@ -165,9 +184,53 @@
 	};
 
 	grf: syscon@11000000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3228-grf", "syscon";
 		reg = <0x11000000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		u2phy0: usb2-phy@760 {
+			compatible = "rockchip,rk322x-usb2phy";
+			reg = <0x0760 0x0c>;
+			status = "disabled";
+
+			u2phy0_otg: otg-port {
+				#phy-cells = <0>;
+				interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
+					     <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "otg-bvalid", "otg-id",
+						  "linestate";
+				status = "disabled";
+			};
+
+			u2phy0_host: host-port {
+				#phy-cells = <0>;
+				interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "linestate";
+				status = "disabled";
+			};
+		};
+
+		u2phy1: usb2-phy@800 {
+			compatible = "rockchip,rk322x-usb2phy";
+			reg = <0x0800 0x0c>;
+			status = "disabled";
+
+			u2phy1_otg: otg-port {
+				#phy-cells = <0>;
+				interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "linestate";
+				status = "disabled";
+			};
+
+			u2phy1_host: host-port {
+				#phy-cells = <0>;
+				interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "linestate";
+				status = "disabled";
+			};
+		};
 	};
 
 	uart0: serial@11010000 {
@@ -206,10 +269,27 @@
 		clocks = <&cru SCLK_UART2>, <&cru PCLK_UART2>;
 		clock-names = "baudclk", "apb_pclk";
 		pinctrl-names = "default";
-		pinctrl-0 = <&uart2_xfer>;
+		pinctrl-0 = <&uart21_xfer>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
 		status = "disabled";
+	};
+
+	efuse: efuse@11040000 {
+		compatible = "rockchip,rk322x-efuse";
+		reg = <0x11040000 0x20>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		clocks = <&cru PCLK_EFUSE_256>;
+		clock-names = "pclk_efuse";
+
+		/* Data cells */
+		efuse_id: id@7 {
+			reg = <0x7 0x10>;
+		};
+		cpu_leakage: cpu_leakage@17 {
+			reg = <0x17 0x1>;
+		};
 	};
 
 	i2c0: i2c@11050000 {
@@ -270,7 +350,7 @@
 		#pwm-cells = <3>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm0_pin>;
 		status = "disabled";
 	};
@@ -281,7 +361,7 @@
 		#pwm-cells = <3>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm1_pin>;
 		status = "disabled";
 	};
@@ -292,7 +372,7 @@
 		#pwm-cells = <3>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm2_pin>;
 		status = "disabled";
 	};
@@ -303,7 +383,7 @@
 		#pwm-cells = <2>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm3_pin>;
 		status = "disabled";
 	};
@@ -317,7 +397,6 @@
 	};
 
 	cru: clock-controller@110e0000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3228-cru";
 		reg = <0x110e0000 0x1000>;
 		rockchip,grf = <&grf>;
@@ -391,8 +470,9 @@
 		interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_SDMMC>, <&cru SCLK_SDMMC>,
 			 <&cru SCLK_SDMMC_DRV>, <&cru SCLK_SDMMC_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
+		cd-gpios = <&gpio1 RK_PC1 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_bus4>;
 		status = "disabled";
@@ -404,7 +484,7 @@
 		interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_SDIO>, <&cru SCLK_SDIO>,
 			 <&cru SCLK_SDIO_DRV>, <&cru SCLK_SDIO_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_clk &sdio_cmd &sdio_bus4>;
@@ -418,7 +498,7 @@
 		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru HCLK_EMMC>, <&cru SCLK_EMMC>,
 			 <&cru SCLK_EMMC_DRV>, <&cru SCLK_EMMC_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		bus-width = <8>;
 		default-sample-phase = <158>;
 		num-slots = <1>;
@@ -437,6 +517,8 @@
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 		hnp-srp-disable;
 		dr_mode = "otg";
+		phys = <&u2phy0_otg>;
+		phy-names = "usb2-phy";
 		status = "disabled";
 	};
 
@@ -448,13 +530,13 @@
 		clocks = <&cru SCLK_MAC>, <&cru SCLK_MAC_RX>,
 			<&cru SCLK_MAC_TX>, <&cru SCLK_MAC_REF>,
 			<&cru SCLK_MAC_REFOUT>, <&cru ACLK_GMAC>,
-			<&cru PCLK_GMAC>;
+			<&cru PCLK_GMAC>, <&cru SCLK_MAC_PHY>;
 		clock-names = "stmmaceth", "mac_clk_rx",
 			"mac_clk_tx", "clk_mac_ref",
 			"clk_mac_refout", "aclk_mac",
-			"pclk_mac";
-		resets = <&cru SRST_GMAC>;
-		reset-names = "stmmaceth";
+			"pclk_mac", "clk_macphy";
+		resets = <&cru SRST_GMAC>, <&cru SRST_MACPHY>;
+		reset-names = "stmmaceth", "mac-phy";
 		rockchip,grf = <&grf>;
 		status = "disabled";
 	};
@@ -748,7 +830,7 @@
 
 		uart2 {
 			uart2_xfer: uart2-xfer {
-				rockchip,pins = <1 RK_PC2 RK_FUNC_2 &pcfg_pull_none>,
+				rockchip,pins = <1 RK_PC2 RK_FUNC_2 &pcfg_pull_up>,
 						<1 RK_PC3 RK_FUNC_2 &pcfg_pull_none>;
 			};
 
@@ -760,10 +842,16 @@
 				rockchip,pins = <0 RK_PD0 RK_FUNC_1 &pcfg_pull_none>;
 			};
 		};
+
+		uart2-1 {
+			uart21_xfer: uart21-xfer {
+				rockchip,pins = <1 10 RK_FUNC_2 &pcfg_pull_up>,
+						<1 9 RK_FUNC_2 &pcfg_pull_none>;
+			};
+		};
 	};
 
 	dmc: dmc@11200000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3228-dmc", "syscon";
 		rockchip,cru = <&cru>;
 		rockchip,grf = <&grf>;
@@ -774,8 +862,17 @@
 	};
 
 	service_msch: syscon@31090000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3228-msch", "syscon";
 		reg = <0x31090000 0x2000>;
+	};
+
+	nandc: nandc@30030000 {
+		compatible = "rockchip,rk-nandc";
+		reg = <0x30030000 0x4000>;
+		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+		nandc_id = <0>;
+		clocks = <&cru SCLK_NANDC>, <&cru HCLK_NANDC>;
+		clock-names = "clk_nandc", "hclk_nandc";
+		status = "disabled";
 	};
 };

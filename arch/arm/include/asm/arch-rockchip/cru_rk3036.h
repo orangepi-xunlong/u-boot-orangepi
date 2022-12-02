@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_CRU_RK3036_H
 #define _ASM_ARCH_CRU_RK3036_H
@@ -27,6 +28,11 @@
 struct rk3036_clk_priv {
 	struct rk3036_cru *cru;
 	ulong rate;
+	ulong armclk_hz;
+	ulong armclk_enter_hz;
+	ulong armclk_init_hz;
+	bool sync_kernel;
+	bool set_armclk_rate;
 };
 
 struct rk3036_cru {
@@ -65,6 +71,12 @@ struct pll_div {
 	u32 frac;
 };
 
+struct rk3036_clk_info {
+	unsigned long id;
+	char *name;
+	bool is_cru;
+};
+
 enum {
 	/* PLLCON0*/
 	PLL_POSTDIV1_SHIFT	= 12,
@@ -74,6 +86,8 @@ enum {
 
 	/* PLLCON1 */
 	PLL_RST_SHIFT		= 14,
+	PLL_PD_SHIFT		= 13,
+	PLL_PD_MASK		= 1 << PLL_PD_SHIFT,
 	PLL_DSMPD_SHIFT		= 12,
 	PLL_DSMPD_MASK		= 1 << PLL_DSMPD_SHIFT,
 	PLL_LOCK_STATUS_SHIFT	= 10,
@@ -163,6 +177,42 @@ enum {
 	MMC0_SEL_24M,
 	EMMC_DIV_SHIFT		= 0,
 	EMMC_DIV_MASK		= 0x7f << EMMC_DIV_SHIFT,
+
+	/* CRU_CLKSEL16_CON */
+	NANDC_DIV_SHIFT		= 10,
+	NANDC_DIV_MASK		= 0x1f << NANDC_DIV_SHIFT,
+	NANDC_PLL_SHIFT		= 8,
+	NANDC_PLL_MASK		= 3 << NANDC_PLL_SHIFT,
+	NANDC_SEL_APLL		= 0,
+	NANDC_SEL_DPLL,
+	NANDC_SEL_GPLL,
+
+	/* CLKSEL_CON25 */
+	SPI_PLL_SEL_SHIFT	= 8,
+	SPI_PLL_SEL_MASK	= 0x3 << SPI_PLL_SEL_SHIFT,
+	SPI_PLL_SEL_APLL	= 0,
+	SPI_PLL_SEL_DPLL,
+	SPI_PLL_SEL_GPLL,
+	SPI_DIV_SHIFT		= 0,
+	SPI_DIV_MASK		= 0x7f << SPI_DIV_SHIFT,
+
+	/* CRU_CLKSEL28_CON */
+	LCDC_DCLK_DIV_SHIFT	= 8,
+	LCDC_DCLK_DIV_MASK	= 0xff << LCDC_DCLK_DIV_SHIFT,
+	LCDC_DCLK_SEL_SHIFT	= 0,
+	LCDC_DCLK_SEL_MASK	= 0x3 << LCDC_DCLK_SEL_SHIFT,
+	LCDC_DCLK_SEL_APLL	= 0,
+	LCDC_DCLK_SEL_DPLL,
+	LCDC_DCLK_SEL_GPLL,
+
+	/* CRU_CLKSEL31_CON */
+	LCDC_ACLK_SEL_SHIFT	= 14,
+	LCDC_ACLK_SEL_MASK	= 0x3 << LCDC_ACLK_SEL_SHIFT,
+	LCDC_ACLK_SEL_APLL	= 0,
+	LCDC_ACLK_SEL_DPLL,
+	LCDC_ACLK_SEL_GPLL,
+	LCDC_ACLK_DIV_SHIFT	= 8,
+	LCDC_ACLK_DIV_MASK	= 0x1f << LCDC_ACLK_DIV_SHIFT,
 
 	/* CRU_SOFTRST5_CON */
 	DDRCTRL_PSRST_SHIFT	= 11,

@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -147,6 +149,11 @@
 		#clock-cells = <0>;
 	};
 
+	psci: psci {
+		compatible      = "arm,psci-1.0";
+		method          = "smc";
+	};
+
 	timer {
 	        arm,use-physical-timer;
 		compatible = "arm,armv7-timer";
@@ -158,9 +165,48 @@
 		always-on;
 	};
 
-	display-subsystem {
+	display_subsystem: display-subsystem {
 		compatible = "rockchip,display-subsystem";
 		ports = <&vopl_out>, <&vopb_out>;
+		status = "disabled";
+
+		route {
+			route_hdmi: route-hdmi {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopb_out_hdmi>;
+			};
+
+			route_edp: route-edp {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_edp>;
+			};
+
+			route_dsi0: route-dsi0 {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_dsi0>;
+			};
+
+			route_lvds: route-lvds {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopl_out_lvds>;
+			};
+		};
 	};
 
 	sdmmc: dwmmc@ff0c0000 {
@@ -168,8 +214,9 @@
 		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDMMC>, <&cru SCLK_SDMMC>,
 			 <&cru SCLK_SDMMC_DRV>, <&cru SCLK_SDMMC_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
+		cd-gpios = <&gpio6 RK_PC6 GPIO_ACTIVE_HIGH>;
 		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0xff0c0000 0x4000>;
 		status = "disabled";
@@ -180,7 +227,7 @@
 		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDIO0>, <&cru SCLK_SDIO0>,
 			 <&cru SCLK_SDIO0_DRV>, <&cru SCLK_SDIO0_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0xff0d0000 0x4000>;
@@ -192,7 +239,7 @@
 		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDIO1>, <&cru SCLK_SDIO1>,
 			 <&cru SCLK_SDIO1_DRV>, <&cru SCLK_SDIO1_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0xff0e0000 0x4000>;
@@ -204,7 +251,7 @@
 		max-frequency = <150000000>;
 		clocks = <&cru HCLK_EMMC>, <&cru SCLK_EMMC>,
 			 <&cru SCLK_EMMC_DRV>, <&cru SCLK_EMMC_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0xff0f0000 0x4000>;
@@ -317,6 +364,7 @@
 		pinctrl-0 = <&i2c5_xfer>;
 		status = "disabled";
 	};
+
 	uart0: serial@ff180000 {
 		compatible = "rockchip,rk3288-uart", "snps,dw-apb-uart";
 		reg = <0xff180000 0x100>;
@@ -385,6 +433,7 @@
 		pinctrl-0 = <&uart4_xfer>;
 		status = "disabled";
 	};
+
 	thermal: thermal-zones {
 		#include "rk3288-thermal.dtsi"
 	};
@@ -468,7 +517,6 @@
 	};
 
 	dmc: dmc@ff610000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3288-dmc", "syscon";
 		rockchip,cru = <&cru>;
 		rockchip,grf = <&grf>;
@@ -518,7 +566,7 @@
 		compatible = "rockchip,rk3288-pwm";
 		reg = <0xff680000 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm0_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -530,7 +578,7 @@
 		compatible = "rockchip,rk3288-pwm";
 		reg = <0xff680010 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm1_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -542,7 +590,7 @@
 		compatible = "rockchip,rk3288-pwm";
 		reg = <0xff680020 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm2_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -554,7 +602,7 @@
 		compatible = "rockchip,rk3288-pwm";
 		reg = <0xff680030 0x10>;
 		#pwm-cells = <2>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm3_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -584,13 +632,11 @@
 	};
 
 	pmu: power-management@ff730000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3288-pmu", "syscon";
 		reg = <0xff730000 0x100>;
 	};
 
 	sgrf: syscon@ff740000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3288-sgrf", "syscon";
 		reg = <0xff740000 0x1000>;
 	};
@@ -599,7 +645,6 @@
 		compatible = "rockchip,rk3288-cru";
 		reg = <0xff760000 0x1000>;
 		rockchip,grf = <&grf>;
-		u-boot,dm-pre-reloc;
 		#clock-cells = <1>;
 		#reset-cells = <1>;
 		assigned-clocks = <&cru PLL_GPLL>, <&cru PLL_CPLL>,
@@ -615,7 +660,6 @@
 	};
 
 	grf: syscon@ff770000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3288-grf", "syscon";
 		reg = <0xff770000 0x1000>;
 	};
@@ -658,9 +702,18 @@
 		status = "disabled";
 	};
 
+	crypto: crypto@ff8a0000 {
+		compatible = "rockchip,rk3288-crypto";
+		reg = <0xff8a0000 0x10000>;
+		clock-names = "sclk_crypto";
+		clocks = <&cru SCLK_CRYPTO>;
+		resets = <&cru SRST_CRYPTO>;
+		reset-names = "reset";
+		status = "disabled";
+	};
+
 	vopb: vop@ff930000 {
-		u-boot,dm-pre-reloc;
-		compatible = "rockchip,rk3288-vop";
+		compatible = "rockchip,rk3288-vop-big";
 		reg = <0xff930000 0x19c>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru ACLK_VOP0>, <&cru DCLK_VOP0>, <&cru HCLK_VOP0>;
@@ -685,9 +738,9 @@
 				reg = <2>;
 				remote-endpoint = <&lvds_in_vopb>;
 			};
-			vopb_out_mipi: endpoint@3 {
+			vopb_out_dsi0: endpoint@3 {
 				reg = <3>;
-				remote-endpoint = <&mipi_in_vopb>;
+				remote-endpoint = <&dsi0_in_vopb>;
 			};
 
 		};
@@ -704,7 +757,7 @@
 	};
 
 	vopl: vop@ff940000 {
-		compatible = "rockchip,rk3288-vop";
+		compatible = "rockchip,rk3288-vop-lit";
 		reg = <0xff940000 0x19c>;
 		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru ACLK_VOP1>, <&cru DCLK_VOP1>, <&cru HCLK_VOP1>;
@@ -714,7 +767,6 @@
 		iommus = <&vopl_mmu>;
 		power-domains = <&power RK3288_PD_VIO>;
 		status = "disabled";
-		u-boot,dm-pre-reloc;
 		vopl_out: port {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -730,9 +782,9 @@
 				reg = <2>;
 				remote-endpoint = <&lvds_in_vopl>;
 			};
-			vopl_out_mipi: endpoint@3 {
+			vopl_out_dsi0: endpoint@3 {
 				reg = <3>;
-				remote-endpoint = <&mipi_in_vopl>;
+				remote-endpoint = <&dsi0_in_vopl>;
 			};
 
 		};
@@ -749,7 +801,7 @@
 	};
 
 	edp: edp@ff970000 {
-		compatible = "rockchip,rk3288-edp";
+		compatible = "rockchip,rk3288-dp";
 		reg = <0xff970000 0x4000>;
 		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru SCLK_EDP>, <&cru SCLK_EDP_24M>, <&cru PCLK_EDP_CTRL>;
@@ -760,6 +812,9 @@
 		power-domains = <&power RK3288_PD_VIO>;
 		status = "disabled";
 		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
 			edp_in: port {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -779,11 +834,12 @@
 		compatible = "rockchip,rk3288-dw-hdmi";
 		reg = <0xff980000 0x20000>;
 		reg-io-width = <4>;
-		ddc-i2c-bus = <&i2c5>;
 		rockchip,grf = <&grf>;
 		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&cru  PCLK_HDMI_CTRL>, <&cru SCLK_HDMI_HDCP>;
 		clock-names = "iahb", "isfr";
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmi_ddc>;
 		status = "disabled";
 		ports {
 			hdmi_in: port {
@@ -829,13 +885,15 @@
 		};
 	};
 
-	mipi_dsi0: mipi@ff960000 {
-		compatible = "rockchip,rk3288_mipi_dsi";
+	dsi0: mipi@ff960000 {
+		compatible = "rockchip,rk3288-mipi-dsi", "snps,dw-mipi-dsi";
 		reg = <0xff960000 0x4000>;
-		clocks = <&cru PCLK_MIPI_DSI0>;
-		clock-names = "pclk_mipi";
-		/*pinctrl-names = "default";
-		pinctrl-0 = <&lcdc0_ctl>;*/
+		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru SCLK_MIPIDSI_24M>, <&cru PCLK_MIPI_DSI0>;
+		clock-names = "ref", "pclk";
+		resets = <&cru SRST_MIPIDSI0>;
+		reset-names = "apb";
+		power-domains = <&power RK3288_PD_VIO>;
 		rockchip,grf = <&grf>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -847,13 +905,13 @@
 			mipi_in: port {
 				#address-cells = <1>;
 				#size-cells = <0>;
-				mipi_in_vopb: endpoint@0 {
+				dsi0_in_vopb: endpoint@0 {
 					reg = <0>;
-					remote-endpoint = <&vopb_out_mipi>;
+					remote-endpoint = <&vopb_out_dsi0>;
 				};
-				mipi_in_vopl: endpoint@1 {
+				dsi0_in_vopl: endpoint@1 {
 					reg = <1>;
-					remote-endpoint = <&vopl_out_mipi>;
+					remote-endpoint = <&vopl_out_dsi0>;
 				};
 			};
 		};
@@ -912,7 +970,6 @@
 	};
 
 	noc: syscon@ffac0000 {
-		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3288-noc", "syscon";
 		reg = <0xffac0000 0x2000>;
 	};
@@ -1092,6 +1149,13 @@
 
 			interrupt-controller;
 			#interrupt-cells = <2>;
+		};
+
+		hdmi {
+			hdmi_ddc: hdmi-ddc {
+				rockchip,pins = <7 19 RK_FUNC_2 &pcfg_pull_none>,
+						<7 20 RK_FUNC_2 &pcfg_pull_none>;
+			};
 		};
 
 		pcfg_pull_up: pcfg-pull-up {

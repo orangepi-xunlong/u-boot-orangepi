@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009-2012 ADVANSEE
  * Benoît Thébaudeau <benoit.thebaudeau@advansee.com>
@@ -6,6 +5,8 @@
  * Based on the Linux rtc-imxdi.c driver, which is:
  * Copyright 2008-2009 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2010 Orex Computed Radiography
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

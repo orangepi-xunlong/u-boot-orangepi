@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: Intel */
 /*
  * Copyright (C) 2013, Intel Corporation
  * Copyright (C) 2014, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier:	Intel
  */
 
 #ifndef _FSP_HEADER_H_
@@ -25,14 +26,7 @@ struct __packed fsp_header {
 	u32	fsp_tempram_init;	/* tempram_init offset */
 	u32	fsp_init;		/* fsp_init offset */
 	u32	fsp_notify;		/* fsp_notify offset */
-	u32	fsp_mem_init;		/* fsp_mem_init offset */
-	u32	fsp_tempram_exit;	/* fsp_tempram_exit offset */
-	u32	fsp_silicon_init;	/* fsp_silicon_init offset */
+	u32	reserved2;
 };
-
-#define FSP_HEADER_REVISION_1		1
-#define FSP_HEADER_REVISION_2		2
-
-#define FSP_ATTR_GRAPHICS_SUPPORT	(1 << 0)
 
 #endif

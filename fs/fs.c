@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <config.h>
@@ -13,7 +14,6 @@
 #include <fs.h>
 #include <sandboxfs.h>
 #include <ubifs_uboot.h>
-#include <btrfs.h>
 #include <asm/io.h>
 #include <div64.h>
 #include <linux/math64.h>
@@ -219,22 +219,6 @@ static struct fstype_info fstypes[] = {
 		.opendir = fs_opendir_unsupported,
 	},
 #endif
-#ifdef CONFIG_FS_BTRFS
-	{
-		.fstype = FS_TYPE_BTRFS,
-		.name = "btrfs",
-		.null_dev_desc_ok = false,
-		.probe = btrfs_probe,
-		.close = btrfs_close,
-		.ls = btrfs_ls,
-		.exists = btrfs_exists,
-		.size = btrfs_size,
-		.read = btrfs_read,
-		.write = fs_write_unsupported,
-		.uuid = btrfs_uuid,
-		.opendir = fs_opendir_unsupported,
-	},
-#endif
 	{
 		.fstype = FS_TYPE_ANY,
 		.name = "unsupported",
@@ -333,6 +317,25 @@ int fs_set_blk_dev_with_part(struct blk_desc *desc, int part)
 	return -1;
 }
 
+int fs_get_fstype(const char **fstype_name)
+{
+	struct fstype_info *info;
+
+	if (fstype_name == NULL) {
+		printf("** parameter error **\n");
+		return -1;
+	}
+
+	info = fs_get_info(fs_type);
+	if (info->fstype == FS_TYPE_ANY) {
+		printf("** not match any filesystem type **\n");
+		return -1;
+	}
+
+	*fstype_name = info->name;
+	return 0;
+}
+
 static void fs_close(void)
 {
 	struct fstype_info *info = fs_get_info(fs_type);
@@ -406,7 +409,7 @@ int fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
 
 	/* If we requested a specific number of bytes, check we got it */
 	if (ret == 0 && len && *actread != len)
-		debug("** %s shorter than offset + len **\n", filename);
+		printf("** %s shorter than offset + len **\n", filename);
 	fs_close();
 
 	return ret;

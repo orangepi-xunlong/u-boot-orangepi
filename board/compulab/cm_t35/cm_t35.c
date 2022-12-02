@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2013 CompuLab, Ltd. <www.compulab.co.il>
  *
@@ -9,10 +8,11 @@
  *	Manikandan Pillai <mani.pillai@ti.com>
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <x0khasim@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <environment.h>
 #include <status_led.h>
 #include <netdev.h>
 #include <net.h>
@@ -452,7 +452,6 @@ static int handle_mac_address(void)
  * Routine: board_eth_init
  * Description: initialize module and base-board Ethernet chips
  */
-#define SB_T35_SMC911X_BASE	(CONFIG_SMC911X_BASE + SZ_16M)
 int board_eth_init(bd_t *bis)
 {
 	int rc = 0, rc1 = 0;
@@ -461,7 +460,7 @@ int board_eth_init(bd_t *bis)
 	if (rc1)
 		printf("No MAC address found! ");
 
-	rc1 = cl_omap3_smc911x_init(0, 5, CONFIG_SMC911X_BASE,
+	rc1 = cl_omap3_smc911x_init(0, 5, CM_T3X_SMC911X_BASE,
 				    cm_t3x_reset_net_chip, -EINVAL);
 	if (rc1 > 0)
 		rc++;

@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013 Google, Inc
  *
  * (C) Copyright 2012
  * Pavel Herrmann <morpheus.ibis@gmail.com>
  * Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DM_DEVICE_H
@@ -60,6 +61,9 @@ struct driver_info;
  * U-Boot exits and the OS is started
  */
 #define DM_FLAG_OS_PREPARE		(1 << 10)
+
+/* Device is from kernel dtb */
+#define DM_FLAG_KNRL_DTB		(1 << 31)
 
 /*
  * One or multiple of these flags are passed to device_remove() so that
@@ -202,7 +206,7 @@ struct udevice_id {
  * it.
  *
  * @name: Device name
- * @id: Identifies the uclass we belong to
+ * @id: Identiies the uclass we belong to
  * @of_match: List of compatible strings to match, and any identifying data
  * for each.
  * @bind: Called to bind a device to its driver

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 - 2013 Atmel Corporation
  * Bo Shen <voice.shen@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +13,9 @@
 #include <asm/arch/gpio.h>
 #include <asm/arch/clk.h>
 #include <debug_uart.h>
+#include <lcd.h>
 #include <linux/ctype.h>
+#include <atmel_hlcdc.h>
 #include <phy.h>
 #include <micrel.h>
 #include <spl.h>
@@ -129,6 +132,80 @@ static void sama5d3xek_mci_hw_init(void)
 }
 #endif
 
+#ifdef CONFIG_LCD
+vidinfo_t panel_info = {
+	.vl_col = 800,
+	.vl_row = 480,
+	.vl_clk = 24000000,
+	.vl_bpix = LCD_BPP,
+	.vl_tft = 1,
+	.vl_hsync_len = 128,
+	.vl_left_margin = 64,
+	.vl_right_margin = 64,
+	.vl_vsync_len = 2,
+	.vl_upper_margin = 22,
+	.vl_lower_margin = 21,
+	.mmio = ATMEL_BASE_LCDC,
+};
+
+void lcd_enable(void)
+{
+}
+
+void lcd_disable(void)
+{
+}
+
+static void sama5d3xek_lcd_hw_init(void)
+{
+	gd->fb_base = CONFIG_SAMA5D3_LCD_BASE;
+
+	/* The higher 8 bit of LCD is board related */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 14, 0);	/* LCDD16 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 13, 0);	/* LCDD17 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 12, 0);	/* LCDD18 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 11, 0);	/* LCDD19 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 10, 0);	/* LCDD20 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTC, 15, 0);	/* LCDD21 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTE, 27, 0);	/* LCDD22 */
+	at91_pio3_set_c_periph(AT91_PIO_PORTE, 28, 0);	/* LCDD23 */
+
+	/* Configure lower 16 bit of LCD and enable clock */
+	at91_lcd_hw_init();
+}
+
+#ifdef CONFIG_LCD_INFO
+#include <nand.h>
+#include <version.h>
+
+void lcd_show_board_info(void)
+{
+	ulong dram_size;
+	uint64_t nand_size;
+	int i;
+	char temp[32];
+
+	lcd_printf("%s\n", U_BOOT_VERSION);
+	lcd_printf("(C) 2013 ATMEL Corp\n");
+	lcd_printf("at91@atmel.com\n");
+	lcd_printf("%s CPU at %s MHz\n", get_cpu_name(),
+		   strmhz(temp, get_cpu_clk_rate()));
+
+	dram_size = 0;
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++)
+		dram_size += gd->bd->bi_dram[i].size;
+
+	nand_size = 0;
+#ifdef CONFIG_NAND_ATMEL
+	for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++)
+		nand_size += get_nand_dev_by_index(i)->size;
+#endif
+	lcd_printf("%ld MB SDRAM, %lld MB NAND\n",
+		   dram_size >> 20, nand_size >> 20);
+}
+#endif /* CONFIG_LCD_INFO */
+#endif /* CONFIG_LCD */
+
 #ifdef CONFIG_DEBUG_UART_BOARD_INIT
 void board_debug_uart_init(void)
 {
@@ -163,6 +240,10 @@ int board_init(void)
 #ifdef CONFIG_GENERIC_ATMEL_MCI
 	sama5d3xek_mci_hw_init();
 #endif
+#ifdef CONFIG_LCD
+	if (has_lcdc())
+		sama5d3xek_lcd_hw_init();
+#endif
 	return 0;
 }
 
@@ -188,9 +269,6 @@ int board_late_init(void)
 	strcat(name, "ek.dtb");
 	env_set("dtb_name", name);
 #endif
-#ifdef CONFIG_DM_VIDEO
-	at91_video_show_board_info();
-#endif
 	return 0;
 }
 #endif
@@ -199,7 +277,7 @@ int board_late_init(void)
 #ifdef CONFIG_SPL_BUILD
 void spl_board_init(void)
 {
-#if CONFIG_NAND_BOOT
+#if CONFIG_SYS_USE_NANDFLASH
 	sama5d3xek_nand_hw_init();
 #endif
 }

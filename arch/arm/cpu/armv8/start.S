@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
@@ -18,9 +19,7 @@
 
 .globl	_start
 _start:
-#if defined(LINUX_KERNEL_IMAGE_HEADER)
-#include <asm/boot0-linux-kernel-header.h>
-#elif defined(CONFIG_ENABLE_ARM_SOC_BOOT0_HOOK)
+#ifdef CONFIG_ENABLE_ARM_SOC_BOOT0_HOOK
 /*
  * Various SoCs need something special and SoC-specific up front in
  * order to boot, allow them to set that in their boot0.h file and then
@@ -31,11 +30,16 @@ _start:
 	b	reset
 #endif
 
+#if !CONFIG_IS_ENABLED(TINY_FRAMEWORK)
 	.align 3
 
 .globl	_TEXT_BASE
 _TEXT_BASE:
+#if defined(CONFIG_SPL_BUILD)
+	.quad   CONFIG_SPL_TEXT_BASE
+#else
 	.quad	CONFIG_SYS_TEXT_BASE
+#endif
 
 /*
  * These are defined in the linker script.
@@ -197,35 +201,13 @@ reset_sctrl:
 WEAK(apply_core_errata)
 
 	mov	x29, lr			/* Save LR */
-	/* For now, we support Cortex-A53, Cortex-A57 specific errata */
-
-	/* Check if we are running on a Cortex-A53 core */
-	branch_if_a53_core x0, apply_a53_core_errata
+	/* For now, we support Cortex-A57 specific errata only */
 
 	/* Check if we are running on a Cortex-A57 core */
 	branch_if_a57_core x0, apply_a57_core_errata
 0:
 	mov	lr, x29			/* Restore LR */
 	ret
-
-apply_a53_core_errata:
-
-#ifdef CONFIG_ARM_ERRATA_855873
-	mrs	x0, midr_el1
-	tst	x0, #(0xf << 20)
-	b.ne	0b
-
-	mrs	x0, midr_el1
-	and	x0, x0, #0xf
-	cmp	x0, #3
-	b.lt	0b
-
-	mrs	x0, S3_1_c15_c2_0	/* cpuactlr_el1 */
-	/* Enable data cache clean as data cache clean/invalidate */
-	orr	x0, x0, #1 << 44
-	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
-#endif
-	b 0b
 
 apply_a57_core_errata:
 
@@ -280,7 +262,7 @@ ENDPROC(apply_core_errata)
 WEAK(lowlevel_init)
 	mov	x29, lr			/* Save LR */
 
-#if defined(CONFIG_GICV2) || defined(CONFIG_GICV3)
+#if CONFIG_IS_ENABLED(IRQ)
 	branch_if_slave x0, 1f
 	ldr	x0, =GICD_BASE
 	bl	gic_init_secure
@@ -361,3 +343,4 @@ ENDPROC(c_runtime_cpu_setup)
 WEAK(save_boot_params)
 	b	save_boot_params_ret	/* back to my caller */
 ENDPROC(save_boot_params)
+#endif

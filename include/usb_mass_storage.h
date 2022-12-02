@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Samsung Electrnoics
  * Lukasz Majewski <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __USB_MASS_STORAGE_H__
@@ -19,6 +20,9 @@ struct ums {
 			   ulong start, lbaint_t blkcnt, void *buf);
 	int (*write_sector)(struct ums *ums_dev,
 			    ulong start, lbaint_t blkcnt, const void *buf);
+#ifdef CONFIG_CMD_ROCKUSB
+	int (*erase_sector)(struct ums *ums_dev, ulong start, lbaint_t blkcnt);
+#endif
 	unsigned int start_sector;
 	unsigned int num_sectors;
 	const char *name;

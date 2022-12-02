@@ -21,7 +21,7 @@ cat << __HEADER_EOF
 	#address-cells = <1>;
 
 	images {
-		uboot {
+		uboot@1 {
 			description = "U-Boot (64-bit)";
 			data = /incbin/("u-boot-nodtb.bin");
 			type = "standalone";
@@ -29,7 +29,7 @@ cat << __HEADER_EOF
 			compression = "none";
 			load = <0x4a000000>;
 		};
-		atf {
+		atf@1 {
 			description = "ARM Trusted Firmware";
 			data = /incbin/("$BL31");
 			type = "firmware";
@@ -44,7 +44,7 @@ cnt=1
 for dtname in $*
 do
 	cat << __FDT_IMAGE_EOF
-		fdt_$cnt {
+		fdt@$cnt {
 			description = "$(basename $dtname .dtb)";
 			data = /incbin/("$dtname");
 			type = "flat_dt";
@@ -57,7 +57,7 @@ done
 cat << __CONF_HEADER_EOF
 	};
 	configurations {
-		default = "config_1";
+		default = "config@1";
 
 __CONF_HEADER_EOF
 
@@ -65,11 +65,11 @@ cnt=1
 for dtname in $*
 do
 	cat << __CONF_SECTION_EOF
-		config_$cnt {
+		config@$cnt {
 			description = "$(basename $dtname .dtb)";
-			firmware = "uboot";
-			loadables = "atf";
-			fdt = "fdt_$cnt";
+			firmware = "uboot@1";
+			loadables = "atf@1";
+			fdt = "fdt@$cnt";
 		};
 __CONF_SECTION_EOF
 	cnt=$((cnt+1))

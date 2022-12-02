@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 #ifndef _GPIO_AM33xx_H
 #define _GPIO_AM33xx_H
 

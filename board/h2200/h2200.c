@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * iPAQ h2200 board configuration
  *
  * Copyright (C) 2012 Lukasz Dalek <luk0104@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

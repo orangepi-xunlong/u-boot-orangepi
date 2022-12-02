@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
   Red Black Trees
   (C) 1999  Andrea Arcangeli <andrea@suse.de>
   
+ * SPDX-License-Identifier:	GPL-2.0+
+
   linux/include/linux/rbtree.h
 
   To use rbtrees you'll have to implement your own insert and search cores.

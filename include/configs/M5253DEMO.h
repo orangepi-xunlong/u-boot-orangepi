@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /* Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * Hayden Fraser (Hayden.Fraser@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _M5253DEMO_H
 #define _M5253DEMO_H
+
+#define CONFIG_M5253DEMO	/* define board type */
 
 #define CONFIG_MCFTMR
 
@@ -76,7 +79,7 @@
 		""
 #endif
 
-#define CONFIG_HOSTNAME		"M5253DEMO"
+#define CONFIG_HOSTNAME		M5253DEMO
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -88,6 +91,8 @@
 #define CONFIG_SYS_I2C_PINMUX_REG	(*(u32 *) (CONFIG_SYS_MBAR+0x19C))
 #define CONFIG_SYS_I2C_PINMUX_CLR	(0xFFFFE7FF)
 #define CONFIG_SYS_I2C_PINMUX_SET	(0)
+
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
 

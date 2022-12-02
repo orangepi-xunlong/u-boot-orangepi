@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2015 Google, Inc
  * Copyright 2014 Rockchip Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0
  *
  * Adapted from the very similar rk3288 ddr init.
  */
@@ -20,9 +21,11 @@
 #include <asm/arch/ddr_rk3188.h>
 #include <asm/arch/grf_rk3188.h>
 #include <asm/arch/pmu_rk3188.h>
+#include <asm/arch/sdram_rk3288.h>
 #include <asm/arch/sdram.h>
-#include <asm/arch/sdram_common.h>
 #include <linux/err.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct chan_info {
 	struct rk3288_ddr_pctl *pctl;

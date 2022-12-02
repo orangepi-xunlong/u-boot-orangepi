@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Álvaro Fernández Rojas <noltari@gmail.com>
  *
  * Derived from linux/arch/mips/bcm63xx/cpu.c:
  *	Copyright (C) 2008 Maxime Bizon <mbizon@freebox.fr>
  *	Copyright (C) 2009 Florian Fainelli <florian@openwrt.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -22,8 +23,6 @@
 #define SDRAM_CFG_32B_MASK	(1 << SDRAM_CFG_32B_SHIFT)
 #define SDRAM_CFG_BANK_SHIFT	13
 #define SDRAM_CFG_BANK_MASK	(1 << SDRAM_CFG_BANK_SHIFT)
-#define SDRAM_6318_SPACE_SHIFT	4
-#define SDRAM_6318_SPACE_MASK	(0xf << SDRAM_6318_SPACE_SHIFT)
 
 #define MEMC_CFG_REG		0x4
 #define MEMC_CFG_32B_SHIFT	1
@@ -45,16 +44,6 @@ struct bmips_ram_priv {
 	void __iomem *regs;
 	const struct bmips_ram_hw *hw;
 };
-
-static ulong bcm6318_get_ram_size(struct bmips_ram_priv *priv)
-{
-	u32 val;
-
-	val = readl_be(priv->regs + SDRAM_CFG_REG);
-	val = (val & SDRAM_6318_SPACE_MASK) >> SDRAM_6318_SPACE_SHIFT;
-
-	return (1 << (val + 20));
-}
 
 static ulong bcm6328_get_ram_size(struct bmips_ram_priv *priv)
 {
@@ -113,10 +102,6 @@ static const struct ram_ops bmips_ram_ops = {
 	.get_info = bmips_ram_get_info,
 };
 
-static const struct bmips_ram_hw bmips_ram_bcm6318 = {
-	.get_ram_size = bcm6318_get_ram_size,
-};
-
 static const struct bmips_ram_hw bmips_ram_bcm6328 = {
 	.get_ram_size = bcm6328_get_ram_size,
 };
@@ -131,9 +116,6 @@ static const struct bmips_ram_hw bmips_ram_bcm6358 = {
 
 static const struct udevice_id bmips_ram_ids[] = {
 	{
-		.compatible = "brcm,bcm6318-mc",
-		.data = (ulong)&bmips_ram_bcm6318,
-	}, {
 		.compatible = "brcm,bcm6328-mc",
 		.data = (ulong)&bmips_ram_bcm6328,
 	}, {

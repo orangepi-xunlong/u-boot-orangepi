@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2008 RuggedCom, Inc.
  * Richard Retanubun <RichardRetanubun@RuggedCom.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -94,11 +95,7 @@ typedef union _gpt_entry_attributes {
 		u64 required_to_function:1;
 		u64 no_block_io_protocol:1;
 		u64 legacy_bios_bootable:1;
-		/* u64 reserved:45; */
-		u64 reserved:27;
-		u64 user_type:16;
-		u64 ro:1;
-		u64 keydata:1;
+		u64 reserved:45;
 		u64 type_guid_specific:16;
 	} fields;
 	unsigned long long raw;
@@ -121,8 +118,5 @@ typedef struct _legacy_mbr {
 	struct partition partition_record[4];
 	__le16 signature;
 } __packed legacy_mbr;
-
-#define  GPT_ENTRY_OFFSET        1024
-#define  GPT_HEAD_OFFSET         512
 
 #endif	/* _DISK_PART_EFI_H */

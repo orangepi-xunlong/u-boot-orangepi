@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007 Michal Simek
  *
  * Michal  SIMEK <monstr@monstr.cz>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #define TIMER_ENABLE_ALL    0x400 /* ENALL */

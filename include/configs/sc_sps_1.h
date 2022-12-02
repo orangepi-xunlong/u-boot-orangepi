@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * SchulerControl GmbH, SC_SPS_1 module config
  *
  * Copyright (C) 2012 Marek Vasut <marex@denx.de>
  * on behalf of DENX Software Engineering GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIGS_SC_SPS_1_H__
 #define __CONFIGS_SC_SPS_1_H__
 
 /* System configuration */
+#define CONFIG_MX28				/* i.MX28 SoC */
 #define CONFIG_MACH_TYPE	MACH_TYPE_SC_SPS_1
 
 /* U-Boot Commands */

@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  Copyright (C) 1998	Dan Malek <dmalek@jlc.net>
  *  Copyright (C) 1999	Magnus Damm <kieraypc01.p.y.kie.era.ericsson.se>
  *  Copyright (C) 2000,2001,2002 Wolfgang Denk <wd@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*  U-Boot - Startup Code for PowerPC based Embedded Boards
@@ -129,6 +130,12 @@ in_flash:
 	/* initialize some SPRs that are hard to access from C			*/
 	/*----------------------------------------------------------------------*/
 
+	lis	r3, CONFIG_SYS_IMMR@h		/* pass IMMR as arg1 to C routine */
+	ori	r1, r3, CONFIG_SYS_INIT_SP_OFFSET /* set up the stack in internal DPRAM */
+	/* Note: R0 is still 0 here */
+	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
+	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
+
 	/*
 	 * Disable serialized ifetch and show cycles
 	 * (i.e. set processor to normal mode).
@@ -144,25 +151,6 @@ in_flash:
 	ori	r2, r2, CONFIG_SYS_DER@l
 	mtspr	DER, r2
 
-	/* set up the stack in internal DPRAM */
-	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@h
-	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@l
-	addi	r1, r3, -8
-
-	bl	board_init_f_alloc_reserve
-	addi	r1, r3, -8
-
-	/* Zeroise the CPM dpram */
-	lis	r4, CONFIG_SYS_IMMR@h
-	ori	r4, r4, (0x2000 - 4)
-	li	r0, (0x2000 / 4)
-	mtctr	r0
-	li	r0, 0
-1:	stwu	r0, 4(r4)
-	bdnz	1b
-
-	bl	board_init_f_init_reserve
-
 	/* let the C-code set up the rest					*/
 	/*									*/
 	/* Be careful to keep code relocatable !				*/
@@ -170,7 +158,7 @@ in_flash:
 
 	GET_GOT			/* initialize GOT access			*/
 
-	lis	r3, CONFIG_SYS_IMMR@h
+	/* r3: IMMR */
 	bl	cpu_init_f	/* run low-level CPU init code     (from Flash)	*/
 
 	bl	board_init_f	/* run 1st part of board init code (from Flash) */

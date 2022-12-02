@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * TI PIPE3 PHY
  *
  * (C) Copyright 2013
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __OMAP_PIPE3_PHY_H

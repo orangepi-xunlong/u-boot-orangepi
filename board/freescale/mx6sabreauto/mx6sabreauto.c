@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -23,7 +24,6 @@
 #include <netdev.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <input.h>
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/mach-imx/video.h>
 #include <asm/arch/crm_regs.h>
@@ -396,9 +396,39 @@ int board_eth_init(bd_t *bis)
 	return cpu_eth_init(bis);
 }
 
+#define BOARD_REV_B  0x200
+#define BOARD_REV_A  0x100
+
+static int mx6sabre_rev(void)
+{
+	/*
+	 * Get Board ID information from OCOTP_GP1[15:8]
+	 * i.MX6Q ARD RevA: 0x01
+	 * i.MX6Q ARD RevB: 0x02
+	 */
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank *bank = &ocotp->bank[4];
+	struct fuse_bank4_regs *fuse =
+			(struct fuse_bank4_regs *)bank->fuse_regs;
+	int reg = readl(&fuse->gp1);
+	int ret;
+
+	switch (reg >> 8 & 0x0F) {
+	case 0x02:
+		ret = BOARD_REV_B;
+		break;
+	case 0x01:
+	default:
+		ret = BOARD_REV_A;
+		break;
+	}
+
+	return ret;
+}
+
 u32 get_board_rev(void)
 {
-	int rev = nxp_board_rev();
+	int rev = mx6sabre_rev();
 
 	return (get_cpu_rev() & ~(0xF << 8)) | rev;
 }
@@ -672,7 +702,20 @@ int board_late_init(void)
 
 int checkboard(void)
 {
-	printf("Board: MX6Q-Sabreauto rev%c\n", nxp_board_rev_string());
+	int rev = mx6sabre_rev();
+	char *revname;
+
+	switch (rev) {
+	case BOARD_REV_B:
+		revname = "B";
+		break;
+	case BOARD_REV_A:
+	default:
+		revname = "A";
+		break;
+	}
+
+	printf("Board: MX6Q-Sabreauto rev%s\n", revname);
 
 	return 0;
 }

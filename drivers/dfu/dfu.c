@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * dfu.c -- DFU back-end routines
  *
  * Copyright (C) 2012 Samsung Electronics
  * author: Lukasz Majewski <l.majewski@samsung.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -398,6 +399,9 @@ static int dfu_fill_entity(struct dfu_entity *dfu, char *s, int alt,
 	/* Specific for mmc device */
 	if (strcmp(interface, "mmc") == 0) {
 		if (dfu_fill_entity_mmc(dfu, devstr, s))
+			return -1;
+	} else if (strcmp(interface, "mtd") == 0) {
+		if (dfu_fill_entity_mtd(dfu, devstr, s))
 			return -1;
 	} else if (strcmp(interface, "nand") == 0) {
 		if (dfu_fill_entity_nand(dfu, devstr, s))

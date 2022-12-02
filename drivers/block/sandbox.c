@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Henrik Nordstrom <henrik@henriknordstrom.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -128,7 +129,7 @@ int host_dev_bind(int devnum, char *filename)
 	}
 	ret = blk_create_device(gd->dm_root, "sandbox_host_blk", str,
 				IF_TYPE_HOST, devnum, 512,
-				os_lseek(fd, 0, OS_SEEK_END) / 512, &dev);
+				os_lseek(fd, 0, OS_SEEK_END), &dev);
 	if (ret)
 		goto err_file;
 	ret = device_probe(dev);

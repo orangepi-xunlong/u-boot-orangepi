@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * SoC-specific code for tms320dm365 and similar chips
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

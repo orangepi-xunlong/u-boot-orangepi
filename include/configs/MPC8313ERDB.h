@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006, 2010.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * mpc8313epb board configuration file
@@ -27,6 +28,7 @@
 #define CONFIG_NS16550_MIN_FUNCTIONS
 #endif
 
+#define CONFIG_SYS_TEXT_BASE	0x00100000 /* CONFIG_SYS_NAND_U_BOOT_DST */
 #define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
 #define CONFIG_SPL_MAX_SIZE	(4 * 1024)
 #define CONFIG_SPL_PAD_TO	0x4000
@@ -43,6 +45,10 @@
 #endif
 
 #endif /* CONFIG_NAND */
+
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFE000000
+#endif
 
 #ifndef CONFIG_SYS_MONITOR_BASE
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
@@ -71,6 +77,8 @@
 #endif
 
 #define CONFIG_SYS_CLK_FREQ	CONFIG_83XX_CLKIN
+
+#define CONFIG_BOARD_EARLY_INIT_R		/* call board_early_init_r */
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
@@ -242,15 +250,17 @@
 				/* LB refresh timer prescal, 266MHz/32 */
 #define CONFIG_SYS_LBC_MRTPR	0x20000000  /*TODO */
 
-/* drivers/mtd/nand/nand.c */
+/* drivers/mtd/nand/raw/nand.c */
 #if defined(CONFIG_NAND) && defined(CONFIG_SPL_BUILD)
 #define CONFIG_SYS_NAND_BASE		0xFFF00000
 #else
 #define CONFIG_SYS_NAND_BASE		0xE2800000
 #endif
 
-#define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITION
+#define MTDIDS_DEFAULT			"nand0=e2800000.flash"
+#define MTDPARTS_DEFAULT		\
+	"mtdparts=e2800000.flash:512k(uboot),128k(env),6m@1m(kernel),-(fs)"
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_NAND_FSL_ELBC 1
@@ -344,6 +354,7 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 
@@ -383,6 +394,7 @@
 /*
  * TSEC
  */
+#define CONFIG_TSEC_ENET		/* TSEC ethernet support */
 
 #define CONFIG_GMII			/* MII PHY management */
 
@@ -443,14 +455,21 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
 
+#define CONFIG_CMDLINE_EDITING 1
+#define CONFIG_AUTO_COMPLETE	/* add autocompletion support   */
+
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 
@@ -603,7 +622,7 @@
 
 #define CONFIG_NETDEV		"eth1"
 
-#define CONFIG_HOSTNAME		"mpc8313erdb"
+#define CONFIG_HOSTNAME		mpc8313erdb
 #define CONFIG_ROOTPATH		"/nfs/root/path"
 #define CONFIG_BOOTFILE		"uImage"
 				/* U-Boot image on TFTP server */

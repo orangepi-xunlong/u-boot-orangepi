@@ -59,62 +59,28 @@ config CC_OPTIMIZE_FOR_SIZE
 
 	  This option is enabled by default for U-Boot.
 
-config CC_COVERAGE
-	bool "Enable code coverage analysis"
-	depends on SANDBOX
-	help
-	  Enabling this option will pass "--coverage" to gcc to compile
-	  and link code instrumented for coverage analysis.
-
 config DISTRO_DEFAULTS
 	bool "Select defaults suitable for booting general purpose Linux distributions"
-	imply USE_BOOTCOMMAND
+	default y if ARCH_SUNXI || TEGRA
+	default y if ARCH_LS2080A
+	default y if ARCH_MESON
+	default y if ARCH_ROCKCHIP
+	default n
 	select CMD_BOOTZ if ARM && !ARM64
 	select CMD_BOOTI if ARM64
-	select CMD_DHCP if CMD_NET
-	select CMD_PING if CMD_NET
-	select CMD_PXE if NET
-	select CMD_ENV_EXISTS
+	select CMD_DHCP
+	imply CMD_PXE
 	select CMD_EXT2
 	select CMD_EXT4
 	select CMD_FAT
 	select CMD_FS_GENERIC
-	imply CMD_MII if NET
-	select CMD_PART if PARTITIONS
+	imply CMD_MII
+	select CMD_PING
+	select CMD_PART
 	select HUSH_PARSER
-	select CMDLINE_EDITING
-	select AUTO_COMPLETE
-	select SYS_LONGHELP
-	select SUPPORT_RAW_INITRD
-	select ENV_VARS_UBOOT_CONFIG
 	help
 	  Select this to enable various options and commands which are suitable
 	  for building u-boot for booting general purpose Linux distributions.
-
-config ENV_VARS_UBOOT_CONFIG
-	bool "Add arch, board, vendor and soc variables to default environment"
-	help
-	  Define this in order to add variables describing the
-	  U-Boot build configuration to the default environment.
-	  These will be named arch, cpu, board, vendor, and soc.
-	  Enabling this option will cause the following to be defined:
-	  - CONFIG_SYS_ARCH
-	  - CONFIG_SYS_CPU
-	  - CONFIG_SYS_BOARD
-	  - CONFIG_SYS_VENDOR
-	  - CONFIG_SYS_SOC
-
-config SYS_BOOT_GET_CMDLINE
-	bool "Enable kernel command line setup"
-	help
-	  Enables allocating and saving kernel cmdline in space between
-	  "bootm_low" and "bootm_low" + BOOTMAPSZ.
-
-config SYS_BOOT_GET_KBD
-	bool "Enable kernel board information setup"
-	help
-	  Enables allocating and saving a kernel copy of the bd_info in
-	  space between "bootm_low" and "bootm_low" + BOOTMAPSZ.
 
 config SYS_MALLOC_F
 	bool "Enable malloc() pool before relocation"
@@ -128,7 +94,6 @@ config SYS_MALLOC_F
 config SYS_MALLOC_F_LEN
 	hex "Size of malloc() pool before relocation"
 	depends on SYS_MALLOC_F
-	default 0x1000 if AM33XX
 	default 0x400
 	help
 	  Before relocation, memory is very limited on many platforms. Still,
@@ -168,7 +133,7 @@ menuconfig EXPERT
 if EXPERT
 	config SYS_MALLOC_CLEAR_ON_INIT
 	bool "Init with zeros the memory reserved for malloc (slow)"
-	default y
+	default y if !ARCH_ROCKCHIP
 	help
 	  This setting is enabled by default. The reserved malloc
 	  memory is initialized with zeros, so first malloc calls
@@ -199,15 +164,6 @@ config PHYS_64BIT
 	  This can be used not only for 64bit SoCs, but also for
 	  large physical address extention on 32bit SoCs.
 
-config BUILD_ROM
-	bool "Build U-Boot as BIOS replacement"
-	depends on X86
-	help
-	  This option allows to build a ROM version of U-Boot.
-	  The build process generally requires several binary blobs
-	  which are not shipped in the U-Boot source tree.
-	  Please, see doc/README.x86 for details.
-
 endmenu		# General setup
 
 menu "Boot images"
@@ -221,8 +177,6 @@ config ANDROID_BOOT_IMAGE
 
 config FIT
 	bool "Support Flattened Image Tree"
-	select MD5
-	select SHA1
 	help
 	  This option allows you to boot the new uImage structure,
 	  Flattened Image Tree.  FIT is formally a FDT, which can include
@@ -237,7 +191,7 @@ if FIT
 
 config FIT_ENABLE_SHA256_SUPPORT
 	bool "Support SHA256 checksum of FIT image contents"
-	select SHA256
+	select SHA256 if !DM_CRYPTO
 	default y
 	help
 	  Enable this to support SHA256 checksum of FIT image contents. A
@@ -253,7 +207,7 @@ config FIT_SIGNATURE
 	bool "Enable signature verification of FIT uImages"
 	depends on DM
 	select RSA
-	select HASH
+	select CONSOLE_DISABLE_CLI
 	help
 	  This option enables signature verification of FIT uImages,
 	  using a hash signed and verified using RSA. If
@@ -266,6 +220,20 @@ config FIT_SIGNATURE
 	  unsigned images cannot be loaded. If a board needs the legacy image
 	  format support in this case, enable it using
 	  CONFIG_IMAGE_FORMAT_LEGACY.
+
+config FIT_ROLLBACK_PROTECT
+	bool "Enable rollback-index protection for FIT image"
+	depends on FIT_SIGNATURE
+	help
+	  Enable rollback-index protection for FIT image
+
+config FIT_ENABLE_RSASSA_PSS_SUPPORT
+	bool "Support rsassa-pss signature scheme of FIT image contents"
+	depends on FIT_SIGNATURE
+	default y
+	help
+	  Enable this to support the pss padding algorithm as described
+	  in the rfc8017 (https://tools.ietf.org/html/rfc8017).
 
 config FIT_VERBOSE
 	bool "Show verbose messages when FIT images fail"
@@ -286,7 +254,6 @@ config FIT_BEST_MATCH
 
 config FIT_IMAGE_POST_PROCESS
 	bool "Enable post-processing of FIT artifacts after loading by U-Boot"
-	depends on TI_SECURE_DEVICE
 	help
 	  Allows doing any sort of manipulation to blobs after they got extracted
 	  from FIT images like stripping off headers or modifying the size of the
@@ -297,6 +264,19 @@ config FIT_IMAGE_POST_PROCESS
 	  need to be comprehended in how the images were prepared before being
 	  injected into the FIT creation (i.e. the blobs would have been pre-
 	  processed before being added to the FIT image).
+
+config FIT_HW_CRYPTO
+	bool "Enable hardware crypto for FIT image checksum and rsa verify"
+	depends on DM_CRYPTO
+	help
+	  Enable hardware crypto for FIT image checksum and rsa verify.
+
+config FIT_PRINT
+	bool "Enable fit image structure and data print"
+	default y
+	help
+	  Say y here if you want to enable fit image structure and data
+	  print.
 
 if SPL
 
@@ -310,6 +290,12 @@ config SPL_FIT_SIGNATURE
 	depends on SPL_DM
 	select SPL_FIT
 	select SPL_RSA
+
+config SPL_FIT_ROLLBACK_PROTECT
+	bool "Enable SPL rollback-index protection for FIT image"
+	depends on SPL_FIT_SIGNATURE
+	help
+	  Enable SPL rollback-index protection for FIT image
 
 config SPL_LOAD_FIT
 	bool "Enable SPL loading U-Boot as a FIT"
@@ -336,9 +322,31 @@ config SPL_FIT_IMAGE_POST_PROCESS
 	  injected into the FIT creation (i.e. the blobs would have been pre-
 	  processed before being added to the FIT image).
 
+config SPL_FIT_HW_CRYPTO
+	bool "Enable SPL hardware crypto for FIT image checksum and rsa verify"
+	depends on SPL_DM_CRYPTO
+	help
+	  Enable SPL hardware crypto for FIT image checksum and rsa verify.
+
+config SPL_SYS_DCACHE_OFF
+	bool "Disable SPL dcache"
+	default y
+	help
+	  Disable SPL dcache. Please make sure CONFIG_SPL_SYS_MALLOC_F_LEN
+	  is large enough to malloc TLB and bd_t buffer while enabling dcache.
+
+config SPL_FIT_PRINT
+	bool "Enable fit image structure and data print in SPL"
+	default n
+	help
+	  Say y here if you want to enable fit image structure and data
+	  print in SPL.
+
+endif # SPL
+
 config SPL_FIT_SOURCE
 	string ".its source file for U-Boot FIT image"
-	depends on SPL_FIT
+	depends on SPL_FIT || FIT
 	help
 	  Specifies a (platform specific) FIT source file to generate the
 	  U-Boot FIT image. This could specify further image to load and/or
@@ -346,7 +354,7 @@ config SPL_FIT_SOURCE
 
 config SPL_FIT_GENERATOR
 	string ".its file generator script for U-Boot FIT image"
-	depends on SPL_FIT
+	depends on SPL_FIT || FIT
 	default "board/sunxi/mksunxi_fit_atf.sh" if SPL_LOAD_FIT && ARCH_SUNXI
 	help
 	  Specifies a (platform specific) script file to generate the FIT
@@ -354,19 +362,21 @@ config SPL_FIT_GENERATOR
 	  passed a list of supported device tree file stub names to
 	  include in the generated image.
 
-endif # SPL
+config SPL_FIT_IMAGE_KB
+	int "SPL FIT image size in KiB"
+	depends on SPL_FIT || FIT
+	default 2048
+	help
+	  SPL FIT image size in KiB, default 2048KB = 1024KB(u-boot) + 1024KB(tee/atf + others).
+
+config SPL_FIT_IMAGE_MULTIPLE
+	int "SPL FIT image multiple number"
+	depends on SPL_FIT || FIT
+	default 2
+	help
+	  SPL FIT image multiple number.
 
 endif # FIT
-
-config IMAGE_FORMAT_LEGACY
-	bool "Enable support for the legacy image format"
-	default y if !FIT_SIGNATURE
-	help
-	  This option enables the legacy image format. It is enabled by
-	  default for backward compatibility, unless FIT_SIGNATURE is
-	  set where it is disabled so that unsigned images cannot be
-	  loaded. If a board needs the legacy image format support in this
-	  case, enable it here.
 
 config OF_BOARD_SETUP
 	bool "Set up board-specific details in device tree before boot"
@@ -411,13 +421,15 @@ config SYS_EXTRA_OPTIONS
 	  new boards should not use this option.
 
 config SYS_TEXT_BASE
-	depends on !NIOS2 && !XTENSA
+	depends on ARC || X86 || ARCH_UNIPHIER || ARCH_ZYNQMP || \
+		(M68K && !TARGET_ASTRO_MCF5373L) || MICROBLAZE || MIPS || \
+		ARCH_ZYNQ || ARCH_KEYSTONE || ARCH_OMAP2PLUS
 	depends on !EFI_APP
-	default 0x80800000 if ARCH_OMAP2PLUS
 	hex "Text Base"
 	help
-	  The address in memory that U-Boot will be running from, initially.
+	  TODO: Move CONFIG_SYS_TEXT_BASE for all the architecture
 
+	default 0x80800000 if ARCH_OMAP2PLUS
 
 
 config SYS_CLK_FREQ
@@ -435,7 +447,6 @@ config ARCH_FIXUP_FDT_MEMORY
 	  the memory location should be used for different purpose.
 
 endmenu		# Boot images
-
 
 source "api/Kconfig"
 
@@ -458,5 +469,3 @@ source "fs/Kconfig"
 source "lib/Kconfig"
 
 source "test/Kconfig"
-
-source "sprite/Kconfig"

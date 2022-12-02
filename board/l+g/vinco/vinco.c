@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board file for the VInCo platform
  * Based on the the SAMA5-EK board file
@@ -7,6 +6,8 @@
  *		      Bo Shen <voice.shen@atmel.com>
  * Copyright (C) 2015 Free Electrons
  *		      Gregory CLEMENT <gregory.clement@free-electrons.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -32,8 +33,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* FIXME gpio code here need to handle through DM_GPIO */
-#ifndef CONFIG_DM_SPI
+#ifdef CONFIG_ATMEL_SPI
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
 	return bus == 0 && cs == 0;
@@ -166,7 +166,7 @@ int board_init(void)
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
-#ifndef CONFIG_DM_SPI
+#ifdef CONFIG_ATMEL_SPI
 	vinco_spi0_hw_init();
 #endif
 

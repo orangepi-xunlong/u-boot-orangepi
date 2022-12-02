@@ -1,36 +1,28 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier: GPL-2.0
  */
 
 #include <common.h>
 #include <dm.h>
 #include <reset-uclass.h>
 #include <linux/io.h>
-#include <asm/arch/hardware.h>
-#include <dm/lists.h>
-/*
- * Each reg has 16 bits reset signal for devices
- * Note: Not including rk2818 and older SoCs
- */
-#define ROCKCHIP_RESET_NUM_IN_REG	16
 
 struct rockchip_reset_priv {
 	void __iomem *base;
-	/* Rockchip reset reg locate at cru controller */
-	u32 reset_reg_offset;
-	/* Rockchip reset reg number */
-	u32 reset_reg_num;
+	unsigned int sf_reset_offset;
+	unsigned int sf_reset_num;
 };
 
 static int rockchip_reset_request(struct reset_ctl *reset_ctl)
 {
 	struct rockchip_reset_priv *priv = dev_get_priv(reset_ctl->dev);
 
-	debug("%s(reset_ctl=%p) (dev=%p, id=%lu) (reg_num=%d)\n", __func__,
-	      reset_ctl, reset_ctl->dev, reset_ctl->id, priv->reset_reg_num);
+	debug("%s(reset_ctl=%p) (dev=%p, id=%lu) (sf_reset_num=%d)\n", __func__,
+	      reset_ctl, reset_ctl->dev, reset_ctl->id, priv->sf_reset_num);
 
-	if (reset_ctl->id / ROCKCHIP_RESET_NUM_IN_REG >= priv->reset_reg_num)
+	if (reset_ctl->id / 16 >= priv->sf_reset_num)
 		return -EINVAL;
 
 	return 0;
@@ -47,14 +39,14 @@ static int rockchip_reset_free(struct reset_ctl *reset_ctl)
 static int rockchip_reset_assert(struct reset_ctl *reset_ctl)
 {
 	struct rockchip_reset_priv *priv = dev_get_priv(reset_ctl->dev);
-	int bank =  reset_ctl->id / ROCKCHIP_RESET_NUM_IN_REG;
-	int offset =  reset_ctl->id % ROCKCHIP_RESET_NUM_IN_REG;
+	int bank =  reset_ctl->id / 16;
+	int offset =  reset_ctl->id % 16;
 
 	debug("%s(reset_ctl=%p) (dev=%p, id=%lu) (reg_addr=%p)\n", __func__,
 	      reset_ctl, reset_ctl->dev, reset_ctl->id,
 	      priv->base + (bank * 4));
 
-	rk_setreg(priv->base + (bank * 4), BIT(offset));
+	writel(BIT(offset) | (BIT(offset) << 16), priv->base + (bank * 4));
 
 	return 0;
 }
@@ -62,14 +54,14 @@ static int rockchip_reset_assert(struct reset_ctl *reset_ctl)
 static int rockchip_reset_deassert(struct reset_ctl *reset_ctl)
 {
 	struct rockchip_reset_priv *priv = dev_get_priv(reset_ctl->dev);
-	int bank =  reset_ctl->id / ROCKCHIP_RESET_NUM_IN_REG;
-	int offset =  reset_ctl->id % ROCKCHIP_RESET_NUM_IN_REG;
+	int bank =  reset_ctl->id / 16;
+	int offset =  reset_ctl->id % 16;
 
 	debug("%s(reset_ctl=%p) (dev=%p, id=%lu) (reg_addr=%p)\n", __func__,
 	      reset_ctl, reset_ctl->dev, reset_ctl->id,
 	      priv->base + (bank * 4));
 
-	rk_clrreg(priv->base + (bank * 4), BIT(offset));
+	writel((BIT(offset) << 16), priv->base + (bank * 4));
 
 	return 0;
 }
@@ -91,34 +83,14 @@ static int rockchip_reset_probe(struct udevice *dev)
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
-	if ((priv->reset_reg_offset == 0) && (priv->reset_reg_num == 0))
+	if ((priv->sf_reset_offset == 0) && (priv->sf_reset_num == 0))
 		return -EINVAL;
 
-	addr += priv->reset_reg_offset;
+	addr += priv->sf_reset_offset;
 	priv->base = ioremap(addr, size);
 
-	debug("%s(base=%p) (reg_offset=%x, reg_num=%d)\n", __func__,
-	      priv->base, priv->reset_reg_offset, priv->reset_reg_num);
-
-	return 0;
-}
-
-int rockchip_reset_bind(struct udevice *pdev, u32 reg_offset, u32 reg_number)
-{
-	struct udevice *rst_dev;
-	struct rockchip_reset_priv *priv;
-	int ret;
-
-	 ret = device_bind_driver_to_node(pdev, "rockchip_reset", "reset",
-					  dev_ofnode(pdev), &rst_dev);
-	if (ret) {
-		debug("Warning: No rockchip reset driver: ret=%d\n", ret);
-		return ret;
-	}
-	priv = malloc(sizeof(struct rockchip_reset_priv));
-	priv->reset_reg_offset = reg_offset;
-	priv->reset_reg_num = reg_number;
-	rst_dev->priv = priv;
+	debug("%s(base=%p) (sf_reset_offset=%x, sf_reset_num=%d)\n", __func__,
+	      priv->base, priv->sf_reset_offset, priv->sf_reset_num);
 
 	return 0;
 }

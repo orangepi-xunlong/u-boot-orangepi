@@ -47,17 +47,34 @@ config DM_USB
 	  declared with the U_BOOT_USB_DEVICE() macro and will be
 	  automatically probed when found on the bus.
 
+config SPL_DM_USB
+	bool "Enable driver model for USB in SPL"
+	depends on SPL_DM && DM_USB
+	default y
+
+config DM_USB_GADGET
+	bool "Enable driver model for USB Gadget"
+	depends on DM_USB
+	help
+	  Enable driver model for USB Gadget (Peripheral
+	  mode)
+
+config SPL_DM_USB_GADGET
+	bool "Enable driver model for USB Gadget in sPL"
+	depends on SPL_DM_USB
+	help
+	  Enable driver model for USB Gadget in SPL
+	  (Peripheral mode)
+
 source "drivers/usb/host/Kconfig"
 
-source "drivers/usb/dwc3/Kconfig"
+source "drivers/usb/cdns3/Kconfig"
 
-source "drivers/usb/musb/Kconfig"
+source "drivers/usb/dwc3/Kconfig"
 
 source "drivers/usb/musb-new/Kconfig"
 
 source "drivers/usb/emul/Kconfig"
-
-source "drivers/usb/phy/Kconfig"
 
 source "drivers/usb/ulpi/Kconfig"
 
@@ -65,6 +82,7 @@ comment "USB peripherals"
 
 config USB_STORAGE
 	bool "USB Mass Storage support"
+	depends on !(BLK && !DM_USB)
 	---help---
 	  Say Y here if you want to connect USB mass storage devices to your
 	  board's USB port.
@@ -77,6 +95,12 @@ config USB_KEYBOARD
 	  input.
 
 if USB_KEYBOARD
+
+config USB_KEYBOARD_FN_KEYS
+	bool "USB keyboard function key support"
+	help
+	  Say Y here if you want support for keys F1 - F12, INS, HOME, DELETE,
+	  END, PAGE UP, and PAGE DOWN.
 
 choice
 	prompt "USB keyboard polling"

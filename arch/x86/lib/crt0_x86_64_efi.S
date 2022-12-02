@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * crt0-efi-x86_64.S - x86_64 EFI startup code.
  * Copyright (C) 1999 Hewlett-Packard Co.
@@ -7,6 +6,7 @@
  * Contributed by Fenghua Yu <fenghua.yu@intel.com>.
  *
  * All rights reserved.
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 	.text
 	.align 4

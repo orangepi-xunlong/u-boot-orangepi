@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Suriyan Ramasami <suriyan.r@gmail.com>
  *
@@ -9,6 +8,8 @@
  * Prafulla Wadaskar <prafulla@marvell.com>
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_GOFLEXHOME_H
@@ -19,6 +20,7 @@
  */
 #define CONFIG_FEROCEON_88FR131	1	/* CPU Core subversion */
 #define CONFIG_KW88F6281	1	/* SOC Name */
+#define CONFIG_MACH_GOFLEXHOME		/* Machine type */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
 /*
@@ -40,8 +42,6 @@
 /*
  * Commands configuration
  */
-
-#define CONFIG_SYS_MVFS         /* Picks up Filesystem from mv-common.h */
 
 /*
  * mv-common.h should be defined after CMD configs since it used them
@@ -73,10 +73,13 @@
 	"ubifsload 0x800000 ${kernel}; " \
 	"bootm 0x800000"
 
+#define CONFIG_MTDPARTS \
+	"mtdparts=orion_nand:1m(uboot),6M(uImage),-(root)\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=console=ttyS0,115200\0" \
 	"mtdids=nand0=orion_nand\0" \
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT \
+	"mtdparts="CONFIG_MTDPARTS \
 	"kernel=/boot/uImage\0" \
 	"bootargs_root=ubi.mtd=root root=ubi0:root rootfstype=ubifs ro\0"
 

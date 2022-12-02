@@ -1,17 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for Compulab CM-FX6 board
  *
  * Copyright (C) 2014, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Nikita Kiryanov <nikita@compulab.co.il>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <ahci.h>
 #include <dm.h>
 #include <dwc_ahsata.h>
-#include <environment.h>
 #include <fsl_esdhc.h>
 #include <miiphy.h>
 #include <mtd_node.h>
@@ -210,6 +210,48 @@ static int cm_fx6_setup_issd(void)
 
 #define CM_FX6_SATA_INIT_RETRIES	10
 
+# if !CONFIG_IS_ENABLED(AHCI)
+int sata_initialize(void)
+{
+	int err, i;
+
+	/* Make sure this gpio has logical 0 value */
+	gpio_direction_output(CM_FX6_SATA_PWLOSS_INT, 0);
+	udelay(100);
+	cm_fx6_sata_power(1);
+
+	for (i = 0; i < CM_FX6_SATA_INIT_RETRIES; i++) {
+		err = setup_sata();
+		if (err) {
+			printf("SATA setup failed: %d\n", err);
+			return err;
+		}
+
+		udelay(100);
+
+		err = __sata_initialize();
+		if (!err)
+			break;
+
+		/* There is no device on the SATA port */
+		if (sata_port_status(0, 0) == 0)
+			break;
+
+		/* There's a device, but link not established. Retry */
+	}
+
+	return err;
+}
+
+int sata_stop(void)
+{
+	__sata_stop();
+	cm_fx6_sata_power(0);
+	mdelay(250);
+
+	return 0;
+}
+# endif
 #else
 static int cm_fx6_setup_issd(void) { return 0; }
 #endif
@@ -506,6 +548,35 @@ static void cm_fx6_setup_gpmi_nand(void)
 static void cm_fx6_setup_gpmi_nand(void) {}
 #endif
 
+#ifdef CONFIG_FSL_ESDHC
+static struct fsl_esdhc_cfg usdhc_cfg[3] = {
+	{USDHC1_BASE_ADDR},
+	{USDHC2_BASE_ADDR},
+	{USDHC3_BASE_ADDR},
+};
+
+static enum mxc_clock usdhc_clk[3] = {
+	MXC_ESDHC_CLK,
+	MXC_ESDHC2_CLK,
+	MXC_ESDHC3_CLK,
+};
+
+int board_mmc_init(bd_t *bis)
+{
+	int i;
+
+	cm_fx6_set_usdhc_iomux();
+	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
+		usdhc_cfg[i].sdhc_clk = mxc_get_clock(usdhc_clk[i]);
+		usdhc_cfg[i].max_bus_width = 4;
+		fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
+		enable_usdhc_clk(1, i);
+	}
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_MXC_SPI
 int cm_fx6_setup_ecspi(void)
 {
@@ -618,27 +689,6 @@ int board_init(void)
 	}
 #endif
 
-	return 0;
-}
-
-int board_late_init(void)
-{
-#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-	char baseboard_name[16];
-	int err;
-
-	if (is_mx6dq())
-		env_set("board_rev", "MX6Q");
-	else if (is_mx6dl())
-		env_set("board_rev", "MX6DL");
-
-	err = cl_eeprom_get_product_name((uchar *)baseboard_name, 0);
-	if (err)
-		return 0;
-
-	if (!strncmp("SB-FX6m", baseboard_name, 7))
-		env_set("board_name", "Utilite");
-#endif
 	return 0;
 }
 

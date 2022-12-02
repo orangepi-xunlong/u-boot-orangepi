@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014  Angelo Dureghello <angelo@sysam.it>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -24,8 +25,7 @@ int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-#if defined(CONFIG_DISPLAY_CPUINFO)
-int print_cpuinfo(void)
+int checkcpu(void)
 {
 	char buf[32];
 
@@ -33,5 +33,4 @@ int print_cpuinfo(void)
 	       strmhz(buf, CONFIG_SYS_CPU_CLK));
 	return 0;
 }
-#endif /* CONFIG_DISPLAY_CPUINFO */
 #endif

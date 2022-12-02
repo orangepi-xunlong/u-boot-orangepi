@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Freescale i.MX28 LRADC Register Definitions
  *
@@ -7,6 +6,8 @@
  *
  * Based on code from LTIB:
  * Copyright 2008-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_LRADC_H__

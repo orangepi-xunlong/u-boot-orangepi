@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -579,7 +580,7 @@ static int do_scsi_scan_one(struct udevice *dev, int id, int lun, bool verbose)
 	*/
 	snprintf(str, sizeof(str), "id%dlun%d", id, lun);
 	ret = blk_create_devicef(dev, "scsi_blk", str, IF_TYPE_SCSI, -1,
-			bd.blksz, bd.lba, &bdev);
+			bd.blksz, bd.blksz * bd.lba, &bdev);
 	if (ret) {
 		debug("Can't create device\n");
 		return ret;

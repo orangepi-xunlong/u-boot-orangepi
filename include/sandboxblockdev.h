@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013, Henrik Nordstrom <henrik@henriknordstrom.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SANDBOX_BLOCK_DEV__

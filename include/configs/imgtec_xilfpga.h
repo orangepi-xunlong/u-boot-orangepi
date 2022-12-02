@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2016, Imagination Technologies Ltd.
  *
  * Zubair Lutfullah Kakakhel <Zubair.Kakakhel@imgtec.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Imagination Technologies Ltd. MIPSfpga
  */
@@ -39,6 +40,7 @@
 /*----------------------------------------------------------------------
  * Commands
  */
+#define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 /*------------------------------------------------------------
  * Console Configuration

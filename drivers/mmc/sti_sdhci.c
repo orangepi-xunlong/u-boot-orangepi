@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ *  Copyright (c) 2017
+ *  Patrice Chotard <patrice.chotard@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
 #include <dm.h>
 #include <mmc.h>
-#include <reset-uclass.h>
 #include <sdhci.h>
 #include <asm/arch/sdhci.h>
 
@@ -16,14 +16,18 @@ DECLARE_GLOBAL_DATA_PTR;
 struct sti_sdhci_plat {
 	struct mmc_config cfg;
 	struct mmc mmc;
-	struct reset_ctl reset;
-	int instance;
 };
+
+/*
+ * used to get access to MMC1 reset,
+ * will be removed when STi reset driver will be available
+ */
+#define STIH410_SYSCONF5_BASE		0x092b0000
 
 /**
  * sti_mmc_core_config: configure the Arasan HC
- * @dev : udevice
- *
+ * @regbase: base address
+ * @mmc_instance: mmc instance id
  * Description: this function is to configure the Arasan MMC HC.
  * This should be called when the system starts in case of, on the SoC,
  * it is needed to configure the host controller.
@@ -32,39 +36,33 @@ struct sti_sdhci_plat {
  * W/o these settings the SDHCI could configure and use the embedded controller
  * with limited features.
  */
-static int sti_mmc_core_config(struct udevice *dev)
+static void sti_mmc_core_config(const u32 regbase, int mmc_instance)
 {
-	struct sti_sdhci_plat *plat = dev_get_platdata(dev);
-	struct sdhci_host *host = dev_get_priv(dev);
-	int ret;
+	unsigned long *sysconf;
 
 	/* only MMC1 has a reset line */
-	if (plat->instance) {
-		ret = reset_deassert(&plat->reset);
-		if (ret < 0) {
-			pr_err("MMC1 deassert failed: %d", ret);
-			return ret;
-		}
+	if (mmc_instance) {
+		sysconf = (unsigned long *)(STIH410_SYSCONF5_BASE +
+			  ST_MMC_CCONFIG_REG_5);
+		generic_set_bit(SYSCONF_MMC1_ENABLE_BIT, sysconf);
 	}
 
 	writel(STI_FLASHSS_MMC_CORE_CONFIG_1,
-	       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_1);
+	       regbase + FLASHSS_MMC_CORE_CONFIG_1);
 
-	if (plat->instance) {
+	if (mmc_instance) {
 		writel(STI_FLASHSS_MMC_CORE_CONFIG2,
-		       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_2);
+		       regbase + FLASHSS_MMC_CORE_CONFIG_2);
 		writel(STI_FLASHSS_MMC_CORE_CONFIG3,
-		       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_3);
+		       regbase + FLASHSS_MMC_CORE_CONFIG_3);
 	} else {
 		writel(STI_FLASHSS_SDCARD_CORE_CONFIG2,
-		       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_2);
+		       regbase + FLASHSS_MMC_CORE_CONFIG_2);
 		writel(STI_FLASHSS_SDCARD_CORE_CONFIG3,
-		       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_3);
+		       regbase + FLASHSS_MMC_CORE_CONFIG_3);
 	}
 	writel(STI_FLASHSS_MMC_CORE_CONFIG4,
-	       host->ioaddr + FLASHSS_MMC_CORE_CONFIG_4);
-
-	return 0;
+	       regbase + FLASHSS_MMC_CORE_CONFIG_4);
 }
 
 static int sti_sdhci_probe(struct udevice *dev)
@@ -72,25 +70,20 @@ static int sti_sdhci_probe(struct udevice *dev)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct sti_sdhci_plat *plat = dev_get_platdata(dev);
 	struct sdhci_host *host = dev_get_priv(dev);
-	int ret;
+	int ret, mmc_instance;
 
 	/*
 	 * identify current mmc instance, mmc1 has a reset, not mmc0
 	 * MMC0 is wired to the SD slot,
 	 * MMC1 is wired on the high speed connector
 	 */
-	ret = reset_get_by_index(dev, 0, &plat->reset);
-	if (!ret)
-		plat->instance = 1;
-	else
-		if (ret == -ENOENT)
-			plat->instance = 0;
-		else
-			return ret;
 
-	ret = sti_mmc_core_config(dev);
-	if (ret)
-		return ret;
+	if (fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "resets", NULL))
+		mmc_instance = 1;
+	else
+		mmc_instance = 0;
+
+	sti_mmc_core_config((const u32) host->ioaddr, mmc_instance);
 
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD |
 		       SDHCI_QUIRK_32BIT_DMA_ADDR |

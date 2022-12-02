@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * arch/arm/include/debug/8250.S
  *
  *  Copyright (C) 1994-2013 Russell King
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <linux/serial_reg.h>
 

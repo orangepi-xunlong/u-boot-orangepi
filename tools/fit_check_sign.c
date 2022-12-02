@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
  * DENX Software Engineering
@@ -16,6 +15,8 @@
  *		some functions added to address abstraction
  *
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
@@ -45,16 +46,20 @@ int main(int argc, char **argv)
 	int ret;
 	void *key_blob;
 	int c;
+	int is_spl = 0;
 
 	strncpy(cmdname, *argv, sizeof(cmdname) - 1);
 	cmdname[sizeof(cmdname) - 1] = '\0';
-	while ((c = getopt(argc, argv, "f:k:")) != -1)
+	while ((c = getopt(argc, argv, "f:k:s")) != -1)
 		switch (c) {
 		case 'f':
 			fdtfile = optarg;
 			break;
 		case 'k':
 			keyfile = optarg;
+			break;
+		case 's':
+			is_spl = 1;
 			break;
 		default:
 			usage(cmdname);
@@ -78,7 +83,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 
 	image_set_host_blob(key_blob);
-	ret = fit_check_sign(fit_blob, key_blob);
+	ret = fit_check_sign(fit_blob, key_blob, is_spl);
 	if (!ret) {
 		ret = EXIT_SUCCESS;
 		fprintf(stderr, "Signature check OK\n");

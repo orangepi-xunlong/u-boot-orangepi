@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
  * Copyright (c) 2010-2011 NVIDIA Corporation
  *  NVIDIA Corporation <www.nvidia.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -18,6 +19,8 @@
 #endif
 #include <asm/arch/gpio.h>
 #include <asm/arch-tegra/tegra_i2c.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 enum i2c_type {
 	TYPE_114,

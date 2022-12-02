@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuation settings for the Renesas Solutions ECOVEC board
  *
  * Copyright (C) 2009 - 2011 Renesas Solutions Corp.
  * Copyright (C) 2009 Kuninori Morimoto <morimoto.kuninori@renesas.com>
  * Copyright (C) 2010, 2011 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ECOVEC_H
@@ -22,8 +23,10 @@
  */
 
 #define CONFIG_CPU_SH7724	1
+#define CONFIG_ECOVEC		1
 
 #define CONFIG_ECOVEC_ROMIMAGE_ADDR 0xA0040000
+#define CONFIG_SYS_TEXT_BASE 0x8FFC0000
 
 #define CONFIG_DISPLAY_BOARDINFO
 #undef  CONFIG_SHOW_BOOT_PROGRESS
@@ -42,6 +45,7 @@
 #define CONFIG_SH_I2C_CLOCK  	41666666
 
 /* Ether */
+#define CONFIG_SH_ETHER 1
 #define CONFIG_SH_ETHER_USE_PORT (0)
 #define CONFIG_SH_ETHER_PHY_ADDR (0x1f)
 #define CONFIG_PHY_SMSC 1
@@ -58,6 +62,7 @@
 #define CONFIG_SUPERH_ON_CHIP_R8A66597
 
 /* undef to save memory	*/
+#define CONFIG_SYS_LONGHELP
 /* Monitor Command Prompt */
 /* Buffer size for Console output */
 #define CONFIG_SYS_PBSIZE		256
@@ -78,6 +83,7 @@
 #define CONFIG_SYS_MEMTEST_START (CONFIG_SYS_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END	 (CONFIG_SYS_MEMTEST_START + 200 * 1024 * 1024)
 /* Enable alternate, more extensive, memory test */
+#undef  CONFIG_SYS_ALT_MEMTEST
 /* Scratch address used by the alternate memory test */
 #undef  CONFIG_SYS_MEMTEST_SCRATCH
 

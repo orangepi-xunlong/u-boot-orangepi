@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2013, Andreas Oetken.
- */
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
+*/
 
 #ifndef _RSA_CHECKSUM_H
 #define _RSA_CHECKSUM_H

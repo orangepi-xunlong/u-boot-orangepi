@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Evgeni Dobrev <evgeni@studio-punkt.com>
  *
@@ -6,6 +5,8 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_NAS220_H
@@ -40,6 +41,9 @@
 /*
  * Commands configuration
  */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
 
 /*
  * mv-common.h should be defined after CMD configs since it used them
@@ -87,6 +91,7 @@
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_EHCI_KIRKWOOD	/* on Kirkwood platform	*/
 #define CONFIG_EHCI_IS_TDI
+#define CONFIG_SUPPORT_VFAT
 #endif /* CONFIG_CMD_USB */
 
 /*
@@ -94,8 +99,6 @@
  */
 #define CONFIG_JFFS2_NAND
 #define CONFIG_JFFS2_LZO
-#define CONFIG_MTD_DEVICE               /* needed for mtdparts commands */
-#define CONFIG_MTD_PARTITIONS
 
 /*
  * SATA

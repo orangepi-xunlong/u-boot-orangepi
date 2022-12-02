@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Rockchip Electronics Co., Ltd
  *
  * Based on kernel drivers/regulator/pwm-regulator.c
  * Copyright (C) 2014 - STMicroelectronics Inc.
  * Author: Lee Jones <lee.jones@linaro.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -93,13 +94,10 @@ static int pwm_regulator_set_voltage(struct udevice *dev, int uvolt)
 static int pwm_regulator_ofdata_to_platdata(struct udevice *dev)
 {
 	struct pwm_regulator_info *priv = dev_get_priv(dev);
-	struct fdtdec_phandle_args args;
-	const void *blob = gd->fdt_blob;
-	int node = dev_of_offset(dev);
+	struct ofnode_phandle_args args;
 	int ret;
 
-	ret = fdtdec_parse_phandle_with_args(blob, node, "pwms", "#pwm-cells",
-					     0, 0, &args);
+	ret = dev_read_phandle_with_args(dev, "pwms", "#pwm-cells", 0, 0, &args);
 	if (ret) {
 		debug("%s: Cannot get PWM phandle: ret=%d\n", __func__, ret);
 		return ret;
@@ -108,14 +106,19 @@ static int pwm_regulator_ofdata_to_platdata(struct udevice *dev)
 	priv->period_ns = args.args[1];
 	priv->polarity = args.args[2];
 
-	priv->init_voltage = fdtdec_get_int(blob, node,
-			"regulator-init-microvolt", -1);
+	priv->init_voltage = dev_read_u32_default(dev, "regulator-init-microvolt", -1);
 	if (priv->init_voltage < 0) {
-		printf("Cannot find regulator pwm init_voltage\n");
-		return -EINVAL;
+		debug("Cannot find 'regulator-init-microvolt'\n");
+
+		/*
+		 * 1. Compatible legacy pwm-regulator driver on rkdevelop;
+		 * 2. Give pwm-regulator default init voltage 1.1v;
+		 */
+		priv->init_voltage = dev_read_u32_default(dev, "rockchip,pwm_voltage",
+							  1100000);
 	}
 
-	ret = uclass_get_device_by_of_offset(UCLASS_PWM, args.node, &priv->pwm);
+	ret = uclass_get_device_by_ofnode(UCLASS_PWM, args.node, &priv->pwm);
 	if (ret) {
 		debug("%s: Cannot get PWM: ret=%d\n", __func__, ret);
 		return ret;
@@ -136,8 +139,11 @@ static int pwm_regulator_probe(struct udevice *dev)
 	priv->max_voltage = uc_pdata->max_uV;
 	priv->min_voltage = uc_pdata->min_uV;
 
-	if (priv->init_voltage)
+	if (priv->init_voltage > 0) {
+		debug("pwm-regulator(%s): init %d uV\n",
+		       dev->name, priv->init_voltage);
 		pwm_regulator_set_voltage(dev, priv->init_voltage);
+	}
 
 	return 0;
 }

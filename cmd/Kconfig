@@ -23,35 +23,20 @@ config HUSH_PARSER
 	  If disabled, you get the old, much simpler behaviour with a somewhat
 	  smaller memory footprint.
 
-config CMDLINE_EDITING
-	bool "Enable command line editing"
-	depends on CMDLINE
-	default y
-	help
-	  Enable editing and History functions for interactive command line
-	  input operations
-
-config AUTO_COMPLETE
-	bool "Enable auto complete using TAB"
-	depends on CMDLINE
-	default y
-	help
-	  Enable auto completion of commands using TAB.
-
-config SYS_LONGHELP
-	bool "Enable long help messages"
-	depends on CMDLINE
-	default y if CMDLINE
-	help
-	  Defined when you want long help messages included
-	  Do not set this option when short of memory.
-
 config SYS_PROMPT
 	string "Shell prompt"
-	default "orangepi# "
+	default "=> "
 	help
 	  This string is displayed in the command line to the left of the
 	  cursor.
+
+config U_BOOT_CMD_ALWAYS
+	bool "Enable cmd with U_BOOT_CMD_ALWAYS() declared"
+	depends on !CMDLINE
+	help
+	  This function is used to support some special U-Boot commands with
+	  U_BOOT_CMD_ALWAYS() declared even when CONFIG_CMDLINE is disabled.
+	  It reduces the image size and works with simple CLI.
 
 menu "Autoboot options"
 
@@ -152,7 +137,6 @@ config CMD_BDI
 	help
 	  Print board info
 
-
 config CMD_CONFIG
 	bool "config"
 	select BUILD_BIN2C
@@ -223,7 +207,7 @@ config CMD_BOOTI
 config CMD_BOOTEFI
 	bool "bootefi"
 	depends on EFI_LOADER
-	default n
+	default y
 	help
 	  Boot an EFI image from memory.
 
@@ -249,17 +233,24 @@ config CMD_BOOTEFI_HELLO
 	  for testing that EFI is working at a basic level, and for bringing
 	  up EFI support on a new architecture.
 
-source lib/efi_selftest/Kconfig
-
 config CMD_BOOTMENU
 	bool "bootmenu"
 	select MENU
 	help
 	  Add an ANSI terminal boot menu command.
 
+config CMD_DTIMG
+	bool "dtimg"
+	select OF_LIBFDT_OVERLAY
+	help
+	  Android DTB/DTBO image manipulation commands. Read dtb/dtbo files from
+	  image into RAM, dump image structure information, etc. Those dtb/dtbo
+	  files should be merged in one dtb further, which needs to be passed to
+	  the kernel, as part of a boot process.
+
 config CMD_ELF
 	bool "bootelf, bootvx"
-	default n
+	default y
 	help
 	  Boot an ELF/vxWorks image from the memory.
 
@@ -284,18 +275,19 @@ config CMD_RUN
 
 config CMD_IMI
 	bool "iminfo"
-	default n
+	default y
 	help
 	  Print header information for application image.
 
 config CMD_IMLS
 	bool "imls"
+	default y
 	help
 	  List all images found in flash
 
 config CMD_XIMG
 	bool "imxtract"
-	default n
+	default y
 	help
 	  Extract a part of a multi-image.
 
@@ -331,12 +323,6 @@ config CMD_SPL_WRITE_SIZE
 	  This provides the size of the command-line argument area in NAND
 	  flash used by Falcon-mode boot. See the documentation until CMD_SPL
 	  for detail.
-
-config CMD_FITUPD
-	bool "fitImage update command"
-	help
-	  Implements the 'fitupd' command, which allows to automatically
-	  store software updates present on a TFTP server in NOR Flash
 
 config CMD_THOR_DOWNLOAD
 	bool "thor - TIZEN 'thor' download"
@@ -423,12 +409,6 @@ config CMD_ENV_FLAGS
 endmenu
 
 menu "Memory commands"
-
-config CMD_BINOP
-	bool "binop"
-	help
-	  Compute binary operations (xor, or, and) of byte arrays of arbitrary
-	  size from memory and store the result in memory or the environment.
 
 config CMD_CRC32
 	bool "crc32"
@@ -534,15 +514,6 @@ config CMD_MEMTEST
 	help
 	  Simple RAM read/write test.
 
-if CMD_MEMTEST
-
-config SYS_ALT_MEMTEST
-	bool "Alternative test"
-	help
-	  Use a more complete alternative memory test.
-
-endif
-
 config CMD_MX_CYCLIC
 	bool "mdc, mwc"
 	help
@@ -569,6 +540,22 @@ config CMD_STRINGS
 	  within the range are displayed. The minimum number of characters
 	  for a sequence to be considered a string can be provided.
 
+config CMD_CRYPTO
+	bool "crypto test"
+	depends on DM_CRYPTO
+	select SHA1
+	select SHA256
+	select SHA512
+	select MD5
+	help
+	  Crypto test.
+
+config CMD_CRYPTO_SUM
+	bool "crypto checksum engine"
+	depends on DM_CRYPTO
+	default y
+	help
+	  Crypto checksum engine for sha1/sha256/sha512/md5.
 endmenu
 
 menu "Compression commands"
@@ -625,7 +612,7 @@ config CMD_DEMO
 
 config CMD_DFU
 	bool "dfu"
-	select DFU
+	select USB_FUNCTION_DFU
 	help
 	  Enables the command "dfu" which is used to have U-Boot create a DFU
 	  class device via USB. This command requires that the "dfu_alt_info"
@@ -659,7 +646,6 @@ config CMD_FLASH
 
 config CMD_FPGA
 	bool "fpga"
-	depends on FPGA
 	default y
 	help
 	  FPGA support.
@@ -715,7 +701,6 @@ config CMD_GPT
 	bool "GPT (GUID Partition Table) command"
 	select PARTITION_UUIDS
 	select EFI_PARTITION
-	select HAVE_BLOCK_DEVICE
 	imply RANDOM_UUID
 	help
 	  Enable the 'gpt' command to ready and write GPT style partition
@@ -723,7 +708,6 @@ config CMD_GPT
 
 config RANDOM_UUID
 	bool "GPT Random UUID generation"
-	select LIB_UUID
 	help
 	  Enable the generation of partitions with random UUIDs if none
 	  are provided.
@@ -804,20 +788,80 @@ config CMD_LOADS
 	help
 	  Load an S-Record file over serial line
 
+config CMD_LOAD_ANDROID
+	bool "load_android"
+	default n
+	depends on ANDROID_BOOT_IMAGE
+	help
+	  Load an Android Boot image from storage. The Android Boot images
+	  define the size and kernel address on the header, which are used by
+	  this command.
+
+config CMD_BOOT_ANDROID
+	bool "boot_android"
+	default n
+	depends on ANDROID_BOOTLOADER
+	help
+	  Performs the Android Bootloader boot flow, loading the appropriate
+	  Android image (normal kernel, recovery kernel or "bootloader" mode)
+	  and booting it. The boot mode is determined by the contents of the
+	  Android Bootloader Message.
+
+config CMD_ANDROID_AB_SELECT
+	bool "android_ab_select"
+	default n
+	depends on ANDROID_AB
+	help
+	  On Android devices with more than one boot slot (multiple copies of
+	  the kernel and system images) this provides a command to select which
+	  slot should be used to boot from and register the boot attempt. This
+	  is used by the new A/B update model where one slot is updated in the
+	  background while running from the other slot.
+
+config CMD_BOOT_FIT
+	bool "boot_fit"
+	default n
+	depends on ROCKCHIP_FIT_IMAGE
+	help
+	  Performs the FIT boot flow, loading the appropriate FIT image from
+	  boot/recovery partition containing kernel/fdt/ramdisk images.
+	  Additional that, the IH_TYPE_MULTI can be used for resource file.
+
+config CMD_BOOT_UIMAGE
+	bool "boot_uimage"
+	default n
+	depends on ROCKCHIP_UIMAGE
+	help
+	  Performs the Legacy uImage boot flow, loading the appropriate uImage
+	  file from resource/kernel/boot(recovery) partitions. Additional that,
+	  the resource partition can be fdt or resource(recommand) uImage file.
+
+config CMD_BOOT_ROCKCHIP
+	bool "boot_rockchip"
+	default n
+	depends on RKIMG_BOOTLOADER
+	help
+	  Performs the Rockchip Bootloader boot flow, loading the appropriate
+	  Rockchip image (normal kernel, boot, resource and revocery)
+	  and booting it. The boot mode is determined by the contents of the
+	  Rockchip bootloader helper.
+
 config CMD_MMC
 	bool "mmc"
 	help
 	  MMC memory mapped support.
+
+config CMD_MTD
+	bool "mtd"
+	select MTD_PARTITIONS
+	help
+	  MTD commands support.
 
 config CMD_NAND
 	bool "nand"
 	default y if NAND_SUNXI
 	help
 	  NAND support.
-config CMD_SUNXI_NAND
-	bool "sunxi nand"
-	help
-	  SUNXI NAND SUPPORT
 
 if CMD_NAND
 config CMD_NAND_TRIMFFS
@@ -865,7 +909,6 @@ config CMD_ONENAND
 config CMD_PART
 	bool "part"
 	select PARTITION_UUIDS
-	select HAVE_BLOCK_DEVICE
 	help
 	  Read and display information about the partition table on
 	  various media.
@@ -897,6 +940,33 @@ config CMD_REMOTEPROC
 	help
 	  Support for Remote Processor control
 
+config CMD_ROCKUSB
+	bool "rockusb - Command to upgrade Rockchip device"
+	depends on USB_GADGET
+	help
+	  Rockusb command provides a way to upgrade firmware for
+	  Rockchip SoC based devices, its design make use of USB
+	  Bulk-Only Transport based on UMS framework.
+
+config CMD_RKNAND
+	bool "rknand"
+	depends on (RKNAND || RKNANDC_NAND)
+	default y if (RKNAND || RKNANDC_NAND)
+	help
+	    Rockchip NAND FLASH device support
+
+config CMD_RKSFC
+	bool "rksfc"
+	depends on (RKSFC_NOR || RKSFC_NAND)
+	default y if (RKSFC_NOR || RKSFC_NAND)
+	help
+	  Rockchip SFC device support
+
+config CMD_RK_SECURE_STORAGE
+	bool "dump rockchip efuse/otp content"
+	help
+	  Dump the data which is written in OTP or efuse.
+
 config CMD_SATA
 	bool "sata - Access SATA subsystem"
 	select SATA
@@ -915,15 +985,6 @@ config CMD_SAVES
 	help
 	  Provides a way to save a binary file using the Motorola S-Record
 	  format over the serial line.
-
-config CMD_SCSI
-	bool "scsi - Access to SCSI devices"
-	default y if SCSI
-	help
-	  This provides a 'scsi' command which provides access to SCSI (Small
-	  Computer System Interface) devices. The command provides a way to
-	  scan the bus, reset the bus, read and write data and get information
-	  about devices.
 
 config CMD_SDRAM
 	bool "sdram - Print SDRAM configuration information"
@@ -967,7 +1028,6 @@ config CMD_UNIVERSE
 
 config CMD_USB
 	bool "usb"
-	select HAVE_BLOCK_DEVICE
 	help
 	  USB support.
 
@@ -977,18 +1037,9 @@ config CMD_USB_SDP
 	help
 	  Enables the command "sdp" which is used to have U-Boot emulating the
 	  Serial Download Protocol (SDP) via USB.
-config CMD_ROCKUSB
-	bool "rockusb"
-	depends on USB_FUNCTION_ROCKUSB
-	help
-          Rockusb protocol is widely used by Rockchip SoC based devices. It can
-	  read/write info, image to/from devices. This enable rockusb command
-	  support to communication with rockusb device. for more detail about
-	  this command, please read doc/README.rockusb.
 
 config CMD_USB_MASS_STORAGE
 	bool "UMS usb mass storage"
-	select USB_FUNCTION_MASS_STORAGE
 	help
 	  USB mass storage support
 
@@ -1009,6 +1060,11 @@ config CMD_ITEST
 	help
 	  Return true/false on integer compare.
 
+config CMD_SCRIPT_UPDATE
+	bool "sd_update/usb_update/tftp_update"
+	help
+	  Auto run sd_update/usb_update/tftp_update.txt from sd/udisk/tftp.
+
 config CMD_SOURCE
 	bool "source"
 	default y
@@ -1026,126 +1082,58 @@ config CMD_SETEXPR
 
 endmenu
 
-if NET
+menu "Network commands"
 
-menuconfig CMD_NET
-	bool "Network commands"
-	default y
-
-if CMD_NET
-
-config CMD_BOOTP
-	bool "bootp"
+config CMD_NET
+	bool "bootp, tftpboot"
+        select NET
 	default y
 	help
+	  Network commands.
 	  bootp - boot image via network using BOOTP/TFTP protocol
-
-config CMD_DHCP
-	bool "dhcp"
-	depends on CMD_BOOTP
-	help
-	  Boot image via network using DHCP/TFTP protocol
-
-config BOOTP_BOOTPATH
-	bool "Request & store 'rootpath' from BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP
-	help
-	  Even though the config is called BOOTP_BOOTPATH, it stores the
-	  path in the variable 'rootpath'.
-
-config BOOTP_DNS
-	bool "Request & store 'dnsip' from BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP
-	help
-	  The primary DNS server is stored as 'dnsip'. If two servers are
-	  returned, you must set BOOTP_DNS2 to store that second server IP
-	  also.
-
-config BOOTP_DNS2
-	bool "Store 'dnsip2' from BOOTP/DHCP server"
-	depends on BOOTP_DNS
-	help
-	  If a DHCP client requests the DNS server IP from a DHCP server,
-	  it is possible that more than one DNS serverip is offered to the
-	  client. If CONFIG_BOOTP_DNS2 is enabled, the secondary DNS
-	  server IP will be stored in the additional environment
-	  variable "dnsip2". The first DNS serverip is always
-	  stored in the variable "dnsip", when BOOTP_DNS is defined.
-
-config BOOTP_GATEWAY
-	bool "Request & store 'gatewayip' from BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP
-
-config BOOTP_HOSTNAME
-	bool "Request & store 'hostname' from BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP
-	help
-	  The name may or may not be qualified with the local domain name.
-
-config BOOTP_SUBNETMASK
-	bool "Request & store 'netmask' from BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP
-
-config BOOTP_PXE
-	bool "Send PXE client arch to BOOTP/DHCP server"
-	default y
-	depends on CMD_BOOTP && CMD_PXE
-	help
-	  Supported for ARM, ARM64, and x86 for now.
-
-config BOOTP_PXE_CLIENTARCH
-	hex
-	depends on BOOTP_PXE
-	default 0x16 if ARM64
-	default 0x15 if ARM
-	default 0 if X86
-
-config BOOTP_VCI_STRING
-	string
-	depends on CMD_BOOTP
-	default "U-Boot.armv7" if CPU_V7 || CPU_V7M
-	default "U-Boot.armv8" if ARM64
-	default "U-Boot.arm" if ARM
-	default "U-Boot"
-
-config CMD_TFTPBOOT
-	bool "tftpboot"
-	default y
-	help
 	  tftpboot - boot image via network using TFTP protocol
 
 config CMD_TFTPPUT
 	bool "tftp put"
-	depends on CMD_TFTPBOOT
 	help
 	  TFTP put command, for uploading files to a server
 
+config CMD_TFTP_BOOTM
+	bool "tftp download and bootm"
+	help
+	  TFTP bootm command, download and bootm the aosp/uImage/FIT Image.
+
+config CMD_TFTP_FLASH
+	bool "tftp download and flash"
+	help
+	  TFTP flash command, download and flash the Image to partition.
+
+config CMD_TFTP_UPDATE
+	bool "tftp update"
+	help
+	  Update a set of images organized with FIT via network using TFTP protocol
+
+
 config CMD_TFTPSRV
 	bool "tftpsrv"
-	depends on CMD_TFTPBOOT
 	help
 	  Act as a TFTP server and boot the first received file
-
-config NET_TFTP_VARS
-	bool "Control TFTP timeout and count through environment"
-	depends on CMD_TFTPBOOT
-	default y
-	help
-	  If set, allows controlling the TFTP timeout through the
-	  environment variable tftptimeout, and the TFTP maximum
-	  timeout count through the variable tftptimeoutcountmax.
-	  If unset, timeout and maximum are hard-defined as 1 second
-	  and 10 timouts per TFTP transfer.
 
 config CMD_RARP
 	bool "rarpboot"
 	help
 	  Boot image via network using RARP/TFTP protocol
+
+config CMD_DHCP
+	bool "dhcp"
+	help
+	  Boot image via network using DHCP/TFTP protocol
+
+config CMD_PXE
+	bool "pxe"
+	select MENU
+	help
+	  Boot image via network using PXE protocol
 
 config CMD_NFS
 	bool "nfs"
@@ -1183,8 +1171,6 @@ config CMD_LINK_LOCAL
 	help
 	  Acquire a network IP address using the link-local protocol
 
-endif
-
 config CMD_ETHSW
 	bool "ethsw"
 	help
@@ -1193,13 +1179,17 @@ config CMD_ETHSW
 	  operations such as enabling / disabling a port and
 	  viewing/maintaining the filtering database (FDB)
 
-config CMD_PXE
-	bool "pxe"
-	select MENU
-	help
-	  Boot image via network using PXE protocol
+endmenu
 
-endif
+config CMD_MEMTESTER
+	bool "Enable memtester for ddr"
+	help
+	  This enables memtester for ddr.
+
+config CMD_DDR_TEST_TOOL
+	bool "Enable ddr test tool"
+	help
+	  This enable ddr test tool code.
 
 menu "Misc commands"
 
@@ -1287,6 +1277,13 @@ config CMD_GETTIME
 	  milliseconds. See also the 'bootstage' command which provides more
 	  flexibility for boot timing.
 
+config CMD_RNG
+	bool "rng command"
+	depends on DM_RNG
+	select HEXDUMP
+	help
+	  Print bytes from the hardware random number generator.
+
 # TODO: rename to CMD_SLEEP
 config CMD_MISC
 	bool "sleep"
@@ -1329,7 +1326,6 @@ config CMD_TERMINAL
 
 config CMD_UUID
 	bool "uuid, guid - generation of unique IDs"
-	select LIB_UUID
 	help
 	  This enables two commands:
 
@@ -1340,8 +1336,6 @@ config CMD_UUID
 	  output.
 
 endmenu
-
-source "cmd/ti/Kconfig"
 
 config CMD_BOOTSTAGE
 	bool "Enable the 'bootstage' command"
@@ -1383,6 +1377,23 @@ config CMD_REGULATOR
 	  The '-f' (force) option can be used for set the value which exceeds
 	  the limits, which are found in device-tree and are kept in regulator's
 	  uclass platdata structure.
+
+config CMD_CHARGE_DISPLAY
+	bool "Enable Driver Model Charge Display command"
+	depends on DM_CHARGE_DISPLAY
+	default y
+	help
+	  Support U-Boot charge display.
+
+config CMD_DVFS
+	bool "Enable Driver Model DVFS command"
+	depends on DM_DVFS
+	default y
+	help
+	  Support dvfs policy apply API
+	  User interface features:
+	  - dvfs            - apply dvfs policy once
+	  - dvfs repeat     - repeat apply dvfs policy until achieve the target temperature
 
 endmenu
 
@@ -1491,16 +1502,6 @@ config CMD_CROS_EC
 endmenu
 
 menu "Filesystem commands"
-config CMD_BTRFS
-	bool "Enable the 'btrsubvol' command"
-	select FS_BTRFS
-	help
-	  This enables the 'btrsubvol' command to list subvolumes
-	  of a BTRFS filesystem. There are no special commands for
-	  listing BTRFS directories or loading BTRFS files - this
-	  can be done by the generic 'fs' commands (see CMD_FS_GENERIC)
-	  when BTRFS is enabled (see FS_BTRFS).
-
 config CMD_CBFS
 	bool "Enable the 'cbfs' command"
 	depends on FS_CBFS
@@ -1524,22 +1525,24 @@ config CMD_CRAMFS
 
 config CMD_EXT2
 	bool "ext2 command support"
-	select FS_EXT4
 	help
 	  Enables EXT2 FS command
 
 config CMD_EXT4
 	bool "ext4 command support"
-	select FS_EXT4
 	help
 	  Enables EXT4 FS command
 
 config CMD_EXT4_WRITE
 	depends on CMD_EXT4
 	bool "ext4 write command support"
-	select EXT4_WRITE
 	help
 	  Enables EXT4 FS write command
+
+config CMD_EXT4_SPARSE_WRITE
+	depends on CMD_EXT4
+	bool "ext4 sparse write command support"
+	help
 
 config CMD_FAT
 	bool "FAT command support"
@@ -1569,19 +1572,29 @@ config CMD_JFFS2
 
 config CMD_MTDPARTS
 	bool "MTD partition support"
+	select MTD_DEVICE if (CMD_NAND || NAND)
 	help
 	  MTD partition support
 
+config CMD_MTD
+	bool "MTD support"
+	help
+	  MTD support
+
+config CMD_MTD_BLK
+	bool "MTD block support"
+	help
+	  MTD block support
+
 config MTDIDS_DEFAULT
 	string "Default MTD IDs"
-	depends on CMD_MTDPARTS || CMD_NAND || CMD_FLASH
+	depends on CMD_MTD || CMD_MTDPARTS || CMD_NAND || CMD_FLASH
 	help
-	  Defines a default MTD IDs list for use with MTD partitions in the
-	  Linux MTD command line partitions format.
+	  Defines a default MTD ID
 
 config MTDPARTS_DEFAULT
 	string "Default MTD partition scheme"
-	depends on CMD_MTDPARTS || CMD_NAND || CMD_FLASH
+	depends on CMD_MTD || CMD_MTDPARTS || CMD_NAND || CMD_FLASH
 	help
 	  Defines a default MTD partitioning scheme in the Linux MTD command
 	  line partitions format
@@ -1604,6 +1617,15 @@ config CMD_REISER
 
 	    reiserls - list files
 	    reiserload - load a file
+
+config CMD_SCSI
+	bool "scsi - Access to SCSI devices"
+	default y if SCSI
+	help
+	  This provides a 'scsi' command which provides access to SCSI (Small
+	  Computer System Interface) devices. The command provides a way to
+	  scan the bus, reset the bus, read and write data and get information
+	  about devices.
 
 config CMD_YAFFS2
 	bool "yaffs2 - Access of YAFFS2 filesystem"
@@ -1630,6 +1652,12 @@ config CMD_ZFS
 endmenu
 
 menu "Debug commands"
+
+config CMD_ATAGS
+	bool "atags - Dump all rockchip atags"
+	default y
+	help
+	  This command dump all rockchip atags.
 
 config CMD_BEDBUG
 	bool "bedbug"
@@ -1665,7 +1693,6 @@ config CMD_KGDB
 
 config CMD_LOG
 	bool "log - Generation, control and access to logging"
-	select LOG
 	help
 	  This provides access to logging features. It allows the output of
 	  log data to be controlled to a limited extent (setting up the default
@@ -1706,74 +1733,4 @@ config CMD_UBIFS
 	help
 	  UBIFS is a file system for flash devices which works on top of UBI.
 
-config UBI_OFFLINE_BURN
-	tristate "Enable offline burn for ubi"
-	depends on CMD_UBI
-	select CRC32
-	default n if CMD_UBI
-	help
-	  Enable offline burn for ubi
-
 endmenu
-
-menu "Sunxi cmd"
-config CMD_SUNXI_TIMER
-	bool "timer test"
-	help
-	  Activate this option to test sunxi timer.
-
-config CMD_SUNXI_SPRITE
-	bool "sprite test"
-	help
-	  Activate this option to test sunxi sprite.
-
-config CMD_SUNXI_EFEX
-	bool "efex test"
-	help
-	  Activate this option to test sunxi efex.
-
-config CMD_SUNXI_FLASH
-	bool "sunxi flash test"
-	default y
-	help
-	  Activate this option to test sunxi flash.
-
-config CMD_SUNXI_BURN
-	bool "pburn test"
-	depends on SUNXI_BURN
-	help
-	  Activate this option to test sunxi burn.
-
-config CMD_SUNXI_DMA
-	bool "sunxi dma test"
-	depends on SUNXI_DMA
-	help
-	  Activate this option to test sunxi dma.
-
-config CMD_SUNXI_EFEX
-	bool "sunxi efex test"
-	default y
-	help
-	  Activate this option to test sunxi fel mode.
-
-config CMD_FASTBOOT
-	bool "enable fastboot"
-	default n
-	select SUNXI_FASTBOOT
-	help
-	  enable fastboot
-
-config CMD_SUNXI_MEMTEST
-	bool "enable memtester"
-	default n
-	help
-	  enable sunxi memtester
-
-config CMD_SUNXI_AUTO_FEL
-	bool "enable auto fel"
-	default n
-	select SUNXI_BURN
-	help
-	  enable auto fel function by probe MP tools.
-
-endmenu 

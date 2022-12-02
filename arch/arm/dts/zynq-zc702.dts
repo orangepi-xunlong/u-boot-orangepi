@@ -1,7 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
+ * Xilinx ZC702 board DTS
+ *
  *  Copyright (C) 2011 - 2015 Xilinx
  *  Copyright (C) 2012 National Instruments Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 /dts-v1/;
 #include "zynq-7000.dtsi"
@@ -93,7 +96,6 @@
 
 	ethernet_phy: ethernet-phy@7 {
 		reg = <7>;
-		device_type = "ethernet-phy";
 	};
 };
 
@@ -105,13 +107,10 @@
 &i2c0 {
 	status = "okay";
 	clock-frequency = <400000>;
-	pinctrl-names = "default", "gpio";
+	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c0_default>;
-	pinctrl-1 = <&pinctrl_i2c0_gpio>;
-	scl-gpios = <&gpio0 50 0>;
-	sda-gpios = <&gpio0 51 0>;
 
-	i2c-mux@74 {
+	i2cswitch@74 {
 		compatible = "nxp,pca9548";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -151,7 +150,7 @@
 			#size-cells = <0>;
 			reg = <2>;
 			eeprom@54 {
-				compatible = "atmel,24c08";
+				compatible = "at,24c08";
 				reg = <0x54>;
 			};
 		};
@@ -295,19 +294,6 @@
 		conf {
 			groups = "i2c0_10_grp";
 			bias-pull-up;
-			slew-rate = <0>;
-			io-standard = <1>;
-		};
-	};
-
-	pinctrl_i2c0_gpio: i2c0-gpio {
-		mux {
-			groups = "gpio0_50_grp", "gpio0_51_grp";
-			function = "gpio0";
-		};
-
-		conf {
-			groups = "gpio0_50_grp", "gpio0_51_grp";
 			slew-rate = <0>;
 			io-standard = <1>;
 		};

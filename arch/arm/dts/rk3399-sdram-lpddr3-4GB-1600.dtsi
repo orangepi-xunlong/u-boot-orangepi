@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 &dmc {
@@ -11,6 +12,12 @@
 		0x2
 		0x2
 		0x0
+		0xf
+		0xf
+		0
+		0
+		0xf
+		0xf
 		0xf
 		0xf
 		1
@@ -26,6 +33,12 @@
 		0x2
 		0x2
 		0x0
+		0xf
+		0xf
+		0
+		0
+		0xf
+		0xf
 		0xf
 		0xf
 		1

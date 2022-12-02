@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2006-2008
  * Texas Instruments.
@@ -7,6 +6,8 @@
  * Nishanth Menon <nm@ti.com>
  *
  * Configuration settings for the TI OMAP3430 Zoom MDK board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -18,6 +19,7 @@
 #include <configs/ti_omap3_common.h>
 
 /* Remove SPL boot option - we do not support that on LDP yet */
+#undef CONFIG_SPL_FRAMEWORK
 
 /* Generic NAND definition conflicts with debug_base */
 #undef CONFIG_SYS_NAND_BASE
@@ -32,6 +34,11 @@
  * Hardware drivers
  */
 
+/* USB */
+#define CONFIG_USB_MUSB_UDC			1
+#define CONFIG_USB_OMAP3		1
+#define CONFIG_TWL4030_USB		1
+
 /* USB device configuration */
 #define CONFIG_USB_DEVICE		1
 #define CONFIG_USB_TTY			1
@@ -40,6 +47,11 @@
 #define CONFIG_USBD_PRODUCTID		0x5678
 #define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
 #define CONFIG_USBD_PRODUCT_NAME	"Zoom1"
+
+#define MTDIDS_DEFAULT			"nand0=nand"
+#define MTDPARTS_DEFAULT		"mtdparts=nand:512k(x-loader),"\
+					"1920k(u-boot),128k(u-boot-env),"\
+					"4m(kernel),-(fs)"
 
 #if defined(CONFIG_CMD_NAND)
 /* NAND: SPL falcon mode configs */
@@ -136,9 +148,18 @@
 #define CONFIG_SYS_ONENAND_BASE		ONENAND_MAP
 
 #define ONENAND_ENV_OFFSET		0x260000 /* environment starts here */
+#define SMNAND_ENV_OFFSET		0x260000 /* environment starts here */
 
 #define CONFIG_SYS_ENV_SECT_SIZE	(128 << 10)	/* 128 KiB */
-#define CONFIG_ENV_OFFSET		0x260000
-#define CONFIG_ENV_ADDR			0x260000
+#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+#define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
+
+#ifdef CONFIG_CMD_NET
+/* Ethernet (LAN9211 from SMSC9118 family) */
+#define CONFIG_SMC911X
+#define CONFIG_SMC911X_32_BIT
+#define CONFIG_SMC911X_BASE		DEBUG_BASE
+
+#endif
 
 #endif				/* __CONFIG_H */

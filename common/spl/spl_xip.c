@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
+ * Copyright (C) 2017 Vikas Manocha <vikas.manocha@st.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>

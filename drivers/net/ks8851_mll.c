@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Micrel KS8851_MLL 16bit Network driver
  * Copyright (c) 2011 Roberto Cerati <roberto.cerati@bticino.it>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/io.h>

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  *
  * usb_match_device() modified from Linux kernel v4.0.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -14,6 +15,8 @@
 #include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dm/uclass-internal.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 extern bool usb_started; /* flag for the started/stopped USB status */
 static bool asynch_allowed;
@@ -31,7 +34,7 @@ int usb_disable_asynch(int disable)
 }
 
 int submit_int_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
-		   int length, int interval)
+		   int length, int interval, bool nonblock)
 {
 	struct udevice *bus = udev->controller_dev;
 	struct dm_usb_ops *ops = usb_get_ops(bus);
@@ -39,7 +42,8 @@ int submit_int_msg(struct usb_device *udev, unsigned long pipe, void *buffer,
 	if (!ops->interrupt)
 		return -ENOSYS;
 
-	return ops->interrupt(bus, udev, pipe, buffer, length, interval);
+	return ops->interrupt(bus, udev, pipe, buffer, length, interval,
+			      nonblock);
 }
 
 int submit_control_msg(struct usb_device *udev, unsigned long pipe,
@@ -210,7 +214,7 @@ static void usb_scan_bus(struct udevice *bus, bool recurse)
 
 	assert(recurse);	/* TODO: Support non-recusive */
 
-	printf("scanning bus %d for devices... ", bus->seq);
+	printf("scanning bus %s for devices... ", bus->name);
 	debug("\n");
 	ret = usb_scan_device(bus, 0, USB_SPEED_FULL, &dev);
 	if (ret)
@@ -242,7 +246,6 @@ int usb_init(void)
 	struct usb_bus_priv *priv;
 	struct udevice *bus;
 	struct uclass *uc;
-	int count = 0;
 	int ret;
 
 	asynch_allowed = 1;
@@ -255,8 +258,7 @@ int usb_init(void)
 
 	uclass_foreach_dev(bus, uc) {
 		/* init low_level USB */
-		printf("USB%d:   ", count);
-		count++;
+		printf("Bus %s: ", bus->name);
 
 #ifdef CONFIG_SANDBOX
 		/*
@@ -327,10 +329,8 @@ int usb_init(void)
 	remove_inactive_children(uc, bus);
 
 	/* if we were not able to find at least one working bus, bail out */
-	if (!count)
-		printf("No controllers found\n");
-	else if (controllers_initialized == 0)
-		printf("USB error: all controllers failed lowlevel init\n");
+	if (controllers_initialized == 0)
+		printf("No working controllers found\n");
 
 	return usb_started ? 0 : -1;
 }

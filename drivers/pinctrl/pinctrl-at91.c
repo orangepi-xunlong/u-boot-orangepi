@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Atmel PIO pinctrl driver
  *
  * Copyright (C) 2016 Atmel Corporation
  *               Wenyou.Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <dm/pinctrl.h>
-#include <asm/hardware.h>
 #include <linux/io.h>
 #include <linux/err.h>
 #include <mach/at91_pio.h>

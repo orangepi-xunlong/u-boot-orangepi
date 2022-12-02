@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  linux/lib/vsprintf.c
  *
@@ -119,12 +118,11 @@ unsigned long long ustrtoull(const char *cp, char **endp, unsigned int base)
 	case 'K':
 	case 'k':
 		result *= 1024;
-		(*endp) += 1;
-		if ((*endp)[0] == 'i') {
-			if ((*endp)[1] == 'B')
-				(*endp) += 2;
+		if ((*endp)[1] == 'i') {
+			if ((*endp)[2] == 'B')
+				(*endp) += 3;
 			else
-				(*endp) += 1;
+				(*endp) += 2;
 		}
 	}
 	return result;

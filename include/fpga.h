@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/types.h>	       /* for ulong typedef */
@@ -53,7 +54,6 @@ void fpga_init(void);
 int fpga_add(fpga_type devtype, void *desc);
 int fpga_count(void);
 const fpga_desc *const fpga_get_desc(int devnum);
-int fpga_is_partial_data(int devnum, size_t img_len);
 int fpga_load(int devnum, const void *buf, size_t bsize,
 	      bitstream_type bstype);
 int fpga_fsload(int devnum, const void *buf, size_t size,

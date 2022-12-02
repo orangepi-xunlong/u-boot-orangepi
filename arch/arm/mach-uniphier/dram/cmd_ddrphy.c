@@ -1,14 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014      Panasonic Corporation
  * Copyright (C) 2015-2017 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <stdio.h>
 #include <linux/io.h>
-#include <linux/printk.h>
 #include <linux/sizes.h>
 
 #include "../soc-info.h"
@@ -268,7 +267,7 @@ static int do_ddr(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	param = uniphier_get_ddrphy_param();
 	if (!param) {
-		pr_err("unsupported SoC\n");
+		printf("unsupported SoC\n");
 		return CMD_RET_FAILURE;
 	}
 

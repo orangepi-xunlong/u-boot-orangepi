@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * This file is part of UBIFS.
  *
  * Copyright (C) 2006-2008 Nokia Corporation.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Authors: Artem Bityutskiy (Битюцкий Артём)
  *          Adrian Hunter
@@ -90,8 +91,8 @@
  * the maximum amount of data which one data node can have or which can be
  * attached to an inode node.
  */
-#define UBIFS_BLOCK_SIZE  8192
-#define UBIFS_BLOCK_SHIFT 13
+#define UBIFS_BLOCK_SIZE  4096
+#define UBIFS_BLOCK_SHIFT 12
 
 /* UBIFS padding byte pattern (must not be first or last byte of node magic) */
 #define UBIFS_PADDING_BYTE 0xCE

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * arch/arm/cpu/armv7/rmobile/pfc-r8a7790.c
  *     This file is r8a7790 processor support - PFC hardware block.
@@ -9,6 +8,8 @@
  * Copyright (C) 2013 Magnus Damm
  * Copyright (C) 2012 Renesas Solutions Corp.
  * Copyright (C) 2012 Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0
  */
 
 #include <common.h>

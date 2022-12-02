@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+ OR MIT
-//
-// Device Tree Source for UniPhier LD11 Reference Board
-//
-// Copyright (C) 2016 Socionext Inc.
-//   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+/*
+ * Device Tree Source for UniPhier LD11 Reference Board
+ *
+ * Copyright (C) 2016 Socionext Inc.
+ *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+ */
 
 /dts-v1/;
 #include "uniphier-ld11.dtsi"
@@ -38,19 +40,11 @@
 };
 
 &ethsc {
-	interrupts = <0 8>;
+	interrupts = <0 48 4>;
 };
 
 &serial0 {
 	status = "okay";
-};
-
-&gpio {
-	xirq0 {
-		gpio-hog;
-		gpios = <UNIPHIER_GPIO_IRQ(0) 0>;
-		input;
-	};
 };
 
 &i2c0 {
@@ -67,15 +61,4 @@
 
 &usb2 {
 	status = "okay";
-};
-
-&eth {
-	status = "okay";
-	phy-handle = <&ethphy>;
-};
-
-&mdio {
-	ethphy: ethphy@1 {
-		reg = <1>;
-	};
 };

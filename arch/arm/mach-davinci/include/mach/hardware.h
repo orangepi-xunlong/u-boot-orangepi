@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
  *
@@ -9,6 +8,8 @@
  *  linux/include/asm-arm/arch-davinci/hardware.h
  *
  *  Copyright (C) 2006 Texas Instruments.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ASM_ARCH_HARDWARE_H
 #define __ASM_ARCH_HARDWARE_H

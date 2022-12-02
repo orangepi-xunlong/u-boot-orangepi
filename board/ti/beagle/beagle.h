@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2008
  * Dirk Behme <dirk.behme@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _BEAGLE_H_
 #define _BEAGLE_H_

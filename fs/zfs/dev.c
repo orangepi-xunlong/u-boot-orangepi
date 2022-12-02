@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  *	based on code of fs/reiserfs/dev.c by
  *
  *	(C) Copyright 2003 - 2004
  *	Sysgo AG, <www.elinos.com>, Pavel Bartusek <pba@sysgo.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 

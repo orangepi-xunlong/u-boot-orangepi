@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -6,6 +5,8 @@
  * Based on:
  * Copyright (c) 2011 IDS GmbH, Germany
  * Sergej Stepanov <ste@ids.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,6 +17,7 @@
  */
 #define CONFIG_MPC831x
 #define CONFIG_MPC8313
+#define CONFIG_IDS8313
 
 #define CONFIG_FSL_ELBC
 
@@ -161,6 +163,7 @@
  */
 #define CONFIG_TSEC1
 #define CONFIG_TSEC2
+#define CONFIG_TSEC_ENET
 #define CONFIG_HARD_SPI
 
 /*
@@ -313,6 +316,7 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 
@@ -406,6 +410,11 @@
 /*
  * U-Boot environment setup
  */
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_BOOTP_SUBNETMASK
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+#define CONFIG_BOOTP_BOOTPATH
 #define CONFIG_BOOTP_BOOTFILESIZE
 
 /*
@@ -425,7 +434,7 @@
 #define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #define CONFIG_NETDEV			eth1
-#define CONFIG_HOSTNAME		"ids8313"
+#define CONFIG_HOSTNAME		ids8313
 #define CONFIG_ROOTPATH		"/opt/eldk-4.2/ppc_6xx"
 #define CONFIG_BOOTFILE		"ids8313/uImage"
 #define CONFIG_UBOOTPATH		"ids8313/u-boot.bin"
@@ -439,6 +448,7 @@
 /*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
@@ -460,7 +470,6 @@
 
 /* mtdparts command line support */
 #define CONFIG_FLASH_CFI_MTD
-#define CONFIG_MTD_DEVICE
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"netdev=" __stringify(CONFIG_NETDEV) "\0"			\
@@ -490,8 +499,8 @@
 			"${netmask}:${hostname}:${netdev}:off "		\
 			"console=${console},${baudrate} ${othbootargs}\0" \
 	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"					\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"				\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"\0"
 
 #define CONFIG_NFSBOOTCOMMAND						\
@@ -503,6 +512,13 @@
 	"bootm ${loadaddr} - ${fdtaddr}"
 
 /* UBI Support */
-#define CONFIG_MTD_PARTITIONS
+
+/* bootcount support */
+#define CONFIG_BOOTCOUNT_LIMIT
+#define CONFIG_BOOTCOUNT_I2C
+#define CONFIG_BOOTCOUNT_ALEN	1
+#define CONFIG_SYS_BOOTCOUNT_ADDR	0x9
+
+#define CONFIG_IMAGE_FORMAT_LEGACY
 
 #endif	/* __CONFIG_H */

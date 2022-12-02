@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -37,6 +38,8 @@
 
 #define SET_SDHC_MUX_SEL(reg, value)	((reg & 0x0f) | value)
 #define SET_EC_MUX_SEL(reg, value)	((reg & 0xf0) | value)
+DECLARE_GLOBAL_DATA_PTR;
+
 enum {
 	MUX_TYPE_CAN,
 	MUX_TYPE_IIC2,
@@ -201,8 +204,7 @@ int board_early_init_f(void)
 #ifdef CONFIG_SPL_BUILD
 void board_init_f(ulong dummy)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
-					CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
 	unsigned int major;
 
 #ifdef CONFIG_NAND_BOOT
@@ -423,8 +425,7 @@ int misc_init_r(void)
 
 int board_init(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
-					CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
 	unsigned int major;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_A010315
@@ -459,8 +460,7 @@ int board_init(void)
 #if defined(CONFIG_DEEP_SLEEP)
 void board_sleep_prepare(void)
 {
-	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
-						CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 __iomem *cci = (void *)CONFIG_SYS_CCI400_ADDR;
 	unsigned int major;
 
 	major = get_soc_major_rev();

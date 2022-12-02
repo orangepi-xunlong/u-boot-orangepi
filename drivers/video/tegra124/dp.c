@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2011-2013, NVIDIA Corporation.
  * Copyright 2014 Google Inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0
  */
 
 #include <common.h>
@@ -16,6 +17,8 @@
 #include "edid.h"
 #include "sor.h"
 #include "displayport.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define DO_FAST_LINK_TRAINING		1
 

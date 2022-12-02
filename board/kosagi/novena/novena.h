@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Novena board support
  *
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __BOARD_KOSAGI_NOVENA_NOVENA_H__

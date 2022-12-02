@@ -6,7 +6,6 @@
 /easylogo/easylogo
 /envcrc
 /fdtgrep
-/file2include
 /fit_check_sign
 /fit_info
 /gdb/gdbcont
@@ -29,3 +28,9 @@
 /sunxi-spl-image-builder
 /ubsha1
 /xway-swap-bytes
+/trust_merger
+/boot_merger
+/loaderimage
+/checksum
+/resource_tool
+/bmp2gray16

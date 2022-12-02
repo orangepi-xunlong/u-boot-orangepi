@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2017 NXP
  * Copyright 2014-2015 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +16,6 @@
 #include <asm/arch/soc.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/speed.h>
-#include <fsl_immap.h>
 #include <asm/arch/mp.h>
 #include <efi_loader.h>
 #include <fm_eth.h>
@@ -28,8 +28,6 @@
 #include <fsl_ddr.h>
 #endif
 #include <asm/arch/clock.h>
-#include <hwconfig.h>
-#include <fsl_qbman.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -495,41 +493,6 @@ static inline int check_psci(void)
 	return 0;
 }
 
-static void config_core_prefetch(void)
-{
-	char *buf = NULL;
-	char buffer[HWCONFIG_BUFFER_SIZE];
-	const char *prefetch_arg = NULL;
-	size_t arglen;
-	unsigned int mask;
-	struct pt_regs regs;
-
-	if (env_get_f("hwconfig", buffer, sizeof(buffer)) > 0)
-		buf = buffer;
-
-	prefetch_arg = hwconfig_subarg_f("core_prefetch", "disable",
-					 &arglen, buf);
-
-	if (prefetch_arg) {
-		mask = simple_strtoul(prefetch_arg, NULL, 0) & 0xff;
-		if (mask & 0x1) {
-			printf("Core0 prefetch can't be disabled\n");
-			return;
-		}
-
-#define SIP_PREFETCH_DISABLE_64 0xC200FF13
-		regs.regs[0] = SIP_PREFETCH_DISABLE_64;
-		regs.regs[1] = mask;
-		smc_call(&regs);
-
-		if (regs.regs[0])
-			printf("Prefetch disable config failed for mask ");
-		else
-			printf("Prefetch disable config passed for mask ");
-		printf("0x%x\n", mask);
-	}
-}
-
 int arch_early_init_r(void)
 {
 #ifdef CONFIG_SYS_FSL_ERRATUM_A009635
@@ -553,20 +516,11 @@ int arch_early_init_r(void)
 			printf("Did not wake secondary cores\n");
 	}
 
-#ifdef CONFIG_SYS_FSL_HAS_RGMII
-	fsl_rgmii_init();
-#endif
-
-	config_core_prefetch();
-
 #ifdef CONFIG_SYS_HAS_SERDES
 	fsl_serdes_init();
 #endif
 #ifdef CONFIG_FMAN_ENET
 	fman_enet_init();
-#endif
-#ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_qbman_portals();
 #endif
 	return 0;
 }
@@ -577,7 +531,7 @@ int timer_init(void)
 #ifdef CONFIG_FSL_LSCH3
 	u32 __iomem *cltbenr = (u32 *)CONFIG_SYS_FSL_PMU_CLTBENR;
 #endif
-#if defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LS1088A)
+#ifdef CONFIG_ARCH_LS2080A
 	u32 __iomem *pctbenr = (u32 *)FSL_PMU_PCTBENR_OFFSET;
 	u32 svr_dev_id;
 #endif
@@ -596,7 +550,7 @@ int timer_init(void)
 	out_le32(cltbenr, 0xf);
 #endif
 
-#if defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LS1088A)
+#ifdef CONFIG_ARCH_LS2080A
 	/*
 	 * In certain Layerscape SoCs, the clock for each core's
 	 * has an enable bit in the PMU Physical Core Time Base Enable
@@ -643,7 +597,6 @@ void __efi_runtime EFIAPI efi_reset_system(
 	switch (reset_type) {
 	case EFI_RESET_COLD:
 	case EFI_RESET_WARM:
-	case EFI_RESET_PLATFORM_SPECIFIC:
 		reset_cpu(0);
 		break;
 	case EFI_RESET_SHUTDOWN:
@@ -654,29 +607,20 @@ void __efi_runtime EFIAPI efi_reset_system(
 	while (1) { }
 }
 
-efi_status_t efi_reset_system_init(void)
+void efi_reset_system_init(void)
 {
-	return efi_add_runtime_mmio(&rstcr, sizeof(*rstcr));
+       efi_add_runtime_mmio(&rstcr, sizeof(*rstcr));
 }
 
 #endif
 
-/*
- * Calculate reserved memory with given memory bank
- * Return aligned memory size on success
- * Return (ram_size + needed size) for failure
- */
 phys_size_t board_reserve_ram_top(phys_size_t ram_size)
 {
 	phys_size_t ram_top = ram_size;
 
 #if defined(CONFIG_FSL_MC_ENET) && !defined(CONFIG_SPL_BUILD)
-	ram_top = mc_get_dram_block_size();
-	if (ram_top > ram_size)
-		return ram_size + ram_top;
-
-	ram_top = ram_size - ram_top;
 	/* The start address of MC reserved memory needs to be aligned. */
+	ram_top -= mc_get_dram_block_size();
 	ram_top &= ~(CONFIG_SYS_MC_RSV_MEM_ALIGN - 1);
 #endif
 
@@ -689,14 +633,13 @@ phys_size_t get_effective_memsize(void)
 
 	/*
 	 * For ARMv8 SoCs, DDR memory is split into two or three regions. The
-	 * first region is 2GB space at 0x8000_0000. Secure memory needs to
-	 * allocated from first region. If the memory extends to  the second
-	 * region (or the third region if applicable), Management Complex (MC)
-	 * memory should be put into the highest region, i.e. the end of DDR
-	 * memory. CONFIG_MAX_MEM_MAPPED is set to the size of first region so
-	 * U-Boot doesn't relocate itself into higher address. Should DDR be
-	 * configured to skip the first region, this function needs to be
-	 * adjusted.
+	 * first region is 2GB space at 0x8000_0000. If the memory extends to
+	 * the second region (or the third region if applicable), the secure
+	 * memory and Management Complex (MC) memory should be put into the
+	 * highest region, i.e. the end of DDR memory. CONFIG_MAX_MEM_MAPPED
+	 * is set to the size of first region so U-Boot doesn't relocate itself
+	 * into higher address. Should DDR be configured to skip the first
+	 * region, this function needs to be adjusted.
 	 */
 	if (gd->ram_size > CONFIG_MAX_MEM_MAPPED) {
 		ea_size = CONFIG_MAX_MEM_MAPPED;
@@ -707,16 +650,22 @@ phys_size_t get_effective_memsize(void)
 
 #ifdef CONFIG_SYS_MEM_RESERVE_SECURE
 	/* Check if we have enough space for secure memory */
-	if (ea_size > CONFIG_SYS_MEM_RESERVE_SECURE)
-		ea_size -= CONFIG_SYS_MEM_RESERVE_SECURE;
-	else
-		printf("Error: No enough space for secure memory.\n");
+	if (rem > CONFIG_SYS_MEM_RESERVE_SECURE) {
+		rem -= CONFIG_SYS_MEM_RESERVE_SECURE;
+	} else {
+		if (ea_size > CONFIG_SYS_MEM_RESERVE_SECURE) {
+			ea_size -= CONFIG_SYS_MEM_RESERVE_SECURE;
+			rem = 0;	/* Presume MC requires more memory */
+		} else {
+			printf("Error: No enough space for secure memory.\n");
+		}
+	}
 #endif
 	/* Check if we have enough memory for MC */
 	if (rem < board_reserve_ram_top(rem)) {
 		/* Not enough memory in high region to reserve */
-		if (ea_size > board_reserve_ram_top(ea_size))
-			ea_size -= board_reserve_ram_top(ea_size);
+		if (ea_size > board_reserve_ram_top(rem))
+			ea_size -= board_reserve_ram_top(rem);
 		else
 			printf("Error: No enough space for reserved memory.\n");
 	}
@@ -735,19 +684,8 @@ int dram_init_banksize(void)
 	 * memory. The DDR extends from low region to high region(s) presuming
 	 * no hole is created with DDR configuration. gd->arch.secure_ram tracks
 	 * the location of secure memory. gd->arch.resv_ram tracks the location
-	 * of reserved memory for Management Complex (MC). Because gd->ram_size
-	 * is reduced by this function if secure memory is reserved, checking
-	 * gd->arch.secure_ram should be done to avoid running it repeatedly.
+	 * of reserved memory for Management Complex (MC).
 	 */
-
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
-	if (gd->arch.secure_ram & MEM_RESERVE_SECURE_MAINTAINED) {
-		debug("No need to run again, skip %s\n", __func__);
-
-		return 0;
-	}
-#endif
-
 	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
 	if (gd->ram_size > CONFIG_SYS_DDR_BLOCK1_SIZE) {
 		gd->bd->bi_dram[0].size = CONFIG_SYS_DDR_BLOCK1_SIZE;
@@ -766,14 +704,32 @@ int dram_init_banksize(void)
 		gd->bd->bi_dram[0].size = gd->ram_size;
 	}
 #ifdef CONFIG_SYS_MEM_RESERVE_SECURE
-	if (gd->bd->bi_dram[0].size >
-				CONFIG_SYS_MEM_RESERVE_SECURE) {
-		gd->bd->bi_dram[0].size -=
-				CONFIG_SYS_MEM_RESERVE_SECURE;
-		gd->arch.secure_ram = gd->bd->bi_dram[0].start +
-				      gd->bd->bi_dram[0].size;
+#ifdef CONFIG_SYS_DDR_BLOCK3_BASE
+	if (gd->bd->bi_dram[2].size >= CONFIG_SYS_MEM_RESERVE_SECURE) {
+		gd->bd->bi_dram[2].size -= CONFIG_SYS_MEM_RESERVE_SECURE;
+		gd->arch.secure_ram = gd->bd->bi_dram[2].start +
+				      gd->bd->bi_dram[2].size;
 		gd->arch.secure_ram |= MEM_RESERVE_SECURE_MAINTAINED;
 		gd->ram_size -= CONFIG_SYS_MEM_RESERVE_SECURE;
+	} else
+#endif
+	{
+		if (gd->bd->bi_dram[1].size >= CONFIG_SYS_MEM_RESERVE_SECURE) {
+			gd->bd->bi_dram[1].size -=
+					CONFIG_SYS_MEM_RESERVE_SECURE;
+			gd->arch.secure_ram = gd->bd->bi_dram[1].start +
+					      gd->bd->bi_dram[1].size;
+			gd->arch.secure_ram |= MEM_RESERVE_SECURE_MAINTAINED;
+			gd->ram_size -= CONFIG_SYS_MEM_RESERVE_SECURE;
+		} else if (gd->bd->bi_dram[0].size >
+					CONFIG_SYS_MEM_RESERVE_SECURE) {
+			gd->bd->bi_dram[0].size -=
+					CONFIG_SYS_MEM_RESERVE_SECURE;
+			gd->arch.secure_ram = gd->bd->bi_dram[0].start +
+					      gd->bd->bi_dram[0].size;
+			gd->arch.secure_ram |= MEM_RESERVE_SECURE_MAINTAINED;
+			gd->ram_size -= CONFIG_SYS_MEM_RESERVE_SECURE;
+		}
 	}
 #endif	/* CONFIG_SYS_MEM_RESERVE_SECURE */
 
@@ -825,11 +781,6 @@ int dram_init_banksize(void)
 			puts("Not detected");
 		}
 	}
-#endif
-
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
-	debug("%s is called. gd->ram_size is reduced to %lu\n",
-	      __func__, (ulong)gd->ram_size);
 #endif
 
 	return 0;

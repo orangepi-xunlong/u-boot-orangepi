@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2015
  * Bhuvanchandra DV, Toradex, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __ASM_ARCH_VF610_GPIO_H

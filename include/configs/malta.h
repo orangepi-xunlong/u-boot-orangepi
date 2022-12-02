@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2013 Gabor Juhos <juhosg@openwrt.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _MALTA_CONFIG_H
@@ -51,6 +52,9 @@
 #define CONFIG_SYS_BOOTPARAMS_LEN	(128 * 1024)
 #define CONFIG_SYS_BOOTM_LEN		(64 * 1024 * 1024)
 
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
+
 /*
  * Serial driver
  */
@@ -91,5 +95,7 @@
 /*
  * Commands
  */
+
+#define CONFIG_SYS_LONGHELP		/* verbose help, undef to save memory */
 
 #endif /* _MALTA_CONFIG_H */

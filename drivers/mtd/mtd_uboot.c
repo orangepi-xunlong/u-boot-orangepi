@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <dm/device.h>
+#include <dm/device-internal.h>
 #include <dm/uclass-internal.h>
 #include <jffs2/jffs2.h> /* LEGACY */
 #include <linux/mtd/mtd.h>
@@ -114,6 +116,22 @@ static void mtd_probe_uclass_mtd_devs(void)
 static void mtd_probe_uclass_mtd_devs(void) { }
 #endif
 
+#if IS_ENABLED(CONFIG_DM_SPI_FLASH) && IS_ENABLED(CONFIG_SPI_FLASH_MTD)
+static void __maybe_unused mtd_probe_uclass_spi_nor_devs(void)
+{
+	struct udevice *dev;
+	int idx = 0;
+
+	/* Probe devices with DM compliant drivers */
+	while (!uclass_find_device(UCLASS_SPI_FLASH, idx, &dev) && dev) {
+		device_probe(dev);
+		idx++;
+	}
+}
+#else
+static void __maybe_unused mtd_probe_uclass_spi_nor_devs(void) { }
+#endif
+
 #if defined(CONFIG_MTD_PARTITIONS)
 
 #define MTDPARTS_MAXLEN         512
@@ -122,7 +140,6 @@ static const char *get_mtdparts(void)
 {
 	__maybe_unused const char *mtdids = NULL;
 	static char tmp_parts[MTDPARTS_MAXLEN];
-	static bool use_defaults = true;
 	const char *mtdparts = NULL;
 
 	if (gd->flags & GD_FLG_ENV_READY)
@@ -130,7 +147,7 @@ static const char *get_mtdparts(void)
 	else if (env_get_f("mtdparts", tmp_parts, sizeof(tmp_parts)) != -1)
 		mtdparts = tmp_parts;
 
-	if (mtdparts || !use_defaults)
+	if (mtdparts)
 		return mtdparts;
 
 #if defined(CONFIG_SYS_MTDPARTS_RUNTIME)
@@ -143,8 +160,6 @@ static const char *get_mtdparts(void)
 
 	if (mtdparts)
 		env_set("mtdparts", mtdparts);
-
-	use_defaults = false;
 
 	return mtdparts;
 }
@@ -207,6 +222,7 @@ int mtd_probe_devices(void)
 	struct mtd_info *mtd;
 
 	mtd_probe_uclass_mtd_devs();
+	mtd_probe_uclass_spi_nor_devs();
 
 	/*
 	 * Check if mtdparts/mtdids changed, if the MTD dev list was updated
@@ -354,6 +370,7 @@ int mtd_probe_devices(void)
 int mtd_probe_devices(void)
 {
 	mtd_probe_uclass_mtd_devs();
+	mtd_probe_uclass_spi_nor_devs();
 
 	return 0;
 }

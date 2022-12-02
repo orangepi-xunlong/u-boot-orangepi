@@ -15,6 +15,18 @@ config UT_TIME
 	  problems. But if you are having problems with udelay() and the like,
 	  this is a good place to start.
 
+config TEST_ROCKCHIP
+	bool "test Rockchip board modules"
+	depends on ARCH_ROCKCHIP
+	help
+	  This enables the test function for rockchip board modules.
+
+config LAVA_INFO
+	bool "Display test info need by LAVA system"
+	depends on TEST_ROCKCHIP
+	help
+	  This enable the print info need by LAVA system
+
 source "test/dm/Kconfig"
 source "test/env/Kconfig"
 source "test/overlay/Kconfig"

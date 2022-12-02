@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -7,6 +6,8 @@
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  * Chao Fu (B44548@freescale.com)
  * Haikun Wang (B53464@freescale.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -273,18 +274,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 	if (len > 1) {
 		int tmp_len = len - 1;
 		while (tmp_len--) {
-			if ((dout != NULL) && (din != NULL)) {
-				if (priv->charbit == 16) {
-					dspi_tx(priv, ctrl, *spi_wr16++);
-					*spi_rd16++ = dspi_rx(priv);
-				}
-				else {
-					dspi_tx(priv, ctrl, *spi_wr++);
-					*spi_rd++ = dspi_rx(priv);
-				}
-			}
-
-			else if (dout != NULL) {
+			if (dout != NULL) {
 				if (priv->charbit == 16)
 					dspi_tx(priv, ctrl, *spi_wr16++);
 				else
@@ -292,7 +282,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 				dspi_rx(priv);
 			}
 
-			else if (din != NULL) {
+			if (din != NULL) {
 				dspi_tx(priv, ctrl, DSPI_IDLE_VAL);
 				if (priv->charbit == 16)
 					*spi_rd16++ = dspi_rx(priv);
@@ -308,18 +298,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 		ctrl &= ~DSPI_TFR_CONT;
 
 	if (len) {
-		if ((dout != NULL) && (din != NULL)) {
-			if (priv->charbit == 16) {
-				dspi_tx(priv, ctrl, *spi_wr16++);
-				*spi_rd16++ = dspi_rx(priv);
-			}
-			else {
-				dspi_tx(priv, ctrl, *spi_wr++);
-				*spi_rd++ = dspi_rx(priv);
-			}
-		}
-
-		else if (dout != NULL) {
+		if (dout != NULL) {
 			if (priv->charbit == 16)
 				dspi_tx(priv, ctrl, *spi_wr16);
 			else
@@ -327,7 +306,7 @@ static int dspi_xfer(struct fsl_dspi_priv *priv, uint cs, unsigned int bitlen,
 			dspi_rx(priv);
 		}
 
-		else if (din != NULL) {
+		if (din != NULL) {
 			dspi_tx(priv, ctrl, DSPI_IDLE_VAL);
 			if (priv->charbit == 16)
 				*spi_rd16 = dspi_rx(priv);
@@ -412,6 +391,11 @@ static int fsl_dspi_cfg_speed(struct fsl_dspi_priv *priv, uint speed)
 	return 0;
 }
 #ifndef CONFIG_DM_SPI
+void spi_init(void)
+{
+	/* Nothing to do */
+}
+
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
 	if (((cs >= 0) && (cs < 8)) && ((bus >= 0) && (bus < 8)))

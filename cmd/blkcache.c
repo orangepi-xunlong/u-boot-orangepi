@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) Nelson Integration, LLC 2016
  * Author: Eric Nelson<eric@nelint.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 #include <config.h>

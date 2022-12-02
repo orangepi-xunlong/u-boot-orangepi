@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * WORK Microwave work_92105 board configuration file
  *
  * (C) Copyright 2014  DENX Software Engineering GmbH
  * Written-by: Albert ARIBAUD <albert.aribaud@3adev.fr>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_WORK_92105_H__
@@ -24,6 +25,7 @@
 #if !defined(CONFIG_SPL_BUILD)
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
+#define CONFIG_BOARD_EARLY_INIT_R
 
 /* generate LPC32XX-specific SPL image */
 #define CONFIG_LPC32XX_SPL
@@ -35,6 +37,7 @@
 #define CONFIG_SYS_MALLOC_LEN		SZ_1M
 #define CONFIG_SYS_SDRAM_BASE		EMC_DYCS0_BASE
 #define CONFIG_SYS_SDRAM_SIZE		SZ_128M
+#define CONFIG_SYS_TEXT_BASE		0x80100000
 #define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE + SZ_32K)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_TEXT_BASE - SZ_1M)
 
@@ -54,6 +57,7 @@
 
 #define CONFIG_PHY_SMSC
 #define CONFIG_LPC32XX_ETH
+#define CONFIG_PHY_ADDR 0
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 /* FIXME: remove "Waiting for PHY auto negotiation to complete..." message */
 
@@ -81,8 +85,12 @@
 /*
  * U-Boot General Configurations
  */
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
 
 /*
  * NAND chip timings for FIXME: which one?
@@ -146,6 +154,7 @@
 /* SPL will use SRAM as stack */
 #define CONFIG_SPL_STACK     0x0000FFF8
 /* Use the framework and generic lib */
+#define CONFIG_SPL_FRAMEWORK
 /* SPL will use serial */
 /* SPL will load U-Boot from NAND offset 0x40000 */
 #define CONFIG_SPL_NAND_DRIVERS

@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  crt0 - C-runtime startup Code for ARM U-Boot
  *
  *  Copyright (c) 2012  Albert ARIBAUD <albert.u.boot@aribaud.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -69,7 +70,9 @@ ENTRY(_main)
  * Set up initial C runtime environment and call board_init_f(0).
  */
 
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
+#if defined(CONFIG_TPL_BUILD) && defined(CONFIG_TPL_NEEDS_SEPARATE_STACK)
+	ldr	r0, =(CONFIG_TPL_STACK)
+#elif defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
 	ldr	r0, =(CONFIG_SPL_STACK)
 #else
 	ldr	r0, =(CONFIG_SYS_INIT_SP_ADDR)
@@ -81,8 +84,8 @@ ENTRY(_main)
 	/* set up gd here, outside any C code */
 	mov	r9, r0
 	bl	board_init_f_init_reserve
+	bl	board_init_f_boot_flags
 
-	mov	r0, #0
 	bl	board_init_f
 
 #if ! defined(CONFIG_SPL_BUILD)
@@ -99,6 +102,7 @@ ENTRY(_main)
 	ldr	r9, [r9, #GD_BD]		/* r9 = gd->bd */
 	sub	r9, r9, #GD_SIZE		/* new GD is below bd */
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
 	adr	lr, here
 	ldr	r0, [r9, #GD_RELOC_OFF]		/* r0 = gd->reloc_off */
 	add	lr, lr, r0
@@ -107,18 +111,30 @@ ENTRY(_main)
 #endif
 	ldr	r0, [r9, #GD_RELOCADDR]		/* r0 = gd->relocaddr */
 	b	relocate_code
+#endif
 here:
+
+/*
+ * The "relocate_vectors" is in section: .text.relocate_vectors, if we don't
+ * compile "bl	relocate_vectors", there seems something wrong about sections
+ * layout(U-Boot code section is quite large, I don't find root cause now),
+ * so let's just skip it.
+ */
+#ifdef CONFIG_SKIP_RELOCATE_UBOOT
+	b	c_runtime
+#endif
+
 /*
  * now relocate vectors
  */
-
 	bl	relocate_vectors
 
+c_runtime:
 /* Set up final (full) environment */
 
 	bl	c_runtime_cpu_setup	/* we still call old routine here */
 #endif
-#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_FRAMEWORK)
+#if !defined(CONFIG_SPL_BUILD) || (defined(CONFIG_SPL_FRAMEWORK) && !defined(CONFIG_TPL_BUILD))
 # ifdef CONFIG_SPL_BUILD
 	/* Use a DRAM stack for the rest of SPL, if requested */
 	bl	spl_relocate_stack_gd

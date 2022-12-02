@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Álvaro Fernández Rojas <noltari@gmail.com>
  *
  * Derived from linux/drivers/spi/spi-bcm63xx-hsspi.c:
  *	Copyright (C) 2000-2010 Broadcom Corporation
  *	Copyright (C) 2012-2013 Jonas Gorski <jogo@openwrt.org>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -14,6 +15,8 @@
 #include <reset.h>
 #include <wait_bit.h>
 #include <asm/io.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define HSSPI_PP			0
 
@@ -335,13 +338,17 @@ static int bcm63xx_hsspi_probe(struct udevice *dev)
 	struct bcm63xx_hsspi_priv *priv = dev_get_priv(dev);
 	struct reset_ctl rst_ctl;
 	struct clk clk;
+	fdt_addr_t addr;
+	fdt_size_t size;
 	int ret;
 
-	priv->regs = dev_remap_addr(dev);
-	if (!priv->regs)
+	addr = devfdt_get_addr_size_index(dev, 0, &size);
+	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
-	priv->num_cs = dev_read_u32_default(dev, "num-cs", 8);
+	priv->regs = ioremap(addr, size);
+	priv->num_cs = fdtdec_get_uint(gd->fdt_blob, dev_of_offset(dev),
+				       "num-cs", 8);
 
 	/* enable clock */
 	ret = clk_get_by_name(dev, "hsspi", &clk);

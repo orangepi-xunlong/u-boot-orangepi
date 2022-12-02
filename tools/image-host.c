@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013, Google Inc.
  *
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
@@ -152,6 +153,7 @@ static int fit_image_setup_sig(struct image_sign_info *info,
 {
 	const char *node_name;
 	char *algo_name;
+	const char *padding_name;
 
 	node_name = fit_get_name(fit, noffset, NULL);
 	if (fit_image_hash_get_algo(fit, noffset, &algo_name)) {
@@ -160,14 +162,18 @@ static int fit_image_setup_sig(struct image_sign_info *info,
 		return -1;
 	}
 
+	padding_name = fdt_getprop(fit, noffset, "padding", NULL);
+	if (!padding_name)
+		padding_name = "pkcs-1.5";
 	memset(info, '\0', sizeof(*info));
 	info->keydir = keydir;
 	info->keyname = fdt_getprop(fit, noffset, "key-name-hint", NULL);
 	info->fit = fit;
 	info->node_offset = noffset;
-	info->name = strdup(algo_name);
+	info->name = algo_name;
 	info->checksum = image_get_checksum_algo(algo_name);
 	info->crypto = image_get_crypto_algo(algo_name);
+	info->padding = image_get_padding_algo(padding_name);
 	info->require_keys = require_keys;
 	info->engine_id = engine_id;
 	if (!info->checksum || !info->crypto) {
@@ -241,19 +247,18 @@ static int fit_image_process_sig(const char *keydir, void *keydest,
 	/* Get keyname again, as FDT has changed and invalidated our pointer */
 	info.keyname = fdt_getprop(fit, noffset, "key-name-hint", NULL);
 
+	if (keydest)
+		ret = info.crypto->add_verify_data(&info, keydest);
+	else
+		return -1;
+
 	/*
 	 * Write the public key into the supplied FDT file; this might fail
 	 * several times, since we try signing with successively increasing
 	 * size values
 	 */
-	if (keydest) {
-		ret = info.crypto->add_verify_data(&info, keydest);
-		if (ret) {
-			printf("Failed to add verification data for '%s' signature node in '%s' image node\n",
-			       node_name, image_name);
-			return ret;
-		}
-	}
+	if (keydest && ret)
+		return ret;
 
 	return 0;
 }
@@ -269,16 +274,16 @@ static int fit_image_process_sig(const char *keydir, void *keydest,
  *
  * Input component image node structure:
  *
- * o image-1 (at image_noffset)
+ * o image@1 (at image_noffset)
  *   | - data = [binary data]
- *   o hash-1
+ *   o hash@1
  *     |- algo = "sha1"
  *
  * Output component image node structure:
  *
- * o image-1 (at image_noffset)
+ * o image@1 (at image_noffset)
  *   | - data = [binary data]
- *   o hash-1
+ *   o hash@1
  *     |- algo = "sha1"
  *     |- value = sha1(data)
  *
@@ -320,7 +325,7 @@ int fit_image_add_verification_data(const char *keydir, void *keydest,
 		/*
 		 * Check subnode name, must be equal to "hash" or "signature".
 		 * Multiple hash nodes require unique unit node
-		 * names, e.g. hash-1, hash-2, signature-1, etc.
+		 * names, e.g. hash@1, hash@2, signature@1, etc.
 		 */
 		node_name = fit_get_name(fit, noffset, NULL);
 		if (!strncmp(node_name, FIT_HASH_NODENAME,
@@ -415,6 +420,7 @@ static int fit_config_get_hash_list(void *fit, int conf_noffset,
 	strlist_init(node_inc);
 	snprintf(name, sizeof(name), "%s/%s", FIT_CONFS_PATH, conf_name);
 	if (strlist_add(node_inc, "/") ||
+	    strlist_add(node_inc, FIT_CONFS_PATH) ||
 	    strlist_add(node_inc, name))
 		goto err_mem;
 
@@ -431,52 +437,61 @@ static int fit_config_get_hash_list(void *fit, int conf_noffset,
 		int noffset;
 		int image_noffset;
 		int hash_count;
+		int i, max_index;
 
-		image_noffset = fit_conf_get_prop_node(fit, conf_noffset,
-						       iname);
-		if (image_noffset < 0) {
-			printf("Failed to find image '%s' in  configuration '%s/%s'\n",
-			       iname, conf_name, sig_name);
-			if (allow_missing)
-				continue;
+		max_index = fdt_stringlist_count(fit, conf_noffset, iname);
 
-			return -ENOENT;
-		}
+		for (i = 0; i < max_index; i++) {
+			image_noffset =
+				fit_conf_get_prop_node_index(fit, conf_noffset,
+							     iname, i);
+			if (image_noffset < 0) {
+				if (i > 0)
+					break;
 
-		ret = fdt_get_path(fit, image_noffset, path, sizeof(path));
-		if (ret < 0)
-			goto err_path;
-		if (strlist_add(node_inc, path))
-			goto err_mem;
+				printf("Failed to find image '%s' in  configuration '%s/%s'\n",
+				       iname, conf_name, sig_name);
+				if (allow_missing)
+					continue;
 
-		snprintf(name, sizeof(name), "%s/%s", FIT_CONFS_PATH,
-			 conf_name);
+				return -ENOENT;
+			}
 
-		/* Add all this image's hashes */
-		hash_count = 0;
-		for (noffset = fdt_first_subnode(fit, image_noffset);
-		     noffset >= 0;
-		     noffset = fdt_next_subnode(fit, noffset)) {
-			const char *name = fit_get_name(fit, noffset, NULL);
-
-			if (strncmp(name, FIT_HASH_NODENAME,
-				    strlen(FIT_HASH_NODENAME)))
-				continue;
-			ret = fdt_get_path(fit, noffset, path, sizeof(path));
+			ret = fdt_get_path(fit, image_noffset, path, sizeof(path));
 			if (ret < 0)
 				goto err_path;
 			if (strlist_add(node_inc, path))
 				goto err_mem;
-			hash_count++;
-		}
 
-		if (!hash_count) {
-			printf("Failed to find any hash nodes in configuration '%s/%s' image '%s' - without these it is not possible to verify this image\n",
-			       conf_name, sig_name, iname);
-			return -ENOMSG;
-		}
+			snprintf(name, sizeof(name), "%s/%s", FIT_CONFS_PATH,
+				 conf_name);
 
-		image_count++;
+			/* Add all this image's hashes */
+			hash_count = 0;
+			for (noffset = fdt_first_subnode(fit, image_noffset);
+			     noffset >= 0;
+			     noffset = fdt_next_subnode(fit, noffset)) {
+				const char *name = fit_get_name(fit, noffset, NULL);
+
+				if (strncmp(name, FIT_HASH_NODENAME,
+					    strlen(FIT_HASH_NODENAME)))
+					continue;
+				ret = fdt_get_path(fit, noffset, path, sizeof(path));
+				if (ret < 0)
+					goto err_path;
+				if (strlist_add(node_inc, path))
+					goto err_mem;
+				hash_count++;
+			}
+
+			if (!hash_count) {
+				printf("Failed to find any hash nodes in configuration '%s/%s' image '%s' - without these it is not possible to verify this image\n",
+				       conf_name, sig_name, iname);
+				return -ENOMSG;
+			}
+
+			image_count++;
+		}
 	}
 
 	if (!image_count) {
@@ -600,10 +615,6 @@ static int fit_config_process_sig(const char *keydir, void *keydest,
 	if (ret) {
 		printf("Failed to sign '%s' signature node in '%s' conf node\n",
 		       node_name, conf_name);
-
-		/* We allow keys to be missing */
-		if (ret == -ENOENT)
-			return 0;
 		return -1;
 	}
 
@@ -625,8 +636,10 @@ static int fit_config_process_sig(const char *keydir, void *keydest,
 	/* Write the public key into the supplied FDT file */
 	if (keydest) {
 		ret = info.crypto->add_verify_data(&info, keydest);
+		if (ret == -ENOSPC)
+			return -ENOSPC;
 		if (ret) {
-			printf("Failed to add verification data for '%s' signature node in '%s' configuration node\n",
+			printf("Failed to add verification data for '%s' signature node in '%s' image node\n",
 			       node_name, conf_name);
 		}
 		return ret;
@@ -723,7 +736,7 @@ int fit_add_verification_data(const char *keydir, void *keydest, void *fit,
 }
 
 #ifdef CONFIG_FIT_SIGNATURE
-int fit_check_sign(const void *fit, const void *key)
+int fit_check_sign(const void *fit, const void *key, int is_spl)
 {
 	int cfg_noffset;
 	int ret;
@@ -736,7 +749,7 @@ int fit_check_sign(const void *fit, const void *key)
 	ret = fit_config_verify(fit, cfg_noffset);
 	if (ret)
 		return ret;
-	ret = bootm_host_load_images(fit, cfg_noffset);
+	ret = bootm_host_load_images(fit, cfg_noffset, is_spl);
 
 	return ret;
 }

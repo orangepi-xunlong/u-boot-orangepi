@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Configuration file for the SAMA5D2 Xplained Board.
  *
  * Copyright (C) 2015 Atmel Corporation
  *		      Wenyou Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,7 +16,7 @@
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
-#define CONFIG_SYS_SDRAM_BASE           0x20000000
+#define CONFIG_SYS_SDRAM_BASE           ATMEL_BASE_DDRCS
 #define CONFIG_SYS_SDRAM_SIZE		0x20000000
 
 #ifdef CONFIG_SPL_BUILD
@@ -34,7 +35,23 @@
 #define CONFIG_SF_DEFAULT_SPEED		30000000
 #endif
 
-#ifdef CONFIG_SD_BOOT
+/* I2C */
+#define AT24MAC_ADDR		0x5c
+#define AT24MAC_REG		0x9a
+
+/* LCD */
+
+#ifdef CONFIG_LCD
+#define LCD_BPP				LCD_COLOR16
+#define LCD_OUTPUT_BPP                  24
+#define CONFIG_LCD_LOGO
+#define CONFIG_LCD_INFO
+#define CONFIG_LCD_INFO_BELOW_LOGO
+#define CONFIG_ATMEL_HLCD
+#define CONFIG_ATMEL_LCD_RGB565
+#endif
+
+#ifdef CONFIG_SYS_USE_MMC
 
 /* bootstrap + u-boot + env in sd card */
 #undef CONFIG_BOOTCOMMAND
@@ -46,8 +63,9 @@
 #endif
 
 /* SPL */
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0x200000
-#define CONFIG_SPL_MAX_SIZE		0x10000
+#define CONFIG_SPL_MAX_SIZE		0x18000
 #define CONFIG_SPL_BSS_START_ADDR	0x20000000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 #define CONFIG_SYS_SPL_MALLOC_START	0x20080000
@@ -55,11 +73,12 @@
 
 #define CONFIG_SYS_MONITOR_LEN		(512 << 10)
 
-#ifdef CONFIG_SD_BOOT
+#ifdef CONFIG_SYS_USE_MMC
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot.img"
 
-#elif CONFIG_SPI_BOOT
+#elif CONFIG_SYS_USE_SERIALFLASH
+#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x10000
 
 #endif

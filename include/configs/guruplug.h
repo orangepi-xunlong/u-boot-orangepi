@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009-2014
  * Gerald Kerma <dreagle@doukki.net>
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Siddarth Gore <gores@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_GURUPLUG_H
@@ -13,11 +14,12 @@
  * High Level Configuration Options (easy to change)
  */
 #define CONFIG_SHEEVA_88SV131	1	/* CPU Core subversion */
+#define CONFIG_MACH_GURUPLUG	/* Machine type */
 
 /*
  * Standard filesystems
  */
-#define CONFIG_SYS_MVFS
+#define CONFIG_BZIP2
 
 /*
  * mv-plug-common.h should be defined after CMD configs since it used them
@@ -51,13 +53,23 @@
 	"fdt addr 0x700000; fdt resize; fdt chosen; "			\
 	"bootz 0x800000 - 0x700000"
 
+#define CONFIG_MTDPARTS	\
+	"mtdparts=orion_nand:"						\
+	"896K(uboot),128K(uboot_env),"					\
+	"-@1M(root)\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=console=ttyS0,115200\0"				\
 	"mtdids=nand0=orion_nand\0"					\
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT			\
+	"mtdparts="CONFIG_MTDPARTS					\
 	"kernel=/boot/zImage\0"						\
 	"fdt=/boot/guruplug-server-plus.dtb\0"				\
 	"bootargs_root=ubi.mtd=2 root=ubi0:rootfs rootfstype=ubifs rw\0"
+
+#define MTDIDS_DEFAULT	"nand0=orion_nand"
+
+#define MTDPARTS_DEFAULT	\
+	"mtdparts="CONFIG_MTDPARTS
 
 /*
  * Ethernet Driver configuration

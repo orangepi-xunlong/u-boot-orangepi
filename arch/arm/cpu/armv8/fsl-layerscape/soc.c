@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014-2015 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <fsl_immap.h>
 #include <fsl_ifc.h>
 #include <ahci.h>
 #include <scsi.h>
@@ -23,7 +23,8 @@
 #ifdef CONFIG_CHAIN_OF_TRUST
 #include <fsl_validate.h>
 #endif
-#include <fsl_immap.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 bool soc_has_dp_ddr(void)
 {
@@ -49,122 +50,6 @@ bool soc_has_aiop(void)
 		return true;
 
 	return false;
-}
-
-static inline void set_usb_txvreftune(u32 __iomem *scfg, u32 offset)
-{
-	scfg_clrsetbits32(scfg + offset / 4,
-			0xF << 6,
-			SCFG_USB_TXVREFTUNE << 6);
-}
-
-static void erratum_a009008(void)
-{
-#ifdef CONFIG_SYS_FSL_ERRATUM_A009008
-	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
-
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-	set_usb_txvreftune(scfg, SCFG_USB3PRM1CR_USB1);
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
-	set_usb_txvreftune(scfg, SCFG_USB3PRM1CR_USB2);
-	set_usb_txvreftune(scfg, SCFG_USB3PRM1CR_USB3);
-#endif
-#elif defined(CONFIG_ARCH_LS2080A)
-	set_usb_txvreftune(scfg, SCFG_USB3PRM1CR);
-#endif
-#endif /* CONFIG_SYS_FSL_ERRATUM_A009008 */
-}
-
-static inline void set_usb_sqrxtune(u32 __iomem *scfg, u32 offset)
-{
-	scfg_clrbits32(scfg + offset / 4,
-			SCFG_USB_SQRXTUNE_MASK << 23);
-}
-
-static void erratum_a009798(void)
-{
-#ifdef CONFIG_SYS_FSL_ERRATUM_A009798
-	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
-
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-	set_usb_sqrxtune(scfg, SCFG_USB3PRM1CR_USB1);
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
-	set_usb_sqrxtune(scfg, SCFG_USB3PRM1CR_USB2);
-	set_usb_sqrxtune(scfg, SCFG_USB3PRM1CR_USB3);
-#endif
-#elif defined(CONFIG_ARCH_LS2080A)
-	set_usb_sqrxtune(scfg, SCFG_USB3PRM1CR);
-#endif
-#endif /* CONFIG_SYS_FSL_ERRATUM_A009798 */
-}
-
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-static inline void set_usb_pcstxswingfull(u32 __iomem *scfg, u32 offset)
-{
-	scfg_clrsetbits32(scfg + offset / 4,
-			0x7F << 9,
-			SCFG_USB_PCSTXSWINGFULL << 9);
-}
-#endif
-
-static void erratum_a008997(void)
-{
-#ifdef CONFIG_SYS_FSL_ERRATUM_A008997
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
-
-	set_usb_pcstxswingfull(scfg, SCFG_USB3PRM2CR_USB1);
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
-	set_usb_pcstxswingfull(scfg, SCFG_USB3PRM2CR_USB2);
-	set_usb_pcstxswingfull(scfg, SCFG_USB3PRM2CR_USB3);
-#endif
-#endif
-#endif /* CONFIG_SYS_FSL_ERRATUM_A008997 */
-}
-
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-
-#define PROGRAM_USB_PHY_RX_OVRD_IN_HI(phy)	\
-	out_be16((phy) + SCFG_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_1);	\
-	out_be16((phy) + SCFG_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_2);	\
-	out_be16((phy) + SCFG_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_3);	\
-	out_be16((phy) + SCFG_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_4)
-
-#elif defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LS1088A)
-
-#define PROGRAM_USB_PHY_RX_OVRD_IN_HI(phy)	\
-	out_le16((phy) + DCSR_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_1); \
-	out_le16((phy) + DCSR_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_2); \
-	out_le16((phy) + DCSR_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_3); \
-	out_le16((phy) + DCSR_USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_4)
-
-#endif
-
-static void erratum_a009007(void)
-{
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A) || \
-	defined(CONFIG_ARCH_LS1012A)
-	void __iomem *usb_phy = (void __iomem *)SCFG_USB_PHY1;
-
-	PROGRAM_USB_PHY_RX_OVRD_IN_HI(usb_phy);
-#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
-	usb_phy = (void __iomem *)SCFG_USB_PHY2;
-	PROGRAM_USB_PHY_RX_OVRD_IN_HI(usb_phy);
-
-	usb_phy = (void __iomem *)SCFG_USB_PHY3;
-	PROGRAM_USB_PHY_RX_OVRD_IN_HI(usb_phy);
-#endif
-#elif defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LS1088A)
-	void __iomem *dcsr = (void __iomem *)DCSR_BASE;
-
-	PROGRAM_USB_PHY_RX_OVRD_IN_HI(dcsr + DCSR_USB_PHY1);
-	PROGRAM_USB_PHY_RX_OVRD_IN_HI(dcsr + DCSR_USB_PHY2);
-#endif /* CONFIG_SYS_FSL_ERRATUM_A009007 */
 }
 
 #if defined(CONFIG_FSL_LSCH3)
@@ -270,8 +155,8 @@ static void erratum_rcw_src(void)
 #ifdef CONFIG_SYS_FSL_ERRATUM_A009203
 static void erratum_a009203(void)
 {
-#ifdef CONFIG_SYS_I2C
 	u8 __iomem *ptr;
+#ifdef CONFIG_SYS_I2C
 #ifdef I2C1_BASE_ADDR
 	ptr = (u8 __iomem *)(I2C1_BASE_ADDR + I2C_DEBUG_REG);
 
@@ -307,18 +192,12 @@ void bypass_smmu(void)
 void fsl_lsch3_early_init_f(void)
 {
 	erratum_rcw_src();
-#ifdef CONFIG_FSL_IFC
 	init_early_memctl_regs();	/* tighten IFC timing */
-#endif
 #ifdef CONFIG_SYS_FSL_ERRATUM_A009203
 	erratum_a009203();
 #endif
 	erratum_a008514();
 	erratum_a008336();
-	erratum_a009008();
-	erratum_a009798();
-	erratum_a008997();
-	erratum_a009007();
 #ifdef CONFIG_CHAIN_OF_TRUST
 	/* In case of Secure Boot, the IBR configures the SMMU
 	* to allow only Secure transactions.
@@ -335,69 +214,22 @@ int sata_init(void)
 {
 	struct ccsr_ahci __iomem *ccsr_ahci;
 
-#ifdef CONFIG_SYS_SATA2
 	ccsr_ahci  = (void *)CONFIG_SYS_SATA2;
 	out_le32(&ccsr_ahci->ppcfg, AHCI_PORT_PHY_1_CFG);
-	out_le32(&ccsr_ahci->pp2c, AHCI_PORT_PHY2_CFG);
-	out_le32(&ccsr_ahci->pp3c, AHCI_PORT_PHY3_CFG);
 	out_le32(&ccsr_ahci->ptc, AHCI_PORT_TRANS_CFG);
 	out_le32(&ccsr_ahci->axicc, AHCI_PORT_AXICC_CFG);
-#endif
 
-#ifdef CONFIG_SYS_SATA1
 	ccsr_ahci  = (void *)CONFIG_SYS_SATA1;
 	out_le32(&ccsr_ahci->ppcfg, AHCI_PORT_PHY_1_CFG);
-	out_le32(&ccsr_ahci->pp2c, AHCI_PORT_PHY2_CFG);
-	out_le32(&ccsr_ahci->pp3c, AHCI_PORT_PHY3_CFG);
 	out_le32(&ccsr_ahci->ptc, AHCI_PORT_TRANS_CFG);
 	out_le32(&ccsr_ahci->axicc, AHCI_PORT_AXICC_CFG);
 
 	ahci_init((void __iomem *)CONFIG_SYS_SATA1);
 	scsi_scan(false);
-#endif
 
 	return 0;
 }
 #endif
-
-/* Get VDD in the unit mV from voltage ID */
-int get_core_volt_from_fuse(void)
-{
-	struct ccsr_gur *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
-	int vdd;
-	u32 fusesr;
-	u8 vid;
-
-	/* get the voltage ID from fuse status register */
-	fusesr = in_le32(&gur->dcfg_fusesr);
-	debug("%s: fusesr = 0x%x\n", __func__, fusesr);
-	vid = (fusesr >> FSL_CHASSIS3_DCFG_FUSESR_ALTVID_SHIFT) &
-		FSL_CHASSIS3_DCFG_FUSESR_ALTVID_MASK;
-	if ((vid == 0) || (vid == FSL_CHASSIS3_DCFG_FUSESR_ALTVID_MASK)) {
-		vid = (fusesr >> FSL_CHASSIS3_DCFG_FUSESR_VID_SHIFT) &
-			FSL_CHASSIS3_DCFG_FUSESR_VID_MASK;
-	}
-	debug("%s: VID = 0x%x\n", __func__, vid);
-	switch (vid) {
-	case 0x00: /* VID isn't supported */
-		vdd = -EINVAL;
-		debug("%s: The VID feature is not supported\n", __func__);
-		break;
-	case 0x08: /* 0.9V silicon */
-		vdd = 900;
-		break;
-	case 0x10: /* 1.0V silicon */
-		vdd = 1000;
-		break;
-	default:  /* Other core voltage */
-		vdd = -EINVAL;
-		debug("%s: The VID(%x) isn't supported\n", __func__, vid);
-		break;
-	}
-	debug("%s: The required minimum volt of CORE is %dmV\n", __func__, vdd);
-
-	return vdd;
-}
 
 #elif defined(CONFIG_FSL_LSCH2)
 #ifdef CONFIG_SCSI_AHCI_PLAT
@@ -408,8 +240,6 @@ int sata_init(void)
 	/* Disable SATA ECC */
 	out_le32((void *)CONFIG_SYS_DCSR_DCFG_ADDR + 0x520, 0x80000000);
 	out_le32(&ccsr_ahci->ppcfg, AHCI_PORT_PHY_1_CFG);
-	out_le32(&ccsr_ahci->pp2c, AHCI_PORT_PHY2_CFG);
-	out_le32(&ccsr_ahci->pp3c, AHCI_PORT_PHY3_CFG);
 	out_le32(&ccsr_ahci->ptc, AHCI_PORT_TRANS_CFG);
 	out_le32(&ccsr_ahci->axicc, AHCI_PORT_AXICC_CFG);
 
@@ -455,8 +285,7 @@ static void erratum_a008850_early(void)
 {
 #ifdef CONFIG_SYS_FSL_ERRATUM_A008850
 	/* part 1 of 2 */
-	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
-						CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 __iomem *cci = (void *)CONFIG_SYS_CCI400_ADDR;
 	struct ccsr_ddr __iomem *ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
 
 	/* Skip if running at lower exception level */
@@ -475,8 +304,7 @@ void erratum_a008850_post(void)
 {
 #ifdef CONFIG_SYS_FSL_ERRATUM_A008850
 	/* part 2 of 2 */
-	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
-						CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 __iomem *cci = (void *)CONFIG_SYS_CCI400_ADDR;
 	struct ccsr_ddr __iomem *ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
 	u32 tmp;
 
@@ -609,33 +437,9 @@ int setup_chip_volt(void)
 	return 0;
 }
 
-#ifdef CONFIG_FSL_PFE
-void init_pfe_scfg_dcfg_regs(void)
-{
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
-	u32 ecccr2;
-
-	out_be32(&scfg->pfeasbcr,
-		 in_be32(&scfg->pfeasbcr) | SCFG_PFEASBCR_AWCACHE0);
-	out_be32(&scfg->pfebsbcr,
-		 in_be32(&scfg->pfebsbcr) | SCFG_PFEASBCR_AWCACHE0);
-
-	/* CCI-400 QoS settings for PFE */
-	out_be32(&scfg->wr_qos1, (unsigned int)(SCFG_WR_QOS1_PFE1_QOS
-		 | SCFG_WR_QOS1_PFE2_QOS));
-	out_be32(&scfg->rd_qos1, (unsigned int)(SCFG_RD_QOS1_PFE1_QOS
-		 | SCFG_RD_QOS1_PFE2_QOS));
-
-	ecccr2 = in_be32(CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2);
-	out_be32((void *)CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2,
-		 ecccr2 | (unsigned int)DISABLE_PFE_ECC);
-}
-#endif
-
 void fsl_lsch2_early_init_f(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
-					CONFIG_SYS_CCI400_OFFSET);
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
 	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_LAYERSCAPE_NS_ACCESS
@@ -669,10 +473,6 @@ void fsl_lsch2_early_init_f(void)
 	erratum_a009929();
 	erratum_a009660();
 	erratum_a010539();
-	erratum_a009008();
-	erratum_a009798();
-	erratum_a008997();
-	erratum_a009007();
 }
 #endif
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015
  * Elecsys Corporation <www.elecsyscorp.com>
@@ -8,6 +7,8 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Prafulla Wadaskar <prafulla@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

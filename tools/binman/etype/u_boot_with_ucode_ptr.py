@@ -1,6 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2016 Google, Inc
 # Written by Simon Glass <sjg@chromium.org>
+#
+# SPDX-License-Identifier:      GPL-2.0+
 #
 # Entry-type module for a U-Boot binary with an embedded microcode pointer
 #
@@ -8,7 +9,6 @@
 import struct
 
 import command
-import elf
 from entry import Entry
 from blob import Entry_blob
 import fdt_util
@@ -31,9 +31,11 @@ class Entry_u_boot_with_ucode_ptr(Entry_blob):
     def ObtainContents(self):
         # Figure out where to put the microcode pointer
         fname = tools.GetInputFilename(self.elf_fname)
-        sym = elf.GetSymbolAddress(fname, '_dt_ucode_base_size')
-        if sym:
-           self.target_pos = sym
+        args = [['nm', fname], ['grep', '-w', '_dt_ucode_base_size']]
+        out = (command.RunPipe(args, capture=True, raise_on_error=False).
+               stdout.splitlines())
+        if len(out) == 1:
+            self.target_pos = int(out[0].split()[0], 16)
         elif not fdt_util.GetBool(self._node, 'optional-ucode'):
             self.Raise('Cannot locate _dt_ucode_base_size symbol in u-boot')
 

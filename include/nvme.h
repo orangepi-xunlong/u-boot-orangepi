@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2017 NXP Semiconductors
  * Copyright (C) 2017 Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __NVME_H__
@@ -77,5 +78,17 @@ int nvme_scan_namespace(void);
  * @return:	0 on success, -EIO if NVMe identify command fails
  */
 int nvme_print_info(struct udevice *udev);
+
+/**
+ * nvme_get_namespace_id - return namespace identifier
+ *
+ * This returns the namespace identifier.
+ *
+ * @udev:	NVMe controller device
+ * @ns_id:	Place where to put the name space identifier
+ * @eui64:	Place where to put the IEEE Extended Unique Identifier
+ * @return:	0 on success, -ve on error
+ */
+int nvme_get_namespace_id(struct udevice *udev, u32 *ns_id, u8 *eui64);
 
 #endif /* __NVME_H__ */

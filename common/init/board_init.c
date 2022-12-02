@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Code shared between SPL and U-Boot proper
  *
  * Copyright (c) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -126,6 +127,19 @@ void board_init_f_init_reserve(ulong base)
 	/* next alloc will be higher by one 'early malloc arena' size */
 	base += CONFIG_VAL(SYS_MALLOC_F_LEN);
 #endif
+}
+
+/*
+ * Board-specific Platform code can init boot flags if needed
+ */
+__weak int board_init_f_boot_flags(void)
+{
+	gd->baudrate = CONFIG_BAUDRATE;
+	gd->serial.baudrate = CONFIG_BAUDRATE;
+	gd->serial.addr = CONFIG_DEBUG_UART_BASE;
+	gd->serial.using_pre_serial = 0;
+
+	return 0;
 }
 
 /*

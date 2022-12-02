@@ -1,15 +1,30 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2013
  * Texas Instruments Incorporated
  *
  * Nishant Kamat <nskamat@ti.com>
  * Lokesh Vutla <lokeshvutla@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _MUX_DRA7XX_H_
 #define _MUX_DRA7XX_H_
 
 #include <asm/types.h>
+
+#define FSC	(1 << 19)
+#define SSC	(0 << 19)
+
+#define IEN	(1 << 18)
+#define IDIS	(0 << 18)
+
+#define PTU	(1 << 17)
+#define PTD	(0 << 17)
+#define PEN	(1 << 16)
+#define PDIS	(0 << 16)
+
+#define WKEN	(1 << 24)
+#define WKDIS	(0 << 24)
 
 #define PULL_ENA		(0 << 16)
 #define PULL_DIS		(1 << 16)
@@ -349,8 +364,5 @@
 #define RESETN		0x45C
 #define NMIN_DSP	0x460
 #define RSTOUTN		0x464
-
-#define MCAN_SEL_ALT_MASK	0x6000
-#define MCAN_SEL		0x2000
 
 #endif /* _MUX_DRA7XX_H_ */

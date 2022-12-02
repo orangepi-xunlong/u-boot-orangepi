@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -19,16 +20,23 @@
 
 #define CONFIG_SKIP_TRUNOFF_WATCHDOG
 
-#define CONFIG_ARCH_MAP_SYSMEM
+#define CONFIG_CMDLINE_EDITING
+
+#define CONFIG_SYS_ICACHE_OFF
+#define CONFIG_SYS_DCACHE_OFF
 
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_BOOTP_SERVERIP
 
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
+#define CONFIG_SYS_TEXT_BASE	0x00500000
 #ifdef CONFIG_OF_CONTROL
 #undef CONFIG_OF_SEPARATE
 #define CONFIG_OF_EMBED
 #endif
+#else
+
+#define CONFIG_SYS_TEXT_BASE	0x80000000
 #endif
 
 /*
@@ -72,6 +80,7 @@
  */
 
 /* FTUART is a high speed NS 16C550A compatible UART, addr: 0x99600000 */
+#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_COM1		CONFIG_FTUART010_02_BASE
 #ifndef CONFIG_DM_SERIAL
@@ -80,8 +89,16 @@
 #define CONFIG_SYS_NS16550_CLK		((18432000 * 20) / 25)	/* AG101P */
 
 /*
+ * SD (MMC) controller
+ */
+#define CONFIG_FTSDC010
+#define CONFIG_FTSDC010_NUMBER		1
+#define CONFIG_FTSDC010_SDIO
+
+/*
  * Miscellaneous configurable options
  */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory */
 
 /*
  * Size of malloc() pool
@@ -203,24 +220,13 @@
 
 /* max number of sectors on one chip */
 #define CONFIG_FLASH_SECTOR_SIZE	(0x10000*2)
+#define CONFIG_ENV_SECT_SIZE		CONFIG_FLASH_SECTOR_SIZE
 #define CONFIG_SYS_MAX_FLASH_SECT	512
 
 /* environments */
-#define CONFIG_ENV_SPI_BUS		0
-#define CONFIG_ENV_SPI_CS		0
-#define CONFIG_ENV_SPI_MAX_HZ		50000000
-#define CONFIG_ENV_SPI_MODE		0
-#define CONFIG_ENV_SECT_SIZE		0x1000
-#define CONFIG_ENV_OFFSET		0x140000
+#define CONFIG_ENV_ADDR			(CONFIG_SYS_MONITOR_BASE + 0x140000)
 #define CONFIG_ENV_SIZE			8192
 #define CONFIG_ENV_OVERWRITE
-
-
-/* SPI FLASH */
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		1000000
-#define CONFIG_SF_DEFAULT_MODE		0
 
 /*
  * For booting Linux, the board info and command line data

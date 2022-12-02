@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
+/*
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -87,6 +89,11 @@
 		#clock-cells = <0>;
 	};
 
+	psci: psci {
+		compatible      = "arm,psci-1.0";
+		method          = "smc";
+	};
+
 	timer {
 		compatible = "arm,armv7-timer";
 		arm,cpu-registers-not-fw-configured;
@@ -105,6 +112,11 @@
 		#reset-cells = <1>;
 		assigned-clocks = <&cru PLL_GPLL>;
 		assigned-clock-rates = <594000000>;
+	};
+
+	dmc: dmc@20004000 {
+		compatible = "rockchip,rk3036-dmc", "syscon";
+		reg = <0x0 0x20004000 0x0 0x1000>;
 	};
 
 	uart0: serial@20060000 {
@@ -150,7 +162,7 @@
 		compatible = "rockchip,rk2928-pwm";
 		reg = <0x20050000 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm0_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -161,7 +173,7 @@
 		compatible = "rockchip,rk2928-pwm";
 		reg = <0x20050010 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm1_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -172,7 +184,7 @@
 		compatible = "rockchip,rk2928-pwm";
 		reg = <0x20050020 0x10>;
 		#pwm-cells = <3>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm2_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -183,7 +195,7 @@
 		compatible = "rockchip,rk2928-pwm";
 		reg = <0x20050030 0x10>;
 		#pwm-cells = <2>;
-		pinctrl-names = "default";
+		pinctrl-names = "active";
 		pinctrl-0 = <&pwm3_pin>;
 		clocks = <&cru PCLK_PWM>;
 		clock-names = "pwm";
@@ -245,7 +257,7 @@
 		max-frequency = <37500000>;
 		clocks = <&cru HCLK_EMMC>, <&cru SCLK_EMMC>,
 		<&cru SCLK_EMMC_DRV>, <&cru SCLK_EMMC_SAMPLE>;
-		clock-names = "biu", "ciu", "ciu_drv", "ciu_sample";
+		clock-names = "biu", "ciu", "ciu-drv", "ciu-sample";
 		dmas = <&pdma 12>;
 		dma-names = "rx-tx";
 		fifo-depth = <0x100>;
@@ -264,6 +276,17 @@
 		pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
 	};
 
+	sfc: sfc@102080000 {
+		compatible = "rockchip,rksfc";
+		reg = <0x10208000 0x4000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupts = <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru SCLK_SFC>, <&cru HCLK_SFC>;
+		clock-names = "clk_sfc", "hclk_sfc";
+		status = "disabled";
+	};
+
 	sdmmc: dwmmc@10214000 {
 		compatible = "rockchip,rk3036-dw-mshc", "rockchip,rk3288-dw-mshc";
 		reg = <0x10214000 0x4000>;
@@ -273,6 +296,16 @@
 		clock-names = "biu", "ciu";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+
+	nandc: nandc@10500000 {
+		compatible = "rockchip,rk-nandc";
+		reg = <0x10500000 0x4000>;
+		interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+		nandc_id = <0>;
+		clocks = <&cru SCLK_NANDC>, <&cru HCLK_NANDC>;
+		clock-names = "clk_nandc", "hclk_nandc";
 		status = "disabled";
 	};
 

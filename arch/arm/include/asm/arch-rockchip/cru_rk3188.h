@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2016 Heiko Stuebner <heiko@sntech.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_CRU_RK3188_H
 #define _ASM_ARCH_CRU_RK3188_H
@@ -28,6 +29,11 @@ struct rk3188_clk_priv {
 	struct rk3188_cru *cru;
 	ulong rate;
 	bool has_bwadj;
+	ulong armclk_hz;
+	ulong armclk_enter_hz;
+	ulong armclk_init_hz;
+	bool sync_kernel;
+	bool set_armclk_rate;
 };
 
 struct rk3188_cru {
@@ -50,6 +56,12 @@ struct rk3188_cru {
 	u32 cru_glb_cnt_th;
 };
 check_member(rk3188_cru, cru_glb_cnt_th, 0x0140);
+
+struct rk3188_clk_info {
+	unsigned long id;
+	char *name;
+	bool is_cru;
+};
 
 /* CRU_CLKSEL0_CON */
 enum {
@@ -135,6 +147,13 @@ enum {
 
 	SDIO_DIV_SHIFT		= 0,
 	SDIO_DIV_MASK		= 0x3f,
+};
+
+/* CRU_CLKSEL24_CON */
+enum {
+	SARADC_DIV_SHIFT	= 8,
+	SARADC_DIV_MASK		=GENMASK(15, 8),
+	SARADC_DIV_WIDTH	= 8,
 };
 
 /* CRU_CLKSEL25_CON */

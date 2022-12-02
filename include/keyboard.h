@@ -1,6 +1,7 @@
 #ifndef __KEYBOARD_H
 #define __KEYBOARD_H
 
+#ifdef CONFIG_DM_KEYBOARD
 #include <input.h>
 #include <stdio_dev.h>
 
@@ -75,5 +76,42 @@ struct keyboard_ops {
 };
 
 #define keyboard_get_ops(dev)	((struct keyboard_ops *)(dev)->driver->ops)
+
+#else
+
+#ifdef CONFIG_PS2MULT
+#include <ps2mult.h>
+#endif
+
+#if !defined(kbd_request_region) || \
+    !defined(kbd_request_irq) || \
+    !defined(kbd_read_input) || \
+    !defined(kbd_read_status) || \
+    !defined(kbd_write_output) || \
+    !defined(kbd_write_command)
+#error PS/2 low level routines not defined
+#endif
+
+extern int kbd_init (void);
+extern void handle_scancode(unsigned char scancode);
+extern int kbd_init_hw(void);
+extern void pckbd_leds(unsigned char leds);
+#endif /* !CONFIG_DM_KEYBOARD */
+
+#if defined(CONFIG_ARCH_MPC8540) || \
+		defined(CONFIG_ARCH_MPC8541) || defined(CONFIG_ARCH_MPC8555)
+int ps2ser_check(void);
+#endif
+
+#ifdef CONFIG_USB_KEYBOARD
+/**
+ * Check if usb keyboard receive F1~F12.
+ *
+ * @key_fn: KEY_F1, KEY_F2, KEY_F3, .... KEY_F12. (defined in input.h)
+ *
+ * return 1 if received, otherwise 0.
+ */
+extern int usb_kbd_recv_fn(int key_fn);
+#endif
 
 #endif /* __KEYBOARD_H */

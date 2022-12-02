@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2013-2018 Hannes Schmelzer <oe5hpm@oevsv.at> -
- * B&R Industrial Automation GmbH - http://www.br-automation.com
+ * Copyright (C) 2013 Hannes Schmelzer <oe5hpm@oevsv.at> -
+ * Bernecker & Rainer Industrieelektronik GmbH - http://www.br-automation.com
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef AM335X_FB_H
@@ -52,7 +53,7 @@ struct am335x_lcdpanel {
 	unsigned int	vfp;		/* Vertical front porch */
 	unsigned int	vbp;		/* Vertical back porch */
 	unsigned int	vsw;		/* Vertical Sync Pulse Width */
-	unsigned int	pxl_clk;	/* Pixel clock */
+	unsigned int	pxl_clk_div;	/* Pixel clock divider*/
 	unsigned int	pol;		/* polarity of sync, clock signals */
 	unsigned int	pup_delay;	/*
 					 * time in ms after power on to

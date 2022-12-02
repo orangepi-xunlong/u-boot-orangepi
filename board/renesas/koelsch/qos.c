@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * board/renesas/koelsch/qos.c
  *
  * Copyright (C) 2013,2014 Renesas Electronics Corporation
+ *
+ * SPDX-License-Identifier: GPL-2.0
  *
  */
 

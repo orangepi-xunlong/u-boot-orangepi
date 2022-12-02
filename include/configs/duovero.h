@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright: 2013
  * Gumstix, Inc - http://www.gumstix.com
@@ -6,6 +5,8 @@
  *
  * Configuration settings for the Gumstix DuoVero board.
  * See omap4_common.h for OMAP4 common part
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __CONFIG_DUOVERO_H
@@ -29,8 +30,14 @@
 
 #define CONFIG_SYS_ENABLE_PADS_ALL
 
+#define CONFIG_SMC911X
+#define CONFIG_SMC911X_32_BIT
+#define CONFIG_SMC911X_BASE		0x2C000000
+
 /* GPIO */
 
 /* ENV related config options */
+
+#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 #endif /* __CONFIG_DUOVERO_H */

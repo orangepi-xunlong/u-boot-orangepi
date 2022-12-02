@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014 - 2015 Xilinx, Inc.
  * Michal Simek <michal.simek@xilinx.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_SYS_PROTO_H
@@ -10,15 +11,10 @@
 #define PAYLOAD_ARG_CNT		5
 
 #define ZYNQMP_CSU_SILICON_VER_MASK	0xF
-#define ZYNQMP_SIP_SVC_PM_SECURE_IMG_LOAD	0xC200002D
-#define KEY_PTR_LEN	32
-
-#define ZYNQMP_FPGA_BIT_NS		5
 
 enum {
 	IDCODE,
 	VERSION,
-	IDCODE2,
 };
 
 enum {
@@ -33,8 +29,11 @@ enum {
 	TCM_SPLIT,
 };
 
-int zynq_board_read_rom_ethaddr(unsigned char *ethaddr);
+int zynq_slcr_get_mio_pin_status(const char *periph);
+
 unsigned int zynqmp_get_silicon_version(void);
+
+void psu_init(void);
 
 void handoff_setup(void);
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 """
@@ -1169,7 +1170,7 @@ class Slot:
             toolchain = self.toolchains.Select(arch)
         except ValueError:
             self.log += color_text(self.options.color, COLOR_YELLOW,
-                    "Tool chain for '%s' is missing.  Do nothing.\n" % arch)
+                    "Tool chain for '%s' is missing.  Do nothing.\n % arch")
             self.finish(False)
             return
 	env = toolchain.MakeEnvironment(False)
@@ -1471,7 +1472,7 @@ def find_kconfig_rules(kconf, config, imply_config):
     """
     sym = kconf.get_symbol(imply_config)
     if sym:
-        for sel in sym.get_selected_symbols() | sym.get_implied_symbols():
+        for sel in sym.get_selected_symbols():
             if sel.get_name() == config:
                 return sym
     return None

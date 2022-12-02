@@ -2847,9 +2847,12 @@ static void yaffsfs_RemoveObjectCallback(struct yaffs_obj *obj)
 	 * the next one to prevent a hanging ptr.
 	 */
 	list_for_each(i, &search_contexts) {
-		dsc = list_entry(i, struct yaffsfs_DirSearchContxt, others);
-		if (dsc->nextReturn == obj)
-			yaffsfs_DirAdvance(dsc);
+		if (i) {
+			dsc = list_entry(i, struct yaffsfs_DirSearchContxt,
+					 others);
+			if (dsc->nextReturn == obj)
+				yaffsfs_DirAdvance(dsc);
+		}
 	}
 
 }

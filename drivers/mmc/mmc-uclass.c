@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,15 +10,19 @@
 #include <dm.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
+#include <dm/root.h>
 #include "mmc_private.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 int dm_mmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		    struct mmc_data *data)
 {
 	struct mmc *mmc = mmc_get_mmc_dev(dev);
 	struct dm_mmc_ops *ops = mmc_get_ops(dev);
-	int ret;
+	int ret, retry_time = 3;
 
+retry:
 	mmmc_trace_before_send(mmc, cmd);
 	if (ops->send_cmd)
 		ret = ops->send_cmd(dev, cmd, data);
@@ -25,12 +30,75 @@ int dm_mmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		ret = -ENOSYS;
 	mmmc_trace_after_send(mmc, cmd, ret);
 
+	if (ret && cmd->cmdidx != SD_CMD_SEND_IF_COND &&
+	    cmd->cmdidx != MMC_CMD_APP_CMD &&
+	    cmd->cmdidx != MMC_CMD_SEND_OP_COND &&
+	    cmd->cmdidx != MMC_SEND_TUNING_BLOCK_HS200 &&
+	    cmd->cmdidx != MMC_CMD_READ_MULTIPLE_BLOCK &&
+	    cmd->cmdidx != MMC_CMD_WRITE_MULTIPLE_BLOCK) {
+		/* execute tuning at last retry. */
+		if (retry_time == 1 &&
+		    mmc->timing == MMC_TIMING_MMC_HS200 &&
+		    ops->execute_tuning) {
+			u32 opcode = MMC_SEND_TUNING_BLOCK_HS200;
+			ops->execute_tuning(mmc->dev, opcode);
+	    	}
+		if (retry_time-- > 0)
+			goto retry;
+		printf("MMC error: The cmd index is %d, ret is %d\n", cmd->cmdidx, ret);
+	}
+
 	return ret;
 }
+
+#ifdef CONFIG_SPL_BLK_READ_PREPARE
+int dm_mmc_send_cmd_prepare(struct udevice *dev, struct mmc_cmd *cmd,
+			    struct mmc_data *data)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+	struct dm_mmc_ops *ops = mmc_get_ops(dev);
+	int ret;
+
+	mmmc_trace_before_send(mmc, cmd);
+	if (ops->send_cmd_prepare)
+		ret = ops->send_cmd_prepare(dev, cmd, data);
+	else
+		ret = -ENOSYS;
+	mmmc_trace_after_send(mmc, cmd, ret);
+	if (ret && cmd->cmdidx != SD_CMD_SEND_IF_COND
+	    && cmd->cmdidx != MMC_CMD_APP_CMD)
+		printf("MMC error: The cmd index is %d, ret is %d\n", cmd->cmdidx, ret);
+
+	return ret;
+}
+#endif
 
 int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
 	return dm_mmc_send_cmd(mmc->dev, cmd, data);
+}
+
+#ifdef CONFIG_SPL_BLK_READ_PREPARE
+int mmc_send_cmd_prepare(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
+{
+	return dm_mmc_send_cmd_prepare(mmc->dev, cmd, data);
+}
+#endif
+
+bool mmc_card_busy(struct mmc *mmc)
+{
+	struct dm_mmc_ops *ops = mmc_get_ops(mmc->dev);
+
+	if (!ops->card_busy)
+		return -ENOSYS;
+	return ops->card_busy(mmc->dev);
+}
+
+bool mmc_can_card_busy(struct mmc *mmc)
+{
+	struct dm_mmc_ops *ops = mmc_get_ops(mmc->dev);
+
+	return !!ops->card_busy;
 }
 
 int dm_mmc_set_ios(struct udevice *dev)
@@ -46,35 +114,6 @@ int mmc_set_ios(struct mmc *mmc)
 {
 	return dm_mmc_set_ios(mmc->dev);
 }
-
-void dm_mmc_send_init_stream(struct udevice *dev)
-{
-	struct dm_mmc_ops *ops = mmc_get_ops(dev);
-
-	if (ops->send_init_stream)
-		ops->send_init_stream(dev);
-}
-
-void mmc_send_init_stream(struct mmc *mmc)
-{
-	dm_mmc_send_init_stream(mmc->dev);
-}
-
-#if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT)
-int dm_mmc_wait_dat0(struct udevice *dev, int state, int timeout)
-{
-	struct dm_mmc_ops *ops = mmc_get_ops(dev);
-
-	if (!ops->wait_dat0)
-		return -ENOSYS;
-	return ops->wait_dat0(dev, state, timeout);
-}
-
-int mmc_wait_dat0(struct mmc *mmc, int state, int timeout)
-{
-	return dm_mmc_wait_dat0(mmc->dev, state, timeout);
-}
-#endif
 
 int dm_mmc_get_wp(struct udevice *dev)
 {
@@ -102,72 +141,6 @@ int dm_mmc_get_cd(struct udevice *dev)
 int mmc_getcd(struct mmc *mmc)
 {
 	return dm_mmc_get_cd(mmc->dev);
-}
-
-#ifdef MMC_SUPPORTS_TUNING
-int dm_mmc_execute_tuning(struct udevice *dev, uint opcode)
-{
-	struct dm_mmc_ops *ops = mmc_get_ops(dev);
-
-	if (!ops->execute_tuning)
-		return -ENOSYS;
-	return ops->execute_tuning(dev, opcode);
-}
-
-int mmc_execute_tuning(struct mmc *mmc, uint opcode)
-{
-	return dm_mmc_execute_tuning(mmc->dev, opcode);
-}
-#endif
-
-int mmc_of_parse(struct udevice *dev, struct mmc_config *cfg)
-{
-	int val;
-
-	val = dev_read_u32_default(dev, "bus-width", 1);
-
-	switch (val) {
-	case 0x8:
-		cfg->host_caps |= MMC_MODE_8BIT;
-		/* fall through */
-	case 0x4:
-		cfg->host_caps |= MMC_MODE_4BIT;
-		/* fall through */
-	case 0x1:
-		cfg->host_caps |= MMC_MODE_1BIT;
-		break;
-	default:
-		dev_err(dev, "Invalid \"bus-width\" value %u!\n", val);
-		return -EINVAL;
-	}
-
-	/* f_max is obtained from the optional "max-frequency" property */
-	dev_read_u32(dev, "max-frequency", &cfg->f_max);
-
-	if (dev_read_bool(dev, "cap-sd-highspeed"))
-		cfg->host_caps |= MMC_CAP(SD_HS);
-	if (dev_read_bool(dev, "cap-mmc-highspeed"))
-		cfg->host_caps |= MMC_CAP(MMC_HS);
-	if (dev_read_bool(dev, "sd-uhs-sdr12"))
-		cfg->host_caps |= MMC_CAP(UHS_SDR12);
-	if (dev_read_bool(dev, "sd-uhs-sdr25"))
-		cfg->host_caps |= MMC_CAP(UHS_SDR25);
-	if (dev_read_bool(dev, "sd-uhs-sdr50"))
-		cfg->host_caps |= MMC_CAP(UHS_SDR50);
-	if (dev_read_bool(dev, "sd-uhs-sdr104"))
-		cfg->host_caps |= MMC_CAP(UHS_SDR104);
-	if (dev_read_bool(dev, "sd-uhs-ddr50"))
-		cfg->host_caps |= MMC_CAP(UHS_DDR50);
-	if (dev_read_bool(dev, "mmc-ddr-1_8v"))
-		cfg->host_caps |= MMC_CAP(MMC_DDR_52);
-	if (dev_read_bool(dev, "mmc-ddr-1_2v"))
-		cfg->host_caps |= MMC_CAP(MMC_DDR_52);
-	if (dev_read_bool(dev, "mmc-hs200-1_8v"))
-		cfg->host_caps |= MMC_CAP(MMC_HS_200);
-	if (dev_read_bool(dev, "mmc-hs200-1_2v"))
-		cfg->host_caps |= MMC_CAP(MMC_HS_200);
-
-	return 0;
 }
 
 struct mmc *mmc_get_mmc_dev(struct udevice *dev)
@@ -269,7 +242,7 @@ void print_mmc_devices(char separator)
 		else
 			mmc_type = NULL;
 
-		pr_msg("%s: %d", m->cfg->name, mmc_get_blk_desc(m)->devnum);
+		printf("%s: %d", m->cfg->name, mmc_get_blk_desc(m)->devnum);
 		if (mmc_type)
 			printf(" (%s)", mmc_type);
 	}
@@ -289,11 +262,9 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 
 	if (!mmc_get_ops(dev))
 		return -ENOSYS;
-#ifndef CONFIG_SPL_BUILD
 	/* Use the fixed index with aliase node's index */
 	ret = dev_read_alias_seq(dev, &devnum);
 	debug("%s: alias ret=%d, devnum=%d\n", __func__, ret, devnum);
-#endif
 
 	ret = blk_create_devicef(dev, "mmc_blk", "blk", IF_TYPE_MMC,
 			devnum, 512, 0, &bdev);

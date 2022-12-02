@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2014-2016 Freescale Semiconductor
- * Copyright 2017 NXP
+ * Copyright (C) 2014 Freescale Semiconductor
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _FSL_MC_PRIVATE_H_
@@ -29,7 +29,6 @@ extern struct fsl_mc_io *dflt_mc_io;
  * @struct dpbp_attr: DPBP attribute
  */
 struct fsl_dpbp_obj {
-	uint32_t dpbp_id;
 	uint16_t dpbp_handle;
 	struct dpbp_attr dpbp_attr;
 };
@@ -42,7 +41,7 @@ extern struct fsl_dpbp_obj *dflt_dpbp;
  * @struct qbman_swp *sw_portal: SW portal object
  */
 struct fsl_dpio_obj {
-	uint32_t dpio_id;
+	int dpio_id;
 	uint16_t dpio_handle;
 	struct qbman_swp *sw_portal; /** SW portal object */
 };
@@ -57,7 +56,7 @@ extern struct fsl_dpio_obj *dflt_dpio;
  * @struct dpni_buffer_layout: DPNI buffer layout
  */
 struct fsl_dpni_obj {
-	uint32_t dpni_id;
+	int dpni_id;
 	uint16_t dpni_handle;
 	struct dpni_attr dpni_attrs;
 	struct dpni_buffer_layout buf_layout;

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board initialization for EP93xx
  *
@@ -11,6 +10,8 @@
  * (C) Copyright 2002 2003
  * Network Audio Technologies, Inc. <www.netaudiotech.com>
  * Adam Bezanson <bezanson <at> netaudiotech.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>

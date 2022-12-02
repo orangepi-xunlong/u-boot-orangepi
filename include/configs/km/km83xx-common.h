@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_KM83XX_H
@@ -10,6 +11,19 @@
 /* include common defines/options for all Keymile boards */
 #include "keymile-common.h"
 #include "km-powerpc.h"
+
+#ifndef MTDIDS_DEFAULT
+# define MTDIDS_DEFAULT	"nor0=boot"
+#endif /* MTDIDS_DEFAULT */
+
+#ifndef MTDPARTS_DEFAULT
+# define MTDPARTS_DEFAULT	"mtdparts="			\
+	"boot:"							\
+		"768k(u-boot),"					\
+		"128k(env),"					\
+		"128k(envred),"					\
+		"-(" CONFIG_KM_UBI_PARTITION_NAME_BOOT ");"
+#endif /* MTDPARTS_DEFAULT */
 
 #define CONFIG_MISC_INIT_R
 /*
@@ -127,6 +141,7 @@
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)

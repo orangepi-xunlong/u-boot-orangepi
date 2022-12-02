@@ -1,13 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2013-2017 Altera Corporation <www.altera.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/io.h>
-#include <dm.h>
 #include <asm/arch/clock_manager.h>
 #include <wait_bit.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static const struct socfpga_clock_manager *clock_manager_base =
 	(struct socfpga_clock_manager *)SOCFPGA_CLKMGR_ADDRESS;
@@ -30,7 +32,7 @@ static void cm_write_ctrl(u32 val)
 }
 
 /* function to write a clock register that has phase information */
-static int cm_write_with_phase(u32 value, const void *reg_address, u32 mask)
+static int cm_write_with_phase(u32 value, u32 reg_address, u32 mask)
 {
 	int ret;
 
@@ -265,26 +267,26 @@ int cm_basic_init(const struct cm_config * const cfg)
 	 * are aligned nicely; so we can change any phase.
 	 */
 	ret = cm_write_with_phase(cfg->ddrdqsclk,
-				  &clock_manager_base->sdr_pll.ddrdqsclk,
+				  (u32)&clock_manager_base->sdr_pll.ddrdqsclk,
 				  CLKMGR_SDRPLLGRP_DDRDQSCLK_PHASE_MASK);
 	if (ret)
 		return ret;
 
 	/* SDRAM DDR2XDQSCLK */
 	ret = cm_write_with_phase(cfg->ddr2xdqsclk,
-				  &clock_manager_base->sdr_pll.ddr2xdqsclk,
+				  (u32)&clock_manager_base->sdr_pll.ddr2xdqsclk,
 				  CLKMGR_SDRPLLGRP_DDR2XDQSCLK_PHASE_MASK);
 	if (ret)
 		return ret;
 
 	ret = cm_write_with_phase(cfg->ddrdqclk,
-				  &clock_manager_base->sdr_pll.ddrdqclk,
+				  (u32)&clock_manager_base->sdr_pll.ddrdqclk,
 				  CLKMGR_SDRPLLGRP_DDRDQCLK_PHASE_MASK);
 	if (ret)
 		return ret;
 
 	ret = cm_write_with_phase(cfg->s2fuser2clk,
-				  &clock_manager_base->sdr_pll.s2fuser2clk,
+				  (u32)&clock_manager_base->sdr_pll.s2fuser2clk,
 				  CLKMGR_SDRPLLGRP_S2FUSER2CLK_PHASE_MASK);
 	if (ret)
 		return ret;
@@ -503,14 +505,6 @@ unsigned int cm_get_spi_controller_clk_hz(void)
 	clock /= (reg + 1);
 
 	return clock;
-}
-
-/* Override weak dw_spi_get_clk implementation in designware_spi.c driver */
-int dw_spi_get_clk(struct udevice *bus, ulong *rate)
-{
-	*rate = cm_get_spi_controller_clk_hz();
-
-	return 0;
 }
 
 void cm_print_clock_quick_summary(void)

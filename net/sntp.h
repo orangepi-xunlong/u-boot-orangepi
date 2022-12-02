@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Masami Komiya <mkomiya@sonare.it> 2005
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __SNTP_H__

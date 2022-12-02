@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Guntermann & Drunck, GmbH
  *
- * Written by Dirk Eibach <dirk.eibach@gdsys.cc>
+ * Written by Dirk Eibach <eibach@gdsys.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -105,23 +106,13 @@ static int tpm_atmel_twi_xfer(struct udevice *dev,
 		udelay(100);
 	}
 	if (!res) {
-		unsigned int hdr_recv_len;
-		hdr_recv_len = get_unaligned_be32(recvbuf + 2);
-		if (hdr_recv_len < 10) {
-			puts("tpm response header too small\n");
-			return -1;
-		} else if (hdr_recv_len > *recv_len) {
-			puts("tpm response length is bigger than receive buffer\n");
-			return -1;
-		} else {
-			*recv_len = hdr_recv_len;
+		*recv_len = get_unaligned_be32(recvbuf + 2);
+		if (*recv_len > 10)
 #ifndef CONFIG_DM_I2C
 			res = i2c_read(0x29, 0, 0, recvbuf, *recv_len);
 #else
 			res = dm_i2c_read(dev, 0, recvbuf, *recv_len);
 #endif
-
-		}
 	}
 	if (res) {
 		printf("i2c_read returned %d (rlen=%d)\n", res, *recv_len);

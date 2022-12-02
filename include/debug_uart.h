@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Early debug UART support
  *
  * (C) Copyright 2014 Google, Inc
  * Writte by Simon Glass <sjg@chromium.org>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _DEBUG_UART_H
@@ -75,6 +76,11 @@ static inline void board_debug_uart_init(void)
  * @ch:		Character to output
  */
 void printch(int ch);
+int debug_uart_getc(void);
+int debug_uart_tstc(void);
+int debug_uart_clrc(void);
+int debug_uart_flushc(void);
+int debug_uart_setbrg(void);
 
 /**
  * printascii() - Output an ASCII string to the debug UART
@@ -103,6 +109,13 @@ void printhex4(uint value);
  * @value:	Value to output
  */
 void printhex8(uint value);
+
+/**
+ * printdec() - Output a decimalism value
+ *
+ * @value:	Value to output
+ */
+void printdec(uint value);
 
 #ifdef CONFIG_DEBUG_UART_ANNOUNCE
 #define _DEBUG_UART_ANNOUNCE	printascii("<debug_uart> ");
@@ -138,6 +151,31 @@ void printhex8(uint value);
 		_printch(ch); \
 	} \
 \
+	int debug_uart_getc(void)\
+	{ \
+		return _debug_uart_getc(); \
+	} \
+\
+	int debug_uart_tstc(void)\
+	{ \
+		return _debug_uart_tstc(true); \
+	} \
+\
+	int debug_uart_clrc(void)\
+	{ \
+		return _debug_uart_clrc(); \
+	} \
+\
+	int debug_uart_flushc(void)\
+	{ \
+		return _debug_uart_flushc(); \
+	} \
+\
+	int debug_uart_setbrg(void)\
+	{ \
+		return _debug_uart_setbrg(); \
+	} \
+\
 	void printascii(const char *str) \
 	{ \
 		while (*str) \
@@ -169,6 +207,18 @@ void printhex8(uint value);
 	void printhex8(uint value) \
 	{ \
 		printhex(value, 8); \
+	} \
+\
+	void printdec(uint value) \
+	{ \
+		if (value > 10) { \
+			printdec(value / 10); \
+			value %= 10; \
+		} else if (value == 10) { \
+			_debug_uart_putc('1'); \
+			value = 0; \
+		} \
+		_debug_uart_putc('0' + value); \
 	} \
 \
 	void debug_uart_init(void) \

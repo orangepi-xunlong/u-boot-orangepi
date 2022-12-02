@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (C) 2007
 # Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
@@ -14,6 +13,7 @@
 #
 # board/mpr2/Makefile
 #
+# SPDX-License-Identifier:	GPL-2.0+
 
 obj-y	:= mpr2.o
 extra-y	+= lowlevel_init.o

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Simulate an I2C eeprom
  *
  * Copyright (c) 2014 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,6 +18,8 @@
 #else
 #define debug_buffer(x, ...)
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 struct sandbox_i2c_flash_plat_data {
 	enum sandbox_i2c_eeprom_test_mode test_mode;

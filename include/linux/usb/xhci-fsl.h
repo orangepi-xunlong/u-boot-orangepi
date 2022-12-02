@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
  *
  * FSL USB HOST xHCI Controller
  *
  * Author: Ramneek Mehresh<ramneek.mehresh@freescale.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_ARCH_XHCI_FSL_H_
@@ -57,7 +58,7 @@ struct fsl_xhci {
 #define CONFIG_SYS_FSL_XHCI_USB1_ADDR CONFIG_SYS_XHCI_USB1_ADDR
 #define CONFIG_SYS_FSL_XHCI_USB2_ADDR 0
 #define CONFIG_SYS_FSL_XHCI_USB3_ADDR 0
-#elif defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LS1088A)
+#elif defined(CONFIG_ARCH_LS2080A)
 #define CONFIG_SYS_FSL_XHCI_USB1_ADDR CONFIG_SYS_XHCI_USB1_ADDR
 #define CONFIG_SYS_FSL_XHCI_USB2_ADDR CONFIG_SYS_XHCI_USB2_ADDR
 #define CONFIG_SYS_FSL_XHCI_USB3_ADDR 0

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -13,9 +14,6 @@
 #include <menu.h>
 #include <post.h>
 #include <u-boot/sha256.h>
-#ifdef CONFIG_ARCH_SUNXI
-#include <sunxi_board.h>
-#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -59,7 +57,7 @@ static int passwd_abort(uint64_t etime)
 	const char *algo_name = "sha256";
 	u_int presskey_len = 0;
 	int abort = 0;
-	int size = sizeof(sha);
+	int size;
 	int ret;
 
 	if (sha_env_str == NULL)
@@ -218,25 +216,20 @@ static int __abortboot(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
-	printf("Hit any key to stop autoboot: %2d ", bootdelay);
+	printf("Hit key to stop autoboot('CTRL+C'): %2d ", bootdelay);
 #endif
 
+#ifdef CONFIG_ARCH_ROCKCHIP
+	if (!IS_ENABLED(CONFIG_CONSOLE_DISABLE_CLI) && ctrlc()) {	/* we press ctrl+c ? */
+#else
 	/*
 	 * Check if key already pressed
 	 */
 	if (tstc()) {	/* we got a key press	*/
-		char input;
-		input = getc();  /* consume input	*/
-		if (input == 's' || input == 'S') {
-			puts("\b\b\b 0");
-			abort = 1;	/* don't auto boot	*/
-		}
-	}
-
-	if (sunxi_get_uboot_shell() == 1) {
-		abort = 1;
-		bootdelay = 0;
-		sunxi_set_uboot_shell(0);
+#endif
+		(void) getc();  /* consume input	*/
+		puts("\b\b\b 0");
+		abort = 1;	/* don't auto boot	*/
 	}
 
 	while ((bootdelay > 0) && (!abort)) {
@@ -244,13 +237,11 @@ static int __abortboot(int bootdelay)
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
-			if (tstc()) {	/* we got a key press	*/
+			if (ctrlc()) {	/* we got a ctrl+c key press	*/
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
 # ifdef CONFIG_MENUKEY
-				menukey = getc();
-# else
-				(void) getc();  /* consume input	*/
+				menukey = 0x03;	/* ctrl+c key code */
 # endif
 				break;
 			}
@@ -350,6 +341,12 @@ const char *bootdelay_process(void)
 	return s;
 }
 
+/*
+ * Board-specific Platform code can reimplement autoboot_command_fail_handle ()
+ * if needed
+ */
+__weak void autoboot_command_fail_handle(void) {}
+
 void autoboot_command(const char *s)
 {
 	debug("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
@@ -360,6 +357,7 @@ void autoboot_command(const char *s)
 #endif
 
 		run_command_list(s, -1, 0);
+		autoboot_command_fail_handle();
 
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		disable_ctrlc(prev);	/* restore Control C checking */

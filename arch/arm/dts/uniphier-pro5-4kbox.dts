@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Device Tree Source for UniPhier Pro5 4KBOX Board (EVB-Pro5-4KBOX-M-V0)
  *
  * Copyright (C) 2015-2016 Socionext Inc.
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0+ OR MIT)
  */
 
 /dts-v1/;
@@ -53,4 +54,13 @@
 
 &sd {
 	status = "okay";
+};
+
+/* for U-Boot only */
+&serial1 {
+	u-boot,dm-pre-reloc;
+};
+
+&pinctrl_uart1 {
+	u-boot,dm-pre-reloc;
 };

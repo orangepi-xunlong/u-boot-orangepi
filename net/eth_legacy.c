@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001-2015
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  * Joe Hershberger, National Instruments
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -247,16 +248,16 @@ int eth_initialize(void)
 	 */
 	if (board_eth_init != __def_eth_init) {
 		if (board_eth_init(gd->bd) < 0)
-			pr_err("Board Net Initialization Failed\n");
+			printf("Board Net Initialization Failed\n");
 	} else if (cpu_eth_init != __def_eth_init) {
 		if (cpu_eth_init(gd->bd) < 0)
-			pr_err("CPU Net Initialization Failed\n");
+			printf("CPU Net Initialization Failed\n");
 	} else {
-		pr_msg("Net Initialization Skipped\n");
+		printf("Net Initialization Skipped\n");
 	}
 
 	if (!eth_devices) {
-		pr_err("No ethernet found.\n");
+		puts("No ethernet found.\n");
 		bootstage_error(BOOTSTAGE_ID_NET_ETH_START);
 	} else {
 		struct eth_device *dev = eth_devices;

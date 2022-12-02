@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2014
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
@@ -8,6 +7,8 @@
  * Based on linux:drivers/pwm/pwm-imx.c
  * from
  * Sascha Hauer <s.hauer@pengutronix.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -22,12 +23,10 @@ struct pwm_regs *pwm_id_to_reg(int pwm_id)
 		return (struct pwm_regs *)PWM1_BASE_ADDR;
 	case 1:
 		return (struct pwm_regs *)PWM2_BASE_ADDR;
-#ifdef CONFIG_MX6
 	case 2:
 		return (struct pwm_regs *)PWM3_BASE_ADDR;
 	case 3:
 		return (struct pwm_regs *)PWM4_BASE_ADDR;
-#endif
 #ifdef CONFIG_MX6SX
 	case 4:
 		return (struct pwm_regs *)PWM5_BASE_ADDR;

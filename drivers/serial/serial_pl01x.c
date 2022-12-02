@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Rob Taylor, Flying Pig Systems. robt@flyingpig.com.
@@ -6,6 +5,8 @@
  * (C) Copyright 2004
  * ARM Ltd.
  * Philippe Robin, <philippe.robin@arm.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* Simple U-Boot driver for the PrimeCell PL010/PL011 UARTs */
@@ -19,6 +20,7 @@
 #include <dm/platform_data/serial_pl01x.h>
 #include <linux/compiler.h>
 #include "serial_pl01x_internal.h"
+#include <fdtdec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -272,7 +274,12 @@ __weak struct serial_device *default_serial_console(void)
 
 #ifdef CONFIG_DM_SERIAL
 
-int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
+struct pl01x_priv {
+	struct pl01x_regs *regs;
+	enum pl01x_type type;
+};
+
+static int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
 {
 	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
 	struct pl01x_priv *priv = dev_get_priv(dev);
@@ -285,7 +292,7 @@ int pl01x_serial_setbrg(struct udevice *dev, int baudrate)
 	return 0;
 }
 
-int pl01x_serial_probe(struct udevice *dev)
+static int pl01x_serial_probe(struct udevice *dev)
 {
 	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
 	struct pl01x_priv *priv = dev_get_priv(dev);
@@ -298,21 +305,21 @@ int pl01x_serial_probe(struct udevice *dev)
 		return 0;
 }
 
-int pl01x_serial_getc(struct udevice *dev)
+static int pl01x_serial_getc(struct udevice *dev)
 {
 	struct pl01x_priv *priv = dev_get_priv(dev);
 
 	return pl01x_getc(priv->regs);
 }
 
-int pl01x_serial_putc(struct udevice *dev, const char ch)
+static int pl01x_serial_putc(struct udevice *dev, const char ch)
 {
 	struct pl01x_priv *priv = dev_get_priv(dev);
 
 	return pl01x_putc(priv->regs, ch);
 }
 
-int pl01x_serial_pending(struct udevice *dev, bool input)
+static int pl01x_serial_pending(struct udevice *dev, bool input)
 {
 	struct pl01x_priv *priv = dev_get_priv(dev);
 	unsigned int fr = readl(&priv->regs->fr);
@@ -337,7 +344,7 @@ static const struct udevice_id pl01x_serial_id[] ={
 	{}
 };
 
-int pl01x_serial_ofdata_to_platdata(struct udevice *dev)
+static int pl01x_serial_ofdata_to_platdata(struct udevice *dev)
 {
 	struct pl01x_serial_platdata *plat = dev_get_platdata(dev);
 	fdt_addr_t addr;
@@ -347,10 +354,11 @@ int pl01x_serial_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 
 	plat->base = addr;
-	plat->clock = dev_read_u32_default(dev, "clock", 1);
+	plat->clock = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "clock",
+				     1);
 	plat->type = dev_get_driver_data(dev);
-	plat->skip_init = dev_read_bool(dev, "skip-init");
-
+	plat->skip_init = fdtdec_get_bool(gd->fdt_blob, dev_of_offset(dev),
+	                                  "skip-init");
 	return 0;
 }
 #endif

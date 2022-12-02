@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (c) 2015 Purna Chandra Mandal <purna.mandal@microchip.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 

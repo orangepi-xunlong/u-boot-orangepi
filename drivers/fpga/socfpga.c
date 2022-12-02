@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright (C) 2012-2017 Altera Corporation <www.altera.com>
+ * Copyright (C) 2012 Altera Corporation <www.altera.com>
  * All rights reserved.
+ *
+ * SPDX-License-Identifier:	BSD-3-Clause
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <asm/arch/fpga_manager.h>
 #include <asm/arch/reset_manager.h>
 #include <asm/arch/system_manager.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* Timeout count */
 #define FPGA_TIMEOUT_CNT		0x1000000
@@ -52,20 +55,18 @@ void fpgamgr_program_write(const void *rbf_data, size_t rbf_size)
 	uint32_t loops4 = DIV_ROUND_UP(rbf_size % 32, 4);
 
 	asm volatile(
-		"	cmp	%2,	#0\n"
-		"	beq	2f\n"
 		"1:	ldmia	%0!,	{r0-r7}\n"
 		"	stmia	%1!,	{r0-r7}\n"
 		"	sub	%1,	#32\n"
 		"	subs	%2,	#1\n"
 		"	bne	1b\n"
-		"2:	cmp	%3,	#0\n"
-		"	beq	4f\n"
-		"3:	ldr	%2,	[%0],	#4\n"
+		"	cmp	%3,	#0\n"
+		"	beq	3f\n"
+		"2:	ldr	%2,	[%0],	#4\n"
 		"	str	%2,	[%1]\n"
 		"	subs	%3,	#1\n"
-		"	bne	3b\n"
-		"4:	nop\n"
+		"	bne	2b\n"
+		"3:	nop\n"
 		: "+r"(src), "+r"(dst), "+r"(loops32), "+r"(loops4) :
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "cc");
 }

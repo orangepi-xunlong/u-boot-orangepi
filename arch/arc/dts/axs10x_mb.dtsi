@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 / {
@@ -30,8 +31,11 @@
 		};
 
 		ethernet@18000 {
+			#interrupt-cells = <1>;
 			compatible = "altr,socfpga-stmmac";
 			reg = < 0x18000 0x2000 >;
+			interrupts = < 25 >;
+			interrupt-names = "macirq";
 			phy-mode = "gmii";
 			snps,pbl = < 32 >;
 			clocks = <&apbclk>;
@@ -42,11 +46,13 @@
 		ehci@0x40000 {
 			compatible = "generic-ehci";
 			reg = < 0x40000 0x100 >;
+			interrupts = < 8 >;
 		};
 
 		ohci@0x60000 {
 			compatible = "generic-ohci";
 			reg = < 0x60000 0x100 >;
+			interrupts = < 8 >;
 		};
 
 		uart0: serial0@22000 {

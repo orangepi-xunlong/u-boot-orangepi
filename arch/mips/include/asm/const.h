@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * const.h: Macros for dealing with constants.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _LINUX_CONST_H

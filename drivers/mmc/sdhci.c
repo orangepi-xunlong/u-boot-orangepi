@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2011, Marvell Semiconductor Inc.
  * Lei Wen <leiwen@marvell.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Back ported to the 8xx platform (from the 8260 platform) by
  * Murray.Jensen@cmst.csiro.au, 27-Jan-01.
@@ -85,8 +86,8 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data,
 	do {
 		stat = sdhci_readl(host, SDHCI_INT_STATUS);
 		if (stat & SDHCI_INT_ERROR) {
-			pr_debug("%s: Error detected in status(0x%X)!\n",
-				 __func__, stat);
+			printf("%s: Error detected in status(0x%X)!\n",
+			       __func__, stat);
 			return -EIO;
 		}
 		if (!transfer_done && (stat & rdy)) {
@@ -156,7 +157,10 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	/* Timeout unit - ms */
 	static unsigned int cmd_timeout = SDHCI_CMD_DEFAULT_TIMEOUT;
 
-	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
+	mask = SDHCI_CMD_INHIBIT;
+
+	if (data)
+		mask |= SDHCI_DATA_INHIBIT;
 
 	/* We shouldn't wait for data inihibit for stop commands, even
 	   though they might use busy signaling */
@@ -170,9 +174,10 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 				cmd_timeout += cmd_timeout;
 				printf("timeout increasing to: %u ms.\n",
 				       cmd_timeout);
+				sdhci_writel(host, SDHCI_INT_ALL_MASK, SDHCI_INT_STATUS);
 			} else {
 				puts("timeout.\n");
-				return -ECOMM;
+				/* remove timeout return error and try to send command */
 			}
 		}
 		time++;
@@ -200,8 +205,15 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	if (data)
 		flags |= SDHCI_CMD_DATA;
 
+	if (cmd->cmdidx == MMC_SEND_TUNING_BLOCK ||
+	    cmd->cmdidx == MMC_SEND_TUNING_BLOCK_HS200) {
+		mask &= ~SDHCI_INT_RESPONSE;
+		mask |= SDHCI_INT_DATA_AVAIL;
+		flags |= SDHCI_CMD_DATA;
+	}
+
 	/* Set Transfer mode regarding to data flag */
-	if (data) {
+	if (data != 0) {
 		sdhci_writeb(host, 0xe, SDHCI_TIMEOUT_CONTROL);
 		mode = SDHCI_TRNS_BLK_CNT_EN;
 		trans_bytes = data->blocks * data->blocksize;
@@ -249,7 +261,7 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	sdhci_writel(host, cmd->cmdarg, SDHCI_ARGUMENT);
 #ifdef CONFIG_MMC_SDHCI_SDMA
-	if (data) {
+	if (data != 0) {
 		trans_bytes = ALIGN(trans_bytes, CONFIG_SYS_CACHELINE_SIZE);
 		flush_cache(start_addr, trans_bytes);
 	}
@@ -301,9 +313,8 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		return -ECOMM;
 }
 
-static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
+int sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 {
-	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout;
 
 	/* Wait max 20 ms */
@@ -319,12 +330,10 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		timeout--;
 		udelay(100);
 	}
-
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
 	if (clock == 0)
 		return 0;
-
 	if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 		/*
 		 * Check if the Host Controller supports Programmable Clock
@@ -364,9 +373,8 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		}
 		div >>= 1;
 	}
-
-	if (host->ops && host->ops->set_clock)
-		host->ops->set_clock(host, div);
+	if (host->ops && host->ops->set_clock_ext)
+		host->ops->set_clock_ext(host, div);
 
 	clk |= (div & SDHCI_DIV_MASK) << SDHCI_DIVIDER_SHIFT;
 	clk |= ((div & SDHCI_DIV_HI_MASK) >> SDHCI_DIV_MASK_LEN)
@@ -386,9 +394,10 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		timeout--;
 		udelay(1000);
 	}
-
 	clk |= SDHCI_CLOCK_CARD_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+
+	host->clock = clock;
 	return 0;
 }
 
@@ -422,6 +431,57 @@ static void sdhci_set_power(struct sdhci_host *host, unsigned short power)
 	sdhci_writeb(host, pwr, SDHCI_POWER_CONTROL);
 }
 
+static void sdhci_set_uhs_signaling(struct sdhci_host *host)
+{
+	u16 ctrl_2;
+	u32 timing = host->mmc->timing;
+
+	ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	/* Select Bus Speed Mode for host */
+	ctrl_2 &= ~SDHCI_CTRL_UHS_MASK;
+
+	if ((timing != MMC_TIMING_LEGACY) &&
+	    (timing != MMC_TIMING_MMC_HS) &&
+	    (timing != MMC_TIMING_SD_HS))
+		ctrl_2 |= SDHCI_CTRL_VDD_180;
+
+	if ((timing == MMC_TIMING_MMC_HS200) ||
+	    (timing == MMC_TIMING_UHS_SDR104))
+		ctrl_2 |= SDHCI_CTRL_UHS_SDR104 | SDHCI_CTRL_DRV_TYPE_A;
+	else if (timing == MMC_TIMING_UHS_SDR12)
+		ctrl_2 |= SDHCI_CTRL_UHS_SDR12;
+	else if (timing == MMC_TIMING_UHS_SDR25)
+		ctrl_2 |= SDHCI_CTRL_UHS_SDR25;
+	else if ((timing == MMC_TIMING_UHS_SDR50) ||
+		(timing == MMC_TIMING_MMC_HS))
+		ctrl_2 |= SDHCI_CTRL_UHS_SDR50;
+	else if ((timing == MMC_TIMING_UHS_DDR50) ||
+		 (timing == MMC_TIMING_MMC_DDR52))
+		ctrl_2 |= SDHCI_CTRL_UHS_DDR50;
+	else if (timing == MMC_TIMING_MMC_HS400 ||
+		 timing == MMC_TIMING_MMC_HS400ES)
+		ctrl_2 |= SDHCI_CTRL_HS400 | SDHCI_CTRL_DRV_TYPE_A;
+
+	sdhci_writew(host, ctrl_2, SDHCI_HOST_CONTROL2);
+}
+
+#ifdef CONFIG_DM_MMC
+static bool sdhci_card_busy(struct udevice *dev)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static bool sdhci_card_busy(struct mmc *mmc)
+{
+#endif
+	struct sdhci_host *host = mmc->priv;
+	u32 present_state;
+
+	/* Check whether DAT[0] is 0 */
+	present_state = sdhci_readl(host, SDHCI_PRESENT_STATE);
+
+	return !(present_state & SDHCI_DATA_0_LVL);
+}
+
 #ifdef CONFIG_DM_MMC
 static int sdhci_set_ios(struct udevice *dev)
 {
@@ -436,8 +496,12 @@ static int sdhci_set_ios(struct mmc *mmc)
 	if (host->ops && host->ops->set_control_reg)
 		host->ops->set_control_reg(host);
 
-	if (mmc->clock != host->clock)
-		sdhci_set_clock(mmc, mmc->clock);
+	if (mmc->clock != host->clock) {
+		if (host->ops && host->ops->set_clock)
+			host->ops->set_clock(host, mmc->clock);
+		else
+			sdhci_set_clock(host, mmc->clock);
+	}
 
 	/* Set bus width */
 	ctrl = sdhci_readb(host, SDHCI_HOST_CONTROL);
@@ -456,16 +520,20 @@ static int sdhci_set_ios(struct mmc *mmc)
 			ctrl &= ~SDHCI_CTRL_4BITBUS;
 	}
 
-	if (mmc->clock > 26000000)
+	if (!(mmc->timing == MMC_TIMING_LEGACY) &&
+	    !(host->quirks & SDHCI_QUIRK_NO_HISPD_BIT))
 		ctrl |= SDHCI_CTRL_HISPD;
 	else
 		ctrl &= ~SDHCI_CTRL_HISPD;
 
-	if ((host->quirks & SDHCI_QUIRK_NO_HISPD_BIT) ||
-	    (host->quirks & SDHCI_QUIRK_BROKEN_HISPD_MODE))
-		ctrl &= ~SDHCI_CTRL_HISPD;
-
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
+
+	if ((mmc->timing != MMC_TIMING_LEGACY) &&
+	    (mmc->timing != MMC_TIMING_MMC_HS) &&
+	    (mmc->timing != MMC_TIMING_SD_HS))
+		sdhci_set_power(host, MMC_VDD_165_195_SHIFT);
+
+	sdhci_set_uhs_signaling(host);
 
 	/* If available, call the driver specific "post" set_ios() function */
 	if (host->ops && host->ops->set_ios_post)
@@ -503,6 +571,108 @@ static int sdhci_init(struct mmc *mmc)
 	return 0;
 }
 
+static int sdhci_send_tuning(struct sdhci_host *host, u32 opcode)
+{
+	struct mmc_cmd cmd;
+
+	cmd.cmdidx = opcode;
+	cmd.resp_type = MMC_RSP_R1;
+	cmd.cmdarg = 0;
+	/*
+	 * In response to CMD19, the card sends 64 bytes of tuning
+	 * block to the Host Controller. So we set the block size
+	 * to 64 here.
+	 */
+	if (opcode == MMC_SEND_TUNING_BLOCK_HS200 &&
+	    host->mmc->bus_width == MMC_BUS_WIDTH_8BIT)
+		sdhci_writew(host, SDHCI_MAKE_BLKSZ(7, 128), SDHCI_BLOCK_SIZE);
+	else
+		sdhci_writew(host, SDHCI_MAKE_BLKSZ(7, 64), SDHCI_BLOCK_SIZE);
+
+	/*
+	 * The tuning block is sent by the card to the host controller.
+	 * So we set the TRNS_READ bit in the Transfer Mode register.
+	 * This also takes care of setting DMA Enable and Multi Block
+	 * Select in the same register to 0.
+	 */
+	sdhci_writew(host, SDHCI_TRNS_READ, SDHCI_TRANSFER_MODE);
+
+#ifdef CONFIG_DM_MMC
+	return sdhci_send_command(host->mmc->dev, &cmd, NULL);
+#else
+	return sdhci_send_command(host->mmc, &cmd, NULL);
+#endif
+}
+
+#define MAX_TUNING_LOOP 40
+static int __sdhci_execute_tuning(struct sdhci_host *host, u32 opcode)
+{
+	int i;
+	int ret;
+
+	/*
+	 * Issue opcode repeatedly till Execute Tuning is set to 0 or the number
+	 * of loops reaches 40 times.
+	 */
+	for (i = 0; i < MAX_TUNING_LOOP; i++) {
+		u16 ctrl;
+
+		ret = sdhci_send_tuning(host, opcode);
+
+		if (ret)
+			return ret;
+
+		ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+		if (!(ctrl & SDHCI_CTRL_EXEC_TUNING)) {
+			if (ctrl & SDHCI_CTRL_TUNED_CLK)
+				/* Tuning successfully */
+				return 0;
+			break;
+		}
+	}
+
+	return -ETIMEDOUT;
+}
+
+#ifdef CONFIG_DM_MMC
+static int sdhci_execute_tuning(struct udevice *dev, u32 opcode)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static int sdhci_execute_tuning(struct mmc *mmc, u32 opcode)
+{
+#endif
+	struct sdhci_host *host = mmc->priv;
+	u16 ctrl;
+
+	/*
+	 * The Host Controller needs tuning in case of SDR104 and DDR50
+	 * mode, and for SDR50 mode when Use Tuning for SDR50 is set in
+	 * the Capabilities register.
+	 * If the Host Controller supports the HS200 mode then the
+	 * tuning function has to be executed.
+	 */
+	switch (mmc->timing) {
+	/* HS400 tuning is done in HS200 mode */
+	case MMC_TIMING_MMC_HS400:
+		return -EINVAL;
+	case MMC_TIMING_MMC_HS200:
+		/*
+		 * Periodic re-tuning for HS400 is not expected to be needed, so
+		 * disable it here.
+		 */
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ctrl = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	ctrl |= SDHCI_CTRL_EXEC_TUNING;
+	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
+
+	return __sdhci_execute_tuning(host, opcode);
+}
+
 #ifdef CONFIG_DM_MMC
 int sdhci_probe(struct udevice *dev)
 {
@@ -512,14 +682,18 @@ int sdhci_probe(struct udevice *dev)
 }
 
 const struct dm_mmc_ops sdhci_ops = {
+	.card_busy	= sdhci_card_busy,
 	.send_cmd	= sdhci_send_command,
 	.set_ios	= sdhci_set_ios,
+	.execute_tuning = sdhci_execute_tuning,
 };
 #else
 static const struct mmc_ops sdhci_ops = {
+	.card_busy	= sdhci_card_busy,
 	.send_cmd	= sdhci_send_command,
 	.set_ios	= sdhci_set_ios,
 	.init		= sdhci_init,
+	.execute_tuning = sdhci_execute_tuning,
 };
 #endif
 
@@ -594,17 +768,12 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 	if (host->quirks & SDHCI_QUIRK_BROKEN_VOLTAGE)
 		cfg->voltages |= host->voltages;
 
-	cfg->host_caps |= MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT;
+	cfg->host_caps = MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT;
 
 	/* Since Host Controller Version3.0 */
 	if (SDHCI_GET_VERSION(host) >= SDHCI_SPEC_300) {
 		if (!(caps & SDHCI_CAN_DO_8BIT))
 			cfg->host_caps &= ~MMC_MODE_8BIT;
-	}
-
-	if (host->quirks & SDHCI_QUIRK_BROKEN_HISPD_MODE) {
-		cfg->host_caps &= ~MMC_MODE_HS;
-		cfg->host_caps &= ~MMC_MODE_HS_52MHz;
 	}
 
 	if (host->host_caps)

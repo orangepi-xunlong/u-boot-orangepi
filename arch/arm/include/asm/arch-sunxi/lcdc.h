@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Sunxi platform timing controller register and constant defines
  *
  * (C) Copyright 2014 Hans de Goede <hdegoede@redhat.com>
  * (C) Copyright 2017 Jernej Skrabec <jernej.skrabec@siol.net>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LCDC_H
@@ -123,8 +124,5 @@ void lcdc_tcon0_mode_set(struct sunxi_lcdc_reg * const lcdc,
 void lcdc_tcon1_mode_set(struct sunxi_lcdc_reg * const lcdc,
 			 const struct display_timing *mode,
 			 bool ext_hvsync, bool is_composite);
-void lcdc_pll_set(struct sunxi_ccm_reg * const ccm, int tcon,
-		  int dotclock, int *clk_div, int *clk_double,
-		  bool is_composite);
 
 #endif /* _LCDC_H */

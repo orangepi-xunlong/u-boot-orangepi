@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * boot-common.c
  *
  * Common bootmode functions for omap based boards
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -98,7 +99,7 @@ void save_omap_boot_params(void)
 			sys_boot_device = 1;
 			break;
 #endif
-#if defined(BOOT_DEVICE_USBETH) && !defined(CONFIG_SPL_USB_ETHER)
+#if defined(BOOT_DEVICE_USBETH) && !defined(CONFIG_SPL_USBETH_SUPPORT)
 		case BOOT_DEVICE_USBETH:
 			sys_boot_device = 1;
 			break;
@@ -108,7 +109,7 @@ void save_omap_boot_params(void)
 			sys_boot_device = 1;
 			break;
 #endif
-#if defined(BOOT_DEVICE_DFU) && !defined(CONFIG_SPL_DFU_SUPPORT)
+#if defined(BOOT_DEVICE_DFU) && !defined(CONFIG_SPL_DFU)
 		case BOOT_DEVICE_DFU:
 			sys_boot_device = 1;
 			break;
@@ -195,10 +196,9 @@ u32 spl_boot_mode(const u32 boot_device)
 
 void spl_board_init(void)
 {
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
 	/* Prepare console output */
 	preloader_console_init();
-#endif
+
 #if defined(CONFIG_SPL_NAND_SUPPORT) || defined(CONFIG_SPL_ONENAND_SUPPORT)
 	gpmc_init();
 #endif

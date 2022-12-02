@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 /dts-v1/;
@@ -8,16 +9,43 @@
 #include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3399.dtsi"
 #include "rk3399-sdram-lpddr3-4GB-1600.dtsi"
+#include "rk3399-u-boot.dtsi"
+#include <linux/media-bus-format.h>
+#include <dt-bindings/input/input.h>
 
 / {
 	model = "Rockchip RK3399 Evaluation Board";
 	compatible = "rockchip,rk3399-evb", "rockchip,rk3399",
 		     "google,rk3399evb-rev2";
 
-	chosen {
-		stdout-path = &uart2;
-		u-boot,spl-boot-order = \
-			&sdhci, &sdmmc;
+	/* RK3399 evb board */
+	rk_key0 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,key";
+		status = "okay";
+		io-channels = <&saradc 1>;
+
+		vol-up-key0 {
+			u-boot,dm-pre-reloc;
+			linux,code = <KEY_VOLUMEUP>;
+			label = "volume up";
+			rockchip,adc_value = <1>;
+		};
+	};
+
+	/* RK3399PRO evb board */
+	rk_key1 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,key";
+		status = "okay";
+		io-channels = <&saradc 2>;
+
+		vol-up-key1 {
+			u-boot,dm-pre-reloc;
+			linux,code = <KEY_VOLUMEUP>;
+			label = "volume up";
+			rockchip,adc_value = <10>;
+		};
 	};
 
 	vdd_center: vdd-center {
@@ -59,6 +87,10 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vcc5v0_host";
 		gpio = <&gpio4 25 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		regulator-boot-on;
 	};
 
 	vcc5v0_typec0: vcc5v0-typec0-en {
@@ -125,13 +157,70 @@
 		status = "disabled";
 	};
 
-	panel:panel {
-		compatible = "simple-panel";
-		power-supply = <&vcc33_lcd>;
-		backlight = <&backlight>;
-		/*enable-gpios = <&gpio4 18 GPIO_ACTIVE_HIGH>;*/
-		status = "disabled";
+	vcc5v0_sys: vcc5v0-sys {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_sys";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
 	};
+
+	vcc_lcd: vcc-lcd {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_lcd";
+		gpio = <&gpio4 30 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <20000>;
+		enable-active-high;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		vin-supply = <&vcc5v0_sys>;
+	};
+
+	panel: panel {
+		compatible = "simple-panel";
+		backlight = <&backlight>;
+		power-supply = <&vcc_lcd>;
+		enable-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+		prepare-delay-ms = <20>;
+		enable-delay-ms = <20>;
+
+		display-timings {
+			native-mode = <&timing0>;
+
+			timing0: timing0 {
+				clock-frequency = <200000000>;
+				hactive = <1536>;
+				vactive = <2048>;
+				hfront-porch = <12>;
+				hsync-len = <16>;
+				hback-porch = <48>;
+				vfront-porch = <8>;
+				vsync-len = <4>;
+				vback-porch = <8>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		ports {
+			panel_in: endpoint {
+				remote-endpoint = <&edp_out>;
+			};
+		};
+	};
+
+};
+
+&crypto {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
 };
 
 &emmc_phy {
@@ -155,7 +244,6 @@
 };
 
 &sdmmc {
-	u-boot,dm-pre-reloc;
 	bus-width = <4>;
 	status = "okay";
 };
@@ -168,7 +256,11 @@
 	status = "okay";
 };
 
-&uart2 {
+&tcphy0 {
+	status = "okay";
+};
+
+&tcphy1 {
 	status = "okay";
 };
 
@@ -180,8 +272,19 @@
 	status = "okay";
 };
 
-&dwc3_typec0 {
-	vbus-supply = <&vcc5v0_typec0>;
+&usbdrd3_0 {
+	status = "okay";
+};
+
+&usbdrd3_1 {
+	status = "okay";
+};
+
+&usbdrd_dwc3_0 {
+	status = "okay";
+};
+
+&usbdrd_dwc3_1 {
 	status = "okay";
 };
 
@@ -193,17 +296,11 @@
 	status = "okay";
 };
 
-&dwc3_typec1 {
-	vbus-supply = <&vcc5v0_typec1>;
-	status = "okay";
-};
-
 &i2c0 {
 	status = "okay";
 	clock-frequency = <400000>;
 	i2c-scl-falling-time-ns = <50>;
 	i2c-scl-rising-time-ns = <100>;
-	u-boot,dm-pre-reloc;
 
 	rk808: pmic@1b {
 		compatible = "rockchip,rk808";
@@ -215,7 +312,6 @@
 		reg = <0x1b>;
 		rockchip,system-power-controller;
 		#clock-cells = <1>;
-		u-boot,dm-pre-reloc;
 		status = "okay";
 
 		vcc12-supply = <&vcc3v3_sys>;
@@ -280,5 +376,41 @@
 	pinctrl-0 = <&rgmii_pins>;
 	tx_delay = <0x28>;
 	rx_delay = <0x11>;
+	status = "okay";
+};
+
+&backlight {
+	status = "okay";
+	enable-gpios = <&gpio4 29 GPIO_ACTIVE_HIGH>;
+};
+
+&route_edp {
+	status = "okay";
+};
+
+&edp_in_vopl {
+	status = "disabled";
+};
+
+&edp_in_vopb {
+	status = "okay";
+};
+
+&edp {
+	status = "okay";
+	force-hpd;
+
+	ports {
+		port@1 {
+			reg = <1>;
+
+			edp_out: endpoint {
+				remote-endpoint = <&panel_in>;
+			};
+		};
+	};
+};
+
+&vopb {
 	status = "okay";
 };

@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013 Atmel Corporation
  *		      Bo Shen <voice.shen@atmel.com>
  *
  * Copyright (C) 2015 Atmel Corporation
  *		      Wenyou Yang <wenyou.yang@atmel.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ATMEL_MPDDRC_H__
@@ -95,10 +96,6 @@ int ddr3_init(const unsigned int base,
 #define ATMEL_MPDDRC_CR_DLL_RESET_ENABLED	(0x1 << 7)
 #define ATMEL_MPDDRC_CR_DIC_DS			(0x1 << 8)
 #define ATMEL_MPDDRC_CR_DIS_DLL			(0x1 << 9)
-#define ATMEL_MPDDRC_CR_ZQ_INIT			(0x0 << 10)
-#define ATMEL_MPDDRC_CR_ZQ_LONG			(0x1 << 10)
-#define ATMEL_MPDDRC_CR_ZQ_SHORT		(0x2 << 10)
-#define ATMEL_MPDDRC_CR_ZQ_RESET		(0x3 << 10)
 #define ATMEL_MPDDRC_CR_OCD_DEFAULT		(0x7 << 12)
 #define ATMEL_MPDDRC_CR_DQMS_SHARED		(0x1 << 16)
 #define ATMEL_MPDDRC_CR_ENRDM_ON		(0x1 << 17)

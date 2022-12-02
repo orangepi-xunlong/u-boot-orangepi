@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2015
  * (C) Copyright 2014
@@ -8,6 +7,8 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6Q SabreSD board.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __ARISTAINETOS_COMMON_CONFIG_H
 #define __ARISTAINETOS_COMMON_CONFIG_H
@@ -32,6 +33,7 @@
 #define CONFIG_FEC_MXC_PHYADDR		0
 
 #define CONFIG_SPI_FLASH_MTD
+#define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_SPEED		20000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define CONFIG_SYS_SPI_ST_ENABLE_WP_PIN
@@ -193,8 +195,6 @@
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* UBI support */
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_MTD_DEVICE
 
 #define CONFIG_HW_WATCHDOG
 #define CONFIG_IMX_WATCHDOG
@@ -208,6 +208,7 @@
 #define CONFIG_BMP_16BPP
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IPUV3_CLK 198000000
 #define CONFIG_IMX_VIDEO_SKIP
 
 #define CONFIG_PWM_IMX

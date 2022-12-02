@@ -65,14 +65,6 @@ config VIDEO_BPP32
 	  this option, such displays will not be supported and console output
 	  will be empty.
 
-config VIDEO_ANSI
-	bool "Support ANSI escape sequences in video console"
-	depends on DM_VIDEO
-	default y if DM_VIDEO
-	help
-	  Enable ANSI escape sequence decoding for a more fully functional
-	  console.
-
 config CONSOLE_NORMAL
 	bool "Support a simple text console"
 	depends on DM_VIDEO
@@ -127,14 +119,6 @@ config SYS_WHITE_ON_BLACK
 	 better in low-light situations or to reduce eye strain in some
 	 cases.
 
-config NO_FB_CLEAR
-	bool "Skip framebuffer clear"
-	help
-	  If firmware (whatever loads u-boot) has already put a splash image
-	  on screen, you might want to preserve it until whatever u-boot
-	  loads takes over the screen.  This, for example, can be used to
-	  keep splash image on screen until grub graphical boot menu starts.
-
 source "drivers/video/fonts/Kconfig"
 
 config VIDCONSOLE_AS_LCD
@@ -174,7 +158,7 @@ config FRAMEBUFFER_SET_VESA_MODE
 
 choice
 	prompt "framebuffer graphics resolution"
-	default FRAMEBUFFER_VESA_MODE_118
+	default FRAMEBUFFER_VESA_MODE_117
 	depends on FRAMEBUFFER_SET_VESA_MODE
 	help
 	  This option sets the resolution used for the U-Boot framebuffer (and
@@ -463,6 +447,7 @@ config VIDEO_FSL_DCU_MAX_FB_SIZE_MB
 	 Controller Unit (DCU4).
 
 source "drivers/video/rockchip/Kconfig"
+source "drivers/video/drm/Kconfig"
 
 config VIDEO_SANDBOX_SDL
 	bool "Enable sandbox video console using SDL"
@@ -472,8 +457,6 @@ config VIDEO_SANDBOX_SDL
 	  appears as an SDL (Simple DirectMedia Layer) window. This is a
 	  console device and can display stdout output. Within U-Boot is is
 	  a normal bitmap display and can display images as well as text.
-
-source "drivers/video/stm32/Kconfig"
 
 config VIDEO_TEGRA20
 	bool "Enable LCD support on Tegra20"
@@ -640,24 +623,9 @@ config VIDEO_DW_HDMI
 	  rather requires a SoC-specific glue driver to call it), it
 	  can not be enabled from the configuration menu.
 
-config VIDEO_SIMPLE
-	bool "Simple display driver for preconfigured display"
+config ROCKCHIP_EINK
+	bool "enable rockchip eink driver"
 	help
-	  Enables a simple generic display driver which utilizes the
-	  simple-framebuffer devicetree bindings.
-
-	  This driver assumes that the display hardware has been initialized
-	  before u-boot starts, and u-boot will simply render to the pre-
-	  allocated frame buffer surface.
-
-config VIDEO_DT_SIMPLEFB
-	bool "Enable SimpleFB support for passing framebuffer to OS"
-	help
-	  Enables the code to pass the framebuffer to the kernel as a
-	  simple framebuffer in the device tree.
-	  The video output is initialized by U-Boot, and kept by the
-	  kernel.
-
-source "drivers/video/sunxi/Kconfig"
-
+	  Enable rockchip eink driver
+source "drivers/video/rk_eink/Kconfig"
 endmenu

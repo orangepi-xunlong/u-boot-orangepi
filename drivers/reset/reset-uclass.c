@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2016, NVIDIA CORPORATION.
+ *
+ * SPDX-License-Identifier: GPL-2.0
  */
 
 #include <common.h>
@@ -8,6 +9,8 @@
 #include <fdtdec.h>
 #include <reset.h>
 #include <reset-uclass.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static inline struct reset_ops *reset_dev_ops(struct udevice *dev)
 {

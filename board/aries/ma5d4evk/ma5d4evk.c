@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -29,8 +30,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static u8 boot_mode_sf;
 
-/* FIXME gpio code here need to handle through DM_GPIO */
-#ifndef CONFIG_DM_SPI
+#ifdef CONFIG_ATMEL_SPI
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
 	return bus == 0 && cs == 0;
@@ -57,7 +57,7 @@ static void ma5d4evk_spi0_hw_init(void)
 	/* Enable clock */
 	at91_periph_clk_enable(ATMEL_ID_SPI0);
 }
-#endif /* CONFIG_DM_SPI */
+#endif /* CONFIG_ATMEL_SPI */
 
 #ifdef CONFIG_CMD_USB
 static void ma5d4evk_usb_hw_init(void)
@@ -292,7 +292,7 @@ int board_init(void)
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 
-#ifndef CONFIG_DM_SPI
+#ifdef CONFIG_ATMEL_SPI
 	ma5d4evk_spi0_hw_init();
 #endif
 #ifdef CONFIG_GENERIC_ATMEL_MCI
@@ -358,7 +358,7 @@ int board_eth_init(bd_t *bis)
 #ifdef CONFIG_SPL_BUILD
 void spl_board_init(void)
 {
-#ifndef CONFIG_DM_SPI
+#ifdef CONFIG_ATMEL_SPI
 	ma5d4evk_spi0_hw_init();
 #endif
 #ifdef CONFIG_GENERIC_ATMEL_MCI

@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004 Freescale Semiconductor.
  * Copyright (C) 2003 Motorola Inc.
  * Xianghua Xiao (x.xiao@motorola.com)
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*

@@ -1,6 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0
 # Copyright (c) 2015 Stephen Warren
 # Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-2.0
 
 # Generate an HTML-formatted log file containing multiple streams of data,
 # each represented in a well-delineated/-structured fashion.
@@ -223,7 +224,6 @@ class Logfile(object):
         self.timestamp_start = self._get_time()
         self.timestamp_prev = self.timestamp_start
         self.timestamp_blocks = []
-        self.seen_warning = False
 
         shutil.copy(mod_dir + '/multiplexed_log.css', os.path.dirname(fn))
         self.f.write('''\
@@ -252,7 +252,6 @@ $(document).ready(function () {
     passed_bcs = passed_bcs.not(":has(.status-xfail)");
     passed_bcs = passed_bcs.not(":has(.status-xpass)");
     passed_bcs = passed_bcs.not(":has(.status-skipped)");
-    passed_bcs = passed_bcs.not(":has(.status-warning)");
     // Hide the passed blocks
     passed_bcs.addClass("hidden");
     // Flip the expand/contract button hiding for those blocks.
@@ -371,13 +370,13 @@ $(document).ready(function () {
 
         self._terminate_stream()
         self.f.write('<div class="' + note_type + '">\n')
+        if anchor:
+            self.f.write('<a href="#%s">\n' % anchor)
         self.f.write('<pre>')
-        if anchor:
-            self.f.write('<a href="#%s">' % anchor)
         self.f.write(self._escape(msg))
-        if anchor:
-            self.f.write('</a>')
         self.f.write('\n</pre>\n')
+        if anchor:
+            self.f.write('</a>\n')
         self.f.write('</div>\n')
 
     def start_section(self, marker, anchor=None):
@@ -479,22 +478,7 @@ $(document).ready(function () {
             Nothing.
         """
 
-        self.seen_warning = True
         self._note("warning", msg)
-
-    def get_and_reset_warning(self):
-        """Get and reset the log warning flag.
-
-        Args:
-            None
-
-        Returns:
-            Whether a warning was seen since the last call.
-        """
-
-        ret = self.seen_warning
-        self.seen_warning = False
-        return ret
 
     def info(self, msg):
         """Write an informational note to the log file.
@@ -557,19 +541,6 @@ $(document).ready(function () {
         """
 
         self._note("status-pass", msg, anchor)
-
-    def status_warning(self, msg, anchor=None):
-        """Write a note to the log file describing test(s) which passed.
-
-        Args:
-            msg: A message describing the passed test(s).
-            anchor: Optional internal link target.
-
-        Returns:
-            Nothing.
-        """
-
-        self._note("status-warning", msg, anchor)
 
     def status_skipped(self, msg, anchor=None):
         """Write a note to the log file describing skipped test(s).

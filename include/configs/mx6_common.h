@@ -1,15 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef __MX6_COMMON_H
 #define __MX6_COMMON_H
 
-#if (defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL))
-#define CONFIG_SC_TIMER_CLK 8000000 /* 8Mhz */
-#define COUNTER_FREQUENCY CONFIG_SC_TIMER_CLK
-#else
+#ifndef CONFIG_MX6UL
 #ifndef CONFIG_SYS_L2CACHE_OFF
 #define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE	L2_PL310_BASE
@@ -39,26 +37,43 @@
 #define CONFIG_REVISION_TAG
 
 /* Boot options */
-#if defined(CONFIG_MX6SL) || defined(CONFIG_MX6SLL) || \
-	defined(CONFIG_MX6SX) || \
-	defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+#if (defined(CONFIG_MX6SX) || defined(CONFIG_MX6SL) || \
+	defined(CONFIG_MX6UL) || defined(CONFIG_MX6SLL))
 #define CONFIG_LOADADDR		0x82000000
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0x87800000
+#endif
 #else
 #define CONFIG_LOADADDR		0x12000000
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0x17800000
+#endif
 #endif
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
+#define CONFIG_CONS_INDEX       1
 
 /* Filesystems and image support */
+#define CONFIG_SUPPORT_RAW_INITRD
 
 /* Miscellaneous configurable options */
+#define CONFIG_SYS_LONGHELP
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE	512
 #define CONFIG_SYS_MAXARGS	32
 
+#ifndef CONFIG_SYS_DCACHE_OFF
+#endif
+
+/* GPIO */
+#define CONFIG_MXC_GPIO
+
 /* MMC */
 #define CONFIG_BOUNCE_BUFFER
+#define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 
 /* Fuses */

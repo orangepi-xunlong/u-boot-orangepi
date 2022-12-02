@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2013-2017 Altera Corporation <www.altera.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -58,8 +59,7 @@ int set_cpu_clk_info(void)
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
-static int do_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	cm_print_clock_quick_summary();
 	return 0;
@@ -70,4 +70,3 @@ U_BOOT_CMD(
 	"display clocks",
 	""
 );
-#endif

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Semihalf
  *
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
@@ -91,6 +92,7 @@ static const table_entry_t uimage_arch[] = {
 
 static const table_entry_t uimage_os[] = {
 	{	IH_OS_INVALID,	"invalid",	"Invalid OS",		},
+	{       IH_OS_OP_TEE, "op-tee", "OP-TEE"  },
 	{       IH_OS_ARM_TRUSTED_FIRMWARE, "arm-trusted-firmware", "ARM Trusted Firmware"  },
 	{	IH_OS_LINUX,	"linux",	"Linux",		},
 #if defined(CONFIG_LYNXKDI) || defined(USE_HOSTCC)
@@ -100,7 +102,6 @@ static const table_entry_t uimage_os[] = {
 	{	IH_OS_OSE,	"ose",		"Enea OSE",		},
 	{	IH_OS_PLAN9,	"plan9",	"Plan 9",		},
 	{	IH_OS_RTEMS,	"rtems",	"RTEMS",		},
-	{	IH_OS_TEE,	"tee",		"Trusted Execution Environment" },
 	{	IH_OS_U_BOOT,	"u-boot",	"U-Boot",		},
 	{	IH_OS_VXWORKS,	"vxworks",	"VxWorks",		},
 #if defined(CONFIG_CMD_ELF) || defined(USE_HOSTCC)
@@ -162,7 +163,7 @@ static const table_entry_t uimage_type[] = {
 	{       IH_TYPE_TEE,        "tee",        "Trusted Execution Environment Image",},
 	{	IH_TYPE_FIRMWARE_IVT, "firmware_ivt", "Firmware with HABv4 IVT" },
 	{       IH_TYPE_PMMC,        "pmmc",        "TI Power Management Micro-Controller Firmware",},
-	{	IH_TYPE_STM32IMAGE, "stm32image", "STMicroelectronics STM32 Image" },
+	{	IH_TYPE_RKNAND,     "rknand",     "Rockchip NAND Boot Image" },
 	{	-1,		    "",		  "",			},
 };
 
@@ -192,6 +193,26 @@ static const struct table_info table_info[IH_COUNT] = {
 /*****************************************************************************/
 /* Legacy format routines */
 /*****************************************************************************/
+#ifndef USE_HOSTCC
+#ifndef CONFIG_SPL_BUILD
+uint32_t image_get_load(const image_header_t *hdr)
+{
+	uint32_t load = uimage_to_cpu(hdr->ih_load);
+
+	return (load == IMAGE_PARAM_INVAL) ?
+		env_get_ulong("kernel_addr_r", 16, 0) : load;
+}
+
+uint32_t image_get_ep(const image_header_t *hdr)
+{
+	uint32_t ep = uimage_to_cpu(hdr->ih_ep);
+
+	return (ep == IMAGE_PARAM_INVAL) ?
+		env_get_ulong("kernel_addr_r", 16, 0) : ep;
+}
+#endif
+#endif
+
 int image_check_hcrc(const image_header_t *hdr)
 {
 	ulong hcrc;
@@ -239,7 +260,7 @@ ulong image_multi_count(const image_header_t *hdr)
 	size = (uint32_t *)image_get_data(hdr);
 
 	/* count non empty slots */
-	for (i = 0; size[i]; ++i)
+	for (i = 0; size[i] != IMAGE_PARAM_INVAL; ++i)
 		count++;
 
 	return count;
@@ -1162,6 +1183,9 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 			*initrd_end = rd_data + rd_len;
 			lmb_reserve(lmb, rd_data, rd_len);
 		} else {
+			if (initrd_high && env_get_yesno("bootm-reloc-at"))
+				initrd_high += rd_len;
+
 			if (initrd_high)
 				*initrd_start = (ulong)lmb_alloc_base(lmb,
 						rd_len, 0x1000, initrd_high);
@@ -1188,8 +1212,7 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 			 * AMP boot scenarios in which we might not be
 			 * HW cache coherent
 			 */
-			flush_cache((unsigned long)*initrd_start,
-				    ALIGN(rd_len, ARCH_DMA_MINALIGN));
+			flush_cache((unsigned long)*initrd_start, rd_len);
 #endif
 			puts("OK\n");
 		}
@@ -1218,7 +1241,7 @@ int boot_get_setup(bootm_headers_t *images, uint8_t arch,
 }
 
 #if IMAGE_ENABLE_FIT
-#if defined(CONFIG_FPGA)
+#if defined(CONFIG_FPGA) && defined(CONFIG_FPGA_XILINX)
 int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 		  uint8_t arch, const ulong *ld_start, ulong * const ld_len)
 {
@@ -1229,6 +1252,8 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 	const char *uname, *name;
 	int err;
 	int devnum = 0; /* TODO support multi fpga platforms */
+	const fpga_desc * const desc = fpga_get_desc(devnum);
+	xilinx_desc *desc_xilinx = desc->devdesc;
 
 	/* Check to see if the images struct has a FIT configuration */
 	if (!genimg_has_config(images)) {
@@ -1273,7 +1298,7 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 			return fit_img_result;
 		}
 
-		if (!fpga_is_partial_data(devnum, img_len)) {
+		if (img_len >= desc_xilinx->size) {
 			name = "full";
 			err = fpga_loadbitstream(devnum, (char *)img_data,
 						 img_len, BIT_FULL);
@@ -1498,14 +1523,11 @@ int image_setup_linux(bootm_headers_t *images)
 		}
 	}
 
-#if !defined(CONFIG_SUNXI_FDT_ADDR)
-	/*manually relocated, pass*/
 	if (IMAGE_ENABLE_OF_LIBFDT) {
 		ret = boot_relocate_fdt(lmb, of_flat_tree, &of_size);
 		if (ret)
 			return ret;
 	}
-#endif
 
 	if (IMAGE_ENABLE_OF_LIBFDT && of_size) {
 		ret = image_setup_libfdt(images, *of_flat_tree, of_size, lmb);

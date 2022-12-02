@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2017 Texas Instruments
  * Written by Franklin Cooper Jr. <fcooper@ti.com>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 /**

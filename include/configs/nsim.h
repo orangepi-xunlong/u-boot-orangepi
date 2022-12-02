@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013-2016 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_NSIM_H_
@@ -29,10 +30,13 @@
  *
  */
 #define CONFIG_ARC_SERIAL
+#define CONFIG_ARC_UART_BASE		0xC0FC1000
 
 /*
  * Command line configuration
  */
+#define CONFIG_AUTO_COMPLETE
+#define CONFIG_CMDLINE_EDITING
 
 /*
  * Environment settings
@@ -49,5 +53,6 @@
 /*
  * Console configuration
  */
+#define CONFIG_SYS_LONGHELP
 
 #endif /* _CONFIG_NSIM_H_ */

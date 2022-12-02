@@ -7,43 +7,10 @@ config MV88E6352_SWITCH
 
 menuconfig PHYLIB
 	bool "Ethernet PHY (physical media interface) support"
-	depends on NET
 	help
 	  Enable Ethernet PHY (physical media interface) support.
 
 if PHYLIB
-
-config PHY_ADDR_ENABLE
-	bool "Limit phy address"
-	default y if ARCH_SUNXI
-	help
-	  Select this if you want to control which phy address is used
-
-if PHY_ADDR_ENABLE
-config PHY_ADDR
-	int "PHY address"
-	default 1 if ARCH_SUNXI
-	default 0
-	help
-	  The address of PHY on MII bus. Usually in range of 0 to 31.
-endif
-
-config B53_SWITCH
-	bool "Broadcom BCM53xx (RoboSwitch) Ethernet switch PHY support."
-	help
-	  Enable support for Broadcom BCM53xx (RoboSwitch) Ethernet switches.
-	  This currently supports BCM53125 and similar models.
-
-if B53_SWITCH
-
-config B53_CPU_PORT
-	int "CPU port"
-	default 8
-
-config B53_PHY_PORTS
-	hex "Bitmask of PHY ports"
-
-endif # B53_SWITCH
 
 config MV88E61XX_SWITCH
 	bool "Marvel MV88E61xx Ethernet switch PHY support."
@@ -87,9 +54,6 @@ config PHY_LXT
 
 config PHY_MARVELL
 	bool "Marvell Ethernet PHYs support"
-
-config PHY_MESON_GXL
-	bool "Amlogic Meson GXL Internal PHY support"
 
 config PHY_MICREL
 	bool "Micrel Ethernet PHYs support"
@@ -147,15 +111,8 @@ config PHY_NATSEMI
 config PHY_REALTEK
 	bool "Realtek Ethernet PHYs support"
 
-config RTL8211E_PINE64_GIGABIT_FIX
-	bool "Fix gigabit throughput on some Pine64+ models"
-	depends on PHY_REALTEK
-	help
-	  Configure the Realtek RTL8211E found on some Pine64+ models differently to
-	  fix throughput on Gigabit links, turning off all internal delays in the
-	  process. The settings that this touches are not documented in the CONFREG
-	  section of the RTL8211E datasheet, but come from Realtek by way of the
-	  Pine64 engineering team.
+config PHY_RK630
+	bool "Rockchip RK630 Ethernet PHYs support"
 
 config RTL8211X_PHY_FORCE_MASTER
 	bool "Ethernet PHY RTL8211x: force 1000BASE-T master mode"

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * drivers/mmc/sh-sdhi.h
  *
@@ -6,6 +5,8 @@
  *
  * Copyright (C) 2013-2017 Renesas Electronics Corporation
  * Copyright (C) 2008-2009 Renesas Solutions Corp.
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #ifndef _SH_SDHI_H

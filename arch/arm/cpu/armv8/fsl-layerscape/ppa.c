@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 NXP Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <malloc.h>
@@ -34,7 +35,6 @@ int ppa_init(void)
 	unsigned int el = current_el();
 	void *ppa_fit_addr;
 	u32 *boot_loc_ptr_l, *boot_loc_ptr_h;
-	u32 *loadable_l, *loadable_h;
 	int ret;
 
 #ifdef CONFIG_CHAIN_OF_TRUST
@@ -240,9 +240,9 @@ int ppa_init(void)
 					   PPA_KEY_HASH,
 					   &ppa_img_addr);
 		if (ret != 0)
-			printf("SEC firmware(s) validation failed\n");
+			printf("PPA validation failed\n");
 		else
-			printf("SEC firmware(s) validation Successful\n");
+			printf("PPA validation Successful\n");
 	}
 #if defined(CONFIG_SYS_LS_PPA_FW_IN_MMC) || \
 	defined(CONFIG_SYS_LS_PPA_FW_IN_NAND)
@@ -254,24 +254,15 @@ int ppa_init(void)
 	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
 	boot_loc_ptr_l = &gur->bootlocptrl;
 	boot_loc_ptr_h = &gur->bootlocptrh;
-
-	/* Assign addresses to loadable ptrs */
-	loadable_l = &gur->scratchrw[4];
-	loadable_h = &gur->scratchrw[5];
 #elif defined(CONFIG_FSL_LSCH2)
 	struct ccsr_scfg __iomem *scfg = (void *)(CONFIG_SYS_FSL_SCFG_ADDR);
 	boot_loc_ptr_l = &scfg->scratchrw[1];
 	boot_loc_ptr_h = &scfg->scratchrw[0];
-
-	/* Assign addresses to loadable ptrs */
-	loadable_l = &scfg->scratchrw[2];
-	loadable_h = &scfg->scratchrw[3];
 #endif
 
 	debug("fsl-ppa: boot_loc_ptr_l = 0x%p, boot_loc_ptr_h =0x%p\n",
 	      boot_loc_ptr_l, boot_loc_ptr_h);
-	ret = sec_firmware_init(ppa_fit_addr, boot_loc_ptr_l, boot_loc_ptr_h,
-				loadable_l, loadable_h);
+	ret = sec_firmware_init(ppa_fit_addr, boot_loc_ptr_l, boot_loc_ptr_h);
 
 #if defined(CONFIG_SYS_LS_PPA_FW_IN_MMC) || \
 	defined(CONFIG_SYS_LS_PPA_FW_IN_NAND)

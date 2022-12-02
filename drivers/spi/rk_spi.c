@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * spi driver for rockchip
  *
@@ -6,6 +5,8 @@
  *
  * (C) Copyright 2008-2013 Rockchip Electronics
  * Peter, Software Engineering, <superpeter.cai@gmail.com>.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -21,8 +22,14 @@
 #include <dm/pinctrl.h>
 #include "rk_spi.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 /* Change to 1 to output registers at the start of each transaction */
 #define DEBUG_RK_SPI	0
+
+struct rockchip_spi_quirks {
+	u32 max_baud_div_in_cpha;
+};
 
 struct rockchip_spi_platdata {
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
@@ -44,11 +51,16 @@ struct rockchip_spi_priv {
 	u8 n_bytes;
 	unsigned int speed_hz;
 	unsigned int last_speed_hz;
-	unsigned int tmode;
 	uint input_rate;
+	uint cr0;
+	u32 rsd;			/* Rx sample delay cycles */
+
+	/* quirks */
+	u32 max_baud_div_in_cpha;
 };
 
 #define SPI_FIFO_DEPTH		32
+#define SPI_CR0_RSD_MAX		0x3
 
 static void rkspi_dump_regs(struct rockchip_spi *regs)
 {
@@ -100,6 +112,12 @@ static void rkspi_set_clk(struct rockchip_spi_priv *priv, uint speed)
 
 	debug("spi speed %u, div %u\n", speed, clk_div);
 
+	/* the maxmum divisor is 4 for mode1/3 spi master case for quirks */
+	if (priv->max_baud_div_in_cpha && clk_div > priv->max_baud_div_in_cpha && priv->mode & SPI_CPHA) {
+		clk_div = priv->max_baud_div_in_cpha;
+		clk_set_rate(&priv->clk, 4 * speed);
+		speed = clk_get_rate(&priv->clk);
+	}
 	clrsetbits_le32(&priv->regs->baudr, 0xffff, clk_div);
 	priv->last_speed_hz = speed;
 }
@@ -179,6 +197,7 @@ static int rockchip_spi_ofdata_to_platdata(struct udevice *bus)
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	struct rockchip_spi_platdata *plat = dev_get_platdata(bus);
 	struct rockchip_spi_priv *priv = dev_get_priv(bus);
+	u32 rsd_nsecs;
 	int ret;
 
 	plat->base = dev_read_addr(bus);
@@ -197,9 +216,26 @@ static int rockchip_spi_ofdata_to_platdata(struct udevice *bus)
 	plat->activate_delay_us =
 		dev_read_u32_default(bus, "spi-activate-delay", 0);
 
-	debug("%s: base=%x, max-frequency=%d, deactivate_delay=%d\n",
+	rsd_nsecs = dev_read_u32_default(bus, "rx-sample-delay-ns", 0);
+	if (rsd_nsecs > 0) {
+		u32 spi_clk, rsd;
+
+		spi_clk = clk_get_rate(&priv->clk);
+		/* rx sample delay is expressed in parent clock cycles (max 3) */
+		rsd = DIV_ROUND_CLOSEST(rsd_nsecs * (spi_clk >> 8), 1000000000 >> 8);
+		if (!rsd) {
+			pr_err("SPI spi_clk %dHz are too slow to express %u ns delay\n", spi_clk, rsd_nsecs);
+		} else if (rsd > SPI_CR0_RSD_MAX) {
+			rsd = SPI_CR0_RSD_MAX;
+			pr_err("SPI spi_clk %dHz are too fast to express %u ns delay, clamping at %u ns\n",
+			       spi_clk, rsd_nsecs, SPI_CR0_RSD_MAX * 1000000000U / spi_clk);
+		}
+		priv->rsd = rsd;
+	}
+
+	debug("%s: base=%x, max-frequency=%d, deactivate_delay=%d rsd=%d\n",
 	      __func__, (uint)plat->base, plat->frequency,
-	      plat->deactivate_delay_us);
+	      plat->deactivate_delay_us, priv->rsd);
 #endif
 
 	return 0;
@@ -237,6 +273,7 @@ static int rockchip_spi_probe(struct udevice *bus)
 {
 	struct rockchip_spi_platdata *plat = dev_get_platdata(bus);
 	struct rockchip_spi_priv *priv = dev_get_priv(bus);
+	struct rockchip_spi_quirks *quirks_cfg;
 	int ret;
 
 	debug("%s: probe\n", __func__);
@@ -264,7 +301,9 @@ static int rockchip_spi_probe(struct udevice *bus)
 	priv->input_rate = ret;
 	debug("%s: rate = %u\n", __func__, priv->input_rate);
 	priv->bits_per_word = 8;
-	priv->tmode = TMOD_TR; /* Tx & Rx */
+	quirks_cfg = (struct rockchip_spi_quirks *)dev_get_driver_data(bus);
+	if (quirks_cfg)
+		priv->max_baud_div_in_cpha = quirks_cfg->max_baud_div_in_cpha;
 
 	return 0;
 }
@@ -328,14 +367,31 @@ static int rockchip_spi_claim_bus(struct udevice *dev)
 	ctrlr0 |= spi_tf << HALF_WORD_TX_SHIFT;
 
 	/* Rxd Sample Delay */
-	ctrlr0 |= 0 << RXDSD_SHIFT;
+	ctrlr0 |= priv->rsd << RXDSD_SHIFT;
 
 	/* Frame Format */
 	ctrlr0 |= FRF_SPI << FRF_SHIFT;
 
-	/* Tx and Rx mode */
-	ctrlr0 |= (priv->tmode & TMOD_MASK) << TMOD_SHIFT;
+	/* Save static configuration */
+	priv->cr0 = ctrlr0;
 
+	writel(ctrlr0, &regs->ctrlr0);
+
+	return 0;
+}
+
+static int rockchip_spi_config(struct rockchip_spi_priv *priv, const void *dout)
+{
+	struct rockchip_spi *regs = priv->regs;
+	uint ctrlr0 = priv->cr0;
+	u32 tmod;
+
+	if (dout)
+		tmod = TMOD_TR;
+	else
+		tmod = TMOD_RO;
+
+	ctrlr0 |= (tmod & TMOD_MASK) << TMOD_SHIFT;
 	writel(ctrlr0, &regs->ctrlr0);
 
 	return 0;
@@ -364,6 +420,8 @@ static int rockchip_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	int toread, towrite;
 	int ret;
 
+	rockchip_spi_config(priv, dout);
+
 	debug("%s: dout=%p, din=%p, len=%x, flags=%lx\n", __func__, dout, din,
 	      len, flags);
 	if (DEBUG_RK_SPI)
@@ -386,7 +444,8 @@ static int rockchip_spi_xfer(struct udevice *dev, unsigned int bitlen,
 			u32 status = readl(&regs->sr);
 
 			if (towrite && !(status & SR_TF_FULL)) {
-				writel(out ? *out++ : 0, regs->txdr);
+				if (out)
+					writel(out ? *out++ : 0, regs->txdr);
 				towrite--;
 			}
 			if (toread && !(status & SR_RF_EMPT)) {
@@ -450,6 +509,8 @@ static const struct udevice_id rockchip_spi_ids[] = {
 	{ .compatible = "rockchip,rk3288-spi" },
 	{ .compatible = "rockchip,rk3368-spi" },
 	{ .compatible = "rockchip,rk3399-spi" },
+	{ .compatible = "rockchip,rk3066-spi" },
+	{ .compatible = "rockchip,rk3328-spi" },
 	{ }
 };
 

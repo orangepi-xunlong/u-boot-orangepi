@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Based on corenet_ds.c
+ *
+ * SPDX-License-Identifier:    GPL-2.0+
  */
 
 #include <common.h>
@@ -20,6 +21,8 @@
 
 #include "cyrus.h"
 #include "../common/eeprom.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define GPIO_OPENDRAIN 0x30000000
 #define GPIO_DIR       0x3c000004
@@ -66,7 +69,7 @@ int board_early_init_r(void)
 	set_liodns();
 
 #ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_qbman_portals();
+	setup_portals();
 #endif
 	print_lbc_regs();
 	return 0;

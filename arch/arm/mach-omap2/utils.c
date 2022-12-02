@@ -1,14 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2011 Linaro Limited
  * Aneesh V <aneesh@ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
-#include <environment.h>
 #include <asm/setup.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/omap_common.h>
-
 static void do_cancel_out(u32 *num, u32 *den, u32 factor)
 {
 	while (1) {
@@ -28,9 +26,6 @@ static void omap_set_fastboot_cpu(void)
 	u32 cpu_rev = omap_revision();
 
 	switch (cpu_rev) {
-	case DRA762_ES1_0:
-		cpu = "DRA762";
-		break;
 	case DRA752_ES1_0:
 	case DRA752_ES1_1:
 	case DRA752_ES2_0:
@@ -38,7 +33,6 @@ static void omap_set_fastboot_cpu(void)
 		break;
 	case DRA722_ES1_0:
 	case DRA722_ES2_0:
-	case DRA722_ES2_1:
 		cpu = "DRA722";
 		break;
 	default:
@@ -97,10 +91,11 @@ static u32 omap_mmc_get_part_size(const char *part)
 		return 0;
 	}
 
-	/* Check only for EFI (GPT) partition table */
-	res = part_get_info_by_name_type(dev_desc, part, &info, PART_TYPE_EFI);
-	if (res < 0)
+	res = part_get_info_by_name(dev_desc, part, &info);
+	if (res < 0) {
+		pr_err("cannot find partition: '%s'\n", part);
 		return 0;
+	}
 
 	/* Calculate size in bytes */
 	sz = (info.size * (u64)info.blksz);
@@ -116,10 +111,13 @@ static void omap_set_fastboot_userdata_size(void)
 	u32 sz_kb;
 
 	sz_kb = omap_mmc_get_part_size("userdata");
-	if (sz_kb == 0)
-		return; /* probably it's not Android partition table */
+	if (sz_kb == 0) {
+		buf[0] = '\0';
+		printf("Warning: fastboot.userdata_size: unable to calc\n");
+	} else {
+		sprintf(buf, "%u", sz_kb);
+	}
 
-	sprintf(buf, "%u", sz_kb);
 	env_set("fastboot.userdata_size", buf);
 }
 #else
@@ -217,9 +215,6 @@ void omap_die_id_usbethaddr(void)
 		mac[5] = (die_id[0] >> 8) & 0xff;
 
 		eth_env_set_enetaddr("usbethaddr", mac);
-
-		if (!env_get("ethaddr"))
-			eth_env_set_enetaddr("ethaddr", mac);
 	}
 }
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * SPDX-License-Identifier:	GPL-2.0
+ */
 #ifndef __ASM_MACH_GENERIC_IOREMAP_H
 #define __ASM_MACH_GENERIC_IOREMAP_H
 

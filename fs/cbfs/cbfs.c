@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -167,9 +168,9 @@ static int file_cbfs_load_header(uintptr_t end_of_rom,
 				 struct cbfs_header *header)
 {
 	struct cbfs_header *header_in_rom;
-	int32_t offset = *(u32 *)(end_of_rom - 3);
 
-	header_in_rom = (struct cbfs_header *)(end_of_rom + offset + 1);
+	header_in_rom = (struct cbfs_header *)(uintptr_t)
+			*(u32 *)(end_of_rom - 3);
 	swap_header(header, header_in_rom);
 
 	if (header->magic != good_magic || header->offset >

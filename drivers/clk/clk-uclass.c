@@ -1,15 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  * Copyright (c) 2016, NVIDIA CORPORATION.
  * Copyright (c) 2018, Theobroma Systems Design und Consulting GmbH
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <clk.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <dm/device-internal.h>
 #include <dm/read.h>
 #include <dt-structs.h>
 #include <errno.h>
@@ -110,8 +112,8 @@ int clk_get_bulk(struct udevice *dev, struct clk_bulk *bulk)
 	bulk->count = 0;
 
 	count = dev_count_phandle_with_args(dev, "clocks", "#clock-cells");
-	if (count < 1)
-		return count;
+	if (!count)
+		return 0;
 
 	bulk->clks = devm_kcalloc(dev, count, sizeof(struct clk), GFP_KERNEL);
 	if (!bulk->clks)
@@ -222,7 +224,7 @@ static int clk_set_default_rates(struct udevice *dev)
 		if (ret < 0) {
 			debug("%s: failed to set rate on clock %d for %s\n",
 			      __func__, index, dev_read_name(dev));
-			break;
+			continue;
 		}
 	}
 
@@ -344,6 +346,26 @@ ulong clk_set_rate(struct clk *clk, ulong rate)
 	return ops->set_rate(clk, rate);
 }
 
+int clk_get_phase(struct clk *clk)
+{
+	const struct clk_ops *ops = clk_dev_ops(clk->dev);
+
+	if (!ops->get_phase)
+		return -ENOSYS;
+
+	return ops->get_phase(clk);
+}
+
+int clk_set_phase(struct clk *clk, int degrees)
+{
+	const struct clk_ops *ops = clk_dev_ops(clk->dev);
+
+	if (!ops->set_phase)
+		return -ENOSYS;
+
+	return ops->set_phase(clk, degrees);
+}
+
 int clk_set_parent(struct clk *clk, struct clk *parent)
 {
 	const struct clk_ops *ops = clk_dev_ops(clk->dev);
@@ -401,6 +423,25 @@ int clk_disable_bulk(struct clk_bulk *bulk)
 		ret = clk_disable(&bulk->clks[i]);
 		if (ret < 0 && ret != -ENOSYS)
 			return ret;
+	}
+
+	return 0;
+}
+
+int clks_probe(void)
+{
+	struct udevice *dev;
+	struct uclass *uc;
+	int ret;
+
+	ret = uclass_get(UCLASS_CLK, &uc);
+	if (ret)
+		return ret;
+
+	uclass_foreach_dev(dev, uc) {
+		ret = device_probe(dev);
+		if (ret)
+			printf("%s - probe failed: %d\n", dev->name, ret);
 	}
 
 	return 0;

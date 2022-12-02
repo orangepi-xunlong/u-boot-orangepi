@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,6 +11,8 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/pcc.h>
 #include <asm/arch/sys_proto.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define PCC_CLKSRC_TYPES 2
 #define PCC_CLKSRC_NUM 7

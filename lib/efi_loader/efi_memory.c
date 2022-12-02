@@ -8,11 +8,12 @@
 
 #include <common.h>
 #include <efi_loader.h>
-#include <inttypes.h>
 #include <malloc.h>
-#include <watchdog.h>
 #include <asm/global_data.h>
+#include <linux/libfdt_env.h>
 #include <linux/list_sort.h>
+#include <inttypes.h>
+#include <watchdog.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -42,7 +43,7 @@ void *efi_bounce_buffer;
  */
 struct efi_pool_allocation {
 	u64 num_pages;
-	char data[] __aligned(ARCH_DMA_MINALIGN);
+	char data[];
 };
 
 /*
@@ -274,24 +275,15 @@ static uint64_t efi_find_free_memory(uint64_t len, uint64_t max_addr)
 	return 0;
 }
 
-/*
- * Allocate memory pages.
- *
- * @type		type of allocation to be performed
- * @memory_type		usage type of the allocated memory
- * @pages		number of pages to be allocated
- * @memory		allocated memory
- * @return		status code
- */
 efi_status_t efi_allocate_pages(int type, int memory_type,
-				efi_uintn_t pages, uint64_t *memory)
+				unsigned long pages, uint64_t *memory)
 {
 	u64 len = pages << EFI_PAGE_SHIFT;
 	efi_status_t r = EFI_SUCCESS;
 	uint64_t addr;
 
 	switch (type) {
-	case EFI_ALLOCATE_ANY_PAGES:
+	case 0:
 		/* Any page */
 		addr = efi_find_free_memory(len, gd->start_addr_sp);
 		if (!addr) {
@@ -299,7 +291,7 @@ efi_status_t efi_allocate_pages(int type, int memory_type,
 			break;
 		}
 		break;
-	case EFI_ALLOCATE_MAX_ADDRESS:
+	case 1:
 		/* Max address */
 		addr = efi_find_free_memory(len, *memory);
 		if (!addr) {
@@ -307,7 +299,7 @@ efi_status_t efi_allocate_pages(int type, int memory_type,
 			break;
 		}
 		break;
-	case EFI_ALLOCATE_ADDRESS:
+	case 2:
 		/* Exact address, reserve it. The addr is already in *memory. */
 		addr = *memory;
 		break;
@@ -346,14 +338,7 @@ void *efi_alloc(uint64_t len, int memory_type)
 	return NULL;
 }
 
-/*
- * Free memory pages.
- *
- * @memory	start of the memory area to be freed
- * @pages	number of pages to be freed
- * @return	status code
- */
-efi_status_t efi_free_pages(uint64_t memory, efi_uintn_t pages)
+efi_status_t efi_free_pages(uint64_t memory, unsigned long pages)
 {
 	uint64_t r = 0;
 
@@ -366,20 +351,12 @@ efi_status_t efi_free_pages(uint64_t memory, efi_uintn_t pages)
 	return EFI_NOT_FOUND;
 }
 
-/*
- * Allocate memory from pool.
- *
- * @pool_type	type of the pool from which memory is to be allocated
- * @size	number of bytes to be allocated
- * @buffer	allocated memory
- * @return	status code
- */
-efi_status_t efi_allocate_pool(int pool_type, efi_uintn_t size, void **buffer)
+efi_status_t efi_allocate_pool(int pool_type, unsigned long size,
+			       void **buffer)
 {
 	efi_status_t r;
 	efi_physical_addr_t t;
-	u64 num_pages = (size + sizeof(struct efi_pool_allocation) +
-			 EFI_PAGE_MASK) >> EFI_PAGE_SHIFT;
+	u64 num_pages = (size + sizeof(u64) + EFI_PAGE_MASK) >> EFI_PAGE_SHIFT;
 
 	if (size == 0) {
 		*buffer = NULL;
@@ -397,12 +374,6 @@ efi_status_t efi_allocate_pool(int pool_type, efi_uintn_t size, void **buffer)
 	return r;
 }
 
-/*
- * Free memory from pool.
- *
- * @buffer	start of memory to be freed
- * @return	status code
- */
 efi_status_t efi_free_pool(void *buffer)
 {
 	efi_status_t r;
@@ -420,27 +391,16 @@ efi_status_t efi_free_pool(void *buffer)
 	return r;
 }
 
-/*
- * Get map describing memory usage.
- *
- * @memory_map_size	on entry the size, in bytes, of the memory map buffer,
- *			on exit the size of the copied memory map
- * @memory_map		buffer to which the memory map is written
- * @map_key		key for the memory map
- * @descriptor_size	size of an individual memory descriptor
- * @descriptor_version	version number of the memory descriptor structure
- * @return		status code
- */
-efi_status_t efi_get_memory_map(efi_uintn_t *memory_map_size,
-				struct efi_mem_desc *memory_map,
-				efi_uintn_t *map_key,
-				efi_uintn_t *descriptor_size,
-				uint32_t *descriptor_version)
+efi_status_t efi_get_memory_map(unsigned long *memory_map_size,
+			       struct efi_mem_desc *memory_map,
+			       unsigned long *map_key,
+			       unsigned long *descriptor_size,
+			       uint32_t *descriptor_version)
 {
-	efi_uintn_t map_size = 0;
+	ulong map_size = 0;
 	int map_entries = 0;
 	struct list_head *lhandle;
-	efi_uintn_t provided_map_size = *memory_map_size;
+	unsigned long provided_map_size = *memory_map_size;
 
 	list_for_each(lhandle, &efi_mem)
 		map_entries++;

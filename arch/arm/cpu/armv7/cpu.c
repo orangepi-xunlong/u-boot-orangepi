@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Texas Insturments
  *
@@ -8,6 +7,8 @@
  *
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -34,6 +35,7 @@ int cleanup_before_linux_select(int flags)
 #ifndef CONFIG_SPL_BUILD
 	disable_interrupts();
 #endif
+	disable_async_abort();
 
 	if (flags & CBL_DISABLE_CACHES) {
 		/*

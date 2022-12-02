@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Platform data definitions for Atmel USBA gadget driver
  * pieces copied from linux:include/linux/platform_data/atmel.h
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef __LINUX_USB_AT91_UDC_H__
 #define __LINUX_USB_AT91_UDC_H__

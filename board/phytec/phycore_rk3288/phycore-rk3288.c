@@ -1,17 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 PHYTEC Messtechnik GmbH
  * Author: Wadim Egorov <w.egorov@phytec.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <asm/io.h>
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
 #include <i2c.h>
 #include <i2c_eeprom.h>
 #include <netdev.h>
 #include "som.h"
+#include <power/rk8xx_pmic.h>
 
 static int valid_rk3288_som(struct rk3288_som *som)
 {
@@ -27,7 +28,49 @@ static int valid_rk3288_som(struct rk3288_som *som)
 	return hw == som->bs;
 }
 
-int rk_board_late_init(void)
+#if defined(CONFIG_SPL_BUILD) && !defined(CONFIG_SPL_OF_PLATDATA)
+static int phycore_init(void)
+{
+	struct udevice *pmic;
+	int ret;
+
+	ret = uclass_first_device_err(UCLASS_PMIC, &pmic);
+	if (ret)
+		return ret;
+
+#if defined(CONFIG_SPL_POWER_SUPPORT)
+	/* Increase USB input current to 2A */
+	ret = rk818_spl_configure_usb_input_current(pmic, 2000);
+	if (ret)
+		return ret;
+
+	/* Close charger when USB lower then 3.26V */
+	ret = rk818_spl_configure_usb_chrg_shutdown(pmic, 3260000);
+	if (ret)
+		return ret;
+#endif
+
+	return 0;
+}
+
+int rk_board_init_f(void)
+{
+	int ret = 0;
+
+	if (of_machine_is_compatible("phytec,rk3288-phycore-som")) {
+		ret = phycore_init();
+		if (ret) {
+			debug("Failed to set up phycore power settings: %d\n",
+			      ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+#endif
+
+int rk3288_board_late_init(void)
 {
 	int ret;
 	struct udevice *dev;

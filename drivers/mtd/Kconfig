@@ -11,6 +11,19 @@ config MTD
 	  flash, RAM and similar chips, often used for solid state file
 	  systems on embedded devices.
 
+config MTD_BLK
+	bool "Enable mtd block model for MTD drivers"
+	depends on MTD
+	help
+	  Enable mtd block model for Memory Technology Devices (MTD).
+
+config MTD_WRITE
+	bool "support for nand & spi nand & spi nor write operations"
+	depends on MTD_BLK
+	default y
+	help
+	  Enable write access to nand & spi nand & spi nor
+
 config MTD_NOR_FLASH
 	bool "Enable parallel NOR flash support"
 	help
@@ -43,34 +56,6 @@ config CFI_FLASH
 	  option. Visit <http://www.amd.com/products/nvd/overview/cfi.html>
 	  for more information on CFI.
 
-config SYS_FLASH_USE_BUFFER_WRITE
-	bool "Enable buffered writes to flash"
-	depends on FLASH_CFI_DRIVER
-	help
-	  Use buffered writes to flash.
-
-config FLASH_CFI_MTD
-	bool "Enable CFI MTD driver"
-	depends on FLASH_CFI_DRIVER
-	help
-	  This option enables the building of the cfi_mtd driver
-	  in the drivers directory. The driver exports CFI flash
-	  to the MTD layer.
-
-config SYS_FLASH_PROTECTION
-	bool "Use hardware flash protection"
-	depends on FLASH_CFI_DRIVER
-	help
-	  If defined, hardware flash sectors protection is used
-	  instead of U-Boot software protection.
-
-config SYS_FLASH_CFI
-	bool "Define extra elements in CFI for flash geometry"
-	depends on FLASH_CFI_DRIVER
-	help
-	  Define if the flash driver uses extra elements in the
-	  common flash structure for storing flash geometry.
-
 config ALTERA_QSPI
 	bool "Altera Generic Quad SPI Controller"
 	depends on MTD
@@ -95,8 +80,6 @@ config RENESAS_RPC_HF
 	  RCar Gen3 RPC controller.
 
 source "drivers/mtd/nand/Kconfig"
-
-source "drivers/mtd/aw-spinand/Kconfig"
 
 source "drivers/mtd/spi/Kconfig"
 

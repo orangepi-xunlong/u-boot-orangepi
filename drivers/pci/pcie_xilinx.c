@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Xilinx AXI Bridge for PCI Express Driver
  *
  * Copyright (C) 2016 Imagination Technologies
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -13,9 +14,11 @@
 
 /**
  * struct xilinx_pcie - Xilinx PCIe controller state
+ * @hose: The parent classes PCI controller state
  * @cfg_base: The base address of memory mapped configuration space
  */
 struct xilinx_pcie {
+	struct pci_controller hose;
 	void *cfg_base;
 };
 
@@ -40,7 +43,7 @@ static bool pcie_xilinx_link_up(struct xilinx_pcie *pcie)
 
 /**
  * pcie_xilinx_config_address() - Calculate the address of a config access
- * @udev: Pointer to the PCI bus
+ * @pcie: Pointer to the PCI controller state
  * @bdf: Identifies the PCIe device to access
  * @offset: The offset into the device's configuration space
  * @paddress: Pointer to the pointer to write the calculates address to
@@ -54,10 +57,9 @@ static bool pcie_xilinx_link_up(struct xilinx_pcie *pcie)
  *
  * Return: 0 on success, else -ENODEV
  */
-static int pcie_xilinx_config_address(struct udevice *udev, pci_dev_t bdf,
+static int pcie_xilinx_config_address(struct xilinx_pcie *pcie, pci_dev_t bdf,
 				      uint offset, void **paddress)
 {
-	struct xilinx_pcie *pcie = dev_get_priv(udev);
 	unsigned int bus = PCI_BUS(bdf);
 	unsigned int dev = PCI_DEV(bdf);
 	unsigned int func = PCI_FUNC(bdf);
@@ -85,7 +87,7 @@ static int pcie_xilinx_config_address(struct udevice *udev, pci_dev_t bdf,
 
 /**
  * pcie_xilinx_read_config() - Read from configuration space
- * @bus: Pointer to the PCI bus
+ * @pcie: Pointer to the PCI controller state
  * @bdf: Identifies the PCIe device to access
  * @offset: The offset into the device's configuration space
  * @valuep: A pointer at which to store the read value
@@ -101,13 +103,34 @@ static int pcie_xilinx_read_config(struct udevice *bus, pci_dev_t bdf,
 				   uint offset, ulong *valuep,
 				   enum pci_size_t size)
 {
-	return pci_generic_mmap_read_config(bus, pcie_xilinx_config_address,
-					    bdf, offset, valuep, size);
+	struct xilinx_pcie *pcie = dev_get_priv(bus);
+	void *address;
+	int err;
+
+	err = pcie_xilinx_config_address(pcie, bdf, offset, &address);
+	if (err < 0) {
+		*valuep = pci_get_ff(size);
+		return 0;
+	}
+
+	switch (size) {
+	case PCI_SIZE_8:
+		*valuep = __raw_readb(address);
+		return 0;
+	case PCI_SIZE_16:
+		*valuep = __raw_readw(address);
+		return 0;
+	case PCI_SIZE_32:
+		*valuep = __raw_readl(address);
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }
 
 /**
  * pcie_xilinx_write_config() - Write to configuration space
- * @bus: Pointer to the PCI bus
+ * @pcie: Pointer to the PCI controller state
  * @bdf: Identifies the PCIe device to access
  * @offset: The offset into the device's configuration space
  * @value: The value to write
@@ -123,8 +146,27 @@ static int pcie_xilinx_write_config(struct udevice *bus, pci_dev_t bdf,
 				    uint offset, ulong value,
 				    enum pci_size_t size)
 {
-	return pci_generic_mmap_write_config(bus, pcie_xilinx_config_address,
-					     bdf, offset, value, size);
+	struct xilinx_pcie *pcie = dev_get_priv(bus);
+	void *address;
+	int err;
+
+	err = pcie_xilinx_config_address(pcie, bdf, offset, &address);
+	if (err < 0)
+		return 0;
+
+	switch (size) {
+	case PCI_SIZE_8:
+		__raw_writeb(value, address);
+		return 0;
+	case PCI_SIZE_16:
+		__raw_writew(value, address);
+		return 0;
+	case PCI_SIZE_32:
+		__raw_writel(value, address);
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }
 
 /**

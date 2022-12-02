@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+ OR X11
 /*
  * Copyright (c) 2013 Heiko Stuebner <heiko@sntech.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+ or X11
  */
 
 /dts-v1/;
@@ -342,6 +343,10 @@
 			rockchip,pins = <2 31 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+};
+
+&saradc {
+	status = "okay";
 };
 
 &spdif {

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008
  * Grazvydas Ignotas <notasas@gmail.com>
@@ -11,6 +10,8 @@
  *
  * (C) Copyright 2004-2008
  * Texas Instruments, <www.ti.com>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <twl4030.h>

@@ -121,11 +121,6 @@ M:	Paul Kocialkowski <contact@paulk.fr>
 S:	Maintained
 F:	configs/Ampe_A76_defconfig
 
-BANANAPI M1 PLUS
-M:	Jagan Teki <jagan@amarulasolutions.com>
-S:	Maintained
-F:	configs/bananapi_m1_plus_defconfig
-
 BANANAPI M2 ULTRA BOARD
 M:	Chen-Yu Tsai <wens@csie.org>
 S:	Maintained
@@ -133,7 +128,7 @@ F:	configs/Bananapi_M2_Ultra_defconfig
 F:	arch/arm/dts/sun8i-r40-bananapi-m2-ultra.dts
 
 BANANAPI M2 MAGIC BOARD
-M:	Maxime Ripard <maxime.ripard@bootlin.com>
+M:	Maxime Ripard <maxime.ripard@free-electrons.com>
 S:	Maintained
 F:	configs/Bananapi_m2m_defconfig
 F:	arch/arm/dts/sun8i-r16-bananapi-m2m.dts
@@ -144,7 +139,7 @@ S:	Maintained
 F:	configs/bananapi_m64_defconfig
 
 COLOMBUS BOARD
-M:	Maxime Ripard <maxime.ripard@bootlin.com>
+M:	Maxime Ripard <maxime.ripard@free-electrons.com>
 S:	Maintained
 F:	configs/Colombus_defconfig
 
@@ -266,11 +261,6 @@ M:	Siarhei Siamashka <siarhei.siamashka@gmail.com>
 S:	Maintained
 F:	configs/MSI_Primo81_defconfig
 
-LIBRETECH ALL-H3-CC H3 BOARD
-M:	Chen-Yu Tsai <wens@csie.org>
-S:	Maintained
-F:	configs/libretech_all_h3_cc_h3_defconfig
-
 NANOPI-M1 BOARD
 M:	Mylène Josserand <mylene.josserand@free-electrons.com>
 S:	Maintained
@@ -291,11 +281,6 @@ M:	Jagan Teki <jagan@amarulasolutions.com>
 S:	Maintained
 F:	configs/nanopi_neo2_defconfig
 
-NANOPI-NEO-PLUS2 BOARD
-M:	Antony Antony <antony@phenome.org>
-S:	Maintained
-F:	configs/nanopi_neo_plus2_defconfig
-
 NANOPI-NEO-AIR BOARD
 M:	Jelle van der Waa <jelle@vdwaa.nl>
 S:	Maintained
@@ -310,12 +295,6 @@ NINTENDO NES CLASSIC EDITION BOARD
 M:	FUKAUMI Naoki <naobsd@gmail.com>
 S:	Maintained
 F:	configs/Nintendo_NES_Classic_Edition_defconfig
-
-OLIMEX A20-SOM204 BOARD
-M:	Stefan Mavrodiev <stefan@olimex.com>
-S:	Maintained
-F:	configs/A20-Olimex-SOM204-EVB_defconfig
-F:	configs/A20-Olimex-SOM204-EVB-eMMC_defconfig
 
 ORANGEPI WIN/WIN PLUS BOARD
 M:	Jagan Teki <jagan@amarulasolutions.com>
@@ -384,11 +363,6 @@ M:	Rask Ingemann Lambertsen <rask@formelder.dk>
 S:	Maintained
 F:	configs/Sunchip_CX-A99_defconfig
 W:	https://linux-sunxi.org/Sunchip_CX-A99
-
-TBS A711 BOARD
-M:	Maxime Ripard <maxime.ripard@bootlin.com>
-S:	Maintained
-F:	configs/tbs_a711_defconfig
 
 WEXLER-TAB7200 BOARD
 M:	Aleksei Mamlin <mamlinav@gmail.com>

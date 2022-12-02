@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 Timesys Corporation
  * Copyright 2015 General Electric Company
  * Copyright 2012 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/arch/clock.h>
@@ -18,29 +19,14 @@
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <miiphy.h>
-#include <net.h>
 #include <netdev.h>
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <input.h>
 #include <pwm.h>
-#include <stdlib.h>
-#include "../common/ge_common.h"
-#include "../common/vpd_reader.h"
-#include "../../../drivers/net/e1000.h"
 DECLARE_GLOBAL_DATA_PTR;
-
-#ifndef CONFIG_SYS_I2C_EEPROM_ADDR
-# define CONFIG_SYS_I2C_EEPROM_ADDR     0x50
-# define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
-#endif
-
-#ifndef CONFIG_SYS_I2C_EEPROM_BUS
-#define CONFIG_SYS_I2C_EEPROM_BUS       4
-#endif
 
 #define NC_PAD_CTRL (PAD_CTL_PUS_100K_UP |	\
 	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |	\
@@ -542,123 +528,10 @@ int overwrite_console(void)
 	return 1;
 }
 
-#define VPD_TYPE_INVALID 0x00
-#define VPD_BLOCK_NETWORK 0x20
-#define VPD_BLOCK_HWID 0x44
-#define VPD_PRODUCT_B850 1
-#define VPD_PRODUCT_B650 2
-#define VPD_PRODUCT_B450 3
-#define VPD_HAS_MAC1 0x1
-#define VPD_HAS_MAC2 0x2
-#define VPD_MAC_ADDRESS_LENGTH 6
-
-struct vpd_cache {
-	u8 product_id;
-	u8 has;
-	unsigned char mac1[VPD_MAC_ADDRESS_LENGTH];
-	unsigned char mac2[VPD_MAC_ADDRESS_LENGTH];
-};
-
-/*
- * Extracts MAC and product information from the VPD.
- */
-static int vpd_callback(void *userdata, u8 id, u8 version, u8 type,
-			size_t size, u8 const *data)
-{
-	struct vpd_cache *vpd = (struct vpd_cache *)userdata;
-
-	if (id == VPD_BLOCK_HWID && version == 1 && type != VPD_TYPE_INVALID &&
-	    size >= 1) {
-		vpd->product_id = data[0];
-	} else if (id == VPD_BLOCK_NETWORK && version == 1 &&
-		   type != VPD_TYPE_INVALID) {
-		if (size >= 6) {
-			vpd->has |= VPD_HAS_MAC1;
-			memcpy(vpd->mac1, data, VPD_MAC_ADDRESS_LENGTH);
-		}
-		if (size >= 12) {
-			vpd->has |= VPD_HAS_MAC2;
-			memcpy(vpd->mac2, data + 6, VPD_MAC_ADDRESS_LENGTH);
-		}
-	}
-
-	return 0;
-}
-
-static void process_vpd(struct vpd_cache *vpd)
-{
-	int fec_index = -1;
-	int i210_index = -1;
-
-	switch (vpd->product_id) {
-	case VPD_PRODUCT_B450:
-		env_set("confidx", "1");
-		break;
-	case VPD_PRODUCT_B650:
-		env_set("confidx", "2");
-		break;
-	case VPD_PRODUCT_B850:
-		env_set("confidx", "3");
-		break;
-	}
-
-	switch (vpd->product_id) {
-	case VPD_PRODUCT_B450:
-		/* fall thru */
-	case VPD_PRODUCT_B650:
-		i210_index = 0;
-		fec_index = 1;
-		break;
-	case VPD_PRODUCT_B850:
-		i210_index = 1;
-		fec_index = 2;
-		break;
-	}
-
-	if (fec_index >= 0 && (vpd->has & VPD_HAS_MAC1))
-		eth_env_set_enetaddr_by_index("eth", fec_index, vpd->mac1);
-
-	if (i210_index >= 0 && (vpd->has & VPD_HAS_MAC2))
-		eth_env_set_enetaddr_by_index("eth", i210_index, vpd->mac2);
-}
-
-static int read_vpd(uint eeprom_bus)
-{
-	struct vpd_cache vpd;
-	int res;
-	int size = 1024;
-	uint8_t *data;
-	unsigned int current_i2c_bus = i2c_get_bus_num();
-
-	res = i2c_set_bus_num(eeprom_bus);
-	if (res < 0)
-		return res;
-
-	data = (uint8_t *)malloc(size);
-	if (!data)
-		return -ENOMEM;
-
-	res = i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0,
-			CONFIG_SYS_I2C_EEPROM_ADDR_LEN, data, size);
-
-	if (res == 0) {
-		memset(&vpd, 0, sizeof(vpd));
-		vpd_reader(size, data, &vpd, vpd_callback);
-		process_vpd(&vpd);
-	}
-
-	free(data);
-
-	i2c_set_bus_num(current_i2c_bus);
-	return res;
-}
-
 int board_eth_init(bd_t *bis)
 {
 	setup_iomux_enet();
 	setup_pcie();
-
-	e1000_initialize(bis);
 
 	return cpu_eth_init(bis);
 }
@@ -671,7 +544,6 @@ static iomux_v3_cfg_t const misc_pads[] = {
 	MX6_PAD_EIM_OE__GPIO2_IO25	| MUX_PAD_CTRL(NC_PAD_CTRL),
 	MX6_PAD_EIM_BCLK__GPIO6_IO31	| MUX_PAD_CTRL(NC_PAD_CTRL),
 	MX6_PAD_GPIO_1__GPIO1_IO01	| MUX_PAD_CTRL(NC_PAD_CTRL),
-	MX6_PAD_GPIO_9__WDOG1_B         | MUX_PAD_CTRL(NC_PAD_CTRL),
 };
 #define SUS_S3_OUT	IMX_GPIO_NR(4, 11)
 #define WIFI_EN	IMX_GPIO_NR(6, 14)
@@ -779,55 +651,10 @@ void pmic_init(void)
 
 int board_late_init(void)
 {
-	read_vpd(CONFIG_SYS_I2C_EEPROM_BUS);
-
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
 #endif
 
-	/* board specific pmic init */
-	pmic_init();
-
-	check_time();
-
-	return 0;
-}
-
-/*
- * Removes the 'eth[0-9]*addr' environment variable with the given index
- *
- * @param index [in] the index of the eth_device whose variable is to be removed
- */
-static void remove_ethaddr_env_var(int index)
-{
-	char env_var_name[9];
-
-	sprintf(env_var_name, index == 0 ? "ethaddr" : "eth%daddr", index);
-	env_set(env_var_name, NULL);
-}
-
-int last_stage_init(void)
-{
-	int i;
-
-	/*
-	 * Remove first three ethaddr which may have been created by
-	 * function process_vpd().
-	 */
-	for (i = 0; i < 3; ++i)
-		remove_ethaddr_env_var(i);
-
-	return 0;
-}
-
-int checkboard(void)
-{
-	printf("BOARD: %s\n", CONFIG_BOARD_NAME);
-	return 0;
-}
-
-static int do_backlight_enable(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
 #ifdef CONFIG_VIDEO_IPUV3
 	/* We need at least 200ms between power on and backlight on
 	 * as per specifications from CHI MEI */
@@ -845,11 +672,14 @@ static int do_backlight_enable(cmd_tbl_t *cmdtp, int flag, int argc, char * cons
 	pwm_enable(0);
 #endif
 
+	/* board specific pmic init */
+	pmic_init();
+
 	return 0;
 }
 
-U_BOOT_CMD(
-       bx50_backlight_enable, 1,      1,      do_backlight_enable,
-       "enable Bx50 backlight",
-       ""
-);
+int checkboard(void)
+{
+	printf("BOARD: %s\n", CONFIG_BOARD_NAME);
+	return 0;
+}

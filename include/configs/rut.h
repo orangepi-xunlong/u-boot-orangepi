@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * siemens rut
  * (C) Copyright 2013 Siemens Schweiz AG
@@ -8,11 +7,14 @@
  * U-Boot file:/include/configs/am335x_evm.h
  *
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_RUT_H
 #define __CONFIG_RUT_H
 
+#define CONFIG_SIEMENS_RUT
 #define CONFIG_SIEMENS_MACH_TYPE	MACH_TYPE_RUT
 
 #include "siemens-am33x-common.h"
@@ -41,6 +43,7 @@
 #ifndef CONFIG_SPL_BUILD
 
 /* Use common default */
+#define MTDPARTS_DEFAULT	MTDPARTS_DEFAULT_V1
 
 /* Default env settings */
 #define CONFIG_EXTRA_ENV_SETTINGS \

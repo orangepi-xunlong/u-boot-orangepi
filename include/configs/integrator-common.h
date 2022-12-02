@@ -1,16 +1,23 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Linaro
  * Linus Walleij <linus.walleij@linaro.org>
  * Common ARM Integrator configuration settings
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#define CONFIG_SYS_TEXT_BASE		0x01000000
 #define CONFIG_SYS_MEMTEST_START	0x100000
 #define CONFIG_SYS_MEMTEST_END		0x10000000
 #define CONFIG_SYS_TIMERBASE		0x13000100	/* Timer1 */
 #define CONFIG_SYS_LOAD_ADDR		0x7fc0	/* default load address */
+#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128*1024) /* Size of malloc() pool */
+
+/* Serial port PL010/PL011 through the device model */
+#define CONFIG_PL01X_SERIAL
+#define CONFIG_CONS_INDEX		0
 
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs  */
 #define CONFIG_SETUP_MEMORY_TAGS

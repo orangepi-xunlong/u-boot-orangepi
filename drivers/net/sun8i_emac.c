@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016
  * Author: Amit Singh Tomar, amittomer25@gmail.com
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  *
  * Ethernet driver for H3/A64/A83T based SoC's
  *
@@ -20,7 +21,6 @@
 #include <malloc.h>
 #include <miiphy.h>
 #include <net.h>
-#include <dt-bindings/pinctrl/sun4i-a10.h>
 #ifdef CONFIG_DM_GPIO
 #include <asm-generic/gpio.h>
 #endif
@@ -278,7 +278,7 @@ static int sun8i_emac_set_syscon(struct emac_eth_dev *priv)
 	int ret;
 	u32 reg;
 
-	reg = readl(priv->sysctl_reg + 0x30);
+	reg = readl(priv->sysctl_reg);
 
 	if (priv->variant == H3_EMAC) {
 		ret = sun8i_emac_set_syscon_ephy(priv, &reg);
@@ -309,7 +309,7 @@ static int sun8i_emac_set_syscon(struct emac_eth_dev *priv)
 		return -EINVAL;
 	}
 
-	writel(reg, priv->sysctl_reg + 0x30);
+	writel(reg, priv->sysctl_reg);
 
 	return 0;
 }
@@ -431,7 +431,7 @@ static int _sun8i_emac_eth_init(struct emac_eth_dev *priv, u8 *enetaddr)
 	tx_descs_init(priv);
 
 	/* PHY Start Up */
-	phy_startup(priv->phydev);
+	genphy_parse_link(priv->phydev);
 
 	sun8i_adjust_link(priv, priv->phydev);
 
@@ -455,7 +455,7 @@ static int parse_phy_pins(struct udevice *dev)
 {
 	int offset;
 	const char *pin_name;
-	int drive, pull = SUN4I_PINCTRL_NO_PULL, i;
+	int drive, pull, i;
 
 	offset = fdtdec_lookup_phandle(gd->fdt_blob, dev_of_offset(dev),
 				       "pinctrl-0");
@@ -465,44 +465,30 @@ static int parse_phy_pins(struct udevice *dev)
 	}
 
 	drive = fdt_getprop_u32_default_node(gd->fdt_blob, offset, 0,
-					     "drive-strength", ~0);
-	if (drive != ~0) {
-		if (drive <= 10)
-			drive = SUN4I_PINCTRL_10_MA;
-		else if (drive <= 20)
-			drive = SUN4I_PINCTRL_20_MA;
-		else if (drive <= 30)
-			drive = SUN4I_PINCTRL_30_MA;
-		else
-			drive = SUN4I_PINCTRL_40_MA;
-	}
-
-	if (fdt_get_property(gd->fdt_blob, offset, "bias-pull-up", NULL))
-		pull = SUN4I_PINCTRL_PULL_UP;
-	else if (fdt_get_property(gd->fdt_blob, offset, "bias-pull-down", NULL))
-		pull = SUN4I_PINCTRL_PULL_DOWN;
-
+					     "allwinner,drive", 4);
+	pull = fdt_getprop_u32_default_node(gd->fdt_blob, offset, 0,
+					    "allwinner,pull", 0);
 	for (i = 0; ; i++) {
 		int pin;
 
 		pin_name = fdt_stringlist_get(gd->fdt_blob, offset,
-					      "pins", i, NULL);
+					      "allwinner,pins", i, NULL);
 		if (!pin_name)
 			break;
-
-		pin = sunxi_name_to_gpio(pin_name);
-		if (pin < 0)
+		if (pin_name[0] != 'P')
 			continue;
+		pin = (pin_name[1] - 'A') << 5;
+		if (pin >= 26 << 5)
+			continue;
+		pin += simple_strtol(&pin_name[2], NULL, 10);
 
 		sunxi_gpio_set_cfgpin(pin, SUN8I_GPD8_GMAC);
-		if (drive != ~0)
-			sunxi_gpio_set_drv(pin, drive);
-		if (pull != ~0)
-			sunxi_gpio_set_pull(pin, pull);
+		sunxi_gpio_set_drv(pin, drive);
+		sunxi_gpio_set_pull(pin, pull);
 	}
 
 	if (!i) {
-		printf("WARNING: emac: cannot find pins property\n");
+		printf("WARNING: emac: cannot find allwinner,pins property\n");
 		return -2;
 	}
 
@@ -618,8 +604,6 @@ static void sun8i_emac_board_setup(struct emac_eth_dev *priv)
 {
 	struct sunxi_ccm_reg *ccm = (struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 
-#ifdef CONFIG_MACH_SUNXI_H3_H5
-	/* Only H3/H5 have clock controls for internal EPHY */
 	if (priv->use_internal_phy) {
 		/* Set clock gating for ephy */
 		setbits_le32(&ccm->bus_gate4, BIT(AHB_GATE_OFFSET_EPHY));
@@ -627,7 +611,6 @@ static void sun8i_emac_board_setup(struct emac_eth_dev *priv)
 		/* Deassert EPHY */
 		setbits_le32(&ccm->ahb_reset2_cfg, BIT(AHB_RESET_OFFSET_EPHY));
 	}
-#endif
 
 	/* Set clock gating for emac */
 	setbits_le32(&ccm->ahb_gate0, BIT(AHB_GATE_OFFSET_GMAC));
@@ -786,7 +769,6 @@ static int sun8i_emac_eth_ofdata_to_platdata(struct udevice *dev)
 	struct eth_pdata *pdata = &sun8i_pdata->eth_pdata;
 	struct emac_eth_dev *priv = dev_get_priv(dev);
 	const char *phy_mode;
-	const fdt32_t *reg;
 	int node = dev_of_offset(dev);
 	int offset = 0;
 #ifdef CONFIG_DM_GPIO
@@ -794,40 +776,18 @@ static int sun8i_emac_eth_ofdata_to_platdata(struct udevice *dev)
 	int ret = 0;
 #endif
 
-	pdata->iobase = devfdt_get_addr(dev);
-	if (pdata->iobase == FDT_ADDR_T_NONE) {
-		debug("%s: Cannot find MAC base address\n", __func__);
-		return -EINVAL;
-	}
-
-	offset = fdtdec_lookup_phandle(gd->fdt_blob, node, "syscon");
-	if (offset < 0) {
-		debug("%s: cannot find syscon node\n", __func__);
-		return -EINVAL;
-	}
-	reg = fdt_getprop(gd->fdt_blob, offset, "reg", NULL);
-	if (!reg) {
-		debug("%s: cannot find reg property in syscon node\n",
-		      __func__);
-		return -EINVAL;
-	}
-	priv->sysctl_reg = fdt_translate_address((void *)gd->fdt_blob,
-						 offset, reg);
-	if (priv->sysctl_reg == FDT_ADDR_T_NONE) {
-		debug("%s: Cannot find syscon base address\n", __func__);
-		return -EINVAL;
-	}
+	pdata->iobase = devfdt_get_addr_name(dev, "emac");
+	priv->sysctl_reg = devfdt_get_addr_name(dev, "syscon");
 
 	pdata->phy_interface = -1;
 	priv->phyaddr = -1;
 	priv->use_internal_phy = false;
 
-	offset = fdtdec_lookup_phandle(gd->fdt_blob, node, "phy-handle");
-	if (offset < 0) {
-		debug("%s: Cannot find PHY address\n", __func__);
-		return -EINVAL;
-	}
-	priv->phyaddr = fdtdec_get_int(gd->fdt_blob, offset, "reg", -1);
+	offset = fdtdec_lookup_phandle(gd->fdt_blob, node,
+				       "phy");
+	if (offset > 0)
+		priv->phyaddr = fdtdec_get_int(gd->fdt_blob, offset, "reg",
+					       -1);
 
 	phy_mode = fdt_getprop(gd->fdt_blob, node, "phy-mode", NULL);
 
@@ -849,11 +809,8 @@ static int sun8i_emac_eth_ofdata_to_platdata(struct udevice *dev)
 	}
 
 	if (priv->variant == H3_EMAC) {
-		int parent = fdt_parent_offset(gd->fdt_blob, offset);
-
-		if (parent >= 0 &&
-		    !fdt_node_check_compatible(gd->fdt_blob, parent,
-				"allwinner,sun8i-h3-mdio-internal"))
+		if (fdt_getprop(gd->fdt_blob, node,
+				"allwinner,use-internal-phy", NULL))
 			priv->use_internal_phy = true;
 	}
 

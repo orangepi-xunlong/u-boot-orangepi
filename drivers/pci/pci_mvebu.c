@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * PCIe driver for Marvell MVEBU SoCs
  *
@@ -7,6 +6,8 @@
  * Ported to U-Boot by:
  * Anton Schubert <anton.schubert@gmx.de>
  * Stefan Roese <sr@denx.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <common.h>
@@ -81,11 +82,11 @@ struct mvebu_pcie {
 
 /*
  * MVEBU PCIe controller needs MEMORY and I/O BARs to be mapped
- * into SoCs address space. Each controller will map 128M of MEM
+ * into SoCs address space. Each controller will map 32M of MEM
  * and 64K of I/O space when registered.
  */
 static void __iomem *mvebu_pcie_membase = (void __iomem *)MBUS_PCI_MEM_BASE;
-#define PCIE_MEM_SIZE	(128 << 20)
+#define PCIE_MEM_SIZE	(32 << 20)
 
 #if defined(CONFIG_ARMADA_38X)
 #define PCIE_BASE(if)					\

@@ -14,6 +14,7 @@
 #include <net.h>
 #include <net/tftp.h>
 #include "bootp.h"
+#include "nfs.h"
 #ifdef CONFIG_LED_STATUS
 #include <status_led.h>
 #endif
@@ -386,19 +387,12 @@ static void bootp_timeout_handler(void)
 
 	if (time_taken >= time_taken_max) {
 #ifdef CONFIG_BOOTP_MAY_FAIL
-		char *ethrotate;
-
-		ethrotate = env_get("ethrotate");
-		if ((ethrotate && strcmp(ethrotate, "no") == 0) ||
-		    net_restart_wrap) {
-			puts("\nRetry time exceeded\n");
-			net_set_state(NETLOOP_FAIL);
-		} else
+		puts("\nRetry time exceeded\n");
+		net_set_state(NETLOOP_FAIL);
+#else
+		puts("\nRetry time exceeded; starting again\n");
+		net_start_again();
 #endif
-		{
-			puts("\nRetry time exceeded; starting again\n");
-			net_start_again();
-		}
 	} else {
 		bootp_timeout *= 2;
 		if (bootp_timeout > 2000)

@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2015-2016 Stefan Roese <sr@denx.de>
  *
  * Configuration settings for the CCV xPress board
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __XPRESS_CONFIG_H
 #define __XPRESS_CONFIG_H
@@ -17,7 +18,7 @@
 #define CONFIG_SYS_MALLOC_LEN		(16 << 20)
 
 #define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE		MX6UL_UART7_BASE_ADDR
+#define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configs */
 #define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
@@ -37,6 +38,8 @@
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 #define CONFIG_SYS_HZ			1000
+
+#define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -84,7 +87,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
-	"console=ttymxc6\0" \
+	"console=ttymxc0\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"fdt_file=undefined\0" \

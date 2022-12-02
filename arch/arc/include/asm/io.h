@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2013-2014 Synopsys, Inc. All rights reserved.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARC_IO_H
@@ -9,7 +10,7 @@
 #include <linux/types.h>
 #include <asm/byteorder.h>
 
-#ifdef __ARCHS__
+#ifdef CONFIG_ISA_ARCV2
 
 /*
  * ARCv2 based HS38 cores are in-order issue, but still weakly ordered
@@ -41,13 +42,37 @@
 #define mb()	asm volatile("sync\n" : : : "memory")
 #endif
 
-#ifdef __ARCHS__
+#ifdef CONFIG_ISA_ARCV2
 #define __iormb()		rmb()
 #define __iowmb()		wmb()
 #else
-#define __iormb()		asm volatile("" : : : "memory")
-#define __iowmb()		asm volatile("" : : : "memory")
+#define __iormb()		do { } while (0)
+#define __iowmb()		do { } while (0)
 #endif
+
+/*
+ * Given a physical address and a length, return a virtual address
+ * that can be used to access the memory range with the caching
+ * properties specified by "flags".
+ */
+#define MAP_NOCACHE	(0)
+#define MAP_WRCOMBINE	(0)
+#define MAP_WRBACK	(0)
+#define MAP_WRTHROUGH	(0)
+
+static inline void *
+map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+{
+	return (void *)((unsigned long)paddr);
+}
+
+/*
+ * Take down a mapping set up by map_physmem().
+ */
+static inline void unmap_physmem(void *vaddr, unsigned long flags)
+{
+
+}
 
 static inline void sync(void)
 {
@@ -277,6 +302,9 @@ static inline int __raw_writesl(unsigned int addr, void *data, int longlen)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
-#include <asm-generic/io.h>
+static inline phys_addr_t virt_to_phys(void *vaddr)
+{
+	return (phys_addr_t)((unsigned long)vaddr);
+}
 
 #endif	/* __ASM_ARC_IO_H */

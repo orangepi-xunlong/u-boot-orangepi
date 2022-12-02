@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (c) 2011 Graf-Syteco, Matthias Weisser
  * <weisserm@arcor.de>
@@ -12,6 +11,8 @@
  *   Copyright (C) 2009 Ilya Yanok <yanok@emcraft.com>
  * And:
  *   RedBoot tx25_misc.c Copyright (C) 2009 Red Hat
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <asm/gpio.h>

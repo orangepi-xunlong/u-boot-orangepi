@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
  *
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -910,11 +911,10 @@ void mxc_set_sata_internal_clock(void)
 }
 #endif
 
-#ifndef CONFIG_SPL_BUILD
 /*
  * Dump some core clockes.
  */
-static int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	u32 freq;
 
@@ -947,4 +947,3 @@ U_BOOT_CMD(
 	"display clocks",
 	""
 );
-#endif

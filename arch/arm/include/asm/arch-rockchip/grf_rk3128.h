@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 #ifndef _ASM_ARCH_GRF_RK3128_H
 #define _ASM_ARCH_GRF_RK3128_H
@@ -293,7 +294,7 @@ enum {
 	GPIO1C3_UART2_RX,
 
 	GPIO1C2_SHIFT		= 4,
-	GPIO1C2_MASK		= 3 << GPIO1C2_SHIFT,
+	GPIO1C2_MASK		= 3 << GPIO1C2_SHIFT ,
 	GPIO1C2_GPIO		= 0,
 	GPIO1C2_MMC0_D0,
 	GPIO1C2_UART2_TX,

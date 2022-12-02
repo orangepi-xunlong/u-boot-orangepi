@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: Intel */
 /*
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
+ *
+ * SPDX-License-Identifier:	Intel
  */
 
 #ifndef __FSP_CONFIGS_H__

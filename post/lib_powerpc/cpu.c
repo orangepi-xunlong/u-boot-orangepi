@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -40,6 +41,8 @@ extern int cpu_post_test_b (void);
 extern int cpu_post_test_multi (void);
 extern int cpu_post_test_string (void);
 extern int cpu_post_test_complex (void);
+
+DECLARE_GLOBAL_DATA_PTR;
 
 ulong cpu_post_makecr (long v)
 {

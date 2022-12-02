@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Novena SPL
  *
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -25,6 +26,8 @@
 #include <asm/arch/mx6-ddr.h>
 
 #include "novena.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL						\
 	(PAD_CTL_PKE | PAD_CTL_PUE |				\
@@ -593,4 +596,10 @@ void board_init_f(ulong dummy)
 	udelay(100);
 	mmdc_do_write_level_calibration(&novena_ddr_info);
 	mmdc_do_dqs_calibration(&novena_ddr_info);
+
+	/* Clear the BSS. */
+	memset(__bss_start, 0, __bss_end - __bss_start);
+
+	/* load/boot image from boot device */
+	board_init_r(NULL, 0);
 }

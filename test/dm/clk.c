@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Google, Inc
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -28,6 +29,7 @@ static int dm_test_clk(struct unit_test_state *uts)
 	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test",
 					      &dev_test));
 	ut_assertok(sandbox_clk_test_get(dev_test));
+	ut_assertok(sandbox_clk_test_valid(dev_test));
 
 	ut_asserteq(1234,
 		    sandbox_clk_test_get_rate(dev_test,

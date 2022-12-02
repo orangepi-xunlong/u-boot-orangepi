@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011-2012 The Chromium OS Authors.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -153,7 +153,7 @@ int sandbox_read_state(struct sandbox_state *state, const char *fname)
 			return ret;
 	}
 
-	/* Call all the state read functions */
+	/* Call all the state read funtcions */
 	got_err = false;
 	blob = state->state_fdt;
 	io = ll_entry_start(struct sandbox_state_io, state_io);
