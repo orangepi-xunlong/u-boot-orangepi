@@ -64,6 +64,12 @@
 	#define BOOT_TARGET_NVME(func)
 #endif
 
+#if CONFIG_IS_ENABLED(SCSI)
+	#define BOOT_TARGET_SCSI(func) func(SCSI, scsi, na)
+#else
+	#define BOOT_TARGET_SCSI(func)
+#endif
+
 /* First try to boot from SD (index 1), then eMMC (index 0) */
 #if CONFIG_IS_ENABLED(CMD_MMC)
 	#define BOOT_TARGET_MMC(func) \
@@ -109,6 +115,7 @@
 #define BOOT_TARGET_DEVICES(func) \
 	BOOT_TARGET_MMC(func) \
 	BOOT_TARGET_NVME(func) \
+	BOOT_TARGET_SCSI(func) \
 	BOOT_TARGET_MTD(func) \
 	BOOT_TARGET_RKNAND(func) \
 	BOOT_TARGET_USB(func) \

@@ -54,7 +54,7 @@
 	};
 };
 
-#if 0
+#if 1
 &sata0 {
 	u-boot,dm-pre-reloc;
 	pinctrl-names = "default";
