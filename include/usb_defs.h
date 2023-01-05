@@ -198,6 +198,7 @@
 #define USB_ST_NAK_REC          0x10	/* NAK Received*/
 #define USB_ST_CRC_ERR          0x20	/* CRC/timeout Error */
 #define USB_ST_BIT_ERR          0x40	/* Bitstuff error */
+#define USB_ST_XACTERR          0x80	/* XACTERR error */
 #define USB_ST_NOT_PROC         0x80000000L	/* Not yet processed */
 
 

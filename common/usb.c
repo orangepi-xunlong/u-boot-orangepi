@@ -941,14 +941,20 @@ static int get_descriptor_len(struct usb_device *dev, int len, int expect_len)
 	__maybe_unused struct usb_device_descriptor *desc;
 	ALLOC_CACHE_ALIGN_BUFFER(unsigned char, tmpbuf, USB_BUFSIZ);
 	int err;
+	int retry = 5;
 
 	desc = (struct usb_device_descriptor *)tmpbuf;
 
+again:
 	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, desc, len);
 	if (err < expect_len) {
 		if (err < 0) {
-			printf("unable to get device descriptor (error=%d)\n",
-				err);
+			printf("unable to get device descriptor (error=%d) retry: %d\n",
+			       err, retry);
+			mdelay(50);
+			if (--retry >= 0)
+				/* Some drives are just slow to wake up. */
+				goto again;
 			return err;
 		} else {
 			printf("USB device descriptor short read (expected %i, got %i)\n",

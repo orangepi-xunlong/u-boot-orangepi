@@ -113,6 +113,18 @@ int usb_stor_get_info(struct usb_device *dev, struct us_data *us,
 		      struct blk_desc *dev_desc);
 int usb_storage_probe(struct usb_device *dev, unsigned int ifnum,
 		      struct us_data *ss);
+
+#ifdef CONFIG_USB_EHCI_HCD
+	/*
+	 * The U-Boot EHCI driver can handle any transfer length as long as
+	 * there is enough free heap space left, but the SCSI READ(10) and
+	 * WRITE(10) commands are limited to 65535 blocks.
+	 */
+int usb_max_xfer_blk = 4096;
+#else
+int usb_max_xfer_blk = 20;
+#endif
+
 #ifdef CONFIG_BLK
 static unsigned long usb_stor_read(struct udevice *dev, lbaint_t blknr,
 				   lbaint_t blkcnt, void *buffer);
@@ -733,6 +745,7 @@ static int usb_stor_BBB_transport(struct scsi_cmd *srb, struct us_data *us)
 	pipeout = usb_sndbulkpipe(us->pusb_dev, us->ep_out);
 	/* DATA phase + error handling */
 	data_actlen = 0;
+	mdelay(10);		/* Like linux does. */
 	/* no data, go immediately to the STATUS phase */
 	if (srb->datalen == 0)
 		goto st;
@@ -744,6 +757,16 @@ static int usb_stor_BBB_transport(struct scsi_cmd *srb, struct us_data *us)
 
 	result = usb_bulk_msg(us->pusb_dev, pipe, srb->pdata, srb->datalen,
 			      &data_actlen, USB_CNTL_TIMEOUT * 5);
+
+	/* special handling of XACTERR in DATA phase */
+	if (result < 0 && (us->pusb_dev->status & USB_ST_XACTERR)) {
+		debug("XACTERR in data phase - clr, reset, and return fail.\n");
+		usb_stor_BBB_clear_endpt_stall(us, dir_in ?
+					       us->ep_in : us->ep_out);
+		usb_stor_BBB_reset(us);
+		return USB_STOR_TRANSPORT_FAILED;
+	}
+
 	/* special handling of STALL in DATA phase */
 	if ((result < 0) && (us->pusb_dev->status & USB_ST_STALLED)) {
 		debug("DATA:stall\n");
@@ -1017,9 +1040,32 @@ static int usb_request_sense(struct scsi_cmd *srb, struct us_data *ss)
 	return 0;
 }
 
+/*
+ * This spins up the disk and also consumes the time that the
+ * disk takes to become active and ready to read data.
+ * Some drives (like Western Digital) can take more than 5 seconds.
+ * The delay occurs on the 1st data read from the disk.
+ * Extending the timeout here works better than handling the timeout
+ * as an error on a "real" read.
+ */
+static int usb_spinup(struct scsi_cmd *srb, struct us_data *ss)
+{
+	memset(&srb->cmd[0], 0, 12);
+	srb->cmd[0] = SCSI_START_STP;
+	srb->cmd[1] = srb->lun << 5;
+	srb->cmd[4] = 1;	/* Start spinup. */
+	srb->datalen = 0;
+	srb->cmdlen = 6;
+	ss->pusb_dev->extra_timeout = 9876;
+	ss->transport(srb, ss);
+	ss->pusb_dev->extra_timeout = 0;
+	return 0;
+}
+
 static int usb_test_unit_ready(struct scsi_cmd *srb, struct us_data *ss)
 {
 	int retries = 10;
+	int gave_extra_time = 0;
 
 	do {
 		memset(&srb->cmd[0], 0, 12);
@@ -1042,6 +1088,17 @@ static int usb_test_unit_ready(struct scsi_cmd *srb, struct us_data *ss)
 		if ((srb->sense_buf[2] == 0x02) &&
 		    (srb->sense_buf[12] == 0x3a))
 			return -1;
+		/*
+		 * If the status is "Not Ready - becoming ready", give it
+		 * more time.  Linux issues a spinup command (once) and gives
+		 * it 100 seconds.
+		 */
+		if (srb->sense_buf[2] == 0x02 &&
+		    srb->sense_buf[12] == 0x04 &&
+		    gave_extra_time == 0) {
+			retries = 100; /* Allow 10 seconds. */
+			gave_extra_time = retries;
+		}
 		mdelay(100);
 	} while (retries--);
 
@@ -1170,15 +1227,30 @@ static unsigned long usb_stor_read(struct blk_desc *block_dev, lbaint_t blknr,
 	      PRIxPTR "\n", block_dev->devnum, start, blks, buf_addr);
 
 	do {
-		/* XXX need some comment here */
+		/*
+		 * Probably most errors are USB errors, not hard disk error.
+		 * Many disks use a USB chip that is flaky when doing large
+		 * transfers. The workaround is to dynamically reduce the
+		 * transfer size and allow an additional try.
+		 * This should pick up flaky disks. Linux uses a quirks table.
+		 * We'll use observation:
+		 * Give it 1 try very large, 1 try large, 2 tries medium and 2
+		 * tries small(ish).
+		 * On a solid fail (actual disk error - which should be rare),
+		 * this will give us 6 tries max, and only that many if the read
+		 * is quite large.
+		 * A fail on a very short read obviously doesn't have a
+		 * too-large max_blks.  Timeout due to spinup being a case in
+		 * this point.
+		 */
 		retry = 2;
 		srb->pdata = (unsigned char *)buf_addr;
-		if (blks > ss->max_xfer_blk)
-			smallblks = ss->max_xfer_blk;
+retry_it:
+		if (blks > usb_max_xfer_blk)
+			smallblks = usb_max_xfer_blk;
 		else
 			smallblks = (unsigned short) blks;
-retry_it:
-		if (smallblks == ss->max_xfer_blk)
+		if (smallblks == usb_max_xfer_blk)
 			usb_show_progress();
 		srb->datalen = block_dev->blksz * smallblks;
 		srb->pdata = (unsigned char *)buf_addr;
@@ -1271,6 +1343,24 @@ retry_it:
 		if (usb_write_10(srb, ss, start, smallblks)) {
 			debug("Write ERROR\n");
 			usb_request_sense(srb, ss);
+
+			/* Dynamically reduce the I/O size. */
+			if (smallblks > 2047) {
+				usb_max_xfer_blk = 2047;
+				++retry;
+			} else if (smallblks > 512) {
+				usb_max_xfer_blk = 512;
+				++retry;
+			} else if (smallblks > 511) {
+				usb_max_xfer_blk = 511;
+				++retry;
+			} else if (smallblks > 63) {
+				usb_max_xfer_blk = 63;
+				retry += 2;
+			}
+			debug("step down usb_max_xfer_blk to %d\n",
+			      usb_max_xfer_blk);
+
 			if (retry--)
 				goto retry_it;
 			blkcnt -= blks;
@@ -1286,8 +1376,6 @@ retry_it:
 	      PRIxPTR "\n", start, smallblks, buf_addr);
 
 	usb_disable_asynch(0); /* asynch transfer allowed */
-	if (blkcnt >= ss->max_xfer_blk)
-		debug("\n");
 	return blkcnt;
 
 }
@@ -1497,6 +1585,7 @@ int usb_stor_get_info(struct usb_device *dev, struct us_data *ss,
 	dev_desc->log2blksz = LOG2(dev_desc->blksz);
 	dev_desc->type = perq;
 	debug(" address %d\n", dev_desc->target);
+	usb_spinup(pccb, ss);
 
 	return 1;
 }

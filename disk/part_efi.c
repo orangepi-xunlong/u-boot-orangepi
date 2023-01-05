@@ -351,7 +351,7 @@ int part_get_info_efi(struct blk_desc *dev_desc, int part,
 	return 0;
 }
 
-#ifdef CONFIG_RKIMG_BOOTLOADER
+#if 0
 #if defined(CONFIG_SPL_KERNEL_BOOT) || !defined(CONFIG_SPL_BUILD)
 static void gpt_entry_modify(struct blk_desc *dev_desc,
 			     gpt_entry *gpt_pte,
@@ -452,7 +452,7 @@ static int part_test_efi(struct blk_desc *dev_desc)
 		|| (is_pmbr_valid(legacymbr) != 1)) {
 		return -1;
 	}
-#ifdef CONFIG_RKIMG_BOOTLOADER
+#if 0
 #if defined(CONFIG_SPL_KERNEL_BOOT) || !defined(CONFIG_SPL_BUILD)
 	gpt_entry *h_gpt_pte = NULL;
 	gpt_header *h_gpt_head = NULL;
