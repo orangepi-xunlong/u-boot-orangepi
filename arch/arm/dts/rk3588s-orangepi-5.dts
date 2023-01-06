@@ -76,3 +76,115 @@
 	u-boot,dm-pre-reloc;
 	status = "okay";
 };
+
+&u2phy0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy2 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy3 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy0_otg {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy3_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy2_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy2_host {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy3_host {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host0_ohci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host1_ehci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host1_ohci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdp_phy0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdp_phy0_dp {
+	u-boot,dm-pre-reloc;
+	status = "disabled";
+};
+
+&usbdp_phy0_u3 {
+	u-boot,dm-pre-reloc;
+	status = "disabled";
+};
+
+&usbdrd3_0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdrd_dwc3_0 {
+	u-boot,dm-pre-reloc;
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usbhost_dwc3_0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&combphy2_psu {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbhost3_0 {
+	u-boot,dm-pre-reloc;
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usb_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy0_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
