@@ -77,11 +77,16 @@
 #ifdef CONFIG_CMD_MMC
 #define BOOTENV_SHARED_MMC	BOOTENV_SHARED_BLKDEV(mmc)
 #define BOOTENV_DEV_MMC(devtypeu, devtypel, instance) \
-        "bootcmd_mmc1=" \
-                "mmc list;" \
-                "setenv devnum 1;" \
-                "run mmc_boot;" \
-                "\0"
+	"bootcmd_mmc1=" \
+	"if mmc dev 1; then "	\
+		"mmc list;" \
+		"setenv devnum 1;" \
+		"run mmc_boot;" \
+	"else " \
+		"mmc list;" \
+		"setenv devnum 0;" \
+		"run mmc_boot;" \
+	"fi\0"
 #define BOOTENV_DEV_NAME_MMC	BOOTENV_DEV_NAME_BLKDEV
 #else
 #define BOOTENV_SHARED_MMC

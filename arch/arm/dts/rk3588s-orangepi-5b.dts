@@ -1,0 +1,163 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2021 Rockchip Electronics Co., Ltd
+ *
+ */
+
+/dts-v1/;
+#include "rk3588.dtsi"
+#include "rk3588-u-boot.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+	model = "Orange Pi 5B";
+	compatible = "rockchip,rk3588s-orangepi-5", "rockchip,rk3588";
+
+	adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 1>;
+		io-channel-names = "buttons";
+		keyup-threshold-microvolt = <1800000>;
+		u-boot,dm-pre-reloc;
+		status = "okay";
+
+		volumeup-key {
+			u-boot,dm-pre-reloc;
+			linux,code = <KEY_VOLUMEUP>;
+			label = "volume up";
+			press-threshold-microvolt = <1750>;
+		};
+	};
+
+	vcc5v0_sys: vcc5v0-sys {
+		u-boot,dm-pre-reloc;
+		compatible = "regulator-fixed";
+		regulator-name = "vcc5v0_sys";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+	};
+};
+
+&sfc {
+	u-boot,dm-spl;
+	status = "disabled";
+};
+
+&combphy0_ps {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy2 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy3 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy0_otg {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy3_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy2_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy2_host {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy3_host {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host0_ohci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host1_ehci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb_host1_ohci {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdp_phy0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdp_phy0_dp {
+	u-boot,dm-pre-reloc;
+	status = "disabled";
+};
+
+&usbdp_phy0_u3 {
+	u-boot,dm-pre-reloc;
+	status = "disabled";
+};
+
+&usbdrd3_0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbdrd_dwc3_0 {
+	u-boot,dm-pre-reloc;
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usbhost_dwc3_0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&combphy2_psu {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usbhost3_0 {
+	u-boot,dm-pre-reloc;
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usb_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&usb2phy0_grf {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
