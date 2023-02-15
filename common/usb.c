@@ -949,8 +949,7 @@ again:
 	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, desc, len);
 	if (err < expect_len) {
 		if (err < 0) {
-			printf("unable to get device descriptor (error=%d) retry: %d\n",
-			       err, retry);
+			debug("unable to get device descriptor (error=%d) retry: %d\n", err, retry);
 			mdelay(50);
 			if (--retry >= 0)
 				/* Some drives are just slow to wake up. */

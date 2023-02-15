@@ -59,6 +59,7 @@
 	};
 
 	usb2phy1_grf: syscon@fd5d4000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-usb2phy-grf", "syscon",
 			     "simple-mfd";
 		reg = <0x0 0xfd5d4000 0x0 0x4000>;

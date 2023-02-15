@@ -614,7 +614,7 @@ retry_xacterr:
 
 	/* Check that the TD processing happened */
 	if (QT_TOKEN_GET_STATUS(token) & QT_TOKEN_STATUS_ACTIVE)
-		printf("EHCI timed out on TD - token=%#x\n", token);
+		debug("EHCI timed out on TD - token=%#x\n", token);
 
 	/* Disable async schedule. */
 	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);

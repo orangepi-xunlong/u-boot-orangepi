@@ -56,7 +56,7 @@ enum usb_device_speed usb_get_maximum_speed(ofnode node)
 
 	max_speed = ofnode_read_string(node, "maximum-speed");
 	if (!max_speed) {
-		pr_err("usb maximum-speed not found\n");
+		debug("usb maximum-speed not found\n");
 		return USB_SPEED_UNKNOWN;
 	}
 
