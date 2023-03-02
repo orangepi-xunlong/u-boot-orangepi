@@ -924,6 +924,7 @@ int arch_cpu_init(void)
 #endif
 #endif
 
+	writel(0x07700110, 0xfdc20008);
 	return 0;
 }
 

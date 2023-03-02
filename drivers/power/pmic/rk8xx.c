@@ -383,11 +383,13 @@ static int rk8xx_ofdata_to_platdata(struct udevice *dev)
 		return ret;
 	}
 
+/*
 	rk8xx->irq = phandle_gpio_to_irq(phandle, interrupt);
 	if (rk8xx->irq < 0) {
 		printf("Failed to request rk8xx irq, ret=%d\n", rk8xx->irq);
 		return rk8xx->irq;
 	}
+*/
 
 	val = dev_read_u32_default(dev, "long-press-off-time-sec", 0);
 	if (val <= 6)

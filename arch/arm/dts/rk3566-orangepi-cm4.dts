@@ -10,8 +10,8 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Rockchip RK3568 Evaluation Board";
-	compatible = "rockchip,rk3568-evb", "rockchip,rk3568";
+	model = "Orange Pi CM4";
+	compatible = "rockchip,rk3566-orangepi-cm4", "rockchip,rk3568";
 
 	dc_12v: dc-12v {
 		u-boot,dm-pre-reloc;
@@ -60,6 +60,19 @@
 			press-threshold-microvolt = <9>;
 		};
 	};
+
+	/* labeled +3.3v For PCIe only in schematic */
+	vcc3v3_pcie: vcc3v3-pcie-regulator {
+		u-boot,dm-pre-reloc;
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_pcie";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&dc_12v>;
+	};
+
 };
 
 &gmac0 {
@@ -496,3 +509,26 @@
 		};
 	};
 };
+
+&pipegrf {
+        u-boot,dm-pre-reloc;
+        status = "okay";
+};
+
+&pipe_phy_grf2 {
+        u-boot,dm-pre-reloc;
+        status = "okay";
+};
+
+&combphy2_psq {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&pcie2x1 {
+	u-boot,dm-pre-reloc;
+	reset-gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie>;
+	status = "okay";
+};
+
