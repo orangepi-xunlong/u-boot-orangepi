@@ -381,7 +381,8 @@ static int get_resource_base_sector(struct blk_desc *dev_desc,
 	}
 #endif
 	/* If Android v012, getting resource from second position ! */
-	if (hdr) {
+	//if (hdr) {
+	if (0) {
 		if (os_ver)
 			printf("Android %u.%u, Build %u.%u, v%d\n",
 			       (os_ver >> 14) & 0x7F, (os_ver >> 7) & 0x7F,
@@ -400,7 +401,8 @@ static int get_resource_base_sector(struct blk_desc *dev_desc,
 resource_part:
 #endif
 	/* resource partition */
-	if (part_get_info_by_name(dev_desc, PART_RESOURCE, &part) < 0) {
+	//if (part_get_info_by_name(dev_desc, PART_RESOURCE, &part) < 0) {
+	if (1) {
 		//printf("No resource partition\n");
 		return -ENODEV;
 	} else {
