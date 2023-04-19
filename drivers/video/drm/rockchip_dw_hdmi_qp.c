@@ -949,7 +949,7 @@ void dw_hdmi_qp_selete_output(struct hdmi_edid_data *edid_data,
 		ret = part_get_info_by_name(dev_desc, "baseparameter",
 					    &part_info);
 		if (ret < 0) {
-			printf("Could not find baseparameter partition\n");
+			//printf("Could not find baseparameter partition\n");
 			goto null_basep;
 		}
 

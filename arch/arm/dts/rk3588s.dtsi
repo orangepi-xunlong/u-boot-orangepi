@@ -155,6 +155,22 @@
 				     <&cpu_b0>, <&cpu_b1>, <&cpu_b2>, <&cpu_b3>;
 	};
 
+	display_subsystem: display-subsystem {
+		compatible = "rockchip,display-subsystem";
+		ports = <&vop_out>;
+
+		route {
+			route_hdmi0: route-hdmi0 {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vp0_out_hdmi0>;
+			};
+		};
+	};
+
 	firmware: firmware {
 		optee: optee {
 			compatible = "linaro,optee-tz";
@@ -356,16 +372,25 @@
 	};
 
 	sys_grf: syscon@fd58c000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-sys-grf", "syscon";
 		reg = <0x0 0xfd58c000 0x0 0x1000>;
 	};
 
+	vop_grf: syscon@fd5a4000 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,rk3588-vop-grf", "syscon";
+		reg = <0x0 0xfd5a4000 0x0 0x2000>;
+	};
+
 	vo0_grf: syscon@fd5a6000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-vo-grf", "syscon";
 		reg = <0x0 0xfd5a6000 0x0 0x2000>;
 	};
 
 	vo1_grf: syscon@fd5a8000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-vo-grf", "syscon";
 		reg = <0x0 0xfd5a8000 0x0 0x100>;
 	};
@@ -472,6 +497,7 @@
 	};
 
 	hdptxphy0_grf: syscon@fd5e0000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-hdptxphy-grf", "syscon";
 		reg = <0x0 0xfd5e0000 0x0 0x100>;
 	};
@@ -498,23 +524,25 @@
 		#reset-cells = <1>;
 
 		assigned-clocks =
-			<&cru PLL_PPLL>, <&cru PLL_CPLL>,
-			<&cru PLL_NPLL>, <&cru PLL_GPLL>,
-			<&cru ARMCLK_L>, <&cru ARMCLK_B01>,
-			<&cru ACLK_CENTER_ROOT>, <&cru PCLK_CENTER_ROOT>,
-			<&cru HCLK_CENTER_ROOT>, <&cru ACLK_CENTER_LOW_ROOT>,
-			<&cru ACLK_TOP_ROOT>, <&cru PCLK_TOP_ROOT>,
-			<&cru ACLK_LOW_TOP_ROOT>, <&cru PCLK_PMU0_ROOT>,
-			<&cru HCLK_PMU_CM0_ROOT>;
+		        <&cru PLL_PPLL>, <&cru PLL_AUPLL>,
+		        <&cru PLL_NPLL>, <&cru PLL_GPLL>,
+		        <&cru ACLK_CENTER_ROOT>,
+		        <&cru HCLK_CENTER_ROOT>, <&cru ACLK_CENTER_LOW_ROOT>,
+		        <&cru ACLK_TOP_ROOT>, <&cru PCLK_TOP_ROOT>,
+		        <&cru ACLK_LOW_TOP_ROOT>, <&cru PCLK_PMU0_ROOT>,
+		        <&cru HCLK_PMU_CM0_ROOT>,
+		        <&cru ACLK_BUS_ROOT>, <&cru CLK_150M_SRC>,
+		        <&cru CLK_GPU>;
 		assigned-clock-rates =
-			<100000000>, <1500000000>,
-			<850000000>,  <1188000000>,
-			<816000000>, <1008000000>,
-			<600000000>, <200000000>,
-			<400000000>, <500000000>,
-			<800000000>, <100000000>,
-			<400000000>, <100000000>,
-			<200000000>;
+		        <1100000000>, <786432000>,
+		        <850000000>, <1188000000>,
+		        <702000000>,
+		        <400000000>, <500000000>,
+		        <800000000>, <100000000>,
+		        <400000000>, <100000000>,
+		        <200000000>,
+		        <375000000>, <150000000>,
+		        <200000000>;
 	};
 
 	i2c0: i2c@fd880000 {
@@ -716,6 +744,216 @@
 			power-domain@RK3588_PD_SDMMC {
 				reg = <RK3588_PD_SDMMC>;
 			};
+		};
+	};
+
+	clocks {
+		u-boot,dm-pre-reloc;
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		hclk_vo1: hclk_vo1@fd7c08ec {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08ec 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VO1USB_TOP_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_vdpu_low_pre: aclk_vdpu_low_pre@fd7c08b0 {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08b0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_vo0: hclk_vo0@fd7c08dc {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08dc 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VOP_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_usb: hclk_usb@fd7c08a8 {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a8 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VO1USB_TOP_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_nvm: hclk_nvm@fd7c087c {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c087c 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_NVM_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_usb: aclk_usb@fd7c08a8 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a8 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VO1USB_TOP_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_isp1_pre: hclk_isp1_pre@fd7c0868 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c0868 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VI_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_isp1_pre: aclk_isp1_pre@fd7c0868 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c0868 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VI_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_rkvdec0_pre: aclk_rkvdec0_pre@fd7c08a0 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_rkvdec0_pre: hclk_rkvdec0_pre@fd7c08a0 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_rkvdec1_pre: aclk_rkvdec1_pre@fd7c08a4 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a4 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_rkvdec1_pre: hclk_rkvdec1_pre@fd7c08a4 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08a4 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_jpeg_decoder_pre: aclk_jpeg_decoder_pre@fd7c08b0 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08b0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_rkvenc1_pre: aclk_rkvenc1_pre@fd7c08c0 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08c0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_RKVENC0>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_rkvenc1_pre: hclk_rkvenc1_pre@fd7c08c0 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08c0 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_RKVENC0>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_hdcp0_pre: aclk_hdcp0_pre@fd7c08dc {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08dc 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VOP_LOW_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_hdcp1_pre: aclk_hdcp1_pre@fd7c08ec {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c08ec 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VO1USB_TOP_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		pclk_av1_pre: pclk_av1_pre@fd7c0910 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c0910 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru HCLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		aclk_av1_pre: aclk_av1_pre@fd7c0910 {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c0910 0 0x10>;
+			clock-names = "link";
+			clocks = <&cru ACLK_VDPU_ROOT>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		hclk_sdio_pre: hclk_sdio_pre@fd7c092c {
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0 0xfd7c092c 0 0x10>;
+			clock-names = "link";
+			clocks = <&hclk_nvm>;
+			#power-domain-cells = <1>;
+			#clock-cells = <0>;
+		};
+
+		pclk_vo0_grf: pclk_vo0_grf@fd7c08dc {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0x0 0xfd7c08dc 0x0 0x4>;
+			clocks = <&hclk_vo0>;
+			clock-names = "link";
+			#clock-cells = <0>;
+		};
+
+		pclk_vo1_grf: pclk_vo1_grf@fd7c08ec {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,rk3588-clock-gate-link";
+			reg = <0x0 0xfd7c08ec 0x0 0x4>;
+			clocks = <&hclk_vo1>;
+			clock-names = "link";
+			#clock-cells = <0>;
 		};
 	};
 
@@ -1035,7 +1273,215 @@
 		status = "disabled";
 	};
 
+	vop: vop@fdd90000 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,rk3588-vop";
+		reg = <0x0 0xfdd90000 0x0 0x4200>, <0x0 0xfdd95000 0x0 0x1000>;
+		reg-names = "regs", "gamma_lut";
+		interrupts = <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru ACLK_VOP>,
+			 <&cru HCLK_VOP>,
+			 <&cru DCLK_VOP0>,
+			 <&cru DCLK_VOP1>,
+			 <&cru DCLK_VOP2>,
+			 <&cru DCLK_VOP3>,
+			 <&cru PCLK_VOP_ROOT>,
+			 <&cru DCLK_VOP0_SRC>,
+			 <&cru DCLK_VOP1_SRC>,
+			 <&cru DCLK_VOP2_SRC>;
+		clock-names = "aclk_vop",
+			      "hclk_vop",
+			      "dclk_vp0",
+			      "dclk_vp1",
+			      "dclk_vp2",
+			      "dclk_vp3",
+			      "pclk_vop",
+			      "dclk_src_vp0",
+			      "dclk_src_vp1",
+			      "dclk_src_vp2";
+		assigned-clocks = <&cru ACLK_VOP>;
+		assigned-clock-rates = <800000000>;
+		resets = <&cru SRST_A_VOP>,
+			 <&cru SRST_H_VOP>,
+			 <&cru SRST_D_VOP0>,
+			 <&cru SRST_D_VOP1>,
+			 <&cru SRST_D_VOP2>,
+			 <&cru SRST_D_VOP3>;
+		reset-names = "axi",
+			      "ahb",
+			      "dclk_vp0",
+			      "dclk_vp1",
+			      "dclk_vp2",
+			      "dclk_vp3";
+		iommus = <&vop_mmu>;
+		power-domains = <&power RK3588_PD_VOP>;
+		rockchip,grf = <&sys_grf>;
+		rockchip,vop-grf = <&vop_grf>;
+		rockchip,vo1-grf = <&vo1_grf>;
+		rockchip,pmu = <&pmu>;
+
+		status = "disabled";
+
+		vop_out: ports {
+			u-boot,dm-pre-reloc;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			vp0: port@0 {
+				u-boot,dm-pre-reloc;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0>;
+
+				vp0_out_hdmi0: endpoint@2 {
+					u-boot,dm-pre-reloc;
+					reg = <2>;
+					remote-endpoint = <&hdmi0_in_vp0>;
+				};
+			};
+
+			vp1: port@1 {
+				u-boot,dm-pre-reloc;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <1>;
+
+				vp1_out_hdmi0: endpoint@2 {
+					u-boot,dm-pre-reloc;
+					reg = <2>;
+					remote-endpoint = <&hdmi0_in_vp1>;
+				};
+			};
+
+			vp2: port@2 {
+				u-boot,dm-pre-reloc;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <2>;
+
+				assigned-clocks = <&cru DCLK_VOP2_SRC>;
+				assigned-clock-parents = <&cru PLL_V0PLL>;
+
+				vp2_out_hdmi0: endpoint@2 {
+					u-boot,dm-pre-reloc;
+					reg = <2>;
+					remote-endpoint = <&hdmi0_in_vp2>;
+				};
+			};
+
+			vp3: port@3 {
+				u-boot,dm-pre-reloc;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <3>;
+			};
+		};
+	};
+
+	hdmi0: hdmi@fde80000 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,rk3588-dw-hdmi";
+		reg = <0x0 0xfde80000 0x0 0x20000>;
+		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 360 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&cru PCLK_HDMITX0>,
+			 <&cru CLK_HDMIHDP0>,
+			 <&cru CLK_HDMITX0_EARC>,
+			 <&cru CLK_HDMITX0_REF>,
+			 <&cru MCLK_I2S5_8CH_TX>,
+			 <&cru DCLK_VOP0>,
+			 <&cru DCLK_VOP1>,
+			 <&cru DCLK_VOP2>,
+			 <&cru DCLK_VOP3>,
+			 <&hclk_vo1>,
+			 <&hdptxphy_hdmi_clk0>;
+		clock-names = "pclk",
+			      "hpd",
+			      "earc",
+			      "hdmitx_ref",
+			      "aud",
+			      "dclk_vp0",
+			      "dclk_vp1",
+			      "dclk_vp2",
+			      "dclk_vp3",
+			      "hclk_vo1",
+			      "link_clk";
+		resets = <&cru SRST_HDMITX0_REF>, <&cru SRST_HDMIHDP0>;
+		reset-names = "ref", "hdp";
+		power-domains = <&power RK3588_PD_VO1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmim0_tx0_cec &hdmim0_tx0_hpd &hdmim0_tx0_scl &hdmim0_tx0_sda>;
+		reg-io-width = <4>;
+		rockchip,grf = <&sys_grf>;
+		rockchip,vo1_grf = <&vo1_grf>;
+		phys = <&hdptxphy_hdmi0>;
+		phy-names = "hdmi";
+		#sound-dai-cells = <0>;
+		status = "disabled";
+
+		ports {
+			u-boot,dm-pre-reloc;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hdmi0_in: port@0 {
+				u-boot,dm-pre-reloc;
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				hdmi0_in_vp0: endpoint@0 {
+					u-boot,dm-pre-reloc;
+					reg = <0>;
+					remote-endpoint = <&vp0_out_hdmi0>;
+					status = "disabled";
+				};
+
+				hdmi0_in_vp1: endpoint@1 {
+					u-boot,dm-pre-reloc;
+					reg = <1>;
+					remote-endpoint = <&vp1_out_hdmi0>;
+					status = "disabled";
+				};
+
+				hdmi0_in_vp2: endpoint@2 {
+					u-boot,dm-pre-reloc;
+					reg = <2>;
+					remote-endpoint = <&vp2_out_hdmi0>;
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	hdptxphy_hdmi0: hdmiphy@fed60000 {
+		u-boot,dm-pre-reloc;
+		compatible = "rockchip,rk3588-hdptx-phy-hdmi";
+		reg = <0x0 0xfed60000 0x0 0x2000>;
+		clocks = <&cru CLK_USB2PHY_HDPTXRXPHY_REF>, <&cru PCLK_HDPTX0>;
+		clock-names = "ref", "apb";
+		resets = <&cru SRST_HDPTX0>, <&cru SRST_P_HDPTX0>,
+			 <&cru SRST_HDPTX0_INIT>, <&cru SRST_HDPTX0_CMN>,
+			 <&cru SRST_HDPTX0_LANE>, <&cru SRST_HDPTX0_ROPLL>,
+			 <&cru SRST_HDPTX0_LCPLL>;
+		reset-names = "phy", "apb", "init", "cmn", "lane", "ropll",
+			      "lcpll";
+		rockchip,grf = <&hdptxphy0_grf>;
+		#phy-cells = <0>;
+		status = "disabled";
+
+		hdptxphy_hdmi_clk0: clk-port {
+			u-boot,dm-pre-reloc;
+			#clock-cells = <0>;
+			status = "okay";
+		};
+	};
+
 	vop_mmu: iommu@fdd97e00 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,iommu-v2";
 		reg = <0x0 0xfdd97e00 0x0 0x100>, <0x0 0xfdd97f00 0x0 0x100>;
 		interrupts = <GIC_SPI 156 IRQ_TYPE_LEVEL_HIGH>;
@@ -1785,9 +2231,8 @@
 		clock-names = "spiclk", "apb_pclk";
 		dmas = <&dmac1 15>, <&dmac1 16>;
 		dma-names = "tx", "rx";
-		pinctrl-names = "default", "high_speed";
-		pinctrl-0 = <&spi2m0_cs0 &spi2m0_cs1 &spi2m0_pins>;
-		pinctrl-1 = <&spi2m0_cs0 &spi2m0_cs1 &spi2m0_pins_hs>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spi2m2_cs0 &spi2m2_cs1 &spi2m2_pins>;
 		num-cs = <2>;
 		status = "disabled";
 	};
@@ -2228,6 +2673,7 @@
 	};
 
 	hdptxphy0: phy@fed60000 {
+		u-boot,dm-pre-reloc;
 		compatible = "rockchip,rk3588-hdptx-phy";
 		reg = <0x0 0xfed60000 0x0 0x2000>;
 		clocks = <&cru CLK_USB2PHY_HDPTXRXPHY_REF>, <&cru PCLK_HDPTX0>;

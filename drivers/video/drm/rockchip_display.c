@@ -17,6 +17,7 @@
 #include <linux/compat.h>
 #include <linux/media-bus-format.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <video.h>
 #include <video_rockchip.h>
 #include <video_bridge.h>
@@ -126,7 +127,7 @@ int rockchip_get_baseparameter(void)
 	}
 
 	if (part_get_info_by_name(dev_desc, "baseparameter", &part_info) < 0) {
-		printf("Could not find baseparameter partition\n");
+		//printf("Could not find baseparameter partition\n");
 		return -ENOENT;
 	}
 
@@ -1329,7 +1330,8 @@ static int load_bmp_logo(struct logo_info *logo, const char *bmp_name)
 		return 0;
 	}
 
-	header = malloc(RK_BLK_SIZE);
+	size_t header_size = RK_BLK_SIZE;
+	header = malloc_cache_aligned(header_size);
 	if (!header)
 		return -ENOMEM;
 
@@ -1343,6 +1345,7 @@ static int load_bmp_logo(struct logo_info *logo, const char *bmp_name)
 	logo->width = get_unaligned_le32(&header->width);
 	logo->height = get_unaligned_le32(&header->height);
 	dst_size = logo->width * logo->height * logo->bpp >> 3;
+
 	reserved = get_unaligned_le32(&header->reserved);
 	if (logo->height < 0)
 	    logo->height = -logo->height;

@@ -8,6 +8,7 @@
 #include "rk3588.dtsi"
 #include "rk3588-u-boot.dtsi"
 #include <dt-bindings/input/input.h>
+//#include <rk3588-rk806-single.dtsi>
 
 / {
 	model = "Orange Pi 5";
@@ -46,11 +47,32 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
-		//regulator-boot-on;
-		//regulator-always-on;
 		gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
 		startup-delay-us = <50000>;
 		vin-supply = <&vcc5v0_sys>;
+	};
+
+	vcc_1v1_nldo_s3: vcc-1v1-nldo-s3 {
+		u-boot,dm-pre-reloc;
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_1v1_nldo_s3";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
+		vin-supply = <&vcc5v0_sys>;
+	};
+
+	reserved-memory {
+		u-boot,dm-pre-reloc;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		drm_logo: drm-logo@00000000 {
+			u-boot,dm-pre-reloc;
+			compatible = "rockchip,drm-logo";
+			reg = <0x0 0x0 0x0 0x0>;
+		};
 	};
 };
 
@@ -180,5 +202,71 @@
 &usbhost_dwc3_0 {
 	u-boot,dm-pre-reloc;
 	dr_mode = "host";
+	status = "okay";
+};
+
+&vop {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+	assigned-clocks = <&cru ACLK_VOP>;
+	assigned-clock-rates = <800000000>;
+};
+
+&vop_mmu {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&display_subsystem {
+	u-boot,dm-pre-reloc;
+	memory-region = <&drm_logo>;
+	memory-region-names = "drm-logo";
+	status = "okay";
+};
+
+&vp0 {
+	u-boot,dm-pre-reloc;
+	rockchip,plane-mask = <(1 << 0 | 1 << 2)>;
+	rockchip,primary-plane = <2>;
+};
+
+&vp1 {
+	u-boot,dm-pre-reloc;
+	rockchip,plane-mask = <(1 << 1 | 1 << 3)>;
+	rockchip,primary-plane = <3>;
+};
+
+&vp2 {
+	u-boot,dm-pre-reloc;
+	rockchip,plane-mask = <(1 << 6 | 1 << 8)>;
+	rockchip,primary-plane = <8>;
+};
+
+&vp3 {
+	u-boot,dm-pre-reloc;
+	rockchip,plane-mask = <(1 << 7 | 1 << 9)>;
+	rockchip,primary-plane = <9>;
+};
+
+&hdmi0 {
+	u-boot,dm-pre-reloc;
+	enable-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&hdmi0_in_vp0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&hdptxphy_hdmi0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&route_hdmi0{
+	u-boot,dm-pre-reloc;
+	logo,uboot = "logo.bmp";
+	connect = <&vp0_out_hdmi0>;
 	status = "okay";
 };

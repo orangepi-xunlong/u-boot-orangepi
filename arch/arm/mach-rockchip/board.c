@@ -525,7 +525,7 @@ int board_fdt_fixup(void *blob)
 {
 	/* Common fixup for DRM */
 #ifdef CONFIG_DRM_ROCKCHIP
-	rockchip_display_fixup(blob);
+	//rockchip_display_fixup(blob);
 #endif
 
 	return rk_board_fdt_fixup(blob);

@@ -11,6 +11,20 @@
  * by adding changes at end of this file.
  */
 &pinctrl {
+	pcfg_pull_none_drv_level_5_smt: pcfg-pull-none-drv-level-5-smt {
+		u-boot,dm-spl;
+		bias-disable;
+		drive-strength = <5>;
+		input-schmitt-enable;
+	};
+
+	pcfg_pull_none_drv_level_1_smt: pcfg-pull-none-drv-level-1-smt {
+		u-boot,dm-spl;
+		bias-disable;
+		drive-strength = <1>;
+		input-schmitt-enable;
+	};
+
 	auddsm {
 		auddsm_pins: auddsm-pins {
 			rockchip,pins =
@@ -598,6 +612,62 @@
 			rockchip,pins =
 				/* hdmi_debug6 */
 				<1 RK_PA0 7 &pcfg_pull_none>;
+		};
+
+		hdmim0_rx_cec: hdmim0-rx-cec {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_rx_cec */
+			        <4 RK_PB5 5 &pcfg_pull_none>;
+		};
+
+		hdmim0_rx_hpdin: hdmim0-rx-hpdin {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_rx_hpdin */
+			        <4 RK_PB6 5 &pcfg_pull_none>;
+		};
+
+		hdmim0_rx_scl: hdmim0-rx-scl {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_rx_scl */
+			        <0 RK_PD2 11 &pcfg_pull_none>;
+		};
+
+		hdmim0_rx_sda: hdmim0-rx-sda {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_rx_sda */
+			        <0 RK_PD1 11 &pcfg_pull_none>;
+		};
+
+		hdmim0_tx0_cec: hdmim0-tx0-cec {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_tx0_cec */
+			        <4 RK_PC1 5 &pcfg_pull_none>;
+		};
+
+		hdmim0_tx0_hpd: hdmim0-tx0-hpd {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_tx0_hpd */
+			        <1 RK_PA5 5 &pcfg_pull_none>;
+		};
+
+		hdmim0_tx0_scl: hdmim0-tx0-scl {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_tx0_scl */
+			        <4 RK_PB7 5 &pcfg_pull_none_drv_level_5_smt>;
+		};
+
+		hdmim0_tx0_sda: hdmim0-tx0-sda {
+			u-boot,dm-spl;
+			rockchip,pins =
+			        /* hdmim0_tx0_sda */
+			        <4 RK_PC0 5 &pcfg_pull_none_drv_level_1_smt>;
 		};
 	};
 
@@ -2216,6 +2286,7 @@
 	};
 
 	spi2 {
+		u-boot,dm-spl;
 		spi2m0_pins: spi2m0-pins {
 			rockchip,pins =
 				/* spi2_clk_m0 */
@@ -2261,6 +2332,7 @@
 		};
 
 		spi2m2_pins: spi2m2-pins {
+			u-boot,dm-spl;
 			rockchip,pins =
 				/* spi2_clk_m2 */
 				<0 RK_PA5 1 &pcfg_pull_none>,
@@ -2271,12 +2343,14 @@
 		};
 
 		spi2m2_cs0: spi2m2-cs0 {
+			u-boot,dm-spl;
 			rockchip,pins =
 				/* spi2_cs0_m2 */
 				<0 RK_PB1 1 &pcfg_pull_none>;
 		};
 
 		spi2m2_cs1: spi2m2-cs1 {
+			u-boot,dm-spl;
 			rockchip,pins =
 				/* spi2_cs1_m2 */
 				<0 RK_PB0 1 &pcfg_pull_none>;

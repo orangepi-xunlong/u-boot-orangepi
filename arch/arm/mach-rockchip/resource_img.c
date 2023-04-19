@@ -11,6 +11,7 @@
 #include <boot_rkimg.h>
 #include <bmp_layout.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <asm/io.h>
 #include <asm/unaligned.h>
 #include <dm/ofnode.h>
@@ -18,6 +19,8 @@
 #include <asm/arch/fit.h>
 #include <asm/arch/uimage.h>
 #include <asm/arch/resource_img.h>
+#include <nvme.h>
+#include <scsi.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -471,6 +474,9 @@ static struct resource_file *get_file_info(const char *name)
 	return NULL;
 }
 
+#define msleep(a)               udelay((a) * 1000)
+
+
 /*
  * read file from resource partition
  * @buf: destination buf to store file data;
@@ -480,39 +486,58 @@ static struct resource_file *get_file_info(const char *name)
  */
 int rockchip_read_resource_file(void *buf, const char *name, int offset, int len)
 {
-	struct resource_file *file;
-	struct blk_desc *dev_desc;
-	int ret = 0;
-	int blks;
-	ulong src;
+	int ret = -1;
 
-	file = get_file_info(name);
-	if (!file) {
-		printf("No file: %s\n", name);
-		return -ENOENT;
+#ifdef CONFIG_CMD_FAT
+	char logo_name[50];
+	char * devtype = env_get("devtype");
+	char * devnum = env_get("devnum");
+	static unsigned int call_num = 0;
+
+	strcpy(logo_name, name);
+
+	if (call_num == 0) {
+		if (!strcmp(devtype, "mmc")) {
+			if (!run_command("blk dev mmc 0", 0)) //for sd card
+			{
+				run_command("setenv devtype mmc", 0);
+				run_command("setenv devnum 0", 0);
+			}
+			else if (!run_command("blk dev mmc 1", 0)) //for emmc
+			{
+				run_command("setenv devtype mmc", 0);
+				run_command("setenv devnum 1", 0);
+			}
+		}else if (!strcmp(devtype, "mtd")) {
+			if (!run_command("pci enum", 0) && !run_command("nvme scan", 0) && !run_command("blk dev nvme 0", 0)) //for nvme ssd
+			{
+				run_command("setenv devtype nvme", 0);
+				run_command("setenv devnum 0", 0);
+			}
+			else if (!run_command("scsi scan", 0) && !run_command("blk dev scsi 0", 0)) //for sata ssd
+			{
+				run_command("setenv devtype scsi", 0);
+				run_command("setenv devnum 0", 0);
+			}
+			else if (!run_command("usb start", 0))	//for usb
+			{
+				run_command("setenv devtype usb", 0);
+				run_command("setenv devnum 0", 0);
+			}
+		}
 	}
+	printf("Read u-boot logo: devtype = %s, devnum = %s, logo_name = %s\n", env_get("devtype"), env_get("devnum"), logo_name);
 
-	dev_desc = rockchip_get_bootdev();
-	if (!dev_desc) {
-		printf("No dev_desc!\n");
-		return -ENODEV;
-	}
+	char *const fatload_argv[6] = {"fatload", devtype, devnum, "0x10000000", logo_name, NULL};
 
-	if (len <= 0 || len > file->f_size)
-		len = file->f_size;
-
-	if (file->ram) {
-		src = file->rsce_base +
-			(file->f_offset + offset) * dev_desc->blksz;
-		memcpy(buf, (char *)src, len);
+	ret = do_fat_fsload(0, 0, 5, fatload_argv);
+	if (ret == 0)
 		ret = len;
-	} else {
-		blks = DIV_ROUND_UP(len, dev_desc->blksz);
-		ret = blk_dread(dev_desc,
-				file->rsce_base + file->f_offset + offset,
-				blks, buf);
-		ret = (ret != blks) ? -EIO : len;
-	}
+
+	memcpy(buf, (char *)0x10000000, len);
+
+	call_num++;
+#endif
 
 	return ret;
 }
