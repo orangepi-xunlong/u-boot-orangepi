@@ -226,6 +226,7 @@ int rockchip_get_boot_mode(void)
 int setup_boot_mode(void)
 {
 	char env_preboot[256] = {0};
+	const char *devtype_num_set = "run rkimg_bootdev_download";
 
 	switch (rockchip_get_boot_mode()) {
 	case BOOT_MODE_BOOTLOADER:
@@ -251,6 +252,7 @@ int setup_boot_mode(void)
 		break;
 #endif
 	case BOOT_MODE_LOADER:
+		run_command_list(devtype_num_set, -1, 0);
 		printf("enter Rockusb!\n");
 		env_set("preboot", "setenv preboot; download");
 		run_command("download", 0);

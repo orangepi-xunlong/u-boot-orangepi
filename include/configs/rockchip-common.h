@@ -183,6 +183,18 @@
 		"setenv devtype spinor; setenv devnum 1;" \
 	"else" \
 		"setenv devtype ramdisk; setenv devnum 0;" \
+	"fi; \0" \
+	"rkimg_bootdev_download=" \
+	"scsi scan;" \
+	"nvme scan;" \
+	"if mmc dev 1; then " \
+		"setenv devtype mmc; setenv devnum 1;" \
+	"elif mmc dev 0; then " \
+		"setenv devtype mmc; setenv devnum 0;" \
+	"elif nvme dev 0; then " \
+		"setenv devtype nvme; setenv devnum 0;" \
+	"elif scsi dev 0; then " \
+		"setenv devtype scsi; setenv devnum 0;" \
 	"fi; \0"
 
 #if defined(CONFIG_AVB_VBMETA_PUBLIC_KEY_VALIDATE)

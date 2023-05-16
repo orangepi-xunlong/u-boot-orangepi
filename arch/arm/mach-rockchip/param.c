@@ -257,6 +257,9 @@ int param_parse_atags_bootdev(char **devtype, char **devnum)
 		case BOOT_TYPE_MTD_BLK_SPI_NOR:
 			*devtype = "mtd";
 			*devnum = "2";
+#if (defined CONFIG_NVME || defined CONFIG_SCSI)
+			return -EINVAL;
+#endif
 			break;
 #endif
 		default:

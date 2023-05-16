@@ -50,6 +50,13 @@ __weak int rk_board_scan_bootdev(void)
 	return run_command_list(devtype_num_set, -1, 0);
 }
 
+__weak int rk_board_scan_bootdev_download(void)
+{
+	const char *devtype_num_set = "run rkimg_bootdev_download";
+
+	return run_command_list(devtype_num_set, -1, 0);
+}
+
 static int bootdev_init(const char *devtype, const char *devnum)
 {
 #ifdef CONFIG_MMC
@@ -108,6 +115,10 @@ static void boot_devtype_init(void)
 			goto finish;
 		}
 	}
+#endif
+
+#ifdef CONFIG_NVME
+	pci_init();
 #endif
 
 	/* scan list */
@@ -328,6 +339,7 @@ void setup_download_mode(void)
 		vbus = rockchip_u2phy_vbus_detect();
 #endif
 		if (vbus > 0) {
+			rk_board_scan_bootdev_download();
 			printf("%sentering download mode...\n",
 			       IS_ENABLED(CONFIG_CMD_ROCKUSB) ?
 			       "" : "no rockusb, ");
