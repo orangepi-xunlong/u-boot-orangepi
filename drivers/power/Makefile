@@ -9,6 +9,7 @@ obj-$(CONFIG_AXP221_POWER)	+= axp221.o
 obj-$(CONFIG_AXP305_POWER)	+= axp305.o
 obj-$(CONFIG_AXP809_POWER)	+= axp809.o
 obj-$(CONFIG_AXP818_POWER)	+= axp818.o
+obj-$(CONFIG_AXP313A_POWER)	+= axp313a.o
 obj-$(CONFIG_EXYNOS_TMU)	+= exynos-tmu.o
 obj-$(CONFIG_FTPMU010_POWER)	+= ftpmu010.o
 obj-$(CONFIG_SY8106A_POWER)	+= sy8106a.o

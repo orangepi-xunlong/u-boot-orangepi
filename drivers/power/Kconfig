@@ -58,6 +58,15 @@ config AXP305_POWER
 	Select this to enable support for the axp305 pmic found on most
 	H616 boards.
 
+config AXP313A_POWER
+	bool "axp313a pmic support"
+	depends on MACH_SUN50I_H616
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Select this to enable support for the axp313a pmic found on most
+	H616 boards.
+
 config AXP809_POWER
 	bool "axp809 pmic support"
 	depends on MACH_SUN9I
@@ -118,11 +127,11 @@ config AXP_DCDC2_VOLT
 
 config AXP_DCDC3_VOLT
 	int "axp pmic dcdc3 voltage"
-	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER
+	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP313A_POWER
 	default 900 if AXP809_POWER || AXP818_POWER
 	default 1500 if AXP152_POWER
 	default 1250 if AXP209_POWER
-	default 1100 if MACH_SUN8I_R40
+	default 1100 if MACH_SUN8I_R40 || AXP313A_POWER
 	default 1200 if MACH_SUN6I || MACH_SUN8I
 	---help---
 	Set the voltage (mV) to program the axp pmic dcdc3 at, set to 0 to
@@ -130,6 +139,7 @@ config AXP_DCDC3_VOLT
 	On A10(s) / A13 / A20 boards with an axp209 dcdc3 is VDD-INT-DLL and
 	should be 1.25V.
 	On A10s boards with an axp152 dcdc3 is VCC-DRAM and should be 1.5V.
+	On H616 boards with an axp313a dcdc3 is VCC-DRAM(LPDDR4) and should be 1.1V.
 	On A23 / A31 / A33 boards dcdc3 is VDD-CPU and should be 1.2V.
 	On A80 boards dcdc3 is used for VDD-CPUA(cluster 0) and should be 0.9V.
 	On A83T boards dcdc3 is used for VDD-CPUB(cluster 1) and should be 0.9V.
