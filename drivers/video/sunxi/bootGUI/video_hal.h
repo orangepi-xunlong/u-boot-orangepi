@@ -83,6 +83,7 @@ int hal_set_layer_geometry(void *handle,
 	int width, int height, int bpp, int stride);
 int hal_set_layer_crop(void *handle, int left, int top, int right, int bottom);
 int hal_show_layer(void *handle, char is_show);
+int hal_save_boot_disp(void *handle);
 
 /* ------- video fb hal : end -------- */
 

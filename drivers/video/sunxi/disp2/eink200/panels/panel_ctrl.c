@@ -13,6 +13,9 @@
 struct __eink_panel *eink_panel_array[] = {
 	&default_eink,
 	/* add new panel below */
+	&ed060xd4u2_tc,
+	&ed068og1,
+	&es103tc1c1,
 	NULL,
 };
 

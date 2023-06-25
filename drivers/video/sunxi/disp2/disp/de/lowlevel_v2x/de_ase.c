@@ -46,7 +46,7 @@ int de_ase_set_reg_base(unsigned int sel, unsigned int chno, void *base)
 int de_ase_update_regs(unsigned int sel, unsigned int chno)
 {
 	if (ase_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)ase_block[sel][chno].off,
+		regwrite((void *)ase_block[sel][chno].off,
 			ase_block[sel][chno].val, ase_block[sel][chno].size);
 		ase_block[sel][chno].dirty = 0x0;
 	}
@@ -60,6 +60,10 @@ int de_ase_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 	void *memory;
 
 	base = reg_base + (sel + 1) * 0x00100000 + ASE_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		base = base - 0x00100000;
+#endif
 	/*FIXME  display path offset should be defined*/
 	__inf("sel %d, ase_base[%d]=0x%p\n", sel, chno, (void *)base);
 

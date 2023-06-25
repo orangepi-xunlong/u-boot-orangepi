@@ -21,5 +21,6 @@ int hal_save_disp_device_config_to_kernel(int disp, void *from);
 
 int hal_fat_fsload(char *part_name, char *file_name,
 	char *load_addr, unsigned long length);
+int hal_reserve_logo_mem(uint64_t addr, uint64_t size);
 
 #endif /* #ifndef __VIDEO_MISC_HAL_H__ */

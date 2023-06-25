@@ -21,10 +21,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
+
 #include <common.h>
 #include <malloc.h>
 #include <sunxi_mbr.h>
 #include "nand_bsp.h"
+
+#ifndef CONFIG_SUNXI_COMM_NAND
+#include <sunxi_nand_partitions.h>
+#endif
 
 extern int NAND_UbootInit(int boot_mode);
 extern int NAND_UbootToPhy(void);
@@ -43,27 +48,184 @@ extern int NAND_UbootProbe(void);
 extern int NAND_GetParam_store(void *buffer, uint length);
 extern int NAND_FlushCache(void);
 
+#if defined(CONFIG_SUNXI_COMM_NAND_V1) || defined(CONFIG_SUNXI_COMM_NAND)
 extern PARTITION_MBR nand_mbr;
 extern int  mbr_burned_flag;
-
-static int  nand_open_times;
+extern int nandphy_had_init;
+#else
+PARTITION_MBR nand_mbr;
+int  mbr_burned_flag;
+int nandphy_had_init;
+#endif
 int nand_open_count;
+int nand_open_times;
 
- int nand_get_mbr(char* buffer, uint len)
+#ifndef CONFIG_MACH_SUN20IW1
+extern struct nand_partitions nand_parts;
+#endif
+
+int __attribute__((weak)) NAND_UbootInit(__maybe_unused int boot_mode)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_UbootToPhy(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_UbootExit(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+uint __attribute__((weak)) NAND_UbootRead_History(__maybe_unused uint start,
+		__maybe_unused uint sectors, __maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+uint __attribute__((weak)) NAND_UbootRead(__maybe_unused uint start,
+		__maybe_unused uint sectors, __maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+uint __attribute__((weak)) NAND_UbootWrite(__maybe_unused uint start,
+		__maybe_unused uint sectors, __maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_BurnBoot0(__maybe_unused uint length,
+		__maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_BurnUboot(__maybe_unused uint length,
+		__maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_ReadBoot0(__maybe_unused uint length,
+		__maybe_unused void *buffer)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_PhyInit(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_PhyExit(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_Uboot_Erase(__maybe_unused int erase_flag)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_UbootProbe(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_GetParam_store(__maybe_unused void *buffer,
+		__maybe_unused uint length)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_FlushCache(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) nand_secure_storage_write(__maybe_unused int item,
+		__maybe_unused unsigned char *buf,
+		__maybe_unused unsigned int len)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) nand_secure_storage_read(__maybe_unused int item,
+		__maybe_unused unsigned char *buf,
+		__maybe_unused unsigned int len)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) NAND_Uboot_Force_Erase(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+uint32 __attribute__((weak)) get_nftl_cap(void)
+{
+	printf("not define Rawnand config\n");
+	return -1;
+}
+
+int __attribute__((weak)) nand_get_parts(char *buffer, uint len)
+{
+	printf("common1(partition3) need it, here is a weak func\n");
+	return -1;
+}
+
+
+int nand_get_mbr(char *buffer, uint len)
 {
 	int i,j;
 
 	sunxi_mbr_t *mbr = (sunxi_mbr_t *)buffer;
 
-	nand_mbr.PartCount = mbr->PartCount +1;
-	nand_mbr.array[0].addr = 0;
-	nand_mbr.array[0].len = mbr->array[0].addrlo;
-	nand_mbr.array[0].user_type = 0x8000;
-	nand_mbr.array[0].classname[0] = 'm';
-	nand_mbr.array[0].classname[1] = 'b';
-	nand_mbr.array[0].classname[2] = 'r';
-	nand_mbr.array[0].classname[3] = '\0';
+/*
+ *#if defined(CONFIG_MACH_SUN50IW10)
+ *                nand_mbr.PartCount = 1;
+ *                nand_mbr.array[0].addr = 0;
+ *                nand_mbr.array[0].len = 0;
+ *                nand_mbr.array[0].user_type = 0x8000;
+ *                nand_mbr.array[0].classname[0] = 'a';
+ *                nand_mbr.array[0].classname[1] = 'l';
+ *                nand_mbr.array[0].classname[2] = 'l';
+ *                nand_mbr.array[0].classname[3] = '\0';
+ *                printf("force one part\n");
+ *                goto out;
+ *#else
+ */
 
+		nand_mbr.PartCount = mbr->PartCount + 1;
+		nand_mbr.array[0].addr = 0;
+		nand_mbr.array[0].len = mbr->array[0].addrlo;
+		nand_mbr.array[0].user_type = 0x8000;
+		nand_mbr.array[0].classname[0] = 'm';
+		nand_mbr.array[0].classname[1] = 'b';
+		nand_mbr.array[0].classname[2] = 'r';
+		nand_mbr.array[0].classname[3] = '\0';
+/*#endif*/
 	for(i=1; i<nand_mbr.PartCount; i++)
 	{
 		for(j=0;j<16;j++)
@@ -82,6 +244,13 @@ int nand_open_count;
 	nand_mbr.array[nand_mbr.PartCount-1].addr = nand_mbr.array[nand_mbr.PartCount-2].addr + nand_mbr.array[nand_mbr.PartCount-2].len;
 	nand_mbr.array[nand_mbr.PartCount-1].len = 0;
 
+/*
+ *#if defined(CONFIG_MACH_SUN50IW10)
+ *out:
+ *#endif
+ */
+
+	nand_get_parts(buffer, len);
 //for DEBUG
 	{
 		printf("total part: %d\n", nand_mbr.PartCount);
@@ -92,7 +261,6 @@ int nand_open_count;
 	}
 	return 0;
 }
-
 
 int nand_uboot_init(int boot_mode)
 {
@@ -116,6 +284,7 @@ int nand_uboot_init_force_sprite(int boot_mode)
 }
 int nand_uboot_exit(int force)
 {
+
 	if(!nand_open_times)
 	{
 		printf("nand not opened\n");
@@ -125,9 +294,6 @@ int nand_uboot_exit(int force)
 	{
 		if(nand_open_times)
 		{
-			nand_open_times = 0;
-			nand_open_count = 0;
-			printf("NAND_UbootExit\n");
 			return NAND_UbootExit();
 		}
 	}
@@ -175,14 +341,15 @@ int nand_download_boot0(uint length, void *buffer)
 {
 	int ret = 0;
 
-	if(!NAND_PhyInit())
-	{
+	if (nandphy_had_init == false)
+		ret = NAND_PhyInit();
+
+	if (!ret) {
 		ret = NAND_BurnBoot0(length, buffer);
-	}
-	else
-	{
+	} else
 		ret = -1;
-	}
+
+	/*download boot0 is the end of burn, need to exit nand phy*/
 	NAND_PhyExit();
 
 	return ret;
@@ -214,17 +381,17 @@ int nand_download_uboot(uint length, void *buffer)
 	int ret = 0;
 	debug("nand_download_uboot\n");
 
-	if(!NAND_PhyInit())
-	{
+	if (nandphy_had_init == false)
+		ret = NAND_PhyInit();
+
+	if (!ret) {
 		ret = NAND_BurnUboot(length, buffer);
 		debug("nand burn uboot error ret = %d\n", ret);
-	}
-	else
-	{
+	} else {
 		debug("nand phyinit error\n");
 		ret = -1;
 	}
-	NAND_PhyExit();
+	/*NAND_PhyExit();*/
 
 	return ret;
 }

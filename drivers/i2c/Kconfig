@@ -615,6 +615,27 @@ config AXP806_SUNXI_I2C_SLAVE
 	default 0
 	help
 	 Sunxi AXP806 I2C Slave
+
+config AXP2101_SUNXI_I2C_SLAVE
+	hex "AXP2101 I2C Slave"
+	depends on AXP2101_POWER
+	default 0
+	help
+	 Sunxi AXP2101 I2C Slave
+
+config AXP2202_SUNXI_I2C_SLAVE
+	hex "AXP2202 I2C Slave"
+	depends on R_I2C0_ENABLE && AXP2202_POWER
+	default 0
+	help
+	 Sunxi AXP2202 I2C Slave
+
+config AXP221_SUNXI_I2C_SLAVE
+	hex "AXP221 I2C Slave"
+	depends on R_I2C0_ENABLE && AXP221_POWER
+	default 0
+	help
+	 Sunxi AXP221 I2C Slave
 endif
 
 

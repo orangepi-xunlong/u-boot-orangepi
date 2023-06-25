@@ -19,7 +19,8 @@ static int rsb_set_device_mode(void);
 
 static void rsb_cfg_io(void)
 {
-#if defined(CONFIG_MACH_SUN8I) || defined(CONFIG_SUNXI_NCAT)
+#if defined(CONFIG_MACH_SUN8I) || defined(CONFIG_SUNXI_NCAT) ||\
+	defined(CONFIG_SUNXI_NCAT_V2)
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_pull(SUNXI_GPL(0), 1);
@@ -53,7 +54,7 @@ static void rsb_set_clk(void)
 
 	writel((cd_odly << 8) | div, &rsb->ccr);
 }
-#if defined(CONFIG_SUNXI_NCAT)
+#if defined(CONFIG_SUNXI_NCAT) || defined(CONFIG_SUNXI_NCAT_V2)
 static void prcm_rsb_enable(void)
 {
 	u32 reg_addr;
@@ -74,7 +75,7 @@ int rsb_init(void)
 	struct sunxi_rsb_reg * const rsb =
 		(struct sunxi_rsb_reg *)SUNXI_RSB_BASE;
 
-#if defined(CONFIG_SUNXI_NCAT)
+#if defined(CONFIG_SUNXI_NCAT) || defined(CONFIG_SUNXI_NCAT_V2)
 	prcm_rsb_enable();
 #elif defined(CONFIG_MACH_SUN8I)
 	/* Enable RSB and PIO clk, and de-assert their resets */

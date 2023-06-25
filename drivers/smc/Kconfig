@@ -9,6 +9,10 @@ config OPTEE25
 	---help---
 	Select this to use optee 2.5 smc api.
 
+config NOT_USE_OPTEE25
+	bool "no use optee 2.5 smc api"
+	---help---
+	Select this to no use optee 2.5 smc api.
 endchoice
 
 endmenu

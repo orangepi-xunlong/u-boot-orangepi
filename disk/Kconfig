@@ -135,5 +135,30 @@ config PARTITION_TYPE_GUID
 	help
 	  Activate the configuration of GUID type
 	  for EFI partition
+config SUNXI_PARTITION_MAP_MAX
+	int "max allowed partition table"
+	default 32
+
+config LAST_PARTITION_NAME
+	string "set last partition name"
+	default "UDISK"
+	help
+
+config DISABLE_SUNXI_PART_DOWNLOAD
+	bool "disable sunxi mbr part. "
+	default n
+	help
+	  if open this macro will not use sunxi_mbr , and will not download mbr.
+	  it just apply to spinor
+
+if DISABLE_SUNXI_PART_DOWNLOAD
+config ENABLE_MTD_CMDLINE_PARTS_BY_ENV
+	bool "support mdtparts= by env to suxi_flash server"
+	default y
+	help
+	  use "mtdparts=" string stroe partition infromation in env.fex
+	  if open, please make sure you env partition in the first partition.
+	  if open, please make sure kernel support [command line partition table parsing]
+endif
 
 endmenu

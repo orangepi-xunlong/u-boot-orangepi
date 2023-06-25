@@ -9,6 +9,7 @@
 #include <mmc.h>
 #include "sunxi_mmc.h"
 #include "mmc_private.h"
+#include "mmc_def.h"
 
 static struct list_head mmc_devices;
 static int cur_dev_num = -1;
@@ -28,9 +29,9 @@ struct mmc *find_mmc_device(int dev_num)
 			return m;
 	}
 
-#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
-	pr_msg("MMC Device %d not found\n", dev_num);
-#endif
+//#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+//	MMCINFO("MMC Device %d not found\n", dev_num);
+//#endif
 
 	return NULL;
 }
@@ -95,18 +96,16 @@ void print_mmc_devices(char separator)
 		else
 			mmc_type = NULL;
 
-		pr_msg("%s: %d", m->cfg->name, m->block_dev.devnum);
+		MMCDBG("%s: %d", m->cfg->name, m->block_dev.devnum);
 		if (mmc_type)
-			pr_msg(" (%s)", mmc_type);
+			MMCINFO(" (%s)", mmc_type);
 
 		if (entry->next != &mmc_devices) {
-			pr_msg("%c", separator);
+			MMCINFO("%c", separator);
 			if (separator != '\n')
 				puts(" ");
 		}
 	}
-
-	printf("\n");
 }
 
 #else
@@ -177,7 +176,7 @@ struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 	bdesc->removable = 1;
 	bdesc->devnum = mmc->cfg->host_no;//mmc_get_next_devnum();
 	cur_dev_num = mmc->cfg->host_no;
-	pr_msg("devnum %d, prv %x, bdesc %x\n", bdesc->devnum, (u32)priv, (u32)bdesc);
+	MMCDBG("devnum %d, prv %x, bdesc %x\n", bdesc->devnum, PT_TO_PHU(priv), PT_TO_PHU(bdesc));
 /*	bdesc->block_read = mmc_bread;
 	bdesc->block_write = mmc_bwrite;
 	bdesc->block_erase = mmc_berase;

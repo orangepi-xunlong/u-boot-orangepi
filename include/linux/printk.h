@@ -20,7 +20,6 @@
 
 #define printk(fmt, ...) \
 	tick_printf(fmt, ##__VA_ARGS__)
-
 /*
  * Dummy printk for disabled debugging statements to use whilst maintaining
  * gcc's format checking.
@@ -46,7 +45,7 @@ extern int uprintf(int log_level, const char *fmt, ...);
 #define pr_crit(fmt, ...) \
 	__printk(2, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_err(fmt, ...) \
-	__printk(3, pr_fmt(fmt), ##__VA_ARGS__)
+	__printk(0, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_warning(fmt, ...) \
 	__printk(4, pr_fmt(fmt), ##__VA_ARGS__)
 #define pr_warn pr_warning
@@ -63,7 +62,7 @@ extern int uprintf(int log_level, const char *fmt, ...);
 #define pr_msg(fmt, args...) \
 	__printk(6, fmt, ##args)
 #define pr_error(fmt, args...) \
-	__printk(3, fmt, ##args)
+	pr_err(fmt, ##args)
 
 /* pr_devel() should produce zero code unless DEBUG is defined */
 #ifdef DEBUG

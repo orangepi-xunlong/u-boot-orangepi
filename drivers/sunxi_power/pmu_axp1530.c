@@ -112,7 +112,7 @@ static int pmu_axp1530_probe(void)
 		return -1;
 	}
 	pmu_chip_id &= 0XCF;
-	if (pmu_chip_id == AXP1530_CHIP_ID) {
+	if (pmu_chip_id == AXP1530_CHIP_ID || pmu_chip_id == AXP313A_CHIP_ID || pmu_chip_id == AXP313B_CHIP_ID) {
 		/*pmu type AXP1530*/
 		pmu_axp1530_necessary_reg_enable();
 		tick_printf("PMU: AXP1530\n");

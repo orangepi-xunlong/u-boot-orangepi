@@ -14,6 +14,7 @@ choice
 	prompt "Boot count device"
 	default BOOTCOUNT_AM33XX if AM33XX || SOC_DA8XX
 	default BOOTCOUNT_AT91 if AT91SAM9XE
+	default BOOTCOUNT_ENV if ARCH_SUNXI
 	default BOOTCOUNT_GENERIC
 
 config BOOTCOUNT_GENERIC
@@ -51,6 +52,11 @@ config BOOTCOUNT_ENV
 	  1 "bootcount" is incremented in the environment.
 	  So the Userspace Application must set the "upgrade_available"
 	  and "bootcount" variable to 0, if a boot was successfully.
+
+config BOOTCOUNT_RTC
+	bool "Boot counter in rtc register"
+	help
+	  If BOOTCOUNT_RTC is set,"bootcount" will be saved in RTC register
 
 config BOOTCOUNT_RAM
 	bool "Boot counter in RAM"

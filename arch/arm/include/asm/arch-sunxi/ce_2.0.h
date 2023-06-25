@@ -46,8 +46,90 @@
 #define SHA1_160_MODE	0
 #define SHA2_256_MODE	1
 
-#define ALG_SHA256 (0x13)
-#define ALG_RSA    (0x20)
+#define TRANG_BYTE_LEN (32)
+
+/*alg type*/
+#define ALG_AES		(0x0)
+#define ALG_SM4		(0x3)
+#define ALG_SHA256	(0x13)
+#define ALG_SHA512	(0x15)
+#define ALG_RSA		(0x20)
+#define ALG_ECC		(0x21)
+#define ALG_SM2		(0x22)
+#define ALG_MD5		(0x10)
+#define ALG_TRANG	(0x1C)
+
+
+/*ctrl
+*/
+#define CHN  (0) /*channel id*/
+#define IVE  (8)
+#define LPKG (12) /*last package*/
+#define DLAV (13) /*data length valid¦Ì¡À¡Á?o¨®¨°???¡ã¨¹,D¨¨¨°a¨¦¨¨?a1,*/
+#define IE   (16)
+
+#define SUNXI_MD5    (0)
+#define SUNXI_SHA1   (1)
+#define SUNXI_SHA244 (2)
+#define SUNXI_SHA256 (3)
+#define SUNXI_SHA384 (4)
+#define SUNXI_SHA512 (5)
+#define SUNXI_SM3    (6)
+
+#define SUNXI_TRNG   (2)
+
+/*sm2 mode*/
+#define SM2_MODE_ENC			(0)
+#define SM2_MODE_DEC			(1)
+#define SM2_MODE_SIGN			(2)
+#define SM2_MODE_VERIFY			(3)
+#define SM2_MODE_KEY_EXCHANGE	(4)
+
+/*cmd
+*/
+#define HASH_SEL 0
+#define HME 4
+#define RGB_SEL 8
+#define SUB_CMD 16
+
+/*CE_TLR
+*/
+#define SYMM_TRPE 0
+#define HASH_RBG_TRPE 1
+#define ASYM_TRPE 2
+#define RAES_TRPE 3
+
+/*CE_ISR
+*/
+#define SUCCESS 0x1
+#define FAIL 0x2
+#define CLEAN 0x3
+
+#define CHANNEL_0 0
+#define CHANNEL_1 1
+#define CHANNEL_2 2
+#define CHANNEL_3 3
+
+/* AES SETTINGS */
+#define _SUNXI_AES_CFG (0)
+#define SS_DIR_ENCRYPT 0
+#define SS_DIR_DECRYPT 1
+#define SS_KEY_SELECT_INPUT        (0)
+#define SS_KEY_SELECT_SSK          (1)
+#define SS_KEY_SELECT_HUK          (2)
+#define SS_KEY_SELECT_RSSK         (3)
+
+#define SS_AES_MODE_ECB         (0)
+#define SS_AES_MODE_CBC         (1)
+#define SS_AES_MODE_CTR         (2)
+#define SS_AES_MODE_CTS         (3)
+#define SS_AES_MODE_OFB         (4)
+#define SS_AES_MODE_CFB         (5)
+#define SS_AES_MODE_CBCMAC      (6)
+
+#define SS_AES_KEY_128BIT       (0)
+#define SS_AES_KEY_192BIT       (1)
+#define SS_AES_KEY_256BIT       (2)
 
 typedef struct sg {
 	uint addr;

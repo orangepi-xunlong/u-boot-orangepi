@@ -20,6 +20,13 @@
 #include <net.h>
 #include <phy.h>
 
+struct legacy_mii_dev {
+	int (*read)(const char *devname, unsigned char addr,
+		     unsigned char reg, unsigned short *value);
+	int (*write)(const char *devname, unsigned char addr,
+		      unsigned char reg, unsigned short value);
+};
+
 int miiphy_read(const char *devname, unsigned char addr, unsigned char reg,
 		 unsigned short *value);
 int miiphy_write(const char *devname, unsigned char addr, unsigned char reg,
@@ -35,6 +42,12 @@ int miiphy_link(const char *devname, unsigned char addr);
 #endif
 
 void miiphy_init(void);
+
+void miiphy_register(const char *devname,
+		      int (*read)(const char *devname, unsigned char addr,
+				   unsigned char reg, unsigned short *value),
+		      int (*write)(const char *devname, unsigned char addr,
+				    unsigned char reg, unsigned short value));
 
 int miiphy_set_current_dev(const char *devname);
 const char *miiphy_get_current_dev(void);

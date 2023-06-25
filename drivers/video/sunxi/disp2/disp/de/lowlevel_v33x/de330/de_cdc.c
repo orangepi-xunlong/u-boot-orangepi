@@ -8,14 +8,15 @@
 * warranty of any kind, whether express or implied.
 */
 
+#include "../../include.h"
+#include "de_cdc.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_CDC
+#include "de_feat.h"
+#include "de_top.h"
 #include "de_cdc_type.h"
 #include "de_cdc_table.h"
 
-#include "../../include.h"
-#include "de_feat.h"
-#include "de_top.h"
 
-#include "de_cdc.h"
 
 enum {
 	DE_SDR = 0,
@@ -491,3 +492,35 @@ s32 de_cdc_get_reg_blks(void *cdc_hdl,
 
 	return 0;
 }
+#else
+
+s32 de_cdc_set_para(void *cdc_hdl,
+	struct de_csc_info *in_info, struct de_csc_info *out_info)
+{
+	return 0;
+}
+
+s32 de_cdc_disable(void *cdc_hdl)
+{
+	return 0;
+}
+
+void *de_cdc_create(u8 __iomem *reg_base,
+	u32 rcq_used, u8 has_csc)
+{
+	return NULL;
+}
+
+s32 de_cdc_destroy(void *cdc_hdl)
+{
+	return 0;
+}
+
+s32 de_cdc_get_reg_blks(void *cdc_hdl,
+	struct de_reg_block **blks, u32 *blk_num)
+{
+	*blk_num = 0;
+	return 0;
+}
+
+#endif

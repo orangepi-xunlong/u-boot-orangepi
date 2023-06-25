@@ -16,13 +16,13 @@
  */
 #ifndef __SPRITE_PROGRESSBAR_H__
 #define __SPRITE_PROGRESSBAR_H__
+#include "sprite_progressbar_i.h"
+extern  progressbar_t *sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op);
+extern  int       	sprite_cartoon_progressbar_config(progressbar_t *p, int frame_color, int progress_color, int thickness);
 
-extern  unsigned	sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op);
-extern  int       	sprite_cartoon_progressbar_config(unsigned p, int frame_color, int progress_color, int thickness);
-
-extern  int 		sprite_cartoon_progressbar_active(unsigned p);
-extern  int 		sprite_cartoon_progressbar_destroy(unsigned p);
-extern  int 		sprite_cartoon_progressbar_upgrate(unsigned p, int rate);
+extern  int 		sprite_cartoon_progressbar_active(progressbar_t *p);
+extern  int 		sprite_cartoon_progressbar_destroy(progressbar_t *p);
+extern  int 		sprite_cartoon_progressbar_upgrate(progressbar_t *p, int rate);
 
 
 

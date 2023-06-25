@@ -127,6 +127,22 @@ menuconfig HDMI2_DISP2_SUNXI
   hdcp1.4,hdcp2.2,cec feature and is compatible with hdmi1.4,support
   HDR,4k@60Hz. If unsure, say N.
 
+choice
+	prompt "HDMI2.0 PHY SELECT."
+config DEFAULT_PHY
+	bool "Synopsys PHY"
+	depends on HDMI2_DISP2_SUNXI
+	help
+	Use original phy to show
+config AW_PHY
+	bool "Allwinner PHY"
+	depends on HDMI2_DISP2_SUNXI
+	help
+	Use sunxi self phy to show
+endchoice
+
+
+
 menuconfig HDMI2_HDCP_SUNXI
   bool "HDMI2.0 HDCP"
   depends on (HDMI2_DISP2_SUNXI)
@@ -235,3 +251,17 @@ menu "Display engine feature select"
 source "drivers/video/sunxi/disp2/disp/Kconfig"
 endmenu
 
+config SUNXI_TV_FASTLOGO
+	bool "SUNXI_TV_FASTLOGO"
+	depends on (SUNXI_FLASH)
+	imply SUNXI_ARM_SOFT_FP
+	default n
+	---help---
+	  fastlogo
+
+config SUNXI_FASTLOGO_JPEG
+	bool "SUNXI_FASTLOGO_JPEG"
+	depends on (SUNXI_FLASH)
+	default n
+	---help---
+	  fastlogo jepg decode support

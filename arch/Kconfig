@@ -4,6 +4,10 @@ config CREATE_ARCH_SYMLINK
 config HAVE_ARCH_IOREMAP
 	bool
 
+config SUNXI_TEXT_SIZE
+	hex
+	default 0x100000
+
 choice
 	prompt "Architecture select"
 	default SANDBOX
@@ -59,8 +63,11 @@ config PPC
 	select SYS_BOOT_GET_KBD
 
 config RISCV
-	bool "riscv architecture"
+	bool "RISC-V architecture"
+	select CREATE_ARCH_SYMLINK
 	select SUPPORT_OF_CONTROL
+	select OF_CONTROL
+
 
 config SANDBOX
 	bool "Sandbox"
@@ -192,8 +199,16 @@ config SYS_CONFIG_NAME
 	  The header file include/configs/<CONFIG_SYS_CONFIG_NAME>.h
 	  should be included from include/config.h.
 
+choice
+	prompt "Target select"
+	default ARCH_SUNXI
+config ARCH_SUNXI
+	bool "Support sunxi (Allwinner) SoCs"
+endchoice
+
 source "arch/arc/Kconfig"
 source "arch/arm/Kconfig"
+source "arch/riscv/Kconfig"
 source "arch/m68k/Kconfig"
 source "arch/microblaze/Kconfig"
 source "arch/mips/Kconfig"
@@ -204,4 +219,3 @@ source "arch/sandbox/Kconfig"
 source "arch/sh/Kconfig"
 source "arch/x86/Kconfig"
 source "arch/xtensa/Kconfig"
-source "arch/riscv/Kconfig"

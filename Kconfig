@@ -460,3 +460,5 @@ source "lib/Kconfig"
 source "test/Kconfig"
 
 source "sprite/Kconfig"
+
+source "rtos/Kconfig"

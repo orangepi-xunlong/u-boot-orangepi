@@ -37,3 +37,13 @@ config SARADC_ROCKCHIP
 	  - 2~6 analog input channels
 	  - 1O or 12 bits resolution
 	  - Up to 1MSPS of sample rate
+
+config SUNXI_GPADC
+	bool "Enabke sunxi gpadc driver"
+	help
+	 This enables driver for sunxi gpadc
+
+config SUNXI_LRADC
+	bool "Enabke sunxi lradc driver"
+	help
+	 This enables driver for sunxi lradc

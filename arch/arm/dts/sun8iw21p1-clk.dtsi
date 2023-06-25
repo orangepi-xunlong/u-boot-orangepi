@@ -1,0 +1,149 @@
+/{
+clocks {
+	compatible = "allwinner,clk-init";
+	device_type = "clocks";
+	#address-cells = <2>;
+	#size-cells = <2>;
+	ranges;
+	reg = <0x0 0x02001000 0x0 0x1000>,	/* cpux-ccu space */
+	      <0x0 0x07010000 0x0 0x400>,	/* cpus-ccu space */
+	      <0x0 0x07090000 0x0 0x400>;	/* rtc-ccu space */
+
+		/* register factor clock */
+		clk_pll_periph0: pll_periph0 {
+			#clock-cells = <0>;
+			compatible = "allwinner,pll-clock";
+			assigned-clock-rates = <600000000>;
+			lock-mode = "new";
+			clock-output-names = "pll_periph0";
+		};
+		clk_pll_video0x4: pll_video0x4 {
+			#clock-cells = <0>;
+			compatible = "allwinner,pll-clock";
+			lock-mode = "new";
+			clock-output-names = "pll_video0x4";
+		};
+		clk_pll_video2: pll_video2 {
+			#clock-cells = <0>;
+			compatible = "allwinner,pll-clock";
+			lock-mode = "new";
+			assigned-clocks = <&clk_pll_video2>;
+			assigned-clock-rates = <336000000>;
+			clock-output-names = "pll_video2";
+		};
+		clk_pll_csix4: pll_csix4 {
+			#clock-cells = <0>;
+			compatible = "allwinner,pll-clock";
+			assigned-clock-rates = <1188000000>;
+			lock-mode = "new";
+			clock-output-names = "pll_csix4";
+		};
+
+		/* register fix_factor clock */
+		/* specify parent of clocks in clk-sun8iw21.c, not here */
+		clk_pll_video0: pll_video0 {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <4>;
+			clock-output-names = "pll_video0";
+		};
+		clk_pll_periph0x2: pll_periph0x2 {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <2>;
+			clock-div = <1>;
+			clock-output-names = "pll_periph0x2";
+		};
+		clk_pll_periph0600m: pll_periph0600m {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <2>;
+			clock-output-names = "pll_periph0600m";
+		};
+		clk_pll_periph0400m: pll_periph0400m {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <3>;
+			clock-output-names = "pll_periph0400m";
+		};
+		clk_pll_periph0200m: pll_periph0200m {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <2>;
+			clock-output-names = "pll_periph0200m";
+		};
+		clk_pll_periph0300m: pll_periph0300m {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <2>;
+			clock-output-names = "pll_periph0300m";
+		};
+		clk_pll_periph0150m: pll_periph0150m {
+			#clock-cells = <0>;
+			compatible = "allwinner,fixed-factor-clock";
+			clock-mult = <1>;
+			clock-div = <2>;
+			clock-output-names = "pll_periph0150m";
+		};
+
+		/* register periph clock */
+		clk_de0: de0 {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			assigned-clock-parents = <&clk_pll_periph0x2>;
+			assigned-clock-rates = <300000000>;
+			assigned-clocks = <&clk_de0>;
+			clock-output-names = "de0";
+		};
+		clk_ee: ee {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			assigned-clock-parents = <&clk_pll_periph0x2>;
+			assigned-clock-rates = <300000000>;
+			assigned-clocks = <&clk_ee>;
+			clock-output-names = "ee";
+		};
+		clk_panel: panel {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			assigned-clock-parents = <&clk_pll_video2>;
+			assigned-clock-rates = <30000000>;
+			assigned-clocks = <&clk_panel>;
+			clock-output-names = "panel";
+		};
+		clk_de: de {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			assigned-clock-rates = <300000000>;
+			clock-output-names = "de";
+		};
+		clk_ahb: ahb {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			clock-output-names = "ahb";
+		};
+		clk_dpss_top: dpss_top {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			clock-output-names = "dpss_top";
+		};
+		clk_tcon_lcd: tcon_lcd {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			clock-output-names = "tcon_lcd";
+		};
+		clk_mipi_dsi: mipi_dsi {
+			#clock-cells = <0>;
+			compatible = "allwinner,periph-clock";
+			assigned-clocks = <&clk_mipi_dsi>;
+			assigned-clock-parents = <&clk_pll_periph0150m>;
+			// assigned-clock-rates = <150000000>;
+			clock-output-names = "mipi_dsi";
+		};
+	};
+};

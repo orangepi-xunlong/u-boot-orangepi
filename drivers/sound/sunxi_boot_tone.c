@@ -77,7 +77,11 @@ static int sunxi_boot_tone_dma_init(void)
 	g_codec_tx_buf->channal_cfg.src_data_width	= DMAC_CFG_SRC_DATA_WIDTH_16BIT;
 	g_codec_tx_buf->channal_cfg.reserved0		= 0;
 
+#ifdef CONFIG_MACH_SUN50IW10
+	g_codec_tx_buf->channal_cfg.dst_drq_type	= 0x07;
+#else
 	g_codec_tx_buf->channal_cfg.dst_drq_type	= 0x06;
+#endif
 	g_codec_tx_buf->channal_cfg.dst_addr_mode	= DMAC_CFG_DEST_ADDR_TYPE_IO_MODE;
 	g_codec_tx_buf->channal_cfg.dst_burst_length	= DMAC_CFG_DEST_4_BURST;
 	g_codec_tx_buf->channal_cfg.dst_data_width	= DMAC_CFG_DEST_DATA_WIDTH_16BIT;
@@ -275,7 +279,7 @@ static int sunxi_boot_tone_test(void)
 
 int do_play_boot_tone(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	return sunxi_boot_tone_test();
+	return  sunxi_boot_tone_test();
 }
 
 U_BOOT_CMD(boottone, 1, 1, do_play_boot_tone,

@@ -479,18 +479,18 @@ int sunxi_clk_register_periph(struct periph_init_data *pd, void *base)
 	periph->flags = init.flags;
 
 	/* fix registers */
-	periph->mux.reg = periph->mux.reg ? (base + (u32)periph->mux.reg) : NULL;
+	periph->mux.reg = periph->mux.reg ? (base + (ulong)periph->mux.reg) : NULL;
 	periph->divider.reg = periph->divider.reg ?
-				(base + (u32)periph->divider.reg) : NULL;
+				(base + (ulong)periph->divider.reg) : NULL;
 
 	periph->gate.enable = periph->gate.enable ?
-				(base + (u32)periph->gate.enable) : NULL;
+				(base + (ulong)periph->gate.enable) : NULL;
 	periph->gate.reset = periph->gate.reset ?
-				(base + (u32)periph->gate.reset) : NULL;
+				(base + (ulong)periph->gate.reset) : NULL;
 	periph->gate.bus = periph->gate.bus ?
-				(base + (u32)periph->gate.bus) : NULL;
+				(base + (ulong)periph->gate.bus) : NULL;
 	periph->gate.dram = periph->gate.dram ?
-				(base + (u32)periph->gate.dram) : NULL;
+				(base + (ulong)periph->gate.dram) : NULL;
 
 	clk = clk_register(&periph->hw);
 	if (NULL == clk)

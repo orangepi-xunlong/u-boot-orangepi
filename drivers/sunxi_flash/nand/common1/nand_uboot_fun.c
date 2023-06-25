@@ -23,20 +23,28 @@
 #include <private_toc.h>
 #include <sprite_verify.h>
 #include "../nand_bsp.h"
+#include <sunxi_nand.h>
+#include <sunxi_nand_partitions.h>
 
+#ifndef SZ_4K
+#define SZ_4K				0x00001000
+#endif
 
-#define OOB_BUF_SIZE					256
 #define NAND_BOOT0_BLK_START			0
 #define NAND_BOOT0_BLK_CNT				2
 #define NAND_UBOOT_BLK_START			(NAND_BOOT0_BLK_START+NAND_BOOT0_BLK_CNT)
 #define NAND_UBOOT_BLK_CNT				6
 #define NAND_BOOT0_PAGE_CNT_PER_COPY	64
 
+
 static char nand_para_store[256];
 static int  flash_scaned;
 static struct _nand_info *g_nand_info;
 static int nand_partition_num;
 int nandphy_had_init;
+
+extern int nand_open_count;
+extern int nand_open_times;
 
 int mbr_burned_flag;
 PARTITION_MBR nand_mbr = {0};
@@ -52,6 +60,30 @@ extern int get_uboot_next_block(void);
 extern __u32 get_storage_type(void);
 extern  int rawnand_is_blank(void);
 extern void nand_common1_show_version(void);
+extern int get_boot_work_mode(void);
+#if defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN8IW18) \
+	|| (defined(CONFIG_SUNXI_RTOS) && (defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)))
+	extern __u32 NAND_GetPageSize(void);
+#endif
+
+extern int get_boot_work_mode(void);
+
+#if defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN8IW18) \
+	|| (defined(CONFIG_SUNXI_RTOS) && (defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)))
+int nand_info_init(struct _nand_info *nand_info, uchar chip, uint16 start_block, uchar *mbr_data);
+#else
+extern int nand_info_init(struct _nand_info *nand_info, int state);
+#endif
+
+struct uboot_status ubootsta;
+
+struct nand_partitions nand_parts;
+
+struct nand_partitions *get_nand_parts(void)
+{
+	return &nand_parts;
+}
+
 
 __u32 __attribute__((weak)) NAND_GetBootFlag(__u32 flag)
 {
@@ -71,6 +103,14 @@ int msg(const char *str, ...)
 {
 	NAND_Print(str);
 	return 0;
+}
+
+void nand_get_ubootstat(void)
+{
+	if (get_boot_work_mode() != WORK_MODE_BOOT)
+		ubootsta.state = UBOOT_IN_PRODUCT;
+	else
+		ubootsta.state = UBOOT_IN_BOOT;
 }
 
 int NAND_PhyInit(void)
@@ -132,6 +172,7 @@ int NAND_LogicInit(int boot_mode)
 	NAND_set_boot_mode(boot_mode);
 #endif
 	nand_info = NandHwInit();
+
 	capacity_level = NAND_GetNandCapacityLevel();
 	set_capacity_level(nand_info, capacity_level);
 
@@ -142,20 +183,24 @@ int NAND_LogicInit(int boot_mode)
 	}
 	nandphy_had_init = true;
 
-	if ((!boot_mode) && (nand_mbr.PartCount != 0) && (mbr_burned_flag == 0)) {
-		NAND_Print("burn nand partition table! mbr tbl: 0x%x, part_count:%d\n", (__u32)(&nand_mbr), nand_mbr.PartCount);
+#if defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN8IW18) \
+	|| (defined(CONFIG_SUNXI_RTOS) && (defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)))
+	boot_mode = get_boot_work_mode();
+	if ((boot_mode != WORK_MODE_BOOT) && (nand_mbr.PartCount != 0) && (mbr_burned_flag == 0)) {
+		NAND_Print("burn nand partition table! mbr tbl: 0x%x, part_count:%d\n", (__u32)(unsigned long)(&nand_mbr), nand_mbr.PartCount);
 		result = nand_info_init(nand_info, 0, 8, (uchar *)&nand_mbr);
 		mbr_burned_flag = 1;
 	} else {
 		NAND_Print("not burn nand partition table!\n");
 		result = nand_info_init(nand_info, 0, 8, NULL);
 	}
-
+#else
+	result = nand_info_init(nand_info, ubootsta.state);
+#endif
 	if (result != 0) {
 		NAND_Print("NB1: nand_info_init fail\n");
 		return -5;
 	}
-
 	if (boot_mode) {
 		nftl_num = get_phy_partition_num(nand_info);
 		NAND_Print("NB1: nftl num: %d\n", nftl_num);
@@ -187,7 +232,6 @@ int NAND_LogicInit(int boot_mode)
 
 int NAND_LogicExit(void)
 {
-	NAND_Print("NB1: NAND_LogicExit\n");
 	nftl_flush_write_cache();
 #if 0 //defined(CONFIG_MACH_SUN8IW7)
 	if (!boot_mode) {
@@ -195,6 +239,15 @@ int NAND_LogicExit(void)
 		nftl_write_end();
 	}
 #endif
+
+	/* burn step logic don't exit the phy layer, which exit after burn boot0*/
+	printf("%s boot_mode:%d\n", __func__, get_boot_work_mode());
+	if (get_boot_work_mode() != WORK_MODE_BOOT)
+		return 0;
+
+	nand_open_times = 0;
+	nand_open_count = 0;
+
 	NandHwExit();
 	nandphy_had_init = false;
 	g_nand_info = NULL;
@@ -378,6 +431,7 @@ int NAND_UbootInit(int boot_mode)
 	int s = get_timer_masked();
 	NAND_Print("NAND_UbootInit start\n");
 
+	nand_get_ubootstat();
 	NAND_set_boot_mode(boot_mode);
 	/* logic init */
 	ret |= NAND_LogicInit(boot_mode);
@@ -396,8 +450,8 @@ int NAND_UbootInit(int boot_mode)
 int NAND_UbootExit(void)
 {
 	int ret = 0;
+	NAND_Print("NAND_UbootExit\n");
 
-	NAND_Print_DBG("NAND_UbootExit\n");
 	ret = NAND_LogicExit();
 
 	return ret;
@@ -415,6 +469,7 @@ int NAND_UbootProbe(void)
 	return -1;
 #endif
 	NAND_GetBootFlag(0);
+	nand_get_ubootstat();
 	/* logic init */
 	if (nandphy_had_init == false)
 		ret = NAND_PhyInit();
@@ -559,6 +614,26 @@ int NAND_GetParam_store(void *buffer, uint length)
 
 int NAND_FlushCache(void)
 {
+#if defined(CONFIG_MACH_SUN8IW18) || defined(CONFIG_MACH_SUN8IW7) \
+	|| (defined(CONFIG_SUNXI_RTOS) && (defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)))
+	unsigned int pagesize = NAND_GetPageSize();
+#else
+	unsigned int pagesize = nand_get_chip_page_size(BYTE);
+#endif
+
+
+
+	/*nftl_write_end() is for some flash, which need share pages
+	 * write together, and SLC nand don't need do that. we think
+	 * vaguely that SLC nand pagesize would be small than 4k byte
+	 * and SLC nand don't to do that to avoid write more dummy data,
+	 * which would lead to slow in boot*/
+	if (pagesize > SZ_4K) {
+		if (boot_mode) {
+			pr_info("write pair page\n");
+			nftl_write_end();
+		}
+	}
 	return nftl_flush_write_cache();
 }
 
@@ -583,3 +658,4 @@ int nand_verify_toc0(unsigned char *buffer, unsigned int len)
 	}
 	return 0;
 }
+

@@ -134,7 +134,7 @@ static int sunxi_arisc_parse_cfg(void)
 	dts_cfg.space.msgpool_offset = (phys_addr_t)value[1];
 	dts_cfg.space.msgpool_size = (size_t)value[2];
 	ARISC_INF("arisc_space space4 msgpool_dst:0x%p, msgpool_offset:0x%p, msgpool_size:0x%zx, \n",
-		(void *)dts_cfg.space.msgpool_dst, (void *)dts_cfg.space.msgpool_offset, dts_cfg.space.msgpool_size);
+		(void *)(u32)dts_cfg.space.msgpool_dst, (void *)(u32)dts_cfg.space.msgpool_offset, dts_cfg.space.msgpool_size);
 
 	/* parse msgbox node */
 	nodeoffset = fdt_path_offset(working_fdt,  "/soc/msgbox");
@@ -153,7 +153,7 @@ static int sunxi_arisc_parse_cfg(void)
 	dts_cfg.msgbox.status = fdtdec_get_is_enabled(working_fdt, nodeoffset);
 
 	ARISC_INF("msgbox base:0x%p, size:0x%zx, status:%u\n",
-		(void *)dts_cfg.msgbox.base, dts_cfg.msgbox.size, dts_cfg.msgbox.status);
+		(void *)(u32)dts_cfg.msgbox.base, dts_cfg.msgbox.size, dts_cfg.msgbox.status);
 
 	/* parse hwspinlock node */
 	/* nodeoffset = fdt_node_offset_by_compatible(working_fdt, -1, "allwinner,sunxi-hwspinlock"); */
@@ -173,7 +173,7 @@ static int sunxi_arisc_parse_cfg(void)
 	dts_cfg.hwspinlock.status = fdtdec_get_is_enabled(working_fdt, nodeoffset);
 
 	ARISC_INF("hwspinlock base:0x%p, size:0x%zx, status:%u\n",
-		(void *)dts_cfg.hwspinlock.base, dts_cfg.hwspinlock.size, dts_cfg.hwspinlock.status);
+		(void *)(u32)dts_cfg.hwspinlock.base, dts_cfg.hwspinlock.size, dts_cfg.hwspinlock.status);
 
 	return 0;
 }

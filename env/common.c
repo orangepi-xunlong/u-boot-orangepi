@@ -102,6 +102,24 @@ int set_default_vars(int nvars, char * const vars[])
 				H_NOCLEAR | H_INTERACTIVE, 0, nvars, vars);
 }
 
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+uint32_t env_calc_crc(const char *buf)
+{
+	env_t *ep = (env_t *)buf;
+	return crc32(0, ep->data, ENV_SIZE);
+}
+
+uint32_t env_get_crc(const char *buf)
+{
+	uint32_t crc;
+
+	env_t *ep = (env_t *)buf;
+	memcpy(&crc, &ep->crc, sizeof(crc));
+
+	return crc;
+}
+#endif
+
 /*
  * Check if CRC is valid and (if yes) import the environment.
  * Note that "buf" may or may not be aligned.

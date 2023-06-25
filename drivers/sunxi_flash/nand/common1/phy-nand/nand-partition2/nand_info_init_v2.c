@@ -13,6 +13,8 @@
 #include "../nand_secure_storage.h"
 #include "build_phy_partition_v2.h"
 
+
+extern int erase_whole_flash;
 /*****************************************************************************/
 
 /*****************************************************************************
@@ -95,6 +97,20 @@ int nand_info_init_v3(struct _nand_info *nand_info, uchar chip, uint16 start_blo
 					return NFTL_FAILURE;
 				}
 			}
+		} else if (erase_whole_flash == 1) {
+				NAND_Print("flash had erase\n");
+				memcpy(nand_info->mbr_data, mbr_data, sizeof(PARTITION_MBR));
+				nand_info->FirstBuild = 1;
+				if (get_partition_v3(nand_info)) {
+					NFTL_ERR("[NE]get partition v3 fail!!\n");
+					return NFTL_FAILURE;
+				}
+				memcpy(boot->partition.ndata, nand_info->partition, sizeof(nand_info->partition));
+				memcpy(boot->mbr.ndata, nand_info->mbr_data, sizeof(PARTITION_MBR));
+				nand_info->boot->logic_start_block = start_block;
+				nand_info->boot->no_use_block = nand_info->boot->logic_start_block;
+				memcpy(nand_info->factory_bad_block, boot->factory_block.ndata, FACTORY_BAD_BLOCK_SIZE);
+
 		} else {
 			// nand3.0 to nand3.0 ; factory  burn ;   not erase
 			NFTL_DBG("[ND]new not erase factory FirstBuild\n");

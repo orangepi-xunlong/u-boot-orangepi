@@ -24,6 +24,7 @@
 
 #include <common.h>
 #include <private_uboot.h>
+#include "sunxi_challenge.h"
 #pragma pack(1)
 struct spare_boot_head_t  uboot_spare_head = 
 {
@@ -65,7 +66,8 @@ struct spare_boot_head_t  uboot_spare_head =
         0,                           //dtb offset
         0,                           //boot_package_size
 		0,							//dram_scan_size
-	{0}			//reserved data
+		{0},
+		.challenge_offset = (unsigned long)&sunxi_challenge
     },
 
 };

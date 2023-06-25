@@ -32,7 +32,7 @@
 #include <lzma/LzmaTools.h>
 
 extern int sunxi_partition_get_partno_byname(const char *part_name);
-static int sunxi_bmp_probe_info(uint addr);
+static int sunxi_bmp_probe_info(unsigned long addr);
 int sunxi_advert_display(char *fatname, char *filename);
 int sunxi_advert_logo_load(char *fatname, char *filename);
 
@@ -129,6 +129,7 @@ U_BOOT_CMD(
 
 int show_bmp_on_fb(char *bmp_head_addr, unsigned int fb_id)
 {
+#if defined(CONFIG_BOOT_GUI)
 	struct bmp_image *bmp = (struct bmp_image *)bmp_head_addr;
 	struct canvas *cv = NULL;
 	char *src_addr;
@@ -239,6 +240,10 @@ err_out:
 	if (cv)
 		fb_unlock(fb_id, NULL, 0);
 	return -1;
+#else
+	printf("Fail to show bmp! You need to enable CONFIG_BOOT_GUI\n");
+	return -1;
+#endif
 }
 
 int sunxi_bmp_display(char *name)
@@ -293,7 +298,7 @@ int sunxi_bmp_dipslay_screen(sunxi_bmp_store_t bmp_info)
  * Return:      None
  *
  */
-static int sunxi_bmp_probe_info(uint addr)
+static int sunxi_bmp_probe_info(unsigned long addr)
 {
 	struct bmp_image *bmp = (struct bmp_image *)addr;
 
@@ -305,10 +310,10 @@ static int sunxi_bmp_probe_info(uint addr)
 	}
 	debug("bmp picture dectede\n");
 
-	pr_msg("Image size    : %d x %d\n", bmp->header.width,
+	tick_printf("Image size    : %d x %d\n", bmp->header.width,
 	       (bmp->header.height & 0x80000000) ? (-bmp->header.height)
 						 : (bmp->header.height));
-	pr_msg("Bits per pixel: %d\n", bmp->header.bit_count);
+	tick_printf("Bits per pixel: %d\n", bmp->header.bit_count);
 
 	return 0;
 }

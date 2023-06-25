@@ -216,7 +216,7 @@ extern s32 fb_init(struct platform_device *pdev);
 extern s32 fb_exit(void);
 #endif
 extern int lcd_init(void);
-
+extern s32 bsp_disp_get_fps(u32 disp);
 s32 disp_set_hdmi_func(struct disp_device_func * func);
 #if defined(__LINUX_PLAT__)
 s32 sunxi_get_fb_addr_para(struct __fb_addr_para *fb_addr_para);

@@ -196,11 +196,11 @@ __s32 _close_ndfc_clk_v0(__u32 nand_index)
 	}
 
 	/*close dclk and cclk*/
-	reg_val = *(volatile __u32 *)(sclk0_reg_adr);
+	reg_val = *(volatile __u32 *)((unsigned long)sclk0_reg_adr);
 	reg_val &= (~(0x1U << 31));
-	*(volatile __u32 *)(sclk0_reg_adr) = reg_val;
+	*(volatile __u32 *)((unsigned long)sclk0_reg_adr) = reg_val;
 
-	reg_val = *(volatile __u32 *)(sclk0_reg_adr);
+	reg_val = *(volatile __u32 *)((unsigned long)sclk0_reg_adr);
 	//printf("ndfc clk release,sclk reg adr %x:%x\n",sclk0_reg_adr,reg_val);
 
 	//printf(" close sclk0 and sclk1\n");

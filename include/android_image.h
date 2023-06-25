@@ -12,12 +12,21 @@
 #define _ANDROID_IMAGE_H_
 
 typedef struct andr_img_hdr andr_img_hdr;
+typedef struct boot_img_hdr boot_img_hdr;
+typedef struct vendor_boot_img_hdr vendor_boot_img_hdr;
 
+#define ANDR_BOOT_DTBO_MAIGC "androidboot.dtbo_idx"
 #define ANDR_BOOT_MAGIC "ANDROID!"
 #define ANDR_BOOT_MAGIC_SIZE 8
 #define ANDR_BOOT_NAME_SIZE 16
 #define ANDR_BOOT_ARGS_SIZE 512
 #define ANDR_BOOT_EXTRA_ARGS_SIZE 1024
+
+#define VENDOR_BOOT_MAGIC_SIZE 8
+#define VENDOR_BOOT_MAGIC "VNDRBOOT"
+#define VENDOR_BOOT_NAME_SIZE 16
+#define VENDOR_BOOT_ARGS_SIZE 2048
+#define VENDOR_BOOT_HEAD_SIZE 2108
 
 struct andr_img_hdr {
 	char magic[ANDR_BOOT_MAGIC_SIZE];
@@ -105,4 +114,33 @@ struct boot_img_hdr_ex {
  * 6. if second_size != 0: jump to second_addr
  *    else: jump to kernel_addr
  */
+
+struct boot_img_hdr {
+	u8 magic[ANDR_BOOT_MAGIC_SIZE];
+	u32 kernel_size; /* size in bytes */
+	u32 ramdisk_size; /* size in bytes */
+	u32 os_version;
+	u32 header_size; /* size of boot image header in bytes */
+	u32 reserved[4];
+	u32 header_version; /* offset remains constant for version check */
+	char cmdline[ANDR_BOOT_ARGS_SIZE + ANDR_BOOT_EXTRA_ARGS_SIZE];
+} __attribute__((packed));
+
+struct vendor_boot_img_hdr {
+	u8 magic[VENDOR_BOOT_MAGIC_SIZE];
+	u32 header_version;
+	u32 page_size; /* flash page size we assume */
+	u32 kernel_addr; /* physical load addr */
+	u32 ramdisk_addr; /* physical load addr */
+	u32 vendor_ramdisk_size; /* size in bytes */
+	u8 cmdline[VENDOR_BOOT_ARGS_SIZE];
+	u32 tags_addr; /* physical addr for kernel tags */
+	u8 name[VENDOR_BOOT_NAME_SIZE]; /* asciiz product name */
+	u32 header_size; /* size of vendor boot image header in
+	* bytes */
+	u32 dtb_size; /* size of dtb image */
+	u64 dtb_addr; /* physical load address */
+} __attribute__((packed));
+
+
 #endif

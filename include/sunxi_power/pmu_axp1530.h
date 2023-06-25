@@ -12,6 +12,8 @@
 
 //PMIC chip id reg03:bit7-6  bit3-
 #define   AXP1530_CHIP_ID              (0x48)
+#define   AXP313A_CHIP_ID              (0x4B)
+#define   AXP313B_CHIP_ID              (0x4C)
 
 #define AXP1530_DEVICE_ADDR			(0x3A3)
 #ifndef CONFIG_SYS_SUNXI_R_I2C0_SLAVE

@@ -17,6 +17,7 @@
  *
  ******************************************************************************/
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_peak_type.h"
 #include "de_rtmx.h"
 #include "de_enhance.h"
@@ -251,3 +252,4 @@ exit:
 	priv->set_blk_dirty(priv, PEAK_PEAK_REG_BLK, 1);
 	return 0;
 }
+#endif

@@ -16,6 +16,19 @@ config MMC_LOGICAL_OFFSET
 	  logic address for mbr and partitions(1M-MBRSIZE = 2048-32).
 	  SDMMC address is offset*512 bytes.
 
+config SUNXI_BOOT0_SDMMC_BACKUP_START_ADDR
+	int "backup boot0 offset"
+	default 256
+	help
+	  offset to write backup boot0, unit:sector(512 bytes)
+
+config SUNXI_RECOVERY_BOOT0_COPY0
+	bool "recovery boot0 copy 0 on boot"
+	default n
+	help
+	  check if boot from copy1, if so, copy0 is curruptted.
+	  copy copy1 to copy0 to recovery it
+
 endif
 
 

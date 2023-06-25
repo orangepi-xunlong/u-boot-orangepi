@@ -118,6 +118,11 @@ static int sprite_erase_partition_by_name(char *part_name)
 				"UDISK", &img_start, &part_size);
 			if (ret) {
 				pr_err("sprite update error: no udisk partition\n");
+			}
+			ret = sunxi_partition_get_info_byname(
+				"userdata", &img_start, &part_size);
+			if (ret) {
+				pr_err("sprite update error: no userdata partition\n");
 				return -1;
 			}
 		}

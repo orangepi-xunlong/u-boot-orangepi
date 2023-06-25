@@ -96,7 +96,7 @@ config RENESAS_RPC_HF
 
 source "drivers/mtd/nand/Kconfig"
 
-source "drivers/mtd/aw-spinand/Kconfig"
+source "drivers/mtd/awnand/Kconfig"
 
 source "drivers/mtd/spi/Kconfig"
 

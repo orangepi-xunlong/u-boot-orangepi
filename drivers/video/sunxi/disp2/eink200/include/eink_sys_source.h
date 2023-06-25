@@ -31,7 +31,7 @@
 
 #include "eink_driver.h"
 
-#define EINK_PRINT_LEVEL 0x1
+#define EINK_PRINT_LEVEL 0
 /* #define TIME_COUNTER_DEBUG */
 //#define DE_WB_DEBUG
 //#define SAVE_DE_WB_BUF
@@ -66,7 +66,7 @@ extern u32 eink_dbg_info;
 
 #define EINK_INFO_MSG(fmt, args...) \
 	do {\
-		if (eink_dbg_info & 0x1)\
+		if (eink_get_print_level() >= 1)\
 		pr_info("[EINK-%-24s] line:%04d: " fmt, __func__, __LINE__, ##args);\
 	} while (0)
 
@@ -202,4 +202,5 @@ extern void eink_fdt_init(void);
 extern int eink_fdt_nodeoffset(char *main_name);
 extern uintptr_t eink_getprop_regbase(char *main_name, char *sub_name, u32 index);
 extern u32 eink_getprop_irq(char *main_name, char *sub_name, u32 index);
+extern s32 eink_get_print_level(void);
 #endif

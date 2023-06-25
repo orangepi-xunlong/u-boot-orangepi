@@ -13,8 +13,10 @@
 #include "../rawnand_cfg.h"
 #include "../rawnand_debug.h"
 #include "ndfc_ops.h"
-#include "../rawnand.h"
+/*#include "../rawnand.h"*/
+#include <sunxi_nand.h>
 #include <asm/io.h>
+#include <sunxi_nand_errno.h>
 
 #define NDFC_VERSION_1 (1)
 

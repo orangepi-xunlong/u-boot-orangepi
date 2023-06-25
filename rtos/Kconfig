@@ -1,0 +1,41 @@
+
+config SUNXI_RTOS
+	bool "Sunxi Freertos support"
+	default n
+	help
+	  Enable support for sunxi freertos
+
+if SUNXI_RTOS
+config SUNXI_RTOS_OFFSET1_ENABLE
+	bool "Sunxi Freertos toc offset1 support"
+	default y
+	help
+	  Enable freertos toc offset1
+
+config SUNXI_RTOS_OFFSET1
+	int "freertos offset 1"
+	depends on SUNXI_RTOS_OFFSET1_ENABLE
+	default 1024
+	help
+	  freertos offset1 is offset*512 bytes
+
+config SUNXI_RTOS_OFFSET2_ENABLE
+	bool "Sunxi Freertos toc offset2 support"
+	default y
+	help
+	  Enable freertos toc offset2
+
+config SUNXI_RTOS_OFFSET2
+	int "freertos offset 2"
+	depends on SUNXI_RTOS_OFFSET2_ENABLE
+	default 5120
+	help
+	  free rtos offset2 is offset*512 bytes
+
+config SUNXI_RTOS_LOGICAL_OFFSET
+	int "freertos logical offset"
+	default 10208
+	help
+	  spinor address is offset*512 bytes
+endif
+

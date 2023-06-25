@@ -14,12 +14,15 @@ config SUNXI_CE_20
 
 config SUNXI_CE_21
 	bool "CE_VERSION 2.1"
+
+config SUNXI_CE_23
+	bool "CE_VERSION 2.3"
 endchoice
 
 config SUNXI_SHA_CAL_PADDING
 	int "padding when malloc buffer for sha calculation"
 	depends on SUNXI_CE_DRIVER
-	default 0 if SUNXI_CE_20 || SUNXI_CE_21
+	default 0 if SUNXI_CE_20 || SUNXI_CE_21 || SUNXI_CE_23
 	default 64 if SUNXI_CE_10
 	help
 		some version of ce need to add padding data

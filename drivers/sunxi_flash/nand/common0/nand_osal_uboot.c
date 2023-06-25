@@ -46,6 +46,11 @@ DECLARE_GLOBAL_DATA_PTR;
  *49--linux4.9
 */
 
+
+/*nand common1 version rule: vx.ab date time
+ * x >= 1 ; 00 <= ab <= 99;*/
+#define NAND_COMMON0_DRV_VERSION "v1.00 2020-04-23 19:50"
+
 #define NAND_CLK_BASE_ADDR (0x03001000)
 #define NAND_PIO_BASE_ADDR (0x0300B000)
 #define NDFC0_BASE_ADDR    (0x04011000)
@@ -87,6 +92,7 @@ int NAND_Print(const char * str, ...)
 	vsprintf(_buf, str, args);
 
 	printf(_buf);
+	va_end(args);
 
 	return 0;
 }
@@ -104,6 +110,7 @@ int NAND_Print_DBG(const char * str, ...)
 		vsprintf(_buf, str, args);
 
 		printf(_buf);
+		va_end(args);
 		return 0;
 	}
 }
@@ -1144,4 +1151,16 @@ void NAND_Print_Version(void)
 int NAND_Get_Version(void)
 {
 	return NAND_DRV_DATE;
+}
+
+/*record changes under common0*/
+void nand_common0_show_version(void)
+{
+	static int flag;
+
+	if (flag)
+		return;
+
+	printf("nand common0 version: %s\n", NAND_COMMON0_DRV_VERSION);
+	flag = 1;
 }

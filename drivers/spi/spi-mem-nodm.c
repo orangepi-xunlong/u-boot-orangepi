@@ -30,7 +30,7 @@ int spi_mem_exec_op(struct spi_slave *slave,
 
 	ret = spi_claim_bus(slave);
 	if (ret < 0)
-		return ret;
+		goto free_op_buf;
 
 	op_buf[pos++] = op->cmd.opcode;
 
@@ -53,14 +53,14 @@ int spi_mem_exec_op(struct spi_slave *slave,
 
 	ret = spi_xfer(slave, op_len * 8, op_buf, NULL, flag);
 	if (ret)
-		return ret;
+		goto free_op_buf;
 
 	/* 2nd transfer: rx or tx data path */
 	if (tx_buf || rx_buf) {
 		ret = spi_xfer(slave, op->data.nbytes * 8, tx_buf,
 			       rx_buf, SPI_XFER_END);
 		if (ret)
-			return ret;
+			goto free_op_buf;
 	}
 
 	spi_release_bus(slave);
@@ -74,6 +74,7 @@ int spi_mem_exec_op(struct spi_slave *slave,
 		debug("%02x ", tx_buf ? tx_buf[i] : rx_buf[i]);
 	debug("[ret %d]\n", ret);
 
+free_op_buf:
 	free(op_buf);
 
 	if (ret < 0)
@@ -97,9 +98,6 @@ int spi_mem_adjust_op_size(struct spi_slave *slave,
 	else if (slave->max_write_size)
 		op->data.nbytes = min(op->data.nbytes,
 				      slave->max_write_size - len);
-
-	if (!op->data.nbytes)
-		return -EINVAL;
 
 	return 0;
 }

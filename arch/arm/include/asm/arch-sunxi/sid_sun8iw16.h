@@ -26,35 +26,16 @@
 #define EFUSE_CHIPD             (0x00) /* 0x0-0xf, 128bits */
 #define EFUSE_BROM_CONFIG       (0x10) /* 16 bit config, 16 bits try */
 #define EFUSE_THERMAL_SENSOR    (0x14) /* 0x14-0x1b, 64bits */
-#define EFUSE_TF_ZONE           (0x1C) /* 0x1c-0x2b, 128bits */
-#define EFUSE_OEM_PROGRAM       (0x2C) /* 0x2c-0x3f, 160bits */
+#define EFUSE_TF_ZONE           (0x20)
+#define EFUSE_OEM_PROGRAM       (0x64)
 
 /* write protect */
-#define EFUSE_WRITE_PROTECT     (0x40) /* 0x40-0x43, 32bits */
+#define EFUSE_WRITE_PROTECT     (0xBC)
 /* read  protect */
-#define EFUSE_READ_PROTECT      (0x44) /* 0x44-0x47, 32bits */
-/* jtag security */
-#define EFUSE_LCJS              (0x48)
-/* jtag attribute */
-#define EFUSE_ATTR              (0x4C)
+#define EFUSE_READ_PROTECT      (0xBC)
 
-/*0x50-0x6F
-0x50-0x67: 192bits HUK hardware Unique key
-0x68-0x6b: 32bits ID of operator
-0x6C-0x6F: 32bits ID
-*/
-#define EFUSE_HUK               (0x50)
-#define EFUSE_INDENTIFICATION   (0x68)
-#define EFUSE_ID                (0x6C)
+#define EFUSE_ROTPK             (0x30)
+#define EFUSE_NV1               (0x50)
 
-#define EFUSE_ROTPK             (0x70) /* 0x70-0x8f, 256bits */
-#define EFUSE_SSK               (0x90) /* 0x90-0x9f, 128bits */
-#define EFUSE_RSSK              (0xA0) /* 0xA0-0xBf, 256bits */
-#define EFUSE_HDCP_HASH         (0xC0) /* 0xC0-0xCf, 128bits */
-#define EFUSE_EK_HASH           (0xD0) /* 0xD0-0xDf, 128bits */
-#define EFUSE_SN                (0xE0) /* 0xE0-0xF7, 192bits */
-#define EFUSE_NV1               (0xF8) /* 0xF8-0xFB, 32 bits */
-#define EFUSE_NV2               (0xFC) /* 0xFC-0x117,224bits */
-#define EFUSE_BACKUP_KEY        (0x118)/* 0x118-0x13F,320bits */
-
+#define SID_OEM_PROGRAM_SIZE	(92)
 #endif    /*  #ifndef __SID_H__  */

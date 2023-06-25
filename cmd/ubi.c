@@ -24,12 +24,25 @@
 #include <ubi_uboot.h>
 #include <linux/errno.h>
 #include <jffs2/load_kernel.h>
-#include <linux/mtd/aw-spinand.h>
+
+/*
+ *#ifdef CONFIG_AW_MTD_SPINAND
+ *#include <linux/mtd/aw-spinand.h>
+ *#endif
+ */
+
+/*
+ *#ifdef CONFIG_AW_MTD_RAWNAND
+ *#include <linux/mtd/aw-rawnand.h>
+ *#endif
+ */
 
 #ifdef CONFIG_UBI_OFFLINE_BURN
 #include <sunxi_board.h>
 #include "ubi_simu.h"
 #endif
+
+#include <linux/mtd/aw-ubi.h>
 
 #undef ubi_msg
 #define ubi_msg(fmt, ...) printf("UBI: " fmt "\n", ##__VA_ARGS__)
@@ -105,6 +118,29 @@ static int ubi_check(char *name)
 	}
 
 	return 1;
+}
+
+static int ubi_get_volume_lebs(const struct ubi_volume *vol)
+{
+	return vol->reserved_pebs;
+}
+
+/*get volume logical size*/
+static int ubi_get_volumesize(char *name)
+{
+	int i;
+
+	for (i = 0; i < (ubi->vtbl_slots + 1); i++) {
+		if (!ubi->volumes[i])
+			continue;	/* Empty record */
+
+		if (!ubi_check_volumename(ubi->volumes[i], name)) {
+			return (ubi_get_volume_lebs(ubi->volumes[i]) * ubi->leb_size);
+
+		}
+	}
+
+	return -ENXIO;
 }
 
 static int verify_mkvol_req(const struct ubi_device *ubi,
@@ -362,7 +398,7 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 		size = vol->used_bytes;
 	}
 
-	printf("Read %zu bytes from volume %s to %p\n", size, volume, buf);
+	pr_debug("Read %zu bytes from volume %s to %p\n", size, volume, buf);
 
 	if (vol->corrupted)
 		printf("read from corrupted volume %d", vol->vol_id);
@@ -582,7 +618,9 @@ static int do_ubi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (!size) {
 			size = (int64_t)ubi->avail_pebs * ubi->leb_size;
 			printf("No size specified -> Using max size (%lld)\n", size);
-			spinand_mtd_set_last_vol_sects(size / 512);
+#ifdef CONFIG_SUNXI_UBIFS
+			mtd_set_last_vol_sects(size / 512);
+#endif
 		}
 		/* E.g., create volume */
 		if (argc == 3)
@@ -648,6 +686,14 @@ static int do_ubi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 	}
 
+	if (strcmp(argv[1], "get") == 0) {
+		if (argc > 2)
+			return ubi_get_volumesize(argv[2]);
+
+		printf("Error, no know volume to get size\n");
+		return -1;
+	}
+
 	printf("Please see usage\n");
 	return 1;
 }
@@ -664,6 +710,8 @@ U_BOOT_CMD(
 		" - Display volume and ubi layout information\n"
 	"ubi check volumename"
 		" - check if volumename exists\n"
+	"ubi get volumesize"
+		" - get volume size if volume exists\n"
 	"ubi create[vol] volume [size] [type] [id]\n"
 		" - create volume name with size ('-' for maximum"
 		" available size)\n"

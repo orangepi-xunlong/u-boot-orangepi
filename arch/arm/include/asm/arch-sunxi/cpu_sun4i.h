@@ -139,8 +139,6 @@ defined(CONFIG_MACH_SUN50I)
 #define SUNXI_TWI4_BASE			0x01c2c000
 #endif
 
-#define SUNXI_CAN_BASE			0x01c2bc00
-
 #define SUNXI_SCR_BASE			0x01c2c400
 
 #ifndef CONFIG_MACH_SUN6I

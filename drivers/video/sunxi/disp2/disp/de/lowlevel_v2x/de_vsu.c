@@ -38,46 +38,46 @@ int de_vsu_update_regs(unsigned int sel)
 
 	for (i = 0; i < chno; i++) {
 		if (vsu_glb_block[sel][i].dirty == 0x1) {
-			memcpy((void *)vsu_glb_block[sel][i].off,
+			regwrite((void *)vsu_glb_block[sel][i].off,
 				vsu_glb_block[sel][i].val,
 				vsu_glb_block[sel][i].size);
 			vsu_glb_block[sel][i].dirty = 0x0;
 		}
 		if (vsu_out_block[sel][i].dirty == 0x1) {
-			memcpy((void *)vsu_out_block[sel][i].off,
+			regwrite((void *)vsu_out_block[sel][i].off,
 				vsu_out_block[sel][i].val,
 				vsu_out_block[sel][i].size);
 			vsu_out_block[sel][i].dirty = 0x0;
 		}
 		if (vsu_yscale_block[sel][i].dirty == 0x1) {
-			memcpy((void *)vsu_yscale_block[sel][i].off,
+			regwrite((void *)vsu_yscale_block[sel][i].off,
 				vsu_yscale_block[sel][i].val,
 				vsu_yscale_block[sel][i].size);
 			vsu_yscale_block[sel][i].dirty = 0x0;
 		}
 		if (vsu_cscale_block[sel][i].dirty == 0x1) {
-			memcpy((void *)vsu_cscale_block[sel][i].off,
+			regwrite((void *)vsu_cscale_block[sel][i].off,
 				vsu_cscale_block[sel][i].val,
 				vsu_cscale_block[sel][i].size);
 			vsu_cscale_block[sel][i].dirty = 0x0;
 		}
 		if (vsu_yhcoeff0_block[sel][i].dirty == 0x1) {
-			memcpy((void *)vsu_yhcoeff0_block[sel][i].off,
+			regwrite((void *)vsu_yhcoeff0_block[sel][i].off,
 				vsu_yhcoeff0_block[sel][i].val,
 				vsu_yhcoeff0_block[sel][i].size);
-			memcpy((void *)vsu_yhcoeff1_block[sel][i].off,
+			regwrite((void *)vsu_yhcoeff1_block[sel][i].off,
 				vsu_yhcoeff1_block[sel][i].val,
 				vsu_yhcoeff1_block[sel][i].size);
-			memcpy((void *)vsu_yvcoeff_block[sel][i].off,
+			regwrite((void *)vsu_yvcoeff_block[sel][i].off,
 				vsu_yvcoeff_block[sel][i].val,
 				vsu_yvcoeff_block[sel][i].size);
-			memcpy((void *)vsu_chcoeff0_block[sel][i].off,
+			regwrite((void *)vsu_chcoeff0_block[sel][i].off,
 				vsu_chcoeff0_block[sel][i].val,
 				vsu_chcoeff0_block[sel][i].size);
-			memcpy((void *)vsu_chcoeff1_block[sel][i].off,
+			regwrite((void *)vsu_chcoeff1_block[sel][i].off,
 				vsu_chcoeff1_block[sel][i].val,
 				vsu_chcoeff1_block[sel][i].size);
-			memcpy((void *)vsu_cvcoeff_block[sel][i].off,
+			regwrite((void *)vsu_cvcoeff_block[sel][i].off,
 				vsu_cvcoeff_block[sel][i].val,
 				vsu_cvcoeff_block[sel][i].size);
 			vsu_yhcoeff0_block[sel][i].dirty = 0x0;
@@ -98,7 +98,10 @@ int de_vsu_init(unsigned int sel, uintptr_t reg_base)
 	for (j = 0; j < chno; j++) {
 		vsu_base = reg_base + (sel + 1) * 0x00100000 + VSU_OFST
 				+ j * 0x20000;
-
+#if defined(CONFIG_INDEPENDENT_DE)
+		if (sel)
+			vsu_base = vsu_base - 0x00100000;
+#endif
 		memory = kmalloc(sizeof(struct __vsu_reg_t),
 			GFP_KERNEL | __GFP_ZERO);
 		if (NULL == memory) {
@@ -319,39 +322,39 @@ int de_vsu_set_para(unsigned int sel, unsigned int chno, unsigned int enable,
 	/* fir coefficient */
 	/* ch0 */
 	pt_coef = de_vsu_calc_fir_coef(ypara->hstep);
-	memcpy(&vsu_dev[sel][chno]->yhcoeff0, lan3coefftab32_left + pt_coef,
+	regwrite(&vsu_dev[sel][chno]->yhcoeff0, lan3coefftab32_left + pt_coef,
 	       sizeof(unsigned int) * VSU_PHASE_NUM);
-	memcpy(&vsu_dev[sel][chno]->yhcoeff1, lan3coefftab32_right + pt_coef,
+	regwrite(&vsu_dev[sel][chno]->yhcoeff1, lan3coefftab32_right + pt_coef,
 	       sizeof(unsigned int) * VSU_PHASE_NUM);
 
 	pt_coef = de_vsu_calc_fir_coef(ypara->vstep);
-	memcpy(&vsu_dev[sel][chno]->yvcoeff, lan2coefftab32 + pt_coef,
+	regwrite(&vsu_dev[sel][chno]->yvcoeff, lan2coefftab32 + pt_coef,
 	       sizeof(unsigned int) * VSU_PHASE_NUM);
 
 	/* ch1/2 */
 	if (VSU_FORMAT_RGB == format) {
 		pt_coef = de_vsu_calc_fir_coef(cpara->hstep);
-		memcpy(&vsu_dev[sel][chno]->chcoeff0,
+		regwrite(&vsu_dev[sel][chno]->chcoeff0,
 			lan3coefftab32_left + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
-		memcpy(&vsu_dev[sel][chno]->chcoeff1,
+		regwrite(&vsu_dev[sel][chno]->chcoeff1,
 			lan3coefftab32_right + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
 
 		pt_coef = de_vsu_calc_fir_coef(cpara->vstep);
-		memcpy(&vsu_dev[sel][chno]->cvcoeff, lan2coefftab32 + pt_coef,
+		regwrite(&vsu_dev[sel][chno]->cvcoeff, lan2coefftab32 + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
 	} else {
 		pt_coef = de_vsu_calc_fir_coef(cpara->hstep);
-		memcpy(&vsu_dev[sel][chno]->chcoeff0,
+		regwrite(&vsu_dev[sel][chno]->chcoeff0,
 			bicubic8coefftab32_left + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
-		memcpy(&vsu_dev[sel][chno]->chcoeff1,
+		regwrite(&vsu_dev[sel][chno]->chcoeff1,
 			bicubic8coefftab32_right + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
 
 		pt_coef = de_vsu_calc_fir_coef(cpara->vstep);
-		memcpy(&vsu_dev[sel][chno]->cvcoeff,
+		regwrite(&vsu_dev[sel][chno]->cvcoeff,
 			bicubic4coefftab32 + pt_coef,
 			sizeof(unsigned int) * VSU_PHASE_NUM);
 	}

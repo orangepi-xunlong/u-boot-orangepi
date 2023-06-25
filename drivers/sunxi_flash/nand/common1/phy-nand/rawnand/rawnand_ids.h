@@ -14,7 +14,8 @@
 //#include <linux/mtd/aw-spinand-nftl.h>
 #include "../../aw_nand_type.h"
 #include "../nand.h"
-#include "rawnand.h"
+#include <sunxi_nand.h>
+//#include "rawnand.h"
 
 //#define SECTOR_SIZE (512)
 /*
@@ -38,6 +39,7 @@
 #define NAND_MFR_STMICRO 0x20
 #define NAND_MFR_TOSHIBA 0x98
 #define NAND_MFR_WINBOND 0xef
+#define NAND_MFR_FORESEE 0xec
 
 /*
  * NAND Flash Manufacture name
@@ -60,6 +62,7 @@
 #define STMICRO_NAME "stmicro"
 #define TOSHIBA_NAME "toshiba"
 #define WINBOND_NAME "winbond"
+#define FORESEE_NAME "foresee"
 
 /**
  *  write boot0 special requirement
@@ -117,6 +120,12 @@
  * micron: different flash have the same id
  */
 #define NAND_FIND_ID_TAB_BY_NAME (1 << 22)
+
+/*it use in the case: name(read from flash) is not the unique,
+ * but id table 1 is conifure to NAND_FIND_ID_TAB_BY_NAME. in this case,
+ * you can use NAND_FIND_IN_TAB_BY_NAME_CANCEL to cancel name matching in id table 2.
+ * id table 2 is the same with id table1 except the optional*/
+#define NAND_FIND_ID_TAB_BY_NAME_CANCEL (1 << 23)
 /* nand flash support onfi's sync reset*/
 #define NAND_ONFI_SYNC_RESET_OP (1 << 28)
 /* nand flash support toggle interface only, and do not support switch between legacy and toggle*/
@@ -403,4 +412,5 @@ static inline unsigned int dev_info_access_high_freq(struct nand_chip_info
 	return info->access_high_freq;
 }
 #endif
+extern u32 nand_fdt_get_uint(const char *path, const char *prop_name);
 #endif /*RAWNAND_IDS_H*/

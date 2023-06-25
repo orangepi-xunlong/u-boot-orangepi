@@ -13,6 +13,7 @@
 #include <cli.h>
 #include <console.h>
 #include <linux/ctype.h>
+#include "trace.h"
 
 #define DEBUG_PARSER	0	/* set to 1 to debug */
 
@@ -271,7 +272,14 @@ void cli_simple_loop(void)
 			 */
 			bootretry_reset_cmd_timeout();
 		}
+#ifdef CONFIG_SUNXI_TRACE
+		/* dont trace readline, too many meaningless polling*/
+		trace_set_enabled(0);
+#endif
 		len = cli_readline(CONFIG_SYS_PROMPT);
+#ifdef CONFIG_SUNXI_TRACE
+		trace_set_enabled(1);
+#endif
 
 		flag = 0;	/* assume no special flags for now */
 		if (len > 0)

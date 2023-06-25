@@ -187,6 +187,13 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 void spi_free_slave(struct spi_slave *slave);
 
 /**
+ * Init spi clk
+ *
+ * @slave:	The SPI slave
+ */
+void spi_init_clk(struct spi_slave *slave);
+
+/**
  * Claim the bus and prepare it for communication with a given slave.
  *
  * This must be called before doing any transfers with a SPI slave. It

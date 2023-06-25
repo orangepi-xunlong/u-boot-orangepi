@@ -55,6 +55,8 @@
 #define   FDT_EDP1_PATH  "edp1"
 //for eink alias
 #define   FDT_EINK_PATH  "eink"
+#define	  FDT_TPS65185_PATH "tps65185"
+#define   FDT_TPS65185_SLV_PATH "tps65185_slave"
 
 typedef struct {
 	char  gpio_name[32];
@@ -162,5 +164,6 @@ int fdt_set_pin_byname(user_gpio_set_t  *pin_list, int pin_count, const char *pi
 int fdt_set_normal_gpio(user_gpio_set_t  *gpio_list, int gpio_count);
 
 int script_parser_fetch(char *node_path, char *prop_name, int value[], int def_val);
+const char *fdt_get_regulator_name(int nodeoffset, const char *name);
 
 #endif

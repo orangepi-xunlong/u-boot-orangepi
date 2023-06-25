@@ -189,7 +189,7 @@ int sunxi_deal_hdcp_key_hash(char *keydata, char *buffer_convert)
 		pr_err("verify_hdcp_key_sha: failed\n");
 		return -1;
 	}
-
+	memset(&efuse_key_info, 0, sizeof(sunxi_efuse_key_info_t));
 	strcpy(efuse_key_info.name, name);
 	efuse_key_info.len      = HDCP_MD5_LEN;
 	efuse_key_info.key_data = obj->md5;
@@ -240,6 +240,7 @@ int sunxi_deal_rssk_key(void)
 	printf("rssk data:\n");
 	sunxi_dump(rssk_buf, RSSK_SIZE_BYTES);
 #endif
+	memset(&efuse_key_info, 0, sizeof(sunxi_efuse_key_info_t));
 	strcpy(efuse_key_info.name, name);
 	efuse_key_info.len      = RSSK_SIZE_BYTES;
 	efuse_key_info.key_data = rssk_buf;

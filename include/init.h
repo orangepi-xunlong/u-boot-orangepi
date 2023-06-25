@@ -10,6 +10,10 @@
 #ifndef __INIT_H_
 #define __INIT_H_	1
 
+#include <linux/types.h>
+
+struct global_data;
+
 #ifndef __ASSEMBLY__		/* put C only stuff in this section */
 
 /*
@@ -140,6 +144,8 @@ ulong board_init_f_alloc_reserve(ulong top);
  */
 void board_init_f_init_reserve(ulong base);
 
+struct global_data;
+
 /**
  * arch_setup_gd() - Set up the global_data pointer
  *
@@ -152,10 +158,11 @@ void board_init_f_init_reserve(ulong base);
  *
  * @gd_ptr:	Pointer to global data
  */
-void arch_setup_gd(gd_t *gd_ptr);
+void arch_setup_gd(struct global_data *gd_ptr);
 
 /* common/board_r.c */
-void board_init_r(gd_t *id, ulong dest_addr) __attribute__ ((noreturn));
+void board_init_r(struct global_data *id, ulong dest_addr)
+	__attribute__ ((noreturn));
 
 int cpu_init_r(void);
 int last_stage_init(void);
@@ -172,6 +179,45 @@ int init_func_vid(void);
 /* common/board_info.c */
 int checkboard(void);
 int show_board_info(void);
+
+/**
+ * Get the uppermost pointer that is valid to access
+ *
+ * Some systems may not map all of their address space. This function allows
+ * boards to indicate what their highest support pointer value is for DRAM
+ * access.
+ *
+ * @param total_size	Size of U-Boot (unused?)
+ */
+ulong board_get_usable_ram_top(ulong total_size);
+
+int board_early_init_f(void);
+
+/* manipulate the U-Boot fdt before its relocation */
+int board_fix_fdt(void *rw_fdt_blob);
+int board_late_init(void);
+int board_postclk_init(void); /* after clocks/timebase, before env/serial */
+int board_early_init_r(void);
+
+/* TODO(sjg@chromium.org): Drop this when DM_PCI migration is completed */
+void pci_init_board(void);
+
+void trap_init(unsigned long reloc_addr);
+
+/**
+ * main_loop() - Enter the main loop of U-Boot
+ *
+ * This normally runs the command line.
+ */
+void main_loop(void);
+
+#if defined(CONFIG_ARM)
+void relocate_code(ulong addr_moni);
+#else
+void relocate_code(ulong start_addr_sp, struct global_data *new_gd,
+		   ulong relocaddr)
+	__attribute__ ((noreturn));
+#endif
 
 #endif	/* __ASSEMBLY__ */
 /* Put only stuff here that the assembler can digest */

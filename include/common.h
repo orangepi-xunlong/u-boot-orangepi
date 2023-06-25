@@ -68,7 +68,14 @@ typedef void (interrupt_handler_t)(void *);
  * common/board_info.c
  */
 #include <init.h>
-
+#if defined(CONFIG_SUNXI_MEM_INFO)
+int sunxi_mem_info(char *pname, void *addr, unsigned long len);
+#else
+inline int sunxi_mem_info(char *pname, void *addr, unsigned long len)
+{
+	return 0;
+}
+#endif
 /*
  * Function Prototypes
  */

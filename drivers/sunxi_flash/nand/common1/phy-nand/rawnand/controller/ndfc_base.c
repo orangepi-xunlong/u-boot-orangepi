@@ -28,16 +28,16 @@
 #include <configs/sunxi-common.h>
 #include <linux/string.h>
 #include "ndfc_base.h"
-#include "../../nand_errno.h"
+#include <sunxi_nand_errno.h>
 #include "../../nand_nftl.h"
-#include "../rawnand.h"
+/*#include "../rawnand.h"*/
+#include <sunxi_nand.h>
 #include "../rawnand_chip.h"
 #include "../rawnand_cfg.h"
 #include "../rawnand_debug.h"
 #include "../../version.h"
 #include "ndfc_internal.h"
 #include "ndfc_ops.h"
-#include "../rawnand.h"
 #include "../../../nand_osal_uboot.h"
 #include <asm/io.h>
 

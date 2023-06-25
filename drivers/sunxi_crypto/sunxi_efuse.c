@@ -71,9 +71,10 @@ typedef struct efuse_key_map_new {
 	{                                                                      \
 		name, offset, size_bits, rd_offset, burn_offset, acl           \
 	}
-#if defined(CONFIG_MRCH_SUN50IW11P1)
+#if defined(CONFIG_MACH_SUN50IW11)
 static efuse_key_map_new_t g_key_info[] = {
-	EFUSE_DEF_ITEM(EFUSE_ROTPK_NAME, 0x38, 256, -1, -1, EFUSE_RO),
+	EFUSE_DEF_ITEM(EFUSE_CHIPID_NAME, EFUSE_CHIPID, 128, -1, -1, EFUSE_RO),
+	EFUSE_DEF_ITEM(EFUSE_ROTPK_NAME, EFUSE_ROTPK, 256, -1, -1, EFUSE_RO),
 	EFUSE_DEF_ITEM("", 0, 0, 0, 0, EFUSE_PRIVATE),
 };
 #elif defined(CONFIG_ARCH_SUN8IW17P1)
@@ -107,9 +108,23 @@ static efuse_key_map_new_t g_key_info[] = {
 	EFUSE_DEF_ITEM("", 0, 0, 0, 0, EFUSE_PRIVATE),
 };
 #else
+#ifndef SCC_ROTPK_BURNED_FLAG
+#define SCC_ROTPK_BURNED_FLAG		(12)
+#endif
 /*Please extend key_maps for new arch here*/
 static efuse_key_map_new_t g_key_info[] = {
-	EFUSE_DEF_ITEM(EFUSE_ROTPK_NAME, 0x70, 256, -1, -1, EFUSE_RO),
+#ifdef EFUSE_ROTPK
+	EFUSE_DEF_ITEM(EFUSE_ROTPK_NAME, EFUSE_ROTPK, 256, -1, SCC_ROTPK_BURNED_FLAG, EFUSE_RO),
+#endif
+#ifdef EFUSE_SSK
+	EFUSE_DEF_ITEM(EFUSE_SSK_NAME, EFUSE_SSK, SID_SSK_SIZE, -1, SCC_SSK_BURNED_FLAG, EFUSE_RO),
+#endif
+#ifdef EFUSE_OEM_PROGRAM
+	EFUSE_DEF_ITEM(EFUSE_OEM_NAME, EFUSE_OEM_PROGRAM, SID_OEM_PROGRAM_SIZE, -1, -1, EFUSE_RO),
+#endif
+#ifdef EFUSE_OEM_PROGRAM_SECURE
+	EFUSE_DEF_ITEM(EFUSE_OEM_SEC_NAME, EFUSE_OEM_PROGRAM_SECURE, SID_OEM_PROGRAM_SECURE_SIZE, -1, -1, EFUSE_RO),
+#endif
 	EFUSE_DEF_ITEM("", 0, 0, 0, 0, EFUSE_PRIVATE),
 };
 #endif
@@ -198,21 +213,26 @@ static int uni_burn_key(uint key_index, uint key_value)
 
 int sid_set_security_mode(void)
 {
-#ifdef EFUSE_LCJS
+#if defined(EFUSE_LCJS)
 #ifdef CONFIG_ARCH_SUN50IW1P1
 	return uni_burn_key(EFUSE_LCJS, ((0x1 << SECURE_BIT_OFFSET) |
 				  (0x1 << SBROM_ACCELERATION_ENABLE_BIT)));
 #else
 	return uni_burn_key(EFUSE_LCJS, (0x1 << SECURE_BIT_OFFSET));
 #endif
-#endif
+#elif defined(EFUSE_ANTI_BRUSH)
+	return uni_burn_key(EFUSE_ANTI_BRUSH, (0x1 << ANTI_BRUSH_BIT_OFFSET));
+#else
 	return 0;
+#endif
 }
 
 int sid_probe_security_mode(void)
 {
-#ifdef EFUSE_LCJS
+#if defined(EFUSE_LCJS)
 	return (sid_read_key(EFUSE_LCJS) >> SECURE_BIT_OFFSET) & 1;
+#elif defined(EFUSE_ANTI_BRUSH)
+	return (sid_read_key(EFUSE_ANTI_BRUSH) >> ANTI_BRUSH_BIT_OFFSET) & 1;
 #else
 	return 0;
 #endif
@@ -294,7 +314,7 @@ static int __efuse_acl_ck(efuse_key_map_new_t *key_map, int burn)
 	if (burn) {
 		if (_get_burned_flag(key_map)) {
 			/*already burned*/
-			EFUSE_DBG("[efuse]%s:already burned\n", key_map->name);
+			pr_err("[efuse]%s:already burned\n", key_map->name);
 			EFUSE_DBG("config reg:0x%x\n",
 				  sid_read_key(EFUSE_WRITE_PROTECT));
 			return EFUSE_ERR_ALREADY_BURNED;
@@ -306,7 +326,7 @@ static int __efuse_acl_ck(efuse_key_map_new_t *key_map, int burn)
 		      key_map->rd_fbd_offset) &
 		     1)) {
 			/*Read is not allowed because of the read forbidden bit was set*/
-			EFUSE_DBG("[efuse]%s forbid bit set\n", key_map->name);
+			pr_err("[efuse]%s forbid bit set\n", key_map->name);
 			EFUSE_DBG("config reg:0x%x\n",
 				  sid_read_key(EFUSE_READ_PROTECT));
 			return EFUSE_ERR_READ_FORBID;
@@ -319,7 +339,7 @@ static int __efuse_acl_ck(efuse_key_map_new_t *key_map, int burn)
 static unsigned int _get_uint_val(unsigned char *k_src)
 {
 	unsigned int test = 0x12345678;
-	if ((unsigned int)k_src & 0x3) {
+	if ((unsigned long)k_src & 0x3) {
 		/*big endian*/
 		if (*(unsigned char *)(&test) == 0x12) {
 			memcpy((void *)&test, (void *)k_src, 4);
@@ -363,13 +383,13 @@ int sunxi_efuse_write(void *key_inf)
 	}
 
 	if (key_map->size == 0) {
-		EFUSE_DBG("[sunxi_efuse_write] error: unknow key\n");
+		pr_err("[sunxi_efuse_write] error: unknow key\n");
 		return EFUSE_ERR_KEY_NAME_WRONG;
 	}
 
 	int ret = __efuse_acl_ck(key_map, 1);
 	if (ret) {
-		EFUSE_DBG("[sunxi_efuse_write] error: NO ACCESS\n");
+		pr_err("[sunxi_efuse_write] error: NO ACCESS\n");
 		return ret;
 	}
 
@@ -460,7 +480,7 @@ int sunxi_efuse_read(void *key_name, void *rd_buf, int *len)
 	offset  = key_map->offset;
 	for (i = 0; i < k_u32_l; i++) {
 		tmp = sid_read_key(offset);
-		if (((unsigned int)rd_buf & 0x3) == 0) {
+		if (((unsigned long)rd_buf & 0x3) == 0) {
 			u32_p[i] = tmp;
 		} else {
 			memcpy((void *)(u8_p + i * 4), (void *)(&tmp), 4);
@@ -473,8 +493,8 @@ int sunxi_efuse_read(void *key_name, void *rd_buf, int *len)
 		EFUSE_DBG("bit lft is %d\n", bit_lft);
 		tmp = sid_read_key(offset);
 		memcpy((void *)(u8_p + k_u32_l * 4), (void *)(&tmp),
-		       EFUSE_ROUND_UP(bit_lft, 8));
-		tmp_sz += EFUSE_ROUND_UP(bit_lft, 8);
+		       EFUSE_ROUND_UP(bit_lft, 8)/8);
+		tmp_sz += EFUSE_ROUND_UP(bit_lft, 8)/8;
 	}
 	*len = tmp_sz;
 
@@ -491,7 +511,54 @@ int sunxi_efuse_get_rotpk_status(void)
 {
 	int ret;
 	ret = (readl(SID_ROTPK_CTRL) & (1 << SID_ROTPK_EFUSED_BIT)) ==
-	      (1 << SID_ROTPK_EFUSED_BIT);
+		(1 << SID_ROTPK_EFUSED_BIT);
 	return ret;
+}
+#endif
+
+int sunxi_efuse_verify_rotpk(u8 *hash)
+{
+#ifdef SID_ROTPK_CMP_RET_BIT
+	int i;
+	u32 *tmp = (u32 *)hash;
+	u32 val;
+
+	for (i = 0; i < 8 ; i++) {
+		writel(tmp[i], SID_ROTPK_VALUE(i));
+	}
+
+	val = readl(SID_ROTPK_CTRL);
+	val |= (0x1U << 31);
+	writel(val, SID_ROTPK_CTRL);
+
+	for (i = 0; i < 30; i++) {
+		;
+	}
+
+	val = readl(SID_ROTPK_CTRL);
+	if (val & (1 << SID_ROTPK_EFUSED_BIT)) {
+		if (val & (1 << SID_ROTPK_CMP_RET_BIT)) {
+			return 0;
+		}
+		return -2;
+	}
+	pr_err("rotpk not init\n");
+	return 0;
+#else
+	return -1;
+#endif
+}
+
+#ifdef SID_GET_SOC_VER
+int sunxi_efuse_get_soc_ver(void)
+{
+	int ret;
+	ret = (readl(SID_EFUSE) >> SID_SOC_VER_OFFSET) & SID_SOC_VER_MASK;
+	return ret;
+}
+#else
+int sunxi_efuse_get_soc_ver(void)
+{
+	return 0;
 }
 #endif

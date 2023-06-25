@@ -27,17 +27,65 @@
 
 #include <linux/string.h>
 #include "../nand_boot.h"
-#include "../nand_errno.h"
+#include <sunxi_nand_errno.h>
 #include "../nand_physic_interface.h"
 #include "../nand_secure_storage.h"
 #include "rawnand_boot.h"
 #include "rawnand_chip.h"
 #include "rawnand_readretry.h"
-#include "rawnand.h"
+/*#include "rawnand.h"*/
 #include "rawnand_base.h"
 #include "rawnand_cfg.h"
 #include "rawnand_debug.h"
 #include "../version.h"
+#include <sunxi_nand_boot.h>
+#include <sunxi_nand.h>
+
+
+extern int nftl_clean_zone(void);
+int erase_whole_flash;
+
+/* phy_block_badtab mark bad block when erase chip,
+ * for partitions don't scan bad block using check badblock interface*/
+unsigned char phy_block_badtab[BITS_MAX_BLOCKS];
+
+int mark_phy_block_badtab_detect_by_erasechip(int chip, int block)
+{
+	int block_offset_byte = 0;
+	int block_offset_bit = 0;
+	int blocks_per_chip = nand_get_chip_die_size(BLOCK);
+	int blocks = chip * blocks_per_chip + block;
+
+	if (blocks > MAX_BLOCKS) {
+		pr_err("chip@%d block@%d more than max %d\n", chip, block, MAX_BLOCKS);
+		return -1;
+	}
+
+	block_offset_byte = (blocks >> 3);
+	block_offset_bit = (blocks % 8);
+
+	phy_block_badtab[block_offset_byte] |= (1 << block_offset_bit);
+
+	return 0;
+}
+
+int phy_block_is_bad_detect_by_erasechip(int chip, int block)
+{
+	int block_offset_byte = 0;
+	int block_offset_bit = 0;
+	int blocks_per_chip = nand_get_chip_die_size(BLOCK);
+	int blocks = chip * blocks_per_chip + block;
+
+	if (blocks > MAX_BLOCKS) {
+		pr_err("chip@%d block@%d more than max %d\n", chip, block, MAX_BLOCKS);
+		return -1;
+	}
+
+	block_offset_byte = (blocks >> 3);
+	block_offset_bit = (blocks % 8);
+
+	return phy_block_badtab[block_offset_byte] & (1 << block_offset_bit);
+}
 
 /*****************************************************************************
  *Name         :
@@ -309,14 +357,13 @@ int rawnand_write_uboot_one(unsigned char *buf, unsigned int len, struct _boot_i
 	int ret;
 	struct nand_chip_info *nci;
 	int real_len;
-
 	RAWNAND_DBG("burn uboot one!\n");
 
 	nci = g_nctri->nci;
 
 	real_len = rawnand_add_len_to_uboot_tail(len);
 
-	//print_physic_info(phyinfo_buf);
+	/*print_physic_info(phyinfo_buf);*/
 
 	if (((0 == nci->lsb_page_type) && (real_len <= nand_get_phy_block_size())) || ((0 != nci->lsb_page_type) && (real_len <= nand_get_lsb_block_size()))) {
 		ret = rawnand_write_uboot_one_in_block(buf, len, phyinfo_buf, PHY_INFO_SIZE, counter);
@@ -929,8 +976,12 @@ int rawnand_erase_chip(unsigned int chip, unsigned int start_block, unsigned int
 			ret = nci->nand_physic_erase_block(&npo);
 			nand_wait_all_rb_ready();
 
-			if (ret != 0)
+			if (ret != 0) {
 				nci->nand_physic_bad_block_mark(&npo);
+				mark_phy_block_badtab_detect_by_erasechip(npo.chip, npo.block);
+			}
+		} else {
+			mark_phy_block_badtab_detect_by_erasechip(npo.chip, npo.block);
 		}
 	}
 
@@ -1014,32 +1065,53 @@ void rawnand_erase_special_block(void)
 int rawnand_uboot_erase_all_chip(UINT32 force_flag)
 {
 	int i, start, end, secure_block_start;
-	int uboot_start_block, uboot_next_block;
+	int uboot_next_block = 0;
+	int secure_end_block;
 
-	uboot_start_block = get_uboot_start_block();
 	uboot_next_block = get_uboot_next_block();
 	secure_block_start = uboot_next_block;
 
+	erase_whole_flash = 1;
 	for (i = 0; i < g_nsi->chip_cnt; i++) {
 		start = 0;
 		end = 0xfffff;
 
 		if (i == 0) {
-			if ((force_flag == 1) || (rawnand_is_blank()) == 1)
+			if ((force_flag == 1) || (rawnand_is_blank()) == 1) {
 				start = secure_block_start;
-			else
-				start = nand_secure_storage_first_build(secure_block_start);
-		}
+				nand_secure_storage_block = 0;
+				nand_secure_storage_block_bak = 0;
 
-		rawnand_erase_chip(i, start, end, force_flag);
+
+				secure_end_block = nand_secure_storage_first_build(secure_block_start);
+
+				if (ubootsta.nand_secstate.state != SECURE_STORAGE_FIRST_BUILD) {
+					/*erase history secure storage*/
+					rawnand_erase_chip(i, start, secure_end_block, force_flag);
+				}
+				/*erase nftl zone*/
+				if (nftl_clean_zone() == false) {
+					/*nftl clean fail, try to raw erase*/
+					ubootsta.nand_erase_state.phy_erase = true;
+					ubootsta.nand_erase_state.erase_method = SINGLE_ERASE;
+					rawnand_erase_chip(i, secure_end_block, end, force_flag);
+				}
+			} else {
+				/*start = nand_secure_storage_first_build(secure_block_start);*/
+				secure_end_block = nand_secure_storage_first_build(secure_block_start);
+				if (nftl_clean_zone() == false) {
+					ubootsta.nand_erase_state.phy_erase = true;
+					/*nftl clean fail, try to raw erase*/
+					rawnand_erase_chip(i, secure_end_block, end, force_flag);
+				}
+			}
+			ubootsta.nand_erase_state.start_block = i * nand_get_chip_die_size(BLOCK) + secure_end_block;
+		}
+		ubootsta.nand_erase_state.end_block = i * nand_get_chip_die_size(BLOCK) + end;
+		ubootsta.nand_erase_state.erase_whole_chip = true;;
+
 	}
 
-	rawnand_erase_special_block();
-
-	clean_physic_info();
-
-	aw_nand_info.boot->uboot_start_block = uboot_start_block;
-	aw_nand_info.boot->uboot_next_block = uboot_next_block;
 
 	return 0;
 }

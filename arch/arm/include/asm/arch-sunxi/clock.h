@@ -30,11 +30,25 @@
 #include <asm/arch/clock_sun50iw9.h>
 #elif defined(CONFIG_MACH_SUN50IW10)
 #include <asm/arch/clock_sun50iw10.h>
+#elif defined(CONFIG_MACH_SUN55IW3)
+#include <asm/arch/plat-sun55iw3p1/clock_sun55iw3.h>
 #elif defined(CONFIG_MACH_SUN50IW11)
 #include <asm/arch/clock_sun50iw11.h>
+#elif defined(CONFIG_MACH_SUN50IW12)
+#include <asm/arch/clock_sun50iw12.h>
 #elif defined(CONFIG_MACH_SUN8IW15)
 #include <asm/arch/clock_sun8iw15.h>
 #elif defined(CONFIG_MACH_SUN8IW7)
+#include <asm/arch/clock_sun6i.h>
+#elif defined(CONFIG_MACH_SUN20IW1)
+#include <asm/arch/clock_sun20iw1.h>
+#elif defined(CONFIG_MACH_SUN8IW20)
+#include <asm/arch/clock_sun8iw20.h>
+#elif defined(CONFIG_MACH_SUN8IW21)
+#include <asm/arch/clock_sun8iw21.h>
+#elif defined(CONFIG_MACH_SUN50IW5)
+#include <asm/arch/clock_sun50iw5.h>
+#elif defined(CONFIG_MACH_SUN8IW11)
 #include <asm/arch/clock_sun6i.h>
 #else
 #include <asm/arch/clock_sun4i.h>
@@ -64,7 +78,8 @@ uint clock_get_apb1(void);
 uint clock_get_apb2(void);
 uint clock_get_axi(void);
 uint clock_get_mbus(void);
-
+void clock_open_timer(int timernum);
+void clock_close_timer(int timernum);
 #endif
 
 #endif /* _SUNXI_CLOCK_H */

@@ -27,10 +27,11 @@
 #include <stdio.h>
 #include <sunxi_nand.h>
 #include "nand_physic_interface.h"
-#include "nand-partition/phy.h"
+/*#include "nand-partition/phy.h"*/
+#include <sunxi_nand_partitions.h>
 #include "rawnand/rawnand_chip.h"
 #include "rawnand/controller/ndfc_base.h"
-#include "rawnand/rawnand.h"
+/*#include "rawnand/rawnand.h"*/
 #include "rawnand/rawnand_base.h"
 #include "rawnand/rawnand_cfg.h"
 #include "nand.h"
@@ -38,6 +39,7 @@
 #include "spinand/spinand.h"
 #include "nand_weak.h"
 #include "../nand_osal_uboot.h"
+#include <sunxi_nand_partitions.h>
 /*#include <linux/mtd/aw-spinand-nftl.h>*/
 //#define POWER_OFF_DBG
 __u32 storage_type;
@@ -240,10 +242,11 @@ void *nand_get_channel_base_addr(u32 no)
 u32 NAND_GetLogicPageSize(void)
 {
 #ifdef CONFIG_SUNXI_UBIFS
-	return 16384;
-#else
-	return 512 * aw_nand_info.SectorNumsPerPage;
+	if (nand_use_ubi())
+		return 16384;
 #endif
+
+	return (nand_get_super_chip_page_size() << 9);
 }
 
 /*****************************************************************************
@@ -349,10 +352,10 @@ int nand_physic_bad_block_mark(unsigned int chip, unsigned int block)
 *Return       : 0:ok  -1:fail
 *Note         :
 *****************************************************************************/
-int nand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d)
+int nand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d, unsigned int copy_nums)
 {
 	if (get_storage_type() == 1)
-		return rawnand_physic_block_copy(chip_s, block_s, chip_d, block_d);
+		return rawnand_physic_block_copy(chip_s, block_s, chip_d, block_d, copy_nums);
 	else if (get_storage_type() == 2)
 		return spinand_nftl_single_block_copy(chip_s, block_s, chip_d, block_d);
 	return 0;

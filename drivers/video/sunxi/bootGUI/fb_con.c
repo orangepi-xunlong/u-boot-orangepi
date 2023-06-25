@@ -347,13 +347,22 @@ static int get_orangepi_env_value(char * buf, int num, char * name)
 	return -1;
 }
 
+static int clear_framebuffer(framebuffer_t *const fb)
+{
+	fb->handle = hal_request_layer(fb->fb_id);
+	if (NULL == fb->handle || NULL == fb->cv->base)
+		return -1;
+	memset(fb->cv->base, 0x00, fb->buf_list->buf_size);
+	return 0;
+}
+
 static void get_fb_configs(fb_config_t *fb_cfgs, int fb_id)
 {
 	int node = get_disp_fdt_node();
 	char prop[12];
 
 	int read_bytes = 0;
-	char buf[256] = {0};
+	char buf[2560] = {0};
 	int value = -1;
 
 	node = get_disp_fdt_node();
@@ -399,6 +408,7 @@ int fb_init(void)
 			s_fb_list[id].fb_id = id;
 			if (creat_framebuffer(&s_fb_list[id], &fb_cfg))
 				continue;
+			clear_framebuffer(&s_fb_list[id]);
 			setup_framebuffer(&s_fb_list[id]);
 		} else {
 			printf("bad fb%d_cfg[w=%d,h=%d,bpp=%d,format=%d]\n", id,
@@ -447,7 +457,7 @@ int fb_unlock(unsigned int fb_id, rect_t *dirty_rects, int count)
 	if ((fb_id < FRAMEBUFFER_NUM)
 		&& (FB_LOCKED == fb->locked)) {
 		if (0 != count) {
-			flush_cache((uint)fb->cv->base, fb->cv->stride * fb->cv->height);
+			flush_cache((unsigned long)fb->cv->base, fb->cv->stride * fb->cv->height);
 			commit_fb(fb, FB_COMMIT_ADDR);
 			switch_buf(fb, dirty_rects, count);
 		}
@@ -499,6 +509,8 @@ int fb_save_para(unsigned int fb_id)
 		interest_rect->left, interest_rect->top, interest_rect->right, interest_rect->bottom);
 	hal_save_string_to_kernel(name, fb_paras);
 
+	hal_save_boot_disp(fb->handle);
+
 	return 0;
 }
 
@@ -514,10 +526,13 @@ int fb_update_cmdline(unsigned int fb_id)
 	char disp_reserve[80];
 	int ret = 0;
 	int size = 0;
+	uint64_t addr = 0;
 
 	size = DO_ALIGN(fb->cv->width * fb->cv->bpp >> 3, GR_ALIGN_BYTE) *  fb->cv->height;
 	if (size && fb->cv->base) {
 		snprintf(disp_reserve, 80, "%d,0x%p", size, fb->cv->base);
+		addr = (unsigned long)fb->cv->base;
+		hal_reserve_logo_mem((uint64_t)addr, (uint64_t)size);
 		ret = env_set("disp_reserve", disp_reserve);
 		if (ret)
 			printf("Set disp_reserve env fail!\n");

@@ -160,6 +160,9 @@ struct sunxi_ccm_reg {
 	u32 pll_lock_ctrl;	/* 0x320 PLL lock control, R40 only */
 };
 
+#define CCMU_PLL_LOCK_CTRL_REG (SUNXI_CCM_BASE + 0x320)
+#define LOCK_EN_NEW_MODE       (1<<28)
+#define LOCK_EN_PLL_CPUX       (1<<0)
 /* apb2 bit field */
 #define APB2_CLK_SRC_LOSC		(0x0 << 24)
 #define APB2_CLK_SRC_OSC24M		(0x1 << 24)
@@ -329,6 +332,7 @@ struct sunxi_ccm_reg {
 #define CCM_MMC_CTRL_OSCM24		(0x0 << 24)
 #define CCM_MMC_CTRL_PLL6		(0x1 << 24)
 #define CCM_MMC_CTRL_ENABLE		(0x1 << 31)
+#define CCM_MMC_CTRL_PLL6X2		(0x1 << 24)
 
 #define CCM_SATA_CTRL_ENABLE		(0x1 << 31)
 #define CCM_SATA_CTRL_USE_EXTCLK	(0x1 << 24)

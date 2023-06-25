@@ -1,9 +1,14 @@
+/*
+ * (C) Copyright 2007-2011
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0+
+ */
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/timer.h>
-
 
 
 void clock_init_uart(void)
@@ -26,8 +31,6 @@ void clock_init_uart(void)
 		     1 << (RESET_SHIFT + CONFIG_CONS_INDEX - 1));
 }
 
-
-
 uint clock_get_pll6(void)
 {
 	struct sunxi_ccm_reg *const ccm =
@@ -45,6 +48,79 @@ uint clock_get_pll6(void)
 
 
 	return pll6;
+}
+
+static int clk_get_pll_para(struct core_pll_freq_tbl *factor, int pll_clk)
+{
+	int index;
+
+	index = pll_clk / 24;
+	factor->FactorP = 0;
+	factor->FactorN = (index - 1);
+	factor->FactorM = 0;
+
+	return 0;
+}
+
+int clock_set_corepll(int frequency)
+{
+
+	unsigned int reg_val = 0;
+	struct sunxi_ccm_reg *const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	struct core_pll_freq_tbl  pll_factor;
+
+	if (frequency == clock_get_corepll())
+		return 0;
+	else if (frequency >= 1008)
+		frequency = 1008;
+
+	/* switch to 24M*/
+	reg_val = readl(&ccm->cpu_axi_cfg);
+	reg_val &= ~(0x03 << 24);
+	reg_val |=  (0x00 << 24);
+	writel(reg_val, &ccm->cpu_axi_cfg);
+	__udelay(20);
+
+	/*get config para form freq table  */
+	clk_get_pll_para(&pll_factor, frequency);
+
+	/* 24M*(N+1)/(M+1)/(P+1)*/
+	reg_val = readl(&ccm->pll1_cfg);
+	reg_val &= ~((1 << 31) | (0x03 << 16) | (0xff << 8) | (0x03 << 0));
+	reg_val |=  (pll_factor.FactorP << 16) | \
+		    (pll_factor.FactorN << 8) | \
+		    (pll_factor.FactorM << 0) ;
+	writel(reg_val, &ccm->pll1_cfg);
+	__udelay(20);
+	/* lock enable */
+	reg_val = readl(&ccm->pll1_cfg);
+	reg_val |= (1 << 29);
+	writel(reg_val, &ccm->pll1_cfg);
+
+	/* enable pll */
+	reg_val = readl(&ccm->pll1_cfg);
+	reg_val |=  (1 << 31);
+	writel(reg_val, &ccm->pll1_cfg);
+
+	/*wait PLL_CPUX stable  */
+#ifndef FPGA_PLATFORM
+	while (!(readl(&ccm->pll1_cfg) & (0x1 << 28)))
+		;
+	__usdelay(1);
+#endif
+	/* lock disable */
+	reg_val = readl(&ccm->pll1_cfg);
+	reg_val &= ~(1 << 29);
+	writel(reg_val, &ccm->pll1_cfg);
+
+	/*set and change cpu clk src to PLL_CPUX,  PLL_CPUX:AXI0 = 408M:136M  */
+	reg_val = readl(&ccm->cpu_axi_cfg);
+	reg_val &=  ~(0x03 << 24);
+	reg_val |=  (0x03 << 24);
+	writel(reg_val, &ccm->cpu_axi_cfg);
+
+	return  0;
 }
 
 uint clock_get_corepll(void)
@@ -148,7 +224,7 @@ uint clock_get_apb1(void)
 	int clock = 0, factor_m = 0,factor_n = 0;
 
 	reg_val = readl(&ccm->apb1_cfg);
-	factor_m  = ((reg_val >> 0) & 0x03) + 1;
+	factor_m  = ((reg_val >> 0) & 0x03);
 	factor_n  = 1<<((reg_val >> 8) & 0x03);
 	src = (reg_val >> 24)&0x3;
 

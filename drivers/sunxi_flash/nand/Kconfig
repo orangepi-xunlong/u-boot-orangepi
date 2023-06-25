@@ -19,9 +19,28 @@ config SUNXI_COMM_NAND
 	depends on SUNXI_NAND
 	default y if MACH_SUN50IW3
 
+config SUNXI_NAND_ERASE_ALL_BLOCK
+	bool "Support NAND force erase all block interface"
+	depends on SUNXI_NAND
+	default n
+	help
+	  Enable support for sunxi nand devices.
+	  These provide a all-block-erase interface which nand flash has
+	  sunxi-nand-boot-crc information and occurs to oob inconsistency on the logic code.
+	  note:This interface will erase all data on flash,
+	  so it is recommended to use it only in debugging stage
+
 config SUNXI_COMM_NAND_V1
 	bool "Support COMM NAND V1 interface"
 	depends on SUNXI_NAND || SUNXI_UBIFS
-	default y if MACH_SUN8IW18 || MACH_SUN50IW9 || MACH_SUN50IW10 || MACH_SUN8IW15 || MACH_SUN8IW7
+	default y if MACH_SUN8IW18 || MACH_SUN50IW5 || MACH_SUN50IW9 || MACH_SUN50IW10 || MACH_SUN8IW15 || MACH_SUN8IW7
 	select SUNXI_DMA
+
+config SUNXI_SLCNAND_OFFLINE_BURN_SECURE_FIRMWARE
+	bool "Enable SUNXI SLCNAND REPLACE SPECIAL BOOT0 WITH TOC0 while OFFLINE BURN SECURITY FIRMWARE"
+	depends on SUNXI_COMM_NAND_V1
+	default n
+	help
+	  if offline burn slc rawnand, for security firmware,
+	  need to backup secure boot0 in special boot0 place
 

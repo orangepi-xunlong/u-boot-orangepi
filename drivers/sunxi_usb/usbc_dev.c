@@ -480,18 +480,18 @@ static void __USBC_Dev_ClearDma_Trans(ulong usbc_base_addr)
 {
 	__u32 reg_val;
 
-	reg_val  = readl(usbc_base_addr + USBC_REG_o_PCTL);
+	reg_val  = readl((const volatile void __iomem *)(usbc_base_addr + USBC_REG_o_PCTL));
 	reg_val &= ~(1 << 24);
-	writel(reg_val, usbc_base_addr + USBC_REG_o_PCTL);
+	writel(reg_val, ((volatile void __iomem *)(usbc_base_addr + USBC_REG_o_PCTL)));
 }
 
 static void __USBC_Dev_ConfigDma_Trans(ulong usbc_base_addr)
 {
 	__u32 reg_val;
 
-	reg_val  = readl(usbc_base_addr + USBC_REG_o_PCTL);
+	reg_val  = readl((const volatile void __iomem *)(usbc_base_addr + USBC_REG_o_PCTL));
 	reg_val |= (1 << 24);
-	writel(reg_val, usbc_base_addr + USBC_REG_o_PCTL);
+	writel(reg_val, ((volatile void __iomem *)(usbc_base_addr + USBC_REG_o_PCTL)));
 }
 #endif
 /*

@@ -33,10 +33,6 @@ extern int show_bmp_on_fb(char *bmp_head_addr, unsigned int fb_id);
 extern int sunxi_partition_get_partno_byname(const char *part_name);
 extern int sunxi_advert_display(char *fatname, char *filename);
 
-#if defined(CONFIG_SUNXI_SPINOR_BMP) || defined(CONFIG_CMD_SUNXI_JPEG)
-extern int read_bmp_to_kernel(char *partition_name);
-#endif
-
 #define IDLE_STATUS 0
 #define DISPLAY_DRIVER_INIT_OK  1
 #define DISPLAY_LOGO_LOAD_OK 2

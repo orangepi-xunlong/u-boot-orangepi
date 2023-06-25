@@ -8,6 +8,7 @@
 #include <sys_partition.h>
 #include <asm/arch/ce.h>
 #include <sunxi_avb.h>
+#include <sunxi_verify_boot_info.h>
 
 int sunxi_avb_check_magic(AvbVBMetaImageHeader *vbmeta_hdr)
 {
@@ -61,6 +62,7 @@ void sunxi_avb_setup_env(char *avb_version, char *hash_alg, u64 vbmeta_size,
 	char cmdline[1024] = { 0 };
 	char tmpbuf[128]   = { 0 };
 	str		   = env_get("bootargs");
+	uint32_t vbmeta_flags;
 	strcpy(cmdline, str);
 	sprintf(tmpbuf, " androidboot.vbmeta.avb_version=%s", "2.0");
 	strcat(cmdline, tmpbuf);
@@ -71,6 +73,13 @@ void sunxi_avb_setup_env(char *avb_version, char *hash_alg, u64 vbmeta_size,
 	sprintf(tmpbuf, " androidboot.vbmeta.digest=%s", sha1_hash);
 	strcat(cmdline, tmpbuf);
 	sprintf(tmpbuf, " androidboot.vbmeta.device_state=%s", lock_state);
+	strcat(cmdline, tmpbuf);
+	sunxi_avb_get_vbmeta_flags(&vbmeta_flags);
+	if (vbmeta_flags & AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED) {
+		sprintf(tmpbuf, " androidboot.veritymode=%s", "disabled");
+	} else {
+		sprintf(tmpbuf, " androidboot.veritymode=%s", "enforcing");
+	}
 	strcat(cmdline, tmpbuf);
 	env_set("bootargs", cmdline);
 }
@@ -167,13 +176,14 @@ int sunxi_avb_verify_all_vbmeta(AvbVBMetaImageHeader *vbmeta_hdr,
 		/*sunxi_ss_close();*/
 		return ret;
 	}
+	sunxi_set_verify_boot_blob(SUNXI_VB_INFO_HASH, sha1_hash, 32);
 	char *p = sha1;
 	int i   = 0;
 	for (i = 0; i < 32; i++) {
 		sprintf(p, "%02x", sha1_hash[i]);
 		p += 2;
 	}
-	pr_msg("vbmeta hash is %s", sha1);
+	pr_msg("vbmeta hash is %s\n", sha1);
 	free(addr);
 	free(addr_vbmeta);
 	free(addr_vbmeta_system);
@@ -214,7 +224,7 @@ int sunxi_avb_verify_vbmeta(AvbVBMetaImageHeader *vbmeta_hdr, char *sha1)
 			sprintf(p, "%02x", sha1_hash[i]);
 			p += 2;
 		}
-		pr_msg("vbmeta hash is %s", sha1);
+		pr_msg("vbmeta hash is %s\n", sha1);
 		ret = 1;
 	}
 	free(addr);
@@ -336,7 +346,7 @@ int sunxi_vbmeta_self_verify(const uint8_t *meta_data, size_t meta_data_size,
 		return -1;
 	}
 
-	header_block	 = (uint8_t *)meta_data;
+	header_block	     = (uint8_t *)meta_data;
 	authentication_block = header_block + sizeof(AvbVBMetaImageHeader);
 	auxiliary_block =
 		authentication_block + h.authentication_data_block_size;
@@ -363,11 +373,12 @@ int sunxi_vbmeta_self_verify(const uint8_t *meta_data, size_t meta_data_size,
 		sunxi_dump((void *)authentication_block + h.hash_offset, 32);
 		return -1;
 	}
+	sunxi_set_verify_boot_blob(SUNXI_VB_INFO_KEY, hash_result, 32);
 
 	memcpy(&key_h, auxiliary_block + h.public_key_offset,
 	       sizeof(AvbRSAPublicKeyHeader));
 	key_h.key_num_bits = be32_to_cpu(key_h.key_num_bits);
-	key_h.n0inv	= 0x10001;
+	key_h.n0inv	   = 0x10001;
 	if (key_h.key_num_bits != 2048 || key_h.n0inv != 0x10001) {
 		pr_error("not supported key\n");
 		pr_error("actual n size:%x, e:%x\n", key_h.key_num_bits,
@@ -412,6 +423,29 @@ int sunxi_vbmeta_self_verify(const uint8_t *meta_data, size_t meta_data_size,
 	return 0;
 }
 
+int sunxi_avb_get_vbmeta_flags(uint32_t *flags)
+{
+	u32 start_block;
+	uint8_t vb_data[512];
+	AvbVBMetaImageHeader *h;
+
+	start_block = sunxi_partition_get_offset_byname("vbmeta");
+	if (!start_block) {
+		pr_error("cant find part named vbmeta\n");
+		return -1;
+	}
+
+	sunxi_flash_read(start_block, 1, (void *)vb_data);
+	if (!sunxi_avb_check_magic((AvbVBMetaImageHeader *)vb_data)) {
+		pr_error("invalid vbmeta head\n");
+		return -1;
+	}
+	sunxi_avb_slot_vbmeta_head((AvbVBMetaImageHeader *)&vb_data);
+	h      = (AvbVBMetaImageHeader *)vb_data;
+	*flags = h->flags;
+	return 0;
+}
+
 int sunxi_avb_read_vbmeta_data(uint8_t **out_ptr, size_t *out_len)
 {
 	u32 start_block;
@@ -439,9 +473,9 @@ int sunxi_avb_read_vbmeta_data(uint8_t **out_ptr, size_t *out_len)
 	vb_len = sunxi_avb_vbmeta_size((AvbVBMetaImageHeader *)vb_data);
 	vb_len = ALIGN(vb_len, 4096);
 	free((void *)vb_data);
-	vb_data = memalign(CACHE_LINE_SIZE,
-			   (vb_len + 511) / 512 * 512 +
-				   CONFIG_SUNXI_SHA_CAL_PADDING);
+	vb_data =
+		memalign(CACHE_LINE_SIZE, (vb_len + 511) / 512 * 512 +
+						  CONFIG_SUNXI_SHA_CAL_PADDING);
 	if (vb_data == NULL) {
 		pr_error("not enough memory\n");
 		return -1;
@@ -450,5 +484,52 @@ int sunxi_avb_read_vbmeta_data(uint8_t **out_ptr, size_t *out_len)
 
 	*out_ptr = vb_data;
 	*out_len = vb_len;
+	return 0;
+}
+
+int sunxi_avb_read_vbmeta_in_partition(const char *part_name, uint8_t **out_ptr,
+				       size_t *out_len)
+{
+	u32 start_block;
+	u32 part_sectors;
+	uint8_t *avb_data;
+	uint8_t avb_footer_sector[512];
+	uint8_t *avb_footer_buf;
+	uint32_t start_addr;
+	uint32_t read_len;
+	AvbFooter footer;
+
+	if (sunxi_partition_get_info_byname(part_name, &start_block,
+					    &part_sectors)) {
+		pr_error("cant find part named %s\n", part_name);
+		return -1;
+	}
+	sunxi_flash_read(start_block + part_sectors - 1, 1, avb_footer_sector);
+	avb_footer_buf = &avb_footer_sector[512 - AVB_FOOTER_SIZE];
+	if (!avb_footer_validate_and_byteswap((const AvbFooter *)avb_footer_buf,
+					      &footer)) {
+		pr_err("%s: No footer detected.\n", part_name);
+		return -1;
+	}
+	start_addr = round_down(footer.vbmeta_offset, 512);
+	read_len   = round_up(footer.vbmeta_size + footer.vbmeta_offset, 512) -
+		   start_addr;
+
+	avb_data =
+		memalign(CACHE_LINE_SIZE, (read_len + 511) / 512 * 512 +
+						  CONFIG_SUNXI_SHA_CAL_PADDING);
+	if (avb_data == NULL) {
+		pr_error("not enough memory\n");
+		return -1;
+	}
+	sunxi_flash_read(start_block + start_addr / 512, read_len / 512,
+			 (void *)avb_data);
+
+	if ((footer.vbmeta_offset - start_addr) != 0) {
+		memcpy(avb_data, avb_data + (footer.vbmeta_offset - start_addr),
+		       footer.vbmeta_size);
+	}
+	*out_ptr = avb_data;
+	*out_len = footer.vbmeta_size;
 	return 0;
 }

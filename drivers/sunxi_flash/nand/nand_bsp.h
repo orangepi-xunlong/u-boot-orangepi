@@ -59,26 +59,30 @@ typedef  signed int     SINT32;
 
 
 //for simplie(boot0)
-struct _nand_super_block{
-	unsigned short  Block_NO;
-	unsigned short  Chip_NO;
-};
+/*
+ *struct _nand_super_block{
+ *        unsigned short  Block_NO;
+ *        unsigned short  Chip_NO;
+ *};
+ */
 
-struct _nand_info{
-	unsigned short                  type;
-	unsigned short                  SectorNumsPerPage;
-	unsigned short                  BytesUserData;
-	unsigned short                  PageNumsPerBlk;
-	unsigned short                  BlkPerChip;
-	unsigned short                  ChipNum;
-	__u64                           FullBitmap;
-	struct _nand_super_block        bad_block_addr;
-	struct _nand_super_block        mbr_block_addr;
-	struct _nand_super_block        no_used_block_addr;
-	struct _nand_super_block*       factory_bad_block;
-	unsigned char*                  mbr_data;
-	void*                           phy_partition_head;
-};
+/*
+ *struct _nand_info{
+ *        unsigned short                  type;
+ *        unsigned short                  SectorNumsPerPage;
+ *        unsigned short                  BytesUserData;
+ *        unsigned short                  PageNumsPerBlk;
+ *        unsigned short                  BlkPerChip;
+ *        unsigned short                  ChipNum;
+ *        __u64                           FullBitmap;
+ *        struct _nand_super_block        bad_block_addr;
+ *        struct _nand_super_block        mbr_block_addr;
+ *        struct _nand_super_block        no_used_block_addr;
+ *        struct _nand_super_block*       factory_bad_block;
+ *        unsigned char*                  mbr_data;
+ *        void*                           phy_partition_head;
+ *};
+ */
 
 struct _physic_nand_info{
 	unsigned short                  type;
@@ -160,7 +164,7 @@ extern __u32 NAND_GetBootFlag(__u32 flag);
 
 //for NFTL
 extern int nftl_build_one(struct _nand_info*, int no);
-extern int nand_info_init(struct _nand_info* nand_info,unsigned char chip,uint16 start_block,unsigned char* mbr_data);
+//extern int nand_info_init(struct _nand_info* nand_info,unsigned char chip,uint16 start_block,unsigned char* mbr_data);
 extern int nftl_build_all(struct _nand_info*nand_info);
 extern uint32 get_nftl_num(void);
 extern unsigned int get_nftl_cap(void);
@@ -175,7 +179,7 @@ extern void set_capacity_level(struct _nand_info*nand_info,unsigned short capaci
 
 
 //for partition
-
+#if defined(CONFIG_SUNXI_COMM_NAND)
 #define MAX_PART_COUNT_PER_FTL		24
 #define MAX_PARTITION        		4
 
@@ -198,7 +202,11 @@ typedef struct _PARTITION_MBR{
 	NAND_PARTITION      array[ND_MAX_PARTITION_COUNT];	//
 }PARTITION_MBR;
 
+#endif
 
-
+#if defined(CONFIG_SUNXI_COMM_NAND) || defined(CONFIG_MACH_SUN8IW7)
+extern int nand_info_init(struct _nand_info *nand_info, uchar chip, uint16 start_block,
+		   uchar *mbr_data);
+#endif
 #endif  //ifndef __BSP_NAND_H__
 

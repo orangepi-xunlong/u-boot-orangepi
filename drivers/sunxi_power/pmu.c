@@ -56,7 +56,7 @@ int pmu_probe(void)
 /*get axp info*/
 int pmu_get_info(char *name, unsigned char *chipid)
 {
-	if (sunxi_pmu_dev->get_info)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->get_info))
 		return sunxi_pmu_dev->get_info(name, chipid);
 	axp_err("not imple:%s\n", __func__);
 	*name = 0;
@@ -68,7 +68,7 @@ int pmu_get_info(char *name, unsigned char *chipid)
 /*Set a certain power, voltage value. */
 int pmu_set_voltage(char *name, uint vol_value, uint onoff)
 {
-	if (sunxi_pmu_dev->set_voltage)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_voltage))
 		return sunxi_pmu_dev->set_voltage(name, vol_value, onoff);
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -77,7 +77,7 @@ int pmu_set_voltage(char *name, uint vol_value, uint onoff)
 /*Read a certain power, voltage value */
 int pmu_get_voltage(char *name)
 {
-	if (sunxi_pmu_dev->get_voltage)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->get_voltage))
 		return sunxi_pmu_dev->get_voltage(name);
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -86,7 +86,7 @@ int pmu_get_voltage(char *name)
 /*Set shutdown*/
 int pmu_set_power_off(void)
 {
-	if (sunxi_pmu_dev->set_power_off)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_power_off))
 		return sunxi_pmu_dev->set_power_off();
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -95,16 +95,26 @@ int pmu_set_power_off(void)
 /*Sets the state of the next mode */
 int pmu_set_sys_mode(int status)
 {
-	if (sunxi_pmu_dev->set_sys_mode)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_sys_mode))
 		return sunxi_pmu_dev->set_sys_mode(status);
 	axp_err("not imple:%s\n", __func__);
 	return -1;
 }
 
+/*Force DCDC in pwm mode or not */
+int pmu_set_dcdc_mode(const char *name, int mode)
+{
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_dcdc_mode))
+		return sunxi_pmu_dev->set_dcdc_mode(name, mode);
+	axp_err("not imple:%s\n", __func__);
+	return -1;
+}
+
+
 /*Get the current mode*/
 int pmu_get_sys_mode(void)
 {
-	if (sunxi_pmu_dev->get_sys_mode)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->get_sys_mode))
 		return sunxi_pmu_dev->get_sys_mode();
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -113,7 +123,7 @@ int pmu_get_sys_mode(void)
 /*Get the button length interrupt*/
 int pmu_get_key_irq(void)
 {
-	if (sunxi_pmu_dev->get_key_irq)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->get_key_irq))
 		return sunxi_pmu_dev->get_key_irq();
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -122,7 +132,7 @@ int pmu_get_key_irq(void)
 /*Set limit total voltage*/
 int pmu_set_bus_vol_limit(int vol_value)
 {
-	if (sunxi_pmu_dev->set_bus_vol_limit)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_bus_vol_limit))
 		return sunxi_pmu_dev->set_bus_vol_limit(vol_value);
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -131,7 +141,7 @@ int pmu_set_bus_vol_limit(int vol_value)
 /*get register value*/
 unsigned char pmu_get_reg_value(unsigned char reg_addr)
 {
-	if (sunxi_pmu_dev->get_reg_value)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->get_reg_value))
 		return sunxi_pmu_dev->get_reg_value(reg_addr);
 	axp_err("not imple:%s\n", __func__);
 	return -1;
@@ -140,7 +150,7 @@ unsigned char pmu_get_reg_value(unsigned char reg_addr)
 /*set register value*/
 unsigned char pmu_set_reg_value(unsigned char reg_addr, unsigned char reg_value)
 {
-	if (sunxi_pmu_dev->set_reg_value)
+	if ((sunxi_pmu_dev) && (sunxi_pmu_dev->set_reg_value))
 		return sunxi_pmu_dev->set_reg_value(reg_addr, reg_value);
 	axp_err("not imple:%s\n", __func__);
 	return -1;

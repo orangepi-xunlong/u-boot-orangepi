@@ -26,12 +26,16 @@ typedef struct _sunxi_flash_desc {
 	uint (*size)(void) ;
 	int (*phyread) (unsigned int start_block, unsigned int nblock, void *buffer);
 	int (*phywrite)(unsigned int start_block, unsigned int nblock, void *buffer);
+	int (*phyerase)(unsigned int start_block, unsigned int nblock, void *skip);
 	int (*secstorage_read)( int item, unsigned char *buf, unsigned int len) ;
 	int (*secstorage_write) (int item, unsigned char *buf, unsigned int len);
+	int (*secstorage_flush) (void);
+	int (*secstorage_fast_write) (int item, unsigned char *buf, unsigned int len);
 	int (*download_spl) (unsigned char *buf, int len, unsigned int ext);
 	int (*download_toc) (unsigned char *buf, int len, unsigned int ext);
 	int (*write_end) (void);
 	int (*erase_area)(uint start_bloca, uint nblock);
+	int (*update_backup_boot0)(void);
 
 }sunxi_flash_desc;
 

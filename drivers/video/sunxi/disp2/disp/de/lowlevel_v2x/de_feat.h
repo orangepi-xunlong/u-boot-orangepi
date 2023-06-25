@@ -17,6 +17,15 @@
 
 #include <common.h>
 
+static inline void regwrite(void *dst, void *src, unsigned int n)
+{
+	volatile unsigned int *tmp = dst;
+	unsigned int *s = src;
+	n = n / 4;
+	while (n--)
+		*tmp++ = *s++;
+}
+
 #define DE_OUTPUT_TYPE_LCD   1
 #define DE_OUTPUT_TYPE_TV    2
 #define DE_OUTPUT_TYPE_HDMI  4
@@ -234,6 +243,112 @@
 
 /* #define LVDS_REVERT */
 
+#elif defined(CONFIG_MACH_SUN50IW10)
+/* features for sun50iw10 */
+
+#define CONFIG_INDEPENDENT_DE
+#define DEVICE_NUM	2
+#define DE_NUM	2
+#define CHN_NUM		4
+#define VI_CHN_NUM	2
+#define UI_CHN_NUM	(CHN_NUM - VI_CHN_NUM)
+#define LAYER_NUM_PER_CHN_PER_VI_CHN	4
+#define LAYER_NUM_PER_CHN_PER_UI_CHN	4
+#define LAYER_MAX_NUM_PER_CHN 4
+
+#define SUPPORT_DSI
+#define SUPPORT_COMBO_DPHY
+#define DSI_VERSION_40
+#define CLK_NUM_PER_DSI 1
+#define DEVICE_DSI_NUM 1
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
+#define SUPPORT_SMBL
+#endif
+#define DEVICE_LVDS_NUM 2
+#define HAVE_DEVICE_COMMON_MODULE
+#define SUPPORT_LVDS
+#define SUNXI_DSI_PASSIVE_BUG
+/*#define DE_WB_RESET_SHARE*/
+
+/* #define SUPPORT_EINK */
+/* #define EINK_PANEL_USED */
+/* #define SUPPORT_WB */
+/* #define EINK_DMABUF_USED */
+
+/* #define LVDS_REVERT */
+
+#elif defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)
+#define DEVICE_NUM      2
+#define DE_NUM          2
+#define CHN_NUM         2
+#define VI_CHN_NUM      1
+#define UI_CHN_NUM      (CHN_NUM - VI_CHN_NUM)
+#define LAYER_NUM_PER_CHN_PER_VI_CHN    4
+#define LAYER_NUM_PER_CHN_PER_UI_CHN    4
+#define LAYER_MAX_NUM_PER_CHN 4
+#define HAVE_DEVICE_COMMON_MODULE
+#define SUPPORT_LVDS
+#define SUPPORT_COMBO_DPHY
+#define SUPPORT_DSI
+#define SUPPORT_HDMI
+#define CLK_NUM_PER_DSI 1
+#define DEVICE_DSI_NUM 1
+#define SUPPORT_LBC
+#define SUPPORT_PALETTE
+#define SUPPORT_DITHER_OUTPUT
+#define BYPASS_TCON_CEU
+#define DSI_VERSION_40
+
+#elif defined(CONFIG_MACH_SUN8IW21)
+#define DEVICE_NUM	1
+#define DE_NUM	1
+#define CHN_NUM		3
+#define VI_CHN_NUM	2
+#define UI_CHN_NUM	(CHN_NUM - VI_CHN_NUM)
+#define LAYER_NUM_PER_CHN_PER_VI_CHN	4
+#define LAYER_NUM_PER_CHN_PER_UI_CHN	4
+#define LAYER_MAX_NUM_PER_CHN 4
+#define SUPPORT_COMBO_DPHY
+#define SUPPORT_FCM
+#define SUPPORT_DSI
+#define DSI_VERSION_40
+#define CLK_NUM_PER_DSI 1
+#define DEVICE_DSI_NUM 1
+#define HAVE_DEVICE_COMMON_MODULE
+
+#elif defined(CONFIG_MACH_SUN8IW19)
+#define DEVICE_NUM	1
+#define DE_NUM	1
+#define CHN_NUM		4 /*It is 3 in fact*/
+#define VI_CHN_NUM	2
+#define UI_CHN_NUM	(CHN_NUM - VI_CHN_NUM)
+#define LAYER_NUM_PER_CHN_PER_VI_CHN	4
+#define LAYER_NUM_PER_CHN_PER_UI_CHN	4
+#define LAYER_MAX_NUM_PER_CHN 4
+
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SMBL
+#define SUPPORT_SMBL
+#endif
+
+#define SUPPORT_DSI
+#define DSI_VERSION_28
+#define CLK_NUM_PER_DSI 2
+#define DEVICE_DSI_NUM 1
+#define BYPASS_TCON_CEU
+#define USE_CEC_DDC_PAD
+#define WB_HAS_CSC
+
+/* #define DSI_VERSION_40 */
+#define HAVE_DEVICE_COMMON_MODULE
+/* #define SUPPORT_VGA */
+#define DE_WB_RESET_SHARE
+/* #define LVDS_REVERT */
+
+#ifdef COFNIG_VDPO_DISP2_SUNXI
+#define SUPPORT_VDPO
+#define DEVICE_VDPO_NUM 1
+#endif
+
 #else
 
 /* default features */
@@ -274,6 +389,10 @@
 #ifndef DEVICE_DSI_NUM
 #define DEVICE_DSI_NUM 1
 #endif /*endif DEVICE_DSI_NUM */
+
+#ifndef DEVICE_LVDS_NUM
+#define DEVICE_LVDS_NUM 1
+#endif
 
 /* total number of DSI clk */
 #define CLK_DSI_NUM  (CLK_NUM_PER_DSI * DEVICE_DSI_NUM)

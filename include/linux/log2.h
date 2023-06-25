@@ -14,7 +14,10 @@
 /*
  * deal with unrepresentable constant logarithms
  */
+#ifdef CONFIG_ARM
 extern __attribute__((const, noreturn))
+#endif
+
 int ____ilog2_NaN(void);
 
 /*

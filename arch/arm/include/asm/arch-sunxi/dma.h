@@ -19,16 +19,23 @@
 #if defined(CONFIG_MACH_SUN8IW18) ||\
     defined(CONFIG_MACH_SUN50IW9) ||\
     defined(CONFIG_MACH_SUN50IW10) ||\
-    defined(CONFIG_MACH_SUN8IW19)
+    defined(CONFIG_MACH_SUN8IW19) ||\
+	defined(CONFIG_MACH_SUN20IW1) ||\
+	defined(CONFIG_MACH_SUN8IW20) ||\
+	defined(CONFIG_MACH_SUN8IW21)
 #define DMAC_CFG_TYPE_SPI0 (22)
 #define DMAC_CFG_SRC_TYPE_NAND (5)
 #elif defined(CONFIG_MACH_SUN8IW15)
 #define DMAC_CFG_TYPE_SPI0 (23)
 #define DMAC_CFG_SRC_TYPE_NAND (5)
-#elif defined(CONFIG_MACH_SUN8IW7)
+#elif defined(CONFIG_MACH_SUN8IW7) ||\
+      defined(CONFIG_MACH_SUN8IW11)
 #define DMAC_CFG_TYPE_SPI0 (24)
 #define DMAC_CFG_SRC_TYPE_NAND (5)
-#elif defined(CONFIG_MACH_SUN50IW11)
+#elif defined(CONFIG_MACH_SUN50IW11) ||\
+	defined(CONFIG_MACH_SUN50IW12) ||\
+       	defined(CONFIG_MACH_SUN55IW3)
+
 #define DMAC_CFG_TYPE_SPI0 (22)
 #define DMAC_CFG_SRC_TYPE_NAND (10)
 
@@ -83,7 +90,10 @@ typedef struct {
 	defined(CONFIG_MACH_SUN50IW9) || defined(CONFIG_MACH_SUN8IW16) ||      \
 	defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN50IW10) ||     \
 	defined(CONFIG_MACH_SUN8IW15) || defined(CONFIG_MACH_SUN8IW7) ||	\
-	defined(CONFIG_MACH_SUN50IW11)
+	defined(CONFIG_MACH_SUN50IW11) || defined(CONFIG_MACH_SUN50IW12) ||	\
+	defined(CONFIG_MACH_SUN20IW1) || defined(CONFIG_MACH_SUN8IW20) ||	\
+	defined(CONFIG_MACH_SUN8IW21) || defined(CONFIG_MACH_SUN50IW5) ||  \
+        defined(CONFIG_MACH_SUN55IW3)
 typedef struct {
 	unsigned int src_drq_type : 6;
 	unsigned int src_burst_length : 2;
@@ -93,6 +103,20 @@ typedef struct {
 	unsigned int dst_drq_type : 6;
 	unsigned int dst_burst_length : 2;
 	unsigned int dst_addr_mode : 1;
+	unsigned int dst_data_width : 2;
+	unsigned int reserved1 : 5;
+} sunxi_dma_channal_config;
+
+#elif defined(CONFIG_MACH_SUN8IW11)
+typedef struct {
+	unsigned int src_drq_type : 5;
+	unsigned int src_addr_mode : 2;
+	unsigned int src_burst_length : 2;
+	unsigned int src_data_width : 2;
+	unsigned int reserved0 : 5;
+	unsigned int dst_drq_type : 5;
+	unsigned int dst_addr_mode : 2;
+	unsigned int dst_burst_length : 2;
 	unsigned int dst_data_width : 2;
 	unsigned int reserved1 : 5;
 } sunxi_dma_channal_config;

@@ -45,8 +45,22 @@ disp-$(CONFIG_LCD_SUPPORT_VR_SHARP) += lcd/vr_sharp.o
 disp-$(CONFIG_LCD_SUPPORT_SL008PN21D) += lcd/sl008pn21d.o
 disp-$(CONFIG_LCD_SUPPORT_VR_LS055T1SX01) += lcd/vr_ls055t1sx01.o
 disp-$(CONFIG_LCD_SUPPORT_BP101WX1) += lcd/bp101wx1-206.o
-
-
+disp-$(CONFIG_LCD_SUPPORT_K101IM2QA04) += lcd/k101im2qa04.o
+disp-$(CONFIG_LCD_SUPPORT_K101IM2BYL02L) += lcd/k101im2byl02l.o
+disp-$(CONFIG_LCD_SUPPORT_M133X56) += lcd/m133x56-105.o
+disp-$(CONFIG_LCD_SUPPORT_FX070) += lcd/fx070.o
+disp-$(CONFIG_LCD_SUPPORT_ST7789V_CPU) += lcd/st7789v_cpu.o
+disp-$(CONFIG_LCD_SUPPORT_M101B31) += lcd/M101B31.o
+disp-$(CONFIG_LCD_SUPPORT_CC08021801_310_800X1280) += lcd/CC08021801_310_800X1280.o
+disp-$(CONFIG_LCD_SUPPORT_K080_IM2HYL802R_800X1280) += lcd/K080_IM2HYL802R_800X1280.o
+disp-$(CONFIG_LCD_SUPPORT_KD101NA5) += lcd/kd101na5.o
+disp-$(CONFIG_LCD_SUPPORT_KD070D57) += lcd/kd070d57.o
+disp-$(CONFIG_LCD_SUPPORT_ZS080NI4003E7H3H_A) += lcd/zs080ni4003e7h3h_a.o
+disp-$(CONFIG_LCD_SUPPORT_K101_IM2BYL02_L_800X1280) += lcd/K101_IM2BYL02_L_800X1280.o
+disp-$(CONFIG_LCD_SUPPORT_JD9366AB_3) += lcd/jd9366ab_3.o
+disp-$(CONFIG_LCD_SUPPORT_TFT08006) += lcd/tft08006.o
+disp-$(CONFIG_LCD_SUPPORT_T050K589) += lcd/t050k589.o
+disp-$(CONFIG_LCD_SUPPORT_K101_MM2QA01_A) += lcd/K101_MM2QA01_A.o
 
 ifeq ($(CONFIG_MACH_SUN8IW6),y)
     export MIPI_DSI_IP_VERSION := 28
@@ -64,6 +78,11 @@ ifeq ($(CONFIG_MACH_SUN50IW1),y)
 endif
 
 ifeq ($(CONFIG_MACH_SUN50IW2),y)
+    export MIPI_DSI_IP_VERSION := 40
+    obj-y += de/lowlevel_v2x/
+endif
+
+ifeq ($(CONFIG_MACH_SUN50IW10),y)
     export MIPI_DSI_IP_VERSION := 40
     obj-y += de/lowlevel_v2x/
 endif
@@ -112,4 +131,25 @@ endif
 ifeq ($(CONFIG_MACH_SUN50IW9),y)
     export MIPI_DSI_IP_VERSION := 28
     obj-y += de/lowlevel_v33x/
+endif
+
+ifeq ($(CONFIG_MACH_SUN8IW19),y)
+    export MIPI_DSI_IP_VERSION := 28
+    obj-y += de/lowlevel_v2x/
+endif
+
+ifeq ($(CONFIG_MACH_SUN8IW21),y)
+    export MIPI_DSI_IP_VERSION := 40
+    obj-y += de/lowlevel_v2x/
+endif
+
+
+ifeq ($(CONFIG_MACH_SUN8IW20),y)
+    export MIPI_DSI_IP_VERSION := 40
+    obj-y += de/lowlevel_v2x/
+endif
+
+ifeq ($(CONFIG_MACH_SUN20IW1),y)
+    export MIPI_DSI_IP_VERSION := 40
+    obj-y += de/lowlevel_v2x/
 endif

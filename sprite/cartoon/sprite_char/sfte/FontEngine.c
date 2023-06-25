@@ -99,7 +99,7 @@ static __s32 draw_pixel(__u32 x, __u32 y, __u32 width, __u8 *alpha, __u32 color)
 	tmp_addr = font->base_addr + font->base_width * (y << 2) + (x << 2);
 	base = (__u32 *)tmp_addr;
 	for (i = 0; i < width; i++) {
-		base[i] = (alpha[i] << 24) | color;
+		base[i] = (alpha[i] << 8);
 	}
 
 	return 0;

@@ -162,7 +162,9 @@ struct sunxi_ccm_reg {
 	u32 irtx_clk_cfg;	/* 0x9c0 IR TX clock control */
 	u8 reserved_0x9c4[8];
 	u32 irtx_gate_reset;	/* 0x9cc IR TX gate/reset control */
-	u8 reserved_0x9d0[44];
+	u8 reserved_0x9d0[32];
+	u32 gpadc_gate_reset;	/*0x9ec gpadc gate/reset control*/
+	u8 reserved_0x9f0[8];
 	u32 ths_gate_reset;	/* 0x9fc THS gate/reset control */
 	u8 reserved_0xa00[12];
 	u32 i2s3_clk_cfg;	/* 0xa0c I2S3 clock control */

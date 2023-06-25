@@ -185,6 +185,7 @@ s32 disp_al_enhance_tasklet(u32 disp)
 	return de_enhance_tasklet(disp);
 }
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_WB
 s32 disp_al_capture_init(u32 disp)
 {
 	u32 rt_mux = 0;
@@ -263,6 +264,7 @@ u32 disp_al_capture_query_irq_state(u32 disp, u32 irq_state)
 {
 	return de_top_wb_query_state_with_clear(disp, irq_state);
 }
+#endif
 
 s32 disp_al_smbl_apply(u32 disp,
 	struct disp_smbl_info *info)
@@ -300,7 +302,9 @@ s32 disp_init_al(disp_bsp_init_para *para)
 	de_enhance_init(para);
 	de_smbl_init(para->reg_base[DISP_MOD_DE]);
 	de_rtmx_init(para);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_WB
 	de_wb_init(para);
+#endif
 	return 0;
 }
 

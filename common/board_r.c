@@ -58,14 +58,24 @@
 #ifdef CONFIG_SOUND_SUNXI_BOOT_TONE
 #include <sunxi_boot_tone.h>
 #endif
+#ifdef CONFIG_CMD_PWM_LED
+#include <pwm_led.h>
+#endif
+#include <sys_partition.h>
+#include <boot_gui.h>
+#include <sunxi_bmp.h>
+#include <sunxi_logo_display.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 ulong monitor_flash_len;
 
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-extern int auto_update_check(void);
+
+#ifdef CONFIG_SUNXI_ROTPK_BURN_ENABLE_BY_TOOL
+extern int sunxi_burn_rotpk(void);
 #endif
+
+static int initr_env(void);
 
 __weak int board_flash_wp_on(void)
 {
@@ -158,12 +168,18 @@ static int initr_reloc(void)
 }
 
 #ifdef CONFIG_ARM
+
+
+__weak void smp_init(void)
+{
+}
 /*
  * Some of these functions are needed purely because the functions they
  * call return void. If we change them to return 0, these stubs can go away.
  */
 static int initr_caches(void)
 {
+	smp_init();
 	/* Enable caches */
 	enable_caches();
 	return 0;
@@ -180,7 +196,11 @@ static int initr_reloc_global_data(void)
 #ifdef __ARM__
 	monitor_flash_len = _end - __image_copy_start;
 #elif defined(CONFIG_NDS32) || defined(CONFIG_RISCV)
+#ifdef CONFIG_ARCH_SUNXI
+	monitor_flash_len = (ulong)&_end - (ulong)&__image_copy_start;
+#else
 	monitor_flash_len = (ulong)&_end - (ulong)&_start;
+#endif
 #elif !defined(CONFIG_SANDBOX) && !defined(CONFIG_NIOS2)
 	monitor_flash_len = (ulong)&__init_end - gd->relocaddr;
 #endif
@@ -491,6 +511,38 @@ static int initr_mmc(void)
 static int initr_sunxi_plat(void)
 {
 	__maybe_unused int ret = 0;
+	__maybe_unused int workmode = get_boot_work_mode();
+#ifdef CONFIG_IR_BOOT_RECOVERY
+	check_ir_boot_recovery();
+#endif
+//#if defined(CONFIG_SUNXI_HOMLET)
+//	sunxi_boot_init_gpio();
+//#endif
+
+#ifdef CONFIG_RECOVERY_KEY
+	check_recovery_key();
+#endif
+	if (!gd->boot_logo_addr) {
+		tick_printf("flash init start\n");
+#ifdef CONFIG_SUNXI_FLASH
+		ret = sunxi_flash_init_ext();
+		if (ret)
+			return ret;
+#endif
+	}
+#if defined(CONFIG_BOARD_EARLY_INIT_R)
+	board_early_init_r();
+#endif
+#ifdef CONFIG_CMD_PWM_LED
+	pwm_led_init();
+#endif
+
+#ifdef CONFIG_SUNXI_ANTI_COPY_BOARD
+	int sunxi_anti_copy_board(void);
+	ret = sunxi_anti_copy_board();
+	if (ret)
+		return ret;
+#endif
 
 #ifdef CONFIG_BOOT_GUI
 	sunxi_early_logo_display();
@@ -504,36 +556,69 @@ static int initr_sunxi_plat(void)
 	atf_box_standby();
 #endif
 
-#ifdef CONFIG_IR_BOOT_RECOVERY
-	check_ir_boot_recovery();
-#endif
-#if defined(CONFIG_SUNXI_HOMLET)
-	sunxi_boot_init_gpio();
-#endif
-
-#ifdef CONFIG_RECOVERY_KEY
-	check_recovery_key();
-#endif
-	tick_printf("flash init start\n");
-
+	if (gd->boot_logo_addr) {
+		tick_printf("flash init start\n");
 #ifdef CONFIG_SUNXI_FLASH
-	ret = sunxi_flash_init_ext();
+		ret = sunxi_flash_init_ext();
+		if (ret)
+			return ret;
 #endif
-#ifdef CONFIG_SUNXI_UBIFS
-	int workmode = get_boot_work_mode();
-
-	if (workmode == WORK_MODE_BOOT && nand_use_ubi()) {
-		ubi_nand_probe_uboot();
-		ubi_nand_attach_mtd();
 	}
+	if (workmode == WORK_MODE_BOOT) {
+#ifdef CONFIG_SUNXI_UPDATE_GPT
+		int sunxi_update_gpt(void);
+		sunxi_update_gpt();
 #endif
 
-#ifdef CONFIG_SUNXI_AUTO_UPDATE
-	auto_update_check();
+#ifdef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
+	initr_env();
+#endif
+
+		//sunxi_probe_partition_map();
+	}
+
+#ifdef CONFIG_SUNXI_ROTPK_BURN_ENABLE_BY_TOOL
+	if (get_boot_work_mode() == WORK_MODE_BOOT) {
+		ret = sunxi_burn_rotpk();
+		if (ret)
+			return ret;
+	}
 #endif
 
 	return ret;
 }
+
+#ifdef CONFIG_SUNXI_FAST_BURN_KEY
+/* uboot already relocated, static var will be good enough */
+static int sunxi_burn_key_processed;
+
+static int sunxi_fast_burn_key(void)
+{
+	int storage_type = get_boot_storage_type_ext();
+	int ret		 = 0;
+
+	sunxi_burn_key_processed = 0;
+
+	if (!sunxi_flash_is_support_fast_write(storage_type)) {
+		pr_msg("sunxi flash type@%d not support fast burn key\n",
+		       storage_type);
+		return 0;
+	} else
+		ret = sunxi_flash_hook_init();
+
+	if (ret) {
+		pr_msg("sunxi flash hook init fail\n");
+		return 0;
+	}
+
+	pr_msg("try fast burn key\n");
+	if (!sunxi_burn_key_processed) {
+		sunxi_burn_key_processed = 1;
+		sunxi_keydata_burn_by_usb();
+	}
+	return 0;
+}
+#endif
 
 static int sunxi_burn_key(void)
 {
@@ -541,8 +626,13 @@ static int sunxi_burn_key(void)
 	sunxi_auto_fel_by_usb();
 #endif
 #ifdef CONFIG_SUNXI_BURN
-	pr_msg("try to burn key\n");
-	sunxi_keydata_burn_by_usb();
+#  ifdef CONFIG_SUNXI_FAST_BURN_KEY
+	if (!sunxi_burn_key_processed)
+#  endif
+	{
+		pr_msg("try to burn key\n");
+		sunxi_keydata_burn_by_usb();
+	}
 #endif
 	return 0;
 }
@@ -580,7 +670,6 @@ static int initr_env(void)
 #ifdef CONFIG_OF_CONTROL
 	env_set_addr("fdtcontroladdr", gd->fdt_blob);
 #endif
-
 	/* Initialize from environment */
 	load_addr = env_get_ulong("loadaddr", 16, load_addr);
 
@@ -839,9 +928,7 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_ADDR_MAP
 	initr_addr_map,
 #endif
-#if defined(CONFIG_BOARD_EARLY_INIT_R)
-	board_early_init_r,
-#endif
+
 #ifdef CONFIG_SUNXI_LEDC
 	initr_ledc,
 #endif
@@ -920,10 +1007,15 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_ARM
 	initr_enable_interrupts,
 #endif
+#ifdef CONFIG_SUNXI_FAST_BURN_KEY
+	sunxi_fast_burn_key,
+#endif
 #ifdef CONFIG_ARCH_SUNXI
 	initr_sunxi_plat,
 #endif
+#ifndef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
 	initr_env,
+#endif
 	board_env_late_init,
 #if defined(CONFIG_MICROBLAZE) || defined(CONFIG_M68K)
 	timer_init,		/* initialize timer */

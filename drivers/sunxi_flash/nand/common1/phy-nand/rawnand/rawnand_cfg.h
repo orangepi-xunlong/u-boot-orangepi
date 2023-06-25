@@ -20,17 +20,19 @@
 #endif
 
 
-struct nand_cfg {
-	unsigned int phy_interface_cfg;
-
-	unsigned int phy_support_two_plane;
-	unsigned int phy_nand_support_vertical_interleave;
-	unsigned int phy_support_dual_channel;
-
-	unsigned int phy_wait_rb_before;
-	unsigned int phy_wait_rb_mode;
-	unsigned int phy_wait_dma_mode;
-};
+/*
+ *struct nand_cfg {
+ *        unsigned int phy_interface_cfg;
+ *
+ *        unsigned int phy_support_two_plane;
+ *        unsigned int phy_nand_support_vertical_interleave;
+ *        unsigned int phy_support_dual_channel;
+ *
+ *        unsigned int phy_wait_rb_before;
+ *        unsigned int phy_wait_rb_mode;
+ *        unsigned int phy_wait_dma_mode;
+ *};
+ */
 
 extern struct nand_cfg *g_phy_cfg;
 

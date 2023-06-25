@@ -97,8 +97,8 @@ struct sunxi_clk_periph_mux {
 
 struct sunxi_clk_comgate {
     const char* name;
-    u8 val;
-    u8 mask;
+	u16             val;
+	u16             mask;
     u8 share;
     u8 res;
 };

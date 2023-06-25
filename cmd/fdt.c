@@ -35,7 +35,7 @@ static int is_printable_string(const void *data, int len);
 /*
  * The working_fdt points to our working flattened device tree.
  */
-struct fdt_header *working_fdt;
+__attribute__((section(".data"))) struct fdt_header *working_fdt;
 
 void set_working_fdt_addr(ulong addr)
 {

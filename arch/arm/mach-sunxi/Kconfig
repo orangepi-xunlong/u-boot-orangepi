@@ -2,7 +2,7 @@ if ARCH_SUNXI
 
 
 config IDENT_STRING
-	default " Xunlong Software"
+	default " Allwinner Technology"
 
 
 config AXP_PMIC_BUS
@@ -22,10 +22,19 @@ config SUN8I_RSB
 	  (RSB) support. This controller is responsible for communicating
 	  with various RSB based devices, such as AXP223, AXP8XX PMICs,
 	  and AC100/AC200 ICs.
+config SUNXI_GIC_V3
+          bool
+          help
+            Support for the GIC controller for 600
 config SUNXI_NCAT
           bool
           help
-            Support for the sunxi new memory layout.
+            Support for the sunxi ncat version 1 memory layout.
+
+config SUNXI_NCAT_V2
+          bool
+          help
+            Support for the sunxi ncat version 2 memory layout.
 
 config SUNXI_VERSION1
           bool
@@ -49,25 +58,38 @@ config SUNXI_PART_VERIFY
 	help
 	  Enable this, uboot will verify rootfs when boot
 
+config SUNXI_DM_VERITY
+	bool "Sunxi dm verity support"
+		depends on SUNXI_SECURE_BOOT
+	help
+	  Enable this, uboot will support rootfs dm-verity
+
 config SUNXI_MEM_MAPPING_CHECK
           bool
           default n
           help
             Support for the sunxi memory mapping check
 
-config SUNXI_BURN_ROTPK_ON_SPRITE
-          bool "Sunxi burn rotpk on sprite"
-              depends on SUNXI_CE_DRIVER
-          help
-            Burn rotpk before set secure bit to 1
+config SUNXI_COMPARE_IMAGE_AND_FLASH
+	bool "compare image and flash size"
+	help
+	 Support comparison of image and flash before burning,
+	 if image is larger than flash, will exit burning.
+	default n
 
 config SUNXI_INITRD_ROUTINE
 	bool "Sunxi ramdisk init routine"
-	default n
+	default y
 	help
 		use sunxi ramdisk init routine ,witch copy ramdisk to addr defined
 		in boot.img head, instead of original one, whitch will copy ramdisk
 		to dynamically malloced addr.
+
+config SUNXI_REBOOT_SCRIPT
+	bool "Sunxi reboot script"
+	default n
+	help
+		Used to count the number of reboot or efex
 
 # Note only one of these may be selected at a time! But hidden choices are
 # not supported by Kconfig
@@ -84,6 +106,18 @@ config SUNXI_GEN_SUN6I
 	separate ahb reset control registers, custom pmic bus, new style
 	watchdog, etc.
 
+
+config SUNXI_WDT_V2
+	bool "sunxi watchdog v2"
+	help
+		version2 watch dog, work as a independent peripheral
+		no longer included in a timer
+
+config SUNXI_SECURE_CRYPTO
+    bool "sunxi secure crypto"
+    default n
+    help
+    Select this for sunxi SoCs which the ce can use the secure key to crypt.
 
 
 choice
@@ -112,6 +146,14 @@ config MACH_SUN50IW3
 	select SUNXI_NCAT
 	select SUNXI_SECURE
 
+config MACH_SUN50IW5
+	bool "sun50i(Allwinner sun50iw5)"
+	select SUNXI_ARM64
+	select CPU_V7
+	select SUN8I_RSB
+	select SUNXI_NCAT
+	select SUNXI_SECURE
+
 config MACH_SUN50IW9
 	bool "sun50i(Allwinner sun50iw9)"
 	select SUNXI_ARM64
@@ -128,6 +170,13 @@ config MACH_SUN50IW10
 	select SUNXI_NCAT
 	select SUNXI_SECURE
 
+config MACH_SUN55IW3
+	bool "sun55i(Allwinner sun55iw3)"
+	select SUNXI_ARM64
+	select CPU_V7
+	select SUNXI_SECURE
+	select SUNXI_GIC_V3
+
 config MACH_SUN50IW11
 	bool "sun50i(Allwinner sun50iw11)"
 	select SUNXI_ARM64
@@ -136,12 +185,27 @@ config MACH_SUN50IW11
 	select SUNXI_NCAT
 	select SUNXI_SECURE
 
+config MACH_SUN50IW12
+	bool "sun50i(Allwinner sun50iw12)"
+	select SUNXI_ARM64
+	select CPU_V7
+	select SUN8I_RSB
+	select SUNXI_NCAT
+	select SUNXI_SECURE
+	select SUNXI_WDT_V2
+
 config MACH_SUN8IW7
 
 	bool "sun8i(Allwinner sun8iw7)"
 	select CPU_V7
 	select SUNXI_VERSION1
 	select SUNXI_SECURE
+
+config MACH_SUN8IW11
+
+	bool "sun8i(Allwinner sun8iw11)"
+	select CPU_V7
+	select SUNXI_VERSION1
 
 config MACH_SUN8IW15
 	bool "sun8i(Allwinner sun8iw15)"
@@ -167,6 +231,21 @@ config MACH_SUN8IW19
 	select CPU_V7
 	select SUNXI_NCAT
 
+config MACH_SUN8IW20
+	bool "sun8i(Allwinner sun8iw20)"
+	select CPU_V7
+	select SUN8I_RSB
+	select SUNXI_NCAT_V2
+	select SUNXI_WDT_V2
+	select SUNXI_SECURE
+
+config MACH_SUN8IW21
+	bool "sun8i(Allwinner sun8iw21)"
+	select CPU_V7
+	select SUN8I_RSB
+	select SUNXI_NCAT_V2
+	select SUNXI_WDT_V2
+	select SUNXI_SECURE
 endchoice
 
 # The sun8i SoCs share a lot, this helps to avoid a lot of "if A23 || A33"
@@ -194,6 +273,12 @@ config SUNXI_FDT_ADDR
 	---help---
 	set the address for start_kernel.
 
+config SUNXI_VENDOR_BOOT_ADDR
+	hex "vendor boot for kernel"
+	default 49000000
+	---help---
+	set vendor boot the address for start_kernel.
+
 config SUNXI_FDT_SAVE
 	bool "SUNXI FDT SVAE"
 	default n
@@ -208,6 +293,27 @@ config SUNXI_DTB_RESERVE_SIZE
 	help
 	  set sunxi dtb reserve default size
 
+config SUNXI_TURNNING_FLASH
+	bool "SUNXI TURNNING FLASH SVAE"
+	default y
+	help
+	  This is the SUNXI TURNNING FLASH
+
+config SUNXI_TURNNING_DRAM
+	bool "SUNXI TURNNING DRAM SVAE"
+	default y
+	help
+	  This is the SUNXI TURNNING DRAM
+
+config SUNXI_OTA_TURNNING
+	bool "SUNXI OTA TURNNING SVAE"
+	depends on (SUNXI_TURNNING_FLASH || SUNXI_TURNNING_DRAM)
+	# if we use this on mmc, copy0 recover must be enabled
+	depends on (!SUNXI_SDMMC || (SUNXI_SDMMC && SUNXI_RECOVERY_BOOT0_COPY0))
+	default n
+	help
+	  This is the SUNXI OTA TURNNING SAVE
+
 config SUNXI_DEBUG
 	bool "the gating for uboot debug"
 	default false
@@ -217,6 +323,7 @@ config SUNXI_NOR_IMG
 
 config SYS_CLK_FREQ
 	default 1008000000 if MACH_SUN50IW3
+	default 1008000000 if MACH_SUN50IW5
 	default 1008000000 if MACH_SUN50IW9
 	default 1008000000 if MACH_SUN50IW10
 	default 1008000000 if MACH_SUN50IW11
@@ -224,10 +331,13 @@ config SYS_CLK_FREQ
 	default 1008000000 if MACH_SUN8IW16
 	default 1008000000 if MACH_SUN8IW18
 	default 1008000000 if MACH_SUN8IW19
+	default 1008000000 if MACH_SUN55IW3
 	default 1008000000
 
 config SYS_CONFIG_NAME
+	string  "system config header name"
 	default "sun50iw3p1" if  MACH_SUN50IW3
+	default "sun50iw5p1" if  MACH_SUN50IW5
 	default "sun50iw9p1" if  MACH_SUN50IW9
 	default "sun50iw10p1" if  MACH_SUN50IW10
 	default "sun50iw11p1" if  MACH_SUN50IW11
@@ -236,10 +346,14 @@ config SYS_CONFIG_NAME
 	default "sun8iw18p1" if MACH_SUN8IW18
 	default "sun8iw19p1" if MACH_SUN8IW19
 	default "sun8iw7p1" if MACH_SUN8IW7
+	default "sun8iw11p1" if MACH_SUN8IW11
+	default "sun8iw20p1" if MACH_SUN8IW20
+	default "sun8iw21p1" if MACH_SUN8IW21
+	default "sun55iw3p1" if  MACH_SUN55IW3
 
 config SUNXI_ARM64
 	bool "set SUNXI ARM64"
-	default y if MACH_SUN50IW3 || MACH_SUN50IW9 || MACH_SUN50IW10 || MACH_SUN50IW11
+	default y if MACH_SUN50IW3 || MACH_SUN50IW5 || MACH_SUN50IW9 || MACH_SUN50IW10 || MACH_SUN50IW11 || MACH_SUN55IW3
 	---help---
 	set SUNXI_ARM64 when SUN50I
 

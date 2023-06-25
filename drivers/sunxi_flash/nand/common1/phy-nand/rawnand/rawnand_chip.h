@@ -8,8 +8,8 @@
 
 #ifndef __RAWNAND_CHIP_H__
 #define __RAWNAND_CHIP_H__
-
-#include "rawnand.h"
+#include <sunxi_nand.h>
+//#include "rawnand.h"
 #include "controller/ndfc_base.h"
 
 extern struct _nand_storage_info *g_nsi;
@@ -40,6 +40,8 @@ void set_default_batch_read_cmd_seq(struct _nctri_cmd_seq *cmd_seq);
 void set_default_batch_write_cmd_seq(struct _nctri_cmd_seq *cmd_seq,
 				     u32 write_cmd1, u32 write_cmd2);
 unsigned int get_row_addr(unsigned int page_offset_for_next_blk,
+			  unsigned int block, unsigned int page);
+unsigned int get_row_addr_2(unsigned int page_offset_for_next_blk,
 			  unsigned int block, unsigned int page);
 int fill_cmd_addr(u32 col_addr, u32 col_cycle, u32 row_addr, u32 row_cycle,
 		  u8 *abuf);

@@ -27,7 +27,7 @@
 
 #include <linux/string.h>
 #include "spinand_boot.h"
-#include "../nand-partition/phy.h"
+/*#include "../nand-partition/phy.h"*/
 #include "../nand_boot.h"
 #include "../nand_physic_interface.h"
 #include "../nand_secure_storage.h"

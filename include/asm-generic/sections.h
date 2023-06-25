@@ -66,7 +66,7 @@ extern void _start(void);
 /*
  * ARM defines its symbols as char[]. Other arches define them as ulongs.
  */
-#ifdef CONFIG_ARM
+#if defined(CONFIG_ARM) || defined(CONFIG_RISCV)
 
 extern char __bss_start[];
 extern char __bss_end[];

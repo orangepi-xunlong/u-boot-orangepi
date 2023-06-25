@@ -22,6 +22,9 @@
 
 /* Check all partition types */
 #define PART_TYPE_ALL		-1
+static disk_partition_t info_map[CONFIG_SUNXI_PARTITION_MAP_MAX] = {0};
+static int force_init;
+static struct blk_desc *dev_desc_map;
 
 static struct part_driver *part_driver_lookup_type(struct blk_desc *dev_desc)
 {
@@ -310,6 +313,7 @@ void part_print(struct blk_desc *dev_desc)
 
 #endif /* CONFIG_HAVE_BLOCK_DEVICE */
 
+
 int part_get_info(struct blk_desc *dev_desc, int part,
 		       disk_partition_t *info)
 {
@@ -323,20 +327,34 @@ int part_get_info(struct blk_desc *dev_desc, int part,
 #ifdef CONFIG_PARTITION_TYPE_GUID
 	info->type_guid[0] = 0;
 #endif
+	if ((!info_map[part].size) || (force_init == 0) || (dev_desc_map != dev_desc)) {
+		drv = part_driver_lookup_type(dev_desc);
+		if (!drv) {
+			debug("## Unknown partition table type %x\n",
+			      dev_desc->part_type);
+			return -EPROTONOSUPPORT;
+		}
+		if (!drv->get_info) {
+			PRINTF("## Driver %s does not have the get_info() method\n",
+			       drv->name);
+			return -ENOSYS;
+		}
 
-	drv = part_driver_lookup_type(dev_desc);
-	if (!drv) {
-		debug("## Unknown partition table type %x\n",
-		      dev_desc->part_type);
-		return -EPROTONOSUPPORT;
-	}
-	if (!drv->get_info) {
-		PRINTF("## Driver %s does not have the get_info() method\n",
-		       drv->name);
-		return -ENOSYS;
-	}
-	if (drv->get_info(dev_desc, part, info) == 0) {
-		PRINTF("## Valid %s partition found ##\n", drv->name);
+		if (drv->get_info(dev_desc, part, info) == 0) {
+
+			PRINTF("## Valid %s partition found ##\n", drv->name);
+			return 0;
+		}
+	} else {
+		if (part >= CONFIG_SUNXI_PARTITION_MAP_MAX) {
+			pr_err("err:part > PART_MAP_MAX\n");
+			return -1;
+		}
+		if (dev_desc_map != dev_desc) {
+			pr_err("## cache dev_desc:0x%lx != input dev_desc:0x%lx\n", (ulong)dev_desc_map, (ulong)dev_desc);
+			return -1;
+		}
+		memcpy((char *)info, (char *)&info_map[part], sizeof(disk_partition_t));
 		return 0;
 	}
 #endif /* CONFIG_HAVE_BLOCK_DEVICE */
@@ -344,6 +362,21 @@ int part_get_info(struct blk_desc *dev_desc, int part,
 	return -1;
 }
 
+int part_init_info_map(struct blk_desc *dev_desc)
+{
+	int i;
+	force_init = 0;
+	dev_desc_map = dev_desc;
+	for (i = 1; i < CONFIG_SUNXI_PARTITION_MAP_MAX; i++) {
+		if (part_get_info(dev_desc, i, &info_map[i]) < 0) {
+			break;
+		}
+		debug("partno:%d, name:%s start:0x%x, size: 0x%x\n", i, info_map[i].name, (u32)info_map[i].start,
+				(u32)info_map[i].size);
+	}
+	force_init = 1;
+	return 0;
+}
 int part_get_info_whole_disk(struct blk_desc *dev_desc, disk_partition_t *info)
 {
 	info->start = 0;

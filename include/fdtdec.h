@@ -984,6 +984,20 @@ int fdtdec_setup_memory_size(void);
 int fdtdec_setup_memory_banksize(void);
 
 /**
+ * fdtdec_set_phandle() - sets the phandle of a given node
+ *
+ * @param blob		FDT blob
+ * @param node		offset in the FDT blob of the node whose phandle is to
+ *			be set
+ * @param phandle	phandle to set for the given node
+ * @return 0 on success or a negative error code on failure
+ */
+static inline int fdtdec_set_phandle(void *blob, int node, uint32_t phandle)
+{
+	return fdt_setprop_u32(blob, node, "phandle", phandle);
+}
+
+/**
  * Set up the device tree ready for use
  */
 int fdtdec_setup(void);
@@ -994,5 +1008,7 @@ int fdtdec_setup(void);
  * and the board implements it.
  */
 void *board_fdt_blob_setup(void);
-
+int fdtdec_add_reserved_memory(void *blob, const char *basename,
+			       const struct fdt_memory *carveout,
+			       uint32_t *phandlep);
 #endif

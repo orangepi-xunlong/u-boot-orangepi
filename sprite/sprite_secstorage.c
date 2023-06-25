@@ -11,6 +11,7 @@
 #include <sunxi_board.h>
 #include <sunxi_flash.h>
 #include <memalign.h>
+#include <securestorage.h>
 
 int sunxi_secure_storage_erase(const char *item_name);
 int sunxi_secure_storage_erase_data_only(const char *item_name);
@@ -93,8 +94,20 @@ static int __probe_name_in_map(unsigned char *buffer, const char *item_name,
 		if (!strcmp(item_name, (const char *)name)) {
 			buf_start += strlen(item_name) + 1;
 			*len = simple_strtoul((const char *)length, NULL, 10);
-			pr_force("name in map %s\n", name);
-			return index;
+
+			if (strlen(item_name) ==
+				    strlen(SECURE_STORAGE_DUMMY_KEY_NAME) &&
+			    !memcmp(item_name, SECURE_STORAGE_DUMMY_KEY_NAME,
+				    strlen(SECURE_STORAGE_DUMMY_KEY_NAME)) &&
+			    *len == 0) {
+				/*
+				 * if *len == 0 it is a actual DUMMY_KEY,
+				 * a key happen to has same name should have a non-zero len
+				 */
+			} else {
+				pr_msg("name in map %s\n", name);
+				return index;
+			}
 		}
 		index++;
 		buf_start += strlen((const char *)buf_start) + 1;
@@ -124,6 +137,10 @@ static int __fill_name_in_map(unsigned char *buffer, const char *item_name,
 	unsigned char *buf_start = buffer;
 	int index		 = 1;
 	int name_len;
+	uint8_t write_back_buf[sizeof(struct map_info)];
+	int dummy_key_index		= -1;
+	unsigned char *dummy_key_start	= NULL;
+	unsigned char *write_back_start = NULL;
 
 	while (*buf_start != '\0' && (buf_start - buffer) < SEC_BLK_SIZE) {
 		name_len = 0;
@@ -142,18 +159,49 @@ static int __fill_name_in_map(unsigned char *buffer, const char *item_name,
 			break;
 		}
 
-		if (!memcmp((const char *)buf_start, item_name, name_len)) {
-			pr_force("name in map %s\n", buf_start);
+		if (!memcmp((const char *)buf_start, item_name, name_len) &&
+		    strlen(item_name) == name_len) {
+			pr_msg("name in map %s\n", buf_start);
 			return index;
+		}
+
+		if (name_len == strlen(SECURE_STORAGE_DUMMY_KEY_NAME) &&
+		    !memcmp((const char *)buf_start,
+			    SECURE_STORAGE_DUMMY_KEY_NAME, name_len) &&
+		    dummy_key_index == -1) {
+			/*
+			 * DUMMY_KEY could be replaced with the input key,
+			 * but we dont know whether to do so at this point,
+			 * save relate info first
+			 */
+			pr_msg("found dummy_key %s\n", buf_start);
+			dummy_key_index	 = index;
+			dummy_key_start	 = buf_start;
+			write_back_start = dummy_key_start +
+					   strlen((const char *)buf_start) + 1;
+			memset(write_back_buf, 0, sizeof(write_back_buf));
+			memcpy((char *)write_back_buf, write_back_start,
+			       4096 - (write_back_start - buffer));
 		}
 		index++;
 		buf_start += strlen((const char *)buf_start) + 1;
 	}
-	if (index >= 32)
+	if ((index >= 32) && (dummy_key_index == -1))
 		return -1;
-	sprintf((char *)buf_start, "%s:%d", item_name, length);
 
-	return index;
+	if (dummy_key_index != -1) {
+		/*use index reserved by DUMMY_KEY*/
+		sprintf((char *)dummy_key_start, "%s:%d", item_name, length);
+		write_back_start = dummy_key_start +
+				   strlen((const char *)dummy_key_start) + 1;
+		memcpy(write_back_start, write_back_buf,
+		       4096 - (write_back_start - buffer));
+		return dummy_key_index;
+	} else {
+		/* add new index */
+		sprintf((char *)buf_start, "%s:%d", item_name, length);
+		return index;
+	}
 }
 /*
 ************************************************************************************************************
@@ -176,6 +224,7 @@ static int __discard_name_in_map(unsigned char *buffer, const char *item_name)
 	unsigned char *buf_start = buffer, *last_start;
 	int index		 = 1;
 	int name_len;
+	uint8_t write_back_buf[sizeof(struct map_info)];
 
 	while (*buf_start != '\0' && (buf_start - buffer) < SEC_BLK_SIZE) {
 		name_len = 0;
@@ -190,17 +239,24 @@ static int __discard_name_in_map(unsigned char *buffer, const char *item_name)
 			return -1;
 		}
 
-		if (!memcmp((const char *)buf_start, item_name, name_len)) {
+		if (!memcmp((const char *)buf_start, item_name, name_len) &&
+		    strlen(item_name) == name_len) {
+			/*
+			 * replace discarded key with DUMMY_KEY, so following
+			 * keys do not need to change their index
+			 */
+			memset(write_back_buf, 0, sizeof(write_back_buf));
 			last_start =
 				buf_start + strlen((const char *)buf_start) + 1;
-			if (*last_start == '\0') {
-				memset(buf_start, 0,
-				       strlen((const char *)buf_start));
-			} else {
-				memcpy(buf_start, last_start,
-				       4096 - (last_start - buffer));
-			}
+			memcpy(write_back_buf, last_start,
+			       4096 - (last_start - buffer));
+			sprintf((char *)buf_start, "%s:%d",
+				SECURE_STORAGE_DUMMY_KEY_NAME, 0);
 
+			last_start =
+				buf_start + strlen((const char *)buf_start) + 1;
+			memcpy((char *)last_start, (char *)write_back_buf,
+			       4096 - (last_start - buffer));
 			return index;
 		}
 		index++;
@@ -312,9 +368,10 @@ int sunxi_secure_storage_exit(void)
 		}
 		clear_map_dirty();
 	}
+	ret = sunxi_secstorage_flush();
 	secure_storage_inited = 0;
 
-	return 0;
+	return ret;
 }
 /*
 ************************************************************************************************************
@@ -363,8 +420,16 @@ int sunxi_secure_storage_list(void)
 			j++;
 		}
 
-		pr_force("name in map %s\n", name);
+		pr_msg("name in map %s\n", name);
 		len = simple_strtoul((const char *)length, NULL, 10);
+
+		if (strlen(name) == strlen(SECURE_STORAGE_DUMMY_KEY_NAME) &&
+		    !memcmp(name, SECURE_STORAGE_DUMMY_KEY_NAME,
+			    strlen(SECURE_STORAGE_DUMMY_KEY_NAME)) &&
+		    len == 0) {
+			/*dummy key, not used, goto next key*/
+			goto next_key;
+		}
 
 		ret = sunxi_secstorage_read(index, buffer, 4096);
 		if (ret < 0) {
@@ -379,6 +444,8 @@ int sunxi_secure_storage_list(void)
 			pr_force("%d data:\n", index);
 			sunxi_dump(buffer, len);
 		}
+
+next_key:
 		index++;
 		buf_start += strlen((const char *)buf_start) + 1;
 	}

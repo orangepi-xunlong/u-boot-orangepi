@@ -18,6 +18,7 @@
 #include <common.h>
 #include  "sprite_char_i.h"
 #include  "sfte/FontEngine.h"
+#include <sunxi_eink.h>
 
 #include  "../sprite_cartoon_color.h"
 
@@ -221,6 +222,9 @@ void sprite_uichar_printf(const char *str, ...)
 	int base_color;
 	int field_width;
 	va_list args;
+#ifdef CONFIG_EINK200_SUNXI
+	struct eink_fb_info_t *p_eink_fb;
+#endif
 
 	memset(string, 0, 512);
 	base_color = sprite_cartoon_ui_get_color();
@@ -238,4 +242,9 @@ void sprite_uichar_printf(const char *str, ...)
 	}
 
 	uichar_putstr(string, field_width);
+
+#ifdef CONFIG_EINK200_SUNXI
+	p_eink_fb = eink_get_fb_inst();
+	p_eink_fb->eink_display(p_eink_fb);
+#endif
 }

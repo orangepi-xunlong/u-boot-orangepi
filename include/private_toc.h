@@ -113,7 +113,8 @@ typedef struct sbrom_toc0_config
 	unsigned int       secure_without_OS;   //secure boot without semelis
 	unsigned char       debug_mode;         //1:turn on printf; 0 :turn off printf
 	unsigned char       power_mode;          /* 0:axp , 1: dummy pmu  */
-	unsigned char       reserver[2];
+	unsigned char       rotpk_flag;
+	unsigned char       reserver[1];
 	unsigned int		card_work_mode;
 	unsigned int      	res[2];   			// 总共1024字节
 

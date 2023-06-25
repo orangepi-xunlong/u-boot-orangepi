@@ -17,7 +17,7 @@
  * along with this program;
  *
  */
-#include <asm/arch-sunxi/cpu_ncat.h>
+#include <asm/arch-sunxi/cpu.h>
 #include <asm/io.h>
 #include <common.h>
 #include <asm/arch/pwm.h>
@@ -25,6 +25,7 @@
 #include <pwm.h>
 #include <fdt_support.h>
 #include <malloc.h>
+#include "sunxi_pwm.h"
 
 #define sys_get_wvalue(n)   (*((volatile uint *)(n)))          /* word input */
 #define sys_put_wvalue(n, c) (*((volatile uint *)(n))  = (c))   /* word output */
@@ -56,16 +57,15 @@ uint pwm_active_sta[4] = {1, 0, 0, 0};
 #define SET_BITS(shift, width, reg, val) \
 	    (((reg) & CLRMASK(width, shift)) | (val << (shift)))
 
-#if ((defined CONFIG_ARCH_SUN8IW12P1) ||\
-			(defined CONFIG_ARCH_SUN8IW17P1) ||\
-			(defined CONFIG_ARCH_SUN50IW6P1) ||\
-			(defined CONFIG_ARCH_SUN50IW3P1)) ||\
-			(defined CONFIG_ARCH_SUN8IW15P1)
-#define CLK_GATE_SUPPORT
+#define CLK_CCU_SUPPORT
 uint clk_count;
+#if !defined CONFIG_ARCH_SUN8IW20 && !defined CONFIG_ARCH_SUN20IW1
+#define CLK_RCM_SUPPORT
 uint sclk_count;
 #endif
 
+#if 0
+//legacy pwm config
 struct sunxi_pwm_cfg {
 	unsigned int reg_busy_offset;
 	unsigned int reg_busy_shift;
@@ -91,6 +91,7 @@ struct sunxi_pwm_cfg {
 	unsigned int reg_prescal_shift;
 	unsigned int reg_prescal_width;
 };
+#endif
 
 struct sunxi_pwm_chip {
 	//struct pwm_chip chip;
@@ -114,14 +115,14 @@ static inline u32 sunxi_pwm_readl(struct sunxi_pwm_chip *chip, u32 offset)
 {
 	unsigned int value;
 
-	value = readl((unsigned long)chip->base + offset);
+	value = readl((void *)(unsigned long)(chip->base + offset));
 
 	return value;
 }
 
 static inline u32 sunxi_pwm_writel(struct sunxi_pwm_chip *chip, u32 offset, u32 value)
 {
-	writel(value, chip->base + offset);
+	writel(value, (void *)(unsigned long)(chip->base + offset));
 
 	return 0;
 }
@@ -139,7 +140,7 @@ static int sunxi_pwm_pin_set_state(char *dev_name, char *name)
 	else
 		state = 0;
 
-	len = sprintf(compat, "%s", dev_name);
+	len = sprintf(compat, "/soc/%s", dev_name);
 	if (len > 32)
 		printf("disp_sys_set_state, size of mian_name is out of range\n");
 
@@ -152,17 +153,21 @@ static int sunxi_pwm_pin_set_state(char *dev_name, char *name)
 
 int sunxi_pwm_set_polarity(struct sunxi_pwm_chip *pchip, enum pwm_polarity polarity)
 {
-    uint temp;
+	uint sel;
+	uint temp;
+
 	unsigned int reg_offset, reg_shift;
 
-	reg_offset = pchip->config->reg_polarity_offset;
-	reg_shift = pchip->config->reg_polarity_shift;
+	sel = pchip->pwm;
+	reg_offset = PWM_PCR_BASE + sel * 0x20;
+	reg_shift = PWM_ACT_STA_SHIFT;
+
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 
 	if (polarity == PWM_POLARITY_NORMAL)
-		temp = SET_BITS(reg_shift, 1, temp, 0);
-	else
 		temp = SET_BITS(reg_shift, 1, temp, 1);
+	else
+		temp = SET_BITS(reg_shift, 1, temp, 0);
 
 	sunxi_pwm_writel(pchip, reg_offset, temp);
 /*
@@ -188,17 +193,36 @@ int sunxi_pwm_set_polarity(struct sunxi_pwm_chip *pchip, enum pwm_polarity polar
 
 int sunxi_pwm_config(struct sunxi_pwm_chip *pchip, int duty_ns, int period_ns)
 {
-	uint pre_scal[11][2] = {{15, 1}, {0, 120}, {1, 180}, {2, 240}, {3, 360}, {4, 480}, {8, 12000}, {9, 24000}, {10, 36000}, {11, 48000}, {12, 72000} };
+
+#if defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)
+	uint pre_scal[][2] = {
+		{0, 1},
+		{1, 2},
+		{2, 4},
+		{3, 8},
+		{4, 16},
+		{5, 32},
+		{6, 64},
+		{7, 128},
+		{8, 256},
+	};
+#else
+
+	uint pre_scal[11][2] = {{15, 1}, {0, 120}, {1, 180}, {2, 240}, {3, 360}, {4, 480},
+		{8, 12000}, {9, 24000}, {10, 36000}, {11, 48000}, {12, 72000} };
+#endif
+
 	uint freq;
 	uint pre_scal_id = 0;
 	uint entire_cycles = 256;
 	uint active_cycles = 192;
 	uint entire_cycles_max = 65536;
 	uint temp;
+	uint sel = pchip->pwm;
 	unsigned int reg_offset, reg_shift, reg_width;
 
-	reg_offset = pchip->config->reg_bypass_offset;
-	reg_shift = pchip->config->reg_bypass_shift;
+	reg_offset = PCGR;
+	reg_shift = sel + PWM_CLK_BYPASS_SHIFT;
 
 	if (period_ns < 42) {
 		/* if freq lt 24M, then direct output 24M clock */
@@ -228,7 +252,7 @@ int sunxi_pwm_config(struct sunxi_pwm_chip *pchip, int duty_ns, int period_ns)
 	while (entire_cycles > entire_cycles_max) {
 		pre_scal_id++;
 
-		if (pre_scal_id > 10)
+		if (pre_scal_id > (ARRAY_SIZE(pre_scal) - 1))
 			break;
 
 		entire_cycles = 24000000 / freq / pre_scal[pre_scal_id][1];
@@ -241,9 +265,9 @@ int sunxi_pwm_config(struct sunxi_pwm_chip *pchip, int duty_ns, int period_ns)
 	else
 		active_cycles = ((duty_ns / 10000) * entire_cycles + (period_ns / 2 / 10000)) / (period_ns / 10000);
 
-	reg_offset = pchip->config->reg_prescal_offset;
-	reg_shift = pchip->config->reg_prescal_shift;
-	reg_width = pchip->config->reg_prescal_width;
+	reg_offset = PWM_PCR_BASE + 0x20 * sel;
+	reg_shift = PWM_PRESCAL_SHIFT;
+	reg_width = PWM_PRESCAL_WIDTH;
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 
 	temp = SET_BITS(reg_shift, reg_width, temp, (pre_scal[pre_scal_id][0]));
@@ -253,17 +277,17 @@ int sunxi_pwm_config(struct sunxi_pwm_chip *pchip, int duty_ns, int period_ns)
 	sunxi_pwm_writel(pchip, reg_offset, temp);
 
 	/*config active cycles*/
-	reg_offset = pchip->config->reg_active_offset;
-	reg_shift = pchip->config->reg_active_shift;
-	reg_width = pchip->config->reg_active_width;
+	reg_offset = PWM_PPR_BASE + 0x20 * sel;
+	reg_shift = PWM_ACT_CYCLES_SHIFT;
+	reg_width = PWM_ACT_CYCLES_WIDTH;
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 	temp = SET_BITS(reg_shift, reg_width, temp, active_cycles);
 	sunxi_pwm_writel(pchip, reg_offset, temp);
 
 	/*config period cycles*/
-	reg_offset = pchip->config->reg_period_offset;
-	reg_shift = pchip->config->reg_period_shift;
-	reg_width = pchip->config->reg_period_width;
+	reg_offset = PWM_PPR_BASE + 0x20 * sel;
+	reg_shift = PWM_PERIOD_CYCLES_SHIFT;
+	reg_width = PWM_PERIOD_CYCLES_WIDTH;
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 	temp = SET_BITS(reg_shift, reg_width, temp, (entire_cycles - 1));
 	sunxi_pwm_writel(pchip, reg_offset, temp);
@@ -302,15 +326,15 @@ int sunxi_pwm_enable(struct sunxi_pwm_chip *pchip)
 	ret = sunxi_pwm_pin_set_state(pin_name, PWM_PIN_STATE_ACTIVE);
 
 	/* enable clk for pwm controller. */
-	reg_offset = pchip->config->reg_clk_gating_offset;
-	reg_shift = pchip->config->reg_clk_gating_shift;
+	reg_offset = PCGR;
+	reg_shift = pwm;
 	value = sunxi_pwm_readl(pchip, reg_offset);
 	value = SET_BITS(reg_shift, 1, value, 1);
 	sunxi_pwm_writel(pchip, reg_offset, value);
 
 	/* enable pwm controller. */
-	reg_offset = pchip->config->reg_enable_offset;
-	reg_shift = pchip->config->reg_enable_shift;
+	reg_offset = PWM_PER;
+	reg_shift = pwm;
 	value = sunxi_pwm_readl(pchip, reg_offset);
 	value = SET_BITS(reg_shift, 1, value, 1);
 	sunxi_pwm_writel(pchip, reg_offset, value);
@@ -329,15 +353,15 @@ void sunxi_pwm_disable(struct sunxi_pwm_chip *pchip)
 	pwm = pchip->pwm;
 
 	/* disable pwm controller. */
-	reg_offset = pchip->config->reg_enable_offset;
-	reg_shift = pchip->config->reg_enable_shift;
+	reg_offset = PWM_PER;
+	reg_shift = pwm;
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 	temp = SET_BITS(reg_shift, 1, temp, 0);
 	sunxi_pwm_writel(pchip, reg_offset, temp);
 
 	/* disable clk for pwm controller. */
-	reg_offset = pchip->config->reg_clk_gating_offset;
-	reg_shift = pchip->config->reg_clk_gating_shift;
+	reg_offset =  PCGR;
+	reg_shift = pwm;
 	temp = sunxi_pwm_readl(pchip, reg_offset);
 	temp = SET_BITS(reg_shift, 1, temp, 0);
 	sunxi_pwm_writel(pchip, reg_offset, temp);
@@ -345,173 +369,20 @@ void sunxi_pwm_disable(struct sunxi_pwm_chip *pchip)
 	/* disable pin config. */
 	if (base > 0) {
 		snprintf(pin_name, 6, "spwm%d", pwm - base);
-#if defined CLK_GATE_SUPPORT
+#if defined CLK_RCM_SUPPORT
 		sclk_count--;
 #endif
 	} else {
 		snprintf(pin_name, 6, "pwm%d", pwm);
-#if defined CLK_GATE_SUPPORT
+#if defined CLK_CCU_SUPPORT
 		clk_count--;
 #endif
 	}
 	sunxi_pwm_pin_set_state(pin_name, PWM_PIN_STATE_SLEEP);
-#if defined CLK_GATE_SUPPORT
-	if (clk_count == 0)
-		writel(0, (SUNXI_CCM_BASE + PWM_CCU_OFFSET));
-	if (sclk_count == 0)
-		writel(0, (SUNXI_PRCM_BASE + PWM_RCM_OFFSET));
-#endif
 }
 
 void sunxi_pwm_init(void)
 {
-}
-
-static int sunxi_pwm_get_config(int node, struct sunxi_pwm_cfg *config)
-{
-	int ret = 0;
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_enable_offset", &config->reg_enable_offset);
-	if (ret < 0) {
-		printf("failed to get reg_enable_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_enable_shift", &config->reg_enable_shift);
-	if (ret < 0) {
-		printf("failed to get reg_enable_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_clk_gating_offset", &config->reg_clk_gating_offset);
-	if (ret < 0) {
-		printf("failed to get reg_clk_gating_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_clk_gating_shift", &config->reg_clk_gating_shift);
-	if (ret < 0) {
-		printf("failed to get reg_clk_gating_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_bypass_offset", &config->reg_bypass_offset);
-	if (ret < 0) {
-		printf("failed to get reg_bypass_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_bypass_shift", &config->reg_bypass_shift);
-	if (ret < 0) {
-		printf("failed to get reg_bypass_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_polarity_offset", &config->reg_polarity_offset);
-	if (ret < 0) {
-		printf("failed to get reg_polarity_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_polarity_shift", &config->reg_polarity_shift);
-	if (ret < 0) {
-		printf("failed to get reg_polarity_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_period_offset", &config->reg_period_offset);
-	if (ret < 0) {
-		printf("failed to get reg_period_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_period_shift", &config->reg_period_shift);
-	if (ret < 0) {
-		printf("failed to get reg_period_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_period_width", &config->reg_period_width);
-	if (ret < 0) {
-		printf("failed to get reg_period_width! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_active_offset", &config->reg_active_offset);
-	if (ret < 0) {
-		printf("failed to get reg_duty_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_active_shift", &config->reg_active_shift);
-	if (ret < 0) {
-		printf("failed to get reg_duty_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_active_width", &config->reg_active_width);
-	if (ret < 0) {
-		printf("failed to get reg_duty_width! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_prescal_offset", &config->reg_prescal_offset);
-	if (ret < 0) {
-		printf("failed to get reg_duty_width! err=%d\n", ret);
-		goto err;
-	}
-	ret = fdt_getprop_u32(working_fdt, node, "reg_prescal_shift", &config->reg_prescal_shift);
-	if (ret < 0) {
-		printf("failed to get reg_duty_width! err=%d\n", ret);
-		goto err;
-	}
-	ret = fdt_getprop_u32(working_fdt, node, "reg_prescal_width", &config->reg_prescal_width);
-	if (ret < 0) {
-		printf("failed to get reg_duty_width! err=%d\n", ret);
-		goto err;
-	}
-
-	/* read register config */
-/*
-	ret = fdt_getprop_u32(working_fdt,node,"reg_busy_offset",&config->reg_busy_offset);
-	if (ret < 0) {
-		printf( "failed to get reg_busy_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_busy_shift", &config->reg_busy_shift);
-	if (ret < 0) {
-		printf( "failed to get reg_busy_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_pulse_start_offset", &config->reg_pulse_start_offset);
-	if (ret < 0) {
-		printf( "failed to get reg_bypass_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_pulse_start_shift", &config->reg_pulse_start_shift);
-	if (ret < 0) {
-		printf( "failed to get reg_pulse_start_shift! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_mode_offset", &config->reg_mode_offset);
-	if (ret < 0) {
-		printf( "failed to get reg_mode_offset! err=%d\n", ret);
-		goto err;
-	}
-
-	ret = fdt_getprop_u32(working_fdt, node, "reg_mode_shift", &config->reg_mode_shift);
-	if (ret < 0) {
-		printf( "failed to get reg_mode_shift! err=%d\n", ret);
-		goto err;
-	}
-*/
-err:
-
-	return ret;
 }
 
 struct pwm_ops {
@@ -592,6 +463,7 @@ int pwm_init(void)
 
 int pwm_request(int pwm, const char *label)
 {
+	__attribute__((unused)) unsigned int reg_val = 0;
 	int ret = 0;
 	int node, sub_node;
 	char main_name[20], sub_name[25];
@@ -637,12 +509,12 @@ int pwm_request(int pwm, const char *label)
 		printf("fdt_getprop_u32 %s.%s fail\n", main_name, sub_name);
 		goto err_pwm;
 	}
-#if defined(CLK_GATE_SUPPORT)
+#if defined(CLK_CCU_SUPPORT)
 	clk_count++;
 	if (clk_count == 1) {
 		reg_val |= 1 << 16;
 		reg_val |= 1;
-		writel(reg_val, (SUNXI_CCM_BASE + PWM_CCU_OFFSET));
+		writel(reg_val, (void *)(SUNXI_CCM_BASE + PWM_CCU_OFFSET));
 	}
 #endif
 	/* pwm is included is in pwm area.*/
@@ -650,10 +522,13 @@ int pwm_request(int pwm, const char *label)
 		/* get handle in pwm. */
 		handle_num = fdt_getprop_u32(working_fdt, node, "pwms", handle);
 		if (handle_num < 0) {
-			printf("%s:%d:error:get property handle %s error:%s\n",
-			       __func__, __LINE__, "clocks",
-					fdt_strerror(handle_num));
-			goto err_pwm;
+			handle_num = fdt_getprop_u32(working_fdt, node, "sunxi-pwms", handle);
+			if (handle_num < 0) {
+				printf("%s:%d:error:get property handle %s error:%s\n",
+					__func__, __LINE__, "clocks",
+						fdt_strerror(handle_num));
+				goto err_pwm;
+			}
 		}
 		sprintf(sub_name, "pwm%d", pwm);
 	} else {
@@ -675,22 +550,24 @@ int pwm_request(int pwm, const char *label)
 			goto err_pwm;
 		} else
 			printf("%s:pwm number = %d\n", __func__, pwm_number);
-
-#if defined(CLK_GATE_SUPPORT)
+#if defined CLK_RCM_SUPPORT
 		sclk_count++;
 		if (sclk_count == 1) {
 			reg_val |= 1 << 16;
 			reg_val |= 1;
-			writel(reg_val, (SUNXI_PRCM_BASE + PWM_RCM_OFFSET));
+			writel(reg_val, (void *)(SUNXI_PRCM_BASE + PWM_RCM_OFFSET));
 		}
 #endif
 		if (pwm >= pwm_base && pwm < (pwm_base + pwm_number)) {
 		/* get handle in pwm. */
 			handle_num = fdt_getprop_u32(working_fdt, node, "pwms", handle);
 			if (handle_num < 0) {
-		      printf("%s:%d:error:get property handle %s error:%s\n",
-			     __func__, __LINE__, "clocks", fdt_strerror(handle_num));
-				goto err_pwm;
+				handle_num = fdt_getprop_u32(working_fdt, node, "sunxi-pwms", handle);
+				if (handle_num < 0) {
+					printf("%s:%d:error:get property handle %s error:%s\n",
+						__func__, __LINE__, "clocks", fdt_strerror(handle_num));
+					goto err_pwm;
+				}
 			}
 		} else {
 			printf("the pwm id is wrong,none pwm in dts.\n");
@@ -708,23 +585,24 @@ int pwm_request(int pwm, const char *label)
 		goto err_pwm;
 	}
 
-	pchip->config = (struct sunxi_pwm_cfg *)malloc(sizeof(struct sunxi_pwm_cfg));
+	/*pchip->config = (struct sunxi_pwm_cfg *)malloc(sizeof(struct sunxi_pwm_cfg));
 	if (!pchip->config) {
 		printf("%s: error:pwm chip malloc failed!\n", __func__);
 		goto err_pwm;
 	} else {
 		memset(pchip->config, 0, sizeof(struct sunxi_pwm_cfg));
-	}
+	}*/
 	pchip->pwm = pwm;
 	pchip->ops = &sunxi_pwm_ops;
 
 	ret = fdt_getprop_u32(working_fdt, sub_node, "reg_base", &pchip->base);
 	if (ret < 0) {
 		printf("%s: err: get reg-base err.\n", __func__);
-		goto err_config;
+		goto err_pwm;
 	}
 
-	ret = sunxi_pwm_get_config(sub_node, pchip->config);
+	//legacy function
+	/* ret = sunxi_pwm_get_config(sub_node, pchip->config); */
 
 	list_add_tail(&pchip->list, &pwm_list);
 
@@ -733,9 +611,6 @@ int pwm_request(int pwm, const char *label)
 
 	return pwm;
 
-err_config:
-	if (pchip->config)
-		free(pchip->config);
 err_pwm:
 	if (pchip)
 		free(pchip);

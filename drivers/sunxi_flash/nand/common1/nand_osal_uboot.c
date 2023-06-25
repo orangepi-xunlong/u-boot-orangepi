@@ -48,14 +48,14 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #else
 #define  NAND_DRV_VERSION_0		0x03
-#define  NAND_DRV_VERSION_1		0x6072
-#define  NAND_DRV_DATE			0x20200330
+#define  NAND_DRV_VERSION_1		0x6081
+#define  NAND_DRV_DATE			0x20210317
 #define  NAND_DRV_TIME			0x18212019
 #endif
 
 /*nand common1 version rule vx.ab date time
  * x >= 1 ; 00 <= ab <= 99;*/
-#define NAND_COMMON1_DRV_VERSION "v1.02 2020-06-08 10:36"
+#define NAND_COMMON1_DRV_VERSION "v2.05 2022-01-13 16:53"
 
 /*
  *1755--AW1755--A50
@@ -72,6 +72,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PL_DAT_REG		(0x01f02c10)
 
 #else
+
+#ifndef SUNXI_NFC_BASE
+#define SUNXI_NFC_BASE  (0)
+#endif
+
 #define NDFC0_BASE_ADDR                 (SUNXI_NFC_BASE)
 #define NDFC1_BASE_ADDR                 (NULL)
 #endif
@@ -101,12 +106,12 @@ extern __u32 storage_type;
 
 __u32 get_wvalue(__u32 addr)
 {
-	return readl(addr);
+	return readl((void *)(unsigned long)addr);
 }
 
 void put_wvalue(__u32 addr, __u32 v)
 {
-	writel(v, addr);
+	writel(v, (void *)(unsigned long)addr);
 }
 
 
@@ -295,8 +300,8 @@ __s32 NAND_AllocMemoryForDMADescs(__u32 *cpu_addr, __u32 *phy_addr)
 		NAND_Print("NAND_AllocMemoryForDMADescs(): alloc dma des failed\n");
 		return -1;
 	} else {
-		*cpu_addr = (__u32)p;
-		*phy_addr = (__u32)p;
+		*cpu_addr = (__u32)((unsigned long)p);
+		*phy_addr = (__u32)((unsigned long)p);
 		NAND_Print_DBG("NAND_AllocMemoryForDMADescs(): cpu: 0x%x  physic: 0x%x\n",
 			*cpu_addr, *phy_addr);
 	}
@@ -306,7 +311,7 @@ __s32 NAND_AllocMemoryForDMADescs(__u32 *cpu_addr, __u32 *phy_addr)
 
 __s32 NAND_FreeMemoryForDMADescs(__u32 *cpu_addr, __u32 *phy_addr)
 {
-	NAND_Free((void *)(*cpu_addr), 1024);
+	NAND_Free((void *)((unsigned long)(*cpu_addr)), 1024);
 	*cpu_addr = 0;
 	*phy_addr = 0;
 
@@ -829,6 +834,8 @@ int NAND_WaitDmaFinish(__u32 tx_flag, __u32 rx_flag)
 
 int Nand_Dma_End(__u32 rw, __u32 addr, __u32 length)
 {
+	if (rw == 0)
+		NAND_InvaildDCacheRegion(rw, addr, length);
 	return 0;
 }
 
@@ -1189,20 +1196,20 @@ void nand_enable_vccq_3p3v(void)
 {
 	u32 reg_val = 0;
 
-	reg_val = readl(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE);
+	reg_val = readl((void *)(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE));
 	/*bit2: PC_POWER MODE SELECT*/
 	reg_val &= (~(1 << 2));
-	writel(reg_val, SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE);
+	writel(reg_val, (void *)(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE));
 }
 
 void nand_enable_vccq_1p8v(void)
 {
 	u32 reg_val = 0;
 
-	reg_val = readl(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE);
+	reg_val = readl((void *)(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE));
 	/*bit2: PC_POWER MODE SELECT*/
 	reg_val |= 0x04;
-	writel(reg_val, SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE);
+	writel(reg_val, (void *)(SUNXI_PIO_BASE + NAND_PIO_WITHSTAND_VOL_MODE));
 }
 
 

@@ -439,11 +439,11 @@ typedef struct {
 typedef struct {
 	int	mNative;
 
-	unsigned mCode;
+	unsigned int mCode;
 
-	unsigned mLimitedToYcc420;
+	unsigned int mLimitedToYcc420;
 
-	unsigned mYcc420;
+	unsigned int mYcc420;
 
 } shortVideoDesc_t;
 
@@ -854,8 +854,8 @@ struct hdmi_dev_func {
 	int (*device_standby)(void);
 	void (*resistor_calibration)(u32 reg, u32 data);
 
-	int (*phy_write)(u8 addr, u16 data);
-	int (*phy_read)(u8 addr, u16 *value);
+	int (*phy_write)(u8 addr, u32 data);
+	int (*phy_read)(u8 addr, u32 *value);
 	int (*scdc_read)(u8 address, u8 size, u8 *data);
 	int (*scdc_write)(u8 address, u8 size, u8 *data);
 
@@ -882,6 +882,7 @@ struct hdmi_dev_func {
 	void (*avmute_enable)(u8 enable);
 	void (*phy_power_enable)(u8 enable);
 	void (*dvimode_enable)(u8 enable);
+	void (*set_phy_base_addr)(uintptr_t reg_base);
 };
 
 #endif

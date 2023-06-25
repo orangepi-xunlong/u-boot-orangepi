@@ -95,7 +95,9 @@ obj-y += memory/
 obj-y += pwm/
 obj-y += reset/
 obj-y += input/
+ifneq (x$(CONFIG_NOT_USE_OPTEE25), xy)
 obj-y += smc/
+endif
 obj-$(CONFIG_SUNXI_PHY_KEY) += phy_key/
 # SOC specific infrastructure drivers.
 obj-y += soc/
@@ -103,5 +105,7 @@ obj-$(CONFIG_REMOTEPROC) += remoteproc/
 obj-y += thermal/
 obj-$(CONFIG_SUNXI_POWER) += sunxi_power/
 obj-$(CONFIG_SUNXI_ARISC_EXIST) += arisc/
+obj-$(CONFIG_XTENSA_DSP) += dsp/
+obj-$(CONFIG_RISCV_E907) += riscv/
 obj-$(CONFIG_MACH_PIC32) += ddr/microchip/
 endif

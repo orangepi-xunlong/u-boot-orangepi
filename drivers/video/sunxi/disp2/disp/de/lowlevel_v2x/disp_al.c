@@ -484,16 +484,22 @@ int disp_al_manager_apply(unsigned int disp, struct disp_manager_data *data)
 
 	if (al_priv.output_type[al_priv.tcon_id[disp]] ==
 	    (u32)DISP_OUTPUT_TYPE_HDMI) {
+
+#ifdef BYPASS_TCON_CEU
+		tcon1_hdmi_color_remap(al_priv.tcon_id[disp], 0,
+				data->config.cs);
+#else
 		/*
 		 * If yuv output(cs != 0), remap yuv plane to (v y u) sequency
 		 * else disable color remap function
 		 */
 		if (data->config.cs != 0)
 			tcon1_hdmi_color_remap(al_priv.tcon_id[disp], 1,
-					       data->config.cs);
+					data->config.cs);
 		else
 			tcon1_hdmi_color_remap(al_priv.tcon_id[disp], 0,
-					       data->config.cs);
+					data->config.cs);
+#endif
 	}
 	de_update_clk_rate(data->config.de_freq);
 
@@ -658,7 +664,7 @@ static struct lcd_clk_info clk_tbl[] = {
 	{LCD_IF_CPU, 12, 1, 1, 0},
 	{LCD_IF_LVDS, 7, 1, 1, 0},
 #if defined(DSI_VERSION_40)
-	{LCD_IF_DSI, 4, 1, 4, 148500000},
+	{LCD_IF_DSI, 4, 1, 4, 150000000},
 #else
 	{LCD_IF_DSI, 4, 1, 4, 0},
 #endif /*endif DSI_VERSION_40 */
@@ -714,6 +720,9 @@ int disp_al_lcd_get_clk_info(u32 screen_id, struct lcd_clk_info *info,
 		}
 
 		dsi_div = bitwidth / lane;
+#if defined(SUNXI_DSI_PASSIVE_BUG)
+		dsi_div = 6;
+#endif
 		if (panel->lcd_dsi_if == LCD_DSI_IF_COMMAND_MODE) {
 			tcon_div = dsi_div;
 		}
@@ -760,6 +769,11 @@ int disp_al_lcd_cfg(u32 screen_id, disp_panel_para *panel,
 
 	tcon_init(screen_id);
 	disp_al_lcd_get_clk_info(screen_id, &info, panel);
+	if (panel->tcon_clk_div_ajust.clk_div_increase_or_decrease == INCREASE) {
+		info.tcon_div = info.tcon_div * panel->tcon_clk_div_ajust.div_multiple;
+	} else if (panel->tcon_clk_div_ajust.clk_div_increase_or_decrease == DECREASE) {
+		info.tcon_div = info.tcon_div / panel->tcon_clk_div_ajust.div_multiple;
+	}
 	tcon0_set_dclk_div(screen_id, info.tcon_div);
 
 #if !defined(TCON1_DRIVE_PANEL)
@@ -997,6 +1011,10 @@ int disp_al_lcd_get_start_delay(u32 screen_id, disp_panel_para *panel)
 	u32 lcd_start_delay = 0;
 	u32 de_clk_rate = de_get_clk_rate() / 1000000;
 
+	if (de_clk_rate <= 0) {
+		de_clk_rate = 297;
+		DE_WRN("%s, de_clk_rate <= 0\n", __func__);
+	}
 	if (panel && LCD_IF_DSI == panel->lcd_if) {
 		lcd_start_delay =
 		    ((tcon0_get_cpu_tri2_start_delay(screen_id) + 1) << 3) *
@@ -1051,6 +1069,11 @@ int disp_al_hdmi_cfg(u32 screen_id, struct disp_video_timings *video_info)
 #ifdef TCON_POL_CORRECT
 	tcom1_cfg_correct(screen_id, video_info);
 #endif
+
+#ifdef BYPASS_TCON_CEU
+	tcon1_hdmi_color_remap(screen_id, 0,
+			al_priv.output_cs[screen_id]);
+#else
 	/*
 	 * If yuv output(cs != 0), remap yuv plane to (v y u) sequency
 	 * else disable color remap function
@@ -1061,6 +1084,7 @@ int disp_al_hdmi_cfg(u32 screen_id, struct disp_video_timings *video_info)
 	else
 		tcon1_hdmi_color_remap(screen_id, 0,
 				       al_priv.output_cs[screen_id]);
+#endif
 	tcon1_src_select(screen_id, LCD_SRC_DE, al_priv.de_id[screen_id]);
 
 	return 0;
@@ -1314,17 +1338,30 @@ int disp_init_al(disp_bsp_init_para *para)
 	wb_ebios_init(para);
 #endif
 	de_clk_set_reg_base(para->reg_base[DISP_MOD_DE]);
+#if defined(CONFIG_INDEPENDENT_DE)
+	de1_clk_set_reg_base(para->reg_base[DISP_MOD_DE1]);
+#endif
 
 	for (i = 0; i < DEVICE_NUM; i++)
 		tcon_set_reg_base(i, para->reg_base[DISP_MOD_LCD0 + i]);
 
 	for (i = 0; i < DE_NUM; i++) {
 		if (de_feat_is_support_smbl(i))
+#if defined(CONFIG_INDEPENDENT_DE)
+			de_smbl_init(i, para->reg_base[DISP_MOD_DE + i]);
+#else
 			de_smbl_init(i, para->reg_base[DISP_MOD_DE]);
+#endif
 	}
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
+#if defined(CONFIG_INDEPENDENT_DE)
+	for (i = 0; i < DE_NUM; i++) {
+		tcon_top_set_reg_base(i, para->reg_base[DISP_MOD_DEVICE + i]);
+	}
+#else
 	tcon_top_set_reg_base(0, para->reg_base[DISP_MOD_DEVICE]);
+#endif
 #endif
 #if defined(SUPPORT_DSI)
 	for (i = 0; i < DEVICE_DSI_NUM; ++i)

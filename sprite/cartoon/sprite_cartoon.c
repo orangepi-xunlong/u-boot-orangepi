@@ -20,12 +20,14 @@
 #include <sunxi_display2.h>
 #include <sunxi_board.h>
 #include <boot_gui.h>
+#include <fastlogo.h>
 #include <sys_partition.h>
+#include <sunxi_eink.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 sprite_cartoon_source  sprite_source;
-static uint  progressbar_hd;
+static progressbar_t *progressbar_hd;
 static int   last_rate;
 
 
@@ -48,18 +50,39 @@ static int   last_rate;
 int sprite_cartoon_screen_set(void)
 {
 
+#if defined (CONFIG_BOOT_GUI)
 	struct canvas *cv = NULL;
 	cv = fb_lock(FB_ID_0);
 	if (NULL == cv) {
 		printf("fb lock for sprite cartoon fail\n");
 		return -1;
 	}
-	if (32 == cv->bpp)
-		fb_set_alpha_mode(FB_ID_0, FB_PIXEL_ALPHA_MODE, 0x00);
-	else if (24 == cv->bpp)
-		fb_set_alpha_mode(FB_ID_0, FB_GLOBAL_ALPHA_MODE, 0xFF);
+	fb_set_alpha_mode(FB_ID_0, FB_GLOBAL_ALPHA_MODE, 0xFF);
 	sprite_source.screen_width = cv->width;
 	sprite_source.screen_height = cv->height;
+	sprite_source.screen_buf = (char *)cv->base;
+	fb_unlock(FB_ID_0, NULL, 1);
+#endif
+
+#if defined (CONFIG_SUNXI_TV_FASTLOGO)
+	struct fastlogo_t *logo = get_fastlogo_inst();
+	if (logo) {
+		logo->get_framebuffer_info(logo, (unsigned int *)&sprite_source.screen_width,
+					   (unsigned int *)&sprite_source.screen_height,
+					   &sprite_source.screen_buf);
+	}
+
+#endif
+#if defined(CONFIG_EINK200_SUNXI)
+	struct eink_fb_info_t *p_info = eink_get_fb_inst();
+	if (p_info) {
+		sprite_source.screen_width = p_info->p_rgb->width;
+		sprite_source.screen_height = p_info->p_rgb->height;
+		sprite_source.screen_buf = (char *)p_info->p_rgb->addr;
+		p_info->update_all_en(p_info, 0);
+		p_info->set_update_mode(p_info, EINK_GU16_MODE);
+	}
+#endif
 
 	if ((sprite_source.screen_width < 40) ||
 	    (sprite_source.screen_height < 40)) {
@@ -68,9 +91,7 @@ int sprite_cartoon_screen_set(void)
 	}
 	sprite_source.screen_size =
 	    sprite_source.screen_width * sprite_source.screen_height * 4;
-	sprite_source.screen_buf = (char *)cv->base;
 	sprite_source.color = SPRITE_CARTOON_GUI_GREEN;
-	fb_unlock(FB_ID_0, NULL, 1);
 
 	if (!sprite_source.screen_buf)
 		return -1;
@@ -99,35 +120,25 @@ int sprite_cartoon_screen_set(void)
 int sprite_cartoon_test(int op)
 {
 	int i;
-	uint progressbar_hd;
-	int screen_width, screen_height;
+	progressbar_t *progressbar_hd;
 	int x1, x2, y1, y2;
-
-	struct canvas *cv = NULL;
 
 	sprite_cartoon_screen_set();
 
-	cv = fb_lock(FB_ID_0);
-	if (NULL == cv) {
-		return 0;
-	}
-	screen_width = cv->width;
-	screen_height = cv->height;
-	fb_unlock(FB_ID_0, NULL, 0);
 
-	printf("screen_width = %d\n", screen_width);
-	printf("screen_height = %d\n", screen_height);
+	printf("screen_width = %d\n", sprite_source.screen_width);
+	printf("screen_height = %d\n", sprite_source.screen_height);
 
 	if (op <= 1) {
-		x1 = screen_width / 4;
+		x1 = sprite_source.screen_width / 4;
 		x2 = x1 * 3;
-		y1 = screen_height / 2 - 40;
-		y2 = screen_height / 2 + 40;
+		y1 = sprite_source.screen_height / 2 - 40;
+		y2 = sprite_source.screen_height / 2 + 40;
 	} else {
-		x1 = screen_width / 2 - screen_width / 16;
-		x2 = screen_width / 2 + screen_width / 16;
-		y1 = screen_height * 1 / 8;
-		y2 = screen_height * 7 / 8;
+		x1 = sprite_source.screen_width / 2 - sprite_source.screen_width / 16;
+		x2 = sprite_source.screen_width / 2 + sprite_source.screen_width / 16;
+		y1 = sprite_source.screen_height * 1 / 8;
+		y2 = sprite_source.screen_height * 7 / 8;
 	}
 
 	printf("bar x1: %d y1: %d\n", x1, y1);
@@ -183,7 +194,6 @@ int sprite_cartoon_test(int op)
 uint sprite_cartoon_create(int op)
 {
 
-	int screen_width, screen_height;
 	int x1, x2, y1, y2;
 
 	if (sprite_cartoon_screen_set()) {
@@ -192,33 +202,16 @@ uint sprite_cartoon_create(int op)
 		return -1;
 	}
 
-	struct canvas *cv = NULL;
-	cv = fb_lock(FB_ID_0);
-	if (NULL == cv) {
-		return 0;
-	}
-	if (32 == cv->bpp)
-		fb_set_alpha_mode(FB_ID_0, FB_PIXEL_ALPHA_MODE, 0x00);
-	else if (24 == cv->bpp)
-		fb_set_alpha_mode(FB_ID_0, FB_GLOBAL_ALPHA_MODE, 0xFF);
-
-	screen_width = cv->width;
-	screen_height = cv->height;
-	fb_unlock(FB_ID_0, NULL, 0);
-
-	printf("screen_width = %d\n", screen_width);
-	printf("screen_height = %d\n", screen_height);
-
 	if (op <= 1) {
-		x1 = screen_width / 4;
+		x1 = sprite_source.screen_width / 4;
 		x2 = x1 * 3;
-		y1 = screen_height / 2 - 40;
-		y2 = screen_height / 2 + 40;
+		y1 = sprite_source.screen_height / 2 - 40;
+		y2 = sprite_source.screen_height / 2 + 40;
 	} else {
-		x1 = screen_width / 2 - screen_width / 16;
-		x2 = screen_width / 2 + screen_width / 16;
-		y1 = screen_height * 1 / 8;
-		y2 = screen_height * 7 / 8;
+		x1 = sprite_source.screen_width / 2 - sprite_source.screen_width / 16;
+		x2 = sprite_source.screen_width / 2 + sprite_source.screen_width / 16;
+		y1 = sprite_source.screen_height * 1 / 8;
+		y2 = sprite_source.screen_height * 7 / 8;
 	}
 
 	printf("bar x1: %d y1: %d\n", x1, y1);
@@ -258,7 +251,8 @@ int sprite_cartoon_upgrade(int rate)
 	last_rate = rate;
 
 	sprite_cartoon_progressbar_upgrate(progressbar_hd, rate);
-
+	if (rate == 100)
+		sprite_uichar_printf("Card OK\n");
 	return 0;
 }
 /*

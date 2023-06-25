@@ -15,6 +15,7 @@
 #include <private_uboot.h>
 #include <sunxi_board.h>
 
+int sunxi_probe_partition_map(void);
 int sunxi_partition_get_partno_byname(const char *part_name);
 int sunxi_partition_get_info(const char *part_name, disk_partition_t *info);
 uint sunxi_partition_get_offset_byname(const char *part_name);

@@ -25,7 +25,12 @@
 
 #include "access.h"
 
+#ifdef CONFIG_AW_PHY
+#include "aw_phy.h"
+#else
 #include "phy.h"
+#endif
+
 #include "scdc.h"
 
 #include "hdmitx_dev.h"
@@ -36,14 +41,22 @@
 
 static hdmi_tx_dev_t				*hdmi_api;
 
-static int api_phy_write(u8 addr, u16 data)
+static int api_phy_write(u8 addr, u32 data)
 {
-	return phy_i2c_write(hdmi_api, addr, data);
+#ifdef CONFIG_AW_PHY
+#else
+	phy_i2c_write(hdmi_api, addr, (u16)data);
+#endif
+	return 0;
 }
 
-static int api_phy_read(u8 addr, u16 *value)
+static int api_phy_read(u8 addr, u32 *value)
 {
-	return phy_i2c_read(hdmi_api, addr, value);
+#ifdef CONFIG_AW_PHY
+#else
+	phy_i2c_read(hdmi_api, addr, (u16 *)value);
+#endif
+	return 0;
 }
 
 static int api_scdc_read(u8 address, u8 size, u8 *data)
@@ -321,7 +334,7 @@ static int api_Configure(videoParams_t *video,
 	dev_write(dev, 0x40018, 0xc0);
 	dev_write(dev, 0x4001c, 0x80);
 
-	success = phy_configure(dev, phy_model);
+	success = phy_configure(dev, phy_model, video->mEncodingOut);
 	if (success == false)
 		HDMI_INFO_MSG("ERROR:Could not configure PHY\n");
 
@@ -491,6 +504,10 @@ static void api_dvimode_enable(u8 enable)
 
 }
 
+static void api_set_phy_base(uintptr_t base)
+{
+	return phy_set_reg_base(base);
+}
 void hdmitx_api_init(char *name)
 {
 	struct hdmi_dev_func func;
@@ -565,6 +582,7 @@ void hdmitx_api_init(char *name)
 	func.avmute_enable	      = api_avmute_enable;
 	func.phy_power_enable	      = api_phy_power_enable;
 	func.dvimode_enable           = api_dvimode_enable;
+	func.set_phy_base_addr        = api_set_phy_base;
 
 	register_func_to_hdmi_core(func);
 }

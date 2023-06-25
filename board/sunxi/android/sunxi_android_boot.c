@@ -10,6 +10,8 @@
 #include <sunxi_image_verifier.h>
 #include <sunxi_avb.h>
 #include <sunxi_board.h>
+#include <sunxi_verify_boot_info.h>
+#include <sys_partition.h>
 DECLARE_GLOBAL_DATA_PTR;
 
 __weak int sunxi_bmp_display(__maybe_unused char *name)
@@ -82,6 +84,10 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 		 * The bootloader displays a warning to the user before allowing
 		 * the boot process to continue.*/
 		if (gd->lockflag == SUNXI_UNLOCKED) {
+			sunxi_set_verify_boot_number(SUNXI_VB_INFO_LOCK, 0);
+			sunxi_set_verify_boot_number(
+				SUNXI_VB_INFO_BOOTSTATE,
+				KM_VERIFIED_BOOT_UNVERIFIED);
 			env_set("verifiedbootstate", "orange");
 			pr_msg("Your device software can't be checked for corruption.\n");
 			pr_msg("Please lock the bootloader.\n");
@@ -104,6 +110,7 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 			}
 		} else {
 			int ret;
+			sunxi_set_verify_boot_number(SUNXI_VB_INFO_LOCK, 1);
 #ifndef CONFIG_SUNXI_AVB
 			ret = sunxi_verify_os(os_load_addr, image_name);
 #else
@@ -123,8 +130,8 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 					ret = verify_image_by_vbmeta(
 						image_name,
 						(uint8_t *)os_load_addr,
-						total_len, vb_meta_data,
-						vb_len);
+						total_len, vb_meta_data, vb_len,
+						"vbmeta");
 				} else {
 					pr_error(
 						"read vbmeta data for verification failed\n");
@@ -137,6 +144,7 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 			 * displays a warning and the fingerprint of the public key before
 			 * allowing the boot process to continue.*/
 			if (!strcmp(env_get("verifiedbootstate"), "yellow")) {
+				sunxi_set_verify_boot_number(SUNXI_VB_INFO_BOOTSTATE, KM_VERIFIED_BOOT_SELF_SIGNED);
 				pr_msg("Your device has loaded a different operating system.\n");
 				pr_msg("stop booting until the power key is pressed\n");
 				sunxi_bmp_display("yellow_pause_warning.bmp");
@@ -168,6 +176,7 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 				 * bootloader to verified partitions, including the bootloader,
 				 * boot partition, and all verified partitions.*/
 				env_set("verifiedbootstate", "green");
+				sunxi_set_verify_boot_number(SUNXI_VB_INFO_BOOTSTATE, KM_VERIFIED_BOOT_VERIFIED);
 			}
 
 			/* RED, indicating the device has failed verification. The bootloader
@@ -176,6 +185,7 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 				pr_msg("boota: verify the %s failed\n",
 				       image_name);
 				env_set("verifiedbootstate", "red");
+				sunxi_set_verify_boot_number(SUNXI_VB_INFO_BOOTSTATE, KM_VERIFIED_BOOT_FAILED);
 				pr_msg("Your device is corrupt.It can't be truseted and will not boot.\n");
 				sunxi_bmp_display("red_warning.bmp");
 				mdelay(30000);
@@ -184,6 +194,23 @@ int sunxi_android_boot(const char *image_name, ulong os_load_addr)
 			}
 		}
 	}
+#ifdef CONFIG_SUNXI_AVB
+	else {
+		u32 start_block;
+		/*
+		 * if vbmeta partition exist, android is compile with AVB
+		 * report AVB info for android AVB
+		 */
+		start_block = sunxi_partition_get_offset_byname("vbmeta");
+		if (start_block) {
+			if (gd->lockflag == SUNXI_UNLOCKED) {
+				android_vbmeta_avb_verify("unlocked");
+			} else {
+				android_vbmeta_avb_verify("locked");
+			}
+		}
+	}
+#endif
 
 	return 0;
 }

@@ -21,8 +21,11 @@
 #include <asm/arch/mmc.h>
 #include <asm/arch/spl.h>
 #include <asm/arch/usb_phy.h>
+#ifdef CONFIG_ARM
+#include <asm/setup.h>
 #ifndef CONFIG_ARM64
 #include <asm/armv7.h>
+#endif
 #endif
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -33,8 +36,8 @@
 #include <net.h>
 #include <spl.h>
 #include <sy8106a.h>
-#include <asm/setup.h>
 #include <private_uboot.h>
+#include <sys_config.h>
 #include <sunxi_board.h>
 #ifdef CONFIG_SUNXI_POWER
 #include <sunxi_power/axp.h>
@@ -44,6 +47,7 @@
 #include <asm/arch/dma.h>
 #endif
 #include <mapmem.h>
+#include <smc.h>
 
 
 int  __attribute__((weak)) sunxi_set_sramc_mode(void)
@@ -56,112 +60,94 @@ int  __attribute__((weak)) clock_set_corepll(int frequency)
 	return 0;
 }
 
+void  __attribute__((weak)) rtc_set_vccio_det_spare(void)
+{
+	return ;
+}
+
+int  __attribute__((weak)) rtc_set_dcxo_off(void)
+{
+	return 0;
+}
+
 DECLARE_GLOBAL_DATA_PTR;
+
+#ifdef CONFIG_SUNXI_OVERLAY
+__weak int sunxi_overlay_apply_merged(void *dtb_base, void *dtbo_base)
+{
+	return fdt_check_header(dtbo_base);
+}
+
+#endif
 
 void i2c_init_board(void)
 {
+	__maybe_unused char fdt_node_str[8] = {0};
 #ifdef CONFIG_I2C0_ENABLE
-#if defined(CONFIG_MACH_SUN4I) || \
-    defined(CONFIG_MACH_SUN5I) || \
-    defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN4I_GPB_TWI0);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN4I_GPB_TWI0);
-	clock_twi_onoff(0, 1);
-#elif defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(14), SUN6I_GPH_TWI0);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(15), SUN6I_GPH_TWI0);
-	clock_twi_onoff(0, 1);
-#elif defined(CONFIG_MACH_SUN8I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(2), SUN8I_GPH_TWI0);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(3), SUN8I_GPH_TWI0);
-	clock_twi_onoff(0, 1);
-#elif defined(CONFIG_MACH_SUN8IW18)
+#if defined(CONFIG_MACH_SUN8IW18)
 	#if 0 /*twi0 & uart0 use the same pin*/
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(0), SUN8I_GPH_TWI0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(1), SUN8I_GPH_TWI0);
 	clock_twi_onoff(0,1);
 	#endif
+#else
+	sprintf(fdt_node_str, "twi0");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
 #endif
 
 #ifdef CONFIG_I2C1_ENABLE
-#if defined(CONFIG_MACH_SUN4I) || \
-    defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(18), SUN4I_GPB_TWI1);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(19), SUN4I_GPB_TWI1);
-	clock_twi_onoff(1, 1);
-#elif defined(CONFIG_MACH_SUN5I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(15), SUN5I_GPB_TWI1);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(16), SUN5I_GPB_TWI1);
-	clock_twi_onoff(1, 1);
-#elif defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(16), SUN6I_GPH_TWI1);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(17), SUN6I_GPH_TWI1);
-	clock_twi_onoff(1, 1);
-#elif defined(CONFIG_MACH_SUN8I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(4), SUN8I_GPH_TWI1);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(5), SUN8I_GPH_TWI1);
-	clock_twi_onoff(1, 1);
-#elif defined(CONFIG_MACH_SUN8IW18)
+#if defined(CONFIG_MACH_SUN8IW18)
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(2), SUN8I_GPH_TWI1);
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(3), SUN8I_GPH_TWI1);
 	/*clock_twi_onoff(1, 1);*/
+#else
+	sprintf(fdt_node_str, "twi1");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
 #endif
 
 #ifdef CONFIG_I2C2_ENABLE
-#if defined(CONFIG_MACH_SUN4I) || \
-    defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(20), SUN4I_GPB_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(21), SUN4I_GPB_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN5I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(17), SUN5I_GPB_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(18), SUN5I_GPB_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(18), SUN6I_GPH_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(19), SUN6I_GPH_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN8I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(12), SUN8I_GPE_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(13), SUN8I_GPE_TWI2);
-	clock_twi_onoff(2, 1);
-#endif
+	sprintf(fdt_node_str, "twi2");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
 
 #ifdef CONFIG_I2C3_ENABLE
-#if defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPG(10), SUN6I_GPG_TWI3);
-	sunxi_gpio_set_cfgpin(SUNXI_GPG(11), SUN6I_GPG_TWI3);
-	clock_twi_onoff(3, 1);
-#elif defined(CONFIG_MACH_SUN7I) || \
-      defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(0), SUN7I_GPI_TWI3);
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(1), SUN7I_GPI_TWI3);
-	clock_twi_onoff(3, 1);
-#endif
+	sprintf(fdt_node_str, "twi3");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
 
 #ifdef CONFIG_I2C4_ENABLE
-#if defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(2), SUN7I_GPI_TWI4);
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(3), SUN7I_GPI_TWI4);
-	clock_twi_onoff(4, 1);
+	sprintf(fdt_node_str, "twi4");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
+
+#ifdef CONFIG_I2C5_ENABLE
+	sprintf(fdt_node_str, "twi5");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
 #endif
 
 #ifdef CONFIG_R_I2C0_ENABLE
-	/*clock_twi_onoff(5, 1);*/
-	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN8I_A23_GPL_R_TWI);
-	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN8I_A23_GPL_R_TWI);
+#if defined(CONFIG_MACH_SUN50IW11)
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(5), SUN8I_H3_GPL_R_TWI);
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(6), SUN8I_H3_GPL_R_TWI);
+#else
+#if defined(CONFIG_MACH_SUN50IW9)
+	sprintf(fdt_node_str, "twi5");
+#elif defined(CONFIG_MACH_SUN50IW10)
+	sprintf(fdt_node_str, "twi6");
+#else
+	sprintf(fdt_node_str, "twi4");
+#endif
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
+#endif
+#ifdef CONFIG_R_I2C1_ENABLE
+	sprintf(fdt_node_str, "twi7");
+	fdt_set_all_pin(fdt_node_str, "pinctrl-0");
+#endif
 #endif
 }
-
+#ifdef CONFIG_ARM
 void enable_smp(void)
 {
    /* SMP status is controlled by bit 6 of the CP15 Aux Ctrl Reg:ACTLR */
@@ -169,12 +155,17 @@ void enable_smp(void)
    asm volatile("ORR     r0, r0, #0x040");
    asm volatile("MCR     p15, 0, r0, c1, c0, 1");
 }
-
+#else
+void __attribute__((weak)) enable_smp(void)
+{
+	return ;
+}
+#endif
 void smp_init(void)
 {
     int cpu_status = 0;
-#if CONFIG_SUNXI_NCAT
-    cpu_status = readl(SUNXI_CPUXCFG_BASE+0x80);
+#if defined(CONFIG_SUNXI_NCAT) || defined(CONFIG_SUNXI_NCAT_V2)
+    cpu_status = readl(IOMEM_ADDR(SUNXI_CPUXCFG_BASE + 0x80));
     cpu_status &= (0xf<<24);
 #else
     /*old platform enable smp unconditionally*/
@@ -199,12 +190,15 @@ int sunxi_plat_init(void)
 	sunxi_dma_init();
 #endif
 
-#ifdef CONFIG_SUNXI_ARISC_EXIST
-	sunxi_arisc_probe();
+#ifdef CONFIG_ARM
+	extern int secure_os_memory_init(void);
+	if (sunxi_probe_secure_os()) {
+		smc_tee_inform_fdt((uint64_t)(unsigned long)working_fdt, gd->fdt_size);
+		secure_os_memory_init();
+	}
 #endif
 	return 0;
 }
-
 
 /* add board specific code here */
 int board_init(void)
@@ -215,21 +209,42 @@ int board_init(void)
 
 	sunxi_plat_init();
 
+	int work_mode = get_boot_work_mode();
+
 	ret = axp_gpio_init();
 	if (ret)
 		return ret;
 #ifdef CONFIG_SUNXI_POWER
 	if (!axp_probe()) {
+		axp_set_dcdc_mode();
 		axp_set_power_supply_output();
+#if defined CONFIG_SUNXI_BMU && !defined CONFIG_AXP_LATE_INFO
+		gd->pmu_saved_status = bmu_get_poweron_source();
+		gd->pmu_runtime_chgcur = axp_get_battery_status();
+
+		if (work_mode != WORK_MODE_BOOT) {
+			ret = axp_reset_capacity();
+			if (!ret) {
+				pr_msg("axp reset capacity fail!\n");
+			}
+		}
+#else
+		gd->pmu_saved_status = -1;
+#endif
 	}
 #endif
-	int work_mode = get_boot_work_mode();
+
+	rtc_set_dcxo_off();
+
 	if ((work_mode == WORK_MODE_BOOT) ||
 		(work_mode == WORK_MODE_CARD_PRODUCT) ||
 		(work_mode == WORK_MODE_CARD_UPDATE))
 		sunxi_set_sramc_mode();
-
-	clock_set_corepll(uboot_spare_head.boot_data.run_clock);
+	int boot_clock;
+	script_parser_fetch(FDT_PATH_TARGET, "boot_clock", &boot_clock, uboot_spare_head.boot_data.run_clock);
+	clock_set_corepll(boot_clock);
+	/*fix reset circuit detection threshold*/
+	rtc_set_vccio_det_spare();
 	tick_printf("CPU=%d MHz,PLL6=%d Mhz,AHB=%d Mhz, APB1=%dMhz  MBus=%dMhz\n",
 		clock_get_corepll(),
 		clock_get_pll6(), clock_get_ahb(),
@@ -246,6 +261,7 @@ int board_init(void)
 		pr_msg("not need merged sunxi overlay\n");
 	}
 #endif
+
 	return 0;
 }
 
@@ -453,6 +469,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 static int reserve_bootlogo(void)
 {
+#ifndef FPGA_PLATFORM
 	uint32_t *compressed_logo_size =
 		(uint32_t *)(CONFIG_SYS_TEXT_BASE + (3 * 1024 * 1024));
 	uint32_t *compressed_logo_buf =
@@ -472,10 +489,14 @@ static int reserve_bootlogo(void)
 	gd->start_addr_sp -= ALIGN(*compressed_logo_size, 16);
 	gd->boot_logo_addr =
 		(ulong)map_sysmem(gd->start_addr_sp, *compressed_logo_size);
+	/* reserve logo_buf size addr */
+	gd->start_addr_sp -= 16;
+	*(uint *)(gd->boot_logo_addr - 16) = *compressed_logo_size;
 	memcpy((void *)gd->boot_logo_addr, compressed_logo_buf,
 	       *compressed_logo_size);
 	debug("reserve: 0x%lx from 0x%x: for boot logo in boot package\n",
 	      gd->boot_logo_addr, *compressed_logo_size);
+#endif
 	return 0;
 }
 

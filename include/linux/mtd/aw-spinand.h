@@ -45,6 +45,13 @@
 #define SPI_NBITS_DUAL 2
 #define SPI_NBITS_QUAD 4
 
+#define SPI_SELECT_ODDNUM_BLACK 0x10
+
+#define SPINAND_MSG_EN	(1U)
+#define SPINAND_MSG(d, fmt, args...) \
+	do {if ((d)->msglevel & SPINAND_MSG_EN) \
+	pr_err("[SPINAND]: "fmt, ##args); } while (0)
+
 struct aw_spinand_ecc;
 struct aw_spinand_info;
 struct aw_spinand_phy_info;
@@ -74,6 +81,9 @@ struct aw_spinand_chip_request {
 
 	unsigned int oobleft;
 	unsigned int dataleft;
+
+#define AW_SPINAND_MTD_OPS_RAW (2)
+	int mode;
 };
 
 struct aw_spinand_chip_ops {
@@ -83,6 +93,7 @@ struct aw_spinand_chip_ops {
 			unsigned char reg_val);
 	int (*get_otp)(struct aw_spinand_chip *chip, unsigned char *reg_val);
 	int (*set_otp)(struct aw_spinand_chip *chip, unsigned char reg_val);
+	int (*get_bft)(struct aw_spinand_chip *chip, unsigned char *reg_val);
 	int (*get_driver_level)(struct aw_spinand_chip *chip,
 			unsigned char *reg_val);
 	int (*set_driver_level)(struct aw_spinand_chip *chip,
@@ -119,6 +130,18 @@ struct aw_spinand_chip_ops {
 			unsigned int from_blk, unsigned int to_blk);
 };
 
+/*different manufacture spinand's ecc status location maybe not the same*/
+enum ecc_status_shift {
+	ECC_STATUS_SHIFT_0 = 0,
+	ECC_STATUS_SHIFT_1,
+	ECC_STATUS_SHIFT_2,
+	ECC_STATUS_SHIFT_3,
+	ECC_STATUS_SHIFT_4,
+	ECC_STATUS_SHIFT_5,
+	ECC_STATUS_SHIFT_6,
+	ECC_STATUS_SHIFT_7,
+};
+
 enum ecc_limit_err {
 	ECC_TYPE_ERR = 0,
 	BIT3_LIMIT2_TO_6_ERR7,
@@ -128,6 +151,7 @@ enum ecc_limit_err {
 	BIT3_LIMIT3_TO_4_ERR7,
 	BIT3_LIMIT5_ERR2,
 	BIT4_LIMIT5_TO_7_ERR8_LIMIT_12,
+	BIT4_LIMIT5_TO_8_ERR9_TO_15,
 };
 
 enum ecc_oob_protected {
@@ -139,6 +163,8 @@ enum ecc_oob_protected {
 	/*compatible with GD5F1GQ4UBYIG@R6*/
 	SIZE16_OFF4_LEN8_OFF4,
 	SIZE16_OFF32_LEN16,
+	/*compatible with XTX*/
+	SIZE16_OFF8_LEN16,
 };
 
 struct aw_spinand_phy_info {
@@ -160,12 +186,14 @@ struct aw_spinand_phy_info {
 #define SPINAND_QUAD_READ			BIT(1)
 #define SPINAND_QUAD_PROGRAM			BIT(2)
 #define SPINAND_QUAD_NO_NEED_ENABLE		BIT(3)
+#define SPINAND_TWO_PLANE_SELECT		BIT(7)
 #define SPINAND_ONEDUMMY_AFTER_RANDOMREAD	BIT(8)
 	int OperationOpt;
 	int MaxEraseTimes;
 #define HAS_EXT_ECC_SE01			BIT(0)
 #define HAS_EXT_ECC_STATUS			BIT(1)
 	int EccFlag;
+	enum ecc_status_shift ecc_status_shift;
 	enum ecc_limit_err EccType;
 	enum ecc_oob_protected EccProtectedType;
 };
@@ -240,14 +268,19 @@ struct aw_spinand {
 	int sector_shift;
 	int page_shift;
 	int block_shift;
+	int phy_page_shift;
+	int phy_block_shift;
 	struct aw_spinand_sec_sto sec_sto;
+	int msglevel;
+	unsigned int right_sample_delay;
+	unsigned int right_sample_mode;
 };
 
 extern int aw_spinand_probe(struct udevice *dev);
 extern void aw_spinand_exit(struct aw_spinand *spinand);
 extern int spinand_mtd_init(void);
 extern int spinand_mtd_attach_mtd(void);
-extern void spinand_mtd_exit(void);
+extern int spinand_mtd_exit(void);
 extern unsigned spinand_mtd_size(void);
 extern bool support_spinand(void);
 extern struct aw_spinand *get_spinand(void);
@@ -268,4 +301,5 @@ extern int spinand_mtd_secure_storage_read(int item, char *buf,
 		unsigned int len);
 extern int spinand_mtd_secure_storage_write(int item, char *buf,
 		unsigned int len);
+extern uint64_t spinand_sys_part_offset(void);
 #endif

@@ -847,6 +847,36 @@ static int scan_peb(struct ubi_device *ubi, struct ubi_attach_info *ai,
 				   UBI_UNKNOWN, 1, &ai->erase);
 	case UBI_IO_BAD_HDR_EBADMSG:
 	case UBI_IO_BAD_HDR:
+#if defined(CONFIG_AW_SPINAND_SIMULATE_MULTIPLANE) || defined(CONFIG_AW_RAWNAND_SIMULATE_MULTIPLANE)
+		/*
+		 * We should ensure erase atomicity! If power lose while
+		 * erasing the first block, we get invalid EC header and valid
+		 * VID header since the EC header is saved in the first block
+		 * and the VID header is saved in the second block.
+		 * All the data on erasing block should be invalid, but using
+		 * simulate multiplane breaks it.
+		 *
+		 * Power lose while erasing the first block, we get wrong
+		 * data that not all 0xFF as following:
+		 *	f7 fb ff ff ff ff ff ff  ff ff f7 ff ff ff ff ff
+		 *
+		 * This block is regarded as good and moved to new block and
+		 * re-creates a new EC. That goes wrongly since all the first
+		 * block is corrupted. We should drop this block directly.
+		 *
+		 * Sometimes we get ecc error while reading the first block,
+		 * sometimes we get no any warning. So no matter ecc error or
+		 * not, we just drop the block with bad EC header if we use
+		 * simulate multiplane.
+		 *
+		 */
+		ai->empty_peb_count += 1;
+		ubi_warn(ubi, "bad ec header%s at pnum %d, drop this block\n",
+				err == UBI_IO_BAD_HDR_EBADMSG ? " (EBADMSG)" : "",
+				pnum);
+		return add_to_list(ai, pnum, UBI_UNKNOWN, UBI_UNKNOWN,
+				   UBI_UNKNOWN, 1, &ai->erase);
+#else
 		/*
 		 * We have to also look at the VID header, possibly it is not
 		 * corrupted. Set %bitflips flag in order to make this PEB be
@@ -856,6 +886,7 @@ static int scan_peb(struct ubi_device *ubi, struct ubi_attach_info *ai,
 		ec = UBI_UNKNOWN;
 		bitflips = 1;
 		break;
+#endif
 	default:
 		ubi_err(ubi, "'ubi_io_read_ec_hdr()' returned unknown code %d",
 			err);

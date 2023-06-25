@@ -601,3 +601,16 @@ s32 sunxi_lcd_gpio_set_direction(u32 screen_id, u32 io_index, u32 direction)
 
 	return -1;
 }
+/**
+ * sunxi_lcd_switch_compat_panel
+ * @screen_id: The index of screen.
+ * @index:  the index of gpio
+ */
+s32 sunxi_lcd_switch_compat_panel(u32 screen_id, u32 index)
+{
+	if (g_lcd_drv.src_ops.sunxi_lcd_switch_compat_panel) {
+		return g_lcd_drv.src_ops.sunxi_lcd_switch_compat_panel(screen_id, index);
+	}
+
+	return -1;
+}

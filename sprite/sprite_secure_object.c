@@ -336,6 +336,14 @@ static int sunxi_secure_object_list(void)
 		printf("name in map %s, len 0x%x\n", name, len);
 		memset(buffer, 0, 4096);
 
+		if (strlen(name) == strlen(SECURE_STORAGE_DUMMY_KEY_NAME) &&
+		    !memcmp(name, SECURE_STORAGE_DUMMY_KEY_NAME,
+			    strlen(SECURE_STORAGE_DUMMY_KEY_NAME)) &&
+		    len == 0) {
+			/*dummy key, not used, goto next key*/
+			goto next_key;
+		}
+
 		if (!strncmp("key_burned_flag", name,
 			     strlen("key_burned_flag")))
 			ret = sunxi_secure_storage_read(name, (void *)buffer,
@@ -355,6 +363,8 @@ static int sunxi_secure_object_list(void)
 			printf("%d data:\n", index);
 			sunxi_dump(buffer, retLen);
 		}
+
+next_key:
 		index++;
 		buf_start += strlen((const char *)buf_start) + 1;
 	}
@@ -416,11 +426,47 @@ static int cmd_secure_object(cmd_tbl_t *cmdtp, int flag, int argc,
 	return ret;
 }
 
+int sunxi_secure_object_build(const char *name, char *buf, int len, int encrypt,
+			      int write_protect, char *secdata_buf)
+{
+	sunxi_secure_storage_info_t *secdata =
+		(sunxi_secure_storage_info_t *)secdata_buf;
+	char lower_name[64];
+	int ret, i, align_len = 0;
+	i = 0;
+	memset(lower_name, 0, 64);
+	while (name[i] != '\0') {
+		lower_name[i] = tolower(name[i]);
+		i++;
+	}
+	strcpy(secdata->name, name);
+	secdata->encrypted     = encrypt;
+	secdata->write_protect = write_protect;
+	secdata->len	       = len;
+	if (gd->securemode == SUNXI_SECURE_MODE_WITH_SECUREOS) {
+		if (!strcmp("hdcpkey", secdata->name))
+			ret = smc_tee_rssk_encrypt(secdata->key_data, buf, len,
+						   &align_len);
+		else
+			ret = smc_tee_ssk_encrypt(secdata->key_data, buf, len,
+						  &align_len);
+		if (ret) {
+			printf("ssk encrypt failed\n");
+			return -1;
+		}
+		secdata->len = align_len;
+		sunxi_dump(secdata->key_data, secdata->len);
+	} else {
+		debug("no secure os, data can't be encrypted\n");
+		memcpy(secdata->key_data, buf, len);
+	}
+	return 0;
+}
+
 int sunxi_secure_object_down(const char *name, char *buf, int len, int encrypt,
 			     int write_protect)
 {
-	int			    ret, i, align_len = 0;
-	char			    lower_name[64];
+	int ret;
 	sunxi_secure_storage_info_t secdata;
 
 	if (len > 4096) {
@@ -429,35 +475,14 @@ int sunxi_secure_object_down(const char *name, char *buf, int len, int encrypt,
 		return -1;
 	}
 	memset(&secdata, 0, sizeof(secdata));
-	i = 0;
-	memset(lower_name, 0, 64);
-	while (name[i] != '\0') {
-		lower_name[i] = tolower(name[i]);
-		i++;
-	}
-	strcpy(secdata.name, lower_name);
-	secdata.encrypted     = encrypt;
-	secdata.write_protect = write_protect;
-	secdata.len	   = len;
-	if (gd->securemode == SUNXI_SECURE_MODE_WITH_SECUREOS) {
-		if (!strcmp("hdcpkey", secdata.name))
-			ret = smc_tee_rssk_encrypt(secdata.key_data, buf, len,
-						   &align_len);
-		else
-			ret = smc_tee_ssk_encrypt(secdata.key_data, buf, len,
-						  &align_len);
-		if (ret) {
-			printf("ssk encrypt failed\n");
-			return -1;
-		}
-		secdata.len = align_len;
-		sunxi_dump(secdata.key_data, secdata.len);
-	} else {
-		debug("no secure os, data can't be encrypted\n");
-		memcpy(secdata.key_data, buf, len);
+
+	ret = sunxi_secure_object_build(name, buf, len, encrypt, write_protect,
+					(char *)&secdata);
+	if (ret) {
+		return ret;
 	}
 
-	ret = sunxi_secure_object_write(lower_name, (void *)&secdata,
+	ret = sunxi_secure_object_write(secdata.name, (void *)&secdata,
 					SUNXI_SECURE_STORTAGE_INFO_HEAD_LEN +
 						secdata.len);
 	if (ret) {

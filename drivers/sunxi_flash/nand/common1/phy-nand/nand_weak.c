@@ -7,7 +7,8 @@
  */
 
 #include "../aw_nand_type.h"
-#include "nand-partition/phy.h"
+/*#include "nand-partition/phy.h"*/
+#include <sunxi_nand_partitions.h>
 #include "nand_boot.h"
 
 unsigned int __attribute__((weak)) spinand_nftl_get_super_page_size(int type)
@@ -277,7 +278,7 @@ int __attribute__((weak)) rawnand_physic_bad_block_mark(unsigned int chip, unsig
 	return -1;
 }
 
-int __attribute__((weak)) rawnand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d)
+int __attribute__((weak)) rawnand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d, unsigned int copy_nums)
 {
 	return -1;
 }

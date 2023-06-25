@@ -91,7 +91,7 @@ int __attribute__((weak)) rawnand_physic_read_page(unsigned int chip, unsigned i
 int __attribute__((weak)) rawnand_physic_write_page(unsigned int chip, unsigned int block, unsigned int page, unsigned int bitmap, unsigned char *mbuf, unsigned char *sbuf);
 int __attribute__((weak)) rawnand_physic_bad_block_check(unsigned int chip, unsigned int block);
 int __attribute__((weak)) rawnand_physic_bad_block_mark(unsigned int chip, unsigned int block);
-int __attribute__((weak)) rawnand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d);
+int __attribute__((weak)) rawnand_physic_block_copy(unsigned int chip_s, unsigned int block_s, unsigned int chip_d, unsigned int block_d, unsigned int copy_nums);
 int __attribute__((weak)) rawnand_physic_read_super_page(unsigned int chip, unsigned int block, unsigned int page, unsigned int bitmap, unsigned char *mbuf, unsigned char *sbuf);
 int __attribute__((weak)) rawnand_physic_write_super_page(unsigned int chip, unsigned int block, unsigned int page, unsigned int bitmap, unsigned char *mbuf, unsigned char *sbuf);
 int __attribute__((weak)) rawnand_physic_erase_super_block(unsigned int chip, unsigned int block);

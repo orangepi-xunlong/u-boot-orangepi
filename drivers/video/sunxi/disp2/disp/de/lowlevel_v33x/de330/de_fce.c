@@ -17,9 +17,10 @@
 
 #include "de_fce_type.h"
 #include "de_rtmx.h"
+#include "de_csc_table.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_enhance.h"
 #include "de_vep_table.h"
-#include "de_csc_table.h"
 
 #define FCE_PARA_NUM (12)
 
@@ -1112,3 +1113,11 @@ s32 de_fce_set_icsc_coeff(u32 disp, u32 chn,
 	}
 	return 0;
 }
+#else
+int de_fce_set_icsc_coeff(unsigned int disp, unsigned int chn,
+	struct de_csc_info *in_info, struct de_csc_info *out_info)
+{
+	return 0;
+};
+
+#endif

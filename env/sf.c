@@ -36,6 +36,13 @@
 #define INITENV
 #endif
 
+#ifdef CONFIG_ENV_OFFSET_BY_LOGICAL_OFFSET
+#define CONFIG_ENV_OFFSET (CONFIG_SPINOR_LOGICAL_OFFSET * 512)
+#endif
+
+/*set env sec size*/
+#define CONFIG_ENV_SECT_SIZE 0x00010000
+
 #ifdef CONFIG_ENV_OFFSET_REDUND
 #ifdef CMD_SAVEENV
 static ulong env_offset		= CONFIG_ENV_OFFSET;
@@ -276,6 +283,7 @@ static int env_sf_load(void)
 	if (ret)
 		goto out;
 
+	printf("env offset :%d , size:%d \n", CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE);
 	ret = spi_flash_read(env_flash,
 		CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE, buf);
 	if (ret) {
@@ -288,8 +296,11 @@ static int env_sf_load(void)
 		gd->env_valid = ENV_VALID;
 
 err_read:
+	/*if free spi_flash ops, the sunxi_flash will not work*/
+/*
 	spi_flash_free(env_flash);
 	env_flash = NULL;
+*/
 out:
 	free(buf);
 

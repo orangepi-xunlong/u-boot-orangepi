@@ -59,6 +59,7 @@ config PWM_SUNXI_NEW
 	depends on ARCH_SUNXI
 	help
 	  This PWM is Enhance PWM framework driver for sunxi.
+
 config PWM_NOT_USE
 	bool "NOT USE PWM"
 	depends on ARCH_SUNXI

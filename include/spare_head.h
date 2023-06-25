@@ -51,13 +51,13 @@
 #define SUNXI_USB_RECOVERY_FLAG         (0x5E)
 #define SUNXI_FASTBOOT_FLAG             (0x5F)
 #define SUNXI_UBOOT_FLAG                (0x60)
+#define SUNXI_CHARGING_FLAG		(0x61)
 
 #define SUNXI_VBUS_UNKNOWN                      (0)
 #define SUNXI_VBUS_EXIST                        (1)
 #define SUNXI_VBUS_NOT_EXIST                    (2)
 
 #define BOOT0_SDMMC_START_ADDR                  (16)
-#define BOOT0_SDMMC_BACKUP_START_ADDR           (256)
 
 #define BOOT0_EMMC3_START_ADDR                  (384)
 #define BOOT0_EMMC3_BACKUP_START_ADDR           (512)
@@ -143,6 +143,7 @@ typedef enum
 	STORAGE_EMMC3,
 	STORAGE_SPI_NAND,
 	STORAGE_SD1,
+	STORAGE_EMMC0,
 }SUNXI_BOOT_STORAGE;
 
 #endif

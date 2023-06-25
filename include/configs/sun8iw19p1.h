@@ -62,4 +62,6 @@
  */
 #include <configs/sunxi-common.h>
 
+#define CONFIG_SYS_NONCACHED_MEMORY (1 << 20)
+
 #endif /* __CONFIG_H */

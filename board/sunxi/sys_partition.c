@@ -11,14 +11,139 @@
 #include <sunxi_flash.h>
 #include <memalign.h>
 #include <sunxi_mbr.h>
+#include <sunxi_board.h>
+#include <android_misc.h>
+#include <android_ab.h>
 
+#ifndef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
 static sunxi_mbr_t *mbr ;
+#endif
+
+extern struct bootloader_control ab_message;
 #define MMC_LOGICAL_OFFSET   (20 * 1024 * 1024/512)
 DECLARE_GLOBAL_DATA_PTR;
 
+#if defined (CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV)
+typedef struct sunxi_env_partition_t
+{
+	unsigned  char      name[16];
+	unsigned  int       addrlo;
+	unsigned  int       lenlo;
+	unsigned  int       ro;
+}sunxi_env_partition;
+
+typedef struct sunxi_env_mtd_t
+{
+	unsigned  char			device_name[16];
+	unsigned  int			device_id;
+	unsigned  int			PartCount;
+	sunxi_env_partition     array[SUNXI_MBR_MAX_PART_COUNT];
+}sunxi_env_mtd;
+
+static sunxi_env_mtd env_mtd;
+
+int sunxi_partition_parse_get_info(int index, disk_partition_t *info)
+{
+	int  find_flag = 0;
+	char *src;
+	char *des;
+	char tmp[5];
+	int partcount;
+	int count;
+	int size;
+	char *cmdline = env_get("sunxi_mtdparts");
+
+	if(cmdline == NULL)
+	{
+		printf("error:can't find mtdparts in env.\n");
+		debug("get partition error\n");
+		return -1;
+	}
+	//name
+	src = cmdline;
+	des = strchr(src, '.');
+	count = (int)(des-src);
+	strncpy((char *)(env_mtd.device_name), src,count);
+	//printf("the device.name = %s\n",env_mtd.device_name);
+	src = des;
+
+	//id
+	memset(tmp, 0, 5);
+	des = strchr(src, ':');
+	count = (int)(des-src);
+	//printf("count %d\n",count);
+	strncpy(tmp, (src+1), (count-1));
+	env_mtd.device_id = (int)simple_strtoul(tmp, NULL, 10);
+	//printf("env_mtd.device_id = %d\n",env_mtd.device_id);
+	src = des;
+
+	//partition
+	for(partcount=0; *(des+1)!='\0'; partcount++)
+	{
+		//size
+		memset(tmp, 0, 5);
+		des = strchr(src, '(');
+		count = (int)(des-src);
+		//printf("count %d\n",count);
+		strncpy(tmp,src+1,count-2);
+
+		size = (int)simple_strtoul(tmp, NULL, 10);
+		//printf("size : %d\n",size);
+		if(*(des-1) == 'K')
+			env_mtd.array[partcount].lenlo = size *1024 / 512;
+		else if(*(des-1) == 'M')
+			env_mtd.array[partcount].lenlo = size *1024 * 1024 / 512;
+		if(partcount == 0)
+			env_mtd.array[partcount].addrlo = 0;
+		else
+			env_mtd.array[partcount].addrlo = env_mtd.array[partcount-1].addrlo
+										+ env_mtd.array[partcount-1].lenlo;
+		//partition_name
+		src = des;
+		des = strchr(src, ')');
+		count = (int)(des-src);
+		strncpy((char *)(env_mtd.array[partcount].name),src+1,count-1);
+
+		//only-read ?
+		src = des;
+		des = strchr(src, ',');
+		if(des == NULL)
+		{
+			env_mtd.array[partcount].ro = 0;
+			break;
+		}
+		count = (int)(des-src);
+		if(!(count-1) && !strncmp((src+1), "ro",2))
+			env_mtd.array[partcount].ro = 1;
+		else
+			env_mtd.array[partcount].ro = 0;
+
+		src = des;
+		if((index-1) == partcount)
+		{
+			find_flag = 1;
+			strncpy((char *)info->name, (const char *)env_mtd.array[partcount].name, PART_NAME_LEN);
+			info->start = env_mtd.array[partcount].addrlo;
+			info->size = env_mtd.array[partcount].lenlo;
+			//printf("name:%s, size:%d, offset:%x, ro:%d\n",env_mtd.array[partcount].name,env_mtd.array[partcount].lenlo,env_mtd.array[partcount].addrlo,env_mtd.array[partcount].ro);
+			break ; //dont check all
+		}
+	}
+
+	if(!find_flag) {
+		return -1;
+	}
+/*
+	env_mtd.PartCount = partcount + 1;
+	printf("partition_count:%d\n",env_mtd.PartCount);
+*/
+	return 0;
+}
+#endif
 
 int sunxi_partition_init(void)
 {
+#ifndef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
 	if (mbr == NULL) {
 		mbr = memalign(ARCH_DMA_MINALIGN, SUNXI_MBR_SIZE);
 		if (mbr == NULL) {
@@ -41,6 +166,54 @@ int sunxi_partition_init(void)
 			gd->lockflag = mbr->lockflag;
 		}
 	}
+#endif
+	return 0;
+}
+
+int sunxi_probe_partition_map(void)
+{
+#ifndef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
+	struct blk_desc *desc;
+	desc = blk_get_devnum_by_typename("sunxi_flash", 0);
+	if (desc == NULL) {
+		pr_err("%s: get desc fail\n", __func__);
+		return -1;
+	}
+	if (part_init_info_map(desc) < 0)
+		return -1;
+	else
+#endif
+		return 0;
+
+}
+
+int sunxi_replace_android_ab_system(char *intput_part_name, char *output_part_name)
+{
+	strncpy(output_part_name, intput_part_name, strlen(intput_part_name));
+#ifdef CONFIG_ANDROID_AB
+	int i, ret;
+	static int part_cur_len;
+	static char ab_partition[16][16] = {"bootloader", "env", "boot", "vendor_boot", "dtbo", "vbmeta", "vbmeta_system", "vbmeta_vendor"};
+	char *ab_part_list = env_get("ab_partition_list");
+	if ((gd->env_has_init) && (ab_part_list != NULL) && (part_cur_len != strlen(ab_part_list))) {
+		memset(ab_partition, 0, sizeof(ab_partition));
+		sunxi_parsed_specific_string(ab_part_list, ab_partition, ',', ' ');
+		part_cur_len = strlen(ab_part_list);
+	}
+	ret = ab_select_slot_from_partname("misc");
+	/* tick_printf("output_part_name:%s\t intput_part_name:%s\n", output_part_name, intput_part_name); */
+	for (i = 0; i < sizeof(ab_partition)/sizeof(ab_partition[0]); i++) {
+		if (!strncmp(intput_part_name, ab_partition[i], max(strlen(intput_part_name), strlen(ab_partition[i])))) {
+			if (ret == 1) {
+				sprintf(output_part_name, "%s_b", intput_part_name);
+			} else {
+				sprintf(output_part_name, "%s_a", intput_part_name);
+			}
+			break;
+		}
+	}
+#endif
+	/* tick_printf("output_part_name:%s\t intput_part_name:%s\n", output_part_name, intput_part_name); */
 	return 0;
 }
 
@@ -50,12 +223,14 @@ int sunxi_partition_get_partno_byname(const char *part_name)
 	struct blk_desc *desc;
 	int ret;
 	disk_partition_t info;
+	char temp_part_name[16] = {0};
 
 	desc = blk_get_devnum_by_typename("sunxi_flash", 0);
 	if (desc == NULL) {
 		printf("%s: get desc fail\n", __func__);
 		ret = -ENODEV;
 	}
+	sunxi_replace_android_ab_system((char *)part_name, temp_part_name);
 
 	for (i = 1;; i++) {
 		ret = part_get_info(desc, i, &info);
@@ -64,7 +239,9 @@ int sunxi_partition_get_partno_byname(const char *part_name)
 			printf("partno erro : can't find partition %s\n", part_name);
 			return ret;
 		}
-		if (!strncmp((const char *)info.name, part_name, sizeof(info.name))) {
+		if (!strncmp((const char *)info.name, temp_part_name, sizeof(info.name))) {
+			return i;
+		} else if (!strncmp((const char *)info.name, part_name, sizeof(info.name))) {
 			return i;
 		}
 	}
@@ -98,6 +275,7 @@ int sunxi_flash_try_partition(struct blk_desc *desc, const char *str,
 			      disk_partition_t *info)
 {
 	int i, ret;
+	char temp_part_name[16] = {0};
 #if 0
 	char *gpt_signature[512] = {0};
 	printf("\n");
@@ -121,13 +299,22 @@ int sunxi_flash_try_partition(struct blk_desc *desc, const char *str,
 	}
 	printf("line:%d:get gpt partition success\n", __LINE__);
 #endif
+	sunxi_replace_android_ab_system((char *)str, temp_part_name);
+
 	for (i = 1;; i++) {
+#if defined (CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV) /*Get partitiones by env*/
+		ret = sunxi_partition_parse_get_info(i, info);
+#else /* Get partitiones by GPT */
 		ret = part_get_info(desc, i, info);
 		debug("%s: try part %d, ret = %d\n", __func__, i, ret);
+
+#endif
 		if (ret < 0)
 			return ret;
 
-		if (!strncmp((const char *)info->name, str, sizeof(info->name)))
+		if (!strncmp((const char *)info->name, temp_part_name, sizeof(info->name)))
+			break;
+		else if (!strncmp((const char *)info->name, (char *)str, sizeof(info->name)))
 			break;
 	}
 	return 0;
@@ -144,7 +331,7 @@ int sunxi_partition_get_info(const char *part_name, disk_partition_t *info)
 	storage_type = get_boot_storage_type();
 	if (get_boot_work_mode() == WORK_MODE_CARD_PRODUCT ||
 		storage_type == STORAGE_EMMC || storage_type == STORAGE_EMMC3
-		|| storage_type == STORAGE_SD) {
+		|| storage_type == STORAGE_SD || storage_type == STORAGE_EMMC0) {
 		logic_offset = MMC_LOGICAL_OFFSET;
 	} else {
 		logic_offset = 0;
@@ -184,6 +371,20 @@ lbaint_t sunxi_partition_get_offset(int part_index)
 		return (lbaint_t)(-1);
 	}
 
+#ifdef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
+		disk_partition_t info;
+		int ret;
+		ret = sunxi_partition_parse_get_info(part_index, &info);
+		if (ret == 0) {
+			debug(" mbr->array[%d].name=%s\n", part_index,
+			       info.name);
+			debug(" mbr->array[%d].lenlo=0x%x\n", part_index,
+			       (u32)info.size);
+			debug("mbr->array[%d].addrlo=0x%x\n", part_index,
+			       (u32)info.start);
+			return (lbaint_t)info.start;
+		}
+#else
 	sunxi_partition_init();
 	if (mbr->PartCount && part_index <= mbr->PartCount) {
 		debug(" mbr->array[%d].name=%s\n", part_index,
@@ -195,5 +396,6 @@ lbaint_t sunxi_partition_get_offset(int part_index)
 		return (lbaint_t)mbr->array[part_index].addrlo;
 	}
 
+#endif
 	return (lbaint_t)(-1);
 }

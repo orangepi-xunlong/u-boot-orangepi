@@ -88,8 +88,8 @@ void boot_fdt_add_mem_rsv_regions(struct lmb *lmb, void *fdt_blob)
 	for (i = 0; i < total; i++) {
 		if (fdt_get_mem_rsv(fdt_blob, i, &addr, &size) != 0)
 			continue;
-		printf("   reserving fdt memory region: addr=%llx size=%llx\n",
-		       (unsigned long long)addr, (unsigned long long)size);
+		debug("   reserving fdt memory region: addr=%llx size=%llx\n",
+		      (unsigned long long)addr, (unsigned long long)size);
 		lmb_reserve(lmb, addr, size);
 	}
 }
@@ -477,10 +477,6 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		printf("ERROR: /chosen node create failed\n");
 		goto err;
 	}
-	if (arch_fixup_fdt(blob) < 0) {
-		printf("ERROR: arch-specific fdt fixup failed\n");
-		goto err;
-	}
 	/* Update ethernet nodes */
 	fdt_fixup_ethernet(blob);
 	if (IMAGE_OF_BOARD_SETUP) {
@@ -504,12 +500,15 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 	if (lmb)
 		lmb_free(lmb, (phys_addr_t)(u32)(uintptr_t)blob,
 			 (phys_size_t)fdt_totalsize(blob));
-
+#ifndef CONFIG_ARCH_SUNXI
+	/*
+	  sunxi plat use CONFIG_SUNXI_FDT_ADDR for fdt mem.
+	*/
 	ret = fdt_shrink_to_minimum(blob, 0);
 	if (ret < 0)
 		goto err;
 	of_size = ret;
-
+#endif
 	if (*initrd_start && *initrd_end) {
 		of_size += FDT_RAMDISK_OVERHEAD;
 		fdt_set_totalsize(blob, of_size);

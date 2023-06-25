@@ -1,0 +1,3 @@
+config RISCV_E907
+	bool "Support RISCV"
+	default n

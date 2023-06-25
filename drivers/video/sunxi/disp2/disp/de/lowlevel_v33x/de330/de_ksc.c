@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  *
  */
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_KSC
 #include "de_ksc_type.h"
 #include "../../include.h"
 #include "de_feat.h"
@@ -159,3 +160,4 @@ s32 de_ksc_get_reg_blocks(u32 disp,
 	*blk_num = i;
 	return 0;
 }
+#endif

@@ -47,6 +47,7 @@ struct sunxi_disp_source_ops {
 	int (*sunxi_lcd_pin_cfg)(unsigned int screen_id, unsigned int bon);
 	int (*sunxi_lcd_gpio_set_value)(unsigned int screen_id, unsigned int io_index, u32 value);
 	int (*sunxi_lcd_gpio_set_direction)(unsigned int screen_id, unsigned int io_index, u32 direction);
+	int (*sunxi_lcd_switch_compat_panel)(unsigned int disp, unsigned int index);
 };
 
 s32 bsp_disp_init(disp_bsp_init_para *para);
@@ -104,6 +105,7 @@ s32 bsp_disp_lcd_gpio_set_direction(u32 disp, unsigned int io_index, u32 directi
 disp_lcd_flow *bsp_disp_lcd_get_open_flow(u32 disp);
 disp_lcd_flow *bsp_disp_lcd_get_close_flow(u32 disp);
 s32 bsp_disp_get_panel_info(u32 disp, disp_panel_para *info);
+s32 bsp_disp_lcd_switch_compat_panel(u32 disp, u32 index);
 disp_lcd_flow *bsp_disp_lcd_get_open_flow(u32 disp);
 disp_lcd_flow *bsp_disp_lcd_get_close_flow(u32 disp);
 

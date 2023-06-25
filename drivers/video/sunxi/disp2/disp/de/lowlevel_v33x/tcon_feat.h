@@ -62,6 +62,10 @@
 #define DEVICE_DSI_NUM 1
 #endif /*endif DEVICE_DSI_NUM */
 
+#ifndef DEVICE_LVDS_NUM
+#define DEVICE_LVDS_NUM 1
+#endif
+
 #if defined(TV_UGLY_CLK_RATE)
 #define TV_COMPOSITE_CLK_RATE 27000000
 #endif

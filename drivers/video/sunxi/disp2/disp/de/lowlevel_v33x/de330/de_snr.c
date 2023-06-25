@@ -21,6 +21,7 @@
 #include "de_top.h"
 #include "de_rtmx.h"
 #include "de_snr.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SNR
 
 struct de_snr_private {
 	struct de_reg_mem_info reg_mem_info;
@@ -225,3 +226,4 @@ s32 de_snr_exit(u32 disp)
 	}
 	return 0;
 }
+#endif

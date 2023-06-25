@@ -37,6 +37,7 @@ static char nand_para_store[256];
 static int  flash_scaned;
 static struct _nand_info* g_nand_info = NULL;
 static int nand_partition_num;
+int nandphy_had_init;
 
 int  mbr_burned_flag;
 PARTITION_MBR nand_mbr = {0};
@@ -48,6 +49,7 @@ __u32 NAND_GetNandCapacityLevel(void);
 extern int get_uboot_start_block(void);
 extern int get_uboot_next_block(void);
 extern int nand_set_boot_mode(int mode);
+extern int nand_common0_show_version(void);
 
 
 int __NAND_UpdatePhyArch(void)
@@ -69,15 +71,17 @@ int NAND_PhyInit(void)
 {
 	struct _nand_info* nand_phy_info;
 
+	nand_common0_show_version();
+
 	NAND_Print("NB1 : enter phy init\n");
 
 	nand_phy_info = NandHwInit();
-	if (nand_phy_info == NULL)
-	{
+	if (nand_phy_info == NULL) {
 		NAND_Print("NB1 : nand phy init fail\n");
 		return -1;
 	}
 
+	nandphy_had_init = true;
 	NAND_Print("NB1 : nand phy init ok\n");
 	return 0;
 
@@ -87,6 +91,7 @@ int NAND_PhyExit(void)
 {
 	NAND_Print("NB1 : enter phy Exit\n");
 	NandHwExit();
+	nandphy_had_init = false;
 	return 0;
 }
 
@@ -109,6 +114,7 @@ int NAND_LogicInit(int boot_mode)
 	struct _nand_info* nand_info;
 	//char* mbr;
 
+	nand_common0_show_version();
 	NAND_Print("NB1: enter NAND_LogicInit\n");
 
 	nand_info = NandHwInit();
@@ -116,11 +122,11 @@ int NAND_LogicInit(int boot_mode)
 	set_capacity_level(nand_info,capacity_level);
 
 	g_nand_info = nand_info;
-	if (nand_info == NULL)
-	{
+	if (nand_info == NULL) {
 		NAND_Print("NB1: nand phy init fail\n");
 		return ret;
 	}
+	nandphy_had_init = true;
 
 	if((!boot_mode)&&(nand_mbr.PartCount!= 0)&&(mbr_burned_flag ==0))
 	{
@@ -179,6 +185,7 @@ int NAND_LogicExit(void)
 	NAND_Print("NB1: NAND_LogicExit\n");
 	nftl_flush_write_cache();
 	NandHwExit();
+	nandphy_had_init = false;
 	g_nand_info = NULL;
     return 0;
 }
@@ -399,8 +406,9 @@ int NAND_UbootProbe(void)
 	nand_set_boot_mode(0);
 
 	/* logic init */
-	ret = NAND_PhyInit();
-	NAND_PhyExit();
+	if (nandphy_had_init == false)
+		ret = NAND_PhyInit();
+	/*NAND_PhyExit();*/
 
 	NAND_Print_DBG("NAND_UbootProbe end: 0x%x\n", ret);
 	return ret;
@@ -424,10 +432,11 @@ int NAND_Uboot_Erase(int erase_flag)
 	int nand_erased = 0;
 
 	NAND_Print("erase_flag = %d\n", erase_flag);
-	NAND_PhyInit();
 
-	if(erase_flag)
-	{
+	if (nandphy_had_init == false)
+		NAND_PhyInit();
+
+	if (erase_flag) {
 		NAND_Print("erase by flag %d\n", erase_flag);
 		NAND_EraseBootBlocks();
 		NAND_EraseChip();
@@ -450,22 +459,24 @@ int NAND_Uboot_Erase(int erase_flag)
 		}
 	}
 	NAND_Print("NAND_Uboot_Erase\n");
-	NAND_PhyExit();
+	/*NAND_PhyExit();*/
 	return nand_erased;
 }
 
 int NAND_Uboot_Force_Erase(void)
 {
 	NAND_Print("force erase\n");
-	if(NAND_PhyInit())
-	{
-		NAND_Print("phy init fail\n");
-		return -1;
+
+	if (nandphy_had_init == false) {
+		if (NAND_PhyInit()) {
+			NAND_Print("phy init fail\n");
+			return -1;
+		}
 	}
 
 	NAND_EraseChip_force();
 
-	NAND_PhyExit();
+	/*NAND_PhyExit();*/
 
 	return 0;
 }
@@ -492,8 +503,9 @@ int NAND_GetParam_store(void *buffer, uint length)
 	if(!flash_scaned)
 	{
 		NAND_Print("sunxi flash: force flash init to begin hardware scanning\n");
-		NAND_PhyInit();
-		NAND_PhyExit();
+		if (nandphy_had_init == false)
+			NAND_PhyInit();
+		/*NAND_PhyExit();*/
 		NAND_Print("sunxi flash: hardware scan finish\n");
 	}
 

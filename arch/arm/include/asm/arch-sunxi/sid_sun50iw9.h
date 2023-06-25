@@ -19,6 +19,11 @@
 #define SJTAG_AT1               (SUNXI_SID_BASE + 0x84)
 #define SJTAG_S                 (SUNXI_SID_BASE + 0x88)
 
+#define SID_ROTPK_VALUE(n)		(SUNXI_SID_BASE + 0x120 + (n * 4))
+#define SID_ROTPK_CTRL			(SUNXI_SID_BASE + 0x140)
+#define SID_ROTPK_EFUSED_BIT    (1)
+#define SID_ROTPK_CMP_RET_BIT	(0)
+
 #define SID_EFUSE               (SUNXI_SID_BASE + 0x200)
 #define SID_SECURE_MODE         (SUNXI_SID_BASE + 0xA0)
 #define SID_OP_LOCK  (0xAC)

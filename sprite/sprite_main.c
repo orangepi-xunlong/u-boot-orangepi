@@ -65,6 +65,19 @@ void __dump_dlmap(sunxi_download_info *dl_info)
 	}
 }
 
+#ifdef CONFIG_DISABLE_SUNXI_PART_DOWNLOAD
+void __modify_dlmap_to_disable_mbr(sunxi_download_info *dl_info)
+{
+	dl_one_part_info *part_info;
+	u32 i;
+	printf("*************modify dlmay to disable mbr************\n");
+	for (part_info = dl_info->one_part_info, i = 0;
+	     i < dl_info->download_count; i++, part_info++) {
+		part_info->addrlo -= SUNXI_MBR_SIZE / 512;
+	}
+}
+#endif
+
 void __dump_mbr(sunxi_mbr_t *mbr_info)
 {
 	sunxi_partition *part_info;
@@ -116,7 +129,6 @@ int sunxi_card_sprite_main(int workmode, char *name)
 	sunxi_download_info *dl_map; //dlinfo
 	int sprite_next_work;
 	int nodeoffset;
-	int mbr_num	   = SUNXI_MBR_COPY_NUM;
 	int processbar_direct = 0;
 	dl_map = (sunxi_download_info *)memalign(CONFIG_SYS_CACHELINE_SIZE, ALIGN(sizeof(sunxi_download_info), CONFIG_SYS_CACHELINE_SIZE));
 	img_mbr = (uchar *)memalign(CONFIG_SYS_CACHELINE_SIZE, ALIGN(1024*1024, CONFIG_SYS_CACHELINE_SIZE));
@@ -155,6 +167,9 @@ int sunxi_card_sprite_main(int workmode, char *name)
 
 		return -1;
 	}
+#ifdef CONFIG_DISABLE_SUNXI_PART_DOWNLOAD
+	__modify_dlmap_to_disable_mbr(dl_map);
+#endif
 	__dump_dlmap(dl_map);
 	//获取mbr
 	tick_printf("fetch mbr\n");
@@ -174,16 +189,20 @@ int sunxi_card_sprite_main(int workmode, char *name)
 
 		return -1;
 	}
+
+#ifndef CONFIG_DISABLE_SUNXI_PART_DOWNLOAD
+	int mbr_num	   = SUNXI_MBR_COPY_NUM;
 	tick_printf("successed in erasing flash\n");
 	if (production_media == STORAGE_NOR) {
 		mbr_num = 1;
 	}
-
 	if (sunxi_sprite_download_mbr(img_mbr, ALIGN(sizeof(sunxi_mbr_t) * mbr_num, CONFIG_SYS_CACHELINE_SIZE))) {
 		printf("sunxi sprite error: download mbr err\n");
 
 		return -1;
 	}
+#endif
+
 #ifdef CONFIG_SUNXI_SPRITE_CARTOON
 		sprite_cartoon_upgrade(10);
 #endif
@@ -198,7 +217,7 @@ int sunxi_card_sprite_main(int workmode, char *name)
 #ifdef CONFIG_SUNXI_SPRITE_CARTOON
 		sprite_cartoon_upgrade(80);
 #endif
-	sunxi_sprite_exit(1);
+	get_boot_storage_type() == STORAGE_NAND ? sunxi_sprite_exit(1) : 0;
 
 	if (sunxi_sprite_deal_uboot(production_media)) {
 		printf("sunxi sprite error : download uboot error\n");

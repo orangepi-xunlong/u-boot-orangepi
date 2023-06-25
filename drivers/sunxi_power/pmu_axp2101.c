@@ -122,7 +122,13 @@ static int pmu_axp2101_probe(void)
 		return -1;
 	}
 	pmu_chip_id &= 0XCF;
-	if (pmu_chip_id == 0x47) {
+
+	/*
+	 * pmu_chip_id is 0x47 and 0x4a.
+	 *
+	 * 0x4a is the second version of axp2101
+	 */
+	if (pmu_chip_id == 0x47 || pmu_chip_id == 0x4a) {
 		/*pmu type AXP21*/
 		pmu_axp2101_ap_reset_enable();
 		tick_printf("PMU: AXP21\n");

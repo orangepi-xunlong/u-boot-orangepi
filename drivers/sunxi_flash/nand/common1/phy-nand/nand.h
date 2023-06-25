@@ -10,7 +10,7 @@
 #ifndef __NAND_H__
 #define __NAND_H__
 #include <sunxi_nand.h>
-#include "rawnand/rawnand.h"
+//#include "rawnand/rawnand.h"
 
 #define NAND_VERSION_0 0x03
 #define NAND_VERSION_1 0x01

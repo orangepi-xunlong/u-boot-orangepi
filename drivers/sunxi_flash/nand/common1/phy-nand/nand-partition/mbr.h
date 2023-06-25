@@ -23,7 +23,7 @@
 
 #ifndef __ND_MBR_H__
 #define __ND_MBR_H__
-
+#if 0
 #define MAX_PART_COUNT_PER_FTL 24
 #define MAX_PARTITION 4
 #define PARTITION_NAME_SIZE 16
@@ -55,4 +55,5 @@ typedef struct _PARTITION_MBR {
 #define FTL_PARTITION_TYPE 0x8000
 #define FTL_CROSS_TALK 0x4000
 
+#endif
 #endif //__MBR_H__

@@ -68,6 +68,12 @@
 #define   AXP806_INTSTS1             			(0x48)
 #define   AXP806_INTSTS2             			(0x49)
 
+#define   AXP806_DCDC_MODESET				(0x1b)
+#define   AXP806_DCDCA_PWM_BIT				(0)
+#define   AXP806_DCDCB_PWM_BIT				(1)
+#define   AXP806_DCDCC_PWM_BIT				(2)
+#define   AXP806_DCDCD_PWM_BIT				(3)
+#define   AXP806_DCDCE_PWM_BIT				(4)
 
 #endif /* __AXP806_REGS_H__ */
 

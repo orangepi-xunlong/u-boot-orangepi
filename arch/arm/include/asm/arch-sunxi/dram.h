@@ -15,16 +15,6 @@
 #include <linux/types.h>
 
 /* dram regs definition */
-#if defined(CONFIG_MACH_SUN50IW3) || defined(CONFIG_MACH_SUN8IW16) \
-		|| defined (CONFIG_MACH_SUN8IW18) \
-		|| defined (CONFIG_MACH_SUN50IW9) \
-		|| defined (CONFIG_MACH_SUN8IW19) \
-		|| defined (CONFIG_MACH_SUN50IW10) \
-		|| defined (CONFIG_MACH_SUN50IW11) \
-		|| defined (CONFIG_MACH_SUN8IW15) \
-		|| defined (CONFIG_MACH_SUN8IW7)
-
-#define  CONFIG_DRAM_VER_1
 
 typedef struct __DRAM_PARA
 {
@@ -69,9 +59,6 @@ unsigned int mctl_init(void *para);
 extern int init_DRAM(int type, __dram_para_t *buff);
 #endif
 extern int update_fdt_dram_para(void *dtb_base);
-#else
-#error "platform not support"
-#endif
 
 
 #endif /* _SUNXI_DRAM_H */

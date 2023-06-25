@@ -26,13 +26,17 @@
 #include "./lowlevel_sun8iw10/disp_al.h"
 #elif defined(CONFIG_MACH_SUN8IW11) || defined(CONFIG_MACH_SUN8IW15)
 #include "./lowlevel_v2x/disp_al.h"
-#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16)
+#elif defined(CONFIG_MACH_SUN8IW12) || defined(CONFIG_MACH_SUN8IW16) \
+   || defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN20IW1) \
+   || defined(CONFIG_MACH_SUN8IW20)
 #include "./lowlevel_v2x/disp_al.h"
-#elif defined(CONFIG_MACH_SUN8IW17)
+#elif defined(CONFIG_MACH_SUN8IW17) || defined(CONFIG_MACH_SUN8IW21)
 #include "./lowlevel_v2x/disp_al.h"
 #elif defined(CONFIG_MACH_SUN50IW1)
 #include "./lowlevel_sun50iw1/disp_al.h"
 #elif defined(CONFIG_MACH_SUN50IW2)
+#include "./lowlevel_v2x/disp_al.h"
+#elif defined(CONFIG_MACH_SUN50IW10)
 #include "./lowlevel_v2x/disp_al.h"
 #elif defined(CONFIG_MACH_SUN8IW7)
 #include "./lowlevel_v2x/disp_al.h"
@@ -47,6 +51,7 @@
 #endif
 
 struct disp_device *disp_get_lcd(u32 disp);
+struct disp_device *disp_get_direct_lcd_compat(u32 disp, u32 index);
 
 struct disp_device *disp_get_hdmi(u32 disp);
 

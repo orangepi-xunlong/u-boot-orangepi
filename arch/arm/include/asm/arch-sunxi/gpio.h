@@ -52,6 +52,45 @@
 #define SUNXI_GPIO_M	12
 #define SUNXI_GPIO_N	13
 
+#ifdef CONFIG_SUNXI_GPIO_V2
+struct sunxi_gpio {
+	u32 cfg[4];
+	u32 dat;
+	u32 drv[4];
+	u32 pull[2];
+	u32 res;
+};
+
+/* gpio interrupt control */
+struct sunxi_gpio_int {
+	u32 cfg[3];
+	u32 ctl;
+	u32 sta;
+	u32 deb;		/* interrupt debounce */
+};
+
+struct sunxi_gpio_reg {
+	struct sunxi_gpio gpio_bank[SUNXI_GPIO_BANKS];
+	u8 res[0x50];/*pad to 0x200*/
+	struct sunxi_gpio_int gpio_int;
+};
+
+#define BANK_TO_GPIO(bank)	(((bank) < SUNXI_GPIO_L) ? \
+	&((struct sunxi_gpio_reg *)SUNXI_PIO_BASE)->gpio_bank[bank] : \
+	&((struct sunxi_gpio_reg *)SUNXI_R_PIO_BASE)->gpio_bank[(bank) - SUNXI_GPIO_L])
+
+#define GPIO_BANK(pin)		((pin) >> 5)
+#define GPIO_NUM(pin)		((pin) & 0x1f)
+
+#define GPIO_CFG_INDEX(pin)	(((pin) & 0x1f) >> 3)
+#define GPIO_CFG_OFFSET(pin)	((((pin) & 0x1f) & 0x7) << 2)
+
+#define GPIO_DRV_INDEX(pin)	(((pin) & 0x1f) >> 3)
+#define GPIO_DRV_OFFSET(pin)	((((pin) & 0x1f) & 0x7) << 2)
+
+#define GPIO_PULL_INDEX(pin)	(((pin) & 0x1f) >> 4)
+#define GPIO_PULL_OFFSET(pin)	((((pin) & 0x1f) & 0xf) << 1)
+#else
 struct sunxi_gpio {
 	u32 cfg[4];
 	u32 dat;
@@ -88,6 +127,7 @@ struct sunxi_gpio_reg {
 
 #define GPIO_PULL_INDEX(pin)	(((pin) & 0x1f) >> 4)
 #define GPIO_PULL_OFFSET(pin)	((((pin) & 0x1f) & 0xf) << 1)
+#endif
 
 /* GPIO bank sizes */
 #define SUNXI_GPIO_A_NR		32

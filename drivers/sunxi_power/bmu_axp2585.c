@@ -25,7 +25,7 @@ static int bmu_axp2585_probe(void)
 		return -1;
 	}
 	bmu_chip_id &= 0XCF;
-	if (bmu_chip_id == 0x46) {
+	if (bmu_chip_id == 0x46 || bmu_chip_id == 0x49) {
 		/*bmu type AXP2585*/
 		tick_printf("BMU: AXP2585\n");
 		return 0;

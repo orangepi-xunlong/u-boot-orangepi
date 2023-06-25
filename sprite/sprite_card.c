@@ -46,14 +46,6 @@ DECLARE_GLOBAL_DATA_PTR;
 //extern int sunxi_flash_mmc_phywipe(unsigned long start_block, unsigned long nblock, unsigned long *skip);
 static int __download_normal_part(dl_one_part_info *part_info,
 				  uchar *source_buff);
-extern int sunxi_sprite_mmcs_phyerase(unsigned int start_block,
-				     unsigned int nblock, void *skip);
-extern int sunxi_sprite_mmcs_phywrite(unsigned int start_block,
-				     unsigned int nblock, void *buffer);
-extern int sunxi_sprite_mmc_read(unsigned int start_block, unsigned int nblock,
-				 void *buffer);
-extern int sunxi_sprite_mmc_write(unsigned int start_block, unsigned int nblock,
-				  void *buffer);
 /*
 ************************************************************************************************************
 *
@@ -1230,14 +1222,14 @@ int card_erase_boot0(uint length, void *buffer, uint storage_type)
 	memset(erase_buffer, 0, length);
 
 	//for card2
-	if (storage_type == STORAGE_EMMC) {
+	if ((storage_type == STORAGE_EMMC) || (storage_type == STORAGE_EMMC0)) {
 		printf("card2 erase boot0 \n");
 		//write boot0 bankup copy firstly
-		ret = sunxi_sprite_phywrite(BOOT0_SDMMC_BACKUP_START_ADDR,
+		ret = sunxi_sprite_phywrite(CONFIG_SUNXI_BOOT0_SDMMC_BACKUP_START_ADDR,
 					   length / 512, buffer);
 		if (!ret) {
 			debug("%s: write boot0 from %d fail\n", __func__,
-			       BOOT0_SDMMC_BACKUP_START_ADDR);
+			       CONFIG_SUNXI_BOOT0_SDMMC_BACKUP_START_ADDR);
 			goto ERR_OUT;
 		}
 		ret = sunxi_sprite_phywrite(BOOT0_SDMMC_START_ADDR, length / 512,
@@ -1290,11 +1282,11 @@ int card_erase_boot0(uint length, void *buffer, uint storage_type)
 			       BOOT0_SDMMC_START_ADDR);
 			goto ERR_OUT;
 		}
-		ret = sunxi_sprite_phywrite(BOOT0_SDMMC_BACKUP_START_ADDR,
+		ret = sunxi_sprite_phywrite(CONFIG_SUNXI_BOOT0_SDMMC_BACKUP_START_ADDR,
 					   length / 512, erase_buffer);
 		if (!ret) {
 			debug("%s: write boot0 from %d fail\n", __func__,
-			       BOOT0_SDMMC_BACKUP_START_ADDR);
+			       CONFIG_SUNXI_BOOT0_SDMMC_BACKUP_START_ADDR);
 			goto ERR_OUT;
 		}
 #endif
@@ -1527,7 +1519,7 @@ int card_erase(int erase, void *mbr_buffer)
 
 		from = mbr->array[i].addrlo + CONFIG_MMC_LOGICAL_OFFSET;
 		nr   = mbr->array[i].lenlo;
-		ret  = sunxi_sprite_mmcs_phyerase(from, nr, skip_space);
+		ret  = sunxi_sprite_phyerase(from, nr, skip_space);
 		if (ret == 0) {
 			//printf("erase part from sector 0x%x to 0x%x ok\n", from, (from+nr-1));
 		} else if (ret == 1) {
@@ -1539,7 +1531,7 @@ int card_erase(int erase, void *mbr_buffer)
 						skip_space[2 * k + 2] - 1));
 					from = skip_space[2 * k + 1];
 					nr   = skip_space[2 * k + 2];
-					if (!sunxi_sprite_mmcs_phywrite(
+					if (!sunxi_sprite_phywrite(
 						    from, nr, erase_buffer)) {
 						debug("card erase fail in erasing part %s\n",
 						       mbr->array[i].name);
@@ -1592,27 +1584,14 @@ int sunxi_card_fill_boot0_magic(void)
 	uchar buffer[BOOT0_MAX_SIZE];
 	boot0_file_head_t *boot0_head;
 	uint src_sum, cal_sum;
-	struct mmc *mmc0;
 	char debug_info[1024];
 	int ret = -1;
 
 	puts("probe mmc0 if exist\n");
 	memset(debug_info, 0, 1024);
-	board_mmc_pre_init(0);
-	mmc0 = find_mmc_device(0);
-	if (!mmc0) {
-		strcpy(debug_info, "fail to find mmc0");
 
-		goto __sunxi_card_fill_boot0_magic_exit;
-	}
-	printf("try to init mmc0\n");
-	if (sunxi_flash_init()) {
-		strcpy(debug_info, "MMC0 init failed");
-
-		goto __sunxi_card_fill_boot0_magic_exit;
-	}
 	memset(buffer, 0, BOOT0_MAX_SIZE);
-	if (sunxi_sprite_mmc_read(16, BOOT0_MAX_SIZE / 512, (void *)buffer))
+	if (sunxi_sprite_read(16, BOOT0_MAX_SIZE / 512, (void *)buffer))
 	//	if(sunxi_sprite_mmc_phyread(16, BOOT0_MAX_SIZE/512, (void *)buffer) != BOOT0_MAX_SIZE/512)
 	{
 		strcpy(debug_info, "read mmc boot0 failed");
@@ -1641,7 +1620,7 @@ int sunxi_card_fill_boot0_magic(void)
 	boot0_head->boot_head.check_sum = src_sum;
 	flush_cache((ulong)buffer, BOOT0_MAX_SIZE);
 	//	if(mmc0->block_dev.block_write_mass_pro(mmc0->block_dev.devnum, 16, BOOT0_MAX_SIZE/512,  (void *)buffer) != BOOT0_MAX_SIZE/512)
-	if (sunxi_sprite_mmc_write(16, BOOT0_MAX_SIZE / 512, (void *)buffer) !=
+	if (sunxi_sprite_write(16, BOOT0_MAX_SIZE / 512, (void *)buffer) !=
 	    BOOT0_MAX_SIZE / 512) {
 		strcpy(debug_info, "write mmc boot0 failed");
 
@@ -1846,7 +1825,7 @@ int sunxi_sprite_deal_fullimg(void)
 	int ret1;
 	uchar *down_buff = NULL;
 
-	if (sunxi_sprite_init(1)) {
+	if (get_boot_storage_type() == STORAGE_NAND ? sunxi_sprite_init(1) : 0) {
 		printf("sunxi sprite err: init flash err\n");
 		return -1;
 	}
@@ -1874,7 +1853,7 @@ int sunxi_sprite_deal_fullimg(void)
 	ret = 0;
 
 __sunxi_sprite_deal_fullimg_err1:
-	sunxi_flash_exit(1);
+	get_boot_storage_type() == STORAGE_NAND ? sunxi_sprite_exit(1) : 0;
 __sunxi_sprite_deal_fullimg_err2:
 	if (down_buff) {
 		free(down_buff);

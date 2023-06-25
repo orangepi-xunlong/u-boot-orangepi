@@ -112,6 +112,7 @@ disp_lcd_flow * bsp_disp_lcd_get_close_flow(u32 disp);
 s32 bsp_disp_get_panel_info(u32 disp, disp_panel_para *info);
 disp_lcd_flow * bsp_disp_lcd_get_open_flow(u32 disp);
 disp_lcd_flow * bsp_disp_lcd_get_close_flow(u32 disp);
+s32 bsp_disp_lcd_switch_compat_panel(u32 disp, u32 index);
 
 s32 bsp_disp_vsync_event_enable(u32 disp, bool enable);
 s32 bsp_disp_tv_suspend(void);

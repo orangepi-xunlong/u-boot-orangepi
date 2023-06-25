@@ -231,6 +231,7 @@ struct mtd_info {
 	 * wrappers instead.
 	 */
 	int (*_erase) (struct mtd_info *mtd, struct erase_info *instr);
+	int (*_force_erase) (struct mtd_info *mtd);
 #ifndef __UBOOT__
 	int (*_point) (struct mtd_info *mtd, loff_t from, size_t len,
 		       size_t *retlen, void **virt, resource_size_t *phys);

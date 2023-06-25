@@ -164,13 +164,13 @@ static inline void _simple_init_layer(void *layer_config)
 static inline void *_get_layer_addr(void *layer_config)
 {
 	struct disp_layer_config *layer = (struct disp_layer_config *)layer_config;
-	return (void *)((uint)(layer->info.fb.addr[0]));
+	return (void *)(unsigned long)(layer->info.fb.addr[0]);
 }
 
 static inline void _set_layer_addr(void *layer_config, void *addr)
 {
 	struct disp_layer_config *layer = (struct disp_layer_config *)layer_config;
-	layer->info.fb.addr[0] = (uint)addr; /* argb only has one planrer ? */
+	layer->info.fb.addr[0] = (unsigned long)addr; /* argb only has one planrer ? */
 }
 
 /* NOTICE: _set_layer_crop is called in the end of _set_layer_geometry calling */
@@ -235,7 +235,7 @@ static inline void _set_layer_geometry(void *layer_config,
 
 static void _show_layer_on_dev(void *layer_config, int sel, char is_show)
 {
-	uint arg[4] = {0, 0, 0, 0};
+	unsigned long arg[4] = {0, 0, 0, 0};
 	struct disp_layer_config *layer = (struct disp_layer_config *)layer_config;
 
 	if (is_show) {
@@ -256,7 +256,7 @@ static void _show_layer_on_dev(void *layer_config, int sel, char is_show)
 	}
 
 	arg[0] = sel;
-	arg[1] = (uint)layer;
+	arg[1] = (unsigned long)layer;
 	arg[2] = 1;
 	disp_ioctl(NULL, DISP_LAYER_SET_CONFIG, (void *)arg);
 }

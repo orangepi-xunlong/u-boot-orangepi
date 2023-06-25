@@ -132,7 +132,7 @@ int de_dcsc_update_regs(unsigned int sel)
 			writel(reg_val,
 			       (void __iomem *)dcsc_enable_block[sel].off);
 		} else {
-			memcpy((void *)dcsc_enable_block[sel].off,
+			regwrite((void *)dcsc_enable_block[sel].off,
 			   dcsc_enable_block[sel].val,
 			   dcsc_enable_block[sel].size);
 		}
@@ -140,7 +140,7 @@ int de_dcsc_update_regs(unsigned int sel)
 	}
 
 	if (dcsc_coeff_block[sel].dirty == 0x1) {
-		memcpy((void *)dcsc_coeff_block[sel].off,
+		regwrite((void *)dcsc_coeff_block[sel].off,
 		   dcsc_coeff_block[sel].val, dcsc_coeff_block[sel].size);
 		dcsc_coeff_block[sel].dirty = 0x0;
 	}
@@ -159,9 +159,15 @@ int de_dcsc_init(disp_bsp_init_para *para)
 	for (screen_id = 0; screen_id < device_num; screen_id++) {
 		is_in_smbl[screen_id] = de_feat_is_support_smbl(screen_id);
 
+#if defined(CONFIG_INDEPENDENT_DE)
+		base = para->reg_base[DISP_MOD_DE + screen_id]
+		    + (screen_id + 1) * 0x00100000 + DCSC_OFST;
+		if (screen_id)
+			base = base - 0x00100000;
+#else
 		base = para->reg_base[DISP_MOD_DE]
 		    + (screen_id + 1) * 0x00100000 + DCSC_OFST;
-
+#endif
 		__inf("sel %d, Dcsc_base=0x%p\n", screen_id, (void *)base);
 
 		if (is_in_smbl[screen_id]) {

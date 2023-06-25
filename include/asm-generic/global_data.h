@@ -52,6 +52,7 @@ typedef struct global_data {
 	unsigned long env_has_init;	/* Bitmask of boolean of struct env_location offsets */
 	int env_load_location;
 
+	unsigned long ram_base;
 	unsigned long ram_top;		/* Top address of RAM used by U-Boot */
 	unsigned long relocaddr;	/* Start address of U-Boot in RAM */
 	phys_size_t ram_size;		/* RAM size */
@@ -72,8 +73,10 @@ typedef struct global_data {
 
 	const void *fdt_blob;		/* Our device tree, NULL if none */
 	void *new_fdt;			/* Relocated FDT */
+	void *new_ext_fdt;		/* Relocated EXTERNAL FDT */
 	void *new_dtbo;			/*Relocated dtbo */
 	unsigned long fdt_size;		/* Space reserved for relocated FDT */
+	unsigned long fdt_ext_size;	/* Space reserved for relocated EXTERNAL FDT */
 #ifdef CONFIG_OF_LIVE
 	struct device_node *of_root;
 #endif
@@ -157,6 +160,7 @@ typedef struct global_data {
 	int            ir_detect_status;
 	bool			uboot_shell;
 	ulong          boot_logo_addr;
+	bool           force_32bit_os;//1: run 32bit os at 64bit platform
 
 #endif
 

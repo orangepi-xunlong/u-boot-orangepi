@@ -447,10 +447,15 @@ static void sunxi_i2c_bus_setting(int bus_num, int onoff)
 
 static void sunxi_r_i2c_bus_setting(int bus_num, int onoff)
 {
+#ifdef SUNXI_RTWI_BRG_REG
 	int reg_value = 0;
 	int r_bus_num = bus_num - SUNXI_PHY_R_I2C0;
 	if (onoff) {
 		/*de-assert*/
+		reg_value = readl(SUNXI_RTWI_BRG_REG);
+		reg_value &= ~(1 << (16 + r_bus_num));
+		writel(reg_value, SUNXI_RTWI_BRG_REG);
+
 		reg_value = readl(SUNXI_RTWI_BRG_REG);
 		reg_value |= (1 << (16 + r_bus_num));
 		writel(reg_value, SUNXI_RTWI_BRG_REG);
@@ -473,7 +478,7 @@ static void sunxi_r_i2c_bus_setting(int bus_num, int onoff)
 		reg_value &= ~(1 << (16 + r_bus_num));
 		writel(reg_value, SUNXI_RTWI_BRG_REG);
 	}
-
+#endif
 }
 
 
@@ -554,10 +559,13 @@ i2c_write_err_occur:
 
 static struct sunxi_twi_reg *sunxi_get_base(struct i2c_adapter *adap)
 {
+#ifdef SUNXI_R_TWI_BASE
 	if (strstr(adap->name, "r_i2c") != NULL) {
 		return (struct sunxi_twi_reg *)(SUNXI_R_TWI_BASE +
 					((adap->hwadapnr - SUNXI_PHY_R_I2C0) * TWI_CONTROL_OFFSET));
-	} else {
+	} else
+#endif
+	{
 		return (struct sunxi_twi_reg *)(SUNXI_TWI0_BASE +
 					(adap->hwadapnr* TWI_CONTROL_OFFSET));
 	}

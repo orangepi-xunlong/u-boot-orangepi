@@ -95,7 +95,7 @@ s32 bsp_disp_get_print_level(void);
 #include <asm/arch/timer.h>
 /*#include <asm/arch/platform.h>*/
 #include <linux/list.h>
-#include <asm/memory.h>
+/*#include <asm/memory.h>*/
 #include <div64.h>
 #include <fdt_support.h>
 #include <sunxi_power/axp.h>
@@ -572,6 +572,7 @@ typedef enum {
 typedef enum {
 	LCD_LVDS_IF_SINGLE_LINK		= 0,
 	LCD_LVDS_IF_DUAL_LINK		  = 1,
+	LCD_LVDS_IF_DUAL_LINK_SAME_SRC = 2,
 } disp_lcd_lvds_if;
 
 typedef enum {
@@ -657,6 +658,16 @@ enum disp_lcd_dsi_port {
 	DISP_LCD_DSI_DUAL_PORT,
 };
 
+enum div_flag {
+	 INCREASE        = 1,
+	 DECREASE        = -1,
+};
+
+struct clk_div_ajust {
+	enum div_flag clk_div_increase_or_decrease;
+	int div_multiple;
+};
+
 typedef struct {
 	disp_lcd_if              lcd_if;
 
@@ -735,11 +746,19 @@ typedef struct {
 	unsigned int            lcd_dclk_freq_original; //not need to config for user
 	unsigned int            ccir_clk_div; /*not need to config for user*/
 	unsigned int            input_csc;
+	unsigned int lcd_hv_data_polarity;
+	struct clk_div_ajust tcon_clk_div_ajust;
 } disp_panel_para;
 
 typedef enum {
 	DISP_MOD_DE = 0,
+#if defined(CONFIG_INDEPENDENT_DE)
+	DISP_MOD_DE1,
+#endif
 	DISP_MOD_DEVICE, //for timing controller common module
+#if defined(CONFIG_INDEPENDENT_DE)
+	DISP_MOD_DEVICE1,
+#endif
 	DISP_MOD_LCD0,
 	DISP_MOD_LCD1,
 	DISP_MOD_LCD2,
@@ -750,8 +769,13 @@ typedef enum {
 	DISP_MOD_DSI3,
 	DISP_MOD_HDMI,
 	DISP_MOD_LVDS,
+	DISP_MOD_LVDS1,
 	DISP_MOD_EINK,
 	DISP_MOD_EDMA,
+#if defined(CONFIG_INDEPENDENT_DE)
+	DISP_MOD_DPSS0,
+	DISP_MOD_DPSS1,
+#endif
 	DISP_MOD_NUM,
 } disp_mod_id;
 
@@ -770,6 +794,7 @@ typedef struct {
 	unsigned int          error_cnt;//under flow .ect
 	unsigned int          irq_cnt;
 	unsigned int          vsync_cnt;
+	unsigned int          vsync_skip_cnt;
 } disp_health_info;
 
 typedef struct {
@@ -863,7 +888,7 @@ struct disp_device {
 	s32 (*set_detect)(struct disp_device *dispdev, bool hpd);
 	s32 (*get_status)(struct disp_device *dispdev);
 	s32 (*get_fps)(struct disp_device *dispdev);
-
+	bool (*is_in_safe_period)(struct disp_device *dispdev);
 	s32 (*get_input_csc)(struct disp_device *dispdev);
 	s32 (*get_input_color_range)(struct disp_device *dispdev);
 	s32 (*is_interlace)(struct disp_device *dispdev);
@@ -915,6 +940,7 @@ struct disp_device {
 
 	disp_lcd_flow *(*get_open_flow)(struct disp_device *dispdev);
 	disp_lcd_flow *(*get_close_flow)(struct disp_device *dispdev);
+	int (*switch_compat_panel)(struct disp_device *dispdev, unsigned int index);
 	s32 (*pin_cfg)(struct disp_device *dispdev, u32 bon);
 	s32 (*set_gamma_tbl)(struct disp_device *dispdev, u32 *tbl, u32 size);
 	s32 (*enable_gamma)(struct disp_device *dispdev);

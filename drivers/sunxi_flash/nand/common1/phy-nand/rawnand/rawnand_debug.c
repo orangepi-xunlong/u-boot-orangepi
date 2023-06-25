@@ -28,14 +28,16 @@
 #include <linux/string.h>
 #include "rawnand_debug.h"
 #include "../nand_boot.h"
-#include "../nand_errno.h"
+#include <sunxi_nand_errno.h>
 #include "../nand_nftl.h"
 #include "../nand_physic_interface.h"
 #include "rawnand_chip.h"
 #include "controller/ndfc_base.h"
 #include "controller/ndfc_ops.h"
-#include "rawnand.h"
+/*#include "rawnand.h"*/
+#include <sunxi_nand.h>
 #include "rawnand_base.h"
+#include <sunxi_nand_boot.h>
 
 
 /*****************************************************************************

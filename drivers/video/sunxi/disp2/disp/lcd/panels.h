@@ -201,4 +201,75 @@ extern __lcd_panel_t vr_sharp_panel;
 extern __lcd_panel_t bp101wx1_panel;
 #endif
 
+#ifdef CONFIG_LCD_SUPPORT_M133X56
+extern __lcd_panel_t m133x56_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_K101IM2QA04
+extern __lcd_panel_t k101im2qa04_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_K101IM2BYL02L
+extern __lcd_panel_t k101im2byl02l_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_FX070
+extern __lcd_panel_t fx070_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_ST7789V_CPU
+extern __lcd_panel_t st7789v_cpu_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_ST7701S
+extern __lcd_panel_t st7701s_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_WTL096601G03
+extern __lcd_panel_t wtl096601g03_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_M101B31
+extern __lcd_panel_t M101B31_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_CC08021801_310_800X1280
+extern __lcd_panel_t CC08021801_310_800X1280_mipi_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_KD101NA5
+extern __lcd_panel_t kd101na5_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_KD070D57
+extern __lcd_panel_t kd070d57_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_ZS080NI4003E7H3H_A
+extern __lcd_panel_t zs080ni4003e7h3h_a_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_K080_IM2HYL802R_800X1280
+extern __lcd_panel_t K080_IM2HYL802R_800X1280_mipi_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_K101_IM2BYL02_L_800X1280
+extern __lcd_panel_t K101_IM2BYL02_L_800X1280_mipi_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_JD9366AB_3
+extern __lcd_panel_t jd9366ab_3_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_TFT08006
+extern __lcd_panel_t tft08006_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_T050K589
+extern __lcd_panel_t t050k589_panel;
+#endif
+
+#ifdef CONFIG_LCD_SUPPORT_K101_MM2QA01_A
+extern __lcd_panel_t K101_MM2QA01_A_mipi_panel;
+#endif
 #endif

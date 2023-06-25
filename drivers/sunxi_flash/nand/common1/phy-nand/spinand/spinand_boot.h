@@ -3,7 +3,7 @@
 #ifndef __UBOOT_TAIL_SPINAND_H__
 #define __UBOOT_TAIL_SPINAND_H__
 
-#include "../nand-partition/phy.h"
+//#include "../nand-partition/phy.h"
 
 typedef struct {
 	__u8        ChipCnt;                 /* the count of the total nand flash chips are currently connecting on the CE pin */

@@ -42,7 +42,7 @@ int sprite_cartoon_ui_draw_hollowrectangle(int x1, int y1, int x2, int y2)
 	char *base1, *base2;
 	int x, y, tmp;
 	int line_offset;
-	uint cache_start;
+	unsigned long cache_start;
 
 	end_x = x1;
 	end_y = y1;
@@ -64,7 +64,7 @@ int sprite_cartoon_ui_draw_hollowrectangle(int x1, int y1, int x2, int y2)
 	base1 = sprite_source.screen_buf +
 		(sprite_source.screen_width * start_y + start_x) * 4;
 	base2 = base1 + (end_y - start_y) * sprite_source.screen_width * 4;
-	cache_start = (uint)base1;
+	cache_start = (unsigned long)base1;
 	for (x = start_x; x <= end_x; x++) {
 		*((int *)base1) = sprite_source.color;
 		*((int *)base2) = sprite_source.color;
@@ -114,8 +114,7 @@ int sprite_cartoon_ui_draw_solidrectangle(int x1, int y1, int x2, int y2)
 	char *base1, *base2;
 	char *base1_1, *base2_1;
 	int x, y, tmp;
-	uint cache_start;
-
+	unsigned long cache_start;
 	end_x = x1;
 	end_y = y1;
 	start_x = x2;
@@ -138,7 +137,8 @@ int sprite_cartoon_ui_draw_solidrectangle(int x1, int y1, int x2, int y2)
 	base2 = base1 + sprite_source.screen_width * (end_y - start_y) * 4;
 	base1_1 = base1;
 	base2_1 = base2;
-	cache_start = (uint)base1;
+
+	cache_start = (unsigned long)base1;
 	for (x = end_x; x >= start_x; x--) {
 		for (y = end_y; y >= start_y; y -= 2) {
 			*((int *)base1_1) = sprite_source.color;
@@ -154,9 +154,8 @@ int sprite_cartoon_ui_draw_solidrectangle(int x1, int y1, int x2, int y2)
 	flush_cache(
 	    DO_ALIGN(cache_start - CONFIG_SYS_CACHELINE_SIZE,
 		     CONFIG_SYS_CACHELINE_SIZE),
-	    DO_ALIGN(((uint)base2 - cache_start + CONFIG_SYS_CACHELINE_SIZE),
-		     CONFIG_SYS_CACHELINE_SIZE));
-
+		DO_ALIGN(((unsigned long)base2 - cache_start + CONFIG_SYS_CACHELINE_SIZE),
+			 CONFIG_SYS_CACHELINE_SIZE));
 	return 0;
 }
 /*

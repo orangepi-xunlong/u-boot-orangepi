@@ -339,9 +339,11 @@ int stdio_add_devices(void)
 			printf("Failed to probe keyboard '%s'\n", dev->name);
 	}
 #endif
+#if 0 /*Initialization here will cause the related configuration of axp to be lost*/
 #ifdef CONFIG_SYS_I2C
 	i2c_init_all();
 #else
+#endif
 #endif
 #ifdef CONFIG_DM_VIDEO
 	/*

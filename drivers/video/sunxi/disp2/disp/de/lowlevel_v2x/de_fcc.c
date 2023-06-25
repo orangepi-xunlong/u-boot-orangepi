@@ -49,6 +49,10 @@ int de_fcc_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 	void *memory;
 
 	fcc_base = reg_base + (sel + 1) * 0x00100000 + FCC_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		fcc_base = fcc_base - 0x00100000;
+#endif
 	/* FIXME  display path offset should be defined */
 
 	memory = kmalloc(sizeof(struct __fcc_reg_t), GFP_KERNEL | __GFP_ZERO);
@@ -71,7 +75,7 @@ int de_fcc_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 int de_fcc_update_regs(unsigned int sel, unsigned int chno)
 {
 	if (fcc_para_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)fcc_para_block[sel][chno].off,
+		regwrite((void *)fcc_para_block[sel][chno].off,
 		       fcc_para_block[sel][chno].val,
 		       fcc_para_block[sel][chno].size);
 		fcc_para_block[sel][chno].dirty = 0x0;
@@ -166,9 +170,9 @@ int de_fcc_set_window(unsigned int sel, unsigned int chno, unsigned int win_en,
  ******************************************************************************/
 int de_fcc_set_para(unsigned int sel, unsigned int chno, unsigned int sgain[6])
 {
-	memcpy((void *)fcc_dev[sel][chno]->fcc_range,
+	regwrite((void *)fcc_dev[sel][chno]->fcc_range,
 	       (void *)&fcc_range_gain[0], sizeof(int) * 6);
-	memcpy((void *)fcc_dev[sel][chno]->fcc_gain, (void *)&sgain[0],
+	regwrite((void *)fcc_dev[sel][chno]->fcc_gain, (void *)&sgain[0],
 	       sizeof(int) * 6);
 
 	fcc_para_block[sel][chno].dirty = 1;

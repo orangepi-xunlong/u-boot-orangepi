@@ -761,6 +761,7 @@ s32 disp_init_tv(void)//disp_bsp_init_para * para)  //call by disp_display
 		p_tv->suspend = disp_tv_suspend;
 		p_tv->resume = disp_tv_resume;
 		p_tv->set_enhance_mode = disp_set_enhance_mode;
+		p_tv->is_in_safe_period = disp_device_is_in_safe_period;
 		p_tv->get_fps = disp_tv_get_fps;
 		p_tv->show_builtin_patten = disp_device_show_builtin_patten;
 		p_tv->init(p_tv);

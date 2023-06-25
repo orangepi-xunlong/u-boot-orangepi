@@ -78,7 +78,15 @@ struct spare_boot_data_head
 	uint16_t                    key_input;
 	uint8_t                     secure_mode; /*update by update_uboot*/
 	uint8_t                     debug_mode;  /*update by update_uboot*/
-	int                         reserved2[2];
+#if __SIZEOF_LONG__ == 8
+	/* for various security check, dont use directly, use with salt */
+	uint64_t                    challenge_offset;
+#elif __SIZEOF_LONG__ == 4
+	uint32_t                    challenge_offset;
+	uint32_t                    challenge_offset_pad;
+#else
+#error "invalid sizeof(long)"
+#endif
 };
 
 struct spare_boot_ext_head
@@ -149,6 +157,8 @@ extern unsigned long get_spare_head_size(void);
 
 enum UBOOT_FUNC_MASK_EN {
 	UBOOT_FUNC_MASK_BIT_BOOTLOGO = (1 << 0),
+	UBOOT_FUNC_MASK_BIT_FORCE_ROTPK = (1 << 1),
+	UBOOT_FUNC_MASK_BIT_BURN_ROTPK = (1 << 2),
 	UBOOT_FUNC_MASK_ALL	  = (0xFF)
 };
 #endif

@@ -63,6 +63,7 @@ struct hdmi_tx_drv {
 	struct clk			*hdmi_ddc_clk;
 	struct clk			*hdmi_hdcp_clk;
 	struct clk			*hdmi_cec_clk;
+	struct clk                      *tcon_tv_clk;
 
 	struct task_struct		*hdmi_task;
 	struct task_struct		*cec_task;

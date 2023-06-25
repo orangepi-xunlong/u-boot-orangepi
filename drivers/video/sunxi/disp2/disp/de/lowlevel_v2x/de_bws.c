@@ -56,7 +56,7 @@ int de_bws_set_reg_base(unsigned int sel, unsigned int chno, void *base)
 int de_bws_update_regs(unsigned int sel, unsigned int chno)
 {
 	if (bws_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)bws_block[sel][chno].off,
+		regwrite((void *)bws_block[sel][chno].off,
 		       bws_block[sel][chno].val, bws_block[sel][chno].size);
 		bws_block[sel][chno].dirty = 0x0;
 	}
@@ -67,13 +67,13 @@ int de_bws_update_regs(unsigned int sel, unsigned int chno)
 int de_bws_update_regs(unsigned int sel, unsigned int chno)
 {
 	if (bws_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)bws_block[sel][chno].off,
+		regwrite((void *)bws_block[sel][chno].off,
 		       bws_block[sel][chno].val, bws_block[sel][chno].size);
 		bws_block[sel][chno].dirty = 0x0;
 	}
 
 	if (bws_para_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)bws_para_block[sel][chno].off,
+		regwrite((void *)bws_para_block[sel][chno].off,
 		       bws_para_block[sel][chno].val,
 		       bws_para_block[sel][chno].size);
 		bws_para_block[sel][chno].dirty = 0x0;
@@ -89,6 +89,10 @@ int de_bws_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 	void *memory;
 
 	base = reg_base + (sel + 1) * 0x00100000 + BWS_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		base = base - 0x00100000;
+#endif
 	/* FIXME  display path offset should be defined */
 	bws_hw_base[sel][chno] = base;
 

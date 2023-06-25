@@ -120,6 +120,7 @@ static int active_pipe(struct pipe_manager *mgr, u32 pipe_no)
 		pr_err("%s:pipe is invalied!\n", __func__);
 		return -EINVAL;
 	}
+	mgr->current_pipe_finish = false;
 
 	spin_lock_irqsave(&mgr->list_lock, flags);
 	list_for_each_entry_safe(pipe, tmp_pipe, &mgr->pipe_used_list, node) {
@@ -259,6 +260,7 @@ int pipe_mgr_init(struct eink_manager *eink_mgr)
 	}
 
 	memset((void *)pipe_mgr, 0, sizeof(struct pipe_manager));
+	pipe_mgr->current_pipe_finish = true;
 	panel_info = &eink_mgr->panel_info;
 
 	if (panel_info->bit_num == 4) {

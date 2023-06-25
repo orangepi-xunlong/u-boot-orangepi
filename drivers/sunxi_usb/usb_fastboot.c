@@ -25,6 +25,10 @@
 #include <sprite_verify.h>
 #include <private_boot0.h>
 #include "../../sprite/sparse/sparse.h"
+#include <android_misc.h>
+#include <sunxi_avb.h>
+#include <asm/arch/efuse.h>
+#include <sunxi_image_verifier.h>
 DECLARE_GLOBAL_DATA_PTR;
 
 /* int do_go(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]); */
@@ -67,6 +71,12 @@ sunxi_secure_object_write(const char *item_name, char *buffer, int length)
 {
 	return 0;
 }
+
+int __attribute__((weak)) sunxi_verify_toc1_root_cert(void *buffer)
+{
+	return 0;
+}
+
 
 /*
 *******************************************************************************
@@ -480,98 +490,6 @@ static int __fastboot_reboot(int word_mode)
 
 	return 0;
 }
-/*
-*******************************************************************************
-*                     __erase_part
-*
-* Description:
-*    void
-*
-* Parameters:
-*    void
-*
-* Return value:
-*    void
-*
-* note:
-*    void
-*
-*******************************************************************************
-*/
-static int __erase_part(char *name)
-{
-	void *addr = (void *)FASTBOOT_ERASE_BUFFER;
-	u32 start, unerased_sectors;
-	u32 nblock = FASTBOOT_ERASE_BUFFER_SIZE / 512;
-	char response[68];
-	disk_partition_t info = { 0 };
-	if (sunxi_partition_get_info((const char *)name, &info) < 0) {
-		printf("line:%d:get %s partition info fail\n", __LINE__, name);
-		return -1;
-	}
-	start		 = info.start;
-	unerased_sectors = info.size;
-
-	printf("********* starting to erase %s partition, this may take some time, please wait for minutes ***********\n",
-	       name);
-	if (memcmp(name, "UDISK", strlen("UDISK")) == 0) {
-		if (unerased_sectors >= 16 * 1024 * 1024 / 512)
-			unerased_sectors = 16 * 1024 * 1024 / 512;
-	} else if (memcmp(name, "cache", strlen("cache")) == 0) {
-		if (unerased_sectors >= 16 * 1024 * 1024 / 512)
-			unerased_sectors = 16 * 1024 * 1024 / 512;
-	}
-
-	if ((!start) || (!unerased_sectors)) {
-		printf("sunxi fastboot erase FAIL: partition %s does not exist\n",
-		       name);
-		sprintf(response, "FAILerase: partition %s does not exist",
-			name);
-
-		__sunxi_fastboot_send_status(response, strlen(response));
-
-		return -1;
-	}
-
-	memset(addr, 0xff, FASTBOOT_ERASE_BUFFER_SIZE);
-	while (unerased_sectors >= nblock) {
-		if (!sunxi_flash_write(start, nblock, addr)) {
-			printf("sunxi fastboot erase FAIL: failed to erase partition %s \n",
-			       name);
-			sprintf(response,
-				"FAILerase: failed to erase partition %s",
-				name);
-
-			__sunxi_fastboot_send_status(response,
-						     strlen(response));
-
-			return -1;
-		}
-		start += nblock;
-		unerased_sectors -= nblock;
-	}
-	if (unerased_sectors) {
-		if (!sunxi_flash_write(start, unerased_sectors, addr)) {
-			printf("sunxi fastboot erase FAIL: failed to erase partition %s \n",
-			       name);
-			sprintf(response,
-				"FAILerase: failed to erase partition %s",
-				name);
-
-			__sunxi_fastboot_send_status(response,
-						     strlen(response));
-
-			return -1;
-		}
-	}
-
-	printf("sunxi fastboot: partition '%s' erased\n", name);
-	sprintf(response, "OKAY");
-
-	__sunxi_fastboot_send_status(response, strlen(response));
-
-	return 0;
-}
 
 /*
 *******************************************************************************
@@ -593,49 +511,159 @@ static int __erase_part(char *name)
 */
 static int erase_userdata(void)
 {
-	void *addr = (void *)FASTBOOT_ERASE_BUFFER;
 	u32 start, unerased_sectors;
 	u32 nblock	    = FASTBOOT_ERASE_BUFFER_SIZE / 512;
 	disk_partition_t info = { 0 };
-	char *name	    = "UDISK";
+	char *name	    = CONFIG_LAST_PARTITION_NAME;
+	int ret = 0;
+	void *addr = (void *)memalign(CONFIG_SYS_CACHELINE_SIZE, FASTBOOT_ERASE_BUFFER_SIZE);
+	if (addr == NULL) {
+		pr_err("%s memalign fail\n", __func__);
+		return -1;
+	}
 
 	if (sunxi_partition_get_info((const char *)name, &info) < 0) {
 		printf("line:%d:get %s partition info fail\n", __LINE__, name);
-		return -1;
+		ret = -1;
+		goto erase_userdata_fail;
 	}
 	printf("partinfo: name %s, start 0x%lx, size 0x%lx\n", info.name,
 	       info.start, info.size);
 	start		 = info.start;
 	unerased_sectors = info.size;
 
-	printf("***start to erase UDISK partition, this may take some time***\n");
+	printf("***start to erase %s partition, this may take some time***\n", CONFIG_LAST_PARTITION_NAME);
 	if (unerased_sectors >= 16 * 1024 * 1024 / 512)
 		unerased_sectors = 16 * 1024 * 1024 / 512;
 
 	if ((!start) || (!unerased_sectors)) {
-		printf("sunxi fastboot erase FAIL: partition UDISK does not exist\n");
-		return -1;
+		printf("sunxi fastboot erase FAIL: partition %s does not exist\n", CONFIG_LAST_PARTITION_NAME);
+		ret = -1;
+		goto erase_userdata_fail;
 	}
 
 	memset(addr, 0xff, FASTBOOT_ERASE_BUFFER_SIZE);
 	while (unerased_sectors >= nblock) {
 		if (!sunxi_flash_write(start, nblock, addr)) {
-			printf("sunxi fastboot erase FAIL: failed to erase partition UDISK \n");
-			return -1;
+			printf("sunxi fastboot erase FAIL: failed to erase partition %s \n", CONFIG_LAST_PARTITION_NAME);
+			ret = -1;
+			goto erase_userdata_fail;
 		}
 		start += nblock;
 		unerased_sectors -= nblock;
 	}
 	if (unerased_sectors) {
 		if (!sunxi_flash_write(start, unerased_sectors, addr)) {
-			printf("sunxi fastboot erase FAIL: failed to erase partition UDISK \n");
-			return -1;
+			printf("sunxi fastboot erase FAIL: failed to erase partition %s \n", CONFIG_LAST_PARTITION_NAME);
+			ret = -1;
+			goto erase_userdata_fail;
 		}
 	}
-
-	printf("sunxi fastboot: partition 'UDISK' erased\n");
-	return 0;
+	printf("sunxi fastboot: partition '%s' erased\n", CONFIG_LAST_PARTITION_NAME);
+erase_userdata_fail:
+	free(addr);
+	return ret;
 }
+
+
+/*
+*******************************************************************************
+*                     __erase_part
+*
+* Description:
+*    void
+*
+* Parameters:
+*    void
+*
+* Return value:
+*    void
+*
+* note:
+*    void
+*
+*******************************************************************************
+*/
+static int __erase_part(char *name)
+{
+	u32 start, unerased_sectors;
+	u32 nblock = FASTBOOT_ERASE_BUFFER_SIZE / 512;
+	char response[68];
+	disk_partition_t info = { 0 };
+	int ret = 0;
+	void *addr = (void *)memalign(CONFIG_SYS_CACHELINE_SIZE, FASTBOOT_ERASE_BUFFER_SIZE);
+	if (addr == NULL) {
+		pr_err("%s memalign fail\n", __func__);
+		return -1;
+	}
+
+	if (!memcmp(name, "userdata", strlen("userdata"))) {
+		erase_userdata();
+	} else {
+		if (sunxi_partition_get_info((const char *)name, &info) < 0) {
+			pr_err("line:%d:get %s partition info fail\n", __LINE__, name);
+		} else {
+			start		 = info.start;
+			unerased_sectors = info.size;
+
+			printf("********* starting to erase %s partition, this may take some time, please wait for minutes ***********\n",
+			       name);
+			if (memcmp(name, CONFIG_LAST_PARTITION_NAME, strlen(CONFIG_LAST_PARTITION_NAME)) == 0) {
+				if (unerased_sectors >= 16 * 1024 * 1024 / 512)
+					unerased_sectors = 16 * 1024 * 1024 / 512;
+			} else if (memcmp(name, "cache", strlen("cache")) == 0) {
+				if (unerased_sectors >= 16 * 1024 * 1024 / 512)
+					unerased_sectors = 16 * 1024 * 1024 / 512;
+			}
+
+			if ((!start) || (!unerased_sectors)) {
+				printf("sunxi fastboot erase FAIL: partition %s does not exist\n",
+				       name);
+				sprintf(response, "FAILerase: partition %s does not exist",
+					name);
+
+				ret = -1;
+				goto __erase_part_fail;
+			}
+
+			memset(addr, 0xff, FASTBOOT_ERASE_BUFFER_SIZE);
+			while (unerased_sectors >= nblock) {
+				if (!sunxi_flash_write(start, nblock, addr)) {
+					printf("sunxi fastboot erase FAIL: failed to erase partition %s \n",
+					       name);
+					sprintf(response,
+						"FAILerase: failed to erase partition %s",
+						name);
+
+					ret = -1;
+					goto __erase_part_fail;
+				}
+				start += nblock;
+				unerased_sectors -= nblock;
+			}
+			if (unerased_sectors) {
+				if (!sunxi_flash_write(start, unerased_sectors, addr)) {
+					printf("sunxi fastboot erase FAIL: failed to erase partition %s \n",
+					       name);
+					sprintf(response,
+						"FAILerase: failed to erase partition %s",
+						name);
+
+					ret = -1;
+					goto __erase_part_fail;
+				}
+			}
+		}
+		printf("sunxi fastboot: partition '%s' erased\n", name);
+	}
+	sprintf(response, "OKAY");
+
+__erase_part_fail:
+	free(addr);
+	__sunxi_fastboot_send_status(response, strlen(response));
+	return ret;
+}
+
 
 #ifdef CONFIG_SUNXI_FASTBOOT_MBR
 static void __flash_to_mbr(void)
@@ -650,7 +678,7 @@ static void __flash_to_mbr(void)
 		__sunxi_fastboot_send_status(response, strlen(response));
 		return;
 	}
-#ifdef CONFIG_SUNXI_NAND
+#if defined(CONFIG_SUNXI_COMM_NAND_V1) || defined(CONFIG_SUNXI_COMM_NAND)
 	if (storage_type == STORAGE_NAND) {
 		nand_get_mbr((char *)img_mbr, 16 * 1024);
 	} else
@@ -662,6 +690,8 @@ static void __flash_to_mbr(void)
 		printf("sunxi fastboot error: download mbr err\n");
 		sprintf(response, "FAIL");
 	} else {
+		sunxi_flash_write_end();
+		sunxi_flash_flush();
 		printf("sunxi fastboot: successed in downloading mbr\n");
 		sprintf(response, "OKAY");
 	}
@@ -690,7 +720,7 @@ static void __flash_to_boot0(void)
 		temp_boot0 =
 			memalign(64, ALIGN(sizeof(boot0_file_head_t), 512));
 		memset(temp_boot0, 0x0, ALIGN(sizeof(boot0_file_head_t), 512));
-#ifdef CONFIG_SUNXI_NAND
+#if defined(CONFIG_SUNXI_COMM_NAND_V1) || defined(CONFIG_SUNXI_COMM_NAND)
 		if (get_boot_storage_type() == STORAGE_NAND) {
 			nand_read_boot0(temp_boot0,
 					ALIGN(sizeof(boot0_file_head_t), 512) /
@@ -723,7 +753,7 @@ static void __flash_to_boot0(void)
 		}
 		temp_toc0 = memalign(64, 2048);
 		memset(temp_toc0, 0x0, 2048);
-#ifdef CONFIG_SUNXI_NAND
+#if defined(CONFIG_SUNXI_COMM_NAND_V1) || defined(CONFIG_SUNXI_COMM_NAND)
 		if (get_boot_storage_type() == STORAGE_NAND) {
 			nand_read_boot0(temp_toc0,
 					ALIGN(sizeof(boot0_file_head_t), 512) /
@@ -757,6 +787,8 @@ static void __flash_to_boot0(void)
 	ret = sunxi_sprite_download_boot0((char *)temp_buf,
 					  get_boot_storage_type());
 	if (!ret) {
+		sunxi_flash_write_end();
+		sunxi_flash_flush();
 		printf("sunxi fastboot: successed in downloading boot0/toc0\n");
 		sprintf(response, "OKAY");
 	} else {
@@ -788,14 +820,29 @@ static void __flash_to_uboot(void)
 		return;
 	}
 
+	if (sid_get_security_status()) {
+		ret = sunxi_verify_toc1_root_cert(temp_buf);
+		if (ret) {
+			printf("sunxi fastboot error: check toc1 root key fail\n");
+			sprintf(response,
+			"FAILdownload:check toc1 root key fail \n");
+			__sunxi_fastboot_send_status(response, strlen(response));
+			return;
+		}
+	}
+
 	printf("ready to download bytes 0x%x\n", trans_data.try_to_recv);
 	ret = sunxi_sprite_download_uboot((char *)temp_buf,
 					  get_boot_storage_type(), 1);
 	if (!ret) {
 		if (!strncmp((char *)temp_buf->name, "sunxi-package",
 			     sizeof("sunxi-package"))) {
+		sunxi_flash_write_end();
+		sunxi_flash_flush();
 		printf("sunxi fastboot: successed in downloading uboot package\n");
 		} else {
+			sunxi_flash_write_end();
+			sunxi_flash_flush();
 			printf("sunxi fastboot: successed in downloading toc1\n");
 		}
 		sprintf(response, "OKAY");
@@ -919,6 +966,8 @@ static int __flash_to_part(char *name)
 		}
 	}
 
+	sunxi_flash_write_end();
+	sunxi_flash_flush();
 	printf("sunxi fastboot: successed in downloading partition '%s'\n",
 	       name);
 	sprintf(response, "OKAY");
@@ -1073,7 +1122,6 @@ static void __get_var(char *ver_name)
 
 	memset(response, 0, 68);
 	strcpy(response, "OKAY");
-
 	if (!strcmp(ver_name, "version")) {
 		strcpy(response + 4, FASTBOOT_VERSION);
 	} else if (!strcmp(ver_name, "product")) {
@@ -1246,7 +1294,7 @@ static char sunxi_read_oem_unlock_ability(void)
 	if (!start_block) {
 		printf("cant find part named frp\n");
 	} else {
-		part_sectors = info.start;
+		part_sectors = info.size;
 #ifdef DEBUG
 		printf("start block = 0x%x, part_sectors = %d\n", start_block,
 		       part_sectors);
@@ -1260,6 +1308,40 @@ static char sunxi_read_oem_unlock_ability(void)
 	}
 
 	return addr[511];
+}
+
+static int oem_lock_will_brick_device(char *response_to_pc)
+{
+#ifndef CONFIG_SUNXI_AVB
+	/*only vbmeta part will cause this problem*/
+	return 0;
+#else
+	uint8_t *vb_meta_data;
+	size_t vb_len;
+	if (sunxi_avb_read_vbmeta_data(&vb_meta_data, &vb_len) == 0) {
+		int ret;
+		sunxi_certif_info_t sub_certif;
+
+		ret = sunxi_vbmeta_self_verify(vb_meta_data, vb_len,
+					       &sub_certif.pubkey);
+		free(vb_meta_data);
+		if (ret == -1) {
+			uint32_t vbmeta_flags;
+			sunxi_avb_get_vbmeta_flags(&vbmeta_flags);
+			if (vbmeta_flags &
+			    AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED) {
+				const char *info =
+					"vbmeta modified, try adb enable-verity before oem lock";
+				pr_force("%s\n", info);
+				strcpy(response_to_pc, info);
+				return 1;
+			}
+		}
+	} else {
+		/*just skip the check if read vbmeta fail*/
+	}
+	return 0;
+#endif
 }
 /*
 ************************************************************************************************************
@@ -1293,8 +1375,19 @@ static void __oem_operation(char *operation)
 		if ((gd->securemode == SUNXI_SECURE_MODE_WITH_SECUREOS) ||
 		    (gd->securemode == SUNXI_SECURE_MODE_NO_SECUREOS)) {
 			printf("the system is secure\n");
-			lockflag = SUNXI_LOCKED;
-			sunxi_fastboot_write_status_flag("locked");
+			if (oem_lock_will_brick_device(&response[4])) {
+				const char *info =
+					"device will failed to boot after oem lock! Abort oem lock";
+				pr_force("%s\n", info);
+				if (strlen(&response[4]) == 0) {
+					strcpy(&response[4], info);
+				}
+				memcpy(response, "FAIL", 4);
+				goto return_without_lock_op;
+			} else {
+				lockflag = SUNXI_LOCKED;
+				sunxi_fastboot_write_status_flag("locked");
+			}
 		} else {
 			printf("the system is normal\n");
 		}
@@ -1346,6 +1439,7 @@ static void __oem_operation(char *operation)
 	strcat(response, lock_info);
 	printf("%s\n", response);
 
+return_without_lock_op:
 	__sunxi_fastboot_send_status(response, strlen(response));
 
 	return;
@@ -1379,7 +1473,8 @@ static void __continue(void)
 
 	sunxi_usb_exit();
 
-	if (storage_type == STORAGE_EMMC || storage_type == STORAGE_SD) {
+	if (storage_type == STORAGE_EMMC || storage_type == STORAGE_SD
+			|| storage_type == STORAGE_EMMC0) {
 		env_set("bootcmd", "run setargs_mmc boot_normal");
 	} else if (storage_type == STORAGE_NAND) {
 		env_set("bootcmd", "run setargs_nand boot_normal");
@@ -1454,7 +1549,7 @@ static int sunxi_fastboot_init(void)
 	printf("recv addr 0x%lx\n", (ulong)trans_data.base_recv_buffer);
 	printf("send addr 0x%lx\n", (ulong)trans_data.base_send_buffer);
 	printf("start to display fastbootlogo.bmp\n");
-#ifdef CONFIG_CMD_SUNXI_BMP
+#if defined(CONFIG_CMD_SUNXI_BMP) || defined(CONFIG_SUNXI_TV_FASTLOGO) || defined(CONFIG_EINK200_SUNXI)
 	sunxi_bmp_display("fastbootlogo.bmp");
 #endif
 	char *p = NULL;
@@ -1483,6 +1578,8 @@ static int sunxi_fastboot_init(void)
 */
 static int sunxi_fastboot_exit(void)
 {
+	sunxi_flash_write_end();
+	sunxi_flash_flush();
 	printf("sunxi_fastboot_exit\n");
 	if (trans_data.base_send_buffer) {
 		free(trans_data.base_send_buffer);
@@ -1732,10 +1829,6 @@ int sunxi_fastboot_status_read(void)
 
 static int sunxi_fastboot_status(void)
 {
-	int debug_mode = 1;
-	if (debug_mode == 1) {
-		return -1;
-	}
 	if ((gd->securemode == SUNXI_SECURE_MODE_WITH_SECUREOS) ||
 	    (gd->securemode == SUNXI_SECURE_MODE_NO_SECUREOS)) {
 		printf("the system is secure\n");
@@ -1792,6 +1885,22 @@ static int sunxi_fastboot_state_loop(void *buffer)
 			   strlen("reboot-bootloader")) == 0) {
 			printf("reboot-bootloader\n");
 			__fastboot_reboot(SUNXI_FASTBOOT_FLAG);
+		} else if (memcmp(sunxi_ubuf->rx_req_buffer, "reboot-fastboot", strlen("reboot-fastboot")) == 0) {
+				tick_printf("reboot-fastboot\n");
+				u32 misc_offset = sunxi_partition_get_offset_byname("misc");
+				char  misc_args[2048] = {0};
+				struct bootloader_message *misc_info;
+				if (!misc_offset) {
+					pr_error("no misc partition is found\n");
+					break;
+				} else {
+					sunxi_flash_read(misc_offset, 2048/512, misc_args);
+				}
+				misc_info = (struct bootloader_message *)misc_args;
+				memset(misc_info->recovery, 0, sizeof(misc_info->recovery));
+				memcpy(misc_info->recovery, "recovery\n--fastboot", strlen("recovery\n--fastboot"));
+				sunxi_flash_write(misc_offset, 2048/512, misc_args);
+				__fastboot_reboot(SUNXI_BOOT_RECOVERY_FLAG);
 		} else if (memcmp(sunxi_ubuf->rx_req_buffer, "reboot", 6) ==
 			   0) {
 			printf("reboot\n");
@@ -1872,7 +1981,8 @@ static int sunxi_fastboot_state_loop(void *buffer)
 				break;
 			}
 			__get_var((char *)(sunxi_ubuf->rx_req_buffer + 7));
-		} else if (memcmp(sunxi_ubuf->rx_req_buffer, "oem", 3) == 0) {
+		} else if ((memcmp(sunxi_ubuf->rx_req_buffer, "oem", 3) == 0) ||
+			(memcmp(sunxi_ubuf->rx_req_buffer, "flashing", 8) == 0)) {
 			printf("oem operations\n");
 			__oem_operation(
 				(char *)(sunxi_ubuf->rx_req_buffer + 4));

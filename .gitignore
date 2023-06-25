@@ -89,3 +89,14 @@ GTAGS
 # gcc code coverage files
 *.gcda
 *.gcno
+
+boot_package.cfg
+dts
+*.dtb
+*.dtbo
+*.fex
+sys_config
+tools/sunxi_proftool
+*.dts
+boot0_sdcard.fex-linux4.9
+board/sunxi/sunxi_challenge.c

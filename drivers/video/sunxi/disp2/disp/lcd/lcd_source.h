@@ -234,3 +234,10 @@ s32 sunxi_lcd_gpio_set_value(u32 screen_id, u32 io_index, u32 value);
  * @direction: value of gpio to be set
  */
 s32 sunxi_lcd_gpio_set_direction(u32 screen_id, u32 io_index, u32 direction);
+
+/**
+ * sunxi_lcd_switch_compat_panel
+ * @screen_id: The index of screen.
+ * @index:  the index of gpio
+ */
+s32 sunxi_lcd_switch_compat_panel(u32 screen_id, u32 index);

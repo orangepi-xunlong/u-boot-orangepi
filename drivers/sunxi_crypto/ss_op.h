@@ -18,7 +18,7 @@ void ss_wait_finish(u32 task_id);
 void ss_pending_clear(u32 task_id);
 void ss_irq_enable(u32 task_id);
 void ss_irq_disable(u32 task_id);
-#if defined(CONFIG_SUNXI_CE_21)
+#if defined(CONFIG_SUNXI_CE_21) || defined(CONFIG_SUNXI_CE_23)
 u32 ss_check_err(u32 task_id);
 #else
 u32 ss_check_err(void);

@@ -13,7 +13,6 @@ config SUNXI_SECURE_STORAGE
 
 config SUNXI_SPRITE_CARTOON
 	bool "Sunxi Sprite cartoon support"
-	depends on (BOOT_GUI)
 	select SUNXI_FLASH
 	help
 	  Enable support for sunxi Sprite cartoon(display)
@@ -31,6 +30,19 @@ config SUNXI_AUTO_UPDATE
 	default n
 	help
 	  Enable support for sunxi auto update
+config SUNXI_DIGEST_TEST
+	bool "Sunxi digest test support"
+	default n
+	help
+	  Enable support for sunxi digest test
+
+config SUNXI_UPDATE_GPT
+
+	bool "Sunxi auto gpt support"
+	default n
+	help
+	  Enable support for sunxi gpt update
+
 choice
 	depends on SUNXI_AUTO_UPDATE
 	prompt "select update form sdcard or usb disk"

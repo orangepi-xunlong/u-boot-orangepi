@@ -182,8 +182,8 @@ struct sunxi_ccm_reg {
 	u8 reserved_0xa64[8];
 	u32 ahub_gate_reset;	/* 0xa6c Audio HUB gate/reset control */
 	u32 usb0_clk_cfg;	/* 0xa70 USB0(OTG) clock control */
-	u32 usb1_clk_cfg;	/* 0xa74 USB1(XHCI) clock control */
-	u8 reserved_0xa78[4];
+	u32 usb1_clk_cfg;	/* 0xa74 USB1 clock control */
+	u32 usb2_clk_cfg;	/* 0xa74 USB2 clock control */
 	u32 usb3_clk_cfg;	/* 0xa78 USB3 clock control */
 	u8 reserved_0xa80[12];
 	u32 usb_gate_reset;	/* 0xa8c USB gate/reset control */
@@ -333,4 +333,25 @@ struct sunxi_ccm_reg {
 #define CE_MBUS_GATING_MASK               (1)
 #define CE_MBUS_GATING_BIT                    (0)
 #define CE_MBUS_GATING			 (1)
+
+#define USBEHCI0_RST_BIT 20
+#define USBEHCI0_GATIING_BIT 4
+#define USBPHY0_RST_BIT 30
+#define USBPHY0_SCLK_GATING_BIT 29
+
+#define USBEHCI1_RST_BIT 21
+#define USBEHCI1_GATIING_BIT 5
+#define USBPHY1_RST_BIT 30
+#define USBPHY1_SCLK_GATING_BIT 29
+
+#define USBEHCI2_RST_BIT 22
+#define USBEHCI2_GATIING_BIT 6
+#define USBPHY2_RST_BIT 30
+#define USBPHY2_SCLK_GATING_BIT 29
+
+#define USBEHCI3_RST_BIT 23
+#define USBEHCI3_GATIING_BIT 7
+#define USBPHY3_RST_BIT 30
+#define USBPHY3_SCLK_GATING_BIT 29
+
 #endif /* _SUNXI_CLOCK_SUN50IW3_H */

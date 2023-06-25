@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier:	GPL-2.0+*/
 #ifndef HEADER_BUFFER_H
 #define HEADER_BUFFER_H
 
@@ -7,8 +8,8 @@
 extern "C" {
 #endif
 
-//#include <stddef.h>
-typedef unsigned int size_t;
+#include <stddef.h>
+//typedef unsigned int size_t;
 //#define offsetof(s,m)   (size_t)&(((s *)0)->m)
 
 /* Already declared in ossl_typ.h */

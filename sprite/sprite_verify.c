@@ -11,6 +11,9 @@
 #include <sunxi_board.h>
 #include <sunxi_flash.h>
 #include "sparse/sparse.h"
+#ifdef CONFIG_SUNXI_CE_DRIVER
+#include <asm/arch/ce.h>
+#endif
 
 #if defined(CONFIG_SUNXI_SPINOR)
 #define VERIFY_ONCE_BYTES (2 * 1024 * 1024)
@@ -115,7 +118,7 @@ uint sunxi_sprite_part_sparsedata_verify(void)
 
 uint sunxi_sprite_generate_checksum(void *buffer, uint length, uint src_sum)
 {
-	return sunxi_generate_checksum(buffer, length, src_sum);
+	return sunxi_generate_checksum(buffer, length, 1, src_sum);
 }
 
 int sunxi_sprite_verify_checksum(void *buffer, uint length, uint src_sum)
@@ -247,3 +250,49 @@ int sunxi_sprite_verify_dlmap(void *buffer)
 
 	return 0;
 }
+
+#ifdef CONFIG_SUNXI_DIGEST_TEST
+int do_sunxi_digest_test(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	__maybe_unused int i;
+	if (argc < 3) {
+		goto usage;
+	}
+	int end_time, start_time = get_timer_masked();
+	uint crc32_val = crc32(0, (const unsigned char *)simple_strtoul(argv[1], NULL, 16), simple_strtoul(argv[2], NULL, 16));
+	end_time = get_timer_masked();
+	tick_printf("crc32:0x%x\ttime=%dms \n", crc32_val, end_time-start_time);
+	start_time = get_timer_masked();
+	int checksum = sunxi_generate_checksum((void *)simple_strtoul(argv[1], NULL, 16),
+			simple_strtoul(argv[2], NULL, 16), (argc < 4 ? 1 : simple_strtoul(argv[3], NULL, 16)), STAMP_VALUE);
+	end_time = get_timer_masked();
+	tick_printf("div:%d checksum:0x%x\ttime=%dms \n", (argc < 4 ? 1 : simple_strtoul(argv[3], NULL, 16)), checksum, end_time-start_time);
+#ifdef CONFIG_SUNXI_CE_DRIVER
+	start_time = get_timer_masked();
+	u8 hash_of_file[32] = {0};
+	sunxi_ss_open();
+	if (sunxi_sha_calc(hash_of_file, 32, (unsigned char *)simple_strtoul(argv[1], NULL, 16), simple_strtoul(argv[2], NULL, 16))) {
+		goto usage;
+	}
+	end_time = get_timer_masked();
+	tick_printf("sha256:\ttime=%dms \n", end_time-start_time);
+	for (i = 0; i < 32; i++)
+		printf("%02x", hash_of_file[i]);
+	printf("\n");
+#endif
+#ifdef CONFIG_CMD_SHA1SUM
+	char temp_buf[64] = {0};
+	start_time = get_timer_masked();
+	sprintf((char *)temp_buf, "sha1sum 0x%lx 0x%lx", simple_strtoul(argv[1], NULL, 16), simple_strtoul(argv[2], NULL, 16));
+	run_command(temp_buf, 0);
+	end_time = get_timer_masked();
+	tick_printf("sha1:\ttime=%dms \n", end_time-start_time);
+#endif
+	return 0;
+usage:
+	return cmd_usage(cmdtp);
+}
+
+U_BOOT_CMD(sunxi_digest_test, 6, 1, do_sunxi_digest_test, "sunxi_digest_test sub-system",
+	   "sunxi_digest_test <mem_addr> <size> [div]\n");
+#endif

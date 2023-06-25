@@ -12,6 +12,7 @@
 #include <securestorage.h>
 #include <sunxi_board.h>
 #include <sys_partition.h>
+#include <sunxi_keybox.h>
 DECLARE_GLOBAL_DATA_PTR;
 volatile int sunxi_usb_burn_from_boot_handshake, sunxi_usb_burn_from_boot_init,
 	sunxi_usb_burn_from_boot_setup, sunxi_auto_fel_from_boot_handshake;
@@ -252,9 +253,9 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 			sunxi_usb_dbg("get device descriptor\n");
 
 			dev_dscrptr = (struct usb_device_descriptor *)buffer;
-			memset((void *)dev_dscrptr, 0, sizeof(struct usb_device_descriptor));
+			memset((void *)dev_dscrptr, 0, (u32)sizeof(struct usb_device_descriptor));
 
-			dev_dscrptr->bLength = MIN(req->wLength, sizeof (struct usb_device_descriptor));
+			dev_dscrptr->bLength = MIN(req->wLength, (u32)sizeof(struct usb_device_descriptor));
 			dev_dscrptr->bDescriptorType    = USB_DT_DEVICE;
 #ifdef CONFIG_USB_1_1_DEVICE
 			dev_dscrptr->bcdUSB             = 0x110;
@@ -291,26 +292,26 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 
 			sunxi_usb_dbg("get config descriptor\n");
 
-			bytes_total = sizeof (struct usb_configuration_descriptor) + \
-						  sizeof (struct usb_interface_descriptor) 	   + \
-						  sizeof (struct usb_endpoint_descriptor) 	   + \
-						  sizeof (struct usb_endpoint_descriptor);
+			bytes_total = (u32)sizeof(struct usb_configuration_descriptor) + \
+						  (u32)sizeof(struct usb_interface_descriptor) 	   + \
+						  (u32)sizeof(struct usb_endpoint_descriptor) 	   + \
+						  (u32)sizeof(struct usb_endpoint_descriptor);
 
 			memset(buffer, 0, bytes_total);
 
 			config_dscrptr = (struct usb_configuration_descriptor *)(buffer + 0);
 			inter_dscrptr  = (struct usb_interface_descriptor 	  *)(buffer + 						\
-																	 sizeof(struct usb_configuration_descriptor));
+																	 (u32)sizeof(struct usb_configuration_descriptor));
 			ep_in 		   = (struct usb_endpoint_descriptor 	  *)(buffer + 						\
-																	 sizeof(struct usb_configuration_descriptor) + 	\
-																	 sizeof(struct usb_interface_descriptor));
+																	 (u32)sizeof(struct usb_configuration_descriptor) + 	\
+																	 (u32)sizeof(struct usb_interface_descriptor));
 			ep_out 		   = (struct usb_endpoint_descriptor 	  *)(buffer + 						\
-																	 sizeof(struct usb_configuration_descriptor) + 	\
-																	 sizeof(struct usb_interface_descriptor)	 +	\
-																	 sizeof(struct usb_endpoint_descriptor));
+																	 (u32)sizeof(struct usb_configuration_descriptor) + 	\
+																	 (u32)sizeof(struct usb_interface_descriptor)	 +	\
+																	 (u32)sizeof(struct usb_endpoint_descriptor));
 
 			/* configuration */
-			config_dscrptr->bLength            	= MIN(bytes_remaining, sizeof (struct usb_configuration_descriptor));
+			config_dscrptr->bLength            	= MIN(bytes_remaining, (u32)sizeof(struct usb_configuration_descriptor));
 			config_dscrptr->bDescriptorType    	= USB_DT_CONFIG;
 			config_dscrptr->wTotalLength 		= bytes_total;
 			config_dscrptr->bNumInterfaces     	= 1;
@@ -321,7 +322,7 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 
 			bytes_remaining 				   -= config_dscrptr->bLength;
 			/* interface */
-			inter_dscrptr->bLength             = MIN (bytes_remaining, sizeof(struct usb_interface_descriptor));
+			inter_dscrptr->bLength             = MIN (bytes_remaining, (u32)sizeof(struct usb_interface_descriptor));
 			inter_dscrptr->bDescriptorType     = USB_DT_INTERFACE;
 			inter_dscrptr->bInterfaceNumber    = 0x00;
 			inter_dscrptr->bAlternateSetting   = 0x00;
@@ -333,7 +334,7 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 
 			bytes_remaining 				  -= inter_dscrptr->bLength;
 			/* ep_in */
-			ep_in->bLength            = MIN (bytes_remaining, sizeof (struct usb_endpoint_descriptor));
+			ep_in->bLength            = MIN (bytes_remaining, (u32)sizeof(struct usb_endpoint_descriptor));
 			ep_in->bDescriptorType    = USB_DT_ENDPOINT;
 			ep_in->bEndpointAddress   = sunxi_udc_get_ep_in_type(); /* IN */
 			ep_in->bmAttributes       = USB_ENDPOINT_XFER_BULK;
@@ -342,7 +343,7 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 
 			bytes_remaining 		 -= ep_in->bLength;
 			/* ep_out */
-			ep_out->bLength            = MIN (bytes_remaining, sizeof (struct usb_endpoint_descriptor));
+			ep_out->bLength            = MIN (bytes_remaining, (u32)sizeof(struct usb_endpoint_descriptor));
 			ep_out->bDescriptorType    = USB_DT_ENDPOINT;
 			ep_out->bEndpointAddress   = sunxi_udc_get_ep_out_type(); /* OUT */
 			ep_out->bmAttributes       = USB_ENDPOINT_XFER_BULK;
@@ -391,9 +392,9 @@ static int __usb_get_descriptor(struct usb_device_request *req, uchar *buffer)
 			sunxi_usb_dbg("get qualifier descriptor\n");
 
 			qua_dscrpt = (struct usb_qualifier_descriptor *)buffer;
-			memset(&buffer, 0, sizeof(struct usb_qualifier_descriptor));
+			memset(&buffer, 0, (u32)sizeof(struct usb_qualifier_descriptor));
 
-			qua_dscrpt->bLength = MIN(req->wLength, sizeof(struct usb_qualifier_descriptor));
+			qua_dscrpt->bLength = MIN(req->wLength, (u32)sizeof(struct usb_qualifier_descriptor));
 			qua_dscrpt->bDescriptorType    = USB_DT_DEVICE_QUALIFIER;
 			qua_dscrpt->bcdUSB             = 0x200;
 			qua_dscrpt->bDeviceClass       = 0xff;
@@ -531,16 +532,18 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 		printf("key if_burn=%d\n", key_list->if_burn);
 		printf("key if_replace=%d\n", key_list->if_replace);
 		printf("key if_crypt=%d\n", key_list->if_crypt);
-		printf("key data:\n");
-		sunxi_dump(key_list->key_data, key_list->len);
+		if (gd->debug_mode >= 7) {
+			printf("key data:\n");
+			sunxi_dump(key_list->key_data, key_list->len);
+		}
 		printf("###################\n");
-		offset = (sizeof(sunxi_usb_burn_key_info_t)) + ((key_list->len + 15) & (~15));
+		offset = ((u32)sizeof(sunxi_usb_burn_key_info_t)) + ((key_list->len + 15) & (~15));
 		printf("offset=%d\n", offset);
 		p_buff += offset;
 
 		if(!key_list->type)
 		{
-			memset(&efuse_key_info, 0, sizeof(efuse_key_info));
+			memset(&efuse_key_info, 0, (u32)sizeof(efuse_key_info));
 			strcpy(efuse_key_info.name, (const char *)key_list->name);
 			efuse_key_info.len = key_list->len;
 			efuse_key_info.key_data = (u8 *)key_list->key_data;
@@ -562,7 +565,7 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 				}
 				#endif
 #ifdef CONFIG_SUNXI_CHECK_CUSTOMER_RESERVED_ID
-			} else if (!strncmp(key_list->name, "customer_reserved", sizeof("customer_reserved"))) {
+			} else if (!strncmp(key_list->name, "customer_reserved", (u32)sizeof("customer_reserved"))) {
 				u32 sunxi_handle_customer_reserved_id(u32 soft_protect_id);
 				u32 customer_reserved_id;
 				u8 *key_buf = (u8 *)key_list->key_data;
@@ -575,7 +578,7 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 				efuse_key_info.len = key_list->len = 4;
 #endif
 			}
-
+#ifdef CONFIG_OPTEE25
 			if ((sunxi_get_securemode() == SUNXI_SECURE_MODE_WITH_SECUREOS) || (sunxi_probe_secure_monitor()))
 			{
 				ret = arm_svc_efuse_write(&efuse_key_info);
@@ -584,7 +587,9 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 					       ret);
 					return -1;
 				}
-			} else {
+			} else
+#endif
+			{
 				if (sunxi_efuse_write(&efuse_key_info)) {
 					return -1;
 				}
@@ -601,8 +606,10 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 					printf("sunxi deal with hdcp key failed\n");
 					return -1;
 				}
-			} else if (sunxi_keybox_has_key(key_list->name)) {
-				ret = sunxi_secure_object_down(
+			}
+#ifdef CONFIG_SUNXI_KEYBOX
+			else if (sunxi_keybox_has_key(key_list->name)) {
+				ret = sunxi_keybox_burn_key(
 					key_list->name,
 					(char *)key_list->key_data,
 					key_list->len, key_list->if_crypt,
@@ -612,7 +619,9 @@ int __sunxi_burn_key(u8 *buff, uint buff_len)
 				if (ret) {
 					return -1;
 				}
-			} else {
+			}
+#endif
+			else {
 				sunxi_secure_object_set(key_list->name,
 										key_list->if_crypt,
 										key_list->if_replace,
@@ -686,10 +695,11 @@ int __sunxi_read_key_by_name(void *buffer, uint buff_len, int *read_len)
 	printf("key if_replace=%d\n", key_info->if_replace);
 	printf("key if_crypt=%d\n", key_info->if_crypt);
 
-	*read_len = sizeof(sunxi_usb_burn_key_info_t);
+	*read_len = (u32)sizeof(sunxi_usb_burn_key_info_t);
 
 	if(!key_info->type)
 	{
+#ifdef CONFIG_OPTEE25
 		if ((gd->securemode == SUNXI_SECURE_MODE_WITH_SECUREOS) || (sunxi_probe_secure_monitor()))
 		{
 			key_data_len = arm_svc_efuse_read(key_info->name, (void *)data_buff);
@@ -699,7 +709,9 @@ int __sunxi_read_key_by_name(void *buffer, uint buff_len, int *read_len)
 				return -1;
 			}
 
-		} else {
+		} else
+#endif
+		{
 			if (sunxi_efuse_read(key_info->name, (void *)data_buff, &key_data_len)) {
 				printf("efuse read %s err\n", key_info->name);
 				return -1;
@@ -707,6 +719,7 @@ int __sunxi_read_key_by_name(void *buffer, uint buff_len, int *read_len)
 		}
 
 		/* convert hex key to char,so that dragonkey tool can display it */
+		key_info->len = key_data_len*2;
 		hex2char((void *)(key_info->key_data), (void *)(data_buff), key_data_len);
 		*read_len +=key_data_len*2;
 		return 0;
@@ -714,7 +727,7 @@ int __sunxi_read_key_by_name(void *buffer, uint buff_len, int *read_len)
 	else
 	{
 		printf("read key form securestorage\n");
-		ret = sunxi_secure_object_read(key_info->name, data_buff, sizeof(sunxi_usb_burn_key_info_t), &key_data_len);
+		ret = sunxi_secure_object_read(key_info->name, data_buff, (u32)sizeof(sunxi_usb_burn_key_info_t), &key_data_len);
 		if (ret < 0)
 			printf("read %s form securestorage failed\n", key_info->name);
 		else {
@@ -826,7 +839,7 @@ int __sunxi_burn_flag(void)
 static int sunxi_pburn_init(void)
 {
 	sunxi_usb_dbg("sunxi_pburn_init\n");
-	memset(&trans_data, 0, sizeof(pburn_trans_set_t));
+	memset(&trans_data, 0, (u32)sizeof(pburn_trans_set_t));
 	sunxi_usb_pburn_write_enable = 0;
     sunxi_usb_pburn_status = SUNXI_USB_PBURN_IDLE;
 
@@ -1085,18 +1098,34 @@ static void sunxi_usb_burn_private_partition(struct umass_bbb_cbw_t *cbw,
 	{
 		__usb_handshake_t *handshake =
 			(__usb_handshake_t *)trans_data.base_send_buffer;
+		int partition_availabe = 1;
 
-		if (sunxi_partition_get_info("private", &disk_part_info)) {
-			printf("private partition is not exist\n");
-
-			csw->bCSWStatus = -1;
+#ifdef CONFIG_SUNXI_FAST_BURN_KEY
+		if (get_boot_storage_type_ext() == STORAGE_NAND) {
+			if (sunxi_flash_init_ext()) {
+				printf("flash init fail\n");
+				csw->bCSWStatus = -1;
+				partition_availabe = 0;
+			}
 		}
+#endif
+
+		if (partition_availabe) {
+			if (sunxi_partition_get_info("private",
+						     &disk_part_info)) {
+				printf("private partition is not exist\n");
+
+				csw->bCSWStatus = -1;
+			} else {
+				csw->bCSWStatus = 0;
+			}
+		}
+
+
 		burn_private_start = disk_part_info.start;
 		burn_private_len   = disk_part_info.size;
 
-		csw->bCSWStatus = 0;
-
-		memset(handshake, 0, sizeof(__usb_handshake_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_t));
 		/* for private partition, use __usb_handshake_t, magic "usb_burn_handsha" */
 		/* for secure storage, use __usb_handshake_sec_t, magic "usb_burn_handshake" */
 		strncpy(handshake->magic, "usb_burn_handshake", 16);
@@ -1109,7 +1138,7 @@ static void sunxi_usb_burn_private_partition(struct umass_bbb_cbw_t *cbw,
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_t));
+					   (u32)sizeof(__usb_handshake_t));
 	} break;
 
 	case 1: //小机端接收数据
@@ -1165,18 +1194,19 @@ static void sunxi_usb_burn_private_partition(struct umass_bbb_cbw_t *cbw,
 		__usb_handshake_ext_t *handshake =
 			(__usb_handshake_ext_t *)trans_data.base_send_buffer;
 
-		memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 		strcpy(handshake->magic, "usb_burn_finish");
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_ext_t));
+					   (u32)sizeof(__usb_handshake_ext_t));
 
 		sunxi_udc_send_data((void *)trans_data.act_send_buffer,
 				    trans_data.send_size);
 
 		csw->bCSWStatus = 0;
 
+		sunxi_flash_write_end();
 		sunxi_flash_flush();
 		sunxi_usb_pburn_status = SUNXI_USB_PBURN_EXIT;
 
@@ -1187,12 +1217,12 @@ static void sunxi_usb_burn_private_partition(struct umass_bbb_cbw_t *cbw,
 			(__usb_handshake_ext_t *)trans_data.base_send_buffer;
 		char buffer[512];
 
-		memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 		strcpy(handshake->magic, "usb_burn_saved");
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_ext_t));
+					   (u32)sizeof(__usb_handshake_ext_t));
 
 		csw->bCSWStatus = 0;
 
@@ -1208,6 +1238,7 @@ static void sunxi_usb_burn_private_partition(struct umass_bbb_cbw_t *cbw,
 
 			csw->bCSWStatus = -1;
 		}
+		sunxi_flash_write_end();
 		sunxi_flash_flush();
 #ifdef CONFIG_SUNXI_SECURE_STORAGE
 		if (sunxi_secure_storage_init()) {
@@ -1243,13 +1274,13 @@ static void sunxi_auto_fel_process(struct umass_bbb_cbw_t *cbw,
 		__usb_handshake_sec_t *handshake =
 			(__usb_handshake_sec_t *)trans_data.base_send_buffer;
 
-		memset(handshake, 0, sizeof(__usb_handshake_sec_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_sec_t));
 		strcpy(handshake->magic, "usb_update_probe_ok");
 		sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_sec_t));
+					   (u32)sizeof(__usb_handshake_sec_t));
 
 		csw->bCSWStatus			   = 0;
 		sunxi_auto_fel_from_boot_handshake = 1;
@@ -1260,13 +1291,13 @@ static void sunxi_auto_fel_process(struct umass_bbb_cbw_t *cbw,
 		__usb_handshake_sec_t *handshake =
 			(__usb_handshake_sec_t *)trans_data.base_send_buffer;
 
-		memset(handshake, 0, sizeof(__usb_handshake_sec_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_sec_t));
 		strcpy(handshake->magic, "usb_update_exit");
 		sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_sec_t));
+					   (u32)sizeof(__usb_handshake_sec_t));
 		sunxi_usb_probe_update_action = 2;
 		csw->bCSWStatus		      = 0;
 	} break;
@@ -1275,13 +1306,13 @@ static void sunxi_auto_fel_process(struct umass_bbb_cbw_t *cbw,
 		__usb_handshake_sec_t *handshake =
 			(__usb_handshake_sec_t *)trans_data.base_send_buffer;
 
-		memset(handshake, 0, sizeof(__usb_handshake_sec_t));
+		memset(handshake, 0, (u32)sizeof(__usb_handshake_sec_t));
 		strcpy(handshake->magic, "usb_update_efex");
 		sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 		trans_data.act_send_buffer = trans_data.base_send_buffer;
 		trans_data.send_size       = min(cbw->dCBWDataTransferLength,
-					   sizeof(__usb_handshake_sec_t));
+					   (u32)sizeof(__usb_handshake_sec_t));
 		sunxi_usb_probe_update_action = 1;
 		csw->bCSWStatus		      = 0;
 	} break;
@@ -1317,6 +1348,15 @@ static int sunxi_pburn_state_loop(void  *buffer)
 	switch(sunxi_usb_pburn_status)
 	{
 		case SUNXI_USB_PBURN_IDLE:
+			/*
+			 * pms id:45549
+			 * Provide the invalidate sunxi_ubuf->rx_req_buffer patch to the customer,
+			 * the probability of occurrence is from 100% -> 10%,
+			 * so further add the patch of invalidate sunxi_ubuf,
+			 * the probability of occurrence is from 10% -> 0%.
+			 *
+			 */
+			invalidate_dcache_range((unsigned long)sunxi_ubuf, (unsigned long)ALIGN(sizeof(sunxi_ubuf_t), CONFIG_SYS_CACHELINE_SIZE));
 			if(sunxi_ubuf->rx_ready_for_data == 1)
 			{
 				sunxi_usb_pburn_status = SUNXI_USB_PBURN_SETUP;
@@ -1325,9 +1365,10 @@ static int sunxi_pburn_state_loop(void  *buffer)
 			break;
 
 		case SUNXI_USB_PBURN_SETUP:
+			invalidate_dcache_range((unsigned long)sunxi_ubuf->rx_req_buffer, (unsigned long)ALIGN(sunxi_ubuf->rx_req_length, CONFIG_SYS_CACHELINE_SIZE));
 
 			sunxi_usb_dbg("SUNXI_USB_PBURN_SETUP\n");
-			if(sunxi_ubuf->rx_req_length == sizeof(struct sunxi_efex_cbw_t))
+			if (sunxi_ubuf->rx_req_length == (u32)sizeof(struct sunxi_efex_cbw_t))
 			{
 				efex_cbw = (struct sunxi_efex_cbw_t *)sunxi_ubuf->rx_req_buffer;
 				if(efex_cbw->magic == CBW_MAGIC)
@@ -1341,9 +1382,9 @@ static int sunxi_pburn_state_loop(void  *buffer)
 					break;
 				}
 			}
-			if(sunxi_ubuf->rx_req_length != sizeof(struct umass_bbb_cbw_t))
+			if (sunxi_ubuf->rx_req_length != (u32)sizeof(struct umass_bbb_cbw_t))
 			{
-				printf("sunxi usb error: received bytes 0x%x is not equal cbw struct size 0x%x\n", sunxi_ubuf->rx_req_length, sizeof(struct umass_bbb_cbw_t));
+				printf("sunxi usb error: received bytes 0x%x is not equal cbw struct size 0x%x\n", sunxi_ubuf->rx_req_length, (u32)sizeof(struct umass_bbb_cbw_t));
 
 				sunxi_ubuf->rx_ready_for_data = 0;
 				sunxi_usb_pburn_status = SUNXI_USB_PBURN_IDLE;
@@ -1381,6 +1422,11 @@ static int sunxi_pburn_state_loop(void  *buffer)
 					}
 					break;
 				case 0xf0:			//burn user data
+					if (sunxi_auto_fel_runnning) {
+						//dont process dragonSN commands
+						//when we are performing auto_fel
+						break;
+					}
 	  				sunxi_usb_dbg("usb burn secure storage data\n");
 	  				printf("usb command = %d\n", cbw->CBWCDB[1]);
 	  				switch(cbw->CBWCDB[1])
@@ -1389,12 +1435,12 @@ static int sunxi_pburn_state_loop(void  *buffer)
 	  					{
 	  						__usb_handshake_sec_t  *handshake = (__usb_handshake_sec_t *)trans_data.base_send_buffer;
 
-                            memset(handshake, 0, sizeof(__usb_handshake_sec_t));
+							memset(handshake, 0, (u32)sizeof(__usb_handshake_sec_t));
 							strcpy(handshake->magic, "usb_burn_handshake");
 							sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 		  					trans_data.act_send_buffer = trans_data.base_send_buffer;
-		  					trans_data.send_size = min(cbw->dCBWDataTransferLength, sizeof(__usb_handshake_sec_t));
+							trans_data.send_size = min(cbw->dCBWDataTransferLength, (u32)sizeof(__usb_handshake_sec_t));
 
 							sunxi_usb_burn_from_boot_setup = 1;
 
@@ -1445,7 +1491,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 						{
 							__usb_handshake_ext_t  *handshake = (__usb_handshake_ext_t *)trans_data.base_send_buffer;
 
-							memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+							memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 							sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 							printf("recv_size=%d\n", trans_data.recv_size);
@@ -1454,7 +1500,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 							int ret = __sunxi_burn_key(private_data_ext_buff, trans_data.recv_size);
 
 		  					trans_data.act_send_buffer = trans_data.base_send_buffer;
-		  					trans_data.send_size = min(cbw->dCBWDataTransferLength, sizeof(__usb_handshake_ext_t));
+							trans_data.send_size = min(cbw->dCBWDataTransferLength, (u32)sizeof(__usb_handshake_ext_t));
 		  					//开始根据数据类型进行烧录动作
 
 		  					if(!ret)	//数据烧写成功
@@ -1474,16 +1520,17 @@ static int sunxi_pburn_state_loop(void  *buffer)
 						{
 							__usb_handshake_ext_t  *handshake = (__usb_handshake_ext_t *)trans_data.base_send_buffer;
 
-                            memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+							memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 							strcpy(handshake->magic, "usb_burn_finish");
 
 							trans_data.act_send_buffer = trans_data.base_send_buffer;
-		  					trans_data.send_size = min(cbw->dCBWDataTransferLength, sizeof(__usb_handshake_ext_t));
+							trans_data.send_size = min(cbw->dCBWDataTransferLength, (u32)sizeof(__usb_handshake_ext_t));
 
 							sunxi_udc_send_data((void *)trans_data.act_send_buffer, trans_data.send_size);
 
 		  					csw.bCSWStatus = 0;
 
+							sunxi_flash_write_end();
 							sunxi_flash_flush();
 
 							if(private_data_ext_buff)
@@ -1503,11 +1550,11 @@ static int sunxi_pburn_state_loop(void  *buffer)
 							int ret;
 							__usb_handshake_ext_t  *handshake = (__usb_handshake_ext_t *)trans_data.base_send_buffer;
 
-							memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+							memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 							strcpy(handshake->magic, "usb_burn_saved");
 
 							trans_data.act_send_buffer = trans_data.base_send_buffer;
-		  					trans_data.send_size = min(cbw->dCBWDataTransferLength, sizeof(__usb_handshake_ext_t));
+							trans_data.send_size = min(cbw->dCBWDataTransferLength, (u32)sizeof(__usb_handshake_ext_t));
 
 		  					csw.bCSWStatus = 0;
 
@@ -1585,13 +1632,13 @@ static int sunxi_pburn_state_loop(void  *buffer)
 							int ret;
 							__usb_handshake_ext_t  *handshake = (__usb_handshake_ext_t *)trans_data.base_send_buffer;
 
-							memset(handshake, 0, sizeof(__usb_handshake_ext_t));
+							memset(handshake, 0, (u32)sizeof(__usb_handshake_ext_t));
 
 							csw.bCSWStatus = 0;
 							sunxi_usb_pburn_status = SUNXI_USB_PBURN_SEND_DATA;
 
 							trans_data.act_send_buffer = trans_data.base_send_buffer;
-							trans_data.send_size = min(cbw->dCBWDataTransferLength, sizeof(__usb_handshake_ext_t));
+							trans_data.send_size = min(cbw->dCBWDataTransferLength, (u32)sizeof(__usb_handshake_ext_t));
 
 							ret = __sunxi_erase_key();
 							if(ret < 0)
@@ -1613,6 +1660,11 @@ static int sunxi_pburn_state_loop(void  *buffer)
 	  			break;
 
 				case 0xf3: //自定义命令，用于烧录用户数据
+					if (sunxi_auto_fel_runnning) {
+						//dont process dragonSN commands
+						//when we are performing auto_fel
+						break;
+					}
 					sunxi_usb_burn_private_partition(cbw, &csw);
 				break;
 			}
@@ -1623,6 +1675,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 	  		sunxi_usb_dbg("SUNXI_USB_SEND_DATA\n");
 
 			sunxi_usb_pburn_status = SUNXI_USB_PBURN_STATUS;
+			flush_dcache_range((unsigned long)trans_data.act_send_buffer, (unsigned long)trans_data.act_send_buffer + ALIGN(trans_data.send_size, CONFIG_SYS_CACHELINE_SIZE));
 			printf("SUNXI_USB_SEND_DATA=%d\n", trans_data.send_size);
 			sunxi_udc_send_data((void *)trans_data.act_send_buffer, trans_data.send_size);
 #if defined(SUNXI_USB_30)
@@ -1636,6 +1689,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 
 			if(sunxi_usb_pburn_write_enable == 1)
 			{
+				invalidate_dcache_range((unsigned long)trans_data.act_recv_buffer, (unsigned long)trans_data.act_recv_buffer + ALIGN(trans_data.recv_size, CONFIG_SYS_CACHELINE_SIZE));
 				sunxi_usb_dbg("write flash, start 0x%x, sectors 0x%x\n", pburn_flash_start, trans_data.recv_size/512);
 				ret = sunxi_flash_write(pburn_flash_start, (trans_data.recv_size+511)/512, (void *)trans_data.act_recv_buffer);
 				if(!ret)
@@ -1664,7 +1718,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 			{
 				sunxi_usb_pburn_status = SUNXI_USB_PBURN_IDLE;
 				sunxi_ubuf->rx_ready_for_data = 0;
-				__sunxi_pburn_send_status(&csw, sizeof(struct umass_bbb_csw_t));
+				__sunxi_pburn_send_status(&csw, (u32)sizeof(struct umass_bbb_csw_t));
 			}
 
 			break;
@@ -1675,7 +1729,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 
 			sunxi_usb_pburn_status = SUNXI_USB_PBURN_IDLE;
 			sunxi_ubuf->rx_ready_for_data = 0;
-			__sunxi_pburn_send_status(&csw, sizeof(struct umass_bbb_csw_t));
+			__sunxi_pburn_send_status(&csw, (u32)sizeof(struct umass_bbb_csw_t));
 
 			printf("Device will shutdown in 3 Secends...\n");
 			__msdelay(3000);
@@ -1690,6 +1744,7 @@ static int sunxi_pburn_state_loop(void  *buffer)
 				csw.bCSWStatus = 0;
 				sunxi_usb_pburn_write_enable = 0;
   				sunxi_usb_pburn_status = SUNXI_USB_PBURN_STATUS;
+				invalidate_dcache_range((unsigned long)private_data_ext_buff, (unsigned long)private_data_ext_buff + ALIGN(DATA_BUFFER_MAX_SIZE, CONFIG_SYS_CACHELINE_SIZE));
 			}
 	  		break;
 

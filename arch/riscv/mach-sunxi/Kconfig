@@ -1,0 +1,344 @@
+if ARCH_SUNXI
+
+config SYS_BOARD
+	default "sunxi"
+
+config SYS_SOC
+	default "sunxi"
+
+config IDENT_STRING
+	default " Allwinner Technology"
+
+config CPU_C906
+	bool "sunxi riscv cpu"
+	select	SYS_CACHE_LINE_SIZE_64
+
+config AXP_PMIC_BUS
+	bool "Sunxi AXP PMIC bus access helpers"
+	help
+	  Select this PMIC bus access helpers for Sunxi platform PRCM or other
+	  AXP family PMIC devices.
+config SUN6I_PRCM
+          bool
+          help
+            Support for the PRCM (Power/Reset/Clock Management) unit available
+	    in A31 SoC.
+config SUN8I_RSB
+	bool "Allwinner sunXi Reduced Serial Bus Driver"
+	help
+	  Say y here to enable support for Allwinner's Reduced Serial Bus
+	  (RSB) support. This controller is responsible for communicating
+	  with various RSB based devices, such as AXP223, AXP8XX PMICs,
+	  and AC100/AC200 ICs.
+config SUNXI_NCAT
+          bool
+          help
+            Support for the sunxi ncat version 1 memory layout.
+
+config SUNXI_NCAT_V2
+          bool
+          help
+            Support for the sunxi ncat version 2 memory layout.
+
+config SUNXI_VERSION1
+          bool
+          help
+            Support for the sunxi version 1 memory layout.
+
+config SUNXI_SECURE
+          bool
+          help
+            Support for the sunxi security
+
+config SUNXI_SECURE_BOOT
+	bool "Sunxi secure boot support"
+	select SUNXI_IMAGE_VERIFIER
+	help
+	  Enable secure boot, uboot will verify image in a secure boot.
+
+config SUNXI_ANTI_BRUSH
+	bool "Sunxi anti brush support"
+	default n
+	help
+	  Enable anti brush, uboot will verify image.
+
+config SUNXI_PART_VERIFY
+	bool "Sunxi partition verify support"
+		depends on SUNXI_SECURE_BOOT
+	help
+	  Enable this, uboot will verify rootfs when boot
+
+config SUNXI_DM_VERITY
+	bool "Sunxi dm verity support"
+		depends on SUNXI_SECURE_BOOT
+	help
+	  Enable this, uboot will support rootfs dm-verity
+
+config SUNXI_MEM_MAPPING_CHECK
+          bool
+          default n
+          help
+            Support for the sunxi memory mapping check
+
+config SUNXI_COMPARE_IMAGE_AND_FLASH
+	bool "compare image and flash size"
+	help
+	 Support comparison of image and flash before burning,
+	 if image is larger than flash, will exit burning.
+	default n
+
+config SUNXI_INITRD_ROUTINE
+	bool "Sunxi ramdisk init routine"
+	default y
+	help
+		use sunxi ramdisk init routine ,witch copy ramdisk to addr defined
+		in boot.img head, instead of original one, whitch will copy ramdisk
+		to dynamically malloced addr.
+
+config SUNXI_WDT_V2
+	bool "sunxi watchdog v2"
+	help
+		version2 watch dog, work as a independent peripheral
+		no longer included in a timer
+
+# Note only one of these may be selected at a time! But hidden choices are
+# not supported by Kconfig
+config SUNXI_GEN_SUN4I
+	bool
+	---help---
+	Select this for sunxi SoCs which have resets and clocks set up
+	as the original A10 (mach-sun4i).
+
+config SUNXI_GEN_SUN6I
+	bool
+	---help---
+	Select this for sunxi SoCs which have sun6i like periphery, like
+	separate ahb reset control registers, custom pmic bus, new style
+	watchdog, etc.
+
+choice
+	prompt "Sunxi SoC Variant"
+	default MACH_SUN20IW1
+
+config MACH_SUN20IW1
+	bool "sun20i(Allwinner sun20iw1)"
+	select CPU_C906
+	select SUN8I_RSB
+	select SUNXI_NCAT_V2
+	select SUNXI_WDT_V2
+
+endchoice
+
+# The sun8i SoCs share a lot, this helps to avoid a lot of "if A23 || A33"
+config MACH_SUN8I
+	bool
+	select SUN8I_RSB
+	select SUN6I_PRCM
+	default y if MACH_SUN8I_V3S
+
+config RESERVE_ALLWINNER_BOOT0_HEADER
+	bool "reserve space for Allwinner boot0 header"
+	select ENABLE_ARM_SOC_BOOT0_HOOK
+	---help---
+	Prepend a 1536 byte (empty) header to the U-Boot image file, to be
+	filled with magic values post build. The Allwinner provided boot0
+	blob relies on this information to load and execute U-Boot.
+	Only needed on 64-bit Allwinner boards so far when using boot0.
+config DRAM_PARA_ADDR
+	hex
+	---help---
+	show the dram init para for sprite.
+config SUNXI_FDT_ADDR
+	hex "device tree address for kernel"
+	default 44000000
+	---help---
+	set the address for start_kernel.
+
+config SUNXI_FDT_SAVE
+	bool "SUNXI FDT SVAE"
+	default n
+	depends on CMD_FDT
+	help
+	  This is the SUNXI FDT SAVE
+
+config SUNXI_DTB_RESERVE_SIZE
+	hex "sunxi dtb reserve default size to 1M"
+	default 0x100000
+	depends on SUNXI_FDT_SAVE
+	help
+	  set sunxi dtb reserve default size
+
+config SUNXI_BOOTPKG_BASE
+	hex "sunxi bootpkage base for anti-brush boot"
+	default 0x41000000
+	depends on SUNXI_ANTI_BRUSH
+	help
+	  set sunxi bootpakge base
+
+config SUNXI_TURNNING_FLASH
+	bool "SUNXI TURNNING FLASH SVAE"
+	default y
+	help
+	  This is the SUNXI TURNNING FLASH
+
+config SUNXI_TURNNING_DRAM
+	bool "SUNXI TURNNING DRAM SVAE"
+	default y
+	help
+	  This is the SUNXI TURNNING DRAM
+
+config SUNXI_OTA_TURNNING
+	bool "SUNXI OTA TURNNING SVAE"
+	depends on (SUNXI_TURNNING_FALSH && SUNXI_TURNNING_DRAM)
+	default n
+	help
+	  This is the SUNXI OTA TURNNING SAVE
+
+config SUNXI_DEBUG
+	bool "the gating for uboot debug"
+	default false
+config SUNXI_NOR_IMG
+	bool "crate u-boot-nor.bin"
+	default false
+
+config SYS_CLK_FREQ
+	default 1008000000 if MACH_SUN8IW20
+	default 1008000000
+
+config SYS_CONFIG_NAME
+	string  "system config header name"
+	default "sun20iw1p1" if MACH_SUN20IW1
+
+config SYS_BOARD
+	default "sunxi"
+
+config SYS_SOC
+	default "sunxi"
+
+config OLD_SUNXI_KERNEL_COMPAT
+	bool "Enable workarounds for booting old kernels"
+	default n
+	---help---
+	Set this to enable various workarounds for old kernels, this results in
+	sub-optimal settings for newer kernels, only enable if needed.
+
+config MACPWR
+	string "MAC power pin"
+	default ""
+	help
+	  Set the pin used to power the MAC. This takes a string in the format
+	  understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
+
+config I2C0_ENABLE
+	bool "Enable I2C/TWI controller 0"
+	default n
+	select CMD_I2C
+	---help---
+	This allows enabling I2C/TWI controller 0 by muxing its pins, enabling
+	its clock and setting up the bus. This is especially useful on devices
+	with slaves connected to the bus or with pins exposed through e.g. an
+	expansion port/header.
+
+config I2C1_ENABLE
+	bool "Enable I2C/TWI controller 1"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C1_ENABLE help text.
+
+config I2C2_ENABLE
+	bool "Enable I2C/TWI controller 2"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C2_ENABLE help text.
+
+config I2C3_ENABLE
+	bool "Enable I2C/TWI controller 3"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C3_ENABLE help text.
+config I2C4_ENABLE
+	bool "Enable I2C/TWI controller 4"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C4_ENABLE help text.
+config I2C5_ENABLE
+	bool "Enable I2C/TWI controller 5"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C5_ENABLE help text.
+config R_I2C0_ENABLE
+	bool "Enable R_I2C/R_TWI controller 0"
+	default n
+	select CMD_I2C
+	---help---
+	See R_I2C0_ENABLE help text.
+config R_I2C1_ENABLE
+	bool "Enable R_I2C/R_TWI controller 1"
+	default n
+	select CMD_I2C
+	---help---
+	See R_I2C1_ENABLE help text.
+
+
+config AXP_GPIO
+	bool "Enable support for gpio-s on axp PMICs"
+	default n
+	---help---
+	Say Y here to enable support for the gpio pins of the axp PMIC ICs.
+
+
+config SATAPWR
+	string "SATA power pin"
+	default ""
+	help
+	  Set the pins used to power the SATA. This takes a string in the
+	  format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of
+	  port H.
+
+config GMAC_TX_DELAY
+	int "GMAC Transmit Clock Delay Chain"
+	default 0
+	---help---
+	Set the GMAC Transmit Clock Delay Chain value.
+
+config INITIAL_USB_SCAN_DELAY
+	int "delay initial usb scan by x ms to allow builtin devices to init"
+	default 0
+	---help---
+	Some boards have on board usb devices which need longer than the
+	USB spec's 1 second to connect from board powerup. Set this config
+	option to a non 0 value to add an extra delay before the first usb
+	bus scan.
+
+config USB0_VBUS_PIN
+	string "Vbus enable pin for usb0 (otg)"
+	default ""
+	---help---
+	Set the Vbus enable pin for usb0 (otg). This takes a string in the
+	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
+
+config USB1_VBUS_PIN
+	string "Vbus enable pin for usb1 (ehci0)"
+	default ""
+	---help---
+	Set the Vbus enable pin for usb1 (ehci0, usb0 is the otg). This takes
+	a string in the format understood by sunxi_name_to_gpio, e.g.
+	PH1 for pin 1 of port H.
+
+config USB2_VBUS_PIN
+	string "Vbus enable pin for usb2 (ehci1)"
+	default ""
+	---help---
+	See USB1_VBUS_PIN help text.
+
+config USB3_VBUS_PIN
+	string "Vbus enable pin for usb3 (ehci2)"
+	default ""
+	---help---
+	See USB1_VBUS_PIN help text.
+endif

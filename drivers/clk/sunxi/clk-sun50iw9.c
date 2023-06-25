@@ -466,7 +466,6 @@ static const char *cpurpio_parents[] = {"cpurapbs1"};
 static const char *stwi_parents[] = {"cpurapbs1"};
 static const char *losc_parents[] = {"losc"};
 static const char *dcxo_parents[] = {"hosc"};
-static const char *apbs2mod_parents[] = {"cpurapbs2"};
 
 struct sunxi_clk_comgate com_gates[] = {
 {"nand",    0, 0x3, BUS_GATE_SHARE|RST_GATE_SHARE|MBUS_GATE_SHARE, 0},
@@ -582,7 +581,6 @@ SUNXI_CLK_PERIPH(cpurapbs1,      0,               0,       0,            CPUS_AP
 SUNXI_CLK_PERIPH(cpurapbs2_pll,  0,               0,       0,            CPUS_APBS2_CFG,     0,         5,          0,          0,          0,          0,               0,               0,             0,             0,          0,          0,             0,             &clk_lock, NULL,             0);
 SUNXI_CLK_PERIPH(cpurapbs2,      CPUS_APBS2_CFG,  24,      2,            CPUS_APBS2_CFG,     0,         0,          8,          2,          0,          0,               0,               0,             0,             0,          0,          0,             0,             &clk_lock, NULL,             0);
 SUNXI_CLK_PERIPH(cpurcir,        CPUS_CIR_CFG,    24,      1,            CPUS_CIR_CFG,       0,         5,          8,          2,          0,          CPUS_CIR_CFG,    CPUS_CIR_GATE,   CPUS_CIR_GATE, 0,             31,         16,         0,             0,             &clk_lock, NULL,             0);
-SUNXI_CLK_PERIPH(cpurcan,        0,    0,      0,            0,       0,         5,          8,          2,          0,          0,    CPUS_CAN_GATE,   CPUS_CAN_GATE, 0,             0,         16,         0,             0,             &clk_lock, NULL,             0);
 SUNXI_CLK_PERIPH(losc_out,       0,               0,       0,            0,                  0,         0,          0,          0,          0,          0,               0,               LOSC_OUT_GATE, 0,             0,          0,          0,             0,             &clk_lock, NULL,             0);
 SUNXI_CLK_PERIPH(stwi,       0,               0,       0,            0,                  0,         0,          0,          0,          0,          0,               CPUS_TWI_GATE,               CPUS_TWI_GATE, 0,             0,          16,          0,             0,             &clk_lock, NULL,             0);
 SUNXI_CLK_PERIPH(cpurpio,        0,               0,       0,            0,                  0,         0,          0,          0,          0,          0,               0,               0,             0,             0,          0,          0,             0,             &clk_lock, NULL,             0);
@@ -698,7 +696,6 @@ struct periph_init_data sunxi_periphs_cpus_init[] = {
 	{"cpurapbs2_pll",   CLK_GET_RATE_NOCACHE|CLK_READONLY,  cpurapbs2_pll_parents,  ARRAY_SIZE(cpurapbs2_pll_parents),  &sunxi_clk_periph_cpurapbs2_pll },
 	{"cpurapbs2",       CLK_GET_RATE_NOCACHE|CLK_READONLY,  cpurapbs2_parents,      ARRAY_SIZE(cpurapbs2_parents),      &sunxi_clk_periph_cpurapbs2     },
 	{"cpurcir",         CLK_GET_RATE_NOCACHE,               cpurdev_parents,        ARRAY_SIZE(cpurdev_parents),        &sunxi_clk_periph_cpurcir       },
-	{"cpurcan",         CLK_GET_RATE_NOCACHE,               apbs2mod_parents,        ARRAY_SIZE(apbs2mod_parents),        &sunxi_clk_periph_cpurcan       },
 	{"losc_out",        0,                                  losc_parents,           ARRAY_SIZE(losc_parents),           &sunxi_clk_periph_losc_out      },
 	{"cpurpio",         CLK_GET_RATE_NOCACHE|CLK_READONLY,  cpurpio_parents,        ARRAY_SIZE(cpurpio_parents),        &sunxi_clk_periph_cpurpio       },
 	{"dcxo_out",        0,                                  dcxo_parents,           ARRAY_SIZE(dcxo_parents),           &sunxi_clk_periph_dcxo_out      },

@@ -10,6 +10,7 @@
 #include <sys_config.h>
 #include <boot_gui.h>
 #include <sys_partition.h>
+#include <sunxi_verify_boot_info.h>
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_SUNXI_USER_KEY
@@ -20,7 +21,7 @@ char *IGNORE_ENV_VARIABLE[] = {
 };
 #define NAME_SIZE 32
 int USER_DATA_NUM;
-char USER_DATA_NAME[10][NAME_SIZE] = { { '\0' } };
+char USER_DATA_NAME[32][NAME_SIZE] = { { '\0' } };
 
 void check_user_data(void)
 {
@@ -29,7 +30,8 @@ void check_user_data(void)
 	int i, j;
 
 	if ((get_boot_storage_type() == STORAGE_SD) ||
-	    (get_boot_storage_type() == STORAGE_EMMC)) {
+	    (get_boot_storage_type() == STORAGE_EMMC) ||
+	    (get_boot_storage_type() == STORAGE_EMMC0)) {
 		command_p = env_get("setargs_mmc");
 	} else {
 		command_p = env_get("setargs_nand");
@@ -100,43 +102,27 @@ void check_user_data(void)
 */
 }
 
-static int get_key_from_private(char *filename, char *data_buf, int *len)
+static int get_key_from_private(int partno, char *filename, char *data_buf, int *len)
 {
-	int ret		    = 0;
-	int partno	  = -1;
 	char part_info[16]  = { 0 }; /* format: "partno:0" */
 	char addr_info[32]  = { 0 }; /* 00000000 */
 	char file_info[64]  = { 0 };
-	char fetch_name[64] = { 0 };
 
 	char *bmp_argv[6] = { "fatload", "sunxi_flash", part_info,
 			      addr_info, file_info,     NULL };
 
-	/* check serial_feature config info */
-	strcpy(fetch_name, filename);
-	strcat(fetch_name, "_filename");
-	ret = script_parser_fetch("/soc/serial_feature", fetch_name,
-				  (int *)file_info, sizeof(file_info) / 4);
-	if ((ret < 0) || (strlen(file_info) == 0)) {
-		strcpy(file_info, "ULI/factory/");
-		strcat(file_info, filename);
-		strcat(file_info, ".txt");
-	}
-
-	/* check private partition info */
-	partno = sunxi_partition_get_partno_byname("private");
-	if (partno < 0) {
+	if (partno < 0)
 		return -1;
-	}
+
+	strcpy(file_info, filename);
 
 	/* get data from file */
 	sprintf(part_info, "0:%x", partno);
 	sprintf(addr_info, "%lx", (ulong)data_buf);
 	memset(data_buf, 0, *len);
-	if (do_fat_fsload(0, 0, 6, bmp_argv)) {
-		pr_error("load file(%s) error.\n", bmp_argv[4]);
+	if (do_fat_fsload(0, 0, 6, bmp_argv))
 		return -1;
-	}
+
 	data_buf[*len] = 0;
 
 	return 0;
@@ -157,6 +143,21 @@ int update_user_data(void)
 	int found	   = 0;
 	int sec_inited      = !sunxi_secure_storage_init();
 
+	int partno = -1;
+	const char *file_path = "ULI/factory";
+	char fetch_name[64] = { 0 };
+	char fetch_data[64] = { 0 };
+	char full_name[64] = { 0 };
+
+	/* check private partition info */
+	partno = sunxi_partition_get_partno_byname("private");
+	if (partno >= 0) {
+		sprintf(buffer, "fatls sunxi_flash 0:%x %s", partno, file_path);
+		printf("List file under %s\n", file_path);
+		if (run_command(buffer, 0))
+			partno = -1;
+	}
+
 	for (k = 0; k < USER_DATA_NUM; k++) {
 		found = 0;
 		memset(buffer, 0, 512);
@@ -170,10 +171,19 @@ int update_user_data(void)
 
 		if (!found) {
 			data_len = 512;
-			ret = get_key_from_private(USER_DATA_NAME[k], buffer,
-						   &data_len);
-			if (!ret) {
-				found = 2;
+
+			if (partno >= 0) {
+				sprintf(fetch_name, "%s_filename", USER_DATA_NAME[k]);
+				ret = script_parser_fetch("/soc/serial_feature", fetch_name,
+							  (int *)fetch_data, sizeof(fetch_data) / 4);
+				if ((ret < 0) || (strlen(fetch_data) == 0))
+					sprintf(full_name, "%s/%s.txt", file_path, USER_DATA_NAME[k]);
+				else
+					sprintf(full_name, "%s", fetch_data);
+
+				ret = get_key_from_private(partno, full_name, buffer, &data_len);
+				if (!ret)
+					found = 2;
 			}
 		}
 
@@ -254,6 +264,18 @@ void update_bootargs(void)
 		sprintf(tmpbuf, " androidboot.secure_os_exist=%d", sunxi_probe_secure_os());
 		strcat(cmdline, tmpbuf);
 	}
+
+#ifdef CONFIG_SUNXI_ANDROID_BOOT
+	str = env_get("android_trust_chain");
+	if (str) {
+		sprintf(tmpbuf, " androidboot.trustchain=%s", str);
+		strcat(cmdline, tmpbuf);
+	}else{
+		sprintf(tmpbuf, " androidboot.trustchain=false");
+		strcat(cmdline, tmpbuf);
+	}
+#endif
+
 	/*dram_clk*/
 	script_parser_fetch("soc/dram_para", "dram_clk", (int *)&dram_clk, 1);
 #ifdef CONFIG_ARCH_SUN8IW15P1
@@ -273,6 +295,30 @@ void update_bootargs(void)
 
 	sprintf(tmpbuf, " uboot_message=%s(%s-%s)", PLAIN_VERSION, U_BOOT_DMI_DATE, U_BOOT_TIME);
 	strcat(cmdline, tmpbuf);
+#ifdef CONFIG_SPINOR_LOGICAL_OFFSET
+#if defined (CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV)
+	char *mtdpart = env_get("sunxi_mtdparts");
+	char *tmpaddr;
+	char *desbuff =NULL;
+	char part_buff[218] = {0};
+	char device_name[16] = {0};
+
+	if(mtdpart != NULL) {
+		tmpaddr = strchr(mtdpart,':');
+		strncpy(device_name, mtdpart, (tmpaddr + 1 - mtdpart));
+		strcpy(part_buff, (tmpaddr+1));
+		desbuff = tmpbuf;
+		sprintf(desbuff, "%s mtdparts=%s%dK(uboot),%s", tmpbuf, device_name,
+				(CONFIG_SPINOR_LOGICAL_OFFSET * 512 / 1024), part_buff);
+
+		strcat(cmdline, tmpbuf);
+	}
+#else
+	/*spi-nor logical offset */
+	sprintf(tmpbuf, " mbr_offset=%d", (CONFIG_SPINOR_LOGICAL_OFFSET * 512));
+	strcat(cmdline, tmpbuf);
+#endif
+#endif
 
 #if defined(CONFIG_BOOT_GUI) || defined(CONFIG_SUNXI_SPINOR_BMP) || defined(CONFIG_SUNXI_SPINOR_JPEG)
 #ifdef CONFIG_BOOT_GUI
@@ -293,13 +339,42 @@ void update_bootargs(void)
 	}
 #endif
 
+#ifdef CONFIG_SUNXI_DM_VERITY
+	char dm_mod[256] = {0};
+	str = env_get("dm_mod");
+	if (str) {
+		snprintf(dm_mod, 256, " dm-mod.create=%s", str);
+		strcat(cmdline, dm_mod);
+	}
+#endif
+
 	str = env_get("aw-ubi-spinand.ubootblks");
 	if (str) {
 		snprintf(tmpbuf, 128, " aw-ubi-spinand.ubootblks=%s", str);
 		strcat(cmdline, tmpbuf);
 	}
 
+	str = env_get("trace_enable");
+	if (str && strcmp(str, "1") == 0) {
+		str = env_get("trace_buf_size");
+		if (str) {
+			snprintf(tmpbuf, 128, " trace_buf_size=%s", str);
+			strcat(cmdline, tmpbuf);
+		}
+		str = env_get("trace_event");
+		if (str) {
+			snprintf(tmpbuf, 128, " trace_event=%s", str);
+			strcat(cmdline, tmpbuf);
+		}
+	}
+
+	sprintf(tmpbuf, " androidboot.dramsize=%d", (unsigned int)(gd->ram_size/1024/1024));
+	strcat(cmdline, tmpbuf);
+
 	env_set("bootargs", cmdline);
 	pr_msg("android.hardware = %s\n", CONFIG_SYS_CONFIG_NAME);
+#ifdef CONFIG_SUNXI_VERIFY_BOOT_INFO_INSTALL
+	sunxi_keymaster_verify_boot_params_install();
+#endif
 
 }

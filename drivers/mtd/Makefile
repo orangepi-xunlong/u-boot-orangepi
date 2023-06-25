@@ -19,4 +19,4 @@ obj-$(CONFIG_ST_SMI) += st_smi.o
 obj-$(CONFIG_STM32_FLASH) += stm32_flash.o
 obj-$(CONFIG_RENESAS_RPC_HF) += renesas_rpc_hf.o
 
-obj-y += aw-spinand/
+obj-y += awnand/

@@ -32,6 +32,12 @@
 		pwm = &pwm;
 		pwm0 = &pwm0;
 		pwm1 = &pwm1;
+		pwm2 = &pwm2;
+		pwm3 = &pwm3;
+		pwm4 = &pwm4;
+		pwm5 = &pwm5;
+		pwm6 = &pwm6;
+		pwm7 = &pwm7;
 		boot_disp = &boot_disp;
 	};
 
@@ -65,7 +71,8 @@
 
 		platform {
 			device_type = "platform";
-			eraseflag = <0x0>;
+			eraseflag = <0x1>;
+			next_work = <0x3>;
 		};
 
 		target {
@@ -311,6 +318,120 @@
 				allwinner,drive = <1>;
 				allwinner,pull = <0>;
 			};
+
+			pwm0_pins_a: pwm0@0 {
+				allwinner,pins = "PB0";
+				allwinner,function = "pwm0";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+
+			pwm0_pins_b: pwm0@1 {
+				allwinner,pins = "PB0";
+				allwinner,function = "pwm0";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm1_pins_a: pwm1@0 {
+				allwinner,pins = "PB1";
+				allwinner,function = "pwm1";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm1_pins_b: pwm1@1 {
+				allwinner,pins = "PB1";
+				allwinner,function = "pwm1";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm2_pins_a: pwm2@0 {
+				allwinner,pins = "PB2";
+				allwinner,function = "pwm2";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm2_pins_b: pwm2@1 {
+				allwinner,pins = "PB2";
+				allwinner,function = "pwm2";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm3_pins_a: pwm3@0 {
+				allwinner,pins = "PB3";
+				allwinner,function = "pwm3";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm3_pins_b: pwm3@1 {
+				allwinner,pins = "PB3";
+				allwinner,function = "pwm3";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm4_pins_a: pwm4@0 {
+				allwinner,pins = "PB4";
+				allwinner,function = "pwm4";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm4_pins_b: pwm4@1 {
+				allwinner,pins = "PB4";
+				allwinner,function = "pwm4";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm5_pins_a: pwm5@0 {
+				allwinner,pins = "PB5";
+				allwinner,function = "pwm5";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm5_pins_b: pwm5@1 {
+				allwinner,pins = "PB5";
+				allwinner,function = "pwm5";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm6_pins_a: pwm6@0 {
+				allwinner,pins = "PB6";
+				allwinner,function = "pwm6";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm6_pins_b: pwm6@1 {
+				allwinner,pins = "PB6";
+				allwinner,function = "pwm6";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm7_pins_a: pwm7@0 {
+				allwinner,pins = "PB7";
+				allwinner,function = "pwm7";
+				allwinner,muxsel = <3>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
+			pwm7_pins_b: pwm7@1 {
+				allwinner,pins = "PB7";
+				allwinner,function = "pwm7";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <1>;
+			};
 		}; /*end pio*/
 
 		uart0: uart@05000000 {
@@ -418,20 +539,19 @@
 
 
 		pwm: pwm@0300a000 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			compatible = "allwinner,sunxi-pwm";
 			reg = <0x0 0x0300a000 0x0 0x3ff>;
 			/*clocks = <&clk_pwm>;*/
 			pwm-number = <8>;
 			pwm-base = <0x0>;
-			pwms = <&pwm0>, <&pwm1>;
+			pwms = <&pwm0>, <&pwm1>,  <&pwm2>, <&pwm3>, <&pwm4>,
+			       <&pwm5>, <&pwm6>, <&pwm7>;
 		};
 		pwm0: pwm0@0300a000 {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			compatible = "allwinner,sunxi-pwm0";
 			pinctrl-names = "active", "sleep";
+			pinctrl-0 = <&pwm0_pins_a>;
+			pinctrl-1 = <&pwm0_pins_b>;
 			reg_base = <0x0300a000>;
 			reg_peci_offset = <0x00>;
 			reg_peci_shift = <0x00>;
@@ -522,6 +642,8 @@
 		pwm1: pwm1@0300a000 {
 			compatible = "allwinner,sunxi-pwm1";
 			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm1_pins_a>;
+			pinctrl-1              = <&pwm1_pins_b>;
 			reg_base = <0x0300a000>;
 			reg_peci_offset = <0x00>;
 			reg_peci_shift = <0x01>;
@@ -608,7 +730,557 @@
 			reg_active_width = <0x10>;
 
 		};
+		pwm2: pwm2@0300a000 {
+			compatible = "allwinner,sunxi-pwm2";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm2_pins_a>;
+			pinctrl-1              = <&pwm2_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x02>;
+			reg_peci_width = <0x01>;
 
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x02>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x04>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x05>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x04>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x05>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x24>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x24>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x24>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x24>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x34>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x34>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x02>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x02>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0xa0>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0xa0>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0xa0>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0xa0>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0xa0>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0xa4>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0xa4>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm3: pwm3@0300a000 {
+			compatible = "allwinner,sunxi-pwm3";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm3_pins_a>;
+			pinctrl-1              = <&pwm3_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x03>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x04>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x06>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x07>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x06>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x07>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x24>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x24>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x24>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x24>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x34>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x34>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x03>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x03>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0xc0>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0xc0>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0xc0>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0xc0>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0xc0>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0xc4>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0xc4>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm4: pwm4@0300a000 {
+			compatible = "allwinner,sunxi-pwm4";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm4_pins_a>;
+			pinctrl-1              = <&pwm4_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x04>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x04>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x08>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x09>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x08>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x09>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x28>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x28>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x28>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x28>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x38>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x38>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x04>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x04>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0xe0>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0xe0>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0xe0>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0xe0>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0xe0>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0xe4>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0xe4>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm5: pwm5@0300a000 {
+			compatible = "allwinner,sunxi-pwm5";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm5_pins_a>;
+			pinctrl-1              = <&pwm5_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x05>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x05>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x0a>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x0b>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x0a>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x0b>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x28>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x28>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x28>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x28>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x38>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x38>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x05>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x05>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0x100>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0x100>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0x100>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0x100>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0x100>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0x104>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0x104>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm6: pwm6@0300a000 {
+			compatible = "allwinner,sunxi-pwm6";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm6_pins_a>;
+			pinctrl-1              = <&pwm6_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x06>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x06>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x0c>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x0d>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x0c>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x0d>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x2c>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x2c>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x2c>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x2c>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x3c>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x3c>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x06>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x06>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0x120>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0x120>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0x120>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0x120>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0x120>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0x124>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0x124>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
+
+		pwm7: pwm7@0300a000 {
+			compatible = "allwinner,sunxi-pwm7";
+			pinctrl-names = "active", "sleep";
+			pinctrl-0              = <&pwm7_pins_a>;
+			pinctrl-1              = <&pwm7_pins_b>;
+			reg_base = <0x0300a000>;
+			reg_peci_offset = <0x00>;
+			reg_peci_shift = <0x07>;
+			reg_peci_width = <0x01>;
+
+			reg_pis_offset = <0x04>;
+			reg_pis_shift = <0x07>;
+			reg_pis_width = <0x01>;
+
+			reg_crie_offset = <0x10>;
+			reg_crie_shift = <0x0e>;
+			reg_crie_width = <0x01>;
+
+			reg_cfie_offset = <0x10>;
+			reg_cfie_shift = <0x0f>;
+			reg_cfie_width = <0x01>;
+
+			reg_cris_offset = <0x14>;
+			reg_cris_shift = <0x0e>;
+			reg_cris_width = <0x01>;
+
+			reg_cfis_offset = <0x14>;
+			reg_cfis_shift = <0x0f>;
+			reg_cfis_width = <0x01>;
+
+			reg_clk_src_offset = <0x2c>;
+			reg_clk_src_shift = <0x07>;
+			reg_clk_src_width = <0x02>;
+
+			reg_bypass_offset = <0x2c>;
+			reg_bypass_shift = <0x06>;
+			reg_bypass_width = <0x01>;
+
+			reg_clk_gating_offset = <0x2c>;
+			reg_clk_gating_shift = <0x04>;
+			reg_clk_gating_width = <0x01>;
+
+			reg_clk_div_m_offset = <0x2c>;
+			reg_clk_div_m_shift = <0x00>;
+			reg_clk_div_m_width = <0x04>;
+
+			reg_pdzintv_offset = <0x3c>;
+			reg_pdzintv_shift = <0x08>;
+			reg_pdzintv_width = <0x08>;
+
+			reg_dz_en_offset = <0x3c>;
+			reg_dz_en_shift = <0x00>;
+			reg_dz_en_width = <0x01>;
+
+			reg_enable_offset = <0x40>;
+			reg_enable_shift = <0x07>;
+			reg_enable_width = <0x01>;
+
+			reg_cap_en_offset = <0x44>;
+			reg_cap_en_shift = <0x07>;
+			reg_cap_en_width = <0x01>;
+
+			reg_period_rdy_offset = <0x140>;
+			reg_period_rdy_shift = <0x0b>;
+			reg_period_rdy_width = <0x01>;
+
+			reg_pul_start_offset = <0x140>;
+			reg_pul_start_shift = <0x0a>;
+			reg_pul_start_width = <0x01>;
+
+			reg_mode_offset = <0x140>;
+			reg_mode_shift = <0x09>;
+			reg_mode_width = <0x01>;
+
+			reg_act_sta_offset = <0x140>;
+			reg_act_sta_shift = <0x08>;
+			reg_act_sta_width = <0x01>;
+
+			reg_prescal_offset = <0x140>;
+			reg_prescal_shift = <0x00>;
+			reg_prescal_width = <0x08>;
+
+			reg_entire_offset = <0x144>;
+			reg_entire_shift = <0x10>;
+			reg_entire_width = <0x10>;
+
+			reg_active_offset = <0x144>;
+			reg_active_shift = <0x00>;
+			reg_active_width = <0x10>;
+
+		};
 
 		boot_disp: boot_disp {
 			compatible = "allwinner,boot_disp";

@@ -40,10 +40,16 @@ static s32 de_rtmx_init_rcq(u32 disp)
 		de_ccsc_get_reg_blocks,
 		de_bld_get_reg_blocks,
 		de_fmt_get_reg_blocks,
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 		de_enhance_get_reg_blocks,
+#endif
 		de_smbl_get_reg_blocks,
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SNR
 		de_snr_get_reg_blocks,
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_KSC
 		de_ksc_get_reg_blocks,
+#endif
 	};
 
 	s32 (*func)(u32, struct de_reg_block **, u32 *);
@@ -224,18 +230,21 @@ s32 de_rtmx_init(disp_bsp_init_para *para)
 					rcq_used, ((phy_chn == 0) ? 1 : 0));
 				if (chn_info->cdc_hdl == NULL) {
 					DE_WRN("de_cdc_create fail!\n");
-					return -1;
 				}
 			}
 		}
 
 		de_ovl_init(disp, ctx->de_reg_base);
 		de_fbd_atw_init(disp, ctx->de_reg_base);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SNR
 		de_snr_init(disp, ctx->de_reg_base);
+#endif
 		de_vsu_init(disp, ctx->de_reg_base);
 		de_ccsc_init(disp, ctx->de_reg_base);
 		de_bld_init(disp, ctx->de_reg_base);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_KSC
 		de_ksc_init(disp, ctx->de_reg_base);
+#endif
 		de_fmt_init(disp, ctx->de_reg_base);
 		de_rtmx_init_rcq(disp);
 	}
@@ -262,8 +271,12 @@ s32 de_rtmx_exit(void)
 		de_vsu_exit(disp);
 		de_fbd_atw_exit(disp);
 		de_ovl_exit(disp);
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SNR
 		de_snr_exit(disp);
+#endif
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_KSC
 		de_ksc_exit(disp);
+#endif
 
 		for (chn = 0; chn < ctx->chn_num; ++chn) {
 			chn_info = ctx->chn_info + chn;
@@ -476,8 +489,10 @@ s32 de_rtmx_mgr_apply(u32 disp, struct disp_manager_data *data)
 
 	}
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_KSC
 	if (data->flag & MANAGER_KSC_DIRTY)
 		de_ksc_set_para(disp, &data->config.ksc);
+#endif
 
 	ctx->clk_rate_hz = data->config.de_freq;
 	ctx->be_blank = data->config.blank;
@@ -964,7 +979,10 @@ static s32 de_rtmx_chn_layer_apply(u32 disp, u32 chn,
 		de_fbd_atw_disable(disp, chn);
 		de_ovl_apply_lay(disp, chn, pdata, pdata_num);
 	}
+
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_SNR
 	de_snr_set_para(disp, chn, pdata, pdata_num);
+#endif
 
 	if (chn_info->scale_en) {
 		de_vsu_set_para(disp, chn, chn_info);

@@ -22,6 +22,7 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply SPI_FLASH_STMICRO
 	imply SPI_FLASH_SST
 	imply SPI_FLASH_WINBOND
+	imply SPI_FLASH_XT
 
 comment "coreboot-specific options"
 

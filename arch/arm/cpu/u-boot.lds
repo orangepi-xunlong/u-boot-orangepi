@@ -197,6 +197,7 @@ SECTIONS
 	}
 
 	_image_binary_end = .;
+	ASSERT(. < CONFIG_SYS_TEXT_BASE + CONFIG_SUNXI_TEXT_SIZE, "uboot size exceeds size limit")
 
 	/*
 	 * Deprecated: this MMU section is used by pxa at present but

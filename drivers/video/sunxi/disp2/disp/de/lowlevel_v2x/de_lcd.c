@@ -19,7 +19,11 @@
 
 static volatile struct __de_lcd_dev_t *lcd_dev[DEVICE_NUM];
 #if defined(HAVE_DEVICE_COMMON_MODULE)
+#if defined(CONFIG_INDEPENDENT_DE)
+static volatile struct __de_lcd_top_dev_t *lcd_top[DEVICE_NUM];
+#else
 static volatile struct __de_lcd_top_dev_t *lcd_top[1];
+#endif
 #endif
 
 #if defined(HAVE_DEVICE_COMMON_MODULE)
@@ -48,10 +52,17 @@ s32 dsi_src_sel(u32 sel, u32 src)
 {
 	if (sel >= DEVICE_DSI_NUM || src > 1)
 		return -1;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel == 0)
+		lcd_top[0]->dsi_src_select.bits.dsi0_src_sel = src;
+	else
+		lcd_top[1]->dsi_src_select.bits.dsi1_src_sel = src;
+#else
 	if (sel == 0)
 		lcd_top[0]->dsi_src_select.bits.dsi0_src_sel = src;
 	else
 		lcd_top[0]->dsi_src_select.bits.dsi1_src_sel = src;
+#endif
 	return 0;
 }
 /* sel: the index of timing controller */
@@ -195,6 +206,20 @@ s32 tcon_de_attach(u32 tcon_index, u32 de_index)
 		if (tcon_real_index > 2)
 			tcon_real_index += 2;
 	}
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (de_index == 0)
+		lcd_top[0]->tcon_de_perh.bits.de_port0_perh = tcon_real_index;
+	else if (de_index == 1)
+		lcd_top[1]->tcon_de_perh.bits.de_port1_perh = tcon_real_index;
+
+	if (lcd_top[0]->tcon_de_perh.bits.de_port0_perh ==
+	    lcd_top[1]->tcon_de_perh.bits.de_port1_perh) {
+		if (de_index == 0)
+			lcd_top[1]->tcon_de_perh.bits.de_port1_perh += 1;
+		else
+			lcd_top[0]->tcon_de_perh.bits.de_port0_perh += 1;
+	}
+#else
 	if (de_index == 0)
 		lcd_top[0]->tcon_de_perh.bits.de_port0_perh = tcon_real_index;
 	else if (de_index == 1)
@@ -207,6 +232,7 @@ s32 tcon_de_attach(u32 tcon_index, u32 de_index)
 		else
 			lcd_top[0]->tcon_de_perh.bits.de_port0_perh += 1;
 	}
+#endif
 
 	return 0;
 }
@@ -222,10 +248,17 @@ s32 tcon_get_attach_by_de_index(u32 de_index)
 {
 	s32 tcon_index = 0;
 
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (0 == de_index)
+		tcon_index = lcd_top[0]->tcon_de_perh.bits.de_port0_perh;
+	else if (1 == de_index)
+		tcon_index = lcd_top[1]->tcon_de_perh.bits.de_port1_perh;
+#else
 	if (0 == de_index)
 		tcon_index = lcd_top[0]->tcon_de_perh.bits.de_port0_perh;
 	else if (1 == de_index)
 		tcon_index = lcd_top[0]->tcon_de_perh.bits.de_port1_perh;
+#endif
 
 	return tcon_index;
 }
@@ -553,8 +586,10 @@ s32 tcon0_open(u32 sel, disp_panel_para *panel)
 		if ((panel->lcd_cpu_mode == 0)
 		    && (panel->lcd_if == LCD_IF_CPU))
 			tcon_irq_enable(sel, LCD_IRQ_TCON0_VBLK);
-		else
+		else {
+			lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 1;
 			tcon_irq_enable(sel, LCD_IRQ_TCON0_CNTR);
+		}
 	} else if (panel->lcd_if == LCD_IF_DSI) {
 		lcd_dev[sel]->tcon0_dclk.bits.tcon0_dclk_en = 0xf;
 		lcd_dev[sel]->tcon0_ctl.bits.tcon0_en = 1;
@@ -708,6 +743,12 @@ static s32 tcon0_cfg_mode_tri(u32 sel, disp_panel_para *panel)
 		lcd_dev[sel]->tcon0_cpu_tri0.bits.block_space =
 		    panel->lcd_ht * dsi_pixel_bits[panel->lcd_dsi_format] /
 		    (tcon_div * panel->lcd_dsi_lane) - panel->lcd_x - 40;
+
+#if defined(SUNXI_DSI_PASSIVE_BUG)
+		lcd_dev[sel]->tcon0_cpu_tri0.bits.block_space =
+		    panel->lcd_ht * dsi_pixel_bits[panel->lcd_dsi_format] /
+		    (tcon_div * 4) - panel->lcd_x - 40;
+#endif
 		lcd_dev[sel]->tcon0_cpu_tri2.bits.trans_start_set = 10;
 #endif
 	}
@@ -800,7 +841,7 @@ s32 tcon0_cfg(u32 sel, disp_panel_para *panel)
 		lcd_dev[sel]->tcon_sync_ctl.bits.dsi_num =
 		    (panel->lcd_tcon_mode == DISP_TCON_DUAL_DSI) ? 1 : 0;
 		lcd_dev[sel]->tcon0_3d_fifo.bits.fifo_3d_setting =
-		    1; /*normal fifo*/
+		    0; /*bypass*/
 
 		/*sync setting between master lcd and slave lcd*/
 		if (panel->lcd_tcon_mode < DISP_TCON_DUAL_DSI) {
@@ -951,6 +992,9 @@ s32 tcon0_cfg(u32 sel, disp_panel_para *panel)
 		break;
 	}
 
+	if (panel->lcd_hv_data_polarity)
+		lcd_dev[sel]->tcon0_io_pol.bits.data_inv = 0xffffff;
+
 	if (panel->lcd_fresh_mode == 1) {
 		u32 lcd_te;
 
@@ -1056,9 +1100,57 @@ u32 tcon0_cpu_busy(u32 sel)
 		return 0;
 }
 
+#if defined(CONFIG_MACH_SUN8IW19)
 s32 tcon0_cpu_wr_24b_index(u32 sel, u32 index)
 {
 	u32 count = 0;
+
+	if (lcd_dev[sel]->tcon0_io_pol.bits.data_inv == 0xffffff)
+		index = ~index;
+
+	while ((tcon0_cpu_busy(sel)) && (count < 50)) {
+		count++;
+		disp_delay_us(100);
+	}
+	lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 0;
+	/*
+	 * 0: write index
+	 * 1: write param
+	 */
+	lcd_dev[sel]->tcon0_cpu_ctl.bits.ca = 0;
+	lcd_dev[sel]->tcon0_cpu_wr.bits.data_wr = index;
+	return 0;
+}
+
+s32 tcon0_cpu_wr_24b_data(u32 sel, u32 data)
+{
+	u32 count = 0;
+
+	if (lcd_dev[sel]->tcon0_io_pol.bits.data_inv == 0xffffff)
+		data = ~data;
+
+	while ((tcon0_cpu_busy(sel)) && (count < 50)) {
+		count++;
+		disp_delay_us(100);
+	}
+	/*
+	 * 0: write index
+	 * 1: write param
+	 */
+	lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 0;
+	lcd_dev[sel]->tcon0_cpu_ctl.bits.ca = 1;
+	lcd_dev[sel]->tcon0_cpu_wr.bits.data_wr = data;
+	return 0;
+}
+#else
+
+s32 tcon0_cpu_wr_24b_index(u32 sel, u32 index)
+{
+	u32 count = 0;
+
+	if (lcd_dev[sel]->tcon0_io_pol.bits.data_inv == 0xffffff)
+		index = ~index;
+
 	while ((tcon0_cpu_busy(sel)) && (count < 50)) {
 		count++;
 		disp_delay_us(100);
@@ -1077,6 +1169,10 @@ s32 tcon0_cpu_wr_24b_index(u32 sel, u32 index)
 s32 tcon0_cpu_wr_24b_data(u32 sel, u32 data)
 {
 	u32 count = 0;
+
+	if (lcd_dev[sel]->tcon0_io_pol.bits.data_inv == 0xffffff)
+		data = ~data;
+
 	while ((tcon0_cpu_busy(sel)) && (count < 50)) {
 		count++;
 		disp_delay_us(100);
@@ -1091,6 +1187,7 @@ s32 tcon0_cpu_wr_24b_data(u32 sel, u32 data)
 	lcd_dev[sel]->tcon0_cpu_ctl.bits.da = 1;
 	return 0;
 }
+#endif
 
 s32 tcon0_cpu_wr_24b(u32 sel, u32 index, u32 data)
 {

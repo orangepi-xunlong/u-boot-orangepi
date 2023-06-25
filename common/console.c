@@ -362,6 +362,8 @@ void fputs(int file, const char *s)
 		console_puts(file, s);
 }
 
+void uputs(const char *s);
+
 int uprintf(int log_level, const char *fmt, ...)
 {
 	va_list args;
@@ -384,7 +386,7 @@ int uprintf(int log_level, const char *fmt, ...)
 		    msecond / 1000, msecond % 1000, printbuffer);
 	va_end(args);
 	/* Print the string */
-	puts(printbuffer_with_timestamp);
+	uputs(printbuffer_with_timestamp);
 	return i;
 }
 
@@ -572,23 +574,21 @@ void putc(const char c)
 		return;
 #endif
 
+	pre_console_putc(c);
 	if (!gd->have_console)
-		return pre_console_putc(c);
+		return;
 
 	if (gd->flags & GD_FLG_DEVINIT) {
 		/* Send to the standard output */
 		fputc(stdout, c);
 	} else {
 		/* Send directly to the handler */
-		pre_console_putc(c);
 		serial_putc(c);
 	}
 }
 
-void puts(const char *s)
+void uputs(const char *s)
 {
-	if (gd->debug_mode == 0)
-		return;
 #ifdef CONFIG_DEBUG_UART
 	if (!gd || !(gd->flags & GD_FLG_SERIAL_READY)) {
 		while (*s) {
@@ -622,6 +622,48 @@ void puts(const char *s)
 	} else {
 		/* Send directly to the handler */
 		pre_console_puts(s);
+		serial_puts(s);
+	}
+}
+
+
+void puts(const char *s)
+{
+	if (gd->debug_mode == 0)
+		return;
+#ifdef CONFIG_DEBUG_UART
+	if (!gd || !(gd->flags & GD_FLG_SERIAL_READY)) {
+		while (*s) {
+			int ch = *s++;
+
+			printch(ch);
+		}
+		return;
+	}
+#endif
+#ifdef CONFIG_CONSOLE_RECORD
+	if (gd && (gd->flags & GD_FLG_RECORD) && gd->console_out.start)
+		membuff_put(&gd->console_out, s, strlen(s));
+#endif
+#ifdef CONFIG_SILENT_CONSOLE
+	if (gd->flags & GD_FLG_SILENT)
+		return;
+#endif
+
+#ifdef CONFIG_DISABLE_CONSOLE
+	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
+		return;
+#endif
+
+	pre_console_puts(s);
+	if (!gd->have_console)
+		return;
+
+	if (gd->flags & GD_FLG_DEVINIT) {
+		/* Send to the standard output */
+		fputs(stdout, s);
+	} else {
+		/* Send directly to the handler */
 		serial_puts(s);
 	}
 }
@@ -797,11 +839,16 @@ int console_init_f(void)
 	int debug_mode;
 	console_update_silent();
 	if (get_boot_work_mode() == WORK_MODE_BOOT)
-		script_parser_fetch("/soc/platform", "debug_mode", &debug_mode, 4);
+		if (uboot_spare_head.boot_data.debug_mode & 0x80) /* bit7 is one, means boot0 want to set debug_mode */
+			debug_mode = uboot_spare_head.boot_data.debug_mode & 0x7F;
+		else /* dts */
+			script_parser_fetch("/soc/platform", "debug_mode", &debug_mode, 4);
 	else
 		debug_mode = 8;
 	gd->debug_mode = debug_mode;
-
+#if CONFIG_IS_ENABLED(PRE_CONSOLE_BUFFER)
+	memset((char *)(CONFIG_PRE_CON_BUF_ADDR + gd->precon_buf_idx), 0, CONFIG_PRE_CON_BUF_SZ - gd->precon_buf_idx);
+#endif
 	print_pre_console_buffer(PRE_CONSOLE_FLUSHPOINT1_SERIAL);
 
 	return 0;

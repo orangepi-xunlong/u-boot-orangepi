@@ -9,16 +9,132 @@
 #include "rawnand_chip.h"
 #include "controller/ndfc_ops.h"
 #include "controller/ndfc_timings.h"
-#include "rawnand.h"
+/*#include "rawnand.h"*/
 #include "rawnand_base.h"
 #include "rawnand_ids.h"
 #include "rawnand_readretry.h"
 #include "../version.h"
 #include "rawnand_boot.h"
 #include "../../nand_osal_uboot.h"
+#include <private_toc.h>
+#include <sunxi_nand_boot.h>
+#include <sunxi_nand_errno.h>
 
-int small_nand_seed; //small nand random seed flag
+/*int small_nand_seed; //small nand random seed flag*/
 static __u32 SECURE_FLAG;
+
+extern __u32 rawnand_get_page_cnt_per_block(void);
+extern __u32 rawnand_get_pae_size(void);
+extern int nand_verify_toc0(unsigned char *buffer, unsigned int len);
+extern int NAND_IS_Secure_Chip(void);
+extern int NAND_IS_Burn_Mode(void);
+
+#if defined(CONFIG_SUNXI_SLCNAND_OFFLINE_BURN_SECURE_FIRMWARE)
+/*
+* For small capacity slc nand offline burner. block0~block3: store secure boot0
+* block4~block7: store normal boot0. Secure bit is not efused.
+* Normal boot0 will run after power on, TA efuses secure bit.
+* Secure boot0(toc0) will run when power on again. From then on,
+* we need destory normal boot0, or we`d better burn secure boot0.
+*/
+int rawnand_replace_boot0_with_toc0(void)
+{
+	uint8 *toc0_buf = NULL;
+	uint8 sbuf[16]  = { 0 };
+	uint8 *mbuf     = NULL;
+	int b = 0, p = 0;
+	int toc0_blk    = 0,
+	    end_toc_blk = aw_nand_info.boot->uboot_start_block >> 1;
+	int check       = (NAND_IS_Secure_Chip() && (!NAND_IS_Burn_Mode()));
+	int ret		= 0;
+	int got_toc0    = 0;
+	int chip	= 0;
+	unsigned int page_cnt_per_blk = rawnand_get_page_cnt_per_block();
+	unsigned int pagesize = rawnand_get_pae_size();
+	unsigned int blocksize = pagesize * page_cnt_per_blk;
+	toc0_private_head_t *toc0 = NULL;
+
+#if 0
+	printf("%s secure_bit: %d mode: %d storage_type: %d, check: %d\n",
+	       __func__, NAND_IS_Secure_Chip(), NAND_IS_Burn_Mode(),
+	       get_boot_storage_type_ext(), check);
+	printf("sector_cnt: %d, page_cnt: %d\n", SECTOR_CNT_OF_SINGLE_PAGE,
+	       PAGE_CNT_OF_PHY_BLK);
+	check = 1;
+#endif
+	if (pagesize == 0 || blocksize == 0) {
+		printf("%s pagesize:%u blocksize:%u err\n", __func__,
+				pagesize, blocksize);
+		return -1;
+	}
+
+	if (check) {
+		mbuf = (uint8 *)NAND_Malloc(pagesize);
+		if (!mbuf) {
+			printf("%s malloc mbuf fail\n", __func__);
+			ret = -1;
+			goto fail_out;
+		}
+		toc0_buf = (uint8 *)NAND_Malloc(blocksize);
+		if (!toc0_buf) {
+			printf("%s malloc toc0_buf fail\n", __func__);
+			ret = -1;
+			goto fail_out;
+		}
+		for (b = end_toc_blk; b < aw_nand_info.boot->uboot_start_block; b++) {
+			/* toc0 header is in page 0 of each block*/
+			ret = nand_physic_read_page(chip, b, 0, pagesize >> 9, mbuf, sbuf);
+			/* toc0 name is "TOC0.GLH".
+			 * now platform before T507 toc0 size is not over 1 block capacity*/
+			toc0 = (toc0_private_head_t *)mbuf;
+
+			if (0 == strncmp((const char *)toc0->name, TOC0_MAGIC, MAGIC_SIZE)) {
+				printf("b %d is valid\n", b);
+				continue;
+			} else {
+				printf("b %d is invalid and erase it first\n", b);
+				nand_physic_erase_block(chip, b);
+				/* find a good toc0 copy first */
+				if (0 == got_toc0) {
+					for (toc0_blk = 0; toc0_blk < end_toc_blk; toc0_blk++) {
+						for (p = 0; p < page_cnt_per_blk; p++) {
+							ret = nand_physic_read_page(chip, toc0_blk, p,
+									pagesize >> 9, toc0_buf + p * pagesize, sbuf);
+							if (ret == ERR_ECC) {
+								printf("%s %d %d fail\n", __func__, toc0_blk, p);
+								break;
+							}
+						}
+						if (p == page_cnt_per_blk) {
+							if (0 == nand_verify_toc0(toc0_buf, blocksize)) {
+								printf("%s %d ok\n", __func__, toc0_blk);
+								break;
+							}
+						}
+					}
+					if (toc0_blk == end_toc_blk)
+						printf("%s can`t find good toc0 copy, %d\n", __func__, end_toc_blk);
+					got_toc0 = 1;
+				}
+				for (p = 0; p < page_cnt_per_blk; p++) {
+					ret = nand_physic_write_page(chip, b, p, pagesize >> 9,
+							toc0_buf + p * pagesize, sbuf);
+					if (ret) {
+						printf("%s W b %d p %d fail\n", __func__, b, p);
+						break;
+					}
+				}
+			}
+		}
+	}
+fail_out:
+	if (mbuf)
+		NAND_Free(mbuf, pagesize);
+	if (toc0_buf)
+		NAND_Free(toc0_buf, blocksize);
+	return ret;
+}
+#endif
 
 u32 _cal_sum(u32 *mem_base, u32 size)
 {
@@ -468,7 +584,8 @@ int generic_write_boot0_one_1k_mode(unsigned char *buf, unsigned int len, unsign
 			lnpo.page = j;
 			lnpo.sdata = oob_buf;
 			lnpo.slen = 64;
-			small_nand_seed = count; //zzm 20180301
+			nci->nctri->random_factor = count;
+			nci->nctri->random_factor |= SMALL_CAPACITY_NAND;
 
 			lnpo.mdata = (__u8 *)(buf + 1024 * count);
 
@@ -482,7 +599,7 @@ int generic_write_boot0_one_1k_mode(unsigned char *buf, unsigned int len, unsign
 			}
 		}
 	}
-	small_nand_seed = 0;
+	nci->nctri->random_factor = 0;
 
 	ndfc_encode_default(nci->nctri);
 	ndfc_channel_select(nci->nctri, 0);
@@ -550,12 +667,13 @@ s32 generic_read_boot0_page_cfg_mode(struct nand_chip_info *nci, struct _nand_ph
 		ndfc_set_ecc_mode(nci->nctri, cfg.ecc_mode);
 		ndfc_enable_ecc(nci->nctri, 1, 1);
 
-		/*For A50 & over 64k boot0 @ R328 spinand*/
-		/*ndfc_set_rand_seed(nci->nctri, small_nand_seed); //zzm 20180301*/
-		ndfc_set_rand_seed(nci->nctri, npo->page); // czk 2019.9.24
+		if (nci->nctri->random_factor & SMALL_CAPACITY_NAND) {
+			ndfc_set_rand_seed(nci->nctri,
+					(nci->nctri->random_factor & RANDOM_VALID_BITS));
+		} else {
+			ndfc_set_rand_seed(nci->nctri, npo->page);
+		}
 
-		/*For R100, yc 20180605*/
-		/*ndfc_set_rand_seed(nci->nctri, npo->page);*/
 		ndfc_enable_randomize(nci->nctri);
 	} else {
 		/*LDPC*/
@@ -733,11 +851,13 @@ s32 generic_write_boot0_page_cfg_mode(struct nand_chip_info *nci,
 	if (nci->nctri->channel_sel == 0) {
 		/*BCH*/
 		ndfc_enable_randomize(nci->nctri);
-		/*For A50 & over 64k boot0 @ R328 spinand*/
-		/*ndfc_set_rand_seed(nci->nctri, small_nand_seed); //zzm 20180301, tcm 20190221*/
-		ndfc_set_rand_seed(nci->nctri, npo->page); // czk 2019.9.24
-		/*For R100, yc 20180605*/
-		/*ndfc_set_rand_seed(nci->nctri, npo->page);*/
+
+		if (nci->nctri->random_factor & SMALL_CAPACITY_NAND) {
+			ndfc_set_rand_seed(nci->nctri,
+					(nci->nctri->random_factor & RANDOM_VALID_BITS));
+		} else {
+			ndfc_set_rand_seed(nci->nctri, npo->page);
+		}
 
 		ndfc_channel_select(nci->nctri, 0);
 		ndfc_set_ecc_mode(nci->nctri, cfg.ecc_mode);
@@ -979,7 +1099,8 @@ int generic_read_boot0_one_1k_mode(unsigned char *buf, unsigned int len, unsigne
 			lnpo.sdata = oob_buf;
 			lnpo.slen = 64;
 			lnpo.mdata = ptr;
-			small_nand_seed = count; //zzm 20180301
+			nci->nctri->random_factor = count;
+			nci->nctri->random_factor |= SMALL_CAPACITY_NAND;
 
 			nand_wait_all_rb_ready();
 			if (nci->nand_read_boot0_page(nci, &lnpo) < 0) {
@@ -1003,7 +1124,8 @@ int generic_read_boot0_one_1k_mode(unsigned char *buf, unsigned int len, unsigne
 			break;
 	}
 	nand_free_temp_buf(ptr, 1024);
-	small_nand_seed = 0;
+	nci->nctri->random_factor = 0;
+
 	return 0;
 
 error:

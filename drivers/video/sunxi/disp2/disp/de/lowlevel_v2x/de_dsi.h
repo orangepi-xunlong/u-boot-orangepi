@@ -212,4 +212,6 @@ s32 dsi_hs_clk(u32 sel, u32 on_off);
 u8 dsi_ecc_pro(u32 dsi_ph);
 u16 dsi_crc_pro_pd_repeat(u8 pd, u32 pd_bytes);
 u16 dsi_crc_pro(u8 *pd_p, u32 pd_bytes);
+s32 lvds_combphy_open(__u32 sel, disp_panel_para *panel);
+__s32 lvds_combphy_close(__u32 sel);
 #endif

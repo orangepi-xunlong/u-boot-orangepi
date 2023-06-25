@@ -18,12 +18,12 @@ int graphic_buffer_alloc(unsigned int w, unsigned h, unsigned int bpp,
 {
 	unsigned int size;
 	void *addr = NULL;
-
+#define PAGE_SIZE 4096
 	if (!w || !h)
 		w = h = 1;
 
 	*stride = DO_ALIGN(w * bpp >> 3, GR_ALIGN_BYTE);
-	size = *stride * h;
+	size = DO_ALIGN(*stride * h, PAGE_SIZE);
 
 	if (GRALLOC_USAGE_HW_FB & usage) {
 		/* only for FB_ID_0 */
@@ -41,7 +41,7 @@ int graphic_buffer_alloc(unsigned int w, unsigned h, unsigned int bpp,
 #endif
 
 	} else {
-		addr = (void *)memalign(CONFIG_SYS_CACHELINE_SIZE, size);
+		addr = (void *)memalign(PAGE_SIZE, size);
 	}
 
 

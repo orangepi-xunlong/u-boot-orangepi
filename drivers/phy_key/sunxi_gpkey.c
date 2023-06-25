@@ -10,6 +10,7 @@
 #include <sys_config.h>
 #include <fdt_support.h>
 #include <console.h>
+#include <sunxi_gpadc.h>
 
 __attribute__((section(".data")))
 static int keyen_flag = 1;
@@ -83,7 +84,24 @@ int sunxi_key_read(void)
 }
 
 
-int do_key_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_adc_key_test(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int val;
+
+	sunxi_gpadc_init();
+	while (1) {
+		val = sunxi_gpadc_read(0);
+		printf("gpadc read vol: %d \n", val);
+		udelay(1000 * 1000);
+		if (tstc()) {
+			if (0x03 == getc())	/*ctrl+c exit */
+				break;
+		}
+	}
+	return 0;
+}
+
+int do_power_key_test(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	u32 power_key = 0;
 
@@ -102,9 +120,29 @@ int do_key_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 }
 
+static cmd_tbl_t cmd_key_test[] = {
+	U_BOOT_CMD_MKENT(power_key, 2, 0, do_power_key_test, "", ""),
+	U_BOOT_CMD_MKENT(adc_driver, 2, 0, do_adc_key_test, "", ""),
+};
+
+int do_key_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	cmd_tbl_t *cp;
+	cp = find_cmd_tbl(argv[1], cmd_key_test, ARRAY_SIZE(cmd_key_test));
+	/* Drop the sunxi_ce_test command */
+	argc--;
+	argv++;
+
+	if (cp)
+		return cp->cmd(cmdtp, flag, argc, argv);
+	else {
+		pr_err("unknown sub command\n");
+		return CMD_RET_USAGE;
+	}
+}
+
 U_BOOT_CMD(
-	key_test, 1, 0,	do_key_test,
-	"Test the key value\n",
-	""
+	key_test, CONFIG_SYS_MAXARGS, 0, do_key_test,
+	"Test the key value\n", "NULL"
 );
 

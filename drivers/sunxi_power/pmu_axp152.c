@@ -26,6 +26,7 @@ typedef struct _axp_step_info {
 	u32 step_min_vol;
 	u32 step_max_vol;
 	u32 step_val;
+	u32 regation;
 } _axp_step_info;
 
 typedef struct _axp_contrl_info {
@@ -64,8 +65,11 @@ __attribute__((section(".data"))) axp_contrl_info pmu_axp152_ctrl_tbl[] = {
 	{ "dldo1", 700, 3500, AXP152_DLDO1OUT_VOL, 0x1f, AXP152_OUTPUT_CTL, 1, 0,
 	{ {700, 3500, 100}, } },
 
-	{ "dldo1", 700, 3500, AXP152_DLDO2OUT_VOL, 0x1f, AXP152_OUTPUT_CTL, 0, 0,
+	{ "dldo2", 700, 3500, AXP152_DLDO2OUT_VOL, 0x1f, AXP152_OUTPUT_CTL, 0, 0,
 	{ {700, 3500, 100}, } },
+
+	{ "ldo0", 2500, 5000, AXP152_LDO0_VOL, 0x30, AXP152_LDO0_VOL, 7, 4,
+	{ {2500, 2800, 300, 1}, {3300, 5000, 1700, 1}, }, },
 
 	{ "gpio2ldo", 1800, 3300, AXP152_GPIO2_LDO_MOD, 0x0f, AXP152_GPIO2_CTL, 7, 0,
 	{ {1800, 3300, 100}, } },
@@ -122,7 +126,7 @@ static int pmu_axp152_get_info(char *name, unsigned char *chipid)
 	return 0;
 }
 
-static int pmu_axp152_set_voltage(char *name, uint set_vol, uint onoff)
+static int pmu_set_vol(char *name, uint set_vol, uint onoff)
 {
 	u8 reg_value, i;
 	axp_contrl_info *p_item = NULL;
@@ -154,13 +158,18 @@ static int pmu_axp152_set_voltage(char *name, uint set_vol, uint onoff)
 			if (p_item->axp_step_tbl[i].step_max_vol >= set_vol) {
 				reg_value |= ((base_step + ((set_vol - p_item->axp_step_tbl[i].step_min_vol)/
 					p_item->axp_step_tbl[i].step_val)) << p_item->reg_addr_offest);
-				axp_err("snum:0x%x\n", (base_step + ((set_vol - p_item->axp_step_tbl[i].step_min_vol)/p_item->axp_step_tbl[i].step_val)));
+			if (p_item->axp_step_tbl[i].regation) {
+				u8 reg_value_temp = (~reg_value & p_item->cfg_reg_mask);
+				reg_value &= ~p_item->cfg_reg_mask;
+				reg_value |= reg_value_temp;
+			}
+				axp_info("sum:0x%x\n", (base_step + ((set_vol - p_item->axp_step_tbl[i].step_min_vol)/p_item->axp_step_tbl[i].step_val)));
 				break;
 			} else {
 				base_step += ((p_item->axp_step_tbl[i].step_max_vol -
 					p_item->axp_step_tbl[i].step_min_vol + p_item->axp_step_tbl[i].step_val) /
 					p_item->axp_step_tbl[i].step_val);
-				axp_err("base_step:0x%x\n", base_step);
+				axp_info("base_step:0x%x\n", base_step);
 			}
 		}
 
@@ -221,18 +230,54 @@ static int pmu_axp152_get_voltage(char *name)
 	reg_value >>= p_item->reg_addr_offest;
 	for (i = 0; p_item->axp_step_tbl[i].step_max_vol != 0; i++) {
 		base_step1 += ((p_item->axp_step_tbl[i].step_max_vol -
-			p_item->axp_step_tbl[i].step_min_vol + p_item->axp_step_tbl[i].step_val) /
-			p_item->axp_step_tbl[i].step_val);
+				p_item->axp_step_tbl[i].step_min_vol + p_item->axp_step_tbl[i].step_val) /
+				p_item->axp_step_tbl[i].step_val);
+		if (p_item->axp_step_tbl[i].regation)
+				reg_value = (~reg_value & (p_item->cfg_reg_mask >> p_item->reg_addr_offest));
 		if (reg_value < base_step1) {
 			vol =  (reg_value - base_step2) * p_item->axp_step_tbl[i].step_val +
-				p_item->axp_step_tbl[i].step_min_vol;
+					p_item->axp_step_tbl[i].step_min_vol;
 			return vol;
 		}
+		if (p_item->axp_step_tbl[i].regation)
+			reg_value = (~reg_value & (p_item->cfg_reg_mask >> p_item->reg_addr_offest));
 		base_step2 += ((p_item->axp_step_tbl[i].step_max_vol -
-			p_item->axp_step_tbl[i].step_min_vol + p_item->axp_step_tbl[i].step_val) /
-			p_item->axp_step_tbl[i].step_val);
+				p_item->axp_step_tbl[i].step_min_vol + p_item->axp_step_tbl[i].step_val) /
+				p_item->axp_step_tbl[i].step_val);
 	}
+
 	return -1;
+}
+
+static int pmu_axp152_set_voltage(char *name, uint set_vol, uint onoff)
+{
+	int i, temp_vol, src_vol = pmu_axp152_get_voltage(name);
+	u32 step_voltage = 0xffff;
+	axp_contrl_info *p_item = NULL;
+	p_item = get_ctrl_info_from_tbl(name);
+	if (!p_item) {
+		return -1;
+	}
+	for (i = 0; p_item->axp_step_tbl[i].step_val != 0; i++) {
+		step_voltage = min(step_voltage, p_item->axp_step_tbl[i].step_val);
+	}
+	if (step_voltage == 0xffff)
+		return -1;
+	if ((set_vol == 0) || (!strncmp(name, "ldo0", strlen("ldo0")))) {
+		pmu_set_vol(name, set_vol, onoff);
+	} else if (src_vol > set_vol) {
+		for (temp_vol = src_vol; temp_vol >= set_vol; temp_vol -= step_voltage) {
+			pmu_set_vol(name, temp_vol, onoff);
+		}
+		udelay(step_voltage*10/25);
+	} else if (src_vol < set_vol) {
+		for (temp_vol = src_vol; temp_vol <= set_vol; temp_vol += step_voltage) {
+			pmu_set_vol(name, temp_vol, onoff);
+		}
+		udelay(step_voltage*10/25);
+	}
+	return 0;
+
 }
 
 static int pmu_axp152_set_power_off(void)

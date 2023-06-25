@@ -82,6 +82,54 @@ config ARM_ASM_UNIFIED
 config THUMB2_KERNEL
 	bool
 
+config SYS_ICACHE_OFF
+	bool "Do not enable icache"
+	default n
+	help
+	  Do not enable instruction cache in U-Boot.
+
+config SPL_SYS_ICACHE_OFF
+	bool "Do not enable icache in SPL"
+	depends on SPL
+	default SYS_ICACHE_OFF
+	help
+	  Do not enable instruction cache in SPL.
+
+config SYS_DCACHE_OFF
+	bool "Do not enable dcache"
+	default n
+	help
+	  Do not enable data cache in U-Boot.
+
+config SPL_SYS_DCACHE_OFF
+	bool "Do not enable dcache in SPL"
+	depends on SPL
+	default SYS_DCACHE_OFF
+	help
+	  Do not enable data cache in SPL.
+
+config SYS_ARM_CACHE_CP15
+	bool "CP15 based cache enabling support"
+	help
+	  Select this if your processor suports enabling caches by using
+	  CP15 registers.
+
+config SYS_ARM_MMU
+	bool "MMU-based Paged Memory Management Support"
+	select SYS_ARM_CACHE_CP15
+	help
+	  Select if you want MMU-based virtualised addressing space
+	  support by paged memory management.
+
+config SYS_ARM_MPU
+	bool 'Use the ARM v7 PMSA Compliant MPU'
+	help
+	  Some ARM systems without an MMU have instead a Memory Protection
+	  Unit (MPU) that defines the type and permissions for regions of
+	  memory.
+	  If your CPU has an MPU then you should choose 'y' here unless you
+	  know that you do not want to use the MPU.
+
 # If set, the workarounds for these ARM errata are applied early during U-Boot
 # startup. Note that in general these options force the workarounds to be
 # applied; no CPU-type/version detection exists, unlike the similar options in
@@ -356,7 +404,7 @@ config ARM64_SUPPORT_AARCH32
 
 choice
 	prompt "Target select"
-	default TARGET_HIKEY
+	default ARCH_ARM_SUNXI
 
 config ARCH_AT91
 	bool "Atmel AT91"
@@ -756,8 +804,8 @@ config ARCH_SUNXI_XXX
 	imply SPL_SERIAL_SUPPORT
 	imply USB_GADGET
 
-config ARCH_SUNXI
-	bool "Support sunxi (Allwinner) SoCs"
+config ARCH_ARM_SUNXI
+	bool "Support arm sunxi (Allwinner) SoCs"
 	#select CMD_GPIO
 	#select CMD_USB if DISTRO_DEFAULTS
 	#select DM
@@ -1258,6 +1306,13 @@ config TI_SECURE_DEVICE
 	  build system (to create signed boot images that can be
 	  authenticated) and the code. See the doc/README.ti-secure
 	  file for further details.
+
+config SUNXI_ARM_SOFT_FP
+	bool "use soft fp implement from gcc"
+	help
+	 Support comparison of image and flash before burning,
+	 if image is larger than flash, will exit burning.
+	default n
 
 source "arch/arm/mach-aspeed/Kconfig"
 

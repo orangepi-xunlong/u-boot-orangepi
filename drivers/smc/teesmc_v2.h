@@ -50,41 +50,79 @@
 	ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, ARM_SMCCC_SMC_32, \
 			   ARM_SMCCC_OWNER_TRUSTED_OS, (func_num))
 
-#define OPTEE_SMC_FUNCID_GET_DRMINFO	15
+/*
+ * Get revision of Trusted OS.
+ *
+ * Used by non-secure world to figure out which version of the Trusted OS
+ * is installed. Note that the returned revision is the revision of the
+ * Trusted OS, not of the API.
+ *
+ * Returns revision in 2 32-bit words in the same way as
+ * OPTEE_MSG_CALLS_REVISION described above.
+ */
+#define OPTEE_MSG_FUNCID_GET_OS_REVISION	0x0001
+
+ /*
+  * Get revision of Trusted OS.
+  *
+  * Used by non-secure world to figure out which version of the Trusted OS
+  * is installed. Note that the returned revision is the revision of the
+  * Trusted OS, not of the API.
+  *
+  * Returns revision in a0-1 in the same way as OPTEE_SMC_CALLS_REVISION
+  * described above. May optionally return a 32-bit build identifier in a2,
+  * with zero meaning unspecified.
+  */
+ #define OPTEE_SMC_FUNCID_GET_OS_REVISION OPTEE_MSG_FUNCID_GET_OS_REVISION
+ #define OPTEE_SMC_CALL_GET_OS_REVISION \
+		OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_GET_OS_REVISION)
+
+#define SUNXI_OPTEE_SMC_OFFSET (0x200)
+extern uint32_t sunxi_smc_call_offset;
+
+#define OPTEE_SMC_FUNCID_GET_DRMINFO	(15 | sunxi_smc_call_offset)
 #define OPTEE_SMC_GET_DRM_INFO \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_GET_DRMINFO)
 
-#define OPTEE_SMC_FUNCID_CRYPT  16
+#define OPTEE_SMC_FUNCID_CRYPT  (16 | sunxi_smc_call_offset)
 #define OPTEE_SMC_CRYPT \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_CRYPT)
 
 
-#define OPTEE_SMC_FUNCID_READ_REG  17
+#define OPTEE_SMC_FUNCID_READ_REG  (17 | sunxi_smc_call_offset)
 #define OPTEE_SMC_READ_REG \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_READ_REG)
 
 
-#define OPTEE_SMC_FUNCID_WRITE_REG  18
+#define OPTEE_SMC_FUNCID_WRITE_REG  (18 | sunxi_smc_call_offset)
 #define OPTEE_SMC_WRITE_REG \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_WRITE_REG)
 
-#define OPTEE_SMC_FUNCID_ARISC_COPY_PARAS  19
+#define OPTEE_SMC_FUNCID_ARISC_COPY_PARAS  (19 | sunxi_smc_call_offset)
 #define OPTEE_SMC_ARISC_COPY_PARAS \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_ARISC_COPY_PARAS)
 
-#define OPTEE_SMC_FUNCID_GET_TEEADDR_PARAS  20
+#define OPTEE_SMC_FUNCID_GET_TEEADDR_PARAS  (20 | sunxi_smc_call_offset)
 #define OPTEE_SMC_GET_TEEADDR_PARAS \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_GET_TEEADDR_PARAS)
 
-#define OPTEE_SMC_FUNCID_EFUSE  21
+#define OPTEE_SMC_FUNCID_EFUSE  (21 | sunxi_smc_call_offset)
 #define OPTEE_SMC_EFUSE_OP \
 	OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_EFUSE)
 #define EFUSE_OP_WR 1
 #define EFUSE_OP_RD 0
 
-#define OPTEE_SMC_FUNCIC_SUNXI_HASH 23
+#define OPTEE_SMC_FUNCIC_SUNXI_HASH (23 | sunxi_smc_call_offset)
 #define OPTEE_SMC_SUNXI_HASH_OP \
 		OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCIC_SUNXI_HASH)
+
+#define OPTEE_SMC_FUNCIC_SUNXI_SETUP_MIPS (24 + SUNXI_OPTEE_SMC_OFFSET)
+#define OPTEE_SMC_SUNXI_SETUP_MIPS \
+		OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCIC_SUNXI_SETUP_MIPS)
+
+#define OPTEE_SMC_FUNCID_SUNXI_INFORM_FDT (25 | SUNXI_OPTEE_SMC_OFFSET)
+#define OPTEE_SMC_SUNXI_INFORM_FDT \
+		OPTEE_SMC_FAST_CALL_VAL(OPTEE_SMC_FUNCID_SUNXI_INFORM_FDT)
 
 /*PLATFORM_FASTCALL*/
 #define OPTEE_SMC_FUNCID_PLATFORM  100

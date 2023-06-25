@@ -120,6 +120,15 @@ u8 phy_interrupt_polarity_status(hdmi_tx_dev_t *dev, u8 mask)
 	LOG_TRACE1(mask);
 	return dev_read(dev, PHY_POL0) & mask;
 }
+void phy_set_reg_base(uintptr_t base)
+{
+	return;
+}
+
+uintptr_t phy_get_reg_base(void)
+{
+	return 0;
+}
 
 
 void phy_i2c_fast_mode(hdmi_tx_dev_t *dev, u8 bit)
@@ -1809,7 +1818,7 @@ int phy_configuration_supported(hdmi_tx_dev_t *dev, u16 phy_model)
 
 }
 
-int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model)
+int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut)
 {
 	LOG_TRACE();
 	if (phy_model == PHY_MODEL_301) {

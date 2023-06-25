@@ -49,7 +49,9 @@
 #define AL_VERIFY_DEV_MODE_UPDATE_HOT	0x04
 
 #define	PHOENIX_PRIV_DATA_LEN_NR	8								//2的8次 = 256
+#ifndef PHOENIX_PRIV_DATA_ADDR
 #define PHOENIX_PRIV_DATA_ADDR	    (SUNXI_SYS_SRAM_BASE + 0x7e00)			//给phoenix保留的空间
+#endif
 #define PHOENIX_PRIV_DATA_LEN	    (1 << PHOENIX_PRIV_DATA_LEN_NR)	//空间大小
 
 //--hgl--传输层的命令
@@ -127,7 +129,10 @@ struct sunxi_efex_csw_t
 #define FEX_CMD_fes_force_erase_key             0x0221
 #define FEX_CMD_fes_reset_cpu					0x0214
 #define FEX_CMD_fes_low_power_manger 			0x0215
+#define FEX_CMD_fes_nand			0x0301
 #define FEX_CMD_fes_query_secure                0x0230
+#define FEX_CMD_fes_query_info               0x0231
+
 //各个app命令的cmd,data部分，status部分是共用的
 
 //====================verify_dev====================
@@ -398,14 +403,34 @@ efex_trans_set_t;
 #define  SUNXI_EFEX_FLASH_TAG           (0x8000)
 #define  SUNXI_EFEX_FLASH_BOOT0_TAG     (0x8001)
 #define  SUNXI_EFEX_FLASH_BOOT1_TAG     (0x8002)
+#define  SUNXI_EFEX_NAND_ID_TAG		(0x8004)
+#define  SUNXI_EFEX_NAND_PAGE_TABLE_TAG	(0x8008)
+#define  SUNXI_EFEX_NAND_BOOT0		(0x8010)
+#define  SUNXI_EFEX_NAND_BOOT1		(0x8020)
+#define  SUNXI_EFEX_NAND_PHY_BLOCK	(0x8040)
+#define  SUNXI_EFEX_NAND_HISTORY_DATA   (0x8080)
+#define  SUNXI_EFEX_NAND_FORCE_ERASE	(0x8100)
+#define	 SUNXI_EFEX_NAND_IO_STRESS	(0x8200)
+#define  SUNXI_EFEX_NAND_IO_WPERF	(0x8400)
+#define  SUNXI_EFEX_NAND_IO_RPERF	(0x8800)
+#define  SUNXI_EFEX_NAND_BOOT0_SIZE	(0x10001)
+#define  SUNXI_EFEX_NAND_BOOT1_SIZE	(0x10002)
 
 #define  SUNXI_EFEX_TRANS_MASK			(0x30000)
 #define  SUNXI_EFEX_TRANS_START_TAG		(0x20000)
 #define  SUNXI_EFEX_TRANS_FINISH_TAG	(0x10000)
 
+#define  SUNXI_EFEX_LOG_BUFF_INFO_TAG		(0x8101)
+
 #define  SUNXI_EFEX_VERIFY_STATUS		(0)
 #define  SUNXI_EFEX_VERIFY_ADDSUM		(1)
 #define  SUNXI_EFEX_VERIFY_CRC32		(2)
+
+
+typedef struct tag_FEX_LOG_BUF_INFO {
+	u32	buf_start;
+	u32	buf_size;
+} fex_log_buf_info_t;
 
 #endif
 

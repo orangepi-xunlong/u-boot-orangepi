@@ -133,7 +133,7 @@ typedef struct
 	u32 if_burn;       //是否需要烧录，0：不需要，1：需要
 	u32 if_replace;    //是否允许替换之前的key，0：不允许；1：允许
 	u32 if_crypt;     //是否需要小机端加密存储
-    u8  *key_data[];   //这是一个数组，存放key的全部信息，数据长度由len指定
+    u8  key_data[];   //这是一个数组，存放key的全部信息，数据长度由len指定
 }
 sunxi_usb_burn_key_info_t;
 

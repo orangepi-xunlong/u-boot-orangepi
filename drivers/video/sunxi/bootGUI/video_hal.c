@@ -31,6 +31,7 @@ typedef struct hal_fb_dev {
 	void *layer_config;
 	int dev_num;
 	int screen_id[DISP_DEV_NUM];
+	disp_device_t *disp_dev;
 } hal_fb_dev_t;
 
 static hal_fb_dev_t *get_fb_dev(unsigned int fb_id)
@@ -46,7 +47,6 @@ static hal_fb_dev_t *get_fb_dev(unsigned int fb_id)
 
 int hal_switch_device(disp_device_t *device, unsigned int fb_id)
 {
-	int disp_para0, disp_para1 = 0, disp_para2 = 0;
 	hal_fb_dev_t *fb_dev;
 	struct disp_device_config config;
 
@@ -68,15 +68,6 @@ int hal_switch_device(disp_device_t *device, unsigned int fb_id)
 
 	device->opened = 1;
 
-	disp_para0 =
-	    (((device->type << 8) | device->mode) << (device->screen_id * 16));
-
-	disp_para1 =
-		((device->cs << 16) | (device->bits << 8) | device->format);
-	disp_para2 = (device->eotf);
-	hal_save_int_to_kernel("boot_disp", disp_para0);
-	hal_save_int_to_kernel("boot_disp1", disp_para1);
-	hal_save_int_to_kernel("boot_disp2", disp_para2);
 
 	pr_msg("switch device: sel=%d, type=%d, mode=%d, format=%d, bits=%d, "
 	       "eotf=%d, cs=%d\n",
@@ -88,6 +79,8 @@ int hal_switch_device(disp_device_t *device, unsigned int fb_id)
 		pr_error("this device can not be bounded to fb(%u)", fb_id);
 		return -1;
 	}
+	fb_dev->disp_dev = device;
+
 
 	if (FB_SHOW_LAYER & fb_dev->state) {
 		_show_layer_on_dev(fb_dev->layer_config, device->screen_id, 1);
@@ -281,4 +274,22 @@ int hal_show_layer(void *handle, char is_show)
 		fb_dev->state &= ~FB_SHOW_LAYER;
 	}
 	return 0;
+}
+
+int hal_save_boot_disp(void *handle)
+{
+	int disp_para0, disp_para1 = 0, disp_para2 = 0;
+	hal_fb_dev_t *fb_dev = (hal_fb_dev_t *)handle;
+
+	disp_para0 = (((fb_dev->disp_dev->type << 8) | fb_dev->disp_dev->mode)
+		      << (fb_dev->disp_dev->screen_id * 16));
+
+	disp_para1 = ((fb_dev->disp_dev->cs << 16) |
+		      (fb_dev->disp_dev->bits << 8) | fb_dev->disp_dev->format);
+	disp_para2 = (fb_dev->disp_dev->eotf);
+
+	hal_save_int_to_kernel("boot_disp", disp_para0);
+	hal_save_int_to_kernel("boot_disp1", disp_para1);
+	hal_save_int_to_kernel("boot_disp2", disp_para2);
+	return  0;
 }

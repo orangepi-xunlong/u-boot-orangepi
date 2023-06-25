@@ -1,5 +1,12 @@
 menu "sunxi board feature"
 
+
+config SUNXI_MALLOC_LEN
+	hex "sunxi_malloc_len"
+	default 0x4000000
+	help
+		when enabled, uboot set init malloc len
+
 config SUNXI_MAC
 	bool "sunxi_mac"
 	default n
@@ -13,11 +20,26 @@ config SUNXI_USER_KEY
 	help
 		when enable, uboot try to read cmdline data from secure storage
 
+config SUNXI_FAST_BURN_KEY
+	bool "sunxi fast burn key enable"
+	default y
+	depends on !MACH_SUN8IW18 && !MACH_SUN8IW7 && !MACH_SUN50IW3 && !MACH_SUN50IW6 && !SUNXI_UBIFS
+	depends on SUNXI_BURN
+
 config SUNXI_DRM_SUPPORT
 	bool "drm support"
 	default n
 	help
 		when enable, uboot set up drm related configurate
+
+config SUNXI_EXTERN_SECURE_MM_LAYOUT
+	bool "sunxi secure memory lay defined in fdt"
+	default n
+	help
+		when enable, uboot try to load secure memory layout
+		from fdt(shm\ta ram). Notify secure os configurated
+		layout and mard those memory as "reserved memory" in
+		fdt
 
 config SUNXI_ADVERT_PICTURE
 	bool "advert logo"
@@ -25,6 +47,27 @@ config SUNXI_ADVERT_PICTURE
 	depends on BOOT_GUI
 	help
 		when enable, uboot will try to use logo in reserve0, witch can be modified by APPS
+
+config SUNXI_ANTI_COPY_BOARD
+	bool "sunxi anti copy board"
+	default n
+	select SUNXI_SECURE_STORAGE
+	help
+		when enable, uboot will verify the board.
+
+config SUNXI_VERIFY_DSP
+	bool "sunxi verify dsp"
+	default y
+	depends on XTENSA_DSP
+	depends on SUNXI_SECURE_BOOT
+	help
+		when enable, uboot will verify the dsp bin.
+
+config SUNXI_IMAGE_HEADER
+	bool "sunxi verify with image header"
+	default n
+	help
+		when enable, uboot will verify with image header.
 
 menuconfig SUNXI_ANDROID_BOOT
 	bool "android boot sequence"
@@ -46,6 +89,13 @@ config SUNXI_AVB
 	select LIBAVB
 	help
 		support android verify boot sequence in sunxi board
+
+config SUNXI_VERIFY_BOOT_INFO_INSTALL
+	bool "install verify boot info for android keymaster"
+	default n
+	help
+		select this, uboot will store verify boot info to optee, for keymaster to read
+
 endif
 
 menuconfig SUNXI_CHECK_LIMIT_VERIFY
@@ -62,6 +112,69 @@ config SUNXI_LIMIT_GPU_FREQ
 	bool "sunxi gpu freq limit"
 
 endif
+
+config SUNXI_MIPS
+	bool "sunxi mips loading support"
+	default n
+
+config SUNXI_SWITCH_SYSTEM
+	bool "Sunxi switch system"
+	default n
+	select BOOTCOUNT_LIMIT
+	select BOOTCOUNT_ENV
+	help
+	    Supports automatic switching and damaged switching
+
+config SUNXI_UPDATE_REMIND
+	bool "sunxi support update remind"
+	default n
+	help
+	    Support reminder after mass production
+
+config SUNXI_REPLACE_FDT_FROM_PARTITION
+	bool "Replace current fdt data"
+	default n
+	depends on OF_SEPARATE
+	help
+	    Get fdt data from raw partition or fat filesystem partition
+	    to replace current fdt data
+
+config SUNXI_NECESSARY_REPLACE_FDT
+	bool "Replace current fdt data v2"
+	default n
+	depends on OF_SEPARATE
+	help
+	    Get fdt data from dtb.img, boot.img or vendor_boot.img
+	    to replace current fdt data v2
+
+config SUN50IW9_AUTOPRINT
+	bool "Open print mode check"
+	default n
+	help
+	    check card print and uart print,write auto_print
+
+config SUNXI_LRADC_VOL
+	bool "sunxi support lradc read voltage"
+	default n
+	depends on SUNXI_LRADC
+	help
+	    Support lradc read voltage in uboot which can be used to
+	    choose sensor through different voltages.
+
+config BOOTCMD_SKIP_MISC
+	bool "sunxi skip detect misc for bootcmd"
+	default n
+	help
+
+config BOOTCMD_SKIP_ADCKEY
+	bool "sunxi skip detect adckey for bootcmd"
+	default n
+	help
+
+config BOOTCMD_SKIP_RTC
+	bool "sunxi skip detect rtc for bootcmd"
+	default n
+	help
 
 menuconfig SUNXI_HOMLET
 	bool "sunxi homlet support"
@@ -112,6 +225,12 @@ config SUNXI_CUSTOMER_RESERVED_ID
 	help
 		set customer reserved id value
 
+config START_MODE_RTC_REG_INDEX
+	hex "homtlet/tv boot mode reg"
+	default 0x2
+	---help---
+	specific reg stored homtlet/tv start mode flag
+
 if SUNXI_HDCP_IN_SECURESTORAGE
 config SUNXI_HDCP_HASH
 	bool "hdcp key hash process"
@@ -122,5 +241,63 @@ config SUNXI_HDCP_HASH
 endif
 
 endif
+
+choice
+	prompt "sunxi image compression type"
+	default SUNXI_COMP_NONE
+
+config SUNXI_COMP_NONE
+	bool "none"
+	help
+		Image use none compression type
+
+config SUNXI_COMP_GZ
+	bool "gzip"
+	help
+		Image use gzip compression type
+
+config SUNXI_COMP_DETECT
+        bool "auto detect"
+	help
+		Auto detect image compression type
+
+endchoice
+
+choice
+	prompt "rotpk burn on sprite"
+	default SUNXI_NOT_BURN_ROTPK
+
+config SUNXI_NOT_BURN_ROTPK
+	bool "do not burn"
+
+config SUNXI_BURN_ROTPK_ON_SPRITE
+	bool "always burn"
+	depends on SUNXI_CE_DRIVER
+	help
+		Burn rotpk before set secure bit to 1
+
+config SUNXI_ROTPK_BURN_ENABLE_BY_TOOL
+	bool "tool enable"
+	depends on SUNXI_CE_DRIVER
+	help
+		if tool do not specific, do not burn
+
+endchoice
+
+config SUNXI_FPGA_PLATFORM
+	bool "build for fpga platform"
+	help
+		fpga board have special treament for resources like
+		clock or io, this config enable thoes special treament
+
+config SUNXI_TRACE
+	bool "enable trace feature"
+	help
+		trace feature based on origin TRACE
+config SUNXI_MEM_INFO
+        bool "sunxi memory info"
+        default y
+        help
+           enable memory information
 
 endmenu

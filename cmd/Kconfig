@@ -48,7 +48,7 @@ config SYS_LONGHELP
 
 config SYS_PROMPT
 	string "Shell prompt"
-	default "orangepi# "
+	default "=> "
 	help
 	  This string is displayed in the command line to the left of the
 	  cursor.
@@ -215,7 +215,7 @@ config CMD_BOOTZ
 
 config CMD_BOOTI
 	bool "booti"
-	depends on ARM64
+	depends on ARM64 || RISCV
 	default y
 	help
 	  Boot an AArch64 Linux Kernel image from memory.
@@ -229,7 +229,7 @@ config CMD_BOOTEFI
 
 config CMD_BOOTEFI_HELLO_COMPILE
 	bool "Compile a standard EFI hello world binary for testing"
-	depends on CMD_BOOTEFI && (ARM || X86)
+	depends on CMD_BOOTEFI && (ARM || X86 || RISCV)
 	default y
 	help
 	  This compiles a standard EFI hello world application with U-Boot so
@@ -272,7 +272,7 @@ config CMD_FDT
 
 config CMD_GO
 	bool "go"
-	default y
+	default n
 	help
 	  Start an application at a given address.
 
@@ -816,6 +816,7 @@ config CMD_NAND
 	  NAND support.
 config CMD_SUNXI_NAND
 	bool "sunxi nand"
+	depends on SUNXI_NAND
 	help
 	  SUNXI NAND SUPPORT
 
@@ -1026,11 +1027,26 @@ config CMD_SETEXPR
 
 endmenu
 
+menu "Android support commands"
+
+config CMD_AB_SELECT
+	bool "ab_select"
+	default n
+	depends on ANDROID_AB
+	help
+	  On Android devices with more than one boot slot (multiple copies of
+	  the kernel and system images) this provides a command to select which
+	  slot should be used to boot from and register the boot attempt. This
+	  is used by the new A/B update model where one slot is updated in the
+	  background while running from the other slot.
+
+endmenu
+
 if NET
 
 menuconfig CMD_NET
 	bool "Network commands"
-	default y
+	default n
 
 if CMD_NET
 
@@ -1722,6 +1738,11 @@ config CMD_SUNXI_TIMER
 	help
 	  Activate this option to test sunxi timer.
 
+config CMD_SUNXI_CLK
+	bool "clk test"
+	help
+	  Activate this option to test sunxi clk.
+
 config CMD_SUNXI_SPRITE
 	bool "sprite test"
 	help
@@ -1769,11 +1790,35 @@ config CMD_SUNXI_MEMTEST
 	help
 	  enable sunxi memtester
 
+config CMD_PWM_LED
+	bool "pwm led"
+	default n
+	help
+	  set pwm led
+
 config CMD_SUNXI_AUTO_FEL
 	bool "enable auto fel"
 	default n
 	select SUNXI_BURN
 	help
 	  enable auto fel function by probe MP tools.
+
+config CMD_SUNXI_BOOTR
+	bool "enable bootr"
+	default n
+	help
+	  enable sunxi bootr
+
+config CMD_SUNXI_CE_TEST
+	bool "sunxi ce test cmd"
+	default n
+	help
+	  enable test for ce api
+
+config CMD_SUNXI_SYSRECOVERY_TEST
+	bool "sunxi sysrecovery test cmd"
+	default n
+	help
+	  enable test for sysrecovery test api
 
 endmenu 

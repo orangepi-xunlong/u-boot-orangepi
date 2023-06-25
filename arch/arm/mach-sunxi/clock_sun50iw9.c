@@ -508,3 +508,12 @@ int ir_clk_cfg(void)
 	return 0;
 }
 
+int sunxi_get_active_boot0_id(void)
+{
+	uint32_t val = *(uint32_t *)(SUNXI_RTC_BASE + 0x1A0);
+	if (val & (1 << 15)) {
+		return (val >> 8) & 0x7;
+	} else {
+		return (val >> 24) & 0x7;
+	}
+}

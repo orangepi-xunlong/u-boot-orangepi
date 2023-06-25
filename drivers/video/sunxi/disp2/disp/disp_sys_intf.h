@@ -74,6 +74,8 @@ void disp_sys_enable_irq(u32 IrqNo);
 int disp_sys_script_get_item(char *main_name, char *sub_name, int value[], int count);
 uintptr_t disp_sys_getprop_regbase(char *main_name, char *sub_name, u32 index);
 u32 disp_sys_getprop_irq(char *main_name, char *sub_name, u32 index);
+int disp_get_compat_lcd_panel_num(int disp);
+int disp_get_set_lcd_param_index_from_flash(bool is_set, int idx);
 
 int disp_sys_get_ic_ver(void);
 

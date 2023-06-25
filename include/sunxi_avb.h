@@ -25,5 +25,9 @@ extern int sunxi_avb_get_hash_descriptor_by_name(const char *name,
 extern int sunxi_vbmeta_self_verify(const uint8_t *meta_data, size_t meta_data_size,
 					     sunxi_key_t *out_pk);
 extern int sunxi_avb_read_vbmeta_data(uint8_t **out_ptr, size_t *out_len);
+extern int sunxi_avb_read_vbmeta_in_partition(const char *part_name,
+					      uint8_t **out_ptr,
+					      size_t *out_len);
+extern int sunxi_avb_get_vbmeta_flags(uint32_t *flags);
 
 #endif /*_SUNXI_AVB_H_*/

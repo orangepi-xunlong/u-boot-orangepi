@@ -47,8 +47,44 @@
 #define SHA1_160_MODE	0
 #define SHA2_256_MODE	1
 
-#define ALG_SHA256 (0x13)
-#define ALG_RSA    (0x20)
+#define TRANG_BYTE_LEN (32)
+
+/*alg type*/
+#define ALG_AES		(0x0)
+#define ALG_SM4		(0x3)
+#define ALG_SHA256	(0x13)
+#define ALG_SHA512	(0x15)
+#define ALG_RSA		(0x20)
+#define ALG_ECC		(0x21)
+#define ALG_SM2		(0x22)
+#define ALG_MD5		(0x10)
+#define ALG_TRANG	(0x30)
+
+#define CHANNEL_0 0
+#define CHANNEL_1 1
+#define CHANNEL_2 2
+#define CHANNEL_3 3
+
+/* AES SETTINGS */
+#define _SUNXI_AES_CFG (0)
+#define SS_DIR_ENCRYPT 0
+#define SS_DIR_DECRYPT 1
+#define SS_KEY_SELECT_INPUT        (0)
+#define SS_KEY_SELECT_SSK          (1)
+#define SS_KEY_SELECT_HUK          (2)
+#define SS_KEY_SELECT_RSSK         (3)
+
+#define SS_AES_MODE_ECB         (0)
+#define SS_AES_MODE_CBC         (1)
+#define SS_AES_MODE_CTR         (2)
+#define SS_AES_MODE_CTS         (3)
+#define SS_AES_MODE_OFB         (4)
+#define SS_AES_MODE_CFB         (5)
+#define SS_AES_MODE_CBCMAC      (6)
+
+#define SS_AES_KEY_128BIT       (0)
+#define SS_AES_KEY_192BIT       (1)
+#define SS_AES_KEY_256BIT       (2)
 
 typedef struct sg {
 	uint addr;

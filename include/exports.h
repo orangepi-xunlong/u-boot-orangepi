@@ -1,11 +1,15 @@
 #ifndef __EXPORTS_H__
 #define __EXPORTS_H__
 
+#include <irq_func.h>
+
 #ifndef __ASSEMBLY__
 #ifdef CONFIG_PHY_AQUANTIA
 #include <miiphy.h>
 #include <phy.h>
 #endif
+
+#include <irq_func.h>
 
 struct spi_slave;
 

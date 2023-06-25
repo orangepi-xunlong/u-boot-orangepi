@@ -24,6 +24,10 @@ typedef struct __eink_node_map {
 
 static eink_fdt_node_map_t g_eink_fdt_node_map[] = {
 	{FDT_EINK_PATH, -1},
+#ifdef CONFIG_PMIC_TPS65185
+	{FDT_TPS65185_PATH, -1},
+	{FDT_TPS65185_SLV_PATH, -1},
+#endif
 	{"", -1}
 };
 
@@ -142,28 +146,17 @@ EXPORT_SYMBOL(eink_sys_pin_set_state);
 int eink_sys_power_enable(char *name)
 {
 	int ret = 0;
-#ifdef CONFIG_AW_AXP
-	struct regulator *regu = NULL;
 
-	regu = regulator_get(NULL, name);
-	if (IS_ERR(regu)) {
-		pr_err("some error happen, fail to get regulator %s\n", name);
-		goto exit;
+	if (strlen(name) == 0) {
+		return 0;
 	}
-	/* enalbe regulator */
-	ret = regulator_enable(regu);
-	if (ret != 0) {
-		pr_err("some err happen, fail to enable regulator %s!\n", name);
-		goto exit1;
-	} else {
-		pr_info("suceess to enable regulator %s!\n", name);
-	}
-
-exit1:
-	/* put regulater, when module exit */
-	regulator_put(regu);
-exit:
+#if defined(CONFIG_SUNXI_PMU)
+	/*TODO:bmu*/
+	ret = pmu_set_voltage(name, 0, 1);
+	if (!ret)
+		EINK_DEFAULT_MSG("enable eink power %s, ret=%d\n", name, ret);
 #endif
+
 	return ret;
 }
 EXPORT_SYMBOL(eink_sys_power_enable);
@@ -171,27 +164,12 @@ EXPORT_SYMBOL(eink_sys_power_enable);
 int eink_sys_power_disable(char *name)
 {
 	int ret = 0;
-#ifdef CONFIG_AW_AXP
-	struct regulator *regu = NULL;
 
-	regu = regulator_get(NULL, name);
-	if (IS_ERR(regu)) {
-		pr_err("some error happen, fail to get regulator %s\n", name);
-		goto exit;
-	}
-	/* disalbe regulator */
-	ret = regulator_disable(regu);
-	if (ret != 0) {
-		pr_err("some err happen, fail to disable regulator %s!\n", name);
-		goto exit1;
-	} else {
-		pr_info("suceess to disable regulator %s!\n", name);
-	}
-
-exit1:
-	/* put regulater, when module exit */
-	regulator_put(regu);
-exit:
+	/*TODO:bmu*/
+#if defined(CONFIG_SUNXI_PMU)
+	ret = pmu_set_voltage(name, 0, 0);
+	if (!ret)
+		EINK_DEFAULT_MSG("disable eink power %s, ret=%d\n", name, ret);
 #endif
 	return ret;
 }
@@ -239,8 +217,8 @@ int eink_sys_gpio_request(struct eink_gpio_cfg *gpio_list,
 	gpio_info.drv_level = gpio_list->drv_level;
 	gpio_info.data = gpio_list->data;
 
-	pr_info("eink_sys_gpio_request, port:%d, port_num:%d, mul_sel:%d, pull:%d, drv_level:%d, data:%d\n",
-		gpio_list->port, gpio_list->port_num, gpio_list->mul_sel,
+	EINK_INFO_MSG("eink_sys_gpio_request, port:%d, port_num:%d, mul_sel:%d, pull:%d, drv_level:%d, data:%d\n",
+		      gpio_list->port, gpio_list->port_num, gpio_list->mul_sel,
 	      gpio_list->pull, gpio_list->drv_level, gpio_list->data);
 
 	return sunxi_gpio_request(&gpio_info, group_count_max);
@@ -276,6 +254,13 @@ int eink_sys_gpio_release(int p_handler, s32 if_release_to_default_status)
 }
 EXPORT_SYMBOL(eink_sys_gpio_release);
 
+/* direction: 0:input, 1:output */
+int eink_sys_gpio_set_direction(u32 p_handler, u32 direction, const char *gpio_name)
+{
+	return gpio_set_one_pin_io_status(p_handler, direction, gpio_name);
+}
+EXPORT_SYMBOL(eink_sys_gpio_set_direction);
+
 int eink_sys_gpio_set_value(u32 p_handler, u32 value_to_gpio,
 			    const char *gpio_name)
 {
@@ -293,14 +278,14 @@ int eink_sys_script_get_item(char *main_name, char *sub_name, int value[],
 
 	node = eink_fdt_nodeoffset(main_name);
 	if (node < 0) {
-	  printf("fdt get node offset fail: %s\n", main_name);
-	return ret;
+		printf("fdt get node offset fail: %s\n", main_name);
+		return ret;
 	}
 
 	if (type == 1) {
-	if (fdt_getprop_u32(working_fdt, node, sub_name, (uint32_t *)value) >=
-	      0)
-	    ret = type;
+		if (fdt_getprop_u32(working_fdt, node, sub_name, (uint32_t *)value) >=
+				0)
+			ret = type;
 	} else if (type == 2) {
 		const char *str;
 

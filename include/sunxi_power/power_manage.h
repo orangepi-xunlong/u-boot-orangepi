@@ -26,14 +26,18 @@
 #define PMU_BOOT_MODE			(0x02)
 #define FDT_PATH_CHARGER0                "/soc/charger0"
 #define FDT_PATH_REGU                   "/soc/regulator0"
+#define FDT_PATH_POWER_DELAY            "/soc/power_delay"
 
 
 int axp_set_power_supply_output(void);
 int axp_set_charge_vol_limit(char *dev);
 int axp_set_current_limit(char *dev);
 int axp_get_battery_status(void);
+int axp_battery_status_handle(void);
 int axp_set_vol(char *name, uint onoff);
 int sunxi_update_axp_info(void);
+int axp_reset_capacity(void);
+int axp_set_dcdc_mode(void);
 
 
 

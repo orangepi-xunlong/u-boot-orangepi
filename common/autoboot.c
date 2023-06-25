@@ -225,18 +225,28 @@ static int __abortboot(int bootdelay)
 	 * Check if key already pressed
 	 */
 	if (tstc()) {	/* we got a key press	*/
-		char input;
-		input = getc();  /* consume input	*/
-		if (input == 's' || input == 'S') {
+		char input, i;
+		for (i = 0; i < 3; i++) {
+			input = getc();  /* consume input       */
+			if (input == 's' || input == 'S') {
+				 mdelay(10);
+			} else {
+				break;
+			}
+		}
+		if (i >= 3) {
 			puts("\b\b\b 0");
 			abort = 1;	/* don't auto boot	*/
+			set_boot_debug_mode(1);
 		}
+
 	}
 
 	if (sunxi_get_uboot_shell() == 1) {
 		abort = 1;
 		bootdelay = 0;
 		sunxi_set_uboot_shell(0);
+		set_boot_debug_mode(1);
 	}
 
 	while ((bootdelay > 0) && (!abort)) {
@@ -339,6 +349,15 @@ const char *bootdelay_process(void)
 	if (bootlimit && (bootcount > bootlimit)) {
 		printf("Warning: Bootlimit (%u) exceeded. Using altbootcmd.\n",
 		       (unsigned)bootlimit);
+#ifdef CONFIG_SUNXI_SWITCH_SYSTEM
+		if (!sunxi_damage_switch_system()) {
+			printf("Damage switching succeeded, now reset the system!\n");
+			reset_cpu(0);
+		} else {
+			s = NULL;
+			return s;
+		}
+#endif
 		s = env_get("altbootcmd");
 	} else
 #endif /* CONFIG_BOOTCOUNT_LIMIT */

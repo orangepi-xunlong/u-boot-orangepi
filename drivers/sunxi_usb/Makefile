@@ -12,3 +12,4 @@ obj-$(CONFIG_SUNXI_USB)	+= usb_base_common.o usb_base_platform.o usb_dma_control
 obj-$(CONFIG_SUNXI_EFEX) += usb_efex.o efex_queue.o buf_queue.o
 obj-$(CONFIG_SUNXI_BURN) += usb_burn.o
 obj-$(CONFIG_SUNXI_FASTBOOT) += usb_fastboot.o
+obj-$(CONFIG_SUNXI_USB_DETECT) += usb_detect.o

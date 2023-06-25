@@ -458,7 +458,7 @@ struct file {
 #define get_seconds()		0
 
 /* 4k page size */
-#define PAGE_CACHE_SHIFT	13
+#define PAGE_CACHE_SHIFT	12
 #define PAGE_CACHE_SIZE		(1 << PAGE_CACHE_SHIFT)
 
 /* Page cache limit. The filesystems should put that into their s_maxbytes

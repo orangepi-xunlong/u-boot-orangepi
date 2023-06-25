@@ -13,8 +13,16 @@
 #define AXP2585_ADDR (0x56)
 
 #define AXP2585_DEVICE_ADDR (0x3a3)
-#define AXP2585_RUNTIME_ADDR (0x3a)
 
+#ifndef CONFIG_SYS_SUNXI_R_I2C0_SLAVE
+#define AXP2585_RUNTIME_ADDR                     (0x3a)
+#else
+#ifndef CONFIG_AXP858_SUNXI_I2C_SLAVE
+#define AXP2585_RUNTIME_ADDR                    CONFIG_SYS_SUNXI_R_I2C0_SLAVE
+#else
+#define AXP2585_RUNTIME_ADDR                    CONFIG_AXP858_SUNXI_I2C_SLAVE
+#endif
+#endif
 /* For BMU1760 */
 #define BMU_CHG_STATUS (0x00)
 #define BMU_BAT_STATUS (0x02)

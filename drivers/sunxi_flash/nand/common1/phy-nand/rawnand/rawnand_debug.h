@@ -6,7 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/printk.h>
 #include "controller/ndfc_base.h"
-#include "rawnand.h"
+#include <sunxi_nand.h>
 
 #define DBG
 #ifdef DBG
@@ -18,7 +18,7 @@
  */
 
 #define RAWNAND_DBG(fmt, ...) \
-	pr_err("[ND]" fmt, ##__VA_ARGS__)
+	pr_debug("[ND]" fmt, ##__VA_ARGS__)
 #define RAWNAND_ERR(fmt, ...) \
 	pr_err("[NE]" fmt, ##__VA_ARGS__)
 #else

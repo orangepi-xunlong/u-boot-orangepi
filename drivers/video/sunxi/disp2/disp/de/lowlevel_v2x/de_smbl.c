@@ -262,7 +262,7 @@ int de_smbl_update_regs(unsigned int sel)
 	unsigned int reg_val;
 
 	if (smbl_ctrl_block[sel].dirty == 0x1) {
-		memcpy((void *)smbl_ctrl_block[sel].off,
+		regwrite((void *)smbl_ctrl_block[sel].off,
 		       smbl_ctrl_block[sel].val, smbl_ctrl_block[sel].size);
 		smbl_ctrl_block[sel].dirty = 0x0;
 	}
@@ -294,6 +294,10 @@ int de_smbl_init(unsigned int sel, uintptr_t reg_base)
 	int ret;
 
 	base = reg_base + (sel + 1) * 0x00100000 + SMBL_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		base = base - 0x00100000;
+#endif
 	smbl_hw_base[sel] = base;
 
 	__inf("sel %d, smbl_base=0x%p\n", sel, (void *)base);
@@ -462,11 +466,11 @@ int de_smbl_set_para(unsigned int sel, unsigned int width, unsigned int height)
 	    (hist_thres_drc[4]);
 
 	/* out_csc coeff */
-	memcpy((void *)smbl_csc_block[sel].off,
+	regwrite((void *)smbl_csc_block[sel].off,
 	       (unsigned char *)csc_bypass_coeff, sizeof(unsigned int) * 12);
 
 	/* filter coeff */
-	memcpy((void *)smbl_filter_block[sel].off,
+	regwrite((void *)smbl_filter_block[sel].off,
 	      (unsigned char *)smbl_filter_coeff, sizeof(unsigned char) * 272);
 
 	smbl_enable_block[sel].dirty = 1;
@@ -486,7 +490,7 @@ int de_smbl_set_lut(unsigned int sel, unsigned short *lut)
 	base = smbl_hw_base[sel];
 
 	/* set lut to smbl lut SRAM */
-	memcpy((void *)smbl_lut_block[sel].off, (unsigned char *)lut,
+	regwrite((void *)smbl_lut_block[sel].off, (unsigned char *)lut,
 	       sizeof(unsigned short) * 256);
 	reg_val = readl((void __iomem *)(base));
 	reg_val |= 0x00000010;

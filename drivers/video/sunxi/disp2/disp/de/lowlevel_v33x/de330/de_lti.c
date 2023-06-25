@@ -17,6 +17,7 @@
  *
  ******************************************************************************/
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_lti_type.h"
 #include "de_enhance.h"
 
@@ -339,3 +340,4 @@ s32 de_lti_info2para(u32 disp, u32 chn,
 	priv->set_blk_dirty(priv, LTI_CTI_REG_BLK, 1);
 	return 0;
 }
+#endif

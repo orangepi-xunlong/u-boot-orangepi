@@ -238,10 +238,10 @@ _nftl_nand_read_page:
 	sub	sp, sp, #20
 	ldr	r3, [r0]
 	ldr	r0, [r3, #4]
-	ldrd	r3, r5, [r2, #88]
+	ldrd	r3, r5, [r2, #80]
 	adds	r3, r3, #1
 	adc	r5, r5, #0
-	strd	r3, r5, [r2, #88]
+	strd	r3, r5, [r2, #80]
 	ldrh	r3, [r1, #2]
 	strh	r3, [sp, #2]	@ movhi
 	ldrh	r3, [r1]
@@ -258,9 +258,9 @@ _nftl_nand_read_page:
 	adds	r3, r0, #2
 	itttt	eq
 	ldreq	r2, [r4, #1968]
-	ldreq	r3, [r2, #136]
+	ldreq	r3, [r2, #132]
 	addeq	r3, r3, #1
-	streq	r3, [r2, #136]
+	streq	r3, [r2, #132]
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, pc}
@@ -282,10 +282,10 @@ _nftl_nand_write_page:
 	sub	sp, sp, #20
 	ldr	r2, [r4, #1968]
 	ldr	r0, [r3, #4]
-	ldrd	r3, r5, [r2, #96]
+	ldrd	r3, r5, [r2, #88]
 	adds	r3, r3, #1
 	adc	r5, r5, #0
-	strd	r3, r5, [r2, #96]
+	strd	r3, r5, [r2, #88]
 	ldrh	r3, [r1, #2]
 	strh	r3, [sp, #2]	@ movhi
 	ldrh	r3, [r1]
@@ -301,9 +301,9 @@ _nftl_nand_write_page:
 	blx	r3
 	cbz	r0, .L14
 	ldr	r2, [r4, #1968]
-	ldr	r3, [r2, #140]
+	ldr	r3, [r2, #136]
 	adds	r3, r3, #1
-	str	r3, [r2, #140]
+	str	r3, [r2, #136]
 .L14:
 	add	sp, sp, #20
 	@ sp needed
@@ -324,6 +324,330 @@ _nand_sector_write:
 	movs	r0, #0
 	bx	lr
 	.size	_nand_sector_write, .-_nand_sector_write
+	.section	.text.print_all_nftl_blk,"ax",%progbits
+	.align	1
+	.global	print_all_nftl_blk
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_all_nftl_blk, %function
+print_all_nftl_blk:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	ldr	r4, .L23
+	ldr	r5, .L23+4
+.L21:
+	ldr	r3, [r4, #8]
+	cbnz	r3, .L22
+	pop	{r3, r4, r5, pc}
+.L22:
+	ldr	r1, [r3]
+	mov	r0, r5
+	bl	NAND_Print_DBG
+	ldr	r4, [r4, #8]
+	b	.L21
+.L24:
+	.align	2
+.L23:
+	.word	.LANCHOR0
+	.word	.LC8
+	.size	print_all_nftl_blk, .-print_all_nftl_blk
+	.section	.text.get_nftl_num,"ax",%progbits
+	.align	1
+	.global	get_nftl_num
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_nftl_num, %function
+get_nftl_num:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L28
+	movs	r0, #0
+.L26:
+	ldr	r3, [r3, #8]
+	cbnz	r3, .L27
+	bx	lr
+.L27:
+	adds	r0, r0, #1
+	b	.L26
+.L29:
+	.align	2
+.L28:
+	.word	.LANCHOR0
+	.size	get_nftl_num, .-get_nftl_num
+	.section	.text.get_nftl_cap,"ax",%progbits
+	.align	1
+	.global	get_nftl_cap
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_nftl_cap, %function
+get_nftl_cap:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L33
+	movs	r0, #0
+.L31:
+	ldr	r3, [r3, #8]
+	cbnz	r3, .L32
+	bx	lr
+.L32:
+	ldr	r2, [r3]
+	add	r0, r0, r2
+	b	.L31
+.L34:
+	.align	2
+.L33:
+	.word	.LANCHOR0
+	.size	get_nftl_cap, .-get_nftl_cap
+	.section	.text.get_first_nftl_cap,"ax",%progbits
+	.align	1
+	.global	get_first_nftl_cap
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_first_nftl_cap, %function
+get_first_nftl_cap:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L36
+	ldr	r3, [r3, #8]
+	ldr	r0, [r3]
+	bx	lr
+.L37:
+	.align	2
+.L36:
+	.word	.LANCHOR0
+	.size	get_first_nftl_cap, .-get_first_nftl_cap
+	.section	.text.nftl_read,"ax",%progbits
+	.align	1
+	.global	nftl_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_read, %function
+nftl_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	mov	r3, r2
+	push	{r4, r5, r6, lr}
+	mov	r2, r1
+	cbnz	r1, .L47
+.L39:
+	mov	r0, r2
+	pop	{r4, r5, r6, pc}
+.L42:
+	ldr	r4, [r4, #8]
+	subs	r0, r0, r1
+	cbnz	r4, .L41
+	mov	r1, r0
+	ldr	r0, .L48
+	bl	NAND_Print
+	movs	r2, #1
+	b	.L39
+.L47:
+	ldr	r1, .L48+4
+	ldr	r4, [r1, #8]
+.L41:
+	ldr	r1, [r4]
+	cmp	r1, r0
+	bls	.L42
+	ldr	r5, [r4, #44]
+	mov	r1, r0
+	mov	r0, r4
+	mov	ip, r5
+	pop	{r4, r5, r6, lr}
+	bx	ip
+.L49:
+	.align	2
+.L48:
+	.word	.LC9
+	.word	.LANCHOR0
+	.size	nftl_read, .-nftl_read
+	.section	.text.nftl_read_history,"ax",%progbits
+	.align	1
+	.global	nftl_read_history
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_read_history, %function
+nftl_read_history:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r6, r0
+	mov	r8, r2
+	mov	r5, r1
+	cbz	r1, .L51
+	ldr	r3, .L58
+	ldr	r0, .L58+4
+	ldr	r4, [r3, #8]
+	ldr	r1, [r4]
+	bl	NAND_Print
+.L52:
+	ldr	r1, [r4]
+	cmp	r1, r6
+	bls	.L53
+	ldr	r7, [r4, #40]
+	mov	r3, r8
+	mov	r2, r5
+	mov	r1, r6
+	mov	r0, r4
+	mov	ip, r7
+	pop	{r4, r5, r6, r7, r8, lr}
+	bx	ip
+.L53:
+	ldr	r4, [r4, #8]
+	subs	r6, r6, r1
+	cmp	r4, #0
+	bne	.L52
+	mov	r2, r5
+	movs	r5, #1
+	mov	r1, r6
+	ldr	r0, .L58+8
+	bl	NAND_Print
+.L51:
+	mov	r0, r5
+	pop	{r4, r5, r6, r7, r8, pc}
+.L59:
+	.align	2
+.L58:
+	.word	.LANCHOR0
+	.word	.LC10
+	.word	.LC9
+	.size	nftl_read_history, .-nftl_read_history
+	.section	.text.nftl_write,"ax",%progbits
+	.align	1
+	.global	nftl_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_write, %function
+nftl_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	mov	r3, r2
+	push	{r4, r5, r6, lr}
+	mov	r2, r1
+	cbnz	r1, .L69
+.L61:
+	mov	r0, r2
+	pop	{r4, r5, r6, pc}
+.L64:
+	ldr	r4, [r4, #8]
+	subs	r0, r0, r1
+	cbnz	r4, .L63
+	mov	r1, r0
+	ldr	r0, .L70
+	bl	NAND_Print
+	movs	r2, #1
+	b	.L61
+.L69:
+	ldr	r1, .L70+4
+	ldr	r4, [r1, #8]
+.L63:
+	ldr	r1, [r4]
+	cmp	r1, r0
+	bls	.L64
+	ldr	r5, [r4, #48]
+	mov	r1, r0
+	mov	r0, r4
+	mov	ip, r5
+	pop	{r4, r5, r6, lr}
+	bx	ip
+.L71:
+	.align	2
+.L70:
+	.word	.LC9
+	.word	.LANCHOR0
+	.size	nftl_write, .-nftl_write
+	.section	.text.nftl_discard,"ax",%progbits
+	.align	1
+	.global	nftl_discard
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_discard, %function
+nftl_discard:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r2, r1
+	cbnz	r1, .L81
+.L73:
+	mov	r0, r2
+	pop	{r4, pc}
+.L76:
+	ldr	r3, [r3, #8]
+	subs	r0, r0, r1
+	cbnz	r3, .L75
+	mov	r1, r0
+	ldr	r0, .L82
+	bl	NAND_Print
+	movs	r2, #1
+	b	.L73
+.L81:
+	ldr	r3, .L82+4
+	ldr	r3, [r3, #8]
+.L75:
+	ldr	r1, [r3]
+	cmp	r1, r0
+	bls	.L76
+	ldr	r4, [r3, #56]
+	mov	r1, r0
+	mov	r0, r3
+	mov	r3, r4
+	pop	{r4, lr}
+	bx	r3
+.L83:
+	.align	2
+.L82:
+	.word	.LC9
+	.word	.LANCHOR0
+	.size	nftl_discard, .-nftl_discard
+	.section	.text.nftl_flush_write_cache,"ax",%progbits
+	.align	1
+	.global	nftl_flush_write_cache
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_flush_write_cache, %function
+nftl_flush_write_cache:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L87
+	push	{r4, lr}
+	ldr	r4, [r3, #8]
+.L85:
+	cbnz	r4, .L86
+	mov	r0, r4
+	pop	{r4, pc}
+.L86:
+	ldr	r3, [r4, #52]
+	mov	r0, r4
+	movw	r1, #65535
+	blx	r3
+	ldr	r4, [r4, #8]
+	b	.L85
+.L88:
+	.align	2
+.L87:
+	.word	.LANCHOR0
+	.size	nftl_flush_write_cache, .-nftl_flush_write_cache
 	.section	.text.nftl_malloc,"ax",%progbits
 	.align	1
 	.global	nftl_malloc
@@ -338,18 +662,18 @@ nftl_malloc:
 	cmp	r0, #1572864
 	push	{r4, lr}
 	mov	r4, r0
-	bls	.L21
+	bls	.L90
 	mov	r1, r0
-	ldr	r0, .L22
+	ldr	r0, .L91
 	bl	NAND_Print
-.L21:
+.L90:
 	mov	r0, r4
 	pop	{r4, lr}
 	b	NAND_Malloc
-.L23:
+.L92:
 	.align	2
-.L22:
-	.word	.LC8
+.L91:
+	.word	.LC11
 	.size	nftl_malloc, .-nftl_malloc
 	.section	.text.nftl_free,"ax",%progbits
 	.align	1
@@ -380,14 +704,14 @@ add_nftl_blk_list:
 	@ link register save eliminated.
 	movs	r3, #0
 	str	r3, [r1, #8]
-.L26:
+.L95:
 	ldr	r3, [r0, #8]
-	cbnz	r3, .L27
+	cbnz	r3, .L96
 	str	r1, [r0, #8]
 	bx	lr
-.L27:
+.L96:
 	mov	r0, r3
-	b	.L26
+	b	.L95
 	.size	add_nftl_blk_list, .-add_nftl_blk_list
 	.section	.text.del_last_nftl_blk,"ax",%progbits
 	.align	1
@@ -401,18 +725,18 @@ del_last_nftl_blk:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	@ link register save eliminated.
-.L29:
+.L98:
 	ldr	r3, [r0, #8]
-	cbz	r3, .L28
+	cbz	r3, .L97
 	ldr	r2, [r3, #8]
-	cbnz	r2, .L32
+	cbnz	r2, .L101
 	str	r2, [r0, #8]
-.L28:
+.L97:
 	mov	r0, r3
 	bx	lr
-.L32:
+.L101:
 	mov	r0, r3
-	b	.L29
+	b	.L98
 	.size	del_last_nftl_blk, .-del_last_nftl_blk
 	.section	.text.nftl_support_boot_check_crc_from_dts,"ax",%progbits
 	.align	1
@@ -432,330 +756,6 @@ nftl_support_boot_check_crc_from_dts:
 	movne	r0, #1
 	pop	{r3, pc}
 	.size	nftl_support_boot_check_crc_from_dts, .-nftl_support_boot_check_crc_from_dts
-	.section	.text.print_all_nftl_blk,"ax",%progbits
-	.align	1
-	.global	print_all_nftl_blk
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_all_nftl_blk, %function
-print_all_nftl_blk:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	ldr	r4, .L37
-	ldr	r5, .L37+4
-.L35:
-	ldr	r3, [r4, #8]
-	cbnz	r3, .L36
-	pop	{r3, r4, r5, pc}
-.L36:
-	ldr	r1, [r3]
-	mov	r0, r5
-	bl	NAND_Print_DBG
-	ldr	r4, [r4, #8]
-	b	.L35
-.L38:
-	.align	2
-.L37:
-	.word	.LANCHOR0
-	.word	.LC9
-	.size	print_all_nftl_blk, .-print_all_nftl_blk
-	.section	.text.get_nftl_num,"ax",%progbits
-	.align	1
-	.global	get_nftl_num
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_nftl_num, %function
-get_nftl_num:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L42
-	movs	r0, #0
-.L40:
-	ldr	r3, [r3, #8]
-	cbnz	r3, .L41
-	bx	lr
-.L41:
-	adds	r0, r0, #1
-	b	.L40
-.L43:
-	.align	2
-.L42:
-	.word	.LANCHOR0
-	.size	get_nftl_num, .-get_nftl_num
-	.section	.text.get_nftl_cap,"ax",%progbits
-	.align	1
-	.global	get_nftl_cap
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_nftl_cap, %function
-get_nftl_cap:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L47
-	movs	r0, #0
-.L45:
-	ldr	r3, [r3, #8]
-	cbnz	r3, .L46
-	bx	lr
-.L46:
-	ldr	r2, [r3]
-	add	r0, r0, r2
-	b	.L45
-.L48:
-	.align	2
-.L47:
-	.word	.LANCHOR0
-	.size	get_nftl_cap, .-get_nftl_cap
-	.section	.text.get_first_nftl_cap,"ax",%progbits
-	.align	1
-	.global	get_first_nftl_cap
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_first_nftl_cap, %function
-get_first_nftl_cap:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L50
-	ldr	r3, [r3, #8]
-	ldr	r0, [r3]
-	bx	lr
-.L51:
-	.align	2
-.L50:
-	.word	.LANCHOR0
-	.size	get_first_nftl_cap, .-get_first_nftl_cap
-	.section	.text.nftl_read,"ax",%progbits
-	.align	1
-	.global	nftl_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_read, %function
-nftl_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	mov	r3, r2
-	push	{r4, r5, r6, lr}
-	mov	r2, r1
-	cbnz	r1, .L61
-.L53:
-	mov	r0, r2
-	pop	{r4, r5, r6, pc}
-.L56:
-	ldr	r4, [r4, #8]
-	subs	r0, r0, r1
-	cbnz	r4, .L55
-	mov	r1, r0
-	ldr	r0, .L62
-	bl	NAND_Print
-	movs	r2, #1
-	b	.L53
-.L61:
-	ldr	r1, .L62+4
-	ldr	r4, [r1, #8]
-.L55:
-	ldr	r1, [r4]
-	cmp	r1, r0
-	bls	.L56
-	ldr	r5, [r4, #44]
-	mov	r1, r0
-	mov	r0, r4
-	mov	ip, r5
-	pop	{r4, r5, r6, lr}
-	bx	ip
-.L63:
-	.align	2
-.L62:
-	.word	.LC10
-	.word	.LANCHOR0
-	.size	nftl_read, .-nftl_read
-	.section	.text.nftl_read_history,"ax",%progbits
-	.align	1
-	.global	nftl_read_history
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_read_history, %function
-nftl_read_history:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r6, r0
-	mov	r8, r2
-	mov	r5, r1
-	cbz	r1, .L65
-	ldr	r3, .L72
-	ldr	r0, .L72+4
-	ldr	r4, [r3, #8]
-	ldr	r1, [r4]
-	bl	NAND_Print
-.L66:
-	ldr	r1, [r4]
-	cmp	r1, r6
-	bls	.L67
-	ldr	r7, [r4, #40]
-	mov	r3, r8
-	mov	r2, r5
-	mov	r1, r6
-	mov	r0, r4
-	mov	ip, r7
-	pop	{r4, r5, r6, r7, r8, lr}
-	bx	ip
-.L67:
-	ldr	r4, [r4, #8]
-	subs	r6, r6, r1
-	cmp	r4, #0
-	bne	.L66
-	mov	r2, r5
-	movs	r5, #1
-	mov	r1, r6
-	ldr	r0, .L72+8
-	bl	NAND_Print
-.L65:
-	mov	r0, r5
-	pop	{r4, r5, r6, r7, r8, pc}
-.L73:
-	.align	2
-.L72:
-	.word	.LANCHOR0
-	.word	.LC11
-	.word	.LC10
-	.size	nftl_read_history, .-nftl_read_history
-	.section	.text.nftl_write,"ax",%progbits
-	.align	1
-	.global	nftl_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_write, %function
-nftl_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	mov	r3, r2
-	push	{r4, r5, r6, lr}
-	mov	r2, r1
-	cbnz	r1, .L83
-.L75:
-	mov	r0, r2
-	pop	{r4, r5, r6, pc}
-.L78:
-	ldr	r4, [r4, #8]
-	subs	r0, r0, r1
-	cbnz	r4, .L77
-	mov	r1, r0
-	ldr	r0, .L84
-	bl	NAND_Print
-	movs	r2, #1
-	b	.L75
-.L83:
-	ldr	r1, .L84+4
-	ldr	r4, [r1, #8]
-.L77:
-	ldr	r1, [r4]
-	cmp	r1, r0
-	bls	.L78
-	ldr	r5, [r4, #48]
-	mov	r1, r0
-	mov	r0, r4
-	mov	ip, r5
-	pop	{r4, r5, r6, lr}
-	bx	ip
-.L85:
-	.align	2
-.L84:
-	.word	.LC10
-	.word	.LANCHOR0
-	.size	nftl_write, .-nftl_write
-	.section	.text.nftl_discard,"ax",%progbits
-	.align	1
-	.global	nftl_discard
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_discard, %function
-nftl_discard:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r2, r1
-	cbnz	r1, .L95
-.L87:
-	mov	r0, r2
-	pop	{r4, pc}
-.L90:
-	ldr	r3, [r3, #8]
-	subs	r0, r0, r1
-	cbnz	r3, .L89
-	mov	r1, r0
-	ldr	r0, .L96
-	bl	NAND_Print
-	movs	r2, #1
-	b	.L87
-.L95:
-	ldr	r3, .L96+4
-	ldr	r3, [r3, #8]
-.L89:
-	ldr	r1, [r3]
-	cmp	r1, r0
-	bls	.L90
-	ldr	r4, [r3, #56]
-	mov	r1, r0
-	mov	r0, r3
-	mov	r3, r4
-	pop	{r4, lr}
-	bx	r3
-.L97:
-	.align	2
-.L96:
-	.word	.LC10
-	.word	.LANCHOR0
-	.size	nftl_discard, .-nftl_discard
-	.section	.text.nftl_flush_write_cache,"ax",%progbits
-	.align	1
-	.global	nftl_flush_write_cache
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_flush_write_cache, %function
-nftl_flush_write_cache:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L101
-	push	{r4, lr}
-	ldr	r4, [r3, #8]
-.L99:
-	cbnz	r4, .L100
-	mov	r0, r4
-	pop	{r4, pc}
-.L100:
-	ldr	r3, [r4, #52]
-	mov	r0, r4
-	movw	r1, #65535
-	blx	r3
-	ldr	r4, [r4, #8]
-	b	.L99
-.L102:
-	.align	2
-.L101:
-	.word	.LANCHOR0
-	.size	nftl_flush_write_cache, .-nftl_flush_write_cache
 	.section	.text._nftl_nand_read_history_page,"ax",%progbits
 	.align	1
 	.global	_nftl_nand_read_history_page
@@ -773,10 +773,10 @@ _nftl_nand_read_history_page:
 	sub	sp, sp, #20
 	ldr	r3, [r0]
 	ldr	r0, [r3, #4]
-	ldrd	r3, r5, [r2, #88]
+	ldrd	r3, r5, [r2, #80]
 	adds	r3, r3, #1
 	adc	r5, r5, #0
-	strd	r3, r5, [r2, #88]
+	strd	r3, r5, [r2, #80]
 	ldrh	r3, [r1, #2]
 	strh	r3, [sp, #2]	@ movhi
 	ldrh	r3, [r1]
@@ -793,14198 +793,609 @@ _nftl_nand_read_history_page:
 	adds	r3, r0, #2
 	itttt	eq
 	ldreq	r2, [r4, #1968]
-	ldreq	r3, [r2, #136]
+	ldreq	r3, [r2, #132]
 	addeq	r3, r3, #1
-	streq	r3, [r2, #136]
+	streq	r3, [r2, #132]
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, pc}
 	.size	_nftl_nand_read_history_page, .-_nftl_nand_read_history_page
-	.section	.text.nftl_get_boot_cnt,"ax",%progbits
+	.section	.text.sandisk_A19_dsp_on,"ax",%progbits
 	.align	1
-	.global	nftl_get_boot_cnt
+	.global	sandisk_A19_dsp_on
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	nftl_get_boot_cnt, %function
-nftl_get_boot_cnt:
+	.type	sandisk_A19_dsp_on, %function
+sandisk_A19_dsp_on:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r0, #1968]
-	ldr	r0, [r3, #144]
-	bx	lr
-	.size	nftl_get_boot_cnt, .-nftl_get_boot_cnt
-	.section	.text.nftl_get_zone_cap,"ax",%progbits
-	.align	1
-	.global	nftl_get_zone_cap
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_get_zone_cap, %function
-nftl_get_zone_cap:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #24]
-	bx	lr
-	.size	nftl_get_zone_cap, .-nftl_get_zone_cap
-	.section	.text.nftl_get_zone_priv,"ax",%progbits
-	.align	1
-	.global	nftl_get_zone_priv
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_get_zone_priv, %function
-nftl_get_zone_priv:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0]
-	bx	lr
-	.size	nftl_get_zone_priv, .-nftl_get_zone_priv
-	.section	.text.nftl_get_zone_write_cache_nums,"ax",%progbits
-	.align	1
-	.global	nftl_get_zone_write_cache_nums
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_get_zone_write_cache_nums, %function
-nftl_get_zone_write_cache_nums:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrh	r0, [r0, #588]
-	bx	lr
-	.size	nftl_get_zone_write_cache_nums, .-nftl_get_zone_write_cache_nums
-	.section	.text.print_smart,"ax",%progbits
-	.align	1
-	.global	print_smart
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_smart, %function
-print_smart:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #356]
+	ldr	r3, .L106
 	push	{r4, lr}
-	cmp	r3, #0
-	beq	.L109
-	ldr	r4, [r0, #1968]
-	ldr	r0, .L111
-	ldr	r1, [r4, #64]
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #72]
-	ldr	r0, .L111+4
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #80]
-	ldr	r0, .L111+8
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #88]
-	ldr	r0, .L111+12
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #96]
-	ldr	r0, .L111+16
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #104]
-	ldr	r0, .L111+20
-	bl	NAND_Print_DBG
-	ldrd	r2, [r4, #112]
-	ldr	r0, .L111+24
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #120]
-	ldr	r0, .L111+28
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #124]
-	ldr	r0, .L111+32
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #128]
-	ldr	r0, .L111+36
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #132]
-	ldr	r0, .L111+40
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #184]
-	ldr	r0, .L111+44
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #136]
-	ldr	r0, .L111+48
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #140]
-	ldr	r0, .L111+52
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #144]
-	ldr	r0, .L111+56
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #148]
-	ldr	r0, .L111+60
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #152]
-	ldr	r0, .L111+64
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #156]
-	ldr	r0, .L111+68
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #160]
-	ldr	r0, .L111+72
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #164]
-	ldr	r0, .L111+76
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #168]
-	ldr	r0, .L111+80
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #172]
-	ldr	r0, .L111+84
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #176]
-	ldr	r0, .L111+88
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #180]
-	ldr	r0, .L111+92
-	pop	{r4, lr}
-	b	NAND_Print_DBG
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r4, r0
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	movs	r2, #0
+	movs	r1, #38
+	mov	r0, r4
+	bl	set_one_cmd
+	mov	r0, r4
+	bl	nand_disable_chip
+	movs	r0, #0
+	pop	{r4, pc}
+.L107:
+	.align	2
+.L106:
+	.word	g_nsi
+	.size	sandisk_A19_dsp_on, .-sandisk_A19_dsp_on
+	.section	.text.sandisk_A19_cmd25,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_cmd25
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_cmd25, %function
+sandisk_A19_cmd25:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L109
+	push	{r4, lr}
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r4, r0
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	movs	r2, #0
+	movs	r1, #37
+	mov	r0, r4
+	bl	set_one_cmd
+	mov	r0, r4
+	bl	nand_disable_chip
+	movs	r0, #0
+	pop	{r4, pc}
+.L110:
+	.align	2
 .L109:
-	pop	{r4, pc}
-.L112:
-	.align	2
-.L111:
-	.word	.LC12
-	.word	.LC13
-	.word	.LC14
-	.word	.LC15
-	.word	.LC16
-	.word	.LC17
-	.word	.LC18
-	.word	.LC19
-	.word	.LC20
-	.word	.LC21
-	.word	.LC22
-	.word	.LC23
-	.word	.LC24
-	.word	.LC25
-	.word	.LC26
-	.word	.LC27
-	.word	.LC28
-	.word	.LC29
-	.word	.LC30
-	.word	.LC31
-	.word	.LC32
-	.word	.LC33
-	.word	.LC34
-	.word	.LC35
-	.size	print_smart, .-print_smart
-	.section	.text.get_empty_gc_node,"ax",%progbits
+	.word	g_nsi
+	.size	sandisk_A19_cmd25, .-sandisk_A19_cmd25
+	.section	.text.sandisk_A19_set_lmflgfix_next,"ax",%progbits
 	.align	1
-	.global	get_empty_gc_node
+	.global	sandisk_A19_set_lmflgfix_next
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	get_empty_gc_node, %function
-get_empty_gc_node:
-	@ args = 0, pretend = 0, frame = 0
+	.type	sandisk_A19_set_lmflgfix_next, %function
+sandisk_A19_set_lmflgfix_next:
+	@ args = 0, pretend = 0, frame = 8
 	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r3, #0
-.L116:
-	lsls	r2, r3, #4
-	adds	r1, r0, r2
-	ldrh	r1, [r1, #6]
-	cbnz	r1, .L114
-	adds	r2, r2, #4
-	add	r0, r0, r2
-	bx	lr
-.L114:
-	adds	r3, r3, #1
-	cmp	r3, #10
-	bne	.L116
-	movs	r0, #0
-	bx	lr
-	.size	get_empty_gc_node, .-get_empty_gc_node
-	.section	.text.search_gc_node,"ax",%progbits
-	.align	1
-	.global	search_gc_node
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	search_gc_node, %function
-search_gc_node:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #172]
-.L119:
-	cbnz	r0, .L121
-.L118:
-	bx	lr
-.L121:
-	ldr	r3, [r0, #4]
-	cmp	r3, r1
-	beq	.L118
-	ldr	r0, [r0, #8]
-	b	.L119
-	.size	search_gc_node, .-search_gc_node
-	.section	.text.add_to_gc_list_tail,"ax",%progbits
-	.align	1
-	.global	add_to_gc_list_tail
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_to_gc_list_tail, %function
-add_to_gc_list_tail:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	add	r2, r0, #164
-.L123:
-	ldr	r3, [r2, #8]
-	cbnz	r3, .L124
-	str	r1, [r2, #8]
-	strd	r3, r2, [r1, #8]
-	ldrh	r2, [r0]
-	adds	r2, r2, #1
-	strh	r2, [r0]	@ movhi
-	mov	r0, r3
-	bx	lr
-.L124:
-	mov	r2, r3
-	b	.L123
-	.size	add_to_gc_list_tail, .-add_to_gc_list_tail
-	.section	.text.del_from_gc_list,"ax",%progbits
-	.align	1
-	.global	del_from_gc_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_from_gc_list, %function
-del_from_gc_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrd	r3, r2, [r1, #8]
-	str	r3, [r2, #8]
-	ldr	r3, [r1, #8]
-	cbz	r3, .L126
-	str	r2, [r3, #12]
-.L126:
-	movs	r3, #0
-	strd	r3, r3, [r1, #8]
-	ldrh	r3, [r0]
-	subs	r3, r3, #1
-	strh	r3, [r0]	@ movhi
-	mov	r0, r1
-	bx	lr
-	.size	del_from_gc_list, .-del_from_gc_list
-	.section	.text.add_prio_gc,"ax",%progbits
-	.align	1
-	.global	add_prio_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_prio_gc, %function
-add_prio_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	add	r5, r0, #392
-	mov	r0, r5
-	mov	r7, r1
-	mov	r6, r2
-	bl	search_gc_node
-	mov	r4, r0
-	cbnz	r0, .L133
-	mov	r0, r5
-	bl	get_empty_gc_node
-	mov	r1, r0
-	cbz	r0, .L133
-	str	r7, [r0, #4]
-	strh	r6, [r0, #2]	@ movhi
-	strd	r4, r4, [r0, #8]
-	mov	r0, r5
-	bl	add_to_gc_list_tail
-	mov	r0, r4
-.L130:
-	pop	{r3, r4, r5, r6, r7, pc}
-.L133:
-	movs	r0, #1
-	b	.L130
-	.size	add_prio_gc, .-add_prio_gc
-	.section	.text.prio_gc_one,"ax",%progbits
-	.align	1
-	.global	prio_gc_one
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	prio_gc_one, %function
-prio_gc_one:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #4]
-	cmp	r2, #1
-	push	{r4, lr}
-	ldr	r4, [r3, #32]
-	mov	r3, #36
-	mla	r1, r3, r1, r4
-	beq	.L135
-	cmp	r2, #2
-	it	ne
-	movne	r2, #3
-.L135:
-	uxth	r2, r2
-	bl	add_prio_gc
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	prio_gc_one, .-prio_gc_one
-	.section	.text.get_total_invalid_page,"ax",%progbits
-	.align	1
-	.global	get_total_invalid_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_total_invalid_page, %function
-get_total_invalid_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	add	r3, r0, #188
-	movs	r0, #0
-.L142:
-	ldr	r3, [r3, #12]
-	cbnz	r3, .L143
-	bx	lr
-.L143:
-	ldrh	r2, [r3, #4]
-	add	r0, r0, r2
-	b	.L142
-	.size	get_total_invalid_page, .-get_total_invalid_page
-	.section	.text.is_current_blcok,"ax",%progbits
-	.align	1
-	.global	is_current_blcok
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_current_blcok, %function
-is_current_blcok:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r3, [r0, #17]	@ zero_extendqisi2
-	lsls	r2, r3, #31
-	bpl	.L145
-	ldr	r3, [r0, #324]
-	cmp	r1, r3
-	beq	.L147
-.L145:
-	ldr	r0, [r0, #292]
-	subs	r3, r0, r1
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-.L147:
-	movs	r0, #1
-	bx	lr
-	.size	is_current_blcok, .-is_current_blcok
-	.section	.text.nftl_get_gc_info,"ax",%progbits
-	.align	1
-	.global	nftl_get_gc_info
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_get_gc_info, %function
-nftl_get_gc_info:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r2
-	movs	r2, #0
-	mov	r5, r0
-	mov	r7, r1
-	sub	sp, sp, #32
-	ldr	ip, [r0, #4]
-	mov	r6, r2
-	ldr	r4, [r0, #200]
-	mov	r1, r2
-	mov	r0, r2
-.L149:
-	cbnz	r4, .L151
-	ldr	ip, [r5, #1968]
-	mov	fp, #10
-	ldrh	r3, [r5, #22]
-	strd	r1, r0, [sp, #16]
-	mov	r1, r8
-	strd	r6, r2, [sp, #24]
-	mov	r0, r7
-	ldr	r2, [ip, #128]
-	ldr	r10, .L162+4
-	str	r2, [sp, #12]
-	ldr	r2, [ip, #124]
-	str	r2, [sp, #8]
-	ldrh	r2, [r5, #382]
-	str	r2, [sp, #4]
-	ldrh	r2, [r5, #380]
-	str	r2, [sp]
-	ldr	r2, .L162
-	bl	NAND_Snprintf
-	ldr	r5, [r5, #200]
-	mov	r6, r0
-.L152:
-	sub	r1, r8, r6
-	adds	r0, r7, r6
-	cmp	r1, #1
-	bne	.L155
-.L153:
-	movs	r3, #10
-	strb	r3, [r0, #-1]
-	mov	r0, r6
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L151:
-	ldrh	r3, [r4, #4]
-	adds	r0, r0, #1
-	ldrh	lr, [ip, #20]
-	ldr	r4, [r4, #12]
-	add	r2, r2, r3
-	cmp	r3, lr, lsr #1
-	itt	hi
-	addhi	r6, r6, r3
-	addhi	r1, r1, #1
-	b	.L149
-.L155:
-	cmp	r5, #0
-	beq	.L153
-	ldrh	r2, [r5, #4]
-	cmp	r2, #0
-	beq	.L153
-	ldrh	r3, [r5]
-	adds	r4, r4, #1
-	str	r2, [sp]
-	mov	r2, r10
-	bl	NAND_Snprintf
-	lsls	r3, r4, #29
-	add	r6, r6, r0
-	itt	eq
-	addeq	r3, r7, r6
-	strbeq	fp, [r3, #-1]
-	ldr	r5, [r5, #12]
-	b	.L152
-.L163:
-	.align	2
-.L162:
-	.word	.LC36
-	.word	.LC37
-	.size	nftl_get_gc_info, .-nftl_get_gc_info
-	.section	.text.dump_buf,"ax",%progbits
-	.align	1
-	.global	dump_buf
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	dump_buf, %function
-dump_buf:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L116
 	push	{r4, r5, r6, r7, r8, lr}
-	movs	r4, #0
-	ldr	r7, .L169
-	mov	r6, r0
 	mov	r5, r1
-	ldr	r8, .L169+8
-	ldr	r0, .L169+4
-	bl	NAND_Print
-.L165:
-	cmp	r4, r5
-	bne	.L168
-	ldr	r0, .L169+4
-	pop	{r4, r5, r6, r7, r8, lr}
-	b	NAND_Print
-.L168:
-	lsls	r2, r4, #28
-	bne	.L166
-	mov	r1, r4
-	mov	r0, r7
-	bl	NAND_Print
-.L166:
-	ldrb	r1, [r6, r4]	@ zero_extendqisi2
-	mov	r0, r8
-	adds	r4, r4, #1
-	bl	NAND_Print
-	lsls	r3, r4, #28
-	bne	.L165
-	ldr	r0, .L169+4
-	bl	NAND_Print
-	b	.L165
-.L170:
-	.align	2
-.L169:
-	.word	.LC5
-	.word	.LC7
-	.word	.LC38
-	.size	dump_buf, .-dump_buf
-	.global	__aeabi_uidiv
-	.section	.text.init_zone_after_first_scan,"ax",%progbits
-	.align	1
-	.global	init_zone_after_first_scan
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	init_zone_after_first_scan, %function
-init_zone_after_first_scan:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r5, r1
-	ldr	r6, [r0, #4]
-	mov	r4, r0
-	ldr	r0, [r0, #24]
-	ldrb	r1, [r6, #8]	@ zero_extendqisi2
-	bl	__aeabi_uidiv
-	ldrh	r1, [r6, #20]
-	bl	__aeabi_uidiv
-	mov	r1, r5
-	mov	r6, r0
-	mov	r2, r0
-	ldr	r0, .L178
-	bl	NAND_Print_DBG
-	cmp	r6, r5
-	bcc	.L172
-	ldr	r0, .L178+4
-	mov	r2, r6
-	mov	r1, r5
-.L177:
-	bl	NAND_Print
-	movs	r0, #1
-.L171:
-	pop	{r4, r5, r6, pc}
-.L172:
-	ldr	r1, [r4, #4]
-	subs	r2, r5, r6
-	ldrb	r0, [r1, #8]	@ zero_extendqisi2
-	ldrh	r3, [r1, #20]
-	muls	r3, r0, r3
-	muls	r3, r2, r3
-	str	r3, [r4, #32]
-	ldr	r3, [r4, #1972]
-	ldrh	r1, [r3, #12]
-	subs	r1, r1, #1
-	cmp	r2, r1
-	bcs	.L174
-	mov	r2, r6
-	mov	r1, r5
-	ldr	r0, .L178+8
-	b	.L177
-.L174:
-	ldr	r0, .L178+12
-	umull	r0, r1, r2, r0
-	ubfx	r0, r1, #2, #16
-	ldrh	r1, [r3, #14]
-	strh	r0, [r4, #380]	@ movhi
-	cmp	r0, r1
-	ldrh	r0, [r3, #18]
-	it	cc
-	strhcc	r1, [r4, #380]	@ movhi
-	ldrh	r1, [r3, #20]
-	muls	r0, r2, r0
-	bl	__aeabi_uidiv
-	ldrh	r3, [r4, #380]
-	strh	r0, [r4, #382]	@ movhi
-	uxth	r0, r0
-	adds	r2, r3, #1
-	cmp	r2, r0
-	mov	r0, #0
-	itt	ge
-	addge	r3, r3, #2
-	strhge	r3, [r4, #382]	@ movhi
-	movs	r3, #1
-	str	r3, [r4, #384]
-	b	.L171
-.L179:
-	.align	2
-.L178:
-	.word	.LC39
-	.word	.LC40
-	.word	.LC41
-	.word	-858993459
-	.size	init_zone_after_first_scan, .-init_zone_after_first_scan
-	.section	.text.check_bit_nums,"ax",%progbits
-	.align	1
-	.global	check_bit_nums
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	check_bit_nums, %function
-check_bit_nums:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	movs	r2, #0
-	mov	r4, r0
-.L181:
-	subs	r3, r4, r0
-	cmp	r3, r1
-	blt	.L184
-	mov	r0, r2
-	pop	{r4, r5, r6, pc}
-.L184:
-	ldrb	r6, [r4], #1	@ zero_extendqisi2
-	movs	r5, #8
-	movs	r3, #1
-.L183:
-	tst	r6, r3
-	lsl	r3, r3, #1
-	it	ne
-	addne	r2, r2, #1
-	subs	r5, r5, #1
-	uxtb	r3, r3
-	bne	.L183
-	b	.L181
-	.size	check_bit_nums, .-check_bit_nums
-	.section	.text.is_all_bit_ff,"ax",%progbits
-	.align	1
-	.global	is_all_bit_ff
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_all_bit_ff, %function
-is_all_bit_ff:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	rsb	r4, r2, r1, lsl #3
-	bl	check_bit_nums
-	cmp	r4, r0
-	ite	gt
-	movgt	r0, #0
-	movle	r0, #1
-	pop	{r4, pc}
-	.size	is_all_bit_ff, .-is_all_bit_ff
-	.section	.text.is_all_byte_ff,"ax",%progbits
-	.align	1
-	.global	is_all_byte_ff
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_all_byte_ff, %function
-is_all_byte_ff:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, lr}
-	subs	r2, r1, r2
-	mov	r4, r0
-	movs	r3, #0
-.L191:
-	subs	r5, r4, r0
-	cmp	r1, r5
-	bgt	.L193
-	cmp	r3, r2
-	ite	lt
-	movlt	r0, #0
-	movge	r0, #1
-	pop	{r4, r5, pc}
-.L193:
-	ldrb	r5, [r4], #1	@ zero_extendqisi2
-	cmp	r5, #255
-	it	eq
-	addeq	r3, r3, #1
-	b	.L191
-	.size	is_all_byte_ff, .-is_all_byte_ff
-	.section	.text.do_write_error_in_build_list,"ax",%progbits
-	.align	1
-	.global	do_write_error_in_build_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_write_error_in_build_list, %function
-do_write_error_in_build_list:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r3
-	ldr	r3, [r0, #4]
-	mov	r7, r2
 	sub	sp, sp, #24
-	movs	r5, #0
-	ldrh	r2, [r2]
-	mov	r10, r1
-	ldrh	r3, [r3, #28]
-	add	r1, sp, #8
-	strh	r5, [sp, #8]	@ movhi
+	ldr	r1, [r0]
+	add	r7, sp, #22
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
 	mov	r4, r0
-	strh	r2, [sp, #10]	@ movhi
-	strh	r3, [sp, #12]	@ movhi
-	strd	r5, r5, [sp, #16]
-	ldr	r3, [r0, #1976]
-	blx	r3
-	ldrh	r3, [r7, #6]
-	strh	r5, [r7, #4]	@ movhi
-	adds	r3, r3, #1
-	strh	r3, [r7, #6]	@ movhi
-	cmp	r0, #0
-	beq	.L199
-	ldr	r0, .L204
-	bl	NAND_Print
-	ldr	r3, [r4, #1996]
-	add	r1, sp, #8
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	movs	r2, #0
+	movs	r1, #92
 	mov	r0, r4
-	blx	r3
-	movs	r0, #1
-.L194:
+	bl	set_one_cmd
+	movs	r2, #0
+	movs	r1, #197
+	mov	r0, r4
+	bl	set_one_cmd
+	movs	r3, #0
+	movs	r2, #1
+	strb	r3, [sp, #21]
+	movs	r3, #85
+	strb	r3, [sp, #23]
+	add	r1, sp, #23
+	add	r3, sp, #21
+	strd	r2, r2, [sp, #4]
+	str	r7, [sp]
+	mov	r0, r4
+	strb	r2, [sp, #22]
+	bl	set_cmd_with_nand_bus
+	ldr	r3, .L116+4
+	ldrb	r3, [r3]	@ zero_extendqisi2
+	cmp	r3, #52
+	bne	.L112
+	movs	r3, #34
+.L115:
+	strb	r5, [sp, #22]
+	movs	r5, #1
+	strb	r3, [sp, #21]
+	mov	r8, #85
+	add	r3, sp, #21
+	mov	r2, r5
+	add	r1, sp, #23
+	strd	r5, r5, [sp, #4]
+	str	r7, [sp]
+	mov	r0, r4
+	movs	r6, #0
+	strb	r8, [sp, #23]
+	bl	set_cmd_with_nand_bus
+	add	r3, sp, #21
+	mov	r2, r5
+	add	r1, sp, #23
+	strd	r5, r5, [sp, #4]
+	str	r7, [sp]
+	mov	r0, r4
+	strb	r6, [sp, #21]
+	strb	r6, [sp, #22]
+	strb	r8, [sp, #23]
+	bl	set_cmd_with_nand_bus
+	mov	r0, r4
+	bl	nand_disable_chip
+	mov	r0, r6
 	add	sp, sp, #24
 	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L198:
-	uxth	r3, r6
-	mov	r2, r7
-	mov	r1, r10
-	ldr	r5, [r4, #1988]
-	str	r3, [sp]
-	mov	r0, r4
-	ldr	r3, [r4, #284]
-	blx	r5
-	cbz	r0, .L197
-	mov	r0, fp
-	bl	NAND_Print
-.L197:
-	adds	r6, r6, #1
-.L195:
-	cmp	r8, r6
-	bhi	.L198
-	ldr	r3, [r4, #4]
-	movs	r5, #0
-	ldrh	r2, [r10]
-	add	r1, sp, #8
-	strh	r5, [sp, #8]	@ movhi
-	mov	r0, r4
-	ldrh	r3, [r3, #28]
-	strh	r2, [sp, #10]	@ movhi
-	strd	r5, r5, [sp, #16]
-	strh	r3, [sp, #12]	@ movhi
-	ldr	r3, [r4, #1996]
-	blx	r3
-	cmp	r8, #0
-	bne	.L200
-	str	r7, [r4, #292]
-	mov	r0, r8
-	strh	r8, [r4, #320]	@ movhi
-	b	.L194
-.L199:
-	mov	r6, r0
-	ldr	fp, .L204+4
-	b	.L195
-.L200:
-	mov	r0, r5
-	b	.L194
-.L205:
-	.align	2
-.L204:
-	.word	.LC42
-	.word	.LC43
-	.size	do_write_error_in_build_list, .-do_write_error_in_build_list
-	.section	.text.init_nrc,"ax",%progbits
-	.align	1
-	.global	init_nrc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	init_nrc, %function
-init_nrc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r5, r0
-	movs	r0, #16
-	mov	r6, r1
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L207
-	movw	r2, #1399
-	ldr	r1, .L227
-	ldr	r0, .L227+4
-	bl	NAND_Print
-.L226:
-	mov	r0, #-1
-	b	.L206
-.L207:
-	movs	r2, #16
-	movs	r1, #0
-	bl	NAND_Memset
-	ldr	r3, [r5, #4]
-	ldrh	r5, [r3, #20]
-	ldrh	r0, [r3, #26]
-	adds	r0, r0, #64
-	muls	r0, r5, r0
-	bl	nftl_malloc
-	str	r0, [r4, #8]
-	cbnz	r0, .L209
-	ldr	r1, .L227
-	mov	r2, #1408
-	ldr	r0, .L227+8
-.L225:
-.L210:
-	bl	NAND_Print
-	ldr	r0, [r4, #8]
-	cbz	r0, .L213
-	bl	nftl_free
-.L213:
-	ldr	r0, [r4, #12]
-	cbz	r0, .L214
-	bl	nftl_free
-.L214:
-	ldr	r0, [r4, #4]
-	cbz	r0, .L215
-	bl	nftl_free
-.L215:
-	mov	r0, r4
-	bl	nftl_free
-	movs	r3, #0
-	str	r3, [r6]
-	b	.L226
-.L209:
-	lsls	r7, r5, #2
-	mov	r0, r7
-	bl	nftl_malloc
-	str	r0, [r4, #12]
-	cbnz	r0, .L211
-	movw	r2, #1413
-	ldr	r1, .L227
-	ldr	r0, .L227+12
-	b	.L225
-.L211:
-	mov	r2, r7
-	movs	r1, #255
-	bl	NAND_Memset
-	mov	r0, r5
-	bl	nftl_malloc
-	str	r0, [r4, #4]
-	cbnz	r0, .L212
-	movw	r2, #1419
-	ldr	r1, .L227
-	ldr	r0, .L227+16
-	b	.L225
-.L212:
-	mov	r2, r5
-	movs	r1, #0
-	bl	NAND_Memset
-	movs	r0, #0
-	str	r4, [r6]
-.L206:
-	pop	{r3, r4, r5, r6, r7, pc}
-.L228:
-	.align	2
-.L227:
-	.word	.LANCHOR1
-	.word	.LC44
-	.word	.LC45
-	.word	.LC46
-	.word	.LC47
-	.size	init_nrc, .-init_nrc
-	.section	.text.free_nrc,"ax",%progbits
-	.align	1
-	.global	free_nrc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	free_nrc, %function
-free_nrc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	cbz	r0, .L230
-	ldr	r0, [r0, #8]
-	bl	nftl_free
-	ldr	r0, [r4, #4]
-	bl	nftl_free
-	ldr	r0, [r4, #12]
-	bl	nftl_free
-	mov	r0, r4
-	bl	nftl_free
-.L230:
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	free_nrc, .-free_nrc
-	.section	.text.nftl_check_pattern,"ax",%progbits
-	.align	1
-	.global	nftl_check_pattern
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_check_pattern, %function
-nftl_check_pattern:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	mov	r3, r0
-	push	{r4, lr}
-.L235:
-	subs	r4, r3, r0
-	cmp	r2, r4
-	bgt	.L237
-	movs	r0, #0
-.L234:
-	pop	{r4, pc}
-.L237:
-	ldrb	r4, [r3], #1	@ zero_extendqisi2
-	cmp	r4, r1
-	beq	.L235
-	movs	r0, #1
-	b	.L234
-	.size	nftl_check_pattern, .-nftl_check_pattern
-	.section	.text.is_last_phy_block,"ax",%progbits
-	.align	1
-	.global	is_last_phy_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_last_phy_block, %function
-is_last_phy_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r1, #4]
-	ldrh	r0, [r0]
-	ldrh	r3, [r3, #24]
-	subs	r3, r3, #1
-	subs	r3, r3, r0
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-	.size	is_last_phy_block, .-is_last_phy_block
-	.section	.text.get_vaild_blocks,"ax",%progbits
-	.align	1
-	.global	get_vaild_blocks
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_vaild_blocks, %function
-get_vaild_blocks:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, lr}
-	movs	r4, #36
-	ldr	r3, [r0, #4]
-	sub	r8, r2, r1
-	mov	r7, r0
-	mov	r5, r1
-	mov	r6, r8
-	ldr	r3, [r3, #32]
-	mla	r4, r4, r1, r3
-.L241:
-	cmp	r5, r8
-	bcc	.L244
-.L240:
-	mov	r0, r6
-	add	sp, sp, #16
-	@ sp needed
 	pop	{r4, r5, r6, r7, r8, pc}
-.L244:
-	ldrh	r3, [r4]
-	mov	r1, sp
-	mov	r0, r7
-	strh	r3, [sp, #2]	@ movhi
-	ldr	r3, [r7, #1992]
-	blx	r3
-	cmp	r0, #159
-	bne	.L242
-	subs	r6, r6, #1
-	beq	.L240
-.L242:
-	mov	r1, r7
-	mov	r0, r4
-	bl	is_last_phy_block
-	cmp	r0, #1
-	beq	.L240
-	adds	r4, r4, #36
-	adds	r5, r5, #1
-	b	.L241
-	.size	get_vaild_blocks, .-get_vaild_blocks
-	.section	.text.is_phy_block_valid,"ax",%progbits
+.L112:
+	cmp	r3, #53
+	ite	eq
+	moveq	r3, #37
+	movne	r3, #35
+	b	.L115
+.L117:
+	.align	2
+.L116:
+	.word	g_nsi
+	.word	.LANCHOR1
+	.size	sandisk_A19_set_lmflgfix_next, .-sandisk_A19_set_lmflgfix_next
+	.section	.text.sandisk_A19_readretry_init,"ax",%progbits
 	.align	1
-	.global	is_phy_block_valid
+	.global	sandisk_A19_readretry_init
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	is_phy_block_valid, %function
-is_phy_block_valid:
+	.type	sandisk_A19_readretry_init, %function
+sandisk_A19_readretry_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r1, #4]
-	ldrh	r0, [r0]
-	ldrh	r3, [r3, #24]
-	cmp	r0, r3
-	ite	cs
-	movcs	r0, #0
-	movcc	r0, #1
-	bx	lr
-	.size	is_phy_block_valid, .-is_phy_block_valid
-	.section	.text.get_phy_block_addr,"ax",%progbits
-	.align	1
-	.global	get_phy_block_addr
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_phy_block_addr, %function
-get_phy_block_addr:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r0, #4]
-	movs	r0, #36
-	ldr	r3, [r3, #32]
-	mla	r0, r0, r1, r3
-	bx	lr
-	.size	get_phy_block_addr, .-get_phy_block_addr
-	.section	.text.check_cross_talk,"ax",%progbits
-	.align	1
-	.global	check_cross_talk
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	check_cross_talk, %function
-check_cross_talk:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
+	ldr	r3, [r0, #272]
+	ldr	r2, .L121
+	push	{r4, lr}
 	movs	r4, #0
-	sub	sp, sp, #36
-	mov	r5, r0
-	mov	r6, r1
-	mov	r7, r4
-.L254:
-	ldr	r3, [r5, #4]
-	ldrh	r2, [r3, #20]
-	cmp	r2, r4
-	bls	.L256
-	ldrh	r3, [r3, #28]
-	add	r1, sp, #16
-	ldrh	r2, [r6]
-	mov	r0, r5
-	strh	r4, [sp, #16]	@ movhi
-	strh	r3, [sp, #20]	@ movhi
-	strh	r2, [sp, #18]	@ movhi
-	str	r7, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r3, [r5, #1980]
-	blx	r3
-	cbnz	r0, .L255
-	ldrb	r3, [sp, #14]	@ zero_extendqisi2
-	cmp	r3, #99
-	bhi	.L255
-	ldr	r2, [r5, #1968]
-	ldr	r1, [r2, #172]
-	cmp	r1, r3
-	bhi	.L255
-	str	r3, [r2, #172]
-.L256:
-	movs	r0, #0
-	add	sp, sp, #36
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L255:
-	adds	r4, r4, #1
-	b	.L254
-	.size	check_cross_talk, .-check_cross_talk
-	.section	.text.nftl_get_bad_block_cnt,"ax",%progbits
+	ldr	r3, [r3, #52]
+	str	r4, [r0, #176]
+	ubfx	r1, r3, #16, #8
+	ldr	r0, .L121+4
+	strb	r1, [r2]
+	lsrs	r2, r3, #8
+	strb	r2, [r0]
+	ldr	r0, .L121+8
+	strb	r3, [r0]
+	sub	r3, r1, #50
+	cmp	r3, #3
+	bls	.L119
+	ldr	r0, .L121+12
+	bl	NAND_Print
+	mvn	r0, #98
+.L118:
+	pop	{r4, pc}
+.L119:
+	uxtb	r1, r2
+	ldr	r0, .L121+16
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	b	.L118
+.L122:
+	.align	2
+.L121:
+	.word	.LANCHOR1
+	.word	.LANCHOR2
+	.word	.LANCHOR3
+	.word	.LC12
+	.word	.LC13
+	.size	sandisk_A19_readretry_init, .-sandisk_A19_readretry_init
+	.section	.text.sandisk_A19_readretry_exit,"ax",%progbits
 	.align	1
-	.global	nftl_get_bad_block_cnt
+	.global	sandisk_A19_readretry_exit
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	nftl_get_bad_block_cnt, %function
-nftl_get_bad_block_cnt:
+	.type	sandisk_A19_readretry_exit, %function
+sandisk_A19_readretry_exit:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	@ link register save eliminated.
-	ldr	r3, [r0, #12]
-	ldrh	r0, [r3, #20]
+	movs	r0, #0
 	bx	lr
-	.size	nftl_get_bad_block_cnt, .-nftl_get_bad_block_cnt
-	.section	.text.print_nftl_zone,"ax",%progbits
+	.size	sandisk_A19_readretry_exit, .-sandisk_A19_readretry_exit
+	.section	.text.sandisk_A19_read_retry_clock_save,"ax",%progbits
 	.align	1
-	.global	print_nftl_zone
+	.global	sandisk_A19_read_retry_clock_save
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	print_nftl_zone, %function
-print_nftl_zone:
+	.type	sandisk_A19_read_retry_clock_save, %function
+sandisk_A19_read_retry_clock_save:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	ldr	r3, .L125
+	ldr	r0, [r0, #268]
+	ldr	r3, [r3]
+	ldr	r2, .L125+4
+	ldr	r1, .L125+8
+	ldr	r0, [r0, #8]
+	blx	r3
+	ldr	r0, [r4, #268]
+	movs	r2, #20
+	ldr	r3, .L125+12
+	movs	r1, #10
+	ldr	r0, [r0, #8]
+	ldr	r3, [r3]
+	blx	r3
+	movs	r0, #0
+	pop	{r4, pc}
+.L126:
+	.align	2
+.L125:
+	.word	NAND_GetClk
+	.word	.LANCHOR4
+	.word	.LANCHOR5
+	.word	NAND_SetClk
+	.size	sandisk_A19_read_retry_clock_save, .-sandisk_A19_read_retry_clock_save
+	.section	.text.sandisk_A19_read_retry_clock_recover,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_read_retry_clock_recover
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_read_retry_clock_recover, %function
+sandisk_A19_read_retry_clock_recover:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	ldr	r0, [r0, #268]
+	ldr	r3, .L128
+	ldr	r2, .L128+4
+	ldr	r1, .L128+8
+	ldr	r3, [r3]
+	ldr	r2, [r2]
+	ldr	r1, [r1]
+	ldr	r0, [r0, #8]
+	blx	r3
+	movs	r0, #0
+	pop	{r3, pc}
+.L129:
+	.align	2
+.L128:
+	.word	NAND_SetClk
+	.word	.LANCHOR4
+	.word	.LANCHOR5
+	.size	sandisk_A19_read_retry_clock_recover, .-sandisk_A19_read_retry_clock_recover
+	.section	.text.sandisk_A19_vender_set_param,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_vender_set_param
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_vender_set_param, %function
+sandisk_A19_vender_set_param:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r2, r3, r4, lr}
-	mov	r4, r0
-	ldr	r3, [r0, #356]
-	cmp	r3, #0
-	beq	.L259
-	ldr	r0, .L265
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldr	r0, .L265+4
-	ldrh	r1, [r3, #24]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldr	r0, .L265+8
-	ldrh	r1, [r3, #26]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldr	r0, .L265+12
-	ldrh	r1, [r3, #20]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldr	r0, .L265+16
-	ldrh	r1, [r3, #16]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldr	r0, .L265+20
-	ldrh	r1, [r3, #30]
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #356]
-	ldr	r0, .L265+24
-	bl	NAND_Print_DBG
-	ldrb	r1, [r4, #16]	@ zero_extendqisi2
-	ldr	r0, .L265+28
-	bl	NAND_Print_DBG
-	ldrb	r1, [r4, #17]	@ zero_extendqisi2
-	ldr	r0, .L265+32
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #18]
-	ldr	r0, .L265+36
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #20]
-	ldr	r0, .L265+40
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #24]
-	ldr	r0, .L265+44
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #32]
-	ldr	r0, .L265+48
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #22]
-	ldr	r0, .L265+52
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #380]
-	ldr	r0, .L265+56
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #382]
-	ldr	r0, .L265+60
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #388]
-	ldr	r0, .L265+64
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #384]
-	ldr	r0, .L265+68
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #394]
-	ldr	r0, .L265+72
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #40]
-	ldr	r0, .L265+76
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #44]
-	ldr	r0, .L265+80
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	add	r3, r4, #272
-	ldm	r3, {r0, r1, r2}
-	add	r3, r4, #260
-	stm	sp, {r0, r1, r2}
-	ldr	r0, .L265+84
-	ldm	r3, {r1, r2, r3}
-	bl	NAND_Print_DBG
-	add	r3, r4, #308
-	ldm	r3, {r0, r1, r2}
-	add	r3, r4, #296
-	stm	sp, {r0, r1, r2}
-	ldr	r0, .L265+88
-	ldm	r3, {r1, r2, r3}
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #292]
-	ldr	r0, .L265+92
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #292]
-	ldr	r0, .L265+96
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #320]
-	ldr	r0, .L265+100
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #292]
-	ldr	r0, .L265+104
-	ldr	r1, [r3, #8]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #48]
-	ldr	r0, .L265+108
-	ldrh	r2, [r3, #6]
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bpl	.L261
-	add	r3, r4, #340
-	ldm	r3, {r0, r1, r2}
-	add	r3, r4, #328
-	stm	sp, {r0, r1, r2}
-	ldr	r0, .L265+112
-	ldm	r3, {r1, r2, r3}
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #324]
-	ldr	r0, .L265+116
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #324]
-	ldr	r0, .L265+120
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #352]
-	ldr	r0, .L265+124
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #324]
-	ldr	r0, .L265+128
-	ldr	r1, [r3, #8]
-	bl	NAND_Print_DBG
-.L261:
-	ldr	r1, [r4, #360]
-	ldr	r0, .L265+132
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #284]
-	ldr	r0, .L265+136
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #376]
-	ldr	r0, .L265+140
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #584]
-	ldr	r0, .L265+144
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #368]
-	ldr	r0, .L265+148
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #372]
-	ldr	r0, .L265+152
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+156
-	ldrh	r1, [r3]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+160
-	ldrh	r1, [r3, #2]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+164
-	ldrh	r1, [r3, #4]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+168
-	ldrh	r1, [r3, #6]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+172
-	ldrh	r1, [r3, #10]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+176
-	ldrh	r1, [r3, #12]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+180
-	ldrh	r1, [r3, #14]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+184
-	ldrh	r1, [r3, #16]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+188
-	ldrh	r1, [r3, #18]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+192
-	ldrh	r1, [r3, #20]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+196
-	ldrh	r1, [r3, #22]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+200
-	ldrh	r1, [r3, #24]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+204
-	ldrh	r1, [r3, #26]
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #1972]
-	ldr	r0, .L265+208
-	ldr	r1, [r3, #32]
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, lr}
-	b	print_smart
-.L259:
+	movs	r4, #1
+	movs	r3, #4
+	str	r1, [sp]
+	strd	r3, r4, [sp, #4]
+	mov	r3, r2
+	ldr	r1, .L131
+	mov	r2, r4
+	bl	set_cmd_with_nand_bus
 	add	sp, sp, #16
 	@ sp needed
 	pop	{r4, pc}
-.L266:
+.L132:
 	.align	2
-.L265:
-	.word	.LC48
-	.word	.LC49
-	.word	.LC50
-	.word	.LC51
-	.word	.LC52
-	.word	.LC53
-	.word	.LC54
-	.word	.LC55
-	.word	.LC56
-	.word	.LC57
-	.word	.LC58
-	.word	.LC59
-	.word	.LC60
-	.word	.LC61
-	.word	.LC62
-	.word	.LC63
-	.word	.LC64
-	.word	.LC65
-	.word	.LC66
-	.word	.LC67
-	.word	.LC68
-	.word	.LC69
-	.word	.LC70
-	.word	.LC71
-	.word	.LC72
-	.word	.LC73
-	.word	.LC74
-	.word	.LC75
-	.word	.LC76
-	.word	.LC77
-	.word	.LC78
-	.word	.LC79
-	.word	.LC80
-	.word	.LC81
-	.word	.LC82
-	.word	.LC83
-	.word	.LC84
-	.word	.LC85
-	.word	.LC86
-	.word	.LC87
-	.word	.LC88
-	.word	.LC89
-	.word	.LC90
-	.word	.LC91
-	.word	.LC92
-	.word	.LC93
-	.word	.LC94
-	.word	.LC95
-	.word	.LC96
-	.word	.LC97
-	.word	.LC98
-	.word	.LC99
-	.word	.LC100
-	.size	print_nftl_zone, .-print_nftl_zone
-	.section	.text.nftl_set_zone_test,"ax",%progbits
-	.align	1
-	.global	nftl_set_zone_test
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_set_zone_test, %function
-nftl_set_zone_test:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	str	r1, [r0, #356]
-	b	print_nftl_zone
-	.size	nftl_set_zone_test, .-nftl_set_zone_test
-	.section	.text.nand_dbg_phy_read,"ax",%progbits
-	.align	1
-	.global	nand_dbg_phy_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_phy_read, %function
-nand_dbg_phy_read:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	mov	r5, r0
-	sub	sp, sp, #76
-	mov	r0, #4096
-	mov	r6, r1
-	mov	r7, r2
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L269
-	ldr	r1, .L270
-	ldr	r0, .L270+4
-	bl	NAND_Print
-.L269:
-	add	r3, sp, #56
-	mov	r2, r7
-	strd	r4, r3, [sp]
-	mov	r1, r6
-	movs	r3, #8
-	mov	r0, r5
-	bl	page_read
-	mov	r5, r0
-	ldrb	r0, [sp, #71]	@ zero_extendqisi2
-	ldrb	r3, [sp, #58]	@ zero_extendqisi2
-	ldrb	r2, [sp, #57]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #70]	@ zero_extendqisi2
-	ldrb	r1, [sp, #56]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #69]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #68]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #67]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #66]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #65]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #64]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #63]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #62]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #61]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #60]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #59]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L270+8
-	bl	NAND_Print_DBG
-	ldrb	r0, [r4, #10]	@ zero_extendqisi2
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [r4, #9]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [r4, #8]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [r4, #7]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [r4, #6]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [r4, #5]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [r4, #4]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [r4, #3]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L270+12
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	bl	nftl_free
-	mov	r0, r5
-	add	sp, sp, #76
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L271:
-	.align	2
-.L270:
-	.word	.LANCHOR2
-	.word	.LC101
-	.word	.LC102
-	.word	.LC103
-	.size	nand_dbg_phy_read, .-nand_dbg_phy_read
-	.section	.text.nand_dbg_zone_phy_read,"ax",%progbits
-	.align	1
-	.global	nand_dbg_zone_phy_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_zone_phy_read, %function
-nand_dbg_zone_phy_read:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	mov	r5, r0
-	sub	sp, sp, #92
-	mov	r0, #4096
-	mov	r7, r1
-	mov	r6, r2
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L273
-	ldr	r1, .L274
-	ldr	r0, .L274+4
-	bl	NAND_Print
-.L273:
-	ldr	r3, [r5, #4]
-	movs	r1, #36
-	muls	r1, r7, r1
-	mov	r0, r5
-	ldr	r3, [r3, #32]
-	ldrh	r3, [r3, r1]
-	add	r1, sp, #56
-	strh	r6, [sp, #56]	@ movhi
-	str	r4, [sp, #64]
-	strh	r3, [sp, #58]	@ movhi
-	movs	r3, #8
-	strh	r3, [sp, #60]	@ movhi
-	add	r3, sp, #72
-	str	r3, [sp, #68]
-	ldr	r3, [r5, #1980]
-	blx	r3
-	mov	r5, r0
-	ldrb	r0, [sp, #87]	@ zero_extendqisi2
-	ldrb	r3, [sp, #74]	@ zero_extendqisi2
-	ldrb	r2, [sp, #73]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #86]	@ zero_extendqisi2
-	ldrb	r1, [sp, #72]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #85]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #84]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #83]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #82]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #81]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #80]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #79]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #78]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #77]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #76]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #75]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L274+8
-	bl	NAND_Print_DBG
-	ldrb	r0, [r4, #10]	@ zero_extendqisi2
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [r4, #9]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [r4, #8]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [r4, #7]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [r4, #6]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [r4, #5]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [r4, #4]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [r4, #3]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L274+12
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	bl	nftl_free
-	mov	r0, r5
-	add	sp, sp, #92
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L275:
-	.align	2
-.L274:
-	.word	.LANCHOR3
-	.word	.LC101
-	.word	.LC102
-	.word	.LC103
-	.size	nand_dbg_zone_phy_read, .-nand_dbg_zone_phy_read
-	.section	.text.nand_dbg_zone_phy_write,"ax",%progbits
-	.align	1
-	.global	nand_dbg_zone_phy_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_zone_phy_write, %function
-nand_dbg_zone_phy_write:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r5, r0
-	sub	sp, sp, #32
-	mov	r0, #8192
-	mov	r6, r1
-	mov	r7, r2
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L277
-	ldr	r1, .L278
-	ldr	r0, .L278+4
-	bl	NAND_Print
-.L277:
-	ldr	r3, [r5, #4]
-	movs	r2, #36
-	muls	r6, r2, r6
-	mov	r0, r4
-	mov	r2, #4096
-	movs	r1, #165
-	ldr	r8, [r3, #32]
-	bl	NAND_Memset
-	ldr	r2, .L278+8
-	mov	r3, #-1
-	strh	r3, [sp, #24]	@ movhi
-	mov	r1, sp
-	mov	r0, r5
-	strd	r3, r2, [sp, #16]
-	movw	r3, #65535
-	strb	r3, [sp, #26]
-	ldr	r3, [r5, #4]
-	ldrh	r2, [r8, r6]
-	strh	r7, [sp]	@ movhi
-	ldrh	r3, [r3, #28]
-	strh	r2, [sp, #2]	@ movhi
-	str	r4, [sp, #8]
-	strh	r3, [sp, #4]	@ movhi
-	add	r3, sp, #16
-	str	r3, [sp, #12]
-	ldr	r3, [r5, #1984]
-	blx	r3
-	mov	r5, r0
-	mov	r0, r4
-	bl	nftl_free
-	mov	r0, r5
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L279:
-	.align	2
-.L278:
-	.word	.LANCHOR4
-	.word	.LC104
-	.word	-5921281
-	.size	nand_dbg_zone_phy_write, .-nand_dbg_zone_phy_write
-	.section	.text.nand_dbg_phy_write,"ax",%progbits
-	.align	1
-	.global	nand_dbg_phy_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_phy_write, %function
-nand_dbg_phy_write:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	mov	r5, r0
-	sub	sp, sp, #28
-	mov	r0, #8192
-	mov	r6, r1
-	mov	r7, r2
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L281
-	ldr	r1, .L282
-	ldr	r0, .L282+4
-	bl	NAND_Print
-.L281:
-	mov	r0, r4
-	mov	r2, #4096
-	movs	r1, #165
-	bl	NAND_Memset
-	ldr	r2, .L282+8
-	mov	r3, #-1
-	strh	r3, [sp, #16]	@ movhi
-	mov	r1, r6
-	mov	r0, r5
-	strd	r3, r2, [sp, #8]
-	movw	r3, #65535
-	strb	r3, [sp, #18]
-	add	r3, sp, #8
-	strd	r4, r3, [sp]
-	mov	r2, r7
-	movs	r3, #8
-	bl	page_write
-	mov	r5, r0
-	mov	r0, r4
-	bl	nftl_free
-	mov	r0, r5
-	add	sp, sp, #28
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L283:
-	.align	2
-.L282:
-	.word	.LANCHOR5
-	.word	.LC104
-	.word	-5921281
-	.size	nand_dbg_phy_write, .-nand_dbg_phy_write
-	.section	.text.nand_dbg_phy_erase,"ax",%progbits
-	.align	1
-	.global	nand_dbg_phy_erase
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_phy_erase, %function
-nand_dbg_phy_erase:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	b	block_erase
-	.size	nand_dbg_phy_erase, .-nand_dbg_phy_erase
-	.section	.text.nand_dbg_single_phy_erase,"ax",%progbits
-	.align	1
-	.global	nand_dbg_single_phy_erase
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_single_phy_erase, %function
-nand_dbg_single_phy_erase:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	b	nand_physic_erase_block
-	.size	nand_dbg_single_phy_erase, .-nand_dbg_single_phy_erase
-	.section	.text.nand_clean_zone_table2,"ax",%progbits
-	.align	1
-	.global	nand_clean_zone_table2
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_clean_zone_table2, %function
-nand_clean_zone_table2:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #4]
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	ldr	r0, [r0, #24]
-	add	r8, r4, #52
-	mov	r5, r4
-	ldrb	r1, [r3, #8]	@ zero_extendqisi2
-	bl	__aeabi_uidiv
-	lsls	r6, r0, #2
-	ldr	fp, .L295+4
-	mov	r2, r0
-	ldrb	r1, [r4, #16]	@ zero_extendqisi2
-	lsrs	r7, r6, #20
-	ldr	r0, .L295
-	add	r10, r8, r7, lsl #2
-	bl	NAND_Print_DBG
-.L287:
-	cmp	r8, r10
-	bne	.L288
-	ubfx	r6, r6, #0, #20
-	cbz	r6, .L289
-	add	r7, r4, r7, lsl #2
-	movs	r1, #255
-	mov	r2, r6
-	ldr	r0, [r7, #52]
-	bl	NAND_Memset
-	mov	r1, r6
-	ldr	r0, .L295+4
-	bl	NAND_Print_DBG
-.L289:
-	movs	r3, #0
-	movw	r2, #65535
-	strh	r2, [r4, #320]	@ movhi
-	strh	r2, [r4, #352]	@ movhi
-	mov	r2, r3
-	str	r3, [r4, #292]
-	str	r3, [r4, #324]
-	strd	r3, r3, [r4, #172]
-	strd	r3, r3, [r4, #164]
-	strd	r3, r3, [r4, #180]
-	strd	r3, r3, [r4, #208]
-	strd	r3, r3, [r4, #200]
-	strd	r3, r3, [r4, #216]
-	strd	r3, r3, [r4, #244]
-	strd	r3, r3, [r4, #236]
-	strd	r3, r3, [r4, #252]
-	str	r3, [r4, #20]
-	strh	r3, [r4, #392]	@ movhi
-.L290:
-	strh	r3, [r5, #396]	@ movhi
-	adds	r3, r3, #1
-	cmp	r3, #10
-	strh	r2, [r5, #398]	@ movhi
-	strd	r2, r2, [r5, #400]
-	add	r5, r5, #16
-	str	r2, [r5, #392]
-	bne	.L290
-	movs	r3, #255
-	strh	r2, [r4, #394]	@ movhi
-	strd	r3, r2, [r4, #556]
-	movs	r0, #0
-	strd	r2, r2, [r4, #564]
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L288:
-	ldr	r0, [r8], #4
-	mov	r2, #1048576
-	movs	r1, #255
-	bl	NAND_Memset
-	mov	r1, #1048576
-	mov	r0, fp
-	bl	NAND_Print_DBG
-	b	.L287
-.L296:
-	.align	2
-.L295:
-	.word	.LC105
-	.word	.LC106
-	.size	nand_clean_zone_table2, .-nand_clean_zone_table2
-	.section	.text.nftl_sector_cache_init,"ax",%progbits
-	.align	1
-	.global	nftl_sector_cache_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_sector_cache_init, %function
-nftl_sector_cache_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	movs	r3, #16
-	movs	r5, #0
-	mov	r4, r0
-	str	r3, [r0, #1620]
-	str	r5, [r0, #1624]
-	mov	r0, #8192
-	bl	NAND_Malloc
-	str	r0, [r4, #1624]
-	cbnz	r0, .L298
-	ldr	r1, .L302
-	ldr	r0, .L302+4
-	bl	NAND_Print
-	movs	r0, #1
-.L297:
-	pop	{r4, r5, r6, pc}
-.L298:
-	mov	r2, r5
-	str	r5, [r4, #1960]
-	str	r5, [r4, #1964]
-	mov	r3, r4
-	movs	r6, #255
-	mov	r5, #-1
-	mov	r1, r2
-.L300:
-	strh	r2, [r3, #1628]	@ movhi
-	add	r4, r0, r2, lsl #9
-	adds	r2, r2, #1
-	strh	r6, [r3, #1630]	@ movhi
-	cmp	r2, #16
-	str	r5, [r3, #1632]
-	str	r1, [r3, #1640]
-	add	r3, r3, #20
-	str	r1, [r3, #1624]
-	str	r4, [r3, #1616]
-	bne	.L300
-	movs	r0, #0
-	b	.L297
-.L303:
-	.align	2
-.L302:
+.L131:
 	.word	.LANCHOR6
-	.word	.LC107
-	.size	nftl_sector_cache_init, .-nftl_sector_cache_init
-	.section	.text.nftl_sector_cache_exit,"ax",%progbits
+	.size	sandisk_A19_vender_set_param, .-sandisk_A19_vender_set_param
+	.section	.text.sandisk_A19_set_readretry,"ax",%progbits
 	.align	1
-	.global	nftl_sector_cache_exit
+	.global	sandisk_A19_set_readretry
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	nftl_sector_cache_exit, %function
-nftl_sector_cache_exit:
+	.type	sandisk_A19_set_readretry, %function
+sandisk_A19_set_readretry:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	ldr	r0, [r0, #1624]
-	bl	nftl_free
-	movs	r0, #0
-	pop	{r3, pc}
-	.size	nftl_sector_cache_exit, .-nftl_sector_cache_exit
-	.section	.text.search_from_sector_cache_write_list,"ax",%progbits
-	.align	1
-	.global	search_from_sector_cache_write_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	search_from_sector_cache_write_list, %function
-search_from_sector_cache_write_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #340]
-.L306:
-	cbnz	r0, .L308
-.L305:
-	bx	lr
-.L308:
-	ldr	r3, [r0, #4]
-	cmp	r3, r1
-	beq	.L305
-	ldr	r0, [r0, #12]
-	b	.L306
-	.size	search_from_sector_cache_write_list, .-search_from_sector_cache_write_list
-	.section	.text.get_empty_sector_cahce_node,"ax",%progbits
-	.align	1
-	.global	get_empty_sector_cahce_node
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_empty_sector_cahce_node, %function
-get_empty_sector_cahce_node:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #0
-	movs	r1, #20
-	push	{r4, lr}
-.L312:
-	mul	r2, r1, r3
-	adds	r4, r0, r2
-	ldrh	r4, [r4, #10]
-	cmp	r4, #255
-	bne	.L310
-	adds	r2, r2, #8
-	add	r0, r0, r2
-.L309:
-	pop	{r4, pc}
-.L310:
-	adds	r3, r3, #1
-	cmp	r3, #16
-	bne	.L312
-	movs	r0, #0
-	b	.L309
-	.size	get_empty_sector_cahce_node, .-get_empty_sector_cahce_node
-	.section	.text.add_to_sector_cache_write_list_tail,"ax",%progbits
-	.align	1
-	.global	add_to_sector_cache_write_list_tail
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_to_sector_cache_write_list_tail, %function
-add_to_sector_cache_write_list_tail:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	add	r2, r0, #328
-.L315:
-	ldr	r3, [r2, #12]
-	cbnz	r3, .L316
-	str	r1, [r2, #12]
-	strd	r3, r2, [r1, #12]
-	movs	r2, #1
-	strh	r2, [r1, #2]	@ movhi
-	ldrh	r2, [r0, #2]
-	adds	r2, r2, #1
-	strh	r2, [r0, #2]	@ movhi
-	mov	r0, r3
-	bx	lr
-.L316:
-	mov	r2, r3
-	b	.L315
-	.size	add_to_sector_cache_write_list_tail, .-add_to_sector_cache_write_list_tail
-	.section	.text.del_from_sector_cache_write_list,"ax",%progbits
-	.align	1
-	.global	del_from_sector_cache_write_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_from_sector_cache_write_list, %function
-del_from_sector_cache_write_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrd	r3, r2, [r1, #12]
-	str	r3, [r2, #12]
-	ldr	r3, [r1, #12]
-	cbz	r3, .L318
-	str	r2, [r3, #16]
-.L318:
-	movs	r3, #0
-	strd	r3, r3, [r1, #12]
-	movs	r3, #255
-	strh	r3, [r1, #2]	@ movhi
-	ldrh	r3, [r0, #2]
-	subs	r3, r3, #1
-	strh	r3, [r0, #2]	@ movhi
-	mov	r0, r1
-	bx	lr
-	.size	del_from_sector_cache_write_list, .-del_from_sector_cache_write_list
-	.section	.text.nand_crc16,"ax",%progbits
-	.align	1
-	.global	nand_crc16
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_crc16, %function
-nand_crc16:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	add	r2, r2, r1
-	ldr	r4, .L325
-.L323:
-	cmp	r2, r1
-	bne	.L324
-	pop	{r4, pc}
-.L324:
-	ldrb	r3, [r1], #1	@ zero_extendqisi2
-	eors	r3, r3, r0
-	uxtb	r3, r3
-	ldrh	r3, [r4, r3, lsl #1]
-	eor	r0, r3, r0, lsr #8
-	b	.L323
-.L326:
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	ldr	r3, .L138
+	ldr	r1, [r4, #176]
+	ldrb	r3, [r3]	@ zero_extendqisi2
+	cmp	r3, #52
+	bne	.L134
+	ldr	r3, .L138+4
+	add	r1, r3, r1, lsl #2
+.L135:
+	movs	r3, #1
+	ldr	r2, .L138+8
+	mov	r0, r4
+	bl	sandisk_A19_vender_set_param
+	movs	r2, #0
+	mov	r5, r0
+	movs	r1, #93
+	mov	r0, r4
+	bl	set_one_cmd
+	mov	r0, r4
+	bl	nand_disable_chip
+	mov	r0, r5
+	pop	{r3, r4, r5, pc}
+.L134:
+	cmp	r3, #53
+	lsl	r1, r1, #2
+	ite	eq
+	ldreq	r3, .L138+12
+	ldrne	r3, .L138+16
+	add	r1, r1, r3
+	b	.L135
+.L139:
 	.align	2
-.L325:
+.L138:
+	.word	.LANCHOR1
 	.word	.LANCHOR7
-	.size	nand_crc16, .-nand_crc16
-	.section	.text.new_block_init_for_write,"ax",%progbits
-	.align	1
-	.global	new_block_init_for_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	new_block_init_for_write, %function
-new_block_init_for_write:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #4]
-	push	{r4, r5, r6, r7, lr}
-	mov	r7, r2
-	ldrh	r2, [r1]
-	sub	sp, sp, #20
-	movs	r6, #0
-	mov	r5, r1
-	ldrh	r3, [r3, #28]
-	mov	r1, sp
-	strh	r2, [sp, #2]	@ movhi
-	mov	r4, r0
-	strh	r6, [sp]	@ movhi
-	strh	r3, [sp, #4]	@ movhi
-	strd	r6, r6, [sp, #8]
-	ldr	r3, [r0, #1976]
-	blx	r3
-	ldrh	r3, [r5, #6]
-	ldr	r2, [r4, #376]
-	strh	r6, [r5, #4]	@ movhi
-	adds	r3, r3, #1
-	uxth	r3, r3
-	cmp	r3, r2
-	strh	r3, [r5, #6]	@ movhi
-	bls	.L328
-	ldr	r2, [r4, #4]
-	ldrh	r2, [r2, #16]
-	cmp	r2, r3
-	it	hi
-	strhi	r3, [r4, #376]
-.L328:
-	str	r7, [r5, #8]
-	cbz	r0, .L327
-	ldr	r3, [r4, #1996]
-	mov	r1, sp
-	mov	r0, r4
-	blx	r3
-	ldr	r0, .L333
-	bl	NAND_Print
-	movs	r0, #1
-.L327:
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L334:
-	.align	2
-.L333:
-	.word	.LC108
-	.size	new_block_init_for_write, .-new_block_init_for_write
-	.section	.text.nftl_ops_init,"ax",%progbits
-	.align	1
-	.global	nftl_ops_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_ops_init, %function
-nftl_ops_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L336
-	str	r3, [r0, #1976]
-	ldr	r3, .L336+4
-	str	r3, [r0, #1980]
-	ldr	r3, .L336+8
-	str	r3, [r0, #1984]
-	ldr	r3, .L336+12
-	str	r3, [r0, #1992]
-	ldr	r3, .L336+16
-	str	r3, [r0, #1996]
-	ldr	r3, .L336+20
-	str	r3, [r0, #1988]
-	ldr	r3, .L336+24
-	str	r3, [r0, #2004]
-	ldr	r3, .L336+28
-	str	r3, [r0, #2008]
-	ldr	r3, .L336+32
-	str	r3, [r0, #2000]
-	ldr	r3, .L336+36
-	str	r3, [r0, #2012]
-	bx	lr
-.L337:
-	.align	2
-.L336:
-	.word	_nftl_nand_erase_superblk
-	.word	_nftl_nand_read_page
-	.word	_nftl_nand_write_page
-	.word	_nftl_nand_is_blk_good
-	.word	_nftl_nand_mark_bad_blk
-	.word	_nftl_nand_copy_page
-	.word	_nftl_nand_read_logic_page
-	.word	_nftl_nand_read_logic_history_page
-	.word	_nftl_nand_write_logic_page
-	.word	_nftl_discard_logic_page
-	.size	nftl_ops_init, .-nftl_ops_init
-	.section	.text.current_block_at_last_page,"ax",%progbits
-	.align	1
-	.global	current_block_at_last_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	current_block_at_last_page, %function
-current_block_at_last_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r0, #4]
-	ldrh	r0, [r1, #28]
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	subs	r3, r3, r0
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-	.size	current_block_at_last_page, .-current_block_at_last_page
-	.section	.text.current_block_at_first_page,"ax",%progbits
-	.align	1
-	.global	current_block_at_first_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	current_block_at_first_page, %function
-current_block_at_first_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrh	r0, [r1, #28]
-	clz	r0, r0
-	lsrs	r0, r0, #5
-	bx	lr
-	.size	current_block_at_first_page, .-current_block_at_first_page
-	.section	.text.set_spare_data,"ax",%progbits
-	.align	1
-	.global	set_spare_data
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_spare_data, %function
-set_spare_data:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	add	r6, r3, #536870912
-	movs	r4, #0
-	add	r2, r2, r0
-	subs	r6, r6, #1
-.L341:
-	cmp	r3, r4
-	bhi	.L342
-	pop	{r4, r5, r6, pc}
-.L342:
-	subs	r5, r6, r4
-	lsls	r5, r5, #3
-	lsr	r5, r1, r5
-	strb	r5, [r2, r4]
-	adds	r4, r4, #1
-	b	.L341
-	.size	set_spare_data, .-set_spare_data
-	.section	.text.get_spare_data,"ax",%progbits
-	.align	1
-	.global	get_spare_data
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_spare_data, %function
-get_spare_data:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #0
-	push	{r4, lr}
-	add	r1, r1, r0
-	mov	r4, r3
-.L344:
-	cmp	r2, r3
-	bhi	.L345
-	mov	r0, r4
-	pop	{r4, pc}
-.L345:
-	ldrb	r0, [r1, r3]	@ zero_extendqisi2
-	adds	r3, r3, #1
-	orr	r4, r0, r4, lsl #8
-	b	.L344
-	.size	get_spare_data, .-get_spare_data
-	.section	.text.set_oob_logic_page,"ax",%progbits
-	.align	1
-	.global	set_oob_logic_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_oob_logic_page, %function
-set_oob_logic_page:
-	@ args = 4, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r1
-	mov	r5, r3
-	movs	r3, #255
-	mov	r1, r2
-	mov	r0, r4
-	strb	r3, [r4]
-	movs	r2, #1
-	movs	r3, #4
-	bl	set_spare_data
-	movs	r3, #2
-	movs	r2, #5
-	ldrh	r1, [sp, #16]
-	bl	set_spare_data
-	movs	r3, #4
-	movs	r2, #7
-	mov	r1, r5
-	bl	set_spare_data
-	ldrb	r3, [r4, #1]	@ zero_extendqisi2
-	orn	r3, r3, #63
-	strb	r3, [r4, #1]
-	pop	{r3, r4, r5, pc}
-	.size	set_oob_logic_page, .-set_oob_logic_page
-	.section	.text.set_oob_special_page,"ax",%progbits
-	.align	1
-	.global	set_oob_special_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_oob_special_page, %function
-set_oob_special_page:
-	@ args = 4, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r4, r1
-	ldrh	r6, [sp, #16]
-	mov	r5, r3
-	movs	r3, #255
-	mov	r1, r2
-	strb	r3, [r4]
-	mov	r0, r4
-	movs	r3, #4
-	movs	r2, #1
-	bl	set_spare_data
-	mov	r1, r6
-	movs	r3, #2
-	movs	r2, #5
-	bl	set_spare_data
-	mov	r1, r5
-	movs	r3, #4
-	movs	r2, #7
-	pop	{r4, r5, r6, lr}
-	b	set_spare_data
-	.size	set_oob_special_page, .-set_oob_special_page
-	.section	.text.mark_free_block,"ax",%progbits
-	.align	1
-	.global	mark_free_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	mark_free_block, %function
-mark_free_block:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	sub	sp, sp, #44
-	add	r6, sp, #24
-	mov	r4, r0
-	mov	r5, r1
-	mov	r0, r6
-	movs	r2, #16
-	movs	r1, #165
-	bl	NAND_Memset
-	ldr	r3, [r4, #4]
-	movs	r7, #0
-	ldrh	r1, [r5]
-	mov	r0, r4
-	strh	r7, [sp, #8]	@ movhi
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #10]	@ movhi
-	mov	r1, r6
-	strh	r2, [sp, #12]	@ movhi
-	mov	r2, #1431655765
-	strd	r3, r6, [sp, #16]
-	ldrh	r3, [r5, #6]
-	str	r3, [sp]
-	ldr	r3, [r5, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #8
-	mov	r0, r4
-	blx	r3
-	ldr	r3, [r4, #4]
-	movs	r0, #1
-	ldrh	r1, [r5]
-	strh	r0, [sp, #8]	@ movhi
-	mov	r0, r4
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #10]	@ movhi
-	mov	r1, r6
-	strh	r2, [sp, #12]	@ movhi
-	mov	r2, #1431655765
-	strd	r3, r6, [sp, #16]
-	ldrh	r3, [r5, #6]
-	str	r3, [sp]
-	ldr	r3, [r5, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #8
-	mov	r0, r4
-	blx	r3
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r5]
-	ldr	r2, [r4, #284]
-	ldrh	r1, [r3, #28]
-	ldrh	r3, [r3, #20]
-	strh	r0, [sp, #10]	@ movhi
-	mov	r0, r4
-	strh	r1, [sp, #12]	@ movhi
-	mov	r1, r6
-	subs	r3, r3, #2
-	strd	r2, r6, [sp, #16]
-	strh	r3, [sp, #8]	@ movhi
-	mov	r2, #1431655765
-	ldrh	r3, [r5, #6]
-	str	r3, [sp]
-	ldr	r3, [r5, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #8
-	mov	r0, r4
-	blx	r3
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r5]
-	ldr	r2, [r4, #284]
-	ldrh	r1, [r3, #28]
-	ldrh	r3, [r3, #20]
-	strh	r0, [sp, #10]	@ movhi
-	mov	r0, r4
-	strh	r1, [sp, #12]	@ movhi
-	mov	r1, r6
-	subs	r3, r3, #1
-	strd	r2, r6, [sp, #16]
-	strh	r3, [sp, #8]	@ movhi
-	mov	r2, #1431655765
-	ldrh	r3, [r5, #6]
-	str	r3, [sp]
-	ldr	r3, [r5, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #8
-	mov	r0, r4
-	blx	r3
-	mov	r0, r7
-	add	sp, sp, #44
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-	.size	mark_free_block, .-mark_free_block
-	.section	.text.set_no_use_page,"ax",%progbits
-	.align	1
-	.global	set_no_use_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_no_use_page, %function
-set_no_use_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #255
-	push	{r4, lr}
-	mov	r4, r1
-	strb	r3, [r1]
-	movs	r3, #1
-	movs	r1, #170
-	mov	r2, r3
-	mov	r0, r4
-	bl	set_spare_data
-	movs	r3, #1
-	movs	r2, #2
-	movs	r1, #187
-	pop	{r4, lr}
-	b	set_spare_data
-	.size	set_no_use_page, .-set_no_use_page
-	.section	.text.set_start_block_flag,"ax",%progbits
-	.align	1
-	.global	set_start_block_flag
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_start_block_flag, %function
-set_start_block_flag:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #255
-	push	{r4, r5, r6, lr}
-	mov	r4, r1
-	strb	r3, [r1]
-	movs	r3, #1
-	mov	r5, r2
-	mov	r0, r4
-	mov	r2, r3
-	movs	r1, #170
-	bl	set_spare_data
-	movs	r3, #1
-	movs	r2, #2
-	movs	r1, #238
-	bl	set_spare_data
-	mov	r1, r5
-	movs	r3, #4
-	movs	r2, #3
-	pop	{r4, r5, r6, lr}
-	b	set_spare_data
-	.size	set_start_block_flag, .-set_start_block_flag
-	.section	.text.set_end_block_flag,"ax",%progbits
-	.align	1
-	.global	set_end_block_flag
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_end_block_flag, %function
-set_end_block_flag:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #255
-	push	{r4, lr}
-	mov	r4, r1
-	strb	r3, [r1]
-	movs	r3, #1
-	movs	r1, #170
-	mov	r2, r3
-	mov	r0, r4
-	bl	set_spare_data
-	movs	r3, #1
-	movs	r2, #2
-	movs	r1, #204
-	pop	{r4, lr}
-	b	set_spare_data
-	.size	set_end_block_flag, .-set_end_block_flag
-	.section	.text.build_zone_list_first,"ax",%progbits
-	.align	1
-	.global	build_zone_list_first
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	build_zone_list_first, %function
-build_zone_list_first:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, lr}
-	mov	r4, r0
-	sub	sp, sp, #36
-	ldr	r0, .L378
-	mov	r10, r1
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #24]
-	ldr	r5, [r4, #40]
-	cmp	r3, #0
-	beq	.L373
-	ldr	r6, [r4, #4]
-	ldr	r0, [r4, #32]
-	ldrb	r1, [r6, #8]	@ zero_extendqisi2
-	add	r0, r0, r3
-	bl	__aeabi_uidiv
-	ldrh	r1, [r6, #20]
-	bl	__aeabi_uidiv
-	mov	r8, r0
-.L353:
-	movs	r7, #0
-	strh	r7, [r4, #18]	@ movhi
-.L354:
-	ldrh	r3, [r4, #18]
-	cmp	r3, r8
-	bcs	.L364
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	str	r5, [r4, #44]
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #18]	@ movhi
-	add	r1, sp, #16
-	strh	r7, [sp, #16]	@ movhi
-	str	r3, [sp, #24]
-	strh	r2, [sp, #20]	@ movhi
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1992]
-	blx	r3
-	cmp	r0, #1
-	bne	.L355
-	ldr	r3, [r4, #1976]
-	add	r1, sp, #16
-	mov	r0, r4
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L356
-	movs	r3, #255
-	add	r1, sp, #16
-	strh	r3, [r5, #2]	@ movhi
-	mov	r0, r4
-	ldr	r3, [r4, #1996]
-	blx	r3
-.L357:
-	movw	r3, #65535
-	str	r7, [r5, #20]
-	strh	r3, [r5, #4]	@ movhi
-	mov	r1, r4
-	strd	r7, r7, [r5, #12]
-	mov	r0, r5
-	str	r5, [r4, #44]
-	bl	is_last_phy_block
-	cmp	r0, #1
-	bne	.L360
-.L364:
-	ldrh	r1, [r4, #18]
-	cmp	r1, #1
-	bhi	.L361
-	ldr	r0, .L378+4
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L352
-.L373:
-	mov	r8, #-1
-	b	.L353
-.L356:
-	ldrh	r3, [r4, #18]
-	adds	r3, r3, #1
-	uxth	r3, r3
-	cmp	r3, #1
-	strh	r3, [r4, #18]	@ movhi
-	strh	r0, [r5, #2]	@ movhi
-	strh	r0, [r5, #6]	@ movhi
-	bne	.L357
-	movs	r2, #16
-	movs	r1, #255
-	mov	r0, sp
-	bl	NAND_Memset
-	mov	r2, r10
-	mov	r1, sp
-	mov	r0, r4
-	bl	set_start_block_flag
-	ldr	r3, [r4, #4]
-	ldrh	r1, [r5]
-	strh	r6, [sp, #16]	@ movhi
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #18]	@ movhi
-	strh	r2, [sp, #20]	@ movhi
-	str	r3, [sp, #24]
-	str	sp, [sp, #28]
-.L358:
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	cmp	r3, r6
-	bhi	.L359
-	add	r3, r5, #36
-	str	r3, [r4, #40]
-	b	.L357
-.L359:
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #16
-	mov	r0, r4
-	adds	r6, r6, #1
-	blx	r3
-	ldrh	r3, [sp, #16]
-	adds	r3, r3, #1
-	strh	r3, [sp, #16]	@ movhi
-	b	.L358
-.L355:
-	movs	r3, #255
-	strh	r3, [r5, #2]	@ movhi
-	b	.L357
-.L360:
-	adds	r5, r5, #36
-	b	.L354
-.L361:
-	cmp	r8, #-1
-	add	r1, r1, #-1
-	strh	r1, [r4, #18]	@ movhi
-	bne	.L365
-.L367:
-	movs	r0, #0
-.L352:
-	add	sp, sp, #36
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L365:
-	mov	r1, r4
-	mov	r0, r5
-	bl	is_last_phy_block
-	cmp	r0, #1
-	beq	.L367
-	movs	r7, #0
-.L368:
-	ldr	r2, [r4, #4]
-	ldrh	r3, [r5]
-	ldrh	r1, [r2, #24]
-	cmp	r1, r3
-	bls	.L367
-	ldrh	r1, [r2, #28]
-	mov	r0, r4
-	ldr	r2, [r4, #284]
-	strh	r3, [sp, #18]	@ movhi
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	strh	r7, [sp, #16]	@ movhi
-	str	r2, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1992]
-	blx	r3
-	cmp	r0, #1
-	bne	.L369
-	ldr	r3, [r4, #1976]
-	add	r1, sp, #16
-	mov	r0, r4
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L370
-	movs	r3, #255
-	add	r1, sp, #16
-	strh	r3, [r5, #2]	@ movhi
-	mov	r0, r4
-	ldr	r3, [r4, #1996]
-	blx	r3
-.L371:
-	adds	r5, r5, #36
-	b	.L368
-.L370:
-	movs	r2, #16
-	mov	r0, sp
-	movs	r1, #255
-	bl	NAND_Memset
-	mov	r1, sp
-	mov	r0, r4
-	bl	set_end_block_flag
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	strh	r6, [sp, #16]	@ movhi
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #18]	@ movhi
-	add	r1, sp, #16
-	strh	r2, [sp, #20]	@ movhi
-	str	r3, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1984]
-	blx	r3
-	b	.L367
-.L369:
-	movs	r3, #255
-	strh	r3, [r5, #2]	@ movhi
-	b	.L371
-.L379:
-	.align	2
-.L378:
-	.word	.LC109
-	.word	.LC110
-	.size	build_zone_list_first, .-build_zone_list_first
-	.section	.text.get_bad_flag_from_oob,"ax",%progbits
-	.align	1
-	.global	get_bad_flag_from_oob
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_bad_flag_from_oob, %function
-get_bad_flag_from_oob:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	movs	r2, #4
-	movs	r1, #1
-	bl	get_spare_data
-	adds	r0, r0, #0
-	it	ne
-	movne	r0, #1
-	pop	{r3, pc}
-	.size	get_bad_flag_from_oob, .-get_bad_flag_from_oob
-	.section	.text.get_block_used_count_from_oob,"ax",%progbits
-	.align	1
-	.global	get_block_used_count_from_oob
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_used_count_from_oob, %function
-get_block_used_count_from_oob:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r2, #4
-	movs	r1, #7
-	b	get_spare_data
-	.size	get_block_used_count_from_oob, .-get_block_used_count_from_oob
-	.section	.text.get_used_block_count,"ax",%progbits
-	.align	1
-	.global	get_used_block_count
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_used_block_count, %function
-get_used_block_count:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r2, [r1]
-	movs	r3, #0
-	push	{r4, lr}
-	sub	sp, sp, #32
-	add	r4, sp, #16
-	strh	r3, [sp]	@ movhi
-	mov	r1, sp
-	strh	r2, [sp, #2]	@ movhi
-	strh	r3, [sp, #4]	@ movhi
-	str	r3, [sp, #8]
-	str	r4, [sp, #12]
-	ldr	r3, [r0, #1980]
-	blx	r3
-	mov	r0, r4
-	bl	get_block_used_count_from_oob
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, pc}
-	.size	get_used_block_count, .-get_used_block_count
-	.section	.text.get_logic_page_from_oob,"ax",%progbits
-	.align	1
-	.global	get_logic_page_from_oob
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_logic_page_from_oob, %function
-get_logic_page_from_oob:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	movs	r2, #4
-	movs	r1, #1
-	bl	get_spare_data
-	bic	r0, r0, #-268435456
-	pop	{r3, pc}
-	.size	get_logic_page_from_oob, .-get_logic_page_from_oob
-	.section	.text._nftl_nand_read_logic_history_page,"ax",%progbits
-	.align	1
-	.global	_nftl_nand_read_logic_history_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nftl_nand_read_logic_history_page, %function
-_nftl_nand_read_logic_history_page:
-	@ args = 0, pretend = 0, frame = 56
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #56
-	movs	r2, #16
-	mov	r5, r0
-	add	r0, sp, #24
-	str	r1, [sp, #16]
-	movs	r1, #0
-	bl	memset
-	ldr	r3, [r5, #4]
-	ldrb	r6, [r3, #8]	@ zero_extendqisi2
-	lsls	r6, r6, #9
-	mov	r0, r6
-	bl	nftl_malloc
-	mov	r8, r0
-	mov	r0, r6
-	bl	nftl_malloc
-	mov	fp, r0
-	cmp	r8, #0
-	bne	.L385
-.L402:
-	ldr	r1, .L403
-	ldr	r0, .L403+4
-	bl	NAND_Print
-	movs	r0, #1
-.L384:
-	add	sp, sp, #56
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L385:
-	cbnz	r0, .L387
-	mov	r0, r8
-	bl	nftl_free
-	b	.L402
-.L387:
-	ldrh	r2, [r5, #18]
-	movs	r1, #0
-	ldrh	r3, [r5, #20]
-	mov	r0, r8
-	mov	r10, #0
-	mov	r7, r10
-	adds	r3, r2, r3
-	mov	r2, r6
-	str	r3, [sp, #8]
-	bl	NAND_Memset
-	mov	r2, r6
-	movs	r1, #0
-	mov	r0, fp
-	bl	NAND_Memset
-	movs	r2, #16
-	movs	r1, #0
-	add	r0, sp, #24
-	bl	NAND_Memset
-	lsrs	r3, r6, #9
-	str	r3, [sp, #20]
-.L388:
-	ldr	r3, [sp, #8]
-	cmp	r3, r7
-	bne	.L396
-	mov	r1, r3
-	ldr	r0, .L403+8
-	bl	NAND_Print
-	mov	r0, r8
-	bl	nftl_free
-	mov	r0, fp
-	bl	nftl_free
-	movs	r0, #0
-	b	.L384
-.L396:
-	mov	r1, r7
-	ldr	r0, .L403+12
-	bl	NAND_Print
-	uxth	r3, r7
-	movs	r4, #0
-	strh	r4, [sp, #40]	@ movhi
-	add	r1, sp, #40
-	str	r3, [sp, #4]
-	mov	r0, r5
-	ldrh	r3, [sp, #4]
-	strh	r4, [sp, #44]	@ movhi
-	str	r4, [sp, #48]
-	strh	r3, [sp, #42]	@ movhi
-	add	r3, sp, #24
-	str	r3, [sp, #52]
-	ldr	r3, [r5, #1992]
-	blx	r3
-	cmp	r0, #1
-	beq	.L389
-	mov	r1, r7
-	ldr	r0, .L403+16
-	bl	NAND_Print
-.L390:
-	adds	r7, r7, #1
-	b	.L388
-.L395:
-	movs	r2, #16
-	movs	r1, #0
-	add	r0, sp, #24
-	bl	NAND_Memset
-	uxth	r3, r4
-	add	r1, sp, #40
-	mov	r0, r5
-	str	r3, [sp, #12]
-	ldrh	r3, [sp, #12]
-	strh	r3, [sp, #40]	@ movhi
-	ldrh	r3, [sp, #4]
-	strh	r3, [sp, #42]	@ movhi
-	movs	r3, #0
-	strh	r3, [sp, #44]	@ movhi
-	str	r3, [sp, #48]
-	add	r3, sp, #24
-	str	r3, [sp, #52]
-	ldr	r3, [r5, #1980]
-	blx	r3
-	adds	r0, r0, #2
-	bne	.L391
-	ldr	r0, .L403+20
-	mov	r2, r4
-	mov	r1, r7
-.L401:
-	bl	NAND_Print
-.L392:
-	adds	r4, r4, #1
-.L389:
-	ldr	r3, [r5, #4]
-	ldrh	r3, [r3, #20]
-	cmp	r3, r4
-	bgt	.L395
-	b	.L390
-.L391:
-	add	r0, sp, #24
-	bl	get_logic_page_from_oob
-	ldr	r3, [sp, #16]
-	cmp	r0, r3
-	bne	.L392
-	ldrh	r3, [sp, #12]
-	add	r1, sp, #40
-	str	r8, [sp, #48]
-	mov	r0, r5
-	strh	r3, [sp, #40]	@ movhi
-	ldrh	r3, [sp, #4]
-	strh	r3, [sp, #42]	@ movhi
-	ldrh	r3, [sp, #20]
-	strh	r3, [sp, #44]	@ movhi
-	add	r3, sp, #24
-	str	r3, [sp, #52]
-	ldr	r3, [r5, #1980]
-	blx	r3
-	adds	r0, r0, #2
-	bne	.L393
-	mov	r2, r4
-	mov	r1, r7
-	ldr	r0, .L403+24
-	b	.L401
-.L393:
-	add	r3, r10, #1
-	str	r3, [sp, #12]
-	cmp	r10, #0
-	beq	.L394
-	mov	r2, r10
-	ldr	r1, [sp, #16]
-	ldr	r0, .L403+28
-	bl	NAND_Print
-	mov	r1, r6
-	mov	r0, fp
-	bl	dumphex
-	ldr	r0, .L403+32
-	bl	NAND_Print
-	movs	r1, #16
-	add	r0, sp, #24
-	bl	dumphex
-.L394:
-	mov	r2, r6
-	mov	r1, r8
-	mov	r0, fp
-	bl	NAND_Memcpy
-	ldr	r10, [sp, #12]
-	b	.L392
-.L404:
-	.align	2
-.L403:
-	.word	.LANCHOR8
-	.word	.LC111
-	.word	.LC118
-	.word	.LC112
-	.word	.LC113
-	.word	.LC114
-	.word	.LC115
-	.word	.LC116
-	.word	.LC117
-	.size	_nftl_nand_read_logic_history_page, .-_nftl_nand_read_logic_history_page
-	.section	.text._nand_read_history,"ax",%progbits
-	.align	1
-	.global	_nand_read_history
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nand_read_history, %function
-_nand_read_history:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r6, r3
-	ldr	r4, [r0, #12]
-	add	r2, r2, r1
-	mov	r5, r1
-	ldr	r3, [r4, #24]
-	cmp	r2, r3
-	bhi	.L409
-	ldr	r3, [r4, #4]
-	mov	r0, r5
-	ldrb	r1, [r3, #8]	@ zero_extendqisi2
-	bl	__aeabi_uidiv
-	mov	r2, r6
-	mov	r1, r0
-	mov	r0, r4
-	pop	{r4, r5, r6, lr}
-	b	_nftl_nand_read_logic_history_page
-.L409:
-	ldr	r0, .L410
-	bl	NAND_Print
-	movs	r0, #1
-	pop	{r4, r5, r6, pc}
-.L411:
-	.align	2
-.L410:
-	.word	.LC119
-	.size	_nand_read_history, .-_nand_read_history
-	.section	.text.get_special_data_from_oob,"ax",%progbits
-	.align	1
-	.global	get_special_data_from_oob
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_special_data_from_oob, %function
-get_special_data_from_oob:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r2, #4
-	movs	r1, #1
-	b	get_spare_data
-	.size	get_special_data_from_oob, .-get_special_data_from_oob
-	.section	.text._nftl_nand_copy_page,"ax",%progbits
-	.align	1
-	.global	_nftl_nand_copy_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nftl_nand_copy_page, %function
-_nftl_nand_copy_page:
-	@ args = 4, pretend = 0, frame = 48
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	sub	sp, sp, #56
-	mov	r8, r2
-	ldrh	r2, [sp, #80]
-	mov	r6, r1
-	add	r5, sp, #8
-	ldrh	r1, [r1]
-	mov	r4, r0
-	strh	r2, [sp, #24]	@ movhi
-	strh	r2, [sp, #40]	@ movhi
-	ldr	r2, [r0, #4]
-	strh	r1, [sp, #26]	@ movhi
-	ldrh	r1, [r8]
-	ldrh	r2, [r2, #28]
-	str	r3, [sp, #32]
-	strh	r1, [sp, #42]	@ movhi
-	add	r1, sp, #24
-	strh	r2, [sp, #28]	@ movhi
-	strh	r2, [sp, #44]	@ movhi
-	str	r3, [sp, #48]
-	str	r5, [sp, #36]
-	ldr	r3, [r0, #1980]
-	str	r5, [sp, #52]
-	blx	r3
-	cmp	r0, #10
-	ite	ne
-	movne	r7, r0
-	moveq	r7, #0
-	mov	r0, r5
-	bl	get_special_data_from_oob
-	ldrh	r3, [r8, #6]
-	mov	r2, r0
-	mov	r1, r5
-	mov	r0, r4
-	adds	r3, r3, #1
-	uxth	r3, r3
-	str	r3, [sp]
-	ldr	r3, [r6, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r4, #1984]
-	add	r1, sp, #40
-	mov	r0, r4
-	blx	r3
-	orr	r0, r7, r0, lsl #8
-	add	sp, sp, #56
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-	.size	_nftl_nand_copy_page, .-_nftl_nand_copy_page
-	.section	.text.get_erase_count_from_oob,"ax",%progbits
-	.align	1
-	.global	get_erase_count_from_oob
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_erase_count_from_oob, %function
-get_erase_count_from_oob:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	movs	r2, #2
-	movs	r1, #5
-	bl	get_spare_data
-	uxth	r0, r0
-	pop	{r3, pc}
-	.size	get_erase_count_from_oob, .-get_erase_count_from_oob
-	.section	.text.is_ftl_start_flag_page,"ax",%progbits
-	.align	1
-	.global	is_ftl_start_flag_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_ftl_start_flag_page, %function
-is_ftl_start_flag_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r3, [r0, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L418
-	ldrb	r0, [r0, #2]	@ zero_extendqisi2
-	sub	r3, r0, #238
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-.L418:
-	movs	r0, #0
-	bx	lr
-	.size	is_ftl_start_flag_page, .-is_ftl_start_flag_page
-	.section	.text.is_no_use_device,"ax",%progbits
-	.align	1
-	.global	is_no_use_device
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_no_use_device, %function
-is_no_use_device:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #24]
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r4, r0
-	sub	sp, sp, #32
-	mov	r6, r1
-	ldr	r5, [r0, #40]
-	cmp	r3, #0
-	beq	.L429
-	ldr	r7, [r0, #4]
-	ldr	r0, [r0, #32]
-	ldrb	r1, [r7, #8]	@ zero_extendqisi2
-	add	r0, r0, r3
-	bl	__aeabi_uidiv
-	ldrh	r1, [r7, #20]
-	bl	__aeabi_uidiv
-	mov	r7, r0
-.L420:
-	movs	r3, #0
-	mov	r8, r3
-	strh	r3, [r4, #18]	@ movhi
-.L421:
-	ldrh	r3, [r4, #18]
-	cmp	r3, r7
-	bcs	.L436
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	str	r5, [r4, #44]
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #18]	@ movhi
-	add	r1, sp, #16
-	strh	r8, [sp, #16]	@ movhi
-	str	r3, [sp, #24]
-	strh	r2, [sp, #20]	@ movhi
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1992]
-	blx	r3
-	cmp	r0, #1
-	bne	.L422
-	ldr	r3, [r4, #1980]
-	add	r1, sp, #16
-	mov	r0, r4
-	blx	r3
-	mov	r2, r0
-	mov	r0, sp
-	bl	is_ftl_start_flag_page
-	cmp	r0, #1
-	beq	.L423
-.L436:
-	movs	r0, #1
-.L419:
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L429:
-	mov	r7, #-1
-	b	.L420
-.L423:
-	cbz	r2, .L425
-	cmp	r2, #10
-	bne	.L436
-.L425:
-	movs	r2, #4
-	movs	r1, #3
-	mov	r0, sp
-	bl	get_spare_data
-	cmp	r0, r6
-	beq	.L427
-	ldr	r0, .L437
-	bl	NAND_Print
-	b	.L436
-.L427:
-	adds	r5, r5, #36
-	movs	r0, #0
-	str	r5, [r4, #40]
-	b	.L419
-.L422:
-	movs	r3, #255
-	mov	r1, r4
-	strh	r3, [r5, #2]	@ movhi
-	mov	r0, r5
-	ldrh	r3, [r4, #18]
-	adds	r3, r3, #1
-	strh	r3, [r4, #18]	@ movhi
-	bl	is_last_phy_block
-	cmp	r0, #1
-	beq	.L436
-	adds	r5, r5, #36
-	b	.L421
-.L438:
-	.align	2
-.L437:
-	.word	.LC120
-	.size	is_no_use_device, .-is_no_use_device
-	.section	.text.is_ftl_end_flag_page,"ax",%progbits
-	.align	1
-	.global	is_ftl_end_flag_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_ftl_end_flag_page, %function
-is_ftl_end_flag_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r3, [r0, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L441
-	ldrb	r0, [r0, #2]	@ zero_extendqisi2
-	sub	r3, r0, #204
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-.L441:
-	movs	r0, #0
-	bx	lr
-	.size	is_ftl_end_flag_page, .-is_ftl_end_flag_page
-	.section	.text.is_ftl_special_data,"ax",%progbits
-	.align	1
-	.global	is_ftl_special_data
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_ftl_special_data, %function
-is_ftl_special_data:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r0, [r0, #1]	@ zero_extendqisi2
-	sub	r3, r0, #170
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-	.size	is_ftl_special_data, .-is_ftl_special_data
-	.section	.text.is_ftl_logic_page_data,"ax",%progbits
-	.align	1
-	.global	is_ftl_logic_page_data
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_ftl_logic_page_data, %function
-is_ftl_logic_page_data:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r0, [r0, #1]	@ zero_extendqisi2
-	and	r0, r0, #240
-	sub	r3, r0, #192
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-	.size	is_ftl_logic_page_data, .-is_ftl_logic_page_data
-	.section	.text.is_nouse_page,"ax",%progbits
-	.align	1
-	.global	is_nouse_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_nouse_page, %function
-is_nouse_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	subs	r2, r0, #1
-	add	r1, r0, #9
-	movs	r3, #0
-	push	{r4, lr}
-.L446:
-	ldrb	r4, [r2, #1]!	@ zero_extendqisi2
-	cmp	r4, #255
-	it	eq
-	addeq	r3, r3, #1
-	cmp	r2, r1
-	bne	.L446
-	cmp	r3, #8
-	bls	.L448
-	ldrb	r0, [r0]	@ zero_extendqisi2
-	sub	r3, r0, #255
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-.L444:
-	pop	{r4, pc}
-.L448:
-	movs	r0, #0
-	b	.L444
-	.size	is_nouse_page, .-is_nouse_page
-	.section	.text.is_fill_page,"ax",%progbits
-	.align	1
-	.global	is_fill_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_fill_page, %function
-is_fill_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	get_special_data_from_oob
-	sub	r3, r0, #1431655765
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	pop	{r3, pc}
-	.size	is_fill_page, .-is_fill_page
-	.section	.text.is_phy_mapping_page,"ax",%progbits
-	.align	1
-	.global	is_phy_mapping_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_phy_mapping_page, %function
-is_phy_mapping_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	get_special_data_from_oob
-	ldr	r3, .L452
-	subs	r3, r0, r3
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	pop	{r3, pc}
-.L453:
-	.align	2
-.L452:
-	.word	-1431633921
-	.size	is_phy_mapping_page, .-is_phy_mapping_page
-	.section	.text.crc_wrong,"ax",%progbits
-	.align	1
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	crc_wrong, %function
-crc_wrong:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r6, r0
-	mov	r0, r2
-	mov	r7, r1
-	mov	r5, r2
-	bl	is_nouse_page
-	cbnz	r0, .L459
-	ldr	r3, [r6, #4]
-	mov	r0, r5
-	ldrb	r4, [r3, #8]	@ zero_extendqisi2
-	bl	is_phy_mapping_page
-	cbnz	r0, .L456
-	lsls	r4, r4, #9
-.L457:
-	mov	r2, r4
-	mov	r1, r7
-	movw	r0, #65535
-	bl	nand_crc16
-	ldrb	r3, [r5, #12]	@ zero_extendqisi2
-	mov	r1, r0
-	ldrb	r2, [r5, #13]	@ zero_extendqisi2
-	orr	r2, r2, r3, lsl #8
-	cmp	r0, r2
-	beq	.L459
-	mov	r3, r4
-	ldr	r0, .L460
-	bl	NAND_Print
-	movs	r0, #1
-.L454:
-	pop	{r3, r4, r5, r6, r7, pc}
-.L456:
-	ldr	r4, [r6, #308]
-	b	.L457
-.L459:
-	movs	r0, #0
-	b	.L454
-.L461:
-	.align	2
-.L460:
-	.word	.LC121
-	.size	crc_wrong, .-crc_wrong
-	.section	.text.nand_power_off_ecc_error,"ax",%progbits
-	.align	1
-	.global	nand_power_off_ecc_error
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_power_off_ecc_error, %function
-nand_power_off_ecc_error:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, lr}
-	mov	r4, r2
-	ldrb	r5, [r2]	@ zero_extendqisi2
-	sub	sp, sp, #60
-	cmp	r5, #255
-	beq	.L463
-	ldr	r0, .L474
-.L473:
-	bl	NAND_Print
-	movs	r3, #1
-	movw	r2, #3063
-	ldr	r1, .L474+4
-	ldr	r0, .L474+8
-	bl	NAND_Print
-	ldr	r0, .L474+12
-	bl	NAND_Print
-	ldrb	r0, [r4, #15]	@ zero_extendqisi2
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [r4, #14]	@ zero_extendqisi2
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [r4, #13]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [r4, #12]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [r4, #11]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [r4, #10]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [r4, #9]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [r4, #8]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [r4, #7]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [r4, #6]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [r4, #5]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [r4, #4]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [r4, #3]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L474+16
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L467
-.L463:
-	ldr	r3, [r0, #1972]
-	ldrh	r3, [r3, #28]
-	cbz	r3, .L465
-	bl	crc_wrong
-	cbnz	r0, .L466
-.L469:
-	movs	r0, #0
-.L467:
-	add	sp, sp, #60
-	@ sp needed
-	pop	{r4, r5, pc}
-.L466:
-	ldr	r0, .L474+20
-	b	.L473
-.L465:
-	ldrb	r3, [r2, #11]	@ zero_extendqisi2
-	cmp	r3, #165
-	bne	.L468
-	ldrb	r3, [r2, #15]	@ zero_extendqisi2
-	cmp	r3, #165
-	beq	.L469
-.L468:
-	ldr	r0, .L474+24
-	b	.L473
-.L475:
-	.align	2
-.L474:
-	.word	.LC122
-	.word	.LANCHOR9
-	.word	.LC125
-	.word	.LC126
-	.word	.LC127
-	.word	.LC123
-	.word	.LC124
-	.size	nand_power_off_ecc_error, .-nand_power_off_ecc_error
-	.section	.text.recover_block_phy_page_mapping,"ax",%progbits
-	.align	1
-	.global	recover_block_phy_page_mapping
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	recover_block_phy_page_mapping, %function
-recover_block_phy_page_mapping:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r10, r2
-	movs	r4, #0
-	ldr	r2, [r0, #308]
-	sub	sp, sp, #40
-	mov	r5, r0
-	mov	r7, r1
-	mov	r0, r10
-	movs	r1, #255
-	bl	NAND_Memset
-.L477:
-	ldr	r2, [r5, #4]
-	ldrh	r3, [r2, #20]
-	subs	r3, r3, #1
-	cmp	r3, r4
-	bgt	.L488
-	movs	r0, #0
-	add	sp, sp, #40
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L488:
-	ldr	r3, [r5, #1972]
-	uxth	r0, r4
-	ldrh	r1, [r7]
-	add	r6, sp, #8
-	ldrh	r3, [r3, #28]
-	cmp	r3, #0
-	beq	.L478
-	ldr	r3, [r5, #284]
-	ldrh	r2, [r2, #28]
-	strh	r0, [sp, #24]	@ movhi
-	strh	r1, [sp, #26]	@ movhi
-	strh	r2, [sp, #28]	@ movhi
-.L499:
-	mov	fp, #0
-	strd	r3, r6, [sp, #32]
-.L482:
-	ldr	r3, [r5, #1980]
-	add	r1, sp, #24
-	mov	r0, r5
-	blx	r3
-	subs	r8, r0, #0
-	bge	.L480
-	mov	r3, r4
-	ldrh	r2, [r7]
-	mov	r1, r8
-	ldr	r0, .L500
-	bl	NAND_Print
-	cmp	fp, #0
-	beq	.L489
-	ldrh	r2, [r7]
-	mov	r3, r4
-	str	fp, [sp]
-	mov	r1, r8
-	ldr	r0, .L500+4
-	bl	NAND_Print
-.L480:
-	mov	r0, r6
-	bl	is_ftl_logic_page_data
-	cmp	r0, #1
-	bne	.L483
-	cmp	r8, #0
-	beq	.L484
-	cmp	r8, #10
-	bne	.L485
-.L484:
-	mov	r2, r6
-	ldr	r1, [r5, #284]
-	mov	r0, r5
-	bl	nand_power_off_ecc_error
-	cbz	r0, .L486
-	ldr	r0, .L500+8
-	bl	NAND_Print
-.L485:
-	adds	r4, r4, #1
-	b	.L477
-.L478:
-	strh	r0, [sp, #24]	@ movhi
-	strh	r1, [sp, #26]	@ movhi
-	strh	r3, [sp, #28]	@ movhi
-	b	.L499
-.L489:
-	mov	fp, #1
-	b	.L482
-.L486:
-	mov	r0, r6
-	bl	get_logic_page_from_oob
-	str	r0, [r10, r4, lsl #2]
-	mov	r3, r0
-	ldr	r2, [r5, #28]
-	cmp	r0, r2
-	bcc	.L485
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L500+12
-	bl	NAND_Print
-	mov	r3, #-1
-	str	r3, [r10, r4, lsl #2]
-	b	.L485
-.L483:
-	mov	r0, r6
-	bl	is_nouse_page
-	cmp	r0, #1
-	beq	.L485
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L500+16
-	bl	NAND_Print
-	b	.L485
-.L501:
-	.align	2
-.L500:
-	.word	.LC128
-	.word	.LC129
-	.word	.LC130
-	.word	.LC131
-	.word	.LC132
-	.size	recover_block_phy_page_mapping, .-recover_block_phy_page_mapping
-	.section	.text.get_used_page_num,"ax",%progbits
-	.align	1
-	.global	get_used_page_num
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_used_page_num, %function
-get_used_page_num:
-	@ args = 0, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r6, r0
-	mov	fp, r2
-	mov	r5, r3
-	sub	sp, sp, #104
-	movs	r4, #0
-	str	r1, [sp, #64]
-	str	r4, [r2]
-.L503:
-	ldr	r3, [r6, #4]
-	ldrh	r2, [r3, #20]
-	cmp	r2, r4
-	bhi	.L514
-.L502:
-	mov	r0, r4
-	add	sp, sp, #104
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L514:
-	cmp	r5, #0
-	beq	.L504
-	ldr	r2, [r5, #4]
-	ldrb	r2, [r2, r4]	@ zero_extendqisi2
-	cmp	r2, #0
-	bne	.L504
-	ldrh	r7, [r3, #26]
-	ldr	r2, [r5, #8]
-	add	r8, r7, #64
-	mla	r8, r4, r8, r2
-	add	r7, r7, r8
-.L505:
-	ldr	r2, [sp, #64]
-	uxth	r0, r4
-	ldrh	r1, [r2]
-	ldr	r2, [r6, #1972]
-	ldrh	r2, [r2, #28]
-	cmp	r2, #0
-	beq	.L506
-	ldrh	r3, [r3, #28]
-	strh	r0, [sp, #88]	@ movhi
-	strh	r1, [sp, #90]	@ movhi
-	strh	r3, [sp, #92]	@ movhi
-	str	r8, [sp, #96]
-.L552:
-	str	r7, [sp, #100]
-	add	r1, sp, #88
-	ldr	r3, [r6, #1980]
-	mov	r0, r6
-	blx	r3
-	mov	r10, r0
-	cbz	r0, .L508
-	cmp	r0, #10
-	beq	.L508
-	ldr	r3, [sp, #64]
-	mov	r2, r4
-	ldr	r0, .L554
-	ldrh	r1, [r3]
-	bl	NAND_Print
-	ldr	r3, [fp]
-	adds	r3, r3, #1
-	str	r3, [fp]
-.L508:
-	mov	r0, r7
-	bl	is_nouse_page
-	cmp	r0, #1
-	beq	.L525
-	adds	r3, r4, #1
-	cmp	r10, #0
-	beq	.L510
-	cmp	r10, #10
-	bne	.L511
-.L510:
-	cmp	r8, #0
-	beq	.L511
-	mov	r2, r7
-	mov	r1, r8
-	mov	r0, r6
-	str	r3, [sp, #68]
-	bl	nand_power_off_ecc_error
-	ldr	r3, [sp, #68]
-	cbz	r0, .L513
-	ldr	r0, .L554+4
-	bl	NAND_Print
-	ldr	r3, [sp, #68]
-.L511:
-	mov	r4, r3
-	b	.L503
-.L504:
-	ldrb	r2, [r3, #8]	@ zero_extendqisi2
-	cmp	r2, #8
-	ittee	eq
-	ldreq	r8, [r6, #284]
-	addeq	r7, sp, #72
-	addne	r7, sp, #72
-	movne	r8, #0
-	b	.L505
-.L506:
-	strh	r0, [sp, #88]	@ movhi
-	strh	r1, [sp, #90]	@ movhi
-	strh	r2, [sp, #92]	@ movhi
-	str	r2, [sp, #96]
-	b	.L552
-.L513:
-	ldr	r2, [r5, #4]
-	movs	r1, #1
-	strb	r1, [r2, r4]
-	ldr	r2, [r5]
-	cmp	r2, r3
-	it	cc
-	strcc	r3, [r5]
-	b	.L511
-.L522:
-	cmp	r5, #0
-	beq	.L527
-	ldr	r2, [r5, #4]
-	ldrb	r2, [r2, r7]	@ zero_extendqisi2
-	cmp	r2, #0
-	bne	.L527
-	ldrh	r2, [r3, #26]
-	ldr	r1, [r5, #8]
-	add	r8, r2, #64
-	mla	r8, r7, r8, r1
-	add	fp, r8, r2
-.L515:
-	ldr	r1, [r6, #1972]
-	uxth	ip, r7
-	ldr	r2, [sp, #64]
-	ldrh	r1, [r1, #28]
-	ldrh	r0, [r2]
-	cmp	r1, #0
-	beq	.L516
-	ldrh	r3, [r3, #28]
-	strh	ip, [sp, #88]	@ movhi
-	strh	r0, [sp, #90]	@ movhi
-	strh	r3, [sp, #92]	@ movhi
-	str	r8, [sp, #96]
-.L553:
-	ldr	r3, [r6, #1980]
-	add	r1, sp, #88
-	str	fp, [sp, #100]
-	mov	r0, r6
-	blx	r3
-	str	r0, [sp, #68]
-	mov	r0, fp
-	bl	is_nouse_page
-	cmp	r0, #1
-	add	r10, r7, #1
-	beq	.L519
-	ldrb	r0, [fp, #15]	@ zero_extendqisi2
-	ldr	r2, [sp, #64]
-	ldrb	r3, [fp]	@ zero_extendqisi2
-	ldrh	r1, [r2]
-	str	r0, [sp, #56]
-	ldrb	r0, [fp, #14]	@ zero_extendqisi2
-	str	r0, [sp, #52]
-	ldrb	r0, [fp, #13]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [fp, #12]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [fp, #11]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [fp, #10]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [fp, #9]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [fp, #8]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [fp, #7]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [fp, #6]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [fp, #5]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [fp, #4]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [fp, #3]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [fp, #2]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r2, [fp, #1]	@ zero_extendqisi2
-	ldr	r0, .L554+8
-	str	r2, [sp]
-	mov	r2, r7
-	bl	NAND_Print
-	ldr	r3, [sp, #68]
-	cbz	r3, .L520
-	cmp	r3, #10
-	bne	.L519
-.L520:
-	cmp	r8, #0
-	beq	.L519
-	ldr	r3, [r5, #4]
-	movs	r2, #1
-	strb	r2, [r3, r7]
-	ldr	r3, [r5]
-	cmp	r3, r10
-	it	cc
-	strcc	r10, [r5]
-.L519:
-	mov	r7, r10
-.L509:
-	ldr	r3, [r6, #4]
-	ldrh	r2, [r3, #20]
-	cmp	r2, r7
-	bhi	.L522
-	b	.L502
-.L527:
-	add	fp, sp, #72
-	mov	r8, #0
-	b	.L515
-.L516:
-	strh	ip, [sp, #88]	@ movhi
-	strh	r0, [sp, #90]	@ movhi
-	strh	r1, [sp, #92]	@ movhi
-	str	r1, [sp, #96]
-	b	.L553
-.L525:
-	mov	r7, r4
-	b	.L509
-.L555:
-	.align	2
-.L554:
-	.word	.LC133
-	.word	.LC134
-	.word	.LC135
-	.size	get_used_page_num, .-get_used_page_num
-	.section	.text.get_used_page_num_no_crosstalk,"ax",%progbits
-	.align	1
-	.global	get_used_page_num_no_crosstalk
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_used_page_num_no_crosstalk, %function
-get_used_page_num_no_crosstalk:
-	@ args = 0, pretend = 0, frame = 48
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r6, r3
-	movs	r3, #0
-	mov	r8, r0
-	mov	r10, r3
-	mov	fp, r3
-	mov	r4, #-1
-	mov	r5, r3
-	sub	sp, sp, #48
-	str	r3, [r2]
-	str	r1, [sp, #4]
-.L557:
-	ldr	r2, [r8, #4]
-	ldrh	r3, [r2, #20]
-	cmp	r3, r5
-	bhi	.L566
-	adds	r2, r4, #1
-	bne	.L564
-	mov	r4, r3
-.L567:
-	mov	r0, r4
-	add	sp, sp, #48
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L566:
-	cbz	r6, .L558
-	ldr	r3, [r6, #4]
-	ldrb	r3, [r3, r5]	@ zero_extendqisi2
-	cbnz	r3, .L558
-	ldrh	r7, [r2, #26]
-	ldr	r3, [r6, #8]
-	add	r1, r7, #64
-	mla	r3, r5, r1, r3
-	add	r7, r7, r3
-.L559:
-	ldr	r1, [sp, #4]
-	mov	r0, r8
-	ldrh	r2, [r2, #28]
-	str	r3, [sp, #40]
-	ldrh	r1, [r1]
-	strh	r2, [sp, #36]	@ movhi
-	strh	r5, [sp, #32]	@ movhi
-	strh	r1, [sp, #34]	@ movhi
-	add	r1, sp, #32
-	str	r7, [sp, #44]
-	ldr	r2, [r8, #1980]
-	str	r3, [sp, #8]
-	blx	r2
-	ldr	r3, [sp, #8]
-	cbz	r0, .L560
-	cmp	r0, #10
-	beq	.L560
-	ldr	r3, [sp, #4]
-	cmp	r4, #-1
-	it	eq
-	moveq	r4, r5
-	mov	r2, r5
-	ldr	r0, .L587
-	ldrh	r1, [r3]
-	bl	NAND_Print
-.L561:
-	adds	r5, r5, #1
-	b	.L557
-.L558:
-	ldrb	r3, [r2, #8]	@ zero_extendqisi2
-	cmp	r3, #4
-	ittee	eq
-	ldreq	r3, [r8, #284]
-	addeq	r7, sp, #16
-	addne	r7, sp, #16
-	movne	r3, #0
-	b	.L559
-.L560:
-	mov	r0, r7
-	str	r3, [sp, #8]
-	bl	is_nouse_page
-	cmp	r0, #1
-	ldr	r3, [sp, #8]
-	bne	.L562
-	add	r10, r10, #1
-	cmp	r4, #-1
-	it	eq
-	moveq	r4, r5
-	cmp	r10, #3
-	bne	.L561
-.L564:
-	cmp	fp, r4
-	beq	.L567
-	ldr	r1, [sp, #4]
-	mov	r3, r4
-	mov	r2, fp
-	ldr	r0, .L587+4
-	ldrh	r1, [r1]
-	bl	NAND_Print
-	ldr	r2, [r8, #1968]
-	ldr	r3, [r2, #172]
-	adds	r3, r3, #1
-	str	r3, [r2, #172]
-	movs	r3, #0
-.L568:
-	ldr	r2, [r6]
-	cmp	r2, r3
-	bls	.L567
-	ldr	r2, [r6, #4]
-	ldrb	r2, [r2, r3]	@ zero_extendqisi2
-	cbz	r2, .L569
-	ldr	r2, [r8, #4]
-	ldr	r1, [r6, #8]
-	ldrh	r0, [r2, #26]
-	add	r1, r1, r0
-	add	r2, r0, #64
-	mla	r2, r3, r2, r1
-	ldr	r1, [r8, #1968]
-	ldr	r1, [r1, #172]
-	strb	r1, [r2, #14]
-.L569:
-	adds	r3, r3, #1
-	b	.L568
-.L562:
-	mov	r2, r7
-	mov	r1, r3
-	mov	r0, r8
-	bl	nand_power_off_ecc_error
-	cbz	r0, .L565
-	ldr	r0, .L587+8
-	bl	NAND_Print
-	b	.L561
-.L565:
-	adds	r1, r4, #1
-	add	fp, fp, #1
-	bne	.L561
-	ldr	r2, [r6, #4]
-	movs	r1, #1
-	adds	r3, r5, #1
-	mov	r0, r7
-	str	r3, [sp, #12]
-	strb	r1, [r2, r5]
-	ldr	r2, [r6, #12]
-	str	r2, [sp, #8]
-	bl	get_logic_page_from_oob
-	ldr	r2, [sp, #8]
-	ldr	r3, [sp, #12]
-	str	r0, [r2, r5, lsl #2]
-	ldr	r2, [r6]
-	cmp	r2, r3
-	it	cc
-	strcc	r3, [r6]
-	b	.L561
-.L588:
-	.align	2
-.L587:
-	.word	.LC136
-	.word	.LC138
-	.word	.LC137
-	.size	get_used_page_num_no_crosstalk, .-get_used_page_num_no_crosstalk
-	.section	.text.init_smart_info,"ax",%progbits
-	.align	1
-	.global	init_smart_info
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	init_smart_info, %function
-init_smart_info:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r2, #328
-	mov	r4, r0
-	sub	sp, sp, #32
-	mov	r5, r1
-	movs	r1, #0
-	ldr	r0, [r0, #1968]
-	bl	NAND_Memset
-	ldr	r3, [r4, #1968]
-	ldr	r6, .L603
-	ldr	r2, [r3, #144]
-	str	r6, [r3, #64]
-	adds	r2, r2, #1
-	str	r2, [r3, #144]
-	cmp	r5, #0
-	beq	.L590
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r5]
-	ldr	r2, [r4, #284]
-	ldrh	r1, [r3, #28]
-	ldrh	r3, [r3, #20]
-	strh	r0, [sp, #18]	@ movhi
-	mov	r0, r4
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	subs	r3, r3, #1
-	str	r2, [sp, #24]
-	strh	r3, [sp, #16]	@ movhi
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1980]
-	blx	r3
-	mov	r5, r0
-	mov	r0, sp
-	bl	is_phy_mapping_page
-	cmp	r0, #1
-	bne	.L592
-	cbz	r5, .L593
-	cmp	r5, #10
-	bne	.L592
-.L593:
-	ldr	r3, [r4, #308]
-	ldr	r1, [r4, #284]
-	add	r1, r1, r3
-	ldr	r3, [r1, #64]
-	cmp	r3, r6
-	bne	.L592
-	mov	r2, #328
-	ldr	r0, [r4, #1968]
-	bl	NAND_Memcpy
-	ldr	r3, [r4, #1968]
-	ldr	r2, [r3, #144]
-	adds	r2, r2, #1
-	str	r2, [r3, #144]
-	ldr	r2, [r3, #168]
-	adds	r2, r2, #1
-	itt	eq
-	moveq	r2, #0
-	streq	r2, [r3, #168]
-	ldr	r2, [r3, #176]
-	adds	r2, r2, #1
-	itt	eq
-	moveq	r2, #0
-	streq	r2, [r3, #176]
-	ldr	r2, [r3, #180]
-	adds	r2, r2, #1
-	itt	eq
-	moveq	r2, #0
-	streq	r2, [r3, #180]
-.L592:
-	mov	r0, r4
-	bl	print_smart
-.L590:
-	movs	r0, #0
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, pc}
-.L604:
-	.align	2
-.L603:
-	.word	-1431655935
-	.size	init_smart_info, .-init_smart_info
-	.section	.text.is_function_info_page,"ax",%progbits
-	.align	1
-	.global	is_function_info_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_function_info_page, %function
-is_function_info_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	get_special_data_from_oob
-	lsrs	r0, r0, #16
-	ldr	r3, .L606
-	lsls	r0, r0, #16
-	subs	r3, r0, r3
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	pop	{r3, pc}
-.L607:
-	.align	2
-.L606:
-	.word	-1441726464
-	.size	is_function_info_page, .-is_function_info_page
-	.section	.text.is_power_down_info_page,"ax",%progbits
-	.align	1
-	.global	is_power_down_info_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_power_down_info_page, %function
-is_power_down_info_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	get_special_data_from_oob
-	ldr	r3, .L609
-	subs	r3, r0, r3
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	pop	{r3, pc}
-.L610:
-	.align	2
-.L609:
-	.word	-1441713357
-	.size	is_power_down_info_page, .-is_power_down_info_page
-	.section	.text.recover_phy_page_mapping,"ax",%progbits
-	.align	1
-	.global	recover_phy_page_mapping
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	recover_phy_page_mapping, %function
-recover_phy_page_mapping:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r2
-	ldr	r10, .L645+20
-	movs	r4, #0
-	sub	sp, sp, #32
-	mov	r5, r0
-	ldr	fp, .L645+24
-	mov	r7, r1
-	ldr	r2, [r0, #308]
-	movs	r1, #255
-	mov	r0, r8
-	bl	NAND_Memset
-.L612:
-	ldr	r3, [r5, #4]
-	ldrh	r2, [r3, #20]
-	cmp	r2, r4
-	ble	.L615
-	ldrh	r2, [r3, #28]
-	mov	r0, r5
-	ldrh	r1, [r7]
-	ldr	r3, [r5, #284]
-	strh	r2, [sp, #20]	@ movhi
-	strh	r1, [sp, #18]	@ movhi
-	add	r1, sp, #16
-	str	r3, [sp, #24]
-	strh	r4, [sp, #16]	@ movhi
-	ldr	r3, [r5, #1980]
-	str	sp, [sp, #28]
-	blx	r3
-	mov	r6, r0
-	mov	r0, sp
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L613
-	cbnz	r6, .L614
-.L616:
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L645
-	bl	NAND_Print
-.L615:
-	mov	r0, r4
-	b	.L611
-.L614:
-	cmp	r6, #10
-	beq	.L616
-.L613:
-	mov	r0, sp
-	bl	is_ftl_logic_page_data
-	cmp	r0, #1
-	bne	.L617
-	cbz	r6, .L618
-	cmp	r6, #10
-	bne	.L619
-.L618:
-	mov	r2, sp
-	ldr	r1, [r5, #284]
-	mov	r0, r5
-	bl	nand_power_off_ecc_error
-	cbz	r0, .L620
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L645+4
-	bl	NAND_Print
-.L619:
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L645+8
-	bl	NAND_Print
-	movw	r0, #65535
-.L611:
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L620:
-	mov	r0, sp
-	bl	get_logic_page_from_oob
-	str	r0, [r8, r4, lsl #2]
-	mov	r3, r0
-	ldr	r2, [r5, #28]
-	cmp	r0, r2
-	bcc	.L621
-	mov	r2, r4
-	ldrh	r1, [r7]
-	ldr	r0, .L645+12
-	bl	NAND_Print
-	mov	r3, #-1
-	str	r3, [r8, r4, lsl #2]
-.L621:
-	cbz	r6, .L626
-	cmp	r6, #10
-	bne	.L619
-.L626:
-	adds	r4, r4, #1
-	b	.L612
-.L617:
-	ldrb	r3, [sp, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L622
-	ldr	r0, .L645+16
-	mov	r1, r4
-.L644:
-	bl	NAND_Print
-	b	.L621
-.L622:
-	mov	r0, sp
-	bl	is_power_down_info_page
-	cmp	r0, #1
-	bne	.L623
-	cbz	r6, .L624
-	cmp	r6, #10
-	bne	.L619
-.L624:
-	mov	r0, sp
-	bl	get_special_data_from_oob
-	mov	r1, r4
-	str	r0, [r8, r4, lsl #2]
-	mov	r0, fp
-	b	.L644
-.L623:
-	mov	r1, r4
-	mov	r0, r10
-	b	.L644
-.L646:
-	.align	2
-.L645:
-	.word	.LC139
-	.word	.LC140
-	.word	.LC144
-	.word	.LC131
-	.word	.LC141
-	.word	.LC143
-	.word	.LC142
-	.size	recover_phy_page_mapping, .-recover_phy_page_mapping
-	.section	.text.get_logic_page_map,"ax",%progbits
-	.align	1
-	.global	get_logic_page_map
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_logic_page_map, %function
-get_logic_page_map:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	mov	r2, r1
-	ldr	r3, [r0, #28]
-	cmp	r3, r1
-	bhi	.L648
-	ldr	r1, .L650
-	ldr	r0, .L650+4
-	bl	NAND_Print
-	movs	r0, #0
-.L647:
-	pop	{r3, pc}
-.L648:
-	lsrs	r1, r1, #18
-	add	r0, r0, r1, lsl #2
-	rsb	r1, r1, r1, lsl #14
-	ldr	r0, [r0, #52]
-	add	r2, r2, r1, lsl #18
-	add	r0, r0, r2, lsl #2
-	b	.L647
-.L651:
-	.align	2
-.L650:
 	.word	.LANCHOR10
-	.word	.LC145
-	.size	get_logic_page_map, .-get_logic_page_map
-	.section	.text.check_invalid_page_right,"ax",%progbits
+	.word	.LANCHOR8
+	.word	.LANCHOR9
+	.size	sandisk_A19_set_readretry, .-sandisk_A19_set_readretry
+	.section	.text.sandisk_A19_exit_readretry,"ax",%progbits
 	.align	1
-	.global	check_invalid_page_right
+	.global	sandisk_A19_exit_readretry
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	check_invalid_page_right, %function
-check_invalid_page_right:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	movs	r4, #0
-	ldr	fp, .L661+4
-	mov	r8, r0
-	mov	r10, r1
-	mov	r7, r2
-	mov	r6, r3
-	mov	r5, r4
-.L653:
-	cmp	r6, r5
-	bhi	.L658
-	ldrh	r2, [r7, #4]
-	cmp	r2, r4
-	beq	.L660
-	mov	r3, r6
-	mov	r1, r4
-	ldr	r0, .L661
-	bl	NAND_Print
-	movs	r0, #1
-.L652:
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L658:
-	ldr	r3, [r10, #8]
-	ldr	r1, [r3, r5, lsl #2]
-	adds	r3, r1, #1
-	beq	.L654
-	mov	r0, r8
-	bl	get_logic_page_map
-	cbnz	r0, .L655
-	mov	r0, fp
-	bl	NAND_Print_DBG
-.L654:
-	adds	r4, r4, #1
-	b	.L656
-.L655:
-	ldrh	r2, [r0, #2]
-	ldrh	r3, [r7]
-	cmp	r2, r3
-	bne	.L654
-	ldrh	r3, [r0]
-	ubfx	r3, r3, #0, #12
-	cmp	r3, r5
-	bne	.L654
-.L656:
-	adds	r5, r5, #1
-	b	.L653
-.L660:
-	movs	r0, #0
-	b	.L652
-.L662:
-	.align	2
-.L661:
-	.word	.LC147
-	.word	.LC146
-	.size	check_invalid_page_right, .-check_invalid_page_right
-	.section	.text.malloc_logic_page_map,"ax",%progbits
-	.align	1
-	.global	malloc_logic_page_map
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	malloc_logic_page_map, %function
-malloc_logic_page_map:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	add	r7, r0, #52
-	mov	r4, r1
-	mov	r6, r0
-	add	r2, r0, #152
-	mov	r3, r7
-	movs	r1, #0
-.L664:
-	str	r1, [r3], #4
-	cmp	r3, r2
-	bne	.L664
-	ldr	r8, .L676+12
-	movs	r5, #0
-.L668:
-	cmp	r4, r8
-	bls	.L665
-	mov	r0, #1048576
-	bl	NAND_Malloc
-	str	r0, [r7], #4
-	cbnz	r0, .L666
-	ldr	r0, .L676
-	mov	r1, r5
-.L675:
-	bl	NAND_Print
-	mvn	r0, #1
-.L663:
-	pop	{r4, r5, r6, r7, r8, pc}
-.L666:
-	mov	r2, #1048576
-	movs	r1, #255
-	adds	r5, r5, #1
-	sub	r4, r4, #262144
-	bl	NAND_Memset
-	cmp	r5, #25
-	bne	.L668
-	cbz	r4, .L671
-	mov	r1, r4
-	ldr	r0, .L676+4
-	b	.L675
-.L665:
-	lsls	r4, r4, #2
-	mov	r0, r4
-	bl	nftl_malloc
-	add	r3, r6, r5, lsl #2
-	str	r0, [r3, #52]
-	cbnz	r0, .L670
-	mov	r1, r5
-	ldr	r0, .L676+8
-	b	.L675
-.L670:
-	mov	r2, r4
-	movs	r1, #255
-	bl	NAND_Memset
-	movs	r0, #0
-	b	.L663
-.L671:
-	mov	r0, r4
-	b	.L663
-.L677:
-	.align	2
-.L676:
-	.word	.LC148
-	.word	.LC150
-	.word	.LC149
-	.word	262143
-	.size	malloc_logic_page_map, .-malloc_logic_page_map
-	.section	.text.zone_param_init,"ax",%progbits
-	.align	1
-	.global	zone_param_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	zone_param_init, %function
-zone_param_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r7, r3
-	ldr	r3, [r0, #4]
-	mov	r4, r0
-	mov	r5, r1
-	mov	r6, r2
-	ldrh	r0, [r3, #26]
-	bl	nftl_malloc
-	str	r0, [r4, #284]
-	cbnz	r0, .L679
-	ldr	r1, .L690
-	ldr	r0, .L690+4
-.L688:
-	bl	NAND_Print
-	b	.L689
-.L679:
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r3, #26]
-	bl	nftl_malloc
-	str	r0, [r4, #288]
-	cbnz	r0, .L681
-	ldr	r1, .L690
-	ldr	r0, .L690+8
-	b	.L688
-.L681:
-	ldr	r2, [r4, #4]
-	movs	r1, #36
-	strh	r5, [r4, #36]	@ movhi
-	mov	r0, r6
-	str	r6, [r4, #24]
-	ldr	r3, [r2, #32]
-	str	r7, [r4, #32]
-	mla	r5, r1, r5, r3
-	movs	r3, #0
-	strh	r3, [r4, #18]	@ movhi
-	str	r5, [r4, #40]
-	strh	r3, [r4, #20]	@ movhi
-	strh	r3, [r4, #22]	@ movhi
-	str	r3, [r4, #44]
-	ldrb	r1, [r2, #8]	@ zero_extendqisi2
-	bl	__aeabi_uidiv
-	mov	r1, r0
-	mov	r0, r4
-	bl	malloc_logic_page_map
-	mov	r5, r0
-	cbz	r0, .L682
-	ldr	r0, .L690+12
-	bl	NAND_Print
-.L689:
-	mvn	r5, #1
-.L678:
-	mov	r0, r5
-	pop	{r3, r4, r5, r6, r7, pc}
-.L682:
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r3, #20]
-	mov	r3, #320
-	str	r3, [r4, #316]
-	lsls	r0, r0, #2
-	str	r0, [r4, #308]
-	add	r0, r0, r3
-	str	r0, [r4, #300]
-	bl	nftl_malloc
-	mov	r3, r0
-	str	r0, [r4, #296]
-	cbnz	r0, .L683
-	ldr	r1, .L690
-	ldr	r0, .L690+16
-	b	.L688
-.L683:
-	ldr	r2, [r4, #308]
-	movs	r1, #255
-	str	r0, [r4, #304]
-	add	r3, r3, r2
-	ldr	r2, [r4, #300]
-	str	r3, [r4, #312]
-	str	r3, [r4, #1968]
-	bl	NAND_Memset
-	ldr	r3, [r4, #308]
-	ldr	r0, [r4, #300]
-	str	r3, [r4, #340]
-	str	r0, [r4, #332]
-	bl	nftl_malloc
-	mov	r3, r0
-	str	r0, [r4, #328]
-	cbnz	r0, .L684
-	ldr	r1, .L690
-	ldr	r0, .L690+20
-	b	.L688
-.L684:
-	ldr	r2, [r4, #340]
-	movs	r1, #255
-	str	r0, [r4, #336]
-	add	r3, r3, r2
-	ldr	r2, [r4, #332]
-	str	r3, [r4, #344]
-	bl	NAND_Memset
-	ldr	r3, [r4, #308]
-	ldr	r0, [r4, #300]
-	str	r3, [r4, #272]
-	ldr	r3, [r4, #316]
-	str	r0, [r4, #264]
-	str	r3, [r4, #280]
-	bl	nftl_malloc
-	str	r0, [r4, #260]
-	cbnz	r0, .L685
-	ldr	r1, .L690
-	ldr	r0, .L690+24
-	b	.L688
-.L685:
-	ldr	r3, [r4, #272]
-	mov	r1, r5
-	str	r0, [r4, #268]
-	str	r5, [r4, #356]
-	add	r0, r0, r3
-	ldr	r3, [r4, #4]
-	str	r0, [r4, #276]
-	str	r5, [r4, #376]
-	ldrh	r2, [r3, #16]
-	strd	r5, r5, [r4, #360]
-	strd	r5, r5, [r4, #368]
-	strd	r5, r5, [r4, #576]
-	lsrs	r3, r2, #1
-	str	r5, [r4, #292]
-	str	r5, [r4, #324]
-	strh	r3, [r4, #572]	@ movhi
-	ldr	r3, .L690+28
-	strd	r5, r5, [r4, #172]
-	strd	r5, r5, [r4, #164]
-	strd	r5, r5, [r4, #180]
-	umull	r2, r3, r2, r3
-	mov	r2, r4
-	strd	r5, r5, [r4, #208]
-	strd	r5, r5, [r4, #200]
-	strd	r5, r5, [r4, #216]
-	lsrs	r3, r3, #2
-	strh	r3, [r4, #574]	@ movhi
-	movw	r3, #65535
-	strh	r3, [r4, #320]	@ movhi
-	strh	r3, [r4, #352]	@ movhi
-	mov	r3, r5
-	strd	r5, r5, [r4, #244]
-	strd	r5, r5, [r4, #236]
-	strd	r5, r5, [r4, #252]
-	strh	r5, [r4, #392]	@ movhi
-.L686:
-	strh	r1, [r2, #396]	@ movhi
-	adds	r1, r1, #1
-	cmp	r1, #10
-	strh	r3, [r2, #398]	@ movhi
-	strd	r3, r3, [r2, #400]
-	add	r2, r2, #16
-	str	r3, [r2, #392]
-	bne	.L686
-	movs	r2, #255
-	strh	r3, [r4, #394]	@ movhi
-	strd	r2, r3, [r4, #556]
-	strd	r3, r3, [r4, #564]
-	b	.L678
-.L691:
-	.align	2
-.L690:
-	.word	.LANCHOR11
-	.word	.LC151
-	.word	.LC152
-	.word	.LC153
-	.word	.LC154
-	.word	.LC155
-	.word	.LC156
-	.word	-1431655765
-	.size	zone_param_init, .-zone_param_init
-	.section	.text.free_logic_page_map,"ax",%progbits
-	.align	1
-	.global	free_logic_page_map
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	free_logic_page_map, %function
-free_logic_page_map:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	add	r5, r0, #52
-	add	r4, r0, #152
-.L694:
-	ldr	r0, [r5], #4
-	cbz	r0, .L693
-	bl	nftl_free
-.L693:
-	cmp	r5, r4
-	bne	.L694
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-	.size	free_logic_page_map, .-free_logic_page_map
-	.section	.text.zone_param_exit,"ax",%progbits
-	.align	1
-	.global	zone_param_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	zone_param_exit, %function
-zone_param_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	bl	free_logic_page_map
-	ldr	r0, [r4, #260]
-	bl	nftl_free
-	ldr	r0, [r4, #296]
-	bl	nftl_free
-	ldr	r0, [r4, #328]
-	bl	nftl_free
-	ldr	r0, [r4, #284]
-	bl	nftl_free
-	ldr	r0, [r4, #288]
-	bl	nftl_free
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	zone_param_exit, .-zone_param_exit
-	.section	.text.set_physic_op_par,"ax",%progbits
-	.align	1
-	.global	set_physic_op_par
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_physic_op_par, %function
-set_physic_op_par:
-	@ args = 8, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	strh	r3, [r0, #4]	@ movhi
-	ldr	r3, [sp]
-	strh	r2, [r0]	@ movhi
-	strh	r1, [r0, #2]	@ movhi
-	str	r3, [r0, #8]
-	ldr	r3, [sp, #4]
-	str	r3, [r0, #12]
-	bx	lr
-	.size	set_physic_op_par, .-set_physic_op_par
-	.section	.text.add_free_list,"ax",%progbits
-	.align	1
-	.global	add_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_free_list, %function
-add_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	adds	r0, r0, #152
-	push	{r4, lr}
-.L702:
-	ldr	r3, [r0, #20]
-	cbnz	r3, .L704
-	str	r1, [r0, #20]
-	str	r3, [r1, #20]
-	b	.L706
-.L704:
-	ldrh	r2, [r3, #6]
-	ldrh	r4, [r1, #6]
-	cmp	r4, r2
-	bhi	.L705
-	str	r1, [r3, #24]
-	str	r3, [r1, #20]
-	str	r1, [r0, #20]
-.L706:
-	str	r0, [r1, #24]
-	movs	r0, #0
-	pop	{r4, pc}
-.L705:
-	mov	r0, r3
-	b	.L702
-	.size	add_free_list, .-add_free_list
-	.section	.text.del_free_list,"ax",%progbits
-	.align	1
-	.global	del_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_free_list, %function
-del_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r0
-	ldr	r0, [r0, #172]
-	cbz	r0, .L707
-	ldr	r2, [r0, #20]
-	str	r2, [r3, #172]
-	ldr	r2, [r0, #20]
-	str	r2, [r3, #172]
-	ldr	r2, [r0, #20]
-	cbz	r2, .L707
-	adds	r3, r3, #152
-	str	r3, [r2, #24]
-.L707:
-	bx	lr
-	.size	del_free_list, .-del_free_list
-	.section	.text.del_free_list_by_block,"ax",%progbits
-	.align	1
-	.global	del_free_list_by_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_free_list_by_block, %function
-del_free_list_by_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #172]
-.L715:
-	cbnz	r0, .L718
-	bx	lr
-.L718:
-	cmp	r0, r1
-	ldr	r3, [r0, #20]
-	bne	.L719
-	ldr	r2, [r0, #24]
-	str	r3, [r2, #20]
-	ldr	r3, [r0, #20]
-	cbz	r3, .L716
-	str	r2, [r3, #24]
-.L716:
-	movs	r3, #0
-	strd	r3, r3, [r0, #20]
-	bx	lr
-.L719:
-	mov	r0, r3
-	b	.L715
-	.size	del_free_list_by_block, .-del_free_list_by_block
-	.section	.text.is_block_in_free_list,"ax",%progbits
-	.align	1
-	.global	is_block_in_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_block_in_free_list, %function
-is_block_in_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #172]
-.L724:
-	cbnz	r0, .L726
-	bx	lr
-.L726:
-	cmp	r0, r1
-	beq	.L727
-	ldr	r0, [r0, #20]
-	b	.L724
-.L727:
-	movs	r0, #1
-	bx	lr
-	.size	is_block_in_free_list, .-is_block_in_free_list
-	.section	.text.print_free_list,"ax",%progbits
-	.align	1
-	.global	print_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_free_list, %function
-print_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #356]
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	cbz	r3, .L728
-	ldr	r0, .L733
-	bl	NAND_Print_DBG
-	ldr	r5, .L733+4
-	ldr	r4, [r4, #172]
-	ldr	r6, .L733+8
-.L730:
-	cbnz	r4, .L731
-.L728:
-	pop	{r4, r5, r6, pc}
-.L731:
-	ldrh	r2, [r4, #6]
-	mov	r0, r5
-	ldrh	r1, [r4]
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #8]
-	mov	r0, r6
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #2]
-	ldr	r0, .L733+12
-	bl	NAND_Print_DBG
-	ldr	r4, [r4, #20]
-	b	.L730
-.L734:
-	.align	2
-.L733:
-	.word	.LC157
-	.word	.LC158
-	.word	.LC159
-	.word	.LC160
-	.size	print_free_list, .-print_free_list
-	.section	.text.add_block_invalid_list,"ax",%progbits
-	.align	1
-	.global	add_block_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_block_invalid_list, %function
-add_block_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	adds	r0, r0, #188
-	push	{r4, lr}
-.L736:
-	ldr	r3, [r0, #12]
-	cbnz	r3, .L738
-	str	r1, [r0, #12]
-	str	r3, [r1, #12]
-	b	.L740
-.L738:
-	ldrh	r2, [r3, #4]
-	ldrh	r4, [r1, #4]
-	cmp	r4, r2
-	bcc	.L739
-	str	r1, [r3, #16]
-	str	r3, [r1, #12]
-	str	r1, [r0, #12]
-.L740:
-	str	r0, [r1, #16]
-	movs	r0, #0
-	pop	{r4, pc}
-.L739:
-	mov	r0, r3
-	b	.L736
-	.size	add_block_invalid_list, .-add_block_invalid_list
-	.section	.text.del_block_invalid_list,"ax",%progbits
-	.align	1
-	.global	del_block_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_block_invalid_list, %function
-del_block_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r0
-	ldr	r0, [r0, #200]
-	cbz	r0, .L741
-	ldr	r2, [r0, #12]
-	str	r2, [r3, #200]
-	ldr	r2, [r0, #12]
-	cbz	r2, .L741
-	adds	r3, r3, #188
-	str	r3, [r2, #16]
-.L741:
-	bx	lr
-	.size	del_block_invalid_list, .-del_block_invalid_list
-	.section	.text.del_block_invalid_list_by_block,"ax",%progbits
-	.align	1
-	.global	del_block_invalid_list_by_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_block_invalid_list_by_block, %function
-del_block_invalid_list_by_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #200]
-.L749:
-	cbnz	r0, .L752
-	bx	lr
-.L752:
-	cmp	r0, r1
-	ldr	r3, [r0, #12]
-	bne	.L753
-	ldr	r2, [r0, #16]
-	str	r3, [r2, #12]
-	ldr	r3, [r0, #12]
-	cbz	r3, .L750
-	str	r2, [r3, #16]
-.L750:
-	movs	r3, #0
-	strd	r3, r3, [r0, #12]
-	bx	lr
-.L753:
-	mov	r0, r3
-	b	.L749
-	.size	del_block_invalid_list_by_block, .-del_block_invalid_list_by_block
-	.section	.text.is_block_in_invalid_list,"ax",%progbits
-	.align	1
-	.global	is_block_in_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_block_in_invalid_list, %function
-is_block_in_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #200]
-.L758:
-	cbnz	r0, .L760
-	bx	lr
-.L760:
-	cmp	r0, r1
-	beq	.L761
-	ldr	r0, [r0, #12]
-	b	.L758
-.L761:
-	movs	r0, #1
-	bx	lr
-	.size	is_block_in_invalid_list, .-is_block_in_invalid_list
-	.section	.text.print_block_invalid_list,"ax",%progbits
-	.align	1
-	.global	print_block_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_block_invalid_list, %function
-print_block_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #356]
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	cbz	r3, .L762
-	ldr	r0, .L767
-	bl	NAND_Print_DBG
-	ldr	r5, .L767+4
-	ldr	r4, [r4, #200]
-	ldr	r6, .L767+8
-.L764:
-	cbnz	r4, .L765
-.L762:
-	pop	{r4, r5, r6, pc}
-.L765:
-	ldrh	r2, [r4, #6]
-	mov	r0, r5
-	ldrh	r1, [r4]
-	bl	NAND_Print_DBG
-	ldrh	r2, [r4, #4]
-	mov	r0, r6
-	ldr	r1, [r4, #8]
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #2]
-	ldr	r0, .L767+12
-	bl	NAND_Print_DBG
-	ldr	r4, [r4, #12]
-	b	.L764
-.L768:
-	.align	2
-.L767:
-	.word	.LC161
-	.word	.LC158
-	.word	.LC162
-	.word	.LC160
-	.size	print_block_invalid_list, .-print_block_invalid_list
-	.section	.text.add_block_count_list,"ax",%progbits
-	.align	1
-	.global	add_block_count_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_block_count_list, %function
-add_block_count_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	adds	r0, r0, #224
-	push	{r4, lr}
-.L770:
-	ldr	r3, [r0, #28]
-	cbnz	r3, .L772
-	str	r1, [r0, #28]
-	str	r3, [r1, #28]
-	b	.L774
-.L772:
-	ldr	r4, [r3, #8]
-	ldr	r2, [r1, #8]
-	cmp	r4, r2
-	blt	.L773
-	str	r1, [r3, #32]
-	str	r3, [r1, #28]
-	str	r1, [r0, #28]
-.L774:
-	str	r0, [r1, #32]
-	movs	r0, #0
-	pop	{r4, pc}
-.L773:
-	mov	r0, r3
-	b	.L770
-	.size	add_block_count_list, .-add_block_count_list
-	.section	.text.del_block_count_list,"ax",%progbits
-	.align	1
-	.global	del_block_count_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_block_count_list, %function
-del_block_count_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r0
-	adds	r0, r0, #224
-	ldr	r2, [r3, #252]
-	cbz	r2, .L775
-	ldr	r2, [r2, #28]
-	str	r2, [r3, #252]
-.L775:
-	bx	lr
-	.size	del_block_count_list, .-del_block_count_list
-	.section	.text.del_block_count_by_block,"ax",%progbits
-	.align	1
-	.global	del_block_count_by_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_block_count_by_block, %function
-del_block_count_by_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #252]
-.L781:
-	cbnz	r0, .L784
-	bx	lr
-.L784:
-	cmp	r0, r1
-	ldr	r3, [r0, #28]
-	bne	.L785
-	ldr	r2, [r0, #32]
-	str	r3, [r2, #28]
-	ldr	r3, [r0, #28]
-	cbz	r3, .L782
-	str	r2, [r3, #32]
-.L782:
-	movs	r3, #0
-	strd	r3, r3, [r0, #28]
-	bx	lr
-.L785:
-	mov	r0, r3
-	b	.L781
-	.size	del_block_count_by_block, .-del_block_count_by_block
-	.section	.text.print_block_count_list,"ax",%progbits
-	.align	1
-	.global	print_block_count_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_block_count_list, %function
-print_block_count_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #356]
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	cbz	r3, .L789
-	ldr	r0, .L794
-	bl	NAND_Print_DBG
-	ldr	r5, .L794+4
-	ldr	r4, [r4, #252]
-	ldr	r6, .L794+8
-.L791:
-	cbnz	r4, .L792
-.L789:
-	pop	{r4, r5, r6, pc}
-.L792:
-	ldrh	r1, [r4]
-	mov	r0, r5
-	bl	NAND_Print_DBG
-	ldr	r1, [r4, #8]
-	mov	r0, r6
-	bl	NAND_Print_DBG
-	ldr	r4, [r4, #28]
-	b	.L791
-.L795:
-	.align	2
-.L794:
-	.word	.LC163
-	.word	.LC164
-	.word	.LC165
-	.size	print_block_count_list, .-print_block_count_list
-	.section	.text.put_phy_block_to_free_list,"ax",%progbits
-	.align	1
-	.global	put_phy_block_to_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	put_phy_block_to_free_list, %function
-put_phy_block_to_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r2, #0
-	push	{r3, r4, r5, lr}
-	strd	r2, r2, [r1, #20]
-	mov	r5, r0
-	bl	add_free_list
-	mov	r4, r0
-	cbnz	r0, .L797
-	ldrh	r3, [r5, #22]
-	adds	r3, r3, #1
-	strh	r3, [r5, #22]	@ movhi
-.L796:
-	mov	r0, r4
-	pop	{r3, r4, r5, pc}
-.L797:
-	ldr	r0, .L799
-	bl	NAND_Print_DBG
-	b	.L796
-.L800:
-	.align	2
-.L799:
-	.word	.LC166
-	.size	put_phy_block_to_free_list, .-put_phy_block_to_free_list
-	.section	.text.erase_block,"ax",%progbits
-	.align	1
-	.global	erase_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	erase_block, %function
-erase_block:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, lr}
-	mov	r5, r0
-	mov	r4, r1
-	ldr	r0, .L804
-	mov	r8, r2
-	movs	r6, #0
-	ldrh	r1, [r1]
-	bl	NAND_Print
-	ldr	r3, [r5, #4]
-	mov	r1, sp
-	ldrh	r2, [r4]
-	mov	r0, r5
-	strh	r6, [sp]	@ movhi
-	ldrh	r3, [r3, #28]
-	strh	r2, [sp, #2]	@ movhi
-	strd	r6, r6, [sp, #8]
-	strh	r3, [sp, #4]	@ movhi
-	ldr	r3, [r5, #1976]
-	blx	r3
-	mov	r7, r0
-	cbz	r0, .L802
-	ldrh	r1, [r4]
-	ldr	r0, .L804+4
-	bl	NAND_Print
-	ldr	r3, [r5, #1996]
-	mov	r1, sp
-	mov	r0, r5
-	blx	r3
-	movs	r3, #255
-	strh	r6, [r4, #4]	@ movhi
-	strh	r3, [r4, #2]	@ movhi
-	ldrh	r3, [r5, #20]
-	adds	r3, r3, #1
-	strh	r3, [r5, #20]	@ movhi
-.L801:
-	mov	r0, r7
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L802:
-	mov	r3, #-1
-	mov	r1, r4
-	str	r3, [r4, #8]
-	mov	r0, r5
-	strh	r8, [r4, #6]	@ movhi
-	bl	put_phy_block_to_free_list
-	mov	r1, r4
-	mov	r0, r5
-	bl	mark_free_block
-	ldr	r3, [r5, #4]
-	ldrh	r3, [r3, #20]
-	strh	r7, [r4, #2]	@ movhi
-	strh	r3, [r4, #4]	@ movhi
-	b	.L801
-.L805:
-	.align	2
-.L804:
-	.word	.LC167
-	.word	.LC168
-	.size	erase_block, .-erase_block
-	.section	.text.torture_block_and_mark,"ax",%progbits
-	.align	1
-	.global	torture_block_and_mark
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	torture_block_and_mark, %function
-torture_block_and_mark:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, lr}
-	sub	sp, sp, #44
-	add	r7, sp, #8
-	mov	r4, r0
-	mov	r5, r1
-	movs	r2, #15
-	movs	r1, #0
-	mov	r0, r7
-	bl	memset
-	ldrh	r1, [r5]
-	ldr	r0, .L822
-	bl	NAND_Print
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	ldrh	r2, [r3, #28]
-	movs	r3, #0
-	strh	r3, [sp, #24]	@ movhi
-	strh	r1, [sp, #26]	@ movhi
-	add	r1, sp, #24
-	strd	r3, r3, [sp, #32]
-	strh	r2, [sp, #28]	@ movhi
-	ldr	r3, [r4, #1976]
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L807
-	ldrh	r1, [r5]
-	ldr	r0, .L822+4
-.L819:
-	bl	NAND_Print
-	b	.L808
-.L807:
-	ldrh	r3, [r5, #6]
-	movs	r1, #165
-	ldr	r0, [r4, #284]
-	mov	r8, r6
-	adds	r3, r3, #1
-	strh	r3, [r5, #6]	@ movhi
-	ldr	r3, [r4, #4]
-	ldrh	r2, [r3, #26]
-	bl	NAND_Memset
-	movs	r2, #15
-	movs	r1, #165
-	mov	r0, r7
-	bl	NAND_Memset
-.L810:
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	strh	r8, [sp, #24]	@ movhi
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #26]	@ movhi
-	add	r1, sp, #24
-	strh	r2, [sp, #28]	@ movhi
-	strd	r3, r7, [sp, #32]
-	ldr	r3, [r4, #1984]
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L809
-	ldrh	r2, [r5]
-	mov	r3, r8
-	ldr	r1, .L822+8
-	ldr	r0, .L822+12
-.L820:
-	bl	NAND_Print
-.L808:
-	ldr	r3, [r4, #1996]
-	add	r1, sp, #24
-	mov	r0, r4
-	blx	r3
-	movs	r3, #0
-	strh	r3, [r5, #4]	@ movhi
-	movs	r3, #255
-	strh	r3, [r5, #2]	@ movhi
-	ldrh	r3, [r4, #20]
-	adds	r3, r3, #1
-	strh	r3, [r4, #20]	@ movhi
-	b	.L806
-.L809:
-	add	r8, r8, #1
-	cmp	r8, #3
-	bne	.L810
-	mov	r8, r0
-.L814:
-	ldr	r3, [r4, #4]
-	movs	r1, #0
-	ldr	r0, [r4, #284]
-	ldrh	r2, [r3, #26]
-	bl	NAND_Memset
-	movs	r2, #15
-	movs	r1, #0
-	mov	r0, r7
-	bl	NAND_Memset
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	strh	r8, [sp, #24]	@ movhi
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #26]	@ movhi
-	add	r1, sp, #24
-	strh	r2, [sp, #28]	@ movhi
-	strd	r3, r7, [sp, #32]
-	ldr	r3, [r4, #1980]
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L811
-	mov	r3, r8
-	ldrh	r2, [r5]
-	ldr	r1, .L822+8
-	ldr	r0, .L822+16
-	b	.L820
-.L811:
-	ldr	r10, [r4, #4]
-	movs	r1, #165
-	ldr	r0, [r4, #284]
-	ldrh	r2, [r10, #26]
-	bl	nftl_check_pattern
-	mov	r6, r0
-	cbz	r0, .L812
-	ldrh	r2, [r5]
-	movs	r3, #165
-	ldr	r1, .L822+8
-	ldr	r0, .L822+20
-	str	r3, [sp]
-	mov	r3, r8
-.L821:
-	bl	NAND_Print
-	b	.L808
-.L812:
-	movs	r2, #15
-	movs	r1, #165
-	mov	r0, r7
-	bl	nftl_check_pattern
-	mov	r6, r0
-	cbz	r0, .L813
-	movs	r3, #165
-	ldrh	r2, [r5]
-	str	r3, [sp]
-	mov	r3, r8
-	ldr	r1, .L822+8
-	ldr	r0, .L822+24
-	b	.L821
-.L813:
-	add	r8, r8, #1
-	cmp	r8, #3
-	bne	.L814
-	ldrh	r3, [r10, #28]
-	add	r1, sp, #24
-	ldrh	r2, [r5]
-	strh	r0, [sp, #24]	@ movhi
-	strh	r3, [sp, #28]	@ movhi
-	strd	r0, r0, [sp, #32]
-	mov	r0, r4
-	strh	r2, [sp, #26]	@ movhi
-	ldr	r3, [r4, #1976]
-	blx	r3
-	mov	r6, r0
-	cbz	r0, .L815
-	ldrh	r1, [r5]
-	ldr	r0, .L822+28
-	b	.L819
-.L815:
-	ldrh	r3, [r5, #6]
-	mov	r1, r5
-	mov	r0, r4
-	adds	r3, r3, #1
-	strh	r3, [r5, #6]	@ movhi
-	mov	r3, #-1
-	str	r3, [r5, #8]
-	bl	put_phy_block_to_free_list
-	mov	r1, r5
-	mov	r0, r4
-	bl	mark_free_block
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	strh	r6, [r5, #2]	@ movhi
-	strh	r3, [r5, #4]	@ movhi
-.L806:
-	mov	r0, r6
-	add	sp, sp, #44
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L823:
-	.align	2
-.L822:
-	.word	.LC169
-	.word	.LC168
-	.word	.LANCHOR12
-	.word	.LC170
-	.word	.LC171
-	.word	.LC172
-	.word	.LC173
-	.word	.LC174
-	.size	torture_block_and_mark, .-torture_block_and_mark
-	.section	.text.out_phy_block_from_free_list,"ax",%progbits
-	.align	1
-	.global	out_phy_block_from_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	out_phy_block_from_free_list, %function
-out_phy_block_from_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	mov	r1, r0
-	bl	del_free_list
-	cbz	r0, .L824
-	movs	r3, #0
-	strd	r3, r3, [r0, #20]
-	ldrh	r3, [r1, #22]
-	cbz	r3, .L824
-	subs	r3, r3, #1
-	strh	r3, [r1, #22]	@ movhi
-.L824:
-	pop	{r3, pc}
-	.size	out_phy_block_from_free_list, .-out_phy_block_from_free_list
-	.section	.text.cross_talk_rebuild_current_block,"ax",%progbits
-	.align	1
-	.global	cross_talk_rebuild_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	cross_talk_rebuild_current_block, %function
-cross_talk_rebuild_current_block:
-	@ args = 0, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #56
-	mov	r6, r1
-	movs	r7, #0
-	add	r1, sp, #56
-	mov	r5, r0
-	str	r7, [r1, #-20]!
-	mov	r4, r2
-	bl	init_nrc
-	cbz	r0, .L832
-	ldr	r0, [sp, #36]
-	mov	r4, r7
-	bl	free_nrc
-	ldr	r0, .L852
-	bl	NAND_Print
-.L833:
-	mov	r0, r4
-	add	sp, sp, #56
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L832:
-	ldr	r3, [sp, #36]
-	add	r2, sp, #28
-	mov	r1, r6
-	mov	r0, r5
-	bl	get_used_page_num
-	mov	r10, r0
-	cbnz	r4, .L834
-	ldr	r3, [r6, #8]
-	mov	r2, r0
-	ldrh	r1, [r6]
-	ldr	r0, .L852+4
-	bl	NAND_Print
-	ldr	r0, [sp, #36]
-	ldr	r3, [r0]
-	cmp	r3, #0
-	bne	.L847
-	bl	free_nrc
-	ldr	r0, .L852+8
-	bl	NAND_Print
-	ldrh	r2, [r6, #6]
-	mov	r1, r6
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	b	.L833
-.L834:
-	ldr	r3, [sp, #36]
-	add	r2, sp, #32
-	mov	r1, r4
-	mov	r0, r5
-	bl	get_used_page_num
-	ldr	r3, [r4, #8]
-	mov	fp, r0
-	ldrh	r1, [r6]
-	mov	r2, r10
-	strd	r0, r3, [sp, #4]
-	ldrh	r3, [r4]
-	ldr	r0, .L852+12
-	str	r3, [sp]
-	ldr	r3, [r6, #8]
-	bl	NAND_Print
-	ldr	r0, [sp, #36]
-	ldr	r3, [r0]
-	cbnz	r3, .L836
-	str	r3, [sp, #20]
-	bl	free_nrc
-	ldr	r0, .L852+16
-	bl	NAND_Print
-	ldrh	r2, [r6, #6]
-	mov	r1, r6
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	ldrh	r2, [r4, #6]
-	mov	r1, r4
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	ldr	r3, [sp, #20]
-	mov	r4, r3
-	b	.L833
-.L836:
-	ldrh	r7, [r4, #6]
-	cmp	r10, fp
-	ldrh	r8, [r6, #6]
-	ittt	ls
-	movls	r2, r7
-	movls	r7, r8
-	movls	r8, r2
-	ldr	r2, [sp, #28]
-	cbnz	r2, .L838
-	ldr	r2, [sp, #32]
-	cbz	r2, .L839
-.L838:
-	adds	r7, r7, #20
-	add	r8, r8, #20
-.L839:
-	cmp	r10, fp
-	add	r7, r7, #1
-	uxth	r7, r7
-	mov	r2, fp
-	mov	r1, r10
-	bcs	.L840
-	ldr	r0, .L852+20
-	bl	NAND_Print
-	mov	r1, r6
-	mov	r6, r4
-	mov	r2, r7
-	mov	r0, r5
-	bl	erase_block
-.L835:
-	ldr	r7, .L852+24
-.L843:
-	mov	r0, r5
-	bl	out_phy_block_from_free_list
-	mov	r4, r0
-	cbnz	r0, .L841
-	ldr	r0, .L852+28
-	bl	NAND_Print
-	b	.L833
-.L840:
-	ldr	r0, .L852+32
-	bl	NAND_Print
-	mov	r2, r7
-	mov	r1, r4
-	mov	r0, r5
-	bl	erase_block
-	b	.L835
-.L847:
-	mov	r8, r4
-	b	.L835
-.L841:
-	ldr	r2, [r6, #8]
-	mov	r1, r0
-	adds	r2, r2, #1
-	str	r2, [r0, #8]
-	mov	r0, r5
-	bl	new_block_init_for_write
-	cmp	r0, #0
-	beq	.L848
-	mov	r0, r7
-	bl	NAND_Print
-	b	.L843
-.L846:
-	ldr	r3, [r0, #4]
-	ldrb	r3, [r3, r10]	@ zero_extendqisi2
-	cmp	r3, #0
-	beq	.L844
-	ldr	r2, [r5, #4]
-	ldr	r0, [r0, #8]
-	ldrh	r1, [r2, #26]
-	ldrh	r2, [r2, #28]
-	add	r3, r1, #64
-	mla	r3, r10, r3, r0
-	ldrh	r0, [r4]
-	strh	r7, [sp, #40]	@ movhi
-	strh	r2, [sp, #44]	@ movhi
-	adds	r7, r7, #1
-	strh	r0, [sp, #42]	@ movhi
-	add	r1, r1, r3
-	mov	r0, r1
-	strd	r3, r1, [sp, #48]
-	str	r1, [sp, #20]
-	bl	get_special_data_from_oob
-	ldrh	r3, [r4, #6]
-	mov	r2, r0
-	ldr	r1, [sp, #20]
-	mov	r0, r5
-	str	r3, [sp]
-	ldr	r3, [r4, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r5, #1984]
-	add	r1, sp, #40
-	mov	r0, r5
-	blx	r3
-.L845:
-	add	r10, r10, #1
-.L842:
-	ldr	r0, [sp, #36]
-	ldr	r2, [r0]
-	cmp	r2, r10
-	bhi	.L846
-	add	r2, r8, #1
-	mov	r1, r6
-	uxth	r2, r2
-	mov	r0, r5
-	bl	erase_block
-	ldr	r0, [sp, #36]
-	bl	free_nrc
-	b	.L833
-.L844:
-	mov	r1, r10
-	mov	r0, fp
-	bl	NAND_Print
-	b	.L845
-.L848:
-	mov	r7, r0
-	mov	r10, r0
-	ldr	fp, .L852+36
-	b	.L842
-.L853:
-	.align	2
-.L852:
-	.word	.LC175
-	.word	.LC176
-	.word	.LC177
-	.word	.LC178
-	.word	.LC179
-	.word	.LC180
-	.word	.LC183
-	.word	.LC182
-	.word	.LC181
-	.word	.LC184
-	.size	cross_talk_rebuild_current_block, .-cross_talk_rebuild_current_block
-	.section	.text.no_cross_talk_rebuild_current_block,"ax",%progbits
-	.align	1
-	.global	no_cross_talk_rebuild_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	no_cross_talk_rebuild_current_block, %function
-no_cross_talk_rebuild_current_block:
-	@ args = 0, pretend = 0, frame = 56
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #72
-	mov	r6, r1
-	movs	r7, #0
-	add	r1, sp, #32
-	mov	r5, r0
-	mov	r4, r2
-	strd	r7, r7, [sp, #32]
-	bl	init_nrc
-	cbz	r0, .L855
-	ldr	r0, .L888
-	bl	NAND_Print
-	ldr	r0, [sp, #32]
-	bl	free_nrc
-.L886:
-	movs	r4, #0
-	b	.L856
-.L855:
-	ldr	r3, [sp, #32]
-	add	r2, sp, #24
-	mov	r1, r6
-	mov	r0, r5
-	bl	get_used_page_num_no_crosstalk
-	mov	r8, r0
-	cbnz	r4, .L857
-	ldr	r3, [r6, #8]
-	mov	r2, r0
-	ldrh	r1, [r6]
-	ldr	r0, .L888+4
-	bl	NAND_Print
-	ldr	r7, [sp, #32]
-	ldr	r3, [r7]
-	cbz	r3, .L885
-	ldr	r8, .L888+40
-.L858:
-	mov	r0, r5
-	bl	out_phy_block_from_free_list
-	mov	r4, r0
-	cbnz	r0, .L859
-.L867:
-	ldr	r0, .L888+8
-.L887:
-	bl	NAND_Print
-	b	.L886
-.L885:
-	mov	r0, r7
-	bl	free_nrc
-	ldr	r0, .L888+12
-	bl	NAND_Print
-	ldrh	r2, [r6, #6]
-	mov	r1, r6
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-.L856:
-	mov	r0, r4
-	add	sp, sp, #72
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L859:
-	ldr	r2, [r6, #8]
-	mov	r1, r0
-	str	r2, [r0, #8]
-	mov	r0, r5
-	bl	new_block_init_for_write
-	cmp	r0, #0
-	beq	.L860
-	mov	r0, r8
-	bl	NAND_Print
-	b	.L858
-.L857:
-	add	r1, sp, #36
-	mov	r0, r5
-	bl	init_nrc
-	cbz	r0, .L861
-	ldr	r0, [sp, #32]
-	bl	free_nrc
-	ldr	r0, [sp, #36]
-	bl	free_nrc
-	ldr	r0, .L888+16
-	b	.L887
-.L861:
-	ldr	r3, [sp, #36]
-	add	r2, sp, #28
-	mov	r1, r4
-	mov	r0, r5
-	bl	get_used_page_num_no_crosstalk
-	ldr	r3, [r4, #8]
-	mov	r10, r0
-	ldrh	r1, [r6]
-	mov	r2, r8
-	strd	r0, r3, [sp, #4]
-	ldrh	r3, [r4]
-	ldr	r0, .L888+20
-	str	r3, [sp]
-	ldr	r3, [r6, #8]
-	bl	NAND_Print
-	ldr	r7, [sp, #36]
-	ldr	fp, [r7]
-	cmp	fp, #0
-	bne	.L862
-	ldr	r0, [sp, #32]
-	bl	free_nrc
-	ldr	r0, [sp, #36]
-	bl	free_nrc
-	ldr	r0, .L888+24
-	bl	NAND_Print
-	ldrh	r2, [r6, #6]
-	mov	r1, r6
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	ldrh	r2, [r4, #6]
-	mov	r1, r4
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	b	.L886
-.L862:
-	cmp	r8, r10
-	bcs	.L863
-	mov	r3, fp
-	mov	r2, r10
-	mov	r1, r8
-	ldr	r0, .L888+28
-	bl	NAND_Print
-	mov	r3, r6
-	mov	r6, r4
-	mov	r4, r3
-.L864:
-	ldr	r3, [r5, #4]
-	mov	r8, #0
-	ldrh	r2, [r4]
-	add	r1, sp, #40
-	strh	r8, [sp, #40]	@ movhi
-	mov	r0, r5
-	ldrh	r3, [r3, #28]
-	strh	r2, [sp, #42]	@ movhi
-	strd	r8, r8, [sp, #48]
-	strh	r3, [sp, #44]	@ movhi
-	ldr	r3, [r5, #1976]
-	blx	r3
-	cbz	r0, .L865
-	ldrh	r1, [r4]
-	ldr	r0, .L888+32
-	bl	NAND_Print
-	ldr	r3, [r5, #1996]
-	add	r1, sp, #40
-	mov	r0, r5
-	blx	r3
-	movs	r3, #255
-	strh	r8, [r6, #4]	@ movhi
-	strh	r3, [r6, #2]	@ movhi
-	ldr	r8, .L888+40
-	ldrh	r3, [r5, #20]
-	adds	r3, r3, #1
-	strh	r3, [r5, #20]	@ movhi
-.L866:
-	mov	r0, r5
-	bl	out_phy_block_from_free_list
-	mov	r4, r0
-	cmp	r0, #0
-	beq	.L867
-	ldr	r2, [r0, #8]
-	mov	r1, r0
-	mov	r0, r5
-	bl	new_block_init_for_write
-	cbz	r0, .L865
-	mov	r0, r8
-	bl	NAND_Print
-	b	.L866
-.L863:
-	ldr	r7, [sp, #32]
-	mov	r2, r10
-	mov	r1, r8
-	ldr	r0, .L888+36
-	ldr	r3, [r7]
-	bl	NAND_Print
-	b	.L864
-.L865:
-	ldr	r3, [r6, #8]
-	str	r3, [r4, #8]
-.L860:
-	ldr	fp, .L888+44
-	mov	r10, #0
-	mov	r8, r10
-.L868:
-	ldr	r2, [r7]
-	cmp	r2, r8
-	bhi	.L871
-	ldrh	r2, [r6, #6]
-	mov	r1, r6
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	ldr	r2, [r7]
-	ldr	r1, [r7, #12]
-	ldr	r0, [r5, #304]
-	strh	r2, [r5, #320]	@ movhi
-	str	r4, [r5, #292]
-	lsls	r2, r2, #2
-	bl	NAND_Memcpy
-	ldr	r0, [sp, #32]
-	bl	free_nrc
-	ldr	r0, [sp, #36]
-	bl	free_nrc
-	b	.L856
-.L871:
-	ldr	r3, [r7, #4]
-	ldrb	r3, [r3, r8]	@ zero_extendqisi2
-	cbz	r3, .L869
-	ldr	r2, [r5, #4]
-	ldr	r0, [r7, #8]
-	ldrh	r1, [r2, #26]
-	ldrh	r2, [r2, #28]
-	add	r3, r1, #64
-	mla	r3, r8, r3, r0
-	ldrh	r0, [r4]
-	strh	r10, [sp, #56]	@ movhi
-	strh	r2, [sp, #60]	@ movhi
-	add	r10, r10, #1
-	strh	r0, [sp, #58]	@ movhi
-	add	r1, r1, r3
-	mov	r0, r1
-	strd	r3, r1, [sp, #64]
-	str	r1, [sp, #20]
-	bl	get_special_data_from_oob
-	ldrh	r3, [r4, #6]
-	mov	r2, r0
-	ldr	r1, [sp, #20]
-	mov	r0, r5
-	str	r3, [sp]
-	ldr	r3, [r4, #8]
-	bl	set_oob_special_page
-	ldr	r3, [r5, #1984]
-	add	r1, sp, #56
-	mov	r0, r5
-	blx	r3
-.L870:
-	add	r8, r8, #1
-	b	.L868
-.L869:
-	mov	r1, r8
-	mov	r0, fp
-	bl	NAND_Print
-	b	.L870
-.L889:
-	.align	2
-.L888:
-	.word	.LC175
-	.word	.LC185
-	.word	.LC182
-	.word	.LC186
-	.word	.LC179
-	.word	.LC187
-	.word	.LC188
-	.word	.LC180
-	.word	.LC189
-	.word	.LC181
-	.word	.LC183
-	.word	.LC184
-	.size	no_cross_talk_rebuild_current_block, .-no_cross_talk_rebuild_current_block
-	.section	.text.current_block_ecc_error,"ax",%progbits
-	.align	1
-	.global	current_block_ecc_error
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	current_block_ecc_error, %function
-current_block_ecc_error:
-	@ args = 0, pretend = 0, frame = 48
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	ldr	r5, .L910
-	sub	sp, sp, #48
-	mov	r8, r1
-.L891:
-	mov	r0, r4
-	bl	out_phy_block_from_free_list
-	mov	r7, r0
-	cbnz	r0, .L892
-	ldr	r0, .L910+4
-	bl	NAND_Print
-.L890:
-	mov	r0, r7
-	add	sp, sp, #48
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L892:
-	ldr	r2, [r8, #8]
-	mov	r1, r0
-	str	r2, [r0, #8]
-	mov	r0, r4
-	bl	new_block_init_for_write
-	mov	r6, r0
-	cbz	r0, .L894
-	mov	r0, r5
-	bl	NAND_Print
-	b	.L891
-.L894:
-	ldr	fp, .L910+32
-	mov	r5, r6
-	ldrh	r1, [r8]
-	ldr	r0, .L910+8
-	bl	NAND_Print
-.L895:
-	ldr	r3, [r4, #4]
-	ldrh	r2, [r3, #20]
-	cmp	r2, r5
-	bgt	.L902
-	ldrh	r2, [r8, #6]
-	mov	r1, r8
-	mov	r0, r4
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	mov	r2, r6
-	mov	r1, r5
-	ldr	r0, .L910+12
-	bl	NAND_Print_DBG
-	b	.L890
-.L902:
-	ldrh	r2, [r3, #28]
-	mov	r0, r4
-	ldrh	r1, [r8]
-	ldr	r3, [r4, #284]
-	strh	r2, [sp, #20]	@ movhi
-	strh	r1, [sp, #18]	@ movhi
-	add	r1, sp, #16
-	str	r3, [sp, #24]
-	strh	r5, [sp, #16]	@ movhi
-	ldr	r3, [r4, #1980]
-	str	sp, [sp, #28]
-	blx	r3
-	mov	r10, r0
-	mov	r0, sp
-	bl	is_ftl_logic_page_data
-	cmp	r0, #1
-	bne	.L896
-	cmp	r10, #0
-	beq	.L897
-	cmp	r10, #10
-	bne	.L898
-.L897:
-	mov	r2, sp
-	ldr	r1, [r4, #284]
-	mov	r0, r4
-	bl	nand_power_off_ecc_error
-	cbz	r0, .L899
-	ldr	r0, .L910+16
-	bl	NAND_Print
-.L900:
-	adds	r5, r5, #1
-	b	.L895
-.L899:
-	mov	r2, r10
-	mov	r1, r5
-	ldr	r0, .L910+20
-	bl	NAND_Print
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r7]
-	strh	r6, [sp, #32]	@ movhi
-	adds	r6, r6, #1
-	ldrh	r2, [r3, #28]
-	ldr	r3, [r4, #284]
-	strh	r1, [sp, #34]	@ movhi
-	add	r1, sp, #32
-	strh	r2, [sp, #36]	@ movhi
-	str	r3, [sp, #40]
-	str	sp, [sp, #44]
-	ldr	r3, [r4, #1984]
-	blx	r3
-	b	.L900
-.L898:
-	ldr	r0, .L910+24
-	mov	r1, r5
-.L909:
-	bl	NAND_Print
-	b	.L900
-.L896:
-	ldrb	r3, [sp, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L901
-	mov	r1, r5
-	mov	r0, fp
-	b	.L909
-.L901:
-	mov	r0, sp
-	bl	is_nouse_page
-	cmp	r0, #1
-	beq	.L900
-	mov	r1, r5
-	ldr	r0, .L910+28
-	b	.L909
-.L911:
-	.align	2
-.L910:
-	.word	.LC191
-	.word	.LC190
-	.word	.LC192
-	.word	.LC198
-	.word	.LC193
-	.word	.LC194
-	.word	.LC195
-	.word	.LC197
-	.word	.LC196
-	.size	current_block_ecc_error, .-current_block_ecc_error
-	.section	.text.block_last_page_ecc_error,"ax",%progbits
-	.align	1
-	.global	block_last_page_ecc_error
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	block_last_page_ecc_error, %function
-block_last_page_ecc_error:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r10, r0
-	sub	sp, sp, #32
-	ldr	r0, .L944
-	mov	r4, r1
-	bl	NAND_Print
-	mov	r0, #4096
-	bl	NAND_Malloc
-	mov	r5, r0
-	cbnz	r0, .L913
-	ldr	r1, .L944+4
-	ldr	r0, .L944+8
-	bl	NAND_Print
-.L913:
-	ldr	r7, .L944+4
-	movs	r6, #0
-	ldr	r8, .L944+28
-.L914:
-	ldr	r2, [r10, #4]
-	ldrh	r1, [r2, #20]
-	cmp	r1, r6
-	bgt	.L916
-	movs	r6, #0
-	mov	r7, r6
-.L917:
-	ldr	r2, [r10, #4]
-	uxth	r8, r7
-	ldrh	ip, [r4]
-	ldr	r1, [r10, #284]
-	ldrh	r0, [r2, #28]
-	ldrh	r2, [r2, #20]
-	cmp	r2, r7
-	ble	.L929
-	strh	ip, [sp, #18]	@ movhi
-	strh	r0, [sp, #20]	@ movhi
-	mov	r0, r10
-	str	r1, [sp, #24]
-	add	r1, sp, #16
-	ldr	r2, [r10, #1980]
-	strh	r8, [sp, #16]	@ movhi
-	str	sp, [sp, #28]
-	blx	r2
-	mov	fp, r0
-	mov	r0, sp
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L918
-.L929:
-	ldr	r2, [r10, #4]
-	ldrh	r0, [r4]
-	strh	r8, [sp, #16]	@ movhi
-	ldrh	r1, [r2, #28]
-	ldr	r2, [r10, #284]
-	strh	r0, [sp, #18]	@ movhi
-	mov	r0, r10
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	str	r2, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r2, [r10, #1976]
-	blx	r2
-	cmp	r0, #0
-	bne	.L919
-.L920:
-	movs	r7, #0
-.L932:
-	cmp	r7, r6
-	ldr	r2, [r10, #4]
-	beq	.L931
-	ldrh	r0, [r4]
-	ldrh	r1, [r2, #28]
-	ldr	r2, [r5, r7, lsl #2]
-	strh	r7, [sp, #16]	@ movhi
-	adds	r7, r7, #1
-	strh	r0, [sp, #18]	@ movhi
-	mov	r0, r10
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	str	r2, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r2, [r10, #1984]
-	blx	r2
-	b	.L932
-.L916:
-	ldrh	r0, [r2, #26]
-	bl	nftl_malloc
-	str	r0, [r5, r6, lsl #2]
-	cbnz	r0, .L915
-	mov	r1, r7
-	mov	r0, r8
-	bl	NAND_Print
-.L915:
-	adds	r6, r6, #1
-	b	.L914
-.L918:
-	mov	r0, sp
-	bl	is_ftl_logic_page_data
-	cmp	r0, #1
-	bne	.L921
-	cmp	fp, #0
-	beq	.L922
-	cmp	fp, #10
-	bne	.L923
-.L922:
-	ldr	r2, [r10, #4]
-	adds	r6, r6, #1
-	ldr	r1, [r10, #284]
-	ldr	r0, [r5, r7, lsl #2]
-	ldrh	r2, [r2, #26]
-	bl	NAND_Memcpy
-.L923:
-	adds	r7, r7, #1
-	b	.L917
-.L921:
-	ldrb	r1, [sp, #1]	@ zero_extendqisi2
-	cmp	r1, #170
-	bne	.L924
-	cmp	fp, #0
-	bne	.L942
-.L925:
-	ldr	r2, [r10, #4]
-	adds	r6, r6, #1
-	ldr	r1, [r10, #284]
-	ldr	r0, [r5, r7, lsl #2]
-	ldrh	r2, [r2, #26]
-	bl	NAND_Memcpy
-	b	.L927
-.L924:
-	ldr	r0, .L944+12
-.L943:
-	bl	NAND_Print
-	b	.L923
-.L942:
-	cmp	fp, #10
-	beq	.L925
-.L927:
-	ldr	r0, .L944+16
-	b	.L943
-.L919:
-	ldr	r2, [r10, #1996]
-	add	r1, sp, #16
-	mov	r0, r10
-	blx	r2
-	mov	r0, r10
-	bl	out_phy_block_from_free_list
-	mov	r4, r0
-	cbnz	r0, .L930
-	ldr	r0, .L944+20
-	bl	NAND_Print
-.L931:
-	movs	r6, #0
-.L934:
-	ldr	r2, [r10, #4]
-	ldrh	r2, [r2, #20]
-	cmp	r2, r6
-	bgt	.L935
-	mov	r0, r5
-	bl	nftl_free
-	ldr	r0, .L944+24
-	bl	NAND_Print
-	mov	r0, r4
-	add	sp, sp, #32
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L930:
-	ldr	r2, [r10, #4]
-	ldrh	r0, [r0]
-	strh	r8, [sp, #16]	@ movhi
-	ldrh	r1, [r2, #28]
-	ldr	r2, [r10, #284]
-	strh	r0, [sp, #18]	@ movhi
-	mov	r0, r10
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	str	r2, [sp, #24]
-	str	sp, [sp, #28]
-	ldr	r2, [r10, #1976]
-	blx	r2
-	b	.L920
-.L935:
-	ldr	r0, [r5, r6, lsl #2]
-	adds	r6, r6, #1
-	bl	nftl_free
-	b	.L934
-.L945:
-	.align	2
-.L944:
-	.word	.LC199
-	.word	.LANCHOR13
-	.word	.LC200
-	.word	.LC202
-	.word	.LC203
-	.word	.LC190
-	.word	.LC204
-	.word	.LC201
-	.size	block_last_page_ecc_error, .-block_last_page_ecc_error
-	.section	.text.do_write_error,"ax",%progbits
-	.align	1
-	.global	do_write_error
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_write_error, %function
-do_write_error:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	ldr	r10, .L968+4
-	sub	sp, sp, #24
-	mov	r6, r1
-	ldr	fp, .L968+8
-.L947:
-	mov	r0, r4
-	bl	out_phy_block_from_free_list
-	mov	r5, r0
-	cbnz	r0, .L948
-.L952:
-	ldr	r0, .L968
-	bl	NAND_Print
-	movs	r0, #1
-.L946:
-	add	sp, sp, #24
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L948:
-	ldr	r3, [r4, #4]
-	movs	r7, #0
-	ldrh	r2, [r0]
-	add	r1, sp, #8
-	strh	r7, [sp, #8]	@ movhi
-	mov	r0, r4
-	ldrh	r3, [r3, #28]
-	strh	r2, [sp, #10]	@ movhi
-	strd	r7, r7, [sp, #16]
-	strh	r3, [sp, #12]	@ movhi
-	ldr	r3, [r4, #1976]
-	blx	r3
-	ldrh	r3, [r5, #6]
-	strh	r7, [r5, #4]	@ movhi
-	adds	r3, r3, #1
-	strh	r3, [r5, #6]	@ movhi
-	cbz	r0, .L950
-	ldr	r3, [r4, #1996]
-	add	r1, sp, #8
-	mov	r0, r4
-	blx	r3
-	ldrh	r1, [r5]
-	mov	r0, fp
-	bl	NAND_Print
-	ldrh	r2, [r4, #380]
-	ldrh	r3, [r4, #22]
-	cmp	r3, r2, lsr #2
-	bhi	.L947
-	b	.L952
-.L950:
-	ldr	r3, [r6]
-	mov	r8, r0
-	ldr	r3, [r3, #8]
-	adds	r3, r3, #1
-	str	r3, [r5, #8]
-.L953:
-	ldrh	r3, [r6, #28]
-	ldr	r1, [r6]
-	cmp	r3, r8
-	bhi	.L956
-.L954:
-	ldrh	r3, [r1, #4]
-	movs	r7, #0
-	ldrh	r2, [r1]
-	mov	r0, r4
-	strh	r7, [sp, #8]	@ movhi
-	strh	r3, [r5, #4]	@ movhi
-	ldr	r3, [r4, #4]
-	strh	r2, [sp, #10]	@ movhi
-	ldrh	r2, [r1, #6]
-	ldrh	r3, [r3, #28]
-	strd	r7, r7, [sp, #16]
-	adds	r2, r2, #1
-	uxth	r2, r2
-	strh	r3, [sp, #12]	@ movhi
-	bl	erase_block
-	ldr	r3, [r6]
-	ldrh	r3, [r3, #2]
-	strh	r3, [r5, #2]	@ movhi
-	str	r5, [r6]
-.L957:
-	ldrh	r3, [r6, #28]
-	cmp	r3, r7
-	bhi	.L961
-	movs	r0, #0
-	b	.L946
-.L956:
-	ldr	r3, [r6, #12]
-	ldr	r3, [r3, r8, lsl #2]
-	adds	r3, r3, #1
-	beq	.L954
-	uxth	r3, r8
-	ldr	r7, [r4, #1988]
-	mov	r2, r5
-	str	r3, [sp]
-	mov	r0, r4
-	ldr	r3, [r4, #284]
-	blx	r7
-	cbz	r0, .L955
-	ldrh	r1, [r5]
-	mov	r0, r10
-	bl	NAND_Print
-	ldr	r3, [r4, #4]
-	mov	r0, r4
-	ldrh	r1, [r5]
-	ldrh	r2, [r3, #28]
-	movs	r3, #0
-	strh	r3, [sp, #8]	@ movhi
-	strh	r1, [sp, #10]	@ movhi
-	add	r1, sp, #8
-	strd	r3, r3, [sp, #16]
-	strh	r2, [sp, #12]	@ movhi
-	ldr	r3, [r4, #1996]
-	blx	r3
-	b	.L947
-.L955:
-	add	r8, r8, #1
-	b	.L953
-.L961:
-	ldr	r3, [r6, #12]
-	ldr	r1, [r3, r7, lsl #2]
-	adds	r3, r1, #1
-	beq	.L959
-	mov	r0, r4
-	bl	get_logic_page_map
-	cbz	r0, .L959
-	ldr	r3, [r6]
-	ldrh	r3, [r3]
-	strh	r3, [r0, #2]	@ movhi
-	ldrh	r3, [r0]
-	bfi	r3, r7, #0, #12
-	strh	r3, [r0]	@ movhi
-.L959:
-	adds	r7, r7, #1
-	b	.L957
-.L969:
-	.align	2
-.L968:
-	.word	.LC205
-	.word	.LC207
-	.word	.LC206
-	.size	do_write_error, .-do_write_error
-	.section	.text.write_phy_data_to_current_block,"ax",%progbits
-	.align	1
-	.global	write_phy_data_to_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	write_phy_data_to_current_block, %function
-write_phy_data_to_current_block:
-	@ args = 4, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #48
-	add	r7, sp, #16
-	mov	r4, r0
-	mov	fp, r2
-	mov	r0, r7
-	movs	r2, #16
-	mov	r5, r1
-	movs	r1, #165
-	str	r3, [sp, #12]
-	ldr	r6, [sp, #80]
-	mov	r8, #3
-	bl	NAND_Memset
-	ldr	r3, [r4, #4]
-	mov	r1, fp
-	movw	r0, #65535
-	ldrb	r2, [r3, #8]	@ zero_extendqisi2
-	ldr	r3, .L987
-	cmp	r6, r3
-	itet	ne
-	lslne	r2, r2, #9
-	ldrheq	r2, [r4, #308]
-	uxthne	r2, r2
-	bl	nand_crc16
-	lsrs	r3, r0, #8
-	strb	r0, [sp, #29]
-	strb	r3, [sp, #28]
-.L973:
-	ldr	r0, [r5]
-	ldr	lr, [r4, #4]
-	ldr	r3, .L987
-	ldrh	r1, [r0]
-	ldrh	r2, [r5, #28]
-	ldrh	ip, [lr, #28]
-	cmp	r6, r3
-	strh	r1, [sp, #34]	@ movhi
-	strh	r2, [sp, #32]	@ movhi
-	strh	ip, [sp, #36]	@ movhi
-	strd	fp, r7, [sp, #40]
-	bne	.L974
-	ldrh	r3, [r0, #6]
-	mov	r2, r6
-	str	r3, [sp]
-	ldr	r3, [r0, #8]
-.L986:
-	mov	r1, r7
-	mov	r0, r4
-	bl	set_oob_special_page
-	b	.L975
-.L974:
-	cmp	r6, #192
-	bne	.L976
-	ldrh	r3, [lr, #20]
-	subs	r3, r3, #1
-	cmp	r2, r3
-	bne	.L977
-	ldr	r0, .L987+4
-	bl	NAND_Print_DBG
-.L977:
-	ldr	r3, [r5]
-	mov	r1, r7
-	mov	r0, r4
-	ldrh	r2, [r3, #6]
-	str	r2, [sp]
-	ldr	r2, [sp, #12]
-	ldr	r3, [r3, #8]
-	bl	set_oob_logic_page
-.L975:
-	ldr	r3, [r5]
-	mov	r10, #1
-	add	r1, sp, #32
-	mov	r0, r4
-	strh	r10, [r3, #2]	@ movhi
-	ldr	r3, [r4, #1984]
-	blx	r3
-	cbz	r0, .L970
-	subs	r8, r8, #1
-	beq	.L980
-	ldrh	r1, [sp, #34]
-	ldr	r0, .L987+8
-	bl	NAND_Print_DBG
-	mov	r1, r5
-	mov	r0, r4
-	bl	do_write_error
-	cmp	r0, #0
-	beq	.L973
-	ldr	r0, .L987+12
-	bl	NAND_Print
-	mov	r0, r10
-.L970:
-	add	sp, sp, #48
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L976:
-	ldr	r3, .L987+16
-	cmp	r6, r3
-	bne	.L975
-	ldrh	r3, [lr, #20]
-	subs	r3, r3, #1
-	cmp	r2, r3
-	bne	.L978
-	ldr	r0, .L987+20
-	bl	NAND_Print_DBG
-.L978:
-	ldr	r3, [r5]
-	ldrh	r2, [r3, #6]
-	str	r2, [sp]
-	ldr	r2, .L987+16
-	ldr	r3, [r3, #8]
-	b	.L986
-.L980:
-	mov	r0, r8
-	b	.L970
-.L988:
-	.align	2
-.L987:
-	.word	-1431633921
-	.word	.LC208
-	.word	.LC210
-	.word	.LC211
-	.word	-1441713357
-	.word	.LC209
-	.size	write_phy_data_to_current_block, .-write_phy_data_to_current_block
-	.section	.text.get_max_erase_time_from_free_list,"ax",%progbits
-	.align	1
-	.global	get_max_erase_time_from_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_max_erase_time_from_free_list, %function
-get_max_erase_time_from_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #172]
-	movs	r0, #0
-	mov	r2, r0
-	push	{r4, lr}
-.L990:
-	cbnz	r3, .L992
-	cbz	r2, .L994
-	ldrh	r0, [r2, #6]
-.L993:
-	pop	{r4, pc}
-.L992:
-	ldrh	r4, [r3, #6]
-	cmp	r4, r1
-	bcs	.L991
-	cmp	r4, r0
-	itt	cs
-	movcs	r0, r4
-	movcs	r2, r3
-.L991:
-	ldr	r3, [r3, #20]
-	b	.L990
-.L994:
-	movw	r0, #65535
-	b	.L993
-	.size	get_max_erase_time_from_free_list, .-get_max_erase_time_from_free_list
-	.section	.text.get_block_max_erase_time_from_free_list,"ax",%progbits
-	.align	1
-	.global	get_block_max_erase_time_from_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_max_erase_time_from_free_list, %function
-get_block_max_erase_time_from_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r2, #0
-	ldr	r3, [r0, #172]
-	mov	r0, r2
-	push	{r4, lr}
-.L996:
-	cbnz	r3, .L998
-	pop	{r4, pc}
-.L998:
-	ldrh	r4, [r3, #6]
-	cmp	r4, r1
-	bcs	.L997
-	cmp	r4, r2
-	itt	cs
-	movcs	r2, r4
-	movcs	r0, r3
-.L997:
-	ldr	r3, [r3, #20]
-	b	.L996
-	.size	get_block_max_erase_time_from_free_list, .-get_block_max_erase_time_from_free_list
-	.section	.text.get_block_max_erase_time_from_invalid_list,"ax",%progbits
-	.align	1
-	.global	get_block_max_erase_time_from_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_max_erase_time_from_invalid_list, %function
-get_block_max_erase_time_from_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r2, #0
-	ldr	r3, [r0, #200]
-	mov	r0, r2
-	push	{r4, lr}
-.L1000:
-	cbnz	r3, .L1002
-	pop	{r4, pc}
-.L1002:
-	ldrh	r4, [r3, #6]
-	cmp	r4, r1
-	bcs	.L1001
-	cmp	r4, r2
-	itt	cs
-	movcs	r2, r4
-	movcs	r0, r3
-.L1001:
-	ldr	r3, [r3, #12]
-	b	.L1000
-	.size	get_block_max_erase_time_from_invalid_list, .-get_block_max_erase_time_from_invalid_list
-	.section	.text.get_block_min_erase_time_from_invalid_list,"ax",%progbits
-	.align	1
-	.global	get_block_min_erase_time_from_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_min_erase_time_from_invalid_list, %function
-get_block_min_erase_time_from_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #4]
-	push	{r4, r5, r6, lr}
-	ldrh	r5, [r3, #16]
-	ldr	r3, [r0, #200]
-	movs	r0, #0
-.L1004:
-	cbnz	r3, .L1006
-	pop	{r4, r5, r6, pc}
-.L1006:
-	ldrh	r4, [r3, #6]
-	cmp	r4, r1
-	bcs	.L1005
-	ldr	r6, [r3, #8]
-	cmp	r6, r2
-	bcs	.L1005
-	cmp	r4, r5
-	itt	ls
-	movls	r5, r4
-	movls	r0, r3
-.L1005:
-	ldr	r3, [r3, #12]
-	b	.L1004
-	.size	get_block_min_erase_time_from_invalid_list, .-get_block_min_erase_time_from_invalid_list
-	.section	.text.check_static_wear_leveling,"ax",%progbits
-	.align	1
-	.global	check_static_wear_leveling
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	check_static_wear_leveling, %function
-check_static_wear_leveling:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, r8, r10, lr}
-	mov	r4, r0
-	ldr	r3, [r0, #580]
-	cbz	r3, .L1008
-.L1010:
-	movs	r0, #1
-.L1007:
-	pop	{r3, r4, r5, r6, r7, r8, r10, pc}
-.L1008:
-	ldr	r3, [r0, #200]
-	cmp	r3, #0
-	beq	.L1010
-	ldr	r3, [r0, #172]
-	cmp	r3, #0
-	beq	.L1010
-	ldr	r3, [r0, #292]
-	ldrh	r7, [r0, #18]
-	ldr	r8, [r3, #8]
-	cmp	r8, r7
-	blt	.L1010
-	ldr	r3, [r0, #4]
-	ldrh	r5, [r3, #16]
-	mov	r1, r5
-	bl	get_block_max_erase_time_from_free_list
-	cmp	r0, #0
-	beq	.L1010
-	ldrh	r6, [r0, #6]
-	ldr	r0, .L1028
-	umull	r0, r1, r5, r0
-	ubfx	r10, r1, #2, #16
-	cmp	r6, r10
-	bcc	.L1010
-	sub	r2, r8, r7
-	mov	r1, r5
-	mov	r0, r4
-	bl	get_block_min_erase_time_from_invalid_list
-	mov	r7, r0
-	cmp	r0, #0
-	beq	.L1010
-	ldrh	r8, [r0, #6]
-	cmp	r6, r8
-	bls	.L1010
-	lsls	r2, r6, #1
-	adds	r3, r2, r6
-	cmp	r3, r5, lsl #1
-	ble	.L1011
-	ldr	r2, .L1028+4
-.L1027:
-	umull	r2, r3, r5, r2
-	lsrs	r3, r3, #3
-	strh	r3, [r4, #574]	@ movhi
-.L1012:
-	ldrh	r2, [r4, #574]
-	sub	r3, r6, r8
-	cmp	r3, r2
-	blt	.L1010
-	mov	r2, r8
-	mov	r1, r6
-	ldr	r0, .L1028+8
-	bl	NAND_Print_DBG
-	ldrh	r1, [r7]
-	ldr	r0, .L1028+12
-	bl	NAND_Print_DBG
-	ldrh	r1, [r4, #18]
-	ldr	r0, .L1028+16
-	bl	NAND_Print_DBG
-	str	r7, [r4, #580]
-	movs	r0, #0
-	b	.L1007
-.L1011:
-	cmp	r5, r2
-	bge	.L1013
-	ldr	r2, .L1028
-	b	.L1027
-.L1013:
-	cmp	r5, r3
-	bge	.L1014
-	movs	r1, #7
-	mov	r0, r5
-	bl	__aeabi_uidiv
-	strh	r0, [r4, #574]	@ movhi
-	b	.L1012
-.L1014:
-	strh	r10, [r4, #574]	@ movhi
-	b	.L1012
-.L1029:
-	.align	2
-.L1028:
-	.word	-858993459
-	.word	-1431655765
-	.word	.LC212
-	.word	.LC213
-	.word	.LC214
-	.size	check_static_wear_leveling, .-check_static_wear_leveling
-	.section	.text.get_block_max_count_from_invalid_list,"ax",%progbits
-	.align	1
-	.global	get_block_max_count_from_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_max_count_from_invalid_list, %function
-get_block_max_count_from_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r2, #0
-	ldr	r3, [r0, #200]
-	mov	r0, r2
-.L1031:
-	cbnz	r3, .L1033
-	bx	lr
-.L1033:
-	ldr	r1, [r3, #8]
-	cmp	r1, r2
-	itt	cs
-	movcs	r0, r3
-	movcs	r2, r1
-	ldr	r3, [r3, #12]
-	b	.L1031
-	.size	get_block_max_count_from_invalid_list, .-get_block_max_count_from_invalid_list
-	.section	.text.get_block_min_count_from_invalid_list,"ax",%progbits
-	.align	1
-	.global	get_block_min_count_from_invalid_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_block_min_count_from_invalid_list, %function
-get_block_min_count_from_invalid_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r0, #200]
-	mov	r2, #-1
-	movs	r0, #0
-.L1035:
-	cbnz	r3, .L1037
-	bx	lr
-.L1037:
-	ldr	r1, [r3, #8]
-	cmp	r1, r2
-	itt	ls
-	movls	r0, r3
-	movls	r2, r1
-	ldr	r3, [r3, #12]
-	b	.L1035
-	.size	get_block_min_count_from_invalid_list, .-get_block_min_count_from_invalid_list
-	.section	.text.static_wear_leveling,"ax",%progbits
-	.align	1
-	.global	static_wear_leveling
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	static_wear_leveling, %function
-static_wear_leveling:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r2, [r0, #22]
-	ldrh	r3, [r0, #380]
-	push	{r4, lr}
-	mov	r4, r0
-	cmp	r2, r3
-	bls	.L1040
-	ldr	r3, [r0, #368]
-	cmp	r3, #19
-	bls	.L1040
-	ldr	r2, [r0, #1968]
-	ldr	r3, [r2, #184]
-	adds	r3, r3, #1
-	str	r3, [r2, #184]
-	bl	get_block_min_count_from_invalid_list
-	movs	r2, #5
-	mov	r1, r0
-	mov	r0, r4
-	bl	add_prio_gc
-	cbnz	r0, .L1042
-	ldr	r3, [r4, #372]
-	adds	r3, r3, #4
-	str	r3, [r4, #372]
-.L1042:
-	ldr	r3, [r4, #4]
-	ldr	r2, [r4, #372]
-	ldrh	r3, [r3, #20]
-	cmp	r2, r3
-	itt	cs
-	movcs	r3, #0
-	strdcs	r3, r3, [r4, #368]
-.L1040:
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	static_wear_leveling, .-static_wear_leveling
-	.section	.text.out_phy_block_from_free_list_by_block,"ax",%progbits
-	.align	1
-	.global	out_phy_block_from_free_list_by_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	out_phy_block_from_free_list_by_block, %function
-out_phy_block_from_free_list_by_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	bl	del_free_list_by_block
-	cbz	r0, .L1043
-	movs	r3, #0
-	strd	r3, r3, [r0, #20]
-	ldrh	r3, [r4, #22]
-	cbz	r3, .L1043
-	subs	r3, r3, #1
-	strh	r3, [r4, #22]	@ movhi
-.L1043:
-	pop	{r4, pc}
-	.size	out_phy_block_from_free_list_by_block, .-out_phy_block_from_free_list_by_block
-	.section	.text.adjust_free_list,"ax",%progbits
-	.align	1
-	.global	adjust_free_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	adjust_free_list, %function
-adjust_free_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r0
-	bl	out_phy_block_from_free_list
-	mov	r4, r0
-	cbnz	r0, .L1051
-	ldr	r0, .L1052
-	bl	NAND_Print
-.L1051:
-	ldrh	r2, [r4, #6]
-	mov	r1, r4
-	mov	r0, r5
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	mov	r1, r4
-	mov	r0, r5
-	bl	out_phy_block_from_free_list_by_block
-	str	r0, [r5, #48]
-	ldrh	r2, [r0, #6]
-	ldrh	r1, [r0]
-	ldr	r0, .L1052+4
-	bl	NAND_Print
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-.L1053:
-	.align	2
-.L1052:
-	.word	.LC215
-	.word	.LC216
-	.size	adjust_free_list, .-adjust_free_list
-	.section	.text.nand_dbg_zone_erase,"ax",%progbits
-	.align	1
-	.global	nand_dbg_zone_erase
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_dbg_zone_erase, %function
-nand_dbg_zone_erase:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r2
-	ldr	r3, [r0, #4]
-	movs	r2, #36
-	mov	r4, r0
-	ldr	r3, [r3, #32]
-	mla	r1, r2, r1, r3
-	bl	out_phy_block_from_free_list_by_block
-	mov	r2, r5
-	mov	r1, r0
-	mov	r0, r4
-	pop	{r3, r4, r5, lr}
-	b	erase_block
-	.size	nand_dbg_zone_erase, .-nand_dbg_zone_erase
-	.section	.text.out_phy_block_from_free_list_by_erase_time,"ax",%progbits
-	.align	1
-	.global	out_phy_block_from_free_list_by_erase_time
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	out_phy_block_from_free_list_by_erase_time, %function
-out_phy_block_from_free_list_by_erase_time:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, [r0, #172]
-	push	{r4, r5}
-	movs	r4, #0
-	mov	r2, r4
-.L1056:
-	cbnz	r3, .L1058
-	cbz	r2, .L1055
-	mov	r1, r2
-	pop	{r4, r5}
-	b	out_phy_block_from_free_list_by_block
-.L1058:
-	ldrh	r5, [r3, #6]
-	cmp	r5, r1
-	bcs	.L1057
-	cmp	r5, r4
-	itt	cs
-	movcs	r4, r5
-	movcs	r2, r3
-.L1057:
-	ldr	r3, [r3, #20]
-	b	.L1056
-.L1055:
-	mov	r0, r2
-	pop	{r4, r5}
-	bx	lr
-	.size	out_phy_block_from_free_list_by_erase_time, .-out_phy_block_from_free_list_by_erase_time
-	.section	.text.get_new_current_block,"ax",%progbits
-	.align	1
-	.global	get_new_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_new_current_block, %function
-get_new_current_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r4, r1
-	ldr	r3, [r1]
-	mov	r6, r0
-	ldr	r2, [r1, #16]
-	movs	r1, #255
-	ldr	r0, [r4, #12]
-	ldr	r5, [r3, #8]
-	bl	NAND_Memset
-	ldrh	r3, [r6, #578]
-	cbz	r3, .L1061
-	ldr	r3, [r6, #4]
-	mov	r0, r6
-	ldrh	r1, [r3, #16]
-	bl	out_phy_block_from_free_list_by_erase_time
-	str	r0, [r4]
-	cbz	r0, .L1062
-	ldrh	r2, [r0, #6]
-	ldrh	r1, [r0]
-	ldr	r0, .L1069
-	bl	NAND_Print_DBG
-.L1062:
-	ldr	r1, [r4]
-	cbnz	r1, .L1063
-	ldr	r0, .L1069+4
-	bl	NAND_Print
-	movs	r0, #1
-.L1060:
-	pop	{r3, r4, r5, r6, r7, pc}
-.L1061:
-	mov	r0, r6
-	bl	out_phy_block_from_free_list
-	str	r0, [r4]
-	b	.L1062
-.L1063:
-	adds	r2, r5, #1
-	movs	r7, #0
-	strh	r7, [r4, #28]	@ movhi
-	str	r2, [r1, #8]
-	ldrb	r3, [r6, #17]	@ zero_extendqisi2
-	ands	r0, r3, #1
-	ittt	ne
-	addne	r2, r5, #2
-	movne	r0, r7
-	strne	r2, [r1, #8]
-	b	.L1060
-.L1070:
-	.align	2
-.L1069:
-	.word	.LC217
-	.word	.LC218
-	.size	get_new_current_block, .-get_new_current_block
-	.section	.text.do_before_write,"ax",%progbits
-	.align	1
-	.global	do_before_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_before_write, %function
-do_before_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	add	r5, r0, #292
-.L1072:
-	ldrh	r3, [r4, #320]
-	cbz	r3, .L1075
-.L1079:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r0, r3, #31
-	bpl	.L1077
-	add	r5, r4, #324
-.L1076:
-	ldrh	r3, [r4, #352]
-	cbnz	r3, .L1077
-	ldr	r1, [r4, #324]
-	mov	r0, r4
-	ldr	r2, [r1, #8]
-	bl	new_block_init_for_write
-	cbnz	r0, .L1081
-.L1077:
-	movs	r0, #0
-.L1071:
-	pop	{r3, r4, r5, pc}
-.L1075:
-	ldr	r1, [r4, #292]
-	mov	r0, r4
-	ldr	r2, [r1, #8]
-	bl	new_block_init_for_write
-	cmp	r0, #0
-	beq	.L1079
-	ldr	r2, [r4, #292]
-	mov	r0, r4
-	ldr	r3, [r2, #8]
-	subs	r1, r3, #1
-	str	r1, [r2, #8]
-	ldrb	r1, [r4, #17]	@ zero_extendqisi2
-	lsls	r1, r1, #31
-	mov	r1, r5
-	itt	mi
-	submi	r3, r3, #2
-	strmi	r3, [r2, #8]
-	bl	get_new_current_block
-	cmp	r0, #0
-	beq	.L1072
-	ldr	r0, .L1094
-.L1093:
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L1071
-.L1081:
-	ldr	r2, [r4, #324]
-	mov	r0, r4
-	ldr	r3, [r2, #8]
-	subs	r1, r3, #1
-	str	r1, [r2, #8]
-	ldrb	r1, [r4, #17]	@ zero_extendqisi2
-	lsls	r1, r1, #31
-	mov	r1, r5
-	itt	mi
-	submi	r3, r3, #2
-	strmi	r3, [r2, #8]
-	bl	get_new_current_block
-	cmp	r0, #0
-	beq	.L1076
-	ldr	r0, .L1094+4
-	b	.L1093
-.L1095:
-	.align	2
-.L1094:
-	.word	.LC219
-	.word	.LC220
-	.size	do_before_write, .-do_before_write
-	.section	.text.put_phy_block_to_invalid_page_list,"ax",%progbits
-	.align	1
-	.global	put_phy_block_to_invalid_page_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	put_phy_block_to_invalid_page_list, %function
-put_phy_block_to_invalid_page_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r2, #0
-	push	{r4, lr}
-	strd	r2, r2, [r1, #12]
-	bl	add_block_invalid_list
-	mov	r4, r0
-	cbz	r0, .L1096
-	ldr	r0, .L1101
-	bl	NAND_Print_DBG
-.L1096:
-	mov	r0, r4
-	pop	{r4, pc}
-.L1102:
-	.align	2
-.L1101:
-	.word	.LC221
-	.size	put_phy_block_to_invalid_page_list, .-put_phy_block_to_invalid_page_list
-	.section	.text.out_phy_block_from_invalid_page_list,"ax",%progbits
-	.align	1
-	.global	out_phy_block_from_invalid_page_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	out_phy_block_from_invalid_page_list, %function
-out_phy_block_from_invalid_page_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	del_block_invalid_list
-	cbz	r0, .L1103
-	movs	r3, #0
-	strd	r3, r3, [r0, #12]
-.L1103:
-	pop	{r3, pc}
-	.size	out_phy_block_from_invalid_page_list, .-out_phy_block_from_invalid_page_list
-	.section	.text.clean_block_list,"ax",%progbits
-	.align	1
-	.global	clean_block_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	clean_block_list, %function
-clean_block_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r5, r0
-	movs	r4, #0
-	mov	r6, #-1
-.L1110:
-	mov	r0, r5
-	bl	out_phy_block_from_free_list
-	cbnz	r0, .L1113
-	mov	r1, r0
-	mov	r4, #-1
-.L1109:
-	mov	r0, r5
-	bl	out_phy_block_from_invalid_page_list
-	cbz	r0, .L1108
-	strh	r1, [r0, #4]	@ movhi
-	strh	r1, [r0, #2]	@ movhi
-	strd	r4, r1, [r0, #8]
-	strd	r1, r1, [r0, #16]
-	strd	r1, r1, [r0, #24]
-	str	r1, [r0, #32]
-	b	.L1109
-.L1113:
-	strh	r4, [r0, #4]	@ movhi
-	strh	r4, [r0, #2]	@ movhi
-	strd	r6, r4, [r0, #8]
-	strd	r4, r4, [r0, #16]
-	strd	r4, r4, [r0, #24]
-	str	r4, [r0, #32]
-	b	.L1110
-.L1108:
-	pop	{r4, r5, r6, pc}
-	.size	clean_block_list, .-clean_block_list
-	.section	.text.out_phy_block_from_invalid_page_list_by_block,"ax",%progbits
-	.align	1
-	.global	out_phy_block_from_invalid_page_list_by_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	out_phy_block_from_invalid_page_list_by_block, %function
-out_phy_block_from_invalid_page_list_by_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	bl	del_block_invalid_list_by_block
-	cbz	r0, .L1114
-	movs	r3, #0
-	strd	r3, r3, [r0, #12]
-.L1114:
-	pop	{r3, pc}
-	.size	out_phy_block_from_invalid_page_list_by_block, .-out_phy_block_from_invalid_page_list_by_block
-	.section	.text.phy_block_from_invalid_page_incr,"ax",%progbits
-	.align	1
-	.global	phy_block_from_invalid_page_incr
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	phy_block_from_invalid_page_incr, %function
-phy_block_from_invalid_page_incr:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r1
-	ldrh	r2, [r1, #4]
-	mov	r5, r0
-	ldr	r1, [r1, #12]
-	ldr	r3, [r0, #4]
-	adds	r2, r2, #1
-	uxth	r2, r2
-	ldrh	r3, [r3, #20]
-	cbnz	r1, .L1120
-	ldr	r1, [r4, #16]
-	cbnz	r1, .L1120
-	cmp	r2, r3
-	strh	r2, [r4, #4]	@ movhi
-	bls	.L1122
-	ldrh	r1, [r4]
-	ldr	r0, .L1134
-	bl	NAND_Print_DBG
-.L1122:
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-.L1120:
-	cmp	r2, r3
-	strh	r2, [r4, #4]	@ movhi
-	bls	.L1123
-	ldr	r0, .L1134+4
-	bl	NAND_Print_DBG
-.L1123:
-	ldr	r3, [r4, #16]
-	adds	r5, r5, #188
-	cmp	r3, r5
-	beq	.L1122
-	ldrh	r1, [r4, #4]
-.L1125:
-	ldrh	r2, [r3, #4]
-	cmp	r2, r1
-	bcs	.L1122
-	ldr	r2, [r3, #16]
-	str	r2, [r4, #16]
-	ldr	r2, [r3, #16]
-	str	r4, [r2, #12]
-	ldr	r2, [r4, #12]
-	str	r2, [r3, #12]
-	ldr	r2, [r4, #12]
-	cbz	r2, .L1126
-	str	r3, [r2, #16]
-.L1126:
-	str	r3, [r4, #12]
-	str	r4, [r3, #16]
-	ldr	r3, [r4, #16]
-	ldr	r2, [r3, #16]
-	cmp	r2, #0
-	bne	.L1125
-	b	.L1122
-.L1135:
-	.align	2
-.L1134:
-	.word	.LC222
-	.word	.LC223
-	.size	phy_block_from_invalid_page_incr, .-phy_block_from_invalid_page_incr
-	.section	.text.recover_logic_page_mapping,"ax",%progbits
-	.align	1
-	.global	recover_logic_page_mapping
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	recover_logic_page_mapping, %function
-recover_logic_page_mapping:
+	.type	sandisk_A19_exit_readretry, %function
+sandisk_A19_exit_readretry:
 	@ args = 0, pretend = 0, frame = 8
 	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r6, r0
-	mov	r4, r1
-	mov	fp, r2
-	mov	r10, r3
-	movs	r5, #0
-.L1137:
-	cmp	r5, r10
-	bne	.L1147
-	movs	r0, #0
-	add	sp, sp, #8
+	push	{r0, r1, r2, r4, r5, lr}
+	movs	r3, #0
+	mov	r4, r0
+	add	r5, sp, #8
+	str	r3, [r5, #-4]!
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	movs	r2, #1
+	movs	r1, #255
+	mov	r0, r4
+	bl	set_one_cmd
+	mov	r1, r5
+	movs	r3, #1
+	ldr	r2, .L141
+	mov	r0, r4
+	bl	sandisk_A19_vender_set_param
+	mov	r5, r0
+	mov	r0, r4
+	bl	nand_disable_chip
+	mov	r0, r5
+	add	sp, sp, #12
 	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1147:
-	ldr	r3, [fp, r5, lsl #2]
-	ldr	r2, [r6, #28]
-	cmp	r2, r3
-	bls	.L1138
-	mov	r1, r3
-	mov	r0, r6
-	bl	get_logic_page_map
-	mov	r7, r0
-	cbnz	r0, .L1139
-	ldr	r0, .L1151
-	bl	NAND_Print
-	ldrh	r3, [r4, #4]
-	adds	r3, r3, #1
-	strh	r3, [r4, #4]	@ movhi
-.L1140:
-	adds	r5, r5, #1
-	b	.L1137
-.L1139:
-	ldrh	r3, [r0, #2]
-	movw	r2, #65535
-	cmp	r3, r2
-	beq	.L1142
-	ldr	r2, [r6, #4]
-	mov	r8, #36
-	mul	r8, r8, r3
-	ldr	r2, [r2, #32]
-	add	r3, r2, r8
-	cmp	r4, r3
-	beq	.L1143
-	mov	r1, r3
-	mov	r0, r6
-	str	r2, [sp, #4]
-	str	r3, [sp]
-	bl	phy_block_from_invalid_page_incr
-	ldrd	r3, r2, [sp]
-.L1144:
-	ldr	r0, [r6, #4]
-	ldrh	r1, [r3, #4]
-	ldrh	r3, [r0, #20]
-	cmp	r1, r3
-	bls	.L1142
-	ldrh	r1, [r2, r8]
-	ldr	r0, .L1151+4
-	bl	NAND_Print
-.L1142:
-	ldrh	r3, [r7]
-	bfi	r3, r5, #0, #12
-	strh	r3, [r7]	@ movhi
-	ldrh	r3, [r4]
-	strh	r3, [r7, #2]	@ movhi
-	b	.L1140
-.L1143:
-	ldrh	r1, [r4, #4]
-	adds	r1, r1, #1
-	strh	r1, [r4, #4]	@ movhi
-	b	.L1144
-.L1138:
-	adds	r2, r3, #1
-	beq	.L1146
-	mov	r2, r5
-	ldrh	r1, [r4]
-	ldr	r0, .L1151+8
-	bl	NAND_Print
-.L1146:
-	ldrh	r3, [r4, #4]
-	ldr	r2, [r6, #4]
-	adds	r3, r3, #1
-	ldrh	r2, [r2, #20]
-	uxth	r3, r3
-	strh	r3, [r4, #4]	@ movhi
-	cmp	r2, r3
-	bcs	.L1140
-	ldr	r0, .L1151+12
-	bl	NAND_Print
-	b	.L1140
-.L1152:
+	pop	{r4, r5, pc}
+.L142:
 	.align	2
-.L1151:
-	.word	.LC224
-	.word	.LC225
-	.word	.LC226
-	.word	.LC227
-	.size	recover_logic_page_mapping, .-recover_logic_page_mapping
-	.section	.text.get_current_used_block,"ax",%progbits
+.L141:
+	.word	.LANCHOR10
+	.size	sandisk_A19_exit_readretry, .-sandisk_A19_exit_readretry
+	.section	.text.sandisk_A19_special_init,"ax",%progbits
 	.align	1
-	.global	get_current_used_block
+	.global	sandisk_A19_special_init
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	get_current_used_block, %function
-get_current_used_block:
+	.type	sandisk_A19_special_init, %function
+sandisk_A19_special_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
-	mov	r4, r0
-	mov	r5, r2
-	mov	r6, r1
-	cmp	r1, #0
-	beq	.L1154
-	ldr	r3, [r0, #292]
-	cmp	r3, r1
-	beq	.L1155
-	movw	r2, #1013
-	ldr	r1, .L1188
-	ldr	r0, .L1188+4
-	bl	NAND_Print
-.L1155:
-	ldr	r3, [r4, #292]
-	ldrh	r2, [r4, #320]
-	ldr	r0, .L1188+8
-	ldrh	r1, [r3]
+	push	{r3, r4, r5, lr}
+	movs	r4, #0
+	ldr	r3, .L148
+	ldr	r3, [r3]
+	ldr	r5, [r3, #8]
+.L144:
+	cbnz	r5, .L145
+	ldr	r3, .L148+4
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	ldr	r3, .L148+8
+	ldrb	r2, [r3]	@ zero_extendqisi2
+	ldr	r3, .L148+12
+	ldrb	r3, [r3]	@ zero_extendqisi2
+	cbnz	r4, .L146
+	ldr	r0, .L148+16
+	ldr	r5, .L148+20
+	str	r5, [r0]
+	ldr	r0, .L148+24
 	bl	NAND_Print_DBG
-	ldrh	r3, [r4, #320]
+.L143:
 	mov	r0, r4
-	ldr	r2, [r4, #304]
-	ldr	r1, [r4, #292]
-	bl	recover_logic_page_mapping
-	ldr	r3, [r4, #292]
-	ldrh	r1, [r4, #320]
-	ldrh	r2, [r3, #4]
-	cmp	r1, r2
-	bcs	.L1156
-	ldr	r0, .L1188+12
+	pop	{r3, r4, r5, pc}
+.L145:
+	mov	r0, r5
+	bl	sandisk_A19_readretry_init
+	ldr	r5, [r5]
+	orrs	r4, r4, r0
+	b	.L144
+.L146:
+	ldr	r0, .L148+28
 	bl	NAND_Print
-.L1156:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bpl	.L1186
-	ldr	r6, .L1188+16
-	ldr	r8, .L1188+44
-.L1157:
-	ldr	r7, [r4, #324]
-	cbz	r7, .L1159
-.L1168:
-	ldr	r2, [r4, #336]
+	b	.L143
+.L149:
+	.align	2
+.L148:
+	.word	g_nsi
+	.word	.LANCHOR1
+	.word	.LANCHOR2
+	.word	.LANCHOR3
+	.word	df_read_page_end
+	.word	sandisk_A19_read_page_end
+	.word	.LC14
+	.word	.LC15
+	.size	sandisk_A19_special_init, .-sandisk_A19_special_init
+	.section	.text.sandisk_A19_special_exit,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_special_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_special_exit, %function
+sandisk_A19_special_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L161
+	push	{r4, r5, r6, lr}
+	movs	r6, #0
+	ldr	r3, [r3]
+	ldr	r4, [r3, #8]
+.L151:
+	cbnz	r4, .L154
+	ldr	r0, .L161+4
+	mov	r5, r4
+	bl	NAND_Print_DBG
+	b	.L150
+.L154:
+	ldrb	r3, [r4, #262]	@ zero_extendqisi2
+	cbz	r3, .L152
+	str	r6, [r4, #196]
 	mov	r0, r4
-	ldr	r1, [r4, #324]
-	bl	recover_phy_page_mapping
-	uxth	r3, r0
-	movw	r2, #65535
-	cmp	r3, r2
-	strh	r3, [r4, #352]	@ movhi
-	bne	.L1184
-	ldr	r0, .L1188+20
-.L1185:
-	bl	NAND_Print
-	ldr	r1, [r4, #324]
-	mov	r0, r4
-	ldrh	r2, [r1, #6]
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	movs	r3, #0
-	str	r3, [r4, #324]
-	b	.L1157
-.L1159:
-	mov	r0, r4
-	bl	out_phy_block_from_free_list
-	mov	r1, r0
-	str	r0, [r4, #324]
-	cbnz	r0, .L1162
-.L1187:
-	movs	r0, #1
-	b	.L1153
-.L1162:
-	ldr	r3, [r4, #292]
-	strh	r7, [r4, #352]	@ movhi
-	ldr	r2, [r3, #8]
-	adds	r2, r2, #1
-	str	r2, [r0, #8]
-	mov	r0, r4
-	bl	new_block_init_for_write
-	cbz	r0, .L1163
-	mov	r0, r8
-	bl	NAND_Print
-	str	r7, [r4, #324]
-	b	.L1157
-.L1163:
-	ldrh	r10, [r4, #320]
+	bl	sandisk_toggle_vendor_specific_setting
 	mov	r5, r0
-.L1165:
-	cmp	r5, r10
-	ldr	r2, [r4, #324]
-	bcs	.L1168
-	uxth	r3, r5
-	ldr	r7, [r4, #1988]
-	ldr	r1, [r4, #292]
+	cbz	r0, .L152
+	ldr	r1, .L161+8
+	ldr	r0, .L161+12
+	bl	NAND_Print
+.L150:
+	mov	r0, r5
+	pop	{r4, r5, r6, pc}
+.L152:
+	ldr	r4, [r4]
+	b	.L151
+.L162:
+	.align	2
+.L161:
+	.word	g_nsi
+	.word	.LC17
+	.word	.LANCHOR11
+	.word	.LC16
+	.size	sandisk_A19_special_exit, .-sandisk_A19_special_exit
+	.section	.text.sandisk_A19_check_bad_block_first_burn,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_check_bad_block_first_burn
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_check_bad_block_first_burn, %function
+sandisk_A19_check_bad_block_first_burn:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L167
+	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
+	mov	r8, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	ldr	r4, [r0, #268]
+	mov	r5, r0
+	ldr	r2, [r0, #20]
+	ldr	r1, [r8, #4]
+	ldr	r3, [r4, #12]
+	add	r10, r4, #32
+	ldr	r0, [r0, #24]
+	cmp	r2, r3
+	bcs	.L164
+	cmp	r1, r0
+	bcc	.L165
+.L164:
+	strd	r1, r0, [sp]
+	ldr	r1, [r4, #8]
+	mvn	r4, #9
+	ldr	r0, .L167+4
+	bl	NAND_Print
+.L163:
 	mov	r0, r4
-	str	r3, [sp]
-	ldr	r3, [r4, #284]
-	blx	r7
-	cbz	r0, .L1166
-	mov	r0, r6
-	bl	NAND_Print
-.L1166:
-	adds	r5, r5, #1
-	b	.L1165
-.L1184:
-	ldr	r3, [r4, #292]
-	ldr	r1, [r4, #324]
-	ldr	r2, [r3, #8]
-	uxth	r3, r0
-	mov	r0, r4
-	adds	r2, r2, #1
-	str	r2, [r1, #8]
-	ldr	r2, [r4, #336]
-	bl	recover_logic_page_mapping
-	ldrh	r1, [r4, #352]
-	ldrh	r2, [r4, #320]
-	cmp	r1, r2
-	bls	.L1169
-	ldr	r0, .L1188+24
-	bl	NAND_Print
-	ldrh	r2, [r4, #320]
-	ldrh	r1, [r4, #352]
-	ldr	r0, .L1188+28
-	bl	NAND_Print
-.L1186:
-	movs	r0, #0
-.L1153:
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L1169:
-	bcs	.L1186
-	ldr	r0, .L1188+32
-	b	.L1185
-.L1154:
-	ldr	r0, .L1188+36
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #172]
-	cbz	r3, .L1171
+.L165:
 	mov	r0, r4
-	bl	out_phy_block_from_free_list
-	str	r0, [r4, #292]
-	cmp	r0, #0
-	beq	.L1187
-	adds	r5, r5, #1
-	strh	r6, [r4, #320]	@ movhi
-	str	r5, [r0, #8]
-	ldrb	r0, [r4, #17]	@ zero_extendqisi2
-	ands	r0, r0, #1
-	beq	.L1173
-	mov	r0, r4
-	bl	out_phy_block_from_free_list
-	str	r0, [r4, #324]
-	cmp	r0, #0
-	beq	.L1187
-	ldr	r3, [r4, #292]
-	strh	r6, [r4, #352]	@ movhi
-	ldr	r3, [r3, #8]
-	adds	r3, r3, #1
-	str	r3, [r0, #8]
-	b	.L1186
-.L1173:
-	str	r0, [r4, #324]
-	b	.L1153
-.L1171:
-	ldr	r0, .L1188+40
-	bl	NAND_Print
-	mov	r0, r4
-	bl	print_free_list
-	mov	r0, r4
-	bl	print_block_invalid_list
-	b	.L1187
-.L1189:
-	.align	2
-.L1188:
-	.word	.LANCHOR14
-	.word	.LC228
-	.word	.LC229
-	.word	.LC230
-	.word	.LC232
-	.word	.LC233
-	.word	.LC234
-	.word	.LC235
-	.word	.LC191
-	.word	.LC236
-	.word	.LC237
-	.word	.LC231
-	.size	get_current_used_block, .-get_current_used_block
-	.section	.text.adjust_invaild_list,"ax",%progbits
-	.align	1
-	.global	adjust_invaild_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	adjust_invaild_list, %function
-adjust_invaild_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-.L1191:
-	ldr	r3, [r4, #200]
-	cbnz	r3, .L1193
-.L1192:
-	movs	r0, #0
-	pop	{r4, pc}
-.L1193:
-	ldr	r1, [r4, #4]
-	ldrh	r2, [r3, #4]
-	ldrh	r3, [r1, #20]
-	cmp	r2, r3
-	bne	.L1192
-	mov	r0, r4
-	bl	out_phy_block_from_invalid_page_list
-	mov	r1, r0
-	mov	r0, r4
-	bl	put_phy_block_to_free_list
-	b	.L1191
-	.size	adjust_invaild_list, .-adjust_invaild_list
-	.section	.text.second_scan_all_blocks,"ax",%progbits
-	.align	1
-	.global	second_scan_all_blocks
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	second_scan_all_blocks, %function
-second_scan_all_blocks:
-	@ args = 0, pretend = 0, frame = 48
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L1277
-	ldr	r2, .L1277+4
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	ldr	r3, [r3]
-	sub	sp, sp, #104
-	ldr	r3, [r3, #752]
-	cmp	r3, r2
-	beq	.L1195
-	subs	r3, r3, #1
-	cmp	r3, #1
-	bhi	.L1230
-.L1195:
-	ldr	r3, [r4, #4]
-	ldr	r0, [r4, #24]
-	ldrb	r1, [r3, #8]	@ zero_extendqisi2
-	bl	__aeabi_uidiv
-	ldr	r5, [r4, #252]
-	mov	r3, #-1
-	str	r0, [r4, #28]
-	str	r3, [sp, #64]
-	mov	r10, r5
-.L1197:
-	cmp	r10, #0
-	bne	.L1198
-	cmp	r5, #0
-	beq	.L1231
-	ldr	r3, [r4, #1968]
-	mov	r7, r10
-	ldr	r2, [r5, #8]
-	mov	r6, r10
-	mov	r8, r10
-	str	r10, [sp, #68]
-	str	r2, [r3, #164]
-.L1214:
-	ldr	r2, [r4, #308]
-	lsrs	r3, r2, #9
-	ubfx	r2, r2, #0, #9
-	cbz	r2, .L1201
-	adds	r3, r3, #1
-.L1201:
-	ldr	r2, [r4, #4]
-	ldrh	r0, [r5]
-	ldr	r1, [r4, #284]
-	ldrh	r2, [r2, #20]
-	strh	r3, [sp, #92]	@ movhi
-	add	r3, sp, #72
-	strh	r0, [sp, #90]	@ movhi
-	mov	r0, r4
-	subs	r2, r2, #1
-	str	r1, [sp, #96]
-	str	r3, [sp, #100]
-	add	r1, sp, #88
-	ldr	r3, [r4, #1980]
-	strh	r2, [sp, #88]	@ movhi
-	blx	r3
-	ldr	r3, [r4, #1972]
-	mov	fp, r0
-	ldrh	r3, [r3, #28]
-	cbz	r3, .L1202
-	add	r2, sp, #72
-	ldr	r1, [r4, #284]
-	mov	r0, r4
-	bl	crc_wrong
-	cmp	r0, #0
-	it	ne
-	mvnne	fp, #1
-.L1202:
-	ldr	r3, [r5, #8]
-	ldr	r1, [r4, #376]
-	ldr	r2, [r4, #1968]
-	str	r3, [sp, #60]
-	ldrh	r3, [r5, #6]
-	cmp	r3, r1
-	bls	.L1203
-	movw	r1, #49999
-	cmp	r3, r1
-	itt	ls
-	strls	r3, [r4, #376]
-	strls	r3, [r2, #152]
-.L1203:
-	ldr	r1, [r2, #156]
-	add	r0, sp, #72
-	cmp	r3, r1
-	it	cc
-	strcc	r3, [r2, #156]
-	bl	is_phy_mapping_page
-	cmp	r0, #1
-	bne	.L1205
-	cmp	fp, #0
-	beq	.L1206
-	cmp	fp, #10
-	bne	.L1205
-.L1206:
-	ldrh	r3, [r5, #4]
-	mov	r10, r5
-	ldr	r2, [r4, #284]
-	mov	r1, r5
-	mov	r0, r4
-	adds	r3, r3, #1
-	strh	r3, [r5, #4]	@ movhi
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	bl	recover_logic_page_mapping
-.L1271:
-	mov	r8, r5
-	b	.L1207
-.L1198:
-	ldr	r3, [r10, #8]
-	ldr	r10, [r10, #28]
-	str	r3, [sp, #64]
-	ldr	r2, [sp, #64]
-	ldr	r3, [r4, #1968]
-	str	r2, [r3, #160]
-	b	.L1197
-.L1205:
-	add	r0, sp, #72
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L1208
-	cbz	r6, .L1233
-	ldrh	r1, [r6]
-	cbnz	r7, .L1209
-	ldrh	r2, [r5]
-	ldr	r0, .L1277+8
-	bl	NAND_Print
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r0, r3, #31
-	bmi	.L1235
-	ldr	r3, [r6, #8]
-	ldr	r0, [r5, #8]
-	cmp	r3, r0
-	beq	.L1235
-	ldrh	r2, [r5]
-	ldrh	r1, [r6]
-	str	r0, [sp]
-	ldr	r0, .L1277+12
-	bl	NAND_Print
-	ldr	r2, [r4, #304]
-	mov	r1, r6
-	mov	r0, r4
-	bl	recover_phy_page_mapping
-	ldr	r3, [r4, #4]
-	mov	r1, r6
-	ldr	r2, [r4, #304]
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	bl	recover_logic_page_mapping
-	movs	r2, #3
-	mov	r1, r6
-	mov	r0, r4
-	bl	add_prio_gc
-.L1233:
-	mov	r6, r5
-	b	.L1207
-.L1209:
-	ldr	r2, [r6, #8]
-	ldr	r0, .L1277+16
-	bl	NAND_Print
-	ldr	r2, [r7, #8]
-	ldrh	r1, [r7]
-	ldr	r0, .L1277+20
-	bl	NAND_Print
-	ldr	r2, [sp, #60]
-	ldrh	r1, [r5]
-	ldr	r0, .L1277+24
-	bl	NAND_Print
-	mov	r1, r6
-	mov	r6, r7
-	movs	r2, #3
-	mov	r0, r4
-	bl	add_prio_gc
-.L1235:
-	mov	r7, r5
-	b	.L1207
-.L1208:
-	ldrb	r0, [sp, #87]	@ zero_extendqisi2
-	ldrb	r2, [sp, #73]	@ zero_extendqisi2
-	ldrb	r1, [sp, #72]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #86]	@ zero_extendqisi2
-	ldrb	r3, [sp, #74]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #85]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #84]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #83]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #82]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #81]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #80]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #79]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #78]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #77]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #76]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #75]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L1277+28
-	bl	NAND_Print
-	ldrh	r2, [r5]
-	ldrb	r1, [r4, #16]	@ zero_extendqisi2
-	cmp	fp, #0
-	beq	.L1210
-	cmp	fp, #10
-	bne	.L1211
-.L1210:
-	ldr	r0, .L1277+32
-.L1270:
-	bl	NAND_Print
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r1, r3, #31
-	bpl	.L1213
-	ldrd	r2, r3, [sp, #60]
-	cmp	r3, r2
-	bne	.L1213
-	ldrh	r2, [r5, #6]
-	mov	r1, r5
-	mov	r0, r4
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	str	r5, [sp, #68]
-.L1207:
-	ldr	r5, [r5, #28]
-	cmp	r5, #0
-	bne	.L1214
-.L1199:
-	mov	r1, r10
-	mov	r0, r4
-	bl	init_smart_info
-	ldr	r5, [r4, #252]
-.L1215:
-	cmp	r5, #0
-	bne	.L1217
-	mov	r0, r4
-	bl	adjust_invaild_list
-	cmp	r8, #0
-	beq	.L1218
-	cbz	r6, .L1218
-	ldr	r1, [r8, #8]
-	ldr	r2, [r6, #8]
-	adds	r3, r1, #1
-	cmp	r3, r2
-	beq	.L1218
-	ldr	r0, .L1277+36
-	bl	NAND_Print
-.L1218:
-	movs	r3, #0
-	str	r3, [r4, #292]
-	cmp	r6, #0
-	bne	.L1219
-	cmp	r7, #0
-	bne	.L1220
-	ldr	r0, .L1277+40
-	bl	NAND_Print
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r2, r3, #31
-	bpl	.L1221
-	cmp	r8, #0
-	beq	.L1222
-.L1275:
-	movs	r2, #3
-	mov	r1, r8
-	mov	r0, r4
-	bl	add_prio_gc
-	b	.L1222
-.L1211:
-	ldr	r0, .L1277+44
-	b	.L1270
-.L1213:
-	movs	r3, #170
-	ldr	r2, [r4, #304]
-	strh	r3, [r5, #2]	@ movhi
-	mov	r1, r5
-	ldrh	r3, [r5, #4]
-	mov	r0, r4
-	adds	r3, r3, #1
-	strh	r3, [r5, #4]	@ movhi
-	bl	recover_block_phy_page_mapping
-	ldr	r3, [r4, #4]
-	mov	r1, r5
-	ldr	r2, [r4, #304]
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	bl	recover_logic_page_mapping
-	movs	r2, #3
-	mov	r1, r5
-	mov	r0, r4
-	bl	add_prio_gc
-	b	.L1271
-.L1278:
-	.align	2
-.L1277:
-	.word	g_nreg_base
-	.word	196609
-	.word	.LC238
-	.word	.LC239
-	.word	.LC240
-	.word	.LC241
-	.word	.LC242
-	.word	.LC243
-	.word	.LC244
-	.word	.LC246
-	.word	.LC247
-	.word	.LC245
-.L1231:
-	mov	r3, #-1
-	mov	r7, r10
-	mov	r6, r10
-	mov	r8, r10
-	str	r10, [sp, #68]
-	str	r3, [sp, #60]
-	b	.L1199
-.L1217:
-	cmp	r6, r5
-	beq	.L1216
-	cmp	r7, r5
-	beq	.L1216
-	ldr	r3, [sp, #68]
-	cmp	r3, r5
-	beq	.L1216
-	mov	r1, r5
-	mov	r0, r4
-	bl	put_phy_block_to_invalid_page_list
-.L1216:
-	ldr	r5, [r5, #28]
-	b	.L1215
-.L1221:
-	cmp	r8, #0
-	beq	.L1222
-	ldrh	r3, [r8, #2]
-	cmp	r3, #170
-	beq	.L1275
-.L1222:
-	ldr	r2, [sp, #60]
-	mov	r1, r7
-	mov	r0, r4
-	bl	get_current_used_block
-	mov	r5, r0
-	cmp	r0, #0
-	beq	.L1229
-	ldr	r0, .L1279
-	bl	NAND_Print
-	b	.L1276
-.L1219:
-	cbnz	r7, .L1220
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bpl	.L1223
-	ldr	r2, [r6, #8]
-	ldrh	r1, [r6]
-	ldr	r0, .L1279+4
-	bl	NAND_Print_DBG
-	cmp	r8, #0
-	beq	.L1224
-	ldrh	r3, [r8, #2]
-	cmp	r3, #170
-	bne	.L1224
-	movs	r2, #3
-	mov	r1, r8
-	mov	r0, r4
-	bl	add_prio_gc
-.L1224:
-	movs	r2, #0
-.L1273:
-	mov	r1, r6
-	mov	r0, r4
-	bl	cross_talk_rebuild_current_block
-	mov	r7, r0
-	cmp	r0, #0
-	bne	.L1222
-.L1276:
-	movs	r5, #1
-.L1194:
-	mov	r0, r5
-	add	sp, sp, #104
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1223:
-	cmp	r8, #0
-	beq	.L1225
-	ldrh	r3, [r8, #2]
-	cmp	r3, #170
-	bne	.L1225
-	movs	r2, #3
-	mov	r1, r8
-	mov	r0, r4
-	bl	add_prio_gc
-.L1225:
-	movs	r2, #0
-.L1274:
-	mov	r1, r6
-	mov	r0, r4
-	bl	no_cross_talk_rebuild_current_block
-	mov	r7, r0
-	b	.L1222
-.L1220:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	ands	r5, r3, #1
-	beq	.L1226
-	mov	r2, r7
-	b	.L1273
-.L1226:
-	ldr	r2, [r6, #8]
-	ldr	r3, [r7, #8]
-	cmp	r2, r3
-	bne	.L1228
-	ldrh	r1, [r6]
-	ldr	r0, .L1279+8
-	bl	NAND_Print
-	ldr	r2, [r7, #8]
-	ldrh	r1, [r7]
-	ldr	r0, .L1279+12
-	bl	NAND_Print_DBG
-	mov	r2, r7
-	b	.L1274
-.L1228:
-	ldr	r0, .L1279+16
-	bl	NAND_Print
-	ldr	r2, [r8, #8]
-	ldrh	r1, [r8]
-	ldr	r0, .L1279+20
-	bl	NAND_Print
-	ldr	r2, [r6, #8]
-	ldrh	r1, [r6]
-	ldr	r0, .L1279+8
-	bl	NAND_Print
-	ldr	r2, [r7, #8]
-	ldrh	r1, [r7]
-	ldr	r0, .L1279+12
-	bl	NAND_Print_DBG
-	ldr	r2, [r4, #304]
-	mov	r1, r6
-	mov	r0, r4
-	bl	recover_block_phy_page_mapping
-	ldr	r3, [r4, #4]
-	mov	r1, r6
-	ldr	r2, [r4, #304]
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	bl	recover_logic_page_mapping
-	movs	r2, #3
-	mov	r1, r6
-	mov	r0, r4
-	bl	add_prio_gc
-	mov	r1, r7
-	ldr	r2, [r4, #304]
-	mov	r0, r4
-	bl	recover_block_phy_page_mapping
-	ldr	r3, [r4, #4]
-	mov	r1, r7
-	ldr	r2, [r4, #304]
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	bl	recover_logic_page_mapping
-	mov	r1, r7
-	movs	r2, #3
-	mov	r0, r4
-	mov	r7, r5
-	bl	add_prio_gc
-	b	.L1222
-.L1229:
-	mov	r0, r4
-	bl	adjust_invaild_list
-	ldr	r2, [r4, #1968]
-	ldr	r3, [r4, #292]
-	ldrh	r1, [r4, #22]
-	ldr	r0, .L1279+24
-	str	r3, [r4, #48]
-	ldr	r3, [r2, #164]
-	str	r3, [sp, #4]
-	ldr	r3, [r2, #160]
-	str	r3, [sp]
-	ldrd	r2, r3, [r2, #152]
-	bl	NAND_Print_DBG
-	b	.L1194
-.L1230:
-	mov	r5, #-1
-	b	.L1194
-.L1280:
-	.align	2
-.L1279:
-	.word	.LC253
-	.word	.LC248
-	.word	.LC249
-	.word	.LC250
-	.word	.LC251
-	.word	.LC252
-	.word	.LC254
-	.size	second_scan_all_blocks, .-second_scan_all_blocks
-	.section	.text.write_phy_page_map_to_current_block,"ax",%progbits
-	.align	1
-	.global	write_phy_page_map_to_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	write_phy_page_map_to_current_block, %function
-write_phy_page_map_to_current_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	add	r3, r0, #324
-	push	{r0, r1, r4, r5, r6, lr}
-	cmp	r1, r3
-	mov	r4, r0
-	mov	r5, r1
-	bne	.L1282
-	ldr	r1, [r0, #312]
-	mov	r2, #328
-	ldr	r0, [r0, #344]
-	bl	NAND_Memcpy
-.L1282:
-	ldr	r3, .L1285
-	mov	r1, r5
-	ldr	r2, [r5, #4]
-	mov	r0, r4
-	str	r3, [sp]
-	movs	r3, #0
-	bl	write_phy_data_to_current_block
-	mov	r6, r0
-	cbz	r0, .L1283
-	ldr	r0, .L1285+4
-	bl	NAND_Print
-.L1281:
-	mov	r0, r6
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, pc}
-.L1283:
-	mov	r1, r5
-	ldrh	r3, [r5, #28]
-	ldr	r2, [r1], #4
-	adds	r3, r3, #1
-	ldrh	r0, [r2, #4]
-	uxth	r3, r3
-	strh	r3, [r5, #28]	@ movhi
-	adds	r0, r0, #1
-	strh	r0, [r2, #4]	@ movhi
-	mov	r0, r4
-	bl	check_invalid_page_right
-	ldr	r3, [r4, #4]
-	ldrh	r2, [r5, #28]
-	ldrh	r3, [r3, #20]
-	cmp	r2, r3
-	bne	.L1281
-	ldr	r1, [r5]
-	mov	r0, r4
-	bl	put_phy_block_to_invalid_page_list
-	mov	r0, r4
-	bl	adjust_invaild_list
-	b	.L1281
-.L1286:
-	.align	2
-.L1285:
-	.word	-1431633921
-	.word	.LC255
-	.size	write_phy_page_map_to_current_block, .-write_phy_page_map_to_current_block
-	.section	.text.do_after_write,"ax",%progbits
-	.align	1
-	.global	do_after_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_after_write, %function
-do_after_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	add	r6, r0, #292
-	mov	r1, r6
-	mov	r4, r0
-	bl	current_block_at_last_page
-	cmp	r0, #1
-	mov	r5, r0
-	bne	.L1295
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cbz	r0, .L1289
-	ldr	r0, .L1306
-.L1305:
-	bl	NAND_Print
-.L1287:
-	mov	r0, r5
-	pop	{r4, r5, r6, pc}
-.L1289:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r2, r3, #31
-	bpl	.L1291
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cbz	r0, .L1291
-	ldr	r0, .L1306
-	bl	NAND_Print
-.L1291:
-	mov	r1, r6
-	mov	r0, r4
-	bl	get_new_current_block
-	cbz	r0, .L1293
-	ldr	r0, .L1306+4
-	b	.L1305
-.L1293:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bpl	.L1294
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	get_new_current_block
-	cbz	r0, .L1294
-	ldr	r0, .L1306+8
-	b	.L1305
-.L1294:
-	ldr	r3, [r4, #368]
-	adds	r3, r3, #1
-	str	r3, [r4, #368]
-.L1295:
-	movs	r5, #0
-	b	.L1287
-.L1307:
-	.align	2
-.L1306:
-	.word	.LC256
-	.word	.LC257
-	.word	.LC258
-	.size	do_after_write, .-do_after_write
-	.section	.text.fill_no_use_data_to_page,"ax",%progbits
-	.align	1
-	.global	fill_no_use_data_to_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	fill_no_use_data_to_page, %function
-fill_no_use_data_to_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	add	r5, r0, #292
-	mov	r1, r5
-	mov	r4, r0
-	bl	current_block_at_last_page
-	cbz	r0, .L1309
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cbz	r0, .L1310
-	ldr	r0, .L1338
-.L1336:
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L1308
-.L1310:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r1, r3, #31
-	bpl	.L1313
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cbz	r0, .L1313
-	ldr	r0, .L1338
-	bl	NAND_Print
-.L1313:
-	mov	r1, r5
-	mov	r0, r4
-	bl	get_new_current_block
-	cbz	r0, .L1315
-	ldr	r0, .L1338+4
-	b	.L1336
-.L1315:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r2, r3, #31
-	bmi	.L1316
-.L1317:
-	movs	r0, #0
-.L1308:
-	pop	{r3, r4, r5, pc}
-.L1316:
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	get_new_current_block
-	cmp	r0, #0
-	beq	.L1317
-	ldr	r0, .L1338+8
-	b	.L1336
-.L1309:
-	ldrh	r3, [r4, #320]
-	cmp	r3, #0
-	beq	.L1317
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cbz	r0, .L1318
-	ldr	r0, .L1338
-	bl	NAND_Print
-.L1318:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bmi	.L1319
-.L1337:
-	movs	r0, #8
-	b	.L1308
-.L1319:
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	write_phy_page_map_to_current_block
-	cmp	r0, #0
-	beq	.L1337
-	ldr	r0, .L1338
-	bl	NAND_Print
-	b	.L1337
-.L1339:
-	.align	2
-.L1338:
-	.word	.LC256
-	.word	.LC257
-	.word	.LC258
-	.size	fill_no_use_data_to_page, .-fill_no_use_data_to_page
-	.section	.text.fill_no_use_data_to_current_block,"ax",%progbits
-	.align	1
-	.global	fill_no_use_data_to_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	fill_no_use_data_to_current_block, %function
-fill_no_use_data_to_current_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r0
-	movs	r4, #0
-.L1341:
-	ldr	r3, [r5, #4]
-	ldrh	r3, [r3, #20]
-	cmp	r3, r4
-	bgt	.L1343
-	movs	r0, #1
-.L1340:
-	pop	{r3, r4, r5, pc}
-.L1343:
-	mov	r0, r5
-	bl	fill_no_use_data_to_page
-	cmp	r0, #0
-	beq	.L1340
-	adds	r4, r4, #1
-	b	.L1341
-	.size	fill_no_use_data_to_current_block, .-fill_no_use_data_to_current_block
-	.section	.text.fill_no_use_page_to_current_block,"ax",%progbits
-	.align	1
-	.global	fill_no_use_page_to_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	fill_no_use_page_to_current_block, %function
-fill_no_use_page_to_current_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r6, r0
-	mov	r5, r1
-	movs	r4, #0
-.L1348:
-	cmp	r4, r5
-	blt	.L1350
-	movs	r0, #1
-.L1347:
-	pop	{r4, r5, r6, pc}
-.L1350:
-	mov	r0, r6
-	bl	fill_no_use_data_to_page
-	cmp	r0, #0
-	beq	.L1347
-	adds	r4, r4, #1
-	b	.L1348
-	.size	fill_no_use_page_to_current_block, .-fill_no_use_page_to_current_block
-	.section	.text.nftl_write_end,"ax",%progbits
-	.align	1
-	.global	nftl_write_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_write_end, %function
-nftl_write_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L1357
-	push	{r4, lr}
-	ldr	r4, [r3, #8]
-.L1355:
-	cbnz	r4, .L1356
-	mov	r0, r4
-	pop	{r4, pc}
-.L1356:
-	ldr	r0, [r4, #12]
-	movs	r1, #8
-	bl	fill_no_use_page_to_current_block
-	ldr	r4, [r4, #8]
-	b	.L1355
-.L1358:
-	.align	2
-.L1357:
-	.word	.LANCHOR0
-	.size	nftl_write_end, .-nftl_write_end
-	.section	.text.nand_before_shutdown,"ax",%progbits
-	.align	1
-	.global	nand_before_shutdown
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_before_shutdown, %function
-nand_before_shutdown:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r1, #8
-	b	fill_no_use_page_to_current_block
-	.size	nand_before_shutdown, .-nand_before_shutdown
-	.section	.text.write_logic_data_to_current_block,"ax",%progbits
-	.align	1
-	.global	write_logic_data_to_current_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	write_logic_data_to_current_block, %function
-write_logic_data_to_current_block:
-	@ args = 4, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	cmp	r2, #192
-	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r0
-	mov	r4, r1
-	mov	fp, r3
-	bne	.L1361
-	mov	r1, r3
-	bl	get_logic_page_map
-	mov	r10, r0
-	cbnz	r0, .L1362
-.L1368:
-	movs	r7, #1
-	ldr	r0, .L1384
-	bl	NAND_Print_DBG
-.L1360:
-	mov	r0, r7
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1362:
-	ldrh	r3, [r0, #2]
-	movw	r2, #65535
-	cmp	r3, r2
-	beq	.L1376
-	ldr	r2, [r8, #4]
-	movs	r5, #36
-	ldr	r1, [r2, #32]
-	mla	r5, r5, r3, r1
-	ldr	r3, [r4]
-	cmp	r3, r5
-	bne	.L1375
-	ldrh	r3, [r5, #4]
-	ldrh	r2, [r2, #20]
-	adds	r3, r3, #1
-	uxth	r3, r3
-	cmp	r2, r3
-	strh	r3, [r5, #4]	@ movhi
-	bcs	.L1376
-	ldrh	r1, [r4, #28]
-	ldr	r0, .L1384+4
-	bl	NAND_Print_DBG
-.L1376:
-	movs	r6, #0
-	b	.L1364
-.L1375:
 	movs	r6, #1
-.L1364:
-	movs	r3, #192
-	ldr	r2, [sp, #40]
-	str	r3, [sp]
-	mov	r1, r4
-	mov	r3, fp
-	mov	r0, r8
-	bl	write_phy_data_to_current_block
-	mov	r7, r0
-	cbz	r0, .L1365
-	ldr	r0, .L1384+8
-.L1383:
-	bl	NAND_Print
-	b	.L1360
-.L1365:
-	ldr	r3, [r4]
-	ldrh	r1, [r4, #28]
-	ldr	r2, [r8, #364]
-	ldrh	r3, [r3]
-	ubfx	r0, r1, #0, #12
-	adds	r1, r1, #1
-	clz	r2, r2
-	strh	r3, [r10, #2]	@ movhi
-	lsrs	r2, r2, #5
-	ldrh	r3, [r10]
-	bfi	r3, r0, #0, #12
-	strh	r3, [r10]	@ movhi
-	ubfx	r3, r3, #8, #8
-	bfi	r3, r2, #4, #1
-	strb	r3, [r10, #1]
-	ldr	r3, [r4, #12]
-	str	fp, [r3, r0, lsl #2]
-	strh	r1, [r4, #28]	@ movhi
-.L1366:
-	cmp	r6, #0
-	beq	.L1371
-	mov	r1, r5
-	mov	r0, r8
-	bl	phy_block_from_invalid_page_incr
-	b	.L1371
-.L1361:
-	ldr	r6, .L1384+12
-	cmp	r2, r6
-	bne	.L1367
-	mov	r1, r3
-	bl	get_logic_page_map
-	mov	r7, r0
-	cmp	r0, #0
-	beq	.L1368
-	ldrh	r3, [r0, #2]
-	movw	r2, #65535
-	cmp	r3, r2
-	beq	.L1379
-	ldr	r2, [r8, #4]
-	movs	r5, #36
-	ldr	r1, [r2, #32]
-	mla	r5, r5, r3, r1
-	ldr	r3, [r4]
-	cmp	r3, r5
-	bne	.L1378
-	ldrh	r3, [r0]
-	mov	r0, #-1
-	ldr	r1, [r4, #12]
-	ldrh	r2, [r2, #20]
-	ubfx	r3, r3, #0, #12
-	str	r0, [r1, r3, lsl #2]
-	ldrh	r3, [r5, #4]
-	adds	r3, r3, #1
-	uxth	r3, r3
-	cmp	r2, r3
-	strh	r3, [r5, #4]	@ movhi
-	bcs	.L1379
-	ldrh	r1, [r4, #28]
-	ldr	r0, .L1384+16
-	bl	NAND_Print
-.L1379:
-	movs	r6, #0
-	b	.L1369
-.L1378:
-	movs	r6, #1
-.L1369:
-	movw	r3, #65535
-	movw	r2, #4095
-	strh	r3, [r7, #2]	@ movhi
-	ldrh	r3, [r7]
-	bfi	r3, r2, #0, #12
-	strh	r3, [r7]	@ movhi
-	ubfx	r3, r3, #8, #8
-	orr	r3, r3, #16
-	strb	r3, [r7, #1]
-	b	.L1366
-.L1367:
-	ldr	r5, .L1384+20
-	cmp	r2, r5
-	bne	.L1371
-	ldr	r6, [r1]
-	ldrh	r5, [r6, #4]
-	adds	r5, r5, #1
-	strh	r5, [r6, #4]	@ movhi
-	str	r2, [sp]
-	ldr	r2, [sp, #40]
-	bl	write_phy_data_to_current_block
-	mov	r7, r0
-	cbz	r0, .L1372
-	ldr	r0, .L1384+24
-	b	.L1383
-.L1372:
-	ldrh	r3, [r4, #28]
-	adds	r3, r3, #1
-	strh	r3, [r4, #28]	@ movhi
-.L1371:
-	mov	r0, r8
+	bl	ndfc_disable_randomize
+	mov	r0, r5
 	movs	r7, #0
-	bl	adjust_invaild_list
-	b	.L1360
-.L1385:
-	.align	2
-.L1384:
-	.word	.LC259
-	.word	.LC260
-	.word	.LC261
-	.word	-1441722095
-	.word	.LC262
-	.word	-1441713357
-	.word	.LC263
-	.size	write_logic_data_to_current_block, .-write_logic_data_to_current_block
-	.section	.text.write_data_to_page,"ax",%progbits
-	.align	1
-	.global	write_data_to_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	write_data_to_page, %function
-write_data_to_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r4, r5, r6, r7, r8, lr}
-	mov	r6, r1
-	str	r3, [sp]
-	mov	r7, r2
-	mov	r8, r3
-	mov	r3, r2
-	mov	r2, r1
-	add	r1, r0, #292
-	mov	r4, r0
-	bl	write_logic_data_to_current_block
-	mov	r5, r0
-	cbz	r0, .L1387
-.L1390:
-	movs	r5, #1
-	ldr	r0, .L1392
-	bl	NAND_Print
-.L1386:
+	bl	nand_read_chip_status_ready
 	mov	r0, r5
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1387:
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	lsls	r3, r3, #31
-	bpl	.L1386
-	str	r8, [sp]
-	mov	r3, r7
-	mov	r2, r6
-	add	r1, r4, #324
-	mov	r0, r4
-	bl	write_logic_data_to_current_block
-	cmp	r0, #0
-	beq	.L1386
-	b	.L1390
-.L1393:
-	.align	2
-.L1392:
-	.word	.LC264
-	.size	write_data_to_page, .-write_data_to_page
-	.section	.text._nftl_discard_logic_page,"ax",%progbits
-	.align	1
-	.global	_nftl_discard_logic_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nftl_discard_logic_page, %function
-_nftl_discard_logic_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r2, r1
-	movs	r3, #0
-	ldr	r1, .L1395
-	b	write_data_to_page
-.L1396:
-	.align	2
-.L1395:
-	.word	-1441722095
-	.size	_nftl_discard_logic_page, .-_nftl_discard_logic_page
-	.section	.text.nand_write_data_page,"ax",%progbits
-	.align	1
-	.global	nand_write_data_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_write_data_page, %function
-nand_write_data_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r6, r1
-	add	r1, r0, #292
-	mov	r5, r0
-	mov	r7, r2
-	mov	r8, r3
-	bl	current_block_at_last_page
-	cmp	r0, #1
-	mov	r4, r0
-	bne	.L1398
-	mov	r0, r5
-	bl	do_after_write
-	cbz	r0, .L1398
-	ldr	r0, .L1409
-	bl	NAND_Print
-.L1397:
-	mov	r0, r4
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1398:
-	mov	r0, r5
-	bl	do_before_write
-	cbz	r0, .L1400
-	ldr	r0, .L1409+4
-.L1408:
-	bl	NAND_Print
-	movs	r4, #1
-	b	.L1397
-.L1400:
-	mov	r3, r8
-	mov	r2, r7
-	mov	r1, r6
-	mov	r0, r5
-	bl	write_data_to_page
-	cbz	r0, .L1401
-	ldr	r0, .L1409+8
-	b	.L1408
-.L1401:
-	mov	r0, r5
-	bl	do_after_write
-	mov	r4, r0
-	cmp	r0, #0
-	beq	.L1397
-	ldr	r0, .L1409+12
-	b	.L1408
-.L1410:
-	.align	2
-.L1409:
-	.word	.LC265
-	.word	.LC266
-	.word	.LC267
-	.word	.LC268
-	.size	nand_write_data_page, .-nand_write_data_page
-	.section	.text.nand_write_logic_page_no_gc,"ax",%progbits
-	.align	1
-	.global	nand_write_logic_page_no_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_write_logic_page_no_gc, %function
-nand_write_logic_page_no_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r2
-	mov	r2, r1
-	movs	r1, #192
-	b	nand_write_data_page
-	.size	nand_write_logic_page_no_gc, .-nand_write_logic_page_no_gc
-	.section	.text.garbage_collect_first,"ax",%progbits
-	.align	1
-	.global	garbage_collect_first
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	garbage_collect_first, %function
-garbage_collect_first:
-	@ args = 0, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #96
-	mov	r5, r1
-	add	r7, sp, #64
-	mov	r4, r0
-	mov	r6, r2
-	movs	r1, #90
-	movs	r2, #16
-	mov	r0, r7
-	bl	NAND_Memset
-	cbnz	r5, .L1413
-	mov	r0, r4
-	bl	out_phy_block_from_invalid_page_list
-.L1453:
-	mov	r5, r0
-	cbnz	r0, .L1416
-	ldr	r0, .L1454
-	bl	NAND_Print
-	movs	r0, #8
-.L1412:
-	add	sp, sp, #96
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1413:
-	mov	r1, r5
-	mov	r0, r4
-	bl	is_current_blcok
-	cmp	r0, #1
-	beq	.L1431
-	mov	r0, r4
-	bl	out_phy_block_from_invalid_page_list_by_block
-	b	.L1453
-.L1416:
-	ldr	r2, [r4, #1968]
-	ldrh	r0, [r0]
-	ldr	r3, [r2, #124]
-	strh	r0, [sp, #82]	@ movhi
-	mov	r0, r4
-	adds	r3, r3, #1
-	str	r3, [r2, #124]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r4, #284]
-	ldrh	r1, [r3, #28]
-	ldrh	r3, [r3, #20]
-	strd	r2, r7, [sp, #88]
-	strh	r1, [sp, #84]	@ movhi
-	add	r1, sp, #80
-	subs	r3, r3, #1
-	strh	r3, [sp, #80]	@ movhi
-	ldr	r3, [r4, #1980]
-	blx	r3
-	mov	r10, r0
-	mov	r0, r7
-	bl	is_phy_mapping_page
-	cmp	r0, #1
-	mov	r8, r0
-	beq	.L1417
-	ldr	r0, .L1454+4
-	mov	r8, #1
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #4]
-	ldrh	r1, [r5]
-	ldr	r0, .L1454+8
-	ldrh	r2, [r3, #20]
-	ldrh	r3, [r3, #28]
-	subs	r2, r2, #1
-	str	r3, [sp]
-	movs	r3, #0
-	bl	NAND_Print_DBG
-	ldrb	r0, [sp, #79]	@ zero_extendqisi2
-	ldrb	r3, [sp, #67]	@ zero_extendqisi2
-	ldrb	r2, [sp, #66]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #78]	@ zero_extendqisi2
-	ldrb	r1, [sp, #65]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #77]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #76]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #75]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #74]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #73]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #72]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #71]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #70]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #69]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #68]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L1454+12
-	bl	NAND_Print_DBG
-	ldrh	r2, [r5]
-	ldrb	r1, [r4, #16]	@ zero_extendqisi2
-	ldr	r0, .L1454+16
-	bl	NAND_Print_DBG
-	ldr	r2, [r4, #268]
-	mov	r1, r5
-	mov	r0, r4
-	bl	recover_block_phy_page_mapping
-.L1418:
-	ldr	r3, [r4, #4]
-	mov	r2, r5
-	add	r1, r4, #260
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	bl	check_invalid_page_right
-	cmp	r0, #0
-	beq	.L1420
-	mov	r8, #1
-	movw	r6, #65535
-	ldr	r0, .L1454+20
-	bl	NAND_Print
-.L1422:
-	mov	r10, #0
-.L1421:
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	cmp	r3, r10
-	bhi	.L1429
-.L1428:
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	subs	r3, r3, #1
-	cmp	r3, r10
-	bne	.L1430
-	movs	r6, #0
-	strh	r6, [r4, #386]	@ movhi
-	cmp	r8, #0
-	beq	.L1430
-	ldr	r0, .L1454+24
-	bl	NAND_Print
-	ldrh	r2, [r5, #6]
-	mov	r1, r5
-	mov	r0, r4
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-.L1431:
-	movs	r0, #0
-	b	.L1412
-.L1417:
-	cmp	r10, #0
-	beq	.L1419
-	cmp	r10, #10
-	beq	.L1419
-	ldrh	r1, [r5]
-	ldr	r0, .L1454+28
-	bl	NAND_Print_DBG
-	ldr	r2, [r4, #268]
-	mov	r1, r5
-	mov	r0, r4
-	bl	recover_block_phy_page_mapping
-	b	.L1418
-.L1419:
-	ldr	r2, [r4, #272]
-	mov	r8, #0
-	ldr	r1, [r4, #284]
-	ldr	r0, [r4, #268]
-	bl	NAND_Memcpy
-	b	.L1418
-.L1420:
-	movw	r3, #65535
-	cmp	r8, #0
-	it	ne
-	movne	r6, r3
-	b	.L1422
-.L1429:
-	ldr	r3, [r4, #268]
-	ldr	r3, [r3, r10, lsl #2]
-	adds	r2, r3, #1
-	beq	.L1423
-	mov	r1, r3
-	mov	r0, r4
-	str	r3, [sp, #60]
-	bl	get_logic_page_map
-	mov	fp, r0
-	cmp	r0, #0
-	beq	.L1423
-	ldrh	r2, [r0, #2]
-	ldrh	r1, [r5]
-	cmp	r1, r2
-	bne	.L1423
-	ldrh	r2, [r0]
-	ubfx	r2, r2, #0, #12
-	cmp	r2, r10
-	bne	.L1423
-	ldr	r0, [r4, #1968]
-	ldr	ip, [r4, #4]
-	strh	r1, [sp, #82]	@ movhi
-	add	r1, sp, #80
-	ldr	r2, [r0, #128]
-	strh	r10, [sp, #80]	@ movhi
-	adds	r2, r2, #1
-	str	r2, [r0, #128]
-	ldrh	r0, [ip, #28]
-	ldr	r2, [r4, #288]
-	strh	r0, [sp, #84]	@ movhi
-	mov	r0, r4
-	strd	r2, r7, [sp, #88]
-	ldr	r2, [r4, #1980]
-	blx	r2
-	str	r0, [sp, #56]
-	mov	r0, r7
-	bl	get_logic_page_from_oob
-	ldrd	r2, r3, [sp, #56]
-	cbz	r2, .L1424
-	cmp	r2, #10
-	bne	.L1425
-.L1424:
-	cmp	r3, r0
-	beq	.L1426
-	ldrh	r1, [r5]
-	mov	r2, r10
-	str	r3, [sp]
-	mov	r3, r0
-	ldr	r0, .L1454+32
-	mov	r8, #1
-	bl	NAND_Print_DBG
-	ldrb	r0, [sp, #79]	@ zero_extendqisi2
-	movw	r6, #65535
-	ldrb	r3, [sp, #66]	@ zero_extendqisi2
-	ldrb	r2, [sp, #65]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #78]	@ zero_extendqisi2
-	ldrb	r1, [sp, #64]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #77]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #76]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #75]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #74]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #73]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #72]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #71]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #70]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #69]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #68]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #67]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L1454+36
-	bl	NAND_Print
-	ldrh	r3, [fp]
-	movw	r2, #4095
-	strh	r6, [fp, #2]	@ movhi
-	bfi	r3, r2, #0, #12
-	strh	r3, [fp]	@ movhi
-	ldrh	r3, [r5, #4]
-	adds	r3, r3, #1
-	strh	r3, [r5, #4]	@ movhi
-.L1427:
-	subs	r6, r6, #1
-	uxth	r6, r6
-	cmp	r6, #0
-	beq	.L1428
-.L1423:
-	add	r10, r10, #1
-	b	.L1421
-.L1426:
-	ldr	r2, [r4, #288]
-	mov	r1, r3
-	mov	r0, r4
-	bl	nand_write_logic_page_no_gc
-	cmp	r0, #0
-	beq	.L1427
-	ldr	r0, .L1454+40
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L1412
-.L1425:
-	ldrh	r3, [r5, #4]
-	mov	r8, #1
-	movw	r6, #65535
-	adds	r3, r3, #1
-	strh	r3, [r5, #4]	@ movhi
-	b	.L1427
-.L1430:
-	mov	r1, r5
-	mov	r0, r4
-	bl	put_phy_block_to_invalid_page_list
-	mov	r0, r4
-	bl	adjust_invaild_list
-	b	.L1431
-.L1455:
-	.align	2
-.L1454:
-	.word	.LC269
-	.word	.LC270
-	.word	.LC271
-	.word	.LC272
-	.word	.LC273
-	.word	.LC275
-	.word	.LC279
-	.word	.LC274
-	.word	.LC276
-	.word	.LC277
-	.word	.LC278
-	.size	garbage_collect_first, .-garbage_collect_first
-	.section	.text.do_prio_gc,"ax",%progbits
-	.align	1
-	.global	do_prio_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_prio_gc, %function
-do_prio_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r1, [r0, #564]
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r6, r0
-	cmp	r1, #0
-	beq	.L1469
-	add	r4, r0, #392
-	mov	r0, r4
-	bl	del_from_gc_list
-	ldr	r7, [r0, #4]
-	mov	r5, r0
-	mov	r0, r6
-	mov	r1, r7
-	bl	is_current_blcok
-	cmp	r0, #1
-	bne	.L1458
-	mov	r1, r5
-	mov	r0, r4
-	bl	add_to_gc_list_tail
-.L1470:
-	movs	r4, #0
-.L1456:
-	mov	r0, r4
-	pop	{r3, r4, r5, r6, r7, pc}
-.L1458:
-	cbnz	r7, .L1459
-	ldr	r0, .L1473
-	bl	NAND_Print_DBG
-	strh	r7, [r5, #2]	@ movhi
-	strh	r7, [r6, #394]	@ movhi
-	str	r7, [r5, #4]
-	b	.L1470
-.L1459:
-	mov	r0, r6
-	bl	is_block_in_invalid_list
-	ldrh	r2, [r5, #2]
-	mov	r4, r0
-	cbnz	r0, .L1460
-	ldrh	r1, [r7]
-	ldr	r0, .L1473+4
-.L1471:
-	bl	NAND_Print_DBG
-	b	.L1472
-.L1460:
-	cmp	r2, #5
-	strh	r2, [r6, #394]	@ movhi
-	bne	.L1461
-	movs	r4, #0
-	movs	r2, #4
-	mov	r0, r6
-	bl	garbage_collect_first
-.L1472:
-	strh	r4, [r5, #2]	@ movhi
-	strh	r4, [r6, #394]	@ movhi
-	str	r4, [r5, #4]
-	b	.L1456
-.L1461:
-	movw	r2, #65535
-	mov	r0, r6
-	bl	garbage_collect_first
-	ldr	r3, [r5, #4]
-	mov	r4, r0
-	cbz	r0, .L1462
-	ldrh	r1, [r3]
-	movs	r4, #1
-	ldrh	r2, [r5, #2]
-	ldr	r0, .L1473+8
-	bl	NAND_Print
-	movs	r3, #0
-	strh	r3, [r5, #2]	@ movhi
-	strh	r3, [r6, #394]	@ movhi
-	str	r3, [r5, #4]
-	b	.L1456
-.L1462:
-	mov	r1, r3
-	mov	r0, r6
-	bl	is_block_in_free_list
-	cbnz	r0, .L1463
-	ldrh	r2, [r5, #2]
-	ldrh	r1, [r3]
-	ldr	r0, .L1473+12
-	b	.L1471
-.L1463:
-	mov	r0, r6
-	bl	out_phy_block_from_free_list_by_block
-	mov	r1, r0
-	cbnz	r0, .L1464
-	ldr	r3, [r5, #4]
-	ldrh	r2, [r5, #2]
-	ldr	r0, .L1473+16
-	ldrh	r1, [r3]
-	b	.L1471
-.L1464:
-	ldrh	r2, [r0, #6]
-	mov	r0, r6
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	movs	r3, #0
-	strh	r3, [r5, #2]	@ movhi
-	strh	r3, [r6, #394]	@ movhi
-	str	r3, [r5, #4]
-	b	.L1456
-.L1469:
-	mov	r4, r1
-	b	.L1456
-.L1474:
-	.align	2
-.L1473:
-	.word	.LC280
-	.word	.LC281
-	.word	.LC282
-	.word	.LC283
-	.word	.LC284
-	.size	do_prio_gc, .-do_prio_gc
-	.section	.text.prio_gc_all,"ax",%progbits
-	.align	1
-	.global	prio_gc_all
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	prio_gc_all, %function
-prio_gc_all:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r6, r0
-	movs	r5, #10
-	movs	r4, #0
-.L1476:
-	mov	r0, r6
-	bl	do_prio_gc
-	subs	r5, r5, #1
-	orr	r4, r4, r0
-	bne	.L1476
-	mov	r0, r4
-	pop	{r4, r5, r6, pc}
-	.size	prio_gc_all, .-prio_gc_all
-	.section	.text._nftl_nand_read_logic_page,"ax",%progbits
-	.align	1
-	.global	_nftl_nand_read_logic_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nftl_nand_read_logic_page, %function
-_nftl_nand_read_logic_page:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	sub	sp, sp, #36
-	mov	r4, r0
-	mov	r7, r1
-	mov	r6, r2
-	bl	get_logic_page_map
-	mov	r5, r0
-	cbnz	r0, .L1479
-	movs	r6, #1
-	ldr	r0, .L1483
-	bl	NAND_Print_DBG
-.L1478:
-	mov	r0, r6
-	add	sp, sp, #36
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L1479:
-	ldrh	r2, [r0, #2]
-	movw	r1, #65535
-	ldr	r3, [r4, #4]
-	cmp	r2, r1
-	bne	.L1481
-	mov	r0, r6
-	ldrh	r2, [r3, #26]
-	movs	r1, #255
-	movs	r6, #0
-	bl	NAND_Memset
-	b	.L1478
-.L1481:
-	ldrb	r1, [r0, #1]	@ zero_extendqisi2
-	ldr	r0, [r4, #364]
-	bfi	r1, r0, #4, #1
-	mov	r0, r4
-	strb	r1, [r5, #1]
-	ldrh	r1, [r3, #28]
-	ldrh	r3, [r5]
-	str	r6, [sp, #24]
-	strh	r1, [sp, #20]	@ movhi
-	add	r1, sp, #16
-	ubfx	r3, r3, #0, #12
-	strh	r2, [sp, #18]	@ movhi
-	strh	r3, [sp, #16]	@ movhi
-	str	sp, [sp, #28]
-	ldr	r3, [r4, #1980]
-	blx	r3
-	adds	r3, r0, #2
-	mov	r6, r0
-	bne	.L1482
-	ldr	r3, [r4, #4]
-	movs	r0, #36
-	ldrh	r1, [r5, #2]
-	movs	r2, #1
-	ldr	r3, [r3, #32]
-	mla	r1, r0, r1, r3
-	mov	r0, r4
-	bl	add_prio_gc
-	mov	r1, r7
-	ldr	r0, .L1483+4
-	bl	NAND_Print
-.L1482:
-	mov	r0, r4
-	bl	do_prio_gc
-	b	.L1478
-.L1484:
-	.align	2
-.L1483:
-	.word	.LC146
-	.word	.LC285
-	.size	_nftl_nand_read_logic_page, .-_nftl_nand_read_logic_page
-	.section	.text.done_static_wear_leveling,"ax",%progbits
-	.align	1
-	.global	done_static_wear_leveling
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	done_static_wear_leveling, %function
-done_static_wear_leveling:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	ldr	r5, [r0, #580]
-	cbz	r5, .L1491
-	mov	r1, r5
-	bl	is_current_blcok
-	cmp	r0, #1
-	bne	.L1487
-	movs	r3, #0
-	str	r3, [r4, #580]
-.L1491:
-	movs	r5, #2
-	b	.L1485
-.L1487:
-	mov	r0, r4
-	bl	is_block_in_invalid_list
-	ldrh	r1, [r5]
-	mov	r6, r0
-	cbnz	r0, .L1488
-	ldr	r0, .L1492
-	bl	NAND_Print_DBG
-	str	r6, [r4, #580]
-	b	.L1491
-.L1488:
-	ldrh	r2, [r5, #6]
-	movs	r5, #1
-	ldr	r0, .L1492+4
-	bl	NAND_Print_DBG
-	ldr	r2, [r4, #1968]
-	mov	r0, r4
-	strh	r5, [r4, #578]	@ movhi
-	ldr	r3, [r2, #132]
-	add	r3, r3, r5
-	str	r3, [r2, #132]
-	bl	fill_no_use_data_to_current_block
-	movw	r2, #65535
-	ldr	r1, [r4, #580]
-	mov	r0, r4
-	bl	garbage_collect_first
-	ldr	r2, [r4, #580]
-	mov	r3, r0
-	cbz	r0, .L1489
-	ldrh	r1, [r2]
-	ldr	r0, .L1492+8
-	bl	NAND_Print
-	movs	r3, #0
-	str	r3, [r4, #580]
-.L1485:
-	mov	r0, r5
-	pop	{r4, r5, r6, pc}
-.L1489:
-	strh	r0, [r4, #578]	@ movhi
-	mov	r1, r2
-	mov	r0, r4
-	bl	is_block_in_free_list
-	mov	r5, r0
-	cbnz	r0, .L1490
-	ldrh	r1, [r2]
-	ldr	r0, .L1492+12
-	bl	NAND_Print
-	str	r5, [r4, #580]
-	b	.L1485
-.L1490:
-	str	r3, [r4, #580]
-	mov	r5, r3
-	b	.L1485
-.L1493:
-	.align	2
-.L1492:
-	.word	.LC286
-	.word	.LC287
-	.word	.LC288
-	.word	.LC289
-	.size	done_static_wear_leveling, .-done_static_wear_leveling
-	.section	.text.do_static_wear_leveling,"ax",%progbits
-	.align	1
-	.global	do_static_wear_leveling
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	do_static_wear_leveling, %function
-do_static_wear_leveling:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #1972]
-	push	{r4, lr}
-	mov	r4, r0
-	ldrh	r3, [r3, #6]
-	cbnz	r3, .L1495
-.L1497:
-	movs	r0, #0
-.L1494:
-	pop	{r4, pc}
-.L1495:
-	ldrh	r3, [r0, #384]
-	cbz	r3, .L1498
-	bl	check_static_wear_leveling
-	cmp	r0, #0
-	bne	.L1497
-	mov	r0, r4
-	pop	{r4, lr}
-	b	done_static_wear_leveling
-.L1498:
-	movs	r0, #1
-	b	.L1494
-	.size	do_static_wear_leveling, .-do_static_wear_leveling
-	.section	.text.gc_one,"ax",%progbits
-	.align	1
-	.global	gc_one
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_one, %function
-gc_one:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #200]
-	push	{r4, lr}
-	cbnz	r3, .L1500
-.L1502:
-	movs	r4, #8
-.L1499:
-	mov	r0, r4
-	pop	{r4, pc}
-.L1500:
-	ldrh	r3, [r3, #4]
-	cmp	r3, r1
-	bls	.L1502
-	movw	r2, #65535
-	movs	r1, #0
-	bl	garbage_collect_first
-	cmp	r0, #8
-	mov	r4, r0
-	beq	.L1502
-	cbnz	r0, .L1503
-	ldr	r0, .L1507
-	bl	NAND_Print_DBG
-	b	.L1499
-.L1503:
-	ldr	r0, .L1507+4
-	movs	r4, #1
-	bl	NAND_Print
-	b	.L1499
-.L1508:
-	.align	2
-.L1507:
-	.word	.LC290
-	.word	.LC291
-	.size	gc_one, .-gc_one
-	.section	.text.gc_all_cnt,"ax",%progbits
-	.align	1
-	.global	gc_all_cnt
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_all_cnt, %function
-gc_all_cnt:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r5, r0
-	mov	r6, r1
-	mov	r4, r2
-.L1510:
-	cbz	r4, .L1514
-	mov	r1, r6
-	mov	r0, r5
-	bl	gc_one
-	cmp	r0, #8
-	add	r4, r4, #-1
-	bne	.L1510
-.L1514:
-	movs	r0, #0
-	pop	{r4, r5, r6, pc}
-	.size	gc_all_cnt, .-gc_all_cnt
-	.section	.text.gc_all_base_on_free_blks,"ax",%progbits
-	.align	1
-	.global	gc_all_base_on_free_blks
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_all_base_on_free_blks, %function
-gc_all_base_on_free_blks:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r3, [r0, #22]
-	ldrh	r1, [r0, #380]
-	push	{r4, r5, r6, lr}
-	mov	r5, r0
-	cmp	r3, r1
-	bcc	.L1515
-	ldrh	r2, [r0, #382]
-	add	r2, r2, r2, lsl #1
-	cmp	r2, r3
-	bcc	.L1515
-	ldr	r6, .L1520
-	ldrb	r0, [r6, #10]	@ zero_extendqisi2
-	ldrh	r4, [r6, #8]
-	muls	r4, r0, r4
-	ldr	r0, [r6, #4]
-	muls	r0, r4, r0
-	cmp	r0, #264192
-	bcs	.L1515
-	ldr	r0, [r5, #4]
-	subs	r3, r3, r1
-	subs	r1, r2, r1
-	ldrh	r4, [r0, #20]
-	lsrs	r4, r4, #1
-	subs	r0, r4, #3
-	muls	r0, r3, r0
-	bl	__aeabi_uidiv
-	adds	r1, r4, r0
-	movs	r2, #3
-	mov	r0, r5
-	uxth	r1, r1
-	pop	{r4, r5, r6, lr}
-	b	gc_all_cnt
-.L1515:
-	movs	r0, #0
-	pop	{r4, r5, r6, pc}
-.L1521:
-	.align	2
-.L1520:
-	.word	.LANCHOR15
-	.size	gc_all_base_on_free_blks, .-gc_all_base_on_free_blks
-	.section	.text.gc_all,"ax",%progbits
-	.align	1
-	.global	gc_all
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_all, %function
-gc_all:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	mov	r5, r1
-.L1523:
-	mov	r1, r5
-	mov	r0, r4
-	bl	gc_one
-	cmp	r0, #0
-	beq	.L1523
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-	.size	gc_all, .-gc_all
-	.section	.text.gc_all_enhance,"ax",%progbits
-	.align	1
-	.global	gc_all_enhance
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_all_enhance, %function
-gc_all_enhance:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrh	r1, [r0, #22]
-	ldrh	r2, [r0, #380]
-	push	{r4}
-	cmp	r2, r1
-	bhi	.L1526
-	ldrh	r2, [r0, #382]
-	add	r2, r2, r2, lsl #1
-	cmp	r2, r1
-	bcc	.L1526
-	ldr	r4, .L1531
-	ldrb	r2, [r4, #10]	@ zero_extendqisi2
-	ldrh	r1, [r4, #8]
-	muls	r1, r2, r1
-	ldr	r2, [r4, #4]
-	muls	r2, r1, r2
-	cmp	r2, #264192
-	bcs	.L1526
-	ldr	r3, [r0, #4]
-	pop	{r4}
-	ldrh	r1, [r3, #20]
-	lsrs	r1, r1, #1
-	b	gc_all
-.L1526:
-	movs	r0, #0
-	pop	{r4}
-	bx	lr
-.L1532:
-	.align	2
-.L1531:
-	.word	.LANCHOR15
-	.size	gc_all_enhance, .-gc_all_enhance
-	.section	.text.gc_win_block,"ax",%progbits
-	.align	1
-	.global	gc_win_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	gc_win_block, %function
-gc_win_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r7, r0
-	ldr	r3, [r0, #4]
-	movs	r5, #0
-	ldrh	r6, [r3, #20]
-	muls	r6, r1, r6
-.L1534:
-	cmp	r5, r6
-	blt	.L1536
-	movs	r4, #0
-	b	.L1533
-.L1536:
-	ldr	r4, [r7, #200]
-	cbz	r4, .L1533
-	ldrh	r3, [r4, #4]
-	movs	r1, #1
-	mov	r0, r7
-	add	r5, r5, r3
-	subs	r5, r5, #1
-	bl	gc_one
-	mov	r4, r0
-	cmp	r0, #0
-	beq	.L1534
-	cmp	r0, #1
-	bne	.L1533
-	ldr	r0, .L1540
-	bl	NAND_Print_DBG
-.L1533:
-	mov	r0, r4
-	pop	{r3, r4, r5, r6, r7, pc}
-.L1541:
-	.align	2
-.L1540:
-	.word	.LC292
-	.size	gc_win_block, .-gc_win_block
-	.section	.text.power_on_gc,"ax",%progbits
-	.align	1
-	.global	power_on_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	power_on_gc, %function
-power_on_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, lr}
-	mov	r4, r0
-	ldrh	r6, [r0, #22]
-	sub	sp, sp, #20
-	ldrh	r7, [r0, #380]
-	ldr	r3, [r0, #4]
-	cmp	r6, r7
-	ldrh	r5, [r3, #20]
-	bcc	.L1543
-	ldrb	r8, [r3, #8]	@ zero_extendqisi2
-	ldrh	r10, [r0, #382]
-	ldr	r0, [r0, #32]
-	mov	r1, r8
-	bl	__aeabi_uidiv
-	mov	r1, r5
-	bl	__aeabi_uidiv
-	mov	r1, r8
-	str	r0, [sp, #8]
-	ldr	r0, [r4, #24]
-	bl	__aeabi_uidiv
-	mov	r1, r5
-	bl	__aeabi_uidiv
-	ldrh	r3, [r4, #18]
-	mov	r2, r7
-	str	r0, [sp, #4]
-	mov	r1, r6
-	ldr	r0, .L1553
-	str	r3, [sp]
-	mov	r3, r10
-	bl	NAND_Print_DBG
-.L1544:
-	movs	r0, #0
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L1543:
-	subs	r5, r5, #10
-	movs	r7, #0
-	uxth	r5, r5
-.L1545:
-	ldrh	r2, [r4, #22]
-	uxth	r6, r7
-	ldrh	r3, [r4, #380]
-	cmp	r2, r3
-	bcs	.L1548
-	mov	r1, r5
-	mov	r0, r4
-	bl	gc_one
-	cmp	r0, #8
-	add	r7, r7, #1
-	bne	.L1545
-.L1548:
-	ldr	r3, [r4, #4]
-	ldr	r7, .L1553+4
-	ldrh	r5, [r3, #20]
-	lsrs	r5, r5, #3
-.L1546:
-	ldrh	r1, [r4, #22]
-	cmp	r1, #4
-	bhi	.L1551
-	mov	r0, r7
-	bl	NAND_Print_DBG
-	mov	r1, r5
-	mov	r0, r4
-	bl	gc_one
-	cmp	r0, #8
-	bne	.L1549
-.L1551:
-	mov	r1, r6
-	ldr	r0, .L1553+8
-	bl	NAND_Print_DBG
-	b	.L1544
-.L1549:
-	adds	r6, r6, #1
-	uxth	r6, r6
-	b	.L1546
-.L1554:
-	.align	2
-.L1553:
-	.word	.LC293
-	.word	.LC294
-	.word	.LC295
-	.size	power_on_gc, .-power_on_gc
-	.section	.text.all_time_gc,"ax",%progbits
-	.align	1
-	.global	all_time_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	all_time_gc, %function
-all_time_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r1, [r0, #22]
-	ldrh	r2, [r0, #382]
-	push	{r3, lr}
-	cmp	r1, r2
-	bcs	.L1556
-	ldrh	r2, [r0, #384]
-	cbz	r2, .L1556
-	ldr	r3, [r0, #4]
-	ldrh	r1, [r3, #20]
-	subs	r1, r1, #3
-	uxth	r1, r1
-	bl	gc_one
-.L1556:
-	movs	r0, #0
-	pop	{r3, pc}
-	.size	all_time_gc, .-all_time_gc
-	.section	.text.shutdown_on_gc,"ax",%progbits
-	.align	1
-	.global	shutdown_on_gc
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	shutdown_on_gc, %function
-shutdown_on_gc:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r2, [r0, #382]
-	push	{r4, r5, lr}
-	sub	sp, sp, #20
-	ldrh	r3, [r0, #384]
-	mov	r4, r0
-	str	r2, [sp, #8]
-	ldrh	r2, [r0, #380]
-	ldr	r5, .L1568
-	ldr	r1, .L1568+4
-	str	r2, [sp, #4]
-	ldrh	r2, [r0, #22]
-	str	r2, [sp]
-	ldr	r2, [r0, #200]
-	ldr	r0, .L1568+8
-	bl	NAND_Print_DBG
-.L1561:
-	ldrh	r1, [r4, #22]
-	ldrh	r3, [r4, #382]
-.L1564:
-	cmp	r1, r3
-	bhi	.L1563
-	ldr	r2, [r4, #200]
-	cbnz	r2, .L1562
-	ldrh	r2, [r4, #380]
-	ldr	r0, .L1568+12
-	bl	NAND_Print
-.L1563:
-	movs	r0, #0
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, pc}
-.L1562:
-	ldrh	r2, [r4, #384]
-	cmp	r2, #0
-	beq	.L1564
-	movs	r1, #0
-	mov	r0, r4
-	bl	gc_one
-	ldrh	r3, [r4, #382]
-	mov	r0, r5
-	ldrh	r2, [r4, #380]
-	ldrh	r1, [r4, #22]
-	bl	NAND_Print_DBG
-	b	.L1561
-.L1569:
-	.align	2
-.L1568:
-	.word	.LC298
-	.word	.LANCHOR16
-	.word	.LC296
-	.word	.LC297
-	.size	shutdown_on_gc, .-shutdown_on_gc
-	.section	.text.garbage_collect,"ax",%progbits
-	.align	1
-	.global	garbage_collect
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	garbage_collect, %function
-garbage_collect:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldrh	r3, [r0, #380]
-	ldrh	r1, [r0, #22]
-	push	{r4, lr}
-	mov	r4, r0
-	cmp	r3, r1
-	itt	cs
-	movcs	r3, #0
-	strhcs	r3, [r0, #384]	@ movhi
-	ldrh	r0, [r0, #384]
-	cbz	r0, .L1572
-.L1589:
-	movs	r0, #0
-	b	.L1570
-.L1572:
-	ldrh	r3, [r4, #382]
-	cmp	r3, r1
-	bls	.L1574
-	ldrh	r3, [r4, #386]
-	cbnz	r3, .L1576
-	ldr	r3, [r4, #200]
-	cbnz	r3, .L1577
-	ldr	r0, .L1591
-	bl	NAND_Print
-.L1590:
-	movs	r0, #1
-.L1570:
-	pop	{r4, pc}
-.L1577:
-	ldrh	r2, [r3, #4]
-	ldr	r3, [r4, #4]
-	ldrh	r3, [r3, #20]
-	cmp	r2, r3, lsr #1
-	bcc	.L1578
-	movs	r3, #4
-.L1588:
-	strh	r3, [r4, #388]	@ movhi
-	ldr	r3, [r4, #1972]
-	ldrh	r2, [r4, #22]
-	ldrh	r3, [r3, #16]
-	cmp	r2, r3
-	itt	ls
-	movwls	r3, #65535
-	strhls	r3, [r4, #388]	@ movhi
-.L1576:
-	ldrh	r2, [r4, #388]
-	movw	r3, #65535
-	cmp	r2, r3
-	beq	.L1583
-	movs	r1, #0
-	mov	r0, r4
-	bl	garbage_collect_first
-	cmp	r0, #0
-	beq	.L1589
-	ldrh	r1, [r4, #22]
-	ldr	r0, .L1591+4
-	bl	NAND_Print
-	b	.L1590
-.L1578:
-	cmp	r2, r3, lsr #2
-	bcc	.L1580
-	movs	r3, #8
-	b	.L1588
-.L1580:
-	cmp	r2, r3, lsr #3
-	bcc	.L1581
-	movs	r3, #16
-	b	.L1588
-.L1581:
-	ldr	r0, .L1591+8
-	bl	NAND_Print_DBG
-	movw	r3, #65535
-	b	.L1588
-.L1583:
-	movs	r1, #1
-	mov	r0, r4
-	bl	gc_win_block
-	b	.L1589
-.L1574:
-	movs	r3, #1
-	strh	r0, [r4, #388]	@ movhi
-	str	r3, [r4, #384]
-	b	.L1570
-.L1592:
-	.align	2
-.L1591:
-	.word	.LC299
-	.word	.LC301
-	.word	.LC300
-	.size	garbage_collect, .-garbage_collect
-	.section	.text._nftl_nand_write_logic_page,"ax",%progbits
-	.align	1
-	.global	_nftl_nand_write_logic_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nftl_nand_write_logic_page, %function
-_nftl_nand_write_logic_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r5, r0
-	mov	r6, r1
-	bl	nand_write_logic_page_no_gc
-	mov	r4, r0
-	cbz	r0, .L1594
-	movs	r4, #1
-	mov	r1, r6
-	ldr	r0, .L1596
-	bl	NAND_Print
-.L1593:
-	mov	r0, r4
-	pop	{r4, r5, r6, pc}
-.L1594:
-	mov	r0, r5
-	bl	garbage_collect
-	mov	r0, r5
-	bl	all_time_gc
-	mov	r0, r5
-	bl	do_prio_gc
-	b	.L1593
-.L1597:
-	.align	2
-.L1596:
-	.word	.LC302
-	.size	_nftl_nand_write_logic_page, .-_nftl_nand_write_logic_page
-	.section	.text.nftl_cache_init,"ax",%progbits
-	.align	1
-	.global	nftl_cache_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_cache_init, %function
-nftl_cache_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #1972]
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r4, r0
-	mov	r6, r0
-	movs	r7, #255
-	mov	r8, #-1
-	movs	r5, #0
-	ldrh	r3, [r3, #22]
-	strh	r5, [r0, #586]	@ movhi
-	strh	r5, [r0, #588]	@ movhi
-	strh	r3, [r0, #584]	@ movhi
-	strh	r5, [r0, #590]	@ movhi
-	str	r5, [r0, #1568]
-	str	r5, [r0, #1572]
-	str	r5, [r0, #1576]
-	str	r5, [r0, #1580]
-	str	r5, [r0, #1600]
-	str	r5, [r0, #1604]
-	str	r5, [r0, #1608]
-	str	r5, [r0, #1612]
-.L1599:
-	ldr	r3, [r4, #4]
-	ldrh	r0, [r3, #26]
-	ldrh	r3, [r4, #584]
-	cmp	r3, r5
-	bhi	.L1602
-	bl	nftl_malloc
-	str	r0, [r4, #1616]
-	cbnz	r0, .L1603
-	ldr	r1, .L1605
-	ldr	r0, .L1605+4
-	b	.L1604
-.L1602:
-	movs	r3, #0
-	strh	r5, [r6, #592]	@ movhi
-	strh	r7, [r6, #594]	@ movhi
-	str	r8, [r6, #600]
-	strd	r3, r3, [r6, #608]
-	strd	r3, r3, [r6, #616]
-	adds	r6, r6, #32
-	strh	r3, [r6, #564]	@ movhi
-	strh	r3, [r6, #566]	@ movhi
-	bl	nftl_malloc
-	str	r0, [r6, #572]
-	cbnz	r0, .L1600
-	ldr	r1, .L1605
-	ldr	r0, .L1605+8
-.L1604:
-	bl	NAND_Print
-	movs	r0, #1
-.L1598:
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1600:
-	adds	r5, r5, #1
-	b	.L1599
-.L1603:
-	movs	r0, #0
-	b	.L1598
-.L1606:
-	.align	2
-.L1605:
-	.word	.LANCHOR17
-	.word	.LC304
-	.word	.LC303
-	.size	nftl_cache_init, .-nftl_cache_init
-	.section	.text.nftl_cache_exit,"ax",%progbits
-	.align	1
-	.global	nftl_cache_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_cache_exit, %function
-nftl_cache_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r0
-	movs	r4, #0
-.L1608:
-	ldrh	r3, [r5, #584]
-	cmp	r3, r4
-	bgt	.L1609
-	ldr	r0, [r5, #1616]
-	bl	nftl_free
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-.L1609:
-	add	r3, r5, r4, lsl #5
-	adds	r4, r4, #1
-	ldr	r0, [r3, #604]
-	bl	nftl_free
-	b	.L1608
-	.size	nftl_cache_exit, .-nftl_cache_exit
-	.section	.text.nftl_zone_release,"ax",%progbits
-	.align	1
-	.global	nftl_zone_release
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_zone_release, %function
-nftl_zone_release:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	bl	nftl_cache_exit
-	mov	r0, r4
-	bl	zone_param_exit
-	ldr	r3, [r4, #4]
-	ldr	r0, [r3, #32]
-	bl	nftl_free
-	ldr	r0, [r4, #4]
-	bl	nftl_free
-	mov	r0, r4
-	pop	{r4, lr}
-	b	nftl_free
-	.size	nftl_zone_release, .-nftl_zone_release
-	.section	.text.nftl_exit,"ax",%progbits
-	.align	1
-	.global	nftl_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_exit, %function
-nftl_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	ldr	r0, [r0, #4]
-	bl	free_nand_partition
-	ldr	r0, [r4, #12]
-	bl	nftl_zone_release
-	ldr	r0, [r4, #16]
-	bl	nftl_free
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	nftl_exit, .-nftl_exit
-	.section	.text.nand_ftl_exit,"ax",%progbits
-	.align	1
-	.global	nand_ftl_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_ftl_exit, %function
-nand_ftl_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	ldr	r5, .L1615
-	ldr	r0, .L1615
-	bl	del_last_nftl_blk
-	mov	r4, r0
-.L1613:
-	mov	r0, r4
-	cbnz	r4, .L1614
-	pop	{r3, r4, r5, pc}
-.L1614:
-	bl	nftl_exit
-	mov	r0, r4
-	bl	nftl_free
-	mov	r0, r5
-	bl	del_last_nftl_blk
-	mov	r4, r0
-	b	.L1613
-.L1616:
-	.align	2
-.L1615:
-	.word	.LANCHOR0
-	.size	nand_ftl_exit, .-nand_ftl_exit
-	.section	.text.nftl_cache_clean,"ax",%progbits
-	.align	1
-	.global	nftl_cache_clean
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_cache_clean, %function
-nftl_cache_clean:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #1972]
-	add	r0, r0, #592
-	push	{r4, r5, lr}
-	movs	r4, #255
-	mov	r5, #-1
-	ldrh	r1, [r3, #22]
-	movs	r3, #0
-	strh	r3, [r0, #-6]	@ movhi
-	mov	r2, r3
-	strh	r3, [r0, #-4]	@ movhi
-	strh	r1, [r0, #-8]	@ movhi
-	strh	r3, [r0, #-2]	@ movhi
-	str	r3, [r0, #976]
-	str	r3, [r0, #980]
-	str	r3, [r0, #984]
-	str	r3, [r0, #988]
-	str	r3, [r0, #1008]
-	str	r3, [r0, #1012]
-	str	r3, [r0, #1016]
-	str	r3, [r0, #1020]
-.L1618:
-	cmp	r1, r3
-	add	r0, r0, #32
-	bhi	.L1619
-	movs	r0, #0
-	pop	{r4, r5, pc}
-.L1619:
-	strh	r3, [r0, #-32]	@ movhi
-	adds	r3, r3, #1
-	strh	r4, [r0, #-30]	@ movhi
-	str	r5, [r0, #-24]
-	strd	r2, r2, [r0, #-16]
-	strd	r2, r2, [r0, #-8]
-	strh	r2, [r0, #-28]	@ movhi
-	strh	r2, [r0, #-26]	@ movhi
-	b	.L1618
-	.size	nftl_cache_clean, .-nftl_cache_clean
-	.section	.text.search_from_cache_read_list,"ax",%progbits
-	.align	1
-	.global	search_from_cache_read_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	search_from_cache_read_list, %function
-search_from_cache_read_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #984]
-.L1621:
-	cbnz	r0, .L1623
-.L1620:
-	bx	lr
-.L1623:
-	ldr	r3, [r0, #8]
-	cmp	r3, r1
-	beq	.L1620
-	ldr	r0, [r0, #16]
-	b	.L1621
-	.size	search_from_cache_read_list, .-search_from_cache_read_list
-	.section	.text.search_from_cache_write_list,"ax",%progbits
-	.align	1
-	.global	search_from_cache_write_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	search_from_cache_write_list, %function
-search_from_cache_write_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #1024]
-.L1625:
-	cbnz	r0, .L1627
-.L1624:
-	bx	lr
-.L1627:
-	ldr	r3, [r0, #8]
-	cmp	r3, r1
-	beq	.L1624
-	ldr	r0, [r0, #24]
-	b	.L1625
-	.size	search_from_cache_write_list, .-search_from_cache_write_list
-	.section	.text.add_to_cache_read_list_tail,"ax",%progbits
-	.align	1
-	.global	add_to_cache_read_list_tail
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_to_cache_read_list_tail, %function
-add_to_cache_read_list_tail:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	add	r3, r0, #968
-	push	{r4, lr}
-.L1629:
-	ldr	r4, [r3, #16]
-	cbnz	r4, .L1632
-	str	r1, [r3, #16]
-	strd	r4, r3, [r1, #16]
-	strh	r2, [r1, #2]	@ movhi
-	cbnz	r2, .L1630
-	ldrh	r3, [r0, #2]
-	adds	r3, r3, #1
-	strh	r3, [r0, #2]	@ movhi
-.L1631:
-	movs	r0, #0
-	pop	{r4, pc}
-.L1632:
-	mov	r3, r4
-	b	.L1629
-.L1630:
-	ldrh	r3, [r0, #6]
-	adds	r3, r3, #1
-	strh	r3, [r0, #6]	@ movhi
-	b	.L1631
-	.size	add_to_cache_read_list_tail, .-add_to_cache_read_list_tail
-	.section	.text.add_to_cache_write_list_tail,"ax",%progbits
-	.align	1
-	.global	add_to_cache_write_list_tail
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	add_to_cache_write_list_tail, %function
-add_to_cache_write_list_tail:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	add	r2, r0, #1000
-.L1634:
-	ldr	r3, [r2, #24]
-	cbnz	r3, .L1635
-	str	r1, [r2, #24]
-	strd	r3, r2, [r1, #24]
-	movs	r2, #1
-	strh	r2, [r1, #2]	@ movhi
-	ldrh	r2, [r0, #4]
-	adds	r2, r2, #1
-	strh	r2, [r0, #4]	@ movhi
-	mov	r0, r3
-	bx	lr
-.L1635:
-	mov	r2, r3
-	b	.L1634
-	.size	add_to_cache_write_list_tail, .-add_to_cache_write_list_tail
-	.section	.text.del_from_cache_read_list,"ax",%progbits
-	.align	1
-	.global	del_from_cache_read_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_from_cache_read_list, %function
-del_from_cache_read_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrd	r3, r2, [r1, #16]
-	str	r3, [r2, #16]
-	ldr	r3, [r1, #16]
-	cbz	r3, .L1637
-	str	r2, [r3, #20]
-.L1637:
-	ldrh	r3, [r1, #2]
-	cbnz	r3, .L1638
-	ldrh	r3, [r0, #2]
-	subs	r3, r3, #1
-	strh	r3, [r0, #2]	@ movhi
-.L1639:
-	movs	r3, #255
-	mov	r0, r1
-	strh	r3, [r1, #2]	@ movhi
-	movs	r3, #0
-	strd	r3, r3, [r1, #16]
-	bx	lr
-.L1638:
-	ldrh	r3, [r0, #6]
-	subs	r3, r3, #1
-	strh	r3, [r0, #6]	@ movhi
-	b	.L1639
-	.size	del_from_cache_read_list, .-del_from_cache_read_list
-	.section	.text.del_from_cache_write_list,"ax",%progbits
-	.align	1
-	.global	del_from_cache_write_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	del_from_cache_write_list, %function
-del_from_cache_write_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrd	r3, r2, [r1, #24]
-	str	r3, [r2, #24]
-	ldr	r3, [r1, #24]
-	cbz	r3, .L1644
-	str	r2, [r3, #28]
-.L1644:
-	movs	r3, #0
-	strd	r3, r3, [r1, #24]
-	movs	r3, #255
-	strh	r3, [r1, #2]	@ movhi
-	ldrh	r3, [r0, #4]
-	subs	r3, r3, #1
-	strh	r3, [r0, #4]	@ movhi
-	mov	r0, r1
-	bx	lr
-	.size	del_from_cache_write_list, .-del_from_cache_write_list
-	.section	.text.get_empty_cahce_node,"ax",%progbits
-	.align	1
-	.global	get_empty_cahce_node
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_empty_cahce_node, %function
-get_empty_cahce_node:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrh	r2, [r0]
-	movs	r1, #0
-	push	{r4}
-.L1649:
-	uxth	r3, r1
-	cmp	r2, r3
-	bhi	.L1651
-	ldrh	r3, [r0, #6]
-	ldr	r1, [r0, #984]
-	cmp	r3, #9
-	bhi	.L1652
-.L1653:
-	cbz	r1, .L1648
-	ldrh	r3, [r1, #2]
-	cbz	r3, .L1660
-	ldr	r1, [r1, #16]
-	b	.L1653
-.L1651:
-	adds	r3, r1, #1
-	add	r4, r0, r3, lsl #5
-	ldrh	r4, [r4, #-22]
-	cmp	r4, #255
-	bne	.L1658
-	add	r1, r0, r1, lsl #5
-	adds	r1, r1, #8
-.L1648:
-	mov	r0, r1
-	pop	{r4}
-	bx	lr
-.L1658:
-	mov	r1, r3
-	b	.L1649
-.L1654:
-	ldr	r1, [r1, #16]
-.L1652:
-	cmp	r1, #0
-	beq	.L1648
-	ldrh	r3, [r1, #2]
-	cmp	r3, #2
-	bne	.L1654
-.L1660:
-	pop	{r4}
-	b	del_from_cache_read_list
-	.size	get_empty_cahce_node, .-get_empty_cahce_node
-	.section	.text.nand_cache_read,"ax",%progbits
-	.align	1
-	.global	nand_cache_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_cache_read, %function
-nand_cache_read:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	str	r1, [sp, #4]
-	mov	r7, r3
-	cbnz	r3, .L1662
-	ldr	r0, .L1672
-	bl	NAND_Print
-.L1670:
-	mov	fp, #0
-.L1661:
-	mov	r0, fp
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1662:
-	lsrs	r3, r2, #8
-	uxtb	r2, r2
-	lsl	r8, r3, #9
-	ldr	r3, [r0, #1972]
-	lsls	r5, r2, #9
-	ldrh	r3, [r3]
-	str	r3, [sp, #12]
-	cbz	r3, .L1664
-	ldr	r6, [r0, #604]
-	ldr	r3, [r0, #2004]
-	mov	r2, r6
-	blx	r3
-	mov	r2, r5
-	mov	fp, r0
-	add	r1, r6, r8
-	mov	r0, r7
-	bl	NAND_Memcpy
-	cmp	fp, #10
-	bne	.L1661
-	ldr	r2, [r4, #1968]
-	mov	r0, r4
-	ldr	r1, [sp, #4]
-	ldr	r3, [r2, #120]
-	adds	r3, r3, #1
-	str	r3, [r2, #120]
-	mov	r2, r6
-	ldr	r3, [r4, #2000]
-	blx	r3
-	b	.L1670
-.L1664:
-	add	r10, r0, #584
+	bl	nand_enable_chip
 	mov	r0, r10
-	bl	search_from_cache_write_list
-	mov	fp, r0
-	cbz	r0, .L1665
-	ldr	r3, [r0, #12]
-	ldrh	r6, [r0, #6]
-	str	r3, [sp, #8]
-	ldrh	r3, [r0, #4]
-	lsls	r6, r6, #9
-	ldr	r2, [sp, #8]
-	uxth	r6, r6
-	lsls	r3, r3, #9
-	add	r10, r2, r8
-	uxth	r3, r3
-	add	r3, r3, r6
-	cmp	r3, r8
-	bcc	.L1666
-	add	r2, r8, r5
-	cmp	r3, r2
-	bcc	.L1666
-.L1671:
-	mov	r2, r5
-	mov	r1, r10
-	mov	r0, r7
-	bl	NAND_Memcpy
-	b	.L1670
-.L1666:
-	ldr	r3, [r4, #2004]
-	mov	r0, r4
-	ldr	r2, [r4, #1616]
-	ldr	r1, [sp, #4]
-	blx	r3
-	ldr	r3, [r4, #4]
-	ldr	r1, [r4, #1616]
-	ldrh	r2, [r3, #26]
-	ldr	r3, [sp, #8]
-	add	r1, r1, r6
-	subs	r2, r2, r6
-	add	r3, r3, r6
-	mov	r0, r3
-	bl	NAND_Memcpy
-	ldr	r3, [r4, #4]
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	strh	r3, [fp, #6]	@ movhi
-	b	.L1671
-.L1665:
-	ldr	r1, [sp, #4]
-	mov	r0, r10
-	bl	search_from_cache_read_list
-	mov	r6, r0
-	cbz	r0, .L1667
-	ldrh	r4, [r0, #2]
-	cbnz	r4, .L1668
-	mov	r1, r0
-	mov	r0, r10
-	bl	del_from_cache_read_list
-	ldr	r1, [r6, #12]
-	mov	r2, r5
-	mov	r0, r7
-	add	r1, r1, r8
-	bl	NAND_Memcpy
-	mov	r2, r4
-	mov	r1, r6
-	mov	r0, r10
-	bl	add_to_cache_read_list_tail
-	b	.L1670
-.L1668:
-	ldr	r1, [r0, #12]
-	mov	r2, r5
-	mov	r0, r7
-	add	r1, r1, r8
-	bl	NAND_Memcpy
-	b	.L1661
-.L1667:
-	mov	r0, r10
-	bl	get_empty_cahce_node
-	cbnz	r0, .L1669
-	ldrh	r3, [r4, #590]
-	mov	fp, #1
-	ldrh	r2, [r4, #586]
-	ldrh	r1, [r4, #588]
-	ldr	r0, .L1672+4
-	bl	NAND_Print
-	b	.L1661
-.L1669:
-	ldr	r2, [sp, #4]
-	ldr	r1, [sp, #4]
-	ldr	r3, [r4, #2004]
-	str	r2, [r0, #8]
-	ldr	r2, [r0, #12]
-	strd	r2, r0, [sp, #8]
-	mov	r0, r4
-	blx	r3
-	ldr	r3, [sp, #12]
-	mov	fp, r0
-	ldr	r2, [r4, #4]
-	mov	r0, r10
-	strh	r6, [r3, #4]	@ movhi
-	mov	r1, r3
-	ldrb	r2, [r2, #8]	@ zero_extendqisi2
-	strh	r2, [r3, #6]	@ movhi
-	mov	r2, r6
-	bl	add_to_cache_read_list_tail
-	ldr	r3, [sp, #8]
-	mov	r2, r5
-	mov	r0, r7
-	add	r1, r3, r8
-	bl	NAND_Memcpy
-	cmp	fp, #10
-	bne	.L1661
-	ldr	r2, [r4, #1968]
-	mov	r0, r4
-	mov	fp, r6
-	ldr	r3, [r2, #120]
-	adds	r3, r3, #1
-	str	r3, [r2, #120]
-	ldr	r3, [r4, #2000]
-	ldrd	r1, r2, [sp, #4]
-	blx	r3
-	b	.L1661
-.L1673:
-	.align	2
-.L1672:
-	.word	.LC305
-	.word	.LC306
-	.size	nand_cache_read, .-nand_cache_read
-	.global	__aeabi_uidivmod
-	.section	.text.nand_op,"ax",%progbits
-	.align	1
-	.global	nand_op
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_op, %function
-nand_op:
-	@ args = 4, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r6, r1
-	ldr	r10, [sp, #32]
-	mov	r4, r3
-	cbz	r3, .L1675
-	ldr	r1, [r1, #24]
-	add	r3, r3, r2
-	cmp	r3, r1
-	bls	.L1676
-	movs	r4, #1
-	ldr	r0, .L1689
-	bl	NAND_Print
-.L1675:
-	mov	r0, r4
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1676:
-	ldr	r1, .L1689+4
-	ldr	r3, .L1689+8
-	cmp	r0, #0
-	ite	ne
-	movne	r8, r1
-	moveq	r8, r3
-	ldr	r3, [r6, #4]
-	mov	r0, r2
-	ldrb	r5, [r3, #8]	@ zero_extendqisi2
-	mov	r1, r5
-	bl	__aeabi_uidivmod
-	subs	r5, r5, r1
-	mov	fp, r0
-	uxth	r5, r5
-	mov	r3, r10
-	cmp	r4, r5
-	itet	ls
-	uxthls	r5, r4
-	subhi	r7, r4, r5
-	movls	r7, #0
-	orr	r2, r5, r1, lsl #8
-	mov	r1, r0
-	mov	r0, r6
-	uxth	r2, r2
-	blx	r8
-	mov	r4, r0
-	cmp	r7, #0
-	beq	.L1675
-.L1680:
-	ldr	r3, [r6, #4]
-	add	fp, fp, #1
-	add	r10, r10, r5, lsl #9
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	cmp	r7, r3
-	bhi	.L1681
-	mov	r3, r10
-	uxth	r2, r7
-	mov	r1, fp
-	mov	r0, r6
-	blx	r8
-	orrs	r4, r4, r0
-	b	.L1675
-.L1681:
-	uxth	r5, r3
-	subs	r7, r7, r3
-	mov	r1, fp
-	mov	r3, r10
-	mov	r2, r5
-	mov	r0, r6
-	blx	r8
-	orrs	r4, r4, r0
-	b	.L1680
-.L1690:
-	.align	2
-.L1689:
-	.word	.LC119
-	.word	nand_cache_write
-	.word	nand_cache_read
-	.size	nand_op, .-nand_op
-	.section	.text.__nand_read,"ax",%progbits
-	.align	1
-	.global	__nand_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_read, %function
-__nand_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r4, r5, r6, r7, fp, lr}
-	mov	r7, r3
-	ldr	r3, [r0, #356]
-	mov	r4, r0
-	mov	r6, r1
-	mov	r5, r2
-	cmp	r3, #3
-	bne	.L1692
-	ldr	r0, .L1693
-	bl	NAND_Print_DBG
-.L1692:
-	ldr	r1, [r4, #1968]
-	movs	r0, #0
-	ldrd	r2, [r1, #72]
-	adds	fp, r2, r5
-	mov	r2, r6
-	adc	ip, r3, #0
-	mov	r3, r5
-	strd	fp, [r1, #72]
-	mov	r1, r4
-	str	r7, [sp]
-	bl	nand_op
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, fp, pc}
-.L1694:
-	.align	2
-.L1693:
-	.word	.LC307
-	.size	__nand_read, .-__nand_read
-	.section	.text._nand_read,"ax",%progbits
-	.align	1
-	.global	_nand_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nand_read, %function
-_nand_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #12]
-	b	__nand_read
-	.size	_nand_read, .-_nand_read
-	.section	.text.nand_sector_cache_read,"ax",%progbits
-	.align	1
-	.global	nand_sector_cache_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_sector_cache_read, %function
-nand_sector_cache_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	addw	r0, r0, #1620
-	mov	r5, r2
-	bl	search_from_sector_cache_write_list
-	cbz	r0, .L1697
-	ldr	r1, [r0, #8]
-	mov	r2, #512
-	mov	r0, r5
-	bl	NAND_Memcpy
-	movs	r0, #0
-.L1696:
-	pop	{r4, r5, r6, pc}
-.L1697:
-	mov	r3, r2
-	mov	r0, r4
-	movs	r2, #1
-	bl	__nand_read
-	cmp	r0, #0
-	beq	.L1696
-	ldr	r0, .L1702
-	bl	NAND_Print
-	movs	r0, #1
-	b	.L1696
-.L1703:
-	.align	2
-.L1702:
-	.word	.LC308
-	.size	nand_sector_cache_read, .-nand_sector_cache_read
-	.section	.text.__nand_sector_read,"ax",%progbits
-	.align	1
-	.global	__nand_sector_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_sector_read, %function
-__nand_sector_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r8, r0
-	mov	r4, r1
-	mov	r6, r3
-	adds	r7, r1, r2
-	movs	r5, #0
-.L1705:
-	cmp	r4, r7
-	bne	.L1706
-	mov	r0, r5
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1706:
-	mov	r2, r6
-	mov	r1, r4
-	mov	r0, r8
-	adds	r4, r4, #1
-	bl	nand_sector_cache_read
-	add	r6, r6, #512
-	orrs	r5, r5, r0
-	b	.L1705
-	.size	__nand_sector_read, .-__nand_sector_read
-	.section	.text.__nand_write,"ax",%progbits
-	.align	1
-	.global	__nand_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_write, %function
-__nand_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r4, r5, r6, r7, fp, lr}
-	mov	r7, r3
-	ldr	r3, [r0, #356]
-	mov	r4, r0
-	mov	r6, r1
-	mov	r5, r2
-	cmp	r3, #3
-	bne	.L1708
-	ldr	r0, .L1709
-	bl	NAND_Print_DBG
-.L1708:
-	ldr	r1, [r4, #1968]
-	movs	r0, #1
-	ldrd	r2, [r1, #80]
-	adds	fp, r2, r5
-	mov	r2, r6
-	adc	ip, r3, #0
-	mov	r3, r5
-	strd	fp, [r1, #80]
-	mov	r1, r4
-	str	r7, [sp]
-	bl	nand_op
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, fp, pc}
-.L1710:
-	.align	2
-.L1709:
-	.word	.LC309
-	.size	__nand_write, .-__nand_write
-	.section	.text._nand_write,"ax",%progbits
-	.align	1
-	.global	_nand_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nand_write, %function
-_nand_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #12]
-	b	__nand_write
-	.size	_nand_write, .-_nand_write
-	.section	.text.write_data_to_nand,"ax",%progbits
-	.align	1
-	.global	write_data_to_nand
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	write_data_to_nand, %function
-write_data_to_nand:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r6, r0
-	mov	r0, #512
-	bl	NAND_Malloc
-	mov	r4, r0
-	cbnz	r0, .L1713
-	ldr	r1, .L1716
-	ldr	r0, .L1716+4
-	bl	NAND_Print
-.L1713:
-	movs	r5, #0
-	mov	r2, #512
-	movs	r1, #170
-	mov	r0, r4
-	bl	NAND_Memset
-.L1714:
-	mov	r1, r5
-	mov	r3, r4
-	movs	r2, #1
-	mov	r0, r6
-	adds	r5, r5, #1
-	bl	__nand_write
-	cmp	r5, #38912
-	bne	.L1714
-	mov	r0, r4
-	bl	nftl_free
-	movs	r0, #0
-	pop	{r4, r5, r6, pc}
-.L1717:
-	.align	2
-.L1716:
-	.word	.LANCHOR18
-	.word	.LC310
-	.size	write_data_to_nand, .-write_data_to_nand
-	.section	.text.nand_sector_cache_write,"ax",%progbits
-	.align	1
-	.global	nand_sector_cache_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_sector_cache_write, %function
-nand_sector_cache_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	addw	r5, r0, #1620
-	mov	r6, r0
-	mov	r0, r5
-	mov	r8, r1
-	mov	r7, r2
-	bl	search_from_sector_cache_write_list
-	mov	r4, r0
-	cbz	r0, .L1719
-	mov	r1, r0
-	mov	r0, r5
-	bl	del_from_sector_cache_write_list
-.L1727:
-	mov	r2, #512
-	mov	r1, r7
-	ldr	r0, [r4, #8]
-	bl	NAND_Memcpy
-	mov	r1, r4
-	mov	r0, r5
-	bl	add_to_sector_cache_write_list_tail
-	movs	r0, #0
-	b	.L1718
-.L1719:
-	ldrh	r3, [r6, #1622]
-	cmp	r3, #7
-	bls	.L1721
-	ldr	r1, [r6, #1960]
-	mov	r0, r5
-	bl	del_from_sector_cache_write_list
-	movs	r2, #1
-	mov	r4, r0
-	ldr	r3, [r0, #8]
-	ldr	r1, [r0, #4]
-	mov	r0, r6
-	bl	__nand_write
-	cbz	r0, .L1722
-	ldr	r0, .L1728
-.L1726:
-	bl	NAND_Print
-	movs	r0, #1
-.L1718:
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1721:
-	mov	r0, r5
-	bl	get_empty_sector_cahce_node
-	mov	r4, r0
-	cbnz	r0, .L1722
-	ldr	r0, .L1728+4
-	b	.L1726
-.L1722:
-	str	r8, [r4, #4]
-	b	.L1727
-.L1729:
-	.align	2
-.L1728:
-	.word	.LC311
-	.word	.LC312
-	.size	nand_sector_cache_write, .-nand_sector_cache_write
-	.section	.text.__nand_sector_write,"ax",%progbits
-	.align	1
-	.global	__nand_sector_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_sector_write, %function
-__nand_sector_write:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r8, r0
-	mov	r4, r1
-	mov	r6, r3
-	adds	r7, r1, r2
-	movs	r5, #0
-.L1731:
-	cmp	r4, r7
-	bne	.L1732
-	mov	r0, r5
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1732:
-	mov	r2, r6
-	mov	r1, r4
-	mov	r0, r8
-	adds	r4, r4, #1
-	bl	nand_sector_cache_write
-	add	r6, r6, #512
-	orrs	r5, r5, r0
-	b	.L1731
-	.size	__nand_sector_write, .-__nand_sector_write
-	.section	.text.__nand_flush_sector_write_cache,"ax",%progbits
-	.align	1
-	.global	__nand_flush_sector_write_cache
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_flush_sector_write_cache, %function
-__nand_flush_sector_write_cache:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r5, r0
-	mov	r6, r1
-	addw	r7, r0, #1620
-	movs	r4, #0
-.L1734:
-	ldr	r1, [r5, #1960]
-	cbz	r1, .L1735
-	mov	r0, r7
-	bl	del_from_sector_cache_write_list
-	movs	r2, #1
-	ldr	r3, [r0, #8]
-	ldr	r1, [r0, #4]
-	mov	r0, r5
-	bl	__nand_write
-	subs	r6, r6, #1
-	mov	r4, r0
-	bne	.L1734
-.L1735:
-	cbz	r4, .L1733
-	ldr	r0, .L1744
-	bl	NAND_Print
-.L1733:
-	mov	r0, r4
-	pop	{r3, r4, r5, r6, r7, pc}
-.L1745:
-	.align	2
-.L1744:
-	.word	.LC313
-	.size	__nand_flush_sector_write_cache, .-__nand_flush_sector_write_cache
-	.section	.text.flush_write_cache_to_nand,"ax",%progbits
-	.align	1
-	.global	flush_write_cache_to_nand
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	flush_write_cache_to_nand, %function
-flush_write_cache_to_nand:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, lr}
-	sub	sp, sp, #20
-	mov	r4, r0
-	movs	r2, #8
-	mov	r8, r1
-	mov	r0, sp
-	ldr	r1, .L1773
-	bl	memcpy
-	movs	r2, #8
-	ldr	r1, .L1773+4
-	add	r0, sp, r2
-	bl	memcpy
-	ldr	r1, [r4, #1608]
-	cbnz	r1, .L1747
-	ldr	r0, .L1773+8
-	bl	NAND_Print
-.L1748:
-	movs	r0, #0
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L1747:
-	add	r7, r4, #584
-	mov	r0, r7
-	bl	del_from_cache_write_list
-	mov	r5, r0
-	cmp	r0, #0
-	beq	.L1748
-	ldr	r3, [r4, #4]
-	ldrh	r2, [r0, #6]
-	ldrd	r1, r6, [r0, #8]
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	cmp	r2, r3
-	beq	.L1750
-	ldr	r3, [r4, #2004]
-	mov	r0, r4
-	ldr	r2, [r4, #1616]
-	blx	r3
-	mov	r10, r0
-	ldrh	r0, [r5, #6]
-	ldr	r3, [r4, #4]
-	ldr	r1, [r4, #1616]
-	lsls	r0, r0, #9
-	ldrh	r2, [r3, #26]
-	uxth	r0, r0
-	subs	r2, r2, r0
-	add	r1, r1, r0
-	add	r0, r0, r6
-	bl	NAND_Memcpy
-	cmp	r10, #10
-	bne	.L1750
-	ldrh	r2, [r4, #590]
-	ldr	r1, [r5, #8]
-	ldr	r0, .L1773+12
-	bl	NAND_Print
-.L1750:
-	movs	r3, #0
-	mov	r2, r6
-	strh	r3, [r5, #4]	@ movhi
-	mov	r0, r4
-	ldr	r3, [r4, #4]
-	ldr	r1, [r5, #8]
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	strh	r3, [r5, #6]	@ movhi
-	ldr	r3, [r4, #2000]
-	blx	r3
-	cbz	r0, .L1752
-	ldr	r0, .L1773+16
-	bl	NAND_Print
-.L1752:
-	ldr	r10, [r4, #4]
-	movs	r2, #8
-	mov	r1, sp
-	mov	r0, r10
-	bl	NAND_Memcmp
-	tst	r0, #255
-	bne	.L1753
-.L1756:
-	cmp	r8, #1
-	bne	.L1757
-	ldrh	r1, [r4, #320]
-	ldr	r0, .L1773+20
-	bl	NAND_Print
-	ldrh	r0, [r4, #320]
-	cbz	r0, .L1757
-	subs	r0, r0, #1
-	bl	nand_phy_get_page_type
-	cmp	r0, #2
-	bne	.L1757
-	ldr	r0, .L1773+24
-	bl	NAND_Print
-	ldr	r3, [r4, #2000]
-	mov	r2, r6
-	ldr	r1, [r5, #8]
-	mov	r0, r4
-	blx	r3
-	cbz	r0, .L1757
-	ldr	r0, .L1773+16
-	bl	NAND_Print
-	b	.L1757
-.L1753:
-	movs	r2, #8
-	mov	r0, r10
-	add	r1, sp, r2
-	bl	NAND_Memcmp
-	tst	r0, #255
-	beq	.L1756
-.L1757:
-	movs	r2, #2
-	mov	r1, r5
-	mov	r0, r7
-	bl	add_to_cache_read_list_tail
-	b	.L1748
-.L1774:
-	.align	2
-.L1773:
-	.word	.LANCHOR19
-	.word	.LANCHOR19+8
-	.word	.LC314
-	.word	.LC315
-	.word	.LC316
-	.word	.LC317
-	.word	.LC318
-	.size	flush_write_cache_to_nand, .-flush_write_cache_to_nand
-	.section	.text.nand_cache_write,"ax",%progbits
-	.align	1
-	.global	nand_cache_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_cache_write, %function
-nand_cache_write:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	mov	r6, r1
-	str	r3, [sp, #4]
-	cbnz	r3, .L1776
-.L1814:
-	movs	r0, #0
-	b	.L1775
-.L1776:
-	lsls	r3, r2, #1
-	lsl	r8, r2, #9
-	and	r10, r3, #65024
-	ldr	r3, [r0, #1972]
-	uxth	r8, r8
-	ldrh	r5, [r3]
-	cbz	r5, .L1778
-	ldr	r5, [r0, #604]
-	ldr	r3, [r0, #2004]
-	mov	r2, r5
-	blx	r3
-	mov	r2, r8
-	ldr	r1, [sp, #4]
-	add	r0, r5, r10
-	bl	NAND_Memcpy
-	ldr	r3, [r4, #2000]
-	mov	r2, r5
-	mov	r1, r6
-	mov	r0, r4
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, lr}
-	bx	r3
-.L1778:
-	add	r5, r0, #584
-	ldrh	r0, [r3, #2]
-	cbnz	r0, .L1779
-	ldr	r0, [r4, #4]
-	ldrb	r7, [r0, #8]	@ zero_extendqisi2
-	cmp	r7, r2
-	bne	.L1779
-	ldrh	r3, [r3, #26]
-	cbnz	r3, .L1779
-	mov	r0, r5
-	bl	search_from_cache_write_list
-	mov	r1, r0
-	cbz	r0, .L1780
-	mov	r0, r5
-	bl	del_from_cache_write_list
-.L1780:
-	mov	r1, r6
-	mov	r0, r5
-	bl	search_from_cache_read_list
-	mov	r1, r0
-	cbz	r0, .L1781
-	mov	r0, r5
-	bl	del_from_cache_read_list
-.L1781:
-	ldr	r3, [r4, #2000]
-	mov	r1, r6
-	ldr	r2, [sp, #4]
-	mov	r0, r4
-	blx	r3
-	cmp	r0, #0
-	beq	.L1814
-	mov	r1, r7
-	ldr	r0, .L1816
-	bl	NAND_Print
-.L1813:
-	movs	r0, #1
-.L1775:
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1779:
-	mov	r1, r6
-	mov	r0, r5
-	bl	search_from_cache_write_list
-	mov	r7, r0
-	cmp	r0, #0
-	beq	.L1783
-	mov	r1, r0
-	mov	r0, r5
-	bl	del_from_cache_write_list
-	ldr	r3, [r7, #12]
-	ldr	r2, [r4, #4]
-	str	r3, [sp, #8]
-	ldrb	r2, [r2, #8]	@ zero_extendqisi2
-	ldrh	r3, [r7, #6]
-	cmp	r2, r3
-	beq	.L1785
-	lsl	fp, r3, #9
-	uxth	fp, fp
-	cmp	r10, fp
-	bne	.L1786
-	add	r3, r3, r8, lsr #9
-	strh	r3, [r7, #6]	@ movhi
-.L1785:
-	ldrd	r1, r3, [sp, #4]
-	mov	r2, r8
-	add	r3, r3, r10
-	mov	r0, r3
-	bl	NAND_Memcpy
-	mov	r1, r7
-	mov	r0, r5
-	bl	add_to_cache_write_list_tail
-	mov	r1, r6
-	mov	r0, r5
-	bl	search_from_cache_read_list
-	mov	r1, r0
-	cmp	r0, #0
-	beq	.L1814
-	mov	r0, r5
-	bl	del_from_cache_read_list
-	b	.L1814
-.L1786:
-	ldr	r3, [r4, #2004]
-	mov	r1, r6
-	ldr	r2, [r4, #1616]
-	mov	r0, r4
-	blx	r3
-	ldr	r2, [r4, #4]
-	ldr	r3, [sp, #8]
-	ldr	r1, [r4, #1616]
-	ldrh	r2, [r2, #26]
-	str	r0, [sp, #12]
-	add	r0, r3, fp
-	add	r1, r1, fp
-	sub	r2, r2, fp
-	bl	NAND_Memcpy
-	ldr	r2, [r4, #4]
-	ldr	r3, [sp, #12]
-	ldrb	r2, [r2, #8]	@ zero_extendqisi2
-	cmp	r3, #10
-	strh	r2, [r7, #6]	@ movhi
-	bne	.L1785
-	mov	r1, r6
-	ldr	r0, .L1816+4
-	bl	NAND_Print
-	b	.L1785
-.L1783:
-	mov	r0, r5
-	bl	search_from_cache_read_list
-	mov	fp, r0
-	cbz	r0, .L1788
-	ldr	r0, [r0, #12]
-	mov	r2, r8
-	ldr	r1, [sp, #4]
-	add	r0, r0, r10
-	bl	NAND_Memcpy
-	ldr	r3, [r4, #4]
-	mov	r1, fp
-	strh	r7, [fp, #4]	@ movhi
-	mov	r0, r5
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	strh	r3, [fp, #6]	@ movhi
-	bl	del_from_cache_read_list
-	mov	r0, r5
-	bl	add_to_cache_write_list_tail
-	ldr	r3, [r4, #1972]
-	ldrh	r2, [r4, #588]
-	ldrh	r3, [r3, #24]
-	cmp	r2, r3
-	bcc	.L1814
-	mov	r1, r7
-	mov	r0, r4
-	bl	flush_write_cache_to_nand
-	cmp	r0, #0
-	beq	.L1814
-	ldr	r0, .L1816+8
-.L1815:
-	bl	NAND_Print
-	b	.L1813
-.L1789:
-	movs	r1, #0
-	mov	r0, r4
-	bl	flush_write_cache_to_nand
-	cbz	r0, .L1788
-	ldr	r0, .L1816+12
-	b	.L1815
-.L1788:
-	ldr	r3, [r4, #1972]
-	ldrh	r2, [r4, #588]
-	ldrh	r3, [r3, #24]
-	cmp	r2, r3
-	bcs	.L1789
-	mov	r0, r5
-	bl	get_empty_cahce_node
-	mov	r7, r0
-	cbnz	r0, .L1790
-	ldrh	r3, [r4, #590]
-	ldrh	r2, [r4, #586]
-	ldrh	r1, [r4, #588]
-	ldr	r0, .L1816+16
-	bl	NAND_Print
-	b	.L1813
-.L1790:
-	str	r6, [r0, #8]
-	ldr	fp, [r0, #12]
-	cmp	r10, #0
-	bne	.L1791
-	lsr	r3, r8, #9
-	strh	r10, [r0, #4]	@ movhi
-.L1812:
-	ldr	r1, [sp, #4]
-	add	r0, fp, r10
-	strh	r3, [r7, #6]	@ movhi
-	mov	r2, r8
-	bl	NAND_Memcpy
-	mov	r1, r7
-	mov	r0, r5
-	bl	add_to_cache_write_list_tail
-	b	.L1814
-.L1791:
-	ldr	r3, [r4, #2004]
-	mov	r2, fp
-	mov	r1, r6
-	mov	r0, r4
-	blx	r3
-	cmp	r0, #10
-	bne	.L1793
-	mov	r1, r6
-	ldr	r0, .L1816+20
-	bl	NAND_Print
-.L1793:
-	movs	r3, #0
-	strh	r3, [r7, #4]	@ movhi
-	ldr	r3, [r4, #4]
-	ldrb	r3, [r3, #8]	@ zero_extendqisi2
-	b	.L1812
-.L1817:
-	.align	2
-.L1816:
-	.word	.LC319
-	.word	.LC320
-	.word	.LC321
-	.word	.LC322
-	.word	.LC306
-	.word	.LC323
-	.size	nand_cache_write, .-nand_cache_write
-	.section	.text.__nand_flush_write_cache,"ax",%progbits
-	.align	1
-	.global	__nand_flush_write_cache
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_flush_write_cache, %function
-__nand_flush_write_cache:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	movs	r4, #0
-	mov	r6, r0
-	mov	r7, r1
-	mov	r5, r4
-.L1819:
-	ldr	r3, [r6, #1608]
-	cbz	r3, .L1820
-	adds	r4, r4, #1
-	movs	r1, #1
-	mov	r0, r6
-	bl	flush_write_cache_to_nand
-	cmp	r7, r4
-	orr	r5, r5, r0
-	bne	.L1819
-.L1820:
-	cbz	r5, .L1822
-	ldr	r0, .L1833
-	bl	NAND_Print
-.L1822:
-	cbz	r4, .L1818
-	ldr	r3, [r6, #356]
-	cbz	r3, .L1818
-	mov	r2, r4
-	ldrb	r1, [r6, #16]	@ zero_extendqisi2
-	ldr	r0, .L1833+4
-	bl	NAND_Print_DBG
-.L1818:
-	mov	r0, r5
-	pop	{r3, r4, r5, r6, r7, pc}
-.L1834:
-	.align	2
-.L1833:
-	.word	.LC313
-	.word	.LC324
-	.size	__nand_flush_write_cache, .-__nand_flush_write_cache
-	.section	.text._nand_flush_write_cache,"ax",%progbits
-	.align	1
-	.global	_nand_flush_write_cache
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nand_flush_write_cache, %function
-_nand_flush_write_cache:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #12]
-	b	__nand_flush_write_cache
-	.size	_nand_flush_write_cache, .-_nand_flush_write_cache
-	.section	.text.nand_clean_zone_table,"ax",%progbits
-	.align	1
-	.global	nand_clean_zone_table
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_clean_zone_table, %function
-nand_clean_zone_table:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r1, #1000
-	mov	r4, r0
-	bl	__nand_flush_write_cache
-	mov	r0, r4
-	bl	clean_block_list
-	mov	r0, r4
-	bl	nand_clean_zone_table2
-	mov	r0, r4
-	bl	nftl_cache_exit
-	movs	r0, #0
-	pop	{r4, pc}
-	.size	nand_clean_zone_table, .-nand_clean_zone_table
-	.section	.text.nand_discard,"ax",%progbits
-	.align	1
-	.global	nand_discard
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_discard, %function
-nand_discard:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r6, r0
-	ldr	r3, [r6, #24]
-	mov	r4, r2
-	adds	r2, r1, r2
-	mov	r0, r1
-	cmp	r2, r3
-	bls	.L1838
-	ldr	r0, .L1859
-	bl	NAND_Print
-	movs	r0, #1
-.L1837:
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1838:
-	ldr	r1, [r6, #1968]
-	ldrd	r2, [r1, #104]
-	adds	r7, r2, r4
-	adc	r8, r3, #0
-	ldr	r3, [r6, #4]
-	strd	r7, [r1, #104]
-	ldrb	r7, [r3, #8]	@ zero_extendqisi2
-	mov	r1, r7
-	bl	__aeabi_uidivmod
-	mov	r5, r0
-	cbz	r1, .L1840
-	subs	r1, r7, r1
-	adds	r5, r5, #1
-	uxth	r1, r1
-	cmp	r1, r4
-	bhi	.L1848
-	subs	r4, r4, r1
-.L1841:
-	mov	r1, r7
-	mov	r0, r4
-	bl	__aeabi_uidiv
-	cbz	r0, .L1842
-	add	r7, r6, #584
-	adds	r4, r5, r0
-.L1847:
-	ldr	r3, [r6, #1972]
-	ldrh	r3, [r3]
-	cbnz	r3, .L1844
-	mov	r1, r5
-	mov	r0, r7
-	bl	search_from_cache_write_list
-	mov	r1, r0
-	cbz	r0, .L1845
-	mov	r0, r7
-	bl	del_from_cache_write_list
-.L1845:
-	mov	r1, r5
-	mov	r0, r7
-	bl	search_from_cache_read_list
-	mov	r1, r0
-	cbz	r0, .L1844
-	mov	r0, r7
-	bl	del_from_cache_read_list
-.L1844:
-	mov	r1, r5
-	ldr	r3, [r6, #2012]
-	mov	r0, r6
-	adds	r5, r5, #1
-	blx	r3
-	ldr	r3, [r6, #4]
-	movs	r1, #0
-	ldr	ip, [r6, #1968]
-	ldrb	r0, [r3, #8]	@ zero_extendqisi2
-	ldrd	r3, r2, [ip, #112]
-	adds	r3, r3, r0
-	adc	r2, r1, r2
-	cmp	r5, r4
-	strd	r3, r2, [ip, #112]
-	bne	.L1847
-.L1842:
-	movs	r0, #0
-	b	.L1837
-.L1840:
-	cmp	r7, r4
-	it	hi
-	movhi	r4, #0
-	b	.L1841
-.L1848:
-	movs	r4, #0
-	b	.L1841
-.L1860:
-	.align	2
-.L1859:
-	.word	.LC325
-	.size	nand_discard, .-nand_discard
-	.section	.text.__nand_discard,"ax",%progbits
-	.align	1
-	.global	__nand_discard
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__nand_discard, %function
-__nand_discard:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #356]
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	mov	r5, r1
-	mov	r6, r2
-	cmp	r3, #3
-	bne	.L1862
-	ldr	r0, .L1863
-	bl	NAND_Print_DBG
-.L1862:
-	mov	r2, r6
-	mov	r1, r5
-	mov	r0, r4
-	pop	{r4, r5, r6, lr}
-	b	nand_discard
-.L1864:
-	.align	2
-.L1863:
-	.word	.LC326
-	.size	__nand_discard, .-__nand_discard
-	.section	.text._nand_discard,"ax",%progbits
-	.align	1
-	.global	_nand_discard
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	_nand_discard, %function
-_nand_discard:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r0, [r0, #12]
-	b	__nand_discard
-	.size	_nand_discard, .-_nand_discard
-	.section	.text.__shutdown_op,"ax",%progbits
-	.align	1
-	.global	__shutdown_op
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	__shutdown_op, %function
-__shutdown_op:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r0, #0
-	bx	lr
-	.size	__shutdown_op, .-__shutdown_op
-	.section	.text.print_logic_page_map,"ax",%progbits
-	.align	1
-	.global	print_logic_page_map
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	print_logic_page_map, %function
-print_logic_page_map:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #4]
-	push	{r0, r1, r4, r5, r6, r7, r8, lr}
-	mov	r5, r0
-	ldr	r7, .L1872
-	movs	r4, #0
-	ldr	r8, .L1872+4
-	ldrb	r1, [r3, #8]	@ zero_extendqisi2
-	ldr	r0, [r0, #24]
-	bl	__aeabi_uidiv
-	mov	r6, r0
-.L1868:
-	cmp	r4, r6
-	bne	.L1871
-	movs	r0, #0
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1871:
-	mov	r1, r4
-	mov	r0, r5
-	bl	get_logic_page_map
-	cbnz	r0, .L1869
-	mov	r0, r8
-	bl	NAND_Print
-.L1870:
-	adds	r4, r4, #1
-	b	.L1868
-.L1869:
-	ldrh	r2, [r0, #2]
-	movw	r3, #65535
-	cmp	r2, r3
-	beq	.L1870
-	ldrb	r1, [r0, #1]	@ zero_extendqisi2
-	ldrh	r3, [r0]
-	mov	r0, r7
-	ubfx	r1, r1, #4, #1
-	str	r1, [sp]
-	ubfx	r3, r3, #0, #12
-	mov	r1, r4
-	bl	NAND_Print_DBG
-	b	.L1870
-.L1873:
-	.align	2
-.L1872:
-	.word	.LC328
-	.word	.LC327
-	.size	print_logic_page_map, .-print_logic_page_map
-	.section	.text.get_last_nftl,"ax",%progbits
-	.align	1
-	.global	get_last_nftl
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_last_nftl, %function
-get_last_nftl:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r0
-.L1875:
-	cbnz	r3, .L1876
-	bx	lr
-.L1876:
-	mov	r0, r3
-	ldr	r3, [r3, #8]
-	b	.L1875
-	.size	get_last_nftl, .-get_last_nftl
-	.section	.text.get_nftl_need_read_claim,"ax",%progbits
-	.align	1
-	.global	get_nftl_need_read_claim
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_nftl_need_read_claim, %function
-get_nftl_need_read_claim:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
+	bl	ndfc_clean_cmd_seq
+	movs	r3, #162
+	ldrd	r1, r2, [r8, #4]
+	strd	r6, r3, [r4, #40]
+	movs	r3, #128
+	strd	r6, r3, [r4, #104]
+	str	r7, [r4, #32]
+	strd	r6, r7, [r4, #48]
+	strd	r6, r7, [r4, #112]
+	ldr	r0, [r5, #36]
+	bl	get_row_addr
+	movs	r3, #5
 	mov	r2, r0
-	mov	r3, r0
-.L1878:
-	cbnz	r3, .L1879
-	ldr	r3, [r2, #12]
-	ldr	r3, [r3, #1968]
-	ldr	r3, [r3, #176]
-.L1880:
-	cbnz	r0, .L1882
-.L1877:
-	bx	lr
-.L1879:
-	mov	r2, r3
-	ldr	r3, [r3, #8]
-	b	.L1878
-.L1882:
-	ldr	r2, [r0, #12]
-	ldrb	r2, [r2, #16]	@ zero_extendqisi2
-	cmp	r2, r3
-	beq	.L1877
-	ldr	r0, [r0, #8]
-	b	.L1880
-	.size	get_nftl_need_read_claim, .-get_nftl_need_read_claim
-	.section	.text.get_nftl_read_claim_page_no,"ax",%progbits
-	.align	1
-	.global	get_nftl_read_claim_page_no
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_nftl_read_claim_page_no, %function
-get_nftl_read_claim_page_no:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	mov	r3, r0
-.L1884:
-	cbnz	r3, .L1885
-	ldr	r3, [r0, #12]
-	ldr	r3, [r3, #1968]
-	ldr	r0, [r3, #180]
-	bx	lr
-.L1885:
-	mov	r0, r3
-	ldr	r3, [r3, #8]
-	b	.L1884
-	.size	get_nftl_read_claim_page_no, .-get_nftl_read_claim_page_no
-	.section	.text.clean_read_reclaim_complete_flag,"ax",%progbits
-	.align	1
-	.global	clean_read_reclaim_complete_flag
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	clean_read_reclaim_complete_flag, %function
-clean_read_reclaim_complete_flag:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-.L1887:
-	cbnz	r0, .L1888
-	bx	lr
-.L1888:
-	ldr	r2, [r0, #12]
-	ldr	r0, [r0, #8]
-	ldr	r3, [r2, #364]
-	clz	r3, r3
-	lsrs	r3, r3, #5
-	str	r3, [r2, #364]
-	b	.L1887
-	.size	clean_read_reclaim_complete_flag, .-clean_read_reclaim_complete_flag
-	.section	.text.set_nftl_read_claim_complete,"ax",%progbits
-	.align	1
-	.global	set_nftl_read_claim_complete
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_nftl_read_claim_complete, %function
-set_nftl_read_claim_complete:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	movs	r3, #1
-	ldr	r5, [r1, #12]
-	mov	r4, r0
-	str	r3, [r5, #360]
-	mov	r3, r0
-.L1890:
-	cbnz	r3, .L1891
-	ldr	r1, [r1, #8]
-	ldr	r2, [r4, #12]
-	ldr	r2, [r2, #1968]
-	cbnz	r1, .L1892
-	str	r3, [r2, #176]
-	bl	clean_read_reclaim_complete_flag
-.L1893:
-	ldr	r3, [r4, #12]
-	movs	r0, #0
-	ldr	r3, [r3, #1968]
-	str	r0, [r3, #180]
-	pop	{r3, r4, r5, pc}
-.L1891:
-	mov	r4, r3
-	ldr	r3, [r3, #8]
-	b	.L1890
-.L1892:
-	ldrb	r3, [r5, #16]	@ zero_extendqisi2
-	adds	r3, r3, #1
-	str	r3, [r2, #176]
-	b	.L1893
-	.size	set_nftl_read_claim_complete, .-set_nftl_read_claim_complete
-	.section	.text.set_nftl_read_claim_flag,"ax",%progbits
-	.align	1
-	.global	set_nftl_read_claim_flag
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	set_nftl_read_claim_flag, %function
-set_nftl_read_claim_flag:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-.L1895:
-	cbnz	r0, .L1896
-	bx	lr
-.L1896:
-	ldr	r3, [r0, #12]
-	ldr	r0, [r0, #8]
-	ldr	r3, [r3, #1968]
-	strd	r1, r2, [r3, #176]
-	b	.L1895
-	.size	set_nftl_read_claim_flag, .-set_nftl_read_claim_flag
-	.section	.text.get_cold_logic_page,"ax",%progbits
-	.align	1
-	.global	get_cold_logic_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	get_cold_logic_page, %function
-get_cold_logic_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r5, r0
-	ldr	r8, .L1903
-	mov	r6, r2
-	mov	r4, r1
-	movw	r7, #65535
-.L1898:
-	cmp	r4, r6
-	bcc	.L1902
-	mov	r4, #-1
-	b	.L1897
-.L1902:
-	mov	r1, r4
-	mov	r0, r5
-	bl	get_logic_page_map
-	cbnz	r0, .L1899
-	mov	r0, r8
-	bl	NAND_Print
-.L1900:
-	adds	r4, r4, #1
-	b	.L1898
-.L1899:
-	ldrh	r3, [r0, #2]
-	cmp	r3, r7
-	beq	.L1900
-	ldrb	r3, [r0, #1]	@ zero_extendqisi2
-	ldr	r2, [r5, #364]
-	ubfx	r1, r3, #4, #1
-	cmp	r1, r2
-	beq	.L1900
-	bfi	r3, r2, #4, #1
-	strb	r3, [r0, #1]
-.L1897:
-	mov	r0, r4
-	pop	{r4, r5, r6, r7, r8, pc}
-.L1904:
-	.align	2
-.L1903:
-	.word	.LC327
-	.size	get_cold_logic_page, .-get_cold_logic_page
-	.section	.text.read_reclaim,"ax",%progbits
-	.align	1
-	.global	read_reclaim
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	read_reclaim, %function
-read_reclaim:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
-	mov	r4, r1
-	mov	r7, r2
-	mov	r6, r0
-	bl	get_nftl_read_claim_page_no
-	ldr	r5, [r1, #12]
-	mov	r1, r0
-	ldr	r2, [r5, #28]
-	mov	r0, r5
-	bl	get_cold_logic_page
-	adds	r3, r0, #1
-	mov	r5, r0
-	bne	.L1906
-	mov	r1, r4
-	mov	r0, r6
-	pop	{r3, r4, r5, r6, r7, lr}
-	b	set_nftl_read_claim_complete
-.L1906:
-	ldr	r0, [r4, #12]
-	mov	r3, r7
-	mov	r1, r5
-	ldr	r2, [r0, #4]
-	ldrb	r2, [r2, #8]	@ zero_extendqisi2
-	bl	nand_cache_read
-	ldr	r3, [r4, #12]
-	mov	r2, r5
-	mov	r0, r6
-	ldrb	r1, [r3, #16]	@ zero_extendqisi2
-	bl	set_nftl_read_claim_flag
-	movs	r0, #0
-	pop	{r3, r4, r5, r6, r7, pc}
-	.size	read_reclaim, .-read_reclaim
-	.section	.text.is_on_panic,"ax",%progbits
-	.align	1
-	.global	is_on_panic
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_on_panic, %function
-is_on_panic:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L1908
-	ldr	r0, [r3]
-	adds	r0, r0, #0
-	it	ne
-	movne	r0, #1
-	bx	lr
-.L1909:
-	.align	2
-.L1908:
-	.word	.LANCHOR20
-	.size	is_on_panic, .-is_on_panic
-	.section	.text.panic_mark_enable,"ax",%progbits
-	.align	1
-	.global	panic_mark_enable
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_mark_enable, %function
-panic_mark_enable:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L1911
-	movs	r2, #1
-	str	r2, [r3]
-	bx	lr
-.L1912:
-	.align	2
-.L1911:
-	.word	.LANCHOR21
-	.size	panic_mark_enable, .-panic_mark_enable
-	.section	.text.is_panic_enable,"ax",%progbits
-	.align	1
-	.global	is_panic_enable
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_panic_enable, %function
-is_panic_enable:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L1914
-	ldr	r0, [r3]
-	adds	r0, r0, #0
-	it	ne
-	movne	r0, #1
-	bx	lr
-.L1915:
-	.align	2
-.L1914:
-	.word	.LANCHOR21
-	.size	is_panic_enable, .-is_panic_enable
-	.section	.text.panic_init_part,"ax",%progbits
-	.align	1
-	.global	panic_init_part
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_init_part, %function
-panic_init_part:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r3, r2
-	cbz	r0, .L1920
-	cbz	r2, .L1920
-	ldr	r5, .L1921
-	ldr	r4, [r5, #8]
-	cbnz	r4, .L1920
-	str	r2, [r5, #8]
-	ldr	r2, .L1921+4
-	strd	r0, r1, [r5]
-	movs	r5, #1
-	str	r5, [r2]
-	mov	r2, r1
-	mov	r1, r0
-	ldr	r0, .L1921+8
-	bl	NAND_Print
-	mov	r0, r4
-.L1916:
-	pop	{r3, r4, r5, pc}
-.L1920:
-	mov	r0, #-1
-	b	.L1916
-.L1922:
-	.align	2
-.L1921:
-	.word	.LANCHOR22
-	.word	.LANCHOR21
-	.word	.LC329
-	.size	panic_init_part, .-panic_init_part
-	.section	.text.panic_backup_block,"ax",%progbits
-	.align	1
-	.global	panic_backup_block
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_backup_block, %function
-panic_backup_block:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L1934
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r0
-	ldr	r0, [r3]
-	cbz	r0, .L1923
-	ldr	r6, .L1934+4
-	movs	r5, #0
-	ldr	fp, .L1934+16
-.L1927:
-	ldr	r4, [r6, r5, lsl #2]
-	lsl	r10, r5, #2
-	cbz	r4, .L1925
-	ldrh	r1, [r4]
-	ldr	r0, .L1934+8
-	bl	NAND_Print
-	movs	r0, #0
-.L1923:
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1925:
-	mov	r0, r8
-	bl	out_phy_block_from_free_list
-	mov	r7, r0
-	cbz	r0, .L1926
-	ldrh	r1, [r0]
-	adds	r5, r5, #1
-	mov	r0, fp
-	bl	NAND_Print
-	cmp	r5, #3
-	str	r7, [r10, r6]
-	bne	.L1927
-	ldr	r3, [r8, #4]
-	mov	r0, r4
-	ldrh	r3, [r3, #20]
-	add	r3, r3, r3, lsl #1
-	str	r3, [r6, #12]
-	b	.L1923
-.L1926:
-	ldr	r0, .L1934+12
-	bl	NAND_Print
-	mov	r0, #-1
-	b	.L1923
-.L1935:
-	.align	2
-.L1934:
-	.word	.LANCHOR21
-	.word	.LANCHOR23
-	.word	.LC330
-	.word	.LC332
-	.word	.LC331
-	.size	panic_backup_block, .-panic_backup_block
-	.section	.text.panic_read,"ax",%progbits
-	.align	1
-	.global	panic_read
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_read, %function
-panic_read:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r8, r3
-	ldr	r3, .L1942
-	mov	r6, r0
-	mov	r5, r2
-	ldr	r3, [r3]
-	cbz	r3, .L1940
-	ldr	r3, .L1942+4
-	movs	r2, #1
-	mov	r4, r1
-	sub	fp, r8, r1
-	str	r2, [r3]
-	bic	r3, r5, #32640
-	bic	r3, r3, #127
-	add	r10, r3, r1
-.L1938:
-	cmp	r4, r10
-	add	r3, fp, r4
-	bne	.L1939
-	ubfx	r2, r5, #0, #15
-	bic	r5, r5, #32640
-	bic	r5, r5, #127
-	add	r3, r8, r5
-	cbz	r2, .L1941
-	ldr	r5, [r6, #44]
-	mov	r1, r4
-	mov	r0, r6
-	blx	r5
-	movs	r0, #0
-.L1936:
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1939:
-	mov	r1, r4
-	ldr	r7, [r6, #44]
-	mov	r2, #32768
-	mov	r0, r6
-	blx	r7
-	add	r4, r4, #32768
-	b	.L1938
-.L1940:
-	mov	r0, #-1
-	b	.L1936
-.L1941:
-	mov	r0, r2
-	b	.L1936
-.L1943:
-	.align	2
-.L1942:
-	.word	.LANCHOR21
-	.word	.LANCHOR20
-	.size	panic_read, .-panic_read
-	.section	.text.panic_write,"ax",%progbits
-	.align	1
-	.global	panic_write
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_write, %function
-panic_write:
-	@ args = 0, pretend = 0, frame = 48
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #56
-	str	r3, [sp, #16]
-	mov	fp, r2
-	ldr	r3, .L1957
-	str	r1, [sp, #12]
-	ldr	r3, [r3]
-	cbz	r3, .L1955
-	ldr	r8, [r0, #12]
-	movs	r2, #1
-	ldr	r3, .L1957+4
-	add	r0, fp, #-1
-	ldr	r7, .L1957+8
-	ldr	r5, [r8, #4]
-	str	r2, [r3]
-	ldrb	r1, [r5, #8]	@ zero_extendqisi2
-	add	r0, r0, r1
-	bl	__aeabi_uidiv
-	ldrh	r1, [r5, #20]
-	mov	r10, r0
-	subs	r0, r1, #1
-	add	r0, r0, r10
-	bl	__aeabi_uidiv
-	mov	r3, r10
-	str	r0, [sp]
-	mov	r2, fp
-	ldr	r1, [sp, #12]
-	ldr	r0, .L1957+12
-	bl	NAND_Print
-	ldr	r3, [r7, #12]
-	subs	r3, r3, #3
-	cmp	r3, r10
-	bcs	.L1946
-	ldrb	r1, [r5, #8]	@ zero_extendqisi2
-	ldr	r0, .L1957+16
-	muls	r1, r3, r1
-	bl	NAND_Print
-.L1955:
-	mov	r0, #-1
-	b	.L1944
-.L1946:
-	movs	r2, #16
-	movs	r1, #165
-	add	r0, sp, #24
-	mov	r4, r7
-	bl	NAND_Memset
-	ldr	r3, [r7, #16]
-	ldr	r6, [r7, r3, lsl #2]
-.L1947:
-	ldr	r3, [r7, #20]
-	cmp	r10, #0
-	bne	.L1950
-	ldr	fp, .L1957+24
-	movs	r7, #3
-	add	r10, sp, #24
-	movs	r3, #98
-	strb	r3, [sp, #26]
-.L1954:
-	ldr	r2, [r4, #20]
-	cmp	r2, #0
-	bne	.L1951
-.L1952:
-	movs	r0, #0
-.L1944:
-	add	sp, sp, #56
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1950:
-	ldrh	r2, [r5, #20]
-	cmp	r3, r2
-	bcc	.L1948
-	ldr	r3, [r7, #16]
-	adds	r3, r3, #1
-	str	r3, [r7, #16]
-	ldr	r6, [r7, r3, lsl #2]
-	movs	r3, #0
-	str	r3, [r7, #20]
-.L1948:
-	ldr	r3, [r4, #20]
-	ldrh	r1, [r6]
-	cbnz	r3, .L1949
-	ldrh	r2, [r5, #28]
-	mov	r0, r8
-	strh	r3, [sp, #40]	@ movhi
-	strh	r1, [sp, #42]	@ movhi
-	add	r1, sp, #40
-	strh	r2, [sp, #44]	@ movhi
-	strd	r3, r3, [sp, #48]
-	ldr	r2, [r8, #1976]
-	str	r3, [sp, #20]
-	blx	r2
-	ldrh	r2, [r6, #6]
-	ldr	r3, [sp, #20]
-	adds	r2, r2, #1
-	strh	r2, [r6, #6]	@ movhi
-	strh	r3, [r6, #4]	@ movhi
-.L1949:
-	ldr	r2, [r4, #20]
-	add	r10, r10, #-1
-	ldrh	r1, [r6]
-	ldr	r0, .L1957+20
-	bl	NAND_Print
-	movw	r3, #43775
-	movs	r2, #5
-	strh	r3, [sp, #24]	@ movhi
-	movs	r3, #99
-	strb	r3, [sp, #26]
-	add	r0, sp, #24
-	ldrb	r3, [r8, #16]	@ zero_extendqisi2
-	strb	r3, [sp, #27]
-	ldr	r3, [r4, #16]
-	strb	r3, [sp, #28]
-	movs	r3, #2
-	ldrh	r1, [r6, #6]
-	bl	set_spare_data
-	movs	r3, #4
-	movs	r2, #7
-	ldr	r1, [sp, #12]
-	add	r0, sp, #24
-	bl	set_spare_data
-	ldrb	r1, [r5, #8]	@ zero_extendqisi2
-	movs	r3, #4
-	movs	r2, #11
-	add	r0, sp, #24
-	cmp	r1, fp
-	it	cs
-	movcs	r1, fp
-	bl	set_spare_data
-	ldrh	r3, [r5, #28]
-	mov	r0, r8
-	ldrh	r2, [r6]
-	ldr	r1, [r4, #20]
-	strh	r3, [sp, #44]	@ movhi
-	ldr	r3, [sp, #16]
-	strh	r1, [sp, #40]	@ movhi
-	add	r1, sp, #40
-	strh	r2, [sp, #42]	@ movhi
-	str	r3, [sp, #48]
-	add	r3, sp, #24
-	str	r3, [sp, #52]
-	ldr	r3, [r8, #1984]
-	blx	r3
-	ldr	r2, [sp, #16]
-	ldrh	r3, [r5, #26]
-	adds	r3, r2, r3
-	ldr	r2, [sp, #12]
-	str	r3, [sp, #16]
-	ldrb	r3, [r5, #8]	@ zero_extendqisi2
-	cmp	r3, fp
-	it	cs
-	movcs	r3, fp
-	add	r2, r2, r3
-	sub	fp, fp, r3
-	ldr	r3, [r4, #12]
-	str	r2, [sp, #12]
-	subs	r3, r3, #1
-	str	r3, [r4, #12]
-	ldr	r3, [r4, #20]
-	adds	r3, r3, #1
-	str	r3, [r4, #20]
-	b	.L1947
-.L1951:
-	ldrh	r3, [r5, #20]
-	cmp	r2, r3
-	bcs	.L1952
-	ldrh	r1, [r6]
-	mov	r0, fp
-	bl	NAND_Print
-	ldrh	r3, [r5, #28]
-	mov	r0, r8
-	ldrh	r2, [r6]
-	ldr	r1, [r4, #20]
-	strh	r3, [sp, #44]	@ movhi
-	ldr	r3, [sp, #16]
-	strh	r1, [sp, #40]	@ movhi
-	add	r1, sp, #40
-	strh	r2, [sp, #42]	@ movhi
-	strd	r3, r10, [sp, #48]
-	ldr	r3, [r8, #1984]
-	blx	r3
-	ldr	r2, [r4, #12]
-	ldr	r3, [r4, #20]
-	subs	r2, r2, #1
-	str	r2, [r4, #12]
-	adds	r3, r3, #1
-	ldrh	r2, [r5, #20]
-	str	r3, [r4, #20]
-	cmp	r3, r2
-	bcc	.L1953
-	ldr	r3, [r4, #16]
-	adds	r3, r3, #1
-	str	r3, [r4, #16]
-	ldr	r6, [r4, r3, lsl #2]
-	movs	r3, #0
-	str	r3, [r4, #20]
-.L1953:
-	subs	r7, r7, #1
-	bne	.L1954
-	b	.L1952
-.L1958:
-	.align	2
-.L1957:
-	.word	.LANCHOR21
-	.word	.LANCHOR20
-	.word	.LANCHOR23
-	.word	.LC333
-	.word	.LC334
-	.word	.LC335
-	.word	.LC336
-	.size	panic_write, .-panic_write
-	.section	.text.is_panic_data_page,"ax",%progbits
-	.align	1
-	.global	is_panic_data_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_panic_data_page, %function
-is_panic_data_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r3, [r0, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L1961
-	ldrb	r0, [r0, #2]	@ zero_extendqisi2
-	sub	r3, r0, #99
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-.L1961:
-	movs	r0, #0
-	bx	lr
-	.size	is_panic_data_page, .-is_panic_data_page
-	.section	.text.is_panic_dummy_page,"ax",%progbits
-	.align	1
-	.global	is_panic_dummy_page
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	is_panic_dummy_page, %function
-is_panic_dummy_page:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldrb	r3, [r0, #1]	@ zero_extendqisi2
-	cmp	r3, #170
-	bne	.L1964
-	ldrb	r0, [r0, #2]	@ zero_extendqisi2
-	sub	r3, r0, #98
-	rsbs	r0, r3, #0
-	adcs	r0, r0, r3
-	bx	lr
-.L1964:
-	movs	r0, #0
-	bx	lr
-	.size	is_panic_dummy_page, .-is_panic_dummy_page
-	.section	.text.panic_recover_info,"ax",%progbits
-	.align	1
-	.global	panic_recover_info
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_recover_info, %function
-panic_recover_info:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r1
-	ldrb	r4, [r0, #4]	@ zero_extendqisi2
-	cmp	r4, #2
-	bhi	.L1966
-	ldrh	r1, [r1]
-	ldr	r0, .L1968
-	bl	NAND_Print
-	ldr	r3, .L1968+4
-	movs	r0, #0
-	str	r5, [r3, r4, lsl #2]
-.L1965:
-	pop	{r3, r4, r5, pc}
-.L1966:
-	mov	r1, r4
-	ldr	r0, .L1968+8
-	bl	NAND_Print
-	mov	r0, #-1
-	b	.L1965
-.L1969:
-	.align	2
-.L1968:
-	.word	.LC337
-	.word	.LANCHOR23
-	.word	.LC338
-	.size	panic_recover_info, .-panic_recover_info
-	.section	.text.first_scan_all_blocks,"ax",%progbits
-	.align	1
-	.global	first_scan_all_blocks
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	first_scan_all_blocks, %function
-first_scan_all_blocks:
-	@ args = 0, pretend = 0, frame = 32
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #88
-	ldr	r4, [r0, #40]
-	mov	r5, r0
-	movs	r2, #5
-	add	r0, sp, #72
-	ldr	r1, .L2024
-	add	r6, sp, #88
-	bl	memcpy
-	movs	r3, #47
-	ldr	r1, .L2024+4
-	strh	r3, [r6, #-32]!	@ movhi
-	mov	r0, r6
-	bl	nand_fdt_get_string
-	cmp	r0, #0
-	beq	.L1971
-	movs	r2, #3
-	add	r1, sp, #72
-	bl	NAND_Memcmp
-	mov	r7, r0
-	cbnz	r0, .L1971
-	ldr	r0, .L2024+8
-	bl	NAND_Print_DBG
-	strh	r7, [r5, #18]	@ movhi
-.L1972:
-	ldr	r2, [r5, #4]
-	mov	r8, #0
-	ldrh	r3, [r4]
-	ldrh	r2, [r2, #24]
-	cmp	r2, r3
-	bls	.L2017
-	strh	r3, [sp, #74]	@ movhi
-	add	r1, sp, #72
-	strh	r8, [sp, #72]	@ movhi
-	mov	r0, r5
-	strh	r8, [sp, #76]	@ movhi
-	strd	r8, r6, [sp, #80]
-	ldr	r3, [r5, #1992]
-	blx	r3
-	cmp	r0, #1
-	bne	.L1974
-	ldr	r3, [r5, #1980]
-	add	r1, sp, #72
-	mov	r0, r5
-	blx	r3
-	str	r4, [r5, #44]
-	mov	r10, r0
-	mov	r0, r6
-	bl	get_block_used_count_from_oob
-	mov	fp, r0
-	mov	r0, r6
-	bl	is_ftl_end_flag_page
-	cmp	r0, #1
-	bne	.L1975
-	ldrh	r1, [r4]
-	ldr	r0, .L2024+12
-	bl	NAND_Print
-.L2017:
-	mov	r0, r8
-	b	.L1970
-.L1971:
-	mov	r0, #-1
-.L1970:
-	add	sp, sp, #88
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L1975:
-	mov	r0, r6
-	bl	is_panic_data_page
-	cmp	r0, #1
-	bne	.L1976
-	ldrb	r2, [sp, #59]	@ zero_extendqisi2
-	ldrb	r3, [r5, #16]	@ zero_extendqisi2
-	cmp	r2, r3
-	bne	.L1977
-	mov	r1, r4
-	mov	r0, r6
-	bl	panic_recover_info
-.L1977:
-	adds	r4, r4, #36
-	b	.L1972
-.L1976:
-	mov	r0, r6
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L1978
-	ldrh	r3, [r5, #18]
-	mov	r1, r4
-	mov	r0, r5
-	adds	r3, r3, #1
-	strh	r3, [r5, #18]	@ movhi
-	strh	r8, [r4, #2]	@ movhi
-	strh	r8, [r4, #6]	@ movhi
-	strh	r8, [r4, #4]	@ movhi
-	bl	put_phy_block_to_free_list
-	b	.L1977
-.L1978:
-	mov	r0, r6
-	bl	is_ftl_logic_page_data
-	cmp	r0, #1
-	beq	.L1979
-	mov	r0, r6
-	bl	is_function_info_page
-	cmp	r0, #1
-	bne	.L1980
-.L1979:
-	cmp	r10, #0
-	beq	.L1981
-	cmp	r10, #10
-	bne	.L1980
-.L1981:
-	ldrh	r3, [r5, #18]
-	mov	r8, #1
-	mov	r0, r6
-	adds	r3, r3, #1
-	strh	r3, [r5, #18]	@ movhi
-	strh	r8, [r4, #2]	@ movhi
-	bl	get_erase_count_from_oob
-	movs	r3, #0
-	strh	r0, [r4, #6]	@ movhi
-	mov	r7, r0
-	strh	r3, [r4, #4]	@ movhi
-	str	fp, [r4, #8]
-	mov	r1, r4
-	strd	r3, r3, [r4, #28]
-	mov	r0, r5
-	bl	add_block_count_list
-	cmp	r10, #10
-	bne	.L1977
-	ldr	r3, [r5, #1972]
-	ldrh	r3, [r3, #4]
-	cmp	r3, #0
-	beq	.L1977
-	mov	r2, r8
-	mov	r0, r5
-	bl	add_prio_gc
-	ldr	r0, .L2024+16
-	bl	NAND_Print_DBG
-	b	.L1977
-.L1980:
-	mov	r0, r6
-	bl	is_ftl_start_flag_page
-	cmp	r0, #1
-	bne	.L1982
-	ldr	r0, .L2024+20
-.L2016:
-	bl	NAND_Print
-	b	.L1977
-.L1982:
-	mov	r0, r6
-	bl	is_fill_page
-	cmp	r0, #1
-	bne	.L1983
-	ldrh	r3, [r5, #18]
-	mov	r0, r6
-	adds	r3, r3, #1
-	strh	r3, [r5, #18]	@ movhi
-	movs	r3, #0
-	strh	r3, [r4, #2]	@ movhi
-	bl	get_erase_count_from_oob
-	ldr	r3, [r5, #4]
-	mov	r1, r4
-	strh	r0, [r4, #6]	@ movhi
-	mov	r7, r0
-	mov	r0, r5
-	ldrh	r3, [r3, #20]
-	strh	r3, [r4, #4]	@ movhi
-	bl	put_phy_block_to_free_list
-	ldrh	r1, [r4]
-	ldr	r0, .L2024+24
-	bl	NAND_Print_DBG
-	b	.L1977
-.L1983:
-	ldrb	r0, [sp, #71]	@ zero_extendqisi2
-	ldrh	r1, [r4]
-	ldrb	r3, [sp, #57]	@ zero_extendqisi2
-	str	r0, [sp, #52]
-	ldrb	r0, [sp, #70]	@ zero_extendqisi2
-	ldrb	r2, [sp, #56]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #69]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #68]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #67]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #66]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #65]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #64]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #63]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #62]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #61]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #60]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #59]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #58]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L2024+28
-	bl	NAND_Print
-	uxth	r2, r7
-	adds	r3, r2, #1
-	strh	r3, [r4, #6]	@ movhi
-	cmp	r10, #0
-	beq	.L1984
-	cmp	r10, #10
-	bne	.L1985
-.L1984:
-	ldrb	r3, [sp, #56]	@ zero_extendqisi2
-	cmp	r3, #255
-	beq	.L1986
-	ldrh	r1, [r4]
-	ldr	r0, .L2024+32
-	bl	NAND_Print
-	movs	r3, #255
-	strh	r3, [r4, #2]	@ movhi
-.L2015:
-	ldrh	r3, [r5, #20]
-	adds	r3, r3, #1
-	strh	r3, [r5, #20]	@ movhi
-	b	.L1977
-.L1986:
-	adds	r2, r2, #2
-.L2022:
-	uxth	r2, r2
-	mov	r1, r4
-	mov	r0, r5
-	bl	erase_block
-.L2019:
-	cmp	r0, #0
-	bne	.L1977
-	ldrh	r3, [r5, #18]
-	adds	r3, r3, #1
-	strh	r3, [r5, #18]	@ movhi
-	b	.L1977
-.L1985:
-	ldrh	r1, [r4]
-	ldr	r0, .L2024+36
-	bl	NAND_Print
-	ldr	r3, [r5, #4]
-	add	r1, sp, #72
-	ldrh	r2, [r4]
-	mov	r0, r5
-	ldrh	r3, [r3, #20]
-	strh	r2, [sp, #74]	@ movhi
-	subs	r3, r3, #1
-	strh	r3, [sp, #72]	@ movhi
-	movs	r3, #0
-	strh	r3, [sp, #76]	@ movhi
-	strd	r3, r6, [sp, #80]
-	ldr	r3, [r5, #1980]
-	blx	r3
-	ldrh	r8, [r4]
-	mov	fp, r0
-	cbz	r0, .L1987
-	cmp	r0, #10
-	bne	.L1988
-.L1987:
-	mov	r0, r6
-	bl	is_phy_mapping_page
-	cmp	r0, #1
-	mov	r10, r0
-	bne	.L1989
-	mov	r1, r8
-	ldr	r0, .L2024+40
-	bl	NAND_Print
-	mov	r0, r6
-	bl	get_block_used_count_from_oob
-	ldrh	r3, [r5, #18]
-	mov	r8, r0
-	mov	r0, r6
-	adds	r3, r3, #1
-	strh	r3, [r5, #18]	@ movhi
-	strh	r10, [r4, #2]	@ movhi
-	bl	get_erase_count_from_oob
-	movs	r3, #0
-	strh	r0, [r4, #6]	@ movhi
-	mov	r7, r0
-	strh	r3, [r4, #4]	@ movhi
-	str	r8, [r4, #8]
-	mov	r1, r4
-	strd	r3, r3, [r4, #28]
-	mov	r0, r5
-	bl	add_block_count_list
-	cmp	fp, #10
-	bne	.L1977
-	ldr	r3, [r5, #1972]
-	ldrh	r3, [r3, #4]
-	cmp	r3, #0
-	beq	.L1977
-	mov	r2, r10
-	mov	r0, r5
-	bl	add_prio_gc
-	ldr	r0, .L2024+44
-	b	.L2016
-.L1989:
-	mov	r0, r6
-	bl	is_nouse_page
-	cmp	r0, #1
-	mov	r1, r8
-	ite	eq
-	ldreq	r0, .L2024+48
-	ldrne	r0, .L2024+52
-	bl	NAND_Print
-	ldrh	r2, [r4, #6]
-	adds	r2, r2, #1
-	b	.L2022
-.L2025:
-	.align	2
-.L2024:
-	.word	.LANCHOR19+16
-	.word	.LANCHOR24
-	.word	.LC339
-	.word	.LC340
-	.word	.LC341
-	.word	.LC342
-	.word	.LC343
-	.word	.LC344
-	.word	.LC345
-	.word	.LC346
-	.word	.LC347
-	.word	.LC348
-	.word	.LC349
-	.word	.LC350
-.L1988:
-	mov	r1, r8
-	ldr	r0, .L2026
-	bl	NAND_Print
-	ldrb	r0, [sp, #71]	@ zero_extendqisi2
-	ldrh	r1, [r4]
-	ldrb	r3, [sp, #57]	@ zero_extendqisi2
-	str	r0, [sp, #52]
-	ldrb	r0, [sp, #70]	@ zero_extendqisi2
-	ldrb	r2, [sp, #56]	@ zero_extendqisi2
-	str	r0, [sp, #48]
-	ldrb	r0, [sp, #69]	@ zero_extendqisi2
-	str	r0, [sp, #44]
-	ldrb	r0, [sp, #68]	@ zero_extendqisi2
-	str	r0, [sp, #40]
-	ldrb	r0, [sp, #67]	@ zero_extendqisi2
-	str	r0, [sp, #36]
-	ldrb	r0, [sp, #66]	@ zero_extendqisi2
-	str	r0, [sp, #32]
-	ldrb	r0, [sp, #65]	@ zero_extendqisi2
-	str	r0, [sp, #28]
-	ldrb	r0, [sp, #64]	@ zero_extendqisi2
-	str	r0, [sp, #24]
-	ldrb	r0, [sp, #63]	@ zero_extendqisi2
-	str	r0, [sp, #20]
-	ldrb	r0, [sp, #62]	@ zero_extendqisi2
-	str	r0, [sp, #16]
-	ldrb	r0, [sp, #61]	@ zero_extendqisi2
-	str	r0, [sp, #12]
-	ldrb	r0, [sp, #60]	@ zero_extendqisi2
-	str	r0, [sp, #8]
-	ldrb	r0, [sp, #59]	@ zero_extendqisi2
-	str	r0, [sp, #4]
-	ldrb	r0, [sp, #58]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L2026+4
-	bl	NAND_Print
-	mov	r1, r4
-	mov	r0, r5
-	bl	torture_block_and_mark
-	b	.L2019
-.L1974:
-	ldrh	r1, [r4]
-	ldr	r0, .L2026+8
-	bl	NAND_Print
-	movs	r3, #255
-	strh	r8, [r4, #6]	@ movhi
-	strh	r3, [r4, #2]	@ movhi
-	b	.L2015
-.L2027:
-	.align	2
-.L2026:
-	.word	.LC351
-	.word	.LC352
-	.word	.LC353
-	.size	first_scan_all_blocks, .-first_scan_all_blocks
-	.section	.text.build_zone_list,"ax",%progbits
-	.align	1
-	.global	build_zone_list
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	build_zone_list, %function
-build_zone_list:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	ldr	r0, .L2033
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	bl	first_scan_all_blocks
-	ldrh	r1, [r4, #18]
-	mov	r0, r4
-	bl	init_zone_after_first_scan
-	cbz	r0, .L2029
-	ldr	r0, .L2033+4
-.L2032:
-	movs	r5, #1
-	bl	NAND_Print
-.L2028:
-	mov	r0, r5
-	pop	{r3, r4, r5, pc}
-.L2029:
-	mov	r0, r4
-	bl	second_scan_all_blocks
-	mov	r5, r0
-	cbz	r0, .L2031
-	ldr	r0, .L2033+8
-	b	.L2032
-.L2031:
-	mov	r0, r4
-	bl	power_on_gc
-	mov	r0, r4
-	bl	print_nftl_zone
-	ldr	r0, .L2033+12
-	bl	NAND_Print
-	mov	r0, r4
-	bl	panic_backup_block
-	b	.L2028
-.L2034:
-	.align	2
-.L2033:
-	.word	.LC354
-	.word	.LC355
-	.word	.LC356
-	.word	.LC357
-	.size	build_zone_list, .-build_zone_list
-	.section	.text.nand_find_zone_table,"ax",%progbits
-	.align	1
-	.global	nand_find_zone_table
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_find_zone_table, %function
-nand_find_zone_table:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	bl	clean_block_list
-	mov	r0, r4
-	bl	nand_clean_zone_table2
-	ldr	r0, .L2036
-	bl	NAND_Print_DBG
-	ldr	r5, .L2036+4
-	mov	r0, r4
-	bl	build_zone_list
-	ldr	r0, .L2036+8
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	bl	nftl_cache_init
-	mov	r0, r5
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	bl	print_block_invalid_list
-	mov	r0, r4
-	bl	print_free_list
-	mov	r0, r5
-	bl	NAND_Print_DBG
-	ldr	r0, .L2036+12
-	bl	NAND_Print_DBG
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-.L2037:
-	.align	2
-.L2036:
-	.word	.LC358
-	.word	.LC360
-	.word	.LC359
-	.word	.LC361
-	.size	nand_find_zone_table, .-nand_find_zone_table
-	.section	.text.nand_check_table,"ax",%progbits
-	.align	1
-	.global	nand_check_table
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nand_check_table, %function
-nand_check_table:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r1, #1000
-	ldr	r4, .L2039
-	mov	r5, r0
-	bl	__nand_flush_write_cache
-	mov	r0, r4
-	bl	NAND_Print_DBG
-	mov	r0, r5
-	bl	print_nftl_zone
-	mov	r0, r4
-	bl	NAND_Print_DBG
-	mov	r0, r5
-	bl	nand_clean_zone_table
-	mov	r0, r4
-	bl	NAND_Print_DBG
-	mov	r0, r5
-	bl	nand_find_zone_table
-	mov	r0, r5
-	bl	write_data_to_nand
-	mov	r0, r4
-	bl	NAND_Print_DBG
-	movs	r0, #0
-	pop	{r3, r4, r5, pc}
-.L2040:
-	.align	2
-.L2039:
-	.word	.LC362
-	.size	nand_check_table, .-nand_check_table
-	.global	__aeabi_idiv
-	.section	.text.nftl_start,"ax",%progbits
-	.align	1
-	.global	nftl_start
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_start, %function
-nftl_start:
-	@ args = 40, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #40
-	ldr	r3, [sp, #92]
-	mov	r6, r2
-	ldr	r2, [sp, #76]
-	ldr	r7, [sp, #88]
-	lsr	r10, r3, #9
-	ldr	r3, [sp, #72]
-	strd	r0, r1, [sp, #28]
-	mov	r0, #2016
-	lsrs	r7, r7, #9
-	lsrs	r3, r3, #9
-	orr	r3, r3, r2, lsl #23
-	ldr	r2, [sp, #84]
-	str	r3, [sp, #20]
-	ldr	r3, [sp, #80]
-	lsrs	r3, r3, #9
-	orr	r3, r3, r2, lsl #23
-	str	r3, [sp, #24]
-	bl	NAND_Malloc
-	mov	r4, r0
-	str	r0, [r6]
-	cbz	r0, .L2042
-	lsl	r3, r10, #9
-	uxth	r3, r3
-	str	r3, [sp, #16]
-	movs	r3, #2
-.L2065:
-.L2043:
-	mov	r2, #2016
-	movs	r1, #0
-	mov	r0, r4
-	str	r3, [sp, #12]
-	bl	NAND_Memset
-	ldr	r3, [sp, #28]
-	movs	r0, #36
-	str	r3, [r4]
-	ldr	r3, [sp, #32]
-	str	r3, [r4, #1972]
-	bl	NAND_Malloc
-	str	r0, [r4, #4]
-	cbnz	r0, .L2045
-	ldr	r1, .L2067
-	ldr	r0, .L2067+4
-	b	.L2066
-.L2042:
-	ldr	r1, .L2067
-	ldr	r0, .L2067+8
-.L2066:
-	mvn	r5, #1
-	bl	NAND_Print
-.L2041:
-	mov	r0, r5
-	add	sp, sp, #40
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2045:
-	movs	r2, #4
-	movs	r1, #0
-	bl	NAND_Memset
-	ldr	r3, .L2067+12
-	movs	r2, #8
-	ldr	r0, [r4, #4]
-	ldr	r3, [r3]
-	ldr	r1, [r3, #8]
-	add	r1, r1, r2
-	bl	NAND_Memcpy
-	ldr	r5, [r4, #4]
-	mov	r1, r7
-	ldrh	r3, [sp, #16]
-	ldr	r0, [sp, #24]
-	strh	r3, [r5, #26]	@ movhi
-	ldr	r3, [sp, #96]
-	strb	r3, [r5, #10]
-	bl	__aeabi_uidiv
-	ldr	r2, [r4, #1972]
-	mov	r8, r0
-	ldrh	r2, [r2, #12]
-	cmp	r2, r0
-	bcs	.L2055
-	uxth	r3, r0
-	mov	r1, r10
-	mov	r0, r7
-	str	r3, [sp, #4]
-	mov	fp, #36
-	ldrh	r3, [sp, #4]
-	strh	r3, [r5, #24]	@ movhi
-	bl	__aeabi_uidiv
-	uxtb	r2, r10
-	add	r3, r8, #1
-	strh	r0, [r5, #20]	@ movhi
-	strb	r2, [r5, #8]
-	strh	r2, [r5, #28]	@ movhi
-	movw	r2, #3000
-	strh	r2, [r5, #16]	@ movhi
-	mul	r2, fp, r3
-	str	r3, [sp, #8]
-	mov	r0, r2
-	str	r2, [sp, #36]
-	bl	nftl_malloc
-	ldr	r3, [r4, #4]
-	str	r0, [r5, #32]
-	ldr	r2, [sp, #36]
-	ldr	r0, [r3, #32]
-	cbnz	r0, .L2046
-	ldr	r1, .L2067
-	ldr	r0, .L2067+16
-	b	.L2066
-.L2046:
-	subs	r2, r2, #36
-	movs	r1, #255
-	bl	NAND_Memset
-	movs	r1, #0
-	mov	ip, #-1
-	mov	r2, r1
-.L2047:
-	ldr	r3, [sp, #8]
-	cmp	r3, r1
-	bhi	.L2048
-	ldr	r0, [r6]
-	bl	nftl_ops_init
-	mov	r1, r7
-	ldr	r0, [sp, #20]
-	bl	__aeabi_uidiv
-	ldr	r3, [sp, #4]
-	subs	r0, r3, r0
-	ldr	r3, [r4, #1972]
-	uxth	r2, r0
-	ldrh	r3, [r3, #12]
-	strh	r2, [r4, #22]	@ movhi
-	cmp	r3, r2
-	bls	.L2049
-	mov	r1, r2
-	ldr	r0, .L2067+20
-	b	.L2066
-.L2048:
-	ldr	r3, [r4, #4]
-	mul	r0, fp, r1
-	ldr	lr, [r3, #32]
-	add	r3, lr, r0
-	strh	r1, [lr, r0]	@ movhi
-	strh	r2, [r3, #4]	@ movhi
-	adds	r1, r1, #1
-	strh	r2, [r3, #2]	@ movhi
-	str	ip, [r3, #8]
-	strh	r2, [r3, #6]	@ movhi
-	strd	r2, r2, [r3, #12]
-	strd	r2, r2, [r3, #20]
-	strd	r2, r2, [r3, #28]
-	b	.L2047
-.L2049:
-	mov	r1, r8
-	ldr	r0, .L2067+24
-	bl	NAND_Print_DBG
-	ldrh	r3, [r4, #22]
-	movs	r1, #0
-	ldr	r0, [r6]
-	sub	r2, r8, r3
-	muls	r2, r7, r2
-	muls	r3, r7, r3
-	bl	zone_param_init
-	mov	r5, r0
-	cbz	r0, .L2050
-	ldr	r0, .L2067+28
-	bl	NAND_Print
-	b	.L2041
-.L2050:
-	ldr	r3, [sp, #104]
-	ldr	r2, [r4, #1972]
-	strb	r3, [r4, #16]
-	ldrh	r3, [r2, #26]
-	cbz	r3, .L2051
-	ldrb	r3, [r4, #17]	@ zero_extendqisi2
-	orr	r3, r3, #1
-	strb	r3, [r4, #17]
-.L2051:
-	ldrh	r3, [r2, #10]
-	cbz	r3, .L2052
-	mov	r1, r8
-	ldr	r0, [r6]
-	bl	is_no_use_device
-	cmp	r0, #1
-	bne	.L2052
-	mov	r1, r8
-	ldr	r0, [r6]
-	bl	build_zone_list_first
-	mov	r8, r0
-	cbz	r0, .L2052
-	ldr	r0, .L2067+32
-	bl	NAND_Print
-.L2054:
-	mov	r5, r8
-	b	.L2041
-.L2052:
-	ldr	r0, [r6]
-	bl	build_zone_list
-	mov	r8, r0
-	cbz	r0, .L2053
-	ldr	r0, .L2067+36
-	bl	NAND_Print
-	ldr	r3, [sp, #12]
-	cmp	r3, #1
-	beq	.L2054
-	ldr	r0, .L2067+40
-	bl	NAND_Print
-	movs	r3, #1
-	b	.L2065
-.L2053:
-	ldr	r0, [r6]
-	bl	nftl_cache_init
-	b	.L2041
-.L2055:
-	mov	r5, #-1
-	b	.L2041
-.L2068:
-	.align	2
-.L2067:
-	.word	.LANCHOR25
-	.word	.LC364
-	.word	.LC363
-	.word	g_nsi
-	.word	.LC365
-	.word	.LC366
-	.word	.LC367
-	.word	.LC368
-	.word	.LC369
-	.word	.LC370
-	.word	.LC371
-	.size	nftl_start, .-nftl_start
-	.section	.text.nftl_initialize,"ax",%progbits
-	.align	1
-	.global	nftl_initialize
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_initialize, %function
-nftl_initialize:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	sub	sp, sp, #60
-	ldr	r5, [r0, #4]
-	mov	r4, r0
-	mov	r6, r1
-	movs	r2, #9
-	ldr	r1, .L2091
-	add	r0, sp, #44
-	bl	memcpy
-	add	r0, sp, #56
-	movs	r3, #47
-	strh	r3, [r0, #-16]!	@ movhi
-	ldr	r1, .L2091+4
-	bl	nand_fdt_get_string
-	cbz	r0, .L2083
-	movs	r2, #9
-	add	r1, sp, #44
-	bl	NAND_Memcmp
-	mov	r7, r0
-	cbnz	r0, .L2083
-	ldr	r3, .L2091+8
-	ldr	r2, .L2091+12
-	ldr	r1, .L2091+16
-	str	r3, [sp, #4]
-	ldr	r3, .L2091+20
-	ldr	r0, .L2091+24
+	str	r3, [r4, #136]
+	add	r3, r4, #120
 	str	r3, [sp]
-	ldr	r3, .L2091+28
-	bl	NAND_Print
-	ldr	r0, .L2091+32
-	bl	nftl_get_nand_phyinfo
-	ldrh	r3, [r5, #34]
-	cmp	r3, #15
-	bhi	.L2087
-.L2083:
-	mov	r6, #-1
-	b	.L2069
-.L2087:
-	movs	r0, #36
-	bl	NAND_Malloc
-	str	r0, [r4, #16]
-	cbnz	r0, .L2073
-	movs	r6, #1
-	ldr	r1, .L2091+36
-	ldr	r0, .L2091+40
-	bl	NAND_Print
-.L2069:
-	mov	r0, r6
-	add	sp, sp, #60
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L2073:
-	str	r7, [r0, #8]
-	mov	r2, #65536
-	ldr	r7, [r5, #80]
-	mov	r3, #65537
-	strd	r2, r3, [r0]
-	movs	r1, #3
-	ldr	r2, [r7, #36]
-	ldrh	r3, [r2, #2478]
-	strh	r3, [r0, #12]	@ movhi
-	ldrh	r3, [r2, #2480]
-	strh	r1, [r0, #20]	@ movhi
-	strh	r3, [r0, #16]	@ movhi
-	movs	r3, #8
-	strh	r3, [r0, #14]	@ movhi
-	movs	r3, #2
-	strh	r3, [r0, #18]	@ movhi
-	ldr	r3, .L2091+44
-	str	r3, [r0, #32]
-	ldrh	r3, [r2, #2474]
-	cmp	r3, #0
-	bne	.L2074
-.L2088:
-	movs	r3, #30
-	strh	r1, [r0, #24]	@ movhi
-	strh	r3, [r0, #22]	@ movhi
-.L2075:
-	ldrh	r3, [r7, #2]
-	strh	r3, [r0, #26]	@ movhi
-	cmp	r3, #0
-	beq	.L2078
+	movs	r1, #2
 	movs	r3, #3
-.L2090:
-	ldr	r1, [r2, #2492]
-	strh	r3, [r0, #24]	@ movhi
-	ldrh	r3, [r0, #22]
-	ldr	r7, .L2091+48
-	sub	r2, r1, #86016
-	sub	r2, r2, #384
-	cmp	r3, #30
-	itt	hi
-	movhi	r3, #30
-	strhhi	r3, [r0, #22]	@ movhi
-	movs	r3, #1
-	cmp	r2, r7
-	strh	r3, [r0, #24]	@ movhi
-	it	ls
-	strls	r1, [r0, #32]
-	strh	r3, [r0, #28]	@ movhi
-	bl	nftl_support_boot_check_crc_from_dts
-	cbnz	r0, .L2082
-	ldr	r3, [r4, #16]
-	strh	r0, [r3, #28]	@ movhi
-.L2082:
-	movs	r3, #0
-	str	r5, [sp, #28]
-	strd	r6, r3, [sp, #32]
-	mov	r0, r4
-	ldrh	r3, [r5, #34]
-	ldr	r1, [r4, #16]
-	str	r3, [sp, #24]
-	ldrh	r3, [r5, #40]
-	str	r3, [sp, #20]
-	ldr	r3, [r5, #44]
-	str	r3, [sp, #16]
-	ldrd	r2, [r5, #72]
-	strd	r2, [sp, #8]
-	ldrd	r2, [r5, #64]
-	strd	r2, [sp]
-	add	r2, r4, #12
-	bl	nftl_start
-	mov	r6, r0
-	cmp	r0, #0
-	bne	.L2069
-	ldr	r3, [r5, #80]
-	ldr	r0, .L2091+52
-	ldr	r2, [r3, #36]
-	ldr	r3, [r4, #12]
-	ldr	r1, [r2, #2484]
-	ldr	r3, [r3, #4]
-	ldr	r2, [r2, #2488]
-	strh	r1, [r3, #16]	@ movhi
-	uxth	r1, r1
-	strh	r2, [r3, #30]	@ movhi
-	bl	NAND_Print_DBG
-	ldr	r3, [r4, #12]
-	ldr	r3, [r3, #24]
-	str	r6, [r4, #8]
-	str	r3, [r4]
-	ldr	r3, .L2091+56
-	str	r3, [r4, #44]
-	ldr	r3, .L2091+60
-	str	r3, [r4, #40]
-	ldr	r3, .L2091+64
-	str	r3, [r4, #48]
-	ldr	r3, .L2091+68
-	str	r3, [r4, #56]
-	ldr	r3, .L2091+72
-	str	r3, [r4, #52]
-	ldr	r3, .L2091+76
-	str	r3, [r4, #60]
-	ldr	r3, .L2091+80
-	str	r3, [r4, #64]
-	ldr	r3, .L2091+84
-	str	r3, [r4, #68]
-	ldr	r3, .L2091+88
-	str	r3, [r4, #72]
-	b	.L2069
-.L2074:
-	cmp	r3, #255
-	bne	.L2076
-	movs	r3, #1
-	strh	r3, [r0]	@ movhi
-	movs	r3, #50
-	strh	r3, [r0, #22]	@ movhi
-	movs	r3, #40
-.L2089:
-	strh	r3, [r0, #24]	@ movhi
-	b	.L2075
-.L2076:
-	cmp	r3, #10
-	bls	.L2077
-	movs	r3, #10
-	strh	r3, [r2, #2474]	@ movhi
-	b	.L2088
-.L2077:
-	add	r3, r3, r3, lsl #2
-	add	r1, r3, r3, lsl #2
-	lsls	r3, r3, #3
-	lsls	r1, r1, #1
-	strh	r1, [r0, #22]	@ movhi
-	b	.L2089
-.L2078:
-	movs	r3, #1
-	b	.L2090
-.L2092:
-	.align	2
-.L2091:
-	.word	.LANCHOR19+21
-	.word	.LANCHOR26
-	.word	.LC376
-	.word	.LC373
-	.word	.LC374
-	.word	.LC377
-	.word	.LC375
-	.word	.LC372
-	.word	.LANCHOR15
-	.word	.LANCHOR27
-	.word	.LC378
-	.word	1296000
-	.word	7692600
-	.word	.LC379
-	.word	_nand_read
-	.word	_nand_read_history
-	.word	_nand_write
-	.word	_nand_discard
-	.word	_nand_flush_write_cache
-	.word	_shutdown_op
-	.word	_nand_sector_read
-	.word	_nand_sector_write
-	.word	_nand_flush_sector_write_cache
-	.size	nftl_initialize, .-nftl_initialize
-	.section	.text.panic_recover_data,"ax",%progbits
-	.align	1
-	.global	panic_recover_data
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	panic_recover_data, %function
-panic_recover_data:
-	@ args = 0, pretend = 0, frame = 40
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, r8, r10, fp, lr}
-	sub	sp, sp, #40
-	ldr	r4, .L2112
-	ldr	r5, [r4]
-	cbnz	r5, .L2094
-	ldr	r0, .L2112+4
-	bl	NAND_Print
-.L2111:
-	movs	r0, #0
-	b	.L2093
-.L2094:
-	ldr	r6, [r0, #12]
-	ldr	r0, .L2112+8
-	ldr	r7, [r6, #4]
-	bl	NAND_Print
-	ldrh	r0, [r7, #26]
-	bl	NAND_Malloc
-	mov	fp, r0
-	cbnz	r0, .L2096
-	mov	r2, #308
-	ldr	r1, .L2112+12
-	ldr	r0, .L2112+16
-	bl	NAND_Print
-	mov	r0, #-1
-.L2093:
-	add	sp, sp, #40
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2096:
-	ldrh	r2, [r7, #26]
-	movs	r1, #0
-	bl	NAND_Memset
-	movs	r3, #0
-.L2110:
-	str	r3, [r4, #16]
-	ldr	r3, [r4, #16]
-	cmp	r3, #2
-	bhi	.L2104
-	ldr	r3, [r4, r3, lsl #2]
-	str	r3, [sp]
-	movs	r3, #0
-.L2109:
-	str	r3, [r4, #20]
-	ldrh	r2, [r7, #20]
-	ldr	r3, [r4, #20]
-	cmp	r3, r2
-	bcc	.L2105
-	ldr	r3, [r4, #16]
-	adds	r3, r3, #1
-	b	.L2110
-.L2105:
-	ldr	r2, [sp]
-	add	r5, sp, #24
-	mov	r0, r6
-	ldrh	r1, [r2]
-	ldrh	r2, [r7, #28]
-	strh	r3, [sp, #8]	@ movhi
-	strh	r1, [sp, #10]	@ movhi
-	add	r1, sp, #8
-	ldr	r3, [r6, #1980]
-	strh	r2, [sp, #12]	@ movhi
-	str	fp, [sp, #16]
-	str	r5, [sp, #20]
-	blx	r3
+	mov	r0, r7
+	bl	fill_cmd_addr
+	movs	r3, #16
+	strd	r6, r6, [r4, #176]
+	strd	r6, r3, [r4, #168]
+	mov	r1, r10
+	ldr	r0, [r5, #268]
+	bl	ndfc_execute_cmd
 	mov	r0, r5
-	bl	is_panic_dummy_page
-	ldr	r3, [sp]
-	ldrh	r8, [r3]
-	cbz	r0, .L2099
-	ldr	r2, [r4, #20]
-	mov	r1, r8
-	ldr	r0, .L2112+20
-	bl	NAND_Print
-.L2100:
-	ldr	r3, [r4, #20]
-	adds	r3, r3, #1
-	b	.L2109
-.L2099:
-	mov	r0, r5
-	bl	is_panic_data_page
-	ldr	r10, [r4, #20]
-	cbnz	r0, .L2101
-	ldr	r3, [r4, #16]
-	mov	r2, r10
-	mov	r1, r8
-	cbnz	r3, .L2102
-	cmp	r10, #0
-	bne	.L2102
-	ldr	r0, .L2112+24
-	bl	NAND_Print
-.L2103:
-	movs	r1, #0
-	mov	r0, fp
-	bl	NAND_Free
-	b	.L2111
-.L2102:
-	ldr	r0, .L2112+28
-	bl	NAND_Print
-.L2104:
-	ldr	r3, [r4, #16]
-	cmp	r3, #0
-	blt	.L2103
-	ldr	r1, [r4, r3, lsl #2]
-	mov	r0, r6
-	ldrh	r2, [r1, #6]
-	adds	r2, r2, #1
-	uxth	r2, r2
-	bl	erase_block
-	ldr	r3, [r4, #16]
-	subs	r3, r3, #1
-	str	r3, [r4, #16]
-	b	.L2104
-.L2101:
-	movs	r2, #4
-	movs	r1, #7
-	mov	r0, r5
-	bl	get_spare_data
-	movs	r2, #4
-	str	r0, [sp, #4]
-	movs	r1, #11
-	mov	r0, r5
-	bl	get_spare_data
-	mov	r2, r10
-	mov	r5, r0
-	mov	r1, r8
-	ldr	r3, [sp, #4]
-	ldr	r0, .L2112+32
-	bl	NAND_Print
-	mov	r2, fp
-	mov	r1, r5
-	ldr	r0, [sp, #4]
-	bl	nftl_write
-	b	.L2100
-.L2113:
-	.align	2
-.L2112:
-	.word	.LANCHOR23
-	.word	.LC380
-	.word	.LC381
-	.word	.LANCHOR28
-	.word	.LC382
-	.word	.LC383
-	.word	.LC384
-	.word	.LC385
-	.word	.LC386
-	.size	panic_recover_data, .-panic_recover_data
-	.section	.text.nftl_add,"ax",%progbits
-	.align	1
-	.global	nftl_add
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_add, %function
-nftl_add:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r0
-	movs	r0, #76
-	bl	NAND_Malloc
+	bl	nand_read_chip_status_ready
 	mov	r4, r0
-	cbnz	r0, .L2115
-	ldr	r1, .L2118
-	ldr	r0, .L2118+4
-	bl	NAND_Print
-.L2114:
-	mov	r0, r4
-	pop	{r3, r4, r5, pc}
-.L2115:
 	mov	r0, r5
-	bl	build_nand_partition
-	ldrh	r1, [r5]
-	str	r0, [r4, #4]
-	mov	r0, r4
-	bl	nftl_initialize
-	cbz	r0, .L2117
-	ldr	r0, .L2118+8
-	movs	r4, #0
-	bl	NAND_Print
-	b	.L2114
-.L2117:
-	mov	r1, r4
-	ldr	r0, .L2118+12
-	bl	add_nftl_blk_list
-	mov	r0, r4
-	bl	panic_recover_data
-	ldr	r0, .L2118+16
-	bl	NAND_Print_DBG
-	b	.L2114
-.L2119:
+	bl	nand_disable_chip
+	b	.L163
+.L168:
 	.align	2
-.L2118:
-	.word	.LANCHOR29
-	.word	.LC387
-	.word	.LC388
-	.word	.LANCHOR0
-	.word	.LC389
-	.size	nftl_add, .-nftl_add
-	.section	.text.nftl_build_all,"ax",%progbits
-	.align	1
-	.global	nftl_build_all
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_build_all, %function
-nftl_build_all:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	movs	r2, #0
-	ldr	r4, [r0, #56]
-	ldr	r3, .L2125
-	str	r2, [r3, #8]
-.L2121:
-	mov	r0, r4
-	cbz	r4, .L2120
-	bl	nftl_add
-	cbnz	r0, .L2122
-	ldr	r0, .L2125+4
-	bl	NAND_Print
-	movs	r0, #1
-.L2120:
-	pop	{r4, pc}
-.L2122:
-	ldr	r4, [r4, #48]
-	b	.L2121
-.L2126:
-	.align	2
-.L2125:
-	.word	.LANCHOR0
-	.word	.LC390
-	.size	nftl_build_all, .-nftl_build_all
-	.section	.text.nftl_build_one,"ax",%progbits
-	.align	1
-	.global	nftl_build_one
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	nftl_build_one, %function
-nftl_build_one:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r5, r1
-	ldr	r4, [r0, #56]
-	cbnz	r1, .L2129
-	ldr	r3, .L2133
-	str	r1, [r3, #8]
-.L2129:
-	cbnz	r4, .L2132
-	mov	r0, r4
-	b	.L2127
-.L2132:
-	ldrh	r3, [r4]
-	cmp	r3, r5
-	bne	.L2130
-	mov	r0, r4
-	bl	nftl_add
-	cbnz	r0, .L2130
-	ldr	r0, .L2133+4
-	bl	NAND_Print
-	movs	r0, #1
-.L2127:
-	pop	{r3, r4, r5, pc}
-.L2130:
-	ldr	r4, [r4, #48]
-	b	.L2129
-.L2134:
-	.align	2
-.L2133:
-	.word	.LANCHOR0
-	.word	.LC390
-	.size	nftl_build_one, .-nftl_build_one
+.L167:
+	.word	g_nsi
+	.word	.LC18
+	.size	sandisk_A19_check_bad_block_first_burn, .-sandisk_A19_check_bad_block_first_burn
 	.section	.text.hynix20nm_vender_set_param,"ax",%progbits
 	.align	1
 	.global	hynix20nm_vender_set_param
@@ -15008,18 +1419,18 @@ hynix20nm_vender_set_param:
 	mov	r5, r1
 	strb	r3, [r8, #-1]!
 	bl	nand_enable_chip
-	ldr	r0, [r6, #260]
+	ldr	r0, [r6, #268]
 	bl	ndfc_disable_randomize
-.L2136:
+.L170:
 	cmp	r4, r7
-	bne	.L2137
+	bne	.L171
 	mov	r0, r6
 	bl	nand_disable_chip
 	movs	r0, #0
 	add	sp, sp, #28
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2137:
+.L171:
 	mov	r3, r4
 	str	r5, [sp]
 	movs	r2, #0
@@ -15033,7 +1444,7 @@ hynix20nm_vender_set_param:
 	adds	r4, r4, #1
 	bl	set_one_cmd
 	adds	r5, r5, #1
-	b	.L2136
+	b	.L170
 	.size	hynix20nm_vender_set_param, .-hynix20nm_vender_set_param
 	.section	.text.hynix20nm_set_readretry,"ax",%progbits
 	.align	1
@@ -15046,183 +1457,64 @@ hynix20nm_vender_set_param:
 hynix20nm_set_readretry:
 	@ args = 0, pretend = 0, frame = 8
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2145
+	ldr	r3, .L179
 	push	{r0, r1, r2, r4, r5, r6, r7, lr}
 	ldr	r1, [r0, #176]
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r1, r3
-	bhi	.L2144
-	ldr	r5, .L2145+4
+	bhi	.L178
+	ldr	r5, .L179+4
 	lsls	r1, r1, #3
 	movs	r2, #0
 	ldrb	r3, [r5]	@ zero_extendqisi2
-.L2140:
+.L174:
 	cmp	r3, r2
-	bhi	.L2141
-	ldr	r7, .L2145+8
+	bhi	.L175
+	ldr	r7, .L179+8
 	mov	r1, sp
-	ldr	r2, .L2145+12
+	ldr	r2, .L179+12
 	movs	r4, #0
 	bl	hynix20nm_vender_set_param
 	mov	r6, r0
-	ldr	r0, .L2145+16
+	ldr	r0, .L179+16
 	bl	NAND_Print_DBG
-.L2142:
+.L176:
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	cmp	r3, r4
-	bhi	.L2143
-	ldr	r0, .L2145+20
+	bhi	.L177
+	ldr	r0, .L179+20
 	bl	NAND_Print_DBG
-.L2138:
+.L172:
 	mov	r0, r6
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2141:
+.L175:
 	adds	r4, r1, r2
 	add	r4, r4, r0
 	ldrb	r4, [r4, #48]	@ zero_extendqisi2
 	strb	r4, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2140
-.L2143:
+	b	.L174
+.L177:
 	ldrb	r1, [sp, r4]	@ zero_extendqisi2
 	mov	r0, r7
 	bl	NAND_Print_DBG
 	adds	r4, r4, #1
-	b	.L2142
-.L2144:
+	b	.L176
+.L178:
 	mvn	r6, #91
-	b	.L2138
-.L2146:
+	b	.L172
+.L180:
 	.align	2
-.L2145:
-	.word	.LANCHOR30
-	.word	.LANCHOR31
-	.word	.LC392
-	.word	.LANCHOR32
-	.word	.LC391
+.L179:
+	.word	.LANCHOR12
+	.word	.LANCHOR13
+	.word	.LC20
+	.word	.LANCHOR14
+	.word	.LC19
 	.word	.LC7
 	.size	hynix20nm_set_readretry, .-hynix20nm_set_readretry
-	.section	.text.hynix20nm_read_page_end,"ax",%progbits
-	.align	1
-	.global	hynix20nm_read_page_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	hynix20nm_read_page_end, %function
-hynix20nm_read_page_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2163
-	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r6, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r5, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	adds	r3, r0, #2
-	mov	r4, r0
-	bne	.L2147
-	ldr	r8, .L2163+16
-	movs	r7, #0
-	ldr	r10, .L2163+20
-	ldr	r0, .L2163+4
-	bl	NAND_Print_DBG
-.L2149:
-	ldrb	r2, [r8]	@ zero_extendqisi2
-	cmp	r2, r7
-	ble	.L2153
-	ldr	r3, [r5, #176]
-	mov	r0, r5
-	adds	r3, r3, #1
-	cmp	r3, r2
-	it	hi
-	movhi	r3, #0
-	str	r3, [r5, #176]
-	bl	hynix20nm_set_readretry
-	mov	r4, r0
-	cbz	r0, .L2152
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	bl	hynix20nm_set_readretry
-.L2153:
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	bl	hynix20nm_set_readretry
-.L2147:
-	mov	r0, r4
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2152:
-	mov	r0, r6
-	bl	generic_read_page_start
-	mov	r4, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	ldr	fp, [r6, #20]
-	orrs	r4, r4, r0
-	mov	r0, fp
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2154
-	ldr	r3, [r5, #176]
-	mvn	r4, #1
-	ldr	r1, [r5, #260]
-	mov	r0, r10
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-.L2155:
-	adds	r7, r7, #1
-	b	.L2149
-.L2154:
-	cmp	r4, #10
-	bne	.L2156
-.L2157:
-	ldrb	r0, [fp, #4]	@ zero_extendqisi2
-	movs	r4, #10
-	ldrb	r3, [fp, #3]	@ zero_extendqisi2
-	ldrb	r2, [fp, #2]	@ zero_extendqisi2
-	ldrb	r1, [fp, #1]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldr	r0, .L2163+8
-	bl	NAND_Print_DBG
-	ldr	r3, [r5, #176]
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2163+12
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2153
-.L2156:
-	cmp	r4, #0
-	bne	.L2155
-	b	.L2157
-.L2164:
-	.align	2
-.L2163:
-	.word	g_nsi
-	.word	.LC393
-	.word	.LC395
-	.word	.LC396
-	.word	.LANCHOR30
-	.word	.LC394
-	.size	hynix20nm_read_page_end, .-hynix20nm_read_page_end
 	.section	.text.hynix20nm_vender_get_param,"ax",%progbits
 	.align	1
 	.global	hynix20nm_vender_get_param
@@ -15243,21 +1535,21 @@ hynix20nm_vender_get_param:
 	add	r7, r7, r4
 	mov	r10, #1
 	bl	nand_enable_chip
-	ldr	r0, [r6, #260]
+	ldr	r0, [r6, #268]
 	add	r8, sp, #16
 	bl	ndfc_disable_randomize
 	movs	r3, #55
 	strb	r3, [r8, #-1]!
-.L2166:
+.L182:
 	cmp	r4, r7
-	bne	.L2167
+	bne	.L183
 	mov	r0, r6
 	bl	nand_disable_chip
 	movs	r0, #0
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2167:
+.L183:
 	mov	r3, r5
 	mov	r2, r4
 	str	r10, [sp]
@@ -15266,7 +1558,7 @@ hynix20nm_vender_get_param:
 	adds	r4, r4, #1
 	bl	get_data_with_nand_bus_one_cmd
 	adds	r5, r5, #1
-	b	.L2166
+	b	.L182
 	.size	hynix20nm_vender_get_param, .-hynix20nm_vender_get_param
 	.section	.text.hynix20nm_lsb_init,"ax",%progbits
 	.align	1
@@ -15280,64 +1572,64 @@ hynix20nm_lsb_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	@ link register save eliminated.
-	ldr	r3, [r0, #264]
-	ldr	r1, .L2172
+	ldr	r3, [r0, #272]
+	ldr	r1, .L188
 	ldr	r2, [r3, #52]
 	ubfx	r3, r2, #16, #8
 	strb	r3, [r1]
 	lsrs	r0, r2, #8
-	ldr	r1, .L2172+4
+	ldr	r1, .L188+4
 	cmp	r3, #2
 	strb	r0, [r1]
-	ldr	r1, .L2172+8
+	ldr	r1, .L188+8
 	strb	r2, [r1]
-	bne	.L2169
-	ldr	r3, .L2172+12
+	bne	.L185
+	ldr	r3, .L188+12
 	movs	r2, #4
 	strb	r2, [r3]
 	movs	r2, #176
-	ldr	r3, .L2172+16
+	ldr	r3, .L188+16
 	strb	r2, [r3]
 	movs	r2, #177
 	strb	r2, [r3, #1]
 	movs	r2, #160
 	strb	r2, [r3, #2]
 	movs	r2, #161
-.L2171:
+.L187:
 	strb	r2, [r3, #3]
 	movs	r2, #10
-	ldr	r3, .L2172+20
+	ldr	r3, .L188+20
 	strb	r2, [r3]
 	strb	r2, [r3, #1]
 	strb	r2, [r3, #2]
 	strb	r2, [r3, #3]
-.L2170:
+.L186:
 	movs	r0, #0
 	bx	lr
-.L2169:
+.L185:
 	cmp	r3, #3
-	bne	.L2170
-	ldr	r3, .L2172+12
+	bne	.L186
+	ldr	r3, .L188+12
 	movs	r2, #4
 	strb	r2, [r3]
 	movs	r2, #160
-	ldr	r3, .L2172+16
+	ldr	r3, .L188+16
 	strb	r2, [r3]
 	movs	r2, #161
 	strb	r2, [r3, #1]
 	movs	r2, #167
 	strb	r2, [r3, #2]
 	movs	r2, #168
-	b	.L2171
-.L2173:
+	b	.L187
+.L189:
 	.align	2
-.L2172:
-	.word	.LANCHOR33
-	.word	.LANCHOR30
-	.word	.LANCHOR31
-	.word	.LANCHOR34
-	.word	.LANCHOR35
-	.word	.LANCHOR36
+.L188:
+	.word	.LANCHOR15
+	.word	.LANCHOR12
+	.word	.LANCHOR13
+	.word	.LANCHOR16
+	.word	.LANCHOR17
+	.word	.LANCHOR18
 	.size	hynix20nm_lsb_init, .-hynix20nm_lsb_init
 	.section	.text.hynix20nm_lsb_enable,"ax",%progbits
 	.align	1
@@ -15352,40 +1644,40 @@ hynix20nm_lsb_enable:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r2, r4, r5, r6, r7, lr}
 	mov	r5, r0
-	ldr	r4, .L2177
-	ldr	r2, .L2177+4
+	ldr	r4, .L193
+	ldr	r2, .L193+4
 	ldrb	r3, [r4]	@ zero_extendqisi2
-	ldr	r1, .L2177+8
+	ldr	r1, .L193+8
 	bl	hynix20nm_vender_get_param
-	ldr	r6, .L2177+12
+	ldr	r6, .L193+12
 	movs	r2, #0
 	ldrb	r3, [r4]	@ zero_extendqisi2
 	add	r1, sp, #4
-	ldr	r4, .L2177+8
-.L2175:
+	ldr	r4, .L193+8
+.L191:
 	cmp	r3, r2
-	bhi	.L2176
-	ldr	r2, .L2177+4
+	bhi	.L192
+	ldr	r2, .L193+4
 	mov	r0, r5
 	bl	hynix20nm_vender_set_param
 	movs	r0, #0
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2176:
+.L192:
 	ldrb	r0, [r2, r4]	@ zero_extendqisi2
 	ldrb	r7, [r2, r6]	@ zero_extendqisi2
 	add	r0, r0, r7
 	strb	r0, [r1, r2]
 	adds	r2, r2, #1
-	b	.L2175
-.L2178:
+	b	.L191
+.L194:
 	.align	2
-.L2177:
-	.word	.LANCHOR34
-	.word	.LANCHOR35
-	.word	.LANCHOR37
-	.word	.LANCHOR36
+.L193:
+	.word	.LANCHOR16
+	.word	.LANCHOR17
+	.word	.LANCHOR19
+	.word	.LANCHOR18
 	.size	hynix20nm_lsb_enable, .-hynix20nm_lsb_enable
 	.section	.text.hynix20nm_lsb_disable,"ax",%progbits
 	.align	1
@@ -15399,19 +1691,19 @@ hynix20nm_lsb_disable:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, lr}
-	ldr	r3, .L2180
-	ldr	r2, .L2180+4
+	ldr	r3, .L196
+	ldr	r2, .L196+4
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	ldr	r1, .L2180+8
+	ldr	r1, .L196+8
 	bl	hynix20nm_vender_set_param
 	movs	r0, #0
 	pop	{r3, pc}
-.L2181:
+.L197:
 	.align	2
-.L2180:
-	.word	.LANCHOR34
-	.word	.LANCHOR35
-	.word	.LANCHOR37
+.L196:
+	.word	.LANCHOR16
+	.word	.LANCHOR17
+	.word	.LANCHOR19
 	.size	hynix20nm_lsb_disable, .-hynix20nm_lsb_disable
 	.section	.text.hynix20nm_lsb_exit,"ax",%progbits
 	.align	1
@@ -15427,7 +1719,7 @@ hynix20nm_lsb_exit:
 	push	{r4, lr}
 	mov	r4, r0
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
 	movs	r2, #0
 	mov	r0, r4
@@ -15452,16 +1744,16 @@ hynix20nm_lsb_exit:
 	movs	r1, #48
 	mov	r0, r4
 	bl	set_one_cmd
-	ldr	r0, .L2183
+	ldr	r0, .L199
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	nand_disable_chip
 	movs	r0, #0
 	pop	{r4, pc}
-.L2184:
+.L200:
 	.align	2
-.L2183:
-	.word	.LC397
+.L199:
+	.word	.LC21
 	.size	hynix20nm_lsb_exit, .-hynix20nm_lsb_exit
 	.section	.text.hynix20nm_vender_get_param_otp_hynix,"ax",%progbits
 	.align	1
@@ -15479,22 +1771,22 @@ hynix20nm_vender_get_param_otp_hynix:
 	sub	sp, sp, #36
 	mov	r4, r0
 	strh	r3, [sp, #28]	@ movhi
-	ldr	r3, .L2203
+	ldr	r3, .L219
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r3, #2
-	bne	.L2186
+	bne	.L202
 	movw	r3, #52479
 	strh	r3, [sp, #24]	@ movhi
 	movw	r3, #19776
 	strh	r3, [sp, #28]	@ movhi
-.L2187:
+.L203:
 	mov	r0, #1024
 	movs	r6, #1
 	bl	nand_get_temp_buf
 	mov	r5, r0
 	mov	r0, r4
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
 	movs	r2, #1
 	movs	r1, #255
@@ -15565,14 +1857,14 @@ hynix20nm_vender_get_param_otp_hynix:
 	ldrb	r1, [r5]	@ zero_extendqisi2
 	ldrb	r2, [r5, #1]	@ zero_extendqisi2
 	cmp	r1, #8
-	bne	.L2189
+	bne	.L205
 	cmp	r2, #8
-	beq	.L2198
-.L2189:
+	beq	.L214
+.L205:
 	mvn	r6, #95
-	ldr	r0, .L2203+4
+	ldr	r0, .L219+4
 	bl	NAND_Print
-.L2190:
+.L206:
 	mov	r3, #1024
 	movs	r2, #0
 	str	r3, [sp]
@@ -15582,43 +1874,43 @@ hynix20nm_vender_get_param_otp_hynix:
 	bl	get_data_with_nand_bus_one_cmd
 	movs	r1, #0
 	add	ip, r4, #112
-.L2191:
+.L207:
 	add	r2, r5, r1, lsl #7
 	add	r3, r4, #48
-.L2193:
+.L209:
 	ldrb	r7, [r2], #1	@ zero_extendqisi2
 	strb	r7, [r3], #1
 	ldrb	r0, [r2, #63]	@ zero_extendqisi2
 	add	r0, r0, r7
 	cmp	r0, #255
-	bne	.L2192
+	bne	.L208
 	cmp	r3, ip
-	bne	.L2193
-	ldr	r0, .L2203+8
+	bne	.L209
+	ldr	r0, .L219+8
 	bl	NAND_Print_DBG
-	b	.L2195
-.L2186:
+	b	.L211
+.L202:
 	cmp	r3, #3
-	bne	.L2197
+	bne	.L213
 	movw	r3, #45230
 	strh	r3, [sp, #24]	@ movhi
 	movs	r3, #77
 	strb	r3, [sp, #29]
-	b	.L2187
-.L2198:
+	b	.L203
+.L214:
 	movs	r6, #0
-	b	.L2190
-.L2197:
+	b	.L206
+.L213:
 	mvn	r6, #96
-	b	.L2185
-.L2192:
+	b	.L201
+.L208:
 	adds	r1, r1, #1
 	cmp	r1, #8
-	bne	.L2191
+	bne	.L207
 	mvn	r6, #94
-	ldr	r0, .L2203+12
+	ldr	r0, .L219+12
 	bl	NAND_Print_DBG
-.L2195:
+.L211:
 	movs	r2, #1
 	movs	r1, #255
 	mov	r0, r4
@@ -15632,18 +1924,18 @@ hynix20nm_vender_get_param_otp_hynix:
 	mov	r1, #1024
 	mov	r0, r5
 	bl	nand_free_temp_buf
-.L2185:
+.L201:
 	mov	r0, r6
 	add	sp, sp, #36
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2204:
+.L220:
 	.align	2
-.L2203:
-	.word	.LANCHOR33
-	.word	.LC398
-	.word	.LC400
-	.word	.LC399
+.L219:
+	.word	.LANCHOR15
+	.word	.LC22
+	.word	.LC24
+	.word	.LC23
 	.size	hynix20nm_vender_get_param_otp_hynix, .-hynix20nm_vender_get_param_otp_hynix
 	.section	.text.hynix20nm_saveotpvalue,"ax",%progbits
 	.align	1
@@ -15660,11 +1952,11 @@ hynix20nm_saveotpvalue:
 	subs	r3, r1, #1
 	adds	r0, r0, #48
 	adds	r1, r1, #63
-.L2206:
+.L222:
 	ldrb	r2, [r3, #1]!	@ zero_extendqisi2
 	cmp	r3, r1
 	strb	r2, [r0], #1
-	bne	.L2206
+	bne	.L222
 	bx	lr
 	.size	hynix20nm_saveotpvalue, .-hynix20nm_saveotpvalue
 	.section	.text.hynix20nm_getotpparam,"ax",%progbits
@@ -15680,48 +1972,48 @@ hynix20nm_getotpparam:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, r5, r6, r7, r8, lr}
 	mov	r4, r0
-	ldr	r8, .L2218+4
+	ldr	r8, .L234+4
 	mov	r5, r1
 	movs	r6, #0
-.L2211:
+.L227:
 	mov	r1, r6
 	mov	r0, r8
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	hynix20nm_vender_get_param_otp_hynix
 	mov	r7, r0
-	cbnz	r0, .L2209
+	cbnz	r0, .L225
 	mov	r0, r4
 	mov	r1, r5
 	add	r2, r4, #64
-.L2210:
+.L226:
 	movs	r3, #0
-.L2213:
+.L229:
 	adds	r4, r0, r3
 	ldrb	r4, [r4, #48]	@ zero_extendqisi2
 	strb	r4, [r1, r3]
 	adds	r3, r3, #1
 	cmp	r3, #8
-	bne	.L2213
+	bne	.L229
 	adds	r0, r0, #8
 	adds	r1, r1, #8
 	cmp	r2, r0
-	bne	.L2210
-.L2208:
+	bne	.L226
+.L224:
 	mov	r0, r7
 	pop	{r4, r5, r6, r7, r8, pc}
-.L2209:
+.L225:
 	adds	r6, r6, #1
 	cmp	r6, #5
-	bne	.L2211
-	ldr	r0, .L2218
+	bne	.L227
+	ldr	r0, .L234
 	bl	NAND_Print
-	b	.L2208
-.L2219:
+	b	.L224
+.L235:
 	.align	2
-.L2218:
-	.word	.LC402
-	.word	.LC401
+.L234:
+	.word	.LC26
+	.word	.LC25
 	.size	hynix20nm_getotpparam, .-hynix20nm_getotpparam
 	.section	.text.hynix20nm_set_default_param,"ax",%progbits
 	.align	1
@@ -15736,48 +2028,48 @@ hynix20nm_set_default_param:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r2, r4, r5, r6, r7, lr}
 	add	r1, r0, #48
-	ldr	r5, .L2225
+	ldr	r5, .L241
 	movs	r2, #0
 	ldrb	r3, [r5]	@ zero_extendqisi2
-.L2221:
+.L237:
 	cmp	r3, r2
-	bhi	.L2222
-	ldr	r7, .L2225+4
+	bhi	.L238
+	ldr	r7, .L241+4
 	mov	r1, sp
-	ldr	r2, .L2225+8
+	ldr	r2, .L241+8
 	movs	r4, #0
 	bl	hynix20nm_vender_set_param
 	mov	r6, r0
-	ldr	r0, .L2225+12
+	ldr	r0, .L241+12
 	bl	NAND_Print_DBG
-.L2223:
+.L239:
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	cmp	r3, r4
-	bhi	.L2224
-	ldr	r0, .L2225+16
+	bhi	.L240
+	ldr	r0, .L241+16
 	bl	NAND_Print_DBG
 	mov	r0, r6
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2222:
+.L238:
 	ldrb	r4, [r1], #1	@ zero_extendqisi2
 	strb	r4, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2221
-.L2224:
+	b	.L237
+.L240:
 	ldrb	r1, [sp, r4]	@ zero_extendqisi2
 	mov	r0, r7
 	bl	NAND_Print_DBG
 	adds	r4, r4, #1
-	b	.L2223
-.L2226:
+	b	.L239
+.L242:
 	.align	2
-.L2225:
-	.word	.LANCHOR31
-	.word	.LC404
-	.word	.LANCHOR32
-	.word	.LC403
+.L241:
+	.word	.LANCHOR13
+	.word	.LC28
+	.word	.LANCHOR14
+	.word	.LC27
 	.word	.LC7
 	.size	hynix20nm_set_default_param, .-hynix20nm_set_default_param
 	.section	.text.hynix20nm_readretry_exit,"ax",%progbits
@@ -15793,17 +2085,17 @@ hynix20nm_readretry_exit:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, lr}
 	mov	r4, r0
-	ldr	r0, .L2228
+	ldr	r0, .L244
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	hynix20nm_set_default_param
 	movs	r0, #0
 	str	r0, [r4, #176]
 	pop	{r4, pc}
-.L2229:
+.L245:
 	.align	2
-.L2228:
-	.word	.LC405
+.L244:
+	.word	.LC29
 	.size	hynix20nm_readretry_exit, .-hynix20nm_readretry_exit
 	.section	.text.hynix20nm_special_exit,"ax",%progbits
 	.align	1
@@ -15816,26 +2108,26 @@ hynix20nm_readretry_exit:
 hynix20nm_special_exit:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2233
+	ldr	r3, .L249
 	push	{r4, lr}
 	ldr	r3, [r3]
 	ldr	r4, [r3, #8]
-.L2231:
-	cbnz	r4, .L2232
-	ldr	r0, .L2233+4
+.L247:
+	cbnz	r4, .L248
+	ldr	r0, .L249+4
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	pop	{r4, pc}
-.L2232:
+.L248:
 	mov	r0, r4
 	bl	hynix20nm_readretry_exit
 	ldr	r4, [r4]
-	b	.L2231
-.L2234:
+	b	.L247
+.L250:
 	.align	2
-.L2233:
+.L249:
 	.word	g_nsi
-	.word	.LC406
+	.word	.LC30
 	.size	hynix20nm_special_exit, .-hynix20nm_special_exit
 	.section	.text.hynix26nm_vender_set_param,"ax",%progbits
 	.align	1
@@ -15861,11 +2153,11 @@ hynix26nm_vender_set_param:
 	mov	fp, #1
 	strb	r3, [r10, #-1]!
 	bl	nand_enable_chip
-	ldr	r0, [r6, #260]
+	ldr	r0, [r6, #268]
 	bl	ndfc_disable_randomize
-.L2236:
+.L252:
 	cmp	r4, r7
-	bne	.L2237
+	bne	.L253
 	mov	r0, r6
 	bl	nand_disable_chip
 	ldrb	r0, [r5, #3]	@ zero_extendqisi2
@@ -15873,13 +2165,13 @@ hynix26nm_vender_set_param:
 	ldrb	r2, [r5, #1]	@ zero_extendqisi2
 	str	r0, [sp]
 	ldrb	r1, [r5]	@ zero_extendqisi2
-	ldr	r0, .L2238
+	ldr	r0, .L254
 	bl	NAND_Print_DBG
 	movs	r0, #0
 	add	sp, sp, #24
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2237:
+.L253:
 	mov	r3, r4
 	str	r8, [sp]
 	movs	r2, #0
@@ -15893,11 +2185,11 @@ hynix26nm_vender_set_param:
 	adds	r4, r4, #1
 	bl	set_one_cmd
 	add	r8, r8, #1
-	b	.L2236
-.L2239:
+	b	.L252
+.L255:
 	.align	2
-.L2238:
-	.word	.LC407
+.L254:
+	.word	.LC31
 	.size	hynix26nm_vender_set_param, .-hynix26nm_vender_set_param
 	.section	.text.hynix26nm_set_readretry,"ax",%progbits
 	.align	1
@@ -15910,25 +2202,25 @@ hynix26nm_vender_set_param:
 hynix26nm_set_readretry:
 	@ args = 0, pretend = 0, frame = 8
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2249
+	ldr	r3, .L265
 	push	{r0, r1, r4, r5, r6, r7, r8, lr}
 	ldr	r1, [r0, #176]
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r1, r3
-	bhi	.L2248
-	ldr	r4, .L2249+4
+	bhi	.L264
+	ldr	r4, .L265+4
 	movs	r6, #0
-	ldr	r7, .L2249+8
+	ldr	r7, .L265+8
 	add	r5, sp, #4
 	ldrb	r3, [r4]	@ zero_extendqisi2
 	add	r7, r7, r1, lsl #3
-.L2242:
+.L258:
 	cmp	r3, r6
-	bhi	.L2243
+	bhi	.L259
 	subs	r2, r1, #2
 	subs	r1, r1, #5
 	cmp	r2, #4
-	ldr	r8, .L2249+24
+	ldr	r8, .L265+24
 	it	ls
 	movls	r2, #0
 	mov	r6, #0
@@ -15940,23 +2232,23 @@ hynix26nm_set_readretry:
 	mov	r1, r5
 	it	ls
 	strbls	r2, [sp, #5]
-	ldr	r2, .L2249+12
+	ldr	r2, .L265+12
 	bl	hynix26nm_vender_set_param
 	mov	r7, r0
-	ldr	r0, .L2249+16
+	ldr	r0, .L265+16
 	bl	NAND_Print_DBG
-.L2246:
+.L262:
 	ldrb	r3, [r4]	@ zero_extendqisi2
 	cmp	r3, r6
-	bhi	.L2247
-	ldr	r0, .L2249+20
+	bhi	.L263
+	ldr	r0, .L265+20
 	bl	NAND_Print_DBG
-.L2240:
+.L256:
 	mov	r0, r7
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, pc}
-.L2243:
+.L259:
 	adds	r2, r0, r6
 	ldrh	ip, [r7, r6, lsl #1]
 	ldrb	r2, [r2, #48]	@ zero_extendqisi2
@@ -15965,26 +2257,26 @@ hynix26nm_set_readretry:
 	usat	r2, #8, r2
 	strb	r2, [r5, r6]
 	adds	r6, r6, #1
-	b	.L2242
-.L2247:
+	b	.L258
+.L263:
 	ldrb	r1, [r5, r6]	@ zero_extendqisi2
 	mov	r0, r8
 	bl	NAND_Print_DBG
 	adds	r6, r6, #1
-	b	.L2246
-.L2248:
+	b	.L262
+.L264:
 	mvn	r7, #52
-	b	.L2240
-.L2250:
+	b	.L256
+.L266:
 	.align	2
-.L2249:
-	.word	.LANCHOR38
-	.word	.LANCHOR39
-	.word	.LANCHOR40
-	.word	.LANCHOR41
-	.word	.LC408
+.L265:
+	.word	.LANCHOR20
+	.word	.LANCHOR21
+	.word	.LANCHOR22
+	.word	.LANCHOR23
+	.word	.LC32
 	.word	.LC7
-	.word	.LC392
+	.word	.LC20
 	.size	hynix26nm_set_readretry, .-hynix26nm_set_readretry
 	.section	.text.hynix26nm_read_page_end,"ax",%progbits
 	.align	1
@@ -15997,7 +2289,7 @@ hynix26nm_set_readretry:
 hynix26nm_read_page_end:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2264
+	ldr	r3, .L280
 	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
 	mov	r6, r0
 	ldr	r1, [r0]
@@ -16008,16 +2300,16 @@ hynix26nm_read_page_end:
 	bl	generic_read_page_end_not_retry
 	adds	r3, r0, #2
 	mov	r4, r0
-	bne	.L2251
-	ldr	r7, .L2264+4
+	bne	.L267
+	ldr	r7, .L280+4
 	mov	r10, #0
 	mov	r8, r10
-	ldr	r0, .L2264+8
+	ldr	r0, .L280+8
 	bl	NAND_Print_DBG
-.L2253:
+.L269:
 	ldrb	r2, [r7]	@ zero_extendqisi2
 	cmp	r2, r10
-	ble	.L2257
+	ble	.L273
 	ldr	r3, [r5, #176]
 	mov	r0, r5
 	adds	r3, r3, #1
@@ -16027,22 +2319,22 @@ hynix26nm_read_page_end:
 	str	r3, [r5, #176]
 	bl	hynix26nm_set_readretry
 	mov	r4, r0
-	cbz	r0, .L2256
+	cbz	r0, .L272
 	movs	r3, #0
 	mov	r0, r5
 	str	r3, [r5, #176]
 	bl	hynix26nm_set_readretry
-.L2257:
+.L273:
 	movs	r3, #0
 	mov	r0, r5
 	str	r3, [r5, #176]
 	bl	hynix26nm_set_readretry
-.L2251:
+.L267:
 	mov	r0, r4
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2256:
+.L272:
 	mov	r0, r6
 	bl	generic_read_page_start
 	mov	r4, r0
@@ -16050,13 +2342,13 @@ hynix26nm_read_page_end:
 	bl	generic_read_page_end_not_retry
 	orrs	r4, r4, r0
 	cmp	r4, #10
-	beq	.L2258
-	cbnz	r4, .L2259
-.L2258:
+	beq	.L274
+	cbnz	r4, .L275
+.L274:
 	ldr	r3, [r5, #176]
 	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2264+12
+	ldr	r1, [r5, #268]
+	ldr	r0, .L280+12
 	str	r3, [sp, #4]
 	ldr	r3, [r6, #8]
 	str	r3, [sp]
@@ -16064,17 +2356,17 @@ hynix26nm_read_page_end:
 	ldr	r2, [r5, #20]
 	ldr	r1, [r1, #8]
 	bl	NAND_Print_DBG
-	b	.L2257
-.L2259:
+	b	.L273
+.L275:
 	add	r10, r10, #1
-	b	.L2253
-.L2265:
+	b	.L269
+.L281:
 	.align	2
-.L2264:
+.L280:
 	.word	g_nsi
-	.word	.LANCHOR38
-	.word	.LC409
-	.word	.LC410
+	.word	.LANCHOR20
+	.word	.LC33
+	.word	.LC34
 	.size	hynix26nm_read_page_end, .-hynix26nm_read_page_end
 	.section	.text.hynix26nm_vender_get_param,"ax",%progbits
 	.align	1
@@ -16099,18 +2391,18 @@ hynix26nm_vender_get_param:
 	mov	r5, r1
 	strb	r3, [r8, #-1]!
 	bl	nand_enable_chip
-	ldr	r0, [r6, #260]
+	ldr	r0, [r6, #268]
 	bl	ndfc_disable_randomize
-.L2267:
+.L283:
 	cmp	r4, r7
-	bne	.L2268
+	bne	.L284
 	mov	r0, r6
 	bl	nand_disable_chip
 	movs	r0, #0
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2268:
+.L284:
 	mov	r3, r5
 	mov	r2, r4
 	str	r10, [sp]
@@ -16119,7 +2411,7 @@ hynix26nm_vender_get_param:
 	adds	r4, r4, #1
 	bl	get_data_with_nand_bus_one_cmd
 	adds	r5, r5, #1
-	b	.L2267
+	b	.L283
 	.size	hynix26nm_vender_get_param, .-hynix26nm_vender_get_param
 	.section	.text.hynix26nm_lsb_init,"ax",%progbits
 	.align	1
@@ -16133,22 +2425,22 @@ hynix26nm_lsb_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	@ link register save eliminated.
-	ldr	r3, [r0, #264]
+	ldr	r3, [r0, #272]
 	movs	r0, #0
-	ldr	r2, .L2270
+	ldr	r2, .L286
 	ldr	r3, [r3, #52]
 	lsrs	r1, r3, #16
 	strb	r1, [r2]
 	lsrs	r1, r3, #8
-	ldr	r2, .L2270+4
+	ldr	r2, .L286+4
 	strb	r1, [r2]
-	ldr	r2, .L2270+8
+	ldr	r2, .L286+8
 	strb	r3, [r2]
 	movs	r2, #5
-	ldr	r3, .L2270+12
+	ldr	r3, .L286+12
 	strb	r2, [r3]
 	movs	r2, #164
-	ldr	r3, .L2270+16
+	ldr	r3, .L286+16
 	strb	r2, [r3]
 	movs	r2, #165
 	strb	r2, [r3, #1]
@@ -16159,7 +2451,7 @@ hynix26nm_lsb_init:
 	movs	r2, #201
 	strb	r2, [r3, #4]
 	movs	r2, #37
-	ldr	r3, .L2270+20
+	ldr	r3, .L286+20
 	strb	r2, [r3]
 	strb	r2, [r3, #1]
 	strb	r2, [r3, #2]
@@ -16167,15 +2459,15 @@ hynix26nm_lsb_init:
 	movs	r2, #1
 	strb	r2, [r3, #4]
 	bx	lr
-.L2271:
+.L287:
 	.align	2
-.L2270:
-	.word	.LANCHOR42
-	.word	.LANCHOR38
-	.word	.LANCHOR39
-	.word	.LANCHOR43
-	.word	.LANCHOR44
-	.word	.LANCHOR45
+.L286:
+	.word	.LANCHOR24
+	.word	.LANCHOR20
+	.word	.LANCHOR21
+	.word	.LANCHOR25
+	.word	.LANCHOR26
+	.word	.LANCHOR27
 	.size	hynix26nm_lsb_init, .-hynix26nm_lsb_init
 	.section	.text.hynix26nm_lsb_enable,"ax",%progbits
 	.align	1
@@ -16190,19 +2482,19 @@ hynix26nm_lsb_enable:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r4, r5, r6, lr}
 	mov	r5, r0
-	ldr	r4, .L2275
-	ldr	r2, .L2275+4
+	ldr	r4, .L291
+	ldr	r2, .L291+4
 	ldrb	r3, [r4]	@ zero_extendqisi2
-	ldr	r1, .L2275+8
+	ldr	r1, .L291+8
 	bl	hynix26nm_vender_get_param
 	ldrb	r3, [r4]	@ zero_extendqisi2
 	movs	r2, #0
-	ldr	r0, .L2275+8
-	ldr	r4, .L2275+12
-.L2273:
+	ldr	r0, .L291+8
+	ldr	r4, .L291+12
+.L289:
 	cmp	r3, r2
-	bhi	.L2274
-	ldr	r2, .L2275+4
+	bhi	.L290
+	ldr	r2, .L291+4
 	mov	r1, sp
 	mov	r0, r5
 	bl	hynix26nm_vender_set_param
@@ -16210,20 +2502,20 @@ hynix26nm_lsb_enable:
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, pc}
-.L2274:
+.L290:
 	ldrb	r1, [r2, r0]	@ zero_extendqisi2
 	ldrb	r6, [r2, r4]	@ zero_extendqisi2
 	add	r1, r1, r6
 	strb	r1, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2273
-.L2276:
+	b	.L289
+.L292:
 	.align	2
-.L2275:
-	.word	.LANCHOR43
-	.word	.LANCHOR44
-	.word	.LANCHOR46
-	.word	.LANCHOR45
+.L291:
+	.word	.LANCHOR25
+	.word	.LANCHOR26
+	.word	.LANCHOR28
+	.word	.LANCHOR27
 	.size	hynix26nm_lsb_enable, .-hynix26nm_lsb_enable
 	.section	.text.hynix26nm_lsb_disable,"ax",%progbits
 	.align	1
@@ -16237,19 +2529,19 @@ hynix26nm_lsb_disable:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, lr}
-	ldr	r3, .L2278
-	ldr	r2, .L2278+4
+	ldr	r3, .L294
+	ldr	r2, .L294+4
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	ldr	r1, .L2278+8
+	ldr	r1, .L294+8
 	bl	hynix26nm_vender_set_param
 	movs	r0, #0
 	pop	{r3, pc}
-.L2279:
+.L295:
 	.align	2
-.L2278:
-	.word	.LANCHOR43
-	.word	.LANCHOR44
-	.word	.LANCHOR46
+.L294:
+	.word	.LANCHOR25
+	.word	.LANCHOR26
+	.word	.LANCHOR28
 	.size	hynix26nm_lsb_disable, .-hynix26nm_lsb_disable
 	.section	.text.hynix26nm_lsb_exit,"ax",%progbits
 	.align	1
@@ -16265,7 +2557,7 @@ hynix26nm_lsb_exit:
 	push	{r4, lr}
 	mov	r4, r0
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
 	movs	r2, #0
 	mov	r0, r4
@@ -16290,16 +2582,16 @@ hynix26nm_lsb_exit:
 	movs	r1, #48
 	mov	r0, r4
 	bl	set_one_cmd
-	ldr	r0, .L2281
+	ldr	r0, .L297
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	nand_disable_chip
 	movs	r0, #0
 	pop	{r4, pc}
-.L2282:
+.L298:
 	.align	2
-.L2281:
-	.word	.LC411
+.L297:
+	.word	.LC35
 	.size	hynix26nm_lsb_exit, .-hynix26nm_lsb_exit
 	.section	.text.hynix26nm_getdefaultparam,"ax",%progbits
 	.align	1
@@ -16314,28 +2606,28 @@ hynix26nm_getdefaultparam:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, r5, r6, lr}
 	add	r4, r0, #48
-	ldr	r5, .L2286
+	ldr	r5, .L302
 	mov	r6, r1
 	mov	r1, r4
-	ldr	r2, .L2286+4
+	ldr	r2, .L302+4
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	bl	hynix26nm_vender_get_param
 	mov	r3, r6
-.L2284:
+.L300:
 	ldrb	r1, [r5]	@ zero_extendqisi2
 	subs	r2, r3, r6
 	cmp	r1, r2
-	bgt	.L2285
+	bgt	.L301
 	pop	{r4, r5, r6, pc}
-.L2285:
+.L301:
 	ldrb	r2, [r4], #1	@ zero_extendqisi2
 	strb	r2, [r3], #1
-	b	.L2284
-.L2287:
+	b	.L300
+.L303:
 	.align	2
-.L2286:
-	.word	.LANCHOR39
-	.word	.LANCHOR41
+.L302:
+	.word	.LANCHOR21
+	.word	.LANCHOR23
 	.size	hynix26nm_getdefaultparam, .-hynix26nm_getdefaultparam
 	.section	.text.hynix26nm_setdefaultparam,"ax",%progbits
 	.align	1
@@ -16350,48 +2642,48 @@ hynix26nm_setdefaultparam:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r2, r4, r5, r6, r7, lr}
 	add	r1, r0, #48
-	ldr	r5, .L2293
+	ldr	r5, .L309
 	movs	r2, #0
 	ldrb	r3, [r5]	@ zero_extendqisi2
-.L2289:
+.L305:
 	cmp	r3, r2
-	bgt	.L2290
-	ldr	r7, .L2293+4
+	bgt	.L306
+	ldr	r7, .L309+4
 	mov	r1, sp
-	ldr	r2, .L2293+8
+	ldr	r2, .L309+8
 	movs	r4, #0
 	bl	hynix26nm_vender_set_param
 	mov	r6, r0
-	ldr	r0, .L2293+12
+	ldr	r0, .L309+12
 	bl	NAND_Print_DBG
-.L2291:
+.L307:
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	cmp	r3, r4
-	bgt	.L2292
-	ldr	r0, .L2293+16
+	bgt	.L308
+	ldr	r0, .L309+16
 	bl	NAND_Print_DBG
 	mov	r0, r6
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2290:
+.L306:
 	ldrb	r4, [r1], #1	@ zero_extendqisi2
 	strb	r4, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2289
-.L2292:
+	b	.L305
+.L308:
 	ldrb	r1, [sp, r4]	@ zero_extendqisi2
 	mov	r0, r7
 	bl	NAND_Print_DBG
 	adds	r4, r4, #1
-	b	.L2291
-.L2294:
+	b	.L307
+.L310:
 	.align	2
-.L2293:
-	.word	.LANCHOR39
-	.word	.LC404
-	.word	.LANCHOR41
-	.word	.LC403
+.L309:
+	.word	.LANCHOR21
+	.word	.LC28
+	.word	.LANCHOR23
+	.word	.LC27
 	.word	.LC7
 	.size	hynix26nm_setdefaultparam, .-hynix26nm_setdefaultparam
 	.section	.text.hynix26nm_get_default_param,"ax",%progbits
@@ -16411,11 +2703,11 @@ hynix26nm_get_default_param:
 	mov	r4, r0
 	bl	hynix26nm_getdefaultparam
 	ldrb	r2, [sp, #23]	@ zero_extendqisi2
-	ldr	r1, [r4, #260]
+	ldr	r1, [r4, #268]
 	ldrb	r3, [sp, #20]	@ zero_extendqisi2
 	str	r2, [sp, #8]
 	ldrb	r2, [sp, #22]	@ zero_extendqisi2
-	ldr	r0, .L2296
+	ldr	r0, .L312
 	str	r2, [sp, #4]
 	ldrb	r2, [sp, #21]	@ zero_extendqisi2
 	str	r2, [sp]
@@ -16428,10 +2720,10 @@ hynix26nm_get_default_param:
 	add	sp, sp, #24
 	@ sp needed
 	pop	{r4, pc}
-.L2297:
+.L313:
 	.align	2
-.L2296:
-	.word	.LC412
+.L312:
+	.word	.LC36
 	.size	hynix26nm_get_default_param, .-hynix26nm_get_default_param
 	.section	.text.hynix26nm_readretry_init,"ax",%progbits
 	.align	1
@@ -16445,21 +2737,21 @@ hynix26nm_readretry_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, r6, r7, lr}
-	ldr	r3, [r0, #264]
-	ldr	r4, .L2313
+	ldr	r3, [r0, #272]
+	ldr	r4, .L329
 	ldr	r2, [r3, #52]
-	ldr	r3, .L2313+4
+	ldr	r3, .L329+4
 	ubfx	r1, r2, #16, #8
 	strb	r1, [r3]
 	lsrs	r3, r2, #8
 	strb	r3, [r4]
-	ldr	r4, .L2313+8
+	ldr	r4, .L329+8
 	strb	r2, [r4]
-	cbnz	r1, .L2299
-	ldr	r4, .L2313+12
+	cbnz	r1, .L315
+	ldr	r4, .L329+12
 	movs	r5, #172
 	uxtb	r3, r3
-	ldr	r6, .L2313+16
+	ldr	r6, .L329+16
 	uxtb	r2, r2
 	strb	r5, [r4]
 	movs	r5, #173
@@ -16469,44 +2761,44 @@ hynix26nm_readretry_init:
 	movs	r5, #175
 	strb	r5, [r4, #3]
 	adds	r3, r3, #1
-	ldr	r5, .L2313+20
-.L2300:
+	ldr	r5, .L329+20
+.L316:
 	cmp	r3, r1
-	bhi	.L2310
-.L2303:
+	bhi	.L326
+.L319:
 	add	r2, r0, #48
 	add	r1, r0, #176
 	movs	r3, #0
 	str	r3, [r0, #176]
-.L2309:
+.L325:
 	strb	r3, [r2], #1
 	cmp	r1, r2
-	bne	.L2309
+	bne	.L325
 	bl	hynix26nm_get_default_param
 	movs	r0, #0
-	b	.L2298
-.L2301:
+	b	.L314
+.L317:
 	ldrh	r7, [r5, r4, lsl #1]
 	strh	r7, [r6, r4, lsl #1]	@ movhi
 	adds	r4, r4, #1
-.L2302:
+.L318:
 	cmp	r4, r2
-	bcc	.L2301
+	bcc	.L317
 	adds	r1, r1, #1
 	adds	r5, r5, #8
 	adds	r6, r6, #8
-	b	.L2300
-.L2310:
+	b	.L316
+.L326:
 	movs	r4, #0
-	b	.L2302
-.L2299:
+	b	.L318
+.L315:
 	cmp	r1, #1
-	bne	.L2304
-	ldr	r1, .L2313+12
+	bne	.L320
+	ldr	r1, .L329+12
 	movs	r4, #167
 	uxtb	r3, r3
-	ldr	r5, .L2313+24
-	ldr	r6, .L2313+16
+	ldr	r5, .L329+24
+	ldr	r6, .L329+16
 	uxtb	r2, r2
 	strb	r4, [r1]
 	movs	r4, #173
@@ -16517,39 +2809,39 @@ hynix26nm_readretry_init:
 	strb	r4, [r1, #3]
 	adds	r3, r3, #1
 	movs	r4, #0
-.L2305:
+.L321:
 	cmp	r3, r4
-	bls	.L2303
+	bls	.L319
 	movs	r1, #0
-	b	.L2307
-.L2306:
+	b	.L323
+.L322:
 	ldrh	r7, [r5, r1, lsl #1]
 	strh	r7, [r6, r1, lsl #1]	@ movhi
 	adds	r1, r1, #1
-.L2307:
+.L323:
 	cmp	r1, r2
-	bcc	.L2306
+	bcc	.L322
 	adds	r4, r4, #1
 	adds	r5, r5, #8
 	adds	r6, r6, #8
-	b	.L2305
-.L2304:
-	ldr	r0, .L2313+28
+	b	.L321
+.L320:
+	ldr	r0, .L329+28
 	bl	NAND_Print
 	mvn	r0, #53
-.L2298:
+.L314:
 	pop	{r3, r4, r5, r6, r7, pc}
-.L2314:
+.L330:
 	.align	2
-.L2313:
-	.word	.LANCHOR38
-	.word	.LANCHOR42
-	.word	.LANCHOR39
-	.word	.LANCHOR41
-	.word	.LANCHOR40
-	.word	.LANCHOR47
-	.word	.LANCHOR48
-	.word	.LC413
+.L329:
+	.word	.LANCHOR20
+	.word	.LANCHOR24
+	.word	.LANCHOR21
+	.word	.LANCHOR23
+	.word	.LANCHOR22
+	.word	.LANCHOR29
+	.word	.LANCHOR30
+	.word	.LC37
 	.size	hynix26nm_readretry_init, .-hynix26nm_readretry_init
 	.section	.text.hynix26nm_readretry_exit,"ax",%progbits
 	.align	1
@@ -16564,17 +2856,17 @@ hynix26nm_readretry_exit:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, lr}
 	mov	r4, r0
-	ldr	r0, .L2316
+	ldr	r0, .L332
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	hynix26nm_setdefaultparam
 	movs	r0, #0
 	str	r0, [r4, #176]
 	pop	{r4, pc}
-.L2317:
+.L333:
 	.align	2
-.L2316:
-	.word	.LC414
+.L332:
+	.word	.LC38
 	.size	hynix26nm_readretry_exit, .-hynix26nm_readretry_exit
 	.section	.text.hynix26nm_special_init,"ax",%progbits
 	.align	1
@@ -16589,47 +2881,47 @@ hynix26nm_special_init:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r4, #0
-	ldr	r3, .L2323
+	ldr	r3, .L339
 	ldr	r3, [r3]
 	ldr	r5, [r3, #8]
-.L2319:
-	cbnz	r5, .L2320
-	ldr	r3, .L2323+4
+.L335:
+	cbnz	r5, .L336
+	ldr	r3, .L339+4
 	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2323+8
+	ldr	r3, .L339+8
 	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2323+12
+	ldr	r3, .L339+12
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2321
-	ldr	r0, .L2323+16
-	ldr	r5, .L2323+20
+	cbnz	r4, .L337
+	ldr	r0, .L339+16
+	ldr	r5, .L339+20
 	str	r5, [r0]
-	ldr	r0, .L2323+24
+	ldr	r0, .L339+24
 	bl	NAND_Print_DBG
-.L2318:
+.L334:
 	mov	r0, r4
 	pop	{r3, r4, r5, pc}
-.L2320:
+.L336:
 	mov	r0, r5
 	bl	hynix26nm_readretry_init
 	ldr	r5, [r5]
 	orrs	r4, r4, r0
-	b	.L2319
-.L2321:
-	ldr	r0, .L2323+28
+	b	.L335
+.L337:
+	ldr	r0, .L339+28
 	bl	NAND_Print
-	b	.L2318
-.L2324:
+	b	.L334
+.L340:
 	.align	2
-.L2323:
+.L339:
 	.word	g_nsi
-	.word	.LANCHOR42
-	.word	.LANCHOR38
-	.word	.LANCHOR39
+	.word	.LANCHOR24
+	.word	.LANCHOR20
+	.word	.LANCHOR21
 	.word	df_read_page_end
 	.word	hynix26nm_read_page_end
-	.word	.LC415
-	.word	.LC416
+	.word	.LC39
+	.word	.LC40
 	.size	hynix26nm_special_init, .-hynix26nm_special_init
 	.section	.text.hynix26nm_special_exit,"ax",%progbits
 	.align	1
@@ -16642,27 +2934,1091 @@ hynix26nm_special_init:
 hynix26nm_special_exit:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2328
+	ldr	r3, .L344
 	push	{r4, lr}
 	ldr	r3, [r3]
 	ldr	r4, [r3, #8]
-.L2326:
-	cbnz	r4, .L2327
-	ldr	r0, .L2328+4
+.L342:
+	cbnz	r4, .L343
+	ldr	r0, .L344+4
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	pop	{r4, pc}
-.L2327:
+.L343:
 	mov	r0, r4
 	bl	hynix26nm_readretry_exit
 	ldr	r4, [r4]
-	b	.L2326
-.L2329:
+	b	.L342
+.L345:
 	.align	2
-.L2328:
+.L344:
 	.word	g_nsi
-	.word	.LC417
+	.word	.LC41
 	.size	hynix26nm_special_exit, .-hynix26nm_special_exit
+	.section	.text.toshiba_read_retry_clock_save,"ax",%progbits
+	.align	1
+	.global	toshiba_read_retry_clock_save
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_read_retry_clock_save, %function
+toshiba_read_retry_clock_save:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	ldr	r3, .L347
+	ldr	r0, [r0, #268]
+	ldr	r3, [r3]
+	ldr	r2, .L347+4
+	ldr	r1, .L347+8
+	ldr	r0, [r0, #8]
+	blx	r3
+	ldr	r0, [r4, #268]
+	movs	r2, #20
+	ldr	r3, .L347+12
+	movs	r1, #10
+	ldr	r0, [r0, #8]
+	ldr	r3, [r3]
+	blx	r3
+	movs	r0, #0
+	pop	{r4, pc}
+.L348:
+	.align	2
+.L347:
+	.word	NAND_GetClk
+	.word	.LANCHOR31
+	.word	.LANCHOR32
+	.word	NAND_SetClk
+	.size	toshiba_read_retry_clock_save, .-toshiba_read_retry_clock_save
+	.section	.text.toshiba_read_retry_clock_recover,"ax",%progbits
+	.align	1
+	.global	toshiba_read_retry_clock_recover
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_read_retry_clock_recover, %function
+toshiba_read_retry_clock_recover:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	ldr	r0, [r0, #268]
+	ldr	r3, .L350
+	ldr	r2, .L350+4
+	ldr	r1, .L350+8
+	ldr	r3, [r3]
+	ldr	r2, [r2]
+	ldr	r1, [r1]
+	ldr	r0, [r0, #8]
+	blx	r3
+	movs	r0, #0
+	pop	{r3, pc}
+.L351:
+	.align	2
+.L350:
+	.word	NAND_SetClk
+	.word	.LANCHOR31
+	.word	.LANCHOR32
+	.size	toshiba_read_retry_clock_recover, .-toshiba_read_retry_clock_recover
+	.section	.text.toshiba_vender_set_param,"ax",%progbits
+	.align	1
+	.global	toshiba_vender_set_param
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_vender_set_param, %function
+toshiba_vender_set_param:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r10, r3
+	ldr	r7, .L361
+	mov	r6, r0
+	mov	r4, r1
+	mov	r8, r2
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #18
+	bne	.L359
+	mov	fp, #1
+	mov	r3, r2
+	strd	r1, fp, [sp]
+	movs	r2, #0
+	str	r10, [sp, #8]
+	ldr	r1, .L361+4
+	bl	set_cmd_with_nand_bus
+	ldrb	r3, [r4]	@ zero_extendqisi2
+	mov	r5, r0
+	cbnz	r3, .L353
+	ldrb	r3, [r4, #1]	@ zero_extendqisi2
+	cbnz	r3, .L353
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	cbnz	r3, .L353
+	ldrb	r3, [r4, #3]	@ zero_extendqisi2
+	cbnz	r3, .L353
+	ldr	r3, .L361+8
+	ldr	r3, [r3]
+	cbnz	r3, .L353
+.L360:
+	ldr	r3, .L361+12
+	movs	r2, #1
+	mov	r0, r6
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	bl	set_one_cmd
+	orrs	r5, r5, r0
+.L352:
+	mov	r0, r5
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L359:
+	movs	r5, #0
+.L353:
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #17
+	bne	.L355
+	mov	fp, #1
+	mov	r3, r8
+	str	r10, [sp, #8]
+	movs	r2, #0
+	strd	r4, fp, [sp]
+	mov	r0, r6
+	ldr	r1, .L361+4
+	bl	set_cmd_with_nand_bus
+	ldrb	r3, [r4]	@ zero_extendqisi2
+	orrs	r5, r5, r0
+	cmp	r3, #0
+	bne	.L356
+	ldrb	r3, [r4, #1]	@ zero_extendqisi2
+	cbnz	r3, .L355
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	cbnz	r3, .L355
+	ldrb	r3, [r4, #3]	@ zero_extendqisi2
+	cmp	r3, #0
+	beq	.L360
+.L355:
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #16
+	bne	.L357
+	ldrb	r3, [r4]	@ zero_extendqisi2
+	cmp	r3, #255
+	bne	.L358
+	ldrb	r3, [r4, #1]	@ zero_extendqisi2
+	cmp	r3, #255
+	bne	.L358
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	cmp	r3, #255
+	bne	.L358
+	ldrb	r3, [r4, #3]	@ zero_extendqisi2
+	cmp	r3, #255
+	beq	.L360
+.L358:
+	movs	r3, #1
+	str	r10, [sp, #8]
+	strd	r4, r3, [sp]
+	movs	r2, #0
+	mov	r3, r8
+	ldr	r1, .L361+16
+	mov	r0, r6
+	bl	set_cmd_with_nand_bus
+	orrs	r5, r5, r0
+.L357:
+	ldr	r7, .L361+20
+	movs	r2, #0
+	mov	r0, r6
+	ldrb	r1, [r7]	@ zero_extendqisi2
+	bl	set_one_cmd
+	ldrb	r1, [r7, #1]	@ zero_extendqisi2
+	orrs	r5, r5, r0
+	movs	r2, #0
+	mov	r0, r6
+	bl	set_one_cmd
+	orrs	r5, r5, r0
+	ldrb	r0, [r4, #3]	@ zero_extendqisi2
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	ldr	r0, .L361+24
+	bl	NAND_Print_DBG
+	b	.L352
+.L356:
+	cmp	r3, #2
+	bne	.L355
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	cmp	r2, #0
+	bne	.L355
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	cmp	r3, #126
+	bne	.L355
+	ldrb	r3, [r4, #3]	@ zero_extendqisi2
+	cmp	r3, #124
+	bne	.L355
+	ldr	r3, .L361+28
+	mov	r0, r6
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	bl	set_one_cmd
+	orrs	r5, r5, r0
+	b	.L355
+.L362:
+	.align	2
+.L361:
+	.word	.LANCHOR33
+	.word	.LANCHOR34
+	.word	.LANCHOR35
+	.word	.LANCHOR36
+	.word	.LANCHOR38
+	.word	.LANCHOR39
+	.word	.LC42
+	.word	.LANCHOR37
+	.size	toshiba_vender_set_param, .-toshiba_vender_set_param
+	.section	.text.toshiba_vender_pre_condition,"ax",%progbits
+	.align	1
+	.global	toshiba_vender_pre_condition
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_vender_pre_condition, %function
+toshiba_vender_pre_condition:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, lr}
+	movs	r3, #0
+	movs	r2, #2
+	str	r3, [sp]
+	strd	r3, r2, [sp, #4]
+	mov	r2, r3
+	ldr	r1, .L368
+	bl	set_cmd_with_nand_bus
+	mov	r4, r0
+	cbz	r0, .L363
+	ldr	r0, .L368+4
+	bl	NAND_Print
+.L363:
+	mov	r0, r4
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, pc}
+.L369:
+	.align	2
+.L368:
+	.word	.LANCHOR40
+	.word	.LC43
+	.size	toshiba_vender_pre_condition, .-toshiba_vender_pre_condition
+	.section	.text.toshiba_set_readretry,"ax",%progbits
+	.align	1
+	.global	toshiba_set_readretry
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_set_readretry, %function
+toshiba_set_readretry:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	ldr	r6, .L383
+	ldrb	r2, [r6]	@ zero_extendqisi2
+	subs	r2, r2, #16
+	cmp	r2, #2
+	bhi	.L378
+	bl	toshiba_read_retry_clock_save
+	mov	r0, r4
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	ldr	r3, [r4, #176]
+	cbnz	r3, .L372
+	mov	r0, r4
+	bl	toshiba_vender_pre_condition
+.L372:
+	ldr	r0, [r4, #268]
+	bl	ndfc_is_toggle_interface
+	ldr	r5, .L383+4
+	cbz	r0, .L373
+	ldr	r0, [r4, #268]
+	bl	ndfc_set_legacy_interface
+	movs	r3, #1
+	str	r3, [r5]
+.L373:
+	ldrb	r2, [r6]	@ zero_extendqisi2
+	ldr	r1, [r4, #176]
+	cmp	r2, #17
+	lsl	r3, r1, #2
+	bne	.L374
+	add	r3, r3, r1
+	ldr	r1, .L383+8
+.L382:
+	ldr	r2, .L383+12
+	add	r1, r1, r3
+	movs	r3, #5
+.L375:
+	mov	r0, r4
+	bl	toshiba_vender_set_param
+	ldr	r3, [r5]
+	mov	r6, r0
+	cmp	r3, #1
+	bne	.L377
+	ldr	r0, [r4, #268]
+	bl	ndfc_set_toggle_interface
+.L377:
+	mov	r0, r4
+	bl	nand_disable_chip
+	mov	r0, r4
+	bl	toshiba_read_retry_clock_recover
+.L370:
+	mov	r0, r6
+	pop	{r4, r5, r6, pc}
+.L374:
+	cmp	r2, #18
+	bne	.L376
+	add	r3, r3, r1
+	ldr	r1, .L383+16
+	b	.L382
+.L376:
+	ldr	r1, .L383+20
+	ldr	r2, .L383+24
+	add	r1, r1, r3
+	movs	r3, #4
+	b	.L375
+.L378:
+	mvn	r6, #88
+	b	.L370
+.L384:
+	.align	2
+.L383:
+	.word	.LANCHOR33
+	.word	.LANCHOR43
+	.word	.LANCHOR44
+	.word	.LANCHOR41
+	.word	.LANCHOR45
+	.word	.LANCHOR46
+	.word	.LANCHOR42
+	.size	toshiba_set_readretry, .-toshiba_set_readretry
+	.section	.text.toshiba_readretry_init,"ax",%progbits
+	.align	1
+	.global	toshiba_readretry_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_readretry_init, %function
+toshiba_readretry_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #272]
+	ldr	r2, .L386
+	push	{r4, lr}
+	movs	r4, #0
+	ldr	r3, [r3, #52]
+	str	r4, [r0, #176]
+	ldr	r0, .L386+4
+	lsrs	r1, r3, #16
+	strb	r1, [r2]
+	lsrs	r1, r3, #8
+	ldr	r2, .L386+8
+	strb	r1, [r2]
+	uxtb	r1, r1
+	ldr	r2, .L386+12
+	strb	r3, [r2]
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	pop	{r4, pc}
+.L387:
+	.align	2
+.L386:
+	.word	.LANCHOR33
+	.word	.LC44
+	.word	.LANCHOR47
+	.word	.LANCHOR48
+	.size	toshiba_readretry_init, .-toshiba_readretry_init
+	.section	.text.toshiba_readretry_exit,"ax",%progbits
+	.align	1
+	.global	toshiba_readretry_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_readretry_exit, %function
+toshiba_readretry_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r0, #0
+	bx	lr
+	.size	toshiba_readretry_exit, .-toshiba_readretry_exit
+	.section	.text.toshiba_exit_readretry,"ax",%progbits
+	.align	1
+	.global	toshiba_exit_readretry
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_exit_readretry, %function
+toshiba_exit_readretry:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	ldr	r5, .L400
+	ldrb	r2, [r5]	@ zero_extendqisi2
+	subs	r2, r2, #16
+	cmp	r2, #2
+	bhi	.L394
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	ldr	r0, [r4, #268]
+	bl	ndfc_is_toggle_interface
+	ldr	r6, .L400+4
+	cbz	r0, .L391
+	ldr	r0, [r4, #268]
+	bl	ndfc_set_legacy_interface
+	movs	r3, #1
+	str	r3, [r6]
+.L391:
+	ldrb	r3, [r5]	@ zero_extendqisi2
+	cmp	r3, #17
+	beq	.L395
+	ldr	r1, .L400+8
+	cmp	r3, #18
+	ldr	r0, .L400+12
+	it	eq
+	moveq	r3, #5
+	ldr	r2, .L400+16
+	itt	ne
+	movne	r3, #0
+	movne	r2, r1
+	ldr	r1, .L400+20
+	it	ne
+	movne	r1, r0
+.L392:
+	mov	r0, r4
+	bl	toshiba_vender_set_param
+	ldr	r3, [r6]
+	mov	r5, r0
+	cmp	r3, #1
+	bne	.L393
+	ldr	r0, [r4, #268]
+	bl	ndfc_set_toggle_interface
+.L393:
+	mov	r0, r4
+	bl	nand_disable_chip
+.L389:
+	mov	r0, r5
+	pop	{r4, r5, r6, pc}
+.L395:
+	movs	r3, #5
+	ldr	r2, .L400+16
+	ldr	r1, .L400+24
+	b	.L392
+.L394:
+	mvn	r5, #87
+	b	.L389
+.L401:
+	.align	2
+.L400:
+	.word	.LANCHOR33
+	.word	.LANCHOR43
+	.word	.LANCHOR42
+	.word	.LANCHOR46+24
+	.word	.LANCHOR41
+	.word	.LANCHOR45+50
+	.word	.LANCHOR44+35
+	.size	toshiba_exit_readretry, .-toshiba_exit_readretry
+	.section	.text.toshiba_read_page_end,"ax",%progbits
+	.align	1
+	.global	toshiba_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_read_page_end, %function
+toshiba_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L412
+	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
+	mov	r6, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r5, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	adds	r3, r0, #2
+	mov	r4, r0
+	bne	.L402
+	ldr	r0, .L412+4
+	movs	r7, #0
+	bl	NAND_Print_DBG
+	ldr	r3, .L412+8
+	movs	r2, #1
+	ldr	r10, .L412+16
+	mov	r8, r3
+	str	r2, [r3]
+.L404:
+	ldrb	r3, [r10]	@ zero_extendqisi2
+	cmp	r3, r7
+	ble	.L407
+	str	r7, [r5, #176]
+	mov	r0, r5
+	bl	toshiba_set_readretry
+	mov	r4, r0
+	cbnz	r0, .L405
+	mov	r0, r6
+	bl	generic_read_page_start
+	mov	r4, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	orrs	r4, r4, r0
+	cmp	r4, #10
+	beq	.L406
+	cbnz	r4, .L405
+.L406:
+	ldr	r3, [r5, #176]
+	movs	r4, #10
+	ldr	r1, [r5, #268]
+	ldr	r0, .L412+12
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+.L407:
+	movs	r3, #0
+	mov	r0, r5
+	str	r3, [r5, #176]
+	str	r3, [r8]
+	bl	toshiba_exit_readretry
+.L402:
+	mov	r0, r4
+	add	sp, sp, #12
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L405:
+	adds	r7, r7, #1
+	b	.L404
+.L413:
+	.align	2
+.L412:
+	.word	g_nsi
+	.word	.LC45
+	.word	.LANCHOR35
+	.word	.LC46
+	.word	.LANCHOR47
+	.size	toshiba_read_page_end, .-toshiba_read_page_end
+	.section	.text.toshiba_special_init,"ax",%progbits
+	.align	1
+	.global	toshiba_special_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_special_init, %function
+toshiba_special_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	movs	r4, #0
+	ldr	r3, .L419
+	ldr	r3, [r3]
+	ldr	r5, [r3, #8]
+.L415:
+	cbnz	r5, .L416
+	ldr	r3, .L419+4
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	ldr	r3, .L419+8
+	ldrb	r2, [r3]	@ zero_extendqisi2
+	ldr	r3, .L419+12
+	ldrb	r3, [r3]	@ zero_extendqisi2
+	cbnz	r4, .L417
+	ldr	r0, .L419+16
+	ldr	r5, .L419+20
+	str	r5, [r0]
+	ldr	r0, .L419+24
+	bl	NAND_Print_DBG
+.L414:
+	mov	r0, r4
+	pop	{r3, r4, r5, pc}
+.L416:
+	mov	r0, r5
+	bl	toshiba_readretry_init
+	ldr	r5, [r5]
+	orrs	r4, r4, r0
+	b	.L415
+.L417:
+	ldr	r0, .L419+28
+	bl	NAND_Print
+	b	.L414
+.L420:
+	.align	2
+.L419:
+	.word	g_nsi
+	.word	.LANCHOR33
+	.word	.LANCHOR47
+	.word	.LANCHOR48
+	.word	df_read_page_end
+	.word	toshiba_read_page_end
+	.word	.LC47
+	.word	.LC48
+	.size	toshiba_special_init, .-toshiba_special_init
+	.section	.text.toshiba_special_exit,"ax",%progbits
+	.align	1
+	.global	toshiba_special_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	toshiba_special_exit, %function
+toshiba_special_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L424
+	push	{r4, lr}
+	ldr	r3, [r3]
+	ldr	r4, [r3, #8]
+.L422:
+	cbnz	r4, .L423
+	ldr	r0, .L424+4
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	pop	{r4, pc}
+.L423:
+	ldr	r4, [r4]
+	b	.L422
+.L425:
+	.align	2
+.L424:
+	.word	g_nsi
+	.word	.LC49
+	.size	toshiba_special_exit, .-toshiba_special_exit
+	.section	.text.micron_intel_set_feature,"ax",%progbits
+	.align	1
+	.global	micron_intel_set_feature
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_intel_set_feature, %function
+micron_intel_set_feature:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	sub	sp, sp, #20
+	movs	r4, #0
+	mov	r7, r0
+	mov	r6, r2
+	mov	r5, r1
+	strb	r1, [sp, #7]
+	add	r1, sp, #7
+	strb	r2, [sp, #8]
+	add	r2, sp, #8
+	strb	r4, [sp, #9]
+	strb	r4, [sp, #10]
+	strb	r4, [sp, #11]
+	bl	nand_set_feature
+	add	r2, sp, #12
+	add	r1, sp, #7
+	mov	r0, r7
+	bl	nand_get_feature
+	ldrb	r2, [sp, #12]	@ zero_extendqisi2
+	ldrb	r3, [sp, #8]	@ zero_extendqisi2
+	cmp	r2, r3
+	beq	.L428
+	mov	r2, r6
+	mov	r1, r5
+	ldr	r0, .L429
+	bl	NAND_Print
+	mvn	r0, #71
+.L426:
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L428:
+	mov	r0, r4
+	b	.L426
+.L430:
+	.align	2
+.L429:
+	.word	.LC50
+	.size	micron_intel_set_feature, .-micron_intel_set_feature
+	.section	.text.micron_set_readretry,"ax",%progbits
+	.align	1
+	.global	micron_set_readretry
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_set_readretry, %function
+micron_set_readretry:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r4, r0
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	ldr	r3, .L442
+	ldrb	r3, [r3]	@ zero_extendqisi2
+	sub	r2, r3, #64
+	cmp	r2, #2
+	bls	.L432
+	cmp	r3, #80
+	bne	.L440
+.L432:
+	ldrb	r6, [r4, #176]	@ zero_extendqisi2
+	ldr	r7, .L442+4
+	cmp	r6, #255
+	it	eq
+	moveq	r6, #0
+	cmp	r3, #80
+	bne	.L435
+	ldr	r3, [r7]
+	ldrb	r3, [r3, r6]	@ zero_extendqisi2
+	cbz	r3, .L436
+.L438:
+	ldr	r3, [r4, #176]
+	cmp	r3, #255
+	bne	.L435
+	movs	r2, #0
+	movs	r1, #137
+	mov	r0, r4
+	bl	micron_intel_set_feature
+	movs	r2, #0
+	mov	r5, r0
+	movs	r1, #147
+	mov	r0, r4
+	bl	micron_intel_set_feature
+	orrs	r5, r5, r0
+	b	.L433
+.L436:
+	movs	r2, #1
+	movs	r1, #147
+	mov	r0, r4
+	bl	micron_intel_set_feature
+	mov	r5, r0
+	cmp	r0, #0
+	beq	.L438
+.L433:
+	ldr	r3, [r4, #176]
+	mov	r0, r4
+	cmp	r3, #255
+	itt	eq
+	moveq	r3, #0
+	streq	r3, [r4, #176]
+	bl	nand_disable_chip
+	mov	r0, r5
+	pop	{r3, r4, r5, r6, r7, pc}
+.L435:
+	ldr	r3, [r7]
+	movs	r1, #137
+	mov	r0, r4
+	ldrb	r2, [r3, r6]	@ zero_extendqisi2
+	bl	micron_intel_set_feature
+	mov	r5, r0
+	b	.L433
+.L440:
+	movs	r5, #0
+	b	.L433
+.L443:
+	.align	2
+.L442:
+	.word	.LANCHOR49
+	.word	.LANCHOR50
+	.size	micron_set_readretry, .-micron_set_readretry
+	.section	.text.micron_read_page_end,"ax",%progbits
+	.align	1
+	.global	micron_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_read_page_end, %function
+micron_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L454
+	push	{r0, r1, r4, r5, r6, r7, r8, lr}
+	mov	r6, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r5, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	adds	r3, r0, #2
+	mov	r4, r0
+	bne	.L444
+	ldr	r8, .L454+12
+	movs	r7, #0
+	ldr	r0, .L454+4
+	bl	NAND_Print_DBG
+.L446:
+	ldrb	r3, [r8]	@ zero_extendqisi2
+	cmp	r3, r7
+	ble	.L449
+	str	r7, [r5, #176]
+	mov	r0, r5
+	bl	micron_set_readretry
+	mov	r4, r0
+	cbnz	r0, .L447
+	mov	r0, r6
+	bl	generic_read_page_start
+	mov	r4, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	orrs	r4, r4, r0
+	cmp	r4, #10
+	beq	.L448
+	cbnz	r4, .L447
+.L448:
+	ldr	r3, [r5, #176]
+	movs	r4, #10
+	ldr	r1, [r5, #268]
+	ldr	r0, .L454+8
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+.L449:
+	movs	r3, #255
+	mov	r0, r5
+	str	r3, [r5, #176]
+	bl	micron_set_readretry
+.L444:
+	mov	r0, r4
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L447:
+	adds	r7, r7, #1
+	b	.L446
+.L455:
+	.align	2
+.L454:
+	.word	g_nsi
+	.word	.LC51
+	.word	.LC52
+	.word	.LANCHOR51
+	.size	micron_read_page_end, .-micron_read_page_end
+	.section	.text.micron_readretry_init,"ax",%progbits
+	.align	1
+	.global	micron_readretry_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_readretry_init, %function
+micron_readretry_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, r8, r10, lr}
+	movs	r7, #0
+	ldr	r3, [r0, #272]
+	movs	r1, #137
+	mov	r6, r0
+	ldr	r10, .L464+28
+	ldr	r3, [r3, #52]
+	ldr	r5, .L464
+	ldr	r8, .L464+32
+	ldr	r4, .L464+4
+	lsrs	r2, r3, #16
+	lsrs	r3, r3, #8
+	str	r7, [r0, #176]
+	strb	r2, [r10]
+	mov	r2, r7
+	strb	r3, [r4]
+	str	r8, [r5]
+	bl	micron_intel_set_feature
+	ldrb	r3, [r10]	@ zero_extendqisi2
+	cmp	r3, #65
+	bne	.L457
+	movs	r3, #12
+	str	r8, [r5]
+	strb	r3, [r4]
+.L458:
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	ldr	r0, .L464+8
+	bl	NAND_Print_DBG
+	movs	r0, #0
+	b	.L456
+.L457:
+	cmp	r3, #64
+	bne	.L459
+	ldr	r3, .L464+12
+	str	r3, [r5]
+	movs	r3, #10
+.L463:
+	strb	r3, [r4]
+	b	.L458
+.L459:
+	cmp	r3, #80
+	bne	.L460
+	ldr	r3, .L464+16
+	mov	r2, r7
+	movs	r1, #147
+	mov	r0, r6
+	str	r3, [r5]
+	movs	r3, #7
+	strb	r3, [r4]
+	bl	micron_intel_set_feature
+	b	.L458
+.L460:
+	cmp	r3, #66
+	bne	.L461
+	ldr	r3, .L464+20
+	str	r3, [r5]
+	movs	r3, #18
+	b	.L463
+.L461:
+	ldr	r0, .L464+24
+	bl	NAND_Print
+	mvn	r0, #70
+.L456:
+	pop	{r3, r4, r5, r6, r7, r8, r10, pc}
+.L465:
+	.align	2
+.L464:
+	.word	.LANCHOR50
+	.word	.LANCHOR51
+	.word	.LC54
+	.word	.LANCHOR53
+	.word	.LANCHOR54
+	.word	.LANCHOR55
+	.word	.LC53
+	.word	.LANCHOR49
+	.word	.LANCHOR52
+	.size	micron_readretry_init, .-micron_readretry_init
+	.section	.text.micron_readretry_exit,"ax",%progbits
+	.align	1
+	.global	micron_readretry_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_readretry_exit, %function
+micron_readretry_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L467
+	movs	r0, #0
+	strb	r0, [r3]
+	ldr	r3, .L467+4
+	strb	r0, [r3]
+	bx	lr
+.L468:
+	.align	2
+.L467:
+	.word	.LANCHOR49
+	.word	.LANCHOR51
+	.size	micron_readretry_exit, .-micron_readretry_exit
+	.section	.text.micron_special_init,"ax",%progbits
+	.align	1
+	.global	micron_special_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_special_init, %function
+micron_special_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	movs	r4, #0
+	ldr	r3, .L474
+	ldr	r3, [r3]
+	ldr	r5, [r3, #8]
+.L470:
+	cbnz	r5, .L471
+	ldr	r3, .L474+4
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	ldr	r3, .L474+8
+	ldrb	r2, [r3]	@ zero_extendqisi2
+	cbnz	r4, .L472
+	ldr	r0, .L474+12
+	ldr	r3, .L474+16
+	str	r0, [r3]
+	ldr	r0, .L474+20
+	bl	NAND_Print_DBG
+.L469:
+	mov	r0, r4
+	pop	{r3, r4, r5, pc}
+.L471:
+	mov	r0, r5
+	bl	micron_readretry_init
+	ldr	r5, [r5]
+	orrs	r4, r4, r0
+	b	.L470
+.L472:
+	ldr	r0, .L474+24
+	bl	NAND_Print
+	b	.L469
+.L475:
+	.align	2
+.L474:
+	.word	g_nsi
+	.word	.LANCHOR49
+	.word	.LANCHOR51
+	.word	micron_read_page_end
+	.word	df_read_page_end
+	.word	.LC55
+	.word	.LC56
+	.size	micron_special_init, .-micron_special_init
+	.section	.text.micron_special_exit,"ax",%progbits
+	.align	1
+	.global	micron_special_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	micron_special_exit, %function
+micron_special_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	movs	r5, #0
+	ldr	r3, .L483
+	ldr	r2, .L483+4
+	ldr	r3, [r3]
+	ldrb	r1, [r2]	@ zero_extendqisi2
+	ldr	r0, [r3, #8]
+	ldr	r3, .L483+8
+	ldrb	r4, [r3]	@ zero_extendqisi2
+.L477:
+	cbnz	r0, .L478
+	cbz	r5, .L479
+	strb	r1, [r2]
+	strb	r4, [r3]
+.L479:
+	ldr	r0, .L483+12
+	bl	NAND_Print_DBG
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L478:
+	movs	r1, #0
+	ldr	r0, [r0]
+	movs	r5, #1
+	mov	r4, r1
+	b	.L477
+.L484:
+	.align	2
+.L483:
+	.word	g_nsi
+	.word	.LANCHOR49
+	.word	.LANCHOR51
+	.word	.LC57
+	.size	micron_special_exit, .-micron_special_exit
 	.section	.text.hynix16nm_vender_set_param,"ax",%progbits
 	.align	1
 	.global	hynix16nm_vender_set_param
@@ -16688,42 +4044,42 @@ hynix16nm_vender_set_param:
 hynix16nm_set_readretry:
 	@ args = 0, pretend = 0, frame = 8
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2336
+	ldr	r3, .L491
 	push	{r0, r1, r4, lr}
 	ldr	r1, [r0, #176]
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r1, r3
-	bhi	.L2335
-	ldr	r3, .L2336+4
+	bhi	.L490
+	ldr	r3, .L491+4
 	lsls	r1, r1, #2
 	movs	r2, #0
 	ldrb	r3, [r3]	@ zero_extendqisi2
-.L2333:
+.L488:
 	cmp	r3, r2
-	bhi	.L2334
-	ldr	r2, .L2336+8
+	bhi	.L489
+	ldr	r2, .L491+8
 	mov	r1, sp
 	bl	hynix26nm_vender_set_param
-.L2331:
+.L486:
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, pc}
-.L2334:
+.L489:
 	adds	r4, r1, r2
 	add	r4, r4, r0
 	ldrb	r4, [r4, #48]	@ zero_extendqisi2
 	strb	r4, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2333
-.L2335:
+	b	.L488
+.L490:
 	mvn	r0, #73
-	b	.L2331
-.L2337:
+	b	.L486
+.L492:
 	.align	2
-.L2336:
-	.word	.LANCHOR49
-	.word	.LANCHOR50
-	.word	.LANCHOR51
+.L491:
+	.word	.LANCHOR56
+	.word	.LANCHOR57
+	.word	.LANCHOR58
 	.size	hynix16nm_set_readretry, .-hynix16nm_set_readretry
 	.section	.text.hynix16nm_read_page_end,"ax",%progbits
 	.align	1
@@ -16736,7 +4092,7 @@ hynix16nm_set_readretry:
 hynix16nm_read_page_end:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2351
+	ldr	r3, .L506
 	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
 	mov	r6, r0
 	ldr	r1, [r0]
@@ -16747,16 +4103,16 @@ hynix16nm_read_page_end:
 	bl	generic_read_page_end_not_retry
 	adds	r3, r0, #2
 	mov	r4, r0
-	bne	.L2338
-	ldr	r7, .L2351+4
+	bne	.L493
+	ldr	r7, .L506+4
 	mov	r10, #0
 	mov	r8, r10
-	ldr	r0, .L2351+8
+	ldr	r0, .L506+8
 	bl	NAND_Print_DBG
-.L2340:
+.L495:
 	ldrb	r2, [r7]	@ zero_extendqisi2
 	cmp	r2, r10
-	ble	.L2344
+	ble	.L499
 	ldr	r3, [r5, #176]
 	mov	r0, r5
 	adds	r3, r3, #1
@@ -16766,22 +4122,22 @@ hynix16nm_read_page_end:
 	str	r3, [r5, #176]
 	bl	hynix16nm_set_readretry
 	mov	r4, r0
-	cbz	r0, .L2343
+	cbz	r0, .L498
 	movs	r3, #0
 	mov	r0, r5
 	str	r3, [r5, #176]
 	bl	hynix16nm_set_readretry
-.L2344:
+.L499:
 	movs	r3, #0
 	mov	r0, r5
 	str	r3, [r5, #176]
 	bl	hynix16nm_set_readretry
-.L2338:
+.L493:
 	mov	r0, r4
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2343:
+.L498:
 	mov	r0, r6
 	bl	generic_read_page_start
 	mov	r4, r0
@@ -16789,13 +4145,13 @@ hynix16nm_read_page_end:
 	bl	generic_read_page_end_not_retry
 	orrs	r4, r4, r0
 	cmp	r4, #10
-	beq	.L2345
-	cbnz	r4, .L2346
-.L2345:
+	beq	.L500
+	cbnz	r4, .L501
+.L500:
 	ldr	r3, [r5, #176]
 	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2351+12
+	ldr	r1, [r5, #268]
+	ldr	r0, .L506+12
 	str	r3, [sp, #4]
 	ldr	r3, [r6, #8]
 	str	r3, [sp]
@@ -16803,17 +4159,17 @@ hynix16nm_read_page_end:
 	ldr	r2, [r5, #20]
 	ldr	r1, [r1, #8]
 	bl	NAND_Print_DBG
-	b	.L2344
-.L2346:
+	b	.L499
+.L501:
 	add	r10, r10, #1
-	b	.L2340
-.L2352:
+	b	.L495
+.L507:
 	.align	2
-.L2351:
+.L506:
 	.word	g_nsi
-	.word	.LANCHOR49
-	.word	.LC418
-	.word	.LC419
+	.word	.LANCHOR56
+	.word	.LC58
+	.word	.LC59
 	.size	hynix16nm_read_page_end, .-hynix16nm_read_page_end
 	.section	.text.hynix16nm_get_special_info,"ax",%progbits
 	.align	1
@@ -16828,55 +4184,55 @@ hynix16nm_get_special_info:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
 	mov	r4, r0
-	ldr	r0, .L2366
+	ldr	r0, .L521
 	mov	r8, r1
 	mov	r7, r2
 	mov	r10, r3
 	bl	NAND_Print_DBG
 	mov	r0, sp
 	bl	physic_info_get_offset
-	cbz	r0, .L2360
-	ldr	r0, .L2366+4
+	cbz	r0, .L515
+	ldr	r0, .L521+4
 	bl	NAND_Print
 	movs	r0, #1
-.L2353:
+.L508:
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2360:
-	ldr	fp, .L2366+8
+.L515:
+	ldr	fp, .L521+8
 	movs	r5, #4
 	add	r6, r4, #9728
-.L2354:
+.L509:
 	mov	r1, r5
 	mov	r0, fp
 	bl	NAND_Print_DBG
 	ldrb	r3, [r6]	@ zero_extendqisi2
 	cmp	r3, #165
-	beq	.L2356
+	beq	.L511
 	mov	r3, r4
 	add	r2, sp, #4
 	ldr	r1, [sp]
 	mov	r0, r5
 	bl	physic_info_get_one_copy
-.L2356:
+.L511:
 	ldrb	r3, [r6]	@ zero_extendqisi2
 	cmp	r3, #165
-	bne	.L2357
+	bne	.L512
 	add	r2, r4, #9728
 	add	r1, r4, #10752
 	adds	r2, r2, #2
 	movs	r3, #0
-.L2358:
+.L513:
 	ldrb	r0, [r2], #1	@ zero_extendqisi2
 	cmp	r2, r1
 	add	r3, r3, r0
 	uxtb	r3, r3
-	bne	.L2358
+	bne	.L513
 	movw	r2, #9729
 	ldrb	r2, [r4, r2]	@ zero_extendqisi2
 	cmp	r2, r3
-	bne	.L2359
+	bne	.L514
 	mla	r1, r7, r10, r4
 	mov	r0, r8
 	mov	r2, r7
@@ -16884,22 +4240,22 @@ hynix16nm_get_special_info:
 	adds	r1, r1, #2
 	bl	NAND_Memcpy
 	movs	r0, #0
-	b	.L2353
-.L2359:
+	b	.L508
+.L514:
 	movs	r3, #0
 	strb	r3, [r6]
-.L2357:
+.L512:
 	adds	r5, r5, #1
 	cmp	r5, #51
-	bne	.L2354
+	bne	.L509
 	mov	r0, #-1
-	b	.L2353
-.L2367:
+	b	.L508
+.L522:
 	.align	2
-.L2366:
-	.word	.LC420
-	.word	.LC421
-	.word	.LC422
+.L521:
+	.word	.LC60
+	.word	.LC61
+	.word	.LC62
 	.size	hynix16nm_get_special_info, .-hynix16nm_get_special_info
 	.section	.text.hynix20nm_init_readretry_param,"ax",%progbits
 	.align	1
@@ -16912,7 +4268,7 @@ hynix16nm_get_special_info:
 hynix20nm_init_readretry_param:
 	@ args = 0, pretend = 0, frame = 64
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
+	ldr	r3, [r0, #272]
 	push	{r4, r5, r6, r7, r8, lr}
 	mov	r4, r0
 	sub	sp, sp, #64
@@ -16920,94 +4276,94 @@ hynix20nm_init_readretry_param:
 	lsls	r0, r0, #9
 	bl	nand_get_temp_buf
 	mov	r6, r0
-	cbnz	r0, .L2369
+	cbnz	r0, .L524
 	mvn	r5, #93
-	ldr	r0, .L2377
+	ldr	r0, .L532
 	bl	NAND_Print_DBG
-.L2368:
+.L523:
 	mov	r0, r5
 	add	sp, sp, #64
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, pc}
-.L2369:
+.L524:
 	mov	r0, #32768
 	bl	nand_get_temp_buf
-	cbnz	r0, .L2371
-	ldr	r3, [r4, #264]
+	cbnz	r0, .L526
+	ldr	r3, [r4, #272]
 	mov	r0, r6
 	mvn	r5, #75
 	ldr	r1, [r3, #16]
 	lsls	r1, r1, #9
 	bl	nand_free_temp_buf
-	ldr	r0, .L2377+4
+	ldr	r0, .L532+4
 	bl	NAND_Print
-	b	.L2368
-.L2371:
+	b	.L523
+.L526:
 	ldr	r3, [r4, #16]
 	movs	r2, #64
 	mov	r1, r6
 	bl	hynix16nm_get_special_info
-	ldr	r3, [r4, #260]
+	ldr	r3, [r4, #268]
 	mov	r5, r0
-	cbnz	r0, .L2372
-	ldr	r7, .L2377+8
-	ldr	r8, .L2377+24
+	cbnz	r0, .L527
+	ldr	r7, .L532+8
+	ldr	r8, .L532+24
 	ldr	r2, [r4, #16]
 	ldr	r1, [r3, #8]
-	ldr	r0, .L2377+12
+	ldr	r0, .L532+12
 	bl	NAND_Print_DBG
-.L2374:
+.L529:
 	ldrb	r1, [r6, r5]	@ zero_extendqisi2
 	mov	r0, r7
 	bl	NAND_Print_DBG
 	and	r3, r5, #7
 	cmp	r3, #7
-	bne	.L2373
+	bne	.L528
 	mov	r0, r8
 	bl	NAND_Print_DBG
-.L2373:
+.L528:
 	adds	r5, r5, #1
 	cmp	r5, #64
-	bne	.L2374
+	bne	.L529
 	mov	r1, r6
 	mov	r0, r4
 	bl	hynix20nm_saveotpvalue
 	mov	r0, r4
 	bl	hynix20nm_set_default_param
 	mov	r5, r0
-.L2375:
-	ldr	r3, [r4, #264]
+.L530:
+	ldr	r3, [r4, #272]
 	mov	r0, r6
 	ldr	r1, [r3, #16]
 	lsls	r1, r1, #9
 	bl	nand_free_temp_buf
-	b	.L2368
-.L2372:
+	b	.L523
+.L527:
 	ldr	r1, [r3, #8]
-	ldr	r0, .L2377+16
+	ldr	r0, .L532+16
 	bl	NAND_Print_DBG
 	mov	r1, sp
 	mov	r0, r4
 	bl	hynix20nm_getotpparam
 	mov	r5, r0
 	cmp	r0, #0
-	bne	.L2375
+	bne	.L530
 	mov	r0, r4
 	bl	hynix20nm_set_default_param
-	ldr	r3, [r4, #260]
-	ldr	r0, .L2377+20
+	ldr	r3, [r4, #268]
+	ldr	r0, .L532+20
 	ldr	r1, [r3, #8]
 	bl	NAND_Print_DBG
-	b	.L2375
-.L2378:
+	b	.L530
+.L533:
 	.align	2
-.L2377:
-	.word	.LC423
-	.word	.LC424
-	.word	.LC426
-	.word	.LC425
-	.word	.LC427
-	.word	.LC428
+.L532:
+	.word	.LC63
+	.word	.LC64
+	.word	.LC66
+	.word	.LC65
+	.word	.LC67
+	.word	.LC68
 	.word	.LC7
 	.size	hynix20nm_init_readretry_param, .-hynix20nm_init_readretry_param
 	.section	.text.hynix20nm_readretry_init,"ax",%progbits
@@ -17021,20 +4377,20 @@ hynix20nm_init_readretry_param:
 hynix20nm_readretry_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
-	ldr	r2, .L2388
+	ldr	r3, [r0, #272]
+	ldr	r2, .L543
 	push	{r4, lr}
 	ldr	r3, [r3, #52]
 	ubfx	r1, r3, #16, #8
 	strb	r1, [r2]
 	lsrs	r4, r3, #8
-	ldr	r2, .L2388+4
+	ldr	r2, .L543+4
 	cmp	r1, #2
 	strb	r4, [r2]
-	ldr	r2, .L2388+8
+	ldr	r2, .L543+8
 	strb	r3, [r2]
-	bne	.L2380
-	ldr	r3, .L2388+12
+	bne	.L535
+	ldr	r3, .L543+12
 	movs	r2, #204
 	strb	r2, [r3]
 	movs	r2, #191
@@ -17050,22 +4406,22 @@ hynix20nm_readretry_init:
 	movs	r2, #174
 	strb	r2, [r3, #6]
 	movs	r2, #175
-.L2387:
+.L542:
 	strb	r2, [r3, #7]
 	add	r1, r0, #176
 	add	r2, r0, #48
 	movs	r3, #0
 	str	r3, [r0, #176]
-.L2384:
+.L539:
 	strb	r3, [r2], #1
 	cmp	r2, r1
-	bne	.L2384
+	bne	.L539
 	pop	{r4, lr}
 	b	hynix20nm_init_readretry_param
-.L2380:
+.L535:
 	cmp	r1, #3
-	bne	.L2382
-	ldr	r3, .L2388+12
+	bne	.L537
+	ldr	r3, .L543+12
 	movs	r2, #176
 	strb	r2, [r3]
 	movs	r2, #177
@@ -17081,20 +4437,20 @@ hynix20nm_readretry_init:
 	movs	r2, #182
 	strb	r2, [r3, #6]
 	movs	r2, #183
-	b	.L2387
-.L2382:
-	ldr	r0, .L2388+16
+	b	.L542
+.L537:
+	ldr	r0, .L543+16
 	bl	NAND_Print
 	mvn	r0, #92
 	pop	{r4, pc}
-.L2389:
+.L544:
 	.align	2
-.L2388:
-	.word	.LANCHOR33
-	.word	.LANCHOR30
-	.word	.LANCHOR31
-	.word	.LANCHOR32
-	.word	.LC413
+.L543:
+	.word	.LANCHOR15
+	.word	.LANCHOR12
+	.word	.LANCHOR13
+	.word	.LANCHOR14
+	.word	.LC37
 	.size	hynix20nm_readretry_init, .-hynix20nm_readretry_init
 	.section	.text.hynix20nm_special_init,"ax",%progbits
 	.align	1
@@ -17109,47 +4465,47 @@ hynix20nm_special_init:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r4, #0
-	ldr	r3, .L2395
+	ldr	r3, .L550
 	ldr	r3, [r3]
 	ldr	r5, [r3, #8]
-.L2391:
-	cbnz	r5, .L2392
-	ldr	r3, .L2395+4
+.L546:
+	cbnz	r5, .L547
+	ldr	r3, .L550+4
 	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2395+8
+	ldr	r3, .L550+8
 	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2395+12
+	ldr	r3, .L550+12
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2393
-	ldr	r0, .L2395+16
-	ldr	r5, .L2395+20
+	cbnz	r4, .L548
+	ldr	r0, .L550+16
+	ldr	r5, .L550+20
 	str	r5, [r0]
-	ldr	r0, .L2395+24
+	ldr	r0, .L550+24
 	bl	NAND_Print_DBG
-.L2390:
+.L545:
 	mov	r0, r4
 	pop	{r3, r4, r5, pc}
-.L2392:
+.L547:
 	mov	r0, r5
 	bl	hynix20nm_readretry_init
 	ldr	r5, [r5]
 	orrs	r4, r4, r0
-	b	.L2391
-.L2393:
-	ldr	r0, .L2395+28
+	b	.L546
+.L548:
+	ldr	r0, .L550+28
 	bl	NAND_Print
-	b	.L2390
-.L2396:
+	b	.L545
+.L551:
 	.align	2
-.L2395:
+.L550:
 	.word	g_nsi
-	.word	.LANCHOR33
-	.word	.LANCHOR30
-	.word	.LANCHOR31
+	.word	.LANCHOR15
+	.word	.LANCHOR12
+	.word	.LANCHOR13
 	.word	df_read_page_end
 	.word	hynix20nm_read_page_end
-	.word	.LC429
-	.word	.LC430
+	.word	.LC69
+	.word	.LC70
 	.size	hynix20nm_special_init, .-hynix20nm_special_init
 	.section	.text.hynix16nm_write_page_FF,"ax",%progbits
 	.align	1
@@ -17162,7 +4518,7 @@ hynix20nm_special_init:
 hynix16nm_write_page_FF:
 	@ args = 0, pretend = 0, frame = 16
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2416
+	ldr	r3, .L571
 	push	{r4, r5, r6, r7, r8, r10, fp, lr}
 	mov	r10, r0
 	sub	sp, sp, #24
@@ -17170,7 +4526,7 @@ hynix16nm_write_page_FF:
 	ldr	r1, [r0]
 	ldr	r0, [r3]
 	bl	nci_get_from_nsi
-	ldr	r4, [r0, #260]
+	ldr	r4, [r0, #268]
 	mov	r5, r0
 	ldr	r2, [r0, #20]
 	ldr	r1, [r10, #4]
@@ -17178,37 +4534,37 @@ hynix16nm_write_page_FF:
 	add	r7, r4, #32
 	ldr	ip, [r0, #24]
 	cmp	r2, r3
-	bcs	.L2398
+	bcs	.L553
 	cmp	r1, ip
-	bcc	.L2399
-.L2398:
+	bcc	.L554
+.L553:
 	strd	r1, ip, [sp]
 	ldr	r1, [r4, #8]
 	mvn	r4, #107
-	ldr	r0, .L2416+4
+	ldr	r0, .L571+4
 	bl	NAND_Print
-.L2397:
+.L552:
 	mov	r0, r4
 	add	sp, sp, #24
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2399:
+.L554:
 	bl	nand_read_chip_status_ready
 	mov	r0, r5
 	bl	nand_enable_chip
-	ldr	r0, [r5, #260]
+	ldr	r0, [r5, #268]
 	bl	ndfc_disable_randomize
-	ldr	r0, [r5, #260]
+	ldr	r0, [r5, #268]
 	bl	ndfc_disable_ecc
 	mov	r0, r7
 	bl	ndfc_clean_cmd_seq
 	cmp	r6, #8
-	beq	.L2408
+	beq	.L563
 	cmp	r6, #16
-	beq	.L2409
+	beq	.L564
 	movs	r3, #0
 	str	r3, [sp, #12]
-.L2413:
+.L568:
 	str	r3, [sp, #8]
 	add	r3, r4, #56
 	str	r3, [sp, #16]
@@ -17217,11 +4573,11 @@ hynix16nm_write_page_FF:
 	mov	r6, r8
 	subs	r3, r3, #1
 	str	r3, [sp, #20]
-.L2402:
+.L557:
 	ldr	r3, [sp, #8]
 	lsl	fp, r6, #10
 	cmp	r6, r3
-	bne	.L2406
+	bne	.L561
 	movs	r3, #0
 	movs	r1, #16
 	str	r3, [r4, #32]
@@ -17230,31 +4586,31 @@ hynix16nm_write_page_FF:
 	mov	r1, r7
 	str	r3, [r4, #48]
 	str	r3, [r4, #116]
-	ldr	r0, [r5, #260]
+	ldr	r0, [r5, #268]
 	bl	ndfc_execute_cmd
 	mov	r0, r5
 	bl	nand_read_chip_status_ready
 	mov	r4, r0
-	cbz	r0, .L2407
-	ldr	r0, .L2416+8
+	cbz	r0, .L562
+	ldr	r0, .L571+8
 	bl	NAND_Print
-.L2407:
+.L562:
 	mov	r0, r5
 	bl	nand_disable_chip
-	b	.L2397
-.L2408:
+	b	.L552
+.L563:
 	mov	r3, #832
 	str	r3, [sp, #12]
 	movs	r3, #9
-	b	.L2413
-.L2409:
+	b	.L568
+.L564:
 	mov	r3, #640
 	str	r3, [sp, #12]
 	movs	r3, #18
-	b	.L2413
-.L2406:
+	b	.L568
+.L561:
 	ldr	r1, [r10, #16]
-	cbnz	r6, .L2403
+	cbnz	r6, .L558
 	movs	r3, #1
 	movs	r0, #128
 	mov	r2, #1024
@@ -17277,15 +4633,15 @@ hynix16nm_write_page_FF:
 	movs	r1, #2
 	str	r3, [sp]
 	movs	r3, #3
-.L2414:
+.L569:
 	mov	r0, fp
 	adds	r6, r6, #1
 	bl	fill_cmd_addr
 	mov	r1, r7
-	ldr	r0, [r5, #260]
+	ldr	r0, [r5, #268]
 	bl	ndfc_execute_cmd
-	b	.L2402
-.L2403:
+	b	.L557
+.L558:
 	ldr	r3, [sp, #20]
 	add	r1, r1, fp
 	movs	r2, #133
@@ -17309,13 +4665,13 @@ hynix16nm_write_page_FF:
 	str	r1, [r4, #72]
 	str	r2, [sp]
 	mov	r2, r8
-	b	.L2414
-.L2417:
+	b	.L569
+.L572:
 	.align	2
-.L2416:
+.L571:
 	.word	g_nsi
-	.word	.LC431
-	.word	.LC432
+	.word	.LC18
+	.word	.LC71
 	.size	hynix16nm_write_page_FF, .-hynix16nm_write_page_FF
 	.section	.text.hynix16nm_vender_get_param,"ax",%progbits
 	.align	1
@@ -17349,38 +4705,38 @@ hynix16nm_major_check_byte:
 	mov	fp, r3
 	str	r1, [sp, #4]
 	cmp	r2, r8, lsr #1
-	bcs	.L2438
+	bcs	.L593
 	mov	r2, r8
 	mov	r1, r5
-	ldr	r0, .L2441
+	ldr	r0, .L596
 	bl	NAND_Print
 	mvn	r0, #106
 	movs	r3, #255
 	strb	r3, [r10]
-.L2419:
+.L574:
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2424:
+.L579:
 	ldrb	lr, [r0], #1	@ zero_extendqisi2
 	tst	lr, r1
 	ite	ne
 	addne	r2, r2, #1
 	addeq	r3, r3, #1
-.L2435:
+.L590:
 	cmp	ip, r0
-	bne	.L2424
+	bne	.L579
 	cmp	r5, r2
-	bcs	.L2425
-.L2440:
+	bcs	.L580
+.L595:
 	orrs	r7, r7, r1
 	uxtb	r7, r7
-.L2426:
+.L581:
 	adds	r6, r6, #1
-.L2433:
+.L588:
 	adds	r4, r4, #1
 	cmp	r4, #8
-	bne	.L2420
+	bne	.L575
 	cmp	r6, #8
 	iteet	ne
 	movne	r3, #255
@@ -17389,57 +4745,57 @@ hynix16nm_major_check_byte:
 	strbne	r3, [r10]
 	it	ne
 	mvnne	r0, #79
-	b	.L2419
-.L2431:
+	b	.L574
+.L586:
 	ldrb	lr, [r0], #1	@ zero_extendqisi2
 	tst	lr, r1
 	ite	ne
 	addne	r3, r3, #1
 	addeq	r2, r2, #1
-	b	.L2428
-.L2438:
+	b	.L583
+.L593:
 	movs	r6, #0
 	mov	r7, r6
 	mov	r4, r6
-.L2420:
+.L575:
 	movs	r1, #1
 	movs	r3, #0
 	lsls	r1, r1, r4
 	mov	r0, fp
 	add	ip, r8, fp
 	mov	r2, r3
-	b	.L2435
-.L2425:
+	b	.L590
+.L580:
 	cmp	r5, r3
-	bcc	.L2426
+	bcc	.L581
 	ldr	r0, [sp, #4]
 	cmp	r0, #1
-	bne	.L2427
+	bne	.L582
 	ldr	r0, [sp, #40]
 	movs	r3, #0
 	mov	r2, r3
 	add	ip, r8, r0
-.L2428:
+.L583:
 	cmp	r0, ip
-	bne	.L2431
+	bne	.L586
 	cmp	r5, r2
-	bcc	.L2440
+	bcc	.L595
 	cmp	r5, r3
-	bcc	.L2426
-.L2427:
+	bcc	.L581
+.L582:
 	mov	r1, r4
-	ldr	r0, .L2441+4
+	ldr	r0, .L596+4
 	bl	NAND_Print
 	mov	r1, r4
-	ldr	r0, .L2441+8
+	ldr	r0, .L596+8
 	bl	NAND_Print
-	b	.L2433
-.L2442:
+	b	.L588
+.L597:
 	.align	2
-.L2441:
-	.word	.LC433
-	.word	.LC434
-	.word	.LC435
+.L596:
+	.word	.LC72
+	.word	.LC73
+	.word	.LC74
 	.size	hynix16nm_major_check_byte, .-hynix16nm_major_check_byte
 	.section	.text.hynix16nm_get_read_retry_cfg,"ax",%progbits
 	.align	1
@@ -17469,12 +4825,12 @@ hynix16nm_get_read_retry_cfg:
 	mov	r0, r7
 	bl	memset
 	movs	r3, #0
-.L2444:
+.L599:
 	ldrb	r2, [r10, r3]	@ zero_extendqisi2
 	strb	r2, [r4, r3]
 	adds	r3, r3, #1
 	cmp	r3, #8
-	bne	.L2444
+	bne	.L599
 	strd	r7, r3, [sp]
 	movs	r2, #4
 	mov	r3, r4
@@ -17482,27 +4838,27 @@ hynix16nm_get_read_retry_cfg:
 	mov	r0, fp
 	bl	hynix16nm_major_check_byte
 	subs	r6, r0, #0
-	bge	.L2445
-	ldr	r0, .L2466
-.L2465:
+	bge	.L600
+	ldr	r0, .L621
+.L620:
 	bl	NAND_Print
-.L2443:
+.L598:
 	mov	r0, r6
 	add	sp, sp, #72
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2445:
+.L600:
 	ldrb	r1, [fp]	@ zero_extendqisi2
-	ldr	r0, .L2466+4
+	ldr	r0, .L621+4
 	bl	NAND_Print_DBG
 	add	r2, r10, #7
 	movs	r3, #0
-.L2447:
+.L602:
 	ldrb	r1, [r2, #1]!	@ zero_extendqisi2
 	strb	r1, [r4, r3]
 	adds	r3, r3, #1
 	cmp	r3, #8
-	bne	.L2447
+	bne	.L602
 	strd	r7, r3, [sp]
 	movs	r2, #4
 	mov	r3, r4
@@ -17510,36 +4866,36 @@ hynix16nm_get_read_retry_cfg:
 	mov	r0, r5
 	bl	hynix16nm_major_check_byte
 	subs	r6, r0, #0
-	bge	.L2448
-	ldr	r0, .L2466+8
-	b	.L2465
-.L2448:
+	bge	.L603
+	ldr	r0, .L621+8
+	b	.L620
+.L603:
 	ldrb	r1, [r5]	@ zero_extendqisi2
-	ldr	r0, .L2466+12
+	ldr	r0, .L621+12
 	bl	NAND_Print_DBG
 	ldrb	r1, [fp]	@ zero_extendqisi2
 	ldrb	r2, [r5]	@ zero_extendqisi2
 	cmp	r1, #8
-	bne	.L2449
+	bne	.L604
 	cmp	r2, #4
-	beq	.L2456
-.L2449:
-	ldr	r0, .L2466+16
+	beq	.L611
+.L604:
+	ldr	r0, .L621+16
 	mvn	r6, #80
 	bl	NAND_Print
-	b	.L2443
-.L2452:
+	b	.L598
+.L607:
 	adds	r5, r5, #1
 	cmp	r5, #32
-	bne	.L2450
+	bne	.L605
 	movs	r6, #0
-	b	.L2453
-.L2456:
+	b	.L608
+.L611:
 	movs	r5, #0
-.L2450:
+.L605:
 	add	r2, r10, r5
 	movs	r3, #0
-.L2451:
+.L606:
 	ldrb	r1, [r2, #16]	@ zero_extendqisi2
 	adds	r2, r2, #64
 	strb	r1, [r4, r3]
@@ -17547,7 +4903,7 @@ hynix16nm_get_read_retry_cfg:
 	strb	r1, [r7, r3]
 	adds	r3, r3, #1
 	cmp	r3, #8
-	bne	.L2451
+	bne	.L606
 	strd	r7, r3, [sp]
 	movs	r2, #4
 	mov	r3, r4
@@ -17555,41 +4911,41 @@ hynix16nm_get_read_retry_cfg:
 	add	r0, r8, r5
 	bl	hynix16nm_major_check_byte
 	subs	r6, r0, #0
-	bge	.L2452
+	bge	.L607
 	mov	r1, r5
-	ldr	r0, .L2466+20
+	ldr	r0, .L621+20
 	bl	NAND_Print
-.L2453:
-	ldr	r7, .L2466+24
+.L608:
+	ldr	r7, .L621+24
 	movs	r4, #0
-	ldr	r5, .L2466+28
-.L2455:
+	ldr	r5, .L621+28
+.L610:
 	lsls	r3, r4, #29
-	bne	.L2454
-	cbz	r4, .L2454
+	bne	.L609
+	cbz	r4, .L609
 	mov	r0, r7
 	bl	NAND_Print_DBG
-.L2454:
+.L609:
 	ldrb	r1, [r8, r4]	@ zero_extendqisi2
 	mov	r0, r5
 	adds	r4, r4, #1
 	bl	NAND_Print_DBG
 	cmp	r4, #32
-	bne	.L2455
-	ldr	r0, .L2466+24
+	bne	.L610
+	ldr	r0, .L621+24
 	bl	NAND_Print_DBG
-	b	.L2443
-.L2467:
+	b	.L598
+.L622:
 	.align	2
-.L2466:
-	.word	.LC436
-	.word	.LC437
-	.word	.LC438
-	.word	.LC439
-	.word	.LC440
-	.word	.LC441
+.L621:
+	.word	.LC75
+	.word	.LC76
+	.word	.LC77
+	.word	.LC78
+	.word	.LC79
+	.word	.LC80
 	.word	.LC7
-	.word	.LC38
+	.word	.LC81
 	.size	hynix16nm_get_read_retry_cfg, .-hynix16nm_get_read_retry_cfg
 	.section	.text.hynix16nm_read_otp_info_hynix,"ax",%progbits
 	.align	1
@@ -17607,27 +4963,27 @@ hynix16nm_read_otp_info_hynix:
 	sub	sp, sp, #32
 	mov	r8, r1
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
 	ldr	r2, [r4, #20]
-	ldr	r3, [r4, #260]
-	ldr	r0, .L2473
+	ldr	r3, [r4, #268]
+	ldr	r0, .L628
 	add	r3, r3, r2, lsl #2
 	ldr	r2, [r3, #1148]
 	ldr	r1, [r3, #1116]
 	bl	NAND_Print_DBG
 	cmp	r8, #0
-	bne	.L2469
+	bne	.L624
 	mov	r0, r4
 	bl	nand_disable_chip
-	ldr	r0, .L2473+4
+	ldr	r0, .L628+4
 	bl	NAND_Print
 	mvn	r0, #78
-.L2468:
+.L623:
 	add	sp, sp, #32
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2469:
+.L624:
 	movs	r2, #1
 	movs	r1, #255
 	mov	r0, r4
@@ -17736,27 +5092,27 @@ hynix16nm_read_otp_info_hynix:
 	ldrb	r1, [r8]	@ zero_extendqisi2
 	ldrb	r2, [r8, #1]	@ zero_extendqisi2
 	cmp	r1, #8
-	bne	.L2471
+	bne	.L626
 	cmp	r2, #8
-	beq	.L2472
-.L2471:
-	ldr	r0, .L2473+8
+	beq	.L627
+.L626:
+	ldr	r0, .L628+8
 	bl	NAND_Print
 	mov	r0, r4
 	bl	nand_disable_chip
 	mvn	r0, #95
-	b	.L2468
-.L2472:
+	b	.L623
+.L627:
 	mov	r0, r4
 	bl	nand_disable_chip
 	mov	r0, r5
-	b	.L2468
-.L2474:
+	b	.L623
+.L629:
 	.align	2
-.L2473:
-	.word	.LC442
-	.word	.LC443
-	.word	.LC398
+.L628:
+	.word	.LC82
+	.word	.LC83
+	.word	.LC22
 	.size	hynix16nm_read_otp_info_hynix, .-hynix16nm_read_otp_info_hynix
 	.section	.text.hynix16nm_get_rr_value_otp_hynix,"ax",%progbits
 	.align	1
@@ -17774,50 +5130,50 @@ hynix16nm_get_rr_value_otp_hynix:
 	mov	r0, #528
 	bl	nand_get_temp_buf
 	mov	r5, r0
-	cbnz	r0, .L2476
+	cbnz	r0, .L631
 	mvn	r6, #77
-	ldr	r0, .L2480
+	ldr	r0, .L635
 	bl	NAND_Print
-.L2475:
+.L630:
 	mov	r0, r6
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, pc}
-.L2476:
+.L631:
 	mov	r1, r0
 	mov	r0, r4
 	bl	hynix16nm_read_otp_info_hynix
 	cmp	r0, #0
-	bge	.L2478
-	ldr	r3, [r4, #260]
+	bge	.L633
+	ldr	r3, [r4, #268]
 	ldr	r2, [r4, #20]
-	ldr	r0, .L2480+4
+	ldr	r0, .L635+4
 	ldr	r1, [r3, #8]
 	bl	NAND_Print
-.L2478:
+.L633:
 	mov	r3, r5
 	add	r2, r4, #48
 	add	r1, sp, #7
 	add	r0, sp, #6
 	bl	hynix16nm_get_read_retry_cfg
 	subs	r6, r0, #0
-	bge	.L2479
-	ldr	r3, [r4, #260]
+	bge	.L634
+	ldr	r3, [r4, #268]
 	ldr	r2, [r4, #20]
-	ldr	r0, .L2480+8
+	ldr	r0, .L635+8
 	ldr	r1, [r3, #8]
 	bl	NAND_Print
-.L2479:
+.L634:
 	mov	r1, #528
 	mov	r0, r5
 	bl	nand_free_temp_buf
-	b	.L2475
-.L2481:
+	b	.L630
+.L636:
 	.align	2
-.L2480:
-	.word	.LC444
-	.word	.LC445
-	.word	.LC446
+.L635:
+	.word	.LC84
+	.word	.LC85
+	.word	.LC86
 	.size	hynix16nm_get_rr_value_otp_hynix, .-hynix16nm_get_rr_value_otp_hynix
 	.section	.text.hynix16nm_save_otp_value,"ax",%progbits
 	.align	1
@@ -17834,11 +5190,11 @@ hynix16nm_save_otp_value:
 	subs	r3, r1, #1
 	adds	r0, r0, #48
 	adds	r1, r1, #31
-.L2483:
+.L638:
 	ldrb	r2, [r3, #1]!	@ zero_extendqisi2
 	cmp	r3, r1
 	strb	r2, [r0], #1
-	bne	.L2483
+	bne	.L638
 	bx	lr
 	.size	hynix16nm_save_otp_value, .-hynix16nm_save_otp_value
 	.section	.text.hynix16nm_get_otp_param,"ax",%progbits
@@ -17854,10 +5210,10 @@ hynix16nm_get_otp_param:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, r6, r7, lr}
 	mov	r4, r0
-	ldr	r7, .L2492
+	ldr	r7, .L647
 	mov	r5, r1
 	movs	r6, #0
-.L2486:
+.L641:
 	mov	r1, r6
 	mov	r0, r7
 	bl	NAND_Print_DBG
@@ -17865,30 +5221,30 @@ hynix16nm_get_otp_param:
 	adds	r6, r6, #1
 	bl	hynix16nm_get_rr_value_otp_hynix
 	cmp	r0, #0
-	bne	.L2486
+	bne	.L641
 	mov	r0, r4
 	mov	r1, r5
 	adds	r4, r4, #32
-.L2487:
+.L642:
 	mov	r2, r1
 	movs	r3, #0
-.L2488:
+.L643:
 	adds	r5, r0, r3
 	adds	r3, r3, #1
 	ldrb	r5, [r5, #48]	@ zero_extendqisi2
 	cmp	r3, #4
 	strb	r5, [r2], #1
-	bne	.L2488
+	bne	.L643
 	adds	r0, r0, #4
 	adds	r1, r1, #4
 	cmp	r0, r4
-	bne	.L2487
+	bne	.L642
 	movs	r0, #0
 	pop	{r3, r4, r5, r6, r7, pc}
-.L2493:
+.L648:
 	.align	2
-.L2492:
-	.word	.LC401
+.L647:
+	.word	.LC25
 	.size	hynix16nm_get_otp_param, .-hynix16nm_get_otp_param
 	.section	.text.hynix16nm_set_default_param,"ax",%progbits
 	.align	1
@@ -17903,48 +5259,48 @@ hynix16nm_set_default_param:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r0, r1, r2, r4, r5, r6, r7, lr}
 	add	r1, r0, #48
-	ldr	r5, .L2499
+	ldr	r5, .L654
 	movs	r2, #0
 	ldrb	r3, [r5]	@ zero_extendqisi2
-.L2495:
+.L650:
 	cmp	r3, r2
-	bhi	.L2496
-	ldr	r7, .L2499+4
+	bhi	.L651
+	ldr	r7, .L654+4
 	mov	r1, sp
-	ldr	r2, .L2499+8
+	ldr	r2, .L654+8
 	movs	r4, #0
 	bl	hynix26nm_vender_set_param
 	mov	r6, r0
-	ldr	r0, .L2499+12
+	ldr	r0, .L654+12
 	bl	NAND_Print_DBG
-.L2497:
+.L652:
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	cmp	r3, r4
-	bhi	.L2498
-	ldr	r0, .L2499+16
+	bhi	.L653
+	ldr	r0, .L654+16
 	bl	NAND_Print_DBG
 	mov	r0, r6
 	add	sp, sp, #12
 	@ sp needed
 	pop	{r4, r5, r6, r7, pc}
-.L2496:
+.L651:
 	ldrb	r4, [r1], #1	@ zero_extendqisi2
 	strb	r4, [sp, r2]
 	adds	r2, r2, #1
-	b	.L2495
-.L2498:
+	b	.L650
+.L653:
 	ldrb	r1, [sp, r4]	@ zero_extendqisi2
 	mov	r0, r7
 	bl	NAND_Print_DBG
 	adds	r4, r4, #1
-	b	.L2497
-.L2500:
+	b	.L652
+.L655:
 	.align	2
-.L2499:
-	.word	.LANCHOR50
-	.word	.LC404
-	.word	.LANCHOR51
-	.word	.LC403
+.L654:
+	.word	.LANCHOR57
+	.word	.LC28
+	.word	.LANCHOR58
+	.word	.LC27
 	.word	.LC7
 	.size	hynix16nm_set_default_param, .-hynix16nm_set_default_param
 	.section	.text.hynix16nm_init_readretry_param,"ax",%progbits
@@ -17958,7 +5314,7 @@ hynix16nm_set_default_param:
 hynix16nm_init_readretry_param:
 	@ args = 0, pretend = 0, frame = 64
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
+	ldr	r3, [r0, #272]
 	push	{r4, r5, r6, r7, r8, r10, lr}
 	mov	r4, r0
 	sub	sp, sp, #68
@@ -17967,92 +5323,92 @@ hynix16nm_init_readretry_param:
 	bl	nand_get_temp_buf
 	mov	r6, r0
 	cmp	r0, #0
-	beq	.L2508
+	beq	.L663
 	mov	r0, #32768
 	bl	nand_get_temp_buf
 	mov	r7, r0
-	cbnz	r0, .L2503
-	ldr	r3, [r4, #264]
+	cbnz	r0, .L658
+	ldr	r3, [r4, #272]
 	mov	r0, r6
 	ldr	r1, [r3, #16]
 	lsls	r1, r1, #9
 	bl	nand_free_temp_buf
-	ldr	r0, .L2510
+	ldr	r0, .L665
 	bl	NAND_Print
 	mvn	r0, #75
-.L2501:
+.L656:
 	add	sp, sp, #68
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2503:
+.L658:
 	ldr	r3, [r4, #16]
 	movs	r2, #32
 	mov	r1, r6
 	bl	hynix16nm_get_special_info
-	ldr	r3, [r4, #260]
+	ldr	r3, [r4, #268]
 	mov	r5, r0
-	cbnz	r0, .L2504
-	ldr	r8, .L2510+16
+	cbnz	r0, .L659
+	ldr	r8, .L665+16
 	mov	r2, r0
-	ldr	r10, .L2510+20
+	ldr	r10, .L665+20
 	ldr	r1, [r3, #8]
-	ldr	r0, .L2510+4
+	ldr	r0, .L665+4
 	bl	NAND_Print_DBG
-.L2506:
+.L661:
 	ldrb	r1, [r6, r5]	@ zero_extendqisi2
 	mov	r0, r8
 	bl	NAND_Print_DBG
 	and	r3, r5, #7
 	cmp	r3, #7
-	bne	.L2505
+	bne	.L660
 	mov	r0, r10
 	bl	NAND_Print_DBG
-.L2505:
+.L660:
 	adds	r5, r5, #1
 	cmp	r5, #32
-	bne	.L2506
+	bne	.L661
 	mov	r0, r4
 	mov	r1, r6
 	bl	hynix16nm_save_otp_value
 	mov	r0, r4
 	bl	hynix16nm_set_default_param
-.L2507:
+.L662:
 	mov	r1, #32768
 	mov	r0, r7
 	bl	nand_free_temp_buf
-	ldr	r3, [r4, #264]
+	ldr	r3, [r4, #272]
 	mov	r0, r6
 	ldr	r1, [r3, #16]
 	lsls	r1, r1, #9
 	bl	nand_free_temp_buf
 	movs	r0, #0
-	b	.L2501
-.L2504:
+	b	.L656
+.L659:
 	ldr	r1, [r3, #8]
-	ldr	r0, .L2510+8
+	ldr	r0, .L665+8
 	bl	NAND_Print_DBG
 	mov	r1, sp
 	mov	r0, r4
 	bl	hynix16nm_get_otp_param
 	mov	r0, r4
 	bl	hynix16nm_set_default_param
-	ldr	r3, [r4, #260]
+	ldr	r3, [r4, #268]
 	movs	r2, #0
-	ldr	r0, .L2510+12
+	ldr	r0, .L665+12
 	ldr	r1, [r3, #8]
 	bl	NAND_Print_DBG
-	b	.L2507
-.L2508:
+	b	.L662
+.L663:
 	mvn	r0, #76
-	b	.L2501
-.L2511:
+	b	.L656
+.L666:
 	.align	2
-.L2510:
-	.word	.LC424
-	.word	.LC447
-	.word	.LC427
-	.word	.LC448
-	.word	.LC426
+.L665:
+	.word	.LC64
+	.word	.LC87
+	.word	.LC67
+	.word	.LC88
+	.word	.LC66
 	.word	.LC7
 	.size	hynix16nm_init_readretry_param, .-hynix16nm_init_readretry_param
 	.section	.text.hynix16nm_readretry_init,"ax",%progbits
@@ -18066,20 +5422,20 @@ hynix16nm_init_readretry_param:
 hynix16nm_readretry_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
-	ldr	r2, .L2517
+	ldr	r3, [r0, #272]
+	ldr	r2, .L672
 	push	{r4, lr}
 	ldr	r3, [r3, #52]
 	ubfx	r1, r3, #16, #8
 	strb	r1, [r2]
 	lsrs	r4, r3, #8
-	ldr	r2, .L2517+4
+	ldr	r2, .L672+4
 	cmp	r1, #4
 	strb	r4, [r2]
-	ldr	r2, .L2517+8
+	ldr	r2, .L672+8
 	strb	r3, [r2]
-	bne	.L2513
-	ldr	r3, .L2517+12
+	bne	.L668
+	ldr	r3, .L672+12
 	movs	r2, #56
 	add	r1, r0, #176
 	strb	r2, [r3]
@@ -18092,27 +5448,27 @@ hynix16nm_readretry_init:
 	add	r2, r0, #48
 	movs	r3, #0
 	str	r3, [r0, #176]
-.L2514:
+.L669:
 	strb	r3, [r2], #1
 	cmp	r2, r1
-	bne	.L2514
+	bne	.L669
 	bl	hynix16nm_init_readretry_param
 	movs	r0, #0
-.L2512:
+.L667:
 	pop	{r4, pc}
-.L2513:
-	ldr	r0, .L2517+16
+.L668:
+	ldr	r0, .L672+16
 	bl	NAND_Print
 	mvn	r0, #74
-	b	.L2512
-.L2518:
+	b	.L667
+.L673:
 	.align	2
-.L2517:
-	.word	.LANCHOR52
-	.word	.LANCHOR49
-	.word	.LANCHOR50
-	.word	.LANCHOR51
-	.word	.LC413
+.L672:
+	.word	.LANCHOR59
+	.word	.LANCHOR56
+	.word	.LANCHOR57
+	.word	.LANCHOR58
+	.word	.LC37
 	.size	hynix16nm_readretry_init, .-hynix16nm_readretry_init
 	.section	.text.hynix16nm_readretry_exit,"ax",%progbits
 	.align	1
@@ -18127,17 +5483,17 @@ hynix16nm_readretry_exit:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, lr}
 	mov	r4, r0
-	ldr	r0, .L2520
+	ldr	r0, .L675
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	bl	hynix16nm_set_default_param
 	movs	r0, #0
 	str	r0, [r4, #176]
 	pop	{r4, pc}
-.L2521:
+.L676:
 	.align	2
-.L2520:
-	.word	.LC449
+.L675:
+	.word	.LC89
 	.size	hynix16nm_readretry_exit, .-hynix16nm_readretry_exit
 	.section	.text.hynix16nm_special_init,"ax",%progbits
 	.align	1
@@ -18152,47 +5508,47 @@ hynix16nm_special_init:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r4, #0
-	ldr	r3, .L2527
+	ldr	r3, .L682
 	ldr	r3, [r3]
 	ldr	r5, [r3, #8]
-.L2523:
-	cbnz	r5, .L2524
-	ldr	r3, .L2527+4
+.L678:
+	cbnz	r5, .L679
+	ldr	r3, .L682+4
 	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2527+8
+	ldr	r3, .L682+8
 	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2527+12
+	ldr	r3, .L682+12
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2525
-	ldr	r0, .L2527+16
-	ldr	r5, .L2527+20
+	cbnz	r4, .L680
+	ldr	r0, .L682+16
+	ldr	r5, .L682+20
 	str	r5, [r0]
-	ldr	r0, .L2527+24
+	ldr	r0, .L682+24
 	bl	NAND_Print_DBG
-.L2522:
+.L677:
 	mov	r0, r4
 	pop	{r3, r4, r5, pc}
-.L2524:
+.L679:
 	mov	r0, r5
 	bl	hynix16nm_readretry_init
 	ldr	r5, [r5]
 	orrs	r4, r4, r0
-	b	.L2523
-.L2525:
-	ldr	r0, .L2527+28
+	b	.L678
+.L680:
+	ldr	r0, .L682+28
 	bl	NAND_Print
-	b	.L2522
-.L2528:
+	b	.L677
+.L683:
 	.align	2
-.L2527:
+.L682:
 	.word	g_nsi
-	.word	.LANCHOR52
-	.word	.LANCHOR49
-	.word	.LANCHOR50
+	.word	.LANCHOR59
+	.word	.LANCHOR56
+	.word	.LANCHOR57
 	.word	df_read_page_end
 	.word	hynix16nm_read_page_end
-	.word	.LC450
-	.word	.LC451
+	.word	.LC90
+	.word	.LC91
 	.size	hynix16nm_special_init, .-hynix16nm_special_init
 	.section	.text.hynix16nm_special_exit,"ax",%progbits
 	.align	1
@@ -18205,1911 +5561,27 @@ hynix16nm_special_init:
 hynix16nm_special_exit:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2532
+	ldr	r3, .L687
 	push	{r4, lr}
 	ldr	r3, [r3]
 	ldr	r4, [r3, #8]
-.L2530:
-	cbnz	r4, .L2531
-	ldr	r0, .L2532+4
+.L685:
+	cbnz	r4, .L686
+	ldr	r0, .L687+4
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	pop	{r4, pc}
-.L2531:
+.L686:
 	mov	r0, r4
 	bl	hynix16nm_readretry_exit
 	ldr	r4, [r4]
-	b	.L2530
-.L2533:
+	b	.L685
+.L688:
 	.align	2
-.L2532:
+.L687:
 	.word	g_nsi
-	.word	.LC452
+	.word	.LC92
 	.size	hynix16nm_special_exit, .-hynix16nm_special_exit
-	.section	.text.generic_special_init,"ax",%progbits
-	.align	1
-	.global	generic_special_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	generic_special_init, %function
-generic_special_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	ldr	r2, .L2535
-	ldr	r3, .L2535+4
-	ldr	r0, .L2535+8
-	str	r2, [r3]
-	bl	NAND_Print_DBG
-	movs	r0, #0
-	pop	{r3, pc}
-.L2536:
-	.align	2
-.L2535:
-	.word	generic_read_page_end_not_retry
-	.word	df_read_page_end
-	.word	.LC453
-	.size	generic_special_init, .-generic_special_init
-	.section	.text.generic_special_exit,"ax",%progbits
-	.align	1
-	.global	generic_special_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	generic_special_exit, %function
-generic_special_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	ldr	r0, .L2538
-	bl	NAND_Print_DBG
-	movs	r0, #0
-	pop	{r3, pc}
-.L2539:
-	.align	2
-.L2538:
-	.word	.LC454
-	.size	generic_special_exit, .-generic_special_exit
-	.section	.text.sandisk_A19_dsp_on,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_dsp_on
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_dsp_on, %function
-sandisk_A19_dsp_on:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2541
-	push	{r4, lr}
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r4, r0
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	movs	r2, #0
-	movs	r1, #38
-	mov	r0, r4
-	bl	set_one_cmd
-	mov	r0, r4
-	bl	nand_disable_chip
-	movs	r0, #0
-	pop	{r4, pc}
-.L2542:
-	.align	2
-.L2541:
-	.word	g_nsi
-	.size	sandisk_A19_dsp_on, .-sandisk_A19_dsp_on
-	.section	.text.sandisk_A19_cmd25,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_cmd25
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_cmd25, %function
-sandisk_A19_cmd25:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2544
-	push	{r4, lr}
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r4, r0
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	movs	r2, #0
-	movs	r1, #37
-	mov	r0, r4
-	bl	set_one_cmd
-	mov	r0, r4
-	bl	nand_disable_chip
-	movs	r0, #0
-	pop	{r4, pc}
-.L2545:
-	.align	2
-.L2544:
-	.word	g_nsi
-	.size	sandisk_A19_cmd25, .-sandisk_A19_cmd25
-	.section	.text.sandisk_A19_set_lmflgfix_next,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_set_lmflgfix_next
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_set_lmflgfix_next, %function
-sandisk_A19_set_lmflgfix_next:
-	@ args = 0, pretend = 0, frame = 8
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2551
-	push	{r4, r5, r6, r7, r8, lr}
-	mov	r5, r1
-	sub	sp, sp, #24
-	ldr	r1, [r0]
-	add	r7, sp, #22
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r4, r0
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	movs	r2, #0
-	movs	r1, #92
-	mov	r0, r4
-	bl	set_one_cmd
-	movs	r2, #0
-	movs	r1, #197
-	mov	r0, r4
-	bl	set_one_cmd
-	movs	r3, #0
-	movs	r2, #1
-	strb	r3, [sp, #21]
-	movs	r3, #85
-	strb	r3, [sp, #23]
-	add	r1, sp, #23
-	add	r3, sp, #21
-	strd	r2, r2, [sp, #4]
-	str	r7, [sp]
-	mov	r0, r4
-	strb	r2, [sp, #22]
-	bl	set_cmd_with_nand_bus
-	ldr	r3, .L2551+4
-	ldrb	r3, [r3]	@ zero_extendqisi2
-	cmp	r3, #52
-	bne	.L2547
-	movs	r3, #34
-.L2550:
-	strb	r5, [sp, #22]
-	movs	r5, #1
-	strb	r3, [sp, #21]
-	mov	r8, #85
-	add	r3, sp, #21
-	mov	r2, r5
-	add	r1, sp, #23
-	strd	r5, r5, [sp, #4]
-	str	r7, [sp]
-	mov	r0, r4
-	movs	r6, #0
-	strb	r8, [sp, #23]
-	bl	set_cmd_with_nand_bus
-	add	r3, sp, #21
-	mov	r2, r5
-	add	r1, sp, #23
-	strd	r5, r5, [sp, #4]
-	str	r7, [sp]
-	mov	r0, r4
-	strb	r6, [sp, #21]
-	strb	r6, [sp, #22]
-	strb	r8, [sp, #23]
-	bl	set_cmd_with_nand_bus
-	mov	r0, r4
-	bl	nand_disable_chip
-	mov	r0, r6
-	add	sp, sp, #24
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L2547:
-	cmp	r3, #53
-	ite	eq
-	moveq	r3, #37
-	movne	r3, #35
-	b	.L2550
-.L2552:
-	.align	2
-.L2551:
-	.word	g_nsi
-	.word	.LANCHOR53
-	.size	sandisk_A19_set_lmflgfix_next, .-sandisk_A19_set_lmflgfix_next
-	.section	.text.sandisk_A19_readretry_init,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_readretry_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_readretry_init, %function
-sandisk_A19_readretry_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
-	ldr	r2, .L2556
-	push	{r4, lr}
-	movs	r4, #0
-	ldr	r3, [r3, #52]
-	str	r4, [r0, #176]
-	ubfx	r1, r3, #16, #8
-	ldr	r0, .L2556+4
-	strb	r1, [r2]
-	lsrs	r2, r3, #8
-	strb	r2, [r0]
-	ldr	r0, .L2556+8
-	strb	r3, [r0]
-	sub	r3, r1, #50
-	cmp	r3, #3
-	bls	.L2554
-	ldr	r0, .L2556+12
-	bl	NAND_Print
-	mvn	r0, #98
-.L2553:
-	pop	{r4, pc}
-.L2554:
-	uxtb	r1, r2
-	ldr	r0, .L2556+16
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	b	.L2553
-.L2557:
-	.align	2
-.L2556:
-	.word	.LANCHOR53
-	.word	.LANCHOR54
-	.word	.LANCHOR55
-	.word	.LC455
-	.word	.LC456
-	.size	sandisk_A19_readretry_init, .-sandisk_A19_readretry_init
-	.section	.text.sandisk_A19_readretry_exit,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_readretry_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_readretry_exit, %function
-sandisk_A19_readretry_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r0, #0
-	bx	lr
-	.size	sandisk_A19_readretry_exit, .-sandisk_A19_readretry_exit
-	.section	.text.sandisk_A19_read_retry_clock_save,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_read_retry_clock_save
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_read_retry_clock_save, %function
-sandisk_A19_read_retry_clock_save:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	ldr	r3, .L2560
-	ldr	r0, [r0, #260]
-	ldr	r3, [r3]
-	ldr	r2, .L2560+4
-	ldr	r1, .L2560+8
-	ldr	r0, [r0, #8]
-	blx	r3
-	ldr	r0, [r4, #260]
-	movs	r2, #20
-	ldr	r3, .L2560+12
-	movs	r1, #10
-	ldr	r0, [r0, #8]
-	ldr	r3, [r3]
-	blx	r3
-	movs	r0, #0
-	pop	{r4, pc}
-.L2561:
-	.align	2
-.L2560:
-	.word	NAND_GetClk
-	.word	.LANCHOR56
-	.word	.LANCHOR57
-	.word	NAND_SetClk
-	.size	sandisk_A19_read_retry_clock_save, .-sandisk_A19_read_retry_clock_save
-	.section	.text.sandisk_A19_read_retry_clock_recover,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_read_retry_clock_recover
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_read_retry_clock_recover, %function
-sandisk_A19_read_retry_clock_recover:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	ldr	r0, [r0, #260]
-	ldr	r3, .L2563
-	ldr	r2, .L2563+4
-	ldr	r1, .L2563+8
-	ldr	r3, [r3]
-	ldr	r2, [r2]
-	ldr	r1, [r1]
-	ldr	r0, [r0, #8]
-	blx	r3
-	movs	r0, #0
-	pop	{r3, pc}
-.L2564:
-	.align	2
-.L2563:
-	.word	NAND_SetClk
-	.word	.LANCHOR56
-	.word	.LANCHOR57
-	.size	sandisk_A19_read_retry_clock_recover, .-sandisk_A19_read_retry_clock_recover
-	.section	.text.sandisk_A19_vender_set_param,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_vender_set_param
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_vender_set_param, %function
-sandisk_A19_vender_set_param:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, lr}
-	movs	r4, #1
-	movs	r3, #4
-	str	r1, [sp]
-	strd	r3, r4, [sp, #4]
-	mov	r3, r2
-	ldr	r1, .L2566
-	mov	r2, r4
-	bl	set_cmd_with_nand_bus
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, pc}
-.L2567:
-	.align	2
-.L2566:
-	.word	.LANCHOR58
-	.size	sandisk_A19_vender_set_param, .-sandisk_A19_vender_set_param
-	.section	.text.sandisk_A19_set_readretry,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_set_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_set_readretry, %function
-sandisk_A19_set_readretry:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	ldr	r3, .L2573
-	ldr	r1, [r4, #176]
-	ldrb	r3, [r3]	@ zero_extendqisi2
-	cmp	r3, #52
-	bne	.L2569
-	ldr	r3, .L2573+4
-	add	r1, r3, r1, lsl #2
-.L2570:
-	movs	r3, #1
-	ldr	r2, .L2573+8
-	mov	r0, r4
-	bl	sandisk_A19_vender_set_param
-	movs	r2, #0
-	mov	r5, r0
-	movs	r1, #93
-	mov	r0, r4
-	bl	set_one_cmd
-	mov	r0, r4
-	bl	nand_disable_chip
-	mov	r0, r5
-	pop	{r3, r4, r5, pc}
-.L2569:
-	cmp	r3, #53
-	lsl	r1, r1, #2
-	ite	eq
-	ldreq	r3, .L2573+12
-	ldrne	r3, .L2573+16
-	add	r1, r1, r3
-	b	.L2570
-.L2574:
-	.align	2
-.L2573:
-	.word	.LANCHOR53
-	.word	.LANCHOR59
-	.word	.LANCHOR62
-	.word	.LANCHOR60
-	.word	.LANCHOR61
-	.size	sandisk_A19_set_readretry, .-sandisk_A19_set_readretry
-	.section	.text.sandisk_A19_exit_readretry,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_exit_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_exit_readretry, %function
-sandisk_A19_exit_readretry:
-	@ args = 0, pretend = 0, frame = 8
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r4, r5, lr}
-	movs	r3, #0
-	mov	r4, r0
-	add	r5, sp, #8
-	str	r3, [r5, #-4]!
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	movs	r2, #1
-	movs	r1, #255
-	mov	r0, r4
-	bl	set_one_cmd
-	mov	r1, r5
-	movs	r3, #1
-	ldr	r2, .L2576
-	mov	r0, r4
-	bl	sandisk_A19_vender_set_param
-	mov	r5, r0
-	mov	r0, r4
-	bl	nand_disable_chip
-	mov	r0, r5
-	add	sp, sp, #12
-	@ sp needed
-	pop	{r4, r5, pc}
-.L2577:
-	.align	2
-.L2576:
-	.word	.LANCHOR62
-	.size	sandisk_A19_exit_readretry, .-sandisk_A19_exit_readretry
-	.section	.text.sandisk_A19_read_page_end,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_read_page_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_read_page_end, %function
-sandisk_A19_read_page_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2626
-	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r4, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r5, r0
-	mov	r0, r4
-	bl	generic_read_page_end_not_retry
-	adds	r3, r0, #2
-	mov	r6, r0
-	bne	.L2578
-	ldr	r8, .L2626+28
-	movs	r7, #0
-	ldr	r0, .L2626+4
-	bl	NAND_Print_DBG
-	mov	r10, r8
-.L2580:
-	ldrb	r3, [r8]	@ zero_extendqisi2
-	cmp	r3, r7
-	bgt	.L2586
-	ldr	r7, .L2626+8
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #51
-	beq	.L2587
-	ldr	fp, .L2626+12
-	mov	r8, #0
-.L2588:
-	ldrb	r3, [r10]	@ zero_extendqisi2
-	cmp	r3, r8
-	bgt	.L2594
-	ldr	fp, .L2626+12
-	mov	r8, #0
-.L2595:
-	ldrb	r3, [r10]	@ zero_extendqisi2
-	cmp	r3, r8
-	bgt	.L2601
-.L2587:
-	ldr	fp, .L2626+12
-	mov	r8, #0
-.L2602:
-	ldrb	r3, [r10]	@ zero_extendqisi2
-	cmp	r3, r8
-	bgt	.L2616
-.L2617:
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	bl	sandisk_A19_exit_readretry
-.L2578:
-	mov	r0, r6
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2586:
-	str	r7, [r5, #176]
-	mov	r0, r5
-	ldrh	r1, [r4, #8]
-	bl	sandisk_A19_set_readretry
-	mov	r6, r0
-	cbz	r0, .L2581
-	ldr	r0, .L2626+12
-	bl	NAND_Print_DBG
-.L2582:
-	adds	r7, r7, #1
-	b	.L2580
-.L2581:
-	mov	r0, r4
-	bl	generic_read_page_start
-	mov	r6, r0
-	mov	r0, r4
-	bl	generic_read_page_end_not_retry
-	orrs	r6, r6, r0
-	ldr	r0, [r4, #20]
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2583
-	ldr	r3, [r5, #176]
-	mvn	r6, #1
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+16
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2582
-.L2583:
-	cmp	r6, #10
-	beq	.L2614
-	cmp	r6, #0
-	bne	.L2582
-.L2615:
-	ldr	r3, [r5, #176]
-	movs	r6, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+20
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2617
-.L2594:
-	str	r8, [r5, #176]
-	mov	r0, r5
-	ldrh	r1, [r4, #8]
-	bl	sandisk_A19_set_readretry
-	mov	r6, r0
-	cbz	r0, .L2589
-	mov	r0, fp
-	bl	NAND_Print_DBG
-.L2590:
-	add	r8, r8, #1
-	b	.L2588
-.L2589:
-	mov	r0, r4
-	bl	sandisk_A19_dsp_on
-	mov	r0, r4
-	bl	generic_read_page_start
-	mov	r6, r0
-	mov	r0, r4
-	bl	generic_read_page_end_not_retry
-	orrs	r6, r6, r0
-	ldr	r0, [r4, #20]
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2591
-	ldr	r3, [r5, #176]
-	mvn	r6, #1
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+16
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2590
-.L2591:
-	cmp	r6, #10
-	beq	.L2614
-	cmp	r6, #0
-	bne	.L2590
-	b	.L2615
-.L2601:
-	str	r8, [r5, #176]
-	mov	r0, r5
-	ldrh	r1, [r4, #8]
-	bl	sandisk_A19_set_readretry
-	mov	r6, r0
-	cbz	r0, .L2596
-	mov	r0, fp
-	bl	NAND_Print_DBG
-.L2597:
-	add	r8, r8, #1
-	b	.L2595
-.L2596:
-	mov	r0, r4
-	bl	sandisk_A19_cmd25
-	mov	r0, r4
-	bl	generic_read_page_start
-	mov	r6, r0
-	mov	r0, r4
-	bl	generic_read_page_end_not_retry
-	orrs	r6, r6, r0
-	ldr	r0, [r4, #20]
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2598
-	ldr	r3, [r5, #176]
-	mvn	r6, #1
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+16
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2597
-.L2598:
-	cmp	r6, #10
-	beq	.L2614
-	cmp	r6, #0
-	bne	.L2597
-	b	.L2615
-.L2616:
-	str	r8, [r5, #176]
-	mov	r0, r5
-	ldrh	r1, [r4, #8]
-	bl	sandisk_A19_set_readretry
-	mov	r6, r0
-	cbz	r0, .L2603
-	mov	r0, fp
-	bl	NAND_Print_DBG
-.L2604:
-	add	r8, r8, #1
-	b	.L2602
-.L2603:
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #52
-	bne	.L2605
-	movs	r1, #198
-.L2624:
-	mov	r0, r4
-	bl	sandisk_A19_set_lmflgfix_next
-	mov	r0, r4
-	bl	sandisk_A19_cmd25
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #50
-	beq	.L2608
-	subs	r3, r3, #52
-	cmp	r3, #1
-	bhi	.L2609
-.L2608:
-	mov	r0, r4
-	bl	sandisk_A19_dsp_on
-.L2609:
-	mov	r0, r4
-	bl	generic_read_page_start
-	mov	r6, r0
-	mov	r0, r4
-	bl	generic_read_page_end_not_retry
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	orrs	r6, r6, r0
-	cmp	r3, #52
-	bne	.L2610
-	movs	r1, #194
-.L2625:
-	mov	r0, r4
-	bl	sandisk_A19_set_lmflgfix_next
-	ldr	r0, [r4, #20]
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2613
-	ldr	r3, [r5, #176]
-	mvn	r6, #1
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+16
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2604
-.L2605:
-	cmp	r3, #53
-	ite	eq
-	moveq	r1, #26
-	movne	r1, #192
-	b	.L2624
-.L2610:
-	cmp	r3, #53
-	ite	eq
-	moveq	r1, #10
-	movne	r1, #64
-	b	.L2625
-.L2613:
-	cmp	r6, #10
-	beq	.L2614
-	cmp	r6, #0
-	bne	.L2604
-	b	.L2615
-.L2614:
-	ldr	r3, [r5, #176]
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2626+24
-	str	r3, [sp, #4]
-	ldr	r3, [r4, #8]
-	str	r3, [sp]
-	ldr	r3, [r4, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-	b	.L2617
-.L2627:
-	.align	2
-.L2626:
-	.word	g_nsi
-	.word	.LC457
-	.word	.LANCHOR53
-	.word	.LC458
-	.word	.LC394
-	.word	.LC459
-	.word	.LC460
-	.word	.LANCHOR54
-	.size	sandisk_A19_read_page_end, .-sandisk_A19_read_page_end
-	.section	.text.sandisk_A19_special_init,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_special_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_special_init, %function
-sandisk_A19_special_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	movs	r4, #0
-	ldr	r3, .L2633
-	ldr	r3, [r3]
-	ldr	r5, [r3, #8]
-.L2629:
-	cbnz	r5, .L2630
-	ldr	r3, .L2633+4
-	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2633+8
-	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2633+12
-	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2631
-	ldr	r0, .L2633+16
-	ldr	r5, .L2633+20
-	str	r5, [r0]
-	ldr	r0, .L2633+24
-	bl	NAND_Print_DBG
-.L2628:
-	mov	r0, r4
-	pop	{r3, r4, r5, pc}
-.L2630:
-	mov	r0, r5
-	bl	sandisk_A19_readretry_init
-	ldr	r5, [r5]
-	orrs	r4, r4, r0
-	b	.L2629
-.L2631:
-	ldr	r0, .L2633+28
-	bl	NAND_Print
-	b	.L2628
-.L2634:
-	.align	2
-.L2633:
-	.word	g_nsi
-	.word	.LANCHOR53
-	.word	.LANCHOR54
-	.word	.LANCHOR55
-	.word	df_read_page_end
-	.word	sandisk_A19_read_page_end
-	.word	.LC461
-	.word	.LC462
-	.size	sandisk_A19_special_init, .-sandisk_A19_special_init
-	.section	.text.sandisk_A19_special_exit,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_special_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_special_exit, %function
-sandisk_A19_special_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2646
-	push	{r4, r5, r6, lr}
-	movs	r6, #0
-	ldr	r3, [r3]
-	ldr	r4, [r3, #8]
-.L2636:
-	cbnz	r4, .L2639
-	ldr	r0, .L2646+4
-	mov	r5, r4
-	bl	NAND_Print_DBG
-	b	.L2635
-.L2639:
-	ldrb	r3, [r4, #254]	@ zero_extendqisi2
-	cbz	r3, .L2637
-	str	r6, [r4, #196]
-	mov	r0, r4
-	bl	sandisk_toggle_vendor_specific_setting
-	mov	r5, r0
-	cbz	r0, .L2637
-	ldr	r1, .L2646+8
-	ldr	r0, .L2646+12
-	bl	NAND_Print
-.L2635:
-	mov	r0, r5
-	pop	{r4, r5, r6, pc}
-.L2637:
-	ldr	r4, [r4]
-	b	.L2636
-.L2647:
-	.align	2
-.L2646:
-	.word	g_nsi
-	.word	.LC464
-	.word	.LANCHOR63
-	.word	.LC463
-	.size	sandisk_A19_special_exit, .-sandisk_A19_special_exit
-	.section	.text.sandisk_A19_check_bad_block_first_burn,"ax",%progbits
-	.align	1
-	.global	sandisk_A19_check_bad_block_first_burn
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_A19_check_bad_block_first_burn, %function
-sandisk_A19_check_bad_block_first_burn:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2652
-	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
-	mov	r8, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	ldr	r4, [r0, #260]
-	mov	r5, r0
-	ldr	r2, [r0, #20]
-	ldr	r1, [r8, #4]
-	ldr	r3, [r4, #12]
-	add	r10, r4, #32
-	ldr	r0, [r0, #24]
-	cmp	r2, r3
-	bcs	.L2649
-	cmp	r1, r0
-	bcc	.L2650
-.L2649:
-	strd	r1, r0, [sp]
-	ldr	r1, [r4, #8]
-	mvn	r4, #9
-	ldr	r0, .L2652+4
-	bl	NAND_Print
-.L2648:
-	mov	r0, r4
-	add	sp, sp, #12
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2650:
-	mov	r0, r4
-	movs	r6, #1
-	bl	ndfc_disable_randomize
-	mov	r0, r5
-	movs	r7, #0
-	bl	nand_read_chip_status_ready
-	mov	r0, r5
-	bl	nand_enable_chip
-	mov	r0, r10
-	bl	ndfc_clean_cmd_seq
-	movs	r3, #162
-	ldrd	r1, r2, [r8, #4]
-	strd	r6, r3, [r4, #40]
-	movs	r3, #128
-	strd	r6, r3, [r4, #104]
-	str	r7, [r4, #32]
-	strd	r6, r7, [r4, #48]
-	strd	r6, r7, [r4, #112]
-	ldr	r0, [r5, #36]
-	bl	get_row_addr
-	movs	r3, #5
-	mov	r2, r0
-	str	r3, [r4, #136]
-	add	r3, r4, #120
-	str	r3, [sp]
-	movs	r1, #2
-	movs	r3, #3
-	mov	r0, r7
-	bl	fill_cmd_addr
-	movs	r3, #16
-	strd	r6, r6, [r4, #176]
-	strd	r6, r3, [r4, #168]
-	mov	r1, r10
-	ldr	r0, [r5, #260]
-	bl	ndfc_execute_cmd
-	mov	r0, r5
-	bl	nand_read_chip_status_ready
-	mov	r4, r0
-	mov	r0, r5
-	bl	nand_disable_chip
-	b	.L2648
-.L2653:
-	.align	2
-.L2652:
-	.word	g_nsi
-	.word	.LC431
-	.size	sandisk_A19_check_bad_block_first_burn, .-sandisk_A19_check_bad_block_first_burn
-	.section	.text.samsung_vender_set_param,"ax",%progbits
-	.align	1
-	.global	samsung_vender_set_param
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_vender_set_param, %function
-samsung_vender_set_param:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, lr}
-	sub	sp, sp, #20
-	str	r3, [sp, #8]
-	movs	r3, #1
-	mov	r4, r1
-	strd	r1, r3, [sp]
-	mov	r3, r2
-	ldr	r1, .L2655
-	movs	r2, #0
-	bl	set_cmd_with_nand_bus
-	mov	r5, r0
-	ldrb	r0, [r4, #3]	@ zero_extendqisi2
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	ldr	r0, .L2655+4
-	bl	NAND_Print_DBG
-	mov	r0, r5
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, pc}
-.L2656:
-	.align	2
-.L2655:
-	.word	.LANCHOR64
-	.word	.LC407
-	.size	samsung_vender_set_param, .-samsung_vender_set_param
-	.section	.text.samsung_set_readretry,"ax",%progbits
-	.align	1
-	.global	samsung_set_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_set_readretry, %function
-samsung_set_readretry:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	mov	r4, r0
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	ldr	r0, [r4, #176]
-	movs	r3, #4
-	ldr	r1, .L2662
-	ldr	r2, .L2662+4
-	add	r1, r1, r0, lsl #2
-	mov	r0, r4
-	bl	samsung_vender_set_param
-	mov	r5, r0
-	cbz	r0, .L2658
-	ldr	r1, [r4, #176]
-	ldr	r0, .L2662+8
-	bl	NAND_Print
-.L2658:
-	mov	r0, r4
-	bl	nand_disable_chip
-	mov	r0, r5
-	pop	{r3, r4, r5, pc}
-.L2663:
-	.align	2
-.L2662:
-	.word	.LANCHOR66
-	.word	.LANCHOR65
-	.word	.LC465
-	.size	samsung_set_readretry, .-samsung_set_readretry
-	.section	.text.samsung_read_page_end,"ax",%progbits
-	.align	1
-	.global	samsung_read_page_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_read_page_end, %function
-samsung_read_page_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2674
-	push	{r0, r1, r4, r5, r6, r7, r8, lr}
-	mov	r6, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r5, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	adds	r3, r0, #2
-	mov	r4, r0
-	bne	.L2664
-	ldr	r8, .L2674+12
-	movs	r7, #1
-	ldr	r0, .L2674+4
-	bl	NAND_Print_DBG
-.L2666:
-	ldrb	r3, [r8]	@ zero_extendqisi2
-	cmp	r3, r7
-	ble	.L2669
-	str	r7, [r5, #176]
-	mov	r0, r5
-	bl	samsung_set_readretry
-	mov	r4, r0
-	cbnz	r0, .L2667
-	mov	r0, r6
-	bl	generic_read_page_start
-	mov	r4, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	orrs	r4, r4, r0
-	cmp	r4, #10
-	beq	.L2668
-	cbnz	r4, .L2667
-.L2668:
-	ldr	r3, [r5, #176]
-	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2674+8
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-.L2669:
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	bl	samsung_set_readretry
-.L2664:
-	mov	r0, r4
-	add	sp, sp, #8
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L2667:
-	adds	r7, r7, #1
-	b	.L2666
-.L2675:
-	.align	2
-.L2674:
-	.word	g_nsi
-	.word	.LC466
-	.word	.LC467
-	.word	.LANCHOR67
-	.size	samsung_read_page_end, .-samsung_read_page_end
-	.section	.text.samsung_readretry_init,"ax",%progbits
-	.align	1
-	.global	samsung_readretry_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_readretry_init, %function
-samsung_readretry_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	movs	r3, #0
-	push	{r4, lr}
-	str	r3, [r0, #176]
-	movs	r1, #15
-	ldr	r3, [r0, #264]
-	ldr	r4, .L2679
-	ldr	r0, .L2679+4
-	ldrh	r3, [r3, #54]
-	strb	r3, [r4]
-	ldr	r3, .L2679+8
-	strb	r1, [r3]
-	bl	NAND_Print_DBG
-	ldrb	r3, [r4]	@ zero_extendqisi2
-	cmp	r3, #32
-	ite	ne
-	mvnne	r0, #99
-	moveq	r0, #0
-	pop	{r4, pc}
-.L2680:
-	.align	2
-.L2679:
-	.word	.LANCHOR68
-	.word	.LC468
-	.word	.LANCHOR67
-	.size	samsung_readretry_init, .-samsung_readretry_init
-	.section	.text.samsung_readretry_exit,"ax",%progbits
-	.align	1
-	.global	samsung_readretry_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_readretry_exit, %function
-samsung_readretry_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r0, #0
-	bx	lr
-	.size	samsung_readretry_exit, .-samsung_readretry_exit
-	.section	.text.samsung_special_init,"ax",%progbits
-	.align	1
-	.global	samsung_special_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_special_init, %function
-samsung_special_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	movs	r4, #0
-	ldr	r3, .L2687
-	ldr	r3, [r3]
-	ldr	r5, [r3, #8]
-.L2683:
-	cbnz	r5, .L2684
-	ldr	r3, .L2687+4
-	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2687+8
-	ldrb	r2, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2685
-	ldr	r0, .L2687+12
-	ldr	r3, .L2687+16
-	str	r0, [r3]
-	ldr	r0, .L2687+20
-	bl	NAND_Print_DBG
-.L2682:
-	mov	r0, r4
-	pop	{r3, r4, r5, pc}
-.L2684:
-	mov	r0, r5
-	bl	samsung_readretry_init
-	ldr	r5, [r5]
-	orrs	r4, r4, r0
-	b	.L2683
-.L2685:
-	ldr	r0, .L2687+24
-	bl	NAND_Print
-	b	.L2682
-.L2688:
-	.align	2
-.L2687:
-	.word	g_nsi
-	.word	.LANCHOR68
-	.word	.LANCHOR67
-	.word	samsung_read_page_end
-	.word	df_read_page_end
-	.word	.LC469
-	.word	.LC470
-	.size	samsung_special_init, .-samsung_special_init
-	.section	.text.samsung_special_exit,"ax",%progbits
-	.align	1
-	.global	samsung_special_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	samsung_special_exit, %function
-samsung_special_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2692
-	push	{r4, lr}
-	ldr	r3, [r3]
-	ldr	r4, [r3, #8]
-.L2690:
-	cbnz	r4, .L2691
-	ldr	r0, .L2692+4
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	pop	{r4, pc}
-.L2691:
-	ldr	r4, [r4]
-	b	.L2690
-.L2693:
-	.align	2
-.L2692:
-	.word	g_nsi
-	.word	.LC471
-	.size	samsung_special_exit, .-samsung_special_exit
-	.section	.text.toshiba_read_retry_clock_save,"ax",%progbits
-	.align	1
-	.global	toshiba_read_retry_clock_save
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_read_retry_clock_save, %function
-toshiba_read_retry_clock_save:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, lr}
-	mov	r4, r0
-	ldr	r3, .L2695
-	ldr	r0, [r0, #260]
-	ldr	r3, [r3]
-	ldr	r2, .L2695+4
-	ldr	r1, .L2695+8
-	ldr	r0, [r0, #8]
-	blx	r3
-	ldr	r0, [r4, #260]
-	movs	r2, #20
-	ldr	r3, .L2695+12
-	movs	r1, #10
-	ldr	r0, [r0, #8]
-	ldr	r3, [r3]
-	blx	r3
-	movs	r0, #0
-	pop	{r4, pc}
-.L2696:
-	.align	2
-.L2695:
-	.word	NAND_GetClk
-	.word	.LANCHOR69
-	.word	.LANCHOR70
-	.word	NAND_SetClk
-	.size	toshiba_read_retry_clock_save, .-toshiba_read_retry_clock_save
-	.section	.text.toshiba_read_retry_clock_recover,"ax",%progbits
-	.align	1
-	.global	toshiba_read_retry_clock_recover
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_read_retry_clock_recover, %function
-toshiba_read_retry_clock_recover:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, lr}
-	ldr	r0, [r0, #260]
-	ldr	r3, .L2698
-	ldr	r2, .L2698+4
-	ldr	r1, .L2698+8
-	ldr	r3, [r3]
-	ldr	r2, [r2]
-	ldr	r1, [r1]
-	ldr	r0, [r0, #8]
-	blx	r3
-	movs	r0, #0
-	pop	{r3, pc}
-.L2699:
-	.align	2
-.L2698:
-	.word	NAND_SetClk
-	.word	.LANCHOR69
-	.word	.LANCHOR70
-	.size	toshiba_read_retry_clock_recover, .-toshiba_read_retry_clock_recover
-	.section	.text.toshiba_vender_set_param,"ax",%progbits
-	.align	1
-	.global	toshiba_vender_set_param
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_vender_set_param, %function
-toshiba_vender_set_param:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
-	mov	r10, r3
-	ldr	r7, .L2709
-	mov	r6, r0
-	mov	r4, r1
-	mov	r8, r2
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #18
-	bne	.L2707
-	mov	fp, #1
-	mov	r3, r2
-	strd	r1, fp, [sp]
-	movs	r2, #0
-	str	r10, [sp, #8]
-	ldr	r1, .L2709+4
-	bl	set_cmd_with_nand_bus
-	ldrb	r3, [r4]	@ zero_extendqisi2
-	mov	r5, r0
-	cbnz	r3, .L2701
-	ldrb	r3, [r4, #1]	@ zero_extendqisi2
-	cbnz	r3, .L2701
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	cbnz	r3, .L2701
-	ldrb	r3, [r4, #3]	@ zero_extendqisi2
-	cbnz	r3, .L2701
-	ldr	r3, .L2709+8
-	ldr	r3, [r3]
-	cbnz	r3, .L2701
-.L2708:
-	ldr	r3, .L2709+12
-	movs	r2, #1
-	mov	r0, r6
-	ldrb	r1, [r3]	@ zero_extendqisi2
-	bl	set_one_cmd
-	orrs	r5, r5, r0
-.L2700:
-	mov	r0, r5
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
-.L2707:
-	movs	r5, #0
-.L2701:
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #17
-	bne	.L2703
-	mov	fp, #1
-	mov	r3, r8
-	str	r10, [sp, #8]
-	movs	r2, #0
-	strd	r4, fp, [sp]
-	mov	r0, r6
-	ldr	r1, .L2709+4
-	bl	set_cmd_with_nand_bus
-	ldrb	r3, [r4]	@ zero_extendqisi2
-	orrs	r5, r5, r0
-	cmp	r3, #0
-	bne	.L2704
-	ldrb	r3, [r4, #1]	@ zero_extendqisi2
-	cbnz	r3, .L2703
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	cbnz	r3, .L2703
-	ldrb	r3, [r4, #3]	@ zero_extendqisi2
-	cmp	r3, #0
-	beq	.L2708
-.L2703:
-	ldrb	r3, [r7]	@ zero_extendqisi2
-	cmp	r3, #16
-	bne	.L2705
-	ldrb	r3, [r4]	@ zero_extendqisi2
-	cmp	r3, #255
-	bne	.L2706
-	ldrb	r3, [r4, #1]	@ zero_extendqisi2
-	cmp	r3, #255
-	bne	.L2706
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	cmp	r3, #255
-	bne	.L2706
-	ldrb	r3, [r4, #3]	@ zero_extendqisi2
-	cmp	r3, #255
-	beq	.L2708
-.L2706:
-	movs	r3, #1
-	str	r10, [sp, #8]
-	strd	r4, r3, [sp]
-	movs	r2, #0
-	mov	r3, r8
-	ldr	r1, .L2709+16
-	mov	r0, r6
-	bl	set_cmd_with_nand_bus
-	orrs	r5, r5, r0
-.L2705:
-	ldr	r7, .L2709+20
-	movs	r2, #0
-	mov	r0, r6
-	ldrb	r1, [r7]	@ zero_extendqisi2
-	bl	set_one_cmd
-	ldrb	r1, [r7, #1]	@ zero_extendqisi2
-	orrs	r5, r5, r0
-	movs	r2, #0
-	mov	r0, r6
-	bl	set_one_cmd
-	orrs	r5, r5, r0
-	ldrb	r0, [r4, #3]	@ zero_extendqisi2
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	str	r0, [sp]
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	ldr	r0, .L2709+24
-	bl	NAND_Print_DBG
-	b	.L2700
-.L2704:
-	cmp	r3, #2
-	bne	.L2703
-	ldrb	r2, [r4, #1]	@ zero_extendqisi2
-	cmp	r2, #0
-	bne	.L2703
-	ldrb	r3, [r4, #2]	@ zero_extendqisi2
-	cmp	r3, #126
-	bne	.L2703
-	ldrb	r3, [r4, #3]	@ zero_extendqisi2
-	cmp	r3, #124
-	bne	.L2703
-	ldr	r3, .L2709+28
-	mov	r0, r6
-	ldrb	r1, [r3]	@ zero_extendqisi2
-	bl	set_one_cmd
-	orrs	r5, r5, r0
-	b	.L2703
-.L2710:
-	.align	2
-.L2709:
-	.word	.LANCHOR71
-	.word	.LANCHOR72
-	.word	.LANCHOR73
-	.word	.LANCHOR74
-	.word	.LANCHOR76
-	.word	.LANCHOR77
-	.word	.LC472
-	.word	.LANCHOR75
-	.size	toshiba_vender_set_param, .-toshiba_vender_set_param
-	.section	.text.toshiba_vender_pre_condition,"ax",%progbits
-	.align	1
-	.global	toshiba_vender_pre_condition
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_vender_pre_condition, %function
-toshiba_vender_pre_condition:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r0, r1, r2, r3, r4, lr}
-	movs	r3, #0
-	movs	r2, #2
-	str	r3, [sp]
-	strd	r3, r2, [sp, #4]
-	mov	r2, r3
-	ldr	r1, .L2716
-	bl	set_cmd_with_nand_bus
-	mov	r4, r0
-	cbz	r0, .L2711
-	ldr	r0, .L2716+4
-	bl	NAND_Print
-.L2711:
-	mov	r0, r4
-	add	sp, sp, #16
-	@ sp needed
-	pop	{r4, pc}
-.L2717:
-	.align	2
-.L2716:
-	.word	.LANCHOR78
-	.word	.LC473
-	.size	toshiba_vender_pre_condition, .-toshiba_vender_pre_condition
-	.section	.text.toshiba_set_readretry,"ax",%progbits
-	.align	1
-	.global	toshiba_set_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_set_readretry, %function
-toshiba_set_readretry:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	ldr	r6, .L2731
-	ldrb	r2, [r6]	@ zero_extendqisi2
-	subs	r2, r2, #16
-	cmp	r2, #2
-	bhi	.L2726
-	bl	toshiba_read_retry_clock_save
-	mov	r0, r4
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	ldr	r3, [r4, #176]
-	cbnz	r3, .L2720
-	mov	r0, r4
-	bl	toshiba_vender_pre_condition
-.L2720:
-	ldr	r0, [r4, #260]
-	bl	ndfc_is_toggle_interface
-	ldr	r5, .L2731+4
-	cbz	r0, .L2721
-	ldr	r0, [r4, #260]
-	bl	ndfc_set_legacy_interface
-	movs	r3, #1
-	str	r3, [r5]
-.L2721:
-	ldrb	r2, [r6]	@ zero_extendqisi2
-	ldr	r1, [r4, #176]
-	cmp	r2, #17
-	lsl	r3, r1, #2
-	bne	.L2722
-	add	r3, r3, r1
-	ldr	r1, .L2731+8
-.L2730:
-	ldr	r2, .L2731+12
-	add	r1, r1, r3
-	movs	r3, #5
-.L2723:
-	mov	r0, r4
-	bl	toshiba_vender_set_param
-	ldr	r3, [r5]
-	mov	r6, r0
-	cmp	r3, #1
-	bne	.L2725
-	ldr	r0, [r4, #260]
-	bl	ndfc_set_toggle_interface
-.L2725:
-	mov	r0, r4
-	bl	nand_disable_chip
-	mov	r0, r4
-	bl	toshiba_read_retry_clock_recover
-.L2718:
-	mov	r0, r6
-	pop	{r4, r5, r6, pc}
-.L2722:
-	cmp	r2, #18
-	bne	.L2724
-	add	r3, r3, r1
-	ldr	r1, .L2731+16
-	b	.L2730
-.L2724:
-	ldr	r1, .L2731+20
-	ldr	r2, .L2731+24
-	add	r1, r1, r3
-	movs	r3, #4
-	b	.L2723
-.L2726:
-	mvn	r6, #88
-	b	.L2718
-.L2732:
-	.align	2
-.L2731:
-	.word	.LANCHOR71
-	.word	.LANCHOR81
-	.word	.LANCHOR82
-	.word	.LANCHOR79
-	.word	.LANCHOR83
-	.word	.LANCHOR84
-	.word	.LANCHOR80
-	.size	toshiba_set_readretry, .-toshiba_set_readretry
-	.section	.text.toshiba_readretry_init,"ax",%progbits
-	.align	1
-	.global	toshiba_readretry_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_readretry_init, %function
-toshiba_readretry_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, [r0, #264]
-	ldr	r2, .L2734
-	push	{r4, lr}
-	movs	r4, #0
-	ldr	r3, [r3, #52]
-	str	r4, [r0, #176]
-	ldr	r0, .L2734+4
-	lsrs	r1, r3, #16
-	strb	r1, [r2]
-	lsrs	r1, r3, #8
-	ldr	r2, .L2734+8
-	strb	r1, [r2]
-	uxtb	r1, r1
-	ldr	r2, .L2734+12
-	strb	r3, [r2]
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	pop	{r4, pc}
-.L2735:
-	.align	2
-.L2734:
-	.word	.LANCHOR71
-	.word	.LC474
-	.word	.LANCHOR85
-	.word	.LANCHOR86
-	.size	toshiba_readretry_init, .-toshiba_readretry_init
-	.section	.text.toshiba_readretry_exit,"ax",%progbits
-	.align	1
-	.global	toshiba_readretry_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_readretry_exit, %function
-toshiba_readretry_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	movs	r0, #0
-	bx	lr
-	.size	toshiba_readretry_exit, .-toshiba_readretry_exit
-	.section	.text.toshiba_exit_readretry,"ax",%progbits
-	.align	1
-	.global	toshiba_exit_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_exit_readretry, %function
-toshiba_exit_readretry:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, lr}
-	mov	r4, r0
-	ldr	r5, .L2748
-	ldrb	r2, [r5]	@ zero_extendqisi2
-	subs	r2, r2, #16
-	cmp	r2, #2
-	bhi	.L2742
-	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
-	bl	ndfc_disable_randomize
-	ldr	r0, [r4, #260]
-	bl	ndfc_is_toggle_interface
-	ldr	r6, .L2748+4
-	cbz	r0, .L2739
-	ldr	r0, [r4, #260]
-	bl	ndfc_set_legacy_interface
-	movs	r3, #1
-	str	r3, [r6]
-.L2739:
-	ldrb	r3, [r5]	@ zero_extendqisi2
-	cmp	r3, #17
-	beq	.L2743
-	ldr	r1, .L2748+8
-	cmp	r3, #18
-	ldr	r0, .L2748+12
-	it	eq
-	moveq	r3, #5
-	ldr	r2, .L2748+16
-	itt	ne
-	movne	r3, #0
-	movne	r2, r1
-	ldr	r1, .L2748+20
-	it	ne
-	movne	r1, r0
-.L2740:
-	mov	r0, r4
-	bl	toshiba_vender_set_param
-	ldr	r3, [r6]
-	mov	r5, r0
-	cmp	r3, #1
-	bne	.L2741
-	ldr	r0, [r4, #260]
-	bl	ndfc_set_toggle_interface
-.L2741:
-	mov	r0, r4
-	bl	nand_disable_chip
-.L2737:
-	mov	r0, r5
-	pop	{r4, r5, r6, pc}
-.L2743:
-	movs	r3, #5
-	ldr	r2, .L2748+16
-	ldr	r1, .L2748+24
-	b	.L2740
-.L2742:
-	mvn	r5, #87
-	b	.L2737
-.L2749:
-	.align	2
-.L2748:
-	.word	.LANCHOR71
-	.word	.LANCHOR81
-	.word	.LANCHOR80
-	.word	.LANCHOR84+24
-	.word	.LANCHOR79
-	.word	.LANCHOR83+50
-	.word	.LANCHOR82+35
-	.size	toshiba_exit_readretry, .-toshiba_exit_readretry
-	.section	.text.toshiba_read_page_end,"ax",%progbits
-	.align	1
-	.global	toshiba_read_page_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_read_page_end, %function
-toshiba_read_page_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2760
-	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
-	mov	r6, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r5, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	adds	r3, r0, #2
-	mov	r4, r0
-	bne	.L2750
-	ldr	r0, .L2760+4
-	movs	r7, #0
-	bl	NAND_Print_DBG
-	ldr	r3, .L2760+8
-	movs	r2, #1
-	ldr	r10, .L2760+16
-	mov	r8, r3
-	str	r2, [r3]
-.L2752:
-	ldrb	r3, [r10]	@ zero_extendqisi2
-	cmp	r3, r7
-	ble	.L2755
-	str	r7, [r5, #176]
-	mov	r0, r5
-	bl	toshiba_set_readretry
-	mov	r4, r0
-	cbnz	r0, .L2753
-	mov	r0, r6
-	bl	generic_read_page_start
-	mov	r4, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	orrs	r4, r4, r0
-	cmp	r4, #10
-	beq	.L2754
-	cbnz	r4, .L2753
-.L2754:
-	ldr	r3, [r5, #176]
-	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2760+12
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-.L2755:
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	str	r3, [r8]
-	bl	toshiba_exit_readretry
-.L2750:
-	mov	r0, r4
-	add	sp, sp, #12
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2753:
-	adds	r7, r7, #1
-	b	.L2752
-.L2761:
-	.align	2
-.L2760:
-	.word	g_nsi
-	.word	.LC475
-	.word	.LANCHOR73
-	.word	.LC476
-	.word	.LANCHOR85
-	.size	toshiba_read_page_end, .-toshiba_read_page_end
-	.section	.text.toshiba_special_init,"ax",%progbits
-	.align	1
-	.global	toshiba_special_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_special_init, %function
-toshiba_special_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, lr}
-	movs	r4, #0
-	ldr	r3, .L2767
-	ldr	r3, [r3]
-	ldr	r5, [r3, #8]
-.L2763:
-	cbnz	r5, .L2764
-	ldr	r3, .L2767+4
-	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2767+8
-	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2767+12
-	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2765
-	ldr	r0, .L2767+16
-	ldr	r5, .L2767+20
-	str	r5, [r0]
-	ldr	r0, .L2767+24
-	bl	NAND_Print_DBG
-.L2762:
-	mov	r0, r4
-	pop	{r3, r4, r5, pc}
-.L2764:
-	mov	r0, r5
-	bl	toshiba_readretry_init
-	ldr	r5, [r5]
-	orrs	r4, r4, r0
-	b	.L2763
-.L2765:
-	ldr	r0, .L2767+28
-	bl	NAND_Print
-	b	.L2762
-.L2768:
-	.align	2
-.L2767:
-	.word	g_nsi
-	.word	.LANCHOR71
-	.word	.LANCHOR85
-	.word	.LANCHOR86
-	.word	df_read_page_end
-	.word	toshiba_read_page_end
-	.word	.LC477
-	.word	.LC478
-	.size	toshiba_special_init, .-toshiba_special_init
-	.section	.text.toshiba_special_exit,"ax",%progbits
-	.align	1
-	.global	toshiba_special_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	toshiba_special_exit, %function
-toshiba_special_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2772
-	push	{r4, lr}
-	ldr	r3, [r3]
-	ldr	r4, [r3, #8]
-.L2770:
-	cbnz	r4, .L2771
-	ldr	r0, .L2772+4
-	bl	NAND_Print_DBG
-	mov	r0, r4
-	pop	{r4, pc}
-.L2771:
-	ldr	r4, [r4]
-	b	.L2770
-.L2773:
-	.align	2
-.L2772:
-	.word	g_nsi
-	.word	.LC479
-	.size	toshiba_special_exit, .-toshiba_special_exit
 	.section	.text.sandisk_read_retry_clock_save,"ax",%progbits
 	.align	1
 	.global	sandisk_read_retry_clock_save
@@ -20123,28 +5595,28 @@ sandisk_read_retry_clock_save:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, lr}
 	mov	r4, r0
-	ldr	r3, .L2775
-	ldr	r0, [r0, #260]
+	ldr	r3, .L690
+	ldr	r0, [r0, #268]
 	ldr	r3, [r3]
-	ldr	r2, .L2775+4
-	ldr	r1, .L2775+8
+	ldr	r2, .L690+4
+	ldr	r1, .L690+8
 	ldr	r0, [r0, #8]
 	blx	r3
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	movs	r2, #20
-	ldr	r3, .L2775+12
+	ldr	r3, .L690+12
 	movs	r1, #10
 	ldr	r0, [r0, #8]
 	ldr	r3, [r3]
 	blx	r3
 	movs	r0, #0
 	pop	{r4, pc}
-.L2776:
+.L691:
 	.align	2
-.L2775:
+.L690:
 	.word	NAND_GetClk
-	.word	.LANCHOR87
-	.word	.LANCHOR88
+	.word	.LANCHOR60
+	.word	.LANCHOR61
 	.word	NAND_SetClk
 	.size	sandisk_read_retry_clock_save, .-sandisk_read_retry_clock_save
 	.section	.text.sandisk_vender_set_param,"ax",%progbits
@@ -20160,7 +5632,7 @@ sandisk_vender_set_param:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r4, r5, r6, r7, r8, r10, lr}
 	mov	r6, r2
-	ldr	r2, .L2781
+	ldr	r2, .L696
 	sub	sp, sp, #20
 	mov	r5, r0
 	mov	r7, r1
@@ -20169,12 +5641,12 @@ sandisk_vender_set_param:
 	mov	r8, r2
 	subs	r3, r3, #48
 	cmp	r3, #1
-	bhi	.L2780
+	bhi	.L695
 	movs	r3, #2
 	mov	r2, r4
 	strd	r4, r3, [sp, #4]
 	mov	r3, r4
-	ldr	r1, .L2781+4
+	ldr	r1, .L696+4
 	str	r4, [sp]
 	bl	set_cmd_with_nand_bus
 	movs	r3, #1
@@ -20184,36 +5656,36 @@ sandisk_vender_set_param:
 	str	r7, [sp]
 	mov	r3, r6
 	mov	r2, r4
-	ldr	r1, .L2781+8
+	ldr	r1, .L696+8
 	mov	r0, r5
 	bl	set_cmd_with_nand_bus
 	orr	r0, r10, r0
-.L2778:
+.L693:
 	ldrb	r3, [r8]	@ zero_extendqisi2
 	cmp	r3, #50
-	bne	.L2777
+	bne	.L692
 	movs	r3, #4
 	movs	r2, #1
 	strd	r3, r2, [sp, #4]
 	mov	r0, r5
 	str	r7, [sp]
 	mov	r3, r6
-	ldr	r1, .L2781+12
+	ldr	r1, .L696+12
 	bl	set_cmd_with_nand_bus
-.L2777:
+.L692:
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2780:
+.L695:
 	mov	r0, r4
-	b	.L2778
-.L2782:
+	b	.L693
+.L697:
 	.align	2
-.L2781:
-	.word	.LANCHOR89
-	.word	.LANCHOR90
-	.word	.LANCHOR91
-	.word	.LANCHOR92
+.L696:
+	.word	.LANCHOR62
+	.word	.LANCHOR63
+	.word	.LANCHOR64
+	.word	.LANCHOR65
 	.size	sandisk_vender_set_param, .-sandisk_vender_set_param
 	.section	.text.sandisk_read_retry_clock_recover,"ax",%progbits
 	.align	1
@@ -20227,10 +5699,10 @@ sandisk_read_retry_clock_recover:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, lr}
-	ldr	r0, [r0, #260]
-	ldr	r3, .L2784
-	ldr	r2, .L2784+4
-	ldr	r1, .L2784+8
+	ldr	r0, [r0, #268]
+	ldr	r3, .L699
+	ldr	r2, .L699+4
+	ldr	r1, .L699+8
 	ldr	r3, [r3]
 	ldr	r2, [r2]
 	ldr	r1, [r1]
@@ -20238,12 +5710,12 @@ sandisk_read_retry_clock_recover:
 	blx	r3
 	movs	r0, #0
 	pop	{r3, pc}
-.L2785:
+.L700:
 	.align	2
-.L2784:
+.L699:
 	.word	NAND_SetClk
-	.word	.LANCHOR87
-	.word	.LANCHOR88
+	.word	.LANCHOR60
+	.word	.LANCHOR61
 	.size	sandisk_read_retry_clock_recover, .-sandisk_read_retry_clock_recover
 	.section	.text.sandisk_end_one_read_retry,"ax",%progbits
 	.align	1
@@ -20256,53 +5728,53 @@ sandisk_read_retry_clock_recover:
 sandisk_end_one_read_retry:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2793
+	ldr	r3, .L708
 	push	{r4, r5, lr}
 	mov	r4, r0
 	sub	sp, sp, #20
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	subs	r3, r3, #48
 	cmp	r3, #1
-	bhi	.L2787
+	bhi	.L702
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_is_toggle_interface
-	ldr	r5, .L2793+4
-	cbz	r0, .L2788
-	ldr	r0, [r4, #260]
+	ldr	r5, .L708+4
+	cbz	r0, .L703
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_legacy_interface
 	movs	r3, #1
 	str	r3, [r5]
-.L2788:
+.L703:
 	movs	r3, #0
 	movs	r2, #1
 	strd	r3, r2, [sp, #4]
 	mov	r0, r4
 	str	r3, [sp]
 	mov	r2, r3
-	ldr	r1, .L2793+8
+	ldr	r1, .L708+8
 	bl	set_cmd_with_nand_bus
 	ldr	r3, [r5]
 	cmp	r3, #1
-	bne	.L2789
-	ldr	r0, [r4, #260]
+	bne	.L704
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_toggle_interface
-.L2789:
+.L704:
 	mov	r0, r4
 	bl	nand_disable_chip
-.L2787:
+.L702:
 	movs	r0, #0
 	add	sp, sp, #20
 	@ sp needed
 	pop	{r4, r5, pc}
-.L2794:
+.L709:
 	.align	2
-.L2793:
-	.word	.LANCHOR89
-	.word	.LANCHOR93
-	.word	.LANCHOR94
+.L708:
+	.word	.LANCHOR62
+	.word	.LANCHOR66
+	.word	.LANCHOR67
 	.size	sandisk_end_one_read_retry, .-sandisk_end_one_read_retry
 	.section	.text.sandisk_set_readretry,"ax",%progbits
 	.align	1
@@ -20318,108 +5790,108 @@ sandisk_set_readretry:
 	push	{r4, r5, r6, lr}
 	mov	r4, r0
 	mov	r6, r1
-	ldr	r5, .L2820
+	ldr	r5, .L735
 	bl	sandisk_read_retry_clock_save
 	mov	r0, r4
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_is_toggle_interface
-	cbz	r0, .L2796
-	ldr	r0, [r4, #260]
+	cbz	r0, .L711
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_legacy_interface
 	movs	r3, #1
 	str	r3, [r5]
-.L2796:
-	ldr	r3, .L2820+4
+.L711:
+	ldr	r3, .L735+4
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r3, #48
-	bne	.L2797
+	bne	.L712
 	cmp	r6, #255
 	ldr	r3, [r4, #176]
-	ldr	r2, .L2820+8
-	beq	.L2798
-	cbz	r6, .L2799
+	ldr	r2, .L735+8
+	beq	.L713
+	cbz	r6, .L714
 	lsls	r1, r6, #31
-	bpl	.L2798
-.L2799:
-	ldr	r1, .L2820+12
+	bpl	.L713
+.L714:
+	ldr	r1, .L735+12
 	add	r3, r3, r3, lsl #1
 	add	r1, r1, r3
 	movs	r3, #16
-.L2817:
+.L732:
 	strb	r3, [r2]
 	movs	r3, #3
-	ldr	r2, .L2820+16
-.L2819:
+	ldr	r2, .L735+16
+.L734:
 	mov	r0, r4
 	bl	sandisk_vender_set_param
 	movs	r2, #0
 	mov	r6, r0
 	movs	r1, #182
-.L2818:
+.L733:
 	mov	r0, r4
 	bl	set_one_cmd
-.L2801:
+.L716:
 	ldr	r3, [r5]
 	cmp	r3, #1
-	bne	.L2803
-	ldr	r0, [r4, #260]
+	bne	.L718
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_toggle_interface
-.L2803:
+.L718:
 	mov	r0, r4
 	bl	nand_disable_chip
 	mov	r0, r4
 	bl	sandisk_read_retry_clock_recover
 	mov	r0, r6
 	pop	{r4, r5, r6, pc}
-.L2798:
-	ldr	r1, .L2820+20
+.L713:
+	ldr	r1, .L735+20
 	add	r3, r3, r3, lsl #1
 	add	r1, r1, r3
 	movs	r3, #20
-	b	.L2817
-.L2797:
+	b	.L732
+.L712:
 	cmp	r3, #49
-	bne	.L2802
+	bne	.L717
 	ldr	r1, [r4, #176]
 	movs	r3, #3
-	ldr	r0, .L2820+24
-	ldr	r2, .L2820+28
+	ldr	r0, .L735+24
+	ldr	r2, .L735+28
 	add	r1, r1, r1, lsl #1
 	add	r1, r1, r0
-	b	.L2819
-.L2802:
+	b	.L734
+.L717:
 	cmp	r3, #50
-	bne	.L2804
+	bne	.L719
 	ldr	r0, [r4, #176]
 	movs	r3, #1
-	ldr	r1, .L2820+32
-	ldr	r2, .L2820+36
+	ldr	r1, .L735+32
+	ldr	r2, .L735+36
 	add	r1, r1, r0, lsl #2
 	mov	r0, r4
 	bl	sandisk_vender_set_param
 	movs	r2, #0
 	mov	r6, r0
 	movs	r1, #93
-	b	.L2818
-.L2804:
+	b	.L733
+.L719:
 	movs	r6, #0
-	b	.L2801
-.L2821:
+	b	.L716
+.L736:
 	.align	2
-.L2820:
-	.word	.LANCHOR93
-	.word	.LANCHOR89
-	.word	.LANCHOR96
-	.word	.LANCHOR95
-	.word	.LANCHOR98
-	.word	.LANCHOR97
-	.word	.LANCHOR100
-	.word	.LANCHOR99
-	.word	.LANCHOR102
-	.word	.LANCHOR101
+.L735:
+	.word	.LANCHOR66
+	.word	.LANCHOR62
+	.word	.LANCHOR69
+	.word	.LANCHOR68
+	.word	.LANCHOR71
+	.word	.LANCHOR70
+	.word	.LANCHOR73
+	.word	.LANCHOR72
+	.word	.LANCHOR75
+	.word	.LANCHOR74
 	.size	sandisk_set_readretry, .-sandisk_set_readretry
 	.section	.text.sandisk_activation_seq,"ax",%progbits
 	.align	1
@@ -20438,7 +5910,7 @@ sandisk_activation_seq:
 	mov	r6, r0
 	mov	r2, r8
 	add	r0, sp, #16
-	ldr	r1, .L2827
+	ldr	r1, .L742
 	movs	r4, #0
 	bl	memcpy
 	mov	r0, r6
@@ -20446,14 +5918,14 @@ sandisk_activation_seq:
 	strb	r4, [sp, #36]
 	add	r7, sp, #28
 	bl	nand_enable_chip
-	ldr	r0, [r6, #260]
+	ldr	r0, [r6, #268]
 	bl	ndfc_disable_randomize
 	movs	r3, #2
 	mov	r2, r4
 	strd	r4, r3, [sp, #4]
 	mov	r0, r6
 	mov	r3, r4
-	ldr	r1, .L2827+4
+	ldr	r1, .L742+4
 	str	r4, [sp]
 	bl	set_cmd_with_nand_bus
 	movs	r3, #1
@@ -20462,28 +5934,28 @@ sandisk_activation_seq:
 	mov	r2, r4
 	str	r8, [sp, #8]
 	add	r1, sp, #16
-	ldr	r3, .L2827+8
+	ldr	r3, .L742+8
 	mov	r0, r6
 	bl	set_cmd_with_nand_bus
 	orrs	r5, r5, r0
 	mov	r0, r6
 	bl	nand_disable_chip
-	cbz	r5, .L2822
+	cbz	r5, .L737
 	mov	r1, r5
-	ldr	r0, .L2827+12
+	ldr	r0, .L742+12
 	bl	NAND_Print
-.L2822:
+.L737:
 	mov	r0, r5
 	add	sp, sp, #40
 	@ sp needed
 	pop	{r4, r5, r6, r7, r8, pc}
-.L2828:
+.L743:
 	.align	2
-.L2827:
-	.word	.LANCHOR19+30
-	.word	.LANCHOR90
-	.word	.LANCHOR103
-	.word	.LC480
+.L742:
+	.word	.LANCHOR76
+	.word	.LANCHOR63
+	.word	.LANCHOR77
+	.word	.LC93
 	.size	sandisk_activation_seq, .-sandisk_activation_seq
 	.section	.text.sandisk_readretry_init,"ax",%progbits
 	.align	1
@@ -20498,44 +5970,44 @@ sandisk_readretry_init:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r2, #0
-	ldr	r3, [r0, #264]
+	ldr	r3, [r0, #272]
 	str	r2, [r0, #176]
 	ldr	r4, [r3, #52]
-	ldr	r2, .L2833
-	ldr	r3, .L2833+4
+	ldr	r2, .L748
+	ldr	r3, .L748+4
 	ubfx	r1, r4, #16, #8
 	lsrs	r5, r4, #8
 	strb	r1, [r2]
 	subs	r1, r1, #48
 	strb	r5, [r3]
 	cmp	r1, #1
-	ldr	r5, .L2833+8
+	ldr	r5, .L748+8
 	strb	r4, [r5]
 	mov	r5, r2
 	mov	r4, r3
-	bhi	.L2830
+	bhi	.L745
 	bl	sandisk_activation_seq
-.L2830:
+.L745:
 	ldrb	r3, [r5]	@ zero_extendqisi2
 	subs	r3, r3, #48
 	cmp	r3, #2
-	bhi	.L2832
+	bhi	.L747
 	ldrb	r1, [r4]	@ zero_extendqisi2
-	ldr	r0, .L2833+12
+	ldr	r0, .L748+12
 	bl	NAND_Print_DBG
 	movs	r0, #0
-.L2829:
+.L744:
 	pop	{r3, r4, r5, pc}
-.L2832:
+.L747:
 	mvn	r0, #98
-	b	.L2829
-.L2834:
+	b	.L744
+.L749:
 	.align	2
-.L2833:
-	.word	.LANCHOR89
-	.word	.LANCHOR96
-	.word	.LANCHOR104
-	.word	.LC481
+.L748:
+	.word	.LANCHOR62
+	.word	.LANCHOR69
+	.word	.LANCHOR78
+	.word	.LC94
 	.size	sandisk_readretry_init, .-sandisk_readretry_init
 	.section	.text.sandisk_readretry_exit,"ax",%progbits
 	.align	1
@@ -20568,169 +6040,69 @@ sandisk_exit_readretry:
 	mov	r4, r0
 	str	r3, [sp, #4]
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_is_toggle_interface
-	ldr	r6, .L2847
-	cbz	r0, .L2837
-	ldr	r0, [r4, #260]
+	ldr	r6, .L762
+	cbz	r0, .L752
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_legacy_interface
 	movs	r3, #1
 	str	r3, [r6]
-.L2837:
-	ldr	r3, .L2847+4
+.L752:
+	ldr	r3, .L762+4
 	ldrb	r3, [r3]	@ zero_extendqisi2
 	cmp	r3, #48
-	bne	.L2838
-	ldr	r2, .L2847+8
+	bne	.L753
+	ldr	r2, .L762+8
 	movs	r3, #3
-.L2846:
+.L761:
 	add	r1, sp, #4
 	mov	r0, r4
 	bl	sandisk_vender_set_param
 	mov	r5, r0
-.L2839:
+.L754:
 	ldr	r3, [r6]
 	cmp	r3, #1
-	bne	.L2841
-	ldr	r0, [r4, #260]
+	bne	.L756
+	ldr	r0, [r4, #268]
 	bl	ndfc_set_toggle_interface
-.L2841:
+.L756:
 	mov	r0, r4
 	bl	nand_disable_chip
 	mov	r0, r5
 	add	sp, sp, #8
 	@ sp needed
 	pop	{r4, r5, r6, pc}
-.L2838:
+.L753:
 	cmp	r3, #49
-	bne	.L2840
+	bne	.L755
 	movs	r3, #3
-	ldr	r2, .L2847+12
-	b	.L2846
-.L2840:
+	ldr	r2, .L762+12
+	b	.L761
+.L755:
 	cmp	r3, #50
-	bne	.L2842
+	bne	.L757
 	movs	r2, #1
 	movs	r1, #255
 	mov	r0, r4
 	bl	set_one_cmd
 	movs	r3, #1
-	ldr	r2, .L2847+16
-	b	.L2846
-.L2842:
+	ldr	r2, .L762+16
+	b	.L761
+.L757:
 	movs	r5, #0
-	b	.L2839
-.L2848:
+	b	.L754
+.L763:
 	.align	2
-.L2847:
-	.word	.LANCHOR93
-	.word	.LANCHOR89
-	.word	.LANCHOR98
-	.word	.LANCHOR99
-	.word	.LANCHOR101
+.L762:
+	.word	.LANCHOR66
+	.word	.LANCHOR62
+	.word	.LANCHOR71
+	.word	.LANCHOR72
+	.word	.LANCHOR74
 	.size	sandisk_exit_readretry, .-sandisk_exit_readretry
-	.section	.text.sandisk_read_page_end,"ax",%progbits
-	.align	1
-	.global	sandisk_read_page_end
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	sandisk_read_page_end, %function
-sandisk_read_page_end:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2860
-	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
-	mov	r6, r0
-	ldr	r1, [r0]
-	ldr	r0, [r3]
-	bl	nci_get_from_nsi
-	mov	r5, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	adds	r3, r0, #2
-	mov	r4, r0
-	bne	.L2849
-	ldr	r8, .L2860+12
-	movs	r7, #0
-	ldr	r10, .L2860+16
-	ldr	r0, .L2860+4
-	bl	NAND_Print_DBG
-.L2851:
-	ldrb	r3, [r8]	@ zero_extendqisi2
-	cmp	r3, r7
-	ble	.L2855
-	str	r7, [r5, #176]
-	mov	r0, r5
-	ldrh	r1, [r6, #8]
-	bl	sandisk_set_readretry
-	mov	r4, r0
-	cbnz	r0, .L2852
-	mov	r0, r6
-	bl	generic_read_page_start
-	mov	r4, r0
-	mov	r0, r6
-	bl	generic_read_page_end_not_retry
-	orrs	r4, r4, r0
-	mov	r0, r5
-	bl	sandisk_end_one_read_retry
-	ldr	r0, [r6, #20]
-	bl	is_nouse_page
-	cmp	r0, #1
-	bne	.L2853
-	ldr	r3, [r5, #176]
-	mvn	r4, #1
-	ldr	r1, [r5, #260]
-	mov	r0, r10
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-.L2852:
-	adds	r7, r7, #1
-	b	.L2851
-.L2853:
-	cmp	r4, #10
-	beq	.L2854
-	cmp	r4, #0
-	bne	.L2852
-.L2854:
-	ldr	r3, [r5, #176]
-	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2860+8
-	str	r3, [sp, #4]
-	ldr	r3, [r6, #8]
-	str	r3, [sp]
-	ldr	r3, [r6, #4]
-	ldr	r2, [r5, #20]
-	ldr	r1, [r1, #8]
-	bl	NAND_Print_DBG
-.L2855:
-	movs	r3, #0
-	mov	r0, r5
-	str	r3, [r5, #176]
-	bl	sandisk_exit_readretry
-.L2849:
-	mov	r0, r4
-	add	sp, sp, #12
-	@ sp needed
-	pop	{r4, r5, r6, r7, r8, r10, pc}
-.L2861:
-	.align	2
-.L2860:
-	.word	g_nsi
-	.word	.LC482
-	.word	.LC483
-	.word	.LANCHOR96
-	.word	.LC394
-	.size	sandisk_read_page_end, .-sandisk_read_page_end
 	.section	.text.sandisk_special_init,"ax",%progbits
 	.align	1
 	.global	sandisk_special_init
@@ -20744,47 +6116,47 @@ sandisk_special_init:
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r4, #0
-	ldr	r3, .L2867
+	ldr	r3, .L769
 	ldr	r3, [r3]
 	ldr	r5, [r3, #8]
-.L2863:
-	cbnz	r5, .L2864
-	ldr	r3, .L2867+4
+.L765:
+	cbnz	r5, .L766
+	ldr	r3, .L769+4
 	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2867+8
+	ldr	r3, .L769+8
 	ldrb	r2, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2867+12
+	ldr	r3, .L769+12
 	ldrb	r3, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2865
-	ldr	r0, .L2867+16
-	ldr	r5, .L2867+20
+	cbnz	r4, .L767
+	ldr	r0, .L769+16
+	ldr	r5, .L769+20
 	str	r5, [r0]
-	ldr	r0, .L2867+24
+	ldr	r0, .L769+24
 	bl	NAND_Print_DBG
-.L2862:
+.L764:
 	mov	r0, r4
 	pop	{r3, r4, r5, pc}
-.L2864:
+.L766:
 	mov	r0, r5
 	bl	sandisk_readretry_init
 	ldr	r5, [r5]
 	orrs	r4, r4, r0
-	b	.L2863
-.L2865:
-	ldr	r0, .L2867+28
+	b	.L765
+.L767:
+	ldr	r0, .L769+28
 	bl	NAND_Print
-	b	.L2862
-.L2868:
+	b	.L764
+.L770:
 	.align	2
-.L2867:
+.L769:
 	.word	g_nsi
-	.word	.LANCHOR89
-	.word	.LANCHOR96
-	.word	.LANCHOR104
+	.word	.LANCHOR62
+	.word	.LANCHOR69
+	.word	.LANCHOR78
 	.word	df_read_page_end
 	.word	sandisk_read_page_end
-	.word	.LC484
-	.word	.LC485
+	.word	.LC95
+	.word	.LC96
 	.size	sandisk_special_init, .-sandisk_special_init
 	.section	.text.sandisk_special_exit,"ax",%progbits
 	.align	1
@@ -20797,133 +6169,187 @@ sandisk_special_init:
 sandisk_special_exit:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2872
+	ldr	r3, .L774
 	push	{r4, lr}
 	ldr	r3, [r3]
 	ldr	r4, [r3, #8]
-.L2870:
-	cbnz	r4, .L2871
-	ldr	r0, .L2872+4
+.L772:
+	cbnz	r4, .L773
+	ldr	r0, .L774+4
 	bl	NAND_Print_DBG
 	mov	r0, r4
 	pop	{r4, pc}
-.L2871:
+.L773:
 	ldr	r4, [r4]
-	b	.L2870
-.L2873:
+	b	.L772
+.L775:
 	.align	2
-.L2872:
+.L774:
 	.word	g_nsi
-	.word	.LC486
+	.word	.LC97
 	.size	sandisk_special_exit, .-sandisk_special_exit
-	.section	.text.micron_intel_set_feature,"ax",%progbits
+	.section	.text.samsung_vender_set_param,"ax",%progbits
 	.align	1
-	.global	micron_intel_set_feature
+	.global	samsung_vender_set_param
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	micron_intel_set_feature, %function
-micron_intel_set_feature:
-	@ args = 0, pretend = 0, frame = 16
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r4, r5, r6, r7, lr}
-	sub	sp, sp, #20
-	movs	r4, #0
-	mov	r7, r0
-	mov	r6, r2
-	mov	r5, r1
-	strb	r1, [sp, #7]
-	add	r1, sp, #7
-	strb	r2, [sp, #8]
-	add	r2, sp, #8
-	strb	r4, [sp, #9]
-	strb	r4, [sp, #10]
-	strb	r4, [sp, #11]
-	bl	nand_set_feature
-	add	r2, sp, #12
-	add	r1, sp, #7
-	mov	r0, r7
-	bl	nand_get_feature
-	ldrb	r2, [sp, #12]	@ zero_extendqisi2
-	ldrb	r3, [sp, #8]	@ zero_extendqisi2
-	cmp	r2, r3
-	beq	.L2876
-	mov	r2, r6
-	mov	r1, r5
-	ldr	r0, .L2877
-	bl	NAND_Print
-	mvn	r0, #71
-.L2874:
-	add	sp, sp, #20
-	@ sp needed
-	pop	{r4, r5, r6, r7, pc}
-.L2876:
-	mov	r0, r4
-	b	.L2874
-.L2878:
-	.align	2
-.L2877:
-	.word	.LC487
-	.size	micron_intel_set_feature, .-micron_intel_set_feature
-	.section	.text.micron_set_readretry,"ax",%progbits
-	.align	1
-	.global	micron_set_readretry
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	micron_set_readretry, %function
-micron_set_readretry:
+	.type	samsung_vender_set_param, %function
+samsung_vender_set_param:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, lr}
+	push	{r4, r5, lr}
+	sub	sp, sp, #20
+	str	r3, [sp, #8]
+	movs	r3, #1
+	mov	r4, r1
+	strd	r1, r3, [sp]
+	mov	r3, r2
+	ldr	r1, .L777
+	movs	r2, #0
+	bl	set_cmd_with_nand_bus
+	mov	r5, r0
+	ldrb	r0, [r4, #3]	@ zero_extendqisi2
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	ldr	r0, .L777+4
+	bl	NAND_Print_DBG
+	mov	r0, r5
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, pc}
+.L778:
+	.align	2
+.L777:
+	.word	.LANCHOR79
+	.word	.LC31
+	.size	samsung_vender_set_param, .-samsung_vender_set_param
+	.section	.text.samsung_readretry_init,"ax",%progbits
+	.align	1
+	.global	samsung_readretry_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	samsung_readretry_init, %function
+samsung_readretry_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r2, [r0, #272]
+	movs	r3, #0
+	push	{r4, lr}
+	ldr	r4, .L785
+	ldrh	r2, [r2, #54]
+	ldr	r1, [r0, #8]
+	str	r3, [r0, #176]
+	strb	r2, [r4]
+	ldr	r2, .L785+4
+	ldr	r3, .L785+8
+	cmp	r1, r2
+	bne	.L780
+	ldrh	r1, [r0, #12]
+	movw	r2, #51876
+	cmp	r1, r2
+	bne	.L780
+	movs	r2, #255
+.L784:
+	strb	r2, [r3]
+	ldr	r0, .L785+12
+	ldrb	r1, [r3]	@ zero_extendqisi2
+	bl	NAND_Print_DBG
+	ldrb	r3, [r4]	@ zero_extendqisi2
+	cmp	r3, #32
+	ite	ne
+	mvnne	r0, #99
+	moveq	r0, #0
+	pop	{r4, pc}
+.L780:
+	movs	r2, #15
+	b	.L784
+.L786:
+	.align	2
+.L785:
+	.word	.LANCHOR80
+	.word	-1013653780
+	.word	.LANCHOR81
+	.word	.LC98
+	.size	samsung_readretry_init, .-samsung_readretry_init
+	.section	.text.samsung_readretry_exit,"ax",%progbits
+	.align	1
+	.global	samsung_readretry_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	samsung_readretry_exit, %function
+samsung_readretry_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r0, #0
+	bx	lr
+	.size	samsung_readretry_exit, .-samsung_readretry_exit
+	.section	.text.samsung_set_readretry_K9GCGD8U0F,"ax",%progbits
+	.align	1
+	.global	samsung_set_readretry_K9GCGD8U0F
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	samsung_set_readretry_K9GCGD8U0F, %function
+samsung_set_readretry_K9GCGD8U0F:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, lr}
+	movs	r3, #0
+	sub	sp, sp, #20
 	mov	r4, r0
+	strb	r3, [sp, #7]
+	strd	r3, r3, [sp, #8]
 	bl	nand_enable_chip
-	ldr	r0, [r4, #260]
+	ldr	r0, [r4, #268]
 	bl	ndfc_disable_randomize
-	ldr	r3, .L2890
-	ldrb	r3, [r3]	@ zero_extendqisi2
-	sub	r2, r3, #64
-	cmp	r2, #1
-	bls	.L2880
-	cmp	r3, #80
-	bne	.L2888
-.L2880:
-	ldrb	r6, [r4, #176]	@ zero_extendqisi2
-	ldr	r7, .L2890+4
-	cmp	r6, #255
-	it	eq
-	moveq	r6, #0
-	cmp	r3, #80
-	bne	.L2883
-	ldr	r3, [r7]
-	ldrb	r3, [r3, r6]	@ zero_extendqisi2
-	cbz	r3, .L2884
-.L2886:
-	ldr	r3, [r4, #176]
-	cmp	r3, #255
-	bne	.L2883
-	movs	r2, #0
-	movs	r1, #137
+	ldrb	r3, [r4, #176]	@ zero_extendqisi2
+	add	r2, sp, #8
+	add	r1, sp, #7
 	mov	r0, r4
-	bl	micron_intel_set_feature
-	movs	r2, #0
+	strb	r3, [sp, #8]
+	strb	r3, [sp, #9]
+	strb	r3, [sp, #10]
+	strb	r3, [sp, #11]
+	mov	r3, #-1
+	str	r3, [sp, #12]
+	bl	nand_set_read_retry_K9GCGD8U0F
+	add	r2, sp, #12
+	add	r1, sp, #7
+	mov	r0, r4
+	bl	nand_get_read_retry_K9GCGD8U0F
+	ldrb	r2, [sp, #12]	@ zero_extendqisi2
 	mov	r5, r0
-	movs	r1, #147
-	mov	r0, r4
-	bl	micron_intel_set_feature
-	orrs	r5, r5, r0
-	b	.L2881
-.L2884:
-	movs	r2, #1
-	movs	r1, #147
-	mov	r0, r4
-	bl	micron_intel_set_feature
-	mov	r5, r0
-	cmp	r0, #0
-	beq	.L2886
-.L2881:
+	ldrb	r3, [sp, #8]	@ zero_extendqisi2
+	cmp	r2, r3
+	bne	.L789
+	ldrb	r2, [sp, #13]	@ zero_extendqisi2
+	ldrb	r3, [sp, #9]	@ zero_extendqisi2
+	cmp	r2, r3
+	bne	.L789
+	ldrb	r2, [sp, #14]	@ zero_extendqisi2
+	ldrb	r3, [sp, #10]	@ zero_extendqisi2
+	cmp	r2, r3
+	bne	.L789
+	ldrb	r2, [sp, #15]	@ zero_extendqisi2
+	ldrb	r3, [sp, #11]	@ zero_extendqisi2
+	cmp	r2, r3
+	beq	.L790
+.L789:
+	mov	r5, #-1
+	ldr	r1, .L792
+	ldr	r0, .L792+4
+	bl	NAND_Print
+.L790:
 	ldr	r3, [r4, #176]
 	mov	r0, r4
 	cmp	r3, #255
@@ -20932,37 +6358,88 @@ micron_set_readretry:
 	streq	r3, [r4, #176]
 	bl	nand_disable_chip
 	mov	r0, r5
-	pop	{r3, r4, r5, r6, r7, pc}
-.L2883:
-	ldr	r3, [r7]
-	movs	r1, #137
-	mov	r0, r4
-	ldrb	r2, [r3, r6]	@ zero_extendqisi2
-	bl	micron_intel_set_feature
-	mov	r5, r0
-	b	.L2881
-.L2888:
-	movs	r5, #0
-	b	.L2881
-.L2891:
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, pc}
+.L793:
 	.align	2
-.L2890:
-	.word	.LANCHOR105
-	.word	.LANCHOR106
-	.size	micron_set_readretry, .-micron_set_readretry
-	.section	.text.micron_read_page_end,"ax",%progbits
+.L792:
+	.word	.LANCHOR82
+	.word	.LC99
+	.size	samsung_set_readretry_K9GCGD8U0F, .-samsung_set_readretry_K9GCGD8U0F
+	.section	.text.samsung_set_readretry,"ax",%progbits
 	.align	1
-	.global	micron_read_page_end
+	.global	samsung_set_readretry
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	micron_read_page_end, %function
-micron_read_page_end:
+	.type	samsung_set_readretry, %function
+samsung_set_readretry:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
-	ldr	r3, .L2902
-	push	{r0, r1, r4, r5, r6, r7, r8, lr}
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	bl	nand_enable_chip
+	ldr	r0, [r4, #268]
+	bl	ndfc_disable_randomize
+	ldr	r2, [r4, #8]
+	ldr	r3, .L804
+	cmp	r2, r3
+	bne	.L795
+	ldrh	r2, [r4, #12]
+	movw	r3, #51876
+	cmp	r2, r3
+	bne	.L795
+	mov	r0, r4
+	bl	samsung_set_readretry_K9GCGD8U0F
+	mov	r5, r0
+	cbz	r0, .L796
+	ldr	r1, [r4, #176]
+	ldr	r0, .L804+4
+.L803:
+	bl	NAND_Print
+.L796:
+	mov	r0, r4
+	bl	nand_disable_chip
+	mov	r0, r5
+	pop	{r3, r4, r5, pc}
+.L795:
+	ldr	r0, [r4, #176]
+	movs	r3, #4
+	ldr	r1, .L804+8
+	ldr	r2, .L804+12
+	add	r1, r1, r0, lsl #2
+	mov	r0, r4
+	bl	samsung_vender_set_param
+	mov	r5, r0
+	cmp	r0, #0
+	beq	.L796
+	ldr	r1, [r4, #176]
+	ldr	r0, .L804+16
+	b	.L803
+.L805:
+	.align	2
+.L804:
+	.word	-1013653780
+	.word	.LC100
+	.word	.LANCHOR84
+	.word	.LANCHOR83
+	.word	.LC101
+	.size	samsung_set_readretry, .-samsung_set_readretry
+	.section	.text.samsung_read_page_end,"ax",%progbits
+	.align	1
+	.global	samsung_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	samsung_read_page_end, %function
+samsung_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L818
+	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
 	mov	r6, r0
 	ldr	r1, [r0]
 	ldr	r0, [r3]
@@ -20972,20 +6449,30 @@ micron_read_page_end:
 	bl	generic_read_page_end_not_retry
 	adds	r3, r0, #2
 	mov	r4, r0
-	bne	.L2892
-	ldr	r8, .L2902+12
-	movs	r7, #0
-	ldr	r0, .L2902+4
+	bne	.L806
+	ldr	r8, .L818+12
+	movs	r7, #1
+	ldr	r10, .L818+16
+	ldr	r0, .L818+4
 	bl	NAND_Print_DBG
-.L2894:
+.L808:
 	ldrb	r3, [r8]	@ zero_extendqisi2
 	cmp	r3, r7
-	ble	.L2897
-	str	r7, [r5, #176]
+	ble	.L813
+	ldr	r3, [r5, #8]
+	cmp	r3, r10
+	bne	.L809
+	ldrh	r2, [r5, #12]
+	movw	r3, #51876
+	cmp	r2, r3
+	bne	.L809
+	rsb	r3, r7, #256
+	str	r3, [r5, #176]
+.L810:
 	mov	r0, r5
-	bl	micron_set_readretry
+	bl	samsung_set_readretry
 	mov	r4, r0
-	cbnz	r0, .L2895
+	cbnz	r0, .L811
 	mov	r0, r6
 	bl	generic_read_page_start
 	mov	r4, r0
@@ -20993,13 +6480,13 @@ micron_read_page_end:
 	bl	generic_read_page_end_not_retry
 	orrs	r4, r4, r0
 	cmp	r4, #10
-	beq	.L2896
-	cbnz	r4, .L2895
-.L2896:
+	beq	.L812
+	cbnz	r4, .L811
+.L812:
 	ldr	r3, [r5, #176]
 	movs	r4, #10
-	ldr	r1, [r5, #260]
-	ldr	r0, .L2902+8
+	ldr	r1, [r5, #268]
+	ldr	r0, .L818+8
 	str	r3, [sp, #4]
 	ldr	r3, [r6, #8]
 	str	r3, [sp]
@@ -21007,241 +6494,15239 @@ micron_read_page_end:
 	ldr	r2, [r5, #20]
 	ldr	r1, [r1, #8]
 	bl	NAND_Print_DBG
-.L2897:
-	movs	r3, #255
+.L813:
+	movs	r3, #0
 	mov	r0, r5
 	str	r3, [r5, #176]
-	bl	micron_set_readretry
-.L2892:
+	bl	samsung_set_readretry
+.L806:
 	mov	r0, r4
-	add	sp, sp, #8
+	add	sp, sp, #12
 	@ sp needed
-	pop	{r4, r5, r6, r7, r8, pc}
-.L2895:
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L809:
+	str	r7, [r5, #176]
+	b	.L810
+.L811:
 	adds	r7, r7, #1
-	b	.L2894
-.L2903:
+	b	.L808
+.L819:
 	.align	2
-.L2902:
+.L818:
 	.word	g_nsi
-	.word	.LC488
-	.word	.LC489
-	.word	.LANCHOR107
-	.size	micron_read_page_end, .-micron_read_page_end
-	.section	.text.micron_readretry_init,"ax",%progbits
+	.word	.LC102
+	.word	.LC103
+	.word	.LANCHOR81
+	.word	-1013653780
+	.size	samsung_read_page_end, .-samsung_read_page_end
+	.section	.text.samsung_special_init,"ax",%progbits
 	.align	1
-	.global	micron_readretry_init
+	.global	samsung_special_init
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	micron_readretry_init, %function
-micron_readretry_init:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	push	{r3, r4, r5, r6, r7, r8, r10, lr}
-	movs	r7, #0
-	ldr	r3, [r0, #264]
-	movs	r1, #137
-	mov	r6, r0
-	ldr	r10, .L2911+28
-	ldr	r3, [r3, #52]
-	ldr	r5, .L2911
-	ldr	r8, .L2911+32
-	ldr	r4, .L2911+4
-	lsrs	r2, r3, #16
-	lsrs	r3, r3, #8
-	str	r7, [r0, #176]
-	strb	r2, [r10]
-	mov	r2, r7
-	strb	r3, [r4]
-	str	r8, [r5]
-	bl	micron_intel_set_feature
-	ldrb	r3, [r10]	@ zero_extendqisi2
-	cmp	r3, #65
-	bne	.L2905
-	movs	r3, #12
-	str	r8, [r5]
-	strb	r3, [r4]
-.L2906:
-	ldrb	r1, [r4]	@ zero_extendqisi2
-	ldr	r0, .L2911+8
-	bl	NAND_Print_DBG
-	movs	r0, #0
-	b	.L2904
-.L2905:
-	cmp	r3, #64
-	bne	.L2907
-	ldr	r3, .L2911+12
-	str	r3, [r5]
-	movs	r3, #10
-	strb	r3, [r4]
-	b	.L2906
-.L2907:
-	cmp	r3, #80
-	bne	.L2908
-	ldr	r3, .L2911+16
-	mov	r2, r7
-	movs	r1, #147
-	mov	r0, r6
-	str	r3, [r5]
-	movs	r3, #7
-	strb	r3, [r4]
-	bl	micron_intel_set_feature
-	b	.L2906
-.L2908:
-	cmp	r3, #66
-	bne	.L2909
-	movs	r3, #16
-	strb	r3, [r4]
-	ldr	r3, .L2911+20
-	str	r3, [r5]
-	b	.L2906
-.L2909:
-	ldr	r0, .L2911+24
-	bl	NAND_Print
-	mvn	r0, #70
-.L2904:
-	pop	{r3, r4, r5, r6, r7, r8, r10, pc}
-.L2912:
-	.align	2
-.L2911:
-	.word	.LANCHOR106
-	.word	.LANCHOR107
-	.word	.LC491
-	.word	.LANCHOR109
-	.word	.LANCHOR110
-	.word	.LANCHOR111
-	.word	.LC490
-	.word	.LANCHOR105
-	.word	.LANCHOR108
-	.size	micron_readretry_init, .-micron_readretry_init
-	.section	.text.micron_readretry_exit,"ax",%progbits
-	.align	1
-	.global	micron_readretry_exit
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	micron_readretry_exit, %function
-micron_readretry_exit:
-	@ args = 0, pretend = 0, frame = 0
-	@ frame_needed = 0, uses_anonymous_args = 0
-	@ link register save eliminated.
-	ldr	r3, .L2914
-	movs	r0, #0
-	strb	r0, [r3]
-	ldr	r3, .L2914+4
-	strb	r0, [r3]
-	bx	lr
-.L2915:
-	.align	2
-.L2914:
-	.word	.LANCHOR105
-	.word	.LANCHOR107
-	.size	micron_readretry_exit, .-micron_readretry_exit
-	.section	.text.micron_special_init,"ax",%progbits
-	.align	1
-	.global	micron_special_init
-	.syntax unified
-	.thumb
-	.thumb_func
-	.fpu softvfp
-	.type	micron_special_init, %function
-micron_special_init:
+	.type	samsung_special_init, %function
+samsung_special_init:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
 	movs	r4, #0
-	ldr	r3, .L2921
+	ldr	r3, .L825
 	ldr	r3, [r3]
 	ldr	r5, [r3, #8]
-.L2917:
-	cbnz	r5, .L2918
-	ldr	r3, .L2921+4
+.L821:
+	cbnz	r5, .L822
+	ldr	r3, .L825+4
 	ldrb	r1, [r3]	@ zero_extendqisi2
-	ldr	r3, .L2921+8
+	ldr	r3, .L825+8
 	ldrb	r2, [r3]	@ zero_extendqisi2
-	cbnz	r4, .L2919
-	ldr	r0, .L2921+12
-	ldr	r3, .L2921+16
+	cbnz	r4, .L823
+	ldr	r0, .L825+12
+	ldr	r3, .L825+16
 	str	r0, [r3]
-	ldr	r0, .L2921+20
+	ldr	r0, .L825+20
 	bl	NAND_Print_DBG
-.L2916:
+.L820:
 	mov	r0, r4
 	pop	{r3, r4, r5, pc}
-.L2918:
+.L822:
 	mov	r0, r5
-	bl	micron_readretry_init
+	bl	samsung_readretry_init
 	ldr	r5, [r5]
 	orrs	r4, r4, r0
-	b	.L2917
-.L2919:
-	ldr	r0, .L2921+24
+	b	.L821
+.L823:
+	ldr	r0, .L825+24
 	bl	NAND_Print
-	b	.L2916
-.L2922:
+	b	.L820
+.L826:
 	.align	2
-.L2921:
+.L825:
 	.word	g_nsi
-	.word	.LANCHOR105
-	.word	.LANCHOR107
-	.word	micron_read_page_end
+	.word	.LANCHOR80
+	.word	.LANCHOR81
+	.word	samsung_read_page_end
 	.word	df_read_page_end
-	.word	.LC492
-	.word	.LC493
-	.size	micron_special_init, .-micron_special_init
-	.section	.text.micron_special_exit,"ax",%progbits
+	.word	.LC104
+	.word	.LC105
+	.size	samsung_special_init, .-samsung_special_init
+	.section	.text.samsung_special_exit,"ax",%progbits
 	.align	1
-	.global	micron_special_exit
+	.global	samsung_special_exit
 	.syntax unified
 	.thumb
 	.thumb_func
 	.fpu softvfp
-	.type	micron_special_exit, %function
-micron_special_exit:
+	.type	samsung_special_exit, %function
+samsung_special_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L830
+	push	{r4, lr}
+	ldr	r3, [r3]
+	ldr	r4, [r3, #8]
+.L828:
+	cbnz	r4, .L829
+	ldr	r0, .L830+4
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	pop	{r4, pc}
+.L829:
+	ldr	r4, [r4]
+	b	.L828
+.L831:
+	.align	2
+.L830:
+	.word	g_nsi
+	.word	.LC106
+	.size	samsung_special_exit, .-samsung_special_exit
+	.section	.text.generic_special_init,"ax",%progbits
+	.align	1
+	.global	generic_special_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	generic_special_init, %function
+generic_special_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	ldr	r2, .L833
+	ldr	r3, .L833+4
+	ldr	r0, .L833+8
+	str	r2, [r3]
+	bl	NAND_Print_DBG
+	movs	r0, #0
+	pop	{r3, pc}
+.L834:
+	.align	2
+.L833:
+	.word	generic_read_page_end_not_retry
+	.word	df_read_page_end
+	.word	.LC107
+	.size	generic_special_init, .-generic_special_init
+	.section	.text.generic_special_exit,"ax",%progbits
+	.align	1
+	.global	generic_special_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	generic_special_exit, %function
+generic_special_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	ldr	r0, .L836
+	bl	NAND_Print_DBG
+	movs	r0, #0
+	pop	{r3, pc}
+.L837:
+	.align	2
+.L836:
+	.word	.LC108
+	.size	generic_special_exit, .-generic_special_exit
+	.section	.text.is_on_panic,"ax",%progbits
+	.align	1
+	.global	is_on_panic
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_on_panic, %function
+is_on_panic:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L839
+	ldr	r0, [r3]
+	adds	r0, r0, #0
+	it	ne
+	movne	r0, #1
+	bx	lr
+.L840:
+	.align	2
+.L839:
+	.word	.LANCHOR85
+	.size	is_on_panic, .-is_on_panic
+	.section	.text.panic_mark_enable,"ax",%progbits
+	.align	1
+	.global	panic_mark_enable
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_mark_enable, %function
+panic_mark_enable:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L842
+	movs	r2, #1
+	str	r2, [r3]
+	bx	lr
+.L843:
+	.align	2
+.L842:
+	.word	.LANCHOR86
+	.size	panic_mark_enable, .-panic_mark_enable
+	.section	.text.is_panic_enable,"ax",%progbits
+	.align	1
+	.global	is_panic_enable
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_panic_enable, %function
+is_panic_enable:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L845
+	ldr	r0, [r3]
+	adds	r0, r0, #0
+	it	ne
+	movne	r0, #1
+	bx	lr
+.L846:
+	.align	2
+.L845:
+	.word	.LANCHOR86
+	.size	is_panic_enable, .-is_panic_enable
+	.section	.text.panic_init_part,"ax",%progbits
+	.align	1
+	.global	panic_init_part
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_init_part, %function
+panic_init_part:
 	@ args = 0, pretend = 0, frame = 0
 	@ frame_needed = 0, uses_anonymous_args = 0
 	push	{r3, r4, r5, lr}
-	movs	r5, #0
-	ldr	r3, .L2930
-	ldr	r2, .L2930+4
+	mov	r3, r2
+	cbz	r0, .L851
+	cbz	r2, .L851
+	ldr	r5, .L852
+	ldr	r4, [r5, #8]
+	cbnz	r4, .L851
+	str	r2, [r5, #8]
+	ldr	r2, .L852+4
+	strd	r0, r1, [r5]
+	movs	r5, #1
+	str	r5, [r2]
+	mov	r2, r1
+	mov	r1, r0
+	ldr	r0, .L852+8
+	bl	NAND_Print
+	mov	r0, r4
+.L847:
+	pop	{r3, r4, r5, pc}
+.L851:
+	mov	r0, #-1
+	b	.L847
+.L853:
+	.align	2
+.L852:
+	.word	.LANCHOR87
+	.word	.LANCHOR86
+	.word	.LC109
+	.size	panic_init_part, .-panic_init_part
+	.section	.text.panic_read,"ax",%progbits
+	.align	1
+	.global	panic_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_read, %function
+panic_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r3
+	ldr	r3, .L860
+	mov	r6, r0
+	mov	r5, r2
 	ldr	r3, [r3]
-	ldrb	r1, [r2]	@ zero_extendqisi2
+	cbz	r3, .L858
+	ldr	r3, .L860+4
+	movs	r2, #1
+	mov	r4, r1
+	sub	fp, r8, r1
+	str	r2, [r3]
+	bic	r3, r5, #32640
+	bic	r3, r3, #127
+	add	r10, r3, r1
+.L856:
+	cmp	r4, r10
+	add	r3, fp, r4
+	bne	.L857
+	ubfx	r2, r5, #0, #15
+	bic	r5, r5, #32640
+	bic	r5, r5, #127
+	add	r3, r8, r5
+	cbz	r2, .L859
+	ldr	r5, [r6, #44]
+	mov	r1, r4
+	mov	r0, r6
+	blx	r5
+	movs	r0, #0
+.L854:
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L857:
+	mov	r1, r4
+	ldr	r7, [r6, #44]
+	mov	r2, #32768
+	mov	r0, r6
+	blx	r7
+	add	r4, r4, #32768
+	b	.L856
+.L858:
+	mov	r0, #-1
+	b	.L854
+.L859:
+	mov	r0, r2
+	b	.L854
+.L861:
+	.align	2
+.L860:
+	.word	.LANCHOR86
+	.word	.LANCHOR85
+	.size	panic_read, .-panic_read
+	.section	.text.is_panic_data_page,"ax",%progbits
+	.align	1
+	.global	is_panic_data_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_panic_data_page, %function
+is_panic_data_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r3, [r0, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L864
+	ldrb	r0, [r0, #2]	@ zero_extendqisi2
+	sub	r3, r0, #99
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+.L864:
+	movs	r0, #0
+	bx	lr
+	.size	is_panic_data_page, .-is_panic_data_page
+	.section	.text.is_panic_dummy_page,"ax",%progbits
+	.align	1
+	.global	is_panic_dummy_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_panic_dummy_page, %function
+is_panic_dummy_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r3, [r0, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L867
+	ldrb	r0, [r0, #2]	@ zero_extendqisi2
+	sub	r3, r0, #98
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+.L867:
+	movs	r0, #0
+	bx	lr
+	.size	is_panic_dummy_page, .-is_panic_dummy_page
+	.section	.text.panic_recover_info,"ax",%progbits
+	.align	1
+	.global	panic_recover_info
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_recover_info, %function
+panic_recover_info:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r1
+	ldrb	r4, [r0, #4]	@ zero_extendqisi2
+	cmp	r4, #2
+	bhi	.L869
+	ldrh	r1, [r1]
+	ldr	r0, .L871
+	bl	NAND_Print
+	ldr	r3, .L871+4
+	movs	r0, #0
+	str	r5, [r3, r4, lsl #2]
+.L868:
+	pop	{r3, r4, r5, pc}
+.L869:
+	mov	r1, r4
+	ldr	r0, .L871+8
+	bl	NAND_Print
+	mov	r0, #-1
+	b	.L868
+.L872:
+	.align	2
+.L871:
+	.word	.LC110
+	.word	.LANCHOR88
+	.word	.LC111
+	.size	panic_recover_info, .-panic_recover_info
+	.section	.text.add_free_list,"ax",%progbits
+	.align	1
+	.global	add_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_free_list, %function
+add_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	adds	r0, r0, #152
+	push	{r4, lr}
+.L874:
+	ldr	r3, [r0, #20]
+	cbnz	r3, .L876
+	str	r1, [r0, #20]
+	str	r3, [r1, #20]
+	b	.L878
+.L876:
+	ldrh	r2, [r3, #6]
+	ldrh	r4, [r1, #6]
+	cmp	r4, r2
+	bhi	.L877
+	str	r1, [r3, #24]
+	str	r3, [r1, #20]
+	str	r1, [r0, #20]
+.L878:
+	str	r0, [r1, #24]
+	movs	r0, #0
+	pop	{r4, pc}
+.L877:
+	mov	r0, r3
+	b	.L874
+	.size	add_free_list, .-add_free_list
+	.section	.text.del_free_list,"ax",%progbits
+	.align	1
+	.global	del_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_free_list, %function
+del_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r0
+	ldr	r0, [r0, #172]
+	cbz	r0, .L879
+	ldr	r2, [r0, #20]
+	str	r2, [r3, #172]
+	ldr	r2, [r0, #20]
+	str	r2, [r3, #172]
+	ldr	r2, [r0, #20]
+	cbz	r2, .L879
+	adds	r3, r3, #152
+	str	r3, [r2, #24]
+.L879:
+	bx	lr
+	.size	del_free_list, .-del_free_list
+	.section	.text.del_free_list_by_block,"ax",%progbits
+	.align	1
+	.global	del_free_list_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_free_list_by_block, %function
+del_free_list_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #172]
+.L887:
+	cbnz	r0, .L890
+	bx	lr
+.L890:
+	cmp	r0, r1
+	ldr	r3, [r0, #20]
+	bne	.L891
+	ldr	r2, [r0, #24]
+	str	r3, [r2, #20]
+	ldr	r3, [r0, #20]
+	cbz	r3, .L888
+	str	r2, [r3, #24]
+.L888:
+	movs	r3, #0
+	strd	r3, r3, [r0, #20]
+	bx	lr
+.L891:
+	mov	r0, r3
+	b	.L887
+	.size	del_free_list_by_block, .-del_free_list_by_block
+	.section	.text.is_block_in_free_list,"ax",%progbits
+	.align	1
+	.global	is_block_in_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_block_in_free_list, %function
+is_block_in_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #172]
+.L896:
+	cbnz	r0, .L898
+	bx	lr
+.L898:
+	cmp	r0, r1
+	beq	.L899
+	ldr	r0, [r0, #20]
+	b	.L896
+.L899:
+	movs	r0, #1
+	bx	lr
+	.size	is_block_in_free_list, .-is_block_in_free_list
+	.section	.text.print_free_list,"ax",%progbits
+	.align	1
+	.global	print_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_free_list, %function
+print_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #356]
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	cbz	r3, .L900
+	ldr	r0, .L905
+	bl	NAND_Print_DBG
+	ldr	r5, .L905+4
+	ldr	r4, [r4, #172]
+	ldr	r6, .L905+8
+.L902:
+	cbnz	r4, .L903
+.L900:
+	pop	{r4, r5, r6, pc}
+.L903:
+	ldrh	r2, [r4, #6]
+	mov	r0, r5
+	ldrh	r1, [r4]
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #8]
+	mov	r0, r6
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #2]
+	ldr	r0, .L905+12
+	bl	NAND_Print_DBG
+	ldr	r4, [r4, #20]
+	b	.L902
+.L906:
+	.align	2
+.L905:
+	.word	.LC112
+	.word	.LC113
+	.word	.LC114
+	.word	.LC115
+	.size	print_free_list, .-print_free_list
+	.section	.text.add_block_invalid_list,"ax",%progbits
+	.align	1
+	.global	add_block_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_block_invalid_list, %function
+add_block_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	adds	r0, r0, #188
+	push	{r4, lr}
+.L908:
+	ldr	r3, [r0, #12]
+	cbnz	r3, .L910
+	str	r1, [r0, #12]
+	str	r3, [r1, #12]
+	b	.L912
+.L910:
+	ldrh	r2, [r3, #4]
+	ldrh	r4, [r1, #4]
+	cmp	r4, r2
+	bcc	.L911
+	str	r1, [r3, #16]
+	str	r3, [r1, #12]
+	str	r1, [r0, #12]
+.L912:
+	str	r0, [r1, #16]
+	movs	r0, #0
+	pop	{r4, pc}
+.L911:
+	mov	r0, r3
+	b	.L908
+	.size	add_block_invalid_list, .-add_block_invalid_list
+	.section	.text.del_block_invalid_list,"ax",%progbits
+	.align	1
+	.global	del_block_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_block_invalid_list, %function
+del_block_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r0
+	ldr	r0, [r0, #200]
+	cbz	r0, .L913
+	ldr	r2, [r0, #12]
+	str	r2, [r3, #200]
+	ldr	r2, [r0, #12]
+	cbz	r2, .L913
+	adds	r3, r3, #188
+	str	r3, [r2, #16]
+.L913:
+	bx	lr
+	.size	del_block_invalid_list, .-del_block_invalid_list
+	.section	.text.del_block_invalid_list_by_block,"ax",%progbits
+	.align	1
+	.global	del_block_invalid_list_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_block_invalid_list_by_block, %function
+del_block_invalid_list_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #200]
+.L921:
+	cbnz	r0, .L924
+	bx	lr
+.L924:
+	cmp	r0, r1
+	ldr	r3, [r0, #12]
+	bne	.L925
+	ldr	r2, [r0, #16]
+	str	r3, [r2, #12]
+	ldr	r3, [r0, #12]
+	cbz	r3, .L922
+	str	r2, [r3, #16]
+.L922:
+	movs	r3, #0
+	strd	r3, r3, [r0, #12]
+	bx	lr
+.L925:
+	mov	r0, r3
+	b	.L921
+	.size	del_block_invalid_list_by_block, .-del_block_invalid_list_by_block
+	.section	.text.is_block_in_invalid_list,"ax",%progbits
+	.align	1
+	.global	is_block_in_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_block_in_invalid_list, %function
+is_block_in_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #200]
+.L930:
+	cbnz	r0, .L932
+	bx	lr
+.L932:
+	cmp	r0, r1
+	beq	.L933
+	ldr	r0, [r0, #12]
+	b	.L930
+.L933:
+	movs	r0, #1
+	bx	lr
+	.size	is_block_in_invalid_list, .-is_block_in_invalid_list
+	.section	.text.print_block_invalid_list,"ax",%progbits
+	.align	1
+	.global	print_block_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_block_invalid_list, %function
+print_block_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #356]
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	cbz	r3, .L934
+	ldr	r0, .L939
+	bl	NAND_Print_DBG
+	ldr	r5, .L939+4
+	ldr	r4, [r4, #200]
+	ldr	r6, .L939+8
+.L936:
+	cbnz	r4, .L937
+.L934:
+	pop	{r4, r5, r6, pc}
+.L937:
+	ldrh	r2, [r4, #6]
+	mov	r0, r5
+	ldrh	r1, [r4]
+	bl	NAND_Print_DBG
+	ldrh	r2, [r4, #4]
+	mov	r0, r6
+	ldr	r1, [r4, #8]
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #2]
+	ldr	r0, .L939+12
+	bl	NAND_Print_DBG
+	ldr	r4, [r4, #12]
+	b	.L936
+.L940:
+	.align	2
+.L939:
+	.word	.LC116
+	.word	.LC113
+	.word	.LC117
+	.word	.LC115
+	.size	print_block_invalid_list, .-print_block_invalid_list
+	.section	.text.add_block_count_list,"ax",%progbits
+	.align	1
+	.global	add_block_count_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_block_count_list, %function
+add_block_count_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	adds	r0, r0, #224
+	push	{r4, lr}
+.L942:
+	ldr	r3, [r0, #28]
+	cbnz	r3, .L944
+	str	r1, [r0, #28]
+	str	r3, [r1, #28]
+	b	.L946
+.L944:
+	ldr	r4, [r3, #8]
+	ldr	r2, [r1, #8]
+	cmp	r4, r2
+	blt	.L945
+	str	r1, [r3, #32]
+	str	r3, [r1, #28]
+	str	r1, [r0, #28]
+.L946:
+	str	r0, [r1, #32]
+	movs	r0, #0
+	pop	{r4, pc}
+.L945:
+	mov	r0, r3
+	b	.L942
+	.size	add_block_count_list, .-add_block_count_list
+	.section	.text.del_block_count_list,"ax",%progbits
+	.align	1
+	.global	del_block_count_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_block_count_list, %function
+del_block_count_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r0
+	adds	r0, r0, #224
+	ldr	r2, [r3, #252]
+	cbz	r2, .L947
+	ldr	r2, [r2, #28]
+	str	r2, [r3, #252]
+.L947:
+	bx	lr
+	.size	del_block_count_list, .-del_block_count_list
+	.section	.text.del_block_count_by_block,"ax",%progbits
+	.align	1
+	.global	del_block_count_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_block_count_by_block, %function
+del_block_count_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #252]
+.L953:
+	cbnz	r0, .L956
+	bx	lr
+.L956:
+	cmp	r0, r1
+	ldr	r3, [r0, #28]
+	bne	.L957
+	ldr	r2, [r0, #32]
+	str	r3, [r2, #28]
+	ldr	r3, [r0, #28]
+	cbz	r3, .L954
+	str	r2, [r3, #32]
+.L954:
+	movs	r3, #0
+	strd	r3, r3, [r0, #28]
+	bx	lr
+.L957:
+	mov	r0, r3
+	b	.L953
+	.size	del_block_count_by_block, .-del_block_count_by_block
+	.section	.text.print_block_count_list,"ax",%progbits
+	.align	1
+	.global	print_block_count_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_block_count_list, %function
+print_block_count_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #356]
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	cbz	r3, .L961
+	ldr	r0, .L966
+	bl	NAND_Print_DBG
+	ldr	r5, .L966+4
+	ldr	r4, [r4, #252]
+	ldr	r6, .L966+8
+.L963:
+	cbnz	r4, .L964
+.L961:
+	pop	{r4, r5, r6, pc}
+.L964:
+	ldrh	r1, [r4]
+	mov	r0, r5
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #8]
+	mov	r0, r6
+	bl	NAND_Print_DBG
+	ldr	r4, [r4, #28]
+	b	.L963
+.L967:
+	.align	2
+.L966:
+	.word	.LC118
+	.word	.LC119
+	.word	.LC120
+	.size	print_block_count_list, .-print_block_count_list
+	.section	.text.put_phy_block_to_free_list,"ax",%progbits
+	.align	1
+	.global	put_phy_block_to_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	put_phy_block_to_free_list, %function
+put_phy_block_to_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r2, #0
+	push	{r3, r4, r5, lr}
+	strd	r2, r2, [r1, #20]
+	mov	r5, r0
+	bl	add_free_list
+	mov	r4, r0
+	cbnz	r0, .L969
+	ldrh	r3, [r5, #22]
+	adds	r3, r3, #1
+	strh	r3, [r5, #22]	@ movhi
+.L968:
+	mov	r0, r4
+	pop	{r3, r4, r5, pc}
+.L969:
+	ldr	r0, .L971
+	bl	NAND_Print_DBG
+	b	.L968
+.L972:
+	.align	2
+.L971:
+	.word	.LC121
+	.size	put_phy_block_to_free_list, .-put_phy_block_to_free_list
+	.section	.text.out_phy_block_from_free_list,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_free_list, %function
+out_phy_block_from_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	mov	r1, r0
+	bl	del_free_list
+	cbz	r0, .L973
+	movs	r3, #0
+	strd	r3, r3, [r0, #20]
+	ldrh	r3, [r1, #22]
+	cbz	r3, .L973
+	subs	r3, r3, #1
+	strh	r3, [r1, #22]	@ movhi
+.L973:
+	pop	{r3, pc}
+	.size	out_phy_block_from_free_list, .-out_phy_block_from_free_list
+	.section	.text.panic_backup_block,"ax",%progbits
+	.align	1
+	.global	panic_backup_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_backup_block, %function
+panic_backup_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L991
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r0
+	ldr	r0, [r3]
+	cbz	r0, .L980
+	ldr	r6, .L991+4
+	movs	r5, #0
+	ldr	fp, .L991+16
+.L984:
+	ldr	r4, [r6, r5, lsl #2]
+	lsl	r10, r5, #2
+	cbz	r4, .L982
+	ldrh	r1, [r4]
+	ldr	r0, .L991+8
+	bl	NAND_Print
+	movs	r0, #0
+.L980:
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L982:
+	mov	r0, r8
+	bl	out_phy_block_from_free_list
+	mov	r7, r0
+	cbz	r0, .L983
+	ldrh	r1, [r0]
+	adds	r5, r5, #1
+	mov	r0, fp
+	bl	NAND_Print
+	cmp	r5, #3
+	str	r7, [r10, r6]
+	bne	.L984
+	ldr	r3, [r8, #4]
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	add	r3, r3, r3, lsl #1
+	str	r3, [r6, #12]
+	b	.L980
+.L983:
+	ldr	r0, .L991+12
+	bl	NAND_Print
+	mov	r0, #-1
+	b	.L980
+.L992:
+	.align	2
+.L991:
+	.word	.LANCHOR86
+	.word	.LANCHOR88
+	.word	.LC122
+	.word	.LC124
+	.word	.LC123
+	.size	panic_backup_block, .-panic_backup_block
+	.section	.text.get_max_erase_time_from_free_list,"ax",%progbits
+	.align	1
+	.global	get_max_erase_time_from_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_max_erase_time_from_free_list, %function
+get_max_erase_time_from_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #172]
+	movs	r0, #0
+	mov	r2, r0
+	push	{r4, lr}
+.L994:
+	cbnz	r3, .L996
+	cbz	r2, .L998
+	ldrh	r0, [r2, #6]
+.L997:
+	pop	{r4, pc}
+.L996:
+	ldrh	r4, [r3, #6]
+	cmp	r4, r1
+	bcs	.L995
+	cmp	r4, r0
+	itt	cs
+	movcs	r0, r4
+	movcs	r2, r3
+.L995:
+	ldr	r3, [r3, #20]
+	b	.L994
+.L998:
+	movw	r0, #65535
+	b	.L997
+	.size	get_max_erase_time_from_free_list, .-get_max_erase_time_from_free_list
+	.section	.text.get_block_max_erase_time_from_free_list,"ax",%progbits
+	.align	1
+	.global	get_block_max_erase_time_from_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_max_erase_time_from_free_list, %function
+get_block_max_erase_time_from_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r2, #0
+	ldr	r3, [r0, #172]
+	mov	r0, r2
+	push	{r4, lr}
+.L1000:
+	cbnz	r3, .L1002
+	pop	{r4, pc}
+.L1002:
+	ldrh	r4, [r3, #6]
+	cmp	r4, r1
+	bcs	.L1001
+	cmp	r4, r2
+	itt	cs
+	movcs	r2, r4
+	movcs	r0, r3
+.L1001:
+	ldr	r3, [r3, #20]
+	b	.L1000
+	.size	get_block_max_erase_time_from_free_list, .-get_block_max_erase_time_from_free_list
+	.section	.text.get_block_max_erase_time_from_invalid_list,"ax",%progbits
+	.align	1
+	.global	get_block_max_erase_time_from_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_max_erase_time_from_invalid_list, %function
+get_block_max_erase_time_from_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r2, #0
+	ldr	r3, [r0, #200]
+	mov	r0, r2
+	push	{r4, lr}
+.L1004:
+	cbnz	r3, .L1006
+	pop	{r4, pc}
+.L1006:
+	ldrh	r4, [r3, #6]
+	cmp	r4, r1
+	bcs	.L1005
+	cmp	r4, r2
+	itt	cs
+	movcs	r2, r4
+	movcs	r0, r3
+.L1005:
+	ldr	r3, [r3, #12]
+	b	.L1004
+	.size	get_block_max_erase_time_from_invalid_list, .-get_block_max_erase_time_from_invalid_list
+	.section	.text.get_block_min_erase_time_from_invalid_list,"ax",%progbits
+	.align	1
+	.global	get_block_min_erase_time_from_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_min_erase_time_from_invalid_list, %function
+get_block_min_erase_time_from_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #4]
+	push	{r4, r5, r6, lr}
+	ldrh	r5, [r3, #16]
+	ldr	r3, [r0, #200]
+	movs	r0, #0
+.L1008:
+	cbnz	r3, .L1010
+	pop	{r4, r5, r6, pc}
+.L1010:
+	ldrh	r4, [r3, #6]
+	cmp	r4, r1
+	bcs	.L1009
+	ldr	r6, [r3, #8]
+	cmp	r6, r2
+	bcs	.L1009
+	cmp	r4, r5
+	itt	ls
+	movls	r5, r4
+	movls	r0, r3
+.L1009:
+	ldr	r3, [r3, #12]
+	b	.L1008
+	.size	get_block_min_erase_time_from_invalid_list, .-get_block_min_erase_time_from_invalid_list
+	.section	.text.get_block_max_count_from_invalid_list,"ax",%progbits
+	.align	1
+	.global	get_block_max_count_from_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_max_count_from_invalid_list, %function
+get_block_max_count_from_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r2, #0
+	ldr	r3, [r0, #200]
+	mov	r0, r2
+.L1012:
+	cbnz	r3, .L1014
+	bx	lr
+.L1014:
+	ldr	r1, [r3, #8]
+	cmp	r1, r2
+	itt	cs
+	movcs	r0, r3
+	movcs	r2, r1
+	ldr	r3, [r3, #12]
+	b	.L1012
+	.size	get_block_max_count_from_invalid_list, .-get_block_max_count_from_invalid_list
+	.section	.text.get_block_min_count_from_invalid_list,"ax",%progbits
+	.align	1
+	.global	get_block_min_count_from_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_min_count_from_invalid_list, %function
+get_block_min_count_from_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #200]
+	mov	r2, #-1
+	movs	r0, #0
+.L1016:
+	cbnz	r3, .L1018
+	bx	lr
+.L1018:
+	ldr	r1, [r3, #8]
+	cmp	r1, r2
+	itt	ls
+	movls	r0, r3
+	movls	r2, r1
+	ldr	r3, [r3, #12]
+	b	.L1016
+	.size	get_block_min_count_from_invalid_list, .-get_block_min_count_from_invalid_list
+	.section	.text.out_phy_block_from_free_list_by_block,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_free_list_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_free_list_by_block, %function
+out_phy_block_from_free_list_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	bl	del_free_list_by_block
+	cbz	r0, .L1019
+	movs	r3, #0
+	strd	r3, r3, [r0, #20]
+	ldrh	r3, [r4, #22]
+	cbz	r3, .L1019
+	subs	r3, r3, #1
+	strh	r3, [r4, #22]	@ movhi
+.L1019:
+	pop	{r4, pc}
+	.size	out_phy_block_from_free_list_by_block, .-out_phy_block_from_free_list_by_block
+	.section	.text.out_phy_block_from_free_list_by_erase_time,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_free_list_by_erase_time
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_free_list_by_erase_time, %function
+out_phy_block_from_free_list_by_erase_time:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #172]
+	push	{r4, r5}
+	movs	r4, #0
+	mov	r2, r4
+.L1027:
+	cbnz	r3, .L1029
+	cbz	r2, .L1026
+	mov	r1, r2
+	pop	{r4, r5}
+	b	out_phy_block_from_free_list_by_block
+.L1029:
+	ldrh	r5, [r3, #6]
+	cmp	r5, r1
+	bcs	.L1028
+	cmp	r5, r4
+	itt	cs
+	movcs	r4, r5
+	movcs	r2, r3
+.L1028:
+	ldr	r3, [r3, #20]
+	b	.L1027
+.L1026:
+	mov	r0, r2
+	pop	{r4, r5}
+	bx	lr
+	.size	out_phy_block_from_free_list_by_erase_time, .-out_phy_block_from_free_list_by_erase_time
+	.section	.text.put_phy_block_to_invalid_page_list,"ax",%progbits
+	.align	1
+	.global	put_phy_block_to_invalid_page_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	put_phy_block_to_invalid_page_list, %function
+put_phy_block_to_invalid_page_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r2, #0
+	push	{r4, lr}
+	strd	r2, r2, [r1, #12]
+	bl	add_block_invalid_list
+	mov	r4, r0
+	cbz	r0, .L1031
+	ldr	r0, .L1036
+	bl	NAND_Print_DBG
+.L1031:
+	mov	r0, r4
+	pop	{r4, pc}
+.L1037:
+	.align	2
+.L1036:
+	.word	.LC125
+	.size	put_phy_block_to_invalid_page_list, .-put_phy_block_to_invalid_page_list
+	.section	.text.out_phy_block_from_invalid_page_list,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_invalid_page_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_invalid_page_list, %function
+out_phy_block_from_invalid_page_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	del_block_invalid_list
+	cbz	r0, .L1038
+	movs	r3, #0
+	strd	r3, r3, [r0, #12]
+.L1038:
+	pop	{r3, pc}
+	.size	out_phy_block_from_invalid_page_list, .-out_phy_block_from_invalid_page_list
+	.section	.text.out_phy_block_from_invalid_page_list_by_block,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_invalid_page_list_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_invalid_page_list_by_block, %function
+out_phy_block_from_invalid_page_list_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	del_block_invalid_list_by_block
+	cbz	r0, .L1043
+	movs	r3, #0
+	strd	r3, r3, [r0, #12]
+.L1043:
+	pop	{r3, pc}
+	.size	out_phy_block_from_invalid_page_list_by_block, .-out_phy_block_from_invalid_page_list_by_block
+	.section	.text.out_phy_block_from_used_list_by_block,"ax",%progbits
+	.align	1
+	.global	out_phy_block_from_used_list_by_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	out_phy_block_from_used_list_by_block, %function
+out_phy_block_from_used_list_by_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	b	del_block_count_by_block
+	.size	out_phy_block_from_used_list_by_block, .-out_phy_block_from_used_list_by_block
+	.section	.text.phy_block_from_invalid_page_incr,"ax",%progbits
+	.align	1
+	.global	phy_block_from_invalid_page_incr
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	phy_block_from_invalid_page_incr, %function
+phy_block_from_invalid_page_incr:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r1
+	ldrh	r2, [r1, #4]
+	mov	r5, r0
+	ldr	r1, [r1, #12]
+	ldr	r3, [r0, #4]
+	adds	r2, r2, #1
+	uxth	r2, r2
+	ldrh	r3, [r3, #20]
+	cbnz	r1, .L1050
+	ldr	r1, [r4, #16]
+	cbnz	r1, .L1050
+	cmp	r2, r3
+	strh	r2, [r4, #4]	@ movhi
+	bls	.L1052
+	ldrh	r1, [r4]
+	ldr	r0, .L1064
+	bl	NAND_Print_DBG
+.L1052:
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L1050:
+	cmp	r2, r3
+	strh	r2, [r4, #4]	@ movhi
+	bls	.L1053
+	ldr	r0, .L1064+4
+	bl	NAND_Print_DBG
+.L1053:
+	ldr	r3, [r4, #16]
+	adds	r5, r5, #188
+	cmp	r3, r5
+	beq	.L1052
+	ldrh	r1, [r4, #4]
+.L1055:
+	ldrh	r2, [r3, #4]
+	cmp	r2, r1
+	bcs	.L1052
+	ldr	r2, [r3, #16]
+	str	r2, [r4, #16]
+	ldr	r2, [r3, #16]
+	str	r4, [r2, #12]
+	ldr	r2, [r4, #12]
+	str	r2, [r3, #12]
+	ldr	r2, [r4, #12]
+	cbz	r2, .L1056
+	str	r3, [r2, #16]
+.L1056:
+	str	r3, [r4, #12]
+	str	r4, [r3, #16]
+	ldr	r3, [r4, #16]
+	ldr	r2, [r3, #16]
+	cmp	r2, #0
+	bne	.L1055
+	b	.L1052
+.L1065:
+	.align	2
+.L1064:
+	.word	.LC126
+	.word	.LC127
+	.size	phy_block_from_invalid_page_incr, .-phy_block_from_invalid_page_incr
+	.section	.text.adjust_invaild_list,"ax",%progbits
+	.align	1
+	.global	adjust_invaild_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	adjust_invaild_list, %function
+adjust_invaild_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+.L1067:
+	ldr	r3, [r4, #200]
+	cbnz	r3, .L1069
+.L1068:
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L1069:
+	ldr	r1, [r4, #4]
+	ldrh	r2, [r3, #4]
+	ldrh	r3, [r1, #20]
+	cmp	r2, r3
+	bne	.L1068
+	mov	r0, r4
+	bl	out_phy_block_from_invalid_page_list
+	mov	r5, r0
+	mov	r1, r0
+	mov	r0, r4
+	bl	put_phy_block_to_free_list
+	mov	r1, r5
+	mov	r0, r4
+	bl	out_phy_block_from_used_list_by_block
+	b	.L1067
+	.size	adjust_invaild_list, .-adjust_invaild_list
+	.section	.text.dump_buf,"ax",%progbits
+	.align	1
+	.global	dump_buf
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	dump_buf, %function
+dump_buf:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	movs	r4, #0
+	ldr	r7, .L1075
+	mov	r6, r0
+	mov	r5, r1
+	ldr	r8, .L1075+8
+	ldr	r0, .L1075+4
+	bl	NAND_Print
+.L1071:
+	cmp	r4, r5
+	bne	.L1074
+	ldr	r0, .L1075+4
+	pop	{r4, r5, r6, r7, r8, lr}
+	b	NAND_Print
+.L1074:
+	lsls	r2, r4, #28
+	bne	.L1072
+	mov	r1, r4
+	mov	r0, r7
+	bl	NAND_Print
+.L1072:
+	ldrb	r1, [r6, r4]	@ zero_extendqisi2
+	mov	r0, r8
+	adds	r4, r4, #1
+	bl	NAND_Print
+	lsls	r3, r4, #28
+	bne	.L1071
+	ldr	r0, .L1075+4
+	bl	NAND_Print
+	b	.L1071
+.L1076:
+	.align	2
+.L1075:
+	.word	.LC5
+	.word	.LC7
+	.word	.LC81
+	.size	dump_buf, .-dump_buf
+	.global	__aeabi_uidiv
+	.section	.text.init_zone_after_first_scan,"ax",%progbits
+	.align	1
+	.global	init_zone_after_first_scan
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	init_zone_after_first_scan, %function
+init_zone_after_first_scan:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r5, r1
+	ldr	r6, [r0, #4]
+	mov	r4, r0
+	ldr	r0, [r0, #24]
+	ldrb	r1, [r6, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	ldrh	r1, [r6, #20]
+	bl	__aeabi_uidiv
+	mov	r1, r5
+	mov	r6, r0
+	mov	r2, r0
+	ldr	r0, .L1084
+	bl	NAND_Print_DBG
+	cmp	r6, r5
+	bcc	.L1078
+	ldr	r0, .L1084+4
+	mov	r2, r6
+	mov	r1, r5
+.L1083:
+	bl	NAND_Print
+	movs	r0, #1
+.L1077:
+	pop	{r4, r5, r6, pc}
+.L1078:
+	ldr	r1, [r4, #4]
+	subs	r2, r5, r6
+	ldrb	r0, [r1, #8]	@ zero_extendqisi2
+	ldrh	r3, [r1, #20]
+	muls	r3, r0, r3
+	muls	r3, r2, r3
+	str	r3, [r4, #32]
+	ldr	r3, [r4, #1972]
+	ldrh	r1, [r3, #12]
+	subs	r1, r1, #1
+	cmp	r2, r1
+	bcs	.L1080
+	mov	r2, r6
+	mov	r1, r5
+	ldr	r0, .L1084+8
+	b	.L1083
+.L1080:
+	ldr	r0, .L1084+12
+	umull	r0, r1, r2, r0
+	ubfx	r0, r1, #2, #16
+	ldrh	r1, [r3, #14]
+	strh	r0, [r4, #380]	@ movhi
+	cmp	r0, r1
+	ldrh	r0, [r3, #18]
+	it	cc
+	strhcc	r1, [r4, #380]	@ movhi
+	ldrh	r1, [r3, #20]
+	muls	r0, r2, r0
+	bl	__aeabi_uidiv
+	ldrh	r3, [r4, #380]
+	strh	r0, [r4, #382]	@ movhi
+	uxth	r0, r0
+	adds	r2, r3, #1
+	cmp	r2, r0
+	mov	r0, #0
+	itt	ge
+	addge	r3, r3, #2
+	strhge	r3, [r4, #382]	@ movhi
+	movs	r3, #1
+	str	r3, [r4, #384]
+	b	.L1077
+.L1085:
+	.align	2
+.L1084:
+	.word	.LC128
+	.word	.LC129
+	.word	.LC130
+	.word	-858993459
+	.size	init_zone_after_first_scan, .-init_zone_after_first_scan
+	.section	.text.check_bit_nums,"ax",%progbits
+	.align	1
+	.global	check_bit_nums
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	check_bit_nums, %function
+check_bit_nums:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	movs	r2, #0
+	mov	r4, r0
+.L1087:
+	subs	r3, r4, r0
+	cmp	r3, r1
+	blt	.L1090
+	mov	r0, r2
+	pop	{r4, r5, r6, pc}
+.L1090:
+	ldrb	r6, [r4], #1	@ zero_extendqisi2
+	movs	r5, #8
+	movs	r3, #1
+.L1089:
+	tst	r6, r3
+	lsl	r3, r3, #1
+	it	ne
+	addne	r2, r2, #1
+	subs	r5, r5, #1
+	uxtb	r3, r3
+	bne	.L1089
+	b	.L1087
+	.size	check_bit_nums, .-check_bit_nums
+	.section	.text.is_all_bit_ff,"ax",%progbits
+	.align	1
+	.global	is_all_bit_ff
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_all_bit_ff, %function
+is_all_bit_ff:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	rsb	r4, r2, r1, lsl #3
+	bl	check_bit_nums
+	cmp	r4, r0
+	ite	gt
+	movgt	r0, #0
+	movle	r0, #1
+	pop	{r4, pc}
+	.size	is_all_bit_ff, .-is_all_bit_ff
+	.section	.text.is_all_byte_ff,"ax",%progbits
+	.align	1
+	.global	is_all_byte_ff
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_all_byte_ff, %function
+is_all_byte_ff:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, lr}
+	subs	r2, r1, r2
+	mov	r4, r0
+	movs	r3, #0
+.L1097:
+	subs	r5, r4, r0
+	cmp	r1, r5
+	bgt	.L1099
+	cmp	r3, r2
+	ite	lt
+	movlt	r0, #0
+	movge	r0, #1
+	pop	{r4, r5, pc}
+.L1099:
+	ldrb	r5, [r4], #1	@ zero_extendqisi2
+	cmp	r5, #255
+	it	eq
+	addeq	r3, r3, #1
+	b	.L1097
+	.size	is_all_byte_ff, .-is_all_byte_ff
+	.section	.text.do_write_error_in_build_list,"ax",%progbits
+	.align	1
+	.global	do_write_error_in_build_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_write_error_in_build_list, %function
+do_write_error_in_build_list:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r3
+	ldr	r3, [r0, #4]
+	mov	r7, r2
+	sub	sp, sp, #24
+	movs	r5, #0
+	ldrh	r2, [r2]
+	mov	r10, r1
+	ldrh	r3, [r3, #28]
+	add	r1, sp, #8
+	strh	r5, [sp, #8]	@ movhi
+	mov	r4, r0
+	strh	r2, [sp, #10]	@ movhi
+	strh	r3, [sp, #12]	@ movhi
+	strd	r5, r5, [sp, #16]
+	ldr	r3, [r0, #1980]
+	blx	r3
+	ldrh	r3, [r7, #6]
+	strh	r5, [r7, #4]	@ movhi
+	adds	r3, r3, #1
+	strh	r3, [r7, #6]	@ movhi
+	cmp	r0, #0
+	beq	.L1105
+	ldr	r0, .L1110
+	bl	NAND_Print
+	ldr	r3, [r4, #2000]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	movs	r0, #1
+.L1100:
+	add	sp, sp, #24
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1104:
+	uxth	r3, r6
+	mov	r2, r7
+	mov	r1, r10
+	ldr	r5, [r4, #1992]
+	str	r3, [sp]
+	mov	r0, r4
+	ldr	r3, [r4, #284]
+	blx	r5
+	cbz	r0, .L1103
+	mov	r0, fp
+	bl	NAND_Print
+.L1103:
+	adds	r6, r6, #1
+.L1101:
+	cmp	r8, r6
+	bhi	.L1104
+	ldr	r3, [r4, #4]
+	movs	r5, #0
+	ldrh	r2, [r10]
+	add	r1, sp, #8
+	strh	r5, [sp, #8]	@ movhi
+	mov	r0, r4
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #10]	@ movhi
+	strd	r5, r5, [sp, #16]
+	strh	r3, [sp, #12]	@ movhi
+	ldr	r3, [r4, #2000]
+	blx	r3
+	cmp	r8, #0
+	bne	.L1106
+	str	r7, [r4, #292]
+	mov	r0, r8
+	strh	r8, [r4, #320]	@ movhi
+	b	.L1100
+.L1105:
+	mov	r6, r0
+	ldr	fp, .L1110+4
+	b	.L1101
+.L1106:
+	mov	r0, r5
+	b	.L1100
+.L1111:
+	.align	2
+.L1110:
+	.word	.LC131
+	.word	.LC132
+	.size	do_write_error_in_build_list, .-do_write_error_in_build_list
+	.section	.text.init_nrc,"ax",%progbits
+	.align	1
+	.global	init_nrc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	init_nrc, %function
+init_nrc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r5, r0
+	movs	r0, #16
+	mov	r6, r1
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1113
+	mov	r2, #1400
+	ldr	r1, .L1133
+	ldr	r0, .L1133+4
+	bl	NAND_Print
+.L1132:
+	mov	r0, #-1
+	b	.L1112
+.L1113:
+	movs	r2, #16
+	movs	r1, #0
+	bl	NAND_Memset
+	ldr	r3, [r5, #4]
+	ldrh	r5, [r3, #20]
+	ldrh	r0, [r3, #26]
+	adds	r0, r0, #64
+	muls	r0, r5, r0
+	bl	nftl_malloc
+	str	r0, [r4, #8]
+	cbnz	r0, .L1115
+	ldr	r1, .L1133
+	movw	r2, #1409
+	ldr	r0, .L1133+8
+.L1131:
+.L1116:
+	bl	NAND_Print
+	ldr	r0, [r4, #8]
+	cbz	r0, .L1119
+	bl	nftl_free
+.L1119:
+	ldr	r0, [r4, #12]
+	cbz	r0, .L1120
+	bl	nftl_free
+.L1120:
+	ldr	r0, [r4, #4]
+	cbz	r0, .L1121
+	bl	nftl_free
+.L1121:
+	mov	r0, r4
+	bl	nftl_free
+	movs	r3, #0
+	str	r3, [r6]
+	b	.L1132
+.L1115:
+	lsls	r7, r5, #2
+	mov	r0, r7
+	bl	nftl_malloc
+	str	r0, [r4, #12]
+	cbnz	r0, .L1117
+	movw	r2, #1414
+	ldr	r1, .L1133
+	ldr	r0, .L1133+12
+	b	.L1131
+.L1117:
+	mov	r2, r7
+	movs	r1, #255
+	bl	NAND_Memset
+	mov	r0, r5
+	bl	nftl_malloc
+	str	r0, [r4, #4]
+	cbnz	r0, .L1118
+	movw	r2, #1420
+	ldr	r1, .L1133
+	ldr	r0, .L1133+16
+	b	.L1131
+.L1118:
+	mov	r2, r5
+	movs	r1, #0
+	bl	NAND_Memset
+	movs	r0, #0
+	str	r4, [r6]
+.L1112:
+	pop	{r3, r4, r5, r6, r7, pc}
+.L1134:
+	.align	2
+.L1133:
+	.word	.LANCHOR89
+	.word	.LC133
+	.word	.LC134
+	.word	.LC135
+	.word	.LC136
+	.size	init_nrc, .-init_nrc
+	.section	.text.free_nrc,"ax",%progbits
+	.align	1
+	.global	free_nrc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	free_nrc, %function
+free_nrc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	cbz	r0, .L1136
+	ldr	r0, [r0, #8]
+	bl	nftl_free
+	ldr	r0, [r4, #4]
+	bl	nftl_free
+	ldr	r0, [r4, #12]
+	bl	nftl_free
+	mov	r0, r4
+	bl	nftl_free
+.L1136:
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	free_nrc, .-free_nrc
+	.section	.text.nftl_check_pattern,"ax",%progbits
+	.align	1
+	.global	nftl_check_pattern
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_check_pattern, %function
+nftl_check_pattern:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	mov	r3, r0
+	push	{r4, lr}
+.L1141:
+	subs	r4, r3, r0
+	cmp	r2, r4
+	bgt	.L1143
+	movs	r0, #0
+.L1140:
+	pop	{r4, pc}
+.L1143:
+	ldrb	r4, [r3], #1	@ zero_extendqisi2
+	cmp	r4, r1
+	beq	.L1141
+	movs	r0, #1
+	b	.L1140
+	.size	nftl_check_pattern, .-nftl_check_pattern
+	.section	.text.is_last_phy_block,"ax",%progbits
+	.align	1
+	.global	is_last_phy_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_last_phy_block, %function
+is_last_phy_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r1, #4]
+	ldrh	r0, [r0]
+	ldrh	r3, [r3, #24]
+	subs	r3, r3, #1
+	subs	r3, r3, r0
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+	.size	is_last_phy_block, .-is_last_phy_block
+	.section	.text.get_vaild_blocks,"ax",%progbits
+	.align	1
+	.global	get_vaild_blocks
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_vaild_blocks, %function
+get_vaild_blocks:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, lr}
+	movs	r4, #36
+	ldr	r3, [r0, #4]
+	sub	r8, r2, r1
+	mov	r7, r0
+	mov	r5, r1
+	mov	r6, r8
+	ldr	r3, [r3, #32]
+	mla	r4, r4, r1, r3
+.L1147:
+	cmp	r5, r8
+	bcc	.L1150
+.L1146:
+	mov	r0, r6
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1150:
+	ldrh	r3, [r4]
+	mov	r1, sp
+	mov	r0, r7
+	strh	r3, [sp, #2]	@ movhi
+	ldr	r3, [r7, #1996]
+	blx	r3
+	cmp	r0, #159
+	bne	.L1148
+	subs	r6, r6, #1
+	beq	.L1146
+.L1148:
+	mov	r1, r7
+	mov	r0, r4
+	bl	is_last_phy_block
+	cmp	r0, #1
+	beq	.L1146
+	adds	r4, r4, #36
+	adds	r5, r5, #1
+	b	.L1147
+	.size	get_vaild_blocks, .-get_vaild_blocks
+	.section	.text.is_phy_block_valid,"ax",%progbits
+	.align	1
+	.global	is_phy_block_valid
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_phy_block_valid, %function
+is_phy_block_valid:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r1, #4]
+	ldrh	r0, [r0]
+	ldrh	r3, [r3, #24]
+	cmp	r0, r3
+	ite	cs
+	movcs	r0, #0
+	movcc	r0, #1
+	bx	lr
+	.size	is_phy_block_valid, .-is_phy_block_valid
+	.section	.text.get_phy_block_addr,"ax",%progbits
+	.align	1
+	.global	get_phy_block_addr
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_phy_block_addr, %function
+get_phy_block_addr:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #4]
+	movs	r0, #36
+	ldr	r3, [r3, #32]
+	mla	r0, r0, r1, r3
+	bx	lr
+	.size	get_phy_block_addr, .-get_phy_block_addr
+	.section	.text.check_cross_talk,"ax",%progbits
+	.align	1
+	.global	check_cross_talk
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	check_cross_talk, %function
+check_cross_talk:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	movs	r4, #0
+	sub	sp, sp, #36
+	mov	r5, r0
+	mov	r6, r1
+	mov	r7, r4
+.L1160:
+	ldr	r3, [r5, #4]
+	ldrh	r2, [r3, #20]
+	cmp	r2, r4
+	bls	.L1162
+	ldrh	r3, [r3, #28]
+	add	r1, sp, #16
+	ldrh	r2, [r6]
+	mov	r0, r5
+	strh	r4, [sp, #16]	@ movhi
+	strh	r3, [sp, #20]	@ movhi
+	strh	r2, [sp, #18]	@ movhi
+	str	r7, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r3, [r5, #1984]
+	blx	r3
+	cbnz	r0, .L1161
+	ldrb	r3, [sp, #14]	@ zero_extendqisi2
+	cmp	r3, #99
+	bhi	.L1161
+	ldr	r2, [r5, #1968]
+	ldr	r1, [r2, #168]
+	cmp	r1, r3
+	bhi	.L1161
+	str	r3, [r2, #168]
+.L1162:
+	movs	r0, #0
+	add	sp, sp, #36
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L1161:
+	adds	r4, r4, #1
+	b	.L1160
+	.size	check_cross_talk, .-check_cross_talk
+	.section	.text.nftl_get_bad_block_cnt,"ax",%progbits
+	.align	1
+	.global	nftl_get_bad_block_cnt
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_bad_block_cnt, %function
+nftl_get_bad_block_cnt:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #12]
+	ldrh	r0, [r3, #20]
+	bx	lr
+	.size	nftl_get_bad_block_cnt, .-nftl_get_bad_block_cnt
+	.section	.text.nand_dbg_phy_read,"ax",%progbits
+	.align	1
+	.global	nand_dbg_phy_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_phy_read, %function
+nand_dbg_phy_read:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	mov	r5, r0
+	sub	sp, sp, #76
+	mov	r0, #4096
+	mov	r6, r1
+	mov	r7, r2
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1166
+	ldr	r1, .L1167
+	ldr	r0, .L1167+4
+	bl	NAND_Print
+.L1166:
+	add	r3, sp, #56
+	mov	r2, r7
+	strd	r4, r3, [sp]
+	mov	r1, r6
+	movs	r3, #8
+	mov	r0, r5
+	bl	page_read
+	mov	r5, r0
+	ldrb	r0, [sp, #71]	@ zero_extendqisi2
+	ldrb	r3, [sp, #58]	@ zero_extendqisi2
+	ldrb	r2, [sp, #57]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #70]	@ zero_extendqisi2
+	ldrb	r1, [sp, #56]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #69]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #68]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #67]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #66]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #65]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #64]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #63]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #62]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #61]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #60]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #59]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1167+8
+	bl	NAND_Print_DBG
+	ldrb	r0, [r4, #10]	@ zero_extendqisi2
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [r4, #9]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [r4, #8]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [r4, #7]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [r4, #6]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [r4, #5]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [r4, #4]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [r4, #3]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1167+12
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	bl	nftl_free
+	mov	r0, r5
+	add	sp, sp, #76
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L1168:
+	.align	2
+.L1167:
+	.word	.LANCHOR90
+	.word	.LC137
+	.word	.LC138
+	.word	.LC139
+	.size	nand_dbg_phy_read, .-nand_dbg_phy_read
+	.section	.text.nand_dbg_zone_phy_read,"ax",%progbits
+	.align	1
+	.global	nand_dbg_zone_phy_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_zone_phy_read, %function
+nand_dbg_zone_phy_read:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	mov	r5, r0
+	sub	sp, sp, #92
+	mov	r0, #4096
+	mov	r7, r1
+	mov	r6, r2
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1170
+	ldr	r1, .L1171
+	ldr	r0, .L1171+4
+	bl	NAND_Print
+.L1170:
+	ldr	r3, [r5, #4]
+	movs	r1, #36
+	muls	r1, r7, r1
+	mov	r0, r5
+	ldr	r3, [r3, #32]
+	ldrh	r3, [r3, r1]
+	add	r1, sp, #56
+	strh	r6, [sp, #56]	@ movhi
+	str	r4, [sp, #64]
+	strh	r3, [sp, #58]	@ movhi
+	movs	r3, #8
+	strh	r3, [sp, #60]	@ movhi
+	add	r3, sp, #72
+	str	r3, [sp, #68]
+	ldr	r3, [r5, #1984]
+	blx	r3
+	mov	r5, r0
+	ldrb	r0, [sp, #87]	@ zero_extendqisi2
+	ldrb	r3, [sp, #74]	@ zero_extendqisi2
+	ldrb	r2, [sp, #73]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #86]	@ zero_extendqisi2
+	ldrb	r1, [sp, #72]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #85]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #84]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #83]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #82]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #81]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #80]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #79]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #78]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #77]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #76]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #75]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1171+8
+	bl	NAND_Print_DBG
+	ldrb	r0, [r4, #10]	@ zero_extendqisi2
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [r4, #9]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [r4, #8]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [r4, #7]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [r4, #6]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [r4, #5]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [r4, #4]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [r4, #3]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1171+12
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	bl	nftl_free
+	mov	r0, r5
+	add	sp, sp, #92
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L1172:
+	.align	2
+.L1171:
+	.word	.LANCHOR91
+	.word	.LC137
+	.word	.LC138
+	.word	.LC139
+	.size	nand_dbg_zone_phy_read, .-nand_dbg_zone_phy_read
+	.section	.text.nand_dbg_zone_phy_write,"ax",%progbits
+	.align	1
+	.global	nand_dbg_zone_phy_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_zone_phy_write, %function
+nand_dbg_zone_phy_write:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r5, r0
+	sub	sp, sp, #32
+	mov	r0, #8192
+	mov	r6, r1
+	mov	r7, r2
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1174
+	ldr	r1, .L1175
+	ldr	r0, .L1175+4
+	bl	NAND_Print
+.L1174:
+	ldr	r3, [r5, #4]
+	movs	r2, #36
+	muls	r6, r2, r6
+	mov	r0, r4
+	mov	r2, #4096
+	movs	r1, #165
+	ldr	r8, [r3, #32]
+	bl	NAND_Memset
+	ldr	r2, .L1175+8
+	mov	r3, #-1
+	strh	r3, [sp, #24]	@ movhi
+	mov	r1, sp
+	mov	r0, r5
+	strd	r3, r2, [sp, #16]
+	movw	r3, #65535
+	strb	r3, [sp, #26]
+	ldr	r3, [r5, #4]
+	ldrh	r2, [r8, r6]
+	strh	r7, [sp]	@ movhi
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #2]	@ movhi
+	str	r4, [sp, #8]
+	strh	r3, [sp, #4]	@ movhi
+	add	r3, sp, #16
+	str	r3, [sp, #12]
+	ldr	r3, [r5, #1988]
+	blx	r3
+	mov	r5, r0
+	mov	r0, r4
+	bl	nftl_free
+	mov	r0, r5
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1176:
+	.align	2
+.L1175:
+	.word	.LANCHOR92
+	.word	.LC140
+	.word	-5921281
+	.size	nand_dbg_zone_phy_write, .-nand_dbg_zone_phy_write
+	.section	.text.nand_dbg_phy_write,"ax",%progbits
+	.align	1
+	.global	nand_dbg_phy_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_phy_write, %function
+nand_dbg_phy_write:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	mov	r5, r0
+	sub	sp, sp, #28
+	mov	r0, #8192
+	mov	r6, r1
+	mov	r7, r2
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1178
+	ldr	r1, .L1179
+	ldr	r0, .L1179+4
+	bl	NAND_Print
+.L1178:
+	mov	r0, r4
+	mov	r2, #4096
+	movs	r1, #165
+	bl	NAND_Memset
+	ldr	r2, .L1179+8
+	mov	r3, #-1
+	strh	r3, [sp, #16]	@ movhi
+	mov	r1, r6
+	mov	r0, r5
+	strd	r3, r2, [sp, #8]
+	movw	r3, #65535
+	strb	r3, [sp, #18]
+	add	r3, sp, #8
+	strd	r4, r3, [sp]
+	mov	r2, r7
+	movs	r3, #8
+	bl	page_write
+	mov	r5, r0
+	mov	r0, r4
+	bl	nftl_free
+	mov	r0, r5
+	add	sp, sp, #28
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L1180:
+	.align	2
+.L1179:
+	.word	.LANCHOR93
+	.word	.LC140
+	.word	-5921281
+	.size	nand_dbg_phy_write, .-nand_dbg_phy_write
+	.section	.text.nand_dbg_phy_erase,"ax",%progbits
+	.align	1
+	.global	nand_dbg_phy_erase
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_phy_erase, %function
+nand_dbg_phy_erase:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	b	block_erase
+	.size	nand_dbg_phy_erase, .-nand_dbg_phy_erase
+	.section	.text.nand_dbg_single_phy_erase,"ax",%progbits
+	.align	1
+	.global	nand_dbg_single_phy_erase
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_single_phy_erase, %function
+nand_dbg_single_phy_erase:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	b	nand_physic_erase_block
+	.size	nand_dbg_single_phy_erase, .-nand_dbg_single_phy_erase
+	.section	.text.clean_block_list,"ax",%progbits
+	.align	1
+	.global	clean_block_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	clean_block_list, %function
+clean_block_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r5, r0
+	movs	r4, #0
+	mov	r6, #-1
+.L1185:
+	mov	r0, r5
+	bl	out_phy_block_from_free_list
+	cbnz	r0, .L1188
+	mov	r1, r0
+	mov	r4, #-1
+.L1184:
+	mov	r0, r5
+	bl	out_phy_block_from_invalid_page_list
+	cbz	r0, .L1183
+	strh	r1, [r0, #4]	@ movhi
+	strh	r1, [r0, #2]	@ movhi
+	strd	r4, r1, [r0, #8]
+	strd	r1, r1, [r0, #16]
+	strd	r1, r1, [r0, #24]
+	str	r1, [r0, #32]
+	b	.L1184
+.L1188:
+	strh	r4, [r0, #4]	@ movhi
+	strh	r4, [r0, #2]	@ movhi
+	strd	r6, r4, [r0, #8]
+	strd	r4, r4, [r0, #16]
+	strd	r4, r4, [r0, #24]
+	str	r4, [r0, #32]
+	b	.L1185
+.L1183:
+	pop	{r4, r5, r6, pc}
+	.size	clean_block_list, .-clean_block_list
+	.section	.text.nand_clean_zone_table2,"ax",%progbits
+	.align	1
+	.global	nand_clean_zone_table2
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_clean_zone_table2, %function
+nand_clean_zone_table2:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #4]
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	ldr	r0, [r0, #24]
+	add	r8, r4, #52
+	mov	r5, r4
+	ldrb	r1, [r3, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	lsls	r6, r0, #2
+	ldr	fp, .L1198+4
+	mov	r2, r0
+	ldrb	r1, [r4, #16]	@ zero_extendqisi2
+	lsrs	r7, r6, #20
+	ldr	r0, .L1198
+	add	r10, r8, r7, lsl #2
+	bl	NAND_Print_DBG
+.L1190:
+	cmp	r8, r10
+	bne	.L1191
+	ubfx	r6, r6, #0, #20
+	cbz	r6, .L1192
+	add	r7, r4, r7, lsl #2
+	movs	r1, #255
+	mov	r2, r6
+	ldr	r0, [r7, #52]
+	bl	NAND_Memset
+	mov	r1, r6
+	ldr	r0, .L1198+4
+	bl	NAND_Print_DBG
+.L1192:
+	movs	r3, #0
+	movw	r2, #65535
+	strh	r2, [r4, #320]	@ movhi
+	strh	r2, [r4, #352]	@ movhi
+	mov	r2, r3
+	str	r3, [r4, #292]
+	str	r3, [r4, #324]
+	strd	r3, r3, [r4, #172]
+	strd	r3, r3, [r4, #164]
+	strd	r3, r3, [r4, #180]
+	strd	r3, r3, [r4, #208]
+	strd	r3, r3, [r4, #200]
+	strd	r3, r3, [r4, #216]
+	strd	r3, r3, [r4, #244]
+	strd	r3, r3, [r4, #236]
+	strd	r3, r3, [r4, #252]
+	str	r3, [r4, #20]
+	strh	r3, [r4, #392]	@ movhi
+.L1193:
+	strh	r3, [r5, #396]	@ movhi
+	adds	r3, r3, #1
+	cmp	r3, #10
+	strh	r2, [r5, #398]	@ movhi
+	strd	r2, r2, [r5, #400]
+	add	r5, r5, #16
+	str	r2, [r5, #392]
+	bne	.L1193
+	movs	r3, #255
+	strh	r2, [r4, #394]	@ movhi
+	strd	r3, r2, [r4, #556]
+	movs	r0, #0
+	strd	r2, r2, [r4, #564]
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1191:
+	ldr	r0, [r8], #4
+	mov	r2, #1048576
+	movs	r1, #255
+	bl	NAND_Memset
+	mov	r1, #1048576
+	mov	r0, fp
+	bl	NAND_Print_DBG
+	b	.L1190
+.L1199:
+	.align	2
+.L1198:
+	.word	.LC141
+	.word	.LC142
+	.size	nand_clean_zone_table2, .-nand_clean_zone_table2
+	.section	.text.nftl_clean_logic_page_map,"ax",%progbits
+	.align	1
+	.global	nftl_clean_logic_page_map
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_clean_logic_page_map, %function
+nftl_clean_logic_page_map:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, r8, r10, lr}
+	mov	r4, r0
+	ldr	r3, [r0, #4]
+	add	r6, r4, #52
+	ldr	r0, [r0, #24]
+	ldrb	r1, [r3, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	lsls	r5, r0, #2
+	ldr	r10, .L1204+4
+	mov	r2, r0
+	ldrb	r1, [r4, #16]	@ zero_extendqisi2
+	lsrs	r7, r5, #20
+	ldr	r0, .L1204
+	add	r8, r6, r7, lsl #2
+	bl	NAND_Print_DBG
+.L1201:
+	cmp	r6, r8
+	bne	.L1202
+	ubfx	r5, r5, #0, #20
+	cbz	r5, .L1200
+	add	r4, r4, r7, lsl #2
+	mov	r2, r5
+	movs	r1, #255
+	ldr	r0, [r4, #52]
+	bl	NAND_Memset
+	mov	r1, r5
+	ldr	r0, .L1204+4
+	pop	{r3, r4, r5, r6, r7, r8, r10, lr}
+	b	NAND_Print_DBG
+.L1202:
+	ldr	r0, [r6], #4
+	mov	r2, #1048576
+	movs	r1, #255
+	bl	NAND_Memset
+	mov	r1, #1048576
+	mov	r0, r10
+	bl	NAND_Print_DBG
+	b	.L1201
+.L1200:
+	pop	{r3, r4, r5, r6, r7, r8, r10, pc}
+.L1205:
+	.align	2
+.L1204:
+	.word	.LC141
+	.word	.LC142
+	.size	nftl_clean_logic_page_map, .-nftl_clean_logic_page_map
+	.section	.text.nftl_clean_used_list,"ax",%progbits
+	.align	1
+	.global	nftl_clean_used_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_clean_used_list, %function
+nftl_clean_used_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r1, [r0, #4]
+	movs	r3, #0
+	push	{r4, r5, r6, lr}
+	movs	r6, #36
+	mov	r4, r3
+	ldrh	r5, [r1, #24]
+.L1207:
+	cmp	r5, r3
+	bgt	.L1208
+	movs	r3, #0
+	strd	r3, r3, [r0, #244]
+	strd	r3, r3, [r0, #236]
+	strd	r3, r3, [r0, #252]
+	pop	{r4, r5, r6, pc}
+.L1208:
+	ldr	r2, [r1, #32]
+	mla	r2, r6, r3, r2
+	adds	r3, r3, #1
+	strd	r4, r4, [r2, #28]
+	b	.L1207
+	.size	nftl_clean_used_list, .-nftl_clean_used_list
+	.section	.text.nftl_clean_invalid_list,"ax",%progbits
+	.align	1
+	.global	nftl_clean_invalid_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_clean_invalid_list, %function
+nftl_clean_invalid_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r1, [r0, #4]
+	movs	r3, #0
+	push	{r4, r5, r6, lr}
+	movs	r6, #36
+	mov	r4, r3
+	ldrh	r5, [r1, #24]
+.L1210:
+	cmp	r5, r3
+	bgt	.L1211
+	movs	r3, #0
+	strd	r3, r3, [r0, #208]
+	strd	r3, r3, [r0, #200]
+	strd	r3, r3, [r0, #216]
+	pop	{r4, r5, r6, pc}
+.L1211:
+	ldr	r2, [r1, #32]
+	mla	r2, r6, r3, r2
+	adds	r3, r3, #1
+	strd	r4, r4, [r2, #12]
+	b	.L1210
+	.size	nftl_clean_invalid_list, .-nftl_clean_invalid_list
+	.section	.text.clean_zone,"ax",%progbits
+	.align	1
+	.global	clean_zone
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	clean_zone, %function
+clean_zone:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, lr}
+	mov	r4, r0
+	cbz	r0, .L1213
+	ldrb	r6, [r0, #1976]	@ zero_extendqisi2
+	cmp	r6, #0
+	beq	.L1214
+.L1213:
+	ldr	r5, [r4, #172]
+	movs	r6, #0
+	ldr	r7, .L1242
+	ldr	r8, .L1242+4
+.L1215:
+	cmp	r5, #0
+	bne	.L1217
+	ldr	r5, [r4, #252]
+	ldr	r7, .L1242
+	ldr	r8, .L1242+12
+.L1218:
+	cmp	r5, #0
+	bne	.L1220
+	ldr	r3, [r4, #292]
+	cbz	r3, .L1221
+	ldrh	r2, [r3]
+	mov	r1, sp
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	strh	r5, [sp]	@ movhi
+	strh	r2, [sp, #2]	@ movhi
+	ldrh	r3, [r3, #28]
+	strd	r5, r5, [sp, #8]
+	strh	r3, [sp, #4]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	cbz	r0, .L1222
+	ldrh	r2, [r5]
+	ldr	r1, .L1242
+	ldr	r0, .L1242+4
+	bl	NAND_Print
+	ldr	r3, [r4, #2000]
+	mov	r1, sp
+	mov	r0, r4
+	blx	r3
+	ldrh	r3, [r4, #20]
+	adds	r3, r3, #1
+	strh	r3, [r4, #20]	@ movhi
+.L1222:
+	movs	r1, #0
+	movs	r6, #1
+	ldrh	r3, [r1, #6]
+	mov	r0, r4
+	strh	r1, [r1, #2]	@ movhi
+	strh	r1, [r1, #4]	@ movhi
+	adds	r3, r3, #1
+	strh	r3, [r1, #6]	@ movhi
+	bl	put_phy_block_to_free_list
+.L1221:
+	mov	r0, r4
+	bl	nftl_clean_logic_page_map
+	mov	r0, r4
+	bl	nftl_clean_used_list
+	bl	nftl_clean_invalid_list
+	bl	out_phy_block_from_free_list
+	str	r0, [r4, #292]
+	cbnz	r0, .L1223
+	ldr	r0, .L1242+8
+	bl	NAND_Print
+.L1223:
+	ldr	r2, [r4, #292]
+	movs	r3, #0
+	strh	r3, [r4, #320]	@ movhi
+	ldr	r3, [r2, #8]
+	adds	r3, r3, #1
+	str	r3, [r2, #8]
+.L1214:
+	mov	r0, r6
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1217:
+	ldr	r3, [r4, #4]
+	movs	r6, #0
+	ldrh	r2, [r5]
+	mov	r1, sp
+	strh	r6, [sp]	@ movhi
+	mov	r0, r4
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #2]	@ movhi
+	strd	r6, r6, [sp, #8]
+	strh	r3, [sp, #4]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	cbz	r0, .L1216
+	ldrh	r2, [r5]
+	mov	r1, r7
+	mov	r0, r8
+	bl	NAND_Print
+	ldr	r3, [r4, #2000]
+	mov	r1, sp
+	mov	r0, r4
+	blx	r3
+	movs	r3, #255
+	strh	r6, [r5, #4]	@ movhi
+	strh	r3, [r5, #2]	@ movhi
+	mov	r1, r5
+	ldrh	r3, [r4, #20]
+	mov	r0, r4
+	adds	r3, r3, #1
+	strh	r3, [r4, #20]	@ movhi
+	bl	out_phy_block_from_free_list_by_block
+.L1216:
+	ldrh	r3, [r5, #6]
+	movs	r6, #1
+	adds	r3, r3, #1
+	strh	r3, [r5, #6]	@ movhi
+	ldr	r5, [r5, #20]
+	b	.L1215
+.L1220:
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	ldrh	r2, [r3, #28]
+	movs	r3, #0
+	strh	r3, [sp]	@ movhi
+	strh	r1, [sp, #2]	@ movhi
+	mov	r1, sp
+	strd	r3, r3, [sp, #8]
+	strh	r2, [sp, #4]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	cbz	r0, .L1219
+	ldrh	r2, [r5]
+	mov	r1, r7
+	mov	r0, r8
+	bl	NAND_Print
+	ldr	r3, [r4, #2000]
+	mov	r1, sp
+	mov	r0, r4
+	blx	r3
+	ldrh	r3, [r4, #20]
+	adds	r3, r3, #1
+	strh	r3, [r4, #20]	@ movhi
+.L1219:
+	ldrh	r3, [r5, #6]
+	movs	r2, #0
+	strh	r2, [r5, #2]	@ movhi
+	mov	r1, r5
+	strh	r2, [r5, #4]	@ movhi
+	mov	r0, r4
+	adds	r3, r3, #1
+	movs	r6, #1
+	strh	r3, [r5, #6]	@ movhi
+	bl	put_phy_block_to_free_list
+	ldr	r5, [r5, #28]
+	b	.L1218
+.L1243:
+	.align	2
+.L1242:
+	.word	.LANCHOR94
+	.word	.LC143
+	.word	.LC145
+	.word	.LC144
+	.size	clean_zone, .-clean_zone
+	.section	.text.nftl_clean_zone,"ax",%progbits
+	.align	1
+	.global	nftl_clean_zone
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_clean_zone, %function
+nftl_clean_zone:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L1246
 	ldr	r0, [r3, #8]
-	ldr	r3, .L2930+8
-	ldrb	r4, [r3]	@ zero_extendqisi2
-.L2924:
-	cbnz	r0, .L2925
-	cbz	r5, .L2926
-	strb	r1, [r2]
-	strb	r4, [r3]
-.L2926:
-	ldr	r0, .L2930+12
+	cbz	r0, .L1245
+	ldr	r0, [r0, #12]
+	b	clean_zone
+.L1245:
+	bx	lr
+.L1247:
+	.align	2
+.L1246:
+	.word	.LANCHOR0
+	.size	nftl_clean_zone, .-nftl_clean_zone
+	.section	.text.set_spare_data,"ax",%progbits
+	.align	1
+	.global	set_spare_data
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_spare_data, %function
+set_spare_data:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	add	r6, r3, #536870912
+	movs	r4, #0
+	add	r2, r2, r0
+	subs	r6, r6, #1
+.L1249:
+	cmp	r3, r4
+	bhi	.L1250
+	pop	{r4, r5, r6, pc}
+.L1250:
+	subs	r5, r6, r4
+	lsls	r5, r5, #3
+	lsr	r5, r1, r5
+	strb	r5, [r2, r4]
+	adds	r4, r4, #1
+	b	.L1249
+	.size	set_spare_data, .-set_spare_data
+	.section	.text.panic_write,"ax",%progbits
+	.align	1
+	.global	panic_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_write, %function
+panic_write:
+	@ args = 0, pretend = 0, frame = 48
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #56
+	str	r3, [sp, #16]
+	mov	fp, r2
+	ldr	r3, .L1264
+	str	r1, [sp, #12]
+	ldr	r3, [r3]
+	cbz	r3, .L1262
+	ldr	r8, [r0, #12]
+	movs	r2, #1
+	ldr	r3, .L1264+4
+	add	r0, fp, #-1
+	ldr	r7, .L1264+8
+	ldr	r5, [r8, #4]
+	str	r2, [r3]
+	ldrb	r1, [r5, #8]	@ zero_extendqisi2
+	add	r0, r0, r1
+	bl	__aeabi_uidiv
+	ldrh	r1, [r5, #20]
+	mov	r10, r0
+	subs	r0, r1, #1
+	add	r0, r0, r10
+	bl	__aeabi_uidiv
+	mov	r3, r10
+	str	r0, [sp]
+	mov	r2, fp
+	ldr	r1, [sp, #12]
+	ldr	r0, .L1264+12
+	bl	NAND_Print
+	ldr	r3, [r7, #12]
+	subs	r3, r3, #3
+	cmp	r3, r10
+	bcs	.L1253
+	ldrb	r1, [r5, #8]	@ zero_extendqisi2
+	ldr	r0, .L1264+16
+	muls	r1, r3, r1
+	bl	NAND_Print
+.L1262:
+	mov	r0, #-1
+	b	.L1251
+.L1253:
+	movs	r2, #16
+	movs	r1, #165
+	add	r0, sp, #24
+	mov	r4, r7
+	bl	NAND_Memset
+	ldr	r3, [r7, #16]
+	ldr	r6, [r7, r3, lsl #2]
+.L1254:
+	ldr	r3, [r7, #20]
+	cmp	r10, #0
+	bne	.L1257
+	ldr	fp, .L1264+24
+	movs	r7, #3
+	add	r10, sp, #24
+	movs	r3, #98
+	strb	r3, [sp, #26]
+.L1261:
+	ldr	r2, [r4, #20]
+	cmp	r2, #0
+	bne	.L1258
+.L1259:
+	movs	r0, #0
+.L1251:
+	add	sp, sp, #56
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1257:
+	ldrh	r2, [r5, #20]
+	cmp	r3, r2
+	bcc	.L1255
+	ldr	r3, [r7, #16]
+	adds	r3, r3, #1
+	str	r3, [r7, #16]
+	ldr	r6, [r7, r3, lsl #2]
+	movs	r3, #0
+	str	r3, [r7, #20]
+.L1255:
+	ldr	r3, [r4, #20]
+	ldrh	r1, [r6]
+	cbnz	r3, .L1256
+	ldrh	r2, [r5, #28]
+	mov	r0, r8
+	strh	r3, [sp, #40]	@ movhi
+	strh	r1, [sp, #42]	@ movhi
+	add	r1, sp, #40
+	strh	r2, [sp, #44]	@ movhi
+	strd	r3, r3, [sp, #48]
+	ldr	r2, [r8, #1980]
+	str	r3, [sp, #20]
+	blx	r2
+	ldrh	r2, [r6, #6]
+	ldr	r3, [sp, #20]
+	adds	r2, r2, #1
+	strh	r2, [r6, #6]	@ movhi
+	strh	r3, [r6, #4]	@ movhi
+.L1256:
+	ldr	r2, [r4, #20]
+	add	r10, r10, #-1
+	ldrh	r1, [r6]
+	ldr	r0, .L1264+20
+	bl	NAND_Print
+	movw	r3, #43775
+	movs	r2, #5
+	strh	r3, [sp, #24]	@ movhi
+	movs	r3, #99
+	strb	r3, [sp, #26]
+	add	r0, sp, #24
+	ldrb	r3, [r8, #16]	@ zero_extendqisi2
+	strb	r3, [sp, #27]
+	ldr	r3, [r4, #16]
+	strb	r3, [sp, #28]
+	movs	r3, #2
+	ldrh	r1, [r6, #6]
+	bl	set_spare_data
+	movs	r3, #4
+	movs	r2, #7
+	ldr	r1, [sp, #12]
+	add	r0, sp, #24
+	bl	set_spare_data
+	ldrb	r1, [r5, #8]	@ zero_extendqisi2
+	movs	r3, #4
+	movs	r2, #11
+	add	r0, sp, #24
+	cmp	r1, fp
+	it	cs
+	movcs	r1, fp
+	bl	set_spare_data
+	ldrh	r3, [r5, #28]
+	mov	r0, r8
+	ldrh	r2, [r6]
+	ldr	r1, [r4, #20]
+	strh	r3, [sp, #44]	@ movhi
+	ldr	r3, [sp, #16]
+	strh	r1, [sp, #40]	@ movhi
+	add	r1, sp, #40
+	strh	r2, [sp, #42]	@ movhi
+	str	r3, [sp, #48]
+	add	r3, sp, #24
+	str	r3, [sp, #52]
+	ldr	r3, [r8, #1988]
+	blx	r3
+	ldr	r2, [sp, #16]
+	ldrh	r3, [r5, #26]
+	adds	r3, r2, r3
+	ldr	r2, [sp, #12]
+	str	r3, [sp, #16]
+	ldrb	r3, [r5, #8]	@ zero_extendqisi2
+	cmp	r3, fp
+	it	cs
+	movcs	r3, fp
+	add	r2, r2, r3
+	sub	fp, fp, r3
+	ldr	r3, [r4, #12]
+	str	r2, [sp, #12]
+	subs	r3, r3, #1
+	str	r3, [r4, #12]
+	ldr	r3, [r4, #20]
+	adds	r3, r3, #1
+	str	r3, [r4, #20]
+	b	.L1254
+.L1258:
+	ldrh	r3, [r5, #20]
+	cmp	r2, r3
+	bcs	.L1259
+	ldrh	r1, [r6]
+	mov	r0, fp
+	bl	NAND_Print
+	ldrh	r3, [r5, #28]
+	mov	r0, r8
+	ldrh	r2, [r6]
+	ldr	r1, [r4, #20]
+	strh	r3, [sp, #44]	@ movhi
+	ldr	r3, [sp, #16]
+	strh	r1, [sp, #40]	@ movhi
+	add	r1, sp, #40
+	strh	r2, [sp, #42]	@ movhi
+	strd	r3, r10, [sp, #48]
+	ldr	r3, [r8, #1988]
+	blx	r3
+	ldr	r2, [r4, #12]
+	ldr	r3, [r4, #20]
+	subs	r2, r2, #1
+	str	r2, [r4, #12]
+	adds	r3, r3, #1
+	ldrh	r2, [r5, #20]
+	str	r3, [r4, #20]
+	cmp	r3, r2
+	bcc	.L1260
+	ldr	r3, [r4, #16]
+	adds	r3, r3, #1
+	str	r3, [r4, #16]
+	ldr	r6, [r4, r3, lsl #2]
+	movs	r3, #0
+	str	r3, [r4, #20]
+.L1260:
+	subs	r7, r7, #1
+	bne	.L1261
+	b	.L1259
+.L1265:
+	.align	2
+.L1264:
+	.word	.LANCHOR86
+	.word	.LANCHOR85
+	.word	.LANCHOR88
+	.word	.LC146
+	.word	.LC147
+	.word	.LC148
+	.word	.LC149
+	.size	panic_write, .-panic_write
+	.section	.text.get_spare_data,"ax",%progbits
+	.align	1
+	.global	get_spare_data
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_spare_data, %function
+get_spare_data:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r3, #0
+	push	{r4, lr}
+	add	r1, r1, r0
+	mov	r4, r3
+.L1267:
+	cmp	r2, r3
+	bhi	.L1268
+	mov	r0, r4
+	pop	{r4, pc}
+.L1268:
+	ldrb	r0, [r1, r3]	@ zero_extendqisi2
+	adds	r3, r3, #1
+	orr	r4, r0, r4, lsl #8
+	b	.L1267
+	.size	get_spare_data, .-get_spare_data
+	.section	.text.set_oob_logic_page,"ax",%progbits
+	.align	1
+	.global	set_oob_logic_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_oob_logic_page, %function
+set_oob_logic_page:
+	@ args = 4, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r1
+	mov	r5, r3
+	movs	r3, #255
+	mov	r1, r2
+	mov	r0, r4
+	strb	r3, [r4]
+	movs	r2, #1
+	movs	r3, #4
+	bl	set_spare_data
+	movs	r3, #2
+	movs	r2, #5
+	ldrh	r1, [sp, #16]
+	bl	set_spare_data
+	movs	r3, #4
+	movs	r2, #7
+	mov	r1, r5
+	bl	set_spare_data
+	ldrb	r3, [r4, #1]	@ zero_extendqisi2
+	orn	r3, r3, #63
+	strb	r3, [r4, #1]
+	pop	{r3, r4, r5, pc}
+	.size	set_oob_logic_page, .-set_oob_logic_page
+	.section	.text.set_oob_special_page,"ax",%progbits
+	.align	1
+	.global	set_oob_special_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_oob_special_page, %function
+set_oob_special_page:
+	@ args = 4, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r4, r1
+	ldrh	r6, [sp, #16]
+	mov	r5, r3
+	movs	r3, #255
+	mov	r1, r2
+	strb	r3, [r4]
+	mov	r0, r4
+	movs	r3, #4
+	movs	r2, #1
+	bl	set_spare_data
+	mov	r1, r6
+	movs	r3, #2
+	movs	r2, #5
+	bl	set_spare_data
+	mov	r1, r5
+	movs	r3, #4
+	movs	r2, #7
+	pop	{r4, r5, r6, lr}
+	b	set_spare_data
+	.size	set_oob_special_page, .-set_oob_special_page
+	.section	.text.mark_free_block,"ax",%progbits
+	.align	1
+	.global	mark_free_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	mark_free_block, %function
+mark_free_block:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	sub	sp, sp, #44
+	add	r6, sp, #24
+	mov	r4, r0
+	mov	r5, r1
+	mov	r0, r6
+	movs	r2, #16
+	movs	r1, #165
+	bl	NAND_Memset
+	ldr	r3, [r4, #4]
+	movs	r7, #0
+	ldrh	r1, [r5]
+	mov	r0, r4
+	strh	r7, [sp, #8]	@ movhi
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #10]	@ movhi
+	mov	r1, r6
+	strh	r2, [sp, #12]	@ movhi
+	mov	r2, #1431655765
+	strd	r3, r6, [sp, #16]
+	ldrh	r3, [r5, #6]
+	str	r3, [sp]
+	ldr	r3, [r5, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	ldr	r3, [r4, #4]
+	movs	r0, #1
+	ldrh	r1, [r5]
+	strh	r0, [sp, #8]	@ movhi
+	mov	r0, r4
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #10]	@ movhi
+	mov	r1, r6
+	strh	r2, [sp, #12]	@ movhi
+	mov	r2, #1431655765
+	strd	r3, r6, [sp, #16]
+	ldrh	r3, [r5, #6]
+	str	r3, [sp]
+	ldr	r3, [r5, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r5]
+	ldr	r2, [r4, #284]
+	ldrh	r1, [r3, #28]
+	ldrh	r3, [r3, #20]
+	strh	r0, [sp, #10]	@ movhi
+	mov	r0, r4
+	strh	r1, [sp, #12]	@ movhi
+	mov	r1, r6
+	subs	r3, r3, #2
+	strd	r2, r6, [sp, #16]
+	strh	r3, [sp, #8]	@ movhi
+	mov	r2, #1431655765
+	ldrh	r3, [r5, #6]
+	str	r3, [sp]
+	ldr	r3, [r5, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r5]
+	ldr	r2, [r4, #284]
+	ldrh	r1, [r3, #28]
+	ldrh	r3, [r3, #20]
+	strh	r0, [sp, #10]	@ movhi
+	mov	r0, r4
+	strh	r1, [sp, #12]	@ movhi
+	mov	r1, r6
+	subs	r3, r3, #1
+	strd	r2, r6, [sp, #16]
+	strh	r3, [sp, #8]	@ movhi
+	mov	r2, #1431655765
+	ldrh	r3, [r5, #6]
+	str	r3, [sp]
+	ldr	r3, [r5, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	mov	r0, r7
+	add	sp, sp, #44
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+	.size	mark_free_block, .-mark_free_block
+	.section	.text.erase_block,"ax",%progbits
+	.align	1
+	.global	erase_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	erase_block, %function
+erase_block:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, lr}
+	mov	r5, r0
+	mov	r4, r1
+	ldr	r0, .L1275
+	mov	r8, r2
+	movs	r6, #0
+	ldrh	r1, [r1]
+	bl	NAND_Print
+	ldr	r3, [r5, #4]
+	mov	r1, sp
+	ldrh	r2, [r4]
+	mov	r0, r5
+	strh	r6, [sp]	@ movhi
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #2]	@ movhi
+	strd	r6, r6, [sp, #8]
+	strh	r3, [sp, #4]	@ movhi
+	ldr	r3, [r5, #1980]
+	blx	r3
+	mov	r7, r0
+	cbz	r0, .L1273
+	ldrh	r1, [r4]
+	ldr	r0, .L1275+4
+	bl	NAND_Print
+	ldr	r3, [r5, #2000]
+	mov	r1, sp
+	mov	r0, r5
+	blx	r3
+	movs	r3, #255
+	strh	r6, [r4, #4]	@ movhi
+	strh	r3, [r4, #2]	@ movhi
+	ldrh	r3, [r5, #20]
+	adds	r3, r3, #1
+	strh	r3, [r5, #20]	@ movhi
+.L1272:
+	mov	r0, r7
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1273:
+	mov	r3, #-1
+	mov	r1, r4
+	str	r3, [r4, #8]
+	mov	r0, r5
+	strh	r8, [r4, #6]	@ movhi
+	bl	put_phy_block_to_free_list
+	mov	r1, r4
+	mov	r0, r5
+	bl	mark_free_block
+	ldr	r3, [r5, #4]
+	mov	r1, r4
+	mov	r0, r5
+	ldrh	r3, [r3, #20]
+	strh	r7, [r4, #2]	@ movhi
+	strh	r3, [r4, #4]	@ movhi
+	bl	out_phy_block_from_used_list_by_block
+	mov	r0, r5
+	bl	out_phy_block_from_invalid_page_list_by_block
+	b	.L1272
+.L1276:
+	.align	2
+.L1275:
+	.word	.LC150
+	.word	.LC151
+	.size	erase_block, .-erase_block
+	.section	.text.adjust_free_list,"ax",%progbits
+	.align	1
+	.global	adjust_free_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	adjust_free_list, %function
+adjust_free_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r0
+	bl	out_phy_block_from_free_list
+	mov	r4, r0
+	cbnz	r0, .L1278
+	ldr	r0, .L1279
+	bl	NAND_Print
+.L1278:
+	ldrh	r2, [r4, #6]
+	mov	r1, r4
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	mov	r1, r4
+	mov	r0, r5
+	bl	out_phy_block_from_free_list_by_block
+	str	r0, [r5, #48]
+	ldrh	r2, [r0, #6]
+	ldrh	r1, [r0]
+	ldr	r0, .L1279+4
+	bl	NAND_Print
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L1280:
+	.align	2
+.L1279:
+	.word	.LC152
+	.word	.LC153
+	.size	adjust_free_list, .-adjust_free_list
+	.section	.text.nand_dbg_zone_erase,"ax",%progbits
+	.align	1
+	.global	nand_dbg_zone_erase
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_dbg_zone_erase, %function
+nand_dbg_zone_erase:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r2
+	ldr	r3, [r0, #4]
+	movs	r2, #36
+	mov	r4, r0
+	ldr	r3, [r3, #32]
+	mla	r1, r2, r1, r3
+	bl	out_phy_block_from_free_list_by_block
+	mov	r2, r5
+	mov	r1, r0
+	mov	r0, r4
+	pop	{r3, r4, r5, lr}
+	b	erase_block
+	.size	nand_dbg_zone_erase, .-nand_dbg_zone_erase
+	.section	.text.panic_recover_data,"ax",%progbits
+	.align	1
+	.global	panic_recover_data
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	panic_recover_data, %function
+panic_recover_data:
+	@ args = 0, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #40
+	ldr	r4, .L1301
+	ldr	r5, [r4]
+	cbnz	r5, .L1283
+	ldr	r0, .L1301+4
+	bl	NAND_Print
+.L1300:
+	movs	r0, #0
+	b	.L1282
+.L1283:
+	ldr	r6, [r0, #12]
+	ldr	r0, .L1301+8
+	ldr	r7, [r6, #4]
+	bl	NAND_Print
+	ldrh	r0, [r7, #26]
+	bl	NAND_Malloc
+	mov	fp, r0
+	cbnz	r0, .L1285
+	mov	r2, #308
+	ldr	r1, .L1301+12
+	ldr	r0, .L1301+16
+	bl	NAND_Print
+	mov	r0, #-1
+.L1282:
+	add	sp, sp, #40
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1285:
+	ldrh	r2, [r7, #26]
+	movs	r1, #0
+	bl	NAND_Memset
+	movs	r3, #0
+.L1299:
+	str	r3, [r4, #16]
+	ldr	r3, [r4, #16]
+	cmp	r3, #2
+	bhi	.L1293
+	ldr	r3, [r4, r3, lsl #2]
+	str	r3, [sp]
+	movs	r3, #0
+.L1298:
+	str	r3, [r4, #20]
+	ldrh	r2, [r7, #20]
+	ldr	r3, [r4, #20]
+	cmp	r3, r2
+	bcc	.L1294
+	ldr	r3, [r4, #16]
+	adds	r3, r3, #1
+	b	.L1299
+.L1294:
+	ldr	r2, [sp]
+	add	r5, sp, #24
+	mov	r0, r6
+	ldrh	r1, [r2]
+	ldrh	r2, [r7, #28]
+	strh	r3, [sp, #8]	@ movhi
+	strh	r1, [sp, #10]	@ movhi
+	add	r1, sp, #8
+	ldr	r3, [r6, #1984]
+	strh	r2, [sp, #12]	@ movhi
+	str	fp, [sp, #16]
+	str	r5, [sp, #20]
+	blx	r3
+	mov	r0, r5
+	bl	is_panic_dummy_page
+	ldr	r3, [sp]
+	ldrh	r8, [r3]
+	cbz	r0, .L1288
+	ldr	r2, [r4, #20]
+	mov	r1, r8
+	ldr	r0, .L1301+20
+	bl	NAND_Print
+.L1289:
+	ldr	r3, [r4, #20]
+	adds	r3, r3, #1
+	b	.L1298
+.L1288:
+	mov	r0, r5
+	bl	is_panic_data_page
+	ldr	r10, [r4, #20]
+	cbnz	r0, .L1290
+	ldr	r3, [r4, #16]
+	mov	r2, r10
+	mov	r1, r8
+	cbnz	r3, .L1291
+	cmp	r10, #0
+	bne	.L1291
+	ldr	r0, .L1301+24
+	bl	NAND_Print
+.L1292:
+	movs	r1, #0
+	mov	r0, fp
+	bl	NAND_Free
+	b	.L1300
+.L1291:
+	ldr	r0, .L1301+28
+	bl	NAND_Print
+.L1293:
+	ldr	r3, [r4, #16]
+	cmp	r3, #0
+	blt	.L1292
+	ldr	r1, [r4, r3, lsl #2]
+	mov	r0, r6
+	ldrh	r2, [r1, #6]
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	ldr	r3, [r4, #16]
+	subs	r3, r3, #1
+	str	r3, [r4, #16]
+	b	.L1293
+.L1290:
+	movs	r2, #4
+	movs	r1, #7
+	mov	r0, r5
+	bl	get_spare_data
+	movs	r2, #4
+	str	r0, [sp, #4]
+	movs	r1, #11
+	mov	r0, r5
+	bl	get_spare_data
+	mov	r2, r10
+	mov	r5, r0
+	mov	r1, r8
+	ldr	r3, [sp, #4]
+	ldr	r0, .L1301+32
+	bl	NAND_Print
+	mov	r2, fp
+	mov	r1, r5
+	ldr	r0, [sp, #4]
+	bl	nftl_write
+	b	.L1289
+.L1302:
+	.align	2
+.L1301:
+	.word	.LANCHOR88
+	.word	.LC154
+	.word	.LC155
+	.word	.LANCHOR95
+	.word	.LC156
+	.word	.LC157
+	.word	.LC158
+	.word	.LC159
+	.word	.LC160
+	.size	panic_recover_data, .-panic_recover_data
+	.section	.text.torture_block_and_mark,"ax",%progbits
+	.align	1
+	.global	torture_block_and_mark
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	torture_block_and_mark, %function
+torture_block_and_mark:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, lr}
+	sub	sp, sp, #44
+	add	r7, sp, #8
+	mov	r4, r0
+	mov	r5, r1
+	movs	r2, #15
+	movs	r1, #0
+	mov	r0, r7
+	bl	memset
+	ldrh	r1, [r5]
+	ldr	r0, .L1319
+	bl	NAND_Print
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	ldrh	r2, [r3, #28]
+	movs	r3, #0
+	strh	r3, [sp, #24]	@ movhi
+	strh	r1, [sp, #26]	@ movhi
+	add	r1, sp, #24
+	strd	r3, r3, [sp, #32]
+	strh	r2, [sp, #28]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1304
+	ldrh	r1, [r5]
+	ldr	r0, .L1319+4
+.L1316:
+	bl	NAND_Print
+	b	.L1305
+.L1304:
+	ldrh	r3, [r5, #6]
+	movs	r1, #165
+	ldr	r0, [r4, #284]
+	mov	r8, r6
+	adds	r3, r3, #1
+	strh	r3, [r5, #6]	@ movhi
+	ldr	r3, [r4, #4]
+	ldrh	r2, [r3, #26]
+	bl	NAND_Memset
+	movs	r2, #15
+	movs	r1, #165
+	mov	r0, r7
+	bl	NAND_Memset
+.L1307:
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	strh	r8, [sp, #24]	@ movhi
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #26]	@ movhi
+	add	r1, sp, #24
+	strh	r2, [sp, #28]	@ movhi
+	strd	r3, r7, [sp, #32]
+	ldr	r3, [r4, #1988]
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1306
+	ldrh	r2, [r5]
+	mov	r3, r8
+	ldr	r1, .L1319+8
+	ldr	r0, .L1319+12
+.L1317:
+	bl	NAND_Print
+.L1305:
+	ldr	r3, [r4, #2000]
+	add	r1, sp, #24
+	mov	r0, r4
+	blx	r3
+	movs	r3, #0
+	strh	r3, [r5, #4]	@ movhi
+	movs	r3, #255
+	strh	r3, [r5, #2]	@ movhi
+	ldrh	r3, [r4, #20]
+	adds	r3, r3, #1
+	strh	r3, [r4, #20]	@ movhi
+	b	.L1303
+.L1306:
+	add	r8, r8, #1
+	cmp	r8, #3
+	bne	.L1307
+	mov	r8, r0
+.L1311:
+	ldr	r3, [r4, #4]
+	movs	r1, #0
+	ldr	r0, [r4, #284]
+	ldrh	r2, [r3, #26]
+	bl	NAND_Memset
+	movs	r2, #15
+	movs	r1, #0
+	mov	r0, r7
+	bl	NAND_Memset
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	strh	r8, [sp, #24]	@ movhi
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #26]	@ movhi
+	add	r1, sp, #24
+	strh	r2, [sp, #28]	@ movhi
+	strd	r3, r7, [sp, #32]
+	ldr	r3, [r4, #1984]
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1308
+	mov	r3, r8
+	ldrh	r2, [r5]
+	ldr	r1, .L1319+8
+	ldr	r0, .L1319+16
+	b	.L1317
+.L1308:
+	ldr	r10, [r4, #4]
+	movs	r1, #165
+	ldr	r0, [r4, #284]
+	ldrh	r2, [r10, #26]
+	bl	nftl_check_pattern
+	mov	r6, r0
+	cbz	r0, .L1309
+	ldrh	r2, [r5]
+	movs	r3, #165
+	ldr	r1, .L1319+8
+	ldr	r0, .L1319+20
+	str	r3, [sp]
+	mov	r3, r8
+.L1318:
+	bl	NAND_Print
+	b	.L1305
+.L1309:
+	movs	r2, #15
+	movs	r1, #165
+	mov	r0, r7
+	bl	nftl_check_pattern
+	mov	r6, r0
+	cbz	r0, .L1310
+	movs	r3, #165
+	ldrh	r2, [r5]
+	str	r3, [sp]
+	mov	r3, r8
+	ldr	r1, .L1319+8
+	ldr	r0, .L1319+24
+	b	.L1318
+.L1310:
+	add	r8, r8, #1
+	cmp	r8, #3
+	bne	.L1311
+	ldrh	r3, [r10, #28]
+	add	r1, sp, #24
+	ldrh	r2, [r5]
+	strh	r0, [sp, #24]	@ movhi
+	strh	r3, [sp, #28]	@ movhi
+	strd	r0, r0, [sp, #32]
+	mov	r0, r4
+	strh	r2, [sp, #26]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1312
+	ldrh	r1, [r5]
+	ldr	r0, .L1319+28
+	b	.L1316
+.L1312:
+	ldrh	r3, [r5, #6]
+	mov	r1, r5
+	mov	r0, r4
+	adds	r3, r3, #1
+	strh	r3, [r5, #6]	@ movhi
+	mov	r3, #-1
+	str	r3, [r5, #8]
+	bl	put_phy_block_to_free_list
+	mov	r1, r5
+	mov	r0, r4
+	bl	mark_free_block
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	strh	r6, [r5, #2]	@ movhi
+	strh	r3, [r5, #4]	@ movhi
+.L1303:
+	mov	r0, r6
+	add	sp, sp, #44
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L1320:
+	.align	2
+.L1319:
+	.word	.LC161
+	.word	.LC151
+	.word	.LANCHOR96
+	.word	.LC162
+	.word	.LC163
+	.word	.LC164
+	.word	.LC165
+	.word	.LC166
+	.size	torture_block_and_mark, .-torture_block_and_mark
+	.section	.text.set_no_use_page,"ax",%progbits
+	.align	1
+	.global	set_no_use_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_no_use_page, %function
+set_no_use_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r3, #255
+	push	{r4, lr}
+	mov	r4, r1
+	strb	r3, [r1]
+	movs	r3, #1
+	movs	r1, #170
+	mov	r2, r3
+	mov	r0, r4
+	bl	set_spare_data
+	movs	r3, #1
+	movs	r2, #2
+	movs	r1, #187
+	pop	{r4, lr}
+	b	set_spare_data
+	.size	set_no_use_page, .-set_no_use_page
+	.section	.text.set_start_block_flag,"ax",%progbits
+	.align	1
+	.global	set_start_block_flag
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_start_block_flag, %function
+set_start_block_flag:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r3, #255
+	push	{r4, r5, r6, lr}
+	mov	r4, r1
+	strb	r3, [r1]
+	movs	r3, #1
+	mov	r5, r2
+	mov	r0, r4
+	mov	r2, r3
+	movs	r1, #170
+	bl	set_spare_data
+	movs	r3, #1
+	movs	r2, #2
+	movs	r1, #238
+	bl	set_spare_data
+	mov	r1, r5
+	movs	r3, #4
+	movs	r2, #3
+	pop	{r4, r5, r6, lr}
+	b	set_spare_data
+	.size	set_start_block_flag, .-set_start_block_flag
+	.section	.text.set_end_block_flag,"ax",%progbits
+	.align	1
+	.global	set_end_block_flag
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_end_block_flag, %function
+set_end_block_flag:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r3, #255
+	push	{r4, lr}
+	mov	r4, r1
+	strb	r3, [r1]
+	movs	r3, #1
+	movs	r1, #170
+	mov	r2, r3
+	mov	r0, r4
+	bl	set_spare_data
+	movs	r3, #1
+	movs	r2, #2
+	movs	r1, #204
+	pop	{r4, lr}
+	b	set_spare_data
+	.size	set_end_block_flag, .-set_end_block_flag
+	.section	.text.build_zone_list_first,"ax",%progbits
+	.align	1
+	.global	build_zone_list_first
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	build_zone_list_first, %function
+build_zone_list_first:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, lr}
+	mov	r4, r0
+	sub	sp, sp, #36
+	ldr	r0, .L1350
+	mov	r10, r1
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #24]
+	ldr	r5, [r4, #40]
+	cmp	r3, #0
+	beq	.L1345
+	ldr	r6, [r4, #4]
+	ldr	r0, [r4, #32]
+	ldrb	r1, [r6, #8]	@ zero_extendqisi2
+	add	r0, r0, r3
+	bl	__aeabi_uidiv
+	ldrh	r1, [r6, #20]
+	bl	__aeabi_uidiv
+	mov	r8, r0
+.L1325:
+	movs	r7, #0
+	strh	r7, [r4, #18]	@ movhi
+.L1326:
+	ldrh	r3, [r4, #18]
+	cmp	r3, r8
+	bcs	.L1336
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	str	r5, [r4, #44]
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #18]	@ movhi
+	add	r1, sp, #16
+	strh	r7, [sp, #16]	@ movhi
+	str	r3, [sp, #24]
+	strh	r2, [sp, #20]	@ movhi
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1996]
+	blx	r3
+	cmp	r0, #1
+	bne	.L1327
+	ldr	r3, [r4, #1980]
+	add	r1, sp, #16
+	mov	r0, r4
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1328
+	movs	r3, #255
+	add	r1, sp, #16
+	strh	r3, [r5, #2]	@ movhi
+	mov	r0, r4
+	ldr	r3, [r4, #2000]
+	blx	r3
+.L1329:
+	movw	r3, #65535
+	str	r7, [r5, #20]
+	strh	r3, [r5, #4]	@ movhi
+	mov	r1, r4
+	strd	r7, r7, [r5, #12]
+	mov	r0, r5
+	str	r5, [r4, #44]
+	bl	is_last_phy_block
+	cmp	r0, #1
+	bne	.L1332
+.L1336:
+	ldrh	r1, [r4, #18]
+	cmp	r1, #1
+	bhi	.L1333
+	ldr	r0, .L1350+4
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L1324
+.L1345:
+	mov	r8, #-1
+	b	.L1325
+.L1328:
+	ldrh	r3, [r4, #18]
+	adds	r3, r3, #1
+	uxth	r3, r3
+	cmp	r3, #1
+	strh	r3, [r4, #18]	@ movhi
+	strh	r0, [r5, #2]	@ movhi
+	strh	r0, [r5, #6]	@ movhi
+	bne	.L1329
+	movs	r2, #16
+	movs	r1, #255
+	mov	r0, sp
+	bl	NAND_Memset
+	mov	r2, r10
+	mov	r1, sp
+	mov	r0, r4
+	bl	set_start_block_flag
+	ldr	r3, [r4, #4]
+	ldrh	r1, [r5]
+	strh	r6, [sp, #16]	@ movhi
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #18]	@ movhi
+	strh	r2, [sp, #20]	@ movhi
+	str	r3, [sp, #24]
+	str	sp, [sp, #28]
+.L1330:
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	cmp	r3, r6
+	bhi	.L1331
+	add	r3, r5, #36
+	str	r3, [r4, #40]
+	b	.L1329
+.L1331:
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #16
+	mov	r0, r4
+	adds	r6, r6, #1
+	blx	r3
+	ldrh	r3, [sp, #16]
+	adds	r3, r3, #1
+	strh	r3, [sp, #16]	@ movhi
+	b	.L1330
+.L1327:
+	movs	r3, #255
+	strh	r3, [r5, #2]	@ movhi
+	b	.L1329
+.L1332:
+	adds	r5, r5, #36
+	b	.L1326
+.L1333:
+	cmp	r8, #-1
+	add	r1, r1, #-1
+	strh	r1, [r4, #18]	@ movhi
+	bne	.L1337
+.L1339:
+	movs	r0, #0
+.L1324:
+	add	sp, sp, #36
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L1337:
+	mov	r1, r4
+	mov	r0, r5
+	bl	is_last_phy_block
+	cmp	r0, #1
+	beq	.L1339
+	movs	r7, #0
+.L1340:
+	ldr	r2, [r4, #4]
+	ldrh	r3, [r5]
+	ldrh	r1, [r2, #24]
+	cmp	r1, r3
+	bls	.L1339
+	ldrh	r1, [r2, #28]
+	mov	r0, r4
+	ldr	r2, [r4, #284]
+	strh	r3, [sp, #18]	@ movhi
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	strh	r7, [sp, #16]	@ movhi
+	str	r2, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1996]
+	blx	r3
+	cmp	r0, #1
+	bne	.L1341
+	ldr	r3, [r4, #1980]
+	add	r1, sp, #16
+	mov	r0, r4
+	blx	r3
+	mov	r6, r0
+	cbz	r0, .L1342
+	movs	r3, #255
+	add	r1, sp, #16
+	strh	r3, [r5, #2]	@ movhi
+	mov	r0, r4
+	ldr	r3, [r4, #2000]
+	blx	r3
+.L1343:
+	adds	r5, r5, #36
+	b	.L1340
+.L1342:
+	movs	r2, #16
+	mov	r0, sp
+	movs	r1, #255
+	bl	NAND_Memset
+	mov	r1, sp
+	mov	r0, r4
+	bl	set_end_block_flag
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	strh	r6, [sp, #16]	@ movhi
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #18]	@ movhi
+	add	r1, sp, #16
+	strh	r2, [sp, #20]	@ movhi
+	str	r3, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1988]
+	blx	r3
+	b	.L1339
+.L1341:
+	movs	r3, #255
+	strh	r3, [r5, #2]	@ movhi
+	b	.L1343
+.L1351:
+	.align	2
+.L1350:
+	.word	.LC167
+	.word	.LC168
+	.size	build_zone_list_first, .-build_zone_list_first
+	.section	.text.get_bad_flag_from_oob,"ax",%progbits
+	.align	1
+	.global	get_bad_flag_from_oob
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_bad_flag_from_oob, %function
+get_bad_flag_from_oob:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	movs	r2, #4
+	movs	r1, #1
+	bl	get_spare_data
+	adds	r0, r0, #0
+	it	ne
+	movne	r0, #1
+	pop	{r3, pc}
+	.size	get_bad_flag_from_oob, .-get_bad_flag_from_oob
+	.section	.text.get_block_used_count_from_oob,"ax",%progbits
+	.align	1
+	.global	get_block_used_count_from_oob
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_block_used_count_from_oob, %function
+get_block_used_count_from_oob:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r2, #4
+	movs	r1, #7
+	b	get_spare_data
+	.size	get_block_used_count_from_oob, .-get_block_used_count_from_oob
+	.section	.text.get_used_block_count,"ax",%progbits
+	.align	1
+	.global	get_used_block_count
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_used_block_count, %function
+get_used_block_count:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r2, [r1]
+	movs	r3, #0
+	push	{r4, lr}
+	sub	sp, sp, #32
+	add	r4, sp, #16
+	strh	r3, [sp]	@ movhi
+	mov	r1, sp
+	strh	r2, [sp, #2]	@ movhi
+	strh	r3, [sp, #4]	@ movhi
+	str	r3, [sp, #8]
+	str	r4, [sp, #12]
+	ldr	r3, [r0, #1984]
+	blx	r3
+	mov	r0, r4
+	bl	get_block_used_count_from_oob
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, pc}
+	.size	get_used_block_count, .-get_used_block_count
+	.section	.text.get_logic_page_from_oob,"ax",%progbits
+	.align	1
+	.global	get_logic_page_from_oob
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_logic_page_from_oob, %function
+get_logic_page_from_oob:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	movs	r2, #4
+	movs	r1, #1
+	bl	get_spare_data
+	bic	r0, r0, #-268435456
+	pop	{r3, pc}
+	.size	get_logic_page_from_oob, .-get_logic_page_from_oob
+	.section	.text._nftl_nand_read_logic_history_page,"ax",%progbits
+	.align	1
+	.global	_nftl_nand_read_logic_history_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nftl_nand_read_logic_history_page, %function
+_nftl_nand_read_logic_history_page:
+	@ args = 0, pretend = 0, frame = 56
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #56
+	movs	r2, #16
+	mov	r5, r0
+	add	r0, sp, #24
+	str	r1, [sp, #16]
+	movs	r1, #0
+	bl	memset
+	ldr	r3, [r5, #4]
+	ldrb	r6, [r3, #8]	@ zero_extendqisi2
+	lsls	r6, r6, #9
+	mov	r0, r6
+	bl	nftl_malloc
+	mov	r8, r0
+	mov	r0, r6
+	bl	nftl_malloc
+	mov	fp, r0
+	cmp	r8, #0
+	bne	.L1357
+.L1374:
+	ldr	r1, .L1375
+	ldr	r0, .L1375+4
+	bl	NAND_Print
+	movs	r0, #1
+.L1356:
+	add	sp, sp, #56
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1357:
+	cbnz	r0, .L1359
+	mov	r0, r8
+	bl	nftl_free
+	b	.L1374
+.L1359:
+	ldrh	r2, [r5, #18]
+	movs	r1, #0
+	ldrh	r3, [r5, #20]
+	mov	r0, r8
+	mov	r10, #0
+	mov	r7, r10
+	adds	r3, r2, r3
+	mov	r2, r6
+	str	r3, [sp, #8]
+	bl	NAND_Memset
+	mov	r2, r6
+	movs	r1, #0
+	mov	r0, fp
+	bl	NAND_Memset
+	movs	r2, #16
+	movs	r1, #0
+	add	r0, sp, #24
+	bl	NAND_Memset
+	lsrs	r3, r6, #9
+	str	r3, [sp, #20]
+.L1360:
+	ldr	r3, [sp, #8]
+	cmp	r3, r7
+	bne	.L1368
+	mov	r1, r3
+	ldr	r0, .L1375+8
+	bl	NAND_Print
+	mov	r0, r8
+	bl	nftl_free
+	mov	r0, fp
+	bl	nftl_free
+	movs	r0, #0
+	b	.L1356
+.L1368:
+	mov	r1, r7
+	ldr	r0, .L1375+12
+	bl	NAND_Print
+	uxth	r3, r7
+	movs	r4, #0
+	strh	r4, [sp, #40]	@ movhi
+	add	r1, sp, #40
+	str	r3, [sp, #4]
+	mov	r0, r5
+	ldrh	r3, [sp, #4]
+	strh	r4, [sp, #44]	@ movhi
+	str	r4, [sp, #48]
+	strh	r3, [sp, #42]	@ movhi
+	add	r3, sp, #24
+	str	r3, [sp, #52]
+	ldr	r3, [r5, #1996]
+	blx	r3
+	cmp	r0, #1
+	beq	.L1361
+	mov	r1, r7
+	ldr	r0, .L1375+16
+	bl	NAND_Print
+.L1362:
+	adds	r7, r7, #1
+	b	.L1360
+.L1367:
+	movs	r2, #16
+	movs	r1, #0
+	add	r0, sp, #24
+	bl	NAND_Memset
+	uxth	r3, r4
+	add	r1, sp, #40
+	mov	r0, r5
+	str	r3, [sp, #12]
+	ldrh	r3, [sp, #12]
+	strh	r3, [sp, #40]	@ movhi
+	ldrh	r3, [sp, #4]
+	strh	r3, [sp, #42]	@ movhi
+	movs	r3, #0
+	strh	r3, [sp, #44]	@ movhi
+	str	r3, [sp, #48]
+	add	r3, sp, #24
+	str	r3, [sp, #52]
+	ldr	r3, [r5, #1984]
+	blx	r3
+	adds	r0, r0, #2
+	bne	.L1363
+	ldr	r0, .L1375+20
+	mov	r2, r4
+	mov	r1, r7
+.L1373:
+	bl	NAND_Print
+.L1364:
+	adds	r4, r4, #1
+.L1361:
+	ldr	r3, [r5, #4]
+	ldrh	r3, [r3, #20]
+	cmp	r3, r4
+	bgt	.L1367
+	b	.L1362
+.L1363:
+	add	r0, sp, #24
+	bl	get_logic_page_from_oob
+	ldr	r3, [sp, #16]
+	cmp	r0, r3
+	bne	.L1364
+	ldrh	r3, [sp, #12]
+	add	r1, sp, #40
+	str	r8, [sp, #48]
+	mov	r0, r5
+	strh	r3, [sp, #40]	@ movhi
+	ldrh	r3, [sp, #4]
+	strh	r3, [sp, #42]	@ movhi
+	ldrh	r3, [sp, #20]
+	strh	r3, [sp, #44]	@ movhi
+	add	r3, sp, #24
+	str	r3, [sp, #52]
+	ldr	r3, [r5, #1984]
+	blx	r3
+	adds	r0, r0, #2
+	bne	.L1365
+	mov	r2, r4
+	mov	r1, r7
+	ldr	r0, .L1375+24
+	b	.L1373
+.L1365:
+	add	r3, r10, #1
+	str	r3, [sp, #12]
+	cmp	r10, #0
+	beq	.L1366
+	mov	r2, r10
+	ldr	r1, [sp, #16]
+	ldr	r0, .L1375+28
+	bl	NAND_Print
+	mov	r1, r6
+	mov	r0, fp
+	bl	dumphex
+	ldr	r0, .L1375+32
+	bl	NAND_Print
+	movs	r1, #16
+	add	r0, sp, #24
+	bl	dumphex
+.L1366:
+	mov	r2, r6
+	mov	r1, r8
+	mov	r0, fp
+	bl	NAND_Memcpy
+	ldr	r10, [sp, #12]
+	b	.L1364
+.L1376:
+	.align	2
+.L1375:
+	.word	.LANCHOR97
+	.word	.LC169
+	.word	.LC176
+	.word	.LC170
+	.word	.LC171
+	.word	.LC172
+	.word	.LC173
+	.word	.LC174
+	.word	.LC175
+	.size	_nftl_nand_read_logic_history_page, .-_nftl_nand_read_logic_history_page
+	.section	.text._nand_read_history,"ax",%progbits
+	.align	1
+	.global	_nand_read_history
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nand_read_history, %function
+_nand_read_history:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r6, r3
+	ldr	r4, [r0, #12]
+	add	r2, r2, r1
+	mov	r5, r1
+	ldr	r3, [r4, #24]
+	cmp	r2, r3
+	bhi	.L1381
+	ldr	r3, [r4, #4]
+	mov	r0, r5
+	ldrb	r1, [r3, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	mov	r2, r6
+	mov	r1, r0
+	mov	r0, r4
+	pop	{r4, r5, r6, lr}
+	b	_nftl_nand_read_logic_history_page
+.L1381:
+	ldr	r0, .L1382
+	bl	NAND_Print
+	movs	r0, #1
+	pop	{r4, r5, r6, pc}
+.L1383:
+	.align	2
+.L1382:
+	.word	.LC177
+	.size	_nand_read_history, .-_nand_read_history
+	.section	.text.get_special_data_from_oob,"ax",%progbits
+	.align	1
+	.global	get_special_data_from_oob
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_special_data_from_oob, %function
+get_special_data_from_oob:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r2, #4
+	movs	r1, #1
+	b	get_spare_data
+	.size	get_special_data_from_oob, .-get_special_data_from_oob
+	.section	.text._nftl_nand_copy_page,"ax",%progbits
+	.align	1
+	.global	_nftl_nand_copy_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nftl_nand_copy_page, %function
+_nftl_nand_copy_page:
+	@ args = 4, pretend = 0, frame = 48
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	sub	sp, sp, #56
+	mov	r8, r2
+	ldrh	r2, [sp, #80]
+	mov	r6, r1
+	add	r5, sp, #8
+	ldrh	r1, [r1]
+	mov	r4, r0
+	strh	r2, [sp, #24]	@ movhi
+	strh	r2, [sp, #40]	@ movhi
+	ldr	r2, [r0, #4]
+	strh	r1, [sp, #26]	@ movhi
+	ldrh	r1, [r8]
+	ldrh	r2, [r2, #28]
+	str	r3, [sp, #32]
+	strh	r1, [sp, #42]	@ movhi
+	add	r1, sp, #24
+	strh	r2, [sp, #28]	@ movhi
+	strh	r2, [sp, #44]	@ movhi
+	str	r3, [sp, #48]
+	str	r5, [sp, #36]
+	ldr	r3, [r0, #1984]
+	str	r5, [sp, #52]
+	blx	r3
+	cmp	r0, #10
+	ite	ne
+	movne	r7, r0
+	moveq	r7, #0
+	mov	r0, r5
+	bl	get_special_data_from_oob
+	ldrh	r3, [r8, #6]
+	mov	r2, r0
+	mov	r1, r5
+	mov	r0, r4
+	adds	r3, r3, #1
+	uxth	r3, r3
+	str	r3, [sp]
+	ldr	r3, [r6, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r4, #1988]
+	add	r1, sp, #40
+	mov	r0, r4
+	blx	r3
+	orr	r0, r7, r0, lsl #8
+	add	sp, sp, #56
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+	.size	_nftl_nand_copy_page, .-_nftl_nand_copy_page
+	.section	.text.get_erase_count_from_oob,"ax",%progbits
+	.align	1
+	.global	get_erase_count_from_oob
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_erase_count_from_oob, %function
+get_erase_count_from_oob:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	movs	r2, #2
+	movs	r1, #5
+	bl	get_spare_data
+	uxth	r0, r0
+	pop	{r3, pc}
+	.size	get_erase_count_from_oob, .-get_erase_count_from_oob
+	.section	.text.is_ftl_start_flag_page,"ax",%progbits
+	.align	1
+	.global	is_ftl_start_flag_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_ftl_start_flag_page, %function
+is_ftl_start_flag_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r3, [r0, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L1390
+	ldrb	r0, [r0, #2]	@ zero_extendqisi2
+	sub	r3, r0, #238
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+.L1390:
+	movs	r0, #0
+	bx	lr
+	.size	is_ftl_start_flag_page, .-is_ftl_start_flag_page
+	.section	.text.is_no_use_device,"ax",%progbits
+	.align	1
+	.global	is_no_use_device
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_no_use_device, %function
+is_no_use_device:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #24]
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r4, r0
+	sub	sp, sp, #32
+	mov	r6, r1
+	ldr	r5, [r0, #40]
+	cmp	r3, #0
+	beq	.L1401
+	ldr	r7, [r0, #4]
+	ldr	r0, [r0, #32]
+	ldrb	r1, [r7, #8]	@ zero_extendqisi2
+	add	r0, r0, r3
+	bl	__aeabi_uidiv
+	ldrh	r1, [r7, #20]
+	bl	__aeabi_uidiv
+	mov	r7, r0
+.L1392:
+	movs	r3, #0
+	mov	r8, r3
+	strh	r3, [r4, #18]	@ movhi
+.L1393:
+	ldrh	r3, [r4, #18]
+	cmp	r3, r7
+	bcs	.L1408
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	str	r5, [r4, #44]
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #18]	@ movhi
+	add	r1, sp, #16
+	strh	r8, [sp, #16]	@ movhi
+	str	r3, [sp, #24]
+	strh	r2, [sp, #20]	@ movhi
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1996]
+	blx	r3
+	cmp	r0, #1
+	bne	.L1394
+	ldr	r3, [r4, #1984]
+	add	r1, sp, #16
+	mov	r0, r4
+	blx	r3
+	mov	r2, r0
+	mov	r0, sp
+	bl	is_ftl_start_flag_page
+	cmp	r0, #1
+	beq	.L1395
+.L1408:
+	movs	r0, #1
+.L1391:
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1401:
+	mov	r7, #-1
+	b	.L1392
+.L1395:
+	cbz	r2, .L1397
+	cmp	r2, #10
+	bne	.L1408
+.L1397:
+	movs	r2, #4
+	movs	r1, #3
+	mov	r0, sp
+	bl	get_spare_data
+	cmp	r0, r6
+	beq	.L1399
+	ldr	r0, .L1409
+	bl	NAND_Print
+	b	.L1408
+.L1399:
+	adds	r5, r5, #36
+	movs	r0, #0
+	str	r5, [r4, #40]
+	b	.L1391
+.L1394:
+	movs	r3, #255
+	mov	r1, r4
+	strh	r3, [r5, #2]	@ movhi
+	mov	r0, r5
+	ldrh	r3, [r4, #18]
+	adds	r3, r3, #1
+	strh	r3, [r4, #18]	@ movhi
+	bl	is_last_phy_block
+	cmp	r0, #1
+	beq	.L1408
+	adds	r5, r5, #36
+	b	.L1393
+.L1410:
+	.align	2
+.L1409:
+	.word	.LC178
+	.size	is_no_use_device, .-is_no_use_device
+	.section	.text.is_ftl_end_flag_page,"ax",%progbits
+	.align	1
+	.global	is_ftl_end_flag_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_ftl_end_flag_page, %function
+is_ftl_end_flag_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r3, [r0, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L1413
+	ldrb	r0, [r0, #2]	@ zero_extendqisi2
+	sub	r3, r0, #204
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+.L1413:
+	movs	r0, #0
+	bx	lr
+	.size	is_ftl_end_flag_page, .-is_ftl_end_flag_page
+	.section	.text.is_ftl_special_data,"ax",%progbits
+	.align	1
+	.global	is_ftl_special_data
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_ftl_special_data, %function
+is_ftl_special_data:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r0, [r0, #1]	@ zero_extendqisi2
+	sub	r3, r0, #170
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+	.size	is_ftl_special_data, .-is_ftl_special_data
+	.section	.text.is_ftl_logic_page_data,"ax",%progbits
+	.align	1
+	.global	is_ftl_logic_page_data
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_ftl_logic_page_data, %function
+is_ftl_logic_page_data:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r0, [r0, #1]	@ zero_extendqisi2
+	and	r0, r0, #240
+	sub	r3, r0, #192
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+	.size	is_ftl_logic_page_data, .-is_ftl_logic_page_data
+	.section	.text.is_nouse_page,"ax",%progbits
+	.align	1
+	.global	is_nouse_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_nouse_page, %function
+is_nouse_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	subs	r2, r0, #1
+	add	r1, r0, #9
+	movs	r3, #0
+	push	{r4, lr}
+.L1418:
+	ldrb	r4, [r2, #1]!	@ zero_extendqisi2
+	cmp	r4, #255
+	it	eq
+	addeq	r3, r3, #1
+	cmp	r2, r1
+	bne	.L1418
+	cmp	r3, #8
+	bls	.L1420
+	ldrb	r0, [r0]	@ zero_extendqisi2
+	sub	r3, r0, #255
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+.L1416:
+	pop	{r4, pc}
+.L1420:
+	movs	r0, #0
+	b	.L1416
+	.size	is_nouse_page, .-is_nouse_page
+	.section	.text.sandisk_A19_read_page_end,"ax",%progbits
+	.align	1
+	.global	sandisk_A19_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_A19_read_page_end, %function
+sandisk_A19_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L1470
+	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r5, r0
+	mov	r0, r4
+	bl	generic_read_page_end_not_retry
+	adds	r3, r0, #2
+	mov	r6, r0
+	bne	.L1422
+	ldr	r8, .L1470+28
+	movs	r7, #0
+	ldr	r0, .L1470+4
+	bl	NAND_Print_DBG
+	mov	r10, r8
+.L1424:
+	ldrb	r3, [r8]	@ zero_extendqisi2
+	cmp	r3, r7
+	bgt	.L1430
+	ldr	r7, .L1470+8
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #51
+	beq	.L1431
+	ldr	fp, .L1470+12
+	mov	r8, #0
+.L1432:
+	ldrb	r3, [r10]	@ zero_extendqisi2
+	cmp	r3, r8
+	bgt	.L1438
+	ldr	fp, .L1470+12
+	mov	r8, #0
+.L1439:
+	ldrb	r3, [r10]	@ zero_extendqisi2
+	cmp	r3, r8
+	bgt	.L1445
+.L1431:
+	ldr	fp, .L1470+12
+	mov	r8, #0
+.L1446:
+	ldrb	r3, [r10]	@ zero_extendqisi2
+	cmp	r3, r8
+	bgt	.L1460
+.L1461:
+	movs	r3, #0
+	mov	r0, r5
+	str	r3, [r5, #176]
+	bl	sandisk_A19_exit_readretry
+.L1422:
+	mov	r0, r6
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1430:
+	str	r7, [r5, #176]
+	mov	r0, r5
+	ldrh	r1, [r4, #8]
+	bl	sandisk_A19_set_readretry
+	mov	r6, r0
+	cbz	r0, .L1425
+	ldr	r0, .L1470+12
+	bl	NAND_Print_DBG
+.L1426:
+	adds	r7, r7, #1
+	b	.L1424
+.L1425:
+	mov	r0, r4
+	bl	generic_read_page_start
+	mov	r6, r0
+	mov	r0, r4
+	bl	generic_read_page_end_not_retry
+	orrs	r6, r6, r0
+	ldr	r0, [r4, #20]
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1427
+	ldr	r3, [r5, #176]
+	mvn	r6, #1
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+16
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1426
+.L1427:
+	cmp	r6, #10
+	beq	.L1458
+	cmp	r6, #0
+	bne	.L1426
+.L1459:
+	ldr	r3, [r5, #176]
+	movs	r6, #10
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+20
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1461
+.L1438:
+	str	r8, [r5, #176]
+	mov	r0, r5
+	ldrh	r1, [r4, #8]
+	bl	sandisk_A19_set_readretry
+	mov	r6, r0
+	cbz	r0, .L1433
+	mov	r0, fp
+	bl	NAND_Print_DBG
+.L1434:
+	add	r8, r8, #1
+	b	.L1432
+.L1433:
+	mov	r0, r4
+	bl	sandisk_A19_dsp_on
+	mov	r0, r4
+	bl	generic_read_page_start
+	mov	r6, r0
+	mov	r0, r4
+	bl	generic_read_page_end_not_retry
+	orrs	r6, r6, r0
+	ldr	r0, [r4, #20]
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1435
+	ldr	r3, [r5, #176]
+	mvn	r6, #1
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+16
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1434
+.L1435:
+	cmp	r6, #10
+	beq	.L1458
+	cmp	r6, #0
+	bne	.L1434
+	b	.L1459
+.L1445:
+	str	r8, [r5, #176]
+	mov	r0, r5
+	ldrh	r1, [r4, #8]
+	bl	sandisk_A19_set_readretry
+	mov	r6, r0
+	cbz	r0, .L1440
+	mov	r0, fp
+	bl	NAND_Print_DBG
+.L1441:
+	add	r8, r8, #1
+	b	.L1439
+.L1440:
+	mov	r0, r4
+	bl	sandisk_A19_cmd25
+	mov	r0, r4
+	bl	generic_read_page_start
+	mov	r6, r0
+	mov	r0, r4
+	bl	generic_read_page_end_not_retry
+	orrs	r6, r6, r0
+	ldr	r0, [r4, #20]
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1442
+	ldr	r3, [r5, #176]
+	mvn	r6, #1
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+16
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1441
+.L1442:
+	cmp	r6, #10
+	beq	.L1458
+	cmp	r6, #0
+	bne	.L1441
+	b	.L1459
+.L1460:
+	str	r8, [r5, #176]
+	mov	r0, r5
+	ldrh	r1, [r4, #8]
+	bl	sandisk_A19_set_readretry
+	mov	r6, r0
+	cbz	r0, .L1447
+	mov	r0, fp
+	bl	NAND_Print_DBG
+.L1448:
+	add	r8, r8, #1
+	b	.L1446
+.L1447:
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #52
+	bne	.L1449
+	movs	r1, #198
+.L1468:
+	mov	r0, r4
+	bl	sandisk_A19_set_lmflgfix_next
+	mov	r0, r4
+	bl	sandisk_A19_cmd25
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	cmp	r3, #50
+	beq	.L1452
+	subs	r3, r3, #52
+	cmp	r3, #1
+	bhi	.L1453
+.L1452:
+	mov	r0, r4
+	bl	sandisk_A19_dsp_on
+.L1453:
+	mov	r0, r4
+	bl	generic_read_page_start
+	mov	r6, r0
+	mov	r0, r4
+	bl	generic_read_page_end_not_retry
+	ldrb	r3, [r7]	@ zero_extendqisi2
+	orrs	r6, r6, r0
+	cmp	r3, #52
+	bne	.L1454
+	movs	r1, #194
+.L1469:
+	mov	r0, r4
+	bl	sandisk_A19_set_lmflgfix_next
+	ldr	r0, [r4, #20]
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1457
+	ldr	r3, [r5, #176]
+	mvn	r6, #1
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+16
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1448
+.L1449:
+	cmp	r3, #53
+	ite	eq
+	moveq	r1, #26
+	movne	r1, #192
+	b	.L1468
+.L1454:
+	cmp	r3, #53
+	ite	eq
+	moveq	r1, #10
+	movne	r1, #64
+	b	.L1469
+.L1457:
+	cmp	r6, #10
+	beq	.L1458
+	cmp	r6, #0
+	bne	.L1448
+	b	.L1459
+.L1458:
+	ldr	r3, [r5, #176]
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1470+24
+	str	r3, [sp, #4]
+	ldr	r3, [r4, #8]
+	str	r3, [sp]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1461
+.L1471:
+	.align	2
+.L1470:
+	.word	g_nsi
+	.word	.LC179
+	.word	.LANCHOR1
+	.word	.LC180
+	.word	.LC181
+	.word	.LC182
+	.word	.LC183
+	.word	.LANCHOR2
+	.size	sandisk_A19_read_page_end, .-sandisk_A19_read_page_end
+	.section	.text.hynix20nm_read_page_end,"ax",%progbits
+	.align	1
+	.global	hynix20nm_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	hynix20nm_read_page_end, %function
+hynix20nm_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L1488
+	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r6, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r5, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	adds	r3, r0, #2
+	mov	r4, r0
+	bne	.L1472
+	ldr	r8, .L1488+16
+	movs	r7, #0
+	ldr	r10, .L1488+20
+	ldr	r0, .L1488+4
+	bl	NAND_Print_DBG
+.L1474:
+	ldrb	r2, [r8]	@ zero_extendqisi2
+	cmp	r2, r7
+	ble	.L1478
+	ldr	r3, [r5, #176]
+	mov	r0, r5
+	adds	r3, r3, #1
+	cmp	r3, r2
+	it	hi
+	movhi	r3, #0
+	str	r3, [r5, #176]
+	bl	hynix20nm_set_readretry
+	mov	r4, r0
+	cbz	r0, .L1477
+	movs	r3, #0
+	mov	r0, r5
+	str	r3, [r5, #176]
+	bl	hynix20nm_set_readretry
+.L1478:
+	movs	r3, #0
+	mov	r0, r5
+	str	r3, [r5, #176]
+	bl	hynix20nm_set_readretry
+.L1472:
+	mov	r0, r4
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1477:
+	mov	r0, r6
+	bl	generic_read_page_start
+	mov	r4, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	ldr	fp, [r6, #20]
+	orrs	r4, r4, r0
+	mov	r0, fp
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1479
+	ldr	r3, [r5, #176]
+	mvn	r4, #1
+	ldr	r1, [r5, #268]
+	mov	r0, r10
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+.L1480:
+	adds	r7, r7, #1
+	b	.L1474
+.L1479:
+	cmp	r4, #10
+	bne	.L1481
+.L1482:
+	ldrb	r0, [fp, #4]	@ zero_extendqisi2
+	movs	r4, #10
+	ldrb	r3, [fp, #3]	@ zero_extendqisi2
+	ldrb	r2, [fp, #2]	@ zero_extendqisi2
+	ldrb	r1, [fp, #1]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1488+8
+	bl	NAND_Print_DBG
+	ldr	r3, [r5, #176]
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1488+12
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+	b	.L1478
+.L1481:
+	cmp	r4, #0
+	bne	.L1480
+	b	.L1482
+.L1489:
+	.align	2
+.L1488:
+	.word	g_nsi
+	.word	.LC184
+	.word	.LC185
+	.word	.LC186
+	.word	.LANCHOR12
+	.word	.LC181
+	.size	hynix20nm_read_page_end, .-hynix20nm_read_page_end
+	.section	.text.sandisk_read_page_end,"ax",%progbits
+	.align	1
+	.global	sandisk_read_page_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	sandisk_read_page_end, %function
+sandisk_read_page_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L1501
+	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
+	mov	r6, r0
+	ldr	r1, [r0]
+	ldr	r0, [r3]
+	bl	nci_get_from_nsi
+	mov	r5, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	adds	r3, r0, #2
+	mov	r4, r0
+	bne	.L1490
+	ldr	r8, .L1501+12
+	movs	r7, #0
+	ldr	r10, .L1501+16
+	ldr	r0, .L1501+4
+	bl	NAND_Print_DBG
+.L1492:
+	ldrb	r3, [r8]	@ zero_extendqisi2
+	cmp	r3, r7
+	ble	.L1496
+	str	r7, [r5, #176]
+	mov	r0, r5
+	ldrh	r1, [r6, #8]
+	bl	sandisk_set_readretry
+	mov	r4, r0
+	cbnz	r0, .L1493
+	mov	r0, r6
+	bl	generic_read_page_start
+	mov	r4, r0
+	mov	r0, r6
+	bl	generic_read_page_end_not_retry
+	orrs	r4, r4, r0
+	mov	r0, r5
+	bl	sandisk_end_one_read_retry
+	ldr	r0, [r6, #20]
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1494
+	ldr	r3, [r5, #176]
+	mvn	r4, #1
+	ldr	r1, [r5, #268]
+	mov	r0, r10
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+.L1493:
+	adds	r7, r7, #1
+	b	.L1492
+.L1494:
+	cmp	r4, #10
+	beq	.L1495
+	cmp	r4, #0
+	bne	.L1493
+.L1495:
+	ldr	r3, [r5, #176]
+	movs	r4, #10
+	ldr	r1, [r5, #268]
+	ldr	r0, .L1501+8
+	str	r3, [sp, #4]
+	ldr	r3, [r6, #8]
+	str	r3, [sp]
+	ldr	r3, [r6, #4]
+	ldr	r2, [r5, #20]
+	ldr	r1, [r1, #8]
+	bl	NAND_Print_DBG
+.L1496:
+	movs	r3, #0
+	mov	r0, r5
+	str	r3, [r5, #176]
+	bl	sandisk_exit_readretry
+.L1490:
+	mov	r0, r4
+	add	sp, sp, #12
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L1502:
+	.align	2
+.L1501:
+	.word	g_nsi
+	.word	.LC187
+	.word	.LC188
+	.word	.LANCHOR69
+	.word	.LC181
+	.size	sandisk_read_page_end, .-sandisk_read_page_end
+	.section	.text.block_last_page_ecc_error,"ax",%progbits
+	.align	1
+	.global	block_last_page_ecc_error
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	block_last_page_ecc_error, %function
+block_last_page_ecc_error:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r10, r0
+	sub	sp, sp, #32
+	ldr	r0, .L1535
+	mov	r4, r1
+	bl	NAND_Print
+	mov	r0, #4096
+	bl	NAND_Malloc
+	mov	r5, r0
+	cbnz	r0, .L1504
+	ldr	r1, .L1535+4
+	ldr	r0, .L1535+8
+	bl	NAND_Print
+.L1504:
+	ldr	r7, .L1535+4
+	movs	r6, #0
+	ldr	r8, .L1535+28
+.L1505:
+	ldr	r2, [r10, #4]
+	ldrh	r1, [r2, #20]
+	cmp	r1, r6
+	bgt	.L1507
+	movs	r6, #0
+	mov	r7, r6
+.L1508:
+	ldr	r2, [r10, #4]
+	uxth	r8, r7
+	ldrh	ip, [r4]
+	ldr	r1, [r10, #284]
+	ldrh	r0, [r2, #28]
+	ldrh	r2, [r2, #20]
+	cmp	r2, r7
+	ble	.L1520
+	strh	ip, [sp, #18]	@ movhi
+	strh	r0, [sp, #20]	@ movhi
+	mov	r0, r10
+	str	r1, [sp, #24]
+	add	r1, sp, #16
+	ldr	r2, [r10, #1984]
+	strh	r8, [sp, #16]	@ movhi
+	str	sp, [sp, #28]
+	blx	r2
+	mov	fp, r0
+	mov	r0, sp
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1509
+.L1520:
+	ldr	r2, [r10, #4]
+	ldrh	r0, [r4]
+	strh	r8, [sp, #16]	@ movhi
+	ldrh	r1, [r2, #28]
+	ldr	r2, [r10, #284]
+	strh	r0, [sp, #18]	@ movhi
+	mov	r0, r10
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	str	r2, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r2, [r10, #1980]
+	blx	r2
+	cmp	r0, #0
+	bne	.L1510
+.L1511:
+	movs	r7, #0
+.L1523:
+	cmp	r7, r6
+	ldr	r2, [r10, #4]
+	beq	.L1522
+	ldrh	r0, [r4]
+	ldrh	r1, [r2, #28]
+	ldr	r2, [r5, r7, lsl #2]
+	strh	r7, [sp, #16]	@ movhi
+	adds	r7, r7, #1
+	strh	r0, [sp, #18]	@ movhi
+	mov	r0, r10
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	str	r2, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r2, [r10, #1988]
+	blx	r2
+	b	.L1523
+.L1507:
+	ldrh	r0, [r2, #26]
+	bl	nftl_malloc
+	str	r0, [r5, r6, lsl #2]
+	cbnz	r0, .L1506
+	mov	r1, r7
+	mov	r0, r8
+	bl	NAND_Print
+.L1506:
+	adds	r6, r6, #1
+	b	.L1505
+.L1509:
+	mov	r0, sp
+	bl	is_ftl_logic_page_data
+	cmp	r0, #1
+	bne	.L1512
+	cmp	fp, #0
+	beq	.L1513
+	cmp	fp, #10
+	bne	.L1514
+.L1513:
+	ldr	r2, [r10, #4]
+	adds	r6, r6, #1
+	ldr	r1, [r10, #284]
+	ldr	r0, [r5, r7, lsl #2]
+	ldrh	r2, [r2, #26]
+	bl	NAND_Memcpy
+.L1514:
+	adds	r7, r7, #1
+	b	.L1508
+.L1512:
+	ldrb	r1, [sp, #1]	@ zero_extendqisi2
+	cmp	r1, #170
+	bne	.L1515
+	cmp	fp, #0
+	bne	.L1533
+.L1516:
+	ldr	r2, [r10, #4]
+	adds	r6, r6, #1
+	ldr	r1, [r10, #284]
+	ldr	r0, [r5, r7, lsl #2]
+	ldrh	r2, [r2, #26]
+	bl	NAND_Memcpy
+	b	.L1518
+.L1515:
+	ldr	r0, .L1535+12
+.L1534:
+	bl	NAND_Print
+	b	.L1514
+.L1533:
+	cmp	fp, #10
+	beq	.L1516
+.L1518:
+	ldr	r0, .L1535+16
+	b	.L1534
+.L1510:
+	ldr	r2, [r10, #2000]
+	add	r1, sp, #16
+	mov	r0, r10
+	blx	r2
+	mov	r0, r10
+	bl	out_phy_block_from_free_list
+	mov	r4, r0
+	cbnz	r0, .L1521
+	ldr	r0, .L1535+20
+	bl	NAND_Print
+.L1522:
+	movs	r6, #0
+.L1525:
+	ldr	r2, [r10, #4]
+	ldrh	r2, [r2, #20]
+	cmp	r2, r6
+	bgt	.L1526
+	mov	r0, r5
+	bl	nftl_free
+	ldr	r0, .L1535+24
+	bl	NAND_Print
+	mov	r0, r4
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1521:
+	ldr	r2, [r10, #4]
+	ldrh	r0, [r0]
+	strh	r8, [sp, #16]	@ movhi
+	ldrh	r1, [r2, #28]
+	ldr	r2, [r10, #284]
+	strh	r0, [sp, #18]	@ movhi
+	mov	r0, r10
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	str	r2, [sp, #24]
+	str	sp, [sp, #28]
+	ldr	r2, [r10, #1980]
+	blx	r2
+	b	.L1511
+.L1526:
+	ldr	r0, [r5, r6, lsl #2]
+	adds	r6, r6, #1
+	bl	nftl_free
+	b	.L1525
+.L1536:
+	.align	2
+.L1535:
+	.word	.LC189
+	.word	.LANCHOR98
+	.word	.LC190
+	.word	.LC192
+	.word	.LC193
+	.word	.LC194
+	.word	.LC195
+	.word	.LC191
+	.size	block_last_page_ecc_error, .-block_last_page_ecc_error
+	.section	.text.is_fill_page,"ax",%progbits
+	.align	1
+	.global	is_fill_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_fill_page, %function
+is_fill_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	get_special_data_from_oob
+	sub	r3, r0, #1431655765
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	pop	{r3, pc}
+	.size	is_fill_page, .-is_fill_page
+	.section	.text.is_phy_mapping_page,"ax",%progbits
+	.align	1
+	.global	is_phy_mapping_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_phy_mapping_page, %function
+is_phy_mapping_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	get_special_data_from_oob
+	ldr	r3, .L1539
+	subs	r3, r0, r3
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	pop	{r3, pc}
+.L1540:
+	.align	2
+.L1539:
+	.word	-1431633921
+	.size	is_phy_mapping_page, .-is_phy_mapping_page
+	.section	.text.is_function_info_page,"ax",%progbits
+	.align	1
+	.global	is_function_info_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_function_info_page, %function
+is_function_info_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	get_special_data_from_oob
+	lsrs	r0, r0, #16
+	ldr	r3, .L1542
+	lsls	r0, r0, #16
+	subs	r3, r0, r3
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	pop	{r3, pc}
+.L1543:
+	.align	2
+.L1542:
+	.word	-1441726464
+	.size	is_function_info_page, .-is_function_info_page
+	.section	.text.is_power_down_info_page,"ax",%progbits
+	.align	1
+	.global	is_power_down_info_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_power_down_info_page, %function
+is_power_down_info_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	bl	get_special_data_from_oob
+	ldr	r3, .L1545
+	subs	r3, r0, r3
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	pop	{r3, pc}
+.L1546:
+	.align	2
+.L1545:
+	.word	-1441713357
+	.size	is_power_down_info_page, .-is_power_down_info_page
+	.section	.text.get_logic_page_map,"ax",%progbits
+	.align	1
+	.global	get_logic_page_map
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_logic_page_map, %function
+get_logic_page_map:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	mov	r2, r1
+	ldr	r3, [r0, #28]
+	cmp	r3, r1
+	bhi	.L1548
+	ldr	r1, .L1550
+	ldr	r0, .L1550+4
+	bl	NAND_Print
+	movs	r0, #0
+.L1547:
+	pop	{r3, pc}
+.L1548:
+	lsrs	r1, r1, #18
+	add	r0, r0, r1, lsl #2
+	rsb	r1, r1, r1, lsl #14
+	ldr	r0, [r0, #52]
+	add	r2, r2, r1, lsl #18
+	add	r0, r0, r2, lsl #2
+	b	.L1547
+.L1551:
+	.align	2
+.L1550:
+	.word	.LANCHOR99
+	.word	.LC196
+	.size	get_logic_page_map, .-get_logic_page_map
+	.section	.text.recover_logic_page_mapping,"ax",%progbits
+	.align	1
+	.global	recover_logic_page_mapping
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	recover_logic_page_mapping, %function
+recover_logic_page_mapping:
+	@ args = 0, pretend = 0, frame = 8
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r6, r0
+	mov	r4, r1
+	mov	fp, r2
+	mov	r10, r3
+	movs	r5, #0
+.L1553:
+	cmp	r5, r10
+	bne	.L1563
+	movs	r0, #0
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1563:
+	ldr	r3, [fp, r5, lsl #2]
+	ldr	r2, [r6, #28]
+	cmp	r2, r3
+	bls	.L1554
+	mov	r1, r3
+	mov	r0, r6
+	bl	get_logic_page_map
+	mov	r7, r0
+	cbnz	r0, .L1555
+	ldr	r0, .L1567
+	bl	NAND_Print
+	ldrh	r3, [r4, #4]
+	adds	r3, r3, #1
+	strh	r3, [r4, #4]	@ movhi
+.L1556:
+	adds	r5, r5, #1
+	b	.L1553
+.L1555:
+	ldrh	r3, [r0, #2]
+	movw	r2, #65535
+	cmp	r3, r2
+	beq	.L1558
+	ldr	r2, [r6, #4]
+	mov	r8, #36
+	mul	r8, r8, r3
+	ldr	r2, [r2, #32]
+	add	r3, r2, r8
+	cmp	r4, r3
+	beq	.L1559
+	mov	r1, r3
+	mov	r0, r6
+	str	r2, [sp, #4]
+	str	r3, [sp]
+	bl	phy_block_from_invalid_page_incr
+	ldrd	r3, r2, [sp]
+.L1560:
+	ldr	r0, [r6, #4]
+	ldrh	r1, [r3, #4]
+	ldrh	r3, [r0, #20]
+	cmp	r1, r3
+	bls	.L1558
+	ldrh	r1, [r2, r8]
+	ldr	r0, .L1567+4
+	bl	NAND_Print
+.L1558:
+	ldrh	r3, [r7]
+	bfi	r3, r5, #0, #12
+	strh	r3, [r7]	@ movhi
+	ldrh	r3, [r4]
+	strh	r3, [r7, #2]	@ movhi
+	b	.L1556
+.L1559:
+	ldrh	r1, [r4, #4]
+	adds	r1, r1, #1
+	strh	r1, [r4, #4]	@ movhi
+	b	.L1560
+.L1554:
+	adds	r2, r3, #1
+	beq	.L1562
+	mov	r2, r5
+	ldrh	r1, [r4]
+	ldr	r0, .L1567+8
+	bl	NAND_Print
+.L1562:
+	ldrh	r3, [r4, #4]
+	ldr	r2, [r6, #4]
+	adds	r3, r3, #1
+	ldrh	r2, [r2, #20]
+	uxth	r3, r3
+	strh	r3, [r4, #4]	@ movhi
+	cmp	r2, r3
+	bcs	.L1556
+	ldr	r0, .L1567+12
+	bl	NAND_Print
+	b	.L1556
+.L1568:
+	.align	2
+.L1567:
+	.word	.LC197
+	.word	.LC198
+	.word	.LC199
+	.word	.LC200
+	.size	recover_logic_page_mapping, .-recover_logic_page_mapping
+	.section	.text.malloc_logic_page_map,"ax",%progbits
+	.align	1
+	.global	malloc_logic_page_map
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	malloc_logic_page_map, %function
+malloc_logic_page_map:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	add	r7, r0, #52
+	mov	r4, r1
+	mov	r6, r0
+	add	r2, r0, #152
+	mov	r3, r7
+	movs	r1, #0
+.L1570:
+	str	r1, [r3], #4
+	cmp	r3, r2
+	bne	.L1570
+	ldr	r8, .L1582+16
+	movs	r5, #0
+	mov	r2, #262144
+	mov	r1, r4
+	ldr	r0, .L1582
+	bl	NAND_Print
+.L1574:
+	cmp	r4, r8
+	bls	.L1571
+	mov	r0, #1048576
+	bl	NAND_Malloc
+	str	r0, [r7], #4
+	cbnz	r0, .L1572
+	ldr	r0, .L1582+4
+	mov	r1, r5
+.L1581:
+	bl	NAND_Print
+	mvn	r0, #1
+.L1569:
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1572:
+	mov	r2, #1048576
+	movs	r1, #255
+	adds	r5, r5, #1
+	sub	r4, r4, #262144
+	bl	NAND_Memset
+	cmp	r5, #25
+	bne	.L1574
+	cbz	r4, .L1577
+	mov	r1, r4
+	ldr	r0, .L1582+8
+	b	.L1581
+.L1571:
+	lsls	r4, r4, #2
+	mov	r0, r4
+	bl	nftl_malloc
+	add	r3, r6, r5, lsl #2
+	str	r0, [r3, #52]
+	cbnz	r0, .L1576
+	mov	r1, r5
+	ldr	r0, .L1582+12
+	b	.L1581
+.L1576:
+	mov	r2, r4
+	movs	r1, #255
+	bl	NAND_Memset
+	movs	r0, #0
+	b	.L1569
+.L1577:
+	mov	r0, r4
+	b	.L1569
+.L1583:
+	.align	2
+.L1582:
+	.word	.LC201
+	.word	.LC202
+	.word	.LC204
+	.word	.LC203
+	.word	262143
+	.size	malloc_logic_page_map, .-malloc_logic_page_map
+	.section	.text.zone_param_init,"ax",%progbits
+	.align	1
+	.global	zone_param_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	zone_param_init, %function
+zone_param_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r7, r3
+	ldr	r3, [r0, #4]
+	mov	r4, r0
+	mov	r5, r1
+	mov	r6, r2
+	ldrh	r0, [r3, #26]
+	bl	nftl_malloc
+	str	r0, [r4, #284]
+	cbnz	r0, .L1585
+	ldr	r1, .L1596
+	ldr	r0, .L1596+4
+.L1594:
+	bl	NAND_Print
+	b	.L1595
+.L1585:
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r3, #26]
+	bl	nftl_malloc
+	str	r0, [r4, #288]
+	cbnz	r0, .L1587
+	ldr	r1, .L1596
+	ldr	r0, .L1596+8
+	b	.L1594
+.L1587:
+	ldr	r2, [r4, #4]
+	movs	r1, #36
+	strh	r5, [r4, #36]	@ movhi
+	mov	r0, r6
+	str	r6, [r4, #24]
+	ldr	r3, [r2, #32]
+	str	r7, [r4, #32]
+	mla	r5, r1, r5, r3
+	movs	r3, #0
+	strh	r3, [r4, #18]	@ movhi
+	str	r5, [r4, #40]
+	strh	r3, [r4, #20]	@ movhi
+	strh	r3, [r4, #22]	@ movhi
+	str	r3, [r4, #44]
+	ldrb	r1, [r2, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	mov	r1, r0
+	mov	r0, r4
+	bl	malloc_logic_page_map
+	mov	r5, r0
+	cbz	r0, .L1588
+	ldr	r0, .L1596+12
+	bl	NAND_Print
+.L1595:
+	mvn	r5, #1
+.L1584:
+	mov	r0, r5
+	pop	{r3, r4, r5, r6, r7, pc}
+.L1588:
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r3, #20]
+	mov	r3, #320
+	str	r3, [r4, #316]
+	lsls	r0, r0, #2
+	str	r0, [r4, #308]
+	add	r0, r0, r3
+	str	r0, [r4, #300]
+	bl	nftl_malloc
+	mov	r3, r0
+	str	r0, [r4, #296]
+	cbnz	r0, .L1589
+	ldr	r1, .L1596
+	ldr	r0, .L1596+16
+	b	.L1594
+.L1589:
+	ldr	r2, [r4, #308]
+	movs	r1, #255
+	str	r0, [r4, #304]
+	add	r3, r3, r2
+	ldr	r2, [r4, #300]
+	str	r3, [r4, #312]
+	str	r3, [r4, #1968]
+	bl	NAND_Memset
+	ldr	r3, [r4, #308]
+	ldr	r0, [r4, #300]
+	str	r3, [r4, #340]
+	str	r0, [r4, #332]
+	bl	nftl_malloc
+	mov	r3, r0
+	str	r0, [r4, #328]
+	cbnz	r0, .L1590
+	ldr	r1, .L1596
+	ldr	r0, .L1596+20
+	b	.L1594
+.L1590:
+	ldr	r2, [r4, #340]
+	movs	r1, #255
+	str	r0, [r4, #336]
+	add	r3, r3, r2
+	ldr	r2, [r4, #332]
+	str	r3, [r4, #344]
+	bl	NAND_Memset
+	ldr	r3, [r4, #308]
+	ldr	r0, [r4, #300]
+	str	r3, [r4, #272]
+	ldr	r3, [r4, #316]
+	str	r0, [r4, #264]
+	str	r3, [r4, #280]
+	bl	nftl_malloc
+	str	r0, [r4, #260]
+	cbnz	r0, .L1591
+	ldr	r1, .L1596
+	ldr	r0, .L1596+24
+	b	.L1594
+.L1591:
+	ldr	r3, [r4, #272]
+	mov	r1, r5
+	str	r0, [r4, #268]
+	str	r5, [r4, #356]
+	add	r0, r0, r3
+	ldr	r3, [r4, #4]
+	str	r0, [r4, #276]
+	str	r5, [r4, #376]
+	ldrh	r2, [r3, #16]
+	strd	r5, r5, [r4, #360]
+	strd	r5, r5, [r4, #368]
+	strd	r5, r5, [r4, #576]
+	lsrs	r3, r2, #1
+	str	r5, [r4, #292]
+	str	r5, [r4, #324]
+	strh	r3, [r4, #572]	@ movhi
+	ldr	r3, .L1596+28
+	strd	r5, r5, [r4, #172]
+	strd	r5, r5, [r4, #164]
+	strd	r5, r5, [r4, #180]
+	umull	r2, r3, r2, r3
+	mov	r2, r4
+	strd	r5, r5, [r4, #208]
+	strd	r5, r5, [r4, #200]
+	strd	r5, r5, [r4, #216]
+	lsrs	r3, r3, #2
+	strh	r3, [r4, #574]	@ movhi
+	movw	r3, #65535
+	strh	r3, [r4, #320]	@ movhi
+	strh	r3, [r4, #352]	@ movhi
+	mov	r3, r5
+	strd	r5, r5, [r4, #244]
+	strd	r5, r5, [r4, #236]
+	strd	r5, r5, [r4, #252]
+	strh	r5, [r4, #392]	@ movhi
+.L1592:
+	strh	r1, [r2, #396]	@ movhi
+	adds	r1, r1, #1
+	cmp	r1, #10
+	strh	r3, [r2, #398]	@ movhi
+	strd	r3, r3, [r2, #400]
+	add	r2, r2, #16
+	str	r3, [r2, #392]
+	bne	.L1592
+	movs	r2, #255
+	strh	r3, [r4, #394]	@ movhi
+	strd	r2, r3, [r4, #556]
+	strd	r3, r3, [r4, #564]
+	b	.L1584
+.L1597:
+	.align	2
+.L1596:
+	.word	.LANCHOR100
+	.word	.LC205
+	.word	.LC206
+	.word	.LC207
+	.word	.LC208
+	.word	.LC209
+	.word	.LC210
+	.word	-1431655765
+	.size	zone_param_init, .-zone_param_init
+	.section	.text.free_logic_page_map,"ax",%progbits
+	.align	1
+	.global	free_logic_page_map
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	free_logic_page_map, %function
+free_logic_page_map:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	add	r5, r0, #52
+	add	r4, r0, #152
+.L1600:
+	ldr	r0, [r5], #4
+	cbz	r0, .L1599
+	bl	nftl_free
+.L1599:
+	cmp	r5, r4
+	bne	.L1600
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+	.size	free_logic_page_map, .-free_logic_page_map
+	.section	.text.zone_param_exit,"ax",%progbits
+	.align	1
+	.global	zone_param_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	zone_param_exit, %function
+zone_param_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	bl	free_logic_page_map
+	ldr	r0, [r4, #260]
+	bl	nftl_free
+	ldr	r0, [r4, #296]
+	bl	nftl_free
+	ldr	r0, [r4, #328]
+	bl	nftl_free
+	ldr	r0, [r4, #284]
+	bl	nftl_free
+	ldr	r0, [r4, #288]
+	bl	nftl_free
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	zone_param_exit, .-zone_param_exit
+	.section	.text.set_physic_op_par,"ax",%progbits
+	.align	1
+	.global	set_physic_op_par
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_physic_op_par, %function
+set_physic_op_par:
+	@ args = 8, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	strh	r3, [r0, #4]	@ movhi
+	ldr	r3, [sp]
+	strh	r2, [r0]	@ movhi
+	strh	r1, [r0, #2]	@ movhi
+	str	r3, [r0, #8]
+	ldr	r3, [sp, #4]
+	str	r3, [r0, #12]
+	bx	lr
+	.size	set_physic_op_par, .-set_physic_op_par
+	.section	.text.nftl_sector_cache_init,"ax",%progbits
+	.align	1
+	.global	nftl_sector_cache_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_sector_cache_init, %function
+nftl_sector_cache_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	movs	r3, #16
+	movs	r5, #0
+	mov	r4, r0
+	str	r3, [r0, #1620]
+	str	r5, [r0, #1624]
+	mov	r0, #8192
+	bl	NAND_Malloc
+	str	r0, [r4, #1624]
+	cbnz	r0, .L1608
+	ldr	r1, .L1612
+	ldr	r0, .L1612+4
+	bl	NAND_Print
+	movs	r0, #1
+.L1607:
+	pop	{r4, r5, r6, pc}
+.L1608:
+	mov	r2, r5
+	str	r5, [r4, #1960]
+	str	r5, [r4, #1964]
+	mov	r3, r4
+	movs	r6, #255
+	mov	r5, #-1
+	mov	r1, r2
+.L1610:
+	strh	r2, [r3, #1628]	@ movhi
+	add	r4, r0, r2, lsl #9
+	adds	r2, r2, #1
+	strh	r6, [r3, #1630]	@ movhi
+	cmp	r2, #16
+	str	r5, [r3, #1632]
+	str	r1, [r3, #1640]
+	add	r3, r3, #20
+	str	r1, [r3, #1624]
+	str	r4, [r3, #1616]
+	bne	.L1610
+	movs	r0, #0
+	b	.L1607
+.L1613:
+	.align	2
+.L1612:
+	.word	.LANCHOR101
+	.word	.LC211
+	.size	nftl_sector_cache_init, .-nftl_sector_cache_init
+	.section	.text.nftl_sector_cache_exit,"ax",%progbits
+	.align	1
+	.global	nftl_sector_cache_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_sector_cache_exit, %function
+nftl_sector_cache_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, lr}
+	ldr	r0, [r0, #1624]
+	bl	nftl_free
+	movs	r0, #0
+	pop	{r3, pc}
+	.size	nftl_sector_cache_exit, .-nftl_sector_cache_exit
+	.section	.text.search_from_sector_cache_write_list,"ax",%progbits
+	.align	1
+	.global	search_from_sector_cache_write_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	search_from_sector_cache_write_list, %function
+search_from_sector_cache_write_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #340]
+.L1616:
+	cbnz	r0, .L1618
+.L1615:
+	bx	lr
+.L1618:
+	ldr	r3, [r0, #4]
+	cmp	r3, r1
+	beq	.L1615
+	ldr	r0, [r0, #12]
+	b	.L1616
+	.size	search_from_sector_cache_write_list, .-search_from_sector_cache_write_list
+	.section	.text.get_empty_sector_cahce_node,"ax",%progbits
+	.align	1
+	.global	get_empty_sector_cahce_node
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_empty_sector_cahce_node, %function
+get_empty_sector_cahce_node:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	movs	r3, #0
+	movs	r1, #20
+	push	{r4, lr}
+.L1622:
+	mul	r2, r1, r3
+	adds	r4, r0, r2
+	ldrh	r4, [r4, #10]
+	cmp	r4, #255
+	bne	.L1620
+	adds	r2, r2, #8
+	add	r0, r0, r2
+.L1619:
+	pop	{r4, pc}
+.L1620:
+	adds	r3, r3, #1
+	cmp	r3, #16
+	bne	.L1622
+	movs	r0, #0
+	b	.L1619
+	.size	get_empty_sector_cahce_node, .-get_empty_sector_cahce_node
+	.section	.text.add_to_sector_cache_write_list_tail,"ax",%progbits
+	.align	1
+	.global	add_to_sector_cache_write_list_tail
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_to_sector_cache_write_list_tail, %function
+add_to_sector_cache_write_list_tail:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	add	r2, r0, #328
+.L1625:
+	ldr	r3, [r2, #12]
+	cbnz	r3, .L1626
+	str	r1, [r2, #12]
+	strd	r3, r2, [r1, #12]
+	movs	r2, #1
+	strh	r2, [r1, #2]	@ movhi
+	ldrh	r2, [r0, #2]
+	adds	r2, r2, #1
+	strh	r2, [r0, #2]	@ movhi
+	mov	r0, r3
+	bx	lr
+.L1626:
+	mov	r2, r3
+	b	.L1625
+	.size	add_to_sector_cache_write_list_tail, .-add_to_sector_cache_write_list_tail
+	.section	.text.del_from_sector_cache_write_list,"ax",%progbits
+	.align	1
+	.global	del_from_sector_cache_write_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_from_sector_cache_write_list, %function
+del_from_sector_cache_write_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrd	r3, r2, [r1, #12]
+	str	r3, [r2, #12]
+	ldr	r3, [r1, #12]
+	cbz	r3, .L1628
+	str	r2, [r3, #16]
+.L1628:
+	movs	r3, #0
+	strd	r3, r3, [r1, #12]
+	movs	r3, #255
+	strh	r3, [r1, #2]	@ movhi
+	ldrh	r3, [r0, #2]
+	subs	r3, r3, #1
+	strh	r3, [r0, #2]	@ movhi
+	mov	r0, r1
+	bx	lr
+	.size	del_from_sector_cache_write_list, .-del_from_sector_cache_write_list
+	.section	.text.get_empty_gc_node,"ax",%progbits
+	.align	1
+	.global	get_empty_gc_node
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_empty_gc_node, %function
+get_empty_gc_node:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r3, #0
+.L1635:
+	lsls	r2, r3, #4
+	adds	r1, r0, r2
+	ldrh	r1, [r1, #6]
+	cbnz	r1, .L1633
+	adds	r2, r2, #4
+	add	r0, r0, r2
+	bx	lr
+.L1633:
+	adds	r3, r3, #1
+	cmp	r3, #10
+	bne	.L1635
+	movs	r0, #0
+	bx	lr
+	.size	get_empty_gc_node, .-get_empty_gc_node
+	.section	.text.search_gc_node,"ax",%progbits
+	.align	1
+	.global	search_gc_node
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	search_gc_node, %function
+search_gc_node:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #172]
+.L1638:
+	cbnz	r0, .L1640
+.L1637:
+	bx	lr
+.L1640:
+	ldr	r3, [r0, #4]
+	cmp	r3, r1
+	beq	.L1637
+	ldr	r0, [r0, #8]
+	b	.L1638
+	.size	search_gc_node, .-search_gc_node
+	.section	.text.add_to_gc_list_tail,"ax",%progbits
+	.align	1
+	.global	add_to_gc_list_tail
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_to_gc_list_tail, %function
+add_to_gc_list_tail:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	add	r2, r0, #164
+.L1642:
+	ldr	r3, [r2, #8]
+	cbnz	r3, .L1643
+	str	r1, [r2, #8]
+	strd	r3, r2, [r1, #8]
+	ldrh	r2, [r0]
+	adds	r2, r2, #1
+	strh	r2, [r0]	@ movhi
+	mov	r0, r3
+	bx	lr
+.L1643:
+	mov	r2, r3
+	b	.L1642
+	.size	add_to_gc_list_tail, .-add_to_gc_list_tail
+	.section	.text.del_from_gc_list,"ax",%progbits
+	.align	1
+	.global	del_from_gc_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_from_gc_list, %function
+del_from_gc_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrd	r3, r2, [r1, #8]
+	str	r3, [r2, #8]
+	ldr	r3, [r1, #8]
+	cbz	r3, .L1645
+	str	r2, [r3, #12]
+.L1645:
+	movs	r3, #0
+	strd	r3, r3, [r1, #8]
+	ldrh	r3, [r0]
+	subs	r3, r3, #1
+	strh	r3, [r0]	@ movhi
+	mov	r0, r1
+	bx	lr
+	.size	del_from_gc_list, .-del_from_gc_list
+	.section	.text.add_prio_gc,"ax",%progbits
+	.align	1
+	.global	add_prio_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_prio_gc, %function
+add_prio_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	add	r5, r0, #392
+	mov	r0, r5
+	mov	r7, r1
+	mov	r6, r2
+	bl	search_gc_node
+	mov	r4, r0
+	cbnz	r0, .L1652
+	mov	r0, r5
+	bl	get_empty_gc_node
+	mov	r1, r0
+	cbz	r0, .L1652
+	str	r7, [r0, #4]
+	strh	r6, [r0, #2]	@ movhi
+	strd	r4, r4, [r0, #8]
+	mov	r0, r5
+	bl	add_to_gc_list_tail
+	mov	r0, r4
+.L1649:
+	pop	{r3, r4, r5, r6, r7, pc}
+.L1652:
+	movs	r0, #1
+	b	.L1649
+	.size	add_prio_gc, .-add_prio_gc
+	.section	.text.first_scan_all_blocks,"ax",%progbits
+	.align	1
+	.global	first_scan_all_blocks
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	first_scan_all_blocks, %function
+first_scan_all_blocks:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #88
+	ldr	r4, [r0, #40]
+	mov	r5, r0
+	movs	r2, #5
+	add	r0, sp, #72
+	ldr	r1, .L1707
+	add	r6, sp, #88
+	bl	memcpy
+	movs	r3, #47
+	ldr	r1, .L1707+4
+	strh	r3, [r6, #-32]!	@ movhi
+	mov	r0, r6
+	bl	nand_fdt_get_string
+	cmp	r0, #0
+	beq	.L1654
+	movs	r2, #3
+	add	r1, sp, #72
+	bl	NAND_Memcmp
+	mov	r7, r0
+	cbnz	r0, .L1654
+	ldr	r0, .L1707+8
+	bl	NAND_Print_DBG
+	strh	r7, [r5, #18]	@ movhi
+.L1655:
+	ldr	r3, [r5, #4]
+	mov	r10, #0
+	ldrh	r2, [r4]
+	ldrh	r3, [r3, #24]
+	cmp	r3, r2
+	bls	.L1700
+	strh	r2, [sp, #74]	@ movhi
+	add	r1, sp, #72
+	strh	r10, [sp, #72]	@ movhi
+	mov	r0, r5
+	strh	r10, [sp, #76]	@ movhi
+	strd	r10, r6, [sp, #80]
+	ldr	r2, [r5, #1996]
+	blx	r2
+	cmp	r0, #1
+	bne	.L1657
+	ldr	r2, [r5, #1984]
+	add	r1, sp, #72
+	mov	r0, r5
+	blx	r2
+	str	r4, [r5, #44]
+	mov	r8, r0
+	mov	r0, r6
+	bl	get_block_used_count_from_oob
+	mov	fp, r0
+	mov	r0, r6
+	bl	is_ftl_end_flag_page
+	cmp	r0, #1
+	bne	.L1658
+	ldrh	r1, [r4]
+	ldr	r0, .L1707+12
+	bl	NAND_Print
+.L1700:
+	mov	r0, r10
+	b	.L1653
+.L1654:
+	mov	r0, #-1
+.L1653:
+	add	sp, sp, #88
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1658:
+	mov	r0, r6
+	bl	is_panic_data_page
+	cmp	r0, #1
+	bne	.L1659
+	ldrb	r2, [sp, #59]	@ zero_extendqisi2
+	ldrb	r3, [r5, #16]	@ zero_extendqisi2
+	cmp	r2, r3
+	bne	.L1660
+	mov	r1, r4
+	mov	r0, r6
+	bl	panic_recover_info
+.L1660:
+	adds	r4, r4, #36
+	b	.L1655
+.L1659:
+	mov	r0, r6
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L1661
+	ldrh	r2, [r5, #18]
+	mov	r1, r4
+	mov	r0, r5
+	adds	r2, r2, #1
+	strh	r2, [r5, #18]	@ movhi
+	strh	r10, [r4, #2]	@ movhi
+	strh	r10, [r4, #6]	@ movhi
+	strh	r10, [r4, #4]	@ movhi
+	bl	put_phy_block_to_free_list
+	b	.L1660
+.L1661:
+	mov	r0, r6
+	bl	is_ftl_logic_page_data
+	cmp	r0, #1
+	beq	.L1662
+	mov	r0, r6
+	bl	is_function_info_page
+	cmp	r0, #1
+	bne	.L1663
+.L1662:
+	cmp	r8, #0
+	beq	.L1664
+	cmp	r8, #10
+	bne	.L1663
+.L1664:
+	ldrh	r3, [r5, #18]
+	mov	r10, #1
+	mov	r0, r6
+	adds	r3, r3, #1
+	strh	r3, [r5, #18]	@ movhi
+	strh	r10, [r4, #2]	@ movhi
+	bl	get_erase_count_from_oob
+	movs	r3, #0
+	strh	r0, [r4, #6]	@ movhi
+	mov	r7, r0
+	strh	r3, [r4, #4]	@ movhi
+	str	fp, [r4, #8]
+	mov	r1, r4
+	strd	r3, r3, [r4, #28]
+	mov	r0, r5
+	bl	add_block_count_list
+	cmp	r8, #10
+	bne	.L1660
+	ldr	r3, [r5, #1972]
+	ldrh	r3, [r3, #4]
+	cmp	r3, #0
+	beq	.L1660
+	mov	r2, r10
+	mov	r0, r5
+	bl	add_prio_gc
+	ldr	r0, .L1707+16
+	bl	NAND_Print_DBG
+	b	.L1660
+.L1663:
+	mov	r0, r6
+	bl	is_ftl_start_flag_page
+	cmp	r0, #1
+	bne	.L1665
+	ldr	r0, .L1707+20
+.L1699:
+	bl	NAND_Print
+	b	.L1660
+.L1665:
+	mov	r0, r6
+	bl	is_fill_page
+	cmp	r0, #1
+	bne	.L1666
+	ldrh	r3, [r5, #18]
+	mov	r0, r6
+	adds	r3, r3, #1
+	strh	r3, [r5, #18]	@ movhi
+	movs	r3, #0
+	strh	r3, [r4, #2]	@ movhi
+	bl	get_erase_count_from_oob
+	ldr	r3, [r5, #4]
+	mov	r1, r4
+	strh	r0, [r4, #6]	@ movhi
+	mov	r7, r0
+	mov	r0, r5
+	ldrh	r3, [r3, #20]
+	strh	r3, [r4, #4]	@ movhi
+	bl	put_phy_block_to_free_list
+	ldrh	r1, [r4]
+	ldr	r0, .L1707+24
+	bl	NAND_Print_DBG
+	b	.L1660
+.L1666:
+	ldrb	r0, [sp, #71]	@ zero_extendqisi2
+	ldrh	r1, [r4]
+	ldrb	r3, [sp, #57]	@ zero_extendqisi2
+	str	r0, [sp, #52]
+	ldrb	r0, [sp, #70]	@ zero_extendqisi2
+	ldrb	r2, [sp, #56]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #69]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #68]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #67]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #66]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #65]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #64]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #63]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #62]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #61]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #60]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #59]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #58]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1707+28
+	bl	NAND_Print
+	uxth	r2, r7
+	adds	r3, r2, #1
+	strh	r3, [r4, #6]	@ movhi
+	cmp	r8, #0
+	beq	.L1667
+	cmp	r8, #10
+	bne	.L1668
+.L1667:
+	ldrb	r3, [sp, #56]	@ zero_extendqisi2
+	cmp	r3, #255
+	beq	.L1669
+	ldrh	r1, [r4]
+	ldr	r0, .L1707+32
+	bl	NAND_Print
+	movs	r3, #255
+	strh	r3, [r4, #2]	@ movhi
+.L1698:
+	ldrh	r3, [r5, #20]
+	adds	r3, r3, #1
+	strh	r3, [r5, #20]	@ movhi
+	b	.L1660
+.L1669:
+	adds	r2, r2, #2
+.L1705:
+	uxth	r2, r2
+	mov	r1, r4
+	mov	r0, r5
+	bl	erase_block
+.L1702:
+	cmp	r0, #0
+	bne	.L1660
+	ldrh	r3, [r5, #18]
+	adds	r3, r3, #1
+	strh	r3, [r5, #18]	@ movhi
+	b	.L1660
+.L1668:
+	ldrh	r1, [r4]
+	ldr	r0, .L1707+36
+	bl	NAND_Print
+	ldr	r3, [r5, #4]
+	add	r1, sp, #72
+	ldrh	r2, [r4]
+	mov	r0, r5
+	ldrh	r3, [r3, #20]
+	strh	r2, [sp, #74]	@ movhi
+	subs	r3, r3, #1
+	strh	r3, [sp, #72]	@ movhi
+	movs	r3, #0
+	strh	r3, [sp, #76]	@ movhi
+	strd	r3, r6, [sp, #80]
+	ldr	r3, [r5, #1984]
+	blx	r3
+	ldrh	r8, [r4]
+	mov	r10, r0
+	cbz	r0, .L1670
+	cmp	r0, #10
+	bne	.L1671
+.L1670:
+	mov	r0, r6
+	bl	is_phy_mapping_page
+	cmp	r0, #1
+	mov	fp, r0
+	bne	.L1672
+	mov	r1, r8
+	ldr	r0, .L1707+40
+	bl	NAND_Print
+	mov	r0, r6
+	bl	get_block_used_count_from_oob
+	ldrh	r2, [r5, #18]
+	mov	r8, r0
+	mov	r0, r6
+	adds	r2, r2, #1
+	strh	r2, [r5, #18]	@ movhi
+	strh	fp, [r4, #2]	@ movhi
+	bl	get_erase_count_from_oob
+	movs	r2, #0
+	strh	r0, [r4, #6]	@ movhi
+	mov	r7, r0
+	strh	r2, [r4, #4]	@ movhi
+	str	r8, [r4, #8]
+	mov	r1, r4
+	strd	r2, r2, [r4, #28]
+	mov	r0, r5
+	bl	add_block_count_list
+	cmp	r10, #10
+	bne	.L1660
+	ldr	r3, [r5, #1972]
+	ldrh	r3, [r3, #4]
+	cmp	r3, #0
+	beq	.L1660
+	mov	r2, fp
+	mov	r0, r5
+	bl	add_prio_gc
+	ldr	r0, .L1707+44
+	b	.L1699
+.L1672:
+	mov	r0, r6
+	bl	is_nouse_page
+	cmp	r0, #1
+	mov	r1, r8
+	ite	eq
+	ldreq	r0, .L1707+48
+	ldrne	r0, .L1707+52
+	bl	NAND_Print
+	ldrh	r2, [r4, #6]
+	adds	r2, r2, #1
+	b	.L1705
+.L1708:
+	.align	2
+.L1707:
+	.word	.LANCHOR76+9
+	.word	.LANCHOR102
+	.word	.LC212
+	.word	.LC213
+	.word	.LC214
+	.word	.LC215
+	.word	.LC216
+	.word	.LC217
+	.word	.LC218
+	.word	.LC219
+	.word	.LC220
+	.word	.LC221
+	.word	.LC222
+	.word	.LC223
+.L1671:
+	mov	r1, r8
+	ldr	r0, .L1709
+	bl	NAND_Print
+	ldrb	r0, [sp, #71]	@ zero_extendqisi2
+	ldrh	r1, [r4]
+	ldrb	r3, [sp, #57]	@ zero_extendqisi2
+	str	r0, [sp, #52]
+	ldrb	r0, [sp, #70]	@ zero_extendqisi2
+	ldrb	r2, [sp, #56]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #69]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #68]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #67]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #66]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #65]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #64]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #63]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #62]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #61]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #60]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #59]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #58]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L1709+4
+	bl	NAND_Print
+	mov	r1, r4
+	mov	r0, r5
+	bl	torture_block_and_mark
+	b	.L1702
+.L1657:
+	movs	r2, #255
+	strh	r10, [r4, #6]	@ movhi
+	strh	r2, [r4, #2]	@ movhi
+	b	.L1698
+.L1710:
+	.align	2
+.L1709:
+	.word	.LC224
+	.word	.LC225
+	.size	first_scan_all_blocks, .-first_scan_all_blocks
+	.section	.text.check_static_wear_leveling,"ax",%progbits
+	.align	1
+	.global	check_static_wear_leveling
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	check_static_wear_leveling, %function
+check_static_wear_leveling:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, r8, r10, lr}
+	mov	r4, r0
+	ldr	r3, [r0, #580]
+	cbz	r3, .L1712
+.L1714:
+	movs	r0, #1
+.L1711:
+	pop	{r3, r4, r5, r6, r7, r8, r10, pc}
+.L1712:
+	ldr	r3, [r0, #200]
+	cmp	r3, #0
+	beq	.L1714
+	ldr	r3, [r0, #172]
+	cmp	r3, #0
+	beq	.L1714
+	ldr	r3, [r0, #292]
+	ldrh	r7, [r0, #18]
+	ldr	r8, [r3, #8]
+	cmp	r8, r7
+	blt	.L1714
+	ldr	r3, [r0, #4]
+	ldrh	r5, [r3, #16]
+	mov	r1, r5
+	bl	get_block_max_erase_time_from_free_list
+	cmp	r0, #0
+	beq	.L1714
+	ldrh	r6, [r0, #6]
+	ldr	r0, .L1732
+	umull	r0, r1, r5, r0
+	ubfx	r10, r1, #2, #16
+	cmp	r6, r10
+	bcc	.L1714
+	sub	r2, r8, r7
+	mov	r1, r5
+	mov	r0, r4
+	bl	get_block_min_erase_time_from_invalid_list
+	mov	r7, r0
+	cmp	r0, #0
+	beq	.L1714
+	ldrh	r8, [r0, #6]
+	cmp	r6, r8
+	bls	.L1714
+	lsls	r2, r6, #1
+	adds	r3, r2, r6
+	cmp	r3, r5, lsl #1
+	ble	.L1715
+	ldr	r2, .L1732+4
+.L1731:
+	umull	r2, r3, r5, r2
+	lsrs	r3, r3, #3
+	strh	r3, [r4, #574]	@ movhi
+.L1716:
+	ldrh	r2, [r4, #574]
+	sub	r3, r6, r8
+	cmp	r3, r2
+	blt	.L1714
+	mov	r2, r8
+	mov	r1, r6
+	ldr	r0, .L1732+8
+	bl	NAND_Print_DBG
+	ldrh	r1, [r7]
+	ldr	r0, .L1732+12
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #18]
+	ldr	r0, .L1732+16
+	bl	NAND_Print_DBG
+	str	r7, [r4, #580]
+	movs	r0, #0
+	b	.L1711
+.L1715:
+	cmp	r5, r2
+	bge	.L1717
+	ldr	r2, .L1732
+	b	.L1731
+.L1717:
+	cmp	r5, r3
+	bge	.L1718
+	movs	r1, #7
+	mov	r0, r5
+	bl	__aeabi_uidiv
+	strh	r0, [r4, #574]	@ movhi
+	b	.L1716
+.L1718:
+	strh	r10, [r4, #574]	@ movhi
+	b	.L1716
+.L1733:
+	.align	2
+.L1732:
+	.word	-858993459
+	.word	-1431655765
+	.word	.LC226
+	.word	.LC227
+	.word	.LC228
+	.size	check_static_wear_leveling, .-check_static_wear_leveling
+	.section	.text.prio_gc_one,"ax",%progbits
+	.align	1
+	.global	prio_gc_one
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	prio_gc_one, %function
+prio_gc_one:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #4]
+	cmp	r2, #1
+	push	{r4, lr}
+	ldr	r4, [r3, #32]
+	mov	r3, #36
+	mla	r1, r3, r1, r4
+	beq	.L1735
+	cmp	r2, #2
+	it	ne
+	movne	r2, #3
+.L1735:
+	uxth	r2, r2
+	bl	add_prio_gc
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	prio_gc_one, .-prio_gc_one
+	.section	.text.get_total_invalid_page,"ax",%progbits
+	.align	1
+	.global	get_total_invalid_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_total_invalid_page, %function
+get_total_invalid_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	add	r3, r0, #188
+	movs	r0, #0
+.L1742:
+	ldr	r3, [r3, #12]
+	cbnz	r3, .L1743
+	bx	lr
+.L1743:
+	ldrh	r2, [r3, #4]
+	add	r0, r0, r2
+	b	.L1742
+	.size	get_total_invalid_page, .-get_total_invalid_page
+	.section	.text.is_current_blcok,"ax",%progbits
+	.align	1
+	.global	is_current_blcok
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	is_current_blcok, %function
+is_current_blcok:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrb	r3, [r0, #17]	@ zero_extendqisi2
+	lsls	r2, r3, #31
+	bpl	.L1745
+	ldr	r3, [r0, #324]
+	cmp	r1, r3
+	beq	.L1747
+.L1745:
+	ldr	r0, [r0, #292]
+	subs	r3, r0, r1
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+.L1747:
+	movs	r0, #1
+	bx	lr
+	.size	is_current_blcok, .-is_current_blcok
+	.section	.text.static_wear_leveling,"ax",%progbits
+	.align	1
+	.global	static_wear_leveling
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	static_wear_leveling, %function
+static_wear_leveling:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r2, [r0, #22]
+	ldrh	r3, [r0, #380]
+	push	{r4, lr}
+	mov	r4, r0
+	cmp	r2, r3
+	bls	.L1750
+	ldr	r3, [r0, #368]
+	cmp	r3, #19
+	bls	.L1750
+	ldr	r2, [r0, #1968]
+	ldr	r3, [r2, #180]
+	adds	r3, r3, #1
+	str	r3, [r2, #180]
+	bl	get_block_min_count_from_invalid_list
+	movs	r2, #5
+	mov	r1, r0
+	mov	r0, r4
+	bl	add_prio_gc
+	cbnz	r0, .L1752
+	ldr	r3, [r4, #372]
+	adds	r3, r3, #4
+	str	r3, [r4, #372]
+.L1752:
+	ldr	r3, [r4, #4]
+	ldr	r2, [r4, #372]
+	ldrh	r3, [r3, #20]
+	cmp	r2, r3
+	itt	cs
+	movcs	r3, #0
+	strdcs	r3, r3, [r4, #368]
+.L1750:
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	static_wear_leveling, .-static_wear_leveling
+	.section	.text.nftl_get_gc_info,"ax",%progbits
+	.align	1
+	.global	nftl_get_gc_info
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_gc_info, %function
+nftl_get_gc_info:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r2
+	movs	r2, #0
+	mov	r5, r0
+	mov	r7, r1
+	sub	sp, sp, #32
+	ldr	ip, [r0, #4]
+	mov	r6, r2
+	ldr	r4, [r0, #200]
+	mov	r1, r2
+	mov	r0, r2
+.L1754:
+	cbnz	r4, .L1756
+	ldr	ip, [r5, #1968]
+	mov	fp, #10
+	ldrh	r3, [r5, #22]
+	strd	r1, r0, [sp, #16]
+	mov	r1, r8
+	strd	r6, r2, [sp, #24]
+	mov	r0, r7
+	ldr	r2, [ip, #124]
+	ldr	r10, .L1767+4
+	str	r2, [sp, #12]
+	ldr	r2, [ip, #120]
+	str	r2, [sp, #8]
+	ldrh	r2, [r5, #382]
+	str	r2, [sp, #4]
+	ldrh	r2, [r5, #380]
+	str	r2, [sp]
+	ldr	r2, .L1767
+	bl	NAND_Snprintf
+	ldr	r5, [r5, #200]
+	mov	r6, r0
+.L1757:
+	sub	r1, r8, r6
+	adds	r0, r7, r6
+	cmp	r1, #1
+	bne	.L1760
+.L1758:
+	movs	r3, #10
+	strb	r3, [r0, #-1]
+	mov	r0, r6
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1756:
+	ldrh	r3, [r4, #4]
+	adds	r0, r0, #1
+	ldrh	lr, [ip, #20]
+	ldr	r4, [r4, #12]
+	add	r2, r2, r3
+	cmp	r3, lr, lsr #1
+	itt	hi
+	addhi	r6, r6, r3
+	addhi	r1, r1, #1
+	b	.L1754
+.L1760:
+	cmp	r5, #0
+	beq	.L1758
+	ldrh	r2, [r5, #4]
+	cmp	r2, #0
+	beq	.L1758
+	ldrh	r3, [r5]
+	adds	r4, r4, #1
+	str	r2, [sp]
+	mov	r2, r10
+	bl	NAND_Snprintf
+	lsls	r3, r4, #29
+	add	r6, r6, r0
+	itt	eq
+	addeq	r3, r7, r6
+	strbeq	fp, [r3, #-1]
+	ldr	r5, [r5, #12]
+	b	.L1757
+.L1768:
+	.align	2
+.L1767:
+	.word	.LC229
+	.word	.LC230
+	.size	nftl_get_gc_info, .-nftl_get_gc_info
+	.section	.text.nftl_cache_init,"ax",%progbits
+	.align	1
+	.global	nftl_cache_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_cache_init, %function
+nftl_cache_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #1972]
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r4, r0
+	mov	r6, r0
+	movs	r7, #255
+	mov	r8, #-1
+	movs	r5, #0
+	ldrh	r3, [r3, #22]
+	strh	r5, [r0, #586]	@ movhi
+	strh	r5, [r0, #588]	@ movhi
+	strh	r3, [r0, #584]	@ movhi
+	strh	r5, [r0, #590]	@ movhi
+	str	r5, [r0, #1568]
+	str	r5, [r0, #1572]
+	str	r5, [r0, #1576]
+	str	r5, [r0, #1580]
+	str	r5, [r0, #1600]
+	str	r5, [r0, #1604]
+	str	r5, [r0, #1608]
+	str	r5, [r0, #1612]
+.L1770:
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r3, #26]
+	ldrh	r3, [r4, #584]
+	cmp	r3, r5
+	bhi	.L1773
+	bl	nftl_malloc
+	str	r0, [r4, #1616]
+	cbnz	r0, .L1774
+	ldr	r1, .L1776
+	ldr	r0, .L1776+4
+	b	.L1775
+.L1773:
+	movs	r3, #0
+	strh	r5, [r6, #592]	@ movhi
+	strh	r7, [r6, #594]	@ movhi
+	str	r8, [r6, #600]
+	strd	r3, r3, [r6, #608]
+	strd	r3, r3, [r6, #616]
+	adds	r6, r6, #32
+	strh	r3, [r6, #564]	@ movhi
+	strh	r3, [r6, #566]	@ movhi
+	bl	nftl_malloc
+	str	r0, [r6, #572]
+	cbnz	r0, .L1771
+	ldr	r1, .L1776
+	ldr	r0, .L1776+8
+.L1775:
+	bl	NAND_Print
+	movs	r0, #1
+.L1769:
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1771:
+	adds	r5, r5, #1
+	b	.L1770
+.L1774:
+	movs	r0, #0
+	b	.L1769
+.L1777:
+	.align	2
+.L1776:
+	.word	.LANCHOR103
+	.word	.LC232
+	.word	.LC231
+	.size	nftl_cache_init, .-nftl_cache_init
+	.section	.text.nftl_cache_exit,"ax",%progbits
+	.align	1
+	.global	nftl_cache_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_cache_exit, %function
+nftl_cache_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r0
+	movs	r4, #0
+.L1779:
+	ldrh	r3, [r5, #584]
+	cmp	r3, r4
+	bgt	.L1780
+	ldr	r0, [r5, #1616]
+	bl	nftl_free
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L1780:
+	add	r3, r5, r4, lsl #5
+	adds	r4, r4, #1
+	ldr	r0, [r3, #604]
+	bl	nftl_free
+	b	.L1779
+	.size	nftl_cache_exit, .-nftl_cache_exit
+	.section	.text.nftl_zone_release,"ax",%progbits
+	.align	1
+	.global	nftl_zone_release
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_zone_release, %function
+nftl_zone_release:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	bl	nftl_cache_exit
+	mov	r0, r4
+	bl	zone_param_exit
+	ldr	r3, [r4, #4]
+	ldr	r0, [r3, #32]
+	bl	nftl_free
+	ldr	r0, [r4, #4]
+	bl	nftl_free
+	mov	r0, r4
+	pop	{r4, lr}
+	b	nftl_free
+	.size	nftl_zone_release, .-nftl_zone_release
+	.section	.text.nftl_exit,"ax",%progbits
+	.align	1
+	.global	nftl_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_exit, %function
+nftl_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, r0
+	ldr	r0, [r0, #4]
+	bl	free_nand_partition
+	ldr	r0, [r4, #12]
+	bl	nftl_zone_release
+	ldr	r0, [r4, #16]
+	bl	nftl_free
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	nftl_exit, .-nftl_exit
+	.section	.text.nand_ftl_exit,"ax",%progbits
+	.align	1
+	.global	nand_ftl_exit
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_ftl_exit, %function
+nand_ftl_exit:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	ldr	r5, .L1786
+	ldr	r0, .L1786
+	bl	del_last_nftl_blk
+	mov	r4, r0
+.L1784:
+	mov	r0, r4
+	cbnz	r4, .L1785
+	pop	{r3, r4, r5, pc}
+.L1785:
+	bl	nftl_exit
+	mov	r0, r4
+	bl	nftl_free
+	mov	r0, r5
+	bl	del_last_nftl_blk
+	mov	r4, r0
+	b	.L1784
+.L1787:
+	.align	2
+.L1786:
+	.word	.LANCHOR0
+	.size	nand_ftl_exit, .-nand_ftl_exit
+	.section	.text.nftl_cache_clean,"ax",%progbits
+	.align	1
+	.global	nftl_cache_clean
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_cache_clean, %function
+nftl_cache_clean:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #1972]
+	add	r0, r0, #592
+	push	{r4, r5, lr}
+	movs	r4, #255
+	mov	r5, #-1
+	ldrh	r1, [r3, #22]
+	movs	r3, #0
+	strh	r3, [r0, #-6]	@ movhi
+	mov	r2, r3
+	strh	r3, [r0, #-4]	@ movhi
+	strh	r1, [r0, #-8]	@ movhi
+	strh	r3, [r0, #-2]	@ movhi
+	str	r3, [r0, #976]
+	str	r3, [r0, #980]
+	str	r3, [r0, #984]
+	str	r3, [r0, #988]
+	str	r3, [r0, #1008]
+	str	r3, [r0, #1012]
+	str	r3, [r0, #1016]
+	str	r3, [r0, #1020]
+.L1789:
+	cmp	r1, r3
+	add	r0, r0, #32
+	bhi	.L1790
+	movs	r0, #0
+	pop	{r4, r5, pc}
+.L1790:
+	strh	r3, [r0, #-32]	@ movhi
+	adds	r3, r3, #1
+	strh	r4, [r0, #-30]	@ movhi
+	str	r5, [r0, #-24]
+	strd	r2, r2, [r0, #-16]
+	strd	r2, r2, [r0, #-8]
+	strh	r2, [r0, #-28]	@ movhi
+	strh	r2, [r0, #-26]	@ movhi
+	b	.L1789
+	.size	nftl_cache_clean, .-nftl_cache_clean
+	.section	.text.search_from_cache_read_list,"ax",%progbits
+	.align	1
+	.global	search_from_cache_read_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	search_from_cache_read_list, %function
+search_from_cache_read_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #984]
+.L1792:
+	cbnz	r0, .L1794
+.L1791:
+	bx	lr
+.L1794:
+	ldr	r3, [r0, #8]
+	cmp	r3, r1
+	beq	.L1791
+	ldr	r0, [r0, #16]
+	b	.L1792
+	.size	search_from_cache_read_list, .-search_from_cache_read_list
+	.section	.text.search_from_cache_write_list,"ax",%progbits
+	.align	1
+	.global	search_from_cache_write_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	search_from_cache_write_list, %function
+search_from_cache_write_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #1024]
+.L1796:
+	cbnz	r0, .L1798
+.L1795:
+	bx	lr
+.L1798:
+	ldr	r3, [r0, #8]
+	cmp	r3, r1
+	beq	.L1795
+	ldr	r0, [r0, #24]
+	b	.L1796
+	.size	search_from_cache_write_list, .-search_from_cache_write_list
+	.section	.text.add_to_cache_read_list_tail,"ax",%progbits
+	.align	1
+	.global	add_to_cache_read_list_tail
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_to_cache_read_list_tail, %function
+add_to_cache_read_list_tail:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	add	r3, r0, #968
+	push	{r4, lr}
+.L1800:
+	ldr	r4, [r3, #16]
+	cbnz	r4, .L1803
+	str	r1, [r3, #16]
+	strd	r4, r3, [r1, #16]
+	strh	r2, [r1, #2]	@ movhi
+	cbnz	r2, .L1801
+	ldrh	r3, [r0, #2]
+	adds	r3, r3, #1
+	strh	r3, [r0, #2]	@ movhi
+.L1802:
+	movs	r0, #0
+	pop	{r4, pc}
+.L1803:
+	mov	r3, r4
+	b	.L1800
+.L1801:
+	ldrh	r3, [r0, #6]
+	adds	r3, r3, #1
+	strh	r3, [r0, #6]	@ movhi
+	b	.L1802
+	.size	add_to_cache_read_list_tail, .-add_to_cache_read_list_tail
+	.section	.text.add_to_cache_write_list_tail,"ax",%progbits
+	.align	1
+	.global	add_to_cache_write_list_tail
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	add_to_cache_write_list_tail, %function
+add_to_cache_write_list_tail:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	add	r2, r0, #1000
+.L1805:
+	ldr	r3, [r2, #24]
+	cbnz	r3, .L1806
+	str	r1, [r2, #24]
+	strd	r3, r2, [r1, #24]
+	movs	r2, #1
+	strh	r2, [r1, #2]	@ movhi
+	ldrh	r2, [r0, #4]
+	adds	r2, r2, #1
+	strh	r2, [r0, #4]	@ movhi
+	mov	r0, r3
+	bx	lr
+.L1806:
+	mov	r2, r3
+	b	.L1805
+	.size	add_to_cache_write_list_tail, .-add_to_cache_write_list_tail
+	.section	.text.del_from_cache_read_list,"ax",%progbits
+	.align	1
+	.global	del_from_cache_read_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_from_cache_read_list, %function
+del_from_cache_read_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrd	r3, r2, [r1, #16]
+	str	r3, [r2, #16]
+	ldr	r3, [r1, #16]
+	cbz	r3, .L1808
+	str	r2, [r3, #20]
+.L1808:
+	ldrh	r3, [r1, #2]
+	cbnz	r3, .L1809
+	ldrh	r3, [r0, #2]
+	subs	r3, r3, #1
+	strh	r3, [r0, #2]	@ movhi
+.L1810:
+	movs	r3, #255
+	mov	r0, r1
+	strh	r3, [r1, #2]	@ movhi
+	movs	r3, #0
+	strd	r3, r3, [r1, #16]
+	bx	lr
+.L1809:
+	ldrh	r3, [r0, #6]
+	subs	r3, r3, #1
+	strh	r3, [r0, #6]	@ movhi
+	b	.L1810
+	.size	del_from_cache_read_list, .-del_from_cache_read_list
+	.section	.text.del_from_cache_write_list,"ax",%progbits
+	.align	1
+	.global	del_from_cache_write_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	del_from_cache_write_list, %function
+del_from_cache_write_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrd	r3, r2, [r1, #24]
+	str	r3, [r2, #24]
+	ldr	r3, [r1, #24]
+	cbz	r3, .L1815
+	str	r2, [r3, #28]
+.L1815:
+	movs	r3, #0
+	strd	r3, r3, [r1, #24]
+	movs	r3, #255
+	strh	r3, [r1, #2]	@ movhi
+	ldrh	r3, [r0, #4]
+	subs	r3, r3, #1
+	strh	r3, [r0, #4]	@ movhi
+	mov	r0, r1
+	bx	lr
+	.size	del_from_cache_write_list, .-del_from_cache_write_list
+	.section	.text.get_empty_cahce_node,"ax",%progbits
+	.align	1
+	.global	get_empty_cahce_node
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_empty_cahce_node, %function
+get_empty_cahce_node:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrh	r2, [r0]
+	movs	r1, #0
+	push	{r4}
+.L1820:
+	uxth	r3, r1
+	cmp	r2, r3
+	bhi	.L1822
+	ldrh	r3, [r0, #6]
+	ldr	r1, [r0, #984]
+	cmp	r3, #9
+	bhi	.L1823
+.L1824:
+	cbz	r1, .L1819
+	ldrh	r3, [r1, #2]
+	cbz	r3, .L1831
+	ldr	r1, [r1, #16]
+	b	.L1824
+.L1822:
+	adds	r3, r1, #1
+	add	r4, r0, r3, lsl #5
+	ldrh	r4, [r4, #-22]
+	cmp	r4, #255
+	bne	.L1829
+	add	r1, r0, r1, lsl #5
+	adds	r1, r1, #8
+.L1819:
+	mov	r0, r1
+	pop	{r4}
+	bx	lr
+.L1829:
+	mov	r1, r3
+	b	.L1820
+.L1825:
+	ldr	r1, [r1, #16]
+.L1823:
+	cmp	r1, #0
+	beq	.L1819
+	ldrh	r3, [r1, #2]
+	cmp	r3, #2
+	bne	.L1825
+.L1831:
+	pop	{r4}
+	b	del_from_cache_read_list
+	.size	get_empty_cahce_node, .-get_empty_cahce_node
+	.section	.text.nand_cache_read,"ax",%progbits
+	.align	1
+	.global	nand_cache_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_cache_read, %function
+nand_cache_read:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	str	r1, [sp, #4]
+	mov	r7, r3
+	cbnz	r3, .L1833
+	ldr	r0, .L1843
+	bl	NAND_Print
+.L1841:
+	mov	fp, #0
+.L1832:
+	mov	r0, fp
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1833:
+	lsrs	r3, r2, #8
+	uxtb	r2, r2
+	lsl	r8, r3, #9
+	ldr	r3, [r0, #1972]
+	lsls	r5, r2, #9
+	ldrh	r3, [r3]
+	str	r3, [sp, #12]
+	cbz	r3, .L1835
+	ldr	r6, [r0, #604]
+	ldr	r3, [r0, #2008]
+	mov	r2, r6
+	blx	r3
+	mov	r2, r5
+	mov	fp, r0
+	add	r1, r6, r8
+	mov	r0, r7
+	bl	NAND_Memcpy
+	cmp	fp, #10
+	bne	.L1832
+	ldr	r2, [r4, #1968]
+	mov	r0, r4
+	ldr	r1, [sp, #4]
+	ldr	r3, [r2, #116]
+	adds	r3, r3, #1
+	str	r3, [r2, #116]
+	mov	r2, r6
+	ldr	r3, [r4, #2004]
+	blx	r3
+	b	.L1841
+.L1835:
+	add	r10, r0, #584
+	mov	r0, r10
+	bl	search_from_cache_write_list
+	mov	fp, r0
+	cbz	r0, .L1836
+	ldr	r3, [r0, #12]
+	ldrh	r6, [r0, #6]
+	str	r3, [sp, #8]
+	ldrh	r3, [r0, #4]
+	lsls	r6, r6, #9
+	ldr	r2, [sp, #8]
+	uxth	r6, r6
+	lsls	r3, r3, #9
+	add	r10, r2, r8
+	uxth	r3, r3
+	add	r3, r3, r6
+	cmp	r3, r8
+	bcc	.L1837
+	add	r2, r8, r5
+	cmp	r3, r2
+	bcc	.L1837
+.L1842:
+	mov	r2, r5
+	mov	r1, r10
+	mov	r0, r7
+	bl	NAND_Memcpy
+	b	.L1841
+.L1837:
+	ldr	r3, [r4, #2008]
+	mov	r0, r4
+	ldr	r2, [r4, #1616]
+	ldr	r1, [sp, #4]
+	blx	r3
+	ldr	r3, [r4, #4]
+	ldr	r1, [r4, #1616]
+	ldrh	r2, [r3, #26]
+	ldr	r3, [sp, #8]
+	add	r1, r1, r6
+	subs	r2, r2, r6
+	add	r3, r3, r6
+	mov	r0, r3
+	bl	NAND_Memcpy
+	ldr	r3, [r4, #4]
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	strh	r3, [fp, #6]	@ movhi
+	b	.L1842
+.L1836:
+	ldr	r1, [sp, #4]
+	mov	r0, r10
+	bl	search_from_cache_read_list
+	mov	r6, r0
+	cbz	r0, .L1838
+	ldrh	r4, [r0, #2]
+	cbnz	r4, .L1839
+	mov	r1, r0
+	mov	r0, r10
+	bl	del_from_cache_read_list
+	ldr	r1, [r6, #12]
+	mov	r2, r5
+	mov	r0, r7
+	add	r1, r1, r8
+	bl	NAND_Memcpy
+	mov	r2, r4
+	mov	r1, r6
+	mov	r0, r10
+	bl	add_to_cache_read_list_tail
+	b	.L1841
+.L1839:
+	ldr	r1, [r0, #12]
+	mov	r2, r5
+	mov	r0, r7
+	add	r1, r1, r8
+	bl	NAND_Memcpy
+	b	.L1832
+.L1838:
+	mov	r0, r10
+	bl	get_empty_cahce_node
+	cbnz	r0, .L1840
+	ldrh	r3, [r4, #590]
+	mov	fp, #1
+	ldrh	r2, [r4, #586]
+	ldrh	r1, [r4, #588]
+	ldr	r0, .L1843+4
+	bl	NAND_Print
+	b	.L1832
+.L1840:
+	ldr	r2, [sp, #4]
+	ldr	r1, [sp, #4]
+	ldr	r3, [r4, #2008]
+	str	r2, [r0, #8]
+	ldr	r2, [r0, #12]
+	strd	r2, r0, [sp, #8]
+	mov	r0, r4
+	blx	r3
+	ldr	r3, [sp, #12]
+	mov	fp, r0
+	ldr	r2, [r4, #4]
+	mov	r0, r10
+	strh	r6, [r3, #4]	@ movhi
+	mov	r1, r3
+	ldrb	r2, [r2, #8]	@ zero_extendqisi2
+	strh	r2, [r3, #6]	@ movhi
+	mov	r2, r6
+	bl	add_to_cache_read_list_tail
+	ldr	r3, [sp, #8]
+	mov	r2, r5
+	mov	r0, r7
+	add	r1, r3, r8
+	bl	NAND_Memcpy
+	cmp	fp, #10
+	bne	.L1832
+	ldr	r2, [r4, #1968]
+	mov	r0, r4
+	mov	fp, r6
+	ldr	r3, [r2, #116]
+	adds	r3, r3, #1
+	str	r3, [r2, #116]
+	ldr	r3, [r4, #2004]
+	ldrd	r1, r2, [sp, #4]
+	blx	r3
+	b	.L1832
+.L1844:
+	.align	2
+.L1843:
+	.word	.LC233
+	.word	.LC234
+	.size	nand_cache_read, .-nand_cache_read
+	.global	__aeabi_uidivmod
+	.section	.text.nand_op,"ax",%progbits
+	.align	1
+	.global	nand_op
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_op, %function
+nand_op:
+	@ args = 4, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r6, r1
+	ldr	r10, [sp, #32]
+	mov	r4, r3
+	cbz	r3, .L1846
+	ldr	r1, [r1, #24]
+	add	r3, r3, r2
+	cmp	r3, r1
+	bls	.L1847
+	movs	r4, #1
+	ldr	r0, .L1860
+	bl	NAND_Print
+.L1846:
+	mov	r0, r4
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1847:
+	ldr	r1, .L1860+4
+	ldr	r3, .L1860+8
+	cmp	r0, #0
+	ite	ne
+	movne	r8, r1
+	moveq	r8, r3
+	ldr	r3, [r6, #4]
+	mov	r0, r2
+	ldrb	r5, [r3, #8]	@ zero_extendqisi2
+	mov	r1, r5
+	bl	__aeabi_uidivmod
+	subs	r5, r5, r1
+	mov	fp, r0
+	uxth	r5, r5
+	mov	r3, r10
+	cmp	r4, r5
+	itet	ls
+	uxthls	r5, r4
+	subhi	r7, r4, r5
+	movls	r7, #0
+	orr	r2, r5, r1, lsl #8
+	mov	r1, r0
+	mov	r0, r6
+	uxth	r2, r2
+	blx	r8
+	mov	r4, r0
+	cmp	r7, #0
+	beq	.L1846
+.L1851:
+	ldr	r3, [r6, #4]
+	add	fp, fp, #1
+	add	r10, r10, r5, lsl #9
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	cmp	r7, r3
+	bhi	.L1852
+	mov	r3, r10
+	uxth	r2, r7
+	mov	r1, fp
+	mov	r0, r6
+	blx	r8
+	orrs	r4, r4, r0
+	b	.L1846
+.L1852:
+	uxth	r5, r3
+	subs	r7, r7, r3
+	mov	r1, fp
+	mov	r3, r10
+	mov	r2, r5
+	mov	r0, r6
+	blx	r8
+	orrs	r4, r4, r0
+	b	.L1851
+.L1861:
+	.align	2
+.L1860:
+	.word	.LC177
+	.word	nand_cache_write
+	.word	nand_cache_read
+	.size	nand_op, .-nand_op
+	.section	.text.__nand_read,"ax",%progbits
+	.align	1
+	.global	__nand_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_read, %function
+__nand_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r4, r5, r6, r7, fp, lr}
+	mov	r7, r3
+	ldr	r3, [r0, #356]
+	mov	r4, r0
+	mov	r6, r1
+	mov	r5, r2
+	cmp	r3, #3
+	bne	.L1863
+	ldr	r0, .L1864
+	bl	NAND_Print_DBG
+.L1863:
+	ldr	r1, [r4, #1968]
+	movs	r0, #0
+	ldrd	r2, [r1, #64]
+	adds	fp, r2, r5
+	mov	r2, r6
+	adc	ip, r3, #0
+	mov	r3, r5
+	strd	fp, [r1, #64]
+	mov	r1, r4
+	str	r7, [sp]
+	bl	nand_op
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, fp, pc}
+.L1865:
+	.align	2
+.L1864:
+	.word	.LC235
+	.size	__nand_read, .-__nand_read
+	.section	.text._nand_read,"ax",%progbits
+	.align	1
+	.global	_nand_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nand_read, %function
+_nand_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #12]
+	b	__nand_read
+	.size	_nand_read, .-_nand_read
+	.section	.text.nand_sector_cache_read,"ax",%progbits
+	.align	1
+	.global	nand_sector_cache_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_sector_cache_read, %function
+nand_sector_cache_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	addw	r0, r0, #1620
+	mov	r5, r2
+	bl	search_from_sector_cache_write_list
+	cbz	r0, .L1868
+	ldr	r1, [r0, #8]
+	mov	r2, #512
+	mov	r0, r5
+	bl	NAND_Memcpy
+	movs	r0, #0
+.L1867:
+	pop	{r4, r5, r6, pc}
+.L1868:
+	mov	r3, r2
+	mov	r0, r4
+	movs	r2, #1
+	bl	__nand_read
+	cmp	r0, #0
+	beq	.L1867
+	ldr	r0, .L1873
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L1867
+.L1874:
+	.align	2
+.L1873:
+	.word	.LC236
+	.size	nand_sector_cache_read, .-nand_sector_cache_read
+	.section	.text.__nand_sector_read,"ax",%progbits
+	.align	1
+	.global	__nand_sector_read
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_sector_read, %function
+__nand_sector_read:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r8, r0
+	mov	r4, r1
+	mov	r6, r3
+	adds	r7, r1, r2
+	movs	r5, #0
+.L1876:
+	cmp	r4, r7
+	bne	.L1877
+	mov	r0, r5
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1877:
+	mov	r2, r6
+	mov	r1, r4
+	mov	r0, r8
+	adds	r4, r4, #1
+	bl	nand_sector_cache_read
+	add	r6, r6, #512
+	orrs	r5, r5, r0
+	b	.L1876
+	.size	__nand_sector_read, .-__nand_sector_read
+	.section	.text.__nand_write,"ax",%progbits
+	.align	1
+	.global	__nand_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_write, %function
+__nand_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r4, r5, r6, r7, fp, lr}
+	mov	r7, r3
+	ldr	r3, [r0, #356]
+	mov	r4, r0
+	mov	r6, r1
+	mov	r5, r2
+	cmp	r3, #3
+	bne	.L1879
+	ldr	r0, .L1880
+	bl	NAND_Print_DBG
+.L1879:
+	ldr	r1, [r4, #1968]
+	movs	r0, #1
+	ldrd	r2, [r1, #72]
+	adds	fp, r2, r5
+	mov	r2, r6
+	adc	ip, r3, #0
+	mov	r3, r5
+	strd	fp, [r1, #72]
+	mov	r1, r4
+	str	r7, [sp]
+	bl	nand_op
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, fp, pc}
+.L1881:
+	.align	2
+.L1880:
+	.word	.LC237
+	.size	__nand_write, .-__nand_write
+	.section	.text._nand_write,"ax",%progbits
+	.align	1
+	.global	_nand_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nand_write, %function
+_nand_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #12]
+	b	__nand_write
+	.size	_nand_write, .-_nand_write
+	.section	.text.write_data_to_nand,"ax",%progbits
+	.align	1
+	.global	write_data_to_nand
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	write_data_to_nand, %function
+write_data_to_nand:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r6, r0
+	mov	r0, #512
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L1884
+	ldr	r1, .L1887
+	ldr	r0, .L1887+4
+	bl	NAND_Print
+.L1884:
+	movs	r5, #0
+	mov	r2, #512
+	movs	r1, #170
+	mov	r0, r4
+	bl	NAND_Memset
+.L1885:
+	mov	r1, r5
+	mov	r3, r4
+	movs	r2, #1
+	mov	r0, r6
+	adds	r5, r5, #1
+	bl	__nand_write
+	cmp	r5, #38912
+	bne	.L1885
+	mov	r0, r4
+	bl	nftl_free
+	movs	r0, #0
+	pop	{r4, r5, r6, pc}
+.L1888:
+	.align	2
+.L1887:
+	.word	.LANCHOR104
+	.word	.LC238
+	.size	write_data_to_nand, .-write_data_to_nand
+	.section	.text.nand_sector_cache_write,"ax",%progbits
+	.align	1
+	.global	nand_sector_cache_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_sector_cache_write, %function
+nand_sector_cache_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	addw	r5, r0, #1620
+	mov	r6, r0
+	mov	r0, r5
+	mov	r8, r1
+	mov	r7, r2
+	bl	search_from_sector_cache_write_list
+	mov	r4, r0
+	cbz	r0, .L1890
+	mov	r1, r0
+	mov	r0, r5
+	bl	del_from_sector_cache_write_list
+.L1898:
+	mov	r2, #512
+	mov	r1, r7
+	ldr	r0, [r4, #8]
+	bl	NAND_Memcpy
+	mov	r1, r4
+	mov	r0, r5
+	bl	add_to_sector_cache_write_list_tail
+	movs	r0, #0
+	b	.L1889
+.L1890:
+	ldrh	r3, [r6, #1622]
+	cmp	r3, #7
+	bls	.L1892
+	ldr	r1, [r6, #1960]
+	mov	r0, r5
+	bl	del_from_sector_cache_write_list
+	movs	r2, #1
+	mov	r4, r0
+	ldr	r3, [r0, #8]
+	ldr	r1, [r0, #4]
+	mov	r0, r6
+	bl	__nand_write
+	cbz	r0, .L1893
+	ldr	r0, .L1899
+.L1897:
+	bl	NAND_Print
+	movs	r0, #1
+.L1889:
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1892:
+	mov	r0, r5
+	bl	get_empty_sector_cahce_node
+	mov	r4, r0
+	cbnz	r0, .L1893
+	ldr	r0, .L1899+4
+	b	.L1897
+.L1893:
+	str	r8, [r4, #4]
+	b	.L1898
+.L1900:
+	.align	2
+.L1899:
+	.word	.LC239
+	.word	.LC240
+	.size	nand_sector_cache_write, .-nand_sector_cache_write
+	.section	.text.__nand_sector_write,"ax",%progbits
+	.align	1
+	.global	__nand_sector_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_sector_write, %function
+__nand_sector_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r8, r0
+	mov	r4, r1
+	mov	r6, r3
+	adds	r7, r1, r2
+	movs	r5, #0
+.L1902:
+	cmp	r4, r7
+	bne	.L1903
+	mov	r0, r5
+	pop	{r4, r5, r6, r7, r8, pc}
+.L1903:
+	mov	r2, r6
+	mov	r1, r4
+	mov	r0, r8
+	adds	r4, r4, #1
+	bl	nand_sector_cache_write
+	add	r6, r6, #512
+	orrs	r5, r5, r0
+	b	.L1902
+	.size	__nand_sector_write, .-__nand_sector_write
+	.section	.text.__nand_flush_sector_write_cache,"ax",%progbits
+	.align	1
+	.global	__nand_flush_sector_write_cache
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_flush_sector_write_cache, %function
+__nand_flush_sector_write_cache:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r5, r0
+	mov	r6, r1
+	addw	r7, r0, #1620
+	movs	r4, #0
+.L1905:
+	ldr	r1, [r5, #1960]
+	cbz	r1, .L1906
+	mov	r0, r7
+	bl	del_from_sector_cache_write_list
+	movs	r2, #1
+	ldr	r3, [r0, #8]
+	ldr	r1, [r0, #4]
+	mov	r0, r5
+	bl	__nand_write
+	subs	r6, r6, #1
+	mov	r4, r0
+	bne	.L1905
+.L1906:
+	cbz	r4, .L1904
+	ldr	r0, .L1915
+	bl	NAND_Print
+.L1904:
+	mov	r0, r4
+	pop	{r3, r4, r5, r6, r7, pc}
+.L1916:
+	.align	2
+.L1915:
+	.word	.LC241
+	.size	__nand_flush_sector_write_cache, .-__nand_flush_sector_write_cache
+	.section	.text.flush_write_cache_to_nand,"ax",%progbits
+	.align	1
+	.global	flush_write_cache_to_nand
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	flush_write_cache_to_nand, %function
+flush_write_cache_to_nand:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, lr}
+	sub	sp, sp, #20
+	mov	r4, r0
+	movs	r2, #8
+	mov	r8, r1
+	mov	r0, sp
+	ldr	r1, .L1944
+	bl	memcpy
+	movs	r2, #8
+	ldr	r1, .L1944+4
+	add	r0, sp, r2
+	bl	memcpy
+	ldr	r1, [r4, #1608]
+	cbnz	r1, .L1918
+	ldr	r0, .L1944+8
+	bl	NAND_Print
+.L1919:
+	movs	r0, #0
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L1918:
+	add	r7, r4, #584
+	mov	r0, r7
+	bl	del_from_cache_write_list
+	mov	r5, r0
+	cmp	r0, #0
+	beq	.L1919
+	ldr	r3, [r4, #4]
+	ldrh	r2, [r0, #6]
+	ldrd	r1, r6, [r0, #8]
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	cmp	r2, r3
+	beq	.L1921
+	ldr	r3, [r4, #2008]
+	mov	r0, r4
+	ldr	r2, [r4, #1616]
+	blx	r3
+	mov	r10, r0
+	ldrh	r0, [r5, #6]
+	ldr	r3, [r4, #4]
+	ldr	r1, [r4, #1616]
+	lsls	r0, r0, #9
+	ldrh	r2, [r3, #26]
+	uxth	r0, r0
+	subs	r2, r2, r0
+	add	r1, r1, r0
+	add	r0, r0, r6
+	bl	NAND_Memcpy
+	cmp	r10, #10
+	bne	.L1921
+	ldrh	r2, [r4, #590]
+	ldr	r1, [r5, #8]
+	ldr	r0, .L1944+12
+	bl	NAND_Print
+.L1921:
+	movs	r3, #0
+	mov	r2, r6
+	strh	r3, [r5, #4]	@ movhi
+	mov	r0, r4
+	ldr	r3, [r4, #4]
+	ldr	r1, [r5, #8]
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	strh	r3, [r5, #6]	@ movhi
+	ldr	r3, [r4, #2004]
+	blx	r3
+	cbz	r0, .L1923
+	ldr	r0, .L1944+16
+	bl	NAND_Print
+.L1923:
+	ldr	r10, [r4, #4]
+	movs	r2, #8
+	mov	r1, sp
+	mov	r0, r10
+	bl	NAND_Memcmp
+	tst	r0, #255
+	bne	.L1924
+.L1927:
+	cmp	r8, #1
+	bne	.L1928
+	ldrh	r1, [r4, #320]
+	ldr	r0, .L1944+20
+	bl	NAND_Print
+	ldrh	r0, [r4, #320]
+	cbz	r0, .L1928
+	subs	r0, r0, #1
+	bl	nand_phy_get_page_type
+	cmp	r0, #2
+	bne	.L1928
+	ldr	r0, .L1944+24
+	bl	NAND_Print
+	ldr	r3, [r4, #2004]
+	mov	r2, r6
+	ldr	r1, [r5, #8]
+	mov	r0, r4
+	blx	r3
+	cbz	r0, .L1928
+	ldr	r0, .L1944+16
+	bl	NAND_Print
+	b	.L1928
+.L1924:
+	movs	r2, #8
+	mov	r0, r10
+	add	r1, sp, r2
+	bl	NAND_Memcmp
+	tst	r0, #255
+	beq	.L1927
+.L1928:
+	movs	r2, #2
+	mov	r1, r5
+	mov	r0, r7
+	bl	add_to_cache_read_list_tail
+	b	.L1919
+.L1945:
+	.align	2
+.L1944:
+	.word	.LANCHOR76+14
+	.word	.LANCHOR76+22
+	.word	.LC242
+	.word	.LC243
+	.word	.LC244
+	.word	.LC245
+	.word	.LC246
+	.size	flush_write_cache_to_nand, .-flush_write_cache_to_nand
+	.section	.text.nand_cache_write,"ax",%progbits
+	.align	1
+	.global	nand_cache_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_cache_write, %function
+nand_cache_write:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	mov	r6, r1
+	str	r3, [sp, #4]
+	cbnz	r3, .L1947
+.L1985:
+	movs	r0, #0
+	b	.L1946
+.L1947:
+	lsls	r3, r2, #1
+	lsl	r8, r2, #9
+	and	r10, r3, #65024
+	ldr	r3, [r0, #1972]
+	uxth	r8, r8
+	ldrh	r5, [r3]
+	cbz	r5, .L1949
+	ldr	r5, [r0, #604]
+	ldr	r3, [r0, #2008]
+	mov	r2, r5
+	blx	r3
+	mov	r2, r8
+	ldr	r1, [sp, #4]
+	add	r0, r5, r10
+	bl	NAND_Memcpy
+	ldr	r3, [r4, #2004]
+	mov	r2, r5
+	mov	r1, r6
+	mov	r0, r4
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, lr}
+	bx	r3
+.L1949:
+	add	r5, r0, #584
+	ldrh	r0, [r3, #2]
+	cbnz	r0, .L1950
+	ldr	r0, [r4, #4]
+	ldrb	r7, [r0, #8]	@ zero_extendqisi2
+	cmp	r7, r2
+	bne	.L1950
+	ldrh	r3, [r3, #26]
+	cbnz	r3, .L1950
+	mov	r0, r5
+	bl	search_from_cache_write_list
+	mov	r1, r0
+	cbz	r0, .L1951
+	mov	r0, r5
+	bl	del_from_cache_write_list
+.L1951:
+	mov	r1, r6
+	mov	r0, r5
+	bl	search_from_cache_read_list
+	mov	r1, r0
+	cbz	r0, .L1952
+	mov	r0, r5
+	bl	del_from_cache_read_list
+.L1952:
+	ldr	r3, [r4, #2004]
+	mov	r1, r6
+	ldr	r2, [sp, #4]
+	mov	r0, r4
+	blx	r3
+	cmp	r0, #0
+	beq	.L1985
+	mov	r1, r7
+	ldr	r0, .L1987
+	bl	NAND_Print
+.L1984:
+	movs	r0, #1
+.L1946:
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L1950:
+	mov	r1, r6
+	mov	r0, r5
+	bl	search_from_cache_write_list
+	mov	r7, r0
+	cmp	r0, #0
+	beq	.L1954
+	mov	r1, r0
+	mov	r0, r5
+	bl	del_from_cache_write_list
+	ldr	r3, [r7, #12]
+	ldr	r2, [r4, #4]
+	str	r3, [sp, #8]
+	ldrb	r2, [r2, #8]	@ zero_extendqisi2
+	ldrh	r3, [r7, #6]
+	cmp	r2, r3
+	beq	.L1956
+	lsl	fp, r3, #9
+	uxth	fp, fp
+	cmp	r10, fp
+	bne	.L1957
+	add	r3, r3, r8, lsr #9
+	strh	r3, [r7, #6]	@ movhi
+.L1956:
+	ldrd	r1, r3, [sp, #4]
+	mov	r2, r8
+	add	r3, r3, r10
+	mov	r0, r3
+	bl	NAND_Memcpy
+	mov	r1, r7
+	mov	r0, r5
+	bl	add_to_cache_write_list_tail
+	mov	r1, r6
+	mov	r0, r5
+	bl	search_from_cache_read_list
+	mov	r1, r0
+	cmp	r0, #0
+	beq	.L1985
+	mov	r0, r5
+	bl	del_from_cache_read_list
+	b	.L1985
+.L1957:
+	ldr	r3, [r4, #2008]
+	mov	r1, r6
+	ldr	r2, [r4, #1616]
+	mov	r0, r4
+	blx	r3
+	ldr	r2, [r4, #4]
+	ldr	r3, [sp, #8]
+	ldr	r1, [r4, #1616]
+	ldrh	r2, [r2, #26]
+	str	r0, [sp, #12]
+	add	r0, r3, fp
+	add	r1, r1, fp
+	sub	r2, r2, fp
+	bl	NAND_Memcpy
+	ldr	r2, [r4, #4]
+	ldr	r3, [sp, #12]
+	ldrb	r2, [r2, #8]	@ zero_extendqisi2
+	cmp	r3, #10
+	strh	r2, [r7, #6]	@ movhi
+	bne	.L1956
+	mov	r1, r6
+	ldr	r0, .L1987+4
+	bl	NAND_Print
+	b	.L1956
+.L1954:
+	mov	r0, r5
+	bl	search_from_cache_read_list
+	mov	fp, r0
+	cbz	r0, .L1959
+	ldr	r0, [r0, #12]
+	mov	r2, r8
+	ldr	r1, [sp, #4]
+	add	r0, r0, r10
+	bl	NAND_Memcpy
+	ldr	r3, [r4, #4]
+	mov	r1, fp
+	strh	r7, [fp, #4]	@ movhi
+	mov	r0, r5
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	strh	r3, [fp, #6]	@ movhi
+	bl	del_from_cache_read_list
+	mov	r0, r5
+	bl	add_to_cache_write_list_tail
+	ldr	r3, [r4, #1972]
+	ldrh	r2, [r4, #588]
+	ldrh	r3, [r3, #24]
+	cmp	r2, r3
+	bcc	.L1985
+	mov	r1, r7
+	mov	r0, r4
+	bl	flush_write_cache_to_nand
+	cmp	r0, #0
+	beq	.L1985
+	ldr	r0, .L1987+8
+.L1986:
+	bl	NAND_Print
+	b	.L1984
+.L1960:
+	movs	r1, #0
+	mov	r0, r4
+	bl	flush_write_cache_to_nand
+	cbz	r0, .L1959
+	ldr	r0, .L1987+12
+	b	.L1986
+.L1959:
+	ldr	r3, [r4, #1972]
+	ldrh	r2, [r4, #588]
+	ldrh	r3, [r3, #24]
+	cmp	r2, r3
+	bcs	.L1960
+	mov	r0, r5
+	bl	get_empty_cahce_node
+	mov	r7, r0
+	cbnz	r0, .L1961
+	ldrh	r3, [r4, #590]
+	ldrh	r2, [r4, #586]
+	ldrh	r1, [r4, #588]
+	ldr	r0, .L1987+16
+	bl	NAND_Print
+	b	.L1984
+.L1961:
+	str	r6, [r0, #8]
+	ldr	fp, [r0, #12]
+	cmp	r10, #0
+	bne	.L1962
+	lsr	r3, r8, #9
+	strh	r10, [r0, #4]	@ movhi
+.L1983:
+	ldr	r1, [sp, #4]
+	add	r0, fp, r10
+	strh	r3, [r7, #6]	@ movhi
+	mov	r2, r8
+	bl	NAND_Memcpy
+	mov	r1, r7
+	mov	r0, r5
+	bl	add_to_cache_write_list_tail
+	b	.L1985
+.L1962:
+	ldr	r3, [r4, #2008]
+	mov	r2, fp
+	mov	r1, r6
+	mov	r0, r4
+	blx	r3
+	cmp	r0, #10
+	bne	.L1964
+	mov	r1, r6
+	ldr	r0, .L1987+20
+	bl	NAND_Print
+.L1964:
+	movs	r3, #0
+	strh	r3, [r7, #4]	@ movhi
+	ldr	r3, [r4, #4]
+	ldrb	r3, [r3, #8]	@ zero_extendqisi2
+	b	.L1983
+.L1988:
+	.align	2
+.L1987:
+	.word	.LC247
+	.word	.LC248
+	.word	.LC249
+	.word	.LC250
+	.word	.LC234
+	.word	.LC251
+	.size	nand_cache_write, .-nand_cache_write
+	.section	.text.__nand_flush_write_cache,"ax",%progbits
+	.align	1
+	.global	__nand_flush_write_cache
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_flush_write_cache, %function
+__nand_flush_write_cache:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	movs	r4, #0
+	mov	r6, r0
+	mov	r7, r1
+	mov	r5, r4
+.L1990:
+	ldr	r3, [r6, #1608]
+	cbz	r3, .L1991
+	adds	r4, r4, #1
+	movs	r1, #1
+	mov	r0, r6
+	bl	flush_write_cache_to_nand
+	cmp	r7, r4
+	orr	r5, r5, r0
+	bne	.L1990
+.L1991:
+	cbz	r5, .L1993
+	ldr	r0, .L2004
+	bl	NAND_Print
+.L1993:
+	cbz	r4, .L1989
+	ldr	r3, [r6, #356]
+	cbz	r3, .L1989
+	mov	r2, r4
+	ldrb	r1, [r6, #16]	@ zero_extendqisi2
+	ldr	r0, .L2004+4
+	bl	NAND_Print_DBG
+.L1989:
+	mov	r0, r5
+	pop	{r3, r4, r5, r6, r7, pc}
+.L2005:
+	.align	2
+.L2004:
+	.word	.LC241
+	.word	.LC252
+	.size	__nand_flush_write_cache, .-__nand_flush_write_cache
+	.section	.text._nand_flush_write_cache,"ax",%progbits
+	.align	1
+	.global	_nand_flush_write_cache
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nand_flush_write_cache, %function
+_nand_flush_write_cache:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #12]
+	b	__nand_flush_write_cache
+	.size	_nand_flush_write_cache, .-_nand_flush_write_cache
+	.section	.text.nand_clean_zone_table,"ax",%progbits
+	.align	1
+	.global	nand_clean_zone_table
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_clean_zone_table, %function
+nand_clean_zone_table:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r1, #1000
+	mov	r4, r0
+	bl	__nand_flush_write_cache
+	mov	r0, r4
+	bl	clean_block_list
+	mov	r0, r4
+	bl	nand_clean_zone_table2
+	mov	r0, r4
+	bl	nftl_cache_exit
+	movs	r0, #0
+	pop	{r4, pc}
+	.size	nand_clean_zone_table, .-nand_clean_zone_table
+	.section	.text.nand_discard,"ax",%progbits
+	.align	1
+	.global	nand_discard
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_discard, %function
+nand_discard:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r6, r0
+	ldr	r3, [r6, #24]
+	mov	r4, r2
+	adds	r2, r1, r2
+	mov	r0, r1
+	cmp	r2, r3
+	bls	.L2009
+	ldr	r0, .L2030
+	bl	NAND_Print
+	movs	r0, #1
+.L2008:
+	pop	{r4, r5, r6, r7, r8, pc}
+.L2009:
+	ldr	r1, [r6, #1968]
+	ldrd	r2, [r1, #96]
+	adds	r7, r2, r4
+	adc	r8, r3, #0
+	ldr	r3, [r6, #4]
+	strd	r7, [r1, #96]
+	ldrb	r7, [r3, #8]	@ zero_extendqisi2
+	mov	r1, r7
+	bl	__aeabi_uidivmod
+	mov	r5, r0
+	cbz	r1, .L2011
+	subs	r1, r7, r1
+	adds	r5, r5, #1
+	uxth	r1, r1
+	cmp	r1, r4
+	bhi	.L2019
+	subs	r4, r4, r1
+.L2012:
+	mov	r1, r7
+	mov	r0, r4
+	bl	__aeabi_uidiv
+	cbz	r0, .L2013
+	add	r7, r6, #584
+	adds	r4, r5, r0
+.L2018:
+	ldr	r3, [r6, #1972]
+	ldrh	r3, [r3]
+	cbnz	r3, .L2015
+	mov	r1, r5
+	mov	r0, r7
+	bl	search_from_cache_write_list
+	mov	r1, r0
+	cbz	r0, .L2016
+	mov	r0, r7
+	bl	del_from_cache_write_list
+.L2016:
+	mov	r1, r5
+	mov	r0, r7
+	bl	search_from_cache_read_list
+	mov	r1, r0
+	cbz	r0, .L2015
+	mov	r0, r7
+	bl	del_from_cache_read_list
+.L2015:
+	mov	r1, r5
+	ldr	r3, [r6, #2016]
+	mov	r0, r6
+	adds	r5, r5, #1
+	blx	r3
+	ldr	r3, [r6, #4]
+	movs	r1, #0
+	ldr	ip, [r6, #1968]
+	ldrb	r0, [r3, #8]	@ zero_extendqisi2
+	ldrd	r3, r2, [ip, #104]
+	adds	r3, r3, r0
+	adc	r2, r1, r2
+	cmp	r5, r4
+	strd	r3, r2, [ip, #104]
+	bne	.L2018
+.L2013:
+	movs	r0, #0
+	b	.L2008
+.L2011:
+	cmp	r7, r4
+	it	hi
+	movhi	r4, #0
+	b	.L2012
+.L2019:
+	movs	r4, #0
+	b	.L2012
+.L2031:
+	.align	2
+.L2030:
+	.word	.LC253
+	.size	nand_discard, .-nand_discard
+	.section	.text.__nand_discard,"ax",%progbits
+	.align	1
+	.global	__nand_discard
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__nand_discard, %function
+__nand_discard:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #356]
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	mov	r5, r1
+	mov	r6, r2
+	cmp	r3, #3
+	bne	.L2033
+	ldr	r0, .L2034
+	bl	NAND_Print_DBG
+.L2033:
+	mov	r2, r6
+	mov	r1, r5
+	mov	r0, r4
+	pop	{r4, r5, r6, lr}
+	b	nand_discard
+.L2035:
+	.align	2
+.L2034:
+	.word	.LC254
+	.size	__nand_discard, .-__nand_discard
+	.section	.text._nand_discard,"ax",%progbits
+	.align	1
+	.global	_nand_discard
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nand_discard, %function
+_nand_discard:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #12]
+	b	__nand_discard
+	.size	_nand_discard, .-_nand_discard
+	.section	.text.__shutdown_op,"ax",%progbits
+	.align	1
+	.global	__shutdown_op
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	__shutdown_op, %function
+__shutdown_op:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r0, #0
+	bx	lr
+	.size	__shutdown_op, .-__shutdown_op
+	.section	.text.print_logic_page_map,"ax",%progbits
+	.align	1
+	.global	print_logic_page_map
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_logic_page_map, %function
+print_logic_page_map:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #4]
+	push	{r0, r1, r4, r5, r6, r7, r8, lr}
+	mov	r5, r0
+	ldr	r7, .L2043
+	movs	r4, #0
+	ldr	r8, .L2043+4
+	ldrb	r1, [r3, #8]	@ zero_extendqisi2
+	ldr	r0, [r0, #24]
+	bl	__aeabi_uidiv
+	mov	r6, r0
+.L2039:
+	cmp	r4, r6
+	bne	.L2042
+	movs	r0, #0
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L2042:
+	mov	r1, r4
+	mov	r0, r5
+	bl	get_logic_page_map
+	cbnz	r0, .L2040
+	mov	r0, r8
+	bl	NAND_Print
+.L2041:
+	adds	r4, r4, #1
+	b	.L2039
+.L2040:
+	ldrh	r2, [r0, #2]
+	movw	r3, #65535
+	cmp	r2, r3
+	beq	.L2041
+	ldrb	r1, [r0, #1]	@ zero_extendqisi2
+	ldrh	r3, [r0]
+	mov	r0, r7
+	ubfx	r1, r1, #4, #1
+	str	r1, [sp]
+	ubfx	r3, r3, #0, #12
+	mov	r1, r4
+	bl	NAND_Print_DBG
+	b	.L2041
+.L2044:
+	.align	2
+.L2043:
+	.word	.LC256
+	.word	.LC255
+	.size	print_logic_page_map, .-print_logic_page_map
+	.section	.text.get_last_nftl,"ax",%progbits
+	.align	1
+	.global	get_last_nftl
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_last_nftl, %function
+get_last_nftl:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r0
+.L2046:
+	cbnz	r3, .L2047
+	bx	lr
+.L2047:
+	mov	r0, r3
+	ldr	r3, [r3, #8]
+	b	.L2046
+	.size	get_last_nftl, .-get_last_nftl
+	.section	.text.get_nftl_need_read_claim,"ax",%progbits
+	.align	1
+	.global	get_nftl_need_read_claim
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_nftl_need_read_claim, %function
+get_nftl_need_read_claim:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r2, r0
+	mov	r3, r0
+.L2049:
+	cbnz	r3, .L2050
+	ldr	r3, [r2, #12]
+	ldr	r3, [r3, #1968]
+	ldr	r3, [r3, #172]
+.L2051:
+	cbnz	r0, .L2053
+.L2048:
+	bx	lr
+.L2050:
+	mov	r2, r3
+	ldr	r3, [r3, #8]
+	b	.L2049
+.L2053:
+	ldr	r2, [r0, #12]
+	ldrb	r2, [r2, #16]	@ zero_extendqisi2
+	cmp	r2, r3
+	beq	.L2048
+	ldr	r0, [r0, #8]
+	b	.L2051
+	.size	get_nftl_need_read_claim, .-get_nftl_need_read_claim
+	.section	.text.get_nftl_read_claim_page_no,"ax",%progbits
+	.align	1
+	.global	get_nftl_read_claim_page_no
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_nftl_read_claim_page_no, %function
+get_nftl_read_claim_page_no:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r0
+.L2055:
+	cbnz	r3, .L2056
+	ldr	r3, [r0, #12]
+	ldr	r3, [r3, #1968]
+	ldr	r0, [r3, #176]
+	bx	lr
+.L2056:
+	mov	r0, r3
+	ldr	r3, [r3, #8]
+	b	.L2055
+	.size	get_nftl_read_claim_page_no, .-get_nftl_read_claim_page_no
+	.section	.text.clean_read_reclaim_complete_flag,"ax",%progbits
+	.align	1
+	.global	clean_read_reclaim_complete_flag
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	clean_read_reclaim_complete_flag, %function
+clean_read_reclaim_complete_flag:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+.L2058:
+	cbnz	r0, .L2059
+	bx	lr
+.L2059:
+	ldr	r2, [r0, #12]
+	ldr	r0, [r0, #8]
+	ldr	r3, [r2, #364]
+	clz	r3, r3
+	lsrs	r3, r3, #5
+	str	r3, [r2, #364]
+	b	.L2058
+	.size	clean_read_reclaim_complete_flag, .-clean_read_reclaim_complete_flag
+	.section	.text.set_nftl_read_claim_complete,"ax",%progbits
+	.align	1
+	.global	set_nftl_read_claim_complete
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_nftl_read_claim_complete, %function
+set_nftl_read_claim_complete:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	movs	r3, #1
+	ldr	r5, [r1, #12]
+	mov	r4, r0
+	str	r3, [r5, #360]
+	mov	r3, r0
+.L2061:
+	cbnz	r3, .L2062
+	ldr	r1, [r1, #8]
+	ldr	r2, [r4, #12]
+	ldr	r2, [r2, #1968]
+	cbnz	r1, .L2063
+	str	r3, [r2, #172]
+	bl	clean_read_reclaim_complete_flag
+.L2064:
+	ldr	r3, [r4, #12]
+	movs	r0, #0
+	ldr	r3, [r3, #1968]
+	str	r0, [r3, #176]
+	pop	{r3, r4, r5, pc}
+.L2062:
+	mov	r4, r3
+	ldr	r3, [r3, #8]
+	b	.L2061
+.L2063:
+	ldrb	r3, [r5, #16]	@ zero_extendqisi2
+	adds	r3, r3, #1
+	str	r3, [r2, #172]
+	b	.L2064
+	.size	set_nftl_read_claim_complete, .-set_nftl_read_claim_complete
+	.section	.text.set_nftl_read_claim_flag,"ax",%progbits
+	.align	1
+	.global	set_nftl_read_claim_flag
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	set_nftl_read_claim_flag, %function
+set_nftl_read_claim_flag:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+.L2066:
+	cbnz	r0, .L2067
+	bx	lr
+.L2067:
+	ldr	r3, [r0, #12]
+	ldr	r0, [r0, #8]
+	ldr	r3, [r3, #1968]
+	strd	r1, r2, [r3, #172]
+	b	.L2066
+	.size	set_nftl_read_claim_flag, .-set_nftl_read_claim_flag
+	.section	.text.get_cold_logic_page,"ax",%progbits
+	.align	1
+	.global	get_cold_logic_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_cold_logic_page, %function
+get_cold_logic_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r5, r0
+	ldr	r8, .L2074
+	mov	r6, r2
+	mov	r4, r1
+	movw	r7, #65535
+.L2069:
+	cmp	r4, r6
+	bcc	.L2073
+	mov	r4, #-1
+	b	.L2068
+.L2073:
+	mov	r1, r4
+	mov	r0, r5
+	bl	get_logic_page_map
+	cbnz	r0, .L2070
+	mov	r0, r8
+	bl	NAND_Print
+.L2071:
+	adds	r4, r4, #1
+	b	.L2069
+.L2070:
+	ldrh	r3, [r0, #2]
+	cmp	r3, r7
+	beq	.L2071
+	ldrb	r3, [r0, #1]	@ zero_extendqisi2
+	ldr	r2, [r5, #364]
+	ubfx	r1, r3, #4, #1
+	cmp	r1, r2
+	beq	.L2071
+	bfi	r3, r2, #4, #1
+	strb	r3, [r0, #1]
+.L2068:
+	mov	r0, r4
+	pop	{r4, r5, r6, r7, r8, pc}
+.L2075:
+	.align	2
+.L2074:
+	.word	.LC255
+	.size	get_cold_logic_page, .-get_cold_logic_page
+	.section	.text.read_reclaim,"ax",%progbits
+	.align	1
+	.global	read_reclaim
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	read_reclaim, %function
+read_reclaim:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r4, r1
+	mov	r7, r2
+	mov	r6, r0
+	bl	get_nftl_read_claim_page_no
+	ldr	r5, [r1, #12]
+	mov	r1, r0
+	ldr	r2, [r5, #28]
+	mov	r0, r5
+	bl	get_cold_logic_page
+	adds	r3, r0, #1
+	mov	r5, r0
+	bne	.L2077
+	mov	r1, r4
+	mov	r0, r6
+	pop	{r3, r4, r5, r6, r7, lr}
+	b	set_nftl_read_claim_complete
+.L2077:
+	ldr	r0, [r4, #12]
+	mov	r3, r7
+	mov	r1, r5
+	ldr	r2, [r0, #4]
+	ldrb	r2, [r2, #8]	@ zero_extendqisi2
+	bl	nand_cache_read
+	ldr	r3, [r4, #12]
+	mov	r2, r5
+	mov	r0, r6
+	ldrb	r1, [r3, #16]	@ zero_extendqisi2
+	bl	set_nftl_read_claim_flag
+	movs	r0, #0
+	pop	{r3, r4, r5, r6, r7, pc}
+	.size	read_reclaim, .-read_reclaim
+	.section	.text.nftl_get_boot_cnt,"ax",%progbits
+	.align	1
+	.global	nftl_get_boot_cnt
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_boot_cnt, %function
+nftl_get_boot_cnt:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #1968]
+	ldr	r0, [r3, #140]
+	bx	lr
+	.size	nftl_get_boot_cnt, .-nftl_get_boot_cnt
+	.section	.text.nftl_get_zone_cap,"ax",%progbits
+	.align	1
+	.global	nftl_get_zone_cap
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_zone_cap, %function
+nftl_get_zone_cap:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0, #24]
+	bx	lr
+	.size	nftl_get_zone_cap, .-nftl_get_zone_cap
+	.section	.text.nftl_get_zone_priv,"ax",%progbits
+	.align	1
+	.global	nftl_get_zone_priv
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_zone_priv, %function
+nftl_get_zone_priv:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r0, [r0]
+	bx	lr
+	.size	nftl_get_zone_priv, .-nftl_get_zone_priv
+	.section	.text.nftl_get_zone_write_cache_nums,"ax",%progbits
+	.align	1
+	.global	nftl_get_zone_write_cache_nums
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_get_zone_write_cache_nums, %function
+nftl_get_zone_write_cache_nums:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrh	r0, [r0, #588]
+	bx	lr
+	.size	nftl_get_zone_write_cache_nums, .-nftl_get_zone_write_cache_nums
+	.section	.text.print_smart,"ax",%progbits
+	.align	1
+	.global	print_smart
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_smart, %function
+print_smart:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #356]
+	push	{r4, lr}
+	cmp	r3, #0
+	beq	.L2082
+	ldr	r4, [r0, #1968]
+	ldr	r0, .L2084
+	ldr	r1, [r4, #112]
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #64]
+	ldr	r0, .L2084+4
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #72]
+	ldr	r0, .L2084+8
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #80]
+	ldr	r0, .L2084+12
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #88]
+	ldr	r0, .L2084+16
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #96]
+	ldr	r0, .L2084+20
+	bl	NAND_Print_DBG
+	ldrd	r2, [r4, #104]
+	ldr	r0, .L2084+24
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #116]
+	ldr	r0, .L2084+28
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #120]
+	ldr	r0, .L2084+32
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #124]
+	ldr	r0, .L2084+36
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #128]
+	ldr	r0, .L2084+40
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #180]
+	ldr	r0, .L2084+44
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #132]
+	ldr	r0, .L2084+48
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #136]
+	ldr	r0, .L2084+52
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #140]
+	ldr	r0, .L2084+56
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #144]
+	ldr	r0, .L2084+60
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #148]
+	ldr	r0, .L2084+64
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #152]
+	ldr	r0, .L2084+68
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #156]
+	ldr	r0, .L2084+72
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #160]
+	ldr	r0, .L2084+76
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #164]
+	ldr	r0, .L2084+80
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #168]
+	ldr	r0, .L2084+84
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #172]
+	ldr	r0, .L2084+88
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #176]
+	ldr	r0, .L2084+92
+	pop	{r4, lr}
+	b	NAND_Print_DBG
+.L2082:
+	pop	{r4, pc}
+.L2085:
+	.align	2
+.L2084:
+	.word	.LC257
+	.word	.LC258
+	.word	.LC259
+	.word	.LC260
+	.word	.LC261
+	.word	.LC262
+	.word	.LC263
+	.word	.LC264
+	.word	.LC265
+	.word	.LC266
+	.word	.LC267
+	.word	.LC268
+	.word	.LC269
+	.word	.LC270
+	.word	.LC271
+	.word	.LC272
+	.word	.LC273
+	.word	.LC274
+	.word	.LC275
+	.word	.LC276
+	.word	.LC277
+	.word	.LC278
+	.word	.LC279
+	.word	.LC280
+	.size	print_smart, .-print_smart
+	.section	.text.init_smart_info,"ax",%progbits
+	.align	1
+	.global	init_smart_info
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	init_smart_info, %function
+init_smart_info:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r2, #320
+	mov	r4, r0
+	sub	sp, sp, #32
+	mov	r5, r1
+	movs	r1, #0
+	ldr	r0, [r0, #1968]
+	bl	NAND_Memset
+	ldr	r3, [r4, #1968]
+	ldr	r6, .L2100
+	ldr	r2, [r3, #140]
+	str	r6, [r3, #112]
+	adds	r2, r2, #1
+	str	r2, [r3, #140]
+	cmp	r5, #0
+	beq	.L2087
+	ldr	r3, [r4, #4]
+	ldrh	r0, [r5]
+	ldr	r2, [r4, #284]
+	ldrh	r1, [r3, #28]
+	ldrh	r3, [r3, #20]
+	strh	r0, [sp, #18]	@ movhi
+	mov	r0, r4
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	subs	r3, r3, #1
+	str	r2, [sp, #24]
+	strh	r3, [sp, #16]	@ movhi
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1984]
+	blx	r3
+	mov	r5, r0
+	mov	r0, sp
+	bl	is_phy_mapping_page
+	cmp	r0, #1
+	bne	.L2089
+	cbz	r5, .L2090
+	cmp	r5, #10
+	bne	.L2089
+.L2090:
+	ldr	r3, [r4, #308]
+	ldr	r1, [r4, #284]
+	add	r1, r1, r3
+	ldr	r3, [r1, #112]
+	cmp	r3, r6
+	bne	.L2089
+	mov	r2, #320
+	ldr	r0, [r4, #1968]
+	bl	NAND_Memcpy
+	ldr	r3, [r4, #1968]
+	ldr	r2, [r3, #140]
+	adds	r2, r2, #1
+	str	r2, [r3, #140]
+	ldr	r2, [r3, #164]
+	adds	r2, r2, #1
+	itt	eq
+	moveq	r2, #0
+	streq	r2, [r3, #164]
+	ldr	r2, [r3, #172]
+	adds	r2, r2, #1
+	itt	eq
+	moveq	r2, #0
+	streq	r2, [r3, #172]
+	ldr	r2, [r3, #176]
+	adds	r2, r2, #1
+	itt	eq
+	moveq	r2, #0
+	streq	r2, [r3, #176]
+.L2089:
+	mov	r0, r4
+	bl	print_smart
+.L2087:
+	movs	r0, #0
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, pc}
+.L2101:
+	.align	2
+.L2100:
+	.word	-1431655935
+	.size	init_smart_info, .-init_smart_info
+	.section	.text.print_nftl_zone,"ax",%progbits
+	.align	1
+	.global	print_nftl_zone
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	print_nftl_zone, %function
+print_nftl_zone:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r3, r4, lr}
+	mov	r4, r0
+	ldr	r3, [r0, #356]
+	cmp	r3, #0
+	beq	.L2102
+	ldr	r0, .L2108
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldr	r0, .L2108+4
+	ldrh	r1, [r3, #24]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldr	r0, .L2108+8
+	ldrh	r1, [r3, #26]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldr	r0, .L2108+12
+	ldrh	r1, [r3, #20]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldr	r0, .L2108+16
+	ldrh	r1, [r3, #16]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldr	r0, .L2108+20
+	ldrh	r1, [r3, #30]
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #356]
+	ldr	r0, .L2108+24
+	bl	NAND_Print_DBG
+	ldrb	r1, [r4, #16]	@ zero_extendqisi2
+	ldr	r0, .L2108+28
+	bl	NAND_Print_DBG
+	ldrb	r1, [r4, #17]	@ zero_extendqisi2
+	ldr	r0, .L2108+32
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #18]
+	ldr	r0, .L2108+36
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #20]
+	ldr	r0, .L2108+40
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #24]
+	ldr	r0, .L2108+44
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #32]
+	ldr	r0, .L2108+48
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #22]
+	ldr	r0, .L2108+52
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #380]
+	ldr	r0, .L2108+56
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #382]
+	ldr	r0, .L2108+60
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #388]
+	ldr	r0, .L2108+64
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #384]
+	ldr	r0, .L2108+68
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #394]
+	ldr	r0, .L2108+72
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #40]
+	ldr	r0, .L2108+76
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #44]
+	ldr	r0, .L2108+80
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	add	r3, r4, #272
+	ldm	r3, {r0, r1, r2}
+	add	r3, r4, #260
+	stm	sp, {r0, r1, r2}
+	ldr	r0, .L2108+84
+	ldm	r3, {r1, r2, r3}
+	bl	NAND_Print_DBG
+	add	r3, r4, #308
+	ldm	r3, {r0, r1, r2}
+	add	r3, r4, #296
+	stm	sp, {r0, r1, r2}
+	ldr	r0, .L2108+88
+	ldm	r3, {r1, r2, r3}
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #292]
+	ldr	r0, .L2108+92
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #292]
+	ldr	r0, .L2108+96
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #320]
+	ldr	r0, .L2108+100
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #292]
+	ldr	r0, .L2108+104
+	ldr	r1, [r3, #8]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #48]
+	ldr	r0, .L2108+108
+	ldrh	r2, [r3, #6]
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bpl	.L2104
+	add	r3, r4, #340
+	ldm	r3, {r0, r1, r2}
+	add	r3, r4, #328
+	stm	sp, {r0, r1, r2}
+	ldr	r0, .L2108+112
+	ldm	r3, {r1, r2, r3}
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #324]
+	ldr	r0, .L2108+116
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #324]
+	ldr	r0, .L2108+120
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #352]
+	ldr	r0, .L2108+124
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #324]
+	ldr	r0, .L2108+128
+	ldr	r1, [r3, #8]
+	bl	NAND_Print_DBG
+.L2104:
+	ldr	r1, [r4, #360]
+	ldr	r0, .L2108+132
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #284]
+	ldr	r0, .L2108+136
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #376]
+	ldr	r0, .L2108+140
+	bl	NAND_Print_DBG
+	ldrh	r1, [r4, #584]
+	ldr	r0, .L2108+144
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #368]
+	ldr	r0, .L2108+148
+	bl	NAND_Print_DBG
+	ldr	r1, [r4, #372]
+	ldr	r0, .L2108+152
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+156
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+160
+	ldrh	r1, [r3, #2]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+164
+	ldrh	r1, [r3, #4]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+168
+	ldrh	r1, [r3, #6]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+172
+	ldrh	r1, [r3, #10]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+176
+	ldrh	r1, [r3, #12]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+180
+	ldrh	r1, [r3, #14]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+184
+	ldrh	r1, [r3, #16]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+188
+	ldrh	r1, [r3, #18]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+192
+	ldrh	r1, [r3, #20]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+196
+	ldrh	r1, [r3, #22]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+200
+	ldrh	r1, [r3, #24]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+204
+	ldrh	r1, [r3, #26]
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #1972]
+	ldr	r0, .L2108+208
+	ldr	r1, [r3, #32]
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, lr}
+	b	print_smart
+.L2102:
+	add	sp, sp, #16
+	@ sp needed
+	pop	{r4, pc}
+.L2109:
+	.align	2
+.L2108:
+	.word	.LC281
+	.word	.LC282
+	.word	.LC283
+	.word	.LC284
+	.word	.LC285
+	.word	.LC286
+	.word	.LC287
+	.word	.LC288
+	.word	.LC289
+	.word	.LC290
+	.word	.LC291
+	.word	.LC292
+	.word	.LC293
+	.word	.LC294
+	.word	.LC295
+	.word	.LC296
+	.word	.LC297
+	.word	.LC298
+	.word	.LC299
+	.word	.LC300
+	.word	.LC301
+	.word	.LC302
+	.word	.LC303
+	.word	.LC304
+	.word	.LC305
+	.word	.LC306
+	.word	.LC307
+	.word	.LC308
+	.word	.LC309
+	.word	.LC310
+	.word	.LC311
+	.word	.LC312
+	.word	.LC313
+	.word	.LC314
+	.word	.LC315
+	.word	.LC316
+	.word	.LC317
+	.word	.LC318
+	.word	.LC319
+	.word	.LC320
+	.word	.LC321
+	.word	.LC322
+	.word	.LC323
+	.word	.LC324
+	.word	.LC325
+	.word	.LC326
+	.word	.LC327
+	.word	.LC328
+	.word	.LC329
+	.word	.LC330
+	.word	.LC331
+	.word	.LC332
+	.word	.LC333
+	.size	print_nftl_zone, .-print_nftl_zone
+	.section	.text.nftl_set_zone_test,"ax",%progbits
+	.align	1
+	.global	nftl_set_zone_test
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_set_zone_test, %function
+nftl_set_zone_test:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	str	r1, [r0, #356]
+	b	print_nftl_zone
+	.size	nftl_set_zone_test, .-nftl_set_zone_test
+	.section	.text.nand_crc16,"ax",%progbits
+	.align	1
+	.global	nand_crc16
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_crc16, %function
+nand_crc16:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	add	r2, r2, r1
+	ldr	r4, .L2114
+.L2112:
+	cmp	r2, r1
+	bne	.L2113
+	pop	{r4, pc}
+.L2113:
+	ldrb	r3, [r1], #1	@ zero_extendqisi2
+	eors	r3, r3, r0
+	uxtb	r3, r3
+	ldrh	r3, [r4, r3, lsl #1]
+	eor	r0, r3, r0, lsr #8
+	b	.L2112
+.L2115:
+	.align	2
+.L2114:
+	.word	.LANCHOR105
+	.size	nand_crc16, .-nand_crc16
+	.section	.text.crc_wrong,"ax",%progbits
+	.align	1
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	crc_wrong, %function
+crc_wrong:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r6, r0
+	mov	r0, r2
+	mov	r7, r1
+	mov	r5, r2
+	bl	is_nouse_page
+	cbnz	r0, .L2121
+	ldr	r3, [r6, #4]
+	mov	r0, r5
+	ldrb	r4, [r3, #8]	@ zero_extendqisi2
+	bl	is_phy_mapping_page
+	cbnz	r0, .L2118
+	lsls	r4, r4, #9
+.L2119:
+	mov	r2, r4
+	mov	r1, r7
+	movw	r0, #65535
+	bl	nand_crc16
+	ldrb	r3, [r5, #12]	@ zero_extendqisi2
+	mov	r1, r0
+	ldrb	r2, [r5, #13]	@ zero_extendqisi2
+	orr	r2, r2, r3, lsl #8
+	cmp	r0, r2
+	beq	.L2121
+	mov	r3, r4
+	ldr	r0, .L2122
+	bl	NAND_Print
+	movs	r0, #1
+.L2116:
+	pop	{r3, r4, r5, r6, r7, pc}
+.L2118:
+	ldr	r4, [r6, #308]
+	b	.L2119
+.L2121:
+	movs	r0, #0
+	b	.L2116
+.L2123:
+	.align	2
+.L2122:
+	.word	.LC334
+	.size	crc_wrong, .-crc_wrong
+	.section	.text.nand_power_off_ecc_error,"ax",%progbits
+	.align	1
+	.global	nand_power_off_ecc_error
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_power_off_ecc_error, %function
+nand_power_off_ecc_error:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, lr}
+	mov	r4, r2
+	ldrb	r5, [r2]	@ zero_extendqisi2
+	sub	sp, sp, #60
+	cmp	r5, #255
+	beq	.L2125
+	ldr	r0, .L2136
+.L2135:
+	bl	NAND_Print
+	movs	r3, #1
+	movw	r2, #3134
+	ldr	r1, .L2136+4
+	ldr	r0, .L2136+8
+	bl	NAND_Print
+	ldr	r0, .L2136+12
+	bl	NAND_Print
+	ldrb	r0, [r4, #15]	@ zero_extendqisi2
+	ldrb	r3, [r4, #2]	@ zero_extendqisi2
+	ldrb	r2, [r4, #1]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [r4, #14]	@ zero_extendqisi2
+	ldrb	r1, [r4]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [r4, #13]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [r4, #12]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [r4, #11]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [r4, #10]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [r4, #9]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [r4, #8]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [r4, #7]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [r4, #6]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [r4, #5]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [r4, #4]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [r4, #3]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L2136+16
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L2129
+.L2125:
+	ldr	r3, [r0, #1972]
+	ldrh	r3, [r3, #28]
+	cbz	r3, .L2127
+	bl	crc_wrong
+	cbnz	r0, .L2128
+.L2131:
+	movs	r0, #0
+.L2129:
+	add	sp, sp, #60
+	@ sp needed
+	pop	{r4, r5, pc}
+.L2128:
+	ldr	r0, .L2136+20
+	b	.L2135
+.L2127:
+	ldrb	r3, [r2, #11]	@ zero_extendqisi2
+	cmp	r3, #165
+	bne	.L2130
+	ldrb	r3, [r2, #15]	@ zero_extendqisi2
+	cmp	r3, #165
+	beq	.L2131
+.L2130:
+	ldr	r0, .L2136+24
+	b	.L2135
+.L2137:
+	.align	2
+.L2136:
+	.word	.LC335
+	.word	.LANCHOR106
+	.word	.LC338
+	.word	.LC339
+	.word	.LC340
+	.word	.LC336
+	.word	.LC337
+	.size	nand_power_off_ecc_error, .-nand_power_off_ecc_error
+	.section	.text.recover_phy_page_mapping,"ax",%progbits
+	.align	1
+	.global	recover_phy_page_mapping
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	recover_phy_page_mapping, %function
+recover_phy_page_mapping:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r2
+	ldr	r10, .L2172+20
+	movs	r4, #0
+	sub	sp, sp, #32
+	mov	r5, r0
+	ldr	fp, .L2172+24
+	mov	r7, r1
+	ldr	r2, [r0, #308]
+	movs	r1, #255
+	mov	r0, r8
+	bl	NAND_Memset
+.L2139:
+	ldr	r3, [r5, #4]
+	ldrh	r2, [r3, #20]
+	cmp	r2, r4
+	ble	.L2142
+	ldrh	r2, [r3, #28]
+	mov	r0, r5
+	ldrh	r1, [r7]
+	ldr	r3, [r5, #284]
+	strh	r2, [sp, #20]	@ movhi
+	strh	r1, [sp, #18]	@ movhi
+	add	r1, sp, #16
+	str	r3, [sp, #24]
+	strh	r4, [sp, #16]	@ movhi
+	ldr	r3, [r5, #1984]
+	str	sp, [sp, #28]
+	blx	r3
+	mov	r6, r0
+	mov	r0, sp
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L2140
+	cbnz	r6, .L2141
+.L2143:
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2172
+	bl	NAND_Print
+.L2142:
+	mov	r0, r4
+	b	.L2138
+.L2141:
+	cmp	r6, #10
+	beq	.L2143
+.L2140:
+	mov	r0, sp
+	bl	is_ftl_logic_page_data
+	cmp	r0, #1
+	bne	.L2144
+	cbz	r6, .L2145
+	cmp	r6, #10
+	bne	.L2146
+.L2145:
+	mov	r2, sp
+	ldr	r1, [r5, #284]
+	mov	r0, r5
+	bl	nand_power_off_ecc_error
+	cbz	r0, .L2147
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2172+4
+	bl	NAND_Print
+.L2146:
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2172+8
+	bl	NAND_Print
+	movw	r0, #65535
+.L2138:
+	add	sp, sp, #32
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2147:
+	mov	r0, sp
+	bl	get_logic_page_from_oob
+	str	r0, [r8, r4, lsl #2]
+	mov	r3, r0
+	ldr	r2, [r5, #28]
+	cmp	r0, r2
+	bcc	.L2148
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2172+12
+	bl	NAND_Print
+	mov	r3, #-1
+	str	r3, [r8, r4, lsl #2]
+.L2148:
+	cbz	r6, .L2153
+	cmp	r6, #10
+	bne	.L2146
+.L2153:
+	adds	r4, r4, #1
+	b	.L2139
+.L2144:
+	ldrb	r3, [sp, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L2149
+	ldr	r0, .L2172+16
+	mov	r1, r4
+.L2171:
+	bl	NAND_Print
+	b	.L2148
+.L2149:
+	mov	r0, sp
+	bl	is_power_down_info_page
+	cmp	r0, #1
+	bne	.L2150
+	cbz	r6, .L2151
+	cmp	r6, #10
+	bne	.L2146
+.L2151:
+	mov	r0, sp
+	bl	get_special_data_from_oob
+	mov	r1, r4
+	str	r0, [r8, r4, lsl #2]
+	mov	r0, fp
+	b	.L2171
+.L2150:
+	mov	r1, r4
+	mov	r0, r10
+	b	.L2171
+.L2173:
+	.align	2
+.L2172:
+	.word	.LC341
+	.word	.LC342
+	.word	.LC347
+	.word	.LC343
+	.word	.LC344
+	.word	.LC346
+	.word	.LC345
+	.size	recover_phy_page_mapping, .-recover_phy_page_mapping
+	.section	.text.recover_block_phy_page_mapping,"ax",%progbits
+	.align	1
+	.global	recover_block_phy_page_mapping
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	recover_block_phy_page_mapping, %function
+recover_block_phy_page_mapping:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r10, r2
+	movs	r4, #0
+	ldr	r2, [r0, #308]
+	sub	sp, sp, #40
+	mov	r5, r0
+	mov	r7, r1
+	mov	r0, r10
+	movs	r1, #255
+	bl	NAND_Memset
+.L2175:
+	ldr	r2, [r5, #4]
+	ldrh	r3, [r2, #20]
+	subs	r3, r3, #1
+	cmp	r3, r4
+	bgt	.L2186
+	movs	r0, #0
+	add	sp, sp, #40
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2186:
+	ldr	r3, [r5, #1972]
+	uxth	r0, r4
+	ldrh	r1, [r7]
+	add	r6, sp, #8
+	ldrh	r3, [r3, #28]
+	cmp	r3, #0
+	beq	.L2176
+	ldr	r3, [r5, #284]
+	ldrh	r2, [r2, #28]
+	strh	r0, [sp, #24]	@ movhi
+	strh	r1, [sp, #26]	@ movhi
+	strh	r2, [sp, #28]	@ movhi
+.L2197:
+	mov	fp, #0
+	strd	r3, r6, [sp, #32]
+.L2180:
+	ldr	r3, [r5, #1984]
+	add	r1, sp, #24
+	mov	r0, r5
+	blx	r3
+	subs	r8, r0, #0
+	bge	.L2178
+	mov	r3, r4
+	ldrh	r2, [r7]
+	mov	r1, r8
+	ldr	r0, .L2198
+	bl	NAND_Print
+	cmp	fp, #0
+	beq	.L2187
+	ldrh	r2, [r7]
+	mov	r3, r4
+	str	fp, [sp]
+	mov	r1, r8
+	ldr	r0, .L2198+4
+	bl	NAND_Print
+.L2178:
+	mov	r0, r6
+	bl	is_ftl_logic_page_data
+	cmp	r0, #1
+	bne	.L2181
+	cmp	r8, #0
+	beq	.L2182
+	cmp	r8, #10
+	bne	.L2183
+.L2182:
+	mov	r2, r6
+	ldr	r1, [r5, #284]
+	mov	r0, r5
+	bl	nand_power_off_ecc_error
+	cbz	r0, .L2184
+	ldr	r0, .L2198+8
+	bl	NAND_Print
+.L2183:
+	adds	r4, r4, #1
+	b	.L2175
+.L2176:
+	strh	r0, [sp, #24]	@ movhi
+	strh	r1, [sp, #26]	@ movhi
+	strh	r3, [sp, #28]	@ movhi
+	b	.L2197
+.L2187:
+	mov	fp, #1
+	b	.L2180
+.L2184:
+	mov	r0, r6
+	bl	get_logic_page_from_oob
+	str	r0, [r10, r4, lsl #2]
+	mov	r3, r0
+	ldr	r2, [r5, #28]
+	cmp	r0, r2
+	bcc	.L2183
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2198+12
+	bl	NAND_Print
+	mov	r3, #-1
+	str	r3, [r10, r4, lsl #2]
+	b	.L2183
+.L2181:
+	mov	r0, r6
+	bl	is_nouse_page
+	cmp	r0, #1
+	beq	.L2183
+	mov	r2, r4
+	ldrh	r1, [r7]
+	ldr	r0, .L2198+16
+	bl	NAND_Print
+	b	.L2183
+.L2199:
+	.align	2
+.L2198:
+	.word	.LC348
+	.word	.LC349
+	.word	.LC350
+	.word	.LC343
+	.word	.LC351
+	.size	recover_block_phy_page_mapping, .-recover_block_phy_page_mapping
+	.section	.text.get_used_page_num,"ax",%progbits
+	.align	1
+	.global	get_used_page_num
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_used_page_num, %function
+get_used_page_num:
+	@ args = 0, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r6, r0
+	mov	fp, r2
+	mov	r5, r3
+	sub	sp, sp, #104
+	movs	r4, #0
+	str	r1, [sp, #64]
+	str	r4, [r2]
+.L2201:
+	ldr	r3, [r6, #4]
+	ldrh	r2, [r3, #20]
+	cmp	r2, r4
+	bhi	.L2212
+.L2200:
+	mov	r0, r4
+	add	sp, sp, #104
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2212:
+	cmp	r5, #0
+	beq	.L2202
+	ldr	r2, [r5, #4]
+	ldrb	r2, [r2, r4]	@ zero_extendqisi2
+	cmp	r2, #0
+	bne	.L2202
+	ldrh	r7, [r3, #26]
+	ldr	r2, [r5, #8]
+	add	r8, r7, #64
+	mla	r8, r4, r8, r2
+	add	r7, r7, r8
+.L2203:
+	ldr	r2, [sp, #64]
+	uxth	r0, r4
+	ldrh	r1, [r2]
+	ldr	r2, [r6, #1972]
+	ldrh	r2, [r2, #28]
+	cmp	r2, #0
+	beq	.L2204
+	ldrh	r3, [r3, #28]
+	strh	r0, [sp, #88]	@ movhi
+	strh	r1, [sp, #90]	@ movhi
+	strh	r3, [sp, #92]	@ movhi
+	str	r8, [sp, #96]
+.L2250:
+	str	r7, [sp, #100]
+	add	r1, sp, #88
+	ldr	r3, [r6, #1984]
+	mov	r0, r6
+	blx	r3
+	mov	r10, r0
+	cbz	r0, .L2206
+	cmp	r0, #10
+	beq	.L2206
+	ldr	r3, [sp, #64]
+	mov	r2, r4
+	ldr	r0, .L2252
+	ldrh	r1, [r3]
+	bl	NAND_Print
+	ldr	r3, [fp]
+	adds	r3, r3, #1
+	str	r3, [fp]
+.L2206:
+	mov	r0, r7
+	bl	is_nouse_page
+	cmp	r0, #1
+	beq	.L2223
+	adds	r3, r4, #1
+	cmp	r10, #0
+	beq	.L2208
+	cmp	r10, #10
+	bne	.L2209
+.L2208:
+	cmp	r8, #0
+	beq	.L2209
+	mov	r2, r7
+	mov	r1, r8
+	mov	r0, r6
+	str	r3, [sp, #68]
+	bl	nand_power_off_ecc_error
+	ldr	r3, [sp, #68]
+	cbz	r0, .L2211
+	ldr	r0, .L2252+4
+	bl	NAND_Print
+	ldr	r3, [sp, #68]
+.L2209:
+	mov	r4, r3
+	b	.L2201
+.L2202:
+	ldrb	r2, [r3, #8]	@ zero_extendqisi2
+	cmp	r2, #8
+	ittee	eq
+	ldreq	r8, [r6, #284]
+	addeq	r7, sp, #72
+	addne	r7, sp, #72
+	movne	r8, #0
+	b	.L2203
+.L2204:
+	strh	r0, [sp, #88]	@ movhi
+	strh	r1, [sp, #90]	@ movhi
+	strh	r2, [sp, #92]	@ movhi
+	str	r2, [sp, #96]
+	b	.L2250
+.L2211:
+	ldr	r2, [r5, #4]
+	movs	r1, #1
+	strb	r1, [r2, r4]
+	ldr	r2, [r5]
+	cmp	r2, r3
+	it	cc
+	strcc	r3, [r5]
+	b	.L2209
+.L2220:
+	cmp	r5, #0
+	beq	.L2225
+	ldr	r2, [r5, #4]
+	ldrb	r2, [r2, r7]	@ zero_extendqisi2
+	cmp	r2, #0
+	bne	.L2225
+	ldrh	r2, [r3, #26]
+	ldr	r1, [r5, #8]
+	add	r8, r2, #64
+	mla	r8, r7, r8, r1
+	add	fp, r8, r2
+.L2213:
+	ldr	r1, [r6, #1972]
+	uxth	ip, r7
+	ldr	r2, [sp, #64]
+	ldrh	r1, [r1, #28]
+	ldrh	r0, [r2]
+	cmp	r1, #0
+	beq	.L2214
+	ldrh	r3, [r3, #28]
+	strh	ip, [sp, #88]	@ movhi
+	strh	r0, [sp, #90]	@ movhi
+	strh	r3, [sp, #92]	@ movhi
+	str	r8, [sp, #96]
+.L2251:
+	ldr	r3, [r6, #1984]
+	add	r1, sp, #88
+	str	fp, [sp, #100]
+	mov	r0, r6
+	blx	r3
+	str	r0, [sp, #68]
+	mov	r0, fp
+	bl	is_nouse_page
+	cmp	r0, #1
+	add	r10, r7, #1
+	beq	.L2217
+	ldrb	r0, [fp, #15]	@ zero_extendqisi2
+	ldr	r2, [sp, #64]
+	ldrb	r3, [fp]	@ zero_extendqisi2
+	ldrh	r1, [r2]
+	str	r0, [sp, #56]
+	ldrb	r0, [fp, #14]	@ zero_extendqisi2
+	str	r0, [sp, #52]
+	ldrb	r0, [fp, #13]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [fp, #12]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [fp, #11]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [fp, #10]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [fp, #9]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [fp, #8]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [fp, #7]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [fp, #6]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [fp, #5]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [fp, #4]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [fp, #3]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [fp, #2]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r2, [fp, #1]	@ zero_extendqisi2
+	ldr	r0, .L2252+8
+	str	r2, [sp]
+	mov	r2, r7
+	bl	NAND_Print
+	ldr	r3, [sp, #68]
+	cbz	r3, .L2218
+	cmp	r3, #10
+	bne	.L2217
+.L2218:
+	cmp	r8, #0
+	beq	.L2217
+	ldr	r3, [r5, #4]
+	movs	r2, #1
+	strb	r2, [r3, r7]
+	ldr	r3, [r5]
+	cmp	r3, r10
+	it	cc
+	strcc	r10, [r5]
+.L2217:
+	mov	r7, r10
+.L2207:
+	ldr	r3, [r6, #4]
+	ldrh	r2, [r3, #20]
+	cmp	r2, r7
+	bhi	.L2220
+	b	.L2200
+.L2225:
+	add	fp, sp, #72
+	mov	r8, #0
+	b	.L2213
+.L2214:
+	strh	ip, [sp, #88]	@ movhi
+	strh	r0, [sp, #90]	@ movhi
+	strh	r1, [sp, #92]	@ movhi
+	str	r1, [sp, #96]
+	b	.L2251
+.L2223:
+	mov	r7, r4
+	b	.L2207
+.L2253:
+	.align	2
+.L2252:
+	.word	.LC352
+	.word	.LC353
+	.word	.LC354
+	.size	get_used_page_num, .-get_used_page_num
+	.section	.text.get_used_page_num_no_crosstalk,"ax",%progbits
+	.align	1
+	.global	get_used_page_num_no_crosstalk
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_used_page_num_no_crosstalk, %function
+get_used_page_num_no_crosstalk:
+	@ args = 0, pretend = 0, frame = 48
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r6, r3
+	movs	r3, #0
+	mov	r8, r0
+	mov	r10, r3
+	mov	fp, r3
+	mov	r4, #-1
+	mov	r5, r3
+	sub	sp, sp, #48
+	str	r3, [r2]
+	str	r1, [sp, #4]
+.L2255:
+	ldr	r2, [r8, #4]
+	ldrh	r3, [r2, #20]
+	cmp	r3, r5
+	bhi	.L2264
+	adds	r2, r4, #1
+	bne	.L2262
+	mov	r4, r3
+.L2265:
+	mov	r0, r4
+	add	sp, sp, #48
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2264:
+	cbz	r6, .L2256
+	ldr	r3, [r6, #4]
+	ldrb	r3, [r3, r5]	@ zero_extendqisi2
+	cbnz	r3, .L2256
+	ldrh	r7, [r2, #26]
+	ldr	r3, [r6, #8]
+	add	r1, r7, #64
+	mla	r3, r5, r1, r3
+	add	r7, r7, r3
+.L2257:
+	ldr	r1, [sp, #4]
+	mov	r0, r8
+	ldrh	r2, [r2, #28]
+	str	r3, [sp, #40]
+	ldrh	r1, [r1]
+	strh	r2, [sp, #36]	@ movhi
+	strh	r5, [sp, #32]	@ movhi
+	strh	r1, [sp, #34]	@ movhi
+	add	r1, sp, #32
+	str	r7, [sp, #44]
+	ldr	r2, [r8, #1984]
+	str	r3, [sp, #8]
+	blx	r2
+	ldr	r3, [sp, #8]
+	cbz	r0, .L2258
+	cmp	r0, #10
+	beq	.L2258
+	ldr	r3, [sp, #4]
+	cmp	r4, #-1
+	it	eq
+	moveq	r4, r5
+	mov	r2, r5
+	ldr	r0, .L2285
+	ldrh	r1, [r3]
+	bl	NAND_Print
+.L2259:
+	adds	r5, r5, #1
+	b	.L2255
+.L2256:
+	ldrb	r3, [r2, #8]	@ zero_extendqisi2
+	cmp	r3, #4
+	ittee	eq
+	ldreq	r3, [r8, #284]
+	addeq	r7, sp, #16
+	addne	r7, sp, #16
+	movne	r3, #0
+	b	.L2257
+.L2258:
+	mov	r0, r7
+	str	r3, [sp, #8]
+	bl	is_nouse_page
+	cmp	r0, #1
+	ldr	r3, [sp, #8]
+	bne	.L2260
+	add	r10, r10, #1
+	cmp	r4, #-1
+	it	eq
+	moveq	r4, r5
+	cmp	r10, #3
+	bne	.L2259
+.L2262:
+	cmp	fp, r4
+	beq	.L2265
+	ldr	r1, [sp, #4]
+	mov	r3, r4
+	mov	r2, fp
+	ldr	r0, .L2285+4
+	ldrh	r1, [r1]
+	bl	NAND_Print
+	ldr	r2, [r8, #1968]
+	ldr	r3, [r2, #168]
+	adds	r3, r3, #1
+	str	r3, [r2, #168]
+	movs	r3, #0
+.L2266:
+	ldr	r2, [r6]
+	cmp	r2, r3
+	bls	.L2265
+	ldr	r2, [r6, #4]
+	ldrb	r2, [r2, r3]	@ zero_extendqisi2
+	cbz	r2, .L2267
+	ldr	r2, [r8, #4]
+	ldr	r1, [r6, #8]
+	ldrh	r0, [r2, #26]
+	add	r1, r1, r0
+	add	r2, r0, #64
+	mla	r2, r3, r2, r1
+	ldr	r1, [r8, #1968]
+	ldr	r1, [r1, #168]
+	strb	r1, [r2, #14]
+.L2267:
+	adds	r3, r3, #1
+	b	.L2266
+.L2260:
+	mov	r2, r7
+	mov	r1, r3
+	mov	r0, r8
+	bl	nand_power_off_ecc_error
+	cbz	r0, .L2263
+	ldr	r0, .L2285+8
+	bl	NAND_Print
+	b	.L2259
+.L2263:
+	adds	r1, r4, #1
+	add	fp, fp, #1
+	bne	.L2259
+	ldr	r2, [r6, #4]
+	movs	r1, #1
+	adds	r3, r5, #1
+	mov	r0, r7
+	str	r3, [sp, #12]
+	strb	r1, [r2, r5]
+	ldr	r2, [r6, #12]
+	str	r2, [sp, #8]
+	bl	get_logic_page_from_oob
+	ldr	r2, [sp, #8]
+	ldr	r3, [sp, #12]
+	str	r0, [r2, r5, lsl #2]
+	ldr	r2, [r6]
+	cmp	r2, r3
+	it	cc
+	strcc	r3, [r6]
+	b	.L2259
+.L2286:
+	.align	2
+.L2285:
+	.word	.LC355
+	.word	.LC357
+	.word	.LC356
+	.size	get_used_page_num_no_crosstalk, .-get_used_page_num_no_crosstalk
+	.section	.text.do_write_error,"ax",%progbits
+	.align	1
+	.global	do_write_error
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_write_error, %function
+do_write_error:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	ldr	r10, .L2309+4
+	sub	sp, sp, #24
+	mov	r6, r1
+	ldr	fp, .L2309+8
+.L2288:
+	mov	r0, r4
+	bl	out_phy_block_from_free_list
+	mov	r5, r0
+	cbnz	r0, .L2289
+.L2293:
+	ldr	r0, .L2309
+	bl	NAND_Print
+	movs	r0, #1
+.L2287:
+	add	sp, sp, #24
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2289:
+	ldr	r3, [r4, #4]
+	movs	r7, #0
+	ldrh	r2, [r0]
+	add	r1, sp, #8
+	strh	r7, [sp, #8]	@ movhi
+	mov	r0, r4
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #10]	@ movhi
+	strd	r7, r7, [sp, #16]
+	strh	r3, [sp, #12]	@ movhi
+	ldr	r3, [r4, #1980]
+	blx	r3
+	ldrh	r3, [r5, #6]
+	strh	r7, [r5, #4]	@ movhi
+	adds	r3, r3, #1
+	strh	r3, [r5, #6]	@ movhi
+	cbz	r0, .L2291
+	ldr	r3, [r4, #2000]
+	add	r1, sp, #8
+	mov	r0, r4
+	blx	r3
+	ldrh	r1, [r5]
+	mov	r0, fp
+	bl	NAND_Print
+	ldrh	r2, [r4, #380]
+	ldrh	r3, [r4, #22]
+	cmp	r3, r2, lsr #2
+	bhi	.L2288
+	b	.L2293
+.L2291:
+	ldr	r3, [r6]
+	mov	r8, r0
+	ldr	r3, [r3, #8]
+	adds	r3, r3, #1
+	str	r3, [r5, #8]
+.L2294:
+	ldrh	r3, [r6, #28]
+	ldr	r1, [r6]
+	cmp	r3, r8
+	bhi	.L2297
+.L2295:
+	ldrh	r3, [r1, #4]
+	movs	r7, #0
+	ldrh	r2, [r1]
+	mov	r0, r4
+	strh	r7, [sp, #8]	@ movhi
+	strh	r3, [r5, #4]	@ movhi
+	ldr	r3, [r4, #4]
+	strh	r2, [sp, #10]	@ movhi
+	ldrh	r2, [r1, #6]
+	ldrh	r3, [r3, #28]
+	strd	r7, r7, [sp, #16]
+	adds	r2, r2, #1
+	uxth	r2, r2
+	strh	r3, [sp, #12]	@ movhi
+	bl	erase_block
+	ldr	r3, [r6]
+	ldrh	r3, [r3, #2]
+	strh	r3, [r5, #2]	@ movhi
+	str	r5, [r6]
+.L2298:
+	ldrh	r3, [r6, #28]
+	cmp	r3, r7
+	bhi	.L2302
+	movs	r0, #0
+	b	.L2287
+.L2297:
+	ldr	r3, [r6, #12]
+	ldr	r3, [r3, r8, lsl #2]
+	adds	r3, r3, #1
+	beq	.L2295
+	uxth	r3, r8
+	ldr	r7, [r4, #1992]
+	mov	r2, r5
+	str	r3, [sp]
+	mov	r0, r4
+	ldr	r3, [r4, #284]
+	blx	r7
+	cbz	r0, .L2296
+	ldrh	r1, [r5]
+	mov	r0, r10
+	bl	NAND_Print
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r5]
+	ldrh	r2, [r3, #28]
+	movs	r3, #0
+	strh	r3, [sp, #8]	@ movhi
+	strh	r1, [sp, #10]	@ movhi
+	add	r1, sp, #8
+	strd	r3, r3, [sp, #16]
+	strh	r2, [sp, #12]	@ movhi
+	ldr	r3, [r4, #2000]
+	blx	r3
+	b	.L2288
+.L2296:
+	add	r8, r8, #1
+	b	.L2294
+.L2302:
+	ldr	r3, [r6, #12]
+	ldr	r1, [r3, r7, lsl #2]
+	adds	r3, r1, #1
+	beq	.L2300
+	mov	r0, r4
+	bl	get_logic_page_map
+	cbz	r0, .L2300
+	ldr	r3, [r6]
+	ldrh	r3, [r3]
+	strh	r3, [r0, #2]	@ movhi
+	ldrh	r3, [r0]
+	bfi	r3, r7, #0, #12
+	strh	r3, [r0]	@ movhi
+.L2300:
+	adds	r7, r7, #1
+	b	.L2298
+.L2310:
+	.align	2
+.L2309:
+	.word	.LC358
+	.word	.LC360
+	.word	.LC359
+	.size	do_write_error, .-do_write_error
+	.section	.text.write_phy_data_to_current_block,"ax",%progbits
+	.align	1
+	.global	write_phy_data_to_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	write_phy_data_to_current_block, %function
+write_phy_data_to_current_block:
+	@ args = 4, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #48
+	add	r7, sp, #16
+	mov	r4, r0
+	mov	fp, r2
+	mov	r0, r7
+	movs	r2, #16
+	mov	r5, r1
+	movs	r1, #165
+	str	r3, [sp, #12]
+	ldr	r6, [sp, #80]
+	mov	r8, #3
+	bl	NAND_Memset
+	ldr	r3, [r4, #4]
+	mov	r1, fp
+	movw	r0, #65535
+	ldrb	r2, [r3, #8]	@ zero_extendqisi2
+	ldr	r3, .L2328
+	cmp	r6, r3
+	itet	ne
+	lslne	r2, r2, #9
+	ldrheq	r2, [r4, #308]
+	uxthne	r2, r2
+	bl	nand_crc16
+	lsrs	r3, r0, #8
+	strb	r0, [sp, #29]
+	strb	r3, [sp, #28]
+.L2314:
+	ldr	r0, [r5]
+	ldr	lr, [r4, #4]
+	ldr	r3, .L2328
+	ldrh	r1, [r0]
+	ldrh	r2, [r5, #28]
+	ldrh	ip, [lr, #28]
+	cmp	r6, r3
+	strh	r1, [sp, #34]	@ movhi
+	strh	r2, [sp, #32]	@ movhi
+	strh	ip, [sp, #36]	@ movhi
+	strd	fp, r7, [sp, #40]
+	bne	.L2315
+	ldrh	r3, [r0, #6]
+	mov	r2, r6
+	str	r3, [sp]
+	ldr	r3, [r0, #8]
+.L2327:
+	mov	r1, r7
+	mov	r0, r4
+	bl	set_oob_special_page
+	b	.L2316
+.L2315:
+	cmp	r6, #192
+	bne	.L2317
+	ldrh	r3, [lr, #20]
+	subs	r3, r3, #1
+	cmp	r2, r3
+	bne	.L2318
+	ldr	r0, .L2328+4
+	bl	NAND_Print_DBG
+.L2318:
+	ldr	r3, [r5]
+	mov	r1, r7
+	mov	r0, r4
+	ldrh	r2, [r3, #6]
+	str	r2, [sp]
+	ldr	r2, [sp, #12]
+	ldr	r3, [r3, #8]
+	bl	set_oob_logic_page
+.L2316:
+	ldr	r3, [r5]
+	mov	r10, #1
+	add	r1, sp, #32
+	mov	r0, r4
+	strh	r10, [r3, #2]	@ movhi
+	ldr	r3, [r4, #1988]
+	blx	r3
+	cbz	r0, .L2311
+	subs	r8, r8, #1
+	beq	.L2321
+	ldrh	r1, [sp, #34]
+	ldr	r0, .L2328+8
+	bl	NAND_Print_DBG
+	mov	r1, r5
+	mov	r0, r4
+	bl	do_write_error
+	cmp	r0, #0
+	beq	.L2314
+	ldr	r0, .L2328+12
+	bl	NAND_Print
+	mov	r0, r10
+.L2311:
+	add	sp, sp, #48
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2317:
+	ldr	r3, .L2328+16
+	cmp	r6, r3
+	bne	.L2316
+	ldrh	r3, [lr, #20]
+	subs	r3, r3, #1
+	cmp	r2, r3
+	bne	.L2319
+	ldr	r0, .L2328+20
+	bl	NAND_Print_DBG
+.L2319:
+	ldr	r3, [r5]
+	ldrh	r2, [r3, #6]
+	str	r2, [sp]
+	ldr	r2, .L2328+16
+	ldr	r3, [r3, #8]
+	b	.L2327
+.L2321:
+	mov	r0, r8
+	b	.L2311
+.L2329:
+	.align	2
+.L2328:
+	.word	-1431633921
+	.word	.LC361
+	.word	.LC363
+	.word	.LC364
+	.word	-1441713357
+	.word	.LC362
+	.size	write_phy_data_to_current_block, .-write_phy_data_to_current_block
+	.section	.text.write_logic_data_to_current_block,"ax",%progbits
+	.align	1
+	.global	write_logic_data_to_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	write_logic_data_to_current_block, %function
+write_logic_data_to_current_block:
+	@ args = 4, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	cmp	r2, #192
+	push	{r0, r1, r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r8, r0
+	mov	r4, r1
+	mov	fp, r3
+	bne	.L2331
+	mov	r1, r3
+	bl	get_logic_page_map
+	mov	r10, r0
+	cbnz	r0, .L2332
+.L2338:
+	movs	r7, #1
+	ldr	r0, .L2354
+	bl	NAND_Print_DBG
+.L2330:
+	mov	r0, r7
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2332:
+	ldrh	r3, [r0, #2]
+	movw	r2, #65535
+	cmp	r3, r2
+	beq	.L2346
+	ldr	r2, [r8, #4]
+	movs	r5, #36
+	ldr	r1, [r2, #32]
+	mla	r5, r5, r3, r1
+	ldr	r3, [r4]
+	cmp	r3, r5
+	bne	.L2345
+	ldrh	r3, [r5, #4]
+	ldrh	r2, [r2, #20]
+	adds	r3, r3, #1
+	uxth	r3, r3
+	cmp	r2, r3
+	strh	r3, [r5, #4]	@ movhi
+	bcs	.L2346
+	ldrh	r1, [r4, #28]
+	ldr	r0, .L2354+4
+	bl	NAND_Print_DBG
+.L2346:
+	movs	r6, #0
+	b	.L2334
+.L2345:
+	movs	r6, #1
+.L2334:
+	movs	r3, #192
+	ldr	r2, [sp, #40]
+	str	r3, [sp]
+	mov	r1, r4
+	mov	r3, fp
+	mov	r0, r8
+	bl	write_phy_data_to_current_block
+	mov	r7, r0
+	cbz	r0, .L2335
+	ldr	r0, .L2354+8
+.L2353:
+	bl	NAND_Print
+	b	.L2330
+.L2335:
+	ldr	r3, [r4]
+	ldrh	r1, [r4, #28]
+	ldr	r2, [r8, #364]
+	ldrh	r3, [r3]
+	ubfx	r0, r1, #0, #12
+	adds	r1, r1, #1
+	clz	r2, r2
+	strh	r3, [r10, #2]	@ movhi
+	lsrs	r2, r2, #5
+	ldrh	r3, [r10]
+	bfi	r3, r0, #0, #12
+	strh	r3, [r10]	@ movhi
+	ubfx	r3, r3, #8, #8
+	bfi	r3, r2, #4, #1
+	strb	r3, [r10, #1]
+	ldr	r3, [r4, #12]
+	str	fp, [r3, r0, lsl #2]
+	strh	r1, [r4, #28]	@ movhi
+.L2336:
+	cmp	r6, #0
+	beq	.L2341
+	mov	r1, r5
+	mov	r0, r8
+	bl	phy_block_from_invalid_page_incr
+	b	.L2341
+.L2331:
+	ldr	r6, .L2354+12
+	cmp	r2, r6
+	bne	.L2337
+	mov	r1, r3
+	bl	get_logic_page_map
+	mov	r7, r0
+	cmp	r0, #0
+	beq	.L2338
+	ldrh	r3, [r0, #2]
+	movw	r2, #65535
+	cmp	r3, r2
+	beq	.L2349
+	ldr	r2, [r8, #4]
+	movs	r5, #36
+	ldr	r1, [r2, #32]
+	mla	r5, r5, r3, r1
+	ldr	r3, [r4]
+	cmp	r3, r5
+	bne	.L2348
+	ldrh	r3, [r0]
+	mov	r0, #-1
+	ldr	r1, [r4, #12]
+	ldrh	r2, [r2, #20]
+	ubfx	r3, r3, #0, #12
+	str	r0, [r1, r3, lsl #2]
+	ldrh	r3, [r5, #4]
+	adds	r3, r3, #1
+	uxth	r3, r3
+	cmp	r2, r3
+	strh	r3, [r5, #4]	@ movhi
+	bcs	.L2349
+	ldrh	r1, [r4, #28]
+	ldr	r0, .L2354+16
+	bl	NAND_Print
+.L2349:
+	movs	r6, #0
+	b	.L2339
+.L2348:
+	movs	r6, #1
+.L2339:
+	movw	r3, #65535
+	movw	r2, #4095
+	strh	r3, [r7, #2]	@ movhi
+	ldrh	r3, [r7]
+	bfi	r3, r2, #0, #12
+	strh	r3, [r7]	@ movhi
+	ubfx	r3, r3, #8, #8
+	orr	r3, r3, #16
+	strb	r3, [r7, #1]
+	b	.L2336
+.L2337:
+	ldr	r5, .L2354+20
+	cmp	r2, r5
+	bne	.L2341
+	ldr	r6, [r1]
+	ldrh	r5, [r6, #4]
+	adds	r5, r5, #1
+	strh	r5, [r6, #4]	@ movhi
+	str	r2, [sp]
+	ldr	r2, [sp, #40]
+	bl	write_phy_data_to_current_block
+	mov	r7, r0
+	cbz	r0, .L2342
+	ldr	r0, .L2354+24
+	b	.L2353
+.L2342:
+	ldrh	r3, [r4, #28]
+	adds	r3, r3, #1
+	strh	r3, [r4, #28]	@ movhi
+.L2341:
+	mov	r0, r8
+	movs	r7, #0
+	bl	adjust_invaild_list
+	b	.L2330
+.L2355:
+	.align	2
+.L2354:
+	.word	.LC365
+	.word	.LC366
+	.word	.LC367
+	.word	-1441722095
+	.word	.LC368
+	.word	-1441713357
+	.word	.LC369
+	.size	write_logic_data_to_current_block, .-write_logic_data_to_current_block
+	.section	.text.write_data_to_page,"ax",%progbits
+	.align	1
+	.global	write_data_to_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	write_data_to_page, %function
+write_data_to_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r4, r5, r6, r7, r8, lr}
+	mov	r6, r1
+	str	r3, [sp]
+	mov	r7, r2
+	mov	r8, r3
+	mov	r3, r2
+	mov	r2, r1
+	add	r1, r0, #292
+	mov	r4, r0
+	bl	write_logic_data_to_current_block
+	mov	r5, r0
+	cbz	r0, .L2357
+.L2360:
+	movs	r5, #1
+	ldr	r0, .L2362
+	bl	NAND_Print
+.L2356:
+	mov	r0, r5
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, pc}
+.L2357:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bpl	.L2356
+	str	r8, [sp]
+	mov	r3, r7
+	mov	r2, r6
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	write_logic_data_to_current_block
+	cmp	r0, #0
+	beq	.L2356
+	b	.L2360
+.L2363:
+	.align	2
+.L2362:
+	.word	.LC370
+	.size	write_data_to_page, .-write_data_to_page
+	.section	.text._nftl_discard_logic_page,"ax",%progbits
+	.align	1
+	.global	_nftl_discard_logic_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nftl_discard_logic_page, %function
+_nftl_discard_logic_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r2, r1
+	movs	r3, #0
+	ldr	r1, .L2365
+	b	write_data_to_page
+.L2366:
+	.align	2
+.L2365:
+	.word	-1441722095
+	.size	_nftl_discard_logic_page, .-_nftl_discard_logic_page
+	.section	.text.get_new_current_block,"ax",%progbits
+	.align	1
+	.global	get_new_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_new_current_block, %function
+get_new_current_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r4, r1
+	ldr	r3, [r1]
+	mov	r6, r0
+	ldr	r2, [r1, #16]
+	movs	r1, #255
+	ldr	r0, [r4, #12]
+	ldr	r5, [r3, #8]
+	bl	NAND_Memset
+	ldrh	r3, [r6, #578]
+	cbz	r3, .L2368
+	ldr	r3, [r6, #4]
+	mov	r0, r6
+	ldrh	r1, [r3, #16]
+	bl	out_phy_block_from_free_list_by_erase_time
+	str	r0, [r4]
+	cbz	r0, .L2369
+	ldrh	r2, [r0, #6]
+	ldrh	r1, [r0]
+	ldr	r0, .L2376
+	bl	NAND_Print_DBG
+.L2369:
+	ldr	r1, [r4]
+	cbnz	r1, .L2370
+	ldr	r0, .L2376+4
+	bl	NAND_Print
+	movs	r0, #1
+.L2367:
+	pop	{r3, r4, r5, r6, r7, pc}
+.L2368:
+	mov	r0, r6
+	bl	out_phy_block_from_free_list
+	str	r0, [r4]
+	b	.L2369
+.L2370:
+	adds	r2, r5, #1
+	movs	r7, #0
+	strh	r7, [r4, #28]	@ movhi
+	str	r2, [r1, #8]
+	ldrb	r3, [r6, #17]	@ zero_extendqisi2
+	ands	r0, r3, #1
+	ittt	ne
+	addne	r2, r5, #2
+	movne	r0, r7
+	strne	r2, [r1, #8]
+	b	.L2367
+.L2377:
+	.align	2
+.L2376:
+	.word	.LC371
+	.word	.LC372
+	.size	get_new_current_block, .-get_new_current_block
+	.section	.text.new_block_init_for_write,"ax",%progbits
+	.align	1
+	.global	new_block_init_for_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	new_block_init_for_write, %function
+new_block_init_for_write:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #4]
+	push	{r4, r5, r6, r7, lr}
+	mov	r7, r2
+	ldrh	r2, [r1]
+	sub	sp, sp, #20
+	movs	r6, #0
+	mov	r5, r1
+	ldrh	r3, [r3, #28]
+	mov	r1, sp
+	strh	r2, [sp, #2]	@ movhi
+	mov	r4, r0
+	strh	r6, [sp]	@ movhi
+	strh	r3, [sp, #4]	@ movhi
+	strd	r6, r6, [sp, #8]
+	ldr	r3, [r0, #1980]
+	blx	r3
+	ldrh	r3, [r5, #6]
+	ldr	r2, [r4, #376]
+	strh	r6, [r5, #4]	@ movhi
+	adds	r3, r3, #1
+	uxth	r3, r3
+	cmp	r3, r2
+	strh	r3, [r5, #6]	@ movhi
+	bls	.L2379
+	ldr	r2, [r4, #4]
+	ldrh	r2, [r2, #16]
+	cmp	r2, r3
+	it	hi
+	strhi	r3, [r4, #376]
+.L2379:
+	str	r7, [r5, #8]
+	cbz	r0, .L2378
+	ldr	r3, [r4, #2000]
+	mov	r1, sp
+	mov	r0, r4
+	blx	r3
+	ldr	r0, .L2384
+	bl	NAND_Print
+	movs	r0, #1
+.L2378:
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L2385:
+	.align	2
+.L2384:
+	.word	.LC373
+	.size	new_block_init_for_write, .-new_block_init_for_write
+	.section	.text.get_current_used_block,"ax",%progbits
+	.align	1
+	.global	get_current_used_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	get_current_used_block, %function
+get_current_used_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r0, r1, r2, r4, r5, r6, r7, r8, r10, lr}
+	mov	r4, r0
+	mov	r5, r2
+	mov	r6, r1
+	cmp	r1, #0
+	beq	.L2387
+	ldr	r3, [r0, #292]
+	cmp	r3, r1
+	beq	.L2388
+	movw	r2, #1014
+	ldr	r1, .L2421
+	ldr	r0, .L2421+4
+	bl	NAND_Print
+.L2388:
+	ldr	r3, [r4, #292]
+	ldrh	r2, [r4, #320]
+	ldr	r0, .L2421+8
+	ldrh	r1, [r3]
+	bl	NAND_Print_DBG
+	ldrh	r3, [r4, #320]
+	mov	r0, r4
+	ldr	r2, [r4, #304]
+	ldr	r1, [r4, #292]
+	bl	recover_logic_page_mapping
+	ldr	r3, [r4, #292]
+	ldrh	r1, [r4, #320]
+	ldrh	r2, [r3, #4]
+	cmp	r1, r2
+	bcs	.L2389
+	ldr	r0, .L2421+12
+	bl	NAND_Print
+.L2389:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bpl	.L2419
+	ldr	r6, .L2421+16
+	ldr	r8, .L2421+44
+.L2390:
+	ldr	r7, [r4, #324]
+	cbz	r7, .L2392
+.L2401:
+	ldr	r2, [r4, #336]
+	mov	r0, r4
+	ldr	r1, [r4, #324]
+	bl	recover_phy_page_mapping
+	uxth	r3, r0
+	movw	r2, #65535
+	cmp	r3, r2
+	strh	r3, [r4, #352]	@ movhi
+	bne	.L2417
+	ldr	r0, .L2421+20
+.L2418:
+	bl	NAND_Print
+	ldr	r1, [r4, #324]
+	mov	r0, r4
+	ldrh	r2, [r1, #6]
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	movs	r3, #0
+	str	r3, [r4, #324]
+	b	.L2390
+.L2392:
+	mov	r0, r4
+	bl	out_phy_block_from_free_list
+	mov	r1, r0
+	str	r0, [r4, #324]
+	cbnz	r0, .L2395
+.L2420:
+	movs	r0, #1
+	b	.L2386
+.L2395:
+	ldr	r3, [r4, #292]
+	strh	r7, [r4, #352]	@ movhi
+	ldr	r2, [r3, #8]
+	adds	r2, r2, #1
+	str	r2, [r0, #8]
+	mov	r0, r4
+	bl	new_block_init_for_write
+	cbz	r0, .L2396
+	mov	r0, r8
+	bl	NAND_Print
+	str	r7, [r4, #324]
+	b	.L2390
+.L2396:
+	ldrh	r10, [r4, #320]
+	mov	r5, r0
+.L2398:
+	cmp	r5, r10
+	ldr	r2, [r4, #324]
+	bcs	.L2401
+	uxth	r3, r5
+	ldr	r7, [r4, #1992]
+	ldr	r1, [r4, #292]
+	mov	r0, r4
+	str	r3, [sp]
+	ldr	r3, [r4, #284]
+	blx	r7
+	cbz	r0, .L2399
+	mov	r0, r6
+	bl	NAND_Print
+.L2399:
+	adds	r5, r5, #1
+	b	.L2398
+.L2417:
+	ldr	r3, [r4, #292]
+	ldr	r1, [r4, #324]
+	ldr	r2, [r3, #8]
+	uxth	r3, r0
+	mov	r0, r4
+	adds	r2, r2, #1
+	str	r2, [r1, #8]
+	ldr	r2, [r4, #336]
+	bl	recover_logic_page_mapping
+	ldrh	r1, [r4, #352]
+	ldrh	r2, [r4, #320]
+	cmp	r1, r2
+	bls	.L2402
+	ldr	r0, .L2421+24
+	bl	NAND_Print
+	ldrh	r2, [r4, #320]
+	ldrh	r1, [r4, #352]
+	ldr	r0, .L2421+28
+	bl	NAND_Print
+.L2419:
+	movs	r0, #0
+.L2386:
+	add	sp, sp, #12
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L2402:
+	bcs	.L2419
+	ldr	r0, .L2421+32
+	b	.L2418
+.L2387:
+	ldr	r0, .L2421+36
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #172]
+	cbz	r3, .L2404
+	mov	r0, r4
+	bl	out_phy_block_from_free_list
+	str	r0, [r4, #292]
+	cmp	r0, #0
+	beq	.L2420
+	adds	r5, r5, #1
+	strh	r6, [r4, #320]	@ movhi
+	str	r5, [r0, #8]
+	ldrb	r0, [r4, #17]	@ zero_extendqisi2
+	ands	r0, r0, #1
+	beq	.L2406
+	mov	r0, r4
+	bl	out_phy_block_from_free_list
+	str	r0, [r4, #324]
+	cmp	r0, #0
+	beq	.L2420
+	ldr	r3, [r4, #292]
+	strh	r6, [r4, #352]	@ movhi
+	ldr	r3, [r3, #8]
+	adds	r3, r3, #1
+	str	r3, [r0, #8]
+	b	.L2419
+.L2406:
+	str	r0, [r4, #324]
+	b	.L2386
+.L2404:
+	ldr	r0, .L2421+40
+	bl	NAND_Print
+	mov	r0, r4
+	bl	print_free_list
+	mov	r0, r4
+	bl	print_block_invalid_list
+	b	.L2420
+.L2422:
+	.align	2
+.L2421:
+	.word	.LANCHOR107
+	.word	.LC374
+	.word	.LC375
+	.word	.LC376
+	.word	.LC378
+	.word	.LC379
+	.word	.LC380
+	.word	.LC381
+	.word	.LC382
+	.word	.LC383
+	.word	.LC384
+	.word	.LC377
+	.size	get_current_used_block, .-get_current_used_block
+	.section	.text.cross_talk_rebuild_current_block,"ax",%progbits
+	.align	1
+	.global	cross_talk_rebuild_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	cross_talk_rebuild_current_block, %function
+cross_talk_rebuild_current_block:
+	@ args = 0, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #56
+	mov	r6, r1
+	movs	r7, #0
+	add	r1, sp, #56
+	mov	r5, r0
+	str	r7, [r1, #-20]!
+	mov	r4, r2
+	bl	init_nrc
+	cbz	r0, .L2424
+	ldr	r0, [sp, #36]
+	mov	r4, r7
+	bl	free_nrc
+	ldr	r0, .L2444
+	bl	NAND_Print
+.L2425:
+	mov	r0, r4
+	add	sp, sp, #56
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2424:
+	ldr	r3, [sp, #36]
+	add	r2, sp, #28
+	mov	r1, r6
+	mov	r0, r5
+	bl	get_used_page_num
+	mov	r10, r0
+	cbnz	r4, .L2426
+	ldr	r3, [r6, #8]
+	mov	r2, r0
+	ldrh	r1, [r6]
+	ldr	r0, .L2444+4
+	bl	NAND_Print
+	ldr	r0, [sp, #36]
+	ldr	r3, [r0]
+	cmp	r3, #0
+	bne	.L2439
+	bl	free_nrc
+	ldr	r0, .L2444+8
+	bl	NAND_Print
+	ldrh	r2, [r6, #6]
+	mov	r1, r6
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	b	.L2425
+.L2426:
+	ldr	r3, [sp, #36]
+	add	r2, sp, #32
+	mov	r1, r4
+	mov	r0, r5
+	bl	get_used_page_num
+	ldr	r3, [r4, #8]
+	mov	fp, r0
+	ldrh	r1, [r6]
+	mov	r2, r10
+	strd	r0, r3, [sp, #4]
+	ldrh	r3, [r4]
+	ldr	r0, .L2444+12
+	str	r3, [sp]
+	ldr	r3, [r6, #8]
+	bl	NAND_Print
+	ldr	r0, [sp, #36]
+	ldr	r3, [r0]
+	cbnz	r3, .L2428
+	str	r3, [sp, #20]
+	bl	free_nrc
+	ldr	r0, .L2444+16
+	bl	NAND_Print
+	ldrh	r2, [r6, #6]
+	mov	r1, r6
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	ldrh	r2, [r4, #6]
+	mov	r1, r4
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	ldr	r3, [sp, #20]
+	mov	r4, r3
+	b	.L2425
+.L2428:
+	ldrh	r7, [r4, #6]
+	cmp	r10, fp
+	ldrh	r8, [r6, #6]
+	ittt	ls
+	movls	r2, r7
+	movls	r7, r8
+	movls	r8, r2
+	ldr	r2, [sp, #28]
+	cbnz	r2, .L2430
+	ldr	r2, [sp, #32]
+	cbz	r2, .L2431
+.L2430:
+	adds	r7, r7, #20
+	add	r8, r8, #20
+.L2431:
+	cmp	r10, fp
+	add	r7, r7, #1
+	uxth	r7, r7
+	mov	r2, fp
+	mov	r1, r10
+	bcs	.L2432
+	ldr	r0, .L2444+20
+	bl	NAND_Print
+	mov	r1, r6
+	mov	r6, r4
+	mov	r2, r7
+	mov	r0, r5
+	bl	erase_block
+.L2427:
+	ldr	r7, .L2444+24
+.L2435:
+	mov	r0, r5
+	bl	out_phy_block_from_free_list
+	mov	r4, r0
+	cbnz	r0, .L2433
+	ldr	r0, .L2444+28
+	bl	NAND_Print
+	b	.L2425
+.L2432:
+	ldr	r0, .L2444+32
+	bl	NAND_Print
+	mov	r2, r7
+	mov	r1, r4
+	mov	r0, r5
+	bl	erase_block
+	b	.L2427
+.L2439:
+	mov	r8, r4
+	b	.L2427
+.L2433:
+	ldr	r2, [r6, #8]
+	mov	r1, r0
+	adds	r2, r2, #1
+	str	r2, [r0, #8]
+	mov	r0, r5
+	bl	new_block_init_for_write
+	cmp	r0, #0
+	beq	.L2440
+	mov	r0, r7
+	bl	NAND_Print
+	b	.L2435
+.L2438:
+	ldr	r3, [r0, #4]
+	ldrb	r3, [r3, r10]	@ zero_extendqisi2
+	cmp	r3, #0
+	beq	.L2436
+	ldr	r2, [r5, #4]
+	ldr	r0, [r0, #8]
+	ldrh	r1, [r2, #26]
+	ldrh	r2, [r2, #28]
+	add	r3, r1, #64
+	mla	r3, r10, r3, r0
+	ldrh	r0, [r4]
+	strh	r7, [sp, #40]	@ movhi
+	strh	r2, [sp, #44]	@ movhi
+	adds	r7, r7, #1
+	strh	r0, [sp, #42]	@ movhi
+	add	r1, r1, r3
+	mov	r0, r1
+	strd	r3, r1, [sp, #48]
+	str	r1, [sp, #20]
+	bl	get_special_data_from_oob
+	ldrh	r3, [r4, #6]
+	mov	r2, r0
+	ldr	r1, [sp, #20]
+	mov	r0, r5
+	str	r3, [sp]
+	ldr	r3, [r4, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r5, #1988]
+	add	r1, sp, #40
+	mov	r0, r5
+	blx	r3
+.L2437:
+	add	r10, r10, #1
+.L2434:
+	ldr	r0, [sp, #36]
+	ldr	r2, [r0]
+	cmp	r2, r10
+	bhi	.L2438
+	add	r2, r8, #1
+	mov	r1, r6
+	uxth	r2, r2
+	mov	r0, r5
+	bl	erase_block
+	ldr	r0, [sp, #36]
+	bl	free_nrc
+	b	.L2425
+.L2436:
+	mov	r1, r10
+	mov	r0, fp
+	bl	NAND_Print
+	b	.L2437
+.L2440:
+	mov	r7, r0
+	mov	r10, r0
+	ldr	fp, .L2444+36
+	b	.L2434
+.L2445:
+	.align	2
+.L2444:
+	.word	.LC385
+	.word	.LC386
+	.word	.LC387
+	.word	.LC388
+	.word	.LC389
+	.word	.LC390
+	.word	.LC393
+	.word	.LC392
+	.word	.LC391
+	.word	.LC394
+	.size	cross_talk_rebuild_current_block, .-cross_talk_rebuild_current_block
+	.section	.text.no_cross_talk_rebuild_current_block,"ax",%progbits
+	.align	1
+	.global	no_cross_talk_rebuild_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	no_cross_talk_rebuild_current_block, %function
+no_cross_talk_rebuild_current_block:
+	@ args = 0, pretend = 0, frame = 56
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #72
+	mov	r6, r1
+	movs	r7, #0
+	add	r1, sp, #32
+	mov	r5, r0
+	mov	r4, r2
+	strd	r7, r7, [sp, #32]
+	bl	init_nrc
+	cbz	r0, .L2447
+	ldr	r0, .L2480
+	bl	NAND_Print
+	ldr	r0, [sp, #32]
+	bl	free_nrc
+.L2478:
+	movs	r4, #0
+	b	.L2448
+.L2447:
+	ldr	r3, [sp, #32]
+	add	r2, sp, #24
+	mov	r1, r6
+	mov	r0, r5
+	bl	get_used_page_num_no_crosstalk
+	mov	r8, r0
+	cbnz	r4, .L2449
+	ldr	r3, [r6, #8]
+	mov	r2, r0
+	ldrh	r1, [r6]
+	ldr	r0, .L2480+4
+	bl	NAND_Print
+	ldr	r7, [sp, #32]
+	ldr	r3, [r7]
+	cbz	r3, .L2477
+	ldr	r8, .L2480+40
+.L2450:
+	mov	r0, r5
+	bl	out_phy_block_from_free_list
+	mov	r4, r0
+	cbnz	r0, .L2451
+.L2459:
+	ldr	r0, .L2480+8
+.L2479:
+	bl	NAND_Print
+	b	.L2478
+.L2477:
+	mov	r0, r7
+	bl	free_nrc
+	ldr	r0, .L2480+12
+	bl	NAND_Print
+	ldrh	r2, [r6, #6]
+	mov	r1, r6
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+.L2448:
+	mov	r0, r4
+	add	sp, sp, #72
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2451:
+	ldr	r2, [r6, #8]
+	mov	r1, r0
+	str	r2, [r0, #8]
+	mov	r0, r5
+	bl	new_block_init_for_write
+	cmp	r0, #0
+	beq	.L2452
+	mov	r0, r8
+	bl	NAND_Print
+	b	.L2450
+.L2449:
+	add	r1, sp, #36
+	mov	r0, r5
+	bl	init_nrc
+	cbz	r0, .L2453
+	ldr	r0, [sp, #32]
+	bl	free_nrc
+	ldr	r0, [sp, #36]
+	bl	free_nrc
+	ldr	r0, .L2480+16
+	b	.L2479
+.L2453:
+	ldr	r3, [sp, #36]
+	add	r2, sp, #28
+	mov	r1, r4
+	mov	r0, r5
+	bl	get_used_page_num_no_crosstalk
+	ldr	r3, [r4, #8]
+	mov	r10, r0
+	ldrh	r1, [r6]
+	mov	r2, r8
+	strd	r0, r3, [sp, #4]
+	ldrh	r3, [r4]
+	ldr	r0, .L2480+20
+	str	r3, [sp]
+	ldr	r3, [r6, #8]
+	bl	NAND_Print
+	ldr	r7, [sp, #36]
+	ldr	fp, [r7]
+	cmp	fp, #0
+	bne	.L2454
+	ldr	r0, [sp, #32]
+	bl	free_nrc
+	ldr	r0, [sp, #36]
+	bl	free_nrc
+	ldr	r0, .L2480+24
+	bl	NAND_Print
+	ldrh	r2, [r6, #6]
+	mov	r1, r6
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	ldrh	r2, [r4, #6]
+	mov	r1, r4
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	b	.L2478
+.L2454:
+	cmp	r8, r10
+	bcs	.L2455
+	mov	r3, fp
+	mov	r2, r10
+	mov	r1, r8
+	ldr	r0, .L2480+28
+	bl	NAND_Print
+	mov	r3, r6
+	mov	r6, r4
+	mov	r4, r3
+.L2456:
+	ldr	r3, [r5, #4]
+	mov	r8, #0
+	ldrh	r2, [r4]
+	add	r1, sp, #40
+	strh	r8, [sp, #40]	@ movhi
+	mov	r0, r5
+	ldrh	r3, [r3, #28]
+	strh	r2, [sp, #42]	@ movhi
+	strd	r8, r8, [sp, #48]
+	strh	r3, [sp, #44]	@ movhi
+	ldr	r3, [r5, #1980]
+	blx	r3
+	cbz	r0, .L2457
+	ldrh	r1, [r4]
+	ldr	r0, .L2480+32
+	bl	NAND_Print
+	ldr	r3, [r5, #2000]
+	add	r1, sp, #40
+	mov	r0, r5
+	blx	r3
+	movs	r3, #255
+	strh	r8, [r6, #4]	@ movhi
+	strh	r3, [r6, #2]	@ movhi
+	ldr	r8, .L2480+40
+	ldrh	r3, [r5, #20]
+	adds	r3, r3, #1
+	strh	r3, [r5, #20]	@ movhi
+.L2458:
+	mov	r0, r5
+	bl	out_phy_block_from_free_list
+	mov	r4, r0
+	cmp	r0, #0
+	beq	.L2459
+	ldr	r2, [r0, #8]
+	mov	r1, r0
+	mov	r0, r5
+	bl	new_block_init_for_write
+	cbz	r0, .L2457
+	mov	r0, r8
+	bl	NAND_Print
+	b	.L2458
+.L2455:
+	ldr	r7, [sp, #32]
+	mov	r2, r10
+	mov	r1, r8
+	ldr	r0, .L2480+36
+	ldr	r3, [r7]
+	bl	NAND_Print
+	b	.L2456
+.L2457:
+	ldr	r3, [r6, #8]
+	str	r3, [r4, #8]
+.L2452:
+	ldr	fp, .L2480+44
+	mov	r10, #0
+	mov	r8, r10
+.L2460:
+	ldr	r2, [r7]
+	cmp	r2, r8
+	bhi	.L2463
+	ldrh	r2, [r6, #6]
+	mov	r1, r6
+	mov	r0, r5
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	ldr	r2, [r7]
+	ldr	r1, [r7, #12]
+	ldr	r0, [r5, #304]
+	strh	r2, [r5, #320]	@ movhi
+	str	r4, [r5, #292]
+	lsls	r2, r2, #2
+	bl	NAND_Memcpy
+	ldr	r0, [sp, #32]
+	bl	free_nrc
+	ldr	r0, [sp, #36]
+	bl	free_nrc
+	b	.L2448
+.L2463:
+	ldr	r3, [r7, #4]
+	ldrb	r3, [r3, r8]	@ zero_extendqisi2
+	cbz	r3, .L2461
+	ldr	r2, [r5, #4]
+	ldr	r0, [r7, #8]
+	ldrh	r1, [r2, #26]
+	ldrh	r2, [r2, #28]
+	add	r3, r1, #64
+	mla	r3, r8, r3, r0
+	ldrh	r0, [r4]
+	strh	r10, [sp, #56]	@ movhi
+	strh	r2, [sp, #60]	@ movhi
+	add	r10, r10, #1
+	strh	r0, [sp, #58]	@ movhi
+	add	r1, r1, r3
+	mov	r0, r1
+	strd	r3, r1, [sp, #64]
+	str	r1, [sp, #20]
+	bl	get_special_data_from_oob
+	ldrh	r3, [r4, #6]
+	mov	r2, r0
+	ldr	r1, [sp, #20]
+	mov	r0, r5
+	str	r3, [sp]
+	ldr	r3, [r4, #8]
+	bl	set_oob_special_page
+	ldr	r3, [r5, #1988]
+	add	r1, sp, #56
+	mov	r0, r5
+	blx	r3
+.L2462:
+	add	r8, r8, #1
+	b	.L2460
+.L2461:
+	mov	r1, r8
+	mov	r0, fp
+	bl	NAND_Print
+	b	.L2462
+.L2481:
+	.align	2
+.L2480:
+	.word	.LC385
+	.word	.LC395
+	.word	.LC392
+	.word	.LC396
+	.word	.LC389
+	.word	.LC397
+	.word	.LC398
+	.word	.LC390
+	.word	.LC399
+	.word	.LC391
+	.word	.LC393
+	.word	.LC394
+	.size	no_cross_talk_rebuild_current_block, .-no_cross_talk_rebuild_current_block
+	.section	.text.second_scan_all_blocks,"ax",%progbits
+	.align	1
+	.global	second_scan_all_blocks
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	second_scan_all_blocks, %function
+second_scan_all_blocks:
+	@ args = 0, pretend = 0, frame = 48
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, .L2565
+	ldr	r2, .L2565+4
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	ldr	r3, [r3]
+	sub	sp, sp, #104
+	ldr	r3, [r3, #752]
+	cmp	r3, r2
+	beq	.L2483
+	subs	r3, r3, #1
+	cmp	r3, #1
+	bhi	.L2518
+.L2483:
+	ldr	r3, [r4, #4]
+	ldr	r0, [r4, #24]
+	ldrb	r1, [r3, #8]	@ zero_extendqisi2
+	bl	__aeabi_uidiv
+	ldr	r5, [r4, #252]
+	mov	r3, #-1
+	str	r0, [r4, #28]
+	str	r3, [sp, #64]
+	mov	r10, r5
+.L2485:
+	cmp	r10, #0
+	bne	.L2486
+	cmp	r5, #0
+	beq	.L2519
+	ldr	r3, [r4, #1968]
+	mov	r7, r10
+	ldr	r2, [r5, #8]
+	mov	r6, r10
+	mov	r8, r10
+	str	r10, [sp, #68]
+	str	r2, [r3, #160]
+.L2502:
+	ldr	r2, [r4, #308]
+	lsrs	r3, r2, #9
+	ubfx	r2, r2, #0, #9
+	cbz	r2, .L2489
+	adds	r3, r3, #1
+.L2489:
+	ldr	r2, [r4, #4]
+	ldrh	r0, [r5]
+	ldr	r1, [r4, #284]
+	ldrh	r2, [r2, #20]
+	strh	r3, [sp, #92]	@ movhi
+	add	r3, sp, #72
+	strh	r0, [sp, #90]	@ movhi
+	mov	r0, r4
+	subs	r2, r2, #1
+	str	r1, [sp, #96]
+	str	r3, [sp, #100]
+	add	r1, sp, #88
+	ldr	r3, [r4, #1984]
+	strh	r2, [sp, #88]	@ movhi
+	blx	r3
+	ldr	r3, [r4, #1972]
+	mov	fp, r0
+	ldrh	r3, [r3, #28]
+	cbz	r3, .L2490
+	add	r2, sp, #72
+	ldr	r1, [r4, #284]
+	mov	r0, r4
+	bl	crc_wrong
+	cmp	r0, #0
+	it	ne
+	mvnne	fp, #1
+.L2490:
+	ldr	r3, [r5, #8]
+	ldr	r1, [r4, #376]
+	ldr	r2, [r4, #1968]
+	str	r3, [sp, #60]
+	ldrh	r3, [r5, #6]
+	cmp	r3, r1
+	bls	.L2491
+	movw	r1, #49999
+	cmp	r3, r1
+	itt	ls
+	strls	r3, [r4, #376]
+	strls	r3, [r2, #148]
+.L2491:
+	ldr	r1, [r2, #152]
+	add	r0, sp, #72
+	cmp	r3, r1
+	it	cc
+	strcc	r3, [r2, #152]
+	bl	is_phy_mapping_page
+	cmp	r0, #1
+	bne	.L2493
+	cmp	fp, #0
+	beq	.L2494
+	cmp	fp, #10
+	bne	.L2493
+.L2494:
+	ldrh	r3, [r5, #4]
+	mov	r10, r5
+	ldr	r2, [r4, #284]
+	mov	r1, r5
+	mov	r0, r4
+	adds	r3, r3, #1
+	strh	r3, [r5, #4]	@ movhi
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	bl	recover_logic_page_mapping
+.L2559:
+	mov	r8, r5
+	b	.L2495
+.L2486:
+	ldr	r3, [r10, #8]
+	ldr	r10, [r10, #28]
+	str	r3, [sp, #64]
+	ldr	r2, [sp, #64]
+	ldr	r3, [r4, #1968]
+	str	r2, [r3, #156]
+	b	.L2485
+.L2493:
+	add	r0, sp, #72
+	bl	is_nouse_page
+	cmp	r0, #1
+	bne	.L2496
+	cbz	r6, .L2521
+	ldrh	r1, [r6]
+	cbnz	r7, .L2497
+	ldrh	r2, [r5]
+	ldr	r0, .L2565+8
+	bl	NAND_Print
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r0, r3, #31
+	bmi	.L2523
+	ldr	r3, [r6, #8]
+	ldr	r0, [r5, #8]
+	cmp	r3, r0
+	beq	.L2523
+	ldrh	r2, [r5]
+	ldrh	r1, [r6]
+	str	r0, [sp]
+	ldr	r0, .L2565+12
+	bl	NAND_Print
+	ldr	r2, [r4, #304]
+	mov	r1, r6
+	mov	r0, r4
+	bl	recover_phy_page_mapping
+	ldr	r3, [r4, #4]
+	mov	r1, r6
+	ldr	r2, [r4, #304]
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	bl	recover_logic_page_mapping
+	movs	r2, #3
+	mov	r1, r6
+	mov	r0, r4
+	bl	add_prio_gc
+.L2521:
+	mov	r6, r5
+	b	.L2495
+.L2497:
+	ldr	r2, [r6, #8]
+	ldr	r0, .L2565+16
+	bl	NAND_Print
+	ldr	r2, [r7, #8]
+	ldrh	r1, [r7]
+	ldr	r0, .L2565+20
+	bl	NAND_Print
+	ldr	r2, [sp, #60]
+	ldrh	r1, [r5]
+	ldr	r0, .L2565+24
+	bl	NAND_Print
+	mov	r1, r6
+	mov	r6, r7
+	movs	r2, #3
+	mov	r0, r4
+	bl	add_prio_gc
+.L2523:
+	mov	r7, r5
+	b	.L2495
+.L2496:
+	ldrb	r0, [sp, #87]	@ zero_extendqisi2
+	ldrb	r2, [sp, #73]	@ zero_extendqisi2
+	ldrb	r1, [sp, #72]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #86]	@ zero_extendqisi2
+	ldrb	r3, [sp, #74]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #85]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #84]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #83]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #82]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #81]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #80]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #79]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #78]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #77]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #76]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #75]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L2565+28
+	bl	NAND_Print
+	ldrh	r2, [r5]
+	ldrb	r1, [r4, #16]	@ zero_extendqisi2
+	cmp	fp, #0
+	beq	.L2498
+	cmp	fp, #10
+	bne	.L2499
+.L2498:
+	ldr	r0, .L2565+32
+.L2558:
+	bl	NAND_Print
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r1, r3, #31
+	bpl	.L2501
+	ldrd	r2, r3, [sp, #60]
+	cmp	r3, r2
+	bne	.L2501
+	ldrh	r2, [r5, #6]
+	mov	r1, r5
+	mov	r0, r4
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	str	r5, [sp, #68]
+.L2495:
+	ldr	r5, [r5, #28]
+	cmp	r5, #0
+	bne	.L2502
+.L2487:
+	mov	r1, r10
+	mov	r0, r4
+	bl	init_smart_info
+	ldr	r5, [r4, #252]
+.L2503:
+	cmp	r5, #0
+	bne	.L2505
+	mov	r0, r4
+	bl	adjust_invaild_list
+	cmp	r8, #0
+	beq	.L2506
+	cbz	r6, .L2506
+	ldr	r1, [r8, #8]
+	ldr	r2, [r6, #8]
+	adds	r3, r1, #1
+	cmp	r3, r2
+	beq	.L2506
+	ldr	r0, .L2565+36
+	bl	NAND_Print
+.L2506:
+	movs	r3, #0
+	str	r3, [r4, #292]
+	cmp	r6, #0
+	bne	.L2507
+	cmp	r7, #0
+	bne	.L2508
+	ldr	r0, .L2565+40
+	bl	NAND_Print
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r2, r3, #31
+	bpl	.L2509
+	cmp	r8, #0
+	beq	.L2510
+.L2563:
+	movs	r2, #3
+	mov	r1, r8
+	mov	r0, r4
+	bl	add_prio_gc
+	b	.L2510
+.L2499:
+	ldr	r0, .L2565+44
+	b	.L2558
+.L2501:
+	movs	r3, #170
+	ldr	r2, [r4, #304]
+	strh	r3, [r5, #2]	@ movhi
+	mov	r1, r5
+	ldrh	r3, [r5, #4]
+	mov	r0, r4
+	adds	r3, r3, #1
+	strh	r3, [r5, #4]	@ movhi
+	bl	recover_block_phy_page_mapping
+	ldr	r3, [r4, #4]
+	mov	r1, r5
+	ldr	r2, [r4, #304]
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	bl	recover_logic_page_mapping
+	movs	r2, #3
+	mov	r1, r5
+	mov	r0, r4
+	bl	add_prio_gc
+	b	.L2559
+.L2566:
+	.align	2
+.L2565:
+	.word	g_nreg_base
+	.word	196609
+	.word	.LC400
+	.word	.LC401
+	.word	.LC402
+	.word	.LC403
+	.word	.LC404
+	.word	.LC405
+	.word	.LC406
+	.word	.LC408
+	.word	.LC409
+	.word	.LC407
+.L2519:
+	mov	r3, #-1
+	mov	r7, r10
+	mov	r6, r10
+	mov	r8, r10
+	str	r10, [sp, #68]
+	str	r3, [sp, #60]
+	b	.L2487
+.L2505:
+	cmp	r6, r5
+	beq	.L2504
+	cmp	r7, r5
+	beq	.L2504
+	ldr	r3, [sp, #68]
+	cmp	r3, r5
+	beq	.L2504
+	mov	r1, r5
+	mov	r0, r4
+	bl	put_phy_block_to_invalid_page_list
+.L2504:
+	ldr	r5, [r5, #28]
+	b	.L2503
+.L2509:
+	cmp	r8, #0
+	beq	.L2510
+	ldrh	r3, [r8, #2]
+	cmp	r3, #170
+	beq	.L2563
+.L2510:
+	ldr	r2, [sp, #60]
+	mov	r1, r7
+	mov	r0, r4
+	bl	get_current_used_block
+	mov	r5, r0
+	cmp	r0, #0
+	beq	.L2517
+	ldr	r0, .L2567
+	bl	NAND_Print
+	b	.L2564
+.L2507:
+	cbnz	r7, .L2508
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bpl	.L2511
+	ldr	r2, [r6, #8]
+	ldrh	r1, [r6]
+	ldr	r0, .L2567+4
+	bl	NAND_Print_DBG
+	cmp	r8, #0
+	beq	.L2512
+	ldrh	r3, [r8, #2]
+	cmp	r3, #170
+	bne	.L2512
+	movs	r2, #3
+	mov	r1, r8
+	mov	r0, r4
+	bl	add_prio_gc
+.L2512:
+	movs	r2, #0
+.L2561:
+	mov	r1, r6
+	mov	r0, r4
+	bl	cross_talk_rebuild_current_block
+	mov	r7, r0
+	cmp	r0, #0
+	bne	.L2510
+.L2564:
+	movs	r5, #1
+.L2482:
+	mov	r0, r5
+	add	sp, sp, #104
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2511:
+	cmp	r8, #0
+	beq	.L2513
+	ldrh	r3, [r8, #2]
+	cmp	r3, #170
+	bne	.L2513
+	movs	r2, #3
+	mov	r1, r8
+	mov	r0, r4
+	bl	add_prio_gc
+.L2513:
+	movs	r2, #0
+.L2562:
+	mov	r1, r6
+	mov	r0, r4
+	bl	no_cross_talk_rebuild_current_block
+	mov	r7, r0
+	b	.L2510
+.L2508:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	ands	r5, r3, #1
+	beq	.L2514
+	mov	r2, r7
+	b	.L2561
+.L2514:
+	ldr	r2, [r6, #8]
+	ldr	r3, [r7, #8]
+	cmp	r2, r3
+	bne	.L2516
+	ldrh	r1, [r6]
+	ldr	r0, .L2567+8
+	bl	NAND_Print
+	ldr	r2, [r7, #8]
+	ldrh	r1, [r7]
+	ldr	r0, .L2567+12
+	bl	NAND_Print_DBG
+	mov	r2, r7
+	b	.L2562
+.L2516:
+	ldr	r0, .L2567+16
+	bl	NAND_Print
+	ldr	r2, [r8, #8]
+	ldrh	r1, [r8]
+	ldr	r0, .L2567+20
+	bl	NAND_Print
+	ldr	r2, [r6, #8]
+	ldrh	r1, [r6]
+	ldr	r0, .L2567+8
+	bl	NAND_Print
+	ldr	r2, [r7, #8]
+	ldrh	r1, [r7]
+	ldr	r0, .L2567+12
+	bl	NAND_Print_DBG
+	ldr	r2, [r4, #304]
+	mov	r1, r6
+	mov	r0, r4
+	bl	recover_block_phy_page_mapping
+	ldr	r3, [r4, #4]
+	mov	r1, r6
+	ldr	r2, [r4, #304]
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	bl	recover_logic_page_mapping
+	movs	r2, #3
+	mov	r1, r6
+	mov	r0, r4
+	bl	add_prio_gc
+	mov	r1, r7
+	ldr	r2, [r4, #304]
+	mov	r0, r4
+	bl	recover_block_phy_page_mapping
+	ldr	r3, [r4, #4]
+	mov	r1, r7
+	ldr	r2, [r4, #304]
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	bl	recover_logic_page_mapping
+	mov	r1, r7
+	movs	r2, #3
+	mov	r0, r4
+	mov	r7, r5
+	bl	add_prio_gc
+	b	.L2510
+.L2517:
+	mov	r0, r4
+	bl	adjust_invaild_list
+	ldr	r2, [r4, #1968]
+	ldr	r3, [r4, #292]
+	ldrh	r1, [r4, #22]
+	ldr	r0, .L2567+24
+	str	r3, [r4, #48]
+	ldr	r3, [r2, #160]
+	str	r3, [sp, #4]
+	ldr	r3, [r2, #156]
+	str	r3, [sp]
+	ldrd	r2, r3, [r2, #148]
+	bl	NAND_Print_DBG
+	b	.L2482
+.L2518:
+	mov	r5, #-1
+	b	.L2482
+.L2568:
+	.align	2
+.L2567:
+	.word	.LC415
+	.word	.LC410
+	.word	.LC411
+	.word	.LC412
+	.word	.LC413
+	.word	.LC414
+	.word	.LC416
+	.size	second_scan_all_blocks, .-second_scan_all_blocks
+	.section	.text.current_block_ecc_error,"ax",%progbits
+	.align	1
+	.global	current_block_ecc_error
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	current_block_ecc_error, %function
+current_block_ecc_error:
+	@ args = 0, pretend = 0, frame = 48
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	mov	r4, r0
+	ldr	r5, .L2589
+	sub	sp, sp, #48
+	mov	r8, r1
+.L2570:
+	mov	r0, r4
+	bl	out_phy_block_from_free_list
+	mov	r7, r0
+	cbnz	r0, .L2571
+	ldr	r0, .L2589+4
+	bl	NAND_Print
+.L2569:
+	mov	r0, r7
+	add	sp, sp, #48
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2571:
+	ldr	r2, [r8, #8]
+	mov	r1, r0
+	str	r2, [r0, #8]
+	mov	r0, r4
+	bl	new_block_init_for_write
+	mov	r6, r0
+	cbz	r0, .L2573
+	mov	r0, r5
+	bl	NAND_Print
+	b	.L2570
+.L2573:
+	ldr	fp, .L2589+32
+	mov	r5, r6
+	ldrh	r1, [r8]
+	ldr	r0, .L2589+8
+	bl	NAND_Print
+.L2574:
+	ldr	r3, [r4, #4]
+	ldrh	r2, [r3, #20]
+	cmp	r2, r5
+	bgt	.L2581
+	ldrh	r2, [r8, #6]
+	mov	r1, r8
+	mov	r0, r4
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	mov	r2, r6
+	mov	r1, r5
+	ldr	r0, .L2589+12
+	bl	NAND_Print_DBG
+	b	.L2569
+.L2581:
+	ldrh	r2, [r3, #28]
+	mov	r0, r4
+	ldrh	r1, [r8]
+	ldr	r3, [r4, #284]
+	strh	r2, [sp, #20]	@ movhi
+	strh	r1, [sp, #18]	@ movhi
+	add	r1, sp, #16
+	str	r3, [sp, #24]
+	strh	r5, [sp, #16]	@ movhi
+	ldr	r3, [r4, #1984]
+	str	sp, [sp, #28]
+	blx	r3
+	mov	r10, r0
+	mov	r0, sp
+	bl	is_ftl_logic_page_data
+	cmp	r0, #1
+	bne	.L2575
+	cmp	r10, #0
+	beq	.L2576
+	cmp	r10, #10
+	bne	.L2577
+.L2576:
+	mov	r2, sp
+	ldr	r1, [r4, #284]
+	mov	r0, r4
+	bl	nand_power_off_ecc_error
+	cbz	r0, .L2578
+	ldr	r0, .L2589+16
+	bl	NAND_Print
+.L2579:
+	adds	r5, r5, #1
+	b	.L2574
+.L2578:
+	mov	r2, r10
+	mov	r1, r5
+	ldr	r0, .L2589+20
+	bl	NAND_Print
+	ldr	r3, [r4, #4]
+	mov	r0, r4
+	ldrh	r1, [r7]
+	strh	r6, [sp, #32]	@ movhi
+	adds	r6, r6, #1
+	ldrh	r2, [r3, #28]
+	ldr	r3, [r4, #284]
+	strh	r1, [sp, #34]	@ movhi
+	add	r1, sp, #32
+	strh	r2, [sp, #36]	@ movhi
+	str	r3, [sp, #40]
+	str	sp, [sp, #44]
+	ldr	r3, [r4, #1988]
+	blx	r3
+	b	.L2579
+.L2577:
+	ldr	r0, .L2589+24
+	mov	r1, r5
+.L2588:
+	bl	NAND_Print
+	b	.L2579
+.L2575:
+	ldrb	r3, [sp, #1]	@ zero_extendqisi2
+	cmp	r3, #170
+	bne	.L2580
+	mov	r1, r5
+	mov	r0, fp
+	b	.L2588
+.L2580:
+	mov	r0, sp
+	bl	is_nouse_page
+	cmp	r0, #1
+	beq	.L2579
+	mov	r1, r5
+	ldr	r0, .L2589+28
+	b	.L2588
+.L2590:
+	.align	2
+.L2589:
+	.word	.LC382
+	.word	.LC194
+	.word	.LC417
+	.word	.LC423
+	.word	.LC418
+	.word	.LC419
+	.word	.LC420
+	.word	.LC422
+	.word	.LC421
+	.size	current_block_ecc_error, .-current_block_ecc_error
+	.section	.text.do_before_write,"ax",%progbits
+	.align	1
+	.global	do_before_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_before_write, %function
+do_before_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	add	r5, r0, #292
+.L2592:
+	ldrh	r3, [r4, #320]
+	cbz	r3, .L2595
+.L2599:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r0, r3, #31
+	bpl	.L2597
+	add	r5, r4, #324
+.L2596:
+	ldrh	r3, [r4, #352]
+	cbnz	r3, .L2597
+	ldr	r1, [r4, #324]
+	mov	r0, r4
+	ldr	r2, [r1, #8]
+	bl	new_block_init_for_write
+	cbnz	r0, .L2601
+.L2597:
+	movs	r0, #0
+.L2591:
+	pop	{r3, r4, r5, pc}
+.L2595:
+	ldr	r1, [r4, #292]
+	mov	r0, r4
+	ldr	r2, [r1, #8]
+	bl	new_block_init_for_write
+	cmp	r0, #0
+	beq	.L2599
+	ldr	r2, [r4, #292]
+	mov	r0, r4
+	ldr	r3, [r2, #8]
+	subs	r1, r3, #1
+	str	r1, [r2, #8]
+	ldrb	r1, [r4, #17]	@ zero_extendqisi2
+	lsls	r1, r1, #31
+	mov	r1, r5
+	itt	mi
+	submi	r3, r3, #2
+	strmi	r3, [r2, #8]
+	bl	get_new_current_block
+	cmp	r0, #0
+	beq	.L2592
+	ldr	r0, .L2614
+.L2613:
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L2591
+.L2601:
+	ldr	r2, [r4, #324]
+	mov	r0, r4
+	ldr	r3, [r2, #8]
+	subs	r1, r3, #1
+	str	r1, [r2, #8]
+	ldrb	r1, [r4, #17]	@ zero_extendqisi2
+	lsls	r1, r1, #31
+	mov	r1, r5
+	itt	mi
+	submi	r3, r3, #2
+	strmi	r3, [r2, #8]
+	bl	get_new_current_block
+	cmp	r0, #0
+	beq	.L2596
+	ldr	r0, .L2614+4
+	b	.L2613
+.L2615:
+	.align	2
+.L2614:
+	.word	.LC424
+	.word	.LC425
+	.size	do_before_write, .-do_before_write
+	.section	.text.check_invalid_page_right,"ax",%progbits
+	.align	1
+	.global	check_invalid_page_right
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	check_invalid_page_right, %function
+check_invalid_page_right:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	movs	r4, #0
+	ldr	fp, .L2625+4
+	mov	r8, r0
+	mov	r10, r1
+	mov	r7, r2
+	mov	r6, r3
+	mov	r5, r4
+.L2617:
+	cmp	r6, r5
+	bhi	.L2622
+	ldrh	r2, [r7, #4]
+	cmp	r2, r4
+	beq	.L2624
+	mov	r3, r6
+	mov	r1, r4
+	ldr	r0, .L2625
+	bl	NAND_Print
+	movs	r0, #1
+.L2616:
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2622:
+	ldr	r3, [r10, #8]
+	ldr	r1, [r3, r5, lsl #2]
+	adds	r3, r1, #1
+	beq	.L2618
+	mov	r0, r8
+	bl	get_logic_page_map
+	cbnz	r0, .L2619
+	mov	r0, fp
+	bl	NAND_Print_DBG
+.L2618:
+	adds	r4, r4, #1
+	b	.L2620
+.L2619:
+	ldrh	r2, [r0, #2]
+	ldrh	r3, [r7]
+	cmp	r2, r3
+	bne	.L2618
+	ldrh	r3, [r0]
+	ubfx	r3, r3, #0, #12
+	cmp	r3, r5
+	bne	.L2618
+.L2620:
+	adds	r5, r5, #1
+	b	.L2617
+.L2624:
+	movs	r0, #0
+	b	.L2616
+.L2626:
+	.align	2
+.L2625:
+	.word	.LC427
+	.word	.LC426
+	.size	check_invalid_page_right, .-check_invalid_page_right
+	.section	.text.write_phy_page_map_to_current_block,"ax",%progbits
+	.align	1
+	.global	write_phy_page_map_to_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	write_phy_page_map_to_current_block, %function
+write_phy_page_map_to_current_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	add	r3, r0, #324
+	push	{r0, r1, r4, r5, r6, lr}
+	cmp	r1, r3
+	mov	r4, r0
+	mov	r5, r1
+	bne	.L2628
+	ldr	r1, [r0, #312]
+	mov	r2, #320
+	ldr	r0, [r0, #344]
+	bl	NAND_Memcpy
+.L2628:
+	ldr	r3, .L2631
+	mov	r1, r5
+	ldr	r2, [r5, #4]
+	mov	r0, r4
+	str	r3, [sp]
+	movs	r3, #0
+	bl	write_phy_data_to_current_block
+	mov	r6, r0
+	cbz	r0, .L2629
+	ldr	r0, .L2631+4
+	bl	NAND_Print
+.L2627:
+	mov	r0, r6
+	add	sp, sp, #8
+	@ sp needed
+	pop	{r4, r5, r6, pc}
+.L2629:
+	mov	r1, r5
+	ldrh	r3, [r5, #28]
+	ldr	r2, [r1], #4
+	adds	r3, r3, #1
+	ldrh	r0, [r2, #4]
+	uxth	r3, r3
+	strh	r3, [r5, #28]	@ movhi
+	adds	r0, r0, #1
+	strh	r0, [r2, #4]	@ movhi
+	mov	r0, r4
+	bl	check_invalid_page_right
+	ldr	r3, [r4, #4]
+	ldrh	r2, [r5, #28]
+	ldrh	r3, [r3, #20]
+	cmp	r2, r3
+	bne	.L2627
+	ldr	r1, [r5]
+	mov	r0, r4
+	bl	put_phy_block_to_invalid_page_list
+	mov	r0, r4
+	bl	adjust_invaild_list
+	b	.L2627
+.L2632:
+	.align	2
+.L2631:
+	.word	-1431633921
+	.word	.LC428
+	.size	write_phy_page_map_to_current_block, .-write_phy_page_map_to_current_block
+	.section	.text.nftl_ops_init,"ax",%progbits
+	.align	1
+	.global	nftl_ops_init
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_ops_init, %function
+nftl_ops_init:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L2634
+	str	r3, [r0, #1980]
+	ldr	r3, .L2634+4
+	str	r3, [r0, #1984]
+	ldr	r3, .L2634+8
+	str	r3, [r0, #1988]
+	ldr	r3, .L2634+12
+	str	r3, [r0, #1996]
+	ldr	r3, .L2634+16
+	str	r3, [r0, #2000]
+	ldr	r3, .L2634+20
+	str	r3, [r0, #1992]
+	ldr	r3, .L2634+24
+	str	r3, [r0, #2008]
+	ldr	r3, .L2634+28
+	str	r3, [r0, #2012]
+	ldr	r3, .L2634+32
+	str	r3, [r0, #2004]
+	ldr	r3, .L2634+36
+	str	r3, [r0, #2016]
+	bx	lr
+.L2635:
+	.align	2
+.L2634:
+	.word	_nftl_nand_erase_superblk
+	.word	_nftl_nand_read_page
+	.word	_nftl_nand_write_page
+	.word	_nftl_nand_is_blk_good
+	.word	_nftl_nand_mark_bad_blk
+	.word	_nftl_nand_copy_page
+	.word	_nftl_nand_read_logic_page
+	.word	_nftl_nand_read_logic_history_page
+	.word	_nftl_nand_write_logic_page
+	.word	_nftl_discard_logic_page
+	.size	nftl_ops_init, .-nftl_ops_init
+	.section	.text.current_block_at_last_page,"ax",%progbits
+	.align	1
+	.global	current_block_at_last_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	current_block_at_last_page, %function
+current_block_at_last_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, [r0, #4]
+	ldrh	r0, [r1, #28]
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	subs	r3, r3, r0
+	rsbs	r0, r3, #0
+	adcs	r0, r0, r3
+	bx	lr
+	.size	current_block_at_last_page, .-current_block_at_last_page
+	.section	.text.do_after_write,"ax",%progbits
+	.align	1
+	.global	do_after_write
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_after_write, %function
+do_after_write:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	add	r6, r0, #292
+	mov	r1, r6
+	mov	r4, r0
+	bl	current_block_at_last_page
+	cmp	r0, #1
+	mov	r5, r0
+	bne	.L2645
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cbz	r0, .L2639
+	ldr	r0, .L2656
+.L2655:
+	bl	NAND_Print
+.L2637:
+	mov	r0, r5
+	pop	{r4, r5, r6, pc}
+.L2639:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r2, r3, #31
+	bpl	.L2641
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cbz	r0, .L2641
+	ldr	r0, .L2656
+	bl	NAND_Print
+.L2641:
+	mov	r1, r6
+	mov	r0, r4
+	bl	get_new_current_block
+	cbz	r0, .L2643
+	ldr	r0, .L2656+4
+	b	.L2655
+.L2643:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bpl	.L2644
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	get_new_current_block
+	cbz	r0, .L2644
+	ldr	r0, .L2656+8
+	b	.L2655
+.L2644:
+	ldr	r3, [r4, #368]
+	adds	r3, r3, #1
+	str	r3, [r4, #368]
+.L2645:
+	movs	r5, #0
+	b	.L2637
+.L2657:
+	.align	2
+.L2656:
+	.word	.LC429
+	.word	.LC430
+	.word	.LC431
+	.size	do_after_write, .-do_after_write
+	.section	.text.nand_write_data_page,"ax",%progbits
+	.align	1
+	.global	nand_write_data_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_write_data_page, %function
+nand_write_data_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, lr}
+	mov	r6, r1
+	add	r1, r0, #292
+	mov	r5, r0
+	mov	r7, r2
+	mov	r8, r3
+	bl	current_block_at_last_page
+	cmp	r0, #1
+	mov	r4, r0
+	bne	.L2659
+	mov	r0, r5
+	bl	do_after_write
+	cbz	r0, .L2659
+	ldr	r0, .L2670
+	bl	NAND_Print
+.L2658:
+	mov	r0, r4
+	pop	{r4, r5, r6, r7, r8, pc}
+.L2659:
+	mov	r0, r5
+	bl	do_before_write
+	cbz	r0, .L2661
+	ldr	r0, .L2670+4
+.L2669:
+	bl	NAND_Print
+	movs	r4, #1
+	b	.L2658
+.L2661:
+	mov	r3, r8
+	mov	r2, r7
+	mov	r1, r6
+	mov	r0, r5
+	bl	write_data_to_page
+	cbz	r0, .L2662
+	ldr	r0, .L2670+8
+	b	.L2669
+.L2662:
+	mov	r0, r5
+	bl	do_after_write
+	mov	r4, r0
+	cmp	r0, #0
+	beq	.L2658
+	ldr	r0, .L2670+12
+	b	.L2669
+.L2671:
+	.align	2
+.L2670:
+	.word	.LC432
+	.word	.LC433
+	.word	.LC434
+	.word	.LC435
+	.size	nand_write_data_page, .-nand_write_data_page
+	.section	.text.nand_write_logic_page_no_gc,"ax",%progbits
+	.align	1
+	.global	nand_write_logic_page_no_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_write_logic_page_no_gc, %function
+nand_write_logic_page_no_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r3, r2
+	mov	r2, r1
+	movs	r1, #192
+	b	nand_write_data_page
+	.size	nand_write_logic_page_no_gc, .-nand_write_logic_page_no_gc
+	.section	.text.garbage_collect_first,"ax",%progbits
+	.align	1
+	.global	garbage_collect_first
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	garbage_collect_first, %function
+garbage_collect_first:
+	@ args = 0, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #96
+	mov	r5, r1
+	add	r7, sp, #64
+	mov	r4, r0
+	mov	r6, r2
+	movs	r1, #90
+	movs	r2, #16
+	mov	r0, r7
+	bl	NAND_Memset
+	cbnz	r5, .L2674
+	mov	r0, r4
+	bl	out_phy_block_from_invalid_page_list
+.L2714:
+	mov	r5, r0
+	cbnz	r0, .L2677
+	ldr	r0, .L2715
+	bl	NAND_Print
+	movs	r0, #8
+.L2673:
+	add	sp, sp, #96
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2674:
+	mov	r1, r5
+	mov	r0, r4
+	bl	is_current_blcok
+	cmp	r0, #1
+	beq	.L2692
+	mov	r0, r4
+	bl	out_phy_block_from_invalid_page_list_by_block
+	b	.L2714
+.L2677:
+	ldr	r2, [r4, #1968]
+	ldrh	r0, [r0]
+	ldr	r3, [r2, #120]
+	strh	r0, [sp, #82]	@ movhi
+	mov	r0, r4
+	adds	r3, r3, #1
+	str	r3, [r2, #120]
+	ldr	r3, [r4, #4]
+	ldr	r2, [r4, #284]
+	ldrh	r1, [r3, #28]
+	ldrh	r3, [r3, #20]
+	strd	r2, r7, [sp, #88]
+	strh	r1, [sp, #84]	@ movhi
+	add	r1, sp, #80
+	subs	r3, r3, #1
+	strh	r3, [sp, #80]	@ movhi
+	ldr	r3, [r4, #1984]
+	blx	r3
+	mov	r10, r0
+	mov	r0, r7
+	bl	is_phy_mapping_page
+	cmp	r0, #1
+	mov	r8, r0
+	beq	.L2678
+	ldr	r0, .L2715+4
+	mov	r8, #1
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #4]
+	ldrh	r1, [r5]
+	ldr	r0, .L2715+8
+	ldrh	r2, [r3, #20]
+	ldrh	r3, [r3, #28]
+	subs	r2, r2, #1
+	str	r3, [sp]
+	movs	r3, #0
+	bl	NAND_Print_DBG
+	ldrb	r0, [sp, #79]	@ zero_extendqisi2
+	ldrb	r3, [sp, #67]	@ zero_extendqisi2
+	ldrb	r2, [sp, #66]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #78]	@ zero_extendqisi2
+	ldrb	r1, [sp, #65]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #77]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #76]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #75]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #74]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #73]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #72]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #71]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #70]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #69]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #68]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L2715+12
+	bl	NAND_Print_DBG
+	ldrh	r2, [r5]
+	ldrb	r1, [r4, #16]	@ zero_extendqisi2
+	ldr	r0, .L2715+16
+	bl	NAND_Print_DBG
+	ldr	r2, [r4, #268]
+	mov	r1, r5
+	mov	r0, r4
+	bl	recover_block_phy_page_mapping
+.L2679:
+	ldr	r3, [r4, #4]
+	mov	r2, r5
+	add	r1, r4, #260
+	mov	r0, r4
+	ldrh	r3, [r3, #20]
+	bl	check_invalid_page_right
+	cmp	r0, #0
+	beq	.L2681
+	mov	r8, #1
+	movw	r6, #65535
+	ldr	r0, .L2715+20
+	bl	NAND_Print
+.L2683:
+	mov	r10, #0
+.L2682:
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	cmp	r3, r10
+	bhi	.L2690
+.L2689:
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	subs	r3, r3, #1
+	cmp	r3, r10
+	bne	.L2691
+	movs	r6, #0
+	strh	r6, [r4, #386]	@ movhi
+	cmp	r8, #0
+	beq	.L2691
+	ldr	r0, .L2715+24
+	bl	NAND_Print
+	ldrh	r2, [r5, #6]
+	mov	r1, r5
+	mov	r0, r4
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+.L2692:
+	movs	r0, #0
+	b	.L2673
+.L2678:
+	cmp	r10, #0
+	beq	.L2680
+	cmp	r10, #10
+	beq	.L2680
+	ldrh	r1, [r5]
+	ldr	r0, .L2715+28
+	bl	NAND_Print_DBG
+	ldr	r2, [r4, #268]
+	mov	r1, r5
+	mov	r0, r4
+	bl	recover_block_phy_page_mapping
+	b	.L2679
+.L2680:
+	ldr	r2, [r4, #272]
+	mov	r8, #0
+	ldr	r1, [r4, #284]
+	ldr	r0, [r4, #268]
+	bl	NAND_Memcpy
+	b	.L2679
+.L2681:
+	movw	r3, #65535
+	cmp	r8, #0
+	it	ne
+	movne	r6, r3
+	b	.L2683
+.L2690:
+	ldr	r3, [r4, #268]
+	ldr	r3, [r3, r10, lsl #2]
+	adds	r2, r3, #1
+	beq	.L2684
+	mov	r1, r3
+	mov	r0, r4
+	str	r3, [sp, #60]
+	bl	get_logic_page_map
+	mov	fp, r0
+	cmp	r0, #0
+	beq	.L2684
+	ldrh	r2, [r0, #2]
+	ldrh	r1, [r5]
+	cmp	r1, r2
+	bne	.L2684
+	ldrh	r2, [r0]
+	ubfx	r2, r2, #0, #12
+	cmp	r2, r10
+	bne	.L2684
+	ldr	r0, [r4, #1968]
+	ldr	ip, [r4, #4]
+	strh	r1, [sp, #82]	@ movhi
+	add	r1, sp, #80
+	ldr	r2, [r0, #124]
+	strh	r10, [sp, #80]	@ movhi
+	adds	r2, r2, #1
+	str	r2, [r0, #124]
+	ldrh	r0, [ip, #28]
+	ldr	r2, [r4, #288]
+	strh	r0, [sp, #84]	@ movhi
+	mov	r0, r4
+	strd	r2, r7, [sp, #88]
+	ldr	r2, [r4, #1984]
+	blx	r2
+	str	r0, [sp, #56]
+	mov	r0, r7
+	bl	get_logic_page_from_oob
+	ldrd	r2, r3, [sp, #56]
+	cbz	r2, .L2685
+	cmp	r2, #10
+	bne	.L2686
+.L2685:
+	cmp	r3, r0
+	beq	.L2687
+	ldrh	r1, [r5]
+	mov	r2, r10
+	str	r3, [sp]
+	mov	r3, r0
+	ldr	r0, .L2715+32
+	mov	r8, #1
+	bl	NAND_Print_DBG
+	ldrb	r0, [sp, #79]	@ zero_extendqisi2
+	movw	r6, #65535
+	ldrb	r3, [sp, #66]	@ zero_extendqisi2
+	ldrb	r2, [sp, #65]	@ zero_extendqisi2
+	str	r0, [sp, #48]
+	ldrb	r0, [sp, #78]	@ zero_extendqisi2
+	ldrb	r1, [sp, #64]	@ zero_extendqisi2
+	str	r0, [sp, #44]
+	ldrb	r0, [sp, #77]	@ zero_extendqisi2
+	str	r0, [sp, #40]
+	ldrb	r0, [sp, #76]	@ zero_extendqisi2
+	str	r0, [sp, #36]
+	ldrb	r0, [sp, #75]	@ zero_extendqisi2
+	str	r0, [sp, #32]
+	ldrb	r0, [sp, #74]	@ zero_extendqisi2
+	str	r0, [sp, #28]
+	ldrb	r0, [sp, #73]	@ zero_extendqisi2
+	str	r0, [sp, #24]
+	ldrb	r0, [sp, #72]	@ zero_extendqisi2
+	str	r0, [sp, #20]
+	ldrb	r0, [sp, #71]	@ zero_extendqisi2
+	str	r0, [sp, #16]
+	ldrb	r0, [sp, #70]	@ zero_extendqisi2
+	str	r0, [sp, #12]
+	ldrb	r0, [sp, #69]	@ zero_extendqisi2
+	str	r0, [sp, #8]
+	ldrb	r0, [sp, #68]	@ zero_extendqisi2
+	str	r0, [sp, #4]
+	ldrb	r0, [sp, #67]	@ zero_extendqisi2
+	str	r0, [sp]
+	ldr	r0, .L2715+36
+	bl	NAND_Print
+	ldrh	r3, [fp]
+	movw	r2, #4095
+	strh	r6, [fp, #2]	@ movhi
+	bfi	r3, r2, #0, #12
+	strh	r3, [fp]	@ movhi
+	ldrh	r3, [r5, #4]
+	adds	r3, r3, #1
+	strh	r3, [r5, #4]	@ movhi
+.L2688:
+	subs	r6, r6, #1
+	uxth	r6, r6
+	cmp	r6, #0
+	beq	.L2689
+.L2684:
+	add	r10, r10, #1
+	b	.L2682
+.L2687:
+	ldr	r2, [r4, #288]
+	mov	r1, r3
+	mov	r0, r4
+	bl	nand_write_logic_page_no_gc
+	cmp	r0, #0
+	beq	.L2688
+	ldr	r0, .L2715+40
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L2673
+.L2686:
+	ldrh	r3, [r5, #4]
+	mov	r8, #1
+	movw	r6, #65535
+	adds	r3, r3, #1
+	strh	r3, [r5, #4]	@ movhi
+	b	.L2688
+.L2691:
+	mov	r1, r5
+	mov	r0, r4
+	bl	put_phy_block_to_invalid_page_list
+	mov	r0, r4
+	bl	adjust_invaild_list
+	b	.L2692
+.L2716:
+	.align	2
+.L2715:
+	.word	.LC436
+	.word	.LC437
+	.word	.LC438
+	.word	.LC439
+	.word	.LC440
+	.word	.LC442
+	.word	.LC446
+	.word	.LC441
+	.word	.LC443
+	.word	.LC444
+	.word	.LC445
+	.size	garbage_collect_first, .-garbage_collect_first
+	.section	.text.do_prio_gc,"ax",%progbits
+	.align	1
+	.global	do_prio_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_prio_gc, %function
+do_prio_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r1, [r0, #564]
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r6, r0
+	cmp	r1, #0
+	beq	.L2730
+	add	r4, r0, #392
+	mov	r0, r4
+	bl	del_from_gc_list
+	ldr	r7, [r0, #4]
+	mov	r5, r0
+	mov	r0, r6
+	mov	r1, r7
+	bl	is_current_blcok
+	cmp	r0, #1
+	bne	.L2719
+	mov	r1, r5
+	mov	r0, r4
+	bl	add_to_gc_list_tail
+.L2731:
+	movs	r4, #0
+.L2717:
+	mov	r0, r4
+	pop	{r3, r4, r5, r6, r7, pc}
+.L2719:
+	cbnz	r7, .L2720
+	ldr	r0, .L2734
+	bl	NAND_Print_DBG
+	strh	r7, [r5, #2]	@ movhi
+	strh	r7, [r6, #394]	@ movhi
+	str	r7, [r5, #4]
+	b	.L2731
+.L2720:
+	mov	r0, r6
+	bl	is_block_in_invalid_list
+	ldrh	r2, [r5, #2]
+	mov	r4, r0
+	cbnz	r0, .L2721
+	ldrh	r1, [r7]
+	ldr	r0, .L2734+4
+.L2732:
+	bl	NAND_Print_DBG
+	b	.L2733
+.L2721:
+	cmp	r2, #5
+	strh	r2, [r6, #394]	@ movhi
+	bne	.L2722
+	movs	r4, #0
+	movs	r2, #4
+	mov	r0, r6
+	bl	garbage_collect_first
+.L2733:
+	strh	r4, [r5, #2]	@ movhi
+	strh	r4, [r6, #394]	@ movhi
+	str	r4, [r5, #4]
+	b	.L2717
+.L2722:
+	movw	r2, #65535
+	mov	r0, r6
+	bl	garbage_collect_first
+	ldr	r3, [r5, #4]
+	mov	r4, r0
+	cbz	r0, .L2723
+	ldrh	r1, [r3]
+	movs	r4, #1
+	ldrh	r2, [r5, #2]
+	ldr	r0, .L2734+8
+	bl	NAND_Print
+	movs	r3, #0
+	strh	r3, [r5, #2]	@ movhi
+	strh	r3, [r6, #394]	@ movhi
+	str	r3, [r5, #4]
+	b	.L2717
+.L2723:
+	mov	r1, r3
+	mov	r0, r6
+	bl	is_block_in_free_list
+	cbnz	r0, .L2724
+	ldrh	r2, [r5, #2]
+	ldrh	r1, [r3]
+	ldr	r0, .L2734+12
+	b	.L2732
+.L2724:
+	mov	r0, r6
+	bl	out_phy_block_from_free_list_by_block
+	mov	r1, r0
+	cbnz	r0, .L2725
+	ldr	r3, [r5, #4]
+	ldrh	r2, [r5, #2]
+	ldr	r0, .L2734+16
+	ldrh	r1, [r3]
+	b	.L2732
+.L2725:
+	ldrh	r2, [r0, #6]
+	mov	r0, r6
+	adds	r2, r2, #1
+	uxth	r2, r2
+	bl	erase_block
+	movs	r3, #0
+	strh	r3, [r5, #2]	@ movhi
+	strh	r3, [r6, #394]	@ movhi
+	str	r3, [r5, #4]
+	b	.L2717
+.L2730:
+	mov	r4, r1
+	b	.L2717
+.L2735:
+	.align	2
+.L2734:
+	.word	.LC447
+	.word	.LC448
+	.word	.LC449
+	.word	.LC450
+	.word	.LC451
+	.size	do_prio_gc, .-do_prio_gc
+	.section	.text.prio_gc_all,"ax",%progbits
+	.align	1
+	.global	prio_gc_all
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	prio_gc_all, %function
+prio_gc_all:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r6, r0
+	movs	r5, #10
+	movs	r4, #0
+.L2737:
+	mov	r0, r6
+	bl	do_prio_gc
+	subs	r5, r5, #1
+	orr	r4, r4, r0
+	bne	.L2737
+	mov	r0, r4
+	pop	{r4, r5, r6, pc}
+	.size	prio_gc_all, .-prio_gc_all
+	.section	.text._nftl_nand_read_logic_page,"ax",%progbits
+	.align	1
+	.global	_nftl_nand_read_logic_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nftl_nand_read_logic_page, %function
+_nftl_nand_read_logic_page:
+	@ args = 0, pretend = 0, frame = 32
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	sub	sp, sp, #36
+	mov	r4, r0
+	mov	r7, r1
+	mov	r6, r2
+	bl	get_logic_page_map
+	mov	r5, r0
+	cbnz	r0, .L2740
+	movs	r6, #1
+	ldr	r0, .L2744
+	bl	NAND_Print_DBG
+.L2739:
+	mov	r0, r6
+	add	sp, sp, #36
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L2740:
+	ldrh	r2, [r0, #2]
+	movw	r1, #65535
+	ldr	r3, [r4, #4]
+	cmp	r2, r1
+	bne	.L2742
+	mov	r0, r6
+	ldrh	r2, [r3, #26]
+	movs	r1, #255
+	movs	r6, #0
+	bl	NAND_Memset
+	b	.L2739
+.L2742:
+	ldrb	r1, [r0, #1]	@ zero_extendqisi2
+	ldr	r0, [r4, #364]
+	bfi	r1, r0, #4, #1
+	mov	r0, r4
+	strb	r1, [r5, #1]
+	ldrh	r1, [r3, #28]
+	ldrh	r3, [r5]
+	str	r6, [sp, #24]
+	strh	r1, [sp, #20]	@ movhi
+	add	r1, sp, #16
+	ubfx	r3, r3, #0, #12
+	strh	r2, [sp, #18]	@ movhi
+	strh	r3, [sp, #16]	@ movhi
+	str	sp, [sp, #28]
+	ldr	r3, [r4, #1984]
+	blx	r3
+	adds	r3, r0, #2
+	mov	r6, r0
+	bne	.L2743
+	ldr	r3, [r4, #4]
+	movs	r0, #36
+	ldrh	r1, [r5, #2]
+	movs	r2, #1
+	ldr	r3, [r3, #32]
+	mla	r1, r0, r1, r3
+	mov	r0, r4
+	bl	add_prio_gc
+	mov	r1, r7
+	ldr	r0, .L2744+4
+	bl	NAND_Print
+.L2743:
+	mov	r0, r4
+	bl	do_prio_gc
+	b	.L2739
+.L2745:
+	.align	2
+.L2744:
+	.word	.LC426
+	.word	.LC452
+	.size	_nftl_nand_read_logic_page, .-_nftl_nand_read_logic_page
+	.section	.text.gc_one,"ax",%progbits
+	.align	1
+	.global	gc_one
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_one, %function
+gc_one:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #200]
+	push	{r4, lr}
+	cbnz	r3, .L2747
+.L2749:
+	movs	r4, #8
+.L2746:
+	mov	r0, r4
+	pop	{r4, pc}
+.L2747:
+	ldrh	r3, [r3, #4]
+	cmp	r3, r1
+	bls	.L2749
+	movw	r2, #65535
+	movs	r1, #0
+	bl	garbage_collect_first
+	cmp	r0, #8
+	mov	r4, r0
+	beq	.L2749
+	cbnz	r0, .L2750
+	ldr	r0, .L2754
+	bl	NAND_Print_DBG
+	b	.L2746
+.L2750:
+	ldr	r0, .L2754+4
+	movs	r4, #1
+	bl	NAND_Print
+	b	.L2746
+.L2755:
+	.align	2
+.L2754:
+	.word	.LC453
+	.word	.LC454
+	.size	gc_one, .-gc_one
+	.section	.text.gc_all_cnt,"ax",%progbits
+	.align	1
+	.global	gc_all_cnt
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_all_cnt, %function
+gc_all_cnt:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r5, r0
+	mov	r6, r1
+	mov	r4, r2
+.L2757:
+	cbz	r4, .L2761
+	mov	r1, r6
+	mov	r0, r5
+	bl	gc_one
+	cmp	r0, #8
+	add	r4, r4, #-1
+	bne	.L2757
+.L2761:
+	movs	r0, #0
+	pop	{r4, r5, r6, pc}
+	.size	gc_all_cnt, .-gc_all_cnt
+	.section	.text.gc_all_base_on_free_blks,"ax",%progbits
+	.align	1
+	.global	gc_all_base_on_free_blks
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_all_base_on_free_blks, %function
+gc_all_base_on_free_blks:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r3, [r0, #22]
+	ldrh	r1, [r0, #380]
+	push	{r4, r5, r6, lr}
+	mov	r5, r0
+	cmp	r3, r1
+	bcc	.L2762
+	ldrh	r2, [r0, #382]
+	add	r2, r2, r2, lsl #1
+	cmp	r2, r3
+	bcc	.L2762
+	ldr	r6, .L2767
+	ldrb	r0, [r6, #10]	@ zero_extendqisi2
+	ldrh	r4, [r6, #8]
+	muls	r4, r0, r4
+	ldr	r0, [r6, #4]
+	muls	r0, r4, r0
+	cmp	r0, #264192
+	bcs	.L2762
+	ldr	r0, [r5, #4]
+	subs	r3, r3, r1
+	subs	r1, r2, r1
+	ldrh	r4, [r0, #20]
+	lsrs	r4, r4, #1
+	subs	r0, r4, #3
+	muls	r0, r3, r0
+	bl	__aeabi_uidiv
+	adds	r1, r4, r0
+	movs	r2, #3
+	mov	r0, r5
+	uxth	r1, r1
+	pop	{r4, r5, r6, lr}
+	b	gc_all_cnt
+.L2762:
+	movs	r0, #0
+	pop	{r4, r5, r6, pc}
+.L2768:
+	.align	2
+.L2767:
+	.word	.LANCHOR108
+	.size	gc_all_base_on_free_blks, .-gc_all_base_on_free_blks
+	.section	.text.gc_all,"ax",%progbits
+	.align	1
+	.global	gc_all
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_all, %function
+gc_all:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	mov	r5, r1
+.L2770:
+	mov	r1, r5
+	mov	r0, r4
+	bl	gc_one
+	cmp	r0, #0
+	beq	.L2770
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+	.size	gc_all, .-gc_all
+	.section	.text.gc_all_enhance,"ax",%progbits
+	.align	1
+	.global	gc_all_enhance
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_all_enhance, %function
+gc_all_enhance:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrh	r1, [r0, #22]
+	ldrh	r2, [r0, #380]
+	push	{r4}
+	cmp	r2, r1
+	bhi	.L2773
+	ldrh	r2, [r0, #382]
+	add	r2, r2, r2, lsl #1
+	cmp	r2, r1
+	bcc	.L2773
+	ldr	r4, .L2778
+	ldrb	r2, [r4, #10]	@ zero_extendqisi2
+	ldrh	r1, [r4, #8]
+	muls	r1, r2, r1
+	ldr	r2, [r4, #4]
+	muls	r2, r1, r2
+	cmp	r2, #264192
+	bcs	.L2773
+	ldr	r3, [r0, #4]
+	pop	{r4}
+	ldrh	r1, [r3, #20]
+	lsrs	r1, r1, #1
+	b	gc_all
+.L2773:
+	movs	r0, #0
+	pop	{r4}
+	bx	lr
+.L2779:
+	.align	2
+.L2778:
+	.word	.LANCHOR108
+	.size	gc_all_enhance, .-gc_all_enhance
+	.section	.text.gc_win_block,"ax",%progbits
+	.align	1
+	.global	gc_win_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	gc_win_block, %function
+gc_win_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, r6, r7, lr}
+	mov	r7, r0
+	ldr	r3, [r0, #4]
+	movs	r5, #0
+	ldrh	r6, [r3, #20]
+	muls	r6, r1, r6
+.L2781:
+	cmp	r5, r6
+	blt	.L2783
+	movs	r4, #0
+	b	.L2780
+.L2783:
+	ldr	r4, [r7, #200]
+	cbz	r4, .L2780
+	ldrh	r3, [r4, #4]
+	movs	r1, #1
+	mov	r0, r7
+	add	r5, r5, r3
+	subs	r5, r5, #1
+	bl	gc_one
+	mov	r4, r0
+	cmp	r0, #0
+	beq	.L2781
+	cmp	r0, #1
+	bne	.L2780
+	ldr	r0, .L2787
+	bl	NAND_Print_DBG
+.L2780:
+	mov	r0, r4
+	pop	{r3, r4, r5, r6, r7, pc}
+.L2788:
+	.align	2
+.L2787:
+	.word	.LC455
+	.size	gc_win_block, .-gc_win_block
+	.section	.text.power_on_gc,"ax",%progbits
+	.align	1
+	.global	power_on_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	power_on_gc, %function
+power_on_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, lr}
+	mov	r4, r0
+	ldrh	r6, [r0, #22]
+	sub	sp, sp, #20
+	ldrh	r7, [r0, #380]
+	ldr	r3, [r0, #4]
+	cmp	r6, r7
+	ldrh	r5, [r3, #20]
+	bcc	.L2790
+	ldrb	r8, [r3, #8]	@ zero_extendqisi2
+	ldrh	r10, [r0, #382]
+	ldr	r0, [r0, #32]
+	mov	r1, r8
+	bl	__aeabi_uidiv
+	mov	r1, r5
+	bl	__aeabi_uidiv
+	mov	r1, r8
+	str	r0, [sp, #8]
+	ldr	r0, [r4, #24]
+	bl	__aeabi_uidiv
+	mov	r1, r5
+	bl	__aeabi_uidiv
+	ldrh	r3, [r4, #18]
+	mov	r2, r7
+	str	r0, [sp, #4]
+	mov	r1, r6
+	ldr	r0, .L2800
+	str	r3, [sp]
+	mov	r3, r10
+	bl	NAND_Print_DBG
+.L2791:
+	movs	r0, #0
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, pc}
+.L2790:
+	subs	r5, r5, #10
+	movs	r7, #0
+	uxth	r5, r5
+.L2792:
+	ldrh	r2, [r4, #22]
+	uxth	r6, r7
+	ldrh	r3, [r4, #380]
+	cmp	r2, r3
+	bcs	.L2795
+	mov	r1, r5
+	mov	r0, r4
+	bl	gc_one
+	cmp	r0, #8
+	add	r7, r7, #1
+	bne	.L2792
+.L2795:
+	ldr	r3, [r4, #4]
+	ldr	r7, .L2800+4
+	ldrh	r5, [r3, #20]
+	lsrs	r5, r5, #3
+.L2793:
+	ldrh	r1, [r4, #22]
+	cmp	r1, #4
+	bhi	.L2798
+	mov	r0, r7
+	bl	NAND_Print_DBG
+	mov	r1, r5
+	mov	r0, r4
+	bl	gc_one
+	cmp	r0, #8
+	bne	.L2796
+.L2798:
+	mov	r1, r6
+	ldr	r0, .L2800+8
+	bl	NAND_Print_DBG
+	b	.L2791
+.L2796:
+	adds	r6, r6, #1
+	uxth	r6, r6
+	b	.L2793
+.L2801:
+	.align	2
+.L2800:
+	.word	.LC456
+	.word	.LC457
+	.word	.LC458
+	.size	power_on_gc, .-power_on_gc
+	.section	.text.build_zone_list,"ax",%progbits
+	.align	1
+	.global	build_zone_list
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	build_zone_list, %function
+build_zone_list:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	ldr	r0, .L2807
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	bl	first_scan_all_blocks
+	ldrh	r1, [r4, #18]
+	mov	r0, r4
+	bl	init_zone_after_first_scan
+	cbz	r0, .L2803
+	ldr	r0, .L2807+4
+.L2806:
+	movs	r5, #1
+	bl	NAND_Print
+.L2802:
+	mov	r0, r5
+	pop	{r3, r4, r5, pc}
+.L2803:
+	mov	r0, r4
+	bl	second_scan_all_blocks
+	mov	r5, r0
+	cbz	r0, .L2805
+	ldr	r0, .L2807+8
+	b	.L2806
+.L2805:
+	mov	r0, r4
+	bl	power_on_gc
+	ldr	r0, .L2807+12
+	bl	NAND_Print
+	mov	r0, r4
+	bl	panic_backup_block
+	b	.L2802
+.L2808:
+	.align	2
+.L2807:
+	.word	.LC459
+	.word	.LC460
+	.word	.LC461
+	.word	.LC462
+	.size	build_zone_list, .-build_zone_list
+	.section	.text.nand_find_zone_table,"ax",%progbits
+	.align	1
+	.global	nand_find_zone_table
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_find_zone_table, %function
+nand_find_zone_table:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r4, r0
+	bl	clean_block_list
+	mov	r0, r4
+	bl	nand_clean_zone_table2
+	ldr	r0, .L2810
+	bl	NAND_Print_DBG
+	ldr	r5, .L2810+4
+	mov	r0, r4
+	bl	build_zone_list
+	ldr	r0, .L2810+8
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	bl	nftl_cache_init
+	mov	r0, r5
+	bl	NAND_Print_DBG
+	mov	r0, r4
+	bl	print_block_invalid_list
+	mov	r0, r4
+	bl	print_free_list
+	mov	r0, r5
+	bl	NAND_Print_DBG
+	ldr	r0, .L2810+12
 	bl	NAND_Print_DBG
 	movs	r0, #0
 	pop	{r3, r4, r5, pc}
-.L2925:
-	movs	r1, #0
-	ldr	r0, [r0]
-	movs	r5, #1
-	mov	r4, r1
-	b	.L2924
-.L2931:
+.L2811:
 	.align	2
-.L2930:
+.L2810:
+	.word	.LC463
+	.word	.LC465
+	.word	.LC464
+	.word	.LC466
+	.size	nand_find_zone_table, .-nand_find_zone_table
+	.section	.text.nand_check_table,"ax",%progbits
+	.align	1
+	.global	nand_check_table
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_check_table, %function
+nand_check_table:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r1, #1000
+	ldr	r4, .L2813
+	mov	r5, r0
+	bl	__nand_flush_write_cache
+	mov	r0, r4
+	bl	NAND_Print_DBG
+	mov	r0, r5
+	bl	print_nftl_zone
+	mov	r0, r4
+	bl	NAND_Print_DBG
+	mov	r0, r5
+	bl	nand_clean_zone_table
+	mov	r0, r4
+	bl	NAND_Print_DBG
+	mov	r0, r5
+	bl	nand_find_zone_table
+	mov	r0, r5
+	bl	write_data_to_nand
+	mov	r0, r4
+	bl	NAND_Print_DBG
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L2814:
+	.align	2
+.L2813:
+	.word	.LC467
+	.size	nand_check_table, .-nand_check_table
+	.global	__aeabi_idiv
+	.section	.text.nftl_start,"ax",%progbits
+	.align	1
+	.global	nftl_start
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_start, %function
+nftl_start:
+	@ args = 40, pretend = 0, frame = 40
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, r8, r10, fp, lr}
+	sub	sp, sp, #40
+	ldr	r3, [sp, #88]
+	mov	r7, r2
+	ldr	r2, [sp, #76]
+	strd	r0, r1, [sp, #28]
+	movw	r0, #2020
+	lsr	r8, r3, #9
+	ldr	r3, [sp, #92]
+	lsrs	r3, r3, #9
+	str	r3, [sp]
+	ldr	r3, [sp, #72]
+	lsrs	r3, r3, #9
+	orr	r3, r3, r2, lsl #23
+	ldr	r2, [sp, #84]
+	str	r3, [sp, #20]
+	ldr	r3, [sp, #80]
+	lsrs	r3, r3, #9
+	orr	r3, r3, r2, lsl #23
+	str	r3, [sp, #24]
+	bl	NAND_Malloc
+	mov	r4, r0
+	str	r0, [r7]
+	cbz	r0, .L2816
+	ldr	r3, [sp]
+	ldr	r10, .L2840+44
+	lsls	r3, r3, #9
+	uxth	r3, r3
+	str	r3, [sp, #12]
+	movs	r3, #2
+	str	r3, [sp, #8]
+.L2817:
+	movw	r2, #2020
+	movs	r1, #0
+	mov	r0, r4
+	bl	NAND_Memset
+	ldr	r3, [sp, #28]
+	movs	r0, #44
+	str	r3, [r4]
+	ldr	r3, [sp, #32]
+	str	r3, [r4, #1972]
+	bl	NAND_Malloc
+	str	r0, [r4, #4]
+	cbnz	r0, .L2819
+	ldr	r1, .L2840
+	ldr	r0, .L2840+4
+	b	.L2839
+.L2816:
+	ldr	r1, .L2840
+	ldr	r0, .L2840+8
+.L2839:
+	mvn	r5, #1
+	bl	NAND_Print
+.L2815:
+	mov	r0, r5
+	add	sp, sp, #40
+	@ sp needed
+	pop	{r4, r5, r6, r7, r8, r10, fp, pc}
+.L2819:
+	movs	r2, #4
+	movs	r1, #0
+	bl	NAND_Memset
+	ldr	r3, [r10]
+	movs	r2, #8
+	ldr	r0, [r4, #4]
+	ldr	r1, [r3, #8]
+	add	r1, r1, r2
+	bl	NAND_Memcpy
+	ldr	r5, [r4, #4]
+	mov	r1, r8
+	ldrh	r3, [sp, #12]
+	ldr	r0, [sp, #24]
+	strh	r3, [r5, #26]	@ movhi
+	ldr	r3, [sp, #96]
+	strb	r3, [r5, #10]
+	bl	__aeabi_uidiv
+	ldr	r2, [r4, #1972]
+	mov	r6, r0
+	ldrh	r2, [r2, #12]
+	cmp	r2, r0
+	bcc	.L2820
+	mov	r1, r0
+	ldr	r0, .L2840+12
+	bl	NAND_Print
+	mov	r5, #-1
+	b	.L2815
+.L2820:
+	uxth	r3, r0
+	ldr	r1, [sp]
+	mov	r0, r8
+	str	r3, [sp, #4]
+	mov	fp, #36
+	ldrh	r3, [sp, #4]
+	strh	r3, [r5, #24]	@ movhi
+	bl	__aeabi_uidiv
+	ldrb	r2, [sp]	@ zero_extendqisi2
+	adds	r3, r6, #1
+	strh	r0, [r5, #20]	@ movhi
+	str	r3, [sp, #16]
+	strb	r2, [r5, #8]
+	strh	r2, [r5, #28]	@ movhi
+	movw	r2, #3000
+	strh	r2, [r5, #16]	@ movhi
+	ldr	r2, [r10]
+	ldr	r2, [r2, #8]
+	ldr	r1, [r2, #248]
+	strb	r1, [r5, #36]
+	ldr	r2, [r2, #252]
+	str	r2, [r5, #40]
+	mul	r2, fp, r3
+	mov	r0, r2
+	str	r2, [sp, #36]
+	bl	nftl_malloc
+	ldr	r3, [r4, #4]
+	str	r0, [r5, #32]
+	ldr	r2, [sp, #36]
+	ldr	r0, [r3, #32]
+	cbnz	r0, .L2821
+	ldr	r1, .L2840
+	ldr	r0, .L2840+16
+	b	.L2839
+.L2821:
+	subs	r2, r2, #36
+	movs	r1, #255
+	bl	NAND_Memset
+	movs	r1, #0
+	mov	ip, #-1
+	mov	r2, r1
+.L2822:
+	ldr	r3, [sp, #16]
+	cmp	r3, r1
+	bhi	.L2823
+	ldr	r0, [r7]
+	bl	nftl_ops_init
+	mov	r1, r8
+	ldr	r0, [sp, #20]
+	bl	__aeabi_uidiv
+	ldr	r3, [sp, #4]
+	subs	r0, r3, r0
+	ldr	r3, [r4, #1972]
+	uxth	r2, r0
+	ldrh	r3, [r3, #12]
+	strh	r2, [r4, #22]	@ movhi
+	cmp	r3, r2
+	bls	.L2824
+	mov	r1, r2
+	ldr	r0, .L2840+20
+	b	.L2839
+.L2823:
+	ldr	r3, [r4, #4]
+	mul	r0, fp, r1
+	ldr	lr, [r3, #32]
+	add	r3, lr, r0
+	strh	r1, [lr, r0]	@ movhi
+	strh	r2, [r3, #4]	@ movhi
+	adds	r1, r1, #1
+	strh	r2, [r3, #2]	@ movhi
+	str	ip, [r3, #8]
+	strh	r2, [r3, #6]	@ movhi
+	strd	r2, r2, [r3, #12]
+	strd	r2, r2, [r3, #20]
+	strd	r2, r2, [r3, #28]
+	b	.L2822
+.L2824:
+	mov	r1, r6
+	ldr	r0, .L2840+24
+	bl	NAND_Print_DBG
+	ldrh	r3, [r4, #22]
+	movs	r1, #0
+	ldr	r0, [r7]
+	subs	r2, r6, r3
+	mul	r2, r8, r2
+	mul	r3, r8, r3
+	bl	zone_param_init
+	mov	r5, r0
+	cbz	r0, .L2825
+	ldr	r0, .L2840+28
+	bl	NAND_Print
+	b	.L2815
+.L2825:
+	ldr	r3, [sp, #104]
+	ldr	r2, [r4, #1972]
+	strb	r3, [r4, #16]
+	ldrh	r3, [r2, #26]
+	cbz	r3, .L2826
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	orr	r3, r3, #1
+	strb	r3, [r4, #17]
+.L2826:
+	ldrh	r3, [r2, #10]
+	cbz	r3, .L2827
+	mov	r1, r6
+	ldr	r0, [r7]
+	bl	is_no_use_device
+	cmp	r0, #1
+	bne	.L2827
+	mov	r1, r6
+	ldr	r0, [r7]
+	bl	build_zone_list_first
+	mov	r6, r0
+	cbz	r0, .L2827
+	ldr	r0, .L2840+32
+	bl	NAND_Print
+.L2829:
+	mov	r5, r6
+	b	.L2815
+.L2827:
+	ldr	r0, [r7]
+	bl	build_zone_list
+	mov	r6, r0
+	cbz	r0, .L2828
+	ldr	r0, .L2840+36
+	bl	NAND_Print
+	ldr	r3, [sp, #8]
+	cmp	r3, #1
+	beq	.L2829
+	ldr	r0, .L2840+40
+	bl	NAND_Print
+	movs	r3, #1
+	str	r3, [sp, #8]
+	b	.L2817
+.L2828:
+	ldr	r0, [r7]
+	bl	nftl_cache_init
+	b	.L2815
+.L2841:
+	.align	2
+.L2840:
+	.word	.LANCHOR109
+	.word	.LC469
+	.word	.LC468
+	.word	.LC470
+	.word	.LC471
+	.word	.LC472
+	.word	.LC473
+	.word	.LC474
+	.word	.LC475
+	.word	.LC476
+	.word	.LC477
 	.word	g_nsi
-	.word	.LANCHOR105
-	.word	.LANCHOR107
+	.size	nftl_start, .-nftl_start
+	.section	.text.nftl_initialize,"ax",%progbits
+	.align	1
+	.global	nftl_initialize
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_initialize, %function
+nftl_initialize:
+	@ args = 0, pretend = 0, frame = 16
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, r7, lr}
+	sub	sp, sp, #60
+	ldr	r5, [r0, #4]
+	mov	r4, r0
+	mov	r6, r1
+	movs	r2, #9
+	ldr	r1, .L2864
+	add	r0, sp, #44
+	bl	memcpy
+	add	r0, sp, #56
+	movs	r3, #47
+	strh	r3, [r0, #-16]!	@ movhi
+	ldr	r1, .L2864+4
+	bl	nand_fdt_get_string
+	cbz	r0, .L2856
+	movs	r2, #9
+	add	r1, sp, #44
+	bl	NAND_Memcmp
+	mov	r7, r0
+	cbnz	r0, .L2856
+	ldr	r3, .L2864+8
+	ldr	r2, .L2864+12
+	ldr	r1, .L2864+16
+	str	r3, [sp, #4]
+	ldr	r3, .L2864+20
+	ldr	r0, .L2864+24
+	str	r3, [sp]
+	ldr	r3, .L2864+28
+	bl	NAND_Print
+	ldr	r0, .L2864+32
+	bl	nftl_get_nand_phyinfo
+	ldrh	r3, [r5, #34]
+	cmp	r3, #15
+	bhi	.L2860
+.L2856:
+	mov	r6, #-1
+	b	.L2842
+.L2860:
+	movs	r0, #36
+	bl	NAND_Malloc
+	str	r0, [r4, #16]
+	cbnz	r0, .L2846
+	movs	r6, #1
+	ldr	r1, .L2864+36
+	ldr	r0, .L2864+40
+	bl	NAND_Print
+.L2842:
+	mov	r0, r6
+	add	sp, sp, #60
+	@ sp needed
+	pop	{r4, r5, r6, r7, pc}
+.L2846:
+	str	r7, [r0, #8]
+	mov	r2, #65536
+	ldr	r7, [r5, #80]
+	mov	r3, #65537
+	strd	r2, r3, [r0]
+	movs	r1, #3
+	ldr	r2, [r7, #36]
+	ldrh	r3, [r2, #2478]
+	strh	r3, [r0, #12]	@ movhi
+	ldrh	r3, [r2, #2480]
+	strh	r1, [r0, #20]	@ movhi
+	strh	r3, [r0, #16]	@ movhi
+	movs	r3, #8
+	strh	r3, [r0, #14]	@ movhi
+	movs	r3, #2
+	strh	r3, [r0, #18]	@ movhi
+	ldr	r3, .L2864+44
+	str	r3, [r0, #32]
+	ldrh	r3, [r2, #2474]
+	cmp	r3, #0
+	bne	.L2847
+.L2861:
+	movs	r3, #30
+	strh	r1, [r0, #24]	@ movhi
+	strh	r3, [r0, #22]	@ movhi
+.L2848:
+	ldrh	r3, [r7, #2]
+	strh	r3, [r0, #26]	@ movhi
+	cmp	r3, #0
+	beq	.L2851
+	movs	r3, #3
+.L2863:
+	ldr	r1, [r2, #2492]
+	strh	r3, [r0, #24]	@ movhi
+	ldrh	r3, [r0, #22]
+	ldr	r7, .L2864+48
+	sub	r2, r1, #86016
+	sub	r2, r2, #384
+	cmp	r3, #30
+	itt	hi
+	movhi	r3, #30
+	strhhi	r3, [r0, #22]	@ movhi
+	movs	r3, #1
+	cmp	r2, r7
+	strh	r3, [r0, #24]	@ movhi
+	it	ls
+	strls	r1, [r0, #32]
+	strh	r3, [r0, #28]	@ movhi
+	bl	nftl_support_boot_check_crc_from_dts
+	cbnz	r0, .L2855
+	ldr	r3, [r4, #16]
+	strh	r0, [r3, #28]	@ movhi
+.L2855:
+	movs	r3, #0
+	str	r5, [sp, #28]
+	strd	r6, r3, [sp, #32]
+	mov	r0, r4
+	ldrh	r3, [r5, #34]
+	ldr	r1, [r4, #16]
+	str	r3, [sp, #24]
+	ldrh	r3, [r5, #40]
+	str	r3, [sp, #20]
+	ldr	r3, [r5, #44]
+	str	r3, [sp, #16]
+	ldrd	r2, [r5, #72]
+	strd	r2, [sp, #8]
+	ldrd	r2, [r5, #64]
+	strd	r2, [sp]
+	add	r2, r4, #12
+	bl	nftl_start
+	mov	r6, r0
+	cmp	r0, #0
+	bne	.L2842
+	ldr	r3, [r5, #80]
+	ldr	r0, .L2864+52
+	ldr	r2, [r3, #36]
+	ldr	r3, [r4, #12]
+	ldr	r1, [r2, #2484]
+	ldr	r3, [r3, #4]
+	ldr	r2, [r2, #2488]
+	strh	r1, [r3, #16]	@ movhi
+	uxth	r1, r1
+	strh	r2, [r3, #30]	@ movhi
+	bl	NAND_Print_DBG
+	ldr	r3, [r4, #12]
+	ldr	r2, [r3, #24]
+	str	r6, [r4, #8]
+	str	r2, [r4]
+	ldr	r2, .L2864+56
+	str	r2, [r4, #44]
+	ldr	r2, .L2864+60
+	str	r2, [r4, #40]
+	ldr	r2, .L2864+64
+	str	r2, [r4, #48]
+	ldr	r2, .L2864+68
+	str	r2, [r4, #56]
+	ldr	r2, .L2864+72
+	str	r2, [r4, #52]
+	ldr	r2, .L2864+76
+	str	r2, [r4, #60]
+	ldr	r2, .L2864+80
+	str	r2, [r4, #64]
+	ldr	r2, .L2864+84
+	str	r2, [r4, #68]
+	ldr	r2, .L2864+88
+	str	r2, [r4, #72]
+	movs	r2, #1
+	strb	r2, [r3, #1976]
+	b	.L2842
+.L2847:
+	cmp	r3, #255
+	bne	.L2849
+	movs	r3, #1
+	strh	r3, [r0]	@ movhi
+	movs	r3, #50
+	strh	r3, [r0, #22]	@ movhi
+	movs	r3, #40
+.L2862:
+	strh	r3, [r0, #24]	@ movhi
+	b	.L2848
+.L2849:
+	cmp	r3, #10
+	bls	.L2850
+	movs	r3, #10
+	strh	r3, [r2, #2474]	@ movhi
+	b	.L2861
+.L2850:
+	add	r3, r3, r3, lsl #2
+	add	r1, r3, r3, lsl #2
+	lsls	r3, r3, #3
+	lsls	r1, r1, #1
+	strh	r1, [r0, #22]	@ movhi
+	b	.L2862
+.L2851:
+	movs	r3, #1
+	b	.L2863
+.L2865:
+	.align	2
+.L2864:
+	.word	.LANCHOR76+30
+	.word	.LANCHOR110
+	.word	.LC482
+	.word	.LC479
+	.word	.LC480
+	.word	.LC483
+	.word	.LC481
+	.word	.LC478
+	.word	.LANCHOR108
+	.word	.LANCHOR111
+	.word	.LC484
+	.word	1296000
+	.word	7692600
+	.word	.LC485
+	.word	_nand_read
+	.word	_nand_read_history
+	.word	_nand_write
+	.word	_nand_discard
+	.word	_nand_flush_write_cache
+	.word	_shutdown_op
+	.word	_nand_sector_read
+	.word	_nand_sector_write
+	.word	_nand_flush_sector_write_cache
+	.size	nftl_initialize, .-nftl_initialize
+	.section	.text.nftl_add,"ax",%progbits
+	.align	1
+	.global	nftl_add
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_add, %function
+nftl_add:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r0
+	movs	r0, #76
+	bl	NAND_Malloc
+	mov	r4, r0
+	cbnz	r0, .L2867
+	ldr	r1, .L2870
+	ldr	r0, .L2870+4
+	bl	NAND_Print
+.L2866:
+	mov	r0, r4
+	pop	{r3, r4, r5, pc}
+.L2867:
+	mov	r0, r5
+	bl	build_nand_partition
+	ldrh	r1, [r5]
+	str	r0, [r4, #4]
+	mov	r0, r4
+	bl	nftl_initialize
+	cbz	r0, .L2869
+	ldr	r0, .L2870+8
+	movs	r4, #0
+	bl	NAND_Print
+	b	.L2866
+.L2869:
+	mov	r1, r4
+	ldr	r0, .L2870+12
+	bl	add_nftl_blk_list
+	mov	r0, r4
+	bl	panic_recover_data
+	ldr	r0, .L2870+16
+	bl	NAND_Print_DBG
+	b	.L2866
+.L2871:
+	.align	2
+.L2870:
+	.word	.LANCHOR112
+	.word	.LC486
+	.word	.LC487
+	.word	.LANCHOR0
+	.word	.LC488
+	.size	nftl_add, .-nftl_add
+	.section	.text.nftl_build_all,"ax",%progbits
+	.align	1
+	.global	nftl_build_all
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_build_all, %function
+nftl_build_all:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	movs	r2, #0
+	ldr	r4, [r0, #56]
+	ldr	r3, .L2877
+	str	r2, [r3, #8]
+.L2873:
+	mov	r0, r4
+	cbz	r4, .L2872
+	bl	nftl_add
+	cbnz	r0, .L2874
+	ldr	r0, .L2877+4
+	bl	NAND_Print
+	movs	r0, #1
+.L2872:
+	pop	{r4, pc}
+.L2874:
+	ldr	r4, [r4, #48]
+	b	.L2873
+.L2878:
+	.align	2
+.L2877:
+	.word	.LANCHOR0
+	.word	.LC489
+	.size	nftl_build_all, .-nftl_build_all
+	.section	.text.nftl_build_one,"ax",%progbits
+	.align	1
+	.global	nftl_build_one
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_build_one, %function
+nftl_build_one:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r1
+	ldr	r4, [r0, #56]
+	cbnz	r1, .L2881
+	ldr	r3, .L2885
+	str	r1, [r3, #8]
+.L2881:
+	cbnz	r4, .L2884
+	mov	r0, r4
+	b	.L2879
+.L2884:
+	ldrh	r3, [r4]
+	cmp	r3, r5
+	bne	.L2882
+	mov	r0, r4
+	bl	nftl_add
+	cbnz	r0, .L2882
+	ldr	r0, .L2885+4
+	bl	NAND_Print
+	movs	r0, #1
+.L2879:
+	pop	{r3, r4, r5, pc}
+.L2882:
+	ldr	r4, [r4, #48]
+	b	.L2881
+.L2886:
+	.align	2
+.L2885:
+	.word	.LANCHOR0
+	.word	.LC489
+	.size	nftl_build_one, .-nftl_build_one
+	.section	.text.all_time_gc,"ax",%progbits
+	.align	1
+	.global	all_time_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	all_time_gc, %function
+all_time_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r1, [r0, #22]
+	ldrh	r2, [r0, #382]
+	push	{r3, lr}
+	cmp	r1, r2
+	bcs	.L2888
+	ldrh	r2, [r0, #384]
+	cbz	r2, .L2888
+	ldr	r3, [r0, #4]
+	ldrh	r1, [r3, #20]
+	subs	r1, r1, #3
+	uxth	r1, r1
+	bl	gc_one
+.L2888:
+	movs	r0, #0
+	pop	{r3, pc}
+	.size	all_time_gc, .-all_time_gc
+	.section	.text.shutdown_on_gc,"ax",%progbits
+	.align	1
+	.global	shutdown_on_gc
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	shutdown_on_gc, %function
+shutdown_on_gc:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r2, [r0, #382]
+	push	{r4, r5, lr}
+	sub	sp, sp, #20
+	ldrh	r3, [r0, #384]
+	mov	r4, r0
+	str	r2, [sp, #8]
+	ldrh	r2, [r0, #380]
+	ldr	r5, .L2900
+	ldr	r1, .L2900+4
+	str	r2, [sp, #4]
+	ldrh	r2, [r0, #22]
+	str	r2, [sp]
+	ldr	r2, [r0, #200]
+	ldr	r0, .L2900+8
+	bl	NAND_Print_DBG
+.L2893:
+	ldrh	r1, [r4, #22]
+	ldrh	r3, [r4, #382]
+.L2896:
+	cmp	r1, r3
+	bhi	.L2895
+	ldr	r2, [r4, #200]
+	cbnz	r2, .L2894
+	ldrh	r2, [r4, #380]
+	ldr	r0, .L2900+12
+	bl	NAND_Print
+.L2895:
+	movs	r0, #0
+	add	sp, sp, #20
+	@ sp needed
+	pop	{r4, r5, pc}
+.L2894:
+	ldrh	r2, [r4, #384]
+	cmp	r2, #0
+	beq	.L2896
+	movs	r1, #0
+	mov	r0, r4
+	bl	gc_one
+	ldrh	r3, [r4, #382]
+	mov	r0, r5
+	ldrh	r2, [r4, #380]
+	ldrh	r1, [r4, #22]
+	bl	NAND_Print_DBG
+	b	.L2893
+.L2901:
+	.align	2
+.L2900:
+	.word	.LC492
+	.word	.LANCHOR113
+	.word	.LC490
+	.word	.LC491
+	.size	shutdown_on_gc, .-shutdown_on_gc
+	.section	.text.garbage_collect,"ax",%progbits
+	.align	1
+	.global	garbage_collect
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	garbage_collect, %function
+garbage_collect:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldrh	r3, [r0, #380]
+	ldrh	r1, [r0, #22]
+	push	{r4, lr}
+	mov	r4, r0
+	cmp	r3, r1
+	itt	cs
+	movcs	r3, #0
+	strhcs	r3, [r0, #384]	@ movhi
+	ldrh	r0, [r0, #384]
+	cbz	r0, .L2904
+.L2921:
+	movs	r0, #0
+	b	.L2902
+.L2904:
+	ldrh	r3, [r4, #382]
+	cmp	r3, r1
+	bls	.L2906
+	ldrh	r3, [r4, #386]
+	cbnz	r3, .L2908
+	ldr	r3, [r4, #200]
+	cbnz	r3, .L2909
+	ldr	r0, .L2923
+	bl	NAND_Print
+.L2922:
+	movs	r0, #1
+.L2902:
+	pop	{r4, pc}
+.L2909:
+	ldrh	r2, [r3, #4]
+	ldr	r3, [r4, #4]
+	ldrh	r3, [r3, #20]
+	cmp	r2, r3, lsr #1
+	bcc	.L2910
+	movs	r3, #4
+.L2920:
+	strh	r3, [r4, #388]	@ movhi
+	ldr	r3, [r4, #1972]
+	ldrh	r2, [r4, #22]
+	ldrh	r3, [r3, #16]
+	cmp	r2, r3
+	itt	ls
+	movwls	r3, #65535
+	strhls	r3, [r4, #388]	@ movhi
+.L2908:
+	ldrh	r2, [r4, #388]
+	movw	r3, #65535
+	cmp	r2, r3
+	beq	.L2915
+	movs	r1, #0
+	mov	r0, r4
+	bl	garbage_collect_first
+	cmp	r0, #0
+	beq	.L2921
+	ldrh	r1, [r4, #22]
+	ldr	r0, .L2923+4
+	bl	NAND_Print
+	b	.L2922
+.L2910:
+	cmp	r2, r3, lsr #2
+	bcc	.L2912
+	movs	r3, #8
+	b	.L2920
+.L2912:
+	cmp	r2, r3, lsr #3
+	bcc	.L2913
+	movs	r3, #16
+	b	.L2920
+.L2913:
+	ldr	r0, .L2923+8
+	bl	NAND_Print_DBG
+	movw	r3, #65535
+	b	.L2920
+.L2915:
+	movs	r1, #1
+	mov	r0, r4
+	bl	gc_win_block
+	b	.L2921
+.L2906:
+	movs	r3, #1
+	strh	r0, [r4, #388]	@ movhi
+	str	r3, [r4, #384]
+	b	.L2902
+.L2924:
+	.align	2
+.L2923:
+	.word	.LC493
+	.word	.LC495
 	.word	.LC494
-	.size	micron_special_exit, .-micron_special_exit
-	.global	micron_p1_4
-	.global	micron_p1_3
-	.global	micron_p1_2
-	.global	micron_p1_1
-	.global	micron_read_retry_cycle
-	.global	micron_read_retry_mode
+	.size	garbage_collect, .-garbage_collect
+	.section	.text._nftl_nand_write_logic_page,"ax",%progbits
+	.align	1
+	.global	_nftl_nand_write_logic_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	_nftl_nand_write_logic_page, %function
+_nftl_nand_write_logic_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r5, r0
+	mov	r6, r1
+	bl	nand_write_logic_page_no_gc
+	mov	r4, r0
+	cbz	r0, .L2926
+	movs	r4, #1
+	mov	r1, r6
+	ldr	r0, .L2928
+	bl	NAND_Print
+.L2925:
+	mov	r0, r4
+	pop	{r4, r5, r6, pc}
+.L2926:
+	mov	r0, r5
+	bl	garbage_collect
+	mov	r0, r5
+	bl	all_time_gc
+	mov	r0, r5
+	bl	do_prio_gc
+	b	.L2925
+.L2929:
+	.align	2
+.L2928:
+	.word	.LC496
+	.size	_nftl_nand_write_logic_page, .-_nftl_nand_write_logic_page
+	.section	.text.current_block_at_first_page,"ax",%progbits
+	.align	1
+	.global	current_block_at_first_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	current_block_at_first_page, %function
+current_block_at_first_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldrh	r0, [r1, #28]
+	clz	r0, r0
+	lsrs	r0, r0, #5
+	bx	lr
+	.size	current_block_at_first_page, .-current_block_at_first_page
+	.section	.text.fill_no_use_data_to_page,"ax",%progbits
+	.align	1
+	.global	fill_no_use_data_to_page
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	fill_no_use_data_to_page, %function
+fill_no_use_data_to_page:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	add	r5, r0, #292
+	mov	r1, r5
+	mov	r4, r0
+	bl	current_block_at_last_page
+	cbz	r0, .L2932
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cbz	r0, .L2933
+	ldr	r0, .L2961
+.L2959:
+	bl	NAND_Print
+	movs	r0, #1
+	b	.L2931
+.L2933:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r1, r3, #31
+	bpl	.L2936
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cbz	r0, .L2936
+	ldr	r0, .L2961
+	bl	NAND_Print
+.L2936:
+	mov	r1, r5
+	mov	r0, r4
+	bl	get_new_current_block
+	cbz	r0, .L2938
+	ldr	r0, .L2961+4
+	b	.L2959
+.L2938:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r2, r3, #31
+	bmi	.L2939
+.L2940:
+	movs	r0, #0
+.L2931:
+	pop	{r3, r4, r5, pc}
+.L2939:
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	get_new_current_block
+	cmp	r0, #0
+	beq	.L2940
+	ldr	r0, .L2961+8
+	b	.L2959
+.L2932:
+	ldrh	r3, [r4, #320]
+	cmp	r3, #0
+	beq	.L2940
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cbz	r0, .L2941
+	ldr	r0, .L2961
+	bl	NAND_Print
+.L2941:
+	ldrb	r3, [r4, #17]	@ zero_extendqisi2
+	lsls	r3, r3, #31
+	bmi	.L2942
+.L2960:
+	movs	r0, #8
+	b	.L2931
+.L2942:
+	add	r1, r4, #324
+	mov	r0, r4
+	bl	write_phy_page_map_to_current_block
+	cmp	r0, #0
+	beq	.L2960
+	ldr	r0, .L2961
+	bl	NAND_Print
+	b	.L2960
+.L2962:
+	.align	2
+.L2961:
+	.word	.LC429
+	.word	.LC430
+	.word	.LC431
+	.size	fill_no_use_data_to_page, .-fill_no_use_data_to_page
+	.section	.text.fill_no_use_data_to_current_block,"ax",%progbits
+	.align	1
+	.global	fill_no_use_data_to_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	fill_no_use_data_to_current_block, %function
+fill_no_use_data_to_current_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	mov	r5, r0
+	movs	r4, #0
+.L2964:
+	ldr	r3, [r5, #4]
+	ldrh	r3, [r3, #20]
+	cmp	r3, r4
+	bgt	.L2966
+	movs	r0, #1
+.L2963:
+	pop	{r3, r4, r5, pc}
+.L2966:
+	mov	r0, r5
+	bl	fill_no_use_data_to_page
+	cmp	r0, #0
+	beq	.L2963
+	adds	r4, r4, #1
+	b	.L2964
+	.size	fill_no_use_data_to_current_block, .-fill_no_use_data_to_current_block
+	.section	.text.done_static_wear_leveling,"ax",%progbits
+	.align	1
+	.global	done_static_wear_leveling
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	done_static_wear_leveling, %function
+done_static_wear_leveling:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r4, r0
+	ldr	r5, [r0, #580]
+	cbz	r5, .L2976
+	mov	r1, r5
+	bl	is_current_blcok
+	cmp	r0, #1
+	bne	.L2972
+	movs	r3, #0
+	str	r3, [r4, #580]
+.L2976:
+	movs	r5, #2
+	b	.L2970
+.L2972:
+	mov	r0, r4
+	bl	is_block_in_invalid_list
+	ldrh	r1, [r5]
+	mov	r6, r0
+	cbnz	r0, .L2973
+	ldr	r0, .L2977
+	bl	NAND_Print_DBG
+	str	r6, [r4, #580]
+	b	.L2976
+.L2973:
+	ldrh	r2, [r5, #6]
+	movs	r5, #1
+	ldr	r0, .L2977+4
+	bl	NAND_Print_DBG
+	ldr	r2, [r4, #1968]
+	mov	r0, r4
+	strh	r5, [r4, #578]	@ movhi
+	ldr	r3, [r2, #128]
+	add	r3, r3, r5
+	str	r3, [r2, #128]
+	bl	fill_no_use_data_to_current_block
+	movw	r2, #65535
+	ldr	r1, [r4, #580]
+	mov	r0, r4
+	bl	garbage_collect_first
+	ldr	r2, [r4, #580]
+	mov	r3, r0
+	cbz	r0, .L2974
+	ldrh	r1, [r2]
+	ldr	r0, .L2977+8
+	bl	NAND_Print
+	movs	r3, #0
+	str	r3, [r4, #580]
+.L2970:
+	mov	r0, r5
+	pop	{r4, r5, r6, pc}
+.L2974:
+	strh	r0, [r4, #578]	@ movhi
+	mov	r1, r2
+	mov	r0, r4
+	bl	is_block_in_free_list
+	mov	r5, r0
+	cbnz	r0, .L2975
+	ldrh	r1, [r2]
+	ldr	r0, .L2977+12
+	bl	NAND_Print
+	str	r5, [r4, #580]
+	b	.L2970
+.L2975:
+	str	r3, [r4, #580]
+	mov	r5, r3
+	b	.L2970
+.L2978:
+	.align	2
+.L2977:
+	.word	.LC497
+	.word	.LC498
+	.word	.LC499
+	.word	.LC500
+	.size	done_static_wear_leveling, .-done_static_wear_leveling
+	.section	.text.do_static_wear_leveling,"ax",%progbits
+	.align	1
+	.global	do_static_wear_leveling
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	do_static_wear_leveling, %function
+do_static_wear_leveling:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	ldr	r3, [r0, #1972]
+	push	{r4, lr}
+	mov	r4, r0
+	ldrh	r3, [r3, #6]
+	cbnz	r3, .L2980
+.L2982:
+	movs	r0, #0
+.L2979:
+	pop	{r4, pc}
+.L2980:
+	ldrh	r3, [r0, #384]
+	cbz	r3, .L2983
+	bl	check_static_wear_leveling
+	cmp	r0, #0
+	bne	.L2982
+	mov	r0, r4
+	pop	{r4, lr}
+	b	done_static_wear_leveling
+.L2983:
+	movs	r0, #1
+	b	.L2979
+	.size	do_static_wear_leveling, .-do_static_wear_leveling
+	.section	.text.fill_no_use_page_to_current_block,"ax",%progbits
+	.align	1
+	.global	fill_no_use_page_to_current_block
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	fill_no_use_page_to_current_block, %function
+fill_no_use_page_to_current_block:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, r5, r6, lr}
+	mov	r6, r0
+	mov	r5, r1
+	movs	r4, #0
+.L2985:
+	cmp	r4, r5
+	blt	.L2987
+	movs	r0, #1
+.L2984:
+	pop	{r4, r5, r6, pc}
+.L2987:
+	mov	r0, r6
+	bl	fill_no_use_data_to_page
+	cmp	r0, #0
+	beq	.L2984
+	adds	r4, r4, #1
+	b	.L2985
+	.size	fill_no_use_page_to_current_block, .-fill_no_use_page_to_current_block
+	.section	.text.nftl_write_end,"ax",%progbits
+	.align	1
+	.global	nftl_write_end
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nftl_write_end, %function
+nftl_write_end:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r3, r4, r5, lr}
+	ldr	r3, .L2999
+	ldr	r4, [r3, #8]
+	ldr	r3, [r4, #12]
+	ldr	r3, [r3, #4]
+	ldrb	r2, [r3, #36]	@ zero_extendqisi2
+	cbz	r2, .L2998
+	ldr	r5, [r3, #40]
+	cmp	r5, #0
+	it	eq
+	moveq	r5, #8
+.L2995:
+	cbnz	r4, .L2996
+.L2998:
+	movs	r0, #0
+	pop	{r3, r4, r5, pc}
+.L2996:
+	ldr	r0, [r4, #12]
+	mov	r1, r5
+	bl	fill_no_use_page_to_current_block
+	ldr	r4, [r4, #8]
+	b	.L2995
+.L3000:
+	.align	2
+.L2999:
+	.word	.LANCHOR0
+	.size	nftl_write_end, .-nftl_write_end
+	.section	.text.nand_before_shutdown,"ax",%progbits
+	.align	1
+	.global	nand_before_shutdown
+	.syntax unified
+	.thumb
+	.thumb_func
+	.fpu softvfp
+	.type	nand_before_shutdown, %function
+nand_before_shutdown:
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	movs	r1, #8
+	b	fill_no_use_page_to_current_block
+	.size	nand_before_shutdown, .-nand_before_shutdown
+	.global	samsung_p1
+	.global	samsung_read_retry_cmd
+	.global	samsung_read_retry_addr
+	.global	samsung_read_retry_cycle
+	.global	samsung_read_retry_mode
 	.global	sandisk_1y
 	.global	sandisk_read_retry_reg_adr_1y
 	.global	sandisk_read_retry_cmd_1y
@@ -21261,6 +21746,16 @@ micron_special_exit:
 	.global	sandisk_read_retry_reg_cnt
 	.global	sandisk_read_retry_cycle
 	.global	sandisk_read_retry_mode
+	.global	hynix16nm_read_retry_reg_adr
+	.global	hynix16nm_read_retry_reg_num
+	.global	hynix16nm_read_retry_cycle
+	.global	hynix16nm_read_retry_mode
+	.global	micron_p1_4
+	.global	micron_p1_3
+	.global	micron_p1_2
+	.global	micron_p1_1
+	.global	micron_read_retry_cycle
+	.global	micron_read_retry_mode
 	.global	toshiba_read_retry_exit_cmd
 	.global	toshiba_read_retry_last_cmd
 	.global	toshiba_p1_3
@@ -21275,25 +21770,6 @@ micron_special_exit:
 	.global	toshiba_read_retry_reg_cnt
 	.global	toshiba_read_retry_cycle
 	.global	toshiba_read_retry_mode
-	.global	samsung_p1
-	.global	samsung_read_retry_cmd
-	.global	samsung_read_retry_addr
-	.global	samsung_read_retry_cycle
-	.global	samsung_read_retry_mode
-	.global	sandisk_A19_1z_8g
-	.global	sandisk_A19_1z_16g
-	.global	sandisk_A19_1y
-	.global	sandisk_A19_read_retry_reg_adr_1y
-	.global	sandisk_A19_read_retry_cmd_1y
-	.global	sandisk_A19_read_retry_exit_cmd_1y
-	.global	sandisk_A19_read_retry_enable_cmd_1y
-	.global	sandisk_A19_read_retry_reg_cnt
-	.global	sandisk_A19_read_retry_cycle
-	.global	sandisk_A19_read_retry_mode
-	.global	hynix16nm_read_retry_reg_adr
-	.global	hynix16nm_read_retry_reg_num
-	.global	hynix16nm_read_retry_cycle
-	.global	hynix16nm_read_retry_mode
 	.global	para1
 	.global	para0
 	.global	hynix26nm_lsb_mode_reg_num
@@ -21315,13 +21791,39 @@ micron_special_exit:
 	.global	hynix20nm_read_retry_reg_num
 	.global	hynix20nm_read_retry_cycle
 	.global	hynix20nm_read_retry_mode
-	.global	nftl_blk_head
+	.global	sandisk_A19_1z_8g
+	.global	sandisk_A19_1z_16g
+	.global	sandisk_A19_1y
+	.global	sandisk_A19_read_retry_reg_adr_1y
+	.global	sandisk_A19_read_retry_cmd_1y
+	.global	sandisk_A19_read_retry_exit_cmd_1y
+	.global	sandisk_A19_read_retry_enable_cmd_1y
+	.global	sandisk_A19_read_retry_reg_cnt
+	.global	sandisk_A19_read_retry_cycle
+	.global	sandisk_A19_read_retry_mode
 	.global	phyinfo
+	.global	nftl_blk_head
 	.global	mod
 	.global	com
 	.section	.rodata
-	.set	.LANCHOR19,. + 0
+	.set	.LANCHOR76,. + 0
+.LC1:
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
+	.byte	83
 .LC2:
+	.byte	115
+	.byte	117
+	.byte	110
+	.byte	120
+	.byte	105
+.LC3:
 	.byte	44
 	.byte	100
 	.byte	68
@@ -21330,7 +21832,7 @@ micron_special_exit:
 	.byte	-1
 	.byte	-1
 	.byte	-1
-.LC3:
+.LC4:
 	.byte	44
 	.byte	-124
 	.byte	68
@@ -21339,12 +21841,6 @@ micron_special_exit:
 	.byte	4
 	.byte	0
 	.byte	0
-.LC1:
-	.byte	115
-	.byte	117
-	.byte	110
-	.byte	120
-	.byte	105
 .LC0:
 	.byte	97
 	.byte	108
@@ -21355,165 +21851,155 @@ micron_special_exit:
 	.byte	110
 	.byte	101
 	.byte	114
-.LC4:
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
-	.byte	83
 	.section	.bss.hynix16nm_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR49,. + 0
+	.set	.LANCHOR56,. + 0
 	.type	hynix16nm_read_retry_cycle, %object
 	.size	hynix16nm_read_retry_cycle, 1
 hynix16nm_read_retry_cycle:
 	.space	1
 	.section	.bss.hynix16nm_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR52,. + 0
+	.set	.LANCHOR59,. + 0
 	.type	hynix16nm_read_retry_mode, %object
 	.size	hynix16nm_read_retry_mode, 1
 hynix16nm_read_retry_mode:
 	.space	1
 	.section	.bss.hynix16nm_read_retry_reg_adr,"aw",%nobits
-	.set	.LANCHOR51,. + 0
+	.set	.LANCHOR58,. + 0
 	.type	hynix16nm_read_retry_reg_adr, %object
 	.size	hynix16nm_read_retry_reg_adr, 4
 hynix16nm_read_retry_reg_adr:
 	.space	4
 	.section	.bss.hynix16nm_read_retry_reg_num,"aw",%nobits
-	.set	.LANCHOR50,. + 0
+	.set	.LANCHOR57,. + 0
 	.type	hynix16nm_read_retry_reg_num, %object
 	.size	hynix16nm_read_retry_reg_num, 1
 hynix16nm_read_retry_reg_num:
 	.space	1
 	.section	.bss.hynix20nm_lsb_mode_default_val,"aw",%nobits
-	.set	.LANCHOR37,. + 0
+	.set	.LANCHOR19,. + 0
 	.type	hynix20nm_lsb_mode_default_val, %object
 	.size	hynix20nm_lsb_mode_default_val, 4
 hynix20nm_lsb_mode_default_val:
 	.space	4
 	.section	.bss.hynix20nm_lsb_mode_reg_adr,"aw",%nobits
-	.set	.LANCHOR35,. + 0
+	.set	.LANCHOR17,. + 0
 	.type	hynix20nm_lsb_mode_reg_adr, %object
 	.size	hynix20nm_lsb_mode_reg_adr, 4
 hynix20nm_lsb_mode_reg_adr:
 	.space	4
 	.section	.bss.hynix20nm_lsb_mode_reg_num,"aw",%nobits
-	.set	.LANCHOR34,. + 0
+	.set	.LANCHOR16,. + 0
 	.type	hynix20nm_lsb_mode_reg_num, %object
 	.size	hynix20nm_lsb_mode_reg_num, 1
 hynix20nm_lsb_mode_reg_num:
 	.space	1
 	.section	.bss.hynix20nm_lsb_mode_val,"aw",%nobits
-	.set	.LANCHOR36,. + 0
+	.set	.LANCHOR18,. + 0
 	.type	hynix20nm_lsb_mode_val, %object
 	.size	hynix20nm_lsb_mode_val, 4
 hynix20nm_lsb_mode_val:
 	.space	4
 	.section	.bss.hynix20nm_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR30,. + 0
+	.set	.LANCHOR12,. + 0
 	.type	hynix20nm_read_retry_cycle, %object
 	.size	hynix20nm_read_retry_cycle, 1
 hynix20nm_read_retry_cycle:
 	.space	1
 	.section	.bss.hynix20nm_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR33,. + 0
+	.set	.LANCHOR15,. + 0
 	.type	hynix20nm_read_retry_mode, %object
 	.size	hynix20nm_read_retry_mode, 1
 hynix20nm_read_retry_mode:
 	.space	1
 	.section	.bss.hynix20nm_read_retry_reg_adr,"aw",%nobits
-	.set	.LANCHOR32,. + 0
+	.set	.LANCHOR14,. + 0
 	.type	hynix20nm_read_retry_reg_adr, %object
 	.size	hynix20nm_read_retry_reg_adr, 8
 hynix20nm_read_retry_reg_adr:
 	.space	8
 	.section	.bss.hynix20nm_read_retry_reg_num,"aw",%nobits
-	.set	.LANCHOR31,. + 0
+	.set	.LANCHOR13,. + 0
 	.type	hynix20nm_read_retry_reg_num, %object
 	.size	hynix20nm_read_retry_reg_num, 1
 hynix20nm_read_retry_reg_num:
 	.space	1
 	.section	.bss.hynix26nm_lsb_mode_default_val,"aw",%nobits
-	.set	.LANCHOR46,. + 0
+	.set	.LANCHOR28,. + 0
 	.type	hynix26nm_lsb_mode_default_val, %object
 	.size	hynix26nm_lsb_mode_default_val, 5
 hynix26nm_lsb_mode_default_val:
 	.space	5
 	.section	.bss.hynix26nm_lsb_mode_reg_adr,"aw",%nobits
-	.set	.LANCHOR44,. + 0
+	.set	.LANCHOR26,. + 0
 	.type	hynix26nm_lsb_mode_reg_adr, %object
 	.size	hynix26nm_lsb_mode_reg_adr, 5
 hynix26nm_lsb_mode_reg_adr:
 	.space	5
 	.section	.bss.hynix26nm_lsb_mode_reg_num,"aw",%nobits
-	.set	.LANCHOR43,. + 0
+	.set	.LANCHOR25,. + 0
 	.type	hynix26nm_lsb_mode_reg_num, %object
 	.size	hynix26nm_lsb_mode_reg_num, 1
 hynix26nm_lsb_mode_reg_num:
 	.space	1
 	.section	.bss.hynix26nm_lsb_mode_val,"aw",%nobits
-	.set	.LANCHOR45,. + 0
+	.set	.LANCHOR27,. + 0
 	.type	hynix26nm_lsb_mode_val, %object
 	.size	hynix26nm_lsb_mode_val, 5
 hynix26nm_lsb_mode_val:
 	.space	5
 	.section	.bss.hynix26nm_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR38,. + 0
+	.set	.LANCHOR20,. + 0
 	.type	hynix26nm_read_retry_cycle, %object
 	.size	hynix26nm_read_retry_cycle, 1
 hynix26nm_read_retry_cycle:
 	.space	1
 	.section	.bss.hynix26nm_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR42,. + 0
+	.set	.LANCHOR24,. + 0
 	.type	hynix26nm_read_retry_mode, %object
 	.size	hynix26nm_read_retry_mode, 1
 hynix26nm_read_retry_mode:
 	.space	1
 	.section	.bss.hynix26nm_read_retry_reg_adr,"aw",%nobits
-	.set	.LANCHOR41,. + 0
+	.set	.LANCHOR23,. + 0
 	.type	hynix26nm_read_retry_reg_adr, %object
 	.size	hynix26nm_read_retry_reg_adr, 4
 hynix26nm_read_retry_reg_adr:
 	.space	4
 	.section	.bss.hynix26nm_read_retry_reg_num,"aw",%nobits
-	.set	.LANCHOR39,. + 0
+	.set	.LANCHOR21,. + 0
 	.type	hynix26nm_read_retry_reg_num, %object
 	.size	hynix26nm_read_retry_reg_num, 1
 hynix26nm_read_retry_reg_num:
 	.space	1
 	.section	.bss.hynix26nm_read_retry_val,"aw",%nobits
 	.align	1
-	.set	.LANCHOR40,. + 0
+	.set	.LANCHOR22,. + 0
 	.type	hynix26nm_read_retry_val, %object
 	.size	hynix26nm_read_retry_val, 56
 hynix26nm_read_retry_val:
 	.space	56
 	.section	.bss.micron_p1,"aw",%nobits
 	.align	2
-	.set	.LANCHOR106,. + 0
+	.set	.LANCHOR50,. + 0
 	.type	micron_p1, %object
 	.size	micron_p1, 4
 micron_p1:
 	.space	4
 	.section	.bss.micron_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR107,. + 0
+	.set	.LANCHOR51,. + 0
 	.type	micron_read_retry_cycle, %object
 	.size	micron_read_retry_cycle, 1
 micron_read_retry_cycle:
 	.space	1
 	.section	.bss.micron_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR105,. + 0
+	.set	.LANCHOR49,. + 0
 	.type	micron_read_retry_mode, %object
 	.size	micron_read_retry_mode, 1
 micron_read_retry_mode:
 	.space	1
 	.section	.bss.nand_on_panic,"aw",%nobits
 	.align	2
-	.set	.LANCHOR20,. + 0
+	.set	.LANCHOR85,. + 0
 	.type	nand_on_panic, %object
 	.size	nand_on_panic, 4
 nand_on_panic:
@@ -21527,157 +22013,157 @@ nftl_blk_head:
 	.space	76
 	.section	.bss.panic_enable,"aw",%nobits
 	.align	2
-	.set	.LANCHOR21,. + 0
+	.set	.LANCHOR86,. + 0
 	.type	panic_enable, %object
 	.size	panic_enable, 4
 panic_enable:
 	.space	4
 	.section	.bss.panic_info,"aw",%nobits
 	.align	2
-	.set	.LANCHOR23,. + 0
+	.set	.LANCHOR88,. + 0
 	.type	panic_info, %object
 	.size	panic_info, 24
 panic_info:
 	.space	24
 	.section	.bss.panic_part,"aw",%nobits
 	.align	2
-	.set	.LANCHOR22,. + 0
+	.set	.LANCHOR87,. + 0
 	.type	panic_part, %object
 	.size	panic_part, 12
 panic_part:
 	.space	12
 	.section	.bss.phyinfo,"aw",%nobits
 	.align	2
-	.set	.LANCHOR15,. + 0
+	.set	.LANCHOR108,. + 0
 	.type	phyinfo, %object
 	.size	phyinfo, 20
 phyinfo:
 	.space	20
 	.section	.bss.samsung_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR67,. + 0
+	.set	.LANCHOR81,. + 0
 	.type	samsung_read_retry_cycle, %object
 	.size	samsung_read_retry_cycle, 1
 samsung_read_retry_cycle:
 	.space	1
 	.section	.bss.samsung_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR68,. + 0
+	.set	.LANCHOR80,. + 0
 	.type	samsung_read_retry_mode, %object
 	.size	samsung_read_retry_mode, 1
 samsung_read_retry_mode:
 	.space	1
 	.section	.bss.sandisk_A19_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR54,. + 0
+	.set	.LANCHOR2,. + 0
 	.type	sandisk_A19_read_retry_cycle, %object
 	.size	sandisk_A19_read_retry_cycle, 1
 sandisk_A19_read_retry_cycle:
 	.space	1
 	.section	.bss.sandisk_A19_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR53,. + 0
+	.set	.LANCHOR1,. + 0
 	.type	sandisk_A19_read_retry_mode, %object
 	.size	sandisk_A19_read_retry_mode, 1
 sandisk_A19_read_retry_mode:
 	.space	1
 	.section	.bss.sandisk_A19_read_retry_reg_cnt,"aw",%nobits
-	.set	.LANCHOR55,. + 0
+	.set	.LANCHOR3,. + 0
 	.type	sandisk_A19_read_retry_reg_cnt, %object
 	.size	sandisk_A19_read_retry_reg_cnt, 1
 sandisk_A19_read_retry_reg_cnt:
 	.space	1
 	.section	.bss.sandisk_A19_sclk0_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR57,. + 0
+	.set	.LANCHOR5,. + 0
 	.type	sandisk_A19_sclk0_bak, %object
 	.size	sandisk_A19_sclk0_bak, 4
 sandisk_A19_sclk0_bak:
 	.space	4
 	.section	.bss.sandisk_A19_sclk1_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR56,. + 0
+	.set	.LANCHOR4,. + 0
 	.type	sandisk_A19_sclk1_bak, %object
 	.size	sandisk_A19_sclk1_bak, 4
 sandisk_A19_sclk1_bak:
 	.space	4
 	.section	.bss.sandisk_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR96,. + 0
+	.set	.LANCHOR69,. + 0
 	.type	sandisk_read_retry_cycle, %object
 	.size	sandisk_read_retry_cycle, 1
 sandisk_read_retry_cycle:
 	.space	1
 	.section	.bss.sandisk_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR89,. + 0
+	.set	.LANCHOR62,. + 0
 	.type	sandisk_read_retry_mode, %object
 	.size	sandisk_read_retry_mode, 1
 sandisk_read_retry_mode:
 	.space	1
 	.section	.bss.sandisk_read_retry_reg_cnt,"aw",%nobits
-	.set	.LANCHOR104,. + 0
+	.set	.LANCHOR78,. + 0
 	.type	sandisk_read_retry_reg_cnt, %object
 	.size	sandisk_read_retry_reg_cnt, 1
 sandisk_read_retry_reg_cnt:
 	.space	1
 	.section	.bss.sandisk_sclk0_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR88,. + 0
+	.set	.LANCHOR61,. + 0
 	.type	sandisk_sclk0_bak, %object
 	.size	sandisk_sclk0_bak, 4
 sandisk_sclk0_bak:
 	.space	4
 	.section	.bss.sandisk_sclk1_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR87,. + 0
+	.set	.LANCHOR60,. + 0
 	.type	sandisk_sclk1_bak, %object
 	.size	sandisk_sclk1_bak, 4
 sandisk_sclk1_bak:
 	.space	4
 	.section	.bss.sandisk_toggle_mode_flag,"aw",%nobits
 	.align	2
-	.set	.LANCHOR93,. + 0
+	.set	.LANCHOR66,. + 0
 	.type	sandisk_toggle_mode_flag, %object
 	.size	sandisk_toggle_mode_flag, 4
 sandisk_toggle_mode_flag:
 	.space	4
 	.section	.bss.toshiba_read_retry_cycle,"aw",%nobits
-	.set	.LANCHOR85,. + 0
+	.set	.LANCHOR47,. + 0
 	.type	toshiba_read_retry_cycle, %object
 	.size	toshiba_read_retry_cycle, 1
 toshiba_read_retry_cycle:
 	.space	1
 	.section	.bss.toshiba_read_retry_mode,"aw",%nobits
-	.set	.LANCHOR71,. + 0
+	.set	.LANCHOR33,. + 0
 	.type	toshiba_read_retry_mode, %object
 	.size	toshiba_read_retry_mode, 1
 toshiba_read_retry_mode:
 	.space	1
 	.section	.bss.toshiba_read_retry_reg_cnt,"aw",%nobits
-	.set	.LANCHOR86,. + 0
+	.set	.LANCHOR48,. + 0
 	.type	toshiba_read_retry_reg_cnt, %object
 	.size	toshiba_read_retry_reg_cnt, 1
 toshiba_read_retry_reg_cnt:
 	.space	1
 	.section	.bss.toshiba_retry_flag,"aw",%nobits
 	.align	2
-	.set	.LANCHOR73,. + 0
+	.set	.LANCHOR35,. + 0
 	.type	toshiba_retry_flag, %object
 	.size	toshiba_retry_flag, 4
 toshiba_retry_flag:
 	.space	4
 	.section	.bss.toshiba_sclk0_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR70,. + 0
+	.set	.LANCHOR32,. + 0
 	.type	toshiba_sclk0_bak, %object
 	.size	toshiba_sclk0_bak, 4
 toshiba_sclk0_bak:
 	.space	4
 	.section	.bss.toshiba_sclk1_bak,"aw",%nobits
 	.align	2
-	.set	.LANCHOR69,. + 0
+	.set	.LANCHOR31,. + 0
 	.type	toshiba_sclk1_bak, %object
 	.size	toshiba_sclk1_bak, 4
 toshiba_sclk1_bak:
 	.space	4
 	.section	.bss.toshiba_toggle_mode_flag,"aw",%nobits
 	.align	2
-	.set	.LANCHOR81,. + 0
+	.set	.LANCHOR43,. + 0
 	.type	toshiba_toggle_mode_flag, %object
 	.size	toshiba_toggle_mode_flag, 4
 toshiba_toggle_mode_flag:
@@ -21707,7 +22193,7 @@ hynix20nm_read_retry_reg_adr_2:
 	.byte	-74
 	.byte	-73
 	.section	.data.micron_p1_1,"aw",%progbits
-	.set	.LANCHOR109,. + 0
+	.set	.LANCHOR53,. + 0
 	.type	micron_p1_1, %object
 	.size	micron_p1_1, 10
 micron_p1_1:
@@ -21722,7 +22208,7 @@ micron_p1_1:
 	.byte	6
 	.byte	7
 	.section	.data.micron_p1_2,"aw",%progbits
-	.set	.LANCHOR108,. + 0
+	.set	.LANCHOR52,. + 0
 	.type	micron_p1_2, %object
 	.size	micron_p1_2, 12
 micron_p1_2:
@@ -21739,7 +22225,7 @@ micron_p1_2:
 	.byte	8
 	.byte	12
 	.section	.data.micron_p1_3,"aw",%progbits
-	.set	.LANCHOR110,. + 0
+	.set	.LANCHOR54,. + 0
 	.type	micron_p1_3, %object
 	.size	micron_p1_3, 7
 micron_p1_3:
@@ -21751,10 +22237,12 @@ micron_p1_3:
 	.byte	2
 	.byte	3
 	.section	.data.micron_p1_4,"aw",%progbits
-	.set	.LANCHOR111,. + 0
+	.set	.LANCHOR55,. + 0
 	.type	micron_p1_4, %object
-	.size	micron_p1_4, 16
+	.size	micron_p1_4, 18
 micron_p1_4:
+	.byte	0
+	.byte	0
 	.byte	0
 	.byte	1
 	.byte	2
@@ -21772,7 +22260,7 @@ micron_p1_4:
 	.byte	14
 	.byte	15
 	.section	.data.samsung_p1,"aw",%progbits
-	.set	.LANCHOR66,. + 0
+	.set	.LANCHOR84,. + 0
 	.type	samsung_p1, %object
 	.size	samsung_p1, 60
 samsung_p1:
@@ -21837,7 +22325,7 @@ samsung_p1:
 	.byte	2
 	.byte	0
 	.section	.data.samsung_read_retry_addr,"aw",%progbits
-	.set	.LANCHOR65,. + 0
+	.set	.LANCHOR83,. + 0
 	.type	samsung_read_retry_addr, %object
 	.size	samsung_read_retry_addr, 4
 samsung_read_retry_addr:
@@ -21846,7 +22334,7 @@ samsung_read_retry_addr:
 	.byte	-91
 	.byte	-90
 	.section	.data.samsung_read_retry_cmd,"aw",%progbits
-	.set	.LANCHOR64,. + 0
+	.set	.LANCHOR79,. + 0
 	.type	samsung_read_retry_cmd, %object
 	.size	samsung_read_retry_cmd, 4
 samsung_read_retry_cmd:
@@ -21855,7 +22343,7 @@ samsung_read_retry_cmd:
 	.byte	-95
 	.byte	-95
 	.section	.data.sandisk_19_high,"aw",%progbits
-	.set	.LANCHOR97,. + 0
+	.set	.LANCHOR70,. + 0
 	.type	sandisk_19_high, %object
 	.size	sandisk_19_high, 60
 sandisk_19_high:
@@ -21920,7 +22408,7 @@ sandisk_19_high:
 	.byte	-96
 	.byte	0
 	.section	.data.sandisk_19_low,"aw",%progbits
-	.set	.LANCHOR95,. + 0
+	.set	.LANCHOR68,. + 0
 	.type	sandisk_19_low, %object
 	.size	sandisk_19_low, 48
 sandisk_19_low:
@@ -21973,7 +22461,7 @@ sandisk_19_low:
 	.byte	0
 	.byte	-64
 	.section	.data.sandisk_1y,"aw",%progbits
-	.set	.LANCHOR102,. + 0
+	.set	.LANCHOR75,. + 0
 	.type	sandisk_1y, %object
 	.size	sandisk_1y, 76
 sandisk_1y:
@@ -22054,7 +22542,7 @@ sandisk_1y:
 	.byte	112
 	.byte	112
 	.section	.data.sandisk_24,"aw",%progbits
-	.set	.LANCHOR100,. + 0
+	.set	.LANCHOR73,. + 0
 	.type	sandisk_24, %object
 	.size	sandisk_24, 27
 sandisk_24:
@@ -22086,7 +22574,7 @@ sandisk_24:
 	.byte	0
 	.byte	0
 	.section	.data.sandisk_A19_1y,"aw",%progbits
-	.set	.LANCHOR61,. + 0
+	.set	.LANCHOR9,. + 0
 	.type	sandisk_A19_1y, %object
 	.size	sandisk_A19_1y, 124
 sandisk_A19_1y:
@@ -22215,7 +22703,7 @@ sandisk_A19_1y:
 	.byte	104
 	.byte	100
 	.section	.data.sandisk_A19_1z_16g,"aw",%progbits
-	.set	.LANCHOR59,. + 0
+	.set	.LANCHOR7,. + 0
 	.type	sandisk_A19_1z_16g, %object
 	.size	sandisk_A19_1z_16g, 128
 sandisk_A19_1z_16g:
@@ -22348,7 +22836,7 @@ sandisk_A19_1z_16g:
 	.byte	112
 	.byte	112
 	.section	.data.sandisk_A19_1z_8g,"aw",%progbits
-	.set	.LANCHOR60,. + 0
+	.set	.LANCHOR8,. + 0
 	.type	sandisk_A19_1z_8g, %object
 	.size	sandisk_A19_1z_8g, 124
 sandisk_A19_1z_8g:
@@ -22477,7 +22965,7 @@ sandisk_A19_1z_8g:
 	.byte	12
 	.byte	8
 	.section	.data.sandisk_A19_read_retry_cmd_1y,"aw",%progbits
-	.set	.LANCHOR58,. + 0
+	.set	.LANCHOR6,. + 0
 	.type	sandisk_A19_read_retry_cmd_1y, %object
 	.size	sandisk_A19_read_retry_cmd_1y, 1
 sandisk_A19_read_retry_cmd_1y:
@@ -22493,13 +22981,13 @@ sandisk_A19_read_retry_enable_cmd_1y:
 sandisk_A19_read_retry_exit_cmd_1y:
 	.byte	-1
 	.section	.data.sandisk_A19_read_retry_reg_adr_1y,"aw",%progbits
-	.set	.LANCHOR62,. + 0
+	.set	.LANCHOR10,. + 0
 	.type	sandisk_A19_read_retry_reg_adr_1y, %object
 	.size	sandisk_A19_read_retry_reg_adr_1y, 1
 sandisk_A19_read_retry_reg_adr_1y:
 	.byte	17
 	.section	.data.sandisk_acti_start_addr,"aw",%progbits
-	.set	.LANCHOR103,. + 0
+	.set	.LANCHOR77,. + 0
 	.type	sandisk_acti_start_addr, %object
 	.size	sandisk_acti_start_addr, 9
 sandisk_acti_start_addr:
@@ -22513,14 +23001,14 @@ sandisk_acti_start_addr:
 	.byte	11
 	.byte	12
 	.section	.data.sandisk_acti_start_cmd,"aw",%progbits
-	.set	.LANCHOR90,. + 0
+	.set	.LANCHOR63,. + 0
 	.type	sandisk_acti_start_cmd, %object
 	.size	sandisk_acti_start_cmd, 2
 sandisk_acti_start_cmd:
 	.byte	59
 	.byte	-71
 	.section	.data.sandisk_read_retry_cmd_19,"aw",%progbits
-	.set	.LANCHOR91,. + 0
+	.set	.LANCHOR64,. + 0
 	.type	sandisk_read_retry_cmd_19, %object
 	.size	sandisk_read_retry_cmd_19, 3
 sandisk_read_retry_cmd_19:
@@ -22528,7 +23016,7 @@ sandisk_read_retry_cmd_19:
 	.byte	83
 	.byte	83
 	.section	.data.sandisk_read_retry_cmd_1y,"aw",%progbits
-	.set	.LANCHOR92,. + 0
+	.set	.LANCHOR65,. + 0
 	.type	sandisk_read_retry_cmd_1y, %object
 	.size	sandisk_read_retry_cmd_1y, 1
 sandisk_read_retry_cmd_1y:
@@ -22541,7 +23029,7 @@ sandisk_read_retry_cmd_24:
 	.byte	83
 	.byte	83
 	.section	.data.sandisk_read_retry_disable_cmd_19,"aw",%progbits
-	.set	.LANCHOR94,. + 0
+	.set	.LANCHOR67,. + 0
 	.type	sandisk_read_retry_disable_cmd_19, %object
 	.size	sandisk_read_retry_disable_cmd_19, 1
 sandisk_read_retry_disable_cmd_19:
@@ -22562,7 +23050,7 @@ sandisk_read_retry_enable_cmd_1y:
 sandisk_read_retry_exit_cmd_1y:
 	.byte	-1
 	.section	.data.sandisk_read_retry_reg_adr_19,"aw",%progbits
-	.set	.LANCHOR98,. + 0
+	.set	.LANCHOR71,. + 0
 	.type	sandisk_read_retry_reg_adr_19, %object
 	.size	sandisk_read_retry_reg_adr_19, 9
 sandisk_read_retry_reg_adr_19:
@@ -22571,13 +23059,13 @@ sandisk_read_retry_reg_adr_19:
 	.byte	7
 	.space	6
 	.section	.data.sandisk_read_retry_reg_adr_1y,"aw",%progbits
-	.set	.LANCHOR101,. + 0
+	.set	.LANCHOR74,. + 0
 	.type	sandisk_read_retry_reg_adr_1y, %object
 	.size	sandisk_read_retry_reg_adr_1y, 1
 sandisk_read_retry_reg_adr_1y:
 	.byte	17
 	.section	.data.sandisk_read_retry_reg_adr_24,"aw",%progbits
-	.set	.LANCHOR99,. + 0
+	.set	.LANCHOR72,. + 0
 	.type	sandisk_read_retry_reg_adr_24, %object
 	.size	sandisk_read_retry_reg_adr_24, 9
 sandisk_read_retry_reg_adr_24:
@@ -22586,7 +23074,7 @@ sandisk_read_retry_reg_adr_24:
 	.byte	7
 	.space	6
 	.section	.data.toshiba_p1_1,"aw",%progbits
-	.set	.LANCHOR84,. + 0
+	.set	.LANCHOR46,. + 0
 	.type	toshiba_p1_1, %object
 	.size	toshiba_p1_1, 28
 toshiba_p1_1:
@@ -22619,7 +23107,7 @@ toshiba_p1_1:
 	.byte	-1
 	.byte	-1
 	.section	.data.toshiba_p1_2,"aw",%progbits
-	.set	.LANCHOR82,. + 0
+	.set	.LANCHOR44,. + 0
 	.type	toshiba_p1_2, %object
 	.size	toshiba_p1_2, 40
 toshiba_p1_2:
@@ -22664,7 +23152,7 @@ toshiba_p1_2:
 	.byte	0
 	.byte	0
 	.section	.data.toshiba_p1_3,"aw",%progbits
-	.set	.LANCHOR83,. + 0
+	.set	.LANCHOR45,. + 0
 	.type	toshiba_p1_3, %object
 	.size	toshiba_p1_3, 55
 toshiba_p1_3:
@@ -22724,7 +23212,7 @@ toshiba_p1_3:
 	.byte	0
 	.byte	0
 	.section	.data.toshiba_read_retry_addr_1,"aw",%progbits
-	.set	.LANCHOR80,. + 0
+	.set	.LANCHOR42,. + 0
 	.type	toshiba_read_retry_addr_1, %object
 	.size	toshiba_read_retry_addr_1, 4
 toshiba_read_retry_addr_1:
@@ -22733,7 +23221,7 @@ toshiba_read_retry_addr_1:
 	.byte	6
 	.byte	7
 	.section	.data.toshiba_read_retry_addr_2,"aw",%progbits
-	.set	.LANCHOR79,. + 0
+	.set	.LANCHOR41,. + 0
 	.type	toshiba_read_retry_addr_2, %object
 	.size	toshiba_read_retry_addr_2, 5
 toshiba_read_retry_addr_2:
@@ -22743,7 +23231,7 @@ toshiba_read_retry_addr_2:
 	.byte	7
 	.byte	13
 	.section	.data.toshiba_read_retry_cmd_1,"aw",%progbits
-	.set	.LANCHOR76,. + 0
+	.set	.LANCHOR38,. + 0
 	.type	toshiba_read_retry_cmd_1, %object
 	.size	toshiba_read_retry_cmd_1, 4
 toshiba_read_retry_cmd_1:
@@ -22752,7 +23240,7 @@ toshiba_read_retry_cmd_1:
 	.byte	85
 	.byte	85
 	.section	.data.toshiba_read_retry_cmd_2,"aw",%progbits
-	.set	.LANCHOR72,. + 0
+	.set	.LANCHOR34,. + 0
 	.type	toshiba_read_retry_cmd_2, %object
 	.size	toshiba_read_retry_cmd_2, 5
 toshiba_read_retry_cmd_2:
@@ -22762,248 +23250,269 @@ toshiba_read_retry_cmd_2:
 	.byte	85
 	.byte	85
 	.section	.data.toshiba_read_retry_end_cmd,"aw",%progbits
-	.set	.LANCHOR77,. + 0
+	.set	.LANCHOR39,. + 0
 	.type	toshiba_read_retry_end_cmd, %object
 	.size	toshiba_read_retry_end_cmd, 2
 toshiba_read_retry_end_cmd:
 	.byte	38
 	.byte	93
 	.section	.data.toshiba_read_retry_exit_cmd,"aw",%progbits
-	.set	.LANCHOR74,. + 0
+	.set	.LANCHOR36,. + 0
 	.type	toshiba_read_retry_exit_cmd, %object
 	.size	toshiba_read_retry_exit_cmd, 1
 toshiba_read_retry_exit_cmd:
 	.byte	-1
 	.section	.data.toshiba_read_retry_last_cmd,"aw",%progbits
-	.set	.LANCHOR75,. + 0
+	.set	.LANCHOR37,. + 0
 	.type	toshiba_read_retry_last_cmd, %object
 	.size	toshiba_read_retry_last_cmd, 1
 toshiba_read_retry_last_cmd:
 	.byte	-77
 	.section	.data.toshiba_read_retry_start_cmd,"aw",%progbits
-	.set	.LANCHOR78,. + 0
+	.set	.LANCHOR40,. + 0
 	.type	toshiba_read_retry_start_cmd, %object
 	.size	toshiba_read_retry_start_cmd, 2
 toshiba_read_retry_start_cmd:
 	.byte	92
 	.byte	-59
-	.section	.rodata.__FUNCTION__.7041,"a",%progbits
-	.set	.LANCHOR9,. + 0
-	.type	__FUNCTION__.7041, %object
-	.size	__FUNCTION__.7041, 25
-__FUNCTION__.7041:
+	.section	.rodata.__FUNCTION__.8562,"a",%progbits
+	.set	.LANCHOR106,. + 0
+	.type	__FUNCTION__.8562, %object
+	.size	__FUNCTION__.8562, 25
+__FUNCTION__.8562:
 	.ascii	"nand_power_off_ecc_error\000"
-	.section	.rodata.__func__.5927,"a",%progbits
-	.set	.LANCHOR27,. + 0
-	.type	__func__.5927, %object
-	.size	__func__.5927, 16
-__func__.5927:
-	.ascii	"nftl_initialize\000"
-	.section	.rodata.__func__.6067,"a",%progbits
-	.set	.LANCHOR29,. + 0
-	.type	__func__.6067, %object
-	.size	__func__.6067, 9
-__func__.6067:
+	.section	.rodata.__func__.6081,"a",%progbits
+	.set	.LANCHOR112,. + 0
+	.type	__func__.6081, %object
+	.size	__func__.6081, 9
+__func__.6081:
 	.ascii	"nftl_add\000"
-	.section	.rodata.__func__.6404,"a",%progbits
-	.set	.LANCHOR16,. + 0
-	.type	__func__.6404, %object
-	.size	__func__.6404, 15
-__func__.6404:
-	.ascii	"shutdown_on_gc\000"
-	.section	.rodata.__func__.6479,"a",%progbits
+	.section	.rodata.__func__.6248,"a",%progbits
+	.set	.LANCHOR111,. + 0
+	.type	__func__.6248, %object
+	.size	__func__.6248, 16
+__func__.6248:
+	.ascii	"nftl_initialize\000"
+	.section	.rodata.__func__.6486,"a",%progbits
 	.set	.LANCHOR11,. + 0
-	.type	__func__.6479, %object
-	.size	__func__.6479, 16
-__func__.6479:
-	.ascii	"zone_param_init\000"
-	.section	.rodata.__func__.6627,"a",%progbits
-	.set	.LANCHOR14,. + 0
-	.type	__func__.6627, %object
-	.size	__func__.6627, 23
-__func__.6627:
-	.ascii	"get_current_used_block\000"
-	.section	.rodata.__func__.6693,"a",%progbits
-	.set	.LANCHOR1,. + 0
-	.type	__func__.6693, %object
-	.size	__func__.6693, 9
-__func__.6693:
-	.ascii	"init_nrc\000"
-	.section	.rodata.__func__.6778,"a",%progbits
-	.set	.LANCHOR12,. + 0
-	.type	__func__.6778, %object
-	.size	__func__.6778, 23
-__func__.6778:
-	.ascii	"torture_block_and_mark\000"
-	.section	.rodata.__func__.6901,"a",%progbits
-	.set	.LANCHOR13,. + 0
-	.type	__func__.6901, %object
-	.size	__func__.6901, 26
-__func__.6901:
-	.ascii	"block_last_page_ecc_error\000"
-	.section	.rodata.__func__.6933,"a",%progbits
-	.set	.LANCHOR2,. + 0
-	.type	__func__.6933, %object
-	.size	__func__.6933, 18
-__func__.6933:
-	.ascii	"nand_dbg_phy_read\000"
-	.section	.rodata.__func__.6944,"a",%progbits
-	.set	.LANCHOR3,. + 0
-	.type	__func__.6944, %object
-	.size	__func__.6944, 23
-__func__.6944:
-	.ascii	"nand_dbg_zone_phy_read\000"
-	.section	.rodata.__func__.6955,"a",%progbits
-	.set	.LANCHOR4,. + 0
-	.type	__func__.6955, %object
-	.size	__func__.6955, 24
-__func__.6955:
-	.ascii	"nand_dbg_zone_phy_write\000"
-	.section	.rodata.__func__.6964,"a",%progbits
-	.set	.LANCHOR5,. + 0
-	.type	__func__.6964, %object
-	.size	__func__.6964, 19
-__func__.6964:
-	.ascii	"nand_dbg_phy_write\000"
-	.section	.rodata.__func__.7017,"a",%progbits
-	.set	.LANCHOR18,. + 0
-	.type	__func__.7017, %object
-	.size	__func__.7017, 19
-__func__.7017:
-	.ascii	"write_data_to_nand\000"
-	.section	.rodata.__func__.7067,"a",%progbits
-	.set	.LANCHOR25,. + 0
-	.type	__func__.7067, %object
-	.size	__func__.7067, 11
-__func__.7067:
-	.ascii	"nftl_start\000"
-	.section	.rodata.__func__.7081,"a",%progbits
-	.set	.LANCHOR6,. + 0
-	.type	__func__.7081, %object
-	.size	__func__.7081, 23
-__func__.7081:
-	.ascii	"nftl_sector_cache_init\000"
-	.section	.rodata.__func__.7214,"a",%progbits
-	.set	.LANCHOR8,. + 0
-	.type	__func__.7214, %object
-	.size	__func__.7214, 35
-__func__.7214:
-	.ascii	"_nftl_nand_read_logic_history_page\000"
-	.section	.rodata.__func__.7501,"a",%progbits
-	.set	.LANCHOR10,. + 0
-	.type	__func__.7501, %object
-	.size	__func__.7501, 19
-__func__.7501:
-	.ascii	"get_logic_page_map\000"
-	.section	.rodata.__func__.7750,"a",%progbits
-	.set	.LANCHOR17,. + 0
-	.type	__func__.7750, %object
-	.size	__func__.7750, 16
-__func__.7750:
-	.ascii	"nftl_cache_init\000"
-	.section	.rodata.__func__.8103,"a",%progbits
-	.set	.LANCHOR28,. + 0
-	.type	__func__.8103, %object
-	.size	__func__.8103, 19
-__func__.8103:
-	.ascii	"panic_recover_data\000"
-	.section	.rodata.__func__.9049,"a",%progbits
-	.set	.LANCHOR63,. + 0
-	.type	__func__.9049, %object
-	.size	__func__.9049, 25
-__func__.9049:
+	.type	__func__.6486, %object
+	.size	__func__.6486, 25
+__func__.6486:
 	.ascii	"sandisk_A19_special_exit\000"
+	.section	.rodata.__func__.7578,"a",%progbits
+	.set	.LANCHOR82,. + 0
+	.type	__func__.7578, %object
+	.size	__func__.7578, 33
+__func__.7578:
+	.ascii	"samsung_set_readretry_K9GCGD8U0F\000"
+	.section	.rodata.__func__.7690,"a",%progbits
+	.set	.LANCHOR95,. + 0
+	.type	__func__.7690, %object
+	.size	__func__.7690, 19
+__func__.7690:
+	.ascii	"panic_recover_data\000"
+	.section	.rodata.__func__.7975,"a",%progbits
+	.set	.LANCHOR100,. + 0
+	.type	__func__.7975, %object
+	.size	__func__.7975, 16
+__func__.7975:
+	.ascii	"zone_param_init\000"
+	.section	.rodata.__func__.8123,"a",%progbits
+	.set	.LANCHOR107,. + 0
+	.type	__func__.8123, %object
+	.size	__func__.8123, 23
+__func__.8123:
+	.ascii	"get_current_used_block\000"
+	.section	.rodata.__func__.8189,"a",%progbits
+	.set	.LANCHOR89,. + 0
+	.type	__func__.8189, %object
+	.size	__func__.8189, 9
+__func__.8189:
+	.ascii	"init_nrc\000"
+	.section	.rodata.__func__.8274,"a",%progbits
+	.set	.LANCHOR96,. + 0
+	.type	__func__.8274, %object
+	.size	__func__.8274, 23
+__func__.8274:
+	.ascii	"torture_block_and_mark\000"
+	.section	.rodata.__func__.8397,"a",%progbits
+	.set	.LANCHOR98,. + 0
+	.type	__func__.8397, %object
+	.size	__func__.8397, 26
+__func__.8397:
+	.ascii	"block_last_page_ecc_error\000"
+	.section	.rodata.__func__.8429,"a",%progbits
+	.set	.LANCHOR90,. + 0
+	.type	__func__.8429, %object
+	.size	__func__.8429, 18
+__func__.8429:
+	.ascii	"nand_dbg_phy_read\000"
+	.section	.rodata.__func__.8440,"a",%progbits
+	.set	.LANCHOR91,. + 0
+	.type	__func__.8440, %object
+	.size	__func__.8440, 23
+__func__.8440:
+	.ascii	"nand_dbg_zone_phy_read\000"
+	.section	.rodata.__func__.8451,"a",%progbits
+	.set	.LANCHOR92,. + 0
+	.type	__func__.8451, %object
+	.size	__func__.8451, 24
+__func__.8451:
+	.ascii	"nand_dbg_zone_phy_write\000"
+	.section	.rodata.__func__.8460,"a",%progbits
+	.set	.LANCHOR93,. + 0
+	.type	__func__.8460, %object
+	.size	__func__.8460, 19
+__func__.8460:
+	.ascii	"nand_dbg_phy_write\000"
+	.section	.rodata.__func__.8538,"a",%progbits
+	.set	.LANCHOR104,. + 0
+	.type	__func__.8538, %object
+	.size	__func__.8538, 19
+__func__.8538:
+	.ascii	"write_data_to_nand\000"
+	.section	.rodata.__func__.8570,"a",%progbits
+	.set	.LANCHOR94,. + 0
+	.type	__func__.8570, %object
+	.size	__func__.8570, 11
+__func__.8570:
+	.ascii	"clean_zone\000"
+	.section	.rodata.__func__.8602,"a",%progbits
+	.set	.LANCHOR109,. + 0
+	.type	__func__.8602, %object
+	.size	__func__.8602, 11
+__func__.8602:
+	.ascii	"nftl_start\000"
+	.section	.rodata.__func__.8736,"a",%progbits
+	.set	.LANCHOR99,. + 0
+	.type	__func__.8736, %object
+	.size	__func__.8736, 19
+__func__.8736:
+	.ascii	"get_logic_page_map\000"
+	.section	.rodata.__func__.8774,"a",%progbits
+	.set	.LANCHOR101,. + 0
+	.type	__func__.8774, %object
+	.size	__func__.8774, 23
+__func__.8774:
+	.ascii	"nftl_sector_cache_init\000"
+	.section	.rodata.__func__.9047,"a",%progbits
+	.set	.LANCHOR113,. + 0
+	.type	__func__.9047, %object
+	.size	__func__.9047, 15
+__func__.9047:
+	.ascii	"shutdown_on_gc\000"
+	.section	.rodata.__func__.9076,"a",%progbits
+	.set	.LANCHOR103,. + 0
+	.type	__func__.9076, %object
+	.size	__func__.9076, 16
+__func__.9076:
+	.ascii	"nftl_cache_init\000"
+	.section	.rodata.__func__.9407,"a",%progbits
+	.set	.LANCHOR97,. + 0
+	.type	__func__.9407, %object
+	.size	__func__.9407, 35
+__func__.9407:
+	.ascii	"_nftl_nand_read_logic_history_page\000"
 	.section	.rodata.__nand_discard.str1.1,"aMS",%progbits,1
-.LC326:
+.LC254:
 	.ascii	"[ND]dicard sector:0x%x,len:0x%x\012\000"
 	.section	.rodata.__nand_flush_sector_write_cache.str1.1,"aMS",%progbits,1
-.LC313:
+.LC241:
 	.ascii	"[NE]nand_flush_write_cache write error\012\000"
 	.section	.rodata.__nand_flush_write_cache.str1.1,"aMS",%progbits,1
-.LC324:
+.LC252:
 	.ascii	"[ND]flush cache %d %d!\012\000"
 	.section	.rodata.__nand_read.str1.1,"aMS",%progbits,1
-.LC307:
+.LC235:
 	.ascii	"[ND]read sector:0x%x,len:0x%x\012\000"
 	.section	.rodata.__nand_write.str1.1,"aMS",%progbits,1
-.LC309:
+.LC237:
 	.ascii	"[ND]write sector:0x%x,len:0x%x\012\000"
 	.section	.rodata._nand_read_history.str1.1,"aMS",%progbits,1
-.LC119:
+.LC177:
 	.ascii	"[NE]paramter error. beyond reality capacity\012\000"
 	.section	.rodata._nftl_nand_read_logic_history_page.str1.1,"aMS",%progbits,1
-.LC111:
+.LC169:
 	.ascii	"[NE]%s malloc buffer fail\012\000"
-.LC112:
+.LC170:
 	.ascii	"scan super block@%d\012\000"
-.LC113:
+.LC171:
 	.ascii	"block@%d is bad\012\000"
-.LC114:
+.LC172:
 	.ascii	"[NE]read sb@%u sp@%u err, maybe read a bad block\012"
 	.ascii	"\000"
-.LC115:
+.LC173:
 	.ascii	"[NE]read lb@%u lp@%u err\012\000"
-.LC116:
+.LC174:
 	.ascii	"page@%u history%d data:\012\000"
-.LC117:
+.LC175:
 	.ascii	"oob:\012\000"
-.LC118:
+.LC176:
 	.ascii	"scan end total super blocks:%d\012\000"
 	.section	.rodata._nftl_nand_read_logic_page.str1.1,"aMS",%progbits,1
-.LC285:
+.LC452:
 	.ascii	"[NE]read a page: %d READ_RECLAIM!\012\000"
 	.section	.rodata._nftl_nand_write_logic_page.str1.1,"aMS",%progbits,1
-.LC302:
+.LC496:
 	.ascii	"[NE]error nand_write_logic_page_no_gc page_no:%u\012"
 	.ascii	"\000"
 	.section	.rodata.adjust_free_list.str1.1,"aMS",%progbits,1
-.LC215:
+.LC152:
 	.ascii	"[NE]adjust free list fail!!\012\000"
-.LC216:
+.LC153:
 	.ascii	"[NI]adjust free list : %d %d!!\012\000"
 	.section	.rodata.block_last_page_ecc_error.str1.1,"aMS",%progbits,1
-.LC199:
+.LC189:
 	.ascii	"[NE]do block_last_page_ecc_error!!\012\000"
-.LC200:
+.LC190:
 	.ascii	"[NE]%s:malloc fail 1!\012\000"
-.LC201:
+.LC191:
 	.ascii	"[NE]%s:malloc fail 2!\012\000"
-.LC202:
+.LC192:
 	.ascii	"[NE]current_block_ecc_error unkown page data!!\012\000"
-.LC203:
+.LC193:
 	.ascii	"[NE]current_block_ecc_error invalid page data!!\012"
 	.ascii	"\000"
-.LC204:
+.LC194:
+	.ascii	"[NE]current_block_ecc_error no free block!!!\012\000"
+.LC195:
 	.ascii	"[NE]do block_last_page_ecc_error end!!\012\000"
 	.section	.rodata.build_zone_list.str1.1,"aMS",%progbits,1
-.LC354:
+.LC459:
 	.ascii	"[ND]first\012\000"
-.LC355:
+.LC460:
 	.ascii	"[NE]init_zone_after_first_scan error\012\000"
-.LC356:
+.LC461:
 	.ascii	"[NE]second_scan_all_blocks error\012\000"
-.LC357:
+.LC462:
 	.ascii	"[NI]nftl ok!\012\000"
 	.section	.rodata.build_zone_list_first.str1.1,"aMS",%progbits,1
-.LC109:
+.LC167:
 	.ascii	"[ND]build_zone_list_first.\012\000"
-.LC110:
+.LC168:
 	.ascii	"[NE]no block %d\012\000"
 	.section	.rodata.check_invalid_page_right.str1.1,"aMS",%progbits,1
-.LC146:
+.LC426:
 	.ascii	"[ND]logic_page_map_temp NULL!!\012\000"
-.LC147:
+.LC427:
 	.ascii	"[NE]invaild_page num error:[%d] [%d]  used_page:[%d"
 	.ascii	"]!!\012\000"
 	.section	.rodata.check_static_wear_leveling.str1.1,"aMS",%progbits,1
-.LC212:
+.LC226:
 	.ascii	"[ND]swl: static WL need to do(%d : %d)\012\000"
-.LC213:
+.LC227:
 	.ascii	"[ND]swl: min_ec_blk_no = %d,\012\000"
-.LC214:
+.LC228:
 	.ascii	"[ND]swl: zone->blocks = %d)\012\000"
+	.section	.rodata.clean_zone.str1.1,"aMS",%progbits,1
+.LC143:
+	.ascii	"[NE]%s erase fb@%d fail\012\000"
+.LC144:
+	.ascii	"[NE]%s erase ub@%u fail\012\000"
+.LC145:
+	.ascii	"[NE]not current block\012\000"
 	.section	.rodata.com,"a",%progbits
-	.set	.LANCHOR26,. + 0
+	.set	.LANCHOR110,. + 0
 	.type	com, %object
 	.size	com, 11
 com:
@@ -23019,103 +23528,96 @@ com:
 	.byte	101
 	.byte	0
 	.section	.rodata.crc_wrong.str1.1,"aMS",%progbits,1
-.LC121:
+.LC334:
 	.ascii	"[NE]exception case wb %04x %04x, len: %d\012\000"
 	.section	.rodata.cross_talk_rebuild_current_block.str1.1,"aMS",%progbits,1
-.LC175:
+.LC385:
 	.ascii	"[NE]cross_talk_rebuild_current_block fail 1\012\000"
-.LC176:
+.LC386:
 	.ascii	"[NE]cross_talk_rebuild_current_block!! %d,%d,%d!\012"
 	.ascii	"\000"
-.LC177:
+.LC387:
 	.ascii	"[NE]cross_talk_rebuild_current_block fail 2\012\000"
-.LC178:
+.LC388:
 	.ascii	"[NE]cross_talk_rebuild_current_block!! %d,%d,%d,%d,"
 	.ascii	"%d,%d!\012\000"
-.LC179:
+.LC389:
 	.ascii	"[NE]cross_talk_rebuild_current_block fail 3\012\000"
-.LC180:
+.LC390:
 	.ascii	"[NE]corss talk rebuild 1 %d %d %d!\012\000"
-.LC181:
+.LC391:
 	.ascii	"[NE]corss talk rebuild 2 %d %d %d!\012\000"
-.LC182:
+.LC392:
 	.ascii	"[NE]get free block fail!\012\000"
-.LC183:
+.LC393:
 	.ascii	"[NE]something is error here 14!\012\000"
-.LC184:
+.LC394:
 	.ascii	"[NE]page lost %d %d\012\000"
 	.section	.rodata.current_block_ecc_error.str1.1,"aMS",%progbits,1
-.LC190:
-	.ascii	"[NE]current_block_ecc_error no free block!!!\012\000"
-.LC191:
-	.ascii	"[NE]something is error here 16!\012\000"
-.LC192:
+.LC417:
 	.ascii	"[NE]do current_block_ecc_error %d!!\012\000"
-.LC193:
+.LC418:
 	.ascii	"[NE]power off ecc error 2.\012\000"
-.LC194:
+.LC419:
 	.ascii	"[NE]current_block_ecc ok page %d %d!!\012\000"
-.LC195:
+.LC420:
 	.ascii	"[NE]current_block_ecc_error page %d!!\012\000"
-.LC196:
+.LC421:
 	.ascii	"[NE]current_block_ecc_error invalid page data %d!!\012"
 	.ascii	"\000"
-.LC197:
+.LC422:
 	.ascii	"[NE]current_block_ecc_error unkown page data %d!!\012"
 	.ascii	"\000"
-.LC198:
+.LC423:
 	.ascii	"[ND]do current_block_ecc_error end %d %d!!\012\000"
 	.section	.rodata.do_after_write.str1.1,"aMS",%progbits,1
-.LC256:
+.LC429:
 	.ascii	"[NE]write_phy_page_map_to_current_block error!\012\000"
-.LC257:
+.LC430:
 	.ascii	"[NE]get_new_current_block error1!\012\000"
-.LC258:
+.LC431:
 	.ascii	"[NE]get_new_current_block error2!\012\000"
 	.section	.rodata.do_before_write.str1.1,"aMS",%progbits,1
-.LC219:
+.LC424:
 	.ascii	"[NE]get_new_current_block error3!\012\000"
-.LC220:
+.LC425:
 	.ascii	"[NE]get_new_current_block error4!\012\000"
 	.section	.rodata.do_prio_gc.str1.1,"aMS",%progbits,1
-.LC280:
+.LC447:
 	.ascii	"[ND]no block to prio gc\012\000"
-.LC281:
+.LC448:
 	.ascii	"[ND]no need gc:%d, type:%d\012\000"
-.LC282:
+.LC449:
 	.ascii	"[NE]do_prio_gc garbage_collect_first fail:%d, type:"
 	.ascii	"%d\012\000"
-.LC283:
+.LC450:
 	.ascii	"[ND]prio gc fail1:%d, type:%d\012\000"
-.LC284:
+.LC451:
 	.ascii	"[ND]prio gc fail2:%d, type:%d\012\000"
 	.section	.rodata.do_write_error.str1.1,"aMS",%progbits,1
-.LC205:
+.LC358:
 	.ascii	"[NE]no free block\012\000"
-.LC206:
+.LC359:
 	.ascii	"[NE]do_write_error erase error sb:%d!\012\000"
-.LC207:
+.LC360:
 	.ascii	"[NE]do_write_error sb@%d nftl_nand_copy_page error!"
 	.ascii	"\012\000"
 	.section	.rodata.do_write_error_in_build_list.str1.1,"aMS",%progbits,1
-.LC42:
+.LC131:
 	.ascii	"[NE]NAND EVENT:do_write_error erase error1!\012\000"
-.LC43:
+.LC132:
 	.ascii	"[NE]NAND EVENT:do_write_error erase error2!\012\000"
 	.section	.rodata.done_static_wear_leveling.str1.1,"aMS",%progbits,1
-.LC286:
+.LC497:
 	.ascii	"[ND]swl: the block(%d) for static WL is not in inva"
 	.ascii	"lid_list\012\000"
-.LC287:
+.LC498:
 	.ascii	"[ND]swl: done_static_wear_leveling(min_ec) block:%d"
 	.ascii	", erase_count:%d\012\000"
-.LC288:
+.LC499:
 	.ascii	"[NE]swl: garbage_collect_first fail:%d\012\000"
-.LC289:
+.LC500:
 	.ascii	"[NE]swl: last->check fail:%d\012\000"
-	.section	.rodata.dump_buf.str1.1,"aMS",%progbits,1
-.LC38:
-	.ascii	"%02x \000"
 	.section	.rodata.dumphex.str1.1,"aMS",%progbits,1
 .LC5:
 	.ascii	"%08x: \000"
@@ -23125,392 +23627,391 @@ com:
 .LC7:
 	.ascii	"\012\000"
 	.section	.rodata.erase_block.str1.1,"aMS",%progbits,1
-.LC167:
+.LC150:
 	.ascii	"[NI]erase_block block %d!\012\000"
-.LC168:
+.LC151:
 	.ascii	"[NE]erase_block block fail %d!\012\000"
 	.section	.rodata.first_scan_all_blocks.str1.1,"aMS",%progbits,1
-.LC339:
+.LC212:
 	.ascii	"[ND]fsab\012\000"
-.LC340:
+.LC213:
 	.ascii	"[NI]ftl end block! %d!\012\000"
-.LC341:
+.LC214:
 	.ascii	"[ND]READ_RECLAIM!\012\000"
-.LC342:
+.LC215:
 	.ascii	"[NI]start page , do nothing\012\000"
-.LC343:
+.LC216:
 	.ascii	"[ND]fill block %d\012\000"
-.LC344:
+.LC217:
 	.ascii	"[NI]b@%d p@0 unknow spare data:%x,%x,%x,%x,%x,%x,%x"
 	.ascii	",%x,%x,%x,%x,%x,%x,%x,%x,%x.\012\000"
-.LC345:
+.LC218:
 	.ascii	"[NE]nftl bad block: %d\012\000"
-.LC346:
+.LC219:
 	.ascii	"[NE]nftl b@%d p@0 ecc error\012\000"
-.LC347:
+.LC220:
 	.ascii	"[NE]b@%d last page ok !\012\000"
-.LC348:
+.LC221:
 	.ascii	"[NI]READ_RECLAIM!\012\000"
-.LC349:
+.LC222:
 	.ascii	"[NE]last page blank ! %d!\012\000"
-.LC350:
+.LC223:
 	.ascii	"[NE]last page unkown ! %d!\012\000"
-.LC351:
+.LC224:
 	.ascii	"[NE]b@%d first page last page ecc error\012\000"
-.LC352:
+.LC225:
 	.ascii	"[NE]b@%d last page spare data %x,%x,%x,%x,%x,%x,%x,"
 	.ascii	"%x,%x,%x,%x,%x,%x,%x,%x,%x\012\000"
-.LC353:
-	.ascii	"[NI]nftl bad block: %d\012\000"
 	.section	.rodata.flush_write_cache_to_nand.str1.1,"aMS",%progbits,1
-.LC314:
+.LC242:
 	.ascii	"[NE]flush write cache to nand no cache!\012\000"
-.LC315:
+.LC243:
 	.ascii	"[NE]ECC_LIMIT happened 10! page:%d cache: %d!\012\000"
-.LC316:
+.LC244:
 	.ascii	"[NE]flush write cache to nand error!\012\000"
-.LC317:
+.LC245:
 	.ascii	"[NE]fwctn %d\012\000"
-.LC318:
+.LC246:
 	.ascii	"[NE]fwctn w+\012\000"
 	.section	.rodata.garbage_collect.str1.1,"aMS",%progbits,1
-.LC299:
+.LC493:
 	.ascii	"[NE]garbage_collect phy_block null\012\000"
-.LC300:
+.LC494:
 	.ascii	"[ND]garbage too frequency! %d:%d\012\000"
-.LC301:
+.LC495:
 	.ascii	"[NE]garbage_collect_first wrong fbn:%d\012\000"
 	.section	.rodata.garbage_collect_first.str1.1,"aMS",%progbits,1
-.LC269:
+.LC436:
 	.ascii	"[NI]garbage_collect_first none!!\012\000"
-.LC270:
+.LC437:
 	.ascii	"[ND]garbage_collect_first wrong!!\012\000"
-.LC271:
+.LC438:
 	.ascii	"[ND]garbage_collect_first cannot find PHY_MAPPING_P"
 	.ascii	"AGE%d %d %d %d!!\012\000"
-.LC272:
+.LC439:
 	.ascii	"[ND]garbage_collect_first cannot find PHY_MAPPING_P"
 	.ascii	"AGE%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x."
 	.ascii	"\012\000"
-.LC273:
+.LC440:
 	.ascii	"[ND][NE]garbage_collect_first rebuild %d,%d!!\012\000"
-.LC274:
+.LC441:
 	.ascii	"[ND]garbage_collect_first PHY_MAPPING_PAGEecc err b"
 	.ascii	"lock:%d !!\012\000"
-.LC275:
+.LC442:
 	.ascii	"[NE]garbage_collect_first invaild_page num error!!\012"
 	.ascii	"\000"
-.LC276:
+.LC443:
 	.ascii	"[ND]garbage_collect_first read a logic page error%d"
 	.ascii	" %d %d %d spare data:\012\000"
-.LC277:
+.LC444:
 	.ascii	"%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\012"
 	.ascii	"\000"
-.LC278:
+.LC445:
 	.ascii	"[NE]nand_write_logic_page_no_gc gc fail!!\012\000"
-.LC279:
+.LC446:
 	.ascii	"[NE]erase ecc error block\012\000"
 	.section	.rodata.gc_one.str1.1,"aMS",%progbits,1
-.LC290:
+.LC453:
 	.ascii	"[ND]gc_one ok!\012\000"
-.LC291:
+.LC454:
 	.ascii	"[NE]gc_one error!\012\000"
 	.section	.rodata.gc_win_block.str1.1,"aMS",%progbits,1
-.LC292:
+.LC455:
 	.ascii	"[ND][NE] gc_win_block gc_one error \012\000"
 	.section	.rodata.generic_special_exit.str1.1,"aMS",%progbits,1
-.LC454:
+.LC108:
 	.ascii	" generic special exit \012\000"
 	.section	.rodata.generic_special_init.str1.1,"aMS",%progbits,1
-.LC453:
+.LC107:
 	.ascii	" generic special init \012\000"
 	.section	.rodata.get_current_used_block.str1.1,"aMS",%progbits,1
-.LC228:
+.LC374:
 	.ascii	"%s %d:\012\000"
-.LC229:
+.LC375:
 	.ascii	"[ND]recover %d %d\012\000"
-.LC230:
+.LC376:
 	.ascii	"[NE]page used:%d invalid page count:%d error\012\000"
-.LC231:
+.LC377:
 	.ascii	"[NE]new_block_init_for_write error here!\012\000"
-.LC232:
+.LC378:
 	.ascii	"[NE]something is error here 10!\012\000"
-.LC233:
+.LC379:
 	.ascii	"[NE]something is error here 11!\012\000"
-.LC234:
+.LC380:
 	.ascii	"[NE]assist block page used:%d current block page us"
 	.ascii	"ed:%d something is error here 12.\012\000"
-.LC235:
+.LC381:
 	.ascii	"[NE]assist block page used:%d current block page us"
 	.ascii	"ed:%d something is error here 17.\012\000"
-.LC236:
+.LC382:
+	.ascii	"[NE]something is error here 16!\012\000"
+.LC383:
 	.ascii	"[ND]get a new free block\012\000"
-.LC237:
+.LC384:
 	.ascii	"[NE]no free block to use!\012\000"
 	.section	.rodata.get_logic_page_map.str1.1,"aMS",%progbits,1
-.LC145:
+.LC196:
 	.ascii	"[NE]%s:logic_page:0x%x >= total_pages:0x%x\012\000"
 	.section	.rodata.get_new_current_block.str1.1,"aMS",%progbits,1
-.LC217:
+.LC371:
 	.ascii	"[ND]swl: new_cur_blk->alloc ok(max_ec): block_no = "
 	.ascii	"%d; ec = %d; \012\000"
-.LC218:
+.LC372:
 	.ascii	"[NE]no free block!!!!\012\000"
 	.section	.rodata.get_used_page_num.str1.1,"aMS",%progbits,1
-.LC133:
+.LC352:
 	.ascii	"[NE]get_used_page_num ecc error block:%d page:%d!\012"
 	.ascii	"\000"
-.LC134:
+.LC353:
 	.ascii	"[NE]power off ecc error 4!!\012\000"
-.LC135:
+.LC354:
 	.ascii	"[NE]sb@%d sp@%d get_used_page_num used spare data %"
 	.ascii	"x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x\012\000"
 	.section	.rodata.get_used_page_num_no_crosstalk.str1.1,"aMS",%progbits,1
-.LC136:
+.LC355:
 	.ascii	"[NE]gupnnc ecc err b:%d p:%d.\012\000"
-.LC137:
+.LC356:
 	.ascii	"[NE]gupnnc power off ecc err.\012\000"
-.LC138:
+.LC357:
 	.ascii	"[NE]cross talk block:%d total_good_num %d good_page"
 	.ascii	"_num: %d!\012\000"
 	.section	.rodata.hynix16nm_get_read_retry_cfg.str1.1,"aMS",%progbits,1
-.LC436:
+.LC75:
 	.ascii	"_get_read_retry_parameters, get rr count failed!\012"
 	.ascii	"\000"
-.LC437:
+.LC76:
 	.ascii	"rr cnt: %d\012\000"
-.LC438:
+.LC77:
 	.ascii	"_get_read_retry_parameters, get rr reg count failed"
 	.ascii	"!\012\000"
-.LC439:
+.LC78:
 	.ascii	"rr reg cnt: %d\012\000"
-.LC440:
+.LC79:
 	.ascii	"read retry value from otp error: rr_cnt %d rr_reg_c"
 	.ascii	"nt %d!\012\000"
-.LC441:
+.LC80:
 	.ascii	"_get_read_retry_parameters, get the %d-th byte of r"
 	.ascii	"r table failed!\012\000"
+.LC81:
+	.ascii	"%02x \000"
 	.section	.rodata.hynix16nm_get_rr_value_otp_hynix.str1.1,"aMS",%progbits,1
-.LC444:
+.LC84:
 	.ascii	"otp_info_hynix_16nm : allocate memory fail\012\000"
-.LC445:
+.LC85:
 	.ascii	"m1 CH %d chip %d get otp info failed!\012\000"
-.LC446:
+.LC86:
 	.ascii	"m1 CH %d chip %d get read retry cfg from otp info f"
 	.ascii	"ailed!\012\000"
 	.section	.rodata.hynix16nm_get_special_info.str1.1,"aMS",%progbits,1
-.LC420:
+.LC60:
 	.ascii	"get_hynix_special_info start!!\012\000"
-.LC421:
+.LC61:
 	.ascii	"hynix_special_info:can't find uboot head\012\000"
-.LC422:
+.LC62:
 	.ascii	"physic info start_block %d\012\000"
 	.section	.rodata.hynix16nm_init_readretry_param.str1.1,"aMS",%progbits,1
-.LC447:
+.LC87:
 	.ascii	"ch %d, chip %d Read Retry value Table from uboot\012"
 	.ascii	"\000"
-.LC448:
+.LC88:
 	.ascii	"[PHY_DBG] repair ch %d chip %d otp value end\012\000"
 	.section	.rodata.hynix16nm_major_check_byte.str1.1,"aMS",%progbits,1
-.LC433:
+.LC72:
 	.ascii	"_major_check_byte, wrong input para, level %d, len "
 	.ascii	"%d\012\000"
-.LC434:
+.LC73:
 	.ascii	"%d:  '1'-'0' : %d - %d\012\000"
-.LC435:
+.LC74:
 	.ascii	"get bit %d failed!\012\000"
 	.section	.rodata.hynix16nm_read_otp_info_hynix.str1.1,"aMS",%progbits,1
-.LC442:
+.LC82:
 	.ascii	"start get read retry param from: ce %d, rb %d...\012"
 	.ascii	"\000"
-.LC443:
+.LC83:
 	.ascii	"invalid buffer for otp info!\012\000"
 	.section	.rodata.hynix16nm_read_page_end.str1.1,"aMS",%progbits,1
-.LC418:
+.LC58:
 	.ascii	"m1 retry!\012\000"
-.LC419:
+.LC59:
 	.ascii	"m1 ReadRetry ok! ch =%d, chip = %d  block = %d, pag"
 	.ascii	"e = %d, RetryCount = %d  \012\000"
 	.section	.rodata.hynix16nm_readretry_exit.str1.1,"aMS",%progbits,1
-.LC449:
+.LC89:
 	.ascii	"hynix16nm_readretry_exit. \012\000"
 	.section	.rodata.hynix16nm_special_exit.str1.1,"aMS",%progbits,1
-.LC452:
+.LC92:
 	.ascii	" hynix16nm_special_exit \012\000"
 	.section	.rodata.hynix16nm_special_init.str1.1,"aMS",%progbits,1
-.LC450:
+.LC90:
 	.ascii	" hynix16nm_special_init hynix16nm_read_retry_mode: "
 	.ascii	"%d hynix16nm_read_retry_cycle:%d hynix16nm_read_ret"
 	.ascii	"ry_reg_num:%d\012\000"
-.LC451:
+.LC91:
 	.ascii	" hynix16nm_special_init error hynix16nm_read_retry_"
 	.ascii	"mode: %d hynix16nm_read_retry_cycle:%d hynix16nm_re"
 	.ascii	"ad_retry_reg_num:%d\012\000"
 	.section	.rodata.hynix16nm_write_page_FF.str1.1,"aMS",%progbits,1
-.LC431:
-	.ascii	"fatal err -0, wrong input parameter, ch: %d  chip: "
-	.ascii	"%d/%d  block: %d/%d \012\000"
-.LC432:
+.LC71:
 	.ascii	"m1 write page FF wrong\012\000"
 	.section	.rodata.hynix20nm_getotpparam.str1.1,"aMS",%progbits,1
-.LC401:
+.LC25:
 	.ascii	"_vender_get_param_otp_hynix time %d!\012\000"
-.LC402:
+.LC26:
 	.ascii	"_vender_get_param_otp_hynix error!\012\000"
 	.section	.rodata.hynix20nm_init_readretry_param.str1.1,"aMS",%progbits,1
-.LC423:
+.LC63:
 	.ascii	"hynix20nm get default param error !\012\000"
-.LC424:
+.LC64:
 	.ascii	"[PHY_GetDefaultParam]:readbuf malloc fail\012\000"
-.LC425:
+.LC65:
 	.ascii	"ch %d, chip %d Read Retry value Table from uboot:\012"
 	.ascii	"\000"
-.LC426:
+.LC66:
 	.ascii	"0x%x \000"
-.LC427:
+.LC67:
 	.ascii	"[PHY_DBG] ch %d, can't get right otp value from nan"
 	.ascii	"d otp blocks, then use otp command\012\000"
-.LC428:
+.LC68:
 	.ascii	"[PHY_DBG] repair ch %d otp value end\012\000"
 	.section	.rodata.hynix20nm_lsb_exit.str1.1,"aMS",%progbits,1
-.LC397:
+.LC21:
 	.ascii	"hynix20nm_lsb_exit\012\000"
 	.section	.rodata.hynix20nm_read_page_end.str1.1,"aMS",%progbits,1
-.LC393:
+.LC184:
 	.ascii	"hynix20nm retry!\012\000"
-.LC394:
-	.ascii	"retry spare all 0xff! ch =%d, chip = %d  block = %d"
-	.ascii	", page = %d, RetryCount = %d  \012\000"
-.LC395:
+.LC185:
 	.ascii	"sdata:0x%x %x %x %x \000"
-.LC396:
+.LC186:
 	.ascii	"hynix20nm ReadRetry ok! ch =%d, chip = %d  block = "
 	.ascii	"%d, page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.hynix20nm_readretry_exit.str1.1,"aMS",%progbits,1
-.LC405:
+.LC29:
 	.ascii	"hynix20nm_readretry_exit. \012\000"
 	.section	.rodata.hynix20nm_set_default_param.str1.1,"aMS",%progbits,1
-.LC403:
+.LC27:
 	.ascii	"set retry default value: \000"
-.LC404:
+.LC28:
 	.ascii	" %x\000"
 	.section	.rodata.hynix20nm_set_readretry.str1.1,"aMS",%progbits,1
-.LC391:
+.LC19:
 	.ascii	"retry para:\000"
-.LC392:
+.LC20:
 	.ascii	" %x \000"
 	.section	.rodata.hynix20nm_special_exit.str1.1,"aMS",%progbits,1
-.LC406:
+.LC30:
 	.ascii	" hynix20nm_special_exit \012\000"
 	.section	.rodata.hynix20nm_special_init.str1.1,"aMS",%progbits,1
-.LC429:
+.LC69:
 	.ascii	" hynix20nm_special_init hynix20nm_read_retry_mode: "
 	.ascii	"%d hynix20nm_read_retry_cycle:%d hynix20nm_read_ret"
 	.ascii	"ry_reg_num:%d\012\000"
-.LC430:
+.LC70:
 	.ascii	" hynix20nm_special_init error hynix20nm_read_retry_"
 	.ascii	"mode: %d hynix20nm_read_retry_cycle:%d hynix20nm_re"
 	.ascii	"ad_retry_reg_num:%d\012\000"
 	.section	.rodata.hynix20nm_vender_get_param_otp_hynix.str1.1,"aMS",%progbits,1
-.LC398:
+.LC22:
 	.ascii	"hynix OTP RegCount value error: 0x%x, 0x%x \012\000"
-.LC399:
+.LC23:
 	.ascii	"otp copy failed!\012\000"
-.LC400:
+.LC24:
 	.ascii	"otp copy %d is ok!\012\000"
 	.section	.rodata.hynix26nm_get_default_param.str1.1,"aMS",%progbits,1
-.LC412:
+.LC36:
 	.ascii	"hynix26nm_get_default_param: ch: %d, chip: %d, valu"
 	.ascii	"e: 0x%x 0x%x 0x%x 0x%x \012\000"
 	.section	.rodata.hynix26nm_lsb_exit.str1.1,"aMS",%progbits,1
-.LC411:
+.LC35:
 	.ascii	"hynix26nm_lsb_exit\012\000"
 	.section	.rodata.hynix26nm_read_page_end.str1.1,"aMS",%progbits,1
-.LC409:
+.LC33:
 	.ascii	"m0 retry!\012\000"
-.LC410:
+.LC34:
 	.ascii	"hynix26nm ReadRetry ok! ch =%d, chip = %d  block = "
 	.ascii	"%d, page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.hynix26nm_readretry_exit.str1.1,"aMS",%progbits,1
-.LC414:
+.LC38:
 	.ascii	"hynix26nm_readretry_exit. \012\000"
 	.section	.rodata.hynix26nm_readretry_init.str1.1,"aMS",%progbits,1
-.LC413:
+.LC37:
 	.ascii	"NFC_ReadRetryInit, unknown read retry mode 0x%x\012"
 	.ascii	"\000"
 	.section	.rodata.hynix26nm_set_readretry.str1.1,"aMS",%progbits,1
-.LC408:
+.LC32:
 	.ascii	"hynix26nm retry param:\000"
 	.section	.rodata.hynix26nm_special_exit.str1.1,"aMS",%progbits,1
-.LC417:
+.LC41:
 	.ascii	" hynix26nm_special_exit \012\000"
 	.section	.rodata.hynix26nm_special_init.str1.1,"aMS",%progbits,1
-.LC415:
+.LC39:
 	.ascii	" hynix26nm_special_init hynix26nm_read_retry_mode: "
 	.ascii	"%d hynix26nm_read_retry_cycle:%d hynix26nm_read_ret"
 	.ascii	"ry_reg_num:%d\012\000"
-.LC416:
+.LC40:
 	.ascii	" hynix26nm_special_init error hynix26nm_read_retry_"
 	.ascii	"mode: %d hynix26nm_read_retry_cycle:%d hynix26nm_re"
 	.ascii	"ad_retry_reg_num:%d\012\000"
 	.section	.rodata.hynix26nm_vender_set_param.str1.1,"aMS",%progbits,1
-.LC407:
+.LC31:
 	.ascii	"rr value %x %x %x %x!\012\000"
 	.section	.rodata.init_nrc.str1.1,"aMS",%progbits,1
-.LC44:
+.LC133:
 	.ascii	"%s %d:fail 1\012\000"
-.LC45:
+.LC134:
 	.ascii	"%s %d:fail 2\012\000"
-.LC46:
+.LC135:
 	.ascii	"%s %d:fail 3\012\000"
-.LC47:
+.LC136:
 	.ascii	"%s %d:fail 4\012\000"
 	.section	.rodata.init_zone_after_first_scan.str1.1,"aMS",%progbits,1
-.LC39:
+.LC128:
 	.ascii	"[ND]before second %d %d.\012\000"
-.LC40:
+.LC129:
 	.ascii	"[NE]only have blocks:%u,logic cap need blocks:%u th"
 	.ascii	"is zone not enough data block!!\012\000"
-.LC41:
+.LC130:
 	.ascii	"[NE]this zone not enough free block %d , %d!!\012\000"
 	.section	.rodata.is_no_use_device.str1.1,"aMS",%progbits,1
-.LC120:
+.LC178:
 	.ascii	"[NE]mtd size changed !\012\000"
 	.section	.rodata.malloc_logic_page_map.str1.1,"aMS",%progbits,1
-.LC148:
+.LC201:
+	.ascii	"[NE]malloc logic page map: total_pages@%u len@%u\012"
+	.ascii	"\000"
+.LC202:
 	.ascii	"[NE]%s:malloc fail for logic_page_map %d\012\000"
-.LC149:
+.LC203:
 	.ascii	"[NE]%s: malloc fail for logic_page_map %d\012\000"
-.LC150:
+.LC204:
 	.ascii	"[NE]zone_param_init malloc_logic_page_map error %d\012"
 	.ascii	"\000"
 	.section	.rodata.micron_intel_set_feature.str1.1,"aMS",%progbits,1
-.LC487:
+.LC50:
 	.ascii	"set feature(addr %d) p0: %d readretry Configuration"
 	.ascii	" failed!\012\000"
 	.section	.rodata.micron_read_page_end.str1.1,"aMS",%progbits,1
-.LC488:
+.LC51:
 	.ascii	"micron retry!\012\000"
-.LC489:
+.LC52:
 	.ascii	"micron ReadRetry ok! ch =%d, chip = %d  block = %d,"
 	.ascii	" page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.micron_readretry_init.str1.1,"aMS",%progbits,1
-.LC490:
+.LC53:
 	.ascii	"micron read retry cannot support!\012\000"
-.LC491:
+.LC54:
 	.ascii	"micron read retry conut: %d !\012\000"
 	.section	.rodata.micron_special_exit.str1.1,"aMS",%progbits,1
-.LC494:
+.LC57:
 	.ascii	" micron_special_exit \012\000"
 	.section	.rodata.micron_special_init.str1.1,"aMS",%progbits,1
-.LC492:
+.LC55:
 	.ascii	" micron_special_init micron_read_retry_mode:%d micr"
 	.ascii	"on_read_retry_cycle:%d \012\000"
-.LC493:
+.LC56:
 	.ascii	" micron_special_init error micron_read_retry_mode:%"
 	.ascii	"d micron_read_retry_cycle:%d \012\000"
 	.section	.rodata.mod,"a",%progbits
-	.set	.LANCHOR24,. + 0
+	.set	.LANCHOR102,. + 0
 	.type	mod, %object
 	.size	mod, 6
 mod:
@@ -23521,32 +24022,32 @@ mod:
 	.byte	108
 	.byte	0
 	.section	.rodata.nand_cache_read.str1.1,"aMS",%progbits,1
-.LC305:
+.LC233:
 	.ascii	"[NI]nand_cache_read error buf is  NULL!\012\000"
-.LC306:
+.LC234:
 	.ascii	"[NE]error1 node %d,%d,%d!\012\000"
 	.section	.rodata.nand_cache_write.str1.1,"aMS",%progbits,1
-.LC319:
+.LC247:
 	.ascii	"[NE]error1 bitmap %x!\012\000"
-.LC320:
+.LC248:
 	.ascii	"[NE]ECC_LIMIT happened 12! page:%d!\012\000"
-.LC321:
+.LC249:
 	.ascii	"[NE]error1 flush write cache to nand\012\000"
-.LC322:
+.LC250:
 	.ascii	"[NE]error2 flush write cache to nand\012\000"
-.LC323:
+.LC251:
 	.ascii	"[NI]ECC_LIMIT happened 11! page:%d!\012\000"
 	.section	.rodata.nand_check_table.str1.1,"aMS",%progbits,1
-.LC362:
+.LC467:
 	.ascii	"[ND]==========================\012\000"
 	.section	.rodata.nand_clean_zone_table2.str1.1,"aMS",%progbits,1
-.LC105:
+.LC141:
 	.ascii	"[ND]zoneNO:%d total_pages: %d\012\000"
-.LC106:
+.LC142:
 	.ascii	"[ND]NAND_Memset bytes: %d\012\000"
 	.section	.rodata.nand_crc16_table,"a",%progbits
 	.align	1
-	.set	.LANCHOR7,. + 0
+	.set	.LANCHOR105,. + 0
 	.type	nand_crc16_table, %object
 	.size	nand_crc16_table, 512
 nand_crc16_table:
@@ -23807,187 +24308,189 @@ nand_crc16_table:
 	.short	-32639
 	.short	16448
 	.section	.rodata.nand_dbg_phy_read.str1.1,"aMS",%progbits,1
-.LC101:
+.LC137:
 	.ascii	"[NE]%s:malloc 4096 fail!\012\000"
-.LC102:
+.LC138:
 	.ascii	"[ND]spare: %x %x %x %x %x %x %x %x %x %x %x %x %x %"
 	.ascii	"x %x %x\000"
-.LC103:
+.LC139:
 	.ascii	"[ND]buf:%x %x %x %x %x %x %x %x %x %x %x.\012\000"
 	.section	.rodata.nand_dbg_zone_phy_write.str1.1,"aMS",%progbits,1
-.LC104:
+.LC140:
 	.ascii	"[NE]%s:malloc 8192 fail!\012\000"
 	.section	.rodata.nand_discard.str1.1,"aMS",%progbits,1
-.LC325:
+.LC253:
 	.ascii	"[NE]nand_discard paramter error!\012\000"
 	.section	.rodata.nand_find_zone_table.str1.1,"aMS",%progbits,1
-.LC358:
+.LC463:
 	.ascii	"[ND]build_zone_list start\012\000"
-.LC359:
+.LC464:
 	.ascii	"[ND]nftl_cache_init start\012\000"
-.LC360:
+.LC465:
 	.ascii	"[ND]=================================2============="
 	.ascii	"==========================\012\000"
-.LC361:
+.LC466:
 	.ascii	"[ND]nand_find_zone_table end\012\000"
 	.section	.rodata.nand_power_off_ecc_error.str1.1,"aMS",%progbits,1
-.LC122:
+.LC335:
 	.ascii	"[NE]exception case bad block\012\000"
-.LC123:
+.LC336:
 	.ascii	"[NE]exception case wbc\012\000"
-.LC124:
+.LC337:
 	.ascii	"[NE]exception case gd\012\000"
-.LC125:
+.LC338:
 	.ascii	"[NE]%s %d, flag = %d\012\000"
-.LC126:
+.LC339:
 	.ascii	"[NE]OOB :\000"
-.LC127:
+.LC340:
 	.ascii	"%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %"
 	.ascii	".2x %.2x %.2x %.2x %.2x %.2x\012\000"
 	.section	.rodata.nand_sector_cache_read.str1.1,"aMS",%progbits,1
-.LC308:
+.LC236:
 	.ascii	"[NE]nand_sector_cache_read 1!\012\000"
 	.section	.rodata.nand_sector_cache_write.str1.1,"aMS",%progbits,1
-.LC311:
+.LC239:
 	.ascii	"[NE]nand_sector_cache_write 1!\012\000"
-.LC312:
+.LC240:
 	.ascii	"[NE]nand_sector_cache_write 2!\012\000"
 	.section	.rodata.nand_write_data_page.str1.1,"aMS",%progbits,1
-.LC265:
+.LC432:
 	.ascii	"[NE]do after write error1!\012\000"
-.LC266:
+.LC433:
 	.ascii	"[NE]do_before_write error!\012\000"
-.LC267:
+.LC434:
 	.ascii	"[NE]write data to page error!\012\000"
-.LC268:
+.LC435:
 	.ascii	"[NE]do after write error2!\012\000"
 	.section	.rodata.new_block_init_for_write.str1.1,"aMS",%progbits,1
-.LC108:
+.LC373:
 	.ascii	"[NE]new_block_init_for_write erase error!\012\000"
 	.section	.rodata.nftl_add.str1.1,"aMS",%progbits,1
-.LC387:
+.LC486:
 	.ascii	"[NE]%s:malloc fail for nftl_blk\012\000"
-.LC388:
+.LC487:
 	.ascii	"[NE]nftl_initialize failed\012\000"
-.LC389:
+.LC488:
 	.ascii	"[ND]nftl_add ok\012\000"
 	.section	.rodata.nftl_build_all.str1.1,"aMS",%progbits,1
-.LC390:
+.LC489:
 	.ascii	"[NE]nftl_build_all error!\012\000"
 	.section	.rodata.nftl_cache_init.str1.1,"aMS",%progbits,1
-.LC303:
+.LC231:
 	.ascii	"[NE]%s:malloc fail for cache_node!\012\000"
-.LC304:
+.LC232:
 	.ascii	"[NE]%s:malloc fail for cache_page_buf!\012\000"
 	.section	.rodata.nftl_get_gc_info.str1.1,"aMS",%progbits,1
-.LC36:
+.LC229:
 	.ascii	"%d %d %d %d %d %d/%d %d/%d\012\000"
-.LC37:
+.LC230:
 	.ascii	"%d:%d \000"
 	.section	.rodata.nftl_initialize.str1.1,"aMS",%progbits,1
-.LC372:
-	.ascii	"003\000"
-.LC373:
-	.ascii	"7\000"
-.LC374:
-	.ascii	"3\000"
-.LC375:
+.LC478:
+	.ascii	"002\000"
+.LC479:
+	.ascii	"0\000"
+.LC480:
+	.ascii	"5\000"
+.LC481:
 	.ascii	"sunxi nftl version %s.%s.%s  %s-%s\012\000"
-.LC376:
-	.ascii	"10:35\000"
-.LC377:
-	.ascii	"2020.01.03\000"
-.LC378:
+.LC482:
+	.ascii	"15:11\000"
+.LC483:
+	.ascii	"2021.08.05\000"
+.LC484:
 	.ascii	"[NE]%s:malloc fail for nftl_cfg\012\000"
-.LC379:
+.LC485:
 	.ascii	"[ND]max_erase_times = %i\012\000"
 	.section	.rodata.nftl_malloc.str1.1,"aMS",%progbits,1
-.LC8:
+.LC11:
 	.ascii	"[NI]malloc size is large %d!\012\000"
 	.section	.rodata.nftl_read.str1.1,"aMS",%progbits,1
-.LC10:
+.LC9:
 	.ascii	"[NE]parameter error %d,%d !\012\000"
 	.section	.rodata.nftl_read_history.str1.1,"aMS",%progbits,1
-.LC11:
+.LC10:
 	.ascii	"awa1543 nftl_logic_size:%u\012\000"
 	.section	.rodata.nftl_sector_cache_init.str1.1,"aMS",%progbits,1
-.LC107:
+.LC211:
 	.ascii	"[NE]%s:malloc fail for cache_buf!\012\000"
 	.section	.rodata.nftl_start.str1.1,"aMS",%progbits,1
-.LC363:
+.LC468:
 	.ascii	"[NE]%s: malloc fail for zone\012\000"
-.LC364:
+.LC469:
 	.ascii	"[NE]%s: malloc fail for nand_chip\012\000"
-.LC365:
+.LC470:
+	.ascii	"[NE]size@%u less than min free block nums@%u\012\000"
+.LC471:
 	.ascii	"[NE]%s: malloc fail for nand_block_info\012\000"
-.LC366:
+.LC472:
 	.ascii	"[NE]not enough blocks %d!\012\000"
-.LC367:
+.LC473:
 	.ascii	"[ND]nftl start:%d,%d\012\000"
-.LC368:
+.LC474:
 	.ascii	"[NE]zone_param_init fail!\012\000"
-.LC369:
+.LC475:
 	.ascii	"[NE]build_zone_list_first fail!\012\000"
-.LC370:
+.LC476:
 	.ascii	"[NE]build_zone_list fail!\012\000"
-.LC371:
+.LC477:
 	.ascii	"[NI]try again\012\000"
 	.section	.rodata.no_cross_talk_rebuild_current_block.str1.1,"aMS",%progbits,1
-.LC185:
+.LC395:
 	.ascii	"[NI]nctrcb1 %d,%d,%d!\012\000"
-.LC186:
+.LC396:
 	.ascii	"[NE]no_cross_talk_rebuild_current_block fail 2\012\000"
-.LC187:
+.LC397:
 	.ascii	"[NI]nctrcb2 %d,%d,%d,%d,%d,%d!\012\000"
-.LC188:
+.LC398:
 	.ascii	"[NE]no_cross_talk_rebuild_current_block fail 4\012\000"
-.LC189:
+.LC399:
 	.ascii	"[NE]no_cross_talk_rebuild_current_block erase block"
 	.ascii	" fail %d!\012\000"
 	.section	.rodata.panic_backup_block.str1.1,"aMS",%progbits,1
-.LC330:
+.LC122:
 	.ascii	"[ND] reserved panic block before %d!\012\000"
-.LC331:
+.LC123:
 	.ascii	"[NE] reserved panic block %d!\012\000"
-.LC332:
+.LC124:
 	.ascii	"[NE] no reserved panic block!!! quit!\012\000"
 	.section	.rodata.panic_init_part.str1.1,"aMS",%progbits,1
-.LC329:
+.LC109:
 	.ascii	"[ND] panic part %s off %u size %u\012\000"
 	.section	.rodata.panic_recover_data.str1.1,"aMS",%progbits,1
-.LC380:
+.LC154:
 	.ascii	"[ND] not find panic data, no need to recovery!\012\000"
-.LC381:
+.LC155:
 	.ascii	"[ND] recovery panic data start!\012\000"
-.LC382:
+.LC156:
 	.ascii	"[NE] %s(%d): malloc failed\012\000"
-.LC383:
+.LC157:
 	.ascii	"[ND] ignore blk %d page %d as dummy page\012\000"
-.LC384:
+.LC158:
 	.ascii	"[ND] exit recovery panic block\012\000"
-.LC385:
+.LC159:
 	.ascii	"[ND] invalid blk %d page %d, finish recovery\012\000"
-.LC386:
+.LC160:
 	.ascii	"[ND] move blk %d page %d to logic addr %d\012\000"
 	.section	.rodata.panic_recover_info.str1.1,"aMS",%progbits,1
-.LC337:
+.LC110:
 	.ascii	"[ND] find panic block : %d\012\000"
-.LC338:
+.LC111:
 	.ascii	"[NE] invalid panic block index %d\012\000"
 	.section	.rodata.panic_write.str1.1,"aMS",%progbits,1
-.LC333:
+.LC146:
 	.ascii	"[ND] write panic data : logic addr: %d, sectors %d,"
 	.ascii	" pages %d, blocks %d\012\000"
-.LC334:
+.LC147:
 	.ascii	"[NE] too much data for panic-write, %d sectors left"
 	.ascii	" over\012\000"
-.LC335:
+.LC148:
 	.ascii	"[ND] write panic data block: %d page %d !\012\000"
-.LC336:
+.LC149:
 	.ascii	"[ND] write dummy data block: %d page %d !\012\000"
 	.section	.rodata.para0,"a",%progbits
 	.align	1
-	.set	.LANCHOR47,. + 0
+	.set	.LANCHOR29,. + 0
 	.type	para0, %object
 	.size	para0, 56
 para0:
@@ -24021,7 +24524,7 @@ para0:
 	.short	-37
 	.section	.rodata.para1,"a",%progbits
 	.align	1
-	.set	.LANCHOR48,. + 0
+	.set	.LANCHOR30,. + 0
 	.type	para1, %object
 	.size	para1, 56
 para1:
@@ -24054,481 +24557,493 @@ para1:
 	.short	-32
 	.short	-37
 	.section	.rodata.phy_block_from_invalid_page_incr.str1.1,"aMS",%progbits,1
-.LC222:
+.LC126:
 	.ascii	"[ND]invalid_page_count more than pages per blk 0 %d"
 	.ascii	" %d!!\012\000"
-.LC223:
+.LC127:
 	.ascii	"[ND]invalid_page_count more than pages per blk 1!!\012"
 	.ascii	"\000"
 	.section	.rodata.power_on_gc.str1.1,"aMS",%progbits,1
-.LC293:
+.LC456:
 	.ascii	"[ND]not power on gc [%d, %d, %d], [%d %d %d]!\012\000"
-.LC294:
+.LC457:
 	.ascii	"[ND]emergency power on gc %d !\012\000"
-.LC295:
+.LC458:
 	.ascii	"[ND]power on gc %d!\012\000"
 	.section	.rodata.print_all_nftl_blk.str1.1,"aMS",%progbits,1
-.LC9:
+.LC8:
 	.ascii	"[ND]cap: 0x%08x.\012\000"
 	.section	.rodata.print_block_count_list.str1.1,"aMS",%progbits,1
-.LC163:
+.LC118:
 	.ascii	"[ND]block_used_count list: \012\000"
-.LC164:
+.LC119:
 	.ascii	"[ND]block NO: %d \000"
-.LC165:
+.LC120:
 	.ascii	"[ND]block_used_count: %d \012\000"
 	.section	.rodata.print_block_invalid_list.str1.1,"aMS",%progbits,1
-.LC161:
+.LC116:
 	.ascii	"[ND]invalid_page_count list: \012\000"
-.LC162:
+.LC117:
 	.ascii	"[ND]count:%4d; invalid:%3d;\000"
 	.section	.rodata.print_free_list.str1.1,"aMS",%progbits,1
-.LC157:
+.LC112:
 	.ascii	"[ND]free list: \012\000"
-.LC158:
+.LC113:
 	.ascii	"[ND]block NO:%4d; erase:%3d; \000"
-.LC159:
+.LC114:
 	.ascii	"[ND]count:%4d; \000"
-.LC160:
+.LC115:
 	.ascii	"[ND]info:0x%x\012\000"
 	.section	.rodata.print_logic_page_map.str1.1,"aMS",%progbits,1
-.LC327:
+.LC255:
 	.ascii	"[NI]page_map NULL!!\012\000"
-.LC328:
+.LC256:
 	.ascii	"[ND]%4d:<%4d %3d><%d>\012\000"
 	.section	.rodata.print_nftl_zone.str1.1,"aMS",%progbits,1
-.LC48:
+.LC281:
 	.ascii	"[ND]nand3.x \012\000"
-.LC49:
+.LC282:
 	.ascii	"[ND]zone->nand_chip->blk_per_chip: %d \012\000"
-.LC50:
+.LC283:
 	.ascii	"[ND]zone->nand_chip->bytes_per_page: %d \012\000"
-.LC51:
+.LC284:
 	.ascii	"[ND]zone->nand_chip->pages_per_blk: %d \012\000"
-.LC52:
+.LC285:
 	.ascii	"[ND]zone->nand_chip->max_erase_times: %d \012\000"
-.LC53:
+.LC286:
 	.ascii	"[ND]zone->nand_chip->support_read_reclaim: %d \012\000"
-.LC54:
+.LC287:
 	.ascii	"[ND]zone->test: %d \012\000"
-.LC55:
+.LC288:
 	.ascii	"[ND]zone->zone_no: %d \012\000"
-.LC56:
+.LC289:
 	.ascii	"[ND]zone->zone_attr: %d \012\000"
-.LC57:
+.LC290:
 	.ascii	"[ND]zone->blocks: %d \012\000"
-.LC58:
+.LC291:
 	.ascii	"[ND]zone->bad_block: %d \012\000"
-.LC59:
+.LC292:
 	.ascii	"[ND]zone->logic_cap_in_sects: %d \012\000"
-.LC60:
+.LC293:
 	.ascii	"[ND]zone->backup_cap_in_sects: %d \012\000"
-.LC61:
+.LC294:
 	.ascii	"[ND]zone->free_block_num: %d \012\000"
-.LC62:
+.LC295:
 	.ascii	"[ND]zone->gc_strategy.start_gc_free_blocks: %d \012"
 	.ascii	"\000"
-.LC63:
+.LC296:
 	.ascii	"[ND]zone->gc_strategy.stop_gc_free_blocks: %d \012\000"
-.LC64:
+.LC297:
 	.ascii	"[ND]zone->gc_strategy.gc_page: %d \012\000"
-.LC65:
+.LC298:
 	.ascii	"[ND]zone->gc_strategy.process: %d \012\000"
-.LC66:
+.LC299:
 	.ascii	"[ND]zone->prio_gc.prio_type : %d \012\000"
-.LC67:
+.LC300:
 	.ascii	"[ND]zone->zone_start_phy_block->phy_block.Block_NO:"
 	.ascii	" %d \012\000"
-.LC68:
+.LC301:
 	.ascii	"[ND]zone->zone_end_phy_block->phy_block.Block_NO: %"
 	.ascii	"d \012\000"
-.LC69:
+.LC302:
 	.ascii	"[ND]zone->zone_phy_page_map_for_gc: %x \012\000"
-.LC70:
+.LC303:
 	.ascii	"[ND]zone->current_block.user_info: %x \012\000"
-.LC71:
+.LC304:
 	.ascii	"[ND]zone->current_block.block_info: %x \012\000"
-.LC72:
+.LC305:
 	.ascii	"[ND]zone->current_block.block_info->phy_block.Block"
 	.ascii	"_NO: %d \012\000"
-.LC73:
+.LC306:
 	.ascii	"[ND]zone->current_block.page_used: %d \012\000"
-.LC74:
+.LC307:
 	.ascii	"[ND]zone->current_block.block_info->block_used_coun"
 	.ascii	"t: %d \012\000"
-.LC75:
+.LC308:
 	.ascii	"[ND]zone->recv_free_block: %d %d!!\012\000"
-.LC76:
+.LC309:
 	.ascii	"[ND]zone->assist_block.user_info: %x \012\000"
-.LC77:
+.LC310:
 	.ascii	"[ND]zone->assist_block.block_info: %x \012\000"
-.LC78:
+.LC311:
 	.ascii	"[ND]zone->assist_block.block_info->phy_block.Block_"
 	.ascii	"NO: %d \012\000"
-.LC79:
+.LC312:
 	.ascii	"[ND]zone->assist_block.page_used: %d \012\000"
-.LC80:
+.LC313:
 	.ascii	"[ND]zone->assist_block.block_info->block_used_count"
 	.ascii	": %d \012\000"
-.LC81:
+.LC314:
 	.ascii	"[ND]zone->read_reclaim_complete: %x \012\000"
-.LC82:
+.LC315:
 	.ascii	"[ND]zone->temp_page_buf: %x \012\000"
-.LC83:
+.LC316:
 	.ascii	"[ND]zone->max_erase_num: %d \012\000"
-.LC84:
+.LC317:
 	.ascii	"[ND]zone->cache.cache_totals: %x \012\000"
-.LC85:
+.LC318:
 	.ascii	"[ND]zone->wl_gc_count: %d \012\000"
-.LC86:
+.LC319:
 	.ascii	"[ND]zone->wl_gc_page_num: %d \012\000"
-.LC87:
+.LC320:
 	.ascii	"[ND]zone->cfg->nftl_dont_use_cache: %x \012\000"
-.LC88:
+.LC321:
 	.ascii	"[ND]zone->cfg->nftl_use_cache_sort: %x \012\000"
-.LC89:
+.LC322:
 	.ascii	"[ND]zone->cfg->nftl_support_gc_read_reclaim: %x \012"
 	.ascii	"\000"
-.LC90:
+.LC323:
 	.ascii	"[ND]zone->cfg->nftl_support_wear_leveling: %x \012\000"
-.LC91:
+.LC324:
 	.ascii	"[ND]zone->cfg->nftl_need_erase: %x \012\000"
-.LC92:
+.LC325:
 	.ascii	"[ND]zone->cfg->nftl_min_free_block_num: %x \012\000"
-.LC93:
+.LC326:
 	.ascii	"[ND]zone->cfg->nftl_gc_threshold_free_block_num: %x"
 	.ascii	" \012\000"
-.LC94:
+.LC327:
 	.ascii	"[ND]zone->cfg->nftl_min_free_block: %x \012\000"
-.LC95:
+.LC328:
 	.ascii	"[ND]zone->cfg->nftl_gc_threshold_ratio_numerator: %"
 	.ascii	"x \012\000"
-.LC96:
+.LC329:
 	.ascii	"[ND]zone->cfg->nftl_gc_threshold_ratio_denominator:"
 	.ascii	" %x \012\000"
-.LC97:
+.LC330:
 	.ascii	"[ND]zone->cfg->nftl_max_cache_num: %d \012\000"
-.LC98:
+.LC331:
 	.ascii	"[ND]zone->cfg->nftl_max_cache_write_num: %d \012\000"
-.LC99:
+.LC332:
 	.ascii	"[ND]zone->cfg->nftl_cross_talk: %x \012\000"
-.LC100:
+.LC333:
 	.ascii	"[ND]zone->cfg->nftl_read_claim_interval: %d \012\000"
 	.section	.rodata.print_smart.str1.1,"aMS",%progbits,1
-.LC12:
+.LC257:
 	.ascii	"[ND]smart->version:%x;\012\000"
-.LC13:
+.LC258:
 	.ascii	"[ND]smart->total_recv_read_sectors:%lld;\012\000"
-.LC14:
+.LC259:
 	.ascii	"[ND]smart->total_recv_write_sectors:%lld;\012\000"
-.LC15:
+.LC260:
 	.ascii	"[ND]smart->total_real_read_pages:%lld;\012\000"
-.LC16:
+.LC261:
 	.ascii	"[ND]smart->total_real_write_pages:%lld;\012\000"
-.LC17:
+.LC262:
 	.ascii	"[ND]smart->total_recv_discard_sectors:%lld;\012\000"
-.LC18:
+.LC263:
 	.ascii	"[ND]smart->total_real_discard_sectors:%lld;\012\000"
-.LC19:
+.LC264:
 	.ascii	"[ND]smart->total_recv_read_claim_pages:%d;\012\000"
-.LC20:
+.LC265:
 	.ascii	"[ND]smart->total_gc_times:%d;\012\000"
-.LC21:
+.LC266:
 	.ascii	"[ND]smart->total_gc_pages:%d;\012\000"
-.LC22:
+.LC267:
 	.ascii	"[ND]smart->total_wl_times:%d;\012\000"
-.LC23:
+.LC268:
 	.ascii	"[ND]smart->total_wl_gc_times:%d;\012\000"
-.LC24:
+.LC269:
 	.ascii	"[ND]smart->total_real_read_error_pages:%d;\012\000"
-.LC25:
+.LC270:
 	.ascii	"[ND]smart->total_real_write_error_pages:%d;\012\000"
-.LC26:
+.LC271:
 	.ascii	"[ND]smart->total_normal_power_cycles:%x;\012\000"
-.LC27:
+.LC272:
 	.ascii	"[ND]smart->total_unusual_power_cycles:%x;\012\000"
-.LC28:
+.LC273:
 	.ascii	"[ND]smart->max_block_erase_times:%d;\012\000"
-.LC29:
+.LC274:
 	.ascii	"[ND]smart->min_block_erase_times:%d;\012\000"
-.LC30:
+.LC275:
 	.ascii	"[ND]smart->max_block_used_counter:%d;\012\000"
-.LC31:
+.LC276:
 	.ascii	"[ND]smart->min_block_used_counter:%d;\012\000"
-.LC32:
+.LC277:
 	.ascii	"[ND]smart->read_reclaim_utc:%d;\012\000"
-.LC33:
+.LC278:
 	.ascii	"[ND]smart->cross_talk_times:%d;\012\000"
-.LC34:
+.LC279:
 	.ascii	"[ND]smart->read_reclaim_zone_no:%d;\012\000"
-.LC35:
+.LC280:
 	.ascii	"[ND]smart->read_reclaim_page_no:%d;\012\000"
 	.section	.rodata.put_phy_block_to_free_list.str1.1,"aMS",%progbits,1
-.LC166:
+.LC121:
 	.ascii	"[ND]free_list error !\012\000"
 	.section	.rodata.put_phy_block_to_invalid_page_list.str1.1,"aMS",%progbits,1
-.LC221:
+.LC125:
 	.ascii	"[ND]add invalid_list error !\012\000"
 	.section	.rodata.recover_block_phy_page_mapping.str1.1,"aMS",%progbits,1
-.LC128:
+.LC348:
 	.ascii	"[NE]ret:%d read fail %d %d,read one more time!!\012"
 	.ascii	"\000"
-.LC129:
+.LC349:
 	.ascii	"[NE]ret:%d read fail %d %d,%d times,don't read more"
 	.ascii	"!!\012\000"
-.LC130:
+.LC350:
 	.ascii	"[NE]power off ecc error 3!!\012\000"
-.LC131:
-	.ascii	"[NE]invalid logic_page block:%d page:%d,logic_page "
-	.ascii	"0x%x.\012\000"
-.LC132:
+.LC351:
 	.ascii	"[NE]recover sb@%d sp@%d phy page mapping error.\012"
 	.ascii	"\000"
 	.section	.rodata.recover_logic_page_mapping.str1.1,"aMS",%progbits,1
-.LC224:
+.LC197:
 	.ascii	"[NI]logic_page_map is NULL\012\000"
-.LC225:
+.LC198:
 	.ascii	"[NE]invalid_page_count more than pages_per_blk :%d\012"
 	.ascii	"\000"
-.LC226:
+.LC199:
 	.ascii	"[NE]inv P b:%d p:%d,lp %x\012\000"
-.LC227:
+.LC200:
 	.ascii	"[NE]build invalid_page_count more than pages_per_bl"
 	.ascii	"k\012\000"
 	.section	.rodata.recover_phy_page_mapping.str1.1,"aMS",%progbits,1
-.LC139:
+.LC341:
 	.ascii	"[NE]sb@%d sp@%d recover_phy_page_mapping no used pa"
 	.ascii	"ge\012\000"
-.LC140:
+.LC342:
 	.ascii	"[NE]sb@%d sp@%d power off ecc error1.\012\000"
-.LC141:
+.LC343:
+	.ascii	"[NE]invalid logic_page block:%d page:%d,logic_page "
+	.ascii	"0x%x.\012\000"
+.LC344:
 	.ascii	"[NE]rppm invalid page %d!!\012\000"
-.LC142:
+.LC345:
 	.ascii	"[NI]power_down page %d!!\012\000"
-.LC143:
+.LC346:
 	.ascii	"[NE]recover_phy_page_mapping unkown page data %d!!\012"
 	.ascii	"\000"
-.LC144:
+.LC347:
 	.ascii	"[NE]recover_phy_page_mapping ecc error block:%d;pag"
 	.ascii	"e:%d.\012\000"
 	.section	.rodata.samsung_read_page_end.str1.1,"aMS",%progbits,1
-.LC466:
+.LC102:
 	.ascii	"samsung retry!\012\000"
-.LC467:
+.LC103:
 	.ascii	"samsung ReadRetry ok! ch =%d, chip = %d  block = %d"
 	.ascii	", page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.samsung_readretry_init.str1.1,"aMS",%progbits,1
-.LC468:
+.LC98:
 	.ascii	"samsung read retry conut: %d !\012\000"
 	.section	.rodata.samsung_set_readretry.str1.1,"aMS",%progbits,1
-.LC465:
+.LC100:
+	.ascii	"m5 set readretry error ! %x \012\000"
+.LC101:
 	.ascii	"samsung set readretry error ! %x \012\000"
+	.section	.rodata.samsung_set_readretry_K9GCGD8U0F.str1.1,"aMS",%progbits,1
+.LC99:
+	.ascii	"%s feature set fail\012\000"
 	.section	.rodata.samsung_special_exit.str1.1,"aMS",%progbits,1
-.LC471:
+.LC106:
 	.ascii	" samsung_special_exit \012\000"
 	.section	.rodata.samsung_special_init.str1.1,"aMS",%progbits,1
-.LC469:
+.LC104:
 	.ascii	" samsung_special_init samsung_read_retry_mode:%d sa"
 	.ascii	"msung_read_retry_cycle :%d \012\000"
-.LC470:
+.LC105:
 	.ascii	" samsung_special_init error samsung_read_retry_mode"
 	.ascii	":%d samsung_read_retry_cycle :%d \012\000"
+	.section	.rodata.sandisk_A19_check_bad_block_first_burn.str1.1,"aMS",%progbits,1
+.LC18:
+	.ascii	"fatal err -0, wrong input parameter, ch: %d  chip: "
+	.ascii	"%d/%d  block: %d/%d \012\000"
 	.section	.rodata.sandisk_A19_read_page_end.str1.1,"aMS",%progbits,1
-.LC457:
+.LC179:
 	.ascii	"sandisk_A19 retry!\012\000"
-.LC458:
+.LC180:
 	.ascii	"sandisk_A19 set readretry error\012\000"
-.LC459:
+.LC181:
+	.ascii	"retry spare all 0xff! ch =%d, chip = %d  block = %d"
+	.ascii	", page = %d, RetryCount = %d  \012\000"
+.LC182:
 	.ascii	"sandisk_A19 ReadRetry ok! ch =%d, chip = %d  block "
 	.ascii	"= %d, page = %d, RetryCount = %d  \012\000"
-.LC460:
+.LC183:
 	.ascii	"sandisk_A19 ReadRetry ok with ecc limit! ch =%d, ch"
 	.ascii	"ip = %d  block = %d, page = %d, RetryCount = %d  \012"
 	.ascii	"\000"
 	.section	.rodata.sandisk_A19_readretry_init.str1.1,"aMS",%progbits,1
-.LC455:
+.LC12:
 	.ascii	"sandisk_A19 retry mode err : %d !\012\000"
-.LC456:
+.LC13:
 	.ascii	"sandisk A19 read retry conut: %d !\012\000"
 	.section	.rodata.sandisk_A19_special_exit.str1.1,"aMS",%progbits,1
-.LC463:
+.LC16:
 	.ascii	"%s sandisk toggle vendor specific setting failed!\012"
 	.ascii	"\000"
-.LC464:
+.LC17:
 	.ascii	" sandisk_A19_special_exit \012\000"
 	.section	.rodata.sandisk_A19_special_init.str1.1,"aMS",%progbits,1
-.LC461:
+.LC14:
 	.ascii	" sandisk_A19_special_init sandisk_A19_read_retry_mo"
 	.ascii	"de:%d sandisk_A19_read_retry_cycle :%d sandisk_A19_"
 	.ascii	"read_retry_reg_cnt %d \012\000"
-.LC462:
+.LC15:
 	.ascii	" sandisk_A19_special_init error sandisk_A19_read_re"
 	.ascii	"try_mode:%d sandisk_A19_read_retry_cycle :%d sandis"
 	.ascii	"k_A19_read_retry_reg_cnt %d \012\000"
 	.section	.rodata.sandisk_activation_seq.str1.1,"aMS",%progbits,1
-.LC480:
+.LC93:
 	.ascii	"sandisk activation seq fail 0x%x\012\000"
 	.section	.rodata.sandisk_read_page_end.str1.1,"aMS",%progbits,1
-.LC482:
+.LC187:
 	.ascii	"sandisk retry!\012\000"
-.LC483:
+.LC188:
 	.ascii	"sandisk ReadRetry ok! ch =%d, chip = %d  block = %d"
 	.ascii	", page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.sandisk_readretry_init.str1.1,"aMS",%progbits,1
-.LC481:
+.LC94:
 	.ascii	"sandisk read retry conut: %d !\012\000"
 	.section	.rodata.sandisk_special_exit.str1.1,"aMS",%progbits,1
-.LC486:
+.LC97:
 	.ascii	" sandisk_special_exit \012\000"
 	.section	.rodata.sandisk_special_init.str1.1,"aMS",%progbits,1
-.LC484:
+.LC95:
 	.ascii	" sandisk_special_init sandisk_read_retry_mode:%d sa"
 	.ascii	"ndisk_read_retry_cycle :%d sandisk_read_retry_reg_c"
 	.ascii	"nt %d \012\000"
-.LC485:
+.LC96:
 	.ascii	" sandisk_special_init error sandisk_read_retry_mode"
 	.ascii	":%d sandisk_read_retry_cycle :%d sandisk_read_retry"
 	.ascii	"_reg_cnt %d \012\000"
 	.section	.rodata.second_scan_all_blocks.str1.1,"aMS",%progbits,1
-.LC238:
+.LC400:
 	.ascii	"[NI]NAND_EVENT: 2 current used block found %d,%d!\012"
 	.ascii	"\000"
-.LC239:
+.LC401:
 	.ascii	"[NE]no crosstalk:2 block used count diff %d,%d %d,%"
 	.ascii	"d !\012\000"
-.LC240:
+.LC402:
 	.ascii	"[NE]NAND_EVENT: muti current used block found1 %d %"
 	.ascii	"d!\012\000"
-.LC241:
+.LC403:
 	.ascii	"[NE]NAND_EVENT: muti current used block found2 %d %"
 	.ascii	"d!\012\000"
-.LC242:
+.LC404:
 	.ascii	"[NE]NAND_EVENT: muti current used block found3 %d %"
 	.ascii	"d!\012\000"
-.LC243:
+.LC405:
 	.ascii	"[NE]NAND_EVENT: last page spare data %x,%x,%x,%x,%x"
 	.ascii	",%x,%x %x %x %x %x %x %x %x %x %x!!\012\000"
-.LC244:
+.LC406:
 	.ascii	"[NI]zone@%d b@%d last page unkown ecc ok.\012\000"
-.LC245:
+.LC407:
 	.ascii	"[NE]zone@%d b@%d last page ecc error.\012\000"
-.LC246:
+.LC408:
 	.ascii	"[NE]something strange %d,%d!!\012\000"
-.LC247:
+.LC409:
 	.ascii	"[NI]all block full!!\012\000"
-.LC248:
+.LC410:
 	.ascii	"[ND]corss talk rebuild 0 %d %d!!\012\000"
-.LC249:
+.LC411:
 	.ascii	"[NE]1st current block:%d 1st current block uc:%d mu"
 	.ascii	"ti current used block 1st.\012\000"
-.LC250:
+.LC412:
 	.ascii	"[ND]2nd current block:%d 2nd current block uc:%d mu"
 	.ascii	"ti current used block 2nd.\012\000"
-.LC251:
+.LC413:
 	.ascii	"[NE]something is error here 7!\012\000"
-.LC252:
+.LC414:
 	.ascii	"[NE]p_phy_block_info_last %d %d.\012\000"
-.LC253:
+.LC415:
 	.ascii	"[NE]get_current_used_block fail.\012\000"
-.LC254:
+.LC416:
 	.ascii	"[ND]free block nums is %d, aec: %d, iec: %d, a_buc:"
 	.ascii	" %d, i_buc: %d!\012\000"
 	.section	.rodata.shutdown_on_gc.str1.1,"aMS",%progbits,1
-.LC296:
+.LC490:
 	.ascii	"[ND]%s %p %d %d %d %\012\000"
-.LC297:
+.LC491:
 	.ascii	"[NI]shutdown_on_gc end! [%d %d %d]\012\000"
-.LC298:
+.LC492:
 	.ascii	"[ND]shutdown_on_gc one ok! [%d %d %d]\012\000"
 	.section	.rodata.torture_block_and_mark.str1.1,"aMS",%progbits,1
-.LC169:
+.LC161:
 	.ascii	"[NI]torture b@%d.\012\000"
-.LC170:
+.LC162:
 	.ascii	"[NE]%s write b@%d p@%d err\012\000"
-.LC171:
+.LC163:
 	.ascii	"[NE]%s read b@%d p@%d err\012\000"
-.LC172:
+.LC164:
 	.ascii	"[NE]%s b@%d p@%d patt %02x checking main data fail\012"
 	.ascii	"\000"
-.LC173:
+.LC165:
 	.ascii	"[NE]%s b@%d p@%d patt %02x checking spare data fail"
 	.ascii	"\012\000"
-.LC174:
+.LC166:
 	.ascii	"[NE][NE]erase_block block fail %d!\012\000"
 	.section	.rodata.toshiba_read_page_end.str1.1,"aMS",%progbits,1
-.LC475:
+.LC45:
 	.ascii	"toshiba retry!\012\000"
-.LC476:
+.LC46:
 	.ascii	"toshiba ReadRetry ok! ch =%d, chip = %d  block = %d"
 	.ascii	", page = %d, RetryCount = %d  \012\000"
 	.section	.rodata.toshiba_readretry_init.str1.1,"aMS",%progbits,1
-.LC474:
+.LC44:
 	.ascii	"toshiba read retry conut: %d !\012\000"
 	.section	.rodata.toshiba_special_exit.str1.1,"aMS",%progbits,1
-.LC479:
+.LC49:
 	.ascii	" toshiba_special_exit \012\000"
 	.section	.rodata.toshiba_special_init.str1.1,"aMS",%progbits,1
-.LC477:
+.LC47:
 	.ascii	" toshiba_special_init toshiba_read_retry_mode :%d t"
 	.ascii	"oshiba_read_retry_cycle :%d toshiba_read_retry_reg_"
 	.ascii	"cnt :%d \012\000"
-.LC478:
+.LC48:
 	.ascii	" toshiba_special_init error toshiba_read_retry_mode"
 	.ascii	" :%d toshiba_read_retry_cycle :%d toshiba_read_retr"
 	.ascii	"y_reg_cnt :%d \012\000"
 	.section	.rodata.toshiba_vender_pre_condition.str1.1,"aMS",%progbits,1
-.LC473:
+.LC43:
 	.ascii	"toshiba vender_pre_condition error!\012\000"
 	.section	.rodata.toshiba_vender_set_param.str1.1,"aMS",%progbits,1
-.LC472:
+.LC42:
 	.ascii	"toshiba rr value 3 %x %x %x %x!\012\000"
 	.section	.rodata.write_data_to_nand.str1.1,"aMS",%progbits,1
-.LC310:
+.LC238:
 	.ascii	"[NE][NE]%s:malloc 512 fail!\012\000"
 	.section	.rodata.write_data_to_page.str1.1,"aMS",%progbits,1
-.LC264:
+.LC370:
 	.ascii	"[NE]write logic data to current block error\012\000"
 	.section	.rodata.write_logic_data_to_current_block.str1.1,"aMS",%progbits,1
-.LC259:
+.LC365:
 	.ascii	"[ND]logic_page_map NULL!!\012\000"
-.LC260:
+.LC366:
 	.ascii	"[ND]invalid_page_count more than pages_per_blk at w"
 	.ascii	"rite logic data to current block:%d!!\012\000"
-.LC261:
+.LC367:
 	.ascii	"[NE]write_phy_data_to_current_block error2\012\000"
-.LC262:
+.LC368:
 	.ascii	"[NE]invalid_page_count more than pages_per_blk at w"
 	.ascii	"rite logic data to current block:%d!!\012\000"
-.LC263:
+.LC369:
 	.ascii	"[NE]write phy data to current block error2\012\000"
 	.section	.rodata.write_phy_data_to_current_block.str1.1,"aMS",%progbits,1
-.LC208:
+.LC361:
 	.ascii	"[ND]last block can not used to logic page %d!!\012\000"
-.LC209:
+.LC362:
 	.ascii	"[ND]last block can not used to power down page %d!!"
 	.ascii	"\012\000"
-.LC210:
+.LC363:
 	.ascii	"[ND]write_phy_data_to_current_block write error %d!"
 	.ascii	"\012\000"
-.LC211:
+.LC364:
 	.ascii	"[NE]do_write_error error\012\000"
 	.section	.rodata.write_phy_page_map_to_current_block.str1.1,"aMS",%progbits,1
-.LC255:
+.LC428:
 	.ascii	"[NE]write_phy_data_to_current_block error1\012\000"
 	.section	.rodata.zone_param_init.str1.1,"aMS",%progbits,1
-.LC151:
+.LC205:
 	.ascii	"[NE]%s:malloc fail for temp_page_buf\012\000"
-.LC152:
+.LC206:
 	.ascii	"[NE]%s:malloc fail for logic_page_buf\012\000"
-.LC153:
+.LC207:
 	.ascii	"[NE]zone_param_init error2\012\000"
-.LC154:
+.LC208:
 	.ascii	"[NE]%s:malloc fail for current_block.user_info.buf\012"
 	.ascii	"\000"
-.LC155:
+.LC209:
 	.ascii	"[NE]%s:malloc fail for assist_block.user_info.buf\012"
 	.ascii	"\000"
-.LC156:
+.LC210:
 	.ascii	"[NE]%s:malloc fail for zone_phy_page_map_for_gc.buf"
 	.ascii	"\012\000"
 	.ident	"GCC: (Linaro GCC 7.2-2017.11) 7.2.1 20171011"

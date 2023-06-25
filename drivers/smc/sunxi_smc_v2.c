@@ -45,6 +45,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ARM_SVC_ARISC_WRITE_PMU                 0x8000ff13
 #define ARM_SVC_ARISC_FAKE_POWER_OFF_REQ_ARCH32 0x83000019
 #define ARM_SVC_FAKE_POWER_OFF       0x8000ff14
+#define ARM_SVC_UBOOT_POWER_OFF       0x8000ff15
 
 /* efuse */
 #define ARM_SVC_EFUSE_READ         (0x8000fe00)
@@ -165,9 +166,14 @@ int arm_svc_arisc_fake_poweroff(void)
 	return sunxi_smc_call(ARM_SVC_ARISC_FAKE_POWER_OFF_REQ_ARCH32, 0, 0, 0, 0);
 }
 
-int arm_svc_fake_poweroff(void)
+int arm_svc_fake_poweroff(ulong dtb_base)
 {
-	return sunxi_smc_call(ARM_SVC_FAKE_POWER_OFF, 0, 0, 0, 0);
+	return sunxi_smc_call(ARM_SVC_FAKE_POWER_OFF, dtb_base, 0, 0, 0);
+}
+
+int arm_svc_poweroff(void)
+{
+	return sunxi_smc_call(ARM_SVC_UBOOT_POWER_OFF, 0, 0, 0, 0);
 }
 
 u32 arm_svc_arisc_read_pmu(ulong addr)
@@ -278,6 +284,7 @@ static  int smc_writel_normal(u32 value, ulong addr)
 
 u32 (*smc_readl_pt)(ulong addr) = smc_readl_normal;
 int (*smc_writel_pt)(u32 value, ulong addr) = smc_writel_normal;
+uint32_t sunxi_smc_call_offset = 0xFFFFFFFF;
 
 u32 smc_readl(ulong addr)
 {
@@ -301,12 +308,34 @@ int smc_efuse_writel(void *key_buf)
 	return 0;
 }
 
+int smc_tee_get_os_revision(uint32_t *major, uint32_t *minor)
+{
+	struct arm_smccc_res param = { 0 };
+
+	arm_smccc_smc(OPTEE_SMC_CALL_GET_OS_REVISION, 0, 0, 0, 0, 0, 0, 0,
+		      &param);
+	*major = param.a0;
+	*minor = param.a1;
+	return 0;
+}
+
+int smc_tee_get_sunxi_call_offset(void)
+{
+	uint32_t major, minor;
+
+	smc_tee_get_os_revision(&major, &minor);
+	pr_msg("optee version: major:%d minor:%d\n", major, minor);
+	if ((major > 3) || ((major == 3) && (minor >= 5))) {
+		return SUNXI_OPTEE_SMC_OFFSET;
+	} else {
+		return 0;
+	}
+}
 
 int smc_init(void)
 {
-	if (sunxi_get_securemode()) {
-		smc_readl_pt = arm_svc_read_sec_reg;
-		smc_writel_pt = arm_svc_write_sec_reg;
+	if (sunxi_probe_secure_os()) {
+		sunxi_smc_call_offset = smc_tee_get_sunxi_call_offset();
 	}
 
 	return 0;
@@ -541,6 +570,11 @@ int smc_tee_keybox_store(const char *name, char *in_buf, int len)
 	printf("write_protect=%d\n", key_box->write_protect);
 	printf("******************\n");
 #endif
+	if (strcmp(name, key_box->name)) {
+		pr_err("name of key %s not match, key data corrupted\n", name);
+		return -1;
+	}
+
 	flush_cache((ulong)key_box, sizeof(sunxi_secure_storage_info_t));
 
 	memset(&param, 0, sizeof(param));
@@ -598,4 +632,34 @@ int smc_tee_check_hash(const char *name, u8 *hash)
 		    ALIGN(NAME_MAX_SIZE + 32, CACHE_LINE_SIZE));
 	return sunxi_smc_call(OPTEE_SMC_SUNXI_HASH_OP, (ulong)smc_name,
 			      (ulong)smc_hash, 0, 0);
+}
+
+int smc_tee_setup_mips(uint32_t load_addr, uint32_t mips_size)
+{
+	struct arm_smccc_res param = { 0 };
+	arm_smccc_smc(OPTEE_SMC_SUNXI_SETUP_MIPS, load_addr, mips_size, 0, 0, 0,
+		      0, 0, &param);
+	if (param.a0 != 0) {
+		pr_err("%s failed with: %ld", __func__, param.a0);
+		return param.a0;
+	}
+	return 0;
+}
+
+int smc_tee_inform_fdt(uint64_t base, uint32_t size)
+{
+	struct arm_smccc_res param = { 0 };
+	arm_smccc_smc(OPTEE_SMC_SUNXI_INFORM_FDT, base, 0, size, 0, 0, 0, 0,
+		      &param);
+	ulong fdt_blob =
+		((ulong)gd->fdt_blob) & ~(CONFIG_SYS_CACHELINE_SIZE - 1);
+	invalidate_dcache_range(
+		(ulong)(fdt_blob),
+		(ulong)(ALIGN(((ulong)gd->fdt_blob + gd->fdt_size),
+			      CONFIG_SYS_CACHELINE_SIZE)));
+	if (param.a0 != 0) {
+		pr_err("%s failed with: %lx\n", __func__, param.a0);
+		return param.a0;
+	}
+	return 0;
 }

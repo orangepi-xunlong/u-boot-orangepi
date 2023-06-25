@@ -40,4 +40,6 @@ int sunxi_mbr_convert_to_gpt(void *sunxi_mbr_buf, char *gpt_buf, int storage_typ
 
 int gpt_convert_to_sunxi_mbr(void *sunxi_mbr_buf, char *gpt_buf, int storage_type);
 
+void sunxi_get_logical_offset_param(int storage_type, u32 *logic_offset, int *total_sectors);
+
 #endif

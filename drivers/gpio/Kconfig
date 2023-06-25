@@ -241,6 +241,13 @@ config STM32F7_GPIO
 	  usable on many stm32 families like stm32f4 & stm32H7.
 	  Tested on STM32F7.
 
+config SIFIVE_GPIO
+	bool "SiFive GPIO driver"
+	depends on DM_GPIO
+	help
+	  Device model driver for GPIO controller present in SiFive FU540 SoC. This
+	  driver enables GPIO interface on HiFive Unleashed A00 board.
+
 config MVEBU_GPIO
 	bool "Marvell MVEBU GPIO driver"
 	depends on DM_GPIO && ARCH_MVEBU
@@ -308,4 +315,19 @@ config MPC8XXX_GPIO
 	  Aside from the standard functions of input/output mode, and output
 	  value setting, the open-drain feature, which can configure individual
 	  GPIOs to work as open-drain outputs, is supported.
+
+if ARCH_SUNXI
+choice
+	prompt "sunxi gpio ip version"
+	default SUNXI_GPIO_V1
+
+config SUNXI_GPIO_V1
+	bool "sunxi gpio v1"
+
+config SUNXI_GPIO_V2
+	bool "sunxi gpio v2"
+
+endchoice
+endif
 endmenu
+

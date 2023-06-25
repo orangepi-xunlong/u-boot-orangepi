@@ -112,7 +112,8 @@ int sunxi_check_cpu_gpu_verify(void)
 	case 0x7400:
 	case 0x2400:
 	case 0x6c00:
-	/*H616 || VMP1002 || T507 || T517 || H700*/
+	case 0x2000:
+	/*H616 || VMP1002 || T507 || T517 || H700 || H618*/
 		cpu_dvf = 1416000000;
 		break;
 	case 0x5c00:

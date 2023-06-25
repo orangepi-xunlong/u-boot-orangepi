@@ -454,8 +454,11 @@ s32 dsi_dcs_rd(u32 sel, u8 cmd, u8 *para_p, u32 *num_p)
 		count++;
 		dsi_delay_us(100);
 	}
-	if (count >= 50)
+	if (count >= 50) {
 		dsi_dev[sel]->dsi_basic_ctl0.bits.inst_st = 0;
+		dsi_dev[sel]->dsi_gctl.bits.dsi_en = 0;
+		dsi_dev[sel]->dsi_gctl.bits.dsi_en = 1;
+	}
 
 	if (dsi_dev[sel]->dsi_cmd_ctl.bits.rx_flag) {
 		if (dsi_dev[sel]->dsi_cmd_ctl.bits.rx_overflow)
@@ -587,7 +590,9 @@ static s32 dsi_dphy_cfg(u32 sel, disp_panel_para *panel)
 	dphy_dev[sel]->dphy_tx_time3.bits.lptx_ulps_exit_set = 0;
 	dphy_dev[sel]->dphy_tx_time4.bits.hstx_ana0_set = 3;
 	dphy_dev[sel]->dphy_tx_time4.bits.hstx_ana1_set = 3;
+#ifndef SUPPORT_COMBO_DPHY
 	dphy_dev[sel]->dphy_gctl.bits.module_en = 1;
+#endif
 /*
 	dphy_dev[sel]->dphy_ana1.bits.reg_vttmode =	0;
 	dphy_dev[sel]->dphy_ana0.bits.reg_selsck = 0;
@@ -640,8 +645,175 @@ static s32 dsi_dphy_cfg(u32 sel, disp_panel_para *panel)
 	return 0;
 }
 
+#ifdef SUPPORT_COMBO_DPHY
+/*description: dsi comb phy pll configuration
+ * @param sel:dsi channel select
+ * @param dclk: pixel clk
+ * @param mode: dsi operation mode,0:video mode; 1:command mode;
+ * @param format:dis pixel format
+ * @param lane: dis output lane number
+ * return ret: clk
+ */
+u32 dsi_comb_dphy_pll_set(__u32 sel, __u32 dclk, __u32 mode, __u32 format,
+			  __u32 lane)
+{
+	u64 frq;
+	u32 n;
+	u32 div_p, div_m0;
+	u8 pixel_bits[3][4] = {
+	    { 24, 24, 18, 16 }, { 24, 24, 16, 0 }, { 24, 24, 18, 16 } };
+
+	frq = dclk * pixel_bits[mode][format] / lane * 1000000; /* unit:Hz */
+	if (frq <= 264000000) {
+		frq = frq * 16;
+		do_div(frq, 24000000);
+		n = frq;
+		div_p = 7;
+		div_m0 = 1;
+	} else if (frq <= 536000000) {
+		frq = frq * 8;
+		do_div(frq, 24000000);
+		n = frq;
+		div_p = 7;
+		div_m0 = 0;
+	} else if (frq <= 1072000000) {
+		frq = frq * 4;
+		do_div(frq, 24000000);
+		n = frq;
+		div_p = 3;
+		div_m0 = 0;
+	} else if (frq <= 2144000000) {
+		frq = frq * 2;
+		do_div(frq, 24000000);
+		n = frq;
+		div_p = 1;
+		div_m0 = 0;
+	} else {
+		do_div(frq, 24000000);
+		n = frq;
+		div_p = 0;
+		div_m0 = 0;
+	}
+	dphy_dev[sel]->dphy_pll_reg0.bits.n =
+	    n; /* HS_clk:24MHz*n/(p+1)/(m0+1); */
+	       /* LP_clk_src:24MHz*n/(p+1)/(m0+1)/(m1+1) */
+	dphy_dev[sel]->dphy_pll_reg0.bits.p = div_p;
+	dphy_dev[sel]->dphy_pll_reg0.bits.m0 = div_m0;
+	dphy_dev[sel]->dphy_pll_reg0.bits.m1 = 2; /*?? */
+
+	dphy_dev[sel]->dphy_pll_reg2.dwval = 0; /*Disable sdm*/
+	return 24000000 * n / (div_p + 1) / (div_m0 + 1);
+}
+
+__s32 dsi_dphy_open(__u32 sel, disp_panel_para *panel)
+{
+	u32 i = 0;
+	u32 lane_den = 0;
+	for (i = 0; i < panel->lcd_dsi_lane; i++)
+		lane_den |= (1 << i);
+
+	dphy_dev[sel]->dphy_ana4.bits.reg_ib = 2;
+	dphy_dev[sel]->dphy_ana4.bits.reg_dmplvc = 0;
+	dphy_dev[sel]->dphy_ana4.bits.reg_dmplvd = 4;
+	dphy_dev[sel]->dphy_ana4.bits.reg_vtt_set = 3;
+	dphy_dev[sel]->dphy_ana4.bits.reg_ckdv = 3;
+	dphy_dev[sel]->dphy_ana4.bits.reg_tmsd = 1;
+	dphy_dev[sel]->dphy_ana4.bits.reg_tmsc = 1;
+	dphy_dev[sel]->dphy_ana4.bits.reg_txpusd = 2;
+	dphy_dev[sel]->dphy_ana4.bits.reg_txpusc = 3;
+	dphy_dev[sel]->dphy_ana4.bits.reg_txdnsd = 2;
+
+	dphy_dev[sel]->dphy_ana2.bits.enck_cpu = 1;
+
+	dphy_dev[sel]->dphy_ana2.bits.enib = 1;
+	dphy_dev[sel]->dphy_ana3.bits.enldor = 1;
+	dphy_dev[sel]->dphy_ana3.bits.enldoc = 1;
+	dphy_dev[sel]->dphy_ana3.bits.enldod = 1;
+	dphy_dev[sel]->dphy_ana0.bits.reg_plr = 4;
+	dphy_dev[sel]->dphy_ana0.bits.reg_sfb = 1;
+	dphy_dev[sel]->dphy_ana0.bits.reg_selsck = 0;
+	dphy_dev[sel]->dphy_ana0.bits.reg_rsd = 0;
+	dphy_dev[sel]->combo_phy_reg0.bits.en_cp = 1;
+	dsi_comb_dphy_pll_set(sel, panel->lcd_dclk_freq, panel->lcd_dsi_if,
+			      panel->lcd_dsi_format, panel->lcd_dsi_lane);
+
+
+	dphy_dev[sel]->dphy_ana4.bits.en_mipi = 1;
+	dphy_dev[sel]->dphy_ana4.bits.reg_txdnsc = 3;
+	dphy_dev[sel]->combo_phy_reg0.bits.en_mipi = 1;
+	dphy_dev[sel]->combo_phy_reg0.bits.en_comboldo = 1;
+	dphy_dev[sel]->combo_phy_reg2.bits.hs_stop_dly = 20;
+	dsi_delay_us(1);
+
+	dphy_dev[sel]->dphy_ana3.bits.envttc = 1;
+	dphy_dev[sel]->dphy_ana3.bits.envttd = lane_den;
+	dphy_dev[sel]->dphy_ana3.bits.endiv = 1;
+	dphy_dev[sel]->dphy_ana2.bits.enck_cpu = 1;
+	dphy_dev[sel]->dphy_ana1.bits.reg_vttmode = 1;
+#if defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MATH_SUN20IW1)
+	i = readl(0x03000024);
+	if ((i & 0x00000007) > 0)
+		dphy_dev[sel]->dphy_ana1.dwval |= 0x00000020;
+	else
+		dphy_dev[sel]->dphy_ana1.dwval &= 0xffffffDf;
+#endif
+	dphy_dev[sel]->dphy_ana2.bits.enp2s_cpu = lane_den;
+
+	dphy_dev[sel]->dphy_gctl.bits.module_en = 1;
+	return 0;
+}
+
+__s32 dsi_dphy_close(__u32 sel)
+{
+	dphy_dev[sel]->dphy_ana2.bits.enck_cpu = 0;
+	dphy_dev[sel]->dphy_ana3.bits.endiv = 0;
+
+	dphy_dev[sel]->dphy_ana2.bits.enib = 0;
+	dphy_dev[sel]->dphy_ana3.bits.enldor = 0;
+	dphy_dev[sel]->dphy_ana3.bits.enldoc = 0;
+	dphy_dev[sel]->dphy_ana3.bits.enldod = 0;
+	dphy_dev[sel]->dphy_ana3.bits.envttc = 0;
+	dphy_dev[sel]->dphy_ana3.bits.envttd = 0;
+	return 0;
+}
+
+__s32 lvds_combphy_close(__u32 sel)
+{
+	dphy_dev[sel]->combo_phy_reg1.dwval = 0x0;
+	dphy_dev[sel]->combo_phy_reg0.dwval = 0x0;
+	dphy_dev[sel]->dphy_ana4.dwval = 0x0;
+	dphy_dev[sel]->dphy_ana3.dwval = 0x0;
+	dphy_dev[sel]->dphy_ana1.dwval = 0x0;
+	return 0;
+}
+
+__s32 lvds_combphy_open(__u32 sel, disp_panel_para *panel)
+{
+
+	dphy_dev[sel]->combo_phy_reg1.dwval = 0x43;
+	dphy_dev[sel]->combo_phy_reg0.dwval = 0x1;
+	dsi_delay_us(5);
+	dphy_dev[sel]->combo_phy_reg0.dwval = 0x5;
+	dsi_delay_us(5);
+	dphy_dev[sel]->combo_phy_reg0.dwval = 0x7;
+	dsi_delay_us(5);
+	dphy_dev[sel]->combo_phy_reg0.dwval = 0xf;
+
+	dphy_dev[sel]->dphy_ana4.dwval = 0x84000000;
+	dphy_dev[sel]->dphy_ana3.dwval = 0x01040000;
+	dphy_dev[sel]->dphy_ana2.dwval =
+	    dphy_dev[sel]->dphy_ana2.dwval & (0x0 << 1);
+	dphy_dev[sel]->dphy_ana1.dwval = 0x0;
+
+	return 0;
+}
+#endif
+
 u32 dsi_io_open(u32 sel, disp_panel_para *panel)
 {
+#ifdef SUPPORT_COMBO_DPHY
+	dsi_dphy_open(sel, panel);
+#else
 	dphy_dev[sel]->dphy_ana1.bits.reg_vttmode = 0;
 	dphy_dev[sel]->dphy_ana0.bits.reg_selsck = 0;
 	dphy_dev[sel]->dphy_ana0.bits.reg_pws = 1;
@@ -684,6 +856,7 @@ u32 dsi_io_open(u32 sel, disp_panel_para *panel)
 	dphy_dev[sel]->dphy_ana2.bits.enp2s_cpu =
 	    dsi_lane_den[panel->lcd_dsi_lane - 1];
 
+#endif
 	return 0;
 }
 
@@ -724,6 +897,9 @@ u32 dsi_io_close(u32 sel)
 	dphy_dev[sel]->dphy_ana0.bits.reg_pws = 0;
 	dphy_dev[sel]->dphy_ana0.bits.reg_selsck = 0;
 	dphy_dev[sel]->dphy_ana1.bits.reg_vttmode = 0;
+#ifdef SUPPORT_COMBO_DPHY
+	dsi_dphy_close(sel);
+#endif
 
 	return 0;
 }
@@ -747,7 +923,6 @@ static s32 dsi_basic_cfg(u32 sel, disp_panel_para *panel)
 		dsi_dev[sel]->dsi_trans_zero.bits.hs_zero_reduce_set = 0;
 	} else {
 		s32 start_delay = panel->lcd_vt - panel->lcd_y - 10;
-		u32 vfp = panel->lcd_vt - panel->lcd_y - panel->lcd_vbp;
 		u32 dsi_start_delay;
 
 		/*
@@ -755,8 +930,7 @@ static s32 dsi_basic_cfg(u32 sel, disp_panel_para *panel)
 		 * set ready sync early to dramfreq, so set start_delay 1
 		 */
 		start_delay = 1;
-
-		dsi_start_delay = panel->lcd_vt - vfp + start_delay;
+		dsi_start_delay = start_delay;
 		if (dsi_start_delay > panel->lcd_vt)
 			dsi_start_delay -= panel->lcd_vt;
 		if (dsi_start_delay == 0)

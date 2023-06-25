@@ -16,5 +16,6 @@ void rtc_clear_fel_flag(void);
 int rtc_get_bootmode_flag(void);
 int rtc_set_bootmode_flag(u8 flag);
 
+extern int rtc_set_dcxo_off(void);
 
 #endif /* _SUNXI_RTC_H */

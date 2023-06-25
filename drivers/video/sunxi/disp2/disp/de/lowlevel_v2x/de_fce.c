@@ -61,7 +61,7 @@ int de_fce_update_regs(unsigned int sel, unsigned int chno)
 	uintptr_t base;
 
 	if (fce_para_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)fce_para_block[sel][chno].off,
+		regwrite((void *)fce_para_block[sel][chno].off,
 		       fce_para_block[sel][chno].val,
 		       fce_para_block[sel][chno].size);
 		fce_para_block[sel][chno].dirty = 0x0;
@@ -69,7 +69,7 @@ int de_fce_update_regs(unsigned int sel, unsigned int chno)
 
 	if (fce_celut_block[sel][chno].dirty == 0x1) {
 		base = fce_hw_base[sel][chno];
-		writel(0x1, (void __iomem *)(base + 0x28));
+		regwrite(0x1, (void __iomem *)(base + 0x28));
 		/* AHB access CE LUT */
 		memcpy((void *)fce_celut_block[sel][chno].off,
 		       fce_celut_block[sel][chno].val,
@@ -88,6 +88,10 @@ int de_fce_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 	void *memory;
 
 	base = reg_base + (sel + 1) * 0x00100000 + FCE_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		base = base - 0x00100000;
+#endif
 	/* FIXME  display path offset should be defined */
 	fce_hw_base[sel][chno] = base;
 

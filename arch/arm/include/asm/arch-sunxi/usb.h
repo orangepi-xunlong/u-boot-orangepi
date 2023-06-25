@@ -142,7 +142,15 @@
 //#define  USBC_REG_o_PHYCTL          0x0404
 #define  USBC_REG_o_PHYBIST         0x0408
 #define  USBC_REG_o_PHYTUNE         0x040c
+
+
+#if defined(CONFIG_MACH_SUN8IW11)
+#define  USBC_REG_o_PHYCTL          0x0404
+#else
 #define  USBC_REG_o_PHYCTL          0x0410
+#endif
+
+
 
 #define  USBC_REG_o_DMA_ENABLE      0x0500
 #define  USBC_REG_o_DMA_STATUS      0x0504

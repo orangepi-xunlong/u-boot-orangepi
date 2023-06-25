@@ -6,7 +6,6 @@
  *     */
 
 #include <common.h>
-#include <sunxi_nand.h>
 #include "../flash_interface.h"
 #include <spare_head.h>
 #include <sunxi_nand.h>
@@ -20,7 +19,6 @@ sunxi_flash_nand_read(uint start_block, uint nblock, void *buffer)
 		return ubi_nand_read(start_block, nblock, buffer);
 #endif
 	return nand_uboot_read(start_block, nblock, buffer);
-
 }
 
 static int
@@ -31,7 +29,6 @@ sunxi_flash_nand_write(uint start_block, uint nblock, void *buffer)
 		return ubi_nand_write(start_block, nblock, buffer);
 #endif
 	return nand_uboot_write(start_block, nblock, buffer);
-
 }
 
 static int
@@ -161,7 +158,21 @@ sunxi_flash_nand_secstorage_write(int item, unsigned char *buf, unsigned int len
 	return nand_secure_storage_write(item, buf, len);
 }
 
-sunxi_flash_desc sunxi_nand_desc = 
+#ifdef CONFIG_SUNXI_FAST_BURN_KEY
+static int
+sunxi_flash_nand_secstorage_flush(void)
+{
+	return nand_secure_storage_flush();
+}
+
+static int
+sunxi_flash_nand_secstorage_fast_write(int item, unsigned char *buf, unsigned int len)
+{
+	return nand_secure_storage_fast_write(item, buf, len);
+}
+#endif
+
+sunxi_flash_desc sunxi_nand_desc =
 {
 	.probe = sunxi_flash_nand_probe,
 	.init = sunxi_flash_nand_init,
@@ -174,6 +185,10 @@ sunxi_flash_desc sunxi_nand_desc =
 	.size = sunxi_flash_nand_size,
 	.secstorage_read = sunxi_flash_nand_secstorage_read,
 	.secstorage_write = sunxi_flash_nand_secstorage_write,
+#ifdef CONFIG_SUNXI_FAST_BURN_KEY
+	.secstorage_fast_write = sunxi_flash_nand_secstorage_fast_write,
+	.secstorage_flush = sunxi_flash_nand_secstorage_flush,
+#endif
 	.download_spl = sunxi_flash_nand_download_spl,
 	.download_toc = sunxi_flash_nand_download_toc,
 	.write_end = sunxi_flash_nand_write_end,

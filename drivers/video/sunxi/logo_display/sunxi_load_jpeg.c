@@ -34,6 +34,10 @@ struct boot_fb_private {
 	int id;
 };
 
+#ifdef CONFIG_SUNXI_SPINOR_JPEG
+static struct boot_fb_private boot_fb;
+#endif
+
 #ifdef CONFIG_BOOT_GUI
 static int show_bmp_on_fb(char *bmp_head_addr, unsigned int fb_id)
 {
@@ -170,14 +174,7 @@ static int add_bmp_header(struct boot_fb_private *fb)
 
 static int read_jpeg(const char *filename, char *buf, unsigned int buf_size)
 {
-
-#ifdef CONFIG_SUNXI_SPINOR_JPEG
-	int size;
-	unsigned int start_block, nblock;
-	sunxi_partition_get_info_byname(filename, &start_block, &nblock);
-	size = sunxi_flash_read(start_block, nblock, (void *)buf);
-	return size > 0 ? (size << 10) : 0;
-#elif CONFIG_CMD_FAT
+#ifdef CONFIG_CMD_FAT
 	char *argv[6];
 	char part_num[16] = {0};
 	char len[16] = {0};
@@ -208,12 +205,19 @@ static int read_jpeg(const char *filename, char *buf, unsigned int buf_size)
 		return env_get_hex("filesize", 0);
 	else
 		return 0;
+#else
+	int size;
+	unsigned int start_block, nblock;
+	sunxi_partition_get_info_byname(filename, &start_block, &nblock);
+	size = sunxi_flash_read(start_block, nblock, (void *)buf);
+	return size > 0 ? (size << 10) : 0;
+
 #endif
 }
 
 static int get_disp_fdt_node(void)
 {
-	static int fdt_node = -1;
+	int fdt_node = -1;
 
 	if (0 <= fdt_node)
 		return fdt_node;
@@ -276,9 +280,10 @@ static int release_fb(struct boot_fb_private *fb)
 	return 0;
 }
 
-
-static void save_fb_para_to_kernel(struct boot_fb_private *fb)
+#ifdef CONFIG_SUNXI_SPINOR_JPEG
+void save_jpg_logo_to_kernel(void)
 {
+	struct boot_fb_private *fb = &boot_fb;
 	int node = get_disp_fdt_node();
 	//int ret = 0;
 	char fb_paras[128];
@@ -288,6 +293,7 @@ static void save_fb_para_to_kernel(struct boot_fb_private *fb)
 	//ret = fdt_setprop_string(working_fdt, node, "boot_fb0", fb_paras);
 	//printf("fdt_setprop_string disp.boot_fb0(%s). ret-code:%s\n",fb_paras, fdt_strerror(ret));
 }
+#endif
 
 int sunxi_jpeg_display(const char *filename)
 {
@@ -321,7 +327,7 @@ int sunxi_jpeg_display(const char *filename)
 		return -1;
 	}
 
-	/* Get the size of the image, request the same size fb */
+	/* Get the size of the image, request the same size fb + bmp header*/
 	tinyjpeg_get_size(jdec, &width, &height);
 	memset((void *)&fb, 0x0, sizeof(fb));
 	request_fb(&fb, width, height);
@@ -329,7 +335,7 @@ int sunxi_jpeg_display(const char *filename)
 		printf("fb.base is null !!!");
 		return -1;
 	}
-	char *tmp = fb.base;
+	char *tmp = fb.base + sizeof(struct bmp_header);
 	tinyjpeg_set_components(jdec, (unsigned char **)&(tmp), 1);
 
 	if (32 == fb.bpp)
@@ -348,11 +354,12 @@ int sunxi_jpeg_display(const char *filename)
 #elif CONFIG_SUNXI_SPINOR_JPEG
 	char disp_reserve[80];
 	snprintf(disp_reserve, 80, "%d,0x%x",
-		1, (uint)tmp);
+		(fb.stride * fb.height + sizeof(struct bmp_header)), (uint)tmp);
 	env_set("disp_reserve", disp_reserve);
 	fb.base = tmp ;
 	add_bmp_header(&fb);
-	save_fb_para_to_kernel(&fb);
+
+	memcpy(&boot_fb, &fb, sizeof(fb));
 #endif
 
 	release_fb(&fb);

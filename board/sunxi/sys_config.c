@@ -33,8 +33,9 @@ DECLARE_GLOBAL_DATA_PTR;
 //#define GPIO_REG_READ(reg)              smc_readl((reg))
 //#define GPIO_REG_WRITE(reg, value)      smc_writel((value), (reg))
 
-#define GPIO_REG_READ(reg)              (readl((ulong)(reg)))
-#define GPIO_REG_WRITE(reg, value)      (writel((value), (ulong)(reg)))
+#define GPIO_REG_READ(reg)              (readl((reg)))
+#define GPIO_REG_WRITE(reg, value)      writel((value), (reg))
+/* #define GPIO_REG_WRITE(reg, value)      {tick_printf("line:%d %s reg:0x%x value:0x%x\n", __LINE__, __func__, reg, value);  writel((value), (reg));} */
 
 
 /**#############################################################################################################
@@ -42,29 +43,83 @@ DECLARE_GLOBAL_DATA_PTR;
  *                           GPIO(PIN) Operations
  *
 -##############################################################################################################*/
-#define _PIO_REG_CFG(n, i)               ((volatile unsigned int *)( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x00))
-#define _PIO_REG_DLEVEL(n, i)            ((volatile unsigned int *)( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x14))
-#define _PIO_REG_PULL(n, i)              ((volatile unsigned int *)( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x1C))
-#define _PIO_REG_DATA(n)                 ((volatile unsigned int *)( SUNXI_PIO_BASE + ((n)-1)*0x24 + 0x10))
+#ifdef CONFIG_SUNXI_GPIO_V2
+#define PIOC_REG_o_CFG0                 (0x00)
+#define PIOC_REG_o_CFG1                 (0x04)
+#define PIOC_REG_o_CFG2                 (0x08)
+#define PIOC_REG_o_CFG3                 (0x0C)
+#define PIOC_REG_o_DATA                 (0x10)
+#define PIOC_REG_o_DRV0                 (0x14)
+#define PIOC_REG_o_DRV1                 (0x18)
+#define PIOC_REG_o_DRV2                 (0x1C)
+#define PIOC_REG_o_DRV3                 (0x20)
+#define PIOC_REG_o_PUL0                 (0x24)
+#define PIOC_REG_o_PUL1                 (0x28)
+#define PIOC_o_OFFSET										(0x30)
+#define PIOC_o_DLEVEL			(8)
+#define PIO_CFG_MASK			(0x0f)
+#else
+#define PIOC_REG_o_CFG0                 (0x00)
+#define PIOC_REG_o_CFG1                 (0x04)
+#define PIOC_REG_o_CFG2                 (0x08)
+#define PIOC_REG_o_CFG3                 (0x0C)
+#define PIOC_REG_o_DATA                 (0x10)
+#define PIOC_REG_o_DRV0                 (0x14)
+#define PIOC_REG_o_DRV1                 (0x18)
+#define PIOC_REG_o_PUL0                 (0x1C)
+#define PIOC_REG_o_PUL1                 (0x20)
+#define PIO_CFG_MASK			(0x07)
+#define PIOC_o_OFFSET										(0x24)
+#define PIOC_o_DLEVEL			(16)
+#endif
 
-#define _PIO_REG_CFG_VALUE(n, i)          readl( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x00)
-#define _PIO_REG_DLEVEL_VALUE(n, i)       readl( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x14)
-#define _PIO_REG_PULL_VALUE(n, i)         readl( SUNXI_PIO_BASE + ((n)-1)*0x24 + ((i)<<2) + 0x1C)
-#define _PIO_REG_DATA_VALUE(n)            readl( SUNXI_PIO_BASE + ((n)-1)*0x24 + 0x10)
-#define _PIO_REG_BASE(n)                    ((volatile unsigned int *)(SUNXI_PIO_BASE +((n)-1)*24))
+#define _PIO_REG_CFG(n, i) \
+		((volatile unsigned int *)((unsigned long)SUNXI_PIO_BASE + \
+		((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_CFG0))
+#define _PIO_REG_DLEVEL(n, i) \
+		((volatile unsigned int *)((unsigned long)SUNXI_PIO_BASE + \
+		((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_DRV0))
+#define _PIO_REG_PULL(n, i) \
+		((volatile unsigned int *)((unsigned long)SUNXI_PIO_BASE + \
+		((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_PUL0))
+#define _PIO_REG_DATA(n) \
+		((volatile unsigned int *)((unsigned long)SUNXI_PIO_BASE + \
+		((n)-1) * PIOC_o_OFFSET + PIOC_REG_o_DATA))
 
-#ifdef SUNXI_RPIO_BASE
-#define _R_PIO_REG_CFG(n, i)               ((volatile unsigned int *)( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x00))
-#define _R_PIO_REG_DLEVEL(n, i)            ((volatile unsigned int *)( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x14))
-#define _R_PIO_REG_PULL(n, i)              ((volatile unsigned int *)( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x1C))
-#define _R_PIO_REG_DATA(n)                 ((volatile unsigned int *)( SUNXI_RPIO_BASE + ((n)-12)*0x24 + 0x10))
+#define _PIO_REG_CFG_VALUE(n, i) \
+		readl(IOMEM_ADDR(SUNXI_PIO_BASE + ((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_CFG0))
+#define _PIO_REG_DLEVEL_VALUE(n, i) \
+		readl(IOMEM_ADDR(SUNXI_PIO_BASE + ((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_DRV0))
+#define _PIO_REG_PULL_VALUE(n, i) \
+		readl(IOMEM_ADDR(SUNXI_PIO_BASE + ((n)-1) * PIOC_o_OFFSET + ((i)<<2) + PIOC_REG_o_PUL0))
+#define _PIO_REG_DATA_VALUE(n) \
+		readl(IOMEM_ADDR(SUNXI_PIO_BASE + ((n)-1) * PIOC_o_OFFSET + PIOC_REG_o_DATA))
+#define _PIO_REG_BASE(n) \
+		((volatile unsigned int *)((unsigned long)SUNXI_PIO_BASE +((n)-1) * PIOC_o_OFFSET))
 
-#define _R_PIO_REG_CFG_VALUE(n, i)          readl( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x00)
-#define _R_PIO_REG_DLEVEL_VALUE(n, i)       readl( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x14)
-#define _R_PIO_REG_PULL_VALUE(n, i)         readl( SUNXI_RPIO_BASE + ((n)-12)*0x24 + ((i)<<2) + 0x1C)
-#define _R_PIO_REG_DATA_VALUE(n)            readl( SUNXI_RPIO_BASE + ((n)-12)*0x24 + 0x10)
-#define _R_PIO_REG_BASE(n)                    ((volatile unsigned int *)(SUNXI_RPIO_BASE +((n)-12)*24))
+#ifdef SUNXI_R_PIO_BASE
+#define _R_PIO_REG_CFG(n, i)                                                   \
+	((volatile unsigned int *)((unsigned long)SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET +        \
+				   ((i) << 2) + PIOC_REG_o_CFG0))
+#define _R_PIO_REG_DLEVEL(n, i)                                                \
+	((volatile unsigned int *)((unsigned long)SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET +        \
+				   ((i) << 2) + PIOC_REG_o_DRV0))
+#define _R_PIO_REG_PULL(n, i)                                                  \
+	((volatile unsigned int *)((unsigned long)SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET +        \
+				   ((i) << 2) + PIOC_REG_o_PUL0))
+#define _R_PIO_REG_DATA(n)                                                     \
+	((volatile unsigned int *)((unsigned long)SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET + PIOC_REG_o_DATA))
 
+#define _R_PIO_REG_CFG_VALUE(n, i)                                             \
+		readl(IOMEM_ADDR(SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET + ((i) << 2) + PIOC_REG_o_CFG0))
+#define _R_PIO_REG_DLEVEL_VALUE(n, i)                                          \
+		readl(IOMEM_ADDR(SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET + ((i) << 2) + PIOC_REG_o_DRV0))
+#define _R_PIO_REG_PULL_VALUE(n, i)                                            \
+		readl(IOMEM_ADDR(SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET + ((i) << 2) + PIOC_REG_o_PUL0))
+#define _R_PIO_REG_DATA_VALUE(n)                                               \
+		readl(IOMEM_ADDR(SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET + PIOC_REG_o_DATA))
+#define _R_PIO_REG_BASE(n)                                                     \
+		((volatile unsigned int *)((unsigned long)SUNXI_R_PIO_BASE + ((n)-12) * PIOC_o_OFFSET))
 
 volatile void* PIO_REG_CFG(int port, int port_num)
 {
@@ -323,7 +378,7 @@ __s32  gpio_get_all_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, __
           
             script_gpio->pull      = (GPIO_REG_READ(tmp_group_pull_addr)   >> ((port_num - (port_num_pull<<4))<<1)) & 0x03; 
             script_gpio->drv_level = (GPIO_REG_READ(tmp_group_dlevel_addr) >> ((port_num - (port_num_pull<<4))<<1)) & 0x03;
-            script_gpio->mul_sel   = (GPIO_REG_READ(tmp_group_func_addr)   >> ((port_num - (port_num_func<<3))<<2)) & 0x07; 
+            script_gpio->mul_sel   = (GPIO_REG_READ(tmp_group_func_addr)   >> ((port_num - (port_num_func<<3))<<2)) & PIO_CFG_MASK;
             if(script_gpio->mul_sel <= 1)
             {
                 script_gpio->data  = (GPIO_REG_READ(tmp_group_data_addr)   >>   port_num) & 0x01;  
@@ -393,7 +448,7 @@ __s32  gpio_get_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, co
 
 			tmp_val1 = ((port_num - (port_num_func << 3)) << 2);
 			tmp_val2 = ((port_num - (port_num_pull << 4)) << 1);
-			gpio_status->mul_sel   = (PIO_REG_CFG_VALUE(port, port_num_func)>>tmp_val1) & 0x07;      
+			gpio_status->mul_sel   = (PIO_REG_CFG_VALUE(port, port_num_func)>>tmp_val1) & PIO_CFG_MASK;
 			gpio_status->pull      = (PIO_REG_PULL_VALUE(port, port_num_pull)>>tmp_val2) & 0x03;    
 			gpio_status->drv_level = (PIO_REG_DLEVEL_VALUE(port, port_num_pull)>>tmp_val2) & 0x03;    
 			if(gpio_status->mul_sel <= 1)
@@ -474,7 +529,7 @@ __s32  gpio_set_one_pin_status(ulong p_handler, user_gpio_set_t *gpio_status, co
             tmp_addr = PIO_REG_CFG(port, port_num_func);
             reg_val = GPIO_REG_READ(tmp_addr);                                                      
             tmp_val = (port_num - (port_num_func<<3))<<2;
-            reg_val &= ~(0x07 << tmp_val);
+            reg_val &= ~(PIO_CFG_MASK << tmp_val);
             reg_val |=  (script_gpio.mul_sel) << tmp_val;
             GPIO_REG_WRITE(tmp_addr, reg_val);
         }
@@ -570,7 +625,7 @@ __s32  gpio_set_one_pin_io_status(ulong p_handler, __u32 if_set_to_output_status
 
     tmp_group_func_addr = PIO_REG_CFG(port, port_num_func);
     reg_val = GPIO_REG_READ(tmp_group_func_addr);
-    reg_val &= ~(0x07 << (((port_num - (port_num_func<<3))<<2)));
+    reg_val &= ~(PIO_CFG_MASK << (((port_num - (port_num_func<<3))<<2)));
     reg_val |=   if_set_to_output_status << (((port_num - (port_num_func<<3))<<2));
     GPIO_REG_WRITE(tmp_group_func_addr, reg_val);
 
@@ -744,7 +799,7 @@ __s32  gpio_read_one_pin_value(ulong p_handler, const char *gpio_name)
 
     reg_val  = PIO_REG_CFG_VALUE(port, port_num_func);
 
-    func_val = (reg_val >> ((port_num - (port_num_func<<3))<<2)) & 0x07;
+    func_val = (reg_val >> ((port_num - (port_num_func<<3))<<2)) & PIO_CFG_MASK;
     if(func_val == 0)
     {
         reg_val = (PIO_REG_DATA_VALUE(port) >> port_num) & 0x01;
@@ -806,7 +861,7 @@ __s32  gpio_write_one_pin_value(ulong p_handler, __u32 value_to_gpio, const char
     port_num_func = port_num >> 3;
 
     reg_val  = PIO_REG_CFG_VALUE(port, port_num_func);
-    func_val = (reg_val >> ((port_num - (port_num_func<<3))<<2)) & 0x07;
+    func_val = (reg_val >> ((port_num - (port_num_func<<3))<<2)) & PIO_CFG_MASK;
     if(func_val == 1)
     {
         tmp_group_data_addr = PIO_REG_DATA(port);
@@ -833,7 +888,7 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 	//	__u32			   *tmp_group_port_addr;
 	volatile __u32     *tmp_group_func_addr,   *tmp_group_pull_addr;
 	volatile __u32     *tmp_group_dlevel_addr, *tmp_group_data_addr;
-	__u32  				port, port_num, port_num_func, port_num_pull;
+	__u32  				port, port_num, port_num_func, port_num_pull, port_num_dlevel;
 	__u32  				pre_port, pre_port_num_func;
 	__u32  				pre_port_num_pull;
 	__s32               i, tmp_val;
@@ -853,10 +908,11 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 		}
 		port_num_func = (port_num >> 3);
 		port_num_pull = (port_num >> 4);
+		port_num_dlevel = (port_num / PIOC_o_DLEVEL);
 
 		tmp_group_func_addr    = PIO_REG_CFG(port, port_num_func);  
 		tmp_group_pull_addr    = PIO_REG_PULL(port, port_num_pull); 
-		tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_pull);
+		tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_dlevel);
 		tmp_group_data_addr    = PIO_REG_DATA(port);
 
 		tmp_group_func_data    = GPIO_REG_READ(tmp_group_func_addr);
@@ -869,10 +925,10 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 		pre_port_num_pull = port_num_pull;
 
 		tmp_val = (port_num - (port_num_func << 3)) << 2;
-		tmp_group_func_data &= ~(0x07 << tmp_val);
+		tmp_group_func_data &= ~(PIO_CFG_MASK << tmp_val);
 		if(set_gpio)
 		{
-			tmp_group_func_data |= (tmp_user_gpio_data->mul_sel & 0x07) << tmp_val;
+			tmp_group_func_data |= (tmp_user_gpio_data->mul_sel & PIO_CFG_MASK) << tmp_val;
 		}
 
 		tmp_val = (port_num - (port_num_pull << 4)) << 1;
@@ -881,7 +937,9 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 			tmp_group_pull_data &= ~(                           0x03  << tmp_val);
 			tmp_group_pull_data |=  (tmp_user_gpio_data->pull & 0x03) << tmp_val;
 		}
-
+#if (PIOC_o_DLEVEL == 8)
+		tmp_val = (port_num % 8) * 4;
+#endif
 		if(tmp_user_gpio_data->drv_level >= 0)
 		{
 			tmp_group_dlevel_data &= ~(                                0x03  << tmp_val);
@@ -935,9 +993,9 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 		}
 		port_num_func = (port_num >> 3);
 		port_num_pull = (port_num >> 4);
+		port_num_dlevel = (port_num / PIOC_o_DLEVEL);
 
-		if((port_num_pull != pre_port_num_pull) || (port != pre_port))
-		{
+		if ((port_num_pull != pre_port_num_pull) || (port != pre_port) || (pre_port_num_func != port_num_func)) {
 			GPIO_REG_WRITE(tmp_group_func_addr, tmp_group_func_data);
 			GPIO_REG_WRITE(tmp_group_pull_addr, tmp_group_pull_data); 
 			GPIO_REG_WRITE(tmp_group_dlevel_addr, tmp_group_dlevel_data);
@@ -949,7 +1007,7 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 
 			tmp_group_func_addr    = PIO_REG_CFG(port, port_num_func); 
 			tmp_group_pull_addr    = PIO_REG_PULL(port, port_num_pull);
-			tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_pull);
+			tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_dlevel);
 			tmp_group_data_addr    = PIO_REG_DATA(port);  
 
 
@@ -957,12 +1015,6 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 			tmp_group_pull_data    = GPIO_REG_READ(tmp_group_pull_addr);
 			tmp_group_dlevel_data  = GPIO_REG_READ(tmp_group_dlevel_addr);
 			tmp_group_data_data    = GPIO_REG_READ(tmp_group_data_addr);
-		}
-		else if(pre_port_num_func != port_num_func)                    
-		{
-			GPIO_REG_WRITE(tmp_group_func_addr, tmp_group_func_data);  
-			tmp_group_func_addr    = PIO_REG_CFG(port, port_num_func); 
-			tmp_group_func_data    = GPIO_REG_READ(tmp_group_func_addr);		
 		}
 
 		pre_port_num_pull = port_num_pull;                    
@@ -973,10 +1025,10 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 		tmp_val = (port_num - (port_num_func << 3)) << 2;
 		if(tmp_user_gpio_data->mul_sel >= 0)
 		{
-			tmp_group_func_data &= ~(0x07  << tmp_val);
+			tmp_group_func_data &= ~(PIO_CFG_MASK  << tmp_val);
 			if(set_gpio)
 			{
-				tmp_group_func_data |=  (tmp_user_gpio_data->mul_sel & 0x07) << tmp_val;
+				tmp_group_func_data |=  (tmp_user_gpio_data->mul_sel & PIO_CFG_MASK) << tmp_val;
 			}
 		}
 
@@ -986,7 +1038,9 @@ int gpio_request_early(void  *user_gpio_list, __u32 group_count_max, __s32 set_g
 			tmp_group_pull_data &= ~(                           0x03  << tmp_val);
 			tmp_group_pull_data |=  (tmp_user_gpio_data->pull & 0x03) << tmp_val;
 		}
-       
+#if (PIOC_o_DLEVEL == 8)
+		tmp_val = (port_num % 8) * 4;
+#endif
 		if(tmp_user_gpio_data->drv_level >= 0)
 		{
 			tmp_group_dlevel_data &= ~(                                0x03  << tmp_val);
@@ -1034,7 +1088,7 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
     __u32               dlevel_change = 0, data_change = 0;
     volatile __u32  *tmp_group_func_addr = NULL, *tmp_group_pull_addr = NULL;
     volatile __u32  *tmp_group_dlevel_addr = NULL, *tmp_group_data_addr = NULL;
-    __u32  port, port_num, port_num_func, port_num_pull;
+    __u32  port, port_num, port_num_func, port_num_pull, port_num_dlevel;
     __u32  pre_port = 0x7fffffff, pre_port_num_func = 0x7fffffff;
     __u32  pre_port_num_pull = 0x7fffffff;
     __s32  i, tmp_val;
@@ -1073,10 +1127,12 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
         }
         port_num_func = (port_num >> 3);
         port_num_pull = (port_num >> 4);
+	port_num_dlevel = (port_num / PIOC_o_DLEVEL);
+
 
         tmp_group_func_addr    = PIO_REG_CFG(port, port_num_func); 
         tmp_group_pull_addr    = PIO_REG_PULL(port, port_num_pull);
-        tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_pull);
+	tmp_group_dlevel_addr  = PIO_REG_DLEVEL(port, port_num_dlevel);
         tmp_group_data_addr    = PIO_REG_DATA(port);               
 
         tmp_group_func_data    = *tmp_group_func_addr;
@@ -1111,9 +1167,9 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
 
         port_num_func = (port_num >> 3);
         port_num_pull = (port_num >> 4);
+	port_num_dlevel = (port_num / 8);
 
-        if((port_num_pull != pre_port_num_pull) || (port != pre_port))  
-        {
+	if ((port_num_pull != pre_port_num_pull) || (port != pre_port) || (pre_port_num_func != port_num_func)) {
             if(func_change)
             {
                 *tmp_group_func_addr   = tmp_group_func_data;  
@@ -1146,15 +1202,6 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
             tmp_group_data_data    = *tmp_group_data_addr;
 
         }
-        else if(pre_port_num_func != port_num_func)            
-        {
-            *tmp_group_func_addr   = tmp_group_func_data;
-
-           tmp_group_func_addr    = PIO_REG_CFG(port, port_num_func);
-
-            tmp_group_func_data    = *tmp_group_func_addr;
-        }
-       
         pre_port_num_pull = port_num_pull;   
         pre_port_num_func = port_num_func;
         pre_port          = port;
@@ -1163,9 +1210,9 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
         if(tmp_user_gpio_data->mul_sel >= 0)
         {
             tmp_val = (port_num - (port_num_func<<3)) << 2;
-            tmp_sys_gpio_data->hardware_gpio_status.mul_sel = (tmp_group_func_data >> tmp_val) & 0x07;
-            tmp_group_func_data &= ~(                              0x07  << tmp_val);
-            tmp_group_func_data |=  (tmp_user_gpio_data->mul_sel & 0x07) << tmp_val;
+            tmp_sys_gpio_data->hardware_gpio_status.mul_sel = (tmp_group_func_data >> tmp_val) & PIO_CFG_MASK;
+            tmp_group_func_data &= ~(                              PIO_CFG_MASK  << tmp_val);
+            tmp_group_func_data |=  (tmp_user_gpio_data->mul_sel & PIO_CFG_MASK) << tmp_val;
             func_change = 1;
         }
      
@@ -1182,7 +1229,9 @@ ulong sunxi_gpio_request(user_gpio_set_t *gpio_list, __u32 group_count_max)
                 pull_change = 1;
             }
         }
-     
+#if (PIOC_o_DLEVEL == 8)
+	tmp_val = (port_num % 8) * 4;
+#endif
         if(tmp_user_gpio_data->drv_level >= 0)
         {
             tmp_sys_gpio_data->hardware_gpio_status.drv_level = (tmp_group_dlevel_data >> tmp_val) & 0x03;
@@ -1256,6 +1305,20 @@ __s32 gpio_release(ulong p_handler, __s32 unused_para)
 #define FDT_INFO(fmt,args...) printf("FDT INFO:"fmt,##args);
 #define FDT_ERR(fmt,args...) printf("FDT ERROR:"fmt,##args);
 
+static int fdt_get_new_pull(int nodeoffset)
+{
+	if (fdt_getprop_string(working_fdt, nodeoffset,
+			"bias-pull-up", NULL) >= 0)
+		return 1;
+	if (fdt_getprop_string(working_fdt, nodeoffset,
+			"bias-pull-down", NULL) >= 0)
+		return 0;
+	if (fdt_getprop_string(working_fdt, nodeoffset,
+			"bias-disable", NULL) >= 0)
+		return 0;
+
+	return -1;
+}
 
 /**
  * fdt_get_pin - Read all pin from node
@@ -1316,6 +1379,9 @@ int fdt_get_all_pin(int nodeoffset,const char* pinctrl_name,user_gpio_set_t* gpi
 		name_num = 0;
 		port_num = 0;
 		ret = fdt_getprop_string(working_fdt,nodeoffset,"allwinner,pins",&pins);
+		if (ret < 0)
+			ret = fdt_getprop_string(working_fdt, nodeoffset,
+								"pins", &pins);
 		if(ret >=0 )
 		{
 			int len = ret;
@@ -1329,6 +1395,10 @@ int fdt_get_all_pin(int nodeoffset,const char* pinctrl_name,user_gpio_set_t* gpi
 		}
 
 		ret = fdt_getprop_string(working_fdt,nodeoffset,"allwinner,pname",&pins);
+		if (ret < 0)
+			ret = fdt_getprop_string(working_fdt, nodeoffset,
+							"pname", &pins);
+
 		if(ret >=0 )
 		{
 			int len = ret;
@@ -1348,31 +1418,68 @@ int fdt_get_all_pin(int nodeoffset,const char* pinctrl_name,user_gpio_set_t* gpi
 		}
 #endif
 		ret = fdt_getprop_string(working_fdt,nodeoffset,"allwinner,function",&function);
-		if(ret < 0 )
+		if (ret < 0)
 		{
-			FDT_ERR("get function err returned %s\n",fdt_strerror(ret));
-			return -1;
+			ret = fdt_getprop_string(working_fdt, nodeoffset,
+						"function", &function);
+			if (ret < 0) {
+				FDT_ERR("get function err returned %s\n",
+							fdt_strerror(ret));
+				return -1;
+			}
 		}
 
 		ret = fdt_getprop_u32(working_fdt,nodeoffset,"allwinner,muxsel",&muxsel);
-		if(ret < 0 )
+		if (ret < 0)
 		{
-			FDT_ERR("get muxsel err returned %s\n",fdt_strerror(ret));
-			return -1;
+			ret = fdt_getprop_u32(working_fdt, nodeoffset,
+						"muxsel", &muxsel);
+			if (ret < 0) {
+				FDT_ERR("get muxsel err returned %s\n",
+							fdt_strerror(ret));
+				return -1;
+			}
 		}
 
 		ret = fdt_getprop_u32(working_fdt,nodeoffset,"allwinner,drive",&drive);
-		if(ret < 0 )
+		if (ret < 0)
 		{
-			FDT_ERR("get drive err returned %s\n",fdt_strerror(ret));
-			return -1;
+			ret = fdt_getprop_u32(working_fdt, nodeoffset,
+						"drive-strength", &drive);
+			if (ret < 0) {
+				FDT_ERR("get drive err returned %s\n",
+							fdt_strerror(ret));
+				return -1;
+			}
+			switch (drive) {
+			case 10:
+				drive = 0;
+				break;
+			case 20:
+				drive = 1;
+				break;
+			case 30:
+				drive = 2;
+				break;
+			case 40:
+				drive = 3;
+				break;
+			default:
+				FDT_ERR("get drive value err %d\n", drive);
+				return -1;
+			}
+
 		}
 
 		ret = fdt_getprop_u32(working_fdt,nodeoffset,"allwinner,pull",&pull);
 		if(ret < 0)
 		{
-			FDT_ERR("get pull err returned %s\n",  fdt_strerror(ret));
-			return -1;
+			pull = fdt_get_new_pull(nodeoffset);
+			if (pull < 0) {
+				FDT_ERR("get pull err returned %s\n",
+							fdt_strerror(ret));
+				return -1;
+			}
 		}
 		for(j = 0; j < port_num; j++)
 		{
@@ -1405,7 +1512,7 @@ int fdt_get_all_pin(int nodeoffset,const char* pinctrl_name,user_gpio_set_t* gpi
 			strcpy(gpio_list[gpio_list_index].gpio_name, pin_name[j]);
 			gpio_list[gpio_list_index].port = port_name[j][1] - 'A'+1;
 			gpio_list[gpio_list_index].port_num = tmp_value;
-			gpio_list[gpio_list_index].mul_sel = tmp_mul&0x7;
+			gpio_list[gpio_list_index].mul_sel = tmp_mul & 0xf;
 			gpio_list[gpio_list_index].pull = pull;
 			gpio_list[gpio_list_index].drv_level = drive;
 			gpio_list[gpio_list_index].data = 0;
@@ -1469,6 +1576,9 @@ int fdt_get_pin_num(int nodeoffset,const char* pinctrl_name)
 			return -1;
 		}
 		ret = fdt_getprop_string(working_fdt,nodeoffset,"allwinner,pins",&pins);
+		if (ret < 0)
+			ret = fdt_getprop_string(working_fdt, nodeoffset,
+								"pins", &pins);
 		if(ret >=0 )
 		{
 			int len = ret;
@@ -1641,7 +1751,7 @@ int fdt_get_one_gpio_by_offset(int nodeoffset, const char* prop_name,user_gpio_s
 			gpio_list->pull,
 			gpio_list->drv_level,
 			gpio_list->data);
-	return 0;
+	return ret;
 
 }
 
@@ -1730,5 +1840,36 @@ int script_parser_fetch(char *node_path, char *prop_name, int value[], int def_v
 	}
 
 	return 0;
+}
+
+/**
+ * fdt_get_regulator_name - get regulator name from device node
+ *
+ * @node_path: device path or alians
+ * @prop_name: ex "pinctrl-0"
+
+ */
+const char *fdt_get_regulator_name(int nodeoffset, const char *name)
+{
+	char supply_name[32];
+	u32 handle = 0;
+	int handle_num = 0;
+
+	sprintf(supply_name, "%s-supply", name);
+
+	handle_num = fdt_getprop_u32(working_fdt, nodeoffset, supply_name, &handle);
+	if (handle_num < 0) {
+		FDT_ERR("%s:get property handle %s error:%s\n",
+			__func__, supply_name, fdt_strerror(handle_num));
+		return NULL;
+	}
+
+	nodeoffset = fdt_node_offset_by_phandle(working_fdt, handle);
+	if (nodeoffset < 0) {
+		FDT_ERR("%s:get property by handle error\n", __func__);
+		return NULL;
+	}
+
+	return fdt_get_name(working_fdt, nodeoffset, NULL);
 }
 

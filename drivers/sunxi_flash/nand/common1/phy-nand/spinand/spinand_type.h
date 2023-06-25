@@ -31,8 +31,8 @@
 #ifndef __SPINAND_TYPE_H
 #define __SPINAND_TYPE_H
 
-#include "../nand_errno.h"
 #include "../../aw_nand_type.h"
+#include <sunxi_nand_errno.h>
 //==============================================================================
 //  define the data structure for physic layer module
 //==============================================================================

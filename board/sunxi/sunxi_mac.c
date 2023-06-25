@@ -6,11 +6,7 @@
  * SPDX-License-Identifier:›GPL-2.0+
  */
 #include <common.h>
-#include <smc.h>
-#include <u-boot/md5.h>
-#include <sunxi_board.h>
-#include <sys_partition.h>
-#include <sys_config.h>
+#include <fdt_support.h>
 
 static int str2num(char *str, char *num)
 {
@@ -31,7 +27,6 @@ static int str2num(char *str, char *num)
 	*num = val;
 	return 0;
 }
-
 
 static int addr_parse(const char *addr_str, int check)
 {
@@ -67,25 +62,39 @@ static int addr_parse(const char *addr_str, int check)
 	return 0;
 }
 
+struct addr_info_t {
+	char *envname;
+	char *dtsname;
+	int   flag;
+};
+
+static struct addr_info_t addr[] = {
+	{"mac",      "addr_eth",  1},
+	{"wifi_mac", "addr_wifi", 1},
+	{"bt_mac",   "addr_bt",   0},
+};
+
 int update_sunxi_mac(void)
 {
-	char *p		   = NULL;
-	int i		   = 0;
+	char *p = NULL;
+	int   i = 0;
+	int   nodeoffset = 0;
+	struct fdt_header *dtb_base = working_fdt;
 
-	char *envtab[] = { "mac", "wifi_mac", "bt_mac" };
+	nodeoffset = fdt_path_offset(dtb_base, "/soc/addr_mgt");
 
-	int checktab[] = { 1, 1, 0 };
-
-	for (i = 0; i < sizeof(envtab) / sizeof(envtab[0]); i++) {
-		p = env_get(envtab[i]);
+	for (i = 0; i < ARRAY_SIZE(addr); i++) {
+		p = env_get(addr[i].envname);
 		if (p != NULL) {
-			if (addr_parse(p, checktab[i]) == 0) {
-				continue;
-			} else {
+			if (addr_parse(p, addr[i].flag)) {
 				/*if not pass, clean it, do not pass through cmdline*/
-				pr_err("%s format illegal\n", envtab[i]);
-				env_set(envtab[i], "");
+				pr_err("%s format illegal\n", addr[i].envname);
+				env_set(addr[i].envname, "");
+				continue;
 			}
+
+			if (nodeoffset >= 0)
+				fdt_setprop_string(dtb_base, nodeoffset, addr[i].dtsname, p);
 		}
 	}
 

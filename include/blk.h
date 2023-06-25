@@ -108,6 +108,36 @@ struct blk_desc {
 					lbaint_t start,
 					lbaint_t blkcnt,
 					unsigned int *skip_space);
+	int (*block_mmc_trim)(struct blk_desc *block_dev,
+					unsigned int start,
+					unsigned int blkcnt);
+	int (*block_mmc_discard)(struct blk_desc *block_dev,
+					unsigned int start,
+					unsigned int blkcnt);
+	int (*block_mmc_sanitize)(struct blk_desc *block_dev);
+	int (*block_mmc_secure_erase)(struct blk_desc *block_dev,
+					unsigned int start,
+					unsigned int blkcnt,
+					unsigned int *skip_space);
+	int (*block_mmc_secure_trim)(struct blk_desc *block_dev,
+					unsigned int start,
+					unsigned int blkcnt);
+	int (*block_mmc_secure_wipe)(struct blk_desc *block_dev,
+					unsigned int start,
+					unsigned int blkcnt,
+					unsigned int *skip_space);
+
+	int (*block_mmc_user_get_wp_grp_size)(int dev_num,
+					unsigned int *wp_grp_size);
+
+	int (*block_mmc_user_write_protect)(int dev_num,
+					unsigned wp_type,
+					unsigned start,
+					unsigned blkcnt);
+
+	int (*block_mmc_clr_tem_wp)(int dev_num,
+					unsigned start,
+					unsigned blkcnt);
 	void		*priv;		/* driver private struct pointer */
 #endif
 };

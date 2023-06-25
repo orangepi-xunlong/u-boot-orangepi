@@ -1,0 +1,338 @@
+/*
+ * Allwinner Technology CO., Ltd. sun50iw10p1 platform
+ *
+ * modify base on juno.dts
+ */
+/dts-v1/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/gpio.h>
+/*#include "sun50iw10p1-pinctrl.dtsi"*/
+#include <dt-bindings/thermal/thermal.h>
+/ {
+	model = "sun50iw10";
+	compatible = "allwinner,a100", "arm,sun50iw10p1";
+	#address-cells = <2>;
+	#size-cells = <2>;
+	aliases:aliases@45100000 {
+	};
+	soc: soc@29000000 {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		power_sply:power_sply@4500000c {
+			device_type = "power_sply";
+
+		};
+
+		power_delay:power_delay@4500024 {
+			device_type = "power_delay";
+		};
+
+		platform:platform@45000004 {
+			device_type = "platform";
+
+		};
+
+		target:target@45000008 {
+			device_type = "target";
+
+		};
+
+		charger0:charger0@45000010 {
+			device_type = "charger0";
+
+		};
+		card_boot:card_boot@45000014 {
+			device_type = "card_boot";
+			logical_start   = <40960>;
+			/* sprite_gpio0 = <&pio PH 6 1 0xffffffff 0xffffffff 1>; */
+			sprite_gpio0 = <&pio 0x7 0x6 0x1 0xffffffff 0xffffffff 0x1>;
+		};
+
+		gpio_bias:gpio_bias@45000018 {
+			device_type = "gpio_bias";
+		};
+
+		fastboot_key:fastboot_key@4500001c {
+			device_type = "fastboot_key";
+			key_max = <42>;
+			key_min = <38>;
+		};
+
+		recovery_key:recovery_key@45000020 {
+			device_type = "recovery_key";
+			key_max = <31>;
+			key_min = <28>;
+		};
+
+		pio: pinctrl@0300b000 {
+			compatible = "allwinner,sun50iw10p1-pinctrl";
+			device_type = "pio";
+			gpio-controller;
+			#size-cells = <0>;
+			#gpio-cells = <6>;
+			/* takes the debounce time in usec as argument */
+			input-debounce = <0 0 0 0 0 0 0 0 0>;
+			r_pio: pinctrl@07022000 {
+
+				s_twi0_pins_a: s_twi0@0 {
+					allwinner,pins = "PL0", "PL1";
+					allwinner,pname = "s_twi0_scl", "s_twi0_sda";
+					allwinner,function = "s_twi0";
+					allwinner,muxsel = <2>;
+					allwinner,drive = <1>;
+					allwinner,pull = <1>;
+				};
+
+				s_twi0_pins_b: s_twi0@1 {
+					allwinner,pins = "PL0", "PL1";
+					allwinner,function = "gpio_out";
+					allwinner,muxsel = <1>;
+					allwinner,drive = <1>;
+					allwinner,pull = <1>;
+				};
+			};
+
+			twi0_pins_a: twi0@0 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,pname = "twi0_scl", "twi0_sda";
+				allwinner,function = "twi0";
+				allwinner,muxsel = <2>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+
+			twi0_pins_b: twi0@1 {
+				allwinner,pins = "PH0", "PH1";
+				allwinner,function = "io_disabled";
+				allwinner,muxsel = <7>;
+				allwinner,drive = <1>;
+				allwinner,pull = <0>;
+			};
+			sdc0_pins_a: sdc0@0 {
+			};
+
+			sdc0_pins_b: sdc0@1 {
+			};
+
+			sdc0_pins_c: sdc0@2 {
+			};
+
+			sdc2_pins_a: sdc2@0 {
+			};
+
+			sdc2_pins_b: sdc2@1 {
+			};
+
+			sdc2_pins_c: sdc2@2 {
+			};
+
+			nand0_pins_a: nand0@0 {
+			};
+
+			nand0_pins_b: nand0@1 {
+			};
+
+			nand0_pins_c: nand0@2 {
+			};
+
+			twi6: s_twi@0x07081400 {
+				pmu0: pmu@34 {
+				};
+			};
+			lvds0_pins_a: lvds0@0 {
+			};
+			lvds0_pins_b: lvds0@1 {
+			};
+			lvds1_pins_a: lvds1@0 {
+			};
+			lvds1_pins_b: lvds1@1 {
+			};
+			lvds2_pins_a: lvds2@0 {
+			};
+			lvds2_pins_b: lvds2@1 {
+			};
+			lvds3_pins_a: lvds3@0 {
+			};
+			lvds3_pins_b: lvds3@1 {
+			};
+			lcd1_lvds2link_pins_a: lcd1_lvds2link@0 {
+			};
+			lcd1_lvds2link_pins_b: lcd1_lvds2link@1 {
+			};
+			lvds2link_pins_a: lvds2link@0 {
+			};
+			lvds2link_pins_b: lvds2link@1 {
+			};
+			rgb24_pins_a: rgb24@0 {
+			};
+			rgb24_pins_b: rgb24@1 {
+			};
+			rgb18_pins_a: rgb18@0 {
+			};
+			rgb18_pins_b: rgb18@1 {
+			};
+			eink_pins_a: eink@0 {
+			};
+			eink_pins_b: eink@1 {
+			};
+			dsi4lane_pins_a: dsi4lane@0 {
+			};
+			dsi4lane_pins_b: dsi4lane@1 {
+			};
+			pwm0_pin_a: pwm0@0 {
+			};
+
+			pwm0_pin_b: pwm0@1 {
+			};
+
+			pwm1_pin_a: pwm1@0 {
+			};
+
+			pwm1_pin_b: pwm1@1 {
+			};
+		};
+
+		pwm: pwm@300a000 {
+		};
+
+		pwm0: pwm0@300a010 {
+		};
+
+		pwm1: pwm1@300a011 {
+		};
+
+		pwm2: pwm2@300a012 {
+		};
+
+		pwm3: pwm3@300a013 {
+		};
+
+		pwm4: pwm4@300a014 {
+		};
+
+		pwm5: pwm5@300a015 {
+		};
+
+		pwm6: pwm6@300a016 {
+		};
+
+		pwm7: pwm7@300a017 {
+		};
+
+		pwm8: pwm8@300a018 {
+		};
+
+		pwm9: pwm9@300a019 {
+		};
+
+		card0_boot_para:card0_boot_para@2 {
+			device_type = "card0_boot_para";
+		};
+
+		card2_boot_para:card2_boot_para@3 {
+			device_type = "card2_boot_para";
+		};
+
+		nand0:nand0@04011000 {
+			device_type = "nand0";
+		};
+
+		disp: disp@06100000 {
+			compatible = "allwinner,sunxi-disp";
+			reg = <0x0 0x06000000 0x0 0x3fffff>,//de0
+			      <0x0 0x06800000 0x0 0x3fffff>,//de1
+			      <0x0 0x06510000 0x0 0xfff>,//tcon-top0
+			      <0x0 0x06d10000 0x0 0xfff>,//tcon-top1
+			      <0x0 0x06511000 0x0 0xfff>,//tcon-lcd0
+			      <0x0 0x06d11000 0x0 0xfff>,//tcon-lcd1
+			      <0x0 0x06504000 0x0 0x1fff>;//dsi0
+			interrupts = 	<GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-parent = <&gic>;
+			clocks = <&clk_de0>,
+				 <&clk_de1>,
+				 <&clk_display_top>,
+				 <&clk_dpss_top0>,
+				 <&clk_dpss_top1>,
+				 <&clk_tcon_lcd0>,
+				 <&clk_tcon_lcd1>,
+				 <&clk_lvds>,
+				 <&clk_lvds1>,
+				 <&clk_mipi_host>;
+			boot_disp = <0>;
+			boot_disp1 = <0>;
+			boot_disp2 = <0>;
+			fb_base = <0>;
+			/* iommus = <&mmu_aw 0 0>; */
+			status = "okay";
+		};
+		lcd0: lcd0@1c0c000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "allwinner,sunxi-lcd0";
+			reg = <0x0 0x1c0c000 0x0 0x0>;  /* Fake registers to avoid dtc compiling warnings */
+			pinctrl-names = "active","sleep";
+			status = "okay";
+		};
+		lcd0_1: lcd0_1@1c0c000 {
+		};
+
+		lcd1: lcd1@1 {
+			compatible = "allwinner,sunxi-lcd1";
+			reg = <0x0 0x1c0c000 0x0 0x0>;  /* Fake registers to avoid dtc compiling warnings */
+			pinctrl-names = "active","sleep";
+			status = "okay";
+		};
+
+		twi0: twi@5002000{
+			compatible = "allwinner,sun50i-twi";
+			pinctrl-names = "default", "sleep";
+			status = "okay";
+
+		};
+		tps65185: tps65185@68 {
+			compatible = "allwinner, tps65185";
+			pinctrl-names = "active","sleep";
+			status = "okay";
+		};
+
+		tps65185_slave: tps65185_slave@68{
+			compatible = "allwinner, tps65185_slave";
+			pinctrl-names = "active","sleep";
+			status = "okay";
+		};
+		eink: eink@6400000 {
+			compatible = "allwinner,sunxi-eink";
+			pinctrl-names = "active","sleep";
+			reg = <0x0 0x06400000 0x0 0x01ffff>,/* eink */
+			      <0x0 0x06000000 0x0 0x3fffff>;/* de */
+			interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>, /* eink */
+				     <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>; /* de */
+			clocks = <&clk_de0>,
+				 <&clk_ee>,
+				 <&clk_panel>;
+			/* iommus = <&mmu_aw 6 1>; */
+			interrupt-parent = <&gic>;
+			status = "okay";
+		};
+	};
+
+	gic: interrupt-controller@3020000 {
+		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		#address-cells = <0>;
+		device_type = "gic";
+		interrupt-controller;
+		reg = <0x0 0x03021000 0 0x1000>, /* GIC Dist */
+		      <0x0 0x03022000 0 0x2000>, /* GIC CPU */
+		      <0x0 0x03024000 0 0x2000>, /* GIC VCPU Control */
+		      <0x0 0x03026000 0 0x2000>; /* GIC VCPU */
+		interrupts = <GIC_PPI 9 0xf04>;  /* GIC Maintenence IRQ */
+		interrupt-parent = <&gic>;
+	};
+
+};
+
+#include "sun50iw10p1-clk.dtsi"
+#include ".board-uboot.dts"

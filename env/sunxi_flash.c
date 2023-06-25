@@ -125,8 +125,8 @@ static int env_sunxi_flash_save(void)
 		}
 	}
 
-	sunxi_flash_flush();
 	sunxi_flash_write_end();
+	sunxi_flash_flush();
 	ret = 0;
 
 	gd->env_valid = gd->env_valid == ENV_REDUND ? ENV_VALID : ENV_REDUND;
@@ -155,15 +155,39 @@ static int env_sunxi_flash_save(void)
 		goto fini;
 
 	printf("Writing to env...\n");
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+	if ((uint)info.size >= ((CONFIG_ENV_SIZE * 2)/512)) {
+		char backup_buf[CONFIG_ENV_SIZE*2];
+		memcpy(backup_buf, env_new, CONFIG_ENV_SIZE);
+		memcpy((backup_buf+CONFIG_ENV_SIZE), env_new, CONFIG_ENV_SIZE);
+		if (write_env(desc, (CONFIG_ENV_SIZE*2 + 511) / 512, (uint)info.start,
+			 (u_char *)backup_buf)) {
+			puts("failed\n");
+			ret = 1;
+			goto fini;
+		}
+	} else {
+		printf("env size is %u\n", (uint)info.size);
+		puts("env partition is too small!\n");
+		puts("can't enabled backup env functions\n");
+		if (write_env(desc, (CONFIG_ENV_SIZE + 511) / 512, (uint)info.start,
+			 (u_char *)env_new)) {
+			puts("failed\n");
+			ret = 1;
+			goto fini;
+		}
+	}
+#else
 	if (write_env(desc, (CONFIG_ENV_SIZE + 511) / 512, (uint)info.start,
 		      (u_char *)env_new)) {
 		puts("failed\n");
 		ret = 1;
 		goto fini;
 	}
+#endif /* CONFIG_SUNXI_ENV_BACKUP */
 
-	sunxi_flash_flush();
 	sunxi_flash_write_end();
+	sunxi_flash_flush();
 	ret = 0;
 
 fini:
@@ -276,9 +300,19 @@ err:
 	return ret;
 }
 #else
+
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+uint32_t env_calc_crc(const char *buf);
+uint32_t env_get_crc(const char *buf);
+#endif
+
 static int env_sunxi_flash_load(void)
 {
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE*2);
+#else
 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
+#endif
 	struct blk_desc *desc;
 	disk_partition_t info = { 0 };
 	int ret;
@@ -303,13 +337,63 @@ static int env_sunxi_flash_load(void)
 		goto err;
 	}
 
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+	if (read_env(desc, (CONFIG_ENV_SIZE*2 + 511) / 512, (uint)info.start,
+		     buf)) {
+#else
 	if (read_env(desc, (CONFIG_ENV_SIZE + 511) / 512, (uint)info.start,
 		     buf)) {
+#endif
 		errmsg = "!read failed";
 		ret    = -EIO;
 		goto err;
 	}
+
+#ifdef CONFIG_SUNXI_ENV_BACKUP
+	char *normal_buf_p = buf;
+	char *backup_buf_p = buf;
+	//point to backup area
+	backup_buf_p += CONFIG_ENV_SIZE;
+
+	uint32_t crc = env_get_crc(normal_buf_p);
+	uint32_t crc_b = env_get_crc(backup_buf_p);
+	uint32_t crc_value = env_calc_crc(normal_buf_p);
+	uint32_t crc_b_value = env_calc_crc(backup_buf_p);
+
+	if ((uint)info.size >= ((CONFIG_ENV_SIZE * 2)/512)) {
+		if ((crc_value == crc) && (crc_b_value == crc_b)) {
+			env_import(normal_buf_p, 0);
+			if (crc != crc_b) {
+				puts("env and backup env are not synchronized,now to synchronize\n");
+				env_save();
+			}
+		} else if ((crc_value != crc) && (crc_b_value == crc_b)) {
+			puts("env check CRC fail\n");
+			puts("Now use backup env\n");
+			env_import(backup_buf_p, 0);
+			env_save();
+		} else if ((crc_value == crc) && (crc_b_value != crc_b)) {
+			puts("backup env check CRC fail\n");
+			puts("Now update backup env\n");
+			env_import(normal_buf_p, 0);
+			env_save();
+		} else if ((crc_value != crc) && (crc_b_value != crc_b)) {
+			puts("env and backup env all check CRC fail\n");
+			puts("Now set env to default\n");
+			errmsg = "!bad CRC";
+			set_default_env(errmsg);
+			env_save();
+			goto err;
+		}
+	} else {
+		printf("env size is %u\n", (uint)info.size);
+		puts("env partition is too small!\n");
+		puts("can't enabled backup env functions\n");
+		env_import(normal_buf_p, 1);
+	}
+#else
 	ret = env_import(buf, 1);
+#endif
 err:
 	if (ret)
 		set_default_env(errmsg);

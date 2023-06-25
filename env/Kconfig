@@ -432,6 +432,7 @@ config ENV_EXT4_FILE
 
 if ARCH_SUNXI
 
+
 config ENV_IS_IN_SUNXI_FLASH
 	bool "Environment is in sunxi flash"
 	default n
@@ -439,8 +440,27 @@ config ENV_IS_IN_SUNXI_FLASH
 	  Define this if you have a sunxi Flash memory device which you
 	  want to use for the environment.
 
+config SUNXI_ENV_BACKUP
+	bool "Environment backup"
+	default n
+	depends on ENV_IS_IN_SUNXI_FLASH
+	depends on !SUNXI_REDUNDAND_ENVIRONMENT
+	help
+	  Environment backup, but the env partition must be twice the size of ENV_SIZE
+
+if ENV_IS_IN_SPI_FLASH
+config ENV_OFFSET_BY_LOGICAL_OFFSET
+	bool "Environment Offset by logical offset on sunxi spinor flash"
+	depends on !ENV_IS_IN_UBI
+	depends on !ENV_IS_NOWHERE
+	default n
+	help
+	  Offset from the start of logical
+endif
+
 config ENV_OFFSET
 	hex "Environment Offset"
+	depends on !ENV_OFFSET_BY_LOGICAL_OFFSET
 	depends on !ENV_IS_IN_UBI
 	depends on !ENV_IS_NOWHERE
 	default 0x88000 if ARCH_SUNXI
@@ -453,6 +473,7 @@ config ENV_SIZE
 	default 0x20000 if ARCH_SUNXI
 	help
 	  Size of the environment storage area
+
 config SYS_MAXARGS
 	hex "Environment Max number of command args"
 	default 64 if ARCH_SUNXI

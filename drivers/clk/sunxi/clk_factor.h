@@ -144,7 +144,13 @@ struct factor_init_data {
 	unsigned long (*calc_rate) (u32 parent_rate, struct clk_factors_value *factor);
 	struct clk_ops      * priv_ops;
 	void		    *priv_regops;
-}; 
+};
+
+struct fix_factor_init_data {
+    const char          *name;
+    const char          *parent_name;
+};
+
 struct sunxi_clk_factors {
 	struct clk_hw       	hw;
 	unsigned long       	flags;

@@ -285,7 +285,6 @@ extern u32 hdmi_set_spread_spectrum(u32 pixel_clk);
 static s32 hdmi_enable(void)
 {
 	s32 ret = 0;
-	struct clk *clk_parent = NULL;
 
 	LOG_TRACE();
 
@@ -295,18 +294,17 @@ static s32 hdmi_enable(void)
 		return 0;
 	}
 
-	clk_parent = clk_get(NULL, "tcon_tv");
-	if (clk_parent == NULL || IS_ERR(clk_parent))
-		printf("tcon_tv clk get failed\n");
-	else
-		clk_set_rate(hdmi_drv->hdmi_clk,
-			clk_get_rate(clk_parent));
+	if (hdmi_drv->hdmi_clk) {
+		if (hdmi_drv->tcon_tv_clk)
+			clk_set_rate(hdmi_drv->hdmi_clk, clk_get_rate(hdmi_drv->tcon_tv_clk));
+		else
+			pr_err("tcon_tv clk get failed\n");
 
 #ifdef CONFIG_HDMI2_FREQ_SPREAD_SPECTRUM
-	hdmi_set_spread_spectrum(
-		clk_get_rate(hdmi_drv->hdmi_clk));
+		hdmi_set_spread_spectrum(
+				clk_get_rate(hdmi_drv->hdmi_clk));
 #endif
-
+	}
 	if (/*hpd_state &&*/ !video_on)
 		ret = hdmi_enable_core();
 #if defined(__LINUX_PLAT__)
@@ -725,7 +723,7 @@ s32 hdmi_init(void)
 		}
 	}*/
 #else
-	int node_offset = 0;
+	int node_offset = 0, count = 0;
 	char io_name[32];
 	disp_gpio_set_t  gpio_info;
 	int power_io_ctrl = 0;
@@ -734,49 +732,73 @@ s32 hdmi_init(void)
 	of_periph_clk_config_setup(node_offset);
 
 	/* get clk */
-	hdmi_drv->hdmi_clk = of_clk_get(node_offset, 0);
+#if defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)
+	hdmi_drv->hdmi_clk = NULL;
+#else
+	hdmi_drv->hdmi_clk = of_clk_get(node_offset, count);
 	if (IS_ERR(hdmi_drv->hdmi_clk)) {
 		dev_err(&pdev->dev, "fail to get clk for hdmi\n");
 		kfree(hdmi_drv);
 		return -1;
 
 	}
-
-	hdmi_drv->hdmi_ddc_clk = of_clk_get(node_offset, 1);
+	count++;
+#endif
+	hdmi_drv->hdmi_ddc_clk = of_clk_get(node_offset, count);
 	if (IS_ERR(hdmi_drv->hdmi_ddc_clk)) {
 		dev_err(&pdev->dev, "fail to get clk for hdmi ddc\n");
 		kfree(hdmi_drv);
 		return -1;
 	}
-
-	hdmi_drv->hdmi_hdcp_clk = of_clk_get(node_offset, 2);
+	count++;
+#if defined(CONFIG_MACH_SUN8IW20) || defined(CONFIG_MACH_SUN20IW1)
+	hdmi_drv->hdmi_hdcp_clk = NULL;
+#else
+	hdmi_drv->hdmi_hdcp_clk = of_clk_get(node_offset, count);
 	if (IS_ERR(hdmi_drv->hdmi_hdcp_clk)) {
 		dev_err(&pdev->dev, "fail to get clk for hdmi hdcp\n");
 		kfree(hdmi_drv);
 		return -1;
 	}
-	hdmi_drv->hdmi_cec_clk = of_clk_get(node_offset, 3);
+	count++;
+#endif
+	hdmi_drv->hdmi_cec_clk = of_clk_get(node_offset, count);
 	if (IS_ERR(hdmi_drv->hdmi_cec_clk)) {
 		dev_err(&pdev->dev, "fail to get clk for hdmi cec\n");
 		kfree(hdmi_drv);
 		return -1;
 	}
+	count++;
 
-	clk_set_rate(hdmi_drv->hdmi_hdcp_clk, 300000000);
+	hdmi_drv->tcon_tv_clk = of_clk_get(node_offset, count);
+	if (IS_ERR(hdmi_drv->tcon_tv_clk)) {
+		dev_err(&pdev->dev, "fail to get clk for tcon tv cec\n");
+		kfree(hdmi_drv);
+		return -1;
+	}
 
-	ret = clk_prepare_enable(hdmi_drv->hdmi_clk);
-	if (ret != 0)
-		pr_info("hdmi clk enable failed!\n");
+	if (hdmi_drv->hdmi_hdcp_clk) {
+		clk_set_rate(hdmi_drv->hdmi_hdcp_clk, 300000000);
+		ret = clk_prepare_enable(hdmi_drv->hdmi_hdcp_clk);
+		if (ret != 0)
+			pr_info("hdmi hdcp clk enable failed!\n");
+	}
+
+	if (hdmi_drv->hdmi_clk) {
+		ret = clk_prepare_enable(hdmi_drv->hdmi_clk);
+		if (ret != 0)
+			pr_info("hdmi clk enable failed!\n");
+	}
+
 	ret = clk_prepare_enable(hdmi_drv->hdmi_ddc_clk);
 	if (ret != 0)
 		pr_info("hdmi ddc clk enable failed!\n");
-	ret = clk_prepare_enable(hdmi_drv->hdmi_hdcp_clk);
-	if (ret != 0)
-		pr_info("hdmi hdcp clk enable failed!\n");
 
-	ret = clk_prepare_enable(hdmi_drv->hdmi_cec_clk);
-	if (ret != 0)
-		pr_info("hdmi cec clk enable failed!\n");
+	if (hdmi_drv->hdmi_cec_clk) {
+		ret = clk_prepare_enable(hdmi_drv->hdmi_cec_clk);
+		if (ret != 0)
+			pr_info("hdmi cec clk enable failed!\n");
+	}
 
 	sprintf(io_name, "ddc_scl");
 	ret = disp_sys_script_get_item("hdmi",
@@ -788,6 +810,7 @@ s32 hdmi_init(void)
 		pr_info("enable ddc_scl pin\n");
 
 	}
+
 	memset(io_name, 0, 32);
 	memset(&gpio_info, 0, sizeof(gpio_info));
 	sprintf(io_name, "ddc_sda");

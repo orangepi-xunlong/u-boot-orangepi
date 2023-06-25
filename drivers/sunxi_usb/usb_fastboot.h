@@ -3,6 +3,7 @@
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Jerry Wang <wangflord@allwinnertech.com>
  *
+ * * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -32,7 +33,7 @@ char sunxi_fastboot_normal_LangID[8] = { 0x04, 0x03, 0x09, 0x04, '\0' };
 #define FASTBOOT_TRANSFER_BUFFER SDRAM_OFFSET(1000000)
 #define FASTBOOT_TRANSFER_BUFFER_SIZE (256 << 20)
 #define FASTBOOT_ERASE_BUFFER SDRAM_OFFSET(0000000)
-#define FASTBOOT_ERASE_BUFFER_SIZE (16 << 20)
+#define FASTBOOT_ERASE_BUFFER_SIZE (1 << 20)
 
 char *sunxi_usb_fastboot_dev[SUNXI_USB_FASTBOOT_DEV_MAX] = {
 	sunxi_fastboot_normal_LangID,  SUNXI_FASTBOOT_DEVICE_MANUFACTURER,

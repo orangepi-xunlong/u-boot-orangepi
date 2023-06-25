@@ -8,8 +8,12 @@
 
 #if defined(CONFIG_SUNXI_NCAT)
 #include <asm/arch/cpu_ncat.h>
+#elif defined(CONFIG_SUNXI_NCAT_V2)
+#include <asm/arch/cpu_ncat_v2.h>
 #elif defined(CONFIG_SUNXI_VERSION1)
 #include <asm/arch/cpu_version1.h>
+#elif defined(CONFIG_MACH_SUN55IW3)
+#include <asm/arch/plat-sun55iw3p1/cpu_sun55iw3.h>
 #else
 #include <asm/arch/cpu_sun4i.h>
 #endif

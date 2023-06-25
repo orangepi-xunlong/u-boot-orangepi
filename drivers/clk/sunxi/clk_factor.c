@@ -25,7 +25,7 @@
 
 static int sunxi_clk_disable_plllock(struct sunxi_clk_factors *factor)
 {
-	volatile u32 reg;
+	volatile ulong reg;
 
 	switch (factor->lock_mode) {
 		case PLL_LOCK_NEW_MODE:
@@ -54,8 +54,8 @@ static int sunxi_clk_disable_plllock(struct sunxi_clk_factors *factor)
 
 static int sunxi_clk_is_lock(struct sunxi_clk_factors *factor)
 {
-	volatile u32 reg;
-	u32 loop = 5000;
+	volatile ulong reg;
+	ulong loop = 5000;
 
 	switch (factor->lock_mode) {
 		case PLL_LOCK_NEW_MODE: {
@@ -356,80 +356,6 @@ static long sunxi_clk_factors_round_rate(struct clk_hw *hw, unsigned long rate, 
 /* not used yet */
 static int sunxi_clk_factors_set_flat_facotrs(struct sunxi_clk_factors *pfactor , struct clk_factors_value *values)
 {
-#if 0
-	struct sunxi_clk_factors_config *config = factor->config;
-	/*get all factors from the regitsters*/
-	u32 reg = factor_readl(factor,factor->reg);
-	u32 tmp_factor_p = config->pwidth ? GET_BITS( config->pshift , config->pwidth , reg) : 0 ;
-	u32 tmp_factor_m = config->mwidth ? GET_BITS( config->mshift , config->mwidth , reg) : 0 ;
-
-#ifdef CONFIG_EVB_PLATFORM
-	unsigned int loop = 300; /*lock loops*/
-#endif
-
-	/* 1).try to increase factor p first */
-	if( config->pwidth && tmp_factor_p < values->factorp )
-	{
-		reg = SET_BITS( config->pshift , config->pwidth , reg , values->factorp );
-		factor_writel(factor,reg, factor->reg);
-		if( factor->flags & CLK_RATE_FLAT_DELAY)
-			udelay(config->delay);
-	}
-	/* 2).try to increase factor m first */
-	if( config->mwidth && tmp_factor_m < values->factorm )
-	{
-		reg = SET_BITS( config->mshift , config->mwidth , reg, values->factorm );
-		factor_writel(factor,reg, factor->reg);
-		if( factor->flags & CLK_RATE_FLAT_DELAY)
-			udelay(config->delay);
-	}
-
-	/* 3. write factor n & k */
-	if( config->nwidth )
-		reg = SET_BITS( config->nshift , config->nwidth , reg, values->factorn );
-
-	if( config->kwidth )
-		reg = SET_BITS( config->kshift , config->kwidth , reg, values->factork );
-
-	factor_writel(factor,reg, factor->reg);
-	/* 4. do pair things for 2). decease factor m */
-	if( config->mwidth && tmp_factor_m > values->factorm)
-	{
-		reg = SET_BITS( config->mshift , config->mwidth , reg, values->factorm );
-		factor_writel(factor,reg, factor->reg);
-		if( factor->flags & CLK_RATE_FLAT_DELAY)
-			udelay(config->delay);
-	}
-
-	/* 5. wait for PLL state stable */
-#ifdef CONFIG_EVB_PLATFORM
-	while(loop--)
-	{
-        u32 reg_val = factor_readl(factor,factor->lock_reg);
-        if(GET_BITS(factor->lock_bit, 1, reg_val))
-             break;
-        else
-            udelay(10);
-	}
-
-    if(!loop)
-#if (defined CONFIG_FPGA_V4_PLATFORM) || (defined CONFIG_FPGA_V7_PLATFORM)
-        printk("clk %s wait lock timeout\n",factor->hw.clk->name);
-#else
-        WARN(1, "clk %s wait lock timeout\n",factor->hw.clk->name);
-#endif
-
-#endif
-
-	/*6.do pair things for 1).  decease factor p */
-	if( config->pwidth && tmp_factor_p > values->factorp )
-	{
-		reg = SET_BITS( config->pshift , config->pwidth , reg, values->factorp );
-		factor_writel(factor,reg, factor->reg);
-		if( factor->flags & CLK_RATE_FLAT_DELAY)
-			udelay(config->delay);
-	}
-#endif
 	return 0;
 }
 
@@ -561,7 +487,7 @@ int sunxi_clk_register_factors(void *dev, void  *base, struct factor_init_data* 
 	factors->lock_en_bit = init_data->lock_en_bit;
 	factors->lock_mode = init_data->lock_mode;
 	factors->config = init_data->config;
-	factors->config->sdmpat = (u32)(base + factors->config->sdmpat);
+	factors->config->sdmpat = (ulong)(base + factors->config->sdmpat);
 	factors->hw.init = &init;
 	factors->get_factors = init_data->get_factors;
 	factors->calc_rate = init_data->calc_rate;

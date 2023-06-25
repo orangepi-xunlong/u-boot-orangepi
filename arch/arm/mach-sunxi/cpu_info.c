@@ -17,7 +17,7 @@
 #ifdef CONFIG_DISPLAY_CPUINFO
 int print_cpuinfo(void)
 {
-	tick_printf("CPU:   Allwinner H616\n");
+	tick_printf("CPU:   Allwinner Family\n");
 	return 0;
 }
 #endif

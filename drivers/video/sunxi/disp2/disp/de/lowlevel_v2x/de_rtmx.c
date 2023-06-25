@@ -49,7 +49,7 @@ int de_rtmx_update_regs(unsigned int sel)
 	layno = LAYER_MAX_NUM_PER_CHN;
 
 	if (glb_ctl_block[sel].dirty == 0x1) {
-		memcpy((void *)glb_ctl_block[sel].off, glb_ctl_block[sel].val,
+		regwrite((void *)glb_ctl_block[sel].off, glb_ctl_block[sel].val,
 		       glb_ctl_block[sel].size);
 		glb_ctl_block[sel].dirty = 0;
 	}
@@ -57,7 +57,7 @@ int de_rtmx_update_regs(unsigned int sel)
 	for (j = 0; j < vi_chno; j++) {
 		for (i = 0; i < layno; i++) {
 			if (vi_attr_block[sel][j][i].dirty == 0x1) {
-				memcpy((void *)vi_attr_block[sel][j][i].off,
+				regwrite((void *)vi_attr_block[sel][j][i].off,
 				       vi_attr_block[sel][j][i].val,
 				       vi_attr_block[sel][j][i].size);
 				vi_attr_block[sel][j][i].dirty = 0;
@@ -65,21 +65,21 @@ int de_rtmx_update_regs(unsigned int sel)
 		}
 
 		if (vi_fc_block[sel][j].dirty == 0x1) {
-			memcpy((void *)vi_fc_block[sel][j].off,
+			regwrite((void *)vi_fc_block[sel][j].off,
 			       vi_fc_block[sel][j].val,
 			       vi_fc_block[sel][j].size);
 			vi_fc_block[sel][j].dirty = 0;
 		}
 
 		if (vi_haddr_block[sel][j].dirty == 0x1) {
-			memcpy((void *)vi_haddr_block[sel][j].off,
+			regwrite((void *)vi_haddr_block[sel][j].off,
 			       vi_haddr_block[sel][j].val,
 			       vi_haddr_block[sel][j].size);
 			vi_haddr_block[sel][j].dirty = 0;
 		}
 
 		if (vi_size_block[sel][j].dirty == 0x1) {
-			memcpy((void *)vi_size_block[sel][j].off,
+			regwrite((void *)vi_size_block[sel][j].off,
 			       vi_size_block[sel][j].val,
 			       vi_size_block[sel][j].size);
 			vi_size_block[sel][j].dirty = 0;
@@ -89,7 +89,7 @@ int de_rtmx_update_regs(unsigned int sel)
 	for (j = 0; j < ui_chno; j++) {
 		for (i = 0; i < layno; i++) {
 			if (ui_attr_block[sel][j][i].dirty == 0x1) {
-				memcpy((void *)ui_attr_block[sel][j][i].off,
+				regwrite((void *)ui_attr_block[sel][j][i].off,
 				       ui_attr_block[sel][j][i].val,
 				       ui_attr_block[sel][j][i].size);
 				ui_attr_block[sel][j][i].dirty = 0;
@@ -97,14 +97,14 @@ int de_rtmx_update_regs(unsigned int sel)
 		}
 
 		if (ui_haddr_block[sel][j].dirty == 0x1) {
-			memcpy((void *)ui_haddr_block[sel][j].off,
+			regwrite((void *)ui_haddr_block[sel][j].off,
 			       ui_haddr_block[sel][j].val,
 			       ui_haddr_block[sel][j].size);
 			ui_haddr_block[sel][j].dirty = 0;
 		}
 
 		if (ui_size_block[sel][j].dirty == 0x1) {
-			memcpy((void *)ui_size_block[sel][j].off,
+			regwrite((void *)ui_size_block[sel][j].off,
 			       ui_size_block[sel][j].val,
 			       ui_size_block[sel][j].size);
 			ui_size_block[sel][j].dirty = 0;
@@ -112,25 +112,25 @@ int de_rtmx_update_regs(unsigned int sel)
 	}
 
 	if (bld_attr_block[sel].dirty == 0x1) {
-		memcpy((void *)bld_attr_block[sel].off, bld_attr_block[sel].val,
+		regwrite((void *)bld_attr_block[sel].off, bld_attr_block[sel].val,
 		       bld_attr_block[sel].size);
 		bld_attr_block[sel].dirty = 0;
 	}
 
 	if (bld_ctl_block[sel].dirty == 0x1) {
-		memcpy((void *)bld_ctl_block[sel].off, bld_ctl_block[sel].val,
+		regwrite((void *)bld_ctl_block[sel].off, bld_ctl_block[sel].val,
 		       bld_ctl_block[sel].size);
 		bld_ctl_block[sel].dirty = 0;
 	}
 
 	if (bld_ck_block[sel].dirty == 0x1) {
-		memcpy((void *)bld_ck_block[sel].off, bld_ck_block[sel].val,
+		regwrite((void *)bld_ck_block[sel].off, bld_ck_block[sel].val,
 		       bld_ck_block[sel].size);
 		bld_ck_block[sel].dirty = 0;
 	}
 
 	if (bld_out_block[sel].dirty == 0x1) {
-		memcpy((void *)bld_out_block[sel].off, bld_out_block[sel].val,
+		regwrite((void *)bld_out_block[sel].off, bld_out_block[sel].val,
 		       bld_out_block[sel].size);
 		bld_out_block[sel].dirty = 0;
 	}
@@ -192,12 +192,19 @@ int de_rtmx_init(unsigned int sel, uintptr_t reg_base)
 	apb_base = reg_base + 0x00101000;
 	ovl_base = reg_base + 0x00102000;
 
-	if (sel == 1) {
+	if (sel) {
 		glb_base = reg_base + 0x00200000;
 		apb_base = reg_base + 0x00201000;
 		ovl_base = reg_base + 0x00202000;
 	}
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel) {
+		glb_base = glb_base - 0x00100000;
+		apb_base = apb_base - 0x00100000;
+		ovl_base = ovl_base - 0x00100000;
 
+	}
+#endif
 	memory = kmalloc(sizeof(struct __glb_reg_t), GFP_KERNEL | __GFP_ZERO);
 	if (NULL == memory) {
 		__wrn("malloc rtmx global memory fail! size=0x%x\n",

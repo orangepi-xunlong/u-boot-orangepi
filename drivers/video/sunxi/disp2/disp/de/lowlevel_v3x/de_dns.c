@@ -14,6 +14,7 @@
  *  History     :  2016-3-3 zzz  v0.1  Initial version
  ******************************************************************************/
 
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
 #include "de_dns_type.h"
 #include "de_rtmx.h"
 #include "de_enhance.h"
@@ -475,3 +476,4 @@ int de_dns_tasklet(unsigned int screen_id, unsigned int chno,
 	}
 	return 0;
 }
+#endif

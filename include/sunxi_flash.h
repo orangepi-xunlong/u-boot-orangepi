@@ -26,8 +26,6 @@
 #include <common.h>
 #include <sunxi_nand.h>
 
-
-
 /*normal*/
 int sunxi_flash_init(void);
 uint sunxi_flash_size(void);
@@ -62,14 +60,18 @@ int sunxi_sprite_write(unsigned int start_block, unsigned int nblock,
 int sunxi_sprite_flush(void);
 int sunxi_sprite_erase(int erase, void *mbr_buffer);
 int sunxi_sprite_force_erase(void);
+int sunxi_sprite_write_end(void);
 
 int sunxi_sprite_phyread(unsigned int start_block, unsigned int nblock,
 			 void *buffer);
 int sunxi_sprite_phywrite(unsigned int start_block, unsigned int nblock,
 			  void *buffer);
+int sunxi_sprite_phyerase(unsigned int start_block, unsigned int nblock, void *skip);
 int sunxi_sprite_secstorage_read(int item, unsigned char *buf,
 				 unsigned int len);
 int sunxi_sprite_secstorage_write(int item, unsigned char *buf,
+				  unsigned int len);
+int sunxi_sprite_secstorage_fast_write(int item, unsigned char *buf,
 				  unsigned int len);
 int sunxi_sprite_download_spl(unsigned char *buf, int len, unsigned int ext);
 int sunxi_sprite_download_toc(unsigned char *buf, int len, unsigned int ext);
@@ -79,6 +81,14 @@ int sunxi_flash_init_ext(void);
 
 int sunxi_flash_boot_init(int storage_type, int workmode);
 int save_fdt_to_flash(void *fdt_buf, size_t fdt_size);
+
+int card_read_boot0(void *buffer, uint length, int backup_id);
+int sunxi_flash_update_boot0(void);
+int card_download_boot0(uint length, void *buffer, uint storage_type);
+int sunxi_flash_hook_init(void);
+int sunxi_flash_is_support_fast_write(int flash_type);
+int sunxi_secstorage_flush(void);
+int sunxi_flash_mmc_recover_boot0_copy0(void);
 
 #define SUNXI_SECSTORE_VERSION 1
 
@@ -110,4 +120,16 @@ struct map_info {
 	unsigned int crc;
 };
 
+extern int sunxi_nand_info_dump(void *buffer);
+extern void sunxi_nand_page_table(void *buffer);
+extern void sunxi_nand_phy_page(int start_page, int nbyte, void *pmem);
+extern void sunxi_nand_boot0_dump(void *mem, int start, int print_flag);
+extern int nand_read_uboot_data(unsigned char *buf, unsigned int len);
+extern void sunxi_nand_logic_history_data_dump(int start_sector, int sector_num, void *pmem, unsigned int print_flag);
+extern int NAND_Uboot_Force_Erase(void);
+extern void sunxi_nand_test_read_write_normal(void);
+extern void sunxi_nand_wperf_test(int *write_speed);
+extern void sunxi_nand_rperf_test(int *read_speed);
+
+extern int nand_get_uboot_total_len(void);
 #endif /* __SUNXI_FLASH_H__ */

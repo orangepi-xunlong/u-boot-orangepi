@@ -276,7 +276,7 @@ int phy_configuration_supported(hdmi_tx_dev_t *dev, u16 phy_model);
  * return TRUE if success, FALSE if not success and -1 if PHY configurations
  * are not supported.
  */
-int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model);
+int phy_configure(hdmi_tx_dev_t *dev, u16 phy_model, encoding_t EncodingOut);
 
 /**
  * Set PHY to standby mode - turn off all interrupts
@@ -335,6 +335,8 @@ u8 phy_pll_lock_state(hdmi_tx_dev_t *dev);
 u8 phy_power_state(hdmi_tx_dev_t *dev);
 
 void phy_power_enable(hdmi_tx_dev_t *dev, u8 enable);
+void phy_set_reg_base(uintptr_t base);
+uintptr_t phy_get_reg_base(void);
 
 
 #endif	/* PHY_H_ */

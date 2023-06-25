@@ -202,15 +202,19 @@ int blk_dselect_hwpart(struct blk_desc *desc, int hwpart)
 
 struct blk_desc *blk_get_devnum_by_typename(const char *if_typename, int devnum)
 {
-	struct blk_driver *drv = blk_driver_lookup_typename(if_typename);
-	struct blk_desc *desc;
+	static struct blk_desc *desc;
+	static char cache_if_typename[16] = {0};
+	if ((desc == NULL) || (cache_if_typename[0] == 0) ||
+		(strncmp(if_typename, cache_if_typename, max(strlen(if_typename), strlen(cache_if_typename))))) {
+		strncpy(cache_if_typename, if_typename, strlen(if_typename));
+		struct blk_driver *drv = blk_driver_lookup_typename(if_typename);
 
-	if (!drv)
-		return NULL;
+		if (!drv)
+			return NULL;
 
-	if (get_desc(drv, devnum, &desc))
-		return NULL;
-
+		if (get_desc(drv, devnum, &desc))
+			return NULL;
+	}
 	return desc;
 }
 

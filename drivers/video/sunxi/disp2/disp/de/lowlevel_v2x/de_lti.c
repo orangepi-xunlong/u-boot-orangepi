@@ -45,7 +45,7 @@ int de_lti_set_reg_base(unsigned int sel, unsigned int chno, void *base)
 int de_lti_update_regs(unsigned int sel, unsigned int chno)
 {
 	if (lti_block[sel][chno].dirty == 0x1) {
-		memcpy((void *)lti_block[sel][chno].off,
+		regwrite((void *)lti_block[sel][chno].off,
 		       lti_block[sel][chno].val, lti_block[sel][chno].size);
 		lti_block[sel][chno].dirty = 0x0;
 	}
@@ -60,6 +60,10 @@ int de_lti_init(unsigned int sel, unsigned int chno, uintptr_t reg_base)
 
 	/* FIXME  display path offset should be defined */
 	base = reg_base + (sel + 1) * 0x00100000 + LTI_OFST;
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel)
+		base = base - 0x00100000;
+#endif
 	__inf("sel %d, lti_base[%d]=0x%p\n", sel, chno, (void *)base);
 
 	memory = kmalloc(sizeof(struct __lti_reg_t), GFP_KERNEL | __GFP_ZERO);

@@ -43,7 +43,7 @@ typedef struct _axp_contrl_info {
 __attribute__((section(".data"))) axp_contrl_info pmu_axp806_ctrl_tbl[] = {
 	/*name,    min,  max, reg,  mask, step0,split1_val, step1,ctrl_reg,ctrl_bit */
 	{ "dcdca", 600,  1520, AXP806_DCAOUT_VOL, 0x7f, 10, 1120, 20, AXP806_OUTPUT_CTL1, 0 },
-	{ "dcdcb", 1000, 2550, AXP806_DCBOUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL1, 1 },
+	{ "dcdcb", 1000, 2550, AXP806_DCBOUT_VOL, 0x1f, 50, 0, 0, AXP806_OUTPUT_CTL1, 1 },
 	{ "dcdcc", 600,  1520, AXP806_DCCOUT_VOL, 0x7f, 10, 1120, 20, AXP806_OUTPUT_CTL1, 2 },
 	{ "dcdcd", 600,  3300, AXP806_DCDOUT_VOL, 0x3f, 20, 1600, 100, AXP806_OUTPUT_CTL1, 3 },
 	{ "dcdce", 1100, 3400, AXP806_DCEOUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL1, 4 },
@@ -54,10 +54,10 @@ __attribute__((section(".data"))) axp_contrl_info pmu_axp806_ctrl_tbl[] = {
 	{ "bldo2", 700, 1900, AXP806_BLDO2OUT_VOL, 0x0f, 100, 0, 0, AXP806_OUTPUT_CTL2, 1 },
 	{ "bldo3", 700, 1900, AXP806_BLDO3OUT_VOL, 0x0f, 100, 0, 0, AXP806_OUTPUT_CTL2, 2 },
 	{ "bldo4", 700, 1900, AXP806_BLDO4OUT_VOL, 0x0f, 100, 0, 0, AXP806_OUTPUT_CTL2, 3 },
-	{ "cldo1", 700, 3300, AXP806_CLDO1OUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL2, 5 },
-	{ "cldo2", 700, 4200, AXP806_CLDO2OUT_VOL, 0x1f, 100, 3600, 200, AXP806_OUTPUT_CTL2, 6 },
-	{ "cldo3", 700, 3300, AXP806_CLDO3OUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL2, 7 },
-
+	{ "cldo1", 700, 3300, AXP806_CLDO1OUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL2, 4 },
+	{ "cldo2", 700, 4200, AXP806_CLDO2OUT_VOL, 0x1f, 100, 3600, 200, AXP806_OUTPUT_CTL2, 5 },
+	{ "cldo3", 700, 3300, AXP806_CLDO3OUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL2, 6 },
+	{ "dc1sw", 1100, 3400, AXP806_DCEOUT_VOL, 0x1f, 100, 0, 0, AXP806_OUTPUT_CTL2, 7 },
 };
 
 static axp_contrl_info *get_ctrl_info_from_tbl(char *name)
@@ -322,6 +322,38 @@ int pmu_axp806_set_bus_vol_limit(int vol)
 	return 0;
 }
 #endif
+
+static int pmu_axp806_set_dcdc_mode(const char *name, int mode)
+{
+	u8 reg_value = 0, mask = 0;
+
+	if (!strncmp(name, "dcdca_mode", sizeof("dcdca_mode")))
+		mask = AXP806_DCDCA_PWM_BIT;
+
+	if (!strncmp(name, "dcdcb_mode", sizeof("dcdcb_mode")))
+		mask = AXP806_DCDCB_PWM_BIT;
+
+	if (!strncmp(name, "dcdcc_mode", sizeof("dcdcc_mode")))
+		mask = AXP806_DCDCC_PWM_BIT;
+
+	if (!strncmp(name, "dcdcd_mode", sizeof("dcdcd_mode")))
+		mask = AXP806_DCDCD_PWM_BIT;
+
+	if (!strncmp(name, "dcdce_mode", sizeof("dcdce_mode")))
+		mask = AXP806_DCDCE_PWM_BIT;
+
+	if (pmic_bus_read(AXP806_RUNTIME_ADDR, AXP806_DCDC_MODESET, &reg_value))
+		return -1;
+
+	reg_value &= ~(1 << mask);
+	reg_value |= (mode << mask);
+
+	if (pmic_bus_write(AXP806_RUNTIME_ADDR, AXP806_DCDC_MODESET, reg_value))
+		return -1;
+
+	return 0;
+}
+
 unsigned char pmu_axp806_get_reg_value(unsigned char reg_addr)
 {
 	u8 reg_value;
@@ -354,6 +386,7 @@ U_BOOT_AXP_PMU_INIT(pmu_axp806) = {
 	.get_sys_mode      = pmu_axp806_get_sys_mode,
 	.get_key_irq       = pmu_axp806_get_key_irq,
 	.set_bus_vol_limit = pmu_axp806_set_bus_vol_limit,*/
+	.set_dcdc_mode     = pmu_axp806_set_dcdc_mode,
 	.get_reg_value	   = pmu_axp806_get_reg_value,
 	.set_reg_value	   = pmu_axp806_set_reg_value,
 };

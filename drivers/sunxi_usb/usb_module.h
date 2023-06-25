@@ -46,6 +46,10 @@
 
 //#define  SUNXI_USB_DEVICE_EFEX_TEST  5
 
+#ifdef CONFIG_SUNXI_USB_DETECT
+#define  SUNXI_USB_DEVICE_DETECT       6
+#endif
+
 typedef struct sunxi_usb_setup_req_s
 {
 	int  (* state_init		  )(void);
@@ -99,6 +103,9 @@ sunxi_usb_setup_req_t;
 #endif
 #ifdef SUNXI_USB_DEVICE_EFEX_TEST
         sunxi_usb_module_ext(SUNXI_USB_DEVICE_EFEX_TEST);
+#endif
+#ifdef SUNXI_USB_DEVICE_DETECT
+		sunxi_usb_module_ext(SUNXI_USB_DEVICE_DETECT);
 #endif
 
 #endif

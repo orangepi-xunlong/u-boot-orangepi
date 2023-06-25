@@ -31,12 +31,28 @@
 #include "rawnand/rawnand_boot.h"
 #include "rawnand/rawnand_cfg.h"
 #include "rawnand/rawnand_debug.h"
-#include "spinand/spinand_boot.h"
+/*#include "spinand/spinand_boot.h"*/
 #include "../nand_osal_uboot.h"
+#include <sunxi_nand_boot.h>
+#include <sunxi_nand_errno.h>
+#include <linux/errno.h>
 
 struct _uboot_info uboot_info = {0};
 struct _boot_info *phyinfo_buf;
 
+extern int spinand_add_len_to_uboot_tail(unsigned int uboot_size);
+extern int spinand_physic_info_get_one_copy(unsigned int start_block, unsigned int pages_offset, unsigned int *block_per_copy, unsigned int *buf);
+extern void spinand_erase_special_block(void);
+extern int spinand_dragonborad_test_one(unsigned char *buf, unsigned char *oob, unsigned int blk_num);
+extern int spinand_uboot_erase_all_chip(UINT32 force_flag);
+extern int SPINAND_UpdatePhyArch(void);
+extern int spinand_get_param(void *nand_param);
+extern int spinand_get_param_for_uboottail(void *nand_param);
+extern int spinand_write_boot0_one(unsigned char *buf, unsigned int len, unsigned int counter);
+extern int spinand_read_boot0_one(unsigned char *buf, unsigned int len, unsigned int counter);
+extern int spinand_write_uboot_one(unsigned char *buf, unsigned int len, struct _boot_info *info_buf, unsigned int info_len, unsigned int counter);
+extern int spinand_read_uboot_one(unsigned char *buf, unsigned int len, unsigned int counter);
+extern int spinand_erase_chip(unsigned int chip, unsigned int start_block, unsigned int end_block, unsigned int force_flag);
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -200,6 +216,14 @@ int disable_crc_when_ota;
 *Return       : 0:ok  -1:fail
 *Note         :
 *****************************************************************************/
+void dump_physic_info(struct _boot_info *info)
+{
+	printf("info->partition.data[0].size = %u\n", info->partition.data[0].size);
+	printf("info->partition.data[0].start.Block_NO = %u\n", info->partition.data[0].start.Block_NO);
+	printf("info->partition.data[0].start.Chip_NO = %u\n", info->partition.data[0].start.Chip_NO);
+	printf("info->partition.data[0].end.Block_NO = %u\n", info->partition.data[0].end.Block_NO);
+	printf("info->partition.data[0].end.Chip_NO = %u\n", info->partition.data[0].end.Chip_NO);
+}
 int nand_write_uboot_one(unsigned char *buf, unsigned int len, struct _boot_info *info_buf, unsigned int info_len, unsigned int counter)
 {
 	int ret = 0;
@@ -208,6 +232,9 @@ int nand_write_uboot_one(unsigned char *buf, unsigned int len, struct _boot_info
 	RAWNAND_DBG("burn uboot one!\n");
 
 	cal_sum_physic_info(phyinfo_buf, PHY_INFO_SIZE);
+
+	/*dump_physic_info(info_buf);*/
+
 
 	/*print_physic_info(phyinfo_buf);*/
 
@@ -630,12 +657,9 @@ int get_uboot_start_block(void)
 	__u32 uboot_start_block;
 	__u32 uboot_next_block;
 
-	if (aw_nand_info.boot->uboot_start_block != 0)
-		uboot_start_block = aw_nand_info.boot->uboot_start_block;
-	else
-		get_default_uboot_block(&uboot_start_block, &uboot_next_block);
+	get_default_uboot_block(&uboot_start_block, &uboot_next_block);
 
-	return uboot_start_block;
+	return (int)uboot_start_block;
 }
 
 /*****************************************************************************
@@ -650,12 +674,9 @@ int get_uboot_next_block(void)
 	__u32 uboot_start_block = 0;
 	__u32 uboot_next_block = 0;
 
-	if (aw_nand_info.boot->uboot_next_block != 0)
-		uboot_next_block = aw_nand_info.boot->uboot_next_block;
-	else
-		get_default_uboot_block(&uboot_start_block, &uboot_next_block);
+	get_default_uboot_block(&uboot_start_block, &uboot_next_block);
 
-	return uboot_next_block;
+	return (int)uboot_next_block;
 }
 
 /*****************************************************************************
@@ -1040,10 +1061,16 @@ int physic_info_get_one_copy(unsigned int start_block, unsigned int pages_offset
 *****************************************************************************/
 int clean_physic_info(void)
 {
-	memset((char *)phyinfo_buf, 0, PHY_INFO_SIZE);
-	phyinfo_buf->len = PHY_INFO_SIZE;
-	phyinfo_buf->magic = PHY_INFO_MAGIC;
-	RAWNAND_DBG("clean physic info uboot\n");
+	/*memset((char *)phyinfo_buf, 0, PHY_INFO_SIZE);*/
+/*
+ *        struct _boot_info *boot = (struct _boot_info *)phyinfo_buf;
+ *
+ *        memset((void *)(&boot->mbr), 0, sizeof(_MBR));
+ *        memset((void *)(&boot->partition), 0, sizeof(_PARTITION));
+ *        phyinfo_buf->len = PHY_INFO_SIZE;
+ *        phyinfo_buf->magic = PHY_INFO_MAGIC;
+ *        RAWNAND_DBG("clean physic info uboot\n");
+ */
 	return 0;
 }
 /*****************************************************************************
@@ -1070,7 +1097,7 @@ int nand_physic_info_read(void)
 	}
 
 	if (init_phyinfo_buf() != 0) {
-		return -1;
+		return -ENOMEM;
 	}
 
 	size_per_page = nand_get_pae_size();
@@ -1111,12 +1138,13 @@ int nand_physic_info_read(void)
 
 		ret_sum = check_sum_physic_info((unsigned int *)phyinfo_buf, PHY_INFO_SIZE);
 		if (ret_sum == 0) {
-			RAWNAND_DBG("physic info copy is ok\n");
+			RAWNAND_INFO("physic info copy is ok\n");
 			ret_flag = 0;
 			flag = 1;
+			ubootsta.nand_bootinfo_state.state = BOOT_INFO_OK;
 			break;
 		} else {
-			RAWNAND_DBG("physic info copy is bad\n");
+			RAWNAND_INFO("physic info copy is bad\n");
 			memset((char *)phyinfo_buf, 0, PHY_INFO_SIZE);
 			phyinfo_buf->len = PHY_INFO_SIZE;
 			phyinfo_buf->magic = PHY_INFO_MAGIC;
@@ -1126,6 +1154,9 @@ int nand_physic_info_read(void)
 
 
 	NAND_Free(temp_buf, size_per_page);
+
+	if (flag == 0)
+		ubootsta.nand_bootinfo_state.state = BOOT_INFO_NOEXIST;
 
 	return ret_flag;
 }

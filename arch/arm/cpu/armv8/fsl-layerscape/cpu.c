@@ -59,7 +59,7 @@ void cpu_name(char *name)
 		strcpy(name, "unknown");
 }
 
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 /*
  * To start MMU before DDR is available, we create MMU table in SRAM.
  * The base address of SRAM is CONFIG_SYS_FSL_OCRAM_BASE. We use three
@@ -278,6 +278,170 @@ void enable_caches(void)
 	__asm_invalidate_tlb_all();
 	icache_enable();
 	dcache_enable();
+}
+#endif	/* !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
+
+#ifdef CONFIG_TFABOOT
+enum boot_src __get_boot_src(u32 porsr1)
+{
+	enum boot_src src = BOOT_SOURCE_RESERVED;
+	u32 rcw_src = (porsr1 & RCW_SRC_MASK) >> RCW_SRC_BIT;
+#if !defined(CONFIG_NXP_LSCH3_2)
+	u32 val;
+#endif
+	debug("%s: rcw_src 0x%x\n", __func__, rcw_src);
+
+#if defined(CONFIG_FSL_LSCH3)
+#if defined(CONFIG_NXP_LSCH3_2)
+	switch (rcw_src) {
+	case RCW_SRC_SDHC1_VAL:
+		src = BOOT_SOURCE_SD_MMC;
+	break;
+	case RCW_SRC_SDHC2_VAL:
+		src = BOOT_SOURCE_SD_MMC2;
+	break;
+	case RCW_SRC_I2C1_VAL:
+		src = BOOT_SOURCE_I2C1_EXTENDED;
+	break;
+	case RCW_SRC_FLEXSPI_NAND2K_VAL:
+		src = BOOT_SOURCE_XSPI_NAND;
+	break;
+	case RCW_SRC_FLEXSPI_NAND4K_VAL:
+		src = BOOT_SOURCE_XSPI_NAND;
+	break;
+	case RCW_SRC_RESERVED_1_VAL:
+		src = BOOT_SOURCE_RESERVED;
+	break;
+	case RCW_SRC_FLEXSPI_NOR_24B:
+		src = BOOT_SOURCE_XSPI_NOR;
+	break;
+	default:
+		src = BOOT_SOURCE_RESERVED;
+	}
+#else
+	val = rcw_src & RCW_SRC_TYPE_MASK;
+	if (val == RCW_SRC_NOR_VAL) {
+		val = rcw_src & NOR_TYPE_MASK;
+
+		switch (val) {
+		case NOR_16B_VAL:
+		case NOR_32B_VAL:
+			src = BOOT_SOURCE_IFC_NOR;
+		break;
+		default:
+			src = BOOT_SOURCE_RESERVED;
+		}
+	} else {
+		/* RCW SRC Serial Flash */
+		val = rcw_src & RCW_SRC_SERIAL_MASK;
+		switch (val) {
+		case RCW_SRC_QSPI_VAL:
+		/* RCW SRC Serial NOR (QSPI) */
+			src = BOOT_SOURCE_QSPI_NOR;
+			break;
+		case RCW_SRC_SD_CARD_VAL:
+		/* RCW SRC SD Card */
+			src = BOOT_SOURCE_SD_MMC;
+			break;
+		case RCW_SRC_EMMC_VAL:
+		/* RCW SRC EMMC */
+			src = BOOT_SOURCE_SD_MMC;
+			break;
+		case RCW_SRC_I2C1_VAL:
+		/* RCW SRC I2C1 Extended */
+			src = BOOT_SOURCE_I2C1_EXTENDED;
+			break;
+		default:
+			src = BOOT_SOURCE_RESERVED;
+		}
+	}
+#endif
+#elif defined(CONFIG_FSL_LSCH2)
+	/* RCW SRC NAND */
+	val = rcw_src & RCW_SRC_NAND_MASK;
+	if (val == RCW_SRC_NAND_VAL) {
+		val = rcw_src & NAND_RESERVED_MASK;
+		if (val != NAND_RESERVED_1 && val != NAND_RESERVED_2)
+			src = BOOT_SOURCE_IFC_NAND;
+
+	} else {
+		/* RCW SRC NOR */
+		val = rcw_src & RCW_SRC_NOR_MASK;
+		if (val == NOR_8B_VAL || val == NOR_16B_VAL) {
+			src = BOOT_SOURCE_IFC_NOR;
+		} else {
+			switch (rcw_src) {
+			case QSPI_VAL1:
+			case QSPI_VAL2:
+				src = BOOT_SOURCE_QSPI_NOR;
+				break;
+			case SD_VAL:
+				src = BOOT_SOURCE_SD_MMC;
+				break;
+			default:
+				src = BOOT_SOURCE_RESERVED;
+			}
+		}
+	}
+#endif
+
+	if (CONFIG_IS_ENABLED(SYS_FSL_ERRATUM_A010539) && !rcw_src)
+		src = BOOT_SOURCE_QSPI_NOR;
+
+	debug("%s: src 0x%x\n", __func__, src);
+	return src;
+}
+
+enum boot_src get_boot_src(void)
+{
+	struct pt_regs regs;
+	u32 porsr1 = 0;
+
+#if defined(CONFIG_FSL_LSCH3)
+	u32 __iomem *dcfg_ccsr = (u32 __iomem *)DCFG_BASE;
+#elif defined(CONFIG_FSL_LSCH2)
+	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+#endif
+
+	if (current_el() == 2) {
+		regs.regs[0] = SIP_SVC_RCW;
+
+		smc_call(&regs);
+		if (!regs.regs[0])
+			porsr1 = regs.regs[1];
+	}
+
+	if (current_el() == 3 || !porsr1) {
+#ifdef CONFIG_FSL_LSCH3
+		porsr1 = in_le32(dcfg_ccsr + DCFG_PORSR1 / 4);
+#elif defined(CONFIG_FSL_LSCH2)
+		porsr1 = in_be32(&gur->porsr1);
+#endif
+	}
+
+	debug("%s: porsr1 0x%x\n", __func__, porsr1);
+
+	return __get_boot_src(porsr1);
+}
+
+#ifdef CONFIG_ENV_IS_IN_MMC
+int mmc_get_env_dev(void)
+{
+	enum boot_src src = get_boot_src();
+	int dev = CONFIG_SYS_MMC_ENV_DEV;
+
+	switch (src) {
+	case BOOT_SOURCE_SD_MMC:
+		dev = 0;
+		break;
+	case BOOT_SOURCE_SD_MMC2:
+		dev = 1;
+		break;
+	default:
+		break;
+	}
+
+	return dev;
 }
 #endif
 

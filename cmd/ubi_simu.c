@@ -138,12 +138,12 @@ static void fill_vid_hdr(int lnum, int vol_type, int vol_id)
 
 static void show_mtd_info(struct mtd_info *mtd)
 {
-	sim_dbg("mtd size: %lld", mtd->size);
-	sim_dbg("erasesize: %d", mtd->erasesize);
-	sim_dbg("writesize: %d", mtd->writesize);
-	sim_dbg("writebufsize: %d", mtd->writebufsize);
-	sim_dbg("subpage_sft: %d", mtd->subpage_sft);
-	sim_dbg("mtd: %p, %s", mtd, mtd->name);
+	pr_err("mtd size: %lld\n", mtd->size);
+	pr_err("erasesize: %d\n", mtd->erasesize);
+	pr_err("writesize: %d\n", mtd->writesize);
+	pr_err("writebufsize: %d\n", mtd->writebufsize);
+	pr_err("subpage_sft: %d\n", mtd->subpage_sft);
+	pr_err("mtd: %p, %s\n", mtd, mtd->name);
 }
 
 static int wr_vol_table(void)
@@ -270,11 +270,88 @@ fail_exit:
 	return -1;
 }
 
+static int wr_peb(struct ubi_volume *vol, int lnum, void *buf, int len)
+{
+	int pnum = 0;
+
+	if (len != vol->usable_leb_size)
+		pr_info("%s lnum: %d, len: %d\n", vol->name, lnum, len);
+
+	if (vol->vol_type == UBI_DYNAMIC_VOLUME) {
+		/* For dynamic volume, this function checks if the data contains 0xFF bytes
+		 * at the end. If yes, the 0xFF bytes are cut and not written. So if the whole
+		 * buffer contains only 0xFF bytes, the LEB is left unmapped.
+		 * The reason why we skip the trailing 0xFF bytes in case of dynamic volume is
+		 * that we want to make sure that more data may be appended to the logical
+		 * eraseblock in future. Indeed, writing 0xFF bytes may have side effects and
+		 * this PEB won't be writable anymore. So if one writes the file-system image
+		 * to the UBI volume where 0xFFs mean free space - UBI makes sure this free
+		 * space is writable after the update.
+		 */
+		int l = ALIGN(len, p_ubi->min_io_size);
+
+		memset(buf + len, 0xFF, l - len);
+		len = ubi_calc_data_len(p_ubi, buf, l);
+		if (len == 0) {
+			pr_warn("all %d bytes contain 0xFF - skip\n", len);
+			return 0;
+		}
+	} else {
+		/*
+		 * When writing static volume, and this is the last logical
+		 * eraseblock, the length (@len) does not have to be aligned to
+		 * the minimal flash I/O unit. The 'ubi_eba_write_leb_st()'
+		 * function accepts exact (unaligned) length and stores it in
+		 * the VID header. And it takes care of proper alignment by
+		 * padding the buffer. Here we just make sure the padding will
+		 * contain zeros, not random trash.
+		 */
+		memset(buf + len, 0, vol->usable_leb_size - len);
+	}
+
+	pnum = get_pnum();
+
+	if (pnum == -1) {
+		pr_err("%s fail\n", __func__);
+		return -1;
+	}
+	vol->eba_tbl[lnum] = pnum;
+	erase_peb(pnum);
+	fill_ec_hdr();
+	fill_vid_hdr(lnum, (vol->vol_type == UBI_DYNAMIC_VOLUME) ?
+			UBI_VID_DYNAMIC : UBI_VID_STATIC, vol->vol_id);
+
+	if (vol->vol_type == UBI_STATIC_VOLUME) {
+		struct ubi_vid_hdr *vch = (struct ubi_vid_hdr *)(p_ubi->peb_buf + p_ubi->vid_hdr_offset);
+
+		vch->data_size = cpu_to_be32(len);
+		vch->used_ebs = cpu_to_be32(vol->upd_ebs);
+		vch->data_crc = cpu_to_be32(crc32(UBI_CRC32_INIT, buf, len));
+
+		/* re-calc vid hdr crc */
+		vch->hdr_crc = cpu_to_be32(crc32(UBI_CRC32_INIT, vch, UBI_VID_HDR_SIZE_CRC));
+
+		sim_dbg("size: %d, ebs: %d, data_crc: %x\n", len, vol->upd_ebs, crc32(UBI_CRC32_INIT, buf, len));
+
+		if (lnum == vol->upd_ebs - 1)
+			/* If this is the last LEB @len may be unaligned */
+			len = ALIGN(len, p_ubi->min_io_size);
+		else
+			ubi_assert(!(len & (p_ubi->min_io_size - 1)));
+	}
+
+	/* Write ec_hdr, vid_hdr and data */
+	if (ubi_io_write(p_ubi, p_ubi->peb_buf, pnum, 0, p_ubi->leb_start + len)) {
+		pr_err("wr %d@%d fail", lnum, vol->vol_id);
+		return -1;
+	}
+	return 0;
+}
+
 static int wr_vol(struct ubi_volume *vol, void *buf, size_t count)
 {
 	int lnum, len;
 	u32 offs = 0;
-	int pnum = -1;
 
 	//sim_dbg("write %d of %lld bytes, %lld already passed", count, vol->upd_bytes, vol->upd_received);
 	lnum = div_u64_rem(vol->upd_received, vol->usable_leb_size, &offs);
@@ -299,22 +376,8 @@ static int wr_vol(struct ubi_volume *vol, void *buf, size_t count)
 		memcpy(vol->upd_buf + offs, buf, len);
 
 		if (offs + len == vol->usable_leb_size ||
-		    vol->upd_received + len == vol->upd_bytes) {
-			int flush_len = offs + len;
-			/*
-			 * OK, we gathered either the whole eraseblock or this
-			 * is the last chunk, it's time to flush the buffer.
-			 */
-			pnum = get_pnum();
-			vol->eba_tbl[lnum] = pnum;
-			erase_peb(pnum);
-			fill_ec_hdr();
-			fill_vid_hdr(lnum, (vol->vol_type == UBI_DYNAMIC_VOLUME) ?
-					UBI_VID_DYNAMIC : UBI_VID_STATIC, vol->vol_id);
-			/* Write ec_hdr, vid_hdr and data */
-			if (ubi_io_write(p_ubi, p_ubi->peb_buf, pnum, 0, p_ubi->leb_start + flush_len))
-				sim_dbg("wr %d@%d fail", lnum, vol->vol_id);
-		}
+		    vol->upd_received + len == vol->upd_bytes)
+			wr_peb(vol, lnum, vol->upd_buf, offs + len);
 		vol->upd_received += len;
 		count -= len;
 		buf += len;
@@ -332,17 +395,8 @@ static int wr_vol(struct ubi_volume *vol, void *buf, size_t count)
 			len = count;
 
 		memcpy(vol->upd_buf, buf, len);
-		if (len == vol->usable_leb_size || vol->upd_received + len == vol->upd_bytes) {
-			pnum = get_pnum();
-			vol->eba_tbl[lnum] = pnum;
-			erase_peb(pnum);
-			fill_ec_hdr();
-			fill_vid_hdr(lnum, (vol->vol_type == UBI_DYNAMIC_VOLUME) ?
-					UBI_VID_DYNAMIC : UBI_VID_STATIC, vol->vol_id);
-			/* Write ec_hdr, vid_hdr and data */
-			if (ubi_io_write(p_ubi, p_ubi->peb_buf, pnum, 0, p_ubi->peb_size))
-				sim_dbg("wr %d@%d fail", lnum, vol->vol_id);
-		}
+		if (len == vol->usable_leb_size || vol->upd_received + len == vol->upd_bytes)
+			wr_peb(vol, lnum, vol->upd_buf, len);
 
 		vol->upd_received += len;
 		count -= len;
@@ -438,8 +492,7 @@ struct ubi_device *ubi_simu_part(char *part_name, const char *vid_header_offset)
 	struct mtd_info *mtd = NULL;
 	int i		     = 0;
 
-	sim_dbg("part_name: %s, vid_hdr_offset: %s, sizeof(void): %d\n",
-		part_name, vid_header_offset, sizeof(void));
+	pr_err("part_name: %s, vid_hdr_offset: %s, sizeof(void): %d\n", part_name, vid_header_offset, sizeof(void));
 	mtd_probe_devices();
 	mtd = get_mtd_device_nm(part_name);
 	if (IS_ERR(mtd)) {
@@ -492,7 +545,7 @@ struct ubi_device *ubi_simu_part(char *part_name, const char *vid_header_offset)
 	p_ubi->avail_pebs = p_ubi->peb_count - p_ubi->bad_peb_count;
 	p_ubi->beb_rsvd_level = p_ubi->bad_peb_limit - p_ubi->bad_peb_count;
 	p_ubi->beb_rsvd_pebs = p_ubi->beb_rsvd_level;
-	sim_dbg("beb_pebs: %d, beb_level: %d, limit: %d\n",
+	pr_err("beb_pebs: %d, beb_level: %d, limit: %d\n",
 		p_ubi->beb_rsvd_pebs, p_ubi->beb_rsvd_level,
 		p_ubi->bad_peb_limit);
 
@@ -505,17 +558,17 @@ struct ubi_device *ubi_simu_part(char *part_name, const char *vid_header_offset)
 		p_ubi->vtbl_slots = UBI_MAX_VOLUMES;
 
 	p_ubi->vtbl_size = p_ubi->vtbl_slots * UBI_VTBL_RECORD_SIZE;
-	sim_dbg("UBI_VTBL_RECORD_SIZE: %d, size: %d\n", UBI_VTBL_RECORD_SIZE,
+	pr_err("UBI_VTBL_RECORD_SIZE: %d, size: %d\n", UBI_VTBL_RECORD_SIZE,
 		p_ubi->vtbl_size);
 	p_ubi->vtbl_size = ALIGN(p_ubi->vtbl_size, p_ubi->min_io_size);
-	sim_dbg("UBI_VTBL_RECORD_SIZE: %d, size: %d\n", UBI_VTBL_RECORD_SIZE,
+	pr_err("UBI_VTBL_RECORD_SIZE: %d, size: %d\n", UBI_VTBL_RECORD_SIZE,
 		p_ubi->vtbl_size);
 	/* 4: reserved 2 layout volumes, 1 wl and 1 atomic change */
 	p_ubi->rsvd_pebs += p_ubi->beb_rsvd_pebs + 4;
 	p_ubi->avail_pebs -= p_ubi->rsvd_pebs;
 
 	ubi_devices[0] = p_ubi;
-	sim_dbg("cnt: %d, bad_cnt:%d, avail: %d, rsvd: %d", p_ubi->peb_count,
+	pr_err("cnt: %d, bad_cnt:%d, avail: %d, rsvd: %d", p_ubi->peb_count,
 		p_ubi->bad_peb_count, p_ubi->avail_pebs, p_ubi->rsvd_pebs);
 	return p_ubi;
 }
@@ -523,7 +576,7 @@ struct ubi_device *ubi_simu_part(char *part_name, const char *vid_header_offset)
 int sunxi_ubi_simu_volume_read(char *volume, loff_t offp, char *buf,
 			       size_t size)
 {
-	int err, lnum, off, len, tbuf_size;
+	int err = 0, lnum, off, len, tbuf_size;
 	void *tbuf;
 	unsigned long long tmp;
 	struct ubi_volume *vol;
@@ -560,7 +613,10 @@ int sunxi_ubi_simu_volume_read(char *volume, loff_t offp, char *buf,
 		if (off + len >= vol->usable_leb_size)
 			len = vol->usable_leb_size - off;
 		sim_dbg("%d -> %d, off: %d, %d", lnum, vol->eba_tbl[lnum], off, len);
-		err = ubi_io_read_data(p_ubi, tbuf, vol->eba_tbl[lnum], off, len);
+		if (UBI_LEB_UNMAPPED == vol->eba_tbl[lnum])
+			memset(tbuf, 0xff, len);
+		else
+			err = ubi_io_read_data(p_ubi, tbuf, vol->eba_tbl[lnum], off, len);
 		off += len;
 		if (off == vol->usable_leb_size) {
 			lnum += 1;

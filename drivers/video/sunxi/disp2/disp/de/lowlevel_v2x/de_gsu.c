@@ -42,6 +42,10 @@ int de_gsu_init(unsigned int sel, uintptr_t reg_base)
 	for (j = 0; j < chno; j++) {
 		gsu_base = reg_base + (sel + 1) * 0x00100000 + gsu_offset
 		+ j * 0x10000;
+#if defined(CONFIG_INDEPENDENT_DE)
+		if (sel)
+			gsu_base = gsu_base - 0x00100000;
+#endif
 
 		memory = kmalloc(sizeof(struct __gsu_reg_t),
 			GFP_KERNEL | __GFP_ZERO);
@@ -88,25 +92,25 @@ int de_gsu_update_regs(unsigned int sel)
 
 	for (i = 0; i < chno; i++) {
 		if (gsu_glb_block[sel][i].dirty == 0x1) {
-			memcpy((void *)gsu_glb_block[sel][i].off,
+			regwrite((void *)gsu_glb_block[sel][i].off,
 				gsu_glb_block[sel][i].val,
 				gsu_glb_block[sel][i].size);
 			gsu_glb_block[sel][i].dirty = 0x0;
 		}
 		if (gsu_out_block[sel][i].dirty == 0x1) {
-			memcpy((void *)gsu_out_block[sel][i].off,
+			regwrite((void *)gsu_out_block[sel][i].off,
 				gsu_out_block[sel][i].val,
 				gsu_out_block[sel][i].size);
 			gsu_out_block[sel][i].dirty = 0x0;
 		}
 		if (gsu_scale_block[sel][i].dirty == 0x1) {
-			memcpy((void *)gsu_scale_block[sel][i].off,
+			regwrite((void *)gsu_scale_block[sel][i].off,
 				gsu_scale_block[sel][i].val,
 				gsu_scale_block[sel][i].size);
 			gsu_scale_block[sel][i].dirty = 0x0;
 		}
 		if (gsu_coeff_block[sel][i].dirty == 0x1) {
-			memcpy((void *)gsu_coeff_block[sel][i].off,
+			regwrite((void *)gsu_coeff_block[sel][i].off,
 				gsu_coeff_block[sel][i].val,
 				gsu_coeff_block[sel][i].size);
 			gsu_coeff_block[sel][i].dirty = 0x0;
@@ -171,7 +175,7 @@ int de_gsu_enable(unsigned int sel, unsigned int chno, unsigned int en)
 /*static int de_gsu_set_fir_coef(unsigned int sel, unsigned int chno,
  *				unsigned int *coef)
  *{
- *	memcpy(&gsu_dev[sel][chno-VI_CHN_NUM]->hcoeff, coef,
+ *	regwrite(&gsu_dev[sel][chno-VI_CHN_NUM]->hcoeff, coef,
  *		sizeof(unsigned int)*GSU_PHASE_NUM);
  *
  *	return 0;
@@ -254,7 +258,7 @@ int de_gsu_set_para(unsigned int sel, unsigned int chno, unsigned int enable,
 
 	/* fir coefficient */
 	pt_coef = de_gsu_calc_fir_coef(para->vstep);
-	memcpy(&gsu_dev[sel][chno_t]->hcoeff, lan2coefftab16 + pt_coef,
+	regwrite(&gsu_dev[sel][chno_t]->hcoeff, lan2coefftab16 + pt_coef,
 		sizeof(unsigned int) * GSU_PHASE_NUM);
 	gsu_dev[sel][chno_t]->ctrl.bits.coef_switch_rdy = 1;
 	gsu_glb_block[sel][chno_t].dirty = 1;

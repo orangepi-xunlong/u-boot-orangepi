@@ -18,6 +18,7 @@
 #include  "../sprite_cartoon.h"
 #include  "../sprite_cartoon_color.h"
 #include  "sprite_progressbar_i.h"
+#include <sunxi_eink.h>
 
 progressbar_t   progress;
 /*
@@ -36,12 +37,12 @@ progressbar_t   progress;
 *
 ************************************************************************************************************
 */
-uint sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op)
+progressbar_t *sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op)
 {
 	progressbar_t *progress = NULL;
 	int tmp;
 
-	progress = malloc(sizeof(progressbar_t));
+	progress = (progressbar_t *)malloc(sizeof(progressbar_t));
 	if (!progress) {
 		printf("sprite cartoon ui: create progressbar failed\n");
 
@@ -73,7 +74,7 @@ uint sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op)
 	progress->frame_color = SPRITE_CARTOON_GUI_GREEN;
 	progress->progress_color = SPRITE_CARTOON_GUI_RED;
 
-	return (uint)progress;
+	return progress;
 }
 /*
 ************************************************************************************************************
@@ -91,10 +92,10 @@ uint sprite_cartoon_progressbar_create(int x1, int y1, int x2, int y2, int op)
 *
 ************************************************************************************************************
 */
-int sprite_cartoon_progressbar_config(uint p, int frame_color,
+int sprite_cartoon_progressbar_config(progressbar_t *p, int frame_color,
 				      int progress_color, int thickness)
 {
-	progressbar_t *progress = (progressbar_t *)p;
+	progressbar_t *progress = p;
 
 	if (!p) {
 		return -1;
@@ -142,11 +143,11 @@ int sprite_cartoon_progressbar_config(uint p, int frame_color,
 *
 ************************************************************************************************************
 */
-int sprite_cartoon_progressbar_active(uint p)
+int sprite_cartoon_progressbar_active(progressbar_t *p)
 {
 	int base_color;
 	int i;
-	progressbar_t *progress = (progressbar_t *)p;
+	progressbar_t *progress = p;
 
 	if (!p) {
 		return -1;
@@ -178,9 +179,9 @@ int sprite_cartoon_progressbar_active(uint p)
 *
 ************************************************************************************************************
 */
-int sprite_cartoon_progressbar_destroy(uint p)
+int sprite_cartoon_progressbar_destroy(progressbar_t *p)
 {
-	progressbar_t *progress = (progressbar_t *)p;
+	progressbar_t *progress = p;
 	int base_color;
 
 	if (!p) {
@@ -213,13 +214,16 @@ int sprite_cartoon_progressbar_destroy(uint p)
 *
 ************************************************************************************************************
 */
-int sprite_cartoon_progressbar_upgrate(uint p, int rate)
+int sprite_cartoon_progressbar_upgrate(progressbar_t *p, int rate)
 {
-	progressbar_t *progress = (progressbar_t *)p;
+	progressbar_t *progress = p;
 	int base_color, progresscolor;
 	int pixel;
 	int x1 = 0, y1 = 0;
 	int x2 = 0, y2 = 0;
+#if defined(CONFIG_EINK200_SUNXI)
+	struct eink_fb_info_t *p_eink_fb = eink_get_fb_inst();
+#endif
 
 	if ((rate < 0) || (rate > 100)) {
 		printf("sprite_cartoon ui progressbar: invalid progressbar "
@@ -277,6 +281,11 @@ int sprite_cartoon_progressbar_upgrate(uint p, int rate)
 	sprite_cartoon_ui_draw_solidrectangle(x1, y1, x2, y2);
 
 	sprite_cartoon_ui_set_color(base_color);
+#if defined(CONFIG_EINK200_SUNXI)
+	if (p_eink_fb) {
+		p_eink_fb->eink_display(p_eink_fb);
+	}
+#endif
 
 	return 0;
 }

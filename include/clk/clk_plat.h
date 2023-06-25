@@ -149,9 +149,23 @@ struct clk_fixed_rate {
 	u8		        flags;
 };
 
+struct clk_fixed_factor {
+	struct clk_hw	hw;
+	unsigned int	mult;
+	unsigned int	div;
+};
+
 struct clk *clk_register_fixed_rate(void *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		unsigned long fixed_rate);
+
+struct clk_hw *clk_hw_register_fixed_factor(void *dev,
+		const char *name, const char *parent_name, unsigned long flags,
+		unsigned int mult, unsigned int div);
+
+struct clk *clk_register_fixed_factor(void *dev,
+		const char *name, const char *parent_name, unsigned long flags,
+		unsigned int mult, unsigned int div);
 
 struct sunxi_reg_ops {
         u32 (*reg_readl)(void __iomem * reg);

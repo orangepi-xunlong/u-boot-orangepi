@@ -130,6 +130,10 @@
 #define DEVICE_DSI_NUM 1
 #endif /*endif DEVICE_DSI_NUM */
 
+#ifndef DEVICE_LVDS_NUM
+#define DEVICE_LVDS_NUM 1
+#endif
+
 /* total number of DSI clk */
 #define CLK_DSI_NUM  (CLK_NUM_PER_DSI * DEVICE_DSI_NUM)
 struct de_feat {

@@ -29,6 +29,13 @@ struct disp_manager_private_data {
 	struct clk *clk;
 	struct clk *clk_parent;
 	struct clk *extra_clk;
+#if defined(CONFIG_INDEPENDENT_DE)
+	struct clk *dpss_clk;
+#endif
+	bool sync;
+	bool err;
+	unsigned int err_cnt;
+	unsigned int force_sync_cnt;
 };
 
 __attribute__((unused)) static spinlock_t mgr_data_lock;
@@ -850,6 +857,13 @@ static s32 disp_mgr_clk_enable(struct disp_manager *mgr)
 		if (0 != ret)
 			DE_WRN("fail enable mgr's extra_clk!\n");
 	}
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (mgrp->dpss_clk) {
+		ret = clk_prepare_enable(mgrp->dpss_clk);
+		if (ret != 0)
+			DE_WRN("fail enable mgr's dpss_clk!\n");
+	}
+#endif
 
 	return ret;
 }
@@ -866,8 +880,12 @@ s32 disp_mgr_clk_disable(struct disp_manager *mgr)
 	if (mgrp->extra_clk)
 		clk_disable(mgrp->extra_clk);
 
-	clk_disable(mgrp->clk);
+	//clk_disable(mgrp->clk);
 
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (mgrp->dpss_clk)
+		clk_disable(mgrp->dpss_clk);
+#endif
 	return 0;
 }
 
@@ -1253,6 +1271,14 @@ static s32 disp_mgr_sync(struct disp_manager *mgr)
 	//mgr->update_regs(mgr);
 	disp_al_manager_sync(mgr->disp);
 	mgr->update_regs(mgr);
+	if (mgr->device && mgr->device->is_in_safe_period) {
+		if (!mgr->device->is_in_safe_period(mgr->device)) {
+			mgrp->err = true;
+			mgrp->err_cnt++;
+		} else {
+			mgrp->err = false;
+		}
+	}
 	spin_lock_irqsave(&mgr_data_lock, flags);
 	mgrp->applied = false;
 	spin_unlock_irqrestore(&mgr_data_lock, flags);
@@ -1487,8 +1513,8 @@ static s32 disp_mgr_enable(struct disp_manager *mgr)
 			mgrp->cfg->config.device_fps = 60;
 	}
 
-	DE_INF("output res: %d x %d, cs=%d, range=%d, interlace=%d\n",
-		width, height, cs, color_range,mgrp->cfg->config.interlace);
+	DE_INF("output res: %d x %d, range=%d, interlace=%d\n",
+		width, height, color_range, mgrp->cfg->config.interlace);
 
 	spin_lock_irqsave(&mgr_data_lock, flags);
 	mgrp->enabled = 1;
@@ -1612,14 +1638,50 @@ static s32 disp_mgr_is_enabled(struct disp_manager *mgr)
 
 static s32 disp_mgr_dump(struct disp_manager *mgr, char *buf)
 {
-	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
 
-	if ((NULL == mgr) || (NULL == mgrp)) {
+	struct disp_manager_private_data *mgrp = disp_mgr_get_priv(mgr);
+	unsigned int count = 0;
+	char const *fmt_name[] = {"rgb", "yuv444", "yuv422", "yuv420"};
+	char const *bits_name[] = {
+		"8bits",
+		"10bits",
+		"12bits",
+		"16bits"
+	};
+	bool direct_show = false;
+
+	if ((mgr == NULL) || (mgrp == NULL)) {
 		DE_WRN("NULL hdl!\n");
 		return -1;
 	}
 
-	return 0;
+	if ((NULL == mgr) || (mgrp == NULL)) {
+		DE_WRN("NULL hdl!\n");
+		return -1;
+	}
+
+//	direct_show = disp_al_get_direct_show_state(mgr->disp);
+
+	count += sprintf(
+	    buf + count,
+	    "mgr%d: %dx%d fmt[%s] cs[0x%x] range[%s] eotf[0x%x] bits[%s] err[%u] force_sync[%u] %s direct_show[%s] iommu[%d]\n",
+	    mgr->disp, mgrp->cfg->config.size.width, mgrp->cfg->config.size.height,
+	    (mgrp->cfg->config.cs < 4) ? fmt_name[mgrp->cfg->config.cs]
+				       : "undef",
+	    mgrp->cfg->config.color_space,
+	    (mgrp->cfg->config.color_range == DISP_COLOR_RANGE_0_255) ? "full"
+								      : "limit",
+	    mgrp->cfg->config.eotf,
+	    (mgrp->cfg->config.data_bits < 4) ?
+		bits_name[mgrp->cfg->config.data_bits] : "undef",
+		mgrp->err_cnt,
+		 mgrp->force_sync_cnt,
+		 (mgrp->cfg->config.blank) ? "blank" : "unblank",
+	    (direct_show) ? "true" : "false", 0);
+
+
+	return count;
+
 }
 
 static s32 disp_mgr_blank(struct disp_manager *mgr, bool blank)
@@ -1702,6 +1764,14 @@ s32 disp_init_mgr(disp_bsp_init_para * para)
 		mgrp->irq_no = para->irq_no[DISP_MOD_DE];
 		mgrp->shadow_protect = para->shadow_protect;
 		mgrp->clk = para->mclk[DISP_MOD_DE];
+#if defined(CONFIG_INDEPENDENT_DE)
+		if (disp == 0) {
+			mgrp->dpss_clk = para->mclk[DISP_MOD_DPSS0];
+		} else {
+			mgrp->clk = para->mclk[DISP_MOD_DE1];
+			mgrp->dpss_clk = para->mclk[DISP_MOD_DPSS1];
+		}
+#endif
 #if defined(HAVE_DEVICE_COMMON_MODULE)
 		mgrp->extra_clk = para->mclk[DISP_MOD_DEVICE];
 #endif

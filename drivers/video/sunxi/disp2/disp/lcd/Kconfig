@@ -156,3 +156,93 @@ config LCD_SUPPORT_BP101WX1
 	default n
 	---help---
 		If you want to support BP101WX1 panel for display driver, select it.
+
+config LCD_SUPPORT_M133X56
+	bool "LCD support M133X56 panel"
+	default n
+	---help---
+		If you want to support M133X56 panel for display driver, select it.
+
+config LCD_SUPPORT_K101IM2QA04
+	bool "LCD support K101IM2QA04 panel"
+	default n
+	---help---
+		If you want to support K101IM2QA04 panel for display driver, select it.
+
+config LCD_SUPPORT_K101_MM2QA01_A
+	bool "LCD support K101_MM2QA01_A panel"
+	default n
+	---help---
+		If you want to support K101_MM2QA01_A panel for display driver, select it.
+
+config LCD_SUPPORT_K101IM2BYL02L
+	bool "LCD support K101IM2BYL02L"
+	default n
+	---help---
+		If you want to support K101IM2BYL02L panel for display driver, select it.
+
+config LCD_SUPPORT_FX070
+	bool "LCD support fx070 panel"
+	default n
+	---help---
+		If you want to support fx070 panel for display driver, select it.
+
+config LCD_SUPPORT_M101B31
+	bool "LCD support m101b31 panel"
+	default n
+	help
+		If you want to support m101b31 panel for display driver, select it.
+
+config LCD_SUPPORT_CC08021801_310_800X1280
+	bool "LCD support CC08021801_310_800X1280 panel"
+	default y
+	---help---
+		If you want to support CC08021801_310_800X1280 panel for display driver, select it.
+
+config LCD_SUPPORT_KD101NA5
+	bool "LCD support kd101na5 panel"
+	default n
+	---help---
+		If you want to support kd101na5 panel for display driver, select it.
+
+config LCD_SUPPORT_KD070D57
+	bool "LCD support kd070d57 panel"
+	default n
+	---help---
+		If you want to support kd070d57 panel for display driver, select it.
+
+config LCD_SUPPORT_ZS080NI4003E7H3H_A
+	bool "LCD support zs080ni4003e7h3h_a panel"
+	default n
+	---help---
+		If you want to support zs080ni4003e7h3h_a panel for display driver, select it.
+
+config LCD_SUPPORT_K080_IM2HYL802R_800X1280
+	bool "LCD support K080_IM2HYL802R_800X1280 panel"
+	default n
+	---help---
+		If you want to support K080_IM2HYL802R_800X1280 panel for display driver, select it.
+
+config LCD_SUPPORT_K101_IM2BYL02_L_800X1280
+	bool "LCD support K101_IM2BYL02_L_800X1280 panel"
+	default n
+	---help---
+		if you want to support K101_IM2BYL02_L_800X1280 panel for display driver, select it.
+
+config LCD_SUPPORT_JD9366AB_3
+	bool "LCD support JD9366AB_3 panel"
+	default n
+	---help---
+		If you want to support JD9366AB_3 panel for display driver, select it.
+
+config LCD_SUPPORT_TFT08006
+	bool "LCD support TFT08006 panel"
+	default n
+	---help---
+		If you want to support TFT08006 panel for display driver, select it.
+
+config LCD_SUPPORT_T050K589
+	bool "LCD support T050K589 panel"
+	default y
+	---help---
+		If you want to support T050K589 panel for display driver, select it.

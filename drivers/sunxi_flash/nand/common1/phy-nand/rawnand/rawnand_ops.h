@@ -6,7 +6,8 @@
  */
 #ifndef __RAWNAND_OPS_H
 #define __RAWNAND_OPS_H
-#include "rawnand.h"
+//#include "rawnand.h"
+#include <sunxi_nand.h>
 
 #define NAND_OPEN_BLOCK_CNT (8)
 

@@ -21,12 +21,12 @@
 #include "hdmi_manage.h"
 #include "video_hal.h"
 #include "video_misc_hal.h"
-
+#include <malloc.h>
 
 #define DISPLAY_PARTITION_NAME "Reserve0"
 //#define DISPLAY_RSL_FILENAME "/boot/disp_rsl.fex"
 #define DISPLAY_RSL_FILENAME "/boot/orangepiEnv.txt"
-
+static disp_device_t g_devices[DISP_DEV_NUM];
 
 enum {
 	LCD_NOT_SKIP_OPEN = 0,
@@ -134,7 +134,6 @@ OUT:
 	return -1;
 }*/
 
-
 static int get_output_mode(disp_device_t *disp_dev, char *buf, int num)
 {
 	char *p = buf;
@@ -177,6 +176,12 @@ static int get_output_mode(disp_device_t *disp_dev, char *buf, int num)
 					disp_dev->mode = DISP_TV_MOD_1080P_50HZ;
 				else if (strcmp(needle, "1080p60") == 0)
 					disp_dev->mode = DISP_TV_MOD_1080P_60HZ;
+				else if (strcmp(needle, "2160p24") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_24HZ;
+				else if (strcmp(needle, "2160p25") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_25HZ;
+				else if (strcmp(needle, "2160p30") == 0)
+					disp_dev->mode = DISP_TV_MOD_3840_2160P_30HZ;
 				else{
 					printf("disp_mode=%s is error, set HDMI to 1080p60hz by default\n", needle);
 					disp_dev->mode = DISP_TV_MOD_1080P_60HZ;
@@ -204,10 +209,11 @@ static int get_device_configs(disp_device_t *disp_dev_list, int *dev_num)
 	char prop[32] = {'\n'};
 
 	int read_bytes = 0;
-	char buf[256] = {0};
+	char buf[2560] = {0};
 
 	disp_device_t *disp_dev = NULL;
 	int id = 0;
+	int fsload = 0;
 
 	node = get_disp_fdt_node();
 	read_bytes = hal_fat_fsload(NULL,
@@ -218,6 +224,13 @@ static int get_device_configs(disp_device_t *disp_dev_list, int *dev_num)
 		uint32_t value = 0;
 		sprintf(prop, "dev%d_output_type", id);
 		disp_getprop_by_name(node, prop, &value, 0);
+
+		/* For LCD products, it is redundant to do this, so we skip it here */
+		if (id == 0  && value != 1 && fsload == 0) {
+			read_bytes = hal_fat_fsload(DISPLAY_PARTITION_NAME,
+				DISPLAY_RSL_FILENAME, buf, sizeof(buf));
+			fsload = 1;
+		}
 		if (0 == value)
 			break;
 
@@ -329,26 +342,22 @@ static unsigned char lcd_is_skip_open(int channel)
 
 int disp_devices_open(void)
 {
-	disp_device_t devices[DISP_DEV_NUM];
 	int actual_dev_num = DISP_DEV_NUM;
 	int def_output_dev;
 	int verify_mode;
 	disp_device_t *output_dev = NULL;
 
-	/* 1.get display devices list */
-	memset((void *)devices, 0, sizeof(devices));
-	def_output_dev = get_device_configs(devices, &actual_dev_num);
+	/* 1.get display g_devices list */
+	memset((void *)g_devices, 0, DISP_DEV_NUM * sizeof(disp_device_t));
+	def_output_dev = get_device_configs(g_devices, &actual_dev_num);
 
 	/* 2.chose one as output by doing hpd */
-	if (devices[0].type == DISP_OUTPUT_TYPE_LCD) {
-		output_dev = &devices[0];
+	if (g_devices[0].type == DISP_OUTPUT_TYPE_LCD) {
+		output_dev = &g_devices[0];
 	} else {
-		output_dev = do_hpd_detect(devices, actual_dev_num);
-		if (NULL == output_dev) {
-			output_dev = &(devices[def_output_dev]);
-			/* all devices plug out, set default as plugin */
-			output_dev->hpd_state = 1;
-		}
+		output_dev = do_hpd_detect(g_devices, actual_dev_num);
+		if (NULL == output_dev)
+			output_dev = &(g_devices[def_output_dev]);
 	}
 
 	/* 3.do open one device */
@@ -401,9 +410,9 @@ int disp_devices_open(void)
 	int init_disp = 0;
 	int i = 0;
 	for (i = 0; i < actual_dev_num; ++i) {
-		if (0 == devices[i].opened) {
-			init_disp |= (((devices[i].type << 8) | devices[i].mode)
-				<< (devices[i].screen_id * 16));
+		if (0 == g_devices[i].opened) {
+			init_disp |= (((g_devices[i].type << 8) | g_devices[i].mode)
+				<< (g_devices[i].screen_id * 16));
 		}
 	}
 	if (0 != init_disp)
@@ -421,20 +430,19 @@ int disp_devices_open(void)
 /* for test */
 int disp_device_open_ex(int dev_id, int fb_id, int flag)
 {
-	disp_device_t devices[DISP_DEV_NUM];
 	int actual_dev_num = DISP_DEV_NUM;
 	int def_output_dev;
 	disp_device_t *output_dev = NULL;
 
 	/* 1.get display devices list */
-	memset((void *)devices, 0, sizeof(devices));
-	def_output_dev = get_device_configs(devices, &actual_dev_num);
+	memset((void *)g_devices, 0, sizeof(g_devices));
+	def_output_dev = get_device_configs(g_devices, &actual_dev_num);
 	if (dev_id >= actual_dev_num) {
 		printf("invalid para: dev_id=%d, actual_dev_num=%d\n",
 			dev_id, actual_dev_num);
 		return -1;
 	}
-	output_dev = &(devices[dev_id]);
+	output_dev = &(g_devices[dev_id]);
 	return hal_switch_device(output_dev, fb_id);
 }
 #endif

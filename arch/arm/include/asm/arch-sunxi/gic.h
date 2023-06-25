@@ -40,6 +40,19 @@
 #define AW_IRQ_NMI                     112
 #define GIC_IRQ_NUM                    (147)
 
+#elif defined(CONFIG_MACH_SUN50IW5)
+#define AW_IRQ_GIC_START    (32)
+#define AW_IRQ_NAND                    66
+#define AW_IRQ_USB_OTG                 57
+#define AW_IRQ_USB_EHCI0               58
+#define AW_IRQ_USB_OHCI0               59
+#define AW_IRQ_DMA                     74
+#define AW_IRQ_TIMER0                  80
+#define AW_IRQ_TIMER1                  81
+#define AW_IRQ_NMI                     135
+#define AW_IRQ_CIR		       138
+#define GIC_IRQ_NUM                    (191)
+
 #elif defined(CONFIG_MACH_SUN50IW9)
 #define AW_IRQ_GIC_START    (32)
 #define AW_IRQ_NAND                    66
@@ -55,15 +68,31 @@
 
 #elif defined(CONFIG_MACH_SUN50IW10)
 #define AW_IRQ_GIC_START    (32)
-#define AW_IRQ_NAND                    68
+#define AW_IRQ_NAND                    70
 #define AW_IRQ_USB_OTG                 64
 #define AW_IRQ_USB_EHCI0               62
 #define AW_IRQ_USB_OHCI0               63
+#define AW_IRQ_USB_EHCI1               65
+#define AW_IRQ_USB_OHCI1               66
 #define AW_IRQ_DMA                     77
 #define AW_IRQ_TIMER0                  83
 #define AW_IRQ_TIMER1                  84
 #define AW_IRQ_NMI                     135
 #define GIC_IRQ_NUM                    (191)
+
+#elif defined(CONFIG_MACH_SUN55IW3)
+#define AW_IRQ_GIC_START    (32)
+#define AW_IRQ_NAND                    70
+#define AW_IRQ_USB_OTG                 61
+#define AW_IRQ_USB_EHCI0               62
+#define AW_IRQ_USB_OHCI0               63
+#define AW_IRQ_USB_EHCI1               64
+#define AW_IRQ_USB_OHCI1               65
+#define AW_IRQ_DMA                     82
+#define AW_IRQ_TIMER0                  87
+#define AW_IRQ_TIMER1                  88
+#define AW_IRQ_NMI                     180
+#define GIC_IRQ_NUM                    (287)
 
 #elif defined(CONFIG_MACH_SUN50IW11)
 #define AW_IRQ_GIC_START				(32)
@@ -77,6 +106,33 @@
 #define AW_IRQ_NMI						120
 #define GIC_IRQ_NUM                    (191)
 
+#elif defined(CONFIG_MACH_SUN50IW12)
+#define AW_IRQ_GIC_START				(32)
+#define AW_IRQ_NAND						70
+#define AW_IRQ_USB_OTG					64
+#define AW_IRQ_USB_EHCI0				62
+#define AW_IRQ_USB_OHCI0				63
+#define AW_IRQ_USB_EHCI1				65
+#define AW_IRQ_USB_OHCI1				66
+#define AW_IRQ_DMA						82
+#define AW_IRQ_TIMER0					80
+#define AW_IRQ_TIMER1					81
+#define AW_IRQ_NMI						120
+#define GIC_IRQ_NUM                    (191)
+
+#elif defined(CONFIG_MACH_SUN20IW1) || defined(CONFIG_MACH_SUN8IW20)
+#define AW_IRQ_GIC_START				(32)
+#define AW_IRQ_NAND						70
+#define AW_IRQ_USB_OTG					61
+#define AW_IRQ_USB_EHCI0				62
+#define AW_IRQ_USB_OHCI0				63
+#define AW_IRQ_USB_EHCI1				65
+#define AW_IRQ_USB_OHCI1				66
+#define AW_IRQ_DMA						82
+#define AW_IRQ_TIMER0					91
+#define AW_IRQ_TIMER1					92
+#define AW_IRQ_NMI						168
+#define GIC_IRQ_NUM                    (223)
 
 #elif defined(CONFIG_MACH_SUN8IW15)
 
@@ -116,6 +172,19 @@
 #define AW_IRQ_NMI                     (136)
 #define GIC_IRQ_NUM                    (179)
 
+#elif defined(CONFIG_MACH_SUN8IW11)
+
+#define AW_IRQ_NAND                    69
+#define AW_IRQ_USB_OTG                 70
+#define AW_IRQ_USB_EHCI0               71
+#define AW_IRQ_USB_OHCI0               72
+#define AW_IRQ_DMA                     59
+#define AW_IRQ_TIMER0                  54
+#define AW_IRQ_TIMER1                  55
+#define AW_IRQ_NMI                     32
+#define AW_IRQ_CIR                     118
+#define GIC_IRQ_NUM                   133
+
 #elif defined(CONFIG_MACH_SUN8IW7)
 
 #define AW_IRQ_NAND                    102
@@ -128,6 +197,17 @@
 #define AW_IRQ_NMI                     64
 #define AW_IRQ_CIR                    69
 #define GIC_IRQ_NUM                   157
+
+#elif defined(CONFIG_MACH_SUN8IW21)
+
+#define AW_IRQ_USB_OTG                 61
+#define AW_IRQ_USB_EHCI0               62
+#define AW_IRQ_USB_OHCI0               63
+#define AW_IRQ_DMA                     82
+#define AW_IRQ_TIMER0                  91
+#define AW_IRQ_TIMER1                  92
+#define AW_IRQ_NMI                     168
+#define GIC_IRQ_NUM                   	223
 
 #else
 #error "Interrupt definition not available for this architecture"
@@ -152,9 +232,39 @@
 
 
 
+
+#if defined(CONFIG_MACH_SUN55IW3)
+
+#define GIC_DIST_BASE        (SUNXI_GIC600_BASE)
+#define GIC_IROUTR(_n)       (GIC_DIST_BASE + 0x6000 + 8 * (_n))
+#define GICR_LPI_BASE(n)     (GIC_DIST_BASE + 0x60000 + n*0x20000)
+#define GICR_WAKER(m)        (GICR_LPI_BASE(m) + 0x0014)
+#define GICR_PWRR(m)         (GICR_LPI_BASE(m) + 0x0024)
+#define put_wvalue(addr, v)  (*((volatile int *)(addr)) = (unsigned int)(v))
+#define get_wvalue(addr)     (*((volatile int *)(addr)))
+#define LEVEL_TRIGERRED      (0)
+#define EDGE_TRIGERRED       (1)
+#define GIC_IRQ_TYPE_CFG(_n)	(GIC_DIST_BASE + 0xc00 + 4 * (_n))
+#define GIC_IRQ_MOD_CFG(_n)	(GIC_DIST_BASE + 0xd00 + 4 * (_n))
+#else
 /* GIC registers */
 #define GIC_DIST_BASE       (SUNXI_GIC400_BASE+0x1000)
 #define GIC_CPUIF_BASE      (SUNXI_GIC400_BASE+0x2000)
+
+#define GIC_CPU_IF_CTRL                 (GIC_CPUIF_BASE + 0x000) // 0x8000
+#define GIC_INT_PRIO_MASK               (GIC_CPUIF_BASE + 0x004) // 0x8004
+#define GIC_BINARY_POINT                (GIC_CPUIF_BASE + 0x008) // 0x8008
+#define GIC_INT_ACK_REG                 (GIC_CPUIF_BASE + 0x00c) // 0x800c
+#define GIC_END_INT_REG                 (GIC_CPUIF_BASE + 0x010) // 0x8010
+#define GIC_RUNNING_PRIO                (GIC_CPUIF_BASE + 0x014) // 0x8014
+#define GIC_HIGHEST_PENDINT             (GIC_CPUIF_BASE + 0x018) // 0x8018
+#define GIC_DEACT_INT_REG               (GIC_CPUIF_BASE + 0x1000)// 0x1000
+#define GIC_AIAR_REG                    (GIC_CPUIF_BASE + 0x020) // 0x8020
+#define GIC_AEOI_REG                    (GIC_CPUIF_BASE + 0x024) // 0x8024
+#define GIC_AHIGHEST_PENDINT    (GIC_CPUIF_BASE + 0x028) // 0x8028
+#define GIC_IRQ_MOD_CFG(_n)	(GIC_DIST_BASE + 0xc00 + 4 * (_n))
+#endif
+
 
 #define GIC_DIST_CON		(GIC_DIST_BASE + 0x0000)
 #define GIC_CON_TYPE		(GIC_DIST_BASE + 0x0004)
@@ -170,20 +280,7 @@
 #define GIC_SGI_PRIO(_n)	(GIC_DIST_BASE + 0x400 + 4 * (_n))
 #define GIC_PPI_PRIO(_n)	(GIC_DIST_BASE + 0x410 + 4 * (_n))
 #define GIC_SPI_PRIO(_n)	(GIC_DIST_BASE + 0x420 + 4 * (_n))
-#define GIC_IRQ_MOD_CFG(_n)	(GIC_DIST_BASE + 0xc00 + 4 * (_n))
 #define GIC_SPI_PROC_TARG(_n)(GIC_DIST_BASE + 0x820 + 4 * (_n))
-
-#define GIC_CPU_IF_CTRL			(GIC_CPUIF_BASE + 0x000) // 0x8000
-#define GIC_INT_PRIO_MASK		(GIC_CPUIF_BASE + 0x004) // 0x8004
-#define GIC_BINARY_POINT		(GIC_CPUIF_BASE + 0x008) // 0x8008
-#define GIC_INT_ACK_REG			(GIC_CPUIF_BASE + 0x00c) // 0x800c
-#define GIC_END_INT_REG			(GIC_CPUIF_BASE + 0x010) // 0x8010
-#define GIC_RUNNING_PRIO		(GIC_CPUIF_BASE + 0x014) // 0x8014
-#define GIC_HIGHEST_PENDINT		(GIC_CPUIF_BASE + 0x018) // 0x8018
-#define GIC_DEACT_INT_REG		(GIC_CPUIF_BASE + 0x1000)// 0x1000
-#define GIC_AIAR_REG			(GIC_CPUIF_BASE + 0x020) // 0x8020
-#define GIC_AEOI_REG			(GIC_CPUIF_BASE + 0x024) // 0x8024
-#define GIC_AHIGHEST_PENDINT	(GIC_CPUIF_BASE + 0x028) // 0x8028
 
 /* software generated interrupt */
 #define GIC_SRC_SGI(_n)		(_n)

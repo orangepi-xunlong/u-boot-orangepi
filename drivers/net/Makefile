@@ -3,6 +3,8 @@
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
+ccflags-y += -I$(src)
+ccflags-$(CONFIG_RTL8363_NB) += -I$(src)/../../include/rtl8363_nb/
 obj-$(CONFIG_ALTERA_TSE) += altera_tse.o
 obj-$(CONFIG_AG7XXX) += ag7xxx.o
 obj-$(CONFIG_ARMADA100_FEC) += armada100_fec.o
@@ -21,6 +23,7 @@ obj-$(CONFIG_E1000_SPI) += e1000_spi.o
 obj-$(CONFIG_EEPRO100) += eepro100.o
 obj-$(CONFIG_SUN4I_EMAC) += sunxi_emac.o
 obj-$(CONFIG_SUN8I_EMAC) += sun8i_emac.o
+obj-$(CONFIG_SUNXI_GETH) += sunxi_geth.o
 obj-$(CONFIG_EP93XX) += ep93xx_eth.o
 obj-$(CONFIG_ETHOC) += ethoc.o
 obj-$(CONFIG_FEC_MXC) += fec_mxc.o
@@ -47,6 +50,7 @@ obj-$(CONFIG_NS8382X) += ns8382x.o
 obj-$(CONFIG_PCH_GBE) += pch_gbe.o
 obj-$(CONFIG_PCNET) += pcnet.o
 obj-$(CONFIG_RTL8139) += rtl8139.o
+obj-$(CONFIG_RTL8363_NB) += rtl8363_nb/
 obj-$(CONFIG_RTL8169) += rtl8169.o
 obj-$(CONFIG_ETH_SANDBOX) += sandbox.o
 obj-$(CONFIG_ETH_SANDBOX_RAW) += sandbox-raw.o

@@ -18,6 +18,8 @@
 #ifndef _SUNXI_SPI_H_
 #define _SUNXI_SPI_H_
 
+#include <spi.h>
+
 #define SPI_MODULE_NUM		(4)
 #define SPI_FIFO_DEPTH		(128)
 #define MAX_FIFU		64
@@ -34,6 +36,7 @@
 #define SPI_FIFO_STA_REG	(0x1C)	/* fifo status register */
 #define SPI_WAIT_CNT_REG	(0x20)	/* wait clock counter register */
 #define SPI_CLK_CTL_REG		(0x24)	/* clock rate control register */
+#define SPI_SDC_REG		(0x28)	/* sample delay control register */
 #define SPI_BURST_CNT_REG	(0x30)	/* burst counter register */
 #define SPI_TRANSMIT_CNT_REG	(0x34)	/* transmit counter register */
 #define SPI_BCC_REG		(0x38)	/* burst control counter register */
@@ -61,6 +64,8 @@
 #define SPI_TC_RPSM		(0x1 << 10) /* select mode for high speed write,0:normal write mode,1:rapids write mode,default 0 */
 #define SPI_TC_SDC		(0x1 << 11) /* master sample data control, 1: delay--high speed operation;0:no delay. */
 #define SPI_TC_FBS		(0x1 << 12) /* LSB/MSB transfer first select 0:MSB,1:LSB,default 0:MSB first */
+#define SPI_TC_SDM		(0x1 << 13) /* master sample data mode, SDM = 1:Normal Sample Mode, SDM = 0:Delay Sample Mode */
+#define SPI_TC_SDC1		(0x1 << 15) /* master sample data mode, SDM = 1:Normal Sample Mode, SDM = 0:Delay Sample Mode */
 #define SPI_TC_XCH		(0x1 << 31) /* Exchange burst default 0:idle,1:start exchange;when BC is zero,this bit cleared by SPI controller*/
 #define SPI_TC_SS_BIT_POS	(4)
 
@@ -169,6 +174,17 @@
 #define spi_set_dma_mode(base)
 #endif
 
+/* sample delay mode */
+#define SPI_SAMP_MODE_EN	(1U << 2)
+#define SPI_SAMP_DL_SW_EN	(1U << 7)
+#define DELAY_NORMAL_SAMPLE	(0x100)
+#define DELAY_0_5_CYCLE_SAMPLE	(0x000)
+#define DELAY_1_CYCLE_SAMPLE	(0x010)
+#define DELAY_1_5_CYCLE_SAMPLE	(0x110)
+#define DELAY_2_CYCLE_SAMPLE	(0x101)
+#define DELAY_2_5_CYCLE_SAMPLE	(0x001)
+#define DELAY_3_CYCLE_SAMPLE	(0x011)
+
 struct sunxi_spi_platform_data {
 	int cs_bitmap; /* cs0-0x1,cs1-0x2,cs0&cs1-0x3 */
 	int cs_num;    /* number of cs */
@@ -189,5 +205,19 @@ struct sunxi_dual_mode_dev_data {
 	int single_cnt;	/* single mode transmit counter */
 	int dummy_cnt;	/* dummy counter should be sent before receive in dual mode */
 };
+
+#define SAMP_MODE_DL_DEFAULT	0xaaaaffff
+struct sunxi_spi_slave {
+	struct spi_slave	slave;
+	uint32_t		max_hz;
+	uint32_t		mode;
+	int             cs_bitmap;/* cs0- 0x1; cs1-0x2, cs0&cs1-0x3. */
+	uint32_t        cdr;
+	uint32_t	    base_addr;
+	unsigned int right_sample_delay;
+	unsigned int right_sample_mode;
+};
+
+struct sunxi_spi_slave *get_sspi(void);
 
 #endif

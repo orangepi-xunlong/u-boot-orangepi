@@ -543,7 +543,7 @@ __s32 _change_spic_clk_v1(__u32 spinand_index, __u32 dclk_src_sel, __u32 dclk)
 
 	if (spinand_index == 0)
 		printf("sclk0_reg_adr: 0x%x, src clock: 0x%x\n",
-			*(volatile __u32 *)(sclk0_reg_adr),
+			*(volatile __u32 *)((unsigned long)sclk0_reg_adr),
 			get_wvalue(SUNXI_CCM_BASE + PLL_PERIPHO_CTRL_REG));
 
 	return 0;

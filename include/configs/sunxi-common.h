@@ -20,6 +20,18 @@
 #define SUNXI_STACKSIZE_IRQ    (4*1024)        /* IRQ stack */
 #define SUNXI_STACKSIZE_FIQ    (4*1024)        /* FIQ stack */
 
+#ifdef FTRACE
+  #ifndef CONFIG_TRACE_EARLY_ADDR
+    /* default value, can be overwirtten somewhere else */
+    #define CONFIG_TRACE
+    #define CONFIG_CMD_TRACE
+    #define CONFIG_TRACE_BUFFER_SIZE	(16 << 20)
+    #define CONFIG_TRACE_EARLY_SIZE		(5 << 20)
+    #define CONFIG_TRACE_EARLY
+    #define CONFIG_TRACE_EARLY_ADDR		0x40000000
+  #endif
+#endif
+
 #ifdef CONFIG_SUNXI_DEBUG
 #define DEBUG
 #endif
@@ -51,13 +63,22 @@
 #define CONFIG_SYS_NS16550_CLK		24000000
 #ifndef CONFIG_DM_SERIAL
 # define CONFIG_SYS_NS16550_REG_SIZE	-4
-# define CONFIG_SYS_NS16550_COM1		SUNXI_UART0_BASE
-# define CONFIG_SYS_NS16550_COM2		SUNXI_UART1_BASE
-# define CONFIG_SYS_NS16550_COM3		SUNXI_UART2_BASE
-# define CONFIG_SYS_NS16550_COM4		SUNXI_UART3_BASE
-/*# define CONFIG_SYS_NS16550_COM5		SUNXI_R_UART_BASE*/
+#if CONFIG_CONS_INDEX == 1
+# define CONFIG_SYS_NS16550_COM1		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#elif CONFIG_CONS_INDEX == 2
+# define CONFIG_SYS_NS16550_COM2		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#elif CONFIG_CONS_INDEX == 3
+# define CONFIG_SYS_NS16550_COM3		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#elif CONFIG_CONS_INDEX == 4
+# define CONFIG_SYS_NS16550_COM4		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#elif CONFIG_CONS_INDEX == 5
+# define CONFIG_SYS_NS16550_COM5		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#elif CONFIG_CONS_INDEX == 6
+# define CONFIG_SYS_NS16550_COM6		(SUNXI_UART0_BASE + 0x400 * (CONFIG_CONS_INDEX - 1))
+#else
+#error "bad com index"
 #endif
-
+#endif
 /* CPU */
 #define COUNTER_FREQUENCY		24000000
 
@@ -153,7 +174,9 @@
 #define CONFIG_MMC_SUNXI_SLOT		0
 #endif
 
-
+#ifdef SUNXI_SYS_MALLOC_LEN
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + SUNXI_SYS_MALLOC_LEN)
+#else
 #if  defined (CONFIG_MACH_SUN8IW18) || defined (CONFIG_MACH_SUN8IW19)
 /* 20MB of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (20 << 20))
@@ -161,7 +184,7 @@
 /* 64MB of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (64 << 20))
 #endif
-
+#endif
 /*
  * Miscellaneous configurable options
  */
@@ -369,9 +392,7 @@
 	func(FEL, fel, na) \
 	BOOT_TARGET_DEVICES_MMC(func) \
 	BOOT_TARGET_DEVICES_SCSI(func) \
-	BOOT_TARGET_DEVICES_USB(func) \
-	func(PXE, pxe, na) \
-	func(DHCP, dhcp, na)
+	BOOT_TARGET_DEVICES_USB(func)
 
 #ifdef CONFIG_OLD_SUNXI_KERNEL_COMPAT
 #define BOOTCMD_SUNXI_COMPAT \
@@ -469,6 +490,7 @@
 
 #else /* ifndef CONFIG_SPL_BUILD */
 #define CONFIG_EXTRA_ENV_SETTINGS
+
 #endif
 
 #define SUNXI_SPRITE_ENV_SETTINGS	\
@@ -479,5 +501,9 @@
 
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_R
+
+#ifdef CONFIG_SUNXI_FPGA_PLATFORM
+#define FPGA_PLATFORM
+#endif
 
 #endif /* _SUNXI_COMMON_CONFIG_H */

@@ -99,6 +99,10 @@
 #define BOOTEFI_NAME "bootia32.efi"
 #elif defined(CONFIG_X86_RUN_64BIT)
 #define BOOTEFI_NAME "bootx64.efi"
+#elif defined(CONFIG_ARCH_RV32I)
+#define BOOTEFI_NAME "bootriscv32.efi"
+#elif defined(CONFIG_ARCH_RV64I)
+#define BOOTEFI_NAME "bootriscv64.efi"
 #endif
 #endif
 
@@ -250,6 +254,17 @@
 /* Always assume we're running 64bit */
 #define BOOTENV_EFI_PXE_ARCH "0x7"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00007:UNDI:003000"
+#elif defined(__i386__)
+#define BOOTENV_EFI_PXE_ARCH "0x6"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00006:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV32I) || ((defined(__riscv) && __riscv_xlen == 32))
+#define BOOTENV_EFI_PXE_ARCH "0x19"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00025:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV64I) || ((defined(__riscv) && __riscv_xlen == 64))
+#define BOOTENV_EFI_PXE_ARCH "0x1b"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00027:UNDI:003000"
+#elif defined(CONFIG_SANDBOX)
+# error "sandbox EFI support is only supported on ARM and x86"
 #else
 #error Please specify an EFI client identifier
 #endif

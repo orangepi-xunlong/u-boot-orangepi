@@ -9,7 +9,7 @@
 #include <asm/cache.h>
 #include <linux/compiler.h>
 
-#if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
+#if !(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -236,7 +236,7 @@ static void cache_disable(uint32_t cache_bit)
 }
 #endif
 
-#ifdef CONFIG_SYS_ICACHE_OFF
+#if CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
 void icache_enable (void)
 {
 	return;
@@ -268,7 +268,7 @@ int icache_status(void)
 }
 #endif
 
-#ifdef CONFIG_SYS_DCACHE_OFF
+#if CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 void dcache_enable (void)
 {
 	return;

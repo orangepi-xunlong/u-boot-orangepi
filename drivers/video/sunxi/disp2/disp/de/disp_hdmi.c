@@ -966,6 +966,7 @@ s32 disp_init_hdmi(disp_bsp_init_para * para)
 			hdmi->resume = disp_hdmi_resume;
 			hdmi->detect = disp_hdmi_detect;
 			hdmi->set_detect = disp_hdmi_set_detect;
+			hdmi->is_in_safe_period = disp_device_is_in_safe_period;
 			hdmi->get_status = disp_hdmi_get_status;
 			hdmi->get_fps = disp_hdmi_get_fps;
 			hdmi->show_builtin_patten = disp_device_show_builtin_patten;

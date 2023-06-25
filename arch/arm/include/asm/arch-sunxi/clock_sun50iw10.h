@@ -314,7 +314,7 @@ struct sunxi_ccm_reg {
 
 #define CE_CLK_DIV_RATION_M_BIT           (0)
 #define CE_CLK_DIV_RATION_M_MASK          (0xF)
-#define CE_CLK_DIV_RATION_M               (3)
+#define CE_CLK_DIV_RATION_M               (2)
 
 #define CE_SCLK_ONOFF_BIT                 (31)
 #define CE_SCLK_ON                        (1)
@@ -330,4 +330,16 @@ struct sunxi_ccm_reg {
 #define CE_MBUS_GATING_MASK               (1)
 #define CE_MBUS_GATING_BIT		  (2)
 #define CE_MBUS_GATING			  (1)
+
+//usb
+#define USBEHCI0_RST_BIT 20
+#define USBEHCI0_GATIING_BIT 4
+#define USBPHY0_RST_BIT 30
+#define USBPHY0_SCLK_GATING_BIT 29
+
+#define USBEHCI1_RST_BIT 21
+#define USBEHCI1_GATIING_BIT 5
+#define USBPHY1_RST_BIT 30
+#define USBPHY1_SCLK_GATING_BIT 29
+
 #endif /* _SUNXI_CLOCK_SUN50IW10_H */

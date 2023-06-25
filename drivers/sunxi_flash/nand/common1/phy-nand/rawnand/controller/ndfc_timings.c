@@ -29,7 +29,7 @@
 
 #include <linux/string.h>
 #include "ndfc_timings.h"
-#include "../../nand_errno.h"
+#include <sunxi_nand_errno.h>
 #include "../rawnand_cfg.h"
 #include "../rawnand_debug.h"
 #include "ndfc_base.h"

@@ -2,7 +2,8 @@
 
 #ifndef __RAWNAND_BOOT_H__
 #define __RAWNAND_BOOT_H__
-#include "../nand-partition/phy.h"
+//#include "../nand-partition/phy.h"
+#include <sunxi_nand_partitions.h>
 #include <private_boot0.h>
 
 
@@ -117,6 +118,7 @@ int change_uboot_start_block(struct _boot_info *info, unsigned int start_block);
 int rawnand_physic_info_get_one_copy(unsigned int start_block, unsigned int pages_offset, unsigned int *block_per_copy, unsigned int *buf);
 int rawnand_add_len_to_uboot_tail(unsigned int uboot_size);
 int set_hynix_special_info(void);
+int rawnand_replace_boot0_with_toc0(void);
 
 extern __u32 NAND_GetNandIDNumCtrl(void);
 extern __u32 NAND_GetNandExtPara(__u32 para_num);

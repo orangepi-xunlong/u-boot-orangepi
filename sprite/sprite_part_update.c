@@ -81,7 +81,7 @@ static void update_next_process(int flag)
 {
 	if (flag) {
 		printf("update finishing, will be reboot \n");
-		sunxi_sprite_exit(0);
+		get_boot_storage_type() == STORAGE_NAND ? sunxi_sprite_exit(0) : 0;
 		udelay(3000000);
 
 		/*wil not return and reboot system*/
@@ -538,6 +538,7 @@ int update_main(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (file_buf)
 		free(file_buf);
 
+	sunxi_flash_write_end();
 	/*flush the flash*/
 	sunxi_flash_flush();
 	sunxi_sprite_flush();

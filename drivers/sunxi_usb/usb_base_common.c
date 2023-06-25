@@ -75,6 +75,13 @@ int sunxi_usb_dev_register(uint dev_name)
 
         	break;
 #endif
+
+#ifdef CONFIG_SUNXI_USB_DETECT
+		case SUNXI_USB_DEVICE_DETECT:
+			sunxi_usb_module_reg(SUNXI_USB_DEVICE_DETECT);
+
+			break;
+#endif
 		default:
 			ret = -1;
 			break;

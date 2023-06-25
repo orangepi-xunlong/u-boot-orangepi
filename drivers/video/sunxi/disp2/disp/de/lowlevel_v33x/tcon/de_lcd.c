@@ -930,10 +930,6 @@ s32 tcon0_cfg(u32 sel, disp_panel_para *panel, u32 de_use_rcq)
 		lcd_dev[sel]->tcon0_io_pol.bits.clk_inv = 1;
 		lcd_dev[sel]->tcon0_io_pol.bits.dclk_sel = 2;
 		break;
-	case 4:
-		lcd_dev[sel]->tcon0_io_pol.bits.clk_inv = 0;
-		lcd_dev[sel]->tcon0_io_pol.bits.dclk_sel = 1;
-		break;
 	default:
 		lcd_dev[sel]->tcon0_io_pol.bits.clk_inv = 0;
 		lcd_dev[sel]->tcon0_io_pol.bits.dclk_sel = 0;

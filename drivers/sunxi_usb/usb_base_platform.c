@@ -23,7 +23,11 @@
  */
 #include "usb_base.h"
 #include <scsi.h>
+#ifdef CONFIG_ARM
 #include <asm/arch/gic.h>
+#elif CONFIG_RISCV
+#include <asm/arch/plic.h>
+#endif
 #include <asm/arch/timer.h>
 //#include <sys_partition.h>
 #include <sunxi_board.h>
@@ -53,7 +57,7 @@ enum usb_device_speed {
 static uchar sunxi_usb_ep0_buffer[SUNXI_USB_EP0_BUFFER_SIZE];
 
 sunxi_udc_t  			  sunxi_udc_source;
-static sunxi_ubuf_t   			  sunxi_ubuf;
+static sunxi_ubuf_t	sunxi_ubuf __aligned(CONFIG_SYS_CACHELINE_SIZE) = { 0 };
 sunxi_usb_setup_req_t     *sunxi_udev_active;
 
 static uint usb_dma_trans_unaliged_bytes;
@@ -79,6 +83,9 @@ static int ep0_recv_op(void);
 
 extern int fastboot_data_flag;
 extern volatile int sunxi_usb_burn_from_boot_init;
+#ifdef CONFIG_SUNXI_USB_DETECT
+extern volatile int sunxi_usb_detect_flag;
+#endif
 
 /* for fastboot */
 __weak int get_fastboot_data_flag(void)
@@ -183,6 +190,9 @@ void sunxi_usb_irq(void *data)
 	{
 	    sunxi_usb_dbg("IRQ: SOF\n");
 
+#ifdef CONFIG_SUNXI_USB_DETECT
+		sunxi_usb_detect_flag = 1;
+#endif
 		set_usb_burn_boot_init_flag(1);
 		USBC_INT_DisableUsbMiscUint(sunxi_udc_source.usbc_hd, USBC_INTUSB_SOF);
 
@@ -363,15 +373,15 @@ int sunxi_usb_init(int delaytime)
 	irq_install_handler(AW_IRQ_USB_OTG, sunxi_usb_irq, NULL);
 	irq_enable(AW_IRQ_USB_OTG);
 	/* sun8iw10p1 spec default value is not correct, bit 1 should be  0 */
-	reg_val = readl(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL);
+	reg_val = readl((const volatile void __iomem *)(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL));
 	reg_val &= ~(0x01<<1);
-	writel(reg_val, SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL);
+	writel(reg_val, (volatile void __iomem *)(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL));
 
-#if defined(CONFIG_SUNXI_NCAT)
-	reg_val = readl(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL);
+#if defined(CONFIG_SUNXI_NCAT) || defined(CONFIG_SUNXI_NCAT_V2)
+	reg_val = readl((const volatile void __iomem *)(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL));
 	reg_val &= ~(0x01<<USBC_PHY_CTL_SIDDQ);
 	reg_val |= 0x01<<USBC_PHY_CTL_VBUSVLDEXT;
-	writel(reg_val, SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL);
+	writel(reg_val, (volatile void __iomem *)(SUNXI_USBOTG_BASE+USBC_REG_o_PHYCTL));
 #endif
 	otg_phy_config();
 

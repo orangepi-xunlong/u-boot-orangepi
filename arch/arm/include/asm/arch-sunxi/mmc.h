@@ -47,7 +47,7 @@ struct sunxi_mmc {
 	u32 chda;		/* 0x90 */
 	u32 cbda;		/* 0x94 */
 	u32 res2[26];
-#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_MACH_SUN50I_H6) || defined(CONFIG_MACH_SUN8IW16) || defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN50IW9) || defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MACH_SUN8IW15) || defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN50IW11)
+#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_MACH_SUN50I_H6) || defined(CONFIG_MACH_SUN8IW16) || defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN50IW9) || defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MACH_SUN8IW15) || defined(CONFIG_MACH_SUN8IW7) || defined(CONFIG_MACH_SUN50IW11) ||  defined(CONFIG_MACH_SUN50IW5)
 	u32 thld;	/* 0x100 */
 	u32 res4[2];    /*  (0x104~0x10b) */
 	u32 dsbd;              /* (0x10c) eMMC4.5 DDR Start Bit Detection Control */

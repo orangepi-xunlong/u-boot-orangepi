@@ -5,6 +5,7 @@
 /*****************************************************************************/
 
 #define MAX_SECURE_STORAGE_ITEM 32
+#define MAX_PAGE_CNT_PER_ITEM 2
 
 #define MIN_SECURE_STORAGE_BLOCK_NUM 8
 #define MAX_SECURE_STORAGE_BLOCK_NUM 50
@@ -27,8 +28,9 @@ int nand_secure_storage_read_one(unsigned int block, int item,
 				 unsigned char *mbuf, unsigned int len);
 int nand_secure_storage_read(int item, unsigned char *buf, unsigned int len);
 int nand_secure_storage_write(int item, unsigned char *buf, unsigned int len);
+int nand_secure_storage_fast_write(int item, unsigned char *buf, unsigned int len);
 int nand_secure_storage_check(void);
-int nand_secure_storage_repair(int flag);
+int nand_secure_storage_repair(int flag, unsigned int copy_nums);
 int nand_secure_storage_update(void);
 int nand_secure_storage_test(unsigned int item);
 int nand_secure_storage_test_read(unsigned int item, unsigned int block);

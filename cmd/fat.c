@@ -97,7 +97,7 @@ U_BOOT_CMD(
 );
 
 #ifdef CONFIG_FAT_WRITE
-static int do_fat_fswrite(cmd_tbl_t *cmdtp, int flag,
+int do_fat_fswrite(cmd_tbl_t *cmdtp, int flag,
 		int argc, char * const argv[])
 {
 	loff_t size;

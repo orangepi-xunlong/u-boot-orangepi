@@ -9,6 +9,10 @@
  */
 #include <common.h>
 #include <i2c.h>
+#ifdef CONFIG_ARCH_SUNXI
+#include <asm/arch/gic.h>
+#endif
+
 
 struct i2c_adapter *i2c_get_adapter(int index)
 {
@@ -244,7 +248,6 @@ int i2c_set_bus_num(unsigned int bus)
 	if (bus >= CONFIG_SYS_NUM_I2C_BUSES)
 		return -1;
 #endif
-
 	max = ll_entry_count(struct i2c_adapter, i2c);
 	if (I2C_ADAPTER(bus) >= max) {
 		printf("Error, wrong i2c adapter %d max %d possible\n",
@@ -290,13 +293,21 @@ int i2c_probe(uint8_t chip)
 int i2c_read(uint8_t chip, unsigned int addr, int alen,
 				uint8_t *buffer, int len)
 {
-	return I2C_ADAP->read(I2C_ADAP, chip, addr, alen, buffer, len);
+	int ret;
+	disable_interrupts();
+	ret = I2C_ADAP->read(I2C_ADAP, chip, addr, alen, buffer, len);
+	enable_interrupts();
+	return ret;
 }
 
 int i2c_write(uint8_t chip, unsigned int addr, int alen,
 				uint8_t *buffer, int len)
 {
-	return I2C_ADAP->write(I2C_ADAP, chip, addr, alen, buffer, len);
+	int ret;
+	disable_interrupts();
+	ret = I2C_ADAP->write(I2C_ADAP, chip, addr, alen, buffer, len);
+	enable_interrupts();
+	return ret;
 }
 
 unsigned int i2c_set_bus_speed(unsigned int speed)

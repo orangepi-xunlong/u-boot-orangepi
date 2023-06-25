@@ -15,6 +15,18 @@
 #include <linux/types.h>
 #include <asm/arch/watchdog.h>
 
+#if defined(CONFIG_MACH_SUN50IW12) || defined(CONFIG_MACH_SUN55IW3)
+/* General purpose timer */
+struct sunxi_timer {
+	volatile u32 ctl;
+	volatile u32 inter;
+	volatile u32 val;
+	volatile u32 inter2;
+	volatile u32 val2;
+	int res[3];
+};
+
+#else
 /* General purpose timer */
 struct sunxi_timer {
 	volatile u32 ctl;
@@ -22,6 +34,7 @@ struct sunxi_timer {
 	volatile u32 val;
 	u8 res[4];
 };
+#endif
 
 /* Audio video sync*/
 struct sunxi_avs {
@@ -61,7 +74,8 @@ struct sunxi_tgp {
 
 #if defined(CONFIG_MACH_SUN50IW3) || defined(CONFIG_MACH_SUN8IW16) \
 	|| defined(CONFIG_MACH_SUN8IW19) || defined(CONFIG_MACH_SUN50IW9)\
-	|| defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MACH_SUN8IW15)
+	|| defined(CONFIG_MACH_SUN50IW10) || defined(CONFIG_MACH_SUN8IW15)\
+	|| defined(CONFIG_MACH_SUN50IW5)
 struct sunxi_timer_reg {
 	volatile u32 tirqen;		/* 0x00 */
 	volatile u32 tirqsta;	/* 0x04 */
@@ -71,15 +85,16 @@ struct sunxi_timer_reg {
 	struct sunxi_wdog wdog[1];		/* 0xa0 */
 	struct sunxi_avs avs;			/* 0xc0 */
 };
-#elif defined(CONFIG_MACH_SUN50IW11)
+#elif defined(CONFIG_MACH_SUN50IW11) || defined(CONFIG_MACH_SUN20IW1) ||       \
+	defined(CONFIG_MACH_SUN8IW20)
 struct sunxi_timer_reg {
-	volatile u32 tirqen;		/* 0x00 */
-	volatile u32 tirqsta;	/* 0x04 */
-	uint     res1[2];
-	struct sunxi_timer timer[2];		/* We have 2 timers */
-	uint  	 res2[0x70/4];			/* 0x70 */
-	struct sunxi_wdog wdog[1];		/* 0xa0 */
-	struct sunxi_avs avs;			/* 0xc0 */
+	volatile u32 tirqen; /* 0x00 */
+	volatile u32 tirqsta; /* 0x04 */
+	uint res1[2];
+	struct sunxi_timer timer[2]; /* We have 2 timers */
+	uint res2[0x70 / 4]; /* 0x70 */
+	struct sunxi_wdog wdog[1]; /* 0xa0 */
+	struct sunxi_avs avs; /* 0xc0 */
 };
 #elif defined (CONFIG_MACH_SUN8IW18)
 struct sunxi_timer_reg {
@@ -88,6 +103,16 @@ struct sunxi_timer_reg {
 	uint     res1[2];
 	struct sunxi_timer timer[6];		/* We have 6 timers */
 	uint  	 res2[12];			/* 0x70 */
+	struct sunxi_wdog wdog[1];		/* 0xa0 */
+	struct sunxi_avs avs;			/* 0xc0 */
+};
+#elif defined (CONFIG_MACH_SUN8IW21)
+struct sunxi_timer_reg {
+	volatile u32 tirqen;			/* 0x00 */
+	volatile u32 tirqsta;			/* 0x04 */
+	uint     res1[2];
+	struct sunxi_timer timer[3];		/* 0x10 We have 3 timers */
+	uint  	 res2[20];			/* 0x50 */
 	struct sunxi_wdog wdog[1];		/* 0xa0 */
 	struct sunxi_avs avs;			/* 0xc0 */
 };
@@ -103,6 +128,16 @@ struct sunxi_timer_reg {
 	uint   res3[0x10/4];
 	struct sunxi_wdog wdog[1];
 };
+#elif defined(CONFIG_MACH_SUN50IW12) || defined(CONFIG_MACH_SUN55IW3)
+struct sunxi_timer_reg {
+	volatile u32 tirqen; /* 0x00 */
+	volatile u32 tirqsta; /* 0x04 */
+	uint res1[6];
+	struct sunxi_timer timer[6]; /* We have 2 timers */
+	struct sunxi_wdog wdog[1]; /* 0xa0 */
+	struct sunxi_avs avs; /* 0xc0 */
+};
+
 #else
 struct sunxi_timer_reg {
 	u32 tirqen;		/* 0x00 */
@@ -110,7 +145,7 @@ struct sunxi_timer_reg {
 	u8 res1[8];
 	struct sunxi_timer timer[6];	/* We have 6 timers */
 	u8 res2[16];
-	struct sunxi_avs avs;
+	struct sunxi_avs avs;   /* 0x80 */
 #if defined(CONFIG_SUNXI_GEN_SUN4I) || defined(CONFIG_MACH_SUN8I_R40)
 	struct sunxi_wdog wdog;	/* 0x90 */
 	/* XXX the following is not accurate for sun5i/sun7i */
@@ -124,6 +159,8 @@ struct sunxi_timer_reg {
 #elif defined(CONFIG_SUNXI_GEN_SUN6I)
 	u8 res3[16];
 	struct sunxi_wdog wdog[5];	/* We have 5 watchdogs */
+#elif defined(CONFIG_MACH_SUN8IW11)
+	struct sunxi_wdog wdog[1];	/* 0x90 We have 1 watchdogs */
 #endif
 };
 #endif
@@ -155,6 +192,7 @@ extern void __usdelay(unsigned long usec);
 
 extern void __msdelay(unsigned long msec);
 
+extern u64 read_timer(void);
 
 #endif /* __ASSEMBLY__ */
 

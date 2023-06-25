@@ -113,7 +113,9 @@ void hdmitx_write(uintptr_t addr, u32 data)
 {
 	if (hdmi_clk_enable_mask == 0)
 		return;
+#ifndef CONFIG_MACH_SUN20IW1
 	asm volatile("dsb st");
+#endif
 	*((volatile u8 *)(hdmi_core_get_base_addr() + (addr >> 2))) = data;
 }
 
@@ -180,6 +182,12 @@ u32 hdmi_core_get_hpd_state(void)
 	return core->dev_func.dev_hpd_status();
 }
 
+void hdmi_core_set_phy_reg_base(void)
+{
+	struct hdmi_tx_core *core = get_platform();
+
+	return core->dev_func.set_phy_base_addr(hdmi_reg_base);
+}
 /**
  * @short Set PHY number
  * @param[in] core Main structure
@@ -262,6 +270,7 @@ static int _api_init(struct hdmi_tx_core *core)
 	register_system_functions(&(core->sys_functions));
 	register_bsp_functions(&(core->dev_access));
 
+	hdmi_core_set_phy_reg_base();
 	return 0;
 }
 

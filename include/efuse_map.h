@@ -1,3 +1,6 @@
+/*
+ *SPDX-License-Identifier: GPL-2.0+
+ */
 #ifndef __EFUSE_MAP_H__
 #define __EFUSE_MAP_H__
 #include <asm/arch/efuse.h>
@@ -10,6 +13,7 @@
 #define EFUSE_FT_ZONE_NAME           "ft_zone"
 #define EFUSE_TV_OUT_NAME            "tvout"
 #define EFUSE_OEM_NAME               "oem"
+#define EFUSE_OEM_SEC_NAME			"oem_secure"
 #define EFUSE_EMAC_NAME              "emac"
 
 #define EFUSE_WR_PROTECT_NAME        "write_protect"

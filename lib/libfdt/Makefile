@@ -14,6 +14,7 @@ obj-y += \
 	fdt_addresses.o
 
 obj-$(CONFIG_OF_LIBFDT_OVERLAY) += fdt_overlay.o
+obj-$(CONFIG_SUNXI_ANDROID_OVERLAY) += ufdt_support.o
 
 # Locally modified for U-Boot.
 # TODO: split out the local modifiction.

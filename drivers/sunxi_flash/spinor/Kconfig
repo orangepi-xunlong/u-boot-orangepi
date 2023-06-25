@@ -20,6 +20,19 @@ config SPINOR_UBOOT_OFFSET
 	default 128
 	help
 	 spinor address is offset*512 bytes.
+
+config SPINOR_LOGICAL_SECURE_OFFSET
+	int "logic address for read/write"
+	default 2016
+	help
+	  logic address for mbr and partitions(1M-MBRSIZE = 2048-32).
+	  spinor address is offset*512 bytes.
+
+config SPINOR_UBOOT_SECURE_OFFSET
+	int "uboot offset for boot from spinor"
+	default 128
+	help
+	 spinor address is offset*512 bytes.
 endif
 
 

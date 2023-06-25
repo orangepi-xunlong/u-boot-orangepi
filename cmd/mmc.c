@@ -107,16 +107,17 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 		return NULL;
 	return mmc;
 }
-
 static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct mmc *mmc;
 
-	curr_device = get_mmc_num();
-	printf("curr_device:%d\n", curr_device);
 	if (curr_device < 0) {
-		puts("No MMC device available\n");
-		return 1;
+		curr_device = get_mmc_num();
+		printf("curr_device:%d\n", curr_device);
+		if (curr_device < 0) {
+			puts("No MMC device available\n");
+			return 1;
+		}
 	}
 
 	mmc = init_mmc_device(curr_device, false);
@@ -401,8 +402,9 @@ static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 		      int argc, char * const argv[])
 {
-	int dev, part = 0, ret;
+	int dev, part = 0;
 	struct mmc *mmc;
+	__maybe_unused int ret;
 
 	if (argc == 1) {
 		dev = curr_device;
@@ -805,7 +807,7 @@ static cmd_tbl_t cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(erase, 3, 0, do_mmc_erase, "", ""),
 #endif
 	U_BOOT_CMD_MKENT(rescan, 1, 1, do_mmc_rescan, "", ""),
-	U_BOOT_CMD_MKENT(part, 1, 1, do_mmc_part, "", ""),
+	U_BOOT_CMD_MKENT(part, 2, 1, do_mmc_part, "", ""),
 	U_BOOT_CMD_MKENT(dev, 3, 0, do_mmc_dev, "", ""),
 	U_BOOT_CMD_MKENT(list, 1, 1, do_mmc_list, "", ""),
 #if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
@@ -826,7 +828,7 @@ static cmd_tbl_t cmd_mmc[] = {
 #endif
 };
 
-static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	cmd_tbl_t *cp;
 
@@ -927,6 +929,8 @@ int do_card0_probe(cmd_tbl_t *cmdtp, int flag,
 		puts("card0 init failed\n");
 		return  -1;
 	}
+	//run_command("mmcinfo", 0);
+	//run_command("mmc part", 0);
 	card0_init = 1;
 	return 0;
 }

@@ -41,7 +41,7 @@ int do_fel_from_boot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	tick_printf("usb init ok\n");
 	begin_time = get_timer(0);
-	over_time = 500; /* 800ms */
+	over_time = 500; /* ms */
 	while(1) {
 		if (sunxi_usb_burn_from_boot_init) {
 			printf("usb sof ok\n");
@@ -56,7 +56,7 @@ int do_fel_from_boot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	tick_printf("usb probe ok\n");
 
 	begin_time = get_timer(0);
-	over_time = 2000; /* 3000ms */
+	over_time = 2000; /* ms */
 	sunxi_auto_fel_runnning = 1;
 	while(1) {
 		ret = sunxi_usb_extern_loop();

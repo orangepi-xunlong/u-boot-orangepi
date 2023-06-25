@@ -97,6 +97,7 @@ int host_get_dev_err(int dev, struct blk_desc **blk_devp);
 
 /* disk/part.c */
 int part_get_info(struct blk_desc *dev_desc, int part, disk_partition_t *info);
+int part_init_info_map(struct blk_desc *dev_desc);
 /**
  * part_get_info_whole_disk() - get partition info for the special case of
  * a partition occupying the entire disk.

@@ -50,8 +50,13 @@ unsigned int wb_lan2coefftab16_down[16] = {
  */
 s32 wb_ebios_set_reg_base(u32 sel, uintptr_t base)
 {
+#if defined(CONFIG_INDEPENDENT_DE)
+	if (sel >= 0 && sel < DE_NUM)
+		wb_dev[sel] = (struct __wb_reg_t *) (base + WB_OFFSET);
+#else
 	__inf("sel=%d, base=0x%p\n", sel, (void *)(base + WB_OFFSET));
 	wb_dev[sel] = (struct __wb_reg_t *) (base + WB_OFFSET);
+#endif
 
 	return 0;
 }
@@ -84,6 +89,9 @@ uintptr_t wb_ebios_get_reg_base(u32 sel)
 s32 wb_ebios_init(disp_bsp_init_para *para)
 {
 	wb_ebios_set_reg_base(0, para->reg_base[DISP_MOD_DE]);
+#if defined(CONFIG_INDEPENDENT_DE)
+	wb_ebios_set_reg_base(1, para->reg_base[DISP_MOD_DE1]);
+#endif
 	/* FIXME, need */
 	/* memset((void*)wb_dev[0], 0, sizeof(struct __wb_reg_t)); */
 	return 0;

@@ -52,10 +52,18 @@ static inline uintptr_t __attribute__((no_instrument_function))
 		offset -= gd->relocaddr;
 	else
 		offset -= CONFIG_SYS_TEXT_BASE;
+	/*
+	 * fix offset error from uboot head
+	 * this may because system.map generation
+	 * did not count uboot header in
+	 * need fix later -- ouyangkun 2022.1.6
+	 */
+	offset -= 0x640;
 #endif
 	return offset / FUNC_SITE_SIZE;
 }
 
+ulong  __attribute__((no_instrument_function))  get_timer_masked(void);
 static void __attribute__((no_instrument_function)) add_ftrace(void *func_ptr,
 				void *caller, ulong flags)
 {
@@ -126,8 +134,8 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(
 		void *func_ptr, void *caller)
 {
 	if (trace_enabled) {
-		add_ftrace(func_ptr, caller, FUNCF_EXIT);
 		hdr->depth--;
+		add_ftrace(func_ptr, caller, FUNCF_EXIT);
 	}
 }
 
@@ -324,7 +332,7 @@ int __attribute__((no_instrument_function)) trace_init(void *buff,
 	add_textbase();
 
 	puts("trace: enabled\n");
-	hdr->depth_limit = 15;
+	hdr->depth_limit = 8;
 	trace_enabled = 1;
 	trace_inited = 1;
 	return 0;

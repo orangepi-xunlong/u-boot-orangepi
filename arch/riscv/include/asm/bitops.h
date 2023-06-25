@@ -13,6 +13,10 @@
  * since they would be too costly.  Also, they require priviledged
  * instructions (which are not available from user mode) to ensure
  * that they are atomic.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #ifndef __ASM_RISCV_BITOPS_H
@@ -21,6 +25,7 @@
 #ifdef __KERNEL__
 
 #include <asm/system.h>
+#include <asm/proc-armv/system.h>
 #include <asm-generic/bitops/fls.h>
 #include <asm-generic/bitops/__fls.h>
 #include <asm-generic/bitops/fls64.h>
@@ -42,6 +47,8 @@ static inline void __set_bit(int nr, void *addr)
 	*a |= mask;
 }
 
+#define PLATFORM__SET_BIT
+
 static inline void __clear_bit(int nr, void *addr)
 {
 	int *a = (int *)addr;
@@ -51,6 +58,8 @@ static inline void __clear_bit(int nr, void *addr)
 	mask = 1 << (nr & 0x1f);
 	*a &= ~mask;
 }
+
+#define PLATFORM__CLEAR_BIT
 
 static inline void __change_bit(int nr, void *addr)
 {
@@ -72,6 +81,18 @@ static inline int __test_and_set_bit(int nr, void *addr)
 	retval = (mask & *a) != 0;
 	*a |= mask;
 	return retval;
+}
+
+static inline int test_and_set_bit(int nr, volatile void *addr)
+{
+	unsigned long flags = 0;
+	int out;
+
+	local_irq_save(flags);
+	out = __test_and_set_bit(nr, (void *)addr);
+	local_irq_restore(flags);
+
+	return out;
 }
 
 static inline int __test_and_clear_bit(int nr, void *addr)

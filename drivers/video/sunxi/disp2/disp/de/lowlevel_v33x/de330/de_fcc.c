@@ -19,8 +19,9 @@
 
 #include "de_fcc_type.h"
 #include "de_rtmx.h"
-#include "de_vep_table.h"
 #include "de_enhance.h"
+#ifdef CONFIG_DISP2_SUNXI_SUPPORT_ENAHNCE
+#include "de_vep_table.h"
 
 #define FCC_PARA_NUM (12)
 
@@ -360,3 +361,18 @@ s32 de_fcc_set_ocsc_coeff(u32 disp, u32 chn,
 	}
 	return 0;
 }
+#else
+
+int de_fcc_set_ocsc_coeff(unsigned int disp, unsigned int chn,
+	struct de_csc_info *in_info, struct de_csc_info *out_info)
+{
+	return 0;
+}
+
+int de_fcc_set_icsc_coeff(unsigned int disp, unsigned int chn,
+	struct de_csc_info *in_info, struct de_csc_info *out_info)
+{
+	return 0;
+}
+#endif
+

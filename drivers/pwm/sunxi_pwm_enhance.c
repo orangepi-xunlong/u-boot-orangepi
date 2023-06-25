@@ -63,7 +63,8 @@ uint pwm_pin_count[4] = {0};
 		(defined CONFIG_MACH_SUN8IW18) ||\
 		(defined CONFIG_MACH_SUN8IW16) ||\
 		(defined CONFIG_MACH_SUN8IW19) ||\
-		(defined CONFIG_MACH_SUN50IW9))
+		(defined CONFIG_MACH_SUN50IW9) ||\
+		(defined CONFIG_MACH_SUN50IW5))
 #define CLK_GATE_SUPPORT
 uint clk_count;
 uint sclk_count;
@@ -534,10 +535,13 @@ int pwm_request(int pwm, const char *label)
 		/* get handle in pwm. */
 		handle_num = fdt_getprop_u32(working_fdt, node, "pwms", handle);
 		if (handle_num < 0) {
-			pr_error("%s:%d:error:get property handle %s error:%s\n",
-			       __func__, __LINE__, "clocks",
+			handle_num = fdt_getprop_u32(working_fdt, node, "sunxi-pwms", handle);
+			if (handle_num < 0) {
+				pr_error("%s:%d:error:get property handle %s error:%s\n",
+					__func__, __LINE__, "clocks",
 					fdt_strerror(handle_num));
-			return -1;
+				return -1;
+			}
 		}
 	} else {
 		/* pwm is included is not  in pwm area,then find spwm area.*/
@@ -571,10 +575,13 @@ int pwm_request(int pwm, const char *label)
 			/* get handle in pwm. */
 			handle_num = fdt_getprop_u32(working_fdt, node, "pwms", handle);
 			if (handle_num < 0) {
-				pr_error("%s:%d:error:get property handle %s error:%s\n",
-				       __func__, __LINE__, "clocks",
+				handle_num = fdt_getprop_u32(working_fdt, node, "sunxi-pwms", handle);
+				if (handle_num < 0) {
+					pr_error("%s:%d:error:get property handle %s error:%s\n",
+						__func__, __LINE__, "clocks",
 						fdt_strerror(handle_num));
-				return -1;
+					return -1;
+				}
 			}
 		} else {
 			pr_error("the pwm id is wrong,none pwm in dts.\n");

@@ -27,9 +27,13 @@ int sunxi_keydata_burn_by_usb(void)
 
 	int workmode	 = uboot_spare_head.boot_data.work_mode;
 	int if_need_burn_key = 0;
-
-	ret = script_parser_fetch("/soc/target", "burn_key", &if_need_burn_key,
-				  1);
+	char *env_burn_key;
+	env_burn_key = env_get("burn_key");
+	if (env_burn_key) {
+		if_need_burn_key = simple_strtoul(env_burn_key, NULL, 16);
+	} else {
+		ret = script_parser_fetch("/soc/target", "burn_key", &if_need_burn_key, 1);
+	}
 
 	if (if_need_burn_key != 1) {
 		pr_err("out of usb burn from boot: not need burn key\n");

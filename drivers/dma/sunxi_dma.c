@@ -145,7 +145,7 @@ void sunxi_dma_exit(void)
 	clrbits_le32(&ccm->ahb_gate0, 1 << AHB_GATE_OFFSET_DMA);
 #else
 	/* close dma clock when dma exit */
-	clrbits_le32(&ccm->dma_gate_reset, 1 << DMA_GATING_OFS);
+	clrbits_le32(&ccm->dma_gate_reset, 1 << DMA_GATING_OFS | 1 << DMA_RST_OFS);
 #endif
 
 	dma_init--;
@@ -205,13 +205,13 @@ int sunxi_dma_setting(ulong hdma, sunxi_dma_set *cfg)
 	sunxi_dma_set     *dma_set = cfg;
 	sunxi_dma_source  *dma_source = (sunxi_dma_source *)hdma;
 	sunxi_dma_desc    *desc = dma_source->desc;
-	uint channal_addr  = (uint)(&(dma_set->channal_cfg));
+	uint channal_addr  = (ulong)(&(dma_set->channal_cfg));
 
 	if (!dma_source->used)
 		return -1;
 
 	if (dma_set->loop_mode)
-		desc->link = (uint)(&dma_source->desc);
+		desc->link = (ulong)(&dma_source->desc);
 	else
 		desc->link = SUNXI_DMA_LINK_NULL;
 
@@ -219,7 +219,7 @@ int sunxi_dma_setting(ulong hdma, sunxi_dma_set *cfg)
 	commit_para |= (dma_set->data_block_size & 0xff) << 8;
 
 	writel(commit_para, &desc->commit_para);
-	writel(readl(channal_addr), &desc->config);
+	writel(readl((volatile void __iomem *)(ulong)channal_addr), &desc->config);
 
 	return 0;
 }
@@ -243,7 +243,7 @@ int sunxi_dma_start(ulong hdma, uint saddr, uint daddr, uint bytes)
 		    ALIGN(sizeof(sunxi_dma_desc), CONFIG_SYS_CACHELINE_SIZE));
 
 	/* start dma */
-	writel((uint)(desc), &channal->desc_addr);
+	writel((ulong)(desc), &channal->desc_addr);
 	writel(1, &channal->enable);
 
 	return 0;
@@ -350,7 +350,7 @@ int sunxi_dma_disable_int(ulong hdma)
 		}
 		clrbits_le32(&dma_reg->irq_en0, (DMA_PKG_END_INT << channal_count * 4));
 	} else {
-		if (!(readl(dma_reg->irq_en1) & (DMA_PKG_END_INT << (channal_count - 8) * 4))) {
+		if (!(readl((volatile void __iomem *)(ulong)dma_reg->irq_en1) & (DMA_PKG_END_INT << (channal_count - 8) * 4))) {
 			debug("dma 0x%lx int is not used yet\n", hdma);
 			return 0;
 		}

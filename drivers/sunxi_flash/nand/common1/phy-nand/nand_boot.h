@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __NAND_BOOT_H__
 #define __NAND_BOOT_H__
+#if 0
 #include "nand-partition/phy.h"
 
 #define TOC_MAIN_INFO_MAGIC 0x89119800
@@ -129,4 +130,5 @@ int mark_to_disable_crc_when_ota(void);
 int disable_phyinfo_crc_in_buffer(struct _boot_info *phyinfo_buf_tmp);
 extern __u32 get_storage_type(void);
 
+#endif
 #endif /*NAND_BOOT_H*/
