@@ -705,8 +705,8 @@ void fdt_fixup_ethernet(void *fdt)
 
 			do_fixup_by_path(fdt, path, "mac-address",
 					 &mac_addr, 6, 0);
-			do_fixup_by_path(fdt, path, "local-mac-address",
-					 &mac_addr, 6, 1);
+			//do_fixup_by_path(fdt, path, "local-mac-address",
+			//		 &mac_addr, 6, 1);
 		}
 	}
 }
