@@ -338,5 +338,6 @@ const struct flash_info spi_nor_ids[] = {
 	{ INFO("XM25QH128A", 0x207018, 0, 64 * 1024, 256, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 #endif
 	{ INFO("zb25vq128a", 0x5e4018, 0, 64 * 1024, 256, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
+	{ INFO("zb25vq16as", 0x5e6015, 0, 64 * 1024, 32, SECT_4K) },
 	{ },
 };
