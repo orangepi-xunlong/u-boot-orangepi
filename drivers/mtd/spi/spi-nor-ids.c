@@ -354,6 +354,7 @@ const struct flash_info spi_nor_ids[] = {
 
 	/*Zetta*/
 	{ INFO("zd25q64b", 0xba3217, 0, 64 * 1024, 128, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
+	{ INFO("zb25vq16as", 0x5e6015, 0, 64 * 1024, 32, SECT_4K) },
 	{ INFO("zb25vq64as", 0x5e4017, 0, 64 * 1024, 128, SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 	{ INFO("zb25vq128as", 0x5e4018, 0, 64 * 1024, 256, SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 
