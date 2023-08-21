@@ -846,6 +846,12 @@ int arch_cpu_init(void)
 	writel(0x3f3f0707, GRF_BASE + GRF_GPIO1C_DS_3);
 
 #if defined(CONFIG_ROCKCHIP_SFC)
+	/* emmc and sfc iomux */
+	writel((0x7777UL << 16) | (0x1111), GRF_BASE + GRF_GPIO1B_IOMUX_H);
+	writel((0x7777UL << 16) | (0x1111), GRF_BASE + GRF_GPIO1C_IOMUX_L);
+	writel((0x7777UL << 16) | (0x2111), GRF_BASE + GRF_GPIO1C_IOMUX_H);
+	writel((0x7777UL << 16) | (0x1111), GRF_BASE + GRF_GPIO1D_IOMUX_L);
+	writel(((7 << 0) << 16) | (1 << 0), GRF_BASE + GRF_GPIO1D_IOMUX_H);
 	/* Set the fspi to secure */
 	writel(((0x1 << 14) << 16) | (0x0 << 14), SGRF_BASE + SGRF_SOC_CON3);
 #endif
