@@ -82,7 +82,8 @@
 		"mmc list;" \
 		"setenv devnum 0;" \
 		"run mmc_boot;" \
-	"else " \
+	"fi;" \
+	"if mmc dev 1; then " \
 		"mmc list;" \
 		"setenv devnum 1;" \
 		"run mmc_boot;" \
