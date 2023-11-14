@@ -30,7 +30,7 @@ void mctl_set_timing_params(struct dram_para *para)
 	u8 trp		= ns_to_t(21);		/* JEDEC: >= 13.75 ns */
 	u8 tras		= ns_to_t(42);		/* JEDEC >= 36 ns, <= 9*trefi */
 	u16 trefi	= ns_to_t(3904) / 32;	/* JEDEC: 7.8us@Tcase <= 85C */
-	u16 trfc	= ns_to_t(180);		/* JEDEC: 160 ns for 2Gb */
+	u16 trfc	= ns_to_t(280);		/* JEDEC: 160 ns for 2Gb */
 	u16 txsr	= ns_to_t(190);		/* ? */
 
 	u8 tmrw		= max(ns_to_t(14), 5);	/* ? */
