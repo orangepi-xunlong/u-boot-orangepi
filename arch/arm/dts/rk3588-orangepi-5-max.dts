@@ -10,8 +10,8 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Orange Pi 5";
-	compatible = "rockchip,rk3588s-orangepi-5", "rockchip,rk3588";
+	model = "RK3588 Orange Pi 5 Max";
+	compatible = "rockchip,rk3588-orangepi-5-max", "rockchip,rk3588";
 
 	adc-keys {
 		compatible = "adc-keys";
@@ -39,42 +39,31 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
-	vcc3v3_pcie2x1l2: vcc3v3-pcie2x1l2 {
+	vcc5v0_host: vcc5v0-host {
 		u-boot,dm-pre-reloc;
 		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_pcie2x1l2";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
+		regulator-name = "vcc5v0_host";
+		regulator-boot-on;
+		regulator-always-on;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		//regulator-boot-on;
-		//regulator-always-on;
-		gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
-		startup-delay-us = <50000>;
+		gpio = <&gpio3 RK_PB7 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_sys>;
 	};
-};
 
-#if 0
-&sata0 {
-	u-boot,dm-pre-reloc;
-	pinctrl-names = "default";
-	pinctrl-0 = <&sata_reset>;
-	status = "okay";
-};
-
-# else
-
-&pcie2x1l2 {
-	u-boot,dm-pre-reloc;
-	reset-gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_HIGH>;
-	vpcie3v3-supply = <&vcc3v3_pcie2x1l2>;
-	status = "okay";
-};
-#endif
-
-&combphy0_ps {
-	u-boot,dm-pre-reloc;
-	status = "okay";
+	vcc3v3_pcie30: vcc3v3-pcie30 {
+		u-boot,dm-pre-reloc;
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_pcie30";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpio = <&gpio2 RK_PB6 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc5v0_sys>;
+	};
 };
 
 &u2phy0 {
@@ -83,6 +72,17 @@
 };
 
 &u2phy0_otg {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+
+&u2phy1 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&u2phy1_otg {
 	u-boot,dm-pre-reloc;
 	status = "okay";
 };
@@ -161,24 +161,20 @@
 	status = "okay";
 };
 
-&usbdrd3_0 {
+&pcie3x4 {
+	u-boot,dm-pre-reloc;
+	vpcie3v3-supply = <&vcc3v3_pcie30>;
+	reset-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&pcie30phy {
 	u-boot,dm-pre-reloc;
 	status = "okay";
 };
 
-&usbdrd_dwc3_0 {
-	u-boot,dm-pre-reloc;
-	dr_mode = "host";
-	status = "okay";
-};
+&sfc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&fspim2_pins &fspim2_cs1>;
 
-&usbhost3_0 {
-	u-boot,dm-pre-reloc;
-	status = "okay";
-};
-
-&usbhost_dwc3_0 {
-	u-boot,dm-pre-reloc;
-	dr_mode = "host";
-	status = "okay";
 };
