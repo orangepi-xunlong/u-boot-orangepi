@@ -171,11 +171,13 @@ static void sun4i_spi_set_cs(struct udevice *bus, u8 cs, bool enable)
 
 	reg &= ~SPI_BIT(priv, SPI_TCR_CS_MASK);
 	reg |= SPI_CS(priv, cs);
-
+	if( (priv -> mode & SPI_CS_HIGH) == 0 ){
+		enable = !enable;
+	}
 	if (enable)
-		reg &= ~SPI_BIT(priv, SPI_TCR_CS_LEVEL);
-	else
 		reg |= SPI_BIT(priv, SPI_TCR_CS_LEVEL);
+	else
+		reg &= ~SPI_BIT(priv, SPI_TCR_CS_LEVEL);
 
 	writel(reg, SPI_REG(priv, SPI_TCR));
 }
@@ -249,7 +251,7 @@ static int sun4i_spi_parse_pins(struct udevice *dev)
 			if (pin < 0)
 				break;
 
-			if (IS_ENABLED(CONFIG_MACH_SUN50I))
+			if (IS_ENABLED(CONFIG_MACH_SUN50I) || IS_ENABLED(CONFIG_MACH_SUN50I_H616))
 				sunxi_gpio_set_cfgpin(pin, SUN50I_GPC_SPI0);
 			else
 				sunxi_gpio_set_cfgpin(pin, SUNXI_GPC_SPI0);
@@ -307,9 +309,6 @@ static int sun4i_spi_claim_bus(struct udevice *dev)
 	struct sun4i_spi_priv *priv = dev_get_priv(dev->parent);
 	int ret;
 
-	ret = sun4i_spi_set_clock(dev->parent, true);
-	if (ret)
-		return ret;
 
 	setbits_le32(SPI_REG(priv, SPI_GCR), SUN4I_CTL_ENABLE |
 		     SUN4I_CTL_MASTER | SPI_BIT(priv, SPI_GCR_TP));
@@ -318,8 +317,7 @@ static int sun4i_spi_claim_bus(struct udevice *dev)
 		setbits_le32(SPI_REG(priv, SPI_GCR),
 			     SPI_BIT(priv, SPI_GCR_SRST));
 
-	setbits_le32(SPI_REG(priv, SPI_TCR), SPI_BIT(priv, SPI_TCR_CS_MANUAL) |
-		     SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW));
+	setbits_le32(SPI_REG(priv, SPI_TCR), SPI_BIT(priv, SPI_TCR_CS_MANUAL));
 
 	return 0;
 }
@@ -343,7 +341,7 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 
 	u32 len = bitlen / 8;
-	u32 rx_fifocnt;
+	u32 tcr;
 	u8 nbytes;
 	int ret;
 
@@ -381,13 +379,12 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		setbits_le32(SPI_REG(priv, SPI_TCR),
 			     SPI_BIT(priv, SPI_TCR_XCH));
 
-		/* Wait till RX FIFO to be empty */
-		ret = readl_poll_timeout(SPI_REG(priv, SPI_FSR),
-					 rx_fifocnt,
-					 (((rx_fifocnt &
-					 SPI_BIT(priv, SPI_FSR_RF_CNT_MASK)) >>
-					 SUN4I_FIFO_STA_RF_CNT_BITS) >= nbytes),
-					 SUN4I_SPI_TIMEOUT_US);
+		/* Wait till Xfer finish */
+		ret = readl_poll_timeout(SPI_REG(priv, SPI_TCR),
+			tcr,
+			(tcr & SPI_BIT(priv,SPI_TCR_XCH)) == 0,
+			SUN4I_SPI_TIMEOUT_US);
+
 		if (ret < 0) {
 			printf("ERROR: sun4i_spi: Timeout transferring data\n");
 			sun4i_spi_set_cs(bus, slave_plat->cs, false);
@@ -460,13 +457,19 @@ static int sun4i_spi_set_mode(struct udevice *dev, uint mode)
 	u32 reg;
 
 	reg = readl(SPI_REG(priv, SPI_TCR));
-	reg &= ~(SPI_BIT(priv, SPI_TCR_CPOL) | SPI_BIT(priv, SPI_TCR_CPHA));
+	reg &= ~(SPI_BIT(priv, SPI_TCR_CPOL) | SPI_BIT(priv, SPI_TCR_CPHA) | SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW));
 
 	if (mode & SPI_CPOL)
 		reg |= SPI_BIT(priv, SPI_TCR_CPOL);
 
 	if (mode & SPI_CPHA)
 		reg |= SPI_BIT(priv, SPI_TCR_CPHA);
+
+	if (mode & SPI_CS_HIGH){
+		reg &= ~SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW);
+	}else{
+		reg |= SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW);
+	}
 
 	priv->mode = mode;
 	writel(reg, SPI_REG(priv, SPI_TCR));
@@ -507,6 +510,10 @@ static int sun4i_spi_probe(struct udevice *bus)
 	}
 
 	sun4i_spi_parse_pins(bus);
+
+	ret = sun4i_spi_set_clock(bus, true);
+	if (ret)
+		return ret;
 
 	priv->variant = plat->variant;
 	priv->base = plat->base;
