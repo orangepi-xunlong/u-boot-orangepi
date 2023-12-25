@@ -48,7 +48,7 @@
 		enable-active-high;
 		//regulator-boot-on;
 		//regulator-always-on;
-		gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio2 RK_PA1 GPIO_ACTIVE_HIGH>;
 		startup-delay-us = <50000>;
 		vin-supply = <&vcc5v0_sys>;
 	};
@@ -59,6 +59,7 @@
 	u-boot,dm-pre-reloc;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sata_reset>;
+	vpcie3v3-supply = <&vcc3v3_pcie2x1l2>;
 	status = "okay";
 };
 

@@ -15,10 +15,12 @@
 #include <sata.h>
 #include <asm/io.h>
 #include <generic-phy.h>
+#include <power/regulator.h>
 
 struct dwc_ahci_priv {
 	void *base;
 	void *wrapper_base;
+	struct udevice *vpcie3v3;
 };
 
 static int dwc_ahci_bind(struct udevice *dev)
@@ -69,6 +71,21 @@ static int dwc_ahci_probe(struct udevice *dev)
 	if (ret) {
 		pr_err("unable to power on the sata phy\n");
 		return ret;
+	}
+
+	ret = device_get_supply_regulator(dev, "vpcie3v3-supply",
+	                                   &priv->vpcie3v3);
+	if (ret) {
+		pr_err("failed to get vpcie3v3 supply (ret=%d)\n", ret);
+		//return ret;
+	}
+
+	if (priv->vpcie3v3) {
+		ret = regulator_set_enable(priv->vpcie3v3, true);
+		if (ret) {
+			dev_err(priv->dev, "failed to enable vpcie3v3 (ret=%d)\n", ret);
+			//return ret;
+		}
 	}
 
 	return ahci_probe_scsi(dev, (ulong)priv->base);
