@@ -82,6 +82,9 @@ int arch_cpu_init(void)
 	struct rk3399_pmugrf_regs *pmugrf = (void *)PMUGRF_BASE;
 	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
 
+	/* config iomux for sdcard*/
+	writel(0xffff0555, GRF_BASE + 0x0000e024);
+
 	/* We do some SoC one time setting here. */
 
 #ifdef CONFIG_SPL_BUILD
