@@ -107,7 +107,7 @@
 	phy-mode = "rgmii";
 	clock_in_out = "output";
 
-	snps,reset-gpio = <&gpio2 RK_PD1 GPIO_ACTIVE_LOW>;
+	snps,reset-gpio = <&gpio3 RK_PC2 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
 	/* Reset time is 20ms, 100ms for rtl8211f */
 	snps,reset-delays-us = <0 20000 100000>;
@@ -117,17 +117,41 @@
 	assigned-clock-rates = <0>, <125000000>;
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&gmac1m1_miim
-		     &gmac1m1_tx_bus2
-		     &gmac1m1_rx_bus2
-		     &gmac1m1_rgmii_clk
-		     &gmac1m1_rgmii_bus>;
+	pinctrl-0 = <&gmac1m0_miim
+		&gmac1m0_tx_bus2
+		&gmac1m0_rx_bus2
+		&gmac1m0_rgmii_clk
+		&gmac1m0_rgmii_bus>;
 
 	tx_delay = <0x4f>;
 	rx_delay = <0x26>;
 
 	phy-handle = <&rgmii_phy1>;
-	status = "disabled";
+	status = "okay";
+};
+
+&gmac1m0_miim {
+	u-boot,dm-pre-reloc;
+};
+
+&gmac1m0_tx_bus2 {
+	u-boot,dm-pre-reloc;
+};
+
+&gmac1m0_rx_bus2 {
+	u-boot,dm-pre-reloc;
+};
+
+&gmac1m0_rgmii_clk {
+	u-boot,dm-pre-reloc;
+};
+
+&gmac1m0_rgmii_bus {
+	u-boot,dm-pre-reloc;
+};
+
+&gpio3 {
+	u-boot,dm-pre-reloc;
 };
 
 &mdio0 {
@@ -189,6 +213,7 @@
 		regulator-name = "vdd_cpu";
 		regulator-min-microvolt = <712500>;
 		regulator-max-microvolt = <1390000>;
+		regulator-init-microvolt = <900000>;
 		regulator-ramp-delay = <2300>;
 		fcs,suspend-voltage-selector = <1>;
 		regulator-boot-on;
@@ -221,6 +246,8 @@
 		//fb-inner-reg-idxs = <2>;
 		/* 1: rst regs (default in codes), 0: rst the pmic */
 		pmic-reset-func = <0>;
+		/* not save the PMIC_POWER_EN register in uboot */
+		not-save-power-en = <1>;
 
 		vcc1-supply = <&vcc3v3_sys>;
 		vcc2-supply = <&vcc3v3_sys>;
@@ -280,6 +307,7 @@
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_logic";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-on-in-suspend;
 				};
 			};
@@ -382,12 +410,14 @@
 			};
 
 			vccio_sd: LDO_REG5 {
+				u-boot,dm-pre-reloc;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-name = "vccio_sd";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-off-in-suspend;
 				};
 			};
@@ -460,10 +490,12 @@
 			};
 
 			vcc_3v3: SWITCH_REG1 {
+				u-boot,dm-pre-reloc;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-name = "vcc_3v3";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-off-in-suspend;
 				};
 			};

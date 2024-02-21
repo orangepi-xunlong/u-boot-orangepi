@@ -15,6 +15,9 @@
 #include "eth_internal.h"
 #include <eth_phy.h>
 
+#include <miiphy.h>
+#include <phy.h>
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /**
@@ -384,6 +387,33 @@ int eth_rx(void)
 	return ret;
 }
 
+void get_eth_phy_level(void)
+{
+	struct mii_dev *bus;
+	unsigned int phy_id, value;
+
+	mdelay(500);
+	bus = mdio_get_current_dev();
+	if(!bus)
+		return ;
+	miiphy_set_current_dev(bus->name);
+	phy_id = bus->read(bus, 0x0, -1, 0x3);
+	phy_id |= bus->read(bus, 0x0, -1, 0x2) << 16;
+
+	if(phy_id == 0x4f51e91b){
+		bus->write(bus, 0x0, -1, 0x1e, 0xa001);
+		value = bus->read(bus, 0x0, -1, 0x1f);
+		value >>= 4;
+		value &= 3;
+
+		if(value == 2 || value == 3) {
+			env_set("yt8531c_phy_level", "1v8");
+		} else {
+			env_set("yt8531c_phy_level", "3v3");
+		}
+	}
+}
+
 int eth_initialize(void)
 {
 	int num_devices = 0;
@@ -431,6 +461,7 @@ int eth_initialize(void)
 		} while (dev);
 
 		putc('\n');
+		get_eth_phy_level();
 	}
 
 	return num_devices;
@@ -447,7 +478,6 @@ static int eth_post_bind(struct udevice *dev)
 #ifdef CONFIG_DM_ETH_PHY
 	eth_phy_binds_nodes(dev);
 #endif
-
 	return 0;
 }
 
