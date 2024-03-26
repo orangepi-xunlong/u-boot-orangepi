@@ -524,6 +524,9 @@ int phy_init(void)
 #ifdef CONFIG_PHY_FIXED
 	phy_fixed_init();
 #endif
+#ifdef CONFIG_PHY_MOTORCOMM
+	phy_yt_init();
+#endif
 	return 0;
 }
 
