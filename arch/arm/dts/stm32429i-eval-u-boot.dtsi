@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2018, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <dt-bindings/memory/stm32-sdram.h>
 /{
 	clocks {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 
 	aliases {
@@ -26,20 +26,20 @@
 	};
 
 	soc {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		pin-controller {
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 
 		fmc: fmc@A0000000 {
 			compatible = "st,stm32-fmc";
-			reg = <0xA0000000 0x1000>;
+			reg = <0xa0000000 0x1000>;
 			clocks = <&rcc 0 STM32F4_AHB3_CLOCK(FMC)>;
 			st,syscfg = <&syscfg>;
 			pinctrl-0 = <&fmc_pins_d32>;
 			pinctrl-names = "default";
 			st,mem_remap = <4>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 
 			/*
 			 * Memory configuration from sdram
@@ -68,97 +68,86 @@
 };
 
 &clk_hse {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &clk_lse {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &clk_i2s_ckin {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &pwrcfg {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &syscfg {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &rcc {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioa {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiob {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioc {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiod {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioe {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiof {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiog {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioh {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioi {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioj {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiok {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &pinctrl {
-	usart1_pins_a: usart1@0	{
-		u-boot,dm-pre-reloc;
+	usart1_pins_a: usart1-0	{
+		bootph-all;
 		pins1 {
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 		pins2 {
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
 
 	fmc_pins_d32: fmc_d32@0 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		pins
 		{
 			pinmux = <STM32_PINMUX('I',10, AF12)>, /* D31 */
@@ -224,7 +213,11 @@
 				 <STM32_PINMUX('H', 2, AF12)>, /* SDCKE0 */
 				 <STM32_PINMUX('G', 8, AF12)>; /* SDCLK> */
 			slew-rate = <2>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
+};
+
+&timers5 {
+	bootph-all;
 };

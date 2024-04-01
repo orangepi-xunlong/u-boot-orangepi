@@ -9,6 +9,7 @@
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <linux/delay.h>
 
 #include "high_speed_env_spec.h"
 #include "board_env_spec.h"
@@ -35,7 +36,7 @@ int pex_local_dev_num_set(u32 pex_if, u32 dev_num);
 #define	ETM_MODULE_DETECT               2
 
 #define PEX_MODE_GET(satr)		((satr & 0x6) >> 1)
-#define PEX_CAPABILITY_GET(satr)	(satr & 1)
+#define PEX_CAPABILITY_GET(satr, port)	((satr >> port) & 1)
 #define MV_PEX_UNIT_TO_IF(pex_unit)	((pex_unit < 3) ? (pex_unit * 4) : 9)
 
 /* Static parametes */
@@ -61,7 +62,7 @@ static u32 board_id_get(void)
 	return DB_78X60_AMC_ID;
 #elif defined(CONFIG_DB_78X60_PCAC_REV2)
 	return DB_78X60_PCAC_REV2_ID;
-#elif defined(CONFIG_DB_784MP_GP)
+#elif defined(CONFIG_TARGET_DB_MV784MP_GP)
 	return DB_784MP_GP_ID;
 #elif defined(CONFIG_RD_78460_CUSTOMER)
 	return RD_78460_CUSTOMER_ID;
@@ -76,6 +77,7 @@ static u32 board_id_get(void)
 
 __weak u8 board_sat_r_get(u8 dev_num, u8 reg)
 {
+	struct udevice *udev;
 	u8 data;
 	u8 *dev;
 	u32 board_id = board_id_get();
@@ -106,8 +108,11 @@ __weak u8 board_sat_r_get(u8 dev_num, u8 reg)
 	}
 
 	/* Read MPP module ID */
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-	ret = i2c_read(dev[dev_num], 0, 1, (u8 *)&data, 1);
+	ret = i2c_get_chip_for_busnum(0, dev[dev_num], 1, &udev);
+	if (ret)
+		return MV_ERROR;
+
+	ret = dm_i2c_read(udev, 0, &data, 1);
 	if (ret)
 		return MV_ERROR;
 
@@ -123,13 +128,18 @@ static int board_modules_scan(void)
 	/* Perform scan only for DB board */
 	if ((board_id == DB_88F78XX0_BP_ID) ||
 	    (board_id == DB_88F78XX0_BP_REV2_ID)) {
+		struct udevice *udev;
+
 		/* reset modules flags */
 		config_module = 0;
 
-		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+		ret = i2c_get_chip_for_busnum(0, MV_BOARD_PEX_MODULE_ADDR,
+					      1, &udev);
+		if (ret)
+			return MV_ERROR;
 
 		/* SERDES module (only PEX model is supported now) */
-		ret = i2c_read(MV_BOARD_PEX_MODULE_ADDR, 0, 1, (u8 *)&val, 1);
+		ret = dm_i2c_read(udev, 0, &val, 1);
 		if (ret)
 			return MV_ERROR;
 
@@ -176,7 +186,7 @@ u8 board_cpu_freq_get(void)
 	return ((sar_msb & 0x100000) >> 17) | ((sar & 0xe00000) >> 21);
 }
 
-__weak MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+__weak MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	u32 board_id;
 	u32 serdes_cfg_val = 0;	/* default */
@@ -352,7 +362,7 @@ int serdes_phy_config(void)
 		DEBUG_WR_REG(CPU_AVS_CONTROL2_REG, cpu_avs);
 	}
 
-	info = board_serdes_cfg_get(PEX_MODE_GET(satr11));
+	info = board_serdes_cfg_get();
 
 	if (info == NULL) {
 		DEBUG_INIT_S("Hight speed PHY Error #1\n");
@@ -675,7 +685,7 @@ int serdes_phy_config(void)
 				tmp |= (0x1 << 4);
 			if (info->pex_mode[pex_unit] == PEX_BUS_MODE_X4)
 				tmp |= (0x4 << 4);
-			if (0 == PEX_CAPABILITY_GET(satr11))
+			if (0 == PEX_CAPABILITY_GET(satr11, pex_unit))
 				tmp |= 0x1;
 			else
 				tmp |= 0x2;

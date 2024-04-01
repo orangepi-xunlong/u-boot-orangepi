@@ -12,11 +12,8 @@
 #include <environment/ti/mmc.h>
 #include <environment/ti/spi.h>
 
-/* Platform type */
-#define CONFIG_SOC_K2G
-
 /* U-Boot general configuration */
-#define CONFIG_EXTRA_ENV_KS2_BOARD_SETTINGS				\
+#define ENV_KS2_BOARD_SETTINGS						\
 	DEFAULT_MMC_TI_ARGS						\
 	DEFAULT_PMMC_BOOT_ENV						\
 	DEFAULT_FW_INITRAMFS_BOOT_ENV					\
@@ -35,6 +32,8 @@
 			"setenv name_fdt keystone-k2g-evm.dtb; " \
 		"else if test $board_name = 66AK2GIC; then " \
 			 "setenv name_fdt keystone-k2g-ice.dtb; " \
+		"else if test $board_name = 66AK2GI1; then " \
+			 "setenv name_fdt keystone-k2g-ice.dtb; " \
 		"else if test $name_fdt = undefined; then " \
 			"echo WARNING: Could not determine device tree to use;"\
 		"fi;fi;fi;fi; setenv fdtfile ${name_fdt}\0" \
@@ -51,48 +50,9 @@
 	"get_mon_mmc=load mmc ${bootpart} ${addr_mon} ${bootdir}/${name_mon}\0"\
 	"name_fs=arago-base-tisdk-image-k2g-evm.cpio\0"
 
-#ifndef CONFIG_TI_SECURE_DEVICE
-#define CONFIG_BOOTCOMMAND						\
-	"run findfdt; "							\
-	"run envboot; "							\
-	"run init_${boot}; "						\
-	"run get_mon_${boot} run_mon; "					\
-	"run set_name_pmmc get_pmmc_${boot} run_pmmc; "			\
-	"run get_kern_${boot}; "					\
-	"run init_fw_rd_${boot}; "					\
-	"run get_fdt_${boot}; "						\
-	"run run_kern"
-#else
-#define CONFIG_BOOTCOMMAND						\
-	"run findfdt; "							\
-	"run envboot; "							\
-	"run run_mon_hs; "						\
-	"run init_${boot}; "						\
-	"run get_fit_${boot}; "						\
-	"bootm ${fit_loadaddr}#${name_fdt}"
-#endif
-
-/* SPL SPI Loader Configuration */
-#define CONFIG_SPL_TEXT_BASE		0x0c0a0000
-
-/* NAND Configuration */
-#define CONFIG_SYS_NAND_PAGE_2K
-
 /* Network */
-#define CONFIG_KSNET_NETCP_V1_5
-#define CONFIG_KSNET_CPSW_NUM_PORTS	2
-#define CONFIG_KSNET_MDIO_PHY_CONFIG_ENABLE
+#define CFG_KSNET_CPSW_NUM_PORTS	2
 #define PHY_ANEG_TIMEOUT	10000 /* PHY needs longer aneg time */
-
-#define CONFIG_ENV_SIZE			(256 << 10)  /* 256 KiB */
-
-#define CONFIG_SF_DEFAULT_BUS		1
-#define CONFIG_SF_DEFAULT_CS		0
-
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_CADENCE_QSPI
-#define CONFIG_CQSPI_REF_CLK 384000000
-#endif
 
 #define SPI_MTD_PARTS	KEYSTONE_SPI1_MTD_PARTS
 

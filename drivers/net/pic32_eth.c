@@ -4,13 +4,20 @@
  *
  */
 #include <common.h>
+#include <cpu_func.h>
 #include <errno.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <net.h>
 #include <miiphy.h>
 #include <console.h>
+#include <time.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
+#include <linux/delay.h>
+#include <linux/mii.h>
 
 #include "pic32_eth.h"
 
@@ -320,7 +327,7 @@ static void pic32_rx_desc_init(struct pic32eth_dev *priv)
 
 static int pic32_eth_start(struct udevice *dev)
 {
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct pic32eth_dev *priv = dev_get_priv(dev);
 
 	/* controller */
@@ -525,9 +532,8 @@ static const struct eth_ops pic32_eth_ops = {
 
 static int pic32_eth_probe(struct udevice *dev)
 {
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct pic32eth_dev *priv = dev_get_priv(dev);
-	const char *phy_mode;
 	void __iomem *iobase;
 	fdt_addr_t addr;
 	fdt_size_t size;
@@ -543,15 +549,9 @@ static int pic32_eth_probe(struct udevice *dev)
 	pdata->iobase = (phys_addr_t)addr;
 
 	/* get phy mode */
-	pdata->phy_interface = -1;
-	phy_mode = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "phy-mode",
-			       NULL);
-	if (phy_mode)
-		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	if (pdata->phy_interface == -1) {
-		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 		return -EINVAL;
-	}
 
 	/* get phy addr */
 	offset = fdtdec_lookup_phandle(gd->fdt_blob, dev_of_offset(dev),
@@ -600,6 +600,6 @@ U_BOOT_DRIVER(pic32_ethernet) = {
 	.probe			= pic32_eth_probe,
 	.remove			= pic32_eth_remove,
 	.ops			= &pic32_eth_ops,
-	.priv_auto_alloc_size	= sizeof(struct pic32eth_dev),
-	.platdata_auto_alloc_size	= sizeof(struct eth_pdata),
+	.priv_auto	= sizeof(struct pic32eth_dev),
+	.plat_auto	= sizeof(struct eth_pdata),
 };

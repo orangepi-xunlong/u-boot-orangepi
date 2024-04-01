@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/clk_synthesizer.h>
 #include <asm/arch/cpu.h>
@@ -21,7 +22,7 @@
 #include <power/tps65217.h>
 #include <spl.h>
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
 
 static struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 
@@ -181,4 +182,4 @@ void sdram_init(void)
 		   &ddr3_chilisom_emif_reg_data, 0);
 }
 
-#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
+#endif /* CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT) */

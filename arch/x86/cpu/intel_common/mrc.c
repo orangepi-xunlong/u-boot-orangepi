@@ -5,8 +5,11 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
+#include <log.h>
 #include <syscon.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/intel_regs.h>
 #include <asm/mrc_common.h>
@@ -22,7 +25,7 @@ static const char *const ecc_decoder[] = {
 	"active"
 };
 
-ulong mrc_common_board_get_usable_ram_top(ulong total_size)
+phys_size_t mrc_common_board_get_usable_ram_top(phys_size_t total_size)
 {
 	struct memory_info *info = &gd->arch.meminfo;
 	uintptr_t dest_addr = 0;
@@ -47,7 +50,7 @@ ulong mrc_common_board_get_usable_ram_top(ulong total_size)
 
 	dest_addr = largest->start + largest->size;
 
-	return (ulong)dest_addr;
+	return (phys_size_t)dest_addr;
 }
 
 void mrc_common_dram_init_banksize(void)
@@ -197,7 +200,7 @@ static int sdram_initialise(struct udevice *dev, struct udevice *me_dev,
 
 	debug("PEI data at %p:\n", pei_data);
 
-	data = (char *)CONFIG_X86_MRC_ADDR;
+	data = (char *)CFG_X86_MRC_ADDR;
 	if (data) {
 		int rv;
 		ulong start;
@@ -241,11 +244,6 @@ static int sdram_initialise(struct udevice *dev, struct udevice *me_dev,
 	debug("System Agent Version %d.%d.%d Build %d\n",
 	      version >> 24 , (version >> 16) & 0xff,
 	      (version >> 8) & 0xff, version & 0xff);
-
-#if CONFIG_USBDEBUG
-	/* mrc.bin reconfigures USB, so reinit it to have debug */
-	early_usbdebug_init();
-#endif
 
 	return 0;
 }

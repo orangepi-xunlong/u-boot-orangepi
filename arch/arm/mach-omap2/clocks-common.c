@@ -13,7 +13,10 @@
  *	Rajendra Nayak <rnayak@ti.com>
  */
 #include <common.h>
+#include <hang.h>
 #include <i2c.h>
+#include <init.h>
+#include <log.h>
 #include <asm/omap_common.h>
 #include <asm/gpio.h>
 #include <asm/arch/clock.h>
@@ -549,7 +552,7 @@ void scale_vcores(struct vcores_data const *vcores)
 		if (pv->value[opp]) {
 			/* Handle non-empty members only */
 			pv->value[opp] = optimize_vcore_voltage(pv, opp);
-     			px = (struct volts *)vcores;
+			px = (struct volts *)vcores;
 			j = 0;
 			while (px < pv) {
 				/*
@@ -855,6 +858,39 @@ void do_enable_clocks(u32 const *clk_domains,
 	}
 }
 
+void do_enable_ipu_clocks(u32 const *clk_domains,
+			  u32 const *clk_modules_hw_auto,
+			  u32 const *clk_modules_explicit_en,
+			  u8 wait_for_enable)
+{
+	u32 i, max = 10;
+
+	if (!IS_ENABLED(CONFIG_REMOTEPROC_TI_IPU))
+		return;
+
+	/* Put the clock domains in SW_WKUP mode */
+	for (i = 0; (i < max) && clk_domains && clk_domains[i]; i++) {
+		enable_clock_domain(clk_domains[i],
+				    CD_CLKCTRL_CLKTRCTRL_SW_WKUP);
+	}
+
+	/* Clock modules that need to be put in HW_AUTO */
+	for (i = 0; (i < max) && clk_modules_hw_auto &&
+	     clk_modules_hw_auto[i]; i++) {
+		enable_clock_module(clk_modules_hw_auto[i],
+				    MODULE_CLKCTRL_MODULEMODE_HW_AUTO,
+				    wait_for_enable);
+	};
+
+	/* Clock modules that need to be put in SW_EXPLICIT_EN mode */
+	for (i = 0; (i < max) && clk_modules_explicit_en &&
+	     clk_modules_explicit_en[i]; i++) {
+		enable_clock_module(clk_modules_explicit_en[i],
+				    MODULE_CLKCTRL_MODULEMODE_SW_EXPLICIT_EN,
+				    wait_for_enable);
+	};
+}
+
 void do_disable_clocks(u32 const *clk_domains,
 			    u32 const *clk_modules_disable,
 			    u8 wait_for_disable)
@@ -909,13 +945,15 @@ void prcm_init(void)
 		enable_basic_uboot_clocks();
 }
 
+#if !CONFIG_IS_ENABLED(DM_I2C)
 void gpi2c_init(void)
 {
 	static int gpi2c = 1;
 
 	if (gpi2c) {
-		i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED,
-			 CONFIG_SYS_OMAP24_I2C_SLAVE);
+		i2c_init(CONFIG_SYS_I2C_SPEED,
+			 CONFIG_SYS_I2C_SLAVE);
 		gpi2c = 0;
 	}
 }
+#endif

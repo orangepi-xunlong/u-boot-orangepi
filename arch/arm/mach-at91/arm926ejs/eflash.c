@@ -43,6 +43,9 @@
  * do a read-modify-write for partially programmed pages
  */
 #include <common.h>
+#include <display_options.h>
+#include <flash.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_common.h>
@@ -58,7 +61,7 @@
 flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];
 static u32 pagesize;
 
-unsigned long flash_init (void)
+unsigned long flash_init(void)
 {
 	at91_eefc_t *eefc = (at91_eefc_t *) ATMEL_BASE_EEFC;
 	at91_dbu_t *dbu = (at91_dbu_t *) ATMEL_BASE_DBGU;
@@ -118,7 +121,7 @@ unsigned long flash_init (void)
 		if (i%32 == 0)
 			tmp = readl(&eefc->frr);
 		flash_info[0].protect[i] = (tmp >> (i%32)) & 1;
-#if defined(CONFIG_EFLASH_PROTSECTORS)
+#if CONFIG_VAL(EFLASH_PROTSECTORS)
 		if (i < CONFIG_EFLASH_PROTSECTORS)
 			flash_info[0].protect[i] = 1;
 #endif
@@ -127,7 +130,7 @@ unsigned long flash_init (void)
 	return size;
 }
 
-void flash_print_info (flash_info_t *info)
+void flash_print_info(flash_info_t *info)
 {
 	int i;
 
@@ -156,7 +159,7 @@ int flash_real_protect (flash_info_t *info, long sector, int prot)
 
 	debug("protect sector=%ld prot=%d\n", sector, prot);
 
-#if defined(CONFIG_EFLASH_PROTSECTORS)
+#if CONFIG_VAL(EFLASH_PROTSECTORS)
 	if (sector < CONFIG_EFLASH_PROTSECTORS) {
 		if (!prot) {
 			printf("eflash: sector %lu cannot be unprotected\n",
@@ -202,7 +205,7 @@ static u32 erase_write_page (u32 pagenum)
 		& (AT91_EEFC_FSR_FCMDE | AT91_EEFC_FSR_FLOCKE);
 }
 
-int flash_erase (flash_info_t *info, int s_first, int s_last)
+int flash_erase(flash_info_t *info, int s_first, int s_last)
 {
 	debug("erase first=%d last=%d\n", s_first, s_last);
 	puts("this flash does not need and support erasing!\n");
@@ -215,7 +218,7 @@ int flash_erase (flash_info_t *info, int s_first, int s_last)
  * 1 - write timeout
  */
 
-int write_buff (flash_info_t *info, uchar *src, ulong addr, ulong cnt)
+int write_buff(flash_info_t *info, uchar *src, ulong addr, ulong cnt)
 {
 	u32 pagenum;
 	u32 *src32, *dst32;

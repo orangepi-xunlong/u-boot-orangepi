@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <irq_func.h>
 
 /*
  * CPU test
@@ -21,7 +22,7 @@
 #include <post.h>
 #include "cpu_asm.h"
 
-#if CONFIG_POST & CONFIG_SYS_POST_CPU
+#if CFG_POST & CFG_SYS_POST_CPU
 
 extern void cpu_post_exec_21 (ulong *code, ulong *cr, ulong *res, ulong op1);
 extern ulong cpu_post_makecr (long v);

@@ -14,7 +14,7 @@
 	interrupt-parent = <&lic>;
 
 
-	pcie-controller@01003000 {
+	pcie@1003000 {
 		compatible = "nvidia,tegra124-pcie";
 		device_type = "pci";
 		reg = <0x01003000 0x00000800   /* PADS registers */
@@ -377,7 +377,7 @@
 	};
 
 	pwm: pwm@7000a000 {
-		compatible = "nvidia,tegra124-pwm", "nvidia,tegra20-pwm";
+		compatible = "nvidia,tegra124-pwm", "nvidia,tegra114-pwm";
 		reg = <0x7000a000 0x100>;
 		#pwm-cells = <2>;
 		clocks = <&tegra_car TEGRA124_CLK_PWM>;

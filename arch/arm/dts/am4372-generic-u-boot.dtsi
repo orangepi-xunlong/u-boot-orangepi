@@ -3,12 +3,14 @@
  * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
  */
 
+#include "am4372-u-boot.dtsi"
+
 /{
 	ocp {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 
 &i2c0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };

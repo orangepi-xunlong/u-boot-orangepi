@@ -1,12 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Device Tree Source for the R-Car Gen3 ULCB board
  *
  * Copyright (C) 2016 Renesas Electronics Corp.
  * Copyright (C) 2016 Cogent Embedded, Inc.
- *
- * This file is licensed under the terms of the GNU General Public License
- * version 2.  This program is licensed "as is" without any warranty of any
- * kind, whether express or implied.
+ */
+
+/*
+ * SSI-AK4613
+ *	aplay   -D plughw:0,0 xxx.wav
+ *	arecord -D plughw:0,0 xxx.wav
+ * SSI-HDMI
+ *	aplay   -D plughw:0,1 xxx.wav
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -16,21 +21,23 @@
 	model = "Renesas R-Car Gen3 ULCB board";
 
 	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c_dvfs;
 		serial0 = &scif2;
 		ethernet0 = &avb;
+		mmc0 = &sdhi2;
+		mmc1 = &sdhi0;
 	};
 
 	chosen {
+		bootargs = "ignore_loglevel rw root=/dev/nfs ip=on";
 		stdout-path = "serial0:115200n8";
-	};
-
-	cpld {
-		compatible = "renesas,ulcb-cpld";
-		status = "okay";
-		gpio-sck = <&gpio6 8 0>;
-		gpio-mosi = <&gpio6 7 0>;
-		gpio-miso = <&gpio6 10 0>;
-		gpio-sstbz = <&gpio2 3 0>;
 	};
 
 	audio_clkout: audio-clkout {
@@ -40,7 +47,7 @@
 		 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
-		clock-frequency = <11289600>;
+		clock-frequency = <12288000>;
 	};
 
 	hdmi0-out {
@@ -49,6 +56,7 @@
 
 		port {
 			hdmi0_con: endpoint {
+				remote-endpoint = <&rcar_dw_hdmi0_out>;
 			};
 		};
 	};
@@ -76,7 +84,7 @@
 		};
 	};
 
-	reg_1p8v: regulator0 {
+	reg_1p8v: regulator-1p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "fixed-1.8V";
 		regulator-min-microvolt = <1800000>;
@@ -85,7 +93,7 @@
 		regulator-always-on;
 	};
 
-	reg_3p3v: regulator1 {
+	reg_3p3v: regulator-3p3v {
 		compatible = "regulator-fixed";
 		regulator-name = "fixed-3.3V";
 		regulator-min-microvolt = <3300000>;
@@ -94,20 +102,13 @@
 		regulator-always-on;
 	};
 
-	rsnd_ak4613: sound {
-		compatible = "simple-audio-card";
+	sound_card: sound {
+		compatible = "audio-graph-card2";
+		label = "rcar-sound";
 
-		simple-audio-card,format = "left_j";
-		simple-audio-card,bitclock-master = <&sndcpu>;
-		simple-audio-card,frame-master = <&sndcpu>;
-
-		sndcpu: simple-audio-card,cpu {
-			sound-dai = <&rcar_sound>;
-		};
-
-		sndcodec: simple-audio-card,codec {
-			sound-dai = <&ak4613>;
-		};
+		links = <&rsnd_port0	/* ak4613 */
+			 &rsnd_port1	/* HDMI0  */
+			>;
 	};
 
 	vcc_sdhi0: regulator-vcc-sdhi0 {
@@ -130,8 +131,7 @@
 
 		gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 		gpios-states = <1>;
-		states = <3300000 1
-			  1800000 0>;
+		states = <3300000 1>, <1800000 0>;
 	};
 
 	x12_clk: x12 {
@@ -147,6 +147,10 @@
 	};
 };
 
+&a57_0 {
+	cpu-supply = <&dvfs>;
+};
+
 &audio_clk_a {
 	clock-frequency = <22579200>;
 };
@@ -154,17 +158,23 @@
 &avb {
 	pinctrl-0 = <&avb_pins>;
 	pinctrl-names = "default";
-	renesas,no-ether-link;
 	phy-handle = <&phy0>;
-	reset-gpios = <&gpio2 10 GPIO_ACTIVE_LOW>;
+	tx-internal-delay-ps = <2000>;
 	status = "okay";
 
 	phy0: ethernet-phy@0 {
+		compatible = "ethernet-phy-id0022.1622",
+			     "ethernet-phy-ieee802.3-c22";
 		rxc-skew-ps = <1500>;
 		reg = <0>;
 		interrupt-parent = <&gpio2>;
 		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&gpio2 10 GPIO_ACTIVE_LOW>;
 	};
+};
+
+&du {
+	status = "okay";
 };
 
 &ehci1 {
@@ -189,11 +199,13 @@
 				remote-endpoint = <&hdmi0_con>;
 			};
 		};
+		port@2 {
+			reg = <2>;
+			dw_hdmi0_snd_in: endpoint {
+				remote-endpoint = <&rsnd_for_hdmi>;
+			};
+		};
 	};
-};
-
-&hdmi0_con {
-	remote-endpoint = <&rcar_dw_hdmi0_out>;
 };
 
 &i2c2 {
@@ -218,6 +230,12 @@
 		asahi-kasei,out4-single-end;
 		asahi-kasei,out5-single-end;
 		asahi-kasei,out6-single-end;
+
+		port {
+			ak4613_endpoint: endpoint {
+				remote-endpoint = <&rsnd_for_ak4613>;
+			};
+		};
 	};
 
 	cs2000: clk-multiplier@4f {
@@ -248,6 +266,34 @@
 
 &i2c_dvfs {
 	status = "okay";
+
+	clock-frequency = <400000>;
+
+	pmic: pmic@30 {
+		pinctrl-0 = <&irq0_pins>;
+		pinctrl-names = "default";
+
+		compatible = "rohm,bd9571mwv";
+		reg = <0x30>;
+		interrupt-parent = <&intc_ex>;
+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		rohm,ddr-backup-power = <0xf>;
+		rohm,rstbmode-pulse;
+
+		regulators {
+			dvfs: dvfs {
+				regulator-name = "dvfs";
+				regulator-min-microvolt = <750000>;
+				regulator-max-microvolt = <1030000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
 };
 
 &ohci1 {
@@ -260,13 +306,12 @@
 
 	avb_pins: avb {
 		mux {
-			groups = "avb_link", "avb_phy_int", "avb_mdc",
-				 "avb_mii";
+			groups = "avb_link", "avb_mdio", "avb_mii";
 			function = "avb";
 		};
 
-		pins_mdc {
-			groups = "avb_mdc";
+		pins_mdio {
+			groups = "avb_mdio";
 			drive-strength = <24>;
 		};
 
@@ -280,6 +325,11 @@
 	i2c2_pins: i2c2 {
 		groups = "i2c2_a";
 		function = "i2c2";
+	};
+
+	irq0_pins: irq0 {
+		groups = "intc_ex_irq0";
+		function = "intc_ex";
 	};
 
 	scif2_pins: scif2 {
@@ -305,13 +355,7 @@
 	};
 
 	sdhi2_pins: sd2 {
-		groups = "sdhi2_data8", "sdhi2_ctrl";
-		function = "sdhi2";
-		power-source = <1800>;
-	};
-
-	sdhi2_pins_uhs: sd2_uhs {
-		groups = "sdhi2_data8", "sdhi2_ctrl";
+		groups = "sdhi2_data8", "sdhi2_ctrl", "sdhi2_ds";
 		function = "sdhi2";
 		power-source = <1800>;
 	};
@@ -334,7 +378,7 @@
 };
 
 &rcar_sound {
-	pinctrl-0 = <&sound_pins &sound_clk_pins>;
+	pinctrl-0 = <&sound_pins>, <&sound_clk_pins>;
 	pinctrl-names = "default";
 
 	/* Single DAI */
@@ -365,12 +409,83 @@
 		 <&audio_clk_c>,
 		 <&cpg CPG_CORE CPG_AUDIO_CLK_I>;
 
-	rcar_sound,dai {
-		dai0 {
-			playback = <&ssi0 &src0 &dvc0>;
-			capture  = <&ssi1 &src1 &dvc1>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		rsnd_port0: port@0 {
+			reg = <0>;
+			rsnd_for_ak4613: endpoint {
+				remote-endpoint = <&ak4613_endpoint>;
+				bitclock-master;
+				frame-master;
+				playback = <&ssi0>, <&src0>, <&dvc0>;
+				capture = <&ssi1>, <&src1>, <&dvc1>;
+			};
+		};
+		rsnd_port1: port@1 {
+			reg = <1>;
+			rsnd_for_hdmi: endpoint {
+				remote-endpoint = <&dw_hdmi0_snd_in>;
+				bitclock-master;
+				frame-master;
+				playback = <&ssi2>;
+			};
 		};
 	};
+};
+
+&rpc {
+	/* Left disabled.  To be enabled by firmware when unlocked. */
+
+	flash@0 {
+		compatible = "cypress,hyperflash", "cfi-flash";
+		reg = <0>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			bootparam@0 {
+				reg = <0x00000000 0x040000>;
+				read-only;
+			};
+			bl2@40000 {
+				reg = <0x00040000 0x140000>;
+				read-only;
+			};
+			cert_header_sa6@180000 {
+				reg = <0x00180000 0x040000>;
+				read-only;
+			};
+			bl31@1c0000 {
+				reg = <0x001c0000 0x040000>;
+				read-only;
+			};
+			tee@200000 {
+				reg = <0x00200000 0x440000>;
+				read-only;
+			};
+			uboot@640000 {
+				reg = <0x00640000 0x100000>;
+				read-only;
+			};
+			dtb@740000 {
+				reg = <0x00740000 0x080000>;
+			};
+			kernel@7c0000 {
+				reg = <0x007c0000 0x1400000>;
+			};
+			user@1bc0000 {
+				reg = <0x01bc0000 0x2440000>;
+			};
+		};
+	};
+};
+
+&rwdt {
+	timeout-sec = <60>;
+	status = "okay";
 };
 
 &scif2 {
@@ -394,20 +509,25 @@
 	cd-gpios = <&gpio3 12 GPIO_ACTIVE_LOW>;
 	bus-width = <4>;
 	sd-uhs-sdr50;
+	sd-uhs-sdr104;
 	status = "okay";
 };
 
 &sdhi2 {
 	/* used for on-board 8bit eMMC */
 	pinctrl-0 = <&sdhi2_pins>;
-	pinctrl-1 = <&sdhi2_pins_uhs>;
+	pinctrl-1 = <&sdhi2_pins>;
 	pinctrl-names = "default", "state_uhs";
 
 	vmmc-supply = <&reg_3p3v>;
 	vqmmc-supply = <&reg_1p8v>;
 	bus-width = <8>;
 	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	no-sd;
+	no-sdio;
 	non-removable;
+	full-pwr-cycle-in-suspend;
 	status = "okay";
 };
 
@@ -419,10 +539,5 @@
 	pinctrl-0 = <&usb1_pins>;
 	pinctrl-names = "default";
 
-	status = "okay";
-};
-
-&wdt0 {
-	timeout-sec = <60>;
 	status = "okay";
 };

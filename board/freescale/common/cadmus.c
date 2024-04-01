@@ -5,13 +5,13 @@
 
 
 #include <common.h>
-
+#include <clock_legacy.h>
 
 /*
  * CADMUS Board System Registers
  */
-#ifndef CONFIG_SYS_CADMUS_BASE_REG
-#define CONFIG_SYS_CADMUS_BASE_REG	(CADMUS_BASE_ADDR + 0x4000)
+#ifndef CFG_SYS_CADMUS_BASE_REG
+#define CFG_SYS_CADMUS_BASE_REG	(CADMUS_BASE_ADDR + 0x4000)
 #endif
 
 typedef struct cadmus_reg {
@@ -30,16 +30,16 @@ typedef struct cadmus_reg {
 unsigned int
 get_board_version(void)
 {
-	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CONFIG_SYS_CADMUS_BASE_REG;
+	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CFG_SYS_CADMUS_BASE_REG;
 
 	return cadmus->cm_ver;
 }
 
 
 unsigned long
-get_clock_freq(void)
+get_board_sys_clk(void)
 {
-	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CONFIG_SYS_CADMUS_BASE_REG;
+	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CFG_SYS_CADMUS_BASE_REG;
 
 	uint pci1_speed = (cadmus->cm_pci >> 2) & 0x3; /* PSPEED in [4:5] */
 
@@ -57,7 +57,7 @@ get_clock_freq(void)
 unsigned int
 get_pci_slot(void)
 {
-	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CONFIG_SYS_CADMUS_BASE_REG;
+	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CFG_SYS_CADMUS_BASE_REG;
 
 	/*
 	 * PCI slot in USER bits CSR[6:7] by convention.
@@ -69,7 +69,7 @@ get_pci_slot(void)
 unsigned int
 get_pci_dual(void)
 {
-	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CONFIG_SYS_CADMUS_BASE_REG;
+	volatile cadmus_reg_t *cadmus = (cadmus_reg_t *)CFG_SYS_CADMUS_BASE_REG;
 
 	/*
 	 * PCI DUAL in CM_PCI[3]

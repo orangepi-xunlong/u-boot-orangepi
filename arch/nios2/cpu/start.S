@@ -6,7 +6,6 @@
 
 #include <asm-offsets.h>
 #include <config.h>
-#include <version.h>
 
 /*
  * icache and dcache configuration used only for start.S.
@@ -147,7 +146,7 @@ _reloc:
 	 * We'll call the board_init_r from here since this isn't
 	 * supposed to return.
 	 *
-	 * void relocate_code (ulong sp, gd_t *global_data,
+	 * void relocate_code(ulong sp, gd_t *global_data,
 	 *			ulong reloc_addr)
 	 *			__attribute__ ((noreturn));
 	 */

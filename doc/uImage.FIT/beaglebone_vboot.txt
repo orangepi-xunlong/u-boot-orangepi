@@ -67,7 +67,6 @@ or if you just installed gcc-arm-linux-gnueabi then it might be
 
 b. Configure and build U-Boot with verified boot enabled:
 
-   export ARCH=arm
    export UBOOT=/path/to/u-boot
    cd $UBOOT
    # You can add -j10 if you have 10 CPUs to make it faster
@@ -462,7 +461,7 @@ you sign.
    cd $UBOOT
    make O=b/am335x_boneblack_vboot EXT_DTB=${WORK}/am335x-boneblack-pubkey.dtb
 
-Here we are overrriding the normal device tree file with our one, which
+Here we are overriding the normal device tree file with our one, which
 contains the public key.
 
 Now you have a special U-Boot image with the public key. It can verify can

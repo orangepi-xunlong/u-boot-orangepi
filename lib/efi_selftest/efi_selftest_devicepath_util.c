@@ -49,7 +49,7 @@ static int setup(const efi_handle_t img_handle,
  *
  * @length:	length of the media device node
  * @dp:		device path
- * @return:	status code
+ * Return:	status code
  */
 static int create_single_node_device_path(unsigned int length,
 					  struct efi_device_path **dp)
@@ -254,11 +254,6 @@ static int execute(void)
 	}
 	if (dp1) {
 		efi_st_error("GetNextDevicePathInstance did not signal end\n");
-		return EFI_ST_FAILURE;
-	}
-	ret = boottime->free_pool(dp2);
-	if (ret != EFI_ST_SUCCESS) {
-		efi_st_error("FreePool failed\n");
 		return EFI_ST_FAILURE;
 	}
 

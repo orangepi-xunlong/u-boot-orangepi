@@ -16,30 +16,25 @@
 
 #if defined(CONFIG_POST)
 
-#ifndef CONFIG_POST_EXTERNAL_WORD_FUNCS
-#ifdef CONFIG_SYS_POST_WORD_ADDR
-#define _POST_WORD_ADDR	CONFIG_SYS_POST_WORD_ADDR
+#ifndef CFG_POST_EXTERNAL_WORD_FUNCS
+#ifdef CFG_SYS_POST_WORD_ADDR
+#define _POST_WORD_ADDR	CFG_SYS_POST_WORD_ADDR
 #else
 
-#if defined(CONFIG_MPC8360)
+#if defined(CONFIG_ARCH_MPC8360)
 #include <linux/immap_qe.h>
 #define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CPM_POST_WORD_ADDR)
 
 #elif defined (CONFIG_MPC85xx)
 #include <asm/immap_85xx.h>
-#define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PIC_OFFSET + \
-				offsetof(ccsr_pic_t, tfrr))
-
-#elif defined (CONFIG_MPC86xx)
-#include <asm/immap_86xx.h>
-#define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC86xx_PIC_OFFSET + \
+#define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CFG_SYS_MPC85xx_PIC_OFFSET + \
 				offsetof(ccsr_pic_t, tfrr))
 #endif
 
 #ifndef _POST_WORD_ADDR
 #error "_POST_WORD_ADDR currently not implemented for this platform!"
 #endif
-#endif /* CONFIG_SYS_POST_WORD_ADDR */
+#endif /* CFG_SYS_POST_WORD_ADDR */
 
 static inline ulong post_word_load (void)
 {
@@ -56,7 +51,7 @@ static inline void post_word_store (ulong value)
 extern ulong post_word_load(void);
 extern void post_word_store(ulong value);
 
-#endif /* CONFIG_POST_EXTERNAL_WORD_FUNCS */
+#endif /* CFG_POST_EXTERNAL_WORD_FUNCS */
 #endif /* defined (CONFIG_POST) */
 #endif /* __ASSEMBLY__ */
 
@@ -107,7 +102,6 @@ int post_init_f (void);
 void post_bootmode_init (void);
 int post_bootmode_get (unsigned int * last_test);
 void post_bootmode_clear (void);
-void post_output_backlog ( void );
 int post_run (char *name, int flags);
 int post_info (char *name);
 int post_log (char *format, ...);
@@ -115,6 +109,16 @@ int post_log (char *format, ...);
 void post_reloc (void);
 #endif
 unsigned long post_time_ms (unsigned long base);
+
+/**
+ * post_output_backlog() - Print POST results
+ *
+ * Print POST results during the generic board init sequence, after
+ * relocation.
+ *
+ * Return: 0 if OK
+ */
+int post_output_backlog(void);
 
 extern struct post_test post_list[];
 extern unsigned int post_list_size;
@@ -136,30 +140,30 @@ extern int memory_post_test(int flags);
 #endif /* __GNUC__ */
 #endif /* __ASSEMBLY__ */
 
-#define CONFIG_SYS_POST_RTC		0x00000001
-#define CONFIG_SYS_POST_WATCHDOG	0x00000002
-#define CONFIG_SYS_POST_MEMORY		0x00000004
-#define CONFIG_SYS_POST_CPU		0x00000008
-#define CONFIG_SYS_POST_I2C		0x00000010
-#define CONFIG_SYS_POST_CACHE		0x00000020
-#define CONFIG_SYS_POST_UART		0x00000040
-#define CONFIG_SYS_POST_ETHER		0x00000080
-#define CONFIG_SYS_POST_USB		0x00000200
-#define CONFIG_SYS_POST_SPR		0x00000400
-#define CONFIG_SYS_POST_SYSMON		0x00000800
-#define CONFIG_SYS_POST_DSP		0x00001000
-#define CONFIG_SYS_POST_OCM		0x00002000
-#define CONFIG_SYS_POST_FPU		0x00004000
-#define CONFIG_SYS_POST_ECC		0x00008000
-#define CONFIG_SYS_POST_BSPEC1		0x00010000
-#define CONFIG_SYS_POST_BSPEC2		0x00020000
-#define CONFIG_SYS_POST_BSPEC3		0x00040000
-#define CONFIG_SYS_POST_BSPEC4		0x00080000
-#define CONFIG_SYS_POST_BSPEC5		0x00100000
-#define CONFIG_SYS_POST_CODEC		0x00200000
-#define CONFIG_SYS_POST_COPROC		0x00400000
-#define CONFIG_SYS_POST_FLASH		0x00800000
-#define CONFIG_SYS_POST_MEM_REGIONS	0x01000000
+#define CFG_SYS_POST_RTC		0x00000001
+#define CFG_SYS_POST_WATCHDOG	0x00000002
+#define CFG_SYS_POST_MEMORY		0x00000004
+#define CFG_SYS_POST_CPU		0x00000008
+#define CFG_SYS_POST_I2C		0x00000010
+#define CFG_SYS_POST_CACHE		0x00000020
+#define CFG_SYS_POST_UART		0x00000040
+#define CFG_SYS_POST_ETHER		0x00000080
+#define CFG_SYS_POST_USB		0x00000200
+#define CFG_SYS_POST_SPR		0x00000400
+#define CFG_SYS_POST_SYSMON		0x00000800
+#define CFG_SYS_POST_DSP		0x00001000
+#define CFG_SYS_POST_OCM		0x00002000
+#define CFG_SYS_POST_FPU		0x00004000
+#define CFG_SYS_POST_ECC		0x00008000
+#define CFG_SYS_POST_BSPEC1		0x00010000
+#define CFG_SYS_POST_BSPEC2		0x00020000
+#define CFG_SYS_POST_BSPEC3		0x00040000
+#define CFG_SYS_POST_BSPEC4		0x00080000
+#define CFG_SYS_POST_BSPEC5		0x00100000
+#define CFG_SYS_POST_CODEC		0x00200000
+#define CFG_SYS_POST_COPROC		0x00400000
+#define CFG_SYS_POST_FLASH		0x00800000
+#define CFG_SYS_POST_MEM_REGIONS	0x01000000
 
 #endif /* CONFIG_POST */
 

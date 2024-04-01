@@ -43,6 +43,7 @@
 #define SDI_CLKCR_CLKEN		0x00000100
 #define SDI_CLKCR_PWRSAV	0x00000200
 #define SDI_CLKCR_BYPASS	0x00000400
+#define SDI_CLKCR_HWFCEN	0x00001000
 #define SDI_CLKCR_WIDBUS_MASK	0x00001800
 #define SDI_CLKCR_WIDBUS_1	0x00000000
 #define SDI_CLKCR_WIDBUS_4	0x00000800
@@ -141,8 +142,8 @@
 
 #define SDI_FIFO_BURST_SIZE	8
 
-#define VERSION1	false
-#define VERSION2	true
+#define STM32_MMCI_ID		0x00880180
+#define UX500V2_MMCI_ID		0x10480180
 
 struct sdi_registers {
 	u32 power;		/* 0x00*/
@@ -192,7 +193,6 @@ struct pl180_mmc_host {
 	struct mmc_config cfg;
 #ifdef CONFIG_DM_MMC
 	struct gpio_desc cd_gpio;
-	bool cd_inverted;
 #endif
 };
 

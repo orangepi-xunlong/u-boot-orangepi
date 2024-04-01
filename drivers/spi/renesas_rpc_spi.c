@@ -6,12 +6,15 @@
  */
 
 #include <common.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/of_access.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <spi.h>
 #include <wait_bit.h>
@@ -154,7 +157,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-struct rpc_spi_platdata {
+struct rpc_spi_plat {
 	fdt_addr_t	regs;
 	fdt_addr_t	extr;
 	s32		freq;	/* Default clock freq, -1 for none */
@@ -404,25 +407,27 @@ static int rpc_spi_bind(struct udevice *parent)
 
 static int rpc_spi_probe(struct udevice *dev)
 {
-	struct rpc_spi_platdata *plat = dev_get_platdata(dev);
+	struct rpc_spi_plat *plat = dev_get_plat(dev);
 	struct rpc_spi_priv *priv = dev_get_priv(dev);
 
 	priv->regs = plat->regs;
 	priv->extr = plat->extr;
-
+#if CONFIG_IS_ENABLED(CLK)
 	clk_enable(&priv->clk);
-
+#endif
 	return 0;
 }
 
-static int rpc_spi_ofdata_to_platdata(struct udevice *bus)
+static int rpc_spi_of_to_plat(struct udevice *bus)
 {
-	struct rpc_spi_platdata *plat = dev_get_platdata(bus);
-	struct rpc_spi_priv *priv = dev_get_priv(bus);
-	int ret;
+	struct rpc_spi_plat *plat = dev_get_plat(bus);
 
 	plat->regs = dev_read_addr_index(bus, 0);
 	plat->extr = dev_read_addr_index(bus, 1);
+
+#if CONFIG_IS_ENABLED(CLK)
+	struct rpc_spi_priv *priv = dev_get_priv(bus);
+	int ret;
 
 	ret = clk_get_by_index(bus, 0, &priv->clk);
 	if (ret < 0) {
@@ -430,6 +435,7 @@ static int rpc_spi_ofdata_to_platdata(struct udevice *bus)
 		       __func__, bus->name, ret);
 		return ret;
 	}
+#endif
 
 	plat->freq = dev_read_u32_default(bus, "spi-max-freq", 50000000);
 
@@ -443,11 +449,8 @@ static const struct dm_spi_ops rpc_spi_ops = {
 };
 
 static const struct udevice_id rpc_spi_ids[] = {
-	{ .compatible = "renesas,rpc-r8a7795" },
-	{ .compatible = "renesas,rpc-r8a7796" },
-	{ .compatible = "renesas,rpc-r8a77965" },
-	{ .compatible = "renesas,rpc-r8a77970" },
-	{ .compatible = "renesas,rpc-r8a77995" },
+	{ .compatible = "renesas,r7s72100-rpc-if" },
+	{ .compatible = "renesas,rcar-gen3-rpc-if" },
 	{ }
 };
 
@@ -456,9 +459,9 @@ U_BOOT_DRIVER(rpc_spi) = {
 	.id		= UCLASS_SPI,
 	.of_match	= rpc_spi_ids,
 	.ops		= &rpc_spi_ops,
-	.ofdata_to_platdata = rpc_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct rpc_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct rpc_spi_priv),
+	.of_to_plat = rpc_spi_of_to_plat,
+	.plat_auto	= sizeof(struct rpc_spi_plat),
+	.priv_auto	= sizeof(struct rpc_spi_priv),
 	.bind		= rpc_spi_bind,
 	.probe		= rpc_spi_probe,
 };

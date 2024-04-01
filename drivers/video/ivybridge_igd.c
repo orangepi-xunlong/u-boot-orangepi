@@ -8,14 +8,18 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <pci_rom.h>
-#include <vbe.h>
+#include <vesa.h>
+#include <video.h>
+#include <asm/global_data.h>
 #include <asm/intel_regs.h>
 #include <asm/io.h>
 #include <asm/mtrr.h>
 #include <asm/pci.h>
 #include <asm/arch/pch.h>
 #include <asm/arch/sandybridge.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -720,7 +724,6 @@ static int gma_func0_init(struct udevice *dev)
 {
 	struct udevice *nbridge;
 	void *gtt_bar;
-	ulong base;
 	u32 reg32;
 	int ret;
 	int rev;
@@ -740,11 +743,6 @@ static int gma_func0_init(struct udevice *dev)
 	reg32 |= PCI_COMMAND_MASTER | PCI_COMMAND_MEMORY | PCI_COMMAND_IO;
 	dm_pci_write_config32(dev, PCI_COMMAND, reg32);
 
-	/* Use write-combining for the graphics memory, 256MB */
-	base = dm_pci_read_bar32(dev, 2);
-	mtrr_add_request(MTRR_TYPE_WRCOMB, base, 256 << 20);
-	mtrr_commit(true);
-
 	gtt_bar = (void *)(ulong)dm_pci_read_bar32(dev, 0);
 	debug("GT bar %p\n", gtt_bar);
 	ret = gma_pm_init_pre_vbios(gtt_bar, rev);
@@ -756,13 +754,15 @@ static int gma_func0_init(struct udevice *dev)
 
 static int bd82x6x_video_probe(struct udevice *dev)
 {
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
+	ulong fbbase;
 	void *gtt_bar;
 	int ret, rev;
 
 	rev = gma_func0_init(dev);
 	if (rev < 0)
 		return rev;
-	ret = vbe_setup_video(dev, int15_handler);
+	ret = vesa_setup_video(dev, int15_handler);
 	if (ret)
 		return ret;
 
@@ -771,6 +771,22 @@ static int bd82x6x_video_probe(struct udevice *dev)
 	ret = gma_pm_init_post_vbios(dev, rev, gtt_bar);
 	if (ret)
 		return ret;
+
+	/* Use write-combining for the graphics memory, 256MB */
+	fbbase = IS_ENABLED(CONFIG_VIDEO_COPY) ? plat->copy_base : plat->base;
+	mtrr_add_request(MTRR_TYPE_WRCOMB, fbbase, 256 << 20);
+	mtrr_commit(true);
+
+	return 0;
+}
+
+static int bd82x6x_video_bind(struct udevice *dev)
+{
+	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
+
+	/* Set the maximum supported resolution */
+	uc_plat->size = 2560 * 1600 * 4;
+	log_debug("%s: Frame buffer size %x\n", __func__, uc_plat->size);
 
 	return 0;
 }
@@ -784,5 +800,6 @@ U_BOOT_DRIVER(bd82x6x_video) = {
 	.name	= "bd82x6x_video",
 	.id	= UCLASS_VIDEO,
 	.of_match = bd82x6x_video_ids,
+	.bind	= bd82x6x_video_bind,
 	.probe	= bd82x6x_video_probe,
 };

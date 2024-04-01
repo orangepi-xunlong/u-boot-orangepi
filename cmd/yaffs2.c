@@ -43,7 +43,7 @@ extern void cmd_yaffs_mv(const char *oldPath, const char *newPath);
 extern int yaffs_dump_dev(const char *path);
 
 /* ytrace - show/set yaffs trace mask */
-int do_ytrace(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ytrace(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc > 1)
 		cmd_yaffs_tracemask(1, simple_strtol(argv[1], NULL, 16));
@@ -54,7 +54,7 @@ int do_ytrace(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 
 /* ydevls - lists yaffs mount points. */
-int do_ydevls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ydevls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	cmd_yaffs_dev_ls();
 
@@ -62,7 +62,7 @@ int do_ydevls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 
 /* ydevconfig mount_pt mtd_dev_num start_block end_block */
-int do_ydevconfig(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ydevconfig(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *mtpoint;
 	int mtd_dev;
@@ -85,7 +85,7 @@ int do_ydevconfig(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_ymount(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ymount(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *mtpoint;
 
@@ -102,7 +102,7 @@ int do_ymount(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yumount(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yumount(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *mtpoint;
 
@@ -118,7 +118,7 @@ int do_yumount(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *dirname;
 
@@ -134,7 +134,7 @@ int do_yls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yrd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yrd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename;
 
@@ -153,7 +153,7 @@ int do_yrd(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_ywr(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ywr(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename;
 	ulong value;
@@ -165,8 +165,8 @@ int do_ywr(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	filename = argv[1];
-	value = simple_strtoul(argv[2], NULL, 16);
-	numValues = simple_strtoul(argv[3], NULL, 16);
+	value = hextoul(argv[2], NULL);
+	numValues = hextoul(argv[3], NULL);
 
 	printf("Writing value (%lx) %lx times to %s... ", value, numValues,
 	       filename);
@@ -177,7 +177,7 @@ int do_ywr(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yrdm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yrdm(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename;
 	ulong addr;
@@ -188,14 +188,14 @@ int do_yrdm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	filename = argv[1];
-	addr = simple_strtoul(argv[2], NULL, 16);
+	addr = hextoul(argv[2], NULL);
 
 	cmd_yaffs_mread_file(filename, (char *)addr);
 
 	return 0;
 }
 
-int do_ywrm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ywrm(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename;
 	ulong addr;
@@ -207,15 +207,15 @@ int do_ywrm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	filename = argv[1];
-	addr = simple_strtoul(argv[2], NULL, 16);
-	size = simple_strtoul(argv[3], NULL, 16);
+	addr = hextoul(argv[2], NULL);
+	size = hextoul(argv[3], NULL);
 
 	cmd_yaffs_mwrite_file(filename, (char *)addr, size);
 
 	return 0;
 }
 
-int do_ymkdir(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ymkdir(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *dirname;
 
@@ -230,7 +230,7 @@ int do_ymkdir(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yrmdir(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yrmdir(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *dirname;
 
@@ -245,7 +245,7 @@ int do_yrmdir(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_yrm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_yrm(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *name;
 
@@ -261,7 +261,7 @@ int do_yrm(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-int do_ymv(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ymv(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *oldPath;
 	char *newPath;

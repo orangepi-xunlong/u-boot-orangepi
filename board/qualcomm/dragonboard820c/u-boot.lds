@@ -20,6 +20,19 @@ SECTIONS
 		*(.__image_copy_start)
 		board/qualcomm/dragonboard820c/head.o (.text*)
 		CPUDIR/start.o (.text*)
+	}
+
+	/* This needs to come before *(.text*) */
+	.efi_runtime : {
+                __efi_runtime_start = .;
+		*(.text.efi_runtime*)
+		*(.rodata.efi_runtime*)
+		*(.data.efi_runtime*)
+                __efi_runtime_stop = .;
+	}
+
+	.text_rest :
+	{
 		*(.text*)
 	}
 
@@ -36,23 +49,16 @@ SECTIONS
 	. = .;
 
 	. = ALIGN(8);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 
 	. = ALIGN(8);
 
-	.efi_runtime : {
-                __efi_runtime_start = .;
-		*(efi_runtime_text)
-		*(efi_runtime_data)
-                __efi_runtime_stop = .;
-	}
-
 	.efi_runtime_rel : {
                 __efi_runtime_rel_start = .;
-		*(.relaefi_runtime_text)
-		*(.relaefi_runtime_data)
+		*(.rel*.efi_runtime)
+		*(.rel*.efi_runtime.*)
                 __efi_runtime_rel_stop = .;
 	}
 

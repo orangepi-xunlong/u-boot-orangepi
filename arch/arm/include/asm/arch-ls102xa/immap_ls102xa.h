@@ -42,42 +42,24 @@
 
 #define DCFG_DCSR_PORCR1		0
 
-/*
- * Define default values for some CCSR macros to make header files cleaner
- *
- * To completely disable CCSR relocation in a board header file, define
- * CONFIG_SYS_CCSR_DO_NOT_RELOCATE.  This will force CONFIG_SYS_CCSRBAR_PHYS
- * to a value that is the same as CONFIG_SYS_CCSRBAR.
- */
-
-#ifdef CONFIG_SYS_CCSRBAR_PHYS
-#error "Do not define CONFIG_SYS_CCSRBAR_PHYS directly."
+#ifndef CFG_SYS_CCSRBAR
+#define CFG_SYS_CCSRBAR		CONFIG_SYS_IMMR
 #endif
 
-#ifdef CONFIG_SYS_CCSR_DO_NOT_RELOCATE
-#undef CONFIG_SYS_CCSRBAR_PHYS_HIGH
-#undef CONFIG_SYS_CCSRBAR_PHYS_LOW
-#define CONFIG_SYS_CCSRBAR_PHYS_HIGH	0
-#endif
-
-#ifndef CONFIG_SYS_CCSRBAR
-#define CONFIG_SYS_CCSRBAR		CONFIG_SYS_IMMR
-#endif
-
-#ifndef CONFIG_SYS_CCSRBAR_PHYS_HIGH
+#ifndef CFG_SYS_CCSRBAR_PHYS_HIGH
 #ifdef CONFIG_PHYS_64BIT
-#define CONFIG_SYS_CCSRBAR_PHYS_HIGH	0xf
+#define CFG_SYS_CCSRBAR_PHYS_HIGH	0xf
 #else
-#define CONFIG_SYS_CCSRBAR_PHYS_HIGH	0
+#define CFG_SYS_CCSRBAR_PHYS_HIGH	0
 #endif
 #endif
 
-#ifndef CONFIG_SYS_CCSRBAR_PHYS_LOW
-#define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_IMMR
+#ifndef CFG_SYS_CCSRBAR_PHYS_LOW
+#define CFG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_IMMR
 #endif
 
-#define CONFIG_SYS_CCSRBAR_PHYS ((CONFIG_SYS_CCSRBAR_PHYS_HIGH * 1ull) << 32 | \
-				 CONFIG_SYS_CCSRBAR_PHYS_LOW)
+#define CFG_SYS_CCSRBAR_PHYS ((CFG_SYS_CCSRBAR_PHYS_HIGH * 1ull) << 32 | \
+				 CFG_SYS_CCSRBAR_PHYS_LOW)
 
 struct sys_info {
 	unsigned long freq_processor[CONFIG_MAX_CPUS];
@@ -85,6 +67,8 @@ struct sys_info {
 	unsigned long freq_ddrbus;
 	unsigned long freq_localbus;
 };
+
+#define CCSR_DEVDISR1_QE	0x00000001
 
 /* Device Configuration and Pin Control */
 struct ccsr_gur {
@@ -153,7 +137,7 @@ struct ccsr_gur {
 #define SCFG_ETSECCMCR_GE0_CLK125	0x00000000
 #define SCFG_ETSECCMCR_GE1_CLK125	0x08000000
 #define SCFG_PIXCLKCR_PXCKEN		0x80000000
-#define SCFG_QSPI_CLKSEL		0xc0100000
+#define SCFG_QSPI_CLKSEL		0x50100000
 #define SCFG_SNPCNFGCR_SEC_RD_WR	0xc0000000
 #define SCFG_SNPCNFGCR_DCU_RD_WR	0x03000000
 #define SCFG_SNPCNFGCR_SATA_RD_WR	0x00c00000
@@ -387,33 +371,6 @@ struct ccsr_serdes {
 		u32	tcsr3;
 	} lane[4];	/* Lane A, B, C, D, E, F, G, H */
 	u8	res_a00[0x1000-0xa00];	/* from 0xa00 to 0xfff */
-};
-
-
-
-/* AHCI (sata) register map */
-struct ccsr_ahci {
-	u32 res1[0xa4/4];	/* 0x0 - 0xa4 */
-	u32 pcfg;	/* port config */
-	u32 ppcfg;	/* port phy1 config */
-	u32 pp2c;	/* port phy2 config */
-	u32 pp3c;	/* port phy3 config */
-	u32 pp4c;	/* port phy4 config */
-	u32 pp5c;	/* port phy5 config */
-	u32 paxic;	/* port AXI config */
-	u32 axicc;	/* AXI cache control */
-	u32 axipc;	/* AXI PROT control */
-	u32 ptc;	/* port Trans Config */
-	u32 pts;	/* port Trans Status */
-	u32 plc;	/* port link config */
-	u32 plc1;	/* port link config1 */
-	u32 plc2;	/* port link config2 */
-	u32 pls;	/* port link status */
-	u32 pls1;	/* port link status1 */
-	u32 pcmdc;	/* port CMD config */
-	u32 ppcs;	/* port phy control status */
-	u32 pberr;	/* port 0/1 BIST error */
-	u32 cmds;	/* port 0/1 CMD status error */
 };
 
 #define RCPM_POWMGTCSR			0x130

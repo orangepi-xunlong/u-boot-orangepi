@@ -7,9 +7,11 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <pch.h>
 #include <pci.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/pci.h>
@@ -158,11 +160,9 @@ static int ich6_pinctrl_probe(struct udevice *dev)
 	u32 iobase = -1;
 
 	debug("%s: start\n", __func__);
-	ret = uclass_first_device(UCLASS_PCH, &pch);
+	ret = uclass_first_device_err(UCLASS_PCH, &pch);
 	if (ret)
 		return ret;
-	if (!pch)
-		return -ENODEV;
 
 	/*
 	 * Get the memory/io base address to configure every pins.

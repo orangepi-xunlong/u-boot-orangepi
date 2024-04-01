@@ -15,6 +15,8 @@
 #include <asm/arch/clocks_omap3.h>
 #include <linux/linkage.h>
 
+.arch_extension sec
+
 /*
  * Funtion for making PPA HAL API calls in secure devices
  * Input:
@@ -31,8 +33,7 @@ ENTRY(do_omap3_emu_romcode_call)
 	MOV r6, #0xFF	@ Indicate new Task call
 	mcr     p15, 0, r0, c7, c10, 4	@ DSB
 	mcr     p15, 0, r0, c7, c10, 5	@ DMB
-	.word	0xe1600071	@ SMC #1 to call PPA service - hand assembled
-				@ because we use -march=armv5
+	SMC     #1	@ Call PPA service
 	POP {r4-r12, pc}
 ENDPROC(do_omap3_emu_romcode_call)
 
@@ -44,7 +45,7 @@ ENDPROC(do_omap3_emu_romcode_call)
 ENTRY(cpy_clk_code)
 	/* Copy DPLL code into SRAM */
 	adr	r0, go_to_speed		/* copy from start of go_to_speed... */
-	adr	r2, lowlevel_init	/* ... up to start of low_level_init */
+	adr	r2, go_to_speed_end	/* ... up to start of go_to_speed_end */
 next2:
 	ldmia	r0!, {r3 - r10}		/* copy from source address [r0] */
 	stmia	r1!, {r3 - r10}		/* copy to   target address [r1] */
@@ -166,8 +167,11 @@ pll_div_add5:
 pll_div_val5:
 	.word CLSEL1_EMU_VAL
 
+go_to_speed_end:
 #endif
 
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT) && \
+	!CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT_ONLY)
 ENTRY(lowlevel_init)
 	ldr	sp, SRAM_STACK
 	str	ip, [sp]	/* stash ip register */
@@ -186,6 +190,7 @@ ENTRY(lowlevel_init)
 	b	s_init
 
 ENDPROC(lowlevel_init)
+#endif
 
 	/* the literal pools origin */
 	.ltorg

@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <net.h>
 #include <asm/arch/chilisom.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -14,12 +16,12 @@
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/emif.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <cpsw.h>
-#include <environment.h>
+#include <env.h>
 #include <errno.h>
 #include <miiphy.h>
-#include <serial.h>
 #include <spl.h>
 #include <watchdog.h>
 
@@ -28,7 +30,7 @@ DECLARE_GLOBAL_DATA_PTR;
 static __maybe_unused struct ctrl_dev *cdev =
 	(struct ctrl_dev *)CTRL_DEVICE_BASE;
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
 static struct module_pin_mux uart0_pin_mux[] = {
 	{OFFSET(uart0_rxd), (MODE(0) | PULLUP_EN | RXACTIVE)},	/* UART0_RXD */
 	{OFFSET(uart0_txd), (MODE(0) | PULLUDEN)},		/* UART0_TXD */
@@ -67,16 +69,7 @@ static void enable_board_pin_mux(void)
 	configure_module_pin_mux(rmii1_pin_mux);
 	configure_module_pin_mux(mmc0_pin_mux);
 }
-#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
 
-#ifndef CONFIG_DM_SERIAL
-struct serial_device *default_serial_console(void)
-{
-	return &eserial1_device;
-}
-#endif
-
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
 void set_uart_mux_conf(void)
 {
 	configure_module_pin_mux(uart0_pin_mux);
@@ -91,7 +84,7 @@ void am33xx_spl_board_init(void)
 {
 	chilisom_spl_board_init();
 }
-#endif
+#endif /* CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT) */
 
 /*
  * Basic board specific setup.  Pinmux has been handled already.
@@ -102,7 +95,7 @@ int board_init(void)
 	hw_watchdog_init();
 #endif
 
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 	gpmc_init();
 
 	return 0;
@@ -148,58 +141,5 @@ int board_late_init(void)
 #endif
 
 	return 0;
-}
-#endif
-
-#if !defined(CONFIG_DM_ETH) && defined(CONFIG_DRIVER_TI_CPSW) && \
-	!defined(CONFIG_SPL_BUILD)
-static void cpsw_control(int enabled)
-{
-	/* VTP can be added here */
-
-	return;
-}
-
-static struct cpsw_slave_data cpsw_slaves[] = {
-	{
-		.slave_reg_ofs	= 0x208,
-		.sliver_reg_ofs	= 0xd80,
-		.phy_addr	= 0,
-	}
-};
-
-static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= CPSW_MDIO_BASE,
-	.cpsw_base		= CPSW_BASE,
-	.mdio_div		= 0xff,
-	.channels		= 8,
-	.cpdma_reg_ofs		= 0x800,
-	.slaves			= 1,
-	.slave_data		= cpsw_slaves,
-	.ale_reg_ofs		= 0xd00,
-	.ale_entries		= 1024,
-	.host_port_reg_ofs	= 0x108,
-	.hw_stats_reg_ofs	= 0x900,
-	.bd_ram_ofs		= 0x2000,
-	.mac_control		= (1 << 5),
-	.control		= cpsw_control,
-	.host_port_num		= 0,
-	.version		= CPSW_CTRL_VERSION_2,
-};
-
-int board_eth_init(bd_t *bis)
-{
-	int rv, n = 0;
-
-	writel(RMII_MODE_ENABLE | RMII_CHIPCKL_ENABLE, &cdev->miisel);
-	cpsw_slaves[0].phy_if = PHY_INTERFACE_MODE_RMII;
-
-	rv = cpsw_register(&cpsw_data);
-	if (rv < 0)
-		printf("Error %d registering CPSW switch\n", rv);
-	else
-		n += rv;
-
-	return n;
 }
 #endif

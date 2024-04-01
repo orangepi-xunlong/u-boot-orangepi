@@ -7,6 +7,10 @@
 #include <common.h>
 #include <command.h>
 #include <cmd_spl.h>
+#include <env.h>
+#include <image.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -28,11 +32,7 @@ static const char **subcmd_list[] = {
 		NULL,
 	},
 	[SPL_EXPORT_ATAGS] = (const char * []) {
-#if defined(CONFIG_SETUP_MEMORY_TAGS) || \
-	defined(CONFIG_CMDLINE_TAG) || \
-	defined(CONFIG_INITRD_TAG) || \
-	defined(CONFIG_SERIAL_TAG) || \
-	defined(CONFIG_REVISION_TAG)
+#ifdef CONFIG_SUPPORT_PASSING_ATAGS
 		"start",
 		"loados",
 #ifdef CONFIG_SYS_BOOT_RAMDISK_HIGH
@@ -48,7 +48,7 @@ static const char **subcmd_list[] = {
 };
 
 /* Calls bootm with the parameters given */
-static int call_bootm(int argc, char * const argv[], const char *subcommand[])
+static int call_bootm(int argc, char *const argv[], const char *subcommand[])
 {
 	char *bootm_argv[5];
 
@@ -94,14 +94,15 @@ static int call_bootm(int argc, char * const argv[], const char *subcommand[])
 	return 0;
 }
 
-static cmd_tbl_t cmd_spl_export_sub[] = {
+static struct cmd_tbl cmd_spl_export_sub[] = {
 	U_BOOT_CMD_MKENT(fdt, 0, 1, (void *)SPL_EXPORT_FDT, "", ""),
 	U_BOOT_CMD_MKENT(atags, 0, 1, (void *)SPL_EXPORT_ATAGS, "", ""),
 };
 
-static int spl_export(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int spl_export(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
-	const cmd_tbl_t *c;
+	const struct cmd_tbl *c;
 
 	if (argc < 2) /* no subcommand */
 		return cmd_usage(cmdtp);
@@ -140,13 +141,13 @@ static int spl_export(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-static cmd_tbl_t cmd_spl_sub[] = {
+static struct cmd_tbl cmd_spl_sub[] = {
 	U_BOOT_CMD_MKENT(export, 0, 1, (void *)SPL_EXPORT, "", ""),
 };
 
-static int do_spl(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_spl(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
-	const cmd_tbl_t *c;
+	const struct cmd_tbl *c;
 	int cmd;
 
 	if (argc < 2) /* no subcommand */

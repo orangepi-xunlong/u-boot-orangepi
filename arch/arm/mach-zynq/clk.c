@@ -6,7 +6,10 @@
 #include <clk.h>
 #include <common.h>
 #include <dm.h>
+#include <init.h>
+#include <malloc.h>
 #include <asm/arch/clk.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -38,7 +41,7 @@ int set_cpu_clk_info(void)
 	int i, ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_CLK,
-		DM_GET_DRIVER(zynq_clk), &dev);
+		DM_DRIVER_GET(zynq_clk), &dev);
 	if (ret)
 		return ret;
 
@@ -49,10 +52,12 @@ int set_cpu_clk_info(void)
 			return ret;
 
 		rate = clk_get_rate(&clk) / 1000000;
-		if (i)
+		if (i) {
 			gd->bd->bi_ddr_freq = rate;
-		else
+		} else {
 			gd->bd->bi_arm_freq = rate;
+			gd->cpu_clk = clk_get_rate(&clk);
+		}
 
 		clk_free(&clk);
 	}
@@ -73,7 +78,7 @@ int soc_clk_dump(void)
 	int i, ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_CLK,
-		DM_GET_DRIVER(zynq_clk), &dev);
+		DM_DRIVER_GET(zynq_clk), &dev);
 	if (ret)
 		return ret;
 

@@ -1,12 +1,13 @@
 /* DRAM parameters for auto dram configuration on sun5i and sun7i */
 
 #include <common.h>
+#include <init.h>
 #include <asm/arch/dram.h>
 
 static struct dram_para dram_para = {
 	.clock = CONFIG_DRAM_CLK,
 	.mbus_clock = CONFIG_DRAM_MBUS_CLK,
-	.type = 3,
+	.type = DRAM_MEMORY_TYPE_DDR3,
 	.rank_num = 1,
 	.density = 0,
 	.io_width = 0,

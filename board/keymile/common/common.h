@@ -120,12 +120,8 @@ struct bfticu_iomap {
 	u8	pb_dbug;
 };
 
-#if !defined(CONFIG_PIGGY_MAC_ADRESS_OFFSET)
-#define CONFIG_PIGGY_MAC_ADRESS_OFFSET	0
-#endif
-
 int ethernet_present(void);
-int ivm_read_eeprom(unsigned char *buf, int len);
+int ivm_read_eeprom(unsigned char *buf, int len, int mac_address_offset);
 int ivm_analyze_eeprom(unsigned char *buf, int len);
 
 int trigger_fpga_config(void);
@@ -137,8 +133,17 @@ int get_testpin(void);
 
 int set_km_env(void);
 
+ulong early_bootcount_load(void);
+void early_bootcount_store(ulong ebootcount);
+void check_for_uboot_update(void);
+
 #define DELAY_ABORT_SEQ		62  /* @200kHz 9 clocks = 44us, 62us is ok */
 #define DELAY_HALF_PERIOD	(500 / (CONFIG_SYS_I2C_SPEED / 1000))
+
+void set_sda(int state);
+void set_scl(int state);
+int get_sda(void);
+int get_scl(void);
 
 int i2c_soft_read_pin(void);
 int i2c_make_abort(void);

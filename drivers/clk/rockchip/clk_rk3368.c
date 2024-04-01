@@ -10,15 +10,20 @@
 #include <dm.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <log.h>
+#include <malloc.h>
 #include <mapmem.h>
 #include <syscon.h>
 #include <bitfield.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3368.h>
-#include <asm/arch/hardware.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru_rk3368.h>
+#include <asm/arch-rockchip/hardware.h>
 #include <asm/io.h>
+#include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/rk3368-cru.h>
+#include <linux/delay.h>
+#include <linux/stringify.h>
 
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
 struct rk3368_clk_plat {
@@ -153,7 +158,7 @@ static void rkclk_init(struct rk3368_cru *cru)
 }
 #endif
 
-#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC_SUPPORT)
+#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC)
 static ulong rk3368_mmc_get_clk(struct rk3368_cru *cru, uint clk_id)
 {
 	u32 div, con, con_id, rate;
@@ -465,7 +470,7 @@ static ulong rk3368_clk_get_rate(struct clk *clk)
 	case SCLK_SPI0 ... SCLK_SPI2:
 		rate = rk3368_spi_get_clk(priv->cru, clk->id);
 		break;
-#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC_SUPPORT)
+#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC)
 	case HCLK_SDMMC:
 	case HCLK_EMMC:
 		rate = rk3368_mmc_get_clk(priv->cru, clk->id);
@@ -496,7 +501,7 @@ static ulong rk3368_clk_set_rate(struct clk *clk, ulong rate)
 		ret = rk3368_ddr_set_clk(priv->cru, rate);
 		break;
 #endif
-#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC_SUPPORT)
+#if !IS_ENABLED(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(MMC)
 	case HCLK_SDMMC:
 	case HCLK_EMMC:
 		ret = rk3368_mmc_set_clk(clk, rate);
@@ -566,38 +571,19 @@ static int __maybe_unused rk3368_clk_set_parent(struct clk *clk, struct clk *par
 	return -ENOENT;
 }
 
-static int rk3368_clk_enable(struct clk *clk)
-{
-	switch (clk->id) {
-	case SCLK_MAC:
-	case SCLK_MAC_RX:
-	case SCLK_MAC_TX:
-	case SCLK_MACREF:
-	case SCLK_MACREF_OUT:
-	case ACLK_GMAC:
-	case PCLK_GMAC:
-		/* Required to successfully probe the Designware GMAC driver */
-		return 0;
-	}
-
-	debug("%s: unsupported clk %ld\n", __func__, clk->id);
-	return -ENOENT;
-}
-
 static struct clk_ops rk3368_clk_ops = {
 	.get_rate = rk3368_clk_get_rate,
 	.set_rate = rk3368_clk_set_rate,
-#if CONFIG_IS_ENABLED(OF_CONTROL) && !CONFIG_IS_ENABLED(OF_PLATDATA)
+#if CONFIG_IS_ENABLED(OF_REAL)
 	.set_parent = rk3368_clk_set_parent,
 #endif
-	.enable = rk3368_clk_enable,
 };
 
 static int rk3368_clk_probe(struct udevice *dev)
 {
 	struct rk3368_clk_priv __maybe_unused *priv = dev_get_priv(dev);
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-	struct rk3368_clk_plat *plat = dev_get_platdata(dev);
+	struct rk3368_clk_plat *plat = dev_get_plat(dev);
 
 	priv->cru = map_sysmem(plat->dtd.reg[0], plat->dtd.reg[1]);
 #endif
@@ -608,13 +594,13 @@ static int rk3368_clk_probe(struct udevice *dev)
 	return 0;
 }
 
-static int rk3368_clk_ofdata_to_platdata(struct udevice *dev)
+static int rk3368_clk_of_to_plat(struct udevice *dev)
 {
-#if !CONFIG_IS_ENABLED(OF_PLATDATA)
-	struct rk3368_clk_priv *priv = dev_get_priv(dev);
+	if (CONFIG_IS_ENABLED(OF_REAL)) {
+		struct rk3368_clk_priv *priv = dev_get_priv(dev);
 
-	priv->cru = dev_read_addr_ptr(dev);
-#endif
+		priv->cru = dev_read_addr_ptr(dev);
+	}
 
 	return 0;
 }
@@ -636,14 +622,14 @@ static int rk3368_clk_bind(struct udevice *dev)
 						    glb_srst_fst_val);
 		priv->glb_srst_snd_value = offsetof(struct rk3368_cru,
 						    glb_srst_snd_val);
-		sys_child->priv = priv;
+		dev_set_priv(sys_child, priv);
 	}
 
-#if CONFIG_IS_ENABLED(CONFIG_RESET_ROCKCHIP)
+#if CONFIG_IS_ENABLED(RESET_ROCKCHIP)
 	ret = offsetof(struct rk3368_cru, softrst_con[0]);
 	ret = rockchip_reset_bind(dev, ret, 15);
 	if (ret)
-		debug("Warning: software reset driver bind faile\n");
+		debug("Warning: software reset driver bind failed\n");
 #endif
 
 	return ret;
@@ -658,11 +644,11 @@ U_BOOT_DRIVER(rockchip_rk3368_cru) = {
 	.name		= "rockchip_rk3368_cru",
 	.id		= UCLASS_CLK,
 	.of_match	= rk3368_clk_ids,
-	.priv_auto_alloc_size = sizeof(struct rk3368_clk_priv),
+	.priv_auto	= sizeof(struct rk3368_clk_priv),
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
-	.platdata_auto_alloc_size = sizeof(struct rk3368_clk_plat),
+	.plat_auto	= sizeof(struct rk3368_clk_plat),
 #endif
-	.ofdata_to_platdata = rk3368_clk_ofdata_to_platdata,
+	.of_to_plat = rk3368_clk_of_to_plat,
 	.ops		= &rk3368_clk_ops,
 	.bind		= rk3368_clk_bind,
 	.probe		= rk3368_clk_probe,

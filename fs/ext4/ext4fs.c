@@ -21,10 +21,14 @@
  */
 
 #include <common.h>
+#include <blk.h>
 #include <ext_common.h>
 #include <ext4fs.h>
 #include "ext4_common.h"
 #include <div64.h>
+#include <malloc.h>
+#include <part.h>
+#include <uuid.h>
 
 int ext4fs_symlinknest;
 struct ext_filesystem ext_fs;
@@ -61,14 +65,20 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 	lbaint_t delayed_skipfirst = 0;
 	lbaint_t delayed_next = 0;
 	char *delayed_buf = NULL;
+	char *start_buf = buf;
 	short status;
+	struct ext_block_cache cache;
 
-	if (blocksize <= 0)
-		return -1;
+	ext_cache_init(&cache);
 
 	/* Adjust len so it we can't read past the end of the file. */
 	if (len + pos > filesize)
 		len = (filesize - pos);
+
+	if (blocksize <= 0 || len <= 0) {
+		ext_cache_fini(&cache);
+		return -1;
+	}
 
 	blockcnt = lldiv(((len + pos) + blocksize - 1), blocksize);
 
@@ -77,9 +87,11 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 		int blockoff = pos - (blocksize * i);
 		int blockend = blocksize;
 		int skipfirst = 0;
-		blknr = read_allocated_block(&(node->inode), i);
-		if (blknr < 0)
+		blknr = read_allocated_block(&node->inode, i, &cache);
+		if (blknr < 0) {
+			ext_cache_fini(&cache);
 			return -1;
+		}
 
 		blknr = blknr << log2_fs_blocksize;
 
@@ -109,8 +121,10 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 							delayed_skipfirst,
 							delayed_extent,
 							delayed_buf);
-					if (status == 0)
+					if (status == 0) {
+						ext_cache_fini(&cache);
 						return -1;
+					}
 					previous_block_number = blknr;
 					delayed_start = blknr;
 					delayed_extent = blockend;
@@ -130,20 +144,24 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 			}
 		} else {
 			int n;
+			int n_left;
 			if (previous_block_number != -1) {
 				/* spill */
 				status = ext4fs_devread(delayed_start,
 							delayed_skipfirst,
 							delayed_extent,
 							delayed_buf);
-				if (status == 0)
+				if (status == 0) {
+					ext_cache_fini(&cache);
 					return -1;
+				}
 				previous_block_number = -1;
 			}
 			/* Zero no more than `len' bytes. */
 			n = blocksize - skipfirst;
-			if (n > len)
-				n = len;
+			n_left = len - ( buf - start_buf );
+			if (n > n_left)
+				n = n_left;
 			memset(buf, 0, n);
 		}
 		buf += blocksize - skipfirst;
@@ -153,18 +171,21 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 		status = ext4fs_devread(delayed_start,
 					delayed_skipfirst, delayed_extent,
 					delayed_buf);
-		if (status == 0)
+		if (status == 0) {
+			ext_cache_fini(&cache);
 			return -1;
+		}
 		previous_block_number = -1;
 	}
 
 	*actread  = len;
+	ext_cache_fini(&cache);
 	return 0;
 }
 
 int ext4fs_ls(const char *dirname)
 {
-	struct ext2fs_node *dirnode;
+	struct ext2fs_node *dirnode = NULL;
 	int status;
 
 	if (dirname == NULL)
@@ -174,7 +195,8 @@ int ext4fs_ls(const char *dirname)
 				  FILETYPE_DIRECTORY);
 	if (status != 1) {
 		printf("** Can not find directory. **\n");
-		ext4fs_free_node(dirnode, &ext4fs_root->diropen);
+		if (dirnode)
+			ext4fs_free_node(dirnode, &ext4fs_root->diropen);
 		return 1;
 	}
 
@@ -207,7 +229,7 @@ int ext4fs_read(char *buf, loff_t offset, loff_t len, loff_t *actread)
 }
 
 int ext4fs_probe(struct blk_desc *fs_dev_desc,
-		 disk_partition_t *fs_partition)
+		 struct disk_partition *fs_partition)
 {
 	ext4fs_set_blk_dev(fs_dev_desc, fs_partition);
 
@@ -250,4 +272,33 @@ int ext4fs_uuid(char *uuid_str)
 #else
 	return -ENOSYS;
 #endif
+}
+
+void ext_cache_init(struct ext_block_cache *cache)
+{
+	memset(cache, 0, sizeof(*cache));
+}
+
+void ext_cache_fini(struct ext_block_cache *cache)
+{
+	free(cache->buf);
+	ext_cache_init(cache);
+}
+
+int ext_cache_read(struct ext_block_cache *cache, lbaint_t block, int size)
+{
+	/* This could be more lenient, but this is simple and enough for now */
+	if (cache->buf && cache->block == block && cache->size == size)
+		return 1;
+	ext_cache_fini(cache);
+	cache->buf = memalign(ARCH_DMA_MINALIGN, size);
+	if (!cache->buf)
+		return 0;
+	if (!ext4fs_devread(block, 0, size, cache->buf)) {
+		ext_cache_fini(cache);
+		return 0;
+	}
+	cache->block = block;
+	cache->size = size;
+	return 1;
 }

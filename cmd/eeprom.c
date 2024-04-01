@@ -15,27 +15,17 @@
  * degradation (typical for EEPROM) is incured for FRAM memory:
  *
  * #define CONFIG_SYS_I2C_FRAM
- * #undef CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS
+ * Set CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS to 0
  *
  */
 
 #include <common.h>
 #include <config.h>
 #include <command.h>
+#include <eeprom.h>
 #include <i2c.h>
 #include <eeprom_layout.h>
-
-#ifndef	CONFIG_SYS_I2C_SPEED
-#define	CONFIG_SYS_I2C_SPEED	50000
-#endif
-
-#ifndef CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS
-#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	0
-#endif
-
-#ifndef CONFIG_SYS_EEPROM_PAGE_WRITE_BITS
-#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	8
-#endif
+#include <linux/delay.h>
 
 #ifndef	I2C_RXTX_LEN
 #define I2C_RXTX_LEN	128
@@ -44,19 +34,8 @@
 #define	EEPROM_PAGE_SIZE	(1 << CONFIG_SYS_EEPROM_PAGE_WRITE_BITS)
 #define	EEPROM_PAGE_OFFSET(x)	((x) & (EEPROM_PAGE_SIZE - 1))
 
-/*
- * for CONFIG_SYS_I2C_EEPROM_ADDR_LEN == 2 (16-bit EEPROM address) offset is
- *   0x000nxxxx for EEPROM address selectors at n, offset xxxx in EEPROM.
- *
- * for CONFIG_SYS_I2C_EEPROM_ADDR_LEN == 1 (8-bit EEPROM page address) offset is
- *   0x00000nxx for EEPROM address selectors and page number at n.
- */
-#if !defined(CONFIG_SPI) || defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
-#if !defined(CONFIG_SYS_I2C_EEPROM_ADDR_LEN) || \
-	(CONFIG_SYS_I2C_EEPROM_ADDR_LEN < 1) || \
-	(CONFIG_SYS_I2C_EEPROM_ADDR_LEN > 2)
-#error CONFIG_SYS_I2C_EEPROM_ADDR_LEN must be 1 or 2
-#endif
+#if CONFIG_IS_ENABLED(DM_I2C)
+static int eeprom_i2c_bus;
 #endif
 
 __weak int eeprom_write_enable(unsigned dev_addr, int state)
@@ -66,19 +45,23 @@ __weak int eeprom_write_enable(unsigned dev_addr, int state)
 
 void eeprom_init(int bus)
 {
-	/* SPI EEPROM */
-#if defined(CONFIG_MPC8XX_SPI) && !defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
-	spi_init_f();
-#endif
-
 	/* I2C EEPROM */
-#if defined(CONFIG_SYS_I2C)
+#if CONFIG_IS_ENABLED(DM_I2C)
+	eeprom_i2c_bus = bus;
+#elif CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
 	if (bus >= 0)
 		i2c_set_bus_num(bus);
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 #endif
 }
 
+/*
+ * for CONFIG_SYS_I2C_EEPROM_ADDR_LEN == 2 (16-bit EEPROM address) offset is
+ *   0x000nxxxx for EEPROM address selectors at n, offset xxxx in EEPROM.
+ *
+ * for CONFIG_SYS_I2C_EEPROM_ADDR_LEN == 1 (8-bit EEPROM page address) offset is
+ *   0x00000nxx for EEPROM address selectors and page number at n.
+ */
 static int eeprom_addr(unsigned dev_addr, unsigned offset, uchar *addr)
 {
 	unsigned blk_off;
@@ -107,7 +90,7 @@ static int eeprom_len(unsigned offset, unsigned end)
 
 	/*
 	 * For a FRAM device there is no limit on the number of the
-	 * bytes that can be ccessed with the single read or write
+	 * bytes that can be accessed with the single read or write
 	 * operation.
 	 */
 #if !defined(CONFIG_SYS_I2C_FRAM)
@@ -129,26 +112,32 @@ static int eeprom_rw_block(unsigned offset, uchar *addr, unsigned alen,
 {
 	int ret = 0;
 
-	/* SPI */
-#if defined(CONFIG_MPC8XX_SPI) && !defined(CONFIG_ENV_EEPROM_IS_ON_I2C)
-	if (read)
-		spi_read(addr, alen, buffer, len);
-	else
-		spi_write(addr, alen, buffer, len);
-#else	/* I2C */
+#if CONFIG_IS_ENABLED(DM_I2C)
+	struct udevice *dev;
 
-#if defined(CONFIG_SYS_I2C_EEPROM_BUS)
-	i2c_set_bus_num(CONFIG_SYS_I2C_EEPROM_BUS);
-#endif
+	ret = i2c_get_chip_for_busnum(eeprom_i2c_bus, addr[0],
+				      alen - 1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       eeprom_i2c_bus);
+		return CMD_RET_FAILURE;
+	}
+
+	if (read)
+		ret = dm_i2c_read(dev, offset, buffer, len);
+	else
+		ret = dm_i2c_write(dev, offset, buffer, len);
+
+#else /* Non DM I2C support - will be removed */
 
 	if (read)
 		ret = i2c_read(addr[0], offset, alen - 1, buffer, len);
 	else
 		ret = i2c_write(addr[0], offset, alen - 1, buffer, len);
-
+#endif /* CONFIG_DM_I2C */
 	if (ret)
-		ret = 1;
-#endif
+		ret = CMD_RET_FAILURE;
+
 	return ret;
 }
 
@@ -160,6 +149,10 @@ static int eeprom_rw(unsigned dev_addr, unsigned offset, uchar *buffer,
 	int rcode = 0;
 	uchar addr[3];
 
+#if !CONFIG_IS_ENABLED(DM_I2C) && defined(CONFIG_SYS_I2C_EEPROM_BUS)
+	eeprom_init(CONFIG_SYS_I2C_EEPROM_BUS);
+#endif
+
 	while (offset < end) {
 		alen = eeprom_addr(dev_addr, offset, addr);
 
@@ -170,8 +163,10 @@ static int eeprom_rw(unsigned dev_addr, unsigned offset, uchar *buffer,
 		buffer += len;
 		offset += len;
 
+#if CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS > 0
 		if (!read)
 			udelay(CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS * 1000);
+#endif
 	}
 
 	return rcode;
@@ -205,10 +200,10 @@ int eeprom_write(unsigned dev_addr, unsigned offset,
 	return ret;
 }
 
-static int parse_numeric_param(char *str)
+static long parse_numeric_param(char *str)
 {
 	char *endptr;
-	int value = simple_strtol(str, &endptr, 16);
+	long value = simple_strtol(str, &endptr, 16);
 
 	return (*endptr != '\0') ? -1 : value;
 }
@@ -225,15 +220,15 @@ static int parse_numeric_param(char *str)
  * @returns:	number of arguments parsed or CMD_RET_USAGE if error
  */
 static int parse_i2c_bus_addr(int *i2c_bus, ulong *i2c_addr, int argc,
-			      char * const argv[], int argc_no_bus_addr)
+			      char *const argv[], int argc_no_bus_addr)
 {
 	int argc_no_bus = argc_no_bus_addr + 1;
 	int argc_bus_addr = argc_no_bus_addr + 2;
 
-#ifdef CONFIG_SYS_DEF_EEPROM_ADDR
+#ifdef CONFIG_SYS_I2C_EEPROM_ADDR
 	if (argc == argc_no_bus_addr) {
 		*i2c_bus = -1;
-		*i2c_addr = CONFIG_SYS_DEF_EEPROM_ADDR;
+		*i2c_addr = CONFIG_SYS_I2C_EEPROM_ADDR;
 
 		return 0;
 	}
@@ -296,7 +291,7 @@ static int eeprom_execute_command(enum eeprom_action action, int i2c_bus,
 {
 	int rcode = 0;
 	const char *const fmt =
-		"\nEEPROM @0x%lX %s: addr %08lx  off %04lx  count %ld ... ";
+		"\nEEPROM @0x%lX %s: addr 0x%08lx  off 0x%04lx  count %ld ... ";
 #ifdef CONFIG_CMD_EEPROM_LAYOUT
 	struct eeprom_layout layout;
 #endif
@@ -343,7 +338,7 @@ static int eeprom_execute_command(enum eeprom_action action, int i2c_bus,
 }
 
 #define NEXT_PARAM(argc, index)	{ (argc)--; (index)++; }
-int do_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_eeprom(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int layout_ver = LAYOUT_VERSION_AUTODETECT;
 	enum eeprom_action action = EEPROM_ACTION_INVALID;

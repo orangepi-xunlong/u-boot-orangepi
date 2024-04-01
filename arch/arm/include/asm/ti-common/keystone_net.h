@@ -11,11 +11,14 @@
 
 #include <asm/io.h>
 #include <phy.h>
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
 
 /* EMAC */
 #ifdef CONFIG_KSNET_NETCP_V1_0
 
-#define GBETH_BASE			(CONFIG_KSNET_NETCP_BASE + 0x00090000)
+#define GBETH_BASE			(CFG_KSNET_NETCP_BASE + 0x00090000)
 #define EMAC_EMACSL_BASE_ADDR		(GBETH_BASE + 0x900)
 #define EMAC_MDIO_BASE_ADDR		(GBETH_BASE + 0x300)
 #define EMAC_SGMII_BASE_ADDR		(GBETH_BASE + 0x100)
@@ -29,7 +32,7 @@
 
 #elif defined CONFIG_KSNET_NETCP_V1_5
 
-#define GBETH_BASE			(CONFIG_KSNET_NETCP_BASE + 0x00200000)
+#define GBETH_BASE			(CFG_KSNET_NETCP_BASE + 0x00200000)
 #define CPGMACSL_REG_RX_PRI_MAP		0x020
 #define EMAC_EMACSL_BASE_ADDR		(GBETH_BASE + 0x22000)
 #define EMAC_MDIO_BASE_ADDR		(GBETH_BASE + 0x00f00)
@@ -46,7 +49,7 @@
 
 #define KEYSTONE2_EMAC_GIG_ENABLE
 
-#define MAC_ID_BASE_ADDR		CONFIG_KSNET_MAC_ID_BASE
+#define MAC_ID_BASE_ADDR		CFG_KSNET_MAC_ID_BASE
 
 /* MDIO module input frequency */
 #ifdef CONFIG_SOC_K2G
@@ -56,19 +59,6 @@
 #endif
 /* MDIO clock output frequency */
 #define EMAC_MDIO_CLOCK_FREQ		2500000	/* 2.5 MHz */
-
-/* MII Status Register */
-#define MII_STATUS_REG			1
-#define MII_STATUS_LINK_MASK		0x4
-
-#define MDIO_CONTROL_IDLE		0x80000000
-#define MDIO_CONTROL_ENABLE		0x40000000
-#define MDIO_CONTROL_FAULT_ENABLE	0x40000
-#define MDIO_CONTROL_FAULT		0x80000
-#define MDIO_USERACCESS0_GO		0x80000000
-#define MDIO_USERACCESS0_WRITE_READ	0x0
-#define MDIO_USERACCESS0_WRITE_WRITE	0x40000000
-#define MDIO_USERACCESS0_ACK		0x20000000
 
 #define EMAC_MACCONTROL_MIIEN_ENABLE		0x20
 #define EMAC_MACCONTROL_FULLDUPLEX_ENABLE	0x1
@@ -127,7 +117,7 @@ struct mac_sl_cfg {
 #define CPSW_CTL_VLAN_AWARE			BIT(1)
 #define CPSW_CTL_FIFO_LOOPBACK			BIT(0)
 
-#define DEVICE_CPSW_NUM_PORTS			CONFIG_KSNET_CPSW_NUM_PORTS
+#define DEVICE_CPSW_NUM_PORTS			CFG_KSNET_CPSW_NUM_PORTS
 #define DEVICE_N_GMACSL_PORTS			(DEVICE_CPSW_NUM_PORTS - 1)
 
 #ifdef CONFIG_KSNET_NETCP_V1_0
@@ -200,14 +190,14 @@ struct mac_sl_cfg {
 /* PSS */
 #ifdef CONFIG_KSNET_NETCP_V1_0
 
-#define DEVICE_PSTREAM_CFG_REG_ADDR	(CONFIG_KSNET_NETCP_BASE + 0x604)
+#define DEVICE_PSTREAM_CFG_REG_ADDR	(CFG_KSNET_NETCP_BASE + 0x604)
 #define DEVICE_PSTREAM_CFG_VAL_ROUTE_CPPI	0x06060606
 #define hw_config_streaming_switch()\
 	writel(DEVICE_PSTREAM_CFG_VAL_ROUTE_CPPI, DEVICE_PSTREAM_CFG_REG_ADDR);
 
 #elif defined CONFIG_KSNET_NETCP_V1_5
 
-#define DEVICE_PSTREAM_CFG_REG_ADDR	(CONFIG_KSNET_NETCP_BASE + 0x500)
+#define DEVICE_PSTREAM_CFG_REG_ADDR	(CFG_KSNET_NETCP_BASE + 0x500)
 #define DEVICE_PSTREAM_CFG_VAL_ROUTE_CPPI	0x0
 
 #define hw_config_streaming_switch()\
@@ -241,19 +231,5 @@ struct mdio_regs {
 	u32 useraccess1;
 	u32 userphysel1;
 };
-
-struct eth_priv_t {
-	char int_name[32];
-	int rx_flow;
-	int phy_addr;
-	int slave_port;
-	int sgmii_link_type;
-	phy_interface_t phy_if;
-	struct phy_device *phy_dev;
-};
-
-int keystone2_emac_initialize(struct eth_priv_t *eth_priv);
-void sgmii_serdes_setup_156p25mhz(void);
-void sgmii_serdes_shutdown(void);
 
 #endif  /* _KEYSTONE_NET_H_ */

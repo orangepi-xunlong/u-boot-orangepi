@@ -11,11 +11,12 @@
  * e.g. PCI controllers need this
  */
 
+#include <asm/cache.h>
 #include <asm/io.h>
 
 #ifdef CONFIG_SYS_OHCI_SWAP_REG_ACCESS
-# define ohci_readl(a) __swap_32(readl(a))
-# define ohci_writel(v, a) writel(__swap_32(v), a)
+# define ohci_readl(a) __swap_32(in_be32((u32 *)a))
+# define ohci_writel(a, b) out_be32((u32 *)b, __swap_32(a))
 #else
 # define ohci_readl(a) readl(a)
 # define ohci_writel(v, a) writel(v, a)
@@ -27,7 +28,7 @@
 #define ED_ALIGNMENT 16
 #endif
 
-#if defined CONFIG_DM_USB && ARCH_DMA_MINALIGN > 32
+#if CONFIG_IS_ENABLED(DM_USB) && ARCH_DMA_MINALIGN > 32
 #define TD_ALIGNMENT ARCH_DMA_MINALIGN
 #else
 #define TD_ALIGNMENT 32
@@ -145,14 +146,6 @@ struct ohci_hcca {
 	u8		reserved_for_hc[116];
 } __attribute__((aligned(256)));
 
-
-/*
- * Maximum number of root hub ports.
- */
-#ifndef CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS
-# error "CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS undefined!"
-#endif
-
 /*
  * This is the structure of the OHCI controller's memory mapped I/O
  * region.  This is Memory Mapped I/O.	You must use the ohci_readl() and
@@ -185,7 +178,7 @@ struct ohci_regs {
 		__u32	a;
 		__u32	b;
 		__u32	status;
-		__u32	portstatus[CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS];
+		__u32	portstatus[];
 	} roothub;
 } __attribute__((aligned(32)));
 
@@ -359,7 +352,7 @@ typedef struct
 } urb_priv_t;
 #define URB_DEL 1
 
-#define NUM_EDS 8		/* num of preallocated endpoint descriptors */
+#define NUM_EDS 32		/* num of preallocated endpoint descriptors */
 
 #define NUM_TD 64		/* we need more TDs than EDs */
 
@@ -406,7 +399,7 @@ typedef struct ohci {
 	const char	*slot_name;
 } ohci_t;
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 extern struct dm_usb_ops ohci_usb_ops;
 
 int ohci_register(struct udevice *dev, struct ohci_regs *regs);

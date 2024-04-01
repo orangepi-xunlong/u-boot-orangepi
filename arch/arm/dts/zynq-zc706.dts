@@ -7,7 +7,7 @@
 #include "zynq-7000.dtsi"
 
 / {
-	model = "Zynq ZC706 Development Board";
+	model = "Xilinx ZC706 board";
 	compatible = "xlnx,zynq-zc706", "xlnx,zynq-7000";
 
 	aliases {
@@ -16,6 +16,8 @@
 		serial0 = &uart1;
 		spi0 = &qspi;
 		mmc0 = &sdhci0;
+		nvmem0 = &eeprom;
+		rtc0 = &rtc;
 	};
 
 	memory@0 {
@@ -101,7 +103,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
-			eeprom@54 {
+			eeprom: eeprom@54 {
 				compatible = "atmel,24c08";
 				reg = <0x54>;
 			};
@@ -123,7 +125,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <4>;
-			rtc@51 {
+			rtc: rtc@51 {
 				compatible = "nxp,pcf8563";
 				reg = <0x51>;
 			};
@@ -151,7 +153,7 @@
 		conf {
 			groups = "ethernet0_0_grp";
 			slew-rate = <0>;
-			io-standard = <4>;
+			power-source = <4>;
 		};
 
 		conf-rx {
@@ -174,7 +176,7 @@
 		conf-mdio {
 			groups = "mdio0_0_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 			bias-disable;
 		};
 	};
@@ -188,7 +190,7 @@
 		conf {
 			groups = "gpio0_7_grp", "gpio0_46_grp", "gpio0_47_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-pull-up {
@@ -212,7 +214,7 @@
 			groups = "i2c0_10_grp";
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 	};
 
@@ -225,7 +227,7 @@
 		conf {
 			groups = "sdio0_2_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 			bias-disable;
 		};
 
@@ -239,7 +241,7 @@
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		mux-wp {
@@ -252,7 +254,7 @@
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 	};
 
@@ -265,7 +267,7 @@
 		conf {
 			groups = "uart1_10_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-rx {
@@ -288,7 +290,7 @@
 		conf {
 			groups = "usb0_0_grp";
 			slew-rate = <0>;
-			io-standard = <1>;
+			power-source = <1>;
 		};
 
 		conf-rx {
@@ -305,19 +307,27 @@
 };
 
 &qspi {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
+	num-cs = <1>;
+	flash@0 {
+		compatible = "n25q128a11", "jedec,spi-nor";
+		reg = <0x0>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <4>;
+		spi-max-frequency = <50000000>;
+	};
 };
 
 &sdhci0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdhci0_default>;
 };
 
 &uart1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1_default>;

@@ -7,6 +7,7 @@
 #ifndef __TMIO_COMMON_H__
 #define __TMIO_COMMON_H__
 
+#include <linux/bitops.h>
 #define TMIO_SD_CMD			0x000	/* command */
 #define   TMIO_SD_CMD_NOSTOP		BIT(14)	/* No automatic CMD12 issue */
 #define   TMIO_SD_CMD_MULTI		BIT(13)	/* multiple block transfer */
@@ -89,6 +90,7 @@
 #define   TMIO_SD_VOLT_180		(2 << 0)/* 1.8V signal */
 #define TMIO_SD_DMA_MODE		0x410
 #define   TMIO_SD_DMA_MODE_DIR_RD	BIT(16)	/* 1: from device, 0: to dev */
+#define   TMIO_SD_DMA_MODE_BUS_WIDTH	(BIT(5) | BIT(4)) /* RCar, 64bit */
 #define   TMIO_SD_DMA_MODE_ADDR_INC	BIT(0)	/* 1: address inc, 0: fixed */
 #define TMIO_SD_DMA_CTL		0x414
 #define   TMIO_SD_DMA_CTL_START	BIT(0)	/* start DMA (auto cleared) */
@@ -117,9 +119,10 @@ struct tmio_sd_plat {
 
 struct tmio_sd_priv {
 	void __iomem			*regbase;
-	unsigned long			mclk;
 	unsigned int			version;
 	u32				caps;
+	u32				read_poll_flag;
+	u32				idma_bus_width;
 #define TMIO_SD_CAP_NONREMOVABLE	BIT(0)	/* Nonremovable e.g. eMMC */
 #define TMIO_SD_CAP_DMA_INTERNAL	BIT(1)	/* have internal DMA engine */
 #define TMIO_SD_CAP_DIV1024		BIT(2)	/* divisor 1024 is available */
@@ -130,9 +133,26 @@ struct tmio_sd_priv {
 #define TMIO_SD_CAP_RCAR_UHS		BIT(7)	/* Renesas RCar UHS/SDR modes */
 #define TMIO_SD_CAP_RCAR		\
 	(TMIO_SD_CAP_RCAR_GEN2 | TMIO_SD_CAP_RCAR_GEN3)
-#ifdef CONFIG_DM_REGULATOR
 	struct udevice *vqmmc_dev;
+#if CONFIG_IS_ENABLED(CLK)
+	struct clk			clk;
+	struct clk			clkh;
 #endif
+#if IS_ENABLED(CONFIG_RENESAS_SDHI)
+	unsigned int			smpcmp;
+	u8				tap_set;
+	u8				tap_num;
+	u8				nrtaps;
+	bool				needs_adjust_hs400;
+	bool				adjust_hs400_enable;
+	u8				adjust_hs400_offset;
+	u8				adjust_hs400_calibrate;
+	u8				hs400_bad_tap;
+	const u8			*adjust_hs400_calib_table;
+	u32			quirks;
+	bool				needs_clkh_fallback;
+#endif
+	ulong (*clk_get_rate)(struct tmio_sd_priv *);
 };
 
 int tmio_sd_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,

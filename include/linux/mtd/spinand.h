@@ -204,6 +204,7 @@ struct spinand_manufacturer {
 extern const struct spinand_manufacturer gigadevice_spinand_manufacturer;
 extern const struct spinand_manufacturer macronix_spinand_manufacturer;
 extern const struct spinand_manufacturer micron_spinand_manufacturer;
+extern const struct spinand_manufacturer toshiba_spinand_manufacturer;
 extern const struct spinand_manufacturer winbond_spinand_manufacturer;
 
 /**
@@ -245,6 +246,7 @@ struct spinand_ecc_info {
 };
 
 #define SPINAND_HAS_QE_BIT		BIT(0)
+#define SPINAND_HAS_CR_FEAT_BIT		BIT(1)
 
 /**
  * struct spinand_info - Structure used to describe SPI NAND chips
@@ -410,6 +412,7 @@ spinand_to_nand(struct spinand_device *spinand)
 	return &spinand->base;
 }
 
+#ifndef __UBOOT__
 /**
  * spinand_set_of_node - Attach a DT node to a SPI NAND device
  * @spinand: SPI NAND device
@@ -422,6 +425,20 @@ static inline void spinand_set_of_node(struct spinand_device *spinand,
 {
 	nanddev_set_of_node(&spinand->base, np);
 }
+#else
+/**
+ * spinand_set_of_node - Attach a DT node to a SPI NAND device
+ * @spinand: SPI NAND device
+ * @node: ofnode
+ *
+ * Attach a DT node to a SPI NAND device.
+ */
+static inline void spinand_set_ofnode(struct spinand_device *spinand,
+				      ofnode node)
+{
+	nanddev_set_ofnode(&spinand->base, node);
+}
+#endif /* __UBOOT__ */
 
 int spinand_match_and_init(struct spinand_device *dev,
 			   const struct spinand_info *table,

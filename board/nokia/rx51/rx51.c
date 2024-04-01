@@ -4,7 +4,7 @@
  * Ивайло Димитров <freemangordon@abv.bg>
  *
  * (C) Copyright 2011-2012
- * Pali Rohár <pali.rohar@gmail.com>
+ * Pali Rohár <pali@kernel.org>
  *
  * (C) Copyright 2010
  * Alistair Buxton <a.j.buxton@gmail.com>
@@ -22,25 +22,46 @@
  */
 
 #include <common.h>
+#include <dm.h>
+#include <env.h>
+#include <init.h>
 #include <watchdog.h>
+#include <wdt.h>
 #include <malloc.h>
 #include <twl4030.h>
 #include <i2c.h>
-#include <video_fb.h>
+#include <video.h>
+#include <keyboard.h>
+#include <ns16550.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/setup.h>
 #include <asm/bitops.h>
 #include <asm/mach-types.h>
+#include <asm/omap_i2c.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mmc_host_def.h>
 
-#include "rx51.h"
 #include "tag_omap.h"
 
-DECLARE_GLOBAL_DATA_PTR;
+/* Needed for ROM SMC call */
+struct emu_hal_params_rx51 {
+	u32 num_params;
+	u32 param1;
+	u32 param2;
+	u32 param3;
+	u32 param4;
+};
 
-GraphicDevice gdev;
+#define ONENAND_GPMC_CONFIG1_RX51	0xfb001202
+#define ONENAND_GPMC_CONFIG2_RX51	0x00111100
+#define ONENAND_GPMC_CONFIG3_RX51	0x00020200
+#define ONENAND_GPMC_CONFIG4_RX51	0x11001102
+#define ONENAND_GPMC_CONFIG5_RX51	0x03101616
+#define ONENAND_GPMC_CONFIG6_RX51	0x90060000
+
+DECLARE_GLOBAL_DATA_PTR;
 
 const omap3_sysinfo sysinfo = {
 	DDR_STACKED,
@@ -68,18 +89,12 @@ static struct tag_omap omap[] = {
 	OMAP_TAG_GPIO_SWITCH_CONFIG("sleep_ind", 0xa2, 0x2, 0x2, 0x0),
 	OMAP_TAG_GPIO_SWITCH_CONFIG("slide", GPIO_SLIDE, 0x0, 0x0, 0x0),
 	OMAP_TAG_WLAN_CX3110X_CONFIG(0x25, 0xff, 87, 42, -1),
-	OMAP_TAG_PARTITION_CONFIG(PART1_NAME, PART1_SIZE * PART1_MULL,
-			PART1_OFFS, PART1_MASK),
-	OMAP_TAG_PARTITION_CONFIG(PART2_NAME, PART2_SIZE * PART2_MULL,
-			PART2_OFFS, PART2_MASK),
-	OMAP_TAG_PARTITION_CONFIG(PART3_NAME, PART3_SIZE * PART3_MULL,
-			PART3_OFFS, PART3_MASK),
-	OMAP_TAG_PARTITION_CONFIG(PART4_NAME, PART4_SIZE * PART4_MULL,
-			PART4_OFFS, PART4_MASK),
-	OMAP_TAG_PARTITION_CONFIG(PART5_NAME, PART5_SIZE * PART5_MULL,
-			PART5_OFFS, PART5_MASK),
-	OMAP_TAG_PARTITION_CONFIG(PART6_NAME, PART6_SIZE * PART6_MULL,
-			PART6_OFFS, PART6_MASK),
+	OMAP_TAG_PARTITION_CONFIG("bootloader", 128 * 1024, 0x00000000, 0x00000003),
+	OMAP_TAG_PARTITION_CONFIG("config", 384 * 1024, 0x00020000, 0x00000000),
+	OMAP_TAG_PARTITION_CONFIG("log", 256 * 1024, 0x00080000, 0x00000000),
+	OMAP_TAG_PARTITION_CONFIG("kernel", 2 * 1024*1024, 0x000c0000, 0x00000000),
+	OMAP_TAG_PARTITION_CONFIG("initfs", 2 * 1024*1024, 0x002c0000, 0x00000000),
+	OMAP_TAG_PARTITION_CONFIG("rootfs", 257280 * 1024, 0x004c0000, 0x00000000),
 	OMAP_TAG_BOOT_REASON_CONFIG("pwr_key"),
 	OMAP_TAG_VERSION_STR_CONFIG("product", "RX-51"),
 	OMAP_TAG_VERSION_STR_CONFIG("hw-build", "2101"),
@@ -92,6 +107,7 @@ static char *boot_reason_ptr;
 static char *hw_build_ptr;
 static char *nolo_version_ptr;
 static char *boot_mode_ptr;
+static int serial_was_console_enabled;
 
 /*
  * Routine: init_omap_tags
@@ -148,6 +164,13 @@ static void reuse_omap_atags(struct tag_omap *t)
 				strcpy(boot_mode_ptr, version);
 			}
 			break;
+		case OMAP_TAG_UART:
+			if (t->u.uart.enabled_uarts)
+				serial_was_console_enabled = 1;
+			break;
+		case OMAP_TAG_SERIAL_CONSOLE:
+			serial_was_console_enabled = 1;
+			break;
 		default:
 			break;
 		}
@@ -194,13 +217,31 @@ static void reuse_atags(void)
  */
 int board_init(void)
 {
+#if defined(CONFIG_CMD_ONENAND)
+	const u32 gpmc_regs_onenandrx51[GPMC_MAX_REG] = {
+		ONENAND_GPMC_CONFIG1_RX51,
+		ONENAND_GPMC_CONFIG2_RX51,
+		ONENAND_GPMC_CONFIG3_RX51,
+		ONENAND_GPMC_CONFIG4_RX51,
+		ONENAND_GPMC_CONFIG5_RX51,
+		ONENAND_GPMC_CONFIG6_RX51,
+		0
+	};
+#endif
 	/* in SRAM or SDRAM, finish GPMC */
 	gpmc_init();
+#if defined(CONFIG_CMD_ONENAND)
+	enable_gpmc_cs_config(gpmc_regs_onenandrx51, &gpmc_cfg->cs[0],
+			      CFG_SYS_ONENAND_BASE, GPMC_SIZE_256M);
+#endif
+	/* Enable the clks & power */
+	per_clocks_enable();
 	/* boot param addr */
 	gd->bd->bi_boot_params = OMAP34XX_SDRC_CS0 + 0x100;
 	return 0;
 }
 
+#ifdef CONFIG_REVISION_TAG
 /*
  * Routine: get_board_revision
  * Description: Return board revision.
@@ -209,6 +250,7 @@ u32 get_board_rev(void)
 {
 	return simple_strtol(hw_build_ptr, NULL, 16);
 }
+#endif
 
 /*
  * Routine: setup_board_tags
@@ -238,10 +280,17 @@ void setup_board_tags(struct tag **in_params)
 		return;
 
 	str = env_get("setup_console_atag");
-	if (str && str[0] == '1')
-		setup_console_atag = 1;
-	else
-		setup_console_atag = 0;
+	if (str && str[0]) {
+		if (str[0] == '1')
+			setup_console_atag = 1;
+		else
+			setup_console_atag = 0;
+	} else {
+		if (serial_was_console_enabled)
+			setup_console_atag = 1;
+		else
+			setup_console_atag = 0;
+	}
 
 	setup_boot_reason_atag = env_get("setup_boot_reason_atag");
 	setup_boot_mode_atag = env_get("setup_boot_mode_atag");
@@ -292,21 +341,27 @@ void setup_board_tags(struct tag **in_params)
 	*in_params = params;
 }
 
-/*
- * Routine: video_hw_init
- * Description: Set up the GraphicDevice depending on sys_boot.
- */
-void *video_hw_init(void)
+static int rx51_video_probe(struct udevice *dev)
 {
-	/* fill in Graphic Device */
-	gdev.frameAdrs = 0x8f9c0000;
-	gdev.winSizeX = 800;
-	gdev.winSizeY = 480;
-	gdev.gdfBytesPP = 2;
-	gdev.gdfIndex = GDF_16BIT_565RGB;
-	memset((void *)gdev.frameAdrs, 0, 0xbb800);
-	return (void *) &gdev;
+	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
+	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
+
+	uc_plat->base = 0x8f9c0000;
+	uc_plat->size = 800 * 480 * sizeof(u16);
+	uc_priv->xsize = 800;
+	uc_priv->ysize = 480;
+	uc_priv->bpix = VIDEO_BPP16;
+
+	video_set_flush_dcache(dev, true);
+
+	return 0;
 }
+
+U_BOOT_DRIVER(rx51_video) = {
+	.name = "rx51_video",
+	.id = UCLASS_VIDEO,
+	.probe = rx51_video_probe,
+};
 
 /*
  * Routine: twl4030_regulator_set_mode
@@ -375,17 +430,18 @@ static void omap3_update_aux_cr_secure_rx51(u32 set_bits, u32 clear_bits)
  */
 int misc_init_r(void)
 {
+	struct udevice *dev;
 	char buf[12];
 	u8 state;
 
-	/* reset lp5523 led */
-	i2c_set_bus_num(1);
-	state = 0xff;
-	i2c_write(0x32, 0x3d, 1, &state, 1);
-	i2c_set_bus_num(0);
+	/* disable lp5523 led */
+	if (i2c_get_chip_for_busnum(1, 0x32, 1, &dev) == 0)
+		dm_i2c_reg_write(dev, 0x00, 0x00);
 
 	/* initialize twl4030 power managment */
 	twl4030_power_init();
+	twl4030_power_mmc_init(0);
+	twl4030_power_mmc_init(1);
 
 	/* set VSIM to 1.8V */
 	twl4030_pmrecv_vsel_cfg(TWL4030_PM_RECEIVER_VSIM_DEDICATED,
@@ -436,35 +492,24 @@ int misc_init_r(void)
 	return 0;
 }
 
-/*
- * Routine: set_muxconf_regs
- * Description: Setting up the configuration Mux registers specific to the
- *		hardware. Many pins need to be moved from protect to primary
- *		mode.
- */
-void set_muxconf_regs(void)
-{
-	MUX_RX51();
-}
-
 static unsigned long int twl_wd_time; /* last time of watchdog reset */
 static unsigned long int twl_i2c_lock;
 
 /*
- * Routine: hw_watchdog_reset
+ * Routine: rx51_watchdog_reset
  * Description: Reset timeout of twl4030 watchdog.
  */
-void hw_watchdog_reset(void)
+static int rx51_watchdog_reset(struct udevice *dev)
 {
 	u8 timeout = 0;
 
 	/* do not reset watchdog too often - max every 4s */
 	if (get_timer(twl_wd_time) < 4 * CONFIG_SYS_HZ)
-		return;
+		return 0;
 
 	/* localy lock twl4030 i2c bus */
 	if (test_and_set_bit(0, &twl_i2c_lock))
-		return;
+		return 0;
 
 	/* read actual watchdog timeout */
 	twl4030_i2c_read_u8(TWL4030_CHIP_PM_RECEIVER,
@@ -481,7 +526,31 @@ void hw_watchdog_reset(void)
 
 	/* localy unlock twl4030 i2c bus */
 	test_and_clear_bit(0, &twl_i2c_lock);
+
+	return 0;
 }
+
+static int rx51_watchdog_start(struct udevice *dev, u64 timeout_ms, ulong flags)
+{
+	return 0;
+}
+
+static int rx51_watchdog_probe(struct udevice *dev)
+{
+	return 0;
+}
+
+static const struct wdt_ops rx51_watchdog_ops = {
+	.start = rx51_watchdog_start,
+	.reset = rx51_watchdog_reset,
+};
+
+U_BOOT_DRIVER(rx51_watchdog) = {
+	.name = "rx51_watchdog",
+	.id = UCLASS_WDT,
+	.ops = &rx51_watchdog_ops,
+	.probe = rx51_watchdog_probe,
+};
 
 /*
  * TWL4030 keypad handler for cfb_console
@@ -492,7 +561,7 @@ static const char keymap[] = {
 	'q',  'o',  'p',  ',', '\b',    0,  'a',  's',
 	'w',  'd',  'f',  'g',  'h',  'j',  'k',  'l',
 	'e',  '.',    0,  '\r',   0,  'z',  'x',  'c',
-	'r',  'v',  'b',  'n',  'm',  ' ',  ' ',    0,
+	'r',  'v',  'b',  'n',  'm',  ' ',    0,    0,
 	't',    0,    0,    0,    0,    0,    0,    0,
 	'y',    0,    0,    0,    0,    0,    0,    0,
 	'u',    0,    0,    0,    0,    0,    0,    0,
@@ -516,10 +585,10 @@ static u8 keybuf_head;
 static u8 keybuf_tail;
 
 /*
- * Routine: rx51_kp_init
+ * Routine: rx51_kp_start
  * Description: Initialize HW keyboard.
  */
-int rx51_kp_init(void)
+static int rx51_kp_start(struct udevice *dev)
 {
 	int ret = 0;
 	u8 ctrl;
@@ -593,7 +662,7 @@ static void rx51_kp_fill(u8 k, u8 mods)
  * Routine: rx51_kp_tstc
  * Description: Test if key was pressed (from buffer).
  */
-int rx51_kp_tstc(struct stdio_dev *sdev)
+static int rx51_kp_tstc(struct udevice *dev)
 {
 	u8 c, r, dk, i;
 	u8 intr;
@@ -615,12 +684,16 @@ int rx51_kp_tstc(struct stdio_dev *sdev)
 			continue;
 
 		/* read the key state */
-		i2c_read(TWL4030_CHIP_KEYPAD,
-			TWL4030_KEYPAD_FULL_CODE_7_0, 1, keys, 8);
+		twl4030_i2c_read(TWL4030_CHIP_KEYPAD,
+				 TWL4030_KEYPAD_FULL_CODE_7_0, keys, 8);
 
 		/* cut out modifier keys from the keystate */
 		mods = keys[4] >> 4;
 		keys[4] &= 0x0f;
+
+		/* space key is indicated by two different bits */
+		keys[3] |= (keys[3] & (1 << 6)) >> 1;
+		keys[3] &= ~(1 << 6);
 
 		for (c = 0; c < 8; c++) {
 
@@ -649,27 +722,85 @@ int rx51_kp_tstc(struct stdio_dev *sdev)
  * Routine: rx51_kp_getc
  * Description: Get last pressed key (from buffer).
  */
-int rx51_kp_getc(struct stdio_dev *sdev)
+static int rx51_kp_getc(struct udevice *dev)
 {
 	keybuf_head %= KEYBUF_SIZE;
-	while (!rx51_kp_tstc(sdev))
-		WATCHDOG_RESET();
+	while (!rx51_kp_tstc(dev))
+		schedule();
 	return keybuf[keybuf_head++];
 }
 
-/*
- * Routine: board_mmc_init
- * Description: Initialize mmc devices.
- */
-int board_mmc_init(bd_t *bis)
+static int rx51_kp_probe(struct udevice *dev)
 {
-	omap_mmc_init(0, 0, 0, -1, -1);
-	omap_mmc_init(1, 0, 0, -1, -1);
-	return 0;
+	struct keyboard_priv *uc_priv = dev_get_uclass_priv(dev);
+	struct stdio_dev *sdev = &uc_priv->sdev;
+
+	strcpy(sdev->name, "keyboard");
+	return input_stdio_register(sdev);
 }
 
-void board_mmc_power_init(void)
-{
-	twl4030_power_mmc_init(0);
-	twl4030_power_mmc_init(1);
-}
+static const struct keyboard_ops rx51_kp_ops = {
+	.start = rx51_kp_start,
+	.tstc = rx51_kp_tstc,
+	.getc = rx51_kp_getc,
+};
+
+U_BOOT_DRIVER(rx51_kp) = {
+	.name = "rx51_kp",
+	.id = UCLASS_KEYBOARD,
+	.probe = rx51_kp_probe,
+	.ops = &rx51_kp_ops,
+};
+
+static const struct mmc_config rx51_mmc_cfg = {
+	.host_caps = MMC_MODE_4BIT | MMC_MODE_HS_52MHz | MMC_MODE_HS,
+	.f_min = 400000,
+	.f_max = 52000000,
+	.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT,
+	.voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195,
+};
+
+static const struct omap_hsmmc_plat rx51_mmc[] = {
+	{ rx51_mmc_cfg, (struct hsmmc *)OMAP_HSMMC1_BASE },
+	{ rx51_mmc_cfg, (struct hsmmc *)OMAP_HSMMC2_BASE },
+};
+
+U_BOOT_DRVINFOS(rx51_mmc) = {
+	{ "omap_hsmmc", &rx51_mmc[0] },
+	{ "omap_hsmmc", &rx51_mmc[1] },
+};
+
+static const struct omap_i2c_plat rx51_i2c[] = {
+	{ I2C_BASE1, 100000, OMAP_I2C_REV_V1 },
+	{ I2C_BASE2, 100000, OMAP_I2C_REV_V1 },
+	{ I2C_BASE3, 100000, OMAP_I2C_REV_V1 },
+};
+
+U_BOOT_DRVINFOS(rx51_i2c) = {
+	{ "i2c_omap", &rx51_i2c[0] },
+	{ "i2c_omap", &rx51_i2c[1] },
+	{ "i2c_omap", &rx51_i2c[2] },
+};
+
+U_BOOT_DRVINFOS(rx51_watchdog) = {
+	{ "rx51_watchdog" },
+};
+
+U_BOOT_DRVINFOS(rx51_video) = {
+	{ "rx51_video" },
+};
+
+U_BOOT_DRVINFOS(rx51_kp) = {
+	{ "rx51_kp" },
+};
+
+static const struct ns16550_plat rx51_serial = {
+	.base = CFG_SYS_NS16550_COM3,
+	.reg_shift = 2,
+	.clock = CFG_SYS_NS16550_CLK,
+	.fcr = UART_FCR_DEFVAL,
+};
+
+U_BOOT_DRVINFOS(rx51_uart) = {
+	{ "omap_serial", &rx51_serial },
+};

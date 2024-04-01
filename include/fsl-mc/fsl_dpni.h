@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2013-2016 Freescale Semiconductor
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
  * Copyright 2017 NXP
  */
 #ifndef _FSL_DPNI_H
@@ -172,8 +172,6 @@ do { \
 	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, state->rate);\
 	MC_RSP_OP(cmd, 2, 0,  64, uint64_t, state->options);\
 } while (0)
-
-
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPNI_CMD_SET_PRIMARY_MAC_ADDR(cmd, mac_addr) \

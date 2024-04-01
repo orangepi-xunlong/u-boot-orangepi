@@ -10,10 +10,6 @@
 
 #include "rcar-base.h"
 
-/* SH-I2C */
-#define CONFIG_SYS_I2C_SH_BASE2	0xE6520000
-#define CONFIG_SYS_I2C_SH_BASE3	0xE60B0000
-
 /* Module stop control/status register bits */
 #define MSTP0_BITS	0x00640801
 #define MSTP1_BITS	0xDB6E9BDF
@@ -28,10 +24,7 @@
 #define MSTP11_BITS	0x00000000
 
 /* SDHI */
-#define CONFIG_SYS_SH_SDHI1_BASE 0xEE120000
-#define CONFIG_SYS_SH_SDHI2_BASE 0xEE140000
-#define CONFIG_SYS_SH_SDHI3_BASE 0xEE160000
-#define CONFIG_SYS_SH_SDHI_NR_CHANNEL 4
+#define CFG_SYS_SH_SDHI_NR_CHANNEL 4
 
 #define R8A7790_CUT_ES2X	2
 #define IS_R8A7790_ES2()	\

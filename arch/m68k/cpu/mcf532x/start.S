@@ -9,7 +9,6 @@
 
 #include <asm-offsets.h>
 #include <config.h>
-#include "version.h"
 #include <asm/cache.h>
 
 #define _START	_start
@@ -99,11 +98,11 @@ _start:
 
 #if !defined(CONFIG_MONITOR_IS_IN_RAM)
 	/* Set vector base register at the beginning of the Flash */
-	move.l	#CONFIG_SYS_FLASH_BASE, %d0
+	move.l	#CFG_SYS_FLASH_BASE, %d0
 	movec	%d0, %VBR
 #endif
 
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_CTRL), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_CTRL), %d0
 	movec	%d0, %RAMBAR1
 
 	/* invalidate and disable cache */
@@ -132,7 +131,7 @@ _start:
 	move.l	#__got_start, %a5
 
 	/* setup stack initially on top of internal static ram  */
-	move.l  #(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE), %sp
+	move.l  #(CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_SIZE), %sp
 
 	/*
 	 * if configured, malloc_f arena will be reserved first,
@@ -165,7 +164,7 @@ _start:
 /******************************************************************************/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.
@@ -268,7 +267,4 @@ _int_handler:
 
 /******************************************************************************/
 
-.globl version_string
-version_string:
-.ascii U_BOOT_VERSION_STRING, "\0"
 .align 4

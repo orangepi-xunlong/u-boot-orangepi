@@ -1,15 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) ARM Ltd 2015
  *
  * Author: Liviu Dudau <Liviu.Dudau@arm.com>
- *
- * SPDX-Licence-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <linux/bitops.h>
 #include <pci_ids.h>
+#include <linux/delay.h>
 #include "pcie.h"
 
 /* XpressRICH3 support */
@@ -54,10 +56,6 @@
 #define XR3PCI_ATR_TRSLID_PCIE_IO	(0x020000)
 #define XR3PCI_ATR_TRSLID_PCIE_MEMORY	(0x000000)
 
-#define XR3PCI_ECAM_OFFSET(b, d, o)	(((b) << 20) | \
-					(PCI_SLOT(d) << 15) | \
-					(PCI_FUNC(d) << 12) | o)
-
 #define JUNO_RESET_CTRL			0x1004
 #define JUNO_RESET_CTRL_PHY		BIT(0)
 #define JUNO_RESET_CTRL_RC		BIT(1)
@@ -70,9 +68,9 @@
 					 JUNO_RESET_STATUS_PHY | \
 					 JUNO_RESET_STATUS_RC)
 
-void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
-			unsigned long trsl_addr, int window_size,
-			int trsl_param)
+static void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
+				 unsigned long trsl_addr, int window_size,
+				 int trsl_param)
 {
 	/* X3PCI_ATR_SRC_ADDR_LOW:
 	     - bit 0: enable entry,
@@ -92,7 +90,7 @@ void xr3pci_set_atr_entry(unsigned long base, unsigned long src_addr,
 	       ((u64)1) << window_size, trsl_param);
 }
 
-void xr3pci_setup_atr(void)
+static void xr3pci_setup_atr(void)
 {
 	/* setup PCIe to CPU address translation tables */
 	unsigned long base = XR3_CONFIG_BASE + XR3PCI_ATR_PCIE_WIN0;
@@ -139,7 +137,7 @@ void xr3pci_setup_atr(void)
 			     XR3_PCI_MEMSPACE64_SIZE, XR3PCI_ATR_TRSLID_PCIE_MEMORY);
 }
 
-void xr3pci_init(void)
+static void xr3pci_init(void)
 {
 	u32 val;
 	int timeout = 200;
@@ -152,7 +150,7 @@ void xr3pci_init(void)
 	/* allow ECRC */
 	writel(0x6006, XR3_CONFIG_BASE + XR3PCI_PEX_SPC2);
 	/* setup the correct class code for the host bridge */
-	writel(PCI_CLASS_BRIDGE_PCI << 16, XR3_CONFIG_BASE + XR3PCI_BRIDGE_PCI_IDS);
+	writel(PCI_CLASS_BRIDGE_PCI_NORMAL << 8, XR3_CONFIG_BASE + XR3PCI_BRIDGE_PCI_IDS);
 
 	/* reset phy and root complex */
 	writel(JUNO_RESET_CTRL_PHY | JUNO_RESET_CTRL_RC,
@@ -191,5 +189,9 @@ void xr3pci_init(void)
 
 void vexpress64_pcie_init(void)
 {
+	/* Initialise and configure the PCIe host bridge. */
 	xr3pci_init();
+
+	/* Register the now ECAM complaint PCIe host controller with U-Boot. */
+	pci_init();
 }

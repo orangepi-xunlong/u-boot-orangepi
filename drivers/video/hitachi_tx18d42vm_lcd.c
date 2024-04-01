@@ -6,6 +6,8 @@
  */
 
 #include <common.h>
+#include <malloc.h>
+#include <linux/delay.h>
 
 #include <asm/gpio.h>
 #include <errno.h>
@@ -47,9 +49,9 @@ int hitachi_tx18d42vm_init(void)
 	};
 	int i, cs, clk, mosi, ret = 0;
 
-	cs = name_to_gpio(CONFIG_VIDEO_LCD_SPI_CS);
-	clk = name_to_gpio(CONFIG_VIDEO_LCD_SPI_SCLK);
-	mosi = name_to_gpio(CONFIG_VIDEO_LCD_SPI_MOSI);
+	cs = sunxi_name_to_gpio(CONFIG_VIDEO_LCD_SPI_CS);
+	clk = sunxi_name_to_gpio(CONFIG_VIDEO_LCD_SPI_SCLK);
+	mosi = sunxi_name_to_gpio(CONFIG_VIDEO_LCD_SPI_MOSI);
 
 	if (cs == -1 || clk == -1 || mosi == 1) {
 		printf("Error tx18d42vm spi gpio config is invalid\n");

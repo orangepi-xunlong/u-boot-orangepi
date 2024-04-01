@@ -1,20 +1,25 @@
-obj-y += clk_factor.o clk_periph.o clk.o clk_fixed_rate.o
-obj-$(CONFIG_MACH_SUN8IW10) += clk-sun8iw10.o
-obj-$(CONFIG_MACH_SUN8IW5) += clk-sun8iw5.o
-obj-$(CONFIG_MACH_SUN8IW8) += clk-sun8iw8.o
-obj-$(CONFIG_MACH_SUN8IW11) += clk-sun8iw11.o
-obj-$(CONFIG_MACH_SUN50IW1) += clk_sun50iw1.o
-obj-$(CONFIG_MACH_SUN50IW2) += clk-sun50iw2.o
-obj-$(CONFIG_MACH_SUN3IW1)  += clk-sun3iw1.o
-obj-$(CONFIG_MACH_SUN50IW6) += clk-sun50iw6.o
-obj-$(CONFIG_MACH_SUN50IW8) += clk-sun50iw8.o
-obj-$(CONFIG_MACH_SUN50IW9) += clk-sun50iw9.o
-obj-$(CONFIG_MACH_SUN50IW3) += clk-sun50iw3.o
-obj-$(CONFIG_MACH_SUN8IW12) += clk-sun8iw12.o
-obj-$(CONFIG_MACH_SUN8IW7) += clk-sun8iw7.o
-obj-$(CONFIG_MACH_SUN8IW16) += clk-sun8iw16.o
-obj-$(CONFIG_MACH_SUN8IW17) += clk-sun8iw17.o
-obj-$(CONFIG_MACH_SUN8IW6) += clk-sun8iw6.o
-obj-$(CONFIG_MACH_SUN8IW15) += clk-sun8iw15.o
-obj-$(CONFIG_MACH_SUN8IW18) += clk-sun8iw18.o
-obj-$(CONFIG_MACH_SUN50IW9) += clk-sun50iw9.o
+#
+# Copyright (C) 2018 Amarula Solutions.
+#
+# SPDX-License-Identifier:      GPL-2.0+
+#
+
+obj-$(CONFIG_CLK_SUNXI) += clk_sunxi.o
+
+obj-$(CONFIG_CLK_SUNXI) += clk_sun6i_rtc.o
+
+obj-$(CONFIG_CLK_SUNIV_F1C100S) += clk_f1c100s.o
+obj-$(CONFIG_CLK_SUN4I_A10) += clk_a10.o
+obj-$(CONFIG_CLK_SUN5I_A10S) += clk_a10s.o
+obj-$(CONFIG_CLK_SUN6I_A31) += clk_a31.o
+obj-$(CONFIG_CLK_SUN6I_A31_R) += clk_a31_r.o
+obj-$(CONFIG_CLK_SUN8I_A23) += clk_a23.o
+obj-$(CONFIG_CLK_SUN8I_A83T) += clk_a83t.o
+obj-$(CONFIG_CLK_SUN8I_R40) += clk_r40.o
+obj-$(CONFIG_CLK_SUN8I_V3S) += clk_v3s.o
+obj-$(CONFIG_CLK_SUN9I_A80) += clk_a80.o
+obj-$(CONFIG_CLK_SUN8I_H3) += clk_h3.o
+obj-$(CONFIG_CLK_SUN50I_H6) += clk_h6.o
+obj-$(CONFIG_CLK_SUN50I_H6_R) += clk_h6_r.o
+obj-$(CONFIG_CLK_SUN50I_H616) += clk_h616.o
+obj-$(CONFIG_CLK_SUN50I_A64) += clk_a64.o

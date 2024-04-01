@@ -10,11 +10,11 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <pwm.h>
+#include <asm/global_data.h>
+#include <dm/device_compat.h>
 #include <power/regulator.h>
-#include <linux/libfdt.h>
-#include <fdt_support.h>
-#include <fdtdec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -90,16 +90,13 @@ static int pwm_regulator_set_voltage(struct udevice *dev, int uvolt)
 	return ret;
 }
 
-static int pwm_regulator_ofdata_to_platdata(struct udevice *dev)
+static int pwm_regulator_of_to_plat(struct udevice *dev)
 {
 	struct pwm_regulator_info *priv = dev_get_priv(dev);
-	struct fdtdec_phandle_args args;
-	const void *blob = gd->fdt_blob;
-	int node = dev_of_offset(dev);
+	struct ofnode_phandle_args args;
 	int ret;
 
-	ret = fdtdec_parse_phandle_with_args(blob, node, "pwms", "#pwm-cells",
-					     0, 0, &args);
+	ret = dev_read_phandle_with_args(dev, "pwms", "#pwm-cells", 0, 0, &args);
 	if (ret) {
 		debug("%s: Cannot get PWM phandle: ret=%d\n", __func__, ret);
 		return ret;
@@ -108,14 +105,13 @@ static int pwm_regulator_ofdata_to_platdata(struct udevice *dev)
 	priv->period_ns = args.args[1];
 	priv->polarity = args.args[2];
 
-	priv->init_voltage = fdtdec_get_int(blob, node,
-			"regulator-init-microvolt", -1);
+	priv->init_voltage = dev_read_u32_default(dev, "regulator-init-microvolt", -1);
 	if (priv->init_voltage < 0) {
 		printf("Cannot find regulator pwm init_voltage\n");
 		return -EINVAL;
 	}
 
-	ret = uclass_get_device_by_of_offset(UCLASS_PWM, args.node, &priv->pwm);
+	ret = uclass_get_device_by_ofnode(UCLASS_PWM, args.node, &priv->pwm);
 	if (ret) {
 		debug("%s: Cannot get PWM: ret=%d\n", __func__, ret);
 		return ret;
@@ -127,9 +123,9 @@ static int pwm_regulator_ofdata_to_platdata(struct udevice *dev)
 static int pwm_regulator_probe(struct udevice *dev)
 {
 	struct pwm_regulator_info *priv = dev_get_priv(dev);
-	struct dm_regulator_uclass_platdata *uc_pdata;
+	struct dm_regulator_uclass_plat *uc_pdata;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	uc_pdata->type = REGULATOR_TYPE_BUCK;
 	uc_pdata->mode_count = 0;
@@ -159,6 +155,6 @@ U_BOOT_DRIVER(pwm_regulator) = {
 	.ops = &pwm_regulator_ops,
 	.probe = pwm_regulator_probe,
 	.of_match = pwm_regulator_ids,
-	.ofdata_to_platdata	= pwm_regulator_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(struct pwm_regulator_info),
+	.of_to_plat	= pwm_regulator_of_to_plat,
+	.priv_auto	= sizeof(struct pwm_regulator_info),
 };

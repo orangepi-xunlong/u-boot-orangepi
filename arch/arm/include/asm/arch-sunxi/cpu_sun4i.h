@@ -11,7 +11,18 @@
 #define SUNXI_SRAM_A1_BASE		0x00000000
 #define SUNXI_SRAM_A1_SIZE		(16 * 1024)	/* 16 kiB */
 
+#if defined(CONFIG_SUNXI_GEN_SUN6I) && \
+    !defined(CONFIG_MACH_SUN8I_R40) && \
+    !defined(CONFIG_MACH_SUN8I_V3S)
+#define SUNXI_SRAM_A2_BASE		0x00040000
+#ifdef CONFIG_MACH_SUN8I_H3
+#define SUNXI_SRAM_A2_SIZE		(48 * 1024)	/* 16+32 kiB */
+#else
+#define SUNXI_SRAM_A2_SIZE		(80 * 1024)	/* 16+64 kiB */
+#endif
+#else
 #define SUNXI_SRAM_A2_BASE		0x00004000	/* 16 kiB */
+#endif
 #define SUNXI_SRAM_A3_BASE		0x00008000	/* 13 kiB */
 #define SUNXI_SRAM_A4_BASE		0x0000b400	/* 3 kiB */
 #define SUNXI_SRAM_D_BASE		0x00010000	/* 4 kiB */
@@ -63,10 +74,11 @@
 #ifdef CONFIG_SUNXI_GEN_SUN6I
 #if defined(CONFIG_MACH_SUNXI_H3_H5) || defined(CONFIG_MACH_SUN50I)
 #define SUNXI_USBPHY_BASE		0x01c19000
-#define SUNXI_USB0_BASE			0x01c1a000
-#define SUNXI_USB1_BASE			0x01c1b000
-#define SUNXI_USB2_BASE			0x01c1c000
-#define SUNXI_USB3_BASE			0x01c1d000
+#define SUNXI_USB0_BASE			SUNXI_USBPHY_BASE
+#define SUNXI_USB1_BASE			0x01c1a000
+#define SUNXI_USB2_BASE			0x01c1b000
+#define SUNXI_USB3_BASE			0x01c1c000
+#define SUNXI_USB4_BASE			0x01c1d000
 #else
 #define SUNXI_USB0_BASE			0x01c19000
 #define SUNXI_USB1_BASE			0x01c1a000
@@ -117,9 +129,15 @@ defined(CONFIG_MACH_SUN50I)
 #define SUNXI_CPUCFG_BASE		0x01c25c00
 #endif
 
+#ifdef CONFIG_MACH_SUNIV
+#define SUNXI_UART0_BASE		0x01c25000
+#define SUNXI_UART1_BASE		0x01c25400
+#define SUNXI_UART2_BASE		0x01c25800
+#else
 #define SUNXI_UART0_BASE		0x01c28000
 #define SUNXI_UART1_BASE		0x01c28400
 #define SUNXI_UART2_BASE		0x01c28800
+#endif
 #define SUNXI_UART3_BASE		0x01c28c00
 #define SUNXI_UART4_BASE		0x01c29000
 #define SUNXI_UART5_BASE		0x01c29400
@@ -214,6 +232,7 @@ void sunxi_board_init(void);
 void sunxi_reset(void);
 int sunxi_get_ss_bonding_id(void);
 int sunxi_get_sid(unsigned int *sid);
+unsigned int sunxi_get_sram_id(void);
 #endif /* __ASSEMBLY__ */
 
 #endif /* _SUNXI_CPU_SUN4I_H */

@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (c) 2016 Toradex, Inc.
+ * Copyright (c) 2016-2020 Toradex
  */
 
 #include <common.h>
+#include <asm/global_data.h>
 #include "tdx-cfg-block.h"
+#include "tdx-eeprom.h"
 
-#if defined(CONFIG_TARGET_APALIS_IMX6) || defined(CONFIG_TARGET_COLIBRI_IMX6)
-#include <asm/arch/sys_proto.h>
-#else
-#define is_cpu_type(cpu) (0)
-#endif
-#if defined(CONFIG_CPU_PXA27X)
-#include <asm/arch-pxa/pxa.h>
-#else
-#define cpu_is_pxa27x(cpu) (0)
-#endif
+#include <command.h>
+#include <asm/cache.h>
+
 #include <cli.h>
 #include <console.h>
+#include <env.h>
+#ifdef CONFIG_TDX_CFG_BLOCK_IS_IN_NOR
 #include <flash.h>
+#endif
 #include <malloc.h>
 #include <mmc.h>
 #include <nand.h>
@@ -28,10 +26,14 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define TAG_VALID	0xcf01
 #define TAG_MAC		0x0000
+#define TAG_CAR_SERIAL	0x0021
 #define TAG_HW		0x0008
 #define TAG_INVALID	0xffff
 
 #define TAG_FLAG_VALID	0x1
+
+#define TDX_EEPROM_ID_MODULE		0
+#define TDX_EEPROM_ID_CARRIER		1
 
 #if defined(CONFIG_TDX_CFG_BLOCK_IS_IN_MMC)
 #define TDX_CFG_BLOCK_MAX_SIZE 512
@@ -39,8 +41,14 @@ DECLARE_GLOBAL_DATA_PTR;
 #define TDX_CFG_BLOCK_MAX_SIZE 64
 #elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_NOR)
 #define TDX_CFG_BLOCK_MAX_SIZE 64
+#elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_EEPROM)
+#define TDX_CFG_BLOCK_MAX_SIZE 64
 #else
 #error Toradex config block location not set
+#endif
+
+#ifdef CONFIG_TDX_CFG_BLOCK_EXTRA
+#define TDX_CFG_BLOCK_EXTRA_MAX_SIZE 64
 #endif
 
 struct toradex_tag {
@@ -53,45 +61,133 @@ bool valid_cfgblock;
 struct toradex_hw tdx_hw_tag;
 struct toradex_eth_addr tdx_eth_addr;
 u32 tdx_serial;
+#ifdef CONFIG_TDX_CFG_BLOCK_EXTRA
+u32 tdx_car_serial;
+bool valid_cfgblock_carrier;
+struct toradex_hw tdx_car_hw_tag;
+#endif
 
-const char * const toradex_modules[] = {
-	 [0] = "UNKNOWN MODULE",
-	 [1] = "Colibri PXA270 312MHz",
-	 [2] = "Colibri PXA270 520MHz",
-	 [3] = "Colibri PXA320 806MHz",
-	 [4] = "Colibri PXA300 208MHz",
-	 [5] = "Colibri PXA310 624MHz",
-	 [6] = "Colibri PXA320 806MHz IT",
-	 [7] = "Colibri PXA300 208MHz XT",
-	 [8] = "Colibri PXA270 312MHz",
-	 [9] = "Colibri PXA270 520MHz",
-	[10] = "Colibri VF50 128MB", /* not currently on sale */
-	[11] = "Colibri VF61 256MB",
-	[12] = "Colibri VF61 256MB IT",
-	[13] = "Colibri VF50 128MB IT",
-	[14] = "Colibri iMX6 Solo 256MB",
-	[15] = "Colibri iMX6 DualLite 512MB",
-	[16] = "Colibri iMX6 Solo 256MB IT",
-	[17] = "Colibri iMX6 DualLite 512MB IT",
-	[18] = "UNKNOWN MODULE",
-	[19] = "UNKNOWN MODULE",
-	[20] = "Colibri T20 256MB",
-	[21] = "Colibri T20 512MB",
-	[22] = "Colibri T20 512MB IT",
-	[23] = "Colibri T30 1GB",
-	[24] = "Colibri T20 256MB IT",
-	[25] = "Apalis T30 2GB",
-	[26] = "Apalis T30 1GB",
-	[27] = "Apalis iMX6 Quad 1GB",
-	[28] = "Apalis iMX6 Quad 2GB IT",
-	[29] = "Apalis iMX6 Dual 512MB",
-	[30] = "Colibri T30 1GB IT",
-	[31] = "Apalis T30 1GB IT",
-	[32] = "Colibri iMX7 Solo 256MB",
-	[33] = "Colibri iMX7 Dual 512MB",
-	[34] = "Apalis TK1 2GB",
-	[35] = "Apalis iMX6 Dual 1GB IT",
+#define TARGET_IS_ENABLED(x) IS_ENABLED(CONFIG_TARGET_ ## x)
+
+const struct toradex_som toradex_modules[] = {
+	 [0] = { "UNKNOWN MODULE",                       0                                  },
+	 [1] = { "Colibri PXA270 312MHz",                0                                  },
+	 [2] = { "Colibri PXA270 520MHz",                0                                  },
+	 [3] = { "Colibri PXA320 806MHz",                0                                  },
+	 [4] = { "Colibri PXA300 208MHz",                0                                  },
+	 [5] = { "Colibri PXA310 624MHz",                0                                  },
+	 [6] = { "Colibri PXA320IT 806MHz",              0                                  },
+	 [7] = { "Colibri PXA300 208MHz XT",             0                                  },
+	 [8] = { "Colibri PXA270 312MHz",                0                                  },
+	 [9] = { "Colibri PXA270 520MHz",                0                                  },
+	[10] = { "Colibri VF50 128MB",                   TARGET_IS_ENABLED(COLIBRI_VF)      },
+	[11] = { "Colibri VF61 256MB",                   TARGET_IS_ENABLED(COLIBRI_VF)      },
+	[12] = { "Colibri VF61 256MB IT",                TARGET_IS_ENABLED(COLIBRI_VF)      },
+	[13] = { "Colibri VF50 128MB IT",                TARGET_IS_ENABLED(COLIBRI_VF)      },
+	[14] = { "Colibri iMX6S 256MB",                  TARGET_IS_ENABLED(COLIBRI_IMX6)    },
+	[15] = { "Colibri iMX6DL 512MB",                 TARGET_IS_ENABLED(COLIBRI_IMX6)    },
+	[16] = { "Colibri iMX6S 256MB IT",               TARGET_IS_ENABLED(COLIBRI_IMX6)    },
+	[17] = { "Colibri iMX6DL 512MB IT",              TARGET_IS_ENABLED(COLIBRI_IMX6)    },
+	[18] = { "UNKNOWN MODULE",                       0                                  },
+	[19] = { "UNKNOWN MODULE",                       0                                  },
+	[20] = { "Colibri T20 256MB",                    TARGET_IS_ENABLED(COLIBRI_T20)     },
+	[21] = { "Colibri T20 512MB",                    TARGET_IS_ENABLED(COLIBRI_T20)     },
+	[22] = { "Colibri T20 512MB IT",                 TARGET_IS_ENABLED(COLIBRI_T20)     },
+	[23] = { "Colibri T30 1GB",                      TARGET_IS_ENABLED(COLIBRI_T30)     },
+	[24] = { "Colibri T20 256MB IT",                 TARGET_IS_ENABLED(COLIBRI_T20)     },
+	[25] = { "Apalis T30 2GB",                       TARGET_IS_ENABLED(APALIS_T30)      },
+	[26] = { "Apalis T30 1GB",                       TARGET_IS_ENABLED(APALIS_T30)      },
+	[27] = { "Apalis iMX6Q 1GB",                     TARGET_IS_ENABLED(APALIS_IMX6)     },
+	[28] = { "Apalis iMX6Q 2GB IT",                  TARGET_IS_ENABLED(APALIS_IMX6)     },
+	[29] = { "Apalis iMX6D 512MB",                   TARGET_IS_ENABLED(APALIS_IMX6)     },
+	[30] = { "Colibri T30 1GB IT",                   TARGET_IS_ENABLED(COLIBRI_T30)     },
+	[31] = { "Apalis T30 1GB IT",                    TARGET_IS_ENABLED(APALIS_T30)      },
+	[32] = { "Colibri iMX7S 256MB",                  TARGET_IS_ENABLED(COLIBRI_IMX7)    },
+	[33] = { "Colibri iMX7D 512MB",                  TARGET_IS_ENABLED(COLIBRI_IMX7)    },
+	[34] = { "Apalis TK1 2GB",                       TARGET_IS_ENABLED(APALIS_TK1)      },
+	[35] = { "Apalis iMX6D 1GB IT",                  TARGET_IS_ENABLED(APALIS_IMX6)     },
+	[36] = { "Colibri iMX6ULL 256MB",                TARGET_IS_ENABLED(COLIBRI_IMX6ULL) },
+	[37] = { "Apalis iMX8QM 4GB WB IT",              TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[38] = { "Colibri iMX8QXP 2GB WB IT",            TARGET_IS_ENABLED(COLIBRI_IMX8X)   },
+	[39] = { "Colibri iMX7D 1GB",                    TARGET_IS_ENABLED(COLIBRI_IMX7)    },
+	[40] = { "Colibri iMX6ULL 512MB WB IT",          TARGET_IS_ENABLED(COLIBRI_IMX6ULL) },
+	[41] = { "Colibri iMX7D 512MB EPDC",             TARGET_IS_ENABLED(COLIBRI_IMX7)    },
+	[42] = { "Apalis TK1 4GB",                       TARGET_IS_ENABLED(APALIS_TK1)      },
+	[43] = { "Colibri T20 512MB IT SETEK",           TARGET_IS_ENABLED(COLIBRI_T20)     },
+	[44] = { "Colibri iMX6ULL 512MB IT",             TARGET_IS_ENABLED(COLIBRI_IMX6ULL) },
+	[45] = { "Colibri iMX6ULL 512MB WB",             TARGET_IS_ENABLED(COLIBRI_IMX6ULL) },
+	[46] = { "Apalis iMX8QXP 2GB WB IT",             0                                  },
+	[47] = { "Apalis iMX8QM 4GB IT",                 TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[48] = { "Apalis iMX8QP 2GB WB",                 TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[49] = { "Apalis iMX8QP 2GB",                    TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[50] = { "Colibri iMX8QXP 2GB IT",               TARGET_IS_ENABLED(COLIBRI_IMX8X)   },
+	[51] = { "Colibri iMX8DX 1GB WB",                TARGET_IS_ENABLED(COLIBRI_IMX8X)   },
+	[52] = { "Colibri iMX8DX 1GB",                   TARGET_IS_ENABLED(COLIBRI_IMX8X)   },
+	[53] = { "Apalis iMX8QXP 2GB ECC IT",            0                                  },
+	[54] = { "Apalis iMX8DXP 1GB",                   TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[55] = { "Verdin iMX8M Mini Quad 2GB WB IT",     TARGET_IS_ENABLED(VERDIN_IMX8MM)   },
+	[56] = { "Verdin iMX8M Nano Quad 1GB WB",        0                                  },
+	[57] = { "Verdin iMX8M Mini DualLite 1GB",       TARGET_IS_ENABLED(VERDIN_IMX8MM)   },
+	[58] = { "Verdin iMX8M Plus Quad 4GB WB IT",     TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[59] = { "Verdin iMX8M Mini Quad 2GB IT",        TARGET_IS_ENABLED(VERDIN_IMX8MM)   },
+	[60] = { "Verdin iMX8M Mini DualLite 1GB WB IT", TARGET_IS_ENABLED(VERDIN_IMX8MM)   },
+	[61] = { "Verdin iMX8M Plus Quad 2GB",           TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[62] = { "Colibri iMX6ULL 1GB IT",               TARGET_IS_ENABLED(COLIBRI_IMX6ULL) },
+	[63] = { "Verdin iMX8M Plus Quad 4GB IT",        TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[64] = { "Verdin iMX8M Plus Quad 2GB WB IT",     TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[65] = { "Verdin iMX8M Plus QuadLite 1GB IT",    TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[66] = { "Verdin iMX8M Plus Quad 8GB WB",        TARGET_IS_ENABLED(VERDIN_IMX8MP)   },
+	[67] = { "Apalis iMX8QM 8GB WB IT",              TARGET_IS_ENABLED(APALIS_IMX8)     },
+	[68] = { "Verdin iMX8M Mini Quad 2GB WB IT",     TARGET_IS_ENABLED(VERDIN_IMX8MM)   },
 };
+
+const char * const toradex_carrier_boards[] = {
+	[0] = "UNKNOWN CARRIER BOARD",
+	[155] = "Dahlia",
+	[156] = "Verdin Development Board",
+};
+
+const char * const toradex_display_adapters[] = {
+	[0] = "UNKNOWN DISPLAY ADAPTER",
+	[157] = "Verdin DSI to HDMI Adapter",
+	[159] = "Verdin DSI to LVDS Adapter",
+};
+
+const u32 toradex_ouis[] = {
+	[0] = 0x00142dUL,
+	[1] = 0x8c06cbUL,
+};
+
+static u32 get_serial_from_mac(struct toradex_eth_addr *eth_addr)
+{
+	int i;
+	u32 oui = ntohl(eth_addr->oui) >> 8;
+	u32 nic = ntohl(eth_addr->nic) >> 8;
+
+	for (i = 0; i < ARRAY_SIZE(toradex_ouis); i++) {
+		if (toradex_ouis[i] == oui)
+			break;
+	}
+
+	return (u32)((i << 24) + nic);
+}
+
+void get_mac_from_serial(u32 tdx_serial, struct toradex_eth_addr *eth_addr)
+{
+	u8 oui_index = tdx_serial >> 24;
+	u32 nic = tdx_serial & GENMASK(23, 0);
+	u32 oui;
+
+	if (oui_index >= ARRAY_SIZE(toradex_ouis)) {
+		puts("Can't find OUI for this serial#\n");
+		oui_index = 0;
+	}
+
+	oui = toradex_ouis[oui_index];
+
+	eth_addr->oui = htonl(oui << 8);
+	eth_addr->nic = htonl(nic << 8);
+}
 
 #ifdef CONFIG_TDX_CFG_BLOCK_IS_IN_MMC
 static int tdx_cfg_block_mmc_storage(u8 *config_block, int write)
@@ -110,8 +206,12 @@ static int tdx_cfg_block_mmc_storage(u8 *config_block, int write)
 		ret = -ENODEV;
 		goto out;
 	}
+	if (mmc_init(mmc)) {
+		puts("MMC init failed\n");
+		return -EINVAL;
+	}
 	if (part != mmc_get_blk_desc(mmc)->hwpart) {
-		if (blk_select_hwpart_devnum(IF_TYPE_MMC, dev, part)) {
+		if (blk_select_hwpart_devnum(UCLASS_MMC, dev, part)) {
 			puts("MMC partition switch failed\n");
 			ret = -ENODEV;
 			goto out;
@@ -139,7 +239,7 @@ static int tdx_cfg_block_mmc_storage(u8 *config_block, int write)
 
 out:
 	/* Switch back to regular eMMC user partition */
-	blk_select_hwpart_devnum(IF_TYPE_MMC, 0, 0);
+	blk_select_hwpart_devnum(UCLASS_MMC, 0, 0);
 
 	return ret;
 }
@@ -149,10 +249,13 @@ out:
 static int read_tdx_cfg_block_from_nand(unsigned char *config_block)
 {
 	size_t size = TDX_CFG_BLOCK_MAX_SIZE;
+	struct mtd_info *mtd = get_nand_dev_by_index(0);
+
+	if (!mtd)
+		return -ENODEV;
 
 	/* Read production parameter config block from NAND page */
-	return nand_read_skip_bad(get_nand_dev_by_index(0),
-				  CONFIG_TDX_CFG_BLOCK_OFFSET,
+	return nand_read_skip_bad(mtd, CONFIG_TDX_CFG_BLOCK_OFFSET,
 				  &size, NULL, TDX_CFG_BLOCK_MAX_SIZE,
 				  config_block);
 }
@@ -186,6 +289,20 @@ static int write_tdx_cfg_block_to_nor(unsigned char *config_block)
 }
 #endif
 
+#ifdef CONFIG_TDX_CFG_BLOCK_IS_IN_EEPROM
+static int read_tdx_cfg_block_from_eeprom(unsigned char *config_block)
+{
+	return read_tdx_eeprom_data(TDX_EEPROM_ID_MODULE, 0x0, config_block,
+				    TDX_CFG_BLOCK_MAX_SIZE);
+}
+
+static int write_tdx_cfg_block_to_eeprom(unsigned char *config_block)
+{
+	return write_tdx_eeprom_data(TDX_EEPROM_ID_MODULE, 0x0, config_block,
+				     TDX_CFG_BLOCK_MAX_SIZE);
+}
+#endif
+
 int read_tdx_cfg_block(void)
 {
 	int ret = 0;
@@ -209,6 +326,8 @@ int read_tdx_cfg_block(void)
 	ret = read_tdx_cfg_block_from_nand(config_block);
 #elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_NOR)
 	ret = read_tdx_cfg_block_from_nor(config_block);
+#elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_EEPROM)
+	ret = read_tdx_cfg_block_from_eeprom(config_block);
 #else
 	ret = -EINVAL;
 #endif
@@ -225,7 +344,12 @@ int read_tdx_cfg_block(void)
 	valid_cfgblock = true;
 	offset = 4;
 
-	while (offset < TDX_CFG_BLOCK_MAX_SIZE) {
+	/*
+	 * check if there is enough space for storing tag and value of the
+	 * biggest element
+	 */
+	while (offset + sizeof(struct toradex_tag) +
+	       sizeof(struct toradex_hw) < TDX_CFG_BLOCK_MAX_SIZE) {
 		tag = (struct toradex_tag *)(config_block + offset);
 		offset += 4;
 		if (tag->id == TAG_INVALID)
@@ -237,8 +361,7 @@ int read_tdx_cfg_block(void)
 				memcpy(&tdx_eth_addr, config_block + offset,
 				       6);
 
-				/* NIC part of MAC address is serial number */
-				tdx_serial = ntohl(tdx_eth_addr.nic) >> 8;
+				tdx_serial = get_serial_from_mac(&tdx_eth_addr);
 				break;
 			case TAG_HW:
 				memcpy(&tdx_hw_tag, config_block + offset, 8);
@@ -251,8 +374,7 @@ int read_tdx_cfg_block(void)
 	}
 
 	/* Cap product id to avoid issues with a yet unknown one */
-	if (tdx_hw_tag.prodid > (sizeof(toradex_modules) /
-				  sizeof(toradex_modules[0])))
+	if (tdx_hw_tag.prodid >= ARRAY_SIZE(toradex_modules))
 		tdx_hw_tag.prodid = 0;
 
 out:
@@ -260,154 +382,396 @@ out:
 	return ret;
 }
 
+static int parse_assembly_string(char *string_to_parse, u16 *assembly)
+{
+	if (string_to_parse[3] >= 'A' && string_to_parse[3] <= 'Z')
+		*assembly = string_to_parse[3] - 'A';
+	else if (string_to_parse[3] == '#')
+		*assembly = dectoul(&string_to_parse[4], NULL);
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
 static int get_cfgblock_interactive(void)
 {
 	char message[CONFIG_SYS_CBSIZE];
-	char *soc;
-	char it = 'n';
-	int len;
+	int len = 0;
+	int ret = 0;
+	unsigned int prodid;
+	int i;
 
-	if (cpu_is_pxa27x())
-		sprintf(message, "Is the module the 312 MHz version? [y/N] ");
-	else
-		sprintf(message, "Is the module an IT version? [y/N] ");
-
-	len = cli_readline(message);
-	it = console_buffer[0];
-
-	soc = env_get("soc");
-	if (!strcmp("mx6", soc)) {
-#ifdef CONFIG_MACH_TYPE
-		if (it == 'y' || it == 'Y')
-			if (is_cpu_type(MXC_CPU_MX6Q))
-				tdx_hw_tag.prodid = APALIS_IMX6Q_IT;
-			else
-				tdx_hw_tag.prodid = APALIS_IMX6D_IT;
-		else
-			if (is_cpu_type(MXC_CPU_MX6Q))
-				tdx_hw_tag.prodid = APALIS_IMX6Q;
-			else
-				tdx_hw_tag.prodid = APALIS_IMX6D;
-#else
-		if (it == 'y' || it == 'Y')
-			if (is_cpu_type(MXC_CPU_MX6DL))
-				tdx_hw_tag.prodid = COLIBRI_IMX6DL_IT;
-			else
-				tdx_hw_tag.prodid = COLIBRI_IMX6S_IT;
-		else
-			if (is_cpu_type(MXC_CPU_MX6DL))
-				tdx_hw_tag.prodid = COLIBRI_IMX6DL;
-			else
-				tdx_hw_tag.prodid = COLIBRI_IMX6S;
-#endif /* CONFIG_MACH_TYPE */
-	} else if (!strcmp("imx7d", soc)) {
-		tdx_hw_tag.prodid = COLIBRI_IMX7D;
-	} else if (!strcmp("imx7s", soc)) {
-		tdx_hw_tag.prodid = COLIBRI_IMX7S;
-	} else if (!strcmp("tegra20", soc)) {
-		if (it == 'y' || it == 'Y')
-			if (gd->ram_size == 0x10000000)
-				tdx_hw_tag.prodid = COLIBRI_T20_256MB_IT;
-			else
-				tdx_hw_tag.prodid = COLIBRI_T20_512MB_IT;
-		else
-			if (gd->ram_size == 0x10000000)
-				tdx_hw_tag.prodid = COLIBRI_T20_256MB;
-			else
-				tdx_hw_tag.prodid = COLIBRI_T20_512MB;
-	} else if (cpu_is_pxa27x()) {
-		if (it == 'y' || it == 'Y')
-			tdx_hw_tag.prodid = COLIBRI_PXA270_312MHZ;
-		else
-			tdx_hw_tag.prodid = COLIBRI_PXA270_520MHZ;
-#ifdef CONFIG_MACH_TYPE
-	} else if (!strcmp("tegra30", soc)) {
-		if (CONFIG_MACH_TYPE == MACH_TYPE_APALIS_T30) {
-			if (it == 'y' || it == 'Y')
-				tdx_hw_tag.prodid = APALIS_T30_IT;
-			else
-				if (gd->ram_size == 0x40000000)
-					tdx_hw_tag.prodid = APALIS_T30_1GB;
-				else
-					tdx_hw_tag.prodid = APALIS_T30_2GB;
-		} else {
-			if (it == 'y' || it == 'Y')
-				tdx_hw_tag.prodid = COLIBRI_T30_IT;
-			else
-				tdx_hw_tag.prodid = COLIBRI_T30;
-		}
-#endif /* CONFIG_MACH_TYPE */
-	} else if (!strcmp("tegra124", soc)) {
-		tdx_hw_tag.prodid = APALIS_TK1_2GB;
-	} else if (!strcmp("vf500", soc)) {
-		if (it == 'y' || it == 'Y')
-			tdx_hw_tag.prodid = COLIBRI_VF50_IT;
-		else
-			tdx_hw_tag.prodid = COLIBRI_VF50;
-	} else if (!strcmp("vf610", soc)) {
-		if (it == 'y' || it == 'Y')
-			tdx_hw_tag.prodid = COLIBRI_VF61_IT;
-		else
-			tdx_hw_tag.prodid = COLIBRI_VF61;
-	} else {
-		printf("Module type not detectable due to unknown SoC\n");
-		return -1;
+	printf("Enabled modules:\n");
+	for (i = 0; i < ARRAY_SIZE(toradex_modules); i++) {
+		if (toradex_modules[i].is_enabled)
+			printf(" %04d %s\n", i, toradex_modules[i].name);
 	}
 
+	sprintf(message, "Enter the module ID: ");
+	len = cli_readline(message);
+
+	prodid = dectoul(console_buffer, NULL);
+	if (prodid >= ARRAY_SIZE(toradex_modules) || !toradex_modules[prodid].is_enabled) {
+		printf("Parsing module id failed\n");
+		return -1;
+	}
+	tdx_hw_tag.prodid = prodid;
+
+	len = 0;
 	while (len < 4) {
-		sprintf(message, "Enter the module version (e.g. V1.1B): V");
+		sprintf(message, "Enter the module version (e.g. V1.1B or V1.1#26): V");
 		len = cli_readline(message);
 	}
 
 	tdx_hw_tag.ver_major = console_buffer[0] - '0';
 	tdx_hw_tag.ver_minor = console_buffer[2] - '0';
-	tdx_hw_tag.ver_assembly = console_buffer[3] - 'A';
 
-	if (cpu_is_pxa27x() && (tdx_hw_tag.ver_major == 1))
-		tdx_hw_tag.prodid -= (COLIBRI_PXA270_312MHZ -
-				       COLIBRI_PXA270_V1_312MHZ);
+	ret = parse_assembly_string(console_buffer, &tdx_hw_tag.ver_assembly);
+	if (ret) {
+		printf("Parsing module version failed\n");
+		return ret;
+	}
 
 	while (len < 8) {
 		sprintf(message, "Enter module serial number: ");
 		len = cli_readline(message);
 	}
 
-	tdx_serial = simple_strtoul(console_buffer, NULL, 10);
+	tdx_serial = dectoul(console_buffer, NULL);
 
 	return 0;
 }
 
-static int get_cfgblock_barcode(char *barcode)
+static int get_cfgblock_barcode(char *barcode, struct toradex_hw *tag,
+				u32 *serial)
 {
+	char revision[3] = {barcode[6], barcode[7], '\0'};
+
 	if (strlen(barcode) < 16) {
 		printf("Argument too short, barcode is 16 chars long\n");
 		return -1;
 	}
 
 	/* Get hardware information from the first 8 digits */
-	tdx_hw_tag.ver_major = barcode[4] - '0';
-	tdx_hw_tag.ver_minor = barcode[5] - '0';
-	tdx_hw_tag.ver_assembly = barcode[7] - '0';
+	tag->ver_major = barcode[4] - '0';
+	tag->ver_minor = barcode[5] - '0';
+	tag->ver_assembly = dectoul(revision, NULL);
 
 	barcode[4] = '\0';
-	tdx_hw_tag.prodid = simple_strtoul(barcode, NULL, 10);
+	tag->prodid = dectoul(barcode, NULL);
 
 	/* Parse second part of the barcode (serial number */
 	barcode += 8;
-	tdx_serial = simple_strtoul(barcode, NULL, 10);
+	*serial = dectoul(barcode, NULL);
 
 	return 0;
 }
 
-static int do_cfgblock_create(cmd_tbl_t *cmdtp, int flag, int argc,
+static int write_tag(u8 *config_block, int *offset, int tag_id,
+		     u8 *tag_data, size_t tag_data_size)
+{
+	struct toradex_tag *tag;
+
+	if (!offset || !config_block)
+		return -EINVAL;
+
+	tag = (struct toradex_tag *)(config_block + *offset);
+	tag->id = tag_id;
+	tag->flags = TAG_FLAG_VALID;
+	/* len is provided as number of 32bit values after the tag */
+	tag->len = (tag_data_size + sizeof(u32) - 1) / sizeof(u32);
+	*offset += sizeof(struct toradex_tag);
+	if (tag_data && tag_data_size) {
+		memcpy(config_block + *offset, tag_data,
+		       tag_data_size);
+		*offset += tag_data_size;
+	}
+
+	return 0;
+}
+
+#ifdef CONFIG_TDX_CFG_BLOCK_EXTRA
+int read_tdx_cfg_block_carrier(void)
+{
+	int ret = 0;
+	u8 *config_block = NULL;
+	struct toradex_tag *tag;
+	size_t size = TDX_CFG_BLOCK_EXTRA_MAX_SIZE;
+	int offset;
+
+	/* Allocate RAM area for carrier config block */
+	config_block = memalign(ARCH_DMA_MINALIGN, size);
+	if (!config_block) {
+		printf("Not enough malloc space available!\n");
+		return -ENOMEM;
+	}
+
+	memset(config_block, 0, size);
+
+	ret = read_tdx_eeprom_data(TDX_EEPROM_ID_CARRIER, 0x0, config_block,
+				   size);
+	if (ret)
+		return ret;
+
+	/* Expect a valid tag first */
+	tag = (struct toradex_tag *)config_block;
+	if (tag->flags != TAG_FLAG_VALID || tag->id != TAG_VALID) {
+		valid_cfgblock_carrier = false;
+		ret = -EINVAL;
+		goto out;
+	}
+	valid_cfgblock_carrier = true;
+	offset = 4;
+
+	while (offset + sizeof(struct toradex_tag) +
+	       sizeof(struct toradex_hw) < TDX_CFG_BLOCK_MAX_SIZE) {
+		tag = (struct toradex_tag *)(config_block + offset);
+		offset += 4;
+		if (tag->id == TAG_INVALID)
+			break;
+
+		if (tag->flags == TAG_FLAG_VALID) {
+			switch (tag->id) {
+			case TAG_CAR_SERIAL:
+				memcpy(&tdx_car_serial, config_block + offset,
+				       sizeof(tdx_car_serial));
+				break;
+			case TAG_HW:
+				memcpy(&tdx_car_hw_tag, config_block +
+				       offset, 8);
+				break;
+			}
+		}
+
+		/* Get to next tag according to current tags length */
+		offset += tag->len * 4;
+	}
+out:
+	free(config_block);
+	return ret;
+}
+
+int check_pid8_sanity(char *pid8)
+{
+	char s_carrierid_verdin_dev[5];
+	char s_carrierid_dahlia[5];
+
+	sprintf(s_carrierid_verdin_dev, "0%d", VERDIN_DEVELOPMENT_BOARD);
+	sprintf(s_carrierid_dahlia, "0%d", DAHLIA);
+
+	/* sane value check, first 4 chars which represent carrier id */
+	if (!strncmp(pid8, s_carrierid_verdin_dev, 4))
+		return 0;
+
+	if (!strncmp(pid8, s_carrierid_dahlia, 4))
+		return 0;
+
+	return -EINVAL;
+}
+
+int try_migrate_tdx_cfg_block_carrier(void)
+{
+	char pid8[8];
+	int offset = 0;
+	int ret = CMD_RET_SUCCESS;
+	size_t size = TDX_CFG_BLOCK_EXTRA_MAX_SIZE;
+	u8 *config_block;
+
+	memset(pid8, 0x0, 8);
+	ret = read_tdx_eeprom_data(TDX_EEPROM_ID_CARRIER, 0x0, (u8 *)pid8, 8);
+	if (ret)
+		return ret;
+
+	if (check_pid8_sanity(pid8))
+		return -EINVAL;
+
+	/* Allocate RAM area for config block */
+	config_block = memalign(ARCH_DMA_MINALIGN, size);
+	if (!config_block) {
+		printf("Not enough malloc space available!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	memset(config_block, 0xff, size);
+	/* we try parse PID8 concatenating zeroed serial number */
+	tdx_car_hw_tag.ver_major = pid8[4] - '0';
+	tdx_car_hw_tag.ver_minor = pid8[5] - '0';
+	tdx_car_hw_tag.ver_assembly = pid8[7] - '0';
+
+	pid8[4] = '\0';
+	tdx_car_hw_tag.prodid = dectoul(pid8, NULL);
+
+	/* Valid Tag */
+	write_tag(config_block, &offset, TAG_VALID, NULL, 0);
+
+	/* Product Tag */
+	write_tag(config_block, &offset, TAG_HW, (u8 *)&tdx_car_hw_tag,
+		  sizeof(tdx_car_hw_tag));
+
+	/* Serial Tag */
+	write_tag(config_block, &offset, TAG_CAR_SERIAL, (u8 *)&tdx_car_serial,
+		  sizeof(tdx_car_serial));
+
+	memset(config_block + offset, 0, 32 - offset);
+	ret = write_tdx_eeprom_data(TDX_EEPROM_ID_CARRIER, 0x0, config_block,
+				    size);
+	if (ret) {
+		printf("Failed to write Toradex Extra config block: %d\n",
+		       ret);
+		ret = CMD_RET_FAILURE;
+		goto out;
+	}
+
+	printf("Successfully migrated to Toradex Config Block from PID8\n");
+
+out:
+	free(config_block);
+	return ret;
+}
+
+static int get_cfgblock_carrier_interactive(void)
+{
+	char message[CONFIG_SYS_CBSIZE];
+	int len;
+	int ret = 0;
+
+	printf("Supported carrier boards:\n");
+	printf("CARRIER BOARD NAME\t\t [ID]\n");
+	for (int i = 0; i < ARRAY_SIZE(toradex_carrier_boards); i++)
+		if (toradex_carrier_boards[i])
+			printf("%s \t\t [%d]\n", toradex_carrier_boards[i], i);
+
+	sprintf(message, "Choose your carrier board (provide ID): ");
+	len = cli_readline(message);
+	tdx_car_hw_tag.prodid = dectoul(console_buffer, NULL);
+
+	do {
+		sprintf(message, "Enter carrier board version (e.g. V1.1B or V1.1#26): V");
+		len = cli_readline(message);
+	} while (len < 4);
+
+	tdx_car_hw_tag.ver_major = console_buffer[0] - '0';
+	tdx_car_hw_tag.ver_minor = console_buffer[2] - '0';
+
+	ret = parse_assembly_string(console_buffer, &tdx_car_hw_tag.ver_assembly);
+	if (ret) {
+		printf("Parsing module version failed\n");
+		return ret;
+	}
+
+	while (len < 8) {
+		sprintf(message, "Enter carrier board serial number: ");
+		len = cli_readline(message);
+	}
+
+	tdx_car_serial = dectoul(console_buffer, NULL);
+
+	return 0;
+}
+
+static int do_cfgblock_carrier_create(struct cmd_tbl *cmdtp, int flag, int argc,
+				      char * const argv[])
+{
+	u8 *config_block;
+	size_t size = TDX_CFG_BLOCK_EXTRA_MAX_SIZE;
+	int offset = 0;
+	int ret = CMD_RET_SUCCESS;
+	int err;
+	int force_overwrite = 0;
+
+	if (argc >= 3) {
+		if (argv[2][0] == '-' && argv[2][1] == 'y')
+			force_overwrite = 1;
+	}
+
+	/* Allocate RAM area for config block */
+	config_block = memalign(ARCH_DMA_MINALIGN, size);
+	if (!config_block) {
+		printf("Not enough malloc space available!\n");
+		return CMD_RET_FAILURE;
+	}
+
+	memset(config_block, 0xff, size);
+	read_tdx_cfg_block_carrier();
+	if (valid_cfgblock_carrier && !force_overwrite) {
+		char message[CONFIG_SYS_CBSIZE];
+
+		sprintf(message, "A valid Toradex Carrier config block is present, still recreate? [y/N] ");
+
+		if (!cli_readline(message))
+			goto out;
+
+		if (console_buffer[0] != 'y' &&
+		    console_buffer[0] != 'Y')
+			goto out;
+	}
+
+	if (argc < 3 || (force_overwrite && argc < 4)) {
+		err = get_cfgblock_carrier_interactive();
+	} else {
+		if (force_overwrite)
+			err = get_cfgblock_barcode(argv[3], &tdx_car_hw_tag,
+						   &tdx_car_serial);
+		else
+			err = get_cfgblock_barcode(argv[2], &tdx_car_hw_tag,
+						   &tdx_car_serial);
+	}
+
+	if (err) {
+		ret = CMD_RET_FAILURE;
+		goto out;
+	}
+
+	/* Valid Tag */
+	write_tag(config_block, &offset, TAG_VALID, NULL, 0);
+
+	/* Product Tag */
+	write_tag(config_block, &offset, TAG_HW, (u8 *)&tdx_car_hw_tag,
+		  sizeof(tdx_car_hw_tag));
+
+	/* Serial Tag */
+	write_tag(config_block, &offset, TAG_CAR_SERIAL, (u8 *)&tdx_car_serial,
+		  sizeof(tdx_car_serial));
+
+	memset(config_block + offset, 0, 32 - offset);
+	err = write_tdx_eeprom_data(TDX_EEPROM_ID_CARRIER, 0x0, config_block,
+				    size);
+	if (err) {
+		printf("Failed to write Toradex Extra config block: %d\n",
+		       ret);
+		ret = CMD_RET_FAILURE;
+		goto out;
+	}
+
+	printf("Toradex Extra config block successfully written\n");
+
+out:
+	free(config_block);
+	return ret;
+}
+
+#endif /* CONFIG_TDX_CFG_BLOCK_EXTRA */
+
+static int do_cfgblock_create(struct cmd_tbl *cmdtp, int flag, int argc,
 			      char * const argv[])
 {
 	u8 *config_block;
-	struct toradex_tag *tag;
 	size_t size = TDX_CFG_BLOCK_MAX_SIZE;
 	int offset = 0;
 	int ret = CMD_RET_SUCCESS;
 	int err;
+	int force_overwrite = 0;
+
+	if (argc >= 3) {
+#ifdef CONFIG_TDX_CFG_BLOCK_EXTRA
+		if (!strcmp(argv[2], "carrier"))
+			return do_cfgblock_carrier_create(cmdtp, flag,
+							  --argc, ++argv);
+#endif /* CONFIG_TDX_CFG_BLOCK_EXTRA */
+		if (argv[2][0] == '-' && argv[2][1] == 'y')
+			force_overwrite = 1;
+	}
 
 	/* Allocate RAM area for config block */
 	config_block = memalign(ARCH_DMA_MINALIGN, size);
@@ -438,67 +802,61 @@ static int do_cfgblock_create(cmd_tbl_t *cmdtp, int flag, int argc,
 		       CONFIG_TDX_CFG_BLOCK_OFFSET);
 		goto out;
 #else
-		char message[CONFIG_SYS_CBSIZE];
-		sprintf(message,
-			"A valid Toradex config block is present, still recreate? [y/N] ");
+		if (!force_overwrite) {
+			char message[CONFIG_SYS_CBSIZE];
 
-		if (!cli_readline(message))
-			goto out;
+			sprintf(message,
+				"A valid Toradex config block is present, still recreate? [y/N] ");
 
-		if (console_buffer[0] != 'y' && console_buffer[0] != 'Y')
-			goto out;
+			if (!cli_readline(message))
+				goto out;
+
+			if (console_buffer[0] != 'y' &&
+			    console_buffer[0] != 'Y')
+				goto out;
+		}
 #endif
 	}
 
 	/* Parse new Toradex config block data... */
-	if (argc < 3)
+	if (argc < 3 || (force_overwrite && argc < 4)) {
 		err = get_cfgblock_interactive();
-	else
-		err = get_cfgblock_barcode(argv[2]);
-
+	} else {
+		if (force_overwrite)
+			err = get_cfgblock_barcode(argv[3], &tdx_hw_tag,
+						   &tdx_serial);
+		else
+			err = get_cfgblock_barcode(argv[2], &tdx_hw_tag,
+						   &tdx_serial);
+	}
 	if (err) {
 		ret = CMD_RET_FAILURE;
 		goto out;
 	}
 
 	/* Convert serial number to MAC address (the storage format) */
-	tdx_eth_addr.oui = htonl(0x00142dUL << 8);
-	tdx_eth_addr.nic = htonl(tdx_serial << 8);
+	get_mac_from_serial(tdx_serial, &tdx_eth_addr);
 
 	/* Valid Tag */
-	tag = (struct toradex_tag *)config_block;
-	tag->id = TAG_VALID;
-	tag->flags = TAG_FLAG_VALID;
-	tag->len = 0;
-	offset += 4;
+	write_tag(config_block, &offset, TAG_VALID, NULL, 0);
 
 	/* Product Tag */
-	tag = (struct toradex_tag *)(config_block + offset);
-	tag->id = TAG_HW;
-	tag->flags = TAG_FLAG_VALID;
-	tag->len = 2;
-	offset += 4;
-
-	memcpy(config_block + offset, &tdx_hw_tag, 8);
-	offset += 8;
+	write_tag(config_block, &offset, TAG_HW, (u8 *)&tdx_hw_tag,
+		  sizeof(tdx_hw_tag));
 
 	/* MAC Tag */
-	tag = (struct toradex_tag *)(config_block + offset);
-	tag->id = TAG_MAC;
-	tag->flags = TAG_FLAG_VALID;
-	tag->len = 2;
-	offset += 4;
+	write_tag(config_block, &offset, TAG_MAC, (u8 *)&tdx_eth_addr,
+		  sizeof(tdx_eth_addr));
 
-	memcpy(config_block + offset, &tdx_eth_addr, 6);
-	offset += 6;
 	memset(config_block + offset, 0, 32 - offset);
-
 #if defined(CONFIG_TDX_CFG_BLOCK_IS_IN_MMC)
 	err = tdx_cfg_block_mmc_storage(config_block, 1);
 #elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_NAND)
 	err = write_tdx_cfg_block_to_nand(config_block);
 #elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_NOR)
 	err = write_tdx_cfg_block_to_nor(config_block);
+#elif defined(CONFIG_TDX_CFG_BLOCK_IS_IN_EEPROM)
+	err = write_tdx_cfg_block_to_eeprom(config_block);
 #else
 	err = -EINVAL;
 #endif
@@ -515,8 +873,8 @@ out:
 	return ret;
 }
 
-static int do_cfgblock(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
+static int do_cfgblock(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	int ret;
 
@@ -539,8 +897,9 @@ static int do_cfgblock(cmd_tbl_t *cmdtp, int flag, int argc,
 }
 
 U_BOOT_CMD(
-	cfgblock, 3, 0, do_cfgblock,
+	cfgblock, 5, 0, do_cfgblock,
 	"Toradex config block handling commands",
-	"create [barcode] - (Re-)create Toradex config block\n"
+	"create [-y] [barcode] - (Re-)create Toradex config block\n"
+	"create carrier [-y] [barcode] - (Re-)create Toradex Carrier config block\n"
 	"cfgblock reload - Reload Toradex config block from flash"
 );

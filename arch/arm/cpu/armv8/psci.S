@@ -8,19 +8,19 @@
 #include <config.h>
 #include <linux/linkage.h>
 #include <asm/psci.h>
+#include <asm/secure.h>
 
 /* Default PSCI function, return -1, Not Implemented */
 #define PSCI_DEFAULT(__fn) \
-	ENTRY(__fn); \
+	WEAK(__fn); \
 	mov	w0, #ARM_PSCI_RET_NI; \
 	ret; \
 	ENDPROC(__fn); \
-	.weak __fn
 
 /* PSCI function and ID table definition*/
 #define PSCI_TABLE(__id, __fn) \
-	.word __id; \
-	.word __fn
+	.quad __id; \
+	.quad __fn
 
 .pushsection ._secure.text, "ax"
 
@@ -81,6 +81,7 @@ PSCI_DEFAULT(psci_node_hw_state_64)
 PSCI_DEFAULT(psci_system_suspend_64)
 PSCI_DEFAULT(psci_stat_residency_64)
 PSCI_DEFAULT(psci_stat_count_64)
+PSCI_DEFAULT(psci_system_reset2_64)
 
 .align 3
 _psci_64_table:
@@ -94,6 +95,7 @@ PSCI_TABLE(ARM_PSCI_1_0_FN64_NODE_HW_STATE, psci_node_hw_state_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_SYSTEM_SUSPEND, psci_system_suspend_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_STAT_RESIDENCY, psci_stat_residency_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_STAT_COUNT, psci_stat_count_64)
+PSCI_TABLE(ARM_PSCI_1_1_FN64_SYSTEM_RESET2, psci_system_reset2_64)
 PSCI_TABLE(0, 0)
 
 .macro	psci_enter
@@ -132,33 +134,52 @@ PSCI_TABLE(0, 0)
 /* Caller must put PSCI function-ID table base in x9 */
 handle_psci:
 	psci_enter
-1:	ldr x10, [x9]			/* Load PSCI function table */
-	ubfx x11, x10, #32, #32
-	ubfx x10, x10, #0, #32
+1:	ldr	x10, [x9]		/* Load PSCI function table */
 	cbz	x10, 3f			/* If reach the end, bail out */
 	cmp	x10, x0
 	b.eq	2f			/* PSCI function found */
-	add x9, x9, #8			/* If not match, try next entry */
+	add x9, x9, #16			/* If not match, try next entry */
 	b	1b
 
-2:	blr	x11			/* Call PSCI function */
+2:	ldr	x11, [x9, #8]		/* Load PSCI function */
+	blr	x11			/* Call PSCI function */
 	psci_return
 
 3:	mov	x0, #ARM_PSCI_RET_NI
 	psci_return
 
-unknown_smc_id:
-	ldr	x0, =0xFFFFFFFF
+/*
+ * Handle SiP service functions defined in SiP service function table.
+ * Use DECLARE_SECURE_SVC(_name, _id, _fn) to add platform specific SiP
+ * service function into the SiP service function table.
+ * SiP service function table is located in '._secure_svc_tbl_entries' section,
+ * which is next to '._secure.text' section.
+ */
+handle_svc:
+	adr	x9, __secure_svc_tbl_start
+	adr	x10, __secure_svc_tbl_end
+	subs	x12, x10, x9	/* Get number of entries in table */
+	b.eq	2f		/* Make sure SiP function table is not empty */
+	psci_enter
+1:	ldr x10, [x9]		/* Load SiP function table */
+	ldr x11, [x9, #8]
+	cmp	w10, w0
+	b.eq	2b		/* SiP service function found */
+	add x9, x9, #SECURE_SVC_TBL_OFFSET	/* Move to next entry */
+	subs	x12, x12, #SECURE_SVC_TBL_OFFSET
+	b.eq	3b		/* If reach the end, bail out */
+	b	1b
+2:	ldr	x0, =0xFFFFFFFF
 	eret
 
 handle_smc32:
 	/* SMC function ID  0x84000000-0x8400001F: 32 bits PSCI */
 	ldr	w9, =0x8400001F
 	cmp	w0, w9
-	b.gt	unknown_smc_id
+	b.gt	handle_svc
 	ldr	w9, =0x84000000
 	cmp	w0, w9
-	b.lt	unknown_smc_id
+	b.lt	handle_svc
 
 	adr	x9, _psci_32_table
 	b	handle_psci
@@ -171,10 +192,10 @@ handle_smc64:
 	/* SMC function ID 0xC4000000-0xC400001F: 64 bits PSCI */
 	ldr	x9, =0xC400001F
 	cmp	x0, x9
-	b.gt	unknown_smc_id
+	b.gt	handle_svc
 	ldr	x9, =0xC4000000
 	cmp	x0, x9
-	b.lt	unknown_smc_id
+	b.lt	handle_svc
 
 	adr	x9, _psci_64_table
 	b	handle_psci
@@ -187,7 +208,7 @@ handle_smc64:
  * used for the return value, while in this PSCI environment, X0 usually holds
  * the SMC function identifier, so X0 should be saved by caller function.
  */
-ENTRY(psci_get_cpu_id)
+WEAK(psci_get_cpu_id)
 #ifdef CONFIG_ARMV8_PSCI_CPUS_PER_CLUSTER
 	mrs	x9, MPIDR_EL1
 	ubfx	x9, x9, #8, #8
@@ -201,7 +222,6 @@ ENTRY(psci_get_cpu_id)
 	add	x0, x10, x9
 	ret
 ENDPROC(psci_get_cpu_id)
-.weak psci_get_cpu_id
 
 /* CPU ID input in x0, stack top output in x0*/
 LENTRY(psci_get_cpu_stack_top)
@@ -236,6 +256,27 @@ handle_sync:
 
 	b	unhandled_exception
 
+#ifdef CONFIG_ARMV8_EA_EL3_FIRST
+/*
+ * Override this function if custom error handling is
+ * needed for asynchronous aborts
+ */
+WEAK(plat_error_handler)
+	ret
+ENDPROC(plat_error_handler)
+
+handle_error:
+	bl	psci_get_cpu_id
+	bl	psci_get_cpu_stack_top
+	mov	x9, #1
+	msr	spsel, x9
+	mov	sp, x0
+
+	bl	plat_error_handler	/* Platform specific error handling */
+deadloop:
+	b	deadloop		/* Never return */
+#endif
+
 	.align	11
 	.globl	el3_exception_vectors
 el3_exception_vectors:
@@ -261,7 +302,11 @@ el3_exception_vectors:
 	.align	7
 	b	unhandled_exception	/* FIQ, Lower EL using AArch64 */
 	.align	7
+#ifdef CONFIG_ARMV8_EA_EL3_FIRST
+	b	handle_error		/* SError, Lower EL using AArch64 */
+#else
 	b	unhandled_exception	/* SError, Lower EL using AArch64 */
+#endif
 	.align	7
 	b	unhandled_exception	/* Sync, Lower EL using AArch32 */
 	.align	7
@@ -277,9 +322,8 @@ ENTRY(psci_setup_vectors)
 	ret
 ENDPROC(psci_setup_vectors)
 
-ENTRY(psci_arch_init)
+WEAK(psci_arch_init)
 	ret
 ENDPROC(psci_arch_init)
-.weak psci_arch_init
 
 .popsection

@@ -8,9 +8,12 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <pci.h>
 #include <mpc83xx.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -21,158 +24,51 @@ static struct {
 	u32 size;
 } mpc83xx_pcie_cfg_space[] = {
 	{
-		.base = CONFIG_SYS_PCIE1_CFG_BASE,
-		.size = CONFIG_SYS_PCIE1_CFG_SIZE,
+		.base = CFG_SYS_PCIE1_CFG_BASE,
+		.size = CFG_SYS_PCIE1_CFG_SIZE,
 	},
-#if defined(CONFIG_SYS_PCIE2_CFG_BASE) && defined(CONFIG_SYS_PCIE2_CFG_SIZE)
+#if defined(CFG_SYS_PCIE2_CFG_BASE) && defined(CFG_SYS_PCIE2_CFG_SIZE)
 	{
-		.base = CONFIG_SYS_PCIE2_CFG_BASE,
-		.size = CONFIG_SYS_PCIE2_CFG_SIZE,
+		.base = CFG_SYS_PCIE2_CFG_BASE,
+		.size = CFG_SYS_PCIE2_CFG_SIZE,
 	},
 #endif
 };
 
-#ifdef CONFIG_83XX_GENERIC_PCIE_REGISTER_HOSES
-
-/* private structure for mpc83xx pcie hose */
-static struct mpc83xx_pcie_priv {
-	u8 index;
-} pcie_priv[PCIE_MAX_BUSES] = {
-	{
-		/* pcie controller 1 */
-		.index = 0,
-	},
-	{
-		/* pcie controller 2 */
-		.index = 1,
-	},
-};
-
-static int mpc83xx_pcie_remap_cfg(struct pci_controller *hose, pci_dev_t dev)
+int get_pcie_clk(int index)
 {
-	int bus = PCI_BUS(dev) - hose->first_busno;
-	immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
-	struct mpc83xx_pcie_priv *pcie_priv = hose->priv_data;
-	pex83xx_t *pex = &immr->pciexp[pcie_priv->index];
-	struct pex_outbound_window *out_win = &pex->bridge.pex_outbound_win[0];
-	u8 devfn = PCI_DEV(dev) << 3 | PCI_FUNC(dev);
-	u32 dev_base = bus << 24 | devfn << 16;
+	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
+	u32 pci_sync_in;
+	u8 spmf;
+	u8 clkin_div;
+	u32 sccr;
+	u32 csb_clk;
+	u32 testval;
 
-	if (hose->indirect_type == INDIRECT_TYPE_NO_PCIE_LINK)
-		return -1;
-	/*
-	 * Workaround for the HW bug: for Type 0 configure transactions the
-	 * PCI-E controller does not check the device number bits and just
-	 * assumes that the device number bits are 0.
-	 */
-	if (devfn & 0xf8)
-		return -1;
+	clkin_div = ((im->clk.spmr & SPMR_CKID) >> SPMR_CKID_SHIFT);
+	sccr = im->clk.sccr;
+	pci_sync_in = get_board_sys_clk() / (1 + clkin_div);
+	spmf = (im->clk.spmr & SPMR_SPMF) >> SPMR_SPMF_SHIFT;
+	csb_clk = pci_sync_in * (1 + clkin_div) * spmf;
 
-	out_le32(&out_win->tarl, dev_base);
-	return 0;
-}
+	if (index)
+		testval = (sccr & SCCR_PCIEXP2CM) >> SCCR_PCIEXP2CM_SHIFT;
+	else
+		testval = (sccr & SCCR_PCIEXP1CM) >> SCCR_PCIEXP1CM_SHIFT;
 
-#define cfg_read(val, addr, type, op) \
-	do { *val = op((type)(addr)); } while (0)
-#define cfg_write(val, addr, type, op) \
-	do { op((type *)(addr), (val)); } while (0)
-
-#define cfg_read_err(val) do { *val = -1; } while (0)
-#define cfg_write_err(val) do { } while (0)
-
-#define PCIE_OP(rw, size, type, op)					\
-static int pcie_##rw##_config_##size(struct pci_controller *hose,	\
-				     pci_dev_t dev, int offset,		\
-				     type val)				\
-{									\
-	int ret;							\
-									\
-	ret = mpc83xx_pcie_remap_cfg(hose, dev);			\
-	if (ret) {							\
-		cfg_##rw##_err(val); 					\
-		return ret; 						\
-	}								\
-	cfg_##rw(val, (void *)hose->cfg_addr + offset, type, op);	\
-	return 0;							\
-}
-
-PCIE_OP(read, byte, u8 *, in_8)
-PCIE_OP(read, word, u16 *, in_le16)
-PCIE_OP(read, dword, u32 *, in_le32)
-PCIE_OP(write, byte, u8, out_8)
-PCIE_OP(write, word, u16, out_le16)
-PCIE_OP(write, dword, u32, out_le32)
-
-static void mpc83xx_pcie_register_hose(int bus, struct pci_region *reg,
-				       u8 link)
-{
-	extern void disable_addr_trans(void); /* start.S */
-	static struct pci_controller pcie_hose[PCIE_MAX_BUSES];
-	struct pci_controller *hose = &pcie_hose[bus];
-	int i;
-
-	/*
-	 * There are no spare BATs to remap all PCI-E windows for U-Boot, so
-	 * disable translations. In general, this is not great solution, and
-	 * that's why we don't register PCI-E hoses by default.
-	 */
-	disable_addr_trans();
-
-	for (i = 0; i < 2; i++, reg++) {
-		if (reg->size == 0)
-			break;
-
-		hose->regions[i] = *reg;
-		hose->region_count++;
+	switch (testval) {
+	case 0:
+		return 0;
+	case 1:
+		return csb_clk;
+	case 2:
+		return csb_clk / 2;
+	case 3:
+		return csb_clk / 3;
 	}
 
-	i = hose->region_count++;
-	hose->regions[i].bus_start = 0;
-	hose->regions[i].phys_start = 0;
-	hose->regions[i].size = gd->ram_size;
-	hose->regions[i].flags = PCI_REGION_MEM | PCI_REGION_SYS_MEMORY;
-
-	i = hose->region_count++;
-	hose->regions[i].bus_start = CONFIG_SYS_IMMR;
-	hose->regions[i].phys_start = CONFIG_SYS_IMMR;
-	hose->regions[i].size = 0x100000;
-	hose->regions[i].flags = PCI_REGION_MEM | PCI_REGION_SYS_MEMORY;
-
-	hose->first_busno = pci_last_busno() + 1;
-	hose->last_busno = 0xff;
-
-	hose->cfg_addr = (unsigned int *)mpc83xx_pcie_cfg_space[bus].base;
-
-	hose->priv_data = &pcie_priv[bus];
-
-	pci_set_ops(hose,
-			pcie_read_config_byte,
-			pcie_read_config_word,
-			pcie_read_config_dword,
-			pcie_write_config_byte,
-			pcie_write_config_word,
-			pcie_write_config_dword);
-
-	if (!link)
-		hose->indirect_type = INDIRECT_TYPE_NO_PCIE_LINK;
-
-	pci_register_hose(hose);
-
-#ifdef CONFIG_PCI_SCAN_SHOW
-	printf("PCI:   Bus Dev VenId DevId Class Int\n");
-#endif
-	/*
-	 * Hose scan.
-	 */
-	hose->last_busno = pci_hose_scan(hose);
+	return 0;
 }
-
-#else
-
-static void mpc83xx_pcie_register_hose(int bus, struct pci_region *reg,
-				       u8 link) {}
-
-#endif /* CONFIG_83XX_GENERIC_PCIE_REGISTER_HOSES */
 
 static void mpc83xx_pcie_init_bus(int bus, struct pci_region *reg)
 {
@@ -269,11 +165,9 @@ static void mpc83xx_pcie_init_bus(int bus, struct pci_region *reg)
 	/* Hose configure header is memory-mapped */
 	hose_cfg_base = (void *)pex;
 
-	get_clocks();
 	/* Configure the PCIE controller core clock ratio */
 	out_le32(hose_cfg_base + PEX_GCLK_RATIO,
-		(((bus ? gd->arch.pciexp2_clk : gd->arch.pciexp1_clk)
-			/ 1000000) * 16) / 333);
+		((get_pcie_clk(bus) / 1000000) * 16) / 333);
 	udelay(1000000);
 
 	/* Do Type 1 bridge configuration */
@@ -305,8 +199,6 @@ static void mpc83xx_pcie_init_bus(int bus, struct pci_region *reg)
 		printf("link\n");
 	else
 		printf("No link\n");
-
-	mpc83xx_pcie_register_hose(bus, reg, reg16 >= PCI_LTSSM_L0);
 }
 
 /*

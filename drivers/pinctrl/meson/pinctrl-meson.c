@@ -5,12 +5,18 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
+#include <asm/global_data.h>
 #include <dm/device-internal.h>
+#include <dm/device_compat.h>
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
 #include <fdt_support.h>
+#include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/libfdt.h>
 #include <linux/sizes.h>
 #include <asm/gpio.h>
 
@@ -20,15 +26,17 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static const char *meson_pinctrl_dummy_name = "_dummy";
 
-static int meson_pinctrl_get_groups_count(struct udevice *dev)
+static char pin_name[PINNAME_SIZE];
+
+int meson_pinctrl_get_groups_count(struct udevice *dev)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev);
 
 	return priv->data->num_groups;
 }
 
-static const char *meson_pinctrl_get_group_name(struct udevice *dev,
-						unsigned selector)
+const char *meson_pinctrl_get_group_name(struct udevice *dev,
+					 unsigned int selector)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev);
 
@@ -38,92 +46,48 @@ static const char *meson_pinctrl_get_group_name(struct udevice *dev,
 	return priv->data->groups[selector].name;
 }
 
-static int meson_pinmux_get_functions_count(struct udevice *dev)
+int meson_pinctrl_get_pins_count(struct udevice *dev)
+{
+	struct meson_pinctrl *priv = dev_get_priv(dev);
+
+	return priv->data->num_pins;
+}
+
+const char *meson_pinctrl_get_pin_name(struct udevice *dev,
+				       unsigned int selector)
+{
+	struct meson_pinctrl *priv = dev_get_priv(dev);
+
+	if (selector > priv->data->num_pins ||
+	    selector > priv->data->funcs[0].num_groups)
+		snprintf(pin_name, PINNAME_SIZE, "Error");
+	else
+		snprintf(pin_name, PINNAME_SIZE, "%s",
+			 priv->data->funcs[0].groups[selector]);
+
+	return pin_name;
+}
+
+int meson_pinmux_get_functions_count(struct udevice *dev)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev);
 
 	return priv->data->num_funcs;
 }
 
-static const char *meson_pinmux_get_function_name(struct udevice *dev,
-						  unsigned selector)
+const char *meson_pinmux_get_function_name(struct udevice *dev,
+					   unsigned int selector)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev);
 
 	return priv->data->funcs[selector].name;
 }
 
-static void meson_pinmux_disable_other_groups(struct meson_pinctrl *priv,
-					      unsigned int pin, int sel_group)
-{
-	struct meson_pmx_group *group;
-	void __iomem *addr;
-	int i, j;
-
-	for (i = 0; i < priv->data->num_groups; i++) {
-		group = &priv->data->groups[i];
-		if (group->is_gpio || i == sel_group)
-			continue;
-
-		for (j = 0; j < group->num_pins; j++) {
-			if (group->pins[j] == pin) {
-				/* We have found a group using the pin */
-				debug("pinmux: disabling %s\n", group->name);
-				addr = priv->reg_mux + group->reg * 4;
-				writel(readl(addr) & ~BIT(group->bit), addr);
-			}
-		}
-	}
-}
-
-static int meson_pinmux_group_set(struct udevice *dev,
-				  unsigned group_selector,
-				  unsigned func_selector)
-{
-	struct meson_pinctrl *priv = dev_get_priv(dev);
-	const struct meson_pmx_group *group;
-	const struct meson_pmx_func *func;
-	void __iomem *addr;
-	int i;
-
-	group = &priv->data->groups[group_selector];
-	func = &priv->data->funcs[func_selector];
-
-	debug("pinmux: set group %s func %s\n", group->name, func->name);
-
-	/*
-	 * Disable groups using the same pins.
-	 * The selected group is not disabled to avoid glitches.
-	 */
-	for (i = 0; i < group->num_pins; i++) {
-		meson_pinmux_disable_other_groups(priv,
-						  group->pins[i],
-						  group_selector);
-	}
-
-	/* Function 0 (GPIO) doesn't need any additional setting */
-	if (func_selector) {
-		addr = priv->reg_mux + group->reg * 4;
-		writel(readl(addr) | BIT(group->bit), addr);
-	}
-
-	return 0;
-}
-
-const struct pinctrl_ops meson_pinctrl_ops = {
-	.get_groups_count = meson_pinctrl_get_groups_count,
-	.get_group_name = meson_pinctrl_get_group_name,
-	.get_functions_count = meson_pinmux_get_functions_count,
-	.get_function_name = meson_pinmux_get_function_name,
-	.pinmux_group_set = meson_pinmux_group_set,
-	.set_state = pinctrl_generic_set_state,
-};
-
 static int meson_gpio_calc_reg_and_bit(struct udevice *dev, unsigned int offset,
 				       enum meson_reg_type reg_type,
 				       unsigned int *reg, unsigned int *bit)
 {
-	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
+	struct meson_pinctrl *priv = dev_get_priv(dev);
 	struct meson_bank *bank = NULL;
 	struct meson_reg_desc *desc;
 	unsigned int pin;
@@ -149,26 +113,28 @@ static int meson_gpio_calc_reg_and_bit(struct udevice *dev, unsigned int offset,
 	return 0;
 }
 
-static int meson_gpio_get(struct udevice *dev, unsigned int offset)
+int meson_gpio_get(struct udevice *dev, unsigned int offset)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	unsigned int reg, bit;
 	int ret;
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_IN, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_IN, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
 	return !!(readl(priv->reg_gpio + reg) & BIT(bit));
 }
 
-static int meson_gpio_set(struct udevice *dev, unsigned int offset, int value)
+int meson_gpio_set(struct udevice *dev, unsigned int offset, int value)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	unsigned int reg, bit;
 	int ret;
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_OUT, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_OUT, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
@@ -177,13 +143,14 @@ static int meson_gpio_set(struct udevice *dev, unsigned int offset, int value)
 	return 0;
 }
 
-static int meson_gpio_get_direction(struct udevice *dev, unsigned int offset)
+int meson_gpio_get_direction(struct udevice *dev, unsigned int offset)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	unsigned int reg, bit, val;
 	int ret;
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_DIR, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_DIR, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
@@ -192,35 +159,38 @@ static int meson_gpio_get_direction(struct udevice *dev, unsigned int offset)
 	return (val & BIT(bit)) ? GPIOF_INPUT : GPIOF_OUTPUT;
 }
 
-static int meson_gpio_direction_input(struct udevice *dev, unsigned int offset)
+int meson_gpio_direction_input(struct udevice *dev, unsigned int offset)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	unsigned int reg, bit;
 	int ret;
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_DIR, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_DIR, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
-	clrsetbits_le32(priv->reg_gpio + reg, BIT(bit), 1);
+	setbits_le32(priv->reg_gpio + reg, BIT(bit));
 
 	return 0;
 }
 
-static int meson_gpio_direction_output(struct udevice *dev,
-				       unsigned int offset, int value)
+int meson_gpio_direction_output(struct udevice *dev,
+				unsigned int offset, int value)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	unsigned int reg, bit;
 	int ret;
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_DIR, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_DIR, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
-	clrsetbits_le32(priv->reg_gpio + reg, BIT(bit), 0);
+	clrbits_le32(priv->reg_gpio + reg, BIT(bit));
 
-	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_OUT, &reg, &bit);
+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_OUT, &reg,
+					  &bit);
 	if (ret)
 		return ret;
 
@@ -229,7 +199,116 @@ static int meson_gpio_direction_output(struct udevice *dev,
 	return 0;
 }
 
-static int meson_gpio_probe(struct udevice *dev)
+static int meson_pinconf_bias_set(struct udevice *dev, unsigned int pin,
+				  unsigned int param)
+{
+	struct meson_pinctrl *priv = dev_get_priv(dev);
+	unsigned int offset = pin - priv->data->pin_base;
+	unsigned int reg, bit;
+	int ret;
+
+	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_PULLEN, &reg, &bit);
+	if (ret)
+		return ret;
+
+	if (param == PIN_CONFIG_BIAS_DISABLE) {
+		clrsetbits_le32(priv->reg_pullen + reg, BIT(bit), 0);
+		return 0;
+	}
+
+	/* othewise, enable the bias and select level */
+	clrsetbits_le32(priv->reg_pullen + reg, BIT(bit), BIT(bit));
+	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_PULL, &reg, &bit);
+	if (ret)
+		return ret;
+
+	clrsetbits_le32(priv->reg_pull + reg, BIT(bit),
+			(param == PIN_CONFIG_BIAS_PULL_UP ? BIT(bit) : 0));
+
+	return 0;
+}
+
+static int meson_pinconf_drive_strength_set(struct udevice *dev,
+					    unsigned int pin,
+					    unsigned int drive_strength_ua)
+{
+	struct meson_pinctrl *priv = dev_get_priv(dev);
+	unsigned int offset = pin - priv->data->pin_base;
+	unsigned int reg, bit;
+	unsigned int ds_val;
+	int ret;
+
+	if (!priv->reg_ds) {
+		dev_err(dev, "drive-strength-microamp not supported\n");
+		return -ENOTSUPP;
+	}
+
+	ret = meson_gpio_calc_reg_and_bit(dev, offset, REG_DS, &reg, &bit);
+	if (ret)
+		return ret;
+
+	bit = bit << 1;
+
+	if (drive_strength_ua <= 500) {
+		ds_val = MESON_PINCONF_DRV_500UA;
+	} else if (drive_strength_ua <= 2500) {
+		ds_val = MESON_PINCONF_DRV_2500UA;
+	} else if (drive_strength_ua <= 3000) {
+		ds_val = MESON_PINCONF_DRV_3000UA;
+	} else if (drive_strength_ua <= 4000) {
+		ds_val = MESON_PINCONF_DRV_4000UA;
+	} else {
+		dev_warn(dev,
+			 "pin %u: invalid drive-strength-microamp : %d , default to 4mA\n",
+			 pin, drive_strength_ua);
+		ds_val = MESON_PINCONF_DRV_4000UA;
+	}
+
+	clrsetbits_le32(priv->reg_ds + reg, 0x3 << bit, ds_val << bit);
+
+	return 0;
+}
+
+int meson_pinconf_set(struct udevice *dev, unsigned int pin,
+		      unsigned int param, unsigned int arg)
+{
+	int ret;
+
+	switch (param) {
+	case PIN_CONFIG_BIAS_DISABLE:
+	case PIN_CONFIG_BIAS_PULL_UP:
+	case PIN_CONFIG_BIAS_PULL_DOWN:
+		ret = meson_pinconf_bias_set(dev, pin, param);
+		break;
+	case PIN_CONFIG_DRIVE_STRENGTH_UA:
+		ret = meson_pinconf_drive_strength_set(dev, pin, arg);
+		break;
+	default:
+		dev_err(dev, "unsupported configuration parameter %u\n", param);
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+int meson_pinconf_group_set(struct udevice *dev,
+			    unsigned int group_selector,
+			    unsigned int param, unsigned int arg)
+{
+	struct meson_pinctrl *priv = dev_get_priv(dev);
+	struct meson_pmx_group *grp = &priv->data->groups[group_selector];
+	int i, ret;
+
+	for (i = 0; i < grp->num_pins; i++) {
+		ret = meson_pinconf_set(dev, grp->pins[i], param, arg);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+int meson_gpio_probe(struct udevice *dev)
 {
 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
 	struct gpio_dev_priv *uc_priv;
@@ -240,21 +319,6 @@ static int meson_gpio_probe(struct udevice *dev)
 
 	return 0;
 }
-
-static const struct dm_gpio_ops meson_gpio_ops = {
-	.set_value = meson_gpio_set,
-	.get_value = meson_gpio_get,
-	.get_function = meson_gpio_get_direction,
-	.direction_input = meson_gpio_direction_input,
-	.direction_output = meson_gpio_direction_output,
-};
-
-static struct driver meson_gpio_driver = {
-	.name	= "meson-gpio",
-	.id	= UCLASS_GPIO,
-	.probe	= meson_gpio_probe,
-	.ops	= &meson_gpio_ops,
-};
 
 static fdt_addr_t parse_address(int offset, const char *name, int na, int ns)
 {
@@ -284,6 +348,7 @@ int meson_pinctrl_probe(struct udevice *dev)
 	int na, ns;
 	char *name;
 
+	/* FIXME: Should use livetree */
 	na = fdt_address_cells(gd->fdt_blob, dev_of_offset(dev->parent));
 	if (na < 1) {
 		debug("bad #address-cells\n");
@@ -321,6 +386,28 @@ int meson_pinctrl_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 	priv->reg_gpio = (void __iomem *)addr;
+
+	addr = parse_address(gpio, "pull", na, ns);
+	/* Use gpio region if pull one is not present */
+	if (addr == FDT_ADDR_T_NONE)
+		priv->reg_pull = priv->reg_gpio;
+	else
+		priv->reg_pull = (void __iomem *)addr;
+
+	addr = parse_address(gpio, "pull-enable", na, ns);
+	/* Use pull region if pull-enable one is not present */
+	if (addr == FDT_ADDR_T_NONE)
+		priv->reg_pullen = priv->reg_pull;
+	else
+		priv->reg_pullen = (void __iomem *)addr;
+
+	addr = parse_address(gpio, "ds", na, ns);
+	/* Drive strength region is optional */
+	if (addr == FDT_ADDR_T_NONE)
+		priv->reg_ds = NULL;
+	else
+		priv->reg_ds = (void __iomem *)addr;
+
 	priv->data = (struct meson_pinctrl_data *)dev_get_driver_data(dev);
 
 	/* Lookup GPIO driver */
@@ -334,8 +421,8 @@ int meson_pinctrl_probe(struct udevice *dev)
 	sprintf(name, "meson-gpio");
 
 	/* Create child device UCLASS_GPIO and bind it */
-	device_bind(dev, &meson_gpio_driver, name, NULL, gpio, &gpio_dev);
-	dev_set_of_offset(gpio_dev, gpio);
+	device_bind(dev, priv->data->gpio_driver, name, NULL,
+		    offset_to_ofnode(gpio), &gpio_dev);
 
 	return 0;
 }

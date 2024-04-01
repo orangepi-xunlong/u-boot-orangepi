@@ -7,6 +7,7 @@
 
 #ifndef __ASSEMBLY__
 /* Hardware Page Table Entry */
+#include <linux/bitops.h>
 typedef struct _PTE {
 #ifdef CONFIG_PPC64BRIDGE
 	unsigned long long vsid:52;
@@ -135,10 +136,6 @@ typedef struct _MMU_context {
 
 extern void _tlbie(unsigned long va);	/* invalidate a TLB entry */
 extern void _tlbia(void);		/* invalidate all TLB entries */
-
-#ifdef CONFIG_ADDR_MAP
-extern void init_addr_map(void);
-#endif
 
 typedef enum {
 	IBAT0 = 0, IBAT1, IBAT2, IBAT3,
@@ -450,7 +447,7 @@ extern void print_bats(void);
 		(((ts) << 12) & MAS1_TS)                |\
 		(MAS1_TSIZE(tsize)))
 #define FSL_BOOKE_MAS2(epn, wimge) \
-		(((epn) & MAS3_RPN) | (wimge))
+		(((epn) & MAS2_EPN) | (wimge))
 #define FSL_BOOKE_MAS3(rpn, user, perms) \
 		(((rpn) & MAS3_RPN) | (user) | (perms))
 #define FSL_BOOKE_MAS7(rpn) \

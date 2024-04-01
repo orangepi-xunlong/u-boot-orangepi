@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <common.h>
@@ -9,7 +9,9 @@
 #include <regmap.h>
 #include <syscon.h>
 #include <sysreset.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -58,7 +60,7 @@ static int sti_sysreset_probe(struct udevice *dev)
 		return -ENODEV;
 	}
 
-	priv->base = regmap->base;
+	priv->base = regmap->ranges[0].start;
 
 	return 0;
 }
@@ -78,5 +80,5 @@ U_BOOT_DRIVER(sysreset_sti) = {
 	.ops = &sti_sysreset,
 	.probe = sti_sysreset_probe,
 	.of_match = sti_sysreset_ids,
-	.priv_auto_alloc_size = sizeof(struct sti_sysreset_priv),
+	.priv_auto	= sizeof(struct sti_sysreset_priv),
 };

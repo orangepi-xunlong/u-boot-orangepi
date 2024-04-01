@@ -29,15 +29,18 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <linux/mtd/rawnand.h>
 #include <asm/io.h>
 #include <nand.h>
+#include <dm/uclass.h>
 #include <asm/ti-common/davinci_nand.h>
 
 /* Definitions for 4-bit hardware ECC */
 #define NAND_TIMEOUT			10240
 #define NAND_ECC_BUSY			0xC
 #define NAND_4BITECC_MASK		0x03FF03FF
-#define EMIF_NANDFSR_ECC_STATE_MASK  	0x00000F00
+#define EMIF_NANDFSR_ECC_STATE_MASK	0x00000F00
 #define ECC_STATE_NO_ERR		0x0
 #define ECC_STATE_TOO_MANY_ERRS		0x1
 #define ECC_STATE_ERR_CORR_COMP_P	0x2
@@ -167,7 +170,7 @@ static u_int32_t nand_davinci_readecc(struct mtd_info *mtd)
 	u_int32_t	ecc = 0;
 
 	ecc = __raw_readl(&(davinci_emif_regs->nandfecc[
-				CONFIG_SYS_NAND_CS - 2]));
+				CFG_SYS_NAND_CS - 2]));
 
 	return ecc;
 }
@@ -180,8 +183,8 @@ static void nand_davinci_enable_hwecc(struct mtd_info *mtd, int mode)
 	nand_davinci_readecc(mtd);
 
 	val = __raw_readl(&davinci_emif_regs->nandfcr);
-	val |= DAVINCI_NANDFCR_NAND_ENABLE(CONFIG_SYS_NAND_CS);
-	val |= DAVINCI_NANDFCR_1BIT_ECC_START(CONFIG_SYS_NAND_CS);
+	val |= DAVINCI_NANDFCR_NAND_ENABLE(CFG_SYS_NAND_CS);
+	val |= DAVINCI_NANDFCR_1BIT_ECC_START(CFG_SYS_NAND_CS);
 	__raw_writel(val, &davinci_emif_regs->nandfcr);
 }
 
@@ -345,9 +348,9 @@ static struct nand_ecclayout nand_keystone_rbl_4bit_layout_oobfirst = {
 };
 
 #ifdef CONFIG_SYS_NAND_PAGE_2K
-#define CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE	CONFIG_KEYSTONE_NAND_MAX_RBL_SIZE >> 11
+#define KEYSTONE_NAND_MAX_RBL_PAGE	(0x100000 >> 11)
 #elif defined(CONFIG_SYS_NAND_PAGE_4K)
-#define CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE	CONFIG_KEYSTONE_NAND_MAX_RBL_SIZE >> 12
+#define KEYSTONE_NAND_MAX_RBL_PAGE	(0x100000 >> 12)
 #endif
 
 /**
@@ -369,7 +372,7 @@ static int nand_davinci_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	struct nand_ecclayout *saved_ecc_layout;
 
 	/* save current ECC layout and assign Keystone RBL ECC layout */
-	if (page < CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE) {
+	if (page < KEYSTONE_NAND_MAX_RBL_PAGE) {
 		saved_ecc_layout = chip->ecc.layout;
 		chip->ecc.layout = &nand_keystone_rbl_4bit_layout_oobfirst;
 		mtd->oobavail = chip->ecc.layout->oobavail;
@@ -400,7 +403,7 @@ static int nand_davinci_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 
 err:
 	/* restore ECC layout */
-	if (page < CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE) {
+	if (page < KEYSTONE_NAND_MAX_RBL_PAGE) {
 		chip->ecc.layout = saved_ecc_layout;
 		mtd->oobavail = saved_ecc_layout->oobavail;
 	}
@@ -431,7 +434,7 @@ static int nand_davinci_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *
 	struct nand_ecclayout *saved_ecc_layout = chip->ecc.layout;
 
 	/* save current ECC layout and assign Keystone RBL ECC layout */
-	if (page < CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE) {
+	if (page < KEYSTONE_NAND_MAX_RBL_PAGE) {
 		chip->ecc.layout = &nand_keystone_rbl_4bit_layout_oobfirst;
 		mtd->oobavail = chip->ecc.layout->oobavail;
 	}
@@ -461,7 +464,7 @@ static int nand_davinci_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *
 	}
 
 	/* restore ECC layout */
-	if (page < CONFIG_KEYSTONE_NAND_MAX_RBL_PAGE) {
+	if (page < KEYSTONE_NAND_MAX_RBL_PAGE) {
 		chip->ecc.layout = saved_ecc_layout;
 		mtd->oobavail = saved_ecc_layout->oobavail;
 	}
@@ -483,8 +486,8 @@ static void nand_davinci_4bit_enable_hwecc(struct mtd_info *mtd, int mode)
 		 */
 		val = __raw_readl(&davinci_emif_regs->nandfcr);
 		val &= ~DAVINCI_NANDFCR_4BIT_ECC_SEL_MASK;
-		val |= DAVINCI_NANDFCR_NAND_ENABLE(CONFIG_SYS_NAND_CS);
-		val |= DAVINCI_NANDFCR_4BIT_ECC_SEL(CONFIG_SYS_NAND_CS);
+		val |= DAVINCI_NANDFCR_NAND_ENABLE(CFG_SYS_NAND_CS);
+		val |= DAVINCI_NANDFCR_4BIT_ECC_SEL(CFG_SYS_NAND_CS);
 		val |= DAVINCI_NANDFCR_4BIT_ECC_START;
 		__raw_writel(val, &davinci_emif_regs->nandfcr);
 		break;
@@ -730,44 +733,7 @@ static int nand_davinci_dev_ready(struct mtd_info *mtd)
 	return __raw_readl(&davinci_emif_regs->nandfsr) & 0x1;
 }
 
-static void nand_flash_init(void)
-{
-	/* This is for DM6446 EVM and *very* similar.  DO NOT GROW THIS!
-	 * Instead, have your board_init() set EMIF timings, based on its
-	 * knowledge of the clocks and what devices are hooked up ... and
-	 * don't even do that unless no UBL handled it.
-	 */
-#ifdef CONFIG_SOC_DM644X
-	u_int32_t	acfg1 = 0x3ffffffc;
-
-	/*------------------------------------------------------------------*
-	 *  NAND FLASH CHIP TIMEOUT @ 459 MHz                               *
-	 *                                                                  *
-	 *  AEMIF.CLK freq   = PLL1/6 = 459/6 = 76.5 MHz                    *
-	 *  AEMIF.CLK period = 1/76.5 MHz = 13.1 ns                         *
-	 *                                                                  *
-	 *------------------------------------------------------------------*/
-	 acfg1 = 0
-		| (0 << 31)	/* selectStrobe */
-		| (0 << 30)	/* extWait */
-		| (1 << 26)	/* writeSetup	10 ns */
-		| (3 << 20)	/* writeStrobe	40 ns */
-		| (1 << 17)	/* writeHold	10 ns */
-		| (1 << 13)	/* readSetup	10 ns */
-		| (5 << 7)	/* readStrobe	60 ns */
-		| (1 << 4)	/* readHold	10 ns */
-		| (3 << 2)	/* turnAround	?? ns */
-		| (0 << 0)	/* asyncSize	8-bit bus */
-		;
-
-	__raw_writel(acfg1, &davinci_emif_regs->ab1cr); /* CS2 */
-
-	/* NAND flash on CS2 */
-	__raw_writel(0x00000101, &davinci_emif_regs->nandfcr);
-#endif
-}
-
-void davinci_nand_init(struct nand_chip *nand)
+static void davinci_nand_init(struct nand_chip *nand)
 {
 #if defined CONFIG_KEYSTONE_RBL_NAND
 	int i;
@@ -775,8 +741,8 @@ void davinci_nand_init(struct nand_chip *nand)
 
 	layout = &nand_keystone_rbl_4bit_layout_oobfirst;
 	layout->oobavail = 0;
-	for (i = 0; layout->oobfree[i].length &&
-	     i < ARRAY_SIZE(layout->oobfree); i++)
+	for (i = 0; i < ARRAY_SIZE(layout->oobfree) &&
+	     layout->oobfree[i].length; i++)
 		layout->oobavail += layout->oobfree[i].length;
 
 	nand->write_page = nand_davinci_write_page;
@@ -800,10 +766,7 @@ void davinci_nand_init(struct nand_chip *nand)
 	nand->ecc.calculate = nand_davinci_calculate_ecc;
 	nand->ecc.correct  = nand_davinci_correct_data;
 	nand->ecc.hwctl  = nand_davinci_enable_hwecc;
-#else
-	nand->ecc.mode = NAND_ECC_SOFT;
-#endif /* CONFIG_SYS_NAND_HW_ECC */
-#ifdef CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST
+#elif defined(CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST)
 	nand->ecc.mode = NAND_ECC_HW_OOB_FIRST;
 	nand->ecc.size = 512;
 	nand->ecc.bytes = 10;
@@ -812,6 +775,8 @@ void davinci_nand_init(struct nand_chip *nand)
 	nand->ecc.correct = nand_davinci_4bit_correct_data;
 	nand->ecc.hwctl = nand_davinci_4bit_enable_hwecc;
 	nand->ecc.layout = &nand_davinci_4bit_layout_oobfirst;
+#elif defined(CONFIG_SYS_NAND_SOFT_ECC)
+	nand->ecc.mode = NAND_ECC_SOFT;
 #endif
 	/* Set address of hardware control function */
 	nand->cmd_ctrl = nand_davinci_hwcontrol;
@@ -820,14 +785,55 @@ void davinci_nand_init(struct nand_chip *nand)
 	nand->write_buf = nand_davinci_write_buf;
 
 	nand->dev_ready = nand_davinci_dev_ready;
-
-	nand_flash_init();
 }
 
-int board_nand_init(struct nand_chip *chip) __attribute__((weak));
+#if CONFIG_IS_ENABLED(SYS_NAND_SELF_INIT)
+static int davinci_nand_probe(struct udevice *dev)
+{
+	struct nand_chip *nand = dev_get_priv(dev);
+	struct mtd_info *mtd = nand_to_mtd(nand);
+	int ret;
 
+	nand->IO_ADDR_R = (void __iomem *)CFG_SYS_NAND_BASE;
+	nand->IO_ADDR_W = (void __iomem *)CFG_SYS_NAND_BASE;
+
+	davinci_nand_init(nand);
+
+	ret = nand_scan(mtd, CONFIG_SYS_NAND_MAX_CHIPS);
+	if (ret)
+		return ret;
+
+	return nand_register(0, mtd);
+}
+
+static const struct udevice_id davinci_nand_ids[] = {
+	{ .compatible = "ti,davinci-nand" },
+	{ }
+};
+
+U_BOOT_DRIVER(davinci_nand) = {
+	.name		= "davinci-nand",
+	.id		= UCLASS_MTD,
+	.of_match	= davinci_nand_ids,
+	.probe		= davinci_nand_probe,
+	.priv_auto	= sizeof(struct nand_chip),
+};
+
+void board_nand_init(void)
+{
+	struct udevice *dev;
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_MTD,
+					  DM_DRIVER_GET(davinci_nand), &dev);
+	if (ret && ret != -ENODEV)
+		pr_err("Failed to initialize %s: %d\n", dev->name, ret);
+}
+#else
+int board_nand_init(struct nand_chip *chip) __attribute__((weak));
 int board_nand_init(struct nand_chip *chip)
 {
 	davinci_nand_init(chip);
 	return 0;
 }
+#endif /* CONFIG_SYS_NAND_SELF_INIT */

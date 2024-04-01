@@ -298,7 +298,7 @@ int universe_vme_slave_window(unsigned int vmeAddr, unsigned int pciAddr, int si
 /*
  * Tundra Universe configuration
  */
-int do_universe(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_universe(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	ulong addr1 = 0, addr2 = 0, size = 0, vam = 0, pms = 0, vdw = 0;
 	char cmd = 'x';
@@ -307,17 +307,17 @@ int do_universe(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc > 1)
 		cmd = argv[1][0];
 	if (argc > 2)
-		addr1 = simple_strtoul(argv[2], NULL, 16);
+		addr1 = hextoul(argv[2], NULL);
 	if (argc > 3)
-		addr2 = simple_strtoul(argv[3], NULL, 16);
+		addr2 = hextoul(argv[3], NULL);
 	if (argc > 4)
-		size = simple_strtoul(argv[4], NULL, 16);
+		size = hextoul(argv[4], NULL);
 	if (argc > 5)
-		vam = simple_strtoul(argv[5], NULL, 16);
+		vam = hextoul(argv[5], NULL);
 	if (argc > 6)
-		pms = simple_strtoul(argv[6], NULL, 16);
+		pms = hextoul(argv[6], NULL);
 	if (argc > 7)
-		vdw = simple_strtoul(argv[7], NULL, 16);
+		vdw = hextoul(argv[7], NULL);
 
 	switch (cmd) {
 	case 'i':		/* init */

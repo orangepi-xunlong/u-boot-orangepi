@@ -7,7 +7,10 @@
  */
 
 #include <common.h>
+#include <display_options.h>
 #include <errno.h>
+#include <init.h>
+#include <log.h>
 #include <asm/arch/pei_data.h>
 
 #define RMODULE_MAGIC		0xf8fe
@@ -63,7 +66,7 @@ struct rmodule_header {
  * platform controller hub (PCH). This function should be implemented by the
  * CPU-specific code.
  *
- * @return 0 on success, -ve on failure
+ * Return: 0 on success, -ve on failure
  */
 static int cpu_run_reference_code(void)
 {
@@ -75,7 +78,7 @@ static int cpu_run_reference_code(void)
 	int ret, dummy;
 	int size;
 
-	hdr = (struct rmodule_header *)CONFIG_X86_REFCODE_ADDR;
+	hdr = (struct rmodule_header *)CFG_X86_REFCODE_ADDR;
 	debug("Extracting code from rmodule at %p\n", hdr);
 	if (hdr->magic != RMODULE_MAGIC) {
 		debug("Invalid rmodule magic\n");
@@ -96,7 +99,7 @@ static int cpu_run_reference_code(void)
 	pei_data->saved_data = (void *)&dummy;
 
 	src = (char *)hdr + hdr->payload_begin_offset;
-	dest = (char *)CONFIG_X86_REFCODE_RUN_ADDR;
+	dest = (char *)CFG_X86_REFCODE_RUN_ADDR;
 
 	size = hdr->payload_end_offset - hdr->payload_begin_offset;
 	debug("Copying refcode from %p to %p, size %x\n", src, dest, size);
@@ -109,7 +112,7 @@ static int cpu_run_reference_code(void)
 	func = (asmlinkage int (*)(void *))dest;
 	debug("Running reference code at %p\n", func);
 #ifdef DEBUG
-	print_buffer(CONFIG_X86_REFCODE_RUN_ADDR, (void *)func, 1, 0x40, 0);
+	print_buffer(CFG_X86_REFCODE_RUN_ADDR, (void *)func, 1, 0x40, 0);
 #endif
 	ret = func(pei_data);
 	if (ret != 0) {

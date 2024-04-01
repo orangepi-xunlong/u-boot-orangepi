@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  * Author: Eric Gao <eric.gao@rock-chips.com>
@@ -8,27 +8,28 @@
 #include <clk.h>
 #include <display.h>
 #include <dm.h>
-#include <fdtdec.h>
+#include <log.h>
 #include <panel.h>
 #include <regmap.h>
 #include "rk_mipi.h"
 #include <syscon.h>
 #include <asm/gpio.h>
-#include <asm/hardware.h>
 #include <asm/io.h>
 #include <dm/uclass-internal.h>
+#include <linux/err.h>
 #include <linux/kernel.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3399.h>
-#include <asm/arch/grf_rk3399.h>
-#include <asm/arch/rockchip_mipi_dsi.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru.h>
+#include <asm/arch-rockchip/grf_rk3399.h>
+#include <asm/arch-rockchip/hardware.h>
+#include <asm/arch-rockchip/rockchip_mipi_dsi.h>
 
 /* Select mipi dsi source, big or little vop */
 static int rk_mipi_dsi_source_select(struct udevice *dev)
 {
 	struct rk_mipi_priv *priv = dev_get_priv(dev);
 	struct rk3399_grf_regs *grf = priv->grf;
-	struct display_plat *disp_uc_plat = dev_get_uclass_platdata(dev);
+	struct display_plat *disp_uc_plat = dev_get_uclass_plat(dev);
 
 	/* Select the video source */
 	switch (disp_uc_plat->source_id) {
@@ -120,7 +121,7 @@ static int rk_display_enable(struct udevice *dev, int panel_bpp,
 	return 0;
 }
 
-static int rk_mipi_ofdata_to_platdata(struct udevice *dev)
+static int rk_mipi_of_to_plat(struct udevice *dev)
 {
 	struct rk_mipi_priv *priv = dev_get_priv(dev);
 
@@ -164,6 +165,7 @@ static const struct dm_display_ops rk_mipi_dsi_ops = {
 };
 
 static const struct udevice_id rk_mipi_dsi_ids[] = {
+	{ .compatible = "rockchip,rk3399-mipi-dsi" },
 	{ .compatible = "rockchip,rk3399_mipi_dsi" },
 	{ }
 };
@@ -172,8 +174,8 @@ U_BOOT_DRIVER(rk_mipi_dsi) = {
 	.name	= "rk_mipi_dsi",
 	.id	= UCLASS_DISPLAY,
 	.of_match = rk_mipi_dsi_ids,
-	.ofdata_to_platdata = rk_mipi_ofdata_to_platdata,
+	.of_to_plat = rk_mipi_of_to_plat,
 	.probe	= rk_mipi_probe,
 	.ops	= &rk_mipi_dsi_ops,
-	.priv_auto_alloc_size   = sizeof(struct rk_mipi_priv),
+	.priv_auto	  = sizeof(struct rk_mipi_priv),
 };

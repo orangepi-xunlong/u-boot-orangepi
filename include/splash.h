@@ -30,6 +30,7 @@ enum splash_storage {
 	SPLASH_STORAGE_MMC,
 	SPLASH_STORAGE_USB,
 	SPLASH_STORAGE_SATA,
+	SPLASH_STORAGE_VIRTIO,
 };
 
 enum splash_flags {
@@ -48,7 +49,7 @@ struct splash_location {
 	char *ubivol;	/* UBI volume-name for ubifsmount */
 };
 
-#ifdef CONFIG_SPLASH_SOURCE
+#if CONFIG_IS_ENABLED(SPLASH_SOURCE)
 int splash_source_load(struct splash_location *locations, uint size);
 #else
 static inline int splash_source_load(struct splash_location *locations,
@@ -59,21 +60,8 @@ static inline int splash_source_load(struct splash_location *locations,
 #endif
 
 int splash_screen_prepare(void);
-
-#ifdef CONFIG_SPLASH_SCREEN_ALIGN
 void splash_get_pos(int *x, int *y);
-#else
-static inline void splash_get_pos(int *x, int *y) { }
-#endif
-
-#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_LCD)
-int lcd_splash(ulong addr);
-#else
-static inline int lcd_splash(ulong addr)
-{
-	return -ENOSYS;
-}
-#endif
+int splash_display(void);
 
 #define BMP_ALIGN_CENTER	0x7FFF
 

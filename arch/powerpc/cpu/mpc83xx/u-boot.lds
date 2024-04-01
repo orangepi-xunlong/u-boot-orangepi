@@ -42,8 +42,8 @@ SECTIONS
   . = .;
 
   . = ALIGN(4);
-  .u_boot_list : {
-	KEEP(*(SORT(.u_boot_list*)));
+  __u_boot_list : {
+	KEEP(*(SORT(__u_boot_list*)));
   }
 
 
@@ -51,6 +51,12 @@ SECTIONS
   __start___ex_table = .;
   __ex_table : { *(__ex_table) }
   __stop___ex_table = .;
+
+  /*
+   * _end - This is end of u-boot.bin image.
+   * dtb will be appended here to make u-boot-dtb.bin
+   */
+  _end = .;
 
   . = ALIGN(4096);
   __init_begin = .;

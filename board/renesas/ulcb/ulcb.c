@@ -7,13 +7,17 @@
  */
 
 #include <common.h>
+#include <image.h>
+#include <init.h>
 #include <malloc.h>
 #include <netdev.h>
 #include <dm.h>
+#include <asm/global_data.h>
 #include <dm/platform_data/serial_sh.h>
 #include <asm/processor.h>
 #include <asm/mach-types.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 #include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
@@ -26,47 +30,17 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define CPGWPCR	0xE6150904
-#define CPGWPR  0xE615090C
-
-#define CLK2MHZ(clk)	(clk / 1000 / 1000)
-void s_init(void)
-{
-	struct rcar_rwdt *rwdt = (struct rcar_rwdt *)RWDT_BASE;
-	struct rcar_swdt *swdt = (struct rcar_swdt *)SWDT_BASE;
-
-	/* Watchdog init */
-	writel(0xA5A5A500, &rwdt->rwtcsra);
-	writel(0xA5A5A500, &swdt->swtcsra);
-
-	writel(0xA5A50000, CPGWPCR);
-	writel(0xFFFFFFFF, CPGWPR);
-}
-
-#define GSX_MSTP112		BIT(12)	/* 3DG */
-#define TMU0_MSTP125		BIT(25)	/* secure */
-#define TMU1_MSTP124		BIT(24)	/* non-secure */
-#define SCIF2_MSTP310		BIT(10)	/* SCIF2 */
 #define DVFS_MSTP926		BIT(26)
 #define HSUSB_MSTP704		BIT(4)	/* HSUSB */
 
 int board_early_init_f(void)
 {
-	/* TMU0,1 */		/* which use ? */
-	mstp_clrbits_le32(MSTPSR1, SMSTPCR1, TMU0_MSTP125 | TMU1_MSTP124);
-
-#if defined(CONFIG_SYS_I2C) && defined(CONFIG_SYS_I2C_SH)
+#if CONFIG_IS_ENABLED(SYS_I2C_LEGACY) && defined(CONFIG_SYS_I2C_SH)
 	/* DVFS for reset */
-	mstp_clrbits_le32(MSTPSR9, SMSTPCR9, DVFS_MSTP926);
+	mstp_clrbits_le32(SMSTPCR9, SMSTPCR9, DVFS_MSTP926);
 #endif
 	return 0;
 }
-
-/* SYSC */
-/* R/- 32 Power status register 2(3DG) */
-#define	SYSC_PWRSR2	0xE6180100
-/* -/W 32 Power resume control register 2 (3DG) */
-#define	SYSC_PWRONCR2	0xE618010C
 
 /* HSUSB block registers */
 #define HSUSB_REG_LPSTS			0xE6590102
@@ -77,14 +51,11 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
-	/* adress of boot parameters */
-	gd->bd->bi_boot_params = CONFIG_SYS_TEXT_BASE + 0x50000;
-
 	/* USB1 pull-up */
 	setbits_le32(PFC_PUEN6, PUEN_USB1_OVC | PUEN_USB1_PWEN);
 
 	/* Configure the HSUSB block */
-	mstp_clrbits_le32(MSTPSR7, SMSTPCR7, HSUSB_MSTP704);
+	mstp_clrbits_le32(SMSTPCR7, SMSTPCR7, HSUSB_MSTP704);
 	/* Choice USB0SEL */
 	clrsetbits_le32(HSUSB_REG_UGCTRL2, HSUSB_REG_UGCTRL2_USB0SEL,
 			HSUSB_REG_UGCTRL2_USB0SEL_EHCI);
@@ -94,17 +65,24 @@ int board_init(void)
 	return 0;
 }
 
-int dram_init(void)
+#ifdef CONFIG_MULTI_DTB_FIT
+int board_fit_config_name_match(const char *name)
 {
-	if (fdtdec_setup_memory_size() != 0)
-		return -EINVAL;
+	/* PRR driver is not available yet */
+	u32 cpu_type = rmobile_get_cpu_type();
 
-	return 0;
+	if ((cpu_type == RMOBILE_CPU_TYPE_R8A7795) &&
+	    !strcmp(name, "r8a77950-ulcb-u-boot"))
+		return 0;
+
+	if ((cpu_type == RMOBILE_CPU_TYPE_R8A7796) &&
+	    !strcmp(name, "r8a77960-ulcb-u-boot"))
+		return 0;
+
+	if ((cpu_type == RMOBILE_CPU_TYPE_R8A77965) &&
+	    !strcmp(name, "r8a77965-ulcb-u-boot"))
+		return 0;
+
+	return -1;
 }
-
-int dram_init_banksize(void)
-{
-	fdtdec_setup_memory_banksize();
-
-	return 0;
-}
+#endif

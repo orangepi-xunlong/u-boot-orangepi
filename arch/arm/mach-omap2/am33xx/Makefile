@@ -3,7 +3,6 @@
 # Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
 
 obj-$(CONFIG_AM33XX)	+= clock_am33xx.o
-obj-$(CONFIG_TI814X)	+= clock_ti814x.o
 obj-$(CONFIG_AM43XX)	+= clock_am43xx.o
 
 ifneq ($(CONFIG_AM43XX)$(CONFIG_AM33XX),)
@@ -13,7 +12,7 @@ endif
 obj-$(CONFIG_TI816X)	+= clock_ti816x.o
 obj-y	+= sys_info.o
 obj-y	+= ddr.o
-ifeq ($(CONFIG_TI816X)$(CONFIG_SKIP_LOWLEVEL_INIT),)
+ifeq ($(CONFIG_TI816X)$(CONFIG_$(SPL_)SKIP_LOWLEVEL_INIT),)
 obj-y	+= emif4.o
 endif
 obj-$(CONFIG_TI816X)	+= ti816x_emif4.o

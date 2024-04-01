@@ -7,6 +7,8 @@
 #define _ASM_BOOT_MODE_H
 #define MAKE_CFGVAL(cfg1, cfg2, cfg3, cfg4) \
 	((cfg4) << 24) | ((cfg3) << 16) | ((cfg2) << 8) | (cfg1)
+#define MAKE_CFGVAL_PRIMARY_BOOT	0xfffffff0
+#define MAKE_CFGVAL_SECONDARY_BOOT	0xffffffff
 
 enum boot_device {
 	WEIM_NOR_BOOT,
@@ -25,7 +27,9 @@ enum boot_device {
 	MMC4_BOOT,
 	NAND_BOOT,
 	QSPI_BOOT,
+	FLEXSPI_BOOT,
 	USB_BOOT,
+	USB2_BOOT,
 	UNKNOWN_BOOT,
 	BOOT_DEV_NUM = UNKNOWN_BOOT,
 };

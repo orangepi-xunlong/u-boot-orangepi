@@ -10,16 +10,15 @@
 
 #include <common.h>
 #include <blk.h>
+#include <dm.h>
 #include <config.h>
 #include <watchdog.h>
 #include <command.h>
 #include <image.h>
 #include <asm/byteorder.h>
 #include <asm/io.h>
-
-#if defined(CONFIG_IDE_PCMCIA)
-# include <pcmcia.h>
-#endif
+#include <dm/device-internal.h>
+#include <dm/uclass-internal.h>
 
 #include <ide.h>
 #include <ata.h>
@@ -31,20 +30,37 @@
 /* Current I/O Device	*/
 static int curr_device;
 
-int do_ide(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_ide(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc == 2) {
 		if (strncmp(argv[1], "res", 3) == 0) {
+			struct udevice *dev;
+			int ret;
+
 			puts("\nReset IDE: ");
-			ide_init();
+			ret = uclass_find_first_device(UCLASS_IDE, &dev);
+			ret = device_remove(dev, DM_REMOVE_NORMAL);
+			if (!ret)
+				ret = device_chld_unbind(dev, NULL);
+			if (ret) {
+				printf("Cannot remove IDE (err=%dE)\n", ret);
+				return CMD_RET_FAILURE;
+			}
+
+			ret = uclass_first_device_err(UCLASS_IDE, &dev);
+			if (ret) {
+				printf("Init failed (err=%dE)\n", ret);
+				return CMD_RET_FAILURE;
+			}
+
 			return 0;
 		}
 	}
 
-	return blk_common_cmd(argc, argv, IF_TYPE_IDE, &curr_device);
+	return blk_common_cmd(argc, argv, UCLASS_IDE, &curr_device);
 }
 
-int do_diskboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_diskboot(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	return common_diskboot(cmdtp, "ide", argc, argv);
 }

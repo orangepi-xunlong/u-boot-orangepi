@@ -10,6 +10,9 @@
 #include <common.h>
 #include <display.h>
 #include <fdtdec.h>
+#include <log.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <malloc.h>
 #include <video_bridge.h>
@@ -875,14 +878,14 @@ static unsigned int exynos_dp_config_video(struct exynos_dp *regs,
 	return ret;
 }
 
-static int exynos_dp_ofdata_to_platdata(struct udevice *dev)
+static int exynos_dp_of_to_plat(struct udevice *dev)
 {
 	struct exynos_dp_priv *priv = dev_get_priv(dev);
 	const void *blob = gd->fdt_blob;
 	unsigned int node = dev_of_offset(dev);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE) {
 		debug("Can't get the DP base address\n");
 		return -EINVAL;
@@ -1078,6 +1081,6 @@ U_BOOT_DRIVER(exynos_dp) = {
 	.id	= UCLASS_DISPLAY,
 	.of_match = exynos_dp_ids,
 	.ops	= &exynos_dp_ops,
-	.ofdata_to_platdata	= exynos_dp_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(struct exynos_dp_priv),
+	.of_to_plat	= exynos_dp_of_to_plat,
+	.priv_auto	= sizeof(struct exynos_dp_priv),
 };

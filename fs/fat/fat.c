@@ -14,10 +14,12 @@
 #include <exports.h>
 #include <fat.h>
 #include <fs.h>
+#include <log.h>
 #include <asm/byteorder.h>
 #include <part.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <asm/cache.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
 
@@ -35,7 +37,7 @@ static void downcase(char *str, size_t len)
 }
 
 static struct blk_desc *cur_dev;
-static disk_partition_t cur_part_info;
+static struct disk_partition cur_part_info;
 
 #define DOS_BOOT_MAGIC_OFFSET	0x1fe
 #define DOS_FS_TYPE_OFFSET	0x36
@@ -56,7 +58,7 @@ static int disk_read(__u32 block, __u32 nr_blocks, void *buf)
 	return ret;
 }
 
-int fat_set_blk_dev(struct blk_desc *dev_desc, disk_partition_t *info)
+int fat_set_blk_dev(struct blk_desc *dev_desc, struct disk_partition *info)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(unsigned char, buffer, dev_desc->blksz);
 
@@ -87,7 +89,7 @@ int fat_set_blk_dev(struct blk_desc *dev_desc, disk_partition_t *info)
 
 int fat_register_device(struct blk_desc *dev_desc, int part_no)
 {
-	disk_partition_t info;
+	struct disk_partition info;
 
 	/* First close any currently found FAT filesystem */
 	cur_dev = NULL;
@@ -121,16 +123,16 @@ static void get_name(dir_entry *dirent, char *s_name)
 {
 	char *ptr;
 
-	memcpy(s_name, dirent->name, 8);
+	memcpy(s_name, dirent->nameext.name, 8);
 	s_name[8] = '\0';
 	ptr = s_name;
 	while (*ptr && *ptr != ' ')
 		ptr++;
 	if (dirent->lcase & CASE_LOWER_BASE)
 		downcase(s_name, (unsigned)(ptr - s_name));
-	if (dirent->ext[0] && dirent->ext[0] != ' ') {
+	if (dirent->nameext.ext[0] && dirent->nameext.ext[0] != ' ') {
 		*ptr++ = '.';
-		memcpy(ptr, dirent->ext, 3);
+		memcpy(ptr, dirent->nameext.ext, 3);
 		if (dirent->lcase & CASE_LOWER_EXT)
 			downcase(ptr, 3);
 		ptr[3] = '\0';
@@ -145,7 +147,8 @@ static void get_name(dir_entry *dirent, char *s_name)
 }
 
 static int flush_dirty_fat_buffer(fsdata *mydata);
-#if !defined(CONFIG_FAT_WRITE)
+
+#if !CONFIG_IS_ENABLED(FAT_WRITE)
 /* Stub for read only operation */
 int flush_dirty_fat_buffer(fsdata *mydata)
 {
@@ -245,7 +248,6 @@ static __u32 get_fatent(fsdata *mydata, __u32 entry)
 static int
 get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
 {
-	__u32 idx = 0;
 	__u32 startsect;
 	int ret;
 
@@ -260,7 +262,7 @@ get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
 	if ((unsigned long)buffer & (ARCH_DMA_MINALIGN - 1)) {
 		ALLOC_CACHE_ALIGN_BUFFER(__u8, tmpbuf, mydata->sect_size);
 
-		printf("FAT: Misaligned buffer address (%p)\n", buffer);
+		debug("FAT: Misaligned buffer address (%p)\n", buffer);
 
 		while (size >= mydata->sect_size) {
 			ret = disk_read(startsect++, 1, tmpbuf);
@@ -273,17 +275,19 @@ get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
 			buffer += mydata->sect_size;
 			size -= mydata->sect_size;
 		}
-	} else {
-		idx = size / mydata->sect_size;
-		ret = disk_read(startsect, idx, buffer);
-		if (ret != idx) {
+	} else if (size >= mydata->sect_size) {
+		__u32 bytes_read;
+		__u32 sect_count = size / mydata->sect_size;
+
+		ret = disk_read(startsect, sect_count, buffer);
+		if (ret != sect_count) {
 			debug("Error reading data (got %d)\n", ret);
 			return -1;
 		}
-		startsect += idx;
-		idx *= mydata->sect_size;
-		buffer += idx;
-		size -= idx;
+		bytes_read = sect_count * mydata->sect_size;
+		startsect += sect_count;
+		buffer += bytes_read;
+		size -= bytes_read;
 	}
 	if (size) {
 		ALLOC_CACHE_ALIGN_BUFFER(__u8, tmpbuf, mydata->sect_size);
@@ -300,14 +304,21 @@ get_cluster(fsdata *mydata, __u32 clustnum, __u8 *buffer, unsigned long size)
 	return 0;
 }
 
-/*
+/**
+ * get_contents() - read from file
+ *
  * Read at most 'maxsize' bytes from 'pos' in the file associated with 'dentptr'
- * into 'buffer'.
- * Update the number of bytes read in *gotsize or return -1 on fatal errors.
+ * into 'buffer'. Update the number of bytes read in *gotsize or return -1 on
+ * fatal errors.
+ *
+ * @mydata:	file system description
+ * @dentprt:	directory entry pointer
+ * @pos:	position from where to read
+ * @buffer:	buffer into which to read
+ * @maxsize:	maximum number of bytes to read
+ * @gotsize:	number of bytes actually read
+ * Return:	-1 on error, otherwise 0
  */
-__u8 get_contents_vfatname_block[MAX_CLUSTSIZE]
-	__aligned(ARCH_DMA_MINALIGN);
-
 static int get_contents(fsdata *mydata, dir_entry *dentptr, loff_t pos,
 			__u8 *buffer, loff_t maxsize, loff_t *gotsize)
 {
@@ -337,8 +348,8 @@ static int get_contents(fsdata *mydata, dir_entry *dentptr, loff_t pos,
 		curclust = get_fatent(mydata, curclust);
 		if (CHECK_CLUST(curclust, mydata->fatsize)) {
 			debug("curclust: 0x%x\n", curclust);
-			debug("Invalid FAT entry\n");
-			return 0;
+			printf("Invalid FAT entry\n");
+			return -1;
 		}
 		actsize += bytesperclust;
 	}
@@ -350,15 +361,24 @@ static int get_contents(fsdata *mydata, dir_entry *dentptr, loff_t pos,
 
 	/* align to beginning of next cluster if any */
 	if (pos) {
+		__u8 *tmp_buffer;
+
 		actsize = min(filesize, (loff_t)bytesperclust);
-		if (get_cluster(mydata, curclust, get_contents_vfatname_block,
-				(int)actsize) != 0) {
+		tmp_buffer = malloc_cache_aligned(actsize);
+		if (!tmp_buffer) {
+			debug("Error: allocating buffer\n");
+			return -1;
+		}
+
+		if (get_cluster(mydata, curclust, tmp_buffer, actsize) != 0) {
 			printf("Error reading cluster\n");
+			free(tmp_buffer);
 			return -1;
 		}
 		filesize -= actsize;
 		actsize -= pos;
-		memcpy(buffer, get_contents_vfatname_block + pos, actsize);
+		memcpy(buffer, tmp_buffer + pos, actsize);
+		free(tmp_buffer);
 		*gotsize += actsize;
 		if (!filesize)
 			return 0;
@@ -367,8 +387,8 @@ static int get_contents(fsdata *mydata, dir_entry *dentptr, loff_t pos,
 		curclust = get_fatent(mydata, curclust);
 		if (CHECK_CLUST(curclust, mydata->fatsize)) {
 			debug("curclust: 0x%x\n", curclust);
-			debug("Invalid FAT entry\n");
-			return 0;
+			printf("Invalid FAT entry\n");
+			return -1;
 		}
 	}
 
@@ -383,8 +403,8 @@ static int get_contents(fsdata *mydata, dir_entry *dentptr, loff_t pos,
 				goto getit;
 			if (CHECK_CLUST(newclust, mydata->fatsize)) {
 				debug("curclust: 0x%x\n", newclust);
-				debug("Invalid FAT entry\n");
-				return 0;
+				printf("Invalid FAT entry\n");
+				return -1;
 			}
 			endclust = newclust;
 			actsize += bytesperclust;
@@ -411,7 +431,7 @@ getit:
 		if (CHECK_CLUST(curclust, mydata->fatsize)) {
 			debug("curclust: 0x%x\n", curclust);
 			printf("Invalid FAT entry\n");
-			return 0;
+			return -1;
 		}
 		actsize = bytesperclust;
 		endclust = curclust;
@@ -450,28 +470,18 @@ static int slot2str(dir_slot *slotptr, char *l_name, int *idx)
 }
 
 /* Calculate short name checksum */
-static __u8 mkcksum(const char name[8], const char ext[3])
+static __u8 mkcksum(struct nameext *nameext)
 {
 	int i;
+	u8 *pos = (void *)nameext;
 
 	__u8 ret = 0;
 
-	for (i = 0; i < 8; i++)
-		ret = (((ret & 1) << 7) | ((ret & 0xfe) >> 1)) + name[i];
-	for (i = 0; i < 3; i++)
-		ret = (((ret & 1) << 7) | ((ret & 0xfe) >> 1)) + ext[i];
+	for (i = 0; i < 11; i++)
+		ret = (((ret & 1) << 7) | ((ret & 0xfe) >> 1)) + pos[i];
 
 	return ret;
 }
-
-/*
- * TODO these should go away once fat_write is reworked to use the
- * directory iterator
- */
-__u8 get_dentfromdir_block[MAX_CLUSTSIZE]
-	__aligned(ARCH_DMA_MINALIGN);
-__u8 do_fat_read_at_block[MAX_CLUSTSIZE]
-	__aligned(ARCH_DMA_MINALIGN);
 
 /*
  * Read boot sector and volume info from a FAT filesystem
@@ -558,10 +568,17 @@ static int get_fs_info(fsdata *mydata)
 
 	if (mydata->fatsize == 32) {
 		mydata->fatlength = bs.fat32_length;
+		mydata->total_sect = bs.total_sect;
 	} else {
 		mydata->fatlength = bs.fat_length;
+		mydata->total_sect = (bs.sectors[1] << 8) + bs.sectors[0];
+		if (!mydata->total_sect)
+			mydata->total_sect = bs.total_sect;
 	}
+	if (!mydata->total_sect) /* unlikely */
+		mydata->total_sect = (u32)cur_part_info.size;
 
+	mydata->fats = bs.fats;
 	mydata->fat_sect = bs.reserved;
 
 	mydata->rootdir_sect = mydata->fat_sect + mydata->fatlength * bs.fats;
@@ -571,6 +588,17 @@ static int get_fs_info(fsdata *mydata)
 	if (mydata->sect_size != cur_part_info.blksz) {
 		printf("Error: FAT sector size mismatch (fs=%hu, dev=%lu)\n",
 				mydata->sect_size, cur_part_info.blksz);
+		return -1;
+	}
+	if (mydata->clust_size == 0) {
+		printf("Error: FAT cluster size not set\n");
+		return -1;
+	}
+	if ((unsigned int)mydata->clust_size * mydata->sect_size >
+	    MAX_CLUSTSIZE) {
+		printf("Error: FAT cluster size too big (cs=%u, max=%u)\n",
+		       (unsigned int)mydata->clust_size * mydata->sect_size,
+		       MAX_CLUSTSIZE);
 		return -1;
 	}
 
@@ -586,8 +614,13 @@ static int get_fs_info(fsdata *mydata)
 		mydata->data_begin = mydata->rootdir_sect +
 					mydata->rootdir_size -
 					(mydata->clust_size * 2);
-		mydata->root_cluster =
-			sect_to_clust(mydata, mydata->rootdir_sect);
+
+		/*
+		 * The root directory is not cluster-aligned and may be on a
+		 * "negative" cluster, this will be handled specially in
+		 * fat_next_cluster().
+		 */
+		mydata->root_cluster = 0;
 	}
 
 	mydata->fatbufnum = -1;
@@ -611,42 +644,88 @@ static int get_fs_info(fsdata *mydata)
 	return 0;
 }
 
-
-/*
- * Directory iterator, to simplify filesystem traversal
+/**
+ * struct fat_itr - directory iterator, to simplify filesystem traversal
  *
  * Implements an iterator pattern to traverse directory tables,
  * transparently handling directory tables split across multiple
  * clusters, and the difference between FAT12/FAT16 root directory
  * (contiguous) and subdirectories + FAT32 root (chained).
  *
- * Rough usage:
+ * Rough usage
  *
- *   for (fat_itr_root(&itr, fsdata); fat_itr_next(&itr); ) {
- *      // to traverse down to a subdirectory pointed to by
- *      // current iterator position:
- *      fat_itr_child(&itr, &itr);
- *   }
+ * .. code-block:: c
  *
- * For more complete example, see fat_itr_resolve()
+ *     for (fat_itr_root(&itr, fsdata); fat_itr_next(&itr); ) {
+ *         // to traverse down to a subdirectory pointed to by
+ *         // current iterator position:
+ *         fat_itr_child(&itr, &itr);
+ *     }
+ *
+ * For a more complete example, see fat_itr_resolve().
  */
-
-typedef struct {
-	fsdata    *fsdata;        /* filesystem parameters */
-	unsigned   clust;         /* current cluster */
-	int        last_cluster;  /* set once we've read last cluster */
-	int        is_root;       /* is iterator at root directory */
-	int        remaining;     /* remaining dent's in current cluster */
-
-	/* current iterator position values: */
-	dir_entry *dent;          /* current directory entry */
-	char       l_name[VFAT_MAXLEN_BYTES];    /* long (vfat) name */
-	char       s_name[14];    /* short 8.3 name */
-	char      *name;          /* l_name if there is one, else s_name */
-
-	/* storage for current cluster in memory: */
-	u8         block[MAX_CLUSTSIZE] __aligned(ARCH_DMA_MINALIGN);
-} fat_itr;
+struct fat_itr {
+	/**
+	 * @fsdata:		filesystem parameters
+	 */
+	fsdata *fsdata;
+	/**
+	 * @start_clust:	first cluster
+	 */
+	unsigned int start_clust;
+	/**
+	 * @clust:		current cluster
+	 */
+	unsigned int clust;
+	/**
+	 * @next_clust:		next cluster if remaining == 0
+	 */
+	unsigned int next_clust;
+	/**
+	 * @last_cluster:	set if last cluster of directory reached
+	 */
+	int last_cluster;
+	/**
+	 * @is_root:		is iterator at root directory
+	 */
+	int is_root;
+	/**
+	 * @remaining:		remaining directory entries in current cluster
+	 */
+	int remaining;
+	/**
+	 * @dent:		current directory entry
+	 */
+	dir_entry *dent;
+	/**
+	 * @dent_rem:		remaining entries after long name start
+	 */
+	int dent_rem;
+	/**
+	 * @dent_clust:		cluster of long name start
+	 */
+	unsigned int dent_clust;
+	/**
+	 * @dent_start:		first directory entry for long name
+	 */
+	dir_entry *dent_start;
+	/**
+	 * @l_name:		long name of current directory entry
+	 */
+	char l_name[VFAT_MAXLEN_BYTES];
+	/**
+	 * @s_name:		short 8.3 name of current directory entry
+	 */
+	char s_name[14];
+	/**
+	 * @name:		l_name if there is one, else s_name
+	 */
+	char *name;
+	/**
+	 * @block:		buffer for current cluster
+	 */
+	u8 block[MAX_CLUSTSIZE] __aligned(ARCH_DMA_MINALIGN);
+};
 
 static int fat_itr_isdir(fat_itr *itr);
 
@@ -656,7 +735,7 @@ static int fat_itr_isdir(fat_itr *itr);
  *
  * @itr: iterator to initialize
  * @fsdata: filesystem data for the partition
- * @return 0 on success, else -errno
+ * Return: 0 on success, else -errno
  */
 static int fat_itr_root(fat_itr *itr, fsdata *fsdata)
 {
@@ -664,7 +743,9 @@ static int fat_itr_root(fat_itr *itr, fsdata *fsdata)
 		return -ENXIO;
 
 	itr->fsdata = fsdata;
+	itr->start_clust = fsdata->root_cluster;
 	itr->clust = fsdata->root_cluster;
+	itr->next_clust = fsdata->root_cluster;
 	itr->dent = NULL;
 	itr->remaining = 0;
 	itr->last_cluster = 0;
@@ -698,11 +779,15 @@ static void fat_itr_child(fat_itr *itr, fat_itr *parent)
 	assert(fat_itr_isdir(parent));
 
 	itr->fsdata = parent->fsdata;
+	itr->start_clust = clustnum;
 	if (clustnum > 0) {
 		itr->clust = clustnum;
+		itr->next_clust = clustnum;
 		itr->is_root = 0;
 	} else {
 		itr->clust = parent->fsdata->root_cluster;
+		itr->next_clust = parent->fsdata->root_cluster;
+		itr->start_clust = parent->fsdata->root_cluster;
 		itr->is_root = 1;
 	}
 	itr->dent = NULL;
@@ -710,20 +795,47 @@ static void fat_itr_child(fat_itr *itr, fat_itr *parent)
 	itr->last_cluster = 0;
 }
 
-static void *next_cluster(fat_itr *itr)
+/**
+ * fat_next_cluster() - load next FAT cluster
+ *
+ * The function is used when iterating through directories. It loads the
+ * next cluster with directory entries
+ *
+ * @itr:	directory iterator
+ * @nbytes:	number of bytes read, 0 on error
+ * Return:	first directory entry, NULL on error
+ */
+void *fat_next_cluster(fat_itr *itr, unsigned int *nbytes)
 {
-	fsdata *mydata = itr->fsdata;  /* for silly macros */
 	int ret;
 	u32 sect;
+	u32 read_size;
 
 	/* have we reached the end? */
 	if (itr->last_cluster)
 		return NULL;
 
-	sect = clust_to_sect(itr->fsdata, itr->clust);
+	if (itr->is_root && itr->fsdata->fatsize != 32) {
+		/*
+		 * The root directory is located before the data area and
+		 * cannot be indexed using the regular unsigned cluster
+		 * numbers (it may start at a "negative" cluster or not at a
+		 * cluster boundary at all), so consider itr->next_clust to be
+		 * a offset in cluster-sized units from the start of rootdir.
+		 */
+		unsigned sect_offset = itr->next_clust * itr->fsdata->clust_size;
+		unsigned remaining_sects = itr->fsdata->rootdir_size - sect_offset;
+		sect = itr->fsdata->rootdir_sect + sect_offset;
+		/* do not read past the end of rootdir */
+		read_size = min_t(u32, itr->fsdata->clust_size,
+				  remaining_sects);
+	} else {
+		sect = clust_to_sect(itr->fsdata, itr->next_clust);
+		read_size = itr->fsdata->clust_size;
+	}
 
-	debug("FAT read(sect=%d), clust_size=%d, DIRENTSPERBLOCK=%zd\n",
-	      sect, itr->fsdata->clust_size, DIRENTSPERBLOCK);
+	log_debug("FAT read(sect=%d), clust_size=%d, read_size=%u\n",
+		  sect, itr->fsdata->clust_size, read_size);
 
 	/*
 	 * NOTE: do_fat_read_at() had complicated logic to deal w/
@@ -734,25 +846,25 @@ static void *next_cluster(fat_itr *itr)
 	 * dent at a time and iteratively constructing the vfat long
 	 * name.
 	 */
-	ret = disk_read(sect, itr->fsdata->clust_size,
-			itr->block);
+	ret = disk_read(sect, read_size, itr->block);
 	if (ret < 0) {
 		debug("Error: reading block\n");
 		return NULL;
 	}
 
+	*nbytes = read_size * itr->fsdata->sect_size;
+	itr->clust = itr->next_clust;
 	if (itr->is_root && itr->fsdata->fatsize != 32) {
-		itr->clust++;
-		sect = clust_to_sect(itr->fsdata, itr->clust);
-		if (sect - itr->fsdata->rootdir_sect >=
+		itr->next_clust++;
+		if (itr->next_clust * itr->fsdata->clust_size >=
 		    itr->fsdata->rootdir_size) {
-			debug("cursect: 0x%x\n", itr->clust);
+			debug("nextclust: 0x%x\n", itr->next_clust);
 			itr->last_cluster = 1;
 		}
 	} else {
-		itr->clust = get_fatent(itr->fsdata, itr->clust);
-		if (CHECK_CLUST(itr->clust, itr->fsdata->fatsize)) {
-			debug("cursect: 0x%x\n", itr->clust);
+		itr->next_clust = get_fatent(itr->fsdata, itr->next_clust);
+		if (CHECK_CLUST(itr->next_clust, itr->fsdata->fatsize)) {
+			debug("nextclust: 0x%x\n", itr->next_clust);
 			itr->last_cluster = 1;
 		}
 	}
@@ -763,13 +875,15 @@ static void *next_cluster(fat_itr *itr)
 static dir_entry *next_dent(fat_itr *itr)
 {
 	if (itr->remaining == 0) {
-		struct dir_entry *dent = next_cluster(itr);
-		unsigned nbytes = itr->fsdata->sect_size *
-			itr->fsdata->clust_size;
+		unsigned nbytes;
+		struct dir_entry *dent = fat_next_cluster(itr, &nbytes);
 
 		/* have we reached the last cluster? */
-		if (!dent)
+		if (!dent) {
+			/* a sign for no more entries left */
+			itr->dent = NULL;
 			return NULL;
+		}
 
 		itr->remaining = nbytes / sizeof(dir_entry) - 1;
 		itr->dent = dent;
@@ -779,7 +893,7 @@ static dir_entry *next_dent(fat_itr *itr)
 	}
 
 	/* have we reached the last valid entry? */
-	if (itr->dent->name[0] == 0)
+	if (itr->dent->nameext.name[0] == 0)
 		return NULL;
 
 	return itr->dent;
@@ -788,7 +902,7 @@ static dir_entry *next_dent(fat_itr *itr)
 static dir_entry *extract_vfat_name(fat_itr *itr)
 {
 	struct dir_entry *dent = itr->dent;
-	int seqn = itr->dent->name[0] & ~LAST_LONG_ENTRY_MASK;
+	int seqn = itr->dent->nameext.name[0] & ~LAST_LONG_ENTRY_MASK;
 	u8 chksum, alias_checksum = ((dir_slot *)dent)->alias_checksum;
 	int n = 0;
 
@@ -797,6 +911,9 @@ static dir_entry *extract_vfat_name(fat_itr *itr)
 		int idx = 0;
 
 		slot2str((dir_slot *)dent, buf, &idx);
+
+		if (n + idx >= sizeof(itr->l_name))
+			return NULL;
 
 		/* shift accumulated long-name up and copy new part in: */
 		memmove(itr->l_name + idx, itr->l_name, n);
@@ -808,14 +925,23 @@ static dir_entry *extract_vfat_name(fat_itr *itr)
 			return NULL;
 	}
 
+	/*
+	 * We are now at the short file name entry.
+	 * If it is marked as deleted, just skip it.
+	 */
+	if (dent->nameext.name[0] == DELETED_FLAG ||
+	    dent->nameext.name[0] == aRING)
+		return NULL;
+
 	itr->l_name[n] = '\0';
 
-	chksum = mkcksum(dent->name, dent->ext);
+	chksum = mkcksum(&dent->nameext);
 
 	/* checksum mismatch could mean deleted file, etc.. skip it: */
 	if (chksum != alias_checksum) {
 		debug("** chksum=%x, alias_checksum=%x, l_name=%s, s_name=%8s.%3s\n",
-		      chksum, alias_checksum, itr->l_name, dent->name, dent->ext);
+		      chksum, alias_checksum, itr->l_name, dent->nameext.name,
+		      dent->nameext.ext);
 		return NULL;
 	}
 
@@ -828,7 +954,7 @@ static dir_entry *extract_vfat_name(fat_itr *itr)
  * Must be called once on a new iterator before the cursor is valid.
  *
  * @itr: the iterator to iterate
- * @return boolean, 1 if success or 0 if no more entries in the
+ * Return: boolean, 1 if success or 0 if no more entries in the
  *    current directory
  */
 static int fat_itr_next(fat_itr *itr)
@@ -837,19 +963,42 @@ static int fat_itr_next(fat_itr *itr)
 
 	itr->name = NULL;
 
+	/*
+	 * One logical directory entry consist of following slots:
+	 *				name[0]	Attributes
+	 *   dent[N - N]: LFN[N - 1]	N|0x40	ATTR_VFAT
+	 *   ...
+	 *   dent[N - 2]: LFN[1]	2	ATTR_VFAT
+	 *   dent[N - 1]: LFN[0]	1	ATTR_VFAT
+	 *   dent[N]:     SFN			ATTR_ARCH
+	 */
+
 	while (1) {
 		dent = next_dent(itr);
-		if (!dent)
+		if (!dent) {
+			itr->dent_start = NULL;
 			return 0;
-
-		if (dent->name[0] == DELETED_FLAG ||
-		    dent->name[0] == aRING)
+		}
+		itr->dent_rem = itr->remaining;
+		itr->dent_start = itr->dent;
+		itr->dent_clust = itr->clust;
+		if (dent->nameext.name[0] == DELETED_FLAG)
 			continue;
 
 		if (dent->attr & ATTR_VOLUME) {
 			if ((dent->attr & ATTR_VFAT) == ATTR_VFAT &&
-			    (dent->name[0] & LAST_LONG_ENTRY_MASK)) {
+			    (dent->nameext.name[0] & LAST_LONG_ENTRY_MASK)) {
+				/* long file name */
 				dent = extract_vfat_name(itr);
+				/*
+				 * If succeeded, dent has a valid short file
+				 * name entry for the current entry.
+				 * If failed, itr points to a current bogus
+				 * entry. So after fetching a next one,
+				 * it may have a short file name entry
+				 * for this bogus entry so that we can still
+				 * check for a short name.
+				 */
 				if (!dent)
 					continue;
 				itr->name = itr->l_name;
@@ -860,6 +1009,7 @@ static int fat_itr_next(fat_itr *itr)
 			}
 		}
 
+		/* short file name */
 		break;
 	}
 
@@ -874,7 +1024,7 @@ static int fat_itr_next(fat_itr *itr)
  * fat_itr_isdir() - is current cursor position pointing to a directory
  *
  * @itr: the iterator
- * @return true if cursor is at a directory
+ * Return: true if cursor is at a directory
  */
 static int fat_itr_isdir(fat_itr *itr)
 {
@@ -902,7 +1052,7 @@ static int fat_itr_isdir(fat_itr *itr)
  * @itr: iterator initialized to root
  * @path: the requested path
  * @type: bitmask of allowable file types
- * @return 0 on success or -errno
+ * Return: 0 on success or -errno
  */
 static int fat_itr_resolve(fat_itr *itr, const char *path, unsigned type)
 {
@@ -923,6 +1073,29 @@ static int fat_itr_resolve(fat_itr *itr, const char *path, unsigned type)
 	next = path;
 	while (next[0] && !ISDIRDELIM(next[0]))
 		next++;
+
+	if (itr->is_root) {
+		/* root dir doesn't have "." nor ".." */
+		if ((((next - path) == 1) && !strncmp(path, ".", 1)) ||
+		    (((next - path) == 2) && !strncmp(path, "..", 2))) {
+			/* point back to itself */
+			itr->clust = itr->fsdata->root_cluster;
+			itr->next_clust = itr->fsdata->root_cluster;
+			itr->start_clust = itr->fsdata->root_cluster;
+			itr->dent = NULL;
+			itr->remaining = 0;
+			itr->last_cluster = 0;
+
+			if (next[0] == 0) {
+				if (type & TYPE_DIR)
+					return 0;
+				else
+					return -ENOENT;
+			}
+
+			return fat_itr_resolve(itr, next, type);
+		}
+	}
 
 	while (fat_itr_next(itr)) {
 		int match = 0;
@@ -971,44 +1144,11 @@ int file_fat_detectfs(void)
 		return 1;
 	}
 
-#if defined(CONFIG_IDE) || \
-    defined(CONFIG_SATA) || \
-    defined(CONFIG_SCSI) || \
-    defined(CONFIG_CMD_USB) || \
-    defined(CONFIG_MMC)
-	printf("Interface:  ");
-	switch (cur_dev->if_type) {
-	case IF_TYPE_IDE:
-		printf("IDE");
-		break;
-	case IF_TYPE_SATA:
-		printf("SATA");
-		break;
-	case IF_TYPE_SCSI:
-		printf("SCSI");
-		break;
-	case IF_TYPE_ATAPI:
-		printf("ATAPI");
-		break;
-	case IF_TYPE_USB:
-		printf("USB");
-		break;
-	case IF_TYPE_DOC:
-		printf("DOC");
-		break;
-	case IF_TYPE_MMC:
-		printf("MMC");
-		break;
-	case IF_TYPE_SUNXI_FLASH:
-		printf("SUNXI_FLASH");
-		break;
-	default:
-		printf("Unknown");
+	if (blk_enabled()) {
+		printf("Interface:  %s\n", blk_get_uclass_name(cur_dev->uclass_id));
+		printf("  Device %d: ", cur_dev->devnum);
+		dev_print(cur_dev);
 	}
-
-	printf("\n  Device %d: ", cur_dev->devnum);
-	dev_print(cur_dev);
-#endif
 
 	if (read_bootsectandvi(&bs, &volinfo, &fatsize)) {
 		printf("\nNo valid FAT fs found\n");
@@ -1044,6 +1184,28 @@ out:
 	return ret == 0;
 }
 
+/**
+ * fat2rtc() - convert FAT time stamp to RTC file stamp
+ *
+ * @date:	FAT date
+ * @time:	FAT time
+ * @tm:		RTC time stamp
+ */
+static void __maybe_unused fat2rtc(u16 date, u16 time, struct rtc_time *tm)
+{
+	tm->tm_mday = date & 0x1f;
+	tm->tm_mon = (date & 0x1e0) >> 4;
+	tm->tm_year = (date >> 9) + 1980;
+
+	tm->tm_sec = (time & 0x1f) << 1;
+	tm->tm_min = (time & 0x7e0) >> 5;
+	tm->tm_hour = time >> 11;
+
+	rtc_calc_weekday(tm);
+	tm->tm_yday = 0;
+	tm->tm_isdst = 0;
+}
+
 int fat_size(const char *filename, loff_t *size)
 {
 	fsdata fsdata;
@@ -1064,11 +1226,12 @@ int fat_size(const char *filename, loff_t *size)
 		 * expected to fail if passed a directory path:
 		 */
 		free(fsdata.fatbuf);
-		fat_itr_root(itr, &fsdata);
-		if (!fat_itr_resolve(itr, filename, TYPE_DIR)) {
+		ret = fat_itr_root(itr, &fsdata);
+		if (ret)
+			goto out_free_itr;
+		ret = fat_itr_resolve(itr, filename, TYPE_DIR);
+		if (!ret)
 			*size = 0;
-			ret = 0;
-		}
 		goto out_free_both;
 	}
 
@@ -1080,8 +1243,8 @@ out_free_itr:
 	return ret;
 }
 
-int file_fat_read_at(const char *filename, loff_t pos, void *buffer,
-		     loff_t maxsize, loff_t *actread)
+int fat_read_file(const char *filename, void *buf, loff_t offset, loff_t len,
+		  loff_t *actread)
 {
 	fsdata fsdata;
 	fat_itr *itr;
@@ -1098,8 +1261,12 @@ int file_fat_read_at(const char *filename, loff_t pos, void *buffer,
 	if (ret)
 		goto out_free_both;
 
-	debug("reading %s\n", filename);
-	ret = get_contents(&fsdata, itr->dent, pos, buffer, maxsize, actread);
+	debug("reading %s at pos %llu\n", filename, offset);
+
+	/* For saving default max clustersize memory allocated to malloc pool */
+	dir_entry *dentptr = itr->dent;
+
+	ret = get_contents(&fsdata, dentptr, offset, buf, len, actread);
 
 out_free_both:
 	free(fsdata.fatbuf);
@@ -1113,23 +1280,11 @@ int file_fat_read(const char *filename, void *buffer, int maxsize)
 	loff_t actread;
 	int ret;
 
-	ret =  file_fat_read_at(filename, 0, buffer, maxsize, &actread);
+	ret =  fat_read_file(filename, buffer, 0, maxsize, &actread);
 	if (ret)
 		return ret;
 	else
 		return actread;
-}
-
-int fat_read_file(const char *filename, void *buf, loff_t offset, loff_t len,
-		  loff_t *actread)
-{
-	int ret;
-
-	ret = file_fat_read_at(filename, offset, buf, len, actread);
-	if (ret)
-		printf("** Unable to read file %s **\n", filename);
-
-	return ret;
 }
 
 typedef struct {
@@ -1177,7 +1332,15 @@ int fat_readdir(struct fs_dir_stream *dirs, struct fs_dirent **dentp)
 
 	memset(dent, 0, sizeof(*dent));
 	strcpy(dent->name, dir->itr.name);
-
+	if (CONFIG_IS_ENABLED(EFI_LOADER)) {
+		dent->attr = dir->itr.dent->attr;
+		fat2rtc(le16_to_cpu(dir->itr.dent->cdate),
+			le16_to_cpu(dir->itr.dent->ctime), &dent->create_time);
+		fat2rtc(le16_to_cpu(dir->itr.dent->date),
+			le16_to_cpu(dir->itr.dent->time), &dent->change_time);
+		fat2rtc(le16_to_cpu(dir->itr.dent->adate),
+			0, &dent->access_time);
+	}
 	if (fat_itr_isdir(&dir->itr)) {
 		dent->type = FS_DT_DIR;
 	} else {
@@ -1199,4 +1362,22 @@ void fat_closedir(struct fs_dir_stream *dirs)
 
 void fat_close(void)
 {
+}
+
+int fat_uuid(char *uuid_str)
+{
+	boot_sector bs;
+	volume_info volinfo;
+	int fatsize;
+	int ret;
+	u8 *id;
+
+	ret = read_bootsectandvi(&bs, &volinfo, &fatsize);
+	if (ret)
+		return ret;
+
+	id = volinfo.volume_id;
+	sprintf(uuid_str, "%02X%02X-%02X%02X", id[3], id[2], id[1], id[0]);
+
+	return 0;
 }

@@ -9,7 +9,8 @@
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <asm/global_data.h>
 #include <linux/stddef.h>
 #include <malloc.h>
 #include <search.h>
@@ -55,7 +56,7 @@ static int env_onenand_load(void)
 		mtd->writesize = MAX_ONENAND_PAGESIZE;
 #endif /* !ENV_IS_EMBEDDED */
 
-	rc = env_import(buf, 1);
+	rc = env_import(buf, 1, H_EXTERNAL);
 	if (!rc)
 		gd->env_valid = ENV_VALID;
 
@@ -72,9 +73,7 @@ static int env_onenand_save(void)
 #endif
 	loff_t	env_addr = CONFIG_ENV_ADDR;
 	size_t	retlen;
-	struct erase_info instr = {
-		.callback	= NULL,
-	};
+	struct erase_info instr = {};
 
 	ret = env_export(&env_new);
 	if (ret)

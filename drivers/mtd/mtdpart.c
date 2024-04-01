@@ -9,6 +9,8 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -19,6 +21,7 @@
 
 #include <common.h>
 #include <malloc.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/compat.h>
 #include <ubi_uboot.h>
@@ -86,7 +89,7 @@ bool mtd_partitions_used(struct mtd_info *master)
  * @mtdparts: String describing the partition with mtdparts command syntax
  * @partition: MTD partition structure to fill
  *
- * @return 0 on success, an error otherwise.
+ * Return: 0 on success, an error otherwise.
  */
 static int mtd_parse_partition(const char **_mtdparts,
 			       struct mtd_partition *partition)
@@ -181,7 +184,6 @@ static int mtd_parse_partition(const char **_mtdparts,
 	return 0;
 }
 
-
 /**
  * mtd_parse_partitions - Create a partition array from an mtdparts definition
  *
@@ -198,14 +200,14 @@ static int mtd_parse_partition(const char **_mtdparts,
  *          caller.
  * @_nparts: Size of @_parts array.
  *
- * @return 0 on success, an error otherwise.
+ * Return: 0 on success, an error otherwise.
  */
 int mtd_parse_partitions(struct mtd_info *parent, const char **_mtdparts,
 			 struct mtd_partition **_parts, int *_nparts)
 {
 	struct mtd_partition partition = {}, *parts;
 	const char *mtdparts = *_mtdparts;
-	int cur_off = 0, cur_sz = 0;
+	uint64_t cur_off = 0, cur_sz = 0;
 	int nparts = 0;
 	int ret, idx;
 	u64 sz;
@@ -444,26 +446,15 @@ static int part_erase(struct mtd_info *mtd, struct erase_info *instr)
 	int ret;
 
 	instr->addr += mtd->offset;
+
 	ret = mtd->parent->_erase(mtd->parent, instr);
-	if (ret) {
-		if (instr->fail_addr != MTD_FAIL_ADDR_UNKNOWN)
-			instr->fail_addr -= mtd->offset;
-		instr->addr -= mtd->offset;
-	}
+	if (ret && instr->fail_addr != MTD_FAIL_ADDR_UNKNOWN)
+		instr->fail_addr -= mtd->offset;
+
+	instr->addr -= mtd->offset;
+
 	return ret;
 }
-
-void mtd_erase_callback(struct erase_info *instr)
-{
-	if (instr->mtd->_erase == part_erase) {
-		if (instr->fail_addr != MTD_FAIL_ADDR_UNKNOWN)
-			instr->fail_addr -= instr->mtd->offset;
-		instr->addr -= instr->mtd->offset;
-	}
-	if (instr->callback)
-		instr->callback(instr);
-}
-EXPORT_SYMBOL_GPL(mtd_erase_callback);
 
 static int part_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 {
@@ -889,6 +880,74 @@ int add_mtd_partitions(struct mtd_info *master,
 
 	return 0;
 }
+
+#if CONFIG_IS_ENABLED(DM) && CONFIG_IS_ENABLED(OF_CONTROL)
+int add_mtd_partitions_of(struct mtd_info *master)
+{
+	ofnode parts, child;
+	int i = 0;
+
+	if (!master->dev && !ofnode_valid(master->flash_node))
+		return 0;
+
+	if (master->dev)
+		parts = ofnode_find_subnode(mtd_get_ofnode(master), "partitions");
+	else
+		parts = ofnode_find_subnode(master->flash_node, "partitions");
+
+	if (!ofnode_valid(parts) || !ofnode_is_enabled(parts) ||
+	    !ofnode_device_is_compatible(parts, "fixed-partitions"))
+		return 0;
+
+	ofnode_for_each_subnode(child, parts) {
+		struct mtd_partition part = { 0 };
+		struct mtd_info *slave;
+		fdt_addr_t offset;
+		fdt_size_t size;
+
+		if (!ofnode_is_enabled(child))
+			continue;
+
+		offset = ofnode_get_addr_size_index_notrans(child, 0, &size);
+		if (offset == FDT_ADDR_T_NONE || !size) {
+			debug("Missing partition offset/size on \"%s\" partition\n",
+			      master->name);
+			continue;
+		}
+
+		part.name = ofnode_read_string(child, "label");
+		if (!part.name)
+			part.name = ofnode_read_string(child, "name");
+
+		/*
+		 * .mask_flags is used to remove flags in allocate_partition(),
+		 * so when "read-only" is present, we add MTD_WRITABLE to the
+		 * mask, and so MTD_WRITABLE will be removed on partition
+		 * allocation
+		 */
+		if (ofnode_read_bool(child, "read-only"))
+			part.mask_flags |= MTD_WRITEABLE;
+		if (ofnode_read_bool(child, "lock"))
+			part.mask_flags |= MTD_POWERUP_LOCK;
+
+		part.offset = offset;
+		part.size = size;
+		part.ecclayout = master->ecclayout;
+
+		slave = allocate_partition(master, &part, i++, 0);
+		if (IS_ERR(slave))
+			return PTR_ERR(slave);
+
+		mutex_lock(&mtd_partitions_mutex);
+		list_add_tail(&slave->node, &master->partitions);
+		mutex_unlock(&mtd_partitions_mutex);
+
+		add_mtd_device(slave);
+	}
+
+	return 0;
+}
+#endif /* CONFIG_IS_ENABLED(DM) && CONFIG_IS_ENABLED(OF_CONTROL) */
 
 #ifndef __UBOOT__
 static DEFINE_SPINLOCK(part_parser_lock);

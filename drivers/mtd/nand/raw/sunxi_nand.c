@@ -24,10 +24,18 @@
  * GNU General Public License for more details.
  */
 
+#include <clk.h>
 #include <common.h>
-#include <fdtdec.h>
+#include <dm.h>
+#include <malloc.h>
 #include <memalign.h>
 #include <nand.h>
+#include <reset.h>
+#include <dm/device_compat.h>
+#include <dm/devres.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+#include <linux/err.h>
 
 #include <linux/kernel.h>
 #include <linux/mtd/mtd.h>
@@ -37,8 +45,6 @@
 
 #include <asm/gpio.h>
 #include <asm/arch/clock.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define NFC_REG_CTL		0x0000
 #define NFC_REG_ST		0x0004
@@ -256,7 +262,7 @@ static inline struct sunxi_nand_chip *to_sunxi_nand(struct nand_chip *nand)
  * NAND Controller structure: stores sunxi NAND controller information
  *
  * @controller:		base controller structure
- * @dev:		parent device (used to print error messages)
+ * @dev:		DM device (used to print error messages)
  * @regs:		NAND controller registers
  * @ahb_clk:		NAND Controller AHB clock
  * @mod_clk:		NAND Controller mod clock
@@ -269,7 +275,7 @@ static inline struct sunxi_nand_chip *to_sunxi_nand(struct nand_chip *nand)
  */
 struct sunxi_nfc {
 	struct nand_hw_control controller;
-	struct device *dev;
+	struct udevice *dev;
 	void __iomem *regs;
 	struct clk *ahb_clk;
 	struct clk *mod_clk;
@@ -1220,7 +1226,8 @@ static int _sunxi_nand_lookup_timing(const s32 *lut, int lut_size, u32 duration,
 #define sunxi_nand_lookup_timing(l, p, c) \
 			_sunxi_nand_lookup_timing(l, ARRAY_SIZE(l), p, c)
 
-static int sunxi_nand_chip_set_timings(struct sunxi_nand_chip *chip,
+static int sunxi_nand_chip_set_timings(struct sunxi_nfc *nfc,
+				       struct sunxi_nand_chip *chip,
 				       const struct nand_sdr_timings *timings)
 {
 	u32 min_clk_period = 0;
@@ -1343,7 +1350,8 @@ static int sunxi_nand_chip_set_timings(struct sunxi_nand_chip *chip,
 	return 0;
 }
 
-static int sunxi_nand_chip_init_timings(struct sunxi_nand_chip *chip)
+static int sunxi_nand_chip_init_timings(struct sunxi_nfc *nfc,
+					struct sunxi_nand_chip *chip)
 {
 	struct mtd_info *mtd = nand_to_mtd(&chip->nand);
 	const struct nand_sdr_timings *timings;
@@ -1378,7 +1386,7 @@ static int sunxi_nand_chip_init_timings(struct sunxi_nand_chip *chip)
 	if (IS_ERR(timings))
 		return PTR_ERR(timings);
 
-	return sunxi_nand_chip_set_timings(chip, timings);
+	return sunxi_nand_chip_set_timings(nfc, chip, timings);
 }
 
 static int sunxi_nand_hw_common_ecc_ctrl_init(struct mtd_info *mtd,
@@ -1417,7 +1425,7 @@ static int sunxi_nand_hw_common_ecc_ctrl_init(struct mtd_info *mtd,
 	}
 
 	if (i >= ARRAY_SIZE(strengths)) {
-		dev_err(nfc->dev, "unsupported strength\n");
+		dev_err(mtd->dev, "unsupported strength\n");
 		ret = -ENOTSUPP;
 		goto err;
 	}
@@ -1596,19 +1604,19 @@ static int sunxi_nand_ecc_init(struct mtd_info *mtd, struct nand_ecc_ctrl *ecc)
 	return 0;
 }
 
-static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
+static int sunxi_nand_chip_init(struct udevice *dev, struct sunxi_nfc *nfc,
+				ofnode np, int devnum)
 {
 	const struct nand_sdr_timings *timings;
-	const void *blob = gd->fdt_blob;
 	struct sunxi_nand_chip *chip;
 	struct mtd_info *mtd;
 	struct nand_chip *nand;
 	int nsels;
 	int ret;
 	int i;
-	u32 cs[8], rb[8];
+	u32 tmp;
 
-	if (!fdt_getprop(blob, node, "reg", &nsels))
+	if (!ofnode_get_property(np, "reg", &nsels))
 		return -EINVAL;
 
 	nsels /= sizeof(u32);
@@ -1629,30 +1637,16 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 	chip->selected = -1;
 
 	for (i = 0; i < nsels; i++) {
-		cs[i] = -1;
-		rb[i] = -1;
-	}
-
-	ret = fdtdec_get_int_array(gd->fdt_blob, node, "reg", cs, nsels);
-	if (ret) {
-		dev_err(dev, "could not retrieve reg property: %d\n", ret);
-		return ret;
-	}
-
-	ret = fdtdec_get_int_array(gd->fdt_blob, node, "allwinner,rb", rb,
-				   nsels);
-	if (ret) {
-		dev_err(dev, "could not retrieve reg property: %d\n", ret);
-		return ret;
-	}
-
-	for (i = 0; i < nsels; i++) {
-		int tmp = cs[i];
+		ret = ofnode_read_u32_index(np, "reg", i, &tmp);
+		if (ret) {
+			dev_err(dev, "could not retrieve reg property: %d\n",
+				ret);
+			return ret;
+		}
 
 		if (tmp > NFC_MAX_CS) {
 			dev_err(dev,
-				"invalid reg value: %u (max CS = 7)\n",
-				tmp);
+				"invalid reg value: %u (max CS = 7)\n", tmp);
 			return -EINVAL;
 		}
 
@@ -1663,15 +1657,14 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 
 		chip->sels[i].cs = tmp;
 
-		tmp = rb[i];
-		if (tmp >= 0 && tmp < 2) {
+		if (!ofnode_read_u32_index(np, "allwinner,rb", i, &tmp) &&
+		    tmp < 2) {
 			chip->sels[i].rb.type = RB_NATIVE;
 			chip->sels[i].rb.info.nativeid = tmp;
 		} else {
-			ret = gpio_request_by_name_nodev(offset_to_ofnode(node),
-						"rb-gpios", i,
-						&chip->sels[i].rb.info.gpio,
-						GPIOD_IS_IN);
+			ret = gpio_request_by_name(dev, "rb-gpios", i,
+						   &chip->sels[i].rb.info.gpio,
+						   GPIOD_IS_IN);
 			if (ret)
 				chip->sels[i].rb.type = RB_GPIO;
 			else
@@ -1688,7 +1681,7 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 		return ret;
 	}
 
-	ret = sunxi_nand_chip_set_timings(chip, timings);
+	ret = sunxi_nand_chip_set_timings(nfc, chip, timings);
 	if (ret) {
 		dev_err(dev, "could not configure chip timings: %d\n", ret);
 		return ret;
@@ -1703,7 +1696,7 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 	 * in the DT.
 	 */
 	nand->ecc.mode = NAND_ECC_HW;
-	nand->flash_node = node;
+	nand->flash_node = np;
 	nand->select_chip = sunxi_nfc_select_chip;
 	nand->cmd_ctrl = sunxi_nfc_cmd_ctrl;
 	nand->read_buf = sunxi_nfc_read_buf;
@@ -1723,7 +1716,7 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 
 	nand->options |= NAND_SUBPAGE_READ;
 
-	ret = sunxi_nand_chip_init_timings(chip);
+	ret = sunxi_nand_chip_init_timings(nfc, chip);
 	if (ret) {
 		dev_err(dev, "could not configure chip timings: %d\n", ret);
 		return ret;
@@ -1752,25 +1745,13 @@ static int sunxi_nand_chip_init(int node, struct sunxi_nfc *nfc, int devnum)
 	return 0;
 }
 
-static int sunxi_nand_chips_init(int node, struct sunxi_nfc *nfc)
+static int sunxi_nand_chips_init(struct udevice *dev, struct sunxi_nfc *nfc)
 {
-	const void *blob = gd->fdt_blob;
-	int nand_node;
+	ofnode nand_np;
 	int ret, i = 0;
 
-	for (nand_node = fdt_first_subnode(blob, node); nand_node >= 0;
-	     nand_node = fdt_next_subnode(blob, nand_node))
-		i++;
-
-	if (i > 8) {
-		dev_err(dev, "too many NAND chips: %d (max = 8)\n", i);
-		return -EINVAL;
-	}
-
-	i = 0;
-	for (nand_node = fdt_first_subnode(blob, node); nand_node >= 0;
-	     nand_node = fdt_next_subnode(blob, nand_node)) {
-		ret = sunxi_nand_chip_init(nand_node, nfc, i++);
+	dev_for_each_subnode(nand_np, dev) {
+		ret = sunxi_nand_chip_init(dev, nfc, nand_np, i++);
 		if (ret)
 			return ret;
 	}
@@ -1794,55 +1775,67 @@ static void sunxi_nand_chips_cleanup(struct sunxi_nfc *nfc)
 }
 #endif /* __UBOOT__ */
 
-void sunxi_nand_init(void)
+static int sunxi_nand_probe(struct udevice *dev)
 {
-	const void *blob = gd->fdt_blob;
-	struct sunxi_nfc *nfc;
-	fdt_addr_t regs;
-	int node;
+	struct sunxi_nfc *nfc = dev_get_priv(dev);
+	struct reset_ctl_bulk rst_bulk;
+	struct clk_bulk clk_bulk;
 	int ret;
 
-	nfc = kzalloc(sizeof(*nfc), GFP_KERNEL);
-	if (!nfc)
-		return;
-
+	nfc->dev = dev;
 	spin_lock_init(&nfc->controller.lock);
 	init_waitqueue_head(&nfc->controller.wq);
 	INIT_LIST_HEAD(&nfc->chips);
 
-	node = fdtdec_next_compatible(blob, 0, COMPAT_SUNXI_NAND);
-	if (node < 0) {
-		pr_err("unable to find nfc node in device tree\n");
-		goto err;
-	}
+	nfc->regs = dev_read_addr_ptr(dev);
+	if (!nfc->regs)
+		return -EINVAL;
 
-	if (!fdtdec_get_is_enabled(blob, node)) {
-		pr_err("nfc disabled in device tree\n");
-		goto err;
-	}
+	ret = reset_get_bulk(dev, &rst_bulk);
+	if (!ret)
+		reset_deassert_bulk(&rst_bulk);
 
-	regs = fdtdec_get_addr(blob, node, "reg");
-	if (regs == FDT_ADDR_T_NONE) {
-		pr_err("unable to find nfc address in device tree\n");
-		goto err;
-	}
-
-	nfc->regs = (void *)regs;
+	ret = clk_get_bulk(dev, &clk_bulk);
+	if (!ret)
+		clk_enable_bulk(&clk_bulk);
 
 	ret = sunxi_nfc_rst(nfc);
 	if (ret)
-		goto err;
+		return ret;
 
-	ret = sunxi_nand_chips_init(node, nfc);
+	ret = sunxi_nand_chips_init(dev, nfc);
 	if (ret) {
 		dev_err(dev, "failed to init nand chips\n");
-		goto err;
+		return ret;
 	}
 
-	return;
+	return 0;
+}
 
-err:
-	kfree(nfc);
+static const struct udevice_id sunxi_nand_ids[] = {
+	{
+		.compatible = "allwinner,sun4i-a10-nand",
+	},
+	{ }
+};
+
+U_BOOT_DRIVER(sunxi_nand) = {
+	.name		= "sunxi_nand",
+	.id		= UCLASS_MTD,
+	.of_match	= sunxi_nand_ids,
+	.probe		= sunxi_nand_probe,
+	.priv_auto	= sizeof(struct sunxi_nfc),
+};
+
+void board_nand_init(void)
+{
+	struct udevice *dev;
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_MTD,
+					  DM_DRIVER_GET(sunxi_nand), &dev);
+	if (ret && ret != -ENODEV)
+		pr_err("Failed to initialize sunxi NAND controller: %d\n", ret);
 }
 
 MODULE_LICENSE("GPL v2");

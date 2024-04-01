@@ -12,6 +12,10 @@
 
 #include <common.h>
 #include <dm.h>
+#include <env.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 
 #include <asm/io.h>
 #include <asm/arch/stm32.h>
@@ -29,7 +33,7 @@ int dram_init(void)
 		return rv;
 	}
 
-	if (fdtdec_setup_memory_size() != 0)
+	if (fdtdec_setup_mem_size_base() != 0)
 		rv = -EINVAL;
 
 	return rv;
@@ -42,20 +46,8 @@ int dram_init_banksize(void)
 	return 0;
 }
 
-u32 get_board_rev(void)
-{
-	return 0;
-}
-
-int board_early_init_f(void)
-{
-	return 0;
-}
-
 int board_init(void)
 {
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
-
 	return 0;
 }
 

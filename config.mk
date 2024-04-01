@@ -12,9 +12,8 @@
 #  If we did not have Tegra SoCs, build system would be much simpler...)
 PLATFORM_RELFLAGS :=
 PLATFORM_CPPFLAGS :=
-PLATFORM_LDFLAGS :=
-LDFLAGS :=
 LDFLAGS_FINAL :=
+LDFLAGS_STANDALONE :=
 OBJCOPYFLAGS :=
 # clear VENDOR for tcsh
 VENDOR :=
@@ -23,7 +22,7 @@ VENDOR :=
 ARCH := $(CONFIG_SYS_ARCH:"%"=%)
 CPU := $(CONFIG_SYS_CPU:"%"=%)
 ifdef CONFIG_SPL_BUILD
-ifdef CONFIG_TEGRA
+ifdef CONFIG_ARCH_TEGRA
 CPU := arm720t
 endif
 endif
@@ -50,8 +49,10 @@ endif
 ifneq ($(BOARD),)
 ifdef	VENDOR
 BOARDDIR = $(VENDOR)/$(BOARD)
+ENVDIR=${vendor}/env
 else
 BOARDDIR = $(BOARD)
+ENVDIR=${board}/env
 endif
 endif
 ifdef	BOARD
@@ -62,11 +63,6 @@ ifdef FTRACE
 PLATFORM_CPPFLAGS += -finstrument-functions -DFTRACE
 endif
 
-# Allow use of stdint.h if available
-ifneq ($(USE_STDINT),)
-PLATFORM_CPPFLAGS += -DCONFIG_USE_STDINT
-endif
-
 #########################################################################
 
 RELFLAGS := $(PLATFORM_RELFLAGS)
@@ -74,10 +70,10 @@ RELFLAGS := $(PLATFORM_RELFLAGS)
 PLATFORM_CPPFLAGS += $(RELFLAGS)
 PLATFORM_CPPFLAGS += -pipe
 
-LDFLAGS += $(PLATFORM_LDFLAGS)
 LDFLAGS_FINAL += -Bstatic
 
 export PLATFORM_CPPFLAGS
 export RELFLAGS
 export LDFLAGS_FINAL
+export LDFLAGS_STANDALONE
 export CONFIG_STANDALONE_LOAD_ADDR

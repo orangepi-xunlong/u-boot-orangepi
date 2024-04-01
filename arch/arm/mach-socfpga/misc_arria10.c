@@ -1,24 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2021 Intel Corporation
  */
 
 #include <altera.h>
 #include <common.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <init.h>
 #include <miiphy.h>
 #include <netdev.h>
 #include <ns16550.h>
+#include <spi_flash.h>
 #include <watchdog.h>
 #include <asm/arch/misc.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/reset_manager.h>
+#include <asm/arch/reset_manager_arria10.h>
 #include <asm/arch/sdram_arria10.h>
 #include <asm/arch/system_manager.h>
 #include <asm/arch/nic301.h>
 #include <asm/io.h>
 #include <asm/pl310.h>
+#include <linux/sizes.h>
 
 #define PINMUX_UART0_TX_SHARED_IO_OFFSET_Q1_3	0x08
 #define PINMUX_UART0_TX_SHARED_IO_OFFSET_Q2_11	0x58
@@ -27,46 +31,39 @@
 #define PINMUX_UART1_TX_SHARED_IO_OFFSET_Q3_7	0x78
 #define PINMUX_UART1_TX_SHARED_IO_OFFSET_Q4_3	0x98
 
-#if defined(CONFIG_SPL_BUILD)
-static struct pl310_regs *const pl310 =
-	(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
-static const struct socfpga_noc_fw_ocram *noc_fw_ocram_base =
-	(void *)SOCFPGA_SDR_FIREWALL_OCRAM_ADDRESS;
-#endif
+#define REGULAR_BOOT_MAGIC	0xd15ea5e
+#define PERIPH_RBF_PROG_FORCE	0x50455249
 
-static struct socfpga_system_manager *sysmgr_regs =
-	(struct socfpga_system_manager *)SOCFPGA_SYSMGR_ADDRESS;
+#define QSPI_S25FL_SOFT_RESET_COMMAND	0x00f0ff82
+#define QSPI_N25_SOFT_RESET_COMMAND	0x00000001
+#define QSPI_NO_SOFT_RESET		0x00000000
 
 /*
- * DesignWare Ethernet initialization
+ * FPGA programming support for SoC FPGA Arria 10
  */
-#ifdef CONFIG_ETH_DESIGNWARE
-void dwmac_deassert_reset(const unsigned int of_reset_id,
-				 const u32 phymode)
-{
-	u32 reset;
-
-	if (of_reset_id == EMAC0_RESET) {
-		reset = SOCFPGA_RESET(EMAC0);
-	} else if (of_reset_id == EMAC1_RESET) {
-		reset = SOCFPGA_RESET(EMAC1);
-	} else if (of_reset_id == EMAC2_RESET) {
-		reset = SOCFPGA_RESET(EMAC2);
-	} else {
-		printf("GMAC: Invalid reset ID (%i)!\n", of_reset_id);
-		return;
-	}
-
-	clrsetbits_le32(&sysmgr_regs->emac[of_reset_id - EMAC0_RESET],
-			SYSMGR_EMACGRP_CTRL_PHYSEL_MASK,
-			phymode);
-
-	/* Release the EMAC controller from reset */
-	socfpga_per_reset(reset, 0);
-}
-#endif
+static Altera_desc altera_fpga[] = {
+	{
+		/* Family */
+		Altera_SoCFPGA,
+		/* Interface type */
+		fast_passive_parallel,
+		/* No limitation as additional data will be ignored */
+		-1,
+		/* No device function table */
+		NULL,
+		/* Base interface address specified in driver */
+		NULL,
+		/* No cookie implementation */
+		0
+	},
+};
 
 #if defined(CONFIG_SPL_BUILD)
+static struct pl310_regs *const pl310 =
+	(struct pl310_regs *)CFG_SYS_PL310_BASE;
+static const struct socfpga_noc_fw_ocram *noc_fw_ocram_base =
+	(void *)SOCFPGA_SDR_FIREWALL_OCRAM_ADDRESS;
+
 /*
 + * This function initializes security policies to be consistent across
 + * all logic units in the Arria 10.
@@ -74,162 +71,40 @@ void dwmac_deassert_reset(const unsigned int of_reset_id,
 + * The idea is to set all security policies to be normal, nonsecure
 + * for all units.
 + */
-static void initialize_security_policies(void)
+void socfpga_init_security_policies(void)
 {
 	/* Put OCRAM in non-secure */
 	writel(0x003f0000, &noc_fw_ocram_base->region0);
 	writel(0x1, &noc_fw_ocram_base->enable);
+
+	/* Put DDR in non-secure */
+	writel(0xffff0000, SOCFPGA_SDR_FIREWALL_L3_ADDRESS + 0xc);
+	writel(0x1, SOCFPGA_SDR_FIREWALL_L3_ADDRESS);
+
+	/* Enable priviledged and non-priviledged access to L4 peripherals */
+	writel(~0, SOCFPGA_NOC_L4_PRIV_FLT_OFST);
+
+	/* Enable secure and non-secure transactions to bridges */
+	writel(~0, SOCFPGA_NOC_FW_H2F_SCR_OFST);
+	writel(~0, SOCFPGA_NOC_FW_H2F_SCR_OFST + 4);
+
+	writel(0x0007FFFF,
+	       socfpga_get_sysmgr_addr() + SYSMGR_A10_ECC_INTMASK_SET);
 }
 
-int arch_early_init_r(void)
+void socfpga_sdram_remap_zero(void)
 {
-	initialize_security_policies();
-
 	/* Configure the L2 controller to make SDRAM start at 0 */
 	writel(0x1, &pl310->pl310_addr_filter_start);
-
-	/* assert reset to all except L4WD0 and L4TIMER0 */
-	socfpga_per_reset_all();
-
-	/* configuring the clock based on handoff */
-	/* TODO: Add call to cm_basic_init() */
-
-	/* Add device descriptor to FPGA device table */
-	socfpga_fpga_add();
-	return 0;
-}
-#else
-int arch_early_init_r(void)
-{
-	return 0;
 }
 #endif
 
-/*
- * This function looking the 1st encounter UART peripheral,
- * and then return its offset of the dedicated/shared IO pin
- * mux. offset value (zero and above).
- */
-static int find_peripheral_uart(const void *blob,
-	int child, const char *node_name)
+int arch_early_init_r(void)
 {
-	int len;
-	fdt_addr_t base_addr = 0;
-	fdt_size_t size;
-	const u32 *cell;
-	u32 value, offset = 0;
-
-	base_addr = fdtdec_get_addr_size(blob, child, "reg", &size);
-	if (base_addr != FDT_ADDR_T_NONE) {
-		cell = fdt_getprop(blob, child, "pinctrl-single,pins",
-			&len);
-		if (cell != NULL) {
-			for (; len > 0; len -= (2 * sizeof(u32))) {
-				offset = fdt32_to_cpu(*cell++);
-				value = fdt32_to_cpu(*cell++);
-				/* Found UART peripheral. */
-				if (value == PINMUX_UART)
-					return offset;
-			}
-		}
-	}
-	return -EINVAL;
-}
-
-/*
- * This function looks up the 1st encounter UART peripheral,
- * and then return its offset of the dedicated/shared IO pin
- * mux. UART peripheral is found if the offset is not in negative
- * value.
- */
-static int is_peripheral_uart_true(const void *blob,
-	int node, const char *child_name)
-{
-	int child, len;
-	const char *node_name;
-
-	child = fdt_first_subnode(blob, node);
-
-	if (child < 0)
-		return -EINVAL;
-
-	node_name = fdt_get_name(blob, child, &len);
-
-	while (node_name) {
-		if (!strcmp(child_name, node_name))
-			return find_peripheral_uart(blob, child, node_name);
-
-		child = fdt_next_subnode(blob, child);
-		if (child < 0)
-			break;
-
-		node_name = fdt_get_name(blob, child, &len);
-	}
-
-	return -1;
-}
-
-/*
- * This function looking the 1st encounter UART dedicated IO peripheral,
- * and then return based address of the 1st encounter UART dedicated
- * IO peripheral.
- */
-unsigned int dedicated_uart_com_port(const void *blob)
-{
-	int node;
-
-	node = fdtdec_next_compatible(blob, 0,
-		 COMPAT_ALTERA_SOCFPGA_PINCTRL_SINGLE);
-	if (node < 0)
-		return 0;
-
-	if (is_peripheral_uart_true(blob, node, "dedicated") >= 0)
-		return SOCFPGA_UART1_ADDRESS;
+	/* Add device descriptor to FPGA device table */
+	socfpga_fpga_add(&altera_fpga[0]);
 
 	return 0;
-}
-
-/*
- * This function looking the 1st encounter UART shared IO peripheral, and then
- * return based address of the 1st encounter UART shared IO peripheral.
- */
-unsigned int shared_uart_com_port(const void *blob)
-{
-	int node, ret;
-
-	node = fdtdec_next_compatible(blob, 0,
-		 COMPAT_ALTERA_SOCFPGA_PINCTRL_SINGLE);
-	if (node < 0)
-		return 0;
-
-	ret = is_peripheral_uart_true(blob, node, "shared");
-
-	if (ret == PINMUX_UART0_TX_SHARED_IO_OFFSET_Q1_3 ||
-	    ret == PINMUX_UART0_TX_SHARED_IO_OFFSET_Q2_11 ||
-	    ret == PINMUX_UART0_TX_SHARED_IO_OFFSET_Q3_3)
-		return SOCFPGA_UART0_ADDRESS;
-	else if (ret == PINMUX_UART1_TX_SHARED_IO_OFFSET_Q1_7 ||
-		ret == PINMUX_UART1_TX_SHARED_IO_OFFSET_Q3_7 ||
-		ret == PINMUX_UART1_TX_SHARED_IO_OFFSET_Q4_3)
-		return SOCFPGA_UART1_ADDRESS;
-
-	return 0;
-}
-
-/*
- * This function looking the 1st encounter UART peripheral, and then return
- * base address of the 1st encounter UART peripheral.
- */
-unsigned int uart_com_port(const void *blob)
-{
-	unsigned int ret;
-
-	ret = dedicated_uart_com_port(blob);
-
-	if (ret)
-		return ret;
-
-	return shared_uart_com_port(blob);
 }
 
 /*
@@ -238,8 +113,9 @@ unsigned int uart_com_port(const void *blob)
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo(void)
 {
-	const u32 bsel =
-		SYSMGR_GET_BOOTINFO_BSEL(readl(&sysmgr_regs->bootinfo));
+	const u32 bootinfo = readl(socfpga_get_sysmgr_addr() +
+				   SYSMGR_A10_BOOTINFO);
+	const u32 bsel = SYSMGR_GET_BOOTINFO_BSEL(bootinfo);
 
 	puts("CPU:   Altera SoCFPGA Arria 10\n");
 
@@ -248,9 +124,151 @@ int print_cpuinfo(void)
 }
 #endif
 
-#ifdef CONFIG_ARCH_MISC_INIT
-int arch_misc_init(void)
+void do_bridge_reset(int enable, unsigned int mask)
 {
+	if (enable)
+		socfpga_reset_deassert_bridges_handoff();
+	else
+		socfpga_bridges_reset();
+}
+
+/*
+ * This function set/unset flag with number "0x50455249" to
+ * handoff register isw_handoff[7] - 0xffd0624c
+ * This flag is used to force periph RBF program regardless FPGA status
+ * and double periph RBF config are needed on some devices or boards to
+ * stabilize the IO config system.
+ */
+void force_periph_program(unsigned int status)
+{
+	if (status)
+		writel(PERIPH_RBF_PROG_FORCE, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+	else
+		writel(0, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+}
+
+/*
+ * This function is used to check whether
+ * handoff register isw_handoff[7] contains
+ * flag for forcing the periph RBF program "0x50455249".
+ */
+bool is_periph_program_force(void)
+{
+	unsigned int status;
+
+	status = readl(socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+
+	if (status == PERIPH_RBF_PROG_FORCE)
+		return true;
+	else
+		return false;
+}
+
+/*
+ * This function set/unset magic number "0xd15ea5e" to
+ * handoff register isw_handoff[7] - 0xffd0624c
+ * This magic number is part of boot progress tracking
+ * and it's required for warm reset workaround on MPFE hang issue.
+ */
+void set_regular_boot(unsigned int status)
+{
+	if (status)
+		writel(REGULAR_BOOT_MAGIC, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+	else
+		writel(0, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+}
+
+/*
+ * This function is used to check whether
+ * handoff register isw_handoff[7] contains
+ * magic number "0xd15ea5e".
+ */
+bool is_regular_boot_valid(void)
+{
+	unsigned int status;
+
+	status = readl(socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ISW_HANDOFF_BASE + SYSMGR_A10_ISW_HANDOFF_7);
+
+	if (status == REGULAR_BOOT_MAGIC)
+		return true;
+	else
+		return false;
+}
+
+#if IS_ENABLED(CONFIG_CADENCE_QSPI)
+/* This function is used to trigger software reset
+ * to the QSPI flash. On some boards, the QSPI flash reset may
+ * not be connected to the HPS warm reset.
+ */
+int qspi_flash_software_reset(void)
+{
+	struct udevice *flash;
+	int ret;
+
+	/* Get the flash info */
+	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
+				     CONFIG_SF_DEFAULT_CS,
+				     CONFIG_SF_DEFAULT_SPEED,
+				     CONFIG_SF_DEFAULT_MODE,
+				     &flash);
+
+	if (ret) {
+		debug("Failed to initialize SPI flash at ");
+		debug("%u:%u (error %d)\n", CONFIG_SF_DEFAULT_BUS,
+		      CONFIG_SF_DEFAULT_CS, ret);
+		return -ENODEV;
+	}
+
+	if (!flash)
+		return -EINVAL;
+
+	/*
+	 * QSPI flash software reset command, for the case where
+	 * no HPS reset connected to QSPI flash reset
+	 */
+	if (!memcmp(flash->name, "N25", SZ_1 + SZ_2))
+		writel(QSPI_N25_SOFT_RESET_COMMAND, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ROMCODE_QSPIRESETCOMMAND);
+	else if (!memcmp(flash->name, "S25FL", SZ_1 + SZ_4))
+		writel(QSPI_S25FL_SOFT_RESET_COMMAND,
+		       socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ROMCODE_QSPIRESETCOMMAND);
+	else /* No software reset */
+		writel(QSPI_NO_SOFT_RESET, socfpga_get_sysmgr_addr() +
+		       SYSMGR_A10_ROMCODE_QSPIRESETCOMMAND);
+
 	return 0;
 }
 #endif
+
+void dram_bank_mmu_setup(int bank)
+{
+	struct bd_info *bd = gd->bd;
+	u32 start, size;
+	int i;
+
+	/* If we're still in OCRAM, don't set the XN bit on it */
+	if (!(gd->flags & GD_FLG_RELOC)) {
+		set_section_dcache(
+			CFG_SYS_INIT_RAM_ADDR >> MMU_SECTION_SHIFT,
+			DCACHE_WRITETHROUGH);
+	}
+
+	/*
+	 * The default implementation of this function allows the DRAM dcache
+	 * to be enabled only after relocation. However, to speed up ECC
+	 * initialization, we want to be able to enable DRAM dcache before
+	 * relocation, so we don't check GD_FLG_RELOC (this assumes bd->bi_dram
+	 * is set first).
+	 */
+	start = bd->bi_dram[bank].start >> MMU_SECTION_SHIFT;
+	size = bd->bi_dram[bank].size >> MMU_SECTION_SHIFT;
+	for (i = start; i < start + size; i++)
+		set_section_dcache(i, DCACHE_DEFAULT_OPTION);
+}

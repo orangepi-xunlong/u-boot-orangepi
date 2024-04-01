@@ -8,35 +8,24 @@
 
 #include <configs/ti_am335x_common.h>
 
-#ifndef CONFIG_SPL_BUILD
-# define CONFIG_TIMESTAMP
-#endif
-
 /* Clock Defines */
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
 #define NANDARGS \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 	"nandargs=setenv bootargs console=${console} ${optargs} " \
 		"${mtdparts} " \
 		"root=${nandroot} " \
 		"rootfstype=${nandrootfstype}\0" \
 	"nandroot=ubi0:rootfs rw ubi.mtd=NAND.file-system\0" \
-	"nandrootfstype=ubifs rootwait=1\0" \
+	"nandrootfstype=ubifs rootwait\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
 		"nand read ${fdt_addr} NAND.u-boot-spl-os; " \
 		"nand read ${loadaddr} NAND.kernel; " \
 		"bootz ${loadaddr} - ${fdt_addr}\0"
 
-#define CONFIG_BOOTCOMMAND \
-	"run mmcboot; " \
-	"run nandboot; " \
-	"run netboot"
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"loadaddr=0x82000000\0" \
 	"fdt_addr=0x87800000\0" \
 	"boot_fdt=try\0" \
@@ -108,30 +97,18 @@
 	NANDARGS
 
 /* NS16550 Configuration */
-#define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
-#define CONFIG_SYS_NS16550_COM2		0x48022000	/* UART1 */
-#define CONFIG_SYS_NS16550_COM3		0x48024000	/* UART2 */
-#define CONFIG_SYS_NS16550_COM4		0x481a6000	/* UART3 */
-#define CONFIG_SYS_NS16550_COM5		0x481a8000	/* UART4 */
-#define CONFIG_SYS_NS16550_COM6		0x481aa000	/* UART5 */
-
-/* PMIC support */
-#define CONFIG_POWER_TPS65217
+#define CFG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
+#define CFG_SYS_NS16550_COM2		0x48022000	/* UART1 */
+#define CFG_SYS_NS16550_COM3		0x48024000	/* UART2 */
+#define CFG_SYS_NS16550_COM4		0x481a6000	/* UART3 */
+#define CFG_SYS_NS16550_COM5		0x481a8000	/* UART4 */
+#define CFG_SYS_NS16550_COM6		0x481aa000	/* UART5 */
 
 /* SPL */
-/* Bootcount using the RTC block */
-#define CONFIG_SYS_BOOTCOUNT_BE
 
 /* NAND: device related configs */
-#define CONFIG_SYS_NAND_5_ADDR_CYCLE
-#define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE / \
-					 CONFIG_SYS_NAND_PAGE_SIZE)
-#define CONFIG_SYS_NAND_PAGE_SIZE	2048
-#define CONFIG_SYS_NAND_OOBSIZE		64
-#define CONFIG_SYS_NAND_BLOCK_SIZE	(128*1024)
 /* NAND: driver related configs */
-#define CONFIG_SYS_NAND_BAD_BLOCK_POS	NAND_LARGE_BADBLOCK_POS
-#define CONFIG_SYS_NAND_ECCPOS		{ 2, 3, 4, 5, 6, 7, 8, 9, \
+#define CFG_SYS_NAND_ECCPOS		{ 2, 3, 4, 5, 6, 7, 8, 9, \
 					 10, 11, 12, 13, 14, 15, 16, 17, \
 					 18, 19, 20, 21, 22, 23, 24, 25, \
 					 26, 27, 28, 29, 30, 31, 32, 33, \
@@ -139,42 +116,7 @@
 					 42, 43, 44, 45, 46, 47, 48, 49, \
 					 50, 51, 52, 53, 54, 55, 56, 57, }
 
-#define CONFIG_SYS_NAND_ECCSIZE		512
-#define CONFIG_SYS_NAND_ECCBYTES	14
-#define CONFIG_SYS_NAND_ONFI_DETECTION
-#define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_BCH8_CODE_HW
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x000c0000
-/* NAND: SPL related configs */
-
-/* USB configuration */
-#define CONFIG_ARCH_MISC_INIT
-#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
-#define CONFIG_AM335X_USB1
-#define CONFIG_AM335X_USB1_MODE MUSB_HOST
-
-/*
- * Disable MMC DM for SPL build and can be re-enabled after adding
- * DM support in SPL
- */
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_DM_MMC
-#undef CONFIG_TIMER
-#endif
-
-#if defined(CONFIG_ENV_IS_IN_NAND)
-#define CONFIG_ENV_OFFSET		0x001c0000
-#define CONFIG_ENV_OFFSET_REDUND	0x001e0000
-#define CONFIG_ENV_SIZE			SZ_128K
-#define CONFIG_SYS_ENV_SECT_SIZE	CONFIG_SYS_NAND_BLOCK_SIZE
-#else
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_OFFSET		SZ_128K
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#define CONFIG_ENV_SIZE			SZ_8K
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#endif
-
-/* Network. */
-#define CONFIG_PHY_SMSC
+#define CFG_SYS_NAND_ECCSIZE		512
+#define CFG_SYS_NAND_ECCBYTES	14
 
 #endif	/* ! __CONFIG_CHILIBOARD_H */

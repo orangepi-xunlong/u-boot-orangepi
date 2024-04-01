@@ -32,7 +32,11 @@ static int print_remoteproc_list(void)
 		struct dm_rproc_uclass_pdata *uc_pdata;
 		const struct dm_rproc_ops *ops = rproc_get_ops(dev);
 
-		uc_pdata = dev_get_uclass_platdata(dev);
+		uc_pdata = dev_get_uclass_plat(dev);
+
+		/* Do not print if rproc is not probed */
+		if (!(dev_get_flags(dev) & DM_FLAG_ACTIVATED))
+			continue;
 
 		switch (uc_pdata->mem_type) {
 		case RPROC_INTERNAL_MEMORY_MAPPED:
@@ -43,7 +47,7 @@ static int print_remoteproc_list(void)
 			break;
 		}
 		printf("%d - Name:'%s' type:'%s' supports: %s%s%s%s%s%s\n",
-		       dev->seq,
+		       dev_seq(dev),
 		       uc_pdata->name,
 		       type,
 		       ops->load ? "load " : "",
@@ -65,15 +69,25 @@ static int print_remoteproc_list(void)
  *
  * Return: 0 if no error, else returns appropriate error value.
  */
-static int do_rproc_init(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_rproc_init(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
+	int id;
+
 	if (rproc_is_initialized()) {
 		printf("\tRemote Processors are already initialized\n");
-	} else {
+		return CMD_RET_FAILURE;
+	}
+
+	if (argc == 1) {
 		if (!rproc_init())
 			return 0;
-		printf("Few Remote Processors failed to be initalized\n");
+		printf("Few Remote Processors failed to be initialized\n");
+	} else if (argc == 2) {
+		id = (int)dectoul(argv[1], NULL);
+		if (!rproc_dev_init(id))
+			return 0;
+		printf("Remote Processor %d failed to be initialized\n", id);
 	}
 
 	return CMD_RET_FAILURE;
@@ -88,14 +102,9 @@ static int do_rproc_init(cmd_tbl_t *cmdtp, int flag, int argc,
  *
  * Return: 0 if no error, else returns appropriate error value.
  */
-static int do_remoteproc_list(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_remoteproc_list(struct cmd_tbl *cmdtp, int flag, int argc,
 			      char *const argv[])
 {
-	if (!rproc_is_initialized()) {
-		printf("\t Remote Processors is not initialized\n");
-		return CMD_RET_USAGE;
-	}
-
 	if (print_remoteproc_list())
 		return CMD_RET_FAILURE;
 
@@ -111,7 +120,7 @@ static int do_remoteproc_list(cmd_tbl_t *cmdtp, int flag, int argc,
  *
  * Return: 0 if no error, else returns appropriate error value.
  */
-static int do_remoteproc_load(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_remoteproc_load(struct cmd_tbl *cmdtp, int flag, int argc,
 			      char *const argv[])
 {
 	ulong addr, size;
@@ -120,18 +129,13 @@ static int do_remoteproc_load(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 4)
 		return CMD_RET_USAGE;
 
-	id = (int)simple_strtoul(argv[1], NULL, 3);
-	addr = simple_strtoul(argv[2], NULL, 16);
+	id = (int)dectoul(argv[1], NULL);
+	addr = hextoul(argv[2], NULL);
 
-	size = simple_strtoul(argv[3], NULL, 16);
+	size = hextoul(argv[3], NULL);
 
 	if (!size) {
 		printf("\t Expect some size??\n");
-		return CMD_RET_USAGE;
-	}
-
-	if (!rproc_is_initialized()) {
-		printf("\tRemote Processors are not initialized\n");
 		return CMD_RET_USAGE;
 	}
 
@@ -155,7 +159,7 @@ static int do_remoteproc_load(cmd_tbl_t *cmdtp, int flag, int argc,
  *
  * Return: 0 if no error, else returns appropriate error value.
  */
-static int do_remoteproc_wrapper(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_remoteproc_wrapper(struct cmd_tbl *cmdtp, int flag, int argc,
 				 char *const argv[])
 {
 	int id, ret = CMD_RET_USAGE;
@@ -163,12 +167,7 @@ static int do_remoteproc_wrapper(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 2)
 		return CMD_RET_USAGE;
 
-	id = (int)simple_strtoul(argv[1], NULL, 3);
-
-	if (!rproc_is_initialized()) {
-		printf("\tRemote Processors are not initialized\n");
-		return CMD_RET_USAGE;
-	}
+	id = (int)dectoul(argv[1], NULL);
 
 	if (!strcmp(argv[0], "start")) {
 		ret = rproc_start(id);
@@ -202,9 +201,11 @@ static int do_remoteproc_wrapper(cmd_tbl_t *cmdtp, int flag, int argc,
 	return ret ? CMD_RET_FAILURE : 0;
 }
 
-static cmd_tbl_t cmd_remoteproc_sub[] = {
-	U_BOOT_CMD_MKENT(init, 0, 1, do_rproc_init,
-			 "Enumerate and initialize all processors", ""),
+static struct cmd_tbl cmd_remoteproc_sub[] = {
+	U_BOOT_CMD_MKENT(init, 1, 1, do_rproc_init,
+			 "Enumerate and initialize the remote processor(s)",
+			 "id - ID of the remote processor\n"
+			 "If id is not passed, initialize all the remote processors"),
 	U_BOOT_CMD_MKENT(list, 0, 1, do_remoteproc_list,
 			 "list remote processors", ""),
 	U_BOOT_CMD_MKENT(load, 5, 1, do_remoteproc_load,
@@ -241,10 +242,10 @@ static cmd_tbl_t cmd_remoteproc_sub[] = {
  *
  * Return: 0 if no error, else returns appropriate error value.
  */
-static int do_remoteproc(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_remoteproc(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
-	cmd_tbl_t *c = NULL;
+	struct cmd_tbl *c = NULL;
 
 	/* Strip off leading 'rproc' command argument */
 	argc--;
@@ -270,7 +271,8 @@ U_BOOT_CMD(rproc, 5, 1, do_remoteproc,
 	   "\t\tNote: Services are dependent on the driver capability\n"
 	   "\t\t      'list' command shows the capability of each device\n"
 	   "\n\tSubcommands:\n"
-	   "\tinit   - Enumerate and initalize the remote processors\n"
+	   "\tinit <id> - Enumerate and initalize the remote processor.\n"
+	   "\t		  if id is not passed, initialize all the remote prcessors\n"
 	   "\tlist   - list available remote processors\n"
 	   "\tload <id> [addr] [size]- Load the remote processor with binary\n"
 	   "\t		  image stored at address [addr] in memory\n"

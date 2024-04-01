@@ -6,8 +6,16 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
 #include <usb.h>
 #include <dm/root.h>
+#include <linux/usb/gadget.h>
+
+struct sandbox_udc {
+	struct usb_gadget gadget;
+};
+
+struct sandbox_udc *this_controller;
 
 struct sandbox_usb_ctrl {
 	int rootdev;
@@ -22,7 +30,7 @@ static void usbmon_trace(struct udevice *bus, ulong pipe,
 	type = (pipe & USB_PIPE_TYPE_MASK) >> USB_PIPE_TYPE_SHIFT;
 	debug("0 0 S %c%c:%d:%03ld:%ld", types[type],
 	      pipe & USB_DIR_IN ? 'i' : 'o',
-	      bus->seq,
+	      dev_seq(bus),
 	      (pipe & USB_PIPE_DEV_MASK) >> USB_PIPE_DEV_SHIFT,
 	      (pipe & USB_PIPE_EP_MASK) >> USB_PIPE_EP_SHIFT);
 	if (setup) {
@@ -99,7 +107,7 @@ static int sandbox_submit_bulk(struct udevice *bus, struct usb_device *udev,
 
 static int sandbox_submit_int(struct udevice *bus, struct usb_device *udev,
 			      unsigned long pipe, void *buffer, int length,
-			      int interval)
+			      int interval, bool nonblock)
 {
 	struct udevice *emul;
 	int ret;
@@ -110,9 +118,31 @@ static int sandbox_submit_int(struct udevice *bus, struct usb_device *udev,
 	usbmon_trace(bus, pipe, NULL, emul);
 	if (ret)
 		return ret;
-	ret = usb_emul_int(emul, udev, pipe, buffer, length, interval);
+	ret = usb_emul_int(emul, udev, pipe, buffer, length, interval,
+			   nonblock);
 
 	return ret;
+}
+
+int usb_gadget_handle_interrupts(int index)
+{
+	return 0;
+}
+
+int usb_gadget_register_driver(struct usb_gadget_driver *driver)
+{
+	struct sandbox_udc *dev = this_controller;
+
+	return driver->bind(&dev->gadget);
+}
+
+int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
+{
+	struct sandbox_udc *dev = this_controller;
+
+	driver->unbind(&dev->gadget);
+
+	return 0;
 }
 
 static int sandbox_alloc_device(struct udevice *dev, struct usb_device *udev)
@@ -153,5 +183,5 @@ U_BOOT_DRIVER(usb_sandbox) = {
 	.of_match = sandbox_usb_ids,
 	.probe = sandbox_usb_probe,
 	.ops	= &sandbox_usb_ops,
-	.priv_auto_alloc_size = sizeof(struct sandbox_usb_ctrl),
+	.priv_auto	= sizeof(struct sandbox_usb_ctrl),
 };

@@ -6,13 +6,14 @@
  * author Andy Fleming
  * Copyright 2016 Karsten Merker <merker@debian.org>
  */
-#include <config.h>
 #include <common.h>
 #include <linux/bitops.h>
 #include <phy.h>
+#include <linux/delay.h>
 
 #define PHY_RTL8211x_FORCE_MASTER BIT(1)
-#define PHY_RTL8211E_PINE64_GIGABIT_FIX BIT(2)
+#define PHY_RTL8211F_FORCE_EEE_RXC_ON BIT(3)
+#define PHY_RTL8201F_S700_RMII_TIMINGS BIT(4)
 
 #define PHY_AUTONEGOTIATE_TIMEOUT 5000
 
@@ -47,16 +48,53 @@
 #define MIIM_RTL8211F_PHYSTAT_SPDDONE  0x0800
 #define MIIM_RTL8211F_PHYSTAT_LINK     0x0004
 
-#define MIIM_RTL8211E_CONFREG           0x1c
-#define MIIM_RTL8211E_CONFREG_TXD		0x0002
-#define MIIM_RTL8211E_CONFREG_RXD		0x0004
-#define MIIM_RTL8211E_CONFREG_MAGIC		0xb400	/* Undocumented */
+#define MIIM_RTL8211E_CONFREG		0x1c
+#define MIIM_RTL8211E_CTRL_DELAY	BIT(13)
+#define MIIM_RTL8211E_TX_DELAY		BIT(12)
+#define MIIM_RTL8211E_RX_DELAY		BIT(11)
 
 #define MIIM_RTL8211E_EXT_PAGE_SELECT  0x1e
 
 #define MIIM_RTL8211F_PAGE_SELECT      0x1f
 #define MIIM_RTL8211F_TX_DELAY		0x100
+#define MIIM_RTL8211F_RX_DELAY		0x8
 #define MIIM_RTL8211F_LCR		0x10
+
+#define RTL8201F_RMSR			0x10
+
+#define RMSR_RX_TIMING_SHIFT		BIT(2)
+#define RMSR_RX_TIMING_MASK		GENMASK(7, 4)
+#define RMSR_RX_TIMING_VAL		0x4
+#define RMSR_TX_TIMING_SHIFT		BIT(3)
+#define RMSR_TX_TIMING_MASK		GENMASK(11, 8)
+#define RMSR_TX_TIMING_VAL		0x5
+
+static int rtl8211f_phy_extread(struct phy_device *phydev, int addr,
+				int devaddr, int regnum)
+{
+	int oldpage = phy_read(phydev, MDIO_DEVAD_NONE,
+			       MIIM_RTL8211F_PAGE_SELECT);
+	int val;
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, devaddr);
+	val = phy_read(phydev, MDIO_DEVAD_NONE, regnum);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, oldpage);
+
+	return val;
+}
+
+static int rtl8211f_phy_extwrite(struct phy_device *phydev, int addr,
+				 int devaddr, int regnum, u16 val)
+{
+	int oldpage = phy_read(phydev, MDIO_DEVAD_NONE,
+			       MIIM_RTL8211F_PAGE_SELECT);
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, devaddr);
+	phy_write(phydev, MDIO_DEVAD_NONE, regnum, val);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, oldpage);
+
+	return 0;
+}
 
 static int rtl8211b_probe(struct phy_device *phydev)
 {
@@ -69,8 +107,22 @@ static int rtl8211b_probe(struct phy_device *phydev)
 
 static int rtl8211e_probe(struct phy_device *phydev)
 {
-#ifdef CONFIG_RTL8211E_PINE64_GIGABIT_FIX
-	phydev->flags |= PHY_RTL8211E_PINE64_GIGABIT_FIX;
+	return 0;
+}
+
+static int rtl8211f_probe(struct phy_device *phydev)
+{
+#ifdef CONFIG_RTL8211F_PHY_FORCE_EEE_RXC_ON
+	phydev->flags |= PHY_RTL8211F_FORCE_EEE_RXC_ON;
+#endif
+
+	return 0;
+}
+
+static int rtl8210f_probe(struct phy_device *phydev)
+{
+#ifdef CONFIG_RTL8201F_PHY_S700_RMII_TIMINGS
+	phydev->flags |= PHY_RTL8201F_S700_RMII_TIMINGS;
 #endif
 
 	return 0;
@@ -97,22 +149,6 @@ static int rtl8211x_config(struct phy_device *phydev)
 		reg |= MIIM_RTL8211x_CTRL1000T_MASTER;
 		phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000, reg);
 	}
-	if (phydev->flags & PHY_RTL8211E_PINE64_GIGABIT_FIX) {
-		unsigned int reg;
-
-		phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT,
-			  7);
-		phy_write(phydev, MDIO_DEVAD_NONE,
-			  MIIM_RTL8211E_EXT_PAGE_SELECT, 0xa4);
-		reg = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211E_CONFREG);
-		/* Ensure both internal delays are turned off */
-		reg &= ~(MIIM_RTL8211E_CONFREG_TXD | MIIM_RTL8211E_CONFREG_RXD);
-		/* Flip the magic undocumented bits */
-		reg |= MIIM_RTL8211E_CONFREG_MAGIC;
-		phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211E_CONFREG, reg);
-		phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT,
-			  0);
-	}
 	/* read interrupt status just to clear it */
 	phy_read(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211x_PHY_INER);
 
@@ -121,9 +157,78 @@ static int rtl8211x_config(struct phy_device *phydev)
 	return 0;
 }
 
+/* RealTek RTL8201F */
+static int rtl8201f_config(struct phy_device *phydev)
+{
+	unsigned int reg;
+
+	if (phydev->flags & PHY_RTL8201F_S700_RMII_TIMINGS) {
+		phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT,
+			  7);
+		reg = phy_read(phydev, MDIO_DEVAD_NONE, RTL8201F_RMSR);
+		reg &= ~(RMSR_RX_TIMING_MASK | RMSR_TX_TIMING_MASK);
+		/* Set the needed Rx/Tx Timings for proper PHY operation */
+		reg |= (RMSR_RX_TIMING_VAL << RMSR_RX_TIMING_SHIFT)
+		       | (RMSR_TX_TIMING_VAL << RMSR_TX_TIMING_SHIFT);
+		phy_write(phydev, MDIO_DEVAD_NONE, RTL8201F_RMSR, reg);
+		phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT,
+			  0);
+	}
+
+	genphy_config_aneg(phydev);
+
+	return 0;
+}
+
+static int rtl8211e_config(struct phy_device *phydev)
+{
+	int reg, val;
+
+	/* enable TX/RX delay for rgmii-* modes, and disable them for rgmii. */
+	switch (phydev->interface) {
+	case PHY_INTERFACE_MODE_RGMII:
+		val = MIIM_RTL8211E_CTRL_DELAY;
+		break;
+	case PHY_INTERFACE_MODE_RGMII_ID:
+		val = MIIM_RTL8211E_CTRL_DELAY | MIIM_RTL8211E_TX_DELAY |
+		      MIIM_RTL8211E_RX_DELAY;
+		break;
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+		val = MIIM_RTL8211E_CTRL_DELAY | MIIM_RTL8211E_RX_DELAY;
+		break;
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		val = MIIM_RTL8211E_CTRL_DELAY | MIIM_RTL8211E_TX_DELAY;
+		break;
+	default: /* the rest of the modes imply leaving delays as is. */
+		goto default_delay;
+	}
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, 7);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211E_EXT_PAGE_SELECT, 0xa4);
+
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211E_CONFREG);
+	reg &= ~(MIIM_RTL8211E_TX_DELAY | MIIM_RTL8211E_RX_DELAY);
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211E_CONFREG, reg | val);
+
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_RTL8211F_PAGE_SELECT, 0);
+
+default_delay:
+	genphy_config_aneg(phydev);
+
+	return 0;
+}
+
 static int rtl8211f_config(struct phy_device *phydev)
 {
 	u16 reg;
+
+	if (phydev->flags & PHY_RTL8211F_FORCE_EEE_RXC_ON) {
+		unsigned int reg;
+
+		reg = phy_read_mmd(phydev, MDIO_MMD_PCS, MDIO_CTRL1);
+		reg &= ~MDIO_PCS_CTRL1_CLKSTOP_EN;
+		phy_write_mmd(phydev, MDIO_MMD_PCS, MDIO_CTRL1, reg);
+	}
 
 	phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
 
@@ -139,6 +244,16 @@ static int rtl8211f_config(struct phy_device *phydev)
 		reg &= ~MIIM_RTL8211F_TX_DELAY;
 
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x11, reg);
+
+	/* enable RX-delay for rgmii-id and rgmii-rxid, otherwise disable it */
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, 0x15);
+	if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
+	    phydev->interface == PHY_INTERFACE_MODE_RGMII_RXID)
+		reg |= MIIM_RTL8211F_RX_DELAY;
+	else
+		reg &= ~MIIM_RTL8211F_RX_DELAY;
+	phy_write(phydev, MDIO_DEVAD_NONE, 0x15, reg);
+
 	/* restore to default page 0 */
 	phy_write(phydev, MDIO_DEVAD_NONE,
 		  MIIM_RTL8211F_PAGE_SELECT, 0x0);
@@ -269,17 +384,6 @@ static int rtl8211x_startup(struct phy_device *phydev)
 	return rtl8211x_parse_status(phydev);
 }
 
-static int rtl8211e_startup(struct phy_device *phydev)
-{
-	int ret;
-
-	ret = genphy_update_link(phydev);
-	if (ret)
-		return ret;
-
-	return genphy_parse_link(phydev);
-}
-
 static int rtl8211f_startup(struct phy_device *phydev)
 {
 	int ret;
@@ -294,7 +398,7 @@ static int rtl8211f_startup(struct phy_device *phydev)
 }
 
 /* Support for RTL8211B PHY */
-static struct phy_driver RTL8211B_driver = {
+U_BOOT_PHY_DRIVER(rtl8211b) = {
 	.name = "RealTek RTL8211B",
 	.uid = 0x1cc912,
 	.mask = 0xffffff,
@@ -306,19 +410,19 @@ static struct phy_driver RTL8211B_driver = {
 };
 
 /* Support for RTL8211E-VB-CG, RTL8211E-VL-CG and RTL8211EG-VB-CG PHYs */
-static struct phy_driver RTL8211E_driver = {
+U_BOOT_PHY_DRIVER(rtl8211e) = {
 	.name = "RealTek RTL8211E",
 	.uid = 0x1cc915,
 	.mask = 0xffffff,
 	.features = PHY_GBIT_FEATURES,
 	.probe = &rtl8211e_probe,
-	.config = &rtl8211x_config,
-	.startup = &rtl8211e_startup,
+	.config = &rtl8211e_config,
+	.startup = &genphy_startup,
 	.shutdown = &genphy_shutdown,
 };
 
 /* Support for RTL8211DN PHY */
-static struct phy_driver RTL8211DN_driver = {
+U_BOOT_PHY_DRIVER(rtl8211dn) = {
 	.name = "RealTek RTL8211DN",
 	.uid = 0x1cc914,
 	.mask = 0xffffff,
@@ -329,22 +433,27 @@ static struct phy_driver RTL8211DN_driver = {
 };
 
 /* Support for RTL8211F PHY */
-static struct phy_driver RTL8211F_driver = {
+U_BOOT_PHY_DRIVER(rtl8211f) = {
 	.name = "RealTek RTL8211F",
 	.uid = 0x1cc916,
 	.mask = 0xffffff,
 	.features = PHY_GBIT_FEATURES,
+	.probe = &rtl8211f_probe,
 	.config = &rtl8211f_config,
 	.startup = &rtl8211f_startup,
 	.shutdown = &genphy_shutdown,
+	.readext = &rtl8211f_phy_extread,
+	.writeext = &rtl8211f_phy_extwrite,
 };
 
-int phy_realtek_init(void)
-{
-	phy_register(&RTL8211B_driver);
-	phy_register(&RTL8211E_driver);
-	phy_register(&RTL8211F_driver);
-	phy_register(&RTL8211DN_driver);
-
-	return 0;
-}
+/* Support for RTL8201F PHY */
+U_BOOT_PHY_DRIVER(rtl8201f) = {
+	.name = "RealTek RTL8201F 10/100Mbps Ethernet",
+	.uid = 0x1cc816,
+	.mask = 0xffffff,
+	.features = PHY_BASIC_FEATURES,
+	.probe = &rtl8210f_probe,
+	.config = &rtl8201f_config,
+	.startup = &genphy_startup,
+	.shutdown = &genphy_shutdown,
+};

@@ -39,6 +39,8 @@ enum altera_iface {
 	fast_passive_parallel,
 	/* fast passive parallel with security (FPPS) */
 	fast_passive_parallel_security,
+	/* secure device manager (SDM) mailbox */
+	secure_device_manager_mailbox,
 	/* insert all new types before this */
 	max_altera_iface_type,
 };
@@ -56,6 +58,8 @@ enum altera_family {
 	Altera_StratixV,
 	/* SoCFPGA Family */
 	Altera_SoCFPGA,
+	/* Intel FPGA Family with SDM (Secure Device Manager) Mailbox */
+	Intel_FPGA_SDM_Mailbox,
 
 	/* Add new models here */
 
@@ -114,6 +118,11 @@ int socfpga_load(Altera_desc *desc, const void *rbf_data, size_t rbf_size);
 
 #ifdef CONFIG_FPGA_STRATIX_V
 int stratixv_load(Altera_desc *desc, const void *rbf_data, size_t rbf_size);
+#endif
+
+#ifdef CONFIG_FPGA_INTEL_SDM_MAILBOX
+int intel_sdm_mb_load(Altera_desc *desc, const void *rbf_data,
+		      size_t rbf_size);
 #endif
 
 #endif /* _ALTERA_H_ */

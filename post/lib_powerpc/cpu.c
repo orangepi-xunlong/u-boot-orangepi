@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 
 /*
  * CPU test
@@ -19,7 +20,7 @@
 #include <post.h>
 #include <asm/mmu.h>
 
-#if CONFIG_POST & CONFIG_SYS_POST_CPU
+#if CFG_POST & CFG_SYS_POST_CPU
 
 extern int cpu_post_test_cmp (void);
 extern int cpu_post_test_cmpi (void);
@@ -57,12 +58,12 @@ ulong cpu_post_makecr (long v)
 
 int cpu_post_test (int flags)
 {
-	int ic = icache_status ();
+	int ic = icache_status();
 	int ret = 0;
 
-	WATCHDOG_RESET();
+	schedule();
 	if (ic)
-		icache_disable ();
+		icache_disable();
 
 	if (ret == 0)
 		ret = cpu_post_test_cmp ();
@@ -72,7 +73,7 @@ int cpu_post_test (int flags)
 		ret = cpu_post_test_two ();
 	if (ret == 0)
 		ret = cpu_post_test_twox ();
-	WATCHDOG_RESET();
+	schedule();
 	if (ret == 0)
 		ret = cpu_post_test_three ();
 	if (ret == 0)
@@ -81,7 +82,7 @@ int cpu_post_test (int flags)
 		ret = cpu_post_test_threei ();
 	if (ret == 0)
 		ret = cpu_post_test_andi ();
-	WATCHDOG_RESET();
+	schedule();
 	if (ret == 0)
 		ret = cpu_post_test_srawi ();
 	if (ret == 0)
@@ -90,7 +91,7 @@ int cpu_post_test (int flags)
 		ret = cpu_post_test_rlwinm ();
 	if (ret == 0)
 		ret = cpu_post_test_rlwimi ();
-	WATCHDOG_RESET();
+	schedule();
 	if (ret == 0)
 		ret = cpu_post_test_store ();
 	if (ret == 0)
@@ -99,22 +100,22 @@ int cpu_post_test (int flags)
 		ret = cpu_post_test_cr ();
 	if (ret == 0)
 		ret = cpu_post_test_b ();
-	WATCHDOG_RESET();
+	schedule();
 	if (ret == 0)
 		ret = cpu_post_test_multi ();
-	WATCHDOG_RESET();
+	schedule();
 	if (ret == 0)
 		ret = cpu_post_test_string ();
 	if (ret == 0)
 		ret = cpu_post_test_complex ();
-	WATCHDOG_RESET();
+	schedule();
 
 	if (ic)
-		icache_enable ();
+		icache_enable();
 
-	WATCHDOG_RESET();
+	schedule();
 
 	return ret;
 }
 
-#endif /* CONFIG_POST & CONFIG_SYS_POST_CPU */
+#endif /* CFG_POST & CFG_SYS_POST_CPU */

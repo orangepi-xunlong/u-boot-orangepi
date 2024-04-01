@@ -1,19 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
+ * Copyright (C) 2021-2022  Tony Dinh <mibodhi@gmail.com>
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  */
 
 #include <common.h>
-#include <miiphy.h>
+#include <init.h>
+#include <netdev.h>
+#include <asm/global_data.h>
 #include <asm/mach-types.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
-#include "sheevaplug.h"
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#define SHEEVAPLUG_OE_LOW		(~(0))
+#define SHEEVAPLUG_OE_HIGH		(~(0))
+#define SHEEVAPLUG_OE_VAL_LOW		BIT(29)       /* USB_PWEN low */
+#define SHEEVAPLUG_OE_VAL_HIGH		BIT(17)       /* LED pin high */
 
 int board_early_init_f(void)
 {
@@ -84,6 +92,11 @@ int board_early_init_f(void)
 	return 0;
 }
 
+int board_eth_init(struct bd_info *bis)
+{
+	return cpu_eth_init(bis);
+}
+
 int board_init(void)
 {
 	/*
@@ -91,43 +104,8 @@ int board_init(void)
 	 */
 	gd->bd->bi_arch_number = MACH_TYPE_SHEEVAPLUG;
 
-	/* adress of boot parameters */
+	/* address of boot parameters */
 	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	return 0;
 }
-
-#ifdef CONFIG_RESET_PHY_R
-/* Configure and enable MV88E1116 PHY */
-void reset_phy(void)
-{
-	u16 reg;
-	u16 devadr;
-	char *name = "egiga0";
-
-	if (miiphy_set_current_dev(name))
-		return;
-
-	/* command to read PHY dev address */
-	if (miiphy_read(name, 0xEE, 0xEE, (u16 *) &devadr)) {
-		printf("Err..%s could not read PHY dev address\n",
-			__FUNCTION__);
-		return;
-	}
-
-	/*
-	 * Enable RGMII delay on Tx and Rx for CPU port
-	 * Ref: sec 4.7.2 of chip datasheet
-	 */
-	miiphy_write(name, devadr, MV88E1116_PGADR_REG, 2);
-	miiphy_read(name, devadr, MV88E1116_MAC_CTRL_REG, &reg);
-	reg |= (MV88E1116_RGMII_RXTM_CTRL | MV88E1116_RGMII_TXTM_CTRL);
-	miiphy_write(name, devadr, MV88E1116_MAC_CTRL_REG, reg);
-	miiphy_write(name, devadr, MV88E1116_PGADR_REG, 0);
-
-	/* reset the phy */
-	miiphy_reset(name, devadr);
-
-	printf("88E1116 Initialized on %s\n", name);
-}
-#endif /* CONFIG_RESET_PHY_R */

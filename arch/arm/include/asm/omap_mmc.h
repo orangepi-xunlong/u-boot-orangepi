@@ -26,6 +26,9 @@
 #define OMAP_MMC_H_
 
 #include <mmc.h>
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
 
 struct hsmmc {
 #ifndef CONFIG_OMAP34XX
@@ -68,7 +71,6 @@ struct omap_hsmmc_plat {
 	struct mmc_config cfg;
 	struct hsmmc *base_addr;
 	struct mmc *mmc;
-	bool cd_inverted;
 	u32 controller_flags;
 	const char *hw_rev;
 };

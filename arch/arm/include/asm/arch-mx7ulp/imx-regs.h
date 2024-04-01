@@ -8,9 +8,15 @@
 
 #include <linux/sizes.h>
 
+#define ARCH_MXC
+
+#define ROM_SW_INFO_ADDR        0x000001E8
+
 #define CAAM_SEC_SRAM_BASE      (0x26000000)
 #define CAAM_SEC_SRAM_SIZE      (SZ_32K)
 #define CAAM_SEC_SRAM_END       (CAAM_SEC_SRAM_BASE + CAAM_SEC_SRAM_SIZE - 1)
+
+#define CAAM_ARB_BASE_ADDR      CAAM_SEC_SRAM_BASE
 
 #define OCRAM_0_BASE            (0x2F000000)
 #define OCRAM_0_SIZE            (SZ_128K)
@@ -54,6 +60,7 @@
 #define USDHC1_AIPS2_SLOT		(56)
 #define RGPIO2P0_AIPS0_SLOT		(15)
 #define RGPIO2P1_AIPS2_SLOT		(15)
+#define SNVS_AIPS2_SLOT			(35)
 #define IOMUXC0_AIPS0_SLOT		(61)
 #define OCOTP_CTRL_AIPS1_SLOT		(38)
 #define OCOTP_CTRL_PCC1_SLOT		(38)
@@ -173,6 +180,9 @@
 #define USDHC0_RBASE	((AIPS2_BASE + (AIPS2_SLOT_SIZE * USDHC0_AIPS2_SLOT)))
 #define USDHC1_RBASE	((AIPS2_BASE + (AIPS2_SLOT_SIZE * USDHC1_AIPS2_SLOT)))
 
+#define SNVS_BASE	((AIPS2_BASE + (AIPS2_SLOT_SIZE * SNVS_AIPS2_SLOT)))
+#define SNVS_LP_LPCR	(SNVS_BASE + 0x38)
+
 #define RGPIO2P0_RBASE	((AIPS0_BASE + (AIPS0_SLOT_SIZE * RGPIO2P0_AIPS0_SLOT)))
 #define RGPIO2P1_RBASE	((AIPS2_BASE + (AIPS2_SLOT_SIZE * RGPIO2P1_AIPS2_SLOT)))
 
@@ -215,6 +225,15 @@
 
 #define IOMUXC_DDR_RBASE	((AIPS3_BASE + (AIPS3_SLOT_SIZE * IOMUXC_DDR_AIPS3_SLOT)))
 #define MMDC0_PCC_REG		(PCC3_RBASE + (4 * MMDC0_PCC3_SLOT))
+
+#define CAAM_IPS_BASE_ADDR              (AIPS2_BASE + 0x240000) /* 40240000 */
+
+#define CFG_SYS_FSL_SEC_OFFSET       0
+#define CFG_SYS_FSL_SEC_ADDR         (CAAM_IPS_BASE_ADDR + \
+					 CFG_SYS_FSL_SEC_OFFSET)
+#define CFG_SYS_FSL_JR0_OFFSET       0x1000
+#define CFG_SYS_FSL_JR0_ADDR         (CFG_SYS_FSL_SEC_ADDR + \
+					 CFG_SYS_FSL_JR0_OFFSET)
 
 #define IOMUXC_DPCR_DDR_DQS0	((IOMUXC_DDR_RBASE + (4 * 32)))
 #define IOMUXC_DPCR_DDR_DQS1	((IOMUXC_DDR_RBASE + (4 * 33)))
@@ -935,6 +954,13 @@
 #define MMDC_MPWRDQBY3DL_WR_DQ25_DEL_MASK	((0x3f  << MMDC_MPWRDQBY3DL_WR_DQ25_DEL))
 #define MMDC_MPWRDQBY3DL_WR_DQ24_DEL_MASK	((0x3f  << MMDC_MPWRDQBY3DL_WR_DQ24_DEL))
 
+#define SNVS_LPCR_DPEN				(0x20)
+#define SNVS_LPCR_SRTC_ENV			(0x1)
+
+#define SRC_BASE_ADDR			CMC1_RBASE
+#define IRAM_BASE_ADDR			OCRAM_0_BASE
+#define IOMUXC_BASE_ADDR		IOMUXC1_RBASE
+
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 
 #include <asm/types.h>
@@ -1110,6 +1136,17 @@ struct usbphy_regs {
 	u32	usb1_pfda_ctrl1_tog;		/* 0x14c */
 };
 
+struct bootrom_sw_info {
+	u8 reserved_1;
+	u8 boot_dev_instance;
+	u8 boot_dev_type;
+	u8 reserved_2;
+	u32 core_freq;
+	u32 axi_freq;
+	u32 ddr_freq;
+	u32 rom_tick_freq;
+	u32 reserved_3[3];
+};
 
 #define	is_boot_from_usb(void)		(!(readl(USB_PHY0_BASE_ADDR) & (1<<20)))
 #define	disconnect_from_pc(void)	writel(0x0, USBOTG0_RBASE + 0x140)

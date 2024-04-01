@@ -11,8 +11,12 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/scu_ast2500.h>
+#include <linux/delay.h>
+#include <linux/err.h>
+#include <reset.h>
 
 #include "ast_i2c.h"
 
@@ -73,7 +77,7 @@ static void ast_i2c_init_bus(struct udevice *dev)
 	/* Enable Master Mode. Assuming single-master */
 	writel(I2CD_MASTER_EN
 	       | I2CD_M_SDA_LOCK_EN
-	       | I2CD_MULTI_MASTER_DIS | I2CD_M_SCL_DRIVE_EN,
+	       | I2CD_MULTI_MASTER_DIS,
 	       &priv->regs->fcr);
 	/* Enable Interrupts */
 	writel(I2CD_INTR_TX_ACK
@@ -84,14 +88,14 @@ static void ast_i2c_init_bus(struct udevice *dev)
 	       | I2CD_INTR_ABNORMAL, &priv->regs->icr);
 }
 
-static int ast_i2c_ofdata_to_platdata(struct udevice *dev)
+static int ast_i2c_of_to_plat(struct udevice *dev)
 {
 	struct ast_i2c_priv *priv = dev_get_priv(dev);
 	int ret;
 
-	priv->regs = devfdt_get_addr_ptr(dev);
-	if (IS_ERR(priv->regs))
-		return PTR_ERR(priv->regs);
+	priv->regs = dev_read_addr_ptr(dev);
+	if (!priv->regs)
+		return -EINVAL;
 
 	ret = clk_get_by_index(dev, 0, &priv->clk);
 	if (ret < 0) {
@@ -105,19 +109,26 @@ static int ast_i2c_ofdata_to_platdata(struct udevice *dev)
 
 static int ast_i2c_probe(struct udevice *dev)
 {
-	struct ast2500_scu *scu;
+	struct reset_ctl reset_ctl;
+	int rc;
 
-	debug("Enabling I2C%u\n", dev->seq);
+	debug("Enabling I2C%u\n", dev_seq(dev));
 
 	/*
 	 * Get all I2C devices out of Reset.
-	 * Only needs to be done once, but doing it for every
-	 * device does not hurt.
+	 *
+	 * Only needs to be done once so test before performing reset.
 	 */
-	scu = ast_get_scu();
-	ast_scu_unlock(scu);
-	clrbits_le32(&scu->sysreset_ctrl1, SCU_SYSRESET_I2C);
-	ast_scu_lock(scu);
+	rc = reset_get_by_index(dev, 0, &reset_ctl);
+	if (rc) {
+		printf("%s: Failed to get reset signal\n", __func__);
+		return rc;
+	}
+
+	if (reset_status(&reset_ctl) > 0) {
+		reset_assert(&reset_ctl);
+		reset_deassert(&reset_ctl);
+	}
 
 	ast_i2c_init_bus(dev);
 
@@ -304,7 +315,7 @@ static int ast_i2c_set_speed(struct udevice *dev, unsigned int speed)
 	struct ast_i2c_regs *regs = priv->regs;
 	ulong i2c_rate, divider;
 
-	debug("Setting speed for I2C%d to <%u>\n", dev->seq, speed);
+	debug("Setting speed for I2C%d to <%u>\n", dev_seq(dev), speed);
 	if (!speed) {
 		debug("No valid speed specified\n");
 		return -EINVAL;
@@ -314,7 +325,7 @@ static int ast_i2c_set_speed(struct udevice *dev, unsigned int speed)
 	divider = i2c_rate / speed;
 
 	priv->speed = speed;
-	if (speed > I2C_HIGHSPEED_RATE) {
+	if (speed > I2C_SPEED_FAST_RATE) {
 		debug("Enable High Speed\n");
 		setbits_le32(&regs->fcr, I2CD_M_HIGH_SPEED_EN
 			     | I2CD_M_SDA_DRIVE_1T_EN
@@ -340,6 +351,7 @@ static const struct dm_i2c_ops ast_i2c_ops = {
 static const struct udevice_id ast_i2c_ids[] = {
 	{ .compatible = "aspeed,ast2400-i2c-bus" },
 	{ .compatible = "aspeed,ast2500-i2c-bus" },
+	{ .compatible = "aspeed,ast2600-i2c-bus" },
 	{ },
 };
 
@@ -348,7 +360,7 @@ U_BOOT_DRIVER(ast_i2c) = {
 	.id = UCLASS_I2C,
 	.of_match = ast_i2c_ids,
 	.probe = ast_i2c_probe,
-	.ofdata_to_platdata = ast_i2c_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct ast_i2c_priv),
+	.of_to_plat = ast_i2c_of_to_plat,
+	.priv_auto	= sizeof(struct ast_i2c_priv),
 	.ops = &ast_i2c_ops,
 };

@@ -17,91 +17,142 @@
  * the last step cherry picks the 2nd arg, we get a zero.
  */
 #define __ARG_PLACEHOLDER_1 0,
-#define config_enabled(cfg) _config_enabled(cfg)
-#define _config_enabled(value) __config_enabled(__ARG_PLACEHOLDER_##value)
-#define __config_enabled(arg1_or_junk) ___config_enabled(arg1_or_junk 1, 0)
+#define config_enabled(cfg, def_val) _config_enabled(cfg, def_val)
+#define _config_enabled(value, def_val) __config_enabled(__ARG_PLACEHOLDER_##value, def_val)
+#define __config_enabled(arg1_or_junk, def_val) ___config_enabled(arg1_or_junk 1, def_val)
 #define ___config_enabled(__ignored, val, ...) val
 
 /*
- * IS_ENABLED(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'y' or 'm',
+ * IS_ENABLED(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'y',
  * 0 otherwise.
- *
  */
-#define IS_ENABLED(option) \
-	(config_enabled(option) || config_enabled(option##_MODULE))
+#define IS_ENABLED(option)	config_enabled(option, 0)
 
 /*
- * IS_BUILTIN(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'y', 0
- * otherwise. For boolean options, this is equivalent to
- * IS_ENABLED(CONFIG_FOO).
+ * U-Boot add-on: Helper macros to reference to different macros (prefixed by
+ * CONFIG_, CONFIG_SPL_, CONFIG_TPL_ or CONFIG_TOOLS_), depending on the build
+ * context.
  */
-#define IS_BUILTIN(option) config_enabled(option)
 
-/*
- * IS_MODULE(CONFIG_FOO) evaluates to 1 if CONFIG_FOO is set to 'm', 0
- * otherwise.
- */
-#define IS_MODULE(option) config_enabled(option##_MODULE)
-
-/*
- * U-Boot add-on: Helper macros to reference to different macros
- * (CONFIG_ or CONFIG_SPL_ prefixed), depending on the build context.
- */
-#ifdef CONFIG_SPL_BUILD
-#define _IS_SPL 1
-#endif
-
-#ifdef CONFIG_TPL_BUILD
-#define _IS_TPL 1
-#endif
-
-#if defined(CONFIG_TPL_BUILD)
-#define config_val(cfg) _config_val(_IS_TPL, cfg)
-#define _config_val(x, cfg) __config_val(x, cfg)
-#define __config_val(x, cfg) ___config_val(__ARG_PLACEHOLDER_##x, cfg)
-#define ___config_val(arg1_or_junk, cfg)  \
-	____config_val(arg1_or_junk CONFIG_TPL_##cfg, CONFIG_##cfg)
-#define ____config_val(__ignored, val, ...) val
+#ifdef USE_HOSTCC
+#define _CONFIG_PREFIX TOOLS_
+#elif defined(CONFIG_TPL_BUILD)
+#define _CONFIG_PREFIX TPL_
+#elif defined(CONFIG_VPL_BUILD)
+#define _CONFIG_PREFIX VPL_
+#elif defined(CONFIG_SPL_BUILD)
+#define _CONFIG_PREFIX SPL_
 #else
-#define config_val(cfg) _config_val(_IS_SPL, cfg)
-#define _config_val(x, cfg) __config_val(x, cfg)
-#define __config_val(x, cfg) ___config_val(__ARG_PLACEHOLDER_##x, cfg)
-#define ___config_val(arg1_or_junk, cfg)  \
-	____config_val(arg1_or_junk CONFIG_SPL_##cfg, CONFIG_##cfg)
-#define ____config_val(__ignored, val, ...) val
+#define _CONFIG_PREFIX
 #endif
+
+#define   config_val(cfg)       _config_val(_CONFIG_PREFIX, cfg)
+#define  _config_val(pfx, cfg) __config_val(pfx, cfg)
+#define __config_val(pfx, cfg) CONFIG_ ## pfx ## cfg
 
 /*
  * CONFIG_VAL(FOO) evaluates to the value of
+ *  CONFIG_TOOLS_FOO if USE_HOSTCC is defined,
  *  CONFIG_FOO if CONFIG_SPL_BUILD is undefined,
  *  CONFIG_SPL_FOO if CONFIG_SPL_BUILD is defined.
+ *  CONFIG_TPL_FOO if CONFIG_TPL_BUILD is defined.
+ *  CONFIG_VPL_FOO if CONFIG_VPL_BUILD is defined.
  */
 #define CONFIG_VAL(option)  config_val(option)
 
 /*
- * CONFIG_IS_ENABLED(FOO) evaluates to
- *  1 if CONFIG_SPL_BUILD is undefined and CONFIG_FOO is set to 'y' or 'm',
- *  1 if CONFIG_SPL_BUILD is defined and CONFIG_SPL_FOO is set to 'y' or 'm',
- *  0 otherwise.
+ * This uses a similar mechanism to config_enabled() above. If cfg is enabled,
+ * it resolves to the value of opt_cfg, otherwise it resolves to def_val
  */
-#define CONFIG_IS_ENABLED(option) \
-	(config_enabled(CONFIG_VAL(option)) ||		\
-	 config_enabled(CONFIG_VAL(option##_MODULE)))
+#define config_opt_enabled(cfg, opt_cfg, def_val) _config_opt_enabled(cfg, opt_cfg, def_val)
+#define _config_opt_enabled(cfg_val, opt_value, def_val) \
+	__config_opt_enabled(__ARG_PLACEHOLDER_##cfg_val, opt_value, def_val)
+#define __config_opt_enabled(arg1_or_junk, arg2, def_val) \
+	___config_opt_enabled(arg1_or_junk arg2, def_val)
+#define ___config_opt_enabled(__ignored, val, ...) val
+
+#ifndef __ASSEMBLY__
+/*
+ * Detect usage of a the value when the conditional is not enabled. When used
+ * in assembly context, this likely produces a assembly error, or hopefully at
+ * least something recognisable.
+ */
+long invalid_use_of_IF_ENABLED_INT(void);
+#endif
+
+/* Evaluates to int_option if option is defined, otherwise a build error */
+#define IF_ENABLED_INT(option, int_option) \
+	config_opt_enabled(option, int_option, invalid_use_of_IF_ENABLED_INT())
 
 /*
- * CONFIG_IS_BUILTIN(FOO) evaluates to
+ * Count number of arguments to a variadic macro. Currently only need
+ * it for 1, 2 or 3 arguments.
+ */
+#define __arg6(a1, a2, a3, a4, a5, a6, ...) a6
+#define __count_args(...) __arg6(dummy, ##__VA_ARGS__, 4, 3, 2, 1, 0)
+
+#define __concat(a, b)   ___concat(a, b)
+#define ___concat(a, b)  a ## b
+
+#define __unwrap(...) __VA_ARGS__
+#define __unwrap1(case1, case0) __unwrap case1
+#define __unwrap0(case1, case0) __unwrap case0
+
+#define __CONFIG_IS_ENABLED_1(option)        __CONFIG_IS_ENABLED_3(option, (1), (0))
+#define __CONFIG_IS_ENABLED_2(option, case1) __CONFIG_IS_ENABLED_3(option, case1, ())
+#define __CONFIG_IS_ENABLED_3(option, case1, case0) \
+	__concat(__unwrap, config_enabled(CONFIG_VAL(option), 0)) (case1, case0)
+
+/*
+ * CONFIG_IS_ENABLED(FOO) expands to
+ *  1 if USE_HOSTCC is defined and CONFIG_TOOLS_FOO is set to 'y',
  *  1 if CONFIG_SPL_BUILD is undefined and CONFIG_FOO is set to 'y',
  *  1 if CONFIG_SPL_BUILD is defined and CONFIG_SPL_FOO is set to 'y',
+ *  1 if CONFIG_TPL_BUILD is defined and CONFIG_TPL_FOO is set to 'y',
  *  0 otherwise.
+ *
+ * CONFIG_IS_ENABLED(FOO, (abc)) expands to
+ *  abc if USE_HOSTCC is defined and CONFIG_TOOLS_FOO is set to 'y',
+ *  abc if CONFIG_SPL_BUILD is undefined and CONFIG_FOO is set to 'y',
+ *  abc if CONFIG_SPL_BUILD is defined and CONFIG_SPL_FOO is set to 'y',
+ *  abc if CONFIG_TPL_BUILD is defined and CONFIG_TPL_FOO is set to 'y',
+ *  nothing otherwise.
+ *
+ * CONFIG_IS_ENABLED(FOO, (abc), (def)) expands to
+ *  abc if USE_HOSTCC is defined and CONFIG_TOOLS_FOO is set to 'y',
+ *  abc if CONFIG_SPL_BUILD is undefined and CONFIG_FOO is set to 'y',
+ *  abc if CONFIG_SPL_BUILD is defined and CONFIG_SPL_FOO is set to 'y',
+ *  abc if CONFIG_TPL_BUILD is defined and CONFIG_TPL_FOO is set to 'y',
+ *  def otherwise.
+ *
+ * The optional second and third arguments must be parenthesized; that
+ * allows one to include a trailing comma, e.g. for use in
+ *
+ * CONFIG_IS_ENABLED(ACME, ({.compatible = "acme,frobnozzle"},))
+ *
+ * which adds an entry to the array being defined if CONFIG_ACME (or
+ * CONFIG_SPL_ACME/CONFIG_TPL_ACME, depending on build context) is
+ * set, and nothing otherwise.
  */
-#define CONFIG_IS_BUILTIN(option) config_enabled(CONFIG_VAL(option))
+
+#define CONFIG_IS_ENABLED(option, ...)					\
+	__concat(__CONFIG_IS_ENABLED_, __count_args(option, ##__VA_ARGS__)) (option, ##__VA_ARGS__)
+
+#ifndef __ASSEMBLY__
+/*
+ * Detect usage of a the value when the conditional is not enabled. When used
+ * in assembly context, this likely produces a assembly error, or hopefully at
+ * least something recognisable.
+ */
+long invalid_use_of_CONFIG_IF_ENABLED_INT(void);
+#endif
 
 /*
- * CONFIG_IS_MODULE(FOO) evaluates to
- *  1 if CONFIG_SPL_BUILD is undefined and CONFIG_FOO is set to 'm',
- *  1 if CONFIG_SPL_BUILD is defined and CONFIG_SPL_FOO is set to 'm',
- *  0 otherwise.
+ * Evaluates to SPL_/TPL_int_option if SPL_/TPL_/option is not defined,
+ * otherwise build error
  */
-#define CONFIG_IS_MODULE(option) config_enabled(CONFIG_VAL(option##_MODULE))
+#define CONFIG_IF_ENABLED_INT(option, int_option) \
+	CONFIG_IS_ENABLED(option, (CONFIG_VAL(int_option)), \
+		(invalid_use_of_CONFIG_IF_ENABLED_INT()))
 
 #endif /* __LINUX_KCONFIG_H */

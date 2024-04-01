@@ -4,6 +4,7 @@
  */
 
 #include <dt-bindings/clock/bcm6328-clock.h>
+#include <dt-bindings/dma/bcm6328-dma.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/power-domain/bcm6328-power-domain.h>
 #include <dt-bindings/reset/bcm6328-reset.h>
@@ -20,20 +21,20 @@
 		reg = <0x10000000 0x4>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 
 		cpu@0 {
 			compatible = "brcm,bcm6328-cpu", "mips,mips4Kc";
 			device_type = "cpu";
 			reg = <0>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 
 		cpu@1 {
 			compatible = "brcm,bcm6328-cpu", "mips,mips4Kc";
 			device_type = "cpu";
 			reg = <1>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
 
@@ -41,7 +42,7 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 
 		hsspi_pll: hsspi-pll {
 			compatible = "fixed-clock";
@@ -53,7 +54,7 @@
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <50000000>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 
 		periph_clk: periph-clk {
@@ -67,7 +68,7 @@
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 
 		periph_rst: reset-controller@10000010 {
 			compatible = "brcm,bcm6345-reset";
@@ -119,6 +120,22 @@
 			compatible = "brcm,bcm6345-uart";
 			reg = <0x10000120 0x18>;
 			clocks = <&periph_osc>;
+
+			status = "disabled";
+		};
+
+		nand: nand-controller@10000200 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "brcm,nand-bcm6368",
+				     "brcm,brcmnand-v2.2",
+				     "brcm,brcmnand";
+			reg-names = "nand",
+				    "nand-cache",
+				    "nand-int-base";
+			reg = <0x10000200 0x180>,
+			      <0x10000400 0x200>,
+			      <0x100000b0 0x10>;
 
 			status = "disabled";
 		};
@@ -185,7 +202,36 @@
 		memory-controller@10003000 {
 			compatible = "brcm,bcm6328-mc";
 			reg = <0x10003000 0x864>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
+		};
+
+		iudma: dma-controller@1000d800 {
+			compatible = "brcm,bcm6368-iudma";
+			reg = <0x1000d800 0x80>,
+			      <0x1000da00 0x80>,
+			      <0x1000dc00 0x80>;
+			reg-names = "dma",
+				    "dma-channels",
+				    "dma-sram";
+			#dma-cells = <1>;
+			dma-channels = <8>;
+		};
+
+		enet: ethernet@10e00000 {
+			compatible = "brcm,bcm6368-enet";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x10e00000 0x10000>;
+			clocks = <&periph_clk BCM6328_CLK_ROBOSW>;
+			resets = <&periph_rst BCM6328_RST_ENETSW>,
+				 <&periph_rst BCM6328_RST_EPHY>;
+			dmas = <&iudma BCM6328_DMA_ENETSW_RX>,
+			       <&iudma BCM6328_DMA_ENETSW_TX>;
+			dma-names = "rx",
+				    "tx";
+			brcm,num-ports = <5>;
+
+			status = "disabled";
 		};
 	};
 };

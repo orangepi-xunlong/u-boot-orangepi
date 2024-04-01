@@ -4,7 +4,9 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <div64.h>
+#include <log.h>
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <asm/arch/imx-regs.h>
@@ -211,6 +213,7 @@ int enable_spi_clk(unsigned char enable, unsigned spi_num)
 static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 {
 	u32 div, test_div, pll_num, pll_denom;
+	u64 temp64;
 
 	switch (pll) {
 	case PLL_SYS:
@@ -270,7 +273,10 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		}
 		test_div = 1 << (2 - test_div);
 
-		return infreq * (div + pll_num / pll_denom) / test_div;
+		temp64 = (u64)infreq;
+		temp64 *= pll_num;
+		do_div(temp64, pll_denom);
+		return infreq * div + (unsigned long)temp64;
 	default:
 		return 0;
 	}
@@ -410,6 +416,60 @@ static u32 get_uart_clk(void)
 	uart_podf = reg >> MXC_CCM_CSCDR1_UART_CLK_PODF_OFFSET;
 
 	return freq / (uart_podf + 1);
+}
+
+static u32 get_lcd_clk(unsigned int ifnum)
+{
+	u32 pll_rate;
+	u32 pred, postd;
+
+	if (!is_mx6sx() && !is_mx6ul() && !is_mx6ull() && !is_mx6sl() &&
+	    !is_mx6sll()) {
+		debug("This chip does't support lcd\n");
+		return 0;
+	}
+
+	pll_rate = decode_pll(PLL_VIDEO, MXC_HCLK);
+	if (ifnum == 1) {
+		if (!is_mx6sl()) {
+			pred = __raw_readl(&imx_ccm->cscdr2);
+			pred &= MXC_CCM_CSCDR2_LCDIF1_PRE_DIV_MASK;
+			pred = pred >> MXC_CCM_CSCDR2_LCDIF1_PRE_DIV_OFFSET;
+
+			postd = readl(&imx_ccm->cbcmr);
+			postd &= MXC_CCM_CBCMR_LCDIF1_PODF_MASK;
+			postd = postd >> MXC_CCM_CBCMR_LCDIF1_PODF_OFFSET;
+		} else {
+			pred = __raw_readl(&imx_ccm->cscdr2);
+			pred &= MXC_CCM_CSCDR2_LCDIF_PIX_PRE_DIV_MASK;
+			pred = pred >> MXC_CCM_CSCDR2_LCDIF_PIX_PRE_DIV_OFFSET;
+
+			postd = readl(&imx_ccm->cscmr1);
+			postd &= MXC_CCM_CSCMR1_LCDIF_PIX_PODF_OFFSET;
+			postd = postd >> MXC_CCM_CBCMR_LCDIF1_PODF_OFFSET;
+		}
+	} else if (ifnum == 2) {
+		if (is_mx6sx()) {
+			pred = __raw_readl(&imx_ccm->cscdr2);
+			pred &= MXC_CCM_CSCDR2_LCDIF2_PRE_DIV_MASK;
+			pred = pred >> MXC_CCM_CSCDR2_LCDIF2_PRE_DIV_OFFSET;
+
+			postd = readl(&imx_ccm->cscmr1);
+			postd &= MXC_CCM_CSCMR1_LCDIF2_PODF_MASK;
+			postd = postd >> MXC_CCM_CSCMR1_LCDIF2_PODF_OFFSET;
+
+		} else {
+			goto if_err;
+		}
+	} else {
+		goto if_err;
+	}
+
+	return DIV_ROUND_UP_ULL((u64)pll_rate, (postd + 1) * (pred + 1));
+
+if_err:
+	debug("This chip not support lcd iterface %d\n", ifnum);
+	return 0;
 }
 
 static u32 get_cspi_clk(void)
@@ -742,6 +802,7 @@ void mxs_set_lcdclk(u32 base_addr, u32 freq)
 		}
 
 		enable_lcdif_clock(base_addr, 1);
+		debug("pixel clock = %u\n", mxc_get_clock(MXC_LCDIF1_CLK));
 	} else if (is_mx6sx()) {
 		/* Setting LCDIF2 for i.MX6SX */
 		if (enable_pll_video(pll_div, pll_num, pll_denom, post_div))
@@ -763,6 +824,7 @@ void mxs_set_lcdclk(u32 base_addr, u32 freq)
 				 MXC_CCM_CSCMR1_LCDIF2_PODF_OFFSET));
 
 		enable_lcdif_clock(base_addr, 1);
+		debug("pixel clock = %u\n", mxc_get_clock(MXC_LCDIF2_CLK));
 	}
 }
 
@@ -1152,7 +1214,7 @@ int enable_pcie_clock(void)
 }
 #endif
 
-#ifdef CONFIG_SECURE_BOOT
+#ifdef CONFIG_IMX_HAB
 void hab_caam_clock_enable(unsigned char enable)
 {
 	u32 reg;
@@ -1267,6 +1329,10 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_usdhc_clk(3);
 	case MXC_SATA_CLK:
 		return get_ahb_clk();
+	case MXC_LCDIF1_CLK:
+		return get_lcd_clk(1);
+	case MXC_LCDIF2_CLK:
+		return get_lcd_clk(2);
 	default:
 		printf("Unsupported MXC CLK: %d\n", clk);
 		break;
@@ -1275,11 +1341,38 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 	return 0;
 }
 
+#ifndef CONFIG_MX6SX
+void enable_ipu_clock(void)
+{
+	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+
+	setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU1_IPU_MASK);
+
+	if (is_mx6dqp()) {
+		setbits_le32(&mxc_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
+		setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
+	}
+}
+
+void disable_ipu_clock(void)
+{
+	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+
+	clrbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU1_IPU_MASK);
+
+	if (is_mx6dqp()) {
+		clrbits_le32(&mxc_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
+		clrbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
+	}
+}
+#endif
+
 #ifndef CONFIG_SPL_BUILD
 /*
  * Dump some core clockes.
  */
-int do_mx6_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mx6_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	u32 freq;
 	freq = decode_pll(PLL_SYS, MXC_HCLK);
@@ -1311,24 +1404,8 @@ int do_mx6_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-#ifndef CONFIG_MX6SX
-void enable_ipu_clock(void)
-{
-	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
-	int reg;
-	reg = readl(&mxc_ccm->CCGR3);
-	reg |= MXC_CCM_CCGR3_IPU1_IPU_MASK;
-	writel(reg, &mxc_ccm->CCGR3);
-
-	if (is_mx6dqp()) {
-		setbits_le32(&mxc_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
-		setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
-	}
-}
-#endif
-
 #if defined(CONFIG_MX6Q) || defined(CONFIG_MX6D) || defined(CONFIG_MX6DL) || \
-	defined(CONFIG_MX6S)
+	defined(CONFIG_MX6S) || defined(CONFIG_MX6QDL)
 static void disable_ldb_di_clock_sources(void)
 {
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;

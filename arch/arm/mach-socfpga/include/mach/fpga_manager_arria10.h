@@ -1,16 +1,21 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2017 Intel Corporation <www.intel.com>
+ * Copyright (C) 2017-2019 Intel Corporation <www.intel.com>
  * All rights reserved.
  */
+
+#include <asm/cache.h>
+#include <altera.h>
+#include <image.h>
+#include <linux/bitops.h>
 
 #ifndef _FPGA_MANAGER_ARRIA10_H_
 #define _FPGA_MANAGER_ARRIA10_H_
 
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_CRC_ERROR_SET_MSK		BIT(0)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_EARLY_USERMODE_SET_MSK	BIT(1)
-#define ALT_FPGAMGR_IMGCFG_STAT_F2S_USERMODE_SET_MSK 		BIT(2)
-#define ALT_FPGAMGR_IMGCFG_STAT_F2S_INITDONE_OE_SET_MSK 	BIT(3)
+#define ALT_FPGAMGR_IMGCFG_STAT_F2S_USERMODE_SET_MSK		BIT(2)
+#define ALT_FPGAMGR_IMGCFG_STAT_F2S_INITDONE_OE_SET_MSK		BIT(3)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_NSTATUS_PIN_SET_MSK		BIT(4)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_NSTATUS_OE_SET_MSK		BIT(5)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_CONDONE_PIN_SET_MSK		BIT(6)
@@ -21,9 +26,9 @@
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_PR_ERROR_SET_MSK		BIT(11)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_NCONFIG_PIN_SET_MSK		BIT(12)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_NCEO_OE_SET_MSK		BIT(13)
-#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL0_SET_MSK    		BIT(16)
-#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL1_SET_MSK    		BIT(17)
-#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL2_SET_MSK    		BIT(18)
+#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL0_SET_MSK		BIT(16)
+#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL1_SET_MSK		BIT(17)
+#define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL2_SET_MSK		BIT(18)
 #define ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL_SET_MSD (\
 	ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL0_SET_MSK |\
 	ALT_FPGAMGR_IMGCFG_STAT_F2S_MSEL1_SET_MSK |\
@@ -45,12 +50,16 @@
 #define ALT_FPGAMGR_IMGCFG_CTL_01_S2F_PR_REQUEST_SET_MSK	BIT(16)
 #define ALT_FPGAMGR_IMGCFG_CTL_01_S2F_NCE_SET_MSK		BIT(24)
 
-#define ALT_FPGAMGR_IMGCFG_CTL_02_EN_CFG_CTRL_SET_MSK    	BIT(0)
-#define ALT_FPGAMGR_IMGCFG_CTL_02_EN_CFG_DATA_SET_MSK    	BIT(8)
-#define ALT_FPGAMGR_IMGCFG_CTL_02_CDRATIO_SET_MSK    		0x00030000
+#define ALT_FPGAMGR_IMGCFG_CTL_02_EN_CFG_CTRL_SET_MSK		BIT(0)
+#define ALT_FPGAMGR_IMGCFG_CTL_02_EN_CFG_DATA_SET_MSK		BIT(8)
+#define ALT_FPGAMGR_IMGCFG_CTL_02_CDRATIO_SET_MSK		0x00030000
 #define ALT_FPGAMGR_IMGCFG_CTL_02_CFGWIDTH_SET_MSK		BIT(24)
 #define ALT_FPGAMGR_IMGCFG_CTL_02_CDRATIO_LSB			16
 
+#define FPGA_SOCFPGA_A10_RBF_UNENCRYPTED	0xa65c
+#define FPGA_SOCFPGA_A10_RBF_ENCRYPTED		0xa65d
+#define FPGA_SOCFPGA_A10_RBF_PERIPH		0x0001
+#define FPGA_SOCFPGA_A10_RBF_CORE		0x8001
 #ifndef __ASSEMBLY__
 
 struct socfpga_fpga_manager {
@@ -88,12 +97,40 @@ struct socfpga_fpga_manager {
 	u32  imgcfg_fifo_status;
 };
 
+enum rbf_type {
+	unknown,
+	periph_section,
+	core_section
+};
+
+enum rbf_security {
+	invalid,
+	unencrypted,
+	encrypted
+};
+
+struct rbf_info {
+	enum rbf_type section;
+	enum rbf_security security;
+};
+
+struct fpga_loadfs_info {
+	fpga_fs_info *fpga_fsinfo;
+	u32 remaining;
+	u32 offset;
+	struct rbf_info rbfinfo;
+};
+
 /* Functions */
 int fpgamgr_program_init(u32 * rbf_data, size_t rbf_size);
 int fpgamgr_program_finish(void);
 int is_fpgamgr_user_mode(void);
 int fpgamgr_wait_early_user_mode(void);
-
+const char *get_fpga_filename(void);
+int is_fpgamgr_early_user_mode(void);
+int socfpga_loadfs(fpga_fs_info *fpga_fsinfo, const void *buf, size_t bsize,
+		  u32 offset);
+void fpgamgr_program(const void *buf, size_t bsize, u32 offset);
 #endif /* __ASSEMBLY__ */
 
 #endif /* _FPGA_MANAGER_ARRIA10_H_ */

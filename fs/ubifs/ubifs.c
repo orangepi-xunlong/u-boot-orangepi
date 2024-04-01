@@ -12,10 +12,18 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <gzip.h>
+#include <log.h>
+#include <malloc.h>
 #include <memalign.h>
+#include <asm/global_data.h>
 #include "ubifs.h"
+#include <part.h>
+#include <dm/devres.h>
 #include <u-boot/zlib.h>
 
+#include <linux/compat.h>
 #include <linux/err.h>
 #include <linux/lzo.h>
 
@@ -68,24 +76,6 @@ struct ubifs_compressor *ubifs_compressors[UBIFS_COMPR_TYPES_CNT];
 
 
 #ifdef __UBOOT__
-/* from mm/util.c */
-
-/**
- * kmemdup - duplicate region of memory
- *
- * @src: memory region to duplicate
- * @len: memory region length
- * @gfp: GFP mask to use
- */
-void *kmemdup(const void *src, size_t len, gfp_t gfp)
-{
-	void *p;
-
-	p = kmalloc(len, gfp);
-	if (p)
-		memcpy(p, src, len);
-	return p;
-}
 
 struct crypto_comp {
 	int compressor;
@@ -562,7 +552,7 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 	return 0;
 }
 
-int ubifs_set_blk_dev(struct blk_desc *rbdd, disk_partition_t *info)
+int ubifs_set_blk_dev(struct blk_desc *rbdd, struct disk_partition *info)
 {
 	if (rbdd) {
 		debug("UBIFS cannot be used with normal block devices\n");
@@ -798,6 +788,8 @@ static int do_readpage(struct ubifs_info *c, struct inode *inode,
 
 				if (last_block_size)
 					dlen = last_block_size;
+				else if (ret)
+					dlen = UBIFS_BLOCK_SIZE;
 				else
 					dlen = le32_to_cpu(dn->size);
 
@@ -933,12 +925,12 @@ void ubifs_close(void)
 }
 
 /* Compat wrappers for common/cmd_ubifs.c */
-int ubifs_load(char *filename, u32 addr, u32 size)
+int ubifs_load(char *filename, unsigned long addr, u32 size)
 {
 	loff_t actread;
 	int err;
 
-	printf("Loading file '%s' to addr 0x%08x...\n", filename, addr);
+	printf("Loading file '%s' to addr 0x%08lx...\n", filename, addr);
 
 	err = ubifs_read(filename, (void *)(uintptr_t)addr, 0, size, &actread);
 	if (err == 0) {

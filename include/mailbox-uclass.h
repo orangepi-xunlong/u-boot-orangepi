@@ -49,20 +49,20 @@ struct mbox_ops {
 	 */
 	int (*request)(struct mbox_chan *chan);
 	/**
-	 * free - Free a previously requested channel.
+	 * rfree - Free a previously requested channel.
 	 *
 	 * This is the implementation of the client mbox_free() API.
 	 *
 	 * @chan:	The channel to free.
 	 * @return 0 if OK, or a negative error code.
 	 */
-	int (*free)(struct mbox_chan *chan);
+	int (*rfree)(struct mbox_chan *chan);
 	/**
 	* send - Send a message over a mailbox channel
 	*
 	* @chan:	The channel to send to the message to.
 	* @data:	A pointer to the message to send.
-	* @return 0 if OK, or a negative error code.
+	* Return: 0 if OK, or a negative error code.
 	*/
 	int (*send)(struct mbox_chan *chan, const void *data);
 	/**
@@ -73,7 +73,7 @@ struct mbox_ops {
 	*
 	* @chan:	The channel to receive to the message from.
 	* @data:	A pointer to the buffer to hold the received message.
-	* @return 0 if OK, -ENODATA if no message was available, or a negative
+	* Return: 0 if OK, -ENODATA if no message was available, or a negative
 	* error code.
 	*/
 	int (*recv)(struct mbox_chan *chan, void *data);

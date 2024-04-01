@@ -6,14 +6,12 @@
 
 /* Generic FPGA support */
 #include <common.h>             /* core U-Boot definitions */
+#include <init.h>
+#include <log.h>
 #include <xilinx.h>             /* xilinx specific definitions */
 #include <altera.h>             /* altera specific definitions */
 #include <lattice.h>
-
-/* Local definitions */
-#ifndef CONFIG_MAX_FPGA_DEVICES
-#define CONFIG_MAX_FPGA_DEVICES		5
-#endif
+#include <dm/device_compat.h>
 
 /* Local static data */
 static int next_desc = FPGA_INVALID_DEVICE;
@@ -217,10 +215,40 @@ int fpga_fsload(int devnum, const void *buf, size_t size,
 }
 #endif
 
+#if CONFIG_IS_ENABLED(FPGA_LOAD_SECURE)
+int fpga_loads(int devnum, const void *buf, size_t size,
+	       struct fpga_secure_info *fpga_sec_info)
+{
+	int ret_val = FPGA_FAIL;
+
+	const fpga_desc *desc = fpga_validate(devnum, buf, size,
+					      (char *)__func__);
+
+	if (desc) {
+		switch (desc->devtype) {
+		case fpga_xilinx:
+#if defined(CONFIG_FPGA_XILINX)
+			ret_val = xilinx_loads(desc->devdesc, buf, size,
+					       fpga_sec_info);
+#else
+			fpga_no_sup((char *)__func__, "Xilinx devices");
+#endif
+			break;
+		default:
+			printf("%s: Invalid or unsupported device type %d\n",
+			       __func__, desc->devtype);
+		}
+	}
+
+	return ret_val;
+}
+#endif
+
 /*
  * Generic multiplexing code
  */
-int fpga_load(int devnum, const void *buf, size_t bsize, bitstream_type bstype)
+int fpga_load(int devnum, const void *buf, size_t bsize, bitstream_type bstype,
+	      int flags)
 {
 	int ret_val = FPGA_FAIL;           /* assume failure */
 	const fpga_desc *desc = fpga_validate(devnum, buf, bsize,
@@ -231,7 +259,7 @@ int fpga_load(int devnum, const void *buf, size_t bsize, bitstream_type bstype)
 		case fpga_xilinx:
 #if defined(CONFIG_FPGA_XILINX)
 			ret_val = xilinx_load(desc->devdesc, buf, bsize,
-					      bstype);
+					      bstype, flags);
 #else
 			fpga_no_sup((char *)__func__, "Xilinx devices");
 #endif
@@ -324,3 +352,29 @@ int fpga_info(int devnum)
 
 	return fpga_dev_info(devnum);
 }
+
+#if CONFIG_IS_ENABLED(FPGA_LOAD_SECURE)
+int fpga_compatible2flag(int devnum, const char *compatible)
+{
+	const fpga_desc * const desc = fpga_get_desc(devnum);
+
+	if (!desc)
+		return 0;
+
+	switch (desc->devtype) {
+#if defined(CONFIG_FPGA_XILINX)
+	case fpga_xilinx:
+	{
+		xilinx_desc *xdesc = (xilinx_desc *)desc->devdesc;
+
+		if (xdesc->operations && xdesc->operations->str2flag)
+			return xdesc->operations->str2flag(xdesc, compatible);
+	}
+#endif
+	default:
+		break;
+	}
+
+	return 0;
+}
+#endif

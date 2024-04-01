@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2013 Suriyan Ramasami <suriyan.r@gmail.com>
+ * Copyright (C) 2021-2022 Tony Dinh <mibodhi@gmail.com>
+ * Copyright (C) 2013-2021 Suriyan Ramasami <suriyan.r@gmail.com>
  *
  * Based on dockstar.c originally written by
  * Copyright (C) 2010  Eric C. Cooper <ecc@cmu.edu>
@@ -12,12 +13,16 @@
  */
 
 #include <common.h>
-#include <miiphy.h>
+#include <bootstage.h>
+#include <init.h>
+#include <netdev.h>
+#include <asm/global_data.h>
 #include <asm/mach-types.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/cpu.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -90,6 +95,11 @@ int board_early_init_f(void)
 	return 0;
 }
 
+int board_eth_init(struct bd_info *bis)
+{
+	return cpu_eth_init(bis);
+}
+
 int board_init(void)
 {
 	/*
@@ -103,43 +113,9 @@ int board_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_RESET_PHY_R
-/* Configure and enable MV88E1116 PHY */
-void reset_phy(void)
-{
-	u16 reg;
-	u16 devadr;
-	char *name = "egiga0";
-
-	if (miiphy_set_current_dev(name))
-		return;
-
-	/* command to read PHY dev address */
-	if (miiphy_read(name, 0xEE, 0xEE, (u16 *)&devadr)) {
-		printf("Err..%s could not read PHY dev address\n",
-		       __func__);
-		return;
-	}
-
-	/*
-	 * Enable RGMII delay on Tx and Rx for CPU port
-	 * Ref: sec 4.7.2 of chip datasheet
-	 */
-	miiphy_write(name, devadr, MV88E1116_PGADR_REG, 2);
-	miiphy_read(name, devadr, MV88E1116_MAC_CTRL_REG, &reg);
-	reg |= (MV88E1116_RGMII_RXTM_CTRL | MV88E1116_RGMII_TXTM_CTRL);
-	miiphy_write(name, devadr, MV88E1116_MAC_CTRL_REG, reg);
-	miiphy_write(name, devadr, MV88E1116_PGADR_REG, 0);
-
-	/* reset the phy */
-	miiphy_reset(name, devadr);
-
-	printf("88E1116 Initialized on %s\n", name);
-}
-#endif /* CONFIG_RESET_PHY_R */
-
-#define GREEN_LED	(1 << 14)
-#define ORANGE_LED	(1 << 15)
+#if CONFIG_IS_ENABLED(BOOTSTAGE)
+#define GREEN_LED	BIT(14)
+#define ORANGE_LED	BIT(15)
 #define BOTH_LEDS	(GREEN_LED | ORANGE_LED)
 #define NEITHER_LED	0
 
@@ -171,3 +147,4 @@ void show_boot_progress(int val)
 		break;
 	}
 }
+#endif

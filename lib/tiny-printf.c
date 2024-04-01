@@ -9,8 +9,9 @@
  */
 
 #include <common.h>
-#include <stdarg.h>
+#include <log.h>
 #include <serial.h>
+#include <stdarg.h>
 #include <linux/ctype.h>
 
 struct printf_info {
@@ -47,7 +48,7 @@ static void div_out(struct printf_info *info, unsigned long *num,
 		out_dgt(info, dgt);
 }
 
-#ifdef CONFIG_SPL_NET_SUPPORT
+#ifdef CONFIG_SPL_NET
 static void string(struct printf_info *info, char *s)
 {
 	char ch;
@@ -157,7 +158,8 @@ static void ip4_addr_string(struct printf_info *info, u8 *addr)
  *       decimal).
  */
 
-static void pointer(struct printf_info *info, const char *fmt, void *ptr)
+static void __maybe_unused pointer(struct printf_info *info, const char *fmt,
+				   void *ptr)
 {
 #ifdef DEBUG
 	unsigned long num = (uintptr_t)ptr;
@@ -176,7 +178,7 @@ static void pointer(struct printf_info *info, const char *fmt, void *ptr)
 		}
 		break;
 #endif
-#ifdef CONFIG_SPL_NET_SUPPORT
+#ifdef CONFIG_SPL_NET
 	case 'm':
 		return mac_address_string(info, ptr, false);
 	case 'M':
@@ -241,6 +243,7 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 				goto abort;
 			case 'u':
 			case 'd':
+			case 'i':
 				div = 1000000000;
 				if (islong) {
 					num = va_arg(va, unsigned long);
@@ -250,7 +253,7 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 					num = va_arg(va, unsigned int);
 				}
 
-				if (ch == 'd') {
+				if (ch != 'u') {
 					if (islong && (long)num < 0) {
 						num = -(long)num;
 						out(info, '-');
@@ -266,6 +269,20 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 						div_out(info, &num, div);
 				}
 				break;
+			case 'p':
+				if (CONFIG_IS_ENABLED(NET) || _DEBUG) {
+					pointer(info, fmt, va_arg(va, void *));
+					/*
+					 * Skip this because it pulls in _ctype which is
+					 * 256 bytes, and we don't generally implement
+					 * pointer anyway
+					 */
+					while (isalnum(fmt[0]))
+						fmt++;
+					break;
+				}
+				islong = true;
+				/* no break */
 			case 'x':
 				if (islong) {
 					num = va_arg(va, unsigned long);
@@ -286,11 +303,6 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 				break;
 			case 's':
 				p = va_arg(va, char*);
-				break;
-			case 'p':
-				pointer(info, fmt, va_arg(va, void *));
-				while (isalnum(fmt[0]))
-					fmt++;
 				break;
 			case '%':
 				out(info, '%');
@@ -366,6 +378,22 @@ int sprintf(char *buf, const char *fmt, ...)
 	return ret;
 }
 
+#if CONFIG_IS_ENABLED(LOG)
+/* Note that size is ignored */
+int vsnprintf(char *buf, size_t size, const char *fmt, va_list va)
+{
+	struct printf_info info;
+	int ret;
+
+	info.outstr = buf;
+	info.putc = putc_outstr;
+	ret = _vprintf(&info, fmt, va);
+	*info.outstr = '\0';
+
+	return ret;
+}
+#endif
+
 /* Note that size is ignored */
 int snprintf(char *buf, size_t size, const char *fmt, ...)
 {
@@ -381,4 +409,10 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 	*info.outstr = '\0';
 
 	return ret;
+}
+
+void print_grouped_ull(unsigned long long int_val, int digits)
+{
+	/* Don't try to print the upper 32-bits */
+	printf("%ld ", (ulong)int_val);
 }

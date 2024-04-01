@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <bitfield.h>
 #include <dm.h>
@@ -64,12 +66,12 @@ static int sti_usb_phy_init(struct phy *usb_phy)
 	void __iomem *reg;
 
 	/* set ctrl picophy value */
-	reg = (void __iomem *)phy->regmap->base + phy->ctrl;
+	reg = (void __iomem *)phy->regmap->ranges[0].start + phy->ctrl;
 	/* CTRL_PORT mask is 0x1f */
 	clrsetbits_le32(reg, 0x1f, STIH407_USB_PICOPHY_CTRL_PORT_CONF);
 
 	/* set ports parameters overriding */
-	reg = (void __iomem *)phy->regmap->base + phy->param;
+	reg = (void __iomem *)phy->regmap->ranges[0].start + phy->param;
 	/* PARAM_DEF mask is 0xffffffff */
 	clrsetbits_le32(reg, 0xffffffff, STIH407_USB_PICOPHY_PARAM_DEF);
 
@@ -176,5 +178,5 @@ U_BOOT_DRIVER(sti_usb_phy) = {
 	.of_match = sti_usb_phy_ids,
 	.probe = sti_usb_phy_probe,
 	.ops = &sti_usb_phy_ops,
-	.priv_auto_alloc_size = sizeof(struct sti_usb_phy),
+	.priv_auto	= sizeof(struct sti_usb_phy),
 };

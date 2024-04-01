@@ -17,6 +17,7 @@ enum sh_serial_type {
 	PORT_SCIF,
 	PORT_SCIFA,
 	PORT_SCIFB,
+	PORT_HSCIF,
 };
 
 /*
@@ -27,7 +28,7 @@ enum sh_serial_type {
  * @clk_mode:	Clock mode, set internal (INT) or external (EXT)
  * @type:	Type of SCIF
  */
-struct sh_serial_platdata {
+struct sh_serial_plat {
 	unsigned long base;
 	unsigned int clk;
 	enum sh_clk_mode clk_mode;

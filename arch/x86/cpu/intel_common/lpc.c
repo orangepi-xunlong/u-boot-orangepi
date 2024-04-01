@@ -9,9 +9,11 @@
 #include <fdtdec.h>
 #include <pch.h>
 #include <pci.h>
+#include <asm/global_data.h>
 #include <asm/intel_regs.h>
 #include <asm/io.h>
 #include <asm/lpc_common.h>
+#include <linux/bitops.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -37,7 +39,7 @@ static void enable_port80_on_lpc(struct udevice *pch)
  * lpc_early_init() - set up LPC serial ports and other early things
  *
  * @dev:	LPC device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int lpc_common_early_init(struct udevice *dev)
 {
@@ -51,7 +53,7 @@ int lpc_common_early_init(struct udevice *dev)
 
 	count = fdtdec_get_int_array_count(gd->fdt_blob, dev_of_offset(dev),
 			"intel,gen-dec", (u32 *)values,
-			sizeof(values) / sizeof(u32));
+			sizeof(values) / (sizeof(u32)));
 	if (count < 0)
 		return -EINVAL;
 

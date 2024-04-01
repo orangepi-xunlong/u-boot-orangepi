@@ -11,17 +11,21 @@
 #include <efi_api.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <linux/compiler.h>
 #include <asm/io.h>
 #include <serial.h>
 
 /* Information about the efi console */
 struct serial_efi_priv {
-	struct efi_simple_input_interface *con_in;
+	struct efi_simple_text_input_protocol *con_in;
 	struct efi_simple_text_output_protocol *con_out;
 	struct efi_input_key key;
 	bool have_key;
 };
+
+/* Convert a lower-case character to its ctrl-char equivalent */
+#define CTL_CH(c)		((c) - 'a' + 1)
 
 int serial_efi_setbrg(struct udevice *dev, int baudrate)
 {
@@ -48,6 +52,7 @@ static int serial_efi_get_key(struct serial_efi_priv *priv)
 static int serial_efi_getc(struct udevice *dev)
 {
 	struct serial_efi_priv *priv = dev_get_priv(dev);
+	char conv_scan[10] = {0, 'p', 'n', 'f', 'b', 'a', 'e', 0, 8};
 	int ret, ch;
 
 	ret = serial_efi_get_key(priv);
@@ -62,8 +67,11 @@ static int serial_efi_getc(struct udevice *dev)
 	 * key scan code of 8. Handle this so that backspace works correctly
 	 * in the U-Boot command line.
 	 */
-	if (!ch && priv->key.scan_code == 8)
-		ch = 8;
+	if (!ch && priv->key.scan_code < sizeof(conv_scan)) {
+		ch = conv_scan[priv->key.scan_code];
+		if (ch >= 'a')
+			ch -= 'a' - 1;
+	}
 	debug(" [%x %x %x] ", ch, priv->key.unicode_char, priv->key.scan_code);
 
 	return ch;
@@ -149,8 +157,7 @@ U_BOOT_DRIVER(serial_efi) = {
 	.name	= "serial_efi",
 	.id	= UCLASS_SERIAL,
 	.of_match = serial_efi_ids,
-	.priv_auto_alloc_size = sizeof(struct serial_efi_priv),
+	.priv_auto	= sizeof(struct serial_efi_priv),
 	.probe = serial_efi_probe,
 	.ops	= &serial_efi_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

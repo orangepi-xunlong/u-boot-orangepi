@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /******************************************************************************
 * (c) Copyright 2010-2014 Xilinx, Inc. All rights reserved.
 * (c) Copyright 2017 Opal Kelly Inc.
-*
-* SPDX-License-Identifier: GPL-2.0+
  *****************************************************************************/
 
 #include <asm/arch/ps7_init_gpl.h>
@@ -221,10 +220,6 @@ unsigned long ps7_peripherals_init_data_3_0[] = {
 	EMIT_MASKWRITE(0XF8000B50, 0x00000180U, 0x00000180U),
 	EMIT_MASKWRITE(0XF8000B54, 0x00000180U, 0x00000180U),
 	EMIT_WRITE(0XF8000004, 0x0000767BU),
-	EMIT_MASKWRITE(0XE0000034, 0x000000FFU, 0x00000006U),
-	EMIT_MASKWRITE(0XE0000018, 0x0000FFFFU, 0x0000007CU),
-	EMIT_MASKWRITE(0XE0000000, 0x000001FFU, 0x00000017U),
-	EMIT_MASKWRITE(0XE0000004, 0x000003FFU, 0x00000020U),
 	EMIT_MASKWRITE(0XE000D000, 0x00080000U, 0x00080000U),
 	EMIT_MASKWRITE(0XF8007000, 0x20000000U, 0x00000000U),
 	EMIT_MASKWRITE(0XE000A244, 0x003FFFFFU, 0x00088000U),
@@ -294,4 +289,3 @@ int ps7_init(void)
 		return ret;
 	return PS7_INIT_SUCCESS;
 }
-

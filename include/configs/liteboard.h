@@ -10,26 +10,17 @@
 
 #include <asm/arch/imx-regs.h>
 #include <linux/sizes.h>
+#include <linux/stringify.h>
 #include "mx6_common.h"
 
-/* SPL options */
-#include "imx6_spl.h"
-
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
-
-#define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE		UART1_BASE
+#define CFG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configs */
 #ifdef CONFIG_FSL_USDHC
-#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC1_BASE_ADDR
-#define CONFIG_SUPPORT_EMMC_BOOT
+#define CFG_SYS_FSL_ESDHC_ADDR	USDHC1_BASE_ADDR
 #endif
 
-#define CONFIG_SYS_MMC_IMG_LOAD_PART	1
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
 	"console=ttymxc0\0" \
@@ -40,8 +31,8 @@
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
-	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcpart=1\0" \
+	"mmcroot=/dev/mmcblk0p2 rootwait rw\0" \
 	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
@@ -91,67 +82,27 @@
 			"bootz; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev};" \
-	   "if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else run netboot; fi"
-
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_128M)
-
-#define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-#define CONFIG_SYS_HZ			1000
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
-#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
-#define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
-#define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
+#define CFG_SYS_SDRAM_BASE		PHYS_SDRAM
+#define CFG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
+#define CFG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
 /* FLASH and environment organization */
-#define CONFIG_ENV_SIZE			SZ_8K
-#define CONFIG_ENV_OFFSET		(8 * SZ_64K)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_MMC_ENV_PART		0
-#define CONFIG_MMCROOT			"/dev/mmcblk0p2"
 
 /* USB Configs */
 #ifdef CONFIG_CMD_USB
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_MXC_USB_FLAGS   0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 1
+#define CFG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
+#define CFG_MXC_USB_FLAGS   0
 #endif
 
 #ifdef CONFIG_CMD_NET
-#define CONFIG_FEC_MXC
-#define CONFIG_MII
-#define CONFIG_FEC_ENET_DEV		0
+#define CFG_FEC_ENET_DEV		0
 
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_MXC_PHYADDR		0x0
-#define CONFIG_FEC_XCV_TYPE		RMII
-#define CONFIG_ETHPRIME			"FEC"
-
-#define CONFIG_PHY_SMSC
+#define CFG_FEC_MXC_PHYADDR		0x0
 #endif
-
-#define CONFIG_IMX_THERMAL
 
 #endif

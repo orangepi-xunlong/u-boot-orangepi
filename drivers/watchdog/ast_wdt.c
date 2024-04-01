@@ -6,9 +6,11 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <wdt.h>
 #include <asm/io.h>
 #include <asm/arch/wdt.h>
+#include <linux/err.h>
 
 #define WDT_AST2500	2500
 #define WDT_AST2400	2400
@@ -22,6 +24,12 @@ static int ast_wdt_start(struct udevice *dev, u64 timeout, ulong flags)
 	struct ast_wdt_priv *priv = dev_get_priv(dev);
 	ulong driver_data = dev_get_driver_data(dev);
 	u32 reset_mode = ast_reset_mode_from_flags(flags);
+
+	/* 32 bits at 1MHz is 4294967ms */
+	timeout = min_t(u64, timeout, 4294967);
+
+	/* WDT counts in ticks of 1MHz clock. 1ms / 1e3 * 1e6 */
+	timeout *= 1000;
 
 	clrsetbits_le32(&priv->regs->ctrl,
 			WDT_CTRL_RESET_MASK << WDT_CTRL_RESET_MODE_SHIFT,
@@ -50,6 +58,7 @@ static int ast_wdt_stop(struct udevice *dev)
 
 	clrbits_le32(&priv->regs->ctrl, WDT_CTRL_EN);
 
+	writel(WDT_RESET_DEFAULT, &priv->regs->reset_mask);
 	return 0;
 }
 
@@ -77,13 +86,13 @@ static int ast_wdt_expire_now(struct udevice *dev, ulong flags)
 	return ast_wdt_stop(dev);
 }
 
-static int ast_wdt_ofdata_to_platdata(struct udevice *dev)
+static int ast_wdt_of_to_plat(struct udevice *dev)
 {
 	struct ast_wdt_priv *priv = dev_get_priv(dev);
 
-	priv->regs = devfdt_get_addr_ptr(dev);
-	if (IS_ERR(priv->regs))
-		return PTR_ERR(priv->regs);
+	priv->regs = dev_read_addr_ptr(dev);
+	if (!priv->regs)
+		return -EINVAL;
 
 	return 0;
 }
@@ -104,7 +113,7 @@ static const struct udevice_id ast_wdt_ids[] = {
 
 static int ast_wdt_probe(struct udevice *dev)
 {
-	debug("%s() wdt%u\n", __func__, dev->seq);
+	debug("%s() wdt%u\n", __func__, dev_seq(dev));
 	ast_wdt_stop(dev);
 
 	return 0;
@@ -115,8 +124,7 @@ U_BOOT_DRIVER(ast_wdt) = {
 	.id = UCLASS_WDT,
 	.of_match = ast_wdt_ids,
 	.probe = ast_wdt_probe,
-	.priv_auto_alloc_size = sizeof(struct ast_wdt_priv),
-	.ofdata_to_platdata = ast_wdt_ofdata_to_platdata,
+	.priv_auto	= sizeof(struct ast_wdt_priv),
+	.of_to_plat = ast_wdt_of_to_plat,
 	.ops = &ast_wdt_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };

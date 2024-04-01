@@ -4,9 +4,14 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <init.h>
+#include <log.h>
 #include <malloc.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/mrccache.h>
 #include <asm/mtrr.h>
 #include <asm/post.h>
@@ -22,7 +27,7 @@ static __maybe_unused int prepare_mrc_cache(struct mrc_params *mrc_params)
 	struct mrc_region entry;
 	int ret;
 
-	ret = mrccache_get_region(NULL, &entry);
+	ret = mrccache_get_region(MRC_TYPE_NORMAL, NULL, &entry);
 	if (ret)
 		return ret;
 
@@ -152,9 +157,11 @@ int dram_init(void)
 #ifdef CONFIG_ENABLE_MRC_CACHE
 	cache = malloc(sizeof(struct mrc_timings));
 	if (cache) {
+		struct mrc_output *mrc = &gd->arch.mrc[MRC_TYPE_NORMAL];
+
 		memcpy(cache, &mrc_params.timings, sizeof(struct mrc_timings));
-		gd->arch.mrc_output = cache;
-		gd->arch.mrc_output_len = sizeof(struct mrc_timings);
+		mrc->buf = cache;
+		mrc->len = sizeof(struct mrc_timings);
 	}
 #endif
 
@@ -177,7 +184,7 @@ int dram_init_banksize(void)
  * the relocation address, and how far U-Boot is moved by relocation are
  * set in the global data structure.
  */
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	return gd->ram_size;
 }

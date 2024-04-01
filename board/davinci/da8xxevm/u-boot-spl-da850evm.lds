@@ -7,8 +7,11 @@
  * Guennadi Liakhovetki, DENX Software Engineering, <lg@denx.de>
  */
 
-MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,\
+MEMORY { .sram : ORIGIN = IMAGE_TEXT_BASE,\
 		LENGTH = CONFIG_SPL_MAX_FOOTPRINT }
+
+MEMORY { .sdram : ORIGIN = CONFIG_SPL_BSS_START_ADDR, \
+                LENGTH = 0x1080000 }
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
@@ -33,7 +36,7 @@ SECTIONS
 	.data : { *(SORT_BY_ALIGNMENT(.data*)) } >.sram
 
 	. = ALIGN(4);
-	.u_boot_list : { KEEP(*(SORT(.u_boot_list*))); } >.sram
+	__u_boot_list : { KEEP(*(SORT(__u_boot_list*))); } >.sram
 
 	. = ALIGN(4);
 	.rel.dyn : {
@@ -42,6 +45,15 @@ SECTIONS
 		__rel_dyn_end = .;
 	} >.sram
 
+	__image_copy_end = .;
+
+	.end :
+	{
+		*(.__end)
+	}
+
+	_image_binary_end = .;
+
 	.bss :
 	{
 		. = ALIGN(4);
@@ -49,12 +61,5 @@ SECTIONS
 		*(.bss*)
 		. = ALIGN(4);
 		__bss_end = .;
-	} >.sram
-
-	__image_copy_end = .;
-
-	.end :
-	{
-		*(.__end)
-	}
+	} >.sdram
 }

@@ -5,19 +5,23 @@
  * Author: Ye Li <ye.li@nxp.com>
  */
 
+#include <init.h>
+#include <net.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 #include <common.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <miiphy.h>
 #include <netdev.h>
 #include <power/pmic.h>
@@ -28,10 +32,6 @@
 #include <pca953x.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#define UART_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |		\
-	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |		\
-	PAD_CTL_DSE_40ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
 #define ENET_PAD_CTRL  (PAD_CTL_PUS_100K_UP | PAD_CTL_PUE |     \
 	PAD_CTL_SPEED_HIGH   |                                   \
@@ -55,11 +55,6 @@ int dram_init(void)
 	return 0;
 }
 
-static iomux_v3_cfg_t const uart1_pads[] = {
-	MX6_PAD_GPIO1_IO04__UART1_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
-	MX6_PAD_GPIO1_IO05__UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
-};
-
 static iomux_v3_cfg_t const fec2_pads[] = {
 	MX6_PAD_ENET1_MDC__ENET2_MDC | MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_ENET1_MDIO__ENET2_MDIO | MUX_PAD_CTRL(ENET_PAD_CTRL),
@@ -77,11 +72,6 @@ static iomux_v3_cfg_t const fec2_pads[] = {
 	MX6_PAD_RGMII2_TXC__ENET2_RGMII_TXC | MUX_PAD_CTRL(ENET_PAD_CTRL),
 };
 
-static void setup_iomux_uart(void)
-{
-	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-}
-
 static int setup_fec(void)
 {
 	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
@@ -92,7 +82,7 @@ static int setup_fec(void)
 	return enable_fec_anatop_clock(1, ENET_125MHZ);
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int ret;
 
@@ -100,7 +90,7 @@ int board_eth_init(bd_t *bis)
 	setup_fec();
 
 	ret = fecmxc_initialize_multi(bis, 1,
-		CONFIG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
+		CFG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
 	if (ret)
 		printf("FEC%d MXC: %s:failed\n", 1, __func__);
 
@@ -212,38 +202,12 @@ int board_ehci_hcd_init(int port)
 
 int board_early_init_f(void)
 {
-	setup_iomux_uart();
-
 	return 0;
 }
 
 #ifdef CONFIG_FSL_QSPI
-
-#define QSPI_PAD_CTRL1	\
-	(PAD_CTL_SRE_FAST | PAD_CTL_SPEED_HIGH | \
-	 PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_PUS_47K_UP | PAD_CTL_DSE_40ohm)
-
-static iomux_v3_cfg_t const quadspi_pads[] = {
-	MX6_PAD_QSPI1A_SS0_B__QSPI1_A_SS0_B   | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1A_SCLK__QSPI1_A_SCLK     | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1A_DATA0__QSPI1_A_DATA_0  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1A_DATA1__QSPI1_A_DATA_1  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1A_DATA2__QSPI1_A_DATA_2  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1A_DATA3__QSPI1_A_DATA_3  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_SS0_B__QSPI1_B_SS0_B   | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_SCLK__QSPI1_B_SCLK     | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_DATA0__QSPI1_B_DATA_0  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_DATA1__QSPI1_B_DATA_1  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_DATA2__QSPI1_B_DATA_2  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-	MX6_PAD_QSPI1B_DATA3__QSPI1_B_DATA_3  | MUX_PAD_CTRL(QSPI_PAD_CTRL1),
-};
-
 int board_qspi_init(void)
 {
-	/* Set the iomux */
-	imx_iomux_v3_setup_multiple_pads(quadspi_pads,
-					 ARRAY_SIZE(quadspi_pads));
-
 	/* Set the clock */
 	enable_qspi_clk(0);
 

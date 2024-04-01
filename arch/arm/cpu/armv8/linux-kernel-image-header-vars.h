@@ -48,7 +48,7 @@
 #define __MAX(a, b)		(((a) > (b)) ? (a) : (b))
 #define __CODE_DATA_SIZE	(__bss_start - _start)
 #define __BSS_SIZE		(__bss_end - __bss_start)
-#ifdef CONFIG_SYS_INIT_SP_BSS_OFFSET
+#ifdef CONFIG_INIT_SP_RELATIVE
 #define __MAX_EXTRA_RAM_USAGE	__MAX(__BSS_SIZE, CONFIG_SYS_INIT_SP_BSS_OFFSET)
 #else
 #define __MAX_EXTRA_RAM_USAGE	__BSS_SIZE
@@ -69,7 +69,7 @@
 				 (__HEAD_FLAG_PAGE_SIZE << 1) |	\
 				 (__HEAD_FLAG_PHYS_BASE << 3))
 
-#define TEXT_OFFSET (CONFIG_SYS_TEXT_BASE - \
+#define TEXT_OFFSET (CONFIG_TEXT_BASE - \
 			CONFIG_LNX_KRNL_IMG_TEXT_OFFSET_BASE)
 
 /*

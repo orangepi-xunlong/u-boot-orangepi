@@ -16,6 +16,8 @@
 #ifndef __FEC_MXC_H
 #define __FEC_MXC_H
 
+#include <clk.h>
+
 /* Layout description of the FEC */
 struct ethernet_regs {
 	/* [10:2]addr = 00 */
@@ -126,7 +128,7 @@ struct ethernet_regs {
 
 	uint32_t res14[7];		/* MBAR_ETH + 0x2E4-2FC */
 
-#if defined(CONFIG_MX25) || defined(CONFIG_MX53) || defined(CONFIG_MX6SL)
+#if defined(CONFIG_MX53) || defined(CONFIG_MX6SL)
 	uint16_t miigsk_cfgr;		/* MBAR_ETH + 0x300 */
 	uint16_t res15[3];		/* MBAR_ETH + 0x302-306 */
 	uint16_t miigsk_enr;		/* MBAR_ETH + 0x308 */
@@ -186,13 +188,15 @@ struct ethernet_regs {
 #define FEC_ECNTRL_ETHER_EN		0x00000002	/* enable the FEC */
 #define FEC_ECNTRL_SPEED		0x00000020
 #define FEC_ECNTRL_DBSWAP		0x00000100
+#define FEC_ECNTRL_TXC_DLY		0x00010000	/* TXC delayed */
+#define FEC_ECNTRL_RXC_DLY		0x00020000	/* RXC delayed */
 
 #define FEC_X_WMRK_STRFWD		0x00000100
 
 #define FEC_X_DES_ACTIVE_TDAR		0x01000000
 #define FEC_R_DES_ACTIVE_RDAR		0x01000000
 
-#if defined(CONFIG_MX25) || defined(CONFIG_MX53) || defined(CONFIG_MX6SL)
+#if defined(CONFIG_MX53) || defined(CONFIG_MX6SL)
 /* defines for MIIGSK */
 /* RMII frequency control: 0=50MHz, 1=5MHz */
 #define MIIGSK_CFGR_FRCONT		(1 << 6)
@@ -240,23 +244,34 @@ struct fec_priv {
 	int rbd_index;			/* next receive BD to read */
 	struct fec_bd *tbd_base;	/* TBD ring */
 	int tbd_index;			/* next transmit BD to write */
-	bd_t *bd;
+	struct bd_info *bd;
 	uint8_t *tdb_ptr;
 	int dev_id;
 	struct mii_dev *bus;
 #ifdef CONFIG_PHYLIB
 	struct phy_device *phydev;
+	ofnode phy_of_node;
 #else
 	int phy_id;
 	int (*mii_postcall)(int);
 #endif
-
-#ifdef CONFIG_DM_ETH
-	u32 interface;
+#ifdef CONFIG_DM_REGULATOR
+	struct udevice *phy_supply;
 #endif
+#if CONFIG_IS_ENABLED(DM_GPIO)
+	struct gpio_desc phy_reset_gpio;
+	uint32_t reset_delay;
+	uint32_t reset_post_delay;
+#endif
+	u32 interface;
+	struct clk ipg_clk;
+	struct clk ahb_clk;
+	struct clk clk_enet_out;
+	struct clk clk_ref;
+	struct clk clk_ptp;
+	u32 clk_rate;
+	bool promisc;
 };
-
-void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 
 /**
  * @brief Numbers of buffer descriptors for receiving

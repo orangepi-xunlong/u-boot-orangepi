@@ -12,6 +12,7 @@
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
+#include <linux/bitops.h>
 #endif /* !(__KERNEL_STRICT_NAMES || __ASSEMBLY__) */
 
 #include <asm/arch/hardware.h>
@@ -407,7 +408,7 @@ struct cm_dpll {
 	unsigned int resv1;
 	unsigned int clktimer2clk;	/* offset 0x04 */
 	unsigned int resv2[11];
-	unsigned int clkselmacclk;	/* offset 0x34 */ 
+	unsigned int clkselmacclk;	/* offset 0x34 */
 };
 #endif /* CONFIG_AM43XX */
 

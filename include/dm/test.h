@@ -6,8 +6,7 @@
 #ifndef __DM_TEST_H
 #define __DM_TEST_H
 
-#include <dm.h>
-#include <test/test.h>
+struct udevice;
 
 /**
  * struct dm_test_cdata - configuration data for test instance
@@ -27,7 +26,7 @@ struct dm_test_pdata {
  *	@dev: Device to operate on
  *	@pingval: Value to ping the device with
  *	@pingret: Returns resulting value from driver
- *	@return 0 if OK, -ve on error
+ *	Return: 0 if OK, -ve on error
  */
 struct test_ops {
 	int (*ping)(struct udevice *dev, int pingval, int *pingret);
@@ -56,6 +55,8 @@ enum {
 enum {
 	DM_TEST_TYPE_FIRST = 0,
 	DM_TEST_TYPE_SECOND,
+
+	DM_TEST_TYPE_COUNT,
 };
 
 /* The number added to the ping total on each probe */
@@ -69,6 +70,12 @@ struct dm_test_priv {
 	int op_count[DM_TEST_OP_COUNT];
 	int uclass_flag;
 	int uclass_total;
+	int uclass_postp;
+};
+
+/* struct dm_test_uc_priv - private data for the testdrv uclass */
+struct dm_test_uc_priv {
+	int dummy;
 };
 
 /**
@@ -83,6 +90,13 @@ struct dm_test_uclass_perdev_priv {
  */
 struct dm_test_uclass_priv {
 	int total_add;
+};
+
+/**
+ * struct dm_test_uclass_plat - private plat data for test uclass
+ */
+struct dm_test_uclass_plat {
+	char dummy[32];
 };
 
 /**
@@ -125,38 +139,23 @@ extern int dm_testdrv_op_count[DM_TEST_OP_COUNT];
 
 extern struct unit_test_state global_dm_test_state;
 
-/*
- * struct dm_test_state - Entire state of dm test system
- *
- * This is often abreviated to dms.
- *
- * @root: Root device
- * @testdev: Test device
- * @force_fail_alloc: Force all memory allocs to fail
- * @skip_post_probe: Skip uclass post-probe processing
- * @removed: Used to keep track of a device that was removed
- */
-struct dm_test_state {
-	struct udevice *root;
-	struct udevice *testdev;
-	int force_fail_alloc;
-	int skip_post_probe;
-	struct udevice *removed;
-};
-
-/* Test flags for each test */
-enum {
-	DM_TESTF_SCAN_PDATA	= 1 << 0,	/* test needs platform data */
-	DM_TESTF_PROBE_TEST	= 1 << 1,	/* probe test uclass */
-	DM_TESTF_SCAN_FDT	= 1 << 2,	/* scan device tree */
-	DM_TESTF_FLAT_TREE	= 1 << 3,	/* test needs flat DT */
-	DM_TESTF_LIVE_TREE	= 1 << 4,	/* needs live device tree */
-};
-
 /* Declare a new driver model test */
-#define DM_TEST(_name, _flags)	UNIT_TEST(_name, _flags, dm_test)
+#define DM_TEST(_name, _flags) \
+	UNIT_TEST(_name, UT_TESTF_DM | UT_TESTF_CONSOLE_REC | (_flags), dm_test)
 
-/* This platform data is needed in tests, so declare it here */
+/*
+ * struct sandbox_sdl_plat - Platform data for the SDL video driver
+ *
+ * This platform data is needed in tests, so declare it here
+ *
+ * @xres: Width of display in pixels
+ * @yres: Height of display in pixels
+ * @bpix: Log2 of bits per pixel (enum video_log2_bpp)
+ * @rot: Console rotation (0=normal orientation, 1=90 degrees clockwise,
+ *	2=upside down, 3=90 degree counterclockwise)
+ * @vidconsole_drv_name: Name of video console driver (set by tests)
+ * @font_size: Console font size to select (set by tests)
+ */
 struct sandbox_sdl_plat {
 	int xres;
 	int yres;
@@ -164,6 +163,24 @@ struct sandbox_sdl_plat {
 	int rot;
 	const char *vidconsole_drv_name;
 	int font_size;
+};
+
+/**
+ * struct dm_test_parent_plat - Used to track state in bus tests
+ *
+ * @count:
+ * @bind_flag: Indicates that the child post-bind method was called
+ * @uclass_bind_flag: Also indicates that the child post-bind method was called
+ */
+struct dm_test_parent_plat {
+	int count;
+	int bind_flag;
+	int uclass_bind_flag;
+};
+
+enum {
+	TEST_FLAG_CHILD_PROBED	= 10,
+	TEST_FLAG_CHILD_REMOVED	= -7,
 };
 
 /* Declare ping methods for the drivers */
@@ -179,7 +196,7 @@ int testfdt_ping(struct udevice *dev, int pingval, int *pingret);
  * @dev: Device to test
  * @base: Base address, used to check ping return value
  * @priv: Pointer to private test information
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int dm_check_operations(struct unit_test_state *uts, struct udevice *dev,
 			uint32_t base, struct dm_test_priv *priv);
@@ -189,7 +206,7 @@ int dm_check_operations(struct unit_test_state *uts, struct udevice *dev,
  *
  * @dms: Overall test state
  * @num_devices: Number of test devices to check
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int dm_check_devices(struct unit_test_state *uts, int num_devices);
 

@@ -8,7 +8,9 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <usb/ulpi.h>
 
 #define OMAP_ULPI_WR_OPSEL	(2 << 22)
@@ -20,7 +22,7 @@
  */
 static int ulpi_wait(struct ulpi_viewport *ulpi_vp, u32 mask)
 {
-	int timeout = CONFIG_USB_ULPI_TIMEOUT;
+	int timeout = CFG_USB_ULPI_TIMEOUT;
 
 	while (--timeout) {
 		if (!(readl(ulpi_vp->viewport_addr) & mask))

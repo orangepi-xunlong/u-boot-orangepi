@@ -6,8 +6,11 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <malloc.h>
 #include <serial.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
+#include <linux/bitops.h>
 #include <mach/pic32.h>
 #include <dt-bindings/clock/microchip,clock.h>
 
@@ -176,8 +179,7 @@ U_BOOT_DRIVER(pic32_serial) = {
 	.of_match	= pic32_uart_ids,
 	.probe		= pic32_uart_probe,
 	.ops		= &pic32_uart_ops,
-	.flags		= DM_FLAG_PRE_RELOC,
-	.priv_auto_alloc_size = sizeof(struct pic32_uart_priv),
+	.priv_auto	= sizeof(struct pic32_uart_priv),
 };
 
 #ifdef CONFIG_DEBUG_UART_PIC32
@@ -185,14 +187,14 @@ U_BOOT_DRIVER(pic32_serial) = {
 
 static inline void _debug_uart_init(void)
 {
-	void __iomem *base = (void __iomem *)CONFIG_DEBUG_UART_BASE;
+	void __iomem *base = (void __iomem *)CONFIG_VAL(DEBUG_UART_BASE);
 
 	pic32_serial_init(base, CONFIG_DEBUG_UART_CLOCK, CONFIG_BAUDRATE);
 }
 
 static inline void _debug_uart_putc(int ch)
 {
-	writel(ch, CONFIG_DEBUG_UART_BASE + U_TXR);
+	writel(ch, CONFIG_VAL(DEBUG_UART_BASE) + U_TXR);
 }
 
 DEBUG_UART_FUNCS

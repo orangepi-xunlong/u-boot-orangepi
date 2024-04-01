@@ -6,11 +6,11 @@
  * Parts of this copied from Linux arch/x86/boot/compressed/head_64.S
  */
 
-#include <asm/global_data.h>
 #include <asm/msr-index.h>
 #include <asm/processor-flags.h>
 
 .code32
+.section .text_call64
 .globl cpu_call64
 cpu_call64:
 	/*
@@ -78,6 +78,10 @@ lret_target:
 	pop	%eax			/* target */
 	mov	%eax, %eax		/* Clear bits 63:32 */
 	jmp	*%eax			/* Jump to the 64-bit target */
+
+.globl call64_stub_size
+call64_stub_size:
+	.long	. - cpu_call64
 
 	.data
 	.align	16

@@ -1,9 +1,6 @@
 if ARCH_ZYNQ
 
-config SPL_LDSCRIPT
-	default "arch/arm/mach-zynq/u-boot-spl.lds"
-
-config SPL_FAT_SUPPORT
+config SPL_FS_FAT
 	default y
 
 config SPL_LIBCOMMON_SUPPORT
@@ -15,16 +12,16 @@ config SPL_LIBDISK_SUPPORT
 config SPL_LIBGENERIC_SUPPORT
 	default y
 
-config SPL_MMC_SUPPORT
+config SPL_MMC
 	default y if MMC_SDHCI_ZYNQ
 
-config SPL_SERIAL_SUPPORT
+config SPL_SERIAL
 	default y
 
 config SPL_SPI_FLASH_SUPPORT
 	default y if ZYNQ_QSPI
 
-config SPL_SPI_SUPPORT
+config SPL_SPI
 	default y if ZYNQ_QSPI
 
 config ZYNQ_DDRC_INIT
@@ -55,7 +52,10 @@ config SYS_CONFIG_NAME
 	  will be used for board configuration.
 
 config SYS_MALLOC_F_LEN
-	default 0x600
+	default 0x800
+
+config SYS_MALLOC_LEN
+	default 0x1400000
 
 config BOOT_INIT_FILE
 	string "boot.bin init register filename"
@@ -66,5 +66,8 @@ config BOOT_INIT_FILE
 
 config ZYNQ_SDHCI_MAX_FREQ
 	default 52000000
+
+source "board/xilinx/Kconfig"
+source "board/xilinx/zynq/Kconfig"
 
 endif

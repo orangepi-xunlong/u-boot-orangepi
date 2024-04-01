@@ -1,12 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Freescale Semiconductor
+ * Copyright 2021 NXP
  */
 
 #ifndef __FSL_MC_H__
 #define __FSL_MC_H__
 
 #include <common.h>
+#include <linux/bitops.h>
 
 #define MC_CCSR_BASE_ADDR \
 	((struct mc_ccsr_registers __iomem *)0x8340000)
@@ -51,14 +53,25 @@ struct mc_ccsr_registers {
 	u32 reg_error[];
 };
 
+struct log_header {
+	u32 magic_word;
+	char reserved[4];
+	u32 buf_start;
+	u32 buf_length;
+	u32 last_byte;
+};
+
+void fdt_fsl_mc_fixup_iommu_map_entry(void *blob);
 int get_mc_boot_status(void);
 int get_dpl_apply_status(void);
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+int is_lazy_dpl_addr_valid(void);
+void fdt_fixup_mc_ddr(u64 *base, u64 *size);
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 int get_aiop_apply_status(void);
 #endif
 u64 mc_get_dram_addr(void);
 unsigned long mc_get_dram_block_size(void);
-int fsl_mc_ldpaa_init(bd_t *bis);
-int fsl_mc_ldpaa_exit(bd_t *bd);
+int fsl_mc_ldpaa_init(struct bd_info *bis);
+int fsl_mc_ldpaa_exit(struct bd_info *bd);
 void mc_env_boot(void);
 #endif

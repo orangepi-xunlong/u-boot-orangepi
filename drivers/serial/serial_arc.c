@@ -10,6 +10,7 @@
 #include <common.h>
 #include <dm.h>
 #include <serial.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -25,7 +26,7 @@ struct arc_serial_regs {
 };
 
 
-struct arc_serial_platdata {
+struct arc_serial_plat {
 	struct arc_serial_regs *reg;
 	unsigned int uartclk;
 };
@@ -37,7 +38,7 @@ struct arc_serial_platdata {
 
 static int arc_serial_setbrg(struct udevice *dev, int baudrate)
 {
-	struct arc_serial_platdata *plat = dev->platdata;
+	struct arc_serial_plat *plat = dev_get_plat(dev);
 	struct arc_serial_regs *const regs = plat->reg;
 	int arc_console_baud = gd->cpu_clk / (baudrate * 4) - 1;
 
@@ -49,11 +50,11 @@ static int arc_serial_setbrg(struct udevice *dev, int baudrate)
 
 static int arc_serial_putc(struct udevice *dev, const char c)
 {
-	struct arc_serial_platdata *plat = dev->platdata;
+	struct arc_serial_plat *plat = dev_get_plat(dev);
 	struct arc_serial_regs *const regs = plat->reg;
 
-	while (!(readb(&regs->status) & UART_TXEMPTY))
-		;
+	if (!(readb(&regs->status) & UART_TXEMPTY))
+		return -EAGAIN;
 
 	writeb(c, &regs->data);
 
@@ -67,7 +68,7 @@ static int arc_serial_tstc(struct arc_serial_regs *const regs)
 
 static int arc_serial_pending(struct udevice *dev, bool input)
 {
-	struct arc_serial_platdata *plat = dev->platdata;
+	struct arc_serial_plat *plat = dev_get_plat(dev);
 	struct arc_serial_regs *const regs = plat->reg;
 	uint32_t status = readb(&regs->status);
 
@@ -79,11 +80,11 @@ static int arc_serial_pending(struct udevice *dev, bool input)
 
 static int arc_serial_getc(struct udevice *dev)
 {
-	struct arc_serial_platdata *plat = dev->platdata;
+	struct arc_serial_plat *plat = dev_get_plat(dev);
 	struct arc_serial_regs *const regs = plat->reg;
 
-	while (!arc_serial_tstc(regs))
-		;
+	if (!arc_serial_tstc(regs))
+		return -EAGAIN;
 
 	/* Check for overflow errors */
 	if (readb(&regs->status) & UART_OVERFLOW_ERR)
@@ -109,12 +110,12 @@ static const struct udevice_id arc_serial_ids[] = {
 	{ }
 };
 
-static int arc_serial_ofdata_to_platdata(struct udevice *dev)
+static int arc_serial_of_to_plat(struct udevice *dev)
 {
-	struct arc_serial_platdata *plat = dev_get_platdata(dev);
+	struct arc_serial_plat *plat = dev_get_plat(dev);
 	DECLARE_GLOBAL_DATA_PTR;
 
-	plat->reg = (struct arc_serial_regs *)devfdt_get_addr(dev);
+	plat->reg = dev_read_addr_ptr(dev);
 	plat->uartclk = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 				       "clock-frequency", 0);
 
@@ -125,8 +126,34 @@ U_BOOT_DRIVER(serial_arc) = {
 	.name	= "serial_arc",
 	.id	= UCLASS_SERIAL,
 	.of_match = arc_serial_ids,
-	.ofdata_to_platdata = arc_serial_ofdata_to_platdata,
+	.of_to_plat = arc_serial_of_to_plat,
+	.plat_auto	= sizeof(struct arc_serial_plat),
 	.probe = arc_serial_probe,
 	.ops	= &arc_serial_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
+
+#ifdef CONFIG_DEBUG_ARC_SERIAL
+#include <debug_uart.h>
+
+static inline void _debug_uart_init(void)
+{
+	struct arc_serial_regs *regs = (struct arc_serial_regs *)CONFIG_VAL(DEBUG_UART_BASE);
+	int arc_console_baud = CONFIG_DEBUG_UART_CLOCK / (CONFIG_BAUDRATE * 4) - 1;
+
+	writeb(arc_console_baud & 0xff, &regs->baudl);
+	writeb((arc_console_baud & 0xff00) >> 8, &regs->baudh);
+}
+
+static inline void _debug_uart_putc(int c)
+{
+	struct arc_serial_regs *regs = (struct arc_serial_regs *)CONFIG_VAL(DEBUG_UART_BASE);
+
+	while (!(readb(&regs->status) & UART_TXEMPTY))
+		;
+
+	writeb(c, &regs->data);
+}
+
+DEBUG_UART_FUNCS
+
+#endif

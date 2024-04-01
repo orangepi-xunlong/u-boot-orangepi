@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright 2014-2020 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 #include <common.h>
+#include <env.h>
+#include <log.h>
 #include <asm/io.h>
 #include <fsl_ddr_sdram.h>
 #include <asm/processor.h>
@@ -14,6 +17,7 @@
 	defined(CONFIG_ARM)
 #include <asm/arch/clock.h>
 #endif
+#include <linux/delay.h>
 
 #define CTLR_INTLV_MASK	0x20000000
 
@@ -54,7 +58,8 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 	struct ccsr_ddr __iomem *ddr;
 	u32 temp32;
 	u32 total_gb_size_per_controller;
-	int timeout;
+	int timeout = 0;
+	int ddr_freq_for_timeout = 0;
 	int mod_bnds = 0;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_A008511
@@ -70,18 +75,27 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 #ifdef CONFIG_FSL_DDR_BIST
 	char buffer[CONFIG_SYS_CBSIZE];
 #endif
+#if defined(CONFIG_SYS_FSL_ERRATUM_A009942) || \
+	(defined(CONFIG_SYS_FSL_ERRATUM_A008378) && \
+	defined(CONFIG_SYS_FSL_DDRC_GEN4)) || \
+	defined(CONFIG_SYS_FSL_ERRATUM_A008109)
+	u32 val32;
+#endif
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009942
+	unsigned int ddr_freq;
+#endif
 	switch (ctrl_num) {
 	case 0:
-		ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 		break;
-#if defined(CONFIG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
+#if defined(CFG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
 	case 1:
-		ddr = (void *)CONFIG_SYS_FSL_DDR2_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR2_ADDR;
 		break;
 #endif
-#if defined(CONFIG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
+#if defined(CFG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
 	case 2:
-		ddr = (void *)CONFIG_SYS_FSL_DDR3_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR3_ADDR;
 		break;
 #endif
 #if defined(CONFIG_SYS_FSL_DDR4_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 3)
@@ -216,7 +230,7 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 	if (is_warm_boot()) {
 		ddr_out32(&ddr->sdram_cfg_2,
 			  regs->ddr_sdram_cfg_2 & ~SDRAM_CFG2_D_INIT);
-		ddr_out32(&ddr->init_addr, CONFIG_SYS_SDRAM_BASE);
+		ddr_out32(&ddr->init_addr, CFG_SYS_SDRAM_BASE);
 		ddr_out32(&ddr->init_ext_addr, DDR_INIT_ADDR_EXT_UIA);
 
 		/* DRAM VRef will not be trained */
@@ -434,6 +448,49 @@ step2:
 	ddr_out32(&ddr->sdram_cfg_2, regs->ddr_sdram_cfg_2);
 #endif
 
+#if defined(CONFIG_SYS_FSL_ERRATUM_A008378) && defined(CONFIG_SYS_FSL_DDRC_GEN4)
+	/* Erratum applies when accumulated ECC is used, or DBI is enabled */
+#define IS_ACC_ECC_EN(v) ((v) & 0x4)
+#define IS_DBI(v) ((((v) >> 12) & 0x3) == 0x2)
+	if (has_erratum_a008378()) {
+		if (IS_ACC_ECC_EN(regs->ddr_sdram_cfg) ||
+		    IS_DBI(regs->ddr_sdram_cfg_3)) {
+			val32 = ddr_in32(&ddr->debug[28]);
+			val32 |= (0x9 << 20);
+			ddr_out32(&ddr->debug[28], val32);
+		}
+		debug("Applied errata CONFIG_SYS_FSL_ERRATUM_A008378\n");
+	}
+#endif
+
+#if defined(CONFIG_SYS_FSL_ERRATUM_A008109)
+	val32 = ddr_in32(&ddr->sdram_cfg_2) | 0x800; /* DDR_SLOW */
+	ddr_out32(&ddr->sdram_cfg_2, val32);
+
+	val32 = ddr_in32(&ddr->debug[18]) | 0x2;
+	ddr_out32(&ddr->debug[18], val32);
+
+	ddr_out32(&ddr->debug[28], 0x30000000);
+	debug("Applied errta CONFIG_SYS_FSL_ERRATUM_A008109\n");
+#endif
+
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009942
+	ddr_freq = get_ddr_freq(ctrl_num) / 1000000;
+	val32 = ddr_in32(&ddr->debug[28]);
+	val32 &= 0xff0fff00;
+	if (ddr_freq <= 1333)
+		val32 |= 0x0080006a;
+	else if (ddr_freq <= 1600)
+		val32 |= 0x0070006f;
+	else if (ddr_freq <= 1867)
+		val32 |= 0x00700076;
+	else if (ddr_freq <= 2133)
+		val32 |= 0x0060007b;
+
+	ddr_out32(&ddr->debug[28], val32);
+	debug("Applied errata CONFIG_SYS_FSL_ERRATUM_A009942\n");
+#endif
+
 	total_gb_size_per_controller = 0;
 	for (i = 0; i < CONFIG_CHIP_SELECTS_PER_CTRL; i++) {
 		if (!(regs->cs[i].config & 0x80000000))
@@ -456,8 +513,14 @@ step2:
 	 */
 	bus_width = 3 - ((ddr_in32(&ddr->sdram_cfg) & SDRAM_CFG_DBW_MASK)
 			>> SDRAM_CFG_DBW_SHIFT);
-	timeout = ((total_gb_size_per_controller << (6 - bus_width)) * 100 /
-		(get_ddr_freq(ctrl_num) >> 20)) << 2;
+	ddr_freq_for_timeout = (get_ddr_freq(ctrl_num) >> 20) << 2;
+	if (ddr_freq_for_timeout) {
+		timeout = ((total_gb_size_per_controller <<
+				       (6 - bus_width)) * 100 /
+				ddr_freq_for_timeout);
+	} else {
+		debug("Error in getting timeout.\n");
+	}
 	total_gb_size_per_controller >>= 4;	/* shift down to gb size */
 	debug("total %d GB\n", total_gb_size_per_controller);
 	debug("Need to wait up to %d * 10ms\n", timeout);

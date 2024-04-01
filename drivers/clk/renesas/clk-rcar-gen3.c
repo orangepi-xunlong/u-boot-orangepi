@@ -13,90 +13,112 @@
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <dm/device-internal.h>
+#include <dm/lists.h>
 #include <errno.h>
+#include <log.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/bitfield.h>
+#include <linux/bitops.h>
+#include <linux/clk-provider.h>
+#include <reset-uclass.h>
 
 #include <dt-bindings/clock/renesas-cpg-mssr.h>
 
 #include "renesas-cpg-mssr.h"
 #include "rcar-gen3-cpg.h"
-
-#define CPG_RST_MODEMR		0x0060
+#include "rcar-cpg-lib.h"
 
 #define CPG_PLL0CR		0x00d8
 #define CPG_PLL2CR		0x002c
 #define CPG_PLL4CR		0x01f4
 
-#define CPG_RPC_PREDIV_MASK	0x3
-#define CPG_RPC_PREDIV_OFFSET	3
-#define CPG_RPC_POSTDIV_MASK	0x7
-#define CPG_RPC_POSTDIV_OFFSET	0
+#define SD0CKCR1		0x08a4
 
-/*
- * SDn Clock
- */
-#define CPG_SD_STP_HCK		BIT(9)
-#define CPG_SD_STP_CK		BIT(8)
+static const struct clk_div_table gen3_cpg_rpcsrc_div_table[] = {
+	{ 2, 5 }, { 3, 6 }, { 0, 0 },
+};
 
-#define CPG_SD_STP_MASK		(CPG_SD_STP_HCK | CPG_SD_STP_CK)
-#define CPG_SD_FC_MASK		(0x7 << 2 | 0x3 << 0)
+static const struct clk_div_table gen4_cpg_rpcsrc_div_table[] = {
+	{ 0, 4 }, { 1, 6 }, { 2, 5 }, { 3, 6 }, { 0, 0 },
+};
 
-#define CPG_SD_DIV_TABLE_DATA(stp_hck, stp_ck, sd_srcfc, sd_fc, sd_div) \
-{ \
-	.val = ((stp_hck) ? CPG_SD_STP_HCK : 0) | \
-	       ((stp_ck) ? CPG_SD_STP_CK : 0) | \
-	       ((sd_srcfc) << 2) | \
-	       ((sd_fc) << 0), \
-	.div = (sd_div), \
+static const struct clk_div_table r8a77970_cpg_sd0h_div_table[] = {
+	{  0,  2 }, {  1,  3 }, {  2,  4 }, {  3,  6 },
+	{  4,  8 }, {  5, 12 }, {  6, 16 }, {  7, 18 },
+	{  8, 24 }, { 10, 36 }, { 11, 48 }, {  0,  0 },
+};
+
+static const struct clk_div_table r8a77970_cpg_sd0_div_table[] = {
+	{  4,  8 }, {  5, 12 }, {  6, 16 }, {  7, 18 },
+	{  8, 24 }, { 10, 36 }, { 11, 48 }, { 12, 10 },
+	{  0,  0 },
+};
+
+static int gen3_clk_get_parent(struct gen3_clk_priv *priv, struct clk *clk,
+			       struct cpg_mssr_info *info, struct clk *parent)
+{
+	const struct cpg_core_clk *core;
+	u8 shift;
+	int ret;
+
+	if (!renesas_clk_is_mod(clk)) {
+		ret = renesas_clk_get_core(clk, info, &core);
+		if (ret)
+			return ret;
+
+		if (core->type == CLK_TYPE_GEN3_MDSEL) {
+			shift = priv->cpg_mode & BIT(core->offset) ? 16 : 0;
+			parent->dev = clk->dev;
+			parent->id = core->parent >> shift;
+			parent->id &= 0xffff;
+			return 0;
+		}
+	}
+
+	return renesas_clk_get_parent(clk, info, parent);
 }
 
-struct sd_div_table {
-	u32 val;
-	unsigned int div;
-};
+static int gen3_clk_enable(struct clk *clk)
+{
+	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
 
-/* SDn divider
- *                     sd_srcfc   sd_fc   div
- * stp_hck   stp_ck    (div)      (div)     = sd_srcfc x sd_fc
- *-------------------------------------------------------------------
- *  0         0         0 (1)      1 (4)      4
- *  0         0         1 (2)      1 (4)      8
- *  1         0         2 (4)      1 (4)     16
- *  1         0         3 (8)      1 (4)     32
- *  1         0         4 (16)     1 (4)     64
- *  0         0         0 (1)      0 (2)      2
- *  0         0         1 (2)      0 (2)      4
- *  1         0         2 (4)      0 (2)      8
- *  1         0         3 (8)      0 (2)     16
- *  1         0         4 (16)     0 (2)     32
- */
-static const struct sd_div_table cpg_sd_div_table[] = {
-/*	CPG_SD_DIV_TABLE_DATA(stp_hck,  stp_ck,   sd_srcfc,   sd_fc,  sd_div) */
-	CPG_SD_DIV_TABLE_DATA(0,        0,        0,          1,        4),
-	CPG_SD_DIV_TABLE_DATA(0,        0,        1,          1,        8),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        2,          1,       16),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        3,          1,       32),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        4,          1,       64),
-	CPG_SD_DIV_TABLE_DATA(0,        0,        0,          0,        2),
-	CPG_SD_DIV_TABLE_DATA(0,        0,        1,          0,        4),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        2,          0,        8),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        3,          0,       16),
-	CPG_SD_DIV_TABLE_DATA(1,        0,        4,          0,       32),
-};
+	return renesas_clk_endisable(clk, priv->base, priv->info, true);
+}
 
-static int gen3_clk_setup_sdif_div(struct clk *clk)
+static int gen3_clk_disable(struct clk *clk)
+{
+	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
+
+	return renesas_clk_endisable(clk, priv->base, priv->info, false);
+}
+
+static u64 gen3_clk_get_rate64(struct clk *clk);
+
+static int gen3_clk_setup_sdif_div(struct clk *clk, ulong rate)
 {
 	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
 	struct cpg_mssr_info *info = priv->info;
 	const struct cpg_core_clk *core;
-	struct clk parent;
+	struct clk parent, grandparent;
 	int ret;
 
-	ret = renesas_clk_get_parent(clk, info, &parent);
-	if (ret) {
-		printf("%s[%i] parent fail, ret=%i\n", __func__, __LINE__, ret);
-		return ret;
+	/*
+	 * The clk may be either CPG_MOD or core clock, in case this is MOD
+	 * clock, use core clock one level up, otherwise use the clock as-is.
+	 * Note that parent clock here always represents core clock. Also note
+	 * that grandparent clock are the parent clock of the core clock here.
+	 */
+	if (renesas_clk_is_mod(clk)) {
+		ret = gen3_clk_get_parent(priv, clk, info, &parent);
+		if (ret) {
+			printf("%s[%i] parent fail, ret=%i\n", __func__, __LINE__, ret);
+			return ret;
+		}
+	} else {
+		parent = *clk;
 	}
 
 	if (renesas_clk_is_mod(&parent))
@@ -106,56 +128,85 @@ static int gen3_clk_setup_sdif_div(struct clk *clk)
 	if (ret)
 		return ret;
 
-	if (core->type != CLK_TYPE_GEN3_SD)
-		return 0;
+	ret = renesas_clk_get_parent(&parent, info, &grandparent);
+	if (ret) {
+		printf("%s[%i] grandparent fail, ret=%i\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
-	debug("%s[%i] SDIF offset=%x\n", __func__, __LINE__, core->offset);
+	switch (core->type) {
+	case CLK_TYPE_GEN3_SDH:
+		fallthrough;
+	case CLK_TYPE_GEN4_SDH:
+		return rcar_clk_set_rate64_sdh(core->parent,
+					       gen3_clk_get_rate64(&grandparent),
+					       rate, priv->base + core->offset);
 
-	writel(1, priv->base + core->offset);
+	case CLK_TYPE_GEN3_SD:
+		fallthrough;
+	case CLK_TYPE_GEN4_SD:
+		return rcar_clk_set_rate64_sd(core->parent,
+					      gen3_clk_get_rate64(&grandparent),
+					      rate, priv->base + core->offset);
+
+	case CLK_TYPE_R8A77970_SD0:
+		return rcar_clk_set_rate64_div_table(core->parent,
+						     gen3_clk_get_rate64(&grandparent),
+						     rate, priv->base + core->offset,
+						     CPG_SDCKCR_SD0FC_MASK,
+						     r8a77970_cpg_sd0_div_table, "SD");
+	}
 
 	return 0;
 }
 
-static int gen3_clk_enable(struct clk *clk)
+static u64 gen3_clk_get_rate64_pll_mul_reg(struct gen3_clk_priv *priv,
+					   struct clk *parent,
+					   u32 mul_reg, u32 mult, u32 div,
+					   char *name)
 {
-	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
-	int ret = gen3_clk_setup_sdif_div(clk);
+	u32 value;
+	u64 rate;
 
-	if (ret)
-		return ret;
+	if (mul_reg) {
+		value = readl(priv->base + mul_reg);
+		mult = (((value >> 24) & 0x7f) + 1) * 2;
+		div = 1;
+	}
 
-	return renesas_clk_endisable(clk, priv->base, true);
+	rate = (gen3_clk_get_rate64(parent) * mult) / div;
+
+	debug("%s[%i] %s clk: mult=%u div=%u => rate=%llu\n",
+	      __func__, __LINE__, name, mult, div, rate);
+	return rate;
 }
 
-static int gen3_clk_disable(struct clk *clk)
-{
-	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
-
-	return renesas_clk_endisable(clk, priv->base, false);
-}
-
-static ulong gen3_clk_get_rate(struct clk *clk)
+static u64 gen3_clk_get_rate64(struct clk *clk)
 {
 	struct gen3_clk_priv *priv = dev_get_priv(clk->dev);
 	struct cpg_mssr_info *info = priv->info;
 	struct clk parent;
 	const struct cpg_core_clk *core;
-	const struct rcar_gen3_cpg_pll_config *pll_config =
-					priv->cpg_pll_config;
-	u32 value, mult, prediv, postdiv, rate = 0;
-	int i, ret;
+	const struct rcar_gen3_cpg_pll_config *gen3_pll_config =
+					priv->gen3_cpg_pll_config;
+	const struct rcar_gen4_cpg_pll_config *gen4_pll_config =
+					priv->gen4_cpg_pll_config;
+	u32 value, div;
+	u64 rate = 0;
+	u8 shift;
+	int ret;
 
 	debug("%s[%i] Clock: id=%lu\n", __func__, __LINE__, clk->id);
 
-	ret = renesas_clk_get_parent(clk, info, &parent);
+	ret = gen3_clk_get_parent(priv, clk, info, &parent);
 	if (ret) {
 		printf("%s[%i] parent fail, ret=%i\n", __func__, __LINE__, ret);
 		return ret;
 	}
 
 	if (renesas_clk_is_mod(clk)) {
-		rate = gen3_clk_get_rate(&parent);
-		debug("%s[%i] MOD clk: parent=%lu => rate=%u\n",
+		rate = gen3_clk_get_rate64(&parent);
+		debug("%s[%i] MOD clk: parent=%lu => rate=%llu\n",
 		      __func__, __LINE__, parent.id, rate);
 		return rate;
 	}
@@ -168,14 +219,14 @@ static ulong gen3_clk_get_rate(struct clk *clk)
 	case CLK_TYPE_IN:
 		if (core->id == info->clk_extal_id) {
 			rate = clk_get_rate(&priv->clk_extal);
-			debug("%s[%i] EXTAL clk: rate=%u\n",
+			debug("%s[%i] EXTAL clk: rate=%llu\n",
 			      __func__, __LINE__, rate);
 			return rate;
 		}
 
 		if (core->id == info->clk_extalr_id) {
 			rate = clk_get_rate(&priv->clk_extalr);
-			debug("%s[%i] EXTALR clk: rate=%u\n",
+			debug("%s[%i] EXTALR clk: rate=%llu\n",
 			      __func__, __LINE__, rate);
 			return rate;
 		}
@@ -183,100 +234,185 @@ static ulong gen3_clk_get_rate(struct clk *clk)
 		return -EINVAL;
 
 	case CLK_TYPE_GEN3_MAIN:
-		rate = gen3_clk_get_rate(&parent) / pll_config->extal_div;
-		debug("%s[%i] MAIN clk: parent=%i extal_div=%i => rate=%u\n",
-		      __func__, __LINE__,
-		      core->parent, pll_config->extal_div, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, 1, gen3_pll_config->extal_div,
+						"MAIN");
 
 	case CLK_TYPE_GEN3_PLL0:
-		value = readl(priv->base + CPG_PLL0CR);
-		mult = (((value >> 24) & 0x7f) + 1) * 2;
-		rate = gen3_clk_get_rate(&parent) * mult;
-		debug("%s[%i] PLL0 clk: parent=%i mult=%u => rate=%u\n",
-		      __func__, __LINE__, core->parent, mult, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						CPG_PLL0CR, 0, 0, "PLL0");
 
 	case CLK_TYPE_GEN3_PLL1:
-		rate = gen3_clk_get_rate(&parent) * pll_config->pll1_mult;
-		debug("%s[%i] PLL1 clk: parent=%i mul=%i => rate=%u\n",
-		      __func__, __LINE__,
-		      core->parent, pll_config->pll1_mult, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen3_pll_config->pll1_mult,
+						gen3_pll_config->pll1_div,
+						"PLL1");
 
 	case CLK_TYPE_GEN3_PLL2:
-		value = readl(priv->base + CPG_PLL2CR);
-		mult = (((value >> 24) & 0x7f) + 1) * 2;
-		rate = gen3_clk_get_rate(&parent) * mult;
-		debug("%s[%i] PLL2 clk: parent=%i mult=%u => rate=%u\n",
-		      __func__, __LINE__, core->parent, mult, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						CPG_PLL2CR, 0, 0, "PLL2");
 
 	case CLK_TYPE_GEN3_PLL3:
-		rate = gen3_clk_get_rate(&parent) * pll_config->pll3_mult;
-		debug("%s[%i] PLL3 clk: parent=%i mul=%i => rate=%u\n",
-		      __func__, __LINE__,
-		      core->parent, pll_config->pll3_mult, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen3_pll_config->pll3_mult,
+						gen3_pll_config->pll3_div,
+						"PLL3");
 
 	case CLK_TYPE_GEN3_PLL4:
-		value = readl(priv->base + CPG_PLL4CR);
-		mult = (((value >> 24) & 0x7f) + 1) * 2;
-		rate = gen3_clk_get_rate(&parent) * mult;
-		debug("%s[%i] PLL4 clk: parent=%i mult=%u => rate=%u\n",
-		      __func__, __LINE__, core->parent, mult, rate);
-		return rate;
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						CPG_PLL4CR, 0, 0, "PLL4");
+
+	case CLK_TYPE_GEN4_MAIN:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, 1, gen4_pll_config->extal_div,
+						"MAIN");
+
+	case CLK_TYPE_GEN4_PLL1:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll1_mult,
+						gen4_pll_config->pll1_div,
+						"PLL1");
+
+	case CLK_TYPE_GEN4_PLL2:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll2_mult,
+						gen4_pll_config->pll2_div,
+						"PLL2");
+
+	case CLK_TYPE_GEN4_PLL2X_3X:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						core->offset, 0, 0, "PLL2X_3X");
+
+	case CLK_TYPE_GEN4_PLL3:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll3_mult,
+						gen4_pll_config->pll3_div,
+						"PLL3");
+
+	case CLK_TYPE_GEN4_PLL4:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll4_mult,
+						gen4_pll_config->pll4_div,
+						"PLL4");
+
+	case CLK_TYPE_GEN4_PLL5:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll5_mult,
+						gen4_pll_config->pll5_div,
+						"PLL5");
+
+	case CLK_TYPE_GEN4_PLL6:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll6_mult,
+						gen4_pll_config->pll6_div,
+						"PLL6");
 
 	case CLK_TYPE_FF:
-	case CLK_TYPE_GEN3_PE:		/* FIXME */
-		rate = (gen3_clk_get_rate(&parent) * core->mult) / core->div;
-		debug("%s[%i] FIXED clk: parent=%i div=%i mul=%i => rate=%u\n",
-		      __func__, __LINE__,
-		      core->parent, core->mult, core->div, rate);
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, core->mult, core->div,
+						"FIXED");
+
+	case CLK_TYPE_GEN3_MDSEL:
+		shift = priv->cpg_mode & BIT(core->offset) ? 16 : 0;
+		div = (core->div >> shift) & 0xffff;
+		rate = gen3_clk_get_rate64(&parent) / div;
+		debug("%s[%i] PE clk: parent=%i div=%u => rate=%llu\n",
+		      __func__, __LINE__, (core->parent >> shift) & 0xffff,
+		      div, rate);
 		return rate;
 
-	case CLK_TYPE_GEN3_SD:		/* FIXME */
-		value = readl(priv->base + core->offset);
-		value &= CPG_SD_STP_MASK | CPG_SD_FC_MASK;
+	case CLK_TYPE_GEN4_SDSRC:
+		div = ((readl(priv->base + SD0CKCR1) >> 29) & 0x03) + 4;
+		rate = gen3_clk_get_rate64(&parent) / div;
+		debug("%s[%i] SDSRC clk: parent=%i div=%u => rate=%llu\n",
+		      __func__, __LINE__, core->parent, div, rate);
+		return rate;
 
-		for (i = 0; i < ARRAY_SIZE(cpg_sd_div_table); i++) {
-			if (cpg_sd_div_table[i].val != value)
-				continue;
+	case CLK_TYPE_GEN3_SDH:	/* Fixed factor 1:1 */
+		fallthrough;
+	case CLK_TYPE_GEN4_SDH:	/* Fixed factor 1:1 */
+		return rcar_clk_get_rate64_sdh(core->parent,
+					       gen3_clk_get_rate64(&parent),
+					       priv->base + core->offset);
 
-			rate = gen3_clk_get_rate(&parent) /
-			       cpg_sd_div_table[i].div;
-			debug("%s[%i] SD clk: parent=%i div=%i => rate=%u\n",
-			      __func__, __LINE__,
-			      core->parent, cpg_sd_div_table[i].div, rate);
+	case CLK_TYPE_R8A77970_SD0H:
+		return rcar_clk_get_rate64_div_table(core->parent,
+						     gen3_clk_get_rate64(&parent),
+						     priv->base + core->offset,
+						     CPG_SDCKCR_SDHFC_MASK,
+						     r8a77970_cpg_sd0h_div_table, "SDH");
 
-			return rate;
+	case CLK_TYPE_GEN3_SD:
+		fallthrough;
+	case CLK_TYPE_GEN4_SD:
+		return rcar_clk_get_rate64_sd(core->parent,
+					      gen3_clk_get_rate64(&parent),
+					      priv->base + core->offset);
+
+	case CLK_TYPE_R8A77970_SD0:
+		return rcar_clk_get_rate64_div_table(core->parent,
+						     gen3_clk_get_rate64(&parent),
+						     priv->base + core->offset,
+						     CPG_SDCKCR_SD0FC_MASK,
+						     r8a77970_cpg_sd0_div_table, "SD");
+
+	case CLK_TYPE_GEN3_RPCSRC:
+		return rcar_clk_get_rate64_div_table(core->parent,
+						     gen3_clk_get_rate64(&parent),
+						     priv->base + CPG_RPCCKCR,
+						     CPG_RPCCKCR_DIV_POST_MASK,
+						     gen3_cpg_rpcsrc_div_table,
+						     "RPCSRC");
+
+	case CLK_TYPE_GEN4_RPCSRC:
+		return rcar_clk_get_rate64_div_table(core->parent,
+						     gen3_clk_get_rate64(&parent),
+						     priv->base + CPG_RPCCKCR,
+						     CPG_RPCCKCR_DIV_POST_MASK,
+						     gen4_cpg_rpcsrc_div_table,
+						     "RPCSRC");
+
+	case CLK_TYPE_GEN3_D3_RPCSRC:
+	case CLK_TYPE_GEN3_E3_RPCSRC:
+		/*
+		 * Register RPCSRC as fixed factor clock based on the
+		 * MD[4:1] pins and CPG_RPCCKCR[4:3] register value for
+		 * which has been set prior to booting the kernel.
+		 */
+		value = (readl(priv->base + CPG_RPCCKCR) & GENMASK(4, 3)) >> 3;
+
+		switch (value) {
+		case 0:
+			div = 5;
+			break;
+		case 1:
+			div = 3;
+			break;
+		case 2:
+			div = core->div;
+			break;
+		case 3:
+		default:
+			div = 2;
+			break;
 		}
 
-		return -EINVAL;
+		rate = gen3_clk_get_rate64(&parent) / div;
+		debug("%s[%i] E3/D3 RPCSRC clk: parent=%i div=%u => rate=%llu\n",
+		      __func__, __LINE__, (core->parent >> 16) & 0xffff, div, rate);
+
+		return rate;
 
 	case CLK_TYPE_GEN3_RPC:
-		rate = gen3_clk_get_rate(&parent);
+	case CLK_TYPE_GEN4_RPC:
+		return rcar_clk_get_rate64_rpc(core->parent,
+					       gen3_clk_get_rate64(&parent),
+					       priv->base + CPG_RPCCKCR);
 
-		value = readl(priv->base + core->offset);
-
-		prediv = (value >> CPG_RPC_PREDIV_OFFSET) &
-			 CPG_RPC_PREDIV_MASK;
-		if (prediv == 2)
-			rate /= 5;
-		else if (prediv == 3)
-			rate /= 6;
-		else
-			return -EINVAL;
-
-		postdiv = (value >> CPG_RPC_POSTDIV_OFFSET) &
-			  CPG_RPC_POSTDIV_MASK;
-		rate /= postdiv + 1;
-
-		debug("%s[%i] RPC clk: parent=%i prediv=%i postdiv=%i => rate=%u\n",
-		      __func__, __LINE__,
-		      core->parent, prediv, postdiv, rate);
-
-		return -EINVAL;
+	case CLK_TYPE_GEN3_RPCD2:
+	case CLK_TYPE_GEN4_RPCD2:
+		return rcar_clk_get_rate64_rpcd2(core->parent,
+						 gen3_clk_get_rate64(&parent));
 
 	}
 
@@ -285,17 +421,22 @@ static ulong gen3_clk_get_rate(struct clk *clk)
 	return -ENOENT;
 }
 
+static ulong gen3_clk_get_rate(struct clk *clk)
+{
+	return gen3_clk_get_rate64(clk);
+}
+
 static ulong gen3_clk_set_rate(struct clk *clk, ulong rate)
 {
 	/* Force correct SD-IF divider configuration if applicable */
-	gen3_clk_setup_sdif_div(clk);
-	return gen3_clk_get_rate(clk);
+	gen3_clk_setup_sdif_div(clk, rate);
+	return gen3_clk_get_rate64(clk);
 }
 
 static int gen3_clk_of_xlate(struct clk *clk, struct ofnode_phandle_args *args)
 {
 	if (args->args_count != 2) {
-		debug("Invaild args_count: %d\n", args->args_count);
+		debug("Invalid args_count: %d\n", args->args_count);
 		return -EINVAL;
 	}
 
@@ -312,16 +453,16 @@ const struct clk_ops gen3_clk_ops = {
 	.of_xlate	= gen3_clk_of_xlate,
 };
 
-int gen3_clk_probe(struct udevice *dev)
+static int gen3_clk_probe(struct udevice *dev)
 {
 	struct gen3_clk_priv *priv = dev_get_priv(dev);
 	struct cpg_mssr_info *info =
 		(struct cpg_mssr_info *)dev_get_driver_data(dev);
+	const void *pll_config;
 	fdt_addr_t rst_base;
-	u32 cpg_mode;
 	int ret;
 
-	priv->base = (struct gen3_base *)devfdt_get_addr(dev);
+	priv->base = dev_read_addr_ptr(dev);
 	if (!priv->base)
 		return -EINVAL;
 
@@ -334,12 +475,29 @@ int gen3_clk_probe(struct udevice *dev)
 	if (rst_base == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
-	cpg_mode = readl(rst_base + CPG_RST_MODEMR);
+	priv->cpg_mode = readl(rst_base + info->reset_modemr_offset);
 
-	priv->cpg_pll_config =
-		(struct rcar_gen3_cpg_pll_config *)info->get_pll_config(cpg_mode);
-	if (!priv->cpg_pll_config->extal_div)
+	pll_config = info->get_pll_config(priv->cpg_mode);
+
+	if (info->reg_layout == CLK_REG_LAYOUT_RCAR_GEN2_AND_GEN3) {
+		priv->info->status_regs = mstpsr;
+		priv->info->control_regs = smstpcr;
+		priv->info->reset_regs = srcr;
+		priv->info->reset_clear_regs = srstclr;
+		priv->gen3_cpg_pll_config = pll_config;
+		if (!priv->gen3_cpg_pll_config->extal_div)
+			return -EINVAL;
+	} else if (info->reg_layout == CLK_REG_LAYOUT_RCAR_GEN4) {
+		priv->info->status_regs = mstpsr_for_gen4;
+		priv->info->control_regs = mstpcr_for_gen4;
+		priv->info->reset_regs = srcr_for_gen4;
+		priv->info->reset_clear_regs = srstclr_for_gen4;
+		priv->gen4_cpg_pll_config = pll_config;
+		if (!priv->gen4_cpg_pll_config->extal_div)
+			return -EINVAL;
+	} else {
 		return -EINVAL;
+	}
 
 	ret = clk_get_by_name(dev, "extal", &priv->clk_extal);
 	if (ret < 0)
@@ -354,9 +512,86 @@ int gen3_clk_probe(struct udevice *dev)
 	return 0;
 }
 
-int gen3_clk_remove(struct udevice *dev)
+static int gen3_clk_remove(struct udevice *dev)
 {
 	struct gen3_clk_priv *priv = dev_get_priv(dev);
 
 	return renesas_clk_remove(priv->base, priv->info);
+}
+
+U_BOOT_DRIVER(clk_gen3) = {
+	.name		= "clk_gen3",
+	.id		= UCLASS_CLK,
+	.priv_auto	= sizeof(struct gen3_clk_priv),
+	.ops		= &gen3_clk_ops,
+	.probe		= gen3_clk_probe,
+	.remove		= gen3_clk_remove,
+};
+
+static int gen3_reset_assert(struct reset_ctl *reset_ctl)
+{
+	struct udevice *cdev = (struct udevice *)dev_get_driver_data(reset_ctl->dev);
+	struct gen3_clk_priv *priv = dev_get_priv(cdev);
+	unsigned int packed_id = MOD_CLK_PACK(reset_ctl->id);
+	unsigned int reg = packed_id / 32;
+	unsigned int bit = packed_id % 32;
+	u32 bitmask = BIT(bit);
+
+	writel(bitmask, priv->base + priv->info->reset_regs[reg]);
+
+	return 0;
+}
+
+static int gen3_reset_deassert(struct reset_ctl *reset_ctl)
+{
+	struct udevice *cdev = (struct udevice *)dev_get_driver_data(reset_ctl->dev);
+	struct gen3_clk_priv *priv = dev_get_priv(cdev);
+	unsigned int packed_id = MOD_CLK_PACK(reset_ctl->id);
+	unsigned int reg = packed_id / 32;
+	unsigned int bit = packed_id % 32;
+	u32 bitmask = BIT(bit);
+
+	writel(bitmask, priv->base + priv->info->reset_clear_regs[reg]);
+
+	return 0;
+}
+
+static const struct reset_ops rst_gen3_ops = {
+	.rst_assert = gen3_reset_assert,
+	.rst_deassert = gen3_reset_deassert,
+};
+
+U_BOOT_DRIVER(rst_gen3) = {
+	.name = "rst_gen3",
+	.id = UCLASS_RESET,
+	.ops = &rst_gen3_ops,
+};
+
+int gen3_cpg_bind(struct udevice *parent)
+{
+	struct cpg_mssr_info *info =
+		(struct cpg_mssr_info *)dev_get_driver_data(parent);
+	struct udevice *cdev, *rdev;
+	struct driver *drv;
+	int ret;
+
+	drv = lists_driver_lookup_name("clk_gen3");
+	if (!drv)
+		return -ENOENT;
+
+	ret = device_bind_with_driver_data(parent, drv, "clk_gen3", (ulong)info,
+					   dev_ofnode(parent), &cdev);
+	if (ret)
+		return ret;
+
+	drv = lists_driver_lookup_name("rst_gen3");
+	if (!drv)
+		return -ENOENT;
+
+	ret = device_bind_with_driver_data(parent, drv, "rst_gen3", (ulong)cdev,
+					   dev_ofnode(parent), &rdev);
+	if (ret)
+		device_unbind(cdev);
+
+	return ret;
 }

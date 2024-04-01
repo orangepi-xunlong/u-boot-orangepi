@@ -37,8 +37,8 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 	__init_end = . ;
 
@@ -53,10 +53,10 @@ SECTIONS
 		. = ALIGN(4);
 		__bss_end = .;
 	}
-	__end = . ;
+	_end = . ;
 }
 
 #if defined(CONFIG_SPL_MAX_FOOTPRINT)
-ASSERT(__end - _start < (CONFIG_SPL_MAX_FOOTPRINT), \
+ASSERT(_end - _start <= (CONFIG_SPL_MAX_FOOTPRINT), \
         "SPL image plus BSS too big");
 #endif

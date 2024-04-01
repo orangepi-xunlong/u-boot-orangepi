@@ -8,32 +8,12 @@
 #ifndef __CONFIG_EXYNOS4_COMMON_H
 #define __CONFIG_EXYNOS4_COMMON_H
 
-#define CONFIG_EXYNOS4			/* Exynos4 Family */
-
 #include "exynos-common.h"
 
-#define CONFIG_BOARD_COMMON
-
-#define CONFIG_REVISION_TAG
-
-/* SD/MMC configuration */
-#define CONFIG_MMC_DEFAULT_DEV	0
-
-#define CONFIG_SYS_DFU_DATA_BUF_SIZE SZ_32M
 #define DFU_DEFAULT_POLL_TIMEOUT 300
 
-/* USB Samsung's IDs */
-#define CONFIG_G_DNL_THOR_VENDOR_NUM 0x04E8
-#define CONFIG_G_DNL_THOR_PRODUCT_NUM 0x685D
-#define CONFIG_G_DNL_UMS_VENDOR_NUM 0x0525
-#define CONFIG_G_DNL_UMS_PRODUCT_NUM 0xA4A5
-
-#define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
-
-#define CONFIG_USB_GADGET_DWC2_OTG_PHY
-
 /* Common environment variables */
-#define CONFIG_EXTRA_ENV_ITB \
+#define ENV_ITB \
 	"loadkernel=load mmc ${mmcbootdev}:${mmcbootpart} ${kerneladdr} " \
 		"${kernelname}\0" \
 	"loadinitrd=load mmc ${mmcbootdev}:${mmcbootpart} ${initrdaddr} " \

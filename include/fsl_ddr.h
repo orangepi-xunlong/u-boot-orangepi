@@ -12,10 +12,7 @@
 
 #include <common_timing_params.h>
 
-#ifndef CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS
-/* All controllers are for main memory */
-#define CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS	CONFIG_SYS_NUM_DDR_CTLRS
-#endif
+struct cmd_tbl;
 
 #ifdef CONFIG_SYS_FSL_DDR_LE
 #define ddr_in32(a)	in_le32(a)
@@ -53,13 +50,12 @@ compute_dimm_parameters(const unsigned int ctrl_num,
  *
  * All data structures have to be on the stack
  */
-#define CONFIG_SYS_DIMM_SLOTS_PER_CTLR CONFIG_DIMM_SLOTS_PER_CTLR
 
 typedef struct {
 	generic_spd_eeprom_t
-	   spd_installed_dimms[CONFIG_SYS_NUM_DDR_CTLRS][CONFIG_SYS_DIMM_SLOTS_PER_CTLR];
+	   spd_installed_dimms[CONFIG_SYS_NUM_DDR_CTLRS][CONFIG_DIMM_SLOTS_PER_CTLR];
 	struct dimm_params_s
-	   dimm_params[CONFIG_SYS_NUM_DDR_CTLRS][CONFIG_SYS_DIMM_SLOTS_PER_CTLR];
+	   dimm_params[CONFIG_SYS_NUM_DDR_CTLRS][CONFIG_DIMM_SLOTS_PER_CTLR];
 	memctl_options_t memctl_opts[CONFIG_SYS_NUM_DDR_CTLRS];
 	common_timing_params_t common_timing_params[CONFIG_SYS_NUM_DDR_CTLRS];
 	fsl_ddr_cfg_regs_t fsl_ddr_config_reg[CONFIG_SYS_NUM_DDR_CTLRS];
@@ -120,7 +116,7 @@ unsigned long long fsl_ddr_interactive(fsl_ddr_info_t *pinfo, int var_is_set);
 void fsl_ddr_get_spd(generic_spd_eeprom_t *ctrl_dimms_spd,
 		     unsigned int ctrl_num, unsigned int dimm_slots_per_ctrl);
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
 unsigned int check_fsl_memctl_config_regs(const fsl_ddr_cfg_regs_t *ddr);
 void board_add_ram_info(int use_default);
 

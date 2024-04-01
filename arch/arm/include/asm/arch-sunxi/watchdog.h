@@ -21,9 +21,9 @@
 #define WDT_MODE_RESET_EN	(0x1 << 1)
 
 struct sunxi_wdog {
-	volatile u32 ctl;		/* 0x00 */
-	volatile u32 mode;		/* 0x04 */
-	volatile u32 res[2];
+	u32 ctl;		/* 0x00 */
+	u32 mode;		/* 0x04 */
+	u32 res[2];
 };
 
 #else
@@ -32,12 +32,12 @@ struct sunxi_wdog {
 #define WDT_MODE_EN		(0x1)
 
 struct sunxi_wdog {
-	volatile u32 irq_en;		/* 0x00 */
-	volatile u32 irq_sta;		/* 0x04 */
-	volatile u32 res1[2];
-	volatile u32 ctl;		/* 0x10 */
-	volatile u32 cfg;		/* 0x14 */
-	volatile u32 mode;		/* 0x18 */
+	u32 irq_en;		/* 0x00 */
+	u32 irq_sta;		/* 0x04 */
+	u32 res1[2];
+	u32 ctl;		/* 0x10 */
+	u32 cfg;		/* 0x14 */
+	u32 mode;		/* 0x18 */
 	u32 res2;
 };
 

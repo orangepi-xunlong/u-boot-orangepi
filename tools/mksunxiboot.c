@@ -12,9 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <sunxi_image.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "../arch/arm/include/asm/arch-sunxi/spl.h"
+#include "imagetool.h"
 
 #define STAMP_VALUE                     0x5F0A6C39
 
@@ -43,9 +44,6 @@ int gen_check_sum(struct boot_file_head *head_p)
 
 	return 0;
 }
-
-#define ALIGN(x, a) __ALIGN_MASK((x), (typeof(x))(a)-1)
-#define __ALIGN_MASK(x, mask) (((x)+(mask))&~(mask))
 
 #define SUNXI_SRAM_SIZE 0x8000	/* SoC with smaller size are limited before */
 #define SRAM_LOAD_MAX_SIZE (SUNXI_SRAM_SIZE - sizeof(struct boot_file_head))

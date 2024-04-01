@@ -12,6 +12,9 @@
 
 #include <common.h>
 #include <dm.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/at91sam9g45_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
@@ -37,8 +40,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static void corvus_request_gpio(void)
 {
-	gpio_request(CONFIG_SYS_NAND_ENABLE_PIN, "nand ena");
-	gpio_request(CONFIG_SYS_NAND_READY_PIN, "nand rdy");
+	gpio_request(CFG_SYS_NAND_ENABLE_PIN, "nand ena");
+	gpio_request(CFG_SYS_NAND_READY_PIN, "nand rdy");
 	gpio_request(AT91_PIN_PD7, "d0");
 	gpio_request(AT91_PIN_PD8, "d1");
 	gpio_request(AT91_PIN_PA12, "d2");
@@ -49,8 +52,28 @@ static void corvus_request_gpio(void)
 	gpio_request(AT91_PIN_PD3, "USB1");
 	gpio_request(AT91_PIN_PB18, "SPICS1");
 	gpio_request(AT91_PIN_PB3, "SPICS0");
-	gpio_request(CONFIG_RED_LED, "red led");
-	gpio_request(CONFIG_GREEN_LED, "green led");
+	gpio_request(AT91_PIN_PD31, "red led"); /* this is the user1 led */
+	gpio_request(AT91_PIN_PD0, "green led"); /* this is the user2 led */
+}
+
+void red_led_on(void)
+{
+	gpio_set_value(AT91_PIN_PD31, 1);
+}
+
+void red_led_off(void)
+{
+	gpio_set_value(AT91_PIN_PD31, 0);
+}
+
+void green_led_on(void)
+{
+	gpio_set_value(AT91_PIN_PD0, 0);
+}
+
+void green_led_off(void)
+{
+	gpio_set_value(AT91_PIN_PD0, 1);
 }
 
 static void corvus_nand_hw_init(void)
@@ -87,8 +110,8 @@ static void corvus_nand_hw_init(void)
 	at91_periph_clk_enable(ATMEL_ID_PIOA);
 
 	/* Enable NandFlash */
-	at91_set_gpio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
-	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
+	at91_set_gpio_output(CFG_SYS_NAND_ENABLE_PIN, 1);
+	at91_set_gpio_input(CFG_SYS_NAND_READY_PIN, 1);
 }
 
 #if defined(CONFIG_SPL_BUILD)
@@ -239,7 +262,7 @@ void at91_udp_hw_init(void)
 int board_init(void)
 {
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 
 	/* we have to request the gpios again after relocation */
 	corvus_request_gpio();
@@ -264,13 +287,13 @@ int board_init(void)
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				    CONFIG_SYS_SDRAM_SIZE);
+	gd->ram_size = get_ram_size((void *)CFG_SYS_SDRAM_BASE,
+				    CFG_SYS_SDRAM_SIZE);
 	return 0;
 }
 
 #ifndef CONFIG_DM_ETH
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int rc = 0;
 #ifdef CONFIG_MACB
@@ -312,11 +335,11 @@ void spi_cs_deactivate(struct spi_slave *slave)
 	}
 }
 
-static struct atmel_serial_platdata at91sam9260_serial_plat = {
+static struct atmel_serial_plat at91sam9260_serial_plat = {
 	.base_addr = ATMEL_BASE_DBGU,
 };
 
-U_BOOT_DEVICE(at91sam9260_serial) = {
+U_BOOT_DRVINFO(at91sam9260_serial) = {
 	.name	= "serial_atmel",
-	.platdata = &at91sam9260_serial_plat,
+	.plat = &at91sam9260_serial_plat,
 };

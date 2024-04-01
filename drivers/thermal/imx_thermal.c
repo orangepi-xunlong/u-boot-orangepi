@@ -9,12 +9,14 @@
 #include <common.h>
 #include <div64.h>
 #include <fuse.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
+#include <linux/delay.h>
 #include <linux/math64.h>
 #include <thermal.h>
 #include <imx_thermal.h>
@@ -50,7 +52,7 @@ static int read_cpu_temperature(struct udevice *dev)
 {
 	int temperature;
 	unsigned int reg, n_meas;
-	const struct imx_thermal_plat *pdata = dev_get_platdata(dev);
+	const struct imx_thermal_plat *pdata = dev_get_plat(dev);
 	struct anatop_regs *anatop = (struct anatop_regs *)pdata->regs;
 	struct thermal_data *priv = dev_get_priv(dev);
 	u32 fuse = priv->fuse;
@@ -235,7 +237,7 @@ static int imx_thermal_probe(struct udevice *dev)
 {
 	unsigned int fuse = ~0;
 
-	const struct imx_thermal_plat *pdata = dev_get_platdata(dev);
+	const struct imx_thermal_plat *pdata = dev_get_plat(dev);
 	struct thermal_data *priv = dev_get_priv(dev);
 
 	/* Read Temperature calibration data fuse */
@@ -272,6 +274,6 @@ U_BOOT_DRIVER(imx_thermal) = {
 	.id	= UCLASS_THERMAL,
 	.ops	= &imx_thermal_ops,
 	.probe	= imx_thermal_probe,
-	.priv_auto_alloc_size = sizeof(struct thermal_data),
+	.priv_auto	= sizeof(struct thermal_data),
 	.flags  = DM_FLAG_PRE_RELOC,
 };

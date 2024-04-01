@@ -12,14 +12,19 @@
  * Intel interrupt router configuration mechanism
  *
  * There are two known ways of Intel interrupt router configuration mechanism
- * so far. On most cases, the IRQ routing configuraiton is controlled by PCI
- * configuraiton registers on the legacy bridge, normally PCI BDF(0, 31, 0).
+ * so far. On most cases, the IRQ routing configuration is controlled by PCI
+ * configuration registers on the legacy bridge, normally PCI BDF(0, 31, 0).
  * On some newer platforms like BayTrail and Braswell, the IRQ routing is now
  * in the IBASE register block where IBASE is memory-mapped.
  */
 enum pirq_config {
 	PIRQ_VIA_PCI,
 	PIRQ_VIA_IBASE
+};
+
+struct pirq_regmap {
+	int link;
+	int offset;
 };
 
 /**
@@ -29,7 +34,9 @@ enum pirq_config {
  *
  * @config:	PIRQ_VIA_PCI or PIRQ_VIA_IBASE
  * @link_base:	link value base number
- * @irq_mask:	IRQ mask reprenting the 16 IRQs in 8259, bit N is 1 means
+ * @link_num:	number of PIRQ links supported
+ * @has_regmap:	has mapping table between PIRQ link and routing register offset
+ * @irq_mask:	IRQ mask representing the 16 IRQs in 8259, bit N is 1 means
  *		IRQ N is available to be routed
  * @lb_bdf:	irq router's PCI bus/device/function number encoding
  * @ibase:	IBASE register block base address
@@ -39,6 +46,9 @@ enum pirq_config {
 struct irq_router {
 	int config;
 	u32 link_base;
+	int link_num;
+	bool has_regmap;
+	struct pirq_regmap *regmap;
 	u16 irq_mask;
 	u32 bdf;
 	u32 ibase;
@@ -52,17 +62,6 @@ struct pirq_routing {
 	int pirq;
 };
 
-/* PIRQ link number and value conversion */
-#define LINK_V2N(link, base)	(link - base)
-#define LINK_N2V(link, base)	(link + base)
-
 #define PIRQ_BITMAP		0xdef8
-
-/**
- * irq_router_common_init() - Perform common x86 interrupt init
- *
- * This creates the PIRQ routing table and routes the IRQs
- */
-int irq_router_common_init(struct udevice *dev);
 
 #endif /* _ARCH_IRQ_H_ */

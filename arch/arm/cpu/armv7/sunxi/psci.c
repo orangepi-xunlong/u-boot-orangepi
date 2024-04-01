@@ -8,6 +8,7 @@
  */
 #include <config.h>
 #include <common.h>
+#include <asm/cache.h>
 
 #include <asm/arch/cpu.h>
 #include <asm/arch/cpucfg.h>
@@ -56,7 +57,7 @@ static u32 __secure cp15_read_cntp_ctl(void)
 	return val;
 }
 
-#define ONE_MS (COUNTER_FREQUENCY / 1000)
+#define ONE_MS (CONFIG_COUNTER_FREQUENCY / 1000)
 
 static void __secure __mdelay(u32 ms)
 {
@@ -152,7 +153,7 @@ static void __secure sunxi_cpu_set_power(int cpu, bool on)
 
 	sunxi_power_switch((void *)cpucfg + SUN8I_R40_PWR_CLAMP(cpu),
 			   (void *)cpucfg + SUN8I_R40_PWROFF,
-			   on, 0);
+			   on, cpu);
 }
 #else /* ! CONFIG_MACH_SUN7I && ! CONFIG_MACH_SUN8I_R40 */
 static void __secure sunxi_cpu_set_power(int cpu, bool on)
@@ -242,14 +243,15 @@ out:
 	cp15_write_scr(scr);
 }
 
-int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc)
+int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc,
+			 u32 context_id)
 {
 	struct sunxi_cpucfg_reg *cpucfg =
 		(struct sunxi_cpucfg_reg *)SUNXI_CPUCFG_BASE;
 	u32 cpu = (mpidr & 0x3);
 
-	/* store target PC */
-	psci_save_target_pc(cpu, pc);
+	/* store target PC and context id */
+	psci_save(cpu, pc, context_id);
 
 	/* Set secondary core power on PC */
 	sunxi_set_entry_address(&psci_cpu_entry);
@@ -275,7 +277,7 @@ int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc)
 	return ARM_PSCI_RET_SUCCESS;
 }
 
-void __secure psci_cpu_off(void)
+s32 __secure psci_cpu_off(void)
 {
 	psci_cpu_off_common();
 

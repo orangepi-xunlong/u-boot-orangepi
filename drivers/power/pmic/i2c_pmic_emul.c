@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
+#include <malloc.h>
 #include <power/pmic.h>
 #include <power/sandbox_pmic.h>
 
@@ -18,25 +20,28 @@
  * @reg:    PMICs registers array
  */
 struct sandbox_i2c_pmic_plat_data {
-	u8 rw_reg;
-	u8 reg[SANDBOX_PMIC_REG_COUNT];
+	u8 rw_reg, rw_idx;
+	u8 reg_count;
+	u8 trans_len;
+	u8 buf_size;
+	u8 *reg;
 };
 
 static int sandbox_i2c_pmic_read_data(struct udevice *emul, uchar chip,
 				      uchar *buffer, int len)
 {
-	struct sandbox_i2c_pmic_plat_data *plat = dev_get_platdata(emul);
+	struct sandbox_i2c_pmic_plat_data *plat = dev_get_plat(emul);
 
-	if (plat->rw_reg + len > SANDBOX_PMIC_REG_COUNT) {
+	if (plat->rw_idx + len > plat->buf_size) {
 		pr_err("Request exceeds PMIC register range! Max register: %#x",
-		      SANDBOX_PMIC_REG_COUNT);
+		      plat->reg_count);
 		return -EFAULT;
 	}
 
-	debug("Read PMIC: %#x at register: %#x count: %d\n",
-	      (unsigned)chip & 0xff, plat->rw_reg, len);
+	debug("Read PMIC: %#x at register: %#x idx: %#x count: %d\n",
+	      (unsigned int)chip & 0xff, plat->rw_reg, plat->rw_idx, len);
 
-	memcpy(buffer, &plat->reg[plat->rw_reg], len);
+	memcpy(buffer, plat->reg + plat->rw_idx, len);
 
 	return 0;
 }
@@ -45,7 +50,7 @@ static int sandbox_i2c_pmic_write_data(struct udevice *emul, uchar chip,
 				       uchar *buffer, int len,
 				       bool next_is_read)
 {
-	struct sandbox_i2c_pmic_plat_data *plat = dev_get_platdata(emul);
+	struct sandbox_i2c_pmic_plat_data *plat = dev_get_plat(emul);
 
 	/* Probe only */
 	if (!len)
@@ -53,9 +58,10 @@ static int sandbox_i2c_pmic_write_data(struct udevice *emul, uchar chip,
 
 	/* Set PMIC register for I/O */
 	plat->rw_reg = *buffer;
+	plat->rw_idx = plat->rw_reg * plat->trans_len;
 
-	debug("Write PMIC: %#x at register: %#x count: %d\n",
-	      (unsigned)chip & 0xff, plat->rw_reg, len);
+	debug("Write PMIC: %#x at register: %#x idx: %#x count: %d\n",
+	      (unsigned int)chip & 0xff, plat->rw_reg, plat->rw_idx, len);
 
 	/* For read operation, set (write) only chip reg */
 	if (next_is_read)
@@ -64,12 +70,12 @@ static int sandbox_i2c_pmic_write_data(struct udevice *emul, uchar chip,
 	buffer++;
 	len--;
 
-	if (plat->rw_reg + len > SANDBOX_PMIC_REG_COUNT) {
+	if (plat->rw_idx + len > plat->buf_size) {
 		pr_err("Request exceeds PMIC register range! Max register: %#x",
-		      SANDBOX_PMIC_REG_COUNT);
+		      plat->reg_count);
 	}
 
-	memcpy(&plat->reg[plat->rw_reg], buffer, len);
+	memcpy(plat->reg + plat->rw_idx, buffer, len);
 
 	return 0;
 }
@@ -97,23 +103,45 @@ static int sandbox_i2c_pmic_xfer(struct udevice *emul, struct i2c_msg *msg,
 	return ret;
 }
 
-static int sandbox_i2c_pmic_ofdata_to_platdata(struct udevice *emul)
+static int sandbox_i2c_pmic_of_to_plat(struct udevice *emul)
 {
-	struct sandbox_i2c_pmic_plat_data *plat = dev_get_platdata(emul);
-	const u8 *reg_defaults;
+	struct sandbox_i2c_pmic_plat_data *plat = dev_get_plat(emul);
+	struct udevice *pmic_dev = i2c_emul_get_device(emul);
 
 	debug("%s:%d Setting PMIC default registers\n", __func__, __LINE__);
+	plat->reg_count = pmic_reg_count(pmic_dev);
+
+	return 0;
+}
+
+static int sandbox_i2c_pmic_probe(struct udevice *emul)
+{
+	struct sandbox_i2c_pmic_plat_data *plat = dev_get_plat(emul);
+	struct udevice *pmic_dev = i2c_emul_get_device(emul);
+	struct uc_pmic_priv *upriv = dev_get_uclass_priv(pmic_dev);
+	const u8 *reg_defaults;
+
+	plat->trans_len = upriv->trans_len;
+	plat->buf_size = plat->reg_count * plat->trans_len;
+
+	plat->reg = calloc(1, plat->buf_size);
+	if (!plat->reg) {
+		debug("Canot allocate memory (%d B) for PMIC I2C emulation!\n",
+		      plat->buf_size);
+		return -ENOMEM;
+	}
 
 	reg_defaults = dev_read_u8_array_ptr(emul, "reg-defaults",
-					     SANDBOX_PMIC_REG_COUNT);
+					     plat->buf_size);
 
 	if (!reg_defaults) {
 		pr_err("Property \"reg-defaults\" not found for device: %s!",
 		      emul->name);
+		free(plat->reg);
 		return -EINVAL;
 	}
 
-	memcpy(&plat->reg, reg_defaults, SANDBOX_PMIC_REG_COUNT);
+	memcpy(plat->reg, reg_defaults, plat->buf_size);
 
 	return 0;
 }
@@ -131,7 +159,8 @@ U_BOOT_DRIVER(sandbox_i2c_pmic_emul) = {
 	.name		= "sandbox_i2c_pmic_emul",
 	.id		= UCLASS_I2C_EMUL,
 	.of_match	= sandbox_i2c_pmic_ids,
-	.ofdata_to_platdata = sandbox_i2c_pmic_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct sandbox_i2c_pmic_plat_data),
+	.of_to_plat = sandbox_i2c_pmic_of_to_plat,
+	.probe		= sandbox_i2c_pmic_probe,
+	.plat_auto	= sizeof(struct sandbox_i2c_pmic_plat_data),
 	.ops		= &sandbox_i2c_pmic_emul_ops,
 };

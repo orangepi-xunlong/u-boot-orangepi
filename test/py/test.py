@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0
 
 # Copyright (c) 2015 Stephen Warren
@@ -10,23 +10,16 @@
 import os
 import os.path
 import sys
+import pytest
+from pkg_resources import load_entry_point
 
-# Get rid of argv[0]
-sys.argv.pop(0)
+if __name__ == '__main__':
+    # argv; py.test test_directory_name user-supplied-arguments
+    args = [os.path.dirname(__file__) + '/tests']
+    args.extend(sys.argv)
 
-# argv; py.test test_directory_name user-supplied-arguments
-args = ['py.test', os.path.dirname(__file__) + '/tests']
-args.extend(sys.argv)
+    # Use short format by default
+    if not [arg for arg in args if '--tb=' in arg]:
+        args.append('--tb=short')
 
-try:
-    os.execvp('py.test', args)
-except:
-    # Log full details of any exception for detailed analysis
-    import traceback
-    traceback.print_exc()
-    # Hint to the user that they likely simply haven't installed the required
-    # dependencies.
-    print >>sys.stderr, '''
-exec(py.test) failed; perhaps you are missing some dependencies?
-See test/py/README.md for the list.'''
-    sys.exit(1)
+    sys.exit(pytest.main(args))

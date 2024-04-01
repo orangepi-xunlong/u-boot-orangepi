@@ -7,6 +7,7 @@
 #include <memalign.h>
 #include <phys2bus.h>
 #include <asm/arch/mbox.h>
+#include <linux/delay.h>
 
 struct msg_set_power_state {
 	struct bcm2835_mbox_hdr hdr;
@@ -17,6 +18,12 @@ struct msg_set_power_state {
 struct msg_get_clock_rate {
 	struct bcm2835_mbox_hdr hdr;
 	struct bcm2835_mbox_tag_get_clock_rate get_clock_rate;
+	u32 end_tag;
+};
+
+struct msg_set_sdhost_clock {
+	struct bcm2835_mbox_hdr hdr;
+	struct bcm2835_mbox_tag_set_sdhost_clock set_sdhost_clock;
 	u32 end_tag;
 };
 
@@ -37,6 +44,12 @@ struct msg_setup {
 	struct bcm2835_mbox_tag_overscan overscan;
 	struct bcm2835_mbox_tag_allocate_buffer allocate_buffer;
 	struct bcm2835_mbox_tag_pitch pitch;
+	u32 end_tag;
+};
+
+struct msg_notify_vl805_reset {
+	struct bcm2835_mbox_hdr hdr;
+	struct bcm2835_mbox_tag_pci_dev_addr dev_addr;
 	u32 end_tag;
 };
 
@@ -68,6 +81,7 @@ int bcm2835_get_mmc_clock(u32 clock_id)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_clock_rate, msg_clk, 1);
 	int ret;
+	u32 clock_rate = 0;
 
 	ret = bcm2835_power_on_module(BCM2835_MBOX_POWER_DEVID_SDHCI);
 	if (ret)
@@ -83,7 +97,45 @@ int bcm2835_get_mmc_clock(u32 clock_id)
 		return -EIO;
 	}
 
-	return msg_clk->get_clock_rate.body.resp.rate_hz;
+	clock_rate = msg_clk->get_clock_rate.body.resp.rate_hz;
+
+	if (clock_rate == 0) {
+		BCM2835_MBOX_INIT_HDR(msg_clk);
+		BCM2835_MBOX_INIT_TAG(&msg_clk->get_clock_rate, GET_MAX_CLOCK_RATE);
+		msg_clk->get_clock_rate.body.req.clock_id = clock_id;
+
+		ret = bcm2835_mbox_call_prop(BCM2835_MBOX_PROP_CHAN, &msg_clk->hdr);
+		if (ret) {
+			printf("bcm2835: Could not query max eMMC clock rate\n");
+			return -EIO;
+		}
+
+		clock_rate = msg_clk->get_clock_rate.body.resp.rate_hz;
+	}
+
+	return clock_rate;
+}
+
+int bcm2835_set_sdhost_clock(u32 rate_hz, u32 *rate_1, u32 *rate_2)
+{
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_set_sdhost_clock, msg_sdhost_clk, 1);
+	int ret;
+
+	BCM2835_MBOX_INIT_HDR(msg_sdhost_clk);
+	BCM2835_MBOX_INIT_TAG(&msg_sdhost_clk->set_sdhost_clock, SET_SDHOST_CLOCK);
+
+	msg_sdhost_clk->set_sdhost_clock.body.req.rate_hz = rate_hz;
+
+	ret = bcm2835_mbox_call_prop(BCM2835_MBOX_PROP_CHAN, &msg_sdhost_clk->hdr);
+	if (ret) {
+		printf("bcm2835: Could not query sdhost clock rate\n");
+		return -EIO;
+	}
+
+	*rate_1 = msg_sdhost_clk->set_sdhost_clock.body.resp.rate_1;
+	*rate_2 = msg_sdhost_clk->set_sdhost_clock.body.resp.rate_2;
+
+	return 0;
 }
 
 int bcm2835_get_video_size(int *widthp, int *heightp)
@@ -148,6 +200,50 @@ int bcm2835_set_video_params(int *widthp, int *heightp, int depth_bpp,
 	*fb_basep = bus_to_phys(
 			msg_setup->allocate_buffer.body.resp.fb_address);
 	*fb_sizep = msg_setup->allocate_buffer.body.resp.fb_size;
+
+	return 0;
+}
+
+/*
+ * On the Raspberry Pi 4, after a PCI reset, VL805's (the xHCI chip) firmware
+ * may either be loaded directly from an EEPROM or, if not present, by the
+ * SoC's VideoCore. This informs VideoCore that VL805 needs its firmware
+ * loaded.
+ */
+int bcm2711_notify_vl805_reset(void)
+{
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_notify_vl805_reset,
+				 msg_notify_vl805_reset, 1);
+	int ret;
+	static int done = false;
+
+	if (done)
+		return 0;
+
+	done = true;
+
+	BCM2835_MBOX_INIT_HDR(msg_notify_vl805_reset);
+	BCM2835_MBOX_INIT_TAG(&msg_notify_vl805_reset->dev_addr,
+			      NOTIFY_XHCI_RESET);
+
+	/*
+	 * The pci device address is expected like this:
+	 *
+	 *   PCI_BUS << 20 | PCI_SLOT << 15 | PCI_FUNC << 12
+	 *
+	 * But since RPi4's PCIe setup is hardwired, we know the address in
+	 * advance.
+	 */
+	msg_notify_vl805_reset->dev_addr.body.req.dev_addr = 0x100000;
+
+	ret = bcm2835_mbox_call_prop(BCM2835_MBOX_PROP_CHAN,
+				     &msg_notify_vl805_reset->hdr);
+	if (ret) {
+		printf("bcm2711: Failed to load vl805's firmware, %d\n", ret);
+		return -EIO;
+	}
+
+	udelay(200);
 
 	return 0;
 }

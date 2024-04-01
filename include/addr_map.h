@@ -8,9 +8,19 @@
 
 #include <asm/types.h>
 
-extern phys_addr_t addrmap_virt_to_phys(void *vaddr);
-extern void *addrmap_phys_to_virt(phys_addr_t paddr);
-extern void addrmap_set_entry(unsigned long vaddr, phys_addr_t paddr,
-				phys_size_t size, int idx);
+struct addrmap {
+	phys_addr_t paddr;
+	phys_size_t size;
+	unsigned long vaddr;
+};
+
+#ifdef CONFIG_ADDR_MAP
+extern struct addrmap address_map[CONFIG_SYS_NUM_ADDR_MAP];
+#endif
+
+phys_addr_t addrmap_virt_to_phys(void *vaddr);
+void *addrmap_phys_to_virt(phys_addr_t paddr);
+void addrmap_set_entry(unsigned long vaddr, phys_addr_t paddr,
+		       phys_size_t size, int idx);
 
 #endif

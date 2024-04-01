@@ -2,13 +2,17 @@
 /*
  * BTRFS filesystem implementation for U-Boot
  *
- * 2017 Marek Behun, CZ.NIC, marek.behun@nic.cz
+ * 2017 Marek Behún, CZ.NIC, kabel@kernel.org
  */
 
 #ifndef __U_BOOT_BTRFS_H__
 #define __U_BOOT_BTRFS_H__
 
-int btrfs_probe(struct blk_desc *, disk_partition_t *);
+struct blk_desc;
+struct disk_partition;
+
+int btrfs_probe(struct blk_desc *fs_dev_desc,
+		struct disk_partition *fs_partition);
 int btrfs_ls(const char *);
 int btrfs_exists(const char *);
 int btrfs_size(const char *, loff_t *);

@@ -21,7 +21,7 @@
 
 #define MVEBU_MMC_CLOCKRATE_MAX			50000000
 #define MVEBU_MMC_BASE_DIV_MAX			0x7ff
-#define MVEBU_MMC_BASE_FAST_CLOCK		CONFIG_SYS_TCLK
+#define MVEBU_MMC_BASE_FAST_CLOCK		CFG_SYS_TCLK
 #define MVEBU_MMC_BASE_FAST_CLK_100		100000000
 #define MVEBU_MMC_BASE_FAST_CLK_200		200000000
 
@@ -222,13 +222,9 @@
 #define MMC_CAP_SDIO_IRQ			(1 << 3)
 /* Talks only SPI protocols */
 #define MMC_CAP_SPI				(1 << 4)
-/* Needs polling for card-detection */
-#define MMC_CAP_NEEDS_POLL			(1 << 5)
 /* Can the host do 8 bit transfers */
 #define MMC_CAP_8_BIT_DATA			(1 << 6)
 
-/* Nonremovable e.g. eMMC */
-#define MMC_CAP_NONREMOVABLE			(1 << 8)
 /* Waits while card is busy */
 #define MMC_CAP_WAIT_WHILE_BUSY			(1 << 9)
 /* Allow erase/trim commands */
@@ -262,17 +258,10 @@
 /* Hardware reset */
 #define MMC_CAP_HW_RESET			(1 << 31)
 
-struct mvebu_mmc_cfg {
-	u32	mvebu_mmc_base;
-	u32	mvebu_mmc_clk;
-	u8	max_bus_width;
+struct mvebu_mmc_plat {
+	void *iobase;
 	struct mmc_config cfg;
+	struct mmc mmc;
 };
-
-/*
- * Functions prototypes
- */
-
-int mvebu_mmc_init(bd_t *bis);
 
 #endif /* __MVEBU_MMC_H__ */

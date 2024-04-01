@@ -3,39 +3,16 @@
  * Copyright (C) 2013-2014 Synopsys, Inc. All rights reserved.
  */
 
-#include <asm/cache.h>
 #include <common.h>
+#include <bootstage.h>
+#include <env.h>
+#include <image.h>
+#include <irq_func.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-static ulong get_sp(void)
-{
-	ulong ret;
-
-	asm("mov %0, sp" : "=r"(ret) : );
-	return ret;
-}
-
-void arch_lmb_reserve(struct lmb *lmb)
-{
-	ulong sp;
-
-	/*
-	 * Booting a (Linux) kernel image
-	 *
-	 * Allocate space for command line and board info - the
-	 * address should be as high as possible within the reach of
-	 * the kernel (see CONFIG_SYS_BOOTMAPSZ settings), but in unused
-	 * memory, which means far enough below the current stack
-	 * pointer.
-	 */
-	sp = get_sp();
-	debug("## Current stack ends at 0x%08lx ", sp);
-
-	/* adjust sp by 4K to be safe */
-	sp -= 4096;
-	lmb_reserve(lmb, sp, (CONFIG_SYS_SDRAM_BASE + gd->ram_size - sp));
-}
 
 static int cleanup_before_linux(void)
 {
@@ -45,16 +22,18 @@ static int cleanup_before_linux(void)
 	return 0;
 }
 
-__weak int board_prep_linux(bootm_headers_t *images) { return 0; }
+__weak int board_prep_linux(struct bootm_headers *images) { return 0; }
 
 /* Subcommand: PREP */
-static int boot_prep_linux(bootm_headers_t *images)
+static int boot_prep_linux(struct bootm_headers *images)
 {
 	int ret;
 
-	ret = image_setup_linux(images);
-	if (ret)
-		return ret;
+	if (IS_ENABLED(CONFIG_LMB)) {
+		ret = image_setup_linux(images);
+		if (ret)
+			return ret;
+	}
 
 	return board_prep_linux(images);
 }
@@ -70,7 +49,7 @@ __weak void board_jump_and_run(ulong entry, int zero, int arch, uint params)
 }
 
 /* Subcommand: GO */
-static void boot_jump_linux(bootm_headers_t *images, int flag)
+static void boot_jump_linux(struct bootm_headers *images, int flag)
 {
 	ulong kernel_entry;
 	unsigned int r0, r2;
@@ -86,7 +65,7 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	       "(fake run for tracing)" : "");
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 
-	if (IMAGE_ENABLE_OF_LIBFDT && images->ft_len) {
+	if (CONFIG_IS_ENABLED(OF_LIBFDT) && images->ft_len) {
 		r0 = 2;
 		r2 = (unsigned int)images->ft_addr;
 	} else {
@@ -100,7 +79,7 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 		board_jump_and_run(kernel_entry, r0, 0, r2);
 }
 
-int do_bootm_linux(int flag, int argc, char *argv[], bootm_headers_t *images)
+int do_bootm_linux(int flag, int argc, char *argv[], struct bootm_headers *images)
 {
 	/* No need for those on ARC */
 	if ((flag & BOOTM_STATE_OS_BD_T) || (flag & BOOTM_STATE_OS_CMDLINE))

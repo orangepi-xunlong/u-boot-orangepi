@@ -6,12 +6,13 @@
 
 #include <common.h>
 #include <command.h>
+#include <init.h>
 #include <linux/compiler.h>
 #include <asm/cache.h>
 #include <asm/mipsregs.h>
 #include <asm/reboot.h>
 
-#ifndef CONFIG_SYSRESET
+#if !CONFIG_IS_ENABLED(SYSRESET)
 void __weak _machine_restart(void)
 {
 	fprintf(stderr, "*** reset failed ***\n");
@@ -20,23 +21,13 @@ void __weak _machine_restart(void)
 		/* NOP */;
 }
 
-int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	_machine_restart();
 
 	return 0;
 }
 #endif
-
-void write_one_tlb(int index, u32 pagemask, u32 hi, u32 low0, u32 low1)
-{
-	write_c0_entrylo0(low0);
-	write_c0_pagemask(pagemask);
-	write_c0_entrylo1(low1);
-	write_c0_entryhi(hi);
-	write_c0_index(index);
-	tlb_write_indexed();
-}
 
 int arch_cpu_init(void)
 {

@@ -9,9 +9,13 @@
 
 #define pr_fmt(fmt)	"nand: " fmt
 
+#include <common.h>
+#include <watchdog.h>
 #ifndef __UBOOT__
+#include <linux/compat.h>
 #include <linux/module.h>
 #endif
+#include <linux/bitops.h>
 #include <linux/mtd/nand.h>
 
 /**
@@ -125,17 +129,24 @@ EXPORT_SYMBOL_GPL(nanddev_isreserved);
  *
  * Return: 0 in case of success, a negative error code otherwise.
  */
-int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
+static int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
 {
+	unsigned int entry;
+
 	if (nanddev_isbad(nand, pos) || nanddev_isreserved(nand, pos)) {
 		pr_warn("attempt to erase a bad/reserved block @%llx\n",
 			nanddev_pos_to_offs(nand, pos));
-		return -EIO;
+		if (nanddev_isreserved(nand, pos))
+			return -EIO;
+
+		/* remove bad block from BBT */
+		entry = nanddev_bbt_pos_to_entry(nand, pos);
+		nanddev_bbt_set_block_status(nand, entry,
+					     NAND_BBT_BLOCK_STATUS_UNKNOWN);
 	}
 
 	return nand->ops->erase(nand, pos);
 }
-EXPORT_SYMBOL_GPL(nanddev_erase);
 
 /**
  * nanddev_mtd_erase() - Generic mtd->_erase() implementation for NAND devices
@@ -161,6 +172,7 @@ int nanddev_mtd_erase(struct mtd_info *mtd, struct erase_info *einfo)
 	nanddev_offs_to_pos(nand, einfo->addr, &pos);
 	nanddev_offs_to_pos(nand, einfo->addr + einfo->len - 1, &last);
 	while (nanddev_pos_cmp(&pos, &last) <= 0) {
+		schedule();
 		ret = nanddev_erase(nand, &pos);
 		if (ret) {
 			einfo->fail_addr = nanddev_pos_to_offs(nand, &pos);

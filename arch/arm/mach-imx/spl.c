@@ -7,6 +7,10 @@
  */
 
 #include <common.h>
+#include <hang.h>
+#include <init.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
@@ -15,8 +19,50 @@
 #include <asm/mach-imx/hab.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <g_dnl.h>
+#include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+__weak int spl_board_boot_device(enum boot_device boot_dev_spl)
+{
+	switch (boot_dev_spl) {
+#if defined(CONFIG_MX7)
+	case SD1_BOOT:
+	case MMC1_BOOT:
+	case SD2_BOOT:
+	case MMC2_BOOT:
+	case SD3_BOOT:
+	case MMC3_BOOT:
+		return BOOT_DEVICE_MMC1;
+#elif defined(CONFIG_IMX8)
+	case MMC1_BOOT:
+		return BOOT_DEVICE_MMC1;
+	case SD2_BOOT:
+		return BOOT_DEVICE_MMC2_2;
+	case SD3_BOOT:
+		return BOOT_DEVICE_MMC1;
+	case FLEXSPI_BOOT:
+		return BOOT_DEVICE_SPI;
+#elif defined(CONFIG_IMX8M)
+	case SD1_BOOT:
+	case MMC1_BOOT:
+		return BOOT_DEVICE_MMC1;
+	case SD2_BOOT:
+	case MMC2_BOOT:
+		return BOOT_DEVICE_MMC2;
+#endif
+	case NAND_BOOT:
+		return BOOT_DEVICE_NAND;
+	case SPI_NOR_BOOT:
+		return BOOT_DEVICE_SPI;
+	case QSPI_BOOT:
+		return BOOT_DEVICE_NOR;
+	case USB_BOOT:
+		return BOOT_DEVICE_BOARD;
+	default:
+		return BOOT_DEVICE_NONE;
+	}
+}
 
 #if defined(CONFIG_MX6)
 /* determine boot device from SRC_SBMR1 (BOOT_CFG[4:1]) or SRC_GPR9 register */
@@ -47,9 +93,9 @@ u32 spl_boot_device(void)
 	/* BOOT_CFG1[7:4] - see IMX6DQRM Table 8-8 */
 	switch ((reg & IMX6_BMODE_MASK) >> IMX6_BMODE_SHIFT) {
 	 /* EIM: See 8.5.1, Table 8-9 */
-	case IMX6_BMODE_EMI:
+	case IMX6_BMODE_EIM:
 		/* BOOT_CFG1[3]: NOR/OneNAND Selection */
-		switch ((reg & IMX6_BMODE_EMI_MASK) >> IMX6_BMODE_EMI_SHIFT) {
+		switch ((reg & IMX6_BMODE_EIM_MASK) >> IMX6_BMODE_EIM_SHIFT) {
 		case IMX6_BMODE_ONENAND:
 			return BOOT_DEVICE_ONENAND;
 		case IMX6_BMODE_NOR:
@@ -92,12 +138,17 @@ u32 spl_boot_device(void)
 	/* NAND Flash: 8.5.2, Table 8-10 */
 	case IMX6_BMODE_NAND_MIN ... IMX6_BMODE_NAND_MAX:
 		return BOOT_DEVICE_NAND;
+#if defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+	/* QSPI boot */
+	case IMX6_BMODE_QSPI:
+		return BOOT_DEVICE_SPI;
+#endif
 	}
 	return BOOT_DEVICE_NONE;
 }
 
-#elif defined(CONFIG_MX7) || defined(CONFIG_MX8M)
-/* Translate iMX7/MX8M boot device to the SPL boot device enumeration */
+#elif defined(CONFIG_MX7) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8) || defined(CONFIG_IMX9)
+/* Translate iMX7/i.MX8M boot device to the SPL boot device enumeration */
 u32 spl_boot_device(void)
 {
 #if defined(CONFIG_MX7)
@@ -125,59 +176,73 @@ u32 spl_boot_device(void)
 
 	enum boot_device boot_device_spl = get_boot_device();
 
-	switch (boot_device_spl) {
-	case SD1_BOOT:
-	case MMC1_BOOT:
-	case SD2_BOOT:
-	case MMC2_BOOT:
-	case SD3_BOOT:
-	case MMC3_BOOT:
-		return BOOT_DEVICE_MMC1;
-	case NAND_BOOT:
-		return BOOT_DEVICE_NAND;
-	case SPI_NOR_BOOT:
-		return BOOT_DEVICE_SPI;
-	case USB_BOOT:
-		return BOOT_DEVICE_USB;
-	default:
-		return BOOT_DEVICE_NONE;
-	}
+	return spl_board_boot_device(boot_device_spl);
 }
-#endif /* CONFIG_MX6 || CONFIG_MX7 || CONFIG_MX8M */
+#endif /* CONFIG_MX7 || CONFIG_IMX8M || CONFIG_IMX8 */
 
-#ifdef CONFIG_SPL_USB_GADGET_SUPPORT
+#ifdef CONFIG_SPL_USB_GADGET
 int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
 	put_unaligned(CONFIG_USB_GADGET_PRODUCT_NUM + 0xfff, &dev->idProduct);
 
 	return 0;
 }
+
+#define SDPV_BCD_DEVICE 0x500
+int g_dnl_get_board_bcd_device_number(int gcnum)
+{
+	return SDPV_BCD_DEVICE;
+}
 #endif
 
-#if defined(CONFIG_SPL_MMC_SUPPORT)
+#if defined(CONFIG_SPL_MMC)
 /* called from spl_mmc to see type of boot mode for storage (RAW or FAT) */
-u32 spl_boot_mode(const u32 boot_device)
+u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
-	switch (spl_boot_device()) {
+#if defined(CONFIG_MX7) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8)
+	switch (get_boot_device()) {
 	/* for MMC return either RAW or FAT mode */
-	case BOOT_DEVICE_MMC1:
-	case BOOT_DEVICE_MMC2:
-#if defined(CONFIG_SPL_FAT_SUPPORT)
-		return MMCSD_MODE_FS;
-#elif defined(CONFIG_SUPPORT_EMMC_BOOT)
-		return MMCSD_MODE_EMMCBOOT;
-#else
-		return MMCSD_MODE_RAW;
-#endif
-		break;
+	case SD1_BOOT:
+	case SD2_BOOT:
+	case SD3_BOOT:
+		if (IS_ENABLED(CONFIG_SPL_FS_FAT))
+			return MMCSD_MODE_FS;
+		else
+			return MMCSD_MODE_RAW;
+	case MMC1_BOOT:
+	case MMC2_BOOT:
+	case MMC3_BOOT:
+		if (IS_ENABLED(CONFIG_SPL_FS_FAT))
+			return MMCSD_MODE_FS;
+		else if (IS_ENABLED(CONFIG_SUPPORT_EMMC_BOOT))
+			return MMCSD_MODE_EMMCBOOT;
+		else
+			return MMCSD_MODE_RAW;
 	default:
 		puts("spl: ERROR:  unsupported device\n");
 		hang();
 	}
+#else
+	switch (boot_device) {
+	/* for MMC return either RAW or FAT mode */
+	case BOOT_DEVICE_MMC1:
+	case BOOT_DEVICE_MMC2:
+	case BOOT_DEVICE_MMC2_2:
+		if (IS_ENABLED(CONFIG_SPL_FS_FAT))
+			return MMCSD_MODE_FS;
+		else if (IS_ENABLED(CONFIG_SUPPORT_EMMC_BOOT))
+			return MMCSD_MODE_EMMCBOOT;
+		else
+			return MMCSD_MODE_RAW;
+	default:
+		puts("spl: ERROR:  unsupported device\n");
+		hang();
+	}
+#endif
 }
 #endif
 
-#if defined(CONFIG_SECURE_BOOT)
+#if defined(CONFIG_IMX_HAB)
 
 /*
  * +------------+  0x0 (DDR_UIMAGE_START) -
@@ -220,27 +285,106 @@ __weak void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 
 	debug("image entry point: 0x%lX\n", spl_image->entry_point);
 
-	/* HAB looks for the CSF at the end of the authenticated data therefore,
-	 * we need to subtract the size of the CSF from the actual filesize */
-	offset = spl_image->size - CONFIG_CSF_SIZE;
-	if (!imx_hab_authenticate_image(spl_image->load_addr,
-					offset + IVT_SIZE + CSF_PAD_SIZE,
-					offset)) {
+	if (spl_image->flags & SPL_FIT_FOUND) {
 		image_entry();
 	} else {
-		puts("spl: ERROR:  image authentication unsuccessful\n");
-		hang();
+		/*
+		 * HAB looks for the CSF at the end of the authenticated
+		 * data therefore, we need to subtract the size of the
+		 * CSF from the actual filesize
+		 */
+		offset = spl_image->size - CONFIG_CSF_SIZE;
+		if (!imx_hab_authenticate_image(spl_image->load_addr,
+						offset + IVT_SIZE +
+						CSF_PAD_SIZE, offset)) {
+			image_entry();
+		} else {
+			panic("spl: ERROR:  image authentication fail\n");
+		}
 	}
 }
 
+#if !defined(CONFIG_SPL_FIT_SIGNATURE)
+ulong board_spl_fit_size_align(ulong size)
+{
+	/*
+	 * HAB authenticate_image requests the IVT offset is
+	 * aligned to 0x1000
+	 */
+
+	size = ALIGN(size, 0x1000);
+	size += CONFIG_CSF_SIZE;
+
+	return size;
+}
+
+void board_spl_fit_post_load(const void *fit)
+{
+	u32 offset = ALIGN(fdt_totalsize(fit), 0x1000);
+
+	if (imx_hab_authenticate_image((uintptr_t)fit,
+				       offset + IVT_SIZE + CSF_PAD_SIZE,
+				       offset)) {
+		panic("spl: ERROR:  image authentication unsuccessful\n");
+	}
+}
+#endif
+
+void *board_spl_fit_buffer_addr(ulong fit_size, int sectors, int bl_len)
+{
+	int align_len = ARCH_DMA_MINALIGN - 1;
+
+	/* Some devices like SDP, NOR, NAND, SPI are using bl_len =1, so their fit address
+	 * is different with SD/MMC, this cause mismatch with signed address. Thus, adjust
+	 * the bl_len to align with SD/MMC.
+	 */
+	if (bl_len < 512)
+		bl_len = 512;
+
+	return  (void *)((CONFIG_TEXT_BASE - fit_size - bl_len -
+			align_len) & ~align_len);
+}
 #endif
 
 #if defined(CONFIG_MX6) && defined(CONFIG_SPL_OS_BOOT)
 int dram_init_banksize(void)
 {
-	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_dram[0].start = CFG_SYS_SDRAM_BASE;
 	gd->bd->bi_dram[0].size = imx_ddr_size();
 
 	return 0;
 }
 #endif
+
+/*
+ * read the address where the IVT header must sit
+ * from IVT image header, loaded from SPL into
+ * an malloced buffer and copy the IVT header
+ * to this address
+ */
+void *spl_load_simple_fit_fix_load(const void *fit)
+{
+	struct ivt *ivt;
+	unsigned long new;
+	unsigned long offset;
+	unsigned long size;
+	u8 *tmp = (u8 *)fit;
+
+	offset = ALIGN(fdt_totalsize(fit), 0x1000);
+	size = ALIGN(fdt_totalsize(fit), 4);
+	size = board_spl_fit_size_align(size);
+	tmp += offset;
+	ivt = (struct ivt *)tmp;
+	if (ivt->hdr.magic != IVT_HEADER_MAGIC) {
+		debug("no IVT header found\n");
+		return (void *)fit;
+	}
+	debug("%s: ivt: %p offset: %lx size: %lx\n", __func__, ivt, offset, size);
+	debug("%s: ivt self: %x\n", __func__, ivt->self);
+	new = ivt->self;
+	new -= offset;
+	debug("%s: new %lx\n", __func__, new);
+	memcpy((void *)new, fit, size);
+
+	return (void *)new;
+}

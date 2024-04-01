@@ -8,10 +8,13 @@
 #define EXPORT_FUNC(a, b, c, ...)
 #endif
 	EXPORT_FUNC(get_version, unsigned long, get_version, void)
-	EXPORT_FUNC(getc, int, getc, void)
+	EXPORT_FUNC(getchar, int, getc, void)
 	EXPORT_FUNC(tstc, int, tstc, void)
 	EXPORT_FUNC(putc, void, putc, const char)
 	EXPORT_FUNC(puts, void, puts, const char *)
+#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
+	EXPORT_FUNC(flush, void, flush, void)
+#endif
 	EXPORT_FUNC(printf, int, printf, const char*, ...)
 #if (defined(CONFIG_X86) && !defined(CONFIG_X86_64)) || defined(CONFIG_PPC)
 	EXPORT_FUNC(irq_install_handler, void, install_hdlr,
@@ -29,7 +32,7 @@
 	EXPORT_FUNC(udelay, void, udelay, unsigned long)
 	EXPORT_FUNC(get_timer, unsigned long, get_timer, unsigned long)
 	EXPORT_FUNC(vprintf, int, vprintf, const char *, va_list)
-	EXPORT_FUNC(do_reset, int, do_reset, cmd_tbl_t *,
+	EXPORT_FUNC(do_reset, int, do_reset, struct cmd_tbl *,
 		    int , int , char * const [])
 	EXPORT_FUNC(env_get, char  *, env_get, const char*)
 	EXPORT_FUNC(env_set, int, env_set, const char *, const char *)
@@ -40,8 +43,7 @@
 	EXPORT_FUNC(simple_strtol, long, simple_strtol,
 		    const char *, char **, unsigned int)
 	EXPORT_FUNC(strcmp, int, strcmp, const char *cs, const char *ct)
-#if defined(CONFIG_CMD_I2C) && \
-		(!defined(CONFIG_DM_I2C) || defined(CONFIG_DM_I2C_COMPAT))
+#if defined(CONFIG_CMD_I2C) && !CONFIG_IS_ENABLED(DM_I2C)
 	EXPORT_FUNC(i2c_write, int, i2c_write, uchar, uint, int , uchar * , int)
 	EXPORT_FUNC(i2c_read, int, i2c_read, uchar, uint, int , uchar * , int)
 #else
@@ -50,11 +52,9 @@
 #endif
 
 #if !defined(CONFIG_CMD_SPI) || defined(CONFIG_DM_SPI)
-	EXPORT_FUNC(dummy, void, spi_init, void)
 	EXPORT_FUNC(dummy, void, spi_setup_slave, void)
 	EXPORT_FUNC(dummy, void, spi_free_slave, void)
 #else
-	EXPORT_FUNC(spi_init, void, spi_init, void)
 	EXPORT_FUNC(spi_setup_slave, struct spi_slave *, spi_setup_slave,
 		    unsigned int, unsigned int, unsigned int, unsigned int)
 	EXPORT_FUNC(spi_free_slave, void, spi_free_slave, struct spi_slave *)
@@ -80,8 +80,7 @@
 	EXPORT_FUNC(mdio_get_current_dev, struct mii_dev *,
 		    mdio_get_current_dev, void)
 	EXPORT_FUNC(phy_find_by_mask, struct phy_device *, phy_find_by_mask,
-		    struct mii_dev *bus, unsigned phy_mask,
-		    phy_interface_t interface)
+		    struct mii_dev *bus, unsigned phy_mask)
 	EXPORT_FUNC(mdio_phydev_for_ethname, struct phy_device *,
 		    mdio_phydev_for_ethname, const char *ethname)
 	EXPORT_FUNC(miiphy_set_current_dev, int, miiphy_set_current_dev,

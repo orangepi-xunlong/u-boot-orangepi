@@ -10,8 +10,12 @@
 /include/ "skeleton.dtsi"
 /include/ "serial.dtsi"
 /include/ "keyboard.dtsi"
+/include/ "pcspkr.dtsi"
+/include/ "reset.dtsi"
 /include/ "rtc.dtsi"
-/include/ "tsc_timer.dtsi"
+
+#include "tsc_timer.dtsi"
+#include "smbios.dtsi"
 
 / {
 	model = "Intel Crown Bay";
@@ -67,7 +71,7 @@
 		#address-cells = <3>;
 		#size-cells = <2>;
 		compatible = "pci-x86";
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		ranges = <0x02000000 0x0 0x40000000 0x40000000 0 0x80000000
 			  0x42000000 0x0 0xc0000000 0xc0000000 0 0x20000000
 			  0x01000000 0x0 0x2000 0x2000 0 0xe000>;
@@ -76,14 +80,14 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			compatible = "pci-bridge";
-			u-boot,dm-pre-reloc;
+			bootph-all;
 			reg = <0x0000b800 0x0 0x0 0x0 0x0>;
 
 			topcliff@0,0 {
 				#address-cells = <3>;
 				#size-cells = <2>;
 				compatible = "pci-bridge";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				reg = <0x00010000 0x0 0x0 0x0 0x0>;
 
 				pciuart0: uart@a,1 {
@@ -92,7 +96,7 @@
 							"pciclass,070002",
 							"pciclass,0700",
 							"ns16550";
-					u-boot,dm-pre-reloc;
+					bootph-all;
 					reg = <0x00025100 0x0 0x0 0x0 0x0
 					       0x01025110 0x0 0x0 0x0 0x0>;
 					reg-shift = <0>;
@@ -106,7 +110,7 @@
 							"pciclass,070002",
 							"pciclass,0700",
 							"ns16550";
-					u-boot,dm-pre-reloc;
+					bootph-all;
 					reg = <0x00025200 0x0 0x0 0x0 0x0
 					       0x01025210 0x0 0x0 0x0 0x0>;
 					reg-shift = <0>;
@@ -120,7 +124,7 @@
 							"pciclass,070002",
 							"pciclass,0700",
 							"ns16550";
-					u-boot,dm-pre-reloc;
+					bootph-all;
 					reg = <0x00025300 0x0 0x0 0x0 0x0
 					       0x01025310 0x0 0x0 0x0 0x0>;
 					reg-shift = <0>;
@@ -134,7 +138,7 @@
 							"pciclass,070002",
 							"pciclass,0700",
 							"ns16550";
-					u-boot,dm-pre-reloc;
+					bootph-all;
 					reg = <0x00025400 0x0 0x0 0x0 0x0
 					       0x01025410 0x0 0x0 0x0 0x0>;
 					reg-shift = <0>;
@@ -151,7 +155,7 @@
 			#size-cells = <1>;
 
 			irq-router {
-				compatible = "intel,queensbay-irq-router";
+				compatible = "intel,irq-router";
 				intel,pirq-config = "pci";
 				intel,actl-addr = <0x58>;
 				intel,pirq-link = <0x60 8>;
@@ -222,21 +226,21 @@
 				spi-flash@0 {
 					reg = <0>;
 					compatible = "sst,25vf016b",
-						"spi-flash";
+						"jedec,spi-nor";
 					memory-map = <0xffe00000 0x00200000>;
 				};
 			};
 
 			gpioa {
 				compatible = "intel,ich6-gpio";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				reg = <0 0x20>;
 				bank-name = "A";
 			};
 
 			gpiob {
 				compatible = "intel,ich6-gpio";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				reg = <0x20 0x20>;
 				bank-name = "B";
 			};

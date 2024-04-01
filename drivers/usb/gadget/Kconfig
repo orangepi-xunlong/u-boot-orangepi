@@ -15,6 +15,8 @@
 
 menuconfig USB_GADGET
 	bool "USB Gadget Support"
+	depends on DM
+	select DM_USB
 	help
 	   USB is a master/slave protocol, organized with one master
 	   host (such as a PC) controlling up to 127 peripheral devices.
@@ -38,7 +40,9 @@ if USB_GADGET
 
 config USB_GADGET_MANUFACTURER
 	string "Vendor name of the USB device"
+	default "NVIDIA" if ARCH_TEGRA
 	default "Allwinner Technology" if ARCH_SUNXI
+	default "Rockchip" if ARCH_ROCKCHIP
 	default "U-Boot"
 	help
 	  Vendor name of the USB device emulated, reported to the host device.
@@ -46,7 +50,9 @@ config USB_GADGET_MANUFACTURER
 
 config USB_GADGET_VENDOR_NUM
 	hex "Vendor ID of the USB device"
+	default 0x0955 if ARCH_TEGRA
 	default 0x1f3a if ARCH_SUNXI
+	default 0x2207 if ARCH_ROCKCHIP
 	default 0x0
 	help
 	  Vendor ID of the USB device emulated, reported to the host device.
@@ -55,7 +61,14 @@ config USB_GADGET_VENDOR_NUM
 
 config USB_GADGET_PRODUCT_NUM
 	hex "Product ID of the USB device"
+	default 0x701a if ARCH_TEGRA
 	default 0x1010 if ARCH_SUNXI
+	default 0x310a if ROCKCHIP_RK3036
+	default 0x300a if ROCKCHIP_RK3066
+	default 0x310c if ROCKCHIP_RK3128
+	default 0x320a if ROCKCHIP_RK3229 || ROCKCHIP_RK3288
+	default 0x330a if ROCKCHIP_RK3328
+	default 0x330c if ROCKCHIP_RK3399
 	default 0x0
 	help
 	  Product ID of the USB device emulated, reported to the host device.
@@ -72,6 +85,10 @@ config USB_GADGET_BCM_UDC_OTG_PHY
 	help
 	  Enable the Broadcom UDC OTG physical device interface.
 
+config USB_GADGET_AT91
+	bool "Atmel AT91 USB Gadget Controller"
+	depends on ARCH_AT91
+
 config USB_GADGET_DWC2_OTG
 	bool "DesignWare USB2.0 HS OTG controller (gadget mode)"
 	select USB_GADGET_DUALSPEED
@@ -83,6 +100,11 @@ config USB_GADGET_DWC2_OTG
 
 if USB_GADGET_DWC2_OTG
 
+config USB_GADGET_DWC2_OTG_PHY
+	bool "DesignWare USB2.0 HS OTG PHY"
+	help
+	  Enable the DesignWare USB2.0 HS OTG physical device interface.
+
 config USB_GADGET_DWC2_OTG_PHY_BUS_WIDTH_8
 	bool "DesignWare USB2.0 HS OTG controller 8-bit PHY bus width"
 	help
@@ -91,12 +113,27 @@ config USB_GADGET_DWC2_OTG_PHY_BUS_WIDTH_8
 
 endif # USB_GADGET_DWC2_OTG
 
+config USB_GADGET_OS_DESCRIPTORS
+	bool "USB OS Feature Descriptors support"
+	help
+	  This is a porting patch from linux kernel: 37a3a533429e
+	  ("usb: gadget: OS Feature Descriptors support"), the original commit
+	  log see below:
+	  There is a custom (non-USB IF) extension to the USB standard:
+	  http://msdn.microsoft.com/library/windows/hardware/gg463182
+
 config CI_UDC
 	bool "ChipIdea device controller"
 	select USB_GADGET_DUALSPEED
 	help
 	  Say Y here to enable device controller functionality of the
 	  ChipIdea driver.
+
+config USB_GADGET_MAX3420
+	bool "MAX3420 USB Over SPI"
+	depends on DM_SPI
+	help
+	  MAX3420, from MAXIM, implements USB-over-SPI Full-Speed device controller.
 
 config USB_GADGET_VBUS_DRAW
 	int "Maximum VBUS Power usage (2-500 mA)"
@@ -114,6 +151,10 @@ config USB_GADGET_VBUS_DRAW
 
 	   This value will be used except for system-specific gadget
 	   drivers that have more specific information.
+
+config SDP_LOADADDR
+	hex "Default load address at SDP_WRITE and SDP_JUMP"
+	default 0
 
 # Selected by UDC drivers that support high-speed operation.
 config USB_GADGET_DUALSPEED
@@ -153,6 +194,15 @@ config USB_FUNCTION_THOR
 	help
 	  Enable Tizen's THOR download protocol support in U-Boot. It
 	  allows downloading images into memory and flash them to target device.
+
+config USB_FUNCTION_ACM
+	bool "Enable CDC ACM gadget"
+	select SYS_STDIO_DEREGISTER
+	select CIRCBUF
+	help
+	  ACM serial link. This function can be used to create a stdio device to
+	  interoperate with MS-Windows hosts or with the Linux-USB "cdc-acm"
+	  driver.
 
 endif # USB_GADGET_DOWNLOAD
 
@@ -198,7 +248,7 @@ config USB_ETH_RNDIS
 
 endchoice
 
-config USBNET_DEVADDR
+config USBNET_DEV_ADDR
 	string "USB Gadget Ethernet device mac address"
 	default "de:ad:be:ef:00:01"
 	help

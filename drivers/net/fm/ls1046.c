@@ -35,7 +35,7 @@ u32 port_to_devdisr[] = {
 
 static int is_device_disabled(enum fm_port port)
 {
-	struct ccsr_gur *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 devdisr2 = in_be32(&gur->devdisr2);
 
 	return port_to_devdisr[port] & devdisr2;
@@ -43,40 +43,40 @@ static int is_device_disabled(enum fm_port port)
 
 void fman_disable_port(enum fm_port port)
 {
-	struct ccsr_gur *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 
 	setbits_be32(&gur->devdisr2, port_to_devdisr[port]);
 }
 
 phy_interface_t fman_port_enet_if(enum fm_port port)
 {
-	struct ccsr_gur *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 rcwsr13 = in_be32(&gur->rcwsr[13]);
 
 	if (is_device_disabled(port))
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 
 	if ((port == FM1_10GEC1) && (is_serdes_configured(XFI_FM1_MAC9)))
 		return PHY_INTERFACE_MODE_XGMII;
 
 	if ((port == FM1_DTSEC9) && (is_serdes_configured(XFI_FM1_MAC9)))
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 
 	if ((port == FM1_10GEC2) && (is_serdes_configured(XFI_FM1_MAC10)))
 		return PHY_INTERFACE_MODE_XGMII;
 
 	if ((port == FM1_DTSEC10) && (is_serdes_configured(XFI_FM1_MAC10)))
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 
 	if (port == FM1_DTSEC3)
 		if ((rcwsr13 & FSL_CHASSIS2_RCWSR13_EC1) ==
 				FSL_CHASSIS2_RCWSR13_EC1_DTSEC3_RGMII)
-			return PHY_INTERFACE_MODE_RGMII_TXID;
+			return PHY_INTERFACE_MODE_RGMII_ID;
 
 	if (port == FM1_DTSEC4)
 		if ((rcwsr13 & FSL_CHASSIS2_RCWSR13_EC2) ==
 				FSL_CHASSIS2_RCWSR13_EC2_DTSEC4_RGMII)
-			return PHY_INTERFACE_MODE_RGMII_TXID;
+			return PHY_INTERFACE_MODE_RGMII_ID;
 
 	/* handle SGMII, only MAC 2/5/6/9/10 available */
 	switch (port) {
@@ -99,7 +99,7 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 	case FM1_DTSEC10:
 		if (is_serdes_configured(SGMII_2500_FM1_DTSEC5 +
 					 port - FM1_DTSEC5))
-			return PHY_INTERFACE_MODE_SGMII_2500;
+			return PHY_INTERFACE_MODE_2500BASEX;
 		break;
 	default:
 		break;
@@ -118,5 +118,5 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 		break;
 	}
 
-	return PHY_INTERFACE_MODE_NONE;
+	return PHY_INTERFACE_MODE_NA;
 }

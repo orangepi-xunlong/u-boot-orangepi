@@ -5,7 +5,12 @@
  */
 
 #include <common.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
+#include <log.h>
+#include <asm/global_data.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -24,6 +29,8 @@ void env_fix_drivers(void)
 			entry->load += gd->reloc_off;
 		if (entry->save)
 			entry->save += gd->reloc_off;
+		if (entry->erase)
+			entry->erase += gd->reloc_off;
 		if (entry->init)
 			entry->init += gd->reloc_off;
 	}
@@ -77,10 +84,6 @@ static enum env_location env_locations[] = {
 #ifdef CONFIG_ENV_IS_IN_UBI
 	ENVL_UBI,
 #endif
-#ifdef CONFIG_ENV_IS_IN_SUNXI_FLASH
-	ENVL_SUNXI_FLASH,
-#endif
-
 #ifdef CONFIG_ENV_IS_NOWHERE
 	ENVL_NOWHERE,
 #endif
@@ -98,9 +101,36 @@ static void env_set_inited(enum env_location location)
 	 * using the above enum value as the bit index. We need to
 	 * make sure that we're not overflowing it.
 	 */
-	BUILD_BUG_ON(ARRAY_SIZE(env_locations) > BITS_PER_LONG);
+	BUILD_BUG_ON(ENVL_COUNT > BITS_PER_LONG);
 
 	gd->env_has_init |= BIT(location);
+}
+
+/**
+ * arch_env_get_location() - Returns the best env location for an arch
+ * @op: operations performed on the environment
+ * @prio: priority between the multiple environments, 0 being the
+ *        highest priority
+ *
+ * This will return the preferred environment for the given priority.
+ * This is overridable by architectures if they need to and has lower
+ * priority than board side env_get_location() override.
+ *
+ * All implementations are free to use the operation, the priority and
+ * any other data relevant to their choice, but must take into account
+ * the fact that the lowest prority (0) is the most important location
+ * in the system. The following locations should be returned by order
+ * of descending priorities, from the highest to the lowest priority.
+ *
+ * Returns:
+ * an enum env_location value on success, a negative error code otherwise
+ */
+__weak enum env_location arch_env_get_location(enum env_operation op, int prio)
+{
+	if (prio >= ARRAY_SIZE(env_locations))
+		return ENVL_UNKNOWN;
+
+	return env_locations[prio];
 }
 
 /**
@@ -123,23 +153,8 @@ static void env_set_inited(enum env_location location)
  */
 __weak enum env_location env_get_location(enum env_operation op, int prio)
 {
-	switch (op) {
-	case ENVOP_GET_CHAR:
-	case ENVOP_INIT:
-	case ENVOP_LOAD:
-		if (prio >= ARRAY_SIZE(env_locations))
-			return ENVL_UNKNOWN;
-
-		gd->env_load_location = env_locations[prio];
-		return gd->env_load_location;
-
-	case ENVOP_SAVE:
-		return gd->env_load_location;
-	}
-
-	return ENVL_UNKNOWN;
+	return arch_env_get_location(op, prio);
 }
-
 
 /**
  * env_driver_lookup() - Finds the most suited environment location
@@ -171,34 +186,83 @@ static struct env_driver *env_driver_lookup(enum env_operation op, int prio)
 	return drv;
 }
 
-__weak int env_get_char_spec(int index)
-{
-	return *(uchar *)(gd->env_addr + index);
-}
-
-int env_get_char(int index)
-{
-	if (gd->env_valid == ENV_INVALID)
-		return default_environment[index];
-	else
-		return env_get_char_spec(index);
-}
-
 int env_load(void)
 {
 	struct env_driver *drv;
+	int best_prio = -1;
 	int prio;
+
+	if (CONFIG_IS_ENABLED(ENV_WRITEABLE_LIST)) {
+		/*
+		 * When using a list of writeable variables, the baseline comes
+		 * from the built-in default env. So load this first.
+		 */
+		env_set_default(NULL, 0);
+	}
 
 	for (prio = 0; (drv = env_driver_lookup(ENVOP_LOAD, prio)); prio++) {
 		int ret;
 
-		if (!drv->load)
-			continue;
-
 		if (!env_has_inited(drv->location))
 			continue;
 
-		tick_printf("Loading Environment from %s... ", drv->name);
+		printf("Loading Environment from %s... ", drv->name);
+		/*
+		 * In error case, the error message must be printed during
+		 * drv->load() in some underlying API, and it must be exactly
+		 * one message.
+		 */
+		ret = drv->load();
+		if (!ret) {
+			printf("OK\n");
+			gd->env_load_prio = prio;
+
+#if !CONFIG_IS_ENABLED(ENV_APPEND)
+			return 0;
+#endif
+		} else if (ret == -ENOMSG) {
+			/* Handle "bad CRC" case */
+			if (best_prio == -1)
+				best_prio = prio;
+		} else {
+			debug("Failed (%d)\n", ret);
+		}
+	}
+
+	/*
+	 * In case of invalid environment, we set the 'default' env location
+	 * to the best choice, i.e.:
+	 *   1. Environment location with bad CRC, if such location was found
+	 *   2. Otherwise use the location with highest priority
+	 *
+	 * This way, next calls to env_save() will restore the environment
+	 * at the right place.
+	 */
+	if (best_prio >= 0)
+		debug("Selecting environment with bad CRC\n");
+	else
+		best_prio = 0;
+
+	gd->env_load_prio = best_prio;
+
+	return -ENODEV;
+}
+
+int env_reload(void)
+{
+	struct env_driver *drv;
+
+	drv = env_driver_lookup(ENVOP_LOAD, gd->env_load_prio);
+	if (drv) {
+		int ret;
+
+		printf("Loading Environment from %s... ", drv->name);
+
+		if (!env_has_inited(drv->location)) {
+			printf("not initialized\n");
+			return -ENODEV;
+		}
+
 		ret = drv->load();
 		if (ret)
 			printf("Failed (%d)\n", ret);
@@ -215,19 +279,55 @@ int env_load(void)
 int env_save(void)
 {
 	struct env_driver *drv;
-	int prio;
 
-	for (prio = 0; (drv = env_driver_lookup(ENVOP_SAVE, prio)); prio++) {
+	drv = env_driver_lookup(ENVOP_SAVE, gd->env_load_prio);
+	if (drv) {
 		int ret;
 
-		if (!drv->save)
-			continue;
-
-		if (!env_has_inited(drv->location))
-			continue;
-
 		printf("Saving Environment to %s... ", drv->name);
+		if (!drv->save) {
+			printf("not possible\n");
+			return -ENODEV;
+		}
+
+		if (!env_has_inited(drv->location)) {
+			printf("not initialized\n");
+			return -ENODEV;
+		}
+
 		ret = drv->save();
+		if (ret)
+			printf("Failed (%d)\n", ret);
+		else
+			printf("OK\n");
+
+		if (!ret)
+			return 0;
+	}
+
+	return -ENODEV;
+}
+
+int env_erase(void)
+{
+	struct env_driver *drv;
+
+	drv = env_driver_lookup(ENVOP_ERASE, gd->env_load_prio);
+	if (drv) {
+		int ret;
+
+		if (!drv->erase) {
+			printf("not possible\n");
+			return -ENODEV;
+		}
+
+		if (!env_has_inited(drv->location)) {
+			printf("not initialized\n");
+			return -ENODEV;
+		}
+
+		printf("Erasing Environment on %s... ", drv->name);
+		ret = drv->erase();
 		if (ret)
 			printf("Failed (%d)\n", ret);
 		else
@@ -249,9 +349,14 @@ int env_init(void)
 	for (prio = 0; (drv = env_driver_lookup(ENVOP_INIT, prio)); prio++) {
 		if (!drv->init || !(ret = drv->init()))
 			env_set_inited(drv->location);
+		if (ret == -ENOENT)
+			env_set_inited(drv->location);
 
 		debug("%s: Environment %s init done (ret=%d)\n", __func__,
 		      drv->name, ret);
+
+		if (gd->env_valid == ENV_INVALID)
+			ret = -ENOENT;
 	}
 
 	if (!prio)
@@ -265,4 +370,46 @@ int env_init(void)
 	}
 
 	return ret;
+}
+
+int env_select(const char *name)
+{
+	struct env_driver *drv;
+	const int n_ents = ll_entry_count(struct env_driver, env_driver);
+	struct env_driver *entry;
+	int prio;
+	bool found = false;
+
+	printf("Select Environment on %s: ", name);
+
+	/* search ENV driver by name */
+	drv = ll_entry_start(struct env_driver, env_driver);
+	for (entry = drv; entry != drv + n_ents; entry++) {
+		if (!strcmp(entry->name, name)) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		printf("driver not found\n");
+		return -ENODEV;
+	}
+
+	/* search priority by driver */
+	for (prio = 0; (drv = env_driver_lookup(ENVOP_INIT, prio)); prio++) {
+		if (entry->location == env_get_location(ENVOP_LOAD, prio)) {
+			/* when priority change, reset the ENV flags */
+			if (gd->env_load_prio != prio) {
+				gd->env_load_prio = prio;
+				gd->env_valid = ENV_INVALID;
+				gd->flags &= ~GD_FLG_ENV_DEFAULT;
+			}
+			printf("OK\n");
+			return 0;
+		}
+	}
+	printf("priority not found\n");
+
+	return -ENODEV;
 }

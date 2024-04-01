@@ -99,24 +99,11 @@ Configuration Options:
    CONFIG_CMD_NAND_TORTURE
       Enables the torture command (see description of this command below).
 
-   CONFIG_SYS_MAX_NAND_DEVICE
-      The maximum number of NAND devices you want to support.
-
-   CONFIG_SYS_NAND_MAX_ECCPOS
-      If specified, overrides the maximum number of ECC bytes
-      supported.  Useful for reducing image size, especially with SPL.
-      This must be at least 48 if nand_base.c is used.
-
-   CONFIG_SYS_NAND_MAX_OOBFREE
-      If specified, overrides the maximum number of free OOB regions
-      supported.  Useful for reducing image size, especially with SPL.
-      This must be at least 2 if nand_base.c is used.
-
    CONFIG_SYS_NAND_MAX_CHIPS
       The maximum number of NAND chips per device to be supported.
 
    CONFIG_SYS_NAND_SELF_INIT
-      Traditionally, glue code in drivers/mtd/nand/nand.c has driven
+      Traditionally, glue code in drivers/mtd/nand/raw/nand.c has driven
       the initialization process -- it provides the mtd and nand
       structs, calls a board init function for a specific device,
       calls nand_scan(), and registers with mtd.
@@ -125,7 +112,7 @@ Configuration Options:
       run code between nand_scan_ident() and nand_scan_tail(), or other
       deviations from the "normal" flow.
 
-      If a board defines CONFIG_SYS_NAND_SELF_INIT, drivers/mtd/nand/nand.c
+      If a board defines CONFIG_SYS_NAND_SELF_INIT, drivers/mtd/nand/raw/nand.c
       will make one call to board_nand_init(), with no arguments.  That
       function is responsible for calling a driver init function for
       each NAND device on the board, that performs all initialization
@@ -147,7 +134,7 @@ Configuration Options:
 	chip.IO_ADDR_R = ...;
 	chip.IO_ADDR_W = ...;
 
-	if (nand_scan_ident(mtd, CONFIG_SYS_MAX_NAND_CHIPS, NULL))
+	if (nand_scan_ident(mtd, CFG_SYS_MAX_NAND_CHIPS, NULL))
 		error out
 
 	/*
@@ -175,11 +162,6 @@ Configuration Options:
       flexibility, so that one day we can eliminate the old mechanism.
 
 
-   CONFIG_SYS_NAND_ONFI_DETECTION
-	Enables detection of ONFI compliant devices during probe.
-	And fetching device parameters flashed on device, by parsing
-	ONFI parameter page.
-
 Platform specific options
 =========================
    CONFIG_NAND_OMAP_GPMC
@@ -205,72 +187,6 @@ Platform specific options
 	so those platforms should use CONFIG_SPL_NAND_SIMPLE for enabling
         SPL-NAND driver with software ECC correction support.
 
-   CONFIG_NAND_OMAP_ECCSCHEME
-	On OMAP platforms, this CONFIG specifies NAND ECC scheme.
-	It can take following values:
-	OMAP_ECC_HAM1_CODE_SW
-		1-bit Hamming code using software lib.
-		(for legacy devices only)
-	OMAP_ECC_HAM1_CODE_HW
-		1-bit Hamming code using GPMC hardware.
-		(for legacy devices only)
-	OMAP_ECC_BCH4_CODE_HW_DETECTION_SW
-		4-bit BCH code (unsupported)
-	OMAP_ECC_BCH4_CODE_HW
-		4-bit BCH code (unsupported)
-	OMAP_ECC_BCH8_CODE_HW_DETECTION_SW
-		8-bit BCH code with
-		- ecc calculation using GPMC hardware engine,
-		- error detection using software library.
-		- requires CONFIG_BCH to enable software BCH library
-		(For legacy device which do not have ELM h/w engine)
-	OMAP_ECC_BCH8_CODE_HW
-		8-bit BCH code with
-		- ecc calculation using GPMC hardware engine,
-		- error detection using ELM hardware engine.
-	OMAP_ECC_BCH16_CODE_HW
-		16-bit BCH code with
-		- ecc calculation using GPMC hardware engine,
-		- error detection using ELM hardware engine.
-
-	How to select ECC scheme on OMAP and AMxx platforms ?
-	-----------------------------------------------------
-	Though higher ECC schemes have more capability to detect and correct
-	bit-flips, but still selection of ECC scheme is dependent on following
-	- hardware engines present in SoC.
-		Some legacy OMAP SoC do not have ELM h/w engine thus such
-		SoC cannot support BCHx_HW ECC schemes.
-	- size of OOB/Spare region
-		With higher ECC schemes, more OOB/Spare area is required to
-		store ECC. So choice of ECC scheme is limited by NAND oobsize.
-
-	In general following expression can help:
-		NAND_OOBSIZE >= 2 + (NAND_PAGESIZE / 512) * ECC_BYTES
-	where
-		NAND_OOBSIZE	= number of bytes available in
-				OOB/spare area per NAND page.
-		NAND_PAGESIZE	= bytes in main-area of NAND page.
-		ECC_BYTES	= number of ECC bytes generated to
-				protect 512 bytes of data, which is:
-				3 for HAM1_xx ecc schemes
-				7 for BCH4_xx ecc schemes
-				14 for BCH8_xx ecc schemes
-				26 for BCH16_xx ecc schemes
-
-		example to check for BCH16 on 2K page NAND
-		NAND_PAGESIZE = 2048
-		NAND_OOBSIZE = 64
-		2 + (2048 / 512) * 26 = 106 > NAND_OOBSIZE
-		Thus BCH16 cannot be supported on 2K page NAND.
-
-		However, for 4K pagesize NAND
-		NAND_PAGESIZE = 4096
-		NAND_OOBSIZE = 224
-		ECC_BYTES = 26
-		2 + (4096 / 512) * 26 = 210 < NAND_OOBSIZE
-		Thus BCH16 can be supported on 4K page NAND.
-
-
     CONFIG_NAND_OMAP_GPMC_PREFETCH
 	On OMAP platforms that use the GPMC controller
 	(CONFIG_NAND_OMAP_GPMC_PREFETCH), this options enables the code that
@@ -280,7 +196,7 @@ NOTE:
 =====
 
 The Disk On Chip driver is currently broken and has been for some time.
-There is a driver in drivers/mtd/nand, taken from Linux, that works with
+There is a driver in drivers/mtd/nand/raw, taken from Linux, that works with
 the current NAND system but has not yet been adapted to the u-boot
 environment.
 

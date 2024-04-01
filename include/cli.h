@@ -7,6 +7,23 @@
 #ifndef __CLI_H
 #define __CLI_H
 
+#include <stdbool.h>
+
+/**
+ * struct cli_ch_state - state information for reading cmdline characters
+ *
+ * @esc_len: Number of escape characters read so far
+ * @esc_save: Escape characters collected so far
+ * @emit_upto: Next index to emit from esc_save
+ * @emitting: true if emitting from esc_save
+ */
+struct cli_ch_state {
+	int esc_len;
+	char esc_save[8];
+	int emit_upto;
+	bool emitting;
+};
+
 /**
  * Go into the command loop
  *
@@ -20,7 +37,7 @@ void cli_simple_loop(void);
  *
  * @cmd:	String containing the command to execute
  * @flag	Flag value - see CMD_FLAG_...
- * @return 1  - command executed, repeatable
+ * Return: 1  - command executed, repeatable
  *	0  - command executed but not repeatable, interrupted commands are
  *	     always considered not repeatable
  *	-1 - not executed (unrecognized, bootd recursion or too many args)
@@ -34,8 +51,10 @@ int cli_simple_run_command(const char *cmd, int flag);
  *
  * @param input		Input string possible containing $() / ${} vars
  * @param output	Output string with $() / ${} vars expanded
+ * @param max_size	Maximum size of @output (including terminator)
+ * Return: 0 if OK, -ENOSPC if we ran out of space in @output
  */
-void cli_simple_process_macros(const char *input, char *output);
+int cli_simple_process_macros(const char *input, char *output, int max_size);
 
 /**
  * cli_simple_run_command_list() - Execute a list of command
@@ -48,7 +67,7 @@ void cli_simple_process_macros(const char *input, char *output);
  *
  * @param cmd	String containing list of commands
  * @param flag	Execution flags (CMD_FLAG_...)
- * @return 0 on success, or != 0 on error.
+ * Return: 0 on success, or != 0 on error.
  */
 int cli_simple_run_command_list(char *cmd, int flag);
 
@@ -58,7 +77,7 @@ int cli_simple_run_command_list(char *cmd, int flag);
  * This is a convenience function which calls cli_readline_into_buffer().
  *
  * @prompt: Prompt to display
- * @return command line length excluding terminator, or -ve on error
+ * Return: command line length excluding terminator, or -ve on error
  */
 int cli_readline(const char *const prompt);
 
@@ -79,8 +98,8 @@ int cli_readline(const char *const prompt);
  *
  * @prompt:	Prompt to display
  * @buffer:	Place to put the line that is entered
- * @timeout:	Timeout in milliseconds, 0 if none
- * @return command line length excluding terminator, or -ve on error: of the
+ * @timeout:	Timeout in seconds, 0 if none
+ * Return: command line length excluding terminator, or -ve on error: if the
  * timeout is exceeded (either CONFIG_BOOT_RETRY_TIME or the timeout
  * parameter), then -2 is returned. If a break is detected (Ctrl-C) then
  * -1 is returned.
@@ -103,7 +122,7 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
  *
  * @line:	Command line to parse
  * @args:	Array to hold arguments
- * @return number of arguments
+ * Return: number of arguments
  */
 int cli_simple_parse_line(char *line, char *argv[]);
 
@@ -119,7 +138,7 @@ int cli_simple_parse_line(char *line, char *argv[]);
  * @cmdp:	On entry, the command that will be executed if the FDT does
  *		not have a command. Returns the command to execute after
  *		checking the FDT.
- * @return true to execute securely, else false
+ * Return: true to execute securely, else false
  */
 bool cli_process_fdt(const char **cmdp);
 
@@ -152,5 +171,62 @@ void cli_loop(void);
 void cli_init(void);
 
 #define endtick(seconds) (get_ticks() + (uint64_t)(seconds) * get_tbclk())
+#define CTL_CH(c)		((c) - 'a' + 1)
+
+/**
+ * cli_ch_init() - Set up the initial state to process input characters
+ *
+ * @cch: State to set up
+ */
+void cli_ch_init(struct cli_ch_state *cch);
+
+/**
+ * cli_ch_process() - Process an input character
+ *
+ * When @ichar is 0, this function returns any characters from an invalid escape
+ * sequence which are still pending in the buffer
+ *
+ * Otherwise it processes the input character. If it is an escape character,
+ * then an escape sequence is started and the function returns 0. If we are in
+ * the middle of an escape sequence, the character is processed and may result
+ * in returning 0 (if more characters are needed) or a valid character (if
+ * @ichar finishes the sequence).
+ *
+ * If @ichar is a valid character and there is no escape sequence in progress,
+ * then it is returned as is.
+ *
+ * If the Enter key is pressed, '\n' is returned.
+ *
+ * Usage should be like this::
+ *
+ *    struct cli_ch_state cch;
+ *
+ *    cli_ch_init(cch);
+ *    do
+ *       {
+ *       int ichar, ch;
+ *
+ *       ichar = cli_ch_process(cch, 0);
+ *       if (!ichar) {
+ *          ch = getchar();
+ *          ichar = cli_ch_process(cch, ch);
+ *       }
+ *       (handle the ichar character)
+ *    } while (!done)
+ *
+ * If tstc() is used to look for keypresses, this function can be called with
+ * @ichar set to -ETIMEDOUT if there is no character after 5-10ms. This allows
+ * the ambgiuity between the Escape key and the arrow keys (which generate an
+ * escape character followed by other characters) to be resolved.
+ *
+ * @cch: Current state
+ * @ichar: Input character to process, or 0 if none, or -ETIMEDOUT if no
+ * character has been received within a small number of milliseconds (this
+ * cancels any existing escape sequence and allows pressing the Escape key to
+ * work)
+ * Returns: Resulting input character after processing, 0 if none, '\e' if
+ * an existing escape sequence was cancelled
+ */
+int cli_ch_process(struct cli_ch_state *cch, int ichar);
 
 #endif

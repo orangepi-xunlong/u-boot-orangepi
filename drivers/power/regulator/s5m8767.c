@@ -7,7 +7,6 @@
 #include <fdtdec.h>
 #include <errno.h>
 #include <dm.h>
-#include <i2c.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/s5m8767.h>
@@ -130,9 +129,9 @@ static int reg_set_value(struct udevice *dev, const struct s5m8767_para *param,
 
 static int s5m8767_ldo_probe(struct udevice *dev)
 {
-	struct dm_regulator_uclass_platdata *uc_pdata;
+	struct dm_regulator_uclass_plat *uc_pdata;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	uc_pdata->type = REGULATOR_TYPE_LDO;
 	uc_pdata->mode_count = 0;
@@ -199,9 +198,9 @@ static int ldo_set_enable(struct udevice *dev, bool enable)
 
 static int s5m8767_buck_probe(struct udevice *dev)
 {
-	struct dm_regulator_uclass_platdata *uc_pdata;
+	struct dm_regulator_uclass_plat *uc_pdata;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	uc_pdata->type = REGULATOR_TYPE_BUCK;
 	uc_pdata->mode_count = 0;

@@ -16,22 +16,6 @@
 
 #include "armada-388.dtsi"
 
-&gpio0 {
-	u-boot,dm-pre-reloc;
-};
-
-&gpio1 {
-	u-boot,dm-pre-reloc;
-};
-
-&uart0 {
-	u-boot,dm-pre-reloc;
-};
-
-&uart1 {
-	u-boot,dm-pre-reloc;
-};
-
 / {
 	model = "Controlcenter Digital Compact";
 	compatible = "marvell,a385-db", "marvell,armada388",
@@ -72,44 +56,9 @@
 			  MBUS_ID(0x01, 0x1d) 0 0xfff00000 0x100000>;
 
 		internal-regs {
-			spi0: spi@10600 {
-				status = "okay";
-				sc16is741: sc16is741@0 {
-					compatible = "nxp,sc16is741";
-					reg = <0>;
-					clocks = <&sc16isclk>;
-					spi-max-frequency = <4000000>;
-					interrupt-parent = <&gpio0>;
-					interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
-					gpio-controller;
-					#gpio-cells = <2>;
-				};
-			};
-
-			spi1: spi@10680 {
-				status = "okay";
-				u-boot,dm-pre-reloc;
-				spi-flash@0 {
-					#address-cells = <1>;
-					#size-cells = <1>;
-					compatible = "n25q016a";
-					reg = <0>; /* Chip select 0 */
-					spi-max-frequency = <108000000>;
-				};
-				spi-flash@1 {
-					#address-cells = <1>;
-					#size-cells = <1>;
-					compatible = "n25q128a11";
-					reg = <1>; /* Chip select 1 */
-					spi-max-frequency = <108000000>;
-					u-boot,dm-pre-reloc;
-				};
-			};
-
 			I2C0: i2c@11000 {
 				status = "okay";
 				clock-frequency = <1000000>;
-				u-boot,dm-pre-reloc;
 				PCA21: pca9698@21 {
 					compatible = "nxp,pca9698";
 					reg = <0x21>;
@@ -118,7 +67,6 @@
 				};
 				PCA22: pca9698@22 {
 					compatible = "nxp,pca9698";
-					u-boot,dm-pre-reloc;
 					reg = <0x22>;
 					#gpio-cells = <2>;
 					gpio-controller;
@@ -277,7 +225,7 @@
 			};
 		};
 
-		pcie-controller {
+		pcie {
 			status = "okay";
 			/*
 			 * The two PCIe units are accessible through
@@ -584,5 +532,37 @@
 			label = "status-led";
 			gpios = <&gpio0 29 0>;
 		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+	sc16is741: sc16is741@0 {
+		compatible = "nxp,sc16is741";
+		reg = <0>;
+		clocks = <&sc16isclk>;
+		spi-max-frequency = <4000000>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	spi-flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "n25q016a", "jedec,spi-nor";
+		reg = <0>; /* Chip select 0 */
+		spi-max-frequency = <108000000>;
+	};
+	spi-flash@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "n25q128a11", "jedec,spi-nor";
+		reg = <1>; /* Chip select 1 */
+		spi-max-frequency = <108000000>;
 	};
 };

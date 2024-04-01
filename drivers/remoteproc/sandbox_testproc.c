@@ -7,7 +7,9 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <remoteproc.h>
+#include <asm/io.h>
 
 /**
  * enum sandbox_state - different device states
@@ -126,7 +128,7 @@ static int sandbox_testproc_probe(struct udevice *dev)
 	struct sandbox_test_devdata *ddata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 	ddata = dev_get_priv(dev);
 	if (!ddata) {
 		debug("%s: platform private data missing\n", uc_pdata->name);
@@ -149,7 +151,7 @@ static int sandbox_testproc_init(struct udevice *dev)
 	struct dm_rproc_uclass_pdata *uc_pdata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	ret = sandbox_dev_move_to_state(dev, sb_init);
 
@@ -171,7 +173,7 @@ static int sandbox_testproc_reset(struct udevice *dev)
 	struct dm_rproc_uclass_pdata *uc_pdata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	ret = sandbox_dev_move_to_state(dev, sb_reset);
 
@@ -195,7 +197,7 @@ static int sandbox_testproc_load(struct udevice *dev, ulong addr, ulong size)
 	struct dm_rproc_uclass_pdata *uc_pdata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	ret = sandbox_dev_move_to_state(dev, sb_loaded);
 
@@ -218,7 +220,7 @@ static int sandbox_testproc_start(struct udevice *dev)
 	struct dm_rproc_uclass_pdata *uc_pdata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	ret = sandbox_dev_move_to_state(dev, sb_running);
 
@@ -240,7 +242,7 @@ static int sandbox_testproc_stop(struct udevice *dev)
 	struct dm_rproc_uclass_pdata *uc_pdata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	ret = sandbox_dev_move_to_state(dev, sb_init);
 
@@ -263,7 +265,7 @@ static int sandbox_testproc_is_running(struct udevice *dev)
 	struct sandbox_test_devdata *ddata;
 	int ret = 1;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 	ddata = dev_get_priv(dev);
 
 	if (ddata->current_state == sb_running)
@@ -285,7 +287,7 @@ static int sandbox_testproc_ping(struct udevice *dev)
 	struct sandbox_test_devdata *ddata;
 	int ret;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 	ddata = dev_get_priv(dev);
 
 	if (ddata->current_state == sb_running)
@@ -300,6 +302,25 @@ static int sandbox_testproc_ping(struct udevice *dev)
 	return ret;
 }
 
+#define SANDBOX_RPROC_DEV_TO_PHY_OFFSET	0x1000
+/**
+ * sandbox_testproc_device_to_virt() - Convert device address to virtual address
+ * @dev:	device to operate upon
+ * @da:		device address
+ * @size:	Size of the memory region @da is pointing to
+ * Return: converted virtual address
+ */
+static void *sandbox_testproc_device_to_virt(struct udevice *dev, ulong da,
+					     ulong size)
+{
+	u64 paddr;
+
+	/* Use a simple offset conversion */
+	paddr = da + SANDBOX_RPROC_DEV_TO_PHY_OFFSET;
+
+	return phys_to_virt(paddr);
+}
+
 static const struct dm_rproc_ops sandbox_testproc_ops = {
 	.init = sandbox_testproc_init,
 	.reset = sandbox_testproc_reset,
@@ -308,6 +329,7 @@ static const struct dm_rproc_ops sandbox_testproc_ops = {
 	.stop = sandbox_testproc_stop,
 	.is_running = sandbox_testproc_is_running,
 	.ping = sandbox_testproc_ping,
+	.device_to_virt = sandbox_testproc_device_to_virt,
 };
 
 static const struct udevice_id sandbox_ids[] = {
@@ -321,7 +343,7 @@ U_BOOT_DRIVER(sandbox_testproc) = {
 	.id = UCLASS_REMOTEPROC,
 	.ops = &sandbox_testproc_ops,
 	.probe = sandbox_testproc_probe,
-	.priv_auto_alloc_size = sizeof(struct sandbox_test_devdata),
+	.priv_auto	= sizeof(struct sandbox_test_devdata),
 };
 
 /* TODO(nm@ti.com): Remove this along with non-DT support */
@@ -330,7 +352,7 @@ static struct dm_rproc_uclass_pdata proc_3_test = {
 	.mem_type = RPROC_INTERNAL_MEMORY_MAPPED,
 };
 
-U_BOOT_DEVICE(proc_3_demo) = {
+U_BOOT_DRVINFO(proc_3_demo) = {
 	.name = "sandbox_test_proc",
-	.platdata = &proc_3_test,
+	.plat = &proc_3_test,
 };

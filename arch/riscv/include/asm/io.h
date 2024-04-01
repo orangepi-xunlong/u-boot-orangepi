@@ -7,79 +7,23 @@
 #ifndef __ASM_RISCV_IO_H
 #define __ASM_RISCV_IO_H
 
-#ifdef __KERNEL__
-
 #include <linux/types.h>
+#include <asm/barrier.h>
 #include <asm/byteorder.h>
 
 static inline void sync(void)
 {
 }
 
-/*
- * Given a physical address and a length, return a virtual address
- * that can be used to access the memory range with the caching
- * properties specified by "flags".
- */
-#define MAP_NOCACHE	(0)
-#define MAP_WRCOMBINE	(0)
-#define MAP_WRBACK	(0)
-#define MAP_WRTHROUGH	(0)
+#define __arch_getb(a)			(*(volatile unsigned char *)(a))
+#define __arch_getw(a)			(*(volatile unsigned short *)(a))
+#define __arch_getl(a)			(*(volatile unsigned int *)(a))
+#define __arch_getq(a)			(*(volatile unsigned long long *)(a))
 
-#ifdef CONFIG_ARCH_MAP_SYSMEM
-static inline void *map_sysmem(phys_addr_t paddr, unsigned long len)
-{
-	if (paddr < PHYS_SDRAM_0_SIZE + PHYS_SDRAM_1_SIZE)
-		paddr = paddr | 0x40000000;
-	return (void *)(uintptr_t)paddr;
-}
-
-static inline void *unmap_sysmem(const void *vaddr)
-{
-	phys_addr_t paddr = (phys_addr_t)vaddr;
-
-	paddr = paddr & ~0x40000000;
-	return (void *)(uintptr_t)paddr;
-}
-
-static inline phys_addr_t map_to_sysmem(const void *ptr)
-{
-	return (phys_addr_t)(uintptr_t)ptr;
-}
-#endif
-
-static inline void *
-map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
-{
-	return (void *)paddr;
-}
-
-/*
- * Take down a mapping set up by map_physmem().
- */
-static inline void unmap_physmem(void *vaddr, unsigned long flags)
-{
-}
-
-static inline phys_addr_t virt_to_phys(void *vaddr)
-{
-	return (phys_addr_t)(vaddr);
-}
-
-/*
- * Generic virtual read/write.  Note that we don't support half-word
- * read/writes.  We define __arch_*[bl] here, and leave __arch_*w
- * to the architecture specific code.
- */
-#define __arch_getb(a)			(*(unsigned char *)(a))
-#define __arch_getw(a)			(*(unsigned short *)(a))
-#define __arch_getl(a)			(*(unsigned int *)(a))
-#define __arch_getq(a)			(*(unsigned long *)(a))
-
-#define __arch_putb(v, a)		(*(unsigned char *)(a) = (v))
-#define __arch_putw(v, a)		(*(unsigned short *)(a) = (v))
-#define __arch_putl(v, a)		(*(unsigned int *)(a) = (v))
-#define __arch_putq(v, a)		(*(unsigned long *)(a) = (v))
+#define __arch_putb(v, a)		(*(volatile unsigned char *)(a) = (v))
+#define __arch_putw(v, a)		(*(volatile unsigned short *)(a) = (v))
+#define __arch_putl(v, a)		(*(volatile unsigned int *)(a) = (v))
+#define __arch_putq(v, a)		(*(volatile unsigned long long *)(a) = (v))
 
 #define __raw_writeb(v, a)		__arch_putb(v, a)
 #define __raw_writew(v, a)		__arch_putw(v, a)
@@ -91,13 +35,13 @@ static inline phys_addr_t virt_to_phys(void *vaddr)
 #define __raw_readl(a)			__arch_getl(a)
 #define __raw_readq(a)			__arch_getq(a)
 
-/*
- * TODO: The kernel offers some more advanced versions of barriers, it might
- * have some advantages to use them instead of the simple one here.
- */
-#define dmb()		__asm__ __volatile__ ("" : : : "memory")
-#define __iormb()	dmb()
-#define __iowmb()	dmb()
+/* adding for cadence_qspi_apb.c */
+#define memcpy_fromio(a, c, l)		memcpy((a), (c), (l))
+#define memcpy_toio(c, a, l)		memcpy((c), (a), (l))
+
+#define dmb()		mb()
+#define __iormb()	rmb()
+#define __iowmb()	wmb()
 
 static inline void writeb(u8 val, volatile void __iomem *addr)
 {
@@ -152,7 +96,7 @@ static inline u32 readl(const volatile void __iomem *addr)
 
 static inline u64 readq(const volatile void __iomem *addr)
 {
-	u32	val;
+	u64	val;
 
 	val = __arch_getq(addr);
 	__iormb();
@@ -236,7 +180,7 @@ static inline u64 readq(const volatile void __iomem *addr)
  *  IO port access primitives
  *  -------------------------
  *
- * The NDS32 doesn't have special IO access instructions just like ARM;
+ * The RISC-V doesn't have special IO access instructions just like ARM;
  * all IO is memory mapped.
  * Note that these are defined to perform little endian accesses
  * only.  Their primary purpose is to access PCI and ISA peripherals.
@@ -379,112 +323,6 @@ static inline void writesl(unsigned int *addr, const void *data, int longlen)
 #define insw_p(port, to, len)		insw(port, to, len)
 #define insl_p(port, to, len)		insl(port, to, len)
 
-/*
- * DMA-consistent mapping functions.  These allocate/free a region of
- * uncached, unwrite-buffered mapped memory space for use with DMA
- * devices.  This is the "generic" version.  The PCI specific version
- * is in pci.h
- */
+#include <asm-generic/io.h>
 
-/*
- * String version of IO memory access ops:
- */
-
-/*
- * If this architecture has PCI memory IO, then define the read/write
- * macros.  These should only be used with the cookie passed from
- * ioremap.
- */
-#ifdef __mem_pci
-
-#define readb(c) ({ unsigned int __v = \
-			__raw_readb(__mem_pci(c)); __v; })
-#define readw(c) ({ unsigned int __v = \
-			le16_to_cpu(__raw_readw(__mem_pci(c))); __v; })
-#define readl(c) ({ unsigned int __v = \
-			le32_to_cpu(__raw_readl(__mem_pci(c))); __v; })
-
-#define writeb(v, c)		__raw_writeb(v, __mem_pci(c))
-#define writew(v, c)		__raw_writew(cpu_to_le16(v), __mem_pci(c))
-#define writel(v, c)		__raw_writel(cpu_to_le32(v), __mem_pci(c))
-
-#define memset_io(c, v, l)	_memset_io(__mem_pci(c), (v), (l))
-#define memcpy_fromio(a, c, l)	_memcpy_fromio((a), __mem_pci(c), (l))
-#define memcpy_toio(c, a, l)	_memcpy_toio(__mem_pci(c), (a), (l))
-
-#define eth_io_copy_and_sum(s, c, l, b) \
-	eth_copy_and_sum((s), __mem_pci(c), (l), (b))
-
-static inline int check_signature(ulong io_addr, const uchar *s, int len)
-{
-	int retval = 0;
-
-	do {
-		if (readb(io_addr) != *s)
-			goto out;
-		io_addr++;
-		s++;
-		len--;
-	} while (len);
-	retval = 1;
-out:
-	return retval;
-}
-#endif	/* __mem_pci */
-
-/*
- * If this architecture has ISA IO, then define the isa_read/isa_write
- * macros.
- */
-#ifdef __mem_isa
-
-#define isa_readb(addr)			__raw_readb(__mem_isa(addr))
-#define isa_readw(addr)			__raw_readw(__mem_isa(addr))
-#define isa_readl(addr)			__raw_readl(__mem_isa(addr))
-#define isa_writeb(val, addr)		__raw_writeb(val, __mem_isa(addr))
-#define isa_writew(val, addr)		__raw_writew(val, __mem_isa(addr))
-#define isa_writel(val, addr)		__raw_writel(val, __mem_isa(addr))
-#define isa_memset_io(a, b, c)		_memset_io(__mem_isa(a), (b), (c))
-#define isa_memcpy_fromio(a, b, c)	_memcpy_fromio((a), __mem_isa(b), (c))
-#define isa_memcpy_toio(a, b, c)	_memcpy_toio(__mem_isa((a)), (b), (c))
-
-#define isa_eth_io_copy_and_sum(a, b, c, d) \
-	eth_copy_and_sum((a), __mem_isa(b), (c), (d))
-
-static inline int
-isa_check_signature(ulong io_addr, const uchar *s, int len)
-{
-	int retval = 0;
-
-	do {
-		if (isa_readb(io_addr) != *s)
-			goto out;
-		io_addr++;
-		s++;
-		len--;
-	} while (len);
-	retval = 1;
-out:
-	return retval;
-}
-
-#else	/* __mem_isa */
-
-#define isa_readb(addr)			(__readwrite_bug("isa_readb"), 0)
-#define isa_readw(addr)			(__readwrite_bug("isa_readw"), 0)
-#define isa_readl(addr)			(__readwrite_bug("isa_readl"), 0)
-#define isa_writeb(val, addr)		__readwrite_bug("isa_writeb")
-#define isa_writew(val, addr)		__readwrite_bug("isa_writew")
-#define isa_writel(val, addr)		__readwrite_bug("isa_writel")
-#define isa_memset_io(a, b, c)		__readwrite_bug("isa_memset_io")
-#define isa_memcpy_fromio(a, b, c)	__readwrite_bug("isa_memcpy_fromio")
-#define isa_memcpy_toio(a, b, c)	__readwrite_bug("isa_memcpy_toio")
-
-#define isa_eth_io_copy_and_sum(a, b, c, d) \
-	__readwrite_bug("isa_eth_io_copy_and_sum")
-
-#define isa_check_signature(io, sig, len)	(0)
-
-#endif	/* __mem_isa */
-#endif	/* __KERNEL__ */
 #endif	/* __ASM_RISCV_IO_H */

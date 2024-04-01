@@ -13,6 +13,10 @@
 
 #include <common.h>
 #include <cli.h>
+#include <command.h>
+#include <env.h>
+#include <log.h>
+#include <asm/bitops.h>
 #include <linux/ctype.h>
 #include <asm/types.h>
 #include <asm/io.h>
@@ -23,9 +27,9 @@
 /* Option parameter Structures */
 struct options_string {
 	const char *option_name;
-	size_t offset;
-	unsigned int size;
-	const char printhex;
+	u32 offset : 9;
+	u32 size : 4;
+	u32 printhex : 1;
 };
 
 static unsigned int picos_to_mhz(unsigned int picos)

@@ -21,7 +21,7 @@
 
 GNU_FPOST_ATTR
 
-#if CONFIG_POST & CONFIG_SYS_POST_FPU
+#if CFG_POST & CFG_SYS_POST_FPU
 
 #include <watchdog.h>
 
@@ -43,7 +43,7 @@ int fpu_post_test (int flags)
 
 	int ret = 0;
 
-	WATCHDOG_RESET ();
+	schedule();
 
 	if (!fpu)
 		fpu_enable ();
@@ -66,9 +66,9 @@ int fpu_post_test (int flags)
 	if (!fpu)
 		fpu_disable ();
 
-	WATCHDOG_RESET ();
+	schedule();
 
 	return ret;
 }
 
-#endif /* CONFIG_POST & CONFIG_SYS_POST_FPU */
+#endif /* CFG_POST & CFG_SYS_POST_FPU */

@@ -5,8 +5,14 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <hwconfig.h>
+#include <image.h>
+#include <init.h>
+#include <log.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -28,7 +34,7 @@ int checkboard(void)
 	struct cpu_type *cpu = gd->arch.cpu;
 	u8 sw;
 
-#if defined(CONFIG_TARGET_T1040D4RDB) || defined(CONFIG_TARGET_T1042D4RDB)
+#if defined(CONFIG_TARGET_T1042D4RDB)
 	printf("Board: %sD4RDB\n", cpu->name);
 #else
 	printf("Board: %sRDB\n", cpu->name);
@@ -56,8 +62,8 @@ int board_early_init_f(void)
 
 int board_early_init_r(void)
 {
-#ifdef CONFIG_SYS_FLASH_BASE
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+#ifdef CFG_SYS_FLASH_BASE
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
@@ -78,7 +84,7 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
@@ -87,7 +93,7 @@ int board_early_init_r(void)
 
 int misc_init_r(void)
 {
-	ccsr_gur_t __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t __iomem *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 srds_s1;
 
 	srds_s1 = in_be32(&gur->rcwsr[4]) >> 24;
@@ -104,27 +110,10 @@ int misc_init_r(void)
 		CPLD_WRITE(misc_ctl_status, CPLD_READ(misc_ctl_status) |
 					 MISC_CTL_SG_SEL | MISC_CTL_AURORA_SEL);
 
-#if defined(CONFIG_TARGET_T1040D4RDB)
-	if (hwconfig("qe-tdm")) {
-		CPLD_WRITE(sfp_ctl_status, CPLD_READ(sfp_ctl_status) |
-			   MISC_MUX_QE_TDM);
-		printf("QECSR : 0x%02x, mux to qe-tdm\n",
-		       CPLD_READ(sfp_ctl_status));
-	}
-	/* Mask all CPLD interrupt sources, except QSGMII interrupts */
-	if (CPLD_READ(sw_ver) < 0x03) {
-		debug("CPLD SW version 0x%02x doesn't support int_mask\n",
-		      CPLD_READ(sw_ver));
-	} else {
-		CPLD_WRITE(int_mask, CPLD_INT_MASK_ALL &
-			   ~(CPLD_INT_MASK_QSGMII1 | CPLD_INT_MASK_QSGMII2));
-	}
-#endif
-
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -147,7 +136,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 #endif
 
 	if (hwconfig("qe-tdm"))

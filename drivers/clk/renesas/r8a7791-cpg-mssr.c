@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Renesas R8A7791 CPG MSSR driver
  *
@@ -6,14 +6,18 @@
  *
  * Based on the following driver from Linux kernel:
  * r8a7791 Clock Pulse Generator / Module Standby and Software Reset
+ *
  * Copyright (C) 2015-2017 Glider bvba
+ *
  * Based on clk-rcar-gen2.c
+ *
  * Copyright (C) 2013 Ideas On Board SPRL
  */
 
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <linux/bitops.h>
 
 #include <dt-bindings/clock/r8a7791-cpg-mssr.h>
 
@@ -54,7 +58,6 @@ static const struct cpg_core_clk r8a7791_core_clks[] = {
 
 	/* Core Clock Outputs */
 	DEF_BASE("z",    R8A7791_CLK_Z,    CLK_TYPE_GEN2_Z,    CLK_PLL0),
-	DEF_BASE("lb",   R8A7791_CLK_LB,   CLK_TYPE_GEN2_LB,   CLK_PLL1),
 	DEF_BASE("adsp", R8A7791_CLK_ADSP, CLK_TYPE_GEN2_ADSP, CLK_PLL1),
 	DEF_BASE("sdh",  R8A7791_CLK_SDH,  CLK_TYPE_GEN2_SDH,  CLK_PLL1),
 	DEF_BASE("sd0",  R8A7791_CLK_SD0,  CLK_TYPE_GEN2_SD0,  CLK_PLL1),
@@ -67,6 +70,7 @@ static const struct cpg_core_clk r8a7791_core_clks[] = {
 	DEF_FIXED("hp",     R8A7791_CLK_HP,    CLK_PLL1,         12, 1),
 	DEF_FIXED("i",      R8A7791_CLK_I,     CLK_PLL1,          2, 1),
 	DEF_FIXED("b",      R8A7791_CLK_B,     CLK_PLL1,         12, 1),
+	DEF_FIXED("lb",     R8A7791_CLK_LB,    CLK_PLL1,         24, 1),
 	DEF_FIXED("p",      R8A7791_CLK_P,     CLK_PLL1,         24, 1),
 	DEF_FIXED("cl",     R8A7791_CLK_CL,    CLK_PLL1,         48, 1),
 	DEF_FIXED("m2",     R8A7791_CLK_M2,    CLK_PLL1,          8, 1),
@@ -102,7 +106,7 @@ static const struct mssr_mod_clk r8a7791_mod_clks[] = {
 	DEF_MOD("tmu0",			 125,	R8A7791_CLK_CP),
 	DEF_MOD("vsp1du1",		 127,	R8A7791_CLK_ZS),
 	DEF_MOD("vsp1du0",		 128,	R8A7791_CLK_ZS),
-	DEF_MOD("vsp1-sy",		 131,	R8A7791_CLK_ZS),
+	DEF_MOD("vsps",			 131,	R8A7791_CLK_ZS),
 	DEF_MOD("scifa2",		 202,	R8A7791_CLK_MP),
 	DEF_MOD("scifa1",		 203,	R8A7791_CLK_MP),
 	DEF_MOD("scifa0",		 204,	R8A7791_CLK_MP),
@@ -125,6 +129,7 @@ static const struct mssr_mod_clk r8a7791_mod_clks[] = {
 	DEF_MOD("cmt1",			 329,	R8A7791_CLK_R),
 	DEF_MOD("usbhs-dmac0",		 330,	R8A7791_CLK_HP),
 	DEF_MOD("usbhs-dmac1",		 331,	R8A7791_CLK_HP),
+	DEF_MOD("rwdt",			 402,	R8A7791_CLK_R),
 	DEF_MOD("irqc",			 407,	R8A7791_CLK_CP),
 	DEF_MOD("intc-sys",		 408,	R8A7791_CLK_ZS),
 	DEF_MOD("audio-dmac1",		 501,	R8A7791_CLK_HP),
@@ -240,7 +245,7 @@ static const struct mstp_stop_table r8a7791_mstp_table[] = {
 	{ 0x800001C4, 0x180, 0x800001C4, 0x0 },
 	{ 0x44C00046, 0x0, 0x44C00046, 0x0 },
 	{ 0x0, 0x0, 0x0, 0x0 },	/* SMSTP6 is not present on Gen2 */
-	{ 0x05BFE618, 0x200000, 0x05BFE618, 0x0 },
+	{ 0x25BFE618, 0x200000, 0x25BFE618, 0x0 },
 	{ 0x40C0FE85, 0x0, 0x40C0FE85, 0x0 },
 	{ 0xFF979FFF, 0x0, 0xFF979FFF, 0x0 },
 	{ 0xFFFEFFE0, 0x0, 0xFFFEFFE0, 0x0 },
@@ -260,6 +265,7 @@ static const struct cpg_mssr_info r8a7791_cpg_mssr_info = {
 	.mstp_table		= r8a7791_mstp_table,
 	.mstp_table_size	= ARRAY_SIZE(r8a7791_mstp_table),
 	.reset_node		= "renesas,r8a7791-rst",
+	.reset_modemr_offset	= CPG_RST_MODEMR,
 	.extal_usb_node		= "usb_extal",
 	.mod_clk_base		= MOD_CLK_BASE,
 	.clk_extal_id		= CLK_EXTAL,
@@ -284,7 +290,7 @@ U_BOOT_DRIVER(clk_r8a7791) = {
 	.name		= "clk_r8a7791",
 	.id		= UCLASS_CLK,
 	.of_match	= r8a7791_clk_ids,
-	.priv_auto_alloc_size = sizeof(struct gen2_clk_priv),
+	.priv_auto	= sizeof(struct gen2_clk_priv),
 	.ops		= &gen2_clk_ops,
 	.probe		= gen2_clk_probe,
 	.remove		= gen2_clk_remove,

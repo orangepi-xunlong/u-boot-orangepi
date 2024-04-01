@@ -300,7 +300,7 @@ struct omap_sys_ctrl_regs const omap5_ctrl = {
 	.control_std_fuse_die_id_1		= 0x4A002208,
 	.control_std_fuse_die_id_2		= 0x4A00220C,
 	.control_std_fuse_die_id_3		= 0x4A002210,
-	.control_phy_power_usb 			= 0x4A002370,
+	.control_phy_power_usb			= 0x4A002370,
 	.control_phy_power_sata			= 0x4A002374,
 	.control_padconf_core_base		= 0x4A002800,
 	.control_paconf_global			= 0x4A002DA0,
@@ -832,7 +832,10 @@ struct prcm_regs const dra7xx_prcm = {
 	/* cm IPU */
 	.cm_ipu_clkstctrl			= 0x4a005540,
 	.cm_ipu_i2c5_clkctrl			= 0x4a005578,
-
+	.cm_ipu1_clkstctrl			= 0x4a005500,
+	.cm_ipu1_ipu1_clkctrl			= 0x4a005520,
+	.cm_ipu2_clkstctrl			= 0x4a008900,
+	.cm_ipu2_ipu2_clkctrl			= 0x4a008920,
 	/* prm irqstatus regs */
 	.prm_irqstatus_mpu			= 0x4ae06010,
 	.prm_irqstatus_mpu_2			= 0x4ae06014,
@@ -1013,6 +1016,10 @@ struct prcm_regs const dra7xx_prcm = {
 	/*l3main1 edma*/
 	.cm_l3main1_tptc1_clkctrl               = 0x4a008778,
 	.cm_l3main1_tptc2_clkctrl               = 0x4a008780,
+
+	/* cm1.abe */
+	.cm1_abe_timer7_clkctrl = 0x4a005568,
+	.cm1_abe_timer8_clkctrl = 0x4a005570,
 };
 
 void clrset_spare_register(u8 spare_type, u32 clear_bits, u32 set_bits)

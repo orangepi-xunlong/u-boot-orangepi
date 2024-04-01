@@ -5,8 +5,10 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/unaligned.h>
+#include <linux/delay.h>
 #include <linux/mtd/rawnand.h>
 #include "denali.h"
 
@@ -23,9 +25,9 @@
 #define BANK(x) ((x) << 24)
 
 static void __iomem *denali_flash_mem =
-			(void __iomem *)CONFIG_SYS_NAND_DATA_BASE;
+			(void __iomem *)CFG_SYS_NAND_DATA_BASE;
 static void __iomem *denali_flash_reg =
-			(void __iomem *)CONFIG_SYS_NAND_REGS_BASE;
+			(void __iomem *)CFG_SYS_NAND_REGS_BASE;
 
 static const int flash_bank;
 static int page_size, oob_size, pages_per_block;
@@ -173,6 +175,13 @@ void nand_init(void)
 	page_size = readl(denali_flash_reg + DEVICE_MAIN_AREA_SIZE);
 	oob_size = readl(denali_flash_reg + DEVICE_SPARE_AREA_SIZE);
 	pages_per_block = readl(denali_flash_reg + PAGES_PER_BLOCK);
+
+	/* Do as denali_hw_init() does. */
+	writel(CONFIG_NAND_DENALI_SPARE_AREA_SKIP_BYTES,
+	       denali_flash_reg + SPARE_AREA_SKIP_BYTES);
+	writel(0x0F, denali_flash_reg + RB_PIN_ENABLED);
+	writel(CHIP_EN_DONT_CARE__FLAG, denali_flash_reg + CHIP_ENABLE_DONT_CARE);
+	writel(0xffff, denali_flash_reg + SPARE_AREA_MARKER);
 }
 
 int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)

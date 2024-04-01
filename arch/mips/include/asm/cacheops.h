@@ -8,6 +8,8 @@
 #ifndef	__ASM_CACHEOPS_H
 #define	__ASM_CACHEOPS_H
 
+#include <asm/cache.h>
+
 #ifndef __ASSEMBLY__
 
 static inline void mips_cache(int op, const volatile void *addr)
@@ -19,6 +21,25 @@ static inline void mips_cache(int op, const volatile void *addr)
 #endif
 }
 
+#define MIPS32_WHICH_ICACHE                    0x0
+#define MIPS32_FETCH_AND_LOCK                  0x7
+
+#define ICACHE_LOAD_LOCK (MIPS32_WHICH_ICACHE | (MIPS32_FETCH_AND_LOCK << 2))
+
+/* Prefetch and lock instructions into cache */
+static inline void icache_lock(void *func, size_t len)
+{
+	int i, lines = ((len - 1) / ARCH_DMA_MINALIGN) + 1;
+
+	for (i = 0; i < lines; i++) {
+		asm volatile (" cache %0, %1(%2)"
+			      : /* No Output */
+			      : "I" ICACHE_LOAD_LOCK,
+				"n" (i * ARCH_DMA_MINALIGN),
+				"r" (func)
+			      : /* No Clobbers */);
+	}
+}
 #endif /* !__ASSEMBLY__ */
 
 /*

@@ -7,6 +7,7 @@
 #define _BCM2835_MBOX_H
 
 #include <linux/compiler.h>
+#include <asm/arch/base.h>
 
 /*
  * The BCM2835 SoC contains (at least) two CPUs; the VideoCore (a/k/a "GPU")
@@ -37,18 +38,18 @@
 
 /* Raw mailbox HW */
 
-#ifndef CONFIG_BCM2835
-#define BCM2835_MBOX_PHYSADDR	0x3f00b880
-#else
-#define BCM2835_MBOX_PHYSADDR	0x2000b880
-#endif
+#define BCM2835_MBOX_PHYSADDR ({ BUG_ON(!rpi_bcm283x_base); \
+				 rpi_bcm283x_base + 0x0000b880; })
 
 struct bcm2835_mbox_regs {
 	u32 read;
 	u32 rsvd0[5];
-	u32 status;
-	u32 config;
+	u32 mail0_status;
+	u32 mail0_config;
 	u32 write;
+	u32 rsvd1[5];
+	u32 mail1_status;
+	u32 mail1_config;
 };
 
 #define BCM2835_MBOX_STATUS_WR_FULL	0x80000000
@@ -223,6 +224,8 @@ struct bcm2835_mbox_tag_set_power_state {
 };
 
 #define BCM2835_MBOX_TAG_GET_CLOCK_RATE	0x00030002
+#define BCM2835_MBOX_TAG_GET_MAX_CLOCK_RATE	0x00030004
+#define BCM2835_MBOX_TAG_GET_MIN_CLOCK_RATE	0x00030007
 
 #define BCM2835_MBOX_CLOCK_ID_EMMC	1
 #define BCM2835_MBOX_CLOCK_ID_UART	2
@@ -234,6 +237,7 @@ struct bcm2835_mbox_tag_set_power_state {
 #define BCM2835_MBOX_CLOCK_ID_SDRAM	8
 #define BCM2835_MBOX_CLOCK_ID_PIXEL	9
 #define BCM2835_MBOX_CLOCK_ID_PWM	10
+#define BCM2835_MBOX_CLOCK_ID_EMMC2	12
 
 struct bcm2835_mbox_tag_get_clock_rate {
 	struct bcm2835_mbox_tag_hdr tag_hdr;
@@ -244,6 +248,22 @@ struct bcm2835_mbox_tag_get_clock_rate {
 		struct {
 			u32 clock_id;
 			u32 rate_hz;
+		} resp;
+	} body;
+};
+
+#define BCM2835_MBOX_TAG_SET_SDHOST_CLOCK	0x00038042
+
+struct bcm2835_mbox_tag_set_sdhost_clock {
+	struct bcm2835_mbox_tag_hdr tag_hdr;
+	union {
+		struct {
+			u32 rate_hz;
+		} req;
+		struct {
+			u32 rate_hz;
+			u32 rate_1;
+			u32 rate_2;
 		} resp;
 	} body;
 };
@@ -348,7 +368,7 @@ struct bcm2835_mbox_tag_depth {
 };
 
 #define BCM2835_MBOX_TAG_GET_PIXEL_ORDER	0x00040006
-#define BCM2835_MBOX_TAG_TEST_PIXEL_ORDER	0x00044005
+#define BCM2835_MBOX_TAG_TEST_PIXEL_ORDER	0x00044006
 #define BCM2835_MBOX_TAG_SET_PIXEL_ORDER	0x00048006
 
 #define BCM2835_MBOX_PIXEL_ORDER_BGR		0
@@ -485,6 +505,19 @@ struct bcm2835_mbox_tag_set_palette {
 		} req;
 		struct {
 			u32 is_invalid;
+		} resp;
+	} body;
+};
+
+#define BCM2835_MBOX_TAG_NOTIFY_XHCI_RESET          0x00030058
+
+struct bcm2835_mbox_tag_pci_dev_addr {
+	struct bcm2835_mbox_tag_hdr tag_hdr;
+	union {
+		struct {
+			u32 dev_addr;
+		} req;
+		struct {
 		} resp;
 	} body;
 };

@@ -7,11 +7,16 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/clk_rst.h>
 #include <spi.h>
 #include <fdtdec.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include "tegra_spi.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -89,13 +94,13 @@ struct tegra_spi_slave {
 	struct tegra30_spi_priv *ctrl;
 };
 
-static int tegra30_spi_ofdata_to_platdata(struct udevice *bus)
+static int tegra30_spi_of_to_plat(struct udevice *bus)
 {
-	struct tegra_spi_platdata *plat = bus->platdata;
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 
-	plat->base = devfdt_get_addr(bus);
+	plat->base = dev_read_addr(bus);
 	plat->periph_id = clock_decode_periph_id(bus);
 
 	if (plat->periph_id == PERIPH_ID_NONE) {
@@ -118,7 +123,7 @@ static int tegra30_spi_ofdata_to_platdata(struct udevice *bus)
 
 static int tegra30_spi_probe(struct udevice *bus)
 {
-	struct tegra_spi_platdata *plat = dev_get_platdata(bus);
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 	struct tegra30_spi_priv *priv = dev_get_priv(bus);
 
 	priv->regs = (struct spi_regs *)plat->base;
@@ -163,7 +168,7 @@ static int tegra30_spi_claim_bus(struct udevice *dev)
 static void spi_cs_activate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra_spi_plat *pdata = dev_get_plat(bus);
 	struct tegra30_spi_priv *priv = dev_get_priv(bus);
 
 	/* If it's too soon to do another transaction, wait */
@@ -182,7 +187,7 @@ static void spi_cs_activate(struct udevice *dev)
 static void spi_cs_deactivate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct tegra_spi_platdata *pdata = dev_get_platdata(bus);
+	struct tegra_spi_plat *pdata = dev_get_plat(bus);
 	struct tegra30_spi_priv *priv = dev_get_priv(bus);
 
 	/* CS is negated on Tegra, so drive a 0 to get a 1 */
@@ -203,16 +208,14 @@ static int tegra30_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	u32 reg, tmpdout, tmpdin = 0;
 	const u8 *dout = data_out;
 	u8 *din = data_in;
-	int num_bytes;
-	int ret;
+	int num_bytes, overflow;
+	int ret = 0;
 
 	debug("%s: slave %u:%u dout %p din %p bitlen %u\n",
-	      __func__, bus->seq, spi_chip_select(dev), dout, din, bitlen);
-	if (bitlen % 8)
-		return -1;
-	num_bytes = bitlen / 8;
+	      __func__, dev_seq(bus), spi_chip_select(dev), dout, din, bitlen);
 
-	ret = 0;
+	num_bytes = DIV_ROUND_UP(bitlen, 8);
+	overflow = bitlen % 8;
 
 	reg = readl(&regs->status);
 	writel(reg, &regs->status);	/* Clear all SPI events via R/W */
@@ -249,8 +252,13 @@ static int tegra30_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 		num_bytes -= bytes;
 
-		clrsetbits_le32(&regs->command, SLINK_CMD_BIT_LENGTH_MASK,
-				bytes * 8 - 1);
+		if (overflow && !num_bytes)
+			clrsetbits_le32(&regs->command, SLINK_CMD_BIT_LENGTH_MASK,
+					(bytes - 1) * 8 + overflow - 1);
+		else
+			clrsetbits_le32(&regs->command, SLINK_CMD_BIT_LENGTH_MASK,
+					bytes * 8 - 1);
+
 		writel(tmpdout, &regs->tx_fifo);
 		setbits_le32(&regs->command, SLINK_CMD_GO);
 
@@ -310,7 +318,7 @@ static int tegra30_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 static int tegra30_spi_set_speed(struct udevice *bus, uint speed)
 {
-	struct tegra_spi_platdata *plat = bus->platdata;
+	struct tegra_spi_plat *plat = dev_get_plat(bus);
 	struct tegra30_spi_priv *priv = dev_get_priv(bus);
 
 	if (speed > plat->frequency)
@@ -368,8 +376,8 @@ U_BOOT_DRIVER(tegra30_spi) = {
 	.id	= UCLASS_SPI,
 	.of_match = tegra30_spi_ids,
 	.ops	= &tegra30_spi_ops,
-	.ofdata_to_platdata = tegra30_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct tegra_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct tegra30_spi_priv),
+	.of_to_plat = tegra30_spi_of_to_plat,
+	.plat_auto	= sizeof(struct tegra_spi_plat),
+	.priv_auto	= sizeof(struct tegra30_spi_priv),
 	.probe	= tegra30_spi_probe,
 };

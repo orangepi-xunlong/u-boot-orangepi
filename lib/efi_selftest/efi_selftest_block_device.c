@@ -11,10 +11,13 @@
  * ConnectController is used to setup partitions and to install the simple
  * file protocol.
  * A known file is read from the file system and verified.
+ * The same block is read via the EFI_BLOCK_IO_PROTOCOL and compared to the file
+ * contents.
  */
 
 #include <efi_selftest.h>
 #include "efi_selftest_disk_image.h"
+#include <asm/cache.h>
 
 /* Block size of compressed disk image */
 #define COMPRESSED_DISK_IMAGE_BLOCK_SIZE 8
@@ -24,8 +27,8 @@
 
 static struct efi_boot_services *boottime;
 
-static const efi_guid_t block_io_protocol_guid = BLOCK_IO_GUID;
-static const efi_guid_t guid_device_path = DEVICE_PATH_GUID;
+static const efi_guid_t block_io_protocol_guid = EFI_BLOCK_IO_PROTOCOL_GUID;
+static const efi_guid_t guid_device_path = EFI_DEVICE_PATH_PROTOCOL_GUID;
 static const efi_guid_t guid_simple_file_system_protocol =
 					EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 static const efi_guid_t guid_file_system_info = EFI_FILE_SYSTEM_INFO_GUID;
@@ -56,7 +59,7 @@ static u8 *image;
  * Reset service of the block IO protocol.
  *
  * @this	block IO protocol
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t EFIAPI reset(
 			struct efi_block_io *this,
@@ -73,7 +76,7 @@ static efi_status_t EFIAPI reset(
  * @lba		start of the read in logical blocks
  * @buffer_size	number of bytes to read
  * @buffer	target buffer
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t EFIAPI read_blocks(
 			struct efi_block_io *this, u32 media_id, u64 lba,
@@ -98,7 +101,7 @@ static efi_status_t EFIAPI read_blocks(
  * @lba		start of the write in logical blocks
  * @buffer_size	number of bytes to read
  * @buffer	source buffer
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t EFIAPI write_blocks(
 			struct efi_block_io *this, u32 media_id, u64 lba,
@@ -119,7 +122,7 @@ static efi_status_t EFIAPI write_blocks(
  * Flush service of the block IO protocol.
  *
  * @this	block IO protocol
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t EFIAPI flush_blocks(struct efi_block_io *this)
 {
@@ -130,7 +133,7 @@ static efi_status_t EFIAPI flush_blocks(struct efi_block_io *this)
  * Decompress the disk image.
  *
  * @image	decompressed disk image
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t decompress(u8 **image)
 {
@@ -179,7 +182,7 @@ static efi_handle_t disk_handle;
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -193,7 +196,7 @@ static int setup(const efi_handle_t handle,
 	decompress(&image);
 
 	block_io.media->block_size = 1 << LB_BLOCK_SIZE;
-	block_io.media->last_block = img.length >> LB_BLOCK_SIZE;
+	block_io.media->last_block = (img.length >> LB_BLOCK_SIZE) - 1;
 
 	ret = boottime->install_protocol_interface(
 				&disk_handle, &block_io_protocol_guid,
@@ -239,7 +242,7 @@ static int setup(const efi_handle_t handle,
 /*
  * Tear down unit test.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int teardown(void)
 {
@@ -257,14 +260,14 @@ static int teardown(void)
 				disk_handle, &block_io_protocol_guid,
 				&block_io);
 		if (r != EFI_SUCCESS) {
-			efi_st_todo(
+			efi_st_error(
 				"Failed to uninstall block I/O protocol\n");
-			return EFI_ST_SUCCESS;
+			return EFI_ST_FAILURE;
 		}
 	}
 
 	if (image) {
-		r = efi_free_pool(image);
+		r = boottime->free_pool(image);
 		if (r != EFI_SUCCESS) {
 			efi_st_error("Failed to free image\n");
 			return EFI_ST_FAILURE;
@@ -277,7 +280,7 @@ static int teardown(void)
  * Get length of device path without end tag.
  *
  * @dp		device path
- * @return	length of device path in bytes
+ * Return:	length of device path in bytes
  */
 static efi_uintn_t dp_size(struct efi_device_path *dp)
 {
@@ -291,7 +294,7 @@ static efi_uintn_t dp_size(struct efi_device_path *dp)
 /*
  * Execute unit test.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(void)
 {
@@ -300,6 +303,7 @@ static int execute(void)
 	efi_handle_t *handles;
 	efi_handle_t handle_partition = NULL;
 	struct efi_device_path *dp_partition;
+	struct efi_block_io *block_io_protocol;
 	struct efi_simple_file_system_protocol *file_system;
 	struct efi_file_handle *root, *file;
 	struct {
@@ -308,12 +312,18 @@ static int execute(void)
 	} system_info;
 	efi_uintn_t buf_size;
 	char buf[16] __aligned(ARCH_DMA_MINALIGN);
+	u32 part1_size;
+	u64 pos;
+	char block_io_aligned[1 << LB_BLOCK_SIZE] __aligned(1 << LB_BLOCK_SIZE);
 
+	/* Connect controller to virtual disk */
 	ret = boottime->connect_controller(disk_handle, NULL, NULL, 1);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Failed to connect controller\n");
 		return EFI_ST_FAILURE;
 	}
+
+	/* Get the handle for the partition */
 	ret = boottime->locate_handle_buffer(
 				BY_PROTOCOL, &guid_device_path, NULL,
 				&no_handles, &handles);
@@ -333,7 +343,7 @@ static int execute(void)
 		}
 		if (len >= dp_size(dp_partition))
 			continue;
-		if (efi_st_memcmp(dp, dp_partition, len))
+		if (memcmp(dp, dp_partition, len))
 			continue;
 		handle_partition = handles[i];
 		break;
@@ -347,6 +357,25 @@ static int execute(void)
 		efi_st_error("Partition handle not found\n");
 		return EFI_ST_FAILURE;
 	}
+
+	/* Open the block_io_protocol */
+	ret = boottime->open_protocol(handle_partition,
+				      &block_io_protocol_guid,
+				      (void **)&block_io_protocol, NULL, NULL,
+				      EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to open block IO protocol\n");
+		return EFI_ST_FAILURE;
+	}
+	/* Get size of first MBR partition */
+	memcpy(&part1_size, image + 0x1ca, sizeof(u32));
+	if (block_io_protocol->media->last_block != part1_size - 1) {
+		efi_st_error("Last LBA of partition %x, expected %x\n",
+			     (unsigned int)block_io_protocol->media->last_block,
+			     part1_size - 1);
+		return EFI_ST_FAILURE;
+	}
+	/* Open the simple file system protocol */
 	ret = boottime->open_protocol(handle_partition,
 				      &guid_simple_file_system_protocol,
 				      (void **)&file_system, NULL, NULL,
@@ -355,6 +384,8 @@ static int execute(void)
 		efi_st_error("Failed to open simple file system protocol\n");
 		return EFI_ST_FAILURE;
 	}
+
+	/* Open volume */
 	ret = file_system->open_volume(file_system, &root);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Failed to open volume\n");
@@ -377,7 +408,109 @@ static int execute(void)
 			"Wrong volume label '%ps', expected 'U-BOOT TEST'\n",
 			system_info.info.volume_label);
 	}
-	ret = root->open(root, &file, (s16 *)L"hello.txt", EFI_FILE_MODE_READ,
+
+	/* Read file */
+	ret = root->open(root, &file, u"hello.txt", EFI_FILE_MODE_READ,
+			 0);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to open file\n");
+		return EFI_ST_FAILURE;
+	}
+	ret = file->setpos(file, 1);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("SetPosition failed\n");
+		return EFI_ST_FAILURE;
+	}
+	buf_size = sizeof(buf) - 1;
+	ret = file->read(file, &buf_size, buf);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to read file\n");
+		return EFI_ST_FAILURE;
+	}
+	if (buf_size != 12) {
+		efi_st_error("Wrong number of bytes read: %u\n",
+			     (unsigned int)buf_size);
+		return EFI_ST_FAILURE;
+	}
+	if (memcmp(buf, "ello world!", 11)) {
+		efi_st_error("Unexpected file content\n");
+		return EFI_ST_FAILURE;
+	}
+	ret = file->getpos(file, &pos);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("GetPosition failed\n");
+		return EFI_ST_FAILURE;
+	}
+	if (pos != 13) {
+		efi_st_error("GetPosition returned %u, expected 13\n",
+			     (unsigned int)pos);
+		return EFI_ST_FAILURE;
+	}
+	ret = file->close(file);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to close file\n");
+		return EFI_ST_FAILURE;
+	}
+
+	/*
+	 * Test that read_blocks() can read same file data.
+	 *
+	 * In the test data, the partition starts at block 1 and the file
+	 * hello.txt with the content 'Hello world!' is located at 0x5000
+	 * of the disk. Here we read block 0x27 (offset 0x4e00 of the
+	 * partition) and expect the string 'Hello world!' to be at the
+	 * start of block.
+	 */
+	ret = block_io_protocol->read_blocks(block_io_protocol,
+				      block_io_protocol->media->media_id,
+				      (0x5000 >> LB_BLOCK_SIZE) - 1,
+				      block_io_protocol->media->block_size,
+				      block_io_aligned);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("ReadBlocks failed\n");
+		return EFI_ST_FAILURE;
+	}
+
+	if (memcmp(block_io_aligned + 1, buf, 11)) {
+		efi_st_error("Unexpected block content\n");
+		return EFI_ST_FAILURE;
+	}
+
+#ifdef CONFIG_FAT_WRITE
+	/* Write file */
+	ret = root->open(root, &file, u"u-boot.txt", EFI_FILE_MODE_READ |
+			 EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to open file\n");
+		return EFI_ST_FAILURE;
+	}
+	buf_size = 7;
+	boottime->set_mem(buf, sizeof(buf), 0);
+	boottime->copy_mem(buf, "U-Boot", buf_size);
+	ret = file->write(file, &buf_size, buf);
+	if (ret != EFI_SUCCESS || buf_size != 7) {
+		efi_st_error("Failed to write file\n");
+		return EFI_ST_FAILURE;
+	}
+	ret = file->getpos(file, &pos);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("GetPosition failed\n");
+		return EFI_ST_FAILURE;
+	}
+	if (pos != 7) {
+		efi_st_error("GetPosition returned %u, expected 7\n",
+			     (unsigned int)pos);
+		return EFI_ST_FAILURE;
+	}
+	ret = file->close(file);
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Failed to close file\n");
+		return EFI_ST_FAILURE;
+	}
+
+	/* Verify file */
+	boottime->set_mem(buf, sizeof(buf), 0);
+	ret = root->open(root, &file, u"u-boot.txt", EFI_FILE_MODE_READ,
 			 0);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Failed to open file\n");
@@ -389,8 +522,13 @@ static int execute(void)
 		efi_st_error("Failed to read file\n");
 		return EFI_ST_FAILURE;
 	}
-	if (efi_st_memcmp(buf, "Hello world!", 12)) {
-		efi_st_error("Unexpected file content\n");
+	if (buf_size != 7) {
+		efi_st_error("Wrong number of bytes read: %u\n",
+			     (unsigned int)buf_size);
+		return EFI_ST_FAILURE;
+	}
+	if (memcmp(buf, "U-Boot", 7)) {
+		efi_st_error("Unexpected file content %s\n", buf);
 		return EFI_ST_FAILURE;
 	}
 	ret = file->close(file);
@@ -398,6 +536,11 @@ static int execute(void)
 		efi_st_error("Failed to close file\n");
 		return EFI_ST_FAILURE;
 	}
+#else
+	efi_st_todo("CONFIG_FAT_WRITE is not set\n");
+#endif /* CONFIG_FAT_WRITE */
+
+	/* Close volume */
 	ret = root->close(root);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Failed to close volume\n");

@@ -23,7 +23,6 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc8xx.h>
-#include <version.h>
 
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
@@ -62,9 +61,6 @@
  */
 	.text
 	.long	0x27051956		/* U-Boot Magic Number			*/
-	.globl	version_string
-version_string:
-	.ascii U_BOOT_VERSION_STRING, "\0"
 
 	. = EXC_OFF_SYS_RESET
 	.globl	_start
@@ -144,13 +140,17 @@ in_flash:
 	ori	r2, r2, CONFIG_SYS_DER@l
 	mtspr	DER, r2
 
-	/* set up the stack in internal DPRAM */
-	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@h
-	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)@l
+	/* set up the stack on top of internal DPRAM */
+	lis	r3, CFG_SYS_INIT_SP@h
+	ori	r3, r3, CFG_SYS_INIT_SP@l
+	stw	r0, -4(r3)
+	stw	r0, -8(r3)
 	addi	r1, r3, -8
 
+	lis	r3, (CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_SIZE)@h
+	ori	r3, r3, (CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_SIZE)@l
+
 	bl	board_init_f_alloc_reserve
-	addi	r1, r3, -8
 
 	/* Zeroise the CPM dpram */
 	lis	r4, CONFIG_SYS_IMMR@h
@@ -173,6 +173,7 @@ in_flash:
 	lis	r3, CONFIG_SYS_IMMR@h
 	bl	cpu_init_f	/* run low-level CPU init code     (from Flash)	*/
 
+	li	r3, 0		/* clear boot_flag for calling board_init_f */
 	bl	board_init_f	/* run 1st part of board init code (from Flash) */
 
 	/* NOTREACHED - board_init_f() does not return */
@@ -320,7 +321,7 @@ int_return:
 /*------------------------------------------------------------------------------*/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.

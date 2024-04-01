@@ -10,8 +10,8 @@ Device (PCI0)
     Name (_HID, EISAID("PNP0A08"))    /* PCIe */
     Name (_CID, EISAID("PNP0A03"))    /* PCI */
 
-    Name (_ADR, 0)
-    Name (_BBN, 0)
+    Name (_UID, Zero)
+    Name (_BBN, Zero)
 
     Name (MCRS, ResourceTemplate()
     {
@@ -66,6 +66,23 @@ Device (PCI0)
         Return (MCRS)
     }
 
+    /* Device Resource Consumption */
+    Device (PDRC)
+    {
+        Name (_HID, EISAID("PNP0C02"))
+        Name (_UID, One)
+
+        Name (PDRS, ResourceTemplate()
+        {
+            Memory32Fixed(ReadWrite, MCFG_BASE_ADDRESS, MCFG_BASE_SIZE)
+        })
+
+        Method (_CRS, 0, Serialized)
+        {
+            Return (PDRS)
+        }
+    }
+
     Method (_OSC, 4)
     {
         /* Check for proper GUID */
@@ -80,6 +97,35 @@ Device (PCI0)
         }
     }
 
+    Device (SDHB)
+    {
+        Name (_ADR, 0x00010002)
+        Name (_DEP, Package ()
+        {
+            GPIO
+        })
+
+        Name (RBUF, ResourceTemplate()
+        {
+            GpioInt(Edge, ActiveBoth, SharedAndWake, PullNone, 10000,
+                "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 77 }
+        })
+
+        Method (_CRS, 0, Serialized)
+        {
+            Return (RBUF)
+        }
+
+        Name (_DSD, Package () {
+            ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"),
+            Package () {
+                Package () { "cd-gpios", Package () { ^SDHB, 0, 0, 0 } },
+            }
+        })
+
+        Name (_STA, STA_VISIBLE)
+    }
+
     Device (SDHC)
     {
         Name (_ADR, 0x00010003)
@@ -89,10 +135,7 @@ Device (PCI0)
         })
         Name (PSTS, Zero)
 
-        Method (_STA)
-        {
-            Return (STA_VISIBLE)
-        }
+        Name (_STA, STA_VISIBLE)
 
         Method (_PS3, 0, NotSerialized)
         {
@@ -119,10 +162,7 @@ Device (PCI0)
                 GPIO
             })
 
-            Method (_STA)
-            {
-                Return (STA_VISIBLE)
-            }
+            Name (_STA, STA_VISIBLE)
 
             Method (_RMV, 0, NotSerialized)
             {
@@ -154,10 +194,8 @@ Device (PCI0)
         Device (BRC2)
         {
             Name (_ADR, 0x02)
-            Method (_STA, 0, NotSerialized)
-            {
-                Return (STA_VISIBLE)
-            }
+
+            Name (_STA, STA_VISIBLE)
 
             Method (_RMV, 0, NotSerialized)
             {
@@ -179,6 +217,9 @@ Device (PCI0)
                 "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 112 }
             GpioIo(Exclusive, PullUp, 0, 0, IoRestrictionOutputOnly,
                 "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 113 }
+
+            FixedDMA(0x000d, 0x0002, Width32bit, )
+            FixedDMA(0x000c, 0x0003, Width32bit, )
         })
 
         Method (_CRS, 0, NotSerialized)
@@ -205,30 +246,69 @@ Device (PCI0)
             }
         })
 
-        Method (_STA, 0, NotSerialized)
-        {
-            Return (STA_VISIBLE)
-        }
+        Name (_STA, STA_VISIBLE)
     }
 
     Device (I2C1)
     {
         Name (_ADR, 0x00080000)
 
-        Method (_STA, 0, NotSerialized)
+        Name (_STA, STA_VISIBLE)
+
+        Name (SSCN, Package ()
         {
-            Return (STA_VISIBLE)
+            0x02F8, 0x037B, Zero,
+        })
+
+        Name (FMCN, Package ()
+        {
+            0x0087, 0x010A, Zero,
+        })
+
+        Name (HSCN, Package ()
+        {
+            0x0008, 0x0020, Zero,
+        })
+
+        Name (RBUF, ResourceTemplate()
+        {
+            FixedDMA(0x0009, 0x0000, Width32bit, )
+            FixedDMA(0x0008, 0x0001, Width32bit, )
+        })
+
+        Method (_CRS, 0, NotSerialized)
+        {
+            Return (RBUF)
         }
+    }
+
+    Device (I2C6)
+    {
+        Name (_ADR, 0x00090001)
+
+        Name (_STA, STA_VISIBLE)
+
+        Name (SSCN, Package ()
+        {
+            0x02F8, 0x037B, Zero,
+        })
+
+        Name (FMCN, Package ()
+        {
+            0x0087, 0x010A, Zero,
+        })
+
+        Name (HSCN, Package ()
+        {
+            0x0008, 0x0020, Zero,
+        })
     }
 
     Device (GPIO)
     {
         Name (_ADR, 0x000c0000)
 
-        Method (_STA)
-        {
-            Return (STA_VISIBLE)
-        }
+        Name (_STA, STA_VISIBLE)
 
         Name (AVBL, Zero)
         Method (_REG, 2, NotSerialized)
@@ -250,24 +330,62 @@ Device (PCI0)
         }
     }
 
+    Device (DWC3)
+    {
+        Name (_ADR, 0x00110000)
+        Name (_DEP, Package ()
+        {
+            ^IPC1.PMIC
+        })
+
+        Name (_STA, STA_VISIBLE)
+
+        Device (RHUB)
+        {
+            Name (_ADR, Zero)
+
+            Name (PCKG, Package () {
+                Buffer (0x14) {}
+            })
+
+            /* GPLD: Generate Port Location Data (PLD) */
+            Method (GPLD, 1, Serialized) {
+                /* REV: Revision 0x02 for ACPI 5.0 */
+                CreateField (DerefOf (Index (PCKG, Zero)), Zero, 0x07, REV)
+                Store (0x0002, REV)
+
+                /* VISI: Port visibility to user per port */
+                CreateField (DerefOf (Index (PCKG, Zero)), 0x40, One, VISI)
+                Store (Arg0, VISI)
+
+                /* VOFF: Vertical offset is not supplied */
+                CreateField (DerefOf (Index (PCKG, Zero)), 0x80, 0x10, VOFF)
+                Store (0xFFFF, VOFF)
+
+                /* HOFF: Horizontal offset is not supplied */
+                CreateField (DerefOf (Index (PCKG, Zero)), 0x90, 0x10, HOFF)
+                Store (0xFFFF, HOFF)
+
+                Return (PCKG)
+            }
+
+            Device (HS01) { Name (_ADR, 1) }
+            Device (SS01) { Name (_ADR, 2) }
+        }
+    }
+
     Device (PWM0)
     {
         Name (_ADR, 0x00170000)
 
-        Method (_STA, 0, NotSerialized)
-        {
-            Return (STA_VISIBLE)
-        }
+        Name (_STA, STA_VISIBLE)
     }
 
     Device (HSU0)
     {
         Name (_ADR, 0x00040001)
 
-        Method (_STA, 0, NotSerialized)
-        {
-            Return (STA_VISIBLE)
-        }
+        Name (_STA, STA_VISIBLE)
 
         Device (BTH0)
         {
@@ -278,25 +396,23 @@ Device (PCI0)
                 HSU0
             })
 
-            Method (_STA, 0, NotSerialized)
+            Name (_STA, STA_VISIBLE)
+
+            Name (RBUF, ResourceTemplate()
             {
-                Return (STA_VISIBLE)
-            }
+                UartSerialBus(0x0001C200, DataBitsEight, StopBitsOne,
+                    0xFC, LittleEndian, ParityTypeNone, FlowControlHardware,
+                    0x20, 0x20, "\\_SB.PCI0.HSU0", 0, ResourceConsumer, , )
+                GpioInt(Level, ActiveHigh, Exclusive, PullNone, 0,
+                    "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 185 }
+                GpioIo(Exclusive, PullDefault, 0, 0, IoRestrictionOutputOnly,
+                    "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 184 }
+                GpioIo(Exclusive, PullDefault, 0, 0, IoRestrictionOutputOnly,
+                    "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 71 }
+            })
 
             Method (_CRS, 0, Serialized)
             {
-                Name (RBUF, ResourceTemplate ()
-                {
-                    UartSerialBus (0x0001C200, DataBitsEight, StopBitsOne,
-                        0xFC, LittleEndian, ParityTypeNone, FlowControlHardware,
-                        0x20, 0x20, "\\_SB.PCI0.HSU0", 0, ResourceConsumer, , )
-                    GpioInt (Level, ActiveHigh, Exclusive, PullNone, 0,
-                        "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 185 }
-                    GpioIo (Exclusive, PullDefault, 0, 0, IoRestrictionOutputOnly,
-                        "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 184 }
-                    GpioIo (Exclusive, PullDefault, 0, 0, IoRestrictionOutputOnly,
-                        "\\_SB.PCI0.GPIO", 0, ResourceConsumer, , ) { 71 }
-                })
                 Return (RBUF)
             }
 
@@ -310,6 +426,106 @@ Device (PCI0)
             })
         }
     }
+
+    Device (IPC1)
+    {
+        Name (_ADR, 0x00130000)
+
+        Name (_STA, STA_VISIBLE)
+
+        Device (PMIC)
+        {
+            Name (_HID, "INTC100E")
+            Name (_CID, "INTC100E")
+            Name (_DDN, "Basin Cove PMIC")
+            Name (_DEP, Package ()
+            {
+                IPC1
+            })
+
+            Name (_STA, STA_VISIBLE)
+
+            Name (RBUF, ResourceTemplate()
+            {
+                /*
+                 * Shadow registers in SRAM for PMIC:
+                 *   SRAM    PMIC register
+                 *   --------------------
+                 *   0x00-    Unknown
+                 *   0x03    THRMIRQ (0x04)
+                 *   0x04    BCUIRQ (0x05)
+                 *   0x05    ADCIRQ (0x06)
+                 *   0x06    CHGRIRQ0 (0x07)
+                 *   0x07    CHGRIRQ1 (0x08)
+                 *   0x08-    Unknown
+                 *   0x0a    PBSTATUS (0x27)
+                 *   0x0b-    Unknown
+                 */
+                Memory32Fixed(ReadWrite, 0xFFFFF610, 0x00000010)
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 30 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 23 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 52 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 51 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 50 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 27 }
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 49 }
+            })
+
+            Method (_CRS, 0, Serialized)
+            {
+                Return (RBUF)
+            }
+
+            OperationRegion (PMOP, 0x8D, Zero, 0x0100)
+            Field (PMOP, DWordAcc, NoLock, Preserve)
+            {
+                SEL1,   32,
+                SEL2,   32,
+                VCCL,   32,
+                VNNL,   32,
+                AONL,   32,
+                CNTC,   32,
+                CNTN,   32,
+                AONN,   32,
+                CNT1,   32,
+                CNT2,   32,
+                CNT3,   32,
+                FLEX,   32,
+                PRG1,   32,
+                PRG2,   32,
+                PRG3,   32,
+                VLDO,   32,
+            }
+
+            Name (AVBL, Zero)
+            Method (_REG, 2, NotSerialized)
+            {
+                If ((Arg0 == 0x8D))
+                {
+                    AVBL = Arg1
+                }
+            }
+        }
+    }
+
+    Device (GDMA)
+    {
+        Name (_ADR, 0x00150000)
+        Name (_UID, Zero)
+
+        Name (_STA, STA_VISIBLE)
+
+        Name (RBUF, ResourceTemplate ()
+        {
+                Memory32Fixed(ReadWrite, 0xFF192000, 0x00001000)
+                Interrupt(ResourceConsumer, Level, ActiveHigh, Shared, ,, ) { 32 }
+        })
+
+        Method (_CRS, 0, Serialized)
+        {
+            Return (RBUF)
+        }
+    }
 }
 
 Device (FLIS)
@@ -318,7 +534,7 @@ Device (FLIS)
     Name (_DDN, "Intel Merrifield Family-Level Interface Shim")
     Name (RBUF, ResourceTemplate()
     {
-        Memory32Fixed(ReadWrite, 0xFF0C0000, 0x00008000, )
+        Memory32Fixed(ReadWrite, 0xFF0C0000, 0x00008000)
         PinGroup("spi5", ResourceProducer, ) { 90, 91, 92, 93, 94, 95, 96 }
         PinGroup("uart0", ResourceProducer, ) { 115, 116, 117, 118 }
         PinGroup("uart1", ResourceProducer, ) { 119, 120, 121, 122 }
@@ -334,8 +550,5 @@ Device (FLIS)
         Return (RBUF)
     }
 
-    Method (_STA, 0, NotSerialized)
-    {
-        Return (STA_VISIBLE)
-    }
+    Name (_STA, STA_VISIBLE)
 }

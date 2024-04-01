@@ -16,7 +16,7 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_STACKBASE	0x02800000	/* 40MB */
+#define CFG_STACKBASE	0x03800000	/* 56MB */
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
@@ -37,30 +37,22 @@
  *   should not overlap that area, or the kernel will have to copy itself
  *   somewhere else before decompression. Similarly, the address of any other
  *   data passed to the kernel shouldn't overlap the start of RAM. Pushing
- *   this up to 16M allows for a sizable kernel to be decompressed below the
+ *   this up to 32M allows for a sizable kernel to be decompressed below the
  *   compressed load address.
  *
- * fdt_addr_r simply shouldn't overlap anything else. Choosing 32M allows for
- *   the compressed kernel to be up to 16M too.
+ * fdt_addr_r simply shouldn't overlap anything else. Choosing 48M allows for
+ *   the compressed kernel to be up to 32M too.
  *
- * ramdisk_addr_r simply shouldn't overlap anything else. Choosing 33M allows
+ * ramdisk_addr_r simply shouldn't overlap anything else. Choosing 49M allows
  *   for the FDT/DTB to be up to 1M, which is hopefully plenty.
  */
-#define CONFIG_LOADADDR 0x01000000
 #define MEM_LAYOUT_ENV_SETTINGS \
 	"scriptaddr=0x10000000\0" \
 	"pxefile_addr_r=0x10100000\0" \
-	"kernel_addr_r=" __stringify(CONFIG_LOADADDR) "\0" \
-	"fdt_addr_r=0x02000000\0" \
-	"ramdisk_addr_r=0x02100000\0"
-
-/* Defines for SPL */
-#define CONFIG_SPL_TEXT_BASE		0x00108000
-#define CONFIG_SYS_SPL_MALLOC_START	0x00090000
-#define CONFIG_SPL_STACK		0x000ffffc
-
-/* Align LCD to 1MB boundary */
-#define CONFIG_LCD_ALIGNMENT	MMU_SECTION_SIZE
+	"kernel_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"fdtfile=" FDTFILE "\0" \
+	"fdt_addr_r=0x03000000\0" \
+	"ramdisk_addr_r=0x03100000\0"
 
 #ifdef CONFIG_TEGRA_LP0
 #define TEGRA_LP0_ADDR			0x1C406000
@@ -71,17 +63,5 @@
 #else
 #define TEGRA_LP0_VEC
 #endif
-
-/*
- * This parameter affects a TXFILLTUNING field that controls how much data is
- * sent to the latency fifo before it is sent to the wire. Without this
- * parameter, the default (2) causes occasional Data Buffer Errors in OUT
- * packets depending on the buffer address and size.
- */
-#define CONFIG_USB_EHCI_TXFIFO_THRESH	10
-#define CONFIG_EHCI_IS_TDI
-
-#define CONFIG_SYS_NAND_SELF_INIT
-#define CONFIG_SYS_NAND_ONFI_DETECTION
 
 #endif /* _TEGRA20_COMMON_H_ */

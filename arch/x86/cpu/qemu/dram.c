@@ -4,12 +4,14 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/post.h>
 #include <asm/arch/qemu.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int dram_init(void)
+u32 qemu_get_low_memory_size(void)
 {
 	u32 ram;
 
@@ -19,7 +21,27 @@ int dram_init(void)
 	ram |= ((u32)inb(CMOS_DATA_PORT)) << 6;
 	ram += 16 * 1024;
 
-	gd->ram_size = ram * 1024;
+	return ram * 1024;
+}
+
+u64 qemu_get_high_memory_size(void)
+{
+	u64 ram;
+
+	outb(HIGH_HIGHRAM_ADDR, CMOS_ADDR_PORT);
+	ram = ((u64)inb(CMOS_DATA_PORT)) << 22;
+	outb(MID_HIGHRAM_ADDR, CMOS_ADDR_PORT);
+	ram |= ((u64)inb(CMOS_DATA_PORT)) << 14;
+	outb(LOW_HIGHRAM_ADDR, CMOS_ADDR_PORT);
+	ram |= ((u64)inb(CMOS_DATA_PORT)) << 6;
+
+	return ram * 1024;
+}
+
+int dram_init(void)
+{
+	gd->ram_size = qemu_get_low_memory_size();
+	gd->ram_size += qemu_get_high_memory_size();
 	post_code(POST_DRAM);
 
 	return 0;
@@ -27,8 +49,16 @@ int dram_init(void)
 
 int dram_init_banksize(void)
 {
+	u64 high_mem_size;
+
 	gd->bd->bi_dram[0].start = 0;
-	gd->bd->bi_dram[0].size = gd->ram_size;
+	gd->bd->bi_dram[0].size = qemu_get_low_memory_size();
+
+	high_mem_size = qemu_get_high_memory_size();
+	if (high_mem_size) {
+		gd->bd->bi_dram[1].start = SZ_4G;
+		gd->bd->bi_dram[1].size = high_mem_size;
+	}
 
 	return 0;
 }
@@ -41,7 +71,7 @@ int dram_init_banksize(void)
  * the relocation address, and how far U-Boot is moved by relocation are
  * set in the global data structure.
  */
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
-	return gd->ram_size;
+	return qemu_get_low_memory_size();
 }

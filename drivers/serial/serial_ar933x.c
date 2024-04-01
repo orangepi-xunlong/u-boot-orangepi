@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <dm.h>
 #include <div64.h>
 #include <errno.h>
@@ -12,6 +13,7 @@
 #include <asm/addrspace.h>
 #include <asm/types.h>
 #include <dm/pinctrl.h>
+#include <linux/bitops.h>
 #include <mach/ar71xx_regs.h>
 
 #define AR933X_UART_DATA_REG            0x00
@@ -148,7 +150,7 @@ static int ar933x_serial_probe(struct udevice *dev)
 	fdt_addr_t addr;
 	u32 val;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -186,10 +188,9 @@ U_BOOT_DRIVER(serial_ar933x) = {
 	.name   = "serial_ar933x",
 	.id = UCLASS_SERIAL,
 	.of_match = ar933x_serial_ids,
-	.priv_auto_alloc_size = sizeof(struct ar933x_serial_priv),
+	.priv_auto	= sizeof(struct ar933x_serial_priv),
 	.probe = ar933x_serial_probe,
 	.ops    = &ar933x_serial_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
 
 #ifdef CONFIG_DEBUG_UART_AR933X
@@ -198,7 +199,7 @@ U_BOOT_DRIVER(serial_ar933x) = {
 
 static inline void _debug_uart_init(void)
 {
-	void __iomem *regs = (void *)CONFIG_DEBUG_UART_BASE;
+	void __iomem *regs = (void *)CONFIG_VAL(DEBUG_UART_BASE);
 	u32 val, scale, step;
 
 	/*
@@ -226,7 +227,7 @@ static inline void _debug_uart_init(void)
 
 static inline void _debug_uart_putc(int c)
 {
-	void __iomem *regs = (void *)CONFIG_DEBUG_UART_BASE;
+	void __iomem *regs = (void *)CONFIG_VAL(DEBUG_UART_BASE);
 	u32 data;
 
 	do {

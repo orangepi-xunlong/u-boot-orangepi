@@ -17,10 +17,20 @@
  * @height	Window height in pixels
  * @log2_bpp:	Log to base 2 of the number of bits per pixel. So a 32bpp
  *		display will pass 5, since 2*5 = 32
- * @return 0 if OK, -ENODEV if no device, -EIO if SDL failed to initialize
+ * @double_size: true to double the visible size in each direction for high-DPI
+ *		displays
+ * Return: 0 if OK, -ENODEV if no device, -EIO if SDL failed to initialize
  *		and -EPERM if the video failed to come up.
  */
-int sandbox_sdl_init_display(int width, int height, int log2_bpp);
+int sandbox_sdl_init_display(int width, int height, int log2_bpp,
+			     bool double_size);
+
+/**
+ * sandbox_sdl_remove_display() - Remove the SDL screen
+ *
+ * Return: 0 if OK, -ENOENT if the SDL had not been inited.
+ */
+int sandbox_sdl_remove_display(void);
 
 /**
  * sandbox_sdl_sync() - Sync current U-Boot LCD frame buffer to SDL
@@ -29,7 +39,7 @@ int sandbox_sdl_init_display(int width, int height, int log2_bpp);
  * user can see it.
  *
  * @lcd_base: Base of frame buffer
- * @return 0 if screen was updated, -ENODEV is there is no screen.
+ * Return: 0 if screen was updated, -ENODEV is there is no screen.
  */
 int sandbox_sdl_sync(void *lcd_base);
 
@@ -40,7 +50,7 @@ int sandbox_sdl_sync(void *lcd_base);
  *
  * @key:	Array to receive keycodes
  * @max_keys:	Size of array
- * @return number of keycodes found, 0 if none, -ENODEV if no keyboard
+ * Return: number of keycodes found, 0 if none, -ENODEV if no keyboard
  */
 int sandbox_sdl_scan_keys(int key[], int max_keys);
 
@@ -48,36 +58,43 @@ int sandbox_sdl_scan_keys(int key[], int max_keys);
  * sandbox_sdl_key_pressed() - check if a particular key is pressed
  *
  * @keycode:	Keycode to check (KEY_... - see include/linux/input.h
- * @return 0 if pressed, -ENOENT if not pressed. -ENODEV if keybord not
+ * Return: 0 if pressed, -ENOENT if not pressed. -ENODEV if keybord not
  * available,
  */
 int sandbox_sdl_key_pressed(int keycode);
 
 /**
- * sandbox_sdl_sound_start() - start playing a sound
+ * sandbox_sdl_sound_play() - Play a sound
  *
- * @frequency:	Frequency of sounds in Hertz
- * @return 0 if OK, -ENODEV if no sound is available
+ * @data:	Data to play (typically 16-bit)
+ * @count:	Number of bytes in data
  */
-int sandbox_sdl_sound_start(uint frequency);
+int sandbox_sdl_sound_play(const void *data, uint count);
 
 /**
  * sandbox_sdl_sound_stop() - stop playing a sound
  *
- * @return 0 if OK, -ENODEV if no sound is available
+ * Return: 0 if OK, -ENODEV if no sound is available
  */
 int sandbox_sdl_sound_stop(void);
 
 /**
  * sandbox_sdl_sound_init() - set up the sound system
  *
- * @return 0 if OK, -ENODEV if no sound is available
+ * @rate:	Sample rate to use
+ * @channels:	Number of channels to use (1=mono, 2=stereo)
+ * Return: 0 if OK, -ENODEV if no sound is available
  */
-int sandbox_sdl_sound_init(void);
+int sandbox_sdl_sound_init(int rate, int channels);
 
 #else
-static inline int sandbox_sdl_init_display(int width, int height,
-					    int log2_bpp)
+static inline int sandbox_sdl_init_display(int width, int height, int log2_bpp,
+					   bool double_size)
+{
+	return -ENODEV;
+}
+
+static inline int sandbox_sdl_remove_display(void)
 {
 	return -ENODEV;
 }
@@ -102,12 +119,17 @@ static inline int sandbox_sdl_sound_start(uint frequency)
 	return -ENODEV;
 }
 
+static inline int sandbox_sdl_sound_play(const void *data, uint count)
+{
+	return -ENODEV;
+}
+
 static inline int sandbox_sdl_sound_stop(void)
 {
 	return -ENODEV;
 }
 
-static inline int sandbox_sdl_sound_init(void)
+static inline int sandbox_sdl_sound_init(int rate, int channels)
 {
 	return -ENODEV;
 }

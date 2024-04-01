@@ -14,8 +14,8 @@
 #define ENV_CALLBACK_VAR ".callbacks"
 
 /* Board configs can define additional static callback bindings */
-#ifndef CONFIG_ENV_CALLBACK_LIST_STATIC
-#define CONFIG_ENV_CALLBACK_LIST_STATIC
+#ifndef CFG_ENV_CALLBACK_LIST_STATIC
+#define CFG_ENV_CALLBACK_LIST_STATIC
 #endif
 
 #ifdef CONFIG_SILENT_CONSOLE
@@ -24,18 +24,10 @@
 #define SILENT_CALLBACK
 #endif
 
-#ifdef CONFIG_SPLASHIMAGE_GUARD
-#define SPLASHIMAGE_CALLBACK "splashimage:splashimage,"
-#else
-#define SPLASHIMAGE_CALLBACK
-#endif
-
 #ifdef CONFIG_REGEX
 #define ENV_DOT_ESCAPE "\\"
-#define ETHADDR_WILDCARD "\\d?"
 #else
 #define ENV_DOT_ESCAPE
-#define ETHADDR_WILDCARD
 #endif
 
 #ifdef CONFIG_CMD_DNS
@@ -44,7 +36,7 @@
 #define DNS_CALLBACK
 #endif
 
-#ifdef CONFIG_CMD_NET
+#ifdef CONFIG_NET
 #define NET_CALLBACKS \
 	"bootfile:bootfile," \
 	"ipaddr:ipaddr," \
@@ -59,6 +51,21 @@
 #define NET_CALLBACKS
 #endif
 
+#ifdef CONFIG_IPV6
+#define NET6_CALLBACKS \
+	"ip6addr:ip6addr," \
+	"serverip6:serverip6," \
+	"gatewayip6:gatewayip6,"
+#else
+#define NET6_CALLBACKS
+#endif
+
+#ifdef CONFIG_BOOTSTD
+#define BOOTSTD_CALLBACK	"bootmeths:bootmeths,"
+#else
+#define BOOTSTD_CALLBACK
+#endif
+
 /*
  * This list of callback bindings is static, but may be overridden by defining
  * a new association in the ".callbacks" environment variable.
@@ -67,36 +74,20 @@
 	ENV_DOT_ESCAPE ENV_FLAGS_VAR ":flags," \
 	"baudrate:baudrate," \
 	NET_CALLBACKS \
+	NET6_CALLBACKS \
+	BOOTSTD_CALLBACK \
 	"loadaddr:loadaddr," \
 	SILENT_CALLBACK \
-	SPLASHIMAGE_CALLBACK \
 	"stdin:console,stdout:console,stderr:console," \
 	"serial#:serialno," \
-	CONFIG_ENV_CALLBACK_LIST_STATIC
+	CFG_ENV_CALLBACK_LIST_STATIC
 
-struct env_clbk_tbl {
-	const char *name;		/* Callback name */
-	int (*callback)(const char *name, const char *value, enum env_op op,
-		int flags);
-};
-
-void env_callback_init(ENTRY *var_entry);
-
-/*
- * Define a callback that can be associated with variables.
- * when associated through the ".callbacks" environment variable, the callback
- * will be executed any time the variable is inserted, overwritten, or deleted.
- */
-#ifdef CONFIG_SPL_BUILD
-#define U_BOOT_ENV_CALLBACK(name, callback) \
-	static inline __maybe_unused void _u_boot_env_noop_##name(void) \
-	{ \
-		(void)callback; \
-	}
+#ifndef CONFIG_SPL_BUILD
+void env_callback_init(struct env_entry *var_entry);
 #else
-#define U_BOOT_ENV_CALLBACK(name, callback) \
-	ll_entry_declare(struct env_clbk_tbl, name, env_clbk) = \
-	{#name, callback}
+static inline void env_callback_init(struct env_entry *var_entry)
+{
+}
 #endif
 
 #endif /* __ENV_CALLBACK_H__ */

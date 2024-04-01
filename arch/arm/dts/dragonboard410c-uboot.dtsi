@@ -6,8 +6,29 @@
  */
 
 / {
-	config {
-		u-boot,mmc-env-partition = "boot";
+
+	smem {
+		bootph-all;
+	};
+
+	soc {
+		bootph-all;
+
+		pinctrl@1000000 {
+			bootph-all;
+
+			uart {
+				bootph-all;
+			};
+		};
+
+		qcom,gcc@1800000 {
+			bootph-all;
+		};
+
+		serial@78b0000 {
+			bootph-all;
+		};
 	};
 };
 

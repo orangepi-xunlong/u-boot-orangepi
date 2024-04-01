@@ -7,6 +7,8 @@
 #ifndef _INCLUDE_REGULATOR_H_
 #define _INCLUDE_REGULATOR_H_
 
+struct udevice;
+
 /**
  * U-Boot Voltage/Current Regulator
  * ================================
@@ -16,15 +18,15 @@
  * 'UCLASS_REGULATOR' and the regulator driver API.
  *
  * The regulator uclass - is based on uclass platform data which is allocated,
- * automatically for each regulator device on bind and 'dev->uclass_platdata'
- * points to it. The data type is: 'struct dm_regulator_uclass_platdata'.
+ * automatically for each regulator device on bind and 'dev->uclass_plat'
+ * points to it. The data type is: 'struct dm_regulator_uclass_plat'.
  * The uclass file: 'drivers/power/regulator/regulator-uclass.c'
  *
  * The regulator device - is based on driver's model 'struct udevice'.
  * The API can use regulator name in two meanings:
  * - devname  - the regulator device's name: 'dev->name'
- * - platname - the device's platdata's name. So in the code it looks like:
- *              'uc_pdata = dev->uclass_platdata'; 'name = uc_pdata->name'.
+ * - platname - the device's plat's name. So in the code it looks like:
+ *              'uc_pdata = dev->uclass_plat'; 'name = uc_pdata->name'.
  *
  * The regulator device driver - provide an implementation of uclass operations
  * pointed by 'dev->driver->ops' as a struct of type 'struct dm_regulator_ops'.
@@ -135,7 +137,7 @@ enum regulator_flag {
 };
 
 /**
- * struct dm_regulator_uclass_platdata - pointed by dev->uclass_platdata, and
+ * struct dm_regulator_uclass_plat - pointed by dev->uclass_plat, and
  * allocated on each regulator bind. This structure holds an information
  * about each regulator's constraints and supported operation modes.
  * There is no "step" voltage value - so driver should take care of this.
@@ -149,7 +151,9 @@ enum regulator_flag {
  * @max_uA*    - maximum amperage (micro Amps)
  * @always_on* - bool type, true or false
  * @boot_on*   - bool type, true or false
+ * @force_off* - bool type, true or false
  * TODO(sjg@chromium.org): Consider putting the above two into @flags
+ * @ramp_delay - Time to settle down after voltage change (unit: uV/us)
  * @flags:     - flags value (see REGULATOR_FLAG_...)
  * @name**     - fdt regulator name - should be taken from the device tree
  * ctrl_reg:   - Control register offset used to enable/disable regulator
@@ -161,20 +165,25 @@ enum regulator_flag {
  * The constraints: type, mode, mode_count, can be set by device driver, e.g.
  * by the driver '.probe' method.
  */
-struct dm_regulator_uclass_platdata {
+struct dm_regulator_uclass_plat {
 	enum regulator_type type;
 	struct dm_regulator_mode *mode;
 	int mode_count;
 	int min_uV;
 	int max_uV;
+	int init_uV;
 	int min_uA;
 	int max_uA;
+	unsigned int ramp_delay;
 	bool always_on;
 	bool boot_on;
+	bool force_off;
 	const char *name;
 	int flags;
 	u8 ctrl_reg;
 	u8 volt_reg;
+	bool suspend_on;
+	u32 suspend_uV;
 };
 
 /* Regulator device operations */
@@ -190,6 +199,19 @@ struct dm_regulator_ops {
 	 */
 	int (*get_value)(struct udevice *dev);
 	int (*set_value)(struct udevice *dev, int uV);
+
+	/**
+	 * The regulator suspend output value function calls operates
+	 * on a micro Volts.
+	 *
+	 * get/set_suspen_value - get/set suspend mode output value
+	 * @dev          - regulator device
+	 * Sets:
+	 * @uV           - set the suspend output value [micro Volts]
+	 * @return output value [uV] on success or negative errno if fail.
+	 */
+	int (*set_suspend_value)(struct udevice *dev, int uV);
+	int (*get_suspend_value)(struct udevice *dev);
 
 	/**
 	 * The regulator output current function calls operates on a micro Amps.
@@ -216,6 +238,19 @@ struct dm_regulator_ops {
 	int (*set_enable)(struct udevice *dev, bool enable);
 
 	/**
+	 * The most basic feature of the regulator output is its enable state
+	 * in suspend mode.
+	 *
+	 * get/set_suspend_enable - get/set enable state of the suspend output
+	 * @dev           - regulator device
+	 * Sets:
+	 * @enable         - set true - enable or false - disable
+	 * @return true/false for get or -errno if fail; 0 / -errno for set.
+	 */
+	int (*set_suspend_enable)(struct udevice *dev, bool enable);
+	int (*get_suspend_enable)(struct udevice *dev);
+
+	/**
 	 * The 'get/set_mode()' function calls should operate on a driver-
 	 * specific mode id definitions, which should be found in:
 	 * field 'id' of struct dm_regulator_mode.
@@ -233,12 +268,13 @@ struct dm_regulator_ops {
 	int (*set_mode)(struct udevice *dev, int mode_id);
 };
 
+#if CONFIG_IS_ENABLED(DM_REGULATOR)
 /**
  * regulator_mode: returns a pointer to the array of regulator mode info
  *
  * @dev        - pointer to the regulator device
  * @modep      - pointer to the returned mode info array
- * @return     - count of modep entries on success or negative errno if fail.
+ * Return:     - count of modep entries on success or negative errno if fail.
  */
 int regulator_mode(struct udevice *dev, struct dm_regulator_mode **modep);
 
@@ -246,7 +282,7 @@ int regulator_mode(struct udevice *dev, struct dm_regulator_mode **modep);
  * regulator_get_value: get microvoltage voltage value of a given regulator
  *
  * @dev    - pointer to the regulator device
- * @return - positive output value [uV] on success or negative errno if fail.
+ * Return: - positive output value [uV] on success or negative errno if fail.
  */
 int regulator_get_value(struct udevice *dev);
 
@@ -255,9 +291,26 @@ int regulator_get_value(struct udevice *dev);
  *
  * @dev    - pointer to the regulator device
  * @uV     - the output value to set [micro Volts]
- * @return - 0 on success or -errno val if fails
+ * Return: - 0 on success or -errno val if fails
  */
 int regulator_set_value(struct udevice *dev, int uV);
+
+/**
+ * regulator_set_suspend_value: set the suspend microvoltage value of a given regulator.
+ *
+ * @dev    - pointer to the regulator device
+ * @uV     - the output suspend value to set [micro Volts]
+ * Return: - 0 on success or -errno val if fails
+ */
+int regulator_set_suspend_value(struct udevice *dev, int uV);
+
+/**
+ * regulator_get_suspend_value: get the suspend microvoltage value of a given regulator.
+ *
+ * @dev    - pointer to the regulator device
+ * Return: - positive output value [uV] on success or negative errno if fail.
+ */
+int regulator_get_suspend_value(struct udevice *dev);
 
 /**
  * regulator_set_value_force: set the microvoltage value of a given regulator
@@ -265,7 +318,7 @@ int regulator_set_value(struct udevice *dev, int uV);
  *
  * @dev    - pointer to the regulator device
  * @uV     - the output value to set [micro Volts]
- * @return - 0 on success or -errno val if fails
+ * Return: - 0 on success or -errno val if fails
  */
 int regulator_set_value_force(struct udevice *dev, int uV);
 
@@ -273,7 +326,7 @@ int regulator_set_value_force(struct udevice *dev, int uV);
  * regulator_get_current: get microampere value of a given regulator
  *
  * @dev    - pointer to the regulator device
- * @return - positive output current [uA] on success or negative errno if fail.
+ * Return: - positive output current [uA] on success or negative errno if fail.
  */
 int regulator_get_current(struct udevice *dev);
 
@@ -282,7 +335,7 @@ int regulator_get_current(struct udevice *dev);
  *
  * @dev    - pointer to the regulator device
  * @uA     - set the output current [micro Amps]
- * @return - 0 on success or -errno val if fails
+ * Return: - 0 on success or -errno val if fails
  */
 int regulator_set_current(struct udevice *dev, int uA);
 
@@ -290,7 +343,7 @@ int regulator_set_current(struct udevice *dev, int uA);
  * regulator_get_enable: get regulator device enable state.
  *
  * @dev    - pointer to the regulator device
- * @return - true/false of enable state or -errno val if fails
+ * Return: - true/false of enable state or -errno val if fails
  */
 int regulator_get_enable(struct udevice *dev);
 
@@ -299,15 +352,43 @@ int regulator_get_enable(struct udevice *dev);
  *
  * @dev    - pointer to the regulator device
  * @enable - set true or false
- * @return - 0 on success or -errno val if fails
+ * Return: - 0 on success or -errno val if fails
  */
 int regulator_set_enable(struct udevice *dev, bool enable);
+
+/**
+ * regulator_set_enable_if_allowed: set regulator enable state if allowed by
+ *					regulator
+ *
+ * @dev    - pointer to the regulator device
+ * @enable - set true or false
+ * Return: - 0 on success or if enabling is not supported
+ *	     -errno val if fails.
+ */
+int regulator_set_enable_if_allowed(struct udevice *dev, bool enable);
+
+/**
+ * regulator_set_suspend_enable: set regulator suspend enable state
+ *
+ * @dev    - pointer to the regulator device
+ * @enable - set true or false
+ * Return: - 0 on success or -errno val if fails
+ */
+int regulator_set_suspend_enable(struct udevice *dev, bool enable);
+
+/**
+ * regulator_get_suspend_enable: get regulator suspend enable state
+ *
+ * @dev    - pointer to the regulator device
+ * Return: - true/false of enable state or -errno val if fails
+ */
+int regulator_get_suspend_enable(struct udevice *dev);
 
 /**
  * regulator_get_mode: get active operation mode id of a given regulator
  *
  * @dev    - pointer to the regulator device
- * @return - positive mode 'id' number on success or -errno val if fails
+ * Return: - positive mode 'id' number on success or -errno val if fails
  * Note:
  * The device can provide an array of operating modes, which is type of struct
  * dm_regulator_mode. Each mode has it's own 'id', which should be unique inside
@@ -321,7 +402,7 @@ int regulator_get_mode(struct udevice *dev);
  *
  * @dev     - pointer to the regulator device
  * @mode_id - mode id to set ('id' field of struct type dm_regulator_mode)
- * @return  - 0 on success or -errno value if fails
+ * Return:  - 0 on success or -errno value if fails
  * Note:
  * The device can provide an array of operating modes, which is type of struct
  * dm_regulator_mode. Each mode has it's own 'id', which should be unique inside
@@ -342,10 +423,19 @@ int regulator_set_mode(struct udevice *dev, int mode_id);
 int regulators_enable_boot_on(bool verbose);
 
 /**
+ * regulators_enable_boot_off() - disable regulators needed for boot
+ *
+ * This disables all regulators which are marked to be off at boot time.
+ *
+ * This effectively calls regulator_unset() for every regulator.
+ */
+int regulators_enable_boot_off(bool verbose);
+
+/**
  * regulator_autoset: setup the voltage/current on a regulator
  *
  * The setup depends on constraints found in device's uclass's platform data
- * (struct dm_regulator_uclass_platdata):
+ * (struct dm_regulator_uclass_plat):
  *
  * - Enable - will set - if any of: 'always_on' or 'boot_on' is set to true,
  *   or if both are unset, then the function returns
@@ -354,16 +444,28 @@ int regulators_enable_boot_on(bool verbose);
  *
  * The function returns on the first-encountered error.
  *
- * @platname - expected string for dm_regulator_uclass_platdata .name field
+ * @platname - expected string for dm_regulator_uclass_plat .name field
  * @devp     - returned pointer to the regulator device - if non-NULL passed
  * @return: 0 on success or negative value of errno.
  */
 int regulator_autoset(struct udevice *dev);
 
 /**
+ * regulator_unset: turn off a regulator
+ *
+ * The setup depends on constraints found in device's uclass's platform data
+ * (struct dm_regulator_uclass_platdata):
+ *
+ * - Disable - will set - if  'force_off' is set to true,
+ *
+ * The function returns on the first-encountered error.
+ */
+int regulator_unset(struct udevice *dev);
+
+/**
  * regulator_autoset_by_name: setup the regulator given by its uclass's
  * platform data name field. The setup depends on constraints found in device's
- * uclass's platform data (struct dm_regulator_uclass_platdata):
+ * uclass's platform data (struct dm_regulator_uclass_plat):
  * - Enable - will set - if any of: 'always_on' or 'boot_on' is set to true,
  *   or if both are unset, then the function returns
  * - Voltage value - will set - if '.min_uV' and '.max_uV' values are equal
@@ -371,7 +473,7 @@ int regulator_autoset(struct udevice *dev);
  *
  * The function returns on first encountered error.
  *
- * @platname - expected string for dm_regulator_uclass_platdata .name field
+ * @platname - expected string for dm_regulator_uclass_plat .name field
  * @devp     - returned pointer to the regulator device - if non-NULL passed
  * @return: 0 on success or negative value of errno.
  *
@@ -387,11 +489,11 @@ int regulator_autoset_by_name(const char *platname, struct udevice **devp);
  * regulator_autoset_by_name() for each name from the list.
  *
  * @list_platname - an array of expected strings for .name field of each
- *                  regulator's uclass platdata
+ *                  regulator's uclass plat
  * @list_devp     - an array of returned pointers to the successfully setup
  *                  regulator devices if non-NULL passed
  * @verbose       - (true/false) print each regulator setup info, or be quiet
- * @return 0 on successfully setup of all list entries, otherwise first error.
+ * Return: 0 on successfully setup of all list entries, otherwise first error.
  *
  * The returned 'regulator' devices can be used with:
  * - regulator_get/set_*
@@ -413,7 +515,7 @@ int regulator_list_autoset(const char *list_platname[],
  *
  * @devname - expected string for 'dev->name' of regulator device
  * @devp    - returned pointer to the regulator device
- * @return 0 on success or negative value of errno.
+ * Return: 0 on success or negative value of errno.
  *
  * The returned 'regulator' device is probed and can be used with:
  * - regulator_get/set_*
@@ -422,11 +524,11 @@ int regulator_get_by_devname(const char *devname, struct udevice **devp);
 
 /**
  * regulator_get_by_platname: returns the pointer to the pmic regulator device.
- * Search by name, found in regulator uclass platdata.
+ * Search by name, found in regulator uclass plat.
  *
- * @platname - expected string for uc_pdata->name of regulator uclass platdata
+ * @platname - expected string for uc_pdata->name of regulator uclass plat
  * @devp     - returns pointer to the regulator device or NULL on error
- * @return 0 on success or negative value of errno.
+ * Return: 0 on success or negative value of errno.
  *
  * The returned 'regulator' device is probed and can be used with:
  * - regulator_get/set_*
@@ -444,9 +546,122 @@ int regulator_get_by_platname(const char *platname, struct udevice **devp);
  * @dev         - device with supply phandle
  * @supply_name - phandle name of regulator
  * @devp        - returned pointer to the supply device
- * @return 0 on success or negative value of errno.
+ * Return: 0 on success or negative value of errno.
  */
 int device_get_supply_regulator(struct udevice *dev, const char *supply_name,
 				struct udevice **devp);
+#else
+static inline int regulator_mode(struct udevice *dev, struct dm_regulator_mode **modep)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_value(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_value(struct udevice *dev, int uV)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_suspend_value(struct udevice *dev, int uV)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_suspend_value(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_value_force(struct udevice *dev, int uV)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_current(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_current(struct udevice *dev, int uA)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_enable(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_enable(struct udevice *dev, bool enable)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_enable_if_allowed(struct udevice *dev, bool enable)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_suspend_enable(struct udevice *dev, bool enable)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_suspend_enable(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_mode(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_set_mode(struct udevice *dev, int mode_id)
+{
+	return -ENOSYS;
+}
+
+static inline int regulators_enable_boot_on(bool verbose)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_autoset(struct udevice *dev)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_autoset_by_name(const char *platname, struct udevice **devp)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_list_autoset(const char *list_platname[], struct udevice *list_devp[],
+					 bool verbose)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_by_devname(const char *devname, struct udevice **devp)
+{
+	return -ENOSYS;
+}
+
+static inline int regulator_get_by_platname(const char *platname, struct udevice **devp)
+{
+	return -ENOSYS;
+}
+
+static inline int device_get_supply_regulator(struct udevice *dev, const char *supply_name,
+					       struct udevice **devp)
+{
+	return -ENOSYS;
+}
+#endif
 
 #endif /* _INCLUDE_REGULATOR_H_ */

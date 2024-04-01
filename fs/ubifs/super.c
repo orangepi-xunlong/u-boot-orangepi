@@ -15,6 +15,8 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/devres.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -30,12 +32,14 @@
 #include <common.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <linux/bitops.h>
 #include <linux/bug.h>
 #include <linux/log2.h>
 #include <linux/stat.h>
 #include <linux/err.h>
 #include "ubifs.h"
 #include <ubi_uboot.h>
+#include <linux/stringify.h>
 #include <mtd/ubi-user.h>
 
 struct dentry;
@@ -1753,6 +1757,8 @@ void ubifs_umount(struct ubifs_info *c)
 	kfree(c->bottom_up_buf);
 	ubifs_debugging_exit(c);
 #ifdef __UBOOT__
+	ubi_close_volume(c->ubi);
+	mutex_unlock(&c->umount_mutex);
 	/* Finally free U-Boot's global copy of superblock */
 	if (ubifs_sb != NULL) {
 		free(ubifs_sb->s_fs_info);
@@ -2054,9 +2060,9 @@ static void ubifs_put_super(struct super_block *sb)
 	ubifs_umount(c);
 #ifndef __UBOOT__
 	bdi_destroy(&c->bdi);
-#endif
 	ubi_close_volume(c->ubi);
 	mutex_unlock(&c->umount_mutex);
+#endif
 }
 #endif
 
@@ -2323,6 +2329,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
 
 out_umount:
 	ubifs_umount(c);
+#ifdef __UBOOT__
+	goto out;
+#endif
 out_unlock:
 	mutex_unlock(&c->umount_mutex);
 #ifndef __UBOOT__

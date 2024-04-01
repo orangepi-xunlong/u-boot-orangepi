@@ -11,14 +11,19 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <log.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/emc.h>
 #include <asm/gpio.h>
+#include <env.h>
 #include <spi.h>
 #include <i2c.h>
+#include <timestamp.h>
 #include <version.h>
 #include <vsprintf.h>
+#include <linux/delay.h>
 
 /*
  * GPO 15 in port 3 is gpio 3*32+15 = 111
@@ -229,8 +234,7 @@ void work_92105_display_init(void)
 	/* set display contrast */
 	display_contrast_str = env_get("fwopt_dispcontrast");
 	if (display_contrast_str)
-		display_contrast = simple_strtoul(display_contrast_str,
-			NULL, 10);
+		display_contrast = dectoul(display_contrast_str, NULL);
 	i2c_write(0x2c, 0x00, 1, &display_contrast, 1);
 
 	/* request GPO_15 as an output initially set to 1 */
@@ -265,7 +269,7 @@ void work_92105_display_init(void)
 
 #ifdef CONFIG_CMD_MAX6957
 
-static int do_max6957aax(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_max6957aax(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
 	int reg, val;
@@ -314,7 +318,8 @@ U_BOOT_CMD(
 #error CONFIG_CMD_HD44760 requires CONFIG_HUSH_PARSER
 #endif
 
-static int do_hd44780(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+static int do_hd44780(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	char *cmd;
 

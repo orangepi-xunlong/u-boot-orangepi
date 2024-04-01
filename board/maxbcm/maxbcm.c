@@ -4,7 +4,9 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <miiphy.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -95,7 +97,7 @@ MV_DRAM_MODES *ddr3_get_static_ddr_mode(void)
 	return &maxbcm_ddr_modes[0];
 }
 
-MV_BIN_SERDES_CFG *board_serdes_cfg_get(u8 pex_mode)
+MV_BIN_SERDES_CFG *board_serdes_cfg_get(void)
 {
 	return &maxbcm_serdes_cfg[0];
 }
@@ -110,13 +112,13 @@ int board_early_init_f(void)
 	/*
 	 * Setup some board specific mbus address windows
 	 */
-	mbus_dt_setup_win(&mbus_state, DEV_CS0_BASE, 16 << 20,
+	mbus_dt_setup_win(DEV_CS0_BASE, 16 << 20,
 			  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_DEV_CS0);
-	mbus_dt_setup_win(&mbus_state, DEV_CS1_BASE, 16 << 20,
+	mbus_dt_setup_win(DEV_CS1_BASE, 16 << 20,
 			  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_DEV_CS1);
-	mbus_dt_setup_win(&mbus_state, DEV_CS2_BASE, 16 << 20,
+	mbus_dt_setup_win(DEV_CS2_BASE, 16 << 20,
 			  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_DEV_CS2);
-	mbus_dt_setup_win(&mbus_state, DEV_CS3_BASE, 16 << 20,
+	mbus_dt_setup_win(DEV_CS3_BASE, 16 << 20,
 			  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_DEV_CS3);
 
 	return 0;

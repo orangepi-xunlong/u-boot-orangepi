@@ -8,12 +8,17 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <hang.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/system.h>
 #include <asm/armv8/mmu.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_SYS_DCACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 
 /*
  *  With 4k page granule, a virtual address is split into 4 lookup parts
@@ -34,8 +39,28 @@ DECLARE_GLOBAL_DATA_PTR;
  *    off:          FFF
  */
 
-u64 get_tcr(int el, u64 *pips, u64 *pva_bits)
+static int get_effective_el(void)
 {
+	int el = current_el();
+
+	if (el == 2) {
+		u64 hcr_el2;
+
+		/*
+		 * If we are using the EL2&0 translation regime, the TCR_EL2
+		 * looks like the EL1 version, even though we are in EL2.
+		 */
+		__asm__ ("mrs %0, HCR_EL2\n" : "=r" (hcr_el2));
+		if (hcr_el2 & BIT(HCR_EL2_E2H_BIT))
+			return 1;
+	}
+
+	return el;
+}
+
+u64 get_tcr(u64 *pips, u64 *pva_bits)
+{
+	int el = get_effective_el();
 	u64 max_addr = 0;
 	u64 ips, va_bits;
 	u64 tcr;
@@ -68,10 +93,16 @@ u64 get_tcr(int el, u64 *pips, u64 *pva_bits)
 
 	if (el == 1) {
 		tcr = TCR_EL1_RSVD | (ips << 32) | TCR_EPD1_DISABLE;
+		if (gd->arch.has_hafdbs)
+			tcr |= TCR_EL1_HA | TCR_EL1_HD;
 	} else if (el == 2) {
 		tcr = TCR_EL2_RSVD | (ips << 16);
+		if (gd->arch.has_hafdbs)
+			tcr |= TCR_EL2_HA | TCR_EL2_HD;
 	} else {
 		tcr = TCR_EL3_RSVD | (ips << 16);
+		if (gd->arch.has_hafdbs)
+			tcr |= TCR_EL3_HA | TCR_EL3_HD;
 	}
 
 	/* PTWs cacheable, inner/outer WBWA and inner shareable */
@@ -110,7 +141,7 @@ static u64 *find_pte(u64 addr, int level)
 
 	debug("addr=%llx level=%d\n", addr, level);
 
-	get_tcr(0, NULL, &va_bits);
+	get_tcr(NULL, &va_bits);
 	if (va_bits < 39)
 		start_level = 1;
 
@@ -137,6 +168,86 @@ static u64 *find_pte(u64 addr, int level)
 	/* Should never reach here */
 	return NULL;
 }
+
+#ifdef CONFIG_CMO_BY_VA_ONLY
+static void __cmo_on_leaves(void (*cmo_fn)(unsigned long, unsigned long),
+			    u64 pte, int level, u64 base)
+{
+	u64 *ptep;
+	int i;
+
+	ptep = (u64 *)(pte & GENMASK_ULL(47, PAGE_SHIFT));
+	for (i = 0; i < PAGE_SIZE / sizeof(u64); i++) {
+		u64 end, va = base + i * BIT(level2shift(level));
+		u64 type, attrs;
+
+		pte = ptep[i];
+		type = pte & PTE_TYPE_MASK;
+		attrs = pte & PMD_ATTRINDX_MASK;
+		debug("PTE %llx at level %d VA %llx\n", pte, level, va);
+
+		/* Not valid? next! */
+		if (!(type & PTE_TYPE_VALID))
+			continue;
+
+		/* Not a leaf? Recurse on the next level */
+		if (!(type == PTE_TYPE_BLOCK ||
+		      (level == 3 && type == PTE_TYPE_PAGE))) {
+			__cmo_on_leaves(cmo_fn, pte, level + 1, va);
+			continue;
+		}
+
+		/*
+		 * From this point, this must be a leaf.
+		 *
+		 * Start excluding non memory mappings
+		 */
+		if (attrs != PTE_BLOCK_MEMTYPE(MT_NORMAL) &&
+		    attrs != PTE_BLOCK_MEMTYPE(MT_NORMAL_NC))
+			continue;
+
+		if (gd->arch.has_hafdbs && (pte & (PTE_RDONLY | PTE_DBM)) != PTE_DBM)
+			continue;
+
+		end = va + BIT(level2shift(level)) - 1;
+
+		/* No intersection with RAM? */
+		if (end < gd->ram_base ||
+		    va >= (gd->ram_base + gd->ram_size))
+			continue;
+
+		/*
+		 * OK, we have a partial RAM mapping. However, this
+		 * can cover *more* than the RAM. Yes, u-boot is
+		 * *that* braindead. Compute the intersection we care
+		 * about, and not a byte more.
+		 */
+		va = max(va, (u64)gd->ram_base);
+		end = min(end, gd->ram_base + gd->ram_size);
+
+		debug("Flush PTE %llx at level %d: %llx-%llx\n",
+		      pte, level, va, end);
+		cmo_fn(va, end);
+	}
+}
+
+static void apply_cmo_to_mappings(void (*cmo_fn)(unsigned long, unsigned long))
+{
+	u64 va_bits;
+	int sl = 0;
+
+	if (!gd->arch.tlb_addr)
+		return;
+
+	get_tcr(NULL, &va_bits);
+	if (va_bits < 39)
+		sl = 1;
+
+	__cmo_on_leaves(cmo_fn, gd->arch.tlb_addr, sl, 0);
+}
+#else
+static inline void apply_cmo_to_mappings(void *dummy) {}
+#endif
 
 /* Returns and creates a new full table (512 entries) */
 static u64 *create_table(void)
@@ -197,153 +308,125 @@ static void split_block(u64 *pte, int level)
 	set_pte_table(pte, new_table);
 }
 
-/* Add one mm_region map entry to the page tables */
-static void add_map(struct mm_region *map)
+static void map_range(u64 virt, u64 phys, u64 size, int level,
+		      u64 *table, u64 attrs)
 {
-	u64 *pte;
-	u64 virt = map->virt;
-	u64 phys = map->phys;
-	u64 size = map->size;
-	u64 attrs = map->attrs | PTE_TYPE_BLOCK | PTE_BLOCK_AF;
-	u64 blocksize;
-	int level;
-	u64 *new_table;
+	u64 map_size = BIT_ULL(level2shift(level));
+	int i, idx;
 
-	while (size) {
-		pte = find_pte(virt, 0);
-		if (pte && (pte_type(pte) == PTE_TYPE_FAULT)) {
-			debug("Creating table for virt 0x%llx\n", virt);
-			new_table = create_table();
-			set_pte_table(pte, new_table);
+	idx = (virt >> level2shift(level)) & (MAX_PTE_ENTRIES - 1);
+	for (i = idx; size; i++) {
+		u64 next_size, *next_table;
+
+		if (level >= gd->arch.first_block_level &&
+		    size >= map_size && !(virt & (map_size - 1))) {
+			if (level == 3)
+				table[i] = phys | attrs | PTE_TYPE_PAGE;
+			else
+				table[i] = phys | attrs;
+
+			virt += map_size;
+			phys += map_size;
+			size -= map_size;
+
+			continue;
 		}
 
-		for (level = 1; level < 4; level++) {
-			pte = find_pte(virt, level);
-			if (!pte)
-				panic("pte not found\n");
+		/* Going one level down */
+		if (pte_type(&table[i]) == PTE_TYPE_FAULT)
+			set_pte_table(&table[i], create_table());
 
-			blocksize = 1ULL << level2shift(level);
-			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
-			      virt, size, blocksize);
-			if (size >= blocksize && !(virt & (blocksize - 1))) {
-				/* Page fits, create block PTE */
-				debug("Setting PTE %p to block virt=%llx\n",
-				      pte, virt);
-				if (level == 3)
-					*pte = phys | attrs | PTE_TYPE_PAGE;
-				else
-					*pte = phys | attrs;
-				virt += blocksize;
-				phys += blocksize;
-				size -= blocksize;
-				break;
-			} else if (pte_type(pte) == PTE_TYPE_FAULT) {
-				/* Page doesn't fit, create subpages */
-				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
-				      virt, blocksize);
-				new_table = create_table();
-				set_pte_table(pte, new_table);
-			} else if (pte_type(pte) == PTE_TYPE_BLOCK) {
-				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
-				      virt, blocksize);
-				split_block(pte, level);
-			}
-		}
+		next_table = (u64 *)(table[i] & GENMASK_ULL(47, PAGE_SHIFT));
+		next_size = min(map_size - (virt & (map_size - 1)), size);
+
+		map_range(virt, phys, next_size, level + 1, next_table, attrs);
+
+		virt += next_size;
+		phys += next_size;
+		size -= next_size;
 	}
 }
 
-enum pte_type {
-	PTE_INVAL,
-	PTE_BLOCK,
-	PTE_LEVEL,
-};
-
-/*
- * This is a recursively called function to count the number of
- * page tables we need to cover a particular PTE range. If you
- * call this with level = -1 you basically get the full 48 bit
- * coverage.
- */
-static int count_required_pts(u64 addr, int level, u64 maxaddr)
+static void add_map(struct mm_region *map)
 {
-	int levelshift = level2shift(level);
-	u64 levelsize = 1ULL << levelshift;
-	u64 levelmask = levelsize - 1;
-	u64 levelend = addr + levelsize;
-	int r = 0;
-	int i;
-	enum pte_type pte_type = PTE_INVAL;
+	u64 attrs = map->attrs | PTE_TYPE_BLOCK | PTE_BLOCK_AF;
+	u64 va_bits;
+	int level = 0;
 
-	for (i = 0; mem_map[i].size || mem_map[i].attrs; i++) {
-		struct mm_region *map = &mem_map[i];
-		u64 start = map->virt;
-		u64 end = start + map->size;
+	get_tcr(NULL, &va_bits);
+	if (va_bits < 39)
+		level = 1;
 
-		/* Check if the PTE would overlap with the map */
-		if (max(addr, start) <= min(levelend, end)) {
-			start = max(addr, start);
-			end = min(levelend, end);
+	if (!gd->arch.first_block_level)
+		gd->arch.first_block_level = 1;
 
-			/* We need a sub-pt for this level */
-			if ((start & levelmask) || (end & levelmask)) {
-				pte_type = PTE_LEVEL;
-				break;
-			}
+	if (gd->arch.has_hafdbs)
+		attrs |= PTE_DBM | PTE_RDONLY;
 
-			/* Lv0 can not do block PTEs, so do levels here too */
-			if (level <= 0) {
-				pte_type = PTE_LEVEL;
-				break;
-			}
+	map_range(map->virt, map->phys, map->size, level,
+		  (u64 *)gd->arch.tlb_addr, attrs);
+}
 
-			/* PTE is active, but fits into a block */
-			pte_type = PTE_BLOCK;
+static void count_range(u64 virt, u64 size, int level, int *cntp)
+{
+	u64 map_size = BIT_ULL(level2shift(level));
+	int i, idx;
+
+	idx = (virt >> level2shift(level)) & (MAX_PTE_ENTRIES - 1);
+	for (i = idx; size; i++) {
+		u64 next_size;
+
+		if (level >= gd->arch.first_block_level &&
+		    size >= map_size && !(virt & (map_size - 1))) {
+			virt += map_size;
+			size -= map_size;
+
+			continue;
 		}
+
+		/* Going one level down */
+		(*cntp)++;
+		next_size = min(map_size - (virt & (map_size - 1)), size);
+
+		count_range(virt, next_size, level + 1, cntp);
+
+		virt += next_size;
+		size -= next_size;
 	}
+}
 
-	/*
-	 * Block PTEs at this level are already covered by the parent page
-	 * table, so we only need to count sub page tables.
-	 */
-	if (pte_type == PTE_LEVEL) {
-		int sublevel = level + 1;
-		u64 sublevelsize = 1ULL << level2shift(sublevel);
+static int count_ranges(void)
+{
+	int i, count = 0, level = 0;
+	u64 va_bits;
 
-		/* Account for the new sub page table ... */
-		r = 1;
+	get_tcr(NULL, &va_bits);
+	if (va_bits < 39)
+		level = 1;
 
-		/* ... and for all child page tables that one might have */
-		for (i = 0; i < MAX_PTE_ENTRIES; i++) {
-			r += count_required_pts(addr, sublevel, maxaddr);
-			addr += sublevelsize;
+	for (i = 0; mem_map[i].size || mem_map[i].attrs; i++)
+		count_range(mem_map[i].virt, mem_map[i].size, level, &count);
 
-			if (addr >= maxaddr) {
-				/*
-				 * We reached the end of address space, no need
-				 * to look any further.
-				 */
-				break;
-			}
-		}
-	}
-
-	return r;
+	return count;
 }
 
 /* Returns the estimated required size of all page tables */
 __weak u64 get_page_table_size(void)
 {
 	u64 one_pt = MAX_PTE_ENTRIES * sizeof(u64);
-	u64 size = 0;
-	u64 va_bits;
-	int start_level = 0;
+	u64 size, mmfr1;
 
-	get_tcr(0, NULL, &va_bits);
-	if (va_bits < 39)
-		start_level = 1;
+	asm volatile("mrs %0, id_aa64mmfr1_el1" : "=r" (mmfr1));
+	if ((mmfr1 & 0xf) == 2) {
+		gd->arch.has_hafdbs = true;
+		gd->arch.first_block_level = 2;
+	} else {
+		gd->arch.has_hafdbs = false;
+		gd->arch.first_block_level = 1;
+	}
 
 	/* Account for all page tables we would need to cover our memory map */
-	size = one_pt * count_required_pts(0, start_level - 1, 1ULL << va_bits);
+	size = one_pt * count_ranges();
 
 	/*
 	 * We need to duplicate our page table once to have an emergency pt to
@@ -410,7 +493,7 @@ __weak void mmu_setup(void)
 		setup_all_pgtables();
 
 	el = current_el();
-	set_ttbr_tcr_mair(el, gd->arch.tlb_addr, get_tcr(el, NULL, NULL),
+	set_ttbr_tcr_mair(el, gd->arch.tlb_addr, get_tcr(NULL, NULL),
 			  MEMORY_ATTRIBUTES);
 
 	/* enable the mmu */
@@ -422,8 +505,12 @@ __weak void mmu_setup(void)
  */
 void invalidate_dcache_all(void)
 {
+#ifndef CONFIG_CMO_BY_VA_ONLY
 	__asm_invalidate_dcache_all();
 	__asm_invalidate_l3_dcache();
+#else
+	apply_cmo_to_mappings(invalidate_dcache_range);
+#endif
 }
 
 /*
@@ -433,6 +520,7 @@ void invalidate_dcache_all(void)
  */
 inline void flush_dcache_all(void)
 {
+#ifndef CONFIG_CMO_BY_VA_ONLY
 	int ret;
 
 	__asm_flush_dcache_all();
@@ -441,8 +529,12 @@ inline void flush_dcache_all(void)
 		debug("flushing dcache returns 0x%x\n", ret);
 	else
 		debug("flushing dcache successfully.\n");
+#else
+	apply_cmo_to_mappings(flush_dcache_range);
+#endif
 }
 
+#ifndef CONFIG_SYS_DISABLE_DCACHE_OPS
 /*
  * Invalidates range in all levels of D-cache/unified cache
  */
@@ -458,6 +550,15 @@ void flush_dcache_range(unsigned long start, unsigned long stop)
 {
 	__asm_flush_dcache_range(start, stop);
 }
+#else
+void invalidate_dcache_range(unsigned long start, unsigned long stop)
+{
+}
+
+void flush_dcache_range(unsigned long start, unsigned long stop)
+{
+}
+#endif /* CONFIG_SYS_DISABLE_DCACHE_OPS */
 
 void dcache_enable(void)
 {
@@ -467,6 +568,10 @@ void dcache_enable(void)
 		__asm_invalidate_tlb_all();
 		mmu_setup();
 	}
+
+	/* Set up page tables only once (it is done also by mmu_setup()) */
+	if (!gd->arch.tlb_fillptr)
+		setup_all_pgtables();
 
 	set_sctlr(get_sctlr() | CR_C);
 }
@@ -481,9 +586,19 @@ void dcache_disable(void)
 	if (!(sctlr & CR_C))
 		return;
 
+	if (IS_ENABLED(CONFIG_CMO_BY_VA_ONLY)) {
+		/*
+		 * When invalidating by VA, do it *before* turning the MMU
+		 * off, so that at least our stack is coherent.
+		 */
+		flush_dcache_all();
+	}
+
 	set_sctlr(sctlr & ~(CR_C|CR_M));
 
-	flush_dcache_all();
+	if (!IS_ENABLED(CONFIG_CMO_BY_VA_ONLY))
+		flush_dcache_all();
+
 	__asm_invalidate_tlb_all();
 }
 
@@ -543,7 +658,7 @@ static u64 set_one_region(u64 start, u64 size, u64 attrs, bool flag, int level)
 void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 				     enum dcache_option option)
 {
-	u64 attrs = PMD_ATTRINDX(option);
+	u64 attrs = PMD_ATTRINDX(option >> 2);
 	u64 real_start = start;
 	u64 real_size = size;
 
@@ -647,7 +762,7 @@ void mmu_change_region_attr(phys_addr_t addr, size_t siz, u64 attrs)
 	__asm_invalidate_tlb_all();
 }
 
-#else	/* CONFIG_SYS_DCACHE_OFF */
+#else	/* !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
 
 /*
  * For SPL builds, we may want to not have dcache enabled. Any real U-Boot
@@ -684,9 +799,9 @@ void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 {
 }
 
-#endif	/* CONFIG_SYS_DCACHE_OFF */
+#endif	/* !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
 
-#ifndef CONFIG_SYS_ICACHE_OFF
+#if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
 
 void icache_enable(void)
 {
@@ -704,13 +819,18 @@ int icache_status(void)
 	return (get_sctlr() & CR_I) != 0;
 }
 
+int mmu_status(void)
+{
+	return (get_sctlr() & CR_M) != 0;
+}
+
 void invalidate_icache_all(void)
 {
 	__asm_invalidate_icache_all();
 	__asm_invalidate_l3_icache();
 }
 
-#else	/* CONFIG_SYS_ICACHE_OFF */
+#else	/* !CONFIG_IS_ENABLED(SYS_ICACHE_OFF) */
 
 void icache_enable(void)
 {
@@ -725,11 +845,16 @@ int icache_status(void)
 	return 0;
 }
 
+int mmu_status(void)
+{
+	return 0;
+}
+
 void invalidate_icache_all(void)
 {
 }
 
-#endif	/* CONFIG_SYS_ICACHE_OFF */
+#endif	/* !CONFIG_IS_ENABLED(SYS_ICACHE_OFF) */
 
 /*
  * Enable dCache & iCache, whether cache is actually enabled

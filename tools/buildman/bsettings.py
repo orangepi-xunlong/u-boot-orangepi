@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2012 The Chromium OS Authors.
 
-import ConfigParser
+import configparser
 import os
-import StringIO
+import io
 
+config_fname = None
 
 def Setup(fname=''):
     """Set up the buildman settings module by reading config files
@@ -15,20 +16,20 @@ def Setup(fname=''):
     global settings
     global config_fname
 
-    settings = ConfigParser.SafeConfigParser()
+    settings = configparser.SafeConfigParser()
     if fname is not None:
         config_fname = fname
         if config_fname == '':
             config_fname = '%s/.buildman' % os.getenv('HOME')
         if not os.path.exists(config_fname):
-            print 'No config file found ~/.buildman\nCreating one...\n'
+            print('No config file found ~/.buildman\nCreating one...\n')
             CreateBuildmanConfigFile(config_fname)
-            print 'To install tool chains, please use the --fetch-arch option'
+            print('To install tool chains, please use the --fetch-arch option')
         if config_fname:
             settings.read(config_fname)
 
 def AddFile(data):
-    settings.readfp(StringIO.StringIO(data))
+    settings.readfp(io.StringIO(data))
 
 def GetItems(section):
     """Get the items from a section of the config.
@@ -41,10 +42,21 @@ def GetItems(section):
     """
     try:
         return settings.items(section)
-    except ConfigParser.NoSectionError as e:
+    except configparser.NoSectionError as e:
         return []
     except:
         raise
+
+def GetGlobalItemValue(name):
+    """Get an item from the 'global' section of the config.
+
+    Args:
+        name: name of item to retrieve
+
+    Returns:
+        str: Value of item, or None if not present
+    """
+    return settings.get('global', name, fallback=None)
 
 def SetItem(section, tag, value):
     """Set an item and write it back to the settings file"""
@@ -68,24 +80,25 @@ def CreateBuildmanConfigFile(config_fname):
     try:
         f = open(config_fname, 'w')
     except IOError:
-        print "Couldn't create buildman config file '%s'\n" % config_fname
+        print("Couldn't create buildman config file '%s'\n" % config_fname)
         raise
 
-    print >>f, '''[toolchain]
+    print('''[toolchain]
 # name = path
 # e.g. x86 = /opt/gcc-4.6.3-nolibc/x86_64-linux
+other = /
 
 [toolchain-prefix]
 # name = path to prefix
 # e.g. x86 = /opt/gcc-4.6.3-nolibc/x86_64-linux/bin/x86_64-linux-
+# arc = /opt/arc/arc_gnu_2021.03_prebuilt_elf32_le_linux_install/bin/arc-elf32-
 
 [toolchain-alias]
 # arch = alias
 # Indicates which toolchain should be used to build for that arch
+riscv = riscv32
+sh = sh4
 x86 = i386
-blackfin = bfin
-nds32 = nds32le
-openrisc = or1k
 
 [make-flags]
 # Special flags to pass to 'make' for certain boards, e.g. to pass a test
@@ -93,5 +106,5 @@ openrisc = or1k
 # snapper-boards=ENABLE_AT91_TEST=1
 # snapper9260=${snapper-boards} BUILD_TAG=442
 # snapper9g45=${snapper-boards} BUILD_TAG=443
-'''
+''', file=f)
     f.close();

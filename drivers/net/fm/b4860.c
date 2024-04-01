@@ -4,6 +4,7 @@
  *	Roy Zang <tie-fei.zang@freescale.com>
  */
 #include <common.h>
+#include <env.h>
 #include <phy.h>
 #include <fm_eth.h>
 #include <asm/io.h>
@@ -24,7 +25,7 @@ u32 port_to_devdisr[] = {
 
 static int is_device_disabled(enum fm_port port)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 devdisr2 = in_be32(&gur->devdisr2);
 
 	return port_to_devdisr[port] & devdisr2;
@@ -32,14 +33,14 @@ static int is_device_disabled(enum fm_port port)
 
 void fman_disable_port(enum fm_port port)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
 	setbits_be32(&gur->devdisr2, port_to_devdisr[port]);
 }
 
 void fman_enable_port(enum fm_port port)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
 	clrbits_be32(&gur->devdisr2, port_to_devdisr[port]);
 }
@@ -50,11 +51,11 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 	u32 serdes2_prtcl;
 	char buffer[HWCONFIG_BUFFER_SIZE];
 	char *buf = NULL;
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 #endif
 
 	if (is_device_disabled(port))
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 
 	/*B4860 has two 10Gig Mac*/
 	if ((port == FM1_10GEC1 || port == FM1_10GEC2)	&&
@@ -99,7 +100,7 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 			env_get_f("hwconfig", buffer, sizeof(buffer));
 			buf = buffer;
 
-			/* check if XFI interface enable in hwconfig for 10g */
+			/* check if 10GBase-R interface enable in hwconfig for 10g */
 			if (hwconfig_subarg_cmp_f("fsl_b4860_serdes2",
 						  "sfp_amc", "sfp", buf)) {
 				if ((port == FM1_10GEC1 ||
@@ -111,7 +112,7 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 					 (port == FM1_DTSEC2) ||
 					 (port == FM1_DTSEC3) ||
 					 (port == FM1_DTSEC4))
-					return PHY_INTERFACE_MODE_NONE;
+					return PHY_INTERFACE_MODE_NA;
 			}
 		}
 	}
@@ -130,8 +131,8 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 			return PHY_INTERFACE_MODE_SGMII;
 		break;
 	default:
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 	}
 
-	return PHY_INTERFACE_MODE_NONE;
+	return PHY_INTERFACE_MODE_NA;
 }

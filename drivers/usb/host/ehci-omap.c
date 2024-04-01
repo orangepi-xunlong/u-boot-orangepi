@@ -11,13 +11,19 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <usb.h>
+#include <linux/delay.h>
 #include <usb/ulpi.h>
 #include <errno.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/ehci.h>
 #include <asm/ehci-omap.h>
+#include <dm.h>
+#include <dm/device-internal.h>
+#include <dm/lists.h>
+#include <power/regulator.h>
 
 #include "ehci.h"
 
@@ -122,63 +128,25 @@ static void omap_ehci_soft_phy_reset(int port)
 }
 #endif
 
-#if defined(CONFIG_OMAP_EHCI_PHY1_RESET_GPIO) || \
-	defined(CONFIG_OMAP_EHCI_PHY2_RESET_GPIO) || \
-	defined(CONFIG_OMAP_EHCI_PHY3_RESET_GPIO)
-/* controls PHY(s) reset signal(s) */
-static inline void omap_ehci_phy_reset(int on, int delay)
-{
-	/*
-	 * Refer ISSUE1:
-	 * Hold the PHY in RESET for enough time till
-	 * PHY is settled and ready
-	 */
-	if (delay && !on)
-		udelay(delay);
-#ifdef CONFIG_OMAP_EHCI_PHY1_RESET_GPIO
-	gpio_request(CONFIG_OMAP_EHCI_PHY1_RESET_GPIO, "USB PHY1 reset");
-	gpio_direction_output(CONFIG_OMAP_EHCI_PHY1_RESET_GPIO, !on);
+struct ehci_omap_priv_data {
+	struct ehci_ctrl ctrl;
+	struct omap_ehci *ehci;
+#ifdef CONFIG_DM_REGULATOR
+	struct udevice *vbus_supply;
 #endif
-#ifdef CONFIG_OMAP_EHCI_PHY2_RESET_GPIO
-	gpio_request(CONFIG_OMAP_EHCI_PHY2_RESET_GPIO, "USB PHY2 reset");
-	gpio_direction_output(CONFIG_OMAP_EHCI_PHY2_RESET_GPIO, !on);
-#endif
-#ifdef CONFIG_OMAP_EHCI_PHY3_RESET_GPIO
-	gpio_request(CONFIG_OMAP_EHCI_PHY3_RESET_GPIO, "USB PHY3 reset");
-	gpio_direction_output(CONFIG_OMAP_EHCI_PHY3_RESET_GPIO, !on);
-#endif
-
-	/* Hold the PHY in RESET for enough time till DIR is high */
-	/* Refer: ISSUE1 */
-	if (delay && on)
-		udelay(delay);
-}
-#else
-#define omap_ehci_phy_reset(on, delay)	do {} while (0)
-#endif
-
-/* Reset is needed otherwise the kernel-driver will throw an error. */
-int omap_ehci_hcd_stop(void)
-{
-	debug("Resetting OMAP EHCI\n");
-	omap_ehci_phy_reset(1, 0);
-
-	if (omap_uhh_reset() < 0)
-		return -1;
-
-	if (omap_ehci_tll_reset() < 0)
-		return -1;
-
-	return 0;
-}
+	enum usb_init_type init_type;
+	int portnr;
+	struct phy phy[OMAP_HS_USB_PORTS];
+	int nports;
+};
 
 /*
  * Initialize the OMAP EHCI controller and PHY.
  * Based on "drivers/usb/host/ehci-omap.c" from Linux 3.1
  * See there for additional Copyrights.
  */
-int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
-		       struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+static int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
+			      struct udevice *dev)
 {
 	int ret;
 	unsigned int i, reg = 0, rev = 0;
@@ -189,8 +157,9 @@ int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
 	if (ret < 0)
 		return ret;
 
-	/* Put the PHY in RESET */
-	omap_ehci_phy_reset(1, 10);
+	/* Hold the PHY in RESET for enough time till DIR is high */
+	/* Refer: ISSUE1 */
+	udelay(10);
 
 	ret = omap_uhh_reset();
 	if (ret < 0)
@@ -269,7 +238,12 @@ int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
 		if (is_ehci_hsic_mode(usbhs_pdata->port_mode[i]))
 			omap_usbhs_hsic_init(i);
 
-	omap_ehci_phy_reset(0, 10);
+	/*
+	 * Refer ISSUE1:
+	 * Hold the PHY in RESET for enough time till
+	 * PHY is settled and ready
+	 */
+	udelay(10);
 
 	/*
 	 * An undocumented "feature" in the OMAP3 EHCI controller,
@@ -286,9 +260,137 @@ int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
 		if (is_ehci_phy_mode(usbhs_pdata->port_mode[i]))
 			omap_ehci_soft_phy_reset(i);
 
-	*hccr = (struct ehci_hccr *)(OMAP_EHCI_BASE);
-	*hcor = (struct ehci_hcor *)(OMAP_EHCI_BASE + 0x10);
-
 	debug("OMAP EHCI init done\n");
 	return 0;
 }
+
+static struct omap_usbhs_board_data usbhs_bdata = {
+	.port_mode[0] = OMAP_USBHS_PORT_MODE_UNUSED,
+	.port_mode[1] = OMAP_USBHS_PORT_MODE_UNUSED,
+	.port_mode[2] = OMAP_USBHS_PORT_MODE_UNUSED,
+};
+
+static void omap_usbhs_set_mode(u8 index, const char *mode)
+{
+	if (!strcmp(mode, "ehci-phy"))
+		usbhs_bdata.port_mode[index] = OMAP_EHCI_PORT_MODE_PHY;
+	else if (!strcmp(mode, "ehci-tll"))
+		usbhs_bdata.port_mode[index] = OMAP_EHCI_PORT_MODE_TLL;
+	else if (!strcmp(mode, "ehci-hsic"))
+		usbhs_bdata.port_mode[index] = OMAP_EHCI_PORT_MODE_HSIC;
+}
+
+static int omap_usbhs_probe(struct udevice *dev)
+{
+	u8 i;
+	const char *mode;
+	char prop[11];
+
+	/* Go through each port portX-mode to determing phy mode */
+	for (i = 0; i < OMAP_HS_USB_PORTS; i++) {
+		snprintf(prop, sizeof(prop), "port%d-mode", i + 1);
+		mode = dev_read_string(dev, prop);
+
+		/* If the portX-mode exists, set the mode */
+		if (mode)
+			omap_usbhs_set_mode(i, mode);
+	}
+
+	return 0;
+}
+
+static const struct udevice_id omap_usbhs_dt_ids[] = {
+	{ .compatible = "ti,usbhs-host" },
+	{ }
+};
+
+U_BOOT_DRIVER(usb_omaphs_host) = {
+	.name	= "usbhs-host",
+	.id	= UCLASS_SIMPLE_BUS,
+	.of_match = omap_usbhs_dt_ids,
+	.probe	= omap_usbhs_probe,
+	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
+};
+
+static int ehci_usb_of_to_plat(struct udevice *dev)
+{
+	struct usb_plat *plat = dev_get_plat(dev);
+
+	plat->init_type = USB_INIT_HOST;
+
+	return 0;
+}
+
+/*
+ * This driver references phys based on the USB port.  If
+ * the port is unused, the corresponding phy is listed as NULL
+ * which generic_phy_init_bulk treats as an error, so we need
+ * a custom one that tolerates empty phys
+ */
+static int omap_ehci_phy_get(struct udevice *dev)
+{
+	struct ehci_omap_priv_data *priv = dev_get_priv(dev);
+	int i, ret;
+
+	for (i = 0; i < OMAP_HS_USB_PORTS; i++) {
+		ret = generic_phy_get_by_index(dev, i, &priv->phy[i]);
+		if (ret && ret != -ENOENT)
+			return ret;
+	};
+
+	return 0;
+};
+
+static int omap_ehci_probe(struct udevice *dev)
+{
+	struct usb_plat *plat = dev_get_plat(dev);
+	struct ehci_omap_priv_data *priv = dev_get_priv(dev);
+	struct ehci_hccr *hccr;
+	struct ehci_hcor *hcor;
+	int ret;
+
+	priv->ehci = dev_read_addr_ptr(dev);
+	priv->portnr = dev_seq(dev);
+	priv->init_type = plat->init_type;
+
+	hccr = (struct ehci_hccr *)&priv->ehci->hccapbase;
+	hcor = (struct ehci_hcor *)&priv->ehci->usbcmd;
+
+	/* Identify Phys */
+	ret = omap_ehci_phy_get(dev);
+	if (ret) {
+		printf("Failed to get phys\n");
+		return ret;
+	}
+
+	/* Register the EHCI */
+	ret = ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
+	if (ret) {
+		printf("Failed to register EHCI\n");
+		return ret;
+	}
+
+	ret = omap_ehci_hcd_init(0, &usbhs_bdata, dev);
+	if (ret)
+		return ret;
+
+	return ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
+}
+
+static const struct udevice_id omap_ehci_dt_ids[] = {
+	{ .compatible = "ti,ehci-omap" },
+	{ }
+};
+
+U_BOOT_DRIVER(usb_omap_ehci) = {
+	.name	= "omap-ehci",
+	.id	= UCLASS_USB,
+	.of_match = omap_ehci_dt_ids,
+	.probe = omap_ehci_probe,
+	.of_to_plat = ehci_usb_of_to_plat,
+	.plat_auto	= sizeof(struct usb_plat),
+	.priv_auto	= sizeof(struct ehci_omap_priv_data),
+	.remove = ehci_deregister,
+	.ops	= &ehci_usb_ops,
+	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
+};

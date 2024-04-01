@@ -11,7 +11,7 @@
 	compatible = "atmel,sama5d3xmb", "atmel,sama5d3xcm", "atmel,sama5d3", "atmel,sama5";
 
 	chosen {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		stdout-path = &dbgu;
 	};
 
@@ -32,7 +32,7 @@
 				dmas = <0>, <0>;	/*  Do not use DMA for spi0 */
 
 				spi_flash@0 {
-					compatible = "spi-flash";
+					compatible = "jedec,spi-nor";
 					spi-max-frequency = <50000000>;
 					reg = <0>;
 				};
@@ -57,7 +57,7 @@
 			};
 
 			i2c1: i2c@f0018000 {
-				ov2640: camera@0x30 {
+				ov2640: camera@30 {
 					compatible = "ovti,ov2640";
 					reg = <0x30>;
 					pinctrl-names = "default";
@@ -180,7 +180,7 @@
 			dbgu: serial@ffffee00 {
 				dmas = <0>, <0>;	/*  Do not use DMA for dbgu */
 				status = "okay";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 			};
 
 			watchdog@fffffe40 {
@@ -221,8 +221,6 @@
 		compatible = "gpio-keys";
 		status = "okay";
 
-		#address-cells = <1>;
-		#size-cells = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_gpio_keys>;
 

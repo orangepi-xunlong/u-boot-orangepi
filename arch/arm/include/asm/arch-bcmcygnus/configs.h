@@ -11,17 +11,8 @@
 /* uArchitecture specifics */
 
 /* Serial Info */
-/* Post pad 3 bytes after each reg addr */
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_MEM32
-
-#define CONFIG_SYS_NS16550_CLK		100000000
-#define CONFIG_SYS_NS16550_CLK_DIV	54
-#define CONFIG_SERIAL_MULTI
-#define CONFIG_SYS_NS16550_COM3		0x18023000
-
-/* Ethernet */
-#define CONFIG_PHY_BROADCOM
-#define CONFIG_PHY_RESET_DELAY 10000 /* PHY reset delay in us*/
+#define CFG_SYS_NS16550_CLK		100000000
+#define CFG_SYS_NS16550_CLK_DIV	54
+#define CFG_SYS_NS16550_COM3		0x18023000
 
 #endif /* __ARCH_CONFIGS_H */

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
+ * Copyright 2018-2020 NXP
  */
 
 #include <common.h>
+#include <log.h>
+#include <net.h>
 #include <asm/io.h>
 #include <netdev.h>
 #include <fdt_support.h>
@@ -24,8 +27,6 @@
 #define EMI1_SLOT2	3
 #define EMI1_SLOT4	4
 
-static int mdio_mux[NUM_FM_PORTS];
-
 static const char * const mdio_names[] = {
 	"LS1046AQDS_MDIO_RGMII1",
 	"LS1046AQDS_MDIO_RGMII2",
@@ -36,7 +37,11 @@ static const char * const mdio_names[] = {
 };
 
 /* Map SerDes 1 & 2 lanes to default slot. */
+#ifdef CONFIG_FMAN_ENET
+static int mdio_mux[NUM_FM_PORTS];
+
 static u8 lane_to_slot[] = {1, 1, 1, 1, 0, 4, 0 , 0};
+#endif
 
 static const char *ls1046aqds_mdio_name_for_muxval(u8 muxval)
 {
@@ -68,6 +73,7 @@ struct mii_dev *mii_dev_for_muxval(u8 muxval)
 	return bus;
 }
 
+#ifdef CONFIG_FMAN_ENET
 struct ls1046aqds_mdio {
 	u8 muxval;
 	struct mii_dev *realbus;
@@ -153,28 +159,29 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 			      enum fm_port port, int offset)
 {
 	struct fixed_link f_link;
+	const char *phyconn;
 
 	if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_SGMII) {
 		switch (port) {
 		case FM1_DTSEC9:
-			fdt_set_phy_handle(fdt, compat, addr, "sgmii_s1_p1");
+			fdt_set_phy_handle(fdt, compat, addr, "sgmii-s1-p1");
 			break;
 		case FM1_DTSEC10:
-			fdt_set_phy_handle(fdt, compat, addr, "sgmii_s1_p2");
+			fdt_set_phy_handle(fdt, compat, addr, "sgmii-s1-p2");
 			break;
 		case FM1_DTSEC5:
-			fdt_set_phy_handle(fdt, compat, addr, "sgmii_s1_p3");
+			fdt_set_phy_handle(fdt, compat, addr, "sgmii-s1-p3");
 			break;
 		case FM1_DTSEC6:
-			fdt_set_phy_handle(fdt, compat, addr, "sgmii_s1_p4");
+			fdt_set_phy_handle(fdt, compat, addr, "sgmii-s1-p4");
 			break;
 		case FM1_DTSEC2:
-			fdt_set_phy_handle(fdt, compat, addr, "sgmii_s4_p1");
+			fdt_set_phy_handle(fdt, compat, addr, "sgmii-s4-p1");
 			break;
 		default:
 			break;
 		}
-	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_SGMII_2500) {
+	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_2500BASEX) {
 		/* 2.5G SGMII interface */
 		f_link.phy_id = cpu_to_fdt32(port);
 		f_link.duplex = cpu_to_fdt32(1);
@@ -185,20 +192,20 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 		fdt_delprop(fdt, offset, "phy-handle");
 		fdt_setprop(fdt, offset, "fixed-link", &f_link, sizeof(f_link));
 		fdt_setprop_string(fdt, offset, "phy-connection-type",
-				   "sgmii-2500");
+				   "2500base-x");
 	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_QSGMII) {
 		switch (port) {
 		case FM1_DTSEC1:
-			fdt_set_phy_handle(fdt, compat, addr, "qsgmii_s2_p4");
+			fdt_set_phy_handle(fdt, compat, addr, "qsgmii-s2-p4");
 			break;
 		case FM1_DTSEC5:
-			fdt_set_phy_handle(fdt, compat, addr, "qsgmii_s2_p2");
+			fdt_set_phy_handle(fdt, compat, addr, "qsgmii-s2-p2");
 			break;
 		case FM1_DTSEC6:
-			fdt_set_phy_handle(fdt, compat, addr, "qsgmii_s2_p1");
+			fdt_set_phy_handle(fdt, compat, addr, "qsgmii-s2-p1");
 			break;
 		case FM1_DTSEC10:
-			fdt_set_phy_handle(fdt, compat, addr, "qsgmii_s2_p3");
+			fdt_set_phy_handle(fdt, compat, addr, "qsgmii-s2-p3");
 			break;
 		default:
 			break;
@@ -208,16 +215,24 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 				   "qsgmii");
 	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_XGMII &&
 		   (port == FM1_10GEC1 || port == FM1_10GEC2)) {
-		/* XFI interface */
-		f_link.phy_id = cpu_to_fdt32(port);
-		f_link.duplex = cpu_to_fdt32(1);
-		f_link.link_speed = cpu_to_fdt32(10000);
-		f_link.pause = 0;
-		f_link.asym_pause = 0;
-		/* no PHY for XFI */
-		fdt_delprop(fdt, offset, "phy-handle");
-		fdt_setprop(fdt, offset, "fixed-link", &f_link, sizeof(f_link));
-		fdt_setprop_string(fdt, offset, "phy-connection-type", "xgmii");
+		phyconn = fdt_getprop(fdt, offset, "phy-connection-type", NULL);
+		if (is_backplane_mode(phyconn)) {
+			/* Backplane KR mode: skip fixups */
+			printf("Interface %d in backplane KR mode\n", port);
+		} else {
+			/* 10GBase-R interface */
+			f_link.phy_id = cpu_to_fdt32(port);
+			f_link.duplex = cpu_to_fdt32(1);
+			f_link.link_speed = cpu_to_fdt32(10000);
+			f_link.pause = 0;
+			f_link.asym_pause = 0;
+			/* no PHY for 10GBase-R */
+			fdt_delprop(fdt, offset, "phy-handle");
+			fdt_setprop(fdt, offset, "fixed-link", &f_link,
+				    sizeof(f_link));
+			fdt_setprop_string(fdt, offset, "phy-connection-type",
+					   "xgmii");
+		}
 	}
 }
 
@@ -231,13 +246,13 @@ void fdt_fixup_board_enet(void *fdt)
 		case PHY_INTERFACE_MODE_QSGMII:
 			switch (mdio_mux[i]) {
 			case EMI1_SLOT1:
-				fdt_status_okay_by_alias(fdt, "emi1_slot1");
+				fdt_status_okay_by_alias(fdt, "emi1-slot1");
 				break;
 			case EMI1_SLOT2:
-				fdt_status_okay_by_alias(fdt, "emi1_slot2");
+				fdt_status_okay_by_alias(fdt, "emi1-slot2");
 				break;
 			case EMI1_SLOT4:
-				fdt_status_okay_by_alias(fdt, "emi1_slot4");
+				fdt_status_okay_by_alias(fdt, "emi1-slot4");
 				break;
 			default:
 				break;
@@ -249,12 +264,11 @@ void fdt_fixup_board_enet(void *fdt)
 	}
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
-#ifdef CONFIG_FMAN_ENET
 	int i, idx, lane, slot, interface;
 	struct memac_mdio_info dtsec_mdio_info;
-	struct ccsr_gur *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 srds_s1, srds_s2;
 	u8 brdcfg12;
 
@@ -271,7 +285,7 @@ int board_eth_init(bd_t *bis)
 		mdio_mux[i] = EMI_NONE;
 
 	dtsec_mdio_info.regs =
-		(struct memac_mdio_controller *)CONFIG_SYS_FM1_DTSEC_MDIO_ADDR;
+		(struct memac_mdio_controller *)CFG_SYS_FM1_DTSEC_MDIO_ADDR;
 
 	dtsec_mdio_info.name = DEFAULT_FM_MDIO_NAME;
 
@@ -335,7 +349,7 @@ int board_eth_init(bd_t *bis)
 		/* SGMII on slot 4, MAC 2 */
 		fm_info_set_phy_address(FM1_DTSEC2, SGMII_CARD_PORT1_PHY_ADDR);
 
-	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CONFIG_SYS_NUM_FM1_DTSEC; i++) {
+	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CFG_SYS_NUM_FM1_DTSEC; i++) {
 		idx = i - FM1_DTSEC1;
 		interface = fm_info_get_enet_if(i);
 		switch (interface) {
@@ -397,6 +411,8 @@ int board_eth_init(bd_t *bis)
 			break;
 		case PHY_INTERFACE_MODE_RGMII:
 		case PHY_INTERFACE_MODE_RGMII_TXID:
+		case PHY_INTERFACE_MODE_RGMII_RXID:
+		case PHY_INTERFACE_MODE_RGMII_ID:
 			if (i == FM1_DTSEC3)
 				mdio_mux[i] = EMI1_RGMII1;
 			else if (i == FM1_DTSEC4)
@@ -409,7 +425,7 @@ int board_eth_init(bd_t *bis)
 	}
 
 	cpu_eth_init(bis);
-#endif /* CONFIG_FMAN_ENET */
 
 	return pci_eth_init(bis);
 }
+#endif /* CONFIG_FMAN_ENET */

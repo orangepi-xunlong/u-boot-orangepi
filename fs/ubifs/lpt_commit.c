@@ -14,13 +14,16 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/devres.h>
 #include <linux/crc16.h>
 #include <linux/slab.h>
 #include <linux/random.h>
 #else
+#include <linux/bitops.h>
 #include <linux/compat.h>
 #include <linux/err.h>
-#include "crc16.h"
+#include <linux/crc16.h>
 #endif
 #include "ubifs.h"
 

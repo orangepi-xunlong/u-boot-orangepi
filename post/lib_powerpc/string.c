@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <irq_func.h>
 
 /*
  * CPU test
@@ -19,13 +20,12 @@
 #include <post.h>
 #include "cpu_asm.h"
 
-#if CONFIG_POST & CONFIG_SYS_POST_CPU
+#if CFG_POST & CFG_SYS_POST_CPU
 
 extern void cpu_post_exec_02 (ulong *code, ulong op1, ulong op2);
 extern void cpu_post_exec_04 (ulong *code, ulong op1, ulong op2, ulong op3,
     ulong op4);
 
-#include <bedbug/regs.h>
 int cpu_post_test_string (void)
 {
     int ret = 0;

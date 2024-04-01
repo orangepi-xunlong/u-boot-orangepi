@@ -15,7 +15,11 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
+#if IS_ENABLED(CONFIG_TARGET_AM335X_GUARDIAN)
+#include <asm/arch/mem-guardian.h>
+#else
 #include <asm/arch/mem.h>
+#endif
 #include <asm/arch/sys_proto.h>
 #include <command.h>
 #include <linux/mtd/omap_gpmc.h>
@@ -25,7 +29,7 @@ const struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
 
 #if defined(CONFIG_NOR)
 char gpmc_cs0_flash = MTD_DEV_TYPE_NOR;
-#elif defined(CONFIG_NAND) || defined(CONFIG_CMD_NAND)
+#elif defined(CONFIG_MTD_RAW_NAND) || defined(CONFIG_CMD_NAND)
 char gpmc_cs0_flash = MTD_DEV_TYPE_NAND;
 #elif defined(CONFIG_CMD_ONENAND)
 char gpmc_cs0_flash = MTD_DEV_TYPE_ONENAND;
@@ -93,7 +97,7 @@ void set_gpmc_cs0(int flash_type)
 		STNOR_GPMC_CONFIG7
 	};
 #endif
-#if defined(CONFIG_NAND) || defined(CONFIG_CMD_NAND)
+#if defined(CONFIG_MTD_RAW_NAND) || defined(CONFIG_CMD_NAND)
 	const u32 gpmc_regs_nand[GPMC_MAX_REG] = {
 		M_NAND_GPMC_CONFIG1,
 		M_NAND_GPMC_CONFIG2,
@@ -120,25 +124,25 @@ void set_gpmc_cs0(int flash_type)
 #if defined(CONFIG_NOR)
 	case MTD_DEV_TYPE_NOR:
 		gpmc_regs = gpmc_regs_nor;
-		base = CONFIG_SYS_FLASH_BASE;
-		size = (CONFIG_SYS_FLASH_SIZE > 0x08000000) ? GPMC_SIZE_256M :
-		      ((CONFIG_SYS_FLASH_SIZE > 0x04000000) ? GPMC_SIZE_128M :
-		      ((CONFIG_SYS_FLASH_SIZE > 0x02000000) ? GPMC_SIZE_64M  :
-		      ((CONFIG_SYS_FLASH_SIZE > 0x01000000) ? GPMC_SIZE_32M  :
+		base = CFG_SYS_FLASH_BASE;
+		size = (CFG_SYS_FLASH_SIZE > 0x08000000) ? GPMC_SIZE_256M :
+		      ((CFG_SYS_FLASH_SIZE > 0x04000000) ? GPMC_SIZE_128M :
+		      ((CFG_SYS_FLASH_SIZE > 0x02000000) ? GPMC_SIZE_64M  :
+		      ((CFG_SYS_FLASH_SIZE > 0x01000000) ? GPMC_SIZE_32M  :
 		                                              GPMC_SIZE_16M)));
 		break;
 #endif
-#if defined(CONFIG_NAND) || defined(CONFIG_CMD_NAND)
+#if defined(CONFIG_MTD_RAW_NAND) || defined(CONFIG_CMD_NAND)
 	case MTD_DEV_TYPE_NAND:
 		gpmc_regs = gpmc_regs_nand;
-		base = CONFIG_SYS_NAND_BASE;
+		base = CFG_SYS_NAND_BASE;
 		size = GPMC_SIZE_16M;
 		break;
 #endif
 #if defined(CONFIG_CMD_ONENAND)
 	case MTD_DEV_TYPE_ONENAND:
 		gpmc_regs = gpmc_regs_onenand;
-		base = CONFIG_SYS_ONENAND_BASE;
+		base = CFG_SYS_ONENAND_BASE;
 		size = GPMC_SIZE_128M;
 		break;
 #endif

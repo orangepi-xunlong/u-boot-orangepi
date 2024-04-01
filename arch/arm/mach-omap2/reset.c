@@ -9,11 +9,12 @@
  * Sricharan R <r.sricharan@ti.com>
  */
 #include <config.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <linux/compiler.h>
 
-void __weak reset_cpu(unsigned long ignored)
+void __weak reset_cpu(void)
 {
 	writel(PRM_RSTCTRL_RESET, PRM_RSTCTRL);
 }

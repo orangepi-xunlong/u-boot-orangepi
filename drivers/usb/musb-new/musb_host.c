@@ -9,6 +9,8 @@
  */
 
 #ifndef __UBOOT__
+#include <dm/device_compat.h>
+#include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
@@ -20,9 +22,12 @@
 #include <linux/dma-mapping.h>
 #else
 #include <common.h>
+#include <dm.h>
+#include <dm/device_compat.h>
 #include <usb.h>
+#include <linux/bug.h>
+#include <linux/usb/usb_urb_compat.h>
 #include "linux-compat.h"
-#include "usb-compat.h"
 #endif
 
 #include "musb_core.h"

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 #include <common.h>
@@ -8,9 +9,11 @@
 #include <asm/fsl_law.h>
 #endif
 #include <div64.h>
+#include <linux/delay.h>
 
 #include <fsl_ddr.h>
 #include <fsl_immap.h>
+#include <log.h>
 #include <asm/io.h>
 #if defined(CONFIG_FSL_LSCH2) || defined(CONFIG_FSL_LSCH3) || \
 	defined(CONFIG_ARM)
@@ -31,16 +34,16 @@ u32 fsl_ddr_get_version(unsigned int ctrl_num)
 
 	switch (ctrl_num) {
 	case 0:
-		ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 		break;
-#if defined(CONFIG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
+#if defined(CFG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
 	case 1:
-		ddr = (void *)CONFIG_SYS_FSL_DDR2_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR2_ADDR;
 		break;
 #endif
-#if defined(CONFIG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
+#if defined(CFG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
 	case 2:
-		ddr = (void *)CONFIG_SYS_FSL_DDR3_ADDR;
+		ddr = (void *)CFG_SYS_FSL_DDR3_ADDR;
 		break;
 #endif
 #if defined(CONFIG_SYS_FSL_DDR4_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 3)
@@ -73,10 +76,13 @@ unsigned int get_memory_clk_period_ps(const unsigned int ctrl_num)
 
 	/* Round to nearest 10ps, being careful about 64-bit multiply/divide */
 	unsigned long long rem, mclk_ps = ULL_2E12;
-
-	/* Now perform the big divide, the result fits in 32-bits */
-	rem = do_div(mclk_ps, data_rate);
-	result = (rem >= (data_rate >> 1)) ? mclk_ps + 1 : mclk_ps;
+	if (data_rate) {
+		/* Now perform the big divide, the result fits in 32-bits */
+		rem = do_div(mclk_ps, data_rate);
+		result = (rem >= (data_rate >> 1)) ? mclk_ps + 1 : mclk_ps;
+	} else {
+		result = 0;
+	}
 
 	return result;
 }
@@ -133,15 +139,15 @@ __fsl_ddr_set_lawbar(const common_timing_params_t *memctl_common_params,
 	}
 
 #if !defined(CONFIG_PHYS_64BIT)
-	if (base >= CONFIG_MAX_MEM_MAPPED)
+	if (base >= CFG_MAX_MEM_MAPPED)
 		return;
-	if ((base + size) >= CONFIG_MAX_MEM_MAPPED)
-		size = CONFIG_MAX_MEM_MAPPED - base;
+	if ((base + size) >= CFG_MAX_MEM_MAPPED)
+		size = CFG_MAX_MEM_MAPPED - base;
 #endif
 	if (set_ddr_laws(base, size, law_memctl) < 0) {
 		printf("%s: ERROR (ctrl #%d, TRGT ID=%x)\n", __func__, ctrl_num,
 			law_memctl);
-		return ;
+		return;
 	}
 	debug("setup ddr law base = 0x%llx, size 0x%llx, TRGT_ID 0x%x\n",
 		base, size, law_memctl);
@@ -175,7 +181,7 @@ u32 fsl_ddr_get_intl3r(void)
 void print_ddr_info(unsigned int start_ctrl)
 {
 	struct ccsr_ddr __iomem *ddr =
-		(struct ccsr_ddr __iomem *)(CONFIG_SYS_FSL_DDR_ADDR);
+		(struct ccsr_ddr __iomem *)(CFG_SYS_FSL_DDR_ADDR);
 
 #if	defined(CONFIG_E6500) && (CONFIG_SYS_NUM_DDR_CTLRS == 3)
 	u32 *mcintl3r = (void *) (CONFIG_SYS_IMMR + 0x18004);
@@ -189,14 +195,14 @@ void print_ddr_info(unsigned int start_ctrl)
 #if CONFIG_SYS_NUM_DDR_CTLRS >= 2
 	if ((!(sdram_cfg & SDRAM_CFG_MEM_EN)) ||
 	    (start_ctrl == 1)) {
-		ddr = (void __iomem *)CONFIG_SYS_FSL_DDR2_ADDR;
+		ddr = (void __iomem *)CFG_SYS_FSL_DDR2_ADDR;
 		sdram_cfg = ddr_in32(&ddr->sdram_cfg);
 	}
 #endif
 #if CONFIG_SYS_NUM_DDR_CTLRS >= 3
 	if ((!(sdram_cfg & SDRAM_CFG_MEM_EN)) ||
 	    (start_ctrl == 2)) {
-		ddr = (void __iomem *)CONFIG_SYS_FSL_DDR3_ADDR;
+		ddr = (void __iomem *)CFG_SYS_FSL_DDR3_ADDR;
 		sdram_cfg = ddr_in32(&ddr->sdram_cfg);
 	}
 #endif
@@ -347,16 +353,16 @@ void fsl_ddr_sync_memctl_refresh(unsigned int first_ctrl,
 	for (i = first_ctrl; i <= last_ctrl; i++) {
 		switch (i) {
 		case 0:
-			ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+			ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 			break;
-#if defined(CONFIG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
+#if defined(CFG_SYS_FSL_DDR2_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 1)
 		case 1:
-			ddr = (void *)CONFIG_SYS_FSL_DDR2_ADDR;
+			ddr = (void *)CFG_SYS_FSL_DDR2_ADDR;
 			break;
 #endif
-#if defined(CONFIG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
+#if defined(CFG_SYS_FSL_DDR3_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 2)
 		case 2:
-			ddr = (void *)CONFIG_SYS_FSL_DDR3_ADDR;
+			ddr = (void *)CFG_SYS_FSL_DDR3_ADDR;
 			break;
 #endif
 #if defined(CONFIG_SYS_FSL_DDR4_ADDR) && (CONFIG_SYS_NUM_DDR_CTLRS > 3)

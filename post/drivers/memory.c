@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 
 /* Memory test
  *
@@ -136,7 +138,7 @@
 #include <post.h>
 #include <watchdog.h>
 
-#if CONFIG_POST & (CONFIG_SYS_POST_MEMORY | CONFIG_SYS_POST_MEM_REGIONS)
+#if CFG_POST & (CFG_SYS_POST_MEMORY | CFG_SYS_POST_MEM_REGIONS)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -226,9 +228,8 @@ static int memory_post_dataline(unsigned long long * pmem)
 			hi = (temp64>>32) & 0xffffffff;
 			lo = temp64 & 0xffffffff;
 
-			post_log("Memory (data line) error at %08x, "
-				  "wrote %08x%08x, read %08x%08x !\n",
-					  pmem, pathi, patlo, hi, lo);
+			post_log("Memory (data line) error at %p, wrote %08x%08x, read %08x%08x !\n",
+				 pmem, pathi, patlo, hi, lo);
 			ret = -1;
 		}
 	}
@@ -257,9 +258,8 @@ static int memory_post_addrline(ulong *testaddr, ulong *base, ulong size)
 			}
 #endif
 			if(readback == *testaddr) {
-				post_log("Memory (address line) error at %08x<->%08x, "
-					"XOR value %08x !\n",
-					testaddr, target, xor);
+				post_log("Memory (address line) error at %p<->%p, XOR value %08lx !\n",
+					 testaddr, target, xor);
 				ret = -1;
 			}
 		}
@@ -279,21 +279,20 @@ static int memory_post_test1(unsigned long start,
 	for (i = 0; i < size / sizeof (ulong); i++) {
 		mem[i] = val;
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	for (i = 0; i < size / sizeof (ulong) && !ret; i++) {
 		readback = mem[i];
 		if (readback != val) {
-			post_log("Memory error at %08x, "
-				  "wrote %08x, read %08x !\n",
-					  mem + i, val, readback);
+			post_log("Memory error at %p, wrote %08lx, read %08lx !\n",
+				 mem + i, val, readback);
 
 			ret = -1;
 			break;
 		}
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	return ret;
@@ -309,21 +308,20 @@ static int memory_post_test2(unsigned long start, unsigned long size)
 	for (i = 0; i < size / sizeof (ulong); i++) {
 		mem[i] = 1 << (i % 32);
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	for (i = 0; i < size / sizeof (ulong) && !ret; i++) {
 		readback = mem[i];
 		if (readback != (1 << (i % 32))) {
-			post_log("Memory error at %08x, "
-				  "wrote %08x, read %08x !\n",
-					  mem + i, 1 << (i % 32), readback);
+			post_log("Memory error at %p, wrote %08lx, read %08lx !\n",
+				 mem + i, 1UL << (i % 32), readback);
 
 			ret = -1;
 			break;
 		}
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	return ret;
@@ -339,21 +337,20 @@ static int memory_post_test3(unsigned long start, unsigned long size)
 	for (i = 0; i < size / sizeof (ulong); i++) {
 		mem[i] = i;
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	for (i = 0; i < size / sizeof (ulong) && !ret; i++) {
 		readback = mem[i];
 		if (readback != i) {
-			post_log("Memory error at %08x, "
-				  "wrote %08x, read %08x !\n",
-					  mem + i, i, readback);
+			post_log("Memory error at %p, wrote %08lx, read %08lx !\n",
+				 mem + i, i, readback);
 
 			ret = -1;
 			break;
 		}
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	return ret;
@@ -369,21 +366,20 @@ static int memory_post_test4(unsigned long start, unsigned long size)
 	for (i = 0; i < size / sizeof (ulong); i++) {
 		mem[i] = ~i;
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	for (i = 0; i < size / sizeof (ulong) && !ret; i++) {
 		readback = mem[i];
 		if (readback != ~i) {
-			post_log("Memory error at %08x, "
-				  "wrote %08x, read %08x !\n",
-					  mem + i, ~i, readback);
+			post_log("Memory error at %p, wrote %08lx, read %08lx !\n",
+				 mem + i, ~i, readback);
 
 			ret = -1;
 			break;
 		}
 		if (i % 1024 == 0)
-			WATCHDOG_RESET();
+			schedule();
 	}
 
 	return ret;
@@ -394,15 +390,15 @@ static int memory_post_test_lines(unsigned long start, unsigned long size)
 	int ret = 0;
 
 	ret = memory_post_dataline((unsigned long long *)start);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_addrline((ulong *)start, (ulong *)start,
 				size);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_addrline((ulong *)(start+size-8),
 				(ulong *)start, size);
-	WATCHDOG_RESET();
+	schedule();
 
 	return ret;
 }
@@ -412,25 +408,25 @@ static int memory_post_test_patterns(unsigned long start, unsigned long size)
 	int ret = 0;
 
 	ret = memory_post_test1(start, size, 0x00000000);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test1(start, size, 0xffffffff);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test1(start, size, 0x55555555);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test1(start, size, 0xaaaaaaaa);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test2(start, size);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test3(start, size);
-	WATCHDOG_RESET();
+	schedule();
 	if (!ret)
 		ret = memory_post_test4(start, size);
-	WATCHDOG_RESET();
+	schedule();
 
 	return ret;
 }
@@ -469,9 +465,9 @@ static int memory_post_tests(unsigned long start, unsigned long size)
 __attribute__((weak))
 int arch_memory_test_prepare(u32 *vstart, u32 *size, phys_addr_t *phys_offset)
 {
-	bd_t *bd = gd->bd;
+	struct bd_info *bd = gd->bd;
 
-	*vstart = CONFIG_SYS_SDRAM_BASE;
+	*vstart = CFG_SYS_SDRAM_BASE;
 	*size = (gd->ram_size >= 256 << 20 ?
 			256 << 20 : gd->ram_size) - (1 << 20);
 
@@ -539,4 +535,4 @@ int memory_post_test(int flags)
 	return ret;
 }
 
-#endif /* CONFIG_POST&(CONFIG_SYS_POST_MEMORY|CONFIG_SYS_POST_MEM_REGIONS) */
+#endif /* CFG_POST&(CFG_SYS_POST_MEMORY|CFG_SYS_POST_MEM_REGIONS) */

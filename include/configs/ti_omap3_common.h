@@ -26,20 +26,15 @@
 
 /* NS16550 Configuration */
 #define V_NS16550_CLK			48000000	/* 48MHz (APLL96/2) */
-#define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
-#if defined(CONFIG_SPL_BUILD)
-#define CONFIG_SYS_NS16550_SERIAL
-#if !defined(CONFIG_DM_SERIAL)
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#endif /* !CONFIG_DM_SERIAL */
-#endif /* CONFIG_SPL_BUILD */
-#define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600, \
+#define CFG_SYS_NS16550_CLK		V_NS16550_CLK
+#define CFG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600, \
 					115200}
 
 /* Select serial console configuration */
 #ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
-#define CONFIG_SERIAL3			3
+#define CFG_SYS_NS16550_COM1		OMAP34XX_UART1
+#define CFG_SYS_NS16550_COM2		OMAP34XX_UART2
+#define CFG_SYS_NS16550_COM3		OMAP34XX_UART3
 #endif
 
 /* Physical Memory Map */
@@ -51,17 +46,12 @@
  * (12/13/16.8/19.2/38.4MHz) or by 32KHz clock. We use 13MHz (V_SCLK).
  * This rate is divided by a local divisor.
  */
-#define CONFIG_SYS_TIMERBASE		(OMAP34XX_GPT2)
-
-#define CONFIG_SYS_MONITOR_LEN		(256 << 10)
+#define CFG_SYS_TIMERBASE		(OMAP34XX_GPT2)
 
 /* SPL */
-#define CONFIG_SPL_TEXT_BASE		0x40200800
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-					 (64 << 20))
 
-#ifdef CONFIG_NAND
-#define CONFIG_SYS_NAND_BASE		0x30000000
+#ifdef CONFIG_MTD_RAW_NAND
+#define CFG_SYS_NAND_BASE		0x30000000
 #endif
 
 /* Now bring in the rest of the common code. */

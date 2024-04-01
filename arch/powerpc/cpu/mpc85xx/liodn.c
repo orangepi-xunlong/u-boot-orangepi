@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 
@@ -75,7 +76,7 @@ static void set_fman_liodn(struct fman_liodn_id_table *tbl, int size)
 
 static void setup_sec_liodn_base(void)
 {
-	ccsr_sec_t *sec = (void *)CONFIG_SYS_FSL_SEC_ADDR;
+	ccsr_sec_t *sec = (void *)CFG_SYS_FSL_SEC_ADDR;
 	u32 base;
 
 	if (!IS_E_PROCESSOR(get_svr()))
@@ -100,17 +101,17 @@ static void setup_fman_liodn_base(enum fsl_dpaa_dev dev,
 
 	switch(dev) {
 	case FSL_HW_PORTAL_FMAN1:
-		fm = (void *)CONFIG_SYS_FSL_FM1_ADDR;
+		fm = (void *)CFG_SYS_FSL_FM1_ADDR;
 		break;
 
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	case FSL_HW_PORTAL_FMAN2:
-		fm = (void *)CONFIG_SYS_FSL_FM2_ADDR;
+		fm = (void *)CFG_SYS_FSL_FM2_ADDR;
 		break;
 #endif
 	default:
 		printf("Error: Invalid device type to %s\n", __FUNCTION__);
-		return ;
+		return;
 	}
 
 	base = (liodn_bases[dev].id[0] << 16) | liodn_bases[dev].id[0];
@@ -129,7 +130,7 @@ static void setup_fman_liodn_base(enum fsl_dpaa_dev dev,
 static void setup_pme_liodn_base(void)
 {
 #ifdef CONFIG_SYS_DPAA_PME
-	ccsr_pme_t *pme = (void *)CONFIG_SYS_FSL_CORENET_PME_ADDR;
+	ccsr_pme_t *pme = (void *)CFG_SYS_FSL_CORENET_PME_ADDR;
 	u32 base = (liodn_bases[FSL_HW_PORTAL_PME].id[0] << 16) |
 			liodn_bases[FSL_HW_PORTAL_PME].id[1];
 
@@ -140,7 +141,7 @@ static void setup_pme_liodn_base(void)
 #ifdef CONFIG_SYS_FSL_RAID_ENGINE
 static void setup_raide_liodn_base(void)
 {
-	struct ccsr_raide *raide = (void *)CONFIG_SYS_FSL_RAID_ENGINE_ADDR;
+	struct ccsr_raide *raide = (void *)CFG_SYS_FSL_RAID_ENGINE_ADDR;
 
 	/* setup raid engine liodn base for data/desc ; both set to 47 */
 	u32 base = (liodn_bases[FSL_HW_PORTAL_RAID_ENGINE].id[0] << 16) |
@@ -154,7 +155,7 @@ static void setup_raide_liodn_base(void)
 static void set_rman_liodn(struct liodn_id_table *tbl, int size)
 {
 	int i;
-	struct ccsr_rman *rman = (void *)CONFIG_SYS_FSL_CORENET_RMAN_ADDR;
+	struct ccsr_rman *rman = (void *)CFG_SYS_FSL_CORENET_RMAN_ADDR;
 
 	for (i = 0; i < size; i++) {
 		/* write the RMan block number */
@@ -167,7 +168,7 @@ static void set_rman_liodn(struct liodn_id_table *tbl, int size)
 static void setup_rman_liodn_base(struct liodn_id_table *tbl, int size)
 {
 	int i;
-	struct ccsr_rman *rman = (void *)CONFIG_SYS_FSL_CORENET_RMAN_ADDR;
+	struct ccsr_rman *rman = (void *)CFG_SYS_FSL_CORENET_RMAN_ADDR;
 	u32 base = liodn_bases[FSL_HW_PORTAL_RMAN].id[0];
 
 	out_be32(&rman->mmliodnbr, base);
@@ -200,7 +201,7 @@ void set_liodns(void)
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN1, fman1_liodn_tbl,
 				fman1_liodn_tbl_sz);
 
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	set_fman_liodn(fman2_liodn_tbl, fman2_liodn_tbl_sz);
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN2, fman2_liodn_tbl,
 				fman2_liodn_tbl_sz);
@@ -231,7 +232,7 @@ static void fdt_fixup_srio_liodn(void *blob, struct srio_liodn_id_table *tbl)
 	/* search for srio node, if doesn't exist just return - nothing todo */
 	srio_off = fdt_node_offset_by_compatible(blob, -1, "fsl,srio");
 	if (srio_off < 0)
-		return ;
+		return;
 
 	for (i = 0; i < srio_liodn_tbl_sz; i++) {
 		int off, portid = tbl[i].portid;
@@ -254,28 +255,23 @@ static void fdt_fixup_srio_liodn(void *blob, struct srio_liodn_id_table *tbl)
 }
 #endif
 
-#define CONFIG_SYS_MAX_PCI_EPS		8
+#define CFG_SYS_MAX_PCI_EPS		8
 
 static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat,
 					int ep_liodn_start)
 {
 	int off, pci_idx = 0, pci_cnt = 0, i, rc;
 	const uint32_t *base_liodn;
-	uint32_t liodn_offs[CONFIG_SYS_MAX_PCI_EPS + 1] = { 0 };
+	uint32_t liodn_offs[CFG_SYS_MAX_PCI_EPS + 1] = { 0 };
 
 	/*
 	 * Count the number of pci nodes.
 	 * It's needed later when the interleaved liodn offsets are generated.
 	 */
-	off = fdt_node_offset_by_compatible(fdt, -1, compat);
-	while (off != -FDT_ERR_NOTFOUND) {
+	fdt_for_each_node_by_compatible(off, fdt, -1, compat)
 		pci_cnt++;
-		off = fdt_node_offset_by_compatible(fdt, off, compat);
-	}
 
-	for (off = fdt_node_offset_by_compatible(fdt, -1, compat);
-	     off != -FDT_ERR_NOTFOUND;
-	     off = fdt_node_offset_by_compatible(fdt, off, compat)) {
+	fdt_for_each_node_by_compatible(off, fdt, -1, compat) {
 		base_liodn = fdt_getprop(fdt, off, "fsl,liodn", &rc);
 		if (!base_liodn) {
 			char path[64];
@@ -286,7 +282,7 @@ static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat,
 			       path, fdt_strerror(rc));
 			continue;
 		}
-		for (i = 0; i < CONFIG_SYS_MAX_PCI_EPS; i++)
+		for (i = 0; i < CFG_SYS_MAX_PCI_EPS; i++)
 			liodn_offs[i + 1] = ep_liodn_start +
 					i * pci_cnt + pci_idx - *base_liodn;
 		rc = fdt_setprop(fdt, off, "fsl,liodn-offset-list",
@@ -341,9 +337,6 @@ static void fdt_fixup_liodn_tbl_fman(void *blob,
 	for (i = 0; i < sz; i++) {
 		int off;
 
-		if (tbl[i].compat == NULL)
-			continue;
-
 		/* Try the new compatible first.
 		 * If the node is missing, try the old.
 		 */
@@ -377,7 +370,7 @@ void fdt_fixup_liodn(void *blob)
 	fdt_fixup_liodn_tbl(blob, liodn_tbl, liodn_tbl_sz);
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_liodn_tbl_fman(blob, fman1_liodn_tbl, fman1_liodn_tbl_sz);
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	fdt_fixup_liodn_tbl_fman(blob, fman2_liodn_tbl, fman2_liodn_tbl_sz);
 #endif
 #endif
@@ -391,7 +384,7 @@ void fdt_fixup_liodn(void *blob)
 	fdt_fixup_liodn_tbl(blob, rman_liodn_tbl, rman_liodn_tbl_sz);
 #endif
 
-	ccsr_pcix_t *pcix = (ccsr_pcix_t *)CONFIG_SYS_PCIE1_ADDR;
+	ccsr_pcix_t *pcix = (ccsr_pcix_t *)CFG_SYS_PCIE1_ADDR;
 	int pci_ver = pcix->ipver1 & 0xffff, liodn_base = 0;
 
 	if (pci_ver >= 0x0204) {

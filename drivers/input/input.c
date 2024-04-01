@@ -9,7 +9,9 @@
 #include <common.h>
 #include <console.h>
 #include <dm.h>
+#include <env.h>
 #include <errno.h>
+#include <log.h>
 #include <stdio_dev.h>
 #include <input.h>
 #ifdef CONFIG_DM_KEYBOARD
@@ -168,21 +170,35 @@ static struct kbd_entry {
 };
 
 /*
- * Scan key code to ANSI 3.64 escape sequence table.  This table is
- * incomplete in that it does not include all possible extra keys.
+ * The table contains conversions from scan key codes to ECMA-48 escape
+ * sequences. The same sequences exist in the withdrawn ANSI 3.64 standard.
+ *
+ * As all escape sequences start with 0x1b this byte has been removed.
+ *
+ * This table is incomplete in that it does not include all possible extra keys.
  */
 static struct {
 	int kbd_scan_code;
 	char *escape;
 } kbd_to_ansi364[] = {
-	{ KEY_UP, "\033[A"},
-	{ KEY_DOWN, "\033[B"},
-	{ KEY_RIGHT, "\033[C"},
-	{ KEY_LEFT, "\033[D"},
+	{ KEY_UP, "[A"},
+	{ KEY_LEFT, "[D"},
+	{ KEY_RIGHT, "[C"},
+	{ KEY_DOWN, "[B"},
+	{ KEY_F1, "OP"},
+	{ KEY_F2, "OQ"},
+	{ KEY_F3, "OR"},
+	{ KEY_F4, "OS"},
+	{ KEY_F5, "[15~"},
+	{ KEY_F6, "[17~"},
+	{ KEY_F7, "[18~"},
+	{ KEY_F8, "[19~"},
+	{ KEY_F9, "[20~"},
+	{ KEY_F10, "[21~"},
 };
 
 /* Maximum number of output characters that an ANSI sequence expands to */
-#define ANSI_CHAR_MAX	3
+#define ANSI_CHAR_MAX	5
 
 static int input_queue_ascii(struct input_config *config, int ch)
 {
@@ -237,7 +253,7 @@ int input_getc(struct input_config *config)
  * @param config	Input state
  * @param key		Key code to process
  * @param release	0 if a press, 1 if a release
- * @return pointer to keycode->ascii translation table that should be used
+ * Return: pointer to keycode->ascii translation table that should be used
  */
 static struct input_key_xlate *process_modifier(struct input_config *config,
 						int key, int release)
@@ -306,7 +322,7 @@ static struct input_key_xlate *process_modifier(struct input_config *config,
  * @param array	Array to search
  * @param count	Number of elements in array
  * @param key	Key value to find
- * @return element where value was first found, -1 if none
+ * Return: element where value was first found, -1 if none
  */
 static int array_search(int *array, int count, int key)
 {
@@ -331,7 +347,7 @@ static int array_search(int *array, int count, int key)
  * @param count		Number of elements to sort
  * @param order		Array containing ordering elements
  * @param ocount	Number of ordering elements
- * @return number of elements in dest that are in order (these will be at the
+ * Return: number of elements in dest that are in order (these will be at the
  *	start of dest).
  */
 static int sort_array_by_ordering(int *dest, int count, int *order,
@@ -401,7 +417,7 @@ static int input_check_keycodes(struct input_config *config,
  *			be at least ANSI_CHAR_MAX bytes long, to allow for
  *			an ANSI sequence.
  * @param max_chars	Maximum number of characters to add to output_ch
- * @return number of characters output, if the key was converted, otherwise 0.
+ * Return: number of characters output, if the key was converted, otherwise 0.
  *	This may be larger than max_chars, in which case the overflow
  *	characters are not output.
  */
@@ -415,6 +431,7 @@ static int input_keycode_to_ansi364(struct input_config *config,
 	for (i = ch_count = 0; i < ARRAY_SIZE(kbd_to_ansi364); i++) {
 		if (keycode != kbd_to_ansi364[i].kbd_scan_code)
 			continue;
+		output_ch[ch_count++] = 0x1b;
 		for (escape = kbd_to_ansi364[i].escape; *escape; escape++) {
 			if (ch_count < max_chars)
 				output_ch[ch_count] = *escape;
@@ -445,7 +462,7 @@ static int input_keycode_to_ansi364(struct input_config *config,
  *			ANSI sequences.
  * @param max_chars	Maximum number of characters to add to output_ch
  * @param same		Number of key codes which are the same
- * @return number of characters written into output_ch, or -1 if we would
+ * Return: number of characters written into output_ch, or -1 if we would
  *	exceed max_chars chars.
  */
 static int input_keycodes_to_ascii(struct input_config *config,
@@ -471,7 +488,7 @@ static int input_keycodes_to_ascii(struct input_config *config,
 	/* Start conversion by looking for the first new keycode (by same). */
 	for (i = same; i < num_keycodes; i++) {
 		int key = keycode[i];
-		int ch;
+		int ch = 0xff;
 
 		/*
 		 * For a normal key (with an ASCII value), add it; otherwise
@@ -490,10 +507,10 @@ static int input_keycodes_to_ascii(struct input_config *config,
 			}
 			if (ch_count < max_chars && ch != 0xff)
 				output_ch[ch_count++] = (uchar)ch;
-		} else {
+		}
+		if (ch == 0xff)
 			ch_count += input_keycode_to_ansi364(config, key,
 						output_ch, max_chars);
-		}
 	}
 
 	if (ch_count > max_chars) {
@@ -652,7 +669,7 @@ int input_stdio_register(struct stdio_dev *dev)
 	int error;
 
 	error = stdio_register(dev);
-
+#if !defined(CONFIG_SPL_BUILD) || CONFIG_IS_ENABLED(ENV_SUPPORT)
 	/* check if this is the standard input device */
 	if (!error && strcmp(env_get("stdin"), dev->name) == 0) {
 		/* reassign the console */
@@ -660,6 +677,9 @@ int input_stdio_register(struct stdio_dev *dev)
 				console_assign(stdin, dev->name))
 			return -1;
 	}
+#else
+	error = error;
+#endif
 
 	return 0;
 }

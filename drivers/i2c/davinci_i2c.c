@@ -8,25 +8,25 @@
  * --------------------------------------------------------
  *
  * NOTE: This driver should be converted to driver model before June 2017.
- * Please see doc/driver-model/i2c-howto.txt for instructions.
+ * Please see doc/driver-model/i2c-howto.rst for instructions.
  */
 
 #include <common.h>
 #include <i2c.h>
 #include <dm.h>
+#include <log.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/i2c_defs.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include "davinci_i2c.h"
 
-#ifdef CONFIG_DM_I2C
 /* Information about i2c controller */
 struct i2c_bus {
 	int			id;
 	uint			speed;
 	struct i2c_regs		*regs;
 };
-#endif
 
 #define CHECK_NACK() \
 	do {\
@@ -91,7 +91,7 @@ static uint _davinci_i2c_setspeed(struct i2c_regs *i2c_base,
 
 	psc = 2;
 	/* SCLL + SCLH */
-	div = (CONFIG_SYS_HZ_CLOCK / ((psc + 1) * speed)) - 10;
+	div = (CFG_SYS_HZ_CLOCK / ((psc + 1) * speed)) - 10;
 	REG(&(i2c_base->i2c_psc)) = psc; /* 27MHz / (2 + 1) = 9MHz */
 	REG(&(i2c_base->i2c_scll)) = (div * 50) / 100; /* 50% Duty */
 	REG(&(i2c_base->i2c_sclh)) = div - REG(&(i2c_base->i2c_scll));
@@ -338,99 +338,6 @@ static int _davinci_i2c_probe_chip(struct i2c_regs *i2c_base, uint8_t chip)
 	return rc;
 }
 
-#ifndef CONFIG_DM_I2C
-static struct i2c_regs *davinci_get_base(struct i2c_adapter *adap)
-{
-	switch (adap->hwadapnr) {
-#if CONFIG_SYS_I2C_BUS_MAX >= 3
-	case 2:
-		return (struct i2c_regs *)I2C2_BASE;
-#endif
-#if CONFIG_SYS_I2C_BUS_MAX >= 2
-	case 1:
-		return (struct i2c_regs *)I2C1_BASE;
-#endif
-	case 0:
-		return (struct i2c_regs *)I2C_BASE;
-
-	default:
-		printf("wrong hwadapnr: %d\n", adap->hwadapnr);
-	}
-
-	return NULL;
-}
-
-static uint davinci_i2c_setspeed(struct i2c_adapter *adap, uint speed)
-{
-	struct i2c_regs *i2c_base = davinci_get_base(adap);
-	uint ret;
-
-	adap->speed = speed;
-	ret =  _davinci_i2c_setspeed(i2c_base, speed);
-
-	return ret;
-}
-
-static void davinci_i2c_init(struct i2c_adapter *adap, int speed,
-			     int slaveadd)
-{
-	struct i2c_regs *i2c_base = davinci_get_base(adap);
-
-	adap->speed = speed;
-	_davinci_i2c_init(i2c_base, speed, slaveadd);
-
-	return;
-}
-
-static int davinci_i2c_read(struct i2c_adapter *adap, uint8_t chip,
-			    uint32_t addr, int alen, uint8_t *buf, int len)
-{
-	struct i2c_regs *i2c_base = davinci_get_base(adap);
-	return _davinci_i2c_read(i2c_base, chip, addr, alen, buf, len);
-}
-
-static int davinci_i2c_write(struct i2c_adapter *adap, uint8_t chip,
-			     uint32_t addr, int alen, uint8_t *buf, int len)
-{
-	struct i2c_regs *i2c_base = davinci_get_base(adap);
-
-	return _davinci_i2c_write(i2c_base, chip, addr, alen, buf, len);
-}
-
-static int davinci_i2c_probe_chip(struct i2c_adapter *adap, uint8_t chip)
-{
-	struct i2c_regs *i2c_base = davinci_get_base(adap);
-
-	return _davinci_i2c_probe_chip(i2c_base, chip);
-}
-
-U_BOOT_I2C_ADAP_COMPLETE(davinci_0, davinci_i2c_init, davinci_i2c_probe_chip,
-			 davinci_i2c_read, davinci_i2c_write,
-			 davinci_i2c_setspeed,
-			 CONFIG_SYS_DAVINCI_I2C_SPEED,
-			 CONFIG_SYS_DAVINCI_I2C_SLAVE,
-			 0)
-
-#if CONFIG_SYS_I2C_BUS_MAX >= 2
-U_BOOT_I2C_ADAP_COMPLETE(davinci_1, davinci_i2c_init, davinci_i2c_probe_chip,
-			 davinci_i2c_read, davinci_i2c_write,
-			 davinci_i2c_setspeed,
-			 CONFIG_SYS_DAVINCI_I2C_SPEED1,
-			 CONFIG_SYS_DAVINCI_I2C_SLAVE1,
-			 1)
-#endif
-
-#if CONFIG_SYS_I2C_BUS_MAX >= 3
-U_BOOT_I2C_ADAP_COMPLETE(davinci_2, davinci_i2c_init, davinci_i2c_probe_chip,
-			 davinci_i2c_read, davinci_i2c_write,
-			 davinci_i2c_setspeed,
-			 CONFIG_SYS_DAVINCI_I2C_SPEED2,
-			 CONFIG_SYS_DAVINCI_I2C_SLAVE2,
-			 2)
-#endif
-
-#else /* CONFIG_DM_I2C */
-
 static int davinci_i2c_xfer(struct udevice *bus, struct i2c_msg *msg,
 			  int nmsgs)
 {
@@ -468,8 +375,8 @@ static int davinci_i2c_probe(struct udevice *dev)
 {
 	struct i2c_bus *i2c_bus = dev_get_priv(dev);
 
-	i2c_bus->id = dev->seq;
-	i2c_bus->regs = (struct i2c_regs *)devfdt_get_addr(dev);
+	i2c_bus->id = dev_seq(dev);
+	i2c_bus->regs = dev_read_addr_ptr(dev);
 
 	i2c_bus->speed = 100000;
 	 _davinci_i2c_init(i2c_bus->regs, i2c_bus->speed, 0);
@@ -502,8 +409,6 @@ U_BOOT_DRIVER(i2c_davinci) = {
 	.id	= UCLASS_I2C,
 	.of_match = davinci_i2c_ids,
 	.probe	= davinci_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct i2c_bus),
+	.priv_auto	= sizeof(struct i2c_bus),
 	.ops	= &davinci_i2c_ops,
 };
-
-#endif /* CONFIG_DM_I2C */

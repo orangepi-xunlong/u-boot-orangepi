@@ -11,6 +11,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <pci.h>
+#include <linux/bitops.h>
 
 /* AHB-PCI Bridge PCI communication registers */
 #define RCAR_AHBPCI_PCICOM_OFFSET	0x800
@@ -97,7 +98,7 @@ static int rcar_gen2_pci_addr_valid(pci_dev_t d, uint offset)
 
 	/* Only one EHCI/OHCI device built-in */
 	slot = PCI_DEV(d);
-	if (slot > 2)
+	if (slot != 1 && slot != 2)
 		return -EINVAL;
 
 	/* bridge logic only has registers to 0x40 */
@@ -107,7 +108,7 @@ static int rcar_gen2_pci_addr_valid(pci_dev_t d, uint offset)
 	return 0;
 }
 
-static u32 get_bus_address(struct udevice *dev, pci_dev_t bdf, u32 offset)
+static u32 get_bus_address(const struct udevice *dev, pci_dev_t bdf, u32 offset)
 {
 	struct rcar_gen2_pci_priv *priv = dev_get_priv(dev);
 
@@ -126,7 +127,7 @@ static u32 setup_bus_address(struct udevice *dev, pci_dev_t bdf, u32 offset)
 	return get_bus_address(dev, bdf, offset);
 }
 
-static int rcar_gen2_pci_read_config(struct udevice *dev, pci_dev_t bdf,
+static int rcar_gen2_pci_read_config(const struct udevice *dev, pci_dev_t bdf,
 				     uint offset, ulong *value,
 				     enum pci_size_t size)
 {
@@ -190,7 +191,7 @@ static int rcar_gen2_pci_probe(struct udevice *dev)
 
 	/* AHB-PCI Bridge Communication Registers */
 	writel(RCAR_AHB_BUS_MODE, priv->cfg_base + RCAR_AHB_BUS_CTR_REG);
-	writel((CONFIG_SYS_SDRAM_BASE & 0xf0000000) | RCAR_PCIAHB_PREFETCH16,
+	writel((CFG_SYS_SDRAM_BASE & 0xf0000000) | RCAR_PCIAHB_PREFETCH16,
 	       priv->cfg_base + RCAR_PCIAHB_WIN1_CTR_REG);
 	writel(0xf0000000 | RCAR_PCIAHB_PREFETCH16,
 	       priv->cfg_base + RCAR_PCIAHB_WIN2_CTR_REG);
@@ -203,7 +204,7 @@ static int rcar_gen2_pci_probe(struct udevice *dev)
 	/* PCI Configuration Registers for AHBPCI */
 	devad = setup_bus_address(dev, PCI_BDF(0, 0, 0), 0);
 	writel(priv->cfg_base + 0x800, devad + PCI_BASE_ADDRESS_0);
-	writel(CONFIG_SYS_SDRAM_BASE & 0xf0000000, devad + PCI_BASE_ADDRESS_1);
+	writel(CFG_SYS_SDRAM_BASE & 0xf0000000, devad + PCI_BASE_ADDRESS_1);
 	writel(0xf0000000, devad + PCI_BASE_ADDRESS_2);
 	writel(PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER |
 	       PCI_COMMAND_PARITY | PCI_COMMAND_SERR,
@@ -230,7 +231,7 @@ static int rcar_gen2_pci_probe(struct udevice *dev)
 	return 0;
 }
 
-static int rcar_gen2_pci_ofdata_to_platdata(struct udevice *dev)
+static int rcar_gen2_pci_of_to_plat(struct udevice *dev)
 {
 	struct rcar_gen2_pci_priv *priv = dev_get_priv(dev);
 
@@ -258,6 +259,6 @@ U_BOOT_DRIVER(rcar_gen2_pci) = {
 	.of_match		= rcar_gen2_pci_ids,
 	.ops			= &rcar_gen2_pci_ops,
 	.probe			= rcar_gen2_pci_probe,
-	.ofdata_to_platdata	= rcar_gen2_pci_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(struct rcar_gen2_pci_priv),
+	.of_to_plat	= rcar_gen2_pci_of_to_plat,
+	.priv_auto	= sizeof(struct rcar_gen2_pci_priv),
 };

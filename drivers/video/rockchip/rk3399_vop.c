@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017 Theobroma Systems Design und Consulting GmbH
  * Copyright (c) 2015 Google, Inc
@@ -8,9 +8,11 @@
 #include <common.h>
 #include <display.h>
 #include <dm.h>
+#include <log.h>
 #include <regmap.h>
 #include <video.h>
-#include <asm/hardware.h>
+#include <asm/arch-rockchip/hardware.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include "rk_vop.h"
 
@@ -45,8 +47,6 @@ static void rk3399_set_pin_polarity(struct udevice *dev,
 				V_RK3399_DSP_MIPI_POL(polarity));
 		break;
 
-	case VOP_MODE_LVDS:
-		/* The RK3399 has neither parallel RGB nor LVDS output. */
 	default:
 		debug("%s: unsupported output mode %x\n", __func__, mode);
 	}
@@ -100,5 +100,5 @@ U_BOOT_DRIVER(rk3399_vop) = {
 	.ops	= &rk3399_vop_ops,
 	.bind	= rk_vop_bind,
 	.probe	= rk3399_vop_probe,
-	.priv_auto_alloc_size	= sizeof(struct rk_vop_priv),
+	.priv_auto	= sizeof(struct rk_vop_priv),
 };

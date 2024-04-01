@@ -7,6 +7,9 @@
 #ifndef _ASM_ARMV8_MMU_H_
 #define _ASM_ARMV8_MMU_H_
 
+#include <hang.h>
+#include <linux/const.h>
+
 /*
  * block/section address mask and size definitions.
  */
@@ -46,10 +49,13 @@
 #define PTE_TYPE_BLOCK		(1 << 0)
 #define PTE_TYPE_VALID		(1 << 0)
 
-#define PTE_TABLE_PXN		(1UL << 59)
-#define PTE_TABLE_XN		(1UL << 60)
-#define PTE_TABLE_AP		(1UL << 61)
-#define PTE_TABLE_NS		(1UL << 63)
+#define PTE_RDONLY		BIT(7)
+#define PTE_DBM			BIT(51)
+
+#define PTE_TABLE_PXN		BIT(59)
+#define PTE_TABLE_XN		BIT(60)
+#define PTE_TABLE_AP		BIT(61)
+#define PTE_TABLE_NS		BIT(63)
 
 /*
  * Block
@@ -96,9 +102,20 @@
 #define TCR_TG0_16K		(2 << 14)
 #define TCR_EPD1_DISABLE	(1 << 23)
 
-#define TCR_EL1_RSVD		(1 << 31)
-#define TCR_EL2_RSVD		(1 << 31 | 1 << 23)
-#define TCR_EL3_RSVD		(1 << 31 | 1 << 23)
+#define TCR_EL1_HA		BIT(39)
+#define TCR_EL1_HD		BIT(40)
+
+#define TCR_EL2_HA		BIT(21)
+#define TCR_EL2_HD		BIT(22)
+
+#define TCR_EL3_HA		BIT(21)
+#define TCR_EL3_HD		BIT(22)
+
+#define TCR_EL1_RSVD		(1U << 31)
+#define TCR_EL2_RSVD		(1U << 31 | 1 << 23)
+#define TCR_EL3_RSVD		(1U << 31 | 1 << 23)
+
+#define HCR_EL2_E2H_BIT		34
 
 #ifndef __ASSEMBLY__
 static inline void set_ttbr_tcr_mair(int el, u64 table, u64 tcr, u64 attr)
@@ -131,7 +148,7 @@ struct mm_region {
 
 extern struct mm_region *mem_map;
 void setup_pgtables(void);
-u64 get_tcr(int el, u64 *pips, u64 *pva_bits);
+u64 get_tcr(u64 *pips, u64 *pva_bits);
 #endif
 
 #endif /* _ASM_ARMV8_MMU_H_ */

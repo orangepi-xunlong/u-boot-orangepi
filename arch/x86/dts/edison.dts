@@ -10,18 +10,26 @@
 
 /include/ "skeleton.dtsi"
 /include/ "rtc.dtsi"
-/include/ "tsc_timer.dtsi"
+
+#include "tsc_timer.dtsi"
+#include "smbios.dtsi"
 
 / {
 	model = "Intel Edison";
-	compatible = "intel,edison";
+	compatible = "intel,edison", "intel,tangier";
 
 	aliases {
 		serial0 = &serial0;
+		serial1 = &serial1;
+		serial2 = &serial2;
+	};
+
+	binman: binman {
+		multiple-images;
 	};
 
 	chosen {
-		stdout-path = &serial0;
+		stdout-path = &serial2;
 	};
 
 	cpus {
@@ -47,13 +55,29 @@
 		compatible = "pci-x86";
 		#address-cells = <3>;
 		#size-cells = <2>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		ranges = <0x02000000 0x0 0x80000000 0x80000000 0 0x40000000
 			  0x42000000 0x0 0xc0000000 0xc0000000 0 0x20000000
 			  0x01000000 0x0 0x2000 0x2000 0 0xe000>;
 	};
 
-	serial0: serial@ff010180 {
+	serial0: serial@ff010080 {
+		compatible = "intel,mid-uart";
+		reg = <0xff010080 0x100>;
+		reg-shift = <0>;
+		clock-frequency = <29491200>;
+		current-speed = <115200>;
+	};
+
+	serial1: serial@ff010100 {
+		compatible = "intel,mid-uart";
+		reg = <0xff010100 0x100>;
+		reg-shift = <0>;
+		clock-frequency = <29491200>;
+		current-speed = <115200>;
+	};
+
+	serial2: serial@ff010180 {
 		compatible = "intel,mid-uart";
 		reg = <0xff010180 0x100>;
 		reg-shift = <0>;
@@ -64,17 +88,19 @@
 	emmc: mmc@ff3fc000 {
 		compatible = "intel,sdhci-tangier";
 		reg = <0xff3fc000 0x1000>;
+		non-removable;
 	};
 
-/*
- * FIXME: For now U-Boot DM model doesn't allow to power up this controller.
- * Enabling it will make U-Boot hang.
- *
 	sdcard: mmc@ff3fa000 {
 		compatible = "intel,sdhci-tangier";
 		reg = <0xff3fa000 0x1000>;
+		/*
+		 * In the disconnected state of the SD Card Detection pin
+		 * the read value is always the same and inverted to what
+		 * we are expecting in the code.
+		 */
+		cd-inverted;
 	};
- */
 
 	pmu: power@ff00b000 {
 		compatible = "intel,pmu-mid";
@@ -84,5 +110,89 @@
 	scu: ipc@ff009000 {
 		compatible = "intel,scu-ipc";
 		reg = <0xff009000 0x1000>;
+	};
+
+	usb: usb@f9100000 {
+		compatible = "intel,tangier-dwc3";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		dwc3: dwc3 {
+			reg = <0xf9100000 0x100000>;
+			maximum-speed = "high-speed";
+			dr_mode = "peripheral";
+		};
+	};
+
+	watchdog: wdt@0 {
+		compatible = "intel,tangier-wdt";
+	};
+
+	reset {
+		compatible = "intel,reset-tangier";
+		bootph-all;
+	};
+
+	pinctrl {
+		compatible = "intel,pinctrl-tangier";
+		reg = <0xff0c0000 0x8000>;
+
+		/*
+		 * Disconnect SD card detection pin, so it won't affect
+		 * the reality on two different PCB designs where it's
+		 * using the opposite signaling: Edison/Arduino uses
+		 * Active Low, while SparkFun went with Active High.
+		 */
+		sd_cd@0 {
+			pad-offset = <37>;
+			mode-func = <3>;
+		};
+
+		/*
+		 * Initial configuration came from the firmware.
+		 * Which quite likely has been used in the phones, where I2C #8,
+		 * that is not part of Atom peripheral, is in use.
+		 * Thus we need to override the leftover.
+		 */
+		i2c6_scl@0 {
+			pad-offset = <111>;
+			mode-func = <1>;
+			protected;
+		};
+		i2c6_sda@0 {
+			pad-offset = <112>;
+			mode-func = <1>;
+			protected;
+		};
+	};
+};
+
+&binman {
+	u-boot-edison {
+		filename = "u-boot-edison.img";
+
+		/* This is the OSIP */
+		blob {
+			filename = "edison-osip.dat";
+		};
+
+		u-boot {
+			offset = <0x200>;
+		};
+
+		u-boot-env {
+			offset = <0x200200>;
+			filename = "edison-environment.txt";
+			size = <0x10000>;
+			fill-byte = [ff];
+		};
+
+		u-boot-env2 {
+			type = "u-boot-env";
+			offset = <0x500200>;
+			filename = "edison-environment.txt";
+			size = <0x10000>;
+			fill-byte = [ff];
+		};
 	};
 };

@@ -6,8 +6,11 @@
 
 #include <common.h>
 #include <dm.h>
+#include <log.h>
+#include <malloc.h>
 #include <dm/platform_data/pfe_dm_eth.h>
 #include <net.h>
+#include <linux/delay.h>
 #include <net/pfe_eth/pfe_eth.h>
 #include <net/pfe_eth/pfe_mdio.h>
 
@@ -30,7 +33,7 @@ struct gemac_s gem_info[] = {
 
 		/* phy iface */
 		.phy_address = CONFIG_PFE_EMAC2_PHY_ADDR,
-		.phy_mode = PHY_INTERFACE_MODE_RGMII_TXID,
+		.phy_mode = PHY_INTERFACE_MODE_RGMII_ID,
 	},
 };
 
@@ -48,7 +51,7 @@ static inline void pfe_gemac_disable(void *gemac_base)
 
 static inline void pfe_gemac_set_speed(void *gemac_base, u32 speed)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 	u32 ecr = readl(gemac_base + EMAC_ECNTRL_REG) & ~EMAC_ECNTRL_SPEED;
 	u32 rcr = readl(gemac_base + EMAC_RCNTRL_REG) & ~EMAC_RCNTRL_RMII_10T;
 	u32 rgmii_pcr = in_be32(&scfg->rgmiipcr) &
@@ -84,7 +87,7 @@ static int pfe_eth_write_hwaddr(struct udevice *dev)
 {
 	struct pfe_eth_dev *priv = dev_get_priv(dev);
 	struct gemac_s *gem = priv->gem;
-	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct eth_pdata *pdata = dev_get_plat(dev);
 	uchar *mac = pdata->enetaddr;
 
 	writel((mac[0] << 24) + (mac[1] << 16) + (mac[2] << 8) + mac[3],
@@ -98,7 +101,7 @@ static int pfe_eth_write_hwaddr(struct udevice *dev)
  *
  * @param[in]   edev    Pointer to eth device structure.
  *
- * @return      none
+ * Return:      none
  */
 static inline void pfe_eth_stop(struct udevice *dev)
 {
@@ -154,7 +157,7 @@ static int pfe_eth_start(struct udevice *dev)
 
 static int pfe_eth_send(struct udevice *dev, void *packet, int length)
 {
-	struct pfe_eth_dev *priv = (struct pfe_eth_dev *)dev->priv;
+	struct pfe_eth_dev *priv = (struct pfe_eth_dev *)dev_get_priv(dev);
 
 	int rc;
 	int i = 0;
@@ -173,9 +176,10 @@ static int pfe_eth_send(struct udevice *dev, void *packet, int length)
 
 		udelay(100);
 		i++;
-		if (i == 30000)
+		if (i == 30000) {
 			printf("Tx timeout, send failed\n");
-		break;
+			break;
+		}
 	}
 
 	return 0;
@@ -210,27 +214,22 @@ static int pfe_eth_recv(struct udevice *dev, int flags, uchar **packetp)
 static int pfe_eth_probe(struct udevice *dev)
 {
 	struct pfe_eth_dev *priv = dev_get_priv(dev);
-	struct pfe_ddr_address *pfe_addr;
-	struct pfe_eth_pdata *pdata = dev_get_platdata(dev);
+	struct pfe_ddr_address pfe_addr;
+	struct pfe_eth_pdata *pdata = dev_get_plat(dev);
 	int ret = 0;
 	static int init_done;
 
 	if (!init_done) {
-		pfe_addr = (struct pfe_ddr_address *)malloc(sizeof
-						    (struct pfe_ddr_address));
-		if (!pfe_addr)
-			return -ENOMEM;
-
-		pfe_addr->ddr_pfe_baseaddr =
+		pfe_addr.ddr_pfe_baseaddr =
 				(void *)pdata->pfe_ddr_addr.ddr_pfe_baseaddr;
-		pfe_addr->ddr_pfe_phys_baseaddr =
+		pfe_addr.ddr_pfe_phys_baseaddr =
 		(unsigned long)pdata->pfe_ddr_addr.ddr_pfe_phys_baseaddr;
 
 		debug("ddr_pfe_baseaddr: %p, ddr_pfe_phys_baseaddr: %08x\n",
-		      pfe_addr->ddr_pfe_baseaddr,
-		      (u32)pfe_addr->ddr_pfe_phys_baseaddr);
+		      pfe_addr.ddr_pfe_baseaddr,
+		      (u32)pfe_addr.ddr_pfe_phys_baseaddr);
 
-		ret = pfe_drv_init(pfe_addr);
+		ret = pfe_drv_init(&pfe_addr);
 		if (ret)
 			return ret;
 
@@ -267,7 +266,7 @@ static int pfe_eth_probe(struct udevice *dev)
 
 static int pfe_eth_bind(struct udevice *dev)
 {
-	struct pfe_eth_pdata *pdata = dev_get_platdata(dev);
+	struct pfe_eth_pdata *pdata = dev_get_plat(dev);
 	char name[20];
 
 	sprintf(name, "pfe_eth%u", pdata->pfe_eth_pdata_mac.phy_interface);
@@ -291,6 +290,6 @@ U_BOOT_DRIVER(pfe_eth) = {
 	.probe	= pfe_eth_probe,
 	.remove = pfe_eth_remove,
 	.ops	= &pfe_eth_ops,
-	.priv_auto_alloc_size = sizeof(struct pfe_eth_dev),
-	.platdata_auto_alloc_size = sizeof(struct pfe_eth_pdata)
+	.priv_auto	= sizeof(struct pfe_eth_dev),
+	.plat_auto	= sizeof(struct pfe_eth_pdata)
 };

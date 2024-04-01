@@ -1,6 +1,4 @@
-if TARGET_T1040RDB || TARGET_T1040D4RDB || \
-	TARGET_T1042RDB || TARGET_T1042D4RDB || \
-	TARGET_T1042RDB_PI
+if TARGET_T1042D4RDB
 
 config SYS_BOARD
 	default "t104xrdb"
@@ -10,7 +8,5 @@ config SYS_VENDOR
 
 config SYS_CONFIG_NAME
 	default "T104xRDB"
-
-source "board/freescale/common/Kconfig"
 
 endif

@@ -8,6 +8,8 @@
 #include <common.h>
 #include <dm.h>
 #include <pci.h>
+#include <asm/global_data.h>
+#include <linux/bitops.h>
 
 #include <asm/io.h>
 
@@ -54,7 +56,7 @@ static bool pcie_xilinx_link_up(struct xilinx_pcie *pcie)
  *
  * Return: 0 on success, else -ENODEV
  */
-static int pcie_xilinx_config_address(struct udevice *udev, pci_dev_t bdf,
+static int pcie_xilinx_config_address(const struct udevice *udev, pci_dev_t bdf,
 				      uint offset, void **paddress)
 {
 	struct xilinx_pcie *pcie = dev_get_priv(udev);
@@ -74,10 +76,7 @@ static int pcie_xilinx_config_address(struct udevice *udev, pci_dev_t bdf,
 		return -ENODEV;
 
 	addr = pcie->cfg_base;
-	addr += bus << 20;
-	addr += dev << 15;
-	addr += func << 12;
-	addr += offset;
+	addr += PCIE_ECAM_OFFSET(bus, dev, func, offset);
 	*paddress = addr;
 
 	return 0;
@@ -97,7 +96,7 @@ static int pcie_xilinx_config_address(struct udevice *udev, pci_dev_t bdf,
  *
  * Return: 0 on success, else -ENODEV or -EINVAL
  */
-static int pcie_xilinx_read_config(struct udevice *bus, pci_dev_t bdf,
+static int pcie_xilinx_read_config(const struct udevice *bus, pci_dev_t bdf,
 				   uint offset, ulong *valuep,
 				   enum pci_size_t size)
 {
@@ -128,7 +127,7 @@ static int pcie_xilinx_write_config(struct udevice *bus, pci_dev_t bdf,
 }
 
 /**
- * pcie_xilinx_ofdata_to_platdata() - Translate from DT to device state
+ * pcie_xilinx_of_to_plat() - Translate from DT to device state
  * @dev: A pointer to the device being operated on
  *
  * Translate relevant data from the device tree pertaining to device @dev into
@@ -137,7 +136,7 @@ static int pcie_xilinx_write_config(struct udevice *bus, pci_dev_t bdf,
  *
  * Return: 0 on success, else -EINVAL
  */
-static int pcie_xilinx_ofdata_to_platdata(struct udevice *dev)
+static int pcie_xilinx_of_to_plat(struct udevice *dev)
 {
 	struct xilinx_pcie *pcie = dev_get_priv(dev);
 	struct fdt_resource reg_res;
@@ -173,6 +172,6 @@ U_BOOT_DRIVER(pcie_xilinx) = {
 	.id			= UCLASS_PCI,
 	.of_match		= pcie_xilinx_ids,
 	.ops			= &pcie_xilinx_ops,
-	.ofdata_to_platdata	= pcie_xilinx_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(struct xilinx_pcie),
+	.of_to_plat	= pcie_xilinx_of_to_plat,
+	.priv_auto	= sizeof(struct xilinx_pcie),
 };

@@ -5,18 +5,22 @@
  * Copyright (c) 2013 The Chromium OS Authors.
  */
 
+#define LOG_CATEGORY UCLASS_CROS_EC
+
 #include <common.h>
 #include <cros_ec.h>
 #include <dm.h>
 #include <ec_commands.h>
 #include <errno.h>
 #include <hash.h>
-#include <malloc.h>
+#include <log.h>
 #include <os.h>
 #include <u-boot/sha256.h>
 #include <spi.h>
+#include <asm/malloc.h>
 #include <asm/state.h>
 #include <asm/sdl.h>
+#include <asm/test.h>
 #include <linux/input.h>
 
 /*
@@ -60,6 +64,20 @@ struct ec_keymatrix_entry {
 	int keycode;	/* corresponding linux key code */
 };
 
+enum {
+	VSTORE_SLOT_COUNT	= 4,
+	PWM_CHANNEL_COUNT	= 4,
+};
+
+struct vstore_slot {
+	bool locked;
+	u8 data[EC_VSTORE_SLOT_SIZE];
+};
+
+struct ec_pwm_channel {
+	uint duty;	/* not ns, EC_PWM_MAX_DUTY = 100% */
+};
+
 /**
  * struct ec_state - Information about the EC state
  *
@@ -72,9 +90,12 @@ struct ec_keymatrix_entry {
  * @matrix: Information about keyboard matrix
  * @keyscan: Current keyscan information (bit set for each row/column pressed)
  * @recovery_req: Keyboard recovery requested
+ * @test_flags: Flags that control behaviour for tests
+ * @slot_locked: Locked vstore slots (mask)
+ * @pwm: Information per PWM channel
  */
 struct ec_state {
-	uint8_t vbnv_context[EC_VBNV_BLOCK_SIZE];
+	u8 vbnv_context[EC_VBNV_BLOCK_SIZE_V2];
 	struct fdt_cros_ec ec_config;
 	uint8_t *flash_data;
 	int flash_data_len;
@@ -83,6 +104,9 @@ struct ec_state {
 	struct ec_keymatrix_entry *matrix;	/* the key matrix info */
 	uint8_t keyscan[KEYBOARD_COLS];
 	bool recovery_req;
+	uint test_flags;
+	struct vstore_slot slot[VSTORE_SLOT_COUNT];
+	struct ec_pwm_channel pwm[PWM_CHANNEL_COUNT];
 } s_state, *g_state;
 
 /**
@@ -115,7 +139,7 @@ static int cros_ec_read_state(const void *blob, int node)
 	prop = fdt_getprop(blob, node, "flash-data", &len);
 	if (prop) {
 		ec->flash_data_len = len;
-		ec->flash_data = os_malloc(len);
+		ec->flash_data = malloc(len);
 		if (!ec->flash_data)
 			return -ENOMEM;
 		memcpy(ec->flash_data, prop, len);
@@ -138,10 +162,14 @@ static int cros_ec_write_state(void *blob, int node)
 {
 	struct ec_state *ec = g_state;
 
+	if (!g_state)
+		return 0;
+
 	/* We are guaranteed enough space to write basic properties */
 	fdt_setprop_u32(blob, node, "current-image", ec->current_image);
 	fdt_setprop(blob, node, "vbnv-context", ec->vbnv_context,
 		    sizeof(ec->vbnv_context));
+
 	return state_setprop(node, "flash-data", ec->flash_data,
 			     ec->ec_config.flash.length);
 }
@@ -158,7 +186,7 @@ SANDBOX_STATE_IO(cros_ec, "google,cros-ec", cros_ec_read_state,
  *
  * @param ec	Current emulated EC state
  * @param entry	Flash map entry containing the image to check
- * @return actual image size in bytes, 0 if the image contains no content or
+ * Return: actual image size in bytes, 0 if the image contains no content or
  * error.
  */
 static int get_image_used(struct ec_state *ec, struct fmap_entry *entry)
@@ -186,7 +214,7 @@ static int get_image_used(struct ec_state *ec, struct fmap_entry *entry)
  *
  * @param ec	Current emulated EC state
  * @param node	Keyboard node of device tree containing keyscan information
- * @return 0 if ok, -1 on error
+ * Return: 0 if ok, -1 on error
  */
 static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
 {
@@ -195,11 +223,12 @@ static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
 	int len;
 
 	cell = ofnode_get_property(node, "linux,keymap", &len);
+	if (!cell)
+		return log_msg_ret("prop", -EINVAL);
 	ec->matrix_count = len / 4;
 	ec->matrix = calloc(ec->matrix_count, sizeof(*ec->matrix));
 	if (!ec->matrix) {
-		debug("%s: Out of memory for key matrix\n", __func__);
-		return -1;
+		return log_msg_ret("mem", -ENOMEM);
 	}
 
 	/* Now read the data */
@@ -217,13 +246,12 @@ static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
 		    matrix->col >= KEYBOARD_COLS) {
 			debug("%s: Matrix pos out of range (%d,%d)\n",
 			      __func__, matrix->row, matrix->col);
-			return -1;
+			return log_msg_ret("matrix", -ERANGE);
 		}
 	}
 
 	if (upto != ec->matrix_count) {
-		debug("%s: Read mismatch from key matrix\n", __func__);
-		return -1;
+		return log_msg_ret("matrix", -E2BIG);
 	}
 
 	return 0;
@@ -235,7 +263,7 @@ static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
  * @param ec	Current emulated EC state
  * @param scan	Place to put keyscan bytes for the keyscan message (must hold
  *		enough space for a full keyscan)
- * @return number of bytes of valid scan data
+ * Return: number of bytes of valid scan data
  */
 static int cros_ec_keyscan(struct ec_state *ec, uint8_t *scan)
 {
@@ -277,7 +305,7 @@ static int cros_ec_keyscan(struct ec_state *ec, uint8_t *scan)
  * @param req_data	Pointer to body of request
  * @param resp_hdr	Pointer to place to put response header
  * @param resp_data	Pointer to place to put response data, if any
- * @return length of response data, or 0 for no response data, or -1 on error
+ * Return: length of response data, or 0 for no response data, or -1 on error
  */
 static int process_cmd(struct ec_state *ec,
 		       struct ec_host_request *req_hdr, const void *req_data,
@@ -294,6 +322,8 @@ static int process_cmd(struct ec_state *ec,
 		struct ec_response_hello *resp = resp_data;
 
 		resp->out_data = req->in_data + 0x01020304;
+		if (ec->test_flags & CROSECT_BREAK_HELLO)
+			resp->out_data++;
 		len = sizeof(*resp);
 		break;
 	}
@@ -314,12 +344,12 @@ static int process_cmd(struct ec_state *ec,
 		switch (req->op) {
 		case EC_VBNV_CONTEXT_OP_READ:
 			memcpy(resp->block, ec->vbnv_context,
-			       sizeof(resp->block));
-			len = sizeof(*resp);
+			       EC_VBNV_BLOCK_SIZE_V2);
+			len = EC_VBNV_BLOCK_SIZE_V2;
 			break;
 		case EC_VBNV_CONTEXT_OP_WRITE:
-			memcpy(ec->vbnv_context, resp->block,
-			       sizeof(resp->block));
+			memcpy(ec->vbnv_context, req->block,
+			       EC_VBNV_BLOCK_SIZE_V2);
 			len = 0;
 			break;
 		default:
@@ -355,17 +385,27 @@ static int process_cmd(struct ec_state *ec,
 			resp->mask |= EC_HOST_EVENT_MASK(
 					EC_HOST_EVENT_KEYBOARD_RECOVERY);
 		}
-
+		if (ec->test_flags & CROSECT_LID_OPEN)
+			resp->mask |=
+				EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_OPEN);
 		len = sizeof(*resp);
 		break;
 	}
+	case EC_CMD_HOST_EVENT_CLEAR_B: {
+		const struct ec_params_host_event_mask *req = req_data;
+
+		if (req->mask & EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_OPEN))
+			ec->test_flags &= ~CROSECT_LID_OPEN;
+		len = 0;
+		break;
+		}
 	case EC_CMD_VBOOT_HASH: {
 		const struct ec_params_vboot_hash *req = req_data;
 		struct ec_response_vboot_hash *resp = resp_data;
 		struct fmap_entry *entry;
 		int ret, size;
 
-		entry = &ec->ec_config.region[EC_FLASH_REGION_RW];
+		entry = &ec->ec_config.region[EC_FLASH_REGION_ACTIVE];
 
 		switch (req->cmd) {
 		case EC_VBOOT_HASH_RECALC:
@@ -420,7 +460,7 @@ static int process_cmd(struct ec_state *ec,
 
 		switch (req->region) {
 		case EC_FLASH_REGION_RO:
-		case EC_FLASH_REGION_RW:
+		case EC_FLASH_REGION_ACTIVE:
 		case EC_FLASH_REGION_WP_RO:
 			entry = &ec->ec_config.region[req->region];
 			resp->offset = entry->offset;
@@ -454,9 +494,97 @@ static int process_cmd(struct ec_state *ec,
 	case EC_CMD_MKBP_STATE:
 		len = cros_ec_keyscan(ec, resp_data);
 		break;
-	case EC_CMD_ENTERING_MODE:
+	case EC_CMD_GET_NEXT_EVENT: {
+		struct ec_response_get_next_event *resp = resp_data;
+
+		resp->event_type = EC_MKBP_EVENT_KEY_MATRIX;
+		cros_ec_keyscan(ec, resp->data.key_matrix);
+		len = sizeof(*resp);
+		break;
+	}
+	case EC_CMD_GET_SKU_ID: {
+		struct ec_sku_id_info *resp = resp_data;
+
+		resp->sku_id = 1234;
+		len = sizeof(*resp);
+		break;
+	}
+	case EC_CMD_GET_FEATURES: {
+		struct ec_response_get_features *resp = resp_data;
+
+		resp->flags[0] = EC_FEATURE_MASK_0(EC_FEATURE_FLASH) |
+			EC_FEATURE_MASK_0(EC_FEATURE_I2C) |
+			EC_FEATURE_MASK_0(EC_FEATURE_VSTORE);
+		resp->flags[1] =
+			EC_FEATURE_MASK_1(EC_FEATURE_UNIFIED_WAKE_MASKS) |
+			EC_FEATURE_MASK_1(EC_FEATURE_ISH);
+		len = sizeof(*resp);
+		break;
+	}
+	case EC_CMD_VSTORE_INFO: {
+		struct ec_response_vstore_info *resp = resp_data;
+		int i;
+
+		resp->slot_count = VSTORE_SLOT_COUNT;
+		resp->slot_locked = 0;
+		for (i = 0; i < VSTORE_SLOT_COUNT; i++) {
+			if (ec->slot[i].locked)
+				resp->slot_locked |= 1 << i;
+		}
+		len = sizeof(*resp);
+		break;
+	};
+	case EC_CMD_VSTORE_WRITE: {
+		const struct ec_params_vstore_write *req = req_data;
+		struct vstore_slot *slot;
+
+		if (req->slot >= EC_VSTORE_SLOT_MAX)
+			return -EINVAL;
+		slot = &ec->slot[req->slot];
+		slot->locked = true;
+		memcpy(slot->data, req->data, EC_VSTORE_SLOT_SIZE);
 		len = 0;
 		break;
+	}
+	case EC_CMD_VSTORE_READ: {
+		const struct ec_params_vstore_read *req = req_data;
+		struct ec_response_vstore_read *resp = resp_data;
+		struct vstore_slot *slot;
+
+		if (req->slot >= EC_VSTORE_SLOT_MAX)
+			return -EINVAL;
+		slot = &ec->slot[req->slot];
+		memcpy(resp->data, slot->data, EC_VSTORE_SLOT_SIZE);
+		len = sizeof(*resp);
+		break;
+	}
+	case EC_CMD_PWM_GET_DUTY: {
+		const struct ec_params_pwm_get_duty *req = req_data;
+		struct ec_response_pwm_get_duty *resp = resp_data;
+		struct ec_pwm_channel *pwm;
+
+		if (req->pwm_type != EC_PWM_TYPE_GENERIC)
+			return -EINVAL;
+		if (req->index >= PWM_CHANNEL_COUNT)
+			return -EINVAL;
+		pwm = &ec->pwm[req->index];
+		resp->duty = pwm->duty;
+		len = sizeof(*resp);
+		break;
+	}
+	case EC_CMD_PWM_SET_DUTY: {
+		const struct ec_params_pwm_set_duty *req = req_data;
+		struct ec_pwm_channel *pwm;
+
+		if (req->pwm_type != EC_PWM_TYPE_GENERIC)
+			return -EINVAL;
+		if (req->index >= PWM_CHANNEL_COUNT)
+			return -EINVAL;
+		pwm = &ec->pwm[req->index];
+		pwm->duty = req->duty;
+		len = 0;
+		break;
+	}
 	default:
 		printf("   ** Unknown EC command %#02x\n", req_hdr->command);
 		return -1;
@@ -491,26 +619,58 @@ int cros_ec_sandbox_packet(struct udevice *udev, int out_bytes, int in_bytes)
 	return in_bytes;
 }
 
-void cros_ec_check_keyboard(struct cros_ec_dev *dev)
+void cros_ec_check_keyboard(struct udevice *dev)
 {
-	struct ec_state *ec = dev_get_priv(dev->dev);
+	struct ec_state *ec = dev_get_priv(dev);
 	ulong start;
 
-	printf("Press keys for EC to detect on reset (ESC=recovery)...");
+	printf("\nPress keys for EC to detect on reset (ESC=recovery)...");
 	start = get_timer(0);
-	while (get_timer(start) < 1000)
-		;
-	putc('\n');
-	if (!sandbox_sdl_key_pressed(KEY_ESC)) {
-		ec->recovery_req = true;
-		printf("   - EC requests recovery\n");
+	while (get_timer(start) < 2000) {
+		if (tstc()) {
+			int ch = getchar();
+
+			if (ch == 0x1b) {
+				ec->recovery_req = true;
+				printf("EC requests recovery");
+			}
+		}
 	}
+	putc('\n');
+}
+
+/* Return the byte of EC switch states */
+static int cros_ec_sandbox_get_switches(struct udevice *dev)
+{
+	struct ec_state *ec = dev_get_priv(dev);
+
+	return ec->test_flags & CROSECT_LID_OPEN ? EC_SWITCH_LID_OPEN : 0;
+}
+
+void sandbox_cros_ec_set_test_flags(struct udevice *dev, uint flags)
+{
+	struct ec_state *ec = dev_get_priv(dev);
+
+	ec->test_flags = flags;
+}
+
+int sandbox_cros_ec_get_pwm_duty(struct udevice *dev, uint index, uint *duty)
+{
+	struct ec_state *ec = dev_get_priv(dev);
+	struct ec_pwm_channel *pwm;
+
+	if (index >= PWM_CHANNEL_COUNT)
+		return -ENOSPC;
+	pwm = &ec->pwm[index];
+	*duty = pwm->duty;
+
+	return 0;
 }
 
 int cros_ec_probe(struct udevice *dev)
 {
-	struct ec_state *ec = dev->priv;
-	struct cros_ec_dev *cdev = dev->uclass_priv;
+	struct ec_state *ec = dev_get_priv(dev);
+	struct cros_ec_dev *cdev = dev_get_uclass_priv(dev);
 	struct udevice *keyb_dev;
 	ofnode node;
 	int err;
@@ -543,14 +703,14 @@ int cros_ec_probe(struct udevice *dev)
 	    ec->flash_data_len != ec->ec_config.flash.length) {
 		printf("EC data length is %x, expected %x, discarding data\n",
 		       ec->flash_data_len, ec->ec_config.flash.length);
-		os_free(ec->flash_data);
+		free(ec->flash_data);
 		ec->flash_data = NULL;
 	}
 
 	/* Otherwise allocate the memory */
 	if (!ec->flash_data) {
 		ec->flash_data_len = ec->ec_config.flash.length;
-		ec->flash_data = os_malloc(ec->flash_data_len);
+		ec->flash_data = malloc(ec->flash_data_len);
 		if (!ec->flash_data)
 			return -ENOMEM;
 	}
@@ -562,6 +722,7 @@ int cros_ec_probe(struct udevice *dev)
 
 struct dm_cros_ec_ops cros_ec_ops = {
 	.packet = cros_ec_sandbox_packet,
+	.get_switches = cros_ec_sandbox_get_switches,
 };
 
 static const struct udevice_id cros_ec_ids[] = {
@@ -569,11 +730,11 @@ static const struct udevice_id cros_ec_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(cros_ec_sandbox) = {
-	.name		= "cros_ec_sandbox",
+U_BOOT_DRIVER(google_cros_ec_sandbox) = {
+	.name		= "google_cros_ec_sandbox",
 	.id		= UCLASS_CROS_EC,
 	.of_match	= cros_ec_ids,
 	.probe		= cros_ec_probe,
-	.priv_auto_alloc_size = sizeof(struct ec_state),
+	.priv_auto	= sizeof(struct ec_state),
 	.ops		= &cros_ec_ops,
 };

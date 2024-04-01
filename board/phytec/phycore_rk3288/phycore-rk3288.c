@@ -4,13 +4,20 @@
  * Author: Wadim Egorov <w.egorov@phytec.de>
  */
 
+#include <eeprom.h>
+#include <init.h>
+#include <log.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <common.h>
 #include <dm.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
 #include <i2c.h>
 #include <i2c_eeprom.h>
 #include <netdev.h>
+#include <linux/bitops.h>
 #include "som.h"
 
 static int valid_rk3288_som(struct rk3288_som *som)
@@ -27,7 +34,7 @@ static int valid_rk3288_som(struct rk3288_som *som)
 	return hw == som->bs;
 }
 
-int rk_board_late_init(void)
+int rk3288_board_late_init(void)
 {
 	int ret;
 	struct udevice *dev;

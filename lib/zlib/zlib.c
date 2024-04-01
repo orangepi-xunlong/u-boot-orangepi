@@ -12,7 +12,7 @@
  * - added inflateIncomp
  */
 
-#include <common.h>
+#include <compiler.h>
 
 #ifdef CONFIG_GZIP_COMPRESSED
 #define NO_DUMMY_DECL
@@ -30,3 +30,6 @@
 #include "inflate.c"
 #include "zutil.c"
 #include "adler32.c"
+#if IS_ENABLED(CONFIG_ZLIB_UNCOMPRESS)
+#include "uncompr.c"
+#endif

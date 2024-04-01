@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2013-2016 Freescale Semiconductor
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
  * Copyright 2017 NXP
  */
 
@@ -525,4 +525,3 @@ int dpni_reset_statistics(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
-

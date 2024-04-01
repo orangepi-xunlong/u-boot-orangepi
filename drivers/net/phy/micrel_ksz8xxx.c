@@ -6,15 +6,15 @@
  * author Andy Fleming
  * (C) 2012 NetModule AG, David Andrey, added KSZ9031
  */
-#include <config.h>
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
 #include <micrel.h>
 #include <phy.h>
+#include <linux/bitops.h>
 
-static struct phy_driver KSZ804_driver = {
+U_BOOT_PHY_DRIVER(ksz804) = {
 	.name = "Micrel KSZ804",
 	.uid = 0x221510,
 	.mask = 0xfffff0,
@@ -25,6 +25,7 @@ static struct phy_driver KSZ804_driver = {
 };
 
 #define MII_KSZPHY_OMSO		0x16
+#define KSZPHY_OMSO_FACTORY_TEST BIT(15)
 #define KSZPHY_OMSO_B_CAST_OFF	(1 << 9)
 
 static int ksz_genconfig_bcastoff(struct phy_device *phydev)
@@ -43,7 +44,7 @@ static int ksz_genconfig_bcastoff(struct phy_device *phydev)
 	return genphy_config(phydev);
 }
 
-static struct phy_driver KSZ8031_driver = {
+U_BOOT_PHY_DRIVER(ksz8031) = {
 	.name = "Micrel KSZ8021/KSZ8031",
 	.uid = 0x221550,
 	.mask = 0xfffff0,
@@ -71,7 +72,7 @@ static int ksz8051_config(struct phy_device *phydev)
 	return genphy_config(phydev);
 }
 
-static struct phy_driver KSZ8051_driver = {
+U_BOOT_PHY_DRIVER(ksz8051) = {
 	.name = "Micrel KSZ8051",
 	.uid = 0x221550,
 	.mask = 0xfffff0,
@@ -81,12 +82,45 @@ static struct phy_driver KSZ8051_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver KSZ8081_driver = {
+static int ksz8061_config(struct phy_device *phydev)
+{
+	return phy_write(phydev, MDIO_MMD_PMAPMD, MDIO_DEVID1, 0xB61A);
+}
+
+U_BOOT_PHY_DRIVER(ksz8061) = {
+	.name = "Micrel KSZ8061",
+	.uid = 0x00221570,
+	.mask = 0xfffff0,
+	.features = PHY_BASIC_FEATURES,
+	.config = &ksz8061_config,
+	.startup = &genphy_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static int ksz8081_config(struct phy_device *phydev)
+{
+	int ret;
+
+	ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZPHY_OMSO);
+	if (ret < 0)
+		return ret;
+
+	ret &= ~KSZPHY_OMSO_FACTORY_TEST;
+
+	ret = phy_write(phydev, MDIO_DEVAD_NONE, MII_KSZPHY_OMSO,
+			ret | KSZPHY_OMSO_B_CAST_OFF);
+	if (ret < 0)
+		return ret;
+
+	return genphy_config(phydev);
+}
+
+U_BOOT_PHY_DRIVER(ksz8081) = {
 	.name = "Micrel KSZ8081",
 	.uid = 0x221560,
 	.mask = 0xfffff0,
 	.features = PHY_BASIC_FEATURES,
-	.config = &ksz_genconfig_bcastoff,
+	.config = &ksz8081_config,
 	.startup = &genphy_startup,
 	.shutdown = &genphy_shutdown,
 };
@@ -138,7 +172,7 @@ static int ksz8895_startup(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver ksz8895_driver = {
+U_BOOT_PHY_DRIVER(ksz8895) = {
 	.name = "Micrel KSZ8895/KSZ8864",
 	.uid  = 0x221450,
 	.mask = 0xffffe1,
@@ -148,11 +182,13 @@ static struct phy_driver ksz8895_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-/* Micrel used the exact same part number for the KSZ9021. */
-static struct phy_driver KS8721_driver = {
+/* Micrel used the exact same model number for the KSZ9021,
+ * so the revision number is used to distinguish them.
+ */
+U_BOOT_PHY_DRIVER(ks8721) = {
 	.name = "Micrel KS8721BL",
-	.uid = 0x221610,
-	.mask = 0xfffff0,
+	.uid = 0x221618,
+	.mask = 0xfffffc,
 	.features = PHY_BASIC_FEATURES,
 	.config = &genphy_config,
 	.startup = &genphy_startup,
@@ -174,7 +210,7 @@ static int ksz886x_startup(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver ksz886x_driver = {
+U_BOOT_PHY_DRIVER(ksz886x) = {
 	.name = "Micrel KSZ886x Switch",
 	.uid  = 0x00221430,
 	.mask = 0xfffff0,
@@ -183,15 +219,3 @@ static struct phy_driver ksz886x_driver = {
 	.startup = &ksz886x_startup,
 	.shutdown = &genphy_shutdown,
 };
-
-int phy_micrel_ksz8xxx_init(void)
-{
-	phy_register(&KSZ804_driver);
-	phy_register(&KSZ8031_driver);
-	phy_register(&KSZ8051_driver);
-	phy_register(&KSZ8081_driver);
-	phy_register(&KS8721_driver);
-	phy_register(&ksz8895_driver);
-	phy_register(&ksz886x_driver);
-	return 0;
-}

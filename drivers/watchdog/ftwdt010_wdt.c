@@ -11,24 +11,31 @@
  *
  * 27/11/2004 Initial release, Faraday.
  * 12/01/2011 Port to u-boot, Macpaul Lin.
+ * 22/08/2022 Port to DM
  */
 
 #include <common.h>
-#include <watchdog.h>
+#include <dm.h>
+#include <wdt.h>
+#include <log.h>
 #include <asm/io.h>
 #include <faraday/ftwdt010_wdt.h>
+
+struct ftwdt010_wdt_priv {
+	struct ftwdt010_wdt __iomem *regs;
+};
 
 /*
  * Set the watchdog time interval.
  * Counter is 32 bit.
  */
-int ftwdt010_wdt_settimeout(unsigned int timeout)
+static int ftwdt010_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 {
+	struct ftwdt010_wdt_priv *priv = dev_get_priv(dev);
+	struct ftwdt010_wdt *wd = priv->regs;
 	unsigned int reg;
 
-	struct ftwdt010_wdt *wd = (struct ftwdt010_wdt *)CONFIG_FTWDT010_BASE;
-
-	debug("Activating WDT..\n");
+	debug("Activating WDT %llu ms\n", timeout_ms);
 
 	/* Check if disabled */
 	if (readl(&wd->wdcr) & ~FTWDT010_WDCR_ENABLE) {
@@ -41,16 +48,17 @@ int ftwdt010_wdt_settimeout(unsigned int timeout)
 	 * if you set WDLOAD as 0x03EF1480 (66000000)
 	 * the reset timer is 1 second.
 	 */
-	reg = FTWDT010_WDLOAD(timeout * FTWDT010_TIMEOUT_FACTOR);
+	reg = FTWDT010_WDLOAD(timeout_ms * FTWDT010_TIMEOUT_FACTOR);
 
 	writel(reg, &wd->wdload);
 
 	return 0;
 }
 
-void ftwdt010_wdt_reset(void)
+static int ftwdt010_wdt_reset(struct udevice *dev)
 {
-	struct ftwdt010_wdt *wd = (struct ftwdt010_wdt *)CONFIG_FTWDT010_BASE;
+	struct ftwdt010_wdt_priv *priv = dev_get_priv(dev);
+	struct ftwdt010_wdt *wd = priv->regs;
 
 	/* clear control register */
 	writel(0, &wd->wdcr);
@@ -60,11 +68,14 @@ void ftwdt010_wdt_reset(void)
 
 	/* Enable WDT */
 	writel((FTWDT010_WDCR_RST | FTWDT010_WDCR_ENABLE), &wd->wdcr);
+
+	return 0;
 }
 
-void ftwdt010_wdt_disable(void)
+static int ftwdt010_wdt_stop(struct udevice *dev)
 {
-	struct ftwdt010_wdt *wd = (struct ftwdt010_wdt *)CONFIG_FTWDT010_BASE;
+	struct ftwdt010_wdt_priv *priv = dev_get_priv(dev);
+	struct ftwdt010_wdt *wd = priv->regs;
 
 	debug("Deactivating WDT..\n");
 
@@ -75,17 +86,47 @@ void ftwdt010_wdt_disable(void)
 	 * Lock it in if it's a module and we defined ...NOWAYOUT
 	 */
 	writel(0, &wd->wdcr);
+	return 0;
 }
 
-#if defined(CONFIG_HW_WATCHDOG)
-void hw_watchdog_reset(void)
+static int ftwdt010_wdt_expire_now(struct udevice *dev, ulong flags)
 {
-	ftwdt010_wdt_reset();
+	struct ftwdt010_wdt_priv *priv = dev_get_priv(dev);
+	struct ftwdt010_wdt *wd = priv->regs;
+
+	debug("Expiring WDT..\n");
+	writel(FTWDT010_WDLOAD(0), &wd->wdload);
+	return ftwdt010_wdt_reset(dev);
 }
 
-void hw_watchdog_init(void)
+static int ftwdt010_wdt_probe(struct udevice *dev)
 {
-	/* set timer in ms */
-	ftwdt010_wdt_settimeout(CONFIG_FTWDT010_HW_TIMEOUT * 1000);
+	struct ftwdt010_wdt_priv *priv = dev_get_priv(dev);
+
+	priv->regs = dev_read_addr_ptr(dev);
+	if (!priv->regs)
+		return -EINVAL;
+
+	return 0;
 }
-#endif
+
+static const struct wdt_ops ftwdt010_wdt_ops = {
+	.start = ftwdt010_wdt_start,
+	.reset = ftwdt010_wdt_reset,
+	.stop = ftwdt010_wdt_stop,
+	.expire_now = ftwdt010_wdt_expire_now,
+};
+
+static const struct udevice_id ftwdt010_wdt_ids[] = {
+	{ .compatible = "faraday,ftwdt010" },
+	{}
+};
+
+U_BOOT_DRIVER(ftwdt010_wdt) = {
+	.name = "ftwdt010_wdt",
+	.id = UCLASS_WDT,
+	.of_match = ftwdt010_wdt_ids,
+	.ops = &ftwdt010_wdt_ops,
+	.probe = ftwdt010_wdt_probe,
+	.priv_auto = sizeof(struct ftwdt010_wdt_priv),
+};

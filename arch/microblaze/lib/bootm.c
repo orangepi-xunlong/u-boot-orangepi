@@ -8,77 +8,100 @@
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <command.h>
+#include <cpu_func.h>
+#include <env.h>
 #include <fdt_support.h>
+#include <hang.h>
 #include <image.h>
+#include <lmb.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <u-boot/zlib.h>
 #include <asm/byteorder.h>
 
-int do_bootm_linux(int flag, int argc, char * const argv[],
-		   bootm_headers_t *images)
+DECLARE_GLOBAL_DATA_PTR;
+
+static ulong get_sp(void)
 {
-	/* First parameter is mapped to $r5 for kernel boot args */
-	void	(*thekernel) (char *, ulong, ulong);
-	char	*commandline = env_get("bootargs");
-	ulong	rd_data_start, rd_data_end;
+	ulong ret;
 
-	/*
-	 * allow the PREP bootm subcommand, it is required for bootm to work
-	 */
-	if (flag & BOOTM_STATE_OS_PREP)
-		return 0;
+	asm("addik %0, r1, 0" : "=r"(ret) : );
+	return ret;
+}
 
-	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
-		return 1;
+void arch_lmb_reserve(struct lmb *lmb)
+{
+	arch_lmb_reserve_generic(lmb, get_sp(), gd->ram_top, 4096);
+}
 
-	int	ret;
-
-	char	*of_flat_tree = NULL;
-#if defined(CONFIG_OF_LIBFDT)
-	/* did generic code already find a device tree? */
-	if (images->ft_len)
-		of_flat_tree = images->ft_addr;
-#endif
+static void boot_jump_linux(struct bootm_headers *images, int flag)
+{
+	void (*thekernel)(char *cmdline, ulong rd, ulong dt);
+	ulong dt = (ulong)images->ft_addr;
+	ulong rd_start = images->initrd_start;
+	ulong cmdline = images->cmdline_start;
+	int fake = (flag & BOOTM_STATE_OS_FAKE_GO);
 
 	thekernel = (void (*)(char *, ulong, ulong))images->ep;
 
-	/* find ramdisk */
-	ret = boot_get_ramdisk(argc, argv, images, IH_ARCH_MICROBLAZE,
-			&rd_data_start, &rd_data_end);
-	if (ret)
-		return 1;
-
+	debug("## Transferring control to Linux (at address 0x%08lx) ",
+	      (ulong)thekernel);
+	debug("cmdline 0x%08lx, ramdisk 0x%08lx, FDT 0x%08lx...\n",
+	      cmdline, rd_start, dt);
 	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
 
-	if (!of_flat_tree && argc > 1)
-		of_flat_tree = (char *)simple_strtoul(argv[1], NULL, 16);
+	printf("\nStarting kernel ...%s\n\n", fake ?
+	       "(fake run for tracing)" : "");
+	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 
-	/* fixup the initrd now that we know where it should be */
-	if (images->rd_start && images->rd_end && of_flat_tree) {
-		ret = fdt_initrd(of_flat_tree, images->rd_start,
-				 images->rd_end);
-		if (ret)
-			return 1;
+	flush_cache_all();
+
+	if (!fake) {
+		/*
+		 * Linux Kernel Parameters (passing device tree):
+		 * r5: pointer to command line
+		 * r6: pointer to ramdisk
+		 * r7: pointer to the fdt, followed by the board info data
+		 */
+		thekernel((char *)cmdline, rd_start, dt);
+		/* does not return */
+	}
+}
+
+static void boot_prep_linux(struct bootm_headers *images)
+{
+	if (CONFIG_IS_ENABLED(OF_LIBFDT) && IS_ENABLED(CONFIG_LMB) && images->ft_len) {
+		debug("using: FDT\n");
+		if (image_setup_linux(images)) {
+			printf("FDT creation failed! hanging...");
+			hang();
+		}
+	}
+}
+
+int do_bootm_linux(int flag, int argc, char *const argv[],
+		   struct bootm_headers *images)
+{
+	images->cmdline_start = (ulong)env_get("bootargs");
+
+	/* cmdline init is the part of 'prep' and nothing to do for 'bdt' */
+	if (flag & BOOTM_STATE_OS_BD_T || flag & BOOTM_STATE_OS_CMDLINE)
+		return -1;
+
+	if (flag & BOOTM_STATE_OS_PREP) {
+		boot_prep_linux(images);
+		return 0;
 	}
 
-#ifdef DEBUG
-	printf("## Transferring control to Linux (at address 0x%08lx) ",
-	       (ulong)thekernel);
-	printf("ramdisk 0x%08lx, FDT 0x%08lx...\n",
-	       rd_data_start, (ulong) of_flat_tree);
-#endif
+	if (flag & (BOOTM_STATE_OS_GO | BOOTM_STATE_OS_FAKE_GO)) {
+		boot_jump_linux(images, flag);
+		return 0;
+	}
 
-#ifdef XILINX_USE_DCACHE
-	flush_cache(0, XILINX_DCACHE_BYTE_SIZE);
-#endif
-	/*
-	 * Linux Kernel Parameters (passing device tree):
-	 * r5: pointer to command line
-	 * r6: pointer to ramdisk
-	 * r7: pointer to the fdt, followed by the board info data
-	 */
-	thekernel(commandline, rd_data_start, (ulong)of_flat_tree);
-	/* does not return */
-
+	boot_prep_linux(images);
+	boot_jump_linux(images, flag);
 	return 1;
 }

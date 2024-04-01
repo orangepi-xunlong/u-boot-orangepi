@@ -24,7 +24,7 @@ static struct mtd_info *mtd;
 static loff_t next_ofs;
 static loff_t skip_ofs;
 
-static int arg_off_size_onenand(int argc, char * const argv[], ulong *off,
+static int arg_off_size_onenand(int argc, char *const argv[], ulong *off,
 				size_t *size)
 {
 	if (argc >= 1) {
@@ -53,7 +53,7 @@ static int arg_off_size_onenand(int argc, char * const argv[], ulong *off,
 	if (*size == mtd->size)
 		puts("whole chip\n");
 	else
-		printf("offset 0x%lx, size 0x%x\n", *off, *size);
+		printf("offset 0x%lx, size 0x%zx\n", *off, *size);
 
 	return 0;
 }
@@ -186,9 +186,7 @@ next:
 static int onenand_block_erase(u32 start, u32 size, int force)
 {
 	struct onenand_chip *this = mtd->priv;
-	struct erase_info instr = {
-		.callback	= NULL,
-	};
+	struct erase_info instr = {};
 	loff_t ofs;
 	int ret;
 	int blocksize = 1 << this->erase_shift;
@@ -219,10 +217,7 @@ static int onenand_block_erase(u32 start, u32 size, int force)
 static int onenand_block_test(u32 start, u32 size)
 {
 	struct onenand_chip *this = mtd->priv;
-	struct erase_info instr = {
-		.callback	= NULL,
-		.priv		= 0,
-	};
+	struct erase_info instr = {};
 
 	int blocks;
 	loff_t ofs;
@@ -358,13 +353,15 @@ static int onenand_dump(struct mtd_info *mtd, ulong off, int only_oob)
 	return 0;
 }
 
-static int do_onenand_info(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_info(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	printf("%s\n", mtd->name);
 	return 0;
 }
 
-static int do_onenand_bad(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_bad(struct cmd_tbl *cmdtp, int flag, int argc,
+			  char *const argv[])
 {
 	ulong ofs;
 
@@ -379,7 +376,8 @@ static int do_onenand_bad(cmd_tbl_t * cmdtp, int flag, int argc, char * const ar
 	return 0;
 }
 
-static int do_onenand_read(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_read(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	char *s;
 	int oob = 0;
@@ -395,7 +393,7 @@ static int do_onenand_read(cmd_tbl_t * cmdtp, int flag, int argc, char * const a
 	if ((s != NULL) && (!strcmp(s, ".oob")))
 		oob = 1;
 
-	addr = (ulong)simple_strtoul(argv[1], NULL, 16);
+	addr = (ulong)hextoul(argv[1], NULL);
 
 	printf("\nOneNAND read: ");
 	if (arg_off_size_onenand(argc - 2, argv + 2, &ofs, &len) != 0)
@@ -403,12 +401,13 @@ static int do_onenand_read(cmd_tbl_t * cmdtp, int flag, int argc, char * const a
 
 	ret = onenand_block_read(ofs, len, &retlen, (u8 *)addr, oob);
 
-	printf(" %d bytes read: %s\n", retlen, ret ? "ERROR" : "OK");
+	printf(" %zu bytes read: %s\n", retlen, ret ? "ERROR" : "OK");
 
 	return ret == 0 ? 0 : 1;
 }
 
-static int do_onenand_write(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_write(struct cmd_tbl *cmdtp, int flag, int argc,
+			    char *const argv[])
 {
 	ulong addr, ofs;
 	size_t len;
@@ -421,7 +420,7 @@ static int do_onenand_write(cmd_tbl_t * cmdtp, int flag, int argc, char * const 
 	if (strncmp(argv[0] + 6, "yaffs", 5) == 0)
 		withoob = 1;
 
-	addr = (ulong)simple_strtoul(argv[1], NULL, 16);
+	addr = (ulong)hextoul(argv[1], NULL);
 
 	printf("\nOneNAND write: ");
 	if (arg_off_size_onenand(argc - 2, argv + 2, &ofs, &len) != 0)
@@ -429,12 +428,13 @@ static int do_onenand_write(cmd_tbl_t * cmdtp, int flag, int argc, char * const 
 
 	ret = onenand_block_write(ofs, len, &retlen, (u8 *)addr, withoob);
 
-	printf(" %d bytes written: %s\n", retlen, ret ? "ERROR" : "OK");
+	printf(" %zu bytes written: %s\n", retlen, ret ? "ERROR" : "OK");
 
 	return ret == 0 ? 0 : 1;
 }
 
-static int do_onenand_erase(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_erase(struct cmd_tbl *cmdtp, int flag, int argc,
+			    char *const argv[])
 {
 	ulong ofs;
 	int ret = 0;
@@ -470,7 +470,8 @@ static int do_onenand_erase(cmd_tbl_t * cmdtp, int flag, int argc, char * const 
 	return ret == 0 ? 0 : 1;
 }
 
-static int do_onenand_test(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_test(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	ulong ofs;
 	int ret = 0;
@@ -495,7 +496,8 @@ static int do_onenand_test(cmd_tbl_t * cmdtp, int flag, int argc, char * const a
 	return ret == 0 ? 0 : 1;
 }
 
-static int do_onenand_dump(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_dump(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	ulong ofs;
 	int ret = 0;
@@ -505,7 +507,7 @@ static int do_onenand_dump(cmd_tbl_t * cmdtp, int flag, int argc, char * const a
 		return CMD_RET_USAGE;
 
 	s = strchr(argv[0], '.');
-	ofs = (int)simple_strtoul(argv[1], NULL, 16);
+	ofs = (int)hextoul(argv[1], NULL);
 
 	if (s != NULL && strcmp(s, ".oob") == 0)
 		ret = onenand_dump(mtd, ofs, 1);
@@ -515,7 +517,8 @@ static int do_onenand_dump(cmd_tbl_t * cmdtp, int flag, int argc, char * const a
 	return ret == 0 ? 1 : 0;
 }
 
-static int do_onenand_markbad(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand_markbad(struct cmd_tbl *cmdtp, int flag, int argc,
+			      char *const argv[])
 {
 	int ret = 0;
 	ulong addr;
@@ -527,7 +530,7 @@ static int do_onenand_markbad(cmd_tbl_t * cmdtp, int flag, int argc, char * cons
 		return CMD_RET_USAGE;
 
 	while (argc > 0) {
-		addr = simple_strtoul(*argv, NULL, 16);
+		addr = hextoul(*argv, NULL);
 
 		if (mtd_block_markbad(mtd, addr)) {
 			printf("block 0x%08lx NOT marked "
@@ -545,7 +548,7 @@ static int do_onenand_markbad(cmd_tbl_t * cmdtp, int flag, int argc, char * cons
 	return ret;
 }
 
-static cmd_tbl_t cmd_onenand_sub[] = {
+static struct cmd_tbl cmd_onenand_sub[] = {
 	U_BOOT_CMD_MKENT(info, 1, 0, do_onenand_info, "", ""),
 	U_BOOT_CMD_MKENT(bad, 1, 0, do_onenand_bad, "", ""),
 	U_BOOT_CMD_MKENT(read, 4, 0, do_onenand_read, "", ""),
@@ -563,9 +566,10 @@ void onenand_reloc(void) {
 }
 #endif
 
-static int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_onenand(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
-	cmd_tbl_t *c;
+	struct cmd_tbl *c;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;

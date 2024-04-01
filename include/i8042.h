@@ -20,12 +20,12 @@
 #define STATUS_IBF	(1 << 1)
 
 /* Configuration byte bit defines */
-#define CONFIG_KIRQ_EN	(1 << 0)
-#define CONFIG_MIRQ_EN	(1 << 1)
-#define CONFIG_SET_BIST	(1 << 2)
-#define CONFIG_KCLK_DIS	(1 << 4)
-#define CONFIG_MCLK_DIS	(1 << 5)
-#define CONFIG_AT_TRANS	(1 << 6)
+#define CFG_KIRQ_EN	(1 << 0)
+#define CFG_MIRQ_EN	(1 << 1)
+#define CFG_SET_BIST	(1 << 2)
+#define CFG_KCLK_DIS	(1 << 4)
+#define CFG_MCLK_DIS	(1 << 5)
+#define CFG_AT_TRANS	(1 << 6)
 
 /* i8042 commands */
 #define CMD_RD_CONFIG	0x20	/* read configuration byte */
@@ -71,20 +71,5 @@
 #define E1		0x0080	/* extended scan code 0xe1 */
 #define BRK		0x0100	/* make break flag for keyboard */
 #define ALT		0x0200	/* right alt */
-
-/* exports */
-
-/**
- * Flush all buffer from keyboard controller to host.
- */
-void i8042_flush(void);
-
-/**
- * Disables the keyboard so that key strokes no longer generate scancodes to
- * the host.
- *
- * @return 0 if ok, -1 if keyboard input was found while disabling
- */
-int i8042_disable(void);
 
 #endif /* _I8042_H_ */

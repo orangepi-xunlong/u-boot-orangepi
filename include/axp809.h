@@ -44,8 +44,9 @@
 #define AXP809_SHUTDOWN_POWEROFF	(1 << 7)
 
 /* For axp_gpio.c */
+#ifdef CONFIG_AXP809_POWER
 #define AXP_POWER_STATUS		0x00
-#define AXP_POWER_STATUS_VBUS_PRESENT		(1 << 5)
+#define AXP_POWER_STATUS_ALDO_IN		BIT(0)
 #define AXP_VBUS_IPSOUT			0x30
 #define AXP_VBUS_IPSOUT_DRIVEBUS		(1 << 2)
 #define AXP_MISC_CTRL			0x8f
@@ -57,3 +58,4 @@
 #define AXP_GPIO_CTRL_INPUT		0x02 /* Input */
 #define AXP_GPIO_STATE			0x94
 #define AXP_GPIO_STATE_OFFSET		0
+#endif

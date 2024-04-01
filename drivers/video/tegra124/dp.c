@@ -9,9 +9,11 @@
 #include <dm.h>
 #include <div64.h>
 #include <errno.h>
+#include <log.h>
 #include <video_bridge.h>
 #include <asm/io.h>
 #include <asm/arch-tegra/dc.h>
+#include <linux/delay.h>
 #include "display.h"
 #include "edid.h"
 #include "sor.h"
@@ -1492,8 +1494,8 @@ int tegra_dp_enable(struct udevice *dev, int panel_bpp,
 		return -ENOLINK;
 	}
 
-	ret = uclass_first_device(UCLASS_VIDEO_BRIDGE, &sor);
-	if (ret || !sor) {
+	ret = uclass_first_device_err(UCLASS_VIDEO_BRIDGE, &sor);
+	if (ret) {
 		debug("dp: failed to find SOR device: ret=%d\n", ret);
 		return ret;
 	}
@@ -1564,9 +1566,9 @@ error_enable:
 	return 0;
 }
 
-static int tegra_dp_ofdata_to_platdata(struct udevice *dev)
+static int tegra_dp_of_to_plat(struct udevice *dev)
 {
-	struct tegra_dp_plat *plat = dev_get_platdata(dev);
+	struct tegra_dp_plat *plat = dev_get_plat(dev);
 
 	plat->base = dev_read_addr(dev);
 
@@ -1592,9 +1594,9 @@ static const struct dm_display_ops dp_tegra_ops = {
 
 static int dp_tegra_probe(struct udevice *dev)
 {
-	struct tegra_dp_plat *plat = dev_get_platdata(dev);
+	struct tegra_dp_plat *plat = dev_get_plat(dev);
 	struct tegra_dp_priv *priv = dev_get_priv(dev);
-	struct display_plat *disp_uc_plat = dev_get_uclass_platdata(dev);
+	struct display_plat *disp_uc_plat = dev_get_uclass_plat(dev);
 
 	priv->regs = (struct dpaux_ctlr *)plat->base;
 	priv->enabled = false;
@@ -1607,6 +1609,7 @@ static int dp_tegra_probe(struct udevice *dev)
 
 static const struct udevice_id tegra_dp_ids[] = {
 	{ .compatible = "nvidia,tegra124-dpaux" },
+	{ .compatible = "nvidia,tegra210-dpaux" },
 	{ }
 };
 
@@ -1614,9 +1617,9 @@ U_BOOT_DRIVER(dp_tegra) = {
 	.name	= "dpaux_tegra",
 	.id	= UCLASS_DISPLAY,
 	.of_match = tegra_dp_ids,
-	.ofdata_to_platdata = tegra_dp_ofdata_to_platdata,
+	.of_to_plat = tegra_dp_of_to_plat,
 	.probe	= dp_tegra_probe,
 	.ops	= &dp_tegra_ops,
-	.priv_auto_alloc_size = sizeof(struct tegra_dp_priv),
-	.platdata_auto_alloc_size = sizeof(struct tegra_dp_plat),
+	.priv_auto	= sizeof(struct tegra_dp_priv),
+	.plat_auto	= sizeof(struct tegra_dp_plat),
 };

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
  * Author: Eric Gao <eric.gao@rock-chips.com>
@@ -8,20 +8,20 @@
 #include <clk.h>
 #include <display.h>
 #include <dm.h>
-#include <fdtdec.h>
+#include <log.h>
 #include <panel.h>
 #include <regmap.h>
+#include <asm/global_data.h>
 #include "rk_mipi.h"
 #include <syscon.h>
 #include <asm/gpio.h>
-#include <asm/hardware.h>
 #include <asm/io.h>
 #include <dm/uclass-internal.h>
 #include <linux/kernel.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3399.h>
-#include <asm/arch/grf_rk3399.h>
-#include <asm/arch/rockchip_mipi_dsi.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru.h>
+#include <asm/arch-rockchip/grf_rk3399.h>
+#include <asm/arch-rockchip/rockchip_mipi_dsi.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -30,8 +30,7 @@ int rk_mipi_read_timing(struct udevice *dev,
 {
 	int ret;
 
-	ret = fdtdec_decode_display_timing(gd->fdt_blob, dev_of_offset(dev),
-					 0, timing);
+	ret = ofnode_decode_display_timing(dev_ofnode(dev), 0, timing);
 	if (ret) {
 		debug("%s: Failed to decode display timing (ret=%d)\n",
 		      __func__, ret);
@@ -78,7 +77,7 @@ static void rk_mipi_dsi_write(uintptr_t regs, u32 reg, u32 val)
 int rk_mipi_dsi_enable(struct udevice *dev,
 		       const struct display_timing *timing)
 {
-	int node, timing_node;
+	ofnode node, timing_node;
 	int val;
 	struct rk_mipi_priv *priv = dev_get_priv(dev);
 	uintptr_t regs = priv->regs;
@@ -106,7 +105,7 @@ int rk_mipi_dsi_enable(struct udevice *dev,
 	rk_mipi_dsi_write(regs, VSYNC_ACTIVE_LOW, val);
 
 	val = (timing->flags & DISPLAY_FLAGS_DE_LOW) ? 1 : 0;
-	rk_mipi_dsi_write(regs, DISPLAY_FLAGS_DE_LOW, val);
+	rk_mipi_dsi_write(regs, DATAEN_ACTIVE_LOW, val);
 
 	val = (timing->flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE) ? 1 : 0;
 	rk_mipi_dsi_write(regs, COLORM_ACTIVE_LOW, val);
@@ -121,10 +120,10 @@ int rk_mipi_dsi_enable(struct udevice *dev,
 	rk_mipi_dsi_write(regs, VID_PKT_SIZE, 0x4b0);
 
 	/* Set dpi color coding depth 24 bit */
-	timing_node = fdt_subnode_offset(gd->fdt_blob, dev_of_offset(dev),
-									 "display-timings");
-	node = fdt_first_subnode(gd->fdt_blob, timing_node);
-	val = fdtdec_get_int(gd->fdt_blob, node, "bits-per-pixel", -1);
+	timing_node = ofnode_find_subnode(dev_ofnode(dev), "display-timings");
+	node = ofnode_first_subnode(timing_node);
+
+	val = ofnode_read_u32_default(node, "bits-per-pixel", -1);
 	switch (val) {
 	case 16:
 		rk_mipi_dsi_write(regs, DPI_COLOR_CODING, DPI_16BIT_CFG_1);
@@ -241,7 +240,7 @@ int rk_mipi_phy_enable(struct udevice *dev)
 
 	/* select the suitable value for fsfreqrang reg */
 	for (i = 0; i < ARRAY_SIZE(freq_rang); i++) {
-		if (ddr_clk / (MHz) >= freq_rang[i][0])
+		if (ddr_clk / (MHz) <= freq_rang[i][0])
 			break;
 	}
 	if (i == ARRAY_SIZE(freq_rang)) {
@@ -329,4 +328,3 @@ int rk_mipi_phy_enable(struct udevice *dev)
 
 	return 0;
 }
-

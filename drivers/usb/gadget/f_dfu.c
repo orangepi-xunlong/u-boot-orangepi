@@ -14,8 +14,10 @@
  * (C) Copyright 2006 by Harald Welte <hwelte at hmw-consulting.de>
  */
 
+#include <env.h>
 #include <errno.h>
 #include <common.h>
+#include <log.h>
 #include <malloc.h>
 
 #include <linux/usb/ch9.h>
@@ -319,21 +321,29 @@ static int state_dfu_idle(struct f_dfu *f_dfu,
 	u16 len = le16_to_cpu(ctrl->wLength);
 	int value = 0;
 
+	len = len > DFU_USB_BUFSIZ ? DFU_USB_BUFSIZ : len;
+
 	switch (ctrl->bRequest) {
 	case USB_REQ_DFU_DNLOAD:
-		if (len == 0) {
-			f_dfu->dfu_state = DFU_STATE_dfuERROR;
-			value = RET_STALL;
-			break;
+		if (!(ctrl->bRequestType & USB_DIR_IN)) {
+			if (len == 0) {
+				f_dfu->dfu_state = DFU_STATE_dfuERROR;
+				value = RET_STALL;
+				break;
+			}
+			f_dfu->dfu_state = DFU_STATE_dfuDNLOAD_SYNC;
+			f_dfu->blk_seq_num = w_value;
+			value = handle_dnload(gadget, len);
 		}
-		f_dfu->dfu_state = DFU_STATE_dfuDNLOAD_SYNC;
-		f_dfu->blk_seq_num = w_value;
-		value = handle_dnload(gadget, len);
 		break;
 	case USB_REQ_DFU_UPLOAD:
-		f_dfu->dfu_state = DFU_STATE_dfuUPLOAD_IDLE;
-		f_dfu->blk_seq_num = 0;
-		value = handle_upload(req, len);
+		if (ctrl->bRequestType & USB_DIR_IN) {
+			f_dfu->dfu_state = DFU_STATE_dfuUPLOAD_IDLE;
+			f_dfu->blk_seq_num = 0;
+			value = handle_upload(req, len);
+			if (value >= 0 && value < len)
+				f_dfu->dfu_state = DFU_STATE_dfuIDLE;
+		}
 		break;
 	case USB_REQ_DFU_ABORT:
 		/* no zlp? */
@@ -422,11 +432,15 @@ static int state_dfu_dnload_idle(struct f_dfu *f_dfu,
 	u16 len = le16_to_cpu(ctrl->wLength);
 	int value = 0;
 
+	len = len > DFU_USB_BUFSIZ ? DFU_USB_BUFSIZ : len;
+
 	switch (ctrl->bRequest) {
 	case USB_REQ_DFU_DNLOAD:
-		f_dfu->dfu_state = DFU_STATE_dfuDNLOAD_SYNC;
-		f_dfu->blk_seq_num = w_value;
-		value = handle_dnload(gadget, len);
+		if (!(ctrl->bRequestType & USB_DIR_IN)) {
+			f_dfu->dfu_state = DFU_STATE_dfuDNLOAD_SYNC;
+			f_dfu->blk_seq_num = w_value;
+			value = handle_dnload(gadget, len);
+		}
 		break;
 	case USB_REQ_DFU_ABORT:
 		f_dfu->dfu_state = DFU_STATE_dfuIDLE;
@@ -509,13 +523,17 @@ static int state_dfu_upload_idle(struct f_dfu *f_dfu,
 	u16 len = le16_to_cpu(ctrl->wLength);
 	int value = 0;
 
+	len = len > DFU_USB_BUFSIZ ? DFU_USB_BUFSIZ : len;
+
 	switch (ctrl->bRequest) {
 	case USB_REQ_DFU_UPLOAD:
-		/* state transition if less data then requested */
-		f_dfu->blk_seq_num = w_value;
-		value = handle_upload(req, len);
-		if (value >= 0 && value < len)
-			f_dfu->dfu_state = DFU_STATE_dfuIDLE;
+		if (ctrl->bRequestType & USB_DIR_IN) {
+			/* state transition if less data then requested */
+			f_dfu->blk_seq_num = w_value;
+			value = handle_upload(req, len);
+			if (value >= 0 && value < len)
+				f_dfu->dfu_state = DFU_STATE_dfuIDLE;
+		}
 		break;
 	case USB_REQ_DFU_ABORT:
 		f_dfu->dfu_state = DFU_STATE_dfuIDLE;
@@ -591,9 +609,16 @@ dfu_handle(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 	int value = 0;
 	u8 req_type = ctrl->bRequestType & USB_TYPE_MASK;
 
+	len = len > DFU_USB_BUFSIZ ? DFU_USB_BUFSIZ : len;
+
 	debug("w_value: 0x%x len: 0x%x\n", w_value, len);
 	debug("req_type: 0x%x ctrl->bRequest: 0x%x f_dfu->dfu_state: 0x%x\n",
 	       req_type, ctrl->bRequest, f_dfu->dfu_state);
+
+#ifdef CONFIG_DFU_TIMEOUT
+	/* Forbid aborting by timeout. Next dfu command may update this */
+	dfu_set_timeout(0);
+#endif
 
 	if (req_type == USB_TYPE_STANDARD) {
 		if (ctrl->bRequest == USB_REQ_GET_DESCRIPTOR &&
@@ -605,7 +630,7 @@ dfu_handle(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 		value = dfu_state[f_dfu->dfu_state] (f_dfu, ctrl, gadget, req);
 
 	if (value >= 0) {
-		req->length = value;
+		req->length = value > DFU_USB_BUFSIZ ? DFU_USB_BUFSIZ : value;
 		req->zero = value < len;
 		value = usb_ep_queue(gadget->ep0, req, 0);
 		if (value < 0) {
@@ -748,6 +773,7 @@ static void dfu_unbind(struct usb_configuration *c, struct usb_function *f)
 
 	if (f_dfu->function) {
 		i = alt_num;
+		i++; /* free DFU Functional Descriptor */
 		while (i) {
 			free(f_dfu->function[--i]);
 			f_dfu->function[i] = NULL;

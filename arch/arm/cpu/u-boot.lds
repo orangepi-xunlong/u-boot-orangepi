@@ -15,7 +15,7 @@ ENTRY(_start)
 SECTIONS
 {
 #ifndef CONFIG_CMDLINE
-	/DISCARD/ : { *(.u_boot_list_2_cmd_*) }
+	/DISCARD/ : { *(__u_boot_list_2_cmd_*) }
 #endif
 #if defined(CONFIG_ARMV7_SECURE_BASE) && defined(CONFIG_ARMV7_NONSEC)
 	/*
@@ -35,40 +35,55 @@ SECTIONS
 	 */
 	/DISCARD/ : { *(.rel._secure*) }
 #endif
-	. = CONFIG_SYS_TEXT_BASE;
-	/*. = 0x00000000;*/
+	. = 0x00000000;
 
 	. = ALIGN(4);
-	.head :
-	{
-		*(.__image_copy_start)
-		CPUDIR/spare_head.o (.data*)
-	}
 	.text :
 	{
-		/* *(.__image_copy_start) */
+		*(.__image_copy_start)
 		*(.vectors)
 		CPUDIR/start.o (.text*)
+	}
+
+	/* This needs to come before *(.text*) */
+	.__efi_runtime_start : {
+		*(.__efi_runtime_start)
+	}
+
+	.efi_runtime : {
+		*(.text.efi_runtime*)
+		*(.rodata.efi_runtime*)
+		*(.data.efi_runtime*)
+	}
+
+	.__efi_runtime_stop : {
+		*(.__efi_runtime_stop)
+	}
+
+	.text_rest :
+	{
 		*(.text*)
 	}
 
 #ifdef CONFIG_ARMV7_NONSEC
 
 	/* Align the secure section only if we're going to use it in situ */
-	.__secure_start :
+	.__secure_start
 #ifndef CONFIG_ARMV7_SECURE_BASE
 		ALIGN(CONSTANT(COMMONPAGESIZE))
 #endif
-	{
+	: {
 		KEEP(*(.__secure_start))
 	}
 
 #ifndef CONFIG_ARMV7_SECURE_BASE
-#define CONFIG_ARMV7_SECURE_BASE
+#define __ARMV7_SECURE_BASE
 #define __ARMV7_PSCI_STACK_IN_RAM
+#else
+#define __ARMV7_SECURE_BASE	CONFIG_ARMV7_SECURE_BASE
 #endif
 
-	.secure_text CONFIG_ARMV7_SECURE_BASE :
+	.secure_text __ARMV7_SECURE_BASE :
 		AT(ADDR(.__secure_start) + SIZEOF(.__secure_start))
 	{
 		*(._secure.text)
@@ -136,24 +151,11 @@ SECTIONS
 	. = .;
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 
 	. = ALIGN(4);
-
-	.__efi_runtime_start : {
-		*(.__efi_runtime_start)
-	}
-
-	.efi_runtime : {
-		*(efi_runtime_text)
-		*(efi_runtime_data)
-	}
-
-	.__efi_runtime_stop : {
-		*(.__efi_runtime_stop)
-	}
 
 	.efi_runtime_rel_start :
 	{
@@ -161,8 +163,8 @@ SECTIONS
 	}
 
 	.efi_runtime_rel : {
-		*(.relefi_runtime_text)
-		*(.relefi_runtime_data)
+		*(.rel*.efi_runtime)
+		*(.rel*.efi_runtime.*)
 	}
 
 	.efi_runtime_rel_stop :

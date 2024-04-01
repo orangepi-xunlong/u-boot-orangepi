@@ -2,6 +2,8 @@
  * NXP GPMI NAND flash driver (DT initialization)
  *
  * Copyright (C) 2018 Toradex
+ * Copyright 2019 NXP
+ *
  * Authors:
  * Stefan Agner <stefan.agner@toradex.com>
  *
@@ -14,19 +16,33 @@
 #include <linux/io.h>
 #include <linux/ioport.h>
 #include <linux/printk.h>
+#include <clk.h>
 
-#include "mxs_nand.h"
+#include <mxs_nand.h>
 
 struct mxs_nand_dt_data {
 	unsigned int max_ecc_strength_supported;
+	int max_chain_delay; /* See the async EDO mode */
 };
 
 static const struct mxs_nand_dt_data mxs_nand_imx6q_data = {
 	.max_ecc_strength_supported = 40,
+	.max_chain_delay = 12000,
+};
+
+static const struct mxs_nand_dt_data mxs_nand_imx6sx_data = {
+	.max_ecc_strength_supported = 62,
+	.max_chain_delay = 12000,
 };
 
 static const struct mxs_nand_dt_data mxs_nand_imx7d_data = {
 	.max_ecc_strength_supported = 62,
+	.max_chain_delay = 12000,
+};
+
+static const struct mxs_nand_dt_data mxs_nand_imx8qxp_data = {
+	.max_ecc_strength_supported = 62,
+	.max_chain_delay = 12000,
 };
 
 static const struct udevice_id mxs_nand_dt_ids[] = {
@@ -35,8 +51,20 @@ static const struct udevice_id mxs_nand_dt_ids[] = {
 		.data = (unsigned long)&mxs_nand_imx6q_data,
 	},
 	{
+		.compatible = "fsl,imx6qp-gpmi-nand",
+		.data = (unsigned long)&mxs_nand_imx6q_data,
+	},
+	{
+		.compatible = "fsl,imx6sx-gpmi-nand",
+		.data = (unsigned long)&mxs_nand_imx6sx_data,
+	},
+	{
 		.compatible = "fsl,imx7d-gpmi-nand",
 		.data = (unsigned long)&mxs_nand_imx7d_data,
+	},
+	{
+		.compatible = "fsl,imx8qxp-gpmi-nand",
+		.data = (unsigned long)&mxs_nand_imx8qxp_data,
 	},
 	{ /* sentinel */ }
 };
@@ -49,8 +77,10 @@ static int mxs_nand_dt_probe(struct udevice *dev)
 	int ret;
 
 	data = (void *)dev_get_driver_data(dev);
-	if (data)
+	if (data) {
 		info->max_ecc_strength_supported = data->max_ecc_strength_supported;
+		info->max_chain_delay = data->max_chain_delay;
+	}
 
 	info->dev = dev;
 
@@ -69,6 +99,64 @@ static int mxs_nand_dt_probe(struct udevice *dev)
 
 	info->use_minimum_ecc = dev_read_bool(dev, "fsl,use-minimum-ecc");
 
+	if (IS_ENABLED(CONFIG_CLK) &&
+	    (IS_ENABLED(CONFIG_IMX8) || IS_ENABLED(CONFIG_IMX8M))) {
+		/* Assigned clock already set clock */
+		struct clk gpmi_clk;
+
+		info->gpmi_clk = devm_clk_get(dev, "gpmi_io");
+
+		if (IS_ERR(info->gpmi_clk)) {
+			ret = PTR_ERR(info->gpmi_clk);
+			debug("Can't get gpmi io clk: %d\n", ret);
+			return ret;
+		}
+
+		ret = clk_enable(info->gpmi_clk);
+		if (ret < 0) {
+			debug("Can't enable gpmi io clk: %d\n", ret);
+			return ret;
+		}
+
+		if (IS_ENABLED(CONFIG_IMX8)) {
+			ret = clk_get_by_name(dev, "gpmi_apb", &gpmi_clk);
+			if (ret < 0) {
+				debug("Can't get gpmi_apb clk: %d\n", ret);
+				return ret;
+			}
+
+			ret = clk_enable(&gpmi_clk);
+			if (ret < 0) {
+				debug("Can't enable gpmi_apb clk: %d\n", ret);
+				return ret;
+			}
+
+			ret = clk_get_by_name(dev, "gpmi_bch", &gpmi_clk);
+			if (ret < 0) {
+				debug("Can't get gpmi_bch clk: %d\n", ret);
+				return ret;
+			}
+
+			ret = clk_enable(&gpmi_clk);
+			if (ret < 0) {
+				debug("Can't enable gpmi_bch clk: %d\n", ret);
+				return ret;
+			}
+		}
+
+		ret = clk_get_by_name(dev, "gpmi_bch_apb", &gpmi_clk);
+		if (ret < 0) {
+			debug("Can't get gpmi_bch_apb clk: %d\n", ret);
+			return ret;
+		}
+
+		ret = clk_enable(&gpmi_clk);
+		if (ret < 0) {
+			debug("Can't enable gpmi_bch_apb clk: %d\n", ret);
+			return ret;
+		}
+	}
+
 	return mxs_nand_init_ctrl(info);
 }
 
@@ -77,7 +165,7 @@ U_BOOT_DRIVER(mxs_nand_dt) = {
 	.id = UCLASS_MTD,
 	.of_match = mxs_nand_dt_ids,
 	.probe = mxs_nand_dt_probe,
-	.priv_auto_alloc_size = sizeof(struct mxs_nand_info),
+	.priv_auto	= sizeof(struct mxs_nand_info),
 };
 
 void board_nand_init(void)
@@ -86,7 +174,7 @@ void board_nand_init(void)
 	int ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_MTD,
-					  DM_GET_DRIVER(mxs_nand_dt),
+					  DM_DRIVER_GET(mxs_nand_dt),
 					  &dev);
 	if (ret && ret != -ENODEV)
 		pr_err("Failed to initialize MXS NAND controller. (error %d)\n",

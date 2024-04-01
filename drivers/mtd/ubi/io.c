@@ -74,9 +74,12 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
+#include <dm/devres.h>
 #include <linux/crc32.h>
 #include <linux/err.h>
 #include <linux/slab.h>
+#include <u-boot/crc.h>
 #else
 #include <hexdump.h>
 #include <ubi_uboot.h>
@@ -302,18 +305,6 @@ int ubi_io_write(struct ubi_device *ubi, const void *buf, int pnum, int offset,
 }
 
 /**
- * erase_callback - MTD erasure call-back.
- * @ei: MTD erase information object.
- *
- * Note, even though MTD erase interface is asynchronous, all the current
- * implementations are synchronous anyway.
- */
-static void erase_callback(struct erase_info *ei)
-{
-	wake_up_interruptible((wait_queue_head_t *)ei->priv);
-}
-
-/**
  * do_sync_erase - synchronously erase a physical eraseblock.
  * @ubi: UBI device description object
  * @pnum: the physical eraseblock number to erase
@@ -343,7 +334,6 @@ retry:
 	ei.mtd      = ubi->mtd;
 	ei.addr     = (loff_t)pnum * ubi->peb_size;
 	ei.len      = ubi->peb_size;
-	ei.callback = erase_callback;
 	ei.priv     = (unsigned long)&wq;
 
 	err = mtd_erase(ubi->mtd, &ei);
@@ -1351,6 +1341,7 @@ static int self_check_write(struct ubi_device *ubi, const void *buf, int pnum,
 
 		ubi_err(ubi, "self-check failed for PEB %d:%d, len %d",
 			pnum, offset, len);
+#if !defined(CONFIG_UBI_SILENCE_MSG)
 		ubi_msg(ubi, "data differ at position %d", i);
 		ubi_msg(ubi, "hex dump of the original buffer from %d to %d",
 			i, i + dump_len);
@@ -1360,6 +1351,7 @@ static int self_check_write(struct ubi_device *ubi, const void *buf, int pnum,
 			i, i + dump_len);
 		print_hex_dump("", DUMP_PREFIX_OFFSET, 32, 1,
 			       buf1 + i, dump_len, 1);
+#endif
 		dump_stack();
 		err = -EINVAL;
 		goto out_free;

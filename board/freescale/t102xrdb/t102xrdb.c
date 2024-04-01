@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <image.h>
+#include <init.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -43,7 +49,7 @@ int checkboard(void)
 {
 	struct cpu_type *cpu = gd->arch.cpu;
 	static const char *freq[3] = {"100.00MHZ", "125.00MHz", "156.25MHZ"};
-	ccsr_gur_t __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t __iomem *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 srds_s1;
 
 	srds_s1 = in_be32(&gur->rcwsr[4]) & FSL_CORENET2_RCWSR4_SRDS1_PRTCL;
@@ -74,7 +80,7 @@ int checkboard(void)
 		printf("NOR vBank%d\n", reg);
 	}
 #elif defined(CONFIG_TARGET_T1023RDB)
-#ifdef CONFIG_NAND
+#ifdef CONFIG_MTD_RAW_NAND
 	puts("NAND\n");
 #else
 	printf("NOR vBank%d\n", t1023rdb_ctrl(I2C_GET_BANK));
@@ -93,7 +99,7 @@ int checkboard(void)
 #ifdef CONFIG_TARGET_T1024RDB
 static void board_mux_lane(void)
 {
-	ccsr_gur_t __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t __iomem *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 srds_prtcl_s1;
 	u8 reg = CPLD_READ(misc_ctl_status);
 
@@ -124,8 +130,8 @@ int board_early_init_f(void)
 
 int board_early_init_r(void)
 {
-#ifdef CONFIG_SYS_FLASH_BASE
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+#ifdef CFG_SYS_FLASH_BASE
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -144,7 +150,7 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
@@ -154,16 +160,6 @@ int board_early_init_r(void)
 #endif
 
 	return 0;
-}
-
-unsigned long get_board_sys_clk(void)
-{
-	return CONFIG_SYS_CLK_FREQ;
-}
-
-unsigned long get_board_ddr_clk(void)
-{
-	return CONFIG_DDR_CLK_FREQ;
 }
 
 #ifdef CONFIG_TARGET_T1024RDB
@@ -178,7 +174,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -198,7 +194,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 
 #ifdef CONFIG_SYS_DPAA_FMAN
+#ifndef CONFIG_DM_ETH
 	fdt_fixup_fman_ethernet(blob);
+#endif
 	fdt_fixup_board_enet(blob);
 #endif
 
@@ -224,7 +222,7 @@ static void fdt_enable_nor(void *blob)
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-	ccsr_gpio_t __iomem *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t __iomem *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 	u32 val = in_be32(&pgpio->gpdat);
 
 	/* GPIO1_14, 0: eMMC, 1: SD/MMC */
@@ -235,7 +233,7 @@ int board_mmc_getcd(struct mmc *mmc)
 
 int board_mmc_getwp(struct mmc *mmc)
 {
-	ccsr_gpio_t __iomem *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t __iomem *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 	u32 val = in_be32(&pgpio->gpdat);
 
 	val &= GPIO1_SD_SEL;
@@ -245,10 +243,71 @@ int board_mmc_getwp(struct mmc *mmc)
 
 static u32 t1023rdb_ctrl(u32 ctrl_type)
 {
-	ccsr_gpio_t __iomem *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
-	ccsr_gur_t __iomem  *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	u32 val, orig_bus = i2c_get_bus_num();
+	ccsr_gpio_t __iomem *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gur_t __iomem  *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
+	u32 val;
 	u8 tmp;
+	int bus_num = I2C_PCA6408_BUS_NUM;
+
+#if CONFIG_IS_ENABLED(DM_I2C)
+	struct udevice *dev;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(bus_num, I2C_PCA6408_ADDR,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
+		return ret;
+	}
+	switch (ctrl_type) {
+	case GPIO1_SD_SEL:
+		val = in_be32(&pgpio->gpdat);
+		val |= GPIO1_SD_SEL;
+		out_be32(&pgpio->gpdat, val);
+		setbits_be32(&pgpio->gpdir, GPIO1_SD_SEL);
+		break;
+	case GPIO1_EMMC_SEL:
+		val = in_be32(&pgpio->gpdat);
+		val &= ~GPIO1_SD_SEL;
+		out_be32(&pgpio->gpdat, val);
+		setbits_be32(&pgpio->gpdir, GPIO1_SD_SEL);
+		break;
+	case GPIO3_GET_VERSION:
+		pgpio = (ccsr_gpio_t *)(CFG_SYS_MPC85xx_GPIO_ADDR
+			 + GPIO3_OFFSET);
+		val = in_be32(&pgpio->gpdat);
+		val = ((val & GPIO3_BRD_VER_MASK) >> 26) & 0x3;
+		if (val == 0x3) /* GPIO3_4/5 not used on RevB */
+			val = 0;
+		return val;
+	case I2C_GET_BANK:
+		dm_i2c_read(dev, 0, &tmp, 1);
+		tmp &= 0x7;
+		tmp = ((tmp & 1) << 2) | (tmp & 2) | ((tmp & 4) >> 2);
+		return tmp;
+	case I2C_SET_BANK0:
+		tmp = 0x0;
+		dm_i2c_write(dev, 1, &tmp, 1);
+		tmp = 0xf8;
+		dm_i2c_write(dev, 3, &tmp, 1);
+		/* asserting HRESET_REQ */
+		out_be32(&gur->rstcr, 0x2);
+		break;
+	case I2C_SET_BANK4:
+		tmp = 0x1;
+		dm_i2c_write(dev, 1, &tmp, 1);
+		tmp = 0xf8;
+		dm_i2c_write(dev, 3, &tmp, 1);
+		out_be32(&gur->rstcr, 0x2);
+		break;
+	default:
+		break;
+	}
+#else
+	u32 orig_bus;
+
+	orig_bus = i2c_get_bus_num();
 
 	switch (ctrl_type) {
 	case GPIO1_SD_SEL:
@@ -264,7 +323,7 @@ static u32 t1023rdb_ctrl(u32 ctrl_type)
 		setbits_be32(&pgpio->gpdir, GPIO1_SD_SEL);
 		break;
 	case GPIO3_GET_VERSION:
-		pgpio = (ccsr_gpio_t *)(CONFIG_SYS_MPC85xx_GPIO_ADDR
+		pgpio = (ccsr_gpio_t *)(CFG_SYS_MPC85xx_GPIO_ADDR
 			 + GPIO3_OFFSET);
 		val = in_be32(&pgpio->gpdat);
 		val = ((val & GPIO3_BRD_VER_MASK) >> 26) & 0x3;
@@ -272,14 +331,14 @@ static u32 t1023rdb_ctrl(u32 ctrl_type)
 			val = 0;
 		return val;
 	case I2C_GET_BANK:
-		i2c_set_bus_num(I2C_PCA6408_BUS_NUM);
+		i2c_set_bus_num(bus_num);
 		i2c_read(I2C_PCA6408_ADDR, 0, 1, &tmp, 1);
 		tmp &= 0x7;
 		tmp = ((tmp & 1) << 2) | (tmp & 2) | ((tmp & 4) >> 2);
 		i2c_set_bus_num(orig_bus);
 		return tmp;
 	case I2C_SET_BANK0:
-		i2c_set_bus_num(I2C_PCA6408_BUS_NUM);
+		i2c_set_bus_num(bus_num);
 		tmp = 0x0;
 		i2c_write(I2C_PCA6408_ADDR, 1, 1, &tmp, 1);
 		tmp = 0xf8;
@@ -288,7 +347,7 @@ static u32 t1023rdb_ctrl(u32 ctrl_type)
 		out_be32(&gur->rstcr, 0x2);
 		break;
 	case I2C_SET_BANK4:
-		i2c_set_bus_num(I2C_PCA6408_BUS_NUM);
+		i2c_set_bus_num(bus_num);
 		tmp = 0x1;
 		i2c_write(I2C_PCA6408_ADDR, 1, 1, &tmp, 1);
 		tmp = 0xf8;
@@ -298,11 +357,12 @@ static u32 t1023rdb_ctrl(u32 ctrl_type)
 	default:
 		break;
 	}
+#endif
 	return 0;
 }
 
-static int switch_cmd(cmd_tbl_t *cmdtp, int flag, int argc,
-		    char * const argv[])
+static int switch_cmd(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	if (argc < 2)
 		return CMD_RET_USAGE;

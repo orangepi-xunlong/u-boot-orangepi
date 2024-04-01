@@ -5,14 +5,16 @@
  */
 
 #include <common.h>
+#include <image.h>
+#include <log.h>
 #include <spl.h>
 
 static int spl_xip(struct spl_image_info *spl_image,
 		   struct spl_boot_device *bootdev)
 {
-#ifdef CONFIG_SPL_OS_BOOT
+#if CONFIG_IS_ENABLED(OS_BOOT)
 	if (!spl_start_uboot()) {
-		spl_image->arg = (void *)CONFIG_SYS_FDT_BASE;
+		spl_image->arg = (void *)CONFIG_SYS_SPL_ARGS_ADDR;
 		spl_image->name = "Linux";
 		spl_image->os = IH_OS_LINUX;
 		spl_image->load_addr = CONFIG_SYS_LOAD_ADDR;
@@ -22,7 +24,7 @@ static int spl_xip(struct spl_image_info *spl_image,
 		return 0;
 	}
 #endif
-	return(spl_parse_image_header(spl_image, (const struct image_header *)
-	       CONFIG_SYS_UBOOT_BASE));
+	return(spl_parse_image_header(spl_image, bootdev,
+	       (const struct legacy_img_hdr *)CFG_SYS_UBOOT_BASE));
 }
 SPL_LOAD_IMAGE_METHOD("XIP", 0, BOOT_DEVICE_XIP, spl_xip);

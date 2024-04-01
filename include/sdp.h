@@ -10,6 +10,14 @@
 #define __SDP_H_
 
 int sdp_init(int controller_index);
-void sdp_handle(int controller_index);
+
+#ifdef CONFIG_SPL_BUILD
+#include <spl.h>
+
+int spl_sdp_handle(int controller_index, struct spl_image_info *spl_image,
+		   struct spl_boot_device *bootdev);
+#else
+int sdp_handle(int controller_index);
+#endif
 
 #endif /* __SDP_H_ */

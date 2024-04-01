@@ -13,6 +13,9 @@ These tests rely on a 4 MB disk image, which is automatically created by
 the test.
 """
 
+# Mark all tests here as slow
+pytestmark = pytest.mark.slow
+
 class GptTestDiskImage(object):
     """Disk Image used by the GPT tests."""
 
@@ -40,16 +43,19 @@ class GptTestDiskImage(object):
                 fd = os.open(persistent, os.O_RDWR | os.O_CREAT)
                 os.ftruncate(fd, 4194304)
                 os.close(fd)
-                cmd = ('sgdisk', '-U', '375a56f7-d6c9-4e81-b5f0-09d41ca89efe',
+                cmd = ('sgdisk',
+                    '--disk-guid=375a56f7-d6c9-4e81-b5f0-09d41ca89efe',
                     persistent)
                 u_boot_utils.run_and_log(u_boot_console, cmd)
                 # part1 offset 1MB size 1MB
-                cmd = ('sgdisk', '--new=1:2048:4095', '-c 1:part1', persistent)
+                cmd = ('sgdisk', '--new=1:2048:4095', '--change-name=1:part1',
+                    persistent)
                 # part2 offset 2MB size 1.5MB
                 u_boot_utils.run_and_log(u_boot_console, cmd)
-                cmd = ('sgdisk', '--new=2:4096:7167', '-c 2:part2', persistent)
+                cmd = ('sgdisk', '--new=2:4096:7167', '--change-name=2:part2',
+                    persistent)
                 u_boot_utils.run_and_log(u_boot_console, cmd)
-                cmd = ('sgdisk', '-l', persistent)
+                cmd = ('sgdisk', '--load-backup=' + persistent)
                 u_boot_utils.run_and_log(u_boot_console, cmd)
 
         cmd = ('cp', persistent, self.path)
@@ -98,6 +104,16 @@ def test_gpt_verify(state_disk_image, u_boot_console):
 @pytest.mark.boardspec('sandbox')
 @pytest.mark.buildconfigspec('cmd_gpt')
 @pytest.mark.requiredtool('sgdisk')
+def test_gpt_repair(state_disk_image, u_boot_console):
+    """Test the gpt repair command."""
+
+    u_boot_console.run_command('host bind 0 ' + state_disk_image.path)
+    output = u_boot_console.run_command('gpt repair host 0')
+    assert 'Repairing GPT: success!' in output
+
+@pytest.mark.boardspec('sandbox')
+@pytest.mark.buildconfigspec('cmd_gpt')
+@pytest.mark.requiredtool('sgdisk')
 def test_gpt_guid(state_disk_image, u_boot_console):
     """Test the gpt guid command."""
 
@@ -117,6 +133,29 @@ def test_gpt_save_guid(state_disk_image, u_boot_console):
     output = u_boot_console.run_command('gpt guid host 0 newguid')
     output = u_boot_console.run_command('printenv newguid')
     assert '375a56f7-d6c9-4e81-b5f0-09d41ca89efe' in output
+
+@pytest.mark.boardspec('sandbox')
+@pytest.mark.buildconfigspec('cmd_gpt')
+@pytest.mark.requiredtool('sgdisk')
+def test_gpt_part_type_uuid(state_disk_image, u_boot_console):
+    """Test the gpt partittion type UUID command."""
+
+    u_boot_console.run_command('host bind 0 ' + state_disk_image.path)
+    output = u_boot_console.run_command('part type host 0:1')
+    assert '0fc63daf-8483-4772-8e79-3d69d8477de4' in output
+
+@pytest.mark.boardspec('sandbox')
+@pytest.mark.buildconfigspec('cmd_gpt')
+@pytest.mark.requiredtool('sgdisk')
+def test_gpt_part_type_save_uuid(state_disk_image, u_boot_console):
+    """Test the gpt partittion type to save UUID into a string."""
+
+    if u_boot_console.config.buildconfig.get('config_cmd_gpt', 'n') != 'y':
+        pytest.skip('gpt command not supported')
+    u_boot_console.run_command('host bind 0 ' + state_disk_image.path)
+    output = u_boot_console.run_command('part type host 0:1 newguid')
+    output = u_boot_console.run_command('printenv newguid')
+    assert '0fc63daf-8483-4772-8e79-3d69d8477de4' in output
 
 @pytest.mark.boardspec('sandbox')
 @pytest.mark.buildconfigspec('cmd_gpt')

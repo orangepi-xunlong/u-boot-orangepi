@@ -10,7 +10,12 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <env.h>
 #include <errno.h>
+#include <init.h>
+#include <malloc.h>
+#include <serial.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -20,6 +25,7 @@
 #include <asm/arch/gpio.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/emif.h>
 #include <asm/gpio.h>
@@ -64,6 +70,7 @@ void sdram_init(void)
 #endif /* #ifdef CONFIG_SPL_BUILD */
 
 #ifndef CONFIG_SPL_BUILD
+#define FACTORYSET_EEPROM_ADDR		0x50
 /*
  * Basic board specific setup.  Pinmux has been handled already.
  */
@@ -78,19 +85,16 @@ int board_init(void)
 #ifdef CONFIG_MACH_TYPE
 	gd->bd->bi_arch_number = CONFIG_MACH_TYPE;
 #endif
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 
 #ifdef CONFIG_FACTORYSET
-	factoryset_read_eeprom(CONFIG_SYS_I2C_EEPROM_ADDR);
+	factoryset_read_eeprom(FACTORYSET_EEPROM_ADDR);
 #endif
 
 	gpmc_init();
 
-#ifdef CONFIG_NAND_CS_INIT
+#if CONFIG_IS_ENABLED(NAND_CS_INIT)
 	board_nand_cs_init();
-#endif
-#ifdef CONFIG_VIDEO
-	board_video_init();
 #endif
 
 	return 0;
@@ -147,7 +151,7 @@ unsigned char get_button_state(char * const envname, unsigned char def)
  *		0 if button is not held down
  */
 static int
-do_userbutton(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_userbutton(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int button = 0;
 	button = get_button_state("button_dfu0", BOARD_DFU_BUTTON_GPIO);
@@ -163,7 +167,7 @@ U_BOOT_CMD(
 #endif
 
 static int
-do_usertestwdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_usertestwdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	printf("\n\n\n Go into infinite loop\n\n\n");
 	while (1)
@@ -188,14 +192,11 @@ void set_env_gpios(unsigned char state)
 {
 	char *ptr_env;
 	char str_tmp[5];	/* must contain "ledX"*/
-	char num[1];
 	unsigned char i, idx, pos1, pos2, ccount;
 	unsigned char gpio_n, gpio_s0, gpio_s1;
 
 	for (i = 0; i < MAX_NR_LEDS; i++) {
-		strcpy(str_tmp, "led");
-		sprintf(num, "%d", i);
-		strcat(str_tmp, num);
+		sprintf(str_tmp, "led%d", i);
 
 		/* If env var is not found we stop */
 		ptr_env = env_get(str_tmp);
@@ -250,8 +251,8 @@ void set_env_gpios(unsigned char state)
 	} /* loop through defined led in environment */
 }
 
-static int do_board_led(cmd_tbl_t *cmdtp, int flag, int argc,
-			   char *const argv[])
+static int do_board_led(struct cmd_tbl *cmdtp, int flag, int argc,
+			char *const argv[])
 {
 	if (argc != 2)
 		return CMD_RET_USAGE;

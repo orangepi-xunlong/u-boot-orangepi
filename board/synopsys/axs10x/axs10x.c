@@ -4,34 +4,16 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <dwmmc.h>
+#include <init.h>
 #include <malloc.h>
 #include <asm/arcregs.h>
+#include <asm/global_data.h>
 #include "axs10x.h"
+#include <asm/cache.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-int board_mmc_init(bd_t *bis)
-{
-	struct dwmci_host *host = NULL;
-
-	host = malloc(sizeof(struct dwmci_host));
-	if (!host) {
-		printf("dwmci_host malloc fail!\n");
-		return 1;
-	}
-
-	memset(host, 0, sizeof(struct dwmci_host));
-	host->name = "Synopsys Mobile storage";
-	host->ioaddr = (void *)ARC_DWMMC_BASE;
-	host->buswidth = 4;
-	host->dev_index = 0;
-	host->bus_hz = 50000000;
-
-	add_dwmci(host, host->bus_hz / 2, 400000);
-
-	return 0;
-}
 
 #define AXS_MB_CREG	0xE0011000
 
@@ -102,3 +84,11 @@ void smp_kick_all_cpus(void)
 	writel(cmd, (void __iomem *)AXC003_CREG_CPU_START);
 }
 #endif
+
+int checkboard(void)
+{
+	printf("Board: ARC Software Development Platform AXS%s\n",
+	     is_isa_arcv2() ? "103" : "101");
+
+	return 0;
+};

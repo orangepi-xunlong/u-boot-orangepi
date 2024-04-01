@@ -7,6 +7,8 @@
 #include "skeleton.dtsi"
 
 / {
+	model = "abilis,tb100";
+
 	aliases {
 		console = &uart0;
 	};
@@ -16,7 +18,7 @@
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
 			clock-frequency = <500000000>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
 

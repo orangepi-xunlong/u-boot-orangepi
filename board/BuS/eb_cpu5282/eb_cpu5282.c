@@ -9,8 +9,11 @@
 
 #include <common.h>
 #include <command.h>
+#include <asm/global_data.h>
 #include "asm/m5282.h"
 #include <bmp_layout.h>
+#include <env.h>
+#include <init.h>
 #include <status_led.h>
 #include <bus_vcxk.h>
 
@@ -18,17 +21,12 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_VIDEO
-unsigned long display_width;
-unsigned long display_height;
-#endif
-
 /*---------------------------------------------------------------------------*/
 
 int checkboard (void)
 {
 	puts("Board: EB+CPU5282 (BuS Elektronik GmbH & Co. KG)\n");
-#if (CONFIG_SYS_TEXT_BASE ==  CONFIG_SYS_INT_FLASH_BASE)
+#if (CONFIG_TEXT_BASE ==  CFG_SYS_INT_FLASH_BASE)
 	puts("       Boot from Internal FLASH\n");
 #endif
 	return 0;
@@ -40,10 +38,10 @@ int dram_init(void)
 
 	size = 0;
 	MCFSDRAMC_DCR = MCFSDRAMC_DCR_RTIM_6 |
-			MCFSDRAMC_DCR_RC((15 * CONFIG_SYS_CLK / 1000000) >> 4);
+			MCFSDRAMC_DCR_RC((15 * CFG_SYS_CLK / 1000000) >> 4);
 	asm (" nop");
-#ifdef CONFIG_SYS_SDRAM_BASE0
-	MCFSDRAMC_DACR0 = MCFSDRAMC_DACR_BASE(CONFIG_SYS_SDRAM_BASE0)|
+#ifdef CFG_SYS_SDRAM_BASE0
+	MCFSDRAMC_DACR0 = MCFSDRAMC_DACR_BASE(CFG_SYS_SDRAM_BASE0)|
 		MCFSDRAMC_DACR_CASL(1) | MCFSDRAMC_DACR_CBM(3) |
 		MCFSDRAMC_DACR_PS_32;
 	asm (" nop");
@@ -56,7 +54,7 @@ int dram_init(void)
 	for (i = 0; i < 10; i++)
 		asm (" nop");
 
-	*(unsigned long *)(CONFIG_SYS_SDRAM_BASE0) = 0xA5A5A5A5;
+	*(unsigned long *)(CFG_SYS_SDRAM_BASE0) = 0xA5A5A5A5;
 	asm (" nop");
 	MCFSDRAMC_DACR0 |= MCFSDRAMC_DACR_RE;
 	asm (" nop");
@@ -67,12 +65,12 @@ int dram_init(void)
 	MCFSDRAMC_DACR0 |= MCFSDRAMC_DACR_IMRS;
 	asm (" nop");
 	/* write SDRAM mode register */
-	*(unsigned long *)(CONFIG_SYS_SDRAM_BASE0 + 0x80440) = 0xA5A5A5A5;
+	*(unsigned long *)(CFG_SYS_SDRAM_BASE0 + 0x80440) = 0xA5A5A5A5;
 	asm (" nop");
-	size += CONFIG_SYS_SDRAM_SIZE0 * 1024 * 1024;
+	size += CFG_SYS_SDRAM_SIZE0 * 1024 * 1024;
 #endif
-#ifdef CONFIG_SYS_SDRAM_BASE1xx
-	MCFSDRAMC_DACR1 = MCFSDRAMC_DACR_BASE (CONFIG_SYS_SDRAM_BASE1)
+#ifdef CFG_SYS_SDRAM_BASE1xx
+	MCFSDRAMC_DACR1 = MCFSDRAMC_DACR_BASE (CFG_SYS_SDRAM_BASE1)
 			| MCFSDRAMC_DACR_CASL (1)
 			| MCFSDRAMC_DACR_CBM (3)
 			| MCFSDRAMC_DACR_PS_16;
@@ -81,23 +79,23 @@ int dram_init(void)
 
 	MCFSDRAMC_DACR1 |= MCFSDRAMC_DACR_IP;
 
-	*(unsigned short *) (CONFIG_SYS_SDRAM_BASE1) = 0xA5A5;
+	*(unsigned short *) (CFG_SYS_SDRAM_BASE1) = 0xA5A5;
 	MCFSDRAMC_DACR1 |= MCFSDRAMC_DACR_RE;
 
 	for (i = 0; i < 2000; i++)
 		asm (" nop");
 
 	MCFSDRAMC_DACR1 |= MCFSDRAMC_DACR_IMRS;
-	*(unsigned int *) (CONFIG_SYS_SDRAM_BASE1 + 0x220) = 0xA5A5;
-	size += CONFIG_SYS_SDRAM_SIZE1 * 1024 * 1024;
+	*(unsigned int *) (CFG_SYS_SDRAM_BASE1 + 0x220) = 0xA5A5;
+	size += CFG_SYS_SDRAM_SIZE1 * 1024 * 1024;
 #endif
 	gd->ram_size = size;
 
 	return 0;
 }
 
-#if defined(CONFIG_SYS_DRAM_TEST)
-int testdram (void)
+#if defined(CFG_SYS_DRAM_TEST)
+int testdram(void)
 {
 	uint *pstart = (uint *) CONFIG_SYS_MEMTEST_START;
 	uint *pend = (uint *) CONFIG_SYS_MEMTEST_END;
@@ -181,85 +179,7 @@ void __led_set(led_id_t mask, int state)
 		MCFGPTA_GPTPORT &= ~(1 << 3);
 }
 
-#if defined(CONFIG_VIDEO)
-
-int drv_video_init(void)
-{
-	char *s;
-#ifdef CONFIG_SPLASH_SCREEN
-	unsigned long splash;
-#endif
-	printf("Init Video as ");
-	s = env_get("displaywidth");
-	if (s != NULL)
-		display_width = simple_strtoul(s, NULL, 10);
-	else
-		display_width = 256;
-
-	s = env_get("displayheight");
-	if (s != NULL)
-		display_height = simple_strtoul(s, NULL, 10);
-	else
-		display_height = 256;
-
-	printf("%lu x %lu pixel matrix\n", display_width, display_height);
-
-	MCFCCM_CCR &= ~MCFCCM_CCR_SZEN;
-	MCFGPIO_PEPAR &= ~MCFGPIO_PEPAR_PEPA2;
-
-	vcxk_init(display_width, display_height);
-
-#ifdef CONFIG_SPLASH_SCREEN
-	s = env_get("splashimage");
-	if (s != NULL) {
-		splash = simple_strtoul(s, NULL, 16);
-		vcxk_acknowledge_wait();
-		video_display_bitmap(splash, 0, 0);
-	}
-#endif
-	return 0;
-}
-#endif
-
 /*---------------------------------------------------------------------------*/
 
-#ifdef CONFIG_VIDEO
-int do_brightness(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	int rcode = 0;
-	ulong side;
-	ulong bright;
-
-	switch (argc) {
-	case 3:
-		side = simple_strtoul(argv[1], NULL, 10);
-		bright = simple_strtoul(argv[2], NULL, 10);
-		if ((side >= 0) && (side <= 3) &&
-			(bright >= 0) && (bright <= 1000)) {
-			vcxk_setbrightness(side, bright);
-			rcode = 0;
-		} else {
-			printf("parameters out of range\n");
-			printf("Usage:\n%s\n", cmdtp->usage);
-			rcode = 1;
-		}
-		break;
-	default:
-		printf("Usage:\n%s\n", cmdtp->usage);
-		rcode = 1;
-		break;
-	}
-	return rcode;
-}
-
-/*---------------------------------------------------------------------------*/
-
-U_BOOT_CMD(
-	bright,	3,	0,	do_brightness,
-	"sets the display brightness\n",
-	" <side> <0..1000>\n        side: 0/3=both; 1=first; 2=second\n"
-);
-
-#endif
 
 /* EOF EB+MCF-EV123.c */

@@ -7,8 +7,8 @@
 #include "zynq-7000.dtsi"
 
 / {
-	model = "Zynq Zed Development Board";
-	compatible = "xlnx,zynq-zed", "xlnx,zynq-7000";
+	model = "Avnet ZedBoard board";
+	compatible = "avnet,zynq-zed", "xlnx,zynq-zed", "xlnx,zynq-7000";
 
 	aliases {
 		ethernet0 = &gem0;
@@ -49,17 +49,24 @@
 };
 
 &qspi {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
+	num-cs = <1>;
+	flash@0 {
+		compatible = "spansion,s25fl256s1", "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <30000000>;
+		m25p,fast-read;
+	};
 };
 
 &sdhci0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
 &uart1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 

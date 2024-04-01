@@ -389,6 +389,7 @@ static inline int nanddev_unregister(struct nand_device *nand)
 	return mtd_device_unregister(nand->mtd);
 }
 
+#ifndef __UBOOT__
 /**
  * nanddev_set_of_node() - Attach a DT node to a NAND device
  * @nand: NAND device
@@ -412,6 +413,19 @@ static inline const struct device_node *nanddev_get_of_node(struct nand_device *
 {
 	return mtd_get_of_node(nand->mtd);
 }
+#else
+/**
+ * nanddev_set_of_node() - Attach a DT node to a NAND device
+ * @nand: NAND device
+ * @node: ofnode
+ *
+ * Attach a DT node to a NAND device.
+ */
+static inline void nanddev_set_ofnode(struct nand_device *nand, ofnode node)
+{
+	mtd_set_ofnode(nand->mtd, node);
+}
+#endif /* __UBOOT__ */
 
 /**
  * nanddev_offs_to_pos() - Convert an absolute NAND offset into a NAND position
@@ -677,7 +691,6 @@ static inline bool nanddev_io_iter_end(struct nand_device *nand,
 
 bool nanddev_isbad(struct nand_device *nand, const struct nand_pos *pos);
 bool nanddev_isreserved(struct nand_device *nand, const struct nand_pos *pos);
-int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos);
 int nanddev_markbad(struct nand_device *nand, const struct nand_pos *pos);
 
 /* BBT related functions */

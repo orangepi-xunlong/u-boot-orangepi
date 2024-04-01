@@ -8,8 +8,8 @@
 #include "zynq-7000.dtsi"
 
 / {
+	model = "Xilinx ZC770 XM012 board";
 	compatible = "xlnx,zynq-zc770-xm012", "xlnx,zynq-7000";
-	model = "Xilinx Zynq";
 
 	aliases {
 		i2c0 = &i2c0;
@@ -53,6 +53,15 @@
 	};
 };
 
+&nor0 {
+	status = "okay";
+	bank-width = <1>;
+};
+
+&smcc {
+	status = "okay";
+};
+
 &spi1 {
 	status = "okay";
 	num-cs = <4>;
@@ -60,6 +69,6 @@
 };
 
 &uart1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };

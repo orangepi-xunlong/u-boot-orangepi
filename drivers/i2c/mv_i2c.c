@@ -19,7 +19,9 @@
 #include <common.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include "mv_i2c.h"
 
 /* All transfers are described by this data structure */
@@ -78,7 +80,7 @@ static void i2c_reset(struct mv_i2c *base)
 
 	i2c_clk_enable();
 
-	writel(CONFIG_SYS_I2C_SLAVE, &base->isar); /* set our slave address */
+	writel(0x0, &base->isar); /* set our slave address */
 	/* set control reg values */
 	writel(I2C_ICR_INIT | icr_mode, &base->icr);
 	writel(I2C_ISR_INIT, &base->isr); /* set clear interrupt bits */
@@ -368,79 +370,22 @@ static int __i2c_write(struct mv_i2c *base, uchar chip, u8 *addr, int alen,
 	return 0;
 }
 
-#ifndef CONFIG_DM_I2C
+#if !CONFIG_IS_ENABLED(DM_I2C)
 
 static struct mv_i2c *base_glob;
-
-static void i2c_board_init(struct mv_i2c *base)
-{
-#ifdef CONFIG_SYS_I2C_INIT_BOARD
-	u32 icr;
-	/*
-	 * call board specific i2c bus reset routine before accessing the
-	 * environment, which might be in a chip on that bus. For details
-	 * about this problem see doc/I2C_Edge_Conditions.
-	 *
-	 * disable I2C controller first, otherwhise it thinks we want to
-	 * talk to the slave port...
-	 */
-	icr = readl(&base->icr);
-	writel(readl(&base->icr) & ~(ICR_SCLE | ICR_IUE), &base->icr);
-
-	i2c_init_board();
-
-	writel(icr, &base->icr);
-#endif
-}
-
-#ifdef CONFIG_I2C_MULTI_BUS
-static unsigned long i2c_regs[CONFIG_MV_I2C_NUM] = CONFIG_MV_I2C_REG;
-static unsigned int bus_initialized[CONFIG_MV_I2C_NUM];
-static unsigned int current_bus;
-
-int i2c_set_bus_num(unsigned int bus)
-{
-	if ((bus < 0) || (bus >= CONFIG_MV_I2C_NUM)) {
-		printf("Bad bus: %d\n", bus);
-		return -1;
-	}
-
-	base_glob = (struct mv_i2c *)i2c_regs[bus];
-	current_bus = bus;
-
-	if (!bus_initialized[current_bus]) {
-		i2c_board_init(base_glob);
-		bus_initialized[current_bus] = 1;
-	}
-
-	return 0;
-}
-
-unsigned int i2c_get_bus_num(void)
-{
-	return current_bus;
-}
-#endif
 
 /* API Functions */
 void i2c_init(int speed, int slaveaddr)
 {
 	u32 val;
 
-#ifdef CONFIG_I2C_MULTI_BUS
-	current_bus = 0;
-	base_glob = (struct mv_i2c *)i2c_regs[current_bus];
-#else
 	base_glob = (struct mv_i2c *)CONFIG_MV_I2C_REG;
-#endif
 
-	if (speed > 100000)
+	if (speed > I2C_SPEED_STANDARD_RATE)
 		val = ICR_FM;
 	else
 		val = ICR_SM;
 	clrsetbits_le32(&base_glob->icr, ICR_MODE_MASK, val);
-
-	i2c_board_init(base_glob);
 }
 
 static int __i2c_probe_chip(struct mv_i2c *base, uchar chip)
@@ -565,7 +510,7 @@ static int mv_i2c_set_bus_speed(struct udevice *bus, unsigned int speed)
 	struct mv_i2c_priv *priv = dev_get_priv(bus);
 	u32 val;
 
-	if (speed > 100000)
+	if (speed > I2C_SPEED_STANDARD_RATE)
 		val = ICR_FM;
 	else
 		val = ICR_SM;
@@ -578,7 +523,7 @@ static int mv_i2c_probe(struct udevice *bus)
 {
 	struct mv_i2c_priv *priv = dev_get_priv(bus);
 
-	priv->base = (void *)devfdt_get_addr_ptr(bus);
+	priv->base = dev_read_addr_ptr(bus);
 
 	return 0;
 }
@@ -598,7 +543,7 @@ U_BOOT_DRIVER(i2c_mv) = {
 	.id	= UCLASS_I2C,
 	.of_match = mv_i2c_ids,
 	.probe	= mv_i2c_probe,
-	.priv_auto_alloc_size = sizeof(struct mv_i2c_priv),
+	.priv_auto	= sizeof(struct mv_i2c_priv),
 	.ops	= &mv_i2c_ops,
 };
 #endif /* CONFIG_DM_I2C */

@@ -128,12 +128,12 @@
 #define ATMEL_BASE_CS7		0x80000000
 
 /* Timer */
-#define CONFIG_SYS_TIMER_COUNTER	0xfffffd3c
+#define CFG_SYS_TIMER_COUNTER	0xfffffd3c
 
 /*
  * Other misc defines
  */
-#ifndef CONFIG_DM_GPIO
+#if !CONFIG_IS_ENABLED(DM_GPIO)
 #define ATMEL_PIO_PORTS		3		/* these SoCs have 3 PIO */
 #define ATMEL_BASE_PIO		ATMEL_BASE_PIOA
 #endif

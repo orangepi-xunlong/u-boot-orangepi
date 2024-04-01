@@ -6,11 +6,12 @@
  */
 
 #include <common.h>
-#include <lcd.h>
+#include <log.h>
 #include <asm/gpio.h>
 #include <asm/arch/pinmux.h>
 #include <asm/arch/power.h>
 #include <asm/arch/mipi_dsim.h>
+#include <linux/delay.h>
 #include <power/pmic.h>
 #include <power/max77686_pmic.h>
 #include <power/battery.h>
@@ -65,10 +66,12 @@ static void check_hw_revision(void)
 	board_rev = modelrev << 8;
 }
 
+#ifdef CONFIG_REVISION_TAG
 u32 get_board_rev(void)
 {
 	return board_rev;
 }
+#endif
 
 static inline u32 get_model_rev(void)
 {
@@ -127,7 +130,7 @@ int exynos_init(void)
 
 int exynos_power_init(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
+#if !CONFIG_IS_ENABLED(DM_I2C) /* TODO(maintainer): Convert to driver model */
 	int chrg;
 	struct power_battery *pb;
 	struct pmic *p_chrg, *p_muic, *p_fg, *p_bat;
@@ -190,7 +193,7 @@ int exynos_power_init(void)
 #ifdef CONFIG_USB_GADGET
 static int s5pc210_phy_control(int on)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
+#if !CONFIG_IS_ENABLED(DM_I2C) /* TODO(maintainer): Convert to driver model */
 	int ret = 0;
 	unsigned int val;
 	struct pmic *p, *p_pmic, *p_muic;
@@ -267,7 +270,7 @@ int board_usb_init(int index, enum usb_init_type init)
 
 int g_dnl_board_usb_cable_connected(void)
 {
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
+#if !CONFIG_IS_ENABLED(DM_I2C) /* TODO(maintainer): Convert to driver model */
 	struct pmic *muic = pmic_get("MAX77693_MUIC");
 	if (!muic)
 		return 0;
@@ -278,59 +281,3 @@ int g_dnl_board_usb_cable_connected(void)
 #endif
 }
 #endif
-
-/*
- * LCD
- */
-
-#ifdef CONFIG_LCD
-int mipi_power(void)
-{
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
-	struct pmic *p = pmic_get("MAX77686_PMIC");
-
-	/* LDO8 VMIPI_1.0V_AP */
-	max77686_set_ldo_mode(p, 8, OPMODE_ON);
-	/* LDO10 VMIPI_1.8V_AP */
-	max77686_set_ldo_mode(p, 10, OPMODE_ON);
-#endif
-
-	return 0;
-}
-
-void exynos_lcd_power_on(void)
-{
-#ifndef CONFIG_DM_I2C /* TODO(maintainer): Convert to driver model */
-	struct pmic *p = pmic_get("MAX77686_PMIC");
-
-	/* LCD_2.2V_EN: GPC0[1] */
-	gpio_request(EXYNOS4X12_GPIO_C01, "lcd_2v2_en");
-	gpio_set_pull(EXYNOS4X12_GPIO_C01, S5P_GPIO_PULL_UP);
-	gpio_direction_output(EXYNOS4X12_GPIO_C01, 1);
-
-	/* LDO25 VCC_3.1V_LCD */
-	pmic_probe(p);
-	max77686_set_ldo_voltage(p, 25, 3100000);
-	max77686_set_ldo_mode(p, 25, OPMODE_LPM);
-#endif
-}
-
-void exynos_reset_lcd(void)
-{
-	/* reset lcd */
-	gpio_request(EXYNOS4X12_GPIO_F21, "lcd_reset");
-	gpio_direction_output(EXYNOS4X12_GPIO_F21, 0);
-	udelay(10);
-	gpio_set_value(EXYNOS4X12_GPIO_F21, 1);
-}
-
-void exynos_lcd_misc_init(vidinfo_t *vid)
-{
-#ifdef CONFIG_TIZEN
-	get_tizen_logo_info(vid);
-#endif
-#ifdef CONFIG_S6E8AX0
-	s6e8ax0_init();
-#endif
-}
-#endif /* LCD */

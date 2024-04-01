@@ -11,11 +11,8 @@
 #ifndef __CONFIG_TI_OMAP4_COMMON_H
 #define __CONFIG_TI_OMAP4_COMMON_H
 
-#define CONFIG_MISC_INIT_R
-
 #ifndef CONFIG_SYS_L2CACHE_OFF
-#define CONFIG_SYS_L2_PL310		1
-#define CONFIG_SYS_PL310_BASE	0x48242000
+#define CFG_SYS_PL310_BASE	0x48242000
 #endif
 
 /* Get CPU defs */
@@ -23,46 +20,17 @@
 #include <asm/arch/omap.h>
 
 /* Use General purpose timer 1 */
-#define CONFIG_SYS_TIMERBASE		GPT2_BASE
-
-/*
- * Total Size Environment - 128k
- */
-#define CONFIG_ENV_SIZE			(128 << 10)
-
-/*
- * For the DDR timing information we can either dynamically determine
- * the timings to use or use pre-determined timings (based on using the
- * dynamic method.  Default to the static timing infomation.
- */
-#define CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
-#ifndef CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
-#define CONFIG_SYS_AUTOMATIC_SDRAM_DETECTION
-#define CONFIG_SYS_DEFAULT_LPDDR2_TIMINGS
-#endif
+#define CFG_SYS_TIMERBASE		GPT2_BASE
 
 #include <configs/ti_armv7_omap.h>
 
 /*
  * Hardware drivers
  */
-#define CONFIG_SYS_NS16550_CLK		48000000
-#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_DM_SERIAL)
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_COM3		UART3_BASE
+#define CFG_SYS_NS16550_CLK		48000000
+#if !CONFIG_IS_ENABLED(DM_SERIAL)
+#define CFG_SYS_NS16550_COM3		UART3_BASE
 #endif
-
-/* TWL6030 */
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_TWL6030_POWER		1
-#endif
-
-/* USB */
-
-/* USB device configuration */
-#define CONFIG_USB_DEVICE		1
-#define CONFIG_USB_TTY			1
 
 /*
  * Environment setup
@@ -90,7 +58,7 @@
 #include <config_distro_bootcmd.h>
 #include <environment/ti/mmc.h>
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	DEFAULT_MMC_TI_ARGS \
 	DEFAULT_FIT_TI_ARGS \
@@ -126,13 +94,9 @@
  * SPL is overlapped with public stack and breaking non HS devices to boot.
  * So moving TEXT_BASE down to non-HS limit.
  */
-#define CONFIG_SPL_TEXT_BASE		0x40300000
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-					 (128 << 20))
 
 #ifdef CONFIG_SPL_BUILD
 /* No need for i2c in SPL mode as we will use SRI2C for PMIC access on OMAP4 */
-#undef CONFIG_SYS_I2C
 #endif
 
 #endif /* __CONFIG_TI_OMAP4_COMMON_H */

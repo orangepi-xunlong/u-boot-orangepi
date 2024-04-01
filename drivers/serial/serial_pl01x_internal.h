@@ -38,9 +38,9 @@ struct pl01x_regs {
 	u32	pl011_cr;	/* 0x30 Control register */
 };
 
-#ifdef CONFIG_DM_SERIAL
+#if CONFIG_IS_ENABLED(DM_SERIAL)
 
-int pl01x_serial_ofdata_to_platdata(struct udevice *dev);
+int pl01x_serial_of_to_plat(struct udevice *dev);
 int pl01x_serial_probe(struct udevice *dev);
 
 /* Needed for external pl01x_serial_ops drivers */

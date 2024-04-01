@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2010-2011, 2013 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <hang.h>
 #include <hwconfig.h>
+#include <image.h>
+#include <init.h>
+#include <net.h>
 #include <pci.h>
 #include <i2c.h>
 #include <asm/processor.h>
@@ -19,6 +25,7 @@
 #include <asm/fsl_lbc.h>
 #include <asm/mp.h>
 #include <miiphy.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
@@ -38,68 +45,12 @@
 #define GPIO_SLIC_PIN		30
 #define GPIO_SLIC_DATA		(1 << (31 - GPIO_SLIC_PIN))
 
-#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
-#define GPIO_DDR_RST_PORT	1
-#define GPIO_DDR_RST_PIN	8
-#define GPIO_DDR_RST_DATA	(1 << (31 - GPIO_DDR_RST_PIN))
-
-#define GPIO_2BIT_MASK		(0x3 << (32 - (GPIO_DDR_RST_PIN + 1) * 2))
-#endif
-
-#if defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB)
-#define PCA_IOPORT_I2C_ADDR		0x23
-#define PCA_IOPORT_OUTPUT_CMD		0x2
-#define PCA_IOPORT_CFG_CMD		0x6
-#define PCA_IOPORT_QE_PIN_ENABLE	0xf8
-#define PCA_IOPORT_QE_TDM_ENABLE	0xf6
-#endif
-
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* GPIO */
 	{1,   1, 2, 0, 0}, /* GPIO7/PB1   - LOAD_DEFAULT_N */
-#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
-	{1,   8, 1, 1, 0}, /* GPIO10/PB8  - DDR_RST */
-#endif
 	{0,  15, 1, 0, 0}, /* GPIO11/A15  - WDI */
 	{GPIO_GETH_SW_PORT, GPIO_GETH_SW_PIN, 1, 0, 0},	/* RST_GETH_SW_N */
 	{GPIO_SLIC_PORT, GPIO_SLIC_PIN, 1, 0, 0},	/* RST_SLIC_N */
-
-#ifdef CONFIG_TARGET_P1025RDB
-	/* QE_MUX_MDC */
-	{1,  19, 1, 0, 1}, /* QE_MUX_MDC               */
-
-	/* QE_MUX_MDIO */
-	{1,  20, 3, 0, 1}, /* QE_MUX_MDIO              */
-
-	/* UCC_1_MII */
-	{0, 23, 2, 0, 2}, /* CLK12 */
-	{0, 24, 2, 0, 1}, /* CLK9 */
-	{0,  7, 1, 0, 2}, /* ENET1_TXD0_SER1_TXD0      */
-	{0,  9, 1, 0, 2}, /* ENET1_TXD1_SER1_TXD1      */
-	{0, 11, 1, 0, 2}, /* ENET1_TXD2_SER1_TXD2      */
-	{0, 12, 1, 0, 2}, /* ENET1_TXD3_SER1_TXD3      */
-	{0,  6, 2, 0, 2}, /* ENET1_RXD0_SER1_RXD0      */
-	{0, 10, 2, 0, 2}, /* ENET1_RXD1_SER1_RXD1      */
-	{0, 14, 2, 0, 2}, /* ENET1_RXD2_SER1_RXD2      */
-	{0, 15, 2, 0, 2}, /* ENET1_RXD3_SER1_RXD3      */
-	{0,  5, 1, 0, 2}, /* ENET1_TX_EN_SER1_RTS_B    */
-	{0, 13, 1, 0, 2}, /* ENET1_TX_ER               */
-	{0,  4, 2, 0, 2}, /* ENET1_RX_DV_SER1_CTS_B    */
-	{0,  8, 2, 0, 2}, /* ENET1_RX_ER_SER1_CD_B    */
-	{0, 17, 2, 0, 2}, /* ENET1_CRS    */
-	{0, 16, 2, 0, 2}, /* ENET1_COL    */
-
-	/* UCC_5_RMII */
-	{1, 11, 2, 0, 1}, /* CLK13 */
-	{1, 7,  1, 0, 2}, /* ENET5_TXD0_SER5_TXD0      */
-	{1, 10, 1, 0, 2}, /* ENET5_TXD1_SER5_TXD1      */
-	{1, 6, 2, 0, 2}, /* ENET5_RXD0_SER5_RXD0      */
-	{1, 9, 2, 0, 2}, /* ENET5_RXD1_SER5_RXD1      */
-	{1, 5, 1, 0, 2}, /* ENET5_TX_EN_SER5_RTS_B    */
-	{1, 4, 2, 0, 2}, /* ENET5_RX_DV_SER5_CTS_B    */
-	{1, 8, 2, 0, 2}, /* ENET5_RX_ER_SER5_CD_B    */
-#endif
-
 	{0,  0, 0, 0, QE_IOP_TAB_END} /* END of table */
 };
 #endif
@@ -132,33 +83,75 @@ struct cpld_data {
 #define CPLD_FXS_LED	0x0F
 #define CPLD_SYS_RST	0x00
 
+void board_reset_prepare(void)
+{
+	/*
+	 * During reset preparation, turn off external watchdog.
+	 * This ensures that external watchdog does not trigger
+	 * another reset or possible infinite reset loop.
+	 */
+	struct cpld_data *cpld_data = (void *)(CFG_SYS_CPLD_BASE);
+	out_8(&cpld_data->wd_cfg, CPLD_WD_CFG);
+	in_8(&cpld_data->wd_cfg); /* Read back to sync write */
+}
+
+void board_reset_last(void)
+{
+	struct cpld_data *cpld_data = (void *)(CFG_SYS_CPLD_BASE);
+	out_8(&cpld_data->system_rst, 1);
+}
+
 void board_cpld_init(void)
 {
-	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
+	struct cpld_data *cpld_data = (void *)(CFG_SYS_CPLD_BASE);
+	u8 prev_wd_cfg = in_8(&cpld_data->wd_cfg);
 
 	out_8(&cpld_data->wd_cfg, CPLD_WD_CFG);
 	out_8(&cpld_data->status_led, CPLD_STATUS_LED);
 	out_8(&cpld_data->fxo_led, CPLD_FXO_LED);
 	out_8(&cpld_data->fxs_led, CPLD_FXS_LED);
+
+	/*
+	 * CPLD's system reset register on P1/P2 RDB boards is not autocleared
+	 * after flipping it. If this register is set to one then CPLD triggers
+	 * reset of CPU in few ms.
+	 *
+	 * CPLD does not trigger reset of CPU for 100ms after the last reset.
+	 *
+	 * This means that trying to reset board via CPLD system reset register
+	 * cause reboot loop. To prevent this reboot loop, the only workaround
+	 * is to try to clear CPLD's system reset register as early as possible
+	 * and it has to be done in 100ms since the last start of reset.
+	 */
 	out_8(&cpld_data->system_rst, CPLD_SYS_RST);
+
+	/*
+	 * If watchdog timer was already set to non-disabled value then it means
+	 * that watchdog timer was already activated, has already expired and
+	 * caused CPU reset. If this happened then due to CPLD firmware bug,
+	 * writing to wd_cfg register has no effect and therefore it is not
+	 * possible to reactivate watchdog timer again. Also if CPU was reset
+	 * via watchdog then some peripherals like i2c do not work. Watchdog and
+	 * i2c start working again after CPU reset via non-watchdog method.
+	 *
+	 * So in case watchdog timer register in CPLD was already enabled then
+	 * disable it in CPLD and reset CPU which cause new boot. Watchdog timer
+	 * is disabled few lines above, after reading CPLD previous value.
+	 * This logic (disabling timer before reset) prevents reboot loop.
+	 */
+	if (prev_wd_cfg != CPLD_WD_CFG) {
+		eieio();
+		do_reset(NULL, 0, 0, NULL);
+		while (1); /* do_reset() does not occur immediately */
+	}
 }
 
 void board_gpio_init(void)
 {
 #ifdef CONFIG_QE
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	par_io_t *par_io = (par_io_t *) &(gur->qe_par_io);
 
-#if defined(CONFIG_TARGET_P1021RDB) && !defined(CONFIG_SYS_RAMBOOT)
-	/* reset DDR3 */
-	setbits_be32(&par_io[GPIO_DDR_RST_PORT].cpdat, GPIO_DDR_RST_DATA);
-	udelay(1000);
-	clrbits_be32(&par_io[GPIO_DDR_RST_PORT].cpdat, GPIO_DDR_RST_DATA);
-	udelay(1000);
-	setbits_be32(&par_io[GPIO_DDR_RST_PORT].cpdat, GPIO_DDR_RST_DATA);
-	/* disable CE_PB8 */
-	clrbits_be32(&par_io[GPIO_DDR_RST_PORT].cpdir1, GPIO_2BIT_MASK);
-#endif
 	/* Enable VSC7385 switch */
 	setbits_be32(&par_io[GPIO_GETH_SW_PORT].cpdat, GPIO_GETH_SW_DATA);
 
@@ -166,7 +159,7 @@ void board_gpio_init(void)
 	setbits_be32(&par_io[GPIO_SLIC_PORT].cpdat, GPIO_SLIC_DATA);
 #else
 
-	ccsr_gpio_t *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 
 	/*
 	 * GPIO10 DDR Reset, open drain
@@ -194,7 +187,7 @@ void board_gpio_init(void)
 	setbits_be32(&pgpio->gpdat, 0x00080000);
 #endif
 
-#ifdef CONFIG_SLIC
+#ifdef CFG_SLIC
 	/* reset SLIC */
 	setbits_be32(&pgpio->gpdir, 0x00040000);
 	setbits_be32(&pgpio->gpdat, 0x00040000);
@@ -204,14 +197,18 @@ void board_gpio_init(void)
 
 int board_early_init_f(void)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
-	setbits_be32(&gur->pmuxcr,
-			(MPC85xx_PMUXCR_SDHC_CD | MPC85xx_PMUXCR_SDHC_WP));
+	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SDHC_CD);
+#ifndef SDHC_WP_IS_GPIO
+	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SDHC_WP);
+#endif
 	clrbits_be32(&gur->sdhcdcr, SDHCDCR_CD_INV);
 
 	clrbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SD_DATA);
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_TDM_ENA);
+#endif
 
 	board_gpio_init();
 	board_cpld_init();
@@ -219,32 +216,75 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#if defined(CONFIG_TARGET_P1020RDB_PC)
+#define BOARD_NAME "P1020RDB-PC"
+#elif defined(CONFIG_TARGET_P1020RDB_PD)
+#define BOARD_NAME "P1020RDB-PD"
+#elif defined(CONFIG_TARGET_P2020RDB)
+#define BOARD_NAME "P2020RDB-PC"
+#endif
+
 int checkboard(void)
 {
-	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	u8 in, out, io_config, val;
+	struct cpld_data *cpld_data = (void *)(CFG_SYS_CPLD_BASE);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
+	u8 in, out, invert, io_config, val;
+	int bus_num = CONFIG_SYS_SPD_BUS_NUM;
 
-	printf("Board: %s CPLD: V%d.%d PCBA: V%d.0\n", CONFIG_BOARDNAME,
+	/* FIXME: This should just use the model from the device tree or similar */
+#ifdef BOARD_NAME
+	printf("Board: %s ", BOARD_NAME);
+#endif
+
+	printf("CPLD: V%d.%d PCBA: V%d.0\n",
 		in_8(&cpld_data->cpld_rev_major) & 0x0F,
 		in_8(&cpld_data->cpld_rev_minor) & 0x0F,
 		in_8(&cpld_data->pcba_rev) & 0x0F);
 
 	/* Initialize i2c early for rom_loc and flash bank information */
-	i2c_set_bus_num(CONFIG_SYS_SPD_BUS_NUM);
+	#if CONFIG_IS_ENABLED(DM_I2C)
+	struct udevice *dev;
+	int ret;
 
-	if (i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 0, 1, &in, 1) < 0 ||
-	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 1, 1, &out, 1) < 0 ||
-	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 3, 1, &io_config, 1) < 0) {
-		printf("Error reading i2c boot information!\n");
+	ret = i2c_get_chip_for_busnum(bus_num, CFG_SYS_I2C_PCA9557_ADDR,
+				      1, &dev);
+	if (ret) {
+		printf("%s: Cannot find udev for a bus %d\n", __func__,
+		       bus_num);
 		return 0; /* Don't want to hang() on this error */
 	}
 
-	val = (in & io_config) | (out & (~io_config));
+	if (dm_i2c_read(dev, 0, &in, 1) < 0 ||
+	    dm_i2c_read(dev, 1, &out, 1) < 0 ||
+	    dm_i2c_read(dev, 2, &invert, 1) < 0 ||
+	    dm_i2c_read(dev, 3, &io_config, 1) < 0) {
+		printf("Error reading i2c boot information!\n");
+		return 0; /* Don't want to hang() on this error */
+	}
+	#else /* Non DM I2C support - will be removed */
+	i2c_set_bus_num(bus_num);
+
+	if (i2c_read(CFG_SYS_I2C_PCA9557_ADDR, 0, 1, &in, 1) < 0 ||
+	    i2c_read(CFG_SYS_I2C_PCA9557_ADDR, 1, 1, &out, 1) < 0 ||
+	    i2c_read(CFG_SYS_I2C_PCA9557_ADDR, 2, 1, &invert, 1) < 0 ||
+	    i2c_read(CFG_SYS_I2C_PCA9557_ADDR, 3, 1, &io_config, 1) < 0) {
+		printf("Error reading i2c boot information!\n");
+		return 0; /* Don't want to hang() on this error */
+	}
+	#endif
+
+	val = ((in ^ invert) & io_config) | (out & (~io_config));
 
 	puts("rom_loc: ");
-	if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD) {
+	if (0) {
+#ifdef __SW_BOOT_SD
+	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD) {
 		puts("sd");
+#endif
+#ifdef __SW_BOOT_SD2
+	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD2) {
+		puts("sd");
+#endif
 #ifdef __SW_BOOT_SPI
 	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SPI) {
 		puts("spi");
@@ -277,17 +317,14 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_PCI
-void pci_init_board(void)
-{
-	fsl_pcie_init_board(0);
-}
-#endif
-
 int board_early_init_r(void)
 {
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
+#ifdef CONFIG_VSC7385_ENET
+	unsigned int vscfw_addr;
+	char *tmp;
+#endif
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -307,133 +344,55 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS, /* tlb, epn, rpn */
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS, /* tlb, epn, rpn */
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,/* perms, wimge */
 		0, flash_esel, BOOKE_PAGESZ_64M, 1);/* ts, esel, tsize, iprot */
-	return 0;
-}
-
-int board_eth_init(bd_t *bis)
-{
-	struct fsl_pq_mdio_info mdio_info;
-	struct tsec_info_struct tsec_info[4];
-	ccsr_gur_t *gur __attribute__((unused)) =
-		(void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	int num = 0;
-#ifdef CONFIG_VSC7385_ENET
-	char *tmp;
-	unsigned int vscfw_addr;
-#endif
-
-#ifdef CONFIG_TSEC1
-	SET_STD_TSEC_INFO(tsec_info[num], 1);
-	num++;
-#endif
-#ifdef CONFIG_TSEC2
-	SET_STD_TSEC_INFO(tsec_info[num], 2);
-	if (is_serdes_configured(SGMII_TSEC2)) {
-		printf("eTSEC2 is in sgmii mode.\n");
-		tsec_info[num].flags |= TSEC_SGMII;
-	}
-	num++;
-#endif
-#ifdef CONFIG_TSEC3
-	SET_STD_TSEC_INFO(tsec_info[num], 3);
-	num++;
-#endif
-
-	if (!num) {
-		printf("No TSECs initialized\n");
-		return 0;
-	}
 
 #ifdef CONFIG_VSC7385_ENET
 	/* If a VSC7385 microcode image is present, then upload it. */
 	tmp = env_get("vscfw_addr");
 	if (tmp) {
-		vscfw_addr = simple_strtoul(tmp, NULL, 16);
+		vscfw_addr = hextoul(tmp, NULL);
 		printf("uploading VSC7385 microcode from %x\n", vscfw_addr);
-		if (vsc7385_upload_firmware((void *) vscfw_addr,
-					CONFIG_VSC7385_IMAGE_SIZE))
+		if (vsc7385_upload_firmware((void *)vscfw_addr,
+					    CFG_VSC7385_IMAGE_SIZE))
 			puts("Failure uploading VSC7385 microcode.\n");
-	} else
+	} else {
 		puts("No address specified for VSC7385 microcode.\n");
+	}
 #endif
-
-	mdio_info.regs = TSEC_GET_MDIO_REGS_BASE(1);
-	mdio_info.name = DEFAULT_MII_NAME;
-
-	fsl_pq_mdio_init(bis, &mdio_info);
-
-	tsec_eth_init(bis, tsec_info, num);
-
-#if defined(CONFIG_UEC_ETH)
-	/*  QE0 and QE3 need to be exposed for UCC1 and UCC5 Eth mode */
-	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_QE0);
-	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_QE3);
-
-	uec_standard_init(bis);
-#endif
-
-	return pci_eth_init(bis);
+	return 0;
 }
 
-#if defined(CONFIG_QE) && \
-	(defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB))
-static void fdt_board_fixup_qe_pins(void *blob)
+#if defined(CONFIG_OF_BOARD_SETUP) || defined(CONFIG_OF_BOARD_FIXUP)
+static void fix_max6370_watchdog(void *blob)
 {
-	unsigned int oldbus;
-	u8 val8;
-	int node;
-	fsl_lbc_t *lbc = LBC_BASE_ADDR;
+	int off = fdt_node_offset_by_compatible(blob, -1, "maxim,max6370");
+	ccsr_gpio_t *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
+	u32 gpioval = in_be32(&pgpio->gpdat);
 
-	if (hwconfig("qe")) {
-		/* For QE and eLBC pins multiplexing,
-		 * there is a PCA9555 device on P1025RDB.
-		 * It control the multiplex pins' functions,
-		 * and setting the PCA9555 can switch the
-		 * function between QE and eLBC.
-		 */
-		oldbus = i2c_get_bus_num();
-		i2c_set_bus_num(0);
-		if (hwconfig("tdm"))
-			val8 = PCA_IOPORT_QE_TDM_ENABLE;
-		else
-			val8 = PCA_IOPORT_QE_PIN_ENABLE;
-		i2c_write(PCA_IOPORT_I2C_ADDR, PCA_IOPORT_CFG_CMD,
-				1, &val8, 1);
-		i2c_write(PCA_IOPORT_I2C_ADDR, PCA_IOPORT_OUTPUT_CMD,
-				1, &val8, 1);
-		i2c_set_bus_num(oldbus);
-		/* if run QE TDM, Set ABSWP to implement
-		 * conversion of addresses in the eLBC.
-		 */
-		if (hwconfig("tdm")) {
-			set_lbc_or(2, CONFIG_PMC_OR_PRELIM);
-			set_lbc_br(2, CONFIG_PMC_BR_PRELIM);
-			setbits_be32(&lbc->lbcr, CONFIG_SYS_LBC_LBCR);
-		}
-	} else {
-		node = fdt_path_offset(blob, "/qe");
-		if (node >= 0)
-			fdt_del_node(blob, node);
-	}
-
-	return;
+	/*
+	 * Delete watchdog max6370 node in load_default mode (detected by
+	 * GPIO7 - LOAD_DEFAULT_N) because CPLD in load_default mode ignores
+	 * watchdog reset signal. CPLD in load_default mode does not reset
+	 * board when watchdog triggers reset signal.
+	 */
+	if (!(gpioval & BIT(31-7)) && off >= 0)
+		fdt_del_node(blob, off);
 }
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 #if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 	const char *soc_usb_compat = "fsl-usb2-dr";
 	int usb_err, usb1_off, usb2_off;
-#endif
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
 	int err;
+#endif
 #endif
 
 	ft_cpu_setup(blob, bd);
@@ -443,20 +402,18 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
-	FT_FSL_PCI_SETUP;
-
 #ifdef CONFIG_QE
 	do_fixup_by_compat(blob, "fsl,qe", "status", "okay",
 			sizeof("okay"), 0);
-#if defined(CONFIG_TARGET_P1025RDB) || defined(CONFIG_TARGET_P1021RDB)
-	fdt_board_fixup_qe_pins(blob);
 #endif
-#endif
+
+	fix_max6370_watchdog(blob);
 
 #if defined(CONFIG_HAS_FSL_DR_USB)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
 	/* Delete eLBC node as it is muxed with USB2 controller */
 	if (hwconfig("usb2")) {
@@ -478,7 +435,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 	}
 #endif
 
-#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 /* Delete USB2 node as it is muxed with eLBC */
 	usb1_off = fdt_node_offset_by_compatible(blob, -1,
 		soc_usb_compat);
@@ -501,6 +457,14 @@ int ft_board_setup(void *blob, bd_t *bd)
 	}
 #endif
 
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_OF_BOARD_FIXUP
+int board_fix_fdt(void *blob)
+{
+	fix_max6370_watchdog(blob);
 	return 0;
 }
 #endif

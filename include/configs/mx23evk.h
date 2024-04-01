@@ -8,50 +8,15 @@
 #ifndef __CONFIGS_MX23EVK_H__
 #define __CONFIGS_MX23EVK_H__
 
-/* System configurations */
-#define CONFIG_MACH_TYPE	MACH_TYPE_MX23EVK
-
 /* U-Boot Commands */
 
 /* Memory configuration */
-#define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
 #define PHYS_SDRAM_1			0x40000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE		0x08000000	/* Max 128 MB RAM */
-#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-
-/* Environment */
-#define CONFIG_ENV_OVERWRITE
-
-/* Environment is in MMC */
-#if defined(CONFIG_CMD_MMC) && defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET	(256 * 1024)
-#define CONFIG_ENV_SIZE		(16 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV	0
-#endif
-
-/* USB */
-#ifdef	CONFIG_CMD_USB
-#define CONFIG_EHCI_MXS_PORT0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 1
-#endif
-
-/* Framebuffer support */
-#ifdef CONFIG_VIDEO
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_BMP_16BPP
-#define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_VIDEO_BMP_GZIP
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(512 << 10)
-#endif
-
-/* Boot Linux */
-#define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_LOADADDR		0x42000000
-#define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CFG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 
 /* Extra Environments */
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"update_sd_firmware_filename=u-boot.sd\0" \
 	"update_sd_firmware="		/* Update the SD firmware partition */ \
 		"if mmc rescan ; then "	\
@@ -93,19 +58,6 @@
 		"else " \
 			"bootz; " \
 		"fi;\0"
-
-#define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev}; if mmc rescan; then " \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loadimage; then " \
-				"run mmcboot; " \
-			"else " \
-				"echo ERR: Fail to boot from MMC; " \
-			"fi; " \
-		"fi; " \
-	"else exit; fi"
 
 /* The rest of the configuration is shared */
 #include <configs/mxs.h>

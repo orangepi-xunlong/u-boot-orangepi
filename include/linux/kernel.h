@@ -1,8 +1,8 @@
 #ifndef _LINUX_KERNEL_H
 #define _LINUX_KERNEL_H
 
-
 #include <linux/types.h>
+#include <linux/printk.h> /* for printf/pr_* utilities */
 
 #define USHRT_MAX	((u16)(~0U))
 #define SHRT_MAX	((s16)(USHRT_MAX>>1))
@@ -19,6 +19,9 @@
 #ifndef SIZE_MAX
 #define SIZE_MAX	(~(size_t)0)
 #endif
+#ifndef SSIZE_MAX
+#define SSIZE_MAX	((ssize_t)(SIZE_MAX >> 1))
+#endif
 
 #define U8_MAX		((u8)~0U)
 #define S8_MAX		((s8)(U8_MAX>>1))
@@ -32,6 +35,12 @@
 #define U64_MAX		((u64)~0ULL)
 #define S64_MAX		((s64)(U64_MAX>>1))
 #define S64_MIN		((s64)(-S64_MAX - 1))
+
+/* Aliases defined by stdint.h */
+#define UINT32_MAX	U32_MAX
+#define UINT64_MAX	U64_MAX
+
+#define INT32_MAX	S32_MAX
 
 #define STACK_MAGIC	0xdeadbeef
 
@@ -62,6 +71,8 @@
 	({ unsigned long long _tmp = (ll); do_div(_tmp, d); _tmp; })
 
 #define DIV_ROUND_UP_ULL(ll, d)		DIV_ROUND_DOWN_ULL((ll) + (d) - 1, (d))
+
+#define ROUND(a, b)		(((a) + (b) - 1) & ~((b) - 1))
 
 #if BITS_PER_LONG == 32
 # define DIV_ROUND_UP_SECTOR_T(ll,d) DIV_ROUND_UP_ULL(ll, d)
@@ -96,6 +107,18 @@
 	 ((typeof(divisor))-1) > 0 || (__x) > 0) ?	\
 		(((__x) + ((__d) / 2)) / (__d)) :	\
 		(((__x) - ((__d) / 2)) / (__d));	\
+}							\
+)
+/*
+ * Same as above but for u64 dividends. divisor must be a 32-bit
+ * number.
+ */
+#define DIV_ROUND_CLOSEST_ULL(x, divisor)(		\
+{							\
+	typeof(divisor) __d = divisor;			\
+	unsigned long long _tmp = (x) + (__d) / 2;	\
+	do_div(_tmp, __d);				\
+	_tmp;						\
 }							\
 )
 
@@ -249,5 +272,40 @@
 #define container_of(ptr, type, member) ({			\
 	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
 	(type *)( (char *)__mptr - offsetof(type,member) );})
+
+/*
+ * check_member() - Check the offset of a structure member
+ *
+ * @structure:	Name of structure (e.g. global_data)
+ * @member:	Name of member (e.g. baudrate)
+ * @offset:	Expected offset in bytes
+ */
+#define check_member(structure, member, offset) _Static_assert( \
+	offsetof(struct structure, member) == (offset), \
+	"`struct " #structure "` offset for `" #member "` is not " #offset)
+
+#define __find_closest(x, a, as, op)					\
+({									\
+	typeof(as) __fc_i, __fc_as = (as) - 1;				\
+	typeof(x) __fc_x = (x);						\
+	typeof(*a) const *__fc_a = (a);					\
+	for (__fc_i = 0; __fc_i < __fc_as; __fc_i++) {			\
+		if (__fc_x op DIV_ROUND_CLOSEST(__fc_a[__fc_i] +	\
+						__fc_a[__fc_i + 1], 2))	\
+			break;						\
+	}								\
+	(__fc_i);							\
+})
+
+/**
+ * find_closest - locate the closest element in a sorted array
+ * @x: The reference value.
+ * @a: The array in which to look for the closest element. Must be sorted
+ *  in ascending order.
+ * @as: Size of 'a'.
+ *
+ * Returns the index of the element closest to 'x'.
+ */
+#define find_closest(x, a, as) __find_closest(x, a, as, <=)
 
 #endif

@@ -24,6 +24,38 @@
 	status = "okay";
 };
 
+&enet {
+	status = "okay";
+
+	port@0 {
+		compatible = "brcm,enetsw-port";
+		reg = <0>;
+		label = "fe2";
+		brcm,phy-id = <1>;
+	};
+
+	port@1 {
+		compatible = "brcm,enetsw-port";
+		reg = <1>;
+		label = "fe3";
+		brcm,phy-id = <2>;
+	};
+
+	port@2 {
+		compatible = "brcm,enetsw-port";
+		reg = <2>;
+		label = "fe4";
+		brcm,phy-id = <3>;
+	};
+
+	port@3 {
+		compatible = "brcm,enetsw-port";
+		reg = <3>;
+		label = "fe1";
+		brcm,phy-id = <4>;
+	};
+};
+
 &leds {
 	status = "okay";
 	brcm,serial-leds;
@@ -67,12 +99,25 @@
 	};
 };
 
+&nand {
+	status = "okay";
+
+	nandcs@0 {
+		compatible = "brcm,nandcs";
+		reg = <0>;
+		nand-ecc-strength = <15>;
+		nand-ecc-step-size = <512>;
+		nand-on-flash-bbt;
+		brcm,nand-oob-sector-size = <64>;
+	};
+};
+
 &ohci {
 	status = "okay";
 };
 
 &uart0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 

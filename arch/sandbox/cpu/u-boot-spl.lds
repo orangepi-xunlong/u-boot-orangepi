@@ -8,16 +8,24 @@
 SECTIONS
 {
 
-	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	. = ALIGN(32);
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 
-	__u_boot_sandbox_option_start = .;
-	_u_boot_sandbox_getopt : { *(.u_boot_sandbox_getopt) }
-	__u_boot_sandbox_option_end = .;
+	/* Private data for devices with OF_PLATDATA_RT */
+	. = ALIGN(4);
+	.priv_data : {
+		__priv_data_start = .;
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.priv_data*)))
+		__priv_data_end = .;
+	}
 
-	__bss_start = .;
+	_u_boot_sandbox_getopt : {
+		*(_u_boot_sandbox_getopt_start)
+		KEEP(*(_u_boot_sandbox_getopt))
+		*(_u_boot_sandbox_getopt_end)
+	}
 }
 
-INSERT BEFORE .data;
+INSERT AFTER .data;

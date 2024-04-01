@@ -11,80 +11,24 @@
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
-/*Uncomment it to use secure boot*/
-/*#define CONFIG_SECURE_BOOT*/
-
-#ifdef CONFIG_SECURE_BOOT
-#ifndef CONFIG_CSF_SIZE
-#define CONFIG_CSF_SIZE			0x4000
-#endif
-#endif
-
-#define CONFIG_BOARD_POSTCLK_INIT
-#define CONFIG_SYS_BOOTM_LEN		0x1000000
-
-#define SRC_BASE_ADDR			CMC1_RBASE
-#define IRAM_BASE_ADDR			OCRAM_0_BASE
-#define IOMUXC_BASE_ADDR		IOMUXC1_RBASE
-
-#define CONFIG_BOUNCE_BUFFER
-#define CONFIG_FSL_USDHC
-#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
-
-#define CONFIG_SYS_FSL_USDHC_NUM        1
-
-#define CONFIG_SYS_FSL_ESDHC_ADDR       0
-#define CONFIG_SYS_MMC_ENV_DEV          0	/* USDHC1 */
-#define CONFIG_SYS_MMC_ENV_PART         0	/* user area */
-#define CONFIG_MMCROOT                  "/dev/mmcblk0p2"  /* USDHC1 */
-#define CONFIG_SYS_MMC_IMG_LOAD_PART    1
-
-#define CONFIG_ENV_OFFSET		(12 * SZ_64K)
-#define CONFIG_ENV_SIZE			SZ_8K
 
 /* Using ULP WDOG for reset */
 #define WDOG_BASE_ADDR			WDG1_RBASE
 
-#define CONFIG_SYS_HZ_CLOCK		1000000 /* Fixed at 1Mhz from TSTMR */
-
-#define CONFIG_INITRD_TAG
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-/*#define CONFIG_REVISION_TAG*/
-
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(8 * SZ_1M)
-
-#define CONFIG_BOARD_EARLY_INIT_F
+#define CFG_SYS_HZ_CLOCK		1000000 /* Fixed at 1Mhz from TSTMR */
 
 /* UART */
 #define LPUART_BASE			LPUART4_RBASE
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_BAUDRATE			115200
-
-#define CONFIG_SYS_CACHELINE_SIZE      64
-
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_PROMPT		"=> "
-#define CONFIG_SYS_CBSIZE		512
-
-#define CONFIG_SYS_MAXARGS		256
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define PHYS_SDRAM			0x60000000
 #define PHYS_SDRAM_SIZE			SZ_1G
-#define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM
-#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
+#define CFG_SYS_SDRAM_BASE		PHYS_SDRAM
 
-#define CONFIG_LOADADDR             0x60800000
-
-#define CONFIG_SYS_MEMTEST_END      0x9E000000
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
 	"console=ttyLP0\0" \
@@ -96,8 +40,8 @@
 	"earlycon=lpuart32,0x402D0010\0" \
 	"ip_dyn=yes\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
-	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcpart=1\0" \
+	"mmcroot=/dev/mmcblk0p2 rootwait rw\0" \
 	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
@@ -148,30 +92,7 @@
 			"bootz; " \
 		"fi;\0" \
 
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "fi"
-
-#define CONFIG_SYS_HZ			1000
-#define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-#define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
-#define CONFIG_SYS_INIT_RAM_SIZE	SZ_256K
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-#ifndef CONFIG_SYS_DCACHE_OFF
-#define CONFIG_CMD_CACHE
-#endif
+#define CFG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
+#define CFG_SYS_INIT_RAM_SIZE	SZ_256K
 
 #endif	/* __CONFIG_H */

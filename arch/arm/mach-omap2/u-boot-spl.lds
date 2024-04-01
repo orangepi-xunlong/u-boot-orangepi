@@ -8,8 +8,8 @@
  *	Aneesh V <aneesh@ti.com>
  */
 
-MEMORY { .sram : ORIGIN = CONFIG_SPL_TEXT_BASE,\
-		LENGTH = CONFIG_SPL_MAX_SIZE }
+MEMORY { .sram : ORIGIN = IMAGE_TEXT_BASE,\
+		LENGTH = IMAGE_MAX_SIZE }
 MEMORY { .sdram : ORIGIN = CONFIG_SPL_BSS_START_ADDR, \
 		LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
 
@@ -33,8 +33,8 @@ SECTIONS
 	.data : { *(SORT_BY_ALIGNMENT(.data*)) } >.sram
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	} >.sram
 
 	. = ALIGN(4);

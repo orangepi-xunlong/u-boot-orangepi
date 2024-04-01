@@ -11,24 +11,20 @@
 #ifndef __BUR_AM335X_COMMON_H__
 #define __BUR_AM335X_COMMON_H__
 /* ------------------------------------------------------------------------- */
-#define CONFIG_MAX_RAM_BANK_SIZE	(1024 << 20)	/* 1GB */
+
+/* legacy #defines for non DM bur-board */
+#ifndef CONFIG_DM
+#define CFG_SYS_NS16550_CLK		(48000000)
+#define CFG_SYS_NS16550_COM1		0x44e09000
+
+#endif /* CONFIG_DM */
+
+#define CFG_MAX_RAM_BANK_SIZE	(1024 << 20)	/* 1GB */
 
 /* Timer information */
-#define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-#define CONFIG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
-#define CONFIG_POWER_TPS65217
+#define CFG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
 
 #include <asm/arch/omap.h>
-
-/* NS16550 Configuration */
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		48000000
-#define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
-
-/* Network defines */
-#define CONFIG_MII			/* Required in net/eth.c */
-#define CONFIG_PHY_NATSEMI
 
 /*
  * SPL related defines.  The Public RAM memory map the ROM defines the
@@ -38,35 +34,18 @@
  * Y-MODEM to load u-boot.img, when booted over UART.  We must also include
  * the scratch space that U-Boot uses in SRAM.
  */
-#define CONFIG_SPL_TEXT_BASE		0x402F0400
-#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
-					 CONFIG_SPL_TEXT_BASE)
 
 /*
  * Since SPL did pll and ddr initialization for us,
  * we don't need to do it twice.
  */
-#if !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_NOR_BOOT)
-#define CONFIG_SKIP_LOWLEVEL_INIT
-#endif /* !CONFIG_SPL_BUILD, ... */
-/*
- * Our DDR memory always starts at 0x80000000 and U-Boot shall have
- * relocated itself to higher in memory by the time this value is used.
- */
-#define CONFIG_SYS_LOAD_ADDR		0x80000000
 /*
  * ----------------------------------------------------------------------------
  * DDR information.  We say (for simplicity) that we have 1 bank,
  * always, even when we have more.  We always start at 0x80000000,
  * and we place the initial stack pointer in our SRAM.
  */
-#define CONFIG_NR_DRAM_BANKS		1
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
-#define CONFIG_SYS_INIT_SP_ADDR		(NON_SECURE_SRAM_END - \
-					GENERATED_GBL_DATA_SIZE)
-
-/* I2C */
-#define CONFIG_SYS_I2C
+#define CFG_SYS_SDRAM_BASE		0x80000000
 
 /*
  * Our platforms make use of SPL to initalize the hardware (primarily
@@ -87,11 +66,6 @@
  *
  * ----------------------------------------------------------------------------
  */
-#define CONFIG_SPL_BSS_START_ADDR	0x80A00000
-#define CONFIG_SPL_BSS_MAX_SIZE		0x80000		/* 512 KB */
-#define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SPL_BSS_START_ADDR + \
-					CONFIG_SPL_BSS_MAX_SIZE)
-#define CONFIG_SYS_SPL_MALLOC_SIZE	CONFIG_SYS_MALLOC_LEN
 
 /* General parts of the framework, required. */
 

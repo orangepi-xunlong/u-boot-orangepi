@@ -7,6 +7,10 @@ import os
 import os.path
 import pytest
 
+# TODO: These tests should be converted to a C test.
+# For more information please take a look at the thread
+# https://lists.denx.de/pipermail/u-boot/2019-October/388732.html
+
 pytestmark = pytest.mark.buildconfigspec('hush_parser')
 
 # The list of "if test" conditions to test.
@@ -52,6 +56,33 @@ subtests = (
     ('test 123 -ge 123', True),
     ('test 123 -ge 456', False),
 
+    # Octal tests
+
+    ('test 010 -eq 010', True),
+    ('test 010 -eq 011', False),
+
+    ('test 010 -ne 011', True),
+    ('test 010 -ne 010', False),
+
+    # Hexadecimal tests
+
+    ('test 0x2000000 -gt 0x2000001', False),
+    ('test 0x2000000 -gt 0x2000000', False),
+    ('test 0x2000000 -gt 0x1ffffff', True),
+
+    # Mixed tests
+
+    ('test 010 -eq 10', False),
+    ('test 010 -ne 10', True),
+    ('test 0xa -eq 10', True),
+    ('test 0xa -eq 012', True),
+
+    ('test 2000000 -gt 0x1ffffff', False),
+    ('test 0x2000000 -gt 1ffffff', True),
+    ('test 0x2000000 -lt 1ffffff', False),
+    ('test 0x2000000 -eq 2000000', False),
+    ('test 0x2000000 -ne 2000000', True),
+
     ('test -z ""', True),
     ('test -z "aaa"', False),
 
@@ -88,11 +119,6 @@ subtests = (
     ('test ! ! aaa != aaa -o ! ! bbb = bbb', True),
     ('test ! ! aaa = aaa -o ! ! bbb != bbb', True),
     ('test ! ! aaa = aaa -o ! ! bbb = bbb', True),
-
-    # -z operator.
-
-    ('test -z "$ut_var_nonexistent"', True),
-    ('test -z "$ut_var_exists"', False),
 )
 
 def exec_hush_if(u_boot_console, expr, result):
@@ -110,12 +136,6 @@ def exec_hush_if(u_boot_console, expr, result):
     response = u_boot_console.run_command(cmd)
     assert response.strip() == str(result).lower()
 
-def test_hush_if_test_setup(u_boot_console):
-    """Set up environment variables used during the "if" tests."""
-
-    u_boot_console.run_command('setenv ut_var_nonexistent')
-    u_boot_console.run_command('setenv ut_var_exists 1')
-
 @pytest.mark.buildconfigspec('cmd_echo')
 @pytest.mark.parametrize('expr,result', subtests)
 def test_hush_if_test(u_boot_console, expr, result):
@@ -123,9 +143,12 @@ def test_hush_if_test(u_boot_console, expr, result):
 
     exec_hush_if(u_boot_console, expr, result)
 
-def test_hush_if_test_teardown(u_boot_console):
-    """Clean up environment variables used during the "if" tests."""
-
+def test_hush_z(u_boot_console):
+    """Test the -z operator"""
+    u_boot_console.run_command('setenv ut_var_nonexistent')
+    u_boot_console.run_command('setenv ut_var_exists 1')
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_nonexistent"', True)
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_exists"', False)
     u_boot_console.run_command('setenv ut_var_exists')
 
 # We might test this on real filesystems via UMS, DFU, 'save', etc.
@@ -148,7 +171,7 @@ def test_hush_if_test_host_file_exists(u_boot_console):
     exec_hush_if(u_boot_console, expr, False)
 
     try:
-        with file(test_file, 'wb'):
+        with open(test_file, 'wb'):
             pass
         assert os.path.exists(test_file)
 
@@ -159,3 +182,16 @@ def test_hush_if_test_host_file_exists(u_boot_console):
 
     expr = 'test -e hostfs - ' + test_file
     exec_hush_if(u_boot_console, expr, False)
+
+def test_hush_var(u_boot_console):
+    """Test the set and unset of variables"""
+    u_boot_console.run_command('ut_var_nonexistent=')
+    u_boot_console.run_command('ut_var_exists=1')
+    u_boot_console.run_command('ut_var_unset=1')
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_nonexistent"', True)
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_exists"', False)
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_unset"', False)
+    exec_hush_if(u_boot_console, 'ut_var_unset=', True)
+    exec_hush_if(u_boot_console, 'test -z "$ut_var_unset"', True)
+    u_boot_console.run_command('ut_var_exists=')
+    u_boot_console.run_command('ut_var_unset=')

@@ -8,5 +8,27 @@
 / {
 	aliases {
 		i2c0 = &i2c0;
+		mmc0 = &mmc0;
+		serial2 = &serial2;
 	};
+
+	soc@1c00000 {
+		bootph-pre-ram;
+	};
+
+	nand {
+		compatible = "ti,davinci-nand";
+	};
+};
+
+&mmc0 {
+	bootph-pre-ram;
+};
+
+&serial2 {
+	bootph-pre-ram;
+};
+
+&gpio {
+	bootph-pre-ram;
 };

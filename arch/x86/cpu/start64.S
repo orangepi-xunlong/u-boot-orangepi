@@ -2,13 +2,13 @@
 /*
  * 64-bit x86 Startup Code
  *
- * (C) Copyright 216 Google, Inc
+ * Copyright 2019 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
  */
 
 #include <config.h>
 
-.section .text
+.section .text.start
 .code64
 .globl _start
 .type _start, @function
@@ -20,6 +20,7 @@ _start:
 
 	call	board_init_f_init_reserve
 
+	xor	%rdi, %rdi
 	call	board_init_f
 	call	board_init_f_r
 

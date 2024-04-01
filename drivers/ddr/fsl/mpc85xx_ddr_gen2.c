@@ -7,6 +7,7 @@
 #include <asm/io.h>
 #include <asm/processor.h>
 #include <fsl_ddr_sdram.h>
+#include <linux/delay.h>
 
 #if (CONFIG_CHIP_SELECTS_PER_CTRL > 4)
 #error Invalid setting for CONFIG_CHIP_SELECTS_PER_CTRL
@@ -17,10 +18,10 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 {
 	unsigned int i;
 	struct ccsr_ddr __iomem *ddr =
-		(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DDR_ADDR;
+		(struct ccsr_ddr __iomem *)CFG_SYS_FSL_DDR_ADDR;
 
 #if defined(CONFIG_SYS_FSL_ERRATUM_NMG_DDR120) && defined(CONFIG_MPC85xx)
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	uint svr;
 #endif
 

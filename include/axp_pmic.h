@@ -5,34 +5,38 @@
  * X-Powers AX Power Management IC support header
  */
 #ifndef _AXP_PMIC_H_
+#define _AXP_PMIC_H_
 
-#ifdef CONFIG_AXP152_POWER
+#include <stdbool.h>
+
 #include <axp152.h>
-#endif
-#ifdef CONFIG_AXP209_POWER
 #include <axp209.h>
-#endif
-#ifdef CONFIG_AXP221_POWER
 #include <axp221.h>
-#endif
-#ifdef CONFIG_AXP809_POWER
+#include <axp305.h>
 #include <axp809.h>
-#endif
-#ifdef CONFIG_AXP818_POWER
 #include <axp818.h>
-#endif
-#ifdef CONFIG_AXP1516_POWER
-#include <axp1516.h>
-#endif
 
-#define PMU_PRE_FASTBOOT_MODE (0x0c)
-#define PMU_PRE_RECOVERY_MODE (0x10)
-#define PMU_PRE_FACTORY_MODE (0x0d)
-#define PMU_PRE_SYS_MODE (0x0e)
-#define PMU_PRE_CHARGE_MODE (0x0f)
-#define PMU_PRE_BOOT_MODE (0x02)
-#define PMU_SHORT_KEY_PRESSED (1 << 1)
-#define PMU_LONG_KEY_PRESSED (1 << 0)
+#define AXP_PMIC_MODE_REG		0x3e
+#define AXP_PMIC_MODE_I2C		0x00
+#define AXP_PMIC_MODE_P2WI		0x3e
+#define AXP_PMIC_MODE_RSB		0x7c
+
+#define AXP_PMIC_PRI_DEVICE_ADDR	0x3a3
+#define AXP_PMIC_PRI_RUNTIME_ADDR	0x2d
+#define AXP_PMIC_SEC_DEVICE_ADDR	0x745
+#define AXP_PMIC_SEC_RUNTIME_ADDR	0x3a
+
+enum {
+	AXP152_ID,
+	AXP202_ID,
+	AXP209_ID,
+	AXP221_ID,
+	AXP223_ID,
+	AXP803_ID,
+	AXP806_ID,
+	AXP809_ID,
+	AXP813_ID,
+};
 
 int axp_set_dcdc1(unsigned int mvolt);
 int axp_set_dcdc2(unsigned int mvolt);

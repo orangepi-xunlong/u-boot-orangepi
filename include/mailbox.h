@@ -44,6 +44,7 @@ struct udevice;
  *
  * @dev: The device which implements the mailbox.
  * @id: The mailbox channel ID within the provider.
+ * @con_priv: Hook for controller driver to attach private data
  *
  * Currently, the mailbox API assumes that a single integer ID is enough to
  * identify and configure any mailbox channel for any mailbox provider. If this
@@ -56,11 +57,9 @@ struct udevice;
  */
 struct mbox_chan {
 	struct udevice *dev;
-	/*
-	 * Written by of_xlate. We assume a single id is enough for now. In the
-	 * future, we might add more fields here.
-	 */
+	/* Written by of_xlate.*/
 	unsigned long id;
+	void *con_priv;
 };
 
 /**
@@ -77,7 +76,7 @@ struct mbox_chan {
  * @index:	The index of the mailbox channel to request, within the
  *		client's list of channels.
  * @chan	A pointer to a channel object to initialize.
- * @return 0 if OK, or a negative error code.
+ * Return: 0 if OK, or a negative error code.
  */
 int mbox_get_by_index(struct udevice *dev, int index, struct mbox_chan *chan);
 
@@ -95,7 +94,7 @@ int mbox_get_by_index(struct udevice *dev, int index, struct mbox_chan *chan);
  * @name:	The name of the mailbox channel to request, within the client's
  *		list of channels.
  * @chan	A pointer to a channel object to initialize.
- * @return 0 if OK, or a negative error code.
+ * Return: 0 if OK, or a negative error code.
  */
 int mbox_get_by_name(struct udevice *dev, const char *name,
 		     struct mbox_chan *chan);
@@ -105,7 +104,7 @@ int mbox_get_by_name(struct udevice *dev, const char *name,
  *
  * @chan:	A channel object that was previously successfully requested by
  *		calling mbox_get_by_*().
- * @return 0 if OK, or a negative error code.
+ * Return: 0 if OK, or a negative error code.
  */
 int mbox_free(struct mbox_chan *chan);
 
@@ -121,7 +120,7 @@ int mbox_free(struct mbox_chan *chan);
  *		the memory region pointed at by @data is determined by the
  *		mailbox provider. Providers that solely transfer notifications
  *		will ignore this parameter.
- * @return 0 if OK, or a negative error code.
+ * Return: 0 if OK, or a negative error code.
  */
 int mbox_send(struct mbox_chan *chan, const void *data);
 
@@ -140,7 +139,7 @@ int mbox_send(struct mbox_chan *chan, const void *data);
  *		notifications will ignore this parameter.
  * @timeout_us:	The maximum time to wait for a message to be available, in
  *		micro-seconds. A value of 0 does not wait at all.
- * @return 0 if OK, -ENODATA if no message was available, or a negative error
+ * Return: 0 if OK, -ENODATA if no message was available, or a negative error
  * code.
  */
 int mbox_recv(struct mbox_chan *chan, void *data, ulong timeout_us);
