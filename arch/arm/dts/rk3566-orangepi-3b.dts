@@ -154,6 +154,10 @@
 	u-boot,dm-pre-reloc;
 };
 
+&gpio4 {
+	u-boot,dm-pre-reloc;
+};
+
 &mdio0 {
 	rgmii_phy0: phy@0 {
 		compatible = "ethernet-phy-ieee802.3-c22";

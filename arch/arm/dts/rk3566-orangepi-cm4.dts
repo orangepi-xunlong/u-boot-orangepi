@@ -278,6 +278,7 @@
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_logic";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-on-in-suspend;
 				};
 			};
@@ -380,12 +381,14 @@
 			};
 
 			vccio_sd: LDO_REG5 {
+				u-boot,dm-pre-reloc;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-name = "vccio_sd";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-off-in-suspend;
 				};
 			};
@@ -458,10 +461,12 @@
 			};
 
 			vcc_3v3: SWITCH_REG1 {
+				u-boot,dm-pre-reloc;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-name = "vcc_3v3";
 				regulator-state-mem {
+					u-boot,dm-pre-reloc;
 					regulator-off-in-suspend;
 				};
 			};
