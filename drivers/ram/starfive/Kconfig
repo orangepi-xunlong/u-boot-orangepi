@@ -1,0 +1,21 @@
+config SPL_STARFIVE_DDR
+	bool "STARFive DDR driver in SPL"
+	depends on SPL_RAM && STARFIVE_JH7110
+	help
+	  This enables DDR support for the platforms based on StarFive SoC.
+
+choice
+	prompt "DDR working frequency"
+	depends on SPL_STARFIVE_DDR
+	default STARFIVE_DDR_2133
+	help
+	  choice DDR working frequency(Default is 2133M).
+
+	config STARFIVE_DDR_2133
+		bool "Frequency of DDR is 2133M"
+	config STARFIVE_DDR_2800
+		bool "Frequency of DDR is 2800M"
+	config STARFIVE_DDR_3200
+		bool "Frequency of DDR is 3200M"
+
+endchoice

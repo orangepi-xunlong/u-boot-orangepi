@@ -1,0 +1,7 @@
+STARFIVE JH7110 EVB BOARD
+M: startfive
+S:	Maintained
+F:	arch/riscv/include/asm/arch-jh7110/
+F:	board/starfive/evb/
+F:	include/configs/starfive-evb.h
+F:	configs/starfive_evb_defconfig

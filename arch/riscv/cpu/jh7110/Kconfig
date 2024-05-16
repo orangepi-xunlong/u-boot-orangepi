@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: GPL-2.0+
+#
+# Copyright (C) 2022 StarFive, Inc
+
+config STARFIVE_JH7110
+	bool
+	select ARCH_EARLY_INIT_R
+	select SUPPORT_SPL
+	imply CPU
+	imply CPU_RISCV
+	imply RISCV_TIMER if (RISCV_SMODE || SPL_RISCV_SMODE)
+	imply SPL_SIFIVE_CLINT
+	imply CMD_CPU
+	imply SPL_CPU
+	imply SPL_OPENSBI
+	imply SPL_LOAD_FIT
+	imply SMP
+	imply SIFIVE_CACHE
+	imply SIFIVE_CCACHE
+	imply MII
+	imply MMC
+	imply MMC_SPI
+	imply MMC_BROKEN_CD
+	imply CMD_MMC
+	imply DM_GPIO
+	imply STARFIVE_GPIO
+	imply CMD_GPIO
+	imply MISC
+	imply STARFIVE_OTP
+	imply DM_PWM
+	imply DM_I2C
+	imply SYS_I2C_OCORES
+	imply CLK_JH7110
+
+choice
+	prompt "JH7110 GMAC Speed"
+	depends on STARFIVE_JH7110
+	default FPGA_GMAC_SPEED10
+	help
+	  choice JH7110 GMAC speed.
+	  (GMAC only works well on 10M/duple, for FPGA board.)
+
+	config FPGA_GMAC_SPEED10
+		bool "GMAC works on 10M mode"
+	config FPGA_GMAC_SPEED100
+		bool "GMAC works on 100M mode"
+	config FPGA_GMAC_SPEED_AUTO
+		bool "GMAC works on auto mode"
+
+endchoice
+
+config STARFIVE_JH7110_L2CC_FLUSH
+ bool "Support Level 2 Cache Controller Flush operation of Starfive JH7110"
+
+if STARFIVE_JH7110_L2CC_FLUSH
+
+config STARFIVE_JH7110_L2CC_FLUSH_START
+ hex "Level 2 Cache Flush operation start"
+ default 0x40000000
+
+config STARFIVE_JH7110_L2CC_FLUSH_SIZE
+ hex "Level 2 Cache Flush operation size"
+ default 0x400000000
+
+endif # STARFIVE_JH7110_L2CC_FLUSH

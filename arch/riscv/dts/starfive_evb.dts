@@ -1,0 +1,465 @@
+// SPDX-License-Identifier: GPL-2.0 OR MIT
+/*
+ * Copyright (C) 2022 StarFive Technology Co., Ltd.
+ */
+
+/dts-v1/;
+
+#include "jh7110.dtsi"
+#include <dt-bindings/pinctrl/pinctrl-starfive-jh7110.h>
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	model = "StarFive JH7110 EVB";
+	compatible = "starfive,jh7110";
+
+	aliases {
+		spi0="/soc/spi@13010000";
+		gpio0="/soc/gpio@13040000";
+		ethernet0=&gmac0;
+		ethernet1=&gmac1;
+		mmc0=&sdio0;
+		mmc1=&sdio1;
+	};
+
+	chosen {
+			stdout-path = "/soc/serial@10000000:115200";
+			starfive,boot-hart-id = <1>;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x40000000 0x1 0x0>;
+	};
+
+	reserved-memory {
+			#size-cells = <2>;
+			#address-cells = <2>;
+			ranges;
+
+			opensbi {
+				reg = <0x00 0x40000000 0x00 0x80000>;
+				no-map;
+			};
+	};
+
+	soc {
+	};
+};
+
+&cpu0 {
+	status = "okay";
+};
+
+&clkgen {
+	clocks = <&osc>, <&gmac1_rmii_refin>,
+		<&stg_apb>, <&gmac0_rmii_refin>;
+	clock-names = "osc", "gmac1_rmii_refin",
+		"stg_apb", "gmac0_rmii_refin";
+};
+
+&gpio {
+	status = "okay";
+
+	usb_pins: usb-pins {
+		drive-vbus-pin {
+			pinmux = <GPIOMUX(33, GPOUT_SYS_USB_DRIVE_VBUS,
+						GPOEN_ENABLE, GPI_NONE)>;
+			bias-pull-up;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+
+		overcurrent-pin {
+			pinmux = <GPIOMUX(34, GPOUT_LOW,
+						GPOEN_DISABLE, GPI_SYS_USB_OVERCURRENT)>;
+			bias-pull-up;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	mmc0_pins: mmc0-pins {
+		 mmc0-pins-rest {
+			pinmux = <GPIOMUX(22, GPOUT_SYS_SDIO0_RST,
+						GPOEN_ENABLE, GPI_NONE)>;
+			bias-pull-up;
+			drive-strength = <12>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	mmc1_pins: mmc1-pins {
+		 mmc1-pins-rest {
+			pinmux = <GPIOMUX(24, GPOUT_SYS_SDIO1_RST,
+						GPOEN_ENABLE, GPI_NONE)>;
+			bias-pull-up;
+			drive-strength = <12>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	i2c2_pins: i2c2-0 {
+		i2c-pins {
+			pinmux = <GPIOMUX(11, GPOUT_LOW,
+				  GPOEN_SYS_I2C2_CLK,
+				  GPI_SYS_I2C2_CLK)>,
+				 <GPIOMUX(9, GPOUT_LOW,
+				  GPOEN_SYS_I2C2_DATA,
+				  GPI_SYS_I2C2_DATA)>;
+			bias-disable; /* external pull-up */
+			input-enable;
+			input-schmitt-enable;
+		};
+	};
+
+	i2c5_pins: i2c5-0 {
+		i2c-pins {
+			pinmux = <GPIOMUX(19, GPOUT_LOW,
+				  GPOEN_SYS_I2C5_CLK,
+				  GPI_SYS_I2C5_CLK)>,
+				 <GPIOMUX(20, GPOUT_LOW,
+				  GPOEN_SYS_I2C5_DATA,
+				  GPI_SYS_I2C5_DATA)>;
+			bias-disable; /* external pull-up */
+			input-enable;
+			input-schmitt-enable;
+		};
+	};
+
+	hdmi_pins: hdmi-0 {
+		i2c-pins {
+			pinmux = <GPIOMUX(7, GPOUT_SYS_HDMI_DDC_SCL,
+				  GPOEN_SYS_HDMI_DDC_SCL,
+				  GPI_SYS_HDMI_DDC_SCL)>,
+				 <GPIOMUX(8, GPOUT_SYS_HDMI_DDC_SDA,
+				  GPOEN_SYS_HDMI_DDC_SDA,
+				  GPI_SYS_HDMI_DDC_SDA)>;
+			bias-pull-up;
+			input-enable;
+		};
+
+		cec-pins {
+			pinmux = <GPIOMUX(14, GPOUT_SYS_HDMI_CEC_SDA,
+				  GPOEN_SYS_HDMI_CEC_SDA,
+				  GPI_SYS_HDMI_CEC_SDA)>;
+			bias-pull-up;
+			input-enable;
+		};
+
+		hpd-pins {
+			pinmux = <GPIOMUX(15, GPOUT_LOW,
+				  GPOEN_DISABLE,
+				  GPI_SYS_HDMI_HPD)>;
+			input-enable;
+		};
+	};
+
+	pcie0_perst_default: pcie0_perst_default {
+		perst-pins {
+			pinmux = <GPIOMUX(26, GPOUT_HIGH, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie0_perst_active: pcie0_perst_active {
+		perst-pins {
+			pinmux = <GPIOMUX(26, GPOUT_LOW, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie0_power_default: pcie0_power_default {
+		power-pins {
+			pinmux = <GPIOMUX(32, GPOUT_LOW, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie0_power_active: pcie0_power_active {
+		power-pins {
+			pinmux = <GPIOMUX(32, GPOUT_HIGH, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie1_perst_default: pcie1_perst_default {
+		perst-pins {
+			pinmux = <GPIOMUX(28, GPOUT_HIGH, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie1_perst_active: pcie1_perst_active {
+		perst-pins {
+			pinmux = <GPIOMUX(28, GPOUT_LOW, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie1_power_default: pcie1_power_default {
+		power-pins {
+			pinmux = <GPIOMUX(21, GPOUT_LOW, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+	pcie1_power_active: pcie1_power_active {
+		power-pins {
+			pinmux = <GPIOMUX(21, GPOUT_HIGH, GPOEN_ENABLE, GPI_NONE)>;
+			drive-strength = <2>;
+			input-disable;
+			input-schmitt-disable;
+			slew-rate = <0>;
+		};
+	};
+
+};
+
+&sdio0 {
+	assigned-clocks = <&clkgen JH7110_SDIO0_CLK_SDCARD>;
+	assigned-clock-rates = <50000000>;
+	fifo-depth = <32>;
+	bus-width = <4>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc0_pins>;
+};
+
+&sdio1 {
+	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc1_pins>;
+};
+
+&gmac0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	phy0: ethernet-phy@0 {
+		rxc_dly_en = <1>;
+		tx_delay_sel_fe = <5>;
+		tx_delay_sel = <0xb>;
+		tx_inverted_10 = <0x0>;
+		tx_inverted_100 = <0x0>;
+		tx_inverted_1000 = <0x0>;
+	};
+};
+
+&gmac1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	phy1: ethernet-phy@1 {
+		rxc-skew-ps = <1060>;
+		txc-skew-ps = <1800>;
+		reg = <0>;
+	};
+};
+
+&uart0 {
+	reg-offset = <0>;
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&gpioa {
+	status = "disabled";
+};
+
+&usbdrd30 {
+	status = "okay";
+};
+
+&usbdrd_cdns3 {
+	dr_mode = "host";
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_pins>;
+};
+
+&pcie0 {
+	pinctrl-names = "perst-default", "perst-active", "power-default", "power-active";
+	pinctrl-0 = <&pcie0_perst_default>;
+	pinctrl-1 = <&pcie0_perst_active>;
+	pinctrl-2 = <&pcie0_power_default>;
+	pinctrl-3 = <&pcie0_power_active>;
+	status = "disabled";
+};
+
+&pcie1 {
+	pinctrl-names = "perst-default", "perst-active", "power-default", "power-active";
+	pinctrl-0 = <&pcie1_perst_default>;
+	pinctrl-1 = <&pcie1_perst_active>;
+	pinctrl-2 = <&pcie1_power_default>;
+	pinctrl-3 = <&pcie1_power_active>;
+	status = "okay";
+};
+
+&timer {
+	status = "disabled";
+};
+
+&wdog {
+	status = "disabled";
+};
+
+&clkvout {
+	status = "okay";
+};
+
+&pdm {
+	status = "disabled";
+};
+
+&mipi_dsi0 {
+	status = "okay";
+	rockchip,panel = <&rm68200_panel>;
+	data-lanes-num = <1>;
+	display-timings {
+		timing0 {
+		bits-per-pixel = <24>;
+		clock-frequency = <160000000>;
+		hfront-porch = <120>;
+		hsync-len = <20>;
+		hback-porch = <21>;
+		hactive = <1200>;
+		vfront-porch = <21>;
+		vsync-len = <3>;
+		vback-porch = <18>;
+		vactive = <1920>;
+		hsync-active = <0>;
+		vsync-active = <0>;
+		de-active = <1>;
+		pixelclk-active = <0>;
+		};
+	};
+
+};
+
+&hdmi{
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_pins>;
+	status = "okay";
+};
+
+&i2c2 {
+	clock-frequency = <100000>;
+	i2c-sda-hold-time-ns = <300>;
+	i2c-sda-falling-time-ns = <3000>;
+	i2c-scl-falling-time-ns = <3000>;
+	auto_calc_scl_lhcnt;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pins>;
+	status = "okay";
+
+	rm68200_panel: rm68200_panel@45 {
+		compatible = "raydium,rm68200";
+		reg = <0x45>;
+
+	};
+
+
+};
+
+
+&i2c5 {
+	clock-frequency = <100000>;
+	i2c-sda-hold-time-ns = <300>;
+	i2c-sda-falling-time-ns = <3000>;
+	i2c-scl-falling-time-ns = <3000>;
+	auto_calc_scl_lhcnt;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c5_pins>;
+	status = "okay";
+
+	pmic_axp15060: axp15060_reg@36 {
+               compatible = "stf,axp15060-regulator";
+               reg = <0x36>;
+	};
+
+	pmic: jh7110_evb_reg@50 {
+		compatible = "starfive,jh7110-evb-regulator";
+		reg = <0x50>;
+
+		regulators {
+			hdmi_1p8: ldo1 {
+				regulator-name = "lp8733-ldo1";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			mipitx_1p8: ldo2 {
+				regulator-name = "lp8733-ldo2";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			mipirx_1p8: ldo3 {
+				regulator-name = "lp8733-ldo3";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			hdmi_0p9: ldo4 {
+				regulator-name = "lp8733-ldo4";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			mipitx_0p9: ldo5 {
+				regulator-name = "lp8733-ldo5";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			mipirx_0p9: ldo6 {
+				regulator-name = "lp8733-ldo6";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+			sdio_vdd: ldo7 {
+				regulator-name = "lp8733-ldo7";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+};

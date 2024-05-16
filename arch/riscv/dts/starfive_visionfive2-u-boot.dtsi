@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: GPL-2.0 OR MIT
+/*
+ * Copyright (C) 2022 StarFive Technology Co., Ltd.
+ */
+
+#include "jh7110-u-boot.dtsi"
+/ {
+	chosen {
+			stdout-path = "/soc/serial@10000000:115200";
+			u-boot,dm-spl;
+	};
+
+	firmware {
+		spi0="/soc/qspi@11860000";
+		u-boot,dm-spl;
+	};
+
+	config {
+		u-boot,dm-spl;
+		u-boot,spl-payload-offset = <0x100000>; /* loader2 @1044KB */
+	};
+
+	memory@80000000 {
+		u-boot,dm-spl;
+		device_type = "memory";
+		reg = <0x0 0x40000000 0x1 0x0>;
+	};
+};
