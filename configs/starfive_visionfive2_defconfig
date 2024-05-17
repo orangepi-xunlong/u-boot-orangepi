@@ -29,7 +29,7 @@ CONFIG_SPI_BOOT=y
 CONFIG_USE_BOOTARGS=y
 CONFIG_BOOTARGS="console=tty1 console=ttyS0,115200  debug rootwait  earlycon=sbi"
 CONFIG_USE_BOOTCOMMAND=y
-CONFIG_BOOTCOMMAND="run sdk_boot_env; run distro_boot_env"
+CONFIG_BOOTCOMMAND="run sdk_boot_env; run distro_boot_env; run distro_boot_env_test;"
 CONFIG_USE_PREBOOT=y
 CONFIG_PREBOOT="run chipa_set_uboot;"
 CONFIG_DEFAULT_FDT_FILE="starfive/jh7110-visionfive-v2.dtb"

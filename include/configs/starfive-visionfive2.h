@@ -258,23 +258,28 @@
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
 #define JH7110_DISTRO_BOOTENV	\
-	"bootdir=/boot\0"	\
-	"bootpart=3\0"		\
+	"bootdir=\0"	\
+	"bootpart=1\0"		\
 	"rootpart=4\0"		\
+	"loadcmd=fatload\0"      \
+	"sizecmd=fatsize\0"      \
+	"writecmd=fatwrite\0"      \
+	"boottype=fat\0"      \
+	"dtbdir=dtb\0"      \
 	"load_distro_uenv="						\
-		"fatload ${bootdev} ${devnum}:${bootpart} ${loadaddr} /${bootenv}; " \
+		"${loadcmd} ${bootdev} ${devnum}:${bootpart} ${loadaddr} ${bootdir}/${bootenv}; " \
 		"env import ${loadaddr} ${filesize}; \0" \
 	"fdt_loaddtb="		\
-		"fatload ${bootdev} ${devnum}:${bootpart} ${fdt_addr_r} /dtbs/${fdtfile}; fdt addr ${fdt_addr_r}; \0" \
+		"${loadcmd} ${bootdev} ${devnum}:${bootpart} ${fdt_addr_r} ${bootdir}/${dtbdir}/${fdtfile}; fdt addr ${fdt_addr_r}; \0" \
 	"fdt_sizecheck="	\
-		"fatsize ${bootdev} ${devnum}:${bootpart} /dtbs/${fdtfile}; \0" \
+		"${sizecmd} ${bootdev} ${devnum}:${bootpart} ${bootdir}/${dtbdir}/${fdtfile}; \0" \
 	"set_fdt_distro="	\
 		"run chipa_set_linux; run cpu_vol_set;" \
-		"fatwrite ${bootdev} ${devnum}:${bootpart} ${fdt_addr_r} /dtbs/${fdtfile} ${filesize}; \0" \
+		"${writecmd} ${bootdev} ${devnum}:${bootpart} ${fdt_addr_r} ${bootdir}/${dtbdir}/${fdtfile} ${filesize}; \0" \
 	"bootcmd_distro="	\
 		"run load_distro_uenv; " \
-		"run fdt_loaddtb; run fdt_sizecheck; run set_fdt_distro; "	\
-		"sysboot ${bootdev} ${devnum}:${bootpart} fat ${scriptaddr} /${boot_syslinux_conf}; \0" \
+		"run fdt_loaddtb; run fdt_sizecheck; run set_fdt_distro; "      \
+		"sysboot ${bootdev} ${devnum}:${bootpart} ${boottype} ${scriptaddr} ${bootdir}/${boot_syslinux_conf}; \0" \
 	"distro_mmc_test_and_boot="					\
 		"if mmc dev ${devnum}; then "				\
 			"echo Try booting from MMC${devnum} ...; "	\

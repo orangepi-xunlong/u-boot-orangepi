@@ -998,6 +998,10 @@ endif
 endif
 endif
 
+ifeq ($(CONFIG_STARFIVE_JH7110),y)
+INPUTS-y += u-boot-spl.bin.normal.out visionfive2_fw_payload.img
+endif
+
 INPUTS-$(CONFIG_X86) += u-boot-x86-start16.bin u-boot-x86-reset16.bin \
 	$(if $(CONFIG_SPL_X86_16BIT_INIT),spl/u-boot-spl.bin) \
 	$(if $(CONFIG_TPL_X86_16BIT_INIT),tpl/u-boot-tpl.bin)
@@ -2045,6 +2049,30 @@ SYSTEM_MAP = \
 System.map:	u-boot
 		@$(call SYSTEM_MAP,$<) > $@
 
+
+ifeq ($(CONFIG_STARFIVE_JH7110),y)
+sbi_srcdir := $(CURDIR)/opensbi
+sbi_wrkdir := $(sbi_srcdir)/build
+FW_FDT_PATH := $(CURDIR)/arch/riscv/dts/$(CONFIG_DEFAULT_DEVICE_TREE).dtb
+ISA ?= rv64imafdc_zicsr_zifencei_zba_zbb
+ABI ?= lp64d
+uboot_path := $(CURDIR)/u-boot.bin
+sbi_bin := $(sbi_wrkdir)/platform/generic/firmware/fw_payload.bin
+
+u-boot-spl.bin.normal.out: spl/u-boot-spl.bin
+	tools/spl_tool -c -f spl/u-boot-spl.bin
+	mv spl/u-boot-spl.bin.normal.out .
+
+$(sbi_bin): u-boot.bin
+	CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE="$(CROSS_COMPILE)" \
+	  PLATFORM=generic FW_PAYLOAD_PATH=$(uboot_path) FW_FDT_PATH=$(FW_FDT_PATH) FW_TEXT_START=0x40000000
+	mv $(sbi_bin) .
+	rm -rf $(sbi_wrkdir)
+
+visionfive2_fw_payload.img: uboot-fit-image.its $(sbi_bin)
+	tools/mkimage -f uboot-fit-image.its -A riscv -O u-boot -T firmware visionfive2_fw_payload.img
+endif
+
 #########################################################################
 
 # ARM relocations should all be R_ARM_RELATIVE (32-bit) or
@@ -2098,7 +2126,8 @@ CLEAN_FILES += include/bmp_logo.h include/bmp_logo_data.h tools/version.h \
 	       boot* u-boot* MLO* SPL System.map fit-dtb.blob* \
 	       u-boot-ivt.img.log u-boot-dtb.imx.log SPL.log u-boot.imx.log \
 	       lpc32xx-* bl31.c bl31.elf bl31_*.bin image.map tispl.bin* \
-	       idbloader.img flash.bin flash.log defconfig keep-syms-lto.c
+	       idbloader.img flash.bin flash.log defconfig keep-syms-lto.c \
+	       u-boot-spl.bin.normal.out visionfive2_fw_payload.img fw_payload.bin
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include/generated spl tpl \
