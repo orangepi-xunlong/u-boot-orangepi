@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
+ * Copyright 2020 NXP
  *
  * Shengzhou Liu <Shengzhou.Liu@freescale.com>
  */
 
 #include <common.h>
 #include <command.h>
+#include <fdt_support.h>
+#include <log.h>
+#include <net.h>
 #include <netdev.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
@@ -26,6 +30,7 @@
 #include "../common/qixis.h"
 #include "../common/fman.h"
 #include "t208xqds_qixis.h"
+#include <linux/libfdt.h>
 
 #define EMI_NONE	0xFFFFFFFF
 #define EMI1_RGMII1	0
@@ -37,13 +42,6 @@
 #define EMI1_SLOT4	4
 #define EMI1_SLOT5	5
 #define EMI2            7
-#elif defined(CONFIG_TARGET_T2081QDS)
-#define EMI1_SLOT2      3
-#define EMI1_SLOT3      4
-#define EMI1_SLOT5      5
-#define EMI1_SLOT6      6
-#define EMI1_SLOT7      7
-#define EMI2		8
 #endif
 
 #define PCCR1_SGMIIA_KX_MASK		0x00008000
@@ -67,24 +65,12 @@ static const char * const mdio_names[] = {
 	"T2080QDS_MDIO_SLOT5",
 	"T2080QDS_MDIO_SLOT2",
 	"T2080QDS_MDIO_10GC",
-#elif defined(CONFIG_TARGET_T2081QDS)
-	"T2081QDS_MDIO_RGMII1",
-	"T2081QDS_MDIO_RGMII2",
-	"T2081QDS_MDIO_SLOT1",
-	"T2081QDS_MDIO_SLOT2",
-	"T2081QDS_MDIO_SLOT3",
-	"T2081QDS_MDIO_SLOT5",
-	"T2081QDS_MDIO_SLOT6",
-	"T2081QDS_MDIO_SLOT7",
-	"T2081QDS_MDIO_10GC",
 #endif
 };
 
 /* Map SerDes1 8 lanes to default slot, will be initialized dynamically */
 #if defined(CONFIG_TARGET_T2080QDS)
 static u8 lane_to_slot[] = {3, 3, 3, 3, 1, 1, 1, 1};
-#elif defined(CONFIG_TARGET_T2081QDS)
-static u8 lane_to_slot[] = {2, 2, 2, 2, 1, 1, 1, 1};
 #endif
 
 static const char *t208xqds_mdio_name_for_muxval(u8 muxval)
@@ -200,12 +186,13 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 	char buf[32] = "serdes-1,";
 	struct fixed_link f_link;
 	int media_type = 0;
+	const char *phyconn;
 	int off;
 
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 #ifdef CONFIG_TARGET_T2080QDS
 	serdes_corenet_t *srds_regs =
-		(void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
+		(void *)CFG_SYS_FSL_CORENET_SERDES_ADDR;
 	u32 srds1_pccr1 = in_be32(&srds_regs->srdspccr1);
 #endif
 	u32 srds_s1 = in_be32(&gur->rcwsr[4]) &
@@ -310,35 +297,6 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 				fdt_status_okay_by_alias(fdt, "emi1_slot2");
 			}
 			break;
-#elif defined(CONFIG_TARGET_T2081QDS)
-		case FM1_DTSEC1:
-		case FM1_DTSEC2:
-		case FM1_DTSEC5:
-		case FM1_DTSEC6:
-		case FM1_DTSEC9:
-		case FM1_DTSEC10:
-			if (mdio_mux[port] == EMI1_SLOT2) {
-				sprintf(alias, "phy_sgmii_s2_%x", phy);
-				fdt_set_phy_handle(fdt, compat, addr, alias);
-				fdt_status_okay_by_alias(fdt, "emi1_slot2");
-			} else if (mdio_mux[port] == EMI1_SLOT3) {
-				sprintf(alias, "phy_sgmii_s3_%x", phy);
-				fdt_set_phy_handle(fdt, compat, addr, alias);
-				fdt_status_okay_by_alias(fdt, "emi1_slot3");
-			} else if (mdio_mux[port] == EMI1_SLOT5) {
-				sprintf(alias, "phy_sgmii_s5_%x", phy);
-				fdt_set_phy_handle(fdt, compat, addr, alias);
-				fdt_status_okay_by_alias(fdt, "emi1_slot5");
-			} else if (mdio_mux[port] == EMI1_SLOT6) {
-				sprintf(alias, "phy_sgmii_s6_%x", phy);
-				fdt_set_phy_handle(fdt, compat, addr, alias);
-				fdt_status_okay_by_alias(fdt, "emi1_slot6");
-			} else if (mdio_mux[port] == EMI1_SLOT7) {
-				sprintf(alias, "phy_sgmii_s7_%x", phy);
-				fdt_set_phy_handle(fdt, compat, addr, alias);
-				fdt_status_okay_by_alias(fdt, "emi1_slot7");
-			}
-			break;
 #endif
 		default:
 			break;
@@ -352,16 +310,16 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 
 	} else if (fm_info_get_enet_if(port) == PHY_INTERFACE_MODE_XGMII) {
 		switch (srds_s1) {
-		case 0x66: /* XFI interface */
+		case 0x66: /* 10GBase-R interface */
 		case 0x6b:
 		case 0x6c:
 		case 0x6d:
 		case 0x71:
 			/*
-			* if the 10G is XFI, check hwconfig to see what is the
-			* media type, there are two types, fiber or copper,
-			* fix the dtb accordingly.
-			*/
+			 * Check hwconfig to see what is the media type, there
+			 * are two types, fiber or copper, fix the dtb
+			 * accordingly.
+			 */
 			switch (port) {
 			case FM1_10GEC1:
 			if (hwconfig_sub("fsl_10gkr_copper", "fm1_10g1")) {
@@ -412,15 +370,24 @@ void board_ft_fman_fixup_port(void *fdt, char *compat, phys_addr_t addr,
 			}
 
 			if (!media_type) {
-				/* fixed-link is used for XFI fiber cable */
-				f_link.phy_id = port;
-				f_link.duplex = 1;
-				f_link.link_speed = 10000;
-				f_link.pause = 0;
-				f_link.asym_pause = 0;
-				fdt_delprop(fdt, offset, "phy-handle");
-				fdt_setprop(fdt, offset, "fixed-link", &f_link,
-					sizeof(f_link));
+				phyconn = fdt_getprop(fdt, offset,
+						      "phy-connection-type",
+						      NULL);
+				if (is_backplane_mode(phyconn)) {
+					/* Backplane KR mode: skip fixups */
+					printf("Interface %d in backplane KR mode\n",
+					       port);
+				} else {
+					/* fixed-link for 10GBase-R fiber cable */
+					f_link.phy_id = port;
+					f_link.duplex = 1;
+					f_link.link_speed = 10000;
+					f_link.pause = 0;
+					f_link.asym_pause = 0;
+					fdt_delprop(fdt, offset, "phy-handle");
+					fdt_setprop(fdt, offset, "fixed-link",
+						    &f_link, sizeof(f_link));
+				}
 			} else {
 				/* set property for copper cable */
 				off = fdt_node_offset_by_compat_reg(fdt,
@@ -446,7 +413,7 @@ void fdt_fixup_board_enet(void *fdt)
  */
 static void initialize_lane_to_slot(void)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 srds_s1 = in_be32(&gur->rcwsr[4]) &
 				FSL_CORENET2_RCWSR4_SRDS1_PRTCL;
 
@@ -480,43 +447,19 @@ static void initialize_lane_to_slot(void)
 		lane_to_slot[6] = 3;
 		lane_to_slot[7] = 3;
 		break;
-#elif defined(CONFIG_TARGET_T2081QDS)
-	case 0x6b:
-		lane_to_slot[4] = 1;
-		lane_to_slot[5] = 3;
-		lane_to_slot[6] = 3;
-		lane_to_slot[7] = 3;
-		break;
-	case 0xca:
-	case 0xcb:
-		lane_to_slot[1] = 7;
-		lane_to_slot[2] = 6;
-		lane_to_slot[3] = 5;
-		lane_to_slot[5] = 3;
-		lane_to_slot[6] = 3;
-		lane_to_slot[7] = 3;
-		break;
-	case 0xf2:
-		lane_to_slot[1] = 7;
-		lane_to_slot[2] = 7;
-		lane_to_slot[3] = 7;
-		lane_to_slot[5] = 4;
-		lane_to_slot[6] = 3;
-		lane_to_slot[7] = 7;
-		break;
 #endif
 	default:
 		break;
 	}
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 #if defined(CONFIG_FMAN_ENET)
 	int i, idx, lane, slot, interface;
 	struct memac_mdio_info dtsec_mdio_info;
 	struct memac_mdio_info tgec_mdio_info;
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 rcwsr13 = in_be32(&gur->rcwsr[13]);
 	u32 srds_s1;
 
@@ -531,7 +474,7 @@ int board_eth_init(bd_t *bis)
 		mdio_mux[i] = EMI_NONE;
 
 	dtsec_mdio_info.regs =
-		(struct memac_mdio_controller *)CONFIG_SYS_FM1_DTSEC_MDIO_ADDR;
+		(struct memac_mdio_controller *)CFG_SYS_FM1_DTSEC_MDIO_ADDR;
 
 	dtsec_mdio_info.name = DEFAULT_FM_MDIO_NAME;
 
@@ -539,7 +482,7 @@ int board_eth_init(bd_t *bis)
 	fm_memac_mdio_init(bis, &dtsec_mdio_info);
 
 	tgec_mdio_info.regs =
-		(struct memac_mdio_controller *)CONFIG_SYS_FM1_TGEC_MDIO_ADDR;
+		(struct memac_mdio_controller *)CFG_SYS_FM1_TGEC_MDIO_ADDR;
 	tgec_mdio_info.name = DEFAULT_FM_TGEC_MDIO_NAME;
 
 	/* Register the 10G MDIO bus */
@@ -555,10 +498,6 @@ int board_eth_init(bd_t *bis)
 	t208xqds_mdio_init(DEFAULT_FM_MDIO_NAME, EMI1_SLOT4);
 #endif
 	t208xqds_mdio_init(DEFAULT_FM_MDIO_NAME, EMI1_SLOT5);
-#if defined(CONFIG_TARGET_T2081QDS)
-	t208xqds_mdio_init(DEFAULT_FM_MDIO_NAME, EMI1_SLOT6);
-	t208xqds_mdio_init(DEFAULT_FM_MDIO_NAME, EMI1_SLOT7);
-#endif
 	t208xqds_mdio_init(DEFAULT_FM_TGEC_MDIO_NAME, EMI2);
 
 	/* Set the two on-board RGMII PHY address */
@@ -599,12 +538,12 @@ int board_eth_init(bd_t *bis)
 	case 0x66:
 	case 0x67:
 		/*
-		 * XFI does not need a PHY to work, but to avoid U-Boot use
-		 * default PHY address which is zero to a MAC when it found
-		 * a MAC has no PHY address, we give a PHY address to XFI
+		 * 10GBase-R does not need a PHY to work, but to avoid U-Boot
+		 * use default PHY address which is zero to a MAC when it found
+		 * a MAC has no PHY address, we give a PHY address to 10GBase-R
 		 * MAC, and should not use a real XAUI PHY address, since
 		 * MDIO can access it successfully, and then MDIO thinks
-		 * the XAUI card is used for the XFI MAC, which will cause
+		 * the XAUI card is used for the 10GBase-R MAC, which will cause
 		 * error.
 		 */
 		fm_info_set_phy_address(FM1_10GEC1, 4);
@@ -674,19 +613,6 @@ int board_eth_init(bd_t *bis)
 		fm_info_set_phy_address(FM1_DTSEC5, SGMII_CARD_PORT3_PHY_ADDR);
 		fm_info_set_phy_address(FM1_DTSEC6, SGMII_CARD_PORT2_PHY_ADDR);
 		break;
-#elif defined(CONFIG_TARGET_T2081QDS)
-	case 0xca:
-	case 0xcb:
-		/* SGMII in Slot3 */
-		fm_info_set_phy_address(FM1_DTSEC5, SGMII_CARD_PORT1_PHY_ADDR);
-		fm_info_set_phy_address(FM1_DTSEC6, SGMII_CARD_PORT2_PHY_ADDR);
-		/* SGMII in Slot5 */
-		fm_info_set_phy_address(FM1_DTSEC2, SGMII_CARD_PORT1_PHY_ADDR);
-		/* SGMII in Slot6 */
-		fm_info_set_phy_address(FM1_DTSEC1, SGMII_CARD_PORT1_PHY_ADDR);
-		/* SGMII in Slot7 */
-		fm_info_set_phy_address(FM1_DTSEC10, SGMII_CARD_PORT3_PHY_ADDR);
-		break;
 #endif
 	case 0xf2:
 		/* T2080QDS: SGMII in Slot3; T2081QDS: SGMII in Slot7 */
@@ -699,7 +625,7 @@ int board_eth_init(bd_t *bis)
 		break;
 	}
 
-	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CONFIG_SYS_NUM_FM1_DTSEC; i++) {
+	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CFG_SYS_NUM_FM1_DTSEC; i++) {
 		idx = i - FM1_DTSEC1;
 		interface = fm_info_get_enet_if(i);
 		switch (interface) {
@@ -730,26 +656,12 @@ int board_eth_init(bd_t *bis)
 				fm_info_set_mdio(i, mii_dev_for_muxval(
 						 mdio_mux[i]));
 				break;
-#if defined(CONFIG_TARGET_T2081QDS)
-			case 5:
-				mdio_mux[i] = EMI1_SLOT5;
-				fm_info_set_mdio(i, mii_dev_for_muxval(
-						 mdio_mux[i]));
-				break;
-			case 6:
-				mdio_mux[i] = EMI1_SLOT6;
-				fm_info_set_mdio(i, mii_dev_for_muxval(
-						 mdio_mux[i]));
-				break;
-			case 7:
-				mdio_mux[i] = EMI1_SLOT7;
-				fm_info_set_mdio(i, mii_dev_for_muxval(
-						 mdio_mux[i]));
-				break;
-#endif
 			}
 			break;
 		case PHY_INTERFACE_MODE_RGMII:
+		case PHY_INTERFACE_MODE_RGMII_TXID:
+		case PHY_INTERFACE_MODE_RGMII_RXID:
+		case PHY_INTERFACE_MODE_RGMII_ID:
 			if (i == FM1_DTSEC3)
 				mdio_mux[i] = EMI1_RGMII1;
 			else if (i == FM1_DTSEC4 || FM1_DTSEC10)
@@ -761,7 +673,7 @@ int board_eth_init(bd_t *bis)
 		}
 	}
 
-	for (i = FM1_10GEC1; i < FM1_10GEC1 + CONFIG_SYS_NUM_FM1_10GEC; i++) {
+	for (i = FM1_10GEC1; i < FM1_10GEC1 + CFG_SYS_NUM_FM1_10GEC; i++) {
 		idx = i - FM1_10GEC1;
 		switch (fm_info_get_enet_if(i)) {
 		case PHY_INTERFACE_MODE_XGMII:
@@ -789,7 +701,7 @@ int board_eth_init(bd_t *bis)
 			    (srds_s1 == 0x6a) || (srds_s1 == 0x70) ||
 			    (srds_s1 == 0x6c) || (srds_s1 == 0x6d) ||
 			    (srds_s1 == 0x71)) {
-				/* As XFI is in cage intead of a slot, so
+				/* As 10GBase-R is in cage intead of a slot, so
 				 * ensure doesn't disable the corresponding port
 				 */
 				break;

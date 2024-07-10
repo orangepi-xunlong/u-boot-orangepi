@@ -10,78 +10,31 @@
 #include "mx6_common.h"
 #include <asm/mach-imx/gpio.h>
 
-/* SPL options */
-#include "imx6_spl.h"
-
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(16 << 20)
-
-#define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE		MX6UL_UART7_BASE_ADDR
+#define CFG_MXC_UART_BASE		MX6UL_UART7_BASE_ADDR
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
-#define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
-
-/* I2C configs */
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_MXC
-#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
-#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
-#define CONFIG_SYS_I2C_MXC_I2C4		/* enable I2C bus 4 */
-#define CONFIG_SYS_I2C_SPEED		100000
+#define CFG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x10000000)
-
-#define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-#define CONFIG_SYS_HZ			1000
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 #define PHYS_SDRAM_SIZE			(128 << 20)
 
-#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
-#define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
-#define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
+#define CFG_SYS_SDRAM_BASE		PHYS_SDRAM
+#define CFG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
+#define CFG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
 /* Environment is in stored in the eMMC boot partition */
-#define CONFIG_ENV_SIZE			(16 << 10)
-#define CONFIG_ENV_OFFSET		(512 << 10)
-#define CONFIG_SYS_MMC_ENV_DEV		0	/* USDHC2 */
-#define CONFIG_SYS_MMC_ENV_PART		1	/* boot parition */
-#define CONFIG_MMCROOT			"/dev/mmcblk0p2"  /* USDHC2 */
 
 /* USB Configs */
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_MXC_USB_FLAGS		0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
+#define CFG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
+#define CFG_MXC_USB_FLAGS		0
 
-#define CONFIG_FEC_MXC
-#define CONFIG_MII
-#define CONFIG_FEC_ENET_DEV		0
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_MXC_PHYADDR          0x0
-#define CONFIG_FEC_XCV_TYPE             RMII
-#define CONFIG_ETHPRIME			"FEC"
-#define CONFIG_PHY_SMSC
+#define CFG_FEC_ENET_DEV		0
+#define CFG_FEC_MXC_PHYADDR          0x0
 
-#define CONFIG_IMX_THERMAL
-
-#define CONFIG_SYS_MMC_IMG_LOAD_PART	1
-
-#define CONFIG_UBOOT_SECTOR_START	0x2
-#define CONFIG_UBOOT_SECTOR_COUNT	0x3fe
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
 	"console=ttymxc6\0" \
@@ -92,8 +45,8 @@
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
-	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcpart=1\0" \
+	"mmcroot=/dev/mmcblk0p2 rootwait rw\0" \
 	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
@@ -119,8 +72,8 @@
 			"bootz; " \
 		"fi;\0" \
 	"uboot=ccv/u-boot.imx\0"					\
-	"uboot_start="__stringify(CONFIG_UBOOT_SECTOR_START)"\0"	\
-	"uboot_size="__stringify(CONFIG_UBOOT_SECTOR_COUNT)"\0"		\
+	"uboot_start=0x2\0"						\
+	"uboot_size=0x3fe\0"						\
 	"update_uboot=if tftp ${uboot}; then "				\
 		"if itest ${filesize} > 0; then "			\
 			"mmc dev 0 1;"					\

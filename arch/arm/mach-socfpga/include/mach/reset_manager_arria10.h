@@ -1,57 +1,30 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2016-2017 Intel Corporation
+ * Copyright (C) 2016-2021 Intel Corporation
  */
 
 #ifndef _RESET_MANAGER_ARRIA10_H_
 #define _RESET_MANAGER_ARRIA10_H_
 
 #include <dt-bindings/reset/altr,rst-mgr-a10.h>
+#include <linux/bitops.h>
 
 void socfpga_watchdog_disable(void);
 void socfpga_reset_deassert_noc_ddr_scheduler(void);
-int socfpga_is_wdt_in_reset(void);
-void socfpga_emac_manage_reset(ulong emacbase, u32 state);
 int socfpga_reset_deassert_bridges_handoff(void);
-void socfpga_reset_assert_fpga_connected_peripherals(void);
 void socfpga_reset_deassert_osc1wd0(void);
-void socfpga_reset_uart(int assert);
 int socfpga_bridges_reset(void);
 
-struct socfpga_reset_manager {
-	u32	stat;
-	u32	ramstat;
-	u32	miscstat;
-	u32	ctrl;
-	u32	hdsken;
-	u32	hdskreq;
-	u32	hdskack;
-	u32	counts;
-	u32	mpumodrst;
-	u32	per0modrst;
-	u32	per1modrst;
-	u32	brgmodrst;
-	u32	sysmodrst;
-	u32	coldmodrst;
-	u32	nrstmodrst;
-	u32	dbgmodrst;
-	u32	mpuwarmmask;
-	u32	per0warmmask;
-	u32	per1warmmask;
-	u32	brgwarmmask;
-	u32	syswarmmask;
-	u32	nrstwarmmask;
-	u32	l3warmmask;
-	u32	tststa;
-	u32	tstscratch;
-	u32	hdsktimeout;
-	u32	hmcintr;
-	u32	hmcintren;
-	u32	hmcintrens;
-	u32	hmcintrenr;
-	u32	hmcgpout;
-	u32	hmcgpin;
-};
+#define RSTMGR_A10_STATUS	0x00
+#define RSTMGR_A10_CTRL		0x0c
+#define RSTMGR_A10_MPUMODRST	0x20
+#define RSTMGR_A10_PER0MODRST	0x24
+#define RSTMGR_A10_PER1MODRST	0x28
+#define RSTMGR_A10_BRGMODRST	0x2c
+#define RSTMGR_A10_SYSMODRST	0x30
+#define RSTMGR_A10_SYSWARMMASK	0x50
+
+#define RSTMGR_CTRL		RSTMGR_A10_CTRL
 
 /*
  * SocFPGA Arria10 reset IDs, bank mapping is as follows:
@@ -142,5 +115,8 @@ struct socfpga_reset_manager {
 #define ALT_RSTMGR_HDSKEN_FPGAMGRHSEN_SET_MSK	BIT(1)
 #define ALT_RSTMGR_HDSKEN_FPGAHSEN_SET_MSK	BIT(2)
 #define ALT_RSTMGR_HDSKEN_ETRSTALLEN_SET_MSK	BIT(3)
+
+#define ALT_RSTMGR_FPGAMGRWARMMASK_S2F_SET_MSK	BIT(3)
+#define ALT_RSTMGR_SYSWARMMASK_S2F_SET_MSK	BIT(4)
 
 #endif /* _RESET_MANAGER_ARRIA10_H_ */

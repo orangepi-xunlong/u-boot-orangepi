@@ -42,7 +42,7 @@ struct cramfs_super super;
 /* CPU address space offset calculation macro, struct part_info offset is
  * device address space offset, so we need to shift it by a device start address. */
 #if defined(CONFIG_MTD_NOR_FLASH)
-extern flash_info_t flash_info[];
+#include <flash.h>
 #define PART_OFFSET(x)	((ulong)x->offset + \
 			 flash_info[x->dev->id->num].start[0])
 #else
@@ -166,8 +166,7 @@ static unsigned long cramfs_resolve (unsigned long begin, unsigned long offset,
 				unsigned long ret;
 				char *link;
 				if (p && strlen(p)) {
-					printf ("unsupported symlink to \
-						 non-terminal path\n");
+					printf ("unsupported symlink to non-terminal path\n");
 					return 0;
 				}
 				link = cramfs_uncompress_link (begin,
@@ -177,8 +176,7 @@ static unsigned long cramfs_resolve (unsigned long begin, unsigned long offset,
 						namelen, namelen, name);
 					return 0;
 				} else if (link[0] == '/') {
-					printf ("unsupported symlink to \
-						 absolute path\n");
+					printf ("unsupported symlink to absolute path\n");
 					free (link);
 					return 0;
 				}

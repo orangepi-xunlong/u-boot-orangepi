@@ -14,7 +14,7 @@ SECTIONS
 	{
 		__text_start = .;
 		arch/microblaze/cpu/start.o (.text)
-		*(.text)
+		*(.text*)
 		__text_end = .;
 	}
 
@@ -28,7 +28,7 @@ SECTIONS
 	.data ALIGN(0x4):
 	{
 		__data_start = .;
-		*(.data)
+		*(.data*)
 		__data_end = .;
 	}
 
@@ -41,20 +41,34 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 	__init_end = . ;
+
+	. = ALIGN(4);
+	__rel_dyn_start = .;
+	.rela.dyn : {
+		*(.rela.dyn)
+	}
+	__rel_dyn_end = .;
+
+	. = ALIGN(4);
+	__dyn_sym_start = .;
+	.dynsym : {
+		*(.dynsym)
+	}
+	__dyn_sym_end = .;
 
 	.bss ALIGN(0x4):
 	{
 		__bss_start = .;
 		*(.sbss)
 		*(.scommon)
-		*(.bss)
+		*(.bss*)
 		*(COMMON)
 		. = ALIGN(4);
 		__bss_end = .;
 	}
-	__end = . ;
+	_end = . ;
 }

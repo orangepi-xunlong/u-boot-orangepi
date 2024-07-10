@@ -6,15 +6,17 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
+#include <linux/delay.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/tps65090.h>
 
 static int tps65090_fet_probe(struct udevice *dev)
 {
-	struct dm_regulator_uclass_platdata *uc_pdata;
+	struct dm_regulator_uclass_plat *uc_pdata;
 
-	uc_pdata = dev_get_uclass_platdata(dev);
+	uc_pdata = dev_get_uclass_plat(dev);
 
 	uc_pdata->type = REGULATOR_TYPE_OTHER;
 	uc_pdata->mode_count = 0;
@@ -43,7 +45,7 @@ static int tps65090_fet_get_enable(struct udevice *dev)
  * @param pmic		pmic structure for the tps65090
  * @param fet_id	FET number to set (1..MAX_FET_NUM)
  * @param set		1 to power on FET, 0 to power off
- * @return -EIO if we got a comms error, -EAGAIN if the FET failed to
+ * Return: -EIO if we got a comms error, -EAGAIN if the FET failed to
  * change state. If all is ok, returns 0.
  */
 static int tps65090_fet_set(struct udevice *pmic, int fet_id, bool set)

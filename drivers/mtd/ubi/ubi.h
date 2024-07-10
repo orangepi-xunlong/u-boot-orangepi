@@ -28,6 +28,7 @@
 #include <asm/pgtable.h>
 #else
 #include <ubi_uboot.h>
+#include <linux/printk.h>
 #endif
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/ubi.h>
@@ -293,6 +294,9 @@ struct ubi_fm_pool {
  *           atomic LEB change
  *
  * @eba_tbl: EBA table of this volume (LEB->PEB mapping)
+ * @skip_check: %1 if CRC check of this static volume should be skipped.
+ *		Directly reflects the presence of the
+ *		%UBI_VTBL_SKIP_CRC_CHECK_FLG flag in the vtbl entry
  * @checked: %1 if this static volume was checked
  * @corrupted: %1 if the volume is corrupted (static volumes only)
  * @upd_marker: %1 if the update marker is set for this volume
@@ -341,6 +345,7 @@ struct ubi_volume {
 	void *upd_buf;
 
 	int *eba_tbl;
+	unsigned int skip_check:1;
 	unsigned int checked:1;
 	unsigned int corrupted:1;
 	unsigned int upd_marker:1;

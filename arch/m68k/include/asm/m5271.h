@@ -11,12 +11,12 @@
 #ifndef	_MCF5271_H_
 #define	_MCF5271_H_
 
-#define mbar_readLong(x)	*((volatile unsigned long *) (CONFIG_SYS_MBAR + x))
-#define mbar_readShort(x)	*((volatile unsigned short *) (CONFIG_SYS_MBAR + x))
-#define mbar_readByte(x)	*((volatile unsigned char *) (CONFIG_SYS_MBAR + x))
-#define mbar_writeLong(x,y)	*((volatile unsigned long *) (CONFIG_SYS_MBAR + x)) = y
-#define mbar_writeShort(x,y)	*((volatile unsigned short *) (CONFIG_SYS_MBAR + x)) = y
-#define mbar_writeByte(x,y)	*((volatile unsigned char *) (CONFIG_SYS_MBAR + x)) = y
+#define mbar_readLong(x)	*((volatile unsigned long *) (CFG_SYS_MBAR + x))
+#define mbar_readShort(x)	*((volatile unsigned short *) (CFG_SYS_MBAR + x))
+#define mbar_readByte(x)	*((volatile unsigned char *) (CFG_SYS_MBAR + x))
+#define mbar_writeLong(x,y)	*((volatile unsigned long *) (CFG_SYS_MBAR + x)) = y
+#define mbar_writeShort(x,y)	*((volatile unsigned short *) (CFG_SYS_MBAR + x)) = y
+#define mbar_writeByte(x,y)	*((volatile unsigned char *) (CFG_SYS_MBAR + x)) = y
 
 #define MCF_FMPLL_SYNCR				0x120000
 #define MCF_FMPLL_SYNSR				0x120004
@@ -115,7 +115,7 @@
 #define MCF_GPIO_PAR_TIMER			0x10004C
 
 #define MCF_DSCR_EIM				0x100050
-#define MCF_DCSR_FEC12C 			0x100052
+#define MCF_DCSR_FEC12C				0x100052
 #define MCF_DCSR_UART				0x100053
 #define MCF_DCSR_QSPI				0x100054
 #define MCF_DCSR_TIMER				0x100055

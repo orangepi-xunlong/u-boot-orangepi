@@ -5,9 +5,17 @@
 /include/ "skeleton.dtsi"
 /include/ "keyboard.dtsi"
 /include/ "serial.dtsi"
+/include/ "reset.dtsi"
 /include/ "rtc.dtsi"
-/include/ "tsc_timer.dtsi"
-/include/ "coreboot_fb.dtsi"
+
+#include "tsc_timer.dtsi"
+#include "smbios.dtsi"
+
+#if defined(CONFIG_CHROMEOS_VBOOT) && defined(CONFIG_ROM_SIZE)
+#include "chromeos-x86.dtsi"
+#include "flashmap-x86-ro.dtsi"
+#include "flashmap-8mb-rw.dtsi"
+#endif
 
 / {
 	model = "Google Samus";
@@ -17,6 +25,7 @@
 		spi0 = &spi;
 		usb0 = &usb_0;
 		usb1 = &usb_1;
+		cros-ec0 = &cros_ec;
 	};
 
 	config {
@@ -68,11 +77,12 @@
 
 	pch_pinctrl {
 		compatible = "intel,x86-broadwell-pinctrl";
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		reg = <0 0>;
 
 		/* Put this first: it is the default */
 		gpio_unused: gpio-unused {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			owner = <OWNER_GPIO>;
@@ -80,6 +90,7 @@
 		};
 
 		gpio_acpi_sci: acpi-sci {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			invert;
@@ -87,6 +98,7 @@
 		};
 
 		gpio_acpi_smi: acpi-smi {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			invert;
@@ -94,12 +106,14 @@
 		};
 
 		gpio_input: gpio-input {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			owner = <OWNER_GPIO>;
 		};
 
 		gpio_input_invert: gpio-input-invert {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			owner = <OWNER_GPIO>;
@@ -107,9 +121,11 @@
 		};
 
 		gpio_native: gpio-native {
+			bootph-all;
 		};
 
 		gpio_out_high: gpio-out-high {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_OUTPUT>;
 			output-value = <1>;
@@ -118,6 +134,7 @@
 		};
 
 		gpio_out_low: gpio-out-low {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_OUTPUT>;
 			output-value = <0>;
@@ -126,6 +143,7 @@
 		};
 
 		gpio_pirq: gpio-pirq {
+			bootph-all;
 			mode-gpio;
 			direction = <PIN_INPUT>;
 			owner = <OWNER_GPIO>;
@@ -133,6 +151,7 @@
 		};
 
 		soc_gpio@0 {
+			bootph-all;
 			config =
 				<0 &gpio_unused 0>,	/* unused */
 				<1 &gpio_unused 0>,	/* unused */
@@ -236,7 +255,7 @@
 		compatible = "pci-x86";
 		#address-cells = <3>;
 		#size-cells = <2>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		ranges = <0x02000000 0x0 0xe0000000 0xe0000000 0 0x10000000
 			0x42000000 0x0 0xd0000000 0xd0000000 0 0x10000000
 			0x01000000 0x0 0x1000 0x1000 0 0xefff>;
@@ -246,12 +265,15 @@
 			compatible = "intel,broadwell-northbridge";
 			board-id-gpios = <&gpio_c 5 0>, <&gpio_c 4 0>,
 					<&gpio_c 3 0>, <&gpio_c 1 0>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
+			fspm,training-delay = <7>;
 			spd {
 				#address-cells = <1>;
 				#size-cells = <0>;
+				bootph-all;
 				samsung_4 {
 					reg = <6>;
+					bootph-all;
 					data = [91 20 f1 03 04 11 05 0b
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -291,6 +313,7 @@
 					 * columns 10, density 4096 mb, x32
 					 */
 					reg = <8>;
+					bootph-all;
 					data = [91 20 f1 03 04 11 05 0b
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -326,6 +349,7 @@
 					};
 				samsung_8 {
 					reg = <10>;
+					bootph-all;
 					data = [91 20 f1 03 04 12 05 0a
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -365,6 +389,7 @@
 					 * columns 11, density 4096 mb, x16
 					 */
 					reg = <12>;
+					bootph-all;
 					data = [91 20 f1 03 04 12 05 0a
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -404,6 +429,7 @@
 					 * columns 11, density 8192 mb, x16
 					 */
 					reg = <13>;
+					bootph-all;
 					data = [91 20 f1 03 05 1a 05 0a
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -443,6 +469,7 @@
 					 * columns 11, density 8192 mb, x16
 					 */
 					reg = <15>;
+					bootph-all;
 					data = [91 20 f1 03 05 1a 05 0a
 						03 11 01 08 0a 00 50 01
 						78 78 90 50 90 11 50 e0
@@ -494,15 +521,44 @@
 			intel,pre-graphics-delay = <200>;
 		};
 
-		me@16,0 {
-			reg = <0x0000b000 0 0 0 0>;
-			compatible = "intel,me";
-			u-boot,dm-pre-reloc;
+		adsp@13,0 {
+			reg = <0x00009800 0 0 0 0>;
+			compatible = "intel,wildcatpoint-adsp";
+			intel,adsp-d3-pg-enable = <0>;
+			intel,adsp-sram-pg-enable = <0>;
+			intel,sio-acpi-mode;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			i2s: shim {
+				compatible = "intel,broadwell-i2s";
+				#sound-dai-cells = <1>;
+				reg = <0xfb000 0xfc000 0xfd000>;
+			};
 		};
 
 		usb_1: usb@14,0 {
 			reg = <0x0000a000 0 0 0 0>;
 			compatible = "xhci-pci";
+		};
+
+		i2c0: i2c@15,1 {
+			reg = <0x0000a900 0 0 0 0>;
+			compatible = "snps,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			rt5677: rt5677@2c {
+				compatible = "realtek,rt5677";
+				#sound-dai-cells = <1>;
+				reg = <0x2c>;
+			};
+		};
+
+		me@16,0 {
+			reg = <0x0000b000 0 0 0 0>;
+			compatible = "intel,me";
+			bootph-all;
 		};
 
 		usb_0: usb@1d,0 {
@@ -511,10 +567,10 @@
 			compatible = "ehci-pci";
 		};
 
-		pch@1f,0 {
+		pch: pch@1f,0 {
 			reg = <0x0000f800 0 0 0 0>;
 			compatible = "intel,broadwell-pch";
-			u-boot,dm-pre-reloc;
+			bootph-all;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			intel,pirq-routing = <0x8b 0x8a 0x8b 0x8b
@@ -530,17 +586,21 @@
 			power-enable-gpio = <&gpio_a 23 0>;
 
 			spi: spi {
+				bootph-all;
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "intel,ich9-spi";
-				spi-flash@0 {
+				fwstore_spi: spi-flash@0 {
+					bootph-all;
 					#size-cells = <1>;
 					#address-cells = <1>;
 					reg = <0>;
+					m25p,fast-read;
 					compatible = "winbond,w25q64",
-							"spi-flash";
+							"jedec,spi-nor";
 					memory-map = <0xff800000 0x00800000>;
 					rw-mrc-cache {
+						bootph-all;
 						label = "rw-mrc-cache";
 						reg = <0x003e0000 0x00010000>;
 					};
@@ -549,7 +609,7 @@
 
 			gpio_a: gpioa {
 				compatible = "intel,broadwell-gpio";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				#gpio-cells = <2>;
 				gpio-controller;
 				reg = <0 0>;
@@ -558,7 +618,7 @@
 
 			gpio_b: gpiob {
 				compatible = "intel,broadwell-gpio";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				#gpio-cells = <2>;
 				gpio-controller;
 				reg = <1 0>;
@@ -567,7 +627,7 @@
 
 			gpio_c: gpioc {
 				compatible = "intel,broadwell-gpio";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				#gpio-cells = <2>;
 				gpio-controller;
 				reg = <2 0>;
@@ -578,9 +638,10 @@
 				compatible = "intel,broadwell-lpc";
 				#address-cells = <1>;
 				#size-cells = <0>;
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				intel,gen-dec = <0x800 0xfc 0x900 0xfc>;
-				cros-ec@200 {
+				cros_ec: cros-ec {
+					bootph-all;
 					compatible = "google,cros-ec-lpc";
 					reg = <0x204 1 0x200 1 0x880 0x80>;
 
@@ -601,7 +662,7 @@
 		sata@1f,2 {
 			compatible = "intel,wildcatpoint-ahci";
 			reg = <0x0000fa00 0 0 0 0>;
-			u-boot,dm-pre-reloc;
+			bootph-some-ram;
 			intel,sata-mode = "ahci";
 			intel,sata-port-map = <1>;
 			intel,sata-port0-gen3-tx = <0x72>;
@@ -611,19 +672,48 @@
 		smbus: smbus@1f,3 {
 			compatible = "intel,ich-i2c";
 			reg = <0x0000fb00 0 0 0 0>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
 
 	tpm {
+		bootph-all;
 		reg = <0xfed40000 0x5000>;
 		compatible = "infineon,slb9635lpc";
+		secdata {
+			bootph-all;
+			compatible = "google,tpm-secdata";
+		};
 	};
 
 	microcode {
+		bootph-all;
 		update@0 {
+			bootph-all;
 #include "microcode/mc0306d4_00000018.dtsi"
 		};
 	};
 
+	sound {
+		compatible = "google,samus-sound";
+		codec-enable-gpio = <&gpio_b 11 GPIO_ACTIVE_HIGH>;
+		cpu {
+			sound-dai = <&i2s 0>;
+		};
+
+		codec {
+			sound-dai = <&rt5677 0>;
+		};
+	};
+
+};
+
+&rtc {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	nvdata {
+		bootph-all;
+		compatible = "google,cmos-nvdata";
+		reg = <0x26>;
+	};
 };

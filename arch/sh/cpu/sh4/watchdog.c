@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 
 #include <common.h>
+#include <cpu_func.h>
 #include <asm/processor.h>
 #include <asm/system.h>
 #include <asm/io.h>
@@ -50,7 +51,7 @@ int watchdog_disable(void)
 }
 #endif
 
-void reset_cpu(unsigned long ignored)
+void reset_cpu(void)
 {
 	/* Address error with SR.BL=1 first. */
 	trigger_address_error();

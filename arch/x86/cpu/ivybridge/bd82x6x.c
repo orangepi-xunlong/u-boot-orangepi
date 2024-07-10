@@ -6,9 +6,11 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <malloc.h>
 #include <pch.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/intel_regs.h>
 #include <asm/io.h>
 #include <asm/lapic.h>
@@ -17,13 +19,18 @@
 #include <asm/arch/model_206ax.h>
 #include <asm/arch/pch.h>
 #include <asm/arch/sandybridge.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define GPIO_BASE	0x48
-#define BIOS_CTRL	0xdc
+#define GPIO_BASE		0x48
+#define BIOS_CTRL		0xdc
 
-#ifndef CONFIG_HAVE_FSP
+#define RCBA_AUDIO_CONFIG	0x2030
+#define RCBA_AUDIO_CONFIG_HDA	BIT(31)
+#define RCBA_AUDIO_CONFIG_MASK	0xfe
+
 static int pch_revision_id = -1;
 static int pch_type = -1;
 
@@ -31,7 +38,7 @@ static int pch_type = -1;
  * pch_silicon_revision() - Read silicon revision ID from the PCH
  *
  * @dev:	PCH device
- * @return silicon revision ID
+ * Return: silicon revision ID
  */
 static int pch_silicon_revision(struct udevice *dev)
 {
@@ -63,7 +70,7 @@ int pch_silicon_type(struct udevice *dev)
  * @dev:	PCH device
  * @type:	PCH type
  * @rev:	Minimum required resion
- * @return 0 if not supported, 1 if supported
+ * Return: 0 if not supported, 1 if supported
  */
 static int pch_silicon_supported(struct udevice *dev, int type, int rev)
 {
@@ -154,15 +161,19 @@ void pch_iobp_update(struct udevice *dev, u32 address, u32 andvalue,
 
 static int bd82x6x_probe(struct udevice *dev)
 {
-	if (!(gd->flags & GD_FLG_RELOC))
-		return 0;
+	/* make sure the LPC is inited since it provides the gpio base */
+	uclass_first_device(UCLASS_LPC, &dev);
 
-	/* Cause the SATA device to do its init */
-	uclass_first_device(UCLASS_AHCI, &dev);
+	if (!IS_ENABLED(CONFIG_HAVE_FSP)) {
+		if (!(gd->flags & GD_FLG_RELOC))
+			return 0;
+
+		/* Cause the SATA device to do its init */
+		uclass_first_device(UCLASS_AHCI, &dev);
+	}
 
 	return 0;
 }
-#endif /* CONFIG_HAVE_FSP */
 
 static int bd82x6x_pch_get_spi_base(struct udevice *dev, ulong *sbasep)
 {
@@ -212,10 +223,44 @@ static int bd82x6x_get_gpio_base(struct udevice *dev, u32 *gbasep)
 	return 0;
 }
 
+static int bd82x6x_ioctl(struct udevice *dev, enum pch_req_t req, void *data,
+			 int size)
+{
+	u32 rcba, val;
+
+	switch (req) {
+	case PCH_REQ_HDA_CONFIG:
+		dm_pci_read_config32(dev, PCH_RCBA, &rcba);
+		val = readl(rcba + RCBA_AUDIO_CONFIG);
+		if (!(val & RCBA_AUDIO_CONFIG_HDA))
+			return -ENOENT;
+
+		return val & RCBA_AUDIO_CONFIG_MASK;
+	case PCH_REQ_PMBASE_INFO: {
+		struct pch_pmbase_info *pm = data;
+		int ret;
+
+		/* Find the base address of the powermanagement registers */
+		ret = dm_pci_read_config16(dev, 0x40, &pm->base);
+		if (ret)
+			return ret;
+		pm->base &= 0xfffe;
+		pm->gpio0_en_ofs = GPE0_EN;
+		pm->pm1_sts_ofs = PM1_STS;
+		pm->pm1_cnt_ofs = PM1_CNT;
+
+		return 0;
+	}
+	default:
+		return -ENOSYS;
+	}
+}
+
 static const struct pch_ops bd82x6x_pch_ops = {
 	.get_spi_base	= bd82x6x_pch_get_spi_base,
 	.set_spi_protect = bd82x6x_set_spi_protect,
 	.get_gpio_base	= bd82x6x_get_gpio_base,
+	.ioctl		= bd82x6x_ioctl,
 };
 
 static const struct udevice_id bd82x6x_ids[] = {
@@ -227,8 +272,6 @@ U_BOOT_DRIVER(bd82x6x_drv) = {
 	.name		= "bd82x6x",
 	.id		= UCLASS_PCH,
 	.of_match	= bd82x6x_ids,
-#ifndef CONFIG_HAVE_FSP
 	.probe		= bd82x6x_probe,
-#endif
 	.ops		= &bd82x6x_pch_ops,
 };

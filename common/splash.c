@@ -21,8 +21,10 @@
  */
 
 #include <common.h>
+#include <display_options.h>
+#include <env.h>
 #include <splash.h>
-#include <lcd.h>
+#include <video.h>
 
 static struct splash_location default_splash_locations[] = {
 	{
@@ -35,6 +37,12 @@ static struct splash_location default_splash_locations[] = {
 		.name = "mmc_fs",
 		.storage = SPLASH_STORAGE_MMC,
 		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
+	},
+	{
+		.name = "mmc_raw",
+		.storage = SPLASH_STORAGE_MMC,
+		.flags = SPLASH_STORAGE_RAW,
 		.devpart = "0:1",
 	},
 	{
@@ -51,18 +59,48 @@ static struct splash_location default_splash_locations[] = {
 	},
 };
 
+#ifdef CONFIG_VIDEO_LOGO
+
+#include <bmp_logo_data.h>
+
+static int splash_video_logo_load(void)
+{
+	char *splashimage;
+	ulong bmp_load_addr;
+
+	splashimage = env_get("splashimage");
+	if (!splashimage)
+		return -ENOENT;
+
+	bmp_load_addr = hextoul(splashimage, 0);
+	if (!bmp_load_addr) {
+		printf("Error: bad 'splashimage' address\n");
+		return -EFAULT;
+	}
+
+	memcpy((void *)bmp_load_addr, bmp_logo_bitmap,
+	       ARRAY_SIZE(bmp_logo_bitmap));
+
+	return 0;
+}
+#else
+static inline int splash_video_logo_load(void) { return -ENOSYS; }
+#endif
+
 __weak int splash_screen_prepare(void)
 {
-	return splash_source_load(default_splash_locations,
-				  ARRAY_SIZE(default_splash_locations));
+	if (CONFIG_IS_ENABLED(SPLASH_SOURCE))
+		return splash_source_load(default_splash_locations,
+					  ARRAY_SIZE(default_splash_locations));
+
+	return splash_video_logo_load();
 }
 
-#ifdef CONFIG_SPLASH_SCREEN_ALIGN
 void splash_get_pos(int *x, int *y)
 {
 	char *s = env_get("splashpos");
 
-	if (!s)
+	if (!CONFIG_IS_ENABLED(SPLASH_SCREEN_ALIGN) || !s)
 		return;
 
 	if (s[0] == 'm')
@@ -78,19 +116,77 @@ void splash_get_pos(int *x, int *y)
 			*y = simple_strtol(s + 1, NULL, 0);
 	}
 }
-#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
-#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_LCD)
-int lcd_splash(ulong addr)
+#if CONFIG_IS_ENABLED(VIDEO) && !CONFIG_IS_ENABLED(HIDE_LOGO_VERSION)
+
+#ifdef CONFIG_VIDEO_LOGO
+#include <bmp_logo.h>
+#endif
+#include <dm.h>
+#include <video_console.h>
+#include <video_font.h>
+#include <video_font_data.h>
+
+void splash_display_banner(void)
 {
-	int x = 0, y = 0, ret;
+	struct video_fontdata __maybe_unused *fontdata = fonts;
+	struct udevice *dev;
+	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
+	int col, row, ret;
 
+	ret = uclass_get_device(UCLASS_VIDEO_CONSOLE, 0, &dev);
+	if (ret)
+		return;
+
+#if IS_ENABLED(CONFIG_VIDEO_LOGO)
+	col = BMP_LOGO_WIDTH / fontdata->width + 1;
+	row = BMP_LOGO_HEIGHT / fontdata->height + 1;
+#else
+	col = 0;
+	row = 0;
+#endif
+
+	display_options_get_banner(false, buf, sizeof(buf));
+	vidconsole_position_cursor(dev, col, 1);
+	vidconsole_put_string(dev, buf);
+	vidconsole_position_cursor(dev, 0, row);
+}
+#endif /* CONFIG_VIDEO && !CONFIG_HIDE_LOGO_VERSION */
+
+/*
+ * Common function to show a splash image if env("splashimage") is set.
+ * For additional details please refer to doc/README.splashprepare.
+ */
+int splash_display(void)
+{
+	ulong addr;
+	char *s;
+	int x = 0, y = 0, ret;
+	if (!CONFIG_IS_ENABLED(SPLASH_SCREEN))
+		return -ENOSYS;
+	s = env_get("splashimage");
+	if (!s)
+		return -EINVAL;
+
+	addr = hextoul(s, NULL);
 	ret = splash_screen_prepare();
 	if (ret)
 		return ret;
 
 	splash_get_pos(&x, &y);
 
-	return bmp_display(addr, x, y);
-}
+	if (CONFIG_IS_ENABLED(BMP))
+		ret = bmp_display(addr, x, y);
+	else
+		return -ENOSYS;
+
+	/* Skip banner output on video console if the logo is not at 0,0 */
+	if (x || y)
+		goto end;
+
+#if CONFIG_IS_ENABLED(VIDEO) && !CONFIG_IS_ENABLED(HIDE_LOGO_VERSION)
+	splash_display_banner();
 #endif
+end:
+	return ret;
+}

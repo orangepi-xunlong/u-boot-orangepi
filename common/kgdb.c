@@ -88,6 +88,7 @@
  ****************************************************************************/
 
 #include <common.h>
+#include <asm/ptrace.h>
 
 #include <kgdb.h>
 #include <command.h>
@@ -526,15 +527,18 @@ handle_exception (struct pt_regs *regs)
  * kgdb_init must be called *after* the
  * monitor is relocated into ram
  */
-void
-kgdb_init(void)
+int kgdb_init(void)
 {
+	puts("KGDB:  ");
+
 	kgdb_serial_init();
 	debugger_exception_handler = handle_exception;
 	initialized = 1;
 
 	putDebugStr("kgdb ready\n");
 	puts("ready\n");
+
+	return 0;
 }
 
 void
@@ -574,7 +578,7 @@ breakpoint(void)
 }
 
 int
-do_kgdb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_kgdb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
     printf("Entering KGDB mode via exception handler...\n\n");
     kgdb_breakpoint(argc - 1, argv + 1);

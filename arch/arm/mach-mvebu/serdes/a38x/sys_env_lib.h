@@ -7,7 +7,6 @@
 #define _SYS_ENV_LIB_H
 
 #include "../../../drivers/ddr/marvell/a38x/ddr3_init.h"
-#include "../../../drivers/ddr/marvell/a38x/ddr3_hws_hw_training.h"
 
 /* Serdes definitions */
 #define COMMON_PHY_BASE_ADDR		0x18300
@@ -34,6 +33,8 @@
 #define DEV_ID_REG_DEVICE_ID_OFFS	16
 #define DEV_ID_REG_DEVICE_ID_MASK	0xffff0000
 
+#define SAR_FREQ_OFFSET			10
+#define SAR_FREQ_MASK			0x1f
 #define SAR_DEV_ID_OFFS			27
 #define SAR_DEV_ID_MASK			0x7
 
@@ -49,6 +50,7 @@
 #define MISC_REG			0xa013c
 #define GLUE_REG			0xa0140
 #define GENERATION_DIVIDER_FORCE_REG	0xa0144
+#define PLLINTP_REG1			0xa0150
 #define PCIE_REG0			0xa0120
 #define LANE_ALIGN_REG0			0xa0124
 #define SQUELCH_FFE_SETTING_REG		0xa0018
@@ -72,10 +74,12 @@
 #define RX_REG3				0xa0188
 #define PCIE_REG1			0xa0288
 #define PCIE_REG3			0xa0290
+#define LANE_CFG0_REG			0xa0600
 #define LANE_CFG1_REG			0xa0604
 #define LANE_CFG4_REG			0xa0620
 #define LANE_CFG5_REG			0xa0624
 #define GLOBAL_CLK_CTRL			0xa0704
+#define GLOBAL_TEST_CTRL		0xa0708
 #define GLOBAL_MISC_CTRL		0xa0718
 #define GLOBAL_CLK_SRC_HI		0xa0710
 
@@ -116,12 +120,8 @@
 
 /* TWSI addresses */
 /* starting from A38x A0, i2c address of EEPROM is 0x57 */
-#ifdef CONFIG_ARMADA_39X
-#define EEPROM_I2C_ADDR			0x50
-#else
 #define EEPROM_I2C_ADDR			(sys_env_device_rev_get() == \
 					 MV_88F68XX_Z1_ID ? 0x50 : 0x57)
-#endif
 #define RD_GET_MODE_ADDR		0x4c
 #define DB_GET_MODE_SLM1363_ADDR	0x25
 #define DB_GET_MODE_SLM1364_ADDR	0x24
@@ -148,6 +148,19 @@
 #define MPP_UART1_SET_MASK		(~(0xff000))
 #define MPP_UART1_SET_DATA		(0x66000)
 
+#define DFX_PIPE_SELECT_PIPE0_ACTIVE_OFFS	0
+/* DFX_PIPE_SELECT_XBAR_CLIENT_SEL_OFFS: Since address completion in 14bit
+ * address mode, and given that [14:8] => [19:13], the 2 lower bits [9:8] =>
+ * [14:13] are dismissed. hence field offset is also shifted to 10
+ */
+#define DFX_PIPE_SELECT_XBAR_CLIENT_SEL_OFFS	10
+
+#define RTC_MEMORY_CTRL_REG_BASE	0xE6000
+#define RTC_MEMORY_WRAPPER_COUNT	8
+#define RTC_MEMORY_WRAPPER_REG(i)	(RTC_MEMORY_CTRL_REG_BASE + ((i) * 0x40))
+#define RTC_MEMORY_CTRL_PDLVMC_FIELD_OFFS	6
+#define RTC_MEMORY_WRAPPER_CTRL_VAL	(0x1 << RTC_MEMORY_CTRL_PDLVMC_FIELD_OFFS)
+
 #define AVS_DEBUG_CNTR_REG		0xe4124
 #define AVS_DEBUG_CNTR_DEFAULT_VALUE	0x08008073
 
@@ -155,10 +168,12 @@
 #define AVS_LOW_VDD_LIMIT_OFFS		4
 #define AVS_LOW_VDD_LIMIT_MASK		(0xff << AVS_LOW_VDD_LIMIT_OFFS)
 #define AVS_LOW_VDD_LIMIT_VAL		(0x27 << AVS_LOW_VDD_LIMIT_OFFS)
+#define AVS_LOW_VDD_SLOW_VAL		(0x23 << AVS_LOW_VDD_LIMIT_OFFS)
 
 #define AVS_HIGH_VDD_LIMIT_OFFS		12
 #define AVS_HIGH_VDD_LIMIT_MASK		(0xff << AVS_HIGH_VDD_LIMIT_OFFS)
 #define AVS_HIGH_VDD_LIMIT_VAL		(0x27 << AVS_HIGH_VDD_LIMIT_OFFS)
+#define AVS_HIGH_VDD_SLOW_VAL		(0x23 << AVS_HIGH_VDD_LIMIT_OFFS)
 
 /* Board ID numbers */
 #define MARVELL_BOARD_ID_MASK		0x10
@@ -183,23 +198,6 @@
 #define A38X_MV_MARVELL_BOARD_NUM	(A38X_MV_MAX_MARVELL_BOARD_ID - \
 					 A38X_MARVELL_BOARD_ID_BASE)
 
-/* Customer boards for A39x */
-#define A39X_CUSTOMER_BOARD_ID_BASE	0x20
-#define A39X_CUSTOMER_BOARD_ID0		(A39X_CUSTOMER_BOARD_ID_BASE + 0)
-#define A39X_CUSTOMER_BOARD_ID1		(A39X_CUSTOMER_BOARD_ID_BASE + 1)
-#define A39X_MV_MAX_CUSTOMER_BOARD_ID	(A39X_CUSTOMER_BOARD_ID_BASE + 2)
-#define A39X_MV_CUSTOMER_BOARD_NUM	(A39X_MV_MAX_CUSTOMER_BOARD_ID - \
-					 A39X_CUSTOMER_BOARD_ID_BASE)
-
-/* Marvell boards for A39x */
-#define A39X_MARVELL_BOARD_ID_BASE	0x30
-#define A39X_DB_69XX_ID			(A39X_MARVELL_BOARD_ID_BASE + 0)
-#define A39X_RD_69XX_ID			(A39X_MARVELL_BOARD_ID_BASE + 1)
-#define A39X_MV_MAX_MARVELL_BOARD_ID	(A39X_MARVELL_BOARD_ID_BASE + 2)
-#define A39X_MV_MARVELL_BOARD_NUM	(A39X_MV_MAX_MARVELL_BOARD_ID - \
-					 A39X_MARVELL_BOARD_ID_BASE)
-
-#ifdef CONFIG_ARMADA_38X
 #define CUTOMER_BOARD_ID_BASE		A38X_CUSTOMER_BOARD_ID_BASE
 #define CUSTOMER_BOARD_ID0		A38X_CUSTOMER_BOARD_ID0
 #define CUSTOMER_BOARD_ID1		A38X_CUSTOMER_BOARD_ID1
@@ -210,18 +208,6 @@
 #define MV_MARVELL_BOARD_NUM		A38X_MV_MARVELL_BOARD_NUM
 #define MV_DEFAULT_BOARD_ID		DB_68XX_ID
 #define MV_DEFAULT_DEVICE_ID		MV_6811
-#elif defined(CONFIG_ARMADA_39X)
-#define CUTOMER_BOARD_ID_BASE		A39X_CUSTOMER_BOARD_ID_BASE
-#define CUSTOMER_BOARD_ID0		A39X_CUSTOMER_BOARD_ID0
-#define CUSTOMER_BOARD_ID1		A39X_CUSTOMER_BOARD_ID1
-#define MV_MAX_CUSTOMER_BOARD_ID	A39X_MV_MAX_CUSTOMER_BOARD_ID
-#define MV_CUSTOMER_BOARD_NUM		A39X_MV_CUSTOMER_BOARD_NUM
-#define MARVELL_BOARD_ID_BASE		A39X_MARVELL_BOARD_ID_BASE
-#define MV_MAX_MARVELL_BOARD_ID		A39X_MV_MAX_MARVELL_BOARD_ID
-#define MV_MARVELL_BOARD_NUM		A39X_MV_MARVELL_BOARD_NUM
-#define MV_DEFAULT_BOARD_ID		A39X_DB_69XX_ID
-#define MV_DEFAULT_DEVICE_ID		MV_6920
-#endif
 
 #define MV_INVALID_BOARD_ID		0xffffffff
 
@@ -233,8 +219,7 @@
 /* A38x revisions */
 #define MV_88F68XX_Z1_ID		0x0
 #define MV_88F68XX_A0_ID		0x4
-/* A39x revisions */
-#define MV_88F69XX_Z1_ID		0x2
+#define MV_88F68XX_B0_ID		0xa
 
 #define MPP_CONTROL_REG(id)		(0x18000 + (id * 4))
 #define GPP_DATA_OUT_REG(grp)		(MV_GPP_REGS_BASE(grp) + 0x00)
@@ -254,19 +239,12 @@
 #define MV_6811_DEV_ID		0x6811
 #define MV_6820_DEV_ID		0x6820
 #define MV_6828_DEV_ID		0x6828
-/* Armada 39x Family */
-#define MV_6920_DEV_ID		0x6920
-#define MV_6928_DEV_ID		0x6928
 
 enum {
 	MV_6810,
 	MV_6820,
 	MV_6811,
 	MV_6828,
-	MV_NONE,
-	MV_6920,
-	MV_6928,
-	MV_MAX_DEV_ID,
 };
 
 #define MV_6820_INDEX			0
@@ -274,21 +252,12 @@ enum {
 #define MV_6811_INDEX			2
 #define MV_6828_INDEX			3
 
-#define MV_6920_INDEX			0
-#define MV_6928_INDEX			1
-
-#ifdef CONFIG_ARMADA_38X
 #define MAX_DEV_ID_NUM			4
-#else
-#define MAX_DEV_ID_NUM			2
-#endif
 
 #define MV_6820_INDEX			0
 #define MV_6810_INDEX			1
 #define MV_6811_INDEX			2
 #define MV_6828_INDEX			3
-#define MV_6920_INDEX			0
-#define MV_6928_INDEX			1
 
 enum unit_id {
 	PEX_UNIT_ID,
@@ -322,21 +291,13 @@ enum suspend_wakeup_status {
  * If suspend to RAM is not supported set '-1'
  */
 #ifdef CONFIG_CUSTOMER_BOARD_SUPPORT
-#ifdef CONFIG_ARMADA_38X
 #define MV_BOARD_WAKEUP_GPIO_INFO {		\
 	{A38X_CUSTOMER_BOARD_ID0,	-1 },	\
 	{A38X_CUSTOMER_BOARD_ID0,	-1 },	\
 };
-#else
-#define MV_BOARD_WAKEUP_GPIO_INFO {		\
-	{A39X_CUSTOMER_BOARD_ID0,	-1 },	\
-	{A39X_CUSTOMER_BOARD_ID0,	-1 },	\
-};
-#endif /* CONFIG_ARMADA_38X */
 
 #else
 
-#ifdef CONFIG_ARMADA_38X
 #define MV_BOARD_WAKEUP_GPIO_INFO {	\
 	{RD_NAS_68XX_ID, -2 },		\
 	{DB_68XX_ID,	 -1 },		\
@@ -346,12 +307,6 @@ enum suspend_wakeup_status {
 	{DB_BP_6821_ID,	 -2 },		\
 	{DB_AMC_6820_ID, -2 },		\
 };
-#else
-#define MV_BOARD_WAKEUP_GPIO_INFO {	\
-	{A39X_RD_69XX_ID, -1 },		\
-	{A39X_DB_69XX_ID, -1 },		\
-};
-#endif /* CONFIG_ARMADA_38X */
 #endif /* CONFIG_CUSTOMER_BOARD_SUPPORT */
 
 u32 mv_board_tclk_get(void);

@@ -8,20 +8,26 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <fs.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/iomux-mx53.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <i2c.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <asm/gpio.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_REVISION_TAG
 u32 get_board_rev(void)
 {
 	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
@@ -33,6 +39,7 @@ u32 get_board_rev(void)
 
 	return (get_cpu_rev() & ~(0xF << 8)) | (rev & 0xF) << 8;
 }
+#endif
 
 struct fsl_esdhc_cfg esdhc_cfg[1] = {
 	{MMC_SDHC1_BASE_ADDR}
@@ -44,7 +51,7 @@ int board_mmc_getcd(struct mmc *mmc)
 	return 1;
 }
 
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	int ret = 0;
 
@@ -405,7 +412,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE, 1 << 30);
+	gd->ram_size = get_ram_size((void *)CFG_SYS_SDRAM_BASE, 1 << 30);
 	return 0;
 }
 

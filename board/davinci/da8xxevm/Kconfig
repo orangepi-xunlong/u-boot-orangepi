@@ -22,18 +22,7 @@ config MAC_ADDR_IN_SPIFLASH
 	  their MAC address in SPI Flash from the factory
 	  Enable this option to read the MAC from SPI Flash
 
-config MAC_ADDR_IN_EEPROM
-	bool "MAC address in EEPROM"
-	help
-	  The DA850 EVM comes with SoM are programmed with
-	  their MAC address in SPI Flash from the factory,
-	  but the kit has an optional expansion board with
-	  EEPROM available.  Enable this option to read the
-	  MAC from the EEPROM
-
 endif
-
-source "board/ti/common/Kconfig"
 
 endif
 
@@ -47,6 +36,9 @@ config SYS_VENDOR
 
 config SYS_CONFIG_NAME
 	default "omapl138_lcdk"
+
+config NAND_6BYTES_OOB_FREE_10BYTES_ECC
+	def_bool y
 
 endif
 

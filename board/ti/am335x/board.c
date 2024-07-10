@@ -4,12 +4,18 @@
  *
  * Board functions for TI AM335X based boards
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #include <common.h>
 #include <dm.h>
+#include <env.h>
 #include <errno.h>
+#include <hang.h>
+#include <image.h>
+#include <init.h>
+#include <malloc.h>
+#include <net.h>
 #include <spl.h>
 #include <serial.h>
 #include <asm/arch/cpu.h>
@@ -22,21 +28,24 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mem.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/emif.h>
 #include <asm/gpio.h>
 #include <asm/omap_common.h>
-#include <asm/omap_sec_common.h>
 #include <asm/omap_mmc.h>
 #include <i2c.h>
 #include <miiphy.h>
 #include <cpsw.h>
+#include <linux/bitops.h>
+#include <linux/compiler.h>
+#include <linux/delay.h>
 #include <power/tps65217.h>
 #include <power/tps65910.h>
-#include <environment.h>
+#include <env_internal.h>
 #include <watchdog.h>
-#include <environment.h>
 #include "../common/board_detect.h"
+#include "../common/cape_detect.h"
 #include "board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -70,8 +79,7 @@ static struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 void do_board_detect(void)
 {
 	enable_i2c0_pin_mux();
-	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
-
+	enable_i2c2_pin_mux();
 	if (ti_i2c_eeprom_am_get(CONFIG_EEPROM_BUS_ADDRESS,
 				 CONFIG_EEPROM_CHIP_ADDRESS))
 		printf("ti_i2c_eeprom_init failed\n");
@@ -88,7 +96,7 @@ struct serial_device *default_serial_console(void)
 }
 #endif
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
 static const struct ddr_data ddr2_data = {
 	.datardsratio0 = MT47H128M16RT25E_RD_DQS,
 	.datafwsratio0 = MT47H128M16RT25E_PHY_FIFO_WE,
@@ -242,7 +250,7 @@ static struct emif_regs ddr3_icev2_emif_reg_data = {
 #ifdef CONFIG_SPL_OS_BOOT
 int spl_start_uboot(void)
 {
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
+#ifdef CONFIG_SPL_SERIAL
 	/* break into full u-boot on 'c' */
 	if (serial_tstc() && serial_getc() == 'c')
 		return 1;
@@ -328,8 +336,9 @@ static void scale_vcores_bone(int freq)
 	if (board_is_bone() && !strncmp(board_ti_get_rev(), "00A1", 4))
 		return;
 
-	if (i2c_probe(TPS65217_CHIP_PM))
+	if (power_tps65217_init(0))
 		return;
+
 
 	/*
 	 * On Beaglebone White we need to ensure we have AC power
@@ -421,9 +430,8 @@ void scale_vcores_generic(int freq)
 	 * 1.10V.  For MPU voltage we need to switch based on
 	 * the frequency we are running at.
 	 */
-	if (i2c_probe(TPS65910_CTRL_I2C_ADDR))
+	if (power_tps65910_init(0))
 		return;
-
 	/*
 	 * Depending on MPU clock and PG we will need a different
 	 * VDD to drive at that speed.
@@ -451,8 +459,6 @@ void gpi2c_init(void)
 
 	if (first_time) {
 		enable_i2c0_pin_mux();
-		i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED,
-			 CONFIG_SYS_OMAP24_I2C_SLAVE);
 		first_time = false;
 	}
 }
@@ -565,7 +571,7 @@ void sdram_init(void)
 #endif
 
 #if defined(CONFIG_CLOCK_SYNTHESIZER) && (!defined(CONFIG_SPL_BUILD) || \
-	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD)))
+	(defined(CONFIG_SPL_ETH) && defined(CONFIG_SPL_BUILD)))
 static void request_and_set_gpio(int gpio, char *name, int val)
 {
 	int ret;
@@ -608,6 +614,86 @@ static struct clk_synth cdce913_data = {
 };
 #endif
 
+#if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_CONTROL) && \
+	defined(CONFIG_DM_ETH) && defined(CONFIG_DRIVER_TI_CPSW)
+
+#define MAX_CPSW_SLAVES	2
+
+/* At the moment, we do not want to stop booting for any failures here */
+int ft_board_setup(void *fdt, struct bd_info *bd)
+{
+	const char *slave_path, *enet_name;
+	int enetnode, slavenode, phynode;
+	struct udevice *ethdev;
+	char alias[16];
+	u32 phy_id[2];
+	int phy_addr;
+	int i, ret;
+
+	/* phy address fixup needed only on beagle bone family */
+	if (!board_is_beaglebonex())
+		goto done;
+
+	for (i = 0; i < MAX_CPSW_SLAVES; i++) {
+		sprintf(alias, "ethernet%d", i);
+
+		slave_path = fdt_get_alias(fdt, alias);
+		if (!slave_path)
+			continue;
+
+		slavenode = fdt_path_offset(fdt, slave_path);
+		if (slavenode < 0)
+			continue;
+
+		enetnode = fdt_parent_offset(fdt, slavenode);
+		enet_name = fdt_get_name(fdt, enetnode, NULL);
+
+		ethdev = eth_get_dev_by_name(enet_name);
+		if (!ethdev)
+			continue;
+
+		phy_addr = cpsw_get_slave_phy_addr(ethdev, i);
+
+		/* check for phy_id as well as phy-handle properties */
+		ret = fdtdec_get_int_array_count(fdt, slavenode, "phy_id",
+						 phy_id, 2);
+		if (ret == 2) {
+			if (phy_id[1] != phy_addr) {
+				printf("fixing up phy_id for %s, old: %d, new: %d\n",
+				       alias, phy_id[1], phy_addr);
+
+				phy_id[0] = cpu_to_fdt32(phy_id[0]);
+				phy_id[1] = cpu_to_fdt32(phy_addr);
+				do_fixup_by_path(fdt, slave_path, "phy_id",
+						 phy_id, sizeof(phy_id), 0);
+			}
+		} else {
+			phynode = fdtdec_lookup_phandle(fdt, slavenode,
+							"phy-handle");
+			if (phynode < 0)
+				continue;
+
+			ret = fdtdec_get_int(fdt, phynode, "reg", -ENOENT);
+			if (ret < 0)
+				continue;
+
+			if (ret != phy_addr) {
+				printf("fixing up phy-handle for %s, old: %d, new: %d\n",
+				       alias, ret, phy_addr);
+
+				fdt_setprop_u32(fdt, phynode, "reg",
+						cpu_to_fdt32(phy_addr));
+			}
+		}
+	}
+
+done:
+	return 0;
+}
+#endif
+
+static bool __maybe_unused prueth_is_mii = true;
+
 /*
  * Basic board specific setup.  Pinmux has been handled already.
  */
@@ -617,16 +703,18 @@ int board_init(void)
 	hw_watchdog_init();
 #endif
 
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
-#if defined(CONFIG_NOR) || defined(CONFIG_NAND)
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
+#if defined(CONFIG_NOR) || defined(CONFIG_MTD_RAW_NAND)
 	gpmc_init();
 #endif
 
 #if defined(CONFIG_CLOCK_SYNTHESIZER) && (!defined(CONFIG_SPL_BUILD) || \
-	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD)))
+	(defined(CONFIG_SPL_ETH) && defined(CONFIG_SPL_BUILD)))
 	if (board_is_icev2()) {
 		int rv;
 		u32 reg;
+		bool eth0_is_mii = true;
+		bool eth1_is_mii = true;
 
 		REQUEST_AND_SET_GPIO(GPIO_PR1_MII_CTRL);
 		/* Make J19 status available on GPIO1_26 */
@@ -657,6 +745,7 @@ int board_init(void)
 			writel(reg, GPIO0_IRQSTATUS1); /* clear irq */
 			/* RMII mode */
 			printf("ETH0, CPSW\n");
+			eth0_is_mii = false;
 		} else {
 			/* MII mode */
 			printf("ETH0, PRU\n");
@@ -669,11 +758,20 @@ int board_init(void)
 			/* RMII mode */
 			printf("ETH1, CPSW\n");
 			gpio_set_value(GPIO_MUX_MII_CTRL, 1);
+			eth1_is_mii = false;
 		} else {
 			/* MII mode */
 			printf("ETH1, PRU\n");
 			cdce913_data.pdiv2 = 4;	/* 25MHz PHY clk */
 		}
+
+		if (eth0_is_mii != eth1_is_mii) {
+			printf("Unsupported Ethernet port configuration\n");
+			printf("Both ports must be set as RMII or MII\n");
+			hang();
+		}
+
+		prueth_is_mii = eth0_is_mii;
 
 		/* disable rising edge IRQs */
 		reg = readl(GPIO0_RISINGDETECT) & ~BIT(11);
@@ -700,6 +798,7 @@ int board_init(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
+	struct udevice *dev;
 #if !defined(CONFIG_SPL_BUILD)
 	uint8_t mac_addr[6];
 	uint32_t mac_hi, mac_lo;
@@ -725,6 +824,20 @@ int board_late_init(void)
 
 	if (board_is_bbg1())
 		name = "BBG1";
+	if (board_is_bben()) {
+		char subtype_id = board_ti_get_config()[1];
+
+		switch (subtype_id) {
+		case 'L':
+			name = "BBELITE";
+			break;
+		case 'I':
+			name = "BBE_EX_WIFI";
+			break;
+		default:
+			name = "BBEN";
+		}
+	}
 	set_board_info_env(name);
 
 	/*
@@ -766,6 +879,8 @@ int board_late_init(void)
 		if (is_valid_ethaddr(mac_addr))
 			eth_env_set_enetaddr("eth1addr", mac_addr);
 	}
+
+	env_set("ice_mii", prueth_is_mii ? "mii" : "rmii");
 #endif
 
 	if (!env_get("serial#")) {
@@ -778,160 +893,60 @@ int board_late_init(void)
 			env_set("serial#", board_serial);
 	}
 
+	/* Just probe the potentially supported cdce913 device */
+	uclass_get_device_by_name(UCLASS_CLK, "cdce913@65", &dev);
+
 	return 0;
 }
 #endif
 
-#ifndef CONFIG_DM_ETH
-
-#if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) || \
-	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD))
-static void cpsw_control(int enabled)
-{
-	/* VTP can be added here */
-
-	return;
-}
-
-static struct cpsw_slave_data cpsw_slaves[] = {
+/* CPSW plat */
+#if CONFIG_IS_ENABLED(NET) && !CONFIG_IS_ENABLED(OF_CONTROL)
+struct cpsw_slave_data slave_data[] = {
 	{
-		.slave_reg_ofs	= 0x208,
-		.sliver_reg_ofs	= 0xd80,
-		.phy_addr	= 0,
+		.slave_reg_ofs  = CPSW_SLAVE0_OFFSET,
+		.sliver_reg_ofs = CPSW_SLIVER0_OFFSET,
+		.phy_addr       = 0,
 	},
 	{
-		.slave_reg_ofs	= 0x308,
-		.sliver_reg_ofs	= 0xdc0,
-		.phy_addr	= 1,
+		.slave_reg_ofs  = CPSW_SLAVE1_OFFSET,
+		.sliver_reg_ofs = CPSW_SLIVER1_OFFSET,
+		.phy_addr       = 1,
 	},
 };
 
-static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= CPSW_MDIO_BASE,
+struct cpsw_platform_data am335_eth_data = {
 	.cpsw_base		= CPSW_BASE,
-	.mdio_div		= 0xff,
-	.channels		= 8,
-	.cpdma_reg_ofs		= 0x800,
-	.slaves			= 1,
-	.slave_data		= cpsw_slaves,
-	.ale_reg_ofs		= 0xd00,
-	.ale_entries		= 1024,
-	.host_port_reg_ofs	= 0x108,
-	.hw_stats_reg_ofs	= 0x900,
-	.bd_ram_ofs		= 0x2000,
-	.mac_control		= (1 << 5),
-	.control		= cpsw_control,
-	.host_port_num		= 0,
 	.version		= CPSW_CTRL_VERSION_2,
+	.bd_ram_ofs		= CPSW_BD_OFFSET,
+	.ale_reg_ofs		= CPSW_ALE_OFFSET,
+	.cpdma_reg_ofs		= CPSW_CPDMA_OFFSET,
+	.mdio_div		= CPSW_MDIO_DIV,
+	.host_port_reg_ofs	= CPSW_HOST_PORT_OFFSET,
+	.channels		= 8,
+	.slaves			= 2,
+	.slave_data		= slave_data,
+	.ale_entries		= 1024,
+	.mac_control		= 0x20,
+	.active_slave		= 0,
+	.mdio_base		= 0x4a101000,
+	.gmii_sel		= 0x44e10650,
+	.phy_sel_compat		= "ti,am3352-cpsw-phy-sel",
+	.syscon_addr		= 0x44e10630,
+	.macid_sel_compat	= "cpsw,am33xx",
+};
+
+struct eth_pdata cpsw_pdata = {
+	.iobase = 0x4a100000,
+	.phy_interface = 0,
+	.priv_pdata = &am335_eth_data,
+};
+
+U_BOOT_DRVINFO(am335x_eth) = {
+	.name = "eth_cpsw",
+	.plat = &cpsw_pdata,
 };
 #endif
-
-#if ((defined(CONFIG_SPL_ETH_SUPPORT) || defined(CONFIG_SPL_USB_ETHER)) &&\
-	defined(CONFIG_SPL_BUILD)) || \
-	((defined(CONFIG_DRIVER_TI_CPSW) || \
-	  defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET)) && \
-	 !defined(CONFIG_SPL_BUILD))
-
-/*
- * This function will:
- * Read the eFuse for MAC addresses, and set ethaddr/eth1addr/usbnet_devaddr
- * in the environment
- * Perform fixups to the PHY present on certain boards.  We only need this
- * function in:
- * - SPL with either CPSW or USB ethernet support
- * - Full U-Boot, with either CPSW or USB ethernet
- * Build in only these cases to avoid warnings about unused variables
- * when we build an SPL that has neither option but full U-Boot will.
- */
-int board_eth_init(bd_t *bis)
-{
-	int rv, n = 0;
-#if defined(CONFIG_USB_ETHER) && \
-	(!defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_USB_ETHER))
-	uint8_t mac_addr[6];
-	uint32_t mac_hi, mac_lo;
-
-	/*
-	 * use efuse mac address for USB ethernet as we know that
-	 * both CPSW and USB ethernet will never be active at the same time
-	 */
-	mac_lo = readl(&cdev->macid0l);
-	mac_hi = readl(&cdev->macid0h);
-	mac_addr[0] = mac_hi & 0xFF;
-	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
-	mac_addr[2] = (mac_hi & 0xFF0000) >> 16;
-	mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
-	mac_addr[4] = mac_lo & 0xFF;
-	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
-#endif
-
-
-#if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) || \
-	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD))
-
-#ifdef CONFIG_DRIVER_TI_CPSW
-	if (board_is_bone() || board_is_bone_lt() ||
-	    board_is_idk()) {
-		writel(MII_MODE_ENABLE, &cdev->miisel);
-		cpsw_slaves[0].phy_if = cpsw_slaves[1].phy_if =
-				PHY_INTERFACE_MODE_MII;
-	} else if (board_is_icev2()) {
-		writel(RMII_MODE_ENABLE | RMII_CHIPCKL_ENABLE, &cdev->miisel);
-		cpsw_slaves[0].phy_if = PHY_INTERFACE_MODE_RMII;
-		cpsw_slaves[1].phy_if = PHY_INTERFACE_MODE_RMII;
-		cpsw_slaves[0].phy_addr = 1;
-		cpsw_slaves[1].phy_addr = 3;
-	} else {
-		writel((RGMII_MODE_ENABLE | RGMII_INT_DELAY), &cdev->miisel);
-		cpsw_slaves[0].phy_if = cpsw_slaves[1].phy_if =
-				PHY_INTERFACE_MODE_RGMII;
-	}
-
-	rv = cpsw_register(&cpsw_data);
-	if (rv < 0)
-		printf("Error %d registering CPSW switch\n", rv);
-	else
-		n += rv;
-#endif
-
-	/*
-	 *
-	 * CPSW RGMII Internal Delay Mode is not supported in all PVT
-	 * operating points.  So we must set the TX clock delay feature
-	 * in the AR8051 PHY.  Since we only support a single ethernet
-	 * device in U-Boot, we only do this for the first instance.
-	 */
-#define AR8051_PHY_DEBUG_ADDR_REG	0x1d
-#define AR8051_PHY_DEBUG_DATA_REG	0x1e
-#define AR8051_DEBUG_RGMII_CLK_DLY_REG	0x5
-#define AR8051_RGMII_TX_CLK_DLY		0x100
-
-	if (board_is_evm_sk() || board_is_gp_evm()) {
-		const char *devname;
-		devname = miiphy_get_current_dev();
-
-		miiphy_write(devname, 0x0, AR8051_PHY_DEBUG_ADDR_REG,
-				AR8051_DEBUG_RGMII_CLK_DLY_REG);
-		miiphy_write(devname, 0x0, AR8051_PHY_DEBUG_DATA_REG,
-				AR8051_RGMII_TX_CLK_DLY);
-	}
-#endif
-#if defined(CONFIG_USB_ETHER) && \
-	(!defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_USB_ETHER))
-	if (is_valid_ethaddr(mac_addr))
-		eth_env_set_enetaddr("usbnet_devaddr", mac_addr);
-
-	rv = usb_eth_initialize(bis);
-	if (rv < 0)
-		printf("Error %d registering USB_ETHER\n", rv);
-	else
-		n += rv;
-#endif
-	return n;
-}
-#endif
-
-#endif /* CONFIG_DM_ETH */
 
 #ifdef CONFIG_SPL_LOAD_FIT
 int board_fit_config_name_match(const char *name)
@@ -950,20 +965,25 @@ int board_fit_config_name_match(const char *name)
 		return 0;
 	else if (board_is_icev2() && !strcmp(name, "am335x-icev2"))
 		return 0;
-	else
-		return -1;
-}
-#endif
+	else if (board_is_bben()) {
+		char subtype_id = board_ti_get_config()[1];
 
-#ifdef CONFIG_TI_SECURE_DEVICE
-void board_fit_image_post_process(void **p_image, size_t *p_size)
-{
-	secure_boot_verify_image(p_image, p_size);
+		if (subtype_id == 'L') {
+			if (!strcmp(name, "am335x-sancloud-bbe-lite"))
+				return 0;
+		} else if (subtype_id == 'I') {
+			if (!strcmp(name, "am335x-sancloud-bbe-extended-wifi"))
+				return 0;
+		} else if (!strcmp(name, "am335x-sancloud-bbe")) {
+			return 0;
+		}
+	}
+	return -1;
 }
 #endif
 
 #if !CONFIG_IS_ENABLED(OF_CONTROL)
-static const struct omap_hsmmc_plat am335x_mmc0_platdata = {
+static const struct omap_hsmmc_plat am335x_mmc0_plat = {
 	.base_addr = (struct hsmmc *)OMAP_HSMMC1_BASE,
 	.cfg.host_caps = MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_4BIT,
 	.cfg.f_min = 400000,
@@ -972,12 +992,12 @@ static const struct omap_hsmmc_plat am335x_mmc0_platdata = {
 	.cfg.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT,
 };
 
-U_BOOT_DEVICE(am335x_mmc0) = {
+U_BOOT_DRVINFO(am335x_mmc0) = {
 	.name = "omap_hsmmc",
-	.platdata = &am335x_mmc0_platdata,
+	.plat = &am335x_mmc0_plat,
 };
 
-static const struct omap_hsmmc_plat am335x_mmc1_platdata = {
+static const struct omap_hsmmc_plat am335x_mmc1_plat = {
 	.base_addr = (struct hsmmc *)OMAP_HSMMC2_BASE,
 	.cfg.host_caps = MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_8BIT,
 	.cfg.f_min = 400000,
@@ -986,8 +1006,8 @@ static const struct omap_hsmmc_plat am335x_mmc1_platdata = {
 	.cfg.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT,
 };
 
-U_BOOT_DEVICE(am335x_mmc1) = {
+U_BOOT_DRVINFO(am335x_mmc1) = {
 	.name = "omap_hsmmc",
-	.platdata = &am335x_mmc1_platdata,
+	.plat = &am335x_mmc1_plat,
 };
 #endif

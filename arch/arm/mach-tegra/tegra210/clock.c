@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2013-2015
+ * (C) Copyright 2013-2020
  * NVIDIA Corporation <www.nvidia.com>
  */
 
@@ -8,6 +8,9 @@
 
 #include <common.h>
 #include <errno.h>
+#include <init.h>
+#include <log.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sysctr.h>
@@ -16,6 +19,10 @@
 #include <asm/arch-tegra/timer.h>
 #include <div64.h>
 #include <fdtdec.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+
+#include <dt-bindings/clock/tegra210-car.h>
 
 /*
  * Clock types that we can use as a source. The Tegra210 has muxes for the
@@ -40,7 +47,7 @@ enum clock_type_id {
 	CLOCK_TYPE_PDCT,
 	CLOCK_TYPE_ACPT,
 	CLOCK_TYPE_ASPTE,
-	CLOCK_TYPE_PMDACD2T,
+	CLOCK_TYPE_PDD2T,
 	CLOCK_TYPE_PCST,
 	CLOCK_TYPE_DP,
 
@@ -97,8 +104,8 @@ static enum clock_id clock_source[CLOCK_TYPE_COUNT][CLOCK_MAX_MUX+1] = {
 	{ CLK(AUDIO),	CLK(SFROM32KHZ),	CLK(PERIPH),	CLK(OSC),
 		CLK(EPCI),	CLK(NONE),	CLK(NONE),	CLK(NONE),
 		MASK_BITS_31_29},
-	{ CLK(PERIPH),	CLK(MEMORY),	CLK(DISPLAY),	CLK(AUDIO),
-		CLK(CGENERAL),	CLK(DISPLAY2),	CLK(OSC),	CLK(NONE),
+	{ CLK(PERIPH),	CLK(NONE),	CLK(DISPLAY),	CLK(NONE),
+		CLK(NONE),	CLK(DISPLAY2),	CLK(OSC),	CLK(NONE),
 		MASK_BITS_31_29},
 	{ CLK(PERIPH),	CLK(CGENERAL),	CLK(SFROM32KHZ),	CLK(OSC),
 		CLK(NONE),	CLK(NONE),	CLK(NONE),	CLK(NONE),
@@ -174,8 +181,8 @@ static enum clock_type_id clock_periph_type[PERIPHC_COUNT] = {
 	TYPE(PERIPHC_0bh,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_0ch,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_SBC1,	CLOCK_TYPE_PC2CC3M_T),
-	TYPE(PERIPHC_DISP1,	CLOCK_TYPE_PMDACD2T),
-	TYPE(PERIPHC_DISP2,	CLOCK_TYPE_PMDACD2T),
+	TYPE(PERIPHC_DISP1,	CLOCK_TYPE_PDD2T),
+	TYPE(PERIPHC_DISP2,	CLOCK_TYPE_PDD2T),
 
 	/* 0x10 */
 	TYPE(PERIPHC_10h,	CLOCK_TYPE_NONE),
@@ -333,7 +340,7 @@ static enum clock_type_id clock_periph_type[PERIPHC_COUNT] = {
 	TYPE(PERIPHC_DMIC3,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_APE,	CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_QSPI,	CLOCK_TYPE_PC01C00_C42C41TC40),
-	TYPE(PERIPHC_VI_I2C,	CLOCK_TYPE_NONE),
+	TYPE(PERIPHC_VI_I2C,	CLOCK_TYPE_PC2CC3M_T16),
 	TYPE(PERIPHC_USB2_HSIC_TRK, CLOCK_TYPE_NONE),
 	TYPE(PERIPHC_PEX_SATA_USB_RX_BYP, CLOCK_TYPE_NONE),
 
@@ -667,8 +674,7 @@ struct clk_pll_info tegra_pll_info_table[CLOCK_ID_PLL_COUNT] = {
 
 /*
  * Get the oscillator frequency, from the corresponding hardware configuration
- * field. Note that Tegra30+ support 3 new higher freqs, but we map back
- * to the old T20 freqs. Support for the higher oscillators is TBD.
+ * field. Note that T30+ supports 3 new higher freqs.
  */
 enum clock_osc_freq clock_get_osc_freq(void)
 {
@@ -677,22 +683,7 @@ enum clock_osc_freq clock_get_osc_freq(void)
 	u32 reg;
 
 	reg = readl(&clkrst->crc_osc_ctrl);
-	reg = (reg & OSC_FREQ_MASK) >> OSC_FREQ_SHIFT;
-	/*
-	 * 0 = 13MHz, 1 = 16.8MHz, 4 = 19.2MHz, 5 = 38.4MHz,
-	 * 8 = 12MHz, 9 = 48MHz,  12 = 26MHz
-	 */
-	if (reg == 5) {
-		debug("OSC_FREQ is 38.4MHz (%d) ...\n", reg);
-		/* Map it to the 5th CLOCK_OSC_ enum, i.e. 4 */
-		return 4;
-	}
-
-	/*
-	 * Map to most common (T20) freqs (except 38.4, handled above):
-	 *  13/16.8 = 0, 19.2 = 1, 12/48 = 2, 26 = 3
-	 */
-	return reg >> 2;
+	return (reg & OSC_FREQ_MASK) >> OSC_FREQ_SHIFT;
 }
 
 /* Returns a pointer to the clock source register for a peripheral */
@@ -739,7 +730,7 @@ int get_periph_clock_info(enum periph_id periph_id, int *mux_bits,
 	if (!clock_periph_id_isvalid(periph_id))
 		return -1;
 
-	internal_id = periph_id_to_internal_id[periph_id];
+	internal_id = INTERNAL_ID(periph_id_to_internal_id[periph_id]);
 	if (!periphc_internal_id_isvalid(internal_id))
 		return -1;
 
@@ -765,7 +756,7 @@ enum clock_id get_periph_clock_id(enum periph_id periph_id, int source)
 	if (!clock_periph_id_isvalid(periph_id))
 		return CLOCK_ID_NONE;
 
-	internal_id = periph_id_to_internal_id[periph_id];
+	internal_id = INTERNAL_ID(periph_id_to_internal_id[periph_id]);
 	if (!periphc_internal_id_isvalid(internal_id))
 		return CLOCK_ID_NONE;
 
@@ -786,7 +777,7 @@ enum clock_id get_periph_clock_id(enum periph_id periph_id, int source)
  * @param source	PLL id of required parent clock
  * @param mux_bits	Set to number of bits in mux register: 2 or 4
  * @param divider_bits Set to number of divider bits (8 or 16)
- * @return mux value (0-4, or -1 if not found)
+ * Return: mux value (0-4, or -1 if not found)
  */
 int get_periph_clock_source(enum periph_id periph_id,
 	enum clock_id parent, int *mux_bits, int *divider_bits)
@@ -866,7 +857,7 @@ void reset_set_enable(enum periph_id periph_id, int enable)
  * provided.
  *
  * @param clk_id    Clock ID according to tegra210 device tree binding
- * @return peripheral ID, or PERIPH_ID_NONE if the clock ID is invalid
+ * Return: peripheral ID, or PERIPH_ID_NONE if the clock ID is invalid
  */
 enum periph_id clk_id_to_periph_id(int clk_id)
 {
@@ -925,6 +916,41 @@ enum periph_id clk_id_to_periph_id(int clk_id)
 		return clk_id;
 	}
 }
+
+/*
+ * Convert a device tree clock ID to our PLL ID.
+ *
+ * @param clk_id	Clock ID according to tegra210 device tree binding
+ * Return: clock ID, or CLOCK_ID_NONE if the clock ID is invalid
+ */
+enum clock_id clk_id_to_pll_id(int clk_id)
+{
+	switch (clk_id) {
+	case TEGRA210_CLK_PLL_C:
+		return CLOCK_ID_CGENERAL;
+	case TEGRA210_CLK_PLL_M:
+		return CLOCK_ID_MEMORY;
+	case TEGRA210_CLK_PLL_P:
+		return CLOCK_ID_PERIPH;
+	case TEGRA210_CLK_PLL_A:
+		return CLOCK_ID_AUDIO;
+	case TEGRA210_CLK_PLL_U:
+		return CLOCK_ID_USB;
+	case TEGRA210_CLK_PLL_D:
+	case TEGRA210_CLK_PLL_D_OUT0:
+		return CLOCK_ID_DISPLAY;
+	case TEGRA210_CLK_PLL_X:
+		return CLOCK_ID_XCPU;
+	case TEGRA210_CLK_PLL_E:
+		return CLOCK_ID_EPCI;
+	case TEGRA210_CLK_CLK_32K:
+		return CLOCK_ID_32KHZ;
+	case TEGRA210_CLK_CLK_M:
+		return CLOCK_ID_CLK_M;
+	default:
+		return CLOCK_ID_NONE;
+	}
+}
 #endif /* CONFIG_OF_CONTROL */
 
 /*
@@ -981,6 +1007,7 @@ void clock_early_init(void)
 	 */
 	switch (clock_get_osc_freq()) {
 	case CLOCK_OSC_FREQ_12_0: /* OSC is 12Mhz */
+	case CLOCK_OSC_FREQ_48_0: /* OSC is 48Mhz */
 		clock_set_rate(CLOCK_ID_CGENERAL, 600, 12, 0, 8);
 		clock_set_rate(CLOCK_ID_DISPLAY, 925, 12, 0, 12);
 		break;
@@ -991,6 +1018,7 @@ void clock_early_init(void)
 		break;
 
 	case CLOCK_OSC_FREQ_13_0: /* OSC is 13Mhz */
+	case CLOCK_OSC_FREQ_16_8: /* OSC is 16.8Mhz */
 		clock_set_rate(CLOCK_ID_CGENERAL, 600, 13, 0, 8);
 		clock_set_rate(CLOCK_ID_DISPLAY, 925, 13, 0, 12);
 		break;
@@ -1235,25 +1263,6 @@ int tegra_plle_enable(void)
 	value &= ~PLLE_SS_CNTL_INTERP_RESET;
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
 
-	/* 7. Enable HW power sequencer for PLLE */
-
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
-	value &= ~PLLE_MISC_IDDQ_SWCTL;
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
-
-	value = readl(NV_PA_CLK_RST_BASE + PLLE_AUX);
-	value &= ~PLLE_AUX_SS_SWCTL;
-	value &= ~PLLE_AUX_ENABLE_SWCTL;
-	value |= PLLE_AUX_SS_SEQ_INCLUDE;
-	value |= PLLE_AUX_USE_LOCKDET;
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_AUX);
-
-	/* 8. Wait 1 us */
-
-	udelay(1);
-	value |= PLLE_AUX_SEQ_ENABLE;
-	writel(value, NV_PA_CLK_RST_BASE + PLLE_AUX);
-
 	return 0;
 }
 
@@ -1265,12 +1274,11 @@ struct periph_clk_init periph_clk_init_table[] = {
 	{ PERIPH_ID_SBC5, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SBC6, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_HOST1X, CLOCK_ID_PERIPH },
-	{ PERIPH_ID_DISP1, CLOCK_ID_CGENERAL },
 	{ PERIPH_ID_SDMMC1, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SDMMC2, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SDMMC3, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SDMMC4, CLOCK_ID_PERIPH },
-	{ PERIPH_ID_PWM, CLOCK_ID_SFROM32KHZ },
+	{ PERIPH_ID_PWM, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C1, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C2, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C3, CLOCK_ID_PERIPH },

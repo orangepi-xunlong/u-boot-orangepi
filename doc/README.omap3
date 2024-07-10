@@ -23,13 +23,6 @@ Currently the following boards are supported:
 
 * CompuLab Ltd. CM-T35 [8]
 
-Toolchain
-=========
-
-While ARM Cortex-A8 support ARM v7 instruction set (-march=armv7a) we compile
-with -march=armv5 to allow more compilers to work. For U-Boot code this has
-no performance impact.
-
 Build
 =====
 
@@ -46,16 +39,6 @@ make
 * TI EVM:
 
 make omap3_evm_config
-make
-
-* Pandora:
-
-make omap3_pandora_config
-make
-
-* Zoom MDK:
-
-make omap3_zoom1_config
 make
 
 * Zoom 2:
@@ -163,11 +146,11 @@ implementation for OMAP3 works for you so the u-boot version should also.
 When you require the SPL to read with BCH8 there are two more configs to
 change:
 
- * CONFIG_SYS_NAND_ECCPOS (must be the same as .eccpos in
+ * CFG_SYS_NAND_ECCPOS (must be the same as .eccpos in
    GPMC_NAND_HW_BCH8_ECC_LAYOUT defined in
    arch/arm/include/asm/arch-omap3/omap_gpmc.h)
- * CONFIG_SYS_NAND_ECCSIZE must be 512
- * CONFIG_SYS_NAND_ECCBYTES must be 13 for this BCH8 setup
+ * CFG_SYS_NAND_ECCSIZE must be 512
+ * CFG_SYS_NAND_ECCBYTES must be 13 for this BCH8 setup
 
 Acknowledgements
 ================
@@ -180,8 +163,8 @@ Links
 
 [1] OMAP3:
 
-http://www.ti.com/omap3 (high volume) and
-http://www.ti.com/omap35x (broad market)
+https://www.ti.com/omap3 (high volume) and
+https://www.ti.com/omap35x (broad market)
 
 [2] OMAP3530 BeagleBoard:
 

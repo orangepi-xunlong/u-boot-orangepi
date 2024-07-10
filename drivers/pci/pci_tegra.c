@@ -15,10 +15,14 @@
 #include <clk.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
 #include <pci.h>
+#include <pci_tegra.h>
 #include <power-domain.h>
 #include <reset.h>
+#include <linux/delay.h>
+#include <linux/printk.h>
 
 #include <asm/io.h>
 #include <asm/gpio.h>
@@ -272,13 +276,6 @@ static void rp_writel(struct tegra_pcie_port *port, unsigned long value,
 	writel(value, port->regs.start + offset);
 }
 
-static unsigned long tegra_pcie_conf_offset(pci_dev_t bdf, int where)
-{
-	return ((where & 0xf00) << 16) | (PCI_BUS(bdf) << 16) |
-	       (PCI_DEV(bdf) << 11) | (PCI_FUNC(bdf) << 8) |
-	       (where & 0xfc);
-}
-
 static int tegra_pcie_conf_address(struct tegra_pcie *pcie, pci_dev_t bdf,
 				   int where, unsigned long *address)
 {
@@ -302,12 +299,14 @@ static int tegra_pcie_conf_address(struct tegra_pcie *pcie, pci_dev_t bdf,
 			return -EFAULT;
 #endif
 
-		*address = pcie->cs.start + tegra_pcie_conf_offset(bdf, where);
+		*address = pcie->cs.start +
+			   (PCI_CONF1_EXT_ADDRESS(PCI_BUS(bdf), PCI_DEV(bdf),
+			    PCI_FUNC(bdf), where) & ~PCI_CONF1_ENABLE);
 		return 0;
 	}
 }
 
-static int pci_tegra_read_config(struct udevice *bus, pci_dev_t bdf,
+static int pci_tegra_read_config(const struct udevice *bus, pci_dev_t bdf,
 				 uint offset, ulong *valuep,
 				 enum pci_size_t size)
 {
@@ -327,8 +326,8 @@ static int pci_tegra_read_config(struct udevice *bus, pci_dev_t bdf,
 	/* fixup root port class */
 	if (PCI_BUS(bdf) == 0) {
 		if ((offset & ~3) == PCI_CLASS_REVISION) {
-			value &= ~0x00ff0000;
-			value |= PCI_CLASS_BRIDGE_PCI << 16;
+			value &= ~0x00ffff00;
+			value |= PCI_CLASS_BRIDGE_PCI_NORMAL << 8;
 		}
 	}
 #endif
@@ -457,15 +456,15 @@ static int tegra_pcie_parse_port_info(ofnode node, uint *index, uint *lanes)
 
 	err = ofnode_read_u32_default(node, "nvidia,num-lanes", -1);
 	if (err < 0) {
-		pr_err("failed to parse \"nvidia,num-lanes\" property");
+		pr_err("failed to parse \"nvidia,num-lanes\" property\n");
 		return err;
 	}
 
 	*lanes = err;
 
-	err = ofnode_read_pci_addr(node, 0, "reg", &addr);
+	err = ofnode_read_pci_addr(node, 0, "reg", &addr, NULL);
 	if (err < 0) {
-		pr_err("failed to parse \"reg\" property");
+		pr_err("failed to parse \"reg\" property\n");
 		return err;
 	}
 
@@ -533,7 +532,7 @@ static int tegra_pcie_parse_dt(struct udevice *dev, enum tegra_pci_id id,
 
 		lanes |= num_lanes << (index << 3);
 
-		if (!ofnode_is_available(subnode))
+		if (!ofnode_is_enabled(subnode))
 			continue;
 
 		port = malloc(sizeof(*port));
@@ -888,7 +887,7 @@ static unsigned long tegra_pcie_port_get_pex_ctrl(struct tegra_pcie_port *port)
 	return ret;
 }
 
-static void tegra_pcie_port_reset(struct tegra_pcie_port *port)
+void tegra_pcie_port_reset(struct tegra_pcie_port *port)
 {
 	unsigned long ctrl = tegra_pcie_port_get_pex_ctrl(port);
 	unsigned long value;
@@ -903,6 +902,16 @@ static void tegra_pcie_port_reset(struct tegra_pcie_port *port)
 	value = afi_readl(port->pcie, ctrl);
 	value |= AFI_PEX_CTRL_RST;
 	afi_writel(port->pcie, value, ctrl);
+}
+
+int tegra_pcie_port_index_of_port(struct tegra_pcie_port *port)
+{
+	return port->index;
+}
+
+void __weak tegra_pcie_board_port_reset(struct tegra_pcie_port *port)
+{
+	tegra_pcie_port_reset(port);
 }
 
 static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
@@ -923,7 +932,7 @@ static void tegra_pcie_port_enable(struct tegra_pcie_port *port)
 
 	afi_writel(pcie, value, ctrl);
 
-	tegra_pcie_port_reset(port);
+	tegra_pcie_board_port_reset(port);
 
 	if (soc->force_pca_enable) {
 		value = rp_readl(port, RP_VEND_CTL2);
@@ -974,7 +983,7 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 		} while (--timeout);
 
 retry:
-		tegra_pcie_port_reset(port);
+		tegra_pcie_board_port_reset(port);
 	} while (--retries);
 
 	return false;
@@ -1079,7 +1088,7 @@ static const struct tegra_pcie_soc pci_tegra_soc[] = {
 	},
 };
 
-static int pci_tegra_ofdata_to_platdata(struct udevice *dev)
+static int pci_tegra_of_to_plat(struct udevice *dev)
 {
 	struct tegra_pcie *pcie = dev_get_priv(dev);
 	enum tegra_pci_id id;
@@ -1184,7 +1193,7 @@ U_BOOT_DRIVER(pci_tegra) = {
 	.id	= UCLASS_PCI,
 	.of_match = pci_tegra_ids,
 	.ops	= &pci_tegra_ops,
-	.ofdata_to_platdata = pci_tegra_ofdata_to_platdata,
+	.of_to_plat = pci_tegra_of_to_plat,
 	.probe	= pci_tegra_probe,
-	.priv_auto_alloc_size = sizeof(struct tegra_pcie),
+	.priv_auto	= sizeof(struct tegra_pcie),
 };

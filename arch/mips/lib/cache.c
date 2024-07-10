@@ -4,14 +4,16 @@
  * Wolfgang Denk, DENX Software Engineering, <wd@denx.de>
  */
 
-#include <common.h>
+#include <cpu_func.h>
+#include <malloc.h>
+#include <asm/cache.h>
 #include <asm/cacheops.h>
-#ifdef CONFIG_MIPS_L2_CACHE
 #include <asm/cm.h>
-#endif
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/mipsregs.h>
 #include <asm/system.h>
+#include <linux/bug.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -36,7 +38,7 @@ static void probe_l2(void)
 			l2c = read_c0_config5() & MIPS_CONF5_L2C;
 	}
 
-	if (l2c && config_enabled(CONFIG_MIPS_CM)) {
+	if (l2c && IS_ENABLED(CONFIG_MIPS_CM)) {
 		gd->arch.l2_line_size = mips_cm_l2_line_size();
 	} else if (l2c) {
 		/* We don't know how to retrieve L2 config on this system */
@@ -87,7 +89,7 @@ static inline unsigned long scache_line_size(void)
 #ifdef CONFIG_MIPS_L2_CACHE
 	return gd->arch.l2_line_size;
 #else
-	return 0;
+	return CONFIG_SYS_SCACHE_LINE_SIZE;
 #endif
 }
 
@@ -106,7 +108,7 @@ static inline unsigned long scache_line_size(void)
 	}								\
 } while (0)
 
-void flush_cache(ulong start_addr, ulong size)
+void __weak flush_cache(ulong start_addr, ulong size)
 {
 	unsigned long ilsize = icache_line_size();
 	unsigned long dlsize = dcache_line_size();
@@ -140,7 +142,7 @@ ops_done:
 	instruction_hazard_barrier();
 }
 
-void flush_dcache_range(ulong start_addr, ulong stop)
+void __weak flush_dcache_range(ulong start_addr, ulong stop)
 {
 	unsigned long lsize = dcache_line_size();
 	unsigned long slsize = scache_line_size();
@@ -158,7 +160,7 @@ void flush_dcache_range(ulong start_addr, ulong stop)
 	sync();
 }
 
-void invalidate_dcache_range(ulong start_addr, ulong stop)
+void __weak invalidate_dcache_range(ulong start_addr, ulong stop)
 {
 	unsigned long lsize = dcache_line_size();
 	unsigned long slsize = scache_line_size();
@@ -175,3 +177,65 @@ void invalidate_dcache_range(ulong start_addr, ulong stop)
 	/* ensure cache ops complete before any further memory accesses */
 	sync();
 }
+
+int dcache_status(void)
+{
+	unsigned int cca = read_c0_config() & CONF_CM_CMASK;
+	return cca != CONF_CM_UNCACHED;
+}
+
+void dcache_enable(void)
+{
+	puts("Not supported!\n");
+}
+
+void dcache_disable(void)
+{
+	/* change CCA to uncached */
+	change_c0_config(CONF_CM_CMASK, CONF_CM_UNCACHED);
+
+	/* ensure the pipeline doesn't contain now-invalid instructions */
+	instruction_hazard_barrier();
+}
+
+#ifdef CONFIG_SYS_NONCACHED_MEMORY
+static unsigned long noncached_start;
+static unsigned long noncached_end;
+static unsigned long noncached_next;
+
+void noncached_set_region(void)
+{
+}
+
+int noncached_init(void)
+{
+	phys_addr_t start, end;
+	size_t size;
+
+	/* If this calculation changes, update board_f.c:reserve_noncached() */
+	end = ALIGN(mem_malloc_start, MMU_SECTION_SIZE) - MMU_SECTION_SIZE;
+	size = ALIGN(CONFIG_SYS_NONCACHED_MEMORY, MMU_SECTION_SIZE);
+	start = end - size;
+
+	debug("mapping memory %pa-%pa non-cached\n", &start, &end);
+
+	noncached_start = start;
+	noncached_end = end;
+	noncached_next = start;
+
+	return 0;
+}
+
+phys_addr_t noncached_alloc(size_t size, size_t align)
+{
+	phys_addr_t next = ALIGN(noncached_next, align);
+
+	if (next >= noncached_end || (noncached_end - next) < size)
+		return 0;
+
+	debug("allocated %zu bytes of uncached memory @%pa\n", size, &next);
+	noncached_next = next + size;
+
+	return CKSEG1ADDR(next);
+}
+#endif /* CONFIG_SYS_NONCACHED_MEMORY */

@@ -14,24 +14,31 @@
  * Sanghee Kim <sh0130.kim@samsung.com>
  */
 
-#include <errno.h>
+#include <command.h>
 #include <common.h>
 #include <console.h>
+#include <dm.h>
+#include <errno.h>
+#include <init.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <version.h>
+#include <linux/delay.h>
+#include <linux/printk.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/cdc.h>
 #include <g_dnl.h>
 #include <dfu.h>
+#include <thor.h>
 
 #include "f_thor.h"
 
-static void thor_tx_data(unsigned char *data, int len);
+static void thor_tx_data(struct udevice *udc, unsigned char *data, int len);
 static void thor_set_dma(void *addr, int len);
-static int thor_rx_data(void);
+static int thor_rx_data(struct udevice *udc);
 
 static struct f_thor *thor_func;
 static inline struct f_thor *func_to_thor(struct usb_function *f)
@@ -47,19 +54,19 @@ DEFINE_CACHE_ALIGN_BUFFER(unsigned char, thor_rx_data_buf,
 /* ********************************************************** */
 /*         THOR protocol - transmission handling	      */
 /* ********************************************************** */
-DEFINE_CACHE_ALIGN_BUFFER(char, f_name, F_NAME_BUF_SIZE);
+DEFINE_CACHE_ALIGN_BUFFER(char, f_name, F_NAME_BUF_SIZE + 1);
 static unsigned long long int thor_file_size;
 static int alt_setting_num;
 
-static void send_rsp(const struct rsp_box *rsp)
+static void send_rsp(struct udevice *udc, const struct rsp_box *rsp)
 {
 	memcpy(thor_tx_data_buf, rsp, sizeof(struct rsp_box));
-	thor_tx_data(thor_tx_data_buf, sizeof(struct rsp_box));
+	thor_tx_data(udc, thor_tx_data_buf, sizeof(struct rsp_box));
 
 	debug("-RSP: %d, %d\n", rsp->rsp, rsp->rsp_data);
 }
 
-static void send_data_rsp(s32 ack, s32 count)
+static void send_data_rsp(struct udevice *udc, s32 ack, s32 count)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct data_rsp_box, rsp,
 				 sizeof(struct data_rsp_box));
@@ -68,12 +75,12 @@ static void send_data_rsp(s32 ack, s32 count)
 	rsp->count = count;
 
 	memcpy(thor_tx_data_buf, rsp, sizeof(struct data_rsp_box));
-	thor_tx_data(thor_tx_data_buf, sizeof(struct data_rsp_box));
+	thor_tx_data(udc, thor_tx_data_buf, sizeof(struct data_rsp_box));
 
 	debug("-DATA RSP: %d, %d\n", ack, count);
 }
 
-static int process_rqt_info(const struct rqt_box *rqt)
+static int process_rqt_info(struct udevice *udc, const struct rqt_box *rqt)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct rsp_box, rsp, sizeof(struct rsp_box));
 	memset(rsp, 0, sizeof(struct rsp_box));
@@ -106,11 +113,11 @@ static int process_rqt_info(const struct rqt_box *rqt)
 		return -EINVAL;
 	}
 
-	send_rsp(rsp);
+	send_rsp(udc, rsp);
 	return true;
 }
 
-static int process_rqt_cmd(const struct rqt_box *rqt)
+static int process_rqt_cmd(struct udevice *udc, const struct rqt_box *rqt)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct rsp_box, rsp, sizeof(struct rsp_box));
 	memset(rsp, 0, sizeof(struct rsp_box));
@@ -121,7 +128,7 @@ static int process_rqt_cmd(const struct rqt_box *rqt)
 	switch (rqt->rqt_data) {
 	case RQT_CMD_REBOOT:
 		debug("TARGET RESET\n");
-		send_rsp(rsp);
+		send_rsp(udc, rsp);
 		g_dnl_unregister();
 		dfu_free_entities();
 #ifdef CONFIG_THOR_RESET_OFF
@@ -131,7 +138,7 @@ static int process_rqt_cmd(const struct rqt_box *rqt)
 		break;
 	case RQT_CMD_POWEROFF:
 	case RQT_CMD_EFSCLEAR:
-		send_rsp(rsp);
+		send_rsp(udc, rsp);
 	default:
 		printf("Command not supported -> cmd: %d\n", rqt->rqt_data);
 		return -EINVAL;
@@ -140,7 +147,8 @@ static int process_rqt_cmd(const struct rqt_box *rqt)
 	return true;
 }
 
-static long long int download_head(unsigned long long total,
+static long long int download_head(struct udevice *udc,
+				   unsigned long long total,
 				   unsigned int packet_size,
 				   long long int *left,
 				   int *cnt)
@@ -161,7 +169,7 @@ static long long int download_head(unsigned long long total,
 	while (total - rcv_cnt >= packet_size) {
 		thor_set_dma(buf, packet_size);
 		buf += packet_size;
-		ret_rcv = thor_rx_data();
+		ret_rcv = thor_rx_data(udc);
 		if (ret_rcv < 0)
 			return ret_rcv;
 		rcv_cnt += ret_rcv;
@@ -173,13 +181,13 @@ static long long int download_head(unsigned long long total,
 					transfer_buffer, THOR_STORE_UNIT_SIZE,
 					(*cnt)++);
 			if (ret) {
-				pr_err("DFU write failed [%d] cnt: %d",
+				pr_err("DFU write failed [%d] cnt: %d\n",
 				      ret, *cnt);
 				return ret;
 			}
 			buf = transfer_buffer;
 		}
-		send_data_rsp(0, ++usb_pkt_cnt);
+		send_data_rsp(udc, 0, ++usb_pkt_cnt);
 	}
 
 	/* Calculate the amount of data to arrive from PC (in bytes) */
@@ -195,11 +203,11 @@ static long long int download_head(unsigned long long total,
 
 	if (left_to_rcv) {
 		thor_set_dma(buf, packet_size);
-		ret_rcv = thor_rx_data();
+		ret_rcv = thor_rx_data(udc);
 		if (ret_rcv < 0)
 			return ret_rcv;
 		rcv_cnt += ret_rcv;
-		send_data_rsp(0, ++usb_pkt_cnt);
+		send_data_rsp(udc, 0, ++usb_pkt_cnt);
 	}
 
 	debug("%s: %llu total: %llu cnt: %d\n", __func__, rcv_cnt, total, *cnt);
@@ -223,14 +231,14 @@ static int download_tail(long long int left, int cnt)
 
 	transfer_buffer = dfu_get_buf(dfu_entity);
 	if (!transfer_buffer) {
-		pr_err("Transfer buffer not allocated!");
+		pr_err("Transfer buffer not allocated!\n");
 		return -ENXIO;
 	}
 
 	if (left) {
 		ret = dfu_write(dfu_entity, transfer_buffer, left, cnt++);
 		if (ret) {
-			pr_err("DFU write failed [%d]: left: %llu", ret, left);
+			pr_err("DFU write failed[%d]: left: %llu\n", ret, left);
 			return ret;
 		}
 	}
@@ -244,12 +252,12 @@ static int download_tail(long long int left, int cnt)
 	 */
 	ret = dfu_flush(dfu_entity, transfer_buffer, 0, cnt);
 	if (ret)
-		pr_err("DFU flush failed!");
+		pr_err("DFU flush failed!\n");
 
 	return ret;
 }
 
-static long long int process_rqt_download(const struct rqt_box *rqt)
+static long long int process_rqt_download(struct udevice *udc, const struct rqt_box *rqt)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct rsp_box, rsp, sizeof(struct rsp_box));
 	static long long int left, ret_head;
@@ -262,8 +270,10 @@ static long long int process_rqt_download(const struct rqt_box *rqt)
 
 	switch (rqt->rqt_data) {
 	case RQT_DL_INIT:
-		thor_file_size = rqt->int_data[0];
-		debug("INIT: total %d bytes\n", rqt->int_data[0]);
+		thor_file_size = (uint64_t)(uint32_t)rqt->int_data[0] +
+				 (((uint64_t)(uint32_t)rqt->int_data[1])
+				  << 32);
+		debug("INIT: total %llu bytes\n", thor_file_size);
 		break;
 	case RQT_DL_FILE_INFO:
 		file_type = rqt->int_data[0];
@@ -274,8 +284,11 @@ static long long int process_rqt_download(const struct rqt_box *rqt)
 			break;
 		}
 
-		thor_file_size = rqt->int_data[1];
+		thor_file_size = (uint64_t)(uint32_t)rqt->int_data[1] +
+				 (((uint64_t)(uint32_t)rqt->int_data[2])
+				  << 32);
 		memcpy(f_name, rqt->str_data[0], F_NAME_BUF_SIZE);
+		f_name[F_NAME_BUF_SIZE] = '\0';
 
 		debug("INFO: name(%s, %d), size(%llu), type(%d)\n",
 		      f_name, 0, thor_file_size, file_type);
@@ -284,15 +297,15 @@ static long long int process_rqt_download(const struct rqt_box *rqt)
 
 		alt_setting_num = dfu_get_alt(f_name);
 		if (alt_setting_num < 0) {
-			pr_err("Alt setting [%d] to write not found!",
+			pr_err("Alt setting [%d] to write not found!\n",
 			      alt_setting_num);
 			rsp->ack = -ENODEV;
 			ret = rsp->ack;
 		}
 		break;
 	case RQT_DL_FILE_START:
-		send_rsp(rsp);
-		ret_head = download_head(thor_file_size, THOR_PACKET_SIZE,
+		send_rsp(udc, rsp);
+		ret_head = download_head(udc, thor_file_size, THOR_PACKET_SIZE,
 					 &left, &cnt);
 		if (ret_head < 0) {
 			left = 0;
@@ -310,15 +323,15 @@ static long long int process_rqt_download(const struct rqt_box *rqt)
 		debug("DL EXIT\n");
 		break;
 	default:
-		pr_err("Operation not supported: %d", rqt->rqt_data);
+		pr_err("Operation not supported: %d\n", rqt->rqt_data);
 		ret = -ENOTSUPP;
 	}
 
-	send_rsp(rsp);
+	send_rsp(udc, rsp);
 	return ret;
 }
 
-static int process_data(void)
+static int process_data(struct udevice *udc)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct rqt_box, rqt, sizeof(struct rqt_box));
 	int ret = -EINVAL;
@@ -329,19 +342,19 @@ static int process_data(void)
 
 	switch (rqt->rqt) {
 	case RQT_INFO:
-		ret = process_rqt_info(rqt);
+		ret = process_rqt_info(udc, rqt);
 		break;
 	case RQT_CMD:
-		ret = process_rqt_cmd(rqt);
+		ret = process_rqt_cmd(udc, rqt);
 		break;
 	case RQT_DL:
-		ret = (int) process_rqt_download(rqt);
+		ret = (int) process_rqt_download(udc, rqt);
 		break;
 	case RQT_UL:
 		puts("RQT: UPLOAD not supported!\n");
 		break;
 	default:
-		pr_err("unknown request (%d)", rqt->rqt);
+		pr_err("unknown request (%d)\n", rqt->rqt);
 	}
 
 	return ret;
@@ -526,7 +539,7 @@ static struct usb_request *alloc_ep_req(struct usb_ep *ep, unsigned length)
 	return req;
 }
 
-static int thor_rx_data(void)
+static int thor_rx_data(struct udevice *udc)
 {
 	struct thor_dev *dev = thor_func->dev;
 	int data_to_rx, tmp, status;
@@ -540,14 +553,14 @@ static int thor_rx_data(void)
 
 		status = usb_ep_queue(dev->out_ep, dev->out_req, 0);
 		if (status) {
-			pr_err("kill %s:  resubmit %d bytes --> %d",
+			pr_err("kill %s:  resubmit %d bytes --> %d\n",
 			      dev->out_ep->name, dev->out_req->length, status);
 			usb_ep_set_halt(dev->out_ep);
 			return -EAGAIN;
 		}
 
 		while (!dev->rxdata) {
-			usb_gadget_handle_interrupts(0);
+			dm_usb_gadget_handle_interrupts(udc);
 			if (ctrlc())
 				return -1;
 		}
@@ -558,7 +571,7 @@ static int thor_rx_data(void)
 	return tmp;
 }
 
-static void thor_tx_data(unsigned char *data, int len)
+static void thor_tx_data(struct udevice *udc, unsigned char *data, int len)
 {
 	struct thor_dev *dev = thor_func->dev;
 	unsigned char *ptr = dev->in_req->buf;
@@ -574,14 +587,14 @@ static void thor_tx_data(unsigned char *data, int len)
 
 	status = usb_ep_queue(dev->in_ep, dev->in_req, 0);
 	if (status) {
-		pr_err("kill %s:  resubmit %d bytes --> %d",
+		pr_err("kill %s:  resubmit %d bytes --> %d\n",
 		      dev->in_ep->name, dev->in_req->length, status);
 		usb_ep_set_halt(dev->in_ep);
 	}
 
 	/* Wait until tx interrupt received */
 	while (!dev->txdata)
-		usb_gadget_handle_interrupts(0);
+		dm_usb_gadget_handle_interrupts(udc);
 
 	dev->txdata = 0;
 }
@@ -607,28 +620,12 @@ static void thor_rx_tx_complete(struct usb_ep *ep, struct usb_request *req)
 	case -ESHUTDOWN:		/* disconnect from host */
 	case -EREMOTEIO:                /* short read */
 	case -EOVERFLOW:
-		pr_err("ERROR:%d", status);
+		pr_err("ERROR:%d\n", status);
 		break;
 	}
 
 	debug("%s complete --> %d, %d/%d\n", ep->name,
 	      status, req->actual, req->length);
-}
-
-static struct usb_request *thor_start_ep(struct usb_ep *ep)
-{
-	struct usb_request *req;
-
-	req = alloc_ep_req(ep, THOR_PACKET_SIZE);
-	debug("%s: ep:%p req:%p\n", __func__, ep, req);
-
-	if (!req)
-		return NULL;
-
-	memset(req->buf, 0, req->length);
-	req->complete = thor_rx_tx_complete;
-
-	return req;
 }
 
 static void thor_setup_complete(struct usb_ep *ep, struct usb_request *req)
@@ -663,7 +660,7 @@ thor_func_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 		break;
 
 	default:
-		pr_err("thor_setup: unknown request: %d", ctrl->bRequest);
+		pr_err("thor_setup: unknown request: %d\n", ctrl->bRequest);
 	}
 
 	if (value >= 0) {
@@ -691,18 +688,18 @@ static void thor_set_dma(void *addr, int len)
 	dev->out_req->length = len;
 }
 
-int thor_init(void)
+int thor_init(struct udevice *udc)
 {
 	struct thor_dev *dev = thor_func->dev;
 
 	/* Wait for a device enumeration and configuration settings */
 	debug("THOR enumeration/configuration setting....\n");
 	while (!dev->configuration_done)
-		usb_gadget_handle_interrupts(0);
+		dm_usb_gadget_handle_interrupts(udc);
 
 	thor_set_dma(thor_rx_data_buf, strlen("THOR"));
 	/* detect the download request from Host PC */
-	if (thor_rx_data() < 0) {
+	if (thor_rx_data(udc) < 0) {
 		printf("%s: Data not received!\n", __func__);
 		return -1;
 	}
@@ -712,7 +709,7 @@ int thor_init(void)
 		udelay(30 * 1000); /* 30 ms */
 
 		strcpy((char *)thor_tx_data_buf, "ROHT");
-		thor_tx_data(thor_tx_data_buf, strlen("ROHT"));
+		thor_tx_data(udc, thor_tx_data_buf, strlen("ROHT"));
 	} else {
 		puts("Wrong reply information\n");
 		return -1;
@@ -721,17 +718,17 @@ int thor_init(void)
 	return 0;
 }
 
-int thor_handle(void)
+int thor_handle(struct udevice *udc)
 {
 	int ret;
 
 	/* receive the data from Host PC */
 	while (1) {
 		thor_set_dma(thor_rx_data_buf, sizeof(struct rqt_box));
-		ret = thor_rx_data();
+		ret = thor_rx_data(udc);
 
 		if (ret > 0) {
-			ret = process_data();
+			ret = process_data(udc);
 #ifdef CONFIG_THOR_RESET_OFF
 			if (ret == RESET_DONE)
 				break;
@@ -742,9 +739,18 @@ int thor_handle(void)
 			printf("%s: No data received!\n", __func__);
 			break;
 		}
+		if (dfu_reinit_needed)
+			return THOR_DFU_REINIT_NEEDED;
 	}
 
 	return 0;
+}
+
+static void free_ep_req(struct usb_ep *ep, struct usb_request *req)
+{
+	if (req->buf)
+		free(req->buf);
+	usb_ep_free_request(ep, req);
 }
 
 static int thor_func_bind(struct usb_configuration *c, struct usb_function *f)
@@ -855,14 +861,10 @@ static int thor_func_bind(struct usb_configuration *c, struct usb_function *f)
 	return 0;
 
  fail:
+	if (dev->req)
+		free_ep_req(gadget->ep0, dev->req);
 	free(dev);
 	return status;
-}
-
-static void free_ep_req(struct usb_ep *ep, struct usb_request *req)
-{
-	free(req->buf);
-	usb_ep_free_request(ep, req);
 }
 
 static void thor_unbind(struct usb_configuration *c, struct usb_function *f)
@@ -870,6 +872,7 @@ static void thor_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct f_thor *f_thor = func_to_thor(f);
 	struct thor_dev *dev = f_thor->dev;
 
+	free_ep_req(dev->gadget->ep0, dev->req);
 	free(dev);
 	memset(thor_func, 0, sizeof(*thor_func));
 	thor_func = NULL;
@@ -884,16 +887,14 @@ static void thor_func_disable(struct usb_function *f)
 
 	/* Avoid freeing memory when ep is still claimed */
 	if (dev->in_ep->driver_data) {
-		free_ep_req(dev->in_ep, dev->in_req);
 		usb_ep_disable(dev->in_ep);
+		free_ep_req(dev->in_ep, dev->in_req);
 		dev->in_ep->driver_data = NULL;
 	}
 
 	if (dev->out_ep->driver_data) {
-		free(dev->out_req->buf);
-		dev->out_req->buf = NULL;
-		usb_ep_free_request(dev->out_ep, dev->out_req);
 		usb_ep_disable(dev->out_ep);
+		usb_ep_free_request(dev->out_ep, dev->out_req);
 		dev->out_ep->driver_data = NULL;
 	}
 
@@ -919,16 +920,17 @@ static int thor_eps_setup(struct usb_function *f)
 
 	result = usb_ep_enable(ep, d);
 	if (result)
-		goto exit;
+		goto err;
 
 	ep->driver_data = cdev; /* claim */
-	req = thor_start_ep(ep);
+	req = alloc_ep_req(ep, THOR_PACKET_SIZE);
 	if (!req) {
-		usb_ep_disable(ep);
 		result = -EIO;
-		goto exit;
+		goto err_disable_in_ep;
 	}
 
+	memset(req->buf, 0, req->length);
+	req->complete = thor_rx_tx_complete;
 	dev->in_req = req;
 	ep = dev->out_ep;
 	d = ep_desc(gadget, &hs_out_desc, &fs_out_desc);
@@ -936,22 +938,41 @@ static int thor_eps_setup(struct usb_function *f)
 
 	result = usb_ep_enable(ep, d);
 	if (result)
-		goto exit;
+		goto err_free_in_req;
 
 	ep->driver_data = cdev; /* claim */
-	req = thor_start_ep(ep);
+	req = usb_ep_alloc_request(ep, 0);
 	if (!req) {
-		usb_ep_disable(ep);
 		result = -EIO;
-		goto exit;
+		goto err_disable_out_ep;
 	}
 
+	req->complete = thor_rx_tx_complete;
 	dev->out_req = req;
 	/* ACM control EP */
 	ep = dev->int_ep;
+	d = ep_desc(gadget, &hs_int_desc, &fs_int_desc);
+	debug("(d)bEndpointAddress: 0x%x\n", d->bEndpointAddress);
+
+	result = usb_ep_enable(ep, d);
+	if (result)
+		goto err;
+
 	ep->driver_data = cdev;	/* claim */
 
- exit:
+	return 0;
+
+ err_disable_out_ep:
+	usb_ep_disable(dev->out_ep);
+
+ err_free_in_req:
+	free_ep_req(dev->in_ep, dev->in_req);
+	dev->in_req = NULL;
+
+ err_disable_in_ep:
+	usb_ep_disable(dev->in_ep);
+
+ err:
 	return result;
 }
 
@@ -972,7 +993,7 @@ static int thor_func_set_alt(struct usb_function *f,
 		debug("Communication Data interface\n");
 		result = thor_eps_setup(f);
 		if (result)
-			pr_err("%s: EPs setup failed!", __func__);
+			pr_err("%s: EPs setup failed!\n", __func__);
 		dev->configuration_done = 1;
 		break;
 	}

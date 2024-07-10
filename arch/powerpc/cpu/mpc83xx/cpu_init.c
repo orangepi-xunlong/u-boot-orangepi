@@ -4,13 +4,27 @@
  */
 
 #include <common.h>
+#include <asm-offsets.h>
 #include <mpc83xx.h>
+#include <system-constants.h>
 #include <ioports.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/processor.h>
+#include <fsl_qe.h>
 #ifdef CONFIG_USB_EHCI_FSL
 #include <usb/ehci-ci.h>
 #endif
+#include <linux/delay.h>
+#ifdef CONFIG_QE
+#include <fsl_qe.h>
+#endif
+
+#include "lblaw/lblaw.h"
+#include "elbc/elbc.h"
+#include "sysio/sysio.h"
+#include "arbiter/arbiter.h"
+#include "initreg/initreg.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -18,9 +32,8 @@ DECLARE_GLOBAL_DATA_PTR;
 extern qe_iop_conf_t qe_iop_conf_tab[];
 extern void qe_config_iopin(u8 port, u8 pin, int dir,
 			 int open_drain, int assign);
-extern void qe_init(uint qe_base);
-extern void qe_reset(void);
 
+#if !defined(CONFIG_PINCTRL)
 static void config_qe_ioports(void)
 {
 	u8	port, pin;
@@ -37,6 +50,7 @@ static void config_qe_ioports(void)
 	}
 }
 #endif
+#endif
 
 /*
  * Breathe some life into the CPU...
@@ -47,62 +61,6 @@ static void config_qe_ioports(void)
  */
 void cpu_init_f (volatile immap_t * im)
 {
-	__be32 acr_mask =
-#ifdef CONFIG_SYS_ACR_PIPE_DEP /* Arbiter pipeline depth */
-		ACR_PIPE_DEP |
-#endif
-#ifdef CONFIG_SYS_ACR_RPTCNT /* Arbiter repeat count */
-		ACR_RPTCNT |
-#endif
-#ifdef CONFIG_SYS_ACR_APARK	/* Arbiter address parking mode */
-		ACR_APARK |
-#endif
-#ifdef CONFIG_SYS_ACR_PARKM	/* Arbiter parking master */
-		ACR_PARKM |
-#endif
-		0;
-	__be32 acr_val =
-#ifdef CONFIG_SYS_ACR_PIPE_DEP /* Arbiter pipeline depth */
-		(CONFIG_SYS_ACR_PIPE_DEP << ACR_PIPE_DEP_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_ACR_RPTCNT /* Arbiter repeat count */
-		(CONFIG_SYS_ACR_RPTCNT << ACR_RPTCNT_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_ACR_APARK	/* Arbiter address parking mode */
-		(CONFIG_SYS_ACR_APARK << ACR_APARK_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_ACR_PARKM	/* Arbiter parking master */
-		(CONFIG_SYS_ACR_PARKM << ACR_PARKM_SHIFT) |
-#endif
-		0;
-	__be32 spcr_mask =
-#ifdef CONFIG_SYS_SPCR_OPT /* Optimize transactions between CSB and other dev */
-		SPCR_OPT |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSECEP /* all eTSEC's Emergency priority */
-		SPCR_TSECEP |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSEC1EP /* TSEC1 Emergency priority */
-		SPCR_TSEC1EP |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSEC2EP /* TSEC2 Emergency priority */
-		SPCR_TSEC2EP |
-#endif
-		0;
-	__be32 spcr_val =
-#ifdef CONFIG_SYS_SPCR_OPT
-		(CONFIG_SYS_SPCR_OPT << SPCR_OPT_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSECEP /* all eTSEC's Emergency priority */
-		(CONFIG_SYS_SPCR_TSECEP << SPCR_TSECEP_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSEC1EP /* TSEC1 Emergency priority */
-		(CONFIG_SYS_SPCR_TSEC1EP << SPCR_TSEC1EP_SHIFT) |
-#endif
-#ifdef CONFIG_SYS_SPCR_TSEC2EP /* TSEC2 Emergency priority */
-		(CONFIG_SYS_SPCR_TSEC2EP << SPCR_TSEC2EP_SHIFT) |
-#endif
-		0;
 	__be32 sccr_mask =
 #ifdef CONFIG_SYS_SCCR_ENCCM /* Encryption clock mode */
 		SCCR_ENCCM |
@@ -119,10 +77,10 @@ void cpu_init_f (volatile immap_t * im)
 #ifdef CONFIG_SYS_SCCR_TSECCM /* all TSEC's clock mode */
 		SCCR_TSECCM |
 #endif
-#ifdef CONFIG_SYS_SCCR_TSEC1CM /* TSEC1 clock mode */
+#ifdef CFG_SYS_SCCR_TSEC1CM /* TSEC1 clock mode */
 		SCCR_TSEC1CM |
 #endif
-#ifdef CONFIG_SYS_SCCR_TSEC2CM /* TSEC2 clock mode */
+#ifdef CFG_SYS_SCCR_TSEC2CM /* TSEC2 clock mode */
 		SCCR_TSEC2CM |
 #endif
 #ifdef CONFIG_SYS_SCCR_TSEC1ON /* TSEC1 clock switch */
@@ -134,10 +92,10 @@ void cpu_init_f (volatile immap_t * im)
 #ifdef CONFIG_SYS_SCCR_USBMPHCM /* USB MPH clock mode */
 		SCCR_USBMPHCM |
 #endif
-#ifdef CONFIG_SYS_SCCR_USBDRCM /* USB DR clock mode */
+#ifdef CFG_SYS_SCCR_USBDRCM /* USB DR clock mode */
 		SCCR_USBDRCM |
 #endif
-#ifdef CONFIG_SYS_SCCR_SATACM /* SATA controller clock mode */
+#ifdef CFG_SYS_SCCR_SATACM /* SATA controller clock mode */
 		SCCR_SATACM |
 #endif
 		0;
@@ -157,11 +115,11 @@ void cpu_init_f (volatile immap_t * im)
 #ifdef CONFIG_SYS_SCCR_TSECCM /* all TSEC's clock mode */
 		(CONFIG_SYS_SCCR_TSECCM << SCCR_TSECCM_SHIFT) |
 #endif
-#ifdef CONFIG_SYS_SCCR_TSEC1CM /* TSEC1 clock mode */
-		(CONFIG_SYS_SCCR_TSEC1CM << SCCR_TSEC1CM_SHIFT) |
+#ifdef CFG_SYS_SCCR_TSEC1CM /* TSEC1 clock mode */
+		(CFG_SYS_SCCR_TSEC1CM << SCCR_TSEC1CM_SHIFT) |
 #endif
-#ifdef CONFIG_SYS_SCCR_TSEC2CM /* TSEC2 clock mode */
-		(CONFIG_SYS_SCCR_TSEC2CM << SCCR_TSEC2CM_SHIFT) |
+#ifdef CFG_SYS_SCCR_TSEC2CM /* TSEC2 clock mode */
+		(CFG_SYS_SCCR_TSEC2CM << SCCR_TSEC2CM_SHIFT) |
 #endif
 #ifdef CONFIG_SYS_SCCR_TSEC1ON /* TSEC1 clock switch */
 		(CONFIG_SYS_SCCR_TSEC1ON << SCCR_TSEC1ON_SHIFT) |
@@ -172,38 +130,16 @@ void cpu_init_f (volatile immap_t * im)
 #ifdef CONFIG_SYS_SCCR_USBMPHCM /* USB MPH clock mode */
 		(CONFIG_SYS_SCCR_USBMPHCM << SCCR_USBMPHCM_SHIFT) |
 #endif
-#ifdef CONFIG_SYS_SCCR_USBDRCM /* USB DR clock mode */
-		(CONFIG_SYS_SCCR_USBDRCM << SCCR_USBDRCM_SHIFT) |
+#ifdef CFG_SYS_SCCR_USBDRCM /* USB DR clock mode */
+		(CFG_SYS_SCCR_USBDRCM << SCCR_USBDRCM_SHIFT) |
 #endif
-#ifdef CONFIG_SYS_SCCR_SATACM /* SATA controller clock mode */
-		(CONFIG_SYS_SCCR_SATACM << SCCR_SATACM_SHIFT) |
-#endif
-		0;
-	__be32 lcrr_mask =
-#ifdef CONFIG_SYS_LCRR_DBYP /* PLL bypass */
-		LCRR_DBYP |
-#endif
-#ifdef CONFIG_SYS_LCRR_EADC /* external address delay */
-		LCRR_EADC |
-#endif
-#ifdef CONFIG_SYS_LCRR_CLKDIV /* system clock divider */
-		LCRR_CLKDIV |
-#endif
-		0;
-	__be32 lcrr_val =
-#ifdef CONFIG_SYS_LCRR_DBYP /* PLL bypass */
-		CONFIG_SYS_LCRR_DBYP |
-#endif
-#ifdef CONFIG_SYS_LCRR_EADC
-		CONFIG_SYS_LCRR_EADC |
-#endif
-#ifdef CONFIG_SYS_LCRR_CLKDIV /* system clock divider */
-		CONFIG_SYS_LCRR_CLKDIV |
+#ifdef CFG_SYS_SCCR_SATACM /* SATA controller clock mode */
+		(CFG_SYS_SCCR_SATACM << SCCR_SATACM_SHIFT) |
 #endif
 		0;
 
 	/* Pointer is writable since we allocated a register for it */
-	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
+	gd = (gd_t *)SYS_INIT_SP_ADDR;
 
 	/* global data region was cleared in start.S */
 
@@ -239,91 +175,57 @@ void cpu_init_f (volatile immap_t * im)
 	setbits_be32(&im->sysconf.spcr, SPCR_TBEN);
 
 	/* System General Purpose Register */
-#ifdef CONFIG_SYS_SICRH
-#if defined(CONFIG_MPC834x) || defined(CONFIG_MPC8313)
+#ifdef CFG_SYS_SICRH
+#if defined(CONFIG_ARCH_MPC834X) || defined(CONFIG_ARCH_MPC8313)
 	/* regarding to MPC34x manual rev.1 bits 28..29 must be preserved */
-	__raw_writel((im->sysconf.sicrh & 0x0000000C) | CONFIG_SYS_SICRH,
+	__raw_writel((im->sysconf.sicrh & 0x0000000C) | CFG_SYS_SICRH,
 		     &im->sysconf.sicrh);
 #else
-	__raw_writel(CONFIG_SYS_SICRH, &im->sysconf.sicrh);
+	__raw_writel(CFG_SYS_SICRH, &im->sysconf.sicrh);
 #endif
 #endif
-#ifdef CONFIG_SYS_SICRL
-	__raw_writel(CONFIG_SYS_SICRL, &im->sysconf.sicrl);
+#ifdef CFG_SYS_SICRL
+	__raw_writel(CFG_SYS_SICRL, &im->sysconf.sicrl);
 #endif
-#ifdef CONFIG_SYS_GPR1
-	__raw_writel(CONFIG_SYS_GPR1, &im->sysconf.gpr1);
+#ifdef CFG_SYS_GPR1
+	__raw_writel(CFG_SYS_GPR1, &im->sysconf.gpr1);
 #endif
-#ifdef CONFIG_SYS_DDRCDR /* DDR control driver register */
-	__raw_writel(CONFIG_SYS_DDRCDR, &im->sysconf.ddrcdr);
+#ifdef CFG_SYS_DDRCDR /* DDR control driver register */
+	__raw_writel(CFG_SYS_DDRCDR, &im->sysconf.ddrcdr);
 #endif
-#ifdef CONFIG_SYS_OBIR /* Output buffer impedance register */
-	__raw_writel(CONFIG_SYS_OBIR, &im->sysconf.obir);
+#ifdef CFG_SYS_OBIR /* Output buffer impedance register */
+	__raw_writel(CFG_SYS_OBIR, &im->sysconf.obir);
 #endif
 
+#if !defined(CONFIG_PINCTRL)
 #ifdef CONFIG_QE
 	/* Config QE ioports */
 	config_qe_ioports();
 #endif
+#endif
+
 	/* Set up preliminary BR/OR regs */
 	init_early_memctl_regs();
 
 	/* Local Access window setup */
-#if defined(CONFIG_SYS_LBLAWBAR0_PRELIM) && defined(CONFIG_SYS_LBLAWAR0_PRELIM)
-	im->sysconf.lblaw[0].bar = CONFIG_SYS_LBLAWBAR0_PRELIM;
-	im->sysconf.lblaw[0].ar = CONFIG_SYS_LBLAWAR0_PRELIM;
+#if defined(CFG_SYS_LBLAWBAR0_PRELIM) && defined(CFG_SYS_LBLAWAR0_PRELIM)
+	im->sysconf.lblaw[0].bar = CFG_SYS_LBLAWBAR0_PRELIM;
+	im->sysconf.lblaw[0].ar = CFG_SYS_LBLAWAR0_PRELIM;
 #else
-#error	CONFIG_SYS_LBLAWBAR0_PRELIM & CONFIG_SYS_LBLAWAR0_PRELIM must be defined
+#error	CFG_SYS_LBLAWBAR0_PRELIM & CFG_SYS_LBLAWAR0_PRELIM must be defined
 #endif
 
-#if defined(CONFIG_SYS_LBLAWBAR1_PRELIM) && defined(CONFIG_SYS_LBLAWAR1_PRELIM)
-	im->sysconf.lblaw[1].bar = CONFIG_SYS_LBLAWBAR1_PRELIM;
-	im->sysconf.lblaw[1].ar = CONFIG_SYS_LBLAWAR1_PRELIM;
+#if defined(CFG_SYS_LBLAWBAR1_PRELIM) && defined(CFG_SYS_LBLAWAR1_PRELIM)
+	im->sysconf.lblaw[1].bar = CFG_SYS_LBLAWBAR1_PRELIM;
+	im->sysconf.lblaw[1].ar = CFG_SYS_LBLAWAR1_PRELIM;
 #endif
-#if defined(CONFIG_SYS_LBLAWBAR2_PRELIM) && defined(CONFIG_SYS_LBLAWAR2_PRELIM)
-	im->sysconf.lblaw[2].bar = CONFIG_SYS_LBLAWBAR2_PRELIM;
-	im->sysconf.lblaw[2].ar = CONFIG_SYS_LBLAWAR2_PRELIM;
+#if defined(CFG_SYS_LBLAWBAR2_PRELIM) && defined(CFG_SYS_LBLAWAR2_PRELIM)
+	im->sysconf.lblaw[2].bar = CFG_SYS_LBLAWBAR2_PRELIM;
+	im->sysconf.lblaw[2].ar = CFG_SYS_LBLAWAR2_PRELIM;
 #endif
-#if defined(CONFIG_SYS_LBLAWBAR3_PRELIM) && defined(CONFIG_SYS_LBLAWAR3_PRELIM)
-	im->sysconf.lblaw[3].bar = CONFIG_SYS_LBLAWBAR3_PRELIM;
-	im->sysconf.lblaw[3].ar = CONFIG_SYS_LBLAWAR3_PRELIM;
-#endif
-#if defined(CONFIG_SYS_LBLAWBAR4_PRELIM) && defined(CONFIG_SYS_LBLAWAR4_PRELIM)
-	im->sysconf.lblaw[4].bar = CONFIG_SYS_LBLAWBAR4_PRELIM;
-	im->sysconf.lblaw[4].ar = CONFIG_SYS_LBLAWAR4_PRELIM;
-#endif
-#if defined(CONFIG_SYS_LBLAWBAR5_PRELIM) && defined(CONFIG_SYS_LBLAWAR5_PRELIM)
-	im->sysconf.lblaw[5].bar = CONFIG_SYS_LBLAWBAR5_PRELIM;
-	im->sysconf.lblaw[5].ar = CONFIG_SYS_LBLAWAR5_PRELIM;
-#endif
-#if defined(CONFIG_SYS_LBLAWBAR6_PRELIM) && defined(CONFIG_SYS_LBLAWAR6_PRELIM)
-	im->sysconf.lblaw[6].bar = CONFIG_SYS_LBLAWBAR6_PRELIM;
-	im->sysconf.lblaw[6].ar = CONFIG_SYS_LBLAWAR6_PRELIM;
-#endif
-#if defined(CONFIG_SYS_LBLAWBAR7_PRELIM) && defined(CONFIG_SYS_LBLAWAR7_PRELIM)
-	im->sysconf.lblaw[7].bar = CONFIG_SYS_LBLAWBAR7_PRELIM;
-	im->sysconf.lblaw[7].ar = CONFIG_SYS_LBLAWAR7_PRELIM;
-#endif
-#ifdef CONFIG_SYS_GPIO1_PRELIM
-	im->gpio[0].dat = CONFIG_SYS_GPIO1_DAT;
-	im->gpio[0].dir = CONFIG_SYS_GPIO1_DIR;
-#endif
-#ifdef CONFIG_SYS_GPIO2_PRELIM
-	im->gpio[1].dat = CONFIG_SYS_GPIO2_DAT;
-	im->gpio[1].dir = CONFIG_SYS_GPIO2_DIR;
-#endif
-#if defined(CONFIG_USB_EHCI_FSL) && defined(CONFIG_MPC831x)
-	uint32_t temp;
-	struct usb_ehci *ehci = (struct usb_ehci *)CONFIG_SYS_FSL_USB1_ADDR;
-
-	/* Configure interface. */
-	setbits_be32(&ehci->control, REFSEL_16MHZ | UTMI_PHY_EN);
-
-	/* Wait for clock to stabilize */
-	do {
-		temp = __raw_readl(&ehci->control);
-		udelay(1000);
-	} while (!(temp & PHY_CLK_VALID));
+#if defined(CFG_SYS_LBLAWBAR3_PRELIM) && defined(CFG_SYS_LBLAWAR3_PRELIM)
+	im->sysconf.lblaw[3].bar = CFG_SYS_LBLAWBAR3_PRELIM;
+	im->sysconf.lblaw[3].ar = CFG_SYS_LBLAWAR3_PRELIM;
 #endif
 }
 
@@ -464,6 +366,7 @@ static int print_83xx_arb_event(int force)
 }
 #endif /* CONFIG_DISPLAY_AER_xxxx */
 
+#ifndef CONFIG_CPU_MPC83XX
 /*
  * Figure out the cause of the reset
  */
@@ -505,3 +408,4 @@ int prt_83xx_rsr(void)
 
 	return 0;
 }
+#endif

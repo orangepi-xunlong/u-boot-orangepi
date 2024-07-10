@@ -4,7 +4,7 @@
  * Based on LINUX KERNEL
  * drivers/usb/host/ehci-omap.c and drivers/mfd/omap-usb-host.c
  *
- * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com*
+ * Copyright (C) 2011 Texas Instruments Incorporated - https://www.ti.com*
  * Author: Govindraj R <govindraj.raja@ti.com>
  */
 
@@ -122,16 +122,5 @@ struct omap_ehci {
 	u32 insreg07;		/* 0xac */
 	u32 insreg08;		/* 0xb0 */
 };
-
-/*
- * FIXME: forward declaration of this structs needed because omap got the
- * ehci implementation backwards. move out ehci_hcd_x from board files
- */
-struct ehci_hccr;
-struct ehci_hcor;
-
-int omap_ehci_hcd_init(int index, struct omap_usbhs_board_data *usbhs_pdata,
-		       struct ehci_hccr **hccr, struct ehci_hcor **hcor);
-int omap_ehci_hcd_stop(void);
 
 #endif /* _OMAP_COMMON_EHCI_H_ */

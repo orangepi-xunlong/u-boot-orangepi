@@ -4,13 +4,11 @@
  *
  * Clock synthesizer header
  *
- * Copyright (C) 2016, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2016, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #ifndef __CLK_SYNTHESIZER_H
 #define __CLK_SYNTHESIZER_H
-
-#include <common.h>
 
 #define CLK_SYNTHESIZER_ID_REG		0x0
 #define CLK_SYNTHESIZER_XCSEL		0x05

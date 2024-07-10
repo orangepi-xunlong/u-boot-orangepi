@@ -8,25 +8,28 @@
 
 #include <common.h>
 #include <config.h>
+#include <init.h>
+#include <log.h>
+#include <serial.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
+#include <asm/sections.h>
 #include <linux/compiler.h>
 
 #include "mxs_init.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 static gd_t gdata __section(".data");
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
-static bd_t bdata __section(".data");
+#ifdef CONFIG_SPL_SERIAL
+static struct bd_info bdata __section(".data");
 #endif
 
 /*
  * This delay function is intended to be used only in early stage of boot, where
- * clock are not set up yet. The timer used here is reset on every boot and
- * takes a few seconds to roll. The boot doesn't take that long, so to keep the
- * code simple, it doesn't take rolling into consideration.
+ * clock are not set up yet.
  */
 void early_delay(int delay)
 {
@@ -34,8 +37,7 @@ void early_delay(int delay)
 		(struct mxs_digctl_regs *)MXS_DIGCTL_BASE;
 
 	uint32_t st = readl(&digctl_regs->hw_digctl_microseconds);
-	st += delay;
-	while (st > readl(&digctl_regs->hw_digctl_microseconds))
+	while (readl(&digctl_regs->hw_digctl_microseconds) - st <= delay)
 		;
 }
 
@@ -99,15 +101,14 @@ static void mxs_spl_fixup_vectors(void)
 	 * thus this fixup. Our vectoring table is PIC, so copying is
 	 * fine.
 	 */
-	extern uint32_t _start;
 
 	/* cppcheck-suppress nullPointer */
-	memcpy(0x0, &_start, 0x60);
+	memcpy(0x0, _start, 0x60);
 }
 
 static void mxs_spl_console_init(void)
 {
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
+#ifdef CONFIG_SPL_SERIAL
 	gd->bd = &bdata;
 	gd->baudrate = CONFIG_BAUDRATE;
 	serial_init();
@@ -121,14 +122,16 @@ void mxs_common_spl_init(const uint32_t arg, const uint32_t *resptr,
 {
 	struct mxs_spl_data *data = MXS_SPL_DATA;
 	uint8_t bootmode = mxs_get_bootmode_index();
-	gd = &gdata;
+	set_gd(&gdata);
 
 	mxs_spl_fixup_vectors();
 
 	mxs_iomux_setup_multiple_pads(iomux_setup, iomux_size);
 
-	mxs_spl_console_init();
-	debug("SPL: Serial Console Initialised\n");
+	if (!CONFIG_IS_ENABLED(DM_SERIAL)) {
+		mxs_spl_console_init();
+		debug("SPL: Serial Console Initialised\n");
+	}
 
 	mxs_power_init();
 

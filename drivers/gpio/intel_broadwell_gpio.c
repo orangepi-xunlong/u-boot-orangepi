@@ -7,10 +7,12 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <pch.h>
 #include <pci.h>
 #include <syscon.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/pci.h>
@@ -116,7 +118,7 @@ static int broadwell_gpio_get_function(struct udevice *dev, unsigned offset)
 
 static int broadwell_gpio_probe(struct udevice *dev)
 {
-	struct broadwell_bank_platdata *plat = dev_get_platdata(dev);
+	struct broadwell_bank_plat *plat = dev_get_plat(dev);
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct broadwell_bank_priv *priv = dev_get_priv(dev);
 	struct udevice *pinctrl;
@@ -138,9 +140,9 @@ static int broadwell_gpio_probe(struct udevice *dev)
 	return 0;
 }
 
-static int broadwell_gpio_ofdata_to_platdata(struct udevice *dev)
+static int broadwell_gpio_of_to_plat(struct udevice *dev)
 {
-	struct broadwell_bank_platdata *plat = dev_get_platdata(dev);
+	struct broadwell_bank_plat *plat = dev_get_plat(dev);
 	u32 gpiobase;
 	int bank;
 	int ret;
@@ -181,8 +183,8 @@ U_BOOT_DRIVER(gpio_broadwell) = {
 	.id	= UCLASS_GPIO,
 	.of_match = intel_broadwell_gpio_ids,
 	.ops	= &gpio_broadwell_ops,
-	.ofdata_to_platdata	= broadwell_gpio_ofdata_to_platdata,
+	.of_to_plat	= broadwell_gpio_of_to_plat,
 	.probe	= broadwell_gpio_probe,
-	.priv_auto_alloc_size = sizeof(struct broadwell_bank_priv),
-	.platdata_auto_alloc_size = sizeof(struct broadwell_bank_platdata),
+	.priv_auto	= sizeof(struct broadwell_bank_priv),
+	.plat_auto	= sizeof(struct broadwell_bank_plat),
 };

@@ -5,10 +5,19 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <image.h>
+#include <irq_func.h>
+#include <log.h>
+#include <asm/global_data.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define NIOS_MAGIC 0x534f494e /* enable command line and initrd passing */
 
-int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *images)
+int do_bootm_linux(int flag, int argc, char *const argv[],
+		   struct bootm_headers *images)
 {
 	void (*kernel)(int, int, int, char *) = (void *)images->ep;
 	char *commandline = env_get("bootargs");
@@ -21,7 +30,7 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 		of_flat_tree = images->ft_addr;
 #endif
 	if (!of_flat_tree && argc > 1)
-		of_flat_tree = (char *)simple_strtoul(argv[1], NULL, 16);
+		of_flat_tree = (char *)hextoul(argv[1], NULL);
 	if (of_flat_tree)
 		initrd_end = (ulong)of_flat_tree;
 
@@ -53,4 +62,17 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	/* does not return */
 
 	return 1;
+}
+
+static ulong get_sp(void)
+{
+	ulong ret;
+
+	asm("mov %0, sp" : "=r"(ret) : );
+	return ret;
+}
+
+void arch_lmb_reserve(struct lmb *lmb)
+{
+	arch_lmb_reserve_generic(lmb, get_sp(), gd->ram_top, 4096);
 }

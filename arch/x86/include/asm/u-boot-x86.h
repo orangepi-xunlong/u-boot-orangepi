@@ -13,7 +13,44 @@ extern char gdt_rom[];
 
 /* cpu/.../cpu.c */
 int arch_cpu_init(void);
+
+/**
+ * x86_cpu_init_f() - Set up basic features of the x86 CPU
+ *
+ * 0 on success, -ve on error
+ */
 int x86_cpu_init_f(void);
+
+/**
+ * x86_cpu_reinit_f() - Set up the CPU a second time
+ *
+ * Once cpu_init_f() has been called (e.g. in SPL) we should not call it
+ * again (e.g. in U-Boot proper) since it sets up the state from scratch.
+ * Call this function in later phases of U-Boot instead. It reads the CPU
+ * identify so that CPU functions can be used correctly, but does not change
+ * anything.
+ *
+ * Return: 0 (indicating success, to mimic cpu_init_f())
+ */
+int x86_cpu_reinit_f(void);
+
+/**
+ * x86_cpu_init_tpl() - Do the minimum possible CPU init
+ *
+ * This just sets up the CPU features and figured out the identity
+ *
+ * Return: 0 (indicating success, to mimic cpu_init_f())
+ */
+int x86_cpu_init_tpl(void);
+
+/**
+ * cpu_reinit_fpu() - Reinit the FPU if something is wrong with it
+ *
+ * The FSP-M code can leave registers in use in the FPU. This functions reinits
+ * it so that the FPU can be used safely
+ */
+void cpu_reinit_fpu(void);
+
 int cpu_init_f(void);
 void setup_gdt(struct global_data *id, u64 *gdt_addr);
 /*
@@ -40,14 +77,11 @@ int x86_cleanup_before_linux(void);
 void x86_enable_caches(void);
 void x86_disable_caches(void);
 int x86_init_cache(void);
-void reset_cpu(ulong addr);
-ulong board_get_usable_ram_top(ulong total_size);
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size);
 int default_print_cpuinfo(void);
 
 /* Set up a UART which can be used with printch(), printhex8(), etc. */
 int setup_internal_uart(int enable);
-
-void setup_pcat_compatibility(void);
 
 void isa_unmap_rom(u32 addr);
 u32 isa_map_rom(u32 bus_addr, int size);
@@ -55,7 +89,7 @@ u32 isa_map_rom(u32 bus_addr, int size);
 /* arch/x86/lib/... */
 int video_bios_init(void);
 
-/* arch/x86/lib/fsp/... */
+/* arch/x86/lib/fsp1,2/... */
 
 /**
  * fsp_save_s3_stack() - save stack address to CMOS for next S3 boot
@@ -68,13 +102,36 @@ int video_bios_init(void);
  */
 int fsp_save_s3_stack(void);
 
-void	board_init_f_r_trampoline(ulong) __attribute__ ((noreturn));
-void	board_init_f_r(void) __attribute__ ((noreturn));
+/**
+ * board_init_f_r_trampoline() - jump to relocated address with new stack
+ *
+ * @sp: New stack pointer to use
+ */
+void __noreturn board_init_f_r_trampoline(ulong sp);
+
+/**
+ * board_init_f_r() - jump to relocated U-Boot
+ *
+ * This is used to jump from pre-relocation to post-relocation U-Boot. It
+ * enables the cache and jump to the new location.
+ */
+void __noreturn board_init_f_r(void);
+
+/*
+ * board_init_f_r_trampoline64() - jump to relocated address with new stack
+ *
+ * This is the 64-bit version
+ *
+ * @new_gd: New global_data pointer to use
+ * @sp: New stack pointer to pass on to board_init_r()
+ */
+void __noreturn board_init_f_r_trampoline64(struct global_data *new_gd,
+					    ulong sp);
 
 int arch_misc_init(void);
 
 /* Read the time stamp counter */
-static inline __attribute__((no_instrument_function)) uint64_t rdtsc(void)
+static inline notrace uint64_t rdtsc(void)
 {
 	uint32_t high, low;
 	__asm__ __volatile__("rdtsc" : "=a" (low), "=d" (high));
@@ -84,7 +141,6 @@ static inline __attribute__((no_instrument_function)) uint64_t rdtsc(void)
 /* board/... */
 void timer_set_tsc_base(uint64_t new_base);
 uint64_t timer_get_tsc(void);
-void board_quiesce_devices(void);
 
 void quick_ram_check(void);
 

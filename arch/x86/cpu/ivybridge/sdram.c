@@ -9,15 +9,21 @@
  * Copyright (C) 2011 Google Inc.
  */
 
+#define LOG_CATEGORY	UCLASS_RAM
+
 #include <common.h>
+#include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <init.h>
+#include <log.h>
 #include <malloc.h>
 #include <net.h>
 #include <rtc.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <syscon.h>
+#include <sysreset.h>
 #include <asm/cpu.h>
 #include <asm/processor.h>
 #include <asm/gpio.h>
@@ -40,7 +46,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CMOS_OFFSET_MRC_SEED_S3		156
 #define CMOS_OFFSET_MRC_SEED_CHK	160
 
-ulong board_get_usable_ram_top(ulong total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	return mrc_common_board_get_usable_ram_top(total_size);
 }
@@ -114,7 +120,7 @@ static int prepare_mrc_cache(struct pei_data *pei_data)
 	ret = read_seed_from_cmos(pei_data);
 	if (ret)
 		return ret;
-	ret = mrccache_get_region(NULL, &entry);
+	ret = mrccache_get_region(MRC_TYPE_NORMAL, NULL, &entry);
 	if (ret)
 		return ret;
 	mrc_cache = mrccache_find_current(&entry);
@@ -209,7 +215,7 @@ static int copy_spd(struct udevice *dev, struct pei_data *peid)
 
 	ret = mrc_locate_spd(dev, sizeof(peid->spd_data[0]), &data);
 	if (ret) {
-		debug("%s: Could not locate SPD (ret=%d)\n", __func__, ret);
+		log_debug("Could not locate SPD (err=%d)\n", ret);
 		return ret;
 	}
 
@@ -497,7 +503,7 @@ int dram_init(void)
 	/* If MRC data is not found we cannot continue S3 resume. */
 	if (pei_data->boot_mode == PEI_BOOT_RESUME && !pei_data->mrc_input) {
 		debug("Giving up in sdram_initialize: No MRC data\n");
-		reset_cpu(0);
+		sysreset_walk_halt(SYSRESET_COLD);
 	}
 
 	/* Pass console handler in pei_data */
@@ -536,12 +542,14 @@ int dram_init(void)
 
 	/* S3 resume: don't save scrambler seed or MRC data */
 	if (pei_data->boot_mode != PEI_BOOT_RESUME) {
+		struct mrc_output *mrc = &gd->arch.mrc[MRC_TYPE_NORMAL];
+
 		/*
 		 * This will be copied to SDRAM in reserve_arch(), then written
 		 * to SPI flash in mrccache_save()
 		 */
-		gd->arch.mrc_output = (char *)pei_data->mrc_output;
-		gd->arch.mrc_output_len = pei_data->mrc_output_len;
+		mrc->buf = (char *)pei_data->mrc_output;
+		mrc->len = pei_data->mrc_output_len;
 		ret = write_seeds_to_cmos(pei_data);
 		if (ret)
 			debug("Failed to write seeds to CMOS: %d\n", ret);

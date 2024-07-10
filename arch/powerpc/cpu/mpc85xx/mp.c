@@ -4,13 +4,19 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/processor.h>
+#include <env.h>
 #include <ioports.h>
 #include <lmb.h>
 #include <asm/io.h>
 #include <asm/mmu.h>
 #include <asm/fsl_law.h>
 #include <fsl_ddr_sdram.h>
+#include <linux/delay.h>
 #include "mp.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -42,9 +48,9 @@ int hold_cores_in_reset(int verbose)
 	return 0;
 }
 
-int cpu_reset(int nr)
+int cpu_reset(u32 nr)
 {
-	volatile ccsr_pic_t *pic = (void *)(CONFIG_SYS_MPC8xxx_PIC_ADDR);
+	volatile ccsr_pic_t *pic = (void *)(CFG_SYS_MPC8xxx_PIC_ADDR);
 	out_be32(&pic->pir, 1 << nr);
 	/* the dummy read works around an errata on early 85xx MP PICs */
 	(void)in_be32(&pic->pir);
@@ -53,7 +59,7 @@ int cpu_reset(int nr)
 	return 0;
 }
 
-int cpu_status(int nr)
+int cpu_status(u32 nr)
 {
 	u32 *table, id = get_my_id();
 
@@ -79,9 +85,9 @@ int cpu_status(int nr)
 }
 
 #ifdef CONFIG_FSL_CORENET
-int cpu_disable(int nr)
+int cpu_disable(u32 nr)
 {
-	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
 	setbits_be32(&gur->coredisrl, 1 << nr);
 
@@ -89,15 +95,15 @@ int cpu_disable(int nr)
 }
 
 int is_core_disabled(int nr) {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 coredisrl = in_be32(&gur->coredisrl);
 
 	return (coredisrl & (1 << nr));
 }
 #else
-int cpu_disable(int nr)
+int cpu_disable(u32 nr)
 {
-	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
 	switch (nr) {
 	case 0:
@@ -115,7 +121,7 @@ int cpu_disable(int nr)
 }
 
 int is_core_disabled(int nr) {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 devdisr = in_be32(&gur->devdisr);
 
 	switch (nr) {
@@ -137,7 +143,7 @@ static u8 boot_entry_map[4] = {
 	BOOT_ENTRY_R3_LOWER,
 };
 
-int cpu_release(int nr, int argc, char * const argv[])
+int cpu_release(u32 nr, int argc, char *const argv[])
 {
 	u32 i, val, *table = (u32 *)&__spin_table + nr * NUM_BOOT_ENTRY;
 	u64 boot_addr;
@@ -161,7 +167,7 @@ int cpu_release(int nr, int argc, char * const argv[])
 	for (i = 1; i < 3; i++) {
 		if (argv[i][0] != '-') {
 			u8 entry = boot_entry_map[i];
-			val = simple_strtoul(argv[i], NULL, 16);
+			val = hextoul(argv[i], NULL);
 			table[entry] = val;
 		}
 	}
@@ -187,9 +193,9 @@ u32 determine_mp_bootpg(unsigned int *pagesize)
 
 
 	/* use last 4K of mapped memory */
-	bootpg = ((gd->ram_size > CONFIG_MAX_MEM_MAPPED) ?
-		CONFIG_MAX_MEM_MAPPED : gd->ram_size) +
-		CONFIG_SYS_SDRAM_BASE - 4096;
+	bootpg = ((gd->ram_size > CFG_MAX_MEM_MAPPED) ?
+		CFG_MAX_MEM_MAPPED : gd->ram_size) +
+		CFG_SYS_SDRAM_BASE - 4096;
 	if (pagesize)
 		*pagesize = 4096;
 
@@ -258,10 +264,10 @@ static void plat_mp_up(unsigned long bootpg, unsigned int pagesize)
 	u32 mask = cpu_mask();
 	struct law_entry e;
 
-	gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	ccm = (void *)(CONFIG_SYS_FSL_CORENET_CCM_ADDR);
-	rcpm = (void *)(CONFIG_SYS_FSL_CORENET_RCPM_ADDR);
-	pic = (void *)(CONFIG_SYS_MPC8xxx_PIC_ADDR);
+	gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
+	ccm = (void *)(CFG_SYS_FSL_CORENET_CCM_ADDR);
+	rcpm = (void *)(CFG_SYS_FSL_CORENET_RCPM_ADDR);
+	pic = (void *)(CFG_SYS_MPC8xxx_PIC_ADDR);
 
 	whoami = in_be32(&pic->whoami);
 	cpu_up_mask = 1 << whoami;
@@ -330,9 +336,9 @@ static void plat_mp_up(unsigned long bootpg, unsigned int pagesize)
 	u32 up, cpu_up_mask, whoami;
 	u32 *table = (u32 *)&__spin_table;
 	volatile u32 bpcr;
-	volatile ccsr_local_ecm_t *ecm = (void *)(CONFIG_SYS_MPC85xx_ECM_ADDR);
-	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	volatile ccsr_pic_t *pic = (void *)(CONFIG_SYS_MPC8xxx_PIC_ADDR);
+	volatile ccsr_local_ecm_t *ecm = (void *)(CFG_SYS_MPC85xx_ECM_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
+	volatile ccsr_pic_t *pic = (void *)(CFG_SYS_MPC8xxx_PIC_ADDR);
 	u32 devdisr;
 	int timeout = 10;
 
@@ -450,18 +456,18 @@ void setup_mp(void)
 	flush_cache(bootpg, 4096);
 
 	/* look for the tlb covering the reset page, there better be one */
-	i = find_tlb_idx((void *)CONFIG_BPTR_VIRT_ADDR, 1);
+	i = find_tlb_idx((void *)BPTR_VIRT_ADDR, 1);
 
 	/* we found a match */
 	if (i != -1) {
 		/* map reset page to bootpg so we can copy code there */
 		disable_tlb(i);
 
-		set_tlb(1, CONFIG_BPTR_VIRT_ADDR, bootpg, /* tlb, epn, rpn */
+		set_tlb(1, BPTR_VIRT_ADDR, bootpg, /* tlb, epn, rpn */
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G, /* perms, wimge */
 			0, i, BOOKE_PAGESZ_4K, 1); /* ts, esel, tsize, iprot */
 
-		memcpy((void *)CONFIG_BPTR_VIRT_ADDR, (void *)fixup, 4096);
+		memcpy((void *)BPTR_VIRT_ADDR, (void *)fixup, 4096);
 
 		plat_mp_up(bootpg_map, pagesize);
 	} else {

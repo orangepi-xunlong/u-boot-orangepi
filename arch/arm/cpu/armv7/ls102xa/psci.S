@@ -36,7 +36,7 @@
 
 	.align	5
 
-#define	ONE_MS		(COUNTER_FREQUENCY / 1000)
+#define	ONE_MS		(CONFIG_COUNTER_FREQUENCY / 1000)
 #define	RESET_WAIT	(30 * ONE_MS)
 
 .globl	psci_version
@@ -124,12 +124,13 @@ psci_cpu_on:
 
 	mov	r0, r4
 	mov	r1, r2
-	bl	psci_save_target_pc
+	mov	r2, r3
+	bl	psci_save
 	mov	r1, r4
 
 	@ Get DCFG base address
-	movw	r4, #(CONFIG_SYS_FSL_GUTS_ADDR & 0xffff)
-	movt	r4, #(CONFIG_SYS_FSL_GUTS_ADDR >> 16)
+	movw	r4, #(CFG_SYS_FSL_GUTS_ADDR & 0xffff)
+	movt	r4, #(CFG_SYS_FSL_GUTS_ADDR >> 16)
 
 	@ Detect target CPU state
 	ldr	r2, [r4, #DCFG_CCSR_BRR]
@@ -140,8 +141,8 @@ psci_cpu_on:
 
 	@ Reset target CPU
 	@ Get SCFG base address
-	movw	r0, #(CONFIG_SYS_FSL_SCFG_ADDR & 0xffff)
-	movt	r0, #(CONFIG_SYS_FSL_SCFG_ADDR >> 16)
+	movw	r0, #(CFG_SYS_FSL_SCFG_ADDR & 0xffff)
+	movt	r0, #(CFG_SYS_FSL_SCFG_ADDR >> 16)
 
 	@ Enable CORE Soft Reset
 	movw	r5, #0
@@ -215,8 +216,8 @@ psci_affinity_info:
 	mov	r1, r4
 
 	@ Get RCPM base address
-	movw	r4, #(CONFIG_SYS_FSL_RCPM_ADDR & 0xffff)
-	movt	r4, #(CONFIG_SYS_FSL_RCPM_ADDR >> 16)
+	movw	r4, #(CFG_SYS_FSL_RCPM_ADDR & 0xffff)
+	movt	r4, #(CFG_SYS_FSL_RCPM_ADDR >> 16)
 
 	mov	r0, #PSCI_AFFINITY_LEVEL_ON
 
@@ -235,8 +236,8 @@ out_affinity_info:
 .globl	psci_system_reset
 psci_system_reset:
 	@ Get DCFG base address
-	movw	r1, #(CONFIG_SYS_FSL_GUTS_ADDR & 0xffff)
-	movt	r1, #(CONFIG_SYS_FSL_GUTS_ADDR >> 16)
+	movw	r1, #(CFG_SYS_FSL_GUTS_ADDR & 0xffff)
+	movt	r1, #(CFG_SYS_FSL_GUTS_ADDR >> 16)
 
 	mov	r2, #DCFG_CCSR_RSTCR_RESET_REQ
 	rev	r2, r2

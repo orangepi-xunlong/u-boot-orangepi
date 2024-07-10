@@ -1,46 +1,48 @@
 config ARCH_LS1021A
 	bool
-	select SYS_FSL_ERRATUM_A008378
-	select SYS_FSL_ERRATUM_A008407
-	select SYS_FSL_ERRATUM_A008997
-	select SYS_FSL_ERRATUM_A009007
-	select SYS_FSL_ERRATUM_A009008
-	select SYS_FSL_ERRATUM_A009663
-	select SYS_FSL_ERRATUM_A009798
-	select SYS_FSL_ERRATUM_A009942
-	select SYS_FSL_ERRATUM_A010315
-	select SYS_FSL_HAS_CCI400
-	select SYS_FSL_SRDS_1
-	select SYS_HAS_SERDES
+	select FSL_DEVICE_DISABLE
+	select FSL_IFC if !QSPI_BOOT && !SD_BOOT_QSPI
+	select LS102XA_STREAM_ID
 	select SYS_FSL_DDR_BE if SYS_FSL_DDR
 	select SYS_FSL_DDR_VER_50 if SYS_FSL_DDR
+	select SYS_FSL_IFC_BE
+	select SYS_FSL_ERRATUM_A008378
+	select SYS_FSL_ERRATUM_A008407
+	select SYS_FSL_ERRATUM_A008850 if SYS_FSL_DDR
+	select SYS_FSL_ERRATUM_A008997 if USB
+	select SYS_FSL_ERRATUM_A009008 if USB
+	select SYS_FSL_ERRATUM_A009663
+	select SYS_FSL_ERRATUM_A009798 if USB
+	select SYS_FSL_ERRATUM_A009942
+	select SYS_FSL_ERRATUM_A010315
+	select SYS_FSL_ESDHC_BE
+	select SYS_FSL_HAS_CCI400
 	select SYS_FSL_HAS_DDR3 if SYS_FSL_DDR
 	select SYS_FSL_HAS_DDR4 if SYS_FSL_DDR
 	select SYS_FSL_HAS_SEC
 	select SYS_FSL_SEC_COMPAT_5
 	select SYS_FSL_SEC_LE
+	select SYS_FSL_SRDS_1
+	select SYS_HAS_SERDES
+	select SYS_I2C_MXC
+	imply CMD_PCI
 	imply SCSI
 	imply SCSI_AHCI
-	imply CMD_PCI
 
 menu "LS102xA architecture"
 	depends on ARCH_LS1021A
 
-config FSL_PCIE_COMPAT
-	string "PCIe compatible of Kernel DT"
-	depends on PCIE_LAYERSCAPE
-	default "fsl,ls1021a-pcie" if ARCH_LS1021A
-	help
-	  This compatible is used to find pci controller node in Kernel DT
-	  to complete fixup.
+config FSL_DEVICE_DISABLE
+	bool
 
 config LS1_DEEP_SLEEP
 	bool "Deep sleep"
-	depends on ARCH_LS1021A
+
+config LS102XA_STREAM_ID
+	bool
 
 config MAX_CPUS
 	int "Maximum number of CPUs permitted for LS102xA"
-	depends on ARCH_LS1021A
 	default 2
 	help
 	  Set this number to the maximum number of possible CPUs in the SoC.
@@ -49,11 +51,8 @@ config MAX_CPUS
 	  cores, count the reserved ports. This will allocate enough memory
 	  in spin table to properly handle all cores.
 
-config SECURE_BOOT
-	bool	"Secure Boot"
-	help
-		Enable Freescale Secure Boot feature. Normally selected
-		by defconfig. If unsure, do not change.
+config PEN_ADDR_BIG_ENDIAN
+	bool
 
 config SYS_CCI400_OFFSET
 	hex "Offset for CCI400 base"
@@ -62,6 +61,11 @@ config SYS_CCI400_OFFSET
 	help
 	  Offset for CCI400 base.
 	  CCI400 base addr = CCSRBAR + CCI400_OFFSET
+
+config SYS_FSL_ERRATUM_A008850
+	bool
+	help
+	  Workaround for DDR erratum A008850
 
 config SYS_FSL_ERRATUM_A008997
 	bool
@@ -89,21 +93,15 @@ config SYS_FSL_ERRATUM_A010315
 config SYS_FSL_HAS_CCI400
 	bool
 
-config SYS_FSL_SRDS_1
-	bool
-
-config SYS_FSL_SRDS_2
-	bool
-
-config SYS_HAS_SERDES
-	bool
-
-config SYS_FSL_IFC_BANK_COUNT
-	int "Maximum banks of Integrated flash controller"
-	depends on ARCH_LS1021A
-	default 8
-
 config SYS_FSL_ERRATUM_A008407
 	bool
+
+config SYS_FSL_QSPI_SKIP_CLKSEL
+	bool "Skip setting QSPI clock during SoC init"
+	help
+	   To improve startup times when booting from QSPI flash, the QSPI
+	   frequency can be set very early in the boot process. If this option
+	   is enabled, the QSPI frequency will not be changed by U-Boot during
+	   SoC initialization.
 
 endmenu

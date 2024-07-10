@@ -12,11 +12,13 @@
  *	Sricharan	<r.sricharan@ti.com>
  */
 #include <common.h>
+#include <cpu_func.h>
 #include <palmas.h>
 #include <asm/armv7.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/clock.h>
+#include <linux/delay.h>
 #include <linux/sizes.h>
 #include <asm/utils.h>
 #include <asm/arch/gpio.h>
@@ -25,7 +27,7 @@
 
 u32 *const omap_si_rev = (u32 *)OMAP_SRAM_SCRATCH_OMAP_REV;
 
-#ifndef CONFIG_DM_GPIO
+#if !CONFIG_IS_ENABLED(DM_GPIO)
 static struct gpio_bank gpio_bank_54xx[8] = {
 	{ (void *)OMAP54XX_GPIO1_BASE },
 	{ (void *)OMAP54XX_GPIO2_BASE },
@@ -415,7 +417,7 @@ void omap_die_id(unsigned int *die_id)
 	die_id[3] = readl((*ctrl)->control_std_fuse_die_id_3);
 }
 
-void reset_cpu(ulong ignored)
+void reset_cpu(void)
 {
 	u32 omap_rev = omap_revision();
 

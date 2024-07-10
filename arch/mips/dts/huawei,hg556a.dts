@@ -93,6 +93,18 @@
 	status = "okay";
 };
 
+&enet1 {
+	status = "okay";
+	phy = <&enet1phy>;
+	phy-mode = "mii";
+
+	enet1phy: fixed-link {
+		reg = <1>;
+		speed = <100>;
+		full-duplex;
+	};
+};
+
 &gpio0 {
 	status = "okay";
 };
@@ -106,7 +118,7 @@
 };
 
 &uart0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 

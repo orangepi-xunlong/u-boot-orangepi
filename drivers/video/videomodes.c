@@ -7,8 +7,7 @@
 
 /************************************************************************
   Get Parameters for the video mode:
-  The default video mode can be defined in CONFIG_SYS_DEFAULT_VIDEO_MODE.
-  If undefined, default video mode is set to 0x301
+  The default video mode is set to 0x301
   Parameters can be set via the variable "videomode" in the environment.
   2 diferent ways are possible:
   "videomode=301"   - 301 is a hexadecimal number describing the VESA
@@ -58,7 +57,9 @@
 
 #include <common.h>
 #include <edid.h>
+#include <env.h>
 #include <errno.h>
+#include <fdtdec.h>
 #include <linux/ctype.h>
 
 #include "videomodes.h"
@@ -382,7 +383,7 @@ int video_get_option_int(const char *options, const char *name, int def)
  * @param t		The EDID detailed timing to be converted
  * @param mode		Returns the converted timing
  *
- * @return 0 on success, or a negative errno on error
+ * Return: 0 on success, or a negative errno on error
  */
 int video_edid_dtd_to_ctfb_res_modes(struct edid_detailed_timing *t,
 				     struct ctfb_res_modes *mode)
@@ -396,10 +397,8 @@ int video_edid_dtd_to_ctfb_res_modes(struct edid_detailed_timing *t,
 	    EDID_DETAILED_TIMING_VERTICAL_ACTIVE(*t) == 0 ||
 	    EDID_DETAILED_TIMING_VERTICAL_BLANKING(*t) == 0 ||
 	    EDID_DETAILED_TIMING_HSYNC_OFFSET(*t) == 0 ||
-	    EDID_DETAILED_TIMING_HSYNC_PULSE_WIDTH(*t) == 0 ||
 	    EDID_DETAILED_TIMING_VSYNC_OFFSET(*t) == 0 ||
-	    EDID_DETAILED_TIMING_VSYNC_PULSE_WIDTH(*t) == 0 ||
-	    /* 3d formats are not supported*/
+	    /* 3d formats are not supported */
 	    EDID_DETAILED_TIMING_FLAG_STEREO(*t) != 0)
 		return -EINVAL;
 
@@ -444,4 +443,33 @@ int video_edid_dtd_to_ctfb_res_modes(struct edid_detailed_timing *t,
 		mode->vmode = FB_VMODE_NONINTERLACED;
 
 	return 0;
+}
+
+void video_ctfb_mode_to_display_timing(const struct ctfb_res_modes *mode,
+				       struct display_timing *timing)
+{
+	timing->pixelclock.typ = mode->pixclock_khz * 1000;
+
+	timing->hactive.typ = mode->xres;
+	timing->hfront_porch.typ = mode->right_margin;
+	timing->hback_porch.typ = mode->left_margin;
+	timing->hsync_len.typ = mode->hsync_len;
+
+	timing->vactive.typ = mode->yres;
+	timing->vfront_porch.typ = mode->lower_margin;
+	timing->vback_porch.typ = mode->upper_margin;
+	timing->vsync_len.typ = mode->vsync_len;
+
+	timing->flags = 0;
+
+	if (mode->sync & FB_SYNC_HOR_HIGH_ACT)
+		timing->flags |= DISPLAY_FLAGS_HSYNC_HIGH;
+	else
+		timing->flags |= DISPLAY_FLAGS_HSYNC_LOW;
+	if (mode->sync & FB_SYNC_VERT_HIGH_ACT)
+		timing->flags |= DISPLAY_FLAGS_VSYNC_HIGH;
+	else
+		timing->flags |= DISPLAY_FLAGS_VSYNC_LOW;
+	if (mode->vmode == FB_VMODE_INTERLACED)
+		timing->flags |= DISPLAY_FLAGS_INTERLACED;
 }

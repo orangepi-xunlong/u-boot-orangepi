@@ -11,14 +11,21 @@
  */
 
 #include <common.h>
+#include <blk.h>
+#include <env.h>
+#include <log.h>
 #include <malloc.h>
 #include <command.h>
+#include <part.h>
 #include <part_efi.h>
+#include <part.h>
 #include <exports.h>
+#include <uuid.h>
 #include <linux/ctype.h>
 #include <div64.h>
 #include <memalign.h>
 #include <linux/compat.h>
+#include <linux/err.h>
 #include <linux/sizes.h>
 #include <stdlib.h>
 
@@ -31,7 +38,7 @@ static LIST_HEAD(disk_partitions);
  * @param str - pointer to string
  * @param env - pointer to pointer to extracted env
  *
- * @return - zero on successful expand and env is set
+ * Return: - zero on successful expand and env is set
  */
 static int extract_env(const char *str, char **env)
 {
@@ -90,7 +97,7 @@ static int extract_env(const char *str, char **env)
  * @param str - pointer to string with key=values pairs
  * @param key - pointer to the key to search for
  *
- * @return - pointer to allocated string with the value
+ * Return: - pointer to allocated string with the value
  */
 static char *extract_val(const char *str, const char *key)
 {
@@ -127,7 +134,7 @@ static char *extract_val(const char *str, const char *key)
  * @param str - pointer to string with key
  * @param key - pointer to the key to search for
  *
- * @return - true on found key
+ * Return: - true on found key
  */
 static bool found_key(const char *str, const char *key)
 {
@@ -155,22 +162,31 @@ static bool found_key(const char *str, const char *key)
 	return result;
 }
 
+/**
+ * calc_parts_list_len() - get size of partition table description
+ *
+ * @numparts:	number of partitions
+ * Return:	string size including terminating NUL
+ */
 static int calc_parts_list_len(int numparts)
 {
-	int partlistlen = UUID_STR_LEN + 1 + strlen("uuid_disk=");
-	/* for the comma */
-	partlistlen++;
+	/* number of hexadecimal digits of the lbaint_t representation */
+	const int lbaint_size = 2 * sizeof(lbaint_t);
+	int partlistlen;
 
-	/* per-partition additions; numparts starts at 1, so this should be correct */
-	partlistlen += numparts * (strlen("name=,") + PART_NAME_LEN + 1);
+	/* media description including terminating NUL */
+	partlistlen = strlen("uuid_disk=;") + UUID_STR_LEN + 1;
+	/* per-partition descriptions; numparts */
+	partlistlen += numparts * (strlen("name=,") + PART_NAME_LEN);
 	/* see part.h for definition of struct disk_partition */
-	partlistlen += numparts * (strlen("start=MiB,") + sizeof(lbaint_t) + 1);
-	partlistlen += numparts * (strlen("size=MiB,") + sizeof(lbaint_t) + 1);
-	partlistlen += numparts * (strlen("uuid=;") + UUID_STR_LEN + 1);
-	/* for the terminating null */
-	partlistlen++;
-	debug("Length of partitions_list is %d for %d partitions\n", partlistlen,
-	      numparts);
+	partlistlen += numparts * (strlen("start=0x,") + lbaint_size);
+	partlistlen += numparts * (strlen("size=0x,") + lbaint_size);
+	if (IS_ENABLED(CONFIG_PARTITION_UUIDS))
+		partlistlen += numparts * (strlen("uuid=,") + UUID_STR_LEN);
+	if (IS_ENABLED(CONFIG_PARTITION_TYPE_GUID))
+		partlistlen += numparts * (strlen("type=;") + UUID_STR_LEN);
+	debug("Length of partitions_list is %d for %d partitions\n",
+	      partlistlen, numparts);
 	return partlistlen;
 }
 
@@ -186,7 +202,8 @@ static void del_gpt_info(void)
 	}
 }
 
-static struct disk_part *allocate_disk_part(disk_partition_t *info, int partnum)
+static struct disk_part *allocate_disk_part(struct disk_partition *info,
+					    int partnum)
 {
 	struct disk_part *newpart;
 	newpart = calloc(1, sizeof(struct disk_part));
@@ -203,12 +220,12 @@ static struct disk_part *allocate_disk_part(disk_partition_t *info, int partnum)
 		PART_TYPE_LEN);
 	newpart->gpt_part_info.type[PART_TYPE_LEN - 1] = '\0';
 	newpart->gpt_part_info.bootable = info->bootable;
-#ifdef CONFIG_PARTITION_UUIDS
-	strncpy(newpart->gpt_part_info.uuid, (const char *)info->uuid,
-		UUID_STR_LEN);
-	/* UUID_STR_LEN is correct, as uuid[]'s length is UUID_STR_LEN+1 chars */
-	newpart->gpt_part_info.uuid[UUID_STR_LEN] = '\0';
-#endif
+	if (IS_ENABLED(CONFIG_PARTITION_UUIDS))
+		disk_partition_set_uuid(&newpart->gpt_part_info,
+					disk_partition_uuid(info));
+	if (IS_ENABLED(CONFIG_PARTITION_TYPE_GUID))
+		disk_partition_set_type_guid(&newpart->gpt_part_info,
+					     disk_partition_type_guid(info));
 	newpart->partnum = partnum;
 
 	return newpart;
@@ -243,10 +260,13 @@ static void print_gpt_info(void)
 		printf("Block size %lu, name %s\n", curr->gpt_part_info.blksz,
 		       curr->gpt_part_info.name);
 		printf("Type %s, bootable %d\n", curr->gpt_part_info.type,
-		       curr->gpt_part_info.bootable);
-#ifdef CONFIG_PARTITION_UUIDS
-		printf("UUID %s\n", curr->gpt_part_info.uuid);
-#endif
+		       curr->gpt_part_info.bootable & PART_BOOTABLE);
+		if (CONFIG_IS_ENABLED(PARTITION_UUIDS))
+			printf("UUID %s\n",
+			       disk_partition_uuid(&curr->gpt_part_info));
+		if (IS_ENABLED(CONFIG_PARTITION_TYPE_GUID))
+			printf("Type GUID %s\n",
+			       disk_partition_type_guid(&curr->gpt_part_info));
 		printf("\n");
 	}
 }
@@ -291,9 +311,20 @@ static int create_gpt_partitions_list(int numparts, const char *guid,
 					    curr->gpt_part_info.blksz);
 		strncat(partitions_list, partstr, PART_NAME_LEN + 1);
 
-		strcat(partitions_list, ",uuid=");
-		strncat(partitions_list, curr->gpt_part_info.uuid,
-			UUID_STR_LEN + 1);
+		if (IS_ENABLED(CONFIG_PARTITION_TYPE_GUID)) {
+			strcat(partitions_list, ",type=");
+			strncat(partitions_list,
+				disk_partition_type_guid(&curr->gpt_part_info),
+				UUID_STR_LEN + 1);
+		}
+		if (CONFIG_IS_ENABLED(PARTITION_UUIDS)) {
+			strcat(partitions_list, ",uuid=");
+			strncat(partitions_list,
+				disk_partition_uuid(&curr->gpt_part_info),
+				UUID_STR_LEN + 1);
+		}
+		if (curr->gpt_part_info.bootable & PART_BOOTABLE)
+			strcat(partitions_list, ",bootable");
 		strcat(partitions_list, ";");
 	}
 	return 0;
@@ -307,7 +338,7 @@ static int get_gpt_info(struct blk_desc *dev_desc)
 {
 	/* start partition numbering at 1, as U-Boot does */
 	int valid_parts = 0, p, ret;
-	disk_partition_t info;
+	struct disk_partition info;
 	struct disk_part *new_disk_part;
 
 	/*
@@ -342,17 +373,46 @@ static int get_gpt_info(struct blk_desc *dev_desc)
 }
 
 /* a wrapper to test get_gpt_info */
-static int do_get_gpt_info(struct blk_desc *dev_desc)
+static int do_get_gpt_info(struct blk_desc *dev_desc, char * const namestr)
 {
-	int ret;
+	int numparts;
 
-	ret = get_gpt_info(dev_desc);
-	if (ret > 0) {
-		print_gpt_info();
+	numparts = get_gpt_info(dev_desc);
+
+	if (numparts > 0) {
+		if (namestr) {
+			char disk_guid[UUID_STR_LEN + 1];
+			char *partitions_list;
+			int partlistlen;
+			int ret = -1;
+
+			ret = get_disk_guid(dev_desc, disk_guid);
+			if (ret < 0)
+				return ret;
+
+			partlistlen = calc_parts_list_len(numparts);
+			partitions_list = malloc(partlistlen);
+			if (!partitions_list) {
+				del_gpt_info();
+				return -ENOMEM;
+			}
+			memset(partitions_list, '\0', partlistlen);
+
+			ret = create_gpt_partitions_list(numparts, disk_guid,
+							 partitions_list);
+			if (ret < 0)
+				printf("Error: Could not create partition list string!\n");
+			else
+				env_set(namestr, partitions_list);
+
+			free(partitions_list);
+		} else {
+			print_gpt_info();
+		}
 		del_gpt_info();
 		return 0;
 	}
-	return ret;
+	return numparts;
 }
 #endif
 
@@ -366,20 +426,20 @@ static int do_get_gpt_info(struct blk_desc *dev_desc)
  * @param partitions - pointer to pointer to allocated partitions array
  * @param parts_count - number of partitions
  *
- * @return - zero on success, otherwise error
+ * Return: - zero on success, otherwise error
  *
  */
 static int set_gpt_info(struct blk_desc *dev_desc,
 			const char *str_part,
 			char **str_disk_guid,
-			disk_partition_t **partitions,
+			struct disk_partition **partitions,
 			u8 *parts_count)
 {
 	char *tok, *str, *s;
 	int i;
 	char *val, *p;
 	int p_count;
-	disk_partition_t *parts;
+	struct disk_partition *parts;
 	int errno = 0;
 	uint64_t size_ll, start_ll;
 	lbaint_t offset = 0;
@@ -437,7 +497,7 @@ static int set_gpt_info(struct blk_desc *dev_desc,
 	}
 
 	/* allocate memory for partitions */
-	parts = calloc(sizeof(disk_partition_t), p_count);
+	parts = calloc(sizeof(struct disk_partition), p_count);
 	if (parts == NULL)
 		return -ENOMEM;
 
@@ -533,7 +593,7 @@ static int set_gpt_info(struct blk_desc *dev_desc,
 
 		/* bootable */
 		if (found_key(tok, "bootable"))
-			parts[i].bootable = 1;
+			parts[i].bootable = PART_BOOTABLE;
 	}
 
 	*parts_count = p_count;
@@ -549,12 +609,21 @@ err:
 	return errno;
 }
 
+static int gpt_repair(struct blk_desc *blk_dev_desc)
+{
+	int ret = 0;
+
+	ret = gpt_repair_headers(blk_dev_desc);
+
+	return ret;
+}
+
 static int gpt_default(struct blk_desc *blk_dev_desc, const char *str_part)
 {
 	int ret;
 	char *str_disk_guid;
 	u8 part_count = 0;
-	disk_partition_t *partitions = NULL;
+	struct disk_partition *partitions = NULL;
 
 	/* fill partitions */
 	ret = set_gpt_info(blk_dev_desc, str_part,
@@ -581,7 +650,7 @@ static int gpt_verify(struct blk_desc *blk_dev_desc, const char *str_part)
 {
 	ALLOC_CACHE_ALIGN_BUFFER_PAD(gpt_header, gpt_head, 1,
 				     blk_dev_desc->blksz);
-	disk_partition_t *partitions = NULL;
+	struct disk_partition *partitions = NULL;
 	gpt_entry *gpt_pte = NULL;
 	char *str_disk_guid;
 	u8 part_count = 0;
@@ -614,6 +683,156 @@ static int gpt_verify(struct blk_desc *blk_dev_desc, const char *str_part)
 	return ret;
 }
 
+/**
+ * gpt_enumerate() - Enumerate partition names into environment variable.
+ *
+ * Enumerate partition names. Partition names are stored in gpt_partition_list
+ * environment variable. Each partition name is delimited by space.
+ *
+ * @desc: block device descriptor
+ *
+ * @Return: '0' on success and -ve error on failure
+ */
+static int gpt_enumerate(struct blk_desc *desc)
+{
+	struct part_driver *first_drv, *part_drv;
+	int str_len = 0, tmp_len;
+	char part_list[2048];
+	int n_drvs;
+	char *ptr;
+
+	part_list[0] = 0;
+	n_drvs = part_driver_get_count();
+	if (!n_drvs) {
+		printf("Failed to get partition driver count\n");
+		return -ENOENT;
+	}
+
+	first_drv = part_driver_get_first();
+	for (part_drv = first_drv; part_drv != first_drv + n_drvs; part_drv++) {
+		struct disk_partition pinfo;
+		int ret;
+		int i;
+
+		if (part_drv->test(desc))
+			continue;
+
+		for (i = 1; i < part_drv->max_entries; i++) {
+			ret = part_drv->get_info(desc, i, &pinfo);
+			if (ret)
+				continue;
+
+			ptr = &part_list[str_len];
+			tmp_len = strlen((const char *)pinfo.name);
+			str_len += tmp_len;
+			/* +1 for space */
+			str_len++;
+			if (str_len > sizeof(part_list)) {
+				printf("Error insufficient memory\n");
+				return -ENOMEM;
+			}
+			strcpy(ptr, (const char *)pinfo.name);
+			/* One byte for space(" ") delimiter */
+			ptr[tmp_len] = ' ';
+		}
+		if (*part_list)
+			part_list[strlen(part_list) - 1] = 0;
+		break;
+	}
+	debug("setenv gpt_partition_list %s\n", part_list);
+
+	return env_set("gpt_partition_list", part_list);
+}
+
+/**
+ * gpt_setenv_part_variables() - setup partition environmental variables
+ *
+ * Setup the gpt_partition_name, gpt_partition_entry, gpt_partition_addr
+ * and gpt_partition_size, gpt_partition_bootable environment variables.
+ *
+ * @pinfo: pointer to disk partition
+ * @i: partition entry
+ *
+ * @Return: '0' on success and -ENOENT on failure
+ */
+static int gpt_setenv_part_variables(struct disk_partition *pinfo, int i)
+{
+	int ret;
+
+	ret = env_set_hex("gpt_partition_addr", pinfo->start);
+	if (ret)
+		goto fail;
+
+	ret = env_set_hex("gpt_partition_size", pinfo->size);
+	if (ret)
+		goto fail;
+
+	ret = env_set_hex("gpt_partition_entry", i);
+	if (ret)
+		goto fail;
+
+	ret = env_set("gpt_partition_name", (const char *)pinfo->name);
+	if (ret)
+		goto fail;
+
+	ret = env_set_ulong("gpt_partition_bootable", !!(pinfo->bootable & PART_BOOTABLE));
+	if (ret)
+		goto fail;
+
+	return 0;
+
+fail:
+	return -ENOENT;
+}
+
+/**
+ * gpt_setenv() - Dynamically setup environment variables.
+ *
+ * Dynamically setup environment variables for name, index, offset and size
+ * for partition in GPT table after running "gpt setenv" for a partition name.
+ *
+ * @desc: block device descriptor
+ * @name: partition name
+ *
+ * @Return: '0' on success and -ve err on failure
+ */
+static int gpt_setenv(struct blk_desc *desc, const char *name)
+{
+	struct part_driver *first_drv, *part_drv;
+	int n_drvs;
+	int ret = -1;
+
+	n_drvs = part_driver_get_count();
+	if (!n_drvs) {
+		printf("Failed to get partition driver count\n");
+		goto fail;
+	}
+
+	first_drv = part_driver_get_first();
+	for (part_drv = first_drv; part_drv != first_drv + n_drvs; part_drv++) {
+		struct disk_partition pinfo;
+		int i;
+
+		for (i = 1; i < part_drv->max_entries; i++) {
+			ret = part_drv->get_info(desc, i, &pinfo);
+			if (ret)
+				continue;
+
+			if (!strcmp(name, (const char *)pinfo.name)) {
+				/* match found, setup environment variables */
+				ret = gpt_setenv_part_variables(&pinfo, i);
+				if (ret)
+					goto fail;
+
+				return 0;
+			}
+		}
+	}
+
+fail:
+	return ret;
+}
+
 static int do_disk_guid(struct blk_desc *dev_desc, char * const namestr)
 {
 	int ret;
@@ -632,34 +851,20 @@ static int do_disk_guid(struct blk_desc *dev_desc, char * const namestr)
 }
 
 #ifdef CONFIG_CMD_GPT_RENAME
-/*
- * There are 3 malloc() calls in set_gpt_info() and there is no info about which
- * failed.
- */
-static void set_gpt_cleanup(char **str_disk_guid,
-			    disk_partition_t **partitions)
-{
-#ifdef CONFIG_RANDOM_UUID
-	if (str_disk_guid)
-		free(str_disk_guid);
-#endif
-	if (partitions)
-		free(partitions);
-}
-
 static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
 			       char *name1, char *name2)
 {
 	struct list_head *pos;
 	struct disk_part *curr;
-	disk_partition_t *new_partitions = NULL;
+	struct disk_partition *new_partitions = NULL;
 	char disk_guid[UUID_STR_LEN + 1];
-	char *partitions_list, *str_disk_guid;
+	char *partitions_list, *str_disk_guid = NULL;
 	u8 part_count = 0;
 	int partlistlen, ret, numparts = 0, partnum, i = 1, ctr1 = 0, ctr2 = 0;
 
-	if ((subcomm == NULL) || (name1 == NULL) || (name2 == NULL) ||
-	    (strcmp(subcomm, "swap") && (strcmp(subcomm, "rename"))))
+	if (!subcomm || !name1 || !name2 ||
+	    (strcmp(subcomm, "swap") && strcmp(subcomm, "rename") &&
+	     strcmp(subcomm, "transpose")))
 		return -EINVAL;
 
 	ret = get_disk_guid(dev_desc, disk_guid);
@@ -696,14 +901,8 @@ static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
 	/* set_gpt_info allocates new_partitions and str_disk_guid */
 	ret = set_gpt_info(dev_desc, partitions_list, &str_disk_guid,
 			   &new_partitions, &part_count);
-	if (ret < 0) {
-		del_gpt_info();
-		free(partitions_list);
-		if (ret == -ENOMEM)
-			set_gpt_cleanup(&str_disk_guid, &new_partitions);
-		else
-			goto out;
-	}
+	if (ret < 0)
+		goto out;
 
 	if (!strcmp(subcomm, "swap")) {
 		if ((strlen(name1) > PART_NAME_LEN) || (strlen(name2) > PART_NAME_LEN)) {
@@ -726,6 +925,41 @@ static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
 			ret = -EINVAL;
 			goto out;
 		}
+	} else if (!strcmp(subcomm, "transpose")) {
+		int idx1, idx2;
+		struct disk_partition* first = NULL;
+		struct disk_partition* second= NULL;
+		struct disk_partition tmp_part;
+
+		idx1 = simple_strtoul(name1, NULL, 10);
+		idx2 = simple_strtoul(name2, NULL, 10);
+		if (idx1 == idx2) {
+			printf("Cannot swap partition with itself\n");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		list_for_each(pos, &disk_partitions) {
+			curr = list_entry(pos, struct disk_part, list);
+			if (curr->partnum == idx1)
+				first = &curr->gpt_part_info;
+			else if (curr->partnum == idx2)
+				second = &curr->gpt_part_info;
+		}
+		if (!first) {
+			printf("Illegal partition number %s\n", name1);
+			ret = -EINVAL;
+			goto out;
+		}
+		if (!second) {
+			printf("Illegal partition number %s\n", name2);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		tmp_part = *first;
+		*first = *second;
+		*second = tmp_part;
 	} else { /* rename */
 		if (strlen(name2) > PART_NAME_LEN) {
 			printf("Names longer than %d characters are truncated.\n", PART_NAME_LEN);
@@ -765,14 +999,8 @@ static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
 	 * Even though valid pointers are here passed into set_gpt_info(),
 	 * it mallocs again, and there's no way to tell which failed.
 	 */
-	if (ret < 0) {
-		del_gpt_info();
-		free(partitions_list);
-		if (ret == -ENOMEM)
-			set_gpt_cleanup(&str_disk_guid, &new_partitions);
-		else
-			goto out;
-	}
+	if (ret < 0)
+		goto out;
 
 	debug("Writing new partition table\n");
 	ret = gpt_restore(dev_desc, disk_guid, new_partitions, numparts);
@@ -794,11 +1022,88 @@ static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
 	}
 	printf("new partition table with %d partitions is:\n", numparts);
 	print_gpt_info();
-	del_gpt_info();
  out:
-	free(new_partitions);
+	del_gpt_info();
+#ifdef CONFIG_RANDOM_UUID
 	free(str_disk_guid);
+#endif
+	free(new_partitions);
 	free(partitions_list);
+	return ret;
+}
+
+/**
+ * gpt_set_bootable() - Set bootable flags for partitions
+ *
+ * Sets the bootable flag for any partition names in the comma separated list of
+ * partition names. Any partitions not in the list have their bootable flag
+ * cleared
+ *
+ * @desc: block device descriptor
+ * @name: Comma separated list of partition names
+ *
+ * @Return: '0' on success and -ve error on failure
+ */
+static int gpt_set_bootable(struct blk_desc *blk_dev_desc, char *const part_list)
+{
+	char *name;
+	char disk_guid[UUID_STR_LEN + 1];
+	struct list_head *pos;
+	struct disk_part *curr;
+	struct disk_partition *partitions = NULL;
+	int part_count = 0;
+	int ret = get_disk_guid(blk_dev_desc, disk_guid);
+
+	if (ret < 0)
+		return ret;
+
+	ret = get_gpt_info(blk_dev_desc);
+	if (ret <= 0)
+		goto out;
+
+	part_count = ret;
+	partitions = malloc(sizeof(*partitions) * part_count);
+	if (!partitions) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* Copy partitions and clear bootable flag */
+	part_count = 0;
+	list_for_each(pos, &disk_partitions) {
+		curr = list_entry(pos, struct disk_part, list);
+		partitions[part_count] = curr->gpt_part_info;
+		partitions[part_count].bootable &= ~PART_BOOTABLE;
+		part_count++;
+	}
+
+	name = strtok(part_list, ",");
+	while (name) {
+		bool found = false;
+
+		for (int i = 0; i < part_count; i++) {
+			if (strcmp((char *)partitions[i].name, name) == 0) {
+				partitions[i].bootable |= PART_BOOTABLE;
+				found = true;
+			}
+		}
+
+		if (!found) {
+			printf("Warning: No partition matching '%s' found\n",
+			       name);
+		}
+
+		name = strtok(NULL, ",");
+	}
+
+	ret = gpt_restore(blk_dev_desc, disk_guid, partitions, part_count);
+
+out:
+	del_gpt_info();
+
+	if (partitions)
+		free(partitions);
+
 	return ret;
 }
 #endif
@@ -811,9 +1116,9 @@ static int do_rename_gpt_parts(struct blk_desc *dev_desc, char *subcomm,
  * @param argc
  * @param argv
  *
- * @return zero on success; otherwise error
+ * Return: zero on success; otherwise error
  */
-static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_gpt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int ret = CMD_RET_SUCCESS;
 	int dev = 0;
@@ -827,7 +1132,7 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 		return CMD_RET_USAGE;
 
-	dev = (int)simple_strtoul(argv[3], &ep, 10);
+	dev = (int)dectoul(argv[3], &ep);
 	if (!ep || ep[0] != '\0') {
 		printf("'%s' is not a number\n", argv[3]);
 		return CMD_RET_USAGE;
@@ -839,20 +1144,30 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return CMD_RET_FAILURE;
 	}
 
-	if ((strcmp(argv[1], "write") == 0) && (argc == 5)) {
+	if (strcmp(argv[1], "repair") == 0) {
+		printf("Repairing GPT: ");
+		ret = gpt_repair(blk_dev_desc);
+	} else if ((strcmp(argv[1], "write") == 0) && (argc == 5)) {
 		printf("Writing GPT: ");
 		ret = gpt_default(blk_dev_desc, argv[4]);
 	} else if ((strcmp(argv[1], "verify") == 0)) {
 		ret = gpt_verify(blk_dev_desc, argv[4]);
 		printf("Verify GPT: ");
+	} else if ((strcmp(argv[1], "setenv") == 0)) {
+		ret = gpt_setenv(blk_dev_desc, argv[4]);
+	} else if ((strcmp(argv[1], "enumerate") == 0)) {
+		ret = gpt_enumerate(blk_dev_desc);
 	} else if (strcmp(argv[1], "guid") == 0) {
 		ret = do_disk_guid(blk_dev_desc, argv[4]);
 #ifdef CONFIG_CMD_GPT_RENAME
 	} else if (strcmp(argv[1], "read") == 0) {
-		ret = do_get_gpt_info(blk_dev_desc);
+		ret = do_get_gpt_info(blk_dev_desc, (argc == 5) ? argv[4] : NULL);
 	} else if ((strcmp(argv[1], "swap") == 0) ||
-		   (strcmp(argv[1], "rename") == 0)) {
+		   (strcmp(argv[1], "rename") == 0) ||
+		   (strcmp(argv[1], "transpose") == 0)) {
 		ret = do_rename_gpt_parts(blk_dev_desc, argv[1], argv[4], argv[5]);
+	} else if ((strcmp(argv[1], "set-bootable") == 0)) {
+		ret = gpt_set_bootable(blk_dev_desc, argv[4]);
 #endif
 	} else {
 		return CMD_RET_USAGE;
@@ -874,26 +1189,44 @@ U_BOOT_CMD(gpt, CONFIG_SYS_MAXARGS, 1, do_gpt,
 	" Restore or verify GPT information on a device connected\n"
 	" to interface\n"
 	" Example usage:\n"
+	" gpt repair mmc 0\n"
+	"    - repair the GPT on the device\n"
 	" gpt write mmc 0 $partitions\n"
+	"    - write the GPT to device\n"
 	" gpt verify mmc 0 $partitions\n"
-	" read <interface> <dev>\n"
-	"    - read GPT into a data structure for manipulation\n"
-	" guid <interface> <dev>\n"
+	"    - verify the GPT on device against $partitions\n"
+	" gpt setenv mmc 0 $name\n"
+	"    - setup environment variables for partition $name:\n"
+	"      gpt_partition_addr, gpt_partition_size,\n"
+	"      gpt_partition_name, gpt_partition_entry,\n"
+	"      gpt_partition_bootable\n"
+	" gpt enumerate mmc 0\n"
+	"    - store list of partitions to gpt_partition_list environment variable\n"
+	" gpt guid <interface> <dev>\n"
 	"    - print disk GUID\n"
-	" guid <interface> <dev> <varname>\n"
+	" gpt guid <interface> <dev> <varname>\n"
 	"    - set environment variable to disk GUID\n"
 	" Example usage:\n"
 	" gpt guid mmc 0\n"
 	" gpt guid mmc 0 varname\n"
 #ifdef CONFIG_CMD_GPT_RENAME
 	"gpt partition renaming commands:\n"
-	"gpt swap <interface> <dev> <name1> <name2>\n"
+	" gpt read <interface> <dev> [<varname>]\n"
+	"    - read GPT into a data structure for manipulation\n"
+	"    - read GPT partitions into environment variable\n"
+	" gpt swap <interface> <dev> <name1> <name2>\n"
 	"    - change all partitions named name1 to name2\n"
 	"      and vice-versa\n"
-	"gpt rename <interface> <dev> <part> <name>\n"
+	" gpt transpose <interface> <dev> <part1> <part2>\n"
+	"    - Swap the order of the entries for part1 and part2 in the partition table\n"
+	" gpt rename <interface> <dev> <part> <name>\n"
 	"    - rename the specified partition\n"
+	" gpt set-bootable <interface> <dev> <list>\n"
+	"    - make partition names in list bootable\n"
 	" Example usage:\n"
 	" gpt swap mmc 0 foo bar\n"
 	" gpt rename mmc 0 3 foo\n"
+	" gpt set-bootable mmc 0 boot_a,boot_b\n"
+	" gpt transpose mmc 0 1 2\n"
 #endif
 );

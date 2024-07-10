@@ -12,14 +12,14 @@
 
 u8 cpld_read(unsigned int reg)
 {
-	void *p = (void *)CONFIG_SYS_CPLD_BASE;
+	void *p = (void *)CFG_SYS_CPLD_BASE;
 
 	return in_8(p + reg);
 }
 
 void cpld_write(unsigned int reg, u8 value)
 {
-	void *p = (void *)CONFIG_SYS_CPLD_BASE;
+	void *p = (void *)CFG_SYS_CPLD_BASE;
 
 	out_8(p + reg, value);
 }
@@ -69,6 +69,10 @@ void cpld_set_defbank(void)
 void cpld_set_nand(void)
 {
 	u16 reg = CPLD_CFG_RCW_SRC_NAND;
+
+	if (CPLD_READ(cpld_ver) > 0x2)
+		reg = CPLD_CFG_RCW_SRC_NAND_4K;
+
 	u8 reg5 = (u8)(reg >> 1);
 	u8 reg6 = (u8)(reg & 1);
 
@@ -133,7 +137,7 @@ void cpld_rev_bit(unsigned char *value)
 	*value = rev_val;
 }
 
-int do_cpld(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_cpld(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int rc = 0;
 

@@ -6,6 +6,7 @@
 #ifndef POWERPC_ASM_MPC85XX_GPIO_H_
 #define POWERPC_ASM_MPC85XX_GPIO_H_
 
+#ifndef CONFIG_DM_GPIO
 # include <asm/immap_85xx.h>
 
 /*
@@ -19,7 +20,7 @@
 static inline void mpc85xx_gpio_set(unsigned int mask,
 		unsigned int dir, unsigned int val)
 {
-	ccsr_gpio_t *gpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t *gpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 
 	/* First mask off the unwanted parts of "dir" and "val" */
 	dir &= mask;
@@ -55,7 +56,7 @@ static inline void mpc85xx_gpio_set_high(unsigned int gpios)
 
 static inline unsigned int mpc85xx_gpio_get(unsigned int mask)
 {
-	ccsr_gpio_t *gpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t *gpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 
 	/* Read the requested values */
 	return in_be32(&gpio->gpdat) & mask;
@@ -110,5 +111,5 @@ static inline int gpio_is_valid(int gpio)
 {
 	return (gpio >= 0) && (gpio < 32);
 }
-
+#endif /* not CONFIG_DM_GPIO */
 #endif /* not POWERPC_ASM_MPC85XX_GPIO_H_ */

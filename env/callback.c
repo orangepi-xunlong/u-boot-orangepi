@@ -5,11 +5,9 @@
  */
 
 #include <common.h>
-#include <environment.h>
-
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-DECLARE_GLOBAL_DATA_PTR;
-#endif
+#include <env.h>
+#include <env_internal.h>
+#include <asm/global_data.h>
 
 /*
  * Look up a callback function pointer by name
@@ -42,7 +40,7 @@ static const char *callback_list;
  * This is called specifically when the variable did not exist in the hash
  * previously, so the blanket update did not find this variable.
  */
-void env_callback_init(ENTRY *var_entry)
+void env_callback_init(struct env_entry *var_entry)
 {
 	const char *var_name = var_entry->key;
 	char callback_name[256] = "";
@@ -53,6 +51,8 @@ void env_callback_init(ENTRY *var_entry)
 		callback_list = env_get(ENV_CALLBACK_VAR);
 		first_call = 0;
 	}
+
+	var_entry->callback = NULL;
 
 	/* look in the ".callbacks" var for a reference to this variable */
 	if (callback_list != NULL)
@@ -67,11 +67,7 @@ void env_callback_init(ENTRY *var_entry)
 	if (!ret && strlen(callback_name)) {
 		clbkp = find_env_callback(callback_name);
 		if (clbkp != NULL)
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-			var_entry->callback = clbkp->callback + gd->reloc_off;
-#else
 			var_entry->callback = clbkp->callback;
-#endif
 	}
 }
 
@@ -79,7 +75,7 @@ void env_callback_init(ENTRY *var_entry)
  * Called on each existing env var prior to the blanket update since removing
  * a callback association should remove its callback.
  */
-static int clear_callback(ENTRY *entry)
+static int clear_callback(struct env_entry *entry)
 {
 	entry->callback = NULL;
 
@@ -91,13 +87,13 @@ static int clear_callback(ENTRY *entry)
  */
 static int set_callback(const char *name, const char *value, void *priv)
 {
-	ENTRY e, *ep;
+	struct env_entry e, *ep;
 	struct env_clbk_tbl *clbkp;
 
 	e.key	= name;
 	e.data	= NULL;
 	e.callback = NULL;
-	hsearch_r(e, FIND, &ep, &env_htab, 0);
+	hsearch_r(e, ENV_FIND, &ep, &env_htab, 0);
 
 	/* does the env variable actually exist? */
 	if (ep != NULL) {
@@ -108,11 +104,7 @@ static int set_callback(const char *name, const char *value, void *priv)
 			/* assign the requested callback */
 			clbkp = find_env_callback(value);
 			if (clbkp != NULL)
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-				ep->callback = clbkp->callback + gd->reloc_off;
-#else
 				ep->callback = clbkp->callback;
-#endif
 		}
 	}
 

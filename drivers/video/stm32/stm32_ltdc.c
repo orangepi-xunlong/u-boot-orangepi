@@ -5,25 +5,135 @@
  *	      Yannick Fertre <yannick.fertre@st.com> for STMicroelectronics.
  */
 
+#define LOG_CATEGORY UCLASS_VIDEO
+
 #include <common.h>
 #include <clk.h>
+#include <display.h>
 #include <dm.h>
+#include <log.h>
 #include <panel.h>
 #include <reset.h>
 #include <video.h>
+#include <video_bridge.h>
 #include <asm/io.h>
-#include <asm/arch/gpio.h>
 #include <dm/device-internal.h>
-
-DECLARE_GLOBAL_DATA_PTR;
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/printk.h>
 
 struct stm32_ltdc_priv {
 	void __iomem *regs;
-	struct display_timing timing;
 	enum video_log2_bpp l2bpp;
 	u32 bg_col_argb;
+	const u32 *layer_regs;
+	const u32 *pix_fmt_hw;
 	u32 crop_x, crop_y, crop_w, crop_h;
 	u32 alpha;
+	u32 hw_version;
+};
+
+/* Layer register offsets */
+static const u32 layer_regs_a0[] = {
+	0x80,	/* L1 configuration 0 */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x84,	/* L1 control register */
+	0x88,	/* L1 window horizontal position configuration */
+	0x8c,	/* L1 window vertical position configuration */
+	0x90,	/* L1 color keying configuration */
+	0x94,	/* L1 pixel format configuration */
+	0x98,	/* L1 constant alpha configuration */
+	0x9c,	/* L1 default color configuration */
+	0xa0,	/* L1 blending factors configuration */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0xac,	/* L1 color frame buffer address */
+	0xb0,	/* L1 color frame buffer length */
+	0xb4,	/* L1 color frame buffer line number */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0xc4,	/* L1 CLUT write */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00	/* not available */
+};
+
+static const u32 layer_regs_a1[] = {
+	0x80,	/* L1 configuration 0 */
+	0x84,	/* L1 configuration 1 */
+	0x00,	/* L1 reload control */
+	0x88,	/* L1 control register */
+	0x8c,	/* L1 window horizontal position configuration */
+	0x90,	/* L1 window vertical position configuration */
+	0x94,	/* L1 color keying configuration */
+	0x98,	/* L1 pixel format configuration */
+	0x9c,	/* L1 constant alpha configuration */
+	0xa0,	/* L1 default color configuration */
+	0xa4,	/* L1 blending factors configuration */
+	0xa8,	/* L1 burst length configuration */
+	0x00,	/* not available */
+	0xac,	/* L1 color frame buffer address */
+	0xb0,	/* L1 color frame buffer length */
+	0xb4,	/* L1 color frame buffer line number */
+	0xb8,	/* L1 auxiliary frame buffer address 0 */
+	0xbc,	/* L1 auxiliary frame buffer address 1 */
+	0xc0,	/* L1 auxiliary frame buffer length */
+	0xc4,	/* L1 auxiliary frame buffer line number */
+	0xc8,	/* L1 CLUT write */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00,	/* not available */
+	0x00	/* not available */
+};
+
+static const u32 layer_regs_a2[] = {
+	0x100,	/* L1 configuration 0 */
+	0x104,	/* L1 configuration 1 */
+	0x108,	/* L1 reload control */
+	0x10c,	/* L1 control register */
+	0x110,	/* L1 window horizontal position configuration */
+	0x114,	/* L1 window vertical position configuration */
+	0x118,	/* L1 color keying configuration */
+	0x11c,	/* L1 pixel format configuration */
+	0x120,	/* L1 constant alpha configuration */
+	0x124,	/* L1 default color configuration */
+	0x128,	/* L1 blending factors configuration */
+	0x12c,	/* L1 burst length configuration */
+	0x130,	/* L1 planar configuration */
+	0x134,	/* L1 color frame buffer address */
+	0x138,	/* L1 color frame buffer length */
+	0x13c,	/* L1 color frame buffer line number */
+	0x140,	/* L1 auxiliary frame buffer address 0 */
+	0x144,	/* L1 auxiliary frame buffer address 1 */
+	0x148,	/* L1 auxiliary frame buffer length */
+	0x14c,	/* L1 auxiliary frame buffer line number */
+	0x150,	/* L1 CLUT write */
+	0x154,	/* not available */
+	0x158,	/* not available */
+	0x15c,	/* not available */
+	0x160,	/* not available */
+	0x164,	/* not available */
+	0x168,	/* not available */
+	0x16c,	/* L1 Conversion YCbCr RGB 0 */
+	0x170,	/* L1 Conversion YCbCr RGB 1 */
+	0x174,	/* L1 Flexible Pixel Format 0 */
+	0x178	/* L1 Flexible Pixel Format 1 */
 };
 
 /* LTDC main registers */
@@ -46,26 +156,32 @@ struct stm32_ltdc_priv {
 #define LTDC_CPSR	0x44	/* Current Position Status */
 #define LTDC_CDSR	0x48	/* Current Display Status */
 
-/* LTDC layer 1 registers */
-#define LTDC_L1LC1R	0x80	/* L1 Layer Configuration 1 */
-#define LTDC_L1LC2R	0x84	/* L1 Layer Configuration 2 */
-#define LTDC_L1CR	0x84	/* L1 Control */
-#define LTDC_L1WHPCR	0x88	/* L1 Window Hor Position Config */
-#define LTDC_L1WVPCR	0x8C	/* L1 Window Vert Position Config */
-#define LTDC_L1CKCR	0x90	/* L1 Color Keying Configuration */
-#define LTDC_L1PFCR	0x94	/* L1 Pixel Format Configuration */
-#define LTDC_L1CACR	0x98	/* L1 Constant Alpha Config */
-#define LTDC_L1DCCR	0x9C	/* L1 Default Color Configuration */
-#define LTDC_L1BFCR	0xA0	/* L1 Blend Factors Configuration */
-#define LTDC_L1FBBCR	0xA4	/* L1 FrameBuffer Bus Control */
-#define LTDC_L1AFBCR	0xA8	/* L1 AuxFB Control */
-#define LTDC_L1CFBAR	0xAC	/* L1 Color FrameBuffer Address */
-#define LTDC_L1CFBLR	0xB0	/* L1 Color FrameBuffer Length */
-#define LTDC_L1CFBLNR	0xB4	/* L1 Color FrameBuffer Line Nb */
-#define LTDC_L1AFBAR	0xB8	/* L1 AuxFB Address */
-#define LTDC_L1AFBLR	0xBC	/* L1 AuxFB Length */
-#define LTDC_L1AFBLNR	0xC0	/* L1 AuxFB Line Number */
-#define LTDC_L1CLUTWR	0xC4	/* L1 CLUT Write */
+/* Layer register offsets */
+#define LTDC_L1C0R	(priv->layer_regs[0])	/* L1 configuration 0 */
+#define LTDC_L1C1R	(priv->layer_regs[1])	/* L1 configuration 1 */
+#define LTDC_L1RCR	(priv->layer_regs[2])	/* L1 reload control */
+#define LTDC_L1CR	(priv->layer_regs[3])	/* L1 control register */
+#define LTDC_L1WHPCR	(priv->layer_regs[4])	/* L1 window horizontal position configuration */
+#define LTDC_L1WVPCR	(priv->layer_regs[5])	/* L1 window vertical position configuration */
+#define LTDC_L1CKCR	(priv->layer_regs[6])	/* L1 color keying configuration */
+#define LTDC_L1PFCR	(priv->layer_regs[7])	/* L1 pixel format configuration */
+#define LTDC_L1CACR	(priv->layer_regs[8])	/* L1 constant alpha configuration */
+#define LTDC_L1DCCR	(priv->layer_regs[9])	/* L1 default color configuration */
+#define LTDC_L1BFCR	(priv->layer_regs[10])	/* L1 blending factors configuration */
+#define LTDC_L1BLCR	(priv->layer_regs[11])	/* L1 burst length configuration */
+#define LTDC_L1PCR	(priv->layer_regs[12])	/* L1 planar configuration */
+#define LTDC_L1CFBAR	(priv->layer_regs[13])	/* L1 color frame buffer address */
+#define LTDC_L1CFBLR	(priv->layer_regs[14])	/* L1 color frame buffer length */
+#define LTDC_L1CFBLNR	(priv->layer_regs[15])	/* L1 color frame buffer line number */
+#define LTDC_L1AFBA0R	(priv->layer_regs[16])	/* L1 auxiliary frame buffer address 0 */
+#define LTDC_L1AFBA1R	(priv->layer_regs[17])	/* L1 auxiliary frame buffer address 1 */
+#define LTDC_L1AFBLR	(priv->layer_regs[18])	/* L1 auxiliary frame buffer length */
+#define LTDC_L1AFBLNR	(priv->layer_regs[19])	/* L1 auxiliary frame buffer line number */
+#define LTDC_L1CLUTWR	(priv->layer_regs[20])	/* L1 CLUT write */
+#define LTDC_L1CYR0R	(priv->layer_regs[27])	/* L1 Conversion YCbCr RGB 0 */
+#define LTDC_L1CYR1R	(priv->layer_regs[28])	/* L1 Conversion YCbCr RGB 1 */
+#define LTDC_L1FPF0R	(priv->layer_regs[29])	/* L1 Flexible Pixel Format 0 */
+#define LTDC_L1FPF1R	(priv->layer_regs[30])	/* L1 Flexible Pixel Format 1 */
 
 /* Bit definitions */
 #define SSCR_VSH	GENMASK(10, 0)	/* Vertical Synchronization Height */
@@ -141,15 +257,60 @@ struct stm32_ltdc_priv {
 #define BF2_1PAXCA	0x007		/* 1 - (Pixel Alpha x Constant Alpha) */
 #define BF2_1CA		0x005		/* 1 - Constant Alpha */
 
+#define NB_PF		8		/* Max nb of HW pixel format */
+
+#define HWVER_10200 0x010200
+#define HWVER_10300 0x010300
+#define HWVER_20101 0x020101
+#define HWVER_40100 0x040100
+
 enum stm32_ltdc_pix_fmt {
-	PF_ARGB8888 = 0,
-	PF_RGB888,
-	PF_RGB565,
-	PF_ARGB1555,
-	PF_ARGB4444,
-	PF_L8,
-	PF_AL44,
-	PF_AL88
+	PF_ARGB8888 = 0,	/* ARGB [32 bits] */
+	PF_ABGR8888,		/* ABGR [32 bits] */
+	PF_BGRA8888,		/* BGRA [32 bits] */
+	PF_RGBA8888,		/* RGBA [32 bits] */
+	PF_RGB888,		/* RGB [24 bits] */
+	PF_BGR565,		/* RGB [16 bits] */
+	PF_RGB565,		/* RGB [16 bits] */
+	PF_ARGB1555,		/* ARGB A:1 bit RGB:15 bits [16 bits] */
+	PF_ARGB4444,		/* ARGB A:4 bits R/G/B: 4 bits each [16 bits] */
+	PF_AL44,		/* Alpha:4 bits + indexed 4 bits [8 bits] */
+	PF_AL88,		/* Alpha:8 bits + indexed 8 bits [16 bits] */
+	PF_L8,			/* Indexed 8 bits [8 bits] */
+	PF_NONE
+};
+
+static const enum stm32_ltdc_pix_fmt pix_fmt_a0[NB_PF] = {
+	PF_ARGB8888,		/* 0x00 */
+	PF_RGB888,		/* 0x01 */
+	PF_RGB565,		/* 0x02 */
+	PF_ARGB1555,		/* 0x03 */
+	PF_ARGB4444,		/* 0x04 */
+	PF_L8,			/* 0x05 */
+	PF_AL44,		/* 0x06 */
+	PF_AL88			/* 0x07 */
+};
+
+static const enum stm32_ltdc_pix_fmt pix_fmt_a1[NB_PF] = {
+	PF_ARGB8888,		/* 0x00 */
+	PF_RGB888,		/* 0x01 */
+	PF_RGB565,		/* 0x02 */
+	PF_RGBA8888,		/* 0x03 */
+	PF_AL44,		/* 0x04 */
+	PF_L8,			/* 0x05 */
+	PF_ARGB1555,		/* 0x06 */
+	PF_ARGB4444		/* 0x07 */
+};
+
+static const enum stm32_ltdc_pix_fmt pix_fmt_a2[NB_PF] = {
+	PF_ARGB8888,		/* 0x00 */
+	PF_ABGR8888,		/* 0x01 */
+	PF_RGBA8888,		/* 0x02 */
+	PF_BGRA8888,		/* 0x03 */
+	PF_RGB565,		/* 0x04 */
+	PF_BGR565,		/* 0x05 */
+	PF_RGB888,		/* 0x06 */
+	PF_NONE			/* 0x07 (flexible pixel format) */
 };
 
 /* TODO add more color format support */
@@ -174,13 +335,13 @@ static u32 stm32_ltdc_get_pixel_format(enum video_log2_bpp l2bpp)
 	case VIDEO_BPP2:
 	case VIDEO_BPP4:
 	default:
-		debug("%s: warning %dbpp not supported yet, %dbpp instead\n",
-		      __func__, VNBITS(l2bpp), VNBITS(VIDEO_BPP16));
+		log_warning("warning %dbpp not supported yet, %dbpp instead\n",
+			    VNBITS(l2bpp), VNBITS(VIDEO_BPP16));
 		pf = PF_RGB565;
 		break;
 	}
 
-	debug("%s: %d bpp -> ltdc pf %d\n", __func__, VNBITS(l2bpp), pf);
+	log_debug("%d bpp -> ltdc pf %d\n", VNBITS(l2bpp), pf);
 
 	return (u32)pf;
 }
@@ -209,23 +370,23 @@ static void stm32_ltdc_enable(struct stm32_ltdc_priv *priv)
 	setbits_le32(priv->regs + LTDC_GCR, GCR_LTDCEN);
 }
 
-static void stm32_ltdc_set_mode(struct stm32_ltdc_priv *priv)
+static void stm32_ltdc_set_mode(struct stm32_ltdc_priv *priv,
+				struct display_timing *timings)
 {
 	void __iomem *regs = priv->regs;
-	struct display_timing *timing = &priv->timing;
 	u32 hsync, vsync, acc_hbp, acc_vbp, acc_act_w, acc_act_h;
 	u32 total_w, total_h;
 	u32 val;
 
 	/* Convert video timings to ltdc timings */
-	hsync = timing->hsync_len.typ - 1;
-	vsync = timing->vsync_len.typ - 1;
-	acc_hbp = hsync + timing->hback_porch.typ;
-	acc_vbp = vsync + timing->vback_porch.typ;
-	acc_act_w = acc_hbp + timing->hactive.typ;
-	acc_act_h = acc_vbp + timing->vactive.typ;
-	total_w = acc_act_w + timing->hfront_porch.typ;
-	total_h = acc_act_h + timing->vfront_porch.typ;
+	hsync = timings->hsync_len.typ - 1;
+	vsync = timings->vsync_len.typ - 1;
+	acc_hbp = hsync + timings->hback_porch.typ;
+	acc_vbp = vsync + timings->vback_porch.typ;
+	acc_act_w = acc_hbp + timings->hactive.typ;
+	acc_act_h = acc_vbp + timings->vactive.typ;
+	total_w = acc_act_w + timings->hfront_porch.typ;
+	total_h = acc_act_h + timings->vfront_porch.typ;
 
 	/* Synchronization sizes */
 	val = (hsync << 16) | vsync;
@@ -247,14 +408,14 @@ static void stm32_ltdc_set_mode(struct stm32_ltdc_priv *priv)
 
 	/* Signal polarities */
 	val = 0;
-	debug("%s: timing->flags 0x%08x\n", __func__, timing->flags);
-	if (timing->flags & DISPLAY_FLAGS_HSYNC_HIGH)
+	log_debug("timing->flags 0x%08x\n", timings->flags);
+	if (timings->flags & DISPLAY_FLAGS_HSYNC_HIGH)
 		val |= GCR_HSPOL;
-	if (timing->flags & DISPLAY_FLAGS_VSYNC_HIGH)
+	if (timings->flags & DISPLAY_FLAGS_VSYNC_HIGH)
 		val |= GCR_VSPOL;
-	if (timing->flags & DISPLAY_FLAGS_DE_HIGH)
+	if (timings->flags & DISPLAY_FLAGS_DE_LOW)
 		val |= GCR_DEPOL;
-	if (timing->flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
+	if (timings->flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
 		val |= GCR_PCPOL;
 	clrsetbits_le32(regs + LTDC_GCR,
 			GCR_HSPOL | GCR_VSPOL | GCR_DEPOL | GCR_PCPOL, val);
@@ -303,7 +464,16 @@ static void stm32_ltdc_set_layer1(struct stm32_ltdc_priv *priv, ulong fb_addr)
 
 	/* Pixel format */
 	format = stm32_ltdc_get_pixel_format(priv->l2bpp);
-	clrsetbits_le32(regs + LTDC_L1PFCR, LXPFCR_PF, format);
+	for (val = 0; val < NB_PF; val++)
+		if (priv->pix_fmt_hw[val] == format)
+			break;
+
+	if (val >= NB_PF) {
+		log_err("invalid pixel format\n");
+		return;
+	}
+
+	clrsetbits_le32(regs + LTDC_L1PFCR, LXPFCR_PF, val);
 
 	/* Constant alpha value */
 	clrsetbits_le32(regs + LTDC_L1CACR, LXCACR_CONSTA, priv->alpha);
@@ -327,98 +497,144 @@ static void stm32_ltdc_set_layer1(struct stm32_ltdc_priv *priv, ulong fb_addr)
 
 static int stm32_ltdc_probe(struct udevice *dev)
 {
-	struct video_uc_platdata *uc_plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct stm32_ltdc_priv *priv = dev_get_priv(dev);
-	struct udevice *panel;
+	struct udevice *bridge = NULL;
+	struct udevice *panel = NULL;
+	struct display_timing timings;
 	struct clk pclk;
 	struct reset_ctl rst;
-	int rate, ret;
+	ulong rate;
+	int ret;
 
-	priv->regs = (void *)dev_read_addr(dev);
-	if ((fdt_addr_t)priv->regs == FDT_ADDR_T_NONE) {
-		debug("%s: ltdc dt register address error\n", __func__);
+	priv->regs = dev_read_addr_ptr(dev);
+	if (!priv->regs) {
+		dev_err(dev, "ltdc dt register address error\n");
 		return -EINVAL;
 	}
 
 	ret = clk_get_by_index(dev, 0, &pclk);
 	if (ret) {
-		debug("%s: peripheral clock get error %d\n", __func__, ret);
+		dev_err(dev, "peripheral clock get error %d\n", ret);
 		return ret;
 	}
 
 	ret = clk_enable(&pclk);
 	if (ret) {
-		debug("%s: peripheral clock enable error %d\n",
-		      __func__, ret);
+		dev_err(dev, "peripheral clock enable error %d\n", ret);
 		return ret;
 	}
 
+	priv->hw_version = readl(priv->regs + LTDC_IDR);
+	debug("%s: LTDC hardware 0x%x\n", __func__, priv->hw_version);
+
+	switch (priv->hw_version) {
+	case HWVER_10200:
+	case HWVER_10300:
+		priv->layer_regs = layer_regs_a0;
+		priv->pix_fmt_hw = pix_fmt_a0;
+		break;
+	case HWVER_20101:
+		priv->layer_regs = layer_regs_a1;
+		priv->pix_fmt_hw = pix_fmt_a1;
+		break;
+	case HWVER_40100:
+		priv->layer_regs = layer_regs_a2;
+		priv->pix_fmt_hw = pix_fmt_a2;
+		break;
+	default:
+		return -ENODEV;
+	}
+
+	ret = uclass_first_device_err(UCLASS_PANEL, &panel);
+	if (ret) {
+		if (ret != -ENODEV)
+			dev_err(dev, "panel device error %d\n", ret);
+		return ret;
+	}
+
+	ret = panel_get_display_timing(panel, &timings);
+	if (ret) {
+		ret = ofnode_decode_display_timing(dev_ofnode(panel),
+						   0, &timings);
+		if (ret) {
+			dev_err(dev, "decode display timing error %d\n", ret);
+			return ret;
+		}
+	}
+
+	rate = clk_set_rate(&pclk, timings.pixelclock.typ);
+	if (IS_ERR_VALUE(rate))
+		dev_warn(dev, "fail to set pixel clock %d hz, ret=%ld\n",
+			 timings.pixelclock.typ, rate);
+
+	dev_dbg(dev, "Set pixel clock req %d hz get %ld hz\n",
+		timings.pixelclock.typ, rate);
+
 	ret = reset_get_by_index(dev, 0, &rst);
 	if (ret) {
-		debug("%s: missing ltdc hardware reset\n", __func__);
-		return -ENODEV;
+		dev_err(dev, "missing ltdc hardware reset\n");
+		return ret;
 	}
 
 	/* Reset */
 	reset_deassert(&rst);
 
-	ret = uclass_first_device(UCLASS_PANEL, &panel);
-	if (ret) {
-		debug("%s: panel device error %d\n", __func__, ret);
-		return ret;
-	}
+	if (IS_ENABLED(CONFIG_VIDEO_BRIDGE)) {
+		ret = uclass_get_device(UCLASS_VIDEO_BRIDGE, 0, &bridge);
+		if (ret)
+			dev_dbg(dev,
+				"No video bridge, or no backlight on bridge\n");
 
-	ret = panel_enable_backlight(panel);
-	if (ret) {
-		debug("%s: panel %s enable backlight error %d\n",
-		      __func__, panel->name, ret);
-		return ret;
+		if (bridge) {
+			ret = video_bridge_attach(bridge);
+			if (ret) {
+				dev_err(bridge, "fail to attach bridge\n");
+				return ret;
+			}
+		}
 	}
-
-	ret = fdtdec_decode_display_timing(gd->fdt_blob,
-					   dev_of_offset(dev), 0,
-					   &priv->timing);
-	if (ret) {
-		debug("%s: decode display timing error %d\n",
-		      __func__, ret);
-		return -EINVAL;
-	}
-
-	rate = clk_set_rate(&pclk, priv->timing.pixelclock.typ);
-	if (rate < 0) {
-		debug("%s: fail to set pixel clock %d hz %d hz\n",
-		      __func__, priv->timing.pixelclock.typ, rate);
-		return rate;
-	}
-
-	debug("%s: Set pixel clock req %d hz get %d hz\n", __func__,
-	      priv->timing.pixelclock.typ, rate);
 
 	/* TODO Below parameters are hard-coded for the moment... */
 	priv->l2bpp = VIDEO_BPP16;
 	priv->bg_col_argb = 0xFFFFFFFF; /* white no transparency */
 	priv->crop_x = 0;
 	priv->crop_y = 0;
-	priv->crop_w = priv->timing.hactive.typ;
-	priv->crop_h = priv->timing.vactive.typ;
+	priv->crop_w = timings.hactive.typ;
+	priv->crop_h = timings.vactive.typ;
 	priv->alpha = 0xFF;
 
-	debug("%s: %dx%d %dbpp frame buffer at 0x%lx\n", __func__,
-	      priv->timing.hactive.typ, priv->timing.vactive.typ,
-	      VNBITS(priv->l2bpp), uc_plat->base);
-	debug("%s: crop %d,%d %dx%d bg 0x%08x alpha %d\n", __func__,
-	      priv->crop_x, priv->crop_y, priv->crop_w, priv->crop_h,
-	      priv->bg_col_argb, priv->alpha);
+	dev_dbg(dev, "%dx%d %dbpp frame buffer at 0x%lx\n",
+		timings.hactive.typ, timings.vactive.typ,
+		VNBITS(priv->l2bpp), uc_plat->base);
+	dev_dbg(dev, "crop %d,%d %dx%d bg 0x%08x alpha %d\n",
+		priv->crop_x, priv->crop_y, priv->crop_w, priv->crop_h,
+		priv->bg_col_argb, priv->alpha);
 
 	/* Configure & start LTDC */
-	stm32_ltdc_set_mode(priv);
+	stm32_ltdc_set_mode(priv, &timings);
 	stm32_ltdc_set_layer1(priv, uc_plat->base);
 	stm32_ltdc_enable(priv);
 
-	uc_priv->xsize = priv->timing.hactive.typ;
-	uc_priv->ysize = priv->timing.vactive.typ;
+	uc_priv->xsize = timings.hactive.typ;
+	uc_priv->ysize = timings.vactive.typ;
 	uc_priv->bpix = priv->l2bpp;
+
+	if (!bridge) {
+		ret = panel_enable_backlight(panel);
+		if (ret) {
+			dev_err(dev, "panel %s enable backlight error %d\n",
+				panel->name, ret);
+			return ret;
+		}
+	} else if (IS_ENABLED(CONFIG_VIDEO_BRIDGE)) {
+		ret = video_bridge_set_backlight(bridge, 80);
+		if (ret) {
+			dev_err(dev, "fail to set backlight\n");
+			return ret;
+		}
+	}
 
 	video_set_flush_dcache(dev, true);
 
@@ -427,12 +643,15 @@ static int stm32_ltdc_probe(struct udevice *dev)
 
 static int stm32_ltdc_bind(struct udevice *dev)
 {
-	struct video_uc_platdata *uc_plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 
 	uc_plat->size = CONFIG_VIDEO_STM32_MAX_XRES *
 			CONFIG_VIDEO_STM32_MAX_YRES *
 			(CONFIG_VIDEO_STM32_MAX_BPP >> 3);
-	debug("%s: frame buffer max size %d bytes\n", __func__, uc_plat->size);
+	/* align framebuffer on kernel MMU_SECTION_SIZE = max 2MB for LPAE */
+	uc_plat->align = SZ_2M;
+	dev_dbg(dev, "frame buffer max size %d bytes align %x\n",
+		uc_plat->size, uc_plat->align);
 
 	return 0;
 }
@@ -448,5 +667,5 @@ U_BOOT_DRIVER(stm32_ltdc) = {
 	.of_match		= stm32_ltdc_ids,
 	.probe			= stm32_ltdc_probe,
 	.bind			= stm32_ltdc_bind,
-	.priv_auto_alloc_size	= sizeof(struct stm32_ltdc_priv),
+	.priv_auto	= sizeof(struct stm32_ltdc_priv),
 };

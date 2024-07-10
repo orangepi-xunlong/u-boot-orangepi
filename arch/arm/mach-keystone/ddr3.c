@@ -6,11 +6,14 @@
  *     Texas Instruments Incorporated, <www.ti.com>
  */
 
+#include <cpu_func.h>
+#include <env.h>
 #include <asm/io.h>
 #include <common.h>
 #include <asm/arch/msmc.h>
 #include <asm/arch/ddr3.h>
 #include <asm/arch/psc_defs.h>
+#include <linux/delay.h>
 
 #include <asm/ti-common/ti-edma3.h>
 
@@ -315,7 +318,7 @@ void ddr3_init_ecc(u32 base, u32 ddr3_size)
 	}
 
 	ddr3_ecc_init_range(base);
-	ddr3_reset_data(CONFIG_SYS_SDRAM_BASE, ddr3_size);
+	ddr3_reset_data(CFG_SYS_SDRAM_BASE, ddr3_size);
 
 	/* mapping DDR3 ECC system interrupt from CIC2 to GIC */
 #if defined(CONFIG_SOC_K2HK) || defined(CONFIG_SOC_K2L)
@@ -341,8 +344,8 @@ void ddr3_check_ecc_int(u32 base)
 		puts("DDR3 ECC 2-bit error interrupted\n");
 
 		if (!ecc_test) {
-			puts("Reseting the device ...\n");
-			reset_cpu(0);
+			puts("Resetting the device ...\n");
+			reset_cpu();
 		}
 	}
 
@@ -442,7 +445,7 @@ void ddr3_err_reset_workaround(void)
 		tmp &= ~KS2_RSTYPE_PLL_SOFT;
 		__raw_writel(tmp, KS2_RSTCTRL_RSCFG);
 
-		reset_cpu(0);
+		reset_cpu();
 	}
 }
 #endif

@@ -8,6 +8,7 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 
@@ -96,12 +97,12 @@ static int msm_gpio_probe(struct udevice *dev)
 {
 	struct msm_gpio_bank *priv = dev_get_priv(dev);
 
-	priv->base = devfdt_get_addr(dev);
+	priv->base = dev_read_addr(dev);
 
 	return priv->base == FDT_ADDR_T_NONE ? -EINVAL : 0;
 }
 
-static int msm_gpio_ofdata_to_platdata(struct udevice *dev)
+static int msm_gpio_of_to_plat(struct udevice *dev)
 {
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
@@ -115,18 +116,12 @@ static int msm_gpio_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
-static const struct udevice_id msm_gpio_ids[] = {
-	{ .compatible = "qcom,msm8916-pinctrl" },
-	{ .compatible = "qcom,apq8016-pinctrl" },
-	{ }
-};
-
 U_BOOT_DRIVER(gpio_msm) = {
 	.name	= "gpio_msm",
 	.id	= UCLASS_GPIO,
-	.of_match = msm_gpio_ids,
-	.ofdata_to_platdata = msm_gpio_ofdata_to_platdata,
+	.of_to_plat = msm_gpio_of_to_plat,
 	.probe	= msm_gpio_probe,
 	.ops	= &gpio_msm_ops,
-	.priv_auto_alloc_size = sizeof(struct msm_gpio_bank),
+	.flags	= DM_UC_FLAG_SEQ_ALIAS,
+	.priv_auto	= sizeof(struct msm_gpio_bank),
 };

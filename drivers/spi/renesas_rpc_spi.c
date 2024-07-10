@@ -6,14 +6,18 @@
  */
 
 #include <common.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/of_access.h>
 #include <dt-structs.h>
 #include <errno.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <spi.h>
+#include <spi-mem.h>
 #include <wait_bit.h>
 
 #define RPC_CMNCR		0x0000	/* R/W */
@@ -137,6 +141,7 @@
 #define PRC_PHYCNT_EXDS		BIT(21)
 #define RPC_PHYCNT_OCT		BIT(20)
 #define RPC_PHYCNT_STRTIM(v)	(((v) & 0x7) << 15)
+#define RPC_PHYCNT_STRTIM2(v)	((((v) & 0x7) << 15) | (((v) & 0x8) << 24))
 #define RPC_PHYCNT_WBUF2	BIT(4)
 #define RPC_PHYCNT_WBUF		BIT(2)
 #define RPC_PHYCNT_MEM(v)	(((v) & 0x3) << 0)
@@ -154,7 +159,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-struct rpc_spi_platdata {
+struct rpc_spi_plat {
 	fdt_addr_t	regs;
 	fdt_addr_t	extr;
 	s32		freq;	/* Default clock freq, -1 for none */
@@ -164,10 +169,6 @@ struct rpc_spi_priv {
 	fdt_addr_t	regs;
 	fdt_addr_t	extr;
 	struct clk	clk;
-
-	u8		cmdcopy[8];
-	u32		cmdlen;
-	bool		cmdstarted;
 };
 
 static int rpc_spi_wait_sslf(struct udevice *dev)
@@ -199,18 +200,35 @@ static void rpc_spi_flush_read_cache(struct udevice *dev)
 
 }
 
+static u32 rpc_spi_get_strobe_delay(void)
+{
+#ifndef CONFIG_RZA1
+	u32 cpu_type = rmobile_get_cpu_type();
+
+	/*
+	 * NOTE: RPC_PHYCNT_STRTIM value:
+	 *       0: On H3 ES1.x (not supported in mainline U-Boot)
+	 *       6: On M3 ES1.x
+	 *       7: On other R-Car Gen3
+	 *      15: On R-Car Gen4
+	 */
+	if (cpu_type == RMOBILE_CPU_TYPE_R8A7796 && rmobile_get_cpu_rev_integer() == 1)
+		return RPC_PHYCNT_STRTIM(6);
+	else if (cpu_type == RMOBILE_CPU_TYPE_R8A779F0 ||
+		 cpu_type == RMOBILE_CPU_TYPE_R8A779G0)
+		return RPC_PHYCNT_STRTIM2(15);
+	else
+#endif
+		return RPC_PHYCNT_STRTIM(7);
+}
+
 static int rpc_spi_claim_bus(struct udevice *dev, bool manual)
 {
 	struct udevice *bus = dev->parent;
 	struct rpc_spi_priv *priv = dev_get_priv(bus);
 
-	/*
-	 * NOTE: The 0x260 are undocumented bits, but they must be set.
-	 * NOTE: On H3 ES1.x (not supported in mainline U-Boot), the
-	 *       RPC_PHYCNT_STRTIM shall be 0, while on newer parts, the
-	 *       RPC_PHYCNT_STRTIM shall be 6.
-	 */
-	writel(RPC_PHYCNT_CAL | RPC_PHYCNT_STRTIM(6) | 0x260,
+	/* NOTE: The 0x260 are undocumented bits, but they must be set. */
+	writel(RPC_PHYCNT_CAL | rpc_spi_get_strobe_delay() | 0x260,
 	       priv->regs + RPC_PHYCNT);
 	writel((manual ? RPC_CMNCR_MD : 0) | RPC_CMNCR_SFDE |
 		 RPC_CMNCR_MOIIO_HIZ | RPC_CMNCR_IOFV_HIZ | RPC_CMNCR_BSZ(0),
@@ -230,79 +248,91 @@ static int rpc_spi_release_bus(struct udevice *dev)
 	struct rpc_spi_priv *priv = dev_get_priv(bus);
 
 	/* NOTE: The 0x260 are undocumented bits, but they must be set. */
-	writel(RPC_PHYCNT_STRTIM(6) | 0x260, priv->regs + RPC_PHYCNT);
+	writel(rpc_spi_get_strobe_delay() | 0x260, priv->regs + RPC_PHYCNT);
 
 	rpc_spi_flush_read_cache(dev);
 
 	return 0;
 }
 
-static int rpc_spi_xfer(struct udevice *dev, unsigned int bitlen,
-			const void *dout, void *din, unsigned long flags)
+static int rpc_spi_mem_exec_op(struct spi_slave *spi,
+			       const struct spi_mem_op *op)
 {
-	struct udevice *bus = dev->parent;
+	struct udevice *bus = spi->dev->parent;
 	struct rpc_spi_priv *priv = dev_get_priv(bus);
-	u32 wlen = dout ? (bitlen / 8) : 0;
-	u32 rlen = din ? (bitlen / 8) : 0;
-	u32 wloop = DIV_ROUND_UP(wlen, 4);
-	u32 smenr, smcr, offset;
+	const void *dout = op->data.buf.out ? op->data.buf.out : NULL;
+	void *din = op->data.buf.in ? op->data.buf.in : NULL;
 	int ret = 0;
-
-	if (!priv->cmdstarted) {
-		if (!wlen || rlen)
-			BUG();
-
-		memcpy(priv->cmdcopy, dout, wlen);
-		priv->cmdlen = wlen;
-
-		/* Command transfer start */
-		priv->cmdstarted = true;
-		if (!(flags & SPI_XFER_END))
-			return 0;
-	}
-
-	offset = (priv->cmdcopy[1] << 16) | (priv->cmdcopy[2] << 8) |
-		 (priv->cmdcopy[3] << 0);
+	u32 offset = 0;
+	u32 smenr, smcr;
 
 	smenr = 0;
+	offset = op->addr.val;
 
-	if (wlen || (!rlen && !wlen) || flags == SPI_XFER_ONCE) {
-		if (wlen && flags == SPI_XFER_END)
-			smenr = RPC_SMENR_SPIDE(0xf);
+	switch (op->data.dir) {
+	case SPI_MEM_DATA_IN:
+		rpc_spi_claim_bus(spi->dev, false);
 
-		rpc_spi_claim_bus(dev, true);
+		writel(0, priv->regs + RPC_DRCMR);
+		writel(RPC_DRCMR_CMD(op->cmd.opcode), priv->regs + RPC_DRCMR);
+		smenr |= RPC_DRENR_CDE;
+
+		writel(0, priv->regs + RPC_DREAR);
+		if (op->addr.nbytes == 4) {
+			writel(RPC_DREAR_EAV(offset >> 25) | RPC_DREAR_EAC(1),
+			       priv->regs + RPC_DREAR);
+			smenr |= RPC_DRENR_ADE(0xF);
+		} else if (op->addr.nbytes == 3) {
+			smenr |= RPC_DRENR_ADE(0x7);
+		} else {
+			smenr |= RPC_DRENR_ADE(0);
+		}
+
+		writel(0, priv->regs + RPC_DRDMCR);
+		if (op->dummy.nbytes) {
+			writel(8 * op->dummy.nbytes - 1, priv->regs + RPC_DRDMCR);
+			smenr |= RPC_DRENR_DME;
+		}
+
+		writel(0, priv->regs + RPC_DROPR);
+		writel(smenr, priv->regs + RPC_DRENR);
+
+		memcpy_fromio(din, (void *)(priv->extr + offset), op->data.nbytes);
+
+		rpc_spi_release_bus(spi->dev);
+		break;
+	case SPI_MEM_DATA_OUT:
+	case SPI_MEM_NO_DATA:
+		rpc_spi_claim_bus(spi->dev, true);
 
 		writel(0, priv->regs + RPC_SMCR);
+		writel(0, priv->regs + RPC_SMCMR);
+		writel(RPC_SMCMR_CMD(op->cmd.opcode), priv->regs + RPC_SMCMR);
+		smenr |= RPC_SMENR_CDE;
 
-		if (priv->cmdlen >= 1) {	/* Command(1) */
-			writel(RPC_SMCMR_CMD(priv->cmdcopy[0]),
-			       priv->regs + RPC_SMCMR);
-			smenr |= RPC_SMENR_CDE;
-		} else {
-			writel(0, priv->regs + RPC_SMCMR);
-		}
+		writel(0, priv->regs + RPC_SMADR);
+		if (op->addr.nbytes == 4)
+			smenr |= RPC_SMENR_ADE(0xF);
+		else if (op->addr.nbytes == 3)
+			smenr |= RPC_SMENR_ADE(0x7);
+		else
+			smenr |= RPC_SMENR_ADE(0);
+		writel(offset, priv->regs + RPC_SMADR);
 
-		if (priv->cmdlen >= 4) {	/* Address(3) */
-			writel(offset, priv->regs + RPC_SMADR);
-			smenr |= RPC_SMENR_ADE(7);
-		} else {
-			writel(0, priv->regs + RPC_SMADR);
-		}
-
-		if (priv->cmdlen >= 5) {	/* Dummy(n) */
-			writel(8 * (priv->cmdlen - 4) - 1,
-			       priv->regs + RPC_SMDMCR);
+		writel(0, priv->regs + RPC_SMDMCR);
+		if (op->dummy.nbytes) {
+			writel(8 * op->dummy.nbytes - 1, priv->regs + RPC_SMDMCR);
 			smenr |= RPC_SMENR_DME;
-		} else {
-			writel(0, priv->regs + RPC_SMDMCR);
 		}
 
 		writel(0, priv->regs + RPC_SMOPR);
-
 		writel(0, priv->regs + RPC_SMDRENR);
 
-		if (wlen && flags == SPI_XFER_END) {
+		if (dout && op->data.nbytes) {
 			u32 *datout = (u32 *)dout;
+			u32 wloop = DIV_ROUND_UP(op->data.nbytes, 4);
+
+			smenr |= RPC_SMENR_SPIDE(0xF);
 
 			while (wloop--) {
 				smcr = RPC_SMCR_SPIWE | RPC_SMCR_SPIE;
@@ -311,56 +341,27 @@ static int rpc_spi_xfer(struct udevice *dev, unsigned int bitlen,
 				writel(smenr, priv->regs + RPC_SMENR);
 				writel(*datout, priv->regs + RPC_SMWDR0);
 				writel(smcr, priv->regs + RPC_SMCR);
-				ret = rpc_spi_wait_tend(dev);
-				if (ret)
-					goto err;
+				ret = rpc_spi_wait_tend(spi->dev);
+				if (ret) {
+					rpc_spi_release_bus(spi->dev);
+					return ret;
+				}
 				datout++;
-				smenr = RPC_SMENR_SPIDE(0xf);
+				smenr &= (~RPC_SMENR_CDE & ~RPC_SMENR_ADE(0xF));
 			}
 
-			ret = rpc_spi_wait_sslf(dev);
-
+			ret = rpc_spi_wait_sslf(spi->dev);
 		} else {
 			writel(smenr, priv->regs + RPC_SMENR);
 			writel(RPC_SMCR_SPIE, priv->regs + RPC_SMCR);
-			ret = rpc_spi_wait_tend(dev);
-		}
-	} else {	/* Read data only, using DRx ext access */
-		rpc_spi_claim_bus(dev, false);
-
-		if (priv->cmdlen >= 1) {	/* Command(1) */
-			writel(RPC_DRCMR_CMD(priv->cmdcopy[0]),
-			       priv->regs + RPC_DRCMR);
-			smenr |= RPC_DRENR_CDE;
-		} else {
-			writel(0, priv->regs + RPC_DRCMR);
+			ret = rpc_spi_wait_tend(spi->dev);
 		}
 
-		if (priv->cmdlen >= 4)		/* Address(3) */
-			smenr |= RPC_DRENR_ADE(7);
-
-		if (priv->cmdlen >= 5) {	/* Dummy(n) */
-			writel(8 * (priv->cmdlen - 4) - 1,
-			       priv->regs + RPC_DRDMCR);
-			smenr |= RPC_DRENR_DME;
-		} else {
-			writel(0, priv->regs + RPC_DRDMCR);
-		}
-
-		writel(0, priv->regs + RPC_DROPR);
-
-		writel(smenr, priv->regs + RPC_DRENR);
-
-		if (rlen)
-			memcpy_fromio(din, (void *)(priv->extr + offset), rlen);
-		else
-			readl(priv->extr);	/* Dummy read */
+		rpc_spi_release_bus(spi->dev);
+		break;
+	default:
+		break;
 	}
-
-err:
-	priv->cmdstarted = false;
-
-	rpc_spi_release_bus(dev);
 
 	return ret;
 }
@@ -376,6 +377,10 @@ static int rpc_spi_set_mode(struct udevice *bus, uint mode)
 	/* This is a SPI NOR controller, do nothing. */
 	return 0;
 }
+
+static const struct spi_controller_mem_ops rpc_spi_mem_ops = {
+	.exec_op	= rpc_spi_mem_exec_op
+};
 
 static int rpc_spi_bind(struct udevice *parent)
 {
@@ -404,25 +409,27 @@ static int rpc_spi_bind(struct udevice *parent)
 
 static int rpc_spi_probe(struct udevice *dev)
 {
-	struct rpc_spi_platdata *plat = dev_get_platdata(dev);
+	struct rpc_spi_plat *plat = dev_get_plat(dev);
 	struct rpc_spi_priv *priv = dev_get_priv(dev);
 
 	priv->regs = plat->regs;
 	priv->extr = plat->extr;
-
+#if CONFIG_IS_ENABLED(CLK)
 	clk_enable(&priv->clk);
-
+#endif
 	return 0;
 }
 
-static int rpc_spi_ofdata_to_platdata(struct udevice *bus)
+static int rpc_spi_of_to_plat(struct udevice *bus)
 {
-	struct rpc_spi_platdata *plat = dev_get_platdata(bus);
-	struct rpc_spi_priv *priv = dev_get_priv(bus);
-	int ret;
+	struct rpc_spi_plat *plat = dev_get_plat(bus);
 
 	plat->regs = dev_read_addr_index(bus, 0);
 	plat->extr = dev_read_addr_index(bus, 1);
+
+#if CONFIG_IS_ENABLED(CLK)
+	struct rpc_spi_priv *priv = dev_get_priv(bus);
+	int ret;
 
 	ret = clk_get_by_index(bus, 0, &priv->clk);
 	if (ret < 0) {
@@ -430,6 +437,7 @@ static int rpc_spi_ofdata_to_platdata(struct udevice *bus)
 		       __func__, bus->name, ret);
 		return ret;
 	}
+#endif
 
 	plat->freq = dev_read_u32_default(bus, "spi-max-freq", 50000000);
 
@@ -437,17 +445,14 @@ static int rpc_spi_ofdata_to_platdata(struct udevice *bus)
 }
 
 static const struct dm_spi_ops rpc_spi_ops = {
-	.xfer		= rpc_spi_xfer,
 	.set_speed	= rpc_spi_set_speed,
 	.set_mode	= rpc_spi_set_mode,
+	.mem_ops        = &rpc_spi_mem_ops
 };
 
 static const struct udevice_id rpc_spi_ids[] = {
-	{ .compatible = "renesas,rpc-r8a7795" },
-	{ .compatible = "renesas,rpc-r8a7796" },
-	{ .compatible = "renesas,rpc-r8a77965" },
-	{ .compatible = "renesas,rpc-r8a77970" },
-	{ .compatible = "renesas,rpc-r8a77995" },
+	{ .compatible = "renesas,r7s72100-rpc-if" },
+	{ .compatible = "renesas,rcar-gen3-rpc-if" },
 	{ }
 };
 
@@ -456,9 +461,9 @@ U_BOOT_DRIVER(rpc_spi) = {
 	.id		= UCLASS_SPI,
 	.of_match	= rpc_spi_ids,
 	.ops		= &rpc_spi_ops,
-	.ofdata_to_platdata = rpc_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct rpc_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct rpc_spi_priv),
+	.of_to_plat = rpc_spi_of_to_plat,
+	.plat_auto	= sizeof(struct rpc_spi_plat),
+	.priv_auto	= sizeof(struct rpc_spi_priv),
 	.bind		= rpc_spi_bind,
 	.probe		= rpc_spi_probe,
 };

@@ -23,6 +23,9 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 #include <errno.h>
 #include <malloc.h>
@@ -609,7 +612,7 @@ static int b53_phy_startup(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver b53_driver = {
+U_BOOT_PHY_DRIVER(b53) = {
 	.name = "Broadcom BCM53125",
 	.uid = 0x03625c00,
 	.mask = 0xfffffc00,
@@ -620,14 +623,7 @@ static struct phy_driver b53_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-int phy_b53_init(void)
-{
-	phy_register(&b53_driver);
-
-	return 0;
-}
-
-int do_b53_reg_read(const char *name, int argc, char * const argv[])
+int do_b53_reg_read(const char *name, int argc, char *const argv[])
 {
 	u8 page, offset, width;
 	struct mii_dev *bus;
@@ -643,9 +639,9 @@ int do_b53_reg_read(const char *name, int argc, char * const argv[])
 		return ret;
 	}
 
-	page = simple_strtoul(argv[1], NULL, 16);
-	offset = simple_strtoul(argv[2], NULL, 16);
-	width = simple_strtoul(argv[3], NULL, 10);
+	page = hextoul(argv[1], NULL);
+	offset = hextoul(argv[2], NULL);
+	width = dectoul(argv[3], NULL);
 
 	switch (width) {
 	case 8:
@@ -681,7 +677,7 @@ int do_b53_reg_read(const char *name, int argc, char * const argv[])
 	return ret;
 }
 
-int do_b53_reg_write(const char *name, int argc, char * const argv[])
+int do_b53_reg_write(const char *name, int argc, char *const argv[])
 {
 	u8 page, offset, width;
 	struct mii_dev *bus;
@@ -695,13 +691,13 @@ int do_b53_reg_write(const char *name, int argc, char * const argv[])
 		return ret;
 	}
 
-	page = simple_strtoul(argv[1], NULL, 16);
-	offset = simple_strtoul(argv[2], NULL, 16);
-	width = simple_strtoul(argv[3], NULL, 10);
+	page = hextoul(argv[1], NULL);
+	offset = hextoul(argv[2], NULL);
+	width = dectoul(argv[3], NULL);
 	if (width == 48 || width == 64)
 		value64 = simple_strtoull(argv[4], NULL, 16);
 	else
-		value = simple_strtoul(argv[4], NULL, 16);
+		value = hextoul(argv[4], NULL);
 
 	switch (width) {
 	case 8:
@@ -727,7 +723,7 @@ int do_b53_reg_write(const char *name, int argc, char * const argv[])
 	return ret;
 }
 
-int do_b53_reg(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_b53_reg(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	const char *cmd, *mdioname;
 	int ret = 0;

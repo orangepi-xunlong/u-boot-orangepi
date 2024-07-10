@@ -9,6 +9,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <i2c.h>
+#include <log.h>
 #include <malloc.h>
 #include <asm/test.h>
 
@@ -23,57 +24,89 @@ struct sandbox_i2c_flash_plat_data {
 	const char *filename;
 	int offset_len;		/* Length of an offset in bytes */
 	int size;		/* Size of data buffer */
+	uint chip_addr_offset_mask; /* mask of addr bits used for offset */
 };
 
 struct sandbox_i2c_flash {
 	uint8_t *data;
+	uint prev_addr;		/* slave address of previous access */
+	uint prev_offset;	/* offset of previous access */
 };
 
 void sandbox_i2c_eeprom_set_test_mode(struct udevice *dev,
 				      enum sandbox_i2c_eeprom_test_mode mode)
 {
-	struct sandbox_i2c_flash_plat_data *plat = dev_get_platdata(dev);
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(dev);
 
 	plat->test_mode = mode;
 }
 
 void sandbox_i2c_eeprom_set_offset_len(struct udevice *dev, int offset_len)
 {
-	struct sandbox_i2c_flash_plat_data *plat = dev_get_platdata(dev);
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(dev);
 
 	plat->offset_len = offset_len;
+}
+
+void sandbox_i2c_eeprom_set_chip_addr_offset_mask(struct udevice *dev,
+						  uint mask)
+{
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(dev);
+
+	plat->chip_addr_offset_mask = mask;
+}
+
+uint sanbox_i2c_eeprom_get_prev_addr(struct udevice *dev)
+{
+	struct sandbox_i2c_flash *priv = dev_get_priv(dev);
+
+	return priv->prev_addr;
+}
+
+uint sanbox_i2c_eeprom_get_prev_offset(struct udevice *dev)
+{
+	struct sandbox_i2c_flash *priv = dev_get_priv(dev);
+
+	return priv->prev_offset;
 }
 
 static int sandbox_i2c_eeprom_xfer(struct udevice *emul, struct i2c_msg *msg,
 				  int nmsgs)
 {
 	struct sandbox_i2c_flash *priv = dev_get_priv(emul);
-	uint offset = 0;
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(emul);
+	uint offset = msg->addr & plat->chip_addr_offset_mask;
 
 	debug("\n%s\n", __func__);
 	debug_buffer(0, priv->data, 1, 16, 0);
+
+	/* store addr for testing visibity */
+	priv->prev_addr = msg->addr;
+
 	for (; nmsgs > 0; nmsgs--, msg++) {
-		struct sandbox_i2c_flash_plat_data *plat =
-				dev_get_platdata(emul);
 		int len;
 		u8 *ptr;
 
 		if (!plat->size)
 			return -ENODEV;
-		if (msg->addr + msg->len > plat->size) {
-			debug("%s: Address %x, len %x is outside range 0..%x\n",
-			      __func__, msg->addr, msg->len, plat->size);
-			return -EINVAL;
-		}
 		len = msg->len;
-		debug("   %s: msg->len=%d",
+		debug("   %s: msg->addr=%x msg->len=%d",
 		      msg->flags & I2C_M_RD ? "read" : "write",
-		      msg->len);
+		      msg->addr, msg->len);
 		if (msg->flags & I2C_M_RD) {
 			if (plat->test_mode == SIE_TEST_MODE_SINGLE_BYTE)
 				len = 1;
 			debug(", offset %x, len %x: ", offset, len);
-			memcpy(msg->buf, priv->data + offset, len);
+			if (offset + len > plat->size) {
+				int overflow = offset + len - plat->size;
+				int initial = len - overflow;
+
+				memcpy(msg->buf, priv->data + offset, initial);
+				memcpy(msg->buf + initial, priv->data,
+				       overflow);
+			} else {
+				memcpy(msg->buf, priv->data + offset, len);
+			}
 			memset(msg->buf + len, '\xff', msg->len - len);
 			debug_buffer(0, msg->buf, 1, msg->len, 0);
 		} else if (len >= plat->offset_len) {
@@ -87,15 +120,24 @@ static int sandbox_i2c_eeprom_xfer(struct udevice *emul, struct i2c_msg *msg,
 			if (plat->test_mode == SIE_TEST_MODE_SINGLE_BYTE)
 				len = min(len, 1);
 
-			/* For testing, map offsets into our limited buffer */
-			for (i = 24; i > 0; i -= 8) {
-				if (offset > (1 << i)) {
-					offset = (offset >> i) |
-						(offset & ((1 << i) - 1));
-					offset += i;
-				}
+			/* store offset for testing visibility */
+			priv->prev_offset = offset;
+
+			/* For testing, map offsets into our limited buffer.
+			 * offset wraps every 256 bytes
+			 */
+			offset &= 0xff;
+			debug("mapped offset to %x\n", offset);
+
+			if (offset + len > plat->size) {
+				int overflow = offset + len - plat->size;
+				int initial = len - overflow;
+
+				memcpy(priv->data + offset, ptr, initial);
+				memcpy(priv->data, ptr + initial, overflow);
+			} else {
+				memcpy(priv->data + offset, ptr, len);
 			}
-			memcpy(priv->data + offset, ptr, len);
 		}
 	}
 	debug_buffer(0, priv->data, 1, 16, 0);
@@ -107,9 +149,9 @@ struct dm_i2c_ops sandbox_i2c_emul_ops = {
 	.xfer = sandbox_i2c_eeprom_xfer,
 };
 
-static int sandbox_i2c_eeprom_ofdata_to_platdata(struct udevice *dev)
+static int sandbox_i2c_eeprom_of_to_plat(struct udevice *dev)
 {
-	struct sandbox_i2c_flash_plat_data *plat = dev_get_platdata(dev);
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(dev);
 
 	plat->size = dev_read_u32_default(dev, "sandbox,size", 32);
 	plat->filename = dev_read_string(dev, "sandbox,filename");
@@ -120,18 +162,23 @@ static int sandbox_i2c_eeprom_ofdata_to_platdata(struct udevice *dev)
 	}
 	plat->test_mode = SIE_TEST_MODE_NONE;
 	plat->offset_len = 1;
+	plat->chip_addr_offset_mask = 0;
 
 	return 0;
 }
 
 static int sandbox_i2c_eeprom_probe(struct udevice *dev)
 {
-	struct sandbox_i2c_flash_plat_data *plat = dev_get_platdata(dev);
+	struct sandbox_i2c_flash_plat_data *plat = dev_get_plat(dev);
 	struct sandbox_i2c_flash *priv = dev_get_priv(dev);
+	/* For eth3 */
+	const u8 mac[] = { 0x02, 0x00, 0x11, 0x22, 0x33, 0x45 };
 
 	priv->data = calloc(1, plat->size);
 	if (!priv->data)
 		return -ENOMEM;
+
+	memcpy(&priv->data[24], mac, sizeof(mac));
 
 	return 0;
 }
@@ -154,10 +201,10 @@ U_BOOT_DRIVER(sandbox_i2c_emul) = {
 	.name		= "sandbox_i2c_eeprom_emul",
 	.id		= UCLASS_I2C_EMUL,
 	.of_match	= sandbox_i2c_ids,
-	.ofdata_to_platdata = sandbox_i2c_eeprom_ofdata_to_platdata,
+	.of_to_plat = sandbox_i2c_eeprom_of_to_plat,
 	.probe		= sandbox_i2c_eeprom_probe,
 	.remove		= sandbox_i2c_eeprom_remove,
-	.priv_auto_alloc_size = sizeof(struct sandbox_i2c_flash),
-	.platdata_auto_alloc_size = sizeof(struct sandbox_i2c_flash_plat_data),
+	.priv_auto	= sizeof(struct sandbox_i2c_flash),
+	.plat_auto	= sizeof(struct sandbox_i2c_flash_plat_data),
 	.ops		= &sandbox_i2c_emul_ops,
 };

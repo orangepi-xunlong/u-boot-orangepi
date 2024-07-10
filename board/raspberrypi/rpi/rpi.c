@@ -4,14 +4,13 @@
  */
 
 #include <common.h>
-#include <inttypes.h>
 #include <config.h>
 #include <dm.h>
-#include <environment.h>
+#include <env.h>
 #include <efi_loader.h>
 #include <fdt_support.h>
 #include <fdt_simplefb.h>
-#include <lcd.h>
+#include <init.h>
 #include <memalign.h>
 #include <mmc.h>
 #include <asm/gpio.h>
@@ -28,8 +27,11 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* From lowlevel_init.S */
-extern unsigned long fw_dtb_pointer;
+/* Assigned in lowlevel_init.S
+ * Push the variable into the .data section so that it
+ * does not get cleared later.
+ */
+unsigned long __section(".data") fw_dtb_pointer;
 
 /* TODO(sjg@chromium.org): Move these to the msg.c file */
 struct msg_get_arm_mem {
@@ -69,14 +71,7 @@ struct msg_get_clock_rate {
 #endif
 
 /*
- * http://raspberryalphaomega.org.uk/2013/02/06/automatic-raspberry-pi-board-revision-detection-model-a-b1-and-b2/
- * http://www.raspberrypi.org/forums/viewtopic.php?f=63&t=32733
- * http://git.drogon.net/?p=wiringPi;a=blob;f=wiringPi/wiringPi.c;h=503151f61014418b9c42f4476a6086f75cd4e64b;hb=refs/heads/master#l922
- *
- * In http://lists.denx.de/pipermail/u-boot/2016-January/243752.html
- * ("[U-Boot] [PATCH] rpi: fix up Model B entries") Dom Cobley at the RPi
- * Foundation stated that the following source was accurate:
- * https://github.com/AndrewFromMelbourne/raspberry_pi_revision
+ * https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#raspberry-pi-revision-codes
  */
 struct rpi_model {
 	const char *name;
@@ -144,6 +139,36 @@ static const struct rpi_model rpi_models_new_scheme[] = {
 	[0xD] = {
 		"3 Model B+",
 		DTB_DIR "bcm2837-rpi-3-b-plus.dtb",
+		true,
+	},
+	[0xE] = {
+		"3 Model A+",
+		DTB_DIR "bcm2837-rpi-3-a-plus.dtb",
+		false,
+	},
+	[0x10] = {
+		"Compute Module 3+",
+		DTB_DIR "bcm2837-rpi-cm3.dtb",
+		false,
+	},
+	[0x11] = {
+		"4 Model B",
+		DTB_DIR "bcm2711-rpi-4-b.dtb",
+		true,
+	},
+	[0x12] = {
+		"Zero 2 W",
+		DTB_DIR "bcm2837-rpi-zero-2-w.dtb",
+		false,
+	},
+	[0x13] = {
+		"400",
+		DTB_DIR "bcm2711-rpi-400.dtb",
+		true,
+	},
+	[0x14] = {
+		"Compute Module 4",
+		DTB_DIR "bcm2711-rpi-cm4.dtb",
 		true,
 	},
 };
@@ -241,30 +266,6 @@ static uint32_t rev_scheme;
 static uint32_t rev_type;
 static const struct rpi_model *model;
 
-#ifdef CONFIG_ARM64
-static struct mm_region bcm2837_mem_map[] = {
-	{
-		.virt = 0x00000000UL,
-		.phys = 0x00000000UL,
-		.size = 0x3f000000UL,
-		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
-			 PTE_BLOCK_INNER_SHARE
-	}, {
-		.virt = 0x3f000000UL,
-		.phys = 0x3f000000UL,
-		.size = 0x01000000UL,
-		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-			 PTE_BLOCK_NON_SHARE |
-			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-	}, {
-		/* List terminator */
-		0,
-	}
-};
-
-struct mm_region *mem_map = bcm2837_mem_map;
-#endif
-
 int dram_init(void)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_arm_mem, msg, 1);
@@ -281,8 +282,28 @@ int dram_init(void)
 
 	gd->ram_size = msg->get_arm_mem.body.resp.mem_size;
 
+	/*
+	 * In some configurations the memory size returned by VideoCore
+	 * is not aligned to the section size, what is mandatory for
+	 * the u-boot's memory setup.
+	 */
+	gd->ram_size &= ~MMU_SECTION_SIZE;
+
 	return 0;
 }
+
+#ifdef CONFIG_OF_BOARD
+int dram_init_banksize(void)
+{
+	int ret;
+
+	ret = fdtdec_setup_memory_banksize();
+	if (ret)
+		return ret;
+
+	return fdtdec_setup_mem_size_base();
+}
+#endif
 
 static void set_fdtfile(void)
 {
@@ -313,7 +334,7 @@ static void set_fdt_addr(void)
 /*
  * Prevent relocation from stomping on a firmware provided FDT blob.
  */
-unsigned long board_get_usable_ram_top(unsigned long total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	if ((gd->ram_top - fw_dtb_pointer) > SZ_64M)
 		return gd->ram_top;
@@ -384,7 +405,7 @@ static void set_serial_number(void)
 		return;
 	}
 
-	snprintf(serial_string, sizeof(serial_string), "%016" PRIx64,
+	snprintf(serial_string, sizeof(serial_string), "%016llx",
 		 msg->get_board_serial.body.resp.serial);
 	env_set("serial#", serial_string);
 }
@@ -402,7 +423,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-static void get_board_rev(void)
+static void get_board_revision(void)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(struct msg_get_board_rev, msg, 1);
 	int ret;
@@ -461,7 +482,7 @@ int board_init(void)
 	hw_watchdog_init();
 #endif
 
-	get_board_rev();
+	get_board_revision();
 
 	gd->bd->bi_boot_params = 0x100;
 
@@ -471,25 +492,82 @@ int board_init(void)
 /*
  * If the firmware passed a device tree use it for U-Boot.
  */
-void *board_fdt_blob_setup(void)
+void *board_fdt_blob_setup(int *err)
 {
-	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC)
+	*err = 0;
+	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC) {
+		*err = -ENXIO;
 		return NULL;
+	}
+
 	return (void *)fw_dtb_pointer;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int copy_property(void *dst, void *src, char *path, char *property)
 {
-	/*
-	 * For now, we simply always add the simplefb DT node. Later, we
-	 * should be more intelligent, and e.g. only do this if no enabled DT
-	 * node exists for the "real" graphics driver.
+	int dst_offset, src_offset;
+	const fdt32_t *prop;
+	int len;
+
+	src_offset = fdt_path_offset(src, path);
+	dst_offset = fdt_path_offset(dst, path);
+
+	if (src_offset < 0 || dst_offset < 0)
+		return -1;
+
+	prop = fdt_getprop(src, src_offset, property, &len);
+	if (!prop)
+		return -1;
+
+	return fdt_setprop(dst, dst_offset, property, prop, len);
+}
+
+/* Copy tweaks from the firmware dtb to the loaded dtb */
+void  update_fdt_from_fw(void *fdt, void *fw_fdt)
+{
+	/* Using dtb from firmware directly; leave it alone */
+	if (fdt == fw_fdt)
+		return;
+
+	/* The firmware provides a more precie model; so copy that */
+	copy_property(fdt, fw_fdt, "/", "model");
+
+	/* memory reserve as suggested by the firmware */
+	copy_property(fdt, fw_fdt, "/", "memreserve");
+
+	/* Adjust dma-ranges for the SD card and PCI bus as they can depend on
+	 * the SoC revision
 	 */
-	lcd_dt_simplefb_add_node(blob);
+	copy_property(fdt, fw_fdt, "emmc2bus", "dma-ranges");
+	copy_property(fdt, fw_fdt, "pcie0", "dma-ranges");
+
+	/* Bootloader configuration template exposes as nvmem */
+	if (copy_property(fdt, fw_fdt, "blconfig", "reg") == 0)
+		copy_property(fdt, fw_fdt, "blconfig", "status");
+
+	/* kernel address randomisation seed as provided by the firmware */
+	copy_property(fdt, fw_fdt, "/chosen", "kaslr-seed");
+
+	/* address of the PHY device as provided by the firmware  */
+	copy_property(fdt, fw_fdt, "ethernet0/mdio@e14/ethernet-phy@1", "reg");
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int node;
+
+	update_fdt_from_fw(blob, (void *)fw_dtb_pointer);
+
+	node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
+	if (node < 0)
+		fdt_simplefb_add_node(blob);
+	else
+		fdt_simplefb_enable_and_mem_rsv(blob);
 
 #ifdef CONFIG_EFI_LOADER
 	/* Reserve the spin table */
-	efi_add_memory_map(0, 1, EFI_RESERVED_MEMORY_TYPE, 0);
+	efi_add_memory_map(0, CONFIG_RPI_EFI_NR_SPIN_PAGES << EFI_PAGE_SHIFT,
+			   EFI_RESERVED_MEMORY_TYPE);
 #endif
 
 	return 0;

@@ -7,10 +7,10 @@
  */
 
 #include <common.h>
+#include <irq_func.h>
 #include <mpc83xx.h>
 #include <command.h>
 
-#if defined(CONFIG_DDR_ECC) && defined(CONFIG_DDR_ECC_CMD)
 void ecc_print_status(void)
 {
 	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
@@ -95,7 +95,7 @@ void ecc_print_status(void)
 	       ddr->capture_attributes & ECC_CAPT_ATTR_VLD);
 }
 
-int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+int do_ecc(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 #ifdef CONFIG_SYS_FSL_DDR2
@@ -137,7 +137,7 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	}
 	if (argc == 3) {
 		if (strcmp(argv[1], "sbecnt") == 0) {
-			val = simple_strtoul(argv[2], NULL, 10);
+			val = dectoul(argv[2], NULL);
 			if (val > 255) {
 				printf("Incorrect Counter value, "
 				       "should be 0..255\n");
@@ -150,7 +150,7 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			ddr->err_sbe = val;
 			return 0;
 		} else if (strcmp(argv[1], "sbethr") == 0) {
-			val = simple_strtoul(argv[2], NULL, 10);
+			val = dectoul(argv[2], NULL);
 			if (val > 255) {
 				printf("Incorrect Counter value, "
 				       "should be 0..255\n");
@@ -191,8 +191,8 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			}
 
 			ddr->err_disable = val;
-			__asm__ __volatile__("sync");
-			__asm__ __volatile__("isync");
+			sync();
+			isync();
 			return 0;
 		} else if (strcmp(argv[1], "errdetectclr") == 0) {
 			val = ddr->err_detect;
@@ -218,17 +218,17 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			ddr->err_detect = val;
 			return 0;
 		} else if (strcmp(argv[1], "injectdatahi") == 0) {
-			val = simple_strtoul(argv[2], NULL, 16);
+			val = hextoul(argv[2], NULL);
 
 			ddr->data_err_inject_hi = val;
 			return 0;
 		} else if (strcmp(argv[1], "injectdatalo") == 0) {
-			val = simple_strtoul(argv[2], NULL, 16);
+			val = hextoul(argv[2], NULL);
 
 			ddr->data_err_inject_lo = val;
 			return 0;
 		} else if (strcmp(argv[1], "injectecc") == 0) {
-			val = simple_strtoul(argv[2], NULL, 16);
+			val = hextoul(argv[2], NULL);
 			if (val > 0xff) {
 				printf("Incorrect ECC inject mask, "
 				       "should be 0x00..0xff\n");
@@ -249,8 +249,8 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 				printf("Incorrect command\n");
 
 			ddr->ecc_err_inject = val;
-			__asm__ __volatile__("sync");
-			__asm__ __volatile__("isync");
+			sync();
+			isync();
 			return 0;
 		} else if (strcmp(argv[1], "mirror") == 0) {
 			val = ddr->ecc_err_inject;
@@ -268,8 +268,8 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	}
 	if (argc == 4) {
 		if (strcmp(argv[1], "testdw") == 0) {
-			addr = (u64 *) simple_strtoul(argv[2], NULL, 16);
-			count = simple_strtoul(argv[3], NULL, 16);
+			addr = (u64 *)hextoul(argv[2], NULL);
+			count = hextoul(argv[3], NULL);
 
 			if ((u32) addr % 8) {
 				printf("Address not aligned on "
@@ -282,33 +282,33 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 				/* enable injects */
 				ddr->ecc_err_inject |= ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* write memory location injecting errors */
 				ppcDWstore((u32 *) i, pattern);
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* disable injects */
 				ddr->ecc_err_inject &= ~ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* read data, this generates ECC error */
 				ppcDWload((u32 *) i, ret);
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* re-initialize memory, double word write the location again,
 				 * generates new ECC code this time */
 				ppcDWstore((u32 *) i, writeback);
-				__asm__ __volatile__("sync");
+				sync();
 			}
 			enable_interrupts();
 			return 0;
 		}
 		if (strcmp(argv[1], "testword") == 0) {
-			addr = (u64 *) simple_strtoul(argv[2], NULL, 16);
-			count = simple_strtoul(argv[3], NULL, 16);
+			addr = (u64 *)hextoul(argv[2], NULL);
+			count = hextoul(argv[3], NULL);
 
 			if ((u32) addr % 8) {
 				printf("Address not aligned on "
@@ -321,29 +321,29 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 				/* enable injects */
 				ddr->ecc_err_inject |= ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* write memory location injecting errors */
 				*(u32 *) i = 0xfedcba98UL;
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* sub double word write,
 				 * bus will read-modify-write,
 				 * generates ECC error */
 				*((u32 *) i + 1) = 0x76543210UL;
-				__asm__ __volatile__("sync");
+				sync();
 
 				/* disable injects */
 				ddr->ecc_err_inject &= ~ECC_ERR_INJECT_EIEN;
-				__asm__ __volatile__("sync");
-				__asm__ __volatile__("isync");
+				sync();
+				isync();
 
 				/* re-initialize memory,
 				 * double word write the location again,
 				 * generates new ECC code this time */
 				ppcDWstore((u32 *) i, writeback);
-				__asm__ __volatile__("sync");
+				sync();
 			}
 			enable_interrupts();
 			return 0;
@@ -385,4 +385,3 @@ U_BOOT_CMD(ecc, 4, 0, do_ecc,
 	   "  - writes pattern injecting errors with word access\n"
 	   "  - writes pattern with word access, generates error\n"
 	   "  - disables injects\n" "  - re-inits memory");
-#endif

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * r8a7790 Clock Pulse Generator / Module Standby and Software Reset
  *
@@ -6,15 +7,12 @@
  * Based on clk-rcar-gen2.c
  *
  * Copyright (C) 2013 Ideas On Board SPRL
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
  */
 
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <linux/bitops.h>
 
 #include <dt-bindings/clock/r8a7790-cpg-mssr.h>
 
@@ -40,7 +38,7 @@ enum clk_ids {
 	MOD_CLK_BASE
 };
 
-static const struct cpg_core_clk r8a7790_core_clks[] = {
+static const struct cpg_core_clk r8a7790_core_clks[] __initconst = {
 	/* External Clock Inputs */
 	DEF_INPUT("extal",     CLK_EXTAL),
 	DEF_INPUT("usb_extal", CLK_USB_EXTAL),
@@ -90,7 +88,7 @@ static const struct cpg_core_clk r8a7790_core_clks[] = {
 	DEF_DIV6P1("ssprs", R8A7790_CLK_SSPRS, CLK_PLL1_DIV2, 0x24c),
 };
 
-static const struct mssr_mod_clk r8a7790_mod_clks[] = {
+static const struct mssr_mod_clk r8a7790_mod_clks[] __initconst = {
 	DEF_MOD("msiof0",		   0,	R8A7790_CLK_MP),
 	DEF_MOD("vcp1",			 100,	R8A7790_CLK_ZS),
 	DEF_MOD("vcp0",			 101,	R8A7790_CLK_ZS),
@@ -110,8 +108,8 @@ static const struct mssr_mod_clk r8a7790_mod_clks[] = {
 	DEF_MOD("tmu0",			 125,	R8A7790_CLK_CP),
 	DEF_MOD("vsp1du1",		 127,	R8A7790_CLK_ZS),
 	DEF_MOD("vsp1du0",		 128,	R8A7790_CLK_ZS),
-	DEF_MOD("vsp1-rt",		 130,	R8A7790_CLK_ZS),
-	DEF_MOD("vsp1-sy",		 131,	R8A7790_CLK_ZS),
+	DEF_MOD("vspr",			 130,	R8A7790_CLK_ZS),
+	DEF_MOD("vsps",			 131,	R8A7790_CLK_ZS),
 	DEF_MOD("scifa2",		 202,	R8A7790_CLK_MP),
 	DEF_MOD("scifa1",		 203,	R8A7790_CLK_MP),
 	DEF_MOD("scifa0",		 204,	R8A7790_CLK_MP),
@@ -139,6 +137,7 @@ static const struct mssr_mod_clk r8a7790_mod_clks[] = {
 	DEF_MOD("cmt1",			 329,	R8A7790_CLK_R),
 	DEF_MOD("usbhs-dmac0",		 330,	R8A7790_CLK_HP),
 	DEF_MOD("usbhs-dmac1",		 331,	R8A7790_CLK_HP),
+	DEF_MOD("rwdt",			 402,	R8A7790_CLK_R),
 	DEF_MOD("irqc",			 407,	R8A7790_CLK_CP),
 	DEF_MOD("intc-sys",		 408,	R8A7790_CLK_ZS),
 	DEF_MOD("audio-dmac1",		 501,	R8A7790_CLK_HP),
@@ -231,7 +230,7 @@ static const struct mssr_mod_clk r8a7790_mod_clks[] = {
 #define CPG_PLL_CONFIG_INDEX(md)	((((md) & BIT(14)) >> 12) | \
 					 (((md) & BIT(13)) >> 12) | \
 					 (((md) & BIT(19)) >> 19))
-static const struct rcar_gen2_cpg_pll_config cpg_pll_configs[8] = {
+static const struct rcar_gen2_cpg_pll_config cpg_pll_configs[8] __initconst = {
 	{ 1, 208, 106 }, { 1, 208,  88 }, { 1, 156,  80 }, { 1, 156,  66 },
 	{ 2, 240, 122 }, { 2, 240, 102 }, { 2, 208, 106 }, { 2, 208,  88 },
 };
@@ -240,11 +239,11 @@ static const struct mstp_stop_table r8a7790_mstp_table[] = {
 	{ 0x00640801, 0x400000, 0x00640801, 0x0 },
 	{ 0xDB6E9BDF, 0x0, 0xDB6E9BDF, 0x0 },
 	{ 0x300DA1FC, 0x2010, 0x300DA1FC, 0x0 },
-	{ 0xF08CF831, 0x0, 0xF08CF831, 0x0 },
+	{ 0xF08CFC31, 0x0, 0xF08CFC31, 0x0 },
 	{ 0x80000184, 0x180, 0x80000184, 0x0 },
 	{ 0x44C00046, 0x0, 0x44C00046, 0x0 },
 	{ 0x0, 0x0, 0x0, 0x0 },	/* SMSTP6 is not present on Gen2 */
-	{ 0x07F30718, 0x200000, 0x07F30718, 0x0 },
+	{ 0x27F30718, 0x200000, 0x27F30718, 0x0 },
 	{ 0x01F0FF84, 0x0, 0x01F0FF84, 0x0 },
 	{ 0xF5979FCF, 0x0, 0xF5979FCF, 0x0 },
 	{ 0xFFFEFFE0, 0x0, 0xFFFEFFE0, 0x0 },
@@ -264,6 +263,7 @@ static const struct cpg_mssr_info r8a7790_cpg_mssr_info = {
 	.mstp_table		= r8a7790_mstp_table,
 	.mstp_table_size	= ARRAY_SIZE(r8a7790_mstp_table),
 	.reset_node		= "renesas,r8a7790-rst",
+	.reset_modemr_offset	= CPG_RST_MODEMR,
 	.extal_usb_node		= "usb_extal",
 	.mod_clk_base		= MOD_CLK_BASE,
 	.clk_extal_id		= CLK_EXTAL,
@@ -284,7 +284,7 @@ U_BOOT_DRIVER(clk_r8a7790) = {
 	.name		= "clk_r8a7790",
 	.id		= UCLASS_CLK,
 	.of_match	= r8a7790_clk_ids,
-	.priv_auto_alloc_size = sizeof(struct gen2_clk_priv),
+	.priv_auto	= sizeof(struct gen2_clk_priv),
 	.ops		= &gen2_clk_ops,
 	.probe		= gen2_clk_probe,
 	.remove		= gen2_clk_remove,

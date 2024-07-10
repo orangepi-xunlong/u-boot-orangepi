@@ -24,15 +24,10 @@
  *	Reading or writing a 2K or 4K page requires only 1 FDI/FDO cycle.
  *	Also some of registers are moved and/or changed meaning as seen below.
  */
-#if defined(CONFIG_MX27) || defined(CONFIG_MX31)
+#if defined(CONFIG_MX31)
 #define MXC_NFC_V1
 #define is_mxc_nfc_1()		1
 #define is_mxc_nfc_21()		0
-#define is_mxc_nfc_32()		0
-#elif defined(CONFIG_MX25) || defined(CONFIG_MX35)
-#define MXC_NFC_V2_1
-#define is_mxc_nfc_1()		0
-#define is_mxc_nfc_21()		1
 #define is_mxc_nfc_32()		0
 #elif defined(CONFIG_MX51) || defined(CONFIG_MX53)
 #define MXC_NFC_V3

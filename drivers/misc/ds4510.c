@@ -11,6 +11,7 @@
 #include <common.h>
 #include <i2c.h>
 #include <command.h>
+#include <linux/delay.h>
 #include "ds4510.h"
 
 enum {
@@ -233,7 +234,7 @@ static int ds4510_info(uint8_t chip)
 	return 0;
 }
 
-cmd_tbl_t cmd_ds4510[] = {
+struct cmd_tbl cmd_ds4510[] = {
 	U_BOOT_CMD_MKENT(device, 3, 0, (void *)DS4510_CMD_DEVICE, "", ""),
 	U_BOOT_CMD_MKENT(nv, 3, 0, (void *)DS4510_CMD_NV, "", ""),
 	U_BOOT_CMD_MKENT(output, 4, 0, (void *)DS4510_CMD_OUTPUT, "", ""),
@@ -246,10 +247,10 @@ cmd_tbl_t cmd_ds4510[] = {
 	U_BOOT_CMD_MKENT(sram, 6, 0, (void *)DS4510_CMD_SRAM, "", ""),
 };
 
-int do_ds4510(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_ds4510(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	static uint8_t chip = 0x51;
-	cmd_tbl_t *c;
+	struct cmd_tbl *c;
 	ulong ul_arg2 = 0;
 	ulong ul_arg3 = 0;
 	int tmp;
@@ -270,11 +271,11 @@ int do_ds4510(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* arg2 used as chip addr and pin number */
 	if (argc > 2)
-		ul_arg2 = simple_strtoul(argv[2], NULL, 16);
+		ul_arg2 = hextoul(argv[2], NULL);
 
 	/* arg3 used as output/pullup value */
 	if (argc > 3)
-		ul_arg3 = simple_strtoul(argv[3], NULL, 16);
+		ul_arg3 = hextoul(argv[3], NULL);
 
 	switch ((int)c->cmd) {
 	case DS4510_CMD_DEVICE:
@@ -336,9 +337,9 @@ int do_ds4510(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	else
 		return cmd_usage(cmdtp);
 
-	addr = simple_strtoul(argv[3], NULL, 16);
-	off += simple_strtoul(argv[4], NULL, 16);
-	cnt = simple_strtoul(argv[5], NULL, 16);
+	addr = hextoul(argv[3], NULL);
+	off += hextoul(argv[4], NULL);
+	cnt = hextoul(argv[5], NULL);
 
 	if ((off + cnt) > end) {
 		printf("ERROR: invalid len\n");

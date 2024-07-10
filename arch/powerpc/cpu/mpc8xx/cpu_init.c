@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <watchdog.h>
 
 #include <mpc8xx.h>
@@ -25,12 +26,11 @@ void cpu_init_f(immap_t __iomem *immr)
 
 	/* SYPCR - contains watchdog control (11-9) */
 
-#ifndef CONFIG_HW_WATCHDOG
 	/* deactivate watchdog if not enabled in config */
-	out_be32(&immr->im_siu_conf.sc_sypcr, CONFIG_SYS_SYPCR & ~SYPCR_SWE);
-#endif
+	if (!IS_ENABLED(CONFIG_WDT_MPC8xxx))
+		out_be32(&immr->im_siu_conf.sc_sypcr, CONFIG_SYS_SYPCR & ~SYPCR_SWE);
 
-	WATCHDOG_RESET();
+	schedule();
 
 	/* SIUMCR - contains debug pin configuration (11-6) */
 	setbits_be32(&immr->im_siu_conf.sc_siumcr, CONFIG_SYS_SIUMCR);

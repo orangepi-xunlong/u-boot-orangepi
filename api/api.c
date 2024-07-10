@@ -8,10 +8,13 @@
 #include <config.h>
 #include <command.h>
 #include <common.h>
+#include <env.h>
 #include <malloc.h>
-#include <environment.h>
+#include <env_internal.h>
+#include <linux/delay.h>
 #include <linux/types.h>
 #include <api_public.h>
+#include <u-boot/crc.h>
 
 #include "api_private.h"
 
@@ -54,7 +57,7 @@ static int API_getc(va_list ap)
 	if ((c = (int *)va_arg(ap, uintptr_t)) == NULL)
 		return API_EINVAL;
 
-	*c = getc();
+	*c = getchar();
 	return 0;
 }
 
@@ -294,27 +297,31 @@ static int API_dev_close(va_list ap)
 
 
 /*
- * Notice: this is for sending network packets only, as U-Boot does not
- * support writing to storage at the moment (12.2007)
- *
  * pseudo signature:
  *
  * int API_dev_write(
  *	struct device_info *di,
  *	void *buf,
- *	int *len
+ *	int *len,
+ *	unsigned long *start
  * )
  *
  * buf:	ptr to buffer from where to get the data to send
  *
- * len: length of packet to be sent (in bytes)
+ * len: ptr to length to be read
+ *      - network: len of packet to be sent (in bytes)
+ *      - storage: # of blocks to write (can vary in size depending on define)
  *
+ * start: ptr to start block (only used for storage devices, ignored for
+ *        network)
  */
 static int API_dev_write(va_list ap)
 {
 	struct device_info *di;
 	void *buf;
-	int *len;
+	lbasize_t *len_stor, act_len_stor;
+	lbastart_t *start;
+	int *len_net;
 	int err = 0;
 
 	/* 1. arg is ptr to the device_info struct */
@@ -332,23 +339,36 @@ static int API_dev_write(va_list ap)
 	if (buf == NULL)
 		return API_EINVAL;
 
-	/* 3. arg is length of buffer */
-	len = (int *)va_arg(ap, uintptr_t);
-	if (len == NULL)
-		return API_EINVAL;
-	if (*len <= 0)
-		return API_EINVAL;
+	if (di->type & DEV_TYP_STOR) {
+		/* 3. arg - ptr to var with # of blocks to write */
+		len_stor = (lbasize_t *)va_arg(ap, uintptr_t);
+		if (!len_stor)
+			return API_EINVAL;
+		if (*len_stor <= 0)
+			return API_EINVAL;
 
-	if (di->type & DEV_TYP_STOR)
-		/*
-		 * write to storage is currently not supported by U-Boot:
-		 * no storage device implements block_write() method
-		 */
-		return API_ENODEV;
+		/* 4. arg - ptr to var with start block */
+		start = (lbastart_t *)va_arg(ap, uintptr_t);
 
-	else if (di->type & DEV_TYP_NET)
-		err = dev_write_net(di->cookie, buf, *len);
-	else
+		act_len_stor = dev_write_stor(di->cookie, buf, *len_stor, *start);
+		if (act_len_stor != *len_stor) {
+			debugf("write @ %llu: done %llu out of %llu blocks",
+				   (uint64_t)blk, (uint64_t)act_len_stor,
+				   (uint64_t)len_stor);
+			return API_EIO;
+		}
+
+	} else if (di->type & DEV_TYP_NET) {
+		/* 3. arg points to the var with length of packet to write */
+		len_net = (int *)va_arg(ap, uintptr_t);
+		if (!len_net)
+			return API_EINVAL;
+		if (*len_net <= 0)
+			return API_EINVAL;
+
+		err = dev_write_net(di->cookie, buf, *len_net);
+
+	} else
 		err = API_ENODEV;
 
 	return err;
@@ -496,7 +516,7 @@ static int API_env_enum(va_list ap)
 {
 	int i, buflen;
 	char *last, **next, *s;
-	ENTRY *match, search;
+	struct env_entry *match, search;
 	static char *var;
 
 	last = (char *)va_arg(ap, unsigned long);
@@ -513,7 +533,7 @@ static int API_env_enum(va_list ap)
 		if (s != NULL)
 			*s = 0;
 		search.key = var;
-		i = hsearch_r(search, FIND, &match, &env_htab, 0);
+		i = hsearch_r(search, ENV_FIND, &match, &env_htab, 0);
 		if (i == 0) {
 			i = API_EINVAL;
 			goto done;
@@ -622,7 +642,7 @@ int syscall(int call, int *retval, ...)
 	return 1;
 }
 
-void api_init(void)
+int api_init(void)
 {
 	struct api_signature *sig;
 
@@ -659,7 +679,7 @@ void api_init(void)
 	sig = malloc(sizeof(struct api_signature));
 	if (sig == NULL) {
 		printf("API: could not allocate memory for the signature!\n");
-		return;
+		return -ENOMEM;
 	}
 
 	env_set_hex("api_address", (unsigned long)sig);
@@ -671,6 +691,8 @@ void api_init(void)
 	sig->checksum = crc32(0, (unsigned char *)sig,
 			      sizeof(struct api_signature));
 	debugf("syscall entry: 0x%lX\n", (unsigned long)sig->syscall);
+
+	return 0;
 }
 
 void platform_set_mr(struct sys_info *si, unsigned long start, unsigned long size,

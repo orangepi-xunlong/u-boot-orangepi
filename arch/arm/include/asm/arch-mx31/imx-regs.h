@@ -39,17 +39,6 @@ struct clock_control_regs {
 	u32 pdr2;
 };
 
-struct cspi_regs {
-	u32 rxdata;
-	u32 txdata;
-	u32 ctrl;
-	u32 intr;
-	u32 dma;
-	u32 stat;
-	u32 period;
-	u32 test;
-};
-
 /* IIM control registers */
 struct iim_regs {
 	u32 iim_stat;
@@ -609,6 +598,18 @@ struct esdc_regs {
 #define UART4_BASE	0x43FB0000
 #define UART5_BASE	0x43FB4000
 
+#define UART_BASE_ADDR(n)	(			\
+	!!sizeof(struct {				\
+		static_assert((n) >= 1 && (n) <= 5);	\
+		int pad;				\
+		}) * (					\
+	(n) == 1 ? UART1_BASE :				\
+	(n) == 2 ? UART2_BASE :				\
+	(n) == 3 ? UART3_BASE :				\
+	(n) == 4 ? UART4_BASE :				\
+	UART5_BASE_ADDR)				\
+	)
+
 #define I2C1_BASE_ADDR          0x43f80000
 #define I2C1_CLK_OFFSET		26
 #define I2C2_BASE_ADDR          0x43F98000
@@ -889,26 +890,6 @@ struct esdc_regs {
 /*
  * CSPI register definitions
  */
-#define MXC_CSPI
-#define MXC_CSPICTRL_EN		(1 << 0)
-#define MXC_CSPICTRL_MODE	(1 << 1)
-#define MXC_CSPICTRL_XCH	(1 << 2)
-#define MXC_CSPICTRL_SMC	(1 << 3)
-#define MXC_CSPICTRL_POL	(1 << 4)
-#define MXC_CSPICTRL_PHA	(1 << 5)
-#define MXC_CSPICTRL_SSCTL	(1 << 6)
-#define MXC_CSPICTRL_SSPOL	(1 << 7)
-#define MXC_CSPICTRL_CHIPSELECT(x)	(((x) & 0x3) << 24)
-#define MXC_CSPICTRL_BITCOUNT(x)	(((x) & 0x1f) << 8)
-#define MXC_CSPICTRL_DATARATE(x)	(((x) & 0x7) << 16)
-#define MXC_CSPICTRL_TC		(1 << 8)
-#define MXC_CSPICTRL_RXOVF	(1 << 6)
-#define MXC_CSPICTRL_MAXBITS	0x1f
-
-#define MXC_CSPIPERIOD_32KHZ	(1 << 15)
-#define MAX_SPI_BYTES	4
-
-
 #define MXC_SPI_BASE_ADDRESSES \
 	0x43fa4000, \
 	0x50010000, \
@@ -918,9 +899,9 @@ struct esdc_regs {
  * Generic timer support
  */
 #ifdef CONFIG_MX31_CLK32
-#define	CONFIG_SYS_TIMER_RATE	CONFIG_MX31_CLK32
+#define	CFG_SYS_TIMER_RATE	CONFIG_MX31_CLK32
 #else
-#define	CONFIG_SYS_TIMER_RATE	32768
+#define	CFG_SYS_TIMER_RATE	32768
 #endif
 
 #endif /* __ASM_ARCH_MX31_IMX_REGS_H */

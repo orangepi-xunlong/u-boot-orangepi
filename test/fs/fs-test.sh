@@ -1,26 +1,26 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2014 Suriyan Ramasami
-#
-#  SPDX-License-Identifier:	GPL-2.0+
-#
 
 # Invoke this test script from U-Boot base directory as ./test/fs/fs-test.sh
 # It currently tests the fs/sb and native commands for ext4 and fat partitions
 # Expected results are as follows:
 # EXT4 tests:
-# fs-test.sb.ext4.out: Summary: PASS: 24 FAIL: 0
-# fs-test.ext4.out: Summary: PASS: 24 FAIL: 0
-# fs-test.fs.ext4.out: Summary: PASS: 24 FAIL: 0
+# fs-test.sb.ext4	Summary: PASS: 24 FAIL: 0
+# fs-test.nonfs.ext4	Summary: PASS: 24 FAIL: 0
+# fs-test.fs.ext4	Summary: PASS: 24 FAIL: 0
 # FAT16 tests:
-# fs-test.sb.fat16.out: Summary: PASS: 24 FAIL: 0
-# fs-test.fat16.out: Summary: PASS: 21 FAIL: 3
-# fs-test.fs.fat16.out: Summary: PASS: 21 FAIL: 3
+# fs-test.sb.fat16	Summary: PASS: 24 FAIL: 0
+# fs-test.nonfs.fat16	Summary: PASS: 24 FAIL: 0
+# fs-test.fs.fat16	Summary: PASS: 24 FAIL: 0
 # FAT32 tests:
-# fs-test.sb.fat32.out: Summary: PASS: 24 FAIL: 0
-# fs-test.fat32.out: Summary: PASS: 21 FAIL: 3
-# fs-test.fs.fat32.out: Summary: PASS: 21 FAIL: 3
-# Total Summary: TOTAL PASS: 204 TOTAL FAIL: 12
+# fs-test.sb.fat32	Summary: PASS: 24 FAIL: 0
+# fs-test.nonfs.fat32	Summary: PASS: 24 FAIL: 0
+# fs-test.fs.fat32	Summary: PASS: 24 FAIL: 0
+# --------------------------------------------
+# Total Summary: TOTAL PASS: 216 TOTAL FAIL: 0
+# --------------------------------------------
 
 # pre-requisite binaries list.
 PREREQ_BINS="md5sum mkfs mount umount dd fallocate mkdir"
@@ -87,7 +87,7 @@ function check_clean() {
 # Generate sandbox U-Boot - gleaned from /test/dm/test-dm.sh
 function compile_sandbox() {
 	unset CROSS_COMPILE
-	NUM_CPUS=$(cat /proc/cpuinfo |grep -c processor)
+	NUM_CPUS=$(nproc)
 	make O=sandbox sandbox_config
 	make O=sandbox -s -j${NUM_CPUS}
 
@@ -194,7 +194,7 @@ function test_image() {
 		;;
 
 		sb)
-		PREFIX="sb "
+		PREFIX="host "
 		WRITE="save"
 		SUFFIX="fs -"
 		;;
@@ -217,17 +217,19 @@ function test_image() {
 
 	# In u-boot commands, <interface> stands for host or hostfs
 	# hostfs maps to the host fs.
-	# host maps to the "sb bind" that we do
+	# host maps to the "host bind" that we do
 
 	$UBOOT << EOF
 sb=$5
-setenv bind 'if test "\$sb" != sb; then sb bind 0 "$1"; fi'
+setenv bind 'if test "\$sb" != sb; then host bind 0 "$1"; fi'
 run bind
 # Test Case 1 - ls
 ${PREFIX}ls host${SUFFIX} $6
+# In addition, test with a nonexistent directory to see if we crash.
+${PREFIX}ls host${SUFFIX} invalid_d
 #
 # We want ${PREFIX}size host 0:0 $3 for host commands and
-# sb size hostfs - $3 for hostfs commands.
+# host size hostfs - $3 for hostfs commands.
 # 1MB is 0x0010 0000
 # Test Case 2a - size of small file
 ${PREFIX}size host${SUFFIX} ${FPATH}$FILE_SMALL
@@ -460,22 +462,22 @@ function check_results() {
 	FAIL=0
 
 	# Check if the ls is showing correct results for 2.5 gb file
-	grep -A7 "Test Case 1 " "$1" | egrep -iq "2621440000 *$4"
+	grep -A7 "Test Case 1 " "$1" | grep -Eiq "2621440000 *$4"
 	pass_fail "TC1: ls of $4"
 
 	# Check if the ls is showing correct results for 1 mb file
-	grep -A7 "Test Case 1 " "$1" | egrep -iq "1048576 *$3"
+	grep -A7 "Test Case 1 " "$1" | grep -Eiq "1048576 *$3"
 	pass_fail "TC1: ls of $3"
 
 	# Check size command on 1MB.file
-	egrep -A3 "Test Case 2a " "$1" | grep -q "filesize=100000"
+	grep -A3 "Test Case 2a " "$1" | grep -q "filesize=100000"
 	pass_fail "TC2: size of $3"
 	# Check size command on 1MB.file via a path using '..'
-	egrep -A3 "Test Case 2b " "$1" | grep -q "filesize=100000"
+	grep -A3 "Test Case 2b " "$1" | grep -q "filesize=100000"
 	pass_fail "TC2: size of $3 via a path using '..'"
 
 	# Check size command on 2.5GB.file
-	egrep -A3 "Test Case 3 " "$1" | grep -q "filesize=9c400000"
+	grep -A3 "Test Case 3 " "$1" | grep -q "filesize=9c400000"
 	pass_fail "TC3: size of $4"
 
 	# Check read full mb of 1MB.file
@@ -522,7 +524,7 @@ function check_results() {
 		"TC11: 1MB write to $3.w - content verified"
 
 	# Check lookup of 'dot' directory
-	grep -A4 "Test Case 12 " "$1" | grep -q 'Unable to write file'
+	grep -A4 "Test Case 12 " "$1" | grep -q 'Unable to write'
 	pass_fail "TC12: 1MB write to . - write denied"
 
 	# Check directory traversal
@@ -573,7 +575,7 @@ TOTAL_PASS=0
 
 # In each loop, for a given file system image, we test both the
 # fs command, like load/size/write, the file system specific command
-# like: ext4load/ext4size/ext4write and the sb load/ls/save commands.
+# like: ext4load/ext4size/ext4write and the host load/ls/save commands.
 for fs in ext4 fat16 fat32; do
 
 	echo "Creating $fs image if not already present."
@@ -581,11 +583,11 @@ for fs in ext4 fat16 fat32; do
 	MD5_FILE_FS="${MD5_FILE}.${fs}"
 	create_image $IMAGE $fs
 
-	# sb commands test
+	# host commands test
 	echo "Creating files in $fs image if not already present."
 	create_files $IMAGE $MD5_FILE_FS
 
-	# Lets mount the image and test sb hostfs commands
+	# Lets mount the image and test host hostfs commands
 	mkdir -p "$MOUNT_DIR"
 	case "$fs" in
 		fat*)

@@ -14,6 +14,7 @@
  */
 
 #include <common.h>
+#include <display_options.h>
 #include <linux/compat.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/onenand.h>
@@ -34,7 +35,7 @@ void onenand_init(void)
 	/* It's used for some board init required */
 	err = onenand_board_init(&onenand_mtd);
 #else
-	onenand_chip.base = (void *) CONFIG_SYS_ONENAND_BASE;
+	onenand_chip.base = (void *) CFG_SYS_ONENAND_BASE;
 #endif
 
 	if (!err && !(onenand_scan(&onenand_mtd, 1))) {
@@ -43,7 +44,7 @@ void onenand_init(void)
 			puts("Flex-");
 		puts("OneNAND: ");
 
-#ifdef CONFIG_MTD_DEVICE
+#ifdef CONFIG_MTD
 		/*
 		 * Add MTD device so that we can reference it later
 		 * via the mtdcore infrastructure (e.g. ubi).

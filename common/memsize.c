@@ -5,8 +5,19 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
+#include <cpu_func.h>
+#include <stdint.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#ifdef CONFIG_SYS_CACHELINE_SIZE
+# define MEMSIZE_CACHELINE_SIZE CONFIG_SYS_CACHELINE_SIZE
+#else
+/* Just use the greatest cache flush alignment requirement I'm aware of */
+# define MEMSIZE_CACHELINE_SIZE 128
+#endif
 
 #ifdef __PPC__
 /*
@@ -18,6 +29,15 @@ DECLARE_GLOBAL_DATA_PTR;
 # define sync()		/* nothing */
 #endif
 
+static void dcache_flush_invalidate(volatile long *p)
+{
+	uintptr_t start, stop;
+	start = ALIGN_DOWN((uintptr_t)p, MEMSIZE_CACHELINE_SIZE);
+	stop = start + MEMSIZE_CACHELINE_SIZE;
+	flush_dcache_range(start, stop);
+	invalidate_dcache_range(start, stop);
+}
+
 /*
  * Check memory range for valid RAM. A simple memory test determines
  * the actually available RAM size between addresses `base' and
@@ -26,12 +46,13 @@ DECLARE_GLOBAL_DATA_PTR;
 long get_ram_size(long *base, long maxsize)
 {
 	volatile long *addr;
-	long           save[31];
+	long           save[BITS_PER_LONG - 1];
 	long           save_base;
 	long           cnt;
 	long           val;
 	long           size;
 	int            i = 0;
+	int            dcache_en = dcache_status();
 
 	for (cnt = (maxsize / sizeof(long)) >> 1; cnt > 0; cnt >>= 1) {
 		addr = base + cnt;	/* pointer arith! */
@@ -39,6 +60,8 @@ long get_ram_size(long *base, long maxsize)
 		save[i++] = *addr;
 		sync();
 		*addr = ~cnt;
+		if (dcache_en)
+			dcache_flush_invalidate(addr);
 	}
 
 	addr = base;
@@ -48,6 +71,9 @@ long get_ram_size(long *base, long maxsize)
 	*addr = 0;
 
 	sync();
+	if (dcache_en)
+		dcache_flush_invalidate(addr);
+
 	if ((val = *addr) != 0) {
 		/* Restore the original data before leaving the function. */
 		sync();
@@ -92,11 +118,25 @@ long get_ram_size(long *base, long maxsize)
 
 phys_size_t __weak get_effective_memsize(void)
 {
-#ifndef CONFIG_VERY_BIG_RAM
-	return gd->ram_size;
+	phys_size_t ram_size = gd->ram_size;
+
+#ifdef CONFIG_MPC85xx
+	/*
+	 * Check for overflow and limit ram size to some representable value.
+	 * It is required that ram_base + ram_size must be representable by
+	 * phys_size_t type and must be aligned by direct access, therefore
+	 * calculate it from last 4kB sector which should work as alignment
+	 * on any platform.
+	 */
+	if (gd->ram_base + ram_size < gd->ram_base)
+		ram_size = ((phys_size_t)~0xfffULL) - gd->ram_base;
+#endif
+
+#ifndef CFG_MAX_MEM_MAPPED
+	return ram_size;
 #else
 	/* limit stack to what we can reasonable map */
-	return ((gd->ram_size > CONFIG_MAX_MEM_MAPPED) ?
-		CONFIG_MAX_MEM_MAPPED : gd->ram_size);
+	return ((ram_size > CFG_MAX_MEM_MAPPED) ?
+		CFG_MAX_MEM_MAPPED : ram_size);
 #endif
 }

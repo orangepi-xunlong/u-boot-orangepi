@@ -8,6 +8,8 @@
 #include <config.h>
 #include <common.h>
 #include <api_public.h>
+#include <part.h>
+#include <scsi.h>
 
 #if defined(CONFIG_CMD_USB) && defined(CONFIG_USB_STORAGE)
 #include <usb.h>
@@ -42,10 +44,6 @@ struct stor_spec {
 
 static struct stor_spec specs[ENUM_MAX] = { { 0, 0, 0, 0, NULL }, };
 
-#ifndef CONFIG_SYS_MMC_MAX_DEVICE
-#define CONFIG_SYS_MMC_MAX_DEVICE	1
-#endif
-
 void dev_stor_init(void)
 {
 #if defined(CONFIG_IDE)
@@ -70,7 +68,7 @@ void dev_stor_init(void)
 	specs[ENUM_SATA].name = "sata";
 #endif
 #if defined(CONFIG_SCSI)
-	specs[ENUM_SCSI].max_dev = CONFIG_SYS_SCSI_MAX_DEVICE;
+	specs[ENUM_SCSI].max_dev = SCSI_MAX_DEVICE;
 	specs[ENUM_SCSI].enum_started = 0;
 	specs[ENUM_SCSI].enum_ended = 0;
 	specs[ENUM_SCSI].type = DEV_TYP_STOR | DT_STOR_SCSI;
@@ -99,6 +97,7 @@ static int dev_stor_get(int type, int *more, struct device_info *di)
 {
 	struct blk_desc *dd;
 	int found = 0;
+	int found_last = 0;
 	int i = 0;
 
 	/* Wasn't configured for this type, return 0 directly */
@@ -111,9 +110,13 @@ static int dev_stor_get(int type, int *more, struct device_info *di)
 			if (di->cookie ==
 			    (void *)blk_get_dev(specs[type].name, i)) {
 				i += 1;
+				found_last = 1;
 				break;
 			}
 		}
+
+		if (!found_last)
+			i = 0;
 	}
 
 	for (; i < specs[type].max_dev; i++) {
@@ -342,5 +345,29 @@ lbasize_t dev_read_stor(void *cookie, void *buf, lbasize_t len, lbastart_t start
 	}
 
 	return dd->block_read(dd, start, len, buf);
+#endif	/* defined(CONFIG_BLK) */
+}
+
+
+lbasize_t dev_write_stor(void *cookie, void *buf, lbasize_t len, lbastart_t start)
+{
+	struct blk_desc *dd = (struct blk_desc *)cookie;
+	int type = dev_stor_type(dd);
+
+	if (type == ENUM_MAX)
+		return 0;
+
+	if (!dev_stor_is_valid(type, dd))
+		return 0;
+
+#ifdef CONFIG_BLK
+	return blk_dwrite(dd, start, len, buf);
+#else
+	if (dd->block_write == NULL) {
+		debugf("no block_write() for device 0x%08x\n", cookie);
+		return 0;
+	}
+
+	return dd->block_write(dd, start, len, buf);
 #endif	/* defined(CONFIG_BLK) */
 }

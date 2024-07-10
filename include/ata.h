@@ -6,11 +6,8 @@
 
 /*
  * Most of the following information was derived from the document
- * "Information Technology - AT Attachment-3 Interface (ATA-3)"
- * which can be found at:
- * http://www.dt.wdc.com/ata/ata-3/ata3r5v.zip
- * ftp://poctok.iae.nsk.su/pub/asm/Documents/IDE/ATA3R5V.ZIP
- * ftp://ftp.fee.vutbr.cz/pub/doc/io/ata/ata-3/ata3r5v.zip
+ * "Information Technology - AT Attachment-3 Interface (ATA-3)",
+ * ANSI X3.298-1997.
  */
 
 #ifndef	_ATA_H
@@ -22,9 +19,6 @@
  * 8-bit (register) and 16-bit (data) accesses might use different
  * address spaces. This is implemented by the following definitions.
  */
-#ifndef CONFIG_SYS_ATA_STRIDE
-#define CONFIG_SYS_ATA_STRIDE	1
-#endif
 
 #define ATA_IO_DATA(x)	(CONFIG_SYS_ATA_DATA_OFFSET+((x) * CONFIG_SYS_ATA_STRIDE))
 #define ATA_IO_REG(x)	(CONFIG_SYS_ATA_REG_OFFSET +((x) * CONFIG_SYS_ATA_STRIDE))
@@ -71,42 +65,8 @@
 #define ATA_LBA		0xE0
 
 /*
- * ATA Commands (only mandatory commands listed here)
- */
-#define ATA_CMD_READ	0x20	/* Read Sectors (with retries)	*/
-#define ATA_CMD_READN	0x21	/* Read Sectors ( no  retries)	*/
-#define ATA_CMD_WRITE	0x30	/* Write Sectores (with retries)*/
-#define ATA_CMD_WRITEN	0x31	/* Write Sectors  ( no  retries)*/
-#define ATA_CMD_VRFY	0x40	/* Read Verify  (with retries)	*/
-#define ATA_CMD_VRFYN	0x41	/* Read verify  ( no  retries)	*/
-#define ATA_CMD_SEEK	0x70	/* Seek				*/
-#define ATA_CMD_DIAG	0x90	/* Execute Device Diagnostic	*/
-#define ATA_CMD_INIT	0x91	/* Initialize Device Parameters	*/
-#define ATA_CMD_RD_MULT	0xC4	/* Read Multiple		*/
-#define ATA_CMD_WR_MULT	0xC5	/* Write Multiple		*/
-#define ATA_CMD_SETMULT	0xC6	/* Set Multiple Mode		*/
-#define ATA_CMD_RD_DMA	0xC8	/* Read DMA (with retries)	*/
-#define ATA_CMD_RD_DMAN	0xC9	/* Read DMS ( no  retries)	*/
-#define ATA_CMD_WR_DMA	0xCA	/* Write DMA (with retries)	*/
-#define ATA_CMD_WR_DMAN	0xCB	/* Write DMA ( no  retires)	*/
-#define ATA_CMD_IDENT	0xEC	/* Identify Device		*/
-#define ATA_CMD_SETF	0xEF	/* Set Features			*/
-#define ATA_CMD_CHK_PWR	0xE5	/* Check Power Mode		*/
-
-#define ATA_CMD_READ_EXT 0x24	/* Read Sectors (with retries)	with 48bit addressing */
-#define ATA_CMD_WRITE_EXT	0x34	/* Write Sectores (with retries) with 48bit addressing */
-#define ATA_CMD_VRFY_EXT	0x42	/* Read Verify	(with retries)	with 48bit addressing */
-
-#define ATA_CMD_FLUSH 0xE7 /* Flush drive cache */
-#define ATA_CMD_FLUSH_EXT 0xEA /* Flush drive cache, with 48bit addressing */
-
-/*
  * ATAPI Commands
  */
-#define ATAPI_CMD_IDENT 0xA1 /* Identify AT Atachment Packed Interface Device */
-#define ATAPI_CMD_PACKET 0xA0 /* Packed Command */
-
-
 #define ATAPI_CMD_INQUIRY 0x12
 #define ATAPI_CMD_REQ_SENSE 0x03
 #define ATAPI_CMD_READ_CAP 0x25
@@ -171,7 +131,7 @@ typedef struct hd_driveid {
 	unsigned short	cur_capacity1;	/*  (2 words, misaligned int)     */
 	unsigned char	multsect;	/* current multiple sector count */
 	unsigned char	multsect_valid;	/* when (bit0==1) multsect is ok */
-	unsigned int	lba_capacity;	/* total number of sectors */
+	unsigned short  lba_capacity[2];/* two words containing total number of sectors */
 	unsigned short	dma_1word;	/* single-word dma info */
 	unsigned short	dma_mword;	/* multiple-word dma info */
 	unsigned short  eide_pio_modes; /* bits 0:mode3 1:mode4 */

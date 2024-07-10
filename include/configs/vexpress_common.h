@@ -15,7 +15,7 @@
  * Definitions copied from linux kernel:
  * arch/arm/mach-vexpress/include/mach/motherboard.h
  */
-#ifdef CONFIG_VEXPRESS_ORIGINAL_MEMORY_MAP
+#ifdef VEXPRESS_ORIGINAL_MEMORY_MAP
 /* CS register bases for the original memory map. */
 #define V2M_PA_CS0		0x40000000
 #define V2M_PA_CS1		0x44000000
@@ -56,7 +56,6 @@
 
 /* Common peripherals relative to CS7. */
 #define V2M_AACI		(V2M_PA_CS7 + V2M_PERIPH_OFFSET(4))
-#define V2M_MMCI		(V2M_PA_CS7 + V2M_PERIPH_OFFSET(5))
 #define V2M_KMI0		(V2M_PA_CS7 + V2M_PERIPH_OFFSET(6))
 #define V2M_KMI1		(V2M_PA_CS7 + V2M_PERIPH_OFFSET(7))
 
@@ -109,49 +108,25 @@
 
 /* Board info register */
 #define SYS_ID				V2M_SYSREGS
-#define CONFIG_REVISION_TAG		1
-
-#define CONFIG_SYS_MEMTEST_START	V2M_BASE
-#define CONFIG_SYS_MEMTEST_END		0x20000000
-
-#define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
-#define CONFIG_SETUP_MEMORY_TAGS	1
-#define CONFIG_SYS_L2CACHE_OFF		1
-#define CONFIG_INITRD_TAG		1
-
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128 * 1024)
 
 #define SCTL_BASE			V2M_SYSCTL
 #define VEXPRESS_FLASHPROG_FLVPPEN	(1 << 0)
 
-#define CONFIG_SYS_TIMER_RATE		1000000
-#define CONFIG_SYS_TIMER_COUNTER	(V2M_TIMER01 + 0x4)
-#define CONFIG_SYS_TIMER_COUNTS_DOWN
+#define CFG_SYS_TIMER_RATE		1000000
+#define CFG_SYS_TIMER_COUNTER	(V2M_TIMER01 + 0x4)
 
 /* PL011 Serial Configuration */
-#define CONFIG_PL011_CLOCK		24000000
-#define CONFIG_PL01x_PORTS		{(void *)CONFIG_SYS_SERIAL0, \
-					 (void *)CONFIG_SYS_SERIAL1}
+#define CFG_PL011_CLOCK		24000000
+#define CFG_PL01x_PORTS		{(void *)CFG_SYS_SERIAL0, \
+					 (void *)CFG_SYS_SERIAL1}
 
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
-#define CONFIG_SYS_SERIAL0		V2M_UART0
-#define CONFIG_SYS_SERIAL1		V2M_UART1
-
-#define CONFIG_ARM_PL180_MMCI
-#define CONFIG_ARM_PL180_MMCI_BASE	V2M_MMCI
-#define CONFIG_SYS_MMC_MAX_BLK_COUNT	127
-#define CONFIG_ARM_PL180_MMCI_CLOCK_FREQ 6250000
-
-/* BOOTP options */
-#define CONFIG_BOOTP_BOOTFILESIZE
+#define CFG_SYS_SERIAL0		V2M_UART0
+#define CFG_SYS_SERIAL1		V2M_UART1
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_LOAD_ADDR		(V2M_BASE + 0x8000)
 #define LINUX_BOOT_PARAM_ADDR		(V2M_BASE + 0x2000)
 
 /* Physical Memory Map */
-#define CONFIG_NR_DRAM_BANKS		2
 #define PHYS_SDRAM_1			(V2M_BASE)	/* SDRAM Bank #1 */
 #define PHYS_SDRAM_2			(((unsigned int)V2M_BASE) + \
 					((unsigned int)0x20000000))
@@ -159,12 +134,8 @@
 #define PHYS_SDRAM_2_SIZE		0x20000000	/* 512 MB */
 
 /* additions for new relocation code */
-#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-#define CONFIG_SYS_INIT_RAM_SIZE		0x1000
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_SDRAM_BASE + \
-					 CONFIG_SYS_INIT_RAM_SIZE - \
-					 GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_GBL_DATA_OFFSET
+#define CFG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CFG_SYS_INIT_RAM_SIZE		0x1000
 
 /* Basic environment settings */
 #define BOOT_TARGET_DEVICES(func) \
@@ -174,29 +145,11 @@
         func(DHCP, dhcp, na)
 #include <config_distro_bootcmd.h>
 
-#ifdef CONFIG_VEXPRESS_ORIGINAL_MEMORY_MAP
-#define CONFIG_PLATFORM_ENV_SETTINGS \
-		"loadaddr=0x80008000\0" \
-		"ramdisk_addr_r=0x61000000\0" \
-		"kernel_addr=0x44100000\0" \
-		"ramdisk_addr=0x44800000\0" \
-		"maxramdisk=0x1800000\0" \
-		"pxefile_addr_r=0x88000000\0" \
-		"scriptaddr=0x88000000\0" \
-		"kernel_addr_r=0x80008000\0"
-#elif defined(CONFIG_VEXPRESS_EXTENDED_MEMORY_MAP)
-#define CONFIG_PLATFORM_ENV_SETTINGS \
-		"loadaddr=0xa0008000\0" \
-		"ramdisk_addr_r=0x81000000\0" \
-		"kernel_addr=0x0c100000\0" \
-		"ramdisk_addr=0x0c800000\0" \
-		"maxramdisk=0x1800000\0" \
-		"pxefile_addr_r=0xa8000000\0" \
-		"scriptaddr=0xa8000000\0" \
-		"kernel_addr_r=0xa0008000\0"
-#endif
-#define CONFIG_EXTRA_ENV_SETTINGS \
-		CONFIG_PLATFORM_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
+                "loadaddr=0x60100000\0" \
+                "kernel_addr_r=0x60100000\0" \
+                "fdt_addr_r=0x60000000\0" \
+                "bootargs=console=tty0 console=ttyAMA0,38400n8\0" \
                 BOOTENV \
 		"console=ttyAMA0,38400n8\0" \
 		"dram=1024M\0" \
@@ -208,50 +161,23 @@
 			"devtmpfs.mount=0  vmalloc=256M\0" \
 		"bootflash=run flashargs; " \
 			"cp ${ramdisk_addr} ${ramdisk_addr_r} ${maxramdisk}; " \
-			"bootm ${kernel_addr} ${ramdisk_addr_r}\0"
+			"bootm ${kernel_addr} ${ramdisk_addr_r}\0" \
+		"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
 /* FLASH and environment organization */
-#define PHYS_FLASH_SIZE			0x04000000	/* 64MB */
-#define CONFIG_SYS_FLASH_CFI		1
-#define CONFIG_FLASH_CFI_DRIVER		1
-#define CONFIG_SYS_FLASH_SIZE		0x04000000
-#define CONFIG_SYS_MAX_FLASH_BANKS	2
-#define CONFIG_SYS_FLASH_BASE0		V2M_NOR0
-#define CONFIG_SYS_FLASH_BASE1		V2M_NOR1
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE0
+#define CFG_SYS_FLASH_SIZE		0x04000000
 
 /* Timeout values in ticks */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	(2 * CONFIG_SYS_HZ) /* Erase Timeout */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	(2 * CONFIG_SYS_HZ) /* Write Timeout */
-
-/* 255 0x40000 sectors + first or last sector may have 4 erase regions = 259 */
-#define CONFIG_SYS_MAX_FLASH_SECT	259		/* Max sectors */
-#define FLASH_MAX_SECTOR_SIZE		0x00040000	/* 256 KB sectors */
 
 /* Room required on the stack for the environment data */
-#define CONFIG_ENV_SIZE			FLASH_MAX_SECTOR_SIZE
-
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE /* use buffered writes */
 
 /*
  * Amount of flash used for environment:
  * We don't know which end has the small erase blocks so we use the penultimate
  * sector location for the environment
  */
-#define CONFIG_ENV_SECT_SIZE		FLASH_MAX_SECTOR_SIZE
-#define CONFIG_ENV_OVERWRITE		1
 
 /* Store environment at top of flash */
-#define CONFIG_ENV_OFFSET		(PHYS_FLASH_SIZE - \
-					(2 * CONFIG_ENV_SECT_SIZE))
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE1 + \
-					 CONFIG_ENV_OFFSET)
-#define CONFIG_SYS_FLASH_PROTECTION	/* The devices have real protection */
-#define CONFIG_SYS_FLASH_EMPTY_INFO	/* flinfo indicates empty blocks */
-#define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE0, \
-					  CONFIG_SYS_FLASH_BASE1 }
-
-/* Monitor Command Prompt */
-#define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
+#define CFG_SYS_FLASH_BANKS_LIST	{ V2M_NOR0, V2M_NOR1 }
 
 #endif /* VEXPRESS_COMMON_H */

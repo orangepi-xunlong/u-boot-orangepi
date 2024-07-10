@@ -10,19 +10,22 @@
 
 #include <common.h>
 #include <clk.h>
+#include <display_options.h>
 #include <dm.h>
+#include <log.h>
 #include <mmc.h>
 #include <part.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/byteorder.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/hardware.h>
 #include "atmel_mci.h"
 
-#ifndef CONFIG_SYS_MMC_CLK_OD
-# define CONFIG_SYS_MMC_CLK_OD	150000
+#ifndef CFG_SYS_MMC_CLK_OD
+# define CFG_SYS_MMC_CLK_OD	150000
 #endif
 
 #define MMC_DEFAULT_BLKLEN	512
@@ -89,7 +92,7 @@ static inline void mci_set_blklen(atmel_mci_t *mci, int blklen)
 #ifdef CONFIG_DM_MMC
 static void mci_set_mode(struct udevice *dev, u32 hz, u32 blklen)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	struct atmel_mci_priv *priv = dev_get_priv(dev);
 	struct mmc *mmc = &plat->mmc;
 	u32 bus_hz = priv->bus_clk_rate;
@@ -240,7 +243,7 @@ io_fail:
 static int atmel_mci_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 			      struct mmc_data *data)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	struct atmel_mci_priv *priv = dev_get_priv(dev);
 	atmel_mci_t *mci = plat->mci;
 #else
@@ -371,7 +374,7 @@ mci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #ifdef CONFIG_DM_MMC
 static int atmel_mci_set_ios(struct udevice *dev)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	struct mmc *mmc = mmc_get_mmc_dev(dev);
 	atmel_mci_t *mci = plat->mci;
 #else
@@ -422,7 +425,7 @@ static int mci_set_ios(struct mmc *mmc)
 #ifdef CONFIG_DM_MMC
 static int atmel_mci_hw_init(struct udevice *dev)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	atmel_mci_t *mci = plat->mci;
 #else
 /* Entered into mmc structure during driver init */
@@ -445,9 +448,9 @@ static int mci_init(struct mmc *mmc)
 
 	/* Set default clocks and blocklen */
 #ifdef CONFIG_DM_MMC
-	mci_set_mode(dev, CONFIG_SYS_MMC_CLK_OD, MMC_DEFAULT_BLKLEN);
+	mci_set_mode(dev, CFG_SYS_MMC_CLK_OD, MMC_DEFAULT_BLKLEN);
 #else
-	mci_set_mode(mmc, CONFIG_SYS_MMC_CLK_OD, MMC_DEFAULT_BLKLEN);
+	mci_set_mode(mmc, CFG_SYS_MMC_CLK_OD, MMC_DEFAULT_BLKLEN);
 #endif
 
 	return 0;
@@ -523,7 +526,7 @@ static const struct dm_mmc_ops atmel_mci_mmc_ops = {
 
 static void atmel_mci_setup_cfg(struct udevice *dev)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	struct atmel_mci_priv *priv = dev_get_priv(dev);
 	struct mmc_config *cfg;
 	u32 version;
@@ -582,7 +585,7 @@ failed:
 static int atmel_mci_probe(struct udevice *dev)
 {
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 	struct mmc *mmc;
 	int ret;
 
@@ -590,7 +593,7 @@ static int atmel_mci_probe(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	plat->mci = (struct atmel_mci *)devfdt_get_addr_ptr(dev);
+	plat->mci = dev_read_addr_ptr(dev);
 
 	atmel_mci_setup_cfg(dev);
 
@@ -606,7 +609,7 @@ static int atmel_mci_probe(struct udevice *dev)
 
 static int atmel_mci_bind(struct udevice *dev)
 {
-	struct atmel_mci_plat *plat = dev_get_platdata(dev);
+	struct atmel_mci_plat *plat = dev_get_plat(dev);
 
 	return mmc_bind(dev, &plat->mmc, &plat->cfg);
 }
@@ -622,8 +625,8 @@ U_BOOT_DRIVER(atmel_mci) = {
 	.of_match = atmel_mci_ids,
 	.bind = atmel_mci_bind,
 	.probe = atmel_mci_probe,
-	.platdata_auto_alloc_size = sizeof(struct atmel_mci_plat),
-	.priv_auto_alloc_size = sizeof(struct atmel_mci_priv),
+	.plat_auto	= sizeof(struct atmel_mci_plat),
+	.priv_auto	= sizeof(struct atmel_mci_priv),
 	.ops = &atmel_mci_mmc_ops,
 };
 #endif

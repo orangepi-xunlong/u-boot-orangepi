@@ -6,7 +6,6 @@
 
 #include <asm-offsets.h>
 #include <config.h>
-#include "version.h"
 #include <asm/cache.h>
 
 #define _START	_start
@@ -40,8 +39,8 @@ _vectors:
 /* Flash offset is 0 until we setup CS0 */
 .long	0x00000000
 #if defined(CONFIG_M5307) && \
-	   (CONFIG_SYS_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE)
-.long	_start - CONFIG_SYS_TEXT_BASE
+	   (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE)
+.long	_start - CONFIG_TEXT_BASE
 #else
 .long	_START
 #endif
@@ -93,10 +92,10 @@ _start:
 	move.w	#0x2700,%sr
 
 	/* set MBAR address + valid flag */
-	move.l	#(CONFIG_SYS_MBAR + 1), %d0
+	move.l	#(CFG_SYS_MBAR + 1), %d0
 	move.c	%d0, %MBAR
 
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + 1), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + 1), %d0
 	move.c	%d0, %RAMBAR
 
 	/* DS 4.8.2 (Cache Organization) invalidate and disable cache */
@@ -111,7 +110,7 @@ _start:
 	 * therefore no VBR to set
 	 */
 #if !defined(CONFIG_MONITOR_IS_IN_RAM)
-	move.l	#CONFIG_SYS_FLASH_BASE, %d0
+	move.l	#CFG_SYS_FLASH_BASE, %d0
 	movec	%d0, %VBR
 #endif
 
@@ -126,14 +125,15 @@ _start:
 	move.l	#__got_start, %a5
 
 	/* setup stack initially on top of internal static ram  */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE), %sp
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_SIZE), %sp
 
 	/*
 	 * if configured, malloc_f arena will be reserved first,
 	 * then (and always) gd struct space will be reserved
 	 */
 	move.l	%sp, -(%sp)
-	bsr	board_init_f_alloc_reserve
+	move.l	#board_init_f_alloc_reserve, %a1
+	jsr	(%a1)
 
 	/* update stack and frame-pointers */
 	move.l	%d0, %sp
@@ -141,21 +141,24 @@ _start:
 
 	/* initialize reserved area */
 	move.l	%d0, -(%sp)
-	bsr	board_init_f_init_reserve
+	move.l	#board_init_f_init_reserve, %a1
+	jsr	(%a1)
 
 	/* run low-level CPU init code (from flash) */
-	bsr	cpu_init_f
+	move.l	#cpu_init_f, %a1
+	jsr	(%a1)
 
 	/* run low-level board init code (from flash) */
 	clr.l	%sp@-
-	bsr	board_init_f
+	move.l	#board_init_f, %a1
+	jsr	(%a1)
 
 	/* board_init_f() does not return */
 
 /******************************************************************************/
 
 /*
- * void relocate_code (addr_sp, gd, addr_moni)
+ * void relocate_code(addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.
@@ -177,6 +180,39 @@ relocate_code:
 	cmp.l	%a1,%a2
 	bgt.s	1b
 
+#define R_68K_32	1
+#define R_68K_RELATIVE	22
+
+	move.l #(__rel_dyn_start), %a1
+	move.l #(__rel_dyn_end), %a2
+
+fixloop:
+	move.l	(%a1)+, %d1	/* Elf32_Rela r_offset */
+	move.l	(%a1)+, %d2	/* Elf32_Rela r_info */
+	move.l	(%a1)+, %d3	/* Elf32_Rela r_addend */
+
+	andi.l	#0xff, %d2
+	cmp.l	#R_68K_32, %d2
+	beq.s	fixup
+	cmp.l	#R_68K_RELATIVE, %d2
+	beq.s	fixup
+
+	bra	fixnext
+
+fixup:
+	/* relative fix: store addend plus offset at dest location */
+	move.l	%a0, %a3
+	add.l	%d1, %a3
+	sub.l   #CONFIG_SYS_MONITOR_BASE, %a3
+	move.l	(%a3), %d4
+	add.l	%a0, %d4
+	sub.l   #CONFIG_SYS_MONITOR_BASE, %d4
+	move.l	%d4, (%a3)
+
+fixnext:
+	cmp.l	%a1, %a2
+	bge.s	fixloop
+
 /*
  * We are done. Do not return, instead branch to second part of board
  * initialization, now running from RAM.
@@ -191,10 +227,8 @@ clear_bss:
 	/*
 	 * Now clear BSS segment
 	 */
-	move.l	%a0, %a1
-	add.l	#(_sbss - CONFIG_SYS_MONITOR_BASE), %a1
-	move.l	%a0, %d1
-	add.l	#(_ebss - CONFIG_SYS_MONITOR_BASE), %d1
+	move.l	#(_sbss), %a1
+	move.l	#(_ebss), %d1
 6:
 	clr.l	(%a1)+
 	cmp.l	%a1,%d1
@@ -203,34 +237,14 @@ clear_bss:
 	/*
 	 * fix got table in RAM
 	 */
-	move.l	%a0, %a1
-	add.l	#(__got_start - CONFIG_SYS_MONITOR_BASE), %a1
-
-	/* fix got pointer register a5 */
-	move.l	%a1,%a5
-
-	move.l	%a0, %a2
-	add.l	#(__got_end - CONFIG_SYS_MONITOR_BASE), %a2
-
-7:
-	move.l	(%a1),%d1
-	sub.l	#_start, %d1
-	add.l	%a0,%d1
-	move.l	%d1,(%a1)+
-	cmp.l	%a2, %a1
-	bne	7b
+	move.l	#(__got_start), %a5	/* fix got pointer register a5 */
 
 	/* calculate relative jump to board_init_r in ram */
-	move.l	%a0, %a1
-	add.l	#(board_init_r - CONFIG_SYS_MONITOR_BASE), %a1
+	move.l	#(board_init_r), %a1
 
 	/* set parameters for board_init_r */
 	move.l	%a0,-(%sp)	/* dest_addr */
 	move.l	%d0,-(%sp)	/* gd */
-#if defined(DEBUG) && (CONFIG_SYS_TEXT_BASE!=CONFIG_SYS_INT_FLASH_BASE) && \
-    defined(CONFIG_SYS_HALT_BEFOR_RAM_JUMP)
-	halt
-#endif
 	jsr	(%a1)
 
 /******************************************************************************/
@@ -244,7 +258,8 @@ _fault:
 _exc_handler:
 	SAVE_ALL
 	movel	%sp,%sp@-
-	bsr	exc_handler
+	move.l	#exc_handler, %a1
+	jsr	(%a1)
 	addql	#4,%sp
 	RESTORE_ALL
 
@@ -252,15 +267,11 @@ _exc_handler:
 _int_handler:
 	SAVE_ALL
 	movel	%sp,%sp@-
-	bsr	int_handler
+	move.l	#int_handler, %a1
+	jsr	(%a1)
 	addql	#4,%sp
 	RESTORE_ALL
 
 /******************************************************************************/
 
-.globl version_string
-version_string:
-.ascii	U_BOOT_VERSION
-.ascii	" (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-.ascii	CONFIG_IDENT_STRING, "\0"
 .align	4

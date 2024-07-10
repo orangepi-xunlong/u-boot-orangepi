@@ -10,8 +10,11 @@
 /include/ "skeleton.dtsi"
 /include/ "serial.dtsi"
 /include/ "keyboard.dtsi"
+/include/ "reset.dtsi"
 /include/ "rtc.dtsi"
-/include/ "tsc_timer.dtsi"
+
+#include "tsc_timer.dtsi"
+#include "smbios.dtsi"
 
 / {
 	model = "QEMU x86 (I440FX)";
@@ -28,26 +31,22 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 
 		cpu@0 {
 			device_type = "cpu";
 			compatible = "cpu-qemu";
-			u-boot,dm-pre-reloc;
+			bootph-all;
 			reg = <0>;
 			intel,apic-id = <0>;
 		};
-	};
-
-	tsc-timer {
-		clock-frequency = <1000000000>;
 	};
 
 	pci {
 		compatible = "pci-x86";
 		#address-cells = <3>;
 		#size-cells = <2>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		ranges = <0x02000000 0x0 0xc0000000 0xc0000000 0 0x10000000
 			0x42000000 0x0 0xd0000000 0xd0000000 0 0x10000000
 			0x01000000 0x0 0x2000 0x2000 0 0xe000>;
@@ -55,11 +54,11 @@
 		pch@1,0 {
 			reg = <0x00000800 0 0 0 0>;
 			compatible = "intel,pch7";
-			u-boot,dm-pre-reloc;
+			bootph-all;
 
 			irq-router {
 				compatible = "intel,irq-router";
-				u-boot,dm-pre-reloc;
+				bootph-all;
 				intel,pirq-config = "pci";
 				intel,pirq-link = <0x60 4>;
 				intel,pirq-mask = <0x0e40>;

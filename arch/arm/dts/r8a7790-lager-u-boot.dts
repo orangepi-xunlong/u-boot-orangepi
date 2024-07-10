@@ -9,5 +9,12 @@
 #include "r8a7790-u-boot.dtsi"
 
 &scif0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
+};
+
+&qspi {
+	flash@0 {
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
 };

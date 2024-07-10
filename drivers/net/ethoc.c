@@ -10,7 +10,9 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
+#include <log.h>
 #include <dm/platform_data/net_ethoc.h>
 #include <linux/io.h>
 #include <malloc.h>
@@ -606,17 +608,15 @@ static int ethoc_mdio_init(const char *name, struct ethoc *priv)
 static int ethoc_phy_init(struct ethoc *priv, void *dev)
 {
 	struct phy_device *phydev;
-	int mask = 0xffffffff;
+	int mask = -1;
 
 #ifdef CONFIG_PHY_ADDR
-	mask = 1 << CONFIG_PHY_ADDR;
+	mask = CONFIG_PHY_ADDR;
 #endif
 
-	phydev = phy_find_by_mask(priv->bus, mask, PHY_INTERFACE_MODE_MII);
+	phydev = phy_connect(priv->bus, mask, dev, PHY_INTERFACE_MODE_MII);
 	if (!phydev)
 		return -ENODEV;
-
-	phy_connect_dev(phydev, dev);
 
 	phydev->supported &= PHY_BASIC_FEATURES;
 	phydev->advertising = phydev->supported;
@@ -641,11 +641,9 @@ static inline int ethoc_phy_init(struct ethoc *priv, void *dev)
 
 #endif
 
-#ifdef CONFIG_DM_ETH
-
 static int ethoc_write_hwaddr(struct udevice *dev)
 {
-	struct ethoc_eth_pdata *pdata = dev_get_platdata(dev);
+	struct ethoc_eth_pdata *pdata = dev_get_plat(dev);
 	struct ethoc *priv = dev_get_priv(dev);
 	u8 *mac = pdata->eth_pdata.enetaddr;
 
@@ -683,12 +681,12 @@ static void ethoc_stop(struct udevice *dev)
 	ethoc_stop_common(dev_get_priv(dev));
 }
 
-static int ethoc_ofdata_to_platdata(struct udevice *dev)
+static int ethoc_of_to_plat(struct udevice *dev)
 {
-	struct ethoc_eth_pdata *pdata = dev_get_platdata(dev);
+	struct ethoc_eth_pdata *pdata = dev_get_plat(dev);
 	fdt_addr_t addr;
 
-	pdata->eth_pdata.iobase = devfdt_get_addr(dev);
+	pdata->eth_pdata.iobase = dev_read_addr(dev);
 	addr = devfdt_get_addr_index(dev, 1);
 	if (addr != FDT_ADDR_T_NONE)
 		pdata->packet_base = addr;
@@ -697,7 +695,7 @@ static int ethoc_ofdata_to_platdata(struct udevice *dev)
 
 static int ethoc_probe(struct udevice *dev)
 {
-	struct ethoc_eth_pdata *pdata = dev_get_platdata(dev);
+	struct ethoc_eth_pdata *pdata = dev_get_plat(dev);
 	struct ethoc *priv = dev_get_priv(dev);
 
 	priv->iobase = ioremap(pdata->eth_pdata.iobase, ETHOC_IOSIZE);
@@ -744,93 +742,10 @@ U_BOOT_DRIVER(ethoc) = {
 	.name				= "ethoc",
 	.id				= UCLASS_ETH,
 	.of_match			= ethoc_ids,
-	.ofdata_to_platdata		= ethoc_ofdata_to_platdata,
+	.of_to_plat		= ethoc_of_to_plat,
 	.probe				= ethoc_probe,
 	.remove				= ethoc_remove,
 	.ops				= &ethoc_ops,
-	.priv_auto_alloc_size		= sizeof(struct ethoc),
-	.platdata_auto_alloc_size	= sizeof(struct ethoc_eth_pdata),
+	.priv_auto		= sizeof(struct ethoc),
+	.plat_auto	= sizeof(struct ethoc_eth_pdata),
 };
-
-#else
-
-static int ethoc_init(struct eth_device *dev, bd_t *bd)
-{
-	struct ethoc *priv = (struct ethoc *)dev->priv;
-
-	return ethoc_init_common(priv);
-}
-
-static int ethoc_write_hwaddr(struct eth_device *dev)
-{
-	struct ethoc *priv = (struct ethoc *)dev->priv;
-	u8 *mac = dev->enetaddr;
-
-	return ethoc_write_hwaddr_common(priv, mac);
-}
-
-static int ethoc_send(struct eth_device *dev, void *packet, int length)
-{
-	return ethoc_send_common(dev->priv, packet, length);
-}
-
-static void ethoc_halt(struct eth_device *dev)
-{
-	ethoc_disable_rx_and_tx(dev->priv);
-}
-
-static int ethoc_recv(struct eth_device *dev)
-{
-	struct ethoc *priv = (struct ethoc *)dev->priv;
-	int count;
-
-	if (!ethoc_is_new_packet_received(priv))
-		return 0;
-
-	for (count = 0; count < PKTBUFSRX; ++count) {
-		uchar *packetp;
-		int size = ethoc_rx_common(priv, &packetp);
-
-		if (size < 0)
-			break;
-		if (size > 0)
-			net_process_received_packet(packetp, size);
-		ethoc_free_pkt_common(priv);
-	}
-	return 0;
-}
-
-int ethoc_initialize(u8 dev_num, int base_addr)
-{
-	struct ethoc *priv;
-	struct eth_device *dev;
-
-	priv = malloc(sizeof(*priv));
-	if (!priv)
-		return 0;
-	dev = malloc(sizeof(*dev));
-	if (!dev) {
-		free(priv);
-		return 0;
-	}
-
-	memset(dev, 0, sizeof(*dev));
-	dev->priv = priv;
-	dev->iobase = base_addr;
-	dev->init = ethoc_init;
-	dev->halt = ethoc_halt;
-	dev->send = ethoc_send;
-	dev->recv = ethoc_recv;
-	dev->write_hwaddr = ethoc_write_hwaddr;
-	sprintf(dev->name, "%s-%hu", "ETHOC", dev_num);
-	priv->iobase = ioremap(dev->iobase, ETHOC_IOSIZE);
-
-	eth_register(dev);
-
-	ethoc_mdio_init(dev->name, priv);
-	ethoc_phy_init(priv, dev);
-
-	return 1;
-}
-
-#endif

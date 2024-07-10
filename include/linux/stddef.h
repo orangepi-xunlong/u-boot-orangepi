@@ -1,6 +1,8 @@
 #ifndef _LINUX_STDDEF_H
 #define _LINUX_STDDEF_H
 
+#include <linux/compiler_types.h>
+
 #undef NULL
 #if defined(__cplusplus)
 #define NULL 0
@@ -12,9 +14,7 @@
 #include <linux/types.h>
 #endif
 
-#ifndef __CHECKER__
 #undef offsetof
-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
+#define offsetof(TYPE, MEMBER)	__builtin_offsetof(TYPE, MEMBER)
 
 #endif

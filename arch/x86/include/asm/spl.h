@@ -2,6 +2,17 @@
 /*
  * Copyright (C) 2017 Google, Inc
  * Written by Simon Glass <sjg@chromium.org>
- *
- * This file is required for SPL to build, but is empty.
  */
+
+#ifndef __asm_spl_h
+#define __asm_spl_h
+
+enum {
+	BOOT_DEVICE_SPI_MMAP	= 10,
+	BOOT_DEVICE_FAST_SPI,
+	BOOT_DEVICE_CROS_VBOOT,
+};
+
+void jump_to_spl(ulong entry);
+
+#endif

@@ -12,23 +12,14 @@
 #include "tegra20-common.h"
 
 /* High-level configuration options */
-#define CONFIG_TEGRA_BOARD_STRING	"Avionic Design Tamonten Evaluation Carrier"
+#define CFG_TEGRA_BOARD_STRING	"Avionic Design Tamonten Evaluation Carrier"
 
 /* Board-specific serial config */
-#define CONFIG_TEGRA_ENABLE_UARTD	/* UARTD: debug UART */
-#define CONFIG_SYS_NS16550_COM1		NV_PA_APB_UARTD_BASE
+#define CFG_SYS_NS16550_COM1		NV_PA_APB_UARTD_BASE
 
 /* NAND support */
-#define CONFIG_TEGRA_NAND
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 
 /* Environment in NAND, aligned to start of last sector */
-#define CONFIG_ENV_OFFSET		(SZ_512M - SZ_128K) /* 128K sectors */
-
-/* USB host support */
-#define CONFIG_USB_EHCI_TEGRA
-
-/* USB networking support */
 
 #include "tegra-common-post.h"
 

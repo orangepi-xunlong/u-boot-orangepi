@@ -1,7 +1,7 @@
 /*
  * mux_am33xx.h
  *
- * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2013 Texas Instruments Incorporated - https://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -16,7 +16,6 @@
 #ifndef _MUX_AM33XX_H_
 #define _MUX_AM33XX_H_
 
-#include <common.h>
 #include <asm/io.h>
 
 #define MUX_CFG(value, offset)	\

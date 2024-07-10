@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014-2015, Freescale Semiconductor, Inc.
+ * Copyright 2019-2020 NXP
  *
  * Derived from arch/power/cpu/mpc85xx/speed.c
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <cpu_func.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <fsl_ifc.h>
 #include <asm/processor.h>
@@ -17,20 +21,15 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_SYS_FSL_NUM_CC_PLLS
-#define CONFIG_SYS_FSL_NUM_CC_PLLS	6
-#endif
-
-
 void get_sys_info(struct sys_info *sys_info)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	struct ccsr_clk_cluster_group __iomem *clk_grp[2] = {
-		(void *)(CONFIG_SYS_FSL_CH3_CLK_GRPA_ADDR),
-		(void *)(CONFIG_SYS_FSL_CH3_CLK_GRPB_ADDR)
+		(void *)(CFG_SYS_FSL_CH3_CLK_GRPA_ADDR),
+		(void *)(CFG_SYS_FSL_CH3_CLK_GRPB_ADDR)
 	};
 	struct ccsr_clk_ctrl __iomem *clk_ctrl =
-		(void *)(CONFIG_SYS_FSL_CH3_CLK_CTRL_ADDR);
+		(void *)(CFG_SYS_FSL_CH3_CLK_CTRL_ADDR);
 	unsigned int cpu;
 	const u8 core_cplx_pll[16] = {
 		[0] = 0,	/* CC1 PPL / 1 */
@@ -63,18 +62,21 @@ void get_sys_info(struct sys_info *sys_info)
 	};
 
 	uint i, cluster;
+#if defined(CONFIG_ARCH_LS1028A) || defined(CONFIG_ARCH_LS1088A)
+	uint rcw_tmp;
+#endif
 	uint freq_c_pll[CONFIG_SYS_FSL_NUM_CC_PLLS];
 	uint ratio[CONFIG_SYS_FSL_NUM_CC_PLLS];
-	unsigned long sysclk = CONFIG_SYS_CLK_FREQ;
-	int cc_group[12] = CONFIG_SYS_FSL_CLUSTER_CLOCKS;
+	unsigned long sysclk = get_board_sys_clk();
+	int cc_group[12] = CFG_SYS_FSL_CLUSTER_CLOCKS;
 	u32 c_pll_sel, cplx_pll;
 	void *offset;
 
 	sys_info->freq_systembus = sysclk;
-#ifdef CONFIG_DDR_CLK_FREQ
-	sys_info->freq_ddrbus = CONFIG_DDR_CLK_FREQ;
+#if defined(CONFIG_DYNAMIC_DDR_CLK_FREQ) || defined(CONFIG_STATIC_DDR_CLK_FREQ)
+	sys_info->freq_ddrbus = get_board_ddr_clk();
 #ifdef CONFIG_SYS_FSL_HAS_DP_DDR
-	sys_info->freq_ddrbus2 = CONFIG_DDR_CLK_FREQ;
+	sys_info->freq_ddrbus2 = get_board_ddr_clk();
 #endif
 #else
 	sys_info->freq_ddrbus = sysclk;
@@ -126,12 +128,43 @@ void get_sys_info(struct sys_info *sys_info)
 	sys_info->freq_localbus = sys_info->freq_systembus /
 						CONFIG_SYS_FSL_IFC_CLK_DIV;
 #endif
-}
 
+#if defined(CONFIG_ARCH_LS1028A) || defined(CONFIG_ARCH_LS1088A)
+#define HWA_CGA_M2_CLK_SEL      0x00380000
+#define HWA_CGA_M2_CLK_SHIFT    19
+	rcw_tmp = in_le32(&gur->rcwsr[5]);
+	switch ((rcw_tmp & HWA_CGA_M2_CLK_SEL) >> HWA_CGA_M2_CLK_SHIFT) {
+	case 1:
+		sys_info->freq_cga_m2 = freq_c_pll[1];
+		break;
+	case 2:
+		sys_info->freq_cga_m2 = freq_c_pll[1] / 2;
+		break;
+	case 3:
+		sys_info->freq_cga_m2 = freq_c_pll[1] / 3;
+		break;
+	case 4:
+		sys_info->freq_cga_m2 = freq_c_pll[1] / 4;
+		break;
+	case 6:
+		sys_info->freq_cga_m2 = freq_c_pll[0] / 2;
+		break;
+	case 7:
+		sys_info->freq_cga_m2 = freq_c_pll[0] / 3;
+		break;
+	default:
+		printf("Error: Unknown peripheral clock select!\n");
+		break;
+	}
+#endif
+}
 
 int get_clocks(void)
 {
 	struct sys_info sys_info;
+#ifdef CONFIG_FSL_ESDHC
+	u32 clock = 0;
+#endif
 	get_sys_info(&sys_info);
 	gd->cpu_clk = sys_info.freq_processor[0];
 	gd->bus_clk = sys_info.freq_systembus / CONFIG_SYS_FSL_PCLK_DIV;
@@ -139,9 +172,16 @@ int get_clocks(void)
 #ifdef CONFIG_SYS_FSL_HAS_DP_DDR
 	gd->arch.mem2_clk = sys_info.freq_ddrbus2;
 #endif
-#if defined(CONFIG_FSL_ESDHC)
+
+#ifdef CONFIG_FSL_ESDHC
+#if defined(CONFIG_ARCH_LS1028A) || defined(CONFIG_ARCH_LS1088A)
+	clock = sys_info.freq_cga_m2;
+#elif defined(CONFIG_ARCH_LX2160A) || defined(CONFIG_ARCH_LS2080A) || defined(CONFIG_ARCH_LX2162A)
+	clock = sys_info.freq_systembus;
+#endif
+	gd->arch.sdhc_per_clk = clock / CONFIG_SYS_FSL_SDHC_CLK_DIV;
 	gd->arch.sdhc_clk = gd->bus_clk / CONFIG_SYS_FSL_SDHC_CLK_DIV;
-#endif /* defined(CONFIG_FSL_ESDHC) */
+#endif
 
 	if (gd->cpu_clk != 0)
 		return 0;

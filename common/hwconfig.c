@@ -11,8 +11,11 @@
 #ifndef HWCONFIG_TEST
 #include <config.h>
 #include <common.h>
+#include <env.h>
 #include <exports.h>
 #include <hwconfig.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <linux/types.h>
 #include <linux/string.h>
 #else
@@ -75,12 +78,14 @@ static const char *__hwconfig(const char *opt, size_t *arglen,
 
 	/* if we are passed a buffer use it, otherwise try the environment */
 	if (!env_hwconfig) {
-		if (!(gd->flags & GD_FLG_ENV_READY)) {
+		if (!(gd->flags & GD_FLG_ENV_READY) && gd->env_valid != ENV_VALID) {
 			printf("WARNING: Calling __hwconfig without a buffer "
 					"and before environment is ready\n");
 			return NULL;
 		}
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
 		env_hwconfig = env_get("hwconfig");
+#endif
 	}
 
 	if (env_hwconfig) {
@@ -176,7 +181,7 @@ int hwconfig_arg_cmp_f(const char *opt, const char *arg, char *buf)
  *
  * This call is similar to hwconfig_f(), except that it takes additional
  * argument @subopt. In this example:
- * 	"dr_usb:mode=peripheral"
+ *	"dr_usb:mode=peripheral"
  * "dr_usb" is an option, "mode" is a sub-option, and "peripheral" is its
  * argument.
  */

@@ -7,39 +7,49 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <g_dnl.h>
 #include <sdp.h>
 #include <usb.h>
+#include <linux/printk.h>
 
-static int do_sdp(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_sdp(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
-	int ret = CMD_RET_FAILURE;
+	int controller_index;
+	struct udevice *udc;
+	int ret;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
-	char *usb_controller = argv[1];
-	int controller_index = simple_strtoul(usb_controller, NULL, 0);
-	board_usb_init(controller_index, USB_INIT_DEVICE);
+	controller_index = simple_strtoul(argv[1], NULL, 0);
+	ret = udc_device_get_by_index(controller_index, &udc);
+	if (ret)
+		return ret;
 
 	g_dnl_clear_detach();
-	g_dnl_register("usb_dnl_sdp");
+	ret = g_dnl_register("usb_dnl_sdp");
+	if (ret) {
+		pr_err("SDP dnl register failed: %d\n", ret);
+		goto exit_register;
+	}
 
-	ret = sdp_init(controller_index);
+	ret = sdp_init(udc);
 	if (ret) {
 		pr_err("SDP init failed: %d\n", ret);
 		goto exit;
 	}
 
 	/* This command typically does not return but jumps to an image */
-	sdp_handle(controller_index);
+	sdp_handle(udc);
 	pr_err("SDP ended\n");
 
 exit:
 	g_dnl_unregister();
-	board_usb_cleanup(controller_index, USB_INIT_DEVICE);
+exit_register:
+	udc_device_put(udc);
 
-	return ret;
+	return CMD_RET_FAILURE;
 }
 
 U_BOOT_CMD(sdp, 2, 1, do_sdp,

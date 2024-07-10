@@ -12,8 +12,6 @@
 #include <asm/ti-common/keystone_net.h>
 #include "../common/board_detect.h"
 
-extern struct eth_priv_t eth_priv_cfg[];
-
 #if defined(CONFIG_TI_I2C_BOARD_DETECT)
 static inline int board_is_k2g_gp(void)
 {
@@ -27,6 +25,10 @@ static inline int board_is_k2g_ice(void)
 {
 	return board_ti_is("66AK2GIC");
 }
+static inline int board_is_k2g_i1(void)
+{
+	return board_ti_is("66AK2GI1");
+}
 #else
 static inline int board_is_k2g_gp(void)
 {
@@ -36,9 +38,12 @@ static inline int board_is_k2g_ice(void)
 {
 	return false;
 }
+static inline int board_is_k2g_i1(void)
+{
+	return false;
+}
 #endif
 
-int get_num_eth_ports(void);
 void spl_init_keystone_plls(void);
 
 #endif

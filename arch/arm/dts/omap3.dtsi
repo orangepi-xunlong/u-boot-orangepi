@@ -1,11 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Device Tree Source for OMAP3 SoC
  *
- * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
- *
- * This file is licensed under the terms of the GNU General Public License
- * version 2.  This program is licensed "as is" without any warranty of any
- * kind, whether express or implied.
+ * Copyright (C) 2011 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -215,6 +212,7 @@
 			#dma-cells = <1>;
 			dma-channels = <32>;
 			dma-requests = <96>;
+			ti,hwmods = "dma";
 		};
 
 		gpio1: gpio@48310000 {
@@ -287,7 +285,6 @@
 		uart1: serial@4806a000 {
 			compatible = "ti,omap3-uart";
 			reg = <0x4806a000 0x2000>;
-			reg-shift = <2>;
 			interrupts-extended = <&intc 72>;
 			dmas = <&sdma 49 &sdma 50>;
 			dma-names = "tx", "rx";
@@ -298,7 +295,6 @@
 		uart2: serial@4806c000 {
 			compatible = "ti,omap3-uart";
 			reg = <0x4806c000 0x400>;
-			reg-shift = <2>;
 			interrupts-extended = <&intc 73>;
 			dmas = <&sdma 51 &sdma 52>;
 			dma-names = "tx", "rx";
@@ -309,7 +305,6 @@
 		uart3: serial@49020000 {
 			compatible = "ti,omap3-uart";
 			reg = <0x49020000 0x400>;
-			reg-shift = <2>;
 			interrupts-extended = <&intc 74>;
 			dmas = <&sdma 53 &sdma 54>;
 			dma-names = "tx", "rx";
@@ -358,7 +353,7 @@
 			#mbox-cells = <1>;
 			ti,mbox-num-users = <2>;
 			ti,mbox-num-fifos = <2>;
-			mbox_dsp: dsp {
+			mbox_dsp: mbox-dsp {
 				ti,mbox-tx = <0 0 0>;
 				ti,mbox-rx = <1 0 0>;
 			};
@@ -559,6 +554,7 @@
 			dma-names = "tx", "rx";
 			clocks = <&mcbsp4_fck>;
 			clock-names = "fck";
+			#sound-dai-cells = <0>;
 			status = "disabled";
 		};
 
@@ -587,20 +583,6 @@
 			interrupts = <49>;
 			dmas = <&sdma 69>;
 			dma-names = "rx";
-		};
-
-		smartreflex_core: smartreflex@480cb000 {
-			compatible = "ti,omap3-smartreflex-core";
-			ti,hwmods = "smartreflex_core";
-			reg = <0x480cb000 0x400>;
-			interrupts = <19>;
-		};
-
-		smartreflex_mpu_iva: smartreflex@480c9000 {
-			compatible = "ti,omap3-smartreflex-iva";
-			ti,hwmods = "smartreflex_mpu_iva";
-			reg = <0x480c9000 0x400>;
-			interrupts = <18>;
 		};
 
 		timer1: timer@48318000 {
@@ -717,6 +699,7 @@
 				compatible = "ti,ohci-omap3";
 				reg = <0x48064400 0x400>;
 				interrupts = <76>;
+				remote-wakeup-connected;
 			};
 
 			usbhsehci: ehci@48064800 {

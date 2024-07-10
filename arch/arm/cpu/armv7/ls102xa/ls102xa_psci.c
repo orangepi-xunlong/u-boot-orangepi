@@ -6,13 +6,14 @@
  */
 
 #include <config.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <asm/psci.h>
 #include <asm/arch/immap_ls102xa.h>
 #include <fsl_immap.h>
 #include "fsl_epu.h"
 
-#define __secure __attribute__((section("._secure.text")))
+#define __secure __section("._secure.text")
 
 #define CCSR_GICD_CTLR			0x1000
 #define CCSR_GICC_CTLR			0x2000
@@ -28,9 +29,9 @@
  */
 static void __secure ls1_save_ddr_head(void)
 {
-	const char *src = (const char *)CONFIG_SYS_SDRAM_BASE;
+	const char *src = (const char *)CFG_SYS_SDRAM_BASE;
 	char *dest = (char *)(OCRAM_BASE_S_ADDR + OCRAM_S_SIZE - DDR_RESV_LEN);
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
 	int i;
 
 	out_le32(&scfg->sparecr[2], dest);
@@ -41,7 +42,7 @@ static void __secure ls1_save_ddr_head(void)
 
 static void __secure ls1_fsm_setup(void)
 {
-	void *dcsr_epu_base = (void *)(CONFIG_SYS_DCSRBAR + EPU_BLOCK_OFFSET);
+	void *dcsr_epu_base = (void *)(CFG_SYS_DCSRBAR + EPU_BLOCK_OFFSET);
 	void *dcsr_rcpm_base = (void *)SYS_FSL_DCSR_RCPM_ADDR;
 
 	out_be32(dcsr_rcpm_base + DCSR_RCPM_CSTTACR0, 0x00001001);
@@ -56,8 +57,8 @@ static void __secure ls1_fsm_setup(void)
 
 static void __secure ls1_deepsleep_irq_cfg(void)
 {
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_rcpm __iomem *rcpm = (void *)CONFIG_SYS_FSL_RCPM_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_rcpm __iomem *rcpm = (void *)CFG_SYS_FSL_RCPM_ADDR;
 	u32 ippdexpcr0, ippdexpcr1, pmcintecr = 0;
 
 	/* Mask interrupts from GIC */
@@ -68,11 +69,18 @@ static void __secure ls1_deepsleep_irq_cfg(void)
 
 	ippdexpcr0 = in_be32(&rcpm->ippdexpcr0);
 	/*
-	 * Workaround: There is bug of register ippdexpcr1, when read it always
-	 * returns zero, so its value is saved to a scrachpad register to be
-	 * read, that is why we don't read it from register ippdexpcr1 itself.
+	 * Workaround of errata A-008646
+	 * Errata states that read to register ippdexpcr1 always returns
+	 * zero irrespective of what value is written into it. So its value
+	 * is first saved to a spare register and then read from it
 	 */
-	ippdexpcr1 = in_le32(&scfg->sparecr[7]);
+	ippdexpcr1 = in_be32(&scfg->sparecr[7]);
+
+	/*
+	 * To allow OCRAM to be used as wakeup source in deep sleep,
+	 * do not power it down.
+	 */
+	out_be32(&rcpm->ippdexpcr1, ippdexpcr1 | RCPM_IPPDEXPCR1_OCRAM1);
 
 	if (ippdexpcr0 & RCPM_IPPDEXPCR0_ETSEC)
 		pmcintecr |= SCFG_PMCINTECR_ETSECRXG0 |
@@ -110,10 +118,10 @@ static void __secure ls1_delay(unsigned int loop)
 
 static void __secure ls1_start_fsm(void)
 {
-	void *dcsr_epu_base = (void *)(CONFIG_SYS_DCSRBAR + EPU_BLOCK_OFFSET);
+	void *dcsr_epu_base = (void *)(CFG_SYS_DCSRBAR + EPU_BLOCK_OFFSET);
 	void *ccsr_gic_base = (void *)SYS_FSL_GIC_ADDR;
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_ddr __iomem *ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_ddr __iomem *ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 
 	/* Set HRSTCR */
 	setbits_be32(&scfg->hrstcr, 0x80000000);
@@ -147,9 +155,9 @@ static void __secure ls1_start_fsm(void)
 
 static void __secure ls1_deep_sleep(u32 entry_point)
 {
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
-	struct ccsr_rcpm __iomem *rcpm = (void *)CONFIG_SYS_FSL_RCPM_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_rcpm __iomem *rcpm = (void *)CFG_SYS_FSL_RCPM_ADDR;
 #ifdef QIXIS_BASE
 	u32 tmp;
 	void *qixis_base = (void *)QIXIS_BASE;
@@ -192,6 +200,9 @@ static void __secure ls1_deep_sleep(u32 entry_point)
 	setbits_be32(&scfg->dpslpcr, SCFG_DPSLPCR_WDRR_EN);
 	setbits_be32(&gur->crstsr, DCFG_CRSTSR_WDRFR);
 
+	/* Disable QE */
+	setbits_be32(&gur->devdisr, CCSR_DEVDISR1_QE);
+
 	ls1_deepsleep_irq_cfg();
 
 	psci_v7_flush_dcache_all();
@@ -202,8 +213,8 @@ static void __secure ls1_deep_sleep(u32 entry_point)
 #else
 static void __secure ls1_sleep(void)
 {
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_rcpm __iomem *rcpm = (void *)CONFIG_SYS_FSL_RCPM_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_rcpm __iomem *rcpm = (void *)CFG_SYS_FSL_RCPM_ADDR;
 
 #ifdef QIXIS_BASE
 	u32 tmp;

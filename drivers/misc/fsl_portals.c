@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 
@@ -13,30 +14,31 @@
 #ifdef CONFIG_PPC
 #include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
+#else
+#include <asm/arch-fsl-layerscape/fsl_portals.h>
+#include <asm/arch-fsl-layerscape/fsl_icid.h>
 #endif
 #include <fsl_qbman.h>
 
-#define MAX_BPORTALS (CONFIG_SYS_BMAN_CINH_SIZE / CONFIG_SYS_BMAN_SP_CINH_SIZE)
-#define MAX_QPORTALS (CONFIG_SYS_QMAN_CINH_SIZE / CONFIG_SYS_QMAN_SP_CINH_SIZE)
+#define MAX_BPORTALS (CFG_SYS_BMAN_CINH_SIZE / CFG_SYS_BMAN_SP_CINH_SIZE)
+#define MAX_QPORTALS (CFG_SYS_QMAN_CINH_SIZE / CFG_SYS_QMAN_SP_CINH_SIZE)
 void setup_qbman_portals(void)
 {
-	void __iomem *bpaddr = (void *)CONFIG_SYS_BMAN_CINH_BASE +
-				CONFIG_SYS_BMAN_SWP_ISDR_REG;
-	void __iomem *qpaddr = (void *)CONFIG_SYS_QMAN_CINH_BASE +
-				CONFIG_SYS_QMAN_SWP_ISDR_REG;
-#ifdef CONFIG_PPC
-	struct ccsr_qman *qman = (void *)CONFIG_SYS_FSL_QMAN_ADDR;
+	void __iomem *bpaddr = (void *)CFG_SYS_BMAN_CINH_BASE +
+				CFG_SYS_BMAN_SWP_ISDR_REG;
+	void __iomem *qpaddr = (void *)CFG_SYS_QMAN_CINH_BASE +
+				CFG_SYS_QMAN_SWP_ISDR_REG;
+	struct ccsr_qman *qman = (void *)CFG_SYS_FSL_QMAN_ADDR;
 
 	/* Set the Qman initiator BAR to match the LAW (for DQRR stashing) */
 #ifdef CONFIG_PHYS_64BIT
-	out_be32(&qman->qcsp_bare, (u32)(CONFIG_SYS_QMAN_MEM_PHYS >> 32));
+	out_be32(&qman->qcsp_bare, (u32)(CFG_SYS_QMAN_MEM_PHYS >> 32));
 #endif
-	out_be32(&qman->qcsp_bar, (u32)CONFIG_SYS_QMAN_MEM_PHYS);
-#endif
+	out_be32(&qman->qcsp_bar, (u32)CFG_SYS_QMAN_MEM_PHYS);
 #ifdef CONFIG_FSL_CORENET
 	int i;
 
-	for (i = 0; i < CONFIG_SYS_QMAN_NUM_PORTALS; i++) {
+	for (i = 0; i < CFG_SYS_QMAN_NUM_PORTALS; i++) {
 		u8 sdest = qp_info[i].sdest;
 		u16 fliodn = qp_info[i].fliodn;
 		u16 dliodn = qp_info[i].dliodn;
@@ -47,13 +49,29 @@ void setup_qbman_portals(void)
 		/* set frame liodn */
 		out_be32(&qman->qcsp[i].qcsp_io_cfg, (sdest << 16) | fliodn);
 	}
+#else
+#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
+	int i;
+
+	for (i = 0; i < CFG_SYS_QMAN_NUM_PORTALS; i++) {
+		u8 sdest = qp_info[i].sdest;
+		u16 ficid = qp_info[i].ficid;
+		u16 dicid = qp_info[i].dicid;
+		u16 icid = qp_info[i].icid;
+
+		out_be32(&qman->qcsp[i].qcsp_lio_cfg, (icid << 16) |
+					dicid);
+		/* set frame icid */
+		out_be32(&qman->qcsp[i].qcsp_io_cfg, (sdest << 16) | ficid);
+	}
+#endif
 #endif
 
 	/* Change default state of BMan ISDR portals to all 1s */
-	inhibit_portals(bpaddr, CONFIG_SYS_BMAN_NUM_PORTALS, MAX_BPORTALS,
-			CONFIG_SYS_BMAN_SP_CINH_SIZE);
-	inhibit_portals(qpaddr, CONFIG_SYS_QMAN_NUM_PORTALS, MAX_QPORTALS,
-			CONFIG_SYS_QMAN_SP_CINH_SIZE);
+	inhibit_portals(bpaddr, CFG_SYS_BMAN_NUM_PORTALS, MAX_BPORTALS,
+			CFG_SYS_BMAN_SP_CINH_SIZE);
+	inhibit_portals(qpaddr, CFG_SYS_QMAN_NUM_PORTALS, MAX_QPORTALS,
+			CFG_SYS_QMAN_SP_CINH_SIZE);
 }
 
 void inhibit_portals(void __iomem *addr, int max_portals,
@@ -88,7 +106,7 @@ static int fdt_qportal(void *blob, int off, int id, char *name,
 		       enum fsl_dpaa_dev dev, int create)
 {
 	int childoff, dev_off, ret = 0;
-	u32 dev_handle;
+	unsigned int dev_handle;
 #ifdef CONFIG_FSL_CORENET
 	int num;
 	u32 liodns[2];
@@ -124,11 +142,9 @@ static int fdt_qportal(void *blob, int off, int id, char *name,
 		if (childoff > 0) {
 			dev_handle = fdt_get_phandle(blob, dev_off);
 			if (dev_handle <= 0) {
-				dev_handle = fdt_alloc_phandle(blob);
-				ret = fdt_set_phandle(blob, dev_off,
-						      dev_handle);
-				if (ret < 0)
-					return ret;
+				dev_handle = fdt_create_phandle(blob, dev_off);
+				if (!dev_handle)
+					return -FDT_ERR_NOPHANDLES;
 			}
 
 			ret = fdt_setprop(blob, childoff, "dev-handle",
@@ -143,7 +159,7 @@ static int fdt_qportal(void *blob, int off, int id, char *name,
 			if (!strncmp(name, "pme", 3)) {
 				u32 pme_rev1, pme_rev2;
 				ccsr_pme_t *pme_regs =
-					(void *)CONFIG_SYS_FSL_CORENET_PME_ADDR;
+					(void *)CFG_SYS_FSL_CORENET_PME_ADDR;
 
 				pme_rev1 = in_be32(&pme_regs->pm_ip_rev_1);
 				pme_rev2 = in_be32(&pme_regs->pm_ip_rev_2);
@@ -174,11 +190,15 @@ void fdt_fixup_qportals(void *blob)
 	int off, err;
 	unsigned int maj, min;
 	unsigned int ip_cfg;
-	struct ccsr_qman *qman = (void *)CONFIG_SYS_FSL_QMAN_ADDR;
+	struct ccsr_qman *qman = (void *)CFG_SYS_FSL_QMAN_ADDR;
 	u32 rev_1 = in_be32(&qman->ip_rev_1);
 	u32 rev_2 = in_be32(&qman->ip_rev_2);
 	char compat[64];
 	int compat_len;
+
+#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
+	int smmu_ph = fdt_get_smmu_phandle(blob);
+#endif
 
 	maj = (rev_1 >> 8) & 0xff;
 	min = rev_1 & 0xff;
@@ -188,9 +208,9 @@ void fdt_fixup_qportals(void *blob)
 			     maj, min, ip_cfg) + 1;
 	compat_len += sprintf(compat + compat_len, "fsl,qman-portal") + 1;
 
-	off = fdt_node_offset_by_compatible(blob, -1, "fsl,qman-portal");
-	while (off != -FDT_ERR_NOTFOUND) {
-#ifdef CONFIG_PPC
+	fdt_for_each_node_by_compatible(off, blob, -1, "fsl,qman-portal") {
+#if defined(CONFIG_PPC) || defined(CONFIG_ARCH_LS1043A) || \
+defined(CONFIG_ARCH_LS1046A)
 #ifdef CONFIG_FSL_CORENET
 		u32 liodns[2];
 #endif
@@ -200,12 +220,12 @@ void fdt_fixup_qportals(void *blob)
 		if (!ci)
 			goto err;
 
-		i = *ci;
-#ifdef CONFIG_SYS_DPAA_FMAN
+		i = fdt32_to_cpu(*ci);
+#if defined(CONFIG_SYS_DPAA_FMAN) && defined(CONFIG_PPC)
 		int j;
 #endif
 
-#endif /* CONFIG_PPC */
+#endif /* CONFIG_PPC || CONFIG_ARCH_LS1043A || CONFIG_ARCH_LS1046A */
 		err = fdt_setprop(blob, off, "compatible", compat, compat_len);
 		if (err < 0)
 			goto err;
@@ -237,7 +257,7 @@ void fdt_fixup_qportals(void *blob)
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
-		for (j = 0; j < CONFIG_SYS_NUM_FMAN; j++) {
+		for (j = 0; j < CFG_SYS_NUM_FMAN; j++) {
 			char name[] = "fman@0";
 
 			name[sizeof(name) - 2] = '0' + j;
@@ -253,6 +273,18 @@ void fdt_fixup_qportals(void *blob)
 		if (err < 0)
 			goto err;
 #endif
+#else
+#if defined(CONFIG_ARCH_LS1043A) || defined(CONFIG_ARCH_LS1046A)
+		if (smmu_ph >= 0) {
+			u32 icids[3];
+
+			icids[0] = qp_info[i].icid;
+			icids[1] = qp_info[i].dicid;
+			icids[2] = qp_info[i].ficid;
+
+			fdt_set_iommu_prop(blob, off, smmu_ph, icids, 3);
+		}
+#endif
 #endif /* CONFIG_PPC */
 
 err:
@@ -262,9 +294,6 @@ err:
 			       fdt_strerror(err));
 			return;
 		}
-
-		off = fdt_node_offset_by_compatible(blob, off,
-						    "fsl,qman-portal");
 	}
 }
 
@@ -273,7 +302,7 @@ void fdt_fixup_bportals(void *blob)
 	int off, err;
 	unsigned int maj, min;
 	unsigned int ip_cfg;
-	struct ccsr_bman *bman = (void *)CONFIG_SYS_FSL_BMAN_ADDR;
+	struct ccsr_bman *bman = (void *)CFG_SYS_FSL_BMAN_ADDR;
 	u32 rev_1 = in_be32(&bman->ip_rev_1);
 	u32 rev_2 = in_be32(&bman->ip_rev_2);
 	char compat[64];

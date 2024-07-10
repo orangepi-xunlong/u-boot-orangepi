@@ -7,13 +7,21 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <cpu_func.h>
+#include <env.h>
+#include <hang.h>
+#include <init.h>
 #include <malloc.h>
 #include <dm.h>
+#include <asm/global_data.h>
 #include <dm/platform_data/serial_sh.h>
-#include <environment.h>
+#include <env_internal.h>
 #include <asm/processor.h>
 #include <asm/mach-types.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
@@ -40,7 +48,7 @@ void s_init(void)
 	writel(0xA5A5A500, &swdt->swtcsra);
 
 	/* CPU frequency setting. Set to 1.5GHz */
-	stc = ((1500 / CLK2MHZ(CONFIG_SYS_CLK_FREQ)) - 1) << PLL0_STC_BIT;
+	stc = ((1500 / CLK2MHZ(get_board_sys_clk())) - 1) << PLL0_STC_BIT;
 	clrsetbits_le32(PLL0CR, PLL0_STC_MASK, stc);
 
 	/* QoS */
@@ -72,7 +80,7 @@ int board_early_init_f(void)
 int board_init(void)
 {
 	/* adress of boot parameters */
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 
 	/* Force ethernet PHY out of reset */
 	gpio_request(ETHERNET_PHY_RESET, "phy_reset");
@@ -85,7 +93,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-	if (fdtdec_setup_memory_size() != 0)
+	if (fdtdec_setup_mem_size_base() != 0)
 		return -EINVAL;
 
 	return 0;
@@ -100,7 +108,7 @@ int dram_init_banksize(void)
 
 /* Koelsch has KSZ8041NL/RNL */
 #define PHY_CONTROL1		0x1E
-#define PHY_LED_MODE		0xC0000
+#define PHY_LED_MODE		0xC000
 #define PHY_LED_MODE_ACK	0x4000
 int board_phy_config(struct phy_device *phydev)
 {
@@ -112,7 +120,7 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	struct udevice *dev;
 	const u8 pmic_bus = 6;

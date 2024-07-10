@@ -11,17 +11,9 @@
 #include "tegra186-common.h"
 
 /* High-level configuration options */
-#define CONFIG_TEGRA_BOARD_STRING	"NVIDIA P2771-0000"
-
-/* I2C */
-#define CONFIG_SYS_I2C_TEGRA
+#define CFG_TEGRA_BOARD_STRING	"NVIDIA P2771-0000"
 
 /* Environment in eMMC, at the end of 2nd "boot sector" */
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_SYS_MMC_ENV_PART		2
-#define CONFIG_ENV_OFFSET		(-CONFIG_ENV_SIZE)
-
-/* PCI host support */
 
 #define BOARD_EXTRA_ENV_SETTINGS \
 	"calculated_vars=kernel_addr_r fdt_addr_r scriptaddr pxefile_addr_r " \
@@ -44,11 +36,5 @@
 	"ramdisk_addr_r_size=02000000\0"
 
 #include "tegra-common-post.h"
-
-/* Crystal is 38.4MHz. clk_m runs at half that rate */
-#define COUNTER_FREQUENCY	19200000
-
-#undef CONFIG_NR_DRAM_BANKS
-#define CONFIG_NR_DRAM_BANKS	(1024 + 2)
 
 #endif

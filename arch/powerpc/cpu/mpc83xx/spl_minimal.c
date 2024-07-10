@@ -4,7 +4,15 @@
  */
 
 #include <common.h>
+#include <asm-offsets.h>
+#include <clock_legacy.h>
 #include <mpc83xx.h>
+#include <system-constants.h>
+#include <time.h>
+#include <asm/global_data.h>
+
+#include "lblaw/lblaw.h"
+#include "elbc/elbc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -18,22 +26,22 @@ DECLARE_GLOBAL_DATA_PTR;
 void cpu_init_f (volatile immap_t * im)
 {
 	/* Pointer is writable since we allocated a register for it */
-	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
+	gd = (gd_t *)SYS_INIT_SP_ADDR;
 
 	/* global data region was cleared in start.S */
 
 	/* system performance tweaking */
 
-#ifdef CONFIG_SYS_ACR_PIPE_DEP
+#ifndef CONFIG_ACR_PIPE_DEP_UNSET
 	/* Arbiter pipeline depth */
 	im->arbiter.acr = (im->arbiter.acr & ~ACR_PIPE_DEP) |
-			  (CONFIG_SYS_ACR_PIPE_DEP << ACR_PIPE_DEP_SHIFT);
+			  CONFIG_ACR_PIPE_DEP;
 #endif
 
-#ifdef CONFIG_SYS_ACR_RPTCNT
+#ifndef CONFIG_ACR_RPTCNT_UNSET
 	/* Arbiter repeat count */
 	im->arbiter.acr = (im->arbiter.acr & ~(ACR_RPTCNT)) |
-			  (CONFIG_SYS_ACR_RPTCNT << ACR_RPTCNT_SHIFT);
+			  CONFIG_ACR_RPTCNT;
 #endif
 
 #ifdef CONFIG_SYS_SPCR_OPT
@@ -46,12 +54,12 @@ void cpu_init_f (volatile immap_t * im)
 	im->sysconf.spcr |= SPCR_TBEN;
 
 	/* DDR control driver register */
-#ifdef CONFIG_SYS_DDRCDR
-	im->sysconf.ddrcdr = CONFIG_SYS_DDRCDR;
+#ifdef CFG_SYS_DDRCDR
+	im->sysconf.ddrcdr = CFG_SYS_DDRCDR;
 #endif
 	/* Output buffer impedance register */
-#ifdef CONFIG_SYS_OBIR
-	im->sysconf.obir = CONFIG_SYS_OBIR;
+#ifdef CFG_SYS_OBIR
+	im->sysconf.obir = CFG_SYS_OBIR;
 #endif
 
 	/*
@@ -63,16 +71,16 @@ void cpu_init_f (volatile immap_t * im)
 	 * has been determined
 	 */
 
-#if defined(CONFIG_SYS_NAND_BR_PRELIM)  \
-	&& defined(CONFIG_SYS_NAND_OR_PRELIM) \
-	&& defined(CONFIG_SYS_NAND_LBLAWBAR_PRELIM) \
-	&& defined(CONFIG_SYS_NAND_LBLAWAR_PRELIM)
-	set_lbc_br(0, CONFIG_SYS_NAND_BR_PRELIM);
-	set_lbc_or(0, CONFIG_SYS_NAND_OR_PRELIM);
-	im->sysconf.lblaw[0].bar = CONFIG_SYS_NAND_LBLAWBAR_PRELIM;
-	im->sysconf.lblaw[0].ar = CONFIG_SYS_NAND_LBLAWAR_PRELIM;
+#if defined(CFG_SYS_NAND_BR_PRELIM)  \
+	&& defined(CFG_SYS_NAND_OR_PRELIM) \
+	&& defined(CFG_SYS_NAND_LBLAWBAR_PRELIM) \
+	&& defined(CFG_SYS_NAND_LBLAWAR_PRELIM)
+	set_lbc_br(0, CFG_SYS_NAND_BR_PRELIM);
+	set_lbc_or(0, CFG_SYS_NAND_OR_PRELIM);
+	im->sysconf.lblaw[0].bar = CFG_SYS_NAND_LBLAWBAR_PRELIM;
+	im->sysconf.lblaw[0].ar = CFG_SYS_NAND_LBLAWAR_PRELIM;
 #else
-#error CONFIG_SYS_NAND_BR_PRELIM, CONFIG_SYS_NAND_OR_PRELIM, CONFIG_SYS_NAND_LBLAWBAR_PRELIM & CONFIG_SYS_NAND_LBLAWAR_PRELIM must be defined
+#error CFG_SYS_NAND_BR_PRELIM, CFG_SYS_NAND_OR_PRELIM, CFG_SYS_NAND_LBLAWBAR_PRELIM & CFG_SYS_NAND_LBLAWAR_PRELIM must be defined
 #endif
 }
 
@@ -88,4 +96,12 @@ void puts(const char *str)
 {
 	while (*str)
 		putc(*str++);
+}
+
+ulong get_bus_freq(ulong dummy)
+{
+	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
+	u8 spmf = (im->clk.spmr & SPMR_SPMF) >> SPMR_SPMF_SHIFT;
+
+	return get_board_sys_clk() * spmf;
 }

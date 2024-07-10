@@ -147,27 +147,35 @@ struct cfi_pri_hdr {
 	u8	minor_version;
 } __attribute__((packed));
 
-#ifndef CONFIG_SYS_FLASH_BANKS_LIST
-#define CONFIG_SYS_FLASH_BANKS_LIST { CONFIG_SYS_FLASH_BASE }
+#ifndef CFG_SYS_FLASH_BANKS_LIST
+#define CFG_SYS_FLASH_BANKS_LIST { CFG_SYS_FLASH_BASE }
 #endif
 
 /*
  * CFI_MAX_FLASH_BANKS only used for flash_info struct declaration.
  *
- * Use CONFIG_SYS_MAX_FLASH_BANKS_DETECT if defined
+ * CFI_FLASH_BANKS selects the correct number of available banks =
+ * cfi_flash_num_flash_banks when CONFIG_SYS_MAX_FLASH_BANKS_DETECT is defined
+ * or CONFIG_SYS_MAX_FLASH_BANKS
  */
+#define CFI_MAX_FLASH_BANKS	CONFIG_SYS_MAX_FLASH_BANKS
+
 #if defined(CONFIG_SYS_MAX_FLASH_BANKS_DETECT)
-#define CONFIG_SYS_MAX_FLASH_BANKS	(cfi_flash_num_flash_banks)
-#define CFI_MAX_FLASH_BANKS	CONFIG_SYS_MAX_FLASH_BANKS_DETECT
+/* map to cfi_flash_num_flash_banks only when supported */
+#if IS_ENABLED(CONFIG_FLASH_CFI_DRIVER) && \
+    (!IS_ENABLED(CONFIG_SPL_BUILD) || IS_ENABLED(CONFIG_SPL_MTD_SUPPORT))
+#define CFI_FLASH_BANKS		(cfi_flash_num_flash_banks)
 /* board code can update this variable before CFI detection */
 extern int cfi_flash_num_flash_banks;
-#else
-#define CFI_MAX_FLASH_BANKS	CONFIG_SYS_MAX_FLASH_BANKS
+#endif
+#endif
+/* default when bank detection is not supported */
+#ifndef CFI_FLASH_BANKS
+#define CFI_FLASH_BANKS		CONFIG_SYS_MAX_FLASH_BANKS
 #endif
 
 phys_addr_t cfi_flash_bank_addr(int i);
 unsigned long cfi_flash_bank_size(int i);
-void flash_cmd_reset(flash_info_t *info);
 
 #ifdef CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
 void flash_write8(u8 value, void *addr);

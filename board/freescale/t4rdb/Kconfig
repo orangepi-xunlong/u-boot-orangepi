@@ -1,4 +1,4 @@
-if TARGET_T4160RDB || TARGET_T4240RDB
+if TARGET_T4240RDB
 
 config SYS_BOARD
 	default "t4rdb"
@@ -8,7 +8,5 @@ config SYS_VENDOR
 
 config SYS_CONFIG_NAME
 	default "T4240RDB"
-
-source "board/freescale/common/Kconfig"
 
 endif

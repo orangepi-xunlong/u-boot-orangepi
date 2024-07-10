@@ -11,25 +11,25 @@
 
 #include <common.h>
 #include <command.h>
-#include <environment.h>
+#include <env.h>
+#include <env_internal.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <linux/stddef.h>
 #include <malloc.h>
 #include <search.h>
 #include <errno.h>
+#include <u-boot/crc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef CONFIG_SPL_BUILD
 # if defined(CONFIG_CMD_SAVEENV) && defined(CONFIG_CMD_FLASH)
+#  include <flash.h>
 #  define CMD_SAVEENV
 # elif defined(CONFIG_ENV_ADDR_REDUND)
 #  error CONFIG_ENV_ADDR_REDUND must have CONFIG_CMD_SAVEENV & CONFIG_CMD_FLASH
 # endif
-#endif
-
-#if defined(CONFIG_ENV_SIZE_REDUND) &&	\
-	(CONFIG_ENV_SIZE_REDUND < CONFIG_ENV_SIZE)
-#error CONFIG_ENV_SIZE_REDUND should not be less then CONFIG_ENV_SIZE
 #endif
 
 /* TODO(sjg@chromium.org): Figure out all these special cases */
@@ -44,16 +44,16 @@ DECLARE_GLOBAL_DATA_PTR;
 #define INITENV
 #endif
 
+#if defined(CONFIG_ENV_ADDR_REDUND) && defined(CMD_SAVEENV) || \
+	!defined(CONFIG_ENV_ADDR_REDUND) && defined(INITENV)
 #ifdef ENV_IS_EMBEDDED
-env_t *env_ptr = &environment;
-
-static __maybe_unused env_t *flash_addr = (env_t *)CONFIG_ENV_ADDR;
-
+static env_t *env_ptr = &embedded_environment;
 #else /* ! ENV_IS_EMBEDDED */
 
-env_t *env_ptr = (env_t *)CONFIG_ENV_ADDR;
-static __maybe_unused env_t *flash_addr = (env_t *)CONFIG_ENV_ADDR;
+static env_t *env_ptr = (env_t *)CONFIG_ENV_ADDR;
 #endif /* ENV_IS_EMBEDDED */
+#endif
+static __maybe_unused env_t *flash_addr = (env_t *)CONFIG_ENV_ADDR;
 
 /* CONFIG_ENV_ADDR is supposed to be on sector boundary */
 static ulong __maybe_unused end_addr =
@@ -77,7 +77,6 @@ static int env_flash_init(void)
 	uchar flag1 = flash_addr->flags;
 	uchar flag2 = flash_addr_new->flags;
 
-	ulong addr_default = (ulong)&default_environment[0];
 	ulong addr1 = (ulong)&(flash_addr->data);
 	ulong addr2 = (ulong)&(flash_addr_new->data);
 
@@ -92,12 +91,13 @@ static int env_flash_init(void)
 		gd->env_addr	= addr2;
 		gd->env_valid	= ENV_VALID;
 	} else if (!crc1_ok && !crc2_ok) {
-		gd->env_addr	= addr_default;
 		gd->env_valid	= ENV_INVALID;
-	} else if (flag1 == ACTIVE_FLAG && flag2 == OBSOLETE_FLAG) {
+	} else if (flag1 == ENV_REDUND_ACTIVE &&
+		   flag2 == ENV_REDUND_OBSOLETE) {
 		gd->env_addr	= addr1;
 		gd->env_valid	= ENV_VALID;
-	} else if (flag1 == OBSOLETE_FLAG && flag2 == ACTIVE_FLAG) {
+	} else if (flag1 == ENV_REDUND_OBSOLETE &&
+		   flag2 == ENV_REDUND_ACTIVE) {
 		gd->env_addr	= addr2;
 		gd->env_valid	= ENV_VALID;
 	} else if (flag1 == flag2) {
@@ -120,7 +120,7 @@ static int env_flash_save(void)
 {
 	env_t	env_new;
 	char	*saved_data = NULL;
-	char	flag = OBSOLETE_FLAG, new_flag = ACTIVE_FLAG;
+	char	flag = ENV_REDUND_OBSOLETE, new_flag = ENV_REDUND_ACTIVE;
 	int	rc = 1;
 #if CONFIG_ENV_SECT_SIZE > CONFIG_ENV_SIZE
 	ulong	up_data = 0;
@@ -208,8 +208,7 @@ static int env_flash_save(void)
 perror:
 	flash_perror(rc);
 done:
-	if (saved_data)
-		free(saved_data);
+	free(saved_data);
 	/* try to re-protect */
 	flash_sect_protect(1, (ulong)flash_addr, end_addr);
 	flash_sect_protect(1, (ulong)flash_addr_new, end_addr_new);
@@ -229,8 +228,7 @@ static int env_flash_init(void)
 		return 0;
 	}
 
-	gd->env_addr	= (ulong)&default_environment[0];
-	gd->env_valid	= ENV_INVALID;
+	gd->env_valid = ENV_INVALID;
 	return 0;
 }
 #endif
@@ -296,8 +294,7 @@ static int env_flash_save(void)
 perror:
 	flash_perror(rc);
 done:
-	if (saved_data)
-		free(saved_data);
+	free(saved_data);
 	/* try to re-protect */
 	flash_sect_protect(1, (long)flash_addr, end_addr);
 	return rc;
@@ -321,9 +318,9 @@ static int env_flash_load(void)
 		end_addr_new = ltmp;
 	}
 
-	if (flash_addr_new->flags != OBSOLETE_FLAG &&
+	if (flash_addr_new->flags != ENV_REDUND_OBSOLETE &&
 	    crc32(0, flash_addr_new->data, ENV_SIZE) == flash_addr_new->crc) {
-		char flag = OBSOLETE_FLAG;
+		char flag = ENV_REDUND_OBSOLETE;
 
 		gd->env_valid = ENV_REDUND;
 		flash_sect_protect(0, (ulong)flash_addr_new, end_addr_new);
@@ -333,9 +330,9 @@ static int env_flash_load(void)
 		flash_sect_protect(1, (ulong)flash_addr_new, end_addr_new);
 	}
 
-	if (flash_addr->flags != ACTIVE_FLAG &&
-	    (flash_addr->flags & ACTIVE_FLAG) == ACTIVE_FLAG) {
-		char flag = ACTIVE_FLAG;
+	if (flash_addr->flags != ENV_REDUND_ACTIVE &&
+	    (flash_addr->flags & ENV_REDUND_ACTIVE) == ENV_REDUND_ACTIVE) {
+		char flag = ENV_REDUND_ACTIVE;
 
 		gd->env_valid = ENV_REDUND;
 		flash_sect_protect(0, (ulong)flash_addr, end_addr);
@@ -350,7 +347,7 @@ static int env_flash_load(void)
 		     "reading environment; recovered successfully\n\n");
 #endif /* CONFIG_ENV_ADDR_REDUND */
 
-	return env_import((char *)flash_addr, 1);
+	return env_import((char *)flash_addr, 1, H_EXTERNAL);
 }
 #endif /* LOADENV */
 

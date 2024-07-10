@@ -9,23 +9,22 @@
 #ifndef _DAVINCI_NAND_H_
 #define _DAVINCI_NAND_H_
 
-#include <linux/mtd/rawnand.h>
 #include <asm/arch/hardware.h>
 
-#define NAND_READ_START  	0x00
-#define NAND_READ_END    	0x30
-#define NAND_STATUS      	0x70
+#define NAND_READ_START		0x00
+#define NAND_READ_END		0x30
+#define NAND_STATUS		0x70
 
 #define MASK_CLE		0x10
 #define MASK_ALE		0x08
 
-#ifdef CONFIG_SYS_NAND_MASK_CLE
+#ifdef CFG_SYS_NAND_MASK_CLE
 #undef MASK_CLE
-#define MASK_CLE CONFIG_SYS_NAND_MASK_CLE
+#define MASK_CLE CFG_SYS_NAND_MASK_CLE
 #endif
-#ifdef CONFIG_SYS_NAND_MASK_ALE
+#ifdef CFG_SYS_NAND_MASK_ALE
 #undef MASK_ALE
-#define MASK_ALE CONFIG_SYS_NAND_MASK_ALE
+#define MASK_ALE CFG_SYS_NAND_MASK_ALE
 #endif
 
 struct davinci_emif_regs {
@@ -94,7 +93,5 @@ struct davinci_emif_regs {
 #define DAVINCI_ABCR_TA(n)				(n << 2)
 #define DAVINCI_ABCR_ASIZE_16BIT			1
 #define DAVINCI_ABCR_ASIZE_8BIT				0
-
-void davinci_nand_init(struct nand_chip *nand);
 
 #endif

@@ -26,9 +26,11 @@
  * terminating R_MIPS_NONE reloc includes no offset.
  */
 
-#include <common.h>
+#include <cpu_func.h>
+#include <init.h>
 #include <asm/relocs.h>
 #include <asm/sections.h>
+#include <linux/bitops.h>
 
 /**
  * read_uint() - Read an unsigned integer from the buffer
@@ -64,7 +66,7 @@ static unsigned long read_uint(uint8_t **buf)
  * intentionally simple, and does the bare minimum needed to fixup the
  * relocated U-Boot - in particular, it does not check for overflows.
  */
-static void apply_reloc(unsigned int type, void *addr, long off)
+static void apply_reloc(unsigned int type, void *addr, long off, uint8_t *buf)
 {
 	uint32_t u32;
 
@@ -89,7 +91,8 @@ static void apply_reloc(unsigned int type, void *addr, long off)
 		break;
 
 	default:
-		panic("Unhandled reloc type %u\n", type);
+		panic("Unhandled reloc type %u (@ %p), bss used before relocation?\n",
+		      type, buf);
 	}
 }
 
@@ -134,7 +137,7 @@ void relocate_code(ulong start_addr_sp, gd_t *new_gd, ulong relocaddr)
 			break;
 
 		addr += read_uint(&buf) << 2;
-		apply_reloc(type, (void *)addr, off);
+		apply_reloc(type, (void *)addr, off, buf);
 	}
 
 	/* Ensure the icache is coherent */
@@ -142,7 +145,7 @@ void relocate_code(ulong start_addr_sp, gd_t *new_gd, ulong relocaddr)
 
 	/* Clear the .bss section */
 	bss_start = (uint8_t *)((unsigned long)__bss_start + off);
-	bss_len = (unsigned long)&__bss_end - (unsigned long)__bss_start;
+	bss_len = (unsigned long)__bss_end - (unsigned long)__bss_start;
 	memset(bss_start, 0, bss_len);
 
 	/* Jump to the relocated U-Boot */

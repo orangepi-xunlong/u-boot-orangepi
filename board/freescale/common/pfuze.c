@@ -91,7 +91,7 @@ struct pmic *pfuze_common_init(unsigned char i2cbus)
 
 	return p;
 }
-#else
+#elif defined(CONFIG_DM_PMIC)
 int pfuze_mode_init(struct udevice *dev, u32 mode)
 {
 	unsigned char offset, i, switch_num;
@@ -136,7 +136,7 @@ struct udevice *pfuze_common_init(void)
 	int ret;
 	unsigned int reg, dev_id, rev_id;
 
-	ret = pmic_get("pfuze100", &dev);
+	ret = pmic_get("pfuze100@8", &dev);
 	if (ret == -ENODEV)
 		return NULL;
 

@@ -42,6 +42,8 @@ static inline void __set_bit(int nr, void *addr)
 	*a |= mask;
 }
 
+#define PLATFORM__SET_BIT
+
 static inline void __clear_bit(int nr, void *addr)
 {
 	int *a = (int *)addr;
@@ -51,6 +53,8 @@ static inline void __clear_bit(int nr, void *addr)
 	mask = 1 << (nr & 0x1f);
 	*a &= ~mask;
 }
+
+#define PLATFORM__CLEAR_BIT
 
 static inline void __change_bit(int nr, void *addr)
 {
@@ -153,6 +157,9 @@ static inline unsigned long ffz(unsigned long word)
 #define hweight32(x) generic_hweight32(x)
 #define hweight16(x) generic_hweight16(x)
 #define hweight8(x) generic_hweight8(x)
+
+#define test_and_set_bit		__test_and_set_bit
+#define test_and_clear_bit		__test_and_clear_bit
 
 #define ext2_set_bit			test_and_set_bit
 #define ext2_clear_bit			test_and_clear_bit

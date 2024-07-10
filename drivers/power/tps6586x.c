@@ -5,9 +5,11 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <tps6586x.h>
 #include <asm/io.h>
 #include <i2c.h>
+#include <linux/delay.h>
 
 static struct udevice *tps6586x_dev;
 
@@ -82,7 +84,7 @@ exit:
  *
  * @param sm0	Place to put SM0 voltage
  * @param sm1	Place to put SM1 voltage
- * @return 0 if ok, -1 on error
+ * Return: 0 if ok, -1 on error
  */
 static int read_voltages(int *sm0, int *sm1)
 {

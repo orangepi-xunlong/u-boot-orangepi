@@ -5,9 +5,6 @@
 #ifndef __AT91RM9200_H__
 #define __AT91RM9200_H__
 
-#define CONFIG_ARCH_CPU_INIT	/* we need arch_cpu_init() for hw timers */
-#define CONFIG_AT91_GPIO	/* and require always gpio features */
-
 /* Periperial Identifiers */
 
 #define ATMEL_ID_SYS	1	/* System Peripheral */
@@ -128,7 +125,5 @@
 
 #define ATMEL_PIO_PORTS		4	/* theese SoCs have 4 PIO */
 #define ATMEL_PMC_UHP		AT91RM9200_PMC_UHP
-
-#define CONFIG_SYS_ATMEL_CPU_NAME	"AT91RM9200"
 
 #endif

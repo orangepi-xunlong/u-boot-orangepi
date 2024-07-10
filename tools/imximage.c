@@ -11,9 +11,13 @@
 #include "imagetool.h"
 #include <image.h>
 #include "imximage.h"
+#include <generated/autoconf.h>
 
 #define UNDEFINED 0xFFFFFFFF
 
+#if !defined(CONFIG_IMX_DCD_ADDR)
+#define CONFIG_IMX_DCD_ADDR 0x00910000
+#endif
 /*
  * Supported commands for configuration file
  */
@@ -456,7 +460,7 @@ static void print_hdr_v1(struct imx_header *imx_hdr)
 	uint32_t size, length, ver;
 
 	size = dcd_v1->preamble.length;
-	if (size > (MAX_HW_CFG_SIZE_V1 * sizeof(dcd_type_addr_data_t))) {
+	if (size >= (MAX_HW_CFG_SIZE_V1 * sizeof(dcd_type_addr_data_t))) {
 		fprintf(stderr,
 			"Error: Image corrupt DCD size %d exceed maximum %d\n",
 			(uint32_t)(size / sizeof(dcd_type_addr_data_t)),
@@ -506,8 +510,7 @@ static void print_hdr_v2(struct imx_header *imx_hdr)
 		genimg_print_size(hdr_v2->boot_data.size);
 		printf("Load Address: %08x\n", (uint32_t)fhdr_v2->boot_data_ptr);
 		printf("Entry Point:  %08x\n", (uint32_t)fhdr_v2->entry);
-		if (fhdr_v2->csf && (imximage_ivt_offset != UNDEFINED) &&
-		    (imximage_csf_size != UNDEFINED)) {
+		if (fhdr_v2->csf) {
 			uint16_t dcdlen;
 			int offs;
 
@@ -515,12 +518,18 @@ static void print_hdr_v2(struct imx_header *imx_hdr)
 			offs = (char *)&hdr_v2->data.dcd_table
 				- (char *)hdr_v2;
 
+			/*
+			 * The HAB block is the first part of the image, from
+			 * start of IVT header (fhdr_v2->self) to the start of
+			 * the CSF block (fhdr_v2->csf). So HAB size is
+			 * calculated as:
+			 * HAB_size = fhdr_v2->csf - fhdr_v2->self
+			 */
 			printf("HAB Blocks:   0x%08x 0x%08x 0x%08x\n",
 			       (uint32_t)fhdr_v2->self, 0,
-			       hdr_v2->boot_data.size - imximage_ivt_offset -
-			       imximage_csf_size);
-			printf("DCD Blocks:   0x00910000 0x%08x 0x%08x\n",
-			       offs, be16_to_cpu(dcdlen));
+			       (uint32_t)(fhdr_v2->csf - fhdr_v2->self));
+			printf("DCD Blocks:   0x%08x 0x%08x 0x%08x\n",
+			       CONFIG_IMX_DCD_ADDR, offs, be16_to_cpu(dcdlen));
 		}
 	} else {
 		imx_header_v2_t *next_hdr_v2;
@@ -804,7 +813,7 @@ static int imximage_verify_header(unsigned char *ptr, int image_size,
 	return 0;
 }
 
-static void imximage_print_header(const void *ptr)
+static void imximage_print_header(const void *ptr, struct image_tool_params *params)
 {
 	struct imx_header *imx_hdr = (struct imx_header *) ptr;
 	uint32_t version = detect_imximage_version(imx_hdr);

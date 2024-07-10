@@ -12,6 +12,8 @@
 #include <div64.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <linux/libfdt.h>
 #include <panel.h>
 #include <video.h>
@@ -376,7 +378,7 @@ void exynos_fimd_disable_sysmmu(void)
 void exynos_fimd_lcd_init(struct udevice *dev)
 {
 	struct exynos_fb_priv *priv = dev_get_priv(dev);
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct exynos_fb *reg = priv->reg;
 	unsigned int cfg = 0, rgb_mode;
 	unsigned int offset;
@@ -478,14 +480,14 @@ unsigned long exynos_fimd_calc_fbsize(struct exynos_fb_priv *priv)
 	return priv->vl_col * priv->vl_row * (VNBITS(priv->vl_bpix) / 8);
 }
 
-int exynos_fb_ofdata_to_platdata(struct udevice *dev)
+int exynos_fb_of_to_plat(struct udevice *dev)
 {
 	struct exynos_fb_priv *priv = dev_get_priv(dev);
 	unsigned int node = dev_of_offset(dev);
 	const void *blob = gd->fdt_blob;
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE) {
 		debug("Can't get the FIMD base address\n");
 		return -EINVAL;
@@ -638,24 +640,16 @@ static int exynos_fb_probe(struct udevice *dev)
 #endif
 	exynos_fimd_lcd_init(dev);
 
-	ret = uclass_first_device(UCLASS_PANEL, &panel);
+	ret = uclass_first_device_err(UCLASS_PANEL, &panel);
 	if (ret) {
-		printf("LCD panel failed to probe\n");
+		printf("%s: LCD panel failed to probe %d\n", __func__, ret);
 		return ret;
 	}
-	if (!panel) {
-		printf("LCD panel not found\n");
-		return -ENODEV;
-	}
 
-	ret = uclass_first_device(UCLASS_DISPLAY, &dp);
+	ret = uclass_first_device_err(UCLASS_DISPLAY, &dp);
 	if (ret) {
 		debug("%s: Display device error %d\n", __func__, ret);
 		return ret;
-	}
-	if (!dev) {
-		debug("%s: Display device missing\n", __func__);
-		return -ENODEV;
 	}
 	ret = display_enable(dp, 18, NULL);
 	if (ret) {
@@ -691,7 +685,7 @@ static int exynos_fb_probe(struct udevice *dev)
 
 static int exynos_fb_bind(struct udevice *dev)
 {
-	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
+	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 
 	/* This is the maximum panel size we expect to see */
 	plat->size = 1920 * 1080 * 2;
@@ -714,6 +708,6 @@ U_BOOT_DRIVER(exynos_fb) = {
 	.ops	= &exynos_fb_ops,
 	.bind	= exynos_fb_bind,
 	.probe	= exynos_fb_probe,
-	.ofdata_to_platdata	= exynos_fb_ofdata_to_platdata,
-	.priv_auto_alloc_size	= sizeof(struct exynos_fb_priv),
+	.of_to_plat	= exynos_fb_of_to_plat,
+	.priv_auto	= sizeof(struct exynos_fb_priv),
 };

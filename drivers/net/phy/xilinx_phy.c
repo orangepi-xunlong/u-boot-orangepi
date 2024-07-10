@@ -7,10 +7,9 @@
 
 #include <config.h>
 #include <common.h>
+#include <log.h>
 #include <phy.h>
 #include <dm.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define MII_PHY_STATUS_SPD_MASK		0x0C00
 #define MII_PHY_STATUS_FULLDUPLEX	0x1000
@@ -100,13 +99,12 @@ static int xilinxphy_startup(struct phy_device *phydev)
 
 static int xilinxphy_of_init(struct phy_device *phydev)
 {
-	u32 phytype;
+	ofnode node;
 
 	debug("%s\n", __func__);
-	phytype = fdtdec_get_int(gd->fdt_blob, dev_of_offset(phydev->dev),
-				 "xlnx,phy-type", -1);
-	if (phytype == XAE_PHY_TYPE_1000BASE_X)
-		phydev->flags |= XAE_PHY_TYPE_1000BASE_X;
+	node = phy_get_ofnode(phydev);
+	if (!ofnode_valid(node))
+		return -EINVAL;
 
 	return 0;
 }
@@ -124,7 +122,7 @@ static int xilinxphy_config(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver xilinxphy_driver = {
+U_BOOT_PHY_DRIVER(xilinxphy) = {
 	.uid = XILINX_PHY_ID,
 	.mask = XILINX_PHY_ID_MASK,
 	.name = "Xilinx PCS/PMA PHY",
@@ -133,11 +131,3 @@ static struct phy_driver xilinxphy_driver = {
 	.startup = &xilinxphy_startup,
 	.shutdown = &genphy_shutdown,
 };
-
-int phy_xilinx_init(void)
-{
-	debug("%s\n", __func__);
-	phy_register(&xilinxphy_driver);
-
-	return 0;
-}

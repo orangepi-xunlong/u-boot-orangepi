@@ -12,6 +12,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -52,26 +54,3 @@ int board_init(void)
 
 	return 0;
 }
-
-#ifdef	CONFIG_CMD_MMC
-static int mx23evk_mmc_wp(int id)
-{
-	if (id != 0) {
-		printf("MXS MMC: Invalid card selected (card id = %d)\n", id);
-		return 1;
-	}
-
-	return gpio_get_value(MX23_PAD_PWM4__GPIO_1_30);
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	/* Configure WP as input */
-	gpio_direction_input(MX23_PAD_PWM4__GPIO_1_30);
-
-	/* Configure MMC0 Power Enable */
-	gpio_direction_output(MX23_PAD_PWM3__GPIO_1_29, 0);
-
-	return mxsmmc_initialize(bis, 0, mx23evk_mmc_wp, NULL);
-}
-#endif

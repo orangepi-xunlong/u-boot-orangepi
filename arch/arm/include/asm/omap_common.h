@@ -10,9 +10,12 @@
 
 #ifndef __ASSEMBLY__
 
-#include <common.h>
+#include <linux/types.h>
 
 #define NUM_SYS_CLKS	7
+#define SYS_PTV		2	/* Divisor: 2^(PTV+1) => 8 */
+
+struct bd_info;
 
 struct prcm_regs {
 	/* cm1.ckgen */
@@ -360,6 +363,10 @@ struct prcm_regs {
 	/* IPU */
 	u32 cm_ipu_clkstctrl;
 	u32 cm_ipu_i2c5_clkctrl;
+	u32 cm_ipu1_clkstctrl;
+	u32 cm_ipu1_ipu1_clkctrl;
+	u32 cm_ipu2_clkstctrl;
+	u32 cm_ipu2_ipu2_clkctrl;
 
 	/*l3main1 edma*/
 	u32 cm_l3main1_tptc1_clkctrl;
@@ -630,6 +637,12 @@ void do_disable_clocks(u32 const *clk_domains,
 		       u8 wait_for_disable);
 #endif /* CONFIG_OMAP44XX || CONFIG_OMAP54XX */
 
+void do_enable_ipu_clocks(u32 const *clk_domains,
+			  u32 const *clk_modules_hw_auto,
+			  u32 const *clk_modules_explicit_en,
+			  u8 wait_for_enable);
+void enable_ipu1_clocks(void);
+void enable_ipu2_clocks(void);
 void setup_post_dividers(u32 const base,
 			const struct dpll_params *params);
 u32 omap_ddr_clk(void);
@@ -683,9 +696,9 @@ void omap_die_id(unsigned int *die_id);
 void gpi2c_init(void);
 
 /* Common FDT Fixups */
-int ft_hs_disable_rng(void *fdt, bd_t *bd);
-int ft_hs_fixup_dram(void *fdt, bd_t *bd);
-int ft_hs_add_tee(void *fdt, bd_t *bd);
+int ft_hs_disable_rng(void *fdt, struct bd_info *bd);
+int ft_hs_fixup_dram(void *fdt, struct bd_info *bd);
+int ft_hs_add_tee(void *fdt, struct bd_info *bd);
 
 /* ABB */
 #define OMAP_ABB_NOMINAL_OPP		0

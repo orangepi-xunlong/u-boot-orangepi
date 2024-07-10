@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/immap.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -19,7 +21,7 @@ int dram_init(void)
 {
 	u32 dramsize, i, dramclk;
 
-	dramsize = CONFIG_SYS_SDRAM_SIZE * 0x100000;
+	dramsize = CFG_SYS_SDRAM_SIZE * 0x100000;
 	for (i = 0x13; i < 0x20; i++) {
 		if (dramsize == (1 << i))
 			break;
@@ -38,7 +40,7 @@ int dram_init(void)
 
 		/* Initialize DACR0 */
 		MCFSDRAMC_DACR0 = (0
-			| MCFSDRAMC_DACR_BASE(CONFIG_SYS_SDRAM_BASE)
+			| MCFSDRAMC_DACR_BASE(CFG_SYS_SDRAM_BASE)
 			| MCFSDRAMC_DACR_CASL(1)
 			| MCFSDRAMC_DACR_CBM(3)
 			| MCFSDRAMC_DACR_PS_32);
@@ -60,7 +62,7 @@ int dram_init(void)
 		}
 
 		/* Write to this block to initiate precharge */
-		*(u32 *)(CONFIG_SYS_SDRAM_BASE) = 0xA5A59696;
+		*(u32 *)(CFG_SYS_SDRAM_BASE) = 0xA5A59696;
 		asm("nop");
 
 		/* Set RE (bit 15) in DACR */
@@ -77,7 +79,7 @@ int dram_init(void)
 		asm("nop");
 
 		/* Write to the SDRAM Mode Register */
-		*(u32 *)(CONFIG_SYS_SDRAM_BASE + 0x400) = 0xA5A59696;
+		*(u32 *)(CFG_SYS_SDRAM_BASE + 0x400) = 0xA5A59696;
 	}
 	gd->ram_size = dramsize;
 

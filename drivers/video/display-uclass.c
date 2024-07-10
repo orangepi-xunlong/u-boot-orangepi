@@ -3,6 +3,8 @@
  * Copyright 2014 Google Inc.
  */
 
+#define LOG_CATEGORY UCLASS_DISPLAY
+
 #include <common.h>
 #include <dm.h>
 #include <display.h>
@@ -31,10 +33,21 @@ int display_enable(struct udevice *dev, int panel_bpp,
 	if (ret)
 		return ret;
 
-	disp_uc_plat = dev_get_uclass_platdata(dev);
+	disp_uc_plat = dev_get_uclass_plat(dev);
 	disp_uc_plat->in_use = true;
 
 	return 0;
+}
+
+static bool display_mode_valid(void *priv, const struct display_timing *timing)
+{
+	struct udevice *dev = priv;
+	struct dm_display_ops *ops = display_get_ops(dev);
+
+	if (ops && ops->mode_valid)
+		return ops->mode_valid(dev, timing);
+
+	return true;
 }
 
 int display_read_timing(struct udevice *dev, struct display_timing *timing)
@@ -53,12 +66,14 @@ int display_read_timing(struct udevice *dev, struct display_timing *timing)
 	if (ret < 0)
 		return ret;
 
-	return edid_get_timing(buf, ret, timing, &panel_bits_per_colour);
+	return edid_get_timing_validate(buf, ret, timing,
+					&panel_bits_per_colour,
+					display_mode_valid, dev);
 }
 
 bool display_in_use(struct udevice *dev)
 {
-	struct display_plat *disp_uc_plat = dev_get_uclass_platdata(dev);
+	struct display_plat *disp_uc_plat = dev_get_uclass_plat(dev);
 
 	return disp_uc_plat->in_use;
 }
@@ -66,5 +81,5 @@ bool display_in_use(struct udevice *dev)
 UCLASS_DRIVER(display) = {
 	.id		= UCLASS_DISPLAY,
 	.name		= "display",
-	.per_device_platdata_auto_alloc_size	= sizeof(struct display_plat),
+	.per_device_plat_auto	= sizeof(struct display_plat),
 };

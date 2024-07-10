@@ -1,11 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright 2014 Texas Instruments, Inc.
- *
  * Device Tree Source for K2G EVM
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016-2017 Texas Instruments Incorporated - https://www.ti.com/
  */
 /dts-v1/;
 
@@ -29,8 +26,33 @@
 	status = "okay";
 	ethphy0: ethernet-phy@0 {
 		reg = <0>;
-		phy-mode = "rgmii-id";
 	};
+};
+
+&keystone_usb0 {
+	status = "okay";
+};
+
+&usb0_phy {
+	status = "okay";
+};
+
+&usb0 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&keystone_usb1 {
+	status = "okay";
+};
+
+&usb1_phy {
+	status = "okay";
+};
+
+&usb1 {
+	dr_mode = "peripheral";
+	status = "okay";
 };
 
 &gbe0 {
@@ -47,7 +69,7 @@
 	spi_nor: flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "spi-flash";
+		compatible = "jedec,spi-nor";
 		spi-max-frequency = <50000000>;
 		m25p,fast-read;
 		reg = <0>;
@@ -68,8 +90,8 @@
 &qspi {
 	status = "okay";
 
-	flash0: m25p80@0 {
-		compatible = "s25fl512s","spi-flash";
+	flash0: flash@0 {
+		compatible = "s25fl512s", "jedec,spi-nor";
 		reg = <0>;
 		spi-tx-bus-width = <1>;
 		spi-rx-bus-width = <4>;

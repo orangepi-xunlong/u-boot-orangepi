@@ -6,40 +6,29 @@
 
 #include <common.h>
 #include <dm.h>
-#include <lcd.h>
+#include <init.h>
+#include <log.h>
+#include <miiphy.h>
+#include <phy_interface.h>
 #include <ram.h>
+#include <serial.h>
 #include <spl.h>
 #include <splash.h>
-#include <st_logo_data.h>
 #include <video.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/armv7m.h>
 #include <asm/arch/stm32.h>
-#include <asm/arch/gpio.h>
 #include <asm/arch/syscfg.h>
 #include <asm/gpio.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int get_memory_base_size(fdt_addr_t *mr_base, fdt_addr_t *mr_size)
-{
-	int mr_node;
-
-	mr_node = fdt_path_offset(gd->fdt_blob, "/memory");
-	if (mr_node < 0)
-		return mr_node;
-	*mr_base = fdtdec_get_addr_size_auto_noparent(gd->fdt_blob, mr_node,
-						      "reg", 0, mr_size, false);
-	debug("mr_base = %lx, mr_size= %lx\n", *mr_base, *mr_size);
-
-	return 0;
-}
 int dram_init(void)
 {
+#ifndef CONFIG_SPL_BUILD
 	int rv;
-	fdt_addr_t mr_base, mr_size;
-
-#ifndef CONFIG_SUPPORT_SPL
 	struct udevice *dev;
 	rv = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (rv) {
@@ -48,31 +37,12 @@ int dram_init(void)
 	}
 
 #endif
-	rv = get_memory_base_size(&mr_base, &mr_size);
-	if (rv)
-		return rv;
-	gd->ram_size = mr_size;
-	gd->ram_top = mr_base;
-
-	return rv;
+	return fdtdec_setup_mem_size_base();
 }
 
 int dram_init_banksize(void)
 {
-	fdt_addr_t mr_base, mr_size;
-	get_memory_base_size(&mr_base, &mr_size);
-	/*
-	 * Fill in global info with description of SRAM configuration
-	 */
-	gd->bd->bi_dram[0].start = mr_base;
-	gd->bd->bi_dram[0].size  = mr_size;
-
-	return 0;
-}
-
-int board_early_init_f(void)
-{
-	return 0;
+	return fdtdec_setup_memory_banksize();
 }
 
 #ifdef CONFIG_SPL_BUILD
@@ -96,20 +66,15 @@ int spl_dram_init(void)
 }
 void spl_board_init(void)
 {
-	spl_dram_init();
 	preloader_console_init();
+	spl_dram_init();
 	arch_cpu_init(); /* to configure mpu for sdram rw permissions */
 }
 u32 spl_boot_device(void)
 {
 	return BOOT_DEVICE_XIP;
 }
-
 #endif
-u32 get_board_rev(void)
-{
-	return 0;
-}
 
 int board_late_init(void)
 {
@@ -149,17 +114,24 @@ int board_late_init(void)
 
 int board_init(void)
 {
-	gd->bd->bi_boot_params = gd->bd->bi_dram[0].start + 0x100;
-
 #ifdef CONFIG_ETH_DESIGNWARE
-	/* Set >RMII mode */
-	STM32_SYSCFG->pmc |= SYSCFG_PMC_MII_RMII_SEL;
-#endif
+	ofnode node;
 
-#if defined(CONFIG_CMD_BMP)
-	bmp_display((ulong)stmicroelectronics_uboot_logo_8bit_rle,
-		    BMP_ALIGN_CENTER, BMP_ALIGN_CENTER);
-#endif /* CONFIG_CMD_BMP */
+	node = ofnode_by_compatible(ofnode_null(), "st,stm32-dwmac");
+	if (!ofnode_valid(node))
+		return -1;
+
+	switch (ofnode_read_phy_mode(node)) {
+	case PHY_INTERFACE_MODE_RMII:
+		STM32_SYSCFG->pmc |= SYSCFG_PMC_MII_RMII_SEL;
+		break;
+	case PHY_INTERFACE_MODE_MII:
+		STM32_SYSCFG->pmc &= ~SYSCFG_PMC_MII_RMII_SEL;
+		break;
+	default:
+		printf("Unsupported PHY interface!\n");
+	}
+#endif
 
 	return 0;
 }

@@ -20,13 +20,17 @@
 
 #include <common.h>
 #include <command.h>
+#include <log.h>
 #include <watchdog.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <div64.h>
+#include <asm/cache.h>
+#include <dm/devres.h>
 
 #include <linux/errno.h>
 #include <linux/mtd/mtd.h>
+#include <linux/mtd/rawnand.h>
 #include <nand.h>
 #include <jffs2/jffs2.h>
 
@@ -43,7 +47,7 @@ typedef struct mtd_info		mtd_info_t;
  *
  * @param mtd		nand mtd instance to erase
  * @param opts		options,  @see struct nand_erase_options
- * @return		0 in case of success
+ * Return:		0 in case of success
  *
  * This code is ported from flash_eraseall.c from Linux mtd utils by
  * Arcom Control System Ltd.
@@ -99,7 +103,7 @@ int nand_erase_opts(struct mtd_info *mtd,
 	     erased_length < erase_length;
 	     erase.addr += mtd->erasesize) {
 
-		WATCHDOG_RESET();
+		schedule();
 
 		if (opts->lim && (erase.addr >= (opts->offset + opts->lim))) {
 			puts("Size of erase exceeds limit\n");
@@ -109,9 +113,10 @@ int nand_erase_opts(struct mtd_info *mtd,
 			int ret = mtd_block_isbad(mtd, erase.addr);
 			if (ret > 0) {
 				if (!opts->quiet)
-					printf("\rSkipping bad block at  "
+					printf("\rSkipping %s at  "
 					       "0x%08llx                 "
 					       "                         \n",
+					       ret == 1 ? "bad block" : "bbt reserved",
 					       erase.addr);
 
 				if (!opts->spread)
@@ -186,7 +191,7 @@ int nand_erase_opts(struct mtd_info *mtd,
 
 #define NAND_CMD_LOCK_TIGHT     0x2c
 #define NAND_CMD_LOCK_STATUS    0x7a
- 
+
 /******************************************************************************
  * Support for locking / unlocking operations of some NAND devices
  *****************************************************************************/
@@ -198,7 +203,7 @@ int nand_erase_opts(struct mtd_info *mtd,
  * @param mtd		nand mtd instance
  * @param tight		bring device in lock tight mode
  *
- * @return		0 on success, -1 in case of error
+ * Return:		0 on success, -1 in case of error
  *
  * The lock / lock-tight command only applies to the whole chip. To get some
  * parts of the chip lock and others unlocked use the following sequence:
@@ -254,7 +259,7 @@ int nand_lock(struct mtd_info *mtd, int tight)
  * @param mtd		nand mtd instance
  * @param offset	page address to query (must be page-aligned!)
  *
- * @return		-1 in case of error
+ * Return:		-1 in case of error
  *			>0 lock status:
  *			  bitfield with the following combinations:
  *			  NAND_LOCK_STATUS_TIGHT: page in tight state
@@ -304,7 +309,7 @@ int nand_get_lock_status(struct mtd_info *mtd, loff_t offset)
  *			page size mtd->writesize)
  * @param allexcept	if set, unlock everything not selected
  *
- * @return		0 on success, -1 in case of error
+ * Return:		0 on success, -1 in case of error
  */
 int nand_unlock(struct mtd_info *mtd, loff_t start, size_t length,
 	int allexcept)
@@ -401,7 +406,7 @@ int nand_unlock(struct mtd_info *mtd, loff_t start, size_t length,
  * @param offset offset in flash
  * @param length image length
  * @param used length of flash needed for the requested length
- * @return 0 if the image fits and there are no bad blocks
+ * Return: 0 if the image fits and there are no bad blocks
  *         1 if the image fits, but there are bad blocks
  *        -1 if the image does not fit
  */
@@ -472,7 +477,7 @@ static size_t drop_ffs(const struct mtd_info *mtd, const u_char *buf,
  * @param mtd		nand mtd instance
  * @param ops		MTD operations, including data to verify
  * @param ofs		offset in flash
- * @return		0 in case of success
+ * Return:		0 in case of success
  */
 int nand_verify_page_oob(struct mtd_info *mtd, struct mtd_oob_ops *ops,
 			 loff_t ofs)
@@ -513,7 +518,7 @@ int nand_verify_page_oob(struct mtd_info *mtd, struct mtd_oob_ops *ops,
  * @param ofs		offset in flash
  * @param len		buffer length
  * @param buf		buffer to read from
- * @return		0 in case of success
+ * Return:		0 in case of success
  */
 int nand_verify(struct mtd_info *mtd, loff_t ofs, size_t len, u_char *buf)
 {
@@ -542,8 +547,6 @@ int nand_verify(struct mtd_info *mtd, loff_t ofs, size_t len, u_char *buf)
 	return rval ? -EIO : 0;
 }
 
-
-
 /**
  * nand_write_skip_bad:
  *
@@ -566,7 +569,7 @@ int nand_verify(struct mtd_info *mtd, loff_t ofs, size_t len, u_char *buf)
  *			exceed the buffer
  * @param buffer        buffer to read from
  * @param flags		flags modifying the behaviour of the write to NAND
- * @return		0 in case of success
+ * Return:		0 in case of success
  */
 int nand_write_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
 			size_t *actual, loff_t lim, u_char *buffer, int flags)
@@ -632,14 +635,14 @@ int nand_write_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
 	}
 
 	while (left_to_write > 0) {
+		loff_t block_start = offset & ~(loff_t)(mtd->erasesize - 1);
 		size_t block_offset = offset & (mtd->erasesize - 1);
 		size_t write_size, truncated_write_size;
 
-		WATCHDOG_RESET();
+		schedule();
 
-		if (nand_block_isbad(mtd, offset & ~(mtd->erasesize - 1))) {
-			printf("Skip bad block 0x%08llx\n",
-				offset & ~(mtd->erasesize - 1));
+		if (nand_block_isbad(mtd, block_start)) {
+			printf("Skip bad block 0x%08llx\n", block_start);
 			offset += mtd->erasesize - block_offset;
 			continue;
 		}
@@ -700,7 +703,7 @@ int nand_write_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
  * @param lim maximum size that actual may be in order to not exceed the
  * buffer
  * @param buffer buffer to write to
- * @return 0 in case of success
+ * Return: 0 in case of success
  */
 int nand_read_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
 		       size_t *actual, loff_t lim, u_char *buffer)
@@ -751,7 +754,7 @@ int nand_read_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
 		size_t block_offset = offset & (mtd->erasesize - 1);
 		size_t read_length;
 
-		WATCHDOG_RESET();
+		schedule();
 
 		if (nand_block_isbad(mtd, offset & ~(mtd->erasesize - 1))) {
 			printf("Skipping bad block 0x%08llx\n",
@@ -791,7 +794,7 @@ int nand_read_skip_bad(struct mtd_info *mtd, loff_t offset, size_t *length,
  * @param buf buffer to check
  * @param patt the pattern to check
  * @param size buffer size in bytes
- * @return 1 if there are only patt bytes in buf
+ * Return: 1 if there are only patt bytes in buf
  *         0 if something else was found
  */
 static int check_pattern(const u_char *buf, u_char patt, int size)
@@ -813,7 +816,7 @@ static int check_pattern(const u_char *buf, u_char patt, int size)
  *
  * @param mtd nand mtd instance
  * @param offset offset in flash
- * @return 0 if the block is still good
+ * Return: 0 if the block is still good
  */
 int nand_torture(struct mtd_info *mtd, loff_t offset)
 {

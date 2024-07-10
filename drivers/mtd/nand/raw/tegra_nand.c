@@ -7,17 +7,24 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <memalign.h>
 #include <nand.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch-tegra/clk_rst.h>
+#include <dm/device_compat.h>
+#include <linux/bug.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
+#include <linux/mtd/rawnand.h>
 #include <asm/gpio.h>
 #include <fdtdec.h>
 #include <bouncebuf.h>
 #include <dm.h>
+#include <linux/printk.h>
 #include "tegra_nand.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -146,7 +153,7 @@ static int nand_waitfor_cmd_completion(struct nand_ctlr *reg)
  * Read one byte from the chip
  *
  * @param mtd	MTD device structure
- * @return	data byte
+ * Return:	data byte
  *
  * Read function for 8bit bus-width
  */
@@ -460,7 +467,7 @@ static void stop_command(struct nand_ctlr *reg)
  *
  * @param info		nand_info structure
  * @param *reg_val	address of reg_val
- * @return 0 if ok, -1 on error
+ * Return: 0 if ok, -1 on error
  */
 static int set_bus_width_page_size(struct mtd_info *our_mtd,
 				   struct fdt_nand *config, u32 *reg_val)
@@ -499,7 +506,7 @@ static int set_bus_width_page_size(struct mtd_info *our_mtd,
  * @param page		page number
  * @param with_ecc	1 to enable ECC, 0 to disable ECC
  * @param is_writing	0 for read, 1 for write
- * @return	0 when successfully completed
+ * Return:	0 when successfully completed
  *		-EIO when command timeout
  */
 static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
@@ -649,7 +656,7 @@ static int nand_rw_page(struct mtd_info *mtd, struct nand_chip *chip,
  * @param chip	nand chip info structure
  * @param buf	buffer to store read data
  * @param page	page number to read
- * @return	0 when successfully completed
+ * Return:	0 when successfully completed
  *		-EIO when command timeout
  */
 static int nand_read_page_hwecc(struct mtd_info *mtd,
@@ -681,7 +688,7 @@ static int nand_write_page_hwecc(struct mtd_info *mtd,
  * @param chip	nand chip info structure
  * @param buf	buffer to store read data
  * @param page	page number to read
- * @return	0 when successfully completed
+ * Return:	0 when successfully completed
  *		-EINVAL when chip->oob_poi is not double-word aligned
  *		-EIO when command timeout
  */
@@ -714,7 +721,7 @@ static int nand_write_page_raw(struct mtd_info *mtd,
  * @param page		page number to read
  * @param with_ecc	1 to enable ECC, 0 to disable ECC
  * @param is_writing	0 for read, 1 for write
- * @return	0 when successfully completed
+ * Return:	0 when successfully completed
  *		-EINVAL when chip->oob_poi is not double-word aligned
  *		-EIO when command timeout
  */
@@ -832,7 +839,7 @@ static int nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
  * @param mtd	mtd info structure
  * @param chip	nand chip info structure
  * @param page	page number to write
- * @return	0 when successfully completed
+ * Return:	0 when successfully completed
  *		-EINVAL when chip->oob_poi is not double-word aligned
  *		-EIO when command timeout
  */
@@ -894,13 +901,13 @@ static void setup_timing(unsigned timing[FDT_NAND_TIMING_COUNT],
  *
  * @param dev		Driver model device
  * @param config	Device tree NAND configuration
- * @return 0 if ok, -ve on error (FDT_ERR_...)
+ * Return: 0 if ok, -ve on error (FDT_ERR_...)
  */
 static int fdt_decode_nand(struct udevice *dev, struct fdt_nand *config)
 {
 	int err;
 
-	config->reg = (struct nand_ctlr *)dev_read_addr(dev);
+	config->reg = dev_read_addr_ptr(dev);
 	config->enabled = dev_read_enabled(dev);
 	config->width = dev_read_u32_default(dev, "nvidia,nand-width", 8);
 	err = gpio_request_by_name(dev, "nvidia,wp-gpios", 0, &config->wp_gpio,
@@ -986,7 +993,7 @@ U_BOOT_DRIVER(tegra_nand) = {
 	.id = UCLASS_MTD,
 	.of_match = tegra_nand_dt_ids,
 	.probe = tegra_probe,
-	.priv_auto_alloc_size = sizeof(struct tegra_nand_info),
+	.priv_auto	= sizeof(struct tegra_nand_info),
 };
 
 void board_nand_init(void)
@@ -995,7 +1002,7 @@ void board_nand_init(void)
 	int ret;
 
 	ret = uclass_get_device_by_driver(UCLASS_MTD,
-					  DM_GET_DRIVER(tegra_nand), &dev);
+					  DM_DRIVER_GET(tegra_nand), &dev);
 	if (ret && ret != -ENODEV)
 		pr_err("Failed to initialize %s. (error %d)\n", dev->name,
 		       ret);

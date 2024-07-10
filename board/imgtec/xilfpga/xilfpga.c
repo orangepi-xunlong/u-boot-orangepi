@@ -9,6 +9,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -17,7 +19,7 @@ int dram_init(void)
 {
 	/* MIG IP block is smart and doesn't need SW
 	 * to do any init */
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;	/* in bytes */
+	gd->ram_size = CFG_SYS_SDRAM_SIZE;	/* in bytes */
 
 	return 0;
 }

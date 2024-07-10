@@ -5,16 +5,23 @@
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
+#include <init.h>
 #include <stdio.h>
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/printk.h>
 
+#include "base-address.h"
 #include "soc-info.h"
 
 int print_cpuinfo(void)
 {
 	unsigned int id, model, rev, required_model = 1, required_rev = 1;
+	int ret;
+
+	ret = uniphier_base_address_init();
+	if (ret)
+		return ret;
 
 	id = uniphier_get_soc_id();
 	model = uniphier_get_soc_model();

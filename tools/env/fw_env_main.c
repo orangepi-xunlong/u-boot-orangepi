@@ -26,6 +26,7 @@
  * of AES key), eg. '-a aabbccddeeff00112233445566778899'.
  */
 
+#include <env.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -72,7 +73,7 @@ void usage_printenv(void)
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
 		" -n, --noheader       do not repeat variable name in output\n"
-		" -l, --lock           lock node, default:/var/lock\n"
+		" -l, --lock           lock node, default:/run\n"
 		"\n");
 }
 
@@ -87,7 +88,7 @@ void usage_env_set(void)
 #ifdef CONFIG_FILE
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
-		" -l, --lock           lock node, default:/var/lock\n"
+		" -l, --lock           lock node, default:/run\n"
 		" -s, --script         batch mode to minimize writes\n"
 		"\n"
 		"Examples:\n"
@@ -205,7 +206,7 @@ int parse_setenv_args(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	char *lockname = "/var/lock/" CMD_PRINTENV ".lock";
+	char *lockname = "/run/" CMD_PRINTENV ".lock";
 	int lockfd = -1;
 	int retval = EXIT_SUCCESS;
 	char *_cmdname;

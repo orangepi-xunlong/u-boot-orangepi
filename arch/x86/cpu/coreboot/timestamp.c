@@ -1,28 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * This file is part of the coreboot project.
- *
  * Copyright (C) 2011 The ChromiumOS Authors.  All rights reserved.
+ *
+ * Modified from the coreboot version
  */
 
 #include <common.h>
+#include <bootstage.h>
 #include <asm/arch/timestamp.h>
-#include <asm/arch/sysinfo.h>
+#include <asm/cb_sysinfo.h>
 #include <linux/compiler.h>
 
-struct timestamp_entry {
-	uint32_t	entry_id;
-	uint64_t	entry_stamp;
-} __packed;
-
-struct timestamp_table {
-	uint64_t	base_time;
-	uint32_t	max_entries;
-	uint32_t	num_entries;
-	struct timestamp_entry entries[0]; /* Variable number of entries */
-} __packed;
-
-static struct timestamp_table *ts_table  __attribute__((section(".data")));
+static struct timestamp_table *ts_table  __section(".data");
 
 void timestamp_init(void)
 {

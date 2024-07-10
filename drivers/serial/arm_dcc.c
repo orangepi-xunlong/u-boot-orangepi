@@ -19,7 +19,7 @@
 #include <dm.h>
 #include <serial.h>
 
-#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7)
+#if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V7A) || defined(CONFIG_CPU_V7R)
 /*
  * ARMV6 & ARMV7
  */
@@ -51,7 +51,7 @@
 #define status_dcc(x)	\
 		__asm__ volatile ("mrc p14, 0, %0, c14, c0, 0\n" : "=r" (x))
 
-#elif defined(CONFIG_CPU_ARMV8)
+#elif defined(CONFIG_ARM64)
 /*
  * ARMV8
  */
@@ -155,7 +155,6 @@ U_BOOT_DRIVER(serial_dcc) = {
 	.id	= UCLASS_SERIAL,
 	.of_match = arm_dcc_ids,
 	.ops	= &arm_dcc_ops,
-	.flags = DM_FLAG_PRE_RELOC,
 };
 
 #ifdef CONFIG_DEBUG_UART_ARM_DCC

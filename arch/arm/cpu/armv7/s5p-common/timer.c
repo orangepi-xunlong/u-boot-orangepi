@@ -8,17 +8,18 @@
 
 #include <common.h>
 #include <div64.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/pwm.h>
 #include <asm/arch/clk.h>
-
-/* Use the old PWM interface for now */
-#undef CONFIG_DM_PWM
-#include <pwm.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 unsigned long get_current_tick(void);
+static void reset_timer_masked(void);
 
 /* macro to read the 16 bit timer */
 static inline struct s5p_timer *s5p_get_base_timer(void)
@@ -32,7 +33,7 @@ static inline struct s5p_timer *s5p_get_base_timer(void)
  * This operates at 1MHz and counts downwards. It will wrap about every
  * hour (2^32 microseconds).
  *
- * @return current value of timer
+ * Return: current value of timer
  */
 static unsigned long timer_get_us_down(void)
 {
@@ -44,9 +45,9 @@ static unsigned long timer_get_us_down(void)
 int timer_init(void)
 {
 	/* PWM Timer 4 */
-	pwm_init(4, MUX_DIV_4, 0);
-	pwm_config(4, 100000, 100000);
-	pwm_enable(4);
+	s5p_pwm_init(4, MUX_DIV_4, 0);
+	s5p_pwm_config(4, 100000, 100000);
+	s5p_pwm_enable(4);
 
 	/* Use this as the current monotonic time in us */
 	gd->arch.timer_reset_value = 0;
@@ -81,7 +82,7 @@ unsigned long get_timer(unsigned long base)
 	return time_ms - base;
 }
 
-unsigned long __attribute__((no_instrument_function)) timer_get_us(void)
+unsigned long notrace timer_get_us(void)
 {
 	static unsigned long base_time_us;
 
@@ -106,7 +107,7 @@ void __udelay(unsigned long usec)
 		;
 }
 
-void reset_timer_masked(void)
+static void reset_timer_masked(void)
 {
 	struct s5p_timer *const timer = s5p_get_base_timer();
 

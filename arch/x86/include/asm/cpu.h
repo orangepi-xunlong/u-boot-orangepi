@@ -55,6 +55,7 @@ enum {
 	X86_SYSCON_PINCONF,	/* Intel x86 pin configuration */
 	X86_SYSCON_PMU,		/* Power Management Unit */
 	X86_SYSCON_SCU,		/* System Controller Unit */
+	X86_SYSCON_PUNIT,	/* Power unit */
 };
 
 struct cpuid_result {
@@ -204,7 +205,7 @@ void cpu_disable_paging_pae(void);
 /**
  * cpu_has_64bit() - Check if the CPU has 64-bit support
  *
- * @return 1 if this CPU supports long mode (64-bit), 0 if not
+ * Return: 1 if this CPU supports long mode (64-bit), 0 if not
  */
 int cpu_has_64bit(void);
 
@@ -223,7 +224,7 @@ const char *cpu_vendor_name(int vendor);
  * cpu_get_name() - Get the name of the current cpu
  *
  * @name: Place to put name, which must be CPU_MAX_NAME_LEN bytes including
- * @return pointer to name, which will likely be a few bytes after the start
+ * Return: pointer to name, which will likely be a few bytes after the start
  * of @name
  * \0 terminator
  */
@@ -261,6 +262,7 @@ void cpu_call32(ulong code_seg32, ulong target, ulong table);
  *
  * @setup_base:	Pointer to the setup.bin information for the kernel
  * @target:	Pointer to the start of the kernel image
+ * Return: -EFAULT if the kernel returned; otherwise does not return
  */
 int cpu_jump_to_64bit(ulong setup_base, ulong target);
 
@@ -276,15 +278,24 @@ int cpu_jump_to_64bit_uboot(ulong target);
 /**
  * cpu_get_family_model() - Get the family and model for the CPU
  *
- * @return the CPU ID masked with 0x0fff0ff0
+ * Return: the CPU ID masked with 0x0fff0ff0
  */
 u32 cpu_get_family_model(void);
 
 /**
  * cpu_get_stepping() - Get the stepping value for the CPU
  *
- * @return the CPU ID masked with 0xf
+ * Return: the CPU ID masked with 0xf
  */
 u32 cpu_get_stepping(void);
+
+/**
+ * cpu_phys_address_size() - Get the physical address size in bits
+ *
+ * This is 32 for older CPUs but newer ones may support 36.
+ *
+ * Return: address size (typically 32 or 36)
+ */
+int cpu_phys_address_size(void);
 
 #endif

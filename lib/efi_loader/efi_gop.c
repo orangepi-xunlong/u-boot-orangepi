@@ -1,32 +1,39 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  EFI application disk support
  *
  *  Copyright (c) 2016 Alexander Graf
- *
- *  SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <efi_loader.h>
-#include <inttypes.h>
-#include <lcd.h>
+#include <log.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <video.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static const efi_guid_t efi_gop_guid = EFI_GOP_GUID;
+static const efi_guid_t efi_gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 
+/**
+ * struct efi_gop_obj - graphical output protocol object
+ *
+ * @header:	EFI object header
+ * @ops:	graphical output protocol interface
+ * @info:	graphical output mode information
+ * @mode:	graphical output mode
+ * @bpix:	bits per pixel
+ * @fb:		frame buffer
+ */
 struct efi_gop_obj {
-	/* Generic EFI object parent class data */
-	struct efi_object parent;
-	/* EFI Interface callback struct for gop */
+	struct efi_object header;
 	struct efi_gop ops;
-	/* The only mode we support */
 	struct efi_gop_mode_info info;
 	struct efi_gop_mode mode;
-	/* Fields we only have acces to during init */
+	/* Fields we only have access to during init */
 	u32 bpix;
 	void *fb;
 };
@@ -36,24 +43,46 @@ static efi_status_t EFIAPI gop_query_mode(struct efi_gop *this, u32 mode_number,
 					  struct efi_gop_mode_info **info)
 {
 	struct efi_gop_obj *gopobj;
+	efi_status_t ret = EFI_SUCCESS;
 
 	EFI_ENTRY("%p, %x, %p, %p", this, mode_number, size_of_info, info);
 
-	gopobj = container_of(this, struct efi_gop_obj, ops);
-	*size_of_info = sizeof(gopobj->info);
-	*info = &gopobj->info;
+	if (!this || !size_of_info || !info || mode_number) {
+		ret = EFI_INVALID_PARAMETER;
+		goto out;
+	}
 
-	return EFI_EXIT(EFI_SUCCESS);
+	gopobj = container_of(this, struct efi_gop_obj, ops);
+	ret = efi_allocate_pool(EFI_BOOT_SERVICES_DATA, sizeof(gopobj->info),
+				(void **)info);
+	if (ret != EFI_SUCCESS)
+		goto out;
+	*size_of_info = sizeof(gopobj->info);
+	memcpy(*info, &gopobj->info, sizeof(gopobj->info));
+
+out:
+	return EFI_EXIT(ret);
 }
 
-static efi_status_t EFIAPI gop_set_mode(struct efi_gop *this, u32 mode_number)
+static __always_inline struct efi_gop_pixel efi_vid30_to_blt_col(u32 vid)
 {
-	EFI_ENTRY("%p, %x", this, mode_number);
+	struct efi_gop_pixel blt = {
+		.reserved = 0,
+	};
 
-	if (mode_number != 0)
-		return EFI_EXIT(EFI_INVALID_PARAMETER);
+	blt.blue  = (vid & 0x3ff) >> 2;
+	vid >>= 10;
+	blt.green = (vid & 0x3ff) >> 2;
+	vid >>= 10;
+	blt.red   = (vid & 0x3ff) >> 2;
+	return blt;
+}
 
-	return EFI_EXIT(EFI_SUCCESS);
+static __always_inline u32 efi_blt_col_to_vid30(struct efi_gop_pixel *blt)
+{
+	return (u32)(blt->red   << 2) << 20 |
+	       (u32)(blt->green << 2) << 10 |
+	       (u32)(blt->blue  << 2);
 }
 
 static __always_inline struct efi_gop_pixel efi_vid16_to_blt_col(u16 vid)
@@ -183,6 +212,9 @@ static __always_inline efi_status_t gop_blt_int(struct efi_gop *this,
 				if (vid_bpp == 32)
 					pix = *(struct efi_gop_pixel *)&fb32[
 						slineoff + j + sx];
+				else if (vid_bpp == 30)
+					pix = efi_vid30_to_blt_col(fb32[
+						slineoff + j + sx]);
 				else
 					pix = efi_vid16_to_blt_col(fb16[
 						slineoff + j + sx]);
@@ -199,6 +231,9 @@ static __always_inline efi_status_t gop_blt_int(struct efi_gop *this,
 			case EFI_BLT_VIDEO_TO_VIDEO:
 				if (vid_bpp == 32)
 					fb32[dlineoff + j + dx] = *(u32 *)&pix;
+				else if (vid_bpp == 30)
+					fb32[dlineoff + j + dx] =
+						efi_blt_col_to_vid30(&pix);
 				else
 					fb16[dlineoff + j + dx] =
 						efi_blt_col_to_vid16(&pix);
@@ -218,18 +253,13 @@ static efi_uintn_t gop_get_bpp(struct efi_gop *this)
 	efi_uintn_t vid_bpp = 0;
 
 	switch (gopobj->bpix) {
-#ifdef CONFIG_DM_VIDEO
 	case VIDEO_BPP32:
-#else
-	case LCD_COLOR32:
-#endif
-		vid_bpp = 32;
+		if (gopobj->info.pixel_format == EFI_GOT_BGRA8)
+			vid_bpp = 32;
+		else
+			vid_bpp = 30;
 		break;
-#ifdef CONFIG_DM_VIDEO
 	case VIDEO_BPP16:
-#else
-	case LCD_COLOR16:
-#endif
 		vid_bpp = 16;
 		break;
 	}
@@ -238,12 +268,12 @@ static efi_uintn_t gop_get_bpp(struct efi_gop *this)
 }
 
 /*
- * Gcc can't optimize our BLT function well, but we need to make sure that
+ * GCC can't optimize our BLT function well, but we need to make sure that
  * our 2-dimensional loop gets executed very quickly, otherwise the system
  * will feel slow.
  *
  * By manually putting all obvious branch targets into functions which call
- * our generic blt function with constants, the compiler can successfully
+ * our generic BLT function with constants, the compiler can successfully
  * optimize for speed.
  */
 static efi_status_t gop_blt_video_fill(struct efi_gop *this,
@@ -267,6 +297,17 @@ static efi_status_t gop_blt_buf_to_vid16(struct efi_gop *this,
 {
 	return gop_blt_int(this, buffer, EFI_BLT_BUFFER_TO_VIDEO, sx, sy, dx,
 			   dy, width, height, delta, 16);
+}
+
+static efi_status_t gop_blt_buf_to_vid30(struct efi_gop *this,
+					 struct efi_gop_pixel *buffer,
+					 u32 foo, efi_uintn_t sx,
+					 efi_uintn_t sy, efi_uintn_t dx,
+					 efi_uintn_t dy, efi_uintn_t width,
+					 efi_uintn_t height, efi_uintn_t delta)
+{
+	return gop_blt_int(this, buffer, EFI_BLT_BUFFER_TO_VIDEO, sx, sy, dx,
+			   dy, width, height, delta, 30);
 }
 
 static efi_status_t gop_blt_buf_to_vid32(struct efi_gop *this,
@@ -304,6 +345,44 @@ static efi_status_t gop_blt_vid_to_buf(struct efi_gop *this,
 			   dx, dy, width, height, delta, vid_bpp);
 }
 
+/**
+ * gop_set_mode() - set graphical output mode
+ *
+ * This function implements the SetMode() service.
+ *
+ * See the Unified Extensible Firmware Interface (UEFI) specification for
+ * details.
+ *
+ * @this:		the graphical output protocol
+ * @mode_number:	the mode to be set
+ * Return:		status code
+ */
+static efi_status_t EFIAPI gop_set_mode(struct efi_gop *this, u32 mode_number)
+{
+	struct efi_gop_obj *gopobj;
+	struct efi_gop_pixel buffer = {0, 0, 0, 0};
+	efi_uintn_t vid_bpp;
+	efi_status_t ret = EFI_SUCCESS;
+
+	EFI_ENTRY("%p, %x", this, mode_number);
+
+	if (!this) {
+		ret = EFI_INVALID_PARAMETER;
+		goto out;
+	}
+	if (mode_number) {
+		ret = EFI_UNSUPPORTED;
+		goto out;
+	}
+	gopobj = container_of(this, struct efi_gop_obj, ops);
+	vid_bpp = gop_get_bpp(this);
+	ret = gop_blt_video_fill(this, &buffer, EFI_BLT_VIDEO_FILL, 0, 0, 0, 0,
+				 gopobj->info.width, gopobj->info.height, 0,
+				 vid_bpp);
+out:
+	return EFI_EXIT(ret);
+}
+
 /*
  * Copy rectangle.
  *
@@ -320,13 +399,14 @@ static efi_status_t gop_blt_vid_to_buf(struct efi_gop *this,
  * @width:	width of rectangle
  * @height:	height of rectangle
  * @delta:	length in bytes of a line in the pixel buffer (optional)
- * @return:	status code
+ * Return:	status code
  */
-efi_status_t EFIAPI gop_blt(struct efi_gop *this, struct efi_gop_pixel *buffer,
-			    u32 operation, efi_uintn_t sx,
-			    efi_uintn_t sy, efi_uintn_t dx,
-			    efi_uintn_t dy, efi_uintn_t width,
-			    efi_uintn_t height, efi_uintn_t delta)
+static efi_status_t EFIAPI gop_blt(struct efi_gop *this,
+				   struct efi_gop_pixel *buffer,
+				   u32 operation, efi_uintn_t sx,
+				   efi_uintn_t sy, efi_uintn_t dx,
+				   efi_uintn_t dy, efi_uintn_t width,
+				   efi_uintn_t height, efi_uintn_t delta)
 {
 	efi_status_t ret = EFI_INVALID_PARAMETER;
 	efi_uintn_t vid_bpp;
@@ -348,6 +428,10 @@ efi_status_t EFIAPI gop_blt(struct efi_gop *this, struct efi_gop_pixel *buffer,
 			ret = gop_blt_buf_to_vid32(this, buffer, operation, sx,
 						   sy, dx, dy, width, height,
 						   delta);
+		else if (vid_bpp == 30)
+			ret = gop_blt_buf_to_vid30(this, buffer, operation, sx,
+						   sy, dx, dy, width, height,
+						   delta);
 		else
 			ret = gop_blt_buf_to_vid16(this, buffer, operation, sx,
 						   sy, dx, dy, width, height,
@@ -362,17 +446,13 @@ efi_status_t EFIAPI gop_blt(struct efi_gop *this, struct efi_gop_pixel *buffer,
 					 dy, width, height, delta, vid_bpp);
 		break;
 	default:
-		ret = EFI_UNSUPPORTED;
+		ret = EFI_INVALID_PARAMETER;
 	}
 
 	if (ret != EFI_SUCCESS)
 		return EFI_EXIT(ret);
 
-#ifdef CONFIG_DM_VIDEO
 	video_sync_all();
-#else
-	lcd_sync();
-#endif
 
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -386,47 +466,32 @@ efi_status_t EFIAPI gop_blt(struct efi_gop *this, struct efi_gop_pixel *buffer,
 efi_status_t efi_gop_register(void)
 {
 	struct efi_gop_obj *gopobj;
-	u32 bpix, col, row;
+	u32 bpix, format, col, row;
 	u64 fb_base, fb_size;
-	void *fb;
 	efi_status_t ret;
-
-#ifdef CONFIG_DM_VIDEO
 	struct udevice *vdev;
 	struct video_priv *priv;
+	struct video_uc_plat *plat;
 
 	/* We only support a single video output device for now */
-	if (uclass_first_device(UCLASS_VIDEO, &vdev) || !vdev) {
+	if (uclass_first_device_err(UCLASS_VIDEO, &vdev)) {
 		debug("WARNING: No video device\n");
 		return EFI_SUCCESS;
 	}
 
 	priv = dev_get_uclass_priv(vdev);
 	bpix = priv->bpix;
+	format = priv->format;
 	col = video_get_xsize(vdev);
 	row = video_get_ysize(vdev);
-	fb_base = (uintptr_t)priv->fb;
-	fb_size = priv->fb_size;
-	fb = priv->fb;
-#else
-	int line_len;
 
-	bpix = panel_info.vl_bpix;
-	col = panel_info.vl_col;
-	row = panel_info.vl_row;
-	fb_base = gd->fb_base;
-	fb_size = lcd_get_size(&line_len);
-	fb = (void*)gd->fb_base;
-#endif
+	plat = dev_get_uclass_plat(vdev);
+	fb_base = IS_ENABLED(CONFIG_VIDEO_COPY) ? plat->copy_base : plat->base;
+	fb_size = plat->size;
 
 	switch (bpix) {
-#ifdef CONFIG_DM_VIDEO
 	case VIDEO_BPP16:
 	case VIDEO_BPP32:
-#else
-	case LCD_COLOR32:
-	case LCD_COLOR16:
-#endif
 		break;
 	default:
 		/* So far, we only work in 16 or 32 bit mode */
@@ -441,13 +506,13 @@ efi_status_t efi_gop_register(void)
 	}
 
 	/* Hook up to the device list */
-	efi_add_handle(&gopobj->parent);
+	efi_add_handle(&gopobj->header);
 
 	/* Fill in object data */
-	ret = efi_add_protocol(gopobj->parent.handle, &efi_gop_guid,
+	ret = efi_add_protocol(&gopobj->header, &efi_gop_guid,
 			       &gopobj->ops);
 	if (ret != EFI_SUCCESS) {
-		printf("ERROR: Failure adding gop protocol\n");
+		printf("ERROR: Failure adding GOP protocol\n");
 		return ret;
 	}
 	gopobj->ops.query_mode = gop_query_mode;
@@ -459,25 +524,32 @@ efi_status_t efi_gop_register(void)
 	gopobj->mode.info = &gopobj->info;
 	gopobj->mode.info_size = sizeof(gopobj->info);
 
-#ifdef CONFIG_DM_VIDEO
-	if (bpix == VIDEO_BPP32)
-#else
-	if (bpix == LCD_COLOR32)
-#endif
-	{
-		/* With 32bit color space we can directly expose the fb */
-		gopobj->mode.fb_base = fb_base;
-		gopobj->mode.fb_size = fb_size;
-	}
+	gopobj->mode.fb_base = fb_base;
+	gopobj->mode.fb_size = fb_size;
 
 	gopobj->info.version = 0;
 	gopobj->info.width = col;
 	gopobj->info.height = row;
-	gopobj->info.pixel_format = EFI_GOT_RGBA8;
+	if (bpix == VIDEO_BPP32)
+	{
+		if (format == VIDEO_X2R10G10B10) {
+			gopobj->info.pixel_format = EFI_GOT_BITMASK;
+			gopobj->info.pixel_bitmask[0] = 0x3ff00000; /* red */
+			gopobj->info.pixel_bitmask[1] = 0x000ffc00; /* green */
+			gopobj->info.pixel_bitmask[2] = 0x000003ff; /* blue */
+			gopobj->info.pixel_bitmask[3] = 0xc0000000; /* reserved */
+		} else {
+			gopobj->info.pixel_format = EFI_GOT_BGRA8;
+		}
+	} else {
+		gopobj->info.pixel_format = EFI_GOT_BITMASK;
+		gopobj->info.pixel_bitmask[0] = 0xf800; /* red */
+		gopobj->info.pixel_bitmask[1] = 0x07e0; /* green */
+		gopobj->info.pixel_bitmask[2] = 0x001f; /* blue */
+	}
 	gopobj->info.pixels_per_scanline = col;
-
 	gopobj->bpix = bpix;
-	gopobj->fb = fb;
+	gopobj->fb = map_sysmem(fb_base, fb_size);
 
 	return EFI_SUCCESS;
 }

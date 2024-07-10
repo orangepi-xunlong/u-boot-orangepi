@@ -14,15 +14,18 @@
 	};
 };
 
+&esdhc1 {
+	mmc-hs200-1_8v;
+};
+
 &qspi {
-	bus-num = <0>;
 	status = "okay";
 
-	qflash0: s25fl128s@0 {
+	s25fs512s0: flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "spi-flash";
-		spi-max-frequency = <20000000>;
+		compatible = "jedec,spi-nor";
+		spi-max-frequency = <50000000>;
 		reg = <0>;
 	};
 };
@@ -32,5 +35,9 @@
 };
 
 &duart0 {
+	status = "okay";
+};
+
+&sata {
 	status = "okay";
 };

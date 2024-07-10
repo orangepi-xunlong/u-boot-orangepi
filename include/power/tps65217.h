@@ -3,7 +3,7 @@
  * (C) Copyright 2011-2013
  * Texas Instruments, <www.ti.com>
  *
- * For more details, please see the TRM at http://www.ti.com/product/tps65217a
+ * For more details, please see the TRM at https://www.ti.com/product/tps65217a
  */
 
 #ifndef __POWER_TPS65217_H__
@@ -79,6 +79,8 @@ enum {
 #define TPS65217_PWR_OFF			0x80
 #define TPS65217_PWR_SRC_USB_BITMASK		0x4
 #define TPS65217_PWR_SRC_AC_BITMASK		0x8
+
+int power_tps65217_init(unsigned char bus);
 
 int tps65217_reg_read(uchar src_reg, uchar *src_val);
 int tps65217_reg_write(uchar prot_level, uchar dest_reg, uchar dest_val,

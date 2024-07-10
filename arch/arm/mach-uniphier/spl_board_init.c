@@ -4,9 +4,10 @@
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#include <common.h>
 #include <debug_uart.h>
+#include <hang.h>
 #include <spl.h>
+#include <linux/printk.h>
 
 #include "init.h"
 #include "micro-support-card.h"
@@ -111,9 +112,7 @@ void spl_board_init(void)
 
 	initdata->early_clk_init();
 
-#ifdef CONFIG_SPL_SERIAL_SUPPORT
 	preloader_console_init();
-#endif
 
 	ret = initdata->dpll_init(bd);
 	if (ret) {

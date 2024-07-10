@@ -4,33 +4,38 @@
  * Copyright (C) 2017 Bin Meng <bmeng.cn@gmail.com>
  */
 
+#define LOG_CATEGORY UCLASS_NVME
+
 #include <common.h>
-#include <errno.h>
+#include <bootdev.h>
 #include <dm.h>
-#include <dm/device.h>
-#include "nvme.h"
+#include <init.h>
+#include <log.h>
+#include <nvme.h>
 
-static int nvme_uclass_post_probe(struct udevice *udev)
+static int nvme_bootdev_bind(struct udevice *dev)
 {
-	char name[20];
-	struct udevice *ns_udev;
-	int i, ret;
-	struct nvme_dev *ndev = dev_get_priv(udev);
+	struct bootdev_uc_plat *ucp = dev_get_uclass_plat(dev);
 
-	/* Create a blk device for each namespace */
-	for (i = 0; i < ndev->nn; i++) {
-		/*
-		 * Encode the namespace id to the device name so that
-		 * we can extract it when doing the probe.
-		 */
-		sprintf(name, "blk#%d", i);
+	ucp->prio = BOOTDEVP_4_SCAN_FAST;
 
-		/* The real blksz and size will be set by nvme_blk_probe() */
-		ret = blk_create_devicef(udev, "nvme-blk", name, IF_TYPE_NVME,
-					 -1, 512, 0, &ns_udev);
+	return 0;
+}
+
+static int nvme_bootdev_hunt(struct bootdev_hunter *info, bool show)
+{
+	int ret;
+
+	/* init PCI first since this is often used to provide NVMe */
+	if (IS_ENABLED(CONFIG_PCI)) {
+		ret = pci_init();
 		if (ret)
-			return ret;
+			log_warning("Failed to init PCI (%dE)\n", ret);
 	}
+
+	ret = nvme_scan_namespace();
+	if (ret)
+		return log_msg_ret("scan", ret);
 
 	return 0;
 }
@@ -38,5 +43,27 @@ static int nvme_uclass_post_probe(struct udevice *udev)
 UCLASS_DRIVER(nvme) = {
 	.name	= "nvme",
 	.id	= UCLASS_NVME,
-	.post_probe = nvme_uclass_post_probe,
+};
+
+struct bootdev_ops nvme_bootdev_ops = {
+};
+
+static const struct udevice_id nvme_bootdev_ids[] = {
+	{ .compatible = "u-boot,bootdev-nvme" },
+	{ }
+};
+
+U_BOOT_DRIVER(nvme_bootdev) = {
+	.name		= "nvme_bootdev",
+	.id		= UCLASS_BOOTDEV,
+	.ops		= &nvme_bootdev_ops,
+	.bind		= nvme_bootdev_bind,
+	.of_match	= nvme_bootdev_ids,
+};
+
+BOOTDEV_HUNTER(nvme_bootdev_hunter) = {
+	.prio		= BOOTDEVP_4_SCAN_FAST,
+	.uclass		= UCLASS_NVME,
+	.hunt		= nvme_bootdev_hunt,
+	.drv		= DM_DRIVER_REF(nvme_bootdev),
 };

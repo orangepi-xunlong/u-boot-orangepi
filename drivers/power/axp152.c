@@ -79,7 +79,8 @@ int axp_init(void)
 	return 0;
 }
 
-int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+#if !IS_ENABLED(CONFIG_SYSRESET_CMD_POWEROFF)
+int do_poweroff(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	pmic_bus_write(AXP152_SHUTDOWN, AXP152_POWEROFF);
 
@@ -89,3 +90,4 @@ int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/* not reached */
 	return 0;
 }
+#endif

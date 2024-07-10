@@ -4,11 +4,15 @@
  *
  * OMAP Watchdog header file
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #ifndef __OMAP_WDT_H__
 #define __OMAP_WDT_H__
+
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
 
 /*
  * Watchdog:
@@ -54,6 +58,11 @@ struct wd_timer {
 	unsigned int wdtwqenc;	/* offset 0x060 */
 	unsigned int resv4[39];
 	unsigned int wdt_unfr;	/* offset 0x100 */
+};
+
+struct omap3_wdt_priv {
+	struct wd_timer *regs;
+	unsigned int wdt_trgr_pattern;
 };
 
 #endif /* __OMAP_WDT_H__ */

@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/clk.h>
@@ -135,7 +137,7 @@ static int exynos_get_pll_clk(int pllreg, unsigned int r, unsigned int k)
 	/* SDIV [2:0] */
 	s = r & 0x7;
 
-	freq = CONFIG_SYS_CLK_FREQ;
+	freq = get_board_sys_clk();
 
 	if (pllreg == EPLL || pllreg == RPLL) {
 		k = k & 0xffff;
@@ -345,7 +347,7 @@ static struct clk_bit_info *get_clk_bit_info(int peripheral)
 	int i;
 	struct clk_bit_info *info;
 
-	if (proid_is_exynos5420() || proid_is_exynos5422())
+	if (proid_is_exynos542x())
 		info = exynos542x_bit_info;
 	else
 		info = exynos5_bit_info;
@@ -557,7 +559,7 @@ static unsigned long exynos542x_get_periph_rate(int peripheral)
 unsigned long clock_get_periph_rate(int peripheral)
 {
 	if (cpu_is_exynos5()) {
-		if (proid_is_exynos5420() || proid_is_exynos5422())
+		if (proid_is_exynos542x())
 			return exynos542x_get_periph_rate(peripheral);
 		return exynos5_get_periph_rate(peripheral);
 	} else {
@@ -1050,7 +1052,7 @@ static unsigned long exynos5800_get_lcd_clk(void)
 									RPLL};
 		sclk = get_pll_clk(reg_map[sel]);
 	} else
-		sclk = CONFIG_SYS_CLK_FREQ;
+		sclk = get_board_sys_clk();
 	/*
 	 * CLK_DIV_DISP10
 	 * FIMD1_RATIO [3:0]
@@ -1317,6 +1319,19 @@ int exynos5_set_epll_clk(unsigned long rate)
 	return 0;
 }
 
+static int exynos5420_set_i2s_clk_source(void)
+{
+	struct exynos5420_clock *clk =
+		(struct exynos5420_clock *)samsung_get_base_clock();
+
+	setbits_le32(&clk->src_top6, EXYNOS5420_CLK_SRC_MOUT_EPLL);
+	clrsetbits_le32(&clk->src_mau, EXYNOS5420_AUDIO0_SEL_MASK,
+			(EXYNOS5420_CLK_SRC_SCLK_EPLL));
+	setbits_le32(EXYNOS5_AUDIOSS_BASE, 1 << 0);
+
+	return 0;
+}
+
 int exynos5_set_i2s_clk_source(unsigned int i2s_id)
 {
 	struct exynos5_clock *clk =
@@ -1388,7 +1403,7 @@ int exynos5_set_i2s_clk_prescaler(unsigned int src_frq,
  * @param target_freq		Desired clock frequency in Hz
  * @param best_fine_scalar	Pointer to store the fine stage divisor
  *
- * @return best_main_scalar	Main scalar for desired frequency or -1 if none
+ * Return: best_main_scalar	Main scalar for desired frequency or -1 if none
  * found
  */
 static int clock_calc_best_scalar(unsigned int main_scaler_bits,
@@ -1575,7 +1590,7 @@ static unsigned long exynos4_get_i2c_clk(void)
 unsigned long get_pll_clk(int pllreg)
 {
 	if (cpu_is_exynos5()) {
-		if (proid_is_exynos5420() || proid_is_exynos5422())
+		if (proid_is_exynos542x())
 			return exynos542x_get_pll_clk(pllreg);
 		return exynos5_get_pll_clk(pllreg);
 	} else if (cpu_is_exynos4()) {
@@ -1691,7 +1706,7 @@ void set_mmc_clk(int dev_index, unsigned int div)
 		div -= 1;
 
 	if (cpu_is_exynos5()) {
-		if (proid_is_exynos5420() || proid_is_exynos5422())
+		if (proid_is_exynos542x())
 			exynos5420_set_mmc_clk(dev_index, div);
 		else
 			exynos5_set_mmc_clk(dev_index, div);
@@ -1739,7 +1754,7 @@ void set_mipi_clk(void)
 int set_spi_clk(int periph_id, unsigned int rate)
 {
 	if (cpu_is_exynos5()) {
-		if (proid_is_exynos5420() || proid_is_exynos5422())
+		if (proid_is_exynos542x())
 			return exynos5420_set_spi_clk(periph_id, rate);
 		return exynos5_set_spi_clk(periph_id, rate);
 	}
@@ -1758,8 +1773,12 @@ int set_i2s_clk_prescaler(unsigned int src_frq, unsigned int dst_frq,
 
 int set_i2s_clk_source(unsigned int i2s_id)
 {
-	if (cpu_is_exynos5())
-		return exynos5_set_i2s_clk_source(i2s_id);
+	if (cpu_is_exynos5()) {
+		if (proid_is_exynos542x())
+			return exynos5420_set_i2s_clk_source();
+		else
+			return exynos5_set_i2s_clk_source(i2s_id);
+	}
 
 	return 0;
 }

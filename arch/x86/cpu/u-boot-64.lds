@@ -12,22 +12,44 @@ ENTRY(_start)
 SECTIONS
 {
 #ifndef CONFIG_CMDLINE
-	/DISCARD/ : { *(.u_boot_list_2_cmd_*) }
+	/DISCARD/ : { *(__u_boot_list_2_cmd_*) }
 #endif
 
-	. = CONFIG_SYS_TEXT_BASE;	/* Location of bootcode in flash */
+#ifdef CONFIG_TEXT_BASE
+	. = CONFIG_TEXT_BASE;	/* Location of bootcode in flash */
+#endif
 	__text_start = .;
+
+	.text.start : { *(.text.start); }
+
+	.__efi_runtime_start : {
+		*(.__efi_runtime_start)
+	}
+
+	.efi_runtime : {
+		*(.text.efi_runtime*)
+		*(.rodata.efi_runtime*)
+		*(.data.efi_runtime*)
+	}
+
+	.__efi_runtime_stop : {
+		*(.__efi_runtime_stop)
+	}
+
 	.text  : { *(.text*); }
 
 	. = ALIGN(4);
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
+	.rodata : {
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
+		KEEP(*(.rodata.efi.init));
+	}
 
 	. = ALIGN(4);
 	.data : { *(.data*) }
@@ -37,6 +59,21 @@ SECTIONS
 
 	. = ALIGN(4);
 	.got : { *(.got*) }
+
+	.efi_runtime_rel_start :
+	{
+		*(.__efi_runtime_rel_start)
+	}
+
+	.efi_runtime_rel : {
+		*(.rel*.efi_runtime)
+		*(.rel*.efi_runtime.*)
+	}
+
+	.efi_runtime_rel_stop :
+	{
+		*(.__efi_runtime_rel_stop)
+	}
 
 	. = ALIGN(4);
 	__data_end = .;
@@ -60,7 +97,7 @@ SECTIONS
 
 	.bss __rel_dyn_start (OVERLAY) : {
 		__bss_start = .;
-		*(.bss)
+		*(.bss*)
 		*(COM*)
 		. = ALIGN(4);
 		__bss_end = .;
@@ -72,4 +109,5 @@ SECTIONS
 	/DISCARD/ : { *(.plt*) }
 	/DISCARD/ : { *(.interp*) }
 	/DISCARD/ : { *(.gnu*) }
+	/DISCARD/ : { *(.note.gnu.property) }
 }

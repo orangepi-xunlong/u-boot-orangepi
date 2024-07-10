@@ -4,8 +4,8 @@
  *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#include <common.h>
 #include <spl.h>
+#include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 
@@ -36,5 +36,5 @@ const unsigned uniphier_pxs3_boot_device_count =
 
 int uniphier_pxs3_boot_device_is_usb(u32 pinmon)
 {
-	return !!(readl(SG_PINMON2) & BIT(31));
+	return !!(readl(sg_base + SG_PINMON2) & BIT(31));
 }

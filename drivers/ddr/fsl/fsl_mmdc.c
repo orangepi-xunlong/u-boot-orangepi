@@ -10,6 +10,7 @@
 #include <common.h>
 #include <fsl_mmdc.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 
 static void set_wait_for_bits_clear(void *ptr, u32 value, u32 bits)
 {
@@ -27,7 +28,7 @@ static void set_wait_for_bits_clear(void *ptr, u32 value, u32 bits)
 
 void mmdc_init(const struct fsl_mmdc_info *priv)
 {
-	struct mmdc_regs *mmdc = (struct mmdc_regs *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct mmdc_regs *mmdc = (struct mmdc_regs *)CFG_SYS_FSL_DDR_ADDR;
 	unsigned int tmp;
 
 	/* 1. set configuration request */

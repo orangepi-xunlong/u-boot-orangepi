@@ -140,24 +140,9 @@ struct stm32mp1_ddrphy_timing {
 	u32 mr3;
 };
 
-struct stm32mp1_ddrphy_cal {
-	u32 dx0dllcr;
-	u32 dx0dqtr;
-	u32 dx0dqstr;
-	u32 dx1dllcr;
-	u32 dx1dqtr;
-	u32 dx1dqstr;
-	u32 dx2dllcr;
-	u32 dx2dqtr;
-	u32 dx2dqstr;
-	u32 dx3dllcr;
-	u32 dx3dqtr;
-	u32 dx3dqstr;
-};
-
 struct stm32mp1_ddr_info {
 	const char *name;
-	u16 speed; /* in MHZ */
+	u32 speed; /* in kHZ */
 	u32 size;  /* memory size in byte = col * row * width */
 };
 
@@ -169,15 +154,9 @@ struct stm32mp1_ddr_config {
 	struct stm32mp1_ddrctrl_perf c_perf;
 	struct stm32mp1_ddrphy_reg p_reg;
 	struct stm32mp1_ddrphy_timing p_timing;
-	struct stm32mp1_ddrphy_cal p_cal;
 };
 
-int stm32mp1_ddr_clk_enable(struct ddr_info *priv, u16 mem_speed);
-void stm32mp1_ddrphy_init(struct stm32mp1_ddrphy *phy, u32 pir);
-void stm32mp1_refresh_disable(struct stm32mp1_ddrctl *ctl);
-void stm32mp1_refresh_restore(struct stm32mp1_ddrctl *ctl,
-			      u32 rfshctl3,
-			      u32 pwrctl);
+int stm32mp1_ddr_clk_enable(struct ddr_info *priv, u32 mem_speed);
 
 void stm32mp1_ddr_init(
 	struct ddr_info *priv,
@@ -196,10 +175,6 @@ int stm32mp1_dump_param(const struct stm32mp1_ddr_config *config,
 void stm32mp1_edit_param(const struct stm32mp1_ddr_config *config,
 			 char *name,
 			 char *string);
-
-void stm32mp1_dump_info(
-	const struct ddr_info *priv,
-	const struct stm32mp1_ddr_config *config);
 
 bool stm32mp1_ddr_interactive(
 	void *priv,

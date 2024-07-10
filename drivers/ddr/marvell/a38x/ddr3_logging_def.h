@@ -73,10 +73,35 @@
 #endif
 #endif
 
+#ifdef CONFIG_DDR4
+#ifdef SILENT_LIB
+#define DEBUG_TAP_TUNING_ENGINE(level, s)
+#define DEBUG_CALIBRATION(level, s)
+#define DEBUG_DDR4_CENTRALIZATION(level, s)
+#define DEBUG_DM_TUNING(level, s)
+#else /* SILENT_LIB */
+#define DEBUG_TAP_TUNING_ENGINE(level, s)	\
+	if (level >= debug_tap_tuning)		\
+		printf s
+#define DEBUG_CALIBRATION(level, s)		\
+	if (level >= debug_calibration)		\
+		printf s
+#define DEBUG_DDR4_CENTRALIZATION(level, s)	\
+	if (level >= debug_ddr4_centralization)	\
+		printf s
+#define DEBUG_DM_TUNING(level, s)		\
+	if (level >= debug_dm_tuning)		\
+		printf s
+#endif /* SILENT_LIB */
+#endif /* CONFIG_DDR4 */
+
 /* Logging defines */
-#define DEBUG_LEVEL_TRACE	1
-#define DEBUG_LEVEL_INFO	2
-#define DEBUG_LEVEL_ERROR	3
+enum mv_ddr_debug_level {
+	DEBUG_LEVEL_TRACE = 1,
+	DEBUG_LEVEL_INFO = 2,
+	DEBUG_LEVEL_ERROR = 3,
+	DEBUG_LEVEL_LAST
+};
 
 enum ddr_lib_debug_block {
 	DEBUG_BLOCK_STATIC,
@@ -90,6 +115,12 @@ enum ddr_lib_debug_block {
 	DEBUG_BLOCK_DEVICE,
 	DEBUG_BLOCK_ACCESS,
 	DEBUG_STAGES_REG_DUMP,
+#if defined(CONFIG_DDR4)
+	DEBUG_TAP_TUNING_ENGINE,
+	DEBUG_BLOCK_CALIBRATION,
+	DEBUG_BLOCK_DDR4_CENTRALIZATION,
+	DEBUG_DM_TUNING,
+#endif /* CONFIG_DDR4 */
 	/* All excluding IP and REG_DUMP, should be enabled separatelly */
 	DEBUG_BLOCK_ALL
 };

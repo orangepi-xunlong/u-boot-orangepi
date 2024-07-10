@@ -21,6 +21,8 @@
 
 #include <common.h>
 #include <div64.h>
+#include <malloc.h>
+#include <linux/printk.h>
 
 #include <config.h>
 #include "nand.h"
@@ -34,6 +36,7 @@
 #else
 #include "malloc.h"
 #endif
+#include <linux/mtd/rawnand.h>
 
 unsigned yaffs_trace_mask = 0x0; /* Disable logging */
 static int yaffs_errno;

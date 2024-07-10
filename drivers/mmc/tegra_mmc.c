@@ -3,17 +3,24 @@
  * (C) Copyright 2009 SAMSUNG Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
  * Jaehoon Chung <jh80.chung@samsung.com>
- * Portions Copyright 2011-2016 NVIDIA Corporation
+ * Portions Copyright 2011-2019 NVIDIA Corporation
  */
 
 #include <bouncebuf.h>
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <mmc.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch-tegra/tegra_mmc.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
+#include <linux/err.h>
+#if defined(CONFIG_TEGRA30) || defined(CONFIG_TEGRA210)
+#include <asm/arch/clock.h>
+#endif
 
 struct tegra_mmc_plat {
 	struct mmc_config cfg;
@@ -29,6 +36,10 @@ struct tegra_mmc_priv {
 	struct gpio_desc wp_gpio;	/* Write Protect GPIO */
 	unsigned int version;	/* SDHCI spec. version */
 	unsigned int clock;	/* Current clock (MHz) */
+	int mmc_id;		/* peripheral id */
+
+	int tap_value;
+	int trim_value;
 };
 
 static void tegra_mmc_set_power(struct tegra_mmc_priv *priv,
@@ -371,6 +382,25 @@ static void tegra_mmc_change_clock(struct tegra_mmc_priv *priv, uint clock)
 
 	rate = clk_set_rate(&priv->clk, clock);
 	div = (rate + clock - 1) / clock;
+
+#if defined(CONFIG_TEGRA210)
+	if (priv->mmc_id == PERIPH_ID_SDMMC1 && clock <= 400000) {
+		/* clock_adjust_periph_pll_div() chooses a 'bad' clock
+		 * on SDMMC1 T210, so skip it here and force a clock
+		 * that's been spec'd in the table in the TRM for
+		 * card-detect (400KHz).
+		 */
+		uint effective_rate = clock_adjust_periph_pll_div(priv->mmc_id,
+				CLOCK_ID_PERIPH, 24727273, NULL);
+		div = 62;
+
+		debug("%s: WAR: Using SDMMC1 clock of %u, div %d to achieve %dHz card clock ...\n",
+		      __func__, effective_rate, div, clock);
+	} else {
+		clock_adjust_periph_pll_div(priv->mmc_id, CLOCK_ID_PERIPH,
+					    clock, &div);
+	}
+#endif
 	debug("div = %d\n", div);
 
 	writew(0, &priv->reg->clkcon);
@@ -445,16 +475,19 @@ static int tegra_mmc_set_ios(struct udevice *dev)
 
 static void tegra_mmc_pad_init(struct tegra_mmc_priv *priv)
 {
-#if defined(CONFIG_TEGRA30)
+#if defined(CONFIG_TEGRA30) || defined(CONFIG_TEGRA210)
 	u32 val;
+	u16 clk_con;
+	int timeout;
+	int id = priv->mmc_id;
 
-	debug("%s: sdmmc address = %08x\n", __func__, (unsigned int)priv->reg);
+	debug("%s: sdmmc address = %p, id = %d\n", __func__,
+		priv->reg, id);
 
 	/* Set the pad drive strength for SDMMC1 or 3 only */
-	if (priv->reg != (void *)0x78000000 &&
-	    priv->reg != (void *)0x78000400) {
+	if (id != PERIPH_ID_SDMMC1 && id != PERIPH_ID_SDMMC3) {
 		debug("%s: settings are only valid for SDMMC1/SDMMC3!\n",
-		      __func__);
+			__func__);
 		return;
 	}
 
@@ -463,11 +496,40 @@ static void tegra_mmc_pad_init(struct tegra_mmc_priv *priv)
 	val |= MEMCOMP_PADCTRL_VREF;
 	writel(val, &priv->reg->sdmemcmppadctl);
 
+	/* Disable SD Clock Enable before running auto-cal as per TRM */
+	clk_con = readw(&priv->reg->clkcon);
+	debug("%s: CLOCK_CONTROL = 0x%04X\n", __func__, clk_con);
+	clk_con &= ~TEGRA_MMC_CLKCON_SD_CLOCK_ENABLE;
+	writew(clk_con, &priv->reg->clkcon);
+
 	val = readl(&priv->reg->autocalcfg);
 	val &= 0xFFFF0000;
-	val |= AUTO_CAL_PU_OFFSET | AUTO_CAL_PD_OFFSET | AUTO_CAL_ENABLED;
+	val |= AUTO_CAL_PU_OFFSET | AUTO_CAL_PD_OFFSET;
 	writel(val, &priv->reg->autocalcfg);
-#endif
+	val |= AUTO_CAL_START | AUTO_CAL_ENABLE;
+	writel(val, &priv->reg->autocalcfg);
+	debug("%s: AUTO_CAL_CFG = 0x%08X\n", __func__, val);
+	udelay(1);
+	timeout = 100;				/* 10 mSec max (100*100uS) */
+	do {
+		val = readl(&priv->reg->autocalsts);
+		udelay(100);
+	} while ((val & AUTO_CAL_ACTIVE) && --timeout);
+	val = readl(&priv->reg->autocalsts);
+	debug("%s: Final AUTO_CAL_STATUS = 0x%08X, timeout = %d\n",
+	      __func__, val, timeout);
+
+	/* Re-enable SD Clock Enable when auto-cal is done */
+	clk_con |= TEGRA_MMC_CLKCON_SD_CLOCK_ENABLE;
+	writew(clk_con, &priv->reg->clkcon);
+	clk_con = readw(&priv->reg->clkcon);
+	debug("%s: final CLOCK_CONTROL = 0x%04X\n", __func__, clk_con);
+
+	if (timeout == 0) {
+		printf("%s: Warning: Autocal timed out!\n", __func__);
+		/* TBD: Set CFG2TMC_SDMMC1_PAD_CAL_DRV* regs here */
+	}
+#endif	/* T30/T210 */
 }
 
 static void tegra_mmc_reset(struct tegra_mmc_priv *priv, struct mmc *mmc)
@@ -504,6 +566,22 @@ static void tegra_mmc_reset(struct tegra_mmc_priv *priv, struct mmc *mmc)
 
 	/* Make sure SDIO pads are set up */
 	tegra_mmc_pad_init(priv);
+
+	if (!IS_ERR_VALUE(priv->tap_value) ||
+	    !IS_ERR_VALUE(priv->trim_value)) {
+		u32 val;
+
+		val = readl(&priv->reg->venclkctl);
+
+		val &= ~TRIM_VAL_MASK;
+		val |= (priv->trim_value << TRIM_VAL_SHIFT);
+
+		val &= ~TAP_VAL_MASK;
+		val |= (priv->tap_value << TAP_VAL_SHIFT);
+
+		writel(val, &priv->reg->venclkctl);
+		debug("%s: VENDOR_CLOCK_CNTRL = 0x%08X\n", __func__, val);
+	}
 }
 
 static int tegra_mmc_init(struct udevice *dev)
@@ -513,6 +591,13 @@ static int tegra_mmc_init(struct udevice *dev)
 	unsigned int mask;
 	debug(" tegra_mmc_init called\n");
 
+#if defined(CONFIG_TEGRA210)
+	priv->mmc_id = clock_decode_periph_id(dev);
+	if (priv->mmc_id == PERIPH_ID_NONE) {
+		printf("%s: Missing/invalid peripheral ID\n", __func__);
+		return -EINVAL;
+	}
+#endif
 	tegra_mmc_reset(priv, mmc);
 
 #if defined(CONFIG_TEGRA124_MMC_DISABLE_EXT_LOOPBACK)
@@ -589,7 +674,7 @@ static const struct dm_mmc_ops tegra_mmc_ops = {
 static int tegra_mmc_probe(struct udevice *dev)
 {
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
-	struct tegra_mmc_plat *plat = dev_get_platdata(dev);
+	struct tegra_mmc_plat *plat = dev_get_plat(dev);
 	struct tegra_mmc_priv *priv = dev_get_priv(dev);
 	struct mmc_config *cfg = &plat->cfg;
 	int bus_width, ret;
@@ -617,7 +702,7 @@ static int tegra_mmc_probe(struct udevice *dev)
 
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 
-	priv->reg = (void *)dev_read_addr(dev);
+	priv->reg = dev_read_addr_ptr(dev);
 
 	ret = reset_get_by_name(dev, "sdhci", &priv->reset_ctl);
 	if (ret) {
@@ -651,6 +736,14 @@ static int tegra_mmc_probe(struct udevice *dev)
 	if (dm_gpio_is_valid(&priv->pwr_gpio))
 		dm_gpio_set_value(&priv->pwr_gpio, 1);
 
+	ret = dev_read_u32(dev, "nvidia,default-tap", &priv->tap_value);
+	if (ret)
+		priv->tap_value = ret;
+
+	ret = dev_read_u32(dev, "nvidia,default-trim", &priv->trim_value);
+	if (ret)
+		priv->trim_value = ret;
+
 	upriv->mmc = &plat->mmc;
 
 	return tegra_mmc_init(dev);
@@ -658,7 +751,7 @@ static int tegra_mmc_probe(struct udevice *dev)
 
 static int tegra_mmc_bind(struct udevice *dev)
 {
-	struct tegra_mmc_plat *plat = dev_get_platdata(dev);
+	struct tegra_mmc_plat *plat = dev_get_plat(dev);
 
 	return mmc_bind(dev, &plat->mmc, &plat->cfg);
 }
@@ -680,6 +773,6 @@ U_BOOT_DRIVER(tegra_mmc_drv) = {
 	.bind		= tegra_mmc_bind,
 	.probe		= tegra_mmc_probe,
 	.ops		= &tegra_mmc_ops,
-	.platdata_auto_alloc_size = sizeof(struct tegra_mmc_plat),
-	.priv_auto_alloc_size = sizeof(struct tegra_mmc_priv),
+	.plat_auto	= sizeof(struct tegra_mmc_plat),
+	.priv_auto	= sizeof(struct tegra_mmc_priv),
 };

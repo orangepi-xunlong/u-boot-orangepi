@@ -38,6 +38,7 @@
  *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <dt-bindings/input/input.h>
 #include "rk3288.dtsi"
 
 / {
@@ -55,8 +56,6 @@
 
 	gpio-keys {
 		compatible = "gpio-keys";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		autorepeat;
 
 		pinctrl-names = "default";
@@ -65,6 +64,7 @@
 		button@0 {
 			gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
 			label = "GPIO Key Power";
+			linux,code = <KEY_POWER>;
 			linux,input-type = <1>;
 			gpio-key,wakeup = <1>;
 			debounce-interval = <100>;

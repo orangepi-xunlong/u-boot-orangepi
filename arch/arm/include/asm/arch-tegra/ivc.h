@@ -6,8 +6,6 @@
 #ifndef _ASM_ARCH_TEGRA_IVC_H
 #define _ASM_ARCH_TEGRA_IVC_H
 
-#include <common.h>
-
 /*
  * Tegra IVC is a communication protocol that transfers fixed-size frames
  * bi-directionally and in-order between the local CPU and some remote entity.
@@ -90,7 +88,7 @@ struct tegra_ivc {
  * @ivc		The IVC channel.
  * @frame	Pointer to be filled with the address of the frame to receive.
  *
- * @return 0 if a frame is available, else a negative error code.
+ * Return: 0 if a frame is available, else a negative error code.
  */
 int tegra_ivc_read_get_next_frame(struct tegra_ivc *ivc, void **frame);
 
@@ -104,7 +102,7 @@ int tegra_ivc_read_get_next_frame(struct tegra_ivc *ivc, void **frame);
  *
  * @ivc		The IVC channel.
  *
- * @return 0 if OK, else a negative error code.
+ * Return: 0 if OK, else a negative error code.
  */
 int tegra_ivc_read_advance(struct tegra_ivc *ivc);
 
@@ -118,7 +116,7 @@ int tegra_ivc_read_advance(struct tegra_ivc *ivc);
  * @ivc		The IVC channel.
  * @frame	Pointer to be filled with the address of the frame to fill.
  *
- * @return 0 if a frame is available, else a negative error code.
+ * Return: 0 if a frame is available, else a negative error code.
  */
 int tegra_ivc_write_get_next_frame(struct tegra_ivc *ivc, void **frame);
 
@@ -132,7 +130,7 @@ int tegra_ivc_write_get_next_frame(struct tegra_ivc *ivc, void **frame);
  *
  * @ivc		The IVC channel.
  *
- * @return 0 if OK, else a negative error code.
+ * Return: 0 if OK, else a negative error code.
  */
 int tegra_ivc_write_advance(struct tegra_ivc *ivc);
 
@@ -143,7 +141,7 @@ int tegra_ivc_write_advance(struct tegra_ivc *ivc);
  *
  * @ivc		The IVC channel.
  *
- * @return 0 if the channel is ready for communication, or -EAGAIN if a
+ * Return: 0 if the channel is ready for communication, or -EAGAIN if a
  * channel reset is in progress.
  */
 int tegra_ivc_channel_notified(struct tegra_ivc *ivc);
@@ -169,7 +167,7 @@ void tegra_ivc_channel_reset(struct tegra_ivc *ivc);
  * @nframes	Number of frames in each shared memory buffer.
  * @frame_size	Size of each frame.
  *
- * @return 0 if OK, else a negative error code.
+ * Return: 0 if OK, else a negative error code.
  */
 int tegra_ivc_init(struct tegra_ivc *ivc, ulong rx_base, ulong tx_base,
 		   uint32_t nframes, uint32_t frame_size,

@@ -9,4 +9,4 @@ else
 obj-y += stm32mp1.o
 endif
 
-obj-y += board.o
+obj-$(CONFIG_DEBUG_UART_BOARD_INIT) += debug_uart.o

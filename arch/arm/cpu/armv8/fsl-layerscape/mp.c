@@ -4,10 +4,21 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <cpu_func.h>
+#include <image.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <asm/ptrace.h>
 #include <asm/system.h>
 #include <asm/arch/mp.h>
 #include <asm/arch/soc.h>
+#include <linux/compat.h>
+#include <linux/delay.h>
+#include <linux/psci.h>
+#include <malloc.h>
 #include "cpu.h"
 #include <asm/arch-fsl-layerscape/soc.h>
 
@@ -15,12 +26,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void *get_spin_tbl_addr(void)
 {
-	return &__spin_table;
-}
-
-phys_addr_t determine_mp_bootpg(void)
-{
-	return (phys_addr_t)&secondary_boot_code;
+	/* the spin table is at the beginning */
+	return secondary_boot_code_start;
 }
 
 void update_os_arch_secondary_cores(uint8_t os_arch)
@@ -39,10 +46,10 @@ void update_os_arch_secondary_cores(uint8_t os_arch)
 }
 
 #ifdef CONFIG_FSL_LSCH3
-void wake_secondary_core_n(int cluster, int core, int cluster_cores)
+static void wake_secondary_core_n(int cluster, int core, int cluster_cores)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
-	struct ccsr_reset __iomem *rst = (void *)(CONFIG_SYS_FSL_RST_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_reset __iomem *rst = (void *)(CFG_SYS_FSL_RST_ADDR);
 	u32 mpidr = 0;
 
 	mpidr = ((cluster << 8) | core);
@@ -66,17 +73,20 @@ void wake_secondary_core_n(int cluster, int core, int cluster_cores)
 
 int fsl_layerscape_wake_seconday_cores(void)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 #ifdef CONFIG_FSL_LSCH3
-	struct ccsr_reset __iomem *rst = (void *)(CONFIG_SYS_FSL_RST_ADDR);
+	struct ccsr_reset __iomem *rst = (void *)(CFG_SYS_FSL_RST_ADDR);
 	u32 svr, ver, cluster, type;
 	int j = 0, cluster_cores = 0;
 #elif defined(CONFIG_FSL_LSCH2)
-	struct ccsr_scfg __iomem *scfg = (void *)(CONFIG_SYS_FSL_SCFG_ADDR);
+	struct ccsr_scfg __iomem *scfg = (void *)(CFG_SYS_FSL_SCFG_ADDR);
 #endif
 	u32 cores, cpu_up_mask = 1;
 	int i, timeout = 10;
-	u64 *table = get_spin_tbl_addr();
+	u64 *table;
+#ifdef CONFIG_EFI_LOADER
+	void *reloc_addr;
+#endif
 
 #ifdef COUNTER_FREQUENCY_REAL
 	/* update for secondary cores */
@@ -85,16 +95,48 @@ int fsl_layerscape_wake_seconday_cores(void)
 			   (unsigned long)&__real_cntfrq + 8);
 #endif
 
+#ifdef CONFIG_EFI_LOADER
+	/*
+	 * EFI will reserve 64kb for its runtime services. This will probably
+	 * overlap with our spin table code, which is why we have to relocate
+	 * it.
+	 * Keep this after the __real_cntfrq update, so we have it when we
+	 * copy the complete section here.
+	 */
+	reloc_addr = memalign(PAGE_SIZE,
+			      round_up(secondary_boot_code_size, PAGE_SIZE));
+	if (reloc_addr) {
+		debug("Relocating spin table from %p to %p (size %lx)\n",
+		      secondary_boot_code_start, reloc_addr,
+		      secondary_boot_code_size);
+		memcpy(reloc_addr, secondary_boot_code_start,
+		       secondary_boot_code_size);
+		flush_dcache_range((unsigned long)reloc_addr,
+				   (unsigned long)reloc_addr +
+						  secondary_boot_code_size);
+
+		/* set new entry point for secondary cores */
+		secondary_boot_addr += reloc_addr -
+				       secondary_boot_code_start;
+		flush_dcache_range((unsigned long)&secondary_boot_addr,
+				   (unsigned long)&secondary_boot_addr + 8);
+
+		/* this will be used to reserve the memory */
+		secondary_boot_code_start = reloc_addr;
+	}
+#endif
+
 	cores = cpu_mask();
 	/* Clear spin table so that secondary processors
 	 * observe the correct value after waking up from wfe.
 	 */
+	table = get_spin_tbl_addr();
 	memset(table, 0, CONFIG_MAX_CPUS*SPIN_TABLE_ELEM_SIZE);
 	flush_dcache_range((unsigned long)table,
 			   (unsigned long)table +
 			   (CONFIG_MAX_CPUS*SPIN_TABLE_ELEM_SIZE));
 
-	printf("Waking secondary cores to start from %lx\n", gd->relocaddr);
+	debug("Waking secondary cores to start from %lx\n", gd->relocaddr);
 
 #ifdef CONFIG_FSL_LSCH3
 	gur_out32(&gur->bootlocptrh, (u32)(gd->relocaddr >> 32));
@@ -164,11 +206,11 @@ int fsl_layerscape_wake_seconday_cores(void)
 		udelay(10);
 	}
 	if (timeout <= 0) {
-		printf("Not all cores (0x%x) are up (0x%x)\n",
-		       cores, cpu_up_mask);
+		printf("CPU:   Failed to bring up some cores (mask 0x%x)\n",
+		       cores ^ cpu_up_mask);
 		return 1;
 	}
-	printf("All (%d) cores are up.\n", hweight32(cores));
+	printf("CPU:   %d cores online\n", hweight32(cores));
 
 	return 0;
 }
@@ -185,20 +227,20 @@ static int is_pos_valid(unsigned int pos)
 
 int is_core_online(u64 cpu_id)
 {
-	u64 *table;
+	u64 *table = get_spin_tbl_addr();
 	int pos = id_to_core(cpu_id);
-	table = (u64 *)get_spin_tbl_addr() + pos * WORDS_PER_SPIN_TABLE_ENTRY;
+	table += pos * WORDS_PER_SPIN_TABLE_ENTRY;
 	return table[SPIN_TABLE_ELEM_STATUS_IDX] == 1;
 }
 
-int cpu_reset(int nr)
+int cpu_reset(u32 nr)
 {
 	puts("Feature is not implemented.\n");
 
 	return 0;
 }
 
-int cpu_disable(int nr)
+int cpu_disable(u32 nr)
 {
 	puts("Feature is not implemented.\n");
 
@@ -231,20 +273,18 @@ static int core_to_pos(int nr)
 	return i;
 }
 
-int cpu_status(int nr)
+int cpu_status(u32 nr)
 {
-	u64 *table;
+	u64 *table = get_spin_tbl_addr();
 	int pos;
 
 	if (nr == 0) {
-		table = (u64 *)get_spin_tbl_addr();
 		printf("table base @ 0x%p\n", table);
 	} else {
 		pos = core_to_pos(nr);
 		if (pos < 0)
 			return -1;
-		table = (u64 *)get_spin_tbl_addr() + pos *
-			WORDS_PER_SPIN_TABLE_ENTRY;
+		table += pos * WORDS_PER_SPIN_TABLE_ENTRY;
 		printf("table @ 0x%p\n", table);
 		printf("   addr - 0x%016llx\n",
 		       table[SPIN_TABLE_ELEM_ENTRY_ADDR_IDX]);
@@ -257,29 +297,42 @@ int cpu_status(int nr)
 	return 0;
 }
 
-int cpu_release(int nr, int argc, char * const argv[])
+int cpu_release(u32 nr, int argc, char *const argv[])
 {
 	u64 boot_addr;
-	u64 *table = (u64 *)get_spin_tbl_addr();
+	u64 *table = get_spin_tbl_addr();
 	int pos;
+	int ret;
 
-	pos = core_to_pos(nr);
-	if (pos <= 0)
-		return -1;
-
-	table += pos * WORDS_PER_SPIN_TABLE_ENTRY;
 	boot_addr = simple_strtoull(argv[0], NULL, 16);
-	table[SPIN_TABLE_ELEM_ENTRY_ADDR_IDX] = boot_addr;
-	flush_dcache_range((unsigned long)table,
+
+	if (check_psci()) {
+		/* SPIN Table is used */
+		pos = core_to_pos(nr);
+		if (pos <= 0)
+			return -1;
+
+		table += pos * WORDS_PER_SPIN_TABLE_ENTRY;
+		table[SPIN_TABLE_ELEM_ENTRY_ADDR_IDX] = boot_addr;
+		flush_dcache_range((unsigned long)table,
 			   (unsigned long)table + SPIN_TABLE_ELEM_SIZE);
-	asm volatile("dsb st");
-	smp_kick_all_cpus();	/* only those with entry addr set will run */
-	/*
-	 * When the first release command runs, all cores are set to go. Those
-	 * without a valid entry address will be trapped by "wfe". "sev" kicks
-	 * them off to check the address again. When set, they continue to run.
-	 */
-	asm volatile("sev");
+		asm volatile("dsb st");
+
+		/*
+		 * The secondary CPUs polling the spin-table above for a non-zero
+		 * value. To save power "wfe" is called. Thus call "sev" here to
+		 * wake the CPUs and let them check the spin-table again (see
+		 * slave_cpu loop in lowlevel.S)
+		 */
+		asm volatile("sev");
+	} else {
+		/* Use PSCI to kick the core */
+		printf("begin to kick cpu core #%d to address %llx\n",
+		       nr, boot_addr);
+		ret = invoke_psci_fn(PSCI_0_2_FN64_CPU_ON, nr, boot_addr, 0);
+		if (ret)
+			return -1;
+	}
 
 	return 0;
 }

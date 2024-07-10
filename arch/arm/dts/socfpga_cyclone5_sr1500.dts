@@ -4,6 +4,7 @@
  */
 
 #include "socfpga_cyclone5.dtsi"
+#include "socfpga-common-u-boot.dtsi"
 
 / {
 	model = "SoCFPGA Cyclone V SR1500";
@@ -11,6 +12,7 @@
 
 	chosen {
 		bootargs = "console=ttyS0,115200";
+		stdout-path = "serial0:115200n8";
 	};
 
 	aliases {
@@ -25,10 +27,6 @@
 		name = "memory";
 		device_type = "memory";
 		reg = <0x0 0x40000000>; /* 1GB */
-	};
-
-	soc {
-		u-boot,dm-pre-reloc;
 	};
 };
 
@@ -49,6 +47,18 @@
 	status = "okay";
 };
 
+&porta {
+	bank-name = "porta";
+};
+
+&portb {
+	bank-name = "portb";
+};
+
+&portc {
+	bank-name = "portc";
+};
+
 &i2c0 {
 	status = "okay";
 	speed-mode = <0>;
@@ -62,11 +72,12 @@
 &mmc0 {
 	status = "okay";
 	bus-width = <8>;
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &uart0 {
 	status = "okay";
+	bootph-all;
 };
 
 &usb1 {
@@ -79,13 +90,13 @@
 
 &qspi {
 	status = "okay";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 
 	flash0: n25q00@0 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "n25q00", "spi-flash";
+		compatible = "n25q00", "jedec,spi-nor";
 		reg = <0>;      /* chip select */
 		spi-max-frequency = <100000000>;
 		m25p,fast-read;

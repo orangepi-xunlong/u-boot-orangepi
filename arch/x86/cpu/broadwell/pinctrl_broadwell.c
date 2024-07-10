@@ -7,15 +7,18 @@
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <pch.h>
 #include <pci.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/pci.h>
 #include <asm/arch/gpio.h>
 #include <dt-bindings/gpio/x86-gpio.h>
 #include <dm/pinctrl.h>
+#include <dm/uclass-internal.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -214,7 +217,7 @@ static int broadwell_pinctrl_probe(struct udevice *dev)
 	u32 gpiobase;
 	int ret;
 
-	ret = uclass_first_device(UCLASS_PCH, &pch);
+	ret = uclass_find_first_device(UCLASS_PCH, &pch);
 	if (ret)
 		return ret;
 	if (!pch)

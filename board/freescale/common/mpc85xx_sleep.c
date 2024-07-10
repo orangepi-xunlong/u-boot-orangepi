@@ -4,6 +4,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/immap_85xx.h>
 #include "sleep.h"
 #ifdef CONFIG_U_QE
@@ -22,7 +24,7 @@ void __weak board_sleep_prepare(void)
 
 bool is_warm_boot(void)
 {
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_MPC85xx_GUTS_ADDR;
 
 	if (in_be32(&gur->scrtsr[0]) & DCFG_CCSR_CRSTSR_WDRFR)
 		return 1;
@@ -44,11 +46,11 @@ static void dp_ddr_restore(void)
 {
 	u64 *src, *dst;
 	int i;
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_MPC85xx_SCFG;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_MPC85xx_SCFG;
 
 	/* get the address of ddr date from SPARECR3 */
 	src = (u64 *)(in_be32(&scfg->sparecr[2]) + DDR_BUFF_LEN - 8);
-	dst = (u64 *)(CONFIG_SYS_SDRAM_BASE + DDR_BUFF_LEN - 8);
+	dst = (u64 *)(CFG_SYS_SDRAM_BASE + DDR_BUFF_LEN - 8);
 
 	for (i = 0; i < DDR_BUFF_LEN / 8; i++)
 		*dst-- = *src--;
@@ -78,7 +80,7 @@ int fsl_dp_resume(void)
 {
 	u32 start_addr;
 	void (*kernel_resume)(void);
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_MPC85xx_SCFG;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_MPC85xx_SCFG;
 
 	if (!is_warm_boot())
 		return 0;

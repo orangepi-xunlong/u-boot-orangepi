@@ -4,7 +4,7 @@
  * drivers and users.
  *
  * Copyright © 1999-2010 David Woodhouse <dwmw2@infradead.org>
- * Copyright © 2006      Red Hat UK Limited 
+ * Copyright © 2006      Red Hat UK Limited
  *
  */
 
@@ -26,6 +26,8 @@
 #include <linux/gfp.h>
 #include <linux/slab.h>
 #else
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/err.h>
 #include <ubi_uboot.h>
 #endif
@@ -76,8 +78,6 @@ static struct class mtd_class = {
 	.resume = mtd_cls_resume,
 };
 #else
-struct mtd_info *mtd_table[MAX_MTD_DEVICES];
-
 #define MAX_IDR_ID	64
 
 struct idr_layer {
@@ -123,7 +123,7 @@ void *idr_get_next(struct idr *idp, int *next)
 	} else {
 		*next = 0;
 	}
-	
+
 	return ret;
 }
 
@@ -768,13 +768,39 @@ int __get_mtd_device(struct mtd_info *mtd)
 }
 EXPORT_SYMBOL_GPL(__get_mtd_device);
 
+#if CONFIG_IS_ENABLED(DM) && CONFIG_IS_ENABLED(OF_CONTROL)
+static bool mtd_device_matches_name(struct mtd_info *mtd, const char *name)
+{
+	struct udevice *dev = NULL;
+	bool is_part;
+
+	/*
+	 * If the first character of mtd name is '/', try interpreting as OF
+	 * path. Otherwise try comparing by mtd->name and mtd->dev->name.
+	 */
+	if (*name == '/')
+		device_get_global_by_ofnode(ofnode_path(name), &dev);
+
+	is_part = mtd_is_partition(mtd);
+
+	return (!is_part && dev && mtd->dev == dev) ||
+	       !strcmp(name, mtd->name) ||
+	       (is_part && mtd->dev && !strcmp(name, mtd->dev->name));
+}
+#else
+static bool mtd_device_matches_name(struct mtd_info *mtd, const char *name)
+{
+	return !strcmp(name, mtd->name);
+}
+#endif
+
 /**
  *	get_mtd_device_nm - obtain a validated handle for an MTD device by
  *	device name
  *	@name: MTD device name to open
  *
- * 	This function returns MTD device description structure in case of
- * 	success and an error code in case of failure.
+ *	This function returns MTD device description structure in case of
+ *	success and an error code in case of failure.
  */
 struct mtd_info *get_mtd_device_nm(const char *name)
 {
@@ -784,10 +810,19 @@ struct mtd_info *get_mtd_device_nm(const char *name)
 	mutex_lock(&mtd_table_mutex);
 
 	mtd_for_each_device(other) {
+#ifdef __UBOOT__
+		if (mtd_device_matches_name(other, name)) {
+			if (mtd)
+				printf("\nWarning: MTD name \"%s\" is not unique!\n\n",
+				       name);
+			mtd = other;
+		}
+#else /* !__UBOOT__ */
 		if (!strcmp(name, other->name)) {
 			mtd = other;
 			break;
 		}
+#endif /* !__UBOOT__ */
 	}
 
 	if (!mtd)
@@ -815,7 +850,7 @@ EXPORT_SYMBOL_GPL(get_mtd_device_nm);
  * @param mtd an MTD device
  * @param offset offset in flash
  * @param length image length
- * @return image length including bad blocks in *len_incl_bad and whether or not
+ * Return: image length including bad blocks in *len_incl_bad and whether or not
  *         the length returned was truncated in *truncated
  */
 void mtd_get_len_incl_bad(struct mtd_info *mtd, uint64_t offset,
@@ -871,13 +906,6 @@ void __put_mtd_device(struct mtd_info *mtd)
 }
 EXPORT_SYMBOL_GPL(__put_mtd_device);
 
-/*
- * Erase is an asynchronous operation.  Device drivers are supposed
- * to call instr->callback() whenever the operation completes, even
- * if it completes with a failure.
- * Callers are supposed to pass a callback function and wait for it
- * to be called before writing to the block.
- */
 int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
 	if (instr->addr > mtd->size || instr->len > mtd->size - instr->addr)
@@ -887,7 +915,6 @@ int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 	instr->fail_addr = MTD_FAIL_ADDR_UNKNOWN;
 	if (!instr->len) {
 		instr->state = MTD_ERASE_DONE;
-		mtd_erase_callback(instr);
 		return 0;
 	}
 	return mtd->_erase(mtd, instr);
@@ -1181,10 +1208,10 @@ int mtd_ooblayout_free(struct mtd_info *mtd, int section,
 	if (!mtd || section < 0)
 		return -EINVAL;
 
-	if (!mtd->ooblayout || !mtd->ooblayout->free)
+	if (!mtd->ooblayout || !mtd->ooblayout->rfree)
 		return -ENOTSUPP;
 
-	return mtd->ooblayout->free(mtd, section, oobfree);
+	return mtd->ooblayout->rfree(mtd, section, oobfree);
 }
 EXPORT_SYMBOL_GPL(mtd_ooblayout_free);
 

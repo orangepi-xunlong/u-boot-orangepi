@@ -26,13 +26,17 @@
  * reserved or subject to arcane restrictions.
  */
 
+#define LOG_CATEGORY	UCLASS_GPIO
+
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <pch.h>
 #include <pci.h>
 #include <asm/cpu.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/pci.h>
@@ -92,9 +96,9 @@ static int _ich6_gpio_set_direction(uint16_t base, unsigned offset, int dir)
 	return 0;
 }
 
-static int gpio_ich6_ofdata_to_platdata(struct udevice *dev)
+static int gpio_ich6_of_to_plat(struct udevice *dev)
 {
-	struct ich6_bank_platdata *plat = dev_get_platdata(dev);
+	struct ich6_bank_plat *plat = dev_get_plat(dev);
 	u32 gpiobase;
 	int offset;
 	int ret;
@@ -118,7 +122,7 @@ static int gpio_ich6_ofdata_to_platdata(struct udevice *dev)
 
 static int ich6_gpio_probe(struct udevice *dev)
 {
-	struct ich6_bank_platdata *plat = dev_get_platdata(dev);
+	struct ich6_bank_plat *plat = dev_get_plat(dev);
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct ich6_bank_priv *bank = dev_get_priv(dev);
 	const void *prop;
@@ -153,8 +157,7 @@ static int ich6_gpio_request(struct udevice *dev, unsigned offset,
 	 */
 	tmplong = inl(bank->use_sel);
 	if (!(tmplong & (1UL << offset))) {
-		debug("%s: gpio %d is reserved for internal use\n", __func__,
-		      offset);
+		log_debug("gpio %d is reserved for internal use\n", offset);
 		return -EPERM;
 	}
 
@@ -233,8 +236,8 @@ U_BOOT_DRIVER(gpio_ich6) = {
 	.id	= UCLASS_GPIO,
 	.of_match = intel_ich6_gpio_ids,
 	.ops	= &gpio_ich6_ops,
-	.ofdata_to_platdata	= gpio_ich6_ofdata_to_platdata,
+	.of_to_plat	= gpio_ich6_of_to_plat,
 	.probe	= ich6_gpio_probe,
-	.priv_auto_alloc_size = sizeof(struct ich6_bank_priv),
-	.platdata_auto_alloc_size = sizeof(struct ich6_bank_platdata),
+	.priv_auto	= sizeof(struct ich6_bank_priv),
+	.plat_auto	= sizeof(struct ich6_bank_plat),
 };

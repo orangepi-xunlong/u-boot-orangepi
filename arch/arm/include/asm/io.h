@@ -1,44 +1,26 @@
 /*
- *  linux/include/asm-arm/io.h
+ * I/O device access primitives. Based on early versions from the Linux kernel.
  *
  *  Copyright (C) 1996-2000 Russell King
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- *
- * Modifications:
- *  16-Sep-1996	RMK	Inlined the inx/outx functions & optimised for both
- *			constant addresses and variable addresses.
- *  04-Dec-1997	RMK	Moved a lot of this stuff to the new architecture
- *			specific IO header files.
- *  27-Mar-1999	PJB	Second parameter of memcpy_toio is const..
- *  04-Apr-1999	PJB	Added check_signature.
- *  12-Dec-1999	RMK	More cleanups
- *  18-Jun-2000 RMK	Removed virt_to_* and friends definitions
  */
 #ifndef __ASM_ARM_IO_H
 #define __ASM_ARM_IO_H
 
-#ifdef __KERNEL__
-
 #include <linux/types.h>
+#include <linux/kernel.h>
 #include <asm/byteorder.h>
 #include <asm/memory.h>
 #include <asm/barriers.h>
-#if 0	/* XXX###XXX */
-#include <asm/arch/hardware.h>
-#endif	/* XXX###XXX */
 
 static inline void sync(void)
 {
 }
 
-/*
- * Generic virtual read/write.  Note that we don't support half-word
- * read/writes.  We define __arch_*[bl] here, and leave __arch_*w
- * to the architecture specific code.
- */
+/* Generic virtual read/write. */
 #define __arch_getb(a)			(*(volatile unsigned char *)(a))
 #define __arch_getw(a)			(*(volatile unsigned short *)(a))
 #define __arch_getl(a)			(*(volatile unsigned int *)(a))
@@ -109,8 +91,12 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
  * have some advantages to use them instead of the simple one here.
  */
 #define mb()		dsb()
+#define rmb()		dsb()
+#define wmb()		dsb()
 #define __iormb()	dmb()
 #define __iowmb()	dmb()
+
+#define smp_processor_id()	0
 
 #define writeb(v,c)	({ u8  __v = v; __iowmb(); __arch_putb(__v,c); __v; })
 #define writew(v,c)	({ u16 __v = v; __iowmb(); __arch_putw(__v,c); __v; })
@@ -121,6 +107,27 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define readw(c)	({ u16 __v = __arch_getw(c); __iormb(); __v; })
 #define readl(c)	({ u32 __v = __arch_getl(c); __iormb(); __v; })
 #define readq(c)	({ u64 __v = __arch_getq(c); __iormb(); __v; })
+
+/*
+ * Relaxed I/O memory access primitives. These follow the Device memory
+ * ordering rules but do not guarantee any ordering relative to Normal memory
+ * accesses.
+ */
+#define readb_relaxed(c)	({ u8  __r = __raw_readb(c); __r; })
+#define readw_relaxed(c)	({ u16 __r = le16_to_cpu((__force __le16) \
+						__raw_readw(c)); __r; })
+#define readl_relaxed(c)	({ u32 __r = le32_to_cpu((__force __le32) \
+						__raw_readl(c)); __r; })
+#define readq_relaxed(c)	({ u64 __r = le64_to_cpu((__force __le64) \
+						__raw_readq(c)); __r; })
+
+#define writeb_relaxed(v, c)	((void)__raw_writeb((v), (c)))
+#define writew_relaxed(v, c)	((void)__raw_writew((__force u16) \
+						    cpu_to_le16(v), (c)))
+#define writel_relaxed(v, c)	((void)__raw_writel((__force u32) \
+						    cpu_to_le32(v), (c)))
+#define writeq_relaxed(v, c)	((void)__raw_writeq((__force u64) \
+						    cpu_to_le64(v), (c)))
 
 /*
  * The compiler seems to be incapable of optimising constants
@@ -154,13 +161,22 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define in_le32(a)	in_arch(l,le32,a)
 #define in_le16(a)	in_arch(w,le16,a)
 
+#define out_be64(a,v)	out_arch(l,be64,a,v)
 #define out_be32(a,v)	out_arch(l,be32,a,v)
 #define out_be16(a,v)	out_arch(w,be16,a,v)
 
+#define in_be64(a)	in_arch(l,be64,a)
 #define in_be32(a)	in_arch(l,be32,a)
 #define in_be16(a)	in_arch(w,be16,a)
 
+#define out_64(a,v)	__raw_writeq(v,a)
+#define out_32(a,v)	__raw_writel(v,a)
+#define out_16(a,v)	__raw_writew(v,a)
 #define out_8(a,v)	__raw_writeb(v,a)
+
+#define in_64(a)	__raw_readq(a)
+#define in_32(a)	__raw_readl(a)
+#define in_16(a)	__raw_readw(a)
 #define in_8(a)		__raw_readb(a)
 
 #define clrbits(type, addr, clear) \
@@ -180,6 +196,10 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define setbits_le32(addr, set) setbits(le32, addr, set)
 #define clrsetbits_le32(addr, clear, set) clrsetbits(le32, addr, clear, set)
 
+#define clrbits_32(addr, clear) clrbits(32, addr, clear)
+#define setbits_32(addr, set) setbits(32, addr, set)
+#define clrsetbits_32(addr, clear, set) clrsetbits(32, addr, clear, set)
+
 #define clrbits_be16(addr, clear) clrbits(be16, addr, clear)
 #define setbits_be16(addr, set) setbits(be16, addr, set)
 #define clrsetbits_be16(addr, clear, set) clrsetbits(be16, addr, clear, set)
@@ -188,16 +208,25 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define setbits_le16(addr, set) setbits(le16, addr, set)
 #define clrsetbits_le16(addr, clear, set) clrsetbits(le16, addr, clear, set)
 
+#define clrbits_16(addr, clear) clrbits(16, addr, clear)
+#define setbits_16(addr, set) setbits(16, addr, set)
+#define clrsetbits_16(addr, clear, set) clrsetbits(16, addr, clear, set)
+
 #define clrbits_8(addr, clear) clrbits(8, addr, clear)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
-/*
- * Now, pick up the machine-defined IO definitions
- */
-#if 0	/* XXX###XXX */
-#include <asm/arch/io.h>
-#endif	/* XXX###XXX */
+#define clrbits_be64(addr, clear) clrbits(be64, addr, clear)
+#define setbits_be64(addr, set) setbits(be64, addr, set)
+#define clrsetbits_be64(addr, clear, set) clrsetbits(be64, addr, clear, set)
+
+#define clrbits_le64(addr, clear) clrbits(le64, addr, clear)
+#define setbits_le64(addr, set) setbits(le64, addr, set)
+#define clrsetbits_le64(addr, clear, set) clrsetbits(le64, addr, clear, set)
+
+#define clrbits_64(addr, clear) clrbits(64, addr, clear)
+#define setbits_64(addr, set) setbits(64, addr, set)
+#define clrsetbits_64(addr, clear, set) clrsetbits(64, addr, clear, set)
 
 /*
  *  IO port access primitives
@@ -263,139 +292,116 @@ static inline void __raw_readsl(unsigned long addr, void *data, int longlen)
 #define readsb(a, d, s)		__raw_readsb((unsigned long)a, d, s)
 
 /*
- * DMA-consistent mapping functions.  These allocate/free a region of
- * uncached, unwrite-buffered mapped memory space for use with DMA
- * devices.  This is the "generic" version.  The PCI specific version
- * is in pci.h
- */
-extern void *consistent_alloc(int gfp, size_t size, dma_addr_t *handle);
-extern void consistent_free(void *vaddr, size_t size, dma_addr_t handle);
-extern void consistent_sync(void *vaddr, size_t size, int rw);
-
-/*
  * String version of IO memory access ops:
  */
 extern void _memcpy_fromio(void *, unsigned long, size_t);
 extern void _memcpy_toio(unsigned long, const void *, size_t);
 extern void _memset_io(unsigned long, int, size_t);
 
-extern void __readwrite_bug(const char *fn);
-
+/* Optimized copy functions to read from/write to IO sapce */
+#ifdef CONFIG_ARM64
+#include <cpu_func.h>
 /*
- * If this architecture has PCI memory IO, then define the read/write
- * macros.  These should only be used with the cookie passed from
- * ioremap.
+ * Copy data from IO memory space to "real" memory space.
  */
-#ifdef __mem_pci
-
-#define readb(c) ({ unsigned int __v = __raw_readb(__mem_pci(c)); __v; })
-#define readw(c) ({ unsigned int __v = le16_to_cpu(__raw_readw(__mem_pci(c))); __v; })
-#define readl(c) ({ unsigned int __v = le32_to_cpu(__raw_readl(__mem_pci(c))); __v; })
-
-#define writeb(v,c)		__raw_writeb(v,__mem_pci(c))
-#define writew(v,c)		__raw_writew(cpu_to_le16(v),__mem_pci(c))
-#define writel(v,c)		__raw_writel(cpu_to_le32(v),__mem_pci(c))
-
-#define memset_io(c,v,l)		_memset_io(__mem_pci(c),(v),(l))
-#define memcpy_fromio(a,c,l)		_memcpy_fromio((a),__mem_pci(c),(l))
-#define memcpy_toio(c,a,l)		_memcpy_toio(__mem_pci(c),(a),(l))
-
-#define eth_io_copy_and_sum(s,c,l,b) \
-				eth_copy_and_sum((s),__mem_pci(c),(l),(b))
-
-static inline int
-check_signature(unsigned long io_addr, const unsigned char *signature,
-		int length)
+static inline
+void __memcpy_fromio(void *to, const volatile void __iomem *from, size_t count)
 {
-	int retval = 0;
-	do {
-		if (readb(io_addr) != *signature)
-			goto out;
-		io_addr++;
-		signature++;
-		length--;
-	} while (length);
-	retval = 1;
-out:
-	return retval;
+	while (count && !IS_ALIGNED((unsigned long)from, 8)) {
+		*(u8 *)to = __raw_readb(from);
+		from++;
+		to++;
+		count--;
+	}
+
+	if (mmu_status()) {
+		while (count >= 8) {
+			*(u64 *)to = __raw_readq(from);
+			from += 8;
+			to += 8;
+			count -= 8;
+		}
+	}
+
+	while (count) {
+		*(u8 *)to = __raw_readb(from);
+		from++;
+		to++;
+		count--;
+	}
 }
 
+/*
+ * Copy data from "real" memory space to IO memory space.
+ */
+static inline
+void __memcpy_toio(volatile void __iomem *to, const void *from, size_t count)
+{
+	while (count && !IS_ALIGNED((unsigned long)to, 8)) {
+		__raw_writeb(*(u8 *)from, to);
+		from++;
+		to++;
+		count--;
+	}
+
+	if (mmu_status()) {
+		while (count >= 8) {
+			__raw_writeq(*(u64 *)from, to);
+			from += 8;
+			to += 8;
+			count -= 8;
+		}
+	}
+
+	while (count) {
+		__raw_writeb(*(u8 *)from, to);
+		from++;
+		to++;
+		count--;
+	}
+}
+
+/*
+ * "memset" on IO memory space.
+ */
+static inline
+void __memset_io(volatile void __iomem *dst, int c, size_t count)
+{
+	u64 qc = (u8)c;
+
+	qc |= qc << 8;
+	qc |= qc << 16;
+	qc |= qc << 32;
+
+	while (count && !IS_ALIGNED((unsigned long)dst, 8)) {
+		__raw_writeb(c, dst);
+		dst++;
+		count--;
+	}
+
+	while (count >= 8) {
+		__raw_writeq(qc, dst);
+		dst += 8;
+		count -= 8;
+	}
+
+	while (count) {
+		__raw_writeb(c, dst);
+		dst++;
+		count--;
+	}
+}
+#endif /* CONFIG_ARM64 */
+
+#ifdef CONFIG_ARM64
+#define memset_io(a, b, c)		__memset_io((a), (b), (c))
+#define memcpy_fromio(a, b, c)		__memcpy_fromio((a), (b), (c))
+#define memcpy_toio(a, b, c)		__memcpy_toio((a), (b), (c))
 #else
 #define memset_io(a, b, c)		memset((void *)(a), (b), (c))
 #define memcpy_fromio(a, b, c)		memcpy((a), (void *)(b), (c))
 #define memcpy_toio(a, b, c)		memcpy((void *)(a), (b), (c))
-
-#if !defined(readb)
-
-#define readb(addr)			(__readwrite_bug("readb"),0)
-#define readw(addr)			(__readwrite_bug("readw"),0)
-#define readl(addr)			(__readwrite_bug("readl"),0)
-#define writeb(v,addr)			__readwrite_bug("writeb")
-#define writew(v,addr)			__readwrite_bug("writew")
-#define writel(v,addr)			__readwrite_bug("writel")
-
-#define eth_io_copy_and_sum(a,b,c,d)	__readwrite_bug("eth_io_copy_and_sum")
-
-#define check_signature(io,sig,len)	(0)
-
 #endif
-#endif	/* __mem_pci */
-
-/*
- * If this architecture has ISA IO, then define the isa_read/isa_write
- * macros.
- */
-#ifdef __mem_isa
-
-#define isa_readb(addr)			__raw_readb(__mem_isa(addr))
-#define isa_readw(addr)			__raw_readw(__mem_isa(addr))
-#define isa_readl(addr)			__raw_readl(__mem_isa(addr))
-#define isa_writeb(val,addr)		__raw_writeb(val,__mem_isa(addr))
-#define isa_writew(val,addr)		__raw_writew(val,__mem_isa(addr))
-#define isa_writel(val,addr)		__raw_writel(val,__mem_isa(addr))
-#define isa_memset_io(a,b,c)		_memset_io(__mem_isa(a),(b),(c))
-#define isa_memcpy_fromio(a,b,c)	_memcpy_fromio((a),__mem_isa(b),(c))
-#define isa_memcpy_toio(a,b,c)		_memcpy_toio(__mem_isa((a)),(b),(c))
-
-#define isa_eth_io_copy_and_sum(a,b,c,d) \
-				eth_copy_and_sum((a),__mem_isa(b),(c),(d))
-
-static inline int
-isa_check_signature(unsigned long io_addr, const unsigned char *signature,
-		    int length)
-{
-	int retval = 0;
-	do {
-		if (isa_readb(io_addr) != *signature)
-			goto out;
-		io_addr++;
-		signature++;
-		length--;
-	} while (length);
-	retval = 1;
-out:
-	return retval;
-}
-
-#else	/* __mem_isa */
-
-#define isa_readb(addr)			(__readwrite_bug("isa_readb"),0)
-#define isa_readw(addr)			(__readwrite_bug("isa_readw"),0)
-#define isa_readl(addr)			(__readwrite_bug("isa_readl"),0)
-#define isa_writeb(val,addr)		__readwrite_bug("isa_writeb")
-#define isa_writew(val,addr)		__readwrite_bug("isa_writew")
-#define isa_writel(val,addr)		__readwrite_bug("isa_writel")
-#define isa_memset_io(a,b,c)		__readwrite_bug("isa_memset_io")
-#define isa_memcpy_fromio(a,b,c)	__readwrite_bug("isa_memcpy_fromio")
-#define isa_memcpy_toio(a,b,c)		__readwrite_bug("isa_memcpy_toio")
-
-#define isa_eth_io_copy_and_sum(a,b,c,d) \
-				__readwrite_bug("isa_eth_io_copy_and_sum")
-
-#define isa_check_signature(io,sig,len)	(0)
-
-#endif	/* __mem_isa */
-#endif	/* __KERNEL__ */
 
 #include <asm-generic/io.h>
 #include <iotrace.h>

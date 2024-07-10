@@ -9,6 +9,7 @@
 #define _SUNXI_CLOCK_H
 
 #include <linux/types.h>
+#include <asm/arch/cpu.h>
 
 #define CLK_GATE_OPEN			0x1
 #define CLK_GATE_CLOSE			0x0
@@ -16,37 +17,16 @@
 /* clock control module regs definition */
 #if defined(CONFIG_MACH_SUN8I_A83T)
 #include <asm/arch/clock_sun8i_a83t.h>
-#elif defined(CONFIG_MACH_SUN50IW3) || defined(CONFIG_MACH_SUN8IW16) || \
-	defined(CONFIG_MACH_SUN8IW19)
-#include <asm/arch/clock_sun50iw3.h>
+#elif defined(CONFIG_SUN50I_GEN_H6) || defined(CONFIG_SUNXI_GEN_NCAT2)
+#include <asm/arch/clock_sun50i_h6.h>
 #elif defined(CONFIG_MACH_SUN6I) || defined(CONFIG_MACH_SUN8I) || \
-      defined(CONFIG_MACH_SUN50I)
+      defined(CONFIG_MACH_SUN50I) || defined(CONFIG_MACH_SUNIV)
 #include <asm/arch/clock_sun6i.h>
 #elif defined(CONFIG_MACH_SUN9I)
 #include <asm/arch/clock_sun9i.h>
-#elif defined(CONFIG_MACH_SUN8IW18)
-#include <asm/arch/clock_sun8iw18.h>
-#elif defined(CONFIG_MACH_SUN50IW9)
-#include <asm/arch/clock_sun50iw9.h>
-#elif defined(CONFIG_MACH_SUN50IW10)
-#include <asm/arch/clock_sun50iw10.h>
-#elif defined(CONFIG_MACH_SUN50IW11)
-#include <asm/arch/clock_sun50iw11.h>
-#elif defined(CONFIG_MACH_SUN8IW15)
-#include <asm/arch/clock_sun8iw15.h>
-#elif defined(CONFIG_MACH_SUN8IW7)
-#include <asm/arch/clock_sun6i.h>
 #else
 #include <asm/arch/clock_sun4i.h>
 #endif
-
-struct core_pll_freq_tbl {
-    int FactorN;
-    int FactorK;
-    int FactorM;
-    int FactorP;
-    int pading;
-};
 
 #ifndef __ASSEMBLY__
 int clock_init(void);
@@ -55,16 +35,6 @@ void clock_set_de_mod_clock(u32 *clk_cfg, unsigned int hz);
 void clock_init_safe(void);
 void clock_init_sec(void);
 void clock_init_uart(void);
-
-uint clock_get_corepll(void);
-int clock_set_corepll(int frequency);
-uint clock_get_pll6(void);
-uint clock_get_ahb(void);
-uint clock_get_apb1(void);
-uint clock_get_apb2(void);
-uint clock_get_axi(void);
-uint clock_get_mbus(void);
-
 #endif
 
 #endif /* _SUNXI_CLOCK_H */

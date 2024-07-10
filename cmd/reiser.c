@@ -11,6 +11,7 @@
 #include <common.h>
 #include <config.h>
 #include <command.h>
+#include <env.h>
 #include <image.h>
 #include <linux/ctype.h>
 #include <asm/byteorder.h>
@@ -29,12 +30,12 @@
 #define PRINTF(fmt,args...)
 #endif
 
-int do_reiserls (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reiserls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename = "/";
 	int dev, part;
 	struct blk_desc *dev_desc = NULL;
-	disk_partition_t info;
+	struct disk_partition info;
 
 	if (argc < 3)
 		return CMD_RET_USAGE;
@@ -75,12 +76,12 @@ U_BOOT_CMD(
 /******************************************************************************
  * Reiserfs boot command intepreter. Derived from diskboot
  */
-int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reiserload(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *filename = NULL;
 	int dev, part;
 	ulong addr = 0, filelen;
-	disk_partition_t info;
+	struct disk_partition info;
 	struct blk_desc *dev_desc = NULL;
 	unsigned long count;
 	char *addr_str;
@@ -89,7 +90,7 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	case 3:
 		addr_str = env_get("loadaddr");
 		if (addr_str != NULL) {
-			addr = simple_strtoul (addr_str, NULL, 16);
+			addr = hextoul(addr_str, NULL);
 		} else {
 			addr = CONFIG_SYS_LOAD_ADDR;
 		}
@@ -97,19 +98,19 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		count = 0;
 		break;
 	case 4:
-		addr = simple_strtoul (argv[3], NULL, 16);
+		addr = hextoul(argv[3], NULL);
 		filename = env_get("bootfile");
 		count = 0;
 		break;
 	case 5:
-		addr = simple_strtoul (argv[3], NULL, 16);
+		addr = hextoul(argv[3], NULL);
 		filename = argv[4];
 		count = 0;
 		break;
 	case 6:
-		addr = simple_strtoul (argv[3], NULL, 16);
+		addr = hextoul(argv[3], NULL);
 		filename = argv[4];
-		count = simple_strtoul (argv[5], NULL, 16);
+		count = hextoul(argv[5], NULL);
 		break;
 
 	default:
@@ -153,7 +154,7 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	/* Loading ok, update default load address */
-	load_addr = addr;
+	image_load_addr = addr;
 
 	printf ("\n%ld bytes read\n", filelen);
 	env_set_hex("filesize", filelen);

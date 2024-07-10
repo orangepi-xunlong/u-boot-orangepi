@@ -3,7 +3,8 @@
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
  */
 
-#include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <linux/sizes.h>
 #include <asm/addrspace.h>
 #include <mach/ddr.h>

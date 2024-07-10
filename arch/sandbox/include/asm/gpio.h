@@ -23,12 +23,21 @@
  */
 #include <asm-generic/gpio.h>
 
+/* Our own private GPIO flags, which musn't conflict with GPIOD_... */
+#define GPIOD_EXT_HIGH		BIT(31)	/* external source is high (else low) */
+#define GPIOD_EXT_DRIVEN	BIT(30)	/* external source is driven */
+#define GPIOD_EXT_PULL_UP	BIT(29)	/* GPIO has external pull-up */
+#define GPIOD_EXT_PULL_DOWN	BIT(28)	/* GPIO has external pull-down */
+
+#define GPIOD_EXT_PULL		(BIT(28) | BIT(29))
+#define GPIOD_SANDBOX_MASK	GENMASK(31, 28)
+
 /**
  * Return the simulated value of a GPIO (used only in sandbox test code)
  *
  * @param dev		device to use
  * @param offset	GPIO offset within bank
- * @return -1 on error, 0 if GPIO is low, >0 if high
+ * Return: -1 on error, 0 if GPIO is low, >0 if high
  */
 int sandbox_gpio_get_value(struct udevice *dev, unsigned int offset);
 
@@ -38,36 +47,16 @@ int sandbox_gpio_get_value(struct udevice *dev, unsigned int offset);
  * @param dev		device to use
  * @param offset	GPIO offset within bank
  * @param value		value to set (0 for low, non-zero for high)
- * @return -1 on error, 0 if ok
+ * Return: -1 on error, 0 if ok
  */
 int sandbox_gpio_set_value(struct udevice *dev, unsigned int offset, int value);
-
-/**
- * Set or reset the simulated open drain mode of a GPIO (used only in sandbox
- * test code)
- *
- * @param gp	GPIO number
- * @param value	value to set (0 for enabled open drain mode, non-zero for
- * 		disabled)
- * @return -1 on error, 0 if ok
- */
-int sandbox_gpio_set_open_drain(struct udevice *dev, unsigned offset, int value);
-
-/**
- * Return the state of the simulated open drain mode of a GPIO (used only in
- * sandbox test code)
- *
- * @param gp	GPIO number
- * @return -1 on error, 0 if GPIO is input, >0 if output
- */
-int sandbox_gpio_get_open_drain(struct udevice *dev, unsigned offset);
 
 /**
  * Return the simulated direction of a GPIO (used only in sandbox test code)
  *
  * @param dev		device to use
  * @param offset	GPIO offset within bank
- * @return -1 on error, 0 if GPIO is input, >0 if output
+ * Return: -1 on error, 0 if GPIO is input, >0 if output
  */
 int sandbox_gpio_get_direction(struct udevice *dev, unsigned int offset);
 
@@ -76,10 +65,30 @@ int sandbox_gpio_get_direction(struct udevice *dev, unsigned int offset);
  *
  * @param dev		device to use
  * @param offset	GPIO offset within bank
- * @param output 	0 to set as input, 1 to set as output
- * @return -1 on error, 0 if ok
+ * @param output	0 to set as input, 1 to set as output
+ * Return: -1 on error, 0 if ok
  */
 int sandbox_gpio_set_direction(struct udevice *dev, unsigned int offset,
 			       int output);
+
+/**
+ * Return the simulated flags of a GPIO (used only in sandbox test code)
+ *
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
+ * Return: dir_flags: bitfield accesses by GPIOD_ defines
+ */
+ulong sandbox_gpio_get_flags(struct udevice *dev, unsigned int offset);
+
+/**
+ * Set the simulated flags of a GPIO (used only in sandbox test code)
+ *
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
+ * @param flags		bitfield accesses by GPIOD_ defines
+ * Return: -1 on error, 0 if ok
+ */
+int sandbox_gpio_set_flags(struct udevice *dev, unsigned int offset,
+			   ulong flags);
 
 #endif

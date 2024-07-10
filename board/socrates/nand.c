@@ -6,9 +6,10 @@
 
 #include <common.h>
 
-#if defined(CONFIG_SYS_NAND_BASE)
+#if defined(CFG_SYS_NAND_BASE)
 #include <nand.h>
 #include <linux/errno.h>
+#include <linux/mtd/rawnand.h>
 #include <asm/io.h>
 
 static int state;

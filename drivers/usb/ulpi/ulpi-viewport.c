@@ -15,6 +15,7 @@
 
 #include <common.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <usb/ulpi.h>
 
 /* ULPI viewport control bits */
@@ -33,7 +34,7 @@
  */
 static int ulpi_wait(struct ulpi_viewport *ulpi_vp, u32 mask)
 {
-	int timeout = CONFIG_USB_ULPI_TIMEOUT;
+	int timeout = CFG_USB_ULPI_TIMEOUT;
 
 	/* Wait for the bits in mask to become zero. */
 	while (--timeout) {

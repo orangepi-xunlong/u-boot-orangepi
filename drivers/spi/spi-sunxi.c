@@ -21,14 +21,17 @@
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
+#include <log.h>
 #include <spi.h>
 #include <errno.h>
 #include <fdt_support.h>
 #include <reset.h>
 #include <wait_bit.h>
+#include <asm/global_data.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
 
 #include <asm/bitops.h>
-#include <asm/gpio.h>
 #include <asm/io.h>
 
 #include <linux/iopoll.h>
@@ -69,10 +72,18 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SUN4I_XMIT_CNT(cnt)		((cnt) & SUN4I_MAX_XFER_SIZE)
 #define SUN4I_FIFO_STA_RF_CNT_BITS	0
 
-#define SUN4I_SPI_MAX_RATE		24000000
+#ifdef CONFIG_MACH_SUNIV
+/* the AHB clock, which we programmed to be 1/3 of PLL_PERIPH@600MHz */
+#define SUNXI_INPUT_CLOCK		200000000	/* 200 MHz */
+#define SUN4I_SPI_MAX_RATE		(SUNXI_INPUT_CLOCK / 2)
+#else
+/* the SPI mod clock, defaulting to be 1/1 of the HOSC@24MHz */
+#define SUNXI_INPUT_CLOCK		24000000	/* 24 MHz */
+#define SUN4I_SPI_MAX_RATE		SUNXI_INPUT_CLOCK
+#endif
 #define SUN4I_SPI_MIN_RATE		3000
 #define SUN4I_SPI_DEFAULT_RATE		1000000
-#define SUN4I_SPI_TIMEOUT_US		1000000
+#define SUN4I_SPI_TIMEOUT_MS		1000
 
 #define SPI_REG(priv, reg)		((priv)->base + \
 					(priv)->variant->regs[reg])
@@ -119,7 +130,7 @@ struct sun4i_spi_variant {
 	bool has_burst_ctl;
 };
 
-struct sun4i_spi_platdata {
+struct sun4i_spi_plat {
 	struct sun4i_spi_variant *variant;
 	u32 base;
 	u32 max_hz;
@@ -176,86 +187,6 @@ static void sun4i_spi_set_cs(struct udevice *bus, u8 cs, bool enable)
 	writel(reg, SPI_REG(priv, SPI_TCR));
 }
 
-static int sun4i_spi_parse_pins(struct udevice *dev)
-{
-	const void *fdt = gd->fdt_blob;
-	const char *pin_name;
-	const fdt32_t *list;
-	u32 phandle;
-	int drive, pull = 0, pin, i;
-	int offset;
-	int size;
-
-	list = fdt_getprop(fdt, dev_of_offset(dev), "pinctrl-0", &size);
-	if (!list) {
-		printf("WARNING: sun4i_spi: cannot find pinctrl-0 node\n");
-		return -EINVAL;
-	}
-
-	while (size) {
-		phandle = fdt32_to_cpu(*list++);
-		size -= sizeof(*list);
-
-		offset = fdt_node_offset_by_phandle(fdt, phandle);
-		if (offset < 0)
-			return offset;
-
-		drive = fdt_getprop_u32_default_node(fdt, offset, 0,
-						     "drive-strength", 0);
-		if (drive) {
-			if (drive <= 10)
-				drive = 0;
-			else if (drive <= 20)
-				drive = 1;
-			else if (drive <= 30)
-				drive = 2;
-			else
-				drive = 3;
-		} else {
-			drive = fdt_getprop_u32_default_node(fdt, offset, 0,
-							     "allwinner,drive",
-							      0);
-			drive = min(drive, 3);
-		}
-
-		if (fdt_get_property(fdt, offset, "bias-disable", NULL))
-			pull = 0;
-		else if (fdt_get_property(fdt, offset, "bias-pull-up", NULL))
-			pull = 1;
-		else if (fdt_get_property(fdt, offset, "bias-pull-down", NULL))
-			pull = 2;
-		else
-			pull = fdt_getprop_u32_default_node(fdt, offset, 0,
-							    "allwinner,pull",
-							     0);
-		pull = min(pull, 2);
-
-		for (i = 0; ; i++) {
-			pin_name = fdt_stringlist_get(fdt, offset,
-						      "pins", i, NULL);
-			if (!pin_name) {
-				pin_name = fdt_stringlist_get(fdt, offset,
-							      "allwinner,pins",
-							       i, NULL);
-				if (!pin_name)
-					break;
-			}
-
-			pin = name_to_gpio(pin_name);
-			if (pin < 0)
-				break;
-
-			if (IS_ENABLED(CONFIG_MACH_SUN50I))
-				sunxi_gpio_set_cfgpin(pin, SUN50I_GPC_SPI0);
-			else
-				sunxi_gpio_set_cfgpin(pin, SUNXI_GPC_SPI0);
-			sunxi_gpio_set_drv(pin, drive);
-			sunxi_gpio_set_pull(pin, pull);
-		}
-	}
-	return 0;
-}
-
 static inline int sun4i_spi_set_clock(struct udevice *dev, bool enable)
 {
 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
@@ -298,6 +229,60 @@ err_ahb:
 	return ret;
 }
 
+static void sun4i_spi_set_speed_mode(struct udevice *dev)
+{
+	struct sun4i_spi_priv *priv = dev_get_priv(dev);
+	unsigned int div;
+	u32 reg;
+
+	/*
+	 * Setup clock divider.
+	 *
+	 * We have two choices there. Either we can use the clock
+	 * divide rate 1, which is calculated thanks to this formula:
+	 * SPI_CLK = MOD_CLK / (2 ^ (cdr + 1))
+	 * Or we can use CDR2, which is calculated with the formula:
+	 * SPI_CLK = MOD_CLK / (2 * (cdr + 1))
+	 * Whether we use the former or the latter is set through the
+	 * DRS bit.
+	 *
+	 * First try CDR2, and if we can't reach the expected
+	 * frequency, fall back to CDR1.
+	 */
+
+	div = DIV_ROUND_UP(SUNXI_INPUT_CLOCK, priv->freq);
+	reg = readl(SPI_REG(priv, SPI_CCR));
+
+	if ((div / 2) <= (SUN4I_CLK_CTL_CDR2_MASK + 1)) {
+		div /= 2;
+		if (div > 0)
+			div--;
+
+		reg &= ~(SUN4I_CLK_CTL_CDR2_MASK | SUN4I_CLK_CTL_DRS);
+		reg |= SUN4I_CLK_CTL_CDR2(div) | SUN4I_CLK_CTL_DRS;
+	} else {
+		div = fls(div - 1);
+		/* The F1C100s encodes the divider as 2^(n+1) */
+		if (IS_ENABLED(CONFIG_MACH_SUNIV))
+			div--;
+		reg &= ~((SUN4I_CLK_CTL_CDR1_MASK << 8) | SUN4I_CLK_CTL_DRS);
+		reg |= SUN4I_CLK_CTL_CDR1(div);
+	}
+
+	writel(reg, SPI_REG(priv, SPI_CCR));
+
+	reg = readl(SPI_REG(priv, SPI_TCR));
+	reg &= ~(SPI_BIT(priv, SPI_TCR_CPOL) | SPI_BIT(priv, SPI_TCR_CPHA));
+
+	if (priv->mode & SPI_CPOL)
+		reg |= SPI_BIT(priv, SPI_TCR_CPOL);
+
+	if (priv->mode & SPI_CPHA)
+		reg |= SPI_BIT(priv, SPI_TCR_CPHA);
+
+	writel(reg, SPI_REG(priv, SPI_TCR));
+}
+
 static int sun4i_spi_claim_bus(struct udevice *dev)
 {
 	struct sun4i_spi_priv *priv = dev_get_priv(dev->parent);
@@ -316,6 +301,8 @@ static int sun4i_spi_claim_bus(struct udevice *dev)
 
 	setbits_le32(SPI_REG(priv, SPI_TCR), SPI_BIT(priv, SPI_TCR_CS_MANUAL) |
 		     SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW));
+
+	sun4i_spi_set_speed_mode(dev->parent);
 
 	return 0;
 }
@@ -336,10 +323,9 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 {
 	struct udevice *bus = dev->parent;
 	struct sun4i_spi_priv *priv = dev_get_priv(bus);
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 
 	u32 len = bitlen / 8;
-	u32 rx_fifocnt;
 	u8 nbytes;
 	int ret;
 
@@ -377,13 +363,10 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		setbits_le32(SPI_REG(priv, SPI_TCR),
 			     SPI_BIT(priv, SPI_TCR_XCH));
 
-		/* Wait till RX FIFO to be empty */
-		ret = readl_poll_timeout(SPI_REG(priv, SPI_FSR),
-					 rx_fifocnt,
-					 (((rx_fifocnt &
-					 SPI_BIT(priv, SPI_FSR_RF_CNT_MASK)) >>
-					 SUN4I_FIFO_STA_RF_CNT_BITS) >= nbytes),
-					 SUN4I_SPI_TIMEOUT_US);
+		/* Wait for the transfer to be done */
+		ret = wait_for_bit_le32((const void *)SPI_REG(priv, SPI_TCR),
+					SPI_BIT(priv, SPI_TCR_XCH),
+					false, SUN4I_SPI_TIMEOUT_MS, false);
 		if (ret < 0) {
 			printf("ERROR: sun4i_spi: Timeout transferring data\n");
 			sun4i_spi_set_cs(bus, slave_plat->cs, false);
@@ -404,48 +387,16 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 static int sun4i_spi_set_speed(struct udevice *dev, uint speed)
 {
-	struct sun4i_spi_platdata *plat = dev_get_platdata(dev);
+	struct sun4i_spi_plat *plat = dev_get_plat(dev);
 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
-	unsigned int div;
-	u32 reg;
 
 	if (speed > plat->max_hz)
 		speed = plat->max_hz;
 
 	if (speed < SUN4I_SPI_MIN_RATE)
 		speed = SUN4I_SPI_MIN_RATE;
-	/*
-	 * Setup clock divider.
-	 *
-	 * We have two choices there. Either we can use the clock
-	 * divide rate 1, which is calculated thanks to this formula:
-	 * SPI_CLK = MOD_CLK / (2 ^ (cdr + 1))
-	 * Or we can use CDR2, which is calculated with the formula:
-	 * SPI_CLK = MOD_CLK / (2 * (cdr + 1))
-	 * Whether we use the former or the latter is set through the
-	 * DRS bit.
-	 *
-	 * First try CDR2, and if we can't reach the expected
-	 * frequency, fall back to CDR1.
-	 */
-
-	div = SUN4I_SPI_MAX_RATE / (2 * speed);
-	reg = readl(SPI_REG(priv, SPI_CCR));
-
-	if (div <= (SUN4I_CLK_CTL_CDR2_MASK + 1)) {
-		if (div > 0)
-			div--;
-
-		reg &= ~(SUN4I_CLK_CTL_CDR2_MASK | SUN4I_CLK_CTL_DRS);
-		reg |= SUN4I_CLK_CTL_CDR2(div) | SUN4I_CLK_CTL_DRS;
-	} else {
-		div = __ilog2(SUN4I_SPI_MAX_RATE) - __ilog2(speed);
-		reg &= ~((SUN4I_CLK_CTL_CDR1_MASK << 8) | SUN4I_CLK_CTL_DRS);
-		reg |= SUN4I_CLK_CTL_CDR1(div);
-	}
 
 	priv->freq = speed;
-	writel(reg, SPI_REG(priv, SPI_CCR));
 
 	return 0;
 }
@@ -453,19 +404,8 @@ static int sun4i_spi_set_speed(struct udevice *dev, uint speed)
 static int sun4i_spi_set_mode(struct udevice *dev, uint mode)
 {
 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
-	u32 reg;
-
-	reg = readl(SPI_REG(priv, SPI_TCR));
-	reg &= ~(SPI_BIT(priv, SPI_TCR_CPOL) | SPI_BIT(priv, SPI_TCR_CPHA));
-
-	if (mode & SPI_CPOL)
-		reg |= SPI_BIT(priv, SPI_TCR_CPOL);
-
-	if (mode & SPI_CPHA)
-		reg |= SPI_BIT(priv, SPI_TCR_CPHA);
 
 	priv->mode = mode;
-	writel(reg, SPI_REG(priv, SPI_TCR));
 
 	return 0;
 }
@@ -480,29 +420,27 @@ static const struct dm_spi_ops sun4i_spi_ops = {
 
 static int sun4i_spi_probe(struct udevice *bus)
 {
-	struct sun4i_spi_platdata *plat = dev_get_platdata(bus);
+	struct sun4i_spi_plat *plat = dev_get_plat(bus);
 	struct sun4i_spi_priv *priv = dev_get_priv(bus);
 	int ret;
 
 	ret = clk_get_by_name(bus, "ahb", &priv->clk_ahb);
 	if (ret) {
-		dev_err(dev, "failed to get ahb clock\n");
+		dev_err(bus, "failed to get ahb clock\n");
 		return ret;
 	}
 
 	ret = clk_get_by_name(bus, "mod", &priv->clk_mod);
 	if (ret) {
-		dev_err(dev, "failed to get mod clock\n");
+		dev_err(bus, "failed to get mod clock\n");
 		return ret;
 	}
 
 	ret = reset_get_by_index(bus, 0, &priv->reset);
 	if (ret && ret != -ENOENT) {
-		dev_err(dev, "failed to get reset\n");
+		dev_err(bus, "failed to get reset\n");
 		return ret;
 	}
-
-	sun4i_spi_parse_pins(bus);
 
 	priv->variant = plat->variant;
 	priv->base = plat->base;
@@ -511,12 +449,12 @@ static int sun4i_spi_probe(struct udevice *bus)
 	return 0;
 }
 
-static int sun4i_spi_ofdata_to_platdata(struct udevice *bus)
+static int sun4i_spi_of_to_plat(struct udevice *bus)
 {
-	struct sun4i_spi_platdata *plat = dev_get_platdata(bus);
+	struct sun4i_spi_plat *plat = dev_get_plat(bus);
 	int node = dev_of_offset(bus);
 
-	plat->base = devfdt_get_addr(bus);
+	plat->base = dev_read_addr(bus);
 	plat->variant = (struct sun4i_spi_variant *)dev_get_driver_data(bus);
 	plat->max_hz = fdtdec_get_int(gd->fdt_blob, node,
 				      "spi-max-frequency",
@@ -627,8 +565,8 @@ U_BOOT_DRIVER(sun4i_spi) = {
 	.id	= UCLASS_SPI,
 	.of_match	= sun4i_spi_ids,
 	.ops	= &sun4i_spi_ops,
-	.ofdata_to_platdata	= sun4i_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size	= sizeof(struct sun4i_spi_platdata),
-	.priv_auto_alloc_size	= sizeof(struct sun4i_spi_priv),
+	.of_to_plat	= sun4i_spi_of_to_plat,
+	.plat_auto	= sizeof(struct sun4i_spi_plat),
+	.priv_auto	= sizeof(struct sun4i_spi_priv),
 	.probe	= sun4i_spi_probe,
 };

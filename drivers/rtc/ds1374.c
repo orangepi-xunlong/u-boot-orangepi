@@ -18,8 +18,6 @@
 #include <rtc.h>
 #include <i2c.h>
 
-#if defined(CONFIG_CMD_DATE)
-
 /*---------------------------------------------------------------------*/
 #undef DEBUG_RTC
 #define DEBUG_RTC
@@ -31,8 +29,8 @@
 #endif
 /*---------------------------------------------------------------------*/
 
-#ifndef CONFIG_SYS_I2C_RTC_ADDR
-# define CONFIG_SYS_I2C_RTC_ADDR	0x68
+#ifndef CFG_SYS_I2C_RTC_ADDR
+# define CFG_SYS_I2C_RTC_ADDR	0x68
 #endif
 
 #if defined(CONFIG_RTC_DS1374) && (CONFIG_SYS_I2C_SPEED > 400000)
@@ -60,7 +58,7 @@
 #define RTC_CTL_BIT_RS2			(1<<2) /* Bit 2/2 - Rate Select square wave output */
 #define RTC_CTL_BIT_WDSTR		(1<<3) /* Bit 3 - Watchdog Reset Steering */
 #define RTC_CTL_BIT_BBSQW		(1<<4) /* Bit 4 - Battery-Backed Square-Wave */
-#define RTC_CTL_BIT_WD_ALM		(1<<5) /* Bit 5 - Watchdoc/Alarm Counter Select */
+#define RTC_CTL_BIT_WD_ALM		(1<<5) /* Bit 5 - Watchdog/Alarm Counter Select */
 #define RTC_CTL_BIT_WACE		(1<<6) /* Bit 6 - Watchdog/Alarm Counter Enable WACE*/
 #define RTC_CTL_BIT_EN_OSC		(1<<7) /* Bit 7 - Enable Oscilator */
 
@@ -196,22 +194,21 @@ void rtc_reset (void){
  */
 static uchar rtc_read (uchar reg)
 {
-	return (i2c_reg_read (CONFIG_SYS_I2C_RTC_ADDR, reg));
+	return (i2c_reg_read (CFG_SYS_I2C_RTC_ADDR, reg));
 }
 
 static void rtc_write(uchar reg, uchar val, bool set)
 {
 	if (set == true) {
-		val |= i2c_reg_read (CONFIG_SYS_I2C_RTC_ADDR, reg);
-		i2c_reg_write (CONFIG_SYS_I2C_RTC_ADDR, reg, val);
+		val |= i2c_reg_read (CFG_SYS_I2C_RTC_ADDR, reg);
+		i2c_reg_write (CFG_SYS_I2C_RTC_ADDR, reg, val);
 	} else {
-		val = i2c_reg_read (CONFIG_SYS_I2C_RTC_ADDR, reg) & ~val;
-		i2c_reg_write (CONFIG_SYS_I2C_RTC_ADDR, reg, val);
+		val = i2c_reg_read (CFG_SYS_I2C_RTC_ADDR, reg) & ~val;
+		i2c_reg_write (CFG_SYS_I2C_RTC_ADDR, reg, val);
 	}
 }
 
 static void rtc_write_raw (uchar reg, uchar val)
 {
-		i2c_reg_write (CONFIG_SYS_I2C_RTC_ADDR, reg, val);
+		i2c_reg_write (CFG_SYS_I2C_RTC_ADDR, reg, val);
 }
-#endif

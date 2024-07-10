@@ -1,24 +1,27 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010
- * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
+ * Vipin Kumar, STMicroelectronics, vipin.kumar@st.com.
  */
 
 #ifndef _DW_ETH_H
 #define _DW_ETH_H
 
-#ifdef CONFIG_DM_GPIO
+#include <asm/cache.h>
+#include <net.h>
+
+#if CONFIG_IS_ENABLED(DM_GPIO)
 #include <asm-generic/gpio.h>
 #endif
 
-#define CONFIG_TX_DESCR_NUM	16
-#define CONFIG_RX_DESCR_NUM	16
-#define CONFIG_ETH_BUFSIZE	2048
-#define TX_TOTAL_BUFSIZE	(CONFIG_ETH_BUFSIZE * CONFIG_TX_DESCR_NUM)
-#define RX_TOTAL_BUFSIZE	(CONFIG_ETH_BUFSIZE * CONFIG_RX_DESCR_NUM)
+#define CFG_TX_DESCR_NUM	16
+#define CFG_RX_DESCR_NUM	16
+#define CFG_ETH_BUFSIZE	2048
+#define TX_TOTAL_BUFSIZE	(CFG_ETH_BUFSIZE * CFG_TX_DESCR_NUM)
+#define RX_TOTAL_BUFSIZE	(CFG_ETH_BUFSIZE * CFG_RX_DESCR_NUM)
 
-#define CONFIG_MACRESET_TIMEOUT	(3 * CONFIG_SYS_HZ)
-#define CONFIG_MDIO_TIMEOUT	(3 * CONFIG_SYS_HZ)
+#define CFG_MACRESET_TIMEOUT	(3 * CONFIG_SYS_HZ)
+#define CFG_MDIO_TIMEOUT	(3 * CONFIG_SYS_HZ)
 
 struct eth_mac_regs {
 	u32 conf;		/* 0x00 */
@@ -82,10 +85,8 @@ struct eth_dma_regs {
 
 #define DW_DMA_BASE_OFFSET	(0x1000)
 
-/* Default DMA Burst length */
-#ifndef CONFIG_DW_GMAC_DEFAULT_DMA_PBL
-#define CONFIG_DW_GMAC_DEFAULT_DMA_PBL 8
-#endif
+/* DMA Burst length */
+#define GMAC_DEFAULT_DMA_PBL	8
 
 /* Bus mode register definitions */
 #define FIXEDBURST		(1 << 16)
@@ -93,7 +94,7 @@ struct eth_dma_regs {
 #define PRIORXTX_31		(2 << 14)
 #define PRIORXTX_21		(1 << 14)
 #define PRIORXTX_11		(0 << 14)
-#define DMA_PBL			(CONFIG_DW_GMAC_DEFAULT_DMA_PBL<<8)
+#define DMA_PBL			(GMAC_DEFAULT_DMA_PBL << 8)
 #define RXHIGHPRIO		(1 << 1)
 #define DMAMAC_SRST		(1 << 0)
 
@@ -220,8 +221,8 @@ struct dmamacdescr {
 #endif
 
 struct dw_eth_dev {
-	struct dmamacdescr tx_mac_descrtable[CONFIG_TX_DESCR_NUM];
-	struct dmamacdescr rx_mac_descrtable[CONFIG_RX_DESCR_NUM];
+	struct dmamacdescr tx_mac_descrtable[CFG_TX_DESCR_NUM];
+	struct dmamacdescr rx_mac_descrtable[CFG_RX_DESCR_NUM];
 	char txbuffs[TX_TOTAL_BUFSIZE] __aligned(ARCH_DMA_MINALIGN);
 	char rxbuffs[RX_TOTAL_BUFSIZE] __aligned(ARCH_DMA_MINALIGN);
 
@@ -232,10 +233,7 @@ struct dw_eth_dev {
 
 	struct eth_mac_regs *mac_regs_p;
 	struct eth_dma_regs *dma_regs_p;
-#ifndef CONFIG_DM_ETH
-	struct eth_device *dev;
-#endif
-#ifdef CONFIG_DM_GPIO
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct gpio_desc reset_gpio;
 #endif
 #ifdef CONFIG_CLK
@@ -243,12 +241,12 @@ struct dw_eth_dev {
 	int clock_count;	/* number of clock in clock list */
 #endif
 
+	struct udevice *dev;
 	struct phy_device *phydev;
 	struct mii_dev *bus;
 };
 
-#ifdef CONFIG_DM_ETH
-int designware_eth_ofdata_to_platdata(struct udevice *dev);
+int designware_eth_of_to_plat(struct udevice *dev);
 int designware_eth_probe(struct udevice *dev);
 extern const struct eth_ops designware_eth_ops;
 
@@ -265,6 +263,5 @@ int designware_eth_free_pkt(struct udevice *dev, uchar *packet,
 				   int length);
 void designware_eth_stop(struct udevice *dev);
 int designware_eth_write_hwaddr(struct udevice *dev);
-#endif
 
 #endif

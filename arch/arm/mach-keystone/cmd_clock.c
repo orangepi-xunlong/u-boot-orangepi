@@ -19,7 +19,7 @@ struct pll_init_data cmd_pll_data = {
 	.pll_od = 2,
 };
 
-int do_pll_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_pll_cmd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	if (argc != 5)
 		goto pll_cmd_usage;
@@ -42,9 +42,9 @@ int do_pll_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	else
 		goto pll_cmd_usage;
 
-	cmd_pll_data.pll_m   = simple_strtoul(argv[2], NULL, 10);
-	cmd_pll_data.pll_d   = simple_strtoul(argv[3], NULL, 10);
-	cmd_pll_data.pll_od  = simple_strtoul(argv[4], NULL, 10);
+	cmd_pll_data.pll_m   = dectoul(argv[2], NULL);
+	cmd_pll_data.pll_d   = dectoul(argv[3], NULL);
+	cmd_pll_data.pll_od  = dectoul(argv[4], NULL);
 
 	printf("Trying to set pll %d; mult %d; div %d; OD %d\n",
 	       cmd_pll_data.pll, cmd_pll_data.pll_m,
@@ -63,7 +63,8 @@ U_BOOT_CMD(
 	PLLSET_CMD_LIST " <mult> <div> <OD>\n"
 );
 
-int do_getclk_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_getclk_cmd(struct cmd_tbl *cmdtp, int flag, int argc,
+		  char *const argv[])
 {
 	unsigned int clk;
 	unsigned long freq;
@@ -71,7 +72,7 @@ int do_getclk_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc != 2)
 		goto getclk_cmd_usage;
 
-	clk = simple_strtoul(argv[1], NULL, 10);
+	clk = dectoul(argv[1], NULL);
 
 	freq = ks_clk_get_rate(clk);
 	if (freq)
@@ -92,7 +93,7 @@ U_BOOT_CMD(
 	CLOCK_INDEXES_LIST
 );
 
-int do_psc_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_psc_cmd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int	psc_module;
 	int	res;
@@ -100,7 +101,7 @@ int do_psc_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc != 3)
 		goto psc_cmd_usage;
 
-	psc_module = simple_strtoul(argv[1], NULL, 10);
+	psc_module = dectoul(argv[1], NULL);
 	if (strcmp(argv[2], "en") == 0) {
 		res = psc_enable_module(psc_module);
 		printf("psc_enable_module(%d) - %s\n", psc_module,

@@ -7,6 +7,8 @@
 
 #include <config.h>
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -33,7 +35,9 @@ struct sdram_addr_dec {
 #define REG_CPUCS_WIN_WIN0_CS(x)	(((x) & 0x3) << 2)
 #define REG_CPUCS_WIN_SIZE(x)		(((x) & 0xff) << 24)
 
-#define SDRAM_SIZE_MAX			0xc0000000
+#ifndef MVEBU_SDRAM_SIZE_MAX
+#define MVEBU_SDRAM_SIZE_MAX		0xc0000000
+#endif
 
 #define SCRUB_MAGIC		0xbeefdead
 
@@ -216,7 +220,7 @@ static int ecc_enabled(void)
 	return 0;
 }
 
-/* Return the width of the DRAM bus, or 0 for unknown. */
+/* Return the width of the DRAM bus. */
 static int bus_width(void)
 {
 	int full_width = 0;
@@ -224,17 +228,11 @@ static int bus_width(void)
 	if (reg_read(REG_SDRAM_CONFIG_ADDR) & (1 << REG_SDRAM_CONFIG_WIDTH_OFFS))
 		full_width = 1;
 
-	switch (mvebu_soc_family()) {
-	case MVEBU_SOC_AXP:
-	    return full_width ? 64 : 32;
-	    break;
-	case MVEBU_SOC_A375:
-	case MVEBU_SOC_A38X:
-	case MVEBU_SOC_MSYS:
-	    return full_width ? 32 : 16;
-	default:
-	    return 0;
-	}
+#ifdef CONFIG_ARMADA_XP
+	return full_width ? 64 : 32;
+#else
+	return full_width ? 32 : 16;
+#endif
 }
 
 static int cycle_mode(void)
@@ -275,19 +273,9 @@ int dram_init(void)
 		 * address space left for the internal registers etc.
 		 */
 		size += mvebu_sdram_bs(i);
-		if (size > SDRAM_SIZE_MAX)
-			size = SDRAM_SIZE_MAX;
+		if (size > MVEBU_SDRAM_SIZE_MAX)
+			size = MVEBU_SDRAM_SIZE_MAX;
 	}
-
-	for (; i < CONFIG_NR_DRAM_BANKS; i++) {
-		/* If above loop terminated prematurely, we need to set
-		 * remaining banks' start address & size as 0. Otherwise other
-		 * u-boot functions and Linux kernel gets wrong values which
-		 * could result in crash */
-		gd->bd->bi_dram[i].start = 0;
-		gd->bd->bi_dram[i].size = 0;
-	}
-
 
 	if (ecc_enabled())
 		dram_ecc_scrubbing();
@@ -312,7 +300,7 @@ int dram_init_banksize(void)
 
 		/* Clip the banksize to 1GiB if it exceeds the max size */
 		size += gd->bd->bi_dram[i].size;
-		if (size > SDRAM_SIZE_MAX)
+		if (size > MVEBU_SDRAM_SIZE_MAX)
 			mvebu_sdram_bs_set(i, 0x40000000);
 	}
 

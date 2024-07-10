@@ -10,7 +10,7 @@
 #include <efi_selftest.h>
 
 static struct efi_boot_services *boottime;
-static efi_guid_t efi_gop_guid = EFI_GOP_GUID;
+static efi_guid_t efi_gop_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 static struct efi_gop *gop;
 
 /*
@@ -18,7 +18,7 @@ static struct efi_gop *gop;
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -39,7 +39,7 @@ static int setup(const efi_handle_t handle,
 /*
  * Tear down unit test.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int teardown(void)
 {
@@ -49,7 +49,7 @@ static int teardown(void)
 /*
  * Execute unit test.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(void)
 {
@@ -80,6 +80,11 @@ static int execute(void)
 		}
 		efi_st_printf("Mode %u: %u x %u\n",
 			      i, info->width, info->height);
+		ret = boottime->free_pool(info);
+		if (ret != EFI_SUCCESS) {
+			efi_st_printf("FreePool failed");
+			return EFI_ST_FAILURE;
+		}
 	}
 
 	return EFI_ST_SUCCESS;

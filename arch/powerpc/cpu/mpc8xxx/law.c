@@ -7,6 +7,9 @@
  */
 
 #include <common.h>
+#include <display_options.h>
+#include <asm/bitops.h>
+#include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/fsl_law.h>
 #include <asm/io.h>
@@ -17,7 +20,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define FSL_HW_NUM_LAWS CONFIG_SYS_FSL_NUM_LAWS
 
 #ifdef CONFIG_FSL_CORENET
-#define LAW_BASE (CONFIG_SYS_FSL_CORENET_CCM_ADDR)
+#define LAW_BASE (CFG_SYS_FSL_CORENET_CCM_ADDR)
 #define LAWAR_ADDR(x) (&((ccsr_local_t *)LAW_BASE)->law[x].lawar)
 #define LAWBARH_ADDR(x) (&((ccsr_local_t *)LAW_BASE)->law[x].lawbarh)
 #define LAWBARL_ADDR(x) (&((ccsr_local_t *)LAW_BASE)->law[x].lawbarl)
@@ -77,7 +80,7 @@ void disable_law(u8 idx)
 }
 
 #if !defined(CONFIG_NAND_SPL) && \
-	(!defined(CONFIG_SPL_BUILD) || !defined(CONFIG_SPL_INIT_MINIMAL))
+	(!defined(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
 static int get_law_entry(u8 i, struct law_entry *e)
 {
 	u32 lawar;
@@ -108,7 +111,7 @@ int set_next_law(phys_addr_t addr, enum law_size sz, enum law_trgt_if id)
 }
 
 #if !defined(CONFIG_NAND_SPL) && \
-	(!defined(CONFIG_SPL_BUILD) || !defined(CONFIG_SPL_INIT_MINIMAL))
+	(!defined(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
 int set_last_law(phys_addr_t addr, enum law_size sz, enum law_trgt_if id)
 {
 	u32 idx;
@@ -259,7 +262,7 @@ void init_laws(void)
 #error FSL_HW_NUM_LAWS can not be greater than 32 w/o code changes
 #endif
 
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_E500) && \
+#if defined(CONFIG_NXP_ESBC) && defined(CONFIG_E500) && \
 						!defined(CONFIG_E500MC)
 	/* ISBC (Boot ROM) creates a LAW 0 entry for non PBL platforms,
 	 * which is not disabled before transferring the control to uboot.
@@ -268,7 +271,7 @@ void init_laws(void)
 	disable_law(0);
 #endif
 
-#if !defined(CONFIG_SECURE_BOOT)
+#if !defined(CONFIG_NXP_ESBC)
 	/*
 	 * if any non DDR LAWs has been created earlier, remove them before
 	 * LAW table is parsed.
@@ -298,7 +301,7 @@ void init_laws(void)
 
 #ifdef CONFIG_SRIO_PCIE_BOOT_SLAVE
 	/* check RCW to get which port is used for boot */
-	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	ccsr_gur_t *gur = (void *)CFG_SYS_MPC85xx_GUTS_ADDR;
 	u32 bootloc = in_be32(&gur->rcwsr[6]);
 	/*
 	 * in SRIO or PCIE boot we need to set specail LAWs for
@@ -306,42 +309,42 @@ void init_laws(void)
 	 */
 	switch ((bootloc & FSL_CORENET_RCWSR6_BOOT_LOC) >> 23) {
 	case 0x0: /* boot from PCIE1 */
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_1);
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_1);
 		break;
 	case 0x1: /* boot from PCIE2 */
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_2);
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_2);
 		break;
 	case 0x2: /* boot from PCIE3 */
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_3);
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_PCIE_3);
 		break;
 	case 0x8: /* boot from SRIO1 */
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_RIO_1);
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_RIO_1);
 		break;
 	case 0x9: /* boot from SRIO2 */
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_RIO_2);
-		set_next_law(CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
+		set_next_law(CFG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS,
 				LAW_SIZE_1M,
 				LAW_TRGT_IF_RIO_2);
 		break;
@@ -350,5 +353,5 @@ void init_laws(void)
 	}
 #endif
 
-	return ;
+	return;
 }

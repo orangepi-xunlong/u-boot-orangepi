@@ -9,9 +9,12 @@
 #include <common.h>
 #include <dm.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/pinmux.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include "s3c24x0_i2c.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -144,7 +147,7 @@ static int hsi2c_get_clk_details(struct s3c24x0_i2c_bus *i2c_bus)
 	unsigned int i = 0, utemp0 = 0, utemp1 = 0;
 	unsigned int t_ftl_cycle;
 
-#if (defined CONFIG_EXYNOS4 || defined CONFIG_EXYNOS5)
+#if defined(CONFIG_ARCH_EXYNOS4) || defined(CONFIG_ARCH_EXYNOS5)
 	clkin = get_i2c_clk();
 #else
 	clkin = get_PCLK();
@@ -515,7 +518,7 @@ static int s3c24x0_i2c_probe(struct udevice *dev, uint chip, uint chip_flags)
 	return ret != I2C_OK;
 }
 
-static int s3c_i2c_ofdata_to_platdata(struct udevice *dev)
+static int s3c_i2c_of_to_plat(struct udevice *dev)
 {
 	const void *blob = gd->fdt_blob;
 	struct s3c24x0_i2c_bus *i2c_bus = dev_get_priv(dev);
@@ -523,14 +526,15 @@ static int s3c_i2c_ofdata_to_platdata(struct udevice *dev)
 
 	node = dev_of_offset(dev);
 
-	i2c_bus->hsregs = (struct exynos5_hsi2c *)devfdt_get_addr(dev);
+	i2c_bus->hsregs = dev_read_addr_ptr(dev);
 
 	i2c_bus->id = pinmux_decode_periph_id(blob, node);
 
-	i2c_bus->clock_frequency = fdtdec_get_int(blob, node,
-						  "clock-frequency", 100000);
+	i2c_bus->clock_frequency =
+		dev_read_u32_default(dev, "clock-frequency",
+				     I2C_SPEED_STANDARD_RATE);
 	i2c_bus->node = node;
-	i2c_bus->bus_num = dev->seq;
+	i2c_bus->bus_num = dev_seq(dev);
 
 	exynos_pinmux_config(i2c_bus->id, PINMUX_FLAG_HS_MODE);
 
@@ -554,7 +558,7 @@ U_BOOT_DRIVER(hs_i2c) = {
 	.name	= "i2c_s3c_hs",
 	.id	= UCLASS_I2C,
 	.of_match = exynos_hs_i2c_ids,
-	.ofdata_to_platdata = s3c_i2c_ofdata_to_platdata,
-	.priv_auto_alloc_size = sizeof(struct s3c24x0_i2c_bus),
+	.of_to_plat = s3c_i2c_of_to_plat,
+	.priv_auto	= sizeof(struct s3c24x0_i2c_bus),
 	.ops	= &exynos_hs_i2c_ops,
 };

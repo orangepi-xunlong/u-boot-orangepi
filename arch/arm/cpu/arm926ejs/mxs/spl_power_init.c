@@ -8,6 +8,8 @@
 
 #include <common.h>
 #include <config.h>
+#include <hang.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 
@@ -37,6 +39,29 @@ static void mxs_power_clock2xtal(void)
 	/* Set XTAL as CPU reference clock */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
 		&clkctrl_regs->hw_clkctrl_clkseq_set);
+}
+
+static void mxs_power_regs_dump(void)
+{
+	struct mxs_power_regs *power_regs =
+		(struct mxs_power_regs *)MXS_POWER_BASE;
+
+	debug("ctrl:\t\t 0x%x\n", readl(&power_regs->hw_power_ctrl));
+	debug("5vctrl:\t\t 0x%x\n", readl(&power_regs->hw_power_5vctrl));
+	debug("minpwr:\t\t 0x%x\n", readl(&power_regs->hw_power_minpwr));
+	debug("charge:\t\t 0x%x\n", readl(&power_regs->hw_power_charge));
+	debug("vddctrl:\t 0x%x\n", readl(&power_regs->hw_power_vdddctrl));
+	debug("vddactrl:\t 0x%x\n", readl(&power_regs->hw_power_vddactrl));
+	debug("vddioctrl:\t 0x%x\n", readl(&power_regs->hw_power_vddioctrl));
+	debug("vddmemctrl:\t 0x%x\n", readl(&power_regs->hw_power_vddmemctrl));
+	debug("dcdc4p2:\t 0x%x\n", readl(&power_regs->hw_power_dcdc4p2));
+	debug("misc:\t\t 0x%x\n", readl(&power_regs->hw_power_misc));
+	debug("dclimits:\t 0x%x\n", readl(&power_regs->hw_power_dclimits));
+	debug("loopctrl:\t 0x%x\n", readl(&power_regs->hw_power_loopctrl));
+	debug("sts:\t\t 0x%x\n", readl(&power_regs->hw_power_sts));
+	debug("speed:\t\t 0x%x\n", readl(&power_regs->hw_power_speed));
+	debug("battmonitor:\t 0x%x\n",
+	      readl(&power_regs->hw_power_battmonitor));
 }
 
 /**
@@ -625,11 +650,11 @@ static void mxs_power_enable_4p2(void)
 
 	mxs_power_init_dcdc_4p2_source();
 
-	writel(vdddctrl, &power_regs->hw_power_vdddctrl);
+	writel(vddioctrl, &power_regs->hw_power_vddioctrl);
 	early_delay(20);
 	writel(vddactrl, &power_regs->hw_power_vddactrl);
 	early_delay(20);
-	writel(vddioctrl, &power_regs->hw_power_vddioctrl);
+	writel(vdddctrl, &power_regs->hw_power_vdddctrl);
 
 	/*
 	 * Check if FET is enabled on either powerout and if so,
@@ -750,7 +775,19 @@ static void mxs_batt_boot(void)
 		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
 		0x8 << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
 
-	mxs_power_enable_4p2();
+	if (CONFIG_IS_ENABLED(MXS_PMU_MINIMAL_VDD5V_CURRENT))
+		setbits_le32(&power_regs->hw_power_5vctrl,
+			     POWER_5VCTRL_ILIMIT_EQ_ZERO);
+
+	if (CONFIG_IS_ENABLED(MXS_PMU_DISABLE_BATT_CHARGE)) {
+		writel(POWER_CHARGE_PWD_BATTCHRG,
+		       &power_regs->hw_power_charge_set);
+		writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
+		       &power_regs->hw_power_5vctrl_set);
+	}
+
+	if (CONFIG_IS_ENABLED(MXS_PMU_ENABLE_4P2_LINEAR_REGULATOR))
+		mxs_power_enable_4p2();
 }
 
 /**
@@ -1254,8 +1291,8 @@ void mxs_power_init(void)
 	debug("SPL: Setting VDDIO to 3V3 (brownout @ 3v15)\n");
 	mxs_power_set_vddx(&mxs_vddio_cfg, 3300, 3150);
 
-	debug("SPL: Setting VDDD to 1V5 (brownout @ 1v315)\n");
-	mxs_power_set_vddx(&mxs_vddd_cfg, 1500, 1315);
+	debug("SPL: Setting VDDD to 1V55 (brownout @ 1v400)\n");
+	mxs_power_set_vddx(&mxs_vddd_cfg, 1550, 1400);
 #ifdef CONFIG_MX23
 	debug("SPL: Setting mx23 VDDMEM to 2V5 (brownout @ 1v7)\n");
 	mxs_power_set_vddx(&mxs_vddmem_cfg, 2500, 1700);
@@ -1266,6 +1303,7 @@ void mxs_power_init(void)
 		POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 
 	writel(POWER_5VCTRL_PWDN_5VBRNOUT, &power_regs->hw_power_5vctrl_set);
+	mxs_power_regs_dump();
 
 	early_delay(1000);
 }

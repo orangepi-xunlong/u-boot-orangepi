@@ -9,9 +9,9 @@ include  $(srctree)/arch/arm/mach-omap2/config_secure.mk
 
 ifndef CONFIG_SPL_BUILD
 ifeq ($(CONFIG_TI_SECURE_DEVICE),y)
-ALL-y += u-boot_HS_MLO
+INPUTS-y += u-boot_HS_MLO
 else
-ALL-y += MLO
+INPUTS-y += MLO
 endif
 endif
 
@@ -27,7 +27,7 @@ u-boot-spi.gph: spl/u-boot-spl.gph u-boot.img FORCE
 
 ifndef CONFIG_SPL_BUILD
 MKIMAGEFLAGS_MLO = -A $(ARCH) -T gpimage -C none \
-	-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_TEXT_BASE) -n U-Boot
+	-a $(CONFIG_TEXT_BASE) -e $(CONFIG_TEXT_BASE) -n U-Boot
 MLO: u-boot.bin FORCE
 	$(call if_changed,mkimage)
 	@dd if=/dev/zero bs=8 count=1 2>/dev/null >> $@

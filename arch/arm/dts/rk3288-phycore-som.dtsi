@@ -71,22 +71,6 @@
 		clock-output-names = "ext_gmac";
 	};
 
-	io_domains: io_domains {
-		compatible = "rockchip,rk3288-io-voltage-domain";
-
-		status = "okay";
-		sdcard-supply = <&vdd_io_sd>;
-		flash0-supply = <&vdd_emmc_io>;
-		flash1-supply = <&vdd_misc_1v8>;
-		gpio1830-supply = <&vdd_3v3_io>;
-		gpio30-supply = <&vdd_3v3_io>;
-		bb-supply = <&vdd_3v3_io>;
-		dvp-supply = <&vdd_3v3_io>;
-		lcdc-supply = <&vdd_3v3_io>;
-		wifi-supply = <&vdd_3v3_io>;
-		audio-supply = <&vdd_3v3_io>;
-	};
-
 	leds: user-leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
@@ -149,8 +133,6 @@
 
 &emmc {
 	status = "okay";
-	u-boot,dm-pre-reloc;
-
 	bus-width = <8>;
 	cap-mmc-highspeed;
 	disable-wp;
@@ -199,10 +181,22 @@
 	ddc-i2c-bus = <&i2c5>;
 };
 
+&io_domains {
+	audio-supply = <&vdd_3v3_io>;
+	bb-supply = <&vdd_3v3_io>;
+	dvp-supply = <&vdd_3v3_io>;
+	flash0-supply = <&vdd_emmc_io>;
+	flash1-supply = <&vdd_misc_1v8>;
+	gpio1830-supply = <&vdd_3v3_io>;
+	gpio30-supply = <&vdd_3v3_io>;
+	lcdc-supply = <&vdd_3v3_io>;
+	sdcard-supply = <&vdd_io_sd>;
+	wifi-supply = <&vdd_3v3_io>;
+	status = "okay";
+};
+
 &i2c0 {
 	status = "okay";
-	u-boot,dm-pre-reloc;
-
 	clock-frequency = <400000>;
 
 	rk818: pmic@1c {
@@ -216,7 +210,6 @@
 		rockchip,system-power-controller;
 		wakeup-source;
 		#clock-cells = <1>;
-		u-boot,dm-pre-reloc;
 
 		vcc1-supply = <&vdd_sys>;
 		vcc2-supply = <&vdd_sys>;
@@ -230,7 +223,6 @@
 		vddio-supply = <&vdd_3v3_io>;
 
 		regulators {
-			u-boot,dm-pre-reloc;
 			vdd_log: DCDC_REG1 {
 				regulator-name = "vdd_log";
 				regulator-always-on;

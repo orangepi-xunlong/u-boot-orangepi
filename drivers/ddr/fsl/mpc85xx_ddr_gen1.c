@@ -4,8 +4,10 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <fsl_ddr_sdram.h>
+#include <linux/delay.h>
 
 #if (CONFIG_CHIP_SELECTS_PER_CTRL > 4)
 #error Invalid setting for CONFIG_CHIP_SELECTS_PER_CTRL
@@ -16,7 +18,7 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 {
 	unsigned int i;
 	struct ccsr_ddr __iomem *ddr =
-		(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DDR_ADDR;
+		(struct ccsr_ddr __iomem *)CFG_SYS_FSL_DDR_ADDR;
 
 	if (ctrl_num != 0) {
 		printf("%s unexpected ctrl_num = %u\n", __FUNCTION__, ctrl_num);
@@ -46,9 +48,6 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 	out_be32(&ddr->timing_cfg_2, regs->timing_cfg_2);
 	out_be32(&ddr->sdram_mode, regs->ddr_sdram_mode);
 	out_be32(&ddr->sdram_interval, regs->ddr_sdram_interval);
-#if defined(CONFIG_ARCH_MPC8555) || defined(CONFIG_ARCH_MPC8541)
-	out_be32(&ddr->sdram_clk_cntl, regs->ddr_sdram_clk_cntl);
-#endif
 
 	/*
 	 * 200 painful micro-seconds must elapse between
@@ -72,9 +71,9 @@ void
 ddr_enable_ecc(unsigned int dram_size)
 {
 	struct ccsr_ddr __iomem *ddr =
-		(struct ccsr_ddr __iomem *)(CONFIG_SYS_FSL_DDR_ADDR);
+		(struct ccsr_ddr __iomem *)(CFG_SYS_FSL_DDR_ADDR);
 
-	dma_meminit(CONFIG_MEM_INIT_VALUE, dram_size);
+	dma_meminit(dram_size);
 
 	/*
 	 * Enable errors for ECC.

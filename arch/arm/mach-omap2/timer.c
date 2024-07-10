@@ -16,19 +16,25 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <time.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/clock.h>
+#include <asm/omap_common.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
+static struct gptimer *timer_base = (struct gptimer *)CFG_SYS_TIMERBASE;
+static ulong get_timer_masked(void);
 
 /*
  * Nothing really to do with interrupts, just starts up a counter.
  */
 
-#define TIMER_CLOCK		(V_SCLK / (2 << CONFIG_SYS_PTV))
+#define TIMER_CLOCK		(V_SCLK / (2 << SYS_PTV))
 #define TIMER_OVERFLOW_VAL	0xffffffff
 #define TIMER_LOAD_VAL		0
 
@@ -37,7 +43,7 @@ int timer_init(void)
 	/* start the counter ticking up, reload value on overflow */
 	writel(TIMER_LOAD_VAL, &timer_base->tldr);
 	/* enable timer */
-	writel((CONFIG_SYS_PTV << 2) | TCLR_PRE | TCLR_AR | TCLR_ST,
+	writel((SYS_PTV << 2) | TCLR_PRE | TCLR_AR | TCLR_ST,
 		&timer_base->tclr);
 
 	return 0;
@@ -67,7 +73,7 @@ void __udelay(unsigned long usec)
 	}
 }
 
-ulong get_timer_masked(void)
+static ulong get_timer_masked(void)
 {
 	/* current tick value */
 	ulong now = readl(&timer_base->tcrr) / (TIMER_CLOCK / CONFIG_SYS_HZ);

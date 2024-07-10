@@ -13,6 +13,11 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <cpu_func.h>
+#include <hang.h>
+#include <init.h>
+#include <log.h>
 #include <stdarg.h>
 
 #include <asm/arch/sys_proto.h>
@@ -193,12 +198,12 @@ u32 get_sec_mem_start(void)
 	 */
 	if (sec_mem_start == 0)
 		sec_mem_start =
-			(CONFIG_SYS_SDRAM_BASE + (
+			(CFG_SYS_SDRAM_BASE + (
 #if defined(CONFIG_OMAP54XX)
 			omap_sdram_size()
 #else
-			get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				     CONFIG_MAX_RAM_BANK_SIZE)
+			get_ram_size((void *)CFG_SYS_SDRAM_BASE,
+				     CFG_MAX_RAM_BANK_SIZE)
 #endif
 			- sec_mem_size));
 	return sec_mem_start;
@@ -333,7 +338,7 @@ int secure_tee_install(u32 addr)
 	debug("tee_info.tee_arg0 = %08X\n", tee_info.tee_arg0);
 	debug("tee_file_size = %d\n", tee_file_size);
 
-#if !defined(CONFIG_SYS_DCACHE_OFF)
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 	flush_dcache_range(
 		rounddown((u32)loadptr, ARCH_DMA_MINALIGN),
 		roundup((u32)loadptr + tee_file_size, ARCH_DMA_MINALIGN));
@@ -356,7 +361,7 @@ int secure_tee_install(u32 addr)
 		/* Reuse the tee_info buffer for SMC params */
 		smc_cpu1_params = (u32 *)&tee_info;
 		smc_cpu1_params[0] = 0;
-#if !defined(CONFIG_SYS_DCACHE_OFF)
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
 		flush_dcache_range((u32)smc_cpu1_params, (u32)smc_cpu1_params +
 				roundup(sizeof(u32), ARCH_DMA_MINALIGN));
 #endif

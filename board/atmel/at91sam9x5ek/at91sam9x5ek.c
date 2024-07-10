@@ -4,6 +4,8 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/at91sam9x5_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
@@ -20,6 +22,9 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Miscelaneous platform dependent initialisations
  */
+
+void at91_prepare_cpu_var(void);
+
 #ifdef CONFIG_CMD_NAND
 static void at91sam9x5ek_nand_hw_init(void)
 {
@@ -60,9 +65,9 @@ static void at91sam9x5ek_nand_hw_init(void)
 	at91_periph_clk_enable(ATMEL_ID_PIOCD);
 
 	/* Configure RDY/BSY */
-	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
+	at91_set_gpio_input(CFG_SYS_NAND_READY_PIN, 1);
 	/* Enable NandFlash */
-	at91_set_gpio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
+	at91_set_gpio_output(CFG_SYS_NAND_ENABLE_PIN, 1);
 
 	at91_pio3_set_a_periph(AT91_PIO_PORTD, 0, 1);	/* NAND OE */
 	at91_pio3_set_a_periph(AT91_PIO_PORTD, 1, 1);	/* NAND WE */
@@ -82,9 +87,10 @@ static void at91sam9x5ek_nand_hw_init(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#ifdef CONFIG_DM_VIDEO
+#ifdef CONFIG_VIDEO
 	at91_video_show_board_info();
 #endif
+	at91_prepare_cpu_var();
 	return 0;
 }
 #endif
@@ -99,9 +105,6 @@ void board_debug_uart_init(void)
 #ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
-#ifdef CONFIG_DEBUG_UART
-	debug_uart_init();
-#endif
 	return 0;
 }
 #endif
@@ -112,7 +115,7 @@ int board_init(void)
 	gd->bd->bi_arch_number = MACH_TYPE_AT91SAM9X5EK;
 
 	/* adress of boot parameters */
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 
 #ifdef CONFIG_CMD_NAND
 	at91sam9x5ek_nand_hw_init();
@@ -126,8 +129,8 @@ int board_init(void)
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size((void *) CONFIG_SYS_SDRAM_BASE,
-					CONFIG_SYS_SDRAM_SIZE);
+	gd->ram_size = get_ram_size((void *) CFG_SYS_SDRAM_BASE,
+					CFG_SYS_SDRAM_SIZE);
 	return 0;
 }
 

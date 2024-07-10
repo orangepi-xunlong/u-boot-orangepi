@@ -2,7 +2,7 @@
 /*
  * ti_armv7_common.h
  *
- * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2013 Texas Instruments Incorporated - https://www.ti.com/
  *
  * The various ARMv7 SoCs from TI all share a number of IP blocks when
  * implementing a given feature.  Rather than define these in every
@@ -16,19 +16,6 @@
 #ifndef __CONFIG_TI_ARMV7_COMMON_H__
 #define __CONFIG_TI_ARMV7_COMMON_H__
 
-/* Support both device trees and ATAGs. */
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
-
-/*
- * Our DDR memory always starts at 0x80000000 and U-Boot shall have
- * relocated itself to higher in memory by the time this value is used.
- * However, set this to a 32MB offset to allow for easier Linux kernel
- * booting as the default is often used as the kernel load address.
- */
-#define CONFIG_SYS_LOAD_ADDR		0x82000000
-
 /*
  * We setup defaults based on constraints from the Linux kernel, which should
  * also be safe elsewhere.  We have the default load at 32MB into DDR (for
@@ -37,12 +24,20 @@
  * seen large trees).  We say all of this must be within the first 256MB
  * as that will normally be within the kernel lowmem and thus visible via
  * bootm_size and we only run on platforms with 256MB or more of memory.
+ *
+ * As a temporary storage for DTBO blobs (which should be applied into DTB
+ * blob), we use the location 15.5 MB above the ramdisk. If someone wants to
+ * use ramdisk bigger than 15.5 MB, then DTBO can be loaded and applied to DTB
+ * blob before loading the ramdisk, as DTBO location is only used as a temporary
+ * storage, and can be re-used after 'fdt apply' command is done.
  */
 #define DEFAULT_LINUX_BOOT_ENV \
 	"loadaddr=0x82000000\0" \
 	"kernel_addr_r=0x82000000\0" \
 	"fdtaddr=0x88000000\0" \
+	"dtboaddr=0x89000000\0" \
 	"fdt_addr_r=0x88000000\0" \
+	"fdtoverlay_addr_r=0x89000000\0" \
 	"rdaddr=0x88080000\0" \
 	"ramdisk_addr_r=0x88080000\0" \
 	"scriptaddr=0x80000000\0" \
@@ -52,10 +47,16 @@
 
 #define DEFAULT_FIT_TI_ARGS \
 	"boot_fit=0\0" \
-	"fit_loadaddr=0x87000000\0" \
-	"fit_bootfile=fitImage\0" \
-	"update_to_fit=setenv loadaddr ${fit_loadaddr}; setenv bootfile ${fit_bootfile}\0" \
-	"loadfit=run args_mmc; bootm ${loadaddr}#${fdtfile};\0" \
+	"addr_fit=0x90000000\0" \
+	"name_fit=fitImage\0" \
+	"update_to_fit=setenv loadaddr ${addr_fit}; setenv bootfile ${name_fit}\0" \
+	"get_overlaystring=" \
+		"for overlay in $name_overlays;" \
+		"do;" \
+		"setenv overlaystring ${overlaystring}'#'${overlay};" \
+		"done;\0" \
+	"get_fit_config=setexpr name_fit_config gsub / _ conf-${fdtfile}\0" \
+	"run_fit=run get_fit_config; bootm ${addr_fit}#${name_fit_config}${overlaystring}\0" \
 
 /*
  * DDR information.  If the CONFIG_NR_DRAM_BANKS is not defined,
@@ -64,38 +65,9 @@
  * initial stack pointer in our SRAM. Otherwise, we can define
  * CONFIG_NR_DRAM_BANKS before including this file.
  */
-#ifndef CONFIG_NR_DRAM_BANKS
-#define CONFIG_NR_DRAM_BANKS		1
-#endif
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
+#define CFG_SYS_SDRAM_BASE		0x80000000
 
-#ifndef CONFIG_SYS_INIT_SP_ADDR
-#define CONFIG_SYS_INIT_SP_ADDR         (NON_SECURE_SRAM_END - \
-						GENERATED_GBL_DATA_SIZE)
-#endif
-
-/* Timer information. */
-#define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-
-/*
- * Disable DM_* for SPL build and can be re-enabled after adding
- * DM support in SPL
- */
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_DM_I2C
-#endif
-
-/* I2C IP block */
-#define CONFIG_I2C
-#ifndef CONFIG_DM_I2C
-#define CONFIG_SYS_I2C
-#else
-/*
- * Enable CONFIG_DM_I2C_COMPAT temporarily until all the i2c client
- * devices are adopted to DM
- */
-#define CONFIG_DM_I2C_COMPAT
-#endif
+/* If DM_I2C, enable non-DM I2C support */
 
 /*
  * The following are general good-enough settings for U-Boot.  We set a
@@ -106,27 +78,15 @@
  * we are on so we do not need to rely on the command prompt.  We set a
  * console baudrate of 115200 and use the default baud rate table.
  */
-#define CONFIG_SYS_MALLOC_LEN		SZ_32M
-#define CONFIG_ENV_OVERWRITE		/* Overwrite ethaddr / serial# */
 
 /* As stated above, the following choices are optional. */
 
-/* We set the max number of command args high to avoid HUSH bugs. */
-#define CONFIG_SYS_MAXARGS		64
-
 /* Console I/O Buffer Size */
-#define CONFIG_SYS_CBSIZE		1024
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
 /*
  * When we have SPI, NOR or NAND flash we expect to be making use of
  * mtdparts, both for ease of use in U-Boot and for passing information
  * on to the Linux kernel.
  */
-#if defined(CONFIG_SPI_BOOT) || defined(CONFIG_NOR) || defined(CONFIG_NAND) || defined(CONFIG_NAND_DAVINCI)
-#define CONFIG_MTD_DEVICE		/* Required for mtdparts */
-#endif
 
 /*
  * Our platforms make use of SPL to initalize the hardware (primarily
@@ -154,43 +114,17 @@
  * of the BSS area.  We suggest that the stack be placed at 32MiB after the
  * start of DRAM to allow room for all of the above (handled in Kconfig).
  */
-#ifndef CONFIG_SPL_BSS_START_ADDR
-#define CONFIG_SPL_BSS_START_ADDR	0x80a00000
-#define CONFIG_SPL_BSS_MAX_SIZE		0x80000		/* 512 KB */
-#endif
-#ifndef CONFIG_SYS_SPL_MALLOC_START
-#define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SPL_BSS_START_ADDR + \
-					 CONFIG_SPL_BSS_MAX_SIZE)
-#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_8M
-#endif
-#ifndef CONFIG_SPL_MAX_SIZE
-#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
-					 CONFIG_SPL_TEXT_BASE)
-#endif
-
-
-/* FAT sd card locations. */
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
-#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME	"u-boot.img"
 
 #ifdef CONFIG_SPL_OS_BOOT
 /* FAT */
-#define CONFIG_SPL_FS_LOAD_KERNEL_NAME		"uImage"
-#define CONFIG_SPL_FS_LOAD_ARGS_NAME		"args"
 
 /* RAW SD card / eMMC */
-#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0x1700  /* address 0x2E0000 */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	0x1500  /* address 0x2A0000 */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	0x200   /* 256KiB */
 #endif
 
 /* General parts of the framework, required. */
 
-#ifdef CONFIG_NAND
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_ECC
-#define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
+#ifdef CONFIG_MTD_RAW_NAND
+#define CFG_SYS_NAND_U_BOOT_START	CONFIG_TEXT_BASE
 #endif
 #endif /* !CONFIG_NOR_BOOT */
 
@@ -219,5 +153,55 @@
 #else
 #define NETARGS ""
 #endif
+
+#ifdef CONFIG_ARM64
+#ifdef CONFIG_DISTRO_DEFAULTS
+#ifdef CONFIG_CMD_PXE
+# define BOOT_TARGET_PXE(func) func(PXE, pxe, na)
+#else
+# define BOOT_TARGET_PXE(func)
+#endif
+
+#ifdef CONFIG_CMD_DHCP
+# define BOOT_TARGET_DHCP(func) func(DHCP, dhcp, na)
+#else
+# define BOOT_TARGET_DHCP(func)
+#endif
+
+#ifdef CONFIG_CMD_MMC
+#define BOOT_TARGET_MMC(func) \
+	func(TI_MMC, ti_mmc, na) \
+	func(MMC, mmc, 0) \
+	func(MMC, mmc, 1)
+#else
+#define BOOT_TARGET_MMC(func)
+#endif
+
+#define BOOTENV_DEV_TI_MMC(devtypeu, devtypel, instance)
+
+#define BOOTENV_DEV_NAME_TI_MMC(devtyeu, devtypel, instance)		\
+	"ti_mmc "
+
+#ifdef CONFIG_CMD_USB
+# define BOOT_TARGET_USB(func)	func(USB, usb, 0)
+#else
+# define BOOT_TARGET_USB(func)
+#endif
+
+#define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_MMC(func) \
+	BOOT_TARGET_USB(func) \
+	BOOT_TARGET_PXE(func) \
+	BOOT_TARGET_DHCP(func)
+
+#include <config_distro_bootcmd.h>
+
+/* Incorporate settings into the U-Boot environment */
+#define CFG_EXTRA_ENV_SETTINGS					\
+	BOOTENV
+
+#endif /* CONFIG_DISTRO_DEFAULTS */
+
+#endif /* CONFIG_ARM64 */
 
 #endif	/* __CONFIG_TI_ARMV7_COMMON_H__ */

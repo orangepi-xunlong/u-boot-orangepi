@@ -9,7 +9,10 @@
 #include <common.h>
 #include <config.h>
 #include <nand.h>
+#include <linux/bitops.h>
 #include <linux/ctype.h>
+#include <linux/delay.h>
+#include <linux/mtd/rawnand.h>
 
 /* registers */
 #define NFC_CTL                    0x00000000
@@ -205,7 +208,7 @@ static void nand_apply_config(const struct nfc_config *conf)
 
 	val = readl(SUNXI_NFC_BASE + NFC_CTL);
 	val &= ~NFC_CTL_PAGE_SIZE_MASK;
-	writel(val | NFC_CTL_RAM_METHOD | NFC_CTL_PAGE_SIZE(conf->page_size),
+	writel(val | NFC_CTL_PAGE_SIZE(conf->page_size),
 	       SUNXI_NFC_BASE + NFC_CTL);
 	writel(conf->ecc_size, SUNXI_NFC_BASE + NFC_CNT);
 	writel(conf->page_size, SUNXI_NFC_BASE + NFC_SPARE_AREA);

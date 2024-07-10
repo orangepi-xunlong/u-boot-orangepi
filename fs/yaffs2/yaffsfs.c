@@ -17,6 +17,7 @@
 #include "yaffscfg.h"
 #include "yportenv.h"
 #include "yaffs_trace.h"
+#include <dm/devres.h>
 
 #define YAFFSFS_MAX_SYMLINK_DEREFERENCES 5
 
@@ -467,7 +468,7 @@ static int yaffsfs_alt_dir_path(const YCHAR *path, YCHAR **ret_path)
 	return 0;
 }
 
-LIST_HEAD(yaffsfs_deviceList);
+static LIST_HEAD(yaffsfs_deviceList);
 
 /*
  * yaffsfs_FindDevice

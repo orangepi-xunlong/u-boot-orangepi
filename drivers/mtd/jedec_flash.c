@@ -12,10 +12,11 @@
 /*#define DEBUG*/
 
 #include <common.h>
+#include <flash.h>
+#include <log.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/byteorder.h>
-#include <environment.h>
 
 #define P_ID_AMD_STD CFI_CMDSET_AMD_LEGACY
 

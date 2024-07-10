@@ -26,7 +26,7 @@
 	};
 
 	qspi: spi@80203000 {
-			compatible = "cadence,qspi";
+			compatible = "cdns,qspi-nor";
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x80203000 0x100>,
@@ -40,7 +40,7 @@
 			flash0: n25q32@0 {
 				#address-cells = <1>;
 				#size-cells = <1>;
-				compatible = "spi-flash";
+				compatible = "jedec,spi-nor";
 				reg = <0>;		/* chip select */
 				spi-max-frequency = <50000000>;
 				m25p,fast-read;

@@ -30,6 +30,8 @@
  */
 
 #include <common.h>
+#include <command.h>
+#include <irq_func.h>
 #include <asm/interrupt.h>
 
 #if !CONFIG_IS_ENABLED(X86_64)
@@ -64,7 +66,8 @@ void irq_install_handler(int irq, interrupt_handler_t *handler, void *arg)
 	irq_handlers[irq].arg = arg;
 	irq_handlers[irq].count = 0;
 
-	unmask_irq(irq);
+	if (CONFIG_IS_ENABLED(I8259_PIC))
+		unmask_irq(irq);
 
 	if (status)
 		enable_interrupts();
@@ -83,7 +86,8 @@ void irq_free_handler(int irq)
 
 	status = disable_interrupts();
 
-	mask_irq(irq);
+	if (CONFIG_IS_ENABLED(I8259_PIC))
+		mask_irq(irq);
 
 	irq_handlers[irq].handler = NULL;
 	irq_handlers[irq].arg = NULL;
@@ -104,14 +108,16 @@ void do_irq(int hw_irq)
 	}
 
 	if (irq_handlers[irq].handler) {
-		mask_irq(irq);
+		if (CONFIG_IS_ENABLED(I8259_PIC))
+			mask_irq(irq);
 
 		irq_handlers[irq].handler(irq_handlers[irq].arg);
 		irq_handlers[irq].count++;
 
-		unmask_irq(irq);
-		specific_eoi(irq);
-
+		if (CONFIG_IS_ENABLED(I8259_PIC)) {
+			unmask_irq(irq);
+			specific_eoi(irq);
+		}
 	} else {
 		if ((irq & 7) != 7) {
 			spurious_irq_cnt++;
@@ -122,11 +128,14 @@ void do_irq(int hw_irq)
 #endif
 
 #if defined(CONFIG_CMD_IRQ)
-int do_irqinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_irqinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 #if !CONFIG_IS_ENABLED(X86_64)
+	struct idt_ptr ptr;
 	int irq;
 
+	interrupt_read_idt(&ptr);
+	printf("IDT at %lx, size %x\n", ptr.address, ptr.size);
 	printf("Spurious IRQ: %u, last unknown IRQ: %d\n",
 			spurious_irq_cnt, spurious_irq);
 

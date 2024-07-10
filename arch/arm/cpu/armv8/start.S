@@ -18,7 +18,7 @@
 
 .globl	_start
 _start:
-#if defined(LINUX_KERNEL_IMAGE_HEADER)
+#if defined(CONFIG_LINUX_KERNEL_IMAGE_HEADER)
 #include <asm/boot0-linux-kernel-header.h>
 #elif defined(CONFIG_ENABLE_ARM_SOC_BOOT0_HOOK)
 /*
@@ -35,7 +35,7 @@ _start:
 
 .globl	_TEXT_BASE
 _TEXT_BASE:
-	.quad	CONFIG_SYS_TEXT_BASE
+	.quad	CONFIG_TEXT_BASE
 
 /*
  * These are defined in the linker script.
@@ -58,7 +58,24 @@ reset:
 .globl	save_boot_params_ret
 save_boot_params_ret:
 
-#if CONFIG_POSITION_INDEPENDENT
+#if CONFIG_POSITION_INDEPENDENT && !defined(CONFIG_SPL_BUILD)
+	/* Verify that we're 4K aligned.  */
+	adr	x0, _start
+	ands	x0, x0, #0xfff
+	b.eq	1f
+0:
+	/*
+	 * FATAL, can't continue.
+	 * U-Boot needs to be loaded at a 4K aligned address.
+	 *
+	 * We use ADRP and ADD to load some symbol addresses during startup.
+	 * The ADD uses an absolute (non pc-relative) lo12 relocation
+	 * thus requiring 4K alignment.
+	 */
+	wfi
+	b	0b
+1:
+
 	/*
 	 * Fix .rela.dyn relocations. This allows U-Boot to be loaded to and
 	 * executed at a different address than it was linked at.
@@ -66,9 +83,12 @@ save_boot_params_ret:
 pie_fixup:
 	adr	x0, _start		/* x0 <- Runtime value of _start */
 	ldr	x1, _TEXT_BASE		/* x1 <- Linked value of _start */
-	sub	x9, x0, x1		/* x9 <- Run-vs-link offset */
-	adr	x2, __rel_dyn_start	/* x2 <- Runtime &__rel_dyn_start */
-	adr	x3, __rel_dyn_end	/* x3 <- Runtime &__rel_dyn_end */
+	subs	x9, x0, x1		/* x9 <- Run-vs-link offset */
+	beq	pie_fixup_done
+	adrp    x2, __rel_dyn_start     /* x2 <- Runtime &__rel_dyn_start */
+	add     x2, x2, #:lo12:__rel_dyn_start
+	adrp    x3, __rel_dyn_end       /* x3 <- Runtime &__rel_dyn_end */
+	add     x3, x3, #:lo12:__rel_dyn_end
 pie_fix_loop:
 	ldp	x0, x1, [x2], #16	/* (x0, x1) <- (Link location, fixup) */
 	ldr	x4, [x2], #8		/* x4 <- addend */
@@ -84,33 +104,47 @@ pie_skip_reloc:
 pie_fixup_done:
 #endif
 
-#ifdef CONFIG_SYS_RESET_SCTRL
-	bl reset_sctrl
+#if defined(CONFIG_ARMV8_SPL_EXCEPTION_VECTORS) || !defined(CONFIG_SPL_BUILD)
+.macro	set_vbar, regname, reg
+	msr	\regname, \reg
+.endm
+	adr	x0, vectors
+#else
+.macro	set_vbar, regname, reg
+.endm
 #endif
 	/*
 	 * Could be EL3/EL2/EL1, Initial State:
 	 * Little Endian, MMU Disabled, i/dCache Disabled
 	 */
-	adr	x0, vectors
 	switch_el x1, 3f, 2f, 1f
-3:	msr	vbar_el3, x0
+3:	set_vbar vbar_el3, x0
 	mrs	x0, scr_el3
 	orr	x0, x0, #0xf			/* SCR_EL3.NS|IRQ|FIQ|EA */
 	msr	scr_el3, x0
 	msr	cptr_el3, xzr			/* Enable FP/SIMD */
-#ifdef COUNTER_FREQUENCY
-	ldr	x0, =COUNTER_FREQUENCY
-	msr	cntfrq_el0, x0			/* Initialize CNTFRQ */
-#endif
 	b	0f
-2:	msr	vbar_el2, x0
+2:	mrs	x1, hcr_el2
+	tbnz	x1, #HCR_EL2_E2H_BIT, 1f	/* HCR_EL2.E2H */
+	orr	x1, x1, #HCR_EL2_AMO_EL2	/* Route SErrors to EL2 */
+	msr	hcr_el2, x1
+	set_vbar vbar_el2, x0
 	mov	x0, #0x33ff
 	msr	cptr_el2, x0			/* Enable FP/SIMD */
 	b	0f
-1:	msr	vbar_el1, x0
+1:	set_vbar vbar_el1, x0
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			/* Enable FP/SIMD */
 0:
+	msr	daifclr, #0x4			/* Unmask SError interrupts */
+
+#if CONFIG_COUNTER_FREQUENCY
+	branch_if_not_highest_el x0, 4f
+	ldr	x0, =CONFIG_COUNTER_FREQUENCY
+	msr	cntfrq_el0, x0			/* Initialize CNTFRQ */
+#endif
+
+4:	isb
 
 	/*
 	 * Enable SMPEN bit for coherency.
@@ -123,6 +157,7 @@ pie_fixup_done:
 	mrs     x0, S3_1_c15_c2_1               /* cpuectlr_el1 */
 	orr     x0, x0, #0x40
 	msr     S3_1_c15_c2_1, x0
+	isb
 1:
 #endif
 
@@ -140,11 +175,11 @@ pie_fixup_done:
 	bl	lowlevel_init
 
 #if defined(CONFIG_ARMV8_SPIN_TABLE) && !defined(CONFIG_SPL_BUILD)
-	branch_if_master x0, x1, master_cpu
+	branch_if_master x0, master_cpu
 	b	spin_table_secondary_jump
 	/* never return */
 #elif defined(CONFIG_ARMV8_MULTIENTRY)
-	branch_if_master x0, x1, master_cpu
+	branch_if_master x0, master_cpu
 
 	/*
 	 * Slave CPUs
@@ -157,40 +192,8 @@ slave_cpu:
 	br	x0			/* branch to the given address */
 #endif /* CONFIG_ARMV8_MULTIENTRY */
 master_cpu:
+	msr	SPSel, #1		/* make sure we use SP_ELx */
 	bl	_main
-
-#ifdef CONFIG_SYS_RESET_SCTRL
-reset_sctrl:
-	switch_el x1, 3f, 2f, 1f
-3:
-	mrs	x0, sctlr_el3
-	b	0f
-2:
-	mrs	x0, sctlr_el2
-	b	0f
-1:
-	mrs	x0, sctlr_el1
-
-0:
-	ldr	x1, =0xfdfffffa
-	and	x0, x0, x1
-
-	switch_el x1, 6f, 5f, 4f
-6:
-	msr	sctlr_el3, x0
-	b	7f
-5:
-	msr	sctlr_el2, x0
-	b	7f
-4:
-	msr	sctlr_el1, x0
-
-7:
-	dsb	sy
-	isb
-	b	__asm_invalidate_tlb_all
-	ret
-#endif
 
 /*-----------------------------------------------------------------------*/
 
@@ -224,6 +227,7 @@ apply_a53_core_errata:
 	/* Enable data cache clean as data cache clean/invalidate */
 	orr	x0, x0, #1 << 44
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 	b 0b
 
@@ -238,6 +242,7 @@ apply_a57_core_errata:
 	/* Disable write streaming no-allocate threshold */
 	orr	x0, x0, #3 << 27
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_826974
@@ -245,6 +250,7 @@ apply_a57_core_errata:
 	/* Disable speculative load execution ahead of a DMB */
 	orr	x0, x0, #1 << 59
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_833471
@@ -254,6 +260,7 @@ apply_a57_core_errata:
 	    could impact performance. */
 	orr	x0, x0, #1 << 38
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_829520
@@ -264,6 +271,7 @@ apply_a57_core_errata:
 	    could impact performance. */
 	orr	x0, x0, #1 << 4
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 
 #ifdef CONFIG_ARM_ERRATA_833069
@@ -271,6 +279,7 @@ apply_a57_core_errata:
 	/* Disable Enable Invalidates of BTB bit */
 	and	x0, x0, #0xE
 	msr	S3_1_c15_c2_0, x0	/* cpuactlr_el1 */
+	isb
 #endif
 	b 0b
 ENDPROC(apply_core_errata)
@@ -296,7 +305,7 @@ WEAK(lowlevel_init)
 #endif
 
 #ifdef CONFIG_ARMV8_MULTIENTRY
-	branch_if_master x0, x1, 2f
+	branch_if_master x0, 2f
 
 	/*
 	 * Slave should wait for master clearing spin table.
@@ -345,6 +354,7 @@ ENDPROC(smp_kick_all_cpus)
 /*-----------------------------------------------------------------------*/
 
 ENTRY(c_runtime_cpu_setup)
+#if defined(CONFIG_ARMV8_SPL_EXCEPTION_VECTORS) || !defined(CONFIG_SPL_BUILD)
 	/* Relocate vBAR */
 	adr	x0, vectors
 	switch_el x1, 3f, 2f, 1f
@@ -354,6 +364,7 @@ ENTRY(c_runtime_cpu_setup)
 	b	0f
 1:	msr	vbar_el1, x0
 0:
+#endif
 
 	ret
 ENDPROC(c_runtime_cpu_setup)

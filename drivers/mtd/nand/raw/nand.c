@@ -9,18 +9,19 @@
 #include <nand.h>
 #include <errno.h>
 #include <linux/mtd/concat.h>
+#include <linux/mtd/rawnand.h>
 
-#ifndef CONFIG_SYS_NAND_BASE_LIST
-#define CONFIG_SYS_NAND_BASE_LIST { CONFIG_SYS_NAND_BASE }
+#ifndef CFG_SYS_NAND_BASE_LIST
+#define CFG_SYS_NAND_BASE_LIST { CFG_SYS_NAND_BASE }
 #endif
 
 int nand_curr_device = -1;
 
-struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
+static struct mtd_info *nand_info[CONFIG_SYS_MAX_NAND_DEVICE];
 
-#ifndef CONFIG_SYS_NAND_SELF_INIT
+#if !CONFIG_IS_ENABLED(SYS_NAND_SELF_INIT)
 static struct nand_chip nand_chip[CONFIG_SYS_MAX_NAND_DEVICE];
-static ulong base_address[CONFIG_SYS_MAX_NAND_DEVICE] = CONFIG_SYS_NAND_BASE_LIST;
+static ulong base_address[CONFIG_SYS_MAX_NAND_DEVICE] = CFG_SYS_NAND_BASE_LIST;
 #endif
 
 static char dev_name[CONFIG_SYS_MAX_NAND_DEVICE][8];
@@ -59,7 +60,7 @@ int nand_register(int devnum, struct mtd_info *mtd)
 	sprintf(dev_name[devnum], "nand%d", devnum);
 	mtd->name = dev_name[devnum];
 
-#ifdef CONFIG_MTD_DEVICE
+#ifdef CONFIG_MTD
 	/*
 	 * Add MTD device so that we can reference it later
 	 * via the mtdcore infrastructure (e.g. ubi).
@@ -75,7 +76,7 @@ int nand_register(int devnum, struct mtd_info *mtd)
 	return 0;
 }
 
-#ifndef CONFIG_SYS_NAND_SELF_INIT
+#if !CONFIG_IS_ENABLED(SYS_NAND_SELF_INIT)
 static void nand_init_chip(int i)
 {
 	struct nand_chip *nand = &nand_chip[i];
@@ -154,7 +155,7 @@ void nand_init(void)
 		return;
 	initialized = 1;
 
-#ifdef CONFIG_SYS_NAND_SELF_INIT
+#if CONFIG_IS_ENABLED(SYS_NAND_SELF_INIT)
 	board_nand_init();
 #else
 	int i;

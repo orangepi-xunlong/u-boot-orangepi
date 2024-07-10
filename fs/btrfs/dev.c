@@ -2,15 +2,16 @@
 /*
  * BTRFS filesystem implementation for U-Boot
  *
- * 2017 Marek Behun, CZ.NIC, marek.behun@nic.cz
+ * 2017 Marek Behún, CZ.NIC, kabel@kernel.org
  */
 
 #include <common.h>
+#include <blk.h>
 #include <compiler.h>
 #include <fs_internal.h>
 
 struct blk_desc *btrfs_blk_desc;
-disk_partition_t *btrfs_part_info;
+struct disk_partition *btrfs_part_info;
 
 int btrfs_devread(u64 address, int byte_len, void *buf)
 {

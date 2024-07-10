@@ -5,6 +5,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <cpu_func.h>
 
 static int cpu_status_all(void)
 {
@@ -25,7 +26,7 @@ static int cpu_status_all(void)
 }
 
 static int
-cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+cpu_cmd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	unsigned long cpuid;
 
@@ -35,7 +36,7 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 3)
 		return CMD_RET_USAGE;
 
-	cpuid = simple_strtoul(argv[1], NULL, 10);
+	cpuid = dectoul(argv[1], NULL);
 	if (!is_core_valid(cpuid)) {
 		printf ("Core num: %lu is not valid\n",	cpuid);
 		return 1;
@@ -65,8 +66,7 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char cpu_help_text[] =
+U_BOOT_LONGHELP(cpu,
 	    "<num> reset                 - Reset cpu <num>\n"
 	"cpu status                      - Status of all cpus\n"
 	"cpu <num> status                - Status of cpu <num>\n"
@@ -85,8 +85,7 @@ static char cpu_help_text[] =
 	"     When cpu <num> is released r4 and r5 = 0.\n" \
 	"     r7 will contain the size of the initial mapped area"
 #endif
-	"";
-#endif
+	);
 
 U_BOOT_CMD(
 	cpu, CONFIG_SYS_MAXARGS, 1, cpu_cmd,

@@ -11,12 +11,14 @@
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
 #include <mapmem.h>
 #include <asm/io.h>
 
 #include <lzma/LzmaTools.h>
 
-static int do_lzmadec(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+static int do_lzmadec(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	unsigned long src, dst;
 	SizeT src_len = ~0UL, dst_len = ~0UL;
@@ -24,11 +26,11 @@ static int do_lzmadec(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	switch (argc) {
 	case 4:
-		dst_len = simple_strtoul(argv[3], NULL, 16);
+		dst_len = hextoul(argv[3], NULL);
 		/* fall through */
 	case 3:
-		src = simple_strtoul(argv[1], NULL, 16);
-		dst = simple_strtoul(argv[2], NULL, 16);
+		src = hextoul(argv[1], NULL);
+		dst = hextoul(argv[2], NULL);
 		break;
 	default:
 		return CMD_RET_USAGE;

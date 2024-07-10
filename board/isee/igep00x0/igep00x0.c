@@ -4,6 +4,10 @@
  * ISEE 2007 SL, <www.iseebcn.com>
  */
 #include <common.h>
+#include <env.h>
+#include <init.h>
+#include <malloc.h>
+#include <net.h>
 #include <status_led.h>
 #include <dm.h>
 #include <ns16550.h>
@@ -16,6 +20,7 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/delay.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/mtd/onenand.h>
@@ -24,14 +29,14 @@
 #include <fdt_support.h>
 #include "igep00x0.h"
 
-static const struct ns16550_platdata igep_serial = {
+static const struct ns16550_plat igep_serial = {
 	.base = OMAP34XX_UART3,
 	.reg_shift = 2,
 	.clock = V_NS16550_CLK,
 	.fcr = UART_FCR_DEFVAL,
 };
 
-U_BOOT_DEVICE(igep_uart) = {
+U_BOOT_DRVINFO(igep_uart) = {
 	"ns16550_serial",
 	&igep_serial
 };
@@ -42,7 +47,7 @@ U_BOOT_DEVICE(igep_uart) = {
  * IGEP00x0 boards. First of all, it is necessary to reset USB transceiver from
  * IGEP0030 in order to read GPIO_IGEP00X0_BOARD_DETECTION correctly, because
  * this functionality is shared by USB HOST.
- * Once USB reset is applied, U-boot configures these pins as input pullup to
+ * Once USB reset is applied, U-Boot configures these pins as input pullup to
  * detect board and revision:
  * IGEP0020-RF = 0b00
  * IGEP0020-RC = 0b01
@@ -77,67 +82,11 @@ int onenand_board_init(struct mtd_info *mtd)
 {
 	if (gpmc_cs0_flash == MTD_DEV_TYPE_ONENAND) {
 		struct onenand_chip *this = mtd->priv;
-		this->base = (void *)CONFIG_SYS_ONENAND_BASE;
+		this->base = (void *)CFG_SYS_ONENAND_BASE;
 		return 0;
 	}
 	return 1;
 }
-
-#if defined(CONFIG_CMD_NET)
-static void reset_net_chip(int gpio)
-{
-	if (!gpio_request(gpio, "eth nrst")) {
-		gpio_direction_output(gpio, 1);
-		udelay(1);
-		gpio_set_value(gpio, 0);
-		udelay(40);
-		gpio_set_value(gpio, 1);
-		mdelay(10);
-	}
-}
-
-/*
- * Routine: setup_net_chip
- * Description: Setting up the configuration GPMC registers specific to the
- *		Ethernet hardware.
- */
-static void setup_net_chip(void)
-{
-	struct ctrl *ctrl_base = (struct ctrl *)OMAP34XX_CTRL_BASE;
-	static const u32 gpmc_lan_config[] = {
-		NET_LAN9221_GPMC_CONFIG1,
-		NET_LAN9221_GPMC_CONFIG2,
-		NET_LAN9221_GPMC_CONFIG3,
-		NET_LAN9221_GPMC_CONFIG4,
-		NET_LAN9221_GPMC_CONFIG5,
-		NET_LAN9221_GPMC_CONFIG6,
-	};
-
-	enable_gpmc_cs_config(gpmc_lan_config, &gpmc_cfg->cs[5],
-			CONFIG_SMC911X_BASE, GPMC_SIZE_16M);
-
-	/* Enable off mode for NWE in PADCONF_GPMC_NWE register */
-	writew(readw(&ctrl_base->gpmc_nwe) | 0x0E00, &ctrl_base->gpmc_nwe);
-	/* Enable off mode for NOE in PADCONF_GPMC_NADV_ALE register */
-	writew(readw(&ctrl_base->gpmc_noe) | 0x0E00, &ctrl_base->gpmc_noe);
-	/* Enable off mode for ALE in PADCONF_GPMC_NADV_ALE register */
-	writew(readw(&ctrl_base->gpmc_nadv_ale) | 0x0E00,
-		&ctrl_base->gpmc_nadv_ale);
-
-	reset_net_chip(64);
-}
-
-int board_eth_init(bd_t *bis)
-{
-#ifdef CONFIG_SMC911X
-	return smc911x_initialize(0, CONFIG_SMC911X_BASE);
-#else
-	return 0;
-#endif
-}
-#else
-static inline void setup_net_chip(void) {}
-#endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
 static int ft_enable_by_compatible(void *blob, char *compat, int enable)
@@ -154,10 +103,10 @@ static int ft_enable_by_compatible(void *blob, char *compat, int enable)
 	return 0;
 }
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
-	static struct node_info nodes[] = {
+	static const struct node_info nodes[] = {
 		{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
 		{ "ti,omap2-onenand", MTD_DEV_TYPE_ONENAND, },
 	};
@@ -228,8 +177,6 @@ int misc_init_r(void)
 		writel(readl(OMAP34XX_CTRL_WKUP_CTRL) |
 					 OMAP34XX_CTRL_WKUP_CTRL_GPIO_IO_PWRDNZ,
 					 OMAP34XX_CTRL_WKUP_CTRL);
-
-	setup_net_chip();
 
 	omap_die_id_display();
 

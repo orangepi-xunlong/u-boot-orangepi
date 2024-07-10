@@ -23,7 +23,7 @@ Changed files:
 - arch/m68k/cpu/mcf532x/config.mk			config make
 - arch/m68k/cpu/mcf532x/start.S			start up assembly code
 
-- doc/README.m53017evb			This readme file
+- board/freescale/m53017evb/README	his readme file
 
 - drivers/net/mcffec.c			ColdFire common FEC driver
 - drivers/net/mcfmii.c			ColdFire common Mii driver
@@ -68,7 +68,7 @@ CONFIG_M53015			-- define for MCF53015 CPUs
 CONFIG_M53017EVB		-- define for M53017EVB board
 
 CONFIG_MCFUART			-- define to use common CF Uart driver
-CONFIG_SYS_UART_PORT		-- define UART port number, start with 0, 1 and 2
+CFG_SYS_UART_PORT		-- define UART port number, start with 0, 1 and 2
 CONFIG_BAUDRATE			-- define UART baudrate
 
 CONFIG_MCFRTC			-- define to use common CF RTC driver
@@ -88,7 +88,6 @@ CONFIG_SYS_FEC0_MIIBASE		-- Set FEC0 MII base register
 MCFFEC_TOUT_LOOP		-- set FEC timeout loop
 
 CONFIG_MCFTMR			-- define to use DMA timer
-CONFIG_MCFPIT			-- define to use PIT timer
 
 CONFIG_SYS_I2C_FSL		-- define to use FSL common I2C driver
 CONFIG_SYS_I2C_SOFT		-- define for I2C bit-banged
@@ -97,17 +96,17 @@ CONFIG_SYS_I2C_SLAVE		-- define for I2C slave address
 CONFIG_SYS_I2C_OFFSET		-- define for I2C base address offset
 CONFIG_SYS_IMMR			-- define for MBAR offset
 
-CONFIG_SYS_MBAR			-- define MBAR offset
+CFG_SYS_MBAR			-- define MBAR offset
 
-CONFIG_MONITOR_IS_IN_RAM 	-- Not support
+CONFIG_MONITOR_IS_IN_RAM	-- Not support
 
-CONFIG_SYS_INIT_RAM_ADDR	-- defines the base address of the MCF5301x internal SRAM
+CFG_SYS_INIT_RAM_ADDR	-- defines the base address of the MCF5301x internal SRAM
 
 CONFIG_SYS_CSn_BASE		-- defines the Chip Select Base register
 CONFIG_SYS_CSn_MASK		-- defines the Chip Select Mask register
 CONFIG_SYS_CSn_CTRL		-- defines the Chip Select Control register
 
-CONFIG_SYS_SDRAM_BASE		-- defines the DRAM Base
+CFG_SYS_SDRAM_BASE		-- defines the DRAM Base
 
 2. MEMORY MAP UNDER U-BOOT AND LINUX KERNEL
 ===========================================

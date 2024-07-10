@@ -11,24 +11,15 @@
 /*
  * Memory configuration
  */
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 
-#define CONFIG_SYS_DDR_SDRAM_BASE	0x80000000
-#define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
-#define CONFIG_SYS_SDRAM_SIZE		SZ_128M
-
-#define CONFIG_SYS_INIT_SP_ADDR		\
-	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
-
-#define CONFIG_SYS_MALLOC_LEN		SZ_128K
-#define CONFIG_SYS_BOOTM_LEN		SZ_32M
-#define CONFIG_SYS_LOAD_ADDR		0x82000000
+#define CFG_SYS_DDR_SDRAM_BASE	0x80000000
+#define CFG_SYS_SDRAM_BASE		CFG_SYS_DDR_SDRAM_BASE
+#define CFG_SYS_SDRAM_SIZE		SZ_128M
 
 /*
  * UART configuration
  */
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_CLK		166666666
+#define CFG_SYS_NS16550_CLK		166666666
 
 /*
  * Even though the board houses Realtek RTL8211E PHY
@@ -38,7 +29,6 @@
  * Until Realtek PHY driver is fixed fall back to generic PHY driver
  * which implements all required functionality and behaves much more stable.
  *
- * #define CONFIG_PHY_REALTEK
  *
  */
 
@@ -47,22 +37,6 @@
  */
 #define ETH0_BASE_ADDRESS		0xFE100000
 #define ETH1_BASE_ADDRESS		0xFE110000
-
-/*
- * Command line configuration
- */
-
-/*
- * Environment settings
- */
-#define CONFIG_ENV_SIZE			SZ_2K
-#define CONFIG_ENV_OFFSET		0
-
-/*
- * Environment configuration
- */
-#define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
 
 /*
  * Console configuration

@@ -9,7 +9,7 @@
  *
  * The following macros need to be defined:
  *
- * CONFIG_SYS_CPLD_BASE - The virtual address of the base of the
+ * CFG_SYS_CPLD_BASE - The virtual address of the base of the
  * CPLD register map
  *
  */
@@ -22,14 +22,14 @@
 
 u8 cpld_read(unsigned int reg)
 {
-	void *p = (void *)CONFIG_SYS_CPLD_BASE;
+	void *p = (void *)CFG_SYS_CPLD_BASE;
 
 	return in_8(p + reg);
 }
 
 void cpld_write(unsigned int reg, u8 value)
 {
-	void *p = (void *)CONFIG_SYS_CPLD_BASE;
+	void *p = (void *)CFG_SYS_CPLD_BASE;
 
 	out_8(p + reg, value);
 }
@@ -95,7 +95,7 @@ static void cpld_dump_regs(void)
 #endif
 
 #ifndef CONFIG_SPL_BUILD
-int do_cpld(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_cpld(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	int rc = 0;
 

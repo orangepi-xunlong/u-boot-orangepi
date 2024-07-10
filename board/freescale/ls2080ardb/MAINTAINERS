@@ -1,5 +1,6 @@
 LS2080A BOARD
-M:	Prabhakar Kushwaha <prabhakar.kushwaha@nxp.com>, Priyanka Jain <priyanka.jain@nxp.com>
+M:	Priyanka Jain <priyanka.jain@nxp.com>
+M:	Wasim Khan <wasim.khan@nxp.com>
 S:	Maintained
 F:	board/freescale/ls2080ardb/
 F:	board/freescale/ls2080a/ls2080ardb.c
@@ -9,8 +10,11 @@ F:	configs/ls2080ardb_nand_defconfig
 
 LS2088A_QSPI-boot BOARD
 M:	Priyanka Jain <priyanka.jain@nxp.com>
+M:	Wasim Khan <wasim.khan@nxp.com>
 S:	Maintained
 F:	configs/ls2088ardb_qspi_defconfig
+F:	configs/ls2088ardb_tfa_defconfig
+F:	configs/ls2088ardb_tfa_SECURE_BOOT_defconfig
 
 LS2081ARDB BOARD
 M:	Priyanka Jain <priyanka.jain@nxp.com>
@@ -18,7 +22,7 @@ S:	Maintained
 F:	configs/ls2081ardb_defconfig
 
 LS2080A_SECURE_BOOT BOARD
-M:	Saksham Jain <saksham.jain@nxp.freescale.com>
+M:	Udit Agarwal <udit.agarwal@nxp.com>
 S:	Maintained
 F:	configs/ls2080ardb_SECURE_BOOT_defconfig
 

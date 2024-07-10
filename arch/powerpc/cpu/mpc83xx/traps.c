@@ -12,6 +12,8 @@
  */
 
 #include <common.h>
+#include <asm/global_data.h>
+#include <asm/ptrace.h>
 #include <command.h>
 #include <kgdb.h>
 #include <asm/processor.h>
@@ -22,7 +24,7 @@ DECLARE_GLOBAL_DATA_PTR;
 /* Returns 0 if exception not found and fixup otherwise.  */
 extern unsigned long search_exception_table(unsigned long);
 
-#define END_OF_MEM	(gd->bd->bi_memstart + gd->bd->bi_memsize)
+#define END_OF_MEM	(gd->ram_base + gd->ram_size)
 
 /*
  * Trap & Exception support
@@ -202,15 +204,8 @@ void UnknownException(struct pt_regs *regs)
 	_exception(0, regs);
 }
 
-#if defined(CONFIG_CMD_BEDBUG)
-extern void do_bedbug_breakpoint(struct pt_regs *);
-#endif
-
 void DebugException(struct pt_regs *regs)
 {
 	printf("Debugger trap at @ %lx\n", regs->nip );
 	show_regs(regs);
-#if defined(CONFIG_CMD_BEDBUG)
-	do_bedbug_breakpoint( regs );
-#endif
 }

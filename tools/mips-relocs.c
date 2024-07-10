@@ -195,15 +195,13 @@ static int compare_relocs(const void *a, const void *b)
 int main(int argc, char *argv[])
 {
 	unsigned int i, j, i_rel_shdr, sh_type, sh_entsize, sh_entries;
-	size_t rel_size, rel_actual_size, load_sz;
+	size_t rel_size, rel_actual_size;
 	const char *shstrtab, *sh_name, *rel_pfx;
 	int (*parse_fn)(const void *rel);
 	uint8_t *buf_start, *buf;
 	const Elf32_Ehdr *ehdr32;
 	const Elf64_Ehdr *ehdr64;
 	uintptr_t sh_offset;
-	Elf32_Phdr *phdr32;
-	Elf64_Phdr *phdr64;
 	Elf32_Shdr *shdr32;
 	Elf64_Shdr *shdr64;
 	struct stat st;
@@ -285,8 +283,6 @@ int main(int argc, char *argv[])
 		goto out_free_relocs;
 	}
 
-	phdr32 = elf + ehdr_field(e_phoff);
-	phdr64 = elf + ehdr_field(e_phoff);
 	shdr32 = elf + ehdr_field(e_shoff);
 	shdr64 = elf + ehdr_field(e_shoff);
 	shstrtab = elf + shdr_field(ehdr_field(e_shstrndx), sh_offset);
@@ -295,7 +291,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < ehdr_field(e_shnum); i++) {
 		sh_name = shstr(shdr_field(i, sh_name));
 
-		if (!strcmp(sh_name, ".rel")) {
+		if (!strcmp(sh_name, ".data.reloc")) {
 			i_rel_shdr = i;
 			continue;
 		}
@@ -316,7 +312,7 @@ int main(int argc, char *argv[])
 		goto out_free_relocs;
 	}
 
-	rel_pfx = is_64 ? ".rela." : ".rel.";
+	rel_pfx = is_64 ? ".rela" : ".rel";
 
 	for (i = 0; i < ehdr_field(e_shnum); i++) {
 		sh_type = shdr_field(i, sh_type);
@@ -325,10 +321,11 @@ int main(int argc, char *argv[])
 
 		sh_name = shstr(shdr_field(i, sh_name));
 		if (strncmp(sh_name, rel_pfx, strlen(rel_pfx))) {
-			if (strcmp(sh_name, ".rel") && strcmp(sh_name, ".rel.dyn"))
-				fprintf(stderr, "WARNING: Unexpected reloc section name '%s'\n", sh_name);
+			fprintf(stderr, "WARNING: Unexpected reloc section name '%s'\n", sh_name);
 			continue;
 		}
+		if (!strcmp(sh_name, ".rel") || !strcmp(sh_name, ".rel.dyn"))
+			continue;
 
 		/*
 		 * Skip reloc sections which either don't correspond to another
@@ -338,7 +335,7 @@ int main(int argc, char *argv[])
 		 */
 		skip = true;
 		for (j = 0; j < ehdr_field(e_shnum); j++) {
-			if (strcmp(&sh_name[strlen(rel_pfx) - 1], shstr(shdr_field(j, sh_name))))
+			if (strcmp(&sh_name[strlen(rel_pfx)], shstr(shdr_field(j, sh_name))))
 				continue;
 
 			skip = !(shdr_field(j, sh_flags) & SHF_ALLOC);
@@ -397,22 +394,12 @@ int main(int argc, char *argv[])
 	rel_size = shdr_field(i_rel_shdr, sh_size);
 	rel_actual_size = buf - buf_start;
 	if (rel_actual_size > rel_size) {
-		fprintf(stderr, "Relocs overflowed .rel section\n");
-		return -ENOMEM;
-	}
-
-	/* Update the .rel section's size */
-	set_shdr_field(i_rel_shdr, sh_size, rel_actual_size);
-
-	/* Shrink the PT_LOAD program header filesz (ie. shrink u-boot.bin) */
-	for (i = 0; i < ehdr_field(e_phnum); i++) {
-		if (phdr_field(i, p_type) != PT_LOAD)
-			continue;
-
-		load_sz = phdr_field(i, p_filesz);
-		load_sz -= rel_size - rel_actual_size;
-		set_phdr_field(i, p_filesz, load_sz);
-		break;
+		fprintf(stderr, "Relocations overflow available space of 0x%lx (required 0x%lx)!\n",
+			rel_size, rel_actual_size);
+		fprintf(stderr, "Please adjust CONFIG_MIPS_RELOCATION_TABLE_SIZE to at least 0x%lx\n",
+			(rel_actual_size + 0x100) & ~0xFF);
+		err = -ENOMEM;
+		goto out_free_relocs;
 	}
 
 	/* Make sure data is written back to the file */

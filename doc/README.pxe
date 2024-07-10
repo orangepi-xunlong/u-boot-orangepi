@@ -89,6 +89,15 @@ pxe boot
      fdt_addr - the location of a fdt blob. 'fdt_addr' will be passed to bootm
      command if it is set and 'fdt_addr_r' is not passed to bootm command.
 
+     fdtoverlay_addr_r - location in RAM at which 'pxe boot' will temporarily store
+     fdt overlay(s) before applying them to the fdt blob stored at 'fdt_addr_r'.
+
+     pxe_label_override - override label to be used, if exists, instead of the
+     default label. This will allow consumers to choose a pxe label at
+     runtime instead of having to prompt the user. If "pxe_label_override" is set
+     but does not exist in the pxe menu, pxe would fallback to the default label if
+     given, and no failure is returned but rather a warning message.
+
 pxe file format
 ===============
 The pxe file format is nearly a subset of the PXELINUX file format; see
@@ -140,6 +149,28 @@ kernel <path>	    - if this label is chosen, use tftp to retrieve the kernel
 		      (or FIT image) at <path>. it will be stored at the address
 		      indicated in the kernel_addr_r environment variable, and
 		      that address will be passed to bootm to boot this kernel.
+		      For FIT image, The configuration specification can be
+		      appended to the file name, with the format:
+		        <path>#<conf>[#<extra-conf[#...]]
+		      It will passed to bootm with that address.
+		      (see: doc/uImage.FIT/command_syntax_extensions.txt)
+		      It useful for overlay selection in pxe file
+		      (see: doc/uImage.FIT/overlay-fdt-boot.txt)
+
+fdtoverlays <path> [...] - if this label is chosen, use tftp to retrieve the DT
+                      overlay(s) at <path>. it will be temporarily stored at the
+                      address indicated in the fdtoverlay_addr_r environment variable,
+                      and then applied in the load order to the fdt blob stored at the
+                      address indicated in the fdt_addr_r environment variable.
+
+devicetree-overlay <path> [...] - if this label is chosen, use tftp to retrieve the DT
+                      overlay(s) at <path>. it will be temporarily stored at the
+                      address indicated in the fdtoverlay_addr_r environment variable,
+                      and then applied in the load order to the fdt blob stored at the
+                      address indicated in the fdt_addr_r environment variable.
+                      Alias for fdtoverlays.
+
+kaslrseed           - set this label to request random number from hwrng as kaslr seed.
 
 append <string>	    - use <string> as the kernel command line when booting this
 		      label.
@@ -148,11 +179,24 @@ initrd <path>	    - if this label is chosen, use tftp to retrieve the initrd
 		      at <path>. it will be stored at the address indicated in
 		      the initrd_addr_r environment variable, and that address
 		      will be passed to bootm.
+		      For FIT image, the initrd can be provided with the same value than
+		      kernel, including configuration:
+		        <path>#<conf>[#<extra-conf[#...]]
+		      In this case, kernel_addr_r is passed to bootm.
 
 fdt <path>	    - if this label is chosen, use tftp to retrieve the fdt blob
 		      at <path>. it will be stored at the address indicated in
 		      the fdt_addr_r environment variable, and that address will
 		      be passed to bootm.
+		      For FIT image, the device tree can be provided with the same value
+		      than kernel, including configuration:
+		        <path>#<conf>[#<extra-conf[#...]]
+		      In this case, kernel_addr_r is passed to bootm.
+
+devicetree <path>   - if this label is chosen, use tftp to retrieve the fdt blob
+		      at <path>. it will be stored at the address indicated in
+		      the fdt_addr_r environment variable, and that address will
+		      be passed to bootm. Alias for fdt.
 
 fdtdir <path>	    - if this label is chosen, use tftp to retrieve a fdt blob
 		      relative to <path>. If the fdtfile environment variable

@@ -18,6 +18,11 @@
 #ifndef __ARM_PSCI_H__
 #define __ARM_PSCI_H__
 
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
+
+#define ARM_PSCI_VER_1_1		(0x00010001)
 #define ARM_PSCI_VER_1_0		(0x00010000)
 #define ARM_PSCI_VER_0_2		(0x00000002)
 
@@ -81,6 +86,9 @@
 #define ARM_PSCI_1_0_FN64_STAT_RESIDENCY	ARM_PSCI_0_2_FN64(16)
 #define ARM_PSCI_1_0_FN64_STAT_COUNT		ARM_PSCI_0_2_FN64(17)
 
+/* PSCI 1.1 interface */
+#define ARM_PSCI_1_1_FN64_SYSTEM_RESET2		ARM_PSCI_0_2_FN64(18)
+
 /* 1KB stack per core */
 #define ARM_PSCI_STACK_SHIFT	10
 #define ARM_PSCI_STACK_SIZE	(1 << ARM_PSCI_STACK_SHIFT)
@@ -90,12 +98,17 @@
 #define PSCI_AFFINITY_LEVEL_OFF		1
 #define PSCI_AFFINITY_LEVEL_ON_PENDING	2
 
+#define PSCI_RESET2_TYPE_VENDOR_SHIFT	31
+#define PSCI_RESET2_TYPE_VENDOR		BIT(PSCI_RESET2_TYPE_VENDOR_SHIFT)
+
 #ifndef __ASSEMBLY__
 #include <asm/types.h>
+#include <linux/bitops.h>
 
-/* These 2 helper functions assume cpu < CONFIG_ARMV7_PSCI_NR_CPUS */
+/* These 3 helper functions assume cpu < CONFIG_ARMV7_PSCI_NR_CPUS */
 u32 psci_get_target_pc(int cpu);
-void psci_save_target_pc(int cpu, u32 pc);
+u32 psci_get_context_id(int cpu);
+void psci_save(int cpu, u32 pc, u32 context_id);
 
 void psci_cpu_entry(void);
 u32 psci_get_cpu_id(void);

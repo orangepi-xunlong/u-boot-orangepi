@@ -30,7 +30,7 @@ to understand the device tree in FIT image should be the one actually used, or
 leave it absent to favor the stored sectors. It is easier to deploy the FIT
 image with embedded static device tree to multiple boards.
 
-Macro CONFIG_SYS_SPL_ARGS_ADDR serves two purposes. One is the pointer to load
+Macro CONFIG_SPL_PAYLOAD_ARGS_ADDR serves two purposes. One is the pointer to load
 the stored sectors to. Normally this is the static device tree. The second
 purpose is the memory location of signature header for secure boot. After the
 FIT image is loaded into memory, it is validated against the signature header
@@ -110,7 +110,7 @@ Example:
 			type = "ramdisk";
 			arch = "arm64";
 			os = "linux";
-			compression = "gzip";
+			compression = "none";
 			load = <0xa0000000>;
 		};
 	};
@@ -128,6 +128,16 @@ Example:
 };
 
 The "loadables" is not optional. It tells SPL which images to load into memory.
+
+Falcon mode with QSPI boot
+--------------------------
+To use falcon mode with QSPI boot, SPL needs to be enabled. Similar to SD or
+NAND boot, a RAM version full feature U-Boot is needed. Unlike SD or NAND boot,
+SPL with QSPI doesn't need to combine SPL image with RAM version image. Two
+separated images are used, u-boot-spl.pbl and u-boot.img. The former is SPL
+image with RCW and PBI commands to load the SPL payload into On-Chip RAM. The
+latter is RAM version U-Boot in FIT format (or legacy format if FIT is not
+used).
 
 Other things to consider
 -----------------------

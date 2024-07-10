@@ -1,27 +1,31 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
+ * Copyright 2019, 2021 NXP
  */
 
 #include <common.h>
+#include <clock_legacy.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/immap_ls102xa.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
 #include <asm/arch/ls102xa_soc.h>
 #include <asm/arch/ls102xa_devdis.h>
-#include <asm/arch/ls102xa_sata.h>
+#include <asm/sections.h>
 #include <hwconfig.h>
 #include <mmc.h>
 #include <fsl_csu.h>
-#include <fsl_esdhc.h>
 #include <fsl_ifc.h>
-#include <fsl_sec.h>
 #include <spl.h>
 #include <fsl_devdis.h>
 #include <fsl_validate.h>
 #include <fsl_ddr.h>
+#include "../common/i2c_mux.h"
 #include "../common/sleep.h"
 #include "../common/qixis.h"
 #include "ls1021aqds_qixis.h"
@@ -98,6 +102,7 @@ int checkboard(void)
 	return 0;
 }
 
+#ifdef CONFIG_DYNAMIC_SYS_CLK_FREQ
 unsigned long get_board_sys_clk(void)
 {
 	u8 sysclk_conf = QIXIS_READ(brdcfg[1]);
@@ -122,7 +127,9 @@ unsigned long get_board_sys_clk(void)
 	}
 	return 66666666;
 }
+#endif
 
+#ifdef CONFIG_DYNAMIC_DDR_CLK_FREQ
 unsigned long get_board_ddr_clk(void)
 {
 	u8 ddrclk_conf = QIXIS_READ(brdcfg[1]);
@@ -137,19 +144,7 @@ unsigned long get_board_ddr_clk(void)
 	}
 	return 66666666;
 }
-
-int select_i2c_ch_pca9547(u8 ch)
-{
-	int ret;
-
-	ret = i2c_write(I2C_MUX_PCA_ADDR_PRI, 0, 1, &ch, 1);
-	if (ret) {
-		puts("PCA: failed to select proper channel\n");
-		return ret;
-	}
-
-	return 0;
-}
+#endif
 
 int dram_init(void)
 {
@@ -157,27 +152,16 @@ int dram_init(void)
 	 * When resuming from deep sleep, the I2C channel may not be
 	 * in the default channel. So, switch to the default channel
 	 * before accessing DDR SPD.
+	 *
+	 * PCA9547(0x77) mount on I2C1 bus
 	 */
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 	return fsl_initdram();
 }
 
-#ifdef CONFIG_FSL_ESDHC
-struct fsl_esdhc_cfg esdhc_cfg[1] = {
-	{CONFIG_SYS_FSL_ESDHC_ADDR},
-};
-
-int board_mmc_init(bd_t *bis)
-{
-	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-
-	return fsl_esdhc_initialize(bis, &esdhc_cfg[0]);
-}
-#endif
-
 int board_early_init_f(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_TSEC_ENET
 	/* clear BD & FR bits for BE BD's and frame data */
@@ -201,12 +185,8 @@ int board_early_init_f(void)
 #ifdef CONFIG_SPL_BUILD
 void board_init_f(ulong dummy)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
-					CONFIG_SYS_CCI400_OFFSET);
-	unsigned int major;
-
 #ifdef CONFIG_NAND_BOOT
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 	u32 porsr1, pinctl;
 
 	/*
@@ -217,7 +197,7 @@ void board_init_f(ulong dummy)
 	porsr1 = in_be32(&gur->porsr1);
 	pinctl = ((porsr1 & ~(DCFG_CCSR_PORSR1_RCW_MASK)) |
 		 DCFG_CCSR_PORSR1_RCW_SRC_I2C);
-	out_be32((unsigned int *)(CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_PORCR1),
+	out_be32((unsigned int *)(CFG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_PORCR1),
 		 pinctl);
 #endif
 
@@ -237,14 +217,11 @@ void board_init_f(ulong dummy)
 
 	preloader_console_init();
 
-#ifdef CONFIG_SPL_I2C_SUPPORT
+#ifdef CONFIG_SPL_I2C
 	i2c_init_all();
 #endif
 
-	major = get_soc_major_rev();
-	if (major == SOC_MAJOR_VER_1_0)
-		out_le32(&cci->ctrl_ord, CCI400_CTRLORD_TERM_BARRIER);
-
+	timer_init();
 	dram_init();
 
 	/* Allow OCRAM access permission as R/W */
@@ -258,7 +235,7 @@ void board_init_f(ulong dummy)
 
 void config_etseccm_source(int etsec_gtx_125_mux)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 	switch (etsec_gtx_125_mux) {
 	case GE0_CLK125:
@@ -332,7 +309,7 @@ int config_board_mux(int ctrl_type)
 
 int config_serdes_mux(void)
 {
-	struct ccsr_gur *gur = (struct ccsr_gur *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur *gur = (struct ccsr_gur *)CFG_SYS_FSL_GUTS_ADDR;
 	u32 cfg;
 
 	cfg = in_be32(&gur->rcwsr[4]) & RCWSR4_SRDS1_PRTCL_MASK;
@@ -362,9 +339,6 @@ int config_serdes_mux(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#ifdef CONFIG_SCSI_AHCI_PLAT
-	ls1021a_sata_init();
-#endif
 #ifdef CONFIG_CHAIN_OF_TRUST
 	fsl_setenv_chain_of_trust();
 #endif
@@ -415,32 +389,19 @@ int misc_init_r(void)
 #ifdef CONFIG_FSL_DEVICE_DISABLE
 	device_disable(devdis_tbl, ARRAY_SIZE(devdis_tbl));
 #endif
-#ifdef CONFIG_FSL_CAAM
-	return sec_init();
-#endif
 	return 0;
 }
 
 int board_init(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
-					CONFIG_SYS_CCI400_OFFSET);
-	unsigned int major;
-
 #ifdef CONFIG_SYS_FSL_ERRATUM_A010315
 	erratum_a010315();
 #endif
 #ifdef CONFIG_SYS_FSL_ERRATUM_A009942
 	erratum_a009942_check_cpo();
 #endif
-	major = get_soc_major_rev();
-	if (major == SOC_MAJOR_VER_1_0) {
-		/* Set CCI-400 control override register to
-		 * enable barrier transaction */
-		out_le32(&cci->ctrl_ord, CCI400_CTRLORD_EN_BARRIER);
-	}
 
-	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
+	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 
 #ifndef CONFIG_SYS_FSL_NO_SERDES
 	fsl_serdes_init();
@@ -459,25 +420,13 @@ int board_init(void)
 #if defined(CONFIG_DEEP_SLEEP)
 void board_sleep_prepare(void)
 {
-	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
-						CONFIG_SYS_CCI400_OFFSET);
-	unsigned int major;
-
-	major = get_soc_major_rev();
-	if (major == SOC_MAJOR_VER_1_0) {
-		/* Set CCI-400 control override register to
-		 * enable barrier transaction */
-		out_le32(&cci->ctrl_ord, CCI400_CTRLORD_EN_BARRIER);
-	}
-
-
 #ifdef CONFIG_LAYERSCAPE_NS_ACCESS
 	enable_layerscape_ns_access();
 #endif
 }
 #endif
 
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	ft_cpu_setup(blob, bd);
 

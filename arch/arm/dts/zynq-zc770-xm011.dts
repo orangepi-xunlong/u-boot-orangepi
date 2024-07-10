@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Xilinx ZC770 XM013 board DTS
+ * Xilinx ZC770 XM011 board DTS
  *
  * Copyright (C) 2013-2018 Xilinx, Inc.
  */
@@ -8,8 +8,8 @@
 #include "zynq-7000.dtsi"
 
 / {
+	model = "Xilinx ZC770 XM011 board";
 	compatible = "xlnx,zynq-zc770-xm011", "xlnx,zynq-7000";
-	model = "Xilinx Zynq";
 
 	aliases {
 		i2c0 = &i2c1;
@@ -47,6 +47,36 @@
 	};
 };
 
+&nfc0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	nand@0 {
+		reg = <0>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "nand-fsbl-uboot";
+				reg = <0x0 0x1000000>;
+			};
+			partition@1000000 {
+				label = "nand-linux";
+				reg = <0x1000000 0x2000000>;
+			};
+			partition@3000000 {
+				label = "nand-rootfs";
+				reg = <0x3000000 0x200000>;
+			};
+		};
+	};
+};
+
+&smcc {
+	status = "okay";
+};
+
 &spi0 {
 	status = "okay";
 	num-cs = <4>;
@@ -54,7 +84,7 @@
 };
 
 &uart1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 

@@ -10,6 +10,7 @@
 #define _GNU_SOURCE
 
 #include <compiler.h>
+#include <env.h>
 #include <errno.h>
 #include <env_flags.h>
 #include <fcntl.h>
@@ -24,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <u-boot/crc.h>
 #include <unistd.h>
 #include <dirent.h>
 
@@ -110,6 +112,7 @@ struct environment {
 	unsigned char *flags;
 	char *data;
 	enum flag_scheme flag_scheme;
+	int dirty;
 };
 
 static struct environment environment = {
@@ -117,10 +120,6 @@ static struct environment environment = {
 };
 
 static int have_redund_env;
-
-static unsigned char active_flag = 1;
-/* obsolete_flag must be 0 to efficiently set it on NOR flash without erasing */
-static unsigned char obsolete_flag = 0;
 
 #define DEFAULT_ENV_INSTANCE_STATIC
 #include <env_default.h>
@@ -193,10 +192,13 @@ static int ubi_get_volnum_by_name(int devnum, const char *volname)
 			     &tmp_devnum, &volnum);
 		if (ret == 2 && devnum == tmp_devnum) {
 			if (ubi_check_volume_sysfs_name(dirent->d_name,
-							volname) == 0)
+							volname) == 0) {
+				closedir(sysfs_ubi);
 				return volnum;
+			}
 		}
 	}
+	closedir(sysfs_ubi);
 
 	return -1;
 }
@@ -347,7 +349,7 @@ static int ubi_write(int fd, const void *buf, size_t count)
 	return 0;
 }
 
-static int flash_io(int mode);
+static int flash_io(int mode, void *buf, size_t count);
 static int parse_config(struct env_opts *opts);
 
 #if defined(CONFIG_FILE)
@@ -508,13 +510,16 @@ int fw_env_flush(struct env_opts *opts)
 	if (!opts)
 		opts = &default_opts;
 
+	if (!environment.dirty)
+		return 0;
+
 	/*
 	 * Update CRC
 	 */
 	*environment.crc = crc32(0, (uint8_t *) environment.data, ENV_SIZE);
 
 	/* write environment back to flash */
-	if (flash_io(O_RDWR)) {
+	if (flash_io(O_RDWR, environment.image, CUR_ENVSIZE)) {
 		fprintf(stderr, "Error: can't write fw_env to flash\n");
 		return -1;
 	}
@@ -553,7 +558,8 @@ int fw_env_write(char *name, char *value)
 
 	deleting = (oldval && !(value && strlen(value)));
 	creating = (!oldval && (value && strlen(value)));
-	overwriting = (oldval && (value && strlen(value)));
+	overwriting = (oldval && (value && strlen(value) &&
+				  strcmp(oldval, value)));
 
 	/* check for permission */
 	if (deleting) {
@@ -593,6 +599,7 @@ int fw_env_write(char *name, char *value)
 		/* Nothing to do */
 		return 0;
 
+	environment.dirty = 1;
 	if (deleting || overwriting) {
 		if (*++nxt == '\0') {
 			*env = '\0';
@@ -737,7 +744,8 @@ int fw_env_set(int argc, char *argv[], struct env_opts *opts)
 int fw_parse_script(char *fname, struct env_opts *opts)
 {
 	FILE *fp;
-	char dump[1024];	/* Maximum line length in the file */
+	char *line = NULL;
+	size_t linesize = 0;
 	char *name;
 	char *val;
 	int lineno = 0;
@@ -763,36 +771,34 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 		}
 	}
 
-	while (fgets(dump, sizeof(dump), fp)) {
+	while ((len = getline(&line, &linesize, fp)) != -1) {
 		lineno++;
-		len = strlen(dump);
 
 		/*
-		 * Read a whole line from the file. If the line is too long
-		 * or is not terminated, reports an error and exit.
+		 * Read a whole line from the file. If the line is not
+		 * terminated, reports an error and exit.
 		 */
-		if (dump[len - 1] != '\n') {
+		if (line[len - 1] != '\n') {
 			fprintf(stderr,
-				"Line %d not corrected terminated or too long\n",
+				"Line %d not correctly terminated\n",
 				lineno);
 			ret = -1;
 			break;
 		}
 
 		/* Drop ending line feed / carriage return */
-		dump[--len] = '\0';
-		if (len && dump[len - 1] == '\r')
-			dump[--len] = '\0';
+		line[--len] = '\0';
+		if (len && line[len - 1] == '\r')
+			line[--len] = '\0';
 
 		/* Skip comment or empty lines */
-		if (len == 0 || dump[0] == '#')
+		if (len == 0 || line[0] == '#')
 			continue;
 
 		/*
-		 * Search for variable's name,
-		 * remove leading whitespaces
+		 * Search for variable's name remove leading whitespaces
 		 */
-		name = skip_blanks(dump);
+		name = skip_blanks(line);
 		if (!name)
 			continue;
 
@@ -829,6 +835,7 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 		}
 
 	}
+	free(line);
 
 	/* Close file if not stdin */
 	if (strcmp(fname, "-") != 0)
@@ -842,10 +849,10 @@ int fw_parse_script(char *fname, struct env_opts *opts)
 }
 
 /**
- * environment_end() - compute offset of first byte right after environemnt
+ * environment_end() - compute offset of first byte right after environment
  * @dev - index of enviroment buffer
  * Return:
- *  device offset of first byte right after environemnt
+ *  device offset of first byte right after environment
  */
 off_t environment_end(int dev)
 {
@@ -942,7 +949,7 @@ static int flash_read_buf(int dev, int fd, void *buf, size_t count,
 		lseek(fd, blockstart + block_seek, SEEK_SET);
 
 		rc = read(fd, buf + processed, readlen);
-		if (rc != readlen) {
+		if (rc == -1) {
 			fprintf(stderr, "Read error on %s: %s\n",
 				DEVNAME(dev), strerror(errno));
 			return -1;
@@ -952,10 +959,18 @@ static int flash_read_buf(int dev, int fd, void *buf, size_t count,
 			rc, (unsigned long long)blockstart + block_seek,
 			DEVNAME(dev));
 #endif
-		processed += readlen;
-		readlen = min(blocklen, count - processed);
-		block_seek = 0;
-		blockstart += blocklen;
+		processed += rc;
+		if (rc != readlen) {
+			fprintf(stderr,
+				"Warning on %s: Attempted to read %zd bytes but got %d\n",
+				DEVNAME(dev), readlen, rc);
+			readlen -= rc;
+			block_seek += rc;
+		} else {
+			blockstart += blocklen;
+			readlen = min(blocklen, count - processed);
+			block_seek = 0;
+		}
 	}
 
 	return processed;
@@ -985,6 +1000,7 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 				   of the data */
 	loff_t blockstart;	/* running start of the current block -
 				   MEMGETBADBLOCK needs 64 bits */
+	int was_locked = 0;	/* flash lock flag */
 	int rc;
 
 	/*
@@ -1089,7 +1105,12 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 
 		if (DEVTYPE(dev) != MTD_ABSENT) {
 			erase.start = blockstart;
-			ioctl(fd, MEMUNLOCK, &erase);
+			was_locked = ioctl(fd, MEMISLOCKED, &erase);
+			/* treat any errors as unlocked flash */
+			if (was_locked < 0)
+					was_locked = 0;
+			if (was_locked)
+				ioctl(fd, MEMUNLOCK, &erase);
 			/* These do not need an explicit erase cycle */
 			if (DEVTYPE(dev) != MTD_DATAFLASH)
 				if (ioctl(fd, MEMERASE, &erase) != 0) {
@@ -1117,8 +1138,10 @@ static int flash_write_buf(int dev, int fd, void *buf, size_t count)
 			return -1;
 		}
 
-		if (DEVTYPE(dev) != MTD_ABSENT)
-			ioctl(fd, MEMLOCK, &erase);
+		if (DEVTYPE(dev) != MTD_ABSENT) {
+			if (was_locked)
+				ioctl(fd, MEMLOCK, &erase);
+		}
 
 		processed += erasesize;
 		block_seek = 0;
@@ -1138,26 +1161,35 @@ static int flash_flag_obsolete(int dev, int fd, off_t offset)
 {
 	int rc;
 	struct erase_info_user erase;
+	char tmp = ENV_REDUND_OBSOLETE;
+	int was_locked;	/* flash lock flag */
 
 	erase.start = DEVOFFSET(dev);
 	erase.length = DEVESIZE(dev);
-	/* This relies on the fact, that obsolete_flag == 0 */
+	/* This relies on the fact, that ENV_REDUND_OBSOLETE == 0 */
 	rc = lseek(fd, offset, SEEK_SET);
 	if (rc < 0) {
 		fprintf(stderr, "Cannot seek to set the flag on %s\n",
 			DEVNAME(dev));
 		return rc;
 	}
-	ioctl(fd, MEMUNLOCK, &erase);
-	rc = write(fd, &obsolete_flag, sizeof(obsolete_flag));
-	ioctl(fd, MEMLOCK, &erase);
+	was_locked = ioctl(fd, MEMISLOCKED, &erase);
+	/* treat any errors as unlocked flash */
+	if (was_locked < 0)
+		was_locked = 0;
+	if (was_locked)
+		ioctl(fd, MEMUNLOCK, &erase);
+	rc = write(fd, &tmp, sizeof(tmp));
+	if (was_locked)
+		ioctl(fd, MEMLOCK, &erase);
 	if (rc < 0)
 		perror("Could not set obsolete flag");
 
 	return rc;
 }
 
-static int flash_write(int fd_current, int fd_target, int dev_target)
+static int flash_write(int fd_current, int fd_target, int dev_target, void *buf,
+		       size_t count)
 {
 	int rc;
 
@@ -1168,7 +1200,7 @@ static int flash_write(int fd_current, int fd_target, int dev_target)
 		(*environment.flags)++;
 		break;
 	case FLAG_BOOLEAN:
-		*environment.flags = active_flag;
+		*environment.flags = ENV_REDUND_ACTIVE;
 		break;
 	default:
 		fprintf(stderr, "Unimplemented flash scheme %u\n",
@@ -1183,12 +1215,11 @@ static int flash_write(int fd_current, int fd_target, int dev_target)
 
 	if (IS_UBI(dev_target)) {
 		if (ubi_update_start(fd_target, CUR_ENVSIZE) < 0)
-			return 0;
-		return ubi_write(fd_target, environment.image, CUR_ENVSIZE);
+			return -1;
+		return ubi_write(fd_target, buf, count);
 	}
 
-	rc = flash_write_buf(dev_target, fd_target, environment.image,
-			     CUR_ENVSIZE);
+	rc = flash_write_buf(dev_target, fd_target, buf, count);
 	if (rc < 0)
 		return rc;
 
@@ -1207,17 +1238,17 @@ static int flash_write(int fd_current, int fd_target, int dev_target)
 	return 0;
 }
 
-static int flash_read(int fd)
+static int flash_read(int fd, void *buf, size_t count)
 {
 	int rc;
 
 	if (IS_UBI(dev_current)) {
 		DEVTYPE(dev_current) = MTD_ABSENT;
 
-		return ubi_read(fd, environment.image, CUR_ENVSIZE);
+		return ubi_read(fd, buf, count);
 	}
 
-	rc = flash_read_buf(dev_current, fd, environment.image, CUR_ENVSIZE,
+	rc = flash_read_buf(dev_current, fd, buf, count,
 			    DEVOFFSET(dev_current));
 	if (rc != CUR_ENVSIZE)
 		return -1;
@@ -1263,7 +1294,7 @@ err:
 	return rc;
 }
 
-static int flash_io_write(int fd_current)
+static int flash_io_write(int fd_current, void *buf, size_t count)
 {
 	int fd_target = -1, rc, dev_target;
 	const char *dname, *target_temp = NULL;
@@ -1294,7 +1325,7 @@ static int flash_io_write(int fd_current)
 			fd_target = fd_current;
 	}
 
-	rc = flash_write(fd_current, fd_target, dev_target);
+	rc = flash_write(fd_current, fd_target, dev_target, buf, count);
 
 	if (fsync(fd_current) && !(errno == EINVAL || errno == EROFS)) {
 		fprintf(stderr,
@@ -1317,7 +1348,7 @@ static int flash_io_write(int fd_current)
 			rc = -1;
 		}
 
-		if (target_temp) {
+		if (rc >= 0 && target_temp) {
 			int dir_fd;
 
 			dir_fd = open(dname, O_DIRECTORY | O_RDONLY);
@@ -1349,7 +1380,7 @@ static int flash_io_write(int fd_current)
 	return rc;
 }
 
-static int flash_io(int mode)
+static int flash_io(int mode, void *buf, size_t count)
 {
 	int fd_current, rc;
 
@@ -1363,9 +1394,9 @@ static int flash_io(int mode)
 	}
 
 	if (mode == O_RDWR) {
-		rc = flash_io_write(fd_current);
+		rc = flash_io_write(fd_current, buf, count);
 	} else {
-		rc = flash_read(fd_current);
+		rc = flash_read(fd_current, buf, count);
 	}
 
 	if (close(fd_current)) {
@@ -1393,9 +1424,6 @@ int fw_env_open(struct env_opts *opts)
 
 	int ret;
 
-	struct env_image_single *single;
-	struct env_image_redundant *redundant;
-
 	if (!opts)
 		opts = &default_opts;
 
@@ -1411,39 +1439,37 @@ int fw_env_open(struct env_opts *opts)
 		goto open_cleanup;
 	}
 
-	/* read environment from FLASH to local buffer */
-	environment.image = addr0;
-
-	if (have_redund_env) {
-		redundant = addr0;
-		environment.crc = &redundant->crc;
-		environment.flags = &redundant->flags;
-		environment.data = redundant->data;
-	} else {
-		single = addr0;
-		environment.crc = &single->crc;
-		environment.flags = NULL;
-		environment.data = single->data;
-	}
-
 	dev_current = 0;
-	if (flash_io(O_RDONLY)) {
+	if (flash_io(O_RDONLY, addr0, CUR_ENVSIZE)) {
 		ret = -EIO;
 		goto open_cleanup;
 	}
 
-	crc0 = crc32(0, (uint8_t *)environment.data, ENV_SIZE);
-
-	crc0_ok = (crc0 == *environment.crc);
 	if (!have_redund_env) {
+		struct env_image_single *single = addr0;
+
+		crc0 = crc32(0, (uint8_t *)single->data, ENV_SIZE);
+		crc0_ok = (crc0 == single->crc);
 		if (!crc0_ok) {
 			fprintf(stderr,
 				"Warning: Bad CRC, using default environment\n");
-			memcpy(environment.data, default_environment,
+			memcpy(single->data, default_environment,
 			       sizeof(default_environment));
+			environment.dirty = 1;
 		}
+
+		environment.image = addr0;
+		environment.crc = &single->crc;
+		environment.flags = NULL;
+		environment.data = single->data;
 	} else {
-		flag0 = *environment.flags;
+		struct env_image_redundant *redundant0 = addr0;
+		struct env_image_redundant *redundant1;
+
+		crc0 = crc32(0, (uint8_t *)redundant0->data, ENV_SIZE);
+		crc0_ok = (crc0 == redundant0->crc);
+
+		flag0 = redundant0->flags;
 
 		dev_current = 1;
 		addr1 = calloc(1, CUR_ENVSIZE);
@@ -1454,14 +1480,9 @@ int fw_env_open(struct env_opts *opts)
 			ret = -ENOMEM;
 			goto open_cleanup;
 		}
-		redundant = addr1;
+		redundant1 = addr1;
 
-		/*
-		 * have to set environment.image for flash_read(), careful -
-		 * other pointers in environment still point inside addr0
-		 */
-		environment.image = addr1;
-		if (flash_io(O_RDONLY)) {
+		if (flash_io(O_RDONLY, addr1, CUR_ENVSIZE)) {
 			ret = -EIO;
 			goto open_cleanup;
 		}
@@ -1489,10 +1510,14 @@ int fw_env_open(struct env_opts *opts)
 			goto open_cleanup;
 		}
 
-		crc1 = crc32(0, (uint8_t *)redundant->data, ENV_SIZE);
+		crc1 = crc32(0, (uint8_t *)redundant1->data, ENV_SIZE);
 
-		crc1_ok = (crc1 == redundant->crc);
-		flag1 = redundant->flags;
+		crc1_ok = (crc1 == redundant1->crc);
+		flag1 = redundant1->flags;
+
+		if (memcmp(redundant0->data, redundant1->data, ENV_SIZE) ||
+		    !crc0_ok || !crc1_ok)
+			environment.dirty = 1;
 
 		if (crc0_ok && !crc1_ok) {
 			dev_current = 0;
@@ -1501,17 +1526,18 @@ int fw_env_open(struct env_opts *opts)
 		} else if (!crc0_ok && !crc1_ok) {
 			fprintf(stderr,
 				"Warning: Bad CRC, using default environment\n");
-			memcpy(environment.data, default_environment,
+			memcpy(redundant0->data, default_environment,
 			       sizeof(default_environment));
+			environment.dirty = 1;
 			dev_current = 0;
 		} else {
 			switch (environment.flag_scheme) {
 			case FLAG_BOOLEAN:
-				if (flag0 == active_flag &&
-				    flag1 == obsolete_flag) {
+				if (flag0 == ENV_REDUND_ACTIVE &&
+				    flag1 == ENV_REDUND_OBSOLETE) {
 					dev_current = 0;
-				} else if (flag0 == obsolete_flag &&
-					   flag1 == active_flag) {
+				} else if (flag0 == ENV_REDUND_OBSOLETE &&
+					   flag1 == ENV_REDUND_ACTIVE) {
 					dev_current = 1;
 				} else if (flag0 == flag1) {
 					dev_current = 0;
@@ -1546,13 +1572,15 @@ int fw_env_open(struct env_opts *opts)
 		 */
 		if (dev_current) {
 			environment.image = addr1;
-			environment.crc = &redundant->crc;
-			environment.flags = &redundant->flags;
-			environment.data = redundant->data;
+			environment.crc = &redundant1->crc;
+			environment.flags = &redundant1->flags;
+			environment.data = redundant1->data;
 			free(addr0);
 		} else {
 			environment.image = addr0;
-			/* Other pointers are already set */
+			environment.crc = &redundant0->crc;
+			environment.flags = &redundant0->flags;
+			environment.data = redundant0->data;
 			free(addr1);
 		}
 #ifdef DEBUG
@@ -1566,7 +1594,7 @@ int fw_env_open(struct env_opts *opts)
 		free(addr0);
 
 	if (addr1)
-		free(addr0);
+		free(addr1);
 
 	return ret;
 }
@@ -1630,6 +1658,9 @@ static int check_device_config(int dev)
 			goto err;
 		}
 		DEVTYPE(dev) = mtdinfo.type;
+		if (DEVESIZE(dev) == 0 && ENVSECTORS(dev) == 0 &&
+		    mtdinfo.type == MTD_NORFLASH)
+			DEVESIZE(dev) = mtdinfo.erasesize;
 		if (DEVESIZE(dev) == 0)
 			/* Assume the erase size is the same as the env-size */
 			DEVESIZE(dev) = ENVSIZE(dev);
@@ -1685,6 +1716,75 @@ static int check_device_config(int dev)
 	return rc;
 }
 
+static int find_nvmem_device(void)
+{
+	const char *path = "/sys/bus/nvmem/devices";
+	struct dirent *dent;
+	char *nvmem = NULL;
+	char comp[256];
+	char buf[32];
+	int bytes;
+	DIR *dir;
+
+	dir = opendir(path);
+	if (!dir) {
+		return -EIO;
+	}
+
+	while (!nvmem && (dent = readdir(dir))) {
+		FILE *fp;
+		size_t size;
+
+		if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, "..")) {
+			continue;
+		}
+
+		bytes = snprintf(comp, sizeof(comp), "%s/%s/of_node/compatible", path, dent->d_name);
+		if (bytes < 0 || bytes == sizeof(comp)) {
+			continue;
+		}
+
+		fp = fopen(comp, "r");
+		if (!fp) {
+			continue;
+		}
+
+		size = fread(buf, sizeof(buf), 1, fp);
+		if (size != 1) {
+			fprintf(stderr,
+				"read failed about %s\n", comp);
+			fclose(fp);
+			return -EIO;
+		}
+
+
+		if (!strcmp(buf, "u-boot,env")) {
+			bytes = asprintf(&nvmem, "%s/%s/nvmem", path, dent->d_name);
+			if (bytes < 0) {
+				nvmem = NULL;
+			}
+		}
+
+		fclose(fp);
+	}
+
+	closedir(dir);
+
+	if (nvmem) {
+		struct stat s;
+
+		stat(nvmem, &s);
+
+		DEVNAME(0) = nvmem;
+		DEVOFFSET(0) = 0;
+		ENVSIZE(0) = s.st_size;
+
+		return 0;
+	}
+
+	return -ENOENT;
+}
+
 static int parse_config(struct env_opts *opts)
 {
 	int rc;
@@ -1695,9 +1795,12 @@ static int parse_config(struct env_opts *opts)
 #if defined(CONFIG_FILE)
 	/* Fills in DEVNAME(), ENVSIZE(), DEVESIZE(). Or don't. */
 	if (get_config(opts->config_file)) {
-		fprintf(stderr, "Cannot parse config file '%s': %m\n",
-			opts->config_file);
-		return -1;
+		if (find_nvmem_device()) {
+			fprintf(stderr, "Cannot parse config file '%s': %m\n",
+				opts->config_file);
+			fprintf(stderr, "Failed to find NVMEM device\n");
+			return -1;
+		}
 	}
 #else
 	DEVNAME(0) = DEVICE1_NAME;
@@ -1742,7 +1845,7 @@ static int parse_config(struct env_opts *opts)
 
 		if (ENVSIZE(0) != ENVSIZE(1)) {
 			fprintf(stderr,
-				"Redundant environments have unequal size");
+				"Redundant environments have unequal size\n");
 			return -1;
 		}
 	}
@@ -1760,19 +1863,20 @@ static int get_config(char *fname)
 	FILE *fp;
 	int i = 0;
 	int rc;
-	char dump[128];
+	char *line = NULL;
+	size_t linesize = 0;
 	char *devname;
 
 	fp = fopen(fname, "r");
 	if (fp == NULL)
 		return -1;
 
-	while (i < 2 && fgets(dump, sizeof(dump), fp)) {
-		/* Skip incomplete conversions and comment strings */
-		if (dump[0] == '#')
+	while (i < 2 && getline(&line, &linesize, fp) != -1) {
+		/* Skip comment strings */
+		if (line[0] == '#')
 			continue;
 
-		rc = sscanf(dump, "%ms %lli %lx %lx %lx",
+		rc = sscanf(line, "%ms %lli %lx %lx %lx",
 			    &devname,
 			    &DEVOFFSET(i),
 			    &ENVSIZE(i), &DEVESIZE(i), &ENVSECTORS(i));
@@ -1788,6 +1892,7 @@ static int get_config(char *fname)
 
 		i++;
 	}
+	free(line);
 	fclose(fp);
 
 	have_redund_env = i - 1;

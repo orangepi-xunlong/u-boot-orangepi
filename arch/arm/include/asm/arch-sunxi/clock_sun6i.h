@@ -60,7 +60,11 @@ struct sunxi_ccm_reg {
 	u32 reserved11;
 	u32 sata_clk_cfg;	/* 0xc8 SATA clock control (R40 only) */
 	u32 usb_clk_cfg;	/* 0xcc USB clock control */
-	u32 gmac_clk_cfg;	/* 0xd0 GMAC clock control */
+#ifdef CONFIG_MACH_SUN8I_R40
+	u32 cir0_clk_cfg;	/* 0xd0 CIR0 clock control (R40 only) */
+#else
+	u32 gmac_clk_cfg;	/* 0xd0 GMAC clock control (not for R40) */
+#endif
 	u32 reserved12[7];
 	u32 mdfs_clk_cfg;	/* 0xf0 MDFS clock control */
 	u32 dram_clk_cfg;	/* 0xf4 DRAM configuration clock control */
@@ -103,7 +107,11 @@ struct sunxi_ccm_reg {
 	u32 mtc_clk_cfg;	/* 0x158 MTC module clock */
 	u32 mbus0_clk_cfg;	/* 0x15c MBUS0 module clock */
 	u32 mbus1_clk_cfg;	/* 0x160 MBUS1 module clock */
+#ifdef CONFIG_MACH_SUN8I_R40
+	u32 gmac_clk_cfg;	/* 0x164 GMAC clock control (R40 only) */
+#else
 	u32 reserved16;
+#endif
 	u32 mipi_dsi_clk_cfg;	/* 0x168 MIPI DSI clock control */
 	u32 mipi_csi_clk_cfg;	/* 0x16c MIPI CSI clock control */
 	u32 reserved17[4];
@@ -200,6 +208,7 @@ struct sunxi_ccm_reg {
 #define CCM_PLL1_CTRL_N(n)		((((n) - 1) & 0x1f) << 8)
 #define CCM_PLL1_CTRL_P(n)		(((n) & 0x3) << 16)
 #define CCM_PLL1_CTRL_EN		(0x1 << 31)
+#define CCM_PLL1_CTRL_LOCK		(0x1 << 28)
 
 #define CCM_PLL3_CTRL_M_SHIFT		0
 #define CCM_PLL3_CTRL_M_MASK		(0xf << CCM_PLL3_CTRL_M_SHIFT)
@@ -218,7 +227,12 @@ struct sunxi_ccm_reg {
 #define CCM_PLL5_CTRL_SIGMA_DELTA_EN	(0x1 << 24)
 #define CCM_PLL5_CTRL_EN		(0x1 << 31)
 
+#ifdef CONFIG_MACH_SUNIV
+/* suniv pll6 doesn't have postdiv 2, so k is set to 0 */
+#define PLL6_CFG_DEFAULT		0x90041801
+#else
 #define PLL6_CFG_DEFAULT		0x90041811 /* 600 MHz */
+#endif
 
 #define CCM_PLL6_CTRL_N_SHIFT		8
 #define CCM_PLL6_CTRL_N_MASK		(0x1f << CCM_PLL6_CTRL_N_SHIFT)
@@ -270,21 +284,33 @@ struct sunxi_ccm_reg {
 #define AXI_GATE_OFFSET_DRAM		0
 
 /* ahb_gate0 offsets */
-#define AHB_GATE_OFFSET_USB_OHCI1	30
-#define AHB_GATE_OFFSET_USB_OHCI0	29
 #ifdef CONFIG_MACH_SUNXI_H3_H5
 /*
  * These are EHCI1 - EHCI3 in the datasheet (EHCI0 is for the OTG) we call
  * them 0 - 2 like they were called on older SoCs.
  */
-#define AHB_GATE_OFFSET_USB_EHCI2	27
-#define AHB_GATE_OFFSET_USB_EHCI1	26
-#define AHB_GATE_OFFSET_USB_EHCI0	25
+#define AHB_GATE_OFFSET_USB_OHCI3	31
+#define AHB_GATE_OFFSET_USB_OHCI2	30
+#define AHB_GATE_OFFSET_USB_OHCI1	29
+#define AHB_GATE_OFFSET_USB_OHCI0	28
+#define AHB_GATE_OFFSET_USB_EHCI3	27
+#define AHB_GATE_OFFSET_USB_EHCI2	26
+#define AHB_GATE_OFFSET_USB_EHCI1	25
+#define AHB_GATE_OFFSET_USB_EHCI0	24
+#elif defined(CONFIG_MACH_SUN50I)
+#define AHB_GATE_OFFSET_USB_OHCI0	28
+#define AHB_GATE_OFFSET_USB_OHCI1	29
+#define AHB_GATE_OFFSET_USB_EHCI0	24
+#define AHB_GATE_OFFSET_USB_EHCI1	25
 #else
+#define AHB_GATE_OFFSET_USB_OHCI1	30
+#define AHB_GATE_OFFSET_USB_OHCI0	29
 #define AHB_GATE_OFFSET_USB_EHCI1	27
 #define AHB_GATE_OFFSET_USB_EHCI0	26
 #endif
-#ifndef CONFIG_MACH_SUN8I_R40
+#if defined(CONFIG_MACH_SUN50I) || defined(CONFIG_MACH_SUNXI_H3_H5)
+#define AHB_GATE_OFFSET_USB0		23
+#elif !defined(CONFIG_MACH_SUN8I_R40)
 #define AHB_GATE_OFFSET_USB0		24
 #else
 #define AHB_GATE_OFFSET_USB0		25
@@ -344,13 +370,10 @@ struct sunxi_ccm_reg {
 #define CCM_USB_CTRL_PHY2_CLK (0x1 << 10)
 #define CCM_USB_CTRL_PHY3_CLK (0x1 << 11)
 #ifdef CONFIG_MACH_SUNXI_H3_H5
-/*
- * These are OHCI1 - OHCI3 in the datasheet (OHCI0 is for the OTG) we call
- * them 0 - 2 like they were called on older SoCs.
- */
-#define CCM_USB_CTRL_OHCI0_CLK (0x1 << 17)
-#define CCM_USB_CTRL_OHCI1_CLK (0x1 << 18)
-#define CCM_USB_CTRL_OHCI2_CLK (0x1 << 19)
+#define CCM_USB_CTRL_OHCI0_CLK (0x1 << 16)
+#define CCM_USB_CTRL_OHCI1_CLK (0x1 << 17)
+#define CCM_USB_CTRL_OHCI2_CLK (0x1 << 18)
+#define CCM_USB_CTRL_OHCI3_CLK (0x1 << 19)
 #else
 #define CCM_USB_CTRL_OHCI0_CLK (0x1 << 16)
 #define CCM_USB_CTRL_OHCI1_CLK (0x1 << 17)
@@ -470,6 +493,14 @@ struct sunxi_ccm_reg {
 /* ahb_reset2 offsets */
 #define AHB_RESET_OFFSET_EPHY		2
 #define AHB_RESET_OFFSET_LVDS		0
+
+/* apb1 reset */
+#ifdef CONFIG_MACH_SUNIV
+#define APB1_GATE_UART_SHIFT	(20)
+#define APB1_GATE_TWI_SHIFT	(16)
+#define APB1_RESET_UART_SHIFT	(20)
+#define APB1_RESET_TWI_SHIFT	(16)
+#endif
 
 /* apb2 reset */
 #define APB2_RESET_UART_SHIFT		(16)

@@ -19,6 +19,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <net.h>
 #include <malloc.h>
 #include <linux/types.h>
@@ -34,12 +35,6 @@
 #undef	VERBOSE
 
 #include "rndis.h"
-
-#define ETH_ALEN	6		/* Octets in one ethernet addr	 */
-#define ETH_HLEN	14		/* Total octets in header.	 */
-#define ETH_ZLEN	60		/* Min. octets in frame sans FCS */
-#define ETH_DATA_LEN	1500		/* Max. octets in payload	 */
-#define ETH_FRAME_LEN	PKTSIZE_ALIGN	/* Max. octets in frame sans FCS */
 
 /*
  * The driver for your USB chip needs to support ep0 OUT to work with
@@ -860,13 +855,16 @@ static int rndis_set_response(int configNr, rndis_set_msg_type *buf)
 	rndis_set_cmplt_type	*resp;
 	rndis_resp_t		*r;
 
+	BufLength = get_unaligned_le32(&buf->InformationBufferLength);
+	BufOffset = get_unaligned_le32(&buf->InformationBufferOffset);
+	if ((BufOffset > RNDIS_MAX_TOTAL_SIZE - 8) ||
+	    (BufLength > RNDIS_MAX_TOTAL_SIZE - 8 - BufOffset))
+		return -EINVAL;
+
 	r = rndis_add_response(configNr, sizeof(rndis_set_cmplt_type));
 	if (!r)
 		return -ENOMEM;
 	resp = (rndis_set_cmplt_type *) r->buf;
-
-	BufLength = get_unaligned_le32(&buf->InformationBufferLength);
-	BufOffset = get_unaligned_le32(&buf->InformationBufferOffset);
 
 #ifdef	VERBOSE
 	debug("%s: Length: %d\n", __func__, BufLength);
@@ -1120,11 +1118,7 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 	return -ENOTSUPP;
 }
 
-#ifndef CONFIG_DM_ETH
-int rndis_register(int (*rndis_control_ack)(struct eth_device *))
-#else
 int rndis_register(int (*rndis_control_ack)(struct udevice *))
-#endif
 {
 	u8 i;
 
@@ -1152,13 +1146,8 @@ void rndis_deregister(int configNr)
 	return;
 }
 
-#ifndef CONFIG_DM_ETH
-int  rndis_set_param_dev(u8 configNr, struct eth_device *dev, int mtu,
-			 struct net_device_stats *stats, u16 *cdc_filter)
-#else
 int  rndis_set_param_dev(u8 configNr, struct udevice *dev, int mtu,
 			 struct net_device_stats *stats, u16 *cdc_filter)
-#endif
 {
 	debug("%s: configNr = %d\n", __func__, configNr);
 	if (!dev || !stats)

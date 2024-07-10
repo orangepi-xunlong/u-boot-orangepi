@@ -7,28 +7,25 @@
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
  */
 
+#define LOG_CATEGORY UCLASS_FPGA
+
 #include <common.h>		/* core U-Boot definitions */
 #include <console.h>
+#include <log.h>
 #include <ACEX1K.h>		/* ACEX device family */
-
-/* Define FPGA_DEBUG to get debug printf's */
-#ifdef	FPGA_DEBUG
-#define PRINTF(fmt,args...)	printf (fmt ,##args)
-#else
-#define PRINTF(fmt,args...)
-#endif
+#include <linux/delay.h>
 
 /* Note: The assumption is that we cannot possibly run fast enough to
  * overrun the device (the Slave Parallel mode can free run at 50MHz).
- * If there is a need to operate slower, define CONFIG_FPGA_DELAY in
+ * If there is a need to operate slower, define CFG_FPGA_DELAY in
  * the board config file to slow things down.
  */
-#ifndef CONFIG_FPGA_DELAY
-#define CONFIG_FPGA_DELAY()
+#ifndef CFG_FPGA_DELAY
+#define CFG_FPGA_DELAY()
 #endif
 
-#ifndef CONFIG_SYS_FPGA_WAIT
-#define CONFIG_SYS_FPGA_WAIT CONFIG_SYS_HZ/10		/* 100 ms */
+#ifndef CFG_SYS_FPGA_WAIT
+#define CFG_SYS_FPGA_WAIT CONFIG_SYS_HZ/10		/* 100 ms */
 #endif
 
 static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize);
@@ -43,7 +40,7 @@ int ACEX1K_load(Altera_desc *desc, const void *buf, size_t bsize)
 
 	switch (desc->iface) {
 	case passive_serial:
-		PRINTF ("%s: Launching Passive Serial Loader\n", __FUNCTION__);
+		log_debug("Launching Passive Serial Loader\n");
 		ret_val = ACEX1K_ps_load (desc, buf, bsize);
 		break;
 
@@ -63,7 +60,7 @@ int ACEX1K_dump(Altera_desc *desc, const void *buf, size_t bsize)
 
 	switch (desc->iface) {
 	case passive_serial:
-		PRINTF ("%s: Launching Passive Serial Dump\n", __FUNCTION__);
+		log_debug("Launching Passive Serial Dump\n");
 		ret_val = ACEX1K_ps_dump (desc, buf, bsize);
 		break;
 
@@ -92,8 +89,7 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 	Altera_ACEX1K_Passive_Serial_fns *fn = desc->iface_fns;
 	int i;
 
-	PRINTF ("%s: start with interface functions @ 0x%p\n",
-			__FUNCTION__, fn);
+	log_debug("start with interface functions @ 0x%p\n", fn);
 
 	if (fn) {
 		size_t bytecount = 0;
@@ -101,16 +97,16 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 		int cookie = desc->cookie;	/* make a local copy */
 		unsigned long ts;		/* timestamp */
 
-		PRINTF ("%s: Function Table:\n"
-				"ptr:\t0x%p\n"
-				"struct: 0x%p\n"
-				"config:\t0x%p\n"
-				"status:\t0x%p\n"
-				"clk:\t0x%p\n"
-				"data:\t0x%p\n"
-				"done:\t0x%p\n\n",
-				__FUNCTION__, &fn, fn, fn->config, fn->status,
-				fn->clk, fn->data, fn->done);
+		log_debug("Function Table:\n"
+			  "ptr:\t0x%p\n"
+			  "struct: 0x%p\n"
+			  "config:\t0x%p\n"
+			  "status:\t0x%p\n"
+			  "clk:\t0x%p\n"
+			  "data:\t0x%p\n"
+			  "done:\t0x%p\n\n",
+			  &fn, fn, fn->config, fn->status,
+			  fn->clk, fn->data, fn->done);
 #ifdef CONFIG_SYS_FPGA_PROG_FEEDBACK
 		printf ("Loading FPGA Device %d...", cookie);
 #endif
@@ -141,8 +137,8 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 		/* Wait for nSTATUS to be released (i.e. deasserted) */
 		ts = get_timer (0);		/* get current time */
 		do {
-			CONFIG_FPGA_DELAY ();
-			if (get_timer (ts) > CONFIG_SYS_FPGA_WAIT) {	/* check the time */
+			CFG_FPGA_DELAY ();
+			if (get_timer (ts) > CFG_SYS_FPGA_WAIT) {	/* check the time */
 				puts ("** Timeout waiting for STATUS to go high.\n");
 				(*fn->abort) (cookie);
 				return FPGA_FAIL;
@@ -151,7 +147,7 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 		} while ((*fn->status) (cookie));
 
 		/* Get ready for the burn */
-		CONFIG_FPGA_DELAY ();
+		CFG_FPGA_DELAY ();
 
 		/* Load the data */
 		while (bytecount < bsize) {
@@ -176,13 +172,13 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 			do {
 				/* Deassert the clock */
 				(*fn->clk) (false, true, cookie);
-				CONFIG_FPGA_DELAY ();
+				CFG_FPGA_DELAY ();
 				/* Write data */
 				(*fn->data) ((val & 0x01), true, cookie);
-				CONFIG_FPGA_DELAY ();
+				CFG_FPGA_DELAY ();
 				/* Assert the clock */
 				(*fn->clk) (true, true, cookie);
-				CONFIG_FPGA_DELAY ();
+				CFG_FPGA_DELAY ();
 				val >>= 1;
 				i --;
 			} while (i > 0);
@@ -193,7 +189,7 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 #endif
 		}
 
-		CONFIG_FPGA_DELAY ();
+		CFG_FPGA_DELAY ();
 
 #ifdef CONFIG_SYS_FPGA_PROG_FEEDBACK
 		putc (' ');			/* terminate the dotted line */
@@ -214,9 +210,9 @@ static int ACEX1K_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 	 */
 
 	for (i = 0; i < 12; i++) {
-		CONFIG_FPGA_DELAY ();
+		CFG_FPGA_DELAY ();
 		(*fn->clk) (true, true, cookie);	/* Assert the clock pin */
-		CONFIG_FPGA_DELAY ();
+		CFG_FPGA_DELAY ();
 		(*fn->clk) (false, true, cookie);	/* Deassert the clock pin */
 	}
 

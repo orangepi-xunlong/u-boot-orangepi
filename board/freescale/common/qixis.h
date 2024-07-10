@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011 Freescale Semiconductor
+ * Copyright 2020 NXP
  * Author: Shengzhou Liu <Shengzhou.Liu@freescale.com>
  *
  * This file provides support for the QIXIS of some Freescale reference boards.
@@ -35,7 +36,12 @@ struct qixis {
 	u8 gdc;
 	u8 gdd;         /* DCM Debug Data Register,0x17 */
 	u8 dmack;
-	u8 res1[6];
+	u8 res1;
+	u8 sdhc1;
+	u8 sdhc2;
+	u8 stat_pres3;
+	u8 los_stat;
+	u8 usb_ctl;
 	u8 watch;       /* Watchdog Register,0x1F */
 	u8 pwr_ctl[2];  /* Power Control Register,0x20 */
 	u8 res2[2];
@@ -94,12 +100,12 @@ u16 qixis_read_minor(void);
 char *qixis_read_time(char *result);
 char *qixis_read_tag(char *buf);
 const char *byte_to_binary_mask(u8 val, u8 mask, char *buf);
-#ifdef CONFIG_SYS_I2C_FPGA_ADDR
+#ifdef CFG_SYS_I2C_FPGA_ADDR
 u8 qixis_read_i2c(unsigned int reg);
 void qixis_write_i2c(unsigned int reg, u8 value);
 #endif
 
-#if defined(CONFIG_QIXIS_I2C_ACCESS) && defined(CONFIG_SYS_I2C_FPGA_ADDR)
+#if defined(CONFIG_QIXIS_I2C_ACCESS) && defined(CFG_SYS_I2C_FPGA_ADDR)
 #define QIXIS_READ(reg) qixis_read_i2c(offsetof(struct qixis, reg))
 #define QIXIS_WRITE(reg, value) \
 	qixis_write_i2c(offsetof(struct qixis, reg), value)
@@ -108,15 +114,15 @@ void qixis_write_i2c(unsigned int reg, u8 value);
 #define QIXIS_WRITE(reg, value) qixis_write(offsetof(struct qixis, reg), value)
 #endif
 
-#ifdef CONFIG_SYS_I2C_FPGA_ADDR
+#ifdef CFG_SYS_I2C_FPGA_ADDR
 #define QIXIS_READ_I2C(reg) qixis_read_i2c(offsetof(struct qixis, reg))
 #define QIXIS_WRITE_I2C(reg, value) \
 			qixis_write_i2c(offsetof(struct qixis, reg), value)
 #endif
 
 /* Use for SDHC adapter card type identification and operation */
-#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
 #define QIXIS_SDID_MASK                         0x07
+
 #define QIXIS_ESDHC_ADAPTER_TYPE_EMMC45         0x1	/* eMMC Card Rev4.5 */
 #define QIXIS_ESDHC_ADAPTER_TYPE_SDMMC_LEGACY   0x2	/* SD/MMC Legacy Card */
 #define QIXIS_ESDHC_ADAPTER_TYPE_EMMC44         0x3	/* eMMC Card Rev4.4 */
@@ -125,12 +131,60 @@ void qixis_write_i2c(unsigned int reg, u8 value);
 #define QIXIS_ESDHC_ADAPTER_TYPE_SD             0x6	/* SD Card Rev2.0 3.0 */
 #define QIXIS_ESDHC_NO_ADAPTER                  0x7	/* No Card is Present*/
 
+#define QIXIS_SDHC1_S1V3	0x80	/* SDHC1: SDHC1 3.3V power control */
+#define QIXIS_SDHC1_VS		0x30	/* BRDCFG11: route to SDHC1_VS */
+
 #define QIXIS_SDCLKIN		0x08
 #define QIXIS_SDCLKOUT		0x02
 #define QIXIS_DAT5_6_7		0X02
 #define QIXIS_DAT4		0X01
 
 #define QIXIS_EVDD_BY_SDHC_VS	0x0c
+
+#if defined(CONFIG_TARGET_LX2160AQDS) || defined(CONFIG_TARGET_LX2162AQDS) || \
+defined(CONFIG_TARGET_LX2160ARDB)
+#define QIXIS_XMAP_MASK			0x07
+#define QIXIS_RST_CTL_RESET_EN		0x30
+#define QIXIS_LBMAP_DFLTBANK		0x00
+#define QIXIS_LBMAP_ALTBANK		0x20
+#define QIXIS_LBMAP_QSPI		0x00
+#define QIXIS_RCW_SRC_QSPI		0xff
+#define QIXIS_RST_CTL_RESET		0x31
+#define QIXIS_RCFG_CTL_RECONFIG_IDLE	0x20
+#define QIXIS_RCFG_CTL_RECONFIG_START	0x21
+#define QIXIS_RCFG_CTL_WATCHDOG_ENBLE	0x08
+#define QIXIS_LBMAP_MASK		0x0f
+#define QIXIS_LBMAP_SD
+#define QIXIS_LBMAP_EMMC
+#define QIXIS_RCW_SRC_SD		0x08
+#define QIXIS_RCW_SRC_EMMC         0x09
+#define NON_EXTENDED_DUTCFG
 #endif
+
+#if defined(CONFIG_TARGET_LX2160AQDS) || defined(CONFIG_TARGET_LX2162AQDS)
+#define QIXIS_SDID_MASK			0x07
+#define QIXIS_ESDHC_NO_ADAPTER		0x7
+#endif
+
+/*
+ * implementation of CONFIG_ESDHC_DETECT_QUIRK Macro.
+ */
+static inline u8 qixis_esdhc_detect_quirk(void)
+{
+	/*
+	 * SDHC1 Card ID:
+	 * Specifies the type of card installed in the SDHC1 adapter slot.
+	 * 000= (reserved)
+	 * 001= eMMC V4.5 adapter is installed.
+	 * 010= SD/MMC 3.3V adapter is installed.
+	 * 011= eMMC V4.4 adapter is installed.
+	 * 100= eMMC V5.0 adapter is installed.
+	 * 101= MMC card/Legacy (3.3V) adapter is installed.
+	 * 110= SDCard V2/V3 adapter installed.
+	 * 111= no adapter is installed.
+	 */
+	return ((QIXIS_READ(sdhc1) & QIXIS_SDID_MASK) !=
+		 QIXIS_ESDHC_NO_ADAPTER);
+}
 
 #endif

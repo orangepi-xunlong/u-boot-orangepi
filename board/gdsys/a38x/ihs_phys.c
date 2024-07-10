@@ -2,6 +2,8 @@
 #include <dm.h>
 #include <miiphy.h>
 #include <asm-generic/gpio.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 #include "ihs_phys.h"
 #include "dt_helpers.h"
@@ -26,6 +28,7 @@ static void ihs_phy_config(struct phy_device *phydev, bool qinpn, bool qoutpn)
 {
 	u16 reg;
 
+	phydev->interface = PHY_INTERFACE_MODE_MII;
 	phy_config(phydev);
 
 	/* enable QSGMII autonegotiation with flow control */
@@ -108,9 +111,7 @@ int register_miiphy_bus(uint k, struct mii_dev **bus)
 
 	if (!mdiodev)
 		return -ENOMEM;
-	strncpy(mdiodev->name,
-		name,
-		MDIO_NAME_LEN);
+	strlcpy(mdiodev->name, name, MDIO_NAME_LEN);
 	mdiodev->read = bb_miiphy_read;
 	mdiodev->write = bb_miiphy_write;
 
@@ -142,10 +143,9 @@ struct porttype *get_porttype(uint octo_phy_mask, uint k)
 int init_single_phy(struct porttype *porttype, struct mii_dev *bus,
 		    uint bus_idx, uint m, uint phy_idx)
 {
-	struct phy_device *phydev = phy_find_by_mask(
-		bus, 1 << (m * 8 + phy_idx),
-		PHY_INTERFACE_MODE_MII);
+	struct phy_device *phydev;
 
+	phydev = phy_find_by_mask(bus, BIT(m * 8 + phy_idx));
 	printf(" %u", bus_idx * 32 + m * 8 + phy_idx);
 
 	if (!phydev)

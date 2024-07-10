@@ -12,6 +12,7 @@
 #include <asm/system.h>
 #include <linux/linkage.h>
 
+#ifndef CONFIG_CMO_BY_VA_ONLY
 /*
  * void __asm_dcache_level(level)
  *
@@ -27,13 +28,11 @@ ENTRY(__asm_dcache_level)
 	msr	csselr_el1, x12		/* select cache level */
 	isb				/* sync change of cssidr_el1 */
 	mrs	x6, ccsidr_el1		/* read the new cssidr_el1 */
-	and	x2, x6, #7		/* x2 <- log2(cache line size)-4 */
+	ubfx	x2, x6,  #0,  #3	/* x2 <- log2(cache line size)-4 */
+	ubfx	x3, x6,  #3, #10	/* x3 <- number of cache ways - 1 */
+	ubfx	x4, x6, #13, #15	/* x4 <- number of cache sets - 1 */
 	add	x2, x2, #4		/* x2 <- log2(cache line size) */
-	mov	x3, #0x3ff
-	and	x3, x3, x6, lsr #3	/* x3 <- max number of #ways */
 	clz	w5, w3			/* bit position of #ways */
-	mov	x4, #0x7fff
-	and	x4, x4, x6, lsr #13	/* x4 <- max number of #sets */
 	/* x12 <- cache level << 1 */
 	/* x2 <- line length offset */
 	/* x3 <- number of cache ways - 1 */
@@ -72,8 +71,7 @@ ENTRY(__asm_dcache_all)
 	mov	x1, x0
 	dsb	sy
 	mrs	x10, clidr_el1		/* read clidr_el1 */
-	lsr	x11, x10, #24
-	and	x11, x11, #0x7		/* x11 <- loc */
+	ubfx	x11, x10, #24, #3	/* x11 <- loc */
 	cbz	x11, finished		/* if loc is 0, exit */
 	mov	x15, lr
 	mov	x0, #0			/* start flush at cache level 0 */
@@ -83,8 +81,7 @@ ENTRY(__asm_dcache_all)
 	/* x15 <- return address */
 
 loop_level:
-	lsl	x12, x0, #1
-	add	x12, x12, x0		/* x0 <- tripled cache level */
+	add	x12, x0, x0, lsl #1	/* x12 <- tripled cache level */
 	lsr	x12, x10, x12
 	and	x12, x12, #7		/* x12 <- cache type */
 	cmp	x12, #2
@@ -120,6 +117,41 @@ ENTRY(__asm_invalidate_dcache_all)
 ENDPROC(__asm_invalidate_dcache_all)
 .popsection
 
+.pushsection .text.__asm_flush_l3_dcache, "ax"
+WEAK(__asm_flush_l3_dcache)
+	mov	x0, #0			/* return status as success */
+	ret
+ENDPROC(__asm_flush_l3_dcache)
+.popsection
+
+.pushsection .text.__asm_invalidate_l3_icache, "ax"
+WEAK(__asm_invalidate_l3_icache)
+	mov	x0, #0			/* return status as success */
+	ret
+ENDPROC(__asm_invalidate_l3_icache)
+.popsection
+
+#else	/* CONFIG_CMO_BY_VA */
+
+/*
+ * Define these so that they actively clash with in implementation
+ * accidentally selecting CONFIG_CMO_BY_VA
+ */
+
+.pushsection .text.__asm_invalidate_l3_icache, "ax"
+ENTRY(__asm_invalidate_l3_icache)
+	mov	x0, xzr
+	ret
+ENDPROC(__asm_invalidate_l3_icache)
+.popsection
+.pushsection .text.__asm_flush_l3_dcache, "ax"
+ENTRY(__asm_flush_l3_dcache)
+	mov	x0, xzr
+	ret
+ENDPROC(__asm_flush_l3_dcache)
+.popsection
+#endif	/* CONFIG_CMO_BY_VA */
+
 /*
  * void __asm_flush_dcache_range(start, end)
  *
@@ -131,8 +163,7 @@ ENDPROC(__asm_invalidate_dcache_all)
 .pushsection .text.__asm_flush_dcache_range, "ax"
 ENTRY(__asm_flush_dcache_range)
 	mrs	x3, ctr_el0
-	lsr	x3, x3, #16
-	and	x3, x3, #0xf
+	ubfx	x3, x3, #16, #4
 	mov	x2, #4
 	lsl	x2, x2, x3		/* cache line size */
 
@@ -158,7 +189,7 @@ ENDPROC(__asm_flush_dcache_range)
 .pushsection .text.__asm_invalidate_dcache_range, "ax"
 ENTRY(__asm_invalidate_dcache_range)
 	mrs	x3, ctr_el0
-	ubfm	x3, x3, #16, #19
+	ubfx	x3, x3, #16, #4
 	mov	x2, #4
 	lsl	x2, x2, x3		/* cache line size */
 
@@ -188,27 +219,10 @@ ENDPROC(__asm_invalidate_icache_all)
 .popsection
 
 .pushsection .text.__asm_invalidate_l3_dcache, "ax"
-ENTRY(__asm_invalidate_l3_dcache)
+WEAK(__asm_invalidate_l3_dcache)
 	mov	x0, #0			/* return status as success */
 	ret
 ENDPROC(__asm_invalidate_l3_dcache)
-	.weak	__asm_invalidate_l3_dcache
-.popsection
-
-.pushsection .text.__asm_flush_l3_dcache, "ax"
-ENTRY(__asm_flush_l3_dcache)
-	mov	x0, #0			/* return status as success */
-	ret
-ENDPROC(__asm_flush_l3_dcache)
-	.weak	__asm_flush_l3_dcache
-.popsection
-
-.pushsection .text.__asm_invalidate_l3_icache, "ax"
-ENTRY(__asm_invalidate_l3_icache)
-	mov	x0, #0			/* return status as success */
-	ret
-ENDPROC(__asm_invalidate_l3_icache)
-	.weak	__asm_invalidate_l3_icache
 .popsection
 
 /*

@@ -7,13 +7,14 @@
 #include <common.h>
 #include <dm.h>
 #include <syscon.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/cru_rk3188.h>
+#include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru_rk3188.h>
+#include <linux/err.h>
 
 int rockchip_get_clk(struct udevice **devp)
 {
 	return uclass_get_device_by_driver(UCLASS_CLK,
-			DM_GET_DRIVER(rockchip_rk3188_cru), devp);
+			DM_DRIVER_GET(rockchip_rk3188_cru), devp);
 }
 
 void *rockchip_get_cru(void)

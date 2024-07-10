@@ -4,15 +4,18 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/addrspace.h>
 #include <asm/types.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <mach/ath79.h>
 #include <mach/ar71xx_regs.h>
 #include <mach/ddr.h>
 #include <debug_uart.h>
 
-#ifdef CONFIG_USB
+#ifdef CONFIG_USB_HOST
 static void wdr4300_usb_start(void)
 {
 	void __iomem *gpio_regs = map_physmem(AR71XX_GPIO_BASE,
@@ -68,7 +71,7 @@ int board_early_init_f(void)
 	wdr4300_pinmux_config();
 #endif
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
 	ar934x_pll_init(560, 480, 240);
 	ar934x_ddr_init(560, 480, 240);
 #endif

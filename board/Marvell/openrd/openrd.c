@@ -11,7 +11,10 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <miiphy.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/mach-types.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
@@ -137,7 +140,7 @@ void mv_phy_init(char *name)
 	/* reset the phy */
 	miiphy_reset(name, devadr);
 
-	printf(PHY_NO" Initialized on %s\n", name);
+	printf("Initialized on %s\n", name);
 }
 
 void reset_phy(void)

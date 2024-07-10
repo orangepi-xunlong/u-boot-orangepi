@@ -4,9 +4,14 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <event.h>
+#include <init.h>
 #include <mmc.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/ioapic.h>
+#include <asm/irq.h>
 #include <asm/mrccache.h>
 #include <asm/mtrr.h>
 #include <asm/pci.h>
@@ -14,6 +19,7 @@
 #include <asm/arch/device.h>
 #include <asm/arch/msg_port.h>
 #include <asm/arch/quark.h>
+#include <linux/delay.h>
 
 static void quark_setup_mtrr(void)
 {
@@ -43,7 +49,7 @@ static void quark_setup_mtrr(void)
 
 	/* variable range MTRR#0: ROM area */
 	mask = ~(CONFIG_SYS_MONITOR_LEN - 1);
-	base = CONFIG_SYS_TEXT_BASE & mask;
+	base = CONFIG_TEXT_BASE & mask;
 	msg_port_write(MSG_PORT_HOST_BRIDGE, MTRR_VAR_PHYBASE(MTRR_VAR_ROM),
 		       base | MTRR_TYPE_WRBACK);
 	msg_port_write(MSG_PORT_HOST_BRIDGE, MTRR_VAR_PHYMASK(MTRR_VAR_ROM),
@@ -101,7 +107,7 @@ static void quark_setup_bars(void)
 		       CONFIG_PCIE_ECAM_BASE | MEM_BAR_EN);
 }
 
-static void quark_pcie_early_init(void)
+static int quark_pcie_early_init(void)
 {
 	/*
 	 * Step1: Assert PCIe signal PERST#
@@ -140,6 +146,8 @@ static void quark_pcie_early_init(void)
 	/* Mixer Load Lane 1 */
 	msg_port_io_clrbits(MSG_PORT_PCIE_AFE, PCIE_RXPICTRL0_L1,
 			    (1 << 6) | (1 << 7));
+
+	return 0;
 }
 
 static void quark_usb_early_init(void)
@@ -242,21 +250,16 @@ int arch_cpu_init(void)
 	return 0;
 }
 
-int arch_cpu_init_dm(void)
-{
-	/*
-	 * Initialize PCIe controller
-	 *
-	 * Quark SoC holds the PCIe controller in reset following a power on.
-	 * U-Boot needs to release the PCIe controller from reset. The PCIe
-	 * controller (D23:F0/F1) will not be visible in PCI configuration
-	 * space and any access to its PCI configuration registers will cause
-	 * system hang while it is held in reset.
-	 */
-	quark_pcie_early_init();
-
-	return 0;
-}
+/*
+ * Initialize PCIe controller
+ *
+ * Quark SoC holds the PCIe controller in reset following a power on.
+ * U-Boot needs to release the PCIe controller from reset. The PCIe
+ * controller (D23:F0/F1) will not be visible in PCI configuration
+ * space and any access to its PCI configuration registers will cause
+ * system hang while it is held in reset.
+ */
+EVENT_SPY_SIMPLE(EVT_DM_POST_INIT_F, quark_pcie_early_init);
 
 int checkcpu(void)
 {
@@ -267,12 +270,6 @@ int print_cpuinfo(void)
 {
 	post_code(POST_CPU_INFO);
 	return default_print_cpuinfo();
-}
-
-void reset_cpu(ulong addr)
-{
-	/* cold reset */
-	x86_full_reset();
 }
 
 static void quark_pcie_init(void)
@@ -313,11 +310,36 @@ static void quark_usb_init(void)
 	writel((0xf << 16) | 0xf, bar + USBD_EP_INT_STS);
 }
 
+static void quark_irq_init(void)
+{
+	struct quark_rcba *rcba;
+	u32 base;
+
+	qrk_pci_read_config_dword(QUARK_LEGACY_BRIDGE, LB_RCBA, &base);
+	base &= ~MEM_BAR_EN;
+	rcba = (struct quark_rcba *)base;
+
+	/*
+	 * Route Quark PCI device interrupt pin to PIRQ
+	 *
+	 * Route device#23's INTA/B/C/D to PIRQA/B/C/D
+	 * Route device#20,21's INTA/B/C/D to PIRQE/F/G/H
+	 */
+	writew(PIRQC, &rcba->rmu_ir);
+	writew(PIRQA | (PIRQB << 4) | (PIRQC << 8) | (PIRQD << 12),
+	       &rcba->d23_ir);
+	writew(PIRQD, &rcba->core_ir);
+	writew(PIRQE | (PIRQF << 4) | (PIRQG << 8) | (PIRQH << 12),
+	       &rcba->d20d21_ir);
+}
+
 int arch_early_init_r(void)
 {
 	quark_pcie_init();
 
 	quark_usb_init();
+
+	quark_irq_init();
 
 	return 0;
 }
@@ -339,7 +361,7 @@ int arch_misc_init(void)
 	return 0;
 }
 
-void board_final_cleanup(void)
+void board_final_init(void)
 {
 	struct quark_rcba *rcba;
 	u32 base, val;

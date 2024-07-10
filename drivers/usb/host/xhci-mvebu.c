@@ -8,13 +8,14 @@
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <log.h>
 #include <usb.h>
 #include <power/regulator.h>
 #include <asm/gpio.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 
-struct mvebu_xhci_platdata {
+struct mvebu_xhci_plat {
 	fdt_addr_t hcd_base;
 };
 
@@ -24,7 +25,7 @@ struct mvebu_xhci_platdata {
  */
 struct mvebu_xhci {
 	struct xhci_ctrl ctrl;	/* Needs to come first in this struct! */
-	struct usb_platdata usb_plat;
+	struct usb_plat usb_plat;
 	struct xhci_hccr *hcd;
 };
 
@@ -39,7 +40,7 @@ __weak int board_xhci_enable(fdt_addr_t base)
 
 static int xhci_usb_probe(struct udevice *dev)
 {
-	struct mvebu_xhci_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_xhci_plat *plat = dev_get_plat(dev);
 	struct mvebu_xhci *ctx = dev_get_priv(dev);
 	struct xhci_hcor *hcor;
 	int len, ret;
@@ -64,14 +65,14 @@ static int xhci_usb_probe(struct udevice *dev)
 	return xhci_register(dev, ctx->hcd, hcor);
 }
 
-static int xhci_usb_ofdata_to_platdata(struct udevice *dev)
+static int xhci_usb_of_to_plat(struct udevice *dev)
 {
-	struct mvebu_xhci_platdata *plat = dev_get_platdata(dev);
+	struct mvebu_xhci_plat *plat = dev_get_plat(dev);
 
 	/*
 	 * Get the base address for XHCI controller from the device node
 	 */
-	plat->hcd_base = devfdt_get_addr(dev);
+	plat->hcd_base = dev_read_addr(dev);
 	if (plat->hcd_base == FDT_ADDR_T_NONE) {
 		debug("Can't get the XHCI register base address\n");
 		return -ENXIO;
@@ -91,11 +92,11 @@ U_BOOT_DRIVER(usb_xhci) = {
 	.name	= "xhci_mvebu",
 	.id	= UCLASS_USB,
 	.of_match = xhci_usb_ids,
-	.ofdata_to_platdata = xhci_usb_ofdata_to_platdata,
+	.of_to_plat = xhci_usb_of_to_plat,
 	.probe = xhci_usb_probe,
 	.remove = xhci_deregister,
 	.ops	= &xhci_usb_ops,
-	.platdata_auto_alloc_size = sizeof(struct mvebu_xhci_platdata),
-	.priv_auto_alloc_size = sizeof(struct mvebu_xhci),
+	.plat_auto	= sizeof(struct mvebu_xhci_plat),
+	.priv_auto	= sizeof(struct mvebu_xhci),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
 };

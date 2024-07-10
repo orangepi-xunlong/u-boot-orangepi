@@ -167,7 +167,7 @@ void at91_mci_hw_init(void)
 #endif
 
 /* Platform data for the GPIOs */
-static const struct at91_port_platdata at91sam9260_plat[] = {
+static const struct at91_port_plat at91sam9260_plat[] = {
 	{ ATMEL_BASE_PIOA, "PA" },
 	{ ATMEL_BASE_PIOB, "PB" },
 	{ ATMEL_BASE_PIOC, "PC" },
@@ -175,10 +175,10 @@ static const struct at91_port_platdata at91sam9260_plat[] = {
 	{ ATMEL_BASE_PIOE, "PE" },
 };
 
-U_BOOT_DEVICES(at91sam9260_gpios) = {
-	{ "gpio_at91", &at91sam9260_plat[0] },
-	{ "gpio_at91", &at91sam9260_plat[1] },
-	{ "gpio_at91", &at91sam9260_plat[2] },
-	{ "gpio_at91", &at91sam9260_plat[3] },
-	{ "gpio_at91", &at91sam9260_plat[4] },
+U_BOOT_DRVINFOS(at91sam9260_gpios) = {
+	{ "atmel_at91rm9200_gpio", &at91sam9260_plat[0] },
+	{ "atmel_at91rm9200_gpio", &at91sam9260_plat[1] },
+	{ "atmel_at91rm9200_gpio", &at91sam9260_plat[2] },
+	{ "atmel_at91rm9200_gpio", &at91sam9260_plat[3] },
+	{ "atmel_at91rm9200_gpio", &at91sam9260_plat[4] },
 };

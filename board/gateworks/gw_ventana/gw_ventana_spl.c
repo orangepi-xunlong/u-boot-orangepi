@@ -5,19 +5,23 @@
  */
 
 #include <common.h>
-#include <asm/io.h>
+#include <env.h>
+#include <gsc.h>
+#include <hang.h>
+#include <i2c.h>
+#include <init.h>
+#include <spl.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/mx6-ddr.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/mach-imx/boot_mode.h>
-#include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/mxc_i2c.h>
-#include <environment.h>
-#include <i2c.h>
-#include <spl.h>
+#include <linux/delay.h>
+#include <power/mp5416.h>
+#include <power/pmic.h>
+#include <power/pfuze100_pmic.h>
+#include <power/ltc3676_pmic.h>
 
-#include "gsc.h"
 #include "common.h"
 
 #define RTT_NOM_120OHM /* use 120ohm Rtt_nom vs 60ohm (lower power) */
@@ -217,6 +221,46 @@ static struct mx6_mmdc_calibration mx6sdl_64x16_mmdc_calib = {
 	.p0_mpwrdlctl = 0x33382C31,
 };
 
+/* TODO: update with calibrated values */
+static struct mx6_mmdc_calibration mx6dq_64x64_mmdc_calib = {
+	/* write leveling calibration determine */
+	.p0_mpwldectrl0 = 0x00190017,
+	.p0_mpwldectrl1 = 0x00140026,
+	.p1_mpwldectrl0 = 0x0021001C,
+	.p1_mpwldectrl1 = 0x0011001D,
+	/* Read DQS Gating calibration */
+	.p0_mpdgctrl0 = 0x43380347,
+	.p0_mpdgctrl1 = 0x433C034D,
+	.p1_mpdgctrl0 = 0x032C0324,
+	.p1_mpdgctrl1 = 0x03310232,
+	/* Read Calibration: DQS delay relative to DQ read access */
+	.p0_mprddlctl = 0x3C313539,
+	.p1_mprddlctl = 0x37343141,
+	/* Write Calibration: DQ/DM delay relative to DQS write access */
+	.p0_mpwrdlctl = 0x36393C39,
+	.p1_mpwrdlctl = 0x42344438,
+};
+
+/* TODO: update with calibrated values */
+static struct mx6_mmdc_calibration mx6sdl_64x64_mmdc_calib = {
+	/* write leveling calibration determine */
+	.p0_mpwldectrl0 = 0x003C003C,
+	.p0_mpwldectrl1 = 0x001F002A,
+	.p1_mpwldectrl0 = 0x00330038,
+	.p1_mpwldectrl1 = 0x0022003F,
+	/* Read DQS Gating calibration */
+	.p0_mpdgctrl0 = 0x42410244,
+	.p0_mpdgctrl1 = 0x4234023A,
+	.p1_mpdgctrl0 = 0x022D022D,
+	.p1_mpdgctrl1 = 0x021C0228,
+	/* Read Calibration: DQS delay relative to DQ read access */
+	.p0_mprddlctl = 0x484A4C4B,
+	.p1_mprddlctl = 0x4B4D4E4B,
+	/* Write Calibration: DQ/DM delay relative to DQS write access */
+	.p0_mpwrdlctl = 0x33342B32,
+	.p1_mpwrdlctl = 0x3933332B,
+};
+
 static struct mx6_mmdc_calibration mx6dq_256x16_mmdc_calib = {
 	/* write leveling calibration determine */
 	.p0_mpwldectrl0 = 0x001B0016,
@@ -390,6 +434,25 @@ static struct mx6_mmdc_calibration mx6sdl_256x64x2_mmdc_calib = {
 	.p1_mpwrdlctl   = 0x3F36363F,
 };
 
+static struct mx6_mmdc_calibration mx6sdl_128x64x2_mmdc_calib = {
+	/* write leveling calibration determine */
+	.p0_mpwldectrl0 = 0x001F003F,
+	.p0_mpwldectrl1 = 0x001F001F,
+	.p1_mpwldectrl0 = 0x001F004E,
+	.p1_mpwldectrl1 = 0x0059001F,
+	/* Read DQS Gating calibration */
+	.p0_mpdgctrl0   = 0x42220225,
+	.p0_mpdgctrl1   = 0x0213021F,
+	.p1_mpdgctrl0   = 0x022C0242,
+	.p1_mpdgctrl1   = 0x022C0244,
+	/* Read Calibration: DQS delay relative to DQ read access */
+	.p0_mprddlctl   = 0x474A4C4A,
+	.p1_mprddlctl   = 0x48494C45,
+	/* Write Calibration: DQ/DM delay relative to DQS write access */
+	.p0_mpwrdlctl   = 0x3F3F3F36,
+	.p1_mpwrdlctl   = 0x3F36363F,
+};
+
 static struct mx6_mmdc_calibration mx6dq_512x32_mmdc_calib = {
 	/* write leveling calibration determine */
 	.p0_mpwldectrl0 = 0x002A0025,
@@ -481,6 +544,11 @@ static void spl_dram_init(int width, int size_mb, int board_model)
 		else
 			calib = &mx6sdl_256x16_mmdc_calib;
 		debug("4gB density\n");
+	} else if (width == 16 && size_mb == 1024) {
+		mem = &mt41k512m16ha_125;
+		if (is_cpu_type(MXC_CPU_MX6Q))
+			calib = &mx6dq_512x32_mmdc_calib;
+		debug("8gB density\n");
 	} else if (width == 32 && size_mb == 256) {
 		/* Same calib as width==16, size==128 */
 		mem = &mt41k64m16jt_125;
@@ -511,6 +579,10 @@ static void spl_dram_init(int width, int size_mb, int board_model)
 	} else if (width == 64 && size_mb == 512) {
 		mem = &mt41k64m16jt_125;
 		debug("1gB density\n");
+		if (is_cpu_type(MXC_CPU_MX6Q))
+			calib = &mx6dq_64x64_mmdc_calib;
+		else
+			calib = &mx6sdl_64x64_mmdc_calib;
 	} else if (width == 64 && size_mb == 1024) {
 		mem = &mt41k128m16jt_125;
 		if (is_cpu_type(MXC_CPU_MX6Q))
@@ -519,18 +591,33 @@ static void spl_dram_init(int width, int size_mb, int board_model)
 			calib = &mx6sdl_128x64_mmdc_calib;
 		debug("2gB density\n");
 	} else if (width == 64 && size_mb == 2048) {
-		mem = &mt41k256m16ha_125;
-		if (is_cpu_type(MXC_CPU_MX6Q))
-			calib = &mx6dq_256x64_mmdc_calib;
-		else
-			calib = &mx6sdl_256x64_mmdc_calib;
-		debug("4gB density\n");
+		switch(board_model) {
+		case GW5905:
+			/* 8xMT41K128M16 (2GiB) fly-by mirrored 2-chipsels */
+			mem = &mt41k128m16jt_125;
+			debug("2gB density - 2 chipsel\n");
+			if (!is_cpu_type(MXC_CPU_MX6Q)) {
+				calib = &mx6sdl_128x64x2_mmdc_calib;
+				sysinfo.ncs = 2;
+				sysinfo.cs_density = 10; /* CS0_END=39 */
+				sysinfo.cs1_mirror = 1; /* mirror enabled */
+			}
+			break;
+		default:
+			mem = &mt41k256m16ha_125;
+			if (is_cpu_type(MXC_CPU_MX6Q))
+				calib = &mx6dq_256x64_mmdc_calib;
+			else
+				calib = &mx6sdl_256x64_mmdc_calib;
+			debug("4gB density\n");
+			break;
+		}
 	} else if (width == 64 && size_mb == 4096) {
 		switch(board_model) {
 		case GW5903:
 			/* 8xMT41K256M16 (4GiB) fly-by mirrored 2-chipsels */
 			mem = &mt41k256m16ha_125;
-			debug("4gB density\n");
+			debug("4gB density - 2 chipsel\n");
 			if (!is_cpu_type(MXC_CPU_MX6Q)) {
 				calib = &mx6sdl_256x64x2_mmdc_calib;
 				sysinfo.ncs = 2;
@@ -580,6 +667,277 @@ static void ccgr_init(void)
 	writel(0x000003FF, &ccm->CCGR6);
 }
 
+/* UART2: Serial Console */
+static const iomux_v3_cfg_t uart2_pads[] = {
+	IOMUX_PADS(PAD_SD4_DAT7__UART2_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL)),
+	IOMUX_PADS(PAD_SD4_DAT4__UART2_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL)),
+};
+
+void setup_iomux_uart(void)
+{
+	SETUP_IOMUX_PADS(uart2_pads);
+}
+
+/*
+ * I2C pad configs:
+ * I2C1: GSC
+ * I2C2: PMIC,PCIe Switch,Clock,Mezz
+ * I2C3: Multimedia/Expansion
+ */
+static struct i2c_pads_info mx6q_i2c_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = MX6Q_PAD_EIM_D21__I2C1_SCL | PC,
+			.gpio_mode = MX6Q_PAD_EIM_D21__GPIO3_IO21 | PC,
+			.gp = IMX_GPIO_NR(3, 21)
+		},
+		.sda = {
+			.i2c_mode = MX6Q_PAD_EIM_D28__I2C1_SDA | PC,
+			.gpio_mode = MX6Q_PAD_EIM_D28__GPIO3_IO28 | PC,
+			.gp = IMX_GPIO_NR(3, 28)
+		}
+	}, {
+		.scl = {
+			.i2c_mode = MX6Q_PAD_KEY_COL3__I2C2_SCL | PC,
+			.gpio_mode = MX6Q_PAD_KEY_COL3__GPIO4_IO12 | PC,
+			.gp = IMX_GPIO_NR(4, 12)
+		},
+		.sda = {
+			.i2c_mode = MX6Q_PAD_KEY_ROW3__I2C2_SDA | PC,
+			.gpio_mode = MX6Q_PAD_KEY_ROW3__GPIO4_IO13 | PC,
+			.gp = IMX_GPIO_NR(4, 13)
+		}
+	}, {
+		.scl = {
+			.i2c_mode = MX6Q_PAD_GPIO_3__I2C3_SCL | PC,
+			.gpio_mode = MX6Q_PAD_GPIO_3__GPIO1_IO03 | PC,
+			.gp = IMX_GPIO_NR(1, 3)
+		},
+		.sda = {
+			.i2c_mode = MX6Q_PAD_GPIO_6__I2C3_SDA | PC,
+			.gpio_mode = MX6Q_PAD_GPIO_6__GPIO1_IO06 | PC,
+			.gp = IMX_GPIO_NR(1, 6)
+		}
+	}
+};
+
+static struct i2c_pads_info mx6dl_i2c_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = MX6DL_PAD_EIM_D21__I2C1_SCL | PC,
+			.gpio_mode = MX6DL_PAD_EIM_D21__GPIO3_IO21 | PC,
+			.gp = IMX_GPIO_NR(3, 21)
+		},
+		.sda = {
+			.i2c_mode = MX6DL_PAD_EIM_D28__I2C1_SDA | PC,
+			.gpio_mode = MX6DL_PAD_EIM_D28__GPIO3_IO28 | PC,
+			.gp = IMX_GPIO_NR(3, 28)
+		}
+	}, {
+		.scl = {
+			.i2c_mode = MX6DL_PAD_KEY_COL3__I2C2_SCL | PC,
+			.gpio_mode = MX6DL_PAD_KEY_COL3__GPIO4_IO12 | PC,
+			.gp = IMX_GPIO_NR(4, 12)
+		},
+		.sda = {
+			.i2c_mode = MX6DL_PAD_KEY_ROW3__I2C2_SDA | PC,
+			.gpio_mode = MX6DL_PAD_KEY_ROW3__GPIO4_IO13 | PC,
+			.gp = IMX_GPIO_NR(4, 13)
+		}
+	}, {
+		.scl = {
+			.i2c_mode = MX6DL_PAD_GPIO_3__I2C3_SCL | PC,
+			.gpio_mode = MX6DL_PAD_GPIO_3__GPIO1_IO03 | PC,
+			.gp = IMX_GPIO_NR(1, 3)
+		},
+		.sda = {
+			.i2c_mode = MX6DL_PAD_GPIO_6__I2C3_SDA | PC,
+			.gpio_mode = MX6DL_PAD_GPIO_6__GPIO1_IO06 | PC,
+			.gp = IMX_GPIO_NR(1, 6)
+		}
+	}
+};
+
+static void setup_ventana_i2c(int i2c)
+{
+	struct i2c_pads_info *p;
+
+	if (is_cpu_type(MXC_CPU_MX6Q))
+		p = &mx6q_i2c_pad_info[i2c];
+	else
+		p = &mx6dl_i2c_pad_info[i2c];
+
+	setup_i2c(i2c, CONFIG_SYS_I2C_SPEED, 0x7f, p);
+}
+
+/* setup board specific PMIC */
+void setup_pmic(void)
+{
+	struct pmic *p;
+	const int i2c_pmic = 1;
+	u32 reg;
+	char rev;
+	int i;
+
+	/* determine board revision */
+	rev = 'A';
+	for (i = sizeof(ventana_info.model) - 1; i > 0; i--) {
+		if (ventana_info.model[i] >= 'A') {
+			rev = ventana_info.model[i];
+			break;
+		}
+	}
+
+	i2c_set_bus_num(i2c_pmic);
+
+	/* configure PFUZE100 PMIC */
+	if (!i2c_probe(CFG_POWER_PFUZE100_I2C_ADDR)) {
+		debug("probed PFUZE100@0x%x\n", CFG_POWER_PFUZE100_I2C_ADDR);
+		power_pfuze100_init(i2c_pmic);
+		p = pmic_get("PFUZE100");
+		if (p && !pmic_probe(p)) {
+			pmic_reg_read(p, PFUZE100_DEVICEID, &reg);
+			printf("PMIC:  PFUZE100 ID=0x%02x\n", reg);
+
+			/* Set VGEN1 to 1.5V and enable */
+			pmic_reg_read(p, PFUZE100_VGEN1VOL, &reg);
+			reg &= ~(LDO_VOL_MASK);
+			reg |= (LDOA_1_50V | LDO_EN);
+			pmic_reg_write(p, PFUZE100_VGEN1VOL, reg);
+
+			/* Set SWBST to 5.0V and enable */
+			pmic_reg_read(p, PFUZE100_SWBSTCON1, &reg);
+			reg &= ~(SWBST_MODE_MASK | SWBST_VOL_MASK);
+			reg |= (SWBST_5_00V | (SWBST_MODE_AUTO << SWBST_MODE_SHIFT));
+			pmic_reg_write(p, PFUZE100_SWBSTCON1, reg);
+
+			if (board_type == GW54xx && (rev == 'G')) {
+				/* Disable VGEN5 */
+				pmic_reg_write(p, PFUZE100_VGEN5VOL, 0);
+
+				/* Set VGEN6 to 2.5V and enable */
+				pmic_reg_read(p, PFUZE100_VGEN6VOL, &reg);
+				reg &= ~(LDO_VOL_MASK);
+				reg |= (LDOB_2_50V | LDO_EN);
+				pmic_reg_write(p, PFUZE100_VGEN6VOL, reg);
+			}
+		}
+
+		/* put all switchers in continuous mode */
+		pmic_reg_read(p, PFUZE100_SW1ABMODE, &reg);
+		reg &= ~(SW_MODE_MASK);
+		reg |= PWM_PWM;
+		pmic_reg_write(p, PFUZE100_SW1ABMODE, reg);
+
+		pmic_reg_read(p, PFUZE100_SW2MODE, &reg);
+		reg &= ~(SW_MODE_MASK);
+		reg |= PWM_PWM;
+		pmic_reg_write(p, PFUZE100_SW2MODE, reg);
+
+		pmic_reg_read(p, PFUZE100_SW3AMODE, &reg);
+		reg &= ~(SW_MODE_MASK);
+		reg |= PWM_PWM;
+		pmic_reg_write(p, PFUZE100_SW3AMODE, reg);
+
+		pmic_reg_read(p, PFUZE100_SW3BMODE, &reg);
+		reg &= ~(SW_MODE_MASK);
+		reg |= PWM_PWM;
+		pmic_reg_write(p, PFUZE100_SW3BMODE, reg);
+
+		pmic_reg_read(p, PFUZE100_SW4MODE, &reg);
+		reg &= ~(SW_MODE_MASK);
+		reg |= PWM_PWM;
+		pmic_reg_write(p, PFUZE100_SW4MODE, reg);
+	}
+
+	/* configure LTC3676 PMIC */
+	else if (!i2c_probe(CFG_POWER_LTC3676_I2C_ADDR)) {
+		debug("probed LTC3676@0x%x\n", CFG_POWER_LTC3676_I2C_ADDR);
+		power_ltc3676_init(i2c_pmic);
+		p = pmic_get("LTC3676_PMIC");
+		if (!p || pmic_probe(p))
+			return;
+		puts("PMIC:  LTC3676\n");
+		/*
+		 * set board-specific scalar for max CPU frequency
+		 * per CPU based on the LDO enabled Operating Ranges
+		 * defined in the respective IMX6DQ and IMX6SDL
+		 * datasheets. The voltage resulting from the R1/R2
+		 * feedback inputs on Ventana is 1308mV. Note that this
+		 * is a bit shy of the Vmin of 1350mV in the datasheet
+		 * for LDO enabled mode but is as high as we can go.
+		 */
+		switch (board_type) {
+		case GW560x:
+			/* mask PGOOD during SW3 transition */
+			pmic_reg_write(p, LTC3676_DVB3B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW3 (VDD_ARM) */
+			pmic_reg_write(p, LTC3676_DVB3A, 0x1f);
+			break;
+		case GW5903:
+			/* mask PGOOD during SW3 transition */
+			pmic_reg_write(p, LTC3676_DVB3B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW3 (VDD_ARM) */
+			pmic_reg_write(p, LTC3676_DVB3A, 0x1f);
+
+			/* mask PGOOD during SW4 transition */
+			pmic_reg_write(p, LTC3676_DVB4B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW4 (VDD_SOC) */
+			pmic_reg_write(p, LTC3676_DVB4A, 0x1f);
+			break;
+		case GW5905:
+			/* mask PGOOD during SW1 transition */
+			pmic_reg_write(p, LTC3676_DVB1B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW1 (VDD_ARM) */
+			pmic_reg_write(p, LTC3676_DVB1A, 0x1f);
+
+			/* mask PGOOD during SW3 transition */
+			pmic_reg_write(p, LTC3676_DVB3B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW3 (VDD_SOC) */
+			pmic_reg_write(p, LTC3676_DVB3A, 0x1f);
+			break;
+		default:
+			/* mask PGOOD during SW1 transition */
+			pmic_reg_write(p, LTC3676_DVB1B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW1 (VDD_SOC) */
+			pmic_reg_write(p, LTC3676_DVB1A, 0x1f);
+
+			/* mask PGOOD during SW3 transition */
+			pmic_reg_write(p, LTC3676_DVB3B,
+				       0x1f | LTC3676_PGOOD_MASK);
+			/* set SW3 (VDD_ARM) */
+			pmic_reg_write(p, LTC3676_DVB3A, 0x1f);
+		}
+
+		/* put all switchers in continuous mode */
+		pmic_reg_write(p, LTC3676_BUCK1, 0xc0);
+		pmic_reg_write(p, LTC3676_BUCK2, 0xc0);
+		pmic_reg_write(p, LTC3676_BUCK3, 0xc0);
+		pmic_reg_write(p, LTC3676_BUCK4, 0xc0);
+	}
+
+	/* configure MP5416 PMIC */
+	else if (!i2c_probe(0x69)) {
+		puts("PMIC:  MP5416\n");
+		switch (board_type) {
+		case GW5910:
+			/* SW1: VDD_ARM 1.2V -> (1.275 to 1.475) */
+			reg = MP5416_VSET_EN | MP5416_VSET_SW1_SVAL(1475000);
+			i2c_write(0x69, MP5416_VSET_SW1, 1, (uint8_t *)&reg, 1);
+			/* SW4: VDD_SOC 1.2V -> (1.350 to 1.475) */
+			reg = MP5416_VSET_EN | MP5416_VSET_SW4_SVAL(1475000);
+			i2c_write(0x69, MP5416_VSET_SW4, 1, (uint8_t *)&reg, 1);
+			break;
+		}
+	}
+}
+
 /*
  * called from C runtime startup code (arch/arm/lib/crt0.S:_main)
  * - we have a stack and a place to store GD, both in SRAM
@@ -599,9 +957,10 @@ void board_init_f(ulong dummy)
 	/* setup AXI */
 	gpr_init();
 
-	/* iomux and setup of i2c */
+	/* iomux and setup of uart/i2c */
 	setup_iomux_uart();
-	setup_ventana_i2c();
+	setup_ventana_i2c(0);
+	setup_ventana_i2c(1);
 
 	/* setup GP timer */
 	timer_init();
@@ -609,11 +968,23 @@ void board_init_f(ulong dummy)
 	/* UART clocks enabled and gd valid - init serial console */
 	preloader_console_init();
 
+	/*
+	 * On a board with a missing/depleted backup battery for GSC, the
+	 * board may be ready to probe the GSC before its firmware is
+	 * running. We will wait here indefinately for the GSC/EEPROM.
+	 */
+	while (1) {
+		if (!i2c_set_bus_num(BOARD_EEPROM_BUSNO) &&
+		    !i2c_probe(BOARD_EEPROM_ADDR))
+			break;
+		mdelay(1);
+	}
+
 	/* read/validate EEPROM info to determine board model and SDRAM cfg */
-	board_model = read_eeprom(CONFIG_I2C_GSC, &ventana_info);
+	board_model = read_eeprom(&ventana_info);
 
 	/* configure model-specific gpio */
-	setup_iomux_gpio(board_model, &ventana_info);
+	setup_iomux_gpio(board_model);
 
 	/* provide some some default: 32bit 128MB */
 	if (GW_UNKNOWN == board_model)
@@ -643,8 +1014,15 @@ void board_boot_order(u32 *spl_boot_list)
 /* its our chance to print info about boot device */
 void spl_board_init(void)
 {
+	u32 boot_device;
+
 	/* determine boot device from SRC_SBMR1 (BOOT_CFG[4:1]) or SRC_GPR9 */
-	u32 boot_device = spl_boot_device();
+	boot_device = spl_boot_device();
+
+	/* read eeprom again now that we have gd */
+	board_type = read_eeprom(&ventana_info);
+	if (board_type == GW_UNKNOWN)
+		hang();
 
 	switch (boot_device) {
 	case BOOT_DEVICE_MMC1:

@@ -19,6 +19,7 @@
  * @oobsize: OOB area size
  * @pages_per_eraseblock: number of pages per eraseblock
  * @eraseblocks_per_lun: number of eraseblocks per LUN (Logical Unit Number)
+ * @max_bad_eraseblocks_per_lun: maximum number of eraseblocks per LUN
  * @planes_per_lun: number of planes per LUN
  * @luns_per_target: number of LUN per target (target is a synonym for die)
  * @ntargets: total number of targets exposed by the NAND device
@@ -29,18 +30,20 @@ struct nand_memory_organization {
 	unsigned int oobsize;
 	unsigned int pages_per_eraseblock;
 	unsigned int eraseblocks_per_lun;
+	unsigned int max_bad_eraseblocks_per_lun;
 	unsigned int planes_per_lun;
 	unsigned int luns_per_target;
 	unsigned int ntargets;
 };
 
-#define NAND_MEMORG(bpc, ps, os, ppe, epl, ppl, lpt, nt)	\
+#define NAND_MEMORG(bpc, ps, os, ppe, epl, mbb, ppl, lpt, nt)	\
 	{							\
 		.bits_per_cell = (bpc),				\
 		.pagesize = (ps),				\
 		.oobsize = (os),				\
 		.pages_per_eraseblock = (ppe),			\
 		.eraseblocks_per_lun = (epl),			\
+		.max_bad_eraseblocks_per_lun = (mbb),		\
 		.planes_per_lun = (ppl),			\
 		.luns_per_target = (lpt),			\
 		.ntargets = (nt),				\
@@ -389,6 +392,7 @@ static inline int nanddev_unregister(struct nand_device *nand)
 	return mtd_device_unregister(nand->mtd);
 }
 
+#ifndef __UBOOT__
 /**
  * nanddev_set_of_node() - Attach a DT node to a NAND device
  * @nand: NAND device
@@ -412,6 +416,19 @@ static inline const struct device_node *nanddev_get_of_node(struct nand_device *
 {
 	return mtd_get_of_node(nand->mtd);
 }
+#else
+/**
+ * nanddev_set_of_node() - Attach a DT node to a NAND device
+ * @nand: NAND device
+ * @node: ofnode
+ *
+ * Attach a DT node to a NAND device.
+ */
+static inline void nanddev_set_ofnode(struct nand_device *nand, ofnode node)
+{
+	mtd_set_ofnode(nand->mtd, node);
+}
+#endif /* __UBOOT__ */
 
 /**
  * nanddev_offs_to_pos() - Convert an absolute NAND offset into a NAND position
@@ -677,7 +694,6 @@ static inline bool nanddev_io_iter_end(struct nand_device *nand,
 
 bool nanddev_isbad(struct nand_device *nand, const struct nand_pos *pos);
 bool nanddev_isreserved(struct nand_device *nand, const struct nand_pos *pos);
-int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos);
 int nanddev_markbad(struct nand_device *nand, const struct nand_pos *pos);
 
 /* BBT related functions */

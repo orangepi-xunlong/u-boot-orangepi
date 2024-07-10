@@ -6,6 +6,7 @@
 #include <image.h>
 #include "pblimage.h"
 #include "pbl_crc32.h"
+#include <u-boot/crc.h>
 
 #define roundup(x, y)		((((x) + ((y) - 1)) / (y)) * (y))
 #define PBL_ACS_CONT_CMD	0x81000000
@@ -229,25 +230,31 @@ static int pblimage_verify_header(unsigned char *ptr, int image_size,
 			struct image_tool_params *params)
 {
 	struct pbl_header *pbl_hdr = (struct pbl_header *) ptr;
+	uint32_t rcwheader;
+
+	if (params->arch == IH_ARCH_ARM)
+		rcwheader = RCW_ARM_HEADER;
+	else
+		rcwheader = RCW_PPC_HEADER;
 
 	/* Only a few checks can be done: search for magic numbers */
 	if (ENDIANNESS == 'l') {
 		if (pbl_hdr->preamble != reverse_byte(RCW_PREAMBLE))
 			return -FDT_ERR_BADSTRUCTURE;
 
-		if (pbl_hdr->rcwheader != reverse_byte(RCW_HEADER))
+		if (pbl_hdr->rcwheader != reverse_byte(rcwheader))
 			return -FDT_ERR_BADSTRUCTURE;
 	} else {
 		if (pbl_hdr->preamble != RCW_PREAMBLE)
 			return -FDT_ERR_BADSTRUCTURE;
 
-		if (pbl_hdr->rcwheader != RCW_HEADER)
+		if (pbl_hdr->rcwheader != rcwheader)
 			return -FDT_ERR_BADSTRUCTURE;
 	}
 	return 0;
 }
 
-static void pblimage_print_header(const void *ptr)
+static void pblimage_print_header(const void *ptr, struct image_tool_params *params)
 {
 	printf("Image Type:   Freescale PBL Boot Image\n");
 }

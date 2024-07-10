@@ -4,9 +4,11 @@
  * Copyright (C) 2017 Álvaro Fernández Rojas <noltari@gmail.com>
  */
 
-#include <common.h>
+#include <init.h>
+#include <log.h>
 #include <ram.h>
 #include <dm.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

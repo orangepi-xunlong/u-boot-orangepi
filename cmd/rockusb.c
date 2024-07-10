@@ -8,12 +8,14 @@
 #include <console.h>
 #include <g_dnl.h>
 #include <usb.h>
-#include <asm/arch/f_rockusb.h>
+#include <asm/arch-rockchip/f_rockusb.h>
 
-static int do_rockusb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+static int do_rockusb(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	int controller_index, dev_index;
 	char *usb_controller;
+	struct udevice *udc;
 	char *devtype;
 	char *devnum;
 	int ret;
@@ -33,7 +35,7 @@ static int do_rockusb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	dev_index = simple_strtoul(devnum, NULL, 0);
 	rockusb_dev_init(devtype, dev_index);
 
-	ret = board_usb_init(controller_index, USB_INIT_DEVICE);
+	ret = udc_device_get_by_index(controller_index, &udc);
 	if (ret) {
 		printf("USB init failed: %d\n", ret);
 		return CMD_RET_FAILURE;
@@ -55,14 +57,14 @@ static int do_rockusb(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			break;
 		if (ctrlc())
 			break;
-		usb_gadget_handle_interrupts(controller_index);
+		dm_usb_gadget_handle_interrupts(udc);
 	}
 	ret = CMD_RET_SUCCESS;
 
 exit:
 	g_dnl_unregister();
 	g_dnl_clear_detach();
-	board_usb_cleanup(controller_index, USB_INIT_DEVICE);
+	udc_device_put(udc);
 
 	return ret;
 }

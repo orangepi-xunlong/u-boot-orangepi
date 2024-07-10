@@ -8,9 +8,16 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/device_compat.h>
+#include <log.h>
 #include <malloc.h>
 #include <spi.h>
+#include <time.h>
+#include <clk.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -32,9 +39,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_SPI_CR_SS_SHIFT		10	/* Slave select shift */
 
 #define ZYNQ_SPI_FIFO_DEPTH		128
-#ifndef CONFIG_SYS_ZYNQ_SPI_WAIT
-#define CONFIG_SYS_ZYNQ_SPI_WAIT	(CONFIG_SYS_HZ/100)	/* 10 ms */
-#endif
+#define ZYNQ_SPI_WAIT			(CONFIG_SYS_HZ / 100)	/* 10 ms */
 
 /* zynq spi register set */
 struct zynq_spi_regs {
@@ -51,7 +56,7 @@ struct zynq_spi_regs {
 
 
 /* zynq spi platform data */
-struct zynq_spi_platdata {
+struct zynq_spi_plat {
 	struct zynq_spi_regs *regs;
 	u32 frequency;		/* input frequency */
 	u32 speed_hz;
@@ -69,25 +74,18 @@ struct zynq_spi_priv {
 	u32 freq;		/* required frequency */
 };
 
-static int zynq_spi_ofdata_to_platdata(struct udevice *bus)
+static int zynq_spi_of_to_plat(struct udevice *bus)
 {
-	struct zynq_spi_platdata *plat = bus->platdata;
+	struct zynq_spi_plat *plat = dev_get_plat(bus);
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 
-	plat->regs = (struct zynq_spi_regs *)devfdt_get_addr(bus);
+	plat->regs = dev_read_addr_ptr(bus);
 
-	/* FIXME: Use 250MHz as a suitable default */
-	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
-					250000000);
 	plat->deactivate_delay_us = fdtdec_get_int(blob, node,
 					"spi-deactivate-delay", 0);
 	plat->activate_delay_us = fdtdec_get_int(blob, node,
 						 "spi-activate-delay", 0);
-	plat->speed_hz = plat->frequency / 2;
-
-	debug("%s: regs=%p max-frequency=%d\n", __func__,
-	      plat->regs, plat->frequency);
 
 	return 0;
 }
@@ -124,14 +122,40 @@ static void zynq_spi_init_hw(struct zynq_spi_priv *priv)
 
 static int zynq_spi_probe(struct udevice *bus)
 {
-	struct zynq_spi_platdata *plat = dev_get_platdata(bus);
+	struct zynq_spi_plat *plat = dev_get_plat(bus);
 	struct zynq_spi_priv *priv = dev_get_priv(bus);
+	struct clk clk;
+	unsigned long clock;
+	int ret;
 
 	priv->regs = plat->regs;
 	priv->fifo_depth = ZYNQ_SPI_FIFO_DEPTH;
 
+	ret = clk_get_by_name(bus, "ref_clk", &clk);
+	if (ret < 0) {
+		dev_err(bus, "failed to get clock\n");
+		return ret;
+	}
+
+	clock = clk_get_rate(&clk);
+	if (IS_ERR_VALUE(clock)) {
+		dev_err(bus, "failed to get rate\n");
+		return clock;
+	}
+
+	ret = clk_enable(&clk);
+	if (ret) {
+		dev_err(bus, "failed to enable clock\n");
+		return ret;
+	}
+
 	/* init the zynq spi hw */
 	zynq_spi_init_hw(priv);
+
+	plat->frequency = clock;
+	plat->speed_hz = plat->frequency / 2;
+
+	debug("%s: max-frequency=%d\n", __func__, plat->speed_hz);
 
 	return 0;
 }
@@ -139,7 +163,7 @@ static int zynq_spi_probe(struct udevice *bus)
 static void spi_cs_activate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct zynq_spi_platdata *plat = bus->platdata;
+	struct zynq_spi_plat *plat = dev_get_plat(bus);
 	struct zynq_spi_priv *priv = dev_get_priv(bus);
 	struct zynq_spi_regs *regs = priv->regs;
 	u32 cr;
@@ -170,7 +194,7 @@ static void spi_cs_activate(struct udevice *dev)
 static void spi_cs_deactivate(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
-	struct zynq_spi_platdata *plat = bus->platdata;
+	struct zynq_spi_plat *plat = dev_get_plat(bus);
 	struct zynq_spi_priv *priv = dev_get_priv(bus);
 	struct zynq_spi_regs *regs = priv->regs;
 
@@ -211,7 +235,7 @@ static int zynq_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	struct udevice *bus = dev->parent;
 	struct zynq_spi_priv *priv = dev_get_priv(bus);
 	struct zynq_spi_regs *regs = priv->regs;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 	u32 len = bitlen / 8;
 	u32 tx_len = len, rx_len = len, tx_tvl;
 	const u8 *tx_buf = dout;
@@ -219,7 +243,7 @@ static int zynq_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	u32 ts, status;
 
 	debug("spi_xfer: bus:%i cs:%i bitlen:%i len:%i flags:%lx\n",
-	      bus->seq, slave_plat->cs, bitlen, len, flags);
+	      dev_seq(bus), slave_plat->cs, bitlen, len, flags);
 
 	if (bitlen % 8) {
 		debug("spi_xfer: Non byte aligned SPI transfer\n");
@@ -247,7 +271,7 @@ static int zynq_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		ts = get_timer(0);
 		status = readl(&regs->isr);
 		while (!(status & ZYNQ_SPI_IXR_TXOW_MASK)) {
-			if (get_timer(ts) > CONFIG_SYS_ZYNQ_SPI_WAIT) {
+			if (get_timer(ts) > ZYNQ_SPI_WAIT) {
 				printf("spi_xfer: Timeout! TX FIFO not full\n");
 				return -1;
 			}
@@ -273,7 +297,7 @@ static int zynq_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 static int zynq_spi_set_speed(struct udevice *bus, uint speed)
 {
-	struct zynq_spi_platdata *plat = bus->platdata;
+	struct zynq_spi_plat *plat = dev_get_plat(bus);
 	struct zynq_spi_priv *priv = dev_get_priv(bus);
 	struct zynq_spi_regs *regs = priv->regs;
 	uint32_t confr;
@@ -348,8 +372,8 @@ U_BOOT_DRIVER(zynq_spi) = {
 	.id	= UCLASS_SPI,
 	.of_match = zynq_spi_ids,
 	.ops	= &zynq_spi_ops,
-	.ofdata_to_platdata = zynq_spi_ofdata_to_platdata,
-	.platdata_auto_alloc_size = sizeof(struct zynq_spi_platdata),
-	.priv_auto_alloc_size = sizeof(struct zynq_spi_priv),
+	.of_to_plat = zynq_spi_of_to_plat,
+	.plat_auto	= sizeof(struct zynq_spi_plat),
+	.priv_auto	= sizeof(struct zynq_spi_priv),
 	.probe	= zynq_spi_probe,
 };

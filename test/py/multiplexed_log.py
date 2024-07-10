@@ -2,11 +2,13 @@
 # Copyright (c) 2015 Stephen Warren
 # Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
 
-# Generate an HTML-formatted log file containing multiple streams of data,
-# each represented in a well-delineated/-structured fashion.
+"""
+Generate an HTML-formatted log file containing multiple streams of data,
+each represented in a well-delineated/-structured fashion.
+"""
 
-import cgi
 import datetime
+import html
 import os.path
 import shutil
 import subprocess
@@ -51,7 +53,7 @@ class LogfileStream(object):
         """Write data to the log stream.
 
         Args:
-            data: The data to write tot he file.
+            data: The data to write to the file.
             implicit: Boolean indicating whether data actually appeared in the
                 stream, or was implicitly generated. A valid use-case is to
                 repeat a shell prompt at the start of each separate log
@@ -64,7 +66,8 @@ class LogfileStream(object):
 
         self.logfile.write(self, data, implicit)
         if self.chained_file:
-            self.chained_file.write(data)
+            # Chained file is console, convert things a little
+            self.chained_file.write((data.encode('ascii', 'replace')).decode())
 
     def flush(self):
         """Flush the log stream, to ensure correct log interleaving.
@@ -108,7 +111,7 @@ class RunAndLog(object):
         """Clean up any resources managed by this object."""
         pass
 
-    def run(self, cmd, cwd=None, ignore_errors=False):
+    def run(self, cmd, cwd=None, ignore_errors=False, stdin=None, env=None):
         """Run a command as a sub-process, and log the results.
 
         The output is available at self.output which can be useful if there is
@@ -122,6 +125,8 @@ class RunAndLog(object):
                 function will simply return if the command cannot be executed
                 or exits with an error code, otherwise an exception will be
                 raised if such problems occur.
+            stdin: Input string to pass to the command as stdin (or None)
+            env: Environment to use, or None to use the current one
 
         Returns:
             The output as a string.
@@ -134,8 +139,13 @@ class RunAndLog(object):
 
         try:
             p = subprocess.Popen(cmd, cwd=cwd,
-                stdin=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            (stdout, stderr) = p.communicate()
+                stdin=subprocess.PIPE if stdin else None,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+            (stdout, stderr) = p.communicate(input=stdin)
+            if stdout is not None:
+                stdout = stdout.decode('utf-8')
+            if stderr is not None:
+                stderr = stderr.decode('utf-8')
             output = ''
             if stdout:
                 if stderr:
@@ -158,7 +168,7 @@ class RunAndLog(object):
         if output and not output.endswith('\n'):
             output += '\n'
         if exit_status and not exception and not ignore_errors:
-            exception = Exception('Exit code: ' + str(exit_status))
+            exception = ValueError('Exit code: ' + str(exit_status))
         if exception:
             output += str(exception) + '\n'
         self.logfile.write(self, output)
@@ -173,7 +183,7 @@ class RunAndLog(object):
             raise exception
         return output
 
-class SectionCtxMgr(object):
+class SectionCtxMgr:
     """A context manager for Python's "with" statement, which allows a certain
     portion of test code to be logged to a separate section of the log file.
     Objects of this type should be created by factory functions in the Logfile
@@ -201,7 +211,7 @@ class SectionCtxMgr(object):
     def __exit__(self, extype, value, traceback):
         self.log.end_section(self.marker)
 
-class Logfile(object):
+class Logfile:
     """Generates an HTML-formatted log file containing multiple streams of
     data, each represented in a well-delineated/-structured fashion."""
 
@@ -215,7 +225,7 @@ class Logfile(object):
             Nothing.
         """
 
-        self.f = open(fn, 'wt')
+        self.f = open(fn, 'wt', encoding='utf-8')
         self.last_stream = None
         self.blocks = []
         self.cur_evt = 1
@@ -314,8 +324,9 @@ $(document).ready(function () {
 
     # The set of characters that should be represented as hexadecimal codes in
     # the log file.
-    _nonprint = ('%' + ''.join(chr(c) for c in range(0, 32) if c not in (9, 10)) +
-                 ''.join(chr(c) for c in range(127, 256)))
+    _nonprint = {ord('%')}
+    _nonprint.update(c for c in range(0, 32) if c not in (9, 10))
+    _nonprint.update(range(127, 256))
 
     def _escape(self, data):
         """Render data format suitable for inclusion in an HTML document.
@@ -331,9 +342,9 @@ $(document).ready(function () {
         """
 
         data = data.replace(chr(13), '')
-        data = ''.join((c in self._nonprint) and ('%%%02x' % ord(c)) or
+        data = ''.join((ord(c) in self._nonprint) and ('%%%02x' % ord(c)) or
                        c for c in data)
-        data = cgi.escape(data)
+        data = html.escape(data)
         return data
 
     def _terminate_stream(self):

@@ -6,6 +6,7 @@
  * Original Author: Andy Fleming
  * Add vsc8662 phy support - Priyanka Jain
  */
+#include <common.h>
 #include <miiphy.h>
 
 /* Cicada Auxiliary Control/Status Register */
@@ -292,7 +293,7 @@ static int vsc8664_config(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver VSC8211_driver = {
+U_BOOT_PHY_DRIVER(vsc8211) = {
 	.name	= "Vitesse VSC8211",
 	.uid	= 0xfc4b0,
 	.mask	= 0xffff0,
@@ -302,7 +303,7 @@ static struct phy_driver VSC8211_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8221_driver = {
+U_BOOT_PHY_DRIVER(vsc8221) = {
 	.name = "Vitesse VSC8221",
 	.uid = 0xfc550,
 	.mask = 0xffff0,
@@ -312,7 +313,7 @@ static struct phy_driver VSC8221_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8244_driver = {
+U_BOOT_PHY_DRIVER(vsc8244) = {
 	.name = "Vitesse VSC8244",
 	.uid = 0xfc6c0,
 	.mask = 0xffff0,
@@ -322,7 +323,7 @@ static struct phy_driver VSC8244_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8234_driver = {
+U_BOOT_PHY_DRIVER(vsc8234) = {
 	.name = "Vitesse VSC8234",
 	.uid = 0xfc620,
 	.mask = 0xffff0,
@@ -332,7 +333,7 @@ static struct phy_driver VSC8234_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8574_driver = {
+U_BOOT_PHY_DRIVER(vsc8574) = {
 	.name = "Vitesse VSC8574",
 	.uid = 0x704a0,
 	.mask = 0xffff0,
@@ -342,7 +343,7 @@ static struct phy_driver VSC8574_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8514_driver = {
+U_BOOT_PHY_DRIVER(vsc8514) = {
 	.name = "Vitesse VSC8514",
 	.uid = 0x70670,
 	.mask = 0xffff0,
@@ -352,7 +353,7 @@ static struct phy_driver VSC8514_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8584_driver = {
+U_BOOT_PHY_DRIVER(vsc8584) = {
 	.name = "Vitesse VSC8584",
 	.uid = 0x707c0,
 	.mask = 0xffff0,
@@ -362,7 +363,7 @@ static struct phy_driver VSC8584_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8601_driver = {
+U_BOOT_PHY_DRIVER(vsc8601) = {
 	.name = "Vitesse VSC8601",
 	.uid = 0x70420,
 	.mask = 0xffff0,
@@ -372,7 +373,7 @@ static struct phy_driver VSC8601_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8641_driver = {
+U_BOOT_PHY_DRIVER(vsc8641) = {
 	.name = "Vitesse VSC8641",
 	.uid = 0x70430,
 	.mask = 0xffff0,
@@ -382,7 +383,7 @@ static struct phy_driver VSC8641_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8662_driver = {
+U_BOOT_PHY_DRIVER(vsc8662) = {
 	.name = "Vitesse VSC8662",
 	.uid = 0x70660,
 	.mask = 0xffff0,
@@ -392,7 +393,7 @@ static struct phy_driver VSC8662_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8664_driver = {
+U_BOOT_PHY_DRIVER(vsc8664) = {
 	.name = "Vitesse VSC8664",
 	.uid = 0x70660,
 	.mask = 0xffff0,
@@ -403,7 +404,7 @@ static struct phy_driver VSC8664_driver = {
 };
 
 /* Vitesse bought Cicada, so we'll put these here */
-static struct phy_driver cis8201_driver = {
+U_BOOT_PHY_DRIVER(cis8201) = {
 	.name = "CIS8201",
 	.uid = 0xfc410,
 	.mask = 0xffff0,
@@ -413,7 +414,7 @@ static struct phy_driver cis8201_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver cis8204_driver = {
+U_BOOT_PHY_DRIVER(cis8204) = {
 	.name = "Cicada Cis8204",
 	.uid = 0xfc440,
 	.mask = 0xffff0,
@@ -422,22 +423,3 @@ static struct phy_driver cis8204_driver = {
 	.startup = &vitesse_startup,
 	.shutdown = &genphy_shutdown,
 };
-
-int phy_vitesse_init(void)
-{
-	phy_register(&VSC8641_driver);
-	phy_register(&VSC8601_driver);
-	phy_register(&VSC8234_driver);
-	phy_register(&VSC8244_driver);
-	phy_register(&VSC8211_driver);
-	phy_register(&VSC8221_driver);
-	phy_register(&VSC8574_driver);
-	phy_register(&VSC8584_driver);
-	phy_register(&VSC8514_driver);
-	phy_register(&VSC8662_driver);
-	phy_register(&VSC8664_driver);
-	phy_register(&cis8201_driver);
-	phy_register(&cis8204_driver);
-
-	return 0;
-}

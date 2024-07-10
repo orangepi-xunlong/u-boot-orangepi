@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2017 Texas Instruments Incorporated - https://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -7,87 +7,143 @@
  * Based on "dra7.dtsi"
  */
 
+#ifdef CONFIG_DRA7XX
 /{
 	chosen {
 		tick-timer = &timer2;
 	};
 
+	aliases {
+		usb0 = &usb1;
+		usb1 = &usb2;
+	};
+
 	ocp {
-		u-boot,dm-spl;
+		bootph-pre-ram;
+
+		ocp2scp@4a080000 {
+			compatible = "ti,omap-ocp2scp", "simple-bus";
+			bootph-pre-ram;
+		};
 
 		ocp2scp@4a090000 {
 			compatible = "ti,omap-ocp2scp", "simple-bus";
 		};
 
 		bandgap@4a0021e0 {
-			u-boot,dm-spl;
+			bootph-pre-ram;
 		};
 	};
 };
 
 &uart1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	reg-shift = <2>;
 };
 
 &uart3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	reg-shift = <2>;
 };
 
 &mmc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &mmc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &l4_cfg {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &scm {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &scm_conf {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &qspi {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 
 	m25p80@0 {
-		compatible = "spi-flash";
-		u-boot,dm-spl;
+		compatible = "jedec,spi-nor";
+		bootph-pre-ram;
 	};
 };
 
 &gpio1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio4 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio5 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio6 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio7 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
+
+&i2c1 {
+	bootph-pre-ram;
+};
+
+#else /* OMAP54XX */
+&l4_cfg {
+	segment@0 {
+		/* SCM Core */
+		target-module@2000 {
+			compatible = "simple-bus";
+		};
+
+		/* USB HS */
+		target-module@64000 {
+			compatible = "simple-bus";
+		};
+	};
+};
+
+&l4_per {
+	segment@0 {
+		/* UART3 */
+		target-module@20000 {
+			compatible = "simple-bus";
+		};
+
+		/* I2C1 */
+		target-module@70000 {
+			compatible = "simple-bus";
+		};
+
+		/* MMC1 */
+		target-module@9c000 {
+			compatible = "simple-bus";
+		};
+
+		/* MMC2 */
+		target-module@b4000 {
+			compatible = "simple-bus";
+		};
+	};
+};
+
+#endif

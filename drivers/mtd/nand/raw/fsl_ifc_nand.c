@@ -7,8 +7,10 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <malloc.h>
 #include <nand.h>
+#include <dm/devres.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/rawnand.h>
@@ -17,10 +19,6 @@
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <fsl_ifc.h>
-
-#ifndef CONFIG_SYS_FSL_IFC_BANK_COUNT
-#define CONFIG_SYS_FSL_IFC_BANK_COUNT	4
-#endif
 
 #define MAX_BANKS	CONFIG_SYS_FSL_IFC_BANK_COUNT
 #define ERR_BYTE	0xFF /* Value returned for read bytes
@@ -409,9 +407,16 @@ static void fsl_ifc_cmdfunc(struct mtd_info *mtd, unsigned int command,
 	/* READID must read all possible bytes while CEB is active */
 	case NAND_CMD_READID:
 	case NAND_CMD_PARAM: {
+		/*
+		 * For READID, read 8 bytes that are currently used.
+		 * For PARAM, read all 3 copies of 256-bytes pages.
+		 */
+		int len = 8;
 		int timing = IFC_FIR_OP_RB;
-		if (command == NAND_CMD_PARAM)
+		if (command == NAND_CMD_PARAM) {
 			timing = IFC_FIR_OP_RBCD;
+			len = 256 * 3;
+		}
 
 		ifc_out32(&ifc->ifc_nand.nand_fir0,
 			  (IFC_FIR_OP_CW0 << IFC_NAND_FIR0_OP0_SHIFT) |
@@ -421,12 +426,8 @@ static void fsl_ifc_cmdfunc(struct mtd_info *mtd, unsigned int command,
 			  command << IFC_NAND_FCR0_CMD0_SHIFT);
 		ifc_out32(&ifc->ifc_nand.row3, column);
 
-		/*
-		 * although currently it's 8 bytes for READID, we always read
-		 * the maximum 256 bytes(for PARAM)
-		 */
-		ifc_out32(&ifc->ifc_nand.nand_fbcr, 256);
-		ctrl->read_bytes = 256;
+		ifc_out32(&ifc->ifc_nand.nand_fbcr, len);
+		ctrl->read_bytes = len;
 
 		set_addr(mtd, 0, 0, 0);
 		fsl_ifc_run_command(mtd);
@@ -775,10 +776,10 @@ static void fsl_ifc_ctrl_init(void)
 	ver = ifc_in32(&ifc_ctrl->regs.gregs->ifc_rev);
 	if (ver >= FSL_IFC_V2_0_0)
 		ifc_ctrl->regs.rregs =
-			(void *)CONFIG_SYS_IFC_ADDR + IFC_RREGS_64KOFFSET;
+			(void *)CFG_SYS_IFC_ADDR + IFC_RREGS_64KOFFSET;
 	else
 		ifc_ctrl->regs.rregs =
-			(void *)CONFIG_SYS_IFC_ADDR + IFC_RREGS_4KOFFSET;
+			(void *)CFG_SYS_IFC_ADDR + IFC_RREGS_4KOFFSET;
 
 	/* clear event registers */
 	ifc_out32(&ifc_ctrl->regs.rregs->ifc_nand.nand_evter_stat, ~0U);
@@ -1048,12 +1049,12 @@ static int fsl_ifc_chip_init(int devnum, u8 *addr)
 	return 0;
 }
 
-#ifndef CONFIG_SYS_NAND_BASE_LIST
-#define CONFIG_SYS_NAND_BASE_LIST { CONFIG_SYS_NAND_BASE }
+#ifndef CFG_SYS_NAND_BASE_LIST
+#define CFG_SYS_NAND_BASE_LIST { CFG_SYS_NAND_BASE }
 #endif
 
 static unsigned long base_address[CONFIG_SYS_MAX_NAND_DEVICE] =
-	CONFIG_SYS_NAND_BASE_LIST;
+	CFG_SYS_NAND_BASE_LIST;
 
 void board_nand_init(void)
 {

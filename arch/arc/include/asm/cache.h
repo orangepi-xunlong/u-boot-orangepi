@@ -16,16 +16,6 @@
  */
 #define ARCH_DMA_MINALIGN	128
 
-#if defined(ARC_MMU_ABSENT)
-#define CONFIG_ARC_MMU_VER 0
-#elif defined(CONFIG_ARC_MMU_V2)
-#define CONFIG_ARC_MMU_VER 2
-#elif defined(CONFIG_ARC_MMU_V3)
-#define CONFIG_ARC_MMU_VER 3
-#elif defined(CONFIG_ARC_MMU_V4)
-#define CONFIG_ARC_MMU_VER 4
-#endif
-
 #ifndef __ASSEMBLY__
 
 void cache_init(void);
@@ -36,6 +26,13 @@ static const inline int is_ioc_enabled(void)
 {
 	return IS_ENABLED(CONFIG_ARC_DBG_IOC_ENABLE);
 }
+
+/*
+ * We export SLC control functions to use them in platform configuration code.
+ * They maust not be used in any generic code!
+ */
+void slc_enable(void);
+void slc_disable(void);
 
 #endif /* __ASSEMBLY__ */
 

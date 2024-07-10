@@ -7,12 +7,22 @@
  * STM32 QSPI driver
  */
 
+#define LOG_CATEGORY UCLASS_SPI
+
 #include <common.h>
 #include <clk.h>
+#include <dm.h>
+#include <log.h>
 #include <reset.h>
+#include <spi.h>
 #include <spi-mem.h>
+#include <watchdog.h>
+#include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <linux/ioport.h>
+#include <linux/printk.h>
 #include <linux/sizes.h>
 
 struct stm32_qspi_regs {
@@ -106,15 +116,8 @@ struct stm32_qspi_regs {
 #define STM32_BUSY_TIMEOUT_US		100000
 #define STM32_ABT_TIMEOUT_US		100000
 
-struct stm32_qspi_flash {
-	u32 cr;
-	u32 dcr;
-	bool initialized;
-};
-
 struct stm32_qspi_priv {
 	struct stm32_qspi_regs *regs;
-	struct stm32_qspi_flash flash[STM32_QSPI_MAX_CHIP];
 	void __iomem *mm_base;
 	resource_size_t mm_size;
 	ulong clock_rate;
@@ -130,7 +133,7 @@ static int _stm32_qspi_wait_for_not_busy(struct stm32_qspi_priv *priv)
 				 !(sr & STM32_QSPI_SR_BUSY),
 				 STM32_BUSY_TIMEOUT_US);
 	if (ret)
-		pr_err("busy timeout (stat:%#x)\n", sr);
+		log_err("busy timeout (stat:%#x)\n", sr);
 
 	return ret;
 }
@@ -139,23 +142,23 @@ static int _stm32_qspi_wait_cmd(struct stm32_qspi_priv *priv,
 				const struct spi_mem_op *op)
 {
 	u32 sr;
-	int ret;
-
-	if (!op->data.nbytes)
-		return _stm32_qspi_wait_for_not_busy(priv);
+	int ret = 0;
 
 	ret = readl_poll_timeout(&priv->regs->sr, sr,
 				 sr & STM32_QSPI_SR_TCF,
 				 STM32_QSPI_CMD_TIMEOUT_US);
 	if (ret) {
-		pr_err("cmd timeout (stat:%#x)\n", sr);
+		log_err("cmd timeout (stat:%#x)\n", sr);
 	} else if (readl(&priv->regs->sr) & STM32_QSPI_SR_TEF) {
-		pr_err("transfer error (stat:%#x)\n", sr);
+		log_err("transfer error (stat:%#x)\n", sr);
 		ret = -EIO;
 	}
 
 	/* clear flags */
 	writel(STM32_QSPI_FCR_CTCF | STM32_QSPI_FCR_CTEF, &priv->regs->fcr);
+
+	if (!ret)
+		ret = _stm32_qspi_wait_for_not_busy(priv);
 
 	return ret;
 }
@@ -163,6 +166,7 @@ static int _stm32_qspi_wait_cmd(struct stm32_qspi_priv *priv,
 static void _stm32_qspi_read_fifo(u8 *val, void __iomem *addr)
 {
 	*val = readb(addr);
+	schedule();
 }
 
 static void _stm32_qspi_write_fifo(u8 *val, void __iomem *addr)
@@ -192,7 +196,7 @@ static int _stm32_qspi_poll(struct stm32_qspi_priv *priv,
 					 sr & STM32_QSPI_SR_FTF,
 					 STM32_QSPI_FIFO_TIMEOUT_US);
 		if (ret) {
-			pr_err("fifo timeout (len:%d stat:%#x)\n", len, sr);
+			log_err("fifo timeout (len:%d stat:%#x)\n", len, sr);
 			return ret;
 		}
 
@@ -240,14 +244,10 @@ static int stm32_qspi_exec_op(struct spi_slave *slave,
 	u8 mode = STM32_QSPI_CCR_IND_WRITE;
 	int timeout, ret;
 
-	debug("%s: cmd:%#x mode:%d.%d.%d.%d addr:%#llx len:%#x\n",
-	      __func__, op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
-	      op->dummy.buswidth, op->data.buswidth,
-	      op->addr.val, op->data.nbytes);
-
-	ret = _stm32_qspi_wait_for_not_busy(priv);
-	if (ret)
-		return ret;
+	dev_dbg(slave->dev, "cmd:%#x mode:%d.%d.%d.%d addr:%#llx len:%#x\n",
+		op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
+		op->dummy.buswidth, op->data.buswidth,
+		op->addr.val, op->data.nbytes);
 
 	addr_max = op->addr.val + op->data.nbytes + 1;
 
@@ -314,7 +314,7 @@ abort:
 	writel(STM32_QSPI_FCR_CTCF, &priv->regs->fcr);
 
 	if (ret || timeout)
-		pr_err("%s ret:%d abort timeout:%d\n", __func__, ret, timeout);
+		dev_err(slave->dev, "ret:%d abort timeout:%d\n", ret, timeout);
 
 	return ret;
 }
@@ -347,8 +347,8 @@ static int stm32_qspi_probe(struct udevice *bus)
 	if (priv->mm_size > STM32_QSPI_MAX_MMAP_SZ)
 		return -EINVAL;
 
-	debug("%s: regs=<0x%p> mapped=<0x%p> mapped_size=<0x%lx>\n",
-	      __func__, priv->regs, priv->mm_base, priv->mm_size);
+	dev_dbg(bus, "regs=<0x%p> mapped=<0x%p> mapped_size=<0x%lx>\n",
+		priv->regs, priv->mm_base, priv->mm_size);
 
 	ret = clk_get_by_index(bus, 0, &clk);
 	if (ret < 0)
@@ -361,9 +361,9 @@ static int stm32_qspi_probe(struct udevice *bus)
 	}
 
 	priv->clock_rate = clk_get_rate(&clk);
-	if (priv->clock_rate < 0) {
+	if (!priv->clock_rate) {
 		clk_disable(&clk);
-		return priv->clock_rate;
+		return -EINVAL;
 	}
 
 	ret = reset_get_by_index(bus, 0, &reset_ctl);
@@ -394,31 +394,18 @@ static int stm32_qspi_probe(struct udevice *bus)
 static int stm32_qspi_claim_bus(struct udevice *dev)
 {
 	struct stm32_qspi_priv *priv = dev_get_priv(dev->parent);
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
+	int slave_cs = slave_plat->cs;
 
-	if (slave_plat->cs >= STM32_QSPI_MAX_CHIP)
+	if (slave_cs >= STM32_QSPI_MAX_CHIP)
 		return -ENODEV;
 
-	if (priv->cs_used != slave_plat->cs) {
-		struct stm32_qspi_flash *flash = &priv->flash[slave_plat->cs];
+	if (priv->cs_used != slave_cs) {
+		priv->cs_used = slave_cs;
 
-		priv->cs_used = slave_plat->cs;
-
-		if (flash->initialized) {
-			/* Set the configuration: speed + cs */
-			writel(flash->cr, &priv->regs->cr);
-			writel(flash->dcr, &priv->regs->dcr);
-		} else {
-			/* Set chip select */
-			clrsetbits_le32(&priv->regs->cr, STM32_QSPI_CR_FSEL,
-					priv->cs_used ? STM32_QSPI_CR_FSEL : 0);
-
-			/* Save the configuration: speed + cs */
-			flash->cr = readl(&priv->regs->cr);
-			flash->dcr = readl(&priv->regs->dcr);
-
-			flash->initialized = true;
-		}
+		/* Set chip select */
+		clrsetbits_le32(&priv->regs->cr, STM32_QSPI_CR_FSEL,
+				priv->cs_used ? STM32_QSPI_CR_FSEL : 0);
 	}
 
 	setbits_le32(&priv->regs->cr, STM32_QSPI_CR_EN);
@@ -444,11 +431,12 @@ static int stm32_qspi_set_speed(struct udevice *bus, uint speed)
 	int ret;
 
 	if (speed > 0) {
-		prescaler = DIV_ROUND_UP(qspi_clk, speed) - 1;
-		if (prescaler > 255)
-			prescaler = 255;
-		else if (prescaler < 0)
-			prescaler = 0;
+		prescaler = 0;
+		if (qspi_clk) {
+			prescaler = DIV_ROUND_UP(qspi_clk, speed) - 1;
+			if (prescaler > 255)
+				prescaler = 255;
+		}
 	}
 
 	csht = DIV_ROUND_UP((5 * qspi_clk) / (prescaler + 1), 100000000);
@@ -467,8 +455,8 @@ static int stm32_qspi_set_speed(struct udevice *bus, uint speed)
 			STM32_QSPI_DCR_CSHT_MASK << STM32_QSPI_DCR_CSHT_SHIFT,
 			csht << STM32_QSPI_DCR_CSHT_SHIFT);
 
-	debug("%s: regs=%p, speed=%d\n", __func__, priv->regs,
-	      (qspi_clk / (prescaler + 1)));
+	dev_dbg(bus, "regs=%p, speed=%d\n", priv->regs,
+		(qspi_clk / (prescaler + 1)));
 
 	return 0;
 }
@@ -477,6 +465,7 @@ static int stm32_qspi_set_mode(struct udevice *bus, uint mode)
 {
 	struct stm32_qspi_priv *priv = dev_get_priv(bus);
 	int ret;
+	const char *str_rx, *str_tx;
 
 	ret = _stm32_qspi_wait_for_not_busy(priv);
 	if (ret)
@@ -492,21 +481,22 @@ static int stm32_qspi_set_mode(struct udevice *bus, uint mode)
 	if (mode & SPI_CS_HIGH)
 		return -ENODEV;
 
-	debug("%s: regs=%p, mode=%d rx: ", __func__, priv->regs, mode);
-
 	if (mode & SPI_RX_QUAD)
-		debug("quad, tx: ");
+		str_rx = "quad";
 	else if (mode & SPI_RX_DUAL)
-		debug("dual, tx: ");
+		str_rx = "dual";
 	else
-		debug("single, tx: ");
+		str_rx = "single";
 
 	if (mode & SPI_TX_QUAD)
-		debug("quad\n");
+		str_tx = "quad";
 	else if (mode & SPI_TX_DUAL)
-		debug("dual\n");
+		str_tx = "dual";
 	else
-		debug("single\n");
+		str_tx = "single";
+
+	dev_dbg(bus, "regs=%p, mode=%d rx: %s, tx: %s\n",
+		priv->regs, mode, str_rx, str_tx);
 
 	return 0;
 }
@@ -524,7 +514,6 @@ static const struct dm_spi_ops stm32_qspi_ops = {
 };
 
 static const struct udevice_id stm32_qspi_ids[] = {
-	{ .compatible = "st,stm32-qspi" },
 	{ .compatible = "st,stm32f469-qspi" },
 	{ }
 };
@@ -534,6 +523,6 @@ U_BOOT_DRIVER(stm32_qspi) = {
 	.id = UCLASS_SPI,
 	.of_match = stm32_qspi_ids,
 	.ops = &stm32_qspi_ops,
-	.priv_auto_alloc_size = sizeof(struct stm32_qspi_priv),
+	.priv_auto	= sizeof(struct stm32_qspi_priv),
 	.probe = stm32_qspi_probe,
 };

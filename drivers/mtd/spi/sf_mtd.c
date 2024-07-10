@@ -9,6 +9,20 @@
 #include <linux/mtd/mtd.h>
 #include <spi_flash.h>
 
+#if CONFIG_IS_ENABLED(DM_SPI_FLASH)
+
+int spi_flash_mtd_register(struct spi_flash *flash)
+{
+	return add_mtd_device(&flash->mtd);
+}
+
+void spi_flash_mtd_unregister(struct spi_flash *flash)
+{
+	del_mtd_device(&flash->mtd);
+}
+
+#else /* !CONFIG_IS_ENABLED(DM_SPI_FLASH) */
+
 static struct mtd_info sf_mtd_info;
 static bool sf_mtd_registered;
 static char sf_mtd_name[8];
@@ -31,7 +45,6 @@ static int spi_flash_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 	}
 
 	instr->state = MTD_ERASE_DONE;
-	mtd_erase_callback(instr);
 
 	return 0;
 }
@@ -110,6 +123,7 @@ int spi_flash_mtd_register(struct spi_flash *flash)
 
 	sf_mtd_info.size = flash->size;
 	sf_mtd_info.priv = flash;
+	sf_mtd_info.dev = flash->dev;
 
 	/* Only uniform flash devices for now */
 	sf_mtd_info.numeraseregions = 0;
@@ -122,7 +136,7 @@ int spi_flash_mtd_register(struct spi_flash *flash)
 	return ret;
 }
 
-void spi_flash_mtd_unregister(void)
+void spi_flash_mtd_unregister(struct spi_flash *flash)
 {
 	int ret;
 
@@ -145,3 +159,5 @@ void spi_flash_mtd_unregister(void)
 	printf("Failed to unregister MTD %s and the spi_flash object is going away: you're in deep trouble!",
 	       sf_mtd_info.name);
 }
+
+#endif /* !CONFIG_IS_ENABLED(DM_SPI_FLASH) */

@@ -7,8 +7,12 @@
 
 #include <common.h>
 #include <errno.h>
+#include <log.h>
 #include <dm/of_access.h>
 #include <dm/ofnode.h>
+#include <linux/delay.h>
+#include <linux/printk.h>
+#include <asm/global_data.h>
 
 #include "../xusb-padctl-common.h"
 

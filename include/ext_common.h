@@ -19,8 +19,13 @@
 
 #ifndef __EXT_COMMON__
 #define __EXT_COMMON__
-#include <command.h>
+
+#include <compiler.h>
+
+struct cmd_tbl;
+
 #define SECTOR_SIZE		0x200
+#define LOG2_SECTOR_SIZE	9
 
 /* Magic value used to identify an ext2 filesystem.  */
 #define	EXT2_MAGIC			0xEF53
@@ -30,6 +35,16 @@
 #define EXT2_PATH_MAX				4096
 /* Maximum nesting of symlinks, used to prevent a loop.  */
 #define	EXT2_MAX_SYMLINKCNT		8
+/* Maximum file name length */
+#define EXT2_NAME_LEN 255
+
+/*
+ * Revision levels
+ */
+#define EXT2_GOOD_OLD_REV	0	/* The good old (original) format */
+#define EXT2_DYNAMIC_REV	1	/* V2 format w/ dynamic inode sizes */
+
+#define EXT2_GOOD_OLD_INODE_SIZE 128
 
 /* Filetype used in directory entry.  */
 #define	FILETYPE_UNKNOWN		0
@@ -43,6 +58,10 @@
 #define FILETYPE_INO_DIRECTORY		0040000
 #define FILETYPE_INO_SYMLINK		0120000
 #define EXT2_ROOT_INO			2 /* Root inode */
+#define EXT2_BOOT_LOADER_INO		5 /* Boot loader inode */
+
+/* First non-reserved inode for old ext2 filesystems */
+#define EXT2_GOOD_OLD_FIRST_INO	11
 
 /* The size of an ext2 block in bytes.  */
 #define EXT2_BLOCK_SIZE(data)	   (1 << LOG2_BLOCK_SIZE(data))
@@ -209,11 +228,11 @@ struct ext2_data {
 
 extern lbaint_t part_offset;
 
-int do_ext2ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
-int do_ext2load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
-int do_ext4_load(cmd_tbl_t *cmdtp, int flag, int argc,
-					char *const argv[]);
-int do_ext4_ls(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
-int do_ext4_write(cmd_tbl_t *cmdtp, int flag, int argc,
-				char *const argv[]);
+int do_ext2ls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext2load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext4_load(struct cmd_tbl *cmdtp, int flag, int argc,
+		 char *const argv[]);
+int do_ext4_ls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
+int do_ext4_write(struct cmd_tbl *cmdtp, int flag, int argc,
+		  char *const argv[]);
 #endif

@@ -7,6 +7,8 @@
 /* Tegra124 Clock control functions */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sysctr.h>
@@ -15,6 +17,10 @@
 #include <asm/arch-tegra/timer.h>
 #include <div64.h>
 #include <fdtdec.h>
+#include <linux/delay.h>
+
+#include <dt-bindings/clock/tegra124-car.h>
+#include <dt-bindings/clock/tegra124-car-common.h>
 
 /*
  * Clock types that we can use as a source. The Tegra124 has muxes for the
@@ -71,7 +77,7 @@ enum {
  */
 #define CLK(x) CLOCK_ID_ ## x
 static enum clock_id clock_source[CLOCK_TYPE_COUNT][CLOCK_MAX_MUX+1] = {
-	{ CLK(AUDIO),	CLK(XCPU),	CLK(PERIPH),	CLK(OSC),
+	{ CLK(AUDIO),	CLK(XCPU),	CLK(PERIPH),	CLK(CLK_M),
 		CLK(NONE),	CLK(NONE),	CLK(NONE),	CLK(NONE),
 		MASK_BITS_31_30},
 	{ CLK(MEMORY),	CLK(CGENERAL),	CLK(PERIPH),	CLK(AUDIO),
@@ -598,8 +604,7 @@ struct clk_pll_info tegra_pll_info_table[CLOCK_ID_PLL_COUNT] = {
 
 /*
  * Get the oscillator frequency, from the corresponding hardware configuration
- * field. Note that Tegra30+ support 3 new higher freqs, but we map back
- * to the old T20 freqs. Support for the higher oscillators is TBD.
+ * field. Note that T30+ supports 3 new higher freqs.
  */
 enum clock_osc_freq clock_get_osc_freq(void)
 {
@@ -608,12 +613,7 @@ enum clock_osc_freq clock_get_osc_freq(void)
 	u32 reg;
 
 	reg = readl(&clkrst->crc_osc_ctrl);
-	reg = (reg & OSC_FREQ_MASK) >> OSC_FREQ_SHIFT;
-
-	if (reg & 1)				/* one of the newer freqs */
-		printf("Warning: OSC_FREQ is unsupported! (%d)\n", reg);
-
-	return reg >> 2;	/* Map to most common (T20) freqs */
+	return (reg & OSC_FREQ_MASK) >> OSC_FREQ_SHIFT;
 }
 
 /* Returns a pointer to the clock source register for a peripheral */
@@ -696,7 +696,7 @@ enum clock_id get_periph_clock_id(enum periph_id periph_id, int source)
  * @param source	PLL id of required parent clock
  * @param mux_bits	Set to number of bits in mux register: 2 or 4
  * @param divider_bits Set to number of divider bits (8 or 16)
- * @return mux value (0-4, or -1 if not found)
+ * Return: mux value (0-4, or -1 if not found)
  */
 int get_periph_clock_source(enum periph_id periph_id,
 	enum clock_id parent, int *mux_bits, int *divider_bits)
@@ -770,7 +770,7 @@ void reset_set_enable(enum periph_id periph_id, int enable)
  * provided.
  *
  * @param clk_id    Clock ID according to tegra124 device tree binding
- * @return peripheral ID, or PERIPH_ID_NONE if the clock ID is invalid
+ * Return: peripheral ID, or PERIPH_ID_NONE if the clock ID is invalid
  */
 enum periph_id clk_id_to_periph_id(int clk_id)
 {
@@ -829,6 +829,41 @@ enum periph_id clk_id_to_periph_id(int clk_id)
 		return clk_id;
 	}
 }
+
+/*
+ * Convert a device tree clock ID to our PLL ID.
+ *
+ * @param clk_id	Clock ID according to tegra124 device tree binding
+ * Return: clock ID, or CLOCK_ID_NONE if the clock ID is invalid
+ */
+enum clock_id clk_id_to_pll_id(int clk_id)
+{
+	switch (clk_id) {
+	case TEGRA124_CLK_PLL_C:
+		return CLOCK_ID_CGENERAL;
+	case TEGRA124_CLK_PLL_M:
+		return CLOCK_ID_MEMORY;
+	case TEGRA124_CLK_PLL_P:
+		return CLOCK_ID_PERIPH;
+	case TEGRA124_CLK_PLL_A:
+		return CLOCK_ID_AUDIO;
+	case TEGRA124_CLK_PLL_U:
+		return CLOCK_ID_USB;
+	case TEGRA124_CLK_PLL_D:
+	case TEGRA124_CLK_PLL_D_OUT0:
+		return CLOCK_ID_DISPLAY;
+	case TEGRA124_CLK_PLL_X:
+		return CLOCK_ID_XCPU;
+	case TEGRA124_CLK_PLL_E:
+		return CLOCK_ID_EPCI;
+	case TEGRA124_CLK_CLK_32K:
+		return CLOCK_ID_32KHZ;
+	case TEGRA124_CLK_CLK_M:
+		return CLOCK_ID_CLK_M;
+	default:
+		return CLOCK_ID_NONE;
+	}
+}
 #endif /* CONFIG_IS_ENABLED(OF_CONTROL) */
 
 void clock_early_init(void)
@@ -851,6 +886,7 @@ void clock_early_init(void)
 	 */
 	switch (clock_get_osc_freq()) {
 	case CLOCK_OSC_FREQ_12_0: /* OSC is 12Mhz */
+	case CLOCK_OSC_FREQ_48_0: /* OSC is 48Mhz */
 		clock_set_rate(CLOCK_ID_CGENERAL, 600, 12, 0, 8);
 		clock_set_rate(CLOCK_ID_DISPLAY, 925, 12, 0, 12);
 		break;
@@ -861,10 +897,12 @@ void clock_early_init(void)
 		break;
 
 	case CLOCK_OSC_FREQ_13_0: /* OSC is 13Mhz */
+	case CLOCK_OSC_FREQ_16_8: /* OSC is 16.8Mhz */
 		clock_set_rate(CLOCK_ID_CGENERAL, 600, 13, 0, 8);
 		clock_set_rate(CLOCK_ID_DISPLAY, 925, 13, 0, 12);
 		break;
 	case CLOCK_OSC_FREQ_19_2:
+	case CLOCK_OSC_FREQ_38_4:
 	default:
 		/*
 		 * These are not supported. It is too early to print a
@@ -896,7 +934,7 @@ void clock_early_init(void)
  * Check a register that we set up to see if clock_early_init() has already
  * been called.
  *
- * @return true if clock_early_init() was called, false if not
+ * Return: true if clock_early_init() was called, false if not
  */
 bool clock_early_init_done(void)
 {
@@ -1170,7 +1208,7 @@ struct periph_clk_init periph_clk_init_table[] = {
 	{ PERIPH_ID_SDMMC2, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SDMMC3, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_SDMMC4, CLOCK_ID_PERIPH },
-	{ PERIPH_ID_PWM, CLOCK_ID_SFROM32KHZ },
+	{ PERIPH_ID_PWM, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C1, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C2, CLOCK_ID_PERIPH },
 	{ PERIPH_ID_I2C3, CLOCK_ID_PERIPH },

@@ -7,9 +7,12 @@
 #include <i2c.h>
 #include <miiphy.h>
 #include <cpsw.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/emif.h>
+#include <linux/delay.h>
 #include <power/pmic.h>
 #include <power/tps65218.h>
 #include "board.h"
@@ -42,10 +45,10 @@ int power_init_board(void)
 
 int board_init(void)
 {
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 	gpmc_init();
 	set_i2c_pin_mux();
-	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
+	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 	i2c_probe(TPS65218_CHIP_PM);
 
 	return 0;
@@ -147,7 +150,7 @@ static void board_phy_init(void)
 	mdelay(2);
 }
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int rv;
 

@@ -5,25 +5,44 @@
 
 #include <common.h>
 #include <ahci.h>
+#include <cpu_func.h>
+#include <init.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/mbus.h>
 #include <asm/io.h>
 #include <asm/pl310.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <asm/spl.h>
 #include <sdhci.h>
 
 #define DDR_BASE_CS_OFF(n)	(0x0000 + ((n) << 3))
 #define DDR_SIZE_CS_OFF(n)	(0x0004 + ((n) << 3))
 
-static struct mbus_win windows[] = {
+static const struct mbus_win windows[] = {
 	/* SPI */
 	{ MBUS_SPI_BASE, MBUS_SPI_SIZE,
 	  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_SPIFLASH },
 
-	/* NOR */
+	/* BootROM */
 	{ MBUS_BOOTROM_BASE, MBUS_BOOTROM_SIZE,
 	  CPU_TARGET_DEVICEBUS_BOOTROM_SPI, CPU_ATTR_BOOTROM },
+
+#ifdef CONFIG_ARMADA_MSYS
+	/* DFX */
+	{ MBUS_DFX_BASE, MBUS_DFX_SIZE, CPU_TARGET_DFX, 0 },
+#endif
 };
+
+/* SPI0 CS0 Flash of size MBUS_SPI_SIZE is mapped to address MBUS_SPI_BASE */
+#if CONFIG_ENV_SPI_BUS == 0 && CONFIG_ENV_SPI_CS == 0 && \
+    CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE <= MBUS_SPI_SIZE
+void *env_sf_get_env_addr(void)
+{
+	return (void *)MBUS_SPI_BASE + CONFIG_ENV_OFFSET;
+}
+#endif
 
 void lowlevel_init(void)
 {
@@ -33,7 +52,7 @@ void lowlevel_init(void)
 	 */
 }
 
-void reset_cpu(unsigned long ignored)
+void reset_cpu(void)
 {
 	struct mvebu_system_registers *reg =
 		(struct mvebu_system_registers *)MVEBU_SYSTEM_REG_BASE;
@@ -44,31 +63,64 @@ void reset_cpu(unsigned long ignored)
 		;
 }
 
-int mvebu_soc_family(void)
+u32 get_boot_device(void)
 {
-	u16 devid = (readl(MVEBU_REG_PCIE_DEVID) >> 16) & 0xffff;
+	u32 val;
+	u32 boot_device;
+	u32 boot_err_mode;
+#ifdef CONFIG_ARMADA_38X
+	u32 boot_err_code;
+#endif
 
-	switch (devid) {
-	case SOC_MV78230_ID:
-	case SOC_MV78260_ID:
-	case SOC_MV78460_ID:
-		return MVEBU_SOC_AXP;
+	/*
+	 * First check, if UART boot-mode is active. This can only
+	 * be done, via the bootrom error register. Here the
+	 * MSB marks if the UART mode is active.
+	 */
+	val = readl(BOOTROM_ERR_REG);
+	boot_err_mode = (val & BOOTROM_ERR_MODE_MASK) >> BOOTROM_ERR_MODE_OFFS;
+	debug("BOOTROM_ERR_REG=0x%08x boot_err_mode=0x%x\n", val, boot_err_mode);
+	if (boot_err_mode == BOOTROM_ERR_MODE_UART)
+		return BOOT_DEVICE_UART;
 
-	case SOC_88F6720_ID:
-		return MVEBU_SOC_A375;
+#ifdef CONFIG_ARMADA_38X
+	/*
+	 * If the bootrom error code contains any other than zeros it's an
+	 * error condition and the bootROM has fallen back to UART boot
+	 */
+	boot_err_code = (val & BOOTROM_ERR_CODE_MASK) >> BOOTROM_ERR_CODE_OFFS;
+	debug("boot_err_code=0x%x\n", boot_err_code);
+	if (boot_err_code)
+		return BOOT_DEVICE_UART;
+#endif
 
-	case SOC_88F6810_ID:
-	case SOC_88F6820_ID:
-	case SOC_88F6828_ID:
-		return MVEBU_SOC_A38X;
-
-	case SOC_98DX3236_ID:
-	case SOC_98DX3336_ID:
-	case SOC_98DX4251_ID:
-		return MVEBU_SOC_MSYS;
-	}
-
-	return MVEBU_SOC_UNKNOWN;
+	/*
+	 * Now check the SAR register for the strapped boot-device
+	 */
+	val = readl(CFG_SAR_REG);	/* SAR - Sample At Reset */
+	boot_device = (val & BOOT_DEV_SEL_MASK) >> BOOT_DEV_SEL_OFFS;
+	debug("SAR_REG=0x%08x boot_device=0x%x\n", val, boot_device);
+#ifdef BOOT_FROM_NAND
+	if (BOOT_FROM_NAND(boot_device))
+		return BOOT_DEVICE_NAND;
+#endif
+#ifdef BOOT_FROM_MMC
+	if (BOOT_FROM_MMC(boot_device))
+		return BOOT_DEVICE_MMC1;
+#endif
+#ifdef BOOT_FROM_UART
+	if (BOOT_FROM_UART(boot_device))
+		return BOOT_DEVICE_UART;
+#endif
+#ifdef BOOT_FROM_SATA
+	if (BOOT_FROM_SATA(boot_device))
+		return BOOT_DEVICE_SATA;
+#endif
+#ifdef BOOT_FROM_SPI
+	if (BOOT_FROM_SPI(boot_device))
+		return BOOT_DEVICE_SPI;
+#endif
+	return BOOT_DEVICE_BOOTROM;
 }
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
@@ -121,6 +173,14 @@ static const struct sar_freq_modes sar_freq_tab[] = {
 	{ 0x13,  0x0, 2000, 1000, 933 },
 	{ 0xff, 0xff,    0,    0,   0 }	/* 0xff marks end of array */
 };
+#elif defined(CONFIG_ARMADA_MSYS)
+static const struct sar_freq_modes sar_freq_tab[] = {
+	{  0x0,	0x0,  400,  400, 400 },
+	{  0x2, 0x0,  667,  333, 667 },
+	{  0x3, 0x0,  800,  400, 800 },
+	{  0x5, 0x0,  800,  400, 800 },
+	{ 0xff, 0xff,    0,   0,   0 }	/* 0xff marks end of array */
+};
 #else
 /* SAR frequency values for Armada XP */
 static const struct sar_freq_modes sar_freq_tab[] = {
@@ -144,10 +204,10 @@ void get_sar_freq(struct sar_freq_modes *sar_freq)
 	u32 freq;
 	int i;
 
-#if defined(CONFIG_ARMADA_375)
-	val = readl(CONFIG_SAR2_REG);	/* SAR - Sample At Reset */
+#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_MSYS)
+	val = readl(CFG_SAR2_REG);	/* SAR - Sample At Reset */
 #else
-	val = readl(CONFIG_SAR_REG);	/* SAR - Sample At Reset */
+	val = readl(CFG_SAR_REG);	/* SAR - Sample At Reset */
 #endif
 	freq = (val & SAR_CPU_FREQ_MASK) >> SAR_CPU_FREQ_OFFS;
 #if defined(SAR2_CPU_FREQ_MASK)
@@ -155,12 +215,12 @@ void get_sar_freq(struct sar_freq_modes *sar_freq)
 	 * Shift CPU0 clock frequency select bit from SAR2 register
 	 * into correct position
 	 */
-	freq |= ((readl(CONFIG_SAR2_REG) & SAR2_CPU_FREQ_MASK)
+	freq |= ((readl(CFG_SAR2_REG) & SAR2_CPU_FREQ_MASK)
 		 >> SAR2_CPU_FREQ_OFFS) << 3;
 #endif
 	for (i = 0; sar_freq_tab[i].val != 0xff; i++) {
 		if (sar_freq_tab[i].val == freq) {
-#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_38X)
+#if defined(CONFIG_ARMADA_375) || defined(CONFIG_ARMADA_38X) || defined(CONFIG_ARMADA_MSYS)
 			*sar_freq = sar_freq_tab[i];
 			return;
 #else
@@ -228,7 +288,10 @@ int print_cpuinfo(void)
 		break;
 	}
 
-	if (mvebu_soc_family() == MVEBU_SOC_AXP) {
+	switch (devid) {
+	case SOC_MV78230_ID:
+	case SOC_MV78260_ID:
+	case SOC_MV78460_ID:
 		switch (revid) {
 		case 1:
 			puts("A0");
@@ -240,9 +303,9 @@ int print_cpuinfo(void)
 			printf("?? (%x)", revid);
 			break;
 		}
-	}
+		break;
 
-	if (mvebu_soc_family() == MVEBU_SOC_A375) {
+	case SOC_88F6720_ID:
 		switch (revid) {
 		case MV_88F67XX_A0_ID:
 			puts("A0");
@@ -251,9 +314,11 @@ int print_cpuinfo(void)
 			printf("?? (%x)", revid);
 			break;
 		}
-	}
+		break;
 
-	if (mvebu_soc_family() == MVEBU_SOC_A38X) {
+	case SOC_88F6810_ID:
+	case SOC_88F6820_ID:
+	case SOC_88F6828_ID:
 		switch (revid) {
 		case MV_88F68XX_Z1_ID:
 			puts("Z1");
@@ -261,10 +326,34 @@ int print_cpuinfo(void)
 		case MV_88F68XX_A0_ID:
 			puts("A0");
 			break;
+		case MV_88F68XX_B0_ID:
+			puts("B0");
+			break;
 		default:
 			printf("?? (%x)", revid);
 			break;
 		}
+		break;
+
+	case SOC_98DX3236_ID:
+	case SOC_98DX3336_ID:
+	case SOC_98DX4251_ID:
+		switch (revid) {
+		case 3:
+			puts("A0");
+			break;
+		case 4:
+			puts("A1");
+			break;
+		default:
+			printf("?? (%x)", revid);
+			break;
+		}
+		break;
+
+	default:
+		printf("?? (%x)", revid);
+		break;
 	}
 
 	get_sar_freq(&sar_freq);
@@ -280,10 +369,8 @@ int print_cpuinfo(void)
  * and sets the correct windows sizes and base addresses accordingly.
  *
  * These values are set in the scratch registers by the Marvell
- * DDR3 training code, which is executed by the BootROM before the
- * main payload (U-Boot) is executed. This training code is currently
- * only available in the Marvell U-Boot version. It needs to be
- * ported to mainline U-Boot SPL at some point.
+ * DDR3 training code, which is executed by the SPL before the
+ * main payload (U-Boot) is executed.
  */
 static void update_sdram_window_sizes(void)
 {
@@ -321,20 +408,7 @@ static void update_sdram_window_sizes(void)
 	}
 }
 
-void mmu_disable(void)
-{
-	asm volatile(
-		"mrc p15, 0, r0, c1, c0, 0\n"
-		"bic r0, #1\n"
-		"mcr p15, 0, r0, c1, c0, 0\n");
-}
-
 #ifdef CONFIG_ARCH_CPU_INIT
-static void set_cbar(u32 addr)
-{
-	asm("mcr p15, 4, %0, c15, c0" : : "r" (addr));
-}
-
 #define MV_USB_PHY_BASE			(MVEBU_AXP_USB_BASE + 0x800)
 #define MV_USB_PHY_PLL_REG(reg)		(MV_USB_PHY_BASE | (((reg) & 0xF) << 2))
 #define MV_USB_X3_BASE(addr)		(MVEBU_AXP_USB_BASE | BIT(11) | \
@@ -381,37 +455,6 @@ static void setup_usb_phys(void)
  */
 int arch_cpu_init(void)
 {
-	struct pl310_regs *const pl310 =
-		(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
-
-	/*
-	 * Only with disabled MMU its possible to switch the base
-	 * register address on Armada 38x. Without this the SDRAM
-	 * located at >= 0x4000.0000 is also not accessible, as its
-	 * still locked to cache.
-	 */
-	mmu_disable();
-
-	/* Linux expects the internal registers to be at 0xf1000000 */
-	writel(SOC_REGS_PHY_BASE, INTREG_BASE_ADDR_REG);
-	set_cbar(SOC_REGS_PHY_BASE + 0xC000);
-
-	/*
-	 * From this stage on, the SoC detection is working. As we have
-	 * configured the internal register base to the value used
-	 * in the macros / defines in the U-Boot header (soc.h).
-	 */
-
-	if (mvebu_soc_family() == MVEBU_SOC_A38X) {
-		/*
-		 * To fully release / unlock this area from cache, we need
-		 * to flush all caches and disable the L2 cache.
-		 */
-		icache_disable();
-		dcache_disable();
-		clrbits_le32(&pl310->pl310_ctrl, L2X0_CTRL_EN);
-	}
-
 	/*
 	 * We need to call mvebu_mbus_probe() before calling
 	 * update_sdram_window_sizes() as it disables all previously
@@ -431,7 +474,7 @@ int arch_cpu_init(void)
 	 */
 	mvebu_mbus_probe(NULL, 0);
 
-	if (mvebu_soc_family() == MVEBU_SOC_AXP) {
+	if (IS_ENABLED(CONFIG_ARMADA_XP)) {
 		/*
 		 * Now the SDRAM access windows can be reconfigured using
 		 * the information in the SDRAM scratch pad registers
@@ -445,7 +488,7 @@ int arch_cpu_init(void)
 	 */
 	mvebu_mbus_probe(windows, ARRAY_SIZE(windows));
 
-	if (mvebu_soc_family() == MVEBU_SOC_AXP) {
+	if (IS_ENABLED(CONFIG_ARMADA_XP)) {
 		/* Enable GBE0, GBE1, LCD and NFC PUP */
 		clrsetbits_le32(ARMADA_XP_PUP_ENABLE, 0,
 				GE0_PUP_EN | GE1_PUP_EN | LCD_PUP_EN |
@@ -469,8 +512,10 @@ u32 mvebu_get_nand_clock(void)
 {
 	u32 reg;
 
-	if (mvebu_soc_family() == MVEBU_SOC_A38X)
+	if (IS_ENABLED(CONFIG_ARMADA_38X))
 		reg = MVEBU_DFX_DIV_CLK_CTRL(1);
+	else if (IS_ENABLED(CONFIG_ARMADA_MSYS))
+		reg = MVEBU_DFX_DIV_CLK_CTRL(8);
 	else
 		reg = MVEBU_CORE_DIV_CLK_CTRL(1);
 
@@ -479,19 +524,8 @@ u32 mvebu_get_nand_clock(void)
 		  NAND_ECC_DIVCKL_RATIO_MASK) >> NAND_ECC_DIVCKL_RATIO_OFFS);
 }
 
-/*
- * SOC specific misc init
- */
-#if defined(CONFIG_ARCH_MISC_INIT)
-int arch_misc_init(void)
-{
-	/* Nothing yet, perhaps we need something here later */
-	return 0;
-}
-#endif /* CONFIG_ARCH_MISC_INIT */
-
-#ifdef CONFIG_MMC_SDHCI_MV
-int board_mmc_init(bd_t *bis)
+#if defined(CONFIG_MMC_SDHCI_MV) && !defined(CONFIG_DM_MMC)
+int board_mmc_init(struct bd_info *bis)
 {
 	mv_sdh_init(MVEBU_SDIO_BASE, 0, 0,
 		    SDHCI_QUIRK_32BIT_DMA_ADDR | SDHCI_QUIRK_WAIT_SEND_CMD);
@@ -500,7 +534,6 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-#ifdef CONFIG_SCSI_AHCI_PLAT
 #define AHCI_VENDOR_SPECIFIC_0_ADDR	0xa0
 #define AHCI_VENDOR_SPECIFIC_0_DATA	0xa4
 
@@ -512,6 +545,10 @@ static void ahci_mvebu_mbus_config(void __iomem *base)
 {
 	const struct mbus_dram_target_info *dram;
 	int i;
+
+	/* mbus is not initialized in SPL; keep the ROM settings */
+	if (IS_ENABLED(CONFIG_SPL_BUILD))
+		return;
 
 	dram = mvebu_mbus_dram_info();
 
@@ -544,11 +581,19 @@ static void ahci_mvebu_regret_option(void __iomem *base)
 	writel(0x80, base + AHCI_VENDOR_SPECIFIC_0_DATA);
 }
 
+int board_ahci_enable(void)
+{
+	ahci_mvebu_mbus_config((void __iomem *)MVEBU_SATA0_BASE);
+	ahci_mvebu_regret_option((void __iomem *)MVEBU_SATA0_BASE);
+
+	return 0;
+}
+
+#ifdef CONFIG_SCSI_AHCI_PLAT
 void scsi_init(void)
 {
 	printf("MVEBU SATA INIT\n");
-	ahci_mvebu_mbus_config((void __iomem *)MVEBU_SATA0_BASE);
-	ahci_mvebu_regret_option((void __iomem *)MVEBU_SATA0_BASE);
+	board_ahci_enable();
 	ahci_init((void __iomem *)MVEBU_SATA0_BASE);
 }
 #endif
@@ -585,7 +630,7 @@ int board_xhci_enable(fdt_addr_t base)
 {
 	const struct mbus_dram_target_info *dram;
 
-	printf("MVEBU XHCI INIT controller @ 0x%lx\n", base);
+	printf("MVEBU XHCI INIT controller @ 0x%llx\n", (fdt64_t)base);
 
 	dram = mvebu_mbus_dram_info();
 	xhci_mvebu_mbus_config((void __iomem *)base, dram);
@@ -604,7 +649,7 @@ void enable_caches(void)
 	 * ethernet driver (mvpp2). So lets keep the d-cache disabled
 	 * until this is solved.
 	 */
-	if (mvebu_soc_family() != MVEBU_SOC_A375) {
+	if (!IS_ENABLED(CONFIG_ARMADA_375)) {
 		/* Enable D-cache. I-cache is already enabled in start.S */
 		dcache_enable();
 	}
@@ -612,12 +657,20 @@ void enable_caches(void)
 
 void v7_outer_cache_enable(void)
 {
-	if (mvebu_soc_family() == MVEBU_SOC_AXP) {
-		struct pl310_regs *const pl310 =
-			(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
-		u32 u;
+	struct pl310_regs *const pl310 =
+		(struct pl310_regs *)CFG_SYS_PL310_BASE;
 
-		/* The L2 cache is already disabled at this point */
+	/* The L2 cache is already disabled at this point */
+
+	/*
+	 * For now L2 cache will be enabled only for Armada XP and Armada 38x.
+	 * It can be enabled also for other SoCs after testing that it works fine.
+	 */
+	if (!IS_ENABLED(CONFIG_ARMADA_XP) && !IS_ENABLED(CONFIG_ARMADA_38X))
+		return;
+
+	if (IS_ENABLED(CONFIG_ARMADA_XP)) {
+		u32 u;
 
 		/*
 		 * For Aurora cache in no outer mode, enable via the CP15
@@ -628,16 +681,16 @@ void v7_outer_cache_enable(void)
 		asm volatile("mcr p15, 1, %0, c15, c2, 0" : : "r" (u));
 
 		isb();
-
-		/* Enable the L2 cache */
-		setbits_le32(&pl310->pl310_ctrl, L2X0_CTRL_EN);
 	}
+
+	/* Enable the L2 cache */
+	setbits_le32(&pl310->pl310_ctrl, L2X0_CTRL_EN);
 }
 
 void v7_outer_cache_disable(void)
 {
 	struct pl310_regs *const pl310 =
-		(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
+		(struct pl310_regs *)CFG_SYS_PL310_BASE;
 
 	clrbits_le32(&pl310->pl310_ctrl, L2X0_CTRL_EN);
 }

@@ -10,12 +10,16 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <log.h>
 #include <miiphy.h>
+#include <net.h>
 #include <netdev.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/gpio.h>
+#include <asm/global_data.h>
 #include "dns325.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -85,6 +89,7 @@ int board_early_init_f(void)
 	kw_gpio_set_blink(DNS325_GPIO_LED_POWER , 1);
 
 	kw_gpio_set_value(DNS325_GPIO_SATA0_EN , 1);
+	kw_gpio_set_value(DNS325_GPIO_SATA1_EN , 1);
 	return 0;
 }
 

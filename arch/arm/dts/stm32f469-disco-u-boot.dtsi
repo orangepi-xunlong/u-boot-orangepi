@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017, STMicroelectronics - All Rights Reserved
- * Author(s): Patrice Chotard, <patrice.chotard@st.com> for STMicroelectronics.
+ * Author(s): Patrice Chotard, <patrice.chotard@foss.st.com> for STMicroelectronics.
  */
 
 #include <dt-bindings/memory/stm32-sdram.h>
 /{
 	clocks {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 
 	aliases {
@@ -23,23 +23,21 @@
 		gpio8 = &gpioi;
 		gpio9 = &gpioj;
 		gpio10 = &gpiok;
+		spi0 = &qspi;
 	};
 
 	soc {
-		u-boot,dm-pre-reloc;
-		pin-controller {
-			u-boot,dm-pre-reloc;
-		};
+		bootph-all;
 
 		fmc: fmc@A0000000 {
 			compatible = "st,stm32-fmc";
-			reg = <0xA0000000 0x1000>;
+			reg = <0xa0000000 0x1000>;
 			clocks = <&rcc 0 STM32F4_AHB3_CLOCK(FMC)>;
 			st,syscfg = <&syscfg>;
 			pinctrl-0 = <&fmc_pins_d32>;
 			pinctrl-names = "default";
 			st,mem_remap = <4>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 
 			/*
 			 * Memory configuration from sdram
@@ -64,101 +62,83 @@
 			       st,sdram-refcount = < 1292 >;
 		       };
 		};
+
+		qspi: spi@A0001000 {
+			compatible = "st,stm32f469-qspi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xa0001000 0x1000>, <0x90000000 0x10000000>;
+			reg-names = "qspi", "qspi_mm";
+			interrupts = <91>;
+			spi-max-frequency = <108000000>;
+			clocks = <&rcc 0 STM32F4_AHB3_CLOCK(QSPI)>;
+			resets = <&rcc STM32F4_AHB3_RESET(QSPI)>;
+			pinctrl-0 = <&qspi_pins>;
+		};
 	};
 };
 
 &clk_hse {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_lse {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &clk_i2s_ckin {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
-&pwrcfg {
-	u-boot,dm-pre-reloc;
-};
-
-&syscfg {
-	u-boot,dm-pre-reloc;
-};
-
-&rcc {
-	u-boot,dm-pre-reloc;
+&clk_lse {
+	bootph-all;
 };
 
 &gpioa {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiob {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioc {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiod {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioe {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiof {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiog {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioh {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioi {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpioj {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gpiok {
-	compatible = "st,stm32-gpio";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &pinctrl {
-	usart3_pins_a: usart3@0	{
-		u-boot,dm-pre-reloc;
-		pins1 {
-			u-boot,dm-pre-reloc;
-		};
-		pins2 {
-			u-boot,dm-pre-reloc;
-		};
-	};
+	bootph-all;
 
 	fmc_pins_d32: fmc_d32@0 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		pins
 		{
 			pinmux = <STM32_PINMUX('I',10, AF12)>, /* D31 */
@@ -223,7 +203,58 @@
 				 <STM32_PINMUX('H', 2, AF12)>, /* SDCKE0 */
 				 <STM32_PINMUX('G', 8, AF12)>; /* SDCLK> */
 			slew-rate = <2>;
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
+
+	qspi_pins: qspi@0 {
+		pins {
+			pinmux = <STM32_PINMUX('F',10, AF9)>, /* CLK */
+				 <STM32_PINMUX('B', 6, AF10)>, /* BK1_NCS */
+				 <STM32_PINMUX('F', 8, AF10)>, /* BK1_IO0 */
+				 <STM32_PINMUX('F', 9, AF10)>, /* BK1_IO1 */
+				 <STM32_PINMUX('F', 7, AF9)>, /* BK1_IO2 */
+				 <STM32_PINMUX('F', 6, AF9)>; /* BK1_IO3 */
+			slew-rate = <2>;
+		};
+	};
+
+	usart3_pins_a: usart3-0	{
+		bootph-all;
+		pins1 {
+			bootph-all;
+		};
+		pins2 {
+			bootph-all;
+		};
+	};
+};
+
+&pwrcfg {
+	bootph-all;
+};
+
+&qspi {
+	reg = <0xa0001000 0x1000>, <0x90000000 0x1000000>;
+	flash0: n25q128a@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		spi-max-frequency = <108000000>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+		reg = <0>;
+	};
+};
+
+&rcc {
+	bootph-all;
+};
+
+&syscfg {
+	bootph-all;
+};
+
+&timers5 {
+	bootph-all;
 };

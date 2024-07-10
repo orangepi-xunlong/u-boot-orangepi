@@ -5,9 +5,6 @@
 config SUPPORT_OF_CONTROL
 	bool
 
-config DTC
-	bool
-
 config PYLIBFDT
 	bool
 
@@ -24,10 +21,19 @@ menu "Device Tree Control"
 
 config OF_CONTROL
 	bool "Run-time configuration via Device Tree"
-	select DTC
+	select OF_LIBFDT
+	select OF_REAL
 	help
 	  This feature provides for run-time configuration of U-Boot
 	  via a flattened device tree.
+
+config OF_REAL
+	bool
+	help
+	  Indicates that a real devicetree is available which can be accessed
+	  at runtime. This means that dev_read_...() functions can be used to
+	  read data from the devicetree for each device. This is true if
+	  OF_CONTROL is enabled in U-Boot proper.
 
 config OF_BOARD_FIXUP
 	bool "Board-specific manipulation of Device Tree"
@@ -42,26 +48,39 @@ config OF_BOARD_FIXUP
 config SPL_OF_CONTROL
 	bool "Enable run-time configuration via Device Tree in SPL"
 	depends on SPL && OF_CONTROL
+	select SPL_OF_LIBFDT if !SPL_OF_PLATDATA
+	select SPL_OF_REAL if !SPL_OF_PLATDATA
 	help
 	  Some boards use device tree in U-Boot but only have 4KB of SRAM
-	  which is not enough to support device tree. Enable this option to
+	  which is not enough to support device tree. Disable this option to
 	  allow such boards to be supported by U-Boot SPL.
 
 config TPL_OF_CONTROL
 	bool "Enable run-time configuration via Device Tree in TPL"
 	depends on TPL && OF_CONTROL
+	select TPL_OF_LIBFDT if !TPL_OF_PLATDATA
+	select TPL_OF_REAL if !TPL_OF_PLATDATA
 	help
 	  Some boards use device tree in U-Boot but only have 4KB of SRAM
 	  which is not enough to support device tree. Enable this option to
 	  allow such boards to be supported by U-Boot TPL.
 
+config VPL_OF_CONTROL
+	bool "Enable run-time configuration via Device Tree in VPL"
+	depends on VPL && OF_CONTROL
+	default y if SPL_OF_CONTROL
+	help
+	  Some boards use device tree in U-Boot but only have 4KB of SRAM
+	  which is not enough to support device tree. Enable this option to
+	  allow such boards to be supported by U-Boot VPL.
+
 config OF_LIVE
 	bool "Enable use of a live tree"
-	depends on OF_CONTROL
+	depends on DM && OF_CONTROL
 	help
 	  Normally U-Boot uses a flat device tree which saves space and
 	  avoids the need to unpack the tree before use. However a flat
-	  tree does not support modifcation from within U-Boot since it
+	  tree does not support modification from within U-Boot since it
 	  can invalidate driver-model device tree offsets. This option
 	  enables a live tree which is available after relocation,
 	  and can be adjusted as needed.
@@ -72,7 +91,6 @@ choice
 
 config OF_SEPARATE
 	bool "Separate DTB for DT control"
-	depends on !SANDBOX
 	help
 	  If this option is enabled, the device tree will be built and
 	  placed as a separate u-boot.dtb file alongside the U-Boot image.
@@ -85,23 +103,50 @@ config OF_EMBED
 	  and development only and is not recommended for production devices.
 	  Boards in the mainline U-Boot tree should not use it.
 
-config OF_BOARD
-	bool "Provided by the board at runtime"
-	depends on !SANDBOX
-	help
-	  If this option is enabled, the device tree will be provided by
-	  the board at runtime if the board supports it, instead of being
-	  bundled with the image.
-
-config OF_HOSTFILE
-	bool "Host filed DTB for DT control"
-	depends on SANDBOX
-	help
-	  If this option is enabled, DTB will be read from a file on startup.
-	  This is only useful for Sandbox.  Use the -d flag to U-Boot to
-	  specify the file to read.
-
 endchoice
+
+config OF_BOARD
+	bool "Provided by the board (e.g a previous loader) at runtime"
+	default y if SANDBOX || OF_HAS_PRIOR_STAGE
+	help
+	  If this option is enabled, the device tree is provided at runtime by
+	  a custom function called board_fdt_blob_setup(). The board must
+	  implement this function if it wishes to provide special behaviour.
+
+	  With this option, the device tree build by U-Boot may be overridden or
+	  ignored. See OF_HAS_PRIOR_STAGE.
+
+	  Note: Boards which use this to handle a device tree passed from an
+	  earlier stage should enable OF_HAS_PRIOR_STAGE.
+
+config OF_HAS_PRIOR_STAGE
+	bool
+	help
+	  Indicates that a prior stage of the firmware (before U-Boot proper)
+	  makes use of device tree and this board normally boots with that prior
+	  stage, that provides a devicetree to U-Boot.
+
+	  This means that the device tree built in U-Boot should not be packaged
+	  in the firmware image. Instead, the prior stage's device tree should
+	  be so packaged. At runtime, the prior stage reads this, does any
+	  necessary fix-ups, then passes it to U-Boot. See OF_BOARD.
+
+	  This option does not preclude using the U-Boot device tree, e.g. for
+	  development purposes, but it is not recommended, and likely will not
+	  even work, for production systems.
+
+	  Note: This option must be set in Kconfig and cannot be enabled or
+	  disabled in the board's defconfig file.
+
+config OF_OMIT_DTB
+	bool "Omit the device tree output when building"
+	default y if OF_HAS_PRIOR_STAGE && !BINMAN
+	help
+	  As a special case, avoid writing a device tree file u-boot.dtb when
+	  building. Also don't include that file in u-boot.bin
+
+	  This is used for boards which normally provide a devicetree via a
+	  runtime mechanism (such as OF_BOARD), to avoid confusion.
 
 config DEFAULT_DEVICE_TREE
 	string "Default Device Tree for DT control"
@@ -111,18 +156,91 @@ config DEFAULT_DEVICE_TREE
 	  It can be overridden from the command line:
 	  $ make DEVICE_TREE=<device-tree-name>
 
+config DEVICE_TREE_INCLUDES
+       string "Extra .dtsi files to include when building DT control"
+	depends on OF_CONTROL
+	help
+	  U-Boot's control .dtb is usually built from an in-tree .dts
+	  file, plus (if available) an in-tree U-Boot-specific .dtsi
+	  file. This option specifies a space-separated list of extra
+	  .dtsi files that will also be used.
+
 config OF_LIST
-	string "List of device tree files to include for DT control"
-	depends on SPL_LOAD_FIT || MULTI_DTB_FIT
+	string "List of device tree files to include for DT control" if SPL_LOAD_FIT || MULTI_DTB_FIT
+	depends on OF_CONTROL
 	default DEFAULT_DEVICE_TREE
 	help
 	  This option specifies a list of device tree files to use for DT
-	  control. These will be packaged into a FIT. At run-time, U-boot
+	  control. These will be packaged into a FIT. At run-time, U-Boot
 	  or SPL will select the correct DT to use by examining the
 	  hardware (e.g. reading a board ID value). This is a list of
 	  device tree files (without the directory or .dtb suffix)
 	  separated by <space>.
 
+config OF_OVERLAY_LIST
+	string "List of device tree overlays to include for DT control"
+	depends on SPL_LOAD_FIT_APPLY_OVERLAY
+	help
+	  This option specifies a list of device tree overlays to use for DT
+	  control. This option can then be used by a FIT generator to include
+	  the overlays in the FIT image.
+
+choice
+	prompt "OF LIST compression"
+	depends on MULTI_DTB_FIT
+	default MULTI_DTB_FIT_NO_COMPRESSION
+
+config MULTI_DTB_FIT_LZO
+	bool "LZO"
+	depends on SYS_MALLOC_F
+	select LZO
+	help
+	  Compress the FIT image containing the DTBs available for the SPL
+	  using LZO compression. (requires lzop on host).
+
+config MULTI_DTB_FIT_GZIP
+	bool "GZIP"
+	depends on SYS_MALLOC_F
+	select GZIP
+	help
+	  Compress the FIT image containing the DTBs available for the SPL
+	  using GZIP compression. (requires gzip on host)
+
+config MULTI_DTB_FIT_NO_COMPRESSION
+	bool "No compression"
+	help
+	  Do not compress the FIT image containing the DTBs available for the SPL.
+	  Use this options only if LZO is not available and the DTBs are very small.
+endchoice
+
+choice
+	prompt "Location of uncompressed DTBs"
+	depends on (MULTI_DTB_FIT_GZIP || MULTI_DTB_FIT_LZO)
+	default MULTI_DTB_FIT_DYN_ALLOC if SYS_MALLOC_F
+
+config MULTI_DTB_FIT_DYN_ALLOC
+	bool "Dynamically allocate the memory"
+	depends on SYS_MALLOC_F
+
+config MULTI_DTB_FIT_USER_DEFINED_AREA
+	bool "User-defined location"
+endchoice
+
+config MULTI_DTB_FIT_UNCOMPRESS_SZ
+	hex "Size of memory reserved to uncompress the DTBs"
+	default 0x8000
+	help
+	   This is the size of this area where the DTBs are uncompressed.
+	   If this area is dynamically allocated, make sure that
+	   SYS_MALLOC_F_LEN is big enough to contain it.
+
+config MULTI_DTB_FIT_USER_DEF_ADDR
+	hex "Address of memory where dtbs are uncompressed"
+	depends on MULTI_DTB_FIT_USER_DEFINED_AREA
+	help
+	   the FIT image containing the DTBs is uncompressed in an area defined
+	   at compilation time. This is the address of this area. It must be
+	   aligned on 2-byte boundary.
 
 config DTB_RESELECT
 	bool "Support swapping dtbs at a later point in boot"
@@ -136,14 +254,14 @@ config DTB_RESELECT
 config MULTI_DTB_FIT
 	bool "Support embedding several DTBs in a FIT image for u-boot"
 	help
-	  This option provides hooks to allow U-boot to parse an
+	  This option provides hooks to allow U-Boot to parse an
 	  appended FIT image and enable board specific code to then select
 	  the correct DTB to be used. Use this if you need to support
 	  multiple DTBs but don't use the SPL.
 
 
 config SPL_MULTI_DTB_FIT
-	depends on SPL_LOAD_FIT && SPL_OF_CONTROL && !SPL_OF_PLATDATA
+	depends on SPL_LOAD_FIT && SPL_OF_REAL
 	bool "Support embedding several DTBs in a FIT image for the SPL"
 	help
 	  This option provides the SPL with the ability to select its own
@@ -155,8 +273,8 @@ config SPL_MULTI_DTB_FIT
 	  capabilities, pad configurations).
 
 config SPL_OF_LIST
-	string "List of device tree files to include for DT control in SPL"
-	depends on SPL_MULTI_DTB_FIT
+	string "List of device tree files to include for DT control in SPL" if SPL_MULTI_DTB_FIT
+	depends on SPL_OF_CONTROL
 	default OF_LIST
 	help
 	  This option specifies a list of device tree files to use for DT
@@ -195,7 +313,7 @@ config SPL_MULTI_DTB_FIT_NO_COMPRESSION
 endchoice
 
 choice
-	prompt "Location of uncompressed DTBs "
+	prompt "Location of uncompressed DTBs"
 	depends on (SPL_MULTI_DTB_FIT_GZIP || SPL_MULTI_DTB_FIT_LZO)
 	default SPL_MULTI_DTB_FIT_DYN_ALLOC if SYS_MALLOC_F
 
@@ -224,25 +342,56 @@ config SPL_MULTI_DTB_FIT_USER_DEF_ADDR
 	   at compilation time. This is the address of this area. It must be
 	   aligned on 2-byte boundary.
 
+config OF_TAG_MIGRATE
+	bool "Ease migration from old device trees with u-boot,dm- tags"
+	default y
+	help
+	  U-Boot moved over to use new tags to mark device tree nodes which need
+	  to be processed in SPL, before relocation, etc. Enable this option to
+	  detect old tags and handle them.
+
+	  Note: This option will be removed after the 2023.07 release.
+
 config OF_SPL_REMOVE_PROPS
 	string "List of device tree properties to drop for SPL"
 	depends on SPL_OF_CONTROL
-	default "interrupt-parent" if SPL_PINCTRL && SPL_CLK
-	default "clocks clock-names interrupt-parent" if SPL_PINCTRL
-	default "pinctrl-0 pinctrl-names interrupt-parent" if SPL_CLK
-	default "pinctrl-0 pinctrl-names clocks clock-names interrupt-parent"
+	default "interrupt-parent interrupts" if SPL_PINCTRL && SPL_CLK
+	default "clocks clock-names interrupt-parent interrupts" if SPL_PINCTRL
+	default "pinctrl-0 pinctrl-names interrupt-parent interrupts" if SPL_CLK
+	default "pinctrl-0 pinctrl-names clocks clock-names interrupt-parent interrupts"
 	help
 	  Since SPL normally runs in a reduced memory space, the device tree
 	  is cut down to only what is needed to load and start U-Boot. Only
-	  nodes marked with the property "u-boot,dm-pre-reloc" will be
+	  nodes marked with the property "bootph-all" will be
 	  included. In addition, some properties are not used by U-Boot and
 	  can be discarded. This option defines the list of properties to
 	  discard.
+
+config OF_DTB_PROPS_REMOVE
+	bool "Enable removal of device tree properties"
+	depends on OF_CONTROL
+	help
+	  Some boards have restricted amount of storage for U-Boot image.
+	  If the generated binary doesn't fit into available image storage,
+	  the built-in device tree could probably be cut down by removing
+	  some not required device tree properties to reduce the image size.
+	  Enable this option and define the properties to be removed in the
+	  CONFIG_OF_REMOVE_PROPS list. Do not enable this option if you must
+	  pass the built-in DTB directly to the kernel!
+
+config OF_REMOVE_PROPS
+	string "List of device tree properties to drop"
+	depends on OF_DTB_PROPS_REMOVE
+	default "interrupt-parent interrupts" if PINCTRL
+	help
+	  Some properties are not used by U-Boot and can be discarded.
+	  This option defines the list of properties to discard.
 
 config SPL_OF_PLATDATA
 	bool "Generate platform data for use in SPL"
 	depends on SPL_OF_CONTROL
 	select DTOC
+	select SPL_OF_PLATDATA_DRIVER_RT if !SPL_OF_PLATDATA_INST
 	help
 	  For very constrained SPL environments the overhead of decoding
 	  device tree nodes and converting their contents into platform data
@@ -251,20 +400,85 @@ config SPL_OF_PLATDATA
 	  former can add 3KB or more to a Thumb 2 Image.
 
 	  This option enables generation of platform data from the device
-	  tree as C code. This code creates devices using U_BOOT_DEVICE()
+	  tree as C code. This code creates devices using U_BOOT_DRVINFO()
 	  declarations. The benefit is that it allows driver code to access
 	  the platform data directly in C structures, avoidin the libfdt
 	  overhead.
 
 	  This option works by generating C structure declarations for each
-	  compatible string, then adding platform data and U_BOOT_DEVICE
-	  declarations for each node. See README.platdata for more
-	  information.
+	  compatible string, then adding platform data and U_BOOT_DRVINFO
+	  declarations for each node. See of-plat.txt for more information.
+
+config SPL_OF_REAL
+	bool "Support a real devicetree in SPL" if SANDBOX
+	depends on SPL_OF_CONTROL
+	select SPL_OF_LIBFDT
+	help
+	  Indicates that a real devicetree is available which can be accessed
+	  at runtime. This means that dev_read_...() functions can be used to
+	  read data from the devicetree for each device. You do not need to
+	  enable this option if you have enabled SPL_OF_PLATDATA.
+
+if SPL_OF_PLATDATA
+
+config SPL_OF_PLATDATA_PARENT
+	bool "Support parent information in devices"
+	default y
+	help
+	  Generally it is useful to be able to access the parent of a device
+	  with of-platdata. To save space this can be disabled, but in that
+	  case dev_get_parent() will always return NULL;
+
+config SPL_OF_PLATDATA_INST
+	bool "Declare devices at build time"
+	help
+	  Declare devices as udevice instances so that they do not need to be
+	  bound when U-Boot starts. This can save time and code space.
+
+config SPL_OF_PLATDATA_NO_BIND
+	bool "Don't allow run-time binding of devices"
+	depends on SPL_OF_PLATDATA_INST
+	default y
+	help
+	  This removes the ability to bind devices at run time, thus saving
+	  some code space in U-Boot. This can be disabled if binding is needed,
+	  at the code of some code size increase.
+
+config SPL_OF_PLATDATA_RT
+	bool "Use a separate struct for device runtime data"
+	depends on SPL_OF_PLATDATA_INST
+	default y
+	help
+	  For systems running SPL from read-only memory it is convenient to
+	  separate out the runtime information, so that the devices don't need
+	  to be copied before being used. This moves the read-write parts of
+	  struct udevice (at present just the flags) into a separate struct,
+	  which is allocated at runtime.
+
+config SPL_OF_PLATDATA_DRIVER_RT
+	bool
+	help
+	  Use a separate struct for driver runtime data.
+
+	  This enables the driver_rt information, used with of-platdata when
+	  of-platdata-inst is not used. It allows finding devices by their
+	  driver data.
+
+endif
+
+config TPL_OF_REAL
+	bool
+	help
+	  Indicates that a real devicetree is available which can be accessed
+	  at runtime. This means that dev_read_...() functions can be used to
+	  read data from the devicetree for each device. This is true if
+	  TPL_OF_CONTROL is enabled and not TPL_OF_PLATDATA
 
 config TPL_OF_PLATDATA
 	bool "Generate platform data for use in TPL"
 	depends on TPL_OF_CONTROL
 	select DTOC
+	select TPL_OF_PLATDATA_DRIVER_RT if !TPL_OF_PLATDATA_INST
 	help
 	  For very constrained SPL environments the overhead of decoding
 	  device tree nodes and converting their contents into platform data
@@ -273,23 +487,70 @@ config TPL_OF_PLATDATA
 	  former can add 3KB or more to a Thumb 2 Image.
 
 	  This option enables generation of platform data from the device
-	  tree as C code. This code creates devices using U_BOOT_DEVICE()
+	  tree as C code. This code creates devices using U_BOOT_DRVINFO()
 	  declarations. The benefit is that it allows driver code to access
 	  the platform data directly in C structures, avoidin the libfdt
 	  overhead.
 
 	  This option works by generating C structure declarations for each
-	  compatible string, then adding platform data and U_BOOT_DEVICE
-	  declarations for each node. See README.platdata for more
-	  information.
+	  compatible string, then adding platform data and U_BOOT_DRVINFO
+	  declarations for each node. See of-plat.txt for more information.
+
+if TPL_OF_PLATDATA
+
+config TPL_OF_PLATDATA_PARENT
+	bool "Support parent information in devices"
+	default y
+	help
+	  Generally it is useful to be able to access the parent of a device
+	  with of-platdata. To save space this can be disabled, but in that
+	  case dev_get_parent() will always return NULL;
+
+config TPL_OF_PLATDATA_INST
+	bool "Declare devices at build time"
+
+	help
+	  Declare devices as udevice instances so that they do not need to be
+	  bound when U-Boot starts. This can save time and code space.
+
+config TPL_OF_PLATDATA_NO_BIND
+	bool "Don't allow run-time binding of devices"
+	depends on TPL_OF_PLATDATA_INST
+	default y
+	help
+	  This removes the ability to bind devices at run time, thus saving
+	  some code space in U-Boot. This can be disabled if binding is needed,
+	  at the code of some code size increase.
+
+config TPL_OF_PLATDATA_RT
+	bool "Use a separate struct for device runtime data"
+	depends on TPL_OF_PLATDATA_INST
+	default y
+	help
+	  For systems running TPL from read-only memory it is convenient to
+	  separate out the runtime information, so that the devices don't need
+	  to be copied before being used. This moves the read-write parts of
+	  struct udevice (at present just the flags) into a separate struct,
+	  which is allocated at runtime.
+
+config TPL_OF_PLATDATA_DRIVER_RT
+	bool
+	help
+	  Use a separate struct for driver runtime data.
+
+	  This enables the driver_rt information, used with of-platdata when
+	  of-platdata-inst is not used. It allows finding devices by their
+	  driver data.
+
+endif
+
+config VPL_OF_REAL
+	def_bool y
+	depends on VPL
+	help
+	  Indicates that a real devicetree is available which can be accessed
+	  at runtime. This means that dev_read_...() functions can be used to
+	  read data from the devicetree for each device. This is true if
+	  TPL_OF_CONTROL is enabled and not TPL_OF_PLATDATA
 
 endmenu
-
-config MKIMAGE_DTC_PATH
-	string "Path to dtc binary for use within mkimage"
-	default "dtc"
-	help
-	  The mkimage host tool will, in order to generate FIT images make
-	  calls to the dtc application in order to create the output.  In
-	  some cases the system dtc may not support all required features
-	  and the path to a different version should be given here.

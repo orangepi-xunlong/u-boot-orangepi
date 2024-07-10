@@ -37,14 +37,14 @@
  * mtdids=<idmap>[,<idmap>,...]
  *
  * <idmap>    := <dev-id>=<mtd-id>
- * <dev-id>   := 'nand'|'nor'|'onenand'<dev-num>
+ * <dev-id>   := 'nand'|'nor'|'onenand'|'spi-nand'<dev-num>
  * <dev-num>  := mtd device number, 0...
  * <mtd-id>   := unique device tag used by linux kernel to find mtd device (mtd->name)
  *
  *
  * 'mtdparts' - partition list
  *
- * mtdparts=mtdparts=<mtd-def>[;<mtd-def>...]
+ * mtdparts=[mtdparts=]<mtd-def>[;<mtd-def>...]
  *
  * <mtd-def>  := <mtd-id>:<part-def>[,<part-def>...]
  * <mtd-id>   := unique device tag used by linux kernel to find mtd device (mtd->name)
@@ -62,17 +62,20 @@
  *
  * 1 NOR Flash, with 1 single writable partition:
  * mtdids=nor0=edb7312-nor
- * mtdparts=mtdparts=edb7312-nor:-
+ * mtdparts=[mtdparts=]edb7312-nor:-
  *
  * 1 NOR Flash with 2 partitions, 1 NAND with one
  * mtdids=nor0=edb7312-nor,nand0=edb7312-nand
- * mtdparts=mtdparts=edb7312-nor:256k(ARMboot)ro,-(root);edb7312-nand:-(home)
+ * mtdparts=[mtdparts=]edb7312-nor:256k(ARMboot)ro,-(root);edb7312-nand:-(home)
  *
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <log.h>
 #include <malloc.h>
+#include <asm/global_data.h>
 #include <jffs2/load_kernel.h>
 #include <linux/list.h>
 #include <linux/ctype.h>
@@ -108,20 +111,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MTD_WRITEABLE_CMD		1
 
 /* default values for mtdids and mtdparts variables */
-#if !defined(MTDIDS_DEFAULT)
 #ifdef CONFIG_MTDIDS_DEFAULT
 #define MTDIDS_DEFAULT CONFIG_MTDIDS_DEFAULT
 #else
 #define MTDIDS_DEFAULT NULL
 #endif
-#endif
-#if !defined(MTDPARTS_DEFAULT)
 #ifdef CONFIG_MTDPARTS_DEFAULT
 #define MTDPARTS_DEFAULT CONFIG_MTDPARTS_DEFAULT
 #else
 #define MTDPARTS_DEFAULT NULL
 #endif
-#endif
+
 #if defined(CONFIG_SYS_MTDPARTS_RUNTIME)
 extern void board_mtdparts_default(const char **mtdids, const char **mtdparts);
 #endif
@@ -167,7 +167,7 @@ static int device_del(struct mtd_device *dev);
  *
  * @param ptr where parse begins
  * @param retptr output pointer to next char after parse completes (output)
- * @return resulting unsigned int
+ * Return: resulting unsigned int
  */
 static u64 memsize_parse (const char *const ptr, const char **retptr)
 {
@@ -177,13 +177,16 @@ static u64 memsize_parse (const char *const ptr, const char **retptr)
 		case 'G':
 		case 'g':
 			ret <<= 10;
+			/* Fallthrough */
 		case 'M':
 		case 'm':
 			ret <<= 10;
+			/* Fallthrough */
 		case 'K':
 		case 'k':
 			ret <<= 10;
 			(*retptr)++;
+			/* Fallthrough */
 		default:
 			break;
 	}
@@ -296,7 +299,7 @@ static void current_save(void)
  * @param type mtd type
  * @param num mtd number
  * @param mtd a pointer to an mtd_info instance (output)
- * @return 0 if device is valid, 1 otherwise
+ * Return: 0 if device is valid, 1 otherwise
  */
 static int get_mtd_info(u8 type, u8 num, struct mtd_info **mtd)
 {
@@ -320,7 +323,7 @@ static int get_mtd_info(u8 type, u8 num, struct mtd_info **mtd)
  *
  * @param id of the parent device
  * @param part partition to validate
- * @return 0 if partition is valid, 1 otherwise
+ * Return: 0 if partition is valid, 1 otherwise
  */
 static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
 {
@@ -336,7 +339,7 @@ static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
 
 	if (!mtd->numeraseregions) {
 		/*
-		 * Only one eraseregion (NAND, OneNAND or uniform NOR),
+		 * Only one eraseregion (NAND, SPI-NAND, OneNAND or uniform NOR),
 		 * checking for alignment is easy here
 		 */
 		offset = part->offset;
@@ -407,7 +410,7 @@ static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
  *
  * @param id of the parent device
  * @param part partition to validate
- * @return 0 if partition is valid, 1 otherwise
+ * Return: 0 if partition is valid, 1 otherwise
  */
 static int part_validate(struct mtdids *id, struct part_info *part)
 {
@@ -443,7 +446,7 @@ static int part_validate(struct mtdids *id, struct part_info *part)
  *
  * @param dev device to delete partition from
  * @param part partition to delete
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_del(struct mtd_device *dev, struct part_info *part)
 {
@@ -571,7 +574,7 @@ static int part_sort_add(struct mtd_device *dev, struct part_info *part)
  *
  * @param dev device to which partition is added
  * @param part partition to be added
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_add(struct mtd_device *dev, struct part_info *part)
 {
@@ -593,7 +596,7 @@ static int part_add(struct mtd_device *dev, struct part_info *part)
  * @param partdef pointer to the partition definition string i.e. <part-def>
  * @param ret output pointer to next char after parse completes (output)
  * @param retpart pointer to the allocated partition (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_parse(const char *const partdef, const char **ret, struct part_info **retpart)
 {
@@ -690,7 +693,7 @@ static int part_parse(const char *const partdef, const char **ret, struct part_i
 		part->auto_name = 0;
 	} else {
 		/* auto generated name in form of size@offset */
-		sprintf(part->name, "0x%08llx@0x%08llx", size, offset);
+		snprintf(part->name, name_len, "0x%08llx@0x%08llx", size, offset);
 		part->auto_name = 1;
 	}
 
@@ -711,7 +714,7 @@ static int part_parse(const char *const partdef, const char **ret, struct part_i
  * @param type mtd type
  * @param num mtd number
  * @param size a pointer to the size of the mtd device (output)
- * @return 0 if device is valid, 1 otherwise
+ * Return: 0 if device is valid, 1 otherwise
  */
 static int mtd_device_validate(u8 type, u8 num, u64 *size)
 {
@@ -729,7 +732,7 @@ static int mtd_device_validate(u8 type, u8 num, u64 *size)
  * Delete all mtd devices from a supplied devices list, free memory allocated for
  * each device and delete all device partitions.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_delall(struct list_head *head)
 {
@@ -753,7 +756,7 @@ static int device_delall(struct list_head *head)
  * from device list and device memory is freed.
  *
  * @param dev device to be deleted
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_del(struct mtd_device *dev)
 {
@@ -785,7 +788,7 @@ static int device_del(struct mtd_device *dev)
  *
  * @param type device type
  * @param num device number
- * @return NULL if requested device does not exist
+ * Return: NULL if requested device does not exist
  */
 struct mtd_device *device_find(u8 type, u8 num)
 {
@@ -832,7 +835,7 @@ static void device_add(struct mtd_device *dev)
  * @param mtd_dev pointer to the device definition string i.e. <mtd-dev>
  * @param ret output pointer to next char after parse completes (output)
  * @param retdev pointer to the allocated device (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_parse(const char *const mtd_dev, const char **ret, struct mtd_device **retdev)
 {
@@ -963,7 +966,7 @@ static int device_parse(const char *const mtd_dev, const char **ret, struct mtd_
 /**
  * Initialize global device list.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int mtd_devices_init(void)
 {
@@ -977,7 +980,7 @@ static int mtd_devices_init(void)
 /*
  * Search global mtdids list and find id of requested type and number.
  *
- * @return pointer to the id if it exists, NULL otherwise
+ * Return: pointer to the id if it exists, NULL otherwise
  */
 static struct mtdids* id_find(u8 type, u8 num)
 {
@@ -1001,7 +1004,7 @@ static struct mtdids* id_find(u8 type, u8 num)
  *
  * @param mtd_id string containing requested mtd_id
  * @param mtd_id_len length of supplied mtd_id
- * @return pointer to the id if it exists, NULL otherwise
+ * Return: pointer to the id if it exists, NULL otherwise
  */
 static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_len)
 {
@@ -1027,14 +1030,14 @@ static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_
 }
 
 /**
- * Parse device id string <dev-id> := 'nand'|'nor'|'onenand'<dev-num>,
+ * Parse device id string <dev-id> := 'nand'|'nor'|'onenand'|'spi-nand'<dev-num>,
  * return device type and number.
  *
  * @param id string describing device id
  * @param ret_id output pointer to next char after parse completes (output)
  * @param dev_type parsed device type (output)
  * @param dev_num parsed device number (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type,
 		 u8 *dev_num)
@@ -1051,6 +1054,9 @@ int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type,
 	} else if (strncmp(p, "onenand", 7) == 0) {
 		*dev_type = MTD_DEV_TYPE_ONENAND;
 		p += 7;
+	} else if (strncmp(p, "spi-nand", 8) == 0) {
+		*dev_type = MTD_DEV_TYPE_SPINAND;
+		p += 8;
 	} else {
 		printf("incorrect device type in %s\n", id);
 		return 1;
@@ -1073,7 +1079,7 @@ int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type,
  *
  * @param buf output buffer holding generated mtdparts string (output)
  * @param buflen buffer size
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int generate_mtdparts(char *buf, u32 buflen)
 {
@@ -1092,9 +1098,6 @@ static int generate_mtdparts(char *buf, u32 buflen)
 		buf[0] = '\0';
 		return 0;
 	}
-
-	strcpy(p, "mtdparts=");
-	p += 9;
 
 	list_for_each(dentry, &devices) {
 		dev = list_entry(dentry, struct mtd_device, link);
@@ -1201,7 +1204,7 @@ cleanup:
  *
  * @param buf output buffer holding generated mtdparts string (output)
  * @param buflen buffer size
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int generate_mtdparts_save(char *buf, u32 buflen)
 {
@@ -1223,17 +1226,17 @@ static int generate_mtdparts_save(char *buf, u32 buflen)
  *
  * @param mtd the mtd info
  * @param part the partition
- * @return the calculated net size of this partition
+ * Return: the calculated net size of this partition
  */
 static uint64_t net_part_size(struct mtd_info *mtd, struct part_info *part)
 {
 	uint64_t i, net_size = 0;
 
-	if (!mtd->block_isbad)
+	if (!mtd->_block_isbad)
 		return part->size;
 
 	for (i = 0; i < part->size; i += mtd->erasesize) {
-		if (!mtd->block_isbad(mtd, part->offset + i))
+		if (!mtd->_block_isbad(mtd, part->offset + i))
 			net_size += mtd->erasesize;
 	}
 
@@ -1270,7 +1273,7 @@ static void print_partition_table(void)
 			part = list_entry(pentry, struct part_info, link);
 			net_size = net_part_size(mtd, part);
 			size_note = part->size == net_size ? " " : " (!)";
-			printf("%2d: %-20s0x%08x\t0x%08x%s\t0x%08x\t%d\n",
+			printf("%2d: %-20s0x%08llx\t0x%08x%s\t0x%08llx\t%d\n",
 					part_num, part->name, part->size,
 					net_size, size_note, part->offset,
 					part->mask_flags);
@@ -1339,7 +1342,7 @@ static void list_partitions(void)
  * @param dev pointer to the requested device (output)
  * @param part_num verified partition number (output)
  * @param part pointer to requested partition (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		u8 *part_num, struct part_info **part)
@@ -1399,7 +1402,7 @@ int find_dev_and_part(const char *id, struct mtd_device **dev,
  * Find and delete partition. For partition id format see find_dev_and_part().
  *
  * @param id string describing device and partition
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int delete_partition(const char *id)
 {
@@ -1475,7 +1478,7 @@ static void spread_partition(struct mtd_info *mtd, struct part_info *part,
  * as big as their mtdparts environment variable sizes and they each start
  * on a good block.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int spread_partitions(void)
 {
@@ -1528,7 +1531,7 @@ static int spread_partitions(void)
  * buffer.  gd->env_buf will be too small.
  *
  * @param buf temporary buffer pointer MTDPARTS_MAXLEN long
- * @return mtdparts variable string, NULL if not found
+ * Return: mtdparts variable string, NULL if not found
  */
 static const char *env_get_mtdparts(char *buf)
 {
@@ -1544,7 +1547,7 @@ static const char *env_get_mtdparts(char *buf)
  * for each entry. Add created devices to the global devices list.
  *
  * @param mtdparts string specifing mtd partitions
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int parse_mtdparts(const char *const mtdparts)
 {
@@ -1566,11 +1569,9 @@ static int parse_mtdparts(const char *const mtdparts)
 	if (!p)
 		p = mtdparts;
 
-	if (strncmp(p, "mtdparts=", 9) != 0) {
-		printf("mtdparts variable doesn't start with 'mtdparts='\n");
-		return err;
-	}
-	p += 9;
+	/* Skip the useless prefix, if any */
+	if (strncmp(p, "mtdparts=", 9) == 0)
+		p += 9;
 
 	while (*p != '\0') {
 		err = 1;
@@ -1604,7 +1605,7 @@ static int parse_mtdparts(const char *const mtdparts)
  * to the global mtdids list.
  *
  * @param ids mapping string
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int parse_mtdids(const char *const ids)
 {
@@ -1633,7 +1634,7 @@ static int parse_mtdids(const char *const ids)
 	while(p && (*p != '\0')) {
 
 		ret = 1;
-		/* parse 'nor'|'nand'|'onenand'<dev-num> */
+		/* parse 'nor'|'nand'|'onenand'|'spi-nand'<dev-num> */
 		if (mtd_id_parse(p, &p, &type, &num) != 0)
 			break;
 
@@ -1714,7 +1715,7 @@ static int parse_mtdids(const char *const ids)
  * Parse and initialize global mtdids mapping and create global
  * device/partition list.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int mtdparts_init(void)
 {
@@ -1864,7 +1865,7 @@ int mtdparts_init(void)
  *
  * @param dev device that is to be searched for a partition
  * @param part_num requested partition number
- * @return pointer to the part_info, NULL otherwise
+ * Return: pointer to the part_info, NULL otherwise
  */
 static struct part_info* mtd_part_info(struct mtd_device *dev, unsigned int part_num)
 {
@@ -1911,9 +1912,10 @@ static struct part_info* mtd_part_info(struct mtd_device *dev, unsigned int part
  * @param flag command flag
  * @param argc number of arguments supplied to the command
  * @param argv arguments list
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
-static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_chpart(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 /* command line only */
 	struct mtd_device *dev;
@@ -1949,10 +1951,10 @@ static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  * @param flag command flag
  * @param argc number of arguments supplied to the command
  * @param argv arguments list
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
-static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
+static int do_mtdparts(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "default") == 0) {
@@ -2072,13 +2074,12 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 /***************************************************/
 U_BOOT_CMD(
 	chpart,	2,	0,	do_chpart,
-	"change active partition",
+	"change active partition of a MTD device",
 	"part-id\n"
-	"    - change active partition (e.g. part-id = nand0,1)"
+	"    - change active partition (e.g. part-id = nand0,1) of a MTD device"
 );
 
-#ifdef CONFIG_SYS_LONGHELP
-static char mtdparts_help_text[] =
+U_BOOT_LONGHELP(mtdparts,
 	"\n"
 	"    - list partition table\n"
 	"mtdparts delall\n"
@@ -2109,7 +2110,7 @@ static char mtdparts_help_text[] =
 	"'mtdids' - linux kernel mtd device id <-> u-boot device id mapping\n\n"
 	"mtdids=<idmap>[,<idmap>,...]\n\n"
 	"<idmap>    := <dev-id>=<mtd-id>\n"
-	"<dev-id>   := 'nand'|'nor'|'onenand'<dev-num>\n"
+	"<dev-id>   := 'nand'|'nor'|'onenand'|'spi-nand'<dev-num>\n"
 	"<dev-num>  := mtd device number, 0...\n"
 	"<mtd-id>   := unique device tag used by linux kernel to find mtd device (mtd->name)\n\n"
 	"'mtdparts' - partition list\n\n"
@@ -2120,94 +2121,10 @@ static char mtdparts_help_text[] =
 	"<size>     := standard linux memsize OR '-' to denote all remaining space\n"
 	"<offset>   := partition start offset within the device\n"
 	"<name>     := '(' NAME ')'\n"
-	"<ro-flag>  := when set to 'ro' makes partition read-only (not used, passed to kernel)";
-#endif
+	"<ro-flag>  := when set to 'ro' makes partition read-only (not used, passed to kernel)");
 
 U_BOOT_CMD(
 	mtdparts,	6,	0,	do_mtdparts,
 	"define flash/nand partitions", mtdparts_help_text
 );
 /***************************************************/
-
-static int _sunxi_do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
-{
-	int ret;
-
-	/*normal boot : env is not ready, so use default.*/
-	if (!(gd->flags & GD_FLG_ENV_READY))
-		set_default_env(NULL);
-
-	ret = do_mtdparts(cmdtp, flag, argc, argv);
-
-	return ret;
-}
-
-int sunxi_do_mtdparts(int flag, int argc, char * const argv[])
-{
-	return _sunxi_do_mtdparts(NULL, flag, argc, argv);
-}
-
-char *sunxi_get_mtdparts_name(u16 mtd_partnum)
-{
-	struct part_info *part;
-
-	if (current_mtd_dev) {
-		if (mtd_partnum <= current_mtd_dev->num_parts) {
-			part = mtd_part_info(current_mtd_dev, mtd_partnum);
-			if (part)
-				return part->name;
-			else
-				printf("%s, null part.\n", __func__);
-		}
-	}
-	return NULL;
-}
-
-u64 sunxi_get_mtdpart_size(u16 mtd_partnum)
-{
-	struct part_info *part;
-
-	if (current_mtd_dev) {
-		if (mtd_partnum <= current_mtd_dev->num_parts) {
-			part = mtd_part_info(current_mtd_dev, mtd_partnum);
-			if (part)
-				return part->size;
-			else
-				printf("%s, null part.\n", __func__);
-		}
-	}
-	return 0;
-}
-
-u64 sunxi_get_mtdpart_offset(u16 mtd_partnum)
-{
-	struct part_info *part;
-
-	if (current_mtd_dev) {
-		if (mtd_partnum <= current_mtd_dev->num_parts) {
-			part = mtd_part_info(current_mtd_dev, mtd_partnum);
-			if (part)
-				return part->offset;
-			else
-				printf("%s, null part.\n", __func__);
-		}
-	}
-	return 0;
-}
-
-u16 sunxi_get_mtd_num_parts(void)
-{
-	if (current_mtd_dev)
-		return current_mtd_dev->num_parts;
-	else
-		return 0;
-}
-
-void sunxi_set_defualt_mtdpart(const char *mtdids, const char *mtdparts)
-{
-	if (mtdids)
-		mtdids_default = mtdids;
-	if (mtdparts)
-		mtdparts_default = mtdparts;
-}

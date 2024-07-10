@@ -80,6 +80,8 @@ _secure_monitor:
 #ifdef CONFIG_ARMV7_VIRT
 	orreq	r5, r5, #0x100			@ allow HVC instruction
 	moveq	r6, #HYP_MODE			@ Enter the kernel as HYP
+	mrseq	r3, sp_svc
+	msreq	sp_hyp, r3			@ migrate SP
 #endif
 
 	mcr	p15, 0, r5, c1, c1, 0		@ write SCR (with NS bit set)
@@ -187,11 +189,11 @@ ENTRY(_nonsec_init)
  * we do this here instead.
  * But first check if we have the generic timer.
  */
-#ifdef COUNTER_FREQUENCY
+#if CONFIG_COUNTER_FREQUENCY
 	mrc	p15, 0, r0, c0, c1, 1		@ read ID_PFR1
 	and	r0, r0, #CPUID_ARM_GENTIMER_MASK	@ mask arch timer bits
 	cmp	r0, #(1 << CPUID_ARM_GENTIMER_SHIFT)
-	ldreq	r1, =COUNTER_FREQUENCY
+	ldreq	r1, =CONFIG_COUNTER_FREQUENCY
 	mcreq	p15, 0, r1, c14, c0, 0		@ write CNTFRQ
 #endif
 
@@ -203,11 +205,11 @@ ENTRY(_nonsec_init)
 	bx	lr
 ENDPROC(_nonsec_init)
 
-#ifdef CONFIG_SMP_PEN_ADDR
+#ifdef CFG_SMP_PEN_ADDR
 /* void __weak smp_waitloop(unsigned previous_address); */
-ENTRY(smp_waitloop)
+WEAK(smp_waitloop)
 	wfi
-	ldr	r1, =CONFIG_SMP_PEN_ADDR	@ load start address
+	ldr	r1, =CFG_SMP_PEN_ADDR	@ load start address
 	ldr	r1, [r1]
 #ifdef CONFIG_PEN_ADDR_BIG_ENDIAN
 	rev	r1, r1
@@ -217,7 +219,6 @@ ENTRY(smp_waitloop)
 	mov	r0, r1
 	b	_do_nonsec_entry
 ENDPROC(smp_waitloop)
-.weak smp_waitloop
 #endif
 
 	.popsection

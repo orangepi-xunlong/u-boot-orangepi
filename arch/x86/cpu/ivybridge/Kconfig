@@ -8,17 +8,21 @@
 config NORTHBRIDGE_INTEL_IVYBRIDGE
 	bool
 	select CACHE_MRC_BIN if HAVE_MRC
+	select DM_EVENT
 	imply HAVE_INTEL_ME
 	imply ENABLE_MRC_CACHE
 	imply AHCI_PCI
 	imply ICH_SPI
 	imply INTEL_ICH6_GPIO
+	imply PINCTRL_ICH6
 	imply SCSI
 	imply SCSI_AHCI
 	imply SPI_FLASH
 	imply USB
 	imply USB_EHCI_HCD
+	imply USB_XHCI_HCD
 	imply VIDEO_VESA
+	imply SOUND_IVYBRIDGE
 
 if NORTHBRIDGE_INTEL_IVYBRIDGE
 
@@ -42,7 +46,6 @@ config SMM_TSEG_SIZE
 
 config ENABLE_VMX
 	bool "Enable VMX for virtualization"
-	default n
 	help
 	  Virtual Machine Extensions are provided in many x86 CPUs. These
 	  provide various facilities for allowing a host OS to provide an
@@ -60,10 +63,6 @@ config ENABLE_VMX
 config FSP_ADDR
 	hex
 	default 0xfff80000
-
-config FSP_USE_UPD
-	bool
-	default n
 
 config FSP_BROKEN_HOB
 	bool

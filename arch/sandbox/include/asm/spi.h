@@ -1,5 +1,5 @@
 /*
- * Simulate a SPI port and clients (see README.sandbox for details)
+ * Simulate a SPI port and clients (see doc/arch/sandbox.rst for details)
  *
  * Copyright (c) 2011-2013 The Chromium OS Authors.
  * See file CREDITS for list of people who contributed to this
@@ -31,15 +31,5 @@ struct sandbox_spi_emu_ops {
 	/* The client is rx-ing bytes from the bus, so it should tx some */
 	int (*xfer)(void *priv, const u8 *rx, u8 *tx, uint bytes);
 };
-
-/*
- * Extract the bus/cs from the spi spec and return the start of the spi
- * client spec.  If the bus/cs are invalid for the current config, then
- * it returns NULL.
- *
- * Example: arg="0:1:foo" will set bus to 0, cs to 1, and return "foo"
- */
-const char *sandbox_spi_parse_spec(const char *arg, unsigned long *bus,
-				   unsigned long *cs);
 
 #endif

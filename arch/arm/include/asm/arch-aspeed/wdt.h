@@ -57,6 +57,15 @@
 #define WDT_RESET_SPI			(1 << 24)
 #define WDT_RESET_MISC			(1 << 25)
 
+#define WDT_RESET_DEFAULT						\
+	(WDT_RESET_ARM | WDT_RESET_COPROC | WDT_RESET_I2C |		\
+	 WDT_RESET_MAC1 | WDT_RESET_MAC2 | WDT_RESET_GCRT |		\
+	 WDT_RESET_USB20 | WDT_RESET_USB11_HOST | WDT_RESET_USB11_EHCI2 | \
+	 WDT_RESET_VIDEO | WDT_RESET_HAC | WDT_RESET_LPC |		\
+	 WDT_RESET_SDSDIO | WDT_RESET_MIC | WDT_RESET_CRT2C |		\
+	 WDT_RESET_PWM | WDT_RESET_PECI | WDT_RESET_JTAG |		\
+	 WDT_RESET_ADC | WDT_RESET_GPIO | WDT_RESET_MISC)
+
 #ifndef __ASSEMBLY__
 struct ast_wdt {
 	u32 counter_status;
@@ -75,7 +84,7 @@ struct ast_wdt {
  * gets Reset Mode value from it.
  *
  * @flags: flags parameter passed into wdt_reset or wdt_start
- * @return Reset Mode value
+ * Return: Reset Mode value
  */
 u32 ast_reset_mode_from_flags(ulong flags);
 
@@ -84,7 +93,7 @@ u32 ast_reset_mode_from_flags(ulong flags);
  * gets Reset Mask value from it. Reset Mask is only supported on ast2500
  *
  * @flags: flags parameter passed into wdt_reset or wdt_start
- * @return Reset Mask value
+ * Return: Reset Mask value
  */
 u32 ast_reset_mask_from_flags(ulong flags);
 
