@@ -270,6 +270,8 @@ FREE_FB:
 		kfree(fb);
 	}
 
+	printf("test\n");
+
 	return ret;
 
 }

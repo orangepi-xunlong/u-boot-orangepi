@@ -24,10 +24,14 @@
 #include <command.h>
 #include <linux/string.h>
 #include <fs.h>
+#include <ext4fs.h>
 
 extern int sunxi_partition_get_partno_byname(const char *part_name);
 extern int disp_fat_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 extern int do_fat_size(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+extern int do_ext4_size(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
+
+extern int do_ext4_load(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]);
 
 #ifdef CONFIG_CMD_FAT
 static int __unload_file(struct file_info_t *file)
@@ -53,9 +57,10 @@ static int __print_file_info(struct file_info_t *file)
 
 struct file_info_t *load_file(char *name, char *part_name)
 {
-	int partno = -1;
+	//int partno = -1;
 	char *argv[6], file_addr[32];
-	char part_info[16] = { 0 }, size[32] = { 0 };
+	//char part_info[16] = { 0 }, 
+	char size[32] = { 0 };
 	struct file_info_t *file = NULL;
 
 	if (!name || !part_name) {
@@ -64,47 +69,59 @@ struct file_info_t *load_file(char *name, char *part_name)
 		goto OUT;
 	}
 
-	partno = sunxi_partition_get_partno_byname(part_name);
-	if (partno < 0) {
-		pr_err("%s is not found!\n", part_name);
-		goto OUT;
-	}
-	snprintf(part_info, 16, "0:%x", partno);
+	//partno = sunxi_partition_get_partno_byname(part_name);
+	//if (partno < 0) {
+	//	pr_err("%s is not found!\n", part_name);
+	//	goto OUT;
+	//}
+	//snprintf(part_info, 16, "0:%x", partno);
 
-	argv[0] = "fatsize";
-	argv[1] = "sunxi_flash";
-	argv[2] = part_info;
+	strncpy(name, "/boot/boot.bmp", 15);
+	printf("bmp_name=%s\n", name);
+
+	argv[0] = "ext4size";
+	argv[1] = "mmc";
+	argv[2] = "0:1";
 	argv[3] = name;
 	argv[4] = NULL;
 	argv[5] = NULL;
 
-	if (!do_fat_size(0, 0, 4, argv)) {
+	run_command("mmc dev 0", 0);
+	run_command("mmc part", 0);
+
+	if (!do_ext4_size(0, 0, 4, argv)) {
 		file = (struct file_info_t *)malloc(sizeof(struct file_info_t));
 		memset(file, 0, sizeof(struct file_info_t));
 		file->file_size = env_get_hex("filesize", 0);
 	} else {
-		pr_err("get file(%s) size from %s error\n", name, part_name);
-		goto OUT;
+		run_command("mmc dev 2", 0);
+		run_command("mmc part", 0);
+		argv[2] = "2:1";
+		if (!do_ext4_size(0, 0, 4, argv)) {
+			memset(file, 0, sizeof(struct file_info_t));
+			file->file_size = env_get_hex("filesize", 0);
+		} else {
+			pr_err("get file(%s) size from %s error\n", name, part_name);
+			goto OUT;
+		}
 	}
 
 	file->name = (char *)malloc(strlen(name) + 1);
 	strncpy(file->name, name, strlen(name) + 1);
 	file->path = (char *)malloc(strlen(part_name) + 1);
-	strncpy(file->path, part_name, strlen(part_name) + 1);
+	strncpy(file->path, name, strlen(name) + 1);
 	file->file_addr =
 		memalign(4096, file->file_size);
 
 	sprintf(file_addr, "%lx", (unsigned long)file->file_addr);
 	snprintf(size, 16, "%lx", (unsigned long)file->file_size);
 
-	argv[0] = "fatload";
-	argv[1] = "sunxi_flash";
-	argv[2] = part_info;
+	argv[0] = "ext4load";
 	argv[3] = file_addr;
 	argv[4] = name;
-	argv[5] = size;
+	argv[5] = NULL;
 
-	if (disp_fat_load(0, 0, 6, argv)) {
+	if (do_ext4_load(0, 0, 6, argv)) {
 		pr_err("Unable to open file %s from %s\n", name, part_name);
 		goto FREE_FILE;
 	}

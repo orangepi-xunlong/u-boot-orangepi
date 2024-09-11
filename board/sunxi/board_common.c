@@ -603,6 +603,7 @@ void sunxi_early_logo_display(void)
 	if (work_mode == WORK_MODE_CARD_PRODUCT
 		|| work_mode == WORK_MODE_CARD_UPDATE || work_mode == WORK_MODE_UDISK_UPDATE) {
 		boot_gui_init();
+
 	} else if (gd->boot_logo_addr) {
 		boot_gui_init();
 		bpk_logo_addr = sunxi_prepare_bpk_bootlogo();
@@ -639,11 +640,11 @@ void board_bootlogo_display(void)
 	}
 #endif
 
-#if defined(CONFIG_CMD_SUNXI_BMP)
-	sunxi_bmp_display("bootlogo.bmp");
-#elif defined(CONFIG_CMD_SUNXI_JPEG)
-	sunxi_jpeg_display("bootlogo.jpg");
-#endif
+//#if defined(CONFIG_CMD_SUNXI_BMP)
+//	sunxi_bmp_display("bootlogo.bmp");
+//#elif defined(CONFIG_CMD_SUNXI_JPEG)
+//	sunxi_jpeg_display("bootlogo.jpg");
+//#endif
 }
 #endif
 
@@ -800,10 +801,10 @@ int board_late_init(void)
 		else
 #endif
 #ifndef CONFIG_SUNXI_RTOS
-		sunxi_update_partinfo();
-		if (sunxi_update_rotpk_info()) {
-			return -1;
-		}
+		//sunxi_update_partinfo();
+		//if (sunxi_update_rotpk_info()) {
+		//	return -1;
+		//}
 #endif
 #ifdef CONFIG_SUNXI_POWER
 #ifdef CONFIG_SUNXI_BMU
@@ -811,7 +812,7 @@ int board_late_init(void)
 #endif
 #endif
 		sunxi_respond_ir_key_action();
-		sunxi_update_bootcmd();
+		//sunxi_update_bootcmd();
 #ifdef CONFIG_PCIE_ALLWINNER_RC
 		pci_init();
 #endif

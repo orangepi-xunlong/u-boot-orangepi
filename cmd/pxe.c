@@ -12,11 +12,26 @@
 #include <linux/ctype.h>
 #include <errno.h>
 #include <linux/list.h>
+#include <fdt_support.h>
+#include <linux/libfdt.h>
 #include <fs.h>
 #include <asm/io.h>
 
 #include "menu.h"
 #include "cli.h"
+
+#include <common.h>
+#include <command.h>
+#include <linux/ctype.h>
+#include <linux/types.h>
+#include <asm/global_data.h>
+#include <linux/libfdt.h>
+#include <fdt_support.h>
+#include <mapmem.h>
+#include <asm/io.h>
+
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_TFTP_PATH_LEN 127
 
@@ -475,6 +490,7 @@ struct pxe_label {
 	char *initrd;
 	char *fdt;
 	char *fdtdir;
+	char *fdtoverlays;
 	int ipappend;
 	int attempted;
 	int localboot;
@@ -550,6 +566,9 @@ static void label_destroy(struct pxe_label *label)
 	if (label->fdtdir)
 		free(label->fdtdir);
 
+	if (label->fdtoverlays)
+		free(label->fdtoverlays);
+
 	free(label);
 }
 
@@ -596,6 +615,111 @@ static int label_localboot(struct pxe_label *label)
 
 	return run_command_list(localcmd, strlen(localcmd), 0);
 }
+
+static void fdt_file_resize(void)
+{
+	struct fdt_header *working_fdt;
+	ulong fdt_addr;
+	int err;
+
+	/* Get the main fdt and map it */
+	fdt_addr = simple_strtoul(env_get("fdt_addr_r"), NULL, 16);
+	working_fdt = map_sysmem(fdt_addr, 0);
+	err = fdt_check_header(working_fdt);
+	if (err)
+		return;
+
+	/* Resize main fdt */
+	fdt_shrink_to_minimum(working_fdt, 8192);
+}
+
+
+/*
+ * Loads fdt overlays specified in 'fdtoverlays'.
+ */
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+static void label_boot_fdtoverlay(cmd_tbl_t *cmdtp, struct pxe_label *label)
+{
+	char *fdtoverlay = label->fdtoverlays;
+	struct fdt_header *working_fdt;
+	char *fdtoverlay_addr_env;
+	ulong fdtoverlay_addr;
+	ulong fdt_addr;
+	int err;
+
+	/* Get the main fdt and map it */
+	fdt_addr = simple_strtoul(env_get("fdt_addr_r"), NULL, 16);
+	//fdt_addr = (ulong)gd->fdt_blob;
+	working_fdt = map_sysmem(fdt_addr, 0);
+	err = fdt_check_header(working_fdt);
+	if (err)
+		return;
+
+	/* Get the specific overlay loading address */
+	fdtoverlay_addr_env = env_get("fdtoverlay_addr_r");
+	if (!fdtoverlay_addr_env) {
+		printf("Invalid fdtoverlay_addr_r for loading overlays\n");
+		return;
+	}
+
+	fdtoverlay_addr = simple_strtoul(fdtoverlay_addr_env, NULL, 16);
+
+	/* Cycle over the overlay files and apply them in order */
+	do {
+		struct fdt_header *blob;
+		char *overlayfile;
+		char *end;
+		int len;
+
+		/* Drop leading spaces */
+		while (*fdtoverlay == ' ')
+			++fdtoverlay;
+
+		/* Copy a single filename if multiple provided */
+		end = strstr(fdtoverlay, " ");
+		if (end) {
+			len = (int)(end - fdtoverlay);
+			overlayfile = malloc(len + 1);
+			strncpy(overlayfile, fdtoverlay, len);
+			overlayfile[len] = '\0';
+		} else
+			overlayfile = fdtoverlay;
+
+		if (!strlen(overlayfile))
+			goto skip_overlay;
+
+		/* Load overlay file */
+		err = get_relfile_envaddr(cmdtp, overlayfile,
+					  "fdtoverlay_addr_r");
+		if (err < 0) {
+			printf("Failed loading overlay %s\n", overlayfile);
+			goto skip_overlay;
+		}
+
+		/* Resize main fdt */
+		fdt_shrink_to_minimum(working_fdt, 8192);
+
+		blob = map_sysmem(fdtoverlay_addr, 0);
+		err = fdt_check_header(blob);
+		if (err) {
+			printf("Invalid overlay %s, skipping\n",
+			       overlayfile);
+			goto skip_overlay;
+		}
+
+		err = fdt_overlay_apply_verbose(working_fdt, blob);
+		if (err) {
+			printf("Failed to apply overlay %s, skipping\n",
+			       overlayfile);
+			goto skip_overlay;
+		}
+
+skip_overlay:
+		if (end)
+			free(overlayfile);
+	} while ((fdtoverlay = strstr(fdtoverlay, " ")));
+}
+#endif
 
 /*
  * Boot according to the contents of a pxe_label.
@@ -774,6 +898,13 @@ static int label_boot(cmd_tbl_t *cmdtp, struct pxe_label *label)
 						label->name);
 				return 1;
 			}
+
+			fdt_file_resize();
+
+#ifdef CONFIG_OF_LIBFDT_OVERLAY
+			if (label->fdtoverlays)
+				label_boot_fdtoverlay(cmdtp, label);
+#endif
 		} else {
 			bootm_argv[3] = NULL;
 		}
@@ -827,6 +958,7 @@ enum token_type {
 	T_INCLUDE,
 	T_FDT,
 	T_FDTDIR,
+	T_FDTOVERLAYS,
 	T_ONTIMEOUT,
 	T_IPAPPEND,
 	T_INVALID
@@ -860,6 +992,7 @@ static const struct token keywords[] = {
 	{"fdt", T_FDT},
 	{"devicetreedir", T_FDTDIR},
 	{"fdtdir", T_FDTDIR},
+	{"fdtoverlays", T_FDTOVERLAYS},
 	{"ontimeout", T_ONTIMEOUT,},
 	{"ipappend", T_IPAPPEND,},
 	{NULL, T_INVALID}
@@ -1259,6 +1392,11 @@ static int parse_label(char **c, struct pxe_menu *cfg)
 		case T_FDTDIR:
 			if (!label->fdtdir)
 				err = parse_sliteral(c, &label->fdtdir);
+			break;
+
+		case T_FDTOVERLAYS:
+			if (!label->fdtoverlays)
+				err = parse_sliteral(c, &label->fdtoverlays);
 			break;
 
 		case T_LOCALBOOT:

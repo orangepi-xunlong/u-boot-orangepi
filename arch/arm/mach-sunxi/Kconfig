@@ -79,7 +79,7 @@ config SUNXI_COMPARE_IMAGE_AND_FLASH
 
 config SUNXI_INITRD_ROUTINE
 	bool "Sunxi ramdisk init routine"
-	default y
+	default n
 	help
 		use sunxi ramdisk init routine ,witch copy ramdisk to addr defined
 		in boot.img head, instead of original one, whitch will copy ramdisk

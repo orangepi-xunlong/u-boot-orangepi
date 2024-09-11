@@ -216,6 +216,7 @@ static int __abortboot(int bootdelay)
 	int abort = 0;
 	unsigned long ts;
 
+	bootdelay = 1;
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else

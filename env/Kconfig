@@ -436,7 +436,7 @@ if ARCH_SUNXI
 
 config ENV_IS_IN_SUNXI_FLASH
 	bool "Environment is in sunxi flash"
-	default y
+	default n
 	help
 	  Define this if you have a sunxi Flash memory device which you
 	  want to use for the environment.

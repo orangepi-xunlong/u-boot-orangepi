@@ -96,6 +96,7 @@ int sunxi_bootparam_format(typedef_sunxi_boot_param *sunxi_boot_param)
 
 int sunxi_bootparam_down(void)
 {
+	return 0;
 	typedef_sunxi_boot_param *sunxi_boot_param = gd->boot_param;
 
 	if (sunxi_bootparam_format(sunxi_boot_param) < 0) {

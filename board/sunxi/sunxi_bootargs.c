@@ -237,6 +237,7 @@ int update_user_data(void)
 	if (get_boot_work_mode() != WORK_MODE_BOOT) {
 		return 0;
 	}
+	return 0;
 
 	check_user_data(); //从env中检测用户的环境变量
 

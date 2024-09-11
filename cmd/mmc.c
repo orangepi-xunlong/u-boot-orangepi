@@ -909,7 +909,7 @@ static cmd_tbl_t cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(swrite, 3, 0, do_mmc_sparse_write, "", ""),
 #endif
 	U_BOOT_CMD_MKENT(rescan, 1, 1, do_mmc_rescan, "", ""),
-	U_BOOT_CMD_MKENT(part, 1, 1, do_mmc_part, "", ""),
+	U_BOOT_CMD_MKENT(part, 2, 1, do_mmc_part, "", ""),
 	U_BOOT_CMD_MKENT(dev, 3, 0, do_mmc_dev, "", ""),
 	U_BOOT_CMD_MKENT(list, 1, 1, do_mmc_list, "", ""),
 #if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
@@ -949,7 +949,7 @@ static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return CMD_RET_SUCCESS;
 
 	if (curr_device < 0) {
-		if (get_mmc_num() > 0) {
+		if (get_mmc_num() >= 0) {
 			curr_device = 0;
 		} else {
 			puts("No MMC device available\n");
@@ -1039,8 +1039,8 @@ int do_card0_probe(cmd_tbl_t *cmdtp, int flag,
 		puts("card0 init failed\n");
 		return  -1;
 	}
-	run_command("mmcinfo", 0);
-	run_command("mmc part", 0);
+	//run_command("mmcinfo", 0);
+	//run_command("mmc part", 0);
 	card0_init = 1;
 	return 0;
 }

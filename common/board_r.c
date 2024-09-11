@@ -532,7 +532,7 @@ static int initr_sunxi_plat(void)
 	check_ir_boot_recovery();
 #endif
 #if defined(CONFIG_SUNXI_HOMLET)
-	sunxi_boot_init_gpio();
+	//sunxi_boot_init_gpio();
 #endif
 
 #ifdef CONFIG_RECOVERY_KEY
@@ -612,13 +612,13 @@ extern int usb_auto_detect_device(void);
 	if (workmode == WORK_MODE_BOOT) {
 #ifdef CONFIG_SUNXI_UPDATE_GPT
 		int sunxi_update_gpt(void);
-		sunxi_update_gpt();
+		//sunxi_update_gpt();
 #endif
 
 #ifdef CONFIG_ENABLE_MTD_CMDLINE_PARTS_BY_ENV
 		initr_env();
 #endif
-		sunxi_probe_partition_map();
+		//sunxi_probe_partition_map();
 	}
 
 #ifdef CONFIG_SUNXI_ROTPK_BURN_ENABLE_BY_TOOL
@@ -666,6 +666,7 @@ static int sunxi_fast_burn_key(void)
 
 static int sunxi_burn_key(void)
 {
+	return 0;
 #ifdef CONFIG_CMD_SUNXI_AUTO_FEL
 	sunxi_auto_fel_by_usb();
 #endif
@@ -707,8 +708,9 @@ static int should_load_env(void)
 static int initr_env(void)
 {
 	/* initialize environment */
-	if (should_load_env())
+	if (should_load_env()) {
 		env_relocate();
+	}
 	else
 		set_default_env(NULL);
 #ifdef CONFIG_OF_CONTROL

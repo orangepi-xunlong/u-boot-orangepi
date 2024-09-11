@@ -19,11 +19,6 @@
 #include <linux/ctype.h>
 #include <linux/err.h>
 #include <u-boot/zlib.h>
-#include <sunxi_image_verifier.h>
-#include <sunxi_board.h>
-#include <android_image.h>
-#include <fdt_support.h>
-#include <sunxi_eink.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -89,143 +84,12 @@ static int do_bootm_subcommand(cmd_tbl_t *cmdtp, int flag, int argc,
 	return ret;
 }
 
-#if CONFIG_SUNXI_INITRD_ROUTINE
-__maybe_unused static void sunxi_update_initrd(ulong os_load_addr)
-{
-	const struct andr_img_hdr *hdr =
-		(const struct andr_img_hdr *)os_load_addr;
-	ulong initrd_start;
-	ulong initrd_size;
-	unsigned long ramdisk_addr = env_get_hex("load_ramdisk_addr", hdr->ramdisk_addr);
-	android_image_get_ramdisk(hdr, &initrd_start, &initrd_size);
-
-	if ((!strncmp(hdr->magic, ANDR_BOOT_MAGIC, ANDR_BOOT_MAGIC_SIZE)) && (hdr->unused >= 0x3)) {
-		ulong vendor_initrd_start, vendor_initrd_size;
-		struct vendor_boot_img_hdr *vendor_hdr = get_vendor_hdr_addr();
-		ramdisk_addr = env_get_hex("load_ramdisk_addr", vendor_hdr->ramdisk_addr);
-		android_image_get_vendor_ramdisk(hdr, &vendor_initrd_start, &vendor_initrd_size);
-		memmove_wd((void *)(ramdisk_addr), (void *)vendor_initrd_start, vendor_initrd_size, CHUNKSZ);
-		memmove_wd((void *)(ramdisk_addr + vendor_initrd_size), (void *)initrd_start, initrd_size, CHUNKSZ);
-
-		initrd_size += vendor_initrd_size;
-
-		/*bootconfig exist*/
-		if (android_image_is_vendor_bootconfig_used(vendor_hdr)) {
-			ulong bootconfig_start = 0;
-			ulong bootconfig_size  = 0;
-			android_image_get_vendor_bootconfig(
-				hdr, &bootconfig_start, &bootconfig_size);
-			android_image_cmdline_to_vendorbootconfig(&bootconfig_start, &bootconfig_size);
-			memmove_wd((void *)(ramdisk_addr + initrd_size),
-				   (void *)bootconfig_start, bootconfig_size,
-				   CHUNKSZ);
-			initrd_size += bootconfig_size;
-			env_set_hex("bootconfig_addr", bootconfig_start);
-			env_set_hex("bootconfig_size", bootconfig_size);
-		}
-
-		if (vendor_hdr->dtb_addr) {
-			env_set_hex("load_dtb_addr", env_get_hex("load_dtb_addr", vendor_hdr->dtb_addr));
-		}
-	} else {
-		if ((!strncmp(hdr->magic, ANDR_BOOT_MAGIC, ANDR_BOOT_MAGIC_SIZE)) && (hdr->dtb_addr)) {
-			env_set_hex("load_dtb_addr", env_get_hex("load_dtb_addr", hdr->dtb_addr));
-		}
-		memmove_wd((void *)ramdisk_addr, (void *)initrd_start, initrd_size, CHUNKSZ);
-	}
-	sunxi_mem_info("ramdisk", (void *)ramdisk_addr, initrd_size);
-	env_set_hex("ramdisk_sum",
-		    sunxi_generate_checksum((void *)ramdisk_addr, initrd_size,
-					    8, STAMP_VALUE));
-	debug("   Loading Ramdisk from %08lx to %08lx, size %08lx ... ",
-		initrd_start, ramdisk_addr, initrd_size);
-#ifdef CONFIG_MP
-	/*
-			 * Ensure the image is flushed to memory to handle
-			 * AMP boot scenarios in which we might not be
-			 * HW cache coherent
-			 */
-	flush_cache((unsigned long)*initrd_start,
-		    ALIGN(rd_len, ARCH_DMA_MINALIGN));
-#endif
-	debug("OK\n");
-	env_set_hex("ramdisk_start", ramdisk_addr);
-	env_set_hex("ramdisk_size", initrd_size);
-	if (initrd_size) {
-		fdt_initrd(working_fdt, (ulong)ramdisk_addr,
-			(ulong)(ramdisk_addr + initrd_size));
-	}
-
-
-}
-#endif
-
-/*
- * depends on boot header, not correct with sunxi-compressed kernel(no header)
- * maybe not always accurate, but good enough in our use case:
- *     run 32 bit os in 64 bit platform for memory usage reducing
- */
-__maybe_unused static void check_os_run_arch(ulong os_load_addr)
-{
-	andr_img_hdr *hdr		       = (andr_img_hdr *)os_load_addr;
-	struct vendor_boot_img_hdr *vendor_hdr = get_vendor_hdr_addr();
-	const char *active_name		       = NULL;
-
-	/*default value*/
-	sunxi_set_force_32bit_os(0);
-
-	/*32 bit platform(no monitor) always 32bit os*/
-	if (!sunxi_probe_secure_monitor())
-		return;
-
-	/*try a valid head, either vendor boot or android boot is acceptable*/
-	if (vendor_hdr != NULL) {
-		active_name = (char *)vendor_hdr->name;
-#if 0 //debug print
-		pr_msg("vendor boot header\n");
-		printf("kernel_addr:%x kernel_size:%x\n"
-		       "dtb_addr:%llx dtb_size:%x\n"
-		       "ramdisk_addr:%x ramdisk_size:%x\n",
-		       vendor_hdr->kernel_addr, hdr->kernel_size,
-		       vendor_hdr->dtb_addr, vendor_hdr->dtb_size,
-		       vendor_hdr->ramdisk_addr,
-		       vendor_hdr->vendor_ramdisk_size);
-		pr_msg("boot header\n");
-		printf("kernel_addr:%x kernel_size:%x\n"
-		       "dtb_addr:%llx dtb_size:%x\n"
-		       "ramdisk_addr:%x ramdisk_size:%x\n",
-		       hdr->kernel_addr, hdr->kernel_size, hdr->dtb_addr,
-		       hdr->dtb_size, hdr->ramdisk_addr, hdr->ramdisk_size);
-#endif
-	} else if (memcmp(ANDR_BOOT_MAGIC, hdr->magic, ANDR_BOOT_MAGIC_SIZE) ==
-		   0) {
-		active_name = hdr->name;
-	} else {
-		return;
-	}
-
-	/*os 64 bit*/
-	if (strstr(active_name, "arm64") != NULL)
-		return;
-
-	if (strstr(active_name, "arm") != NULL) {
-		pr_msg("force run 32bit os on this device\n");
-		sunxi_set_force_32bit_os(1);
-	}
-}
-
 /*******************************************************************/
 /* bootm - boot application image from image in memory */
 /*******************************************************************/
-void update_bootargs(void);
-int sunxi_get_lcd_op_finished(void);
+
 int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	ulong os_load_addr = simple_strtoul(argv[1], NULL, 16);
-	int fake_go = 0;
-	if (env_get("fake_go"))
-		fake_go = BOOTM_STATE_OS_FAKE_GO;
-
 #ifdef CONFIG_NEEDS_MANUAL_RELOC
 	static int relocated = 0;
 
@@ -239,75 +103,6 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		relocated = 1;
 	}
 #endif
-
-#ifdef CONFIG_SUNXI_ANDROID_BOOT
-	if (sunxi_android_boot(env_get("boot_from_partion"),
-			       os_load_addr)) {
-		return -1;
-	}
-#else
-
-#ifdef CONFIG_SUNXI_SECURE_BOOT
-	/* verify image before booting in secure boot*/
-	if (gd->securemode) {
-
-#if defined(CONFIG_SUNXI_DM_VERITY)
-		if (sunxi_verity_hash_tree("rootfs", "rootfs") != 0) {
-			pr_err("sunxi verity rootfs error\n");
-			return -1;
-		}
-#elif defined(CONFIG_SUNXI_PART_VERIFY)
-		pr_msg("begin to verify rootfs\n");
-		int full = 0;
-		struct sunxi_image_verify_pattern_st verify_pattern = {
-			0x1000, 0x100000, -1
-		};
-		char *rootfs_name = env_get("root_partition");
-		char *s = env_get("rootfs_per_MB");
-		if (strcmp(s, "full") == 0) {
-			full = 1;
-		} else {
-			int rootfs_per_MB =
-				s ? (int)simple_strtol(s, NULL, 10) : 0;
-			if ((rootfs_per_MB >= 4096 && rootfs_per_MB <= 1048576)
-				 && (rootfs_per_MB % 4096 == 0))
-				verify_pattern.size = rootfs_per_MB;
-			else if (rootfs_per_MB != 0) {
-				return -1;
-			}
-
-			full = 0;
-		}
-		if (sunxi_verify_partion(&verify_pattern, rootfs_name, "rootfs", full) != 0) {
-			return -1;
-		}
-#endif /*CONFIG_SUNXI_PART_VERIFY*/
-
-		if (sunxi_verify_os(os_load_addr,
-				    env_get("boot_from_partion")) != 0) {
-			return -1;
-		}
-	}
-#endif /*CONFIG_SUNXI_SECURE_BOOT*/
-
-#endif /*CONFIG_SUNXI_ANDROID_BOOT*/
-
-#if defined(CONFIG_EINK200_SUNXI)
-	struct eink_fb_info_t *p_inst = eink_get_fb_inst();
-	if (p_inst) {
-		p_inst->wait_pipe_finish(p_inst);
-	}
-#elif defined(CONFIG_DISP2_SUNXI)
-	while (!sunxi_get_lcd_op_finished()) {
-		mdelay(10);
-	}
-#endif
-
-#if CONFIG_SUNXI_INITRD_ROUTINE
-	sunxi_update_initrd(os_load_addr);
-#endif
-
-	check_os_run_arch(os_load_addr);
 
 	/* determine if we have a sub command */
 	argc--; argv++;
@@ -326,21 +121,17 @@ int do_bootm(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if ((*endp != 0) && (*endp != ':') && (*endp != '#'))
 			return do_bootm_subcommand(cmdtp, flag, argc, argv);
 	}
-	update_bootargs();
-	update_vendorbootconfig_and_bootgargs();
 
 	return do_bootm_states(cmdtp, flag, argc, argv, BOOTM_STATE_START |
 		BOOTM_STATE_FINDOS | BOOTM_STATE_FINDOTHER |
 		BOOTM_STATE_LOADOS |
-#ifndef CONFIG_SUNXI_INITRD_ROUTINE
 #ifdef CONFIG_SYS_BOOT_RAMDISK_HIGH
 		BOOTM_STATE_RAMDISK |
-#endif
 #endif
 #if defined(CONFIG_PPC) || defined(CONFIG_MIPS)
 		BOOTM_STATE_OS_CMDLINE |
 #endif
-		BOOTM_STATE_OS_PREP | fake_go |
+		BOOTM_STATE_OS_PREP | BOOTM_STATE_OS_FAKE_GO |
 		BOOTM_STATE_OS_GO, &images, 1);
 }
 
@@ -491,7 +282,7 @@ static int image_info(ulong addr)
 	case IMAGE_FORMAT_FIT:
 		puts("   FIT image found\n");
 
-		if (fit_check_format(hdr, IMAGE_SIZE_INVAL)) {
+		if (!fit_check_format(hdr)) {
 			puts("Bad FIT image format!\n");
 			return 1;
 		}
@@ -564,7 +355,7 @@ static int do_imls_nor(void)
 #endif
 #if defined(CONFIG_FIT)
 			case IMAGE_FORMAT_FIT:
-				if (fit_check_format(hdr, IMAGE_SIZE_INVAL))
+				if (!fit_check_format(hdr))
 					goto next_sector;
 
 				printf("FIT Image at %08lX:\n", (ulong)hdr);
@@ -644,7 +435,7 @@ static int nand_imls_fitimage(struct mtd_info *mtd, int nand_dev, loff_t off,
 		return ret;
 	}
 
-	if (fit_check_format(imgdata, IMAGE_SIZE_INVAL)) {
+	if (!fit_check_format(imgdata)) {
 		free(imgdata);
 		return 0;
 	}

@@ -158,7 +158,7 @@ int btrfs_read_chunk_tree(void)
 	do {
 		found_key = btrfs_path_leaf_key(&path);
 		if (btrfs_comp_keys_type(&key, found_key))
-			continue;
+			break;
 
 		chunk = btrfs_path_item_ptr(&path, struct btrfs_chunk);
 		btrfs_chunk_to_cpu(chunk);

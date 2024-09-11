@@ -1,0 +1,1068 @@
+/*
+ * Allwinner Technology CO., Ltd. sun50iw10p1 soc board.
+ *
+ * soc board support.
+ */
+ #include <media_bus_format.h>
+
+/{
+	edp_panel_backlight: edp_backlight {
+		compatible = "pwm-backlight";
+		status = "okay";
+		brightness-levels = <
+			  0   1   2   3   4   5   6   7
+			  8   9  10  11  12  13  14  15
+			 16  17  18  19  20  21  22  23
+			 24  25  26  27  28  29  30  31
+			 32  33  34  35  36  37  38  39
+			 40  41  42  43  44  45  46  47
+			 48  49  50  51  52  53  54  55
+			 56  57  58  59  60  61  62  63
+			 64  65  66  67  68  69  70  71
+			 72  73  74  75  76  77  78  79
+			 80  81  82  83  84  85  86  87
+			 88  89  90  91  92  93  94  95
+			 96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <200>;
+		enable-gpios = <&pio PI 5 1 0 3 1>;
+		/* power-supply = <&reg_backlight_12v>; */
+		pwms = <&pwm 5 5000000 0>;
+	};
+
+	edp_panel: edp_panel {
+		compatible = "edp-general-panel";
+		status = "okay";
+		//enable1-gpios = <&pio PI 4 1 0 3 1>;
+		//enable2-gpios = <&pio PI 5 1 0 3 1>;
+		power0-supply = <&reg_dcdc4>;
+		backlight = <&edp_panel_backlight>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			panel_in: port@0 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0>;
+				edp_panel_in: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&edp_panel_out>;
+				};
+			};
+		};
+	};
+
+	backlight0: backlight0 {
+		compatible = "pwm-backlight";
+		status = "okay";
+		brightness-levels = <
+			  0   1   2   3   4   5   6   7
+			  8   9  10  11  12  13  14  15
+			 16  17  18  19  20  21  22  23
+			 24  25  26  27  28  29  30  31
+			 32  33  34  35  36  37  38  39
+			 40  41  42  43  44  45  46  47
+			 48  49  50  51  52  53  54  55
+			 56  57  58  59  60  61  62  63
+			 64  65  66  67  68  69  70  71
+			 72  73  74  75  76  77  78  79
+			 80  81  82  83  84  85  86  87
+			 88  89  90  91  92  93  94  95
+			 96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <200>;
+		enable-gpios = <&pio PI 2 1 0 3 1>;
+		pwms = <&pwm 4 50000 0>;
+	};
+
+	lvds_panel: lvds_panel@0 {
+		compatible = "sunxi-lvds";
+		status = "okay";
+		reg = <0>;
+		//power0-supply = <&reg_cldo3>;
+		//power1-supply = <&reg_dcdc4>;
+		//power2-supply = <&reg_cldo1>;
+		backlight = <&backlight0>;
+		bus-format = <MEDIA_BUS_FMT_RGB888_1X7X4_SPWG>;
+		display-timings {
+			native-mode = <&lvds_timing0>;
+			lvds_timing0: timing0 {
+				clock-frequency = <74871600>;
+				hback-porch = <70>;
+				hactive = <1280>;
+				hfront-porch = <83>;
+				hsync-len = <18>;
+				vback-porch = <13>;
+				vactive = <800>;
+				vfront-porch = <37>;
+				vsync-len = <10>;
+			};
+		};
+		port {
+			lvds_panel_in: endpoint {
+				remote-endpoint = <&lvds_panel_out>;
+			};
+		};
+	};
+	rgb_panel1: rgb_panel@1 {
+		compatible = "sunxi-rgb";
+		status = "disabled";
+		reg = <0>;
+		//power0-supply = <&reg_cldo3>;
+		//power1-supply = <&reg_dcdc4>;
+		//power2-supply = <&reg_cldo1>;
+
+		backlight = <&edp_panel_backlight>;
+
+		display-timings {
+			native-mode = <&rgb1_timing0>;
+
+			rgb1_timing0: timing0 {
+				clock-frequency = <74871600>;
+				hback-porch = <35>;
+				hactive = <1024>;
+				hfront-porch = <83>;
+				hsync-len = <161>;
+				vback-porch = <25>;
+				vactive = <600>;
+				vfront-porch = <15>;
+				vsync-len = <10>;
+			};
+		};
+		port {
+			rgb1_panel_in: endpoint {
+				remote-endpoint = <&rgb1_panel_out>;
+			};
+		};
+	};
+
+};
+
+&sunxi_drm {
+	route {
+		disp0_hdmi {
+			status = "okay";
+		};
+	};
+};
+
+&rgb1 {
+	status = "disabled";
+	pinctrl-0 = <&rgb24_pins_a>;
+	pinctrl-1 = <&rgb24_pins_b>;
+	pinctrl-names = "active","sleep";
+	ports {
+		port@1 {
+			reg = <1>;
+			rgb1_panel_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&rgb1_panel_in>;
+			};
+		};
+	};
+};
+
+&lvds0 {
+	status = "disabled";
+//	dual-channel = <0>;
+	pinctrl-0 = <&lvds0_pins_a>;
+	pinctrl-1 = <&lvds0_pins_b>;
+	pinctrl-names = "active","sleep";
+	ports {
+		port@1 {
+			reg = <1>;
+			lvds_panel_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&lvds_panel_in>;
+			};
+		};
+	};
+};
+
+&dsi0combophy {
+	status = "disabled";
+};
+
+&dsi1combophy {
+	status = "disabled";
+};
+
+&dlcd0 {
+	status = "disabled";
+};
+
+&dlcd1 {
+	status = "disabled";
+};
+
+&vo0 {
+	status = "okay";
+};
+
+&vo1 {
+	status = "disabled";
+};
+
+&tv0 {
+	status = "okay";
+};
+
+&tv1 {
+	status = "disabled";
+};
+
+&de {
+	chn_cfg_mode = <3>;
+	status = "okay";
+};
+
+&hdmi {
+	hdmi_used = <1>;
+	cldo1-supply = <&reg_cldo1>;
+	hdmi_power0 = "cldo1";
+	//vmid-supply = <&reg_vmid>;
+	hdmi_power1 = "vmid";
+	hdmi_power_cnt = <2>;
+	hdmi_hdcp_enable = <1>;
+	hdmi_hdcp22_enable = <0>;
+	hdmi_cts_compatibility = <0>;
+	hdmi_cec_support = <1>;
+	hdmi_cec_super_standby = <1>;
+	hdmi_skip_bootedid = <1>;
+
+	ddc_en_io_ctrl = <0>;
+	power_io_ctrl = <0>;
+
+	status = "okay";
+};
+
+&drm_edp {
+	status = "disabled";
+
+	edp_colordepth = <8>; /* 6/8/10/12/16 */
+	edp_color_fmt = <0>; /* 0:RGB  1: YUV444  2: YUV422 */
+
+	vcc-edp-supply = <&reg_bldo3>;
+	vdd-edp-supply = <&reg_dcdc2>;
+	ports {
+		edp_out: port@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			edp_panel_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&edp_panel_in>;
+			};
+		};
+	};
+};
+
+&power_sply {
+	bldo1_vol = <1800>;
+	bldo2_vol = <1001800>;
+	bldo3_vol = <1001800>;
+	cldo2_vol = <1001800>;
+	cldo4_vol = <1103300>;
+	dcdc1_mode = <1>;
+	dcdc3_mode = <1>;
+	ext_dcdc0_mode = <1>;
+	ext_dcdc1_mode = <1>;
+	ext_dcdc2_mode = <1>;
+	dcdc2_mode = <1>;
+	bc12_mode = <0>;
+	ntc_status = <2>;
+	battery_exist = <0>;
+};
+
+&platform {
+	eraseflag   = <1>;
+	next_work   = <3>;
+	debug_mode  = <1>;
+};
+
+/*
+ *recovery_key_used :  模块使能端，    1：开启，0：关闭
+ *press_mode_enable :  长短按模式使能，1：开启，0：关闭
+ *                     a)如果开启了该模式，则key_work_mode失效，short_press_mode和long_press_mode生效,
+ *                     recovery按键可以通过长按和短按来触发两种不同的模式;
+ *                     b)如果关闭了该模式，则key_work_mode生效，recovery按键只能触发一种模式.
+ *key_work_mode     :  模式选择
+ *                     0: 刷机,
+ *                     1: 一键恢复(uboot阶段),
+ *                     2: 安卓recovery,
+ *                     3: 安卓恢复出厂设置.
+ *                     如果不设置，模式为安卓recovery.
+ *short_press_mode  :  长按触发的模式，选项同上.
+ *long_press_mode   :  短按触发的模式，选项同上.
+ *key_press_time    :  定义长按的时间，单位:毫秒.
+ *recovery_key      :  按键配置.
+ */
+&adc_boot_recovery {
+       recovery_adc_used = <0x1>;
+       recovery_adc_channel = <0x1>;
+       press_mode_enable = <0x1>;
+       adc_work_mode = <0x2>;
+       short_press_mode = <0x0>;
+       long_press_mode = <0x2>;
+       key_press_time = <0x1388>;
+       key_min = <9>;
+       key_max = <11>;
+};
+
+&target {
+	boot_clock = <1008>;	/*CPU boot frequency, Unit: MHz*/
+	storage_type = <0xffffffff>; /*boot medium, 0-nand, 1-card0, 2-card2, -1(defualt)auto scan*/
+	burn_key = <1>;		/*1:support burn key; 0:not support burn key*/
+	dragonboard_test = <0>;	/*1:support card boot dragonboard; 0:not support card boot dragonboard*/
+};
+
+&charger0 {
+	pmu_safe_vol = <3400>;
+	ntc_cur = <50>;
+	safe_temp_H = <600>;//60
+	safe_temp_L = <0xFFFFFFCE>;//-5
+	pmu_bat_temp_para1 = <4592>;
+	pmu_bat_temp_para2 = <2781>;
+	pmu_bat_temp_para3 = <2125>;
+	pmu_bat_temp_para4 = <1738>;
+	pmu_bat_temp_para5 = <1390>;
+	pmu_bat_temp_para6 = <1118>;
+	pmu_bat_temp_para7 = <906>;
+	pmu_bat_temp_para8 = <606>;
+	pmu_bat_temp_para9 = <415>;
+	pmu_bat_temp_para10 = <290>;
+	pmu_bat_temp_para11 = <244>;
+	pmu_bat_temp_para12 = <206>;
+	pmu_bat_temp_para13 = <175>;
+	pmu_bat_temp_para14 = <150>;
+	pmu_bat_temp_para15 = <110>;
+	pmu_bat_temp_para16 = <83>;
+};
+
+&twi6 {
+	clock-frequency = <200000>;
+	pinctrl-0 = <&s_twi0_pins_a>;
+	pinctrl-1 = <&s_twi0_pins_b>;
+	twi-supply = <&reg_aldo3>;
+	no_suspend = <1>;
+	twi_drv_used = <1>;
+	status = "okay";
+	pmu0: pmu@34 {
+		compatible = "x-powers,axp2202";
+		status = "okay";
+		reg = <0x35>;
+		/* interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+		 * interrupt-parent = <&gic>; */
+		x-powers,drive-vbus-en;
+
+		wakeup-source;
+
+		regulator0: regulators@0 {
+			reg_dcdc1: dcdc1 {
+				regulator-name = "axp2202-dcdc1";
+			};
+			reg_dcdc2: dcdc2 {
+				regulator-name = "axp2202-dcdc2";
+			};
+			reg_dcdc3: dcdc3 {
+				regulator-name = "axp2202-dcdc3";
+			};
+			reg_dcdc4: dcdc4 {
+				regulator-name = "axp2202-dcdc4";
+			};
+			reg_rtcldo: rtcldo {
+				/* RTC_LDO is a fixed, always-on regulator */
+				regulator-name = "axp2202-rtcldo";
+			};
+			reg_aldo1: aldo1 {
+				regulator-name = "axp2202-aldo1";
+			};
+			reg_aldo2: aldo2 {
+				regulator-name = "axp2202-aldo2";
+			};
+			reg_aldo3: aldo3 {
+				regulator-name = "axp2202-aldo3";
+			};
+			reg_aldo4: aldo4 {
+				regulator-name = "axp2202-aldo4";
+			};
+			reg_bldo1: bldo1 {
+				regulator-name = "axp2202-bldo1";
+			};
+			reg_bldo2: bldo2 {
+				regulator-name = "axp2202-bldo2";
+			};
+			reg_bldo3: bldo3 {
+				regulator-name = "axp2202-bldo3";
+			};
+			reg_bldo4: bldo4 {
+				regulator-name = "axp2202-bldo4";
+			};
+			reg_cldo1: cldo1 {
+				regulator-name = "axp2202-cldo1";
+			};
+			reg_cldo2: cldo2 {
+				regulator-name = "axp2202-cldo2";
+			};
+			reg_cldo4: cldo4 {
+				regulator-name = "axp2202-cldo4";
+			};
+			reg_cpusldo: cpusldo {
+				regulator-name = "axp2202-cpusldo";
+			};
+		};
+	};
+};
+
+&recovery_key {
+	device_type = "recovery_key";
+	key_max = <11>;
+	key_min = <9>;
+};
+
+&pwm0_pin_a {
+	allwinner,pins = "PD23";
+	allwinner,function = "pwm0";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x02>;
+};
+
+&pwm0_pin_b {
+	allwinner,pins = "PD23";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm1_pin_a {
+	allwinner,pins = "PD22";
+	allwinner,function = "pwm1";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x02>;
+};
+
+&pwm1_pin_b {
+	allwinner,pins = "PD22";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm2_pin_a {
+	allwinner,pins = "PB11";
+	allwinner,function = "pwm2";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x05>;
+};
+
+&pwm2_pin_b {
+	allwinner,pins = "PB11";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm3_pin_a {
+	allwinner,pins = "PB12";
+	allwinner,function = "pwm3";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x05>;
+};
+
+&pwm3_pin_b {
+	allwinner,pins = "PB12";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm4_pin_a {
+	allwinner,pins = "PI3";
+	allwinner,function = "pwm4";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x04>;
+};
+
+&pwm4_pin_b {
+	allwinner,pins = "PI3";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm5_pin_a {
+	allwinner,pins = "PI4";
+	allwinner,function = "pwm5";
+	allwinner,drive = <0>;
+	allwinner,muxsel = <0x04>;
+};
+
+&pwm5_pin_b {
+	allwinner,pins = "PI4";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <0x0f>;
+	allwinner,drive = <0>;
+	allwinner,pull = <0>;
+};
+
+&pwm0 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm0_pin_a>;
+	pinctrl-1 = <&pwm0_pin_b>;
+	status = "okay";
+};
+
+&pwm1 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm1_pin_a>;
+	pinctrl-1 = <&pwm1_pin_b>;
+	status = "okay";
+};
+
+&pwm2 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm2_pin_a>;
+	pinctrl-1 = <&pwm2_pin_b>;
+	status = "disabled";
+};
+
+&pwm3 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm3_pin_a>;
+	pinctrl-1 = <&pwm3_pin_b>;
+	status = "disabled";
+};
+
+&pwm4 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm4_pin_a>;
+	pinctrl-1 = <&pwm4_pin_b>;
+	status = "okay";
+};
+
+&pwm5 {
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&pwm5_pin_a>;
+	pinctrl-1 = <&pwm5_pin_b>;
+	status = "okay";
+};
+
+&sdc0_pins_a {
+	allwinner,pins = "PF0", "PF1", "PF2",
+			 "PF3", "PF4", "PF5";
+	allwinner,function = "sdc0";
+	allwinner,muxsel = <2>;
+	allwinner,drive = <3>;
+	allwinner,pull = <1>;
+};
+
+&sdc0_pins_b {
+	allwinner,pins = "PF0", "PF1", "PF2",
+			 "PF3", "PF4", "PF5";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <1>;
+	allwinner,pull = <1>;
+};
+
+&sdc0_pins_c {
+	allwinner,pins = "PF0", "PF1", "PF2",
+			 "PF3", "PF4", "PF5";
+	allwinner,function = "uart0_jtag";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <1>;
+	allwinner,pull = <1>;
+};
+
+
+&sdc2_pins_a {
+	allwinner,pins = "PC1", "PC5", "PC6",
+			 "PC8", "PC9", "PC10", "PC11",
+			 "PC13", "PC14", "PC15", "PC16";
+	allwinner,function = "sdc2";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <1>;
+};
+
+&sdc2_pins_b {
+	allwinner,pins = "PC0", "PC1", "PC5", "PC6",
+			 "PC8", "PC9", "PC10", "PC11",
+			 "PC13", "PC14", "PC15", "PC16";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <1>;
+	allwinner,pull = <1>;
+};
+
+&sdc2_pins_c {
+	allwinner,pins = "PC0";
+	allwinner,function = "sdc2";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <2>;
+};
+
+&nand0_pins_a {
+	allwinner,pins = "PC0", "PC1", "PC2", "PC5",
+			 "PC8", "PC9", "PC10", "PC11",
+			 "PC12", "PC13", "PC14", "PC15",
+			 "PC16";
+	allwinner,pname= "nand0_we", "nand0_ale","nand0_cle", "nand0_nre",
+			 "nand0_d0", "nand0_d1", "nand0_d2", "nand0_d3",
+			 "nand0_d4", "nand0_d5", "nand0_d6", "nand0_d7",
+			 "nand0_ndqs";
+	allwinner,function = "nand0";
+	allwinner,muxsel = <2>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&nand0_pins_b {
+	allwinner,pins = "PC4", "PC6", "PC03", "PC07";
+	allwinner,pname= "nand0_ce0", "nand0_rb0", "nand0_ce1", "nand0_rb1";
+	allwinner,function = "nand0";
+	allwinner,muxsel = <2>;
+	allwinner,drive = <1>;
+	allwinner,pull = <1>;	/* only RB&CE should be pulled up */
+};
+
+&nand0_pins_c {
+	allwinner,pins = "PC0", "PC1", "PC2", "PC3",
+			 "PC4", "PC5", "PC6", "PC7",
+			 "PC8", "PC9", "PC10", "PC11",
+			 "PC12", "PC13", "PC14", "PC15",
+			 "PC16";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&spi0_pins_a {
+	allwinner,pins = "PC12", "PC2", "PC4";
+	allwinner,pname = "spi0_clk", "spi0_mosi", "spi0_miso";
+	allwinner,function = "spi0";
+	allwinner,muxsel = <4>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&spi0_pins_b {
+	allwinner,pins = "PC3", "PC15", "PC16";
+	allwinner,pname = "spi0_cs0", "spi0_wp", "spi0_hold";
+	allwinner,function = "spi0";
+	allwinner,muxsel = <4>;
+	allwinner,drive = <1>;
+	allwinner,pull = <1>;   // only CS should be pulled up
+};
+
+&spi0_pins_c {
+	allwinner,pins = "PC12", "PC2", "PC4", "PC3", "PC15", "PC16";
+	allwinner,function = "io_disabled";
+	allwinner,muxsel = <15>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&lvds0_pins_a {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7";
+	allwinner,function = "lvds0";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds0_pins_b {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7";
+	allwinner,function = "lvds0_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds1_pins_a {
+	allwinner,pins = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,pname = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,function = "lvds1";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds1_pins_b {
+	allwinner,pins = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,pname = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,function = "lvds1_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds2_pins_a {
+	allwinner,pins = "PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,pname = "PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,function = "lvds2";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds2_pins_b {
+	allwinner,pins = "PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,pname = "PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,function = "lvds2_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds3_pins_a {
+	allwinner,pins = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19";
+	allwinner,pname = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19";
+	allwinner,function = "lvds3";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds3_pins_b {
+	allwinner,pins = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19";
+	allwinner,pname = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19";
+	allwinner,function = "lvds3_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lcd1_lvds2link_pins_a {
+	allwinner,pins = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,pname = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,function = "lvds3";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lcd1_lvds2link_pins_b {
+	allwinner,pins = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,pname = "PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ7", "PJ6", "PJ5", "PJ4", "PJ3", "PJ2", "PJ1", "PJ0", "PJ8", "PJ9";
+	allwinner,function = "lvds3_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds2link_pins_a {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,function = "lvds2link";
+	allwinner,muxsel = <3>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&lvds2link_pins_b {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD8", "PD9", "PD6", "PD7", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD18", "PD19", "PD16", "PD17";
+	allwinner,function = "lvds2link_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&rgb24_pins_a {
+	allwinner,pins = "PJ0", "PJ1", "PJ2", "PJ3", "PJ4", "PJ5", "PJ6", "PJ7", "PJ8", "PJ9", \
+	"PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ20", "PJ21", "PJ22", "PJ23", "PJ24", "PJ25", "PJ26", "PJ27";
+	allwinner,pname = "PJ0", "PJ1", "PJ2", "PJ3", "PJ4", "PJ5", "PJ6", "PJ7", "PJ8", "PJ9", \
+	"PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ20", "PJ21", "PJ22", "PJ23", "PJ24", "PJ25", "PJ26", "PJ27";
+	allwinner,function = "rgb24";
+	allwinner,muxsel = <2>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&rgb24_pins_b {
+	allwinner,pins = "PJ0", "PJ1", "PJ2", "PJ3", "PJ4", "PJ5", "PJ6", "PJ7", "PJ8", "PJ9", \
+	"PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ20", "PJ21", "PJ22", "PJ23", "PJ24", "PJ25", "PJ26", "PJ27";
+	allwinner,pname = "PJ0", "PJ1", "PJ2", "PJ3", "PJ4", "PJ5", "PJ6", "PJ7", "PJ8", "PJ9", \
+	"PJ10", "PJ11", "PJ12", "PJ13", "PJ14", "PJ15", "PJ16", "PJ17", "PJ18", "PJ19", \
+	"PJ20", "PJ21", "PJ22", "PJ23", "PJ24", "PJ25", "PJ26", "PJ27";
+	allwinner,function = "rgb24_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&rgb18_pins_a {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21";
+	allwinner,function = "rgb18";
+	allwinner,muxsel = <2>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&rgb18_pins_b {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21";
+	allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21";
+	allwinner,function = "rgb18_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&eink_pins_a {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21", "PD22";
+	allwinner,pname = "eink_pin0", "eink_pin1", "eink_pin2", "eink_pin3", "eink_pin4", \
+			  "eink_pin5", "eink_pin6", "eink_pin7", "eink_pin8", "eink_pin9", \
+			  "eink_pin10", "eink_pin11", "eink_pin12", "eink_pin13", "eink_pin14", \
+			  "eink_pin15", "eink_pinoeh", "eink_pinleh", "eink_pinckh", "eink_pinsth", \
+			  "eink_pinckv", "eink_pinmod", "eink_pinstv";
+	allwinner,function = "eink";
+	allwinner,muxsel = <5>;
+	allwinner,drive = <3>;
+	allwinner,pull = <0>;
+};
+
+&eink_pins_b {
+	allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9", \
+	"PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19", \
+	"PD20", "PD21", "PD22";
+	allwinner,pname = "eink_pin0", "eink_pin1", "eink_pin2", "eink_pin3", "eink_pin4", \
+			  "eink_pin5", "eink_pin6", "eink_pin7", "eink_pin8", "eink_pin9", \
+			  "eink_pin10", "eink_pin11", "eink_pin12", "eink_pin13", "eink_pin14", \
+			  "eink_pin15", "eink_pinoeh", "eink_pinleh", "eink_pinckh", "eink_pinsth", \
+			  "eink_pinckv", "eink_pinmod", "eink_pinstv";
+	allwinner,function = "eink_suspend";
+	allwinner,muxsel = <7>;
+	allwinner,drive = <1>;
+	allwinner,pull = <0>;
+};
+
+&dsi0_4lane_pins_a {
+        allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9";
+        allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9";
+        allwinner,function = "dsi4lane";
+        allwinner,muxsel = <4>;
+        allwinner,drive = <3>;
+        allwinner,pull = <0>;
+};
+
+&dsi0_4lane_pins_b {
+        allwinner,pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9";
+        allwinner,pname = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8", "PD9";
+        allwinner,function = "dsi4lane_suspend";
+        allwinner,muxsel = <7>;
+        allwinner,drive = <1>;
+        allwinner,pull = <0>;
+};
+
+&dsi1_4lane_pins_a {
+        allwinner,pins = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19";
+        allwinner,pname = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19";
+        allwinner,function = "dsi1";
+        allwinner,muxsel = <4>;
+        allwinner,drive = <3>;
+        allwinner,pull = <0>;
+};
+
+&dsi1_4lane_pins_b {
+        allwinner,pins = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19";
+        allwinner,pname = "PD10", "PD11", "PD12", "PD13", "PD14", "PD15", "PD16", "PD17", "PD18", "PD19";
+        allwinner,function = "io_disabled";
+        allwinner,muxsel = <7>;
+        allwinner,drive = <1>;
+        allwinner,pull = <0>;
+};
+
+
+&card0_boot_para {  /* Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value */
+	/* reg = <0x0 0x2 0x0 0x0>;  [> Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value <] */
+	device_type = "card0_boot_para";
+	card_ctrl = <0x0>;
+	card_high_speed = <0x1>;
+	card_line = <0x4>;
+	clk_mmc = "sdmmc0_mod";
+	pll-0 = "hosc";
+	pll-1 = "pll_periph1_400m";
+	pll-2 = "pll_periph1_300m";
+	pinctrl-0 = <&sdc0_pins_a>;
+};
+
+&card2_boot_para {
+	/*
+	* Avoid dtc compiling warnings.
+	* @TODO: Developer should modify this to the actual value
+	*/
+	reg = <0x0 0x3 0x0 0x0>;
+	device_type = "card2_boot_para";
+	card_ctrl = <0x2>;
+	card_high_speed = <0x1>;
+	card_line = <0x8>;
+	clk_mmc = "sdmmc2_mod";
+	pll-0 = "hosc";
+	pll-1 = "pll_periph1_800m";
+	pll-2 = "pll_periph1_600m";
+	pinctrl-0 = <&sdc2_pins_a &sdc2_pins_c>;
+	sdc_ex_dly_used = <0x2>;
+	sdc_tm4_hs200_max_freq = <150>;
+	sdc_tm4_hs400_max_freq = <150>;
+	sdc_io_1v8 = <0x1>;
+	sdc_type = "tm4";
+};
+
+&gpio_bias {  /* Avoid dtc compiling warnings. @TODO: Developer should modify this to the actual value */
+	device_type = "gpio_bias";
+	pc_bias = <1800>;
+	pl_supply = "aldo3_vol";
+};
+
+&power_delay {
+	device_type = "power_delay";
+	aldo3_vol_delay = <20000>;
+};
+
+&nand0 {
+	compatible = "allwinner,sun55iw3-nand";
+	device_type = "nand0";
+	//reg = <0x0 0x04011000 0x0 0x1000>;/* nand0 */
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&nand0_pins_a &nand0_pins_b>;
+	pinctrl-1 = <&nand0_pins_c>;
+	nand0_regulator1 = "vcc-nand";
+	nand0_regulator2 = "none";
+	nand0_cache_level = <0x55aaaa55>;
+	nand0_flush_cache_num = <0x55aaaa55>;
+	nand0_capacity_level = <0x55aaaa55>;
+	nand0_id_number_ctl = <0x55aaaa55>;
+	nand0_print_level = <0x55aaaa55>;
+	nand0_p0 = <0x55aaaa55>;
+	nand0_p1 = <0x55aaaa55>;
+	nand0_p2 = <0x55aaaa55>;
+	nand0_p3 = <0x55aaaa55>;
+	chip_code = "sun50iw10";
+	status = "disabled";
+};
+
+&spi0 {
+	clock-frequency = <100000000>;
+	pinctrl-0 = <&spi0_pins_a &spi0_pins_b>;
+	pinctrl-1 = <&spi0_pins_c>;
+	pinctrl-names = "default", "sleep";
+	spi_slave_mode = <0>;
+	spi_dbi_enable = <0>;
+	spi0_cs_number = <1>;
+	status = "disabled";
+
+	spi_board0 {
+		device_type = "spi_board0";
+		compatible = "spi-nor";
+		spi-max-frequency = <100000000>;
+		m25p,fast-read = <1>;
+		/*individual_lock;*/
+		reg = <0x0>;
+		spi-rx-bus-width=<0x01>;
+		spi-tx-bus-width=<0x01>;
+		status="disabled";
+	};
+
+	spi-nand@0 {
+		compatible = "spi-nand";
+		spi-max-frequency=<50000000>;
+		reg = <0x0>;
+		spi-rx-bus-width=<0x01>;
+		spi-tx-bus-width=<0x01>;
+		status="disabled";
+	};
+};
+
+
+&aliases {
+	nand0 = &nand0;
+	twi6 = &twi6;
+	pwm = &pwm;
+	pwm0 = &pwm0;
+	pwm1 = &pwm1;
+	pwm2 = &pwm2;
+	pwm3 = &pwm3;
+	pwm4 = &pwm4;
+	pwm5 = &pwm5;
+	pwm6 = &pwm6;
+	pwm7 = &pwm7;
+	pwm8 = &pwm8;
+	pwm9 = &pwm9;
+	disp = &disp;
+	lcd0 = &lcd0;
+	lcd1 = &lcd1;
+	lcd2 = &lcd2;
+	eink = &eink;
+	edp0 = &edp0;
+	pmu0 = &pmu0;
+
+};

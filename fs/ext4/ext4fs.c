@@ -61,8 +61,10 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 	lbaint_t delayed_skipfirst = 0;
 	lbaint_t delayed_next = 0;
 	char *delayed_buf = NULL;
-	char *start_buf = buf;
 	short status;
+
+	if (blocksize <= 0)
+		return -1;
 
 	/* Adjust len so it we can't read past the end of the file. */
 	if (len + pos > filesize)
@@ -134,7 +136,6 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 			}
 		} else {
 			int n;
-			int n_left;
 			if (previous_block_number != -1) {
 				/* spill */
 				status = ext4fs_devread(delayed_start,
@@ -147,9 +148,8 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 			}
 			/* Zero no more than `len' bytes. */
 			n = blocksize - skipfirst;
-			n_left = len - ( buf - start_buf );
-			if (n > n_left)
-				n = n_left;
+			if (n > len)
+				n = len;
 			memset(buf, 0, n);
 		}
 		buf += blocksize - skipfirst;
@@ -170,7 +170,7 @@ int ext4fs_read_file(struct ext2fs_node *node, loff_t pos,
 
 int ext4fs_ls(const char *dirname)
 {
-	struct ext2fs_node *dirnode = NULL;
+	struct ext2fs_node *dirnode;
 	int status;
 
 	if (dirname == NULL)
@@ -180,8 +180,7 @@ int ext4fs_ls(const char *dirname)
 				  FILETYPE_DIRECTORY);
 	if (status != 1) {
 		printf("** Can not find directory. **\n");
-		if (dirnode)
-			ext4fs_free_node(dirnode, &ext4fs_root->diropen);
+		ext4fs_free_node(dirnode, &ext4fs_root->diropen);
 		return 1;
 	}
 

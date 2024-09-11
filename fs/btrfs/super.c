@@ -15,34 +15,18 @@
 
 #define BTRFS_SUPER_INFO_SIZE	4096
 
-/*
- * checks if a valid root backup is present.
- * considers the case when all root backups empty valid.
- * returns -1 in case of invalid root backup and 0 for valid.
- */
-static int btrfs_check_super_roots(struct btrfs_super_block *sb)
+static int btrfs_newest_root_backup(struct btrfs_super_block *sb)
 {
 	struct btrfs_root_backup *root_backup;
 	int i, newest = -1;
-	int num_empty = 0;
 
 	for (i = 0; i < BTRFS_NUM_BACKUP_ROOTS; ++i) {
 		root_backup = sb->super_roots + i;
-
-		if (root_backup->tree_root == 0 && root_backup->tree_root_gen == 0)
-			num_empty++;
-
 		if (root_backup->tree_root_gen == sb->generation)
 			newest = i;
 	}
 
-	if (num_empty == BTRFS_NUM_BACKUP_ROOTS) {
-		return 0;
-	} else if (newest >= 0) {
-		return 0;
-	}
-
-	return -1;
+	return newest;
 }
 
 static inline int is_power_of_2(u64 x)
@@ -182,7 +166,7 @@ int btrfs_read_superblock(void)
 	char raw_sb[BTRFS_SUPER_INFO_SIZE];
 	struct btrfs_super_block *sb = (struct btrfs_super_block *) raw_sb;
 	u64 dev_total_bytes;
-	int i;
+	int i, root_backup_idx;
 
 	dev_total_bytes = (u64) btrfs_part_info->size * btrfs_part_info->blksz;
 
@@ -227,15 +211,17 @@ int btrfs_read_superblock(void)
 		return -1;
 	}
 
-	if (btrfs_check_super_roots(&btrfs_info.sb)) {
+	root_backup_idx = btrfs_newest_root_backup(&btrfs_info.sb);
+	if (root_backup_idx < 0) {
 		printf("%s: No valid root_backup found!\n", __func__);
 		return -1;
 	}
+	btrfs_info.root_backup = btrfs_info.sb.super_roots + root_backup_idx;
 
-	if (btrfs_info.sb.num_devices != 1) {
+	if (btrfs_info.root_backup->num_devices != 1) {
 		printf("%s: Unsupported number of devices (%lli). This driver "
 		       "only supports filesystem on one device.\n", __func__,
-		       btrfs_info.sb.num_devices);
+		       btrfs_info.root_backup->num_devices);
 		return -1;
 	}
 
