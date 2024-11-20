@@ -183,6 +183,14 @@ __weak int dram_init_banksize(void)
 #if defined(CONFIG_NR_DRAM_BANKS) && defined(CONFIG_SYS_SDRAM_BASE)
 	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
 	gd->bd->bi_dram[0].size = get_effective_memsize();
+
+#endif
+
+#if defined(CONFIG_ARCH_SUNXI)
+	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_dram[0].size =
+		(phys_size_t)uboot_spare_head.boot_data.dram_scan_size * 1024 *
+		1024;
 #endif
 
 	return 0;
