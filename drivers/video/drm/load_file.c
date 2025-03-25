@@ -62,6 +62,13 @@ struct file_info_t *load_file(char *name, char *part_name)
 	//char part_info[16] = { 0 }, 
 	char size[32] = { 0 };
 	struct file_info_t *file = NULL;
+	int i = 0;
+
+	const char *devices[][2] = {
+		{ "mmc dev 0", "0:1" },
+		{ "mmc dev 2", "2:1" },
+		{ "pci enum;nvme scan;nvme dev 0", "0:1" }
+	};
 
 	if (!name || !part_name) {
 		pr_err("NULL pointer! name:%p, part_name:%p\n", name,
@@ -77,35 +84,48 @@ struct file_info_t *load_file(char *name, char *part_name)
 	//snprintf(part_info, 16, "0:%x", partno);
 
 	strncpy(name, "/boot/boot.bmp", 15);
-	printf("bmp_name=%s\n", name);
 
 	argv[0] = "ext4size";
-	argv[1] = "mmc";
-	argv[2] = "0:1";
 	argv[3] = name;
 	argv[4] = NULL;
 	argv[5] = NULL;
 
-	run_command("mmc dev 0", 0);
-	run_command("mmc part", 0);
+	for (i = 0; i < ARRAY_SIZE(devices); i++) {
+		printf("Trying device: %s\n", devices[i][0]);
 
-	if (!do_ext4_size(0, 0, 4, argv)) {
-		file = (struct file_info_t *)malloc(sizeof(struct file_info_t));
-		memset(file, 0, sizeof(struct file_info_t));
-		file->file_size = env_get_hex("filesize", 0);
-	} else {
-		run_command("mmc dev 2", 0);
-		run_command("mmc part", 0);
-		argv[2] = "2:1";
+		if (run_command(devices[i][0], 0)) {
+			printf("Failed to set %s\n", devices[i][0]);
+			continue;
+		}
+
+		argv[1] = strstr(devices[i][0], "nvme") ? "nvme" : "mmc";
+		if(!strcmp(argv[1], "mmc"))
+			run_command("mmc part", 0);
+
+		argv[2] = (char *)devices[i][1];
+		printf("Trying to get file size from %s, file: %s\n", argv[2], name);
+
 		if (!do_ext4_size(0, 0, 4, argv)) {
+			file = malloc(sizeof(struct file_info_t));
+			if (!file) {
+				pr_err("malloc failed\n");
+				goto OUT;
+			}
 			memset(file, 0, sizeof(struct file_info_t));
 			file->file_size = env_get_hex("filesize", 0);
+			printf("Found file: %s, size: 0x%lx (%lu bytes)\n", name,
+			       (unsigned long)file->file_size,
+			       (unsigned long)file->file_size);
+			break;
 		} else {
-			pr_err("get file(%s) size from %s error\n", name, part_name);
-			goto OUT;
+			printf("ext4size failed on %s\n", argv[2]);
 		}
 	}
 
+	if (!file) {
+		pr_err("get file(%s) size from %s error\n", name, part_name);
+		goto OUT;
+	}
 	file->name = (char *)malloc(strlen(name) + 1);
 	strncpy(file->name, name, strlen(name) + 1);
 	file->path = (char *)malloc(strlen(part_name) + 1);

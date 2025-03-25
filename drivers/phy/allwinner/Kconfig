@@ -14,7 +14,6 @@ config PHY_SUN4I_USB
 
 config AW_INNO_COMBOPHY
 	tristate "Allwinner INNO COMBO PHY Driver"
-	default n
 	depends on ARCH_SUNXI
 	help
 	  Enable this to support the Allwinner PCIe/USB3.0 combo PHY

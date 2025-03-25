@@ -1217,7 +1217,7 @@ pwm: pwm@2000c00 {
 			      <0x0 0x04f80000 0x0 0x80000>; /* Combo INNO PHY Registers */
 			reg-names = "phy-ctl", "phy-clk";
 			#phy-cells = <1>;
-			status = "disabled";
+			status = "okay";
 		};
 
 		pcie: pcie@4800000 {
@@ -1240,7 +1240,7 @@ pwm: pwm@2000c00 {
 			num-ib-windows = <8>;
 			num-ob-windows = <8>;
 			linux,pci-domain = <0>;
-			status = "disabled";
+			status = "okay";
 		};
 	};
 

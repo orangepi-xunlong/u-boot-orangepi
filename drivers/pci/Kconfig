@@ -120,4 +120,11 @@ config PCIE_ALLWINNER_RC
 	help
 	   Enables support for the DW PCIe controller in the Allwinner SoC.
 
+config PCIE_ALLWINNER_RC
+	bool "Allwinner DesignWare PCIe controller"
+	depends on ARCH_SUNXI
+	select DM
+	help
+	   Enables support for the DW PCIe controller in the Allwinner SoC.
+
 endif
