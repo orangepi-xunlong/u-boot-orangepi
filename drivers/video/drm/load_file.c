@@ -83,7 +83,8 @@ struct file_info_t *load_file(char *name, char *part_name)
 	//}
 	//snprintf(part_info, 16, "0:%x", partno);
 
-	strncpy(name, "/boot/boot.bmp", 15);
+	//strncpy(name, "/boot/boot.bmp", 15);
+	strncpy(name, "/boot/boot1.bmp", 15);
 
 	argv[0] = "ext4size";
 	argv[3] = name;
