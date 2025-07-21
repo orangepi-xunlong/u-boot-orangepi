@@ -297,8 +297,8 @@
 &power_sply {
 	bldo1_vol = <1800>;
 	bldo2_vol = <1001800>;
-	bldo3_vol = <1001800>;
-	cldo2_vol = <1001800>;
+	//bldo3_vol = <1001800>;
+	//cldo2_vol = <1001800>;
 	cldo4_vol = <1103300>;
 	dcdc1_mode = <1>;
 	dcdc3_mode = <1>;
