@@ -373,6 +373,7 @@ static void sunxi_pcie_host_init(struct udevice *dev)
 		mdelay(100);
 		gpio_set_value(pcie_reset_gpio, 1);
 	}
+	mdelay(100);
 
 	sunxi_pcie_host_setup_rc(&pci->pcie_port);
 

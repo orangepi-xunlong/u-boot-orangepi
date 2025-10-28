@@ -70,6 +70,8 @@ struct file_info_t *load_file(char *name, char *part_name)
 		{ "pci enum;nvme scan;nvme dev 0", "0:1" }
 	};
 
+	goto OUT;
+
 	if (!name || !part_name) {
 		pr_err("NULL pointer! name:%p, part_name:%p\n", name,
 		       part_name);
@@ -83,8 +85,7 @@ struct file_info_t *load_file(char *name, char *part_name)
 	//}
 	//snprintf(part_info, 16, "0:%x", partno);
 
-	//strncpy(name, "/boot/boot.bmp", 15);
-	strncpy(name, "/boot/boot1.bmp", 15);
+	strncpy(name, "/boot/boot.bmp", 15);
 
 	argv[0] = "ext4size";
 	argv[3] = name;

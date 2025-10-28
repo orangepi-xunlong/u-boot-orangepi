@@ -216,6 +216,8 @@ static int __abortboot(int bootdelay)
 	int abort = 0;
 	unsigned long ts;
 
+	//run_command("run bootcmd_nvme", 0);
+
 	bootdelay = 1;
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);

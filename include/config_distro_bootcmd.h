@@ -59,10 +59,13 @@
 #define BOOTENV_SHARED_NVME  BOOTENV_SHARED_BLKDEV(nvme)
 #define BOOTENV_DEV_NVME(devtypeu, devtypel, instance) \
 	"bootcmd_nvme=" \
+		"sleep 0.5;" \
 		"pci enum;" \
 		"nvme scan;" \
 		"setenv devnum 0;" \
-		"run nvme_boot;" \
+		"setenv devtype nvme;" \
+		"setenv prefix /boot/;" \
+		"run nvme_boot_test;" \
 		"\0"
 #define BOOTENV_DEV_NAME_NVME(devtypeu, devtypel, instance)  "nvme "
 #else
@@ -434,6 +437,10 @@
 	\
 	BOOT_TARGET_DEVICES(BOOTENV_DEV)                                  \
 	\
+	"nvme_boot_test="                                                 \
+		"load nvme 0:1 ${scriptaddr} /boot/boot.scr;"             \
+		"source ${scriptaddr};"                                   \
+		"\0"                                                      \
 	"distro_bootcmd=" BOOTENV_SET_SCSI_NEED_INIT                      \
 		"for target in ${boot_targets}; do "                      \
 			"run bootcmd_${target}; "                         \
