@@ -55,11 +55,32 @@ static int __print_file_info(struct file_info_t *file)
 	return 0;
 }
 
+#include "boot_bmp.h"
+
+void *decompress_boot_bmp(void)
+{
+	unsigned long uncomp_len = 256 * 1024;
+	void *uncomp_buf = malloc(uncomp_len);
+
+	if (!uncomp_buf) {
+		printf("malloc failed!\n");
+		return NULL;
+	}
+
+	if (gunzip(uncomp_buf, uncomp_len,
+		   boot_bmp_gz, (long unsigned int *)&boot_bmp_gz_len) != 0) {
+		printf("gunzip failed!\n");
+		free(uncomp_buf);
+		return NULL;
+	}
+
+	printf("boot.bmp decompressed OK\n");
+	return uncomp_buf;
+}
+
 struct file_info_t *load_file(char *name, char *part_name)
 {
-	//int partno = -1;
 	char *argv[6], file_addr[32];
-	//char part_info[16] = { 0 }, 
 	char size[32] = { 0 };
 	struct file_info_t *file = NULL;
 	int i = 0;
@@ -70,20 +91,10 @@ struct file_info_t *load_file(char *name, char *part_name)
 		{ "pci enum;nvme scan;nvme dev 0", "0:1" }
 	};
 
-	goto OUT;
-
 	if (!name || !part_name) {
-		pr_err("NULL pointer! name:%p, part_name:%p\n", name,
-		       part_name);
+		pr_err("NULL pointer! name:%p, part_name:%p\n", name, part_name);
 		goto OUT;
 	}
-
-	//partno = sunxi_partition_get_partno_byname(part_name);
-	//if (partno < 0) {
-	//	pr_err("%s is not found!\n", part_name);
-	//	goto OUT;
-	//}
-	//snprintf(part_info, 16, "0:%x", partno);
 
 	strncpy(name, "/boot/boot.bmp", 15);
 
@@ -93,6 +104,7 @@ struct file_info_t *load_file(char *name, char *part_name)
 	argv[5] = NULL;
 
 	for (i = 0; i < ARRAY_SIZE(devices); i++) {
+
 		printf("Trying device: %s\n", devices[i][0]);
 
 		if (run_command(devices[i][0], 0)) {
@@ -100,9 +112,33 @@ struct file_info_t *load_file(char *name, char *part_name)
 			continue;
 		}
 
-		argv[1] = strstr(devices[i][0], "nvme") ? "nvme" : "mmc";
-		if(!strcmp(argv[1], "mmc"))
-			run_command("mmc part", 0);
+		int is_nvme = (strstr(devices[i][0], "nvme") != NULL);
+
+		if (is_nvme) {
+			printf("NVMe detected ==> using embedded boot.bmp array\n");
+
+			file = malloc(sizeof(struct file_info_t));
+			if (!file) {
+				pr_err("malloc failed\n");
+				goto OUT;
+			}
+
+			memset(file, 0, sizeof(struct file_info_t));
+
+			file->file_addr = decompress_boot_bmp();
+			file->file_size = 256 * 1024;
+
+			file->name = strdup("boot.bmp");
+			file->path = strdup("embedded_array");
+
+			file->unload_file = __unload_file;
+			file->print_file_info = __print_file_info;
+
+			return file;
+		}
+
+		argv[1] = "mmc";
+		run_command("mmc part", 0);
 
 		argv[2] = (char *)devices[i][1];
 		printf("Trying to get file size from %s, file: %s\n", argv[2], name);
@@ -113,27 +149,29 @@ struct file_info_t *load_file(char *name, char *part_name)
 				pr_err("malloc failed\n");
 				goto OUT;
 			}
+
 			memset(file, 0, sizeof(struct file_info_t));
+
 			file->file_size = env_get_hex("filesize", 0);
-			printf("Found file: %s, size: 0x%lx (%lu bytes)\n", name,
-			       (unsigned long)file->file_size,
+			printf("Found file: %s, size: 0x%lx (%lu bytes)\n",
+			       name, (unsigned long)file->file_size,
 			       (unsigned long)file->file_size);
 			break;
-		} else {
-			printf("ext4size failed on %s\n", argv[2]);
 		}
+
+		printf("ext4size failed on %s\n", argv[2]);
 	}
 
 	if (!file) {
 		pr_err("get file(%s) size from %s error\n", name, part_name);
 		goto OUT;
 	}
-	file->name = (char *)malloc(strlen(name) + 1);
-	strncpy(file->name, name, strlen(name) + 1);
-	file->path = (char *)malloc(strlen(part_name) + 1);
-	strncpy(file->path, name, strlen(name) + 1);
-	file->file_addr =
-		memalign(4096, file->file_size);
+
+	file->name = strdup(name);
+
+	file->path = strdup(part_name);
+
+	file->file_addr = memalign(4096, file->file_size);
 
 	sprintf(file_addr, "%lx", (unsigned long)file->file_addr);
 	snprintf(size, 16, "%lx", (unsigned long)file->file_size);
@@ -141,7 +179,6 @@ struct file_info_t *load_file(char *name, char *part_name)
 	argv[0] = "ext4load";
 	argv[3] = file_addr;
 	argv[4] = name;
-	argv[5] = NULL;
 
 	if (do_ext4_load(0, 0, 6, argv)) {
 		pr_err("Unable to open file %s from %s\n", name, part_name);
@@ -164,6 +201,7 @@ FREE_FILE:
 	free(file->path);
 	free(file->file_addr);
 	free(file);
+
 OUT:
 	return NULL;
 }

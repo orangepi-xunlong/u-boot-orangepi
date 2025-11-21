@@ -813,9 +813,9 @@
 	logo,uboot = "bootlogo.bmp";
 };
 
-&disp0_lvds0 {
+&disp1_lvds0 {
 	enable = <1>;
-	status = "okay";
+	status = "disabled";
 	logo,uboot = "bootlogo.bmp";
 };
 
@@ -825,7 +825,7 @@
 	logo,uboot = "bootlogo.bmp";
 };
 
-&disp1_hdmi0 {
+&disp0_hdmi0 {
 	enable = <1>;
 	status = "okay";
 	logo,uboot = "bootlogo.bmp";

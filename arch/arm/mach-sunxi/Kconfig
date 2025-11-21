@@ -660,4 +660,12 @@ config PCIE_WAKE_GPIO
 	Set the WAKE enable pin for PCIE. This takes
 	a string in the format understood by sunxi_name_to_gpio, e.g.
 	PH1 for pin 1 of port H.
+
+config PCIE_POWER_GPIO
+	string "POWER enable pin for PCIE "
+	default ""
+	---help---
+	Set the POWER enable pin for PCIE. This takes
+	a string in the format understood by sunxi_name_to_gpio, e.g.
+	PH1 for pin 1 of port H.
 endif
