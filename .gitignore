@@ -113,3 +113,10 @@ tools/sunxi_proftool
 /sunxi.fex
 /sys_config.fex
 /sys_config/
+boot0_sdcard_a733.fex
+boot0_sdcard_orangepizero3w.fex
+boot0_spinor_a733.fex
+boot_package_a733_nvme.fex
+dts/orangepi4pro-u-boot.dts
+dts/u-boot-current.dts
+
