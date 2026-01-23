@@ -55,6 +55,15 @@
 	BOOT_TARGET_DEVICES_references_HOST_without_CONFIG_SANDBOX
 #endif
 
+#define BOOTENV_SHARED_UFS  BOOTENV_SHARED_BLKDEV(ufs)
+#define BOOTENV_DEV_UFS(devtypeu, devtypel, instance) \
+       "bootcmd_ufs=" \
+               "ufs init;" \
+               "setenv devnum 0;" \
+               "run ufs_boot;" \
+               "\0"
+#define BOOTENV_DEV_NAME_UFS(devtypeu, devtypel, instance)  "ufs "
+
 #if ((defined CONFIG_CMD_PCI) && (defined CONFIG_CMD_NVME))
 #define BOOTENV_SHARED_NVME  BOOTENV_SHARED_BLKDEV(nvme)
 #define BOOTENV_DEV_NVME(devtypeu, devtypel, instance) \
@@ -371,6 +380,7 @@
 #define BOOTENV \
 	BOOTENV_SHARED_HOST \
 	BOOTENV_SHARED_NVME \
+	BOOTENV_SHARED_UFS \
 	BOOTENV_SHARED_MMC \
 	BOOTENV_SHARED_PCI \
 	BOOTENV_SHARED_USB \

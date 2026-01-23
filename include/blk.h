@@ -22,6 +22,7 @@ typedef ulong lbaint_t;
 /* Interface types: */
 enum if_type {
 	IF_TYPE_UNKNOWN = 0,
+	IF_TYPE_UFS,
 	IF_TYPE_IDE,
 	IF_TYPE_SCSI,
 	IF_TYPE_ATAPI,
@@ -689,6 +690,9 @@ static inline ulong blk_dread(struct blk_desc *block_dev, lbaint_t start,
 #ifdef CONFIG_AW_BLK
 	if (block_dev->if_type == IF_TYPE_NVME)
 		return aw_blk_dread(block_dev, start, blkcnt, buffer);
+
+	else if (block_dev->if_type == IF_TYPE_UFS)
+		return aw_blk_dread(block_dev, start, blkcnt, buffer);
 #endif
 
 	ulong blks_read;
@@ -714,6 +718,8 @@ static inline ulong blk_dwrite(struct blk_desc *block_dev, lbaint_t start,
 {
 #ifdef CONFIG_AW_BLK
 	if (block_dev->if_type == IF_TYPE_NVME)
+		return aw_blk_dwrite(block_dev, start, blkcnt, buffer);
+	else if (block_dev->if_type == IF_TYPE_UFS)
 		return aw_blk_dwrite(block_dev, start, blkcnt, buffer);
 #endif
 

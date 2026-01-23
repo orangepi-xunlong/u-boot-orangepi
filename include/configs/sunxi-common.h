@@ -368,6 +368,9 @@
         #define BOOT_TARGET_MMC(func)
 #endif
 
+#define BOOT_TARGET_UFS(func) \
+	func(UFS, ufs, 0)
+
 
 #if CONFIG_IS_ENABLED(CMD_USB)
         #define BOOT_TARGET_USB(func) func(USB, usb, 0)
@@ -376,9 +379,10 @@
 #endif
 
 #define BOOT_TARGET_DEVICES(func) \
-        BOOT_TARGET_MMC(func) \
-        BOOT_TARGET_NVME(func) \
-        BOOT_TARGET_USB(func)
+	BOOT_TARGET_MMC(func) \
+	BOOT_TARGET_UFS(func) \
+	BOOT_TARGET_NVME(func) \
+	BOOT_TARGET_USB(func) \
 
 
 #ifdef CONFIG_OLD_SUNXI_KERNEL_COMPAT

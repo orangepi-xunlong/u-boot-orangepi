@@ -88,6 +88,7 @@ struct file_info_t *load_file(char *name, char *part_name)
 	const char *devices[][2] = {
 		{ "mmc dev 0", "0:1" },
 		{ "mmc dev 2", "2:1" },
+		{ "ufs init", "0:1" },
 		{ "pci enum;nvme scan;nvme dev 0", "0:1" }
 	};
 
@@ -105,7 +106,7 @@ struct file_info_t *load_file(char *name, char *part_name)
 
 	for (i = 0; i < ARRAY_SIZE(devices); i++) {
 
-		printf("Trying device: %s\n", devices[i][0]);
+		//printf("Trying device: %s\n", devices[i][0]);
 
 		if (run_command(devices[i][0], 0)) {
 			printf("Failed to set %s\n", devices[i][0]);
@@ -113,9 +114,10 @@ struct file_info_t *load_file(char *name, char *part_name)
 		}
 
 		int is_nvme = (strstr(devices[i][0], "nvme") != NULL);
+		int is_ufs = (strstr(devices[i][0], "ufs") != NULL);
 
-		if (is_nvme) {
-			printf("NVMe detected ==> using embedded boot.bmp array\n");
+		if (is_nvme || is_ufs) {
+			printf("NVMe or UFS detected ==> using embedded boot.bmp array\n");
 
 			file = malloc(sizeof(struct file_info_t));
 			if (!file) {

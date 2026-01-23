@@ -35,18 +35,21 @@ struct udevice g_dev;
 struct blk_desc g_bds;
 struct blk_ops g_sc_bops;
 
+extern int vblk_create(struct blk_desc *);
 
 int sunxi_ufs_init(struct udevice *udev)
 {
 	int ret = 0;
+	struct blk_desc *pbds = g_dev.bd;
+
 	ufs_bind(udev);
 	ret = ufs_probe(udev);
 	if (ret)
 		return ret;
 	ret = scsi_scan_dev(udev, true);
+	vblk_create(pbds);
 	return ret;
 }
-
 
 void sunxi_ufs_exit(struct udevice *udev)
 {

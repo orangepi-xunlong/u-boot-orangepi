@@ -836,6 +836,8 @@ int board_late_init(void)
 			p_fastlogo->reserve_memory(p_fastlogo);
 		}
 #endif
+extern int sunxi_ufs_global_init(void);
+		sunxi_ufs_global_init();
 	}
 	return 0;
 }

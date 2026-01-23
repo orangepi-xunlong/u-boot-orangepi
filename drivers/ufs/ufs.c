@@ -200,6 +200,7 @@ int ufshcd_wait_for_register(struct ufs_hba *hba, u32 reg, u32 mask,
 
 inline void ufshcd_print_uic_info(struct ufs_hba *hba)
 {
+	return ;
 	dev_err(hba->dev, "uic c %x,uic a %x,%x,%x\n",\
 			ufshcd_readl(hba, REG_UIC_COMMAND), \
 			ufshcd_readl(hba, REG_UIC_COMMAND_ARG_1),\
@@ -340,8 +341,8 @@ static inline int ufshcd_wait_device_linkstartup(struct ufs_hba *hba)
 	err = ufshcd_wait_for_register(hba, REG_INTERRUPT_STATUS,
 				       UIC_LINK_STARTUP, UIC_LINK_STARTUP,
 				       100);
-	if (err)
-		dev_err(hba->dev, "wait device link startup failed\n");
+	//if (err)
+	//	dev_err(hba->dev, "wait device link startup failed\n");
 	return err;
 }
 
@@ -402,8 +403,8 @@ static int ufshcd_send_uic_cmd(struct ufs_hba *hba, struct uic_command *uic_cmd)
 	uic_cmd->argument3 = ufshcd_get_dme_attr_val(hba);
 
 	if (uic_cmd->argument2) {
-		ufshcd_print_uic_info(hba);
-		ufshcd_print_int_info(hba, intr_status);
+		//ufshcd_print_uic_info(hba);
+		//ufshcd_print_int_info(hba, intr_status);
 	}
 
 	debug("Sent successfully\n");
@@ -703,11 +704,11 @@ link_startup:
 		/* check if device is detected by inter-connect layer */
 		if (!ret && !ufshcd_is_device_present(hba)) {
 			//dev_err(hba->dev, "%s: Device not present\n", __func__);
-			dev_err(hba->dev, "Device not present\n");
+			//dev_err(hba->dev, "Device not present\n");
 			ret = -ENXIO;
 #ifdef SUPPORT_PEER_INITED_BOOT
 			if (ufshcd_wait_device_linkstartup(hba)) {
-				dev_info(hba->dev, "peer link startup timeout\n");
+				//dev_info(hba->dev, "peer link startup timeout\n");
 				if (retries == 1)
 					ufshcd_ops_device_reset(hba);
 				/*
@@ -780,7 +781,7 @@ link_startup:
 out:
 	if (ret) {
 		sunxi_ufs_trace_point(SUNXI_UFS_LINK_ERR);
-		dev_err(hba->dev, "link startup failed %d\n", ret);
+		//dev_err(hba->dev, "link startup failed %d\n", ret);
 	}
 	return ret;
 }

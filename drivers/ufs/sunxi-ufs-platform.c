@@ -71,9 +71,9 @@ static inline int sunxi_ufs_get_cal_words(struct ufs_hba *hba, u32 *pll_rate_a, 
 	u32 rval_l  = sid_read_key(SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_LOW);
 	u32 rval_h  = sid_read_key(SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_HIGH);
 
-	dev_info(hba->dev, "Cal words 0x%x:val 0x%x, 0x%x:val 0x%x\n",\
-						SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_LOW, rval_l,\
-						SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_HIGH, rval_h);
+	//dev_info(hba->dev, "Cal words 0x%x:val 0x%x, 0x%x:val 0x%x\n",
+	//					SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_LOW, rval_l,
+	//					SUNXI_UFS_CAL_WORDS_EFUSE_ALIGN_HIGH, rval_h);
 	*pll_rate_a = (rval_h >> 16) & 0xff;
 	*pll_rate_b = (rval_h >> 24) & 0xff;
 
@@ -1438,8 +1438,8 @@ static int sunxi_ufs_pltfm_probe(struct udevice *dev)
 {
 	int err = 0;
 	err = ufshcd_probe(dev, &dev->sunxi_pltfm_hba_ops);
-	if (err)
-		dev_err(dev, "ufshcd_probe() failed %d\n", err);
+	//if (err)
+	//	dev_err(dev, "ufshcd_probe() failed %d\n", err);
 
 	return err;
 }

@@ -42,6 +42,8 @@ const char *blk_get_if_type_name(enum if_type if_type)
 #ifdef CONFIG_AW_BLK
 	if (if_type == IF_TYPE_NVME)
 		return aw_blk_get_if_type_name(if_type);
+	else if (if_type == IF_TYPE_UFS)
+		return aw_blk_get_if_type_name(if_type);
 #endif
 
 	struct blk_driver *drv = blk_driver_lookup_type(if_type);
@@ -77,7 +79,7 @@ static int get_desc(struct blk_driver *drv, int devnum, struct blk_desc **descp)
 int blk_list_part(enum if_type if_type)
 {
 #ifdef CONFIG_AW_BLK
-	if (if_type == IF_TYPE_NVME)
+	if (if_type == IF_TYPE_NVME|| if_type == IF_TYPE_UFS)
 		return aw_blk_list_part(if_type);
 #endif
 
@@ -109,7 +111,7 @@ int blk_list_part(enum if_type if_type)
 int blk_print_part_devnum(enum if_type if_type, int devnum)
 {
 #ifdef CONFIG_AW_BLK
-	if (if_type == IF_TYPE_NVME)
+	if (if_type == IF_TYPE_NVME || if_type == IF_TYPE_UFS)
 		return aw_blk_print_part_devnum(if_type, devnum);
 #endif
 
@@ -132,7 +134,7 @@ int blk_print_part_devnum(enum if_type if_type, int devnum)
 void blk_list_devices(enum if_type if_type)
 {
 #ifdef CONFIG_AW_BLK
-	if (if_type == IF_TYPE_NVME)
+	if (if_type == IF_TYPE_NVME || if_type == IF_TYPE_UFS)
 		return aw_blk_list_devices(if_type);
 #endif
 
@@ -155,7 +157,7 @@ void blk_list_devices(enum if_type if_type)
 int blk_print_device_num(enum if_type if_type, int devnum)
 {
 #ifdef CONFIG_AW_BLK
-	if (if_type == IF_TYPE_NVME)
+	if (if_type == IF_TYPE_NVME || if_type == IF_TYPE_UFS)
 		return aw_blk_print_device_num(if_type, devnum);
 #endif
 
@@ -178,6 +180,8 @@ int blk_show_device(enum if_type if_type, int devnum)
 {
 #ifdef CONFIG_AW_BLK
 	if (if_type == IF_TYPE_NVME)
+		return aw_blk_show_device(if_type, devnum);
+	else if (if_type == IF_TYPE_UFS)
 		return aw_blk_show_device(if_type, devnum);
 #endif
 
@@ -223,6 +227,8 @@ int blk_dselect_hwpart(struct blk_desc *desc, int hwpart)
 #ifdef CONFIG_AW_BLK
 	if (desc->if_type == IF_TYPE_NVME)
 		return aw_blk_dselect_hwpart(desc, hwpart);
+	else if (desc->if_type == IF_TYPE_UFS)
+		return aw_blk_dselect_hwpart(desc, hwpart);
 #endif
 
 	struct blk_driver *drv = blk_driver_lookup_type(desc->if_type);
@@ -235,11 +241,15 @@ int blk_dselect_hwpart(struct blk_desc *desc, int hwpart)
 	return 0;
 }
 
+extern struct blk_desc *vblk_get_devnum_by_typename(const char *if_typename, int devnum);
+
 struct blk_desc *blk_get_devnum_by_typename(const char *if_typename, int devnum)
 {
 #ifdef CONFIG_AW_BLK
 	if (0 == strcmp(if_typename, "nvme"))
 		return aw_blk_get_devnum_by_typename(if_typename, devnum);
+	else if (0 == strcmp(if_typename, "ufs"))
+		return vblk_get_devnum_by_typename(if_typename, devnum);
 #endif
 
 	static struct blk_desc *desc;
@@ -256,6 +266,7 @@ struct blk_desc *blk_get_devnum_by_typename(const char *if_typename, int devnum)
 		if (get_desc(drv, devnum, &desc))
 			return NULL;
 	}
+
 	return desc;
 }
 
@@ -264,6 +275,8 @@ ulong blk_read_devnum(enum if_type if_type, int devnum, lbaint_t start,
 {
 #ifdef CONFIG_AW_BLK
 	if (if_type == IF_TYPE_NVME)
+		return aw_blk_read_devnum(if_type, devnum, start, blkcnt, buffer);
+	else if (if_type == IF_TYPE_UFS)
 		return aw_blk_read_devnum(if_type, devnum, start, blkcnt, buffer);
 #endif
 
@@ -288,7 +301,7 @@ ulong blk_write_devnum(enum if_type if_type, int devnum, lbaint_t start,
 		       lbaint_t blkcnt, const void *buffer)
 {
 #ifdef CONFIG_AW_BLK
-	if (if_type == IF_TYPE_NVME)
+	if (if_type == IF_TYPE_NVME || if_type == IF_TYPE_UFS)
 		return aw_blk_write_devnum(if_type, devnum, start, blkcnt, buffer);
 #endif
 
@@ -308,6 +321,8 @@ int blk_select_hwpart_devnum(enum if_type if_type, int devnum, int hwpart)
 {
 #ifdef CONFIG_AW_BLK
 	if (if_type == IF_TYPE_NVME)
+		return aw_blk_select_hwpart_devnum(if_type, devnum, hwpart);
+	else if (if_type == IF_TYPE_UFS)
 		return aw_blk_select_hwpart_devnum(if_type, devnum, hwpart);
 #endif
 

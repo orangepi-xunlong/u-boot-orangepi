@@ -146,6 +146,7 @@ void dev_print (struct blk_desc *dev_desc)
 		break;
 	case IF_TYPE_SD:
 	case IF_TYPE_MMC:
+	case IF_TYPE_UFS:
 	case IF_TYPE_USB:
 	case IF_TYPE_NVME:
 	case IF_TYPE_SUNXI_FLASH:
@@ -290,6 +291,9 @@ static void print_part_header(const char *type, struct blk_desc *dev_desc)
 		break;
 	case IF_TYPE_NVME:
 		puts ("NVMe");
+		break;
+	case IF_TYPE_UFS:
+		puts ("UFS");
 		break;
 	default:
 		puts ("UNKNOWN");
