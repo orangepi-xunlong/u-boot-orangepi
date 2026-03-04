@@ -78,6 +78,31 @@ void *decompress_boot_bmp(void)
 	return uncomp_buf;
 }
 
+static struct file_info_t *create_boot_bmp_file(void)
+{
+	struct file_info_t *file = NULL;
+
+	file = malloc(sizeof(struct file_info_t));
+	if (!file) {
+		pr_err("malloc failed\n");
+
+		return NULL;
+	}
+
+	memset(file, 0, sizeof(struct file_info_t));
+
+	file->file_addr = decompress_boot_bmp();
+	file->file_size = 256 * 1024;
+
+	file->name = strdup("boot.bmp");
+	file->path = strdup("embedded_array");
+
+	file->unload_file = __unload_file;
+	file->print_file_info = __print_file_info;
+
+	return file;
+}
+
 struct file_info_t *load_file(char *name, char *part_name)
 {
 	char *argv[6], file_addr[32];
@@ -118,23 +143,7 @@ struct file_info_t *load_file(char *name, char *part_name)
 
 		if (is_nvme || is_ufs) {
 			printf("NVMe or UFS detected ==> using embedded boot.bmp array\n");
-
-			file = malloc(sizeof(struct file_info_t));
-			if (!file) {
-				pr_err("malloc failed\n");
-				goto OUT;
-			}
-
-			memset(file, 0, sizeof(struct file_info_t));
-
-			file->file_addr = decompress_boot_bmp();
-			file->file_size = 256 * 1024;
-
-			file->name = strdup("boot.bmp");
-			file->path = strdup("embedded_array");
-
-			file->unload_file = __unload_file;
-			file->print_file_info = __print_file_info;
+			file = create_boot_bmp_file();
 
 			return file;
 		}
@@ -166,7 +175,8 @@ struct file_info_t *load_file(char *name, char *part_name)
 
 	if (!file) {
 		pr_err("get file(%s) size from %s error\n", name, part_name);
-		goto OUT;
+		file = create_boot_bmp_file();
+		return file;
 	}
 
 	file->name = strdup(name);
