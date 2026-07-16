@@ -674,7 +674,7 @@
 
 &pcie_rc {
 	pcie1v8_supply = "dldo2";
-	pcie3v3_supply = "dc1sw2";
+	pcie3v3_supply = "dc1sw1";
 	status = "okay";
 };
 
