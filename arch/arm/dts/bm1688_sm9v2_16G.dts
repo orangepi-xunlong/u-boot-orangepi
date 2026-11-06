@@ -1,0 +1,235 @@
+/dts-v1/;
+#include "soph_base_arm64.dtsi"
+//#include "soph_asic_bga.dtsi"
+#include "soph_asic_emmc.dtsi"
+#include "soph_default_memmap.dtsi"
+
+/ {
+	model = "Ntimes. NA1688 EMMC 8G.";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0"; // "serial0:115200n8", no arguments means no re-initialization
+	};
+
+	memory@100000000 {
+		device_type = "memory";
+		reg = <0x1 0x00000000 0x4 0x00000000>;	//16G
+	};
+
+	watchdog: watchdog {
+		compatible = "linux,wdt-gpio";
+		gpios = <&portd 23 GPIO_ACTIVE_LOW>;	// gpio119
+		hw_algo = "toggle";
+		hw_margin_ms = <1600>;
+		always-running;
+	};
+
+	wiegand0 {
+		status = "disabled";
+	};
+
+	wiegand1 {
+		status = "disabled";
+	};
+
+	wifi_pin {
+		compatible = "cvitek,wifi-pin";
+		poweron-gpio = <&portg 16 GPIO_ACTIVE_HIGH>;
+		wakeup-gpio = <&portg 17 GPIO_ACTIVE_HIGH>;
+	};
+
+	bt_pin {
+		compatible = "cvitek,bt-pin";
+		poweron-gpio = <&portc 29 GPIO_ACTIVE_HIGH>;
+	};
+
+	/delete-node/ cv-sd1@29320000;
+	/delete-node/ wifi-sd@29330000;
+	wifi-sd@29320000 {
+		compatible = "cvitek,cv186x-sd1";
+		reg = <0x0 0x29320000 0x0 0x10000>;
+		reg-names = "core_mem";
+		bus-width = <4>;
+		no-sd;
+		no-mmc;
+		non-removable;
+		src-frequency = <383333334>;
+		min-frequency = <400000>;
+		max-frequency = <150000000>;
+		64_addressing;
+		reset_tx_rx_phy;
+		pwr-gpios = <&portc 4 GPIO_ACTIVE_HIGH>;
+		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
+	};
+};
+
+&uart0 {
+	clock-frequency = <200000000>;
+	current-speed = <115200>;
+};
+
+&uart3 {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart5 {
+	status = "okay";
+};
+
+&uart7 {
+	status = "okay";
+};
+
+&uart8 {
+	status = "okay";
+};
+
+&sata {
+	status = "disabled";
+};
+
+&gpio_leds {
+	status = "disabled";
+};
+
+
+&cif_v4l2 {
+	status = "disabled";
+};
+
+&sd {
+	pwr-gpios = <&portg 0 GPIO_ACTIVE_HIGH>;
+};
+
+&irrx {
+	status = "disabled";
+};
+
+&keyscan {
+	status = "disabled";
+};
+
+&pcie0 {
+	status = "okay"; 
+    reset-gpio = <&porte 3 GPIO_ACTIVE_HIGH>; //gpio 131
+};
+
+&pcie1 {
+	status = "disabled";
+    reset-gpio = <&porte 3 GPIO_ACTIVE_HIGH>; //gpio 131
+};
+
+&mipi_dsi1 {
+	status = "disabled";
+};
+
+&mipi_panel1 {
+	status = "disabled";
+};
+
+&lvds0 {
+	status = "disabled";
+};
+
+&panel {
+	status = "disabled";	
+};
+
+&lvds1 {
+	status = "disabled";	
+};
+
+&panel1 {
+	status = "disabled";
+};
+
+&mipi_dsi0 {
+	status = "okay";
+	clock-lane = <4>;
+	data-lanes = <0 1>;
+	lanes-swap = <0 0 0 0 0>;
+};
+
+&mipi_panel0 {
+	compatible = "cvitek,hx8399";
+	status = "okay";
+	reset-gpio = <&portc 30 GPIO_ACTIVE_HIGH>;  // gpio94
+	//power-gpio = <&portd 20 GPIO_ACTIVE_HIGH>;  // gpio116
+	power-gpio = <&portb 19 GPIO_ACTIVE_HIGH>;  // gpio51
+	bl_en-gpio = <&portb 16 GPIO_ACTIVE_HIGH>;  // gpio48
+	pwm-gpio = <&porta 3 GPIO_ACTIVE_HIGH>;     //gpio3
+};
+
+&hdmi {
+	status = "okay";
+};
+
+&usbdrd3_0 {
+	//vbus-gpio = <&porte 1 GPIO_ACTIVE_HIGH>;
+	usbdrd_dwc3_0: usb@39010000 {
+		role-switch-default-mode = "host";
+	};
+};
+
+&usbdrd3_1 {
+	vbus-gpio = <&porte 2 GPIO_ACTIVE_HIGH>;
+};
+
+&cif_v4l2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cif_in: port@0 {
+			reg = <0>;
+			cif_in_ep0: endpoint@0 {
+				remote-endpoint = <&sensor0_out>;
+			};
+		};
+	};
+};
+
+&i2c2 {
+	sensor0@1a{
+		status = "okay";
+		compatible = "cvitek,sensor0";
+		reg = <0x1a>;
+		reset-gpios = <&portb 29 GPIO_ACTIVE_HIGH>;  // gpio61
+		power-gpios = <&portb 10 GPIO_ACTIVE_HIGH>;  // gpio42
+
+		port {
+			sensor0_out: endpoint {
+				remote-endpoint = <&cif_in_ep0>;
+			};
+		};
+	};
+};
+
+&dac1{
+	mute-gpio-l;
+};
+
+&i2c4 {
+	rtc@51 {
+		status = "okay";
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+	};
+};
+
+&veth {
+	status = "okay";
+};
+
+&spi0 {
+	cs-gpios = <&porte 1 GPIO_ACTIVE_LOW>;
+};

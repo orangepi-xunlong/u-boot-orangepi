@@ -1,0 +1,38 @@
+#
+# Video drivers selection for soph soc.
+#
+# Author: yu.yang <yu.yang@sophgo.com>
+#
+
+menuconfig VIDEO_SOPH
+	bool "Enable Sophon Video Support"
+	select DM_VIDEO
+	select DISPLAY
+	help
+	  Sophon SoCs provide video output capabilities for High-Definition
+	  Multimedia Interface (HDMI), Low-voltage Differential Signalling
+	  (LVDS) and Display Serial Interface (DSI).
+
+config LOGO_FROM_INTERNEL
+	bool "Use Internel Logo"
+	depends on VIDEO_SOPH
+	help
+	  This enables use logo picture from soph_logo.h, not from emmc/spinand/spinor.
+
+if VIDEO_SOPH
+
+choice
+	prompt "Display port selection"
+	depends on VIDEO_SOPH
+	help
+	  Select one kind of display port or function.
+
+config DISPLAY_SOPH_HDMI
+	bool "HDMI port"
+	depends on VIDEO_SOPH
+	help
+	  This enables High-Definition Multimedia Interface display support.
+
+endchoice
+
+endif

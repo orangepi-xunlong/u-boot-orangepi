@@ -1,0 +1,35 @@
+/dts-v1/;
+#include "soph_base_arm64.dtsi"
+//#include "soph_asic_bga.dtsi"
+#include "soph_asic_emmc.dtsi"
+#include "soph_default_memmap.dtsi"
+
+/ {
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0"; // "serial0:115200n8", no arguments means no re-initialization
+	};
+};
+
+&uart0 {
+	clock-frequency = <200000000>;
+	current-speed = <115200>;
+};
+
+&i2c2 {
+	rtc@68 {
+		compatible = "dallas,ds1307";
+		reg = <0x68>;
+	};
+};
+
+&usbdrd3_0 {
+	vbus-gpio = <&porte 1 GPIO_ACTIVE_HIGH>;
+};
+
+&usbdrd3_1 {
+	vbus-gpio = <&porte 2 GPIO_ACTIVE_HIGH>;
+};

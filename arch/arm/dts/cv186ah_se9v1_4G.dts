@@ -1,0 +1,186 @@
+/dts-v1/;
+#include "soph_base_arm64.dtsi"
+//#include "soph_asic_bga.dtsi"
+#include "soph_asic_emmc.dtsi"
+#include "soph_default_memmap_4G.dtsi"
+
+/ {
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0"; // "serial0:115200n8", no arguments means no re-initialization
+	};
+
+	reserved-memory {
+		#address-cells = <0x2>;
+		#size-cells = <0x2>;
+		ranges;
+#ifndef __UBOOT__
+		//0x1_0400_0000 - 0x1_2400_0000 for TPU (owner: zhuolin.li@sophgo.com)
+		scalar_reserved: scalar_mem {
+			reg = <0x1 0x04000000 0x0 0x20000000>;  //512MB for TPU firmware
+			no-map;
+		};
+
+		//0x1_2c00_0000 - 0x1_5c00_0000 for TPU (owner: zhuolin.li@sophgo.com)
+		ion_for_npu: ion_npu_mem {
+			compatible = "npu-region";
+			reg = <0x1 0x24000000 0x0 0x30000000>; // 768MB, for TPU
+		};
+
+		//0x1_5c00_0000 - 0x1_C000_0000 for VPP (owner: zhuolin.li@sophgo.com)
+		ion_for_vpp: ion_vpp_mem {
+			compatible = "vpp-region";
+			reg = <0x1 0x5c000000 0x0 0x60000000>; // 1.5GB, for VPP
+		};
+#endif
+	};
+
+	pcie@20400000 {
+		reset-gpio = <&porte 1 GPIO_ACTIVE_HIGH>; //gpio 129
+	};
+
+	/delete-node/ cv-sd1@29320000;
+	sd:cv-sd@29310000 {
+		 pwr-gpios = <&porte 6 GPIO_ACTIVE_HIGH>;
+	};
+
+	thermal-zones {
+		soc_thermal_0 {
+			trips {
+				soc_thermal_trip_0 {
+					temperature = <85000>; /* millicelsius */
+					hysteresis = <10000>; /* millicelsius */
+					type = "passive";
+				};
+
+				soc_thermal_trip_1 {
+					temperature = <95000>; /* millicelsius */
+					hysteresis = <20000>; /* millicelsius */
+					type = "passive";
+				};
+
+				soc_thermal_crtical_0 {
+					temperature = <105000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "critical";
+
+				};
+			};
+		};
+	};
+
+	cpus {
+		#size-cells = <0x0>;
+		#address-cells = <0x1>;
+
+		/delete-node/ cpu-map;
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&cpu0>;
+				};
+				core1 {
+					cpu = <&cpu1>;
+				};
+				core2 {
+					cpu = <&cpu2>;
+				};
+				core3 {
+					cpu = <&cpu3>;
+				};
+			};
+
+			cluster1 {
+				core0 {
+					cpu = <&cpu4>;
+				};
+				core1 {
+					cpu = <&cpu5>;
+				};
+			};
+		};
+		/delete-node/ cpu@102;
+		/delete-node/ cpu@103;
+	};
+};
+
+&uart0 {
+	clock-frequency = <200000000>;
+	current-speed = <115200>;
+};
+
+&mipi_dsi0 {
+	clock-lane = <2>;
+	data-lanes = <4 3 1 0>;
+	lanes-swap = <0 0 0 0 0>;
+};
+
+&mipi_panel0 {
+	compatible = "cvitek,hx8399";
+	status = "okay";
+	reset-gpio = <&portd 18 GPIO_ACTIVE_LOW>;
+	pwm-gpio = <&portg 17 GPIO_ACTIVE_HIGH>;
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+};
+
+&mipi_dsi1 {
+	clock-lane = <2>;
+	data-lanes = <0 1 3 4>;
+	lanes-swap = <0 0 0 0 0>;
+};
+
+&mipi_panel1 {
+	compatible = "cvitek,hx8394";
+	status = "okay";
+	reset-gpio = <&portg 16 GPIO_ACTIVE_LOW>;
+	pwm-gpio = <&portd 16 GPIO_ACTIVE_HIGH>;
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+};
+
+&hdmi {
+	phy-table =
+			<0  0x0007 0x0120 0x8d88>,
+			<1  0x0007 0x0120 0x8d88>,
+			<2  0x0007 0x0120 0x8d88>,
+			<3  0x0007 0x0120 0x8d88>,
+			<4  0x0007 0x0120 0x8d88>,
+			<5  0x0007 0x0120 0x8d88>,
+			<6  0x0000 0x0120 0x83F8>,
+			<7  0x0000 0x0120 0x83F8>,
+			<8  0x0000 0x0120 0x83F8>,
+			<9  0x0000 0x0080 0x8FF4>,
+			<10 0x0000 0x0080 0x8FF4>;
+};
+
+&panel {
+	compatible = "cvitek,lcm18x56";
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&panel1 {
+	compatible = "cvitek,lcm18x56";
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+	status = "disable";
+};
+
+
+&usbdrd3_0 {
+	usbdrd_dwc3_0: usb@39010000 {
+		role-switch-default-mode = "host";
+	};
+};
+
+&i2c2 {
+	rtc@68 {
+		compatible = "dallas,ds1307";
+		reg = <0x68>;
+	};
+};
+
+&can0 {
+    label = "SE9";
+};

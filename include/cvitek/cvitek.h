@@ -1,0 +1,1 @@
+/project/sophon/1688_v1.9_github/build/boards/sophon/edge_wevb_emmc/u-boot/cvitek.h

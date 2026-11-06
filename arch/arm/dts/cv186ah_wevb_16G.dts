@@ -1,0 +1,264 @@
+/dts-v1/;
+#include "soph_base_arm64.dtsi"
+//#include "soph_asic_bga.dtsi"
+#include "soph_asic_emmc.dtsi"
+#include "soph_default_memmap.dtsi"
+
+/ {
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0"; // "serial0:115200n8", no arguments means no re-initialization
+	};
+
+	memory@100000000 {
+		device_type = "memory";
+		reg = <0x1 0x00000000 0x4 0x00000000>;  //16G
+    };
+
+	reserved-memory {
+		#address-cells = <0x2>;
+		#size-cells = <0x2>;
+		ranges;
+#ifndef __UBOOT__
+		//0x1_0400_0000 - 0x1_2400_0000 for TPU (owner: zhuolin.li@sophgo.com)
+		//Don't move the TPU address
+		scalar_reserved: scalar_mem {
+			reg = <0x1 0x04000000 0x0 0x20000000>;  //512MB for TPU firmware
+			no-map;
+		};
+
+		ion_for_npu: ion_npu_mem {
+			compatible = "npu-region";
+			reg = <0x2 0x00000000 0x1 0x00000000>; // 4G, for npu
+		};
+
+		ion_for_vpp: ion_vpp_mem {
+			compatible = "vpp-region";
+			reg = <0x3 0x00000000 0x1 0x00000000>; // 4G, for TPU
+		};
+#endif
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		wake {
+			label = "wake key";
+			gpios = <&portg 8 GPIO_ACTIVE_LOW>;
+			linux,code = <143>;
+			linux,input-type = <EV_KEY>;
+			wakeup-source;
+		};
+	};
+
+	cpus {
+		#size-cells = <0x0>;
+		#address-cells = <0x1>;
+
+		/delete-node/ cpu-map;
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&cpu0>;
+				};
+				core1 {
+					cpu = <&cpu1>;
+				};
+				core2 {
+					cpu = <&cpu2>;
+				};
+				core3 {
+					cpu = <&cpu3>;
+				};
+			};
+
+			cluster1 {
+				core0 {
+					cpu = <&cpu4>;
+				};
+				core1 {
+					cpu = <&cpu5>;
+				};
+			};
+		};
+		/delete-node/ cpu@102;
+		/delete-node/ cpu@103;
+	};
+};
+
+&uart0 {
+	clock-frequency = <200000000>;
+	current-speed = <115200>;
+};
+
+&mipi_dsi0 {
+	clock-lane = <2>;
+	data-lanes = <4 3 1 0>;
+	lanes-swap = <0 0 0 0 0>;
+};
+
+&mipi_panel0 {
+	compatible = "cvitek,hx8399";
+	status = "okay";
+	reset-gpio = <&portd 18 GPIO_ACTIVE_LOW>;
+	pwm-gpio = <&portg 17 GPIO_ACTIVE_HIGH>;
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+};
+
+&mipi_dsi1 {
+	clock-lane = <2>;
+	data-lanes = <0 1 3 4>;
+	lanes-swap = <0 0 0 0 0>;
+};
+
+&mipi_panel1 {
+	compatible = "cvitek,hx8394";
+	status = "okay";
+	reset-gpio = <&portg 16 GPIO_ACTIVE_LOW>;
+	pwm-gpio = <&portd 16 GPIO_ACTIVE_HIGH>;
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+};
+
+&panel {
+	compatible = "cvitek,lcm18x56";
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&panel1 {
+	compatible = "cvitek,lcm18x56";
+	power-gpio = <&portd 15 GPIO_ACTIVE_HIGH>;
+	status = "disable";
+};
+
+&usbdrd3_0 {
+	vbus-gpio = <&porte 1 GPIO_ACTIVE_HIGH>;
+	usbdrd_dwc3_0: usb@39010000 {
+		role-switch-default-mode = "host";
+	};
+};
+
+&usbdrd3_1 {
+	vbus-gpio = <&porte 2 GPIO_ACTIVE_HIGH>;
+};
+
+&i2c2 {
+	rtc@68 {
+		compatible = "dallas,ds1307";
+		reg = <0x68>;
+	};
+};
+
+&cif_v4l2 {
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cif_in: port@0 {
+			reg = <0>;
+			cif_in_ep0: endpoint@0 {
+				remote-endpoint = <&sensor0_out>;
+			};
+			cif_in_ep1: endpoint@1 {
+				remote-endpoint = <&sensor1_out>;
+			};
+			cif_in_ep2: endpoint@2 {
+				remote-endpoint = <&sensor2_out>;
+			};
+			cif_in_ep3: endpoint@3 {
+				remote-endpoint = <&sensor3_out>;
+			};
+			cif_in_ep4: endpoint@4 {
+				remote-endpoint = <&sensor4_out>;
+			};
+			cif_in_ep5: endpoint@5 {
+				remote-endpoint = <&sensor5_out>;
+			};
+		};
+	};
+};
+
+&i2c0 {
+	sensor0@1a{
+		status = "okay";
+		compatible = "v4l2,sensor0";
+		reg = <0x1a>;
+		port {
+			sensor0_out: endpoint {
+				remote-endpoint = <&cif_in_ep0>;
+			};
+		};
+	};
+};
+
+&i2c1 {
+	sensor1@1a{
+		status = "okay";
+		compatible = "v4l2,sensor1";
+		reg = <0x1a>;
+		port {
+			sensor1_out: endpoint {
+				remote-endpoint = <&cif_in_ep1>;
+			};
+		};
+	};
+};
+
+
+&i2c2 {
+	sensor2@1a{
+		status = "okay";
+		compatible = "v4l2,sensor2";
+		reg = <0x1a>;
+		port {
+			sensor2_out: endpoint {
+				remote-endpoint = <&cif_in_ep2>;
+			};
+		};
+	};
+};
+
+&i2c4 {
+	sensor3@1a{
+		status = "okay";
+		compatible = "v4l2,sensor3";
+		reg = <0x1a>;
+		port {
+			sensor3_out: endpoint {
+				remote-endpoint = <&cif_in_ep3>;
+			};
+		};
+	};
+};
+
+&i2c5 {
+	sensor4@1a{
+		status = "okay";
+		compatible = "v4l2,sensor4";
+		reg = <0x1a>;
+		port {
+			sensor4_out: endpoint {
+				remote-endpoint = <&cif_in_ep4>;
+			};
+		};
+	};
+};
+
+&i2c6 {
+	sensor5@1a{
+		status = "okay";
+		compatible = "v4l2,sensor5";
+		reg = <0x1a>;
+		port {
+			sensor5_out: endpoint {
+				remote-endpoint = <&cif_in_ep5>;
+			};
+		};
+	};
+};
+
+&veth {
+	status = "okay";
+};

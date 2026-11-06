@@ -1,0 +1,5 @@
+/ {
+	/delete-node/ cv-emmc@29300000;
+	/delete-node/ cv-spinf@290d0000;
+};
+
