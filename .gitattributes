@@ -1,0 +1,3 @@
+# Preserve prebuilt FSBL firmware and DDR objects byte for byte.
+fsbl/**/*.o binary
+fsbl/**/*.bin binary

@@ -6,6 +6,7 @@
 # Normal rules (sorted alphabetically)
 #
 .*
+!.gitattributes
 *.a
 *.asn1.[ch]
 *.bin
@@ -100,3 +101,7 @@ build
 #include/cvi_board_memmap.h
 #include/cvipart.h
 #include/imgs.h
+
+# Inputs required to build the BM1688 FIP image.
+!fsbl/test/cv181x/ddr_param.bin
+!fsbl/plat/cvitek/cv186x/common/prebuilt/cv186x_mcu_fw.bin

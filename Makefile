@@ -2067,7 +2067,9 @@ export CVIBOARD=wevb_emmc
 endif
 ifeq ($(CONFIG_TARGET_CVITEK),y)
 fip.bin: u-boot.bin
+	mkdir -p fsbl/build/
 	find fsbl/build/ -type f ! -name '*.h' -delete
+	cp $(srctree)/include/cvi_board_memmap.h fsbl/build/
 	STORAGE_TYPE=$(storage_type) CHIP_ARCH=SOPHON DDR_CFG=ddr_auto SUBTYPE=asic ${MAKE} -C fsbl \
 		SPD=opteed O=$(CURDIR)/fsbl/build/ BLCP_2ND_PATH= LOADER_2ND_PATH=$(CURDIR)/u-boot.bin \
 		CROSS_COMPILE="$(CROSS_COMPILE)"
